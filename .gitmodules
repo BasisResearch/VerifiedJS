@@ -1,0 +1,12 @@
+[submodule "tests/test262"]
+	path = tests/test262
+	url = https://github.com/nicolo-ribaudo/test262.git
+[submodule "tests/flagship/prettier"]
+	path = tests/flagship/prettier
+	url = https://github.com/prettier/prettier.git
+[submodule "tests/flagship/TypeScript"]
+	path = tests/flagship/TypeScript
+	url = https://github.com/microsoft/TypeScript.git
+[submodule "tests/flagship/babel"]
+	path = tests/flagship/babel
+	url = https://github.com/babel/babel.git

@@ -1,0 +1,35 @@
+# Lean build artifacts
+.lake/
+lake-packages/
+build/
+
+# Output files
+*.wasm
+*.wat
+output/
+
+# Logs
+agent_logs/*.log
+test_logs/
+
+# Editor
+.vscode/settings.json
+.idea/
+*.swp
+*.swo
+*~
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Python
+__pycache__/
+*.pyc
+.venv/
+
+# Sorry report (auto-generated)
+SORRY_REPORT.md
+
+# Task locks (transient)
+current_tasks/*.txt
