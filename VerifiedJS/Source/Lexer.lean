@@ -72,6 +72,14 @@ private def keywordSet : List String :=
 private def isKeyword (s : String) : Bool :=
   keywordSet.contains s
 
+/--
+ECMA-262 §11 lexical grammar is context-sensitive around `/`:
+after specific control headers (e.g. `if (...)`) the next token starts a statement,
+so `/` should be lexed as a regex literal start rather than division.
+-/
+private def controlHeaderKeyword (s : String) : Bool :=
+  s = "if" || s = "while" || s = "for" || s = "with" || s = "catch"
+
 private def tokenCanEndExpression : TokenKind → Bool
   | .number _ | .string _ | .regex _ _ | .ident _ => true
   | .kw k => k = "this" || k = "true" || k = "false" || k = "null" || k = "undefined"
@@ -126,18 +134,28 @@ private def readStringBody (quote : Char) (chars : List Char) :
         go cs (c :: acc) (consumed + 1)
   go chars [] 0
 
-private def readRegexBody (chars : List Char) : String × String × List Char × Nat :=
-  let rec body (rest acc : List Char) (consumed : Nat) :=
+private def readRegexBody (chars : List Char) : String × String × List Char × Nat × Bool :=
+  let rec body (rest acc : List Char) (consumed : Nat) (inClass escaped : Bool) :=
     match rest with
-    | [] => (String.mk acc.reverse, "", [], consumed)
-    | '\\' :: c :: cs => body cs (c :: '\\' :: acc) (consumed + 2)
-    | '/' :: cs =>
+    | [] => (String.mk acc.reverse, "", [], consumed, false)
+    | '\n' :: _ => (String.mk acc.reverse, "", rest, consumed, false)
+    | c :: cs =>
+      if escaped then
+        body cs (c :: acc) (consumed + 1) inClass false
+      else if c = '\\' then
+        body cs (c :: acc) (consumed + 1) inClass true
+      else if c = '[' then
+        body cs (c :: acc) (consumed + 1) true false
+      else if c = ']' then
+        body cs (c :: acc) (consumed + 1) false false
+      else if c = '/' && !inClass then
       let (flagsChars, tail) := readWhile cs (fun c => c.isAlpha)
       let flags := String.mk flagsChars
       let consumedFlags := flagsChars.length + 1
-      (String.mk acc.reverse, flags, tail, consumed + consumedFlags)
-    | c :: cs => body cs (c :: acc) (consumed + 1)
-  body chars [] 0
+      (String.mk acc.reverse, flags, tail, consumed + consumedFlags, true)
+      else
+        body cs (c :: acc) (consumed + 1) inClass false
+  body chars [] 0 false false
 
 private def punct2Set : List String :=
   [ "==", "!=", "<=", ">=", "&&", "||", "??", "=>", "++", "--"
@@ -173,6 +191,9 @@ partial def tokenizeChars
     (chars : List Char)
     (line col offset : Nat)
     (expectRegex : Bool)
+    (parenDepth : Nat)
+    (controlHeaderParens : List Nat)
+    (pendingControlHeader : Bool)
     (acc : List Token) : Except String (List Token) := do
   match chars with
   | [] =>
@@ -180,49 +201,54 @@ partial def tokenizeChars
   | c :: cs =>
     if c = ' ' || c = '\t' || c = '\r' then
       let (_, nextCol, nextOffset) := advancePos line col offset c
-      tokenizeChars cs line nextCol nextOffset expectRegex acc
+      tokenizeChars cs line nextCol nextOffset expectRegex parenDepth controlHeaderParens pendingControlHeader acc
     else if c = '\n' then
       let tok : Token := { kind := .newline, pos := { line, col, offset } }
       let (nextLine, nextCol, nextOffset) := advancePos line col offset c
-      tokenizeChars cs nextLine nextCol nextOffset true (tok :: acc)
+      tokenizeChars cs nextLine nextCol nextOffset true parenDepth controlHeaderParens pendingControlHeader (tok :: acc)
     else if isIdentStart c then
       let (idChars, rest) := readWhile (c :: cs) isIdentContinue
       let s := String.mk idChars
       let kind := if isKeyword s then TokenKind.kw s else TokenKind.ident s
       let tok : Token := { kind, pos := { line, col, offset } }
+      let pendingControlHeader' := match kind with
+        | .kw k => controlHeaderKeyword k
+        | _ => false
       tokenizeChars rest line (col + idChars.length) (offset + idChars.length)
-        (not (tokenCanEndExpression kind)) (tok :: acc)
+        (not (tokenCanEndExpression kind)) parenDepth controlHeaderParens pendingControlHeader' (tok :: acc)
     else if c.isDigit then
       let (numChars, rest) := readWhile (c :: cs) (fun ch => ch.isDigit || ch = '.')
       let n := (String.toNat? (String.mk numChars)).getD 0
       let tok : Token := { kind := .number (Float.ofNat n), pos := { line, col, offset } }
-      tokenizeChars rest line (col + numChars.length) (offset + numChars.length) false (tok :: acc)
+      tokenizeChars rest line (col + numChars.length) (offset + numChars.length) false parenDepth controlHeaderParens false (tok :: acc)
     else if c = '"' || c = '\'' then
       let (body, rest, consumedTail) := readStringBody c cs
       let tok : Token := { kind := .string body, pos := { line, col, offset } }
       let consumed := consumedTail + 1
-      tokenizeChars rest line (col + consumed) (offset + consumed) false (tok :: acc)
+      tokenizeChars rest line (col + consumed) (offset + consumed) false parenDepth controlHeaderParens false (tok :: acc)
     else if c = '/' then
       match cs with
       | '/' :: tail =>
         let (rest, consumedComment) := skipLineComment tail
         let consumed := consumedComment + 2
-        tokenizeChars rest line (col + consumed) (offset + consumed) expectRegex acc
+        tokenizeChars rest line (col + consumed) (offset + consumed) expectRegex parenDepth controlHeaderParens pendingControlHeader acc
       | '*' :: tail =>
         let (rest, line', col', offset', _) ← skipBlockComment tail line (col + 2) (offset + 2) 2
-        tokenizeChars rest line' col' offset' expectRegex acc
+        tokenizeChars rest line' col' offset' expectRegex parenDepth controlHeaderParens pendingControlHeader acc
       | '=' :: tail =>
         let tok : Token := { kind := .punct "/=", pos := { line, col, offset } }
-        tokenizeChars tail line (col + 2) (offset + 2) true (tok :: acc)
+        tokenizeChars tail line (col + 2) (offset + 2) true parenDepth controlHeaderParens false (tok :: acc)
       | _ =>
         if expectRegex then
-        let (pat, flags, rest, consumedTail) := readRegexBody cs
+        let (pat, flags, rest, consumedTail, terminated) := readRegexBody cs
+        if !terminated then
+          throw s!"Lexer error at {line}:{col}: unterminated regex literal"
         let tok : Token := { kind := .regex pat flags, pos := { line, col, offset } }
         let consumed := consumedTail + 1
-        tokenizeChars rest line (col + consumed) (offset + consumed) false (tok :: acc)
+        tokenizeChars rest line (col + consumed) (offset + consumed) false parenDepth controlHeaderParens false (tok :: acc)
         else
           let tok : Token := { kind := .punct "/", pos := { line, col, offset } }
-          tokenizeChars cs line (col + 1) (offset + 1) true (tok :: acc)
+          tokenizeChars cs line (col + 1) (offset + 1) true parenDepth controlHeaderParens false (tok :: acc)
     else
       let (p, rest) := readPunct (c :: cs)
       if p.isEmpty then
@@ -230,11 +256,28 @@ partial def tokenizeChars
       else
         let kind : TokenKind := .punct p
         let tok : Token := { kind, pos := { line, col, offset } }
+        let (parenDepth', controlHeaderParens', expectRegex') :=
+          if p = "(" then
+            let depth' := parenDepth + 1
+            let controlHeaderParens' :=
+              if pendingControlHeader then depth' :: controlHeaderParens else controlHeaderParens
+            (depth', controlHeaderParens', true)
+          else if p = ")" then
+            let closingDepth := parenDepth
+            let depth' := parenDepth - 1
+            let (controlHeaderParens'', isControlClose) :=
+              match controlHeaderParens with
+              | hd :: tl =>
+                if hd = closingDepth then (tl, true) else (controlHeaderParens, false)
+              | [] => ([], false)
+            (depth', controlHeaderParens'', isControlClose || not (tokenCanEndExpression kind))
+          else
+            (parenDepth, controlHeaderParens, not (tokenCanEndExpression kind))
         tokenizeChars rest line (col + p.length) (offset + p.length)
-          (not (tokenCanEndExpression kind)) (tok :: acc)
+          expectRegex' parenDepth' controlHeaderParens' false (tok :: acc)
 
 /-- Tokenize the full source string -/
 def tokenize (source : String) : Except String (List Token) :=
-  tokenizeChars source.toList 1 1 0 true []
+  tokenizeChars source.toList 1 1 0 true 0 [] false []
 
 end VerifiedJS.Source

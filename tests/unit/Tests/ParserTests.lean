@@ -30,6 +30,30 @@ def commentIsIgnored (toks : List Token) : Bool :=
     ] => true
   | _ => false
 
+def slashAfterIfHeaderIsRegex (toks : List Token) : Bool :=
+  match toks with
+  | [ { kind := .kw "if", .. }
+    , { kind := .punct "(", .. }
+    , { kind := .ident "x", .. }
+    , { kind := .punct ")", .. }
+    , { kind := .regex "ab+" "", .. }
+    , { kind := .punct ".", .. }
+    , { kind := .ident "test", .. }
+    , { kind := .punct "(", .. }
+    , { kind := .ident "y", .. }
+    , { kind := .punct ")", .. }
+    , { kind := .eof, .. }
+    ] => true
+  | _ => false
+
+def regexCharClassKeepsSlash (toks : List Token) : Bool :=
+  match toks with
+  | [ { kind := .kw "return", .. }
+    , { kind := .regex "[a/b]+" "g", .. }
+    , { kind := .eof, .. }
+    ] => true
+  | _ => false
+
 def isMulPrecedence : Expr → Bool
   | .binary .add (.lit (.number _)) (.binary .mul (.lit (.number _)) (.lit (.number _))) => true
   | _ => false
@@ -97,6 +121,16 @@ def isBlockWithAssign : Program → Bool
 #guard
   match tokenize "a/*x*/ / b // trailing comment" with
   | .ok toks => commentIsIgnored toks
+  | .error _ => false
+
+#guard
+  match tokenize "if (x) /ab+/.test(y)" with
+  | .ok toks => slashAfterIfHeaderIsRegex toks
+  | .error _ => false
+
+#guard
+  match tokenize "return /[a/b]+/g" with
+  | .ok toks => regexCharClassKeepsSlash toks
   | .error _ => false
 
 end Tests
