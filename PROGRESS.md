@@ -28,3 +28,4 @@
 - Sorry count: TBD (run `./scripts/sorry_report.sh`)
 - Test262 pass rate: N/A
 - Unit tests: N/A
+- 2026-03-08: `Define ANF.Semantics small-step LTS` completed in `VerifiedJS/ANF/Semantics.lean` (pending supervisor validation move in `TASKS.md`)
