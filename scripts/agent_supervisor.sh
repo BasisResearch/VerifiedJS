@@ -409,6 +409,12 @@ spawn_codex_bg() {
   prompt+="Assigned task: ${task_text}"$'\n'
   prompt+="Use this exact assigned task. Do NOT self-claim from TASKS.md or current_tasks/."$'\n'
   prompt+="Implement the task, run ./tests/run_tests.sh --fast, commit your changes, and exit."$'\n'
+  if [[ "${task_text}" =~ [Pp]arser|[Pp]arse|[Ll]exer|[Aa][Ss][Tt] ]]; then
+    prompt+="This task touches parsing/lexing/AST. Run parser fail-fast gates before commit:"$'\n'
+    prompt+="1) quick sampled benchmark-first gate: ./scripts/parse_flagship_failfast.sh --sample 0.02"$'\n'
+    prompt+="2) when near-done or fixing parser regressions: ./scripts/parse_flagship_failfast.sh --full"$'\n'
+    prompt+="If parser gate fails, fix or add a TODO task describing the blocker before exit."$'\n'
+  fi
 
   if [[ "${DRY_RUN}" -eq 1 ]]; then
     echo "[dry-run] codex exec -C ${wt} --add-dir ${ROOT_DIR}/.git --add-dir ${ROOT_DIR}/.lake <prompt with assigned task> > ${log}"

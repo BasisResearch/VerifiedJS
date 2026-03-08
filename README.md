@@ -161,7 +161,9 @@ The parser is **outside the verified TCB**. Validate by:
 - Test262 parse-only tests
 - Round-trip: `parse ∘ print ≈ id` on the AST
 - Differential: parse with VerifiedJS, parse with Acorn/Babel, compare ASTs
-- Flagship parser sweeps using `./scripts/parse_flagship.sh --full --integration-only`
+- Fail-fast flagship parser gate (benchmark-first): `./scripts/parse_flagship_failfast.sh --sample 0.02`
+- Completion gate: `./scripts/parse_flagship_failfast.sh --full` (all flagship JS files)
+- Long-sequence integration sweep: `./scripts/parse_flagship.sh --full --integration-only`
 
 Reference: `argumentcomputer/Wasm.lean` uses Megaparsec.lean for WAST parsing.
 
@@ -421,7 +423,7 @@ Every agent, on every spawn, does this:
 4. Read `ARCHITECTURE.md` to understand the current state.
 5. Read `PROGRESS.md` to understand what's done and what's in flight.
 6. If the task is proof work, read `PROOF_BLOCKERS.md` to avoid repeating failed attempts.
-7. Do the task. Run `./tests/run_tests.sh --fast` before pushing.
+7. Do the task. Run `./tests/run_tests.sh --fast` before pushing. If the task touches parser/lexer/AST, also run `./scripts/parse_flagship_failfast.sh --sample 0.02` (and `--full` when validating parser completion/regression fixes).
 8. Update `TASKS.md` (mark done), `PROGRESS.md` (update status), and `SORRY_REPORT.md` (run script).
    If the task revealed additional required work, append those new tasks to `TASKS.md` before exiting.
 9. Remove lock. Push. Clean up worktree (`git worktree remove`). Exit.
@@ -477,7 +479,7 @@ Pre-compute aggregate statistics. Never make the agent count things manually.
 
 **The problem**: Agents can be time-blind and may spend far too long running tests.
 
-**Mitigation**: Keep `--fast` short and run heavyweight checks only in `--full`. Flagship parser coverage runs in long sequences via `./scripts/parse_flagship.sh --full --integration-only`. The test harness prints wall-clock elapsed time and warns after 5 minutes:
+**Mitigation**: Keep `--fast` short and run heavyweight checks only in `--full`. For parser work, run fail-fast coverage first via `./scripts/parse_flagship_failfast.sh --sample 0.02` (benchmark-first), then confirm with `./scripts/parse_flagship_failfast.sh --full`. Long-sequence integration sweeps remain `./scripts/parse_flagship.sh --full --integration-only`. The test harness prints wall-clock elapsed time and warns after 5 minutes:
 
 ```bash
 if [ "$SECONDS" -gt 300 ]; then
@@ -734,6 +736,8 @@ lake exe verifiedjs input.js --run=anf          # interpret at ANF
 lake test                                        # Lean unit tests
 ./tests/run_tests.sh --fast                      # lightweight regression checks
 ./tests/run_tests.sh --full                      # full suites (includes flagship parse integration sweep)
+./scripts/parse_flagship_failfast.sh --sample 0.02         # parser fail-fast gate (benchmark-first sample)
+./scripts/parse_flagship_failfast.sh --full                # parser completion gate (all flagship JS files)
 ./scripts/parse_flagship.sh --full --integration-only  # long-sequence parser gate
 ./scripts/sorry_report.sh                        # sorry report
 git submodule update --init --recursive          # fetch all submodules (test262 + flagship repos)
@@ -757,15 +761,16 @@ At the end of each run it prints a supervisor summary (rounds, agent exits, test
 4. **Automation first in proofs.** Try `decide`/`simp`/`omega`/`grind`/`canonical`/`aesop` before manual proof.
 5. **Use the LSP.** Query diagnostics, goal states, hover, LeanSearch/Loogle.
 6. **Every change must pass `./tests/run_tests.sh --fast`.** No regressions.
-7. **No context pollution.** Print one-line summaries. Log details to files.
-8. **Update coordination files** (`TASKS.md`, `PROGRESS.md`) before pushing.
+7. **Parser/lexer/AST changes must run parser fail-fast gate**: `./scripts/parse_flagship_failfast.sh --sample 0.02`; use `--full` before claiming parser completion.
+8. **No context pollution.** Print one-line summaries. Log details to files.
+9. **Update coordination files** (`TASKS.md`, `PROGRESS.md`) before pushing.
    If you discover new required work, add it as a new unchecked task in `TASKS.md` (with priority/dependency note).
-9. **Small commits.** One logical change per commit. Easier to merge, easier to bisect.
-10. **When stuck on a proof >30 minutes**, file in `PROOF_BLOCKERS.md` with the goal state and failed approaches. Move on.
-11. **If a proof has failed 3+ times**, mark `ESCALATE:` in `PROOF_BLOCKERS.md`. The property might be false.
-12. **When an e2e test fails**, bisect using `--run=<IL>` interpreters.
-13. **Do not proliferate sorrys.** Check `SORRY_REPORT.md`. If near threshold, close existing sorrys first.
-14. **Design for provability.** If an implementation is correct but hard to prove, refactor it.
-15. **Watch for code duplication.** If you see reimplemented helpers, coalesce into `Util.lean`.
-16. **Interfaces first.** Define types and theorem signatures before implementations.
-17. **Read `PROOF_BLOCKERS.md` before starting proof work.** Do not retry approaches that already failed.
+10. **Small commits.** One logical change per commit. Easier to merge, easier to bisect.
+11. **When stuck on a proof >30 minutes**, file in `PROOF_BLOCKERS.md` with the goal state and failed approaches. Move on.
+12. **If a proof has failed 3+ times**, mark `ESCALATE:` in `PROOF_BLOCKERS.md`. The property might be false.
+13. **When an e2e test fails**, bisect using `--run=<IL>` interpreters.
+14. **Do not proliferate sorrys.** Check `SORRY_REPORT.md`. If near threshold, close existing sorrys first.
+15. **Design for provability.** If an implementation is correct but hard to prove, refactor it.
+16. **Watch for code duplication.** If you see reimplemented helpers, coalesce into `Util.lean`.
+17. **Interfaces first.** Define types and theorem signatures before implementations.
+18. **Read `PROOF_BLOCKERS.md` before starting proof work.** Do not retry approaches that already failed.
