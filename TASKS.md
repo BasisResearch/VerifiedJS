@@ -3,9 +3,8 @@
 ## Priority 1 (blocking — foundations)
 - [ ] Parser milestone: parse ≥95% of JS files selected by `scripts/parse_flagship.sh --full` (current: 86.79% = 1781/2052 on 2026-03-08) — TODO(supervisor): raise parse_flagship pass-rate to >=0.95 before re-validation
 - [ ] Define JS.Core.Semantics small-step LTS
-- [x] Define JS.Flat.Syntax inductive types
 - [ ] Define JS.ANF.Syntax inductive types
-- [x] Define Wasm.Syntax (port from WasmCert-Coq)
+- [ ] Define Wasm.Syntax (port from WasmCert-Coq) — TODO(supervisor): Move `Define Wasm.Syntax (port from WasmCert-Coq)` into `Validated Completed (Supervisor)` in `TASKS.md` after supervisor validation.
 
 ## Priority 2 (important — passes and interpreters)
 - [ ] Implement Core.Elaborate (JS.AST → JS.Core) — SPEC: §14.6, §13.15.5, §13.7
@@ -66,3 +65,4 @@
 - [x] Implement JS.Source.Parser (recursive descent) — SPEC: §11–15 — VALIDATED by supervisor 2026-03-08
 - [x] Parser milestone: support multi-token expression/statement parsing (currently baseline single-token parse only) — VALIDATED by supervisor 2026-03-08
 - [x] Define JS.Core.Syntax inductive types — VALIDATED by supervisor 2026-03-08
+- [x] Define JS.Flat.Syntax inductive types — VALIDATED by supervisor 2026-03-08
