@@ -23,6 +23,8 @@ MERGE_LOCAL=1
 KEEP_LOCAL=0
 LAST_INTEGRATED=0
 VALIDATOR_LLM_COUNT=2
+USE_LLM_PARALLEL_PLANNER=1
+PLANNER_CANDIDATE_CAP=20
 
 SCRIPT_START_TS="$(date +%s)"
 SUMMARY_PRINTED=0
@@ -37,6 +39,9 @@ declare -a SUMMARY_OK
 declare -a SUMMARY_FAIL
 declare -a ROUND_TASK_IDS
 declare -a ROUND_TASK_TEXTS
+declare -a CAND_TASK_LINES
+declare -a CAND_TASK_IDS
+declare -a CAND_TASK_TEXTS
 LAST_SPAWN_PID=0
 
 timestamp() {
@@ -63,6 +68,8 @@ Options:
   --max-rounds N       Stop after N rounds (0 = unlimited, default: 0)
   --monitor-secs N     Print agent progress every N seconds while waiting (default: 5, 0 disables)
   --validator-llms N   Number of Codex validator passes per checked task (default: 2)
+  --no-llm-planner     Disable LLM planner for deciding task parallelization
+  --planner-cap N      Max unchecked tasks provided to LLM planner per round (default: 20)
   --no-push            Skip pushing agent branches
   --no-merge-local     Do not merge successful local agent branches into current branch
   --keep-local         Keep local agent branches/worktrees after run (implies no cleanup)
@@ -722,6 +729,14 @@ parse_args() {
         VALIDATOR_LLM_COUNT="${2:?missing value for --validator-llms}"
         shift 2
         ;;
+      --no-llm-planner)
+        USE_LLM_PARALLEL_PLANNER=0
+        shift
+        ;;
+      --planner-cap)
+        PLANNER_CANDIDATE_CAP="${2:?missing value for --planner-cap}"
+        shift 2
+        ;;
       --no-push)
         PUSH_AFTER_RUN=0
         shift
@@ -1013,24 +1028,172 @@ record_test_failure_todo() {
   echo "ROUND ${round}: added TODO to ${TASKS_FILE} and committed"
 }
 
+task_is_blocker_text() {
+  local task_text="$1"
+  local t
+  t="$(printf '%s' "${task_text}" | tr '[:upper:]' '[:lower:]')"
+  [[ "${t}" == *"implement js.source.parser"* ]] \
+    || [[ "${t}" == *"implement js.source.lexer"* ]] \
+    || [[ "${t}" == *"parser milestone"* ]] \
+    || [[ "${t}" == *"define js.core.semantics"* ]] \
+    || [[ "${t}" == *"define flat.semantics"* ]] \
+    || [[ "${t}" == *"define anf.semantics"* ]] \
+    || [[ "${t}" == *"define wasm.semantics"* ]]
+}
+
+gather_candidate_tasks() {
+  local cap="$1"
+  CAND_TASK_LINES=()
+  CAND_TASK_IDS=()
+  CAND_TASK_TEXTS=()
+
+  local seen=0
+  while IFS='|' read -r line_no task_text; do
+    local task_id
+    task_id="$(slug_for_task "${line_no}" "${task_text}")"
+    if [[ -d "${LOCK_DIR}/${task_id}" ]]; then
+      continue
+    fi
+    CAND_TASK_LINES+=("${line_no}")
+    CAND_TASK_IDS+=("${task_id}")
+    CAND_TASK_TEXTS+=("${task_text}")
+    seen=$((seen + 1))
+    if [[ "${cap}" -gt 0 && "${seen}" -ge "${cap}" ]]; then
+      break
+    fi
+  done < <(unchecked_tasks)
+}
+
+candidate_text_for_id() {
+  local id="$1"
+  for i in "${!CAND_TASK_IDS[@]}"; do
+    if [[ "${CAND_TASK_IDS[$i]}" == "${id}" ]]; then
+      printf '%s' "${CAND_TASK_TEXTS[$i]}"
+      return 0
+    fi
+  done
+  return 1
+}
+
+plan_parallel_tasks_with_llm() {
+  local needed="$1"
+  local plan_log="$2"
+  local selected_file
+  selected_file="$(mktemp)"
+
+  if [[ "${#CAND_TASK_IDS[@]}" -eq 0 ]]; then
+    rm -f "${selected_file}"
+    return 1
+  fi
+
+  local prompt=""
+  prompt+="You are scheduling Codex agents for VerifiedJS."$'\n'
+  prompt+="Choose which tasks can run in parallel this round."$'\n'
+  prompt+="Constraints:"$'\n'
+  prompt+="- Output only lines in format: SELECT <task_id>"$'\n'
+  prompt+="- Output at least 1 and at most ${needed} SELECT lines."$'\n'
+  prompt+="- Prefer a single task when there is a clear blocker (parser/lexer/parser milestone/semantics foundation)."$'\n'
+  prompt+="- Otherwise maximize safe parallelism while avoiding dependent tasks in the same phase."$'\n'
+  prompt+="Candidates:"$'\n'
+  for i in "${!CAND_TASK_IDS[@]}"; do
+    prompt+="- ${CAND_TASK_IDS[$i]} :: ${CAND_TASK_TEXTS[$i]}"$'\n'
+  done
+
+  if ! (
+    cd "${ROOT_DIR}"
+    codex exec -C "${ROOT_DIR}" \
+      --add-dir "${ROOT_DIR}/.git" \
+      --add-dir "${ROOT_DIR}/.lake" \
+      "${prompt}"
+  ) >"${selected_file}" 2>>"${plan_log}"; then
+    rm -f "${selected_file}"
+    return 1
+  fi
+
+  ROUND_TASK_IDS=()
+  ROUND_TASK_TEXTS=()
+  while IFS= read -r line; do
+    if [[ "${line}" =~ ^SELECT[[:space:]]+([A-Za-z0-9_]+)$ ]]; then
+      local id="${BASH_REMATCH[1]}"
+      local txt
+      txt="$(candidate_text_for_id "${id}" || true)"
+      if [[ -n "${txt}" ]]; then
+        ROUND_TASK_IDS+=("${id}")
+        ROUND_TASK_TEXTS+=("${txt}")
+        if [[ "${#ROUND_TASK_IDS[@]}" -ge "${needed}" ]]; then
+          break
+        fi
+      fi
+    fi
+  done < "${selected_file}"
+  rm -f "${selected_file}"
+
+  [[ "${#ROUND_TASK_IDS[@]}" -gt 0 ]]
+}
+
+plan_parallel_tasks_heuristic() {
+  local needed="$1"
+  ROUND_TASK_IDS=()
+  ROUND_TASK_TEXTS=()
+
+  if [[ "${#CAND_TASK_IDS[@]}" -eq 0 ]]; then
+    return 1
+  fi
+
+  # If first available task is a blocker, focus with a single agent.
+  if task_is_blocker_text "${CAND_TASK_TEXTS[0]}"; then
+    ROUND_TASK_IDS+=("${CAND_TASK_IDS[0]}")
+    ROUND_TASK_TEXTS+=("${CAND_TASK_TEXTS[0]}")
+    return 0
+  fi
+
+  local picked=0
+  for i in "${!CAND_TASK_IDS[@]}"; do
+    ROUND_TASK_IDS+=("${CAND_TASK_IDS[$i]}")
+    ROUND_TASK_TEXTS+=("${CAND_TASK_TEXTS[$i]}")
+    picked=$((picked + 1))
+    if [[ "${picked}" -ge "${needed}" ]]; then
+      break
+    fi
+  done
+  return 0
+}
+
 collect_assignments() {
   local needed="$1"
   ROUND_TASK_IDS=()
   ROUND_TASK_TEXTS=()
 
-  local got=0
-  while IFS='|' read -r line_no task_text; do
-    local task_id
-    task_id="$(slug_for_task "${line_no}" "${task_text}")"
-    if claim_task "${task_id}" "${task_text}"; then
-      ROUND_TASK_IDS+=("${task_id}")
-      ROUND_TASK_TEXTS+=("${task_text}")
-      got=$((got + 1))
-      if [[ "${got}" -ge "${needed}" ]]; then
-        break
-      fi
+  gather_candidate_tasks "${PLANNER_CANDIDATE_CAP}"
+  if [[ "${#CAND_TASK_IDS[@]}" -eq 0 ]]; then
+    return 0
+  fi
+
+  local planner_log="${LOG_ROOT}/planner_$(timestamp).log"
+  if [[ "${USE_LLM_PARALLEL_PLANNER}" -eq 1 && "${DRY_RUN}" -eq 0 ]]; then
+    if plan_parallel_tasks_with_llm "${needed}" "${planner_log}"; then
+      echo "PLANNER: LLM selected ${#ROUND_TASK_IDS[@]} task(s) (log: ${planner_log})"
+    else
+      echo "PLANNER: LLM planner failed or produced empty selection; using heuristic fallback"
+      plan_parallel_tasks_heuristic "${needed}" || true
     fi
-  done < <(unchecked_tasks)
+  else
+    plan_parallel_tasks_heuristic "${needed}" || true
+  fi
+
+  # Claim selected tasks; if any claim fails due to race, skip it.
+  local -a selected_ids=("${ROUND_TASK_IDS[@]}")
+  local -a selected_texts=("${ROUND_TASK_TEXTS[@]}")
+  ROUND_TASK_IDS=()
+  ROUND_TASK_TEXTS=()
+  for i in "${!selected_ids[@]}"; do
+    local tid="${selected_ids[$i]}"
+    local ttxt="${selected_texts[$i]}"
+    if claim_task "${tid}" "${ttxt}"; then
+      ROUND_TASK_IDS+=("${tid}")
+      ROUND_TASK_TEXTS+=("${ttxt}")
+    fi
+  done
 }
 
 spawn_round() {

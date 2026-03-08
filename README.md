@@ -768,6 +768,7 @@ python3 monitoring/backend/app.py                    # Flask live monitor API (l
 At the end of each run it prints a supervisor summary (rounds, agent exits, test status, completed/failed task list, log paths).
 It also applies phase-aware symbolic validation before checking off tasks (e.g., parser fail-fast gates for parser tasks, module build + no-`sorry` checks for semantics/proof milestones).
 It also runs Codex validator passes over checked tasks before moving them to the validated section.
+It uses an LLM parallelization planner each round to decide whether work should be single-threaded (blockers like parser/semantics foundations) or parallel; disable with `--no-llm-planner` or tune candidate set with `--planner-cap N`.
 
 ---
 
