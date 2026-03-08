@@ -1,7 +1,7 @@
 # VerifiedJS — Task List
 
 ## Priority 1 (blocking — foundations)
-- [ ] Define JS.Source.AST inductive types (full ECMAScript 2020) — SPEC: §11–15
+- [x] Define JS.Source.AST inductive types (full ECMAScript 2020) — SPEC: §11–15 — DONE by agent supervisor
 - [ ] Implement JS.Source.Lexer (context-sensitive `/` handling) — SPEC: §11
 - [ ] Implement JS.Source.Parser (recursive descent) — SPEC: §11–15
 - [ ] Parser milestone: parse ≥95% of JS files in `tests/flagship/{prettier,babel,TypeScript}` via `scripts/parse_flagship.sh --full`
