@@ -5,7 +5,7 @@
 - [ ] Implement JS.Source.Lexer (context-sensitive `/` handling) — SPEC: §11
 - [ ] Implement JS.Source.Parser (recursive descent) — SPEC: §11–15
 - [ ] Parser milestone: parse ≥95% of JS files in `tests/flagship/{prettier,babel,TypeScript}` via `scripts/parse_flagship.sh --full`
-- [ ] Parser milestone: support multi-token expression/statement parsing (currently baseline single-token parse only)
+- [x] Parser milestone: support multi-token expression/statement parsing (currently baseline single-token parse only) — DONE by agent supervisor
 - [x] Define JS.Core.Syntax inductive types — DONE by agent_20260308_001335_r1_a3_4146
 - [ ] Define JS.Core.Semantics small-step LTS
 - [ ] Define JS.Flat.Syntax inductive types

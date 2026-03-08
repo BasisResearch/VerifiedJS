@@ -517,13 +517,14 @@ resolve_merge_with_codex() {
   prompt+="- Keep changes minimal and compile/test-safe when possible."$'\n'
   prompt+="- Exit non-zero only if you cannot complete the merge."$'\n'
 
+  echo "INFO: running codex merge resolver for ${branch} (log: ${log})"
   if ! (
     cd "${ROOT_DIR}"
     codex exec -C "${ROOT_DIR}" \
       --add-dir "${ROOT_DIR}/.git" \
       --add-dir "${ROOT_DIR}/.lake" \
-      "${prompt}"
-  ) >>"${log}" 2>&1; then
+      "${prompt}" 2>&1 | tee -a "${log}"
+  ); then
     return 1
   fi
 
