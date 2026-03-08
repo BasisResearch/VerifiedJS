@@ -43,21 +43,27 @@ lake build
 # 2. Write a simple JS program
 echo 'var x = 1 + 2; var y = x * 3;' > hello.js
 
+# 2b. Printing example
+echo 'var x = 41; console.log(x + 1);' > print.js
+
 # 3. Inspect intermediate representations
 lake exe verifiedjs hello.js --emit=core      # Core IL (desugared JS)
 lake exe verifiedjs hello.js --emit=flat      # Flat IL (closure-converted)
 lake exe verifiedjs hello.js --emit=anf       # ANF IL (A-normal form)
 lake exe verifiedjs hello.js --emit=wasmIR    # Wasm IR (structured control flow)
 lake exe verifiedjs hello.js --emit=wat       # WebAssembly Text Format
+lake exe verifiedjs print.js --emit=core       # inspect console.log lowering
 
 # 4. Compile to .wasm binary
 lake exe verifiedjs hello.js -o hello.wasm
+lake exe verifiedjs print.js -o print.wasm
 
 # 4b. Compile an ES module entry with linked relative imports/exports
 lake exe verifiedjs src/main.js --module -o app.wasm
 
 # 5. Run with wasmtime (simple arithmetic programs work)
 wasmtime hello.wasm
+wasmtime print.wasm
 
 # 6. Run the e2e test suite
 bash tests/e2e/run_e2e.sh

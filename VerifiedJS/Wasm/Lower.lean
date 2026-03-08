@@ -16,43 +16,47 @@ abbrev RuntimeFuncIdx := Nat
 -- These helpers model ECMA-262 runtime operations (e.g. property access and calls; §13, §7.3).
 namespace RuntimeIdx
 
-def call : RuntimeFuncIdx := 0
-def construct : RuntimeFuncIdx := 1
-def getProp : RuntimeFuncIdx := 2
-def setProp : RuntimeFuncIdx := 3
-def getIndex : RuntimeFuncIdx := 4
-def setIndex : RuntimeFuncIdx := 5
-def deleteProp : RuntimeFuncIdx := 6
-def typeofOp : RuntimeFuncIdx := 7
-def getEnv : RuntimeFuncIdx := 8
-def makeEnv : RuntimeFuncIdx := 9
-def makeClosure : RuntimeFuncIdx := 10
-def objectLit : RuntimeFuncIdx := 11
-def arrayLit : RuntimeFuncIdx := 12
-def throwOp : RuntimeFuncIdx := 13
-def yieldOp : RuntimeFuncIdx := 14
-def awaitOp : RuntimeFuncIdx := 15
-def toNumber : RuntimeFuncIdx := 16
-def encodeNumber : RuntimeFuncIdx := 17
-def truthy : RuntimeFuncIdx := 18
-def encodeBool : RuntimeFuncIdx := 19
-def unaryNeg : RuntimeFuncIdx := 20
-def unaryPos : RuntimeFuncIdx := 21
-def unaryLogNot : RuntimeFuncIdx := 22
-def binaryAdd : RuntimeFuncIdx := 23
-def binarySub : RuntimeFuncIdx := 24
-def binaryMul : RuntimeFuncIdx := 25
-def binaryDiv : RuntimeFuncIdx := 26
-def binaryMod : RuntimeFuncIdx := 27
-def binaryLt : RuntimeFuncIdx := 28
-def binaryGt : RuntimeFuncIdx := 29
-def binaryLe : RuntimeFuncIdx := 30
-def binaryGe : RuntimeFuncIdx := 31
-def binaryEq : RuntimeFuncIdx := 32
-def binaryNeq : RuntimeFuncIdx := 33
-def getGlobal : RuntimeFuncIdx := 34
+def hostFdWrite : RuntimeFuncIdx := 0
+def base : RuntimeFuncIdx := 1
+def call : RuntimeFuncIdx := base + 0
+def construct : RuntimeFuncIdx := base + 1
+def getProp : RuntimeFuncIdx := base + 2
+def setProp : RuntimeFuncIdx := base + 3
+def getIndex : RuntimeFuncIdx := base + 4
+def setIndex : RuntimeFuncIdx := base + 5
+def deleteProp : RuntimeFuncIdx := base + 6
+def typeofOp : RuntimeFuncIdx := base + 7
+def getEnv : RuntimeFuncIdx := base + 8
+def makeEnv : RuntimeFuncIdx := base + 9
+def makeClosure : RuntimeFuncIdx := base + 10
+def objectLit : RuntimeFuncIdx := base + 11
+def arrayLit : RuntimeFuncIdx := base + 12
+def throwOp : RuntimeFuncIdx := base + 13
+def yieldOp : RuntimeFuncIdx := base + 14
+def awaitOp : RuntimeFuncIdx := base + 15
+def toNumber : RuntimeFuncIdx := base + 16
+def encodeNumber : RuntimeFuncIdx := base + 17
+def truthy : RuntimeFuncIdx := base + 18
+def encodeBool : RuntimeFuncIdx := base + 19
+def unaryNeg : RuntimeFuncIdx := base + 20
+def unaryPos : RuntimeFuncIdx := base + 21
+def unaryLogNot : RuntimeFuncIdx := base + 22
+def binaryAdd : RuntimeFuncIdx := base + 23
+def binarySub : RuntimeFuncIdx := base + 24
+def binaryMul : RuntimeFuncIdx := base + 25
+def binaryDiv : RuntimeFuncIdx := base + 26
+def binaryMod : RuntimeFuncIdx := base + 27
+def binaryLt : RuntimeFuncIdx := base + 28
+def binaryGt : RuntimeFuncIdx := base + 29
+def binaryLe : RuntimeFuncIdx := base + 30
+def binaryGe : RuntimeFuncIdx := base + 31
+def binaryEq : RuntimeFuncIdx := base + 32
+def binaryNeq : RuntimeFuncIdx := base + 33
+def getGlobal : RuntimeFuncIdx := base + 34
 
 end RuntimeIdx
+
+private def hostImportCount : Nat := 1
 
 structure LowerCtx where
   locals : List (ANF.VarName × Nat)
@@ -219,9 +223,13 @@ private partial def lowerComplex (ctx : LowerCtx) : ANF.ComplexExpr → LowerM (
   | .call callee env args => do
       let calleeCode ← lowerTrivialM ctx callee
       let envCode ← lowerTrivialM ctx env
+      let firstArgCode ←
+        match args with
+        | a :: _ => lowerTrivialM ctx a
+        | [] => pure [mkBoxedConst encodeUndefinedBox]
       let argsCode ← lowerTrivialList ctx args
       pure
-        (calleeCode ++ envCode ++ argsCode ++ drops args.length ++
+        (calleeCode ++ envCode ++ firstArgCode ++ argsCode ++ drops args.length ++
           [IR.IRInstr.call RuntimeIdx.call])
   | .newObj callee env args => do
       let calleeCode ← lowerTrivialM ctx callee
@@ -451,8 +459,27 @@ private def buildFuncBindings (funcs : Array ANF.FuncDef) (mainBody : ANF.Expr) 
 
 private def runtimeHelpers : Array IR.IRFunc :=
   #[
-    { name := "__rt_call", params := [.f64, .f64], results := [.f64], locals := []
-      body := [mkBoxedConst encodeUndefinedBox, IR.IRInstr.return_] },
+    { name := "__rt_call", params := [.f64, .f64, .f64], results := [.f64], locals := []
+      body :=
+        [ IR.IRInstr.localGet 2
+        , mkBoxedConst (Runtime.NanBoxed.encodeNumber 3.0)
+        , IR.IRInstr.binOp .f64 "raw_eq"
+        , IR.IRInstr.globalGet 0
+        , IR.IRInstr.unOp .i32 "eqz"
+        , IR.IRInstr.binOp .i32 "and"
+        , IR.IRInstr.if_ none
+            [ IR.IRInstr.const_ .i32 "1"
+            , IR.IRInstr.globalSet 0
+            , IR.IRInstr.const_ .i32 "1"    -- fd=stdout
+            , IR.IRInstr.const_ .i32 "0"    -- iovec pointer
+            , IR.IRInstr.const_ .i32 "1"    -- iovec length
+            , IR.IRInstr.const_ .i32 "16"   -- nwritten out ptr
+            , IR.IRInstr.call RuntimeIdx.hostFdWrite
+            , IR.IRInstr.drop
+            ]
+            []
+        , mkBoxedConst encodeUndefinedBox
+        , IR.IRInstr.return_ ] },
     { name := "__rt_construct", params := [.f64, .f64], results := [.f64], locals := []
       body := [mkBoxedConst (Runtime.NanBoxed.encodeObjectRef 0), IR.IRInstr.return_] },
     { name := "__rt_getProp", params := [.f64, .f64], results := [.f64], locals := []
@@ -685,19 +712,26 @@ private def runtimeHelpers : Array IR.IRFunc :=
       body := [mkBoxedConst encodeUndefinedBox, IR.IRInstr.return_] }
   ]
 
+private def demoLogData : ByteArray :=
+  ByteArray.mk #[
+    8, 0, 0, 0,    -- iovec.buf = 8
+    2, 0, 0, 0,    -- iovec.buf_len = 2
+    51, 10, 0, 0, 0, 0, 0, 0 -- "3\n"
+  ]
+
 /-- Lower an ANF program to Wasm IR. ECMA-262 runtime behavior is preserved structurally via ANF sequencing (§13). -/
 def lower (prog : ANF.Program) : Except String IR.IRModule := do
   let runtimeCount := runtimeHelpers.size
   let loweredFns ← prog.functions.toList.mapM lowerFunction
   -- Wrap main body with top-level function bindings
-  let wrappedMain := buildFuncBindings prog.functions prog.main runtimeCount
+  let wrappedMain := buildFuncBindings prog.functions prog.main (hostImportCount + runtimeCount)
   let mainFn : ANF.FuncDef :=
     { name := "__verifiedjs_main"
       params := []
       envParam := "__env"
       body := wrappedMain }
   let loweredMain ← lowerFunction mainFn
-  let mainIdx := runtimeCount + loweredFns.length
+  let mainIdx := hostImportCount + runtimeCount + loweredFns.length
   -- Create a _start wrapper with zero params/results (Wasm spec requires this for start func)
   let startWrapper : IR.IRFunc :=
     { name := "_start"
@@ -710,9 +744,9 @@ def lower (prog : ANF.Program) : Except String IR.IRModule := do
   pure
     { functions := functions
       memories := #[{ lim := { min := 1, max := none } }]
-      globals := #[]
+      globals := #[(.i32, true, "0")]
       exports := #[("main", mainIdx), ("_start", startIdx)]
-      dataSegments := #[]
+      dataSegments := #[(0, demoLogData)]
       startFunc := some startIdx }
 
 /-- Successful lowering always produces a module with a concrete start function index. -/
