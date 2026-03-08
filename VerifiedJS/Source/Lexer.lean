@@ -179,7 +179,8 @@ private def punct2Set : List String :=
   , "?."
   ]
 
-private def punct3Set : List String := ["===", "!==", "<<=", ">>=", "**=", ">>>", ">>>=", "...", "??="]
+private def punct3Set : List String :=
+  ["===", "!==", "<<=", ">>=", "**=", ">>>", ">>>=", "...", "??=", "&&=", "||="]
 
 private def readPunct (chars : List Char) : String × List Char :=
   match chars with
