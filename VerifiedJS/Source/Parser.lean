@@ -449,7 +449,7 @@ private partial def parseArrayLiteral : ParserM Expr := do
     else
       let e <-
         if (← consumePunct? "...") then
-          return .spread (← parseAssignmentM)
+          pure (.spread (← parseAssignmentM))
         else
           parseAssignmentM
       if (← consumePunct? ",") then
@@ -635,6 +635,8 @@ private partial def parsePostfixM : ParserM Expr := do
     pure withPost
 
 private partial def parseUnaryM : ParserM Expr := do
+  -- Prefix operators may appear after line terminators inside expressions.
+  skipNewlines
   let t0 <- peekN 0
   let t1 <- peekN 1
   let t2 <- peekN 2
@@ -884,6 +886,34 @@ private partial def parseArrowFromSingleIdent? : ParserM (Option Expr) := do
     pure (some (.arrowFunction [parsePatternFromIdent name] body))
   | _, _ => pure none
 
+private partial def parseArrowFromAsync? : ParserM (Option Expr) := do
+  let st0 <- get
+  try
+    let t0 <- peekN 0
+    match t0.kind with
+    | .ident "async" =>
+      let _ <- bump
+      let params <-
+        if (← consumePunct? "(") then
+          parseParamListAfterOpen
+        else
+          let name <- parseIdentLike
+          pure [parsePatternFromIdent name]
+      expectPunct "=>"
+      let body <-
+        if (← consumePunct? "{") then
+          let st <- get
+          set { st with pos := st.pos - 1 }
+          .block <$> parseFunctionBody
+        else
+          .expr <$> parseAssignmentM
+      pure (some (.arrowFunction params body))
+    | _ =>
+      pure none
+  catch _ =>
+    set st0
+    pure none
+
 private partial def parseArrowFromParenParams? : ParserM (Option Expr) := do
   let st0 <- get
   try
@@ -906,22 +936,25 @@ private partial def parseArrowFromParenParams? : ParserM (Option Expr) := do
 
 private partial def parseAssignmentM : ParserM Expr := do
   skipNewlines
-  match (← parseArrowFromParenParams?) with
+  match (← parseArrowFromAsync?) with
   | some f => pure f
   | none =>
-    match (← parseArrowFromSingleIdent?) with
+    match (← parseArrowFromParenParams?) with
     | some f => pure f
     | none =>
-      let lhs <- parseConditionalM
-      match (← parseAssignOp?) with
-      | none => pure lhs
-      | some op =>
-        match asAssignTarget lhs with
-        | none =>
-          throw "Invalid assignment target"
-        | some target =>
-          let rhs <- parseAssignmentM
-          pure (.assign op target rhs)
+      match (← parseArrowFromSingleIdent?) with
+      | some f => pure f
+      | none =>
+        let lhs <- parseConditionalM
+        match (← parseAssignOp?) with
+        | none => pure lhs
+        | some op =>
+          match asAssignTarget lhs with
+          | none =>
+            throw "Invalid assignment target"
+          | some target =>
+            let rhs <- parseAssignmentM
+            pure (.assign op target rhs)
 
 private partial def parseExprM : ParserM Expr := do
   skipNewlines
@@ -1373,6 +1406,7 @@ private partial def parseStmt : ParserM Stmt := do
       pure (.export_ (.all source alias_))
     else if (← consumePunct? "{") then
       let rec parseSpecs (acc : List ExportSpecifier) : ParserM (List ExportSpecifier) := do
+        skipNewlines
         if (← consumePunct? "}") then
           pure acc.reverse
         else
@@ -1383,7 +1417,9 @@ private partial def parseStmt : ParserM Stmt := do
             else
               pure localName
           let spec := ExportSpecifier.mk localName exportedName
+          skipNewlines
           if (← consumePunct? ",") then
+            skipNewlines
             if (← consumePunct? "}") then
               pure (List.reverse (spec :: acc))
             else
@@ -1392,6 +1428,7 @@ private partial def parseStmt : ParserM Stmt := do
             expectPunct "}"
             pure (List.reverse (spec :: acc))
       let specs <- parseSpecs []
+      skipNewlines
       let source <-
         if (← consumeWord? "from") then
           let tk <- peek

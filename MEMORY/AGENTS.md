@@ -63,3 +63,8 @@ Template:
   Symptom: Parser fail-fast gate can report `selected=0` for all projects when local `tests/flagship/*` dirs exist but are empty, because the script does not fall back to the shared flagship checkout in that case.
   Fix: Use `./scripts/parse_flagship.sh --full` to measure real coverage; treat fail-fast `selected=0` as non-informative until local submodules are populated or script fallback is improved.
   Guardrail: Always verify parser milestone progress with `parse_flagship.sh --full` (check `selected>0`) before concluding parser coverage status.
+
+- [2026-03-08] Context: `VerifiedJS/Source/Parser.lean` array literal parsing
+  Symptom: Spread elements in array literals (`[...xs]`, `[a, ...xs]`) failed with downstream errors like `Expected expression, found ]`.
+  Fix: In `parseArrayLiteral`, use `pure (.spread ...)` inside expression branches; a `return` there exits the enclosing parser function early and leaves closing tokens unconsumed.
+  Guardrail: In nested `do` branches that compute subexpressions, avoid `return` unless you intend to exit the whole parser function.
