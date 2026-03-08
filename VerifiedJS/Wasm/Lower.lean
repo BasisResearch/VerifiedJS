@@ -326,7 +326,7 @@ private partial def lowerExprWithExn (ctx : LowerCtx) (exnTarget : Option String
       let condCode ← lowerTrivialM ctx cond
       let thenCode ← lowerExprWithExn ctx exnTarget ctrlStack then_
       let elseCode ← lowerExprWithExn ctx exnTarget ctrlStack else_
-      pure (condCode ++ [IR.IRInstr.call RuntimeIdx.truthy, IR.IRInstr.if_ thenCode elseCode])
+      pure (condCode ++ [IR.IRInstr.call RuntimeIdx.truthy, IR.IRInstr.if_ (some .f64) thenCode elseCode])
   | .while_ cond body =>
       lowerWhile ctx exnTarget ctrlStack none cond body
   | .throw arg => do
@@ -494,7 +494,7 @@ private def runtimeHelpers : Array IR.IRFunc :=
         , IR.IRInstr.binOp .i64 "and"
         , IR.IRInstr.const_ .i64 s!"{Runtime.NanBoxed.nanMask.toNat}"
         , IR.IRInstr.binOp .i64 "eq"
-        , IR.IRInstr.if_
+        , IR.IRInstr.if_ (some .f64)
             [ IR.IRInstr.localGet 1
             , IR.IRInstr.const_ .i64 s!"{Runtime.NanBoxed.tagMask.toNat}"
             , IR.IRInstr.binOp .i64 "and"
@@ -502,27 +502,27 @@ private def runtimeHelpers : Array IR.IRFunc :=
             , IR.IRInstr.localGet 2
             , IR.IRInstr.const_ .i64 s!"{Runtime.NanBoxed.tagNull.toNat}"
             , IR.IRInstr.binOp .i64 "eq"
-            , IR.IRInstr.if_
+            , IR.IRInstr.if_ (some .f64)
                 [IR.IRInstr.const_ .f64 "0.0"]
                 [ IR.IRInstr.localGet 2
                 , IR.IRInstr.const_ .i64 s!"{Runtime.NanBoxed.tagUndefined.toNat}"
                 , IR.IRInstr.binOp .i64 "eq"
-                , IR.IRInstr.if_
+                , IR.IRInstr.if_ (some .f64)
                     [mkBoxedConst (Runtime.NanBoxed.encodeNumber (0.0 / 0.0))]
                     [ IR.IRInstr.localGet 2
                     , IR.IRInstr.const_ .i64 s!"{Runtime.NanBoxed.tagBool.toNat}"
                     , IR.IRInstr.binOp .i64 "eq"
-                    , IR.IRInstr.if_
+                    , IR.IRInstr.if_ (some .f64)
                         [ IR.IRInstr.localGet 1
                         , IR.IRInstr.const_ .i64 s!"{Runtime.NanBoxed.payloadMask.toNat}"
                         , IR.IRInstr.binOp .i64 "and"
                         , IR.IRInstr.unOp .i64 "eqz"
                         , IR.IRInstr.unOp .i32 "eqz"
-                        , IR.IRInstr.if_ [IR.IRInstr.const_ .f64 "1.0"] [IR.IRInstr.const_ .f64 "0.0"] ]
+                        , IR.IRInstr.if_ (some .f64) [IR.IRInstr.const_ .f64 "1.0"] [IR.IRInstr.const_ .f64 "0.0"] ]
                         [ IR.IRInstr.localGet 2
                         , IR.IRInstr.const_ .i64 s!"{Runtime.NanBoxed.tagInt32.toNat}"
                         , IR.IRInstr.binOp .i64 "eq"
-                        , IR.IRInstr.if_
+                        , IR.IRInstr.if_ (some .f64)
                             [ IR.IRInstr.localGet 1
                             , IR.IRInstr.const_ .i64 s!"{Runtime.NanBoxed.payloadMask.toNat}"
                             , IR.IRInstr.binOp .i64 "and"
@@ -537,7 +537,7 @@ private def runtimeHelpers : Array IR.IRFunc :=
         [ IR.IRInstr.localGet 0
         , IR.IRInstr.localGet 0
         , IR.IRInstr.binOp .f64 "raw_eq"
-        , IR.IRInstr.if_
+        , IR.IRInstr.if_ (some .f64)
             [IR.IRInstr.localGet 0]
             [mkBoxedConst (Runtime.NanBoxed.encodeNumber (0.0 / 0.0))]
         , IR.IRInstr.return_ ] }
@@ -552,7 +552,7 @@ private def runtimeHelpers : Array IR.IRFunc :=
         , IR.IRInstr.binOp .i64 "and"
         , IR.IRInstr.const_ .i64 s!"{Runtime.NanBoxed.nanMask.toNat}"
         , IR.IRInstr.binOp .i64 "eq"
-        , IR.IRInstr.if_
+        , IR.IRInstr.if_ (some .i32)
             [ IR.IRInstr.localGet 1
             , IR.IRInstr.const_ .i64 s!"{Runtime.NanBoxed.tagMask.toNat}"
             , IR.IRInstr.binOp .i64 "and"
@@ -560,17 +560,17 @@ private def runtimeHelpers : Array IR.IRFunc :=
             , IR.IRInstr.localGet 2
             , IR.IRInstr.const_ .i64 s!"{Runtime.NanBoxed.tagNull.toNat}"
             , IR.IRInstr.binOp .i64 "eq"
-            , IR.IRInstr.if_
+            , IR.IRInstr.if_ (some .i32)
                 [IR.IRInstr.const_ .i32 "0"]
                 [ IR.IRInstr.localGet 2
                 , IR.IRInstr.const_ .i64 s!"{Runtime.NanBoxed.tagUndefined.toNat}"
                 , IR.IRInstr.binOp .i64 "eq"
-                , IR.IRInstr.if_
+                , IR.IRInstr.if_ (some .i32)
                     [IR.IRInstr.const_ .i32 "0"]
                     [ IR.IRInstr.localGet 2
                     , IR.IRInstr.const_ .i64 s!"{Runtime.NanBoxed.tagBool.toNat}"
                     , IR.IRInstr.binOp .i64 "eq"
-                    , IR.IRInstr.if_
+                    , IR.IRInstr.if_ (some .i32)
                         [ IR.IRInstr.localGet 1
                         , IR.IRInstr.const_ .i64 s!"{Runtime.NanBoxed.payloadMask.toNat}"
                         , IR.IRInstr.binOp .i64 "and"
@@ -579,7 +579,7 @@ private def runtimeHelpers : Array IR.IRFunc :=
                         [ IR.IRInstr.localGet 2
                         , IR.IRInstr.const_ .i64 s!"{Runtime.NanBoxed.tagInt32.toNat}"
                         , IR.IRInstr.binOp .i64 "eq"
-                        , IR.IRInstr.if_
+                        , IR.IRInstr.if_ (some .i32)
                             [ IR.IRInstr.localGet 1
                             , IR.IRInstr.const_ .i64 s!"{Runtime.NanBoxed.payloadMask.toNat}"
                             , IR.IRInstr.binOp .i64 "and"
@@ -598,7 +598,7 @@ private def runtimeHelpers : Array IR.IRFunc :=
     { name := "__rt_encodeBool", params := [.i32], results := [.f64], locals := []
       body :=
         [ IR.IRInstr.localGet 0
-        , IR.IRInstr.if_
+        , IR.IRInstr.if_ (some .f64)
             [mkBoxedConst (encodeBoolBox true)]
             [mkBoxedConst (encodeBoolBox false)]
         , IR.IRInstr.return_ ] }

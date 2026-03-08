@@ -114,10 +114,13 @@ private partial def emitInstr (s : EmitState) : IR.IRInstr → Except String (Li
     let s' := pushLabel s label
     let bodyInstrs ← emitInstrs s' body
     .ok [.loop .none bodyInstrs]
-  | .if_ then_ else_ => do
+  | .if_ result then_ else_ => do
     let thenInstrs ← emitInstrs s then_
     let elseInstrs ← emitInstrs s else_
-    .ok [.if_ .none thenInstrs elseInstrs]
+    let bt := match result with
+      | some t => .valType (irTypeToValType t)
+      | none => .none
+    .ok [.if_ bt thenInstrs elseInstrs]
   | .br label => do
     let idx ← resolveLabelIdx s label
     .ok [.br idx]

@@ -29,13 +29,16 @@ partial def printInstr (instr : IRInstr) (indent : Nat := 0) : String :=
   | .loop label body =>
     let bodyStrs := body.map (printInstr · (indent + 1))
     s!"{i}loop ${label}\n{String.intercalate "\n" bodyStrs}\n{i}end"
-  | .if_ then_ else_ =>
+  | .if_ result then_ else_ =>
     let thenStrs := then_.map (printInstr · (indent + 1))
     let elseStrs := else_.map (printInstr · (indent + 1))
+    let resultAnn := match result with
+      | some t => s!" (result {printIRType t})"
+      | none => ""
     if else_.isEmpty then
-      s!"{i}if\n{String.intercalate "\n" thenStrs}\n{i}end"
+      s!"{i}if{resultAnn}\n{String.intercalate "\n" thenStrs}\n{i}end"
     else
-      s!"{i}if\n{String.intercalate "\n" thenStrs}\n{i}else\n{String.intercalate "\n" elseStrs}\n{i}end"
+      s!"{i}if{resultAnn}\n{String.intercalate "\n" thenStrs}\n{i}else\n{String.intercalate "\n" elseStrs}\n{i}end"
   | .br label => s!"{i}br ${label}"
   | .brIf label => s!"{i}br_if ${label}"
   | .return_ => s!"{i}return"

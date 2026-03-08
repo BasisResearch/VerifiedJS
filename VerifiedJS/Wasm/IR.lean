@@ -28,7 +28,7 @@ inductive IRInstr where
   | callIndirect (typeIdx : Nat)
   | block (label : String) (body : List IRInstr)
   | loop (label : String) (body : List IRInstr)
-  | if_ (then_ : List IRInstr) (else_ : List IRInstr)
+  | if_ (result : Option IRType) (then_ : List IRInstr) (else_ : List IRInstr)
   | br (label : String)
   | brIf (label : String)
   | return_

@@ -292,7 +292,7 @@ private partial def runInstr (m : IRModule) (instr : IRInstr) (fuel : Nat) (s : 
                 (.branch target, s', f')
           | _ => (sig, s', f')
       | .loop label body => runLoop m label body f s
-      | .if_ then_ else_ =>
+      | .if_ _ then_ else_ =>
           match pop1? s.stack with
           | some (cond, rest) =>
               let branch := if asTruthy cond then then_ else else_
