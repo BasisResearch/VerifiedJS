@@ -53,7 +53,7 @@ private def lookupLocal (ctx : LowerCtx) (name : ANF.VarName) : Except String Na
 private def allocLocal (name : ANF.VarName) (ctx : LowerCtx) : LowerM (Nat × LowerCtx) := do
   let st ← get
   let idx := st.nextLocal
-  set { st with nextLocal := idx + 1, locals := st.locals.push .ptr }
+  set { st with nextLocal := idx + 1, locals := st.locals.push .f64 }
   pure (idx, { ctx with locals := (name, idx) :: ctx.locals })
 
 private def lowerUnaryOp : Core.UnaryOp → String
@@ -89,8 +89,8 @@ private def lowerBinOp : Core.BinOp → String
   | .instanceof => "instanceof"
   | .in => "in"
 
-private def boolAsI32 (b : Bool) : String :=
-  if b then "1" else "0"
+private def boolAsF64 (b : Bool) : String :=
+  if b then "1.0" else "0.0"
 
 private def drops (n : Nat) : List IR.IRInstr :=
   List.replicate n IR.IRInstr.drop
@@ -99,13 +99,14 @@ private def lowerTrivial (ctx : LowerCtx) : ANF.Trivial → Except String (List 
   | .var name => do
       let idx ← lookupLocal ctx name
       pure [IR.IRInstr.localGet idx]
-  | .litNull => pure [IR.IRInstr.const_ .ptr "null"]
-  | .litUndefined => pure [IR.IRInstr.const_ .ptr "undefined"]
-  | .litBool b => pure [IR.IRInstr.const_ .i32 (boolAsI32 b)]
-  | .litNum n => pure [IR.IRInstr.const_ .ptr (toString n)]
-  | .litStr s => pure [IR.IRInstr.const_ .ptr s!"\"{s}\""]
-  | .litObject addr => pure [IR.IRInstr.const_ .ptr (toString addr)]
-  | .litClosure funcIdx envPtr => pure [IR.IRInstr.const_ .ptr s!"closure({funcIdx},{envPtr})"]
+  -- NaN-boxed placeholder encoding: all JS values are carried as f64 in lowered IR.
+  | .litNull => pure [IR.IRInstr.const_ .f64 "0.0"]
+  | .litUndefined => pure [IR.IRInstr.const_ .f64 "nan"]
+  | .litBool b => pure [IR.IRInstr.const_ .f64 (boolAsF64 b)]
+  | .litNum n => pure [IR.IRInstr.const_ .f64 (toString n)]
+  | .litStr _ => pure [IR.IRInstr.const_ .f64 "nan"]
+  | .litObject addr => pure [IR.IRInstr.const_ .f64 (toString addr)]
+  | .litClosure funcIdx envPtr => pure [IR.IRInstr.const_ .f64 s!"{funcIdx + envPtr}"]
 
 private def lowerTrivialM (ctx : LowerCtx) (t : ANF.Trivial) : LowerM (List IR.IRInstr) :=
   match lowerTrivial ctx t with
@@ -143,12 +144,14 @@ private partial def lowerComplex (ctx : LowerCtx) : ANF.ComplexExpr → LowerM (
           [IR.IRInstr.call RuntimeIdx.construct])
   | .getProp obj prop => do
       let objCode ← lowerTrivialM ctx obj
-      pure (objCode ++ [IR.IRInstr.const_ .ptr s!"\"{prop}\"", IR.IRInstr.call RuntimeIdx.getProp])
+      let _ := prop
+      pure (objCode ++ [IR.IRInstr.const_ .f64 "nan", IR.IRInstr.call RuntimeIdx.getProp])
   | .setProp obj prop value => do
       let objCode ← lowerTrivialM ctx obj
       let valCode ← lowerTrivialM ctx value
+      let _ := prop
       pure
-        (objCode ++ [IR.IRInstr.const_ .ptr s!"\"{prop}\""] ++ valCode ++
+        (objCode ++ [IR.IRInstr.const_ .f64 "nan"] ++ valCode ++
           [IR.IRInstr.call RuntimeIdx.setProp])
   | .getIndex obj idx => do
       let objCode ← lowerTrivialM ctx obj
@@ -161,36 +164,38 @@ private partial def lowerComplex (ctx : LowerCtx) : ANF.ComplexExpr → LowerM (
       pure (objCode ++ idxCode ++ valCode ++ [IR.IRInstr.call RuntimeIdx.setIndex])
   | .deleteProp obj prop => do
       let objCode ← lowerTrivialM ctx obj
-      pure (objCode ++ [IR.IRInstr.const_ .ptr s!"\"{prop}\"", IR.IRInstr.call RuntimeIdx.deleteProp])
+      let _ := prop
+      pure (objCode ++ [IR.IRInstr.const_ .f64 "nan", IR.IRInstr.call RuntimeIdx.deleteProp])
   | .typeof arg => do
       let argCode ← lowerTrivialM ctx arg
       pure (argCode ++ [IR.IRInstr.call RuntimeIdx.typeofOp])
   | .getEnv env idx => do
       let envCode ← lowerTrivialM ctx env
-      pure (envCode ++ [IR.IRInstr.const_ .i32 (toString idx), IR.IRInstr.call RuntimeIdx.getEnv])
+      pure (envCode ++ [IR.IRInstr.const_ .f64 (toString idx), IR.IRInstr.call RuntimeIdx.getEnv])
   | .makeEnv values => do
       let valuesCode ← lowerTrivialList ctx values
       pure (valuesCode ++ drops values.length ++ [IR.IRInstr.call RuntimeIdx.makeEnv])
   | .makeClosure funcIdx env => do
       let envCode ← lowerTrivialM ctx env
       pure
-        ([IR.IRInstr.const_ .i32 (toString funcIdx)] ++ envCode ++
+        ([IR.IRInstr.const_ .f64 (toString funcIdx)] ++ envCode ++
           [IR.IRInstr.call RuntimeIdx.makeClosure])
   | .objectLit props => do
       let mut out := []
       for (prop, value) in props do
-        out := out ++ [IR.IRInstr.const_ .ptr s!"\"{prop}\""] ++ (← lowerTrivialM ctx value)
+        let _ := prop
+        out := out ++ [IR.IRInstr.const_ .f64 "nan"] ++ (← lowerTrivialM ctx value)
       pure (out ++ drops (2 * props.length) ++ [IR.IRInstr.call RuntimeIdx.objectLit])
   | .arrayLit elems => do
       let elemsCode ← lowerTrivialList ctx elems
       pure (elemsCode ++ drops elems.length ++ [IR.IRInstr.call RuntimeIdx.arrayLit])
   | .unary op arg => do
       let argCode ← lowerTrivialM ctx arg
-      pure (argCode ++ [IR.IRInstr.unOp .ptr (lowerUnaryOp op)])
+      pure (argCode ++ [IR.IRInstr.unOp .f64 (lowerUnaryOp op)])
   | .binary op lhs rhs => do
       let lhsCode ← lowerTrivialM ctx lhs
       let rhsCode ← lowerTrivialM ctx rhs
-      pure (lhsCode ++ rhsCode ++ [IR.IRInstr.binOp .ptr (lowerBinOp op)])
+      pure (lhsCode ++ rhsCode ++ [IR.IRInstr.binOp .f64 (lowerBinOp op)])
 
 private partial def lowerExpr (ctx : LowerCtx) : ANF.Expr → LowerM (List IR.IRInstr)
   | .trivial t => lowerTrivialM ctx t
@@ -207,7 +212,7 @@ private partial def lowerExpr (ctx : LowerCtx) : ANF.Expr → LowerM (List IR.IR
       let condCode ← lowerTrivialM ctx cond
       let thenCode ← lowerExpr ctx then_
       let elseCode ← lowerExpr ctx else_
-      pure (condCode ++ [IR.IRInstr.if_ thenCode elseCode])
+      pure (condCode ++ [IR.IRInstr.unOp .f64 "truthy", IR.IRInstr.if_ thenCode elseCode])
   | .while_ cond body => do
       let condCode ← lowerExpr ctx cond
       let bodyCode ← lowerExpr ctx body
@@ -215,7 +220,8 @@ private partial def lowerExpr (ctx : LowerCtx) : ANF.Expr → LowerM (List IR.IR
         [IR.IRInstr.block "while_exit"
           [IR.IRInstr.loop "while_loop"
             (condCode ++
-              [IR.IRInstr.unOp .i32 "eqz", IR.IRInstr.brIf "while_exit"] ++
+              [IR.IRInstr.unOp .f64 "truthy", IR.IRInstr.unOp .i32 "eqz",
+                IR.IRInstr.brIf "while_exit"] ++
               bodyCode ++
               [IR.IRInstr.drop, IR.IRInstr.br "while_loop"])]]
   | .throw arg => do
@@ -242,10 +248,10 @@ private partial def lowerExpr (ctx : LowerCtx) : ANF.Expr → LowerM (List IR.IR
       let argCode ←
         match arg with
         | some v => lowerTrivialM ctx v
-        | none => pure [IR.IRInstr.const_ .ptr "undefined"]
+        | none => pure [IR.IRInstr.const_ .f64 "nan"]
       pure
         (argCode ++
-          [IR.IRInstr.const_ .i32 (boolAsI32 delegate), IR.IRInstr.call RuntimeIdx.yieldOp])
+          [IR.IRInstr.const_ .f64 (boolAsF64 delegate), IR.IRInstr.call RuntimeIdx.yieldOp])
   | .await arg => do
       let argCode ← lowerTrivialM ctx arg
       pure (argCode ++ [IR.IRInstr.call RuntimeIdx.awaitOp])
@@ -267,14 +273,14 @@ private def mkInitialCtx (params : List ANF.VarName) (envParam : ANF.VarName) : 
   { locals := (envParam, envIdx) :: go params 0 [] }
 
 private def lowerFunction (f : ANF.FuncDef) : Except String IR.IRFunc := do
-  let paramTypes := List.replicate (f.params.length + 1) IR.IRType.ptr
+  let paramTypes := List.replicate (f.params.length + 1) IR.IRType.f64
   let initState : LowerState := { nextLocal := paramTypes.length, locals := #[] }
   let ctx := mkInitialCtx f.params f.envParam
   let (body, st) ← (lowerExpr ctx f.body).run initState
   pure
     { name := f.name
       params := paramTypes
-      results := [IR.IRType.ptr]
+      results := [IR.IRType.f64]
       locals := st.locals.toList
       body := body }
 
@@ -291,38 +297,38 @@ private def buildFuncBindings (funcs : Array ANF.FuncDef) (mainBody : ANF.Expr) 
 
 private def runtimeHelpers : Array IR.IRFunc :=
   #[
-    { name := "__rt_call", params := [.ptr, .ptr], results := [.ptr], locals := []
-      body := [IR.IRInstr.const_ .ptr "0", IR.IRInstr.return_] },
-    { name := "__rt_construct", params := [.ptr, .ptr], results := [.ptr], locals := []
-      body := [IR.IRInstr.const_ .ptr "0", IR.IRInstr.return_] },
-    { name := "__rt_getProp", params := [.ptr, .ptr], results := [.ptr], locals := []
-      body := [IR.IRInstr.const_ .ptr "0", IR.IRInstr.return_] },
-    { name := "__rt_setProp", params := [.ptr, .ptr, .ptr], results := [.ptr], locals := []
-      body := [IR.IRInstr.const_ .ptr "0", IR.IRInstr.return_] },
-    { name := "__rt_getIndex", params := [.ptr, .ptr], results := [.ptr], locals := []
-      body := [IR.IRInstr.const_ .ptr "0", IR.IRInstr.return_] },
-    { name := "__rt_setIndex", params := [.ptr, .ptr, .ptr], results := [.ptr], locals := []
-      body := [IR.IRInstr.const_ .ptr "0", IR.IRInstr.return_] },
-    { name := "__rt_deleteProp", params := [.ptr, .ptr], results := [.ptr], locals := []
-      body := [IR.IRInstr.const_ .ptr "0", IR.IRInstr.return_] },
-    { name := "__rt_typeof", params := [.ptr], results := [.ptr], locals := []
-      body := [IR.IRInstr.const_ .ptr "0", IR.IRInstr.return_] },
-    { name := "__rt_getEnv", params := [.ptr, .i32], results := [.ptr], locals := []
-      body := [IR.IRInstr.const_ .ptr "0", IR.IRInstr.return_] },
-    { name := "__rt_makeEnv", params := [], results := [.ptr], locals := []
-      body := [IR.IRInstr.const_ .ptr "0", IR.IRInstr.return_] },
-    { name := "__rt_makeClosure", params := [.i32, .ptr], results := [.ptr], locals := []
-      body := [IR.IRInstr.const_ .ptr "0", IR.IRInstr.return_] },
-    { name := "__rt_objectLit", params := [], results := [.ptr], locals := []
-      body := [IR.IRInstr.const_ .ptr "0", IR.IRInstr.return_] },
-    { name := "__rt_arrayLit", params := [], results := [.ptr], locals := []
-      body := [IR.IRInstr.const_ .ptr "0", IR.IRInstr.return_] },
-    { name := "__rt_throw", params := [.ptr], results := [.ptr], locals := []
-      body := [IR.IRInstr.const_ .ptr "0", IR.IRInstr.return_] },
-    { name := "__rt_yield", params := [.ptr, .i32], results := [.ptr], locals := []
-      body := [IR.IRInstr.const_ .ptr "0", IR.IRInstr.return_] },
-    { name := "__rt_await", params := [.ptr], results := [.ptr], locals := []
-      body := [IR.IRInstr.const_ .ptr "0", IR.IRInstr.return_] }
+    { name := "__rt_call", params := [.f64, .f64], results := [.f64], locals := []
+      body := [IR.IRInstr.const_ .f64 "nan", IR.IRInstr.return_] },
+    { name := "__rt_construct", params := [.f64, .f64], results := [.f64], locals := []
+      body := [IR.IRInstr.const_ .f64 "nan", IR.IRInstr.return_] },
+    { name := "__rt_getProp", params := [.f64, .f64], results := [.f64], locals := []
+      body := [IR.IRInstr.const_ .f64 "nan", IR.IRInstr.return_] },
+    { name := "__rt_setProp", params := [.f64, .f64, .f64], results := [.f64], locals := []
+      body := [IR.IRInstr.const_ .f64 "nan", IR.IRInstr.return_] },
+    { name := "__rt_getIndex", params := [.f64, .f64], results := [.f64], locals := []
+      body := [IR.IRInstr.const_ .f64 "nan", IR.IRInstr.return_] },
+    { name := "__rt_setIndex", params := [.f64, .f64, .f64], results := [.f64], locals := []
+      body := [IR.IRInstr.const_ .f64 "nan", IR.IRInstr.return_] },
+    { name := "__rt_deleteProp", params := [.f64, .f64], results := [.f64], locals := []
+      body := [IR.IRInstr.const_ .f64 "nan", IR.IRInstr.return_] },
+    { name := "__rt_typeof", params := [.f64], results := [.f64], locals := []
+      body := [IR.IRInstr.const_ .f64 "nan", IR.IRInstr.return_] },
+    { name := "__rt_getEnv", params := [.f64, .f64], results := [.f64], locals := []
+      body := [IR.IRInstr.const_ .f64 "nan", IR.IRInstr.return_] },
+    { name := "__rt_makeEnv", params := [], results := [.f64], locals := []
+      body := [IR.IRInstr.const_ .f64 "nan", IR.IRInstr.return_] },
+    { name := "__rt_makeClosure", params := [.f64, .f64], results := [.f64], locals := []
+      body := [IR.IRInstr.const_ .f64 "nan", IR.IRInstr.return_] },
+    { name := "__rt_objectLit", params := [], results := [.f64], locals := []
+      body := [IR.IRInstr.const_ .f64 "nan", IR.IRInstr.return_] },
+    { name := "__rt_arrayLit", params := [], results := [.f64], locals := []
+      body := [IR.IRInstr.const_ .f64 "nan", IR.IRInstr.return_] },
+    { name := "__rt_throw", params := [.f64], results := [.f64], locals := []
+      body := [IR.IRInstr.const_ .f64 "nan", IR.IRInstr.return_] },
+    { name := "__rt_yield", params := [.f64, .f64], results := [.f64], locals := []
+      body := [IR.IRInstr.const_ .f64 "nan", IR.IRInstr.return_] },
+    { name := "__rt_await", params := [.f64], results := [.f64], locals := []
+      body := [IR.IRInstr.const_ .f64 "nan", IR.IRInstr.return_] }
   ]
 
 /-- Lower an ANF program to Wasm IR. ECMA-262 runtime behavior is preserved structurally via ANF sequencing (§13). -/
@@ -344,7 +350,7 @@ def lower (prog : ANF.Program) : Except String IR.IRModule := do
       params := []
       results := []
       locals := []
-      body := [IR.IRInstr.const_ .ptr "null", IR.IRInstr.call mainIdx, IR.IRInstr.drop] }
+      body := [IR.IRInstr.const_ .f64 "nan", IR.IRInstr.call mainIdx, IR.IRInstr.drop] }
   let startIdx := mainIdx + 1
   let functions := runtimeHelpers ++ loweredFns.toArray ++ #[loweredMain, startWrapper]
   pure

@@ -2,7 +2,7 @@
 
 ## Priority 1 (blocking — end-to-end correctness)
 - [ ] Parser milestone: parse ≥95% of JS files selected by `scripts/parse_flagship.sh --full` (current: 86.79% = 1781/2052 on 2026-03-08)
-- [ ] Fix value representation in Wasm lowering: all JS values are currently lowered as i32 (ptr) but numeric operations need proper f64 handling. Need NaN-boxing or tagged pointer scheme.
+- [x] Fix value representation in Wasm lowering: all JS values are currently lowered as i32 (ptr) but numeric operations need proper f64 handling. Need NaN-boxing or tagged pointer scheme.
 - [ ] Fix float constant emission: `lowerTrivial` emits ptr constants for numbers but the Wasm emit maps ptr→i32, losing float precision. Numbers like `1.5` become `0`.
 - [ ] Handle global variable references in lowering (e.g., `console`, `Math`, `JSON`) — currently fails with "unbound variable"
 
