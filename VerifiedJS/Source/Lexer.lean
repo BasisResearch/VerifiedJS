@@ -199,7 +199,15 @@ partial def tokenizeChars
   | [] =>
     return (acc.reverse ++ [{ kind := .eof, pos := { line, col, offset } }])
   | c :: cs =>
-    if c = ' ' || c = '\t' || c = '\r' then
+    if c = '#' && line = 1 && col = 1 then
+      match cs with
+      | '!' :: tail =>
+        let (rest, consumedComment) := skipLineComment tail
+        let consumed := consumedComment + 2
+        tokenizeChars rest line (col + consumed) (offset + consumed) expectRegex parenDepth controlHeaderParens pendingControlHeader acc
+      | _ =>
+        throw s!"Lexer error at {line}:{col}: unexpected character `#`"
+    else if c = ' ' || c = '\t' || c = '\r' then
       let (_, nextCol, nextOffset) := advancePos line col offset c
       tokenizeChars cs line nextCol nextOffset expectRegex parenDepth controlHeaderParens pendingControlHeader acc
     else if c = '\n' then
