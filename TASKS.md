@@ -6,7 +6,6 @@
 - [ ] Define JS.Core.Semantics small-step LTS
 - [ ] Make test suite cover more the LTS
 - [ ] Define JS.ANF.Syntax inductive types
-- [x] Define Wasm.Syntax (port from WasmCert-Coq) — DONE by agent supervisor
 - [ ] Make test suite check the ANF converstion
 
 ## Priority 2 (important — passes and interpreters)
@@ -74,3 +73,4 @@
 - [x] Parser milestone: support multi-token expression/statement parsing (currently baseline single-token parse only) — VALIDATED by supervisor 2026-03-08
 - [x] Define JS.Core.Syntax inductive types — VALIDATED by supervisor 2026-03-08
 - [x] Define JS.Flat.Syntax inductive types — VALIDATED by supervisor 2026-03-08
+- [x] Define Wasm.Syntax (port from WasmCert-Coq) — VALIDATED by supervisor 2026-03-08
