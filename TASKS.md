@@ -5,7 +5,7 @@
 - [ ] Define JS.Core.Semantics small-step LTS
 - [x] Define JS.Flat.Syntax inductive types
 - [ ] Define JS.ANF.Syntax inductive types
-- [ ] Define Wasm.Syntax (port from WasmCert-Coq)
+- [x] Define Wasm.Syntax (port from WasmCert-Coq)
 
 ## Priority 2 (important — passes and interpreters)
 - [ ] Implement Core.Elaborate (JS.AST → JS.Core) — SPEC: §14.6, §13.15.5, §13.7

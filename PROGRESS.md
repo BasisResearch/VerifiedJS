@@ -10,7 +10,7 @@
 | Flat | defined | stub | stub | stub | ClosureConvert: stub | stub |
 | ANF | stub | stub | stub | stub | Convert: stub, Optimize: done (identity) | OptimizeCorrect: done |
 | Wasm.IR | stub | N/A | stub | stub | Lower: stub | stub |
-| Wasm.AST | stub | stub | stub | stub | Emit: stub, Binary: stub | stub |
+| Wasm.AST | defined | stub | stub | stub | Emit: stub, Binary: stub | stub |
 
 ## Runtime Status
 
