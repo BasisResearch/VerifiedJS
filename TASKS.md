@@ -30,7 +30,7 @@
 - [ ] Write Wasm.IR.Print pretty-printer
 
 ## Priority 3 (proof work)
-- [ ] Define Flat.Semantics small-step LTS
+- [x] Define Flat.Semantics small-step LTS
 - [ ] Define ANF.Semantics small-step LTS
 - [ ] Define Wasm.Semantics (port from WasmCert-Coq)
 - [ ] Prove ElaborateCorrect.lean

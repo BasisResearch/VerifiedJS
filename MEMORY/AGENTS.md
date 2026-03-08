@@ -33,3 +33,8 @@ Template:
   Symptom: Lean failed on recursive `Env` definitions with termination goals (`sizeOf p < sizeOf env`) and stdlib mismatches (`Array.get?`, `String.toFloat?`, `Int.ofFloat` not available as used).
   Fix: Flattened `Env` to non-recursive bindings and constrained semantics helpers to APIs known in this codebase.
   Guardrail: Prefer minimal, compile-checked primitives first; only introduce recursive records or numeric/string conversions after confirming exact Lean API names in this toolchain.
+
+- [2026-03-08] Context: `scripts/sorry_report.sh`
+  Symptom: `grep -v "-- ..."` treats the pattern as an option, causing the sorry report to fail.
+  Fix: Pass option-like patterns via `-e`, e.g. `grep -v -e "-- PROVED:"`.
+  Guardrail: Any grep pattern starting with `-`/`--` must be wrapped with `-e` (or preceded by `--`) in scripts.
