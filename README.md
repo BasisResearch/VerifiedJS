@@ -387,6 +387,27 @@ Located in `tests/e2e/`. The test harness (`tests/e2e/run_e2e.sh`) runs:
 3. **Wasm validation**: compiled .wasm runs on wasmtime
 4. **Node.js comparison**: test files are valid JS that runs identically in Node.js
 
+### Test262 Compiler-Comparison Harness
+
+Use `scripts/run_test262_compare.sh` to compare Node.js syntax acceptance against VerifiedJS compilation on the embedded Test262 suite:
+
+```bash
+# Fast deterministic sample
+./scripts/run_test262_compare.sh --fast --sample 60 --seed local
+
+# Larger sample (used by full pipeline test runs)
+./scripts/run_test262_compare.sh --full --sample 500 --seed local
+```
+
+The runner emits machine-parseable lines:
+
+- `TEST262_PASS`: Node `--check` accepts and VerifiedJS compiles
+- `TEST262_FAIL`: unexpected VerifiedJS compile failure
+- `TEST262_XFAIL`: compile failure classified as known limitation
+- `TEST262_SKIP`: metadata-based or limitation-based skip
+
+Current skip/xfail filters intentionally avoid unsupported Test262 categories and known frontend/runtime gaps (negative tests, harness includes/flags, module/raw/async harness requirements, fixture files, and tests that rely on unsupported globals or stubbed features).
+
 ### Validation Tools
 
 - `wasmtime` on every `.wasm` output
@@ -405,7 +426,9 @@ wasmtime output.wasm                             # run
 lake exe verifiedjs input.js --emit=core        # inspect IL
 lake exe verifiedjs input.js --run=anf          # interpret at ANF
 lake test                                        # Lean unit tests
+bash tests/run_tests.sh --fast --profile pipeline # unit+e2e+test262+wasm summary
 bash tests/e2e/run_e2e.sh                        # e2e tests
+./scripts/run_test262_compare.sh --fast --sample 60 --seed local
 ./scripts/sorry_report.sh                        # sorry report
 ./scripts/parse_flagship_failfast.sh --full      # parser completion gate
 ```
@@ -482,6 +505,7 @@ verifiedjs/
 │   └── flagship/             ← git submodules: prettier, babel, TypeScript
 │
 └── scripts/
+    ├── run_test262_compare.sh
     ├── sorry_report.sh
     ├── parse_flagship_failfast.sh
     └── validate_wasm.sh
