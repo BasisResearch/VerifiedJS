@@ -33,3 +33,6 @@ SORRY_REPORT.md
 
 # Task locks (transient)
 current_tasks/*.txt
+
+.agent_locks/
+monitoring/frontend/dist/
