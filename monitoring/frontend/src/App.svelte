@@ -153,7 +153,8 @@
       <div class="list">
         {#if snapshot?.agent_logs?.length}
           {#each snapshot.agent_logs as log}
-            <div
+            <button
+              type="button"
               class="row {selectedLog === log.name ? 'active' : ''}"
               on:click={() => fetchLog(log.name)}
             >
@@ -162,7 +163,7 @@
               {#if log.last_line}
                 <div class="meta">{log.last_line}</div>
               {/if}
-            </div>
+            </button>
           {/each}
         {:else}
           <div class="row small">no agent logs found</div>
@@ -247,10 +248,10 @@
         <div class="list">
           {#if snapshot?.supervisor_logs?.length}
             {#each snapshot.supervisor_logs as log}
-              <div class="row" on:click={() => fetchLog(log.name)}>
+              <button type="button" class="row" on:click={() => fetchLog(log.name)}>
                 <div>{log.name}</div>
                 <div class="meta">{log.mtime}</div>
-              </div>
+              </button>
             {/each}
           {:else}
             <div class="row small">no supervisor logs</div>
