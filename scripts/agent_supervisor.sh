@@ -571,6 +571,8 @@ spawn_codex_bg() {
   prompt+="Assigned task: ${task_text}"$'\n'
   prompt+="Use this exact assigned task. Do NOT self-claim from TASKS.md or current_tasks/."$'\n'
   prompt+="Implement the task, run ./tests/run_tests.sh --fast, commit your changes, and exit."$'\n'
+  prompt+="If you hit recurring Lean errors or workflow pitfalls, append a concise entry to MEMORY/AGENTS.md (symptom -> fix -> guardrail)."$'\n'
+  prompt+="Prune low-value or stale tips in MEMORY/AGENTS.md; keep only high-signal guidance."$'\n'
   if [[ "${task_text}" =~ [Pp]arser|[Pp]arse|[Ll]exer|[Aa][Ss][Tt] ]]; then
     prompt+="This task touches parsing/lexing/AST. Run parser fail-fast gates before commit:"$'\n'
     prompt+="1) quick project-by-project smoke gate (heaviest last):"$'\n'

@@ -411,6 +411,8 @@ All work is driven by three coordination files. Agents read these on startup and
 
 **`PROGRESS.md`** — per-pass status. Updated by every agent before pushing.
 
+**`MEMORY/AGENTS.md`** — recurring Lean/workflow mistakes and fixes. Add concise high-signal observations; prune stale or low-value tips.
+
 When agents discover missing prerequisite work, regressions, or follow-up tasks while implementing, they must add new unchecked items to `TASKS.md` immediately (with priority + short rationale/dependency note), then continue or hand off.
 
 ### Agent Startup Protocol
