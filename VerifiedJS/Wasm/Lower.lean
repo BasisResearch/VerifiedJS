@@ -99,7 +99,7 @@ private def lowerTrivial (ctx : LowerCtx) : ANF.Trivial → Except String (List 
   | .litNull => pure [IR.IRInstr.const_ .ptr "null"]
   | .litUndefined => pure [IR.IRInstr.const_ .ptr "undefined"]
   | .litBool b => pure [IR.IRInstr.const_ .i32 (boolAsI32 b)]
-  | .litNum n => pure [IR.IRInstr.const_ .f64 (toString n)]
+  | .litNum n => pure [IR.IRInstr.const_ .ptr (toString n)]
   | .litStr s => pure [IR.IRInstr.const_ .ptr s!"\"{s}\""]
   | .litObject addr => pure [IR.IRInstr.const_ .ptr (toString addr)]
   | .litClosure funcIdx envPtr => pure [IR.IRInstr.const_ .ptr s!"closure({funcIdx},{envPtr})"]
@@ -271,23 +271,43 @@ private def lowerFunction (f : ANF.FuncDef) : Except String IR.IRFunc := do
       locals := st.locals.toList
       body := body }
 
+/-- Build a preamble that binds each top-level function name to its closure value. -/
+private def buildFuncBindings (funcs : Array ANF.FuncDef) (mainBody : ANF.Expr) : ANF.Expr :=
+  let rec go (i : Nat) (fns : List ANF.FuncDef) (body : ANF.Expr) : ANF.Expr :=
+    match fns with
+    | [] => body
+    | f :: rest =>
+      -- Bind function name to a makeClosure(funcIdx, null_env)
+      .«let» f.name (.makeClosure i (.litNull)) (go (i + 1) rest body)
+  go 0 funcs.toList mainBody
+
 /-- Lower an ANF program to Wasm IR. ECMA-262 runtime behavior is preserved structurally via ANF sequencing (§13). -/
 def lower (prog : ANF.Program) : Except String IR.IRModule := do
   let loweredFns ← prog.functions.toList.mapM lowerFunction
+  -- Wrap main body with top-level function bindings
+  let wrappedMain := buildFuncBindings prog.functions prog.main
   let mainFn : ANF.FuncDef :=
     { name := "__verifiedjs_main"
       params := []
       envParam := "__env"
-      body := prog.main }
+      body := wrappedMain }
   let loweredMain ← lowerFunction mainFn
-  let functions := (loweredFns ++ [loweredMain]).toArray
   let mainIdx := loweredFns.length
+  -- Create a _start wrapper with zero params/results (Wasm spec requires this for start func)
+  let startWrapper : IR.IRFunc :=
+    { name := "_start"
+      params := []
+      results := []
+      locals := []
+      body := [IR.IRInstr.const_ .ptr "null", IR.IRInstr.call mainIdx, IR.IRInstr.drop] }
+  let startIdx := mainIdx + 1
+  let functions := (loweredFns ++ [loweredMain, startWrapper]).toArray
   pure
     { functions := functions
       memories := #[{ lim := { min := 1, max := none } }]
       globals := #[]
-      exports := #[("main", mainIdx)]
+      exports := #[("main", mainIdx), ("_start", startIdx)]
       dataSegments := #[]
-      startFunc := some mainIdx }
+      startFunc := some startIdx }
 
 end VerifiedJS.Wasm

@@ -28,3 +28,5 @@ lean_exe verifiedjs where
 -- Test library
 lean_lib Tests where
   srcDir := "tests/unit"
+
+set_option maxHeartbeats 1000000

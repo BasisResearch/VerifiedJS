@@ -69,7 +69,7 @@ inductive Expr where
   | this
   | unary (op : Core.UnaryOp) (arg : Expr)
   | binary (op : Core.BinOp) (lhs rhs : Expr)
-  deriving Repr, BEq
+  deriving Repr, BEq, Inhabited
 
 /-- ECMA-262 §10.2 ECMAScript Function Objects (closure-converted form). -/
 structure FuncDef where

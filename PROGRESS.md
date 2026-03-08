@@ -4,13 +4,29 @@
 
 | Pass | Syntax | Semantics | Interp | Print | Pass Impl | Proof |
 |------|--------|-----------|--------|-------|-----------|-------|
-| Source (AST) | partial | N/A | N/A | baseline | N/A | N/A |
-| Lexer/Parser | partial | N/A | N/A | N/A | baseline (single-token expr + tokenization) | N/A |
-| Core | defined | defined | implemented (small-step driver over `Core.Semantics.step?`) | stub | Elaborate: stub | stub |
-| Flat | defined | defined (`step?` explicit coverage for all `Flat.Expr` constructors) | stub | stub | ClosureConvert: stub | stub |
-| ANF | partial | defined (`step?`, `Step`, `Steps`, `initialState`, `Behaves`) | implemented (small-step driver over `ANF.Semantics.step?`) | stub | Convert: implemented (full Flat.Expr coverage), Optimize: done (identity) | OptimizeCorrect: done |
-| Wasm.IR | stub | N/A | stub | stub | Lower: implemented (ANF.Expr/ComplexExpr coverage with runtime helper call lowering) | stub |
-| Wasm.AST | defined | defined (`step?`, `Step`, `Steps`, `initialStore`, `initialState`, `Behaves`; core control/stack/local/global/numeric subset + branch/call_indirect/memory.size/memory.grow/bulk-op stubs wired, no `not yet implemented` fallbacks) | stub | stub | Emit: stub, Binary: stub | stub |
+| Source (AST) | ✅ full ES2020 | N/A | N/A | baseline | N/A | N/A |
+| Lexer/Parser | ✅ | N/A | N/A | N/A | ✅ recursive descent (86.79% flagship coverage) | N/A |
+| Core | ✅ | ✅ `step?` | ✅ small-step driver | ✅ full pretty-printer | Elaborate: ✅ (stubs for classes/for-in/destructuring) | stub |
+| Flat | ✅ | ✅ `step?` (all constructors) | ✅ small-step driver | ✅ full pretty-printer | ClosureConvert: ✅ builds, handles free vars + env threading | stub |
+| ANF | ✅ | ✅ `step?`, `Step`, `Steps`, `Behaves` | ✅ small-step driver | ✅ full pretty-printer | Convert: ✅, Optimize: ✅ (identity) | OptimizeCorrect: ✅ |
+| Wasm.IR | ✅ | N/A | ✅ symbolic stack-machine (359 lines) | ✅ WAT-like pretty-printer | Lower: ✅ (with start wrapper + func bindings) | stub |
+| Wasm.AST | ✅ | ✅ `step?`, `Step`, `Steps`, `Behaves` | stub | ✅ full WAT printer (all instructions) | Emit: ✅ (IR→AST with label resolution) | stub |
+| Wasm.Binary | N/A | N/A | N/A | N/A | ✅ full encoder (LEB128 + all sections) | N/A |
+
+## End-to-End Pipeline Status
+
+**Working**: Parse → Elaborate → ClosureConvert → ANF Convert → Optimize → Lower → Emit → Binary
+
+- Simple arithmetic programs compile to valid .wasm and run on wasmtime ✅
+- Programs with top-level function definitions compile to .wasm ✅ (but wasmtime rejects due to runtime helper calls)
+- All `--emit=` targets work: core, flat, anf, wasmIR, wat
+- All `--run=` targets wired: core, flat, anf, wasmIR
+
+### Known Wasm Runtime Issues
+
+1. **Runtime helper functions missing**: Programs with function calls emit `call RuntimeIdx.*` (indices 0-15) but no runtime functions are defined in the module. Wasmtime rejects with "function index out of bounds".
+2. **Type system mismatch**: All JS values are lowered as `i32` (ptr) but float operations should use `f64`. Need proper value representation (NaN-boxing or tagged pointers).
+3. **Start function already fixed**: Added zero-param `_start` wrapper (Wasm spec requires start functions take no params).
 
 ## Runtime Status
 
@@ -23,11 +39,17 @@
 | Regex | stub |
 | Generators/Async | stub |
 
+## E2E Test Status
+
+- 10 handcrafted test cases in `tests/e2e/`
+- Pipeline stage tests: parse/elaborate/flat/anf/wasmIR/wat/compile
+- Metamorphic tests: Core vs Flat vs ANF interpreter trace comparison
+- Wasm validation: wasmtime execution for simple programs
+- Node.js comparison: all test files valid JS
+
 ## Metrics
 
 - Sorry count: TBD (run `./scripts/sorry_report.sh`)
 - Test262 pass rate: N/A
-- Unit tests: N/A
-- 2026-03-08: `Define ANF.Semantics small-step LTS` completed in `VerifiedJS/ANF/Semantics.lean` (`Step`/`Steps`/`Behaves` wired and task validated by supervisor in `TASKS.md`)
-- 2026-03-08: `Define Wasm.Semantics (port from WasmCert-Coq)` completed in `VerifiedJS/Wasm/Semantics.lean` (implemented concrete branches for `br*`, `call_indirect`, memory loads/stores, conversion/reinterpret op families, and bulk/table ops; validated in `TASKS.md`)
-- 2026-03-08: `Write ANF.Interp reference interpreter` completed in `VerifiedJS/ANF/Interp.lean` (fuel-bounded deterministic runner over `ANF.initialState` and `ANF.step?`)
+- Flagship parse rate: 86.79% (1781/2052)
+- E2E tests: 10 handcrafted JS programs

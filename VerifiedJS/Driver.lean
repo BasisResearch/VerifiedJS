@@ -25,6 +25,39 @@ import VerifiedJS.Util
 
 open VerifiedJS
 
+/-- Helper: run pipeline through elaboration -/
+private def elaborate (ast : Source.Program) : Except String Core.Program :=
+  Core.elaborate ast
+
+/-- Helper: run pipeline through closure conversion -/
+private def toFlat (ast : Source.Program) : Except String Flat.Program := do
+  let core ← elaborate ast
+  Flat.closureConvert core
+
+/-- Helper: run pipeline through ANF conversion + optimization -/
+private def toANF (ast : Source.Program) : Except String ANF.Program := do
+  let flat ← toFlat ast
+  let anf ← ANF.convert flat
+  pure (ANF.optimize anf)
+
+/-- Helper: run pipeline through Wasm IR lowering -/
+private def toWasmIR (ast : Source.Program) : Except String Wasm.IR.IRModule := do
+  let anf ← toANF ast
+  Wasm.lower anf
+
+/-- Helper: run pipeline through Wasm AST emission -/
+private def toWasm (ast : Source.Program) : Except String Wasm.Module := do
+  let ir ← toWasmIR ast
+  Wasm.emit ir
+
+/-- Helper: print trace events from interpreters -/
+private def printTrace (trace : List Core.TraceEvent) : IO Unit := do
+  for event in trace do
+    match event with
+    | .log s => IO.println s
+    | .error s => IO.eprintln s!"Error: {s}"
+    | .silent => pure ()
+
 /-- Emit targets for --emit flag -/
 inductive EmitTarget where
   | core | flat | anf | wasmIR | wat
@@ -95,10 +128,25 @@ def main (args : List String) : IO UInt32 := do
       let target := (arg.drop 7).toString
       match parseEmitTarget target with
       | some .core => do
-        match Core.elaborate ast with
+        match elaborate ast with
         | .ok core => IO.println (Core.printProgram core)
         | .error e => IO.eprintln s!"Elaboration error: {e}"
-      | some _ => IO.println s!"TODO: emit {target}"
+      | some .flat => do
+        match toFlat ast with
+        | .ok flat => IO.println (Flat.printProgram flat)
+        | .error e => IO.eprintln s!"Pipeline error: {e}"
+      | some .anf => do
+        match toANF ast with
+        | .ok anf => IO.println (ANF.printProgram anf)
+        | .error e => IO.eprintln s!"Pipeline error: {e}"
+      | some .wasmIR => do
+        match toWasmIR ast with
+        | .ok ir => IO.println (Wasm.IR.printModule ir)
+        | .error e => IO.eprintln s!"Pipeline error: {e}"
+      | some .wat => do
+        match toWasm ast with
+        | .ok wasm => IO.println (Wasm.printWat wasm)
+        | .error e => IO.eprintln s!"Pipeline error: {e}"
       | none => IO.eprintln s!"Unknown emit target: {target}"
       return 0
 
@@ -108,22 +156,38 @@ def main (args : List String) : IO UInt32 := do
       let target := (arg.drop 6).toString
       match parseRunTarget target with
       | some .core => do
-        match Core.elaborate ast with
+        match elaborate ast with
         | .ok core => do
           let trace ← Core.interp core
-          for event in trace do
-            match event with
-            | .log s => IO.println s
-            | .error s => IO.eprintln s!"Error: {s}"
-            | .silent => pure ()
+          printTrace trace
         | .error e => IO.eprintln s!"Elaboration error: {e}"
-      | some _ => IO.println s!"TODO: run {target}"
+      | some .flat => do
+        match toFlat ast with
+        | .ok flat => do
+          let trace ← Flat.interp flat
+          printTrace trace
+        | .error e => IO.eprintln s!"Pipeline error: {e}"
+      | some .anf => do
+        match toANF ast with
+        | .ok anf => do
+          let trace ← ANF.interp anf
+          printTrace trace
+        | .error e => IO.eprintln s!"Pipeline error: {e}"
+      | some .wasmIR => do
+        match toWasmIR ast with
+        | .ok ir => Wasm.IR.interp ir
+        | .error e => IO.eprintln s!"Pipeline error: {e}"
       | none => IO.eprintln s!"Unknown run target: {target}"
       return 0
 
   -- Default: compile to wasm
-  -- Find output file
   let outputFile := findOutputFile args
 
-  IO.println s!"TODO: Full compilation pipeline to {outputFile}"
-  return 0
+  match toWasm ast with
+  | .ok wasm => do
+    Wasm.writeWasm wasm outputFile
+    IO.println s!"Compiled to {outputFile}"
+    return 0
+  | .error e => do
+    IO.eprintln s!"Compilation error: {e}"
+    return 1
