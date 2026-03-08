@@ -11,9 +11,9 @@ echo "# Sorry Report ($(date))" > "$REPORT"
 echo "" >> "$REPORT"
 
 grep -rn "sorry" --include="*.lean" VerifiedJS/ 2>/dev/null | \
-  grep -v "-- sorry OK:" | \
+  grep -v -e "-- sorry OK:" | \
   grep -v "sorry_report" | \
-  grep -v "-- PROVED:" | \
+  grep -v -e "-- PROVED:" | \
   while IFS=: read -r file line content; do
     name=$(head -n "$line" "$file" | grep -oE '(theorem|lemma|def)\s+\S+' | tail -1 || echo "unknown")
     echo "- [ ] \`$file:$line\` — \`$name\` — \`$(echo "$content" | xargs)\`" >> "$REPORT"
