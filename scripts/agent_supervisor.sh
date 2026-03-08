@@ -406,7 +406,7 @@ mark_task_done_in_tasks() {
 
 normalize_task_text() {
   local t="$1"
-  printf '%s' "${t}" | sed -E 's/ — DONE by .*$//'
+  printf '%s' "${t}" | sed -E 's/ — DONE by .*$//' | sed -E 's/ — TODO\(supervisor\): .*$//'
 }
 
 ensure_validated_tasks_section() {
@@ -555,6 +555,59 @@ annotate_unchecked_task_needs_checkoff() {
   else
     rm -f "${tmp}"
   fi
+}
+
+reconcile_tasks_from_done_locks() {
+  if [[ "${DRY_RUN}" -eq 1 ]]; then
+    echo "[dry-run] reconcile ${TASKS_FILE} from done lock metadata"
+    return 0
+  fi
+
+  shopt -s nullglob
+  local lock_meta
+  for lock_meta in "${LOCK_DIR}"/task_*/meta.txt; do
+    [[ -f "${lock_meta}" ]] || continue
+    local status raw_task normalized_task
+    status="$(sed -n 's/^status=//p' "${lock_meta}" | tail -n1)"
+    [[ "${status}" == "done" ]] || continue
+    raw_task="$(sed -n 's/^task=//p' "${lock_meta}" | tail -n1)"
+    [[ -n "${raw_task}" ]] || continue
+    normalized_task="$(normalize_task_text "${raw_task}")"
+    [[ -n "${normalized_task}" ]] || continue
+
+    if task_exists_in_validated_section "${normalized_task}"; then
+      continue
+    fi
+
+    local tmp
+    tmp="$(mktemp)"
+    if awk -v t="${normalized_task}" '
+      BEGIN { validated=0; changed=0 }
+      /^## Validated Completed \(Supervisor\)$/ { validated=1; print; next }
+      {
+        if (!validated && !changed && $0 ~ /^- \[ \] /) {
+          txt=$0
+          sub(/^- \[ \] /, "", txt)
+          norm=txt
+          sub(/ — DONE by .*/, "", norm)
+          sub(/ — TODO\(supervisor\): .*/, "", norm)
+          if (norm == t) {
+            print "- [x] " t " — DONE by agent supervisor"
+            changed=1
+            next
+          }
+        }
+        print
+      }
+      END { if (!changed) exit 3 }
+    ' "${TASKS_FILE}" > "${tmp}"; then
+      mv "${tmp}" "${TASKS_FILE}"
+      echo "RECONCILE: marked task checked from done lock -> ${normalized_task}"
+    else
+      rm -f "${tmp}"
+    fi
+  done
+  shopt -u nullglob
 }
 
 run_llm_validator_once() {
@@ -981,6 +1034,7 @@ setup() {
   resolve_base_ref
   resolve_pending_merges_at_start
   cleanup_orphan_agent_worktrees
+  reconcile_tasks_from_done_locks
   commit_supervisor_task_updates "supervisor: reconcile pending merges at startup" || true
 }
 
