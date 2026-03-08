@@ -565,48 +565,13 @@ fi
 
 ### Test Harness Design (for agents, not humans)
 
-```bash
-#!/bin/bash
-# tests/run_tests.sh
-# --fast: lightweight regression checks only
-# --full: includes heavyweight suites
-# Output: one summary line to stdout. Details to test_logs/.
+`tests/run_tests.sh` is stage-aware for partial compiler progress:
 
-MODE="${1:---fast}"
-SEED=$(echo "$HOSTNAME" | md5sum | head -c 8)
-LOGDIR="test_logs/$(date +%Y%m%d_%H%M%S)"
-mkdir -p "$LOGDIR"
+- `--profile core`: unit + wasm validation only
+- `--profile parser`: unit + parser fail-fast gates + wasm validation
+- `--profile pipeline` (default): unit + e2e + wasm, with parse integration sweep in `--full`
 
-# Lean unit tests
-lake test > "$LOGDIR/unit.log" 2>&1
-UNIT_PASS=$(grep -c "PASS" "$LOGDIR/unit.log" || true)
-UNIT_FAIL=$(grep -c "FAIL" "$LOGDIR/unit.log" || true)
-
-# E2E tests (sample or full)
-if [ "$MODE" = "--fast" ]; then
-  ./scripts/run_e2e.sh --seed "$SEED" --sample 0.05 > "$LOGDIR/e2e.log" 2>&1
-else
-  ./scripts/run_e2e.sh > "$LOGDIR/e2e.log" 2>&1
-fi
-E2E_PASS=$(grep -c "^PASS" "$LOGDIR/e2e.log" || true)
-E2E_FAIL=$(grep -c "^FAIL" "$LOGDIR/e2e.log" || true)
-
-# Flagship parser sweep (full mode only; integration tests only)
-if [ "$MODE" != "--fast" ]; then
-  ./scripts/parse_flagship.sh --full --integration-only > "$LOGDIR/parse_flagship.log" 2>&1 || true
-fi
-
-# Wasm validation
-./scripts/validate_wasm.sh > "$LOGDIR/validate.log" 2>&1
-VALID=$(grep -c "^VALID" "$LOGDIR/validate.log" || true)
-INVALID=$(grep -c "^INVALID" "$LOGDIR/validate.log" || true)
-
-# One-line summary
-echo "Tests: unit=$UNIT_PASS/$((UNIT_PASS+UNIT_FAIL)) e2e=$E2E_PASS/$((E2E_PASS+E2E_FAIL)) wasm=$VALID/$((VALID+INVALID)) — logs in $LOGDIR"
-
-# Exit nonzero if any regression
-[ "$UNIT_FAIL" -eq 0 ] && [ "$E2E_FAIL" -eq 0 ] && [ "$INVALID" -eq 0 ]
-```
+Use `./tests/run_tests.sh --help` for current options.
 
 ### Validation Tools
 
@@ -745,8 +710,10 @@ wasmtime output.wasm                             # run
 lake exe verifiedjs input.js --emit=core        # inspect IL
 lake exe verifiedjs input.js --run=anf          # interpret at ANF
 lake test                                        # Lean unit tests
-./tests/run_tests.sh --fast                      # lightweight regression checks
-./tests/run_tests.sh --full                      # full suites (includes flagship parse integration sweep)
+./tests/run_tests.sh --fast                      # default pipeline profile (unit + e2e + wasm)
+./tests/run_tests.sh --full                      # full pipeline checks (adds long-sequence parse integration sweep)
+./tests/run_tests.sh --fast --profile core       # incremental checks for early compiler phases
+./tests/run_tests.sh --fast --profile parser --parser-sample 200  # parser-focused smoke gates
 ./scripts/parse_flagship_failfast.sh --project prettier --sample-per-project 200   # parser smoke gate 1 (benchmark-first)
 ./scripts/parse_flagship_failfast.sh --project babel --sample-per-project 200      # parser smoke gate 2
 ./scripts/parse_flagship_failfast.sh --project TypeScript --sample-per-project 200  # parser smoke gate 3 (heaviest last)
