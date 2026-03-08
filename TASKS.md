@@ -14,7 +14,6 @@
 - [ ] Implement Flat.ClosureConvert (JS.Core → JS.Flat)
 - [ ] Make test suite check for flat closure conversion
 - [ ] Make test suite check for ANF conversion
-- [x] Implement Wasm.Lower (JS.ANF → Wasm.IR)
 - [ ] Make test suite check for WASM lowering
 - [ ] Implement Wasm.Emit (Wasm.IR → Wasm.AST)
 - [ ] Make test suite check for WASM emitting
@@ -74,3 +73,4 @@
 - [x] Define JS.Flat.Syntax inductive types — VALIDATED by supervisor 2026-03-08
 - [x] Define Wasm.Syntax (port from WasmCert-Coq) — VALIDATED by supervisor 2026-03-08
 - [x] Implement ANF.Convert (JS.Flat → JS.ANF) — VALIDATED by supervisor 2026-03-08
+- [x] Implement Wasm.Lower (JS.ANF → Wasm.IR) — VALIDATED by supervisor 2026-03-08
