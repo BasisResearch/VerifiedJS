@@ -92,6 +92,9 @@ private def lowerBinOp : Core.BinOp → String
 private def boolAsI32 (b : Bool) : String :=
   if b then "1" else "0"
 
+private def drops (n : Nat) : List IR.IRInstr :=
+  List.replicate n IR.IRInstr.drop
+
 private def lowerTrivial (ctx : LowerCtx) : ANF.Trivial → Except String (List IR.IRInstr)
   | .var name => do
       let idx ← lookupLocal ctx name
@@ -128,12 +131,16 @@ private partial def lowerComplex (ctx : LowerCtx) : ANF.ComplexExpr → LowerM (
       let calleeCode ← lowerTrivialM ctx callee
       let envCode ← lowerTrivialM ctx env
       let argsCode ← lowerTrivialList ctx args
-      pure (calleeCode ++ envCode ++ argsCode ++ [IR.IRInstr.call RuntimeIdx.call])
+      pure
+        (calleeCode ++ envCode ++ argsCode ++ drops args.length ++
+          [IR.IRInstr.call RuntimeIdx.call])
   | .newObj callee env args => do
       let calleeCode ← lowerTrivialM ctx callee
       let envCode ← lowerTrivialM ctx env
       let argsCode ← lowerTrivialList ctx args
-      pure (calleeCode ++ envCode ++ argsCode ++ [IR.IRInstr.call RuntimeIdx.construct])
+      pure
+        (calleeCode ++ envCode ++ argsCode ++ drops args.length ++
+          [IR.IRInstr.call RuntimeIdx.construct])
   | .getProp obj prop => do
       let objCode ← lowerTrivialM ctx obj
       pure (objCode ++ [IR.IRInstr.const_ .ptr s!"\"{prop}\"", IR.IRInstr.call RuntimeIdx.getProp])
@@ -163,7 +170,7 @@ private partial def lowerComplex (ctx : LowerCtx) : ANF.ComplexExpr → LowerM (
       pure (envCode ++ [IR.IRInstr.const_ .i32 (toString idx), IR.IRInstr.call RuntimeIdx.getEnv])
   | .makeEnv values => do
       let valuesCode ← lowerTrivialList ctx values
-      pure (valuesCode ++ [IR.IRInstr.call RuntimeIdx.makeEnv])
+      pure (valuesCode ++ drops values.length ++ [IR.IRInstr.call RuntimeIdx.makeEnv])
   | .makeClosure funcIdx env => do
       let envCode ← lowerTrivialM ctx env
       pure
@@ -173,10 +180,10 @@ private partial def lowerComplex (ctx : LowerCtx) : ANF.ComplexExpr → LowerM (
       let mut out := []
       for (prop, value) in props do
         out := out ++ [IR.IRInstr.const_ .ptr s!"\"{prop}\""] ++ (← lowerTrivialM ctx value)
-      pure (out ++ [IR.IRInstr.call RuntimeIdx.objectLit])
+      pure (out ++ drops (2 * props.length) ++ [IR.IRInstr.call RuntimeIdx.objectLit])
   | .arrayLit elems => do
       let elemsCode ← lowerTrivialList ctx elems
-      pure (elemsCode ++ [IR.IRInstr.call RuntimeIdx.arrayLit])
+      pure (elemsCode ++ drops elems.length ++ [IR.IRInstr.call RuntimeIdx.arrayLit])
   | .unary op arg => do
       let argCode ← lowerTrivialM ctx arg
       pure (argCode ++ [IR.IRInstr.unOp .ptr (lowerUnaryOp op)])
@@ -272,27 +279,65 @@ private def lowerFunction (f : ANF.FuncDef) : Except String IR.IRFunc := do
       body := body }
 
 /-- Build a preamble that binds each top-level function name to its closure value. -/
-private def buildFuncBindings (funcs : Array ANF.FuncDef) (mainBody : ANF.Expr) : ANF.Expr :=
+private def buildFuncBindings (funcs : Array ANF.FuncDef) (mainBody : ANF.Expr) (baseIdx : Nat) :
+    ANF.Expr :=
   let rec go (i : Nat) (fns : List ANF.FuncDef) (body : ANF.Expr) : ANF.Expr :=
     match fns with
     | [] => body
     | f :: rest =>
       -- Bind function name to a makeClosure(funcIdx, null_env)
-      .«let» f.name (.makeClosure i (.litNull)) (go (i + 1) rest body)
+      .«let» f.name (.makeClosure (baseIdx + i) (.litNull)) (go (i + 1) rest body)
   go 0 funcs.toList mainBody
+
+private def runtimeHelpers : Array IR.IRFunc :=
+  #[
+    { name := "__rt_call", params := [.ptr, .ptr], results := [.ptr], locals := []
+      body := [IR.IRInstr.const_ .ptr "0", IR.IRInstr.return_] },
+    { name := "__rt_construct", params := [.ptr, .ptr], results := [.ptr], locals := []
+      body := [IR.IRInstr.const_ .ptr "0", IR.IRInstr.return_] },
+    { name := "__rt_getProp", params := [.ptr, .ptr], results := [.ptr], locals := []
+      body := [IR.IRInstr.const_ .ptr "0", IR.IRInstr.return_] },
+    { name := "__rt_setProp", params := [.ptr, .ptr, .ptr], results := [.ptr], locals := []
+      body := [IR.IRInstr.const_ .ptr "0", IR.IRInstr.return_] },
+    { name := "__rt_getIndex", params := [.ptr, .ptr], results := [.ptr], locals := []
+      body := [IR.IRInstr.const_ .ptr "0", IR.IRInstr.return_] },
+    { name := "__rt_setIndex", params := [.ptr, .ptr, .ptr], results := [.ptr], locals := []
+      body := [IR.IRInstr.const_ .ptr "0", IR.IRInstr.return_] },
+    { name := "__rt_deleteProp", params := [.ptr, .ptr], results := [.ptr], locals := []
+      body := [IR.IRInstr.const_ .ptr "0", IR.IRInstr.return_] },
+    { name := "__rt_typeof", params := [.ptr], results := [.ptr], locals := []
+      body := [IR.IRInstr.const_ .ptr "0", IR.IRInstr.return_] },
+    { name := "__rt_getEnv", params := [.ptr, .i32], results := [.ptr], locals := []
+      body := [IR.IRInstr.const_ .ptr "0", IR.IRInstr.return_] },
+    { name := "__rt_makeEnv", params := [], results := [.ptr], locals := []
+      body := [IR.IRInstr.const_ .ptr "0", IR.IRInstr.return_] },
+    { name := "__rt_makeClosure", params := [.i32, .ptr], results := [.ptr], locals := []
+      body := [IR.IRInstr.const_ .ptr "0", IR.IRInstr.return_] },
+    { name := "__rt_objectLit", params := [], results := [.ptr], locals := []
+      body := [IR.IRInstr.const_ .ptr "0", IR.IRInstr.return_] },
+    { name := "__rt_arrayLit", params := [], results := [.ptr], locals := []
+      body := [IR.IRInstr.const_ .ptr "0", IR.IRInstr.return_] },
+    { name := "__rt_throw", params := [.ptr], results := [.ptr], locals := []
+      body := [IR.IRInstr.const_ .ptr "0", IR.IRInstr.return_] },
+    { name := "__rt_yield", params := [.ptr, .i32], results := [.ptr], locals := []
+      body := [IR.IRInstr.const_ .ptr "0", IR.IRInstr.return_] },
+    { name := "__rt_await", params := [.ptr], results := [.ptr], locals := []
+      body := [IR.IRInstr.const_ .ptr "0", IR.IRInstr.return_] }
+  ]
 
 /-- Lower an ANF program to Wasm IR. ECMA-262 runtime behavior is preserved structurally via ANF sequencing (§13). -/
 def lower (prog : ANF.Program) : Except String IR.IRModule := do
+  let runtimeCount := runtimeHelpers.size
   let loweredFns ← prog.functions.toList.mapM lowerFunction
   -- Wrap main body with top-level function bindings
-  let wrappedMain := buildFuncBindings prog.functions prog.main
+  let wrappedMain := buildFuncBindings prog.functions prog.main runtimeCount
   let mainFn : ANF.FuncDef :=
     { name := "__verifiedjs_main"
       params := []
       envParam := "__env"
       body := wrappedMain }
   let loweredMain ← lowerFunction mainFn
-  let mainIdx := loweredFns.length
+  let mainIdx := runtimeCount + loweredFns.length
   -- Create a _start wrapper with zero params/results (Wasm spec requires this for start func)
   let startWrapper : IR.IRFunc :=
     { name := "_start"
@@ -301,7 +346,7 @@ def lower (prog : ANF.Program) : Except String IR.IRModule := do
       locals := []
       body := [IR.IRInstr.const_ .ptr "null", IR.IRInstr.call mainIdx, IR.IRInstr.drop] }
   let startIdx := mainIdx + 1
-  let functions := (loweredFns ++ [loweredMain, startWrapper]).toArray
+  let functions := runtimeHelpers ++ loweredFns.toArray ++ #[loweredMain, startWrapper]
   pure
     { functions := functions
       memories := #[{ lim := { min := 1, max := none } }]
