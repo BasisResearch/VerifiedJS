@@ -405,7 +405,16 @@ All work is driven by three coordination files. Agents read these on startup and
 - [ ] Deduplicate helper functions in Wasm/ modules
 - [ ] Update ARCHITECTURE.md to reflect new IR.lean structure
 - [ ] Review and coalesce any reimplemented utility code
+
+## Validated Completed (Supervisor)
+- [x] Define Wasm.Syntax.lean module type — VALIDATED by supervisor 2026-03-08
 ```
+
+Task flow:
+- Agents mark completed tasks as `- [x]` in their original section.
+- Supervisor validator passes review all checked tasks.
+- If validation passes, supervisor moves the task to `## Validated Completed (Supervisor)`.
+- If validation fails, supervisor reopens it as `- [ ] ... — TODO(supervisor): ...` with actionable notes.
 
 **`PROOF_BLOCKERS.md`** — goals agents are stuck on. Agents check this before starting proof work to avoid duplicating failed attempts.
 
@@ -755,6 +764,7 @@ git submodule update --init --recursive          # fetch all submodules (test262
 `scripts/agent_supervisor.sh` assigns tasks centrally from `TASKS.md` and uses atomic local locks in `.agent_locks/` to prevent duplicate task claims across parallel worktrees.
 At the end of each run it prints a supervisor summary (rounds, agent exits, test status, completed/failed task list, log paths).
 It also applies phase-aware symbolic validation before checking off tasks (e.g., parser fail-fast gates for parser tasks, module build + no-`sorry` checks for semantics/proof milestones).
+It also runs Codex validator passes over checked tasks before moving them to the validated section.
 
 ---
 

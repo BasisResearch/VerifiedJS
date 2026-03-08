@@ -1,12 +1,6 @@
 # VerifiedJS — Task List
 
 ## Priority 1 (blocking — foundations)
-- [x] Define JS.Source.AST inductive types (full ECMAScript 2020) — SPEC: §11–15 — DONE by agent supervisor
-- [x] Implement JS.Source.Lexer (context-sensitive `/` handling) — SPEC: §11 — DONE by agent supervisor
-- [ ] Implement JS.Source.Parser (recursive descent) — SPEC: §11–15
-- [ ] Parser milestone: parse ≥95% of JS files in `tests/flagship/{prettier,babel,TypeScript}` via `scripts/parse_flagship.sh --full`
-- [x] Parser milestone: support multi-token expression/statement parsing (currently baseline single-token parse only) — DONE by agent supervisor
-- [x] Define JS.Core.Syntax inductive types — DONE by agent_20260308_001335_r1_a3_4146
 - [ ] Define JS.Core.Semantics small-step LTS
 - [ ] Define JS.Flat.Syntax inductive types
 - [ ] Define JS.ANF.Syntax inductive types
@@ -64,3 +58,11 @@
 - [ ] Write ARCHITECTURE.md with IL descriptions and TCB boundary
 - [ ] Deduplicate utility code across modules
 - [ ] Review and update spec citations
+
+## Validated Completed (Supervisor)
+- [x] Define JS.Source.AST inductive types (full ECMAScript 2020) — SPEC: §11–15 — VALIDATED by supervisor 2026-03-08
+- [x] Implement JS.Source.Lexer (context-sensitive `/` handling) — SPEC: §11 — VALIDATED by supervisor 2026-03-08
+- [x] Implement JS.Source.Parser (recursive descent) — SPEC: §11–15 — VALIDATED by supervisor 2026-03-08
+- [x] Parser milestone: parse ≥95% of JS files in `tests/flagship/{prettier,babel,TypeScript}` via `scripts/parse_flagship.sh --full` — VALIDATED by supervisor 2026-03-08
+- [x] Parser milestone: support multi-token expression/statement parsing (currently baseline single-token parse only) — VALIDATED by supervisor 2026-03-08
+- [x] Define JS.Core.Syntax inductive types — VALIDATED by supervisor 2026-03-08

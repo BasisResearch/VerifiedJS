@@ -22,6 +22,7 @@ CLEANUP_LOCAL=1
 MERGE_LOCAL=1
 KEEP_LOCAL=0
 LAST_INTEGRATED=0
+VALIDATOR_LLM_COUNT=2
 
 SCRIPT_START_TS="$(date +%s)"
 SUMMARY_PRINTED=0
@@ -31,6 +32,7 @@ TOTAL_OK=0
 TOTAL_FAIL=0
 LAST_TEST_PASS="N/A"
 LAST_TEST_LOG=""
+LAST_VALIDATION_NOTE=""
 declare -a SUMMARY_OK
 declare -a SUMMARY_FAIL
 declare -a ROUND_TASK_IDS
@@ -60,6 +62,7 @@ Options:
   --sleep SEC          Delay between rounds in supervise mode (default: 20)
   --max-rounds N       Stop after N rounds (0 = unlimited, default: 0)
   --monitor-secs N     Print agent progress every N seconds while waiting (default: 5, 0 disables)
+  --validator-llms N   Number of Codex validator passes per checked task (default: 2)
   --no-push            Skip pushing agent branches
   --no-merge-local     Do not merge successful local agent branches into current branch
   --keep-local         Keep local agent branches/worktrees after run (implies no cleanup)
@@ -222,6 +225,284 @@ mark_task_done_in_tasks() {
     rm -f "${tmp}"
     echo "WARN: could not mark task as done in ${TASKS_FILE}: ${task_id}" >&2
   fi
+}
+
+normalize_task_text() {
+  local t="$1"
+  printf '%s' "${t}" | sed -E 's/ — DONE by .*$//'
+}
+
+ensure_validated_tasks_section() {
+  if grep -q '^## Validated Completed (Supervisor)$' "${TASKS_FILE}"; then
+    return 0
+  fi
+  if [[ "${DRY_RUN}" -eq 1 ]]; then
+    echo "[dry-run] append validated completed section to ${TASKS_FILE}"
+    return 0
+  fi
+  {
+    echo ""
+    echo "## Validated Completed (Supervisor)"
+  } >> "${TASKS_FILE}"
+}
+
+list_checked_tasks_pending_validation() {
+  awk '
+    BEGIN { validated=0 }
+    /^## Validated Completed \(Supervisor\)$/ { validated=1; next }
+    !validated && /^- \[x\] / {
+      txt=$0
+      sub(/^- \[x\] /, "", txt)
+      print txt
+    }
+  ' "${TASKS_FILE}"
+}
+
+task_exists_in_validated_section() {
+  local task_text="$1"
+  awk -v t="${task_text}" '
+    BEGIN { validated=0; found=0 }
+    /^## Validated Completed \(Supervisor\)$/ { validated=1; next }
+    validated && /^- \[x\] / {
+      txt=$0
+      sub(/^- \[x\] /, "", txt)
+      sub(/ — VALIDATED by supervisor.*/, "", txt)
+      if (txt == t) { found=1; exit }
+    }
+    END { exit(found ? 0 : 1) }
+  ' "${TASKS_FILE}"
+}
+
+move_checked_task_to_validated_section() {
+  local raw_task_text="$1"
+  local normalized_task_text="$2"
+  local validated_date="$3"
+
+  if [[ "${DRY_RUN}" -eq 1 ]]; then
+    echo "[dry-run] move checked task to validated section: ${normalized_task_text}"
+    return 0
+  fi
+
+  local tmp
+  tmp="$(mktemp)"
+  if ! awk -v t="${raw_task_text}" '
+    BEGIN { validated=0; moved=0 }
+    /^## Validated Completed \(Supervisor\)$/ { validated=1; print; next }
+    {
+      if (!validated && !moved && $0 == ("- [x] " t)) {
+        moved=1
+        next
+      }
+      print
+    }
+    END { if (!moved) exit 3 }
+  ' "${TASKS_FILE}" > "${tmp}"; then
+    rm -f "${tmp}"
+    return 1
+  fi
+  mv "${tmp}" "${TASKS_FILE}"
+
+  if ! task_exists_in_validated_section "${normalized_task_text}"; then
+    echo "- [x] ${normalized_task_text} — VALIDATED by supervisor ${validated_date}" >> "${TASKS_FILE}"
+  fi
+}
+
+reopen_checked_task_with_note() {
+  local raw_task_text="$1"
+  local normalized_task_text="$2"
+  local note="$3"
+  local cleaned_note
+  cleaned_note="$(printf '%s' "${note}" | tr '\n' ' ' | sed -E 's/[[:space:]]+/ /g' | sed -E 's/^ +| +$//g' | cut -c1-240)"
+
+  if [[ "${DRY_RUN}" -eq 1 ]]; then
+    echo "[dry-run] reopen checked task with note: ${normalized_task_text} :: ${cleaned_note}"
+    return 0
+  fi
+
+  local tmp
+  tmp="$(mktemp)"
+  if ! awk -v t="${raw_task_text}" -v n="${normalized_task_text}" -v note="${cleaned_note}" '
+    BEGIN { validated=0; changed=0 }
+    /^## Validated Completed \(Supervisor\)$/ { validated=1; print; next }
+    {
+      if (!validated && !changed && $0 == ("- [x] " t)) {
+        print "- [ ] " n " — TODO(supervisor): " note
+        changed=1
+      } else {
+        print
+      }
+    }
+    END { if (!changed) exit 3 }
+  ' "${TASKS_FILE}" > "${tmp}"; then
+    rm -f "${tmp}"
+    return 1
+  fi
+  mv "${tmp}" "${TASKS_FILE}"
+}
+
+task_marked_checked_in_active_section() {
+  local task_text="$1"
+  awk -v t="${task_text}" '
+    BEGIN { validated=0; found=0 }
+    /^## Validated Completed \(Supervisor\)$/ { validated=1; next }
+    !validated && /^- \[x\] / {
+      txt=$0
+      sub(/^- \[x\] /, "", txt)
+      if (index(txt, t) == 1) { found=1; exit }
+    }
+    END { exit(found ? 0 : 1) }
+  ' "${TASKS_FILE}"
+}
+
+annotate_unchecked_task_needs_checkoff() {
+  local task_text="$1"
+  local note="agent merged code but did not mark task as [x] for supervisor validation"
+  if [[ "${DRY_RUN}" -eq 1 ]]; then
+    echo "[dry-run] annotate unchecked task: ${task_text}"
+    return 0
+  fi
+  local tmp
+  tmp="$(mktemp)"
+  if awk -v t="${task_text}" -v note="${note}" '
+    {
+      if (!changed && $0 == ("- [ ] " t)) {
+        print "- [ ] " t " — TODO(supervisor): " note
+        changed=1
+      } else {
+        print
+      }
+    }
+    END { if (!changed) exit 3 }
+  ' "${TASKS_FILE}" > "${tmp}"; then
+    mv "${tmp}" "${TASKS_FILE}"
+  else
+    rm -f "${tmp}"
+  fi
+}
+
+run_llm_validator_once() {
+  local task_text="$1"
+  local focus="$2"
+  local log="$3"
+  local tmp
+  tmp="$(mktemp)"
+  LAST_VALIDATION_NOTE=""
+
+  local prompt=""
+  prompt+="You are a strict task validator for VerifiedJS."$'\n'
+  prompt+="Task: ${task_text}"$'\n'
+  prompt+="Focus: ${focus}"$'\n'
+  prompt+="Inspect repository state and decide if this task is complete."$'\n'
+  prompt+="Output exactly two lines:"$'\n'
+  prompt+="VERDICT: PASS or FAIL"$'\n'
+  prompt+="NOTES: one short actionable sentence"$'\n'
+
+  if ! (
+    cd "${ROOT_DIR}"
+    codex exec -C "${ROOT_DIR}" \
+      --add-dir "${ROOT_DIR}/.git" \
+      --add-dir "${ROOT_DIR}/.lake" \
+      "${prompt}"
+  ) >"${tmp}" 2>>"${log}"; then
+    LAST_VALIDATION_NOTE="validator execution failed (${focus})"
+    rm -f "${tmp}"
+    return 1
+  fi
+
+  local verdict notes
+  verdict="$(sed -nE 's/^VERDICT:[[:space:]]*(PASS|FAIL).*$/\1/p' "${tmp}" | tail -n1)"
+  notes="$(sed -nE 's/^NOTES:[[:space:]]*//p' "${tmp}" | head -n1)"
+  if [[ -z "${notes}" ]]; then
+    notes="$(tail -n 3 "${tmp}" | tr '\n' ' ' | sed -E 's/[[:space:]]+/ /g' | cut -c1-180)"
+  fi
+  echo "LLM_VALIDATOR[${focus}] VERDICT=${verdict} NOTES=${notes}" >>"${log}"
+  LAST_VALIDATION_NOTE="${notes}"
+  rm -f "${tmp}"
+
+  [[ "${verdict}" == "PASS" ]]
+}
+
+run_llm_validators_for_task() {
+  local task_text="$1"
+  local log="$2"
+  LAST_VALIDATION_NOTE=""
+
+  if [[ "${DRY_RUN}" -eq 1 ]]; then
+    return 0
+  fi
+  if [[ "${VALIDATOR_LLM_COUNT}" -le 0 ]]; then
+    return 0
+  fi
+
+  local failures=0
+  local notes=()
+  local idx=1
+  while [[ "${idx}" -le "${VALIDATOR_LLM_COUNT}" ]]; do
+    local focus="completeness-pass-${idx}"
+    if run_llm_validator_once "${task_text}" "${focus}" "${log}"; then
+      :
+    else
+      failures=$((failures + 1))
+      notes+=("${LAST_VALIDATION_NOTE}")
+    fi
+    idx=$((idx + 1))
+  done
+
+  if [[ "${failures}" -eq 0 ]]; then
+    return 0
+  fi
+
+  LAST_VALIDATION_NOTE="$(printf '%s; ' "${notes[@]}" | sed -E 's/; $//')"
+  return 1
+}
+
+review_checked_tasks_with_validators() {
+  local round="$1"
+  local review_log="${LOG_ROOT}/validator_round_${round}_$(timestamp).log"
+
+  ensure_validated_tasks_section
+  if [[ "${DRY_RUN}" -eq 1 ]]; then
+    echo "ROUND ${round}: [dry-run] validating checked tasks via symbolic + LLM validators"
+    return 0
+  fi
+
+  echo "ROUND ${round}: validating checked tasks (log: ${review_log})"
+
+  local reviewed=0
+  while IFS= read -r raw_task_text; do
+    [[ -z "${raw_task_text}" ]] && continue
+    reviewed=$((reviewed + 1))
+
+    local normalized_task_text
+    normalized_task_text="$(normalize_task_text "${raw_task_text}")"
+    if task_exists_in_validated_section "${normalized_task_text}"; then
+      continue
+    fi
+
+    local fail_note=""
+    if ! run_task_symbolic_validation "${normalized_task_text}" "${ROOT_DIR}" "${review_log}"; then
+      fail_note="symbolic checks failed"
+    elif ! run_llm_validators_for_task "${normalized_task_text}" "${review_log}"; then
+      fail_note="${LAST_VALIDATION_NOTE}"
+    fi
+
+    if [[ -z "${fail_note}" ]]; then
+      if move_checked_task_to_validated_section "${raw_task_text}" "${normalized_task_text}" "$(date -u +%Y-%m-%d)"; then
+        echo "VALIDATED_TASK: ${normalized_task_text}" | tee -a "${review_log}"
+      else
+        echo "WARN: could not move checked task to validated section: ${raw_task_text}" | tee -a "${review_log}"
+      fi
+    else
+      if reopen_checked_task_with_note "${raw_task_text}" "${normalized_task_text}" "${fail_note}"; then
+        echo "REOPEN_TASK: ${normalized_task_text} :: ${fail_note}" | tee -a "${review_log}"
+      else
+        echo "WARN: could not reopen failed checked task: ${raw_task_text}" | tee -a "${review_log}"
+      fi
+    fi
+  done < <(list_checked_tasks_pending_validation)
+
+  echo "ROUND ${round}: validator review processed ${reviewed} checked task(s)"
+  return 0
 }
 
 release_task_lock() {
@@ -437,6 +718,10 @@ parse_args() {
         MONITOR_SECS="${2:?missing value for --monitor-secs}"
         shift 2
         ;;
+      --validator-llms)
+        VALIDATOR_LLM_COUNT="${2:?missing value for --validator-llms}"
+        shift 2
+        ;;
       --no-push)
         PUSH_AFTER_RUN=0
         shift
@@ -570,6 +855,7 @@ spawn_codex_bg() {
   prompt+=$'\n\n'
   prompt+="Assigned task: ${task_text}"$'\n'
   prompt+="Use this exact assigned task. Do NOT self-claim from TASKS.md or current_tasks/."$'\n'
+  prompt+="Mark your assigned task as [x] in TASKS.md when you believe it is complete. Keep it in-place; supervisor validators will relocate validated tasks."$'\n'
   prompt+="Implement the task, run ./tests/run_tests.sh --fast, commit your changes, and exit."$'\n'
   prompt+="If you hit recurring Lean errors or workflow pitfalls, append a concise entry to MEMORY/AGENTS.md (symptom -> fix -> guardrail)."$'\n'
   prompt+="Prune low-value or stale tips in MEMORY/AGENTS.md; keep only high-signal guidance."$'\n'
@@ -895,10 +1181,16 @@ spawn_round() {
     integrated="${LAST_INTEGRATED}"
 
     if [[ "${st}" -eq 0 && ( "${DRY_RUN}" -eq 1 || "${ahead}" -gt 0 ) && "${integrated}" -eq 1 ]]; then
-      TOTAL_OK=$((TOTAL_OK + 1))
-      SUMMARY_OK+=("${task_text}")
-      mark_task_done "${task_id}"
-      mark_task_done_in_tasks "${task_id}" "${task_text}"
+      if [[ "${DRY_RUN}" -eq 1 ]] || task_marked_checked_in_active_section "${task_text}"; then
+        TOTAL_OK=$((TOTAL_OK + 1))
+        SUMMARY_OK+=("${task_text}")
+        mark_task_done "${task_id}"
+      else
+        TOTAL_FAIL=$((TOTAL_FAIL + 1))
+        SUMMARY_FAIL+=("${task_text} (agent did not mark [x] in TASKS.md)")
+        annotate_unchecked_task_needs_checkoff "${task_text}"
+        release_task_lock "${task_id}"
+      fi
     elif [[ "${st}" -eq 0 && "${ahead}" -gt 0 ]]; then
       TOTAL_FAIL=$((TOTAL_FAIL + 1))
       SUMMARY_FAIL+=("${task_text} (pending merge)")
@@ -953,6 +1245,7 @@ run_test_cmd() {
 run_spawn_mode() {
   setup
   spawn_round 1 || true
+  review_checked_tasks_with_validators 1 || true
 }
 
 run_supervise_mode() {
@@ -968,6 +1261,8 @@ run_supervise_mode() {
       echo "Supervisor: stopping because no tasks were available."
       return 0
     fi
+
+    review_checked_tasks_with_validators "${round}" || true
 
     if run_test_cmd "${round}"; then
       if [[ "${STOP_ON_PASS}" -eq 1 ]]; then
