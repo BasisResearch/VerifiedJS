@@ -77,6 +77,13 @@ PARSE_FAIL=0
 PARSE_TOTAL=0
 PARSE_STATUS="skipped"
 
+T262_PASS=0
+T262_FAIL=0
+T262_XFAIL=0
+T262_SKIP=0
+T262_TOTAL=0
+T262_STATUS="skipped"
+
 VALID=0
 INVALID=0
 WASM_TOTAL=0
@@ -150,6 +157,22 @@ elif [[ "${MODE}" != "--fast" && -x "./scripts/parse_flagship.sh" ]]; then
   PARSE_TOTAL=$((PARSE_PASS + PARSE_FAIL))
 fi
 
+if [[ "${PROFILE}" == "pipeline" && -x "./scripts/run_test262_compare.sh" ]]; then
+  T262_STATUS="ok"
+  if [[ "${MODE}" == "--fast" ]]; then
+    ./scripts/run_test262_compare.sh --fast --sample 60 --seed "${SEED}" > "${LOGDIR}/test262.log" 2>&1 || T262_STATUS="fail"
+  else
+    ./scripts/run_test262_compare.sh --full --sample 500 --seed "${SEED}" > "${LOGDIR}/test262.log" 2>&1 || T262_STATUS="fail"
+  fi
+  T262_PASS="$(grep -c "^TEST262_PASS " "${LOGDIR}/test262.log" 2>/dev/null || true)"
+  T262_FAIL="$(grep -c "^TEST262_FAIL " "${LOGDIR}/test262.log" 2>/dev/null || true)"
+  T262_XFAIL="$(grep -c "^TEST262_XFAIL " "${LOGDIR}/test262.log" 2>/dev/null || true)"
+  T262_SKIP="$(grep -c "^TEST262_SKIP " "${LOGDIR}/test262.log" 2>/dev/null || true)"
+  T262_TOTAL=$((T262_PASS + T262_FAIL + T262_XFAIL + T262_SKIP))
+elif [[ "${PROFILE}" == "pipeline" ]]; then
+  T262_STATUS="missing"
+fi
+
 if [[ -x "./scripts/validate_wasm.sh" ]]; then
   WASM_STATUS="ok"
   ./scripts/validate_wasm.sh > "${LOGDIR}/validate.log" 2>&1 || WASM_STATUS="fail"
@@ -174,8 +197,8 @@ if [[ "${E2E_STATUS}" == "ok" || "${E2E_STATUS}" == "fail" ]]; then
   E2E_LABEL="${E2E_STATUS}:skip=${E2E_SKIP}"
 fi
 
-echo "Tests: mode=${MODE#--} profile=${PROFILE} unit=${UNIT_PASS}/${UNIT_TOTAL}(${UNIT_LABEL}) e2e=${E2E_PASS}/${E2E_TOTAL}(${E2E_LABEL}) parse=${PARSE_PASS}/${PARSE_TOTAL}(${PARSE_STATUS}) wasm=${VALID}/${WASM_TOTAL}(${WASM_STATUS}) [${SECONDS}s] — logs in ${LOGDIR}"
+echo "Tests: mode=${MODE#--} profile=${PROFILE} unit=${UNIT_PASS}/${UNIT_TOTAL}(${UNIT_LABEL}) e2e=${E2E_PASS}/${E2E_TOTAL}(${E2E_LABEL}) parse=${PARSE_PASS}/${PARSE_TOTAL}(${PARSE_STATUS}) test262=${T262_PASS}/${T262_TOTAL}(fail=${T262_FAIL},xfail=${T262_XFAIL},${T262_STATUS}) wasm=${VALID}/${WASM_TOTAL}(${WASM_STATUS}) [${SECONDS}s] — logs in ${LOGDIR}"
 
-if [[ "${UNIT_STATUS}" == "fail" ]] || [[ "${E2E_FAIL}" -gt 0 ]] || [[ "${PARSE_STATUS}" == "fail" ]] || [[ "${INVALID}" -gt 0 ]] || [[ "${WASM_STATUS}" == "fail" ]]; then
+if [[ "${UNIT_STATUS}" == "fail" ]] || [[ "${E2E_FAIL}" -gt 0 ]] || [[ "${PARSE_STATUS}" == "fail" ]] || [[ "${T262_FAIL}" -gt 0 ]] || [[ "${T262_STATUS}" == "fail" ]] || [[ "${INVALID}" -gt 0 ]] || [[ "${WASM_STATUS}" == "fail" ]]; then
   exit 1
 fi

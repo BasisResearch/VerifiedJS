@@ -36,3 +36,5 @@ current_tasks/*.txt
 
 .agent_locks/
 monitoring/frontend/dist/
+.worktrees/
+.claude/worktrees/
