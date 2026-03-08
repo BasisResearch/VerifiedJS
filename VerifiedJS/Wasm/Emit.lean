@@ -27,6 +27,34 @@ private def resolveLabelIdx (s : EmitState) (name : String) : Except String Nat 
   | some idx => .ok idx
   | none => .error s!"emit: unresolved label '{name}'"
 
+private def pow10 (n : Nat) : Float :=
+  (List.replicate n ()).foldl (fun acc _ => acc * 10.0) 1.0
+
+private def parseF64Literal? (raw : String) : Option Float :=
+  let s := raw.trimAscii.toString
+  if s = "nan" || s = "NaN" then
+    some (0.0 / 0.0)
+  else
+    let neg := s.startsWith "-"
+    let absStr := if neg then (s.drop 1).toString else s
+    let pieces := String.splitOn absStr "."
+    match pieces with
+    | [intPart] =>
+        match intPart.toNat? with
+        | some n =>
+            let v := Float.ofNat n
+            some (if neg then -v else v)
+        | none => none
+    | [intPart, fracPart] =>
+        match intPart.toNat?, fracPart.toNat? with
+        | some whole, some frac =>
+            let fracDen := pow10 fracPart.length
+            let fracNum := Float.ofNat frac
+            let v := Float.ofNat whole + (fracNum / fracDen)
+            some (if neg then -v else v)
+        | _, _ => none
+    | _ => none
+
 /-- Convert an IR instruction to Wasm AST instructions -/
 private partial def emitInstr (s : EmitState) : IR.IRInstr → Except String (List Instr)
   | .const_ .i32 v =>
@@ -41,8 +69,7 @@ private partial def emitInstr (s : EmitState) : IR.IRInstr → Except String (Li
     | some n => .ok [.i64Const (UInt64.ofNat n)]
     | none => .ok [.i64Const 0]
   | .const_ .f64 v =>
-    -- Float.ofScientific handles most cases
-    .ok [.f64Const 0.0]  -- TODO: parse float from string
+    .ok [.f64Const (parseF64Literal? v |>.getD 0.0)]
   | .const_ .ptr v =>
     -- Pointers lowered as i32 constants; symbolic values get 0
     match v.toNat? with
@@ -62,7 +89,7 @@ private partial def emitInstr (s : EmitState) : IR.IRInstr → Except String (Li
   | .store .ptr offset => .ok [.i32Store { offset := offset, align := 2 }]
   | .binOp .i32 op => .ok [emitI32BinOp op]
   | .binOp .i64 op => .ok [emitI64BinOp op]
-  | .binOp .f64 op => .ok [emitF64BinOp op]
+  | .binOp .f64 op => .ok (emitF64BinOp op)
   | .binOp .ptr op => .ok [emitI32BinOp op]  -- ptr ops use i32
   | .unOp .i32 op => .ok (emitI32UnOp op)
   | .unOp .i64 op => .ok (emitI64UnOp op)
@@ -109,13 +136,28 @@ where
     | "div" => .i64DivS | "mod" => .i64RemS
     | _ => .nop
 
-  emitF64BinOp (op : String) : Instr :=
+  emitF64BinOp (op : String) : List Instr :=
     match op with
-    | "add" => .f64Add | "sub" => .f64Sub | "mul" => .f64Mul
-    | "div" => .f64Div
-    | "eq" | "strict_eq" => .f64Eq | "neq" | "strict_neq" => .f64Ne
-    | "lt" => .f64Lt | "gt" => .f64Gt | "le" => .f64Le | "ge" => .f64Ge
-    | _ => .nop
+    | "add" => [.f64Add]
+    | "sub" => [.f64Sub]
+    | "mul" => [.f64Mul]
+    | "div" => [.f64Div]
+    | "mod" => [.f64Div]
+    -- Comparisons are boxed back into f64 (0.0/1.0) for uniform JS value representation.
+    | "eq" | "strict_eq" => [.f64Eq, .f64ConvertI32u]
+    | "neq" | "strict_neq" => [.f64Ne, .f64ConvertI32u]
+    | "lt" => [.f64Lt, .f64ConvertI32u]
+    | "gt" => [.f64Gt, .f64ConvertI32u]
+    | "le" => [.f64Le, .f64ConvertI32u]
+    | "ge" => [.f64Ge, .f64ConvertI32u]
+    | "log_and" => [.f64Mul]
+    | "log_or" => [.f64Add]
+    | "bit_and" => [.f64Mul]
+    | "bit_or" => [.f64Add]
+    | "bit_xor" => [.f64Add]
+    | "shl" => [.f64Mul]
+    | "shr" | "ushr" => [.f64Div]
+    | _ => [.f64Add]
 
   emitI32UnOp (op : String) : List Instr :=
     match op with
@@ -134,6 +176,9 @@ where
     match op with
     | "neg" => [.f64Neg]
     | "abs" => [.f64Abs]
+    | "pos" => [.nop]
+    | "log_not" => [.f64Const 0.0, .f64Eq, .f64ConvertI32u]
+    | "truthy" => [.f64Const 0.0, .f64Ne]
     | _ => [.nop]
 
   emitInstrs (s : EmitState) : List IR.IRInstr → Except String (List Instr)

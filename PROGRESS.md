@@ -25,7 +25,7 @@
 ### Known Wasm Runtime Issues
 
 1. **Runtime helper functions missing**: Programs with function calls emit `call RuntimeIdx.*` (indices 0-15) but no runtime functions are defined in the module. Wasmtime rejects with "function index out of bounds".
-2. **Type system mismatch**: All JS values are lowered as `i32` (ptr) but float operations should use `f64`. Need proper value representation (NaN-boxing or tagged pointers).
+2. **Value representation (partial)**: Lowering now carries JS values through `f64` with boxed placeholders and emits numeric ops via `f64` paths. Full NaN-box payload tagging/runtime decoding is still pending.
 3. **Start function already fixed**: Added zero-param `_start` wrapper (Wasm spec requires start functions take no params).
 
 ## Runtime Status
