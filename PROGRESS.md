@@ -8,7 +8,7 @@
 | Lexer/Parser | partial | N/A | N/A | N/A | baseline (single-token expr + tokenization) | N/A |
 | Core | defined | defined | implemented (small-step driver over `Core.Semantics.step?`) | stub | Elaborate: stub | stub |
 | Flat | defined | defined (`step?` explicit coverage for all `Flat.Expr` constructors) | stub | stub | ClosureConvert: stub | stub |
-| ANF | partial | defined (`step?`, `Step`, `Steps`, `initialState`, `Behaves`) | stub | stub | Convert: implemented (full Flat.Expr coverage), Optimize: done (identity) | OptimizeCorrect: done |
+| ANF | partial | defined (`step?`, `Step`, `Steps`, `initialState`, `Behaves`) | implemented (small-step driver over `ANF.Semantics.step?`) | stub | Convert: implemented (full Flat.Expr coverage), Optimize: done (identity) | OptimizeCorrect: done |
 | Wasm.IR | stub | N/A | stub | stub | Lower: implemented (ANF.Expr/ComplexExpr coverage with runtime helper call lowering) | stub |
 | Wasm.AST | defined | defined (`step?`, `Step`, `Steps`, `initialStore`, `initialState`, `Behaves`; core control/stack/local/global/numeric subset + branch/call_indirect/memory.size/memory.grow/bulk-op stubs wired, no `not yet implemented` fallbacks) | stub | stub | Emit: stub, Binary: stub | stub |
 
@@ -30,3 +30,4 @@
 - Unit tests: N/A
 - 2026-03-08: `Define ANF.Semantics small-step LTS` completed in `VerifiedJS/ANF/Semantics.lean` (`Step`/`Steps`/`Behaves` wired and task validated by supervisor in `TASKS.md`)
 - 2026-03-08: `Define Wasm.Semantics (port from WasmCert-Coq)` completed in `VerifiedJS/Wasm/Semantics.lean` (implemented concrete branches for `br*`, `call_indirect`, memory loads/stores, conversion/reinterpret op families, and bulk/table ops; validated in `TASKS.md`)
+- 2026-03-08: `Write ANF.Interp reference interpreter` completed in `VerifiedJS/ANF/Interp.lean` (fuel-bounded deterministic runner over `ANF.initialState` and `ANF.step?`)
