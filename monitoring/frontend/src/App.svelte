@@ -79,8 +79,16 @@
 
   $: taskDone = snapshot?.tasks?.done ?? 0;
   $: taskTodo = snapshot?.tasks?.todo ?? 0;
-  $: lockCount = snapshot?.locks?.length ?? 0;
+  $: activeLocks = snapshot?.locks_partition?.active ?? [];
+  $: completedLocks = snapshot?.locks_partition?.completed ?? [];
+  $: lockCount = activeLocks.length;
   $: agentCount = snapshot?.agent_logs?.length ?? 0;
+  $: phases = snapshot?.tasks?.phases ?? [];
+  $: todos = snapshot?.tasks?.todos ?? [];
+  $: supervisorPhase = snapshot?.metrics?.supervisor_phase ?? "unknown";
+  $: agentsRunning = snapshot?.metrics?.agents_running ?? 0;
+  $: pendingMergeCount = snapshot?.metrics?.pending_merge_count ?? 0;
+  $: totalTasks = Math.max(taskDone + taskTodo, 1);
 </script>
 
 <div class="container">
@@ -104,14 +112,40 @@
       <div class="value">{taskTodo}</div>
     </div>
     <div class="card">
+      <div class="label">AGENTS RUNNING</div>
+      <div class="value">{agentsRunning}</div>
+    </div>
+    <div class="card">
+      <div class="label">PENDING MERGE</div>
+      <div class="value">{pendingMergeCount}</div>
+    </div>
+    <div class="card">
       <div class="label">ACTIVE LOCKS</div>
       <div class="value">{lockCount}</div>
     </div>
     <div class="card">
-      <div class="label">AGENT LOGS</div>
-      <div class="value">{agentCount}</div>
+      <div class="label">SUPERVISOR PHASE</div>
+      <div class="value phase">{supervisorPhase}</div>
     </div>
   </div>
+
+  <section class="panel">
+    <h3>Pipeline Progress</h3>
+    <div class="phase-stack">
+      {#each phases as p}
+        <div class="phase-row">
+          <div class="phase-head">
+            <span>{p.section}</span>
+            <span class="meta">{p.done}/{p.total}</span>
+          </div>
+          <div class="bar">
+            <div class="bar-fill" style={`width:${p.total ? (p.done / p.total) * 100 : 0}%`}></div>
+            <div class="bar-guide"></div>
+          </div>
+        </div>
+      {/each}
+    </div>
+  </section>
 
   <div class="layout">
     <section class="panel">
@@ -142,10 +176,10 @@
     </section>
 
     <section class="panel">
-      <h3>Locks</h3>
+      <h3>Active Locks</h3>
       <div class="list">
-        {#if snapshot?.locks?.length}
-          {#each snapshot.locks as lock}
+        {#if activeLocks.length}
+          {#each activeLocks as lock}
             <div class="row">
               <div>{lock.id}</div>
               {#if lock.meta?.task}
@@ -158,6 +192,41 @@
           {/each}
         {:else}
           <div class="row small">no active locks</div>
+        {/if}
+      </div>
+    </section>
+
+    <section class="panel">
+      <h3>Completed Locks</h3>
+      <div class="list">
+        {#if completedLocks.length}
+          {#each completedLocks as lock}
+            <div class="row">
+              <div>{lock.id}</div>
+              {#if lock.meta?.task}
+                <div class="meta">{lock.meta.task}</div>
+              {/if}
+              <div class="meta">status: {lock.meta?.status ?? "done"}</div>
+            </div>
+          {/each}
+        {:else}
+          <div class="row small">no completed locks retained</div>
+        {/if}
+      </div>
+    </section>
+
+    <section class="panel">
+      <h3>TODOs ({todos.length})</h3>
+      <div class="list">
+        {#if todos.length}
+          {#each todos as t}
+            <div class="row">
+              <div>{t.text}</div>
+              <div class="meta">{t.section}</div>
+            </div>
+          {/each}
+        {:else}
+          <div class="row small">no open todos</div>
         {/if}
       </div>
     </section>

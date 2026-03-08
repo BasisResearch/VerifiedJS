@@ -6,7 +6,6 @@ import os
 import re
 import subprocess
 import time
-from dataclasses import dataclass
 from datetime import datetime, timezone
 from pathlib import Path
 from typing import Dict, List
@@ -59,11 +58,27 @@ def parse_tasks() -> Dict[str, object]:
                             "text": text,
                         }
                     )
+    phase_map: Dict[str, Dict[str, object]] = {}
+    for item in items:
+        sec = item["section"]
+        if sec not in phase_map:
+            phase_map[sec] = {"section": sec, "total": 0, "done": 0, "todo": 0}
+        phase_map[sec]["total"] += 1
+        if item["state"] == "done":
+            phase_map[sec]["done"] += 1
+        else:
+            phase_map[sec]["todo"] += 1
+
+    phases = list(phase_map.values())
+    phases.sort(key=lambda p: p["section"])
+
     return {
         "items": items,
         "total": len(items),
         "done": sum(1 for i in items if i["state"] == "done"),
         "todo": sum(1 for i in items if i["state"] == "todo"),
+        "phases": phases,
+        "todos": [i for i in items if i["state"] == "todo"],
     }
 
 
@@ -96,6 +111,22 @@ def read_locks() -> List[Dict[str, object]]:
             }
         )
     return rows
+
+
+def partition_locks(locks: List[Dict[str, object]]) -> Dict[str, List[Dict[str, object]]]:
+    active: List[Dict[str, object]] = []
+    completed: List[Dict[str, object]] = []
+    pending_merge: List[Dict[str, object]] = []
+    for lock in locks:
+        status = lock.get("meta", {}).get("status", "").strip()
+        if status in {"done", "completed"}:
+            completed.append(lock)
+        elif status == "pending_merge":
+            pending_merge.append(lock)
+            active.append(lock)
+        else:
+            active.append(lock)
+    return {"active": active, "completed": completed, "pending_merge": pending_merge}
 
 
 def list_agent_logs(limit: int = 25) -> List[Dict[str, object]]:
@@ -144,6 +175,23 @@ def list_supervisor_logs(limit: int = 10) -> List[Dict[str, object]]:
     return entries[:limit]
 
 
+def infer_supervisor_phase(
+    tasks: Dict[str, object], lock_parts: Dict[str, List[Dict[str, object]]]
+) -> str:
+    if lock_parts["pending_merge"]:
+        return "pending_merge_resolution"
+    running = [
+        l
+        for l in lock_parts["active"]
+        if l.get("meta", {}).get("status", "in_progress") == "in_progress"
+    ]
+    if running:
+        return "agents_running"
+    if tasks.get("todo", 0) == 0:
+        return "all_tasks_validated"
+    return "waiting_for_next_round"
+
+
 def git_status_short() -> List[str]:
     try:
         out = subprocess.check_output(
@@ -158,6 +206,16 @@ def git_status_short() -> List[str]:
 
 def snapshot() -> Dict[str, object]:
     tasks = parse_tasks()
+    locks = read_locks()
+    lock_parts = partition_locks(locks)
+    agents_running = len(
+        [
+            l
+            for l in lock_parts["active"]
+            if l.get("meta", {}).get("status", "in_progress") == "in_progress"
+        ]
+    )
+    pending_merge = len(lock_parts["pending_merge"])
     return {
         "timestamp": iso(time.time()),
         "paths": {
@@ -167,10 +225,16 @@ def snapshot() -> Dict[str, object]:
             "worktrees": str(WORKTREES_DIR),
         },
         "tasks": tasks,
-        "locks": read_locks(),
+        "locks": locks,
+        "locks_partition": lock_parts,
         "agent_logs": list_agent_logs(limit=30),
         "supervisor_logs": list_supervisor_logs(limit=12),
         "git_status": git_status_short(),
+        "metrics": {
+            "agents_running": agents_running,
+            "pending_merge_count": pending_merge,
+            "supervisor_phase": infer_supervisor_phase(tasks, lock_parts),
+        },
     }
 
 

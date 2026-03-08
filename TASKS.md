@@ -1,6 +1,7 @@
 # VerifiedJS — Task List
 
 ## Priority 1 (blocking — foundations)
+- [ ] Parser milestone: parse ≥95% of JS files selected by `scripts/parse_flagship.sh --full` (current: 86.79% = 1781/2052 on 2026-03-08) — TODO(supervisor): raise parse_flagship pass-rate to >=0.95 before re-validation
 - [ ] Define JS.Core.Semantics small-step LTS
 - [ ] Define JS.Flat.Syntax inductive types
 - [ ] Define JS.ANF.Syntax inductive types
@@ -63,6 +64,5 @@
 - [x] Define JS.Source.AST inductive types (full ECMAScript 2020) — SPEC: §11–15 — VALIDATED by supervisor 2026-03-08
 - [x] Implement JS.Source.Lexer (context-sensitive `/` handling) — SPEC: §11 — VALIDATED by supervisor 2026-03-08
 - [x] Implement JS.Source.Parser (recursive descent) — SPEC: §11–15 — VALIDATED by supervisor 2026-03-08
-- [x] Parser milestone: parse ≥95% of JS files in `tests/flagship/{prettier,babel,TypeScript}` via `scripts/parse_flagship.sh --full` — VALIDATED by supervisor 2026-03-08
 - [x] Parser milestone: support multi-token expression/statement parsing (currently baseline single-token parse only) — VALIDATED by supervisor 2026-03-08
 - [x] Define JS.Core.Syntax inductive types — VALIDATED by supervisor 2026-03-08
