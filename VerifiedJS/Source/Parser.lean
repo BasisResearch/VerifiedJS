@@ -100,6 +100,17 @@ private def consumeKeyword? (k : String) : ParserM Bool := do
       pure false
   | _ => pure false
 
+private def consumeWord? (w : String) : ParserM Bool := do
+  let t <- peek
+  match t.kind with
+  | .kw w' | .ident w' =>
+    if w = w' then
+      let _ <- bump
+      pure true
+    else
+      pure false
+  | _ => pure false
+
 private def expectPunct (p : String) : ParserM Unit := do
   let ok <- consumePunct? p
   if ok then
@@ -113,6 +124,13 @@ private def expectKeyword (k : String) : ParserM Unit := do
     pure ()
   else
     failExpected s!"keyword `{k}`"
+
+private def expectWord (w : String) : ParserM Unit := do
+  let ok <- consumeWord? w
+  if ok then
+    pure ()
+  else
+    failExpected s!"keyword/identifier `{w}`"
 
 private def expectIdent : ParserM String := do
   let t <- peek
@@ -132,6 +150,76 @@ private def parseIdentLike : ParserM String := do
     let _ <- bump
     pure name
   | _ => failExpected "identifier"
+
+/-- ECMA-262 §15.2.2 Parse imported bindings and source string. -/
+private partial def parseImportDeclStmt : ParserM Stmt := do
+  let parseSourceString : ParserM String := do
+    let tk <- peek
+    match tk.kind with
+    | .string s => let _ <- bump; pure s
+    | _ => throw "Expected import source string literal"
+
+  let parseNamedSpecifiers : ParserM (List ImportSpecifier) := do
+    expectPunct "{"
+    if (← consumePunct? "}") then
+      pure []
+    else
+      let rec loop (acc : List ImportSpecifier) : ParserM (List ImportSpecifier) := do
+        let imported <- parseIdentLike
+        let localName <-
+          if (← consumeWord? "as") then
+            parseIdentLike
+          else
+            pure imported
+        let spec := ImportSpecifier.named imported localName
+        if (← consumePunct? ",") then
+          if (← consumePunct? "}") then
+            pure (List.reverse (spec :: acc))
+          else
+            loop (spec :: acc)
+        else
+          expectPunct "}"
+          pure (List.reverse (spec :: acc))
+      loop []
+
+  let parseNamespaceSpecifier : ParserM ImportSpecifier := do
+    expectPunct "*"
+    expectWord "as"
+    ImportSpecifier.namespace <$> parseIdentLike
+
+  let next <- peek
+  match next.kind with
+  | .string source =>
+    let _ <- bump
+    pure (.import_ [] source)
+  | .punct "*" =>
+    let ns <- parseNamespaceSpecifier
+    expectWord "from"
+    pure (.import_ [ns] (← parseSourceString))
+  | .punct "{" =>
+    let named <- parseNamedSpecifiers
+    expectWord "from"
+    pure (.import_ named (← parseSourceString))
+  | .ident _ | .kw _ =>
+    let defaultBinding <- parseIdentLike
+    let defaultSpec := ImportSpecifier.default_ defaultBinding
+    if (← consumePunct? ",") then
+      let nextAfterComma <- peek
+      let combined <- match nextAfterComma.kind with
+        | .punct "*" =>
+          let ns <- parseNamespaceSpecifier
+          pure [defaultSpec, ns]
+        | .punct "{" =>
+          let named <- parseNamedSpecifiers
+          pure (defaultSpec :: named)
+        | _ => throw "Expected `*` or `{` after default import binding"
+      expectWord "from"
+      pure (.import_ combined (← parseSourceString))
+    else
+      expectWord "from"
+      pure (.import_ [defaultSpec] (← parseSourceString))
+  | _ =>
+    throw "Invalid import declaration"
 
 private def asAssignTarget (e : Expr) : Option AssignTarget :=
   match e with
@@ -244,6 +332,7 @@ private partial def parsePropertyKey : ParserM PropertyKey := do
 private partial def parseObjectLiteral : ParserM Expr := do
   expectPunct "{"
   let rec loop (acc : List Property) : ParserM Expr := do
+    skipSeparators
     if (← consumePunct? "}") then
       pure (.object acc.reverse)
     else if (← consumePunct? "...") then
@@ -275,6 +364,7 @@ private partial def parseObjectLiteral : ParserM Expr := do
 private partial def parseArrayLiteral : ParserM Expr := do
   expectPunct "["
   let rec loop (acc : List (Option Expr)) : ParserM Expr := do
+    skipSeparators
     if (← consumePunct? "]") then
       pure (.array acc.reverse)
     else if (← consumePunct? ",") then
@@ -1027,23 +1117,95 @@ private partial def parseStmt : ParserM Stmt := do
     pure (.varDecl .const_ decls)
   | .kw "import" =>
     let _ <- bump
-    let source <- (do
-      let tk <- peek
-      match tk.kind with
-      | .string s => let _ <- bump; pure s
-      | _ => throw "Only bare string import declarations are currently supported")
+    let importStmt <- parseImportDeclStmt
     parseSemiOpt
-    pure (.import_ [] source)
+    pure importStmt
   | .kw "export" =>
     let _ <- bump
     if (← consumeKeyword? "default") then
       let e <- parseExprM
       parseSemiOpt
       pure (.export_ (.default_ e))
-    else
-      let e <- parseExprM
+    else if (← consumePunct? "*") then
+      let alias_ <-
+        if (← consumeWord? "as") then
+          some <$> parseIdentLike
+        else
+          pure none
+      expectWord "from"
+      let source <- (do
+        let tk <- peek
+        match tk.kind with
+        | .string s => let _ <- bump; pure s
+        | _ => throw "Expected export source string literal")
       parseSemiOpt
-      pure (.export_ (.default_ e))
+      pure (.export_ (.all source alias_))
+    else if (← consumePunct? "{") then
+      let rec parseSpecs (acc : List ExportSpecifier) : ParserM (List ExportSpecifier) := do
+        if (← consumePunct? "}") then
+          pure acc.reverse
+        else
+          let localName <- parseIdentLike
+          let exportedName <-
+            if (← consumeWord? "as") then
+              parseIdentLike
+            else
+              pure localName
+          let spec := ExportSpecifier.mk localName exportedName
+          if (← consumePunct? ",") then
+            if (← consumePunct? "}") then
+              pure (List.reverse (spec :: acc))
+            else
+              parseSpecs (spec :: acc)
+          else
+            expectPunct "}"
+            pure (List.reverse (spec :: acc))
+      let specs <- parseSpecs []
+      let source <-
+        if (← consumeWord? "from") then
+          let tk <- peek
+          match tk.kind with
+          | .string s => let _ <- bump; pure (some s)
+          | _ => throw "Expected export source string literal"
+        else
+          pure none
+      parseSemiOpt
+      pure (.export_ (.named specs source))
+    else
+      let next <- peek
+      match next.kind with
+      | .kw "var" =>
+        let _ <- bump
+        let decls <- parseVarDecls
+        parseSemiOpt
+        pure (.export_ (.decl (.varDecl .var decls)))
+      | .kw "let" =>
+        let _ <- bump
+        let decls <- parseVarDecls
+        parseSemiOpt
+        pure (.export_ (.decl (.varDecl .let_ decls)))
+      | .kw "const" =>
+        let _ <- bump
+        let decls <- parseVarDecls
+        parseSemiOpt
+        pure (.export_ (.decl (.varDecl .const_ decls)))
+      | .kw "function" =>
+        pure (.export_ (.decl (← parseFunctionDecl false)))
+      | .kw "class" =>
+        pure (.export_ (.decl (← parseClassDecl)))
+      | .kw "async" =>
+        let t1 <- peekN 1
+        if tokenIsKeyword t1 "function" then
+          let _ <- bump
+          pure (.export_ (.decl (← parseFunctionDecl true)))
+        else
+          let e <- parseExprM
+          parseSemiOpt
+          pure (.export_ (.default_ e))
+      | _ =>
+        let e <- parseExprM
+        parseSemiOpt
+        pure (.export_ (.default_ e))
   | _ =>
     let e <- parseExprM
     if (← consumePunct? ":") then

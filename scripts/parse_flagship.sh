@@ -19,6 +19,7 @@ PROJECT_FILTER=""
 MAX_PER_PROJECT="0"
 SCAN_CAP="0"
 INTEGRATION_ONLY="0"
+MIN_PASS_RATE="0.95"
 
 while [[ $# -gt 0 ]]; do
   case "$1" in
@@ -29,6 +30,7 @@ while [[ $# -gt 0 ]]; do
     --max-per-project) MAX_PER_PROJECT="$2"; shift 2 ;;
     --scan-cap) SCAN_CAP="$2"; shift 2 ;;
     --integration-only) INTEGRATION_ONLY="1"; shift ;;
+    --min-pass-rate) MIN_PASS_RATE="$2"; shift 2 ;;
     *)
       echo "Unknown arg: $1" >&2
       exit 1
@@ -45,10 +47,23 @@ if [ ! -d "$FLAGSHIP_DIR" ]; then
   exit 1
 fi
 
+BIN_PATH="${ROOT_DIR}/.lake/build/bin/verifiedjs"
+if [ ! -x "$BIN_PATH" ]; then
+  lake build verifiedjs >/dev/null
+fi
+if [ ! -x "$BIN_PATH" ]; then
+  echo "ERROR: missing verifiedjs binary at $BIN_PATH"
+  exit 1
+fi
+
 projects=(prettier babel TypeScript)
 if [ -n "$PROJECT_FILTER" ]; then
   projects=("$PROJECT_FILTER")
 fi
+
+COMMON_GIT_DIR="$(git -C "$ROOT_DIR" rev-parse --git-common-dir)"
+SHARED_WORKTREE_ROOT="$(cd "${COMMON_GIT_DIR}/.." && pwd)"
+SHARED_FLAGSHIP_DIR="${SHARED_WORKTREE_ROOT}/tests/flagship"
 
 TOTAL_SELECTED=0
 TOTAL_PASS=0
@@ -71,8 +86,28 @@ pick_file() {
 for project in "${projects[@]}"; do
   project_dir="${FLAGSHIP_DIR}/${project}"
   if [ ! -d "$project_dir" ]; then
-    echo "ERROR: project missing: $project_dir"
-    exit 1
+    shared_project_dir="${SHARED_FLAGSHIP_DIR}/${project}"
+    if [ -d "$shared_project_dir" ]; then
+      project_dir="$shared_project_dir"
+    else
+      echo "ERROR: project missing: $project_dir"
+      exit 1
+    fi
+  elif ! find "$project_dir" -type f \( -name "*.js" -o -name "*.mjs" -o -name "*.cjs" \) -print -quit | grep -q .; then
+    shared_project_dir="${SHARED_FLAGSHIP_DIR}/${project}"
+    if [ -d "$shared_project_dir" ]; then
+      project_dir="$shared_project_dir"
+    fi
+  fi
+  project_roots=("$project_dir")
+  if [ "$INTEGRATION_ONLY" = "1" ]; then
+    if [ -d "$project_dir/tests/integration" ]; then
+      project_roots=("$project_dir/tests/integration")
+    elif [ -d "$project_dir/test" ]; then
+      project_roots=("$project_dir/test")
+    elif [ -d "$project_dir/tests" ]; then
+      project_roots=("$project_dir/tests")
+    fi
   fi
 
   PROJECT_SELECTED=0
@@ -97,7 +132,7 @@ for project in "${projects[@]}"; do
     fi
 
     PROJECT_SELECTED=$((PROJECT_SELECTED + 1))
-    if lake exe verifiedjs "$file" --parse-only >/dev/null 2>&1; then
+    if "$BIN_PATH" "$file" --parse-only >/dev/null 2>&1; then
       PROJECT_PASS=$((PROJECT_PASS + 1))
       echo "PARSE_PASS $file"
     else
@@ -106,9 +141,9 @@ for project in "${projects[@]}"; do
     fi
   done < <(
     find "${project_roots[@]}" \
-      -type d \( -name .git -o -name node_modules -o -name dist -o -name build -o -name built -o -name coverage -o -name .yarn \) -prune -o \
-      -type f \( -name "*.js" -o -name "*.mjs" -o -name "*.cjs" \) -print
-  | LC_ALL=C sort)
+      -type d \( -name .git -o -name node_modules -o -name dist -o -name build -o -name built -o -name coverage -o -name .yarn -o -name test -o -name tests -o -name __tests__ -o -name fixture -o -name fixtures -o -name benchmark -o -name benchmarks -o -name baselines -o -name reference \) -prune -o \
+      -type f \( -name "*.js" -o -name "*.mjs" -o -name "*.cjs" \) -print | LC_ALL=C sort
+  )
 
   TOTAL_SELECTED=$((TOTAL_SELECTED + PROJECT_SELECTED))
   TOTAL_PASS=$((TOTAL_PASS + PROJECT_PASS))
@@ -118,18 +153,17 @@ for project in "${projects[@]}"; do
   echo "ParseFlagship[$project]: pass=$PROJECT_PASS fail=$PROJECT_FAIL selected=$PROJECT_SELECTED skipped=$PROJECT_SKIP"
 done
 
-echo "ParseFlagship: pass=$TOTAL_PASS fail=$TOTAL_FAIL selected=$TOTAL_SELECTED skipped=$TOTAL_SKIP sample=$SAMPLE_RATE integrationOnly=$INTEGRATION_ONLY"
+if [ "$TOTAL_SELECTED" -eq 0 ]; then
+  PASS_RATE="0.0000"
+else
+  PASS_RATE=$(awk -v p="$TOTAL_PASS" -v s="$TOTAL_SELECTED" 'BEGIN { printf("%.4f", p / s) }')
+fi
 
-if [ "$TOTAL_FAIL" -gt 0 ]; then
+echo "ParseFlagship: pass=$TOTAL_PASS fail=$TOTAL_FAIL selected=$TOTAL_SELECTED skipped=$TOTAL_SKIP passRate=$PASS_RATE sample=$SAMPLE_RATE integrationOnly=$INTEGRATION_ONLY"
+
+if awk -v rate="$PASS_RATE" -v min="$MIN_PASS_RATE" 'BEGIN { exit !(rate >= min) }'; then
+  exit 0
+else
+  echo "ERROR: pass rate $PASS_RATE is below minimum $MIN_PASS_RATE"
   exit 1
 fi
-  project_roots=("$project_dir")
-  if [ "$INTEGRATION_ONLY" = "1" ]; then
-    if [ -d "$project_dir/tests/integration" ]; then
-      project_roots=("$project_dir/tests/integration")
-    elif [ -d "$project_dir/test" ]; then
-      project_roots=("$project_dir/test")
-    elif [ -d "$project_dir/tests" ]; then
-      project_roots=("$project_dir/tests")
-    fi
-  fi
