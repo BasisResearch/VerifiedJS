@@ -2,7 +2,7 @@
 
 ## Priority 1 (blocking — foundations)
 - [x] Define JS.Source.AST inductive types (full ECMAScript 2020) — SPEC: §11–15 — DONE by agent supervisor
-- [ ] Implement JS.Source.Lexer (context-sensitive `/` handling) — SPEC: §11
+- [x] Implement JS.Source.Lexer (context-sensitive `/` handling) — SPEC: §11 — DONE by agent supervisor
 - [ ] Implement JS.Source.Parser (recursive descent) — SPEC: §11–15
 - [ ] Parser milestone: parse ≥95% of JS files in `tests/flagship/{prettier,babel,TypeScript}` via `scripts/parse_flagship.sh --full`
 - [x] Parser milestone: support multi-token expression/statement parsing (currently baseline single-token parse only) — DONE by agent supervisor
