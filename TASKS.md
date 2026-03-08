@@ -26,7 +26,6 @@
 - [ ] Compose EndToEnd.lean
 
 ## Priority 4 (runtime)
-- [x] Implement Runtime.Values (NaN-boxing)
 - [ ] Implement Runtime.GC (mark-sweep in Wasm)
 - [ ] Implement Runtime.Objects (property maps in linear memory)
 - [ ] Implement Runtime.Strings (interned UTF-16)
@@ -79,3 +78,4 @@
 - [x] Define JS.Core.Semantics small-step LTS
 - [x] End-to-end: Parse → Core → Flat → ANF → Wasm.IR → Wasm.AST → .wasm binary
 - [x] Implement Wasm runtime helper stubs (indices 0-15): `call`, `construct`, `getProp`, `setProp`, `getIndex`, `setIndex`, `deleteProp`, `typeof`, `getEnv`, `makeEnv`, `makeClosure`, `objectLit`, `arrayLit`, `throw`, `yield`, `await` — without these, any program with function calls or property access fails in wasmtime with "function index out of bounds" — VALIDATED by supervisor 2026-03-08
+- [x] Implement Runtime.Values (NaN-boxing) — VALIDATED by supervisor 2026-03-08
