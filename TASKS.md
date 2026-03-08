@@ -31,7 +31,7 @@
 ## Priority 3 (proof work)
 - [x] Define Flat.Semantics small-step LTS — TODO(supervisor): Replace the `getEnv` placeholder error with real heap environment lookup semantics in `VerifiedJS/Flat/Semantics.lean`.
 - [ ] Define ANF.Semantics small-step LTS — TODO(supervisor): Add a `Validated Completed (Supervisor)` entry for “Define ANF.Semantics small-step LTS” in `TASKS.md` after running the validation workflow.; Add a `Validated Completed (Supervisor)` entry for “Define ANF.Semantics small-step LTS” in `TASK
-- [x] Define Wasm.Semantics (port from WasmCert-Coq) — TODO(supervisor): Implement the many `step?` branches that still return “not yet implemented” traps (e.g., `br*`, memory, conversions, table/data ops) to make `Wasm.Semantics` complete.
+- [ ] Define Wasm.Semantics (port from WasmCert-Coq) — TODO(supervisor): Replace placeholder `step?` behaviors with spec-accurate WasmCert semantics (especially `br/loop` control flow and numeric/conversion edge cases).; Remove the stale TODO on “Define Wasm.Semantics” in `TASKS.md` (or move it to Validated Comp
 - [ ] Prove ElaborateCorrect.lean
 - [ ] Prove ClosureConvertCorrect.lean
 - [ ] Prove ANFConvertCorrect.lean
