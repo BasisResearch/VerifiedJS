@@ -88,6 +88,7 @@ LEAN_SRC = PROJECT_ROOT / "VerifiedJS"
 
 class TaskSpec(TypedDict):
     """A concrete task assignment for a worker agent."""
+
     task_id: str
     task_type: Literal["spec", "implement", "test", "prove", "review"]
     module: str
@@ -100,12 +101,14 @@ class TaskSpec(TypedDict):
 
 class PlanResult(TypedDict):
     """Planner output — a prioritized list of task specs."""
+
     tasks: list[TaskSpec]
     rationale: str
 
 
 class ContextBundle(TypedDict):
     """Assembled context for a worker agent."""
+
     task_id: str
     lean_source: dict[str, str]
     ecma_spec_notes: str
@@ -116,6 +119,7 @@ class ContextBundle(TypedDict):
 
 class FileWrite(TypedDict):
     """A concrete file write to be applied."""
+
     path: str
     content: str
     action: Literal["create", "overwrite", "patch"]
@@ -123,6 +127,7 @@ class FileWrite(TypedDict):
 
 class SpecResult(TypedDict):
     """Output from a spec writer — includes executable file writes."""
+
     file_writes: list[FileWrite]
     spec_citations: list[str]
     new_sorrys: list[str]
@@ -132,6 +137,7 @@ class SpecResult(TypedDict):
 
 class ExecutableTestCase(TypedDict):
     """A single executable test case with expected output."""
+
     name: str
     js_input: str
     expected_node_output: str
@@ -141,6 +147,7 @@ class ExecutableTestCase(TypedDict):
 
 class TestResult(TypedDict):
     """Output from the test writer — includes executable test cases."""
+
     verdict: Literal["PASS", "NEEDS_FIXES", "SPEC_INACCURATE"]
     file_writes: list[FileWrite]
     test_cases: list[ExecutableTestCase]
@@ -150,6 +157,7 @@ class TestResult(TypedDict):
 
 class ProofResult(TypedDict):
     """Output from a prover agent — includes file writes."""
+
     file_writes: list[FileWrite]
     sorrys_resolved: int
     sorrys_remaining: int
@@ -160,6 +168,7 @@ class ProofResult(TypedDict):
 
 class ReviewResult(TypedDict):
     """Supervisor review of completed work."""
+
     verdict: Literal["ACCEPT", "REVISE", "REJECT"]
     feedback: str
     updates: dict[str, str]
@@ -167,6 +176,7 @@ class ReviewResult(TypedDict):
 
 class ContinueDecision(TypedDict):
     """Planner decides whether to keep looping."""
+
     should_continue: bool
     reason: str
     priority_shift: str
@@ -177,6 +187,7 @@ class ContinueDecision(TypedDict):
 
 class SpecViolation(TypedDict):
     """A specific ECMA-262 violation found in our Lean semantics."""
+
     ecma_section: str
     ecma_requirement: str
     our_behavior: str
@@ -191,6 +202,7 @@ class SpecViolation(TypedDict):
 
 class SpecChallengeResult(TypedDict):
     """Output from the spec challenger — concrete violations with witnesses."""
+
     violations: list[SpecViolation]
     tests_run: int
     ecma_sections_checked: list[str]
@@ -199,13 +211,19 @@ class SpecChallengeResult(TypedDict):
 
 class FuzzCase(TypedDict):
     """A fuzz test case that triggered a bug."""
+
     js_code: str
     expected_behavior: str
     actual_behavior: str
     crash_type: Literal[
-        "parse_error", "elaborate_crash", "interp_diverge",
-        "interp_wrong_result", "wasm_compile_fail", "wasm_runtime_mismatch",
-        "pipeline_inconsistency", "timeout",
+        "parse_error",
+        "elaborate_crash",
+        "interp_diverge",
+        "interp_wrong_result",
+        "wasm_compile_fail",
+        "wasm_runtime_mismatch",
+        "pipeline_inconsistency",
+        "timeout",
     ]
     stage: str
     reproducer_command: str
@@ -214,6 +232,7 @@ class FuzzCase(TypedDict):
 
 class FuzzResult(TypedDict):
     """Output from the fuzzer — executable reproducers."""
+
     bugs_found: list[FuzzCase]
     cases_tried: int
     stages_fuzzed: list[str]
@@ -222,6 +241,7 @@ class FuzzResult(TypedDict):
 
 class SorryAuditEntry(TypedDict):
     """An audit of a single sorry usage."""
+
     file: str
     line: int
     theorem_name: str
@@ -233,10 +253,14 @@ class SorryAuditEntry(TypedDict):
 
 class SoundnessIssue(TypedDict):
     """A soundness concern found during proof audit."""
+
     category: Literal[
-        "sorry_on_critical_path", "axiom_inconsistency",
-        "missing_decreasing_proof", "unsound_native_decide",
-        "incorrect_spec_assumption", "proof_by_cheating",
+        "sorry_on_critical_path",
+        "axiom_inconsistency",
+        "missing_decreasing_proof",
+        "unsound_native_decide",
+        "incorrect_spec_assumption",
+        "proof_by_cheating",
     ]
     file: str
     location: str
@@ -247,6 +271,7 @@ class SoundnessIssue(TypedDict):
 
 class SoundnessAuditResult(TypedDict):
     """Output from the soundness auditor."""
+
     sorry_audit: list[SorryAuditEntry]
     soundness_issues: list[SoundnessIssue]
     total_sorrys: int
@@ -258,6 +283,7 @@ class SoundnessAuditResult(TypedDict):
 
 class MemoryReport(TypedDict):
     """Structured output from the memory keeper."""
+
     files_updated: list[str]
     sorry_count_before: int
     sorry_count_after: int
@@ -311,7 +337,9 @@ def _write_project_file(path: str, content: str) -> str:
 
 def _fetch_url(url: str, max_chars: int = 8000) -> str:
     try:
-        req = urllib.request.Request(url, headers={"User-Agent": "VerifiedJS-Agent/1.0"})
+        req = urllib.request.Request(
+            url, headers={"User-Agent": "VerifiedJS-Agent/1.0"}
+        )
         with urllib.request.urlopen(req, timeout=15) as resp:
             text = resp.read().decode("utf-8", errors="replace")
             if len(text) > max_chars:
@@ -382,8 +410,11 @@ class _SharedTools:
     def lean_check_file(self, path: str) -> str:
         """Typecheck a Lean file and return only error/warning lines."""
         out = _run(f"lake env lean {path} 2>&1", timeout=180)
-        diag = [line for line in out.splitlines()
-                if any(k in line for k in ["error", "warning", "sorry"])]
+        diag = [
+            line
+            for line in out.splitlines()
+            if any(k in line for k in ["error", "warning", "sorry"])
+        ]
         return "\n".join(diag) if diag else "No errors or warnings."
 
     @Tool.define
@@ -418,13 +449,17 @@ class _SharedTools:
     def grep_lean(self, pattern: str, module: str = "") -> str:
         """Grep for a pattern across Lean files. Optionally restrict to a module dir."""
         target = f"VerifiedJS/{module}" if module else "VerifiedJS/"
-        return _run(f"grep -rn '{pattern}' --include='*.lean' {target} || echo 'No matches'")
+        return _run(
+            f"grep -rn '{pattern}' --include='*.lean' {target} || echo 'No matches'"
+        )
 
     @Tool.define
     def count_sorrys(self, module: str = "") -> str:
         """Count sorry occurrences. Optionally restrict to a module."""
         target = f"VerifiedJS/{module}" if module else "VerifiedJS/"
-        return _run(f"grep -rn 'sorry' --include='*.lean' {target} 2>/dev/null || echo '0 sorrys'")
+        return _run(
+            f"grep -rn 'sorry' --include='*.lean' {target} 2>/dev/null || echo '0 sorrys'"
+        )
 
     @Tool.define
     def list_lean_files(self, module: str = "") -> str:
@@ -479,9 +514,7 @@ class _SharedTools:
             f.write(js_code)
             f.flush()
             try:
-                return _run(
-                    f"lake exe verifiedjs {f.name} --run={stage}", timeout=60
-                )
+                return _run(f"lake exe verifiedjs {f.name} --run={stage}", timeout=60)
             finally:
                 os.unlink(f.name)
 
@@ -562,7 +595,9 @@ class PlannerSupervisor(_SharedTools, PersistentAgent):
 
     @Template.define
     def plan_next_sprint(
-        self, current_state: str, cycle_number: int,
+        self,
+        current_state: str,
+        cycle_number: int,
         adversarial_findings: str,
     ) -> PlanResult:
         """Plan the next batch of parallel tasks.
@@ -966,7 +1001,9 @@ class FuzzerAgent(_SharedTools, PersistentAgent):
     """
 
     @Tool.define
-    def hypothesis_fuzz(self, strategy: str = "expressions", num_cases: int = 50) -> str:
+    def hypothesis_fuzz(
+        self, strategy: str = "expressions", num_cases: int = 50
+    ) -> str:
         """Run property-based fuzzing using Python's Hypothesis library.
         Strategy: 'expressions' | 'statements' | 'programs' | 'numeric'
         Generates random JS, runs in Node + VerifiedJS, finds mismatches."""
@@ -1306,14 +1343,21 @@ for loc in sorry_locs:
         """Scan all Lean files for axiom declarations, noncomputable defs,
         and uses of Classical.choice / Decidable.decide on non-obvious types."""
         results = []
-        for pattern in ["axiom ", "noncomputable ", "Classical.choice",
-                        "Classical.em", "Classical.byContradiction"]:
+        for pattern in [
+            "axiom ",
+            "noncomputable ",
+            "Classical.choice",
+            "Classical.em",
+            "Classical.byContradiction",
+        ]:
             out = _run(
                 f"grep -rn '{pattern}' --include='*.lean' VerifiedJS/ 2>/dev/null"
             )
             if out and "No matches" not in out:
                 results.append(f"=== {pattern} ===\n{out}")
-        return "\n\n".join(results) if results else "No axioms or classical logic found."
+        return (
+            "\n\n".join(results) if results else "No axioms or classical logic found."
+        )
 
     @Tool.define
     def check_theorem_vacuity(self, lean_file: str, theorem_name: str) -> str:
@@ -1488,9 +1532,15 @@ def verified_compiler_development_loop(
 
     all_cycle_reports: list[dict] = []
     memory_report: MemoryReport = {
-        "files_updated": [], "sorry_count_before": 0, "sorry_count_after": 0,
-        "sorry_delta": 0, "build_healthy": False, "e2e_pass": False,
-        "regressions": [], "key_findings": [], "new_blockers": [],
+        "files_updated": [],
+        "sorry_count_before": 0,
+        "sorry_count_after": 0,
+        "sorry_delta": 0,
+        "build_healthy": False,
+        "e2e_pass": False,
+        "regressions": [],
+        "key_findings": [],
+        "new_blockers": [],
         "resolved_blockers": [],
     }
     # Adversarial findings accumulate across cycles
@@ -1527,7 +1577,9 @@ def verified_compiler_development_loop(
             )
 
         plan = planner.plan_next_sprint(
-            current_state, cycle, prev_adversarial,
+            current_state,
+            cycle,
+            prev_adversarial,
         )
         log.info(
             f"[Cycle {cycle}] Planned {len(plan['tasks'])} tasks: "
@@ -1671,8 +1723,7 @@ def verified_compiler_development_loop(
             elif review["verdict"] == "REVISE":
                 needs_revision.append((kind, task, result, review))
             log.info(
-                f"  [{task['task_id']}] {review['verdict']}: "
-                f"{review['feedback'][:100]}"
+                f"  [{task['task_id']}] {review['verdict']}: {review['feedback'][:100]}"
             )
 
         # One revision round
@@ -1692,17 +1743,20 @@ def verified_compiler_development_loop(
                 )
                 if kind == "spec":
                     scatter(
-                        [rev_payload], spec_writer,
+                        [rev_payload],
+                        spec_writer,
                         lambda w, r: w.write_spec(r),
                     )
                 elif kind == "test":
                     scatter(
-                        [rev_payload], tester,
+                        [rev_payload],
+                        tester,
                         lambda t, r: t.write_tests_and_validate(r),
                     )
                 elif kind == "proof":
                     scatter(
-                        [rev_payload], prover,
+                        [rev_payload],
+                        prover,
                         lambda p, r: p.prove_theorem(r),
                     )
 
@@ -1793,12 +1847,17 @@ def main() -> None:
     soundness_auditor = SoundnessAuditorAgent(agent_id="soundness-auditor")
 
     all_agents = [
-        planner, context_builder,
-        spec_writer_1, spec_writer_2,
+        planner,
+        context_builder,
+        spec_writer_1,
+        spec_writer_2,
         tester,
-        prover_1, prover_2,
+        prover_1,
+        prover_2,
         memory_keeper,
-        spec_challenger, fuzzer, soundness_auditor,
+        spec_challenger,
+        fuzzer,
+        soundness_auditor,
     ]
 
     # ── Build choreography ─────────────────────────────────────────
@@ -1815,7 +1874,9 @@ def main() -> None:
         ],
     )
 
-    log.info(f"Agents ({len(all_agents)}): {', '.join(a.__agent_id__ for a in all_agents)}")
+    log.info(
+        f"Agents ({len(all_agents)}): {', '.join(a.__agent_id__ for a in all_agents)}"
+    )
     log.info("Starting development loop (Ctrl-C to pause, re-run to resume)")
 
     # ── Run ────────────────────────────────────────────────────────
