@@ -8,6 +8,9 @@
   let snapshot = $state(null);
   let status = $state("connecting");
   let selectedTask = $state(null);
+  let selectedAgent = $state(null);
+  let agentHistory = $state(null);
+  let agentHistoryLoading = $state(false);
   let pollTimer = null;
   let es = null;
 
@@ -202,6 +205,23 @@
     const d = new Date(ts * 1000);
     return d.toLocaleTimeString("en-GB", { hour12: false });
   }
+
+  async function selectAgent(agentId) {
+    if (selectedAgent === agentId) { selectedAgent = null; agentHistory = null; return; }
+    selectedAgent = agentId;
+    agentHistory = null;
+    agentHistoryLoading = true;
+    try {
+      const res = await fetch(`/api/agent/${encodeURIComponent(agentId)}/history`);
+      if (res.ok) { agentHistory = await res.json(); }
+      else { agentHistory = { messages: [], error: `HTTP ${res.status}` }; }
+    } catch (e) {
+      agentHistory = { messages: [], error: e.message };
+    }
+    agentHistoryLoading = false;
+  }
+
+  let activeCheckpoints = $derived((checkpoints ?? []).filter(c => c.has_checkpoint));
 </script>
 
 <div class="app">
@@ -249,7 +269,7 @@
     </div>
     <div class="stat">
       <div class="stat-label">Active Agents</div>
-      <div class="stat-value">{checkpoints.length}</div>
+      <div class="stat-value">{activeCheckpoints.length}/{checkpoints.length}</div>
     </div>
     <div class="stat">
       <div class="stat-label">Active Phase</div>
@@ -466,23 +486,75 @@
     </div>
 
     <!-- Agent Checkpoints -->
-    <div class="panel">
+    <div class="panel" style={selectedAgent ? "grid-column: 1 / -1" : ""}>
       <div class="panel-header">
-        Agent Checkpoints
-        <span style="font-weight:400">{checkpoints.length}</span>
+        Agents
+        <span style="font-weight:400">{activeCheckpoints.length} active / {checkpoints.length} total</span>
       </div>
-      <div class="panel-body">
-        {#if checkpoints.length === 0}
-          <div class="empty">No agent checkpoints</div>
-        {:else}
-          {#each checkpoints as cp}
-            <div class="agent-card">
-              <div class="agent-dot" class:active={cp.handoff || cp.history_len > 0} class:idle={!cp.handoff && cp.history_len === 0}></div>
-              <span class="agent-name">{cp.agent_id}</span>
-              <span class="agent-handoff" title={cp.handoff}>{truncate(cp.handoff, 60) || "idle"}</span>
-              <span class="agent-msgs">{cp.history_len} msgs</span>
+      <div style="display:flex;">
+        <div class="panel-body" style="flex:1;min-width:0;{selectedAgent ? 'max-height:500px' : ''}">
+          {#if checkpoints.length === 0}
+            <div class="empty">No agents</div>
+          {:else}
+            {#each checkpoints as cp}
+              {@const rt = cp.runtime ?? {status: "idle"}}
+              <div
+                class="agent-card"
+                class:selected={selectedAgent === cp.agent_id}
+                onclick={() => selectAgent(cp.agent_id)}
+                role="button"
+                tabindex="0"
+                onkeydown={(e) => e.key === 'Enter' && selectAgent(cp.agent_id)}
+                style="cursor:pointer;"
+              >
+                <div class="agent-dot {rt.status}"></div>
+                <span class="agent-name">{cp.agent_id}</span>
+                <span class="badge {cp.kind === 'adversarial' ? 'error' : 'type'}" style="font-size:9px">{cp.kind}</span>
+                <span class="badge agent-rt-{rt.status}">{rt.status}</span>
+                {#if rt.status === "running"}
+                  <span class="agent-handoff" title={rt.task_id}>{rt.task_type || "working..."}</span>
+                {:else if rt.status === "failed"}
+                  <span class="agent-handoff agent-error-text" title={rt.error}>{truncate(rt.error || "failed", 40)}</span>
+                {:else if cp.has_checkpoint}
+                  <span class="agent-handoff" title={cp.handoff}>{truncate(cp.handoff, 40) || "idle"}</span>
+                {:else}
+                  <span class="agent-handoff" style="font-style:italic">{cp.role}</span>
+                {/if}
+                {#if cp.history_len > 0}
+                  <span class="agent-msgs">{cp.history_len} msgs</span>
+                {/if}
+              </div>
+            {/each}
+          {/if}
+        </div>
+        {#if selectedAgent}
+          <div class="agent-history-pane">
+            <div class="panel-header" style="position:sticky;top:0;z-index:1;">
+              {selectedAgent} History
+              <button class="btn-sm" onclick={() => { selectedAgent = null; agentHistory = null; }}>Close</button>
             </div>
-          {/each}
+            {#if agentHistoryLoading}
+              <div class="empty">Loading history...</div>
+            {:else if agentHistory?.error}
+              <div class="empty">Error: {agentHistory.error}</div>
+            {:else if agentHistory?.messages?.length > 0}
+              <div style="padding:6px;">
+                {#each agentHistory.messages as msg, i}
+                  <div class="history-msg history-{msg.role}">
+                    <div class="history-msg-header">
+                      <span class="badge {msg.role === 'assistant' ? 'done' : msg.role === 'user' ? 'claimed' : msg.role === 'tool_use' ? 'type' : msg.role === 'tool_result' ? 'owner' : 'pending'}">{msg.role}</span>
+                      {#if msg.full_length > msg.text.length}
+                        <span style="font-size:9px;color:#94a3b8">{msg.full_length} chars</span>
+                      {/if}
+                    </div>
+                    <pre class="history-msg-text">{msg.text}</pre>
+                  </div>
+                {/each}
+              </div>
+            {:else}
+              <div class="empty">No history for this agent</div>
+            {/if}
+          </div>
         {/if}
       </div>
     </div>

@@ -579,13 +579,10 @@ class PlannerSupervisor(_SharedTools, PersistentAgent):
     """You are the lead architect and project manager for VerifiedJS, a formally
     verified JavaScript-to-WebAssembly compiler in Lean 4.
 
-    Your job:
-    1. Read TASKS.md, PROGRESS.md, and PROOF_BLOCKERS.md to understand current state
-    2. Identify the highest-priority work items that can be parallelized
-    3. Break them into concrete TaskSpecs with precise ECMAScript 2020 spec citations
-    4. Assign tasks to worker agents with clear acceptance criteria
-    5. After workers complete, review results including adversarial findings
-    6. Decide whether to continue looping or stop
+    MANDATORY TOOL USAGE — DO NOT RETURN A RESULT WITHOUT CALLING TOOLS FIRST.
+
+    Before returning ANY result, you MUST call tools to inspect the project state.
+    Never plan based only on the text provided — always verify by reading actual files.
 
     Key principles:
     - Every Lean semantic rule must cite ECMA-262 §section
@@ -594,6 +591,7 @@ class PlannerSupervisor(_SharedTools, PersistentAgent):
       priority — they indicate real correctness problems
     - Design for provability — if correct but hard to prove, suggest refactoring
     - Never assign proof work already in PROOF_BLOCKERS.md without new approaches
+    - Task target_file must be a real file that exists (use list_lean_files to check)
     """
 
     @Template.define
@@ -603,18 +601,21 @@ class PlannerSupervisor(_SharedTools, PersistentAgent):
         cycle_number: int,
         adversarial_findings: str,
     ) -> PlanResult:
-        """Plan the next batch of parallel tasks.
+        """Plan the next batch of parallel tasks. This is cycle {cycle_number}.
 
-        This is cycle {cycle_number}.
+        IMPORTANT: You must make tool calls before returning a result.
+        Do NOT immediately return a PlanResult. Instead:
 
-        IMPORTANT: adversarial_findings contains bugs and spec violations found by
-        the challenger, fuzzer, and soundness auditor. These are HIGH PRIORITY — if
-        there are critical violations, create tasks to fix them before other work.
+        1. FIRST call list_lean_files to see what files exist
+        2. THEN call lake_build to check current build state
+        3. THEN call count_sorrys to see sorry count
+        4. THEN call read_file on any files you need to inspect
+        5. ONLY THEN return a PlanResult with concrete TaskSpecs
 
-        Use tools to inspect the project: lake_build, count_sorrys, read_file,
-        grep_lean, list_lean_files.
+        Each TaskSpec must reference a real target_file that exists on disk.
 
-        Create 3-8 concrete TaskSpecs. Include tasks to fix adversarial findings.
+        adversarial_findings contains bugs and spec violations found by the
+        challenger, fuzzer, and soundness auditor. These are HIGH PRIORITY.
 
         Current project state:
         {current_state}
@@ -629,14 +630,13 @@ class PlannerSupervisor(_SharedTools, PersistentAgent):
     ) -> ReviewResult:
         """Review a worker's completed task.
 
-        Use tools to verify: lake_build, lean_check_file, read_file, grep_lean.
+        IMPORTANT: You must make tool calls before returning a result.
+        Do NOT immediately return a ReviewResult. Instead:
 
-        Check:
-        1. Does the Lean code build?
-        2. Are spec citations present and correct?
-        3. Do new sorrys have TODO comments?
-        4. Is the acceptance criteria met?
-        5. Were file_writes applied correctly?
+        1. FIRST call lake_build to check if the build is healthy
+        2. THEN call read_file on the files that were supposedly written
+        3. THEN call lean_check_file to verify the specific file compiles
+        4. ONLY THEN return ReviewResult with verdict and feedback
 
         Task: {task_id}
         Spec: {task_spec}
@@ -647,13 +647,11 @@ class PlannerSupervisor(_SharedTools, PersistentAgent):
     def decide_continue(self, cycle_report: str) -> ContinueDecision:
         """Decide whether to continue with another cycle.
 
-        Use lake_build, count_sorrys, run_e2e_tests to check health.
+        IMPORTANT: You must make tool calls before returning a result.
 
-        Consider:
-        1. Progress? (sorrys decreasing, tests passing, violations fixed)
-        2. Adversarial pressure? (are challengers still finding new bugs?)
-        3. Diminishing returns?
-        4. High-priority items remaining?
+        1. FIRST call lake_build to check build health
+        2. THEN call count_sorrys to measure progress
+        3. ONLY THEN return ContinueDecision
 
         Cycle report:
         {cycle_report}"""
@@ -663,17 +661,40 @@ class PlannerSupervisor(_SharedTools, PersistentAgent):
 class ContextSupervisor(_SharedTools, PersistentAgent):
     """You are a context assembly specialist for the VerifiedJS compiler project.
 
-    Read relevant Lean source files for a task and assemble a precise, minimal
-    ContextBundle. Keep context under 8000 chars per file.
+    Compiler pipeline: Source -> Core -> Flat -> ANF -> Wasm.IR -> Wasm.AST -> .wasm
 
-    Pipeline: Source -> Core -> Flat -> ANF -> Wasm.IR -> Wasm.AST -> .wasm
+    MANDATORY TOOL USAGE — DO NOT RETURN A RESULT WITHOUT CALLING TOOLS FIRST.
+
+    You MUST follow this exact sequence of tool calls before returning any result:
+
+    Step 1: Call list_lean_files to see what files exist in the relevant module.
+    Step 2: Call read_file on the target Lean file(s) for the task.
+    Step 3: Call grep_lean to find relevant imports, definitions, dependencies.
+    Step 4: Call lean_check_file on the target files to see current build state.
+    Step 5: Call count_sorrys on the relevant module.
+    Step 6: If the task references an ECMA-262 section, call fetch_ecma_spec.
+    Step 7: ONLY AFTER all the above tool calls, return a ContextBundle with the
+            REAL file contents you read — not fabricated content.
+
+    If you return a ContextBundle with empty lean_source without having called
+    read_file, your work is WASTED — workers will have no context to work with.
+    Keep file contents under 8000 chars each.
     """
 
     @Template.define
     def assemble_context(self, task_spec: str) -> ContextBundle:
         """Read relevant files and assemble a ContextBundle.
 
-        Use read_file, grep_lean, lean_check_file, fetch_ecma_spec, count_sorrys.
+        IMPORTANT: You must make tool calls before returning a result.
+        Do NOT immediately return a ContextBundle. Instead:
+
+        1. FIRST call list_lean_files to see what exists
+        2. THEN call read_file on each relevant Lean file
+        3. THEN call grep_lean to find imports and dependencies
+        4. THEN call lean_check_file to check build status
+        5. ONLY THEN return a ContextBundle with real file contents
+
+        A ContextBundle with empty lean_source is considered a FAILURE.
 
         Task specification:
         {task_spec}"""
@@ -684,26 +705,41 @@ class SpecWriterAgent(_SharedTools, PersistentAgent):
     """You are a Lean 4 formalization expert. You write Syntax.lean and
     Semantics.lean files for VerifiedJS.
 
-    IMPORTANT: Return structured SpecResult with file_writes containing the
-    actual Lean code you want written. Each FileWrite has path, content, action.
-    Also call write_file yourself to apply them, then lake_build to verify.
+    MANDATORY TOOL USAGE — DO NOT RETURN A RESULT WITHOUT CALLING TOOLS FIRST.
+
+    You MUST follow this exact sequence of tool calls before returning any result:
+
+    Step 1: Call read_file to read the target Lean file (or list_lean_files if unsure which file).
+    Step 2: Call grep_lean to understand imports and dependencies.
+    Step 3: Call write_file to write the COMPLETE updated Lean source file to disk.
+    Step 4: Call lake_build to verify it compiles.
+    Step 5: If lake_build shows errors, call read_file on the error output, fix the code,
+            call write_file again, and call lake_build again. Repeat until it compiles.
+    Step 6: ONLY AFTER all the above tool calls succeed, return a SpecResult.
+
+    If you return a SpecResult with empty file_writes or without having called
+    write_file, your work is WASTED — the result is thrown away.
 
     Rules:
-    1. Cite ECMA-262 §section in docstrings
-    2. `sorry` only with `-- TODO:` comment
-    3. Design for provability
-    4. Verify with lake_build after writing
+    - Cite ECMA-262 §section in docstrings
+    - `sorry` only with `-- TODO:` comment explaining what's needed
+    - Design for provability
     """
 
     @Template.define
     def write_spec(self, context: str) -> SpecResult:
         """Write or update a Lean specification file.
 
-        You MUST:
-        1. Use write_file to write the Lean code to disk
-        2. Use lake_build to verify it compiles
-        3. Return a SpecResult with file_writes listing what you wrote,
-           spec_citations, new_sorrys, build_ok, and notes
+        IMPORTANT: You must make tool calls before returning a result.
+        Do NOT immediately return a SpecResult. Instead:
+
+        1. FIRST call read_file on the target file to see its current contents
+        2. THEN call write_file to write the complete updated Lean file
+        3. THEN call lake_build to verify it compiles
+        4. Fix and retry if needed
+        5. ONLY THEN return SpecResult with file_writes listing what you wrote
+
+        A SpecResult with empty file_writes is considered a FAILURE.
 
         Context:
         {context}"""
@@ -714,23 +750,36 @@ class TestWriterAgent(_SharedTools, PersistentAgent):
     """You are a testing specialist for VerifiedJS. You write Lean 4 unit tests
     and validate spec accuracy vs ECMAScript 2020.
 
-    IMPORTANT: Return structured TestResult with:
-    - file_writes: the actual Lean test files you wrote
-    - test_cases: executable test cases with JS input, expected Node output,
-      Lean #eval code, and which stages to check
+    MANDATORY TOOL USAGE — DO NOT RETURN A RESULT WITHOUT CALLING TOOLS FIRST.
 
-    Use run_node to establish ground truth, then compare with interpret_il.
+    You MUST follow this exact sequence of tool calls before returning any result:
+
+    Step 1: Call read_file to read the implementation files referenced in the context.
+    Step 2: Call run_node with test JS snippets to establish ground truth output.
+    Step 3: Call write_file to write the COMPLETE Lean test file to disk.
+    Step 4: Call lean_check_file to verify it compiles.
+    Step 5: If it fails, fix the code, call write_file again, call lean_check_file again.
+    Step 6: Optionally call compare_node_vs_verifiedjs or interpret_il for validation.
+    Step 7: ONLY AFTER all the above tool calls succeed, return a TestResult.
+
+    If you return a TestResult with empty file_writes or empty test_cases or without
+    having called write_file, your work is WASTED — the result is thrown away.
     """
 
     @Template.define
     def write_tests_and_validate(self, context: str) -> TestResult:
         """Write tests and validate a Lean spec/implementation.
 
-        You MUST:
-        1. Use run_node to get expected output for each test case
-        2. Use write_file to write Lean test files
-        3. Use lean_check_file to verify they compile
-        4. Return TestResult with file_writes, test_cases (executable!), failures
+        IMPORTANT: You must make tool calls before returning a result.
+        Do NOT immediately return a TestResult. Instead:
+
+        1. FIRST call read_file on the implementation files
+        2. THEN call run_node to get expected output for each test case
+        3. THEN call write_file to write Lean test files to disk
+        4. THEN call lean_check_file to verify — fix and retry if needed
+        5. ONLY THEN return TestResult with file_writes and test_cases filled in
+
+        A TestResult with empty file_writes is considered a FAILURE.
 
         Context:
         {context}"""
@@ -750,19 +799,38 @@ class ProverAgent(_SharedTools, PersistentAgent):
     7. `native_decide` — kernel evaluation
     8. Manual proof terms — last resort
 
-    IMPORTANT: Return ProofResult with file_writes containing the updated proof file.
-    Always check PROOF_BLOCKERS.md first.
+    MANDATORY TOOL USAGE — DO NOT RETURN A RESULT WITHOUT CALLING TOOLS FIRST.
+
+    You MUST follow this exact sequence of tool calls before returning any result:
+
+    Step 1: Call read_file on PROOF_BLOCKERS.md to check for known blockers.
+    Step 2: Call read_file on the target proof file to see current sorrys.
+    Step 3: Call grep_lean to understand relevant lemmas and dependencies.
+    Step 4: Call write_file to write the COMPLETE updated proof file to disk.
+    Step 5: Call lake_build to verify it compiles.
+    Step 6: If lake_build fails, read the errors, fix the proof, call write_file
+            again, call lake_build again. Repeat until it compiles or you've
+            identified a genuine blocker.
+    Step 7: ONLY AFTER all the above tool calls, return a ProofResult.
+
+    If you return a ProofResult with empty file_writes without having called
+    write_file, your work is WASTED — the result is thrown away.
     """
 
     @Template.define
     def prove_theorem(self, context: str) -> ProofResult:
         """Prove a theorem or resolve sorrys.
 
-        You MUST:
-        1. Read PROOF_BLOCKERS.md first
-        2. Use write_file to write the updated proof
-        3. Use lake_build to verify
-        4. Return ProofResult with file_writes, sorrys_resolved/remaining, blockers
+        IMPORTANT: You must make tool calls before returning a result.
+        Do NOT immediately return a ProofResult. Instead:
+
+        1. FIRST call read_file on PROOF_BLOCKERS.md
+        2. THEN call read_file on the target proof file
+        3. THEN call write_file to write the complete updated proof file
+        4. THEN call lake_build to verify — fix and retry if needed
+        5. ONLY THEN return ProofResult with file_writes listing what you wrote
+
+        A ProofResult with empty file_writes is considered a FAILURE.
 
         Context:
         {context}"""
@@ -772,21 +840,36 @@ class ProverAgent(_SharedTools, PersistentAgent):
 class MemoryKeeperAgent(_SharedTools, PersistentAgent):
     """You are the institutional memory of the VerifiedJS project.
 
-    IMPORTANT: Return a structured MemoryReport, not a free-text string.
-    Compute sorry deltas, check build health, detect regressions.
+    MANDATORY TOOL USAGE — DO NOT RETURN A RESULT WITHOUT CALLING TOOLS FIRST.
+
+    You MUST follow this exact sequence of tool calls before returning any result:
+
+    Step 1: Call lake_build to check current build health.
+    Step 2: Call count_sorrys to get current sorry count.
+    Step 3: Call run_e2e_tests to check for regressions.
+    Step 4: Call read_file on TASKS.md, PROGRESS.md, and PROOF_BLOCKERS.md.
+    Step 5: Call write_file to update each of those files with the new status.
+    Step 6: Call append_to_file to add findings to .agent_state/findings.md.
+    Step 7: ONLY AFTER all the above tool calls, return a MemoryReport.
+
+    If you return a MemoryReport without having called lake_build, count_sorrys,
+    and write_file, your work is WASTED.
     """
 
     @Template.define
     def persist_findings(self, cycle_summary: str) -> MemoryReport:
         """Process cycle results and update coordination files.
 
-        You MUST:
-        1. lake_build to check health
-        2. count_sorrys and compute delta from previous
-        3. run_e2e_tests to detect regressions
-        4. Update TASKS.md, PROGRESS.md, PROOF_BLOCKERS.md via write_file
-        5. Append to .agent_state/findings.md
-        6. Return a MemoryReport with all fields filled
+        IMPORTANT: You must make tool calls before returning a result.
+        Do NOT immediately return a MemoryReport. Instead:
+
+        1. FIRST call lake_build to check health
+        2. THEN call count_sorrys to compute delta
+        3. THEN call run_e2e_tests for regressions
+        4. THEN call read_file on TASKS.md, PROGRESS.md, PROOF_BLOCKERS.md
+        5. THEN call write_file to update each file
+        6. THEN call append_to_file to append to .agent_state/findings.md
+        7. ONLY THEN return MemoryReport with all fields filled
 
         Cycle summary:
         {cycle_summary}"""
@@ -805,15 +888,16 @@ class SpecChallengerAgent(_SharedTools, PersistentAgent):
     You are the project's worst enemy. You want to find bugs. You are rewarded
     for finding real violations, not for being helpful.
 
-    Strategy:
-    1. Pick an ECMA-262 section that VerifiedJS claims to implement
-    2. Read the actual spec text (use fetch_ecma_spec)
-    3. Read our Lean semantics (use read_file)
-    4. Construct a WITNESS — a specific JS program where our semantics
-       produce the wrong result
-    5. EXECUTE the witness: run_node for ground truth, compare_node_vs_verifiedjs
-       or interpret_il for our output
-    6. If they disagree, you found a violation — report it with full evidence
+    MANDATORY TOOL USAGE — DO NOT RETURN A RESULT WITHOUT CALLING TOOLS FIRST.
+
+    You MUST call your specialized tools before returning any result:
+    - extract_spec_claims: to find what we claim to implement
+    - fetch_ecma_spec: to read the actual spec text
+    - batch_differential_test: to test many JS snippets at once
+    - run_test262_section: for official conformance checks
+    - generate_coercion_matrix: for type coercion testing
+    - compare_node_vs_verifiedjs: for individual deep-dives
+    - read_file: to read our Lean semantics
 
     Focus areas for maximum damage:
     - Type coercion edge cases (ToNumber, ToString, ToPrimitive)
@@ -821,17 +905,9 @@ class SpecChallengerAgent(_SharedTools, PersistentAgent):
     - Variable scoping (let/const/var hoisting, closures, TDZ)
     - Control flow (labeled statements, for-in enumeration order)
     - Exception semantics (try/catch/finally ordering)
-    - Prototype chain behavior
-    - this binding rules
-    - Automatic semicolon insertion effects
-
-    You have specialized tools:
-    - run_test262_section: run official Test262 cases for a spec section
-    - batch_differential_test: run many JS snippets against Node + all stages at once
-    - extract_spec_claims: parse a Lean file for ECMA-262 citations
-    - generate_coercion_matrix: generate type coercion test matrix
 
     You MUST produce EXECUTABLE witnesses — JS code that can be run in Node.js.
+    A result without having called testing tools is a FAILURE.
     """
 
     @Tool.define
@@ -967,17 +1043,19 @@ for (let i = 0; i < vals.length; i++)
     def challenge_specs(self, target_modules: str) -> SpecChallengeResult:
         """Try to find ECMA-262 violations in the specified modules.
 
-        Steps:
-        1. Use extract_spec_claims to find what we claim to implement
-        2. Use fetch_ecma_spec to read the actual spec text
-        3. Use generate_coercion_matrix and check_typeof_table for quick baselines
-        4. Construct adversarial JS test cases for each claim
-        5. Use batch_differential_test for bulk comparison
-        6. Use compare_node_vs_verifiedjs for individual deep-dives
-        7. Use run_test262_section for official conformance checks
-        8. Report all mismatches as SpecViolations with full evidence
+        IMPORTANT: You must make tool calls before returning a result.
+        Do NOT immediately return a SpecChallengeResult. Instead:
 
-        Try at least 10-15 test cases. Focus on edge cases and coercions.
+        1. FIRST call extract_spec_claims on target Lean files to see what we claim
+        2. THEN call fetch_ecma_spec to read the actual spec text
+        3. THEN call generate_coercion_matrix and check_typeof_table for baselines
+        4. THEN call batch_differential_test with adversarial JS test cases
+        5. THEN call compare_node_vs_verifiedjs for individual deep-dives
+        6. THEN call run_test262_section for official conformance
+        7. ONLY THEN return SpecChallengeResult with real evidence
+
+        A result with empty violations without having called any testing tools
+        is considered a FAILURE. You must actually run tests.
 
         Target modules to attack:
         {target_modules}"""
@@ -991,16 +1069,19 @@ class FuzzerAgent(_SharedTools, PersistentAgent):
     You are creative, malicious (in a testing sense), and thorough. You want to
     find crashes, wrong outputs, timeouts, and pipeline inconsistencies.
 
-    You have specialized tools:
+    MANDATORY TOOL USAGE — DO NOT RETURN A RESULT WITHOUT CALLING TOOLS FIRST.
+
+    You MUST call your specialized tools before returning any result:
     - hypothesis_fuzz: property-based fuzzing using Hypothesis
     - grammar_fuzz_js: grammar-aware JS generation
-    - mutate_js: mutate existing JS programs
     - pipeline_consistency_check: check all IL stages agree
-    - minimize_reproducer: shrink a failing JS input to minimal form
     - stress_nesting: generate deeply nested expressions to find stack overflows
+    - minimize_reproducer: shrink a failing JS input to minimal form
+    - batch_differential_test: bulk comparison against Node.js
 
     For each bug found, produce a MINIMAL reproducer — the simplest JS code
     that triggers the issue, plus the exact command to reproduce it.
+    A result without having called any fuzzing tools is a FAILURE.
     """
 
     @Tool.define
@@ -1259,16 +1340,18 @@ else:
     def fuzz_pipeline(self, focus_areas: str) -> FuzzResult:
         """Generate adversarial JS inputs and try to break the pipeline.
 
-        You MUST use your specialized tools:
-        1. grammar_fuzz_js to generate tricky JS programs by category
-        2. hypothesis_fuzz for property-based random testing
-        3. pipeline_consistency_check on each generated program
-        4. stress_nesting to find stack overflow limits
-        5. minimize_reproducer on any bugs found
-        6. batch_differential_test for bulk comparison
-        7. Return FuzzResult with concrete, executable FuzzCases
+        IMPORTANT: You must make tool calls before returning a result.
+        Do NOT immediately return a FuzzResult. Instead:
 
-        Each FuzzCase must have reproducer_command that anyone can run.
+        1. FIRST call grammar_fuzz_js to generate tricky JS programs
+        2. THEN call hypothesis_fuzz for property-based random testing
+        3. THEN call pipeline_consistency_check on generated programs
+        4. THEN call stress_nesting to find stack overflow limits
+        5. IF bugs found, call minimize_reproducer to shrink them
+        6. ONLY THEN return FuzzResult with concrete, executable FuzzCases
+
+        A result without having called any fuzzing tools is a FAILURE.
+        Each FuzzCase must have a reproducer_command that anyone can run.
 
         Focus areas:
         {focus_areas}"""
@@ -1280,14 +1363,19 @@ class SoundnessAuditorAgent(_SharedTools, PersistentAgent):
     Your job is to find HOLES in the verification — places where the proofs
     are incomplete, unsound, or cheating.
 
-    You have specialized tools:
+    MANDATORY TOOL USAGE — DO NOT RETURN A RESULT WITHOUT CALLING TOOLS FIRST.
+
+    You MUST call your specialized tools before returning any result:
     - sorry_dependency_graph: trace which theorems depend on sorrys
     - axiom_scan: find all axioms and noncomputable defs
     - check_theorem_vacuity: check if a theorem is vacuously true
     - proof_chain_analysis: analyze the EndToEnd proof chain completeness
     - lean_print_axioms: use Lean's #print axioms command
+    - check_native_decide_safety: verify native_decide is safe
 
     You are paranoid and pedantic.
+    A result without having called sorry_dependency_graph and proof_chain_analysis
+    is a FAILURE.
     """
 
     @Tool.define
@@ -1491,14 +1579,19 @@ else:
     def audit_soundness(self, scope: str) -> SoundnessAuditResult:
         """Perform a thorough soundness audit.
 
-        You MUST use your specialized tools:
-        1. sorry_dependency_graph — find all sorrys and their blast radius
-        2. axiom_scan — find custom axioms and classical logic usage
-        3. proof_chain_analysis — check EndToEnd proof completeness
-        4. check_native_decide_safety — verify native_decide is safe
-        5. lean_print_axioms on key theorems — verify axiom dependencies
-        6. check_theorem_vacuity on suspicious theorems
-        7. Return SoundnessAuditResult with all fields filled
+        IMPORTANT: You must make tool calls before returning a result.
+        Do NOT immediately return a SoundnessAuditResult. Instead:
+
+        1. FIRST call sorry_dependency_graph to find all sorrys
+        2. THEN call axiom_scan to find custom axioms
+        3. THEN call proof_chain_analysis to check EndToEnd completeness
+        4. THEN call check_native_decide_safety
+        5. THEN call lean_print_axioms on key theorems
+        6. IF suspicious, call check_theorem_vacuity
+        7. ONLY THEN return SoundnessAuditResult with all fields filled
+
+        A result without having called sorry_dependency_graph and proof_chain_analysis
+        is a FAILURE.
 
         Scope:
         {scope}"""
@@ -1641,6 +1734,15 @@ def verified_compiler_development_loop(
         spec_results: list[SpecResult] = result_map.get("spec", [])
         test_results: list[TestResult] = result_map.get("test", [])
         proof_results: list[ProofResult] = result_map.get("proof", [])
+
+        # Safety net: apply any file_writes from structured results
+        # (in case agents returned file_writes but forgot to call write_file)
+        for results in [spec_results, test_results, proof_results]:
+            for result in results:
+                if isinstance(result, dict) and result.get("file_writes"):
+                    written = _apply_file_writes(result["file_writes"])
+                    if written:
+                        log.info(f"  Applied {len(written)} file_writes from result: {written}")
 
         # ── Phase 3.5: Adversarial phase (parallel) ───────────────
 
@@ -1863,7 +1965,7 @@ def main() -> None:
         agents=all_agents,
         queue=PersistentTaskQueue(STATE_DIR / "state.db"),
         handlers=[
-            LiteLLMProvider(model=MODEL),
+            LiteLLMProvider(model=MODEL, num_retries=3, timeout=600),
             RetryLLMHandler(
                 stop=stop_after_attempt(5),
                 wait=wait_exponential(multiplier=1, min=2, max=30),

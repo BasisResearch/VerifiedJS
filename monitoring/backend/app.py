@@ -31,6 +31,22 @@ FRONTEND_DIST = FRONTEND_DIR / "dist"
 
 app = Flask(__name__, static_folder=str(FRONTEND_DIST), static_url_path="")
 
+# All known agents in the choreography
+ALL_AGENTS = [
+    {"id": "planner-supervisor", "kind": "constructive", "role": "Plans sprints, reviews work"},
+    {"id": "context-supervisor", "kind": "constructive", "role": "Assembles context windows"},
+    {"id": "spec-writer-1", "kind": "constructive", "role": "Writes Lean specs/implementations"},
+    {"id": "spec-writer-2", "kind": "constructive", "role": "Writes Lean specs/implementations"},
+    {"id": "test-writer", "kind": "constructive", "role": "Writes tests, validates spec accuracy"},
+    {"id": "prover-1", "kind": "constructive", "role": "Proves correctness theorems"},
+    {"id": "prover-2", "kind": "constructive", "role": "Proves correctness theorems"},
+    {"id": "memory-keeper", "kind": "constructive", "role": "Persists findings, updates files"},
+    {"id": "spec-challenger", "kind": "adversarial", "role": "Finds ECMA-262 violations"},
+    {"id": "fuzzer", "kind": "adversarial", "role": "Generates crash/diverge inputs"},
+    {"id": "soundness-auditor", "kind": "adversarial", "role": "Audits proofs for sorry abuse"},
+]
+ALL_AGENT_IDS = {a["id"] for a in ALL_AGENTS}
+
 # ---------------------------------------------------------------------------
 # DB helpers
 # ---------------------------------------------------------------------------
@@ -73,12 +89,12 @@ def query_tasks() -> List[Dict[str, Any]]:
 
 
 def query_checkpoints() -> List[Dict[str, Any]]:
-    """Return all rows from the checkpoints table."""
+    """Return all agents, merging DB checkpoints with the full agent roster."""
+    db_map: Dict[str, Dict] = {}
     try:
         conn = get_db()
         rows = conn.execute("SELECT agent_id, handoff, state, history FROM checkpoints ORDER BY agent_id").fetchall()
         conn.close()
-        result = []
         for r in rows:
             state = {}
             try:
@@ -90,12 +106,88 @@ def query_checkpoints() -> List[Dict[str, Any]]:
                 history = json.loads(r["history"]) if r["history"] else []
             except (json.JSONDecodeError, TypeError):
                 pass
-            result.append({
+            db_map[r["agent_id"]] = {
                 "agent_id": r["agent_id"],
                 "handoff": r["handoff"] or "",
                 "state": state,
                 "history_len": len(history) if isinstance(history, list) else 0,
                 "last_message": _extract_last_message(history),
+                "has_checkpoint": True,
+            }
+    except Exception:
+        pass
+
+    # Build full list: DB agents first (in roster order), then any extras
+    result = []
+    seen = set()
+    for agent_def in ALL_AGENTS:
+        aid = agent_def["id"]
+        seen.add(aid)
+        if aid in db_map:
+            entry = db_map[aid]
+        else:
+            entry = {
+                "agent_id": aid,
+                "handoff": "",
+                "state": {},
+                "history_len": 0,
+                "last_message": "",
+                "has_checkpoint": False,
+            }
+        entry["kind"] = agent_def["kind"]
+        entry["role"] = agent_def["role"]
+        result.append(entry)
+    # Include any DB agents not in roster (shouldn't happen, but be safe)
+    for aid, entry in db_map.items():
+        if aid not in seen:
+            entry["kind"] = "unknown"
+            entry["role"] = ""
+            result.append(entry)
+    return result
+
+
+def query_agent_history(agent_id: str) -> List[Dict[str, Any]]:
+    """Return the full conversation history for a single agent."""
+    try:
+        conn = get_db()
+        row = conn.execute(
+            "SELECT history FROM checkpoints WHERE agent_id = ?", (agent_id,)
+        ).fetchone()
+        conn.close()
+        if not row:
+            return []
+        history = json.loads(row["history"]) if row["history"] else []
+        if not isinstance(history, list):
+            return []
+        # Summarize each message for display
+        result = []
+        for msg in history:
+            if not isinstance(msg, dict):
+                continue
+            role = msg.get("role", "unknown")
+            content = msg.get("content", "")
+            # Extract text content
+            if isinstance(content, list):
+                text_parts = []
+                tool_calls = 0
+                for block in content:
+                    if isinstance(block, dict):
+                        if block.get("type") == "text":
+                            text_parts.append(block.get("text", ""))
+                        elif block.get("type") == "tool_use":
+                            tool_calls += 1
+                            text_parts.append(f"[tool_use: {block.get('name', '?')}]")
+                        elif block.get("type") == "tool_result":
+                            text_parts.append(f"[tool_result: {str(block.get('content', ''))[:200]}]")
+                text = "\n".join(text_parts)
+            elif isinstance(content, str):
+                text = content
+            else:
+                text = str(content)
+            result.append({
+                "role": role,
+                "text": text[:2000],
+                "full_length": len(text) if isinstance(text, str) else 0,
             })
         return result
     except Exception:
@@ -392,6 +484,70 @@ def agent_phase_positions(tasks: List[Dict], checkpoints: List[Dict]) -> Dict[st
     return agent_phases
 
 
+def derive_agent_status(tasks: List[Dict]) -> Dict[str, Dict[str, Any]]:
+    """Derive per-agent runtime status from task queue.
+
+    Returns {agent_id: {status, task_id, task_type, error}} where status is one of:
+    - "running": agent owns a claimed task (waiting for LLM / executing)
+    - "failed": agent's most recent task has a failure/error result
+    - "done": agent has completed tasks, none currently active
+    - "idle": no tasks for this agent
+    """
+    agent_info: Dict[str, Dict[str, Any]] = {}
+    # Process tasks in order so later tasks override earlier
+    for t in tasks:
+        owner = t.get("owner", "")
+        if not owner:
+            continue
+        status = t.get("status", "")
+        if status == "claimed":
+            agent_info[owner] = {
+                "status": "running",
+                "task_id": t["id"],
+                "task_type": t.get("type", ""),
+                "error": None,
+            }
+        elif status == "done":
+            # Check if result contains an error
+            result = t.get("result")
+            has_error = False
+            error_msg = None
+            if isinstance(result, dict):
+                err = result.get("error") or result.get("Error")
+                if err:
+                    has_error = True
+                    error_msg = str(err)[:200]
+            elif isinstance(result, str) and ("error" in result.lower()[:50] or "Errno" in result or "Traceback" in result[:50]):
+                has_error = True
+                error_msg = result[:200]
+            if has_error:
+                # Only mark failed if not already running something else
+                if owner not in agent_info or agent_info[owner]["status"] != "running":
+                    agent_info[owner] = {
+                        "status": "failed",
+                        "task_id": t["id"],
+                        "task_type": t.get("type", ""),
+                        "error": error_msg,
+                    }
+            else:
+                if owner not in agent_info or agent_info[owner]["status"] not in ("running", "failed"):
+                    agent_info[owner] = {
+                        "status": "done",
+                        "task_id": t["id"],
+                        "task_type": t.get("type", ""),
+                        "error": None,
+                    }
+        elif status == "pending":
+            if owner not in agent_info:
+                agent_info[owner] = {
+                    "status": "pending",
+                    "task_id": t["id"],
+                    "task_type": t.get("type", ""),
+                    "error": None,
+                }
+    return agent_info
+
+
 def build_snapshot() -> Dict[str, Any]:
     tasks = query_tasks()
     checkpoints = query_checkpoints()
@@ -406,6 +562,15 @@ def build_snapshot() -> Dict[str, Any]:
 
     active_phase = infer_active_phase(tasks)
     agent_positions = agent_phase_positions(tasks, checkpoints)
+    agent_statuses = derive_agent_status(tasks)
+
+    # Merge agent status into checkpoints
+    for cp in checkpoints:
+        aid = cp["agent_id"]
+        if aid in agent_statuses:
+            cp["runtime"] = agent_statuses[aid]
+        else:
+            cp["runtime"] = {"status": "idle", "task_id": None, "task_type": None, "error": None}
 
     return {
         "timestamp": iso(time.time()),
@@ -480,13 +645,24 @@ def api_task_detail(task_id: str):
     return jsonify({"error": "not found"}), 404
 
 
+@app.get("/api/agent/<path:agent_id>/history")
+def api_agent_history(agent_id: str):
+    history = query_agent_history(agent_id)
+    return jsonify({"agent_id": agent_id, "messages": history, "count": len(history)})
+
+
 @app.get("/api/stream")
 def api_stream():
     def generate():
-        while True:
-            payload = json.dumps(build_snapshot(), separators=(",", ":"))
-            yield f"event: snapshot\ndata: {payload}\n\n"
-            time.sleep(3)
+        try:
+            while True:
+                payload = json.dumps(build_snapshot(), separators=(",", ":"))
+                yield f"event: snapshot\ndata: {payload}\n\n"
+                time.sleep(3)
+        except GeneratorExit:
+            pass
+        except BrokenPipeError:
+            pass
     return Response(generate(), mimetype="text/event-stream")
 
 
@@ -667,6 +843,10 @@ def api_agents_log_stream():
                     break
                 payload = json.dumps(entry, separators=(",", ":"))
                 yield f"event: line\ndata: {payload}\n\n"
+        except GeneratorExit:
+            pass
+        except BrokenPipeError:
+            pass
         finally:
             agent_proc.unsubscribe(q)
 
