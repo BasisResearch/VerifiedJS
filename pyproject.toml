@@ -1,0 +1,11 @@
+[project]
+name = "verifiedjs-agents"
+version = "0.1.0"
+description = "Multi-agent choreography for verified JS-to-Wasm compiler development"
+requires-python = ">=3.12"
+dependencies = [
+    "effectful[llm] @ git+https://github.com/BasisResearch/effectful.git@kg-persistent-agents",
+]
+
+[project.scripts]
+verifiedjs-agents = "agents.verified_compiler_agents:main"
