@@ -74,7 +74,7 @@ log = logging.getLogger("verifiedjs-agents")
 
 PROJECT_ROOT = Path(__file__).resolve().parent.parent
 STATE_DIR = PROJECT_ROOT / ".agent_state"
-MODEL = os.environ.get("VERIFIEDJS_MODEL", "anthropic/claude-opus-4-20250514")
+MODEL = os.environ.get("VERIFIEDJS_MODEL", "anthropic/claude-opus-4-6")
 MAX_CYCLES = int(os.environ.get("VERIFIEDJS_MAX_CYCLES", "10"))
 MAX_HISTORY_LEN = 100
 
