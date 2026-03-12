@@ -39,7 +39,9 @@ import os
 import subprocess
 import sys
 import tempfile
+import threading
 import urllib.request
+import webbrowser
 from pathlib import Path
 from typing import Literal, TypedDict
 
@@ -1917,8 +1919,47 @@ def verified_compiler_development_loop(
 # ---------------------------------------------------------------------------
 
 
+def _start_monitor(host: str = "127.0.0.1", port: int = 5001) -> None:
+    """Start the monitoring dashboard in a background thread.
+
+    Imports the Flask app from monitoring.backend, builds the Svelte
+    frontend if needed, and serves everything on *port* so the full
+    dashboard is available alongside the running agents.
+    """
+    try:
+        # Ensure the monitoring package is importable
+        sys.path.insert(0, str(PROJECT_ROOT))
+        from monitoring.backend.app import app, build_frontend, FRONTEND_DIST
+
+        # Auto-build frontend if dist is missing
+        if not (FRONTEND_DIST / "index.html").exists():
+            log.info("[monitor] Frontend not built — building now …")
+            build_frontend()
+
+        def _run_flask():
+            # Suppress Flask's default request logs to avoid noise
+            werkzeug_log = logging.getLogger("werkzeug")
+            werkzeug_log.setLevel(logging.WARNING)
+            app.run(host=host, port=port, debug=False, threaded=True,
+                    use_reloader=False)
+
+        t = threading.Thread(target=_run_flask, daemon=True, name="monitor")
+        t.start()
+        log.info(f"[monitor] Dashboard running at http://{host}:{port}")
+        webbrowser.open(f"http://{host}:{port}")
+    except Exception as exc:
+        log.warning(f"[monitor] Could not start monitoring dashboard: {exc}")
+        log.warning("[monitor] Agents will continue without the dashboard.")
+
+
 def main() -> None:
     STATE_DIR.mkdir(parents=True, exist_ok=True)
+
+    # ── Start monitoring dashboard ────────────────────────────────
+    monitor_host = os.environ.get("MONITOR_HOST", "127.0.0.1")
+    monitor_port = int(os.environ.get("MONITOR_PORT", "5001"))
+    if not os.environ.get("VERIFIEDJS_NO_MONITOR"):
+        _start_monitor(host=monitor_host, port=monitor_port)
 
     log.info("VerifiedJS Multi-Agent Choreography (with adversarial agents)")
     log.info(f"  Project root: {PROJECT_ROOT}")
@@ -1926,6 +1967,8 @@ def main() -> None:
     log.info(f"  Max cycles: {MAX_CYCLES}")
     log.info(f"  Max history len: {MAX_HISTORY_LEN}")
     log.info(f"  State dir: {STATE_DIR}")
+    if not os.environ.get("VERIFIEDJS_NO_MONITOR"):
+        log.info(f"  Monitor: http://{monitor_host}:{monitor_port}")
 
     # ── Create constructive agents ─────────────────────────────────
 
