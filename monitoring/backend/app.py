@@ -441,42 +441,18 @@ def infer_active_phase(tasks: List[Dict]) -> str:
 
 
 def agent_phase_positions(tasks: List[Dict], checkpoints: List[Dict]) -> Dict[str, str]:
-    """Map each agent to the choreography phase they're currently at."""
+    """Map each agent to the choreography phase they're currently executing.
+
+    Only shows agents that are ACTIVELY working (have a claimed task).
+    Agents that are idle/waiting/polling are not shown on the code viewer —
+    even though all agent threads run the same choreographic function,
+    only the agent that owns a task is actually doing work in that phase.
+    """
     agent_phases: Dict[str, str] = {}
 
-    # From active tasks (claimed/pending)
+    # Only from active tasks (claimed) — this is the agent actually doing work
     for t in tasks:
-        if t["owner"] and t["status"] in ("claimed",):
-            phase = classify_task_phase(t)
-            if phase != "unknown":
-                agent_phases[t["owner"]] = phase
-
-    # From checkpoints with handoff text
-    for cp in checkpoints:
-        aid = cp["agent_id"]
-        if aid in agent_phases:
-            continue  # active task takes priority
-        handoff = (cp.get("handoff") or "").lower()
-        if not handoff:
-            continue
-        if "plan" in handoff:
-            agent_phases[aid] = "plan"
-        elif "context" in handoff or "assemble" in handoff:
-            agent_phases[aid] = "context"
-        elif any(kw in handoff for kw in ("spec", "test", "prov", "implement", "write")):
-            agent_phases[aid] = "execute"
-        elif any(kw in handoff for kw in ("challeng", "fuzz", "audit", "adversar")):
-            agent_phases[aid] = "adversarial"
-        elif "review" in handoff:
-            agent_phases[aid] = "review"
-        elif "memory" in handoff or "persist" in handoff:
-            agent_phases[aid] = "memory"
-        elif "continue" in handoff or "decide" in handoff:
-            agent_phases[aid] = "continue"
-
-    # From last completed tasks for agents not yet mapped
-    for t in reversed(tasks):
-        if t["owner"] and t["owner"] not in agent_phases and t["status"] == "done":
+        if t["owner"] and t["status"] == "claimed":
             phase = classify_task_phase(t)
             if phase != "unknown":
                 agent_phases[t["owner"]] = phase
