@@ -111,6 +111,8 @@ structure LowerCtx where
   consoleLogVars : List ANF.VarName := []
   /-- Variables bound to makeClosure(funcIdx, _), mapping name → Wasm function index. -/
   directCallVars : List (ANF.VarName × Nat) := []
+  /-- Offset to add to ANF/Flat function indices to get Wasm function indices. -/
+  funcOffset : Nat := 0
   deriving Inhabited
 
 structure LowerState where
@@ -253,7 +255,8 @@ private def lowerTrivial (ctx : LowerCtx) : ANF.Trivial → LowerM (List IR.IRIn
       pure [mkBoxedConst (Runtime.NanBoxed.encodeStringRef sid)]
   | .litObject addr => pure [mkBoxedConst (Runtime.NanBoxed.encodeObjectRef addr)]
   | .litClosure funcIdx envPtr =>
-      pure [mkBoxedConst (Runtime.NanBoxed.encodeObjectRef (funcIdx * 65536 + envPtr))]
+      let wasmFuncIdx := funcIdx + ctx.funcOffset
+      pure [mkBoxedConst (Runtime.NanBoxed.encodeObjectRef (wasmFuncIdx * 65536 + envPtr))]
 
 private def lowerTrivialM (ctx : LowerCtx) (t : ANF.Trivial) : LowerM (List IR.IRInstr) :=
   lowerTrivial ctx t
@@ -349,8 +352,9 @@ private partial def lowerComplex (ctx : LowerCtx) : ANF.ComplexExpr → LowerM (
       pure (valuesCode ++ drops values.length ++ [IR.IRInstr.call RuntimeIdx.makeEnv])
   | .makeClosure funcIdx env => do
       let envCode ← lowerTrivialM ctx env
+      let wasmFuncIdx := funcIdx + ctx.funcOffset
       pure
-        ([mkBoxedConst (encodeNatAsInt32 funcIdx)] ++ envCode ++
+        ([mkBoxedConst (encodeNatAsInt32 wasmFuncIdx)] ++ envCode ++
           [IR.IRInstr.call RuntimeIdx.makeClosure])
   | .objectLit props => do
       let mut out := []
@@ -405,7 +409,9 @@ private partial def lowerExprWithExn (ctx : LowerCtx) (exnTarget : Option String
         | .getProp (.var "console") "log" =>
             { ctx' with consoleLogVars := name :: ctx'.consoleLogVars }
         | .makeClosure funcIdx _ =>
-            { ctx' with directCallVars := (name, funcIdx) :: ctx'.directCallVars }
+            { ctx' with directCallVars := (name, funcIdx + ctx'.funcOffset) :: ctx'.directCallVars }
+        | .trivial (.litClosure funcIdx _) =>
+            { ctx' with directCallVars := (name, funcIdx + ctx'.funcOffset) :: ctx'.directCallVars }
         | _ => ctx'
       let bodyCode ← lowerExprWithExn ctx' exnTarget ctrlStack body
       pure (rhsCode ++ [IR.IRInstr.localSet idx] ++ bodyCode)
@@ -507,14 +513,15 @@ end
 private partial def lowerExpr (ctx : LowerCtx) : ANF.Expr → LowerM (List IR.IRInstr) :=
   lowerExprWithExn ctx none []
 
-private def mkInitialCtx (params : List ANF.VarName) (envParam : ANF.VarName) : LowerCtx :=
+private def mkInitialCtx (params : List ANF.VarName) (envParam : ANF.VarName)
+    (funcOffset : Nat := 0) : LowerCtx :=
   let rec go (ps : List ANF.VarName) (idx : Nat) (acc : List (ANF.VarName × Nat)) :
       List (ANF.VarName × Nat) :=
     match ps with
     | [] => acc
     | p :: rest => go rest (idx + 1) ((p, idx) :: acc)
   let envIdx := params.length
-  { locals := (envParam, envIdx) :: go params 0 [] }
+  { locals := (envParam, envIdx) :: go params 0 [], funcOffset := funcOffset }
 
 /-- String table state threaded across function lowerings. -/
 structure StringTableState where
@@ -522,13 +529,13 @@ structure StringTableState where
   strings : List (String × Nat)
 
 private def lowerFunctionWithStrings (f : ANF.FuncDef) (sts : StringTableState)
-    (selfRef : Option (ANF.VarName × Nat) := none) :
+    (selfRef : Option (ANF.VarName × Nat) := none) (funcOffset : Nat := 0) :
     Except String (IR.IRFunc × StringTableState) := do
   let paramTypes := List.replicate (f.params.length + 1) IR.IRType.f64
   let initState : LowerState :=
     { nextLocal := paramTypes.length, locals := #[], nextStringId := sts.nextStringId,
       strings := sts.strings, nextLabelId := 0 }
-  let ctx := mkInitialCtx f.params f.envParam
+  let ctx := mkInitialCtx f.params f.envParam funcOffset
   -- If a self-reference is provided, add it to directCallVars for recursive calls
   let ctx := match selfRef with
     | some (name, wasmIdx) => { ctx with directCallVars := (name, wasmIdx) :: ctx.directCallVars }
@@ -546,15 +553,15 @@ private def lowerFunction (f : ANF.FuncDef) : Except String IR.IRFunc := do
   let (func, _) ← lowerFunctionWithStrings f { nextStringId := typeofStringCount, strings := [] }
   pure func
 
-/-- Build a preamble that binds each top-level function name to its closure value. -/
-private def buildFuncBindings (funcs : Array ANF.FuncDef) (mainBody : ANF.Expr) (baseIdx : Nat) :
+/-- Build a preamble that binds each top-level function name to its closure value.
+    funcIdx is the ANF/Flat function index (Wasm offset applied in lowerComplex). -/
+private def buildFuncBindings (funcs : Array ANF.FuncDef) (mainBody : ANF.Expr) :
     ANF.Expr :=
   let rec go (i : Nat) (fns : List ANF.FuncDef) (body : ANF.Expr) : ANF.Expr :=
     match fns with
     | [] => body
     | f :: rest =>
-      -- Bind function name to a makeClosure(funcIdx, null_env)
-      .«let» f.name (.makeClosure (baseIdx + i) (.litNull)) (go (i + 1) rest body)
+      .«let» f.name (.makeClosure i (.litNull)) (go (i + 1) rest body)
   go 0 funcs.toList mainBody
 
 private def runtimeHelpers : Array IR.IRFunc :=
@@ -1338,21 +1345,22 @@ def lower (prog : ANF.Program) : Except String IR.IRModule := do
   let runtimeCount := runtimeHelpers.size
   -- Thread string table state through all function lowerings
   let initStrState : StringTableState := { nextStringId := typeofStringCount, strings := [] }
+  let funcOffset := hostImportCount + runtimeCount
   let funcList := prog.functions.toList
   let (loweredFns, strState) ← funcList.zipIdx.foldlM
     (init := ([], initStrState))
     fun (fns, sts) (f, i) => do
-      let wasmIdx := hostImportCount + runtimeCount + i
-      let (fn, sts') ← lowerFunctionWithStrings f sts (some (f.name, wasmIdx))
+      let wasmIdx := funcOffset + i
+      let (fn, sts') ← lowerFunctionWithStrings f sts (some (f.name, wasmIdx)) funcOffset
       pure (fns ++ [fn], sts')
-  -- Wrap main body with top-level function bindings
-  let wrappedMain := buildFuncBindings prog.functions prog.main (hostImportCount + runtimeCount)
+  -- Wrap main body with top-level function bindings (funcIdx offset applied in lowerComplex)
+  let wrappedMain := buildFuncBindings prog.functions prog.main
   let mainFn : ANF.FuncDef :=
     { name := "__verifiedjs_main"
       params := []
       envParam := "__env"
       body := wrappedMain }
-  let (loweredMain, finalStrState) ← lowerFunctionWithStrings mainFn strState
+  let (loweredMain, finalStrState) ← lowerFunctionWithStrings mainFn strState (funcOffset := funcOffset)
   let mainIdx := hostImportCount + runtimeCount + loweredFns.length
   -- Create a _start wrapper with zero params/results (Wasm spec requires this for start func)
   let startWrapper : IR.IRFunc :=
