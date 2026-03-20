@@ -1,0 +1,6 @@
+.lake/
+.git/
+agent_logs/
+test_logs/
+current_tasks/
+*.wasm

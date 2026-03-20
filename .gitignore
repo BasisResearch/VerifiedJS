@@ -1,0 +1,7 @@
+.lake/
+.cache/
+.claude-*/
+*.wasm
+/fail/
+/uv.lock
+/kickoff.sh
