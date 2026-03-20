@@ -55,6 +55,8 @@ def binaryNeq : RuntimeFuncIdx := base + 33
 def getGlobal : RuntimeFuncIdx := base + 34
 def printValue : RuntimeFuncIdx := base + 35
 def writeStrNl : RuntimeFuncIdx := base + 36
+def logicalAnd : RuntimeFuncIdx := base + 37
+def logicalOr : RuntimeFuncIdx := base + 38
 
 end RuntimeIdx
 
@@ -227,6 +229,8 @@ private def lowerBinaryRuntime? : Core.BinOp → Option RuntimeFuncIdx
   | .ge => some RuntimeIdx.binaryGe
   | .eq | .strictEq => some RuntimeIdx.binaryEq
   | .neq | .strictNeq => some RuntimeIdx.binaryNeq
+  | .logAnd => some RuntimeIdx.logicalAnd
+  | .logOr => some RuntimeIdx.logicalOr
   | _ => none
 
 private def drops (n : Nat) : List IR.IRInstr :=
@@ -1285,6 +1289,26 @@ private def runtimeHelpers : Array IR.IRFunc :=
         , IR.IRInstr.call RuntimeIdx.hostFdWrite
         , IR.IRInstr.drop
         , mkBoxedConst encodeUndefinedBox
+        , IR.IRInstr.return_ ] }
+    ,
+    -- logicalAnd(a, b): if truthy(a) then b else a
+    { name := "__rt_logicalAnd", params := [.f64, .f64], results := [.f64], locals := []
+      body :=
+        [ IR.IRInstr.localGet 0
+        , IR.IRInstr.call RuntimeIdx.truthy
+        , IR.IRInstr.if_ (some .f64)
+            [IR.IRInstr.localGet 1]
+            [IR.IRInstr.localGet 0]
+        , IR.IRInstr.return_ ] }
+    ,
+    -- logicalOr(a, b): if truthy(a) then a else b
+    { name := "__rt_logicalOr", params := [.f64, .f64], results := [.f64], locals := []
+      body :=
+        [ IR.IRInstr.localGet 0
+        , IR.IRInstr.call RuntimeIdx.truthy
+        , IR.IRInstr.if_ (some .f64)
+            [IR.IRInstr.localGet 0]
+            [IR.IRInstr.localGet 1]
         , IR.IRInstr.return_ ] }
   ]
 

@@ -23,11 +23,14 @@ inductive TraceEvent where
   | trap (msg : String)
   deriving Repr, BEq
 
-/-- Wasm store (functions, tables, memories, globals). -/
+/-- Wasm store (functions, tables, memories, globals).
+    REF: WasmCert-Coq `store_record`, Wasm §4.5 -/
 structure Store where
+  types : Array FuncType   -- module type section, needed for call_indirect type check
   funcs : Array Func
   tables : Array (Array (Option Nat))
   memories : Array ByteArray
+  memLimits : Array Limits  -- declared memory limits for grow bounds checking
   globals : Array WasmValue
   deriving Repr
 
@@ -80,9 +83,11 @@ private def initMemory (mt : MemType) : ByteArray :=
 /-- Build an initial store from a module declaration. -/
 def initialStore (m : Module) : Store :=
   {
+    types := m.types
     funcs := m.funcs
     tables := m.tables.map initTableSlots
     memories := m.memories.map initMemory
+    memLimits := m.memories.map (·.lim)
     globals := initGlobals m
   }
 
@@ -131,6 +136,13 @@ private def updateHeadFrame (frames : List Frame) (f : Frame) : List Frame :=
 private def i32Truth : WasmValue → Option Bool
   | .i32 n => some (n != 0)
   | _ => none
+
+/-- Pop exactly `n` values from the stack, returning them in order (first popped = first in list).
+    Returns `none` if the stack has fewer than `n` elements. -/
+private def popN? (stack : List WasmValue) (n : Nat) : Option (List WasmValue × List WasmValue) :=
+  if n == 0 then some ([], stack)
+  else if stack.length < n then none
+  else some (stack.take n, stack.drop n)
 
 private def withI32Bin
     (s : ExecState)
@@ -522,15 +534,28 @@ def step? (s : ExecState) : Option (TraceEvent × ExecState) :=
           let s' := pushTrace { base with labels := [], code := [] } .silent
           some (.silent, s')
       | .call idx =>
+          -- SPEC §4.4.8.5: call invocation pops arguments from the stack.
+          -- REF: WasmCert-Coq `r_invoke_native`
           if h : idx < base.store.funcs.size then
             let func := base.store.funcs[idx]
-            let locals := (func.locals.map defaultValue).toArray
-            let frame : Frame := { locals := locals, moduleInst := 0 }
-            let s' := pushTrace { base with frames := frame :: base.frames, code := func.body ++ rest } .silent
-            some (.silent, s')
+            -- Resolve function type to determine parameter count
+            let nParams :=
+              if hT : func.typeIdx < base.store.types.size then
+                base.store.types[func.typeIdx].params.length
+              else 0
+            match popN? base.stack nParams with
+            | some (args, remainingStack) =>
+                let argLocals := args.reverse.toArray  -- reverse: first param is deepest on stack
+                let extraLocals := (func.locals.map defaultValue).toArray
+                let frame : Frame := { locals := argLocals ++ extraLocals, moduleInst := 0 }
+                let s' := pushTrace { base with stack := remainingStack, frames := frame :: base.frames, code := func.body ++ rest } .silent
+                some (.silent, s')
+            | none => some (trapState base s!"stack underflow in call {idx}")
           else
             some (trapState base s!"unknown function index {idx}")
-      | .callIndirect _ tableIdx =>
+      | .callIndirect expectedTypeIdx tableIdx =>
+          -- SPEC §4.4.8.7 call_indirect: type-checked indirect call.
+          -- REF: WasmCert-Coq r_call_indirect_success/failure
           match pop1? base.stack with
           | some (.i32 elemIdx, stk) =>
               if hTbl : tableIdx < base.store.tables.size then
@@ -540,11 +565,31 @@ def step? (s : ExecState) : Option (TraceEvent × ExecState) :=
                   | some funcIdx =>
                       if hFunc : funcIdx < base.store.funcs.size then
                         let func := base.store.funcs[funcIdx]
-                        let locals := (func.locals.map defaultValue).toArray
-                        let frame : Frame := { locals := locals, moduleInst := 0 }
-                        let s' := pushTrace
-                          { base with stack := stk, frames := frame :: base.frames, code := func.body ++ rest } .silent
-                        some (.silent, s')
+                        -- Type check: the function's type must match the expected type index.
+                        let typeOk :=
+                          if hType : expectedTypeIdx < base.store.types.size then
+                            let expectedType := base.store.types[expectedTypeIdx]
+                            if hFuncType : func.typeIdx < base.store.types.size then
+                              let actualType := base.store.types[func.typeIdx]
+                              actualType == expectedType
+                            else false
+                          else true  -- If type section unavailable, skip check (permissive)
+                        if typeOk then
+                          let nParams :=
+                            if hT : expectedTypeIdx < base.store.types.size then
+                              base.store.types[expectedTypeIdx].params.length
+                            else 0
+                          match popN? stk nParams with
+                          | some (args, remainingStack) =>
+                              let argLocals := args.reverse.toArray
+                              let extraLocals := (func.locals.map defaultValue).toArray
+                              let frame : Frame := { locals := argLocals ++ extraLocals, moduleInst := 0 }
+                              let s' := pushTrace
+                                { base with stack := remainingStack, frames := frame :: base.frames, code := func.body ++ rest } .silent
+                              some (.silent, s')
+                          | none => some (trapState base "stack underflow in call_indirect")
+                        else
+                          some (trapState base "indirect call type mismatch")
                       else
                         some (trapState base s!"unknown function index {funcIdx}")
                   | none => some (trapState base s!"uninitialized table slot {elemIdx.toNat}")
@@ -644,14 +689,29 @@ def step? (s : ExecState) : Option (TraceEvent × ExecState) :=
           else
             some (trapState base s!"unknown memory index {memIdx}")
       | .memoryGrow memIdx =>
+          -- SPEC §4.4.7.2 memory.grow: attempt to grow memory by delta pages.
+          -- Returns old size on success, -1 (0xFFFFFFFF) on failure.
+          -- REF: WasmCert-Coq r_memory_grow_success/failure
           match pop1? base.stack with
           | some (.i32 delta, stk) =>
               if hMem : memIdx < base.store.memories.size then
                 let mem := base.store.memories[memIdx]
                 let oldPages := mem.size / 65536
-                let grown := ByteArray.mk (mem.toList.toArray ++ Array.replicate (delta.toNat * 65536) 0)
-                let store' := { base.store with memories := base.store.memories.set! memIdx grown }
-                some (.silent, pushTrace { base with store := store', stack := .i32 (UInt32.ofNat oldPages) :: stk } .silent)
+                let newPages := oldPages + delta.toNat
+                -- Check against declared maximum (Wasm spec §5.5.5)
+                let maxOk : Bool :=
+                  if hLim : memIdx < base.store.memLimits.size then
+                    match base.store.memLimits[memIdx].max with
+                    | some maxPages => newPages.ble maxPages
+                    | none => newPages.ble 65536
+                  else newPages.ble 65536
+                if maxOk then
+                  let grown := ByteArray.mk (mem.toList.toArray ++ Array.replicate (delta.toNat * 65536) 0)
+                  let store' := { base.store with memories := base.store.memories.set! memIdx grown }
+                  some (.silent, pushTrace { base with store := store', stack := .i32 (UInt32.ofNat oldPages) :: stk } .silent)
+                else
+                  -- Failure: return -1 (as i32, i.e. 0xFFFFFFFF), store unchanged
+                  some (.silent, pushTrace { base with stack := .i32 (UInt32.ofNat 0xFFFFFFFF) :: stk } .silent)
               else
                 some (trapState base s!"unknown memory index {memIdx}")
           | some (_, _) => some (trapState base "memory.grow delta is not i32")

@@ -236,6 +236,9 @@ private def allValues : List Expr → Option (List Value)
       let vs ← allValues rest
       return v :: vs
 
+/-- Built-in function index for console.log (reserved at index 0). -/
+private def consoleLogIdx : FuncIdx := 0
+
 private def pushTrace (s : State) (t : TraceEvent) : State :=
   { s with trace := s.trace ++ [t] }
 
@@ -344,6 +347,14 @@ partial def step? (s : State) : Option (TraceEvent × State) :=
               -- Step 3: All args are values — perform the call.
               match cv with
               | .function idx =>
+                  -- §18.2 Built-in: console.log (reserved at function index 0).
+                  if idx == consoleLogIdx then
+                      let msg := match argVals with
+                        | [v] => valueToString v
+                        | vs => String.intercalate " " (vs.map valueToString)
+                      let s' := pushTrace { s with expr := .lit .undefined } (.log msg)
+                      some (.log msg, s')
+                  else
                   match s.funcs[idx]? with
                   | some closure =>
                       -- §10.2.1 [[Call]]: bind params to args in closure's captured environment.
@@ -852,9 +863,17 @@ inductive Steps : State → List TraceEvent → State → Prop where
       Steps s2 ts s3 →
       Steps s1 (t :: ts) s3
 
-/-- Initial Core machine state for a program body. -/
+/-- Initial Core machine state for a program body.
+    Preloads the `console` global with a `log` method (§18.2). -/
 def initialState (p : Program) : State :=
-  { expr := p.body, env := Env.empty, heap := Heap.empty, trace := [], funcs := #[], callStack := [] }
+  -- Reserve heap address 0 for the console object.
+  let consoleProps : List (PropName × Value) := [("log", .function consoleLogIdx)]
+  let heap : Heap := { objects := #[consoleProps], nextAddr := 1 }
+  -- Reserve function index 0 for the console.log built-in.
+  let logBuiltin : FuncClosure := ⟨some "log", ["__arg__"], .lit .undefined, []⟩
+  let env := Env.empty.extend "console" (.object 0)
+  { expr := p.body, env := env, heap := heap, trace := []
+  , funcs := #[logBuiltin], callStack := [] }
 
 /-- Program behavior as finite terminating trace sequence. -/
 def Behaves (p : Program) (b : List TraceEvent) : Prop :=

@@ -112,3 +112,29 @@
   - Consider adding @[simp] equation lemmas for clz/ctz/popcnt helpers to aid proof automation
   - Port more WasmCert-Coq semantics if proof agent needs them
 
+### Continued: WasmCert-Coq gap fixes + round-trip theorems
+
+- Implemented:
+  - **call_indirect type check** (critical spec gap):
+    - Added `types : Array FuncType` field to `Store` structure
+    - Added `memLimits : Array Limits` field to `Store` structure
+    - `call_indirect` now resolves expected type index from `store.types` and compares against the function's actual type. Traps on mismatch per §4.4.8.7.
+    - REF: WasmCert-Coq `r_call_indirect_success/failure_mismatch`
+  - **memory.grow failure case**:
+    - Checks new page count against declared max limit (from `store.memLimits`)
+    - On failure (exceeds max or 65536 absolute limit), returns -1 (0xFFFFFFFF) with store unchanged
+    - REF: WasmCert-Coq `r_memory_grow_failure`
+  - **Runtime/Values.lean — @[simp] theorems for proof automation**:
+    - `decode_encodeNull`, `decode_encodeUndefined`, `decode_encodeBool`
+    - `decodeToBool_encodeBool`, `isTruthy_encodeBool`
+    - `isTruthy_encodeNull`, `isTruthy_encodeUndefined`
+    - `isBoxed_encode*`, `getTag_encode*`
+  - **Wasm/Semantics.lean — native_decide sanity checks**:
+    - 7 examples for i32Clz/Ctz/Popcnt verifying concrete values
+
+- Files changed:
+  - VerifiedJS/Wasm/Semantics.lean (Store gains `types`/`memLimits` fields, call_indirect rewritten, memory.grow rewritten)
+  - VerifiedJS/Runtime/Values.lean (+12 @[simp] theorems)
+
+- Build: PASS (all 15 wasmspec-dependent modules build clean)
+
