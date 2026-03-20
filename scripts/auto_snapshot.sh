@@ -3,10 +3,10 @@ cd /opt/verifiedjs
 export PATH=/opt/elan/bin:/usr/local/bin:$PATH
 export ELAN_HOME=/opt/elan
 
-git add -A 2>/dev/null
+/usr/bin/git.real add -A 2>/dev/null
 
 # Only commit if there are actual changes
-if git diff --cached --quiet 2>/dev/null; then
+if /usr/bin/git.real diff --cached --quiet 2>/dev/null; then
   exit 0
 fi
 
@@ -17,7 +17,7 @@ LEAN_FILES=$(find VerifiedJS/ -name "*.lean" | wc -l)
 LEAN_LOC=$(cat VerifiedJS/**/*.lean VerifiedJS/*.lean 2>/dev/null | wc -l)
 
 # Check which agents changed files
-CHANGED=$(git diff --cached --name-only 2>/dev/null)
+CHANGED=$(/usr/bin/git.real diff --cached --name-only 2>/dev/null)
 AGENTS=""
 echo "$CHANGED" | grep -q "Source/\|Core/Syntax\|Core/Semantics\|tests/" && AGENTS="$AGENTS jsspec"
 echo "$CHANGED" | grep -q "Flat/Syntax\|Flat/Semantics\|ANF/Syntax\|ANF/Semantics\|Wasm/Syntax\|Wasm/Semantics\|Wasm/Typing\|Wasm/Numerics\|Runtime/" && AGENTS="$AGENTS wasmspec"
@@ -27,7 +27,7 @@ AGENTS=$(echo $AGENTS | xargs)
 
 FILES_CHANGED=$(echo "$CHANGED" | wc -l)
 
-git commit -m "auto: ${SORRY} sorries, ${LEAN_FILES} lean files, ${LEAN_LOC} LOC [${AGENTS:-none}]
+/usr/bin/git.real commit -m "auto: ${SORRY} sorries, ${LEAN_FILES} lean files, ${LEAN_LOC} LOC [${AGENTS:-none}]
 
 Changed: ${FILES_CHANGED} files
 Agents active:${AGENTS:- none}" 2>/dev/null

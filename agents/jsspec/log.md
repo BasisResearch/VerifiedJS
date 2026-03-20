@@ -209,7 +209,14 @@
 - Build: PASS (all 49 jobs)
 - E2E: 34/37 passing (3 failures are pre-existing: for_in/for_of Elaborate gap, string_concat Wasm gap)
 - Sorry count: 4 (unchanged — 2 in ClosureConvertCorrect.lean, 2 in ANFConvertCorrect.lean)
+- Added E2E tests: arrow_function.js, delete_prop.js, labeled_stmt.js, array_length.js, nested_calls.js, recursive_fn.js
+- E2E (before infrastructure issue): 40/43 tests, 37/40 passing
 - Next: Work on priority stack items (arrow functions, template literals, spread/rest)
-2026-03-20T20:35:00+00:00 DONE
+- BLOCKER: wasmspec agent broke .lake/packages/duper — cloned with wrong permissions (drwxr-s---
+  instead of drwxrws---) and wrong Lean version (4.28.0 vs project's 4.29.0-rc6). Lake tries to
+  re-clone but can't delete wasmspec-owned files. Build was confirmed passing before this.
+  Cannot fix without root/wasmspec access.
+2026-03-20T20:40:00+00:00 DONE
 
 2026-03-20T21:00:01+00:00 SKIP: already running
+2026-03-20T21:03:52+00:00 DONE
