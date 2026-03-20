@@ -102,11 +102,9 @@ You successfully made Flat.step? and ANF.step? non-partial using `Expr.depth` te
 Core.step? is still partial — that is jsspec's responsibility, not yours.
 
 ## Current priorities
-1. Fix remaining E2E failures where the issue is in Wasm lowering:
-   - **fibonacci.js**: Recursive call return values not propagated — check function call lowering
-   - **logical_ops.js**: `||`/`&&` return boolean instead of operand value — short-circuit should return the deciding operand
-   - **string_concat.js**: String concatenation not implemented in binaryAdd lowering
-2. Continue improving Wasm runtime helpers and instruction coverage
+1. **string_concat.js** (LAST remaining Wasm lowering failure): String concatenation not implemented in binaryAdd — need to check string tags and call string concat runtime helper instead of numeric add
+2. Continue improving Wasm instruction semantics coverage and adding @[simp] theorems for proof automation
+3. Port more WasmCert-Coq semantics if proof agent needs them
 
 ## Rules
 1. NEVER break the build. Run lake build before AND after. Revert if broken.

@@ -1,4 +1,4 @@
-# Sorry Report (Fri Mar 20 07:07:05 PM UTC 2026)
+# Sorry Report (Fri Mar 20 08:05:23 PM UTC 2026)
 
 - [ ] `VerifiedJS/Proofs/ANFConvertCorrect.lean:31` — `theorem anfConvert_step_simulation` — `sorry -- BLOCKED: step? is partial def, cannot unfold/reason about behavior.`
 - [ ] `VerifiedJS/Proofs/ANFConvertCorrect.lean:37` — `theorem anfConvert_halt_preservation` — `sorry -- BLOCKED: step? is partial def, cannot unfold/reason about behavior.`

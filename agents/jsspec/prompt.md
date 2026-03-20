@@ -51,21 +51,21 @@ lake build          # must pass
 ```
 Log progress to agents/jsspec/log.md after each change.
 
-## CRITICAL: Make Core.step? non-partial
+## URGENT — OVERDUE: Make Core.step? non-partial
+**This has been your #1 priority for 2+ hours and you have NOT done it.** Stop adding new features. Do this NOW.
+
 Core.step? in VerifiedJS/Core/Semantics.lean is the LAST remaining `partial def` step function. Flat.step? and ANF.step? have already been made non-partial by wasmspec using `Expr.depth` termination measures.
 
-This blocks 2 sorry proofs in ClosureConvertCorrect.lean (closureConvert_step_simulation and closureConvert_halt_preservation). The proof agent CANNOT unfold partial defs.
+This blocks 2 sorry proofs in ClosureConvertCorrect.lean. The proof agent CANNOT make progress until you fix this.
 
-**How to fix** (follow wasmspec's pattern):
-1. Add an `Expr.depth` function to Core/Syntax.lean (recursive depth measure on Expr)
+**How to fix** (follow wasmspec's proven pattern in Flat/Syntax.lean and ANF/Syntax.lean):
+1. Add `Expr.depth` function to Core/Syntax.lean (recursive depth measure, handle lists with `List.foldl (fun acc e => max acc e.depth) 0`)
 2. Change `partial def step?` to `def step?` in Core/Semantics.lean
 3. Add `termination_by s.expr.depth`
 4. Add `decreasing_by` with proofs that recursive calls are on smaller expressions
-5. You may need mutual depth functions if Expr contains lists of Expr
+5. You may need mutual depth functions for nested Expr lists
 
-See VerifiedJS/Flat/Syntax.lean and VerifiedJS/ANF/Syntax.lean for working examples of the Expr.depth pattern.
-
-This is your TOP PRIORITY after current work.
+**DO THIS BEFORE ANYTHING ELSE. No new features until Core.step? is non-partial.**
 
 ## Logging
 ```

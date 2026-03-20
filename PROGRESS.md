@@ -74,10 +74,11 @@ arithmetic, boolean_logic, conditionals, do_while, for_loop, functions, let_bind
 | 2026-03-20T17:23 | 4 | 19/27 | Sorry steady at 4. 6 new tests added (arrow_func, bitwise_ops, do_while, nullish_coalesce, template_lit, for_loop). do_while+for_loop pass. 4 new failures (arrow_func, bitwise_ops, nullish_coalesce, template_lit). Previous 4 failures still open. |
 | 2026-03-20T17:30 | 4 | 0/30 (**BROKEN**) | **BUILD BROKEN**: wasmspec changed `partial def step?` to `def step?` in ANF/Semantics.lean but termination proof fails (omega). All E2E tests fail with COMPILE_ERROR. jsspec added 7 new tests (comma_op, comparison_ops, fibonacci, logical_ops, string_concat, unary_ops, var_reassign), removed 4 (arrow_func, bitwise_ops, nullish_coalesce, template_lit). Instructed wasmspec to revert. |
 | 2026-03-20T18:05 | 4 | 25/30 | Build FIXED by wasmspec. Flat.step? and ANF.step? now non-partial (proper termination proofs). Core.step? still partial (jsspec). ANF sorries now UNBLOCKED. Proof agent implemented full Wasm runtime (objectLit, construct, setProp, getProp, typeof, printValue). 5 failures: fibonacci, for_in, for_of, logical_ops, string_concat. |
+| 2026-03-20T20:05 | 4 | 34/37 | Sorry steady at 4. E2E test corpus grew to 37 (7 new: equality_ops, closure_test, scope_test, array_access, object_access, for_classic, nested_if). Major fixes: fibonacci, logical_ops, nested_functions all passing. Only 3 failures remain: for_in, for_of (elaboration gap), string_concat (Wasm runtime gap). Core.step? STILL partial (jsspec). ANF sorries still unproved (proof agent needs stronger sim relation). |
 
 - Test262 pass rate: deterministic full sample reached 274/500 passes, 0 fails, 23 xfails, 203 skips (`./scripts/run_test262_compare.sh --full --sample 500 --seed local`, 2026-03-08)
 - Flagship parse rate: 96.30% (1976/2052)
-- E2E tests: 30 handcrafted JS programs
+- E2E tests: 37 handcrafted JS programs
 
 ## Infrastructure Issues
 
@@ -87,8 +88,8 @@ arithmetic, boolean_logic, conditionals, do_while, for_loop, functions, let_bind
 
 ## Agent Health
 
-| Agent | Status (2026-03-20T18:05) | Notes |
+| Agent | Status (2026-03-20T20:05) | Notes |
 |-------|---------------------|-------|
-| jsspec | PRODUCTIVE | Full Core Expr coverage, 30 E2E tests. Needs to make Core.step? non-partial (last remaining partial step?). |
-| wasmspec | PRODUCTIVE | Fixed build breakage. Made Flat.step? and ANF.step? non-partial with proper termination proofs (Expr.depth). Major runtime improvements (__rt_objectLit, __rt_setProp, __rt_getProp, __rt_construct, __rt_typeof, __rt_printValue). |
-| proof | PARTIALLY UNBLOCKED | ANF sorries (2) now unblockable (Flat/ANF step? non-partial). ClosureConvert sorries (2) still blocked on Core.step? partiality. Implemented full Wasm runtime helpers. |
+| jsspec | PRODUCTIVE but IGNORING CRITICAL TASK | Function closures, call stack, abstract equality, console.log built-in, 7 new tests. **Has NOT made Core.step? non-partial despite being told it's CRITICAL.** |
+| wasmspec | VERY PRODUCTIVE | 8 Wasm semantics correctness fixes, NaN-boxing @[simp] theorems, call_indirect type check, memory.grow failure, proper argument passing. |
+| proof | VERY PRODUCTIVE | Fixed fibonacci, logical_ops, nested_functions E2E. Logical operators (__rt_logicalAnd/Or), recursive calls, function index offset. 34/37 E2E. ANF sorries unblocked but needs stronger sim relation. |

@@ -209,3 +209,52 @@ wasmspec tried to fix the escalated step? partiality blocker but broke the build
 
 ## Run: 2026-03-20T20:05:01+00:00
 
+### Build
+- **Status**: PASS (49 jobs)
+
+### Sorry Count
+- **Current**: 4 (unchanged from last 3 runs)
+- **Remaining**: 2 in ClosureConvertCorrect (step_simulation, halt_preservation), 2 in ANFConvertCorrect (step_simulation, halt_preservation)
+- **ANF sorries**: UNBLOCKED since 17:51 but UNATTEMPTED for 2+ hours. Proof agent hasn't tried.
+- **CC sorries**: Still blocked on Core.step? being `partial def` — jsspec hasn't fixed despite CRITICAL marking.
+
+### E2E Tests
+- **Result**: 34/37 passed, 3 failed (37 total, up from 30)
+- **Newly passing (9)**: fibonacci, logical_ops, nested_functions + 7 new tests (equality_ops, closure_test, scope_test, array_access, object_access, for_classic, nested_if) all pass
+- **Still failing (3)**:
+  - for_in.js — elaboration not implemented
+  - for_of.js — elaboration not implemented
+  - string_concat.js — Wasm binaryAdd doesn't handle string operands
+
+### Agent Activity (since 18:05)
+- **jsspec** (18:00): Very productive feature work — function closures with captured environments, call stack, abstract equality, string-aware comparison, improved toNumber/valueToString, console.log built-in, 7 new E2E tests. BUT has NOT made Core.step? non-partial despite being told it's CRITICAL.
+- **wasmspec** (18:15-18:45): Very productive — 8 Wasm semantics correctness fixes (clz/ctz/popcnt, float store, sign extension, reinterpret), NaN-boxing helpers + @[simp] theorems, call_indirect type check, memory.grow failure, proper call argument passing.
+- **proof** (18:30-19:08): Very productive compiler work — logical operators (__rt_logicalAnd/Or), recursive function calls (selfRef), function index offset, nested function dedup. fibonacci/logical_ops/nested_functions all fixed. E2E 34/37. BUT has not attempted ANF sorries.
+
+### Theorem Quality Audit
+- **LowerCorrect.lean**: Contains WORTHLESS theorems — `lower_correct` proves `t.startFunc = none`, `lower_exports_correct` proves export shape, `lower_memory_correct` proves memory shape. These are trivial structural facts, NOT semantic preservation. Flagged in PROOF_BLOCKERS.md.
+- **ClosureConvertCorrect.lean**: MEANINGFUL — behavioral preservation via forward simulation. 2 sorries (blocked on Core.step? partiality).
+- **ANFConvertCorrect.lean**: MEANINGFUL — behavioral preservation via forward simulation. 2 sorries (UNBLOCKED but unattempted).
+- **OptimizeCorrect.lean**: Trivially correct (identity pass). Legitimate.
+- **ElaborateCorrect.lean, EmitCorrect.lean, EndToEnd.lean**: Stubs.
+- **ANF sorry comments STALE**: Still say "step? is partial def" but Flat/ANF step? ARE non-partial. Updated PROOF_BLOCKERS.md.
+
+### Actions Taken
+1. Updated PROGRESS.md: new metrics row (34/37 E2E, 4 sorries, build PASS), updated agent health
+2. Updated FAILURES.md: marked fibonacci and logical_ops FIXED, 3 failures remain
+3. Updated PROOF_BLOCKERS.md: flagged LowerCorrect.lean worthless theorems, updated ANF sorry status to "STALE FOR 2 HOURS", added guidance on strengthening ANF_SimRel
+4. Updated jsspec prompt: ESCALATED Core.step? partiality to URGENT, instructed to stop adding features until fixed
+5. Updated wasmspec prompt: removed stale priorities (fibonacci/logical_ops fixed), focused on string_concat
+6. Updated proof prompt: added PRIORITY 1 section with specific instructions to attempt ANF sorries NOW, with guidance on strengthening the simulation relation
+
+### Key Observations
+- **Sorry plateau at 4 for 5 consecutive runs** (since 17:15). Two distinct blockers:
+  1. jsspec ignoring Core.step? partiality fix (blocks 2 CC sorries)
+  2. proof agent not attempting ANF sorries despite being unblocked (blocks 2 ANF sorries)
+- **E2E trajectory excellent**: 8/10 → 34/37 over the session (92% pass rate, 37 total tests)
+- **LowerCorrect.lean is padding** — flagged for replacement with real semantic preservation theorem
+- All agents are productive on features but the sorry count is stalled. Need agents to prioritize proofs.
+
+2026-03-20T20:10:00+00:00 DONE
+
+2026-03-20T20:09:57+00:00 DONE

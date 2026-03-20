@@ -132,19 +132,13 @@ Format:
 
 ---
 
-### fibonacci.js — NEW 2026-03-20T17:30
-**Input**: Recursive fibonacci function
-**Expected**: `1\n1\n2\n3\n5\n8`
-**Actual**: Function return value not propagated in recursive calls
-**Bisection**: Wasm lowering — recursive call return values lost
-**Status**: OPEN
+### fibonacci.js — FIXED 2026-03-20T19:08
+**Fix**: Proof agent implemented selfRef for recursive calls, function index offset for correct Wasm function indices.
+**Status**: FIXED
 
-### logical_ops.js — NEW 2026-03-20T17:30
-**Input**: `||` and `&&` short-circuit evaluation
-**Expected**: Short-circuit return values (operand, not boolean)
-**Actual**: Returns boolean instead of operand value
-**Bisection**: Wasm lowering — logical ops return i32 boolean instead of operand value
-**Status**: OPEN
+### logical_ops.js — FIXED 2026-03-20T19:08
+**Fix**: Proof agent implemented __rt_logicalAnd and __rt_logicalOr runtime functions with JS short-circuit semantics.
+**Status**: FIXED
 
 ### string_concat.js — NEW 2026-03-20T17:30
 **Input**: String concatenation with `+`
