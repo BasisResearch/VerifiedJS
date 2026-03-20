@@ -911,17 +911,17 @@ def step? (s : ExecState) : Option (TraceEvent × ExecState) :=
       | .i32Geu => withI32Rel base Numerics.i32Geu "i32.ge_u"
       | .i32Clz =>
           match pop1? base.stack with
-          | some (.i32 n, stk) => some (.silent, pushTrace { base with stack := .i32 (i32Clz n) :: stk } .silent)
+          | some (.i32 n, stk) => some (.silent, pushTrace { base with stack := .i32 (Numerics.i32Clz n) :: stk } .silent)
           | some _ => some (trapState base "type mismatch in i32.clz")
           | none => some (trapState base "stack underflow in i32.clz")
       | .i32Ctz =>
           match pop1? base.stack with
-          | some (.i32 n, stk) => some (.silent, pushTrace { base with stack := .i32 (i32Ctz n) :: stk } .silent)
+          | some (.i32 n, stk) => some (.silent, pushTrace { base with stack := .i32 (Numerics.i32Ctz n) :: stk } .silent)
           | some _ => some (trapState base "type mismatch in i32.ctz")
           | none => some (trapState base "stack underflow in i32.ctz")
       | .i32Popcnt =>
           match pop1? base.stack with
-          | some (.i32 n, stk) => some (.silent, pushTrace { base with stack := .i32 (i32Popcnt n) :: stk } .silent)
+          | some (.i32 n, stk) => some (.silent, pushTrace { base with stack := .i32 (Numerics.i32Popcnt n) :: stk } .silent)
           | some _ => some (trapState base "type mismatch in i32.popcnt")
           | none => some (trapState base "stack underflow in i32.popcnt")
       | .i32DivS => withI32Div base true "i32.div_s"
@@ -1209,11 +1209,81 @@ def step? (s : ExecState) : Option (TraceEvent × ExecState) :=
               some (.silent, pushTrace { base with stack := .f64 (Numerics.f64ReinterpretI64 n) :: stk } .silent)
           | some _ => some (trapState base "type mismatch in f64.reinterpret_i64")
           | none => some (trapState base "stack underflow in f64.reinterpret_i64")
-      | .memoryInit _ _ | .memoryCopy _ _ | .memoryFill _ | .tableInit _ _ | .tableCopy _ _ =>
+      -- SPEC §4.4.7.11 memory.copy: copy n bytes from src to dst within memory.
+      -- REF: WasmCert-Coq r_memory_copy
+      | .memoryCopy dstMem srcMem =>
+          match pop3? base.stack with
+          | some (.i32 n, .i32 src, .i32 dst, stk) =>
+              let memIdx := dstMem  -- MVP: dst and src must be memory 0
+              match base.store.memories[memIdx]? with
+              | some mem =>
+                  let len := n.toNat
+                  let srcOff := src.toNat
+                  let dstOff := dst.toNat
+                  if srcOff + len > mem.size || dstOff + len > mem.size then
+                    some (trapState { base with stack := stk } "out of bounds memory access in memory.copy")
+                  else
+                    let copied := Id.run do
+                      let mut m := mem
+                      for i in List.range len do
+                        let byte := if srcOff + i < m.size then m.get! (srcOff + i) else 0
+                        if dstOff + i < m.size then
+                          m := m.set! (dstOff + i) byte
+                      return m
+                    let store' := { base.store with memories := base.store.memories.set! memIdx copied }
+                    some (.silent, pushTrace { base with store := store', stack := stk } .silent)
+              | none => some (trapState { base with stack := stk } s!"unknown memory index {memIdx}")
+          | some _ => some (trapState base "type mismatch in memory.copy")
+          | none => some (trapState base "stack underflow in memory.copy")
+      -- SPEC §4.4.7.12 memory.fill: fill n bytes starting at dst with byte value.
+      -- REF: WasmCert-Coq r_memory_fill
+      | .memoryFill memIdx =>
+          match pop3? base.stack with
+          | some (.i32 n, .i32 val, .i32 dst, stk) =>
+              match base.store.memories[memIdx]? with
+              | some mem =>
+                  let len := n.toNat
+                  let dstOff := dst.toNat
+                  let fillByte := UInt8.ofNat (val.toNat % 256)
+                  if dstOff + len > mem.size then
+                    some (trapState { base with stack := stk } "out of bounds memory access in memory.fill")
+                  else
+                    let filled := Id.run do
+                      let mut m := mem
+                      for i in List.range len do
+                        if dstOff + i < m.size then
+                          m := m.set! (dstOff + i) fillByte
+                      return m
+                    let store' := { base.store with memories := base.store.memories.set! memIdx filled }
+                    some (.silent, pushTrace { base with store := store', stack := stk } .silent)
+              | none => some (trapState { base with stack := stk } s!"unknown memory index {memIdx}")
+          | some _ => some (trapState base "type mismatch in memory.fill")
+          | none => some (trapState base "stack underflow in memory.fill")
+      -- SPEC §4.4.7.10 memory.init: copy from data segment into memory.
+      -- REF: WasmCert-Coq r_memory_init
+      | .memoryInit dataIdx memIdx =>
+          match pop3? base.stack with
+          | some (.i32 n, .i32 src, .i32 dst, stk) =>
+              match base.store.memories[memIdx]? with
+              | some mem =>
+                  -- Data segment bounds check would require store to track data segments
+                  -- For now: perform the copy if within memory bounds, else trap
+                  let len := n.toNat
+                  let dstOff := dst.toNat
+                  if dstOff + len > mem.size then
+                    some (trapState { base with stack := stk } "out of bounds memory access in memory.init")
+                  else
+                    -- No-op for the actual data copy (data segment not tracked in store yet)
+                    some (.silent, pushTrace { base with stack := stk } .silent)
+              | none => some (trapState { base with stack := stk } s!"unknown memory index {memIdx}")
+          | some _ => some (trapState base "type mismatch in memory.init")
+          | none => some (trapState base "stack underflow in memory.init")
+      | .tableInit _ _ | .tableCopy _ _ =>
           match pop3? base.stack with
           | some (.i32 _, .i32 _, .i32 _, stk) =>
               some (.silent, pushTrace { base with stack := stk } .silent)
-          | _ => some (trapState base "type mismatch in bulk operation")
+          | some _ => some (trapState base "type mismatch in table operation")
+          | none => some (trapState base "stack underflow in table operation")
       | .dataDrop _ | .elemDrop _ =>
           some (.silent, pushTrace base .silent)
 
@@ -1261,35 +1331,35 @@ theorem Steps_nil_iff (s s' : ExecState) :
 theorem step?_i32Const (s : ExecState) (n : UInt32) (rest : List Instr) :
     step? { s with code := .i32Const n :: rest } =
       some (.silent, pushTrace { s with code := rest, stack := .i32 n :: s.stack } .silent) := by
-  simp [step?]
+  unfold step?; rfl
 
 /-- i64.const pushes a value onto the stack. -/
 @[simp]
 theorem step?_i64Const (s : ExecState) (n : UInt64) (rest : List Instr) :
     step? { s with code := .i64Const n :: rest } =
       some (.silent, pushTrace { s with code := rest, stack := .i64 n :: s.stack } .silent) := by
-  simp [step?]
+  unfold step?; rfl
 
 /-- f64.const pushes a value onto the stack. -/
 @[simp]
 theorem step?_f64Const (s : ExecState) (n : Float) (rest : List Instr) :
     step? { s with code := .f64Const n :: rest } =
       some (.silent, pushTrace { s with code := rest, stack := .f64 n :: s.stack } .silent) := by
-  simp [step?]
+  unfold step?; rfl
 
 /-- nop is a no-op. -/
 @[simp]
 theorem step?_nop (s : ExecState) (rest : List Instr) :
     step? { s with code := .nop :: rest } =
       some (.silent, pushTrace { s with code := rest } .silent) := by
-  simp [step?]
+  unfold step?; rfl
 
 /-- drop pops one value from the stack. -/
 @[simp]
 theorem step?_drop (s : ExecState) (v : WasmValue) (stk : List WasmValue) (rest : List Instr) :
     step? { s with code := .drop :: rest, stack := v :: stk } =
       some (.silent, pushTrace { s with code := rest, stack := stk } .silent) := by
-  simp [step?, pop1?]
+  unfold step?; simp [pop1?]
 
 /-! ## Inhabitedness examples for Wasm.Step
 
@@ -1307,7 +1377,7 @@ private def exState0 : ExecState :=
     trace := [] }
 
 example : Step exState0 .silent (pushTrace { exState0 with code := [], stack := [.i32 42] } .silent) :=
-  Step.mk (by simp [step?])
+  Step.mk (by unfold step?; rfl)
 
 /-- Witness: i32.add on stack [3, 5] produces [8]. -/
 private def exStateAdd : ExecState :=
@@ -1320,7 +1390,7 @@ private def exStateAdd : ExecState :=
 
 example : Step exStateAdd .silent
     (pushTrace { exStateAdd with code := [], stack := [.i32 8] } .silent) :=
-  Step.mk (by simp [step?, pop2?, withI32Bin, Numerics.i32Add])
+  Step.mk (by unfold step?; rfl)
 
 /-- Witness: nop followed by i32.const — a two-step trace. -/
 private def exStateNopConst : ExecState :=
@@ -1334,9 +1404,9 @@ private def exStateNopConst : ExecState :=
 example : Steps exStateNopConst [.silent, .silent]
     (pushTrace (pushTrace { exStateNopConst with code := [], stack := [.i32 7] } .silent) .silent) := by
   apply Steps.tail
-  · exact Step.mk (by simp [step?])
+  · exact Step.mk (by unfold step?; rfl)
   · apply Steps.tail
-    · exact Step.mk (by simp [step?])
+    · exact Step.mk (by unfold step?; rfl)
     · exact Steps.refl _
 
 /-- Witness: unreachable traps. -/
@@ -1350,6 +1420,6 @@ private def exStateTrap : ExecState :=
 
 example : Step exStateTrap (.trap "unreachable executed")
     (pushTrace { exStateTrap with code := [] } (.trap "unreachable executed")) :=
-  Step.mk (by simp [step?, trapState])
+  Step.mk (by unfold step?; rfl)
 
 end VerifiedJS.Wasm
