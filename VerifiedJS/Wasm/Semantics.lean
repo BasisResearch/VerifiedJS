@@ -896,23 +896,19 @@ def step? (s : ExecState) : Option (TraceEvent × ExecState) :=
           | none => some (trapState base "stack underflow in f64.store")
       | .i32Eqz =>
           match pop1? base.stack with
-          | some (.i32 n, stk) => some (.silent, pushTrace { base with stack := boolToI32 (n == 0) :: stk } .silent)
+          | some (.i32 n, stk) => some (.silent, pushTrace { base with stack := boolToI32 (Numerics.i32Eqz n) :: stk } .silent)
           | some _ => some (trapState base "type mismatch in i32.eqz")
           | none => some (trapState base "stack underflow in i32.eqz")
-      | .i32Eq => withI32Rel base (· == ·) "i32.eq"
-      | .i32Ne => withI32Rel base (· != ·) "i32.ne"
-      | .i32Lts =>
-          withI32Rel base (fun a b => i32ToSigned a < i32ToSigned b) "i32.lt_s"
-      | .i32Ltu => withI32Rel base (· < ·) "i32.lt_u"
-      | .i32Gts =>
-          withI32Rel base (fun a b => i32ToSigned a > i32ToSigned b) "i32.gt_s"
-      | .i32Gtu => withI32Rel base (· > ·) "i32.gt_u"
-      | .i32Les =>
-          withI32Rel base (fun a b => i32ToSigned a <= i32ToSigned b) "i32.le_s"
-      | .i32Leu => withI32Rel base (· <= ·) "i32.le_u"
-      | .i32Ges =>
-          withI32Rel base (fun a b => i32ToSigned a >= i32ToSigned b) "i32.ge_s"
-      | .i32Geu => withI32Rel base (· >= ·) "i32.ge_u"
+      | .i32Eq => withI32Rel base Numerics.i32Eq "i32.eq"
+      | .i32Ne => withI32Rel base Numerics.i32Ne "i32.ne"
+      | .i32Lts => withI32Rel base Numerics.i32Lts "i32.lt_s"
+      | .i32Ltu => withI32Rel base Numerics.i32Ltu "i32.lt_u"
+      | .i32Gts => withI32Rel base Numerics.i32Gts "i32.gt_s"
+      | .i32Gtu => withI32Rel base Numerics.i32Gtu "i32.gt_u"
+      | .i32Les => withI32Rel base Numerics.i32Les "i32.le_s"
+      | .i32Leu => withI32Rel base Numerics.i32Leu "i32.le_u"
+      | .i32Ges => withI32Rel base Numerics.i32Ges "i32.ge_s"
+      | .i32Geu => withI32Rel base Numerics.i32Geu "i32.ge_u"
       | .i32Clz =>
           match pop1? base.stack with
           | some (.i32 n, stk) => some (.silent, pushTrace { base with stack := .i32 (i32Clz n) :: stk } .silent)
@@ -932,39 +928,29 @@ def step? (s : ExecState) : Option (TraceEvent × ExecState) :=
       | .i32DivU => withI32Div base false "i32.div_u"
       | .i32RemS => withI32Rem base true "i32.rem_s"
       | .i32RemU => withI32Rem base false "i32.rem_u"
-      | .i32And => withI32Bin base (· &&& ·) "i32.and"
-      | .i32Or => withI32Bin base (· ||| ·) "i32.or"
-      | .i32Xor => withI32Bin base (· ^^^ ·) "i32.xor"
-      | .i32Shl =>
-          withI32Bin base (fun a b => UInt32.shiftLeft a (UInt32.ofNat (b.toNat % 32))) "i32.shl"
-      | .i32ShrS =>
-          withI32Bin base
-            (fun a b =>
-              Int32.toUInt32 (Int32.ofInt (i32ToSigned a / Int.ofNat (Nat.pow 2 (b.toNat % 32)))))
-            "i32.shr_s"
-      | .i32ShrU =>
-          withI32Bin base (fun a b => UInt32.shiftRight a (UInt32.ofNat (b.toNat % 32))) "i32.shr_u"
-      | .i32Rotl => withI32Bin base i32Rotl "i32.rotl"
-      | .i32Rotr => withI32Bin base i32Rotr "i32.rotr"
+      | .i32And => withI32Bin base Numerics.i32And "i32.and"
+      | .i32Or => withI32Bin base Numerics.i32Or "i32.or"
+      | .i32Xor => withI32Bin base Numerics.i32Xor "i32.xor"
+      | .i32Shl => withI32Bin base Numerics.i32Shl "i32.shl"
+      | .i32ShrS => withI32Bin base Numerics.i32ShrS "i32.shr_s"
+      | .i32ShrU => withI32Bin base Numerics.i32ShrU "i32.shr_u"
+      | .i32Rotl => withI32Bin base Numerics.i32Rotl "i32.rotl"
+      | .i32Rotr => withI32Bin base Numerics.i32Rotr "i32.rotr"
       | .i64Eqz =>
           match pop1? base.stack with
-          | some (.i64 n, stk) => some (.silent, pushTrace { base with stack := boolToI32 (n == 0) :: stk } .silent)
+          | some (.i64 n, stk) => some (.silent, pushTrace { base with stack := boolToI32 (Numerics.i64Eqz n) :: stk } .silent)
           | some _ => some (trapState base "type mismatch in i64.eqz")
           | none => some (trapState base "stack underflow in i64.eqz")
-      | .i64Eq => withI64Rel base (· == ·) "i64.eq"
-      | .i64Ne => withI64Rel base (· != ·) "i64.ne"
-      | .i64Lts =>
-          withI64Rel base (fun a b => i64ToSigned a < i64ToSigned b) "i64.lt_s"
-      | .i64Ltu => withI64Rel base (· < ·) "i64.lt_u"
-      | .i64Gts =>
-          withI64Rel base (fun a b => i64ToSigned a > i64ToSigned b) "i64.gt_s"
-      | .i64Gtu => withI64Rel base (· > ·) "i64.gt_u"
-      | .i64Les =>
-          withI64Rel base (fun a b => i64ToSigned a <= i64ToSigned b) "i64.le_s"
-      | .i64Leu => withI64Rel base (· <= ·) "i64.le_u"
-      | .i64Ges =>
-          withI64Rel base (fun a b => i64ToSigned a >= i64ToSigned b) "i64.ge_s"
-      | .i64Geu => withI64Rel base (· >= ·) "i64.ge_u"
+      | .i64Eq => withI64Rel base Numerics.i64Eq "i64.eq"
+      | .i64Ne => withI64Rel base Numerics.i64Ne "i64.ne"
+      | .i64Lts => withI64Rel base Numerics.i64Lts "i64.lt_s"
+      | .i64Ltu => withI64Rel base Numerics.i64Ltu "i64.lt_u"
+      | .i64Gts => withI64Rel base Numerics.i64Gts "i64.gt_s"
+      | .i64Gtu => withI64Rel base Numerics.i64Gtu "i64.gt_u"
+      | .i64Les => withI64Rel base Numerics.i64Les "i64.le_s"
+      | .i64Leu => withI64Rel base Numerics.i64Leu "i64.le_u"
+      | .i64Ges => withI64Rel base Numerics.i64Ges "i64.ge_s"
+      | .i64Geu => withI64Rel base Numerics.i64Geu "i64.ge_u"
       | .i64Clz =>
           match pop1? base.stack with
           | some (.i64 n, stk) => some (.silent, pushTrace { base with stack := .i64 (i64Clz n) :: stk } .silent)
@@ -984,26 +970,20 @@ def step? (s : ExecState) : Option (TraceEvent × ExecState) :=
       | .i64DivU => withI64Div base false "i64.div_u"
       | .i64RemS => withI64Rem base true "i64.rem_s"
       | .i64RemU => withI64Rem base false "i64.rem_u"
-      | .i64And => withI64Bin base (· &&& ·) "i64.and"
-      | .i64Or => withI64Bin base (· ||| ·) "i64.or"
-      | .i64Xor => withI64Bin base (· ^^^ ·) "i64.xor"
-      | .i64Shl =>
-          withI64Bin base (fun a b => UInt64.shiftLeft a (UInt64.ofNat (b.toNat % 64))) "i64.shl"
-      | .i64ShrS =>
-          withI64Bin base
-            (fun a b =>
-              Int64.toUInt64 (Int64.ofInt (i64ToSigned a / Int.ofNat (Nat.pow 2 (b.toNat % 64)))))
-            "i64.shr_s"
-      | .i64ShrU =>
-          withI64Bin base (fun a b => UInt64.shiftRight a (UInt64.ofNat (b.toNat % 64))) "i64.shr_u"
-      | .i64Rotl => withI64Bin base i64Rotl "i64.rotl"
-      | .i64Rotr => withI64Bin base i64Rotr "i64.rotr"
-      | .f32Eq => withF32Rel base (· == ·) "f32.eq"
-      | .f32Ne => withF32Rel base (· != ·) "f32.ne"
-      | .f32Lt => withF32Rel base (· < ·) "f32.lt"
-      | .f32Gt => withF32Rel base (· > ·) "f32.gt"
-      | .f32Le => withF32Rel base (· <= ·) "f32.le"
-      | .f32Ge => withF32Rel base (· >= ·) "f32.ge"
+      | .i64And => withI64Bin base Numerics.i64And "i64.and"
+      | .i64Or => withI64Bin base Numerics.i64Or "i64.or"
+      | .i64Xor => withI64Bin base Numerics.i64Xor "i64.xor"
+      | .i64Shl => withI64Bin base Numerics.i64Shl "i64.shl"
+      | .i64ShrS => withI64Bin base Numerics.i64ShrS "i64.shr_s"
+      | .i64ShrU => withI64Bin base Numerics.i64ShrU "i64.shr_u"
+      | .i64Rotl => withI64Bin base Numerics.i64Rotl "i64.rotl"
+      | .i64Rotr => withI64Bin base Numerics.i64Rotr "i64.rotr"
+      | .f32Eq => withF32Rel base Numerics.f32Eq "f32.eq"
+      | .f32Ne => withF32Rel base Numerics.f32Ne "f32.ne"
+      | .f32Lt => withF32Rel base Numerics.f32Lt "f32.lt"
+      | .f32Gt => withF32Rel base Numerics.f32Gt "f32.gt"
+      | .f32Le => withF32Rel base Numerics.f32Le "f32.le"
+      | .f32Ge => withF32Rel base Numerics.f32Ge "f32.ge"
       | .f32Abs =>
           match pop1? base.stack with
           | some (.f32 n, stk) => some (.silent, pushTrace { base with stack := .f32 n.abs :: stk } .silent)
