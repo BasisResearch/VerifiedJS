@@ -54,6 +54,7 @@ private def pushTrace (s : State) (t : Core.TraceEvent) : State :=
   { s with trace := s.trace ++ [t] }
 
 /-- Convert an ANF literal-like trivial to a Flat value when possible. -/
+@[simp]
 def trivialValue? : Trivial → Option Flat.Value
   | .var _ => none
   | .litNull => some .null
@@ -298,6 +299,7 @@ def evalComplex (s : State) (rhs : ComplexExpr) : ComplexResult :=
       | _, .error msg => mkError msg s
 
 /-- Check whether an ANF expression is already a value expression. -/
+@[simp]
 def exprValue? : Expr → Option Flat.Value
   | .trivial t => trivialValue? t
   | _ => none
@@ -462,5 +464,75 @@ def Behaves (p : Program) (b : List Core.TraceEvent) : Prop :=
   ∃ sFinal,
     Steps (initialState p) b sFinal ∧
     step? sFinal = none
+
+/-- ANF literal trivials are final values and do not step. -/
+@[simp]
+theorem step?_litNull (s : State) :
+    step? { s with expr := .trivial .litNull } = none := by
+  simp [step?]
+
+@[simp]
+theorem step?_litUndefined (s : State) :
+    step? { s with expr := .trivial .litUndefined } = none := by
+  simp [step?]
+
+@[simp]
+theorem step?_litBool (s : State) (b : Bool) :
+    step? { s with expr := .trivial (.litBool b) } = none := by
+  simp [step?]
+
+@[simp]
+theorem step?_litNum (s : State) (n : Float) :
+    step? { s with expr := .trivial (.litNum n) } = none := by
+  simp [step?]
+
+@[simp]
+theorem step?_litStr (s : State) (str : String) :
+    step? { s with expr := .trivial (.litStr str) } = none := by
+  simp [step?]
+
+@[simp]
+theorem step?_litObject (s : State) (addr : Nat) :
+    step? { s with expr := .trivial (.litObject addr) } = none := by
+  simp [step?]
+
+@[simp]
+theorem step?_litClosure (s : State) (f e : Nat) :
+    step? { s with expr := .trivial (.litClosure f e) } = none := by
+  simp [step?]
+
+/-- Variable lookup that succeeds produces the looked-up value. -/
+@[simp]
+theorem step?_var_found (s : State) (name : VarName) (v : Flat.Value)
+    (h : s.env.lookup name = some v) :
+    step? { s with expr := .trivial (.var name) } =
+      some (.silent, pushTrace { s with expr := .trivial (trivialOfValue v) } .silent) := by
+  simp [step?, h]
+
+/-- Variable lookup that fails produces a ReferenceError. -/
+@[simp]
+theorem step?_var_not_found (s : State) (name : VarName)
+    (h : s.env.lookup name = none) :
+    step? { s with expr := .trivial (.var name) } =
+      some (.error s!"ReferenceError: {name}",
+            pushTrace { s with expr := .trivial .litUndefined } (.error s!"ReferenceError: {name}")) := by
+  simp [step?, h]
+
+/-- Let-binding always steps by evaluating the complex RHS immediately. -/
+theorem step?_let (s : State) (name : VarName) (rhs : ComplexExpr) (body : Expr) :
+    let r := evalComplex { s with expr := .let name rhs body } rhs
+    step? { s with expr := .let name rhs body } =
+      some (r.event, pushTrace { s with expr := body, env := r.env.extend name r.value, heap := r.heap } r.event) := by
+  simp [step?]
+
+/-- Step relation is equivalent to step? returning some. -/
+theorem Step_iff (s : State) (t : Core.TraceEvent) (s' : State) :
+    Step s t s' ↔ step? s = some (t, s') :=
+  ⟨fun ⟨h⟩ => h, fun h => ⟨h⟩⟩
+
+/-- Steps.refl is the only way to produce an empty trace. -/
+theorem Steps_nil_iff (s s' : State) :
+    Steps s [] s' ↔ s = s' :=
+  ⟨fun h => by cases h; rfl, fun h => h ▸ Steps.refl s⟩
 
 end VerifiedJS.ANF

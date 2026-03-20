@@ -48,6 +48,7 @@ def Env.extend (env : Env) (name : VarName) (v : Value) : Env :=
   (name, v) :: env
 
 /-- Check whether an expression is already a Flat value expression. -/
+@[simp]
 def exprValue? : Expr → Option Value
   | .lit v => some v
   | _ => none
@@ -667,5 +668,82 @@ def initialState (p : Program) : State :=
 /-- Behavioral semantics -/
 def Behaves (p : Program) (b : List Core.TraceEvent) : Prop :=
   ∃ s', Steps (initialState p) b s' ∧ step? s' = none
+
+/-- Flat literal expressions are final values and do not step. -/
+@[simp]
+theorem step?_lit_none (s : State) (v : Value) :
+    step? { s with expr := .lit v } = none := by
+  simp [step?]
+
+/-- Variable lookup that succeeds. -/
+@[simp]
+theorem step?_var_found (s : State) (name : VarName) (v : Value)
+    (h : s.env.lookup name = some v) :
+    step? { s with expr := .var name } =
+      some (.silent, pushTrace { s with expr := .lit v } .silent) := by
+  simp [step?, h]
+
+/-- Variable lookup that fails. -/
+@[simp]
+theorem step?_var_not_found (s : State) (name : VarName)
+    (h : s.env.lookup name = none) :
+    step? { s with expr := .var name } =
+      some (.error ("ReferenceError: " ++ name),
+            pushTrace { s with expr := .lit .undefined } (.error ("ReferenceError: " ++ name))) := by
+  simp [step?, h]
+
+/-- Let-binding where init is already a value. -/
+@[simp]
+theorem step?_let_value (s : State) (name : VarName) (v : Value) (body : Expr) :
+    step? { s with expr := .«let» name (.lit v) body } =
+      some (.silent, pushTrace { s with expr := body, env := s.env.extend name v } .silent) := by
+  simp [step?, exprValue?]
+
+/-- Seq where first expression is already a value: skip to the second. -/
+@[simp]
+theorem step?_seq_value (s : State) (v : Value) (b : Expr) :
+    step? { s with expr := .seq (.lit v) b } =
+      some (.silent, pushTrace { s with expr := b } .silent) := by
+  simp [step?, exprValue?]
+
+/-- If with a true-ish condition value: takes the then branch. -/
+@[simp]
+theorem step?_if_true (s : State) (v : Value) (then_ else_ : Expr)
+    (h : toBoolean v = true) :
+    step? { s with expr := .«if» (.lit v) then_ else_ } =
+      some (.silent, pushTrace { s with expr := then_ } .silent) := by
+  simp [step?, exprValue?, h]
+
+/-- If with a false-ish condition value: takes the else branch. -/
+@[simp]
+theorem step?_if_false (s : State) (v : Value) (then_ else_ : Expr)
+    (h : toBoolean v = false) :
+    step? { s with expr := .«if» (.lit v) then_ else_ } =
+      some (.silent, pushTrace { s with expr := else_ } .silent) := by
+  simp [step?, exprValue?, h]
+
+/-- Unary op on a value. -/
+@[simp]
+theorem step?_unary_value (s : State) (op : Core.UnaryOp) (v : Value) :
+    step? { s with expr := .unary op (.lit v) } =
+      some (.silent, pushTrace { s with expr := .lit (evalUnary op v) } .silent) := by
+  simp [step?, exprValue?]
+
+/-- Binary op on two values. -/
+@[simp]
+theorem step?_binary_values (s : State) (op : Core.BinOp) (lv rv : Value) :
+    step? { s with expr := .binary op (.lit lv) (.lit rv) } =
+      some (.silent, pushTrace { s with expr := .lit (evalBinary op lv rv) } .silent) := by
+  simp [step?, exprValue?]
+
+/-- Step relation is equivalent to step? returning some. -/
+theorem Step_iff (s : State) (t : Core.TraceEvent) (s' : State) :
+    Step s t s' ↔ step? s = some (t, s') :=
+  ⟨fun ⟨h⟩ => h, fun h => ⟨h⟩⟩
+
+/-- Steps.refl is the only way to produce an empty trace. -/
+theorem Steps_nil_iff (s s' : State) :
+    Steps s [] s' ↔ s = s' :=
+  ⟨fun h => by cases h; rfl, fun h => h ▸ Steps.refl s⟩
 
 end VerifiedJS.Flat

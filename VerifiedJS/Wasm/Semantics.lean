@@ -1291,4 +1291,20 @@ inductive Steps : ExecState → List TraceEvent → ExecState → Prop where
 def Behaves (m : Module) (b : List TraceEvent) : Prop :=
   ∃ s', Steps (initialState m) b s' ∧ step? s' = none
 
+/-- Empty code with no labels halts. -/
+@[simp]
+theorem step?_halt (s : ExecState) (h : s.code = [] ∧ s.labels = []) :
+    step? s = none := by
+  simp [step?, h.1, h.2]
+
+/-- Step relation is equivalent to step? returning some. -/
+theorem Step_iff (s : ExecState) (t : TraceEvent) (s' : ExecState) :
+    Step s t s' ↔ step? s = some (t, s') :=
+  ⟨fun ⟨h⟩ => h, fun h => ⟨h⟩⟩
+
+/-- Steps.refl is the only way to produce an empty trace. -/
+theorem Steps_nil_iff (s s' : ExecState) :
+    Steps s [] s' ↔ s = s' :=
+  ⟨fun h => by cases h; rfl, fun h => h ▸ Steps.refl s⟩
+
 end VerifiedJS.Wasm
