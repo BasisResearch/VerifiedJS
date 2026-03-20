@@ -138,3 +138,16 @@
 
 - Build: PASS (all 15 wasmspec-dependent modules build clean)
 
+### Continued: call/call_indirect argument passing
+
+- Implemented:
+  - **Proper argument passing for `call` and `call_indirect`**:
+    - Added `popN?` helper to pop exactly N values from the stack
+    - `call`: resolves function type from `store.types`, pops |params| arguments from stack, creates frame with args as initial locals (reversed: deepest stack value = first param)
+    - `call_indirect`: same argument passing after type check succeeds
+    - REF: WasmCert-Coq `r_invoke_native` — pops `length ts1` values into frame locals
+
+- Build: PASS (all modules including Interp, LowerCorrect, Typing)
+
+2026-03-20T18:45:00+00:00 DONE
+

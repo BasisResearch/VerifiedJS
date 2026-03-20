@@ -521,13 +521,18 @@ structure StringTableState where
   nextStringId : Nat
   strings : List (String × Nat)
 
-private def lowerFunctionWithStrings (f : ANF.FuncDef) (sts : StringTableState) :
+private def lowerFunctionWithStrings (f : ANF.FuncDef) (sts : StringTableState)
+    (selfRef : Option (ANF.VarName × Nat) := none) :
     Except String (IR.IRFunc × StringTableState) := do
   let paramTypes := List.replicate (f.params.length + 1) IR.IRType.f64
   let initState : LowerState :=
     { nextLocal := paramTypes.length, locals := #[], nextStringId := sts.nextStringId,
       strings := sts.strings, nextLabelId := 0 }
   let ctx := mkInitialCtx f.params f.envParam
+  -- If a self-reference is provided, add it to directCallVars for recursive calls
+  let ctx := match selfRef with
+    | some (name, wasmIdx) => { ctx with directCallVars := (name, wasmIdx) :: ctx.directCallVars }
+    | none => ctx
   let (body, st) ← (lowerExpr ctx f.body).run initState
   let func : IR.IRFunc :=
     { name := f.name
@@ -1333,10 +1338,12 @@ def lower (prog : ANF.Program) : Except String IR.IRModule := do
   let runtimeCount := runtimeHelpers.size
   -- Thread string table state through all function lowerings
   let initStrState : StringTableState := { nextStringId := typeofStringCount, strings := [] }
-  let (loweredFns, strState) ← prog.functions.toList.foldlM
+  let funcList := prog.functions.toList
+  let (loweredFns, strState) ← funcList.zipIdx.foldlM
     (init := ([], initStrState))
-    fun (fns, sts) f => do
-      let (fn, sts') ← lowerFunctionWithStrings f sts
+    fun (fns, sts) (f, i) => do
+      let wasmIdx := hostImportCount + runtimeCount + i
+      let (fn, sts') ← lowerFunctionWithStrings f sts (some (f.name, wasmIdx))
       pure (fns ++ [fn], sts')
   -- Wrap main body with top-level function bindings
   let wrappedMain := buildFuncBindings prog.functions prog.main (hostImportCount + runtimeCount)
