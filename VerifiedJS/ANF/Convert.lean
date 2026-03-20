@@ -33,7 +33,7 @@ private def trivialOfFlatValue : Flat.Value → Except String Trivial
 
 mutual
 
-private partial def normalizeExpr (e : Flat.Expr) (k : Trivial → ConvM Expr) : ConvM Expr := do
+private def normalizeExpr (e : Flat.Expr) (k : Trivial → ConvM Expr) : ConvM Expr := do
   match e with
   | .lit v =>
     match trivialOfFlatValue v with
@@ -132,22 +132,28 @@ private partial def normalizeExpr (e : Flat.Expr) (k : Trivial → ConvM Expr) :
     normalizeExpr lhs (fun lhsTriv =>
       normalizeExpr rhs (fun rhsTriv =>
         bindComplex (.binary op lhsTriv rhsTriv) k))
+  termination_by e.depth
+  decreasing_by all_goals (try cases ‹Option Flat.Expr›) <;> simp_all [Flat.Expr.depth, Flat.Expr.listDepth, Flat.Expr.propListDepth] <;> omega
 
-private partial def normalizeExprList (es : List Flat.Expr)
+private def normalizeExprList (es : List Flat.Expr)
     (k : List Trivial → ConvM Expr) : ConvM Expr := do
   match es with
   | [] => k []
   | e :: rest =>
     normalizeExpr e (fun t =>
       normalizeExprList rest (fun ts => k (t :: ts)))
+  termination_by Flat.Expr.listDepth es
+  decreasing_by all_goals simp_all [Flat.Expr.depth, Flat.Expr.listDepth, Flat.Expr.propListDepth] <;> omega
 
-private partial def normalizeProps (props : List (Flat.PropName × Flat.Expr))
+private def normalizeProps (props : List (Flat.PropName × Flat.Expr))
     (k : List (PropName × Trivial) → ConvM Expr) : ConvM Expr := do
   match props with
   | [] => k []
   | (name, value) :: rest =>
     normalizeExpr value (fun valueTriv =>
       normalizeProps rest (fun tail => k ((name, valueTriv) :: tail)))
+  termination_by Flat.Expr.propListDepth props
+  decreasing_by all_goals simp_all [Flat.Expr.depth, Flat.Expr.listDepth, Flat.Expr.propListDepth] <;> omega
 
 end
 
