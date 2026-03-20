@@ -30,6 +30,9 @@ fi
 
 mkdir -p "$(dirname "$RUN_LOG")"
 
+# Track run start
+bash "$PROJECT/scripts/track_agent_runs.sh" "$AGENT_NAME" start 2>/dev/null || true
+
 {
   echo ""
   echo "## Run: $(date -Iseconds)"
@@ -43,7 +46,6 @@ export CLAUDE_CONFIG_DIR="$PROJECT/.claude-$AGENT_NAME"
 
 cd "$PROJECT"
 
-# Use stream-json for real-time output, pipe through jq to extract text
 timeout "$TIMEOUT_SECS" stdbuf -oL claude \
   --print \
   --verbose \
@@ -62,6 +64,9 @@ NEVER break the build." \
     echo "$(date -Iseconds) EXIT: code $EXIT_CODE" >> "$LOG_FILE"
     [[ $EXIT_CODE -eq 124 ]] && echo "$(date -Iseconds) TIMEOUT" >> "$LOG_FILE"
   }
+
+# Track run stop
+bash "$PROJECT/scripts/track_agent_runs.sh" "$AGENT_NAME" stop 2>/dev/null || true
 
 echo "$(date -Iseconds) DONE" >> "$LOG_FILE"
 exec 9>&-

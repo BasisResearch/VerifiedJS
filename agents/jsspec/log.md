@@ -128,4 +128,27 @@
 2026-03-20T17:33:51+00:00 DONE
 
 ## Run: 2026-03-20T18:00:01+00:00
+- Implemented: Full function closure semantics (ECMA-262 §10.2, §14.1)
+  - `FuncClosure` structure: captures name, params, body, and lexical environment
+  - `functionDef` now creates closures with captured environment bindings
+  - `call` with `.function idx` invokes closure body with param bindings
+  - Function name bound for recursion (§14.1.20 step 28)
+  - Body wrapped in tryCatch with "__call_frame_return__" convention to intercept returns
+- Implemented: Call stack for environment restoration (ECMA-262 §10.2)
+  - `callStack : List (List (VarName × Value))` added to State
+  - Caller env pushed onto stack before function entry
+  - Restored on return (normal completion or return statement)
+  - Unhandled throws propagate through call frame with env restoration
+- Improved: State propagation through all sub-stepping cases
+  - Changed from `{ s with ..., env := sb.env, heap := sb.heap }` to `{ sb with ..., trace := s.trace }`
+  - Ensures `funcs` and `callStack` are correctly propagated through nested expressions
+  - Critical for recursive function calls where inner calls modify the closure table
+- Files changed: VerifiedJS/Core/Syntax.lean, VerifiedJS/Core/Semantics.lean
+- Build: PASS
+- E2E: 24/30 passing (6 failures are pre-existing Wasm pipeline issues or wasmspec agent regression)
+  - nested_functions.js: new failure from wasmspec agent changes (Wasm indirect call type mismatch)
+  - fibonacci.js: Wasm recursion bug (pre-existing)
+  - for_in/for_of: Elaborate.lean gap (pre-existing)
+  - logical_ops/string_concat: Wasm runtime gaps (pre-existing)
+- Next: Improve abstract equality, add nullish coalescing, add more E2E tests
 

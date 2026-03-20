@@ -160,6 +160,45 @@ def decodeToInt32? (v : NanBoxed) : Option Int32 :=
   | .int32 i => some i
   | _ => none
 
+/-- Extract a string reference ID, or `none` if not a string. -/
+def decodeToStringRef? (v : NanBoxed) : Option Nat :=
+  match decode v with
+  | .stringRef sid => some sid
+  | _ => none
+
+/-- Extract an object reference ID, or `none` if not an object. -/
+def decodeToObjectRef? (v : NanBoxed) : Option Nat :=
+  match decode v with
+  | .objectRef oid => some oid
+  | _ => none
+
+/-- Extract a symbol reference ID, or `none` if not a symbol. -/
+def decodeToSymbolRef? (v : NanBoxed) : Option Nat :=
+  match decode v with
+  | .symbolRef sid => some sid
+  | _ => none
+
+/-- Is this value truthy? (ECMA-262 §7.1.2 ToBoolean) -/
+def isTruthy (v : NanBoxed) : Bool :=
+  match decode v with
+  | .undefined | .null => false
+  | .bool b => b
+  | .number n => !n.isNaN && n != 0.0
+  | .int32 i => i != 0
+  | .stringRef _ | .objectRef _ | .symbolRef _ => true
+
+/-- Is this value a string reference? -/
+def isString (v : NanBoxed) : Bool := getTag? v == some .string
+
+/-- Is this value an object reference? -/
+def isObject (v : NanBoxed) : Bool := getTag? v == some .object
+
+/-- Is this value null or undefined? -/
+def isNullish (v : NanBoxed) : Bool :=
+  match getTag? v with
+  | some .null | some .undefined => true
+  | _ => false
+
 /-! Sanity checks for the NaN-box encoding. -/
 example : decode encodeNull = .null := rfl
 example : decode encodeUndefined = .undefined := rfl

@@ -119,6 +119,37 @@ def valueToString : Value → String
   | .object _ => "[object Object]"
   | .function _ => "function"
 
+/-- ECMA-262 §7.2.14 Abstract Equality Comparison (simplified core subset).
+    Handles null/undefined equivalence and type coercion. -/
+private def abstractEq : Value → Value → Bool
+  -- §7.2.14 step 1: same type → strict equality
+  | .null, .null => true
+  | .undefined, .undefined => true
+  -- §7.2.14 step 2: null == undefined → true
+  | .null, .undefined => true
+  | .undefined, .null => true
+  -- Same-type comparisons
+  | .bool a, .bool b => a == b
+  | .number a, .number b => a == b
+  | .string a, .string b => a == b
+  | .object a, .object b => a == b
+  | .function a, .function b => a == b
+  -- §7.2.14 step 5: number == string → number == ToNumber(string)
+  | .number a, .string b => a == toNumber (.string b)
+  | .string a, .number b => toNumber (.string a) == b
+  -- §7.2.14 step 7-8: boolean == x → ToNumber(boolean) == x
+  | .bool a, .number b => (toNumber (.bool a)) == b
+  | .bool a, .string b => (toNumber (.bool a)) == (toNumber (.string b))
+  | .number a, .bool b => a == (toNumber (.bool b))
+  | .string a, .bool b => (toNumber (.string a)) == (toNumber (.bool b))
+  -- All other cross-type comparisons: false
+  | _, _ => false
+
+/-- ECMA-262 §7.2.13 Abstract Relational Comparison (string-aware). -/
+private def abstractLt : Value → Value → Bool
+  | .string a, .string b => a < b  -- lexicographic comparison
+  | a, b => toNumber a < toNumber b
+
 /-- ECMA-262 §13.15 Runtime Semantics: Evaluation (core binary subset). -/
 def evalBinary : BinOp → Value → Value → Value
   -- ECMA-262 §12.8.3: if either operand is a string, concatenate after ToString.
@@ -129,14 +160,17 @@ def evalBinary : BinOp → Value → Value → Value
   | .sub, a, b => .number (toNumber a - toNumber b)
   | .mul, a, b => .number (toNumber a * toNumber b)
   | .div, a, b => .number (toNumber a / toNumber b)
-  | .eq, a, b => .bool (a == b)
-  | .neq, a, b => .bool (a != b)
+  -- §7.2.14 Abstract Equality (with type coercion).
+  | .eq, a, b => .bool (abstractEq a b)
+  | .neq, a, b => .bool (!abstractEq a b)
+  -- §7.2.15 Strict Equality (no type coercion).
   | .strictEq, a, b => .bool (a == b)
   | .strictNeq, a, b => .bool (a != b)
-  | .lt, a, b => .bool (toNumber a < toNumber b)
-  | .gt, a, b => .bool (toNumber a > toNumber b)
-  | .le, a, b => .bool (toNumber a <= toNumber b)
-  | .ge, a, b => .bool (toNumber a >= toNumber b)
+  -- §7.2.13 Abstract Relational Comparison (string-aware).
+  | .lt, a, b => .bool (abstractLt a b)
+  | .gt, a, b => .bool (abstractLt b a)
+  | .le, a, b => .bool (!abstractLt b a)
+  | .ge, a, b => .bool (!abstractLt a b)
   | .logAnd, a, b => if toBoolean a then b else a
   | .logOr, a, b => if toBoolean a then a else b
   -- ECMA-262 §12.10.4 instanceof: simplified — checks if rhs is a function.
