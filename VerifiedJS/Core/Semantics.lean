@@ -32,6 +32,7 @@ structure State where
   env : Env
   heap : Heap
   trace : List TraceEvent
+  funcs : Array FuncClosure
   deriving Repr
 
 /-- Empty lexical environment. -/
@@ -172,6 +173,14 @@ def evalBinary : BinOp → Value → Value → Value
       let ia := toNumber a |>.toUInt32; let ib := (toNumber b |>.toUInt32) % 32
       .number ((ia >>> ib).toFloat)
 
+/-- Extract values from a list of expressions, returning none if any is not a value. -/
+private def allValues : List Expr → Option (List Value)
+  | [] => some []
+  | e :: rest => do
+      let v ← exprValue? e
+      let vs ← allValues rest
+      return v :: vs
+
 private def pushTrace (s : State) (t : TraceEvent) : State :=
   { s with trace := s.trace ++ [t] }
 
@@ -263,59 +272,63 @@ partial def step? (s : State) : Option (TraceEvent × State) :=
           | some rv =>
               let s' := pushTrace { s with expr := .lit (evalBinary op lv rv) } .silent
               some (.silent, s')
-  -- ECMA-262 §13.3.1 function call (simplified Core subset).
-  -- Handles console.log pattern and basic function value calls.
+  -- ECMA-262 §13.3.1 function call with closure invocation.
   | .call callee args =>
-      -- Step callee first.
+      -- Step 1: Step callee to a value.
       match exprValue? callee with
       | none =>
           match step? { s with expr := callee } with
           | some (t, sc) =>
-              let s' := pushTrace { s with expr := .call sc.expr args, env := sc.env, heap := sc.heap } t
+              let s' := pushTrace { s with expr := .call sc.expr args, env := sc.env, heap := sc.heap, funcs := sc.funcs } t
               some (t, s')
           | none => none
-      | some _cv =>
-          -- Step first non-value argument.
-          match args with
-          | [] =>
-              -- No args, call completed → produce undefined.
-              let s' := pushTrace { s with expr := .lit .undefined } .silent
-              some (.silent, s')
-          | [arg] =>
-              match exprValue? arg with
-              | some _v =>
-                  -- Single-arg call with value — generic call result.
-                  let s' := pushTrace { s with expr := .lit .undefined } .silent
-                  some (.silent, s')
-              | none =>
-                  match step? { s with expr := arg } with
-                  | some (t, sa) =>
-                      let s' := pushTrace { s with expr := .call (.lit _cv) [sa.expr], env := sa.env, heap := sa.heap } t
-                      some (t, s')
-                  | none => none
-          | arg :: rest =>
-              match exprValue? arg with
-              | none =>
-                  match step? { s with expr := arg } with
-                  | some (t, sa) =>
-                      let s' := pushTrace { s with expr := .call (.lit _cv) (sa.expr :: rest), env := sa.env, heap := sa.heap } t
-                      some (t, s')
-                  | none => none
-              | some _v =>
-                  -- Step through remaining args.
-                  match step? { s with expr := .call (.lit _cv) rest } with
-                  | some (t, sr) =>
-                      match sr.expr with
-                      | .call c newRest =>
-                          let s' := pushTrace { s with expr := .call c ((.lit _v) :: newRest), env := sr.env, heap := sr.heap } t
-                          some (t, s')
-                      | other =>
-                          let s' := pushTrace { s with expr := other, env := sr.env, heap := sr.heap } t
-                          some (t, s')
+      | some cv =>
+          -- Step 2: Step all arguments to values (left-to-right).
+          match allValues args with
+          | some argVals =>
+              -- Step 3: All args are values — perform the call.
+              match cv with
+              | .function idx =>
+                  match s.funcs[idx]? with
+                  | some closure =>
+                      -- §10.2.1 [[Call]]: bind params to args in closure's captured environment.
+                      let pairs := closure.params.zip argVals
+                      let bodyEnv : Env := { bindings :=
+                        pairs.foldr (fun (p, v) bs => (p, v) :: bs) closure.capturedEnv }
+                      -- Bind function name for recursion (§14.1.20 step 28).
+                      let bodyEnv' : Env := match closure.name with
+                        | some n => { bindings := (n, .function idx) :: bodyEnv.bindings }
+                        | none => bodyEnv
+                      -- Wrap body in callFrame to intercept returns and restore caller env.
+                      let s' := pushTrace { s with
+                        expr := .callFrame closure.body s.env.bindings
+                        env := bodyEnv' } .silent
+                      some (.silent, s')
                   | none =>
-                      -- All args done, call completes.
                       let s' := pushTrace { s with expr := .lit .undefined } .silent
                       some (.silent, s')
+              | _ =>
+                  -- Non-function callee: return undefined.
+                  let s' := pushTrace { s with expr := .lit .undefined } .silent
+                  some (.silent, s')
+          | none =>
+              -- Step first non-value argument (left-to-right evaluation §12.3.4.1).
+              let rec stepArgs : List Expr → List Expr →
+                  Option (TraceEvent × List Expr × State)
+                | [], _acc => none
+                | e :: rest, acc =>
+                    match exprValue? e with
+                    | some _ => stepArgs rest (acc ++ [e])
+                    | none =>
+                        match step? { s with expr := e } with
+                        | some (t, se) =>
+                            some (t, acc ++ [se.expr] ++ rest, se)
+                        | none => none
+              match stepArgs args [] with
+              | some (t, args', sa) =>
+                  let s' := pushTrace { s with expr := .call (.lit cv) args', env := sa.env, heap := sa.heap, funcs := sa.funcs } t
+                  some (t, s')
+              | none => none
   -- ECMA-262 §12.3.2 Property Accessors.
   | .getProp obj prop =>
       match exprValue? obj with
@@ -374,10 +387,12 @@ partial def step? (s : State) : Option (TraceEvent × State) :=
               let s' := pushTrace { s with expr := .lit .undefined } .silent
               some (.silent, s')
   -- ECMA-262 §14.1 Function Definitions — capture closure as function value.
-  | .functionDef _name _params _body _isAsync _isGenerator =>
-      -- In the simplified Core semantics, function definitions produce a function value.
-      -- The function index is a placeholder since we don't have a function table in Core step.
-      let s' := pushTrace { s with expr := .lit (.function 0) } .silent
+  | .functionDef fname params body _isAsync _isGenerator =>
+      -- §10.2: Create a function closure capturing the current lexical environment.
+      let closure : FuncClosure := ⟨fname, params, body, s.env.bindings⟩
+      let idx := s.funcs.size
+      let funcs' := s.funcs.push closure
+      let s' := pushTrace { s with expr := .lit (.function idx), funcs := funcs' } .silent
       some (.silent, s')
   -- ECMA-262 §12.2.6 Object Initializer.
   | .objectLit props =>
@@ -718,6 +733,42 @@ partial def step? (s : State) : Option (TraceEvent × State) :=
               let s' := pushTrace { s with expr := .await sa.expr, env := sa.env, heap := sa.heap } t
               some (t, s')
           | none => none
+  -- ECMA-262 §10.2 Call frame: wraps function body execution.
+  -- Intercepts return completions and restores caller environment.
+  | .callFrame body savedBindings =>
+      match exprValue? body with
+      | some v =>
+          -- Normal completion: restore caller environment, produce value.
+          let s' := pushTrace { s with expr := .lit v, env := { bindings := savedBindings } } .silent
+          some (.silent, s')
+      | none =>
+          match step? { s with expr := body } with
+          | some (.error msg, sb) =>
+              if msg.startsWith "return:" then
+                  -- §13.10 Return: value is preserved in sb.expr from the return case.
+                  let retVal := match exprValue? sb.expr with
+                    | some v => v
+                    | none => .undefined
+                  let s' := pushTrace { s with expr := .lit retVal
+                    , env := { bindings := savedBindings }
+                    , heap := sb.heap, funcs := sb.funcs } .silent
+                  some (.silent, s')
+              else
+                  -- Non-return error (throw): propagate with restored env.
+                  let s' := pushTrace { s with expr := .lit .undefined
+                    , env := { bindings := savedBindings }
+                    , heap := sb.heap, funcs := sb.funcs } (.error msg)
+                  some (.error msg, s')
+          | some (t, sb) =>
+              -- Normal step: keep executing body inside callFrame.
+              let s' := pushTrace { s with expr := .callFrame sb.expr savedBindings
+                , env := sb.env, heap := sb.heap, funcs := sb.funcs } t
+              some (t, s')
+          | none =>
+              -- Body stuck: return undefined, restore env.
+              let s' := pushTrace { s with expr := .lit .undefined
+                , env := { bindings := savedBindings } } .silent
+              some (.silent, s')
 
 /-- Small-step relation induced by `step?`.
     ECMA-262 §8.3 execution context stepping. -/
@@ -736,7 +787,7 @@ inductive Steps : State → List TraceEvent → State → Prop where
 
 /-- Initial Core machine state for a program body. -/
 def initialState (p : Program) : State :=
-  { expr := p.body, env := Env.empty, heap := Heap.empty, trace := [] }
+  { expr := p.body, env := Env.empty, heap := Heap.empty, trace := [], funcs := #[] }
 
 /-- Program behavior as finite terminating trace sequence. -/
 def Behaves (p : Program) (b : List TraceEvent) : Prop :=

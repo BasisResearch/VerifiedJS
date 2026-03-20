@@ -85,6 +85,14 @@ inductive Expr where
   | this
   deriving Repr, BEq
 
+/-- ECMA-262 §10.2 Function closure: captures lexical environment at definition site. -/
+structure FuncClosure where
+  name : Option VarName
+  params : List VarName
+  body : Expr
+  capturedEnv : List (VarName × Value)
+  deriving Repr, BEq
+
 /-- ECMA-262 §10.2 function metadata captured in Core programs. -/
 structure FuncDef where
   name : VarName

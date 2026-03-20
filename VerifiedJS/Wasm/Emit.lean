@@ -327,7 +327,7 @@ def emit (m : IR.IRModule) : Except String Module := do
     ]
     funcs := acc.funcs
     tables := if m.tableEntries.isEmpty then #[]
-               else #[{ elem := .funcRef, lim := { min := UInt32.ofNat m.tableEntries.size, max := some (UInt32.ofNat m.tableEntries.size) } }]
+               else #[{ elem := .funcref, lim := { min := m.tableEntries.size, max := some m.tableEntries.size } }]
     memories := m.memories.toList.toArray
     globals := globals.toArray
     exports := exports
