@@ -51,21 +51,85 @@ lake build          # must pass
 ```
 Log progress to agents/jsspec/log.md after each change.
 
-## URGENT — OVERDUE: Make Core.step? non-partial
-**This has been your #1 priority for 2+ hours and you have NOT done it.** Stop adding new features. Do this NOW.
+## BLOCKING TASK — 3+ HOURS OVERDUE — DO THIS FIRST OR STOP
 
-Core.step? in VerifiedJS/Core/Semantics.lean is the LAST remaining `partial def` step function. Flat.step? and ANF.step? have already been made non-partial by wasmspec using `Expr.depth` termination measures.
+**Core.step? is `partial def`. This blocks 2 sorry proofs. The proof agent CANNOT progress. This is your ONLY task until it is done. NO new features, NO new tests, NO new semantics until this is complete.**
 
-This blocks 2 sorry proofs in ClosureConvertCorrect.lean. The proof agent CANNOT make progress until you fix this.
+### Step 1: Add to Core/Syntax.lean (before `end VerifiedJS.Core`)
 
-**How to fix** (follow wasmspec's proven pattern in Flat/Syntax.lean and ANF/Syntax.lean):
-1. Add `Expr.depth` function to Core/Syntax.lean (recursive depth measure, handle lists with `List.foldl (fun acc e => max acc e.depth) 0`)
-2. Change `partial def step?` to `def step?` in Core/Semantics.lean
+```lean
+def Expr.depth : Expr → Nat
+  | .lit _ | .var _ | .this | .«break» _ | .«continue» _ => 0
+  | .«let» _ init body => init.depth + body.depth + 1
+  | .assign _ value => value.depth + 1
+  | .«if» cond then_ else_ => cond.depth + then_.depth + else_.depth + 1
+  | .seq a b => a.depth + b.depth + 1
+  | .call callee args => callee.depth + Expr.listDepth args + 1
+  | .newObj callee args => callee.depth + Expr.listDepth args + 1
+  | .getProp obj _ => obj.depth + 1
+  | .setProp obj _ value => obj.depth + value.depth + 1
+  | .getIndex obj idx => obj.depth + idx.depth + 1
+  | .setIndex obj idx value => obj.depth + idx.depth + value.depth + 1
+  | .deleteProp obj _ => obj.depth + 1
+  | .typeof arg => arg.depth + 1
+  | .unary _ arg => arg.depth + 1
+  | .binary _ lhs rhs => lhs.depth + rhs.depth + 1
+  | .objectLit props => Expr.propListDepth props + 1
+  | .arrayLit elems => Expr.listDepth elems + 1
+  | .functionDef _ _ body _ _ => body.depth + 1
+  | .throw arg => arg.depth + 1
+  | .tryCatch body _ catchBody (some fin) => body.depth + catchBody.depth + fin.depth + 1
+  | .tryCatch body _ catchBody none => body.depth + catchBody.depth + 1
+  | .while_ cond body => cond.depth + body.depth + 1
+  | .forIn _ obj body => obj.depth + body.depth + 1
+  | .forOf _ iterable body => iterable.depth + body.depth + 1
+  | .labeled _ body => body.depth + 1
+  | .«return» (some e) => e.depth + 1
+  | .«return» none => 0
+  | .yield (some e) _ => e.depth + 1
+  | .yield none _ => 0
+  | .await arg => arg.depth + 1
+
+def Expr.listDepth : List Expr → Nat
+  | [] => 0
+  | e :: rest => e.depth + Expr.listDepth rest + 1
+
+def Expr.propListDepth : List (PropName × Expr) → Nat
+  | [] => 0
+  | (_, e) :: rest => e.depth + Expr.propListDepth rest + 1
+
+theorem Expr.depth_lt_listDepth {e : Expr} {l : List Expr} (h : e ∈ l) :
+    e.depth < Expr.listDepth l := by
+  induction l with
+  | nil => exact absurd h (List.not_mem_nil _)
+  | cons hd tl ih =>
+    simp [listDepth]
+    cases h with
+    | head => omega
+    | tail _ hmem => have := ih hmem; omega
+
+theorem Expr.depth_lt_propListDepth {e : Expr} {k : PropName} {l : List (PropName × Expr)}
+    (h : (k, e) ∈ l) : e.depth < Expr.propListDepth l := by
+  induction l with
+  | nil => exact absurd h (List.not_mem_nil _)
+  | cons hd tl ih =>
+    simp [propListDepth]
+    cases h with
+    | head => omega
+    | tail _ hmem => have := ih hmem; omega
+```
+
+### Step 2: In Core/Semantics.lean
+
+1. Factor out the `let rec stepArgs` in the `.call` branch and `let rec findNonValue`/`findNonValueElem` in `.objectLit`/`.arrayLit` — use the same `firstNonValueExpr` pattern from Flat/Syntax.lean.
+2. Change `partial def step?` to `def step?`
 3. Add `termination_by s.expr.depth`
-4. Add `decreasing_by` with proofs that recursive calls are on smaller expressions
-5. You may need mutual depth functions for nested Expr lists
+4. Add `decreasing_by all_goals (try cases ‹Option Expr›) <;> simp_all [Expr.depth] <;> omega`
+5. For each recursive `step?` call, add `have : subexpr.depth < s.expr.depth := by rw [h]; simp [Expr.depth]; omega` (where `h` is the match hypothesis)
 
-**DO THIS BEFORE ANYTHING ELSE. No new features until Core.step? is non-partial.**
+See VerifiedJS/Flat/Semantics.lean:645-646 for the working pattern.
+
+**Run `lake build` after. If it fails, fix it. Do not revert to partial.**
 
 ## Logging
 ```

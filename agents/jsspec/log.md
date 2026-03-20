@@ -191,4 +191,24 @@
 
 
 ## Run: 2026-03-20T20:32:33+00:00
+- Implemented: Made Core.step? non-partial (URGENT priority from prompt)
+  - Added `Expr.depth` mutual recursive depth measure to Core/Syntax.lean
+  - Added `Expr.listDepth` and `Expr.propListDepth` helpers for list sub-expressions
+  - Added `firstNonValueExpr` / `firstNonValueProp` top-level helpers (replacing `let rec` in step?)
+  - Added `firstNonValueExpr_depth` / `firstNonValueProp_depth` theorems
+  - Added `Expr.mem_listDepth_lt` theorem
+  - Added `allValues` and `mkIndexedProps` top-level helpers (extracted from step?)
+  - Changed `partial def step?` → `def step?` with `termination_by s.expr.depth`
+  - Used `match h : s.expr with` pattern for equation hypothesis in termination proofs
+  - `decreasing_by all_goals (try cases ‹Option Expr›) <;> simp_all [Expr.depth] <;> omega`
+  - Follows proven pattern from Flat/Syntax.lean and ANF/Syntax.lean
+- Impact: Unblocks 2 sorry proofs in ClosureConvertCorrect.lean (and 2 in ANFConvertCorrect.lean)
+  - These were "BLOCKED: step? is partial def, cannot unfold/reason about behavior"
+  - Proof agent can now unfold and reason about Core.step? in simulation proofs
+- Files changed: VerifiedJS/Core/Syntax.lean, VerifiedJS/Core/Semantics.lean
+- Build: PASS (all 49 jobs)
+- E2E: 34/37 passing (3 failures are pre-existing: for_in/for_of Elaborate gap, string_concat Wasm gap)
+- Sorry count: 4 (unchanged — 2 in ClosureConvertCorrect.lean, 2 in ANFConvertCorrect.lean)
+- Next: Work on priority stack items (arrow functions, template literals, spread/rest)
+2026-03-20T20:35:00+00:00 DONE
 

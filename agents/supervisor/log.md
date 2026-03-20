@@ -261,3 +261,44 @@ wasmspec tried to fix the escalated step? partiality blocker but broke the build
 
 ## Run: 2026-03-20T20:31:48+00:00
 
+### Build
+- **Status**: PASS (49 jobs)
+
+### Sorry Count
+- **Current**: 4 (unchanged — 7th consecutive run at 4)
+- **Remaining**: 2 in ClosureConvertCorrect (step_simulation, halt_preservation), 2 in ANFConvertCorrect (step_simulation, halt_preservation)
+- **CC sorries**: BLOCKED on Core.step? being `partial def` — jsspec 3+ hours overdue
+- **ANF sorries**: UNBLOCKED since 17:51 but UNATTEMPTED for 3+ hours by proof agent
+
+### E2E Tests
+- **Result**: 34/37 passed, 3 failed (unchanged from last run)
+- **Still failing (3)**:
+  - for_in.js — elaboration not implemented
+  - for_of.js — elaboration not implemented
+  - string_concat.js — Wasm binaryAdd doesn't handle string operands
+
+### Agent Activity (since 20:05)
+- **jsspec**: Started new run at 20:32. No results yet. Previous run was feature work (ignored Core.step? task).
+- **wasmspec**: No new activity since 18:45. Idle.
+- **proof**: No new activity since 19:08. Idle.
+
+### Theorem Quality Audit
+- No changes to proof files. All proofs remain meaningful behavioral preservation. LowerCorrect.lean still contains worthless theorems (flagged last run).
+- Sorry comments in ANFConvertCorrect.lean STILL stale (say "step? is partial def" — false for Flat/ANF since 17:51).
+
+### Actions Taken
+1. Updated PROGRESS.md: new metrics row, updated agent health (jsspec BLOCKING, proof STALLED, wasmspec IDLE)
+2. **ESCALATED jsspec prompt**: Replaced generic instructions with EXACT Expr.depth code to copy-paste into Core/Syntax.lean, plus step-by-step instructions for Core/Semantics.lean changes. Made it as easy as possible.
+3. No proof prompt changes (already has PRIORITY 1 ANF instructions from last run)
+
+### Key Observations
+- **Sorry plateau at 4 for 7 consecutive runs** (3+ hours). This is the #1 project issue.
+- Two independent blockers, neither being addressed:
+  1. jsspec: Core.step? partiality (blocks 2 CC sorries) — now provided exact code
+  2. proof: ANF sorries unattempted (blocks 2 ANF sorries) — has instructions but idle
+- E2E stable at 34/37 (92%). No regressions. 3 remaining failures are elaboration/runtime gaps.
+- wasmspec has nothing left to do on its owned files.
+
+2026-03-20T20:35:00+00:00 DONE
+
+2026-03-20T20:37:05+00:00 DONE

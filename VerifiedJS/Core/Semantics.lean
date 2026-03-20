@@ -228,14 +228,6 @@ def evalBinary : BinOp → Value → Value → Value
       let ia := toNumber a |>.toUInt32; let ib := (toNumber b |>.toUInt32) % 32
       .number ((ia >>> ib).toFloat)
 
-/-- Extract values from a list of expressions, returning none if any is not a value. -/
-private def allValues : List Expr → Option (List Value)
-  | [] => some []
-  | e :: rest => do
-      let v ← exprValue? e
-      let vs ← allValues rest
-      return v :: vs
-
 /-- Built-in function index for console.log (reserved at index 0). -/
 private def consoleLogIdx : FuncIdx := 0
 
@@ -243,8 +235,8 @@ private def pushTrace (s : State) (t : TraceEvent) : State :=
   { s with trace := s.trace ++ [t] }
 
 /-- One deterministic Core small-step transition with emitted trace event. -/
-partial def step? (s : State) : Option (TraceEvent × State) :=
-  match s.expr with
+def step? (s : State) : Option (TraceEvent × State) :=
+  match h : s.expr with
   | .lit _ => none
   | .var name =>
       match s.env.lookup name with
@@ -384,21 +376,15 @@ partial def step? (s : State) : Option (TraceEvent × State) :=
                   some (.silent, s')
           | none =>
               -- Step first non-value argument (left-to-right evaluation §12.3.4.1).
-              let rec stepArgs : List Expr → List Expr →
-                  Option (TraceEvent × List Expr × State)
-                | [], _acc => none
-                | e :: rest, acc =>
-                    match exprValue? e with
-                    | some _ => stepArgs rest (acc ++ [e])
-                    | none =>
-                        match step? { s with expr := e } with
-                        | some (t, se) =>
-                            some (t, acc ++ [se.expr] ++ rest, se)
-                        | none => none
-              match stepArgs args [] with
-              | some (t, args', sa) =>
-                  let s' := pushTrace { sa with expr := .call (.lit cv) args', trace := s.trace } t
-                  some (t, s')
+              match hf : firstNonValueExpr args with
+              | some (done, target, remaining) =>
+                  have : Expr.depth target < Expr.depth s.expr := by
+                    rw [h]; simp [Expr.depth]; have := firstNonValueExpr_depth hf; omega
+                  match step? { s with expr := target } with
+                  | some (t, sa) =>
+                      let s' := pushTrace { sa with expr := .call (.lit cv) (done ++ [sa.expr] ++ remaining), trace := s.trace } t
+                      some (t, s')
+                  | none => none
               | none => none
   -- ECMA-262 §12.3.2 Property Accessors.
   | .getProp obj prop =>
@@ -467,17 +453,11 @@ partial def step? (s : State) : Option (TraceEvent × State) :=
       some (.silent, s')
   -- ECMA-262 §12.2.6 Object Initializer.
   | .objectLit props =>
-      -- Step first non-value property.
-      let rec findNonValue : List (PropName × Expr) → List (PropName × Expr) →
-          Option (List (PropName × Expr) × PropName × Expr × List (PropName × Expr))
-        | [], _acc => none
-        | (k, e) :: rest, acc =>
-            match exprValue? e with
-            | some _ => findNonValue rest (acc ++ [(k, e)])
-            | none => some (acc, k, e, rest)
-      match findNonValue props [] with
-      | some (done, k, e, rest) =>
-          match step? { s with expr := e } with
+      match hf : firstNonValueProp props with
+      | some (done, k, target, rest) =>
+          have : Expr.depth target < Expr.depth s.expr := by
+            rw [h]; simp [Expr.depth]; have := firstNonValueProp_depth hf; omega
+          match step? { s with expr := target } with
           | some (t, se) =>
               let s' := pushTrace { se with expr := .objectLit (done ++ [(k, se.expr)] ++ rest), trace := s.trace } t
               some (t, s')
@@ -494,17 +474,11 @@ partial def step? (s : State) : Option (TraceEvent × State) :=
           some (.silent, s')
   -- ECMA-262 §12.2.5 Array Initializer.
   | .arrayLit elems =>
-      -- Step first non-value element.
-      let rec findNonValueElem : List Expr → List Expr →
-          Option (List Expr × Expr × List Expr)
-        | [], _acc => none
-        | e :: rest, acc =>
-            match exprValue? e with
-            | some _ => findNonValueElem rest (acc ++ [e])
-            | none => some (acc, e, rest)
-      match findNonValueElem elems [] with
-      | some (done, e, rest) =>
-          match step? { s with expr := e } with
+      match hf : firstNonValueExpr elems with
+      | some (done, target, rest) =>
+          have : Expr.depth target < Expr.depth s.expr := by
+            rw [h]; simp [Expr.depth]; have := firstNonValueExpr_depth hf; omega
+          match step? { s with expr := target } with
           | some (t, se) =>
               let s' := pushTrace { se with expr := .arrayLit (done ++ [se.expr] ++ rest), trace := s.trace } t
               some (t, s')
@@ -512,13 +486,7 @@ partial def step? (s : State) : Option (TraceEvent × State) :=
       | none =>
           -- All elements are values: allocate array on heap with indexed entries.
           let addr := s.heap.nextAddr
-          let rec mkIndexed : Nat → List Expr → List (PropName × Value)
-            | _, [] => []
-            | i, e :: rest =>
-                match exprValue? e with
-                | some v => (toString i, v) :: mkIndexed (i + 1) rest
-                | none => mkIndexed (i + 1) rest
-          let heapProps := mkIndexed 0 elems
+          let heapProps := mkIndexedProps 0 elems
           let heap' := { objects := s.heap.objects.push heapProps, nextAddr := addr + 1 }
           let s' := pushTrace { s with expr := .lit (.object addr), heap := heap' } .silent
           some (.silent, s')
@@ -848,6 +816,8 @@ partial def step? (s : State) : Option (TraceEvent × State) :=
               let s' := pushTrace { sa with expr := .await sa.expr, trace := s.trace } t
               some (t, s')
           | none => none
+  termination_by s.expr.depth
+  decreasing_by all_goals (try cases ‹Option Expr›) <;> simp_all [Expr.depth] <;> omega
 /-- Small-step relation induced by `step?`.
     ECMA-262 §8.3 execution context stepping. -/
 inductive Step : State → TraceEvent → State → Prop where
