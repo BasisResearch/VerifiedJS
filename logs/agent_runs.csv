@@ -51,3 +51,4 @@ timestamp,agent,event
 2026-03-20T21:15:01+00:00,wasmspec,start
 2026-03-20T21:30:01+00:00,proof,start
 2026-03-20T21:41:27+00:00,wasmspec,stop
+2026-03-20T22:05:01+00:00,supervisor,start
