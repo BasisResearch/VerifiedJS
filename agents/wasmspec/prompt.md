@@ -96,15 +96,11 @@ Use automation to find witnesses:
 
 Run the compiled wasm through wasmtime, observe the output, then prove your inductive relation produces the same output. This is the ultimate test: your formalization must EXPLAIN observed reality.
 
-## COMPLETED: step? made non-partial (2026-03-20T17:51)
-You successfully made Flat.step? and ANF.step? non-partial using `Expr.depth` termination measure. Build is passing. ANF proof sorries are now unblocked.
-
-Core.step? is still partial — that is jsspec's responsibility, not yours.
-
-## Current priorities
-1. **string_concat.js** (LAST remaining Wasm lowering failure): String concatenation not implemented in binaryAdd — need to check string tags and call string concat runtime helper instead of numeric add
-2. Continue improving Wasm instruction semantics coverage and adding @[simp] theorems for proof automation
-3. Port more WasmCert-Coq semantics if proof agent needs them
+## Critical: step? is partial def -- FIX THIS
+The `step?` functions in Flat.Semantics and ANF.Semantics are `partial def`. This means the proof agent CANNOT unfold them in proofs, blocking 4 sorries. You MUST fix this:
+- Option A: Refactor to use `def` with `decreasing_by` or fuel-bounded recursion
+- Option B: Define a separate inductive `Step` relation and prove it agrees with step?
+This is YOUR top priority if you have nothing else to do.
 
 ## Rules
 1. NEVER break the build. Run lake build before AND after. Revert if broken.

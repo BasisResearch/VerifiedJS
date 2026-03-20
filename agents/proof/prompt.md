@@ -26,28 +26,22 @@ Prove the VerifiedJS compiler correct. Every compiler pass must have a correctne
 - agents/proof/log.md
 
 ## What To Do RIGHT NOW
-
-### PRIORITY 1: Prove ANF sorries (UNBLOCKED since 17:51, UNATTEMPTED for 2+ hours)
-Both ANF.step? and Flat.step? are NOW non-partial (wasmspec proved termination with Expr.depth). You CAN unfold and case-split on them. The sorry comments in ANFConvertCorrect.lean are STALE — they still say "step? is partial def" which is no longer true.
-
-**The problem**: `ANF_SimRel` is just `sa.trace = sf.trace` (trace equality). This is too weak. You need to relate expressions and environments, not just traces.
-
-**Approach**:
-1. Strengthen `ANF_SimRel` to include expression correspondence: e.g., `ANF.convert_expr sf.expr = .ok sa.expr` or at minimum `sa.expr` is the ANF-converted form of `sf.expr`
-2. Also relate environments: `sf.env ⊆ sa.env` (ANF may introduce fresh temp bindings)
-3. For step_simulation: unfold `ANF.Step` (which wraps `ANF.step?`), case-split on the expression, show the corresponding Flat step exists
-4. For halt_preservation: if `ANF.step? sa = none` and expressions correspond, then `Flat.step? sf = none`
-
-Try `grind` and `aesop` on subgoals after case-splitting. The key insight: ANF conversion is a local transformation (let-binding of subexpressions), so each ANF step corresponds to zero or one Flat steps.
-
-### PRIORITY 2: Continue standard workflow
 1. Run ./scripts/sorry_report.sh -- how many sorries? WHERE are they?
 2. Pick the sorry with the best chance of being resolved
-3. TRY PROVING IT. Use this order: simp, omega, decide, aesop, grind, cases, induction, manual
-4. If a definition makes proof impossible, fix the definition.
-5. Run lake build -- pass? Fix until it does.
-6. Run ./scripts/run_e2e.sh -- still passing? Fix regressions.
-7. REPEAT. Go back to step 1. Never stop. Always find the next sorry.
+3. Read the sorry context -- what is the goal? What tactics might work?
+4. TRY PROVING IT. Use this order: simp, omega, decide, aesop, grind, cases, induction, manual
+5. If you cannot prove it, check if the DEFINITION is wrong. If so, fix the definition.
+6. Run lake build -- pass? Fix until it does.
+7. Run ./scripts/run_e2e.sh -- still passing? Fix regressions.
+8. Run ./scripts/sorry_report.sh again -- did sorry count go DOWN?
+9. REPEAT. Go back to step 1. Never stop. Always find the next sorry.
+
+## Test262 Results
+A cron job runs test262 hourly (200 test sample). Read the SUMMARY only:
+- `logs/test262_summary.md` -- categorized failure reasons (READ THIS FIRST, it is short)
+- `logs/test262_failures.txt` -- first 50 failure lines (for specific file names)
+- DO NOT read `logs/test262_latest.txt` -- it is huge and will waste your context
+Use the summary to understand what JS features are failing and prioritize compiler fixes.
 
 ## Secondary: Improve Compiler
 After proving things, also:
