@@ -1210,7 +1210,10 @@ def step? (s : ExecState) : Option (TraceEvent × ExecState) :=
           | some _ => some (trapState base "type mismatch in f64.reinterpret_i64")
           | none => some (trapState base "stack underflow in f64.reinterpret_i64")
       -- SPEC §4.4.7.11 memory.copy: copy n bytes from src to dst within memory.
-      -- REF: WasmCert-Coq r_memory_copy
+      -- REF: WasmCert-Coq r_memory_copy_forward / r_memory_copy_backward
+      -- When regions overlap, copy direction depends on dst vs src to preserve correctness:
+      --   dst ≤ src → forward copy (ascending indices)
+      --   dst > src → backward copy (descending indices)
       | .memoryCopy dstMem srcMem =>
           match pop3? base.stack with
           | some (.i32 n, .i32 src, .i32 dst, stk) =>
@@ -1225,10 +1228,19 @@ def step? (s : ExecState) : Option (TraceEvent × ExecState) :=
                   else
                     let copied := Id.run do
                       let mut m := mem
-                      for i in List.range len do
-                        let byte := if srcOff + i < m.size then m.get! (srcOff + i) else 0
-                        if dstOff + i < m.size then
-                          m := m.set! (dstOff + i) byte
+                      if dstOff <= srcOff then
+                        -- Forward copy (ascending): safe when dst ≤ src
+                        for i in List.range len do
+                          let byte := if srcOff + i < m.size then m.get! (srcOff + i) else 0
+                          if dstOff + i < m.size then
+                            m := m.set! (dstOff + i) byte
+                      else
+                        -- Backward copy (descending): required when dst > src to avoid overwriting
+                        for i in List.range len do
+                          let j := len - 1 - i
+                          let byte := if srcOff + j < m.size then m.get! (srcOff + j) else 0
+                          if dstOff + j < m.size then
+                            m := m.set! (dstOff + j) byte
                       return m
                     let store' := { base.store with memories := base.store.memories.set! memIdx copied }
                     some (.silent, pushTrace { base with store := store', stack := stk } .silent)
