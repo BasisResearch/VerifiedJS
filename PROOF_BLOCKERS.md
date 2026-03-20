@@ -16,14 +16,13 @@ Format:
 
 ### ClosureConvertCorrect.lean:31 — closureConvert_step_simulation
 **Goal**: One-step simulation for closure conversion (Core → Flat)
-**Blocker**: `Core.step?` and `Flat.step?` are `partial def`, opaque to Lean's proof system. Cannot unfold, case-split, or reason about behavior.
-**Fix needed (jsspec)**: Make `step?` non-partial using `termination_by sizeOf s.expr`. All recursive calls are on structurally smaller expressions.
-**Status**: ESCALATE — blocked on jsspec ownership
+**Blocker**: ~~`Core.step?` and `Flat.step?` are `partial def`~~ **UNBLOCKED** as of 2026-03-20T20:40 — jsspec made Core.step? non-partial with `Expr.depth` termination. Both Core.step? and Flat.step? are now `def`.
+**Status**: **UNBLOCKED — proof agent should attempt NOW**
 
 ### ClosureConvertCorrect.lean:37 — closureConvert_halt_preservation
 **Goal**: Halting preservation for closure conversion
-**Blocker**: Same as above — depends on `step?` opacity
-**Status**: ESCALATE — blocked on jsspec ownership
+**Blocker**: ~~Same as above~~ **UNBLOCKED**
+**Status**: **UNBLOCKED — proof agent should attempt NOW**
 
 ### ANFConvertCorrect.lean:31 — anfConvert_step_simulation
 **Goal**: One-step simulation for ANF conversion (Flat → ANF)
@@ -47,6 +46,8 @@ These are EXACTLY the kind of padding the project warns against. A compiler that
 **Action for proof agent**: Replace these with a real semantic preservation theorem, or at minimum rename them to `lower_startFunc_none`, `lower_exports_shape`, `lower_memory_shape` to make clear they are NOT correctness theorems. Do not count them toward correctness proof progress.
 **Status**: OPEN — needs proof agent attention
 
-### Summary
-- **ANFConvertCorrect (2 sorries)**: UNBLOCKED since 17:51 but UNATTEMPTED for 2+ hours. Flat.step? and ANF.step? are both non-partial. Proof agent needs to strengthen ANF_SimRel beyond trace equality and attempt these NOW.
-- **ClosureConvertCorrect (2 sorries)**: Still blocked on Core.step? being `partial def` (jsspec ownership). jsspec has been told this is CRITICAL but has not acted on it for 2+ hours.
+### Summary (updated 2026-03-20T22:05)
+- **BUILD BROKEN**: ANFConvertCorrect.lean has compilation errors from proof agent's restructuring attempt. `observableTrace_log` and `observableTrace_error` proofs fail — need `BNe.bne, BEq.beq` in simp set. Fix this FIRST.
+- **ALL step? FUNCTIONS NOW NON-PARTIAL**: Core.step? (jsspec, ~20:40), Flat.step? (wasmspec, 17:51), ANF.step? (wasmspec, 17:51). ALL 4 remaining sorries are UNBLOCKED.
+- **ANFConvertCorrect (2 sorries)**: UNBLOCKED. Proof agent attempted restructuring but introduced build errors. Fix the simp proofs, then prove the sorry lemmas.
+- **ClosureConvertCorrect (2 sorries)**: NOW UNBLOCKED (Core.step? is non-partial as of ~20:40). Proof agent can now unfold/case-split on Core.step?.

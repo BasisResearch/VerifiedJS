@@ -305,3 +305,52 @@ wasmspec tried to fix the escalated step? partiality blocker but broke the build
 
 ## Run: 2026-03-20T22:05:01+00:00
 
+### Build
+- **Status**: **BROKEN** (`lake build` fails on VerifiedJS.Proofs.ANFConvertCorrect)
+- **Error**: `observableTrace_log` and `observableTrace_error` theorems — `simp [observableTrace, List.filter]` cannot reduce `TraceEvent.log s != TraceEvent.silent` (needs `BNe.bne, BEq.beq` in simp set)
+- **Root cause**: proof agent restructured ANFConvertCorrect.lean with observable trace infrastructure but left failing simp proofs
+- **E2E unaffected**: `lake exe verifiedjs` works from cache (Proofs module not needed for executable)
+
+### Sorry Count
+- **Current**: 4 (unchanged — 9th consecutive run at 4)
+- **Remaining**: 2 in ANFConvertCorrect (step_simulation, halt_preservation), 2 in ClosureConvertCorrect (step_simulation, halt_preservation)
+- **MILESTONE: ALL step? FUNCTIONS NOW NON-PARTIAL**
+  - Core.step? made non-partial by jsspec at ~20:40 (Expr.depth termination)
+  - Flat.step? and ANF.step? made non-partial by wasmspec at 17:51
+  - **ALL 4 remaining sorries are now theoretically unblocked**
+
+### E2E Tests
+- **Result**: 40/43 passed, 3 failed (43 total, up from 37)
+- **Newly passing (6)**: arrow_function, delete_prop, labeled_stmt, array_length, nested_calls, recursive_fn
+- **Still failing (3)**:
+  - for_in.js — elaboration not implemented
+  - for_of.js — elaboration not implemented
+  - string_concat.js — Wasm binaryAdd doesn't handle string operands
+
+### Agent Activity (since 20:31)
+- **jsspec** (20:32): **Completed Core.step? non-partial** — the critical blocker that was 3+ hours overdue. Added Expr.depth/listDepth/propListDepth mutual depth functions, firstNonValueExpr/firstNonValueProp helpers, and termination proofs. Also added 6 new E2E tests (arrow_function, delete_prop, labeled_stmt, array_length, nested_calls, recursive_fn). E2E 40/43.
+- **wasmspec**: No new activity since 18:45. Idle.
+- **proof** (21:30): Attempted ANF sorry restructuring — added observable trace infrastructure (observableTrace, stuttering simulation). Broke the build with failing simp proofs. File modified at 21:42 but left in broken state.
+
+### Theorem Quality Audit
+- Proof agent's restructuring direction is CORRECT: observable trace approach with stuttering simulation is the right architecture for ANF correctness (ANF introduces extra let-bindings = extra silent steps)
+- The implementation just needs the simp proof fix (trivial)
+- ClosureConvertCorrect.lean unchanged — still needs proof agent attention now that Core.step? is non-partial
+- LowerCorrect.lean still contains worthless structural theorems (flagged previously)
+
+### Actions Taken
+1. Updated proof agent prompt: URGENT build fix instructions with exact code, documented Core.step? milestone, prioritized all 4 sorry proofs
+2. Updated jsspec prompt: removed BLOCKING TASK section (completed), redirected to for-in/for-of elaboration and continued feature work
+3. Updated PROGRESS.md: new metrics row, updated agent health table
+4. Updated PROOF_BLOCKERS.md: marked CC sorries as UNBLOCKED, updated summary with build status
+5. Updated FAILURES.md: added ANFConvertCorrect.lean build breakage entry
+
+### Key Observations
+- **MAJOR MILESTONE**: All step? functions are non-partial. The architectural blocker that stalled the project for 5+ hours is RESOLVED. All 4 remaining sorries are now attackable.
+- **Build must be fixed first**: proof agent needs to add `BNe.bne, BEq.beq` to two simp calls. Trivial fix, detailed in prompt.
+- **E2E trajectory excellent**: 8/10 → 40/43 over the session (93% pass rate, 43 total tests). Only 3 remaining failures are elaboration/runtime gaps.
+- **Sorry count should finally move**: With all blockers resolved and specific build fix instructions provided, the proof agent should be able to reduce the sorry count on next run.
+
+2026-03-20T22:10:00+00:00 DONE
+
+2026-03-20T22:13:53+00:00 DONE

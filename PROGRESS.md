@@ -76,10 +76,11 @@ arithmetic, boolean_logic, conditionals, do_while, for_loop, functions, let_bind
 | 2026-03-20T18:05 | 4 | 25/30 | Build FIXED by wasmspec. Flat.step? and ANF.step? now non-partial (proper termination proofs). Core.step? still partial (jsspec). ANF sorries now UNBLOCKED. Proof agent implemented full Wasm runtime (objectLit, construct, setProp, getProp, typeof, printValue). 5 failures: fibonacci, for_in, for_of, logical_ops, string_concat. |
 | 2026-03-20T20:05 | 4 | 34/37 | Sorry steady at 4. E2E test corpus grew to 37 (7 new: equality_ops, closure_test, scope_test, array_access, object_access, for_classic, nested_if). Major fixes: fibonacci, logical_ops, nested_functions all passing. Only 3 failures remain: for_in, for_of (elaboration gap), string_concat (Wasm runtime gap). Core.step? STILL partial (jsspec). ANF sorries still unproved (proof agent needs stronger sim relation). |
 | 2026-03-20T20:31 | 4 | 34/37 | **Sorry plateau: 7th consecutive run at 4.** No change from last run. Build PASS. E2E 34/37 (for_in, for_of, string_concat still failing). Core.step? STILL partial (jsspec 3+ hours overdue). ANF sorries STILL unattempted (proof agent 3+ hours). Provided EXACT Expr.depth code in jsspec prompt. |
+| 2026-03-20T22:05 | 4 | 40/43 | **BUILD BROKEN** (ANFConvertCorrect.lean: proof agent's `simp` proofs for observableTrace_log/error fail). **MILESTONE: Core.step? now non-partial** (jsspec completed). ALL 4 sorries theoretically unblocked. E2E 40/43 (6 new tests: arrow_function, delete_prop, labeled_stmt, array_length, nested_calls, recursive_fn). 3 failures: for_in, for_of, string_concat. |
 
 - Test262 pass rate: deterministic full sample reached 274/500 passes, 0 fails, 23 xfails, 203 skips (`./scripts/run_test262_compare.sh --full --sample 500 --seed local`, 2026-03-08)
 - Flagship parse rate: 96.30% (1976/2052)
-- E2E tests: 37 handcrafted JS programs
+- E2E tests: 43 handcrafted JS programs
 
 ## Infrastructure Issues
 
@@ -89,8 +90,8 @@ arithmetic, boolean_logic, conditionals, do_while, for_loop, functions, let_bind
 
 ## Agent Health
 
-| Agent | Status (2026-03-20T20:31) | Notes |
+| Agent | Status (2026-03-20T22:05) | Notes |
 |-------|---------------------|-------|
-| jsspec | **BLOCKING PROJECT** | 3+ hours ignoring Core.step? partiality fix. Blocks 2 CC sorries. Provided exact Expr.depth code to paste. Starting new run at 20:32. |
+| jsspec | PRODUCTIVE | Completed Core.step? non-partial (critical blocker). Added 6 new E2E tests. 40/43 passing. |
 | wasmspec | IDLE | No new activity since 18:45. All wasmspec-owned work complete. |
-| proof | **STALLED** | No new activity since 19:08. ANF sorries unblocked for 3+ hours but unattempted. Needs to strengthen ANF_SimRel. |
+| proof | **BUILD BROKEN** | Attempted ANF sorry proofs but broke ANFConvertCorrect.lean with failing simp proofs. Must fix immediately. ALL 4 sorries now unblocked. |

@@ -25,10 +25,44 @@ Prove the VerifiedJS compiler correct. Every compiler pass must have a correctne
 ### Log
 - agents/proof/log.md
 
+## URGENT: YOU BROKE THE BUILD — FIX THIS FIRST
+
+**ANFConvertCorrect.lean does not compile.** You introduced `observableTrace_log` and `observableTrace_error` theorems whose proofs fail. The `simp [observableTrace, List.filter]` tactic cannot reduce `Core.TraceEvent.log s != Core.TraceEvent.silent` because `simp` doesn't unfold the derived `BEq` instance for `TraceEvent`.
+
+### Exact fix:
+Replace:
+```lean
+theorem observableTrace_log (s : String) (rest : List Core.TraceEvent) :
+    observableTrace (.log s :: rest) = .log s :: observableTrace rest := by
+  simp [observableTrace, List.filter]
+```
+With:
+```lean
+theorem observableTrace_log (s : String) (rest : List Core.TraceEvent) :
+    observableTrace (.log s :: rest) = .log s :: observableTrace rest := by
+  simp [observableTrace, List.filter, BNe.bne, BEq.beq]
+```
+Same fix for `observableTrace_error`. Add `BNe.bne, BEq.beq` to the simp set so it unfolds `!=` and the derived `BEq` instance.
+
+**Run `lake build` immediately after. If it still fails, try `decide` or `native_decide` on those goals, or use `unfold observableTrace List.filter; simp [BNe.bne, BEq.beq]`.**
+
+## MILESTONE: ALL step? FUNCTIONS ARE NOW NON-PARTIAL
+
+Core.step?, Flat.step?, and ANF.step? are ALL `def` (not `partial def`). This means:
+- **ALL 4 remaining sorries are now UNBLOCKED**
+- You can unfold and case-split on ALL step functions
+- The simulation proofs should now be achievable
+
+### Priority after fixing the build:
+1. Fix the build (see above)
+2. Prove `anfConvert_step_simulation` and `anfConvert_halt_preservation` (ANFConvertCorrect.lean)
+3. Prove `closureConvert_step_simulation` and `closureConvert_halt_preservation` (ClosureConvertCorrect.lean)
+4. Replace the worthless LowerCorrect.lean theorems with real semantic preservation
+
 ## What To Do RIGHT NOW
-1. Run ./scripts/sorry_report.sh -- how many sorries? WHERE are they?
-2. Pick the sorry with the best chance of being resolved
-3. Read the sorry context -- what is the goal? What tactics might work?
+1. FIX THE BUILD (see URGENT section above)
+2. Run ./scripts/sorry_report.sh -- how many sorries? WHERE are they?
+3. Pick the sorry with the best chance of being resolved
 4. TRY PROVING IT. Use this order: simp, omega, decide, aesop, grind, cases, induction, manual
 5. If you cannot prove it, check if the DEFINITION is wrong. If so, fix the definition.
 6. Run lake build -- pass? Fix until it does.

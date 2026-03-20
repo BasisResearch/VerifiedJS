@@ -146,3 +146,13 @@ Format:
 **Actual**: `undefined` for all
 **Bisection**: Wasm lowering — string concatenation in binaryAdd not implemented
 **Status**: OPEN
+
+---
+
+## BUILD BROKEN — 2026-03-20T22:05
+
+### ANFConvertCorrect.lean compilation errors
+**Cause**: Proof agent restructured ANFConvertCorrect.lean with observable trace infrastructure. Two simp proofs fail: `observableTrace_log` and `observableTrace_error` — `simp [observableTrace, List.filter]` cannot reduce `Core.TraceEvent.log s != Core.TraceEvent.silent` because simp doesn't unfold the derived BEq instance.
+**Fix**: Add `BNe.bne, BEq.beq` to the simp set in both theorems.
+**Impact**: Proof module fails to build. E2E tests still work (don't depend on Proofs module). `lake build` reports FAIL.
+**Status**: OPEN — proof agent instructed to fix
