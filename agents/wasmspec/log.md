@@ -73,3 +73,42 @@
 
 ## Run: 2026-03-20T18:15:01+00:00
 
+- Implemented:
+  - **Wasm/Semantics.lean — 8 correctness fixes**:
+    1. `i32.clz`, `i32.ctz`, `i32.popcnt`: Implemented actual counting algorithms (were returning input unchanged). Added top-level `clzGo`/`ctzGo`/`popcntGo` with proper termination proofs.
+    2. `i64.clz`, `i64.ctz`, `i64.popcnt`: Same fix for 64-bit variants.
+    3. `f32.store`, `f64.store`: Now write actual float bit patterns via `floatToU32Bits`/`floatToU64Bits` (were writing 0).
+    4. `i32.load8_s`, `i32.load16_s`: Added sign extension via `signExtend32` (were zero-extending like _u).
+    5. `i64.load8_s`, `i64.load16_s`, `i64.load32_s`: Added sign extension via `signExtend64` (were zero-extending).
+    6. `f32.convert_i32_s`, `f64.convert_i32_s`: Now use `Float.ofInt (i32ToSigned n)` for signed conversion (were using unsigned `Float.ofNat`).
+    7. `f32.reinterpret_i32`, `f64.reinterpret_i64`: Now use `u32BitsToFloat`/`u64BitsToFloat` for bit-level reinterpret (were using `Float.ofNat` numeric conversion).
+    8. `f32.load`, `f64.load`: Now use bit-level reinterpretation for loaded values.
+  - **Runtime/Values.lean — 6 new helpers + 15 sanity checks**:
+    - `decodeToStringRef?`, `decodeToObjectRef?`, `decodeToSymbolRef?`: Extract typed payloads from NaN-boxed values.
+    - `isTruthy`: ECMA-262 §7.1.2 ToBoolean implementation.
+    - `isString`, `isObject`, `isNullish`: Fast tag predicates.
+    - 15 new `example` unit tests verifying all new helpers.
+
+- Files changed:
+  - VerifiedJS/Wasm/Semantics.lean (added ~80 lines of helpers, rewrote ~120 lines of instruction cases)
+  - VerifiedJS/Runtime/Values.lean (added ~55 lines of helpers + tests)
+
+- Build: PASS (all 12 wasmspec-owned modules build clean, 0 sorries)
+
+- E2E blockers identified (NOT my files — owned by `proof`):
+  - **logical_ops.js**: `logAnd`/`logOr` in Emit.lean mapped to f64.mul/f64.add instead of short-circuit semantics. Fix needed in Lower.lean or Emit.lean.
+  - **fibonacci.js**: `__rt_call` runtime helper (in Lower.lean) has correct source code but old binary has stub body. Rebuilding compiler should fix once Core/Semantics.lean syntax error is resolved.
+  - **string_concat.js**: `__rt_binaryAdd` always does numeric add, never checks string operands. Fix needed in Lower.lean.
+  - **Core/Semantics.lean:297** has syntax error (jsspec broke build) — blocks all E2E compilation.
+
+- Gaps remaining:
+  - Runtime/Regex.lean: 0% (empty stub)
+  - Runtime/Generators.lean: 0% (empty stub)
+  - Wasm/Semantics.lean bulk memory ops (memoryInit/Copy/Fill) are no-ops (pop+discard)
+  - No formal round-trip proof for NaN-boxing encode/decode
+
+- Next:
+  - Await jsspec fix for Core/Semantics.lean:297 syntax error
+  - Consider adding @[simp] equation lemmas for clz/ctz/popcnt helpers to aid proof automation
+  - Port more WasmCert-Coq semantics if proof agent needs them
+

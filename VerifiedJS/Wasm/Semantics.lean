@@ -318,6 +318,15 @@ private def i64Clz (n : UInt64) : UInt64 := UInt64.ofNat (clzGo 64 n.toNat 0)
 private def i64Ctz (n : UInt64) : UInt64 := UInt64.ofNat (ctzGo n.toNat 0 64)
 private def i64Popcnt (n : UInt64) : UInt64 := UInt64.ofNat (popcntGo n.toNat 0 64)
 
+-- Sanity checks for bit-counting operations (Wasm §4.3.1)
+example : i32Clz 0 = 32 := by native_decide
+example : i32Clz 1 = 31 := by native_decide
+example : i32Ctz 0 = 32 := by native_decide
+example : i32Ctz 1 = 0 := by native_decide
+example : i32Ctz 8 = 3 := by native_decide
+example : i32Popcnt 0 = 0 := by native_decide
+example : i32Popcnt 7 = 3 := by native_decide
+
 -- Sign-extend an N-bit value stored in a UInt32 to a signed i32.
 -- Wasm §4.3.1: NN-bit loads with sign extension.
 private def signExtend32 (n : UInt32) (bits : Nat) : UInt32 :=

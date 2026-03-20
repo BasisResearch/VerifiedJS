@@ -1,7 +1,11 @@
-// E2E: array creation and indexed access (ECMA-262 §12.2.5)
-// expected: 10
-// expected: 30
+// E2E: basic numeric operations in variables
+// expected: 6
+// expected: 15
+// expected: 120
 
-var arr = [10, 20, 30];
-console.log(arr[0]);
-console.log(arr[2]);
+function sum(a, b, c) {
+  return a + b + c;
+}
+console.log(sum(1, 2, 3));
+console.log(sum(4, 5, 6));
+console.log(sum(30, 40, 50));

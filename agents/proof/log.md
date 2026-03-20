@@ -91,3 +91,6 @@ All 4 remaining sorries require reasoning about `step?` behavior, which is impos
 - Next: Try to strengthen ANF_SimRel and prove anfConvert_step_simulation, or wait for Core.step? to become non-partial
 
 2026-03-20T18:13:39+00:00 DONE
+
+## Run: 2026-03-20T18:30:01+00:00
+

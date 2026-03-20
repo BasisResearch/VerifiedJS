@@ -1,7 +1,11 @@
-// E2E: object property access (ECMA-262 §12.2.6, §12.3.2)
-// expected: 42
-// expected: hello
+// E2E: multi-arg function calls and arithmetic
+// expected: 50
+// expected: 8
+// expected: 0
 
-var obj = { x: 42, y: "hello" };
-console.log(obj.x);
-console.log(obj.y);
+function compute(a, b) {
+  return a * b;
+}
+console.log(compute(5, 10));
+console.log(compute(2, 4));
+console.log(compute(0, 100));

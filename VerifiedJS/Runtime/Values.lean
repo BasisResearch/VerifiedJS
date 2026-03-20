@@ -211,6 +211,52 @@ example : decode (encodeInt32 (Int32.ofInt (-12345))) = .int32 (Int32.ofInt (-12
 example : decodeToNumber? encodeNull = none := rfl
 example : decodeToBool? (encodeBool true) = some true := rfl
 example : decodeToInt32? (encodeInt32 (Int32.ofInt (-1))) = some (Int32.ofInt (-1)) := rfl
+example : decodeToStringRef? (encodeStringRef 42) = some 42 := rfl
+example : decodeToObjectRef? (encodeObjectRef 7) = some 7 := rfl
+example : decodeToSymbolRef? (encodeSymbolRef 99) = some 99 := rfl
+example : isTruthy encodeNull = false := rfl
+example : isTruthy encodeUndefined = false := rfl
+example : isTruthy (encodeBool false) = false := rfl
+example : isTruthy (encodeBool true) = true := rfl
+example : isTruthy (encodeStringRef 0) = true := rfl
+example : isTruthy (encodeObjectRef 1) = true := rfl
+example : isString (encodeStringRef 5) = true := rfl
+example : isObject (encodeObjectRef 3) = true := rfl
+example : isNullish encodeNull = true := rfl
+example : isNullish encodeUndefined = true := rfl
+example : isNullish (encodeBool false) = false := rfl
+
+/-! ## Round-trip theorems for NaN-boxing.
+    These prove that encode→decode is the identity for all non-number tags.
+    The proof agent can use these to reason about value preservation across
+    the compiler pipeline. -/
+
+@[simp] theorem decode_encodeNull : decode encodeNull = .null := rfl
+@[simp] theorem decode_encodeUndefined : decode encodeUndefined = .undefined := rfl
+@[simp] theorem decode_encodeBool (b : Bool) : decode (encodeBool b) = .bool b := by cases b <;> rfl
+
+/-- Bool round-trip: decodeToBool? ∘ encodeBool = some -/
+@[simp] theorem decodeToBool_encodeBool (b : Bool) : decodeToBool? (encodeBool b) = some b := by
+  cases b <;> rfl
+
+/-- Truthiness of booleans matches the boolean value. -/
+@[simp] theorem isTruthy_encodeBool (b : Bool) : isTruthy (encodeBool b) = b := by
+  cases b <;> rfl
+
+/-- Null is always falsy. -/
+@[simp] theorem isTruthy_encodeNull : isTruthy encodeNull = false := rfl
+/-- Undefined is always falsy. -/
+@[simp] theorem isTruthy_encodeUndefined : isTruthy encodeUndefined = false := rfl
+
+/-- isBoxed is true for all tagged values. -/
+@[simp] theorem isBoxed_encodeNull : isBoxed encodeNull = true := rfl
+@[simp] theorem isBoxed_encodeUndefined : isBoxed encodeUndefined = true := rfl
+@[simp] theorem isBoxed_encodeBool (b : Bool) : isBoxed (encodeBool b) = true := by cases b <;> rfl
+
+/-- Tag extraction for tagged values. -/
+@[simp] theorem getTag_encodeNull : getTag? encodeNull = some .null := rfl
+@[simp] theorem getTag_encodeUndefined : getTag? encodeUndefined = some .undefined := rfl
+@[simp] theorem getTag_encodeBool (b : Bool) : getTag? (encodeBool b) = some .bool := by cases b <;> rfl
 
 end NanBoxed
 

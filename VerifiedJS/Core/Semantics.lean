@@ -94,9 +94,20 @@ def toNumber : Value → Float
   | .null => 0.0
   | .undefined => 0.0 / 0.0  -- ECMA-262 §7.1.3: undefined → NaN
   | .string s =>
-      -- ECMA-262 §7.1.3.1: StringNumericValue (simplified).
-      if s.isEmpty then 0.0
-      else 0.0 / 0.0  -- NaN for non-empty strings (full numeric parsing not yet implemented)
+      -- ECMA-262 §7.1.3.1: StringNumericValue.
+      let trimmed := s.trim
+      if trimmed.isEmpty then 0.0
+      else
+        -- Try to parse as integer literal, fallback to NaN.
+        match trimmed.toNat? with
+        | some n => Float.ofNat n
+        | none =>
+            -- Check for negative integers.
+            if trimmed.startsWith "-" then
+              match (trimmed.drop 1).toNat? with
+              | some n => -(Float.ofNat n)
+              | none => 0.0 / 0.0  -- NaN
+            else 0.0 / 0.0  -- NaN for non-numeric strings
   | _ => 0.0 / 0.0  -- NaN for objects/functions
 
 /-- ECMA-262 §13.5 Runtime Semantics: Evaluation (core unary subset). -/
@@ -111,7 +122,15 @@ def evalUnary : UnaryOp → Value → Value
 /-- ECMA-262 §7.1.12 ToString (core subset). -/
 def valueToString : Value → String
   | .string s => s
-  | .number n => toString n
+  | .number n =>
+      -- §7.1.12.1: if n is an integer, omit decimal point.
+      if n.isNaN then "NaN"
+      else if n == 1.0/0.0 then "Infinity"
+      else if n == -1.0/0.0 then "-Infinity"
+      else
+        let i := n.toUInt64
+        if i.toFloat == n && n >= 0.0 then toString i.toNat
+        else toString n
   | .bool true => "true"
   | .bool false => "false"
   | .null => "null"
