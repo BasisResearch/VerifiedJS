@@ -223,3 +223,57 @@ lake build works. ANFConvertCorrect.lean has broken code — proof agent must fi
 
 ## Run: 2026-03-20T22:51:24+00:00
 
+- Implemented:
+  - **Wasm/Semantics.lean — Store expanded with data segments and element segments**:
+    - Added `datas : Array ByteArray` field for data segment payloads (memory.init)
+    - Added `elems : Array (Array (Option Nat))` field for element segment function indices (table.init)
+    - Added `tableLimits : Array Limits` field for table.grow bounds checking
+    - Updated `initialStore` to populate all new fields from module declaration
+  - **memory.copy: Fixed overlapping region handling** (critical correctness fix):
+    - Forward copy (ascending indices) when dst ≤ src
+    - Backward copy (descending indices) when dst > src
+    - REF: WasmCert-Coq `r_memory_copy_forward` / `r_memory_copy_backward`
+  - **memory.init: Full data segment copying** (was no-op stub):
+    - Reads from `store.datas[dataIdx]` and copies into memory
+    - Proper bounds checking on both data segment source and memory destination
+    - REF: WasmCert-Coq `r_memory_init`
+  - **table.init: Full element segment copying** (was pop-and-discard stub):
+    - Reads from `store.elems[elemIdx]` and copies function references into table
+    - Proper bounds checking on both element segment and table
+    - REF: WasmCert-Coq `r_table_init`
+  - **table.copy: Full table element copying with overlap handling** (was pop-and-discard stub):
+    - Forward/backward copy direction based on dst vs src (same as memory.copy)
+    - Proper bounds checking on both source and destination tables
+    - REF: WasmCert-Coq `r_table_copy_forward` / `r_table_copy_backward`
+  - **data.drop / elem.drop: Proper segment clearing** (was complete no-op):
+    - `data.drop` replaces data segment with empty ByteArray
+    - `elem.drop` replaces element segment with empty array
+    - REF: WasmCert-Coq `r_data_drop` / `r_elem_drop`
+  - **New lemmas for proof automation**:
+    - `step?_dataDrop_some`, `step?_elemDrop_some`: these instructions never get stuck
+    - `step?_select_some`: select with i32 condition never gets stuck
+    - `initialStore_datas`, `initialStore_elems`, `initialStore_types`, `initialStore_funcs`: @[simp] lemmas for reasoning about initial store construction
+    - `Store.empty`: convenience definition for empty store in proofs/examples
+
+- Files changed:
+  - VerifiedJS/Wasm/Semantics.lean (~120 lines rewritten, ~50 lines added)
+
+- Build: PASS (19 jobs, 0 errors, 0 sorries in wasmspec-owned files)
+- E2E: All wasm files valid (0 invalid)
+
+- Gaps remaining:
+  - Wasm/Syntax.lean owned by root — cannot add tableGet/tableSet/tableSize/tableGrow/tableFill/refNull/refIsNull instructions
+  - Runtime/Regex.lean: 0% (empty stub, not used by compiler)
+  - Runtime/Generators.lean: 0% (empty stub, not used by compiler)
+  - Core.step? still partial (jsspec ownership, blocks ClosureConvertCorrect.lean)
+  - ANFConvertCorrect.lean build broken (proof agent must fix observableTrace_log/error proofs)
+
+- Next:
+  - If Syntax.lean becomes writable: add table.get/set/size/grow/fill + ref.null/ref.is_null instructions
+  - Proof agent should use new initialStore_* @[simp] lemmas for LowerCorrect work
+  - Consider adding memory.grow @[simp] lemma for successful grow case
+  - Port more WasmCert-Coq structural rules (r_label, r_frame) if proof agent needs them
+
+2026-03-20T23:15:00+00:00 DONE
+
+2026-03-20T23:15:41+00:00 DONE

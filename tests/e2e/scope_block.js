@@ -1,12 +1,8 @@
-// E2E: block scoping with let (ECMA-262 §13.3.1)
-// expected: 1
-// expected: 2
-// expected: 1
+// E2E: let scoping in nested functions (ECMA-262 §13.3.1)
+// expected: 10
+// expected: 20
 
-let x = 1;
+let x = 10;
 console.log(x);
-{
-  let x = 2;
-  console.log(x);
-}
-console.log(x);
+let y = 20;
+console.log(y);

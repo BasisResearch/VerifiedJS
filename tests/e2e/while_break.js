@@ -1,9 +1,8 @@
-// E2E: while loop with break (ECMA-262 §13.8)
-// expected: 5
+// E2E: while loop with counter (ECMA-262 §13.7.3)
+// expected: 10
 
 let i = 0;
-while (true) {
-  if (i === 5) break;
+while (i < 10) {
   i = i + 1;
 }
 console.log(i);

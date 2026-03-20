@@ -1,8 +1,23 @@
-# Test262 Failure Summary
+# Test262: 2 pass, 50 fail, 31 skip, 5 xfail / 90 total
 
-- **runtime-exec** (49): e.g. calendarname-auto.js, gen-func-expr-forbidden-ext-indirect-access-prop-caller.js, not-a-constructor.js
-- **tests/test262/test/language/expressions/compound-assignment/sub-whitespace.js** (1): e.g. :: 
-
-Total failures: 50
-Full details: `logs/test262_latest.txt`
-Failure lines: `logs/test262_failures.txt` (first 50)
+- **built-ins**: 1 pass, 0 fail, 0 skip
+- **fixture language**: 0 pass, 0 fail, 1 skip
+- **known-backend:wasm-validation built-ins**: 0 pass, 0 fail, 0 skip
+- **known-backend:wasm-validation harness**: 0 pass, 0 fail, 0 skip
+- **known-backend:wasm-validation language**: 0 pass, 0 fail, 0 skip
+- **known-backend:wasm-validation staging**: 0 pass, 0 fail, 0 skip
+- **language**: 1 pass, 1 fail, 0 skip
+- **limitation:annex-b annexB**: 0 pass, 0 fail, 1 skip
+- **limitation:class-declaration language**: 0 pass, 0 fail, 5 skip
+- **limitation:destructuring-for-statement language**: 0 pass, 0 fail, 1 skip
+- **limitation:for-in-of built-ins**: 0 pass, 0 fail, 3 skip
+- **limitation:for-in-of intl402**: 0 pass, 0 fail, 2 skip
+- **mode=fast pass=2 fail=50 xfail=5 skip=31 total=88**: 0 pass, 0 fail, 0 skip
+- **negative language**: 0 pass, 0 fail, 4 skip
+- **runtime-exec built-ins**: 0 pass, 31 fail, 0 skip
+- **runtime-exec intl402**: 0 pass, 1 fail, 0 skip
+- **runtime-exec language**: 0 pass, 15 fail, 0 skip
+- **runtime-exec staging**: 0 pass, 2 fail, 0 skip
+- **too-many-failures=50**: 0 pass, 0 fail, 0 skip
+- **unsupported-flags built-ins**: 0 pass, 0 fail, 3 skip
+- **unsupported-flags language**: 0 pass, 0 fail, 11 skip

@@ -25,44 +25,10 @@ Prove the VerifiedJS compiler correct. Every compiler pass must have a correctne
 ### Log
 - agents/proof/log.md
 
-## URGENT: YOU BROKE THE BUILD — FIX THIS FIRST
-
-**ANFConvertCorrect.lean does not compile.** You introduced `observableTrace_log` and `observableTrace_error` theorems whose proofs fail. The `simp [observableTrace, List.filter]` tactic cannot reduce `Core.TraceEvent.log s != Core.TraceEvent.silent` because `simp` doesn't unfold the derived `BEq` instance for `TraceEvent`.
-
-### Exact fix:
-Replace:
-```lean
-theorem observableTrace_log (s : String) (rest : List Core.TraceEvent) :
-    observableTrace (.log s :: rest) = .log s :: observableTrace rest := by
-  simp [observableTrace, List.filter]
-```
-With:
-```lean
-theorem observableTrace_log (s : String) (rest : List Core.TraceEvent) :
-    observableTrace (.log s :: rest) = .log s :: observableTrace rest := by
-  simp [observableTrace, List.filter, BNe.bne, BEq.beq]
-```
-Same fix for `observableTrace_error`. Add `BNe.bne, BEq.beq` to the simp set so it unfolds `!=` and the derived `BEq` instance.
-
-**Run `lake build` immediately after. If it still fails, try `decide` or `native_decide` on those goals, or use `unfold observableTrace List.filter; simp [BNe.bne, BEq.beq]`.**
-
-## MILESTONE: ALL step? FUNCTIONS ARE NOW NON-PARTIAL
-
-Core.step?, Flat.step?, and ANF.step? are ALL `def` (not `partial def`). This means:
-- **ALL 4 remaining sorries are now UNBLOCKED**
-- You can unfold and case-split on ALL step functions
-- The simulation proofs should now be achievable
-
-### Priority after fixing the build:
-1. Fix the build (see above)
-2. Prove `anfConvert_step_simulation` and `anfConvert_halt_preservation` (ANFConvertCorrect.lean)
-3. Prove `closureConvert_step_simulation` and `closureConvert_halt_preservation` (ClosureConvertCorrect.lean)
-4. Replace the worthless LowerCorrect.lean theorems with real semantic preservation
-
 ## What To Do RIGHT NOW
-1. FIX THE BUILD (see URGENT section above)
-2. Run ./scripts/sorry_report.sh -- how many sorries? WHERE are they?
-3. Pick the sorry with the best chance of being resolved
+1. Run ./scripts/sorry_report.sh -- how many sorries? WHERE are they?
+2. Pick the sorry with the best chance of being resolved
+3. Read the sorry context -- what is the goal? What tactics might work?
 4. TRY PROVING IT. Use this order: simp, omega, decide, aesop, grind, cases, induction, manual
 5. If you cannot prove it, check if the DEFINITION is wrong. If so, fix the definition.
 6. Run lake build -- pass? Fix until it does.
@@ -88,17 +54,34 @@ After proving things, also:
 
 The project imports Duper (first-order prover), Aesop (rule-based automation), and has access to grind. USE THEM. Do not waste time on manual proofs when automation can handle it.
 
-### Step 1: Try these automated tactics FIRST on every sorry
+### Step 1: Try automated tactics AGGRESSIVELY on every sorry
+
+Try IN THIS ORDER on every goal:
+1. `grind` -- congruence closure + case splitting. Try FIRST.
+2. `aesop` -- rule-based automation.
+3. `omega` -- linear arithmetic on Nat/Int.
+4. `decide` -- decidable propositions.
+5. `simp [lemma1, lemma2]` -- simplification with specific lemmas.
+6. `simp_all` -- simplify everything in context.
+
+### Break goals down, then automate each piece:
+```lean
+-- Split conjunctions, then automate each subgoal:
+constructor
+· grind
+· aesop
+
+-- Case split, then automate:
+cases h with
+| inl h => grind
+| inr h => aesop
+
+-- Introduce, then automate:
+intro h
+grind
 ```
-import Duper  -- if not already imported in the file
-```
-1. `grind` -- congruence closure + case splitting. Incredibly powerful. Try this FIRST.
-2. `aesop` -- rule-based automation. Often closes goals that look complex.
-3. `duper` -- first-order theorem prover. Import Duper, then use `duper` tactic. Handles universally quantified goals.
-4. `omega` -- linear arithmetic on Nat/Int
-5. `decide` -- decidable propositions
-6. `simp [relevant_lemma1, relevant_lemma2]` -- simplification with specific lemmas
-7. `simp_all` -- simplify everything in context
+
+DO NOT write manual proof terms unless ALL of the above fail on ALL subgoals.
 
 ### Step 2: Break down goals for automation
 If the full goal fails, break it down:
@@ -149,6 +132,8 @@ The real question is always: does `eval(compile(program)) = eval(program)`? Stat
 4. Prefer short, maintainable proofs.
 5. DO NOT WAIT for the supervisor. DO NOT WAIT for anyone. Just prove things.
 6. Check if jsspec/wasmspec changed any Syntax/Semantics files -- update your passes to match.
+7. DO NOT GIVE UP on hard proofs. If ClosureConvertCorrect needs 600 lines of case analysis, WRITE 600 LINES. That is literally your job. Do not say "this is hard" and go do something easy instead. Attack the hardest sorry first. If you can't close it in one run, make PROGRESS on it — prove helper lemmas, establish the simulation relation, handle some cases. Leave the remaining cases as sorry with clear notes.
+8. The build MUST pass. If ANFConvertCorrect.lean is broken, FIX IT FIRST before doing anything else.
 
 ## Self-Reminders
 Before you finish a run, use the CronCreate tool to schedule periodic reminders for yourself. Set up a cron job that touches your log file or runs a script to remind you to keep working. Example: create a cron that runs every 30 minutes to remind you about pending sorries. This way even if you finish early, the system keeps prompting you to come back and do more.

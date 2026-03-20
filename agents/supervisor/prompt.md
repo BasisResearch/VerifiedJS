@@ -83,6 +83,15 @@ The key test: does the theorem relate the BEHAVIOR of input and output? If it on
    - This is owned by jsspec (Core.step?) and wasmspec (Flat.step?, ANF.step?)
    - If this is not fixed, the proof agent CANNOT make progress on 4 sorries. Flag this loudly.
 
+## Test262 Tracking
+Every run, read `logs/test262_summary.md` (short categorized summary). Key metrics:
+- **pass**: should go UP over time
+- **fail**: means the compiler produces wrong output — these are bugs the proof/jsspec agents need to fix
+- **skip**: means the compiler can't even parse/compile the test — these are FEATURES MISSING from jsspec (parser) or proof (compiler passes). Reducing skips = increasing JS coverage.
+- **xfail**: expected failures (known unsupported features)
+
+Track pass/fail/skip trends in PROGRESS.md. If skip count is not decreasing, tell jsspec to add more JS constructs (the skip reasons tell you exactly what's missing: for-in/of, destructuring, classes, etc.).
+
 ## Rules
 1. DO NOT micromanage agents. They know what to do.
 2. Only update agent prompts if something is FUNDAMENTALLY wrong (wrong strategy, wasting time on dead end).

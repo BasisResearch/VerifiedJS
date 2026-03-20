@@ -29,9 +29,12 @@ structure Store where
   types : Array FuncType   -- module type section, needed for call_indirect type check
   funcs : Array Func
   tables : Array (Array (Option Nat))
+  tableLimits : Array Limits  -- declared table limits for table.grow bounds checking
   memories : Array ByteArray
   memLimits : Array Limits  -- declared memory limits for grow bounds checking
   globals : Array WasmValue
+  datas : Array ByteArray   -- data segment payloads for memory.init
+  elems : Array (Array (Option Nat))  -- element segment function indices for table.init
   deriving Repr
 
 /-- Active call frame with locals and bound module instance id. -/
@@ -86,9 +89,12 @@ def initialStore (m : Module) : Store :=
     types := m.types
     funcs := m.funcs
     tables := m.tables.map initTableSlots
+    tableLimits := m.tables.map (·.lim)
     memories := m.memories.map initMemory
     memLimits := m.memories.map (·.lim)
     globals := initGlobals m
+    datas := m.datas.map (·.init)
+    elems := m.elems.map (fun seg => seg.funcIdxs.toArray.map some)
   }
 
 /-- Initial machine state for a module entry; code starts at explicit start call if present. -/
@@ -1276,28 +1282,100 @@ def step? (s : ExecState) : Option (TraceEvent × ExecState) :=
       | .memoryInit dataIdx memIdx =>
           match pop3? base.stack with
           | some (.i32 n, .i32 src, .i32 dst, stk) =>
-              match base.store.memories[memIdx]? with
-              | some mem =>
-                  -- Data segment bounds check would require store to track data segments
-                  -- For now: perform the copy if within memory bounds, else trap
+              match base.store.memories[memIdx]?, base.store.datas[dataIdx]? with
+              | some mem, some dataSeg =>
                   let len := n.toNat
+                  let srcOff := src.toNat
                   let dstOff := dst.toNat
-                  if dstOff + len > mem.size then
+                  if srcOff + len > dataSeg.size then
+                    some (trapState { base with stack := stk } "out of bounds data segment access in memory.init")
+                  else if dstOff + len > mem.size then
                     some (trapState { base with stack := stk } "out of bounds memory access in memory.init")
                   else
-                    -- No-op for the actual data copy (data segment not tracked in store yet)
-                    some (.silent, pushTrace { base with stack := stk } .silent)
-              | none => some (trapState { base with stack := stk } s!"unknown memory index {memIdx}")
+                    let filled := Id.run do
+                      let mut m := mem
+                      for i in List.range len do
+                        let byte := if srcOff + i < dataSeg.size then dataSeg.get! (srcOff + i) else 0
+                        if dstOff + i < m.size then
+                          m := m.set! (dstOff + i) byte
+                      return m
+                    let store' := { base.store with memories := base.store.memories.set! memIdx filled }
+                    some (.silent, pushTrace { base with store := store', stack := stk } .silent)
+              | none, _ => some (trapState { base with stack := stk } s!"unknown memory index {memIdx}")
+              | _, none => some (trapState { base with stack := stk } s!"unknown data segment index {dataIdx}")
           | some _ => some (trapState base "type mismatch in memory.init")
           | none => some (trapState base "stack underflow in memory.init")
-      | .tableInit _ _ | .tableCopy _ _ =>
+      -- SPEC §4.4.7.14 table.init: copy from element segment into table.
+      -- REF: WasmCert-Coq r_table_init
+      | .tableInit elemIdx tableIdx =>
           match pop3? base.stack with
-          | some (.i32 _, .i32 _, .i32 _, stk) =>
-              some (.silent, pushTrace { base with stack := stk } .silent)
-          | some _ => some (trapState base "type mismatch in table operation")
-          | none => some (trapState base "stack underflow in table operation")
-      | .dataDrop _ | .elemDrop _ =>
-          some (.silent, pushTrace base .silent)
+          | some (.i32 n, .i32 src, .i32 dst, stk) =>
+              match base.store.tables[tableIdx]?, base.store.elems[elemIdx]? with
+              | some tbl, some elemSeg =>
+                  let len := n.toNat
+                  let srcOff := src.toNat
+                  let dstOff := dst.toNat
+                  if srcOff + len > elemSeg.size then
+                    some (trapState { base with stack := stk } "out of bounds element segment access in table.init")
+                  else if dstOff + len > tbl.size then
+                    some (trapState { base with stack := stk } "out of bounds table access in table.init")
+                  else
+                    let newTbl := Id.run do
+                      let mut t := tbl
+                      for i in List.range len do
+                        if srcOff + i < elemSeg.size && dstOff + i < t.size then
+                          t := t.set! (dstOff + i) (elemSeg.getD (srcOff + i) none)
+                      return t
+                    let store' := { base.store with tables := base.store.tables.set! tableIdx newTbl }
+                    some (.silent, pushTrace { base with store := store', stack := stk } .silent)
+              | none, _ => some (trapState { base with stack := stk } s!"unknown table index {tableIdx}")
+              | _, none => some (trapState { base with stack := stk } s!"unknown element segment index {elemIdx}")
+          | some _ => some (trapState base "type mismatch in table.init")
+          | none => some (trapState base "stack underflow in table.init")
+      -- SPEC §4.4.7.15 table.copy: copy elements between tables.
+      -- REF: WasmCert-Coq r_table_copy_forward / r_table_copy_backward
+      | .tableCopy dstIdx srcIdx =>
+          match pop3? base.stack with
+          | some (.i32 n, .i32 src, .i32 dst, stk) =>
+              match base.store.tables[dstIdx]?, base.store.tables[srcIdx]? with
+              | some dstTbl, some srcTbl =>
+                  let len := n.toNat
+                  let srcOff := src.toNat
+                  let dstOff := dst.toNat
+                  if srcOff + len > srcTbl.size || dstOff + len > dstTbl.size then
+                    some (trapState { base with stack := stk } "out of bounds table access in table.copy")
+                  else
+                    let newTbl := Id.run do
+                      let mut t := dstTbl
+                      if dstOff <= srcOff then
+                        for i in List.range len do
+                          if srcOff + i < srcTbl.size && dstOff + i < t.size then
+                            t := t.set! (dstOff + i) (srcTbl.getD (srcOff + i) none)
+                      else
+                        for i in List.range len do
+                          let j := len - 1 - i
+                          if srcOff + j < srcTbl.size && dstOff + j < t.size then
+                            t := t.set! (dstOff + j) (srcTbl.getD (srcOff + j) none)
+                      return t
+                    let store' := { base.store with tables := base.store.tables.set! dstIdx newTbl }
+                    some (.silent, pushTrace { base with store := store', stack := stk } .silent)
+              | _, _ => some (trapState { base with stack := stk } "unknown table index in table.copy")
+          | some _ => some (trapState base "type mismatch in table.copy")
+          | none => some (trapState base "stack underflow in table.copy")
+      -- SPEC §4.4.7.13 data.drop / §4.4.7.16 elem.drop: drop segment contents.
+      -- REF: WasmCert-Coq r_data_drop / r_elem_drop
+      | .dataDrop dataIdx =>
+          let store' := { base.store with
+            datas := if dataIdx < base.store.datas.size
+                     then base.store.datas.set! dataIdx ByteArray.empty
+                     else base.store.datas }
+          some (.silent, pushTrace { base with store := store' } .silent)
+      | .elemDrop elemIdx =>
+          let store' := { base.store with
+            elems := if elemIdx < base.store.elems.size
+                     then base.store.elems.set! elemIdx #[]
+                     else base.store.elems }
+          some (.silent, pushTrace { base with store := store' } .silent)
 
 /-- Small-step reduction relation induced by `step?`. -/
 inductive Step : ExecState → TraceEvent → ExecState → Prop where
@@ -1386,6 +1464,52 @@ theorem step?_localGet_some (s : ExecState) (idx : Nat) (fr : Frame) (frs : List
     ∃ t s', step? { s with code := .localGet idx :: rest, frames := fr :: frs } = some (t, s') := by
   unfold step?; simp [h]
 
+/-- dataDrop does not get stuck. -/
+theorem step?_dataDrop_some (s : ExecState) (idx : DataIdx) (rest : List Instr) :
+    ∃ t s', step? { s with code := .dataDrop idx :: rest } = some (t, s') := by
+  unfold step?; exact ⟨_, _, rfl⟩
+
+/-- elemDrop does not get stuck. -/
+theorem step?_elemDrop_some (s : ExecState) (idx : ElemIdx) (rest : List Instr) :
+    ∃ t s', step? { s with code := .elemDrop idx :: rest } = some (t, s') := by
+  unfold step?; exact ⟨_, _, rfl⟩
+
+/-- select with i32 condition does not get stuck. -/
+theorem step?_select_some (s : ExecState) (n : UInt32) (v1 v2 : WasmValue)
+    (stk : List WasmValue) (rest : List Instr) :
+    ∃ t s', step? { s with code := .select :: rest, stack := .i32 n :: v2 :: v1 :: stk } = some (t, s') := by
+  unfold step?; simp [pop2?, pop1?, i32Truth]
+  cases h : (n != 0) <;> exact ⟨_, _, rfl⟩
+
+/-- An empty Store for use in lemmas and examples. -/
+def Store.empty : Store :=
+  { types := #[], funcs := #[], tables := #[], tableLimits := #[],
+    memories := #[], memLimits := #[], globals := #[], datas := #[], elems := #[] }
+
+/-- initialStore preserves the module's data segment payloads. -/
+@[simp]
+theorem initialStore_datas (m : Module) :
+    (initialStore m).datas = m.datas.map (·.init) := by
+  simp [initialStore]
+
+/-- initialStore preserves the module's element segments as optional function indices. -/
+@[simp]
+theorem initialStore_elems (m : Module) :
+    (initialStore m).elems = m.elems.map (fun seg => seg.funcIdxs.toArray.map some) := by
+  simp [initialStore]
+
+/-- initialStore preserves the module's type section. -/
+@[simp]
+theorem initialStore_types (m : Module) :
+    (initialStore m).types = m.types := by
+  simp [initialStore]
+
+/-- initialStore preserves the module's function section. -/
+@[simp]
+theorem initialStore_funcs (m : Module) :
+    (initialStore m).funcs = m.funcs := by
+  simp [initialStore]
+
 /-! ## Inhabitedness examples for Wasm.Step
 
     These construct concrete evaluation traces proving the Step inductive
@@ -1394,7 +1518,7 @@ theorem step?_localGet_some (s : ExecState) (idx : Nat) (fr : Frame) (frs : List
 
 /-- Witness: i32.const 42 pushes 42 onto the stack. -/
 private def exState0 : ExecState :=
-  { store := { types := #[], funcs := #[], tables := #[], memories := #[], memLimits := #[], globals := #[] }
+  { store := { types := #[], funcs := #[], tables := #[], tableLimits := #[], memories := #[], memLimits := #[], globals := #[], datas := #[], elems := #[] }
     stack := []
     frames := [{ locals := #[], moduleInst := 0 }]
     labels := []
@@ -1406,7 +1530,7 @@ example : Step exState0 .silent (pushTrace { exState0 with code := [], stack := 
 
 /-- Witness: i32.add on stack [3, 5] produces [8]. -/
 private def exStateAdd : ExecState :=
-  { store := { types := #[], funcs := #[], tables := #[], memories := #[], memLimits := #[], globals := #[] }
+  { store := { types := #[], funcs := #[], tables := #[], tableLimits := #[], memories := #[], memLimits := #[], globals := #[], datas := #[], elems := #[] }
     stack := [.i32 3, .i32 5]
     frames := [{ locals := #[], moduleInst := 0 }]
     labels := []
@@ -1419,7 +1543,7 @@ example : Step exStateAdd .silent
 
 /-- Witness: nop followed by i32.const — a two-step trace. -/
 private def exStateNopConst : ExecState :=
-  { store := { types := #[], funcs := #[], tables := #[], memories := #[], memLimits := #[], globals := #[] }
+  { store := { types := #[], funcs := #[], tables := #[], tableLimits := #[], memories := #[], memLimits := #[], globals := #[], datas := #[], elems := #[] }
     stack := []
     frames := [{ locals := #[], moduleInst := 0 }]
     labels := []
@@ -1436,7 +1560,7 @@ example : Steps exStateNopConst [.silent, .silent]
 
 /-- Witness: unreachable traps. -/
 private def exStateTrap : ExecState :=
-  { store := { types := #[], funcs := #[], tables := #[], memories := #[], memLimits := #[], globals := #[] }
+  { store := { types := #[], funcs := #[], tables := #[], tableLimits := #[], memories := #[], memLimits := #[], globals := #[], datas := #[], elems := #[] }
     stack := []
     frames := [{ locals := #[], moduleInst := 0 }]
     labels := []
