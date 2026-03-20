@@ -295,8 +295,9 @@ partial def step? (s : State) : Option (TraceEvent × State) :=
                   | some closure =>
                       -- §10.2.1 [[Call]]: bind params to args in closure's captured environment.
                       let pairs := closure.params.zip argVals
-                      let bodyEnv : Env := { bindings :=
-                        pairs.foldr (fun (p, v) bs => (p, v) :: bs) closure.capturedEnv }
+                      let bodyBindings :=
+                        pairs.foldr (fun pv bs => (pv.1, pv.2) :: bs) closure.capturedEnv
+                      let bodyEnv : Env := { bindings := bodyBindings }
                       -- Bind function name for recursion (§14.1.20 step 28).
                       let bodyEnv' : Env := match closure.name with
                         | some n => { bindings := (n, .function idx) :: bodyEnv.bindings }
@@ -364,13 +365,13 @@ partial def step? (s : State) : Option (TraceEvent × State) :=
       | none, _ =>
           match step? { s with expr := obj } with
           | some (t, so) =>
-              let s' := pushTrace { s with expr := .getIndex so.expr idx, env := so.env, heap := so.heap } t
+              let s' := pushTrace { so with expr := .getIndex so.expr idx, trace := s.trace } t
               some (t, s')
           | none => none
       | some _, none =>
           match step? { s with expr := idx } with
           | some (t, si) =>
-              let s' := pushTrace { s with expr := .getIndex (.lit (match exprValue? obj with | some v => v | none => .undefined)) si.expr, env := si.env, heap := si.heap } t
+              let s' := pushTrace { si with expr := .getIndex (.lit (match exprValue? obj with | some v => v | none => .undefined)) si.expr, trace := s.trace } t
               some (t, s')
           | none => none
       | some objVal, some idxVal =>
@@ -414,7 +415,7 @@ partial def step? (s : State) : Option (TraceEvent × State) :=
       | some (done, k, e, rest) =>
           match step? { s with expr := e } with
           | some (t, se) =>
-              let s' := pushTrace { s with expr := .objectLit (done ++ [(k, se.expr)] ++ rest), env := se.env, heap := se.heap } t
+              let s' := pushTrace { se with expr := .objectLit (done ++ [(k, se.expr)] ++ rest), trace := s.trace } t
               some (t, s')
           | none => none
       | none =>
@@ -441,7 +442,7 @@ partial def step? (s : State) : Option (TraceEvent × State) :=
       | some (done, e, rest) =>
           match step? { s with expr := e } with
           | some (t, se) =>
-              let s' := pushTrace { s with expr := .arrayLit (done ++ [se.expr] ++ rest), env := se.env, heap := se.heap } t
+              let s' := pushTrace { se with expr := .arrayLit (done ++ [se.expr] ++ rest), trace := s.trace } t
               some (t, s')
           | none => none
       | none =>
@@ -468,7 +469,7 @@ partial def step? (s : State) : Option (TraceEvent × State) :=
       | none =>
           match step? { s with expr := obj } with
           | some (t, so) =>
-              let s' := pushTrace { s with expr := .forIn binding so.expr body, env := so.env, heap := so.heap } t
+              let s' := pushTrace { so with expr := .forIn binding so.expr body, trace := s.trace } t
               some (t, s')
           | none => none
       | some (.object addr) =>
@@ -493,7 +494,7 @@ partial def step? (s : State) : Option (TraceEvent × State) :=
       | none =>
           match step? { s with expr := iterable } with
           | some (t, si) =>
-              let s' := pushTrace { s with expr := .forOf binding si.expr body, env := si.env, heap := si.heap } t
+              let s' := pushTrace { si with expr := .forOf binding si.expr body, trace := s.trace } t
               some (t, s')
           | none => none
       | some (.object addr) =>
@@ -524,7 +525,7 @@ partial def step? (s : State) : Option (TraceEvent × State) :=
       | none =>
           match step? { s with expr := arg } with
           | some (t, sa) =>
-              let s' := pushTrace { s with expr := .throw sa.expr, env := sa.env, heap := sa.heap } t
+              let s' := pushTrace { sa with expr := .throw sa.expr, trace := s.trace } t
               some (t, s')
           | none => none
   -- ECMA-262 §13.15 try/catch/finally: exception handling.
@@ -534,9 +535,12 @@ partial def step? (s : State) : Option (TraceEvent × State) :=
       | some v =>
           if isCallFrame then
               -- Function normal completion: restore caller env from callStack.
-              let (restoredEnv, newStack) := match s.callStack with
-                | saved :: rest => ({ bindings := saved : Env }, rest)
-                | [] => (s.env, [])
+              let restoredEnv : Env := match s.callStack with
+                | saved :: _ => ⟨saved⟩
+                | [] => s.env
+              let newStack := match s.callStack with
+                | _ :: rest => rest
+                | [] => []
               let s' := pushTrace { s with expr := .lit v, env := restoredEnv, callStack := newStack } .silent
               some (.silent, s')
           else
@@ -557,21 +561,29 @@ partial def step? (s : State) : Option (TraceEvent × State) :=
                   let retVal := match exprValue? sb.expr with
                     | some v => v
                     | none => .undefined
-                  let (restoredEnv, newStack) := match s.callStack with
-                    | saved :: rest => ({ bindings := saved : Env }, rest)
-                    | [] => (sb.env, [])
-                  let s' := pushTrace { s with expr := .lit retVal
-                    , env := restoredEnv, heap := sb.heap
-                    , funcs := sb.funcs, callStack := newStack } .silent
+                  let restoredEnv : Env := match s.callStack with
+                    | saved :: _ => ⟨saved⟩
+                    | [] => sb.env
+                  let newStack := match s.callStack with
+                    | _ :: rest => rest
+                    | [] => []
+                  let s' := pushTrace
+                    { s with expr := .lit retVal, env := restoredEnv
+                           , heap := sb.heap, funcs := sb.funcs
+                           , callStack := newStack } .silent
                   some (.silent, s')
               else if isCallFrame then
                   -- Function threw: propagate error, restore caller env.
-                  let (restoredEnv, newStack) := match s.callStack with
-                    | saved :: rest => ({ bindings := saved : Env }, rest)
-                    | [] => (sb.env, [])
-                  let s' := pushTrace { s with expr := .lit .undefined
-                    , env := restoredEnv, heap := sb.heap
-                    , funcs := sb.funcs, callStack := newStack } (.error msg)
+                  let restoredEnv : Env := match s.callStack with
+                    | saved :: _ => ⟨saved⟩
+                    | [] => sb.env
+                  let newStack := match s.callStack with
+                    | _ :: rest => rest
+                    | [] => []
+                  let s' := pushTrace
+                    { s with expr := .lit .undefined, env := restoredEnv
+                           , heap := sb.heap, funcs := sb.funcs
+                           , callStack := newStack } (.error msg)
                   some (.error msg, s')
               else
                   -- Regular exception caught: bind error to catchParam, run catch body.
@@ -579,16 +591,15 @@ partial def step? (s : State) : Option (TraceEvent × State) :=
                     match finally_ with
                     | some fin => .seq catchBody fin
                     | none => catchBody
+                  let catchEnv := sb.env.extend catchParam (.string msg)
                   let s' := pushTrace
-                    { sb with expr := handler
-                    , env := sb.env.extend catchParam (.string msg)
-                    , trace := s.trace } (.error msg)
+                    { sb with expr := handler, env := catchEnv, trace := s.trace } (.error msg)
                   some (.error msg, s')
           | some (t, sb) =>
               -- Normal step inside try body: keep wrapping in tryCatch.
               let s' := pushTrace
                 { sb with expr := .tryCatch sb.expr catchParam catchBody finally_
-                , trace := s.trace } t
+                        , trace := s.trace } t
               some (t, s')
           | none => none
   | .this =>
@@ -616,7 +627,7 @@ partial def step? (s : State) : Option (TraceEvent × State) :=
       | none =>
           match step? { s with expr := arg } with
           | some (t, sa) =>
-              let s' := pushTrace { s with expr := .typeof sa.expr, env := sa.env, heap := sa.heap } t
+              let s' := pushTrace { sa with expr := .typeof sa.expr, trace := s.trace } t
               some (t, s')
           | none => none
   -- ECMA-262 §13.1 Block statement / §13.6 return / §13.8 break / §13.9 continue
@@ -630,7 +641,7 @@ partial def step? (s : State) : Option (TraceEvent × State) :=
           | none =>
               match step? { s with expr := e } with
               | some (t, sa) =>
-                  let s' := pushTrace { s with expr := .«return» (some sa.expr), env := sa.env, heap := sa.heap } t
+                  let s' := pushTrace { sa with expr := .«return» (some sa.expr), trace := s.trace } t
                   some (t, s')
               | none => none
       | none =>
@@ -650,7 +661,7 @@ partial def step? (s : State) : Option (TraceEvent × State) :=
       | none =>
           match step? { s with expr := obj } with
           | some (t, so) =>
-              let s' := pushTrace { s with expr := .setProp so.expr prop value, env := so.env, heap := so.heap } t
+              let s' := pushTrace { so with expr := .setProp so.expr prop value, trace := s.trace } t
               some (t, s')
           | none => none
       | some objVal =>
@@ -658,7 +669,7 @@ partial def step? (s : State) : Option (TraceEvent × State) :=
           | none =>
               match step? { s with expr := value } with
               | some (t, sv) =>
-                  let s' := pushTrace { s with expr := .setProp (.lit objVal) prop sv.expr, env := sv.env, heap := sv.heap } t
+                  let s' := pushTrace { sv with expr := .setProp (.lit objVal) prop sv.expr, trace := s.trace } t
                   some (t, s')
               | none => none
           | some v =>
@@ -684,19 +695,19 @@ partial def step? (s : State) : Option (TraceEvent × State) :=
       | none, _, _ =>
           match step? { s with expr := obj } with
           | some (t, so) =>
-              let s' := pushTrace { s with expr := .setIndex so.expr idx value, env := so.env, heap := so.heap } t
+              let s' := pushTrace { so with expr := .setIndex so.expr idx value, trace := s.trace } t
               some (t, s')
           | none => none
       | some _, none, _ =>
           match step? { s with expr := idx } with
           | some (t, si) =>
-              let s' := pushTrace { s with expr := .setIndex (.lit (match exprValue? obj with | some v => v | none => .undefined)) si.expr value, env := si.env, heap := si.heap } t
+              let s' := pushTrace { si with expr := .setIndex (.lit (match exprValue? obj with | some v => v | none => .undefined)) si.expr value, trace := s.trace } t
               some (t, s')
           | none => none
       | some _, some _, none =>
           match step? { s with expr := value } with
           | some (t, sv) =>
-              let s' := pushTrace { s with expr := .setIndex (.lit (match exprValue? obj with | some v => v | none => .undefined)) (.lit (match exprValue? idx with | some v => v | none => .undefined)) sv.expr, env := sv.env, heap := sv.heap } t
+              let s' := pushTrace { sv with expr := .setIndex (.lit (match exprValue? obj with | some v => v | none => .undefined)) (.lit (match exprValue? idx with | some v => v | none => .undefined)) sv.expr, trace := s.trace } t
               some (t, s')
           | none => none
       | some objVal, some idxVal, some v =>
@@ -724,7 +735,7 @@ partial def step? (s : State) : Option (TraceEvent × State) :=
       | none =>
           match step? { s with expr := obj } with
           | some (t, so) =>
-              let s' := pushTrace { s with expr := .deleteProp so.expr prop, env := so.env, heap := so.heap } t
+              let s' := pushTrace { so with expr := .deleteProp so.expr prop, trace := s.trace } t
               some (t, s')
           | none => none
       | some (.object addr) =>
@@ -755,7 +766,7 @@ partial def step? (s : State) : Option (TraceEvent × State) :=
           | none =>
               match step? { s with expr := e } with
               | some (t, sa) =>
-                  let s' := pushTrace { s with expr := .yield (some sa.expr) _delegate, env := sa.env, heap := sa.heap } t
+                  let s' := pushTrace { sa with expr := .yield (some sa.expr) _delegate, trace := s.trace } t
                   some (t, s')
               | none => none
       | none =>
@@ -770,7 +781,7 @@ partial def step? (s : State) : Option (TraceEvent × State) :=
       | none =>
           match step? { s with expr := arg } with
           | some (t, sa) =>
-              let s' := pushTrace { s with expr := .await sa.expr, env := sa.env, heap := sa.heap } t
+              let s' := pushTrace { sa with expr := .await sa.expr, trace := s.trace } t
               some (t, s')
           | none => none
 /-- Small-step relation induced by `step?`.

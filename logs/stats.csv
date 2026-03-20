@@ -1,0 +1,9 @@
+timestamp,sorry_count,e2e_pass,e2e_fail,lean_files,lean_loc,theorems_proved,theorems_sorry,theorems_todo,build_ok
+2026-03-20T18:24:06+00:00,4,24,6,47,13099,18,0
+0,VerifiedJS/Proofs/ANFConvertCorrect.lean:0
+VerifiedJS/Proofs/ClosureConvertCorrect.lean:0
+VerifiedJS/Proofs/ElaborateCorrect.lean:1
+VerifiedJS/Proofs/EmitCorrect.lean:1
+VerifiedJS/Proofs/EndToEnd.lean:1
+VerifiedJS/Proofs/LowerCorrect.lean:0
+VerifiedJS/Proofs/OptimizeCorrect.lean:0,1
