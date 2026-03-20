@@ -489,18 +489,9 @@ private partial def elabStmt (s : Source.Stmt) : ElabM Core.Expr := do
 
   | .functionDecl name params body isAsync isGenerator => do
     let bodyExpr ← elabStmts body
-    let fd : FuncDef := {
-      name := name
-      params := paramsToNames params
-      body := bodyExpr
-      isAsync := isAsync
-      isGenerator := isGenerator
-    }
-    let fns ← get
-    let funcIdx := fns.size
-    modify fun fns => fns.push fd
-    -- Bind the function name to its top-level function index (avoids duplicate lifting)
-    pure (.assign name (.lit (.function funcIdx)))
+    -- Use functionDef expression; closure conversion will lift it properly.
+    -- Do NOT also add to top-level functions array (avoids duplicates).
+    pure (.assign name (.functionDef (some name) (paramsToNames params) bodyExpr isAsync isGenerator))
 
   | .classDecl _ _ _ => pure undef  -- classes not supported
   | .import_ _ _ => pure undef       -- imports not supported in Core
@@ -533,6 +524,12 @@ private partial def elabStmtsList (stmts : List Source.Stmt) : ElabM Core.Expr :
     -- Thread variable declarations as let-bindings around the rest
     let restExpr ← elabStmtsList rest
     elabVarDeclsWithBody decls restExpr
+  | (.functionDecl name params body isAsync isGenerator) :: rest => do
+    -- Thread function declarations as let-bindings (proper scoping for closure conversion)
+    let bodyExpr ← elabStmts body
+    let funcExpr := Core.Expr.functionDef (some name) (paramsToNames params) bodyExpr isAsync isGenerator
+    let restExpr ← elabStmtsList rest
+    pure (.«let» name funcExpr restExpr)
   | s :: rest => do
     let e ← elabStmt s
     let r ← elabStmtsList rest

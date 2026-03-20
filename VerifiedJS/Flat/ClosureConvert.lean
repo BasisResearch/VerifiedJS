@@ -227,6 +227,11 @@ partial def convertExpr
     let bodyFree := freeVars body
     let bound := params
     let free := bodyFree.filter (fun v => !(bound.elem v))
+    -- For named functions, exclude self-reference from captures (handled via self-call)
+    let selfName := fname
+    let free := match selfName with
+      | some n => free.filter (· != n)
+      | none => free
     let captured := dedupStrings free []
     -- Build inner environment mapping for captured variables
     let innerEnvMap := indexedMap captured 0
