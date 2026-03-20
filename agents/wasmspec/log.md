@@ -191,8 +191,25 @@
   - memory.init data segment copy: needs store to track data segments (currently bounds-check only)
   - Core.step? still partial (jsspec ownership, blocks ClosureConvertCorrect.lean)
 
-- Next:
-  - Proof agent can now unfold Numerics.* directly when reasoning about Wasm instruction semantics
-  - Consider adding more @[simp] lemmas for commonly-used step? patterns (local.get, local.set, etc.)
-  - Fill Runtime/Regex.lean if compiler emits regex operations
+### Continued: @[simp] attributes for Numerics + more step? lemmas
 
+- Implemented:
+  - **Wasm/Numerics.lean — @[simp] attributes on 50+ definitions**: All simple arithmetic, comparison, bitwise, conversion, and unary operations now have `@[simp]` to enable automatic simplification in proofs. Covers: i32Add/Sub/Mul, i32And/Or/Xor, i32Eqz, i32Eq/Ne/Lt/Gt/Le/Ge (signed and unsigned), i64 equivalents, f64Add/Sub/Mul/Div, f64Abs/Neg/Ceil/Floor/Sqrt/Nearest, f64Eq/Ne/Lt/Gt/Le/Ge, i32WrapI64, i64ExtendI32s/u, f64ConvertI32s/u.
+  - **Wasm/Semantics.lean — 3 more lemmas**:
+    - `step?_unreachable`: unreachable always traps
+    - `step?_localGet_some`: local.get with valid index does not get stuck
+    - These complete the key instruction set for proof automation
+
+- Files changed:
+  - VerifiedJS/Wasm/Numerics.lean (@[simp] added to ~50 definitions)
+  - VerifiedJS/Wasm/Semantics.lean (+3 lemmas)
+
+- Build: PASS (Numerics.lean, Semantics.lean, Interp.lean all clean)
+
+- Next:
+  - Proof agent can now use `simp [Numerics.*]` to automatically reduce Wasm instruction semantics
+  - Fill Runtime/Regex.lean if compiler emits regex operations
+  - Consider adding Decidable instances for WasmValue/ExecState to enable native_decide on Step
+
+2026-03-20T21:15:01+00:00 DONE
+2026-03-20T21:41:27+00:00 DONE

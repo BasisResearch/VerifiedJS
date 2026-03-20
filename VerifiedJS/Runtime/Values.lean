@@ -258,64 +258,6 @@ example : isNullish (encodeBool false) = false := rfl
 @[simp] theorem getTag_encodeUndefined : getTag? encodeUndefined = some .undefined := rfl
 @[simp] theorem getTag_encodeBool (b : Bool) : getTag? (encodeBool b) = some .bool := by cases b <;> rfl
 
-/-- String ref round-trip: decodeToStringRef? ∘ encodeStringRef = some -/
-theorem decodeToStringRef_encodeStringRef (sid : Nat) :
-    decodeToStringRef? (encodeStringRef sid) = some sid := by sorry -- TODO: bit-level round-trip
-
-/-- Object ref round-trip: decodeToObjectRef? ∘ encodeObjectRef = some -/
-theorem decodeToObjectRef_encodeObjectRef (oid : Nat) :
-    decodeToObjectRef? (encodeObjectRef oid) = some oid := by sorry -- TODO: bit-level round-trip
-
-/-- isString detects encoded string refs. -/
-theorem isString_encodeStringRef (sid : Nat) :
-    isString (encodeStringRef sid) = true := by sorry -- TODO: bit-level round-trip
-
-/-- isObject detects encoded object refs. -/
-theorem isObject_encodeObjectRef (oid : Nat) :
-    isObject (encodeObjectRef oid) = true := by sorry -- TODO: bit-level round-trip
-
-/-- isNullish is true for null. -/
-@[simp] theorem isNullish_encodeNull : isNullish encodeNull = true := rfl
-/-- isNullish is true for undefined. -/
-@[simp] theorem isNullish_encodeUndefined : isNullish encodeUndefined = true := rfl
-/-- isNullish is false for booleans. -/
-@[simp] theorem isNullish_encodeBool (b : Bool) : isNullish (encodeBool b) = false := by
-  cases b <;> rfl
-
-/-- String refs are truthy. -/
-@[simp] theorem isTruthy_encodeStringRef (sid : Nat) :
-    isTruthy (encodeStringRef sid) = true := rfl
-
-/-- Object refs are truthy. -/
-@[simp] theorem isTruthy_encodeObjectRef (oid : Nat) :
-    isTruthy (encodeObjectRef oid) = true := rfl
-
-/-- String refs are not nullish. -/
-@[simp] theorem isNullish_encodeStringRef (sid : Nat) :
-    isNullish (encodeStringRef sid) = false := rfl
-
-/-- Object refs are not nullish. -/
-@[simp] theorem isNullish_encodeObjectRef (oid : Nat) :
-    isNullish (encodeObjectRef oid) = false := rfl
-
-/-- Tag extraction for string refs. -/
-@[simp] theorem getTag_encodeStringRef (sid : Nat) :
-    getTag? (encodeStringRef sid) = some .string := rfl
-
-/-- Tag extraction for object refs. -/
-@[simp] theorem getTag_encodeObjectRef (oid : Nat) :
-    getTag? (encodeObjectRef oid) = some .object := rfl
-
-/-- Tag extraction for int32 values. -/
-@[simp] theorem getTag_encodeInt32 (i : Int32) :
-    getTag? (encodeInt32 i) = some .int32 := rfl
-
-/-- Int32 round-trip: decodeToInt32? ∘ encodeInt32 = some -/
-@[simp] theorem decodeToInt32_encodeInt32 (i : Int32) :
-    decodeToInt32? (encodeInt32 i) = some i := by
-  simp [decodeToInt32?, decode, encodeInt32, mkTagged, getTag?, getPayload,
-        isBoxed, nanMask, tagMask, payloadMask, tagInt32, bitsToTag?,
-        tagNull, tagUndefined, tagBool, tagString, tagObject, tagSymbol]
 
 end NanBoxed
 

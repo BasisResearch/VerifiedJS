@@ -308,12 +308,12 @@ def f64Trunc (n : Float) : Float :=
 
 /-! ## f64 comparison (§4.3.4) -/
 
-def f64Eq (a b : Float) : Bool := a == b
-def f64Ne (a b : Float) : Bool := a != b
-def f64Lt (a b : Float) : Bool := a < b
-def f64Gt (a b : Float) : Bool := a > b
-def f64Le (a b : Float) : Bool := a <= b
-def f64Ge (a b : Float) : Bool := a >= b
+@[simp] def f64Eq (a b : Float) : Bool := a == b
+@[simp] def f64Ne (a b : Float) : Bool := a != b
+@[simp] def f64Lt (a b : Float) : Bool := a < b
+@[simp] def f64Gt (a b : Float) : Bool := a > b
+@[simp] def f64Le (a b : Float) : Bool := a <= b
+@[simp] def f64Ge (a b : Float) : Bool := a >= b
 
 /-! ## Conversion operations (§4.3.4)
     SPEC: WebAssembly 1.0 §4.3.4 (Conversions). -/
@@ -332,13 +332,13 @@ where
     else Int.ofNat f.toUInt64.toNat
 
 /-- SPEC §4.3.4 i32.wrap_i64: wrap i64 to i32 (mod 2^32). -/
-def i32WrapI64 (n : UInt64) : UInt32 := UInt32.ofNat n.toNat
+@[simp] def i32WrapI64 (n : UInt64) : UInt32 := UInt32.ofNat n.toNat
 
 /-- SPEC §4.3.4 i64.extend_i32_s: sign-extending extend. -/
-def i64ExtendI32s (n : UInt32) : UInt64 := UInt64.ofInt (i32ToSigned n)
+@[simp] def i64ExtendI32s (n : UInt32) : UInt64 := UInt64.ofInt (i32ToSigned n)
 
 /-- SPEC §4.3.4 i64.extend_i32_u: zero-extending extend. -/
-def i64ExtendI32u (n : UInt32) : UInt64 := UInt64.ofNat n.toNat
+@[simp] def i64ExtendI32u (n : UInt32) : UInt64 := UInt64.ofNat n.toNat
 
 /-- SPEC §4.3.4 i32.trunc_f*_s: truncate float to signed i32, traps on overflow/NaN. -/
 def i32TruncFS? (n : Float) : Option UInt32 :=
@@ -382,9 +382,9 @@ def f32ConvertI64s (n : UInt64) : Float := Float.ofInt (i64ToSigned n)
 def f32ConvertI64u (n : UInt64) : Float := Float.ofNat n.toNat
 
 /-- SPEC §4.3.4 f64.convert_i32_s: convert signed i32 to f64. -/
-def f64ConvertI32s (n : UInt32) : Float := Float.ofInt (i32ToSigned n)
+@[simp] def f64ConvertI32s (n : UInt32) : Float := Float.ofInt (i32ToSigned n)
 /-- SPEC §4.3.4 f64.convert_i32_u: convert unsigned i32 to f64. -/
-def f64ConvertI32u (n : UInt32) : Float := Float.ofNat n.toNat
+@[simp] def f64ConvertI32u (n : UInt32) : Float := Float.ofNat n.toNat
 /-- SPEC §4.3.4 f64.convert_i64_s: convert signed i64 to f64. -/
 def f64ConvertI64s (n : UInt64) : Float := Float.ofInt (i64ToSigned n)
 /-- SPEC §4.3.4 f64.convert_i64_u: convert unsigned i64 to f64. -/
