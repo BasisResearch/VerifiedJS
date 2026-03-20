@@ -953,17 +953,17 @@ def step? (s : ExecState) : Option (TraceEvent × ExecState) :=
       | .i64Geu => withI64Rel base Numerics.i64Geu "i64.ge_u"
       | .i64Clz =>
           match pop1? base.stack with
-          | some (.i64 n, stk) => some (.silent, pushTrace { base with stack := .i64 (i64Clz n) :: stk } .silent)
+          | some (.i64 n, stk) => some (.silent, pushTrace { base with stack := .i64 (Numerics.i64Clz n) :: stk } .silent)
           | some _ => some (trapState base "type mismatch in i64.clz")
           | none => some (trapState base "stack underflow in i64.clz")
       | .i64Ctz =>
           match pop1? base.stack with
-          | some (.i64 n, stk) => some (.silent, pushTrace { base with stack := .i64 (i64Ctz n) :: stk } .silent)
+          | some (.i64 n, stk) => some (.silent, pushTrace { base with stack := .i64 (Numerics.i64Ctz n) :: stk } .silent)
           | some _ => some (trapState base "type mismatch in i64.ctz")
           | none => some (trapState base "stack underflow in i64.ctz")
       | .i64Popcnt =>
           match pop1? base.stack with
-          | some (.i64 n, stk) => some (.silent, pushTrace { base with stack := .i64 (i64Popcnt n) :: stk } .silent)
+          | some (.i64 n, stk) => some (.silent, pushTrace { base with stack := .i64 (Numerics.i64Popcnt n) :: stk } .silent)
           | some _ => some (trapState base "type mismatch in i64.popcnt")
           | none => some (trapState base "stack underflow in i64.popcnt")
       | .i64DivS => withI64Div base true "i64.div_s"
@@ -1360,6 +1360,19 @@ theorem step?_drop (s : ExecState) (v : WasmValue) (stk : List WasmValue) (rest 
     step? { s with code := .drop :: rest, stack := v :: stk } =
       some (.silent, pushTrace { s with code := rest, stack := stk } .silent) := by
   unfold step?; simp [pop1?]
+
+/-- unreachable always traps. -/
+@[simp]
+theorem step?_unreachable (s : ExecState) (rest : List Instr) :
+    step? { s with code := .unreachable :: rest } =
+      some (trapState { s with code := rest } "unreachable executed") := by
+  unfold step?; rfl
+
+/-- local.get with valid index does not get stuck. -/
+theorem step?_localGet_some (s : ExecState) (idx : Nat) (fr : Frame) (frs : List Frame)
+    (rest : List Instr) (h : idx < fr.locals.size) :
+    ∃ t s', step? { s with code := .localGet idx :: rest, frames := fr :: frs } = some (t, s') := by
+  unfold step?; simp [h]
 
 /-! ## Inhabitedness examples for Wasm.Step
 

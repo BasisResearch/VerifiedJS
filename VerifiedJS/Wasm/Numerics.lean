@@ -28,9 +28,9 @@ def i64ToSigned (n : UInt64) : Int :=
 
 /-! ## i32 arithmetic (§4.3.2) -/
 
-def i32Add (a b : UInt32) : UInt32 := a + b
-def i32Sub (a b : UInt32) : UInt32 := a - b
-def i32Mul (a b : UInt32) : UInt32 := a * b
+@[simp] def i32Add (a b : UInt32) : UInt32 := a + b
+@[simp] def i32Sub (a b : UInt32) : UInt32 := a - b
+@[simp] def i32Mul (a b : UInt32) : UInt32 := a * b
 
 /-- SPEC §4.3.2 i32.div_s: signed division, traps on zero or overflow. -/
 def i32DivS? (a b : UInt32) : Option UInt32 :=
@@ -55,9 +55,9 @@ def i32RemS? (a b : UInt32) : Option UInt32 :=
 def i32RemU? (a b : UInt32) : Option UInt32 :=
   if b == 0 then none else some (a % b)
 
-def i32And (a b : UInt32) : UInt32 := a &&& b
-def i32Or  (a b : UInt32) : UInt32 := a ||| b
-def i32Xor (a b : UInt32) : UInt32 := a ^^^ b
+@[simp] def i32And (a b : UInt32) : UInt32 := a &&& b
+@[simp] def i32Or  (a b : UInt32) : UInt32 := a ||| b
+@[simp] def i32Xor (a b : UInt32) : UInt32 := a ^^^ b
 
 /-- SPEC §4.3.2 i32.shl: shift left, shift count modulo 32. -/
 def i32Shl (a b : UInt32) : UInt32 :=
@@ -112,26 +112,26 @@ def i32Popcnt (n : UInt32) : UInt32 :=
   UInt32.ofNat count
 
 /-- SPEC §4.3.2 i32.eqz: test for zero. -/
-def i32Eqz (n : UInt32) : Bool := n == 0
+@[simp] def i32Eqz (n : UInt32) : Bool := n == 0
 
 /-! ## i32 comparison (§4.3.3) -/
 
-def i32Eq  (a b : UInt32) : Bool := a == b
-def i32Ne  (a b : UInt32) : Bool := a != b
-def i32Ltu (a b : UInt32) : Bool := a < b
-def i32Gtu (a b : UInt32) : Bool := a > b
-def i32Leu (a b : UInt32) : Bool := a <= b
-def i32Geu (a b : UInt32) : Bool := a >= b
-def i32Lts (a b : UInt32) : Bool := i32ToSigned a < i32ToSigned b
-def i32Gts (a b : UInt32) : Bool := i32ToSigned a > i32ToSigned b
-def i32Les (a b : UInt32) : Bool := i32ToSigned a <= i32ToSigned b
-def i32Ges (a b : UInt32) : Bool := i32ToSigned a >= i32ToSigned b
+@[simp] def i32Eq  (a b : UInt32) : Bool := a == b
+@[simp] def i32Ne  (a b : UInt32) : Bool := a != b
+@[simp] def i32Ltu (a b : UInt32) : Bool := a < b
+@[simp] def i32Gtu (a b : UInt32) : Bool := a > b
+@[simp] def i32Leu (a b : UInt32) : Bool := a <= b
+@[simp] def i32Geu (a b : UInt32) : Bool := a >= b
+@[simp] def i32Lts (a b : UInt32) : Bool := i32ToSigned a < i32ToSigned b
+@[simp] def i32Gts (a b : UInt32) : Bool := i32ToSigned a > i32ToSigned b
+@[simp] def i32Les (a b : UInt32) : Bool := i32ToSigned a <= i32ToSigned b
+@[simp] def i32Ges (a b : UInt32) : Bool := i32ToSigned a >= i32ToSigned b
 
 /-! ## i64 arithmetic (§4.3.2) -/
 
-def i64Add (a b : UInt64) : UInt64 := a + b
-def i64Sub (a b : UInt64) : UInt64 := a - b
-def i64Mul (a b : UInt64) : UInt64 := a * b
+@[simp] def i64Add (a b : UInt64) : UInt64 := a + b
+@[simp] def i64Sub (a b : UInt64) : UInt64 := a - b
+@[simp] def i64Mul (a b : UInt64) : UInt64 := a * b
 
 /-- SPEC §4.3.2 i64.div_s: signed division, traps on zero or overflow. -/
 def i64DivS? (a b : UInt64) : Option UInt64 :=
@@ -156,9 +156,9 @@ def i64RemS? (a b : UInt64) : Option UInt64 :=
 def i64RemU? (a b : UInt64) : Option UInt64 :=
   if b == 0 then none else some (a % b)
 
-def i64And (a b : UInt64) : UInt64 := a &&& b
-def i64Or  (a b : UInt64) : UInt64 := a ||| b
-def i64Xor (a b : UInt64) : UInt64 := a ^^^ b
+@[simp] def i64And (a b : UInt64) : UInt64 := a &&& b
+@[simp] def i64Or  (a b : UInt64) : UInt64 := a ||| b
+@[simp] def i64Xor (a b : UInt64) : UInt64 := a ^^^ b
 
 /-- SPEC §4.3.2 i64.shl: shift left, shift count modulo 64. -/
 def i64Shl (a b : UInt64) : UInt64 :=
@@ -212,20 +212,20 @@ def i64Popcnt (n : UInt64) : UInt64 :=
   UInt64.ofNat count
 
 /-- SPEC §4.3.2 i64.eqz: test for zero. -/
-def i64Eqz (n : UInt64) : Bool := n == 0
+@[simp] def i64Eqz (n : UInt64) : Bool := n == 0
 
 /-! ## i64 comparison (§4.3.3) -/
 
-def i64Eq  (a b : UInt64) : Bool := a == b
-def i64Ne  (a b : UInt64) : Bool := a != b
-def i64Ltu (a b : UInt64) : Bool := a < b
-def i64Gtu (a b : UInt64) : Bool := a > b
-def i64Leu (a b : UInt64) : Bool := a <= b
-def i64Geu (a b : UInt64) : Bool := a >= b
-def i64Lts (a b : UInt64) : Bool := i64ToSigned a < i64ToSigned b
-def i64Gts (a b : UInt64) : Bool := i64ToSigned a > i64ToSigned b
-def i64Les (a b : UInt64) : Bool := i64ToSigned a <= i64ToSigned b
-def i64Ges (a b : UInt64) : Bool := i64ToSigned a >= i64ToSigned b
+@[simp] def i64Eq  (a b : UInt64) : Bool := a == b
+@[simp] def i64Ne  (a b : UInt64) : Bool := a != b
+@[simp] def i64Ltu (a b : UInt64) : Bool := a < b
+@[simp] def i64Gtu (a b : UInt64) : Bool := a > b
+@[simp] def i64Leu (a b : UInt64) : Bool := a <= b
+@[simp] def i64Geu (a b : UInt64) : Bool := a >= b
+@[simp] def i64Lts (a b : UInt64) : Bool := i64ToSigned a < i64ToSigned b
+@[simp] def i64Gts (a b : UInt64) : Bool := i64ToSigned a > i64ToSigned b
+@[simp] def i64Les (a b : UInt64) : Bool := i64ToSigned a <= i64ToSigned b
+@[simp] def i64Ges (a b : UInt64) : Bool := i64ToSigned a >= i64ToSigned b
 
 /-! ## f32 arithmetic (§4.3.3)
     Note: Lean `Float` is IEEE 754 f64. We use Float for both f32 and f64
@@ -274,10 +274,10 @@ def f32Ge (a b : Float) : Bool := a >= b
 
 /-! ## f64 arithmetic (§4.3.3) -/
 
-def f64Add (a b : Float) : Float := a + b
-def f64Sub (a b : Float) : Float := a - b
-def f64Mul (a b : Float) : Float := a * b
-def f64Div (a b : Float) : Float := a / b
+@[simp] def f64Add (a b : Float) : Float := a + b
+@[simp] def f64Sub (a b : Float) : Float := a - b
+@[simp] def f64Mul (a b : Float) : Float := a * b
+@[simp] def f64Div (a b : Float) : Float := a / b
 
 /-- SPEC §4.3.3 f64.min: NaN-propagating minimum. -/
 def f64Min (a b : Float) : Float :=
@@ -295,12 +295,12 @@ def f64Copysign (a b : Float) : Float :=
 
 /-! ## f64 unary (§4.3.3) -/
 
-def f64Abs     (n : Float) : Float := n.abs
-def f64Neg     (n : Float) : Float := -n
-def f64Ceil    (n : Float) : Float := n.ceil
-def f64Floor   (n : Float) : Float := n.floor
-def f64Sqrt    (n : Float) : Float := n.sqrt
-def f64Nearest (n : Float) : Float := n.round
+@[simp] def f64Abs     (n : Float) : Float := n.abs
+@[simp] def f64Neg     (n : Float) : Float := -n
+@[simp] def f64Ceil    (n : Float) : Float := n.ceil
+@[simp] def f64Floor   (n : Float) : Float := n.floor
+@[simp] def f64Sqrt    (n : Float) : Float := n.sqrt
+@[simp] def f64Nearest (n : Float) : Float := n.round
 
 /-- SPEC §4.3.3 f64.trunc: round towards zero. -/
 def f64Trunc (n : Float) : Float :=

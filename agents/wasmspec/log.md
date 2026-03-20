@@ -157,3 +157,42 @@
 
 ## Run: 2026-03-20T21:15:01+00:00
 
+- Implemented:
+  - **Wasm/Semantics.lean — Full Numerics.* refactor**: All numeric, comparison, bitwise, shift, rotation, unary, and conversion operations in `step?` now reference `Numerics.*` instead of inline lambdas. This gives the proof agent clean unfold targets for every operation. Affected: ~80 instruction cases refactored to use named Numerics functions.
+    - i32: eqz, eq, ne, lt_s/u, gt_s/u, le_s/u, ge_s/u, and, or, xor, shl, shr_s/u, rotl, rotr, clz, ctz, popcnt
+    - i64: eqz, eq, ne, lt_s/u, gt_s/u, le_s/u, ge_s/u, and, or, xor, shl, shr_s/u, rotl, rotr, clz, ctz, popcnt
+    - f32: eq, ne, lt, gt, le, ge, abs, neg, ceil, floor, trunc, nearest, sqrt, add, sub, mul, div, min, max, copysign
+    - f64: eq, ne, lt, gt, le, ge, abs, neg, ceil, floor, trunc, nearest, sqrt, min, max, copysign
+    - Conversions: i32.wrap_i64, i64.extend_i32_s/u, i32.trunc_f*_s/u, i64.trunc_f*_s/u, f32/f64.convert_i32/i64_s/u, f32.demote_f64, f64.promote_f32, all reinterpret ops
+  - **Wasm/Semantics.lean — Split combined instruction cases**: `i64ExtendI32s`/`i64ExtendI32u` and `f32ConvertI64s`/`f32ConvertI64u` and `f64ConvertI64s`/`f64ConvertI64u` were combined into single match arms with runtime `match i with` dispatch. Split into separate cases for cleaner proof structure.
+  - **Wasm/Semantics.lean — Proper bulk memory operations**:
+    - `memory.copy`: Actual byte-by-byte copy within linear memory with bounds checking
+    - `memory.fill`: Actual fill with byte value and bounds checking
+    - `memory.init`: Bounds checking (data segment payload copy deferred until store tracks data segments)
+    - `table.init`/`table.copy`: Separated from memory ops with proper error messages
+  - **Wasm/Semantics.lean — 5 @[simp] equation lemmas** for proof automation:
+    - `step?_i32Const`, `step?_i64Const`, `step?_f64Const`: Const pushes onto stack
+    - `step?_nop`: No-op passes through
+    - `step?_drop`: Pop one value
+  - **Wasm/Semantics.lean — 4 inhabitedness examples** for Step/Steps relations:
+    - `i32.const 42` single step (via `unfold step?; rfl`)
+    - `i32.add` on concrete stack [3, 5] → [8] (via `unfold step?; rfl`)
+    - Two-step trace: nop followed by i32.const (via Steps.tail)
+    - Unreachable trap (via `unfold step?; rfl`)
+
+- Files changed:
+  - VerifiedJS/Wasm/Semantics.lean (~200 lines refactored, ~100 lines added)
+
+- Build: PASS (Wasm/Semantics.lean + Wasm/Interp.lean compile clean, 0 errors, 0 sorries)
+
+- Gaps remaining:
+  - Runtime/Regex.lean: 0% (empty stub, not used by compiler)
+  - Runtime/Generators.lean: 0% (empty stub, not used by compiler)
+  - memory.init data segment copy: needs store to track data segments (currently bounds-check only)
+  - Core.step? still partial (jsspec ownership, blocks ClosureConvertCorrect.lean)
+
+- Next:
+  - Proof agent can now unfold Numerics.* directly when reasoning about Wasm instruction semantics
+  - Consider adding more @[simp] lemmas for commonly-used step? patterns (local.get, local.set, etc.)
+  - Fill Runtime/Regex.lean if compiler emits regex operations
+
