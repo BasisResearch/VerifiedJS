@@ -412,6 +412,16 @@ private partial def lowerExprWithExn (ctx : LowerCtx) (exnTarget : Option String
             { ctx' with directCallVars := (name, funcIdx + ctx'.funcOffset) :: ctx'.directCallVars }
         | .trivial (.litClosure funcIdx _) =>
             { ctx' with directCallVars := (name, funcIdx + ctx'.funcOffset) :: ctx'.directCallVars }
+        | .trivial (.var srcName) =>
+            -- Propagate directCallVars through trivial variable copies
+            match ctx'.directCallVars.find? (fun (n, _) => n == srcName) with
+            | some (_, wasmIdx) =>
+                { ctx' with directCallVars := (name, wasmIdx) :: ctx'.directCallVars }
+            | none =>
+              -- Also propagate consoleLogVars
+              if ctx'.consoleLogVars.elem srcName then
+                { ctx' with consoleLogVars := name :: ctx'.consoleLogVars }
+              else ctx'
         | _ => ctx'
       let bodyCode ← lowerExprWithExn ctx' exnTarget ctrlStack body
       pure (rhsCode ++ [IR.IRInstr.localSet idx] ++ bodyCode)

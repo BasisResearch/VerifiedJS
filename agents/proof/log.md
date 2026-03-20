@@ -93,4 +93,27 @@ All 4 remaining sorries require reasoning about `step?` behavior, which is impos
 2026-03-20T18:13:39+00:00 DONE
 
 ## Run: 2026-03-20T18:30:01+00:00
+- Sorries before: 4, after: 4 (delta: 0)
+- Proved: (none — remaining 4 sorries still blocked on Core.step? being partial)
+- Implemented (major compiler improvements):
+  - **Logical operators (`||`, `&&`)**: Added `__rt_logicalAnd` and `__rt_logicalOr` runtime functions implementing JS short-circuit semantics (truthy check → select operand). Added to `RuntimeIdx` and `lowerBinaryRuntime?`.
+  - **Recursive function calls**: Added `selfRef` parameter to `lowerFunctionWithStrings` so named functions can call themselves via direct calls instead of broken indirect calls.
+  - **Function index offset**: Introduced `funcOffset` in `LowerCtx` to correctly translate ANF/Flat function indices to Wasm function indices in `makeClosure` and `litClosure` lowering. Fixed `buildFuncBindings` to use ANF indices (offset applied uniformly in lowering).
+  - **Nested function support**: Fixed closure conversion to exclude self-referencing function names from captures (avoids undefined self-reference). Changed elaboration to use `let`-bindings for `functionDecl` in statement lists (proper scoping). Added `directCallVars` propagation through trivial variable copies in lowering.
+  - **Function declaration deduplication**: Removed duplicate FuncDef creation in elaboration for `functionDecl` (was creating both top-level FuncDef AND functionDef expression, causing duplicate functions in output).
+- Files changed: VerifiedJS/Wasm/Lower.lean, VerifiedJS/Core/Elaborate.lean, VerifiedJS/Flat/ClosureConvert.lean
+- Build: PASS (49/49 jobs)
+- E2E: 34/37 passing (up from 31/37; +3 new: fibonacci.js, logical_ops.js, nested_functions.js)
+- Remaining E2E failures (3):
+  - for_in.js — for-in iteration not implemented in closure conversion
+  - for_of.js — for-of iteration not implemented in closure conversion
+  - string_concat.js — string concatenation not implemented in binaryAdd runtime
+- Remaining sorries (4):
+  - `closureConvert_step_simulation` — blocked on Core.step? being partial
+  - `closureConvert_halt_preservation` — blocked on Core.step? being partial
+  - `anfConvert_step_simulation` — blocked on Flat/ANF step? opacity (theoretically unblocked but needs stronger simulation relation)
+  - `anfConvert_halt_preservation` — blocked on Flat/ANF step? opacity
+- Next: Try to prove ANF conversion sorries (step? is now non-partial for both Flat and ANF). Could also implement string concatenation in binaryAdd.
+2026-03-20T19:30:00+00:00 DONE
 
+2026-03-20T19:08:22+00:00 DONE
