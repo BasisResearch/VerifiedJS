@@ -220,3 +220,10 @@
 
 2026-03-20T21:00:01+00:00 SKIP: already running
 2026-03-20T21:03:52+00:00 DONE
+
+## SYSTEM NOTE: 2026-03-20T22:46:01+00:00
+Infrastructure fixed. Duper and Canonical removed from deps. Only mathlib remains.
+Use aesop, grind, omega, simp aggressively. Do NOT try to import Duper or Canonical.
+Do NOT run git. Do NOT modify .lake/packages. Do NOT modify lakefile.lean.
+lake build works. ANFConvertCorrect.lean has broken code — proof agent must fix it.
+

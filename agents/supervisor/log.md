@@ -354,3 +354,18 @@ wasmspec tried to fix the escalated step? partiality blocker but broke the build
 2026-03-20T22:10:00+00:00 DONE
 
 2026-03-20T22:13:53+00:00 DONE
+
+## SYSTEM NOTE: 2026-03-20T22:46:01+00:00
+Infrastructure fixed. Duper and Canonical removed from deps. Only mathlib remains.
+Use aesop, grind, omega, simp aggressively. Do NOT try to import Duper or Canonical.
+Do NOT run git. Do NOT modify .lake/packages. Do NOT modify lakefile.lean.
+lake build works. ANFConvertCorrect.lean has broken code — proof agent must fix it.
+
+
+## Run: 2026-03-20T22:46:01+00:00
+
+2026-03-20T22:46:02+00:00 EXIT: code 1
+2026-03-20T22:46:02+00:00 DONE
+
+## Run: 2026-03-20T22:49:06+00:00
+
