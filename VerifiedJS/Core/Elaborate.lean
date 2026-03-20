@@ -496,9 +496,11 @@ private partial def elabStmt (s : Source.Stmt) : ElabM Core.Expr := do
       isAsync := isAsync
       isGenerator := isGenerator
     }
+    let fns ← get
+    let funcIdx := fns.size
     modify fun fns => fns.push fd
-    -- Bind the function name in scope
-    pure (.assign name (.functionDef (some name) (paramsToNames params) bodyExpr isAsync isGenerator))
+    -- Bind the function name to its top-level function index (avoids duplicate lifting)
+    pure (.assign name (.lit (.function funcIdx)))
 
   | .classDecl _ _ _ => pure undef  -- classes not supported
   | .import_ _ _ => pure undef       -- imports not supported in Core
