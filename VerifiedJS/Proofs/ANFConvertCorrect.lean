@@ -35,15 +35,15 @@ theorem observableTrace_nil : observableTrace [] = [] := rfl
 
 theorem observableTrace_silent (rest : List Core.TraceEvent) :
     observableTrace (.silent :: rest) = observableTrace rest := by
-  simp [observableTrace, List.filter]
+  simp [observableTrace, List.filter, BNe.bne, BEq.beq]
 
 theorem observableTrace_log (s : String) (rest : List Core.TraceEvent) :
     observableTrace (.log s :: rest) = .log s :: observableTrace rest := by
-  simp [observableTrace, List.filter]
+  simp [observableTrace, List.filter, BNe.bne, BEq.beq]
 
 theorem observableTrace_error (s : String) (rest : List Core.TraceEvent) :
     observableTrace (.error s :: rest) = .error s :: observableTrace rest := by
-  simp [observableTrace, List.filter]
+  simp [observableTrace, List.filter, BNe.bne, BEq.beq]
 
 theorem observableTrace_append (a b : List Core.TraceEvent) :
     observableTrace (a ++ b) = observableTrace a ++ observableTrace b := by
@@ -62,7 +62,7 @@ private theorem anfConvert_step_star
       observableTrace sa.trace = observableTrace sf.trace →
       sa.heap = sf.heap →
       ANF.Step sa ev sa' →
-      ∃ sf' (evs : List Core.TraceEvent),
+      ∃ (sf' : Flat.State) (evs : List Core.TraceEvent),
         Flat.Steps sf evs sf' ∧
         observableTrace [ev] = observableTrace evs ∧
         observableTrace sa'.trace = observableTrace sf'.trace ∧
@@ -78,7 +78,7 @@ private theorem anfConvert_halt_star
       observableTrace sa.trace = observableTrace sf.trace →
       sa.heap = sf.heap →
       ANF.step? sa = none →
-      ∃ sf' (evs : List Core.TraceEvent),
+      ∃ (sf' : Flat.State) (evs : List Core.TraceEvent),
         Flat.Steps sf evs sf' ∧
         Flat.step? sf' = none ∧
         observableTrace evs = [] ∧
@@ -93,7 +93,7 @@ private theorem anfConvert_steps_star
       observableTrace sa.trace = observableTrace sf.trace →
       sa.heap = sf.heap →
       ANF.Steps sa tr sa' →
-      ∃ sf' (tr' : List Core.TraceEvent),
+      ∃ (sf' : Flat.State) (tr' : List Core.TraceEvent),
         Flat.Steps sf tr' sf' ∧
         observableTrace tr = observableTrace tr' ∧
         observableTrace sa'.trace = observableTrace sf'.trace ∧
