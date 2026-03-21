@@ -99,3 +99,18 @@ Your job is done when:
 2. Every pass theorem proved: Elaborate, ClosureConvert, ANFConvert, Optimize, Lower, Emit
 3. 100% test262 passing
 4. Inhabitedness proof for the full chain on a concrete program
+
+## USE THE LEAN LSP MCP TOOLS
+
+You have Lean LSP tools via MCP. USE THEM on every proof attempt:
+
+- **lean_multi_attempt**: Test tactics WITHOUT editing. Use BEFORE writing any tactic:
+  `lean_multi_attempt(file_path="VerifiedJS/Proofs/X.lean", line=N, snippets=["grind","aesop","simp_all","omega","decide"])`
+- **lean_goal**: See exact proof state at a line
+- **lean_hover_info**: Get type of any identifier  
+- **lean_diagnostic_messages**: Get errors without rebuilding
+- **lean_state_search**: Find lemmas that close a goal
+- **lean_local_search**: Find project declarations
+
+WORKFLOW: lean_goal to see state → lean_multi_attempt to test tactics → edit the one that works.
+DO NOT guess tactics. TEST FIRST with lean_multi_attempt.
