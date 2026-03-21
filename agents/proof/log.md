@@ -308,4 +308,33 @@ This is TRUE but valuesFromExprList? is `private` in Flat/Semantics.lean (owned 
 2026-03-21T05:30:01+00:00 DONE
 
 ## Run: 2026-03-21T05:30:01+00:00
+- Sorries before: 8, after: 7 (delta: -1)
+- Proved:
+  - `step?_none_implies_lit_aux` list-based constructors (CCCorrect:427→line 463-608):
+    Eliminated the wildcard `| _ => all_goals sorry` covering call, newObj, makeEnv, objectLit, arrayLit.
+    - Added `firstNonValueExpr_none_implies_values`: if firstNonValueExpr returns none, all elements are literals, so valuesFromExprList? returns some. KEY LEMMA that was blocked on valuesFromExprList? being private — now PUBLIC.
+    - Added `firstNonValueProp_none_implies_values`: same for property lists.
+    - Each constructor case proved by: (1) case split on valuesFromExprList?/exprValue?, (2) `some` → unfold step? + simp → contradiction, (3) `none` + firstNonValueExpr `some` → IH + firstNonValueExpr_not_lit, (4) `none` + firstNonValueExpr `none` → firstNonValueExpr_none_implies_values contradicts valuesFromExprList? = none.
+    - Key technique for match-hf patterns: `unfold Flat.step? at h; simp only [...] at h; rw [show Flat.firstNonValueExpr args = some (...) from hf] at h; simp only [hstept] at h; exact absurd h (by simp)`.
+  - Fixed `firstNonValueExpr_none_implies_values` and `firstNonValueProp_none_implies_values` proofs (replaced `split at h` with explicit `cases heq : ... with` for proper hypothesis naming).
+- Files changed: VerifiedJS/Proofs/ClosureConvertCorrect.lean
+- Build: PASS (0 errors)
+- E2E: Running (157 test files)
+- Remaining sorries (7):
+  1. `closureConvert_step_simulation` (CC:138) — HARDEST, one-step backward simulation
+  2. `closureConvert_trace_reflection` noForInOf (CC:672) — needs NoForInForOf invariant/precondition
+  3. `anfConvert_step_star` (ANF:84) — stuttering forward simulation
+  4. `anfConvert_halt_star` non-lit (ANF:127) — needs normalizeExpr reasoning
+  5. `lower_behavioral_correct` (Lower:51) — forward simulation ANF→IR
+  6. `emit_behavioral_correct` (Emit:44) — forward simulation IR→Wasm
+  7. `flat_to_wasm_correct` (EndToEnd:52) — composition of all above
+
+### Key unblock: valuesFromExprList? now public
+The previous blocker (valuesFromExprList? private in Flat/Semantics.lean) is resolved.
+wasmspec made it public, enabling the proof of all 5 list-based constructor cases.
+
+### Next priorities
+1. Add `NoForInForOf` predicate + precondition to eliminate CC:672 sorry (requires recursive predicate on Core.Expr + preservation proof through Core.step?)
+2. Prove anfConvert_halt_star non-lit cases via normalizeExpr analysis
+3. Attack simulation proofs (CC:138, ANF:84) — require ~200+ lines case analysis each
 
