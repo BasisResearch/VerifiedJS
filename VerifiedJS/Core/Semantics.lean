@@ -2212,17 +2212,17 @@ theorem stuck_implies_lit {s : State} (hstuck : step? s = none) :
     simp only [step?, h] at hstuck; split at hstuck <;> simp at hstuck
     split at hstuck <;> simp at hstuck
   | await arg =>
-    simp only [step?, h] at hstuck; split at hstuck <;> simp at hstuck
-    split at hstuck <;> simp at hstuck
+    unfold step? at hstuck; simp only [h] at hstuck; split at hstuck <;> simp [-step?] at hstuck
+    split at hstuck <;> simp [-step?] at hstuck
   | «return» arg =>
     cases arg with
-    | none => simp [step?, h] at hstuck
+    | none => unfold step? at hstuck; simp [-step?, h] at hstuck
     | some e =>
-      simp only [step?, h] at hstuck; split at hstuck <;> simp at hstuck
-      split at hstuck <;> simp at hstuck
+      unfold step? at hstuck; simp [-step?, h] at hstuck; split at hstuck <;> simp [-step?] at hstuck
+      split at hstuck <;> simp [-step?] at hstuck
   | yield arg _ =>
     cases arg with
-    | none => unfold step? at hstuck; simp [h] at hstuck
+    | none => unfold step? at hstuck; simp [-step?, h] at hstuck
     | some e =>
       unfold step? at hstuck; simp only [h] at hstuck; split at hstuck <;> simp only [] at hstuck
       split at hstuck <;> simp only [] at hstuck
