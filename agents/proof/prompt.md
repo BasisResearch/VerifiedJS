@@ -63,58 +63,54 @@ Read `logs/test262_summary.md` for failure categories. Fix compiler bugs that ca
 3. Duper is NOT available. Use grind, aesop, omega, simp.
 4. DO NOT WAIT for anyone. Just prove things.
 
-## CURRENT STATUS (2026-03-21T17:05) — 6 proof sorries remain
+## CURRENT STATUS (2026-03-21T18:05) — 8 proof sorries remain
 
-**BUILD BROKEN** by jsspec (Core/Semantics.lean:2173-2228 — `step?.eq_1` simp loop in `stuck_implies_lit`).
-jsspec has been instructed to fix. All 57 errors are in ONE theorem; the rest of the codebase compiles.
-You can still work on proof files — just test with `lake build VerifiedJS.Proofs.ANFConvertCorrect` etc.
-to skip the broken module.
+### !!!! IMMEDIATE ACTION: `elaborate_correct` — 30-SECOND WIN !!!!
 
-Attack sorries in this priority order:
+**THIS IS YOUR #1 PRIORITY. DO THIS BEFORE ANYTHING ELSE.**
 
-### Sorry #0: `elaborate_correct` (ElaborateCorrect.lean) — FREE WIN
-**TRIVIALLY PROVABLE.** Source.Behaves is now defined (Core/Semantics.lean:2258) as:
+Replace the ENTIRE contents of `VerifiedJS/Proofs/ElaborateCorrect.lean` with:
 ```lean
-def Behaves (p : Source.Program) (b : List Core.TraceEvent) : Prop :=
-  ∃ coreProg, Core.elaborate p = .ok coreProg ∧ Core.Behaves coreProg b
-```
-So elaborate_correct is just:
-```lean
+/-
+  VerifiedJS — Elaboration Correctness Proof
+  JS.AST → JS.Core semantic preservation.
+-/
+
+import VerifiedJS.Core.Elaborate
+import VerifiedJS.Core.Semantics
+
+namespace VerifiedJS.Proofs
+
+/-- Elaboration preserves behavior: if elaboration produces Core program `t`,
+    then every Core behavior of `t` is a Source behavior of `s`. -/
 theorem elaborate_correct (s : Source.Program) (t : Core.Program)
     (h : Core.elaborate s = .ok t) :
     ∀ b, Core.Behaves t b → Source.Behaves s b := by
   intro b hb
   exact ⟨t, h, hb⟩
+
+end VerifiedJS.Proofs
 ```
-Uncomment and replace the TODO in ElaborateCorrect.lean with this. Takes 30 seconds.
+This is trivially correct because `Source.Behaves` is defined as `∃ coreProg, elaborate p = .ok coreProg ∧ Core.Behaves coreProg b`. Just do it. NOW.
 
-### Sorry #1: `anfConvert_halt_star` non-lit (ANFConvertCorrect.lean:150)
-**EASIEST WIN.** You already proved break/continue cases. Pattern for remaining constructors:
-- For each Flat.Expr constructor, show `normalizeExpr` produces ANF that ALWAYS steps.
-- bindComplex cases (assign, call, newObj, getProp, etc.): normalizeExpr wraps in `.let tmp rhs body` → ANF.step? on `.let` always returns some (contradiction with halt).
-- Control flow (throw, return, yield, await, labeled): normalizeExpr produces fixed ANF → step? returns some.
-- Recursive (let, seq, if, while_): normalizeExpr recurses → result is `.let` or stepping construct.
-- **Key technique**: `unfold normalizeExpr; simp` to see the output form, then show ANF.step? ≠ none.
+### Sorry #1: `anfConvert_halt_star` — tryCatch/while_ monadic bind chains
+ANFConvertCorrect.lean lines 321, 516, 699 have `all_goals sorry` for tryCatch and var/this/seq.
+- Line 321: tryCatch/while_ in `normalizeExpr_not_trivial_family` — need to chase monadic bind chains
+- Line 516: var/this/seq in halt preservation — need multi-step Flat reasoning
+- Line 699: tryCatch bind chains in halt preservation — same pattern as 321
 
-### Sorry #2: `closureConvert_step_simulation` (ClosureConvertCorrect.lean:138)
-**HARDEST.** One-step backward simulation: if Flat takes a step, Core can match it.
-- With convertExpr now non-partial, you have equation lemmas (`convertExpr.eq_1`, etc.)
-- Case-split on the Flat.Step constructor
-- For each case, use CC_SimRel to extract the Core expression, show it steps to the corresponding Core expression
-- This IS a 200+ line proof. Start with the easy cases (lit, var, break, continue) and work through
+### Sorry #2: `anfConvert_step_star` (ANFConvertCorrect.lean:84)
+Stuttering forward simulation. Case analysis on ANF.Step over all expression forms.
 
-### Sorry #3: `anfConvert_step_star` (ANFConvertCorrect.lean:84)
-**HARD.** Stuttering forward simulation: one ANF step corresponds to zero or more Flat steps.
-- Similar structure to CC step_simulation but in reverse direction
+### Sorry #3: `closureConvert_step_simulation` (ClosureConvertCorrect.lean:138)
+One-step backward simulation. 200+ line case analysis on Flat.Step.
 
 ### Sorry #4-6: `lower_behavioral_correct`, `emit_behavioral_correct`, `flat_to_wasm_correct`
-**MEDIUM.** These are the NEW theorem statements you added. They compose the chain:
-- lower: ANF.Behaves → IR.IRBehaves (needs IRForwardSim lemmas from wasmspec)
-- emit: IR.IRBehaves → Wasm.Behaves (needs Wasm step lemmas from wasmspec)
-- endToEnd: composition of all above
-- Start with lower_behavioral_correct since wasmspec has provided many IR @[simp] lemmas
+These compose the chain. wasmspec has 19+ `irStep?_eq_*` lemmas ready.
+- Start with lower_behavioral_correct (LowerCorrect.lean:51)
+- Use IRSteps composition helpers from wasmspec
 
-**Strategy**: Focus on #1 first (easiest), then #4 (lower), then #2 (hardest but most important).
+**Strategy**: Do elaborate_correct FIRST (30 sec), then ANF sorries (#1-2), then CC (#3), then Lower/Emit (#4-6).
 
 ## GLOBAL GOAL -- DO NOT STOP
 Your job is done when:

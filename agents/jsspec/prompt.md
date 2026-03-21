@@ -60,55 +60,40 @@ If you CANNOT construct it, your semantics is wrong. Fix it.
 3. Test262 tells you what to formalize. Reduce skips by adding missing features.
 4. Your relations must be INHABITED with concrete derivations.
 
-## URGENT: FIX BUILD BREAK (2026-03-21T17:05)
+## URGENT: Prove `stuck_implies_lit` sorry cases (2026-03-21T18:05)
 
-**BUILD IS BROKEN** because of your Core/Semantics.lean. 57 errors in `stuck_implies_lit` (lines 2173-2228).
+You have 8 sorry cases in `stuck_implies_lit` (Core/Semantics.lean:2233-2240):
+`binary`, `getIndex`, `setProp`, `setIndex`, `objectLit`, `arrayLit`, `tryCatch`, `call`.
 
-**Root cause**: `step?.eq_1` is a LOOPING simp theorem. `step?` has grown so large that its
-auto-generated equation lemma creates an infinite rewrite cycle. EVERY `simp [step?, ...]` call
-in `stuck_implies_lit` now fails with "maximum recursion depth has been reached".
+These 8 sorries account for almost HALF the project's total sorry count. They are **YOUR responsibility**.
 
-**FIX**: In the `stuck_implies_lit` theorem (lines 2168-2238), replace EVERY occurrence of
-`simp [step?, ...]` or `simp only [step?, ...]` with `unfold step?; simp [-step?, ...]`.
-
-Specifically:
-1. Lines 2173-2180: Replace `simp [step?, h]` with `unfold step? at hstuck; simp [-step?, h] at hstuck`
-2. Lines 2182-2213: Replace `simp only [step?, h]` with `unfold step? at hstuck; simp only [-step?, h] at hstuck`
-   AND replace bare `simp at hstuck` with `simp [-step?] at hstuck`
-3. Lines 2215-2228: These already use `unfold step?` but some inner `simp only [h]` / `simp only []`
-   calls need to be `simp [-step?, h]` / `simp [-step?]`
-
-The pattern for EVERY case should be:
+**Technique**: Same pattern as the working cases above them (lines 2214-2230):
 ```lean
-| constructor args =>
-    unfold step? at hstuck; simp [-step?, h] at hstuck; split at hstuck <;> simp [-step?] at hstuck
-    split at hstuck <;> simp [-step?] at hstuck  -- if needed
+| binary op lhs rhs =>
+    unfold step? at hstuck; simp [-step?, h] at hstuck
+    split at hstuck <;> simp [-step?] at hstuck
+    split at hstuck <;> simp [-step?] at hstuck
+    -- repeat split/simp as needed until all branches close
 ```
 
-The per-theorem `simp [step?, ...]` calls (lines 2040-2165) are fine — they have enough
-hypotheses to prevent looping. Only the `stuck_implies_lit` theorem is broken.
+Key rules:
+- ALWAYS use `unfold step? at hstuck` (NOT `simp [step?, ...]` — causes infinite loop)
+- ALWAYS include `-step?` in all simp calls
+- Use `split at hstuck` to case-split on match expressions
+- Each constructor just needs enough splits to show step? ≠ none
 
-**DO THIS FIRST** before anything else. Run `bash scripts/lake_build_concise.sh` to verify.
+**DO THIS FIRST.** These are blocking the proof chain.
 
-## PRIORITY REDIRECT: Test262 Skips (2026-03-21T15:05)
+## THEN: Test262 Skips (2026-03-21T15:05)
 
-**STOP writing e2e tests.** We have 120+. You have been writing e2e tests for 10+ hours
-instead of reducing test262 skips. Test262 has been stuck at 2/93 pass, 31 skip for 24+ hours.
+Test262 has been stuck at 2/93 pass, 31 skip for **31+ hours**. Fix the skips:
+- **unsupported-flags**: 14 skips — add strict mode/module parser flags
+- **class-declaration**: 5 skips — add class declaration parsing
+- **for-in-of**: 5 skips — add for-in/for-of elaboration
+- **negative language**: 4 skips — parser error reporting
+- **other**: 3 skips (annex-b, destructuring, fixture)
 
-The 31 skips break down as:
-- **unsupported-flags language**: 11 skips — likely missing parser flags (strict mode, module, etc.)
-- **limitation:class-declaration language**: 5 skips — class declarations not in parser
-- **limitation:for-in-of built-ins**: 3 skips — for-in/for-of not elaborated
-- **unsupported-flags built-ins**: 3 skips — missing parser flags
-- **limitation:for-in-of intl402**: 2 skips — for-in/for-of intl
-- **negative language**: 4 skips — should be parse errors, needs parser error reporting
-- **fixture language**: 1 skip, **limitation:annex-b annexB**: 1 skip, **limitation:destructuring-for-statement**: 1 skip
-
-**YOUR NEXT ACTIONS** (in order):
-1. Fix the build break above
-2. Add `unsupported-flags` support to the parser (11+3 = 14 skips → passes)
-3. Add class declaration parsing (5 skips → passes)
-4. Add for-in/for-of elaboration (3+2 = 5 skips → passes)
+DO NOT write new e2e tests. We have 120+.
 
 ## GLOBAL GOAL -- DO NOT STOP
 Your job is done when:
