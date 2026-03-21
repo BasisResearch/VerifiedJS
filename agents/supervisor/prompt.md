@@ -90,7 +90,7 @@ Every run, read `logs/test262_summary.md` (short categorized summary). Key metri
 - **skip**: means the compiler can't even parse/compile the test — these are FEATURES MISSING from jsspec (parser) or proof (compiler passes). Reducing skips = increasing JS coverage.
 - **xfail**: expected failures (known unsupported features)
 
-Track pass/fail/skip trends in PROGRESS.md. If skip count is not decreasing, tell jsspec to add more JS constructs (the skip reasons tell you exactly what's missing: for-in/of, destructuring, classes, etc.).
+Track pass/fail/skip trends in PROGRESS.md. If skip count is not decreasing, WRITE to jsspec's prompt with the EXACT skip category to implement next. jsspec should NOT be writing new e2e tests — we have enough. It should focus 100% on reducing test262 skips by adding parser/AST/semantics support for missing JS features.
 
 ## END-TO-END CORRECTNESS — YOUR #1 JOB
 
