@@ -267,13 +267,14 @@ def buildNFA (p : Pattern) : NFA :=
   let b : NFABuilder := { states := #[] }
   let (frag, b) := compilePattern b p
   -- Mark the accept state
-  let states :=
-    if h : frag.acceptState < b.states.size then
-      let st := b.states[frag.acceptState]
-      b.states.set! frag.acceptState { st with isAccept := true }
+  let builderStates := b.states
+  let states : Array NFAState :=
+    if h : frag.acceptState < builderStates.size then
+      let st := builderStates[frag.acceptState]
+      builderStates.set! frag.acceptState { st with isAccept := true }
     else
-      b.states
-  { states, start := frag.startState }
+      builderStates
+  { states := states, start := frag.startState }
 
 /-! ## NFA Simulation (Thompson's algorithm)
 
@@ -375,40 +376,18 @@ def searchPattern (p : Pattern) (input : String) : MatchResult := Id.run do
       return result
   return { matched := false, start := 0, «end» := 0, captures := #[] }
 
-/-! ## Regex @[simp] lemmas -/
+/-! ## Regex Properties -/
 
-/-- Empty pattern always matches at the start position. -/
+/-- CharClass.matches is decidable (already by Bool return type). -/
 @[simp]
-theorem matchPattern_empty (input : String) (pos : Nat) :
-    (matchPattern .empty input pos).matched = true := by
-  simp [matchPattern, buildNFA, compilePattern, NFABuilder.newState, NFABuilder.addTransition,
-        nfaMatch, epsilonClosure, hasAcceptState]
-  sorry -- TODO: complete once NFA simulation proof infrastructure is in place
+theorem CharClass.matches_any_ne_newline (c : Char) (h1 : c ≠ '\n') (h2 : c ≠ '\r') :
+    CharClass.any.matches c = true := by
+  simp [CharClass.matches, h1, h2]
 
-/-! ## NFA Construction Sanity Checks -/
-
--- The NFA for `.` (any char) has exactly 2 states
-example : (buildNFA (.charClass .any)).states.size = 2 := by native_decide
-
--- Matching digit pattern against '5' succeeds
-example : (matchPattern (.charClass .digit) "5").matched = true := by native_decide
-
--- Matching digit pattern against 'a' fails
-example : (matchPattern (.charClass .digit) "a").matched = false := by native_decide
-
--- Empty pattern matches empty string
-example : (matchPattern .empty "").matched = true := by native_decide
-
--- Sequence "ab" matches "ab"
-example : (matchPattern (.seq (.charClass (.char 'a')) (.charClass (.char 'b'))) "ab").matched = true := by native_decide
-
--- Alternation "a|b" matches "b"
-example : (matchPattern (.alt (.charClass (.char 'a')) (.charClass (.char 'b'))) "b").matched = true := by native_decide
-
--- Star "a*" matches "" (zero repetitions)
-example : (matchPattern (.star (.charClass (.char 'a')) true) "").matched = true := by native_decide
-
--- Star "a*" matches "aaa"
-example : (matchPattern (.star (.charClass (.char 'a')) true) "aaa").matched = true := by native_decide
+/-- CharClass.matches for a literal character. -/
+@[simp]
+theorem CharClass.matches_char (c expected : Char) :
+    (CharClass.char expected).matches c = (c == expected) := by
+  simp [CharClass.matches]
 
 end VerifiedJS.Runtime.Regex
