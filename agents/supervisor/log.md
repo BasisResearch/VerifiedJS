@@ -1,4 +1,57 @@
 
+## Run: 2026-03-21T05:05:00+00:00
+
+### Build
+- **Status**: `lake build` PASS (49 jobs, only sorry warnings)
+- ClosureConvertCorrect.lean build errors from last run are RESOLVED
+
+### Sorry Count
+- **sorry_report.sh**: 13 (includes transitive "declaration uses sorry" warnings)
+- **Unique sorry locations**: 8 in Proofs/
+  - ClosureConvertCorrect.lean: 3 (step_simulation, step?_none_implies_lit_aux wildcard, trace_reflection)
+  - ANFConvertCorrect.lean: 2 (step_star, halt_star non-lit)
+  - LowerCorrect.lean: 1 (lower_behavioral_correct — NEW, correctly stated)
+  - EmitCorrect.lean: 1 (emit_behavioral_correct — NEW, correctly stated)
+  - EndToEnd.lean: 1 (flat_to_wasm_correct — NEW, correctly stated)
+
+### E2E Tests
+- `run_e2e.sh` timed out (>3min). Estimated ~120/123 passing based on last known good state.
+- 3 persistent failures: for_in.js, for_of.js (elaboration gap), string_concat.js (Wasm string alloc)
+
+### Test262
+- 2/93 pass, 50 fail, 31 skip, 8 xfail (unchanged)
+
+### Theorem Quality Audit
+- **OptimizeCorrect**: PROVED, REAL (identity pass, correct statement) ✅
+- **closureConvert_correct**: REAL — `∀ b, Flat.Behaves t b → ∃ b', Core.Behaves s b' ∧ b = b'` ✅
+- **anfConvert_correct**: REAL — observable trace preservation ✅
+- **lower_behavioral_correct**: REAL — `∀ trace, ANF.Behaves → IR.IRBehaves` ✅ (NEW, sorry)
+- **emit_behavioral_correct**: REAL — `∀ trace, IR.IRBehaves → Wasm.Behaves` ✅ (NEW, sorry)
+- **flat_to_wasm_correct**: REAL — partial end-to-end composition ✅ (NEW, sorry)
+- **lower_correct** (old): WORTHLESS — proves `t.startFunc = none`. Kept as auxiliary, not the main result.
+- **emit_preserves_start, emit_single_import** (old): WORTHLESS — structural, not behavioral. Kept as auxiliary.
+- **74 Core proof theorems by jsspec**: step_deterministic, Steps_trans, etc. — REAL helper lemmas ✅
+
+### Root Cause Analysis
+1. **step?_none_implies_lit_aux wildcard** (CC:427): BLOCKED on `valuesFromExprList?` being private in Flat/Semantics.lean. This is owned by wasmspec. Written specific instruction to wasmspec prompt to make it public.
+2. **closureConvert_trace_reflection** (CC:485): BLOCKED on forIn/forOf elaboration. jsspec stubs these as `.lit .undefined` which makes halt_preservation false. Written instruction to jsspec to fix elaboration or change stub to `.error`.
+3. **lower/emit behavioral theorems**: Correctly stated with sorry proofs. Proof agent should prioritize these after unblocking #1.
+
+### Cross-Agent Coordination
+- **wasmspec → proof**: Wrote instruction to make `valuesFromExprList?` public in Flat/Semantics.lean
+- **jsspec → proof**: Wrote instruction to fix for-in/for-of elaboration and define Source.Behaves
+- **wasmspec trace bridge**: COMPLETED — traceFromCore, traceListToWasm with round-trip proofs exist
+
+### Agent Prompt Updates
+- **wasmspec/prompt.md**: Added URGENT priority to make valuesFromExprList? public
+- **jsspec/prompt.md**: Updated priorities — E2E stability, for-in/for-of elaboration, Source.Behaves, Test262 skip reduction
+- **proof/prompt.md**: Updated sorry inventory (8 locations with priority order and approach), removed stale build-broken instructions
+
+### Summary
+Build recovered from last run's breakage. All theorem statements in the proof chain are now correct Behaves-based forms. The sorry plateau is a cross-agent dependency issue: wasmspec must expose `valuesFromExprList?` and jsspec must fix forIn/forOf. Both agents have been given specific instructions. Proof agent should focus on lower_behavioral_correct and anfConvert_halt_star while waiting for cross-agent blockers.
+
+2026-03-21T05:05:00+00:00 DONE
+
 ## Run: 2026-03-21T04:05:00+00:00
 
 ### Build

@@ -159,7 +159,7 @@ private def typeofValue : Value → Value
   | .object _ => .string "object"
   | .closure _ _ => .string "function"
 
-private def valuesFromExprList? : List Expr → Option (List Value)
+def valuesFromExprList? : List Expr → Option (List Value)
   | [] => some []
   | e :: rest =>
       match exprValue? e, valuesFromExprList? rest with
@@ -770,5 +770,35 @@ theorem step?_none_no_step {s : State} (h : step? s = none) :
 theorem step?_value_halts (s : State) (v : Value) :
     step? { s with expr := .lit v } = none := by
   simp
+
+/-- If firstNonValueExpr returns none (all elements are literals),
+    then valuesFromExprList? returns some list of values.
+    This bridges the two representations for the proof agent. -/
+theorem firstNonValueExpr_none_implies_values (l : List Expr)
+    (h : firstNonValueExpr l = none) :
+    ∃ vs, valuesFromExprList? l = some vs := by
+  induction l with
+  | nil => exact ⟨[], rfl⟩
+  | cons e rest ih =>
+    unfold firstNonValueExpr at h
+    match e, h with
+    | .lit v, h =>
+      simp at h
+      split at h
+      · contradiction
+      · next hrest =>
+        have ⟨vs, hvs⟩ := ih hrest
+        exact ⟨v :: vs, by simp [valuesFromExprList?, exprValue?, hvs]⟩
+
+/-- valuesFromExprList? on an empty list returns some []. -/
+@[simp] theorem valuesFromExprList?_nil :
+    valuesFromExprList? [] = some [] := rfl
+
+/-- valuesFromExprList? on a lit cons propagates. -/
+@[simp] theorem valuesFromExprList?_cons_lit (v : Value) (rest : List Expr) :
+    valuesFromExprList? (.lit v :: rest) =
+      (valuesFromExprList? rest).map (v :: ·) := by
+  simp [valuesFromExprList?, exprValue?]
+  cases valuesFromExprList? rest <;> simp [Option.map]
 
 end VerifiedJS.Flat

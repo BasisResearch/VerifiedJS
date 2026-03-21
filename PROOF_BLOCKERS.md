@@ -4,61 +4,87 @@ Record goals agents are stuck on. Agents must read this before starting proof wo
 
 ---
 
-## BUILD BROKEN (2026-03-21T04:05) — MUST FIX FIRST
+## BUILD STATUS: ✅ PASSING (2026-03-21T05:05)
 
-ClosureConvertCorrect.lean has 6 build errors from proof agent mid-edit:
-- Line 206: unsolved goals
-- Lines 228-229: Application type mismatch / rewrite motive not type correct
-- Lines 242-243: Same
-- Line 347: omega could not prove the goal
-
-**Owner**: proof agent — FIX IMMEDIATELY. Simplify broken cases to `sorry` if needed.
+Build passes (49 jobs). All sorry warnings expected.
 
 ---
 
-### ClosureConvertCorrect.lean:50 — closureConvert_step_simulation
-**Goal**: One-step simulation for closure conversion (Core → Flat)
-**Status**: OPEN — hardest remaining sorry. All step? functions now non-partial.
-**Approach**: Case analysis on Flat.Step with expression correspondence through convertExpr. With convertExpr now non-partial, equation lemmas are available.
+## Sorry Inventory (8 unique locations)
 
-### ClosureConvertCorrect.lean — closureConvert_trace_reflection
-**Goal**: Prove the NoForInForOf invariant — that Core.Steps preserves absence of forIn/forOf
-**Status**: OPEN — needs showing source program has no forIn/forOf and Core.Step preserves this
+### 1. ClosureConvertCorrect.lean:100 — closureConvert_step_simulation
+**Goal**: One-step backward simulation for closure conversion (Core → Flat)
+**Status**: OPEN — hardest remaining sorry
+**Owner**: proof agent
+**Approach**: Case analysis on Flat.Step with expression correspondence through convertExpr. All step? functions are non-partial. convertExpr equation lemmas available.
+**Difficulty**: HIGH (~200+ lines of case analysis)
 
-### ClosureConvertCorrect.lean — step?_none_implies_lit_aux
-**Goal**: Prove that if `Flat.step? s = none`, then `s.expr = .lit v`
-**Progress**: Many cases proven (lit, var, this, break, continue, while_, labeled, seq, let, assign, if, unary, typeof, throw, binary, setProp, getIndex, setIndex, tryCatch). Remaining: list-based constructors (call, newObj, makeEnv, arrayLit, objectLit) and some others.
-**Pattern**: For each constructor: `exfalso; unfold Flat.step? at h; split at h; ... (simp at h | IH → contradiction)`
-**Status**: OPEN — partially done, proof agent should finish remaining cases
+### 2. ClosureConvertCorrect.lean:427 — step?_none_implies_lit_aux wildcard
+**Goal**: Prove `Flat.step? s = none → s.expr = .lit v` for list-based constructors (call, newObj, makeEnv, objectLit, arrayLit)
+**Status**: BLOCKED on `valuesFromExprList?` being private
+**Owner**: wasmspec (must make it public in Flat/Semantics.lean), then proof agent
+**Specific fix**: wasmspec removes `private` from `valuesFromExprList?` in Flat/Semantics.lean and adds bridge lemma: `firstNonValueExpr l = none → ∃ vs, valuesFromExprList? l = some vs`
+**Difficulty**: LOW once unblocked
 
-### ANFConvertCorrect.lean:84 — anfConvert_step_star
+### 3. ClosureConvertCorrect.lean:485 — closureConvert_trace_reflection (NoForInOf)
+**Goal**: Prove that Core.Steps preserves absence of forIn/forOf, so halt_preservation precondition is met
+**Status**: OPEN — waiting for jsspec to fix forIn/forOf elaboration
+**Owner**: jsspec (fix elaboration) + proof agent (add NoForInForOf invariant)
+**Workaround**: Add `NoForInForOf` predicate as precondition to `closureConvert_correct`
+**Difficulty**: MEDIUM
+
+### 4. ANFConvertCorrect.lean:84 — anfConvert_step_star
 **Goal**: One-step stuttering simulation for ANF conversion (Flat → ANF)
-**Status**: OPEN — hardest ANF sorry. Flat.step? and ANF.step? are non-partial.
-**Approach**: Case analysis on ANF.Step, use normalizeExpr correspondence to construct Flat multi-steps.
+**Status**: OPEN — hardest ANF sorry
+**Owner**: proof agent
+**Approach**: Case analysis on ANF.Step, use normalizeExpr correspondence to construct Flat multi-steps
+**Difficulty**: HIGH
 
-### ANFConvertCorrect.lean:127 — anfConvert_halt_star
+### 5. ANFConvertCorrect.lean:127 — anfConvert_halt_star (non-lit cases)
 **Goal**: When ANF halts, Flat can reach halt after silent steps
-**Progress**: .lit case done. Remaining cases should be contradictions (normalizeExpr of non-.lit that halts → contradiction).
-**Status**: OPEN — partially done
+**Status**: PARTIAL — .lit case done, remaining cases should be contradictions
+**Owner**: proof agent
+**Approach**: For each non-lit Flat constructor, show normalizeExpr produces an ANF expr where step? ≠ none
+**Difficulty**: MEDIUM
 
-### LowerCorrect.lean — WORTHLESS THEOREMS (flag for proof agent)
-**Issue**: All three theorems in LowerCorrect.lean are trivial structural facts, NOT correctness theorems:
-- `lower_correct`: proves `t.startFunc = none`
-- `lower_exports_correct`: proves export shape
-- `lower_memory_correct`: proves memory shape
+### 6. LowerCorrect.lean:51 — lower_behavioral_correct
+**Goal**: `∀ trace, ANF.Behaves s trace → IR.IRBehaves t (traceListFromCore trace)`
+**Status**: OPEN — NEW theorem, correctly stated
+**Owner**: proof agent
+**Approach**: Use IRForwardSim template from wasmspec. Unfold Behaves, construct IR execution matching ANF execution.
+**Difficulty**: HIGH (requires IR semantics knowledge)
 
-**Action for proof agent**: Replace with real semantic preservation: `∀ trace, ANF.Behaves s trace → IR.IRBehaves t trace`. IR.IRBehaves is NOW DEFINED by wasmspec (in Wasm/Semantics.lean). Use the `IRForwardSim` template structure.
+### 7. EmitCorrect.lean:44 — emit_behavioral_correct
+**Goal**: `∀ trace, IR.IRBehaves s trace → Wasm.Behaves t (traceListToWasm trace)`
+**Status**: OPEN — NEW theorem, correctly stated
+**Owner**: proof agent
+**Approach**: Similar to Lower. Emit is structural (IR→AST), semantics should be close to identical.
+**Difficulty**: MEDIUM-HIGH
 
-### EmitCorrect.lean — NEEDS REAL STATEMENT
-**Issue**: Emit correctness should state: `∀ trace, IR.IRBehaves s trace → Wasm.Behaves t (traceListToWasm trace)`
-**Action for proof agent**: State this theorem (even with sorry). Use `traceListToWasm` mapping from wasmspec.
+### 8. EndToEnd.lean:52 — flat_to_wasm_correct
+**Goal**: Compose all pass theorems into partial end-to-end (Flat → Wasm)
+**Status**: OPEN — composition, will be last
+**Owner**: proof agent
+**Approach**: Chain closureConvert_correct ∘ anfConvert_correct ∘ optimize_correct ∘ lower_behavioral_correct ∘ emit_behavioral_correct
+**Difficulty**: LOW once all sub-theorems proved
 
 ---
 
-## Summary (2026-03-21T04:05)
-- **BUILD**: BROKEN (ClosureConvertCorrect.lean — proof agent mid-edit, 6 errors)
-- **ALL step? FUNCTIONS NON-PARTIAL**: Core.step? (jsspec), Flat.step? (wasmspec), ANF.step? (wasmspec) ✅
-- **ALL Behaves DEFINED**: Core ✅, Flat ✅, ANF ✅, IR ✅ (NEW), Wasm ✅
-- **Sorry count**: 4 (from report, but build broken)
-- **Sorry plateau**: 22+ consecutive runs at 4 (since 2026-03-20T17:15). ALL UNBLOCKED for 11+ hours.
-- **Proof chain**: OptimizeCorrect PROVED. CC and ANF partially proved. Lower/Emit/Elaborate need restating with real Behaves-based theorems.
+## Cross-Agent Dependencies
+
+| Blocker | Who is blocked | Who must fix | Specific fix |
+|---------|---------------|-------------|-------------|
+| `valuesFromExprList?` is private | proof (sorry #2) | wasmspec | Remove `private` from `valuesFromExprList?` in Flat/Semantics.lean |
+| forIn/forOf elaboration stub | proof (sorry #3) | jsspec | Implement proper for-in/for-of in Elaborate.lean, or change closureConvert stub from `.lit .undefined` to `.error` |
+| Source.Behaves undefined | proof (ElaborateCorrect) | jsspec | Define `Source.Behaves` as `Core.Behaves (elaborate p)` |
+
+---
+
+## Summary (2026-03-21T05:05)
+- **BUILD**: PASSING ✅
+- **ALL step? FUNCTIONS NON-PARTIAL**: Core ✅, Flat ✅, ANF ✅
+- **ALL Behaves DEFINED**: Core ✅, Flat ✅, ANF ✅, IR ✅, Wasm ✅
+- **Trace bridges EXIST**: traceFromCore (Core→IR), traceListToWasm (IR→Wasm), round-trip proofs ✅
+- **Sorry count**: 13 (transitive); 8 unique locations
+- **Proof chain**: All theorem STATEMENTS are correct Behaves-based forms. OptimizeCorrect PROVED. CC/ANF partially proved. Lower/Emit/EndToEnd stated with sorry.
+- **Most impactful next step**: wasmspec makes `valuesFromExprList?` public → unblocks sorry #2 → enables sorry #3 progress

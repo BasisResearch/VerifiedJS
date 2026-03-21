@@ -49,72 +49,43 @@ After proving things, also:
 - Handle new JS constructs that jsspec adds (check Core/Syntax.lean for new cases)
 - Make sure all Interp.lean interpreters handle every case (no unimplemented branches)
 
-## ⚠️ BUILD IS BROKEN — FIX THIS FIRST (2026-03-21T04:05)
+## ✅ BUILD IS PASSING (2026-03-21T05:05)
 
-ClosureConvertCorrect.lean has MULTIPLE build errors. The build MUST pass before anything else.
+Build passes (49 jobs). The ClosureConvertCorrect.lean errors are resolved.
+The wildcard `| _ => all_goals sorry` at line 427 is the clean fallback for list-based constructors.
 
-Current errors:
-- Line 206: unsolved goals
-- Line 228: Application type mismatch
-- Line 229: rewrite failed — motive not type correct
-- Line 242: Application type mismatch
-- Line 243: rewrite failed — motive not type correct
-- Line 347: omega could not prove the goal
+## Sorry Inventory (8 sorry locations, 2026-03-21T05:05)
 
-**YOUR #1 PRIORITY IS TO MAKE `lake build` PASS.** If you cannot fix all errors immediately, simplify the proof by reverting broken cases to `sorry` temporarily. A building codebase with sorry is ALWAYS better than a broken build.
+### Priority order — attack these in this sequence:
 
-### Build Fix Strategy:
-1. For the `step?_none_implies_lit_aux` proof: if cases are broken, replace them with `| _ => all_goals sorry` TEMPORARILY
-2. Ensure NO explicit constructor cases appear AFTER a `| _ =>` wildcard — Lean 4 processes cases in order, so a wildcard catches all remaining constructors
-3. Run `lake build` after EVERY change. Stop when it passes.
-4. Then go back and fix the sorry'd cases one at a time, building after each.
+1. **step?_none_implies_lit_aux wildcard** (ClosureConvertCorrect.lean:427) — BLOCKED on `valuesFromExprList?` being private in Flat/Semantics.lean. wasmspec has been asked to make it public. Once public, you can prove: `firstNonValueExpr l = none → valuesFromExprList? l = some _`, then close call/newObj/makeEnv/objectLit/arrayLit cases.
 
-### IMPORTANT: Do NOT put named cases after a wildcard
-In Lean 4's `cases ... with` syntax:
+2. **closureConvert_trace_reflection** (ClosureConvertCorrect.lean:485) — needs NoForInForOf invariant. The forIn/forOf issue is being addressed by jsspec (either proper elaboration or converting stubs from `.lit .undefined` to `.error`). **MEANWHILE**: you can add a `NoForInForOf` predicate on Core.Program and add it as a precondition to `closureConvert_correct`. This lets you proceed without waiting.
+
+3. **anfConvert_halt_star non-lit** (ANFConvertCorrect.lean:127) — most non-lit cases should be contradictions. For each Flat constructor `c`: show that `normalizeExpr (.c ...) k` produces an ANF expression where `step? ≠ none` (i.e., the ANF expression always steps). This contradicts `hhalt : ANF.step? sa = none`.
+
+4. **lower_behavioral_correct** (LowerCorrect.lean:51) — NEW theorem, already stated correctly. Start proof: unfold `ANF.Behaves`, get `ANF.Steps` and `ANF.step? = none`. Need to construct `IR.IRSteps` and `IR.irStep? = none`. Use the `IRForwardSim` template from wasmspec.
+
+5. **emit_behavioral_correct** (EmitCorrect.lean:44) — NEW theorem, already stated. Similar approach to lower.
+
+6. **closureConvert_step_simulation** (ClosureConvertCorrect.lean:100) — HARDEST. Case analysis on `Flat.Step` + expression correspondence through `convertExpr`. With convertExpr non-partial and equation lemmas available, this is approachable but ~200+ lines.
+
+7. **anfConvert_step_star** (ANFConvertCorrect.lean:84) — HARDEST for ANF. Case analysis on `ANF.Step`, use normalizeExpr correspondence.
+
+8. **flat_to_wasm_correct** (EndToEnd.lean:52) — composition of all above. Will be the LAST to be proved.
+
+### IMPORTANT: LowerCorrect and EmitCorrect theorem statements are GOOD
+
+You already stated `lower_behavioral_correct` and `emit_behavioral_correct` with the correct Behaves-based form. These are REAL correctness theorems (not the worthless structural ones). The old structural theorems (lower_correct, lower_exports_correct, lower_memory_correct) can stay as auxiliary lemmas but are NOT the main result.
+
+### forIn/forOf workaround
+
+`closureConvert_halt_preservation` is correctly guarded with `sc.expr ≠ .forIn` and `sc.expr ≠ .forOf` preconditions. For `closureConvert_trace_reflection`, define:
 ```lean
--- WRONG: objectLit has no goal because _ caught it
-| tryCatch ... => ...
-| _ => all_goals sorry   -- catches call, newObj, makeEnv, arrayLit, objectLit, etc.
-| call ... => ...         -- ERROR: No goals to be solved
-| objectLit ... => ...    -- ERROR: No goals to be solved
+def NoForInForOf (e : Core.Expr) : Prop :=
+  ∀ b o f, e ≠ .forIn b o f ∧ e ≠ .forOf b o f
 ```
-
-```lean
--- RIGHT: explicit cases first, wildcard last
-| tryCatch ... => ...
-| call ... => ...
-| objectLit ... => ...
-| _ => all_goals sorry   -- catches only truly unhandled cases
-```
-
-## Sorry Status (4 sorries when build passes):
-
-### Remaining sorry locations:
-1. **closureConvert_step_simulation** — one-step simulation (HARDEST)
-2. **closureConvert_trace_reflection** — forIn/forOf precondition (needs NoForInForOf invariant)
-3. **anfConvert_step_star** — ANF one-step stuttering simulation (HARDEST)
-4. **anfConvert_halt_star** — non-lit cases (most cases should be contradictions)
-
-### GENUINELY FALSE: closureConvert_halt_preservation forIn/forOf
-
-The theorem is FALSE for programs with forIn/forOf because `convertExpr (.forIn ...)` returns `(.lit .undefined, st)` (stub) but `Core.step? (.forIn ...)` returns `some _`.
-
-**Your fix (already applied)**: preconditions excluding forIn/forOf. Now you need to prove `closureConvert_trace_reflection` by showing the Core program at halt point has no forIn/forOf — either via an invariant on Core.Steps or by restricting the top-level theorem.
-
-## MILESTONE: IR.Behaves NOW EXISTS
-
-wasmspec defined full IR behavioral semantics in Wasm/Semantics.lean:
-- `IR.IRStep`, `IR.IRSteps`, `IR.IRBehaves` — all defined with no sorry
-- `IRStep_deterministic`, `IRSteps_trans`, `IRBehaves_deterministic` — proved
-- 20 @[simp] equation lemmas for irStep? covering all common IR instructions
-- `IRForwardSim` template structure for simulation proofs
-
-**This means you can now:**
-1. State REAL LowerCorrect: `∀ trace, ANF.Behaves s trace → IR.IRBehaves t trace`
-2. State REAL EmitCorrect: `∀ trace, IR.IRBehaves s trace → Wasm.Behaves t (traceListToWasm trace)`
-3. Start building the EndToEnd proof chain
-
-**After fixing the build, your NEXT priority should be stating these theorems** (even with sorry proofs) so the proof chain structure is visible.
+Then prove `Core.Step s ev s' → NoForInForOf s.expr → NoForInForOf s'.expr` (Core.step? never introduces forIn/forOf). Add `NoForInForOf (initialState s).expr` as precondition to the top-level theorem.
 
 ## Proof Strategy -- USE AUTOMATION FIRST
 

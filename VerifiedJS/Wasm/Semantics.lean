@@ -3582,6 +3582,55 @@ theorem irStep?_ir_convert_i32_u (s : IRExecState) (rest : List IRInstr)
     ∃ t s', irStep? s = some (t, s') := by
   simp [irStep?, hcode, hstack, irPop1?, irPushTrace]
 
+/-- irStep? for load with i32 address on stack and in-bounds access succeeds.
+    REF: Wasm §4.4.7.1 (memory.load) -/
+@[simp]
+theorem irStep?_ir_load (s : IRExecState) (rest : List IRInstr) (t : ValType)
+    (offset : Nat) (addr : UInt32) (stk : List IRValue)
+    (hcode : s.code = IRInstr.load t offset :: rest)
+    (hstack : s.stack = .i32 addr :: stk)
+    (hbounds : addr.toNat + offset + 4 ≤ s.memory.size) :
+    ∃ te s', irStep? s = some (te, s') := by
+  simp [irStep?, hcode, hstack, irPop1?, irPushTrace, hbounds]
+
+/-- irStep? for store with i32 value and i32 address on stack and in-bounds succeeds.
+    REF: Wasm §4.4.7.2 (memory.store) -/
+@[simp]
+theorem irStep?_ir_store (s : IRExecState) (rest : List IRInstr) (t : ValType)
+    (offset : Nat) (val addr : UInt32) (stk : List IRValue)
+    (hcode : s.code = IRInstr.store t offset :: rest)
+    (hstack : s.stack = .i32 val :: .i32 addr :: stk)
+    (hbounds : addr.toNat + offset + 4 ≤ s.memory.size) :
+    ∃ te s', irStep? s = some (te, s') := by
+  simp [irStep?, hcode, hstack, irPop2?, irPushTrace, hbounds]
+
+/-- irStep? for store8 with i32 value and i32 address on stack and in-bounds succeeds.
+    REF: Wasm §4.4.7.2 (memory.store, 1-byte variant) -/
+@[simp]
+theorem irStep?_ir_store8 (s : IRExecState) (rest : List IRInstr)
+    (offset : Nat) (val addr : UInt32) (stk : List IRValue)
+    (hcode : s.code = IRInstr.store8 offset :: rest)
+    (hstack : s.stack = .i32 val :: .i32 addr :: stk)
+    (hbounds : addr.toNat + offset < s.memory.size) :
+    ∃ te s', irStep? s = some (te, s') := by
+  simp [irStep?, hcode, hstack, irPop2?, irPushTrace, hbounds]
+
+/-- irStep? for callIndirect with i32 func index on stack and valid function succeeds.
+    REF: Wasm §4.4.8.7 (call_indirect) / WasmCert-Coq r_call_indirect_success -/
+@[simp]
+theorem irStep?_ir_callIndirect (s : IRExecState) (rest : List IRInstr)
+    (typeIdx : Nat) (funcIdx : UInt32) (stk : List IRValue) (fn : IRFunc)
+    (hcode : s.code = IRInstr.callIndirect typeIdx :: rest)
+    (hstack : s.stack = .i32 funcIdx :: stk)
+    (hfunc : s.module.functions[funcIdx.toNat]? = some fn)
+    (hargs : fn.params.length ≤ stk.length) :
+    ∃ te s', irStep? s = some (te, s') := by
+  simp [irStep?, hcode, hstack, irPop1?, hfunc]
+  simp [irPopN?]
+  exact ⟨stk.take fn.params.length, stk.drop fn.params.length,
+    by simp [List.take_append_drop]; omega,
+    .silent, by simp [irPushTrace]⟩
+
 /-! ### IRSteps Composition Helpers -/
 
 /-- Build a single-step IRSteps. -/

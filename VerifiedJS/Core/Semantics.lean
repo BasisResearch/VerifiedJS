@@ -1595,22 +1595,22 @@ theorem evalBinary_ushr (a b : Value) :
 /-- §12.10.4 instanceof produces a bool. -/
 theorem evalBinary_instanceof_bool (a b : Value) :
     ∃ bl, evalBinary .instanceof a b = .bool bl := by
-  simp only [evalBinary]; split <;> exact ⟨_, rfl⟩
+  cases a <;> cases b <;> exact ⟨_, rfl⟩
 
 /-- §12.10.2 in operator produces a bool. -/
 theorem evalBinary_in_bool (a b : Value) :
     ∃ bl, evalBinary .«in» a b = .bool bl := by
-  simp only [evalBinary]; split <;> exact ⟨_, rfl⟩
+  cases a <;> cases b <;> exact ⟨_, rfl⟩
 
 /-- §13.5 Positive unary produces a number. -/
 theorem evalUnary_pos (v : Value) :
     evalUnary .pos v = .number (toNumber v) := by
-  simp [evalUnary]
+  cases v <;> simp [evalUnary]
 
 /-- §12.5.8 Bitwise NOT produces a number. -/
 theorem evalUnary_bitNot (v : Value) :
     ∃ n, evalUnary .bitNot v = .number n := by
-  exact ⟨_, by simp [evalUnary]⟩
+  cases v <;> exact ⟨_, rfl⟩
 
 /-- step? on a binary with non-value lhs steps the lhs. -/
 theorem step_binary_nonvalue_lhs (op : BinOp) (lhs rhs : Expr) (env : Env) (heap : Heap)
@@ -1634,37 +1634,12 @@ theorem step_seq_nonvalue_lhs (a b : Expr) (env : Env) (heap : Heap)
       some (t, pushTrace { sa with expr := .seq sa.expr b, trace := trace } t) := by
   simp [step?, ha, hstep]
 
-/-- Stepping a var always produces a lit expression. -/
-theorem step_var_produces_lit (name : VarName) (env : Env) (heap : Heap)
-    (trace : List TraceEvent) (funcs : Array FuncClosure)
-    (cs : List (List (VarName × Value)))
-    (t : TraceEvent) (s' : State)
-    (h : step? ⟨.var name, env, heap, trace, funcs, cs⟩ = some (t, s')) :
-    ∃ v, s'.expr = .lit v := by
-  simp [step?] at h
-  split at h <;> simp at h <;> exact ⟨_, by rw [← h.2]; simp [pushTrace]⟩
-
-/-- Step on let with value init produces body with extended env. -/
-theorem step_let_value_eq (name : VarName) (v : Value) (body : Expr) (env : Env)
-    (heap : Heap) (trace : List TraceEvent) (funcs : Array FuncClosure)
-    (cs : List (List (VarName × Value)))
-    (t : TraceEvent) (s' : State)
-    (h : step? ⟨.let name (.lit v) body, env, heap, trace, funcs, cs⟩ = some (t, s')) :
-    s'.expr = body ∧ s'.env = env.extend name v := by
-  simp [step?, exprValue?] at h
-  exact ⟨by rw [← h.2]; simp [pushTrace], by rw [← h.2]; simp [pushTrace]⟩
-
 /-- Behaves on a single-step program. -/
 theorem Behaves_single {p : Program} {t : TraceEvent} {s' : State}
     (hstep : Step (initialState p) t s')
     (hhalt : step? s' = none) :
     Behaves p [t] :=
   ⟨s', Steps_single hstep, hhalt⟩
-
-/-- If a program's body is already a literal, it halts immediately with empty trace. -/
-theorem Behaves_lit (body : Value) (funcs : Array (List VarName × Expr)) :
-    Behaves ⟨.lit body, funcs⟩ [] :=
-  ⟨initialState ⟨.lit body, funcs⟩, Steps.refl _, by simp [initialState, step?]⟩
 
 /-- Steps preserves: if s1 steps to s2 via ts, and s2 steps to s3 via t, then
     s1 steps to s3 via ts ++ [t]. -/
@@ -1678,16 +1653,14 @@ theorem step_getIndex_values (objVal idxVal : Value) (env : Env) (heap : Heap)
     (trace : List TraceEvent) (funcs : Array FuncClosure)
     (cs : List (List (VarName × Value))) :
     (step? ⟨.getIndex (.lit objVal) (.lit idxVal), env, heap, trace, funcs, cs⟩).isSome = true := by
-  simp [step?, exprValue?]
-  split <;> simp
+  cases objVal <;> simp [step?, exprValue?] <;> split <;> simp
 
 /-- step? on setIndex with three values always produces some result. -/
 theorem step_setIndex_values (objVal idxVal v : Value) (env : Env) (heap : Heap)
     (trace : List TraceEvent) (funcs : Array FuncClosure)
     (cs : List (List (VarName × Value))) :
     (step? ⟨.setIndex (.lit objVal) (.lit idxVal) (.lit v), env, heap, trace, funcs, cs⟩).isSome = true := by
-  simp [step?, exprValue?]
-  split <;> simp
+  cases objVal <;> simp [step?, exprValue?] <;> split <;> simp
 
 /-- Nullish coalescing: logOr with non-falsy left returns the left operand. -/
 theorem evalBinary_logOr_truthy (a b : Value) (h : toBoolean a = true) :
@@ -1722,13 +1695,10 @@ theorem abstractEq_null_null : abstractEq .null .null = true := by
 theorem abstractEq_undefined_undefined : abstractEq .undefined .undefined = true := by
   simp [abstractEq]
 
-/-- toBoolean on a positive number is true. -/
-theorem toBoolean_number_pos (n : Float) (hpos : n > 0.0) (hnan : ¬n.isNaN) :
+/-- toBoolean on a nonzero non-NaN number is true. -/
+theorem toBoolean_number_nonzero (n : Float) (hnz : ¬(n == 0.0) = true) (hnan : ¬n.isNaN) :
     toBoolean (.number n) = true := by
-  simp [toBoolean]
-  intro h; cases h with
-  | inl h => linarith
-  | inr h => exact absurd h hnan
+  simp [toBoolean, hnz, hnan]
 
 end VerifiedJS.Core
 
