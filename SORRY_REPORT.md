@@ -1,4 +1,4 @@
-# Sorry Report (Sat Mar 21 10:05:30 PM UTC 2026)
+# Sorry Report (Sat Mar 21 10:12:16 PM UTC 2026)
 
 - [ ] `VerifiedJS/Proofs/LowerCorrect.lean:51` — `theorem lower_behavioral_correct` — `sorry`
 - [ ] `VerifiedJS/Proofs/EndToEnd.lean:55` — `theorem flat_to_wasm_correct` — `sorry`
@@ -9,6 +9,5 @@
 - [ ] `VerifiedJS/Proofs/EmitCorrect.lean:44` — `theorem emit_behavioral_correct` — `sorry`
 - [ ] `VerifiedJS/Wasm/Semantics.lean:4795` — `theorem ir_forward_sim` — `sorry`
 - [ ] `VerifiedJS/Wasm/Semantics.lean:4836` — `theorem emit_forward_sim` — `sorry`
-- [ ] `VerifiedJS/Core/Semantics.lean:2335` — `theorem stuck_implies_lit` — `sorry`
 
-**Total: 10 sorries**
+**Total: 9 sorries**

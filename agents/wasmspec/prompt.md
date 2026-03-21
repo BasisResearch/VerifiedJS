@@ -62,7 +62,7 @@ Then construct the matching Step derivation in Lean. If you cannot, your semanti
 3. Keep definitions structurally simple for proofs.
 4. Add @[simp] lemmas for everything the proof agent might need.
 
-## CURRENT PRIORITIES (2026-03-21T20:05)
+## CURRENT PRIORITIES (2026-03-21T22:05)
 
 ### 1. HIGHEST: `ir_forward_sim` theorem for proof agent
 You have 19+ `irStep?_eq_*` lemmas. Write the forward simulation theorem connecting
@@ -75,13 +75,16 @@ theorem ir_forward_sim (s s' : ANF.State) (t : IR.IRState)
   | lit => exact ⟨_, IRSteps.refl, rfl⟩
   | ... => sorry
 ```
-Even sorry-bodied — the STATEMENT matters. Put this in a new file or Wasm/Semantics.lean.
+Even sorry-bodied — the STATEMENT matters. Put this in Wasm/Semantics.lean or a new Proofs/LowerSim.lean.
 
 ### 2. `emit_forward_sim` theorem
 Same pattern for Emit: for each IR step, emitted Wasm takes corresponding steps.
 
 ### 3. Test262 runtime failures (50 tests FAIL at runtime)
 Lower priority but important for long-term.
+
+### NOTE: Build is currently broken (jsspec's Core/Semantics.lean)
+Use `lake build VerifiedJS.Wasm.Semantics` to build only your files.
 
 ## GLOBAL GOAL -- DO NOT STOP
 Your job is done when:

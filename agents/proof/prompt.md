@@ -63,38 +63,35 @@ Read `logs/test262_summary.md` for failure categories. Fix compiler bugs that ca
 3. Duper is NOT available. Use grind, aesop, omega, simp.
 4. DO NOT WAIT for anyone. Just prove things.
 
-## CURRENT STATUS (2026-03-21T20:05) — 6 sorries remain in Proofs/
+## CURRENT STATUS (2026-03-21T22:05) — 7 sorries remain in Proofs/
 
 **elaborate_correct: PROVED** (done). **optimize_correct: PROVED** (done).
 
-**BUILD IS BROKEN** — jsspec's Core/Semantics.lean has 57 errors (stuck_implies_lit simp loop).
-Build individual modules: `lake build VerifiedJS.Proofs.ANFConvertCorrect` etc.
+**BUILD IS BROKEN** — jsspec's Core/Semantics.lean has 81 errors (stuck_implies_lit simp loop).
+Build individual Proof modules with: `lake build VerifiedJS.Proofs.ANFConvertCorrect` etc.
+jsspec has been told to sorry it — should be fixed soon.
 
-### Remaining 6 sorries (in priority order):
+### Remaining 7 sorries (in priority order):
 
-**#1: `anfConvert_halt_star`** (ANFConvertCorrect.lean:529 `all_goals sorry`)
-~28 constructor cases remaining. Pattern: show normalizeExpr produces ANF that always steps (not stuck).
-- Category 1 (bindComplex): 16 constructors always produce `.let`, which steps → contradiction
-- Category 2 (control flow): throw/return/yield/await/labeled → fixed ANF output, step? returns some → contradiction
-- Category 3 (recursive): let/seq/if/while_ → chase monadic bind + IH
-- Category 4 (pass-through): var/this → depends on continuation k
-
-**#2: `anfConvert_step_star`** (ANFConvertCorrect.lean:84)
+**#1: `anfConvert_step_star`** (ANFConvertCorrect.lean:84)
 Stuttering forward simulation. Case analysis on ANF.Step over all expression forms.
 
+**#2: `anfConvert_halt_star`** (ANFConvertCorrect.lean:567 and :571)
+2 sorries. Show normalizeExpr produces ANF that always steps (not stuck).
+
 **#3: `closureConvert_step_simulation`** (ClosureConvertCorrect.lean:138)
-One-step backward simulation. 200+ line case analysis on Flat.Step with convertExpr equation lemmas (now available since convertExpr is non-partial).
+One-step backward simulation. 200+ line case analysis on Flat.Step.
 
 **#4: `lower_behavioral_correct`** (LowerCorrect.lean:51)
-Forward simulation ANF→IR. wasmspec has 19+ `irStep?_eq_*` lemmas and IRSteps composition helpers.
+Forward simulation ANF→IR.
 
 **#5: `emit_behavioral_correct`** (EmitCorrect.lean:44)
 Forward simulation IR→Wasm.
 
 **#6: `flat_to_wasm_correct`** (EndToEnd.lean:55)
-Composition of #3-5. Proves itself once components are done.
+Composition of #3-5. Last to prove.
 
-**Strategy**: Focus on #1 (anfConvert_halt_star) — most cases are mechanical. Then #3 (CC step_sim). Then #4-5 (Lower/Emit).
+**Strategy**: Focus on #1 (anfConvert_step_star) — the hardest but most impactful. Then #3 (CC step_sim). #4-6 depend on wasmspec's forward sim theorems.
 
 ## GLOBAL GOAL -- DO NOT STOP
 Your job is done when:
