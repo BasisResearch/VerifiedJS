@@ -19,15 +19,12 @@ private theorem firstNonValueExpr_not_lit {l : List Flat.Expr} {done target rest
   | nil => simp [Flat.firstNonValueExpr] at h
   | cons e tl ih =>
     unfold Flat.firstNonValueExpr at h
-    split at h
-    · -- e = .lit _
+    cases e with
+    | lit w =>
       split at h
       · next heq => simp at h; obtain ⟨_, rfl, rfl⟩ := h; exact ih heq
       · simp at h
-    · -- e is not a lit
-      next hne =>
-        simp at h; obtain ⟨_, rfl, _⟩ := h
-        intro v hv; rw [hv] at hne; exact hne ⟨v, rfl⟩
+    | _ => all_goals (simp at h; obtain ⟨_, rfl, _⟩ := h; intro v habs; exact Flat.Expr.noConfusion habs)
 
 /-- The target returned by firstNonValueProp is never a literal. -/
 private theorem firstNonValueProp_not_lit {l : List (Flat.PropName × Flat.Expr)} {done name target rest}
@@ -38,15 +35,12 @@ private theorem firstNonValueProp_not_lit {l : List (Flat.PropName × Flat.Expr)
   | cons p tl ih =>
     obtain ⟨pn, pe⟩ := p
     unfold Flat.firstNonValueProp at h
-    split at h
-    · -- pe = .lit _
+    cases pe with
+    | lit w =>
       split at h
       · next heq => simp at h; obtain ⟨_, _, rfl, rfl⟩ := h; exact ih heq
       · simp at h
-    · -- pe is not a lit
-      next hne =>
-        simp at h; obtain ⟨_, _, rfl, _⟩ := h
-        intro v hv; rw [hv] at hne; exact hne ⟨v, rfl⟩
+    | _ => all_goals (simp at h; obtain ⟨_, _, rfl, _⟩ := h; intro v habs; exact Flat.Expr.noConfusion habs)
 
 /-- Simulation relation for closure conversion: Flat and Core states
     have matching traces, and expression correspondence through the conversion. -/
