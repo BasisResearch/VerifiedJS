@@ -104,6 +104,55 @@ axiom bumpAlloc_nonoverlap :
     bumpAlloc st size = some (addr, st') →
     ∀ a ∈ st.allocations, addr + ((size + 3) / 4 * 4) ≤ a.addr ∨ a.addr + a.size ≤ addr
 
+/-- bumpAlloc returns an address equal to the current allocation pointer. -/
+theorem bumpAlloc_addr (st : AllocatorState) (size : Nat) (addr : Nat) (st' : AllocatorState)
+    (h : bumpAlloc st size = some (addr, st')) :
+    addr = st.gc.allocPtr := by
+  unfold bumpAlloc at h
+  by_cases hle : st.gc.allocPtr + (size + 3) / 4 * 4 ≤ st.gc.heapEnd
+  · simp [hle] at h; exact h.1.symm
+  · simp [hle] at h
+
+/-- bumpAlloc advances the allocation pointer by the aligned size. -/
+theorem bumpAlloc_advances (st : AllocatorState) (size : Nat) (addr : Nat) (st' : AllocatorState)
+    (h : bumpAlloc st size = some (addr, st')) :
+    st'.gc.allocPtr = st.gc.allocPtr + (size + 3) / 4 * 4 := by
+  unfold bumpAlloc at h
+  by_cases hle : st.gc.allocPtr + (size + 3) / 4 * 4 ≤ st.gc.heapEnd
+  · simp [hle] at h; rw [← h.2]
+  · simp [hle] at h
+
+/-- bumpAlloc preserves the heap bounds. -/
+theorem bumpAlloc_bounds (st : AllocatorState) (size : Nat) (addr : Nat) (st' : AllocatorState)
+    (h : bumpAlloc st size = some (addr, st')) :
+    st'.gc.heapBase = st.gc.heapBase ∧ st'.gc.heapEnd = st.gc.heapEnd := by
+  unfold bumpAlloc at h
+  by_cases hle : st.gc.allocPtr + (size + 3) / 4 * 4 ≤ st.gc.heapEnd
+  · simp [hle] at h; rw [← h.2]; exact ⟨rfl, rfl⟩
+  · simp [hle] at h
+
+/-- bumpAlloc returns none when there is not enough free space. -/
+theorem bumpAlloc_none_iff (st : AllocatorState) (size : Nat) :
+    bumpAlloc st size = none ↔ st.gc.allocPtr + (size + 3) / 4 * 4 > st.gc.heapEnd := by
+  unfold bumpAlloc
+  constructor
+  · intro h
+    by_cases hle : st.gc.allocPtr + (size + 3) / 4 * 4 ≤ st.gc.heapEnd
+    · simp [hle] at h
+    · omega
+  · intro h; simp [Nat.not_le.mpr h]
+
+/-- The returned address from bumpAlloc is within the heap. -/
+theorem bumpAlloc_in_heap (st : AllocatorState) (size : Nat) (addr : Nat) (st' : AllocatorState)
+    (h : bumpAlloc st size = some (addr, st'))
+    (hbase : st.gc.heapBase ≤ st.gc.allocPtr) :
+    st.gc.heapBase ≤ addr ∧ addr + (size + 3) / 4 * 4 ≤ st.gc.heapEnd := by
+  have haddr := bumpAlloc_addr st size addr st' h
+  unfold bumpAlloc at h
+  by_cases hle : st.gc.allocPtr + (size + 3) / 4 * 4 ≤ st.gc.heapEnd
+  · simp [hle] at h; subst haddr; exact ⟨hbase, hle⟩
+  · simp [hle] at h
+
 /-- Total heap bytes currently allocated. -/
 def AllocatorState.totalAllocated (st : AllocatorState) : Nat :=
   st.allocations.foldl (fun acc a => acc + a.size) 0
