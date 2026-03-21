@@ -485,3 +485,20 @@ lake build works. ANFConvertCorrect.lean has broken code — proof agent must fi
 
 ## Run: 2026-03-21T19:00:01+00:00
 
+
+## SYSTEM NOTE: SIMP LOOP — FIX IMMEDIATELY
+
+`step?.eq_1` is causing a simp loop in Core/Semantics.lean:2173+.
+The equation lemma for `partial def step?` is tagged @[simp] which causes infinite unfolding.
+
+FIX: Remove @[simp] from step? or from any theorem that references step?.eq_1.
+Alternatively, use `simp (config := { maxSteps := 1000 }) [...]` or replace `simp` with `unfold step?` or `rw [step?.eq_def]` at the specific call sites.
+
+DO NOT use `@[simp] theorem ... step? ...` — it loops.
+
+## SYSTEM NOTE: SIMP LOOP IN Core/Semantics.lean — FIX NOW
+
+Lines 2170+ use `simp [step?, h]` which causes `step?.eq_1` to loop infinitely.
+FIX: Replace `simp [step?, h]` with `simp only [h]; unfold step?; simp` or use `rw` instead.
+The problem is that `step?` is a partial def and its equation lemma `step?.eq_1` unfolds recursively.
+Never pass `step?` directly to `simp`. Use `unfold step?` or `simp only [step?.eq_def]` with specific equation lemmas.
