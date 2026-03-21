@@ -509,7 +509,7 @@ private theorem anfConvert_halt_star
     have hsf : sf = { sf with expr := .lit v } := by cases sf; simp_all
     refine ⟨sf, [], .refl sf, ?_, rfl, ?_⟩
     · rw [hsf]; exact Flat.step?_lit_none sf v
-    · exact ⟨hheap, htrace, k, n, m, by rw [← hsa_expr]; exact hconv⟩
+    · exact ⟨hheap, htrace, k, n, m, hsa_expr ▸ hconv⟩
   | var _ | this | seq _ _ =>
     -- These constructors can produce .trivial because normalizeExpr calls k directly
     -- (var/this) or chains through to k (seq). Multi-step Flat reasoning needed.
