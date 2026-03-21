@@ -49,43 +49,39 @@ After proving things, also:
 - Handle new JS constructs that jsspec adds (check Core/Syntax.lean for new cases)
 - Make sure all Interp.lean interpreters handle every case (no unimplemented branches)
 
-## ✅ BUILD IS PASSING (2026-03-21T05:05)
+## ✅ BUILD IS PASSING (2026-03-21T13:20)
 
-Build passes (49 jobs). The ClosureConvertCorrect.lean errors are resolved.
-The wildcard `| _ => all_goals sorry` at line 427 is the clean fallback for list-based constructors.
+Build passes (49 jobs). Sorry count: 7.
 
-## Sorry Inventory (8 sorry locations, 2026-03-21T05:05)
+## ✅ MILESTONE: valuesFromExprList? blocker RESOLVED
+
+wasmspec made `valuesFromExprList?` public and added `firstNonValueExpr_none_implies_values` bridge lemma. You already used it to prove the list-based constructor cases. Well done.
+
+## Sorry Inventory (7 sorry locations, 2026-03-21T13:20)
 
 ### Priority order — attack these in this sequence:
 
-1. **step?_none_implies_lit_aux wildcard** (ClosureConvertCorrect.lean:427) — BLOCKED on `valuesFromExprList?` being private in Flat/Semantics.lean. wasmspec has been asked to make it public. Once public, you can prove: `firstNonValueExpr l = none → valuesFromExprList? l = some _`, then close call/newObj/makeEnv/objectLit/arrayLit cases.
+1. **anfConvert_halt_star non-lit** (ANFConvertCorrect.lean:127) — BEST NEXT TARGET. Most non-lit cases should be contradictions. For each Flat constructor (var, seq, let_, assign, if_, etc.): show that `normalizeExpr (.c ...) k` produces an ANF expression where `step? ≠ none` (i.e., the ANF expression always steps). This contradicts `hhalt : ANF.step? sa = none`. Try:
+   ```lean
+   | var n =>
+     -- normalizeExpr (.var n) k produces .var n or a let-binding
+     -- ANF.step? on .var always returns some (lookup or error)
+     simp [ANF.normalizeExpr] at hconv
+     -- Then show ANF.step? produces some for this expr
+     simp [ANF.step?] at hhalt
+   ```
 
-2. **closureConvert_trace_reflection** (ClosureConvertCorrect.lean:485) — needs NoForInForOf invariant. The forIn/forOf issue is being addressed by jsspec (either proper elaboration or converting stubs from `.lit .undefined` to `.error`). **MEANWHILE**: you can add a `NoForInForOf` predicate on Core.Program and add it as a precondition to `closureConvert_correct`. This lets you proceed without waiting.
+2. **lower_behavioral_correct** (LowerCorrect.lean:51) — wasmspec added 19+ exact-value equation lemmas (`irStep?_eq_i32Const`, `irStep?_eq_f64Const`, etc.) and composition helpers (`IRSteps_two`, `IRSteps_cons`). Start by: unfold `ANF.Behaves`, get `ANF.Steps` and halt. Construct matching `IR.IRSteps` instruction by instruction.
 
-3. **anfConvert_halt_star non-lit** (ANFConvertCorrect.lean:127) — most non-lit cases should be contradictions. For each Flat constructor `c`: show that `normalizeExpr (.c ...) k` produces an ANF expression where `step? ≠ none` (i.e., the ANF expression always steps). This contradicts `hhalt : ANF.step? sa = none`.
+3. **closureConvert_step_simulation** (ClosureConvertCorrect.lean:138) — HARDEST. Case analysis on `Flat.Step` with expression correspondence through `convertExpr`. All step? functions are non-partial. convertExpr equation lemmas available (`convertExpr.eq_1`, etc.). This is ~200+ lines but resolving it also auto-resolves trace_reflection (CC:672).
 
-4. **lower_behavioral_correct** (LowerCorrect.lean:51) — NEW theorem, already stated correctly. Start proof: unfold `ANF.Behaves`, get `ANF.Steps` and `ANF.step? = none`. Need to construct `IR.IRSteps` and `IR.irStep? = none`. Use the `IRForwardSim` template from wasmspec.
+4. **anfConvert_step_star** (ANFConvertCorrect.lean:84) — HARDEST for ANF. Case analysis on `ANF.Step`, use normalizeExpr correspondence.
 
-5. **emit_behavioral_correct** (EmitCorrect.lean:44) — NEW theorem, already stated. Similar approach to lower.
+5. **emit_behavioral_correct** (EmitCorrect.lean:44) — similar to lower. Emit is structural (IR→AST).
 
-6. **closureConvert_step_simulation** (ClosureConvertCorrect.lean:100) — HARDEST. Case analysis on `Flat.Step` + expression correspondence through `convertExpr`. With convertExpr non-partial and equation lemmas available, this is approachable but ~200+ lines.
+6. **closureConvert_trace_reflection** (ClosureConvertCorrect.lean:672) — depends on step_simulation (#3). Will resolve automatically once #3 is proved.
 
-7. **anfConvert_step_star** (ANFConvertCorrect.lean:84) — HARDEST for ANF. Case analysis on `ANF.Step`, use normalizeExpr correspondence.
-
-8. **flat_to_wasm_correct** (EndToEnd.lean:52) — composition of all above. Will be the LAST to be proved.
-
-### IMPORTANT: LowerCorrect and EmitCorrect theorem statements are GOOD
-
-You already stated `lower_behavioral_correct` and `emit_behavioral_correct` with the correct Behaves-based form. These are REAL correctness theorems (not the worthless structural ones). The old structural theorems (lower_correct, lower_exports_correct, lower_memory_correct) can stay as auxiliary lemmas but are NOT the main result.
-
-### forIn/forOf workaround
-
-`closureConvert_halt_preservation` is correctly guarded with `sc.expr ≠ .forIn` and `sc.expr ≠ .forOf` preconditions. For `closureConvert_trace_reflection`, define:
-```lean
-def NoForInForOf (e : Core.Expr) : Prop :=
-  ∀ b o f, e ≠ .forIn b o f ∧ e ≠ .forOf b o f
-```
-Then prove `Core.Step s ev s' → NoForInForOf s.expr → NoForInForOf s'.expr` (Core.step? never introduces forIn/forOf). Add `NoForInForOf (initialState s).expr` as precondition to the top-level theorem.
+7. **flat_to_wasm_correct** (EndToEnd.lean:52) — composition. LAST to prove.
 
 ## Proof Strategy -- USE AUTOMATION FIRST
 

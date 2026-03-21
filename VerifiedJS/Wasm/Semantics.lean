@@ -4217,198 +4217,194 @@ theorem irStep?_eq_memoryGrow_ok (s : IRExecState) (rest : List IRInstr)
 Key property for the proof chain: every non-halted IR state can step.
 This is the IR-level analogue of Wasm type soundness. -/
 
-/-- Every IR state is either halted or can take a step.
-    This is the fundamental progress property — compiled code never gets stuck
-    in an undefined state (it either completes or traps). -/
+/-- Every IR state with non-empty code can take a step.
+    Every instruction in irStep? either executes successfully or produces a trap;
+    no instruction path returns none. This is the fundamental progress property. -/
+theorem irStep?_code_nonempty (s : IRExecState) (instr : IRInstr) (rest : List IRInstr)
+    (hc : s.code = instr :: rest) :
+    ∃ t s', irStep? s = some (t, s') := by
+  simp only [irStep?, hc]
+  cases instr with
+  | const_ t v =>
+    cases t with
+    | i32 => cases v.toNat? <;> simp_all [irPushTrace, irTrapState]
+    | i64 => cases v.toNat? <;> simp_all [irPushTrace, irTrapState]
+    | f64 => simp [irPushTrace]
+    | ptr => cases v.toNat? <;> simp_all [irPushTrace, irTrapState]
+  | localGet idx =>
+    cases s.frames with
+    | nil => simp [irTrapState]
+    | cons frame _ => cases frame.locals[idx]? <;> simp [irPushTrace, irTrapState]
+  | localSet idx =>
+    cases h1 : irPop1? ({ s with code := rest }).stack with
+    | none => simp [h1, irTrapState]; cases s.frames <;> simp [irTrapState]
+    | some p =>
+      obtain ⟨v, stk⟩ := p
+      simp only [h1]
+      cases s.frames with
+      | nil => simp [irTrapState]
+      | cons frame frest =>
+        cases Nat.decLt idx frame.locals.size with
+        | isTrue h => simp [h, irPushTrace]
+        | isFalse h => simp [Nat.not_lt.mp h, irTrapState]
+  | globalGet idx =>
+    cases ({ s with code := rest }).globals[idx]? <;> simp [irPushTrace, irTrapState]
+  | globalSet idx =>
+    cases h1 : irPop1? ({ s with code := rest }).stack with
+    | none => simp [h1, irTrapState]
+    | some p =>
+      obtain ⟨v, stk⟩ := p
+      simp only [h1]
+      cases Nat.decLt idx ({ s with code := rest }).globals.size with
+      | isTrue h => simp [h, irPushTrace]
+      | isFalse h => simp [Nat.not_lt.mp h, irTrapState]
+  | binOp t op =>
+    cases t <;> (
+      cases h1 : irPop2? ({ s with code := rest }).stack with
+      | none => simp [h1, irTrapState]
+      | some p =>
+        obtain ⟨a, b, stk⟩ := p
+        simp only [h1]
+        cases a <;> cases b <;> (
+          try { simp [irTrapState]; done }
+          try {
+            simp only []
+            split <;> (try (split <;> simp [irPushTrace, irTrapState])) <;> simp [irPushTrace, irTrapState]
+            done
+          }))
+  | unOp t op =>
+    cases t <;> (
+      cases h1 : irPop1? ({ s with code := rest }).stack with
+      | none => simp [h1, irTrapState]
+      | some p =>
+        obtain ⟨v, stk⟩ := p
+        simp only [h1]
+        cases v <;> (
+          try { simp [irTrapState]; done }
+          try { simp [irPushTrace]; done }
+          try {
+            simp only []
+            split <;> simp [irPushTrace, irTrapState]
+            done
+          }))
+  | load t offset =>
+    cases h1 : irPop1? ({ s with code := rest }).stack with
+    | none => simp [h1, irTrapState]
+    | some p =>
+      obtain ⟨v, stk⟩ := p
+      simp only [h1]
+      cases v <;> (try { simp [irTrapState]; done })
+      rename_i addr
+      split <;> simp [irPushTrace, irTrapState]
+  | store t offset =>
+    cases h1 : irPop2? ({ s with code := rest }).stack with
+    | none => simp [h1, irTrapState]
+    | some p =>
+      obtain ⟨a, b, stk⟩ := p
+      simp only [h1]
+      cases a <;> cases b <;> (try { simp [irTrapState]; done })
+      rename_i val addr
+      split <;> simp [irPushTrace, irTrapState]
+  | store8 offset =>
+    cases h1 : irPop2? ({ s with code := rest }).stack with
+    | none => simp [h1, irTrapState]
+    | some p =>
+      obtain ⟨a, b, stk⟩ := p
+      simp only [h1]
+      cases a <;> cases b <;> (try { simp [irTrapState]; done })
+      rename_i val addr
+      split <;> simp [irPushTrace, irTrapState]
+  | block label body => simp [irPushTrace]
+  | loop label body => simp [irPushTrace]
+  | if_ result then_ else_ =>
+    cases h1 : irPop1? ({ s with code := rest }).stack with
+    | none => simp [h1, irTrapState]
+    | some p =>
+      obtain ⟨v, stk⟩ := p
+      simp only [h1]
+      cases v <;> (try { simp [irTrapState]; done })
+      simp [irPushTrace]
+  | br label =>
+    cases irFindLabel? s.labels label <;> simp [irPushTrace, irTrapState]
+  | brIf label =>
+    cases h1 : irPop1? ({ s with code := rest }).stack with
+    | none => simp [h1, irTrapState]
+    | some p =>
+      obtain ⟨v, stk⟩ := p
+      simp only [h1]
+      cases v <;> (try { simp [irTrapState]; done })
+      rename_i cond
+      simp only []
+      split
+      · cases irFindLabel? s.labels label <;> simp [irPushTrace, irTrapState]
+      · simp [irPushTrace]
+  | return_ =>
+    cases s.frames with
+    | nil => simp [irTrapState]
+    | cons f fs =>
+      cases fs with
+      | nil => simp [irPushTrace]
+      | cons f2 fs2 => simp [irPushTrace]
+  | drop =>
+    cases h1 : irPop1? ({ s with code := rest }).stack with
+    | none => simp [h1, irTrapState]
+    | some p =>
+      obtain ⟨_, stk⟩ := p
+      simp only [h1, irPushTrace]
+  | call funcIdx =>
+    cases h1 : ({ s with code := rest }).module.functions[funcIdx]? with
+    | none => simp [h1, irTrapState]
+    | some fn =>
+      simp only [h1]
+      cases h2 : irPopN? ({ s with code := rest }).stack fn.params.length with
+      | none => simp [h2, irTrapState]
+      | some p =>
+        obtain ⟨args, callerStack⟩ := p
+        simp only [h2, irPushTrace]
+  | callIndirect typeIdx =>
+    cases h1 : irPop1? ({ s with code := rest }).stack with
+    | none => simp [h1, irTrapState]
+    | some p =>
+      obtain ⟨v, stk⟩ := p
+      simp only [h1]
+      cases v <;> (try { simp [irTrapState]; done })
+      rename_i funcIdx
+      cases h2 : ({ s with code := rest }).module.functions[funcIdx.toNat]? with
+      | none => simp [h2, irTrapState]
+      | some fn =>
+        simp only [h2]
+        cases h3 : irPopN? stk fn.params.length with
+        | none => simp [h3, irTrapState]
+        | some p2 =>
+          obtain ⟨args, callerStack⟩ := p2
+          simp only [h3, irPushTrace]
+  | memoryGrow =>
+    cases h1 : irPop1? ({ s with code := rest }).stack with
+    | none => simp [h1, irTrapState]
+    | some p =>
+      obtain ⟨v, stk⟩ := p
+      simp only [h1]
+      cases v <;> (try { simp [irTrapState]; done })
+      rename_i pages
+      split <;> simp [irPushTrace]
+
+/-- Every IR state is either halted or can take a step (full progress theorem). -/
 theorem irStep?_progress (s : IRExecState) :
     s.halted ∨ ∃ t s', irStep? s = some (t, s') := by
-  unfold IRExecState.halted
   match hc : s.code with
-  | instr :: rest =>
-    right
-    simp only [irStep?, hc]
-    -- Every instruction branch of irStep? returns some (either a value or a trap)
-    match instr with
-    | .const_ .i32 v => cases v.toNat? <;> exact ⟨_, _, rfl⟩
-    | .const_ .i64 v => cases v.toNat? <;> exact ⟨_, _, rfl⟩
-    | .const_ .f64 _ => exact ⟨_, _, rfl⟩
-    | .const_ .ptr v => cases v.toNat? <;> exact ⟨_, _, rfl⟩
-    | .localGet idx =>
-      match s.frames with
-      | [] => exact ⟨_, _, rfl⟩
-      | frame :: _ =>
-        cases frame.locals[idx]? <;> exact ⟨_, _, rfl⟩
-    | .localSet idx =>
-      match irPop1? ({ s with code := rest }).stack, s.frames with
-      | some (_, _), frame :: _ =>
-        cases Nat.decLt idx frame.locals.size with
-        | isTrue h => simp [h]; exact ⟨_, _, rfl⟩
-        | isFalse h => simp [Nat.not_lt.mp h]; exact ⟨_, _, rfl⟩
-      | _, [] => exact ⟨_, _, rfl⟩
-      | none, _ => exact ⟨_, _, rfl⟩
-    | .globalGet idx =>
-      cases ({ s with code := rest }).globals[idx]? <;> exact ⟨_, _, rfl⟩
-    | .globalSet idx =>
-      match irPop1? ({ s with code := rest }).stack with
-      | some (_, _) =>
-        cases Nat.decLt idx ({ s with code := rest }).globals.size with
-        | isTrue h => simp [h]; exact ⟨_, _, rfl⟩
-        | isFalse h => simp [Nat.not_lt.mp h]; exact ⟨_, _, rfl⟩
-      | none => exact ⟨_, _, rfl⟩
-    | .binOp t op =>
-      match t with
-      | .i32 =>
-        match irPop2? ({ s with code := rest }).stack with
-        | some (.i32 rhs, .i32 lhs, stk) =>
-          match op with
-          | "div_s" => cases Numerics.i32DivS? lhs rhs <;> exact ⟨_, _, rfl⟩
-          | "div_u" => cases Numerics.i32DivU? lhs rhs <;> exact ⟨_, _, rfl⟩
-          | "rem_s" => cases Numerics.i32RemS? lhs rhs <;> exact ⟨_, _, rfl⟩
-          | "rem_u" => cases Numerics.i32RemU? lhs rhs <;> exact ⟨_, _, rfl⟩
-          | _ => exact ⟨_, _, rfl⟩
-        | some _ => exact ⟨_, _, rfl⟩
-        | none => exact ⟨_, _, rfl⟩
-      | .i64 =>
-        match irPop2? ({ s with code := rest }).stack with
-        | some (.i64 rhs, .i64 lhs, stk) =>
-          match op with
-          | "div_s" => cases Numerics.i64DivS? lhs rhs <;> exact ⟨_, _, rfl⟩
-          | "div_u" => cases Numerics.i64DivU? lhs rhs <;> exact ⟨_, _, rfl⟩
-          | "rem_s" => cases Numerics.i64RemS? lhs rhs <;> exact ⟨_, _, rfl⟩
-          | "rem_u" => cases Numerics.i64RemU? lhs rhs <;> exact ⟨_, _, rfl⟩
-          | _ => exact ⟨_, _, rfl⟩
-        | some _ => exact ⟨_, _, rfl⟩
-        | none => exact ⟨_, _, rfl⟩
-      | .f64 =>
-        match irPop2? ({ s with code := rest }).stack with
-        | some (.f64 _, .f64 _, _) => exact ⟨_, _, rfl⟩
-        | some _ => exact ⟨_, _, rfl⟩
-        | none => exact ⟨_, _, rfl⟩
-      | .ptr =>
-        match irPop2? ({ s with code := rest }).stack with
-        | some (.i32 _, .i32 _, _) => exact ⟨_, _, rfl⟩
-        | some _ => exact ⟨_, _, rfl⟩
-        | none => exact ⟨_, _, rfl⟩
-    | .unOp t op =>
-      match t with
-      | .i32 =>
-        match irPop1? ({ s with code := rest }).stack with
-        | some (.i32 _, _) => exact ⟨_, _, rfl⟩
-        | some (.i64 _, stk) =>
-          cases op <;> exact ⟨_, _, rfl⟩
-        | some _ => exact ⟨_, _, rfl⟩
-        | none => exact ⟨_, _, rfl⟩
-      | .i64 =>
-        match irPop1? ({ s with code := rest }).stack with
-        | some (.i64 _, _) => exact ⟨_, _, rfl⟩
-        | some (.i32 _, stk) =>
-          cases op <;> exact ⟨_, _, rfl⟩
-        | some (.f64 _, stk) =>
-          cases op <;> exact ⟨_, _, rfl⟩
-        | none => exact ⟨_, _, rfl⟩
-      | .f64 =>
-        match irPop1? ({ s with code := rest }).stack with
-        | some (.f64 _, _) => exact ⟨_, _, rfl⟩
-        | some (.i32 _, stk) =>
-          cases op <;> exact ⟨_, _, rfl⟩
-        | some (.i64 _, stk) =>
-          cases op <;> exact ⟨_, _, rfl⟩
-        | none => exact ⟨_, _, rfl⟩
-      | .ptr =>
-        match irPop1? ({ s with code := rest }).stack with
-        | some (.i32 _, _) => exact ⟨_, _, rfl⟩
-        | some _ => exact ⟨_, _, rfl⟩
-        | none => exact ⟨_, _, rfl⟩
-    | .load _ offset =>
-      match irPop1? ({ s with code := rest }).stack with
-      | some (.i32 addr, stk) =>
-        cases Nat.decLe (addr.toNat + offset + 4) ({ s with code := rest }).memory.size with
-        | isTrue h => simp [h]; exact ⟨_, _, rfl⟩
-        | isFalse h => simp [Nat.not_le.mp h]; exact ⟨_, _, rfl⟩
-      | some _ => exact ⟨_, _, rfl⟩
-      | none => exact ⟨_, _, rfl⟩
-    | .store _ offset =>
-      match irPop2? ({ s with code := rest }).stack with
-      | some (.i32 _, .i32 addr, stk) =>
-        cases Nat.decLe (addr.toNat + offset + 4) ({ s with code := rest }).memory.size with
-        | isTrue h => simp [h]; exact ⟨_, _, rfl⟩
-        | isFalse h => simp [Nat.not_le.mp h]; exact ⟨_, _, rfl⟩
-      | some _ => exact ⟨_, _, rfl⟩
-      | none => exact ⟨_, _, rfl⟩
-    | .store8 offset =>
-      match irPop2? ({ s with code := rest }).stack with
-      | some (.i32 _, .i32 addr, stk) =>
-        cases Nat.decLt (addr.toNat + offset) ({ s with code := rest }).memory.size with
-        | isTrue h => simp [h]; exact ⟨_, _, rfl⟩
-        | isFalse h => simp [Nat.not_lt.mp h]; exact ⟨_, _, rfl⟩
-      | some _ => exact ⟨_, _, rfl⟩
-      | none => exact ⟨_, _, rfl⟩
-    | .block _ _ => exact ⟨_, _, rfl⟩
-    | .loop _ _ => exact ⟨_, _, rfl⟩
-    | .if_ _ _ _ =>
-      match irPop1? ({ s with code := rest }).stack with
-      | some (.i32 _, _) => exact ⟨_, _, rfl⟩
-      | some _ => exact ⟨_, _, rfl⟩
-      | none => exact ⟨_, _, rfl⟩
-    | .br label =>
-      cases irFindLabel? s.labels label <;> exact ⟨_, _, rfl⟩
-    | .brIf label =>
-      match irPop1? ({ s with code := rest }).stack with
-      | some (.i32 cond, stk) =>
-        cases Nat.decEq cond.toNat 0 with
-        | isTrue _ =>
-          simp_all; exact ⟨_, _, rfl⟩
-        | isFalse _ =>
-          cases irFindLabel? s.labels label <;> exact ⟨_, _, rfl⟩
-      | some _ => exact ⟨_, _, rfl⟩
-      | none => exact ⟨_, _, rfl⟩
-    | .return_ =>
-      match s.frames with
-      | [] => exact ⟨_, _, rfl⟩
-      | [_] => exact ⟨_, _, rfl⟩
-      | _ :: _ :: _ => exact ⟨_, _, rfl⟩
-    | .drop =>
-      match irPop1? ({ s with code := rest }).stack with
-      | some _ => exact ⟨_, _, rfl⟩
-      | none => exact ⟨_, _, rfl⟩
-    | .call funcIdx =>
-      match ({ s with code := rest }).module.functions[funcIdx]? with
-      | none => exact ⟨_, _, rfl⟩
-      | some fn =>
-        match irPopN? ({ s with code := rest }).stack fn.params.length with
-        | none => exact ⟨_, _, rfl⟩
-        | some _ => exact ⟨_, _, rfl⟩
-    | .callIndirect _ =>
-      match irPop1? ({ s with code := rest }).stack with
-      | some (.i32 funcIdx, stk) =>
-        match ({ s with code := rest }).module.functions[funcIdx.toNat]? with
-        | none => exact ⟨_, _, rfl⟩
-        | some fn =>
-          match irPopN? stk fn.params.length with
-          | none => exact ⟨_, _, rfl⟩
-          | some _ => exact ⟨_, _, rfl⟩
-      | some _ => exact ⟨_, _, rfl⟩
-      | none => exact ⟨_, _, rfl⟩
-    | .memoryGrow =>
-      match irPop1? ({ s with code := rest }).stack with
-      | some (.i32 pages, stk) =>
-        cases Nat.decLe (({ s with code := rest }).memory.size + pages.toNat * 65536) (65536 * 65536) with
-        | isTrue h => simp [h]; exact ⟨_, _, rfl⟩
-        | isFalse h => simp [Nat.not_le.mp h]; exact ⟨_, _, rfl⟩
-      | some _ => exact ⟨_, _, rfl⟩
-      | none => exact ⟨_, _, rfl⟩
+  | instr :: rest => exact Or.inr (irStep?_code_nonempty s instr rest hc)
   | [] =>
     match hl : s.labels with
-    | _ :: _ =>
-      right; simp [irStep?, hc, hl]; exact ⟨_, _, rfl⟩
+    | label :: lrest =>
+      right; simp [irStep?, hc, hl, irPushTrace]; exact ⟨_, _, rfl⟩
     | [] =>
       match hf : s.frames with
       | [] => left; exact ⟨hc, hl, by simp [hf]⟩
       | [_] => left; exact ⟨hc, hl, by simp [hf]⟩
       | _ :: _ :: _ =>
-        right; simp [irStep?, hc, hl, hf]; exact ⟨_, _, rfl⟩
+        right; simp [irStep?, hc, hl, hf, irPushTrace]; exact ⟨_, _, rfl⟩
 
-/-- Corollary: if irStep? returns none, the state is halted. -/
+/-- Corollary: irStep? returns none if and only if the state is halted. -/
 theorem irStep?_none_iff_halted (s : IRExecState) :
     irStep? s = none ↔ s.halted := by
   constructor
