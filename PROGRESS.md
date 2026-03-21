@@ -88,6 +88,8 @@ arithmetic, boolean_logic, conditionals, do_while, for_loop, functions, let_bind
 | 2026-03-21T13:20 | **7** | **~120/123 (est.)** | Build PASS (49 jobs). **Sorry DOWN from 13→7** (direct sorry count; 8→7 unique locations since 05:05). valuesFromExprList? blocker RESOLVED — wasmspec made it public, proof agent used it to close step?_none_implies_lit_aux wildcard cases. **ALL 3 AGENTS STUCK** (EXIT code 1) for 6+ hours (since ~07:00). No sorry progress since 05:30. E2E script timed out (estimated ~120/123 from last known). Test262: 2/91 pass, 50 fail, 31 skip, 8 xfail (unchanged). |
 | 2026-03-21T15:05 | **6** | **~120/123 (est.)** | **BUILD BROKEN**: jsspec Core/Semantics.lean has 5 `simp` loop errors (step?.eq_1 at lines 2215-2227, await/return/yield cases). Sorry DOWN from 7→6: proof eliminated CC trace_reflection sorry via NoForInForOf precondition; partial progress on anfConvert_halt_star (break/continue done). Agents restarted from STUCK at ~13:20 but jsspec broke build again at 14:05. E2E can't run (build broken). Test262: 2/93 pass, 50 fail, 31 skip, 8 xfail (UNCHANGED 24+ hours). Wrote EXACT build fix to jsspec prompt. Redirected jsspec to test262 skip reduction. |
 
+| 2026-03-21T17:05 | **16** | **~120/123 (est.)** | **BUILD STILL BROKEN**: jsspec Core/Semantics.lean now has 57 errors — ALL in `stuck_implies_lit` theorem (lines 2173-2228). Root cause: `step?.eq_1` simp loop. Sorry UP from 6→16: jsspec added 8 sorries (step?-progress theorem for binary/getIndex/setProp/setIndex/objectLit/arrayLit/tryCatch/call), wasmspec has 2 sorries (Wasm/Semantics.lean:4588,4645), 6 proof sorries unchanged. Proof agent ran at 16:30, still going. jsspec started new run at 17:00 with updated fix instructions. Test262: 2/93 (UNCHANGED 30+ hours). |
+
 - Test262 pass rate: 2/93 (fast mode), deterministic full sample reached 274/500 passes (2026-03-08)
 - Flagship parse rate: 96.30% (1976/2052)
 - E2E tests: ~123 handcrafted JS programs, ~120 passing (estimated, build broken)
@@ -103,7 +105,7 @@ arithmetic, boolean_logic, conditionals, do_while, for_loop, functions, let_bind
 
 | Pass | Theorem | Statement OK? | Proved? | Blocker |
 |------|---------|--------------|---------|---------|
-| Elaborate | elaborate_correct | STUB (commented out) | No | No Source.Behaves defined; jsspec asked to define it |
+| Elaborate | elaborate_correct | STUB (commented out) | No | Source.Behaves NOW DEFINED (elaboration-based). Theorem not yet stated. |
 | ClosureConvert | closureConvert_correct | YES — `∀ b, Flat.Behaves t b → ∃ b', Core.Behaves s b' ∧ b = b'` | 1 sorry | step_simulation (hardest ~200+ lines case analysis). trace_reflection PROVED via NoForInForOf precondition. |
 | ANFConvert | anfConvert_correct | YES — observable trace preservation | 2 sorry | step_star (hardest), halt_star (partial — lit case done) |
 | Optimize | optimize_correct | YES — `∀ b, ANF.Behaves (optimize p) b ↔ ANF.Behaves p b` | **PROVED** | Identity pass — trivially correct |
@@ -111,12 +113,12 @@ arithmetic, boolean_logic, conditionals, do_while, for_loop, functions, let_bind
 | Emit | emit_behavioral_correct | **YES** — `∀ trace, IR.IRBehaves → Wasm.Behaves` | 1 sorry | Theorem correctly stated! Needs proof |
 | EndToEnd | flat_to_wasm_correct | **YES** — partial composition (Flat→Wasm) | 1 sorry | Composition of above; last to prove |
 
-**Chain gaps**: Source.Behaves UNDEFINED (jsspec asked to define it). All 5 intermediate Behaves relations DEFINED: Core ✅, Flat ✅, ANF ✅, IR ✅, Wasm ✅. Trace bridges exist: `traceFromCore` (Core→IR), `traceListToWasm` (IR→Wasm). **All theorem statements in the chain are now correct** (except Elaborate which is still a stub).
+**Chain gaps**: Source.Behaves NOW DEFINED (elaboration-based, Core/Semantics.lean:2258). All 6 Behaves relations DEFINED: Source ✅, Core ✅, Flat ✅, ANF ✅, IR ✅, Wasm ✅. Trace bridges exist: `traceFromCore` (Core→IR), `traceListToWasm` (IR→Wasm). **All theorem statements in the chain are now correct** (except Elaborate which still needs its theorem stated). **Sorry count in proof chain: 6** (1 CC, 2 ANF, 1 Lower, 1 Emit, 1 EndToEnd). Only OptimizeCorrect is fully proved (trivial identity).
 
 ## Agent Health
 
-| Agent | Status (2026-03-21T15:05) | Notes |
+| Agent | Status (2026-03-21T17:05) | Notes |
 |-------|---------------------|-------|
-| jsspec | **RUNNING** (since ~15:00) — **BROKE BUILD** | 97+ proved Core theorems. BROKE BUILD at 14:05 (simp loop). Given exact fix + redirected to test262 skip reduction (31 skips unchanged 24+ hrs). |
-| wasmspec | **RUNNING** (since ~15:00) | 19+ exact-value IR lemmas. Given priority: ir_forward_sim helper for proof agent, emit step lemmas. |
-| proof | **RUNNING** (since ~14:30) | 6 sorry locations (1 CC, 2 ANF, 1 Lower, 1 Emit, 1 EndToEnd). Given priority order: anfConvert_halt_star → lower_behavioral_correct → CC step_simulation. |
+| jsspec | **RUNNING** (since 17:00) — **BUILD BREAKER** | 97+ Core theorems. Build broken since ~14:05 (57 errors in stuck_implies_lit). Has been crashing (EXIT 1) for hours 08:00-13:00, then timeouts. Given detailed fix (replace simp[step?] with unfold step?;simp[-step?]). Redirected to test262 (31 skips unchanged 30+ hrs). |
+| wasmspec | **RUNNING** (since 17:15) | 19+ IR @[simp] lemmas, trace bridges. Asked to write ir_forward_sim theorem for proof agent + clean up 2 sorries in Wasm/Semantics.lean. |
+| proof | **RUNNING** (since 16:30) | 6 proof sorries (1 CC, 2 ANF, 1 Lower, 1 Emit, 1 EndToEnd). Build broken but can work on individual proof modules. Given workaround: `lake build VerifiedJS.Proofs.ANFConvertCorrect`. |

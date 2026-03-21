@@ -62,33 +62,34 @@ Then construct the matching Step derivation in Lean. If you cannot, your semanti
 3. Keep definitions structurally simple for proofs.
 4. Add @[simp] lemmas for everything the proof agent might need.
 
-## CURRENT PRIORITIES (2026-03-21T15:05)
+## CURRENT PRIORITIES (2026-03-21T17:05)
 
-The proof agent needs your help with 2 sorry theorems:
+### 1. HIGHEST: `ir_forward_sim` theorem for proof agent
+You have 19+ `irStep?_eq_*` lemmas. The proof agent CANNOT prove `lower_behavioral_correct`
+(LowerCorrect.lean:51) without a forward simulation theorem connecting ANF steps to IR steps.
 
-### 1. `lower_behavioral_correct` (LowerCorrect.lean:51)
-Statement: `∀ trace, ANF.Behaves s trace → IR.IRBehaves t (traceListFromCore trace)`
-Proof agent needs an **IRForwardSim** lemma: for each ANF.Step, there exists a corresponding
-sequence of IR steps. You've written 19+ `irStep?_eq_*` lemmas — the proof agent needs these
-packaged into a forward simulation theorem. Consider adding:
+**Write this in Wasm/Semantics.lean** (even with sorry — the statement is what matters):
 ```lean
-theorem ir_forward_sim (anfStep : ANF.Step s s') (lower : lower s = t) :
-    ∃ t', IRSteps t t' ∧ lower s' = t' := sorry
+/-- For each ANF step, the lowered IR program takes corresponding IR steps. -/
+theorem ir_forward_sim (s s' : ANF.State) (t : IR.IRState)
+    (hstep : ANF.Step s s') (hlower : lowerState s = t) :
+    ∃ t', IR.IRSteps t t' ∧ lowerState s' = t' := by
+  cases hstep with
+  | lit => exact ⟨_, IRSteps.refl, rfl⟩  -- or appropriate
+  | ... => sorry
 ```
-Even a sorry-marked statement helps the proof agent structure the proof.
+The proof agent can then use this as a building block. Even a partial proof (some cases done,
+rest sorry) is very valuable.
 
-### 2. `emit_behavioral_correct` (EmitCorrect.lean:44)
-Statement: `∀ trace, IR.IRBehaves s trace → Wasm.Behaves t (traceListToWasm trace)`
-Needs Wasm.Step lemmas that show emitted Wasm instructions execute correctly.
+### 2. `emit_forward_sim` theorem
+Same pattern for EmitCorrect.lean:44: for each IR step, the emitted Wasm takes corresponding steps.
 
-### 3. Test262 runtime failures
-50 test262 tests FAIL at runtime. Many are `runtime-exec` failures in built-ins (31), language (15),
-staging (2), intl402 (1). These likely need more Wasm runtime support:
-- String operations (Strings.lean)
-- Object property enumeration
-- Array methods
+### 3. Remove your 2 sorries in Wasm/Semantics.lean
+Lines 4588 and 4645 have sorry. Clean these up — the sorry at 4588 is in an `ih` call
+(missing termination argument?), and 4645 says "proof agent can fill this in" but it's YOUR file.
 
-Focus on #1 and #2 — they directly unblock the proof chain.
+### 4. Test262 runtime failures (LOWER PRIORITY)
+50 test262 tests FAIL at runtime. Focus on #1-3 first — they directly unblock the proof chain.
 
 ## GLOBAL GOAL -- DO NOT STOP
 Your job is done when:

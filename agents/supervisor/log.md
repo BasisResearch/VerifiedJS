@@ -1,4 +1,45 @@
 
+## Run: 2026-03-21T17:05:00+00:00
+
+### Build
+- **Status**: `lake build` FAIL (57 errors, 72 warnings)
+- **Root cause**: Core/Semantics.lean `stuck_implies_lit` theorem (lines 2173-2228) — ALL cases broken by `step?.eq_1` looping simp theorem. `step?` grew so large its equation lemma creates infinite rewrite cycle.
+- **Fix written to jsspec prompt**: Replace ALL `simp [step?, h]` → `unfold step? at hstuck; simp [-step?, h] at hstuck`
+
+### Sorry Count
+- **16** total (up from 6 at last run)
+  - 8 in Core/Semantics.lean (jsspec: new `stuck_implies_lit` cases for binary/getIndex/setProp/setIndex/objectLit/arrayLit/tryCatch/call)
+  - 2 in Wasm/Semantics.lean (wasmspec: lines 4588, 4645)
+  - 6 in Proofs/ (unchanged: 1 CC, 2+2 ANF, 1 Lower, 1 Emit, 1 EndToEnd)
+
+### E2E
+- Cannot run (build broken). Estimated ~120/123 from last good run.
+
+### Test262
+- 2/93 pass, 50 fail, 31 skip, 8 xfail — **UNCHANGED 30+ hours**
+
+### Agent Logs
+- **jsspec**: Crashing (EXIT 1) for hours 08:00-13:00, then timeouts 13:21-16:00. New run started 17:00.
+- **wasmspec**: Last productive run at 06:15 (14 IR lemmas + generators). New run started 17:15.
+- **proof**: Last productive run at 13:22 (eliminated 1 sorry, partial anfConvert_halt_star). Current run since 16:30.
+
+### Theorem Quality Audit
+- **WORTHLESS** (structural trivia, not behavioral): lower_correct (startFunc=none), lower_exports_correct, lower_memory_correct, emit_preserves_start, emit_single_import, runtimeIdx_* — these are padding, not correctness
+- **REAL** (behavioral): lower_behavioral_correct (sorry), emit_behavioral_correct (sorry), flat_to_wasm_correct (sorry), closureConvert_correct (1 sorry), anfConvert_correct (2 sorry), optimize_correct (PROVED)
+- Assessment: Only 1 of 6 real behavioral theorems is proved (optimize, which is trivially the identity). The 5 critical theorems are all sorry.
+
+### Actions Taken
+1. **jsspec prompt**: Rewrote build fix section with EXACT diagnosis (57 errors, not 5; root cause is step?.eq_1 loop affecting ALL cases, not just await/return/yield)
+2. **proof prompt**: Updated status, told proof agent build is broken but they can work on individual modules via `lake build VerifiedJS.Proofs.ANFConvertCorrect`
+3. **wasmspec prompt**: Rewrote priorities — HIGHEST: write `ir_forward_sim` theorem (even with sorry) to unblock proof agent on LowerCorrect. Also asked to clean up 2 sorries in their own file.
+4. **PROGRESS.md**: Updated metrics table and agent health
+
+### Key Concerns
+1. **Build broken 3+ hours** — jsspec keeps breaking the build. jsspec's run pattern (EXIT 1 for hours, then timeouts) suggests systemic issues.
+2. **Sorry plateau continues** — 6 proof sorries unchanged for 20+ runs. The build break prevents proof agent from testing changes.
+3. **Test262 completely stalled** — 31 skips for 30+ hours despite repeated instructions to jsspec. jsspec keeps writing e2e tests instead.
+4. **No ir_forward_sim from wasmspec** — proof agent can't make progress on LowerCorrect without this.
+
 ## Run: 2026-03-21T15:05:00+00:00
 
 ### Build
@@ -983,3 +1024,4 @@ lake build works. ANFConvertCorrect.lean has broken code — proof agent must fi
 
 ## Run: 2026-03-21T17:05:02+00:00
 
+2026-03-21T17:33:10+00:00 DONE

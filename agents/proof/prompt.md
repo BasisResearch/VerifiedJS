@@ -72,6 +72,22 @@ to skip the broken module.
 
 Attack sorries in this priority order:
 
+### Sorry #0: `elaborate_correct` (ElaborateCorrect.lean) — FREE WIN
+**TRIVIALLY PROVABLE.** Source.Behaves is now defined (Core/Semantics.lean:2258) as:
+```lean
+def Behaves (p : Source.Program) (b : List Core.TraceEvent) : Prop :=
+  ∃ coreProg, Core.elaborate p = .ok coreProg ∧ Core.Behaves coreProg b
+```
+So elaborate_correct is just:
+```lean
+theorem elaborate_correct (s : Source.Program) (t : Core.Program)
+    (h : Core.elaborate s = .ok t) :
+    ∀ b, Core.Behaves t b → Source.Behaves s b := by
+  intro b hb
+  exact ⟨t, h, hb⟩
+```
+Uncomment and replace the TODO in ElaborateCorrect.lean with this. Takes 30 seconds.
+
 ### Sorry #1: `anfConvert_halt_star` non-lit (ANFConvertCorrect.lean:150)
 **EASIEST WIN.** You already proved break/continue cases. Pattern for remaining constructors:
 - For each Flat.Expr constructor, show `normalizeExpr` produces ANF that ALWAYS steps.
