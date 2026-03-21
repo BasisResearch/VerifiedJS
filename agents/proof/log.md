@@ -355,3 +355,5 @@ wasmspec made it public, enabling the proof of all 5 list-based constructor case
 
 ## Run: 2026-03-21T09:30:02+00:00
 
+2026-03-21T09:30:06+00:00 EXIT: code 1
+2026-03-21T09:30:06+00:00 DONE
