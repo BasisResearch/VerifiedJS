@@ -4619,18 +4619,19 @@ theorem IRForwardSim_behavioral {S : Type} {R : S → IRExecState → Prop}
     (hBehaves : DetBehaves step_src s_init ts) :
     ∃ ir_final, IRSteps ir_init ts ir_final ∧ irStep? ir_final = none := by
   obtain ⟨s_final, hSteps, hHalt⟩ := hBehaves
-  -- Lift the multi-step execution by induction on StepStar
-  suffices h : ∃ ir_final, IRSteps ir_init ts ir_final ∧ R s_final ir_final by
-    obtain ⟨ir_final, hIRSteps, hR_final⟩ := h
-    exact ⟨ir_final, hIRSteps, sim.halt_sim s_final ir_final hR_final hHalt⟩
-  -- Induction on the source execution trace
-  induction hSteps generalizing ir_init with
-  | refl =>
-    exact ⟨ir_init, IRSteps.refl _, hR⟩
-  | step hstep _ ih =>
-    obtain ⟨ir_mid, hIR_step, hR_mid⟩ := IRForwardSim_step_one sim hR hstep
-    obtain ⟨ir_final, hIR_rest, hR_final⟩ := ih hR_mid
-    exact ⟨ir_final, IRSteps.tail hIR_step hIR_rest, hR_final⟩
+  -- First, lift multi-step execution preserving R
+  have hLift : ∃ ir_final, IRSteps ir_init ts ir_final ∧ R s_final ir_final := by
+    clear hHalt
+    induction hSteps generalizing ir_init with
+    | refl _ =>
+      exact ⟨ir_init, IRSteps.refl _, hR⟩
+    | step hstep _ ih =>
+      obtain ⟨ir_mid, hIR_step, hR_mid⟩ := IRForwardSim_step_one sim hR hstep
+      obtain ⟨ir_final, hIR_rest, hR_final⟩ := ih hR_mid
+      exact ⟨ir_final, IRSteps.tail hIR_step hIR_rest, hR_final⟩
+  -- Then use halt preservation
+  obtain ⟨ir_final, hIRSteps, hR_final⟩ := hLift
+  exact ⟨ir_final, hIRSteps, sim.halt_sim s_final ir_final hR_final hHalt⟩
 
 /-- StepStar is equivalent to the ANF.Steps relation when the step function is ANF.step?.
     This bridges the ANF.Behaves definition (which uses ANF.Steps) to the DetBehaves
@@ -4746,16 +4747,13 @@ theorem anfStepMapped_some (s s' : ANF.State) (t : Core.TraceEvent)
     anfStepMapped s = some (traceFromCore t, s') := by
   simp [anfStepMapped, h]
 
-/-- State relation for ANF → IR lowering simulation.
+/-- State relation for ANF → IR lowering simulation (deprecated, use LowerSimRel).
     Relates an ANF state to the corresponding IR execution state produced
     by lowering the program and executing to the matching point.
     REF: This is the key invariant that the lowering pass must maintain. -/
-structure LowerRel (prog : ANF.Program) (irmod : IRModule) : ANF.State → IRExecState → Prop where
-  /-- The IR module was produced by lowering the ANF program. -/
-  lower_ok : Wasm.lower prog = .ok irmod
-  /-- The IR state's trace corresponds to the mapped ANF trace. -/
-  trace_match : ∀ s ir, LowerRel prog irmod s ir →
-    ir.trace = (s.trace.map traceFromCore).bind (fun t => [t])
+def LowerRel (prog : ANF.Program) (irmod : IRModule) (s : ANF.State) (ir : IRExecState) : Prop :=
+  Wasm.lower prog = .ok irmod ∧
+  ir.trace = (s.trace.map traceFromCore).bind (fun t => [t])
 
 /-! ### Concrete Simulation Relations
 
