@@ -6,6 +6,7 @@
 
 import VerifiedJS.Wasm.Syntax
 import VerifiedJS.Wasm.Numerics
+import VerifiedJS.Wasm.IR
 
 namespace VerifiedJS.Wasm
 
@@ -2437,3 +2438,892 @@ private theorem withI32Rel_some (s : ExecState) (op : UInt32 → UInt32 → Bool
   simp [withI32Rel, pop2?, hstk]
 
 end VerifiedJS.Wasm
+
+/-! ----------------------------------------------------------------
+  ## Wasm IR Behavioral Semantics
+  Small-step reduction and behavioral semantics for the structured IR.
+  SPEC: Bridges ANF.Behaves (Core.TraceEvent) to Wasm.Behaves (Wasm.TraceEvent).
+
+  The IR is a structured control-flow stack machine that is:
+  - The output of lowering (ANF → IR)
+  - The input of emission (IR → Wasm AST)
+
+  These definitions enable:
+  - LowerCorrect: ∀ trace, ANF.Behaves s trace → IR.Behaves t trace
+  - EmitCorrect:  ∀ trace, IR.Behaves s trace → Wasm.Behaves t trace
+  ---------------------------------------------------------------- -/
+
+namespace VerifiedJS.Wasm.IR
+
+/-! ### IR Trace Events -/
+
+/-- Observable trace events for IR execution.
+    Superset of both Core.TraceEvent (log/error/silent) and Wasm.TraceEvent (silent/trap).
+    This enables the proof chain to map between trace types at pass boundaries. -/
+inductive TraceEvent where
+  | silent
+  | trap (msg : String)
+  | log (s : String)
+  | error (s : String)
+  deriving Repr, BEq
+
+/-! ### IR Runtime Values -/
+
+/-- Typed runtime values for the IR stack machine. -/
+inductive IRValue where
+  | i32 (n : UInt32)
+  | i64 (n : UInt64)
+  | f64 (n : Float)
+  deriving Repr, BEq
+
+/-- Default value for an IR type. -/
+def IRValue.default : IRType → IRValue
+  | .i32 => .i32 0
+  | .i64 => .i64 0
+  | .f64 => .f64 0.0
+  | .ptr => .i32 0  -- ptrs are i32 in Wasm MVP
+
+/-! ### IR Execution State -/
+
+/-- Control label for structured branching in the IR. -/
+structure IRLabel where
+  name : String
+  isLoop : Bool
+  onBranch : List IRInstr   -- branch target code (loop head for loops)
+  onExit : List IRInstr     -- continuation after this scope
+  deriving Repr
+
+/-- Call frame for the IR stack machine.
+    Saves the caller's continuation so that function return can restore execution.
+    REF: WasmCert-Coq `frame` / Wasm §4.4.6 (activation frames). -/
+structure IRFrame where
+  locals : Array IRValue
+  returnArity : Nat
+  /-- Caller's remaining code to resume after return. -/
+  savedCode : List IRInstr
+  /-- Caller's label stack to restore after return. -/
+  savedLabels : List IRLabel
+  deriving Repr
+
+/-- IR execution state. -/
+structure IRExecState where
+  module : IRModule
+  stack : List IRValue
+  frames : List IRFrame
+  labels : List IRLabel
+  globals : Array IRValue
+  memory : ByteArray
+  code : List IRInstr
+  trace : List TraceEvent
+  deriving Repr
+
+/-! ### Initial State -/
+
+/-- Initialize globals from module declaration. -/
+private def initIRGlobals (m : IRModule) : Array IRValue :=
+  m.globals.map fun (t, _, _) => IRValue.default t
+
+/-- Initialize linear memory from module memories (first memory only in MVP). -/
+private def initIRMemory (m : IRModule) : ByteArray :=
+  match m.memories[0]? with
+  | some mem => ByteArray.mk (Array.replicate (mem.lim.min * 65536) 0)
+  | none => ByteArray.empty
+
+/-- Build the initial execution state for an IR module. -/
+def irInitialState (m : IRModule) : IRExecState :=
+  let entryCode := match m.startFunc with
+    | some idx => [IRInstr.call idx]
+    | none => []
+  { module := m
+    stack := []
+    frames := [{ locals := #[], returnArity := 0, savedCode := [], savedLabels := [] }]
+    labels := []
+    globals := initIRGlobals m
+    memory := initIRMemory m
+    code := entryCode
+    trace := [] }
+
+/-! ### IR Helpers -/
+
+private def irPop1? (stack : List IRValue) : Option (IRValue × List IRValue) :=
+  match stack with
+  | v :: rest => some (v, rest)
+  | [] => none
+
+private def irPop2? (stack : List IRValue) : Option (IRValue × IRValue × List IRValue) :=
+  match stack with
+  | v1 :: v2 :: rest => some (v1, v2, rest)
+  | _ => none
+
+private def irPopN? (stack : List IRValue) (n : Nat) : Option (List IRValue × List IRValue) :=
+  if stack.length < n then none
+  else some (stack.take n, stack.drop n)
+
+private def irPushTrace (s : IRExecState) (t : TraceEvent) : IRExecState :=
+  { s with trace := s.trace ++ [t] }
+
+private def irTrapState (s : IRExecState) (msg : String) : TraceEvent × IRExecState :=
+  let s' := irPushTrace { s with code := [] } (.trap msg)
+  (.trap msg, s')
+
+private def irBoolToI32 (b : Bool) : IRValue :=
+  .i32 (if b then 1 else 0)
+
+/-- Resolve a branch label by name, returning its index in the label stack. -/
+private def irFindLabel? (labels : List IRLabel) (name : String) : Option (Nat × IRLabel) :=
+  let rec go (ls : List IRLabel) (idx : Nat) : Option (Nat × IRLabel) :=
+    match ls with
+    | [] => none
+    | l :: rest => if l.name == name then some (idx, l) else go rest (idx + 1)
+  go labels 0
+
+/-! ### IR Single-Step Function -/
+
+/-- One step of IR execution. Returns `none` when halted (no code, no labels).
+    SPEC: Each case mirrors a Wasm instruction adapted for IR's structured control flow. -/
+def irStep? (s : IRExecState) : Option (TraceEvent × IRExecState) :=
+  match s.code with
+  | [] =>
+      match s.labels with
+      | label :: rest =>
+          -- Label scope completed: pop label and continue with onExit code
+          some (.silent, irPushTrace { s with code := label.onExit, labels := rest } .silent)
+      | [] =>
+          -- No code, no labels. Check if we need to return from a function call.
+          match s.frames with
+          | [] => none  -- no frames at all (shouldn't happen)
+          | [_] => none  -- only top-level frame: halted
+          | calleeFrame :: callerFrame :: frest =>
+              -- Function body completed: pop frame, take returnArity values from stack,
+              -- restore caller's saved code/labels. Return values stay on the stack.
+              -- REF: WasmCert-Coq r_return / Wasm §4.4.6
+              let retVals := s.stack.take calleeFrame.returnArity
+              some (.silent, irPushTrace {
+                s with
+                stack := retVals  -- only return values visible to caller
+                frames := callerFrame :: frest
+                code := calleeFrame.savedCode
+                labels := calleeFrame.savedLabels
+              } .silent)
+  | instr :: rest =>
+      let base := { s with code := rest }
+      match instr with
+      -- Constants
+      | .const_ .i32 v =>
+          match v.toNat? with
+          | some n => some (.silent, irPushTrace { base with stack := .i32 n.toUInt32 :: base.stack } .silent)
+          | none => some (irTrapState base s!"invalid i32 const: {v}")
+      | .const_ .i64 v =>
+          match v.toNat? with
+          | some n => some (.silent, irPushTrace { base with stack := .i64 n.toUInt64 :: base.stack } .silent)
+          | none => some (irTrapState base s!"invalid i64 const: {v}")
+      | .const_ .f64 v =>
+          let f := v.toNat?.map (fun n => Float.ofNat n) |>.getD 0.0
+          some (.silent, irPushTrace { base with stack := .f64 f :: base.stack } .silent)
+      | .const_ .ptr v =>
+          match v.toNat? with
+          | some n => some (.silent, irPushTrace { base with stack := .i32 n.toUInt32 :: base.stack } .silent)
+          | none => some (irTrapState base s!"invalid ptr const: {v}")
+
+      -- Local variables
+      | .localGet idx =>
+          match s.frames with
+          | [] => some (irTrapState base "no active frame")
+          | frame :: _ =>
+              match frame.locals[idx]? with
+              | some v => some (.silent, irPushTrace { base with stack := v :: base.stack } .silent)
+              | none => some (irTrapState base s!"local.get out of bounds: {idx}")
+      | .localSet idx =>
+          match irPop1? base.stack, s.frames with
+          | some (v, stk), frame :: frest =>
+              if idx < frame.locals.size then
+                let frame' := { frame with locals := frame.locals.set! idx v }
+                some (.silent, irPushTrace { base with stack := stk, frames := frame' :: frest } .silent)
+              else some (irTrapState base s!"local.set out of bounds: {idx}")
+          | _, [] => some (irTrapState base "no active frame for local.set")
+          | none, _ => some (irTrapState base "stack underflow in local.set")
+
+      -- Global variables
+      | .globalGet idx =>
+          match base.globals[idx]? with
+          | some v => some (.silent, irPushTrace { base with stack := v :: base.stack } .silent)
+          | none => some (irTrapState base s!"global.get out of bounds: {idx}")
+      | .globalSet idx =>
+          match irPop1? base.stack with
+          | some (v, stk) =>
+              if idx < base.globals.size then
+                some (.silent, irPushTrace { base with stack := stk, globals := base.globals.set! idx v } .silent)
+              else some (irTrapState base s!"global.set out of bounds: {idx}")
+          | none => some (irTrapState base "stack underflow in global.set")
+
+      -- Binary operations (i32)
+      | .binOp .i32 op =>
+          match irPop2? base.stack with
+          | some (.i32 rhs, .i32 lhs, stk) =>
+              let result := match op with
+                | "add" => IRValue.i32 (Numerics.i32Add lhs rhs)
+                | "sub" => IRValue.i32 (Numerics.i32Sub lhs rhs)
+                | "mul" => IRValue.i32 (Numerics.i32Mul lhs rhs)
+                | "and" => IRValue.i32 (Numerics.i32And lhs rhs)
+                | "or"  => IRValue.i32 (Numerics.i32Or lhs rhs)
+                | "xor" => IRValue.i32 (Numerics.i32Xor lhs rhs)
+                | "shl" => IRValue.i32 (Numerics.i32Shl lhs rhs)
+                | "shr_s" => IRValue.i32 (Numerics.i32ShrS lhs rhs)
+                | "shr_u" => IRValue.i32 (Numerics.i32ShrU lhs rhs)
+                | "eq"  => irBoolToI32 (Numerics.i32Eq lhs rhs)
+                | "ne"  => irBoolToI32 (Numerics.i32Ne lhs rhs)
+                | "lt_s" => irBoolToI32 (Numerics.i32Lts lhs rhs)
+                | "lt_u" => irBoolToI32 (Numerics.i32Ltu lhs rhs)
+                | "gt_s" => irBoolToI32 (Numerics.i32Gts lhs rhs)
+                | "gt_u" => irBoolToI32 (Numerics.i32Gtu lhs rhs)
+                | "le_s" => irBoolToI32 (Numerics.i32Les lhs rhs)
+                | "le_u" => irBoolToI32 (Numerics.i32Leu lhs rhs)
+                | "ge_s" => irBoolToI32 (Numerics.i32Ges lhs rhs)
+                | "ge_u" => irBoolToI32 (Numerics.i32Geu lhs rhs)
+                | _ => IRValue.i32 0
+              some (.silent, irPushTrace { base with stack := result :: stk } .silent)
+          | some _ => some (irTrapState base s!"type mismatch in i32.{op}")
+          | none => some (irTrapState base s!"stack underflow in i32.{op}")
+      -- Binary operations (i64)
+      | .binOp .i64 op =>
+          match irPop2? base.stack with
+          | some (.i64 rhs, .i64 lhs, stk) =>
+              let result := match op with
+                | "add" => IRValue.i64 (Numerics.i64Add lhs rhs)
+                | "sub" => IRValue.i64 (Numerics.i64Sub lhs rhs)
+                | "mul" => IRValue.i64 (Numerics.i64Mul lhs rhs)
+                | _ => IRValue.i64 0
+              some (.silent, irPushTrace { base with stack := result :: stk } .silent)
+          | some _ => some (irTrapState base s!"type mismatch in i64.{op}")
+          | none => some (irTrapState base s!"stack underflow in i64.{op}")
+      -- Binary operations (f64)
+      | .binOp .f64 op =>
+          match irPop2? base.stack with
+          | some (.f64 rhs, .f64 lhs, stk) =>
+              let result := match op with
+                | "add" => IRValue.f64 (Numerics.f64Add lhs rhs)
+                | "sub" => IRValue.f64 (Numerics.f64Sub lhs rhs)
+                | "mul" => IRValue.f64 (Numerics.f64Mul lhs rhs)
+                | "div" => IRValue.f64 (Numerics.f64Div lhs rhs)
+                | "eq"  => irBoolToI32 (Numerics.f64Eq lhs rhs)
+                | "ne"  => irBoolToI32 (Numerics.f64Ne lhs rhs)
+                | "lt"  => irBoolToI32 (Numerics.f64Lt lhs rhs)
+                | "gt"  => irBoolToI32 (Numerics.f64Gt lhs rhs)
+                | "le"  => irBoolToI32 (Numerics.f64Le lhs rhs)
+                | "ge"  => irBoolToI32 (Numerics.f64Ge lhs rhs)
+                | _ => IRValue.f64 0.0
+              some (.silent, irPushTrace { base with stack := result :: stk } .silent)
+          | some _ => some (irTrapState base s!"type mismatch in f64.{op}")
+          | none => some (irTrapState base s!"stack underflow in f64.{op}")
+      -- Binary operations (ptr = i32)
+      | .binOp .ptr op =>
+          match irPop2? base.stack with
+          | some (.i32 rhs, .i32 lhs, stk) =>
+              let result := match op with
+                | "add" => IRValue.i32 (Numerics.i32Add lhs rhs)
+                | "sub" => IRValue.i32 (Numerics.i32Sub lhs rhs)
+                | _ => IRValue.i32 0
+              some (.silent, irPushTrace { base with stack := result :: stk } .silent)
+          | some _ => some (irTrapState base s!"type mismatch in ptr.{op}")
+          | none => some (irTrapState base s!"stack underflow in ptr.{op}")
+
+      -- Unary operations
+      | .unOp .i32 op =>
+          match irPop1? base.stack with
+          | some (.i32 v, stk) =>
+              let result := match op with
+                | "eqz" => irBoolToI32 (Numerics.i32Eqz v)
+                | _ => IRValue.i32 0
+              some (.silent, irPushTrace { base with stack := result :: stk } .silent)
+          | some _ => some (irTrapState base s!"type mismatch in unary i32.{op}")
+          | none => some (irTrapState base s!"stack underflow in unary i32.{op}")
+      | .unOp .i64 op =>
+          match irPop1? base.stack with
+          | some (.i64 v, stk) =>
+              let result := match op with
+                | "eqz" => irBoolToI32 (Numerics.i64Eqz v)
+                | _ => IRValue.i64 0
+              some (.silent, irPushTrace { base with stack := result :: stk } .silent)
+          | some _ => some (irTrapState base s!"type mismatch in unary i64.{op}")
+          | none => some (irTrapState base s!"stack underflow in unary i64.{op}")
+      | .unOp _ _ =>
+          match irPop1? base.stack with
+          | some (_, stk) => some (.silent, irPushTrace { base with stack := .i32 0 :: stk } .silent)
+          | none => some (irTrapState base "stack underflow in unOp")
+
+      -- Memory: load (4-byte little-endian i32)
+      | .load _t offset =>
+          match irPop1? base.stack with
+          | some (.i32 addr, stk) =>
+              let byteAddr := addr.toNat + offset
+              if byteAddr + 4 ≤ base.memory.size then
+                let b0 := base.memory.get! byteAddr
+                let b1 := base.memory.get! (byteAddr + 1)
+                let b2 := base.memory.get! (byteAddr + 2)
+                let b3 := base.memory.get! (byteAddr + 3)
+                let val : UInt32 := b0.toUInt32 ||| (b1.toUInt32 <<< 8) ||| (b2.toUInt32 <<< 16) ||| (b3.toUInt32 <<< 24)
+                some (.silent, irPushTrace { base with stack := .i32 val :: stk } .silent)
+              else some (irTrapState base s!"memory access out of bounds: {byteAddr}")
+          | some _ => some (irTrapState base "type mismatch in load")
+          | none => some (irTrapState base "stack underflow in load")
+      -- Memory: store (4-byte little-endian i32)
+      | .store _t offset =>
+          match irPop2? base.stack with
+          | some (.i32 val, .i32 addr, stk) =>
+              let byteAddr := addr.toNat + offset
+              if byteAddr + 4 ≤ base.memory.size then
+                let mem := base.memory
+                  |>.set! byteAddr (val.toUInt8)
+                  |>.set! (byteAddr + 1) ((val >>> 8).toUInt8)
+                  |>.set! (byteAddr + 2) ((val >>> 16).toUInt8)
+                  |>.set! (byteAddr + 3) ((val >>> 24).toUInt8)
+                some (.silent, irPushTrace { base with stack := stk, memory := mem } .silent)
+              else some (irTrapState base s!"memory store out of bounds: {byteAddr}")
+          | some _ => some (irTrapState base "type mismatch in store")
+          | none => some (irTrapState base "stack underflow in store")
+      -- Memory: store8
+      | .store8 offset =>
+          match irPop2? base.stack with
+          | some (.i32 val, .i32 addr, stk) =>
+              let byteAddr := addr.toNat + offset
+              if byteAddr < base.memory.size then
+                let mem := base.memory.set! byteAddr val.toUInt8
+                some (.silent, irPushTrace { base with stack := stk, memory := mem } .silent)
+              else some (irTrapState base s!"memory store8 out of bounds: {byteAddr}")
+          | some _ => some (irTrapState base "type mismatch in store8")
+          | none => some (irTrapState base "stack underflow in store8")
+
+      -- Control flow: block
+      | .block label body =>
+          let lbl : IRLabel := {
+            name := label, isLoop := false
+            onBranch := rest, onExit := rest }
+          some (.silent, irPushTrace { base with code := body, labels := lbl :: base.labels } .silent)
+      -- Control flow: loop
+      | .loop label body =>
+          let lbl : IRLabel := {
+            name := label, isLoop := true
+            onBranch := [IRInstr.loop label body] ++ rest
+            onExit := rest }
+          some (.silent, irPushTrace { base with code := body, labels := lbl :: base.labels } .silent)
+      -- Control flow: if
+      | .if_ _result then_ else_ =>
+          match irPop1? base.stack with
+          | some (.i32 cond, stk) =>
+              let branch := if cond != 0 then then_ else else_
+              some (.silent, irPushTrace { base with stack := stk, code := branch ++ rest } .silent)
+          | some _ => some (irTrapState base "type mismatch in if (expected i32)")
+          | none => some (irTrapState base "stack underflow in if")
+      -- Control flow: br
+      | .br label =>
+          match irFindLabel? s.labels label with
+          | some (idx, lbl) =>
+              let labels' := s.labels.drop (idx + 1)
+              some (.silent, irPushTrace { base with code := lbl.onBranch, labels := labels' } .silent)
+          | none => some (irTrapState base s!"br: unknown label '{label}'")
+      -- Control flow: br_if
+      | .brIf label =>
+          match irPop1? base.stack with
+          | some (.i32 cond, stk) =>
+              if cond != 0 then
+                match irFindLabel? s.labels label with
+                | some (idx, lbl) =>
+                    let labels' := s.labels.drop (idx + 1)
+                    some (.silent, irPushTrace { base with stack := stk, code := lbl.onBranch, labels := labels' } .silent)
+                | none => some (irTrapState base s!"br_if: unknown label '{label}'")
+              else
+                some (.silent, irPushTrace { base with stack := stk } .silent)
+          | some _ => some (irTrapState base "type mismatch in br_if (expected i32)")
+          | none => some (irTrapState base "stack underflow in br_if")
+      -- Control flow: return
+      -- REF: WasmCert-Coq r_return / Wasm §4.4.7.4
+      | .return_ =>
+          match s.frames with
+          | [] => some (irTrapState base "return with no frame")
+          | [_] =>
+              -- Top-level frame: clear code/labels to halt
+              some (.silent, irPushTrace { base with code := [], labels := [] } .silent)
+          | calleeFrame :: callerFrame :: frest =>
+              -- Pop callee frame, take return values, restore caller context
+              let retVals := base.stack.take calleeFrame.returnArity
+              some (.silent, irPushTrace {
+                base with
+                stack := retVals
+                frames := callerFrame :: frest
+                code := calleeFrame.savedCode
+                labels := calleeFrame.savedLabels
+              } .silent)
+      -- Stack: drop
+      | .drop =>
+          match irPop1? base.stack with
+          | some (_, stk) => some (.silent, irPushTrace { base with stack := stk } .silent)
+          | none => some (irTrapState base "stack underflow in drop")
+      -- Function call
+      -- REF: WasmCert-Coq r_invoke_native / Wasm §4.4.6
+      | .call funcIdx =>
+          match base.module.functions[funcIdx]? with
+          | none => some (irTrapState base s!"call: unknown function {funcIdx}")
+          | some fn =>
+              let nParams := fn.params.length
+              match irPopN? base.stack nParams with
+              | none => some (irTrapState base s!"stack underflow in call {funcIdx}")
+              | some (args, callerStack) =>
+                  let localDefaults := fn.locals.map IRValue.default
+                  let calleeLocals := (args ++ localDefaults).toArray
+                  let calleeFrame : IRFrame := {
+                    locals := calleeLocals
+                    returnArity := fn.results.length
+                    savedCode := rest          -- caller's remaining code
+                    savedLabels := base.labels -- caller's label stack
+                  }
+                  some (.silent, irPushTrace {
+                    base with
+                    stack := callerStack  -- caller's stack below return values
+                    frames := calleeFrame :: base.frames
+                    code := fn.body
+                    labels := []  -- callee starts with fresh label stack
+                  } .silent)
+      -- Indirect call (resolve function index from stack)
+      -- REF: WasmCert-Coq r_call_indirect_success / Wasm §4.4.8.7
+      | .callIndirect _typeIdx =>
+          match irPop1? base.stack with
+          | some (.i32 funcIdx, stk) =>
+              match base.module.functions[funcIdx.toNat]? with
+              | none => some (irTrapState { base with stack := stk } s!"call_indirect: unknown function {funcIdx}")
+              | some fn =>
+                  let nParams := fn.params.length
+                  match irPopN? stk nParams with
+                  | none => some (irTrapState { base with stack := stk } s!"stack underflow in call_indirect")
+                  | some (args, callerStack) =>
+                      let localDefaults := fn.locals.map IRValue.default
+                      let calleeLocals := (args ++ localDefaults).toArray
+                      let calleeFrame : IRFrame := {
+                        locals := calleeLocals
+                        returnArity := fn.results.length
+                        savedCode := rest
+                        savedLabels := base.labels
+                      }
+                      some (.silent, irPushTrace {
+                        base with
+                        stack := callerStack
+                        frames := calleeFrame :: base.frames
+                        code := fn.body
+                        labels := []  -- callee starts with fresh label stack
+                      } .silent)
+          | some _ => some (irTrapState base "type mismatch in call_indirect (expected i32 index)")
+          | none => some (irTrapState base "stack underflow in call_indirect")
+      -- Memory grow
+      | .memoryGrow =>
+          match irPop1? base.stack with
+          | some (.i32 pages, stk) =>
+              let oldPages := base.memory.size / 65536
+              let newSize := base.memory.size + pages.toNat * 65536
+              if newSize ≤ 65536 * 65536 then
+                let grown := ByteArray.mk (base.memory.toList.toArray ++ Array.replicate (pages.toNat * 65536) 0)
+                some (.silent, irPushTrace { base with stack := .i32 oldPages.toUInt32 :: stk, memory := grown } .silent)
+              else
+                some (.silent, irPushTrace { base with stack := .i32 (0xFFFFFFFF : UInt32) :: stk } .silent)
+          | some _ => some (irTrapState base "type mismatch in memory.grow")
+          | none => some (irTrapState base "stack underflow in memory.grow")
+
+/-! ### IR Inductive Relations -/
+
+/-- Small-step reduction relation induced by `irStep?`. -/
+inductive IRStep : IRExecState → TraceEvent → IRExecState → Prop where
+  | mk {s : IRExecState} {t : TraceEvent} {s' : IRExecState} :
+      irStep? s = some (t, s') →
+      IRStep s t s'
+
+/-- Reflexive-transitive closure of IR steps with trace accumulation.
+    REF: Mirrors Wasm.Steps and ANF.Steps for proof chain compatibility. -/
+inductive IRSteps : IRExecState → List TraceEvent → IRExecState → Prop where
+  | refl (s : IRExecState) : IRSteps s [] s
+  | tail {s1 s2 s3 : IRExecState} {t : TraceEvent} {ts : List TraceEvent} :
+      IRStep s1 t s2 →
+      IRSteps s2 ts s3 →
+      IRSteps s1 (t :: ts) s3
+
+/-- Behavioral semantics for an IR module.
+    A module `m` exhibits behavior `b` when execution from the initial state
+    reaches a halted state after producing trace `b`.
+    REF: Mirrors Wasm.Behaves for the emit correctness theorem. -/
+def IRBehaves (m : IRModule) (b : List TraceEvent) : Prop :=
+  ∃ sFinal, IRSteps (irInitialState m) b sFinal ∧ irStep? sFinal = none
+
+/-! ### IR State Classification -/
+
+/-- A state has halted when there is no code left, no labels to pop,
+    and only the top-level frame remains (no callers to return to). -/
+def IRExecState.halted (s : IRExecState) : Prop :=
+  s.code = [] ∧ s.labels = [] ∧ s.frames.length ≤ 1
+
+/-- Halted states have irStep? = none. -/
+@[simp]
+theorem irStep?_halted {s : IRExecState} (h : s.halted) : irStep? s = none := by
+  obtain ⟨hc, hl, hf⟩ := h
+  simp [irStep?, hc, hl]
+  match s.frames, hf with
+  | [], _ => rfl
+  | [_], _ => rfl
+
+/-! ### IR Basic Properties -/
+
+/-- IRStep relation is equivalent to irStep? returning some. -/
+theorem IRStep_iff (s : IRExecState) (t : TraceEvent) (s' : IRExecState) :
+    IRStep s t s' ↔ irStep? s = some (t, s') :=
+  ⟨fun ⟨h⟩ => h, fun h => ⟨h⟩⟩
+
+/-- IR.Step is deterministic. -/
+theorem IRStep_deterministic {s : IRExecState} {t1 t2 : TraceEvent} {s1 s2 : IRExecState} :
+    IRStep s t1 s1 → IRStep s t2 s2 → t1 = t2 ∧ s1 = s2 := by
+  intro ⟨h1⟩ ⟨h2⟩
+  rw [h1] at h2
+  simp only [Option.some.injEq, Prod.mk.injEq] at h2
+  exact h2
+
+/-- IR.Steps is transitive. -/
+theorem IRSteps_trans {s1 s2 s3 : IRExecState} {t1 t2 : List TraceEvent} :
+    IRSteps s1 t1 s2 → IRSteps s2 t2 s3 → IRSteps s1 (t1 ++ t2) s3 := by
+  intro h1 h2
+  induction h1 with
+  | refl _ => exact h2
+  | tail hstep _ ih => exact .tail hstep (ih h2)
+
+/-- If a module exhibits behavior b via IRSteps, then IRBehaves holds. -/
+theorem IRBehaves_of_Steps {m : IRModule} {sFinal : IRExecState} {b : List TraceEvent}
+    (hsteps : IRSteps (irInitialState m) b sFinal)
+    (hhalt : irStep? sFinal = none) :
+    IRBehaves m b :=
+  ⟨sFinal, hsteps, hhalt⟩
+
+/-- IRSteps determinism: if the same start state leads to two halted states, the traces match. -/
+theorem IRSteps_deterministic {s : IRExecState} {b1 b2 : List TraceEvent}
+    {s1 s2 : IRExecState}
+    (h1 : IRSteps s b1 s1) (hhalt1 : irStep? s1 = none)
+    (h2 : IRSteps s b2 s2) (hhalt2 : irStep? s2 = none) :
+    b1 = b2 ∧ s1 = s2 := by
+  induction h1 generalizing b2 s2 with
+  | refl _ =>
+      cases h2 with
+      | refl _ => exact ⟨rfl, rfl⟩
+      | tail hstep _ =>
+          obtain ⟨h⟩ := hstep
+          rw [hhalt1] at h; exact absurd h (by simp)
+  | tail hstep1 _ ih =>
+      cases h2 with
+      | refl _ =>
+          obtain ⟨h⟩ := hstep1
+          rw [hhalt2] at h; exact absurd h (by simp)
+      | tail hstep2 hsteps2' =>
+          obtain ⟨h1e⟩ := hstep1
+          obtain ⟨h2e⟩ := hstep2
+          rw [h1e] at h2e
+          simp only [Option.some.injEq, Prod.mk.injEq] at h2e
+          obtain ⟨ht, hs⟩ := h2e
+          subst ht; subst hs
+          have ⟨htl, hsl⟩ := ih hhalt1 hsteps2' hhalt2
+          exact ⟨by rw [htl], hsl⟩
+
+/-- IR behavioral semantics is deterministic: a module can only produce one trace. -/
+theorem IRBehaves_deterministic {m : IRModule} {b1 b2 : List TraceEvent} :
+    IRBehaves m b1 → IRBehaves m b2 → b1 = b2 := by
+  intro ⟨s1, hsteps1, hhalt1⟩ ⟨s2, hsteps2, hhalt2⟩
+  exact (IRSteps_deterministic hsteps1 hhalt1 hsteps2 hhalt2).1
+
+/-! ### Trace Event Mappings (for proof chain) -/
+
+/-- Map IR trace events to Wasm trace events.
+    Used by EmitCorrect to relate IR traces to Wasm traces.
+    Observable events (log/error) become silent at the Wasm level
+    because they are implemented via host calls (fd_write). -/
+def traceToWasm : TraceEvent → Wasm.TraceEvent
+  | .silent => .silent
+  | .trap msg => .trap msg
+  | .log _ => .silent
+  | .error _ => .silent
+
+/-- Map a full IR trace to a Wasm trace. -/
+def traceListToWasm : List TraceEvent → List Wasm.TraceEvent :=
+  List.map traceToWasm
+
+/-! ### @[simp] Equation Lemmas for irStep? -/
+
+/-- irStep? with no code, no labels, and ≤ 1 frame is none (halted). -/
+@[simp]
+theorem irStep?_nil_nil (s : IRExecState) (h1 : s.code = []) (h2 : s.labels = [])
+    (hf : s.frames.length ≤ 1) :
+    irStep? s = none := by
+  simp [irStep?, h1, h2]
+  match s.frames, hf with
+  | [], _ => rfl
+  | [_], _ => rfl
+
+/-- irStep? with no code but labels pops the label scope. -/
+@[simp]
+theorem irStep?_nil_label (s : IRExecState) (l : IRLabel) (ls : List IRLabel)
+    (h1 : s.code = []) (h2 : s.labels = l :: ls) :
+    ∃ t s', irStep? s = some (t, s') := by
+  simp [irStep?, h1, h2]
+
+/-- IRSteps can be extended by one step at the end. -/
+theorem IRSteps_snoc {s1 s2 s3 : IRExecState} {ts : List TraceEvent} {t : TraceEvent} :
+    IRSteps s1 ts s2 → IRStep s2 t s3 → IRSteps s1 (ts ++ [t]) s3 := by
+  intro hsteps hstep
+  induction hsteps with
+  | refl _ => exact .tail hstep (.refl _)
+  | tail h _ ih => exact .tail h (ih hstep)
+
+/-! ### Trace Mapping Lemmas -/
+
+@[simp] theorem traceToWasm_silent : traceToWasm .silent = .silent := rfl
+@[simp] theorem traceToWasm_trap (msg : String) : traceToWasm (.trap msg) = .trap msg := rfl
+@[simp] theorem traceToWasm_log (s : String) : traceToWasm (.log s) = .silent := rfl
+@[simp] theorem traceToWasm_error (s : String) : traceToWasm (.error s) = .silent := rfl
+
+@[simp] theorem traceListToWasm_nil : traceListToWasm [] = [] := rfl
+@[simp] theorem traceListToWasm_cons (t : TraceEvent) (ts : List TraceEvent) :
+    traceListToWasm (t :: ts) = traceToWasm t :: traceListToWasm ts := rfl
+
+@[simp] theorem traceListToWasm_append (t1 t2 : List TraceEvent) :
+    traceListToWasm (t1 ++ t2) = traceListToWasm t1 ++ traceListToWasm t2 := by
+  simp [traceListToWasm, List.map_append]
+
+/-! ### Simulation Framework for Proof Chain
+
+These definitions provide the template for stating semantic preservation theorems.
+The proof agent should instantiate these for LowerCorrect and EmitCorrect. -/
+
+/-- A forward simulation: if source and target are related and source steps,
+    then target can step with the same trace event and stay related.
+    Use this to prove semantic preservation for each compiler pass. -/
+structure IRForwardSim {S : Type} (R : S → IRExecState → Prop)
+    (step_src : S → Option (TraceEvent × S)) where
+  /-- Simulation step: source step implies target step with same event. -/
+  step_sim : ∀ (s1 : S) (s2 : IRExecState) (t : TraceEvent) (s1' : S),
+    R s1 s2 → step_src s1 = some (t, s1') →
+    ∃ s2', irStep? s2 = some (t, s2') ∧ R s1' s2'
+  /-- Halting preservation: source halts implies target halts. -/
+  halt_sim : ∀ (s1 : S) (s2 : IRExecState),
+    R s1 s2 → step_src s1 = none → irStep? s2 = none
+
+/-! ### Additional @[simp] Equation Lemmas for irStep? -/
+
+/-- irStep? for i32.const pushes value onto stack. -/
+@[simp]
+theorem irStep?_ir_i32Const (s : IRExecState) (v : String) (n : Nat) (rest : List IRInstr)
+    (hcode : s.code = IRInstr.const_ .i32 v :: rest) (hv : v.toNat? = some n) :
+    ∃ t s', irStep? s = some (t, s') := by
+  simp [irStep?, hcode, hv, irPushTrace]
+
+/-- irStep? for f64.const pushes value onto stack. -/
+@[simp]
+theorem irStep?_ir_f64Const (s : IRExecState) (v : String) (rest : List IRInstr)
+    (hcode : s.code = IRInstr.const_ .f64 v :: rest) :
+    ∃ t s', irStep? s = some (t, s') := by
+  simp [irStep?, hcode]
+
+/-- irStep? for local.get with valid index. -/
+@[simp]
+theorem irStep?_ir_localGet (s : IRExecState) (idx : Nat) (rest : List IRInstr)
+    (frame : IRFrame) (frest : List IRFrame) (val : IRValue)
+    (hcode : s.code = IRInstr.localGet idx :: rest)
+    (hframes : s.frames = frame :: frest)
+    (hlocal : frame.locals[idx]? = some val) :
+    ∃ t s', irStep? s = some (t, s') := by
+  simp [irStep?, hcode, hframes, hlocal, irPushTrace]
+
+/-- irStep? for local.set with valid index and non-empty stack. -/
+@[simp]
+theorem irStep?_ir_localSet (s : IRExecState) (idx : Nat) (rest : List IRInstr)
+    (v : IRValue) (stk : List IRValue)
+    (frame : IRFrame) (frest : List IRFrame)
+    (hcode : s.code = IRInstr.localSet idx :: rest)
+    (hstack : s.stack = v :: stk)
+    (hframes : s.frames = frame :: frest)
+    (hbounds : idx < frame.locals.size) :
+    ∃ t s', irStep? s = some (t, s') := by
+  simp [irStep?, hcode, hstack, hframes, irPop1?, irPushTrace, hbounds]
+
+/-- irStep? for global.get with valid index. -/
+@[simp]
+theorem irStep?_ir_globalGet (s : IRExecState) (idx : Nat) (rest : List IRInstr)
+    (val : IRValue)
+    (hcode : s.code = IRInstr.globalGet idx :: rest)
+    (hglobal : s.globals[idx]? = some val) :
+    ∃ t s', irStep? s = some (t, s') := by
+  simp [irStep?, hcode, hglobal, irPushTrace]
+
+/-- irStep? for global.set with valid index and non-empty stack. -/
+@[simp]
+theorem irStep?_ir_globalSet (s : IRExecState) (idx : Nat) (rest : List IRInstr)
+    (v : IRValue) (stk : List IRValue)
+    (hcode : s.code = IRInstr.globalSet idx :: rest)
+    (hstack : s.stack = v :: stk)
+    (hbounds : idx < s.globals.size) :
+    ∃ t s', irStep? s = some (t, s') := by
+  simp [irStep?, hcode, hstack, irPop1?, irPushTrace, hbounds]
+
+/-- irStep? for drop with non-empty stack. -/
+@[simp]
+theorem irStep?_ir_drop (s : IRExecState) (rest : List IRInstr)
+    (v : IRValue) (stk : List IRValue)
+    (hcode : s.code = IRInstr.drop :: rest)
+    (hstack : s.stack = v :: stk) :
+    ∃ t s', irStep? s = some (t, s') := by
+  simp [irStep?, hcode, hstack, irPop1?, irPushTrace]
+
+/-- irStep? for block pushes label and enters body. -/
+@[simp]
+theorem irStep?_ir_block (s : IRExecState) (label : String) (body rest : List IRInstr)
+    (hcode : s.code = IRInstr.block label body :: rest) :
+    ∃ t s', irStep? s = some (t, s') := by
+  simp [irStep?, hcode, irPushTrace]
+
+/-- irStep? for loop pushes label and enters body. -/
+@[simp]
+theorem irStep?_ir_loop (s : IRExecState) (label : String) (body rest : List IRInstr)
+    (hcode : s.code = IRInstr.loop label body :: rest) :
+    ∃ t s', irStep? s = some (t, s') := by
+  simp [irStep?, hcode, irPushTrace]
+
+/-- irStep? for if with i32 condition on stack always succeeds. -/
+@[simp]
+theorem irStep?_ir_if (s : IRExecState) (result : Option IRType)
+    (then_ else_ rest : List IRInstr) (cond : UInt32) (stk : List IRValue)
+    (hcode : s.code = IRInstr.if_ result then_ else_ :: rest)
+    (hstack : s.stack = .i32 cond :: stk) :
+    ∃ t s', irStep? s = some (t, s') := by
+  simp [irStep?, hcode, hstack, irPop1?, irPushTrace]
+
+/-- irStep? for i32 binop with valid operands always succeeds. -/
+@[simp]
+theorem irStep?_ir_i32BinOp (s : IRExecState) (op : String) (rest : List IRInstr)
+    (lhs rhs : UInt32) (stk : List IRValue)
+    (hcode : s.code = IRInstr.binOp .i32 op :: rest)
+    (hstack : s.stack = .i32 rhs :: .i32 lhs :: stk) :
+    ∃ t s', irStep? s = some (t, s') := by
+  simp [irStep?, hcode, hstack, irPop2?, irPushTrace]
+
+/-- irStep? for f64 binop with valid operands always succeeds. -/
+@[simp]
+theorem irStep?_ir_f64BinOp (s : IRExecState) (op : String) (rest : List IRInstr)
+    (lhs rhs : Float) (stk : List IRValue)
+    (hcode : s.code = IRInstr.binOp .f64 op :: rest)
+    (hstack : s.stack = .f64 rhs :: .f64 lhs :: stk) :
+    ∃ t s', irStep? s = some (t, s') := by
+  simp [irStep?, hcode, hstack, irPop2?, irPushTrace]
+
+/-- irStep? for i32 eqz always succeeds with i32 on stack. -/
+@[simp]
+theorem irStep?_ir_i32Eqz (s : IRExecState) (rest : List IRInstr)
+    (v : UInt32) (stk : List IRValue)
+    (hcode : s.code = IRInstr.unOp .i32 "eqz" :: rest)
+    (hstack : s.stack = .i32 v :: stk) :
+    ∃ t s', irStep? s = some (t, s') := by
+  simp [irStep?, hcode, hstack, irPop1?, irPushTrace]
+
+/-- irStep? for call with valid function index and enough stack args. -/
+@[simp]
+theorem irStep?_ir_call (s : IRExecState) (funcIdx : Nat) (rest : List IRInstr)
+    (fn : IRFunc)
+    (hcode : s.code = IRInstr.call funcIdx :: rest)
+    (hfunc : s.module.functions[funcIdx]? = some fn)
+    (hstack : fn.params.length ≤ s.stack.length) :
+    ∃ t s', irStep? s = some (t, s') := by
+  simp only [irStep?, hcode, hfunc]
+  simp only [irPopN?]
+  have : ¬ (s.stack.length < fn.params.length) := by omega
+  simp [this, irPushTrace]
+
+/-- irStep? for return_ with multiple frames pops the callee frame. -/
+@[simp]
+theorem irStep?_ir_return_callee (s : IRExecState) (rest : List IRInstr)
+    (calleeFrame callerFrame : IRFrame) (frest : List IRFrame)
+    (hcode : s.code = IRInstr.return_ :: rest)
+    (hframes : s.frames = calleeFrame :: callerFrame :: frest) :
+    ∃ t s', irStep? s = some (t, s') := by
+  simp [irStep?, hcode, hframes, irPushTrace]
+
+/-- irStep? for return_ at top level clears code and labels. -/
+@[simp]
+theorem irStep?_ir_return_toplevel (s : IRExecState) (rest : List IRInstr)
+    (frame : IRFrame)
+    (hcode : s.code = IRInstr.return_ :: rest)
+    (hframes : s.frames = [frame]) :
+    ∃ t s', irStep? s = some (t, s') := by
+  simp [irStep?, hcode, hframes, irPushTrace]
+
+/-- irStep? for memoryGrow with i32 on stack always succeeds. -/
+@[simp]
+theorem irStep?_ir_memoryGrow (s : IRExecState) (rest : List IRInstr)
+    (pages : UInt32) (stk : List IRValue)
+    (hcode : s.code = IRInstr.memoryGrow :: rest)
+    (hstack : s.stack = .i32 pages :: stk) :
+    ∃ t s', irStep? s = some (t, s') := by
+  simp [irStep?, hcode, hstack, irPop1?, irPushTrace]
+  split <;> exact ⟨_, _, rfl⟩
+
+/-- irStep? for code exhaustion with multiple frames performs function return. -/
+@[simp]
+theorem irStep?_ir_frameReturn (s : IRExecState)
+    (calleeFrame callerFrame : IRFrame) (frest : List IRFrame)
+    (hcode : s.code = []) (hlabels : s.labels = [])
+    (hframes : s.frames = calleeFrame :: callerFrame :: frest) :
+    ∃ t s', irStep? s = some (t, s') := by
+  simp [irStep?, hcode, hlabels, hframes, irPushTrace]
+
+/-! ### IRSteps Composition Helpers -/
+
+/-- Build a single-step IRSteps. -/
+theorem IRSteps_single {s1 s2 : IRExecState} {t : TraceEvent}
+    (h : IRStep s1 t s2) : IRSteps s1 [t] s2 :=
+  .tail h (.refl _)
+
+/-! ### Inhabitedness Examples -/
+
+/-- A module with no start function and no functions halts immediately with empty trace. -/
+example : IRBehaves
+    { functions := #[], memories := #[], globals := #[], exports := #[],
+      dataSegments := #[], startFunc := none, tableEntries := #[] }
+    [] := by
+  refine ⟨_, IRSteps.refl _, ?_⟩
+  native_decide
+
+/-- A module calling function 0 (i32.const 42 + return) completes successfully.
+    This demonstrates call entry, const push, and return with frame restore. -/
+private def exCallModule : IRModule :=
+  { functions := #[{
+      name := "f"
+      params := []
+      results := [.i32]
+      locals := []
+      body := [IRInstr.const_ .i32 "42", IRInstr.return_]
+    }]
+    memories := #[]
+    globals := #[]
+    exports := #[]
+    dataSegments := #[]
+    startFunc := some 0
+    tableEntries := #[] }
+
+/-- irStep? on the initial state of exCallModule is not none (not stuck). -/
+example : (irStep? (irInitialState exCallModule)).isSome = true := by native_decide
+
+/-- Run IR execution for up to `fuel` steps, collecting the trace. -/
+private def irRun (fuel : Nat) (s : IRExecState) : List TraceEvent × IRExecState :=
+  match fuel with
+  | 0 => ([], s)
+  | fuel' + 1 =>
+    match irStep? s with
+    | none => ([], s)
+    | some (t, s') =>
+      let (ts, sf) := irRun fuel' s'
+      (t :: ts, sf)
+
+/-- The call module halts within 10 steps (call + const + return + frame-pop). -/
+example : (irRun 10 (irInitialState exCallModule)).2.code = [] := by native_decide
+
+/-- After execution, the stack has [i32 42] (the returned value). -/
+example : (irRun 10 (irInitialState exCallModule)).2.stack == [.i32 42] := by native_decide
+
+end VerifiedJS.Wasm.IR

@@ -912,4 +912,506 @@ theorem Steps_trans {s1 s2 s3 : State} {ts1 ts2 : List TraceEvent}
   | refl => exact h2
   | tail hstep _ ih => exact Steps.tail hstep (ih h2)
 
+/-- A single step embeds into Steps. -/
+theorem Steps_single {s s' : State} {t : TraceEvent}
+    (h : Step s t s') : Steps s [t] s' :=
+  Steps.tail h (Steps.refl s')
+
+/-- toBoolean is total and decidable. ECMA-262 §7.2.14. -/
+theorem toBoolean_bool (v : Value) : ∃ b : Bool, toBoolean v = b :=
+  ⟨toBoolean v, rfl⟩
+
+/-- evalBinary produces a value for all inputs. ECMA-262 §13.15. -/
+theorem evalBinary_total (op : BinOp) (a b : Value) : ∃ v, evalBinary op a b = v :=
+  ⟨evalBinary op a b, rfl⟩
+
+/-- evalUnary produces a value for all inputs. ECMA-262 §13.5. -/
+theorem evalUnary_total (op : UnaryOp) (v : Value) : ∃ w, evalUnary op v = w :=
+  ⟨evalUnary op v, rfl⟩
+
+/-- A variable lookup in a non-empty env that contains the name succeeds. -/
+theorem Env.lookup_extend_same (env : Env) (name : VarName) (v : Value) :
+    (env.extend name v).lookup name = some v := by
+  simp [Env.extend, Env.lookup, List.find?]
+
+/-- var lookup steps to the bound value. -/
+theorem step_var_lookup (env : Env) (name : VarName) (v : Value) (heap : Heap)
+    (trace : List TraceEvent) (funcs : Array FuncClosure) (cs : List (List (VarName × Value)))
+    (h : env.lookup name = some v) :
+    (step? ⟨.var name, env, heap, trace, funcs, cs⟩).isSome = true := by
+  simp [step?, h]
+
+/-- A binary operation on two values always steps (is not stuck). -/
+theorem step_binary_values (op : BinOp) (a b : Value) (env : Env) (heap : Heap)
+    (trace : List TraceEvent) (funcs : Array FuncClosure) (cs : List (List (VarName × Value))) :
+    (step? ⟨.binary op (.lit a) (.lit b), env, heap, trace, funcs, cs⟩).isSome = true := by
+  simp [step?, exprValue?]
+
+/-- §13.2 seq: when left side is a value, step produces the right side. -/
+theorem step_seq_value (v : Value) (b : Expr) (env : Env) (heap : Heap)
+    (trace : List TraceEvent) (funcs : Array FuncClosure) (cs : List (List (VarName × Value))) :
+    step? ⟨.seq (.lit v) b, env, heap, trace, funcs, cs⟩ =
+      some (.silent, pushTrace ⟨b, env, heap, trace, funcs, cs⟩ .silent) := by
+  simp [step?, exprValue?]
+
+/-- §8.1.1.1 let: when init is a value, step extends env and produces body. -/
+theorem step_let_value (name : VarName) (v : Value) (body : Expr) (env : Env)
+    (heap : Heap) (trace : List TraceEvent) (funcs : Array FuncClosure)
+    (cs : List (List (VarName × Value))) :
+    step? ⟨.let name (.lit v) body, env, heap, trace, funcs, cs⟩ =
+      some (.silent, pushTrace ⟨body, env.extend name v, heap, trace, funcs, cs⟩ .silent) := by
+  simp [step?, exprValue?]
+
+/-- §8.1.1.4.5 assign: when rhs is a value, step updates env. -/
+theorem step_assign_value (name : VarName) (v : Value) (env : Env) (heap : Heap)
+    (trace : List TraceEvent) (funcs : Array FuncClosure)
+    (cs : List (List (VarName × Value))) :
+    step? ⟨.assign name (.lit v), env, heap, trace, funcs, cs⟩ =
+      some (.silent, pushTrace ⟨.lit v, env.assign name v, heap, trace, funcs, cs⟩ .silent) := by
+  simp [step?, exprValue?]
+
+/-- §13.6 if with truthy condition steps to then branch. -/
+theorem step_if_true (v : Value) (then_ else_ : Expr) (env : Env) (heap : Heap)
+    (trace : List TraceEvent) (funcs : Array FuncClosure)
+    (cs : List (List (VarName × Value)))
+    (hv : toBoolean v = true) :
+    step? ⟨.if (.lit v) then_ else_, env, heap, trace, funcs, cs⟩ =
+      some (.silent, pushTrace ⟨then_, env, heap, trace, funcs, cs⟩ .silent) := by
+  simp [step?, exprValue?, hv]
+
+/-- §13.6 if with falsy condition steps to else branch. -/
+theorem step_if_false (v : Value) (then_ else_ : Expr) (env : Env) (heap : Heap)
+    (trace : List TraceEvent) (funcs : Array FuncClosure)
+    (cs : List (List (VarName × Value)))
+    (hv : toBoolean v = false) :
+    step? ⟨.if (.lit v) then_ else_, env, heap, trace, funcs, cs⟩ =
+      some (.silent, pushTrace ⟨else_, env, heap, trace, funcs, cs⟩ .silent) := by
+  simp [step?, exprValue?, hv]
+
+/-- §13.5 unary on a value always steps. -/
+theorem step_unary_value (op : UnaryOp) (v : Value) (env : Env) (heap : Heap)
+    (trace : List TraceEvent) (funcs : Array FuncClosure)
+    (cs : List (List (VarName × Value))) :
+    step? ⟨.unary op (.lit v), env, heap, trace, funcs, cs⟩ =
+      some (.silent, pushTrace ⟨.lit (evalUnary op v), env, heap, trace, funcs, cs⟩ .silent) := by
+  simp [step?, exprValue?]
+
+/-- §13.14 throw with valued argument produces error event. -/
+theorem step_throw_value (v : Value) (env : Env) (heap : Heap)
+    (trace : List TraceEvent) (funcs : Array FuncClosure)
+    (cs : List (List (VarName × Value))) :
+    step? ⟨.throw (.lit v), env, heap, trace, funcs, cs⟩ =
+      some (.error (valueToString v),
+        pushTrace ⟨.lit .undefined, env, heap, trace, funcs, cs⟩ (.error (valueToString v))) := by
+  simp [step?, exprValue?]
+
+/-- §13.7.4 while unfolds to if-then-seq-while. -/
+theorem step_while_unfold (cond body : Expr) (env : Env) (heap : Heap)
+    (trace : List TraceEvent) (funcs : Array FuncClosure)
+    (cs : List (List (VarName × Value))) :
+    step? ⟨.while_ cond body, env, heap, trace, funcs, cs⟩ =
+      some (.silent, pushTrace
+        ⟨.if cond (.seq body (.while_ cond body)) (.lit .undefined),
+         env, heap, trace, funcs, cs⟩ .silent) := by
+  simp [step?]
+
+/-- §13.8 break produces error event with label. -/
+theorem step_break (label : Option LabelName) (env : Env) (heap : Heap)
+    (trace : List TraceEvent) (funcs : Array FuncClosure)
+    (cs : List (List (VarName × Value))) :
+    (step? ⟨.break label, env, heap, trace, funcs, cs⟩).isSome = true := by
+  simp [step?]
+
+/-- §13.9 continue produces error event with label. -/
+theorem step_continue (label : Option LabelName) (env : Env) (heap : Heap)
+    (trace : List TraceEvent) (funcs : Array FuncClosure)
+    (cs : List (List (VarName × Value))) :
+    (step? ⟨.break label, env, heap, trace, funcs, cs⟩).isSome = true := by
+  simp [step?]
+
+/-- §14.1 functionDef always steps (creates a closure). -/
+theorem step_functionDef (fname : Option VarName) (params : List VarName) (body : Expr)
+    (isAsync isGen : Bool) (env : Env) (heap : Heap)
+    (trace : List TraceEvent) (funcs : Array FuncClosure)
+    (cs : List (List (VarName × Value))) :
+    (step? ⟨.functionDef fname params body isAsync isGen, env, heap, trace, funcs, cs⟩).isSome = true := by
+  simp [step?]
+
+/-- §12.5.6 typeof on a value always steps. -/
+theorem step_typeof_value (v : Value) (env : Env) (heap : Heap)
+    (trace : List TraceEvent) (funcs : Array FuncClosure)
+    (cs : List (List (VarName × Value))) :
+    (step? ⟨.typeof (.lit v), env, heap, trace, funcs, cs⟩).isSome = true := by
+  simp [step?, exprValue?]
+
+/-- §12.2.6 objectLit with all-value props allocates on heap. -/
+theorem step_objectLit_allValues (props : List (PropName × Expr)) (env : Env) (heap : Heap)
+    (trace : List TraceEvent) (funcs : Array FuncClosure)
+    (cs : List (List (VarName × Value)))
+    (hf : firstNonValueProp props = none) :
+    (step? ⟨.objectLit props, env, heap, trace, funcs, cs⟩).isSome = true := by
+  unfold step?; split <;> simp_all
+
+/-- §12.3.3 newObj always steps (allocates empty object). -/
+theorem step_newObj (callee : Expr) (args : List Expr) (env : Env) (heap : Heap)
+    (trace : List TraceEvent) (funcs : Array FuncClosure)
+    (cs : List (List (VarName × Value))) :
+    (step? ⟨.newObj callee args, env, heap, trace, funcs, cs⟩).isSome = true := by
+  simp [step?]
+
+/-- Labeled statement just unwraps to body. -/
+theorem step_labeled (label : LabelName) (body : Expr) (env : Env) (heap : Heap)
+    (trace : List TraceEvent) (funcs : Array FuncClosure)
+    (cs : List (List (VarName × Value))) :
+    step? ⟨.labeled label body, env, heap, trace, funcs, cs⟩ =
+      some (.silent, pushTrace ⟨body, env, heap, trace, funcs, cs⟩ .silent) := by
+  simp [step?]
+
+/-- §12.8.3 Adding two numbers produces a number. -/
+theorem evalBinary_add_nums (a b : Float) :
+    evalBinary .add (.number a) (.number b) = .number (a + b) := by
+  unfold evalBinary; rfl
+
+/-- §12.8.3 Adding two strings concatenates them. -/
+theorem evalBinary_add_strings (a b : String) :
+    evalBinary .add (.string a) (.string b) = .string (a ++ b) := by
+  simp [evalBinary]
+
+/-- §7.2.15 Strict equality of same value is true. -/
+theorem evalBinary_strictEq_refl (v : Value) :
+    evalBinary .strictEq v v = .bool (v == v) := by
+  simp [evalBinary]
+
+/-- §7.2.14 null == undefined is true. -/
+theorem evalBinary_eq_null_undefined :
+    evalBinary .eq .null .undefined = .bool true := by
+  simp [evalBinary, abstractEq]
+
+/-- §7.2.14 undefined == null is true. -/
+theorem evalBinary_eq_undefined_null :
+    evalBinary .eq .undefined .null = .bool true := by
+  simp [evalBinary, abstractEq]
+
+/-- Env.assign on a fresh name extends the env. -/
+theorem Env.assign_fresh (env : Env) (name : VarName) (v : Value)
+    (h : env.bindings.any (fun kv => kv.fst == name) = false) :
+    (env.assign name v).bindings = (name, v) :: env.bindings := by
+  simp [Env.assign, h]
+
+/-- Env.lookup on a different name after extend returns original result. -/
+theorem Env.lookup_extend_other (env : Env) (name other : VarName) (v : Value)
+    (h : name ≠ other) :
+    (env.extend name v).lookup other = env.lookup other := by
+  simp [Env.extend, Env.lookup, BEq.beq, h]
+
+/-- this expression resolves to env lookup of "this". -/
+theorem step_this_bound (v : Value) (env : Env) (heap : Heap)
+    (trace : List TraceEvent) (funcs : Array FuncClosure)
+    (cs : List (List (VarName × Value)))
+    (h : env.lookup "this" = some v) :
+    step? ⟨.this, env, heap, trace, funcs, cs⟩ =
+      some (.silent, pushTrace ⟨.lit v, env, heap, trace, funcs, cs⟩ .silent) := by
+  simp [step?, h]
+
+/-- return with no argument produces error event "return:undefined". -/
+theorem step_return_none (env : Env) (heap : Heap) (trace : List TraceEvent)
+    (funcs : Array FuncClosure) (cs : List (List (VarName × Value))) :
+    step? ⟨.return none, env, heap, trace, funcs, cs⟩ =
+      some (.error "return:undefined",
+        pushTrace ⟨.lit .undefined, env, heap, trace, funcs, cs⟩ (.error "return:undefined")) := by
+  simp [step?]
+
+/-- §13.7.5 for-in on non-object produces undefined. -/
+theorem step_forIn_nonObject (binding : VarName) (v : Value) (body : Expr)
+    (env : Env) (heap : Heap) (trace : List TraceEvent)
+    (funcs : Array FuncClosure) (cs : List (List (VarName × Value)))
+    (hv : ∀ addr, v ≠ .object addr) :
+    (step? ⟨.forIn binding (.lit v) body, env, heap, trace, funcs, cs⟩).isSome = true := by
+  cases v with
+  | object addr => exact absurd rfl (hv addr)
+  | _ => simp [step?, exprValue?]
+
+/-- §13.7.5 for-in on object always steps (enumerates property keys). -/
+theorem step_forIn_object (binding : VarName) (addr : Nat) (body : Expr)
+    (env : Env) (heap : Heap) (trace : List TraceEvent)
+    (funcs : Array FuncClosure) (cs : List (List (VarName × Value))) :
+    (step? ⟨.forIn binding (.lit (.object addr)) body, env, heap, trace, funcs, cs⟩).isSome = true := by
+  simp [step?, exprValue?]
+
+/-- §13.7.5.13 for-of on object always steps (iterates values). -/
+theorem step_forOf_object (binding : VarName) (addr : Nat) (body : Expr)
+    (env : Env) (heap : Heap) (trace : List TraceEvent)
+    (funcs : Array FuncClosure) (cs : List (List (VarName × Value))) :
+    (step? ⟨.forOf binding (.lit (.object addr)) body, env, heap, trace, funcs, cs⟩).isSome = true := by
+  simp [step?, exprValue?]
+
+/-- §13.7.5.13 for-of on non-object produces undefined. -/
+theorem step_forOf_nonObject (binding : VarName) (v : Value) (body : Expr)
+    (env : Env) (heap : Heap) (trace : List TraceEvent)
+    (funcs : Array FuncClosure) (cs : List (List (VarName × Value)))
+    (hv : ∀ addr, v ≠ .object addr) :
+    (step? ⟨.forOf binding (.lit v) body, env, heap, trace, funcs, cs⟩).isSome = true := by
+  cases v with
+  | object addr => exact absurd rfl (hv addr)
+  | _ => simp [step?, exprValue?]
+
+/-- §12.2.5 arrayLit with all-value elems allocates on heap. -/
+theorem step_arrayLit_allValues (elems : List Expr) (env : Env) (heap : Heap)
+    (trace : List TraceEvent) (funcs : Array FuncClosure)
+    (cs : List (List (VarName × Value)))
+    (hf : firstNonValueExpr elems = none) :
+    (step? ⟨.arrayLit elems, env, heap, trace, funcs, cs⟩).isSome = true := by
+  unfold step?; split <;> simp_all
+
+/-- §9.1.9 setProp on object always steps when obj and value are values. -/
+theorem step_setProp_object_value (addr : Nat) (prop : PropName) (v : Value)
+    (env : Env) (heap : Heap) (trace : List TraceEvent)
+    (funcs : Array FuncClosure) (cs : List (List (VarName × Value))) :
+    (step? ⟨.setProp (.lit (.object addr)) prop (.lit v), env, heap, trace, funcs, cs⟩).isSome = true := by
+  simp [step?, exprValue?]
+
+/-- §9.1.9 setProp on non-object returns value. -/
+theorem step_setProp_nonObject (v val : Value) (prop : PropName)
+    (env : Env) (heap : Heap) (trace : List TraceEvent)
+    (funcs : Array FuncClosure) (cs : List (List (VarName × Value)))
+    (hv : ∀ addr, v ≠ .object addr) :
+    (step? ⟨.setProp (.lit v) prop (.lit val), env, heap, trace, funcs, cs⟩).isSome = true := by
+  cases v with
+  | object addr => exact absurd rfl (hv addr)
+  | _ => simp [step?, exprValue?]
+
+/-- §12.4.3 deleteProp on object always steps. -/
+theorem step_deleteProp_object (addr : Nat) (prop : PropName) (env : Env) (heap : Heap)
+    (trace : List TraceEvent) (funcs : Array FuncClosure)
+    (cs : List (List (VarName × Value))) :
+    (step? ⟨.deleteProp (.lit (.object addr)) prop, env, heap, trace, funcs, cs⟩).isSome = true := by
+  simp [step?, exprValue?]
+
+/-- §12.4.3 deleteProp on non-object always steps (returns true). -/
+theorem step_deleteProp_nonObject (v : Value) (prop : PropName) (env : Env) (heap : Heap)
+    (trace : List TraceEvent) (funcs : Array FuncClosure)
+    (cs : List (List (VarName × Value)))
+    (hv : ∀ addr, v ≠ .object addr) :
+    (step? ⟨.deleteProp (.lit v) prop, env, heap, trace, funcs, cs⟩).isSome = true := by
+  cases v with
+  | object addr => exact absurd rfl (hv addr)
+  | _ => simp [step?, exprValue?]
+
+/-- §12.3.2 getProp on string returns length or undefined. -/
+theorem step_getProp_string (s : String) (prop : PropName) (env : Env) (heap : Heap)
+    (trace : List TraceEvent) (funcs : Array FuncClosure)
+    (cs : List (List (VarName × Value))) :
+    (step? ⟨.getProp (.lit (.string s)) prop, env, heap, trace, funcs, cs⟩).isSome = true := by
+  simp [step?, exprValue?]
+
+/-- §12.3.2 getProp on object always steps. -/
+theorem step_getProp_object (addr : Nat) (prop : PropName) (env : Env) (heap : Heap)
+    (trace : List TraceEvent) (funcs : Array FuncClosure)
+    (cs : List (List (VarName × Value))) :
+    (step? ⟨.getProp (.lit (.object addr)) prop, env, heap, trace, funcs, cs⟩).isSome = true := by
+  simp [step?, exprValue?]
+
+/-- allValues of empty list is some []. -/
+theorem allValues_nil : allValues [] = some [] := by
+  simp [allValues]
+
+/-- allValues of lit :: rest decomposes. -/
+theorem allValues_cons_lit (v : Value) (rest : List Expr) (vs : List Value)
+    (h : allValues rest = some vs) :
+    allValues (.lit v :: rest) = some (v :: vs) := by
+  simp [allValues, h]
+
+/-- allValues of non-lit head is none. -/
+theorem allValues_cons_nonLit (e : Expr) (rest : List Expr)
+    (he : ∀ v, e ≠ .lit v) :
+    allValues (e :: rest) = none := by
+  unfold allValues; split
+  · next v => exact absurd rfl (he v)
+  · rfl
+
+/-- §7.1.12 valueToString on string is identity. -/
+theorem valueToString_string (s : String) :
+    valueToString (.string s) = s := by
+  simp [valueToString]
+
+/-- §7.2.14 toBoolean on true is true. -/
+theorem toBoolean_true : toBoolean (.bool true) = true := by
+  simp [toBoolean]
+
+/-- §7.2.14 toBoolean on false is false. -/
+theorem toBoolean_false : toBoolean (.bool false) = false := by
+  simp [toBoolean]
+
+/-- §7.2.14 toBoolean on null is false. -/
+theorem toBoolean_null : toBoolean .null = false := by
+  simp [toBoolean]
+
+/-- §7.2.14 toBoolean on undefined is false. -/
+theorem toBoolean_undefined : toBoolean .undefined = false := by
+  simp [toBoolean]
+
+/-- §7.2.14 toBoolean on any object is true. -/
+theorem toBoolean_object (addr : Nat) : toBoolean (.object addr) = true := by
+  simp [toBoolean]
+
+/-- §7.2.14 toBoolean on any function is true. -/
+theorem toBoolean_function (idx : FuncIdx) : toBoolean (.function idx) = true := by
+  simp [toBoolean]
+
+/-- §7.2.14 toBoolean on non-empty string is true. -/
+theorem toBoolean_string_nonempty (s : String) (h : ¬s.isEmpty) :
+    toBoolean (.string s) = true := by
+  simp [toBoolean, h]
+
+/-- §7.2.14 toBoolean on empty string is false. -/
+theorem toBoolean_string_empty : toBoolean (.string "") = false := by
+  simp [toBoolean]
+
+/-- §7.1.3 toNumber on a number is identity. -/
+theorem toNumber_number (n : Float) : toNumber (.number n) = n := by
+  simp [toNumber]
+
+/-- §7.1.3 toNumber on true is 1. -/
+theorem toNumber_true : toNumber (.bool true) = 1.0 := by
+  simp [toNumber]
+
+/-- §7.1.3 toNumber on false is 0. -/
+theorem toNumber_false : toNumber (.bool false) = 0.0 := by
+  simp [toNumber]
+
+/-- §7.1.3 toNumber on null is 0. -/
+theorem toNumber_null : toNumber .null = 0.0 := by
+  simp [toNumber]
+
+/-- §13.15 try/catch normal completion: when body is a value without finally, steps to the value. -/
+theorem step_tryCatch_normal_noFinally (v : Value) (catchParam : VarName) (catchBody : Expr)
+    (env : Env) (heap : Heap) (trace : List TraceEvent) (funcs : Array FuncClosure)
+    (cs : List (List (VarName × Value)))
+    (hNotCallFrame : catchParam ≠ "__call_frame_return__") :
+    step? ⟨.tryCatch (.lit v) catchParam catchBody none, env, heap, trace, funcs, cs⟩ =
+      some (.silent, pushTrace ⟨.lit v, env, heap, trace, funcs, cs⟩ .silent) := by
+  simp [step?, exprValue?, hNotCallFrame]
+
+/-- §13.1 return with valued argument produces error event. -/
+theorem step_return_some_value (v : Value) (env : Env) (heap : Heap)
+    (trace : List TraceEvent) (funcs : Array FuncClosure)
+    (cs : List (List (VarName × Value))) :
+    (step? ⟨.return (some (.lit v)), env, heap, trace, funcs, cs⟩).isSome = true := by
+  simp [step?, exprValue?]
+
+/-- §14.4.14 yield with no argument steps to undefined. -/
+theorem step_yield_none (delegate : Bool) (env : Env) (heap : Heap)
+    (trace : List TraceEvent) (funcs : Array FuncClosure)
+    (cs : List (List (VarName × Value))) :
+    step? ⟨.yield none delegate, env, heap, trace, funcs, cs⟩ =
+      some (.silent, pushTrace ⟨.lit .undefined, env, heap, trace, funcs, cs⟩ .silent) := by
+  simp [step?]
+
+/-- §14.7.14 await with valued argument steps to that value. -/
+theorem step_await_value (v : Value) (env : Env) (heap : Heap)
+    (trace : List TraceEvent) (funcs : Array FuncClosure)
+    (cs : List (List (VarName × Value))) :
+    step? ⟨.await (.lit v), env, heap, trace, funcs, cs⟩ =
+      some (.silent, pushTrace ⟨.lit v, env, heap, trace, funcs, cs⟩ .silent) := by
+  simp [step?, exprValue?]
+
+/-- §8.3 this without binding resolves to undefined. -/
+theorem step_this_unbound (env : Env) (heap : Heap) (trace : List TraceEvent)
+    (funcs : Array FuncClosure) (cs : List (List (VarName × Value)))
+    (h : env.lookup "this" = none) :
+    step? ⟨.this, env, heap, trace, funcs, cs⟩ =
+      some (.silent, pushTrace ⟨.lit .undefined, env, heap, trace, funcs, cs⟩ .silent) := by
+  simp [step?, h]
+
+/-- §13.12 Subtraction produces a number. -/
+theorem evalBinary_sub (a b : Value) :
+    ∃ n, evalBinary .sub a b = .number n := by
+  exact ⟨toNumber a - toNumber b, by simp [evalBinary]⟩
+
+/-- §13.12 Multiplication produces a number. -/
+theorem evalBinary_mul (a b : Value) :
+    ∃ n, evalBinary .mul a b = .number n := by
+  exact ⟨toNumber a * toNumber b, by simp [evalBinary]⟩
+
+/-- §13.12 Division produces a number. -/
+theorem evalBinary_div (a b : Value) :
+    ∃ n, evalBinary .div a b = .number n := by
+  exact ⟨toNumber a / toNumber b, by simp [evalBinary]⟩
+
+/-- §7.2.15 Strict equality is decidable and produces a bool. -/
+theorem evalBinary_strictEq_bool (a b : Value) :
+    ∃ bl, evalBinary .strictEq a b = .bool bl := by
+  exact ⟨a == b, by simp [evalBinary]⟩
+
+/-- §7.2.14 Equality is decidable and produces a bool. -/
+theorem evalBinary_eq_bool (a b : Value) :
+    ∃ bl, evalBinary .eq a b = .bool bl := by
+  exact ⟨abstractEq a b, by simp [evalBinary]⟩
+
+/-- §7.2.13 Less-than produces a bool. -/
+theorem evalBinary_lt_bool (a b : Value) :
+    ∃ bl, evalBinary .lt a b = .bool bl := by
+  exact ⟨abstractLt a b, by simp [evalBinary]⟩
+
+/-- var lookup on unbound name produces ReferenceError. -/
+theorem step_var_unbound (name : VarName) (env : Env) (heap : Heap)
+    (trace : List TraceEvent) (funcs : Array FuncClosure)
+    (cs : List (List (VarName × Value)))
+    (h : env.lookup name = none) :
+    step? ⟨.var name, env, heap, trace, funcs, cs⟩ =
+      some (.error ("ReferenceError: " ++ name),
+        pushTrace ⟨.lit .undefined, env, heap, trace, funcs, cs⟩ (.error ("ReferenceError: " ++ name))) := by
+  simp [step?, h]
+
+/-- §13.5 Negation produces a number. -/
+theorem evalUnary_neg (v : Value) :
+    evalUnary .neg v = .number (-toNumber v) := by
+  simp [evalUnary]
+
+/-- §13.5 Logical NOT produces a bool. -/
+theorem evalUnary_logNot (v : Value) :
+    evalUnary .logNot v = .bool (!toBoolean v) := by
+  simp [evalUnary]
+
+/-- §13.5 void produces undefined. -/
+theorem evalUnary_void (v : Value) :
+    evalUnary .void v = .undefined := by
+  simp [evalUnary]
+
+/-- Env.assign on existing name updates it. -/
+theorem Env.assign_existing (env : Env) (name : VarName) (v : Value)
+    (h : env.bindings.any (fun kv => kv.fst == name) = true) :
+    (env.assign name v).bindings = updateBindingList env.bindings name v := by
+  simp [Env.assign, h]
+
+/-- Env.extend always prepends. -/
+theorem Env.extend_bindings (env : Env) (name : VarName) (v : Value) :
+    (env.extend name v).bindings = (name, v) :: env.bindings := by
+  simp [Env.extend]
+
+/-- exprValue? of a literal is some. -/
+theorem exprValue_lit (v : Value) : exprValue? (.lit v) = some v := by
+  simp [exprValue?]
+
+/-- exprValue? of a non-literal is none. -/
+theorem exprValue_var (name : VarName) : exprValue? (.var name) = none := by
+  simp [exprValue?]
+
+/-- §13.7.4 while_ always steps (unfolds to if). -/
+theorem step_while_isSome (cond body : Expr) (env : Env) (heap : Heap)
+    (trace : List TraceEvent) (funcs : Array FuncClosure)
+    (cs : List (List (VarName × Value))) :
+    (step? ⟨.while_ cond body, env, heap, trace, funcs, cs⟩).isSome = true := by
+  simp [step?]
+
+/-- §18.2 console.log call produces log trace event. -/
+theorem step_consoleLog (msg : String) (env : Env) (heap : Heap)
+    (trace : List TraceEvent) (funcs : Array FuncClosure)
+    (cs : List (List (VarName × Value))) :
+    step? ⟨.call (.lit (.function consoleLogIdx)) [.lit (.string msg)],
+           env, heap, trace, funcs, cs⟩ =
+      some (.log msg,
+        pushTrace ⟨.lit .undefined, env, heap, trace, funcs, cs⟩ (.log msg)) := by
+  simp [step?, exprValue?, allValues, consoleLogIdx, valueToString]
+
 end VerifiedJS.Core

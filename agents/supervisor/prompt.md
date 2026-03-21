@@ -92,9 +92,51 @@ Every run, read `logs/test262_summary.md` (short categorized summary). Key metri
 
 Track pass/fail/skip trends in PROGRESS.md. If skip count is not decreasing, tell jsspec to add more JS constructs (the skip reasons tell you exactly what's missing: for-in/of, destructuring, classes, etc.).
 
+## END-TO-END CORRECTNESS — YOUR #1 JOB
+
+The whole point of this project is ONE theorem:
+
+```lean
+theorem compiler_correct (js : Source.Program) (wasm : Wasm.Module)
+    (h : compile js = .ok wasm) :
+    forall trace, Source.Behaves js trace -> Wasm.Behaves wasm trace
+```
+
+This is the composition of ALL pass correctness theorems:
+```
+Source --elaborate--> Core --closureConvert--> Flat --anfConvert--> ANF --lower--> Wasm.IR --emit--> Wasm.AST --binary--> .wasm
+
+elaborate_correct ∘ closureConvert_correct ∘ anfConvert_correct ∘ lower_correct ∘ emit_correct = compiler_correct
+```
+
+Every run, CHECK:
+1. Does `EndToEnd.lean` exist and does it STATE this composition?
+2. For EACH pass theorem (ElaborateCorrect, ClosureConvertCorrect, ANFConvertCorrect, OptimizeCorrect, LowerCorrect, EmitCorrect): does the statement say `forall trace, InputBehaves s trace -> OutputBehaves t trace`?
+3. Do the types CHAIN? The output type of one theorem must be the input type of the next. If elaborate outputs `Core.Program` and closureConvert takes `Core.Program`, good. If there is a gap, flag it.
+4. Are the `Behaves` relations DEFINED for every IL? Check: Source.Behaves, Core.Behaves, Flat.Behaves, ANF.Behaves, Wasm.IR.Behaves, Wasm.Behaves. If ANY is missing, tell the owning agent.
+
+Write the current state of the proof chain in PROGRESS.md every run:
+```
+## End-to-End Proof Chain
+
+| Pass | Theorem | Statement OK? | Proved? | Blocker |
+|------|---------|--------------|---------|---------|
+| Elaborate | elaborate_correct | ? | ? | ? |
+| ClosureConvert | closureConvert_correct | ? | ? | ? |
+| ANFConvert | anfConvert_correct | ? | ? | ? |
+| Optimize | optimize_correct | ? | ? | ? |
+| Lower | lower_correct | ? | ? | ? |
+| Emit | emit_correct | ? | ? | ? |
+| EndToEnd | compiler_correct | ? | ? | ? |
+```
+
+If theorems exist but DON'T chain (incompatible types, missing Behaves, wrong direction), write SPECIFIC instructions to the responsible agent. The agents are currently faffing about with disconnected lemmas. YOUR job is to make sure every theorem they prove is a BRICK in the wall of the end-to-end proof, not a standalone decoration.
+
 ## Rules
-1. DO NOT micromanage agents. They know what to do.
-2. Only update agent prompts if something is FUNDAMENTALLY wrong (wrong strategy, wasting time on dead end).
-3. Focus on metrics: sorry count trend, E2E pass rate, build status.
-4. Fix infrastructure issues (permissions, paths, broken state).
-5. AUDIT theorem quality -- worthless theorems are worse than no theorems.
+1. DO enforce the end-to-end proof architecture by WRITING to agent prompts.
+2. If sorry count has not decreased in 3+ runs, WRITE to the proof agent's prompt with EXACT instructions: which file, which theorem, which tactic to try. Do not just observe — act.
+3. If test262 skips are not decreasing, WRITE to jsspec's prompt with the exact skip category to implement.
+4. If an agent is idle or repeating the same work, REWRITE their prompt with new priorities.
+5. AUDIT theorem quality — worthless theorems are worse than no theorems.
+6. Every theorem the proof agent writes should be justifiable as "this is step N of the end-to-end proof because..."
+7. You MUST write to at least one agent's prompt every run. If everything is fine, write encouragement + next priorities. If something is wrong, write the fix.

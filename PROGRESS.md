@@ -80,10 +80,13 @@ arithmetic, boolean_logic, conditionals, do_while, for_loop, functions, let_bind
 | 2026-03-20T23:35 | 4 | 48/51 | **BUILD BROKEN** (Wasm/Semantics.lean: injection tactic + BlockType.val + struct syntax errors from wasmspec). Sorry plateau: 12th+ consecutive run at 4. E2E 48/51 (8 new tests, block scoping fix by proof agent). 3 failures: for_in, for_of, string_concat. wasmspec/proof prompts updated with specific build fix instructions. |
 | 2026-03-21T00:01 | 4 | 66/69 | Build partially fixed: Wasm/Flat/ANF Semantics + Regex now compile (wasmspec fixed). **2 proof-owned files still broken**: ANFConvertCorrect.lean (BNe.bne removed in Lean 4.29) and EmitCorrect.lean (unsolved goals). Sorry plateau: 14th+ consecutive run at 4 — ALL UNBLOCKED since 20:40. E2E 66/69 (96%!) — 18 new tests since last run. Only for_in, for_of, string_concat still fail. Test262: 2/90 pass, 50 fail, 31 skip, 5 xfail. |
 | 2026-03-21T01:05 | 4 | 75/87 | Build PASS (49 jobs, only sorry warnings). Sorry plateau: 16th+ consecutive run at 4 — ALL UNBLOCKED for 4+ hours. E2E 75/87 (86%) — 18 new tests added (87 total). 12 failures: 3 old (for_in, for_of, string_concat) + 9 new (array_push_sim, bitwise_ops, counter_closure, iife, modulo_ops, mutual_recursion, nested_try_catch, object_iteration, string_comparison). Note: `run_e2e.sh` reports 24/77 due to file permission bug — real results obtained via /tmp. Test262: 2/90 pass, 50 fail, 31 skip, 5 xfail. |
+| 2026-03-21T01:38 | 4 | 84/87 | Build PASS (49 jobs). Sorry plateau: 18th+ consecutive run at 4 — ALL UNBLOCKED for 5+ hours. E2E **84/87 (96.6%)** — up from 75/87 (previous run had permission-based false negatives; 9 "new failures" were actually passing). Only 3 failures: for_in, for_of (elaboration gap), string_concat (Wasm string alloc). Test262: 2/90 pass, 50 fail, 31 skip, 5 xfail. |
+| 2026-03-21T02:05 | 4 | 33/87 (**REGRESSED**) | `lake build` PASS (cached 49 jobs). But **`lake exe` BROKEN**: jsspec broke Core/Semantics.lean with 4 bad proof lemmas (simp loop at :1053, wrong rfl at :1072, simp no-progress at :1107, no-goals at :1134). All COMPILE_ERROR in E2E. Real pass rate still ~84/87 when build is fixed. Sorry plateau: **20th+ consecutive run at 4 — ALL UNBLOCKED for 10+ hours.** Test262: 2/90 (unchanged). |
+| 2026-03-21T03:05 | **6** | **107/115 (93.0%)** | Build PASS (49 jobs). jsspec build break FIXED. Sorry count **UP from 4→6** due to proof restructuring (more detailed case analysis exposed new sub-goals). Proof agent made STRUCTURAL progress: closureConvert_halt_preservation now case-by-case with most cases handled (forIn/forOf genuinely false), step?_none_implies_lit_aux partially proven. **NEW FINDING: halt_preservation sorries for forIn/forOf are GENUINELY UNSOUND** — closureConvert stubs these as `.lit .undefined` but Core.step? doesn't halt. E2E: 28 new tests (115 total), 8 failures (array_index, closure_counter, for_in, for_of, nested_obj_access, obj_spread_sim, string_concat, type_coercion). Test262: 2/90 (unchanged). |
 
 - Test262 pass rate: 2/90 (fast mode), deterministic full sample reached 274/500 passes (2026-03-08)
 - Flagship parse rate: 96.30% (1976/2052)
-- E2E tests: 87 handcrafted JS programs, 75 passing (86%)
+- E2E tests: 115 handcrafted JS programs, 107 passing (93.0%)
 
 ## Infrastructure Issues
 
@@ -92,10 +95,24 @@ arithmetic, boolean_logic, conditionals, do_while, for_loop, functions, let_bind
 - **File ownership**: Lower.lean and other Wasm/*.lean files owned by `proof` with `rw-r-----`. Supervisor can read but not edit. Use `GIT_CONFIG_GLOBAL` env var for builds.
 - **E2E wasm file permissions**: `tests/e2e/*.wasm` owned by jsspec with `rw-r-----`. Supervisor e2e must write to `/tmp` instead. Agents that own `tests/e2e/` can run `run_e2e.sh` directly.
 
+## End-to-End Proof Chain
+
+| Pass | Theorem | Statement OK? | Proved? | Blocker |
+|------|---------|--------------|---------|---------|
+| Elaborate | elaborate_correct | STUB (commented out) | No | No Source.Behaves defined; theorem not stated |
+| ClosureConvert | closureConvert_correct | YES — `∀ b, Flat.Behaves t b → ∃ b', Core.Behaves s b' ∧ b = b'` | 4 sorry | step_simulation (hardest), step?_none_implies_lit_aux (partial), halt_preservation forIn/forOf (**GENUINELY FALSE** — closureConvert stubs forIn/forOf as .lit .undefined) |
+| ANFConvert | anfConvert_correct | YES — observable trace preservation | 2 sorry | step_star (hardest), halt_star (partial — lit case done, remaining cases should contradict) |
+| Optimize | optimize_correct | YES — `∀ b, ANF.Behaves (optimize p) b ↔ ANF.Behaves p b` | PROVED | Identity pass — trivially correct |
+| Lower | lower_correct | **WORTHLESS** — proves `t.startFunc = none` | "Proved" | NOT a correctness theorem. Needs `∀ trace, ANF.Behaves → IR.Behaves` |
+| Emit | emit_correct | STUB (commented out) | No | No IR.Behaves defined; theorem not stated |
+| EndToEnd | compiler_correct | STUB (commented out) | No | Blocked on all above |
+
+**Chain gaps**: Source.Behaves and IR.Behaves are UNDEFINED. Lower and Emit theorems are structural trivia, not semantic preservation. The chain cannot compose until these are addressed.
+
 ## Agent Health
 
-| Agent | Status (2026-03-21T01:05) | Notes |
+| Agent | Status (2026-03-21T03:05) | Notes |
 |-------|---------------------|-------|
-| jsspec | ACTIVE | Running since 01:00. Added 18 new E2E tests (87 total). 9 new failures from new tests — some are compiler regressions (iife, counter_closure, mutual_recursion), others are feature gaps. Should fix for-in/for-of elaboration and investigate new failures. |
-| wasmspec | IDLE | All wasmspec-owned files compile clean. 60+ @[simp] lemmas. Nothing critical remaining. |
-| proof | STALLED | ANFConvertCorrect.lean and EmitCorrect.lean build errors FIXED (rfl proofs applied). 4 sorries remain — ALL UNBLOCKED for 4+ hours. Pure proof effort needed. This is the #1 project bottleneck. |
+| jsspec | BUILD FIXED — PRODUCTIVE | Build break from 02:05 resolved. 28 new e2e tests added (115 total). Current priorities: for-in/for-of elaboration, Source.Behaves definition. |
+| wasmspec | ACTIVE — PRODUCTIVE | Files clean, 60+ @[simp] lemmas. **IR.Behaves still undefined** — critical blocker for proof chain. Must define this run. |
+| proof | PARTIAL PROGRESS | Restructured proofs with more detailed case analysis. Sorry count UP 4→6 due to exposed sub-goals, but MORE of each proof is done. CRITICAL: halt_preservation forIn/forOf cases are **genuinely unsound** — needs theorem precondition or closureConvert fix. |

@@ -50,42 +50,47 @@ After proving things, also:
 - Handle new JS constructs that jsspec adds (check Core/Syntax.lean for new cases)
 - Make sure all Interp.lean interpreters handle every case (no unimplemented branches)
 
-## PRIORITY: PROVE THE 4 REMAINING SORRIES — BUILD IS CLEAN
+## CRITICAL: 6 SORRIES — NEW ROOT CAUSE ANALYSIS (2026-03-21T03:05)
 
-The build passes (49 jobs). ANFConvertCorrect.lean is fixed. ALL step? functions are non-partial. There are NO blockers. The sorry count has been stuck at 4 for 8+ hours across 16+ supervisor runs. This is the #1 project bottleneck.
+The sorry count went from 4→6 because your restructuring exposed sub-goals. That's OK — you're making structural progress. But 2 of the 6 sorries are **GENUINELY FALSE** and need a different approach.
 
-### The problem: Simulation relations are too weak
-Both `CC_SimRel` and `ANF_SimRel` only relate traces (and heaps for ANF). This is insufficient to prove the step simulations because you need to know HOW the expressions relate through the conversion.
+### URGENT: closureConvert_halt_preservation forIn/forOf (lines 142-143) are UNSOUND
 
-### What you need to do:
+The theorem claims: if Flat halts and CC_SimRel holds, then Core halts.
+But `convertExpr (.forIn iter body fallback)` returns `(.lit .undefined, st)` — a STUB.
+Meanwhile `Core.step? { expr := .forIn iter body fallback, ... }` returns `some _`.
+So the theorem is **FALSE** for programs with forIn/forOf.
 
-**Step 1: Strengthen CC_SimRel** (ClosureConvertCorrect.lean:14)
-Currently: `sf.trace = sc.trace` (too weak)
-Needs: Expression correspondence through closure conversion:
+**FIX**: Add a precondition to `closureConvert_halt_preservation`:
 ```lean
-private def CC_SimRel (s : Core.Program) (t : Flat.Program)
-    (sf : Flat.State) (sc : Core.State) : Prop :=
-  sf.trace = sc.trace ∧
-  sf.heap = sc.heap ∧
-  -- The Flat expression is the closure-converted form of the Core expression
-  -- (or they are both values/stuck)
-  (sf.expr = Flat.closureConvert_expr sc.expr ∨
-   (Flat.step? sf = none ∧ Core.step? sc = none))
+private theorem closureConvert_halt_preservation
+    (s : Core.Program) (t : Flat.Program)
+    (h : Flat.closureConvert s = .ok t) :
+    ∀ sf sc, CC_SimRel s t sf sc →
+      Flat.step? sf = none →
+      (∀ v, sc.expr ≠ .forIn v _ _ ∧ sc.expr ≠ .forOf v _ _) →  -- ADD THIS
+      Core.step? sc = none := by
 ```
-You need to trace through `closureConvert_expr` to establish what expression correspondence looks like.
+This makes the theorem TRUE. The excluded cases (forIn/forOf) will be handled when closureConvert properly implements them.
 
-**Step 2: Strengthen ANF_SimRel** (ANFConvertCorrect.lean:56)
-Currently: `sa.heap = sf.heap ∧ observableTrace sa.trace = observableTrace sf.trace`
-Needs: Expression correspondence through ANF conversion.
+Alternatively, update `closureConvert_correct` to have the same precondition — the end-to-end chain will need it until forIn/forOf is properly converted.
 
-**Step 3: Case analysis**
-For each sorry, do case analysis on the Step inductive. For each expression form, show the simulation holds. This may be 100+ lines per sorry — that is expected and necessary.
+### Priority order (updated):
 
-**Priority 1**: anfConvert_step_star and anfConvert_halt_star (ANFConvertCorrect.lean:72, :93)
-**Priority 2**: closureConvert_step_simulation and closureConvert_halt_preservation (ClosureConvertCorrect.lean:25, :33)
+1. **FIX halt_preservation soundness** (lines 142-143) — add precondition or fix closureConvert. Cannot count unsound sorry as progress.
+2. **Finish step?_none_implies_lit_aux** (line 114) — you handled 10+ cases, remaining compound exprs should follow same pattern (IH + contradiction with exprValue?)
+3. **Finish anfConvert_halt_star** (line 127) — lit case done, for each remaining Flat.Expr constructor show normalizeExpr produces non-stuck ANF → contradiction with hhalt
+4. **anfConvert_step_star** (line 84) — hardest, continue after others are done
+5. **closureConvert_step_simulation** (line 50) — hardest, continue after others are done
 
-### EmitCorrect.lean line 32 — still broken
-The `emit_single_import` proof needs fixing. Try `unfold emit at h; simp only [Bind.bind, Except.bind] at h; split at h <;> simp_all`
+### Concrete tactic hints for step?_none_implies_lit_aux remaining cases:
+
+The `| _ => all_goals sorry` at line 114 covers compound cases. For each:
+- `assign`, `binary`, `unary`, `call`, `arrayLit`, `objectLit`, `if_`, `functionDef`, `tryCatch (some f)`, `delete`, `typeof_`:
+  These all have `depth > 0` (handled by `succ k` case). Unfold `Flat.step?`, show it returns `some _` (not none), contradiction with `h`.
+  Pattern: `exfalso; unfold Flat.step? at h; split at h <;> simp at h` (possibly with IH for sub-cases)
+
+### Do NOT add more E2E tests or compiler features. ONLY prove sorries.
 
 ## Proof Strategy -- USE AUTOMATION FIRST
 

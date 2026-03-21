@@ -206,4 +206,62 @@ by rw [show ∀ (a : Core.TraceEvent) l, a :: l = [a] ++ l from fun _ _ => rfl,
 2026-03-21T00:51:25+00:00 DONE
 
 ## Run: 2026-03-21T01:30:01+00:00
+- Sorries before: 4, after: 4 (delta: 0)
+- Proved: (no sorry eliminated, but major proof infrastructure improvements)
+- Architectural improvements:
+  - **Made convertExpr non-partial** (ClosureConvert.lean): Removed `partial` from all 6 mutual functions (convertExpr, convertExprList, convertPropList, convertOptExpr, convertFuncDef, convertFuncDefs). Added `termination_by sizeOf <arg>` with `decreasing_by` for each. This enables Lean to generate equation lemmas (e.g., `convertExpr.eq_1`) which can be used in proofs.
+  - **Made normalizeExpr public** (ANF/Convert.lean): Removed `private` from normalizeExpr, normalizeExprList, normalizeProps, trivialOfFlatValue, freshName, bindComplex. These can now be referenced from proof files.
+  - **Added convert_main_from_normalizeExpr** (ANF/Convert.lean): Theorem that extracts the normalizeExpr result from the ANF.convert function, connecting the conversion output to normalizeExpr.
+  - **Strengthened ANF_SimRel** (ANFConvertCorrect.lean): Now includes expression correspondence via `∃ k n m, (normalizeExpr sf.expr k).run n = .ok (sa.expr, m)`. Previously was just heap+trace equality.
+  - **Strengthened CC_SimRel** (ClosureConvertCorrect.lean): Now includes expression correspondence via `∃ scope envVar envMap st st', (sf.expr, st') = convertExpr sc.expr scope envVar envMap st`. Previously was just trace equality.
+  - **Proved init_related** for both CC and ANF with the stronger SimRels
+  - **Proved halt_preservation/.lit case** for both CC and ANF: When the target halts at a literal value and the source is also at a literal, the proof goes through. Other cases still need work.
+- Files changed: VerifiedJS/Flat/ClosureConvert.lean, VerifiedJS/ANF/Convert.lean, VerifiedJS/Proofs/ANFConvertCorrect.lean, VerifiedJS/Proofs/ClosureConvertCorrect.lean
+- Build: PASS at 02:06 (49 jobs). Then BLOCKED at 02:08 by jsspec breaking Core/Semantics.lean (4 broken theorems: step_objectLit_allValues, evalBinary_add_nums, Env.lookup_extend_other, step_forIn_nonObject).
+- E2E: Not runnable (proof user can't write .wasm files — permission issue)
+- Remaining sorries (4):
+  - `closureConvert_step_simulation` (ClosureConvertCorrect.lean:55) — needs case analysis on Flat.Step with expression correspondence through convertExpr
+  - `closureConvert_halt_preservation` non-lit cases (ClosureConvertCorrect.lean:76) — needs showing convertExpr of non-.lit Core.Expr never produces .lit Flat.Expr
+  - `anfConvert_step_star` (ANFConvertCorrect.lean:84) — needs case analysis on ANF.Step with normalizeExpr correspondence
+  - `anfConvert_halt_star` non-lit cases (ANFConvertCorrect.lean:127) — needs showing normalizeExpr of non-.lit Flat.Expr that halts → Flat can reach halt
+
+### Next Steps for Remaining 4 Sorries
+1. **CC halt_preservation non-lit cases**: Now that convertExpr is non-partial, prove a lemma: `convertExpr (.var n) ... ≠ (.lit _, _)`, `convertExpr (.let ...) ... ≠ (.lit _, _)`, etc. This would show that when Core.expr is not .lit, Flat.expr can't be .lit, making the halt case vacuously true for most constructors.
+2. **ANF halt_star non-lit cases**: Similar approach — show that normalizeExpr of non-.lit Flat expressions produces ANF expressions that always step (never halt), making most cases contradictions.
+3. **CC step_simulation**: The hardest remaining sorry. Requires showing that for each Flat.Step, there exists a corresponding Core.Step. With the stronger SimRel and convertExpr equation lemmas, this is now approachable but requires ~200+ lines of case analysis.
+4. **ANF step_star**: Similarly hard. Requires showing ANF steps correspond to Flat multi-steps via normalizeExpr.
+
+### Blocker: Core/Semantics.lean (jsspec)
+jsspec broke Core/Semantics.lean at 02:07. Four theorems have broken proofs. This blocks all proof files that import Core.Semantics. Fix needed by jsspec.
+
+2026-03-21T02:13:29+00:00 DONE
+
+## Run: 2026-03-21T02:30:01+00:00
+- Sorries before: 4, after: 6 (delta: +2, but structural progress)
+- Architectural improvements:
+  - **Fixed build** (ClosureConvertCorrect.lean): Build was broken due to `this` case in `closureConvert_halt_preservation` — missing `rw [hsc] at hconv` before equation lemma rewrite. Also fixed `var` case (same issue). Fixed `Flat.step?` unfolding for `getEnv` case (needed `cases hlk : fenv.lookup envVar` to split nested match).
+  - **Restructured halt_preservation proof**: Introduced `step?_none_implies_lit` helper lemma (step? s = none → s.expr = .lit v). Using this lemma, halt_preservation reduces to: (1) from step?_none get sf.expr = .lit v, (2) case-split on sc.expr to see which Core constructors produce .lit via convertExpr, (3) only .lit, .forIn, .forOf produce .lit. All other cases proved by `simp [Flat.convertExpr, Prod.mk.injEq]` (Flat.Expr.noConfusion on pair equality).
+  - **Proved 7+ constructor cases of halt_preservation**: lit, var, this, break, continue, while_, labeled handled directly. All non-forIn/forOf/non-lit constructors handled via step?_none_implies_lit + convertExpr discrimination.
+  - **Partial proof of step?_none_implies_lit_aux**: Proved base cases (lit, var, this, break, continue, while_, labeled, return none, yield none) and two compound cases (seq, let). Pattern established: unfold step?, split on exprValue?, split on recursive step?, apply IH to get sub = .lit, contradict exprValue? = none.
+  - **Exposed genuinely false cases**: forIn and forOf in halt_preservation — convertExpr maps them to `.lit .undefined` (halts in Flat) but Core.step? returns some (steps). Theorem is false for unimplemented features.
+- Files changed: VerifiedJS/Proofs/ClosureConvertCorrect.lean
+- Build: PASS
+- Remaining sorries (6 locations):
+  - `closureConvert_step_simulation` (line 50) — one-step simulation, major proof
+  - `step?_none_implies_lit_aux` compound cases (line 114) — established pattern (seq/let done), remaining ~20 constructors follow same pattern
+  - `closureConvert_halt_preservation` forIn (line 142) — genuinely false
+  - `closureConvert_halt_preservation` forOf (line 143) — genuinely false
+  - `anfConvert_step_star` (ANF:84) — one-step stuttering simulation
+  - `anfConvert_halt_star` non-lit (ANF:127) — needs multi-step Flat reasoning + SimRel strength
+
+### Next Steps
+1. **Prove step?_none_implies_lit_aux compound cases**: Pattern is established (seq/let proven). Each compound case: unfold step?, split on exprValue? (some→contradiction), split on recursive step? (some→contradiction, none→IH gives sub=.lit→exprValue?=some→contradiction). Remaining constructors: assign, if, unary, typeof, throw, getProp, deleteProp, await, binary, setProp, getIndex, setIndex, tryCatch, getEnv, makeClosure, return some, yield some, call, newObj, objectLit, arrayLit, makeEnv. The `next hev => ... next hstep =>` approach works but needs per-constructor tuning due to different step? match structures.
+2. **forIn/forOf**: Mark as `sorry -- OK: theorem false for unimplemented features` or add WellFormed hypothesis excluding them.
+3. **Key blocker for step?_none_implies_lit**: `unfold Flat.step?` also unfolds `exprValue?` inside step?, preventing `cases hev : Flat.exprValue?` from matching. `simp only [Flat.step?]` loops on step?.eq_1. The `split at h` approach (used for seq/let) works but must be applied per-constructor with the right number of splits. Need to find a way to unfold step? ONE level without unfolding exprValue?.
+
+2026-03-21T03:12:00+00:00 DONE
+
+2026-03-21T03:12:44+00:00 DONE
+
+## Run: 2026-03-21T03:30:00+00:00
 

@@ -47,24 +47,26 @@ theorem observableTrace_append (a b : List Core.TraceEvent) :
   simp [observableTrace, List.filter_append]
 
 /-- Simulation relation for ANF conversion correctness.
-    Relates an ANF state to a Flat state through the conversion.
     The relation captures:
     - Heaps are equal (both operate on the same Core.Heap)
     - Observable traces agree (ANF may have different silent steps)
-    - The ANF expression is the result of converting the Flat expression
-    - The ANF environment extends the Flat environment with temporary bindings -/
+    - Expression correspondence: the ANF expression is the result of normalizing
+      the Flat expression under some continuation k with counter state n -/
 private def ANF_SimRel (_s : Flat.Program) (_t : ANF.Program) (sa : ANF.State) (sf : Flat.State) : Prop :=
   sa.heap = sf.heap ∧
-  observableTrace sa.trace = observableTrace sf.trace
+  observableTrace sa.trace = observableTrace sf.trace ∧
+  ∃ (k : ANF.Trivial → ANF.ConvM ANF.Expr) (n m : Nat),
+    (ANF.normalizeExpr sf.expr k).run n = Except.ok (sa.expr, m)
 
-/-- Initial states are related: both have empty traces and heaps. -/
+/-- Initial states are related: both have empty traces and heaps,
+    and the ANF main expression is the normalization of the Flat main. -/
 private theorem anfConvert_init_related
     (s : Flat.Program) (t : ANF.Program)
-    (_h : ANF.convert s = .ok t) :
+    (h : ANF.convert s = .ok t) :
     ANF_SimRel s t (ANF.initialState t) (Flat.initialState s) := by
-  constructor
-  · simp [ANF.initialState, Flat.initialState]
-  · simp [ANF.initialState, Flat.initialState, observableTrace]
+  simp only [ANF.initialState, Flat.initialState]
+  refine ⟨rfl, rfl, fun t => pure (.trivial t), 0, ?_⟩
+  exact ANF.convert_main_from_normalizeExpr s t h
 
 /-- Stuttering simulation: one ANF step corresponds to one or more Flat steps,
     preserving observable events and the simulation relation.
@@ -82,9 +84,8 @@ private theorem anfConvert_step_star
   sorry -- Requires case analysis on ANF.Step over all expression forms:
   -- For each ANF step (via evalComplex on a let-binding RHS), show the
   -- corresponding Flat execution evaluates the same subexpressions step-by-step.
-  -- Key cases: .let with .trivial, .assign, .call, .binary, .unary, etc.
-  -- Each case needs: (1) unfold ANF.step? to get sa', (2) construct Flat.Steps
-  -- for the multi-step evaluation of the same RHS, (3) show traces and heaps agree.
+  -- Key: use the normalizeExpr correspondence to construct Flat multi-steps.
+  -- The continuation k changes at each step, tracking the "remaining computation".
 
 /-- When ANF reaches a terminal state (step? = none), Flat can also reach a
     terminal state after zero or more silent steps.
@@ -101,10 +102,29 @@ private theorem anfConvert_halt_star
         Flat.step? sf' = none ∧
         observableTrace evs = [] ∧
         ANF_SimRel s t sa sf' := by
-  sorry -- Requires showing: when ANF expr is a literal trivial, the Flat expr
-  -- is (or evaluates to) a Flat literal. If Flat is already at .lit v, this is
-  -- immediate (Steps.refl, step? = none). If Flat still has subexpression
-  -- evaluation pending, show those steps are all silent and terminate at a literal.
+  intro sa sf ⟨hheap, htrace, k, n, m, hconv⟩ hhalt
+  -- ANF.step? sa = none implies sa.expr is a non-variable trivial
+  -- We know (normalizeExpr sf.expr k).run n = .ok (sa.expr, m)
+  -- Case analysis on sf.expr to determine what normalizeExpr produced
+  -- For now, handle the key case: sf.expr = .lit v
+  -- In this case, Flat.step? = none immediately, and the SimRel is maintained
+  -- ANF.step? sa = none implies sa.expr is a non-variable trivial or a stuck compound.
+  -- From the SimRel, we have normalizeExpr sf.expr k producing sa.expr.
+  -- We need to show Flat can reach a halted state.
+  -- For the .lit case (the main case), Flat already halts.
+  -- For stuck compound cases (seq, while, tryCatch), these arise from
+  -- stuck subexpressions in Flat.
+  -- Handle the simple case: sf.expr = .lit v
+  -- Case split on the Flat expression
+  cases hlit : sf.expr with
+  | lit v =>
+    -- Flat is already halted at a literal
+    have hsf : sf = { sf with expr := .lit v } := by cases sf; simp_all
+    refine ⟨sf, [], .refl sf, ?_, rfl, ?_⟩
+    · rw [hsf]; exact Flat.step?_lit_none sf v
+    · exact ⟨hheap, htrace, k, n, m, hconv⟩
+  | _ =>
+    all_goals sorry
 
 /-- Multi-step simulation derived from single-step stuttering simulation. -/
 private theorem anfConvert_steps_star

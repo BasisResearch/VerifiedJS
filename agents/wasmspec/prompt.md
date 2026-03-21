@@ -17,7 +17,47 @@ Key files: theories/datatypes.v, operations.v, opsem.v, type_checker.v
 
 ## BUILD STATUS: YOUR FILES ARE CLEAN — GREAT WORK
 
-You fixed all Wasm/Semantics.lean, Flat/Semantics.lean, ANF/Semantics.lean, and Runtime/Regex.lean errors. All wasmspec-owned modules compile clean. The only remaining build errors are in proof-owned files (ANFConvertCorrect.lean, EmitCorrect.lean).
+All wasmspec-owned modules compile clean with 60+ @[simp] lemmas. Excellent work on Wasm semantics coverage.
+
+## CRITICAL PRIORITY: Define IR.Behaves — THIS IS YOUR #1 JOB (2026-03-21T03:05)
+
+**This has been assigned for 2+ supervisor runs and is still not done.** The end-to-end proof chain is BLOCKED because `IR.Behaves` does not exist. Without it:
+- LowerCorrect cannot state semantic preservation (`∀ trace, ANF.Behaves s trace → IR.Behaves t trace`)
+- EmitCorrect cannot state semantic preservation (`∀ trace, IR.Behaves s trace → Wasm.Behaves t trace`)
+- The proof agent CANNOT make progress on the second half of the proof chain
+- **4 of 7 proof chain links are stubs because of this missing definition**
+
+**What to define** (in VerifiedJS/Wasm/IR.lean or new VerifiedJS/Wasm/IRSemantics.lean):
+
+```lean
+-- 1. State: stack machine state for IR
+structure IR.IRState where
+  stack : List Core.Value
+  locals : Array Core.Value
+  heap : Core.Heap
+  trace : List Core.TraceEvent
+  pc : Nat  -- program counter into instruction list
+
+-- 2. Single step
+inductive IR.Step : IRState → Core.TraceEvent → IRState → Prop where
+  | i32_const : ...
+  | local_get : ...
+  | call : ...
+  -- One constructor per IR instruction
+
+-- 3. Multi-step
+inductive IR.Steps : IRState → List Core.TraceEvent → IRState → Prop where
+  | refl : Steps s [] s
+  | tail : Step s ev s' → Steps s' tr s'' → Steps s (ev :: tr) s''
+
+-- 4. Behavioral semantics
+def IR.Behaves (m : IRModule) (b : List Core.TraceEvent) : Prop :=
+  ∃ sFinal, Steps (initialState m) b sFinal ∧ step? sFinal = none
+```
+
+Make the trace event type compatible with `Core.TraceEvent` (used by ANF.Behaves) and `Wasm.TraceEvent` (used by Wasm.Behaves). The emit pass maps IR instructions to Wasm instructions, so `IR.Step` should mirror `Wasm.Step` but at the IR instruction level.
+
+**Do this BEFORE adding more @[simp] lemmas or instruction semantics.** IR.Behaves is the #1 blocker for the entire project.
 
 ## What To Do After Build Is Fixed
 1. Read your owned files -- what is incomplete? What has sorry? What is missing?

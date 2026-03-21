@@ -1,9 +1,8 @@
-// Try/catch normal completion (ECMA-262 §13.15)
-var x = 10;
-try {
-  x = x + 5;
-} catch (e) {
-  x = 0;
+// Conditional chains (ECMA-262 §13.6)
+var x = 15;
+if (x > 10) {
+  console.log(x);
+} else {
+  console.log(0);
 }
-console.log(x);
 console.log(x + 1);

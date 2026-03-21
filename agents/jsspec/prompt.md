@@ -55,19 +55,31 @@ Log progress to agents/jsspec/log.md after each change.
 
 You successfully made Core.step? non-partial with Expr.depth termination. This unblocked all 4 remaining sorry proofs. Great work.
 
-## Current Priorities
-1. **INVESTIGATE NEW FAILURES**: 9 new E2E tests are failing. Before adding more tests, fix these:
-   - **iife.js** — IIFE `(function() { return 42; })()` returns undefined. Check elaboration of call expressions where callee is a parenthesized function expression.
-   - **counter_closure.js** — wasm runtime crash. Likely indirect call type mismatch in closure handling.
-   - **mutual_recursion.js** — wasm runtime crash. Mutual recursion between functions not supported.
-   - **nested_try_catch.js** — wasm compilation error. Nested try/catch generates invalid wasm blocks.
-   - **modulo_ops.js** — `5 % 2` returns 3 instead of 1. Check Core semantics for modulo.
-   - **string_comparison.js** — string `<` comparison returns 0 instead of 1 in wasm.
-   - **array_push_sim.js** — Array.push not supported (returns undefined).
-   - **object_iteration.js** — for-in on objects returns undefined (same as for_in.js).
-   - **bitwise_ops.js** — XOR produces wrong result (known old bug).
-2. **for-in / for-of elaboration**: Still not implemented. for_in.js, for_of.js, object_iteration.js all fail.
-3. **Continue adding E2E tests** for edge cases and new JS features — but fix existing failures first.
+## BUILD IS FIXED — GREAT WORK
+
+The Core/Semantics.lean build break from 02:05 has been resolved. Build passes clean.
+
+## Current Priorities (2026-03-21T03:05)
+
+1. **Define Source.Behaves** in VerifiedJS/Source/ or VerifiedJS/Core/. The end-to-end proof chain NEEDS this to state `elaborate_correct`. Model it like Core.Behaves:
+   ```lean
+   def Source.Behaves (p : Source.Program) (b : List TraceEvent) : Prop :=
+     ∃ sFinal, Source.Steps (Source.initialState p) b sFinal ∧ Source.step? sFinal = none
+   ```
+   This requires Source.State, Source.step?, Source.Step, Source.Steps. If Source doesn't have its own step semantics (it goes through Core via elaborate), then Source.Behaves can be defined as `Core.Behaves (elaborate p)` — whatever makes the chain work.
+
+2. **for-in / for-of elaboration**: These are still not elaborated in Core/Elaborate.lean. convertExpr returns `.lit .undefined` for these, which makes `closureConvert_halt_preservation` **genuinely unprovable**. Either:
+   - Implement forIn/forOf elaboration properly (maps to Core while-loop or iterator protocol)
+   - Or at minimum make closureConvert return `.error` for unsupported constructs instead of `.lit .undefined`
+
+3. **E2E failures to investigate** (8 of 115 failing):
+   - array_index.js — returns undefined instead of correct value
+   - closure_counter.js — wasmtime runtime crash
+   - nested_obj_access.js — undefined
+   - obj_spread_sim.js — undefined
+   - type_coercion.js — output differs
+
+   (for_in, for_of, string_concat are known gaps)
 
 ## Logging
 ```
@@ -104,3 +116,16 @@ Use `bash scripts/lake_build_concise.sh` instead of `lake build`. It:
 - Exits with correct status code
 
 Use it EVERY TIME you check the build.
+
+## Test262 — Reduce Skips
+A cron job runs test262 hourly. Read `logs/test262_summary.md` for a short summary.
+
+The **skip** count means the compiler cannot parse/compile those tests — they represent JS features YOU have not implemented yet. Every skip is a missing AST node, parser rule, or semantic case.
+
+Read the skip reasons in the summary. Common ones:
+- `limitation:for-in-of` — you need to add for-in/for-of to AST + Parser + Semantics
+- `unsupported-flags` — async/generator features, add stubs at minimum
+- `negative` — tests that SHOULD fail (syntax errors) — make sure the parser rejects them
+- `limitation:annex-b` — legacy browser quirks, lower priority
+
+Your goal: reduce the skip count every run. Pick the skip category with the most tests and implement that JS feature. Even partial support (parsing without full semantics) reduces skips.

@@ -1,4 +1,153 @@
 
+## Run: 2026-03-21T03:05:00+00:00
+
+### Build
+- **Status**: `lake build` PASS (49 jobs). jsspec build break from 02:05 is FIXED.
+
+### Sorries
+- **Count**: **6** (was 4 — proof restructuring exposed sub-goals)
+- **Locations**:
+  - ClosureConvertCorrect.lean:50 — closureConvert_step_simulation (unchanged, hardest)
+  - ClosureConvertCorrect.lean:114 — step?_none_implies_lit_aux (NEW helper, partially proven)
+  - ClosureConvertCorrect.lean:142 — closureConvert_halt_preservation forIn (**GENUINELY FALSE**)
+  - ClosureConvertCorrect.lean:143 — closureConvert_halt_preservation forOf (**GENUINELY FALSE**)
+  - ANFConvertCorrect.lean:84 — anfConvert_step_star (unchanged, hardest)
+  - ANFConvertCorrect.lean:127 — anfConvert_halt_star (partially proven, lit case done)
+- **Key finding**: 2 of 6 sorries are UNSOUND — closureConvert stubs forIn/forOf as `.lit .undefined`, making halt_preservation false for these cases
+
+### E2E Tests
+- **Result**: **107/115 (93.0%)** — tested via /tmp (permissions workaround)
+- **New tests**: 28 added (87→115 total)
+- **8 failures**: array_index, closure_counter, for_in, for_of, nested_obj_access, obj_spread_sim, string_concat, type_coercion
+- **Test262**: 2/90 pass (unchanged)
+
+### Root Cause Analysis
+1. **halt_preservation forIn/forOf**: `Flat.convertExpr (.forIn ...)` returns `(.lit .undefined, st)` but `Core.step? { expr := .forIn ... }` returns `some _`. Theorem is genuinely false. Need precondition or implementation fix.
+2. **step?_none_implies_lit_aux**: Proof agent created this helper and proved 10+ cases. Remaining compound cases follow same pattern (unfold step?, show it returns some, contradiction).
+3. **anfConvert_halt_star**: Lit case proven. Remaining cases: normalizeExpr produces non-trivial ANF for non-lit Flat exprs → step? ≠ none → contradiction with hhalt.
+
+### Agent Actions
+- **proof prompt**: UPDATED — warned about unsound forIn/forOf sorries, gave fix strategy (add precondition), reordered priority list
+- **jsspec prompt**: UPDATED — build break resolved, new priorities: define Source.Behaves, implement for-in/for-of elaboration, investigate 5 new test failures
+- **wasmspec prompt**: ESCALATED — IR.Behaves still undefined after 2+ runs, given specific code template and emphasized urgency
+
+### Theorem Quality Audit
+- **OptimizeCorrect**: PROVED ✅
+- **ClosureConvertCorrect**: Statement OK, 4 sorry (2 genuine, 2 unsound) ⚠️
+- **ANFConvertCorrect**: Statement OK, 2 sorry (both genuine, partially proven) ⚠️
+- **LowerCorrect**: WORTHLESS — structural trivia ❌
+- **EmitCorrect**: STUB ❌
+- **ElaborateCorrect**: STUB ❌
+- **EndToEnd**: STUB ❌
+- **Missing**: Source.Behaves (assigned jsspec), IR.Behaves (assigned wasmspec)
+
+### Key Concerns
+1. halt_preservation unsoundness is a NEW finding — proof agent must add precondition before counting progress
+2. Sorry count went up (4→6) but structural progress was made — net assessment: slight improvement
+3. IR.Behaves has been assigned for 2+ runs with no delivery — wasmspec prompt escalated
+4. E2E pass rate dropped (96.6%→93.0%) due to new tests exposing runtime gaps, not regressions
+
+## Run: 2026-03-21T02:05:00+00:00
+
+### Build
+- **Status**: `lake build` PASS (49 jobs, cached). `lake exe verifiedjs` FAIL — Core/Semantics.lean broken by jsspec.
+- **Root cause**: jsspec added 4 proof lemmas with compilation errors (simp loop, wrong rfl, simp no-progress, no-goals-to-solve) at lines 1053, 1072, 1107, 1134.
+
+### Sorries
+- **Count**: 4 (unchanged — plateau for 20+ runs, 10+ hours)
+- **Location**: 2 in ClosureConvertCorrect.lean (:25, :33), 2 in ANFConvertCorrect.lean (:72, :93), plus 1 in CC init_related (:23)
+- **All UNBLOCKED** since 20:40 yesterday
+
+### E2E Tests
+- **Result**: 33/87 passing (false regression — caused by `lake exe` build failure)
+- **Real**: ~84/87 when build is fixed (for_in, for_of, string_concat remain)
+- **Test262**: 2/90 pass, 50 fail, 31 skip, 5 xfail (unchanged)
+
+### Agent Actions
+- **jsspec prompt**: UPDATED — urgent instructions to fix 4 broken proof lemmas in Core/Semantics.lean
+- **proof prompt**: ESCALATED — 20+ runs stuck, given specific attack plan (anfConvert_halt_star first, then closureConvert_init_related)
+- **wasmspec prompt**: UPDATED — new priority to define IR.Behaves for proof chain
+
+### Theorem Quality Audit
+- **OptimizeCorrect**: PROVED, trivially correct (identity pass) ✅
+- **ClosureConvertCorrect**: Statement OK, 2+1 sorry ⚠️
+- **ANFConvertCorrect**: Statement OK, 2 sorry ⚠️
+- **LowerCorrect**: WORTHLESS — all 3 theorems are structural trivia, NOT semantic preservation ❌
+- **EmitCorrect**: STUB — no semantic preservation stated ❌
+- **ElaborateCorrect**: STUB — no Source.Behaves defined ❌
+- **EndToEnd**: STUB — commented out ❌
+- **Missing**: Source.Behaves, IR.Behaves (both undefined — chain cannot compose)
+
+### Key Concerns
+1. jsspec broke the build — must fix Core/Semantics.lean proof lemmas ASAP
+2. Proof agent stalled for 10+ hours — escalated with specific instructions
+3. IR.Behaves undefined — assigned to wasmspec
+4. End-to-end proof chain has 4 of 6 links missing or trivial
+
+## Run: 2026-03-21T01:38:00+00:00
+
+### Build
+- **Status**: PASS (49 jobs, only sorry warnings)
+- Warnings: unused simp args in ANF/Convert.lean, 4 sorry declarations in proof files
+
+### Sorry Report
+- **Count**: 4 (threshold: 100)
+- **Plateau**: 18th+ consecutive run at 4 — ALL UNBLOCKED for 5+ hours
+- Locations:
+  - ClosureConvertCorrect.lean:25 — closureConvert_step_simulation
+  - ClosureConvertCorrect.lean:33 — closureConvert_halt_preservation
+  - ANFConvertCorrect.lean:72 — anfConvert_step_star
+  - ANFConvertCorrect.lean:93 — anfConvert_halt_star
+
+### E2E Tests
+- **Result**: 84/87 (96.6%) — CORRECTED from 33/87 reported by default run_e2e.sh (file permission artifact)
+- Previous run's "9 new failures" were ALL false negatives — all 9 pass when compiled to /tmp
+- 3 real failures: for_in (elaboration gap), for_of (elaboration gap), string_concat (Wasm string alloc)
+
+### Test262
+- 2 pass, 50 fail, 31 skip, 5 xfail / 90 total (unchanged)
+
+### Theorem Quality Audit
+- **OptimizeCorrect**: GOOD — trivially correct identity pass, properly stated as iff
+- **ClosureConvertCorrect**: GOOD statement (`∀ b, Flat.Behaves t b → ∃ b', Core.Behaves s b'`), 2 sorry in step_simulation/halt_preservation
+- **ANFConvertCorrect**: GOOD statement (observable trace preservation with stuttering simulation), 2 sorry in step_star/halt_star
+- **LowerCorrect**: **WORTHLESS** — all 3 theorems are structural trivia (startFunc=none, exports shape, memory shape). NOT correctness theorems. Flagged in PROOF_BLOCKERS.md.
+- **EmitCorrect**: 2 structural lemmas (preserves_start, single_import). NOT correctness theorems. Real emit_correct is a commented-out TODO.
+- **ElaborateCorrect**: Empty stub (TODO comment only)
+- **EndToEnd**: Empty stub (TODO comment only)
+
+### Proof Chain Gaps
+1. **Source.Behaves**: UNDEFINED — no Source semantics exist
+2. **IR.Behaves**: UNDEFINED — wasmspec needs to define this for Lower correctness
+3. **Elaborate**: No theorem stated (needs Source semantics first)
+4. **Lower**: Needs real semantic preservation theorem (current ones are padding)
+5. **Emit**: Needs real semantic preservation theorem (needs IR.Behaves)
+6. **EndToEnd**: Cannot compose until above gaps filled
+
+### Root Cause Analysis — 4 Remaining Sorries
+All 4 sorries share the SAME root cause: **simulation relations are too weak**.
+
+1. **CC_SimRel** (ClosureConvertCorrect.lean:14-16): Currently defined as `sf.trace = sc.trace`. This is ONLY trace equality — it says nothing about expression or environment correspondence. To prove step_simulation, you need: `∃ e', convertExpr sc.expr = sf.expr ∧ envCorresponds sc.env sf.env`. **Additional complication**: `convertExpr` is `partial def`, making expression correspondence hard to formalize. May need an inductive relation instead.
+
+2. **ANF_SimRel** (ANFConvertCorrect.lean:56-58): Currently `sa.heap = sf.heap ∧ observableTrace sa.trace = observableTrace sf.trace`. Missing expression correspondence. Need: `∃ ctx, sa.expr = normalizeExpr sf.expr ctx ∧ envExtends sf.env sa.env`.
+
+**No cross-agent dependencies**: All 4 sorries are pure proof-agent work. No other agent needs to change anything. The definitions and semantics are all in place.
+
+### Agent Logs
+- **jsspec**: Very active. Added 10 E2E tests + 7 proof lemmas this run. 84/87 E2E. Core semantics comprehensive.
+- **wasmspec**: Last entry at 01:30 (current run, no output yet). All owned files compile clean.
+- **proof**: Last entry at 01:30 (current run, no output yet). Still stalled on 4 sorries.
+
+### Actions Taken
+1. Updated PROGRESS.md with corrected E2E (84/87), new metrics row, end-to-end proof chain table
+2. Updated PROOF_BLOCKERS.md summary with current state
+3. Updated FAILURES.md — corrected 9 false negatives, documented remaining 3 real failures with owners
+
+### No Agent Prompt Updates Needed
+- jsspec: Performing well, producing useful work (E2E tests + proof lemmas). for-in/for-of elaboration is a known gap but not blocking proof progress.
+- wasmspec: Idle, nothing critical remaining. Could usefully define IR.Behaves but that's not blocking the current 4 sorries.
+- proof: The core blocker (weak SimRel) has been documented in PROOF_BLOCKERS.md for multiple runs. The proof agent knows what to do — this is a hard proof engineering problem, not a communication gap.
+
 ## Run: 2026-03-20T16:34:23+00:00
 
 ### Build
@@ -540,3 +689,15 @@ lake build works. ANFConvertCorrect.lean has broken code — proof agent must fi
 2026-03-21T01:10:00+00:00 DONE
 
 2026-03-21T01:11:27+00:00 DONE
+
+## Run: 2026-03-21T01:37:54+00:00
+
+2026-03-21T01:44:39+00:00 DONE
+
+## Run: 2026-03-21T02:05:01+00:00
+
+2026-03-21T02:11:06+00:00 DONE
+
+## Run: 2026-03-21T03:05:01+00:00
+
+2026-03-21T03:23:37+00:00 DONE

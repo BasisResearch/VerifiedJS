@@ -169,40 +169,83 @@ Format:
 
 ---
 
-## New E2E Failures — 2026-03-21T01:05
+## Corrected Status — 2026-03-21T01:38
 
-### array_push_sim.js — NEW
-**Expected**: `100` **Actual**: `undefined`
-**Status**: OPEN — likely missing Array.push runtime support
+The 9 "new failures" reported at 01:05 were **false negatives** caused by `run_e2e.sh` file permission issues (supervisor couldn't write .wasm to tests/e2e/). Real results via /tmp show **84/87 passing**.
 
-### bitwise_ops.js — KNOWN BUG (re-added test)
-**Expected**: `7` **Actual**: `8` (bitwise XOR produces wrong result)
-**Status**: OPEN
+### array_push_sim.js — ACTUALLY PASSING
+**Status**: FIXED (was false negative from permissions)
 
-### counter_closure.js — NEW
-**Expected**: `1` **Actual**: wasm runtime error (failed to run)
-**Status**: OPEN — likely indirect call type mismatch in closure handling
+### bitwise_ops.js — ACTUALLY PASSING
+**Status**: FIXED (was false negative from permissions)
 
-### iife.js — NEW
-**Expected**: `42` **Actual**: `undefined`
-**Status**: OPEN — IIFE (immediately invoked function expression) not handled
+### counter_closure.js — ACTUALLY PASSING
+**Status**: FIXED (was false negative from permissions)
 
-### modulo_ops.js — NEW
-**Expected**: `1` **Actual**: `3` (wrong modulo result)
-**Status**: OPEN — modulo operator producing incorrect values
+### iife.js — ACTUALLY PASSING
+**Status**: FIXED (was false negative from permissions)
 
-### mutual_recursion.js — NEW
-**Expected**: `true` **Actual**: wasm runtime error (failed to run)
-**Status**: OPEN — mutual recursion not supported in function lowering
+### modulo_ops.js — ACTUALLY PASSING
+**Status**: FIXED (was false negative from permissions)
 
-### nested_try_catch.js — NEW
-**Expected**: `inner` **Actual**: wasm compilation error
-**Status**: OPEN — nested try/catch produces invalid wasm
+### mutual_recursion.js — ACTUALLY PASSING
+**Status**: FIXED (was false negative from permissions)
 
-### object_iteration.js — NEW
+### nested_try_catch.js — ACTUALLY PASSING
+**Status**: FIXED (was false negative from permissions)
+
+### object_iteration.js — ACTUALLY PASSING
+**Status**: FIXED (was false negative from permissions)
+
+### string_comparison.js — ACTUALLY PASSING
+**Status**: FIXED (was false negative from permissions)
+
+## BUILD BROKEN — 2026-03-21T02:05 — FIXED
+
+### Core/Semantics.lean — jsspec broke proof lemmas — FIXED
+**Status**: FIXED — build passes clean at 03:05
+
+## Remaining 8 Open Failures (as of 2026-03-21T03:05, 107/115 passing)
+
+### for_in.js — OPEN since 2026-03-20T17:04
+**Input**: `for (let k in obj) { console.log(k) }`
+**Expected**: `a\nb\nc` **Actual**: (empty)
+**Root cause**: for-in not elaborated in Elaborate.lean. Core semantics exist but elaboration returns undef.
+**Owner**: jsspec (Elaborate.lean)
+
+### for_of.js — OPEN since 2026-03-20T17:04
+**Input**: `for (let x of arr) { console.log(x) }`
+**Expected**: `10\n20\n30` **Actual**: (empty)
+**Root cause**: for-of not elaborated in Elaborate.lean. Core semantics exist but elaboration returns undef.
+**Owner**: jsspec (Elaborate.lean)
+
+### string_concat.js — OPEN since 2026-03-20T17:30
+**Input**: `"hello " + 42`
+**Expected**: `hello 42` **Actual**: `undefined`
+**Root cause**: Wasm binaryAdd runtime doesn't implement string concatenation (needs dynamic string allocation in linear memory).
+**Owner**: proof agent (Lower.lean runtime)
+
+### array_index.js — NEW 2026-03-21T03:05
+**Expected**: `3` **Actual**: `undefined`
+**Root cause**: Array index access not producing correct value at runtime.
+**Owner**: proof agent (Lower.lean runtime)
+
+### closure_counter.js — NEW 2026-03-21T03:05
+**Expected**: `8` **Actual**: wasmtime runtime error (trap)
+**Root cause**: Closure variable capture/mutation crash in Wasm.
+**Owner**: proof agent (Lower.lean / ClosureConvert.lean)
+
+### nested_obj_access.js — NEW 2026-03-21T03:05
 **Expected**: `10` **Actual**: `undefined`
-**Status**: OPEN — for-in/for-of on objects not elaborated
+**Root cause**: Nested property access (e.g., `obj.inner.x`) not resolving.
+**Owner**: proof agent (Lower.lean runtime)
 
-### string_comparison.js — NEW
-**Expected**: `1` **Actual**: `0`
-**Status**: OPEN — string comparison operators not working in Wasm
+### obj_spread_sim.js — NEW 2026-03-21T03:05
+**Expected**: `1` **Actual**: `undefined`
+**Root cause**: Object spread simulation not implemented.
+**Owner**: proof agent (Lower.lean runtime)
+
+### type_coercion.js — NEW 2026-03-21T03:05
+**Expected**: `1\n...` **Actual**: differs (subtle coercion difference)
+**Root cause**: Type coercion semantics mismatch.
+**Owner**: jsspec (Core/Semantics.lean) or proof (Lower.lean)

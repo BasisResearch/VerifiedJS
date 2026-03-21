@@ -488,3 +488,121 @@ lake build works. ANFConvertCorrect.lean has broken code — proof agent must fi
 2026-03-21T01:30:00+00:00 DONE
 
 2026-03-21T01:26:47+00:00 DONE
+
+## Run: 2026-03-21T02:15:01+00:00
+
+- Implemented:
+  - **IR Behavioral Semantics (TOP PRIORITY — was blocking proof chain)**:
+    - `IR.TraceEvent`: Observable events (silent, trap, log, error) — superset of Core.TraceEvent and Wasm.TraceEvent for proof chain compatibility
+    - `IR.IRValue`: Typed runtime values (i32, i64, f64) with `IRValue.default`
+    - `IR.IRFrame`: Call frame with locals and return arity
+    - `IR.IRLabel`: Control label for structured branching (block/loop)
+    - `IR.IRExecState`: Full execution state (module, stack, frames, labels, globals, memory, code, trace)
+    - `IR.irInitialState`: Build initial state from IRModule
+    - `IR.irStep?`: Single-step function covering ALL IR instructions:
+      - Constants (i32, i64, f64, ptr)
+      - Variables (localGet, localSet, globalGet, globalSet)
+      - Binary ops (i32/i64/f64/ptr) using Numerics.* functions
+      - Unary ops (i32/i64 eqz)
+      - Memory (load 4-byte LE, store 4-byte LE, store8)
+      - Control flow (block, loop, if_, br, brIf, return_)
+      - Calls (call, callIndirect with function lookup)
+      - Stack (drop) and memoryGrow
+    - `IR.IRStep`: Inductive step relation (provable, matchable)
+    - `IR.IRSteps`: Reflexive-transitive closure with trace accumulation
+    - `IR.IRBehaves`: Behavioral semantics (module → trace)
+    - `IR.IRExecState.halted`: State classification
+  - **Key theorems proved (NO sorry)**:
+    - `irStep?_halted`: halted states have irStep? = none
+    - `IRStep_iff`: equivalence between inductive relation and step function
+    - `IRStep_deterministic`: single-step determinism
+    - `IRSteps_trans`: transitivity of multi-step
+    - `IRSteps_deterministic`: full determinism with halting
+    - `IRBehaves_deterministic`: a module can only produce one trace
+    - `IRBehaves_of_Steps`: construction helper
+    - `IRSteps_snoc`: append one step to a trace
+    - `irStep?_nil_nil`, `irStep?_nil_label`: @[simp] equation lemmas
+  - **Trace mappings for proof chain**:
+    - `traceToWasm`: IR.TraceEvent → Wasm.TraceEvent
+    - `traceListToWasm`: List IR.TraceEvent → List Wasm.TraceEvent
+    - 7 @[simp] lemmas for trace mapping
+  - **Inhabitedness example**: empty module halts with empty trace
+
+- Files changed:
+  - VerifiedJS/Wasm/Semantics.lean (+~550 lines: full IR semantics section)
+
+- Build: PASS (0 errors, 0 sorries in all wasmspec-owned files)
+
+- Impact:
+  - **UNBLOCKS proof chain**: LowerCorrect can now state `∀ trace, ANF.Behaves s trace → IR.IRBehaves t trace`
+  - **UNBLOCKS EmitCorrect**: Can now state `∀ trace, IR.IRBehaves s trace → Wasm.Behaves t (traceListToWasm trace)`
+  - All 5 Behaves relations now defined: Core.Behaves, Flat.Behaves, ANF.Behaves, IR.IRBehaves, Wasm.Behaves
+  - Proof agent has determinism + transitivity + equation lemmas for IR proofs
+
+- Gaps remaining:
+  - Runtime/Regex.lean: NFA construction not implemented (not used by compiler)
+  - Runtime/Generators.lean: step function not implemented (not used by compiler)
+  - IR call semantics simplified (no frame save/restore on return — would need continuation passing)
+
+- Next:
+  - Proof agent should update LowerCorrect.lean to state real semantic preservation using IR.IRBehaves
+  - Proof agent should update EmitCorrect.lean to state real semantic preservation using IR.IRBehaves → Wasm.Behaves
+  - Consider adding IR call return semantics (frame pop on code exhaustion)
+
+2026-03-21T02:25:17+00:00 DONE
+
+## Run: 2026-03-21T03:15:01+00:00
+
+- Implemented:
+  - **IR Call/Return Semantics — Complete Frame Save/Restore** (critical correctness fix):
+    - `IRFrame` now saves caller's continuation: `savedCode : List IRInstr`, `savedLabels : List IRLabel`
+    - `IRLabel` moved before `IRFrame` (dependency ordering)
+    - `call` instruction: saves caller's remaining code and label stack in new frame, callee starts with fresh label stack
+    - `call_indirect`: same frame save/restore as call
+    - `return_` with multiple frames: pops callee frame, takes return values, restores caller's saved code/labels
+    - Code exhaustion (code=[], labels=[]) with multiple frames: implicit return — pops frame and restores caller
+    - `IRExecState.halted` updated: requires `frames.length ≤ 1` (not just empty code+labels)
+    - REF: WasmCert-Coq `r_invoke_native`, `r_return` / Wasm §4.4.6
+  - **20 new @[simp] equation lemmas for irStep?**:
+    - Constants: `irStep?_ir_i32Const`, `irStep?_ir_f64Const`
+    - Variables: `irStep?_ir_localGet`, `irStep?_ir_localSet`, `irStep?_ir_globalGet`, `irStep?_ir_globalSet`
+    - Stack: `irStep?_ir_drop`
+    - Control: `irStep?_ir_block`, `irStep?_ir_loop`, `irStep?_ir_if`
+    - Arithmetic: `irStep?_ir_i32BinOp`, `irStep?_ir_f64BinOp`, `irStep?_ir_i32Eqz`
+    - Calls: `irStep?_ir_call` (with stack sufficiency), `irStep?_ir_return_callee`, `irStep?_ir_return_toplevel`
+    - Memory: `irStep?_ir_memoryGrow`
+    - Frame: `irStep?_ir_frameReturn` (implicit return on code exhaustion)
+  - **Trace mapping infrastructure**:
+    - `traceListToWasm_append`: compositionality for trace list mapping
+    - `IRForwardSim` structure: template for semantic preservation proofs (step_sim + halt_sim)
+  - **Inhabitedness examples**:
+    - `exCallModule`: concrete module with function call (i32.const 42 + return)
+    - `irRun`: fuel-bounded execution helper for `native_decide` examples
+    - Verified: initial state is not stuck, execution halts with code=[], stack=[i32 42]
+  - **`IRSteps_single`**: helper to build single-step IRSteps traces
+
+- Files changed:
+  - VerifiedJS/Wasm/Semantics.lean (~250 lines added/refactored: frame save/restore, 20 lemmas, simulation framework, inhabitedness)
+
+- Build: PASS (0 errors, 0 sorries in all wasmspec-owned files, 47 warnings total)
+- E2E: All wasm files valid (0 invalid)
+
+- Impact:
+  - IR semantics now correctly models function call/return with frame save/restore
+  - Proof agent has 20 @[simp] lemmas covering all common IR instructions
+  - `IRForwardSim` template ready for LowerCorrect/EmitCorrect semantic preservation proofs
+  - `irRun` enables `native_decide` testing of concrete IR execution
+
+- Gaps remaining:
+  - Runtime/Regex.lean: NFA construction not implemented (not used by compiler)
+  - Runtime/Generators.lean: step function not implemented (not used by compiler)
+  - LowerCorrect/EmitCorrect don't yet import Wasm.Semantics (proof agent must update)
+  - Core→IR trace mapping requires bridge file (Wasm doesn't import Core)
+
+- Next:
+  - Proof agent should use `IRForwardSim` to structure LowerCorrect/EmitCorrect proofs
+  - Consider adding `DecidableEq IRValue` for more `native_decide` proofs
+  - Add more IR lemmas if proof agent requests specific instruction coverage
+
+2026-03-21T03:30:00+00:00 DONE
+2026-03-21T03:30:00+00:00 DONE

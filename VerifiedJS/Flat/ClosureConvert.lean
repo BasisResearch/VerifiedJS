@@ -116,7 +116,7 @@ def indexedMap : List String → Nat → List (String × Nat)
 mutual
 
 /-- Convert a list of expressions, threading state. -/
-partial def convertExprList
+def convertExprList
     (es : List Core.Expr) (scope : List String) (envVar : String)
     (envMap : EnvMapping) (st : CCState)
     : List Flat.Expr × CCState :=
@@ -126,9 +126,11 @@ partial def convertExprList
     let (e', st1) := convertExpr e scope envVar envMap st
     let (rest', st2) := convertExprList rest scope envVar envMap st1
     (e' :: rest', st2)
+  termination_by sizeOf es
+  decreasing_by all_goals simp_all <;> omega
 
 /-- Convert a list of (PropName × Expr) pairs, threading state. -/
-partial def convertPropList
+def convertPropList
     (ps : List (Core.PropName × Core.Expr)) (scope : List String) (envVar : String)
     (envMap : EnvMapping) (st : CCState)
     : List (PropName × Flat.Expr) × CCState :=
@@ -138,9 +140,11 @@ partial def convertPropList
     let (e', st1) := convertExpr e scope envVar envMap st
     let (rest', st2) := convertPropList rest scope envVar envMap st1
     ((pname, e') :: rest', st2)
+  termination_by sizeOf ps
+  decreasing_by all_goals simp_all <;> omega
 
 /-- Convert an optional Core.Expr, threading state. -/
-partial def convertOptExpr
+def convertOptExpr
     (oe : Option Core.Expr) (scope : List String) (envVar : String)
     (envMap : EnvMapping) (st : CCState)
     : Option Flat.Expr × CCState :=
@@ -149,9 +153,11 @@ partial def convertOptExpr
   | some e =>
     let (e', st1) := convertExpr e scope envVar envMap st
     (some e', st1)
+  termination_by sizeOf oe
+  decreasing_by all_goals simp_all <;> omega
 
 /-- Main expression conversion: Core.Expr → Flat.Expr with state threading. -/
-partial def convertExpr
+def convertExpr
     (e : Core.Expr) (scope : List String) (envVar : String)
     (envMap : EnvMapping) (st : CCState)
     : Flat.Expr × CCState :=
@@ -290,15 +296,19 @@ partial def convertExpr
   | .await arg =>
     let (arg', st1) := convertExpr arg scope envVar envMap st
     (.await arg', st1)
+  termination_by sizeOf e
+  decreasing_by all_goals (try cases ‹Option Core.Expr›) <;> simp_all <;> omega
 
 /-- Convert a Core.FuncDef to a Flat.FuncDef (top-level, no captures). -/
-partial def convertFuncDef (fd : Core.FuncDef) (st : CCState) : FuncDef × CCState :=
+def convertFuncDef (fd : Core.FuncDef) (st : CCState) : FuncDef × CCState :=
   let envVar := "__env_top"
   let (body', st1) := convertExpr fd.body fd.params envVar [] st
   ({ name := fd.name, params := fd.params, envParam := envVar, body := body' }, st1)
+  termination_by sizeOf fd
+  decreasing_by all_goals simp_all <;> omega
 
 /-- Convert top-level functions array, threading state. -/
-partial def convertFuncDefs (fds : List Core.FuncDef) (st : CCState)
+def convertFuncDefs (fds : List Core.FuncDef) (st : CCState)
     : List FuncDef × CCState :=
   match fds with
   | [] => ([], st)
@@ -306,6 +316,8 @@ partial def convertFuncDefs (fds : List Core.FuncDef) (st : CCState)
     let (fd', st1) := convertFuncDef fd st
     let (rest', st2) := convertFuncDefs rest st1
     (fd' :: rest', st2)
+  termination_by sizeOf fds
+  decreasing_by all_goals simp_all <;> omega
 
 end -- mutual
 

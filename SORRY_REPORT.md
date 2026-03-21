@@ -1,8 +1,11 @@
-# Sorry Report (Sat Mar 21 01:05:10 AM UTC 2026)
+# Sorry Report (Sat Mar 21 03:05:00 AM UTC 2026)
 
-- [ ] `VerifiedJS/Proofs/ANFConvertCorrect.lean:82` — `theorem anfConvert_step_star` — `sorry -- Requires case analysis on ANF.Step over all expression forms`
-- [ ] `VerifiedJS/Proofs/ANFConvertCorrect.lean:104` — `theorem anfConvert_halt_star` — `sorry -- Requires showing: when ANF expr is a literal trivial, the Flat expr`
-- [ ] `VerifiedJS/Proofs/ClosureConvertCorrect.lean:31` — `theorem closureConvert_step_simulation` — `sorry -- Requires strong SimRel: expression/env correspondence through closure conversion`
-- [ ] `VerifiedJS/Proofs/ClosureConvertCorrect.lean:37` — `theorem closureConvert_halt_preservation` — `sorry -- Requires strong SimRel: when Flat halts on literal, Core also has literal`
+- [ ] `VerifiedJS/Proofs/ANFConvertCorrect.lean:84` — `anfConvert_step_star` — hardest sorry, needs full case analysis on ANF.Step
+- [ ] `VerifiedJS/Proofs/ANFConvertCorrect.lean:127` — `anfConvert_halt_star` — partially done (lit case proven), remaining cases should contradict
+- [ ] `VerifiedJS/Proofs/ClosureConvertCorrect.lean:50` — `closureConvert_step_simulation` — hardest CC sorry, needs Flat.Step case analysis + expr correspondence
+- [ ] `VerifiedJS/Proofs/ClosureConvertCorrect.lean:114` — `step?_none_implies_lit_aux` — partially done (10+ cases proven), remaining compound exprs
+- [ ] `VerifiedJS/Proofs/ClosureConvertCorrect.lean:142` — `closureConvert_halt_preservation` — **GENUINELY FALSE** for forIn (closureConvert stubs as .lit .undefined)
+- [ ] `VerifiedJS/Proofs/ClosureConvertCorrect.lean:143` — `closureConvert_halt_preservation` — **GENUINELY FALSE** for forOf (same as forIn)
 
-**Total: 4 sorries**
+**Total: 6 sorries** (was 4 — restructuring exposed sub-goals)
+**2 of 6 are UNSOUND** — need theorem precondition or closureConvert fix

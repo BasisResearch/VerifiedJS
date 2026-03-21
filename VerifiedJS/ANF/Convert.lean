@@ -12,17 +12,17 @@ namespace VerifiedJS.ANF
 /-- Converter monad carrying a fresh-name counter and conversion errors. -/
 abbrev ConvM := StateT Nat (Except String)
 
-private def freshName : ConvM String := do
+def freshName : ConvM String := do
   let n ← get
   set (n + 1)
   pure s!"_anf{n}"
 
-private def bindComplex (rhs : ComplexExpr) (k : Trivial → ConvM Expr) : ConvM Expr := do
+def bindComplex (rhs : ComplexExpr) (k : Trivial → ConvM Expr) : ConvM Expr := do
   let tmp ← freshName
   let body ← k (.var tmp)
   pure (.let tmp rhs body)
 
-private def trivialOfFlatValue : Flat.Value → Except String Trivial
+def trivialOfFlatValue : Flat.Value → Except String Trivial
   | .null => .ok .litNull
   | .undefined => .ok .litUndefined
   | .bool b => .ok (.litBool b)
@@ -33,7 +33,7 @@ private def trivialOfFlatValue : Flat.Value → Except String Trivial
 
 mutual
 
-private def normalizeExpr (e : Flat.Expr) (k : Trivial → ConvM Expr) : ConvM Expr := do
+def normalizeExpr (e : Flat.Expr) (k : Trivial → ConvM Expr) : ConvM Expr := do
   match e with
   | .lit v =>
     match trivialOfFlatValue v with
@@ -135,7 +135,7 @@ private def normalizeExpr (e : Flat.Expr) (k : Trivial → ConvM Expr) : ConvM E
   termination_by e.depth
   decreasing_by all_goals (try cases ‹Option Flat.Expr›) <;> simp_all [Flat.Expr.depth, Flat.Expr.listDepth, Flat.Expr.propListDepth] <;> omega
 
-private def normalizeExprList (es : List Flat.Expr)
+def normalizeExprList (es : List Flat.Expr)
     (k : List Trivial → ConvM Expr) : ConvM Expr := do
   match es with
   | [] => k []
@@ -145,7 +145,7 @@ private def normalizeExprList (es : List Flat.Expr)
   termination_by Flat.Expr.listDepth es
   decreasing_by all_goals simp_all [Flat.Expr.depth, Flat.Expr.listDepth, Flat.Expr.propListDepth] <;> omega
 
-private def normalizeProps (props : List (Flat.PropName × Flat.Expr))
+def normalizeProps (props : List (Flat.PropName × Flat.Expr))
     (k : List (PropName × Trivial) → ConvM Expr) : ConvM Expr := do
   match props with
   | [] => k []
@@ -172,5 +172,42 @@ def convert (prog : Flat.Program) : Except String Program := do
   pure
     { functions := functions.toArray
       main := main }
+
+/-- When convert succeeds, the main expression comes from normalizeExpr. -/
+theorem convert_main_from_normalizeExpr (prog : Flat.Program) (t : Program)
+    (h : convert prog = .ok t) :
+    ∃ m, (normalizeExpr prog.main (fun t => pure (.trivial t))).run 0 = .ok (t.main, m) := by
+  -- StateT.run is definitionally equal to function application for StateT
+  show ∃ m, normalizeExpr prog.main (fun t => pure (.trivial t)) 0 = .ok (t.main, m)
+  -- Extract from convert that t.main = fst of normalizeExpr result
+  unfold convert at h
+  simp only [Bind.bind, Except.bind] at h
+  -- Split on mapM result
+  match hfns : prog.functions.toList.mapM convertFuncDef with
+  | .error _ => simp [hfns] at h
+  | .ok fns =>
+    simp only [hfns, Except.ok.injEq] at h
+    -- h is now about StateT.run'
+    -- run' calls normalizeExpr ... 0 and maps Prod.fst
+    match hnorm : normalizeExpr prog.main (fun t => pure (Expr.trivial t)) 0 with
+    | .ok (expr, counter) =>
+      -- run' with .ok result maps to .ok expr
+      have : (StateT.run' (normalizeExpr prog.main (fun t => pure (Expr.trivial t))) 0) = .ok expr := by
+        show (Prod.fst <$> (normalizeExpr prog.main (fun t => pure (Expr.trivial t)) 0 : Except String _)) = .ok expr
+        rw [hnorm]; rfl
+      rw [this] at h
+      -- h : pure { functions := fns.toArray, main := expr } = Except.ok t
+      -- pure = Except.ok for Except
+      change Except.ok { functions := fns.toArray, main := expr } = Except.ok t at h
+      simp only [Except.ok.injEq] at h
+      -- h : { functions := fns.toArray, main := expr } = t
+      have hmain : expr = t.main := congrArg Program.main h
+      subst hmain; exact ⟨counter, rfl⟩
+    | .error e =>
+      have : (StateT.run' (normalizeExpr prog.main (fun t => pure (Expr.trivial t))) 0) = .error e := by
+        show (Prod.fst <$> (normalizeExpr prog.main (fun t => pure (Expr.trivial t)) 0 : Except String _)) = .error e
+        rw [hnorm]; rfl
+      rw [this] at h
+      simp at h
 
 end VerifiedJS.ANF

@@ -1,0 +1,7 @@
+// Multiple expressions and variable bindings
+let a = 1;
+let b = 2;
+let c = a + b;
+let d = c * 2;
+let e = d - a;
+console.log(e); // 5
