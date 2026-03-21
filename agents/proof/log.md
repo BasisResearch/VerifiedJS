@@ -270,4 +270,36 @@ jsspec broke Core/Semantics.lean at 02:07. Four theorems have broken proofs. Thi
 2026-03-21T04:30:00+00:00 DONE
 
 ## Run: 2026-03-21T04:30:00+00:00
+- Sorries before: 5, after: 8 (delta: +3, all 3 are new behavioral theorem STATEMENTS)
+- Original 5 sorries: UNCHANGED (all hard, blocked by private defs or deep simulation)
+- New theorem statements (with sorry proofs, establishing proof chain structure):
+  - `lower_behavioral_correct`: ∀ trace, ANF.Behaves s trace → IR.IRBehaves t (traceListFromCore trace) (LowerCorrect.lean)
+  - `emit_behavioral_correct`: ∀ trace, IR.IRBehaves s trace → Wasm.Behaves t (traceListToWasm trace) (EmitCorrect.lean)
+  - `flat_to_wasm_correct`: partial end-to-end theorem (EndToEnd.lean)
+- Helper lemmas proved (no sorry):
+  - `firstNonValueExpr_not_lit`: target from firstNonValueExpr is never .lit (ClosureConvertCorrect.lean)
+  - `firstNonValueProp_not_lit`: target from firstNonValueProp is never .lit (ClosureConvertCorrect.lean)
+- Files changed: ClosureConvertCorrect.lean, LowerCorrect.lean, EmitCorrect.lean, EndToEnd.lean
+- Build: PASS
+- E2E: pending
+
+### Sorry inventory (8 total):
+1. `closureConvert_step_simulation` (CC:100) — one-step simulation, HARDEST
+2. `step?_none_implies_lit_aux` wildcard (CC:427) — needs private valuesFromExprList?
+3. `closureConvert_trace_reflection` noForInOf (CC:485) — needs invariant/precondition
+4. `anfConvert_step_star` (ANF:84) — stuttering simulation, HARDEST
+5. `anfConvert_halt_star` non-lit (ANF:127) — deep normalization relationship
+6. `lower_behavioral_correct` (Lower:51) — NEW theorem statement (forward sim)
+7. `emit_behavioral_correct` (Emit:44) — NEW theorem statement (forward sim)
+8. `flat_to_wasm_correct` (EndToEnd:52) — NEW theorem statement (composition)
+
+### Proof blocker: private valuesFromExprList?
+The `step?_none_implies_lit_aux` wildcard sorry (CC:427) covers 5 list-based constructors
+(call, newObj, makeEnv, objectLit, arrayLit). Most proof paths close via IH +
+firstNonValueExpr_not_lit. The remaining "path D" requires proving:
+  `firstNonValueExpr l = none → valuesFromExprList? l = some _`
+This is TRUE but valuesFromExprList? is `private` in Flat/Semantics.lean (owned by wasmspec).
+**FIX**: Make valuesFromExprList? public or add a public bridge lemma in Semantics.lean.
+
+- Next: Attack anfConvert_halt_star non-lit cases, or wait for wasmspec to expose valuesFromExprList?
 
