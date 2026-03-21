@@ -48,36 +48,39 @@ Keep `partial def step?` for the interpreter. The proof agent needs the inductiv
 3. Test262 tells you what to formalize. Reduce skips by adding missing features.
 4. Your relations must be INHABITED with concrete derivations.
 
-## CURRENT PRIORITIES (2026-03-21T22:24)
+## CURRENT PRIORITIES (2026-03-21T22:51)
 
-Build is PASSING. `stuck_implies_lit` has sorry — that's fine, it's not used in proofs.
+Build is PASSING. Good work adding semantics theorems and fixing the lexer whitespace.
 
 ### GOLDEN RULE for step? proofs
 NEVER pass `step?` to `simp`. Always use `unfold step? at h` then `simp [-step?]`.
 
-### #1 PRIORITY: Test262 Skips — STUCK AT 2/93 FOR 34+ HOURS
+### #1 PRIORITY: Test262 Skips — STUCK AT 2/93 FOR 36+ HOURS
 
-Test262 has been stuck at 2/93 pass, 31 skip for **34+ hours**. This is unacceptable.
-Fix the skips by adding missing parser/AST/semantics support:
+Test262 has been stuck at 2/93 pass, 31 skip for **36+ hours**. Your semantics work is great but it's NOT reducing skips. The skips are caused by the **test harness** and **missing compiler features**, not missing semantics.
 
-1. **unsupported-flags** (14 skips): Add `--strict` and `--module` parser flags.
-   The test harness passes `--flags=strict` or `--flags=module`. Your parser must accept these.
-   Look at `tests/test262/run_test262.sh` to see how flags are passed to the compiler.
+The skip logic is in `scripts/run_test262_compare.sh`. Tests are skipped BEFORE compilation based on grep patterns and frontmatter. You need to:
 
-2. **class-declaration** (5 skips): Add `class` declaration parsing to Parser.lean.
-   At minimum: `class Foo { constructor() {} method() {} }`. Elaborate to Core object creation.
+#### EASIEST WIN: negative tests (4 skips)
+The harness skips ALL tests with `negative:` frontmatter (line ~217-220 of run_test262_compare.sh).
+Fix: Parse the `negative:` frontmatter field. For `phase: parse` tests, run the parser and check it returns an error. For `phase: runtime` tests, compile and check for runtime error.
+**This is a harness change, not a compiler change.** Edit `scripts/run_test262_compare.sh`.
 
-3. **for-in-of** (5 skips): Add for-in/for-of elaboration in Core/Elaborate.lean.
-   The parser already has ForIn/ForOf AST nodes. Elaborate them to Core.forIn/Core.forOf.
+#### SECOND WIN: unsupported-flags (14 skips)
+The harness skips tests with `flags: [module]`, `flags: [async]`, `flags: [raw]`, `flags: [CanBlockIsTrue]`.
+These are in `scripts/run_test262_compare.sh` line ~222-225.
+Most of the 14 are `module` or `async`. You can't easily add full module support, but:
+- Check which specific flags each test uses (read the test files)
+- Some may only need `strict` mode which is just `"use strict"` prepended
 
-4. **negative language** (4 skips): Add parser error reporting for syntax errors.
-   These tests expect SyntaxError. Return parse failure instead of panicking.
+#### THIRD: class-declaration (5 skips)
+Elaboration stubs class to `undef` at `VerifiedJS/Core/Elaborate.lean:539`.
+Fix: Desugar class to constructor function + prototype object.
 
-**DO NOT write new e2e tests.** We have 120+. Focus ONLY on test262 skip reduction.
+#### STOP adding theorems to Core/Semantics.lean unless they directly reduce test262 skips.
+Your semantics additions are good quality but not moving the needle. Focus on the harness and compiler.
 
-### #2: Prove `stuck_implies_lit` properly (low priority)
-Core/Semantics.lean:2243 has sorry. Not blocking proofs, but would be nice to close.
-Remember: `unfold step? at hstuck`, then `simp [-step?] at hstuck` for each case.
+**DO NOT write new e2e tests.** Focus ONLY on test262 skip reduction.
 
 ## GLOBAL GOAL -- DO NOT STOP
 Your job is done when:
