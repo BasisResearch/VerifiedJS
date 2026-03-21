@@ -4684,16 +4684,20 @@ theorem WasmForwardSim_behavioral (R : IRExecState → ExecState → Prop)
     ∃ w_final, Steps w_init (traceListToWasm ts) w_final ∧ step? w_final = none := by
   obtain ⟨ir_final, hIRSteps, hIRHalt⟩ := hBehaves
   -- Lift the multi-step execution by induction on IRSteps
-  suffices h : ∃ w_final, Steps w_init (traceListToWasm ts) w_final ∧ R ir_final w_final by
-    obtain ⟨w_final, hWSteps, hR_final⟩ := h
+  -- We prove the stronger: R is preserved, then use halt_sim at the end.
+  suffices h : ∀ (w0 : ExecState), R ir_init w0 →
+      ∃ w_final, Steps w0 (traceListToWasm ts) w_final ∧ R ir_final w_final by
+    obtain ⟨w_final, hWSteps, hR_final⟩ := h w_init hR
     exact ⟨w_final, hWSteps, sim.halt_sim ir_final w_final hR_final hIRHalt⟩
-  induction hIRSteps generalizing w_init with
+  induction hIRSteps with
   | refl _ =>
-    exact ⟨w_init, Steps.refl _, hR⟩
+    intro w0 hR0
+    exact ⟨w0, Steps.refl _, hR0⟩
   | tail hstep _ ih =>
+    intro w0 hR0
     obtain ⟨h_irStep⟩ := hstep
-    obtain ⟨w_mid, hW_step, hR_mid⟩ := sim.step_sim _ w_init _ _ hR h_irStep
-    have ⟨w_final, hW_rest, hR_final⟩ := ih hR_mid
+    obtain ⟨w_mid, hW_step, hR_mid⟩ := sim.step_sim _ w0 _ _ hR0 h_irStep
+    obtain ⟨w_final, hW_rest, hR_final⟩ := ih w_mid hR_mid
     exact ⟨w_final, Steps.tail ⟨hW_step⟩ hW_rest, hR_final⟩
 
 /-- Convenience: combining IRForwardSim_behavioral and WasmForwardSim_behavioral
@@ -4875,6 +4879,19 @@ def EmitSimRel (irmod : IRModule) (wmod : Module)
 
 namespace EmitSimRel
 
+/-- emit preserves startFunc as the Wasm start section. -/
+private theorem emit_preserves_start (irmod : IRModule) (wmod : Module)
+    (hemit : emit irmod = .ok wmod) :
+    wmod.start = irmod.startFunc := by
+  -- emit m = .ok (buildModule m acc) for some acc
+  -- buildModule_start: (buildModule m acc).start = m.startFunc
+  unfold emit at hemit
+  simp only [Bind.bind, Except.bind] at hemit
+  split at hemit
+  · simp [Pure.pure, Except.pure] at hemit
+  · simp only [Pure.pure, Except.pure, Except.ok.injEq] at hemit
+    rw [← hemit]; rfl
+
 /-- Initial states are related: the IR initial state corresponds to the Wasm initial state.
     Proof: `emit irmod = .ok wmod` ensures module correspondence.
     Both start with empty stacks, and the entry code (start function call) is
@@ -4885,29 +4902,20 @@ theorem init (irmod : IRModule) (wmod : Module)
   refine ⟨hemit, ?_, ?_⟩
   · -- Stack lengths: both start with empty stacks
     simp [irInitialState, Wasm.initialState]
-  · -- Halt correspondence at init: emit preserves startFunc as start section.
-    -- Both initial states use the same start function index, so both have the
-    -- same code = [] or code = [call idx] structure.
+  · -- Halt correspondence at init: both initial states have the same code structure
+    -- (determined by startFunc/start), so if IR halts then Wasm halts.
     intro hirHalt
     rw [irStep?_none_iff_halted] at hirHalt
     obtain ⟨hc, hl, _⟩ := hirHalt
+    have hstart := emit_preserves_start irmod wmod hemit
     apply step?_halted
     constructor
-    · -- Wasm code is empty: irInitialState code depends on startFunc, and
-      -- initialState code depends on start (= startFunc via emit/buildModule).
-      -- If IR code is empty, then startFunc was none (or matched), so start is also none.
+    · -- Code is empty
       simp [irInitialState] at hc
       split at hc
-      · -- startFunc = some idx: code = [call idx], contradicts code = []
-        simp at hc
-      · -- startFunc = none: code = []
-        rename_i hsf
-        -- emit preserves startFunc as start: buildModule sets start := m.startFunc
-        have hstart : wmod.start = irmod.startFunc := by
-          simp [emit, Bind.bind, Except.bind] at hemit
-          split at hemit <;> simp_all [Pure.pure, Except.pure, buildModule]
-        simp [Wasm.initialState, hstart, hsf]
-    · -- Wasm labels empty: initialState always has labels = []
+      · simp at hc
+      · rename_i hsf; simp [Wasm.initialState, hstart, hsf]
+    · -- Labels empty
       simp [Wasm.initialState]
 
 /-- Step simulation: if the IR takes one step, the Wasm takes a matching step.
