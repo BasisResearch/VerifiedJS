@@ -1,4 +1,70 @@
 
+## Run: 2026-03-21T22:51:00+00:00
+
+### Build
+- **Status**: `lake build` PASS (clean, only sorry warnings)
+
+### Sorry Count: 10
+Breakdown (13 `sorry` tokens, 10 real proof sorries):
+- Wasm/Semantics.lean:2708 — match arm sorry in `step?_eq_some` (wasmspec, minor)
+- Wasm/Semantics.lean:4833 — `LowerSimRel.step_sim` (wasmspec, CRITICAL)
+- Wasm/Semantics.lean:4926 — `EmitSimRel.step_sim` (wasmspec, CRITICAL)
+- Proofs/ClosureConvertCorrect.lean:175 — `| _ => all_goals sorry` (proof)
+- Proofs/ANFConvertCorrect.lean:84 — `anfConvert_step_star` (proof)
+- Proofs/ANFConvertCorrect.lean:593 — `var` case (proof)
+- Proofs/ANFConvertCorrect.lean:597 — `seq` case (proof)
+- Proofs/LowerCorrect.lean:51 — `lower_behavioral_correct` (proof, blocked on wasmspec step_sim)
+- Proofs/EmitCorrect.lean:44 — `emit_behavioral_correct` (proof, blocked on wasmspec step_sim)
+- Proofs/EndToEnd.lean:55 — `flat_to_wasm_correct` (proof, composition)
+
+**PROGRESS since last run:**
+- Core/Semantics.lean:2243 sorry CLOSED by jsspec (stuck_implies_lit proved)
+- Wasm/Semantics.lean: LowerSimRel.halt_sim PROVED by wasmspec
+- Wasm/Semantics.lean: EmitSimRel.halt_sim PROVED by wasmspec
+- Wasm/Semantics.lean: EmitSimRel.init PROVED by wasmspec
+- Net change: ~13 → ~10 sorries (-3)
+
+### E2E Tests: Timed out (estimated ~120/123 from previous runs)
+
+### Test262: 2/93 (UNCHANGED 36+ hours)
+- 2 pass, 50 fail, 31 skip, 8 xfail
+- No progress since 2026-03-20T14:00
+
+### Agent Status
+- **jsspec**: Active. Added 6 semantics theorems (step_newObj_exact, step_forIn_object_props, step_forOf_object_props, step_forIn_nonObject_exact, step_forOf_nonObject_exact, step_class_pattern_functionDef). Fixed lexer whitespace (ECMA-262 §11.2/§11.3). stuck_implies_lit CLOSED. But still not reducing test262 skips.
+- **wasmspec**: Active. MAJOR PROGRESS — proved both halt_sim theorems and EmitSimRel.init. Only 2 step_sim sorries remain. Active in current run.
+- **proof**: Active. No sorry reduction this run. 7 Proofs/ sorries unchanged.
+
+### Proof Chain Analysis
+| Pass | Statement OK? | Proved? | Blocker |
+|------|--------------|---------|---------|
+| Elaborate | YES | **PROVED** | — |
+| ClosureConvert | YES | 1 sorry | CC_SimRel env/heap correspondence (proof) |
+| ANFConvert | YES | 3 sorry | Case analysis + var/seq cases (proof) |
+| Optimize | YES | **PROVED** | — |
+| Lower | YES | 1 sorry | halt_sim PROVED. **BLOCKED on step_sim** (wasmspec:4833) |
+| Emit | YES | 1 sorry | halt_sim PROVED. **BLOCKED on step_sim** (wasmspec:4926) |
+| EndToEnd | YES | 1 sorry | Composition of above |
+
+### Theorem Quality Audit
+- All existing theorems relate BEHAVIOR, not structure. No padding theorems found.
+- jsspec's new semantics theorems (step_newObj_exact etc.) are SPECIFICATION theorems, not proof chain theorems — they're fine as documentation but don't directly reduce sorries.
+
+### Actions Taken
+1. **Updated jsspec prompt**: Redirected from adding semantics theorems to fixing test262 harness. Identified negative tests (4 skips) as easiest win — just needs harness changes in `run_test262_compare.sh`. Told them to stop adding Core/Semantics theorems unless directly reducing skips.
+
+2. **Updated wasmspec prompt**: Praised halt_sim progress. Updated priorities to focus on 2 remaining step_sim sorries (lines 4833, 4926). Provided detailed approach: intro, unfold anfStepMapped/irStep?, case-split on expression, apply irStep?_eq_* lemmas.
+
+3. **Updated proof prompt**: Updated sorry count and status. Noted halt_sim is PROVED. Reordered priorities: (1) write LowerCorrect/EmitCorrect proof structure first (easy, 15 min each — sorry only the step_sim call), (2) then ANF cases, (3) then CC. This makes the proof chain structurally complete modulo step_sim.
+
+4. **Updated PROGRESS.md**: New metrics row, updated proof chain table, updated agent health.
+
+### Key Observations
+- **Wasmspec is delivering**: 4→2 sorries this run. If step_sim falls next run, Lower+Emit+EndToEnd could all close.
+- **Proof agent is stalled**: 7 sorries unchanged. Need to verify they're actually using lean_multi_attempt.
+- **Test262 is the biggest stall**: 36+ hours at 2/93. Jsspec keeps adding semantics instead of fixing the harness. Rewrote prompt to be very explicit about harness-level changes.
+- **LSP may be broken**: Agent reported Core/Semantics.lean has unsolved goals preventing LSP elaboration of downstream files. This could be blocking wasmspec and proof from using lean_multi_attempt effectively. Need to monitor.
+
 ## Run: 2026-03-21T22:24:00+00:00
 
 ### Build

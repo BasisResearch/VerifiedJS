@@ -4753,7 +4753,7 @@ theorem anfStepMapped_some (s s' : ANF.State) (t : Core.TraceEvent)
     REF: This is the key invariant that the lowering pass must maintain. -/
 def LowerRel (prog : ANF.Program) (irmod : IRModule) (s : ANF.State) (ir : IRExecState) : Prop :=
   Wasm.lower prog = .ok irmod ∧
-  ir.trace = (s.trace.map traceFromCore).bind (fun t => [t])
+  ir.trace = (s.trace.map traceFromCore).flatMap (fun t => [t])
 
 /-! ### Concrete Simulation Relations
 
@@ -4796,7 +4796,7 @@ def LowerSimRel (prog : ANF.Program) (irmod : IRModule)
   /- Environment correspondence: every ANF environment binding has a
      corresponding IR local variable with the encoded value. -/
   (∀ name v, s.env.lookup name = some v →
-    ∃ idx val, ir.frames.head?.bind (fun f => f.locals[idx]?) = some val)
+    ∃ idx val, (ir.frames.head?.bind (fun f => f.locals[idx]?)) = some val)
 
 namespace LowerSimRel
 

@@ -80,52 +80,48 @@ It IS OK to temporarily increase sorry count if you are decomposing a large sorr
 4. DO NOT WAIT for anyone. Just prove things.
 5. Sorry count must go DOWN or stay flat. Never up.
 
-## CURRENT STATUS & PRIORITIES (2026-03-21T22:24)
+## CURRENT STATUS & PRIORITIES (2026-03-21T22:51)
 
-**Build is PASSING. Sorry count: 10 (7 in Proofs/, 1 in Core/, 4 in Wasm/Semantics.lean owned by wasmspec).**
+**Build is PASSING. Sorry count: 10 total (7 in Proofs/, 2+1 in Wasm/Semantics.lean owned by wasmspec, 0 in Core).**
+
+**PROGRESS**: Wasmspec proved both `halt_sim` theorems! LowerCorrect and EmitCorrect are now PARTIALLY unblocked — only `step_sim` remains.
 
 ### YOUR 7 sorries (attack these NOW):
 
-1. **ClosureConvertCorrect.lean:170** — `| _ => all_goals sorry`
-   The catch-all case for CC step simulation. Needs env/heap correspondence in CC_SimRel.
-   **ACTION**: Strengthen CC_SimRel to track env/heap (not just trace+expr). Then prove each remaining constructor case-by-case. Start with the simplest ones (lit, var, binop).
+**UNBLOCKED — do these FIRST:**
+
+1. **ClosureConvertCorrect.lean:175** — `| _ => all_goals sorry`
+   Catch-all for CC step simulation. The comment at lines 166-174 explains: CC_SimRel needs env/heap/funcs correspondence, and convertExpr correspondence breaks after control-flow unrolling.
+   **ACTION**: Start with option (b) from the comment — use a weaker structural bisimulation that doesn't depend on convertExpr exact equality. Or prove easy constructor cases (lit, binop, unop) individually before the catch-all.
 
 2. **ANFConvertCorrect.lean:84** — `anfConvert_step_star` sorry
-   Case analysis on ANF.Step over all expression forms.
-   **ACTION**: Start with `cases hstep` and handle each ANF step constructor.
-   Use `lean_goal` at line 84, then `lean_multi_attempt` with `["cases hstep", "intro sa sf ev sa' hrel hstep; cases hstep"]`.
+   **ACTION**: `intro sa sf ev sa' hrel hstep; cases hstep` then handle each constructor.
+   Use `lean_multi_attempt` at line 84 with `["intro sa sf ev sa' hrel hstep; cases hstep; all_goals simp_all"]`.
 
-3. **ANFConvertCorrect.lean:567** — `var` case of `anfConvert_halt_star`
-   Needs env correspondence to show Flat.step? steps on var lookup.
-   **ACTION**: This may need a helper lemma about normalizeExpr preserving var lookups.
+3. **ANFConvertCorrect.lean:593** — `var` case: variable not found produces .error event
+   Comment says: "Requires well-formedness precondition on environments."
+   **ACTION**: Either add a well-formedness precondition to `anfConvert_halt_star`, or handle the error case by showing the error trace is observable.
 
-4. **ANFConvertCorrect.lean:571** — `seq` case of `anfConvert_halt_star`
-   Multi-step Flat reasoning for seq evaluation.
-   **ACTION**: Induction on `a`, then use IH for the first component.
+4. **ANFConvertCorrect.lean:597** — `seq` case
+   **ACTION**: `normalizeExpr (.seq a b) k = normalizeExpr a (fun _ => normalizeExpr b k)`. Use induction on the `a` term with IH.
+
+**PARTIALLY BLOCKED — write proof structure NOW:**
 
 5. **LowerCorrect.lean:51** — `lower_behavioral_correct`
-   **BLOCKED on wasmspec's `LowerSimRel.step_sim` and `halt_sim`** (Wasm/Semantics.lean:4823,4838).
-   Once wasmspec proves those, this proof follows by composing init + step_sim + halt_sim.
-   **ACTION**: Write the proof structure assuming wasmspec's theorems, using `sorry` only for the wasmspec dependency. This way you're ready to close it the moment they deliver.
+   `halt_sim` is PROVED. Only `step_sim` (Wasm/Semantics.lean:4833) remains.
+   **ACTION**: Write the proof using `LowerSimRel.init`, `LowerSimRel.step_sim`, and `LowerSimRel.halt_sim`. The sorry will be ONLY in the step_sim application. This makes the sorry trivially closable once wasmspec delivers.
 
 6. **EmitCorrect.lean:44** — `emit_behavioral_correct`
-   **BLOCKED on wasmspec's `EmitSimRel.step_sim` and `halt_sim`** (Wasm/Semantics.lean:4886,4899).
-   Same approach: write structure, sorry only the wasmspec dependency.
+   Same: `halt_sim` is PROVED. Only `step_sim` (Wasm/Semantics.lean:4926) remains.
+   **ACTION**: Same approach — write proof structure, sorry only the step_sim call.
 
 7. **EndToEnd.lean:55** — `flat_to_wasm_correct`
-   Composition of all the above. Last to prove.
+   Composition. Write structure using all pass theorems.
 
-### STRATEGY: Focus on CC and ANF first (items 1-4). These are NOT blocked.
-
-For CC (item 1):
-- Read ClosureConvertCorrect.lean:130-170 to see what cases remain
-- Add env/heap fields to CC_SimRel
-- Prove one case at a time, starting with simplest
-
-For ANF (items 2-4):
-- `lean_goal` at each sorry to see exact goal
-- `lean_multi_attempt` with aggressive tactics
-- Handle easy constructors first (lit, var, binop), leave hard ones as sorry
+### STRATEGY
+1. Items 5-6 first — they're 15 minutes of work each and show the proof chain is structurally complete
+2. Then items 2-4 (ANF) — concrete case analysis work
+3. Then item 1 (CC) — hardest, needs SimRel redesign
 
 ## GLOBAL GOAL -- DO NOT STOP
 Your job is done when:

@@ -106,14 +106,14 @@ private theorem bindComplex_not_trivial (rhs : ANF.ComplexExpr) (k : ANF.Trivial
 private theorem normalizeExpr_not_trivial_family :
     ∀ (d : Nat),
       (∀ (e : Flat.Expr) (k : ANF.Trivial → ANF.ConvM ANF.Expr),
-        (∀ x n' m' t, (k x).run n' ≠ .ok (.trivial t, m')) →
-        e.depth ≤ d → ∀ n m t, (ANF.normalizeExpr e k).run n ≠ .ok (.trivial t, m)) ∧
+        (∀ x n' m' t, (k x) n' ≠ .ok (.trivial t, m')) →
+        e.depth ≤ d → ∀ n m t, (ANF.normalizeExpr e k) n ≠ .ok (.trivial t, m)) ∧
       (∀ (es : List Flat.Expr) (k : List ANF.Trivial → ANF.ConvM ANF.Expr),
-        (∀ xs n' m' t, (k xs).run n' ≠ .ok (.trivial t, m')) →
-        Flat.Expr.listDepth es ≤ d → ∀ n m t, (ANF.normalizeExprList es k).run n ≠ .ok (.trivial t, m)) ∧
+        (∀ xs n' m' t, (k xs) n' ≠ .ok (.trivial t, m')) →
+        Flat.Expr.listDepth es ≤ d → ∀ n m t, (ANF.normalizeExprList es k) n ≠ .ok (.trivial t, m)) ∧
       (∀ (ps : List (Flat.PropName × Flat.Expr)) (k : List (ANF.PropName × ANF.Trivial) → ANF.ConvM ANF.Expr),
-        (∀ xs n' m' t, (k xs).run n' ≠ .ok (.trivial t, m')) →
-        Flat.Expr.propListDepth ps ≤ d → ∀ n m t, (ANF.normalizeProps ps k).run n ≠ .ok (.trivial t, m))
+        (∀ xs n' m' t, (k xs) n' ≠ .ok (.trivial t, m')) →
+        Flat.Expr.propListDepth ps ≤ d → ∀ n m t, (ANF.normalizeProps ps k) n ≠ .ok (.trivial t, m))
     := by
   intro d
   induction d with
@@ -125,7 +125,7 @@ private theorem normalizeExpr_not_trivial_family :
         simp only [ANF.normalizeExpr]
         cases ANF.trivialOfFlatValue v with
         | ok tv => exact hk tv n m t
-        | error _ => simp [StateT.run, Except.bind]
+        | error _ => intro h; simp [Except.bind] at h
       | var name => simp only [ANF.normalizeExpr]; exact hk (.var name) n m t
       | this => simp only [ANF.normalizeExpr]; exact hk (.var "this") n m t
       | «break» _ =>
@@ -134,6 +134,18 @@ private theorem normalizeExpr_not_trivial_family :
       | «continue» _ =>
         simp only [ANF.normalizeExpr, pure, Pure.pure, StateT.pure, Except.pure]
         intro habs; exact ANF.Expr.noConfusion (Prod.mk.inj habs).1
+      | «return» arg =>
+        cases arg with
+        | none =>
+          simp only [ANF.normalizeExpr, pure, Pure.pure, StateT.pure, Except.pure]
+          intro habs; exact ANF.Expr.noConfusion (Prod.mk.inj habs).1
+        | some _ => exfalso; simp [Flat.Expr.depth] at hd
+      | yield arg _ =>
+        cases arg with
+        | none =>
+          simp only [ANF.normalizeExpr, pure, Pure.pure, StateT.pure, Except.pure]
+          intro habs; exact ANF.Expr.noConfusion (Prod.mk.inj habs).1
+        | some _ => exfalso; simp [Flat.Expr.depth] at hd
       | _ => exfalso; simp [Flat.Expr.depth] at hd
     · intro es k hk hd n m t
       cases es with
@@ -153,7 +165,7 @@ private theorem normalizeExpr_not_trivial_family :
         simp only [ANF.normalizeExpr]
         cases ANF.trivialOfFlatValue v with
         | ok tv => exact hk tv n m t
-        | error _ => simp [StateT.run, Except.bind]
+        | error _ => intro h; simp [Except.bind] at h
       | var name => simp only [ANF.normalizeExpr]; exact hk (.var name) n m t
       | this => simp only [ANF.normalizeExpr]; exact hk (.var "this") n m t
       | «break» _ =>
