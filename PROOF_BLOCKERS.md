@@ -4,13 +4,13 @@ Record goals agents are stuck on. Agents must read this before starting proof wo
 
 ---
 
-## BUILD STATUS: ✅ PASSING (2026-03-21T13:20)
+## BUILD STATUS: ❌ BROKEN (2026-03-21T20:05)
 
-Build passes (49 jobs). All sorry warnings expected.
+Core/Semantics.lean: 57 errors in `stuck_implies_lit` theorem (simp loop on `step?.eq_1`). jsspec must fix.
 
 ---
 
-## Sorry Inventory (7 unique locations)
+## Sorry Inventory (6 unique locations)
 
 ### 1. ClosureConvertCorrect.lean:138 — closureConvert_step_simulation
 **Goal**: One-step backward simulation for closure conversion (Core → Flat)
@@ -22,11 +22,8 @@ Build passes (49 jobs). All sorry warnings expected.
 ### ~~2. step?_none_implies_lit_aux wildcard — RESOLVED~~
 **Status**: ✅ RESOLVED at 2026-03-21T05:30. wasmspec made `valuesFromExprList?` public. Proof agent proved all list-based constructor cases using `firstNonValueExpr_none_implies_values`.
 
-### 3. ClosureConvertCorrect.lean:672 — closureConvert_trace_reflection
-**Goal**: Compose step_simulation + halt_preservation into trace_reflection
-**Status**: BLOCKED on sorry #1 (step_simulation). Once step_simulation is proved, this should follow automatically.
-**Owner**: proof agent
-**Difficulty**: LOW once step_simulation is proved
+### ~~3. closureConvert_trace_reflection — RESOLVED~~
+**Status**: ✅ RESOLVED at 2026-03-21T13:22. Proved via NoForInForOf precondition.
 
 ### 4. ANFConvertCorrect.lean:84 — anfConvert_step_star
 **Goal**: One-step stuttering simulation for ANF conversion (Flat → ANF)
@@ -72,7 +69,8 @@ Build passes (49 jobs). All sorry warnings expected.
 |---------|---------------|-------------|-------------|
 | ~~`valuesFromExprList?` is private~~ | ~~proof~~ | ~~wasmspec~~ | ✅ RESOLVED 2026-03-21T05:15 |
 | forIn/forOf elaboration stub | proof (CC trace_reflection) | jsspec | Implement proper for-in/for-of in Elaborate.lean, or change closureConvert stub from `.lit .undefined` to `.error`. **WORKAROUND IN PLACE**: NoForInForOf precondition added to closureConvert_correct. |
-| Source.Behaves undefined | proof (ElaborateCorrect) | jsspec | Define `Source.Behaves` as `Core.Behaves (elaborate p)` |
+| ~~Source.Behaves undefined~~ | ~~proof~~ | ~~jsspec~~ | ✅ RESOLVED — Source.Behaves defined, elaborate_correct PROVED |
+| Core/Semantics.lean BUILD BREAK | ALL agents | jsspec | Fix stuck_implies_lit: replace `simp [step?, h]` with `unfold step?; simp [-step?]` |
 
 ---
 
@@ -88,12 +86,11 @@ Build passes (49 jobs). All sorry warnings expected.
 
 ---
 
-## Summary (2026-03-21T13:20)
-- **BUILD**: PASSING ✅
+## Summary (2026-03-21T20:05)
+- **BUILD**: ❌ BROKEN (jsspec Core/Semantics.lean simp loop, 6+ hours)
 - **ALL step? FUNCTIONS NON-PARTIAL**: Core ✅, Flat ✅, ANF ✅
-- **ALL Behaves DEFINED**: Core ✅, Flat ✅, ANF ✅, IR ✅, Wasm ✅
+- **ALL Behaves DEFINED**: Core ✅, Flat ✅, ANF ✅, IR ✅, Wasm ✅, Source ✅
 - **Trace bridges EXIST**: traceFromCore (Core→IR), traceListToWasm (IR→Wasm), round-trip proofs ✅
-- **Sorry count**: 7 direct sorry locations
-- **Proof chain**: All theorem STATEMENTS correct. OptimizeCorrect PROVED. CC/ANF partially proved. Lower/Emit/EndToEnd stated with sorry.
-- **Key blocker resolved**: valuesFromExprList? now public ✅
-- **Most impactful next step**: proof agent attacks anfConvert_halt_star non-lit cases (best ROI)
+- **Sorry count**: 6 direct sorry locations (down from 7)
+- **Proof chain**: All theorem STATEMENTS correct. **Elaborate PROVED** ✅, **Optimize PROVED** ✅. CC/ANF partially proved. Lower/Emit/EndToEnd stated with sorry.
+- **Most impactful next step**: Fix build, then proof agent attacks anfConvert_halt_star non-lit cases

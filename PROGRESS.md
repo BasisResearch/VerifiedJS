@@ -106,20 +106,20 @@ arithmetic, boolean_logic, conditionals, do_while, for_loop, functions, let_bind
 
 | Pass | Theorem | Statement OK? | Proved? | Blocker |
 |------|---------|--------------|---------|---------|
-| Elaborate | elaborate_correct | STUB (commented out) | No | Source.Behaves NOW DEFINED (elaboration-based). Theorem not yet stated. |
-| ClosureConvert | closureConvert_correct | YES — `∀ b, Flat.Behaves t b → ∃ b', Core.Behaves s b' ∧ b = b'` | 1 sorry | step_simulation (hardest ~200+ lines case analysis). trace_reflection PROVED via NoForInForOf precondition. |
-| ANFConvert | anfConvert_correct | YES — observable trace preservation | 2 sorry | step_star (hardest), halt_star (partial — lit case done) |
+| Elaborate | elaborate_correct | YES | **PROVED** | — |
+| ClosureConvert | closureConvert_correct | YES — trace preservation with NoForInForOf | 1 sorry | step_simulation (200+ lines case analysis). trace_reflection PROVED. |
+| ANFConvert | anfConvert_correct | YES — observable trace preservation | 2 sorry | step_star (hardest), halt_star (~28 cases remaining) |
 | Optimize | optimize_correct | YES — `∀ b, ANF.Behaves (optimize p) b ↔ ANF.Behaves p b` | **PROVED** | Identity pass — trivially correct |
-| Lower | lower_behavioral_correct | **YES** — `∀ trace, ANF.Behaves → IR.IRBehaves` | 1 sorry | Theorem correctly stated! Needs proof via IRForwardSim |
-| Emit | emit_behavioral_correct | **YES** — `∀ trace, IR.IRBehaves → Wasm.Behaves` | 1 sorry | Theorem correctly stated! Needs proof |
-| EndToEnd | flat_to_wasm_correct | **YES** — partial composition (Flat→Wasm) | 1 sorry | Composition of above; last to prove |
+| Lower | lower_behavioral_correct | YES — `∀ trace, ANF.Behaves → IR.IRBehaves` | 1 sorry | Needs ir_forward_sim from wasmspec |
+| Emit | emit_behavioral_correct | YES — `∀ trace, IR.IRBehaves → Wasm.Behaves` | 1 sorry | Needs emit_forward_sim from wasmspec |
+| EndToEnd | flat_to_wasm_correct | YES — partial composition (Flat→Wasm) | 1 sorry | Composition of above; last to prove |
 
-**Chain gaps**: Source.Behaves NOW DEFINED (elaboration-based, Core/Semantics.lean:2258). All 6 Behaves relations DEFINED: Source ✅, Core ✅, Flat ✅, ANF ✅, IR ✅, Wasm ✅. Trace bridges exist: `traceFromCore` (Core→IR), `traceListToWasm` (IR→Wasm). **All theorem statements in the chain are now correct** (except Elaborate which still needs its theorem stated). **Sorry count in proof chain: 6** (1 CC, 2 ANF, 1 Lower, 1 Emit, 1 EndToEnd). Only OptimizeCorrect is fully proved (trivial identity).
+**Chain status**: All 6 Behaves relations DEFINED. All theorem STATEMENTS correct. Trace bridges exist (`traceFromCore`, `traceListToWasm`). **2 passes FULLY PROVED** (Elaborate, Optimize). **Sorry count in proof chain: 6** (1 CC, 2 ANF, 1 Lower, 1 Emit, 1 EndToEnd).
 
 ## Agent Health
 
-| Agent | Status (2026-03-21T17:05) | Notes |
+| Agent | Status (2026-03-21T20:05) | Notes |
 |-------|---------------------|-------|
-| jsspec | **RUNNING** (since 17:00) — **BUILD BREAKER** | 97+ Core theorems. Build broken since ~14:05 (57 errors in stuck_implies_lit). Has been crashing (EXIT 1) for hours 08:00-13:00, then timeouts. Given detailed fix (replace simp[step?] with unfold step?;simp[-step?]). Redirected to test262 (31 skips unchanged 30+ hrs). |
-| wasmspec | **RUNNING** (since 17:15) | 19+ IR @[simp] lemmas, trace bridges. Asked to write ir_forward_sim theorem for proof agent + clean up 2 sorries in Wasm/Semantics.lean. |
-| proof | **RUNNING** (since 16:30) | 6 proof sorries (1 CC, 2 ANF, 1 Lower, 1 Emit, 1 EndToEnd). Build broken but can work on individual proof modules. Given workaround: `lake build VerifiedJS.Proofs.ANFConvertCorrect`. |
+| jsspec | **TIMING OUT** (EXIT 124 cycling since 08:00) — **BUILD BREAKER** | 97+ Core theorems. Build broken 6+ hours (57 errors in stuck_implies_lit simp loop). Given EXACT replacement code in prompt. Test262 unchanged 30+ hrs. |
+| wasmspec | **TIMING OUT** (EXIT 124 at 19:30) | Cleared 2 sorries (0 in Wasm/Semantics.lean). 19+ IR lemmas, trace bridges. Asked to write ir_forward_sim theorem. |
+| proof | **TIMING OUT** (EXIT 124 at 19:30) | 6 sorries (1 CC, 2 ANF, 1 Lower, 1 Emit, 1 EndToEnd). elaborate_correct PROVED. Blocked on build break for full verification. |
