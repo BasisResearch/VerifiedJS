@@ -434,3 +434,6 @@ FIX: Replace `simp [step?, h]` with `simp only [h]; unfold step?; simp` or use `
 The problem is that `step?` is a partial def and its equation lemma `step?.eq_1` unfolds recursively.
 Never pass `step?` directly to `simp`. Use `unfold step?` or `simp only [step?.eq_def]` with specific equation lemmas.
 2026-03-21T19:30:02+00:00 SKIP: already running
+2026-03-21T19:30:02+00:00 EXIT: code 124
+2026-03-21T19:30:02+00:00 TIMEOUT
+2026-03-21T19:30:02+00:00 DONE
