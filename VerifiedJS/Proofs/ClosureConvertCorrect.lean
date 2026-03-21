@@ -7,6 +7,8 @@ import VerifiedJS.Flat.ClosureConvert
 import VerifiedJS.Core.Semantics
 import VerifiedJS.Flat.Semantics
 
+set_option maxHeartbeats 400000
+
 namespace VerifiedJS.Proofs
 
 /-! ### Helper lemmas for list-based constructor cases in step?_none_implies_lit -/
@@ -494,7 +496,9 @@ private theorem step?_none_implies_lit_aux :
               obtain ⟨done, target, remaining⟩ := val
               cases hstept : Flat.step? ⟨target, fenv, fheap, ftrace⟩ with
               | some r =>
-                unfold Flat.step? at h; simp only [hevf, heve, hvals, hf, hstept] at h; exact absurd h (by simp)
+                unfold Flat.step? at h; simp only [hevf, heve, hvals] at h
+                rw [show Flat.firstNonValueExpr args = some (done, target, remaining) from hf] at h
+                simp only [hstept] at h; exact absurd h (by simp)
               | none =>
                 have ⟨v, hv⟩ := ih ⟨target, fenv, fheap, ftrace⟩
                   (by simp [Flat.Expr.depth] at hd ⊢
@@ -534,7 +538,9 @@ private theorem step?_none_implies_lit_aux :
               obtain ⟨done, target, remaining⟩ := val
               cases hstept : Flat.step? ⟨target, fenv, fheap, ftrace⟩ with
               | some r =>
-                unfold Flat.step? at h; simp only [hevf, heve, hvals, hf, hstept] at h; exact absurd h (by simp)
+                unfold Flat.step? at h; simp only [hevf, heve, hvals] at h
+                rw [show Flat.firstNonValueExpr args = some (done, target, remaining) from hf] at h
+                simp only [hstept] at h; exact absurd h (by simp)
               | none =>
                 have ⟨v, hv⟩ := ih ⟨target, fenv, fheap, ftrace⟩
                   (by simp [Flat.Expr.depth] at hd ⊢
@@ -554,7 +560,9 @@ private theorem step?_none_implies_lit_aux :
           obtain ⟨done, target, remaining⟩ := val
           cases hstept : Flat.step? ⟨target, fenv, fheap, ftrace⟩ with
           | some r =>
-            unfold Flat.step? at h; simp only [hvals, hf, hstept] at h; exact absurd h (by simp)
+            unfold Flat.step? at h; simp only [hvals] at h
+            rw [show Flat.firstNonValueExpr values = some (done, target, remaining) from hf] at h
+            simp only [hstept] at h; exact absurd h (by simp)
           | none =>
             have ⟨v, hv⟩ := ih ⟨target, fenv, fheap, ftrace⟩
               (by simp [Flat.Expr.depth] at hd ⊢
@@ -574,7 +582,9 @@ private theorem step?_none_implies_lit_aux :
           obtain ⟨done, propName, target, remaining⟩ := val
           cases hstept : Flat.step? ⟨target, fenv, fheap, ftrace⟩ with
           | some r =>
-            unfold Flat.step? at h; simp only [hvals, hf, hstept] at h; exact absurd h (by simp)
+            unfold Flat.step? at h; simp only [hvals] at h
+            rw [show Flat.firstNonValueProp props = some (done, propName, target, remaining) from hf] at h
+            simp only [hstept] at h; exact absurd h (by simp)
           | none =>
             have ⟨v, hv⟩ := ih ⟨target, fenv, fheap, ftrace⟩
               (by simp [Flat.Expr.depth] at hd ⊢
@@ -594,7 +604,9 @@ private theorem step?_none_implies_lit_aux :
           obtain ⟨done, target, remaining⟩ := val
           cases hstept : Flat.step? ⟨target, fenv, fheap, ftrace⟩ with
           | some r =>
-            unfold Flat.step? at h; simp only [hvals, hf, hstept] at h; exact absurd h (by simp)
+            unfold Flat.step? at h; simp only [hvals] at h
+            rw [show Flat.firstNonValueExpr elems = some (done, target, remaining) from hf] at h
+            simp only [hstept] at h; exact absurd h (by simp)
           | none =>
             have ⟨v, hv⟩ := ih ⟨target, fenv, fheap, ftrace⟩
               (by simp [Flat.Expr.depth] at hd ⊢
