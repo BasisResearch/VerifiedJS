@@ -406,3 +406,6 @@ For each Flat constructor, normalizeExpr produces an ANF expression that fits on
 
 - Next: Once Core/Semantics is fixed, verify build. Then continue handling categories 2-3 in anfConvert_halt_star.
 2026-03-21T13:45:00+00:00 DONE
+2026-03-21T14:22:39+00:00 EXIT: code 124
+2026-03-21T14:22:39+00:00 TIMEOUT
+2026-03-21T14:22:39+00:00 DONE
