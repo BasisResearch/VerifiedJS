@@ -891,7 +891,7 @@ theorem Step_deterministic {s : State} {t1 t2 : TraceEvent} {s1 s2 : State}
 theorem step_lit_none (v : Value) (env : Env) (heap : Heap) (trace : List TraceEvent)
     (funcs : Array FuncClosure) (callStack : List (List (VarName × Value))) :
     step? ⟨.lit v, env, heap, trace, funcs, callStack⟩ = none := by
-  unfold step?; simp
+  simp [step?]
 
 /-- Step inversion: any Step must have come from step?. -/
 theorem Step_iff (s : State) (t : TraceEvent) (s' : State) :
@@ -941,20 +941,20 @@ theorem step_var_lookup (env : Env) (name : VarName) (v : Value) (heap : Heap)
     (trace : List TraceEvent) (funcs : Array FuncClosure) (cs : List (List (VarName × Value)))
     (h : env.lookup name = some v) :
     (step? ⟨.var name, env, heap, trace, funcs, cs⟩).isSome = true := by
-  unfold step?; simp [h]
+  simp [step?, h]
 
 /-- A binary operation on two values always steps (is not stuck). -/
 theorem step_binary_values (op : BinOp) (a b : Value) (env : Env) (heap : Heap)
     (trace : List TraceEvent) (funcs : Array FuncClosure) (cs : List (List (VarName × Value))) :
     (step? ⟨.binary op (.lit a) (.lit b), env, heap, trace, funcs, cs⟩).isSome = true := by
-  unfold step?; simp [exprValue?]
+  simp [step?, exprValue?]
 
 /-- §13.2 seq: when left side is a value, step produces the right side. -/
 theorem step_seq_value (v : Value) (b : Expr) (env : Env) (heap : Heap)
     (trace : List TraceEvent) (funcs : Array FuncClosure) (cs : List (List (VarName × Value))) :
     step? ⟨.seq (.lit v) b, env, heap, trace, funcs, cs⟩ =
       some (.silent, pushTrace ⟨b, env, heap, trace, funcs, cs⟩ .silent) := by
-  unfold step?; simp [exprValue?]
+  simp [step?, exprValue?]
 
 /-- §8.1.1.1 let: when init is a value, step extends env and produces body. -/
 theorem step_let_value (name : VarName) (v : Value) (body : Expr) (env : Env)
@@ -962,7 +962,7 @@ theorem step_let_value (name : VarName) (v : Value) (body : Expr) (env : Env)
     (cs : List (List (VarName × Value))) :
     step? ⟨.let name (.lit v) body, env, heap, trace, funcs, cs⟩ =
       some (.silent, pushTrace ⟨body, env.extend name v, heap, trace, funcs, cs⟩ .silent) := by
-  unfold step?; simp [exprValue?]
+  simp [step?, exprValue?]
 
 /-- §8.1.1.4.5 assign: when rhs is a value, step updates env. -/
 theorem step_assign_value (name : VarName) (v : Value) (env : Env) (heap : Heap)
@@ -970,7 +970,7 @@ theorem step_assign_value (name : VarName) (v : Value) (env : Env) (heap : Heap)
     (cs : List (List (VarName × Value))) :
     step? ⟨.assign name (.lit v), env, heap, trace, funcs, cs⟩ =
       some (.silent, pushTrace ⟨.lit v, env.assign name v, heap, trace, funcs, cs⟩ .silent) := by
-  unfold step?; simp [exprValue?]
+  simp [step?, exprValue?]
 
 /-- §13.6 if with truthy condition steps to then branch. -/
 theorem step_if_true (v : Value) (then_ else_ : Expr) (env : Env) (heap : Heap)
@@ -979,7 +979,7 @@ theorem step_if_true (v : Value) (then_ else_ : Expr) (env : Env) (heap : Heap)
     (hv : toBoolean v = true) :
     step? ⟨.if (.lit v) then_ else_, env, heap, trace, funcs, cs⟩ =
       some (.silent, pushTrace ⟨then_, env, heap, trace, funcs, cs⟩ .silent) := by
-  unfold step?; simp [exprValue?, hv]
+  simp [step?, exprValue?, hv]
 
 /-- §13.6 if with falsy condition steps to else branch. -/
 theorem step_if_false (v : Value) (then_ else_ : Expr) (env : Env) (heap : Heap)
@@ -988,7 +988,7 @@ theorem step_if_false (v : Value) (then_ else_ : Expr) (env : Env) (heap : Heap)
     (hv : toBoolean v = false) :
     step? ⟨.if (.lit v) then_ else_, env, heap, trace, funcs, cs⟩ =
       some (.silent, pushTrace ⟨else_, env, heap, trace, funcs, cs⟩ .silent) := by
-  unfold step?; simp [exprValue?, hv]
+  simp [step?, exprValue?, hv]
 
 /-- §13.5 unary on a value always steps. -/
 theorem step_unary_value (op : UnaryOp) (v : Value) (env : Env) (heap : Heap)
@@ -996,7 +996,7 @@ theorem step_unary_value (op : UnaryOp) (v : Value) (env : Env) (heap : Heap)
     (cs : List (List (VarName × Value))) :
     step? ⟨.unary op (.lit v), env, heap, trace, funcs, cs⟩ =
       some (.silent, pushTrace ⟨.lit (evalUnary op v), env, heap, trace, funcs, cs⟩ .silent) := by
-  unfold step?; simp [exprValue?]
+  simp [step?, exprValue?]
 
 /-- §13.14 throw with valued argument produces error event. -/
 theorem step_throw_value (v : Value) (env : Env) (heap : Heap)
@@ -1005,7 +1005,7 @@ theorem step_throw_value (v : Value) (env : Env) (heap : Heap)
     step? ⟨.throw (.lit v), env, heap, trace, funcs, cs⟩ =
       some (.error (valueToString v),
         pushTrace ⟨.lit .undefined, env, heap, trace, funcs, cs⟩ (.error (valueToString v))) := by
-  unfold step?; simp [exprValue?]
+  simp [step?, exprValue?]
 
 /-- §13.7.4 while unfolds to if-then-seq-while. -/
 theorem step_while_unfold (cond body : Expr) (env : Env) (heap : Heap)
@@ -1015,21 +1015,21 @@ theorem step_while_unfold (cond body : Expr) (env : Env) (heap : Heap)
       some (.silent, pushTrace
         ⟨.if cond (.seq body (.while_ cond body)) (.lit .undefined),
          env, heap, trace, funcs, cs⟩ .silent) := by
-  unfold step?; simp
+  simp [step?]
 
 /-- §13.8 break produces error event with label. -/
 theorem step_break (label : Option LabelName) (env : Env) (heap : Heap)
     (trace : List TraceEvent) (funcs : Array FuncClosure)
     (cs : List (List (VarName × Value))) :
     (step? ⟨.break label, env, heap, trace, funcs, cs⟩).isSome = true := by
-  unfold step?; simp
+  simp [step?]
 
 /-- §13.9 continue produces error event with label. -/
 theorem step_continue (label : Option LabelName) (env : Env) (heap : Heap)
     (trace : List TraceEvent) (funcs : Array FuncClosure)
     (cs : List (List (VarName × Value))) :
     (step? ⟨.break label, env, heap, trace, funcs, cs⟩).isSome = true := by
-  unfold step?; simp
+  simp [step?]
 
 /-- §14.1 functionDef always steps (creates a closure). -/
 theorem step_functionDef (fname : Option VarName) (params : List VarName) (body : Expr)
@@ -1037,14 +1037,14 @@ theorem step_functionDef (fname : Option VarName) (params : List VarName) (body 
     (trace : List TraceEvent) (funcs : Array FuncClosure)
     (cs : List (List (VarName × Value))) :
     (step? ⟨.functionDef fname params body isAsync isGen, env, heap, trace, funcs, cs⟩).isSome = true := by
-  unfold step?; simp
+  simp [step?]
 
 /-- §12.5.6 typeof on a value always steps. -/
 theorem step_typeof_value (v : Value) (env : Env) (heap : Heap)
     (trace : List TraceEvent) (funcs : Array FuncClosure)
     (cs : List (List (VarName × Value))) :
     (step? ⟨.typeof (.lit v), env, heap, trace, funcs, cs⟩).isSome = true := by
-  unfold step?; simp [exprValue?]
+  simp [step?, exprValue?]
 
 /-- §12.2.6 objectLit with all-value props allocates on heap. -/
 theorem step_objectLit_allValues (props : List (PropName × Expr)) (env : Env) (heap : Heap)
@@ -1059,7 +1059,7 @@ theorem step_newObj (callee : Expr) (args : List Expr) (env : Env) (heap : Heap)
     (trace : List TraceEvent) (funcs : Array FuncClosure)
     (cs : List (List (VarName × Value))) :
     (step? ⟨.newObj callee args, env, heap, trace, funcs, cs⟩).isSome = true := by
-  unfold step?; simp
+  simp [step?]
 
 /-- Labeled statement just unwraps to body. -/
 theorem step_labeled (label : LabelName) (body : Expr) (env : Env) (heap : Heap)
@@ -1067,7 +1067,7 @@ theorem step_labeled (label : LabelName) (body : Expr) (env : Env) (heap : Heap)
     (cs : List (List (VarName × Value))) :
     step? ⟨.labeled label body, env, heap, trace, funcs, cs⟩ =
       some (.silent, pushTrace ⟨body, env, heap, trace, funcs, cs⟩ .silent) := by
-  unfold step?; simp
+  simp [step?]
 
 /-- §12.8.3 Adding two numbers produces a number. -/
 theorem evalBinary_add_nums (a b : Float) :
@@ -1113,7 +1113,7 @@ theorem step_this_bound (v : Value) (env : Env) (heap : Heap)
     (h : env.lookup "this" = some v) :
     step? ⟨.this, env, heap, trace, funcs, cs⟩ =
       some (.silent, pushTrace ⟨.lit v, env, heap, trace, funcs, cs⟩ .silent) := by
-  unfold step?; simp [h]
+  simp [step?, h]
 
 /-- return with no argument produces error event "return:undefined". -/
 theorem step_return_none (env : Env) (heap : Heap) (trace : List TraceEvent)
@@ -1121,7 +1121,7 @@ theorem step_return_none (env : Env) (heap : Heap) (trace : List TraceEvent)
     step? ⟨.return none, env, heap, trace, funcs, cs⟩ =
       some (.error "return:undefined",
         pushTrace ⟨.lit .undefined, env, heap, trace, funcs, cs⟩ (.error "return:undefined")) := by
-  unfold step?; simp
+  simp [step?]
 
 /-- §13.7.5 for-in on non-object produces undefined. -/
 theorem step_forIn_nonObject (binding : VarName) (v : Value) (body : Expr)
@@ -1131,21 +1131,21 @@ theorem step_forIn_nonObject (binding : VarName) (v : Value) (body : Expr)
     (step? ⟨.forIn binding (.lit v) body, env, heap, trace, funcs, cs⟩).isSome = true := by
   cases v with
   | object addr => exact absurd rfl (hv addr)
-  | _ => unfold step?; simp [exprValue?]
+  | _ => simp [step?, exprValue?]
 
 /-- §13.7.5 for-in on object always steps (enumerates property keys). -/
 theorem step_forIn_object (binding : VarName) (addr : Nat) (body : Expr)
     (env : Env) (heap : Heap) (trace : List TraceEvent)
     (funcs : Array FuncClosure) (cs : List (List (VarName × Value))) :
     (step? ⟨.forIn binding (.lit (.object addr)) body, env, heap, trace, funcs, cs⟩).isSome = true := by
-  unfold step?; simp [exprValue?]
+  simp [step?, exprValue?]
 
 /-- §13.7.5.13 for-of on object always steps (iterates values). -/
 theorem step_forOf_object (binding : VarName) (addr : Nat) (body : Expr)
     (env : Env) (heap : Heap) (trace : List TraceEvent)
     (funcs : Array FuncClosure) (cs : List (List (VarName × Value))) :
     (step? ⟨.forOf binding (.lit (.object addr)) body, env, heap, trace, funcs, cs⟩).isSome = true := by
-  unfold step?; simp [exprValue?]
+  simp [step?, exprValue?]
 
 /-- §13.7.5.13 for-of on non-object produces undefined. -/
 theorem step_forOf_nonObject (binding : VarName) (v : Value) (body : Expr)
@@ -1155,7 +1155,7 @@ theorem step_forOf_nonObject (binding : VarName) (v : Value) (body : Expr)
     (step? ⟨.forOf binding (.lit v) body, env, heap, trace, funcs, cs⟩).isSome = true := by
   cases v with
   | object addr => exact absurd rfl (hv addr)
-  | _ => unfold step?; simp [exprValue?]
+  | _ => simp [step?, exprValue?]
 
 /-- §12.2.5 arrayLit with all-value elems allocates on heap. -/
 theorem step_arrayLit_allValues (elems : List Expr) (env : Env) (heap : Heap)
@@ -1170,7 +1170,7 @@ theorem step_setProp_object_value (addr : Nat) (prop : PropName) (v : Value)
     (env : Env) (heap : Heap) (trace : List TraceEvent)
     (funcs : Array FuncClosure) (cs : List (List (VarName × Value))) :
     (step? ⟨.setProp (.lit (.object addr)) prop (.lit v), env, heap, trace, funcs, cs⟩).isSome = true := by
-  unfold step?; simp [exprValue?]
+  simp [step?, exprValue?]
 
 /-- §9.1.9 setProp on non-object returns value. -/
 theorem step_setProp_nonObject (v val : Value) (prop : PropName)
@@ -1180,14 +1180,14 @@ theorem step_setProp_nonObject (v val : Value) (prop : PropName)
     (step? ⟨.setProp (.lit v) prop (.lit val), env, heap, trace, funcs, cs⟩).isSome = true := by
   cases v with
   | object addr => exact absurd rfl (hv addr)
-  | _ => unfold step?; simp [exprValue?]
+  | _ => simp [step?, exprValue?]
 
 /-- §12.4.3 deleteProp on object always steps. -/
 theorem step_deleteProp_object (addr : Nat) (prop : PropName) (env : Env) (heap : Heap)
     (trace : List TraceEvent) (funcs : Array FuncClosure)
     (cs : List (List (VarName × Value))) :
     (step? ⟨.deleteProp (.lit (.object addr)) prop, env, heap, trace, funcs, cs⟩).isSome = true := by
-  unfold step?; simp [exprValue?]
+  simp [step?, exprValue?]
 
 /-- §12.4.3 deleteProp on non-object always steps (returns true). -/
 theorem step_deleteProp_nonObject (v : Value) (prop : PropName) (env : Env) (heap : Heap)
@@ -1197,21 +1197,21 @@ theorem step_deleteProp_nonObject (v : Value) (prop : PropName) (env : Env) (hea
     (step? ⟨.deleteProp (.lit v) prop, env, heap, trace, funcs, cs⟩).isSome = true := by
   cases v with
   | object addr => exact absurd rfl (hv addr)
-  | _ => unfold step?; simp [exprValue?]
+  | _ => simp [step?, exprValue?]
 
 /-- §12.3.2 getProp on string returns length or undefined. -/
 theorem step_getProp_string (s : String) (prop : PropName) (env : Env) (heap : Heap)
     (trace : List TraceEvent) (funcs : Array FuncClosure)
     (cs : List (List (VarName × Value))) :
     (step? ⟨.getProp (.lit (.string s)) prop, env, heap, trace, funcs, cs⟩).isSome = true := by
-  unfold step?; simp [exprValue?]
+  simp [step?, exprValue?]
 
 /-- §12.3.2 getProp on object always steps. -/
 theorem step_getProp_object (addr : Nat) (prop : PropName) (env : Env) (heap : Heap)
     (trace : List TraceEvent) (funcs : Array FuncClosure)
     (cs : List (List (VarName × Value))) :
     (step? ⟨.getProp (.lit (.object addr)) prop, env, heap, trace, funcs, cs⟩).isSome = true := by
-  unfold step?; simp [exprValue?]
+  simp [step?, exprValue?]
 
 /-- allValues of empty list is some []. -/
 theorem allValues_nil : allValues [] = some [] := by
@@ -1292,14 +1292,14 @@ theorem step_tryCatch_normal_noFinally (v : Value) (catchParam : VarName) (catch
     (hNotCallFrame : catchParam ≠ "__call_frame_return__") :
     step? ⟨.tryCatch (.lit v) catchParam catchBody none, env, heap, trace, funcs, cs⟩ =
       some (.silent, pushTrace ⟨.lit v, env, heap, trace, funcs, cs⟩ .silent) := by
-  unfold step?; simp [exprValue?, hNotCallFrame]
+  simp [step?, exprValue?, hNotCallFrame]
 
 /-- §13.1 return with valued argument produces error event. -/
 theorem step_return_some_value (v : Value) (env : Env) (heap : Heap)
     (trace : List TraceEvent) (funcs : Array FuncClosure)
     (cs : List (List (VarName × Value))) :
     (step? ⟨.return (some (.lit v)), env, heap, trace, funcs, cs⟩).isSome = true := by
-  unfold step?; simp [exprValue?]
+  simp [step?, exprValue?]
 
 /-- §14.4.14 yield with no argument steps to undefined. -/
 theorem step_yield_none (delegate : Bool) (env : Env) (heap : Heap)
@@ -1307,7 +1307,7 @@ theorem step_yield_none (delegate : Bool) (env : Env) (heap : Heap)
     (cs : List (List (VarName × Value))) :
     step? ⟨.yield none delegate, env, heap, trace, funcs, cs⟩ =
       some (.silent, pushTrace ⟨.lit .undefined, env, heap, trace, funcs, cs⟩ .silent) := by
-  unfold step?; simp
+  simp [step?]
 
 /-- §14.7.14 await with valued argument steps to that value. -/
 theorem step_await_value (v : Value) (env : Env) (heap : Heap)
@@ -1315,7 +1315,7 @@ theorem step_await_value (v : Value) (env : Env) (heap : Heap)
     (cs : List (List (VarName × Value))) :
     step? ⟨.await (.lit v), env, heap, trace, funcs, cs⟩ =
       some (.silent, pushTrace ⟨.lit v, env, heap, trace, funcs, cs⟩ .silent) := by
-  unfold step?; simp [exprValue?]
+  simp [step?, exprValue?]
 
 /-- §8.3 this without binding resolves to undefined. -/
 theorem step_this_unbound (env : Env) (heap : Heap) (trace : List TraceEvent)
@@ -1323,7 +1323,7 @@ theorem step_this_unbound (env : Env) (heap : Heap) (trace : List TraceEvent)
     (h : env.lookup "this" = none) :
     step? ⟨.this, env, heap, trace, funcs, cs⟩ =
       some (.silent, pushTrace ⟨.lit .undefined, env, heap, trace, funcs, cs⟩ .silent) := by
-  unfold step?; simp [h]
+  simp [step?, h]
 
 /-- §13.12 Subtraction produces a number. -/
 theorem evalBinary_sub (a b : Value) :
@@ -1363,7 +1363,7 @@ theorem step_var_unbound (name : VarName) (env : Env) (heap : Heap)
     step? ⟨.var name, env, heap, trace, funcs, cs⟩ =
       some (.error ("ReferenceError: " ++ name),
         pushTrace ⟨.lit .undefined, env, heap, trace, funcs, cs⟩ (.error ("ReferenceError: " ++ name))) := by
-  unfold step?; simp [h]
+  simp [step?, h]
 
 /-- §13.5 Negation produces a number. -/
 theorem evalUnary_neg (v : Value) :
@@ -1404,7 +1404,7 @@ theorem step_while_isSome (cond body : Expr) (env : Env) (heap : Heap)
     (trace : List TraceEvent) (funcs : Array FuncClosure)
     (cs : List (List (VarName × Value))) :
     (step? ⟨.while_ cond body, env, heap, trace, funcs, cs⟩).isSome = true := by
-  unfold step?; simp
+  simp [step?]
 
 /-- §18.2 console.log call produces log trace event. -/
 theorem step_consoleLog (msg : String) (env : Env) (heap : Heap)
@@ -1414,7 +1414,7 @@ theorem step_consoleLog (msg : String) (env : Env) (heap : Heap)
            env, heap, trace, funcs, cs⟩ =
       some (.log msg,
         pushTrace ⟨.lit .undefined, env, heap, trace, funcs, cs⟩ (.log msg)) := by
-  unfold step?; simp [exprValue?, allValues, consoleLogIdx, valueToString]
+  simp [step?, exprValue?, allValues, consoleLogIdx, valueToString]
 
 /-- initialState produces a state with empty trace. -/
 theorem initialState_trace (p : Program) : (initialState p).trace = [] := by
@@ -1428,7 +1428,7 @@ theorem initialState_expr (p : Program) : (initialState p).expr = p.body := by
 theorem stuck_lit_expr {v : Value} {env : Env} {heap : Heap} {trace : List TraceEvent}
     {funcs : Array FuncClosure} {cs : List (List (VarName × Value))} :
     step? ⟨.lit v, env, heap, trace, funcs, cs⟩ = none := by
-  unfold step?; simp
+  simp [step?]
 
 /-- seq with two values steps to the second value. ECMA-262 §13.2. -/
 theorem step_seq_two_values (v1 v2 : Value) (env : Env) (heap : Heap)
@@ -1436,7 +1436,7 @@ theorem step_seq_two_values (v1 v2 : Value) (env : Env) (heap : Heap)
     (cs : List (List (VarName × Value))) :
     step? ⟨.seq (.lit v1) (.lit v2), env, heap, trace, funcs, cs⟩ =
       some (.silent, pushTrace ⟨.lit v2, env, heap, trace, funcs, cs⟩ .silent) := by
-  unfold step?; simp [exprValue?]
+  simp [step?, exprValue?]
 
 /-- abstractEq: null == undefined is true. ECMA-262 §7.2.14. -/
 theorem abstractEq_null_undef : abstractEq .null .undefined = true := by
@@ -1621,7 +1621,7 @@ theorem step_binary_nonvalue_lhs (op : BinOp) (lhs rhs : Expr) (env : Env) (heap
     (hstep : step? ⟨lhs, env, heap, trace, funcs, cs⟩ = some (t, sl)) :
     step? ⟨.binary op lhs rhs, env, heap, trace, funcs, cs⟩ =
       some (t, pushTrace { sl with expr := .binary op sl.expr rhs, trace := trace } t) := by
-  unfold step?; simp [hlhs, hstep]
+  simp [step?, hlhs, hstep]
 
 /-- step? on a seq with non-value left steps the left. -/
 theorem step_seq_nonvalue_lhs (a b : Expr) (env : Env) (heap : Heap)
@@ -1632,7 +1632,7 @@ theorem step_seq_nonvalue_lhs (a b : Expr) (env : Env) (heap : Heap)
     (hstep : step? ⟨a, env, heap, trace, funcs, cs⟩ = some (t, sa)) :
     step? ⟨.seq a b, env, heap, trace, funcs, cs⟩ =
       some (t, pushTrace { sa with expr := .seq sa.expr b, trace := trace } t) := by
-  unfold step?; simp [ha, hstep]
+  simp [step?, ha, hstep]
 
 /-- Behaves on a single-step program. -/
 theorem Behaves_single {p : Program} {t : TraceEvent} {s' : State}
@@ -1653,14 +1653,14 @@ theorem step_getIndex_values (objVal idxVal : Value) (env : Env) (heap : Heap)
     (trace : List TraceEvent) (funcs : Array FuncClosure)
     (cs : List (List (VarName × Value))) :
     (step? ⟨.getIndex (.lit objVal) (.lit idxVal), env, heap, trace, funcs, cs⟩).isSome = true := by
-  cases objVal <;> unfold step?; simp [exprValue?] <;> split <;> simp
+  cases objVal <;> simp [step?, exprValue?] <;> split <;> simp
 
 /-- step? on setIndex with three values always produces some result. -/
 theorem step_setIndex_values (objVal idxVal v : Value) (env : Env) (heap : Heap)
     (trace : List TraceEvent) (funcs : Array FuncClosure)
     (cs : List (List (VarName × Value))) :
     (step? ⟨.setIndex (.lit objVal) (.lit idxVal) (.lit v), env, heap, trace, funcs, cs⟩).isSome = true := by
-  cases objVal <;> unfold step?; simp [exprValue?] <;> split <;> simp
+  cases objVal <;> simp [step?, exprValue?] <;> split <;> simp
 
 /-- Nullish coalescing: logOr with non-falsy left returns the left operand. -/
 theorem evalBinary_logOr_truthy (a b : Value) (h : toBoolean a = true) :
@@ -1707,49 +1707,49 @@ theorem step_var_isSome (name : VarName) (env : Env) (heap : Heap)
     (trace : List TraceEvent) (funcs : Array FuncClosure)
     (cs : List (List (VarName × Value))) :
     (step? ⟨.var name, env, heap, trace, funcs, cs⟩).isSome = true := by
-  unfold step?; simp; split <;> simp
+  simp [step?]; split <;> simp
 
 /-- step? on this always produces some result. -/
 theorem step_this_isSome (env : Env) (heap : Heap)
     (trace : List TraceEvent) (funcs : Array FuncClosure)
     (cs : List (List (VarName × Value))) :
     (step? ⟨.this, env, heap, trace, funcs, cs⟩).isSome = true := by
-  unfold step?; simp; split <;> simp
+  simp [step?]; split <;> simp
 
 /-- step? on labeled always produces some result. -/
 theorem step_labeled_isSome (label : LabelName) (body : Expr) (env : Env) (heap : Heap)
     (trace : List TraceEvent) (funcs : Array FuncClosure)
     (cs : List (List (VarName × Value))) :
     (step? ⟨.labeled label body, env, heap, trace, funcs, cs⟩).isSome = true := by
-  unfold step?; simp
+  simp [step?]
 
 /-- step? on break always produces some result. -/
 theorem step_break_isSome (label : Option LabelName) (env : Env) (heap : Heap)
     (trace : List TraceEvent) (funcs : Array FuncClosure)
     (cs : List (List (VarName × Value))) :
     (step? ⟨.break label, env, heap, trace, funcs, cs⟩).isSome = true := by
-  unfold step?; simp
+  simp [step?]
 
 /-- step? on continue always produces some result. -/
 theorem step_continue_isSome (label : Option LabelName) (env : Env) (heap : Heap)
     (trace : List TraceEvent) (funcs : Array FuncClosure)
     (cs : List (List (VarName × Value))) :
     (step? ⟨.continue label, env, heap, trace, funcs, cs⟩).isSome = true := by
-  unfold step?; simp
+  simp [step?]
 
 /-- step? on while_ always produces some result. -/
 theorem step_while_isSome' (cond body : Expr) (env : Env) (heap : Heap)
     (trace : List TraceEvent) (funcs : Array FuncClosure)
     (cs : List (List (VarName × Value))) :
     (step? ⟨.while_ cond body, env, heap, trace, funcs, cs⟩).isSome = true := by
-  unfold step?; simp
+  simp [step?]
 
 /-- step? on newObj always produces some result. -/
 theorem step_newObj_isSome (callee : Expr) (args : List Expr) (env : Env) (heap : Heap)
     (trace : List TraceEvent) (funcs : Array FuncClosure)
     (cs : List (List (VarName × Value))) :
     (step? ⟨.newObj callee args, env, heap, trace, funcs, cs⟩).isSome = true := by
-  unfold step?; simp
+  simp [step?]
 
 /-- step? on functionDef always produces some result. -/
 theorem step_functionDef_isSome (fname : Option VarName) (params : List VarName)
@@ -1757,7 +1757,7 @@ theorem step_functionDef_isSome (fname : Option VarName) (params : List VarName)
     (trace : List TraceEvent) (funcs : Array FuncClosure)
     (cs : List (List (VarName × Value))) :
     (step? ⟨.functionDef fname params body isAsync isGen, env, heap, trace, funcs, cs⟩).isSome = true := by
-  unfold step?; simp
+  simp [step?]
 
 /-- Step_iff forward: Step implies step?. -/
 theorem Step_implies_step {s : State} {t : TraceEvent} {s' : State}
@@ -1805,7 +1805,7 @@ theorem step_call_nonfunc (v : Value) (args : List Expr) (vs : List Value)
     (step? ⟨.call (.lit v) args, env, heap, trace, funcs, cs⟩).isSome = true := by
   cases v with
   | function idx => exact absurd rfl (hv idx)
-  | _ => unfold step?; simp [exprValue?, hargs]
+  | _ => simp [step?, exprValue?, hargs]
 
 /-- step? on let with non-value init and steppable init, steps the init. -/
 theorem step_let_step_init (name : VarName) (init body : Expr) (env : Env) (heap : Heap)
@@ -1816,7 +1816,7 @@ theorem step_let_step_init (name : VarName) (init body : Expr) (env : Env) (heap
     (hstep : step? ⟨init, env, heap, trace, funcs, cs⟩ = some (t, si)) :
     step? ⟨.let name init body, env, heap, trace, funcs, cs⟩ =
       some (t, pushTrace { si with expr := .let name si.expr body, trace := trace } t) := by
-  unfold step?; simp [hinit, hstep]
+  simp [step?, hinit, hstep]
 
 /-- step? on assign with non-value rhs and steppable rhs, steps the rhs. -/
 theorem step_assign_step_rhs (name : VarName) (rhs : Expr) (env : Env) (heap : Heap)
@@ -1827,7 +1827,7 @@ theorem step_assign_step_rhs (name : VarName) (rhs : Expr) (env : Env) (heap : H
     (hstep : step? ⟨rhs, env, heap, trace, funcs, cs⟩ = some (t, sr)) :
     step? ⟨.assign name rhs, env, heap, trace, funcs, cs⟩ =
       some (t, pushTrace { sr with expr := .assign name sr.expr, trace := trace } t) := by
-  unfold step?; simp [hrhs, hstep]
+  simp [step?, hrhs, hstep]
 
 /-- step? on if with non-value cond and steppable cond, steps the cond. -/
 theorem step_if_step_cond (cond then_ else_ : Expr) (env : Env) (heap : Heap)
@@ -1838,7 +1838,7 @@ theorem step_if_step_cond (cond then_ else_ : Expr) (env : Env) (heap : Heap)
     (hstep : step? ⟨cond, env, heap, trace, funcs, cs⟩ = some (t, sc)) :
     step? ⟨.if cond then_ else_, env, heap, trace, funcs, cs⟩ =
       some (t, pushTrace { sc with expr := .if sc.expr then_ else_, trace := trace } t) := by
-  unfold step?; simp [hcond, hstep]
+  simp [step?, hcond, hstep]
 
 /-- step? on unary with non-value arg and steppable arg, steps the arg. -/
 theorem step_unary_step_arg (op : UnaryOp) (arg : Expr) (env : Env) (heap : Heap)
@@ -1849,7 +1849,7 @@ theorem step_unary_step_arg (op : UnaryOp) (arg : Expr) (env : Env) (heap : Heap
     (hstep : step? ⟨arg, env, heap, trace, funcs, cs⟩ = some (t, sa)) :
     step? ⟨.unary op arg, env, heap, trace, funcs, cs⟩ =
       some (t, pushTrace { sa with expr := .unary op sa.expr, trace := trace } t) := by
-  unfold step?; simp [harg, hstep]
+  simp [step?, harg, hstep]
 
 /-- step? on throw with non-value arg and steppable arg, steps the arg. -/
 theorem step_throw_step_arg (arg : Expr) (env : Env) (heap : Heap)
@@ -1860,7 +1860,7 @@ theorem step_throw_step_arg (arg : Expr) (env : Env) (heap : Heap)
     (hstep : step? ⟨arg, env, heap, trace, funcs, cs⟩ = some (t, sa)) :
     step? ⟨.throw arg, env, heap, trace, funcs, cs⟩ =
       some (t, pushTrace { sa with expr := .throw sa.expr, trace := trace } t) := by
-  unfold step?; simp [harg, hstep]
+  simp [step?, harg, hstep]
 
 /-- step? on typeof with non-value arg and steppable arg, steps the arg. -/
 theorem step_typeof_step_arg (arg : Expr) (env : Env) (heap : Heap)
@@ -1871,7 +1871,7 @@ theorem step_typeof_step_arg (arg : Expr) (env : Env) (heap : Heap)
     (hstep : step? ⟨arg, env, heap, trace, funcs, cs⟩ = some (t, sa)) :
     step? ⟨.typeof arg, env, heap, trace, funcs, cs⟩ =
       some (t, pushTrace { sa with expr := .typeof sa.expr, trace := trace } t) := by
-  unfold step?; simp [harg, hstep]
+  simp [step?, harg, hstep]
 
 /-- step? on getProp with non-value obj and steppable obj, steps the obj. -/
 theorem step_getProp_step_obj (obj : Expr) (prop : PropName) (env : Env) (heap : Heap)
@@ -1882,7 +1882,7 @@ theorem step_getProp_step_obj (obj : Expr) (prop : PropName) (env : Env) (heap :
     (hstep : step? ⟨obj, env, heap, trace, funcs, cs⟩ = some (t, so)) :
     step? ⟨.getProp obj prop, env, heap, trace, funcs, cs⟩ =
       some (t, pushTrace { so with expr := .getProp so.expr prop, trace := trace } t) := by
-  unfold step?; simp [hobj, hstep]
+  simp [step?, hobj, hstep]
 
 /-- Steps from a stuck state must be the empty (refl) step. -/
 theorem Steps_stuck {s sf : State} {ts : List TraceEvent}
@@ -1935,7 +1935,7 @@ theorem step_binary_value (op : BinOp) (a b : Value) (env : Env) (heap : Heap)
     (cs : List (List (VarName × Value))) :
     step? ⟨.binary op (.lit a) (.lit b), env, heap, trace, funcs, cs⟩ =
       some (.silent, pushTrace ⟨.lit (evalBinary op a b), env, heap, trace, funcs, cs⟩ .silent) := by
-  unfold step?; simp [exprValue?]
+  simp [step?, exprValue?]
 
 /-- step? on deleteProp with non-value obj and steppable obj, steps the obj. -/
 theorem step_deleteProp_step_obj (obj : Expr) (prop : PropName) (env : Env) (heap : Heap)
@@ -1946,7 +1946,7 @@ theorem step_deleteProp_step_obj (obj : Expr) (prop : PropName) (env : Env) (hea
     (hstep : step? ⟨obj, env, heap, trace, funcs, cs⟩ = some (t, so)) :
     step? ⟨.deleteProp obj prop, env, heap, trace, funcs, cs⟩ =
       some (t, pushTrace { so with expr := .deleteProp so.expr prop, trace := trace } t) := by
-  unfold step?; simp [hobj, hstep]
+  simp [step?, hobj, hstep]
 
 /-- Env.lookup_extend_same' — more precise version returning the actual result. -/
 theorem Env.lookup_extend_eq (env : Env) (name : VarName) (v : Value) :
@@ -1962,7 +1962,7 @@ theorem step_forIn_step_obj (binding : VarName) (obj body : Expr) (env : Env) (h
     (hstep : step? ⟨obj, env, heap, trace, funcs, cs⟩ = some (t, so)) :
     step? ⟨.forIn binding obj body, env, heap, trace, funcs, cs⟩ =
       some (t, pushTrace { so with expr := .forIn binding so.expr body, trace := trace } t) := by
-  unfold step?; simp [hobj, hstep]
+  simp [step?, hobj, hstep]
 
 /-- step? on forOf with non-value iterable and steppable iterable, steps the iterable. -/
 theorem step_forOf_step_obj (binding : VarName) (iterable body : Expr) (env : Env) (heap : Heap)
@@ -1973,7 +1973,7 @@ theorem step_forOf_step_obj (binding : VarName) (iterable body : Expr) (env : En
     (hstep : step? ⟨iterable, env, heap, trace, funcs, cs⟩ = some (t, so)) :
     step? ⟨.forOf binding iterable body, env, heap, trace, funcs, cs⟩ =
       some (t, pushTrace { so with expr := .forOf binding so.expr body, trace := trace } t) := by
-  unfold step?; simp [hiter, hstep]
+  simp [step?, hiter, hstep]
 
 /-- §7.2.14 abstractEq: null/null is true. -/
 theorem abstractEq_null_self : abstractEq .null .null = true := by
@@ -2027,7 +2027,7 @@ theorem step_consoleLog_num (n : Float) (env : Env) (heap : Heap)
       some (.log (valueToString (.number n)),
         pushTrace ⟨.lit .undefined, env, heap, trace, funcs, cs⟩
           (.log (valueToString (.number n)))) := by
-  unfold step?; simp [exprValue?, allValues, consoleLogIdx, valueToString]
+  simp [step?, exprValue?, allValues, consoleLogIdx, valueToString]
 
 /-- Env.lookup after multiple extends: latest wins. -/
 theorem Env.lookup_extend_shadow (env : Env) (name : VarName) (v1 v2 : Value) :
@@ -2047,7 +2047,7 @@ theorem step_setProp_step_obj (obj : Expr) (prop : PropName) (value : Expr) (env
     (hstep : step? ⟨obj, env, heap, trace, funcs, cs⟩ = some (t, so)) :
     step? ⟨.setProp obj prop value, env, heap, trace, funcs, cs⟩ =
       some (t, pushTrace { so with expr := .setProp so.expr prop value, trace := trace } t) := by
-  unfold step?; simp [hobj, hstep]
+  simp [step?, hobj, hstep]
 
 /-- step? on call with non-value callee steps the callee. ECMA-262 §13.3.1. -/
 theorem step_call_step_callee (callee : Expr) (args : List Expr) (env : Env) (heap : Heap)
@@ -2058,7 +2058,7 @@ theorem step_call_step_callee (callee : Expr) (args : List Expr) (env : Env) (he
     (hstep : step? ⟨callee, env, heap, trace, funcs, cs⟩ = some (t, sc)) :
     step? ⟨.call callee args, env, heap, trace, funcs, cs⟩ =
       some (t, pushTrace { sc with expr := .call sc.expr args, trace := trace } t) := by
-  unfold step?; simp [hcallee, hstep]
+  simp [step?, hcallee, hstep]
 
 /-- step? on return with non-value arg steps the arg. ECMA-262 §13.1. -/
 theorem step_return_step_arg (e : Expr) (env : Env) (heap : Heap)
@@ -2069,7 +2069,7 @@ theorem step_return_step_arg (e : Expr) (env : Env) (heap : Heap)
     (hstep : step? ⟨e, env, heap, trace, funcs, cs⟩ = some (t, sa)) :
     step? ⟨.return (some e), env, heap, trace, funcs, cs⟩ =
       some (t, pushTrace { sa with expr := .return (some sa.expr), trace := trace } t) := by
-  unfold step?; simp [harg, hstep]
+  simp [step?, harg, hstep]
 
 /-- step? on await with non-value arg steps the arg. ECMA-262 §14.7.14. -/
 theorem step_await_step_arg (arg : Expr) (env : Env) (heap : Heap)
@@ -2080,7 +2080,7 @@ theorem step_await_step_arg (arg : Expr) (env : Env) (heap : Heap)
     (hstep : step? ⟨arg, env, heap, trace, funcs, cs⟩ = some (t, sa)) :
     step? ⟨.await arg, env, heap, trace, funcs, cs⟩ =
       some (t, pushTrace { sa with expr := .await sa.expr, trace := trace } t) := by
-  unfold step?; simp [harg, hstep]
+  simp [step?, harg, hstep]
 
 /-- step? on yield with non-value arg steps the arg. ECMA-262 §14.4.14. -/
 theorem step_yield_step_arg (e : Expr) (delegate : Bool) (env : Env) (heap : Heap)
@@ -2091,7 +2091,7 @@ theorem step_yield_step_arg (e : Expr) (delegate : Bool) (env : Env) (heap : Hea
     (hstep : step? ⟨e, env, heap, trace, funcs, cs⟩ = some (t, sa)) :
     step? ⟨.yield (some e) delegate, env, heap, trace, funcs, cs⟩ =
       some (t, pushTrace { sa with expr := .yield (some sa.expr) delegate, trace := trace } t) := by
-  unfold step?; simp [harg, hstep]
+  simp [step?, harg, hstep]
 
 /-- step? on getIndex with non-value obj steps the obj. ECMA-262 §12.3.2. -/
 theorem step_getIndex_step_obj (obj idx : Expr) (env : Env) (heap : Heap)
@@ -2102,7 +2102,7 @@ theorem step_getIndex_step_obj (obj idx : Expr) (env : Env) (heap : Heap)
     (hstep : step? ⟨obj, env, heap, trace, funcs, cs⟩ = some (t, so)) :
     step? ⟨.getIndex obj idx, env, heap, trace, funcs, cs⟩ =
       some (t, pushTrace { so with expr := .getIndex so.expr idx, trace := trace } t) := by
-  unfold step?; simp [hobj, hstep]
+  simp [step?, hobj, hstep]
 
 /-- step? on tryCatch with non-value body: normal (non-error) step wraps in tryCatch. -/
 theorem step_tryCatch_step_body_silent (body : Expr) (catchParam : VarName) (catchBody : Expr)
@@ -2114,7 +2114,7 @@ theorem step_tryCatch_step_body_silent (body : Expr) (catchParam : VarName) (cat
     (hstep : step? ⟨body, env, heap, trace, funcs, cs⟩ = some (.silent, sb)) :
     step? ⟨.tryCatch body catchParam catchBody finally_, env, heap, trace, funcs, cs⟩ =
       some (.silent, pushTrace { sb with expr := .tryCatch sb.expr catchParam catchBody finally_, trace := trace } .silent) := by
-  unfold step?; simp [hbody, hstep]
+  simp [step?, hbody, hstep]
 
 /-- step? on tryCatch with non-value body: log step wraps in tryCatch. -/
 theorem step_tryCatch_step_body_log (body : Expr) (catchParam : VarName) (catchBody : Expr)
@@ -2126,7 +2126,7 @@ theorem step_tryCatch_step_body_log (body : Expr) (catchParam : VarName) (catchB
     (hstep : step? ⟨body, env, heap, trace, funcs, cs⟩ = some (.log msg, sb)) :
     step? ⟨.tryCatch body catchParam catchBody finally_, env, heap, trace, funcs, cs⟩ =
       some (.log msg, pushTrace { sb with expr := .tryCatch sb.expr catchParam catchBody finally_, trace := trace } (.log msg)) := by
-  unfold step?; simp [hbody, hstep]
+  simp [step?, hbody, hstep]
 
 /-- Steps inversion: from [t] there is exactly one step. -/
 theorem Steps_single_inv {s1 s2 : State} {t : TraceEvent}
@@ -2144,7 +2144,7 @@ theorem step_functionDef_exact (fname : Option VarName) (params : List VarName)
     step? ⟨.functionDef fname params body isAsync isGen, env, heap, trace, funcs, cs⟩ =
       some (.silent, pushTrace ⟨.lit (.function funcs.size), env, heap, trace,
         funcs.push ⟨fname, params, body, env.bindings⟩, cs⟩ .silent) := by
-  unfold step?; simp
+  simp [step?]
 
 /-- step? on yield with value arg steps to that value. -/
 theorem step_yield_some_value (v : Value) (delegate : Bool) (env : Env) (heap : Heap)
@@ -2152,7 +2152,7 @@ theorem step_yield_some_value (v : Value) (delegate : Bool) (env : Env) (heap : 
     (cs : List (List (VarName × Value))) :
     step? ⟨.yield (some (.lit v)) delegate, env, heap, trace, funcs, cs⟩ =
       some (.silent, pushTrace ⟨.lit v, env, heap, trace, funcs, cs⟩ .silent) := by
-  unfold step?; simp [exprValue?]
+  simp [step?, exprValue?]
 
 /-- step? on return with value arg produces error event. -/
 theorem step_return_some_value_exact (v : Value) (env : Env) (heap : Heap)
@@ -2162,7 +2162,7 @@ theorem step_return_some_value_exact (v : Value) (env : Env) (heap : Heap)
       some (.error ("return:" ++ toString (repr v)),
         pushTrace ⟨.lit v, env, heap, trace, funcs, cs⟩
           (.error ("return:" ++ toString (repr v)))) := by
-  unfold step?; simp [exprValue?]
+  simp [step?, exprValue?]
 
 set_option maxHeartbeats 800000 in
 /-- The only stuck expression is a literal (progress). -/
@@ -2170,14 +2170,14 @@ theorem stuck_implies_lit {s : State} (hstuck : step? s = none) :
     ∃ v, s.expr = .lit v := by
   cases h : s.expr with
   | lit v => exact ⟨v, rfl⟩
-  | var _ => unfold step? at hstuck; simp [h] at hstuck; split at hstuck <;> simp at hstuck
-  | while_ _ _ => unfold step? at hstuck; simp [h] at hstuck
-  | «break» _ => unfold step? at hstuck; simp [h] at hstuck
-  | «continue» _ => unfold step? at hstuck; simp [h] at hstuck
-  | labeled _ _ => unfold step? at hstuck; simp [h] at hstuck
-  | newObj _ _ => unfold step? at hstuck; simp [h] at hstuck
-  | this => unfold step? at hstuck; simp [h] at hstuck; split at hstuck <;> simp at hstuck
-  | functionDef _ _ _ _ _ => unfold step? at hstuck; simp [h] at hstuck
+  | var _ => simp [step?, h] at hstuck; split at hstuck <;> simp at hstuck
+  | while_ _ _ => simp [step?, h] at hstuck
+  | «break» _ => simp [step?, h] at hstuck
+  | «continue» _ => simp [step?, h] at hstuck
+  | labeled _ _ => simp [step?, h] at hstuck
+  | newObj _ _ => simp [step?, h] at hstuck
+  | this => simp [step?, h] at hstuck; split at hstuck <;> simp at hstuck
+  | functionDef _ _ _ _ _ => simp [step?, h] at hstuck
   | «let» _ init _ =>
     simp only [step?, h] at hstuck; split at hstuck <;> simp at hstuck
     split at hstuck <;> simp at hstuck

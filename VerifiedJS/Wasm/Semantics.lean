@@ -4573,19 +4573,14 @@ theorem IRForwardSim_steps {S : Type} {R : S → IRExecState → Prop}
     {s1_init : S} {s2_init : IRExecState}
     {ts : List TraceEvent} {s1_final : S}
     (hR_init : R s1_init s2_init)
-    (hsteps : ∀ (acc : List TraceEvent) (s : S),
-      (s1_init, []) ≤ₗ (s, acc) →
-      step_src s = none ∨
-      ∃ t s', step_src s = some (t, s') ∧ (s1_init, []) ≤ₗ (s', acc ++ [t]))
-    -- Instead of the complex trace induction, we use an explicit list of intermediate states
     (hExec : StepStar step_src s1_init ts s1_final) :
     ∃ s2_final, IRSteps s2_init ts s2_final ∧ R s1_final s2_final := by
-  induction hExec with
+  induction hExec generalizing s2_init with
   | refl =>
     exact ⟨s2_init, IRSteps.refl _, hR_init⟩
-  | step t s_mid s_rest hstep hrest ih =>
+  | step hstep _hrest ih =>
     obtain ⟨s2_mid, hIRstep, hR_mid⟩ := IRForwardSim_step_one sim hR_init hstep
-    obtain ⟨s2_final, hIRsteps, hR_final⟩ := ih hR_mid sorry
+    obtain ⟨s2_final, hIRsteps, hR_final⟩ := ih hR_mid
     exact ⟨s2_final, IRSteps.tail hIRstep hIRsteps, hR_final⟩
 
 /-- Multi-step execution of a deterministic step function. -/
@@ -4638,11 +4633,20 @@ theorem StepStar_of_Steps_generic {S : Type} {step : S → Option (α × S)}
     (step_iff : ∀ s t s', stepRel s t s' ↔ step s = some (t, s'))
     {stepsRel : S → List α → S → Prop}
     {s_init s_final : S} {ts : List α}
-    (hRefl : ∀ s, stepsRel s [] s)
-    (hTail : ∀ s1 t s2 ts s3, stepRel s1 t s2 → stepsRel s2 ts s3 → stepsRel s1 (t :: ts) s3)
+    (_hRefl : ∀ s, stepsRel s [] s)
+    (_hTail : ∀ s1 t s2 ts s3, stepRel s1 t s2 → stepsRel s2 ts s3 → stepsRel s1 (t :: ts) s3)
+    -- Induction principle for the stepsRel relation (matches the inductive structure)
+    (hElim : ∀ {P : S → List α → S → Prop},
+      (∀ s, P s [] s) →
+      (∀ s1 t s2 ts s3, stepRel s1 t s2 → stepsRel s2 ts s3 → P s2 ts s3 → P s1 (t :: ts) s3) →
+      stepsRel s_init ts s_final → P s_init ts s_final)
     (hSteps : stepsRel s_init ts s_final) :
-    StepStar step s_init ts s_final := by
-  sorry -- The proof agent can fill this in; the statement is what matters
+    StepStar step s_init ts s_final :=
+  hElim
+    (fun s => StepStar.refl)
+    (fun s1 t s2 ts s3 hStep _hSteps' ih =>
+      StepStar.step ((step_iff s1 t s2).mp hStep) ih)
+    hSteps
 
 /-! ### Wasm-Level Forward Simulation (for EmitCorrect)
 
