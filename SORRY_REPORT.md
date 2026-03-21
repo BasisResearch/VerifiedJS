@@ -1,4 +1,4 @@
-# Sorry Report (Sat Mar 21 05:10:23 PM UTC 2026)
+# Sorry Report (Sat Mar 21 06:10:22 PM UTC 2026)
 
 - [ ] `VerifiedJS/Proofs/LowerCorrect.lean:51` — `theorem lower_behavioral_correct` — `sorry`
 - [ ] `VerifiedJS/Proofs/EndToEnd.lean:55` — `theorem flat_to_wasm_correct` — `sorry`
@@ -8,13 +8,15 @@
 - [ ] `VerifiedJS/Proofs/ANFConvertCorrect.lean:699` — `theorem anfConvert_halt_star` — `all_goals sorry -- tryCatch monadic bind chains`
 - [ ] `VerifiedJS/Proofs/ClosureConvertCorrect.lean:138` — `theorem closureConvert_step_simulation` — `sorry -- Requires case analysis on Flat.Step + expression correspondence through conversion`
 - [ ] `VerifiedJS/Proofs/EmitCorrect.lean:44` — `theorem emit_behavioral_correct` — `sorry`
-- [ ] `VerifiedJS/Core/Semantics.lean:2231` — `theorem stuck_implies_lit` — `| binary _ _ _ => sorry`
-- [ ] `VerifiedJS/Core/Semantics.lean:2232` — `theorem stuck_implies_lit` — `| getIndex _ _ => sorry`
-- [ ] `VerifiedJS/Core/Semantics.lean:2233` — `theorem stuck_implies_lit` — `| setProp _ _ _ => sorry`
-- [ ] `VerifiedJS/Core/Semantics.lean:2234` — `theorem stuck_implies_lit` — `| setIndex _ _ _ => sorry`
-- [ ] `VerifiedJS/Core/Semantics.lean:2235` — `theorem stuck_implies_lit` — `| objectLit _ => sorry`
-- [ ] `VerifiedJS/Core/Semantics.lean:2236` — `theorem stuck_implies_lit` — `| arrayLit _ => sorry`
-- [ ] `VerifiedJS/Core/Semantics.lean:2237` — `theorem stuck_implies_lit` — `| tryCatch _ _ _ _ => sorry`
-- [ ] `VerifiedJS/Core/Semantics.lean:2238` — `theorem stuck_implies_lit` — `| call _ _ => sorry`
+- [ ] `VerifiedJS/Wasm/Semantics.lean:4588` — `theorem IRForwardSim_steps` — `obtain ⟨s2_final, hIRsteps, hR_final⟩ := ih hR_mid sorry`
+- [ ] `VerifiedJS/Wasm/Semantics.lean:4645` — `theorem StepStar_of_Steps_generic` — `sorry -- The proof agent can fill this in; the statement is what matters`
+- [ ] `VerifiedJS/Core/Semantics.lean:2233` — `theorem stuck_implies_lit` — `| binary _ _ _ => sorry`
+- [ ] `VerifiedJS/Core/Semantics.lean:2234` — `theorem stuck_implies_lit` — `| getIndex _ _ => sorry`
+- [ ] `VerifiedJS/Core/Semantics.lean:2235` — `theorem stuck_implies_lit` — `| setProp _ _ _ => sorry`
+- [ ] `VerifiedJS/Core/Semantics.lean:2236` — `theorem stuck_implies_lit` — `| setIndex _ _ _ => sorry`
+- [ ] `VerifiedJS/Core/Semantics.lean:2237` — `theorem stuck_implies_lit` — `| objectLit _ => sorry`
+- [ ] `VerifiedJS/Core/Semantics.lean:2238` — `theorem stuck_implies_lit` — `| arrayLit _ => sorry`
+- [ ] `VerifiedJS/Core/Semantics.lean:2239` — `theorem stuck_implies_lit` — `| tryCatch _ _ _ _ => sorry`
+- [ ] `VerifiedJS/Core/Semantics.lean:2240` — `theorem stuck_implies_lit` — `| call _ _ => sorry`
 
-**Total: 16 sorries**
+**Total: 18 sorries**
