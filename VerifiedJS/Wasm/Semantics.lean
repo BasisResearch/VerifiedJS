@@ -4644,7 +4644,7 @@ theorem StepStar_of_Steps_generic {S : Type} {step : S → Option (TraceEvent ×
     (_hRefl : ∀ s, stepsRel s [] s)
     (_hTail : ∀ s1 t s2 ts s3, stepRel s1 t s2 → stepsRel s2 ts s3 → stepsRel s1 (t :: ts) s3)
     -- Induction principle for the stepsRel relation (matches the inductive structure)
-    (hElim : ∀ {P : S → List α → S → Prop},
+    (hElim : ∀ {P : S → List TraceEvent → S → Prop},
       (∀ s, P s [] s) →
       (∀ s1 t s2 ts s3, stepRel s1 t s2 → stepsRel s2 ts s3 → P s2 ts s3 → P s1 (t :: ts) s3) →
       stepsRel s_init ts s_final → P s_init ts s_final)
@@ -4693,7 +4693,7 @@ theorem WasmForwardSim_behavioral (R : IRExecState → ExecState → Prop)
   | tail hstep _ ih =>
     obtain ⟨h_irStep⟩ := hstep
     obtain ⟨w_mid, hW_step, hR_mid⟩ := sim.step_sim _ w_init _ _ hR h_irStep
-    obtain ⟨w_final, hW_rest, hR_final⟩ := ih hR_mid
+    have ⟨w_final, hW_rest, hR_final⟩ := ih w_mid hR_mid
     exact ⟨w_final, Steps.tail ⟨hW_step⟩ hW_rest, hR_final⟩
 
 /-- Convenience: combining IRForwardSim_behavioral and WasmForwardSim_behavioral
@@ -4796,7 +4796,7 @@ def LowerSimRel (prog : ANF.Program) (irmod : IRModule)
   /- Environment correspondence: every ANF environment binding has a
      corresponding IR local variable with the encoded value. -/
   (∀ name v, s.env.lookup name = some v →
-    ∃ idx val, (Option.bind ir.frames.head? (fun f => f.locals[idx]?)) = some val)
+    ∃ (idx : Nat) (val : IRValue), (Option.bind ir.frames.head? (fun f => f.locals[idx]?)) = some val)
 
 namespace LowerSimRel
 

@@ -125,7 +125,7 @@ private theorem normalizeExpr_not_trivial_family :
         simp only [ANF.normalizeExpr]
         cases ANF.trivialOfFlatValue v with
         | ok tv => exact hk tv n m t
-        | error _ => intro h; simp [Except.bind] at h
+        | error _ => nofun
       | var name => simp only [ANF.normalizeExpr]; exact hk (.var name) n m t
       | this => simp only [ANF.normalizeExpr]; exact hk (.var "this") n m t
       | «break» _ =>
@@ -146,6 +146,7 @@ private theorem normalizeExpr_not_trivial_family :
           simp only [ANF.normalizeExpr, pure, Pure.pure, StateT.pure, Except.pure]
           intro habs; exact ANF.Expr.noConfusion (Prod.mk.inj (Except.ok.inj habs)).1
         | some _ => exfalso; simp [Flat.Expr.depth] at hd
+      | tryCatch _ _ _ fin => exfalso; cases fin <;> simp [Flat.Expr.depth] at hd
       | _ => exfalso; simp [Flat.Expr.depth] at hd
     · intro es k hk hd n m t
       cases es with
@@ -165,7 +166,7 @@ private theorem normalizeExpr_not_trivial_family :
         simp only [ANF.normalizeExpr]
         cases ANF.trivialOfFlatValue v with
         | ok tv => exact hk tv n m t
-        | error _ => intro h; simp [Except.bind] at h
+        | error _ => nofun
       | var name => simp only [ANF.normalizeExpr]; exact hk (.var name) n m t
       | this => simp only [ANF.normalizeExpr]; exact hk (.var "this") n m t
       | «break» _ =>
@@ -284,9 +285,8 @@ private theorem normalizeExpr_not_trivial_family :
           (by intro x n' m' t'
               simp only [bind, Bind.bind, StateT.bind, Except.bind]
               intro habs; split at habs
-              · simp at habs
-              · simp only [pure, Pure.pure, StateT.pure, Except.pure, Except.ok.injEq] at habs
-                exact ANF.Expr.noConfusion (Prod.mk.inj (Except.ok.inj habs)).1)
+              · cases habs
+              · simp [pure, Pure.pure, StateT.pure, Except.pure] at habs)
           (by simp [Flat.Expr.depth] at hd ⊢; omega) n m t
       | «if» cond then_ else_ =>
         simp only [ANF.normalizeExpr]
@@ -297,9 +297,7 @@ private theorem normalizeExpr_not_trivial_family :
           (by intro x n' m' t'
               simp only [bind, Bind.bind, StateT.bind, Except.bind]
               intro habs
-              repeat (first | split at habs | simp at habs)
-              all_goals (simp only [pure, Pure.pure, StateT.pure, Except.pure, Except.ok.injEq] at habs)
-              all_goals (exact ANF.Expr.noConfusion (Prod.mk.inj (Except.ok.inj habs)).1))
+              repeat (first | split at habs | (simp [pure, Pure.pure, StateT.pure, Except.pure] at habs)))
           (by simp [Flat.Expr.depth] at hd ⊢; omega) n m t
       | seq a b =>
         simp only [ANF.normalizeExpr]
@@ -311,38 +309,21 @@ private theorem normalizeExpr_not_trivial_family :
         simp only [ANF.normalizeExpr, bind, Bind.bind, StateT.bind, Except.bind]
         intro habs
         split at habs
-        · simp at habs
-        · simp only [pure, Pure.pure, StateT.pure, Except.pure, Except.ok.injEq] at habs
-          exact ANF.Expr.noConfusion (Prod.mk.inj (Except.ok.inj habs)).1
+        · cases habs
+        · simp [pure, Pure.pure, StateT.pure, Except.pure] at habs
       | while_ cond body =>
         simp only [ANF.normalizeExpr, bind, Bind.bind, StateT.bind, Except.bind]
         intro habs
-        repeat (first | split at habs | simp at habs)
-        all_goals (
-          try simp only [pure, Pure.pure, StateT.pure, Except.pure, Except.ok.injEq] at habs
-          try exact ANF.Expr.noConfusion (Prod.mk.inj (Except.ok.inj habs)).1)
+        repeat (first | split at habs | (simp [pure, Pure.pure, StateT.pure, Except.pure] at habs) | cases habs)
       | tryCatch body catchParam catchBody finally_ =>
         simp only [ANF.normalizeExpr, bind, Bind.bind, StateT.bind, Except.bind]
         intro habs
-        -- The do block: bodyExpr ← normalizeExpr body k; catchExpr ← ...; finallyExpr ← ...; pure (.tryCatch ...)
-        -- Split on each bind result
-        split at habs
-        · simp at habs
-        · rename_i bodyRes _ _
-          split at habs
-          · simp at habs
-          · rename_i catchRes _ _
-            -- Now split on the finally_ match
-            cases finally_ with
-            | none =>
-              simp only [pure, Pure.pure, StateT.pure, Except.pure, Except.ok.injEq] at habs
-              exact ANF.Expr.noConfusion (Prod.mk.inj (Except.ok.inj habs)).1
-            | some fin =>
-              simp only [Functor.map, StateT.map, bind, Bind.bind, StateT.bind, Except.bind] at habs
-              split at habs
-              · simp at habs
-              · simp only [pure, Pure.pure, StateT.pure, Except.pure, Except.ok.injEq] at habs
-                exact ANF.Expr.noConfusion (Prod.mk.inj (Except.ok.inj habs)).1
+        cases finally_ with
+        | none =>
+          repeat (first | split at habs | (simp [pure, Pure.pure, StateT.pure, Except.pure] at habs) | cases habs)
+        | some fin =>
+          simp only [Functor.map, StateT.map, bind, Bind.bind, StateT.bind, Except.bind] at habs
+          repeat (first | split at habs | (simp [pure, Pure.pure, StateT.pure, Except.pure] at habs) | cases habs)
       | call funcIdx envPtr args =>
         simp only [ANF.normalizeExpr]
         exact ihe funcIdx (fun ft => ANF.normalizeExpr envPtr (fun et =>
