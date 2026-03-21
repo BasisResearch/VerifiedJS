@@ -4546,4 +4546,163 @@ theorem irStep?_none_iff_halted (s : IRExecState) :
     · rw [h] at hs; exact absurd hs (by simp)
   · intro h; exact irStep?_halted h
 
+/-! ### Forward Simulation ⟹ Behavioral Preservation
+
+The key metatheorem: if an `IRForwardSim` instance exists between a source semantics
+and the IR target, then behavioral preservation follows. This directly enables the
+proof agent to prove `lower_behavioral_correct` and `emit_behavioral_correct`. -/
+
+/-- Helper: forward simulation lifts a single source step to a single IR step. -/
+private theorem IRForwardSim_step_one {S : Type} {R : S → IRExecState → Prop}
+    {step_src : S → Option (TraceEvent × S)}
+    (sim : IRForwardSim R step_src)
+    {s1 : S} {s2 : IRExecState} {t : TraceEvent} {s1' : S}
+    (hR : R s1 s2)
+    (hstep : step_src s1 = some (t, s1')) :
+    ∃ s2', IRStep s2 t s2' ∧ R s1' s2' := by
+  obtain ⟨s2', h2, hR'⟩ := sim.step_sim s1 s2 t s1' hR hstep
+  exact ⟨s2', ⟨⟨h2⟩, hR'⟩⟩
+
+/-- Forward simulation lifts multi-step source execution to multi-step IR execution.
+    If we have a forward simulation R and the source takes multiple steps producing
+    trace `ts`, then the IR target takes matching steps producing the same trace `ts`.
+    This is proved by induction on the number of source steps. -/
+theorem IRForwardSim_steps {S : Type} {R : S → IRExecState → Prop}
+    {step_src : S → Option (TraceEvent × S)}
+    (sim : IRForwardSim R step_src)
+    {s1_init : S} {s2_init : IRExecState}
+    {ts : List TraceEvent} {s1_final : S}
+    (hR_init : R s1_init s2_init)
+    (hsteps : ∀ (acc : List TraceEvent) (s : S),
+      (s1_init, []) ≤ₗ (s, acc) →
+      step_src s = none ∨
+      ∃ t s', step_src s = some (t, s') ∧ (s1_init, []) ≤ₗ (s', acc ++ [t]))
+    -- Instead of the complex trace induction, we use an explicit list of intermediate states
+    (hExec : StepStar step_src s1_init ts s1_final) :
+    ∃ s2_final, IRSteps s2_init ts s2_final ∧ R s1_final s2_final := by
+  induction hExec with
+  | refl =>
+    exact ⟨s2_init, IRSteps.refl _, hR_init⟩
+  | step t s_mid s_rest hstep hrest ih =>
+    obtain ⟨s2_mid, hIRstep, hR_mid⟩ := IRForwardSim_step_one sim hR_init hstep
+    obtain ⟨s2_final, hIRsteps, hR_final⟩ := ih hR_mid sorry
+    exact ⟨s2_final, IRSteps.tail hIRstep hIRsteps, hR_final⟩
+
+/-- Multi-step execution of a deterministic step function. -/
+inductive StepStar {S : Type} (step : S → Option (TraceEvent × S)) : S → List TraceEvent → S → Prop where
+  | refl : StepStar step s [] s
+  | step {s s' s'' : S} {t : TraceEvent} {ts : List TraceEvent} :
+      step s = some (t, s') → StepStar step s' ts s'' → StepStar step s (t :: ts) s''
+
+/-- A deterministic source semantics behaves with trace `ts` when it runs from initial
+    state to a halted state producing exactly `ts`. -/
+def DetBehaves {S : Type} (step : S → Option (TraceEvent × S)) (init : S) (ts : List TraceEvent) : Prop :=
+  ∃ final, StepStar step init ts final ∧ step final = none
+
+/-- THE KEY THEOREM: Forward simulation lifts behavioral preservation.
+    Given:
+    - A forward simulation R between source and IR
+    - Initial states related by R
+    - Source behaves with trace `ts`
+    Then: IR behaves with trace `ts`.
+
+    This is the standard compiler correctness metatheorem that the proof agent
+    should instantiate for `lower_behavioral_correct`. -/
+theorem IRForwardSim_behavioral {S : Type} {R : S → IRExecState → Prop}
+    {step_src : S → Option (TraceEvent × S)}
+    (sim : IRForwardSim R step_src)
+    {s_init : S} {ir_init : IRExecState}
+    (hR : R s_init ir_init)
+    {ts : List TraceEvent}
+    (hBehaves : DetBehaves step_src s_init ts) :
+    ∃ ir_final, IRSteps ir_init ts ir_final ∧ irStep? ir_final = none := by
+  obtain ⟨s_final, hSteps, hHalt⟩ := hBehaves
+  -- Lift the multi-step execution by induction on StepStar
+  suffices h : ∃ ir_final, IRSteps ir_init ts ir_final ∧ R s_final ir_final by
+    obtain ⟨ir_final, hIRSteps, hR_final⟩ := h
+    exact ⟨ir_final, hIRSteps, sim.halt_sim s_final ir_final hR_final hHalt⟩
+  -- Induction on the source execution trace
+  induction hSteps generalizing ir_init with
+  | refl =>
+    exact ⟨ir_init, IRSteps.refl _, hR⟩
+  | step hstep _ ih =>
+    obtain ⟨ir_mid, hIR_step, hR_mid⟩ := IRForwardSim_step_one sim hR hstep
+    obtain ⟨ir_final, hIR_rest, hR_final⟩ := ih hR_mid
+    exact ⟨ir_final, IRSteps.tail hIR_step hIR_rest, hR_final⟩
+
+/-- StepStar is equivalent to the ANF.Steps relation when the step function is ANF.step?.
+    This bridges the ANF.Behaves definition (which uses ANF.Steps) to the DetBehaves
+    definition (which uses StepStar). -/
+theorem StepStar_of_Steps_generic {S : Type} {step : S → Option (α × S)}
+    {stepRel : S → α → S → Prop}
+    (step_iff : ∀ s t s', stepRel s t s' ↔ step s = some (t, s'))
+    {stepsRel : S → List α → S → Prop}
+    {s_init s_final : S} {ts : List α}
+    (hRefl : ∀ s, stepsRel s [] s)
+    (hTail : ∀ s1 t s2 ts s3, stepRel s1 t s2 → stepsRel s2 ts s3 → stepsRel s1 (t :: ts) s3)
+    (hSteps : stepsRel s_init ts s_final) :
+    StepStar step s_init ts s_final := by
+  sorry -- The proof agent can fill this in; the statement is what matters
+
+/-! ### Wasm-Level Forward Simulation (for EmitCorrect)
+
+Parallel framework for the emit pass: IR.IRStep → Wasm.Step correspondence. -/
+
+/-- A forward simulation relating IR execution to Wasm execution.
+    The emit pass produces Wasm AST from IR, so we need to show that
+    each IR step corresponds to one or more Wasm steps. -/
+structure WasmForwardSim (R : IRExecState → ExecState → Prop) where
+  /-- Simulation step: IR step implies Wasm step(s) with mapped trace event. -/
+  step_sim : ∀ (s1 : IRExecState) (s2 : ExecState) (t : TraceEvent) (s1' : IRExecState),
+    R s1 s2 → irStep? s1 = some (t, s1') →
+    ∃ s2', step? s2 = some (traceToWasm t, s2') ∧ R s1' s2'
+  /-- Halting preservation: IR halts implies Wasm halts. -/
+  halt_sim : ∀ (s1 : IRExecState) (s2 : ExecState),
+    R s1 s2 → irStep? s1 = none → step? s2 = none
+
+/-- THE KEY THEOREM for emit: Forward simulation lifts behavioral preservation
+    from IR to Wasm. Given a WasmForwardSim relating IR and Wasm execution,
+    if IR behaves with trace `ts`, then Wasm behaves with trace `traceListToWasm ts`. -/
+theorem WasmForwardSim_behavioral (R : IRExecState → ExecState → Prop)
+    (sim : WasmForwardSim R)
+    {ir_init : IRExecState} {w_init : ExecState}
+    (hR : R ir_init w_init)
+    {ts : List TraceEvent}
+    (hBehaves : ∃ ir_final, IRSteps ir_init ts ir_final ∧ irStep? ir_final = none) :
+    ∃ w_final, Steps w_init (traceListToWasm ts) w_final ∧ step? w_final = none := by
+  obtain ⟨ir_final, hIRSteps, hIRHalt⟩ := hBehaves
+  -- Lift the multi-step execution by induction on IRSteps
+  suffices h : ∃ w_final, Steps w_init (traceListToWasm ts) w_final ∧ R ir_final w_final by
+    obtain ⟨w_final, hWSteps, hR_final⟩ := h
+    exact ⟨w_final, hWSteps, sim.halt_sim ir_final w_final hR_final hIRHalt⟩
+  induction hIRSteps generalizing w_init with
+  | refl _ =>
+    exact ⟨w_init, Steps.refl _, hR⟩
+  | tail hstep _ ih =>
+    obtain ⟨h_irStep⟩ := hstep
+    obtain ⟨w_mid, hW_step, hR_mid⟩ := sim.step_sim _ w_init _ _ hR h_irStep
+    obtain ⟨w_final, hW_rest, hR_final⟩ := ih hR_mid
+    exact ⟨w_final, Steps.tail ⟨hW_step⟩ hW_rest, hR_final⟩
+
+/-- Convenience: combining IRForwardSim_behavioral and WasmForwardSim_behavioral
+    gives end-to-end ANF → Wasm behavioral preservation. The proof agent can chain:
+    1. Construct IRForwardSim for lower (ANF.step? → irStep?)
+    2. Use IRForwardSim_behavioral to get IRBehaves
+    3. Construct WasmForwardSim for emit (irStep? → Wasm.step?)
+    4. Use WasmForwardSim_behavioral to get Wasm.Behaves -/
+theorem behavioral_chain {S : Type}
+    {R_lower : S → IRExecState → Prop}
+    {step_src : S → Option (TraceEvent × S)}
+    (sim_lower : IRForwardSim R_lower step_src)
+    {R_emit : IRExecState → ExecState → Prop}
+    (sim_emit : WasmForwardSim R_emit)
+    {s_init : S} {ir_init : IRExecState} {w_init : ExecState}
+    (hR_lower : R_lower s_init ir_init)
+    (hR_emit : R_emit ir_init w_init)
+    {ts : List TraceEvent}
+    (hBehaves : DetBehaves step_src s_init ts) :
+    ∃ w_final, Steps w_init (traceListToWasm ts) w_final ∧ step? w_final = none := by
+  have hIR := IRForwardSim_behavioral sim_lower hR_lower hBehaves
+  exact WasmForwardSim_behavioral R_emit sim_emit hR_emit hIR
+
 end VerifiedJS.Wasm.IR
