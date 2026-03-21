@@ -313,12 +313,25 @@ private theorem normalizeExpr_not_trivial_family :
       | tryCatch body catchParam catchBody finally_ =>
         simp only [ANF.normalizeExpr, bind, Bind.bind, StateT.bind, Except.bind]
         intro habs
-        repeat (first | split at habs | simp at habs)
-        all_goals (
-          try simp only [pure, Pure.pure, StateT.pure, Except.pure, Except.ok.injEq, Functor.map,
-                          StateT.map] at habs
-          try exact ANF.Expr.noConfusion (Prod.mk.inj habs).1)
-        all_goals sorry -- tryCatch/while_ monadic bind chains
+        -- The do block: bodyExpr ← normalizeExpr body k; catchExpr ← ...; finallyExpr ← ...; pure (.tryCatch ...)
+        -- Split on each bind result
+        split at habs
+        · simp at habs
+        · rename_i bodyRes _ _
+          split at habs
+          · simp at habs
+          · rename_i catchRes _ _
+            -- Now split on the finally_ match
+            cases finally_ with
+            | none =>
+              simp only [pure, Pure.pure, StateT.pure, Except.pure, Except.ok.injEq] at habs
+              exact ANF.Expr.noConfusion (Prod.mk.inj habs).1
+            | some fin =>
+              simp only [Functor.map, StateT.map, bind, Bind.bind, StateT.bind, Except.bind] at habs
+              split at habs
+              · simp at habs
+              · simp only [pure, Pure.pure, StateT.pure, Except.pure, Except.ok.injEq] at habs
+                exact ANF.Expr.noConfusion (Prod.mk.inj habs).1
       | call funcIdx envPtr args =>
         simp only [ANF.normalizeExpr]
         exact ihe funcIdx (fun ft => ANF.normalizeExpr envPtr (fun et =>
@@ -691,12 +704,20 @@ private theorem anfConvert_halt_star
   | tryCatch body catchParam catchBody finally_ =>
     exfalso; rw [hlit] at hconv
     simp only [ANF.normalizeExpr, bind, Bind.bind, StateT.bind, Except.bind] at hconv
-    repeat (first | split at hconv | simp at hconv)
-    all_goals (
-      try simp only [pure, Pure.pure, StateT.pure, Except.pure, Except.ok.injEq,
-                      Functor.map, StateT.map] at hconv
-      try exact ANF.Expr.noConfusion (Prod.mk.inj hconv).1)
-    all_goals sorry -- tryCatch monadic bind chains
+    split at hconv
+    · simp at hconv
+    · split at hconv
+      · simp at hconv
+      · cases finally_ with
+        | none =>
+          simp only [pure, Pure.pure, StateT.pure, Except.pure, Except.ok.injEq] at hconv
+          exact ANF.Expr.noConfusion (Prod.mk.inj hconv).1
+        | some fin =>
+          simp only [Functor.map, StateT.map, bind, Bind.bind, StateT.bind, Except.bind] at hconv
+          split at hconv
+          · simp at hconv
+          · simp only [pure, Pure.pure, StateT.pure, Except.pure, Except.ok.injEq] at hconv
+            exact ANF.Expr.noConfusion (Prod.mk.inj hconv).1
   | call funcIdx envPtr args =>
     exfalso; rw [hlit] at hconv; simp only [ANF.normalizeExpr] at hconv
     exact normalizeExpr_not_trivial funcIdx

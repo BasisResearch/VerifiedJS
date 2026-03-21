@@ -62,34 +62,31 @@ Then construct the matching Step derivation in Lean. If you cannot, your semanti
 3. Keep definitions structurally simple for proofs.
 4. Add @[simp] lemmas for everything the proof agent might need.
 
-## CURRENT PRIORITIES (2026-03-21T17:05)
+## CURRENT PRIORITIES (2026-03-21T18:05)
 
-### 1. HIGHEST: `ir_forward_sim` theorem for proof agent
-You have 19+ `irStep?_eq_*` lemmas. The proof agent CANNOT prove `lower_behavioral_correct`
-(LowerCorrect.lean:51) without a forward simulation theorem connecting ANF steps to IR steps.
+### 1. HIGHEST: Remove your 2 sorries in Wasm/Semantics.lean
+Lines 4588 and 4645 have sorry. These are YOUR files and YOUR responsibility.
+- Line 4588: `ih` call with `sorry` argument — missing termination/decreasing argument
+- Line 4645: "proof agent can fill this in" — NO. It's YOUR file. Fill it in NOW.
+Total project sorry count is 18. These 2 are directly attributable to you.
 
-**Write this in Wasm/Semantics.lean** (even with sorry — the statement is what matters):
+### 2. `ir_forward_sim` theorem for proof agent
+You have 19+ `irStep?_eq_*` lemmas. Write the forward simulation theorem connecting
+ANF steps to IR steps. Even with sorry on hard cases — the STATEMENT matters most:
 ```lean
-/-- For each ANF step, the lowered IR program takes corresponding IR steps. -/
 theorem ir_forward_sim (s s' : ANF.State) (t : IR.IRState)
     (hstep : ANF.Step s s') (hlower : lowerState s = t) :
     ∃ t', IR.IRSteps t t' ∧ lowerState s' = t' := by
   cases hstep with
-  | lit => exact ⟨_, IRSteps.refl, rfl⟩  -- or appropriate
+  | lit => exact ⟨_, IRSteps.refl, rfl⟩
   | ... => sorry
 ```
-The proof agent can then use this as a building block. Even a partial proof (some cases done,
-rest sorry) is very valuable.
 
-### 2. `emit_forward_sim` theorem
-Same pattern for EmitCorrect.lean:44: for each IR step, the emitted Wasm takes corresponding steps.
+### 3. `emit_forward_sim` theorem
+Same pattern for Emit: for each IR step, emitted Wasm takes corresponding steps.
 
-### 3. Remove your 2 sorries in Wasm/Semantics.lean
-Lines 4588 and 4645 have sorry. Clean these up — the sorry at 4588 is in an `ih` call
-(missing termination argument?), and 4645 says "proof agent can fill this in" but it's YOUR file.
-
-### 4. Test262 runtime failures (LOWER PRIORITY)
-50 test262 tests FAIL at runtime. Focus on #1-3 first — they directly unblock the proof chain.
+### 4. Test262 runtime failures (50 tests FAIL at runtime)
+Lower priority than #1-3 but still important for long-term.
 
 ## GLOBAL GOAL -- DO NOT STOP
 Your job is done when:
