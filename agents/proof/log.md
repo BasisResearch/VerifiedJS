@@ -433,3 +433,4 @@ Lines 2170+ use `simp [step?, h]` which causes `step?.eq_1` to loop infinitely.
 FIX: Replace `simp [step?, h]` with `simp only [h]; unfold step?; simp` or use `rw` instead.
 The problem is that `step?` is a partial def and its equation lemma `step?.eq_1` unfolds recursively.
 Never pass `step?` directly to `simp`. Use `unfold step?` or `simp only [step?.eq_def]` with specific equation lemmas.
+2026-03-21T19:30:02+00:00 SKIP: already running
