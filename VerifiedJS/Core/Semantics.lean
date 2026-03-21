@@ -1700,6 +1700,80 @@ theorem toBoolean_number_nonzero (n : Float) (hnz : ¬(n == 0.0) = true) (hnan :
     toBoolean (.number n) = true := by
   simp [toBoolean, hnz, hnan]
 
+/-- Every non-literal expression has step? producing some result or its sub-expression is stuck.
+    This is the progress lemma: var, break, continue, while, labeled, newObj, functionDef, this
+    always step (no stuck non-lit states for these constructors). -/
+theorem step_var_isSome (name : VarName) (env : Env) (heap : Heap)
+    (trace : List TraceEvent) (funcs : Array FuncClosure)
+    (cs : List (List (VarName × Value))) :
+    (step? ⟨.var name, env, heap, trace, funcs, cs⟩).isSome = true := by
+  simp [step?]; split <;> simp
+
+/-- step? on this always produces some result. -/
+theorem step_this_isSome (env : Env) (heap : Heap)
+    (trace : List TraceEvent) (funcs : Array FuncClosure)
+    (cs : List (List (VarName × Value))) :
+    (step? ⟨.this, env, heap, trace, funcs, cs⟩).isSome = true := by
+  simp [step?]; split <;> simp
+
+/-- step? on labeled always produces some result. -/
+theorem step_labeled_isSome (label : LabelName) (body : Expr) (env : Env) (heap : Heap)
+    (trace : List TraceEvent) (funcs : Array FuncClosure)
+    (cs : List (List (VarName × Value))) :
+    (step? ⟨.labeled label body, env, heap, trace, funcs, cs⟩).isSome = true := by
+  simp [step?]
+
+/-- step? on break always produces some result. -/
+theorem step_break_isSome (label : Option LabelName) (env : Env) (heap : Heap)
+    (trace : List TraceEvent) (funcs : Array FuncClosure)
+    (cs : List (List (VarName × Value))) :
+    (step? ⟨.break label, env, heap, trace, funcs, cs⟩).isSome = true := by
+  simp [step?]
+
+/-- step? on continue always produces some result. -/
+theorem step_continue_isSome (label : Option LabelName) (env : Env) (heap : Heap)
+    (trace : List TraceEvent) (funcs : Array FuncClosure)
+    (cs : List (List (VarName × Value))) :
+    (step? ⟨.continue label, env, heap, trace, funcs, cs⟩).isSome = true := by
+  simp [step?]
+
+/-- step? on while_ always produces some result. -/
+theorem step_while_isSome' (cond body : Expr) (env : Env) (heap : Heap)
+    (trace : List TraceEvent) (funcs : Array FuncClosure)
+    (cs : List (List (VarName × Value))) :
+    (step? ⟨.while_ cond body, env, heap, trace, funcs, cs⟩).isSome = true := by
+  simp [step?]
+
+/-- step? on newObj always produces some result. -/
+theorem step_newObj_isSome (callee : Expr) (args : List Expr) (env : Env) (heap : Heap)
+    (trace : List TraceEvent) (funcs : Array FuncClosure)
+    (cs : List (List (VarName × Value))) :
+    (step? ⟨.newObj callee args, env, heap, trace, funcs, cs⟩).isSome = true := by
+  simp [step?]
+
+/-- step? on functionDef always produces some result. -/
+theorem step_functionDef_isSome (fname : Option VarName) (params : List VarName)
+    (body : Expr) (isAsync isGen : Bool) (env : Env) (heap : Heap)
+    (trace : List TraceEvent) (funcs : Array FuncClosure)
+    (cs : List (List (VarName × Value))) :
+    (step? ⟨.functionDef fname params body isAsync isGen, env, heap, trace, funcs, cs⟩).isSome = true := by
+  simp [step?]
+
+/-- Step_iff forward: Step implies step?. -/
+theorem Step_implies_step {s : State} {t : TraceEvent} {s' : State}
+    (h : Step s t s') : step? s = some (t, s') := by
+  cases h with | mk h' => exact h'
+
+/-- Step_iff backward: step? implies Step. -/
+theorem step_implies_Step {s : State} {t : TraceEvent} {s' : State}
+    (h : step? s = some (t, s')) : Step s t s' :=
+  Step.mk h
+
+/-- Steps with empty trace is identity. -/
+theorem Steps_nil_eq {s1 s2 : State} (h : Steps s1 [] s2) : s1 = s2 := by
+  cases h with
+  | refl => rfl
+
 end VerifiedJS.Core
 
 namespace VerifiedJS.Source

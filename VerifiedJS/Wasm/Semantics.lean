@@ -3585,7 +3585,7 @@ theorem irStep?_ir_convert_i32_u (s : IRExecState) (rest : List IRInstr)
 /-- irStep? for load with i32 address on stack and in-bounds access succeeds.
     REF: Wasm §4.4.7.1 (memory.load) -/
 @[simp]
-theorem irStep?_ir_load (s : IRExecState) (rest : List IRInstr) (t : ValType)
+theorem irStep?_ir_load (s : IRExecState) (rest : List IRInstr) (t : IRType)
     (offset : Nat) (addr : UInt32) (stk : List IRValue)
     (hcode : s.code = IRInstr.load t offset :: rest)
     (hstack : s.stack = .i32 addr :: stk)
@@ -3596,7 +3596,7 @@ theorem irStep?_ir_load (s : IRExecState) (rest : List IRInstr) (t : ValType)
 /-- irStep? for store with i32 value and i32 address on stack and in-bounds succeeds.
     REF: Wasm §4.4.7.2 (memory.store) -/
 @[simp]
-theorem irStep?_ir_store (s : IRExecState) (rest : List IRInstr) (t : ValType)
+theorem irStep?_ir_store (s : IRExecState) (rest : List IRInstr) (t : IRType)
     (offset : Nat) (val addr : UInt32) (stk : List IRValue)
     (hcode : s.code = IRInstr.store t offset :: rest)
     (hstack : s.stack = .i32 val :: .i32 addr :: stk)
@@ -3625,11 +3625,10 @@ theorem irStep?_ir_callIndirect (s : IRExecState) (rest : List IRInstr)
     (hfunc : s.module.functions[funcIdx.toNat]? = some fn)
     (hargs : fn.params.length ≤ stk.length) :
     ∃ te s', irStep? s = some (te, s') := by
-  simp [irStep?, hcode, hstack, irPop1?, hfunc]
-  simp [irPopN?]
-  exact ⟨stk.take fn.params.length, stk.drop fn.params.length,
-    by simp [List.take_append_drop]; omega,
-    .silent, by simp [irPushTrace]⟩
+  simp only [irStep?, hcode, hstack, irPop1?, hfunc, irPopN?]
+  split
+  · omega
+  · simp [irPushTrace]
 
 /-! ### IRSteps Composition Helpers -/
 
