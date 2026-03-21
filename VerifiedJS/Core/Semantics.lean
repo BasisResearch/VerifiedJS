@@ -2164,6 +2164,77 @@ theorem step_return_some_value_exact (v : Value) (env : Env) (heap : Heap)
           (.error ("return:" ++ toString (repr v)))) := by
   simp [step?, exprValue?]
 
+/-- §12.3.3 newObj exact: allocates empty object at next heap address. -/
+theorem step_newObj_exact (callee : Expr) (args : List Expr) (env : Env) (heap : Heap)
+    (trace : List TraceEvent) (funcs : Array FuncClosure)
+    (cs : List (List (VarName × Value))) :
+    step? ⟨.newObj callee args, env, heap, trace, funcs, cs⟩ =
+      some (.silent, pushTrace ⟨.lit (.object heap.nextAddr), env,
+        { objects := heap.objects.push [], nextAddr := heap.nextAddr + 1 },
+        trace, funcs, cs⟩ .silent) := by
+  simp [step?]
+
+/-- §13.7.5 for-in exact on object: desugars to sequential let-bindings over property keys.
+    ECMA-262 §13.7.5.15 EnumerateObjectProperties. -/
+theorem step_forIn_object_exact (binding : VarName) (addr : Nat) (body : Expr)
+    (env : Env) (heap : Heap) (trace : List TraceEvent)
+    (funcs : Array FuncClosure) (cs : List (List (VarName × Value))) :
+    step? ⟨.forIn binding (.lit (.object addr)) body, env, heap, trace, funcs, cs⟩ =
+      some (.silent, pushTrace ⟨
+        (match heap.objects[addr]? with
+         | some props => (props.map (fun p => p.1)).foldr (fun key acc =>
+             .seq (.«let» binding (.lit (.string key)) body) acc) (.lit .undefined)
+         | none => (.lit .undefined)),
+        env, heap, trace, funcs, cs⟩ .silent) := by
+  simp [step?, exprValue?]
+
+/-- §13.7.5.13 for-of exact on object: desugars to sequential let-bindings over element values.
+    ECMA-262 §7.4.1 GetIterator / §7.4.6 IteratorStep. -/
+theorem step_forOf_object_exact (binding : VarName) (addr : Nat) (body : Expr)
+    (env : Env) (heap : Heap) (trace : List TraceEvent)
+    (funcs : Array FuncClosure) (cs : List (List (VarName × Value))) :
+    step? ⟨.forOf binding (.lit (.object addr)) body, env, heap, trace, funcs, cs⟩ =
+      some (.silent, pushTrace ⟨
+        (match heap.objects[addr]? with
+         | some props => (props.map (fun p => p.2)).foldr (fun val acc =>
+             .seq (.«let» binding (.lit val) body) acc) (.lit .undefined)
+         | none => (.lit .undefined)),
+        env, heap, trace, funcs, cs⟩ .silent) := by
+  simp [step?, exprValue?]
+
+/-- §13.7.5 for-in on non-object exact: produces undefined.
+    ECMA-262 §13.7.5.12: ToObject(null/undefined/bool/number/string) then enumerate. -/
+theorem step_forIn_nonObject_exact (binding : VarName) (v : Value) (body : Expr)
+    (env : Env) (heap : Heap) (trace : List TraceEvent)
+    (funcs : Array FuncClosure) (cs : List (List (VarName × Value)))
+    (hv : ∀ addr, v ≠ .object addr) :
+    step? ⟨.forIn binding (.lit v) body, env, heap, trace, funcs, cs⟩ =
+      some (.silent, pushTrace ⟨.lit .undefined, env, heap, trace, funcs, cs⟩ .silent) := by
+  cases v with
+  | object addr => exact absurd rfl (hv addr)
+  | _ => simp [step?, exprValue?]
+
+/-- §13.7.5.13 for-of on non-object exact: produces undefined. -/
+theorem step_forOf_nonObject_exact (binding : VarName) (v : Value) (body : Expr)
+    (env : Env) (heap : Heap) (trace : List TraceEvent)
+    (funcs : Array FuncClosure) (cs : List (List (VarName × Value)))
+    (hv : ∀ addr, v ≠ .object addr) :
+    step? ⟨.forOf binding (.lit v) body, env, heap, trace, funcs, cs⟩ =
+      some (.silent, pushTrace ⟨.lit .undefined, env, heap, trace, funcs, cs⟩ .silent) := by
+  cases v with
+  | object addr => exact absurd rfl (hv addr)
+  | _ => simp [step?, exprValue?]
+
+/-- §14.6 Class pattern inhabitedness: a class desugars to functionDef + setProp on prototype.
+    This demonstrates that the Core IL supports the class pattern:
+    `let C = function C() {}; C.prototype.m = function() { ... }` -/
+theorem step_class_pattern_functionDef (name : VarName) (env : Env) (heap : Heap)
+    (trace : List TraceEvent) (funcs : Array FuncClosure)
+    (cs : List (List (VarName × Value))) :
+    (step? ⟨.functionDef (some name) [] (.lit .undefined) false false,
+            env, heap, trace, funcs, cs⟩).isSome = true := by
+  simp [step?]
+
 set_option maxHeartbeats 800000 in
 /-- The only stuck expression is a literal (progress). -/
 theorem stuck_implies_lit {s : State} (hstuck : step? s = none) :

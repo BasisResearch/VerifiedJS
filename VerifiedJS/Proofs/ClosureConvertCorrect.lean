@@ -135,7 +135,39 @@ private theorem closureConvert_step_simulation
     ∀ (sf : Flat.State) (sc : Core.State) (ev : Core.TraceEvent) (sf' : Flat.State),
       CC_SimRel s t sf sc → Flat.Step sf ev sf' →
       ∃ sc', Core.Step sc ev sc' ∧ CC_SimRel s t sf' sc' := by
-  sorry -- Requires case analysis on Flat.Step + expression correspondence through conversion
+  intro sf sc ev sf' ⟨htrace, scope, envVar, envMap, st, st', hconv⟩ ⟨hstep⟩
+  -- Case analysis on the Core expression sc.expr.
+  -- convertExpr maps sc.expr to sf.expr; step? sf = some (ev, sf').
+  cases hsc : sc.expr with
+  | lit v =>
+    -- convertExpr (.lit v) = (.lit (convertValue v), st)
+    -- Flat.step? on .lit = none, contradicting hstep
+    exfalso
+    rw [hsc] at hconv; simp only [Flat.convertExpr] at hconv
+    have := (Prod.mk.inj hconv).1
+    have hsf : sf.expr = .lit (Flat.convertValue v) := by cases sf; simp_all
+    have : Flat.step? sf = none := by rw [show sf = { sf with expr := .lit (Flat.convertValue v) } from by cases sf; simp_all]; exact Flat.step?_lit_none sf (Flat.convertValue v)
+    simp [this] at hstep
+  | forIn _binding _obj _body =>
+    -- convertExpr (.forIn ..) = (.lit .undefined, st)
+    -- Flat.step? on .lit = none, contradicting hstep
+    exfalso
+    rw [hsc] at hconv; simp only [Flat.convertExpr] at hconv
+    have hsf : sf.expr = .lit .undefined := by cases sf; simp_all [(Prod.mk.inj hconv).1]
+    have : Flat.step? sf = none := by rw [show sf = { sf with expr := .lit .undefined } from by cases sf; simp_all]; exact Flat.step?_lit_none sf .undefined
+    simp [this] at hstep
+  | forOf _binding _iterable _body =>
+    -- Same as forIn
+    exfalso
+    rw [hsc] at hconv; simp only [Flat.convertExpr] at hconv
+    have hsf : sf.expr = .lit .undefined := by cases sf; simp_all [(Prod.mk.inj hconv).1]
+    have : Flat.step? sf = none := by rw [show sf = { sf with expr := .lit .undefined } from by cases sf; simp_all]; exact Flat.step?_lit_none sf .undefined
+    simp [this] at hstep
+  -- All remaining constructors require env/heap correspondence
+  -- to connect Flat steps back to Core steps. The current CC_SimRel
+  -- tracks only trace + expression correspondence but not env/heap.
+  -- TODO: Strengthen CC_SimRel with env/heap correspondence.
+  | _ => all_goals sorry
 
 /-! ### step?_none_implies_lit -/
 

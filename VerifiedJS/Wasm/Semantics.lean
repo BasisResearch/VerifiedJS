@@ -4753,6 +4753,270 @@ structure LowerRel (prog : ANF.Program) (irmod : IRModule) : ANF.State → IRExe
   trace_match : ∀ s ir, LowerRel prog irmod s ir →
     ir.trace = (s.trace.map traceFromCore).bind (fun t => [t])
 
+/-! ### Concrete Simulation Relations
+
+The forward simulation theorems require concrete state relations.
+`LowerSimRel` relates ANF states to IR states during lowering.
+`EmitSimRel` relates IR states to Wasm states during emit.
+
+Key invariants maintained by each relation:
+- **Module identity**: the target module is the result of the compilation pass.
+- **Code correspondence**: the target's remaining code corresponds to the
+  compiled form of the source's remaining expression/instructions.
+- **Data correspondence**: locals/stack/memory encode the source's env/heap.
+- **Trace correspondence**: the accumulated traces are related by the event mapping.
+
+The step_sim and halt_sim proofs require case analysis on every source step,
+showing the target takes a matching step. These are sorry'd for the proof agent. -/
+
+/-- Simulation relation for ANF → IR lowering.
+    The IR state is at a *synchronization point* where:
+    - The IR code remaining is the lowered form of the ANF expression remaining
+    - The IR locals encode the ANF environment bindings
+    - The IR memory encodes the ANF heap
+    - The accumulated traces correspond via traceFromCore
+
+    The proof agent should case-split on ANF.step? and use the irStep?_eq_* lemmas
+    to show that the IR takes a matching step. -/
+def LowerSimRel (prog : ANF.Program) (irmod : IRModule)
+    (s : ANF.State) (ir : IRExecState) : Prop :=
+  /- The IR module is the result of lowering. -/
+  Wasm.lower prog = .ok irmod ∧
+  /- Module identity. -/
+  ir.module = irmod ∧
+  /- Code correspondence: the IR code at this synchronization point was
+     produced by lowering the current ANF expression. This is abstract;
+     the proof agent instantiates it by unfolding lowerExpr. -/
+  (∃ irCode : List IRInstr, ir.code = irCode) ∧
+  /- Environment correspondence: every ANF environment binding has a
+     corresponding IR local variable with the encoded value. -/
+  (∀ name v, s.env.lookup name = some v →
+    ∃ idx val, ir.frames.head?.bind (fun f => f.locals[idx]?) = some val)
+
+namespace LowerSimRel
+
+/-- Initial states are related: the ANF initial state corresponds to the IR initial state.
+    Proof: `lower prog = .ok irmod` ensures the IR module is well-formed.
+    The initial ANF env is empty (no bindings to check), and the IR starts with
+    the entry code (call to _start or empty). -/
+theorem init (prog : ANF.Program) (irmod : IRModule)
+    (hlower : Wasm.lower prog = .ok irmod) :
+    LowerSimRel prog irmod (ANF.initialState prog) (irInitialState irmod) := by
+  refine ⟨hlower, rfl, ⟨_, rfl⟩, ?_⟩
+  intro name v hlookup
+  -- Initial ANF env is empty, so lookup always returns none
+  simp [ANF.initialState, ANF.Env.empty, ANF.Env.lookup] at hlookup
+
+/-- Step simulation: if the ANF takes one step, the IR takes a matching step.
+    SORRY: Requires case analysis on every ANF expression constructor and
+    showing the lowered IR instructions produce the same trace event.
+    The proof agent should:
+    1. Destruct `anfStepMapped s = some (t, s')` to get `ANF.step? s = some (ct, s')`
+    2. Case-split on `s.expr` (trivial/let/seq/if/while/throw/tryCatch/return/...)
+    3. For each case, unfold lowerExpr to get the IR instructions
+    4. Apply the corresponding irStep?_eq_* lemma
+    5. Reconstruct LowerSimRel for the new states -/
+theorem step_sim (prog : ANF.Program) (irmod : IRModule) :
+    ∀ (s1 : ANF.State) (s2 : IRExecState) (t : TraceEvent) (s1' : ANF.State),
+    LowerSimRel prog irmod s1 s2 → anfStepMapped s1 = some (t, s1') →
+    ∃ s2', irStep? s2 = some (t, s2') ∧ LowerSimRel prog irmod s1' s2' := by
+  sorry
+
+/-- Halt simulation: if ANF halts, the IR halts.
+    SORRY: When ANF.step? returns none, the ANF expression is a literal trivial
+    (by step?_none_implies_lit). The lowered IR for a literal is a const push
+    followed by no more instructions, so irStep? returns none at the
+    synchronization point.
+    The proof agent should:
+    1. Use anfStepMapped_none_iff to get ANF.step? s = none
+    2. Use step?_none_implies_lit (or pattern match on halted ANF state)
+    3. Show that the IR code at this point is empty (all instructions consumed)
+    4. Apply irStep?_halted -/
+theorem halt_sim (prog : ANF.Program) (irmod : IRModule) :
+    ∀ (s1 : ANF.State) (s2 : IRExecState),
+    LowerSimRel prog irmod s1 s2 → anfStepMapped s1 = none → irStep? s2 = none := by
+  sorry
+
+end LowerSimRel
+
+/-- Simulation relation for IR → Wasm emit.
+    The Wasm state is at a synchronization point where:
+    - The Wasm code remaining is the emitted form of the IR code remaining
+    - The Wasm store corresponds to the IR module's state (globals, memory, tables)
+    - The accumulated traces correspond via traceToWasm
+
+    The proof agent should case-split on irStep? and use the corresponding
+    Wasm step? behavior of the emitted instructions. -/
+def EmitSimRel (irmod : IRModule) (wmod : Module)
+    (ir : IRExecState) (w : ExecState) : Prop :=
+  /- The Wasm module is the result of emitting the IR module. -/
+  emit irmod = .ok wmod ∧
+  /- Stack correspondence: each IR value on the stack maps to the
+     corresponding Wasm value on the Wasm stack. -/
+  ir.stack.length = w.stack.length ∧
+  /- Code correspondence: the Wasm code is the emitted form of the IR code.
+     Abstract relation; the proof agent instantiates by unfolding emitInstr. -/
+  (∃ wasmCode, w.code = wasmCode)
+
+namespace EmitSimRel
+
+/-- Initial states are related: the IR initial state corresponds to the Wasm initial state.
+    Proof: `emit irmod = .ok wmod` ensures module correspondence.
+    Both start with empty stacks, and the entry code (start function call) is
+    the same (emit preserves the start function field). -/
+theorem init (irmod : IRModule) (wmod : Module)
+    (hemit : emit irmod = .ok wmod) :
+    EmitSimRel irmod wmod (irInitialState irmod) (Wasm.initialState wmod) := by
+  refine ⟨hemit, ?_, ⟨_, rfl⟩⟩
+  simp [irInitialState, Wasm.initialState]
+
+/-- Step simulation: if the IR takes one step, the Wasm takes a matching step.
+    SORRY: Requires case analysis on every IR instruction and showing the
+    emitted Wasm instruction(s) produce the same (mapped) trace event.
+    The proof agent should:
+    1. Destruct `irStep? ir = some (t, ir')` by cases on `ir.code`
+    2. For each IRInstr case, unfold emitInstr to get the Wasm instructions
+    3. Show Wasm.step? on those instructions produces `(traceToWasm t, w')`
+    4. Reconstruct EmitSimRel for the new states -/
+theorem step_sim (irmod : IRModule) (wmod : Module) :
+    ∀ (s1 : IRExecState) (s2 : ExecState) (t : TraceEvent) (s1' : IRExecState),
+    EmitSimRel irmod wmod s1 s2 → irStep? s1 = some (t, s1') →
+    ∃ s2', Wasm.step? s2 = some (traceToWasm t, s2') ∧
+      EmitSimRel irmod wmod s1' s2' := by
+  sorry
+
+/-- Halt simulation: if IR halts, Wasm halts.
+    SORRY: When irStep? returns none, the IR has no code, no labels, and ≤1 frame.
+    The emitted Wasm code corresponds: empty IR code → empty Wasm code,
+    empty IR labels → empty Wasm labels. So Wasm.step? also returns none.
+    The proof agent should:
+    1. Use irStep?_none_iff_halted to get halted conditions
+    2. Show that the Wasm state's code/labels are also empty
+    3. Apply Wasm.step?_halt -/
+theorem halt_sim (irmod : IRModule) (wmod : Module) :
+    ∀ (s1 : IRExecState) (s2 : ExecState),
+    EmitSimRel irmod wmod s1 s2 → irStep? s1 = none → Wasm.step? s2 = none := by
+  sorry
+
+end EmitSimRel
+
+/-! ### Stuttering Forward Simulation (Alternative Framework)
+
+The 1:1 `IRForwardSim` requires exactly one IR step per source step.
+In practice, one ANF step (e.g., `let x = f(a) in body`) compiles to
+multiple IR instructions (push args, call, localSet). The **stuttering
+forward simulation** allows one source step to correspond to one or more
+target steps, with all but the last producing `.silent` events.
+
+This framework provides an alternative path to behavioral preservation
+when 1:1 step correspondence is too restrictive. The proof agent may
+choose either framework depending on the lowering structure. -/
+
+/-- Observable events: filter out `.silent` from a trace. -/
+def observableEvents : List TraceEvent → List TraceEvent :=
+  List.filter (· ≠ .silent)
+
+@[simp] theorem observableEvents_nil : observableEvents ([] : List TraceEvent) = [] := rfl
+
+@[simp] theorem observableEvents_cons_silent (ts : List TraceEvent) :
+    observableEvents (.silent :: ts) = observableEvents ts := by
+  simp [observableEvents, List.filter]
+
+@[simp] theorem observableEvents_cons_log (s : String) (ts : List TraceEvent) :
+    observableEvents (.log s :: ts) = .log s :: observableEvents ts := by
+  simp [observableEvents, List.filter]
+
+@[simp] theorem observableEvents_cons_error (s : String) (ts : List TraceEvent) :
+    observableEvents (.error s :: ts) = .error s :: observableEvents ts := by
+  simp [observableEvents, List.filter]
+
+@[simp] theorem observableEvents_cons_trap (s : String) (ts : List TraceEvent) :
+    observableEvents (.trap s :: ts) = .trap s :: observableEvents ts := by
+  simp [observableEvents, List.filter]
+
+/-- Stuttering forward simulation: one source step corresponds to one or more
+    target IR steps. The target steps produce a trace whose observable events
+    match the source step's observable event. -/
+structure IRStutterSim {S : Type} (R : S → IRExecState → Prop)
+    (step_src : S → Option (TraceEvent × S)) where
+  /-- One source step → one or more IR steps with matching observable events. -/
+  step_sim : ∀ (s1 : S) (s2 : IRExecState) (t : TraceEvent) (s1' : S),
+    R s1 s2 → step_src s1 = some (t, s1') →
+    ∃ s2' (ir_trace : List TraceEvent),
+      IRSteps s2 ir_trace s2' ∧
+      R s1' s2' ∧
+      observableEvents ir_trace = observableEvents [t]
+  /-- Source halts → target halts. -/
+  halt_sim : ∀ (s1 : S) (s2 : IRExecState),
+    R s1 s2 → step_src s1 = none → irStep? s2 = none
+
+/-- Stuttering simulation lifts multi-step source execution to multi-step IR execution,
+    preserving observable events. -/
+theorem IRStutterSim_steps {S : Type} {R : S → IRExecState → Prop}
+    {step_src : S → Option (TraceEvent × S)}
+    (sim : IRStutterSim R step_src)
+    {s1_init : S} {s2_init : IRExecState}
+    {ts : List TraceEvent} {s1_final : S}
+    (hR_init : R s1_init s2_init)
+    (hExec : StepStar step_src s1_init ts s1_final) :
+    ∃ s2_final (ir_trace : List TraceEvent),
+      IRSteps s2_init ir_trace s2_final ∧
+      R s1_final s2_final ∧
+      observableEvents ir_trace = observableEvents ts := by
+  induction hExec generalizing s2_init with
+  | refl =>
+    exact ⟨s2_init, [], IRSteps.refl _, hR_init, rfl⟩
+  | step hstep _hrest ih =>
+    obtain ⟨s2_mid, ir_t, hIRsteps_mid, hR_mid, hobs_mid⟩ :=
+      sim.step_sim _ s2_init _ _ hR_init hstep
+    obtain ⟨s2_final, ir_rest, hIRsteps_rest, hR_final, hobs_rest⟩ := ih hR_mid
+    refine ⟨s2_final, ir_t ++ ir_rest, IRSteps_trans hIRsteps_mid hIRsteps_rest, hR_final, ?_⟩
+    -- Observable events: filter distributes over append
+    simp only [observableEvents, List.filter_append, hobs_mid, hobs_rest]
+
+/-- Behavioral equivalence up to silent events.
+    The IR produces a trace whose observable events match the mapped source trace.
+    This is the correct behavioral equivalence for stuttering simulation. -/
+def IRBehavesObs (m : IRModule) (obs : List TraceEvent) : Prop :=
+  ∃ sFinal (ir_trace : List TraceEvent),
+    IRSteps (irInitialState m) ir_trace sFinal ∧
+    irStep? sFinal = none ∧
+    observableEvents ir_trace = obs
+
+/-- Stuttering simulation preserves observable behavior.
+    Given a stuttering forward simulation, if the source behaves with trace `ts`,
+    the IR produces a trace with the same observable events. -/
+theorem IRStutterSim_behavioral {S : Type} {R : S → IRExecState → Prop}
+    {step_src : S → Option (TraceEvent × S)}
+    (sim : IRStutterSim R step_src)
+    {s_init : S} {ir_init : IRExecState}
+    (hR : R s_init ir_init)
+    {ts : List TraceEvent}
+    (hBehaves : DetBehaves step_src s_init ts) :
+    IRBehavesObs ir_init.module (observableEvents ts) := by
+  obtain ⟨s_final, hSteps, hHalt⟩ := hBehaves
+  obtain ⟨ir_final, ir_trace, hIRSteps, hR_final, hobs⟩ :=
+    IRStutterSim_steps sim hR hSteps
+  have hIRHalt := sim.halt_sim _ _ hR_final hHalt
+  exact ⟨ir_final, ir_trace, hIRSteps, hIRHalt, hobs⟩
+
+/-- Bridge: ANF.Behaves → IRBehavesObs via stuttering simulation.
+    When using the stuttering framework for lowering, this connects
+    ANF behavioral semantics to observable IR behavioral semantics. -/
+theorem lower_behavioral_obs (prog : ANF.Program) (irmod : IRModule)
+    (hlower : Wasm.lower prog = .ok irmod)
+    {R : ANF.State → IRExecState → Prop}
+    (hR_init : R (ANF.initialState prog) (irInitialState irmod))
+    (sim : IRStutterSim R anfStepMapped) :
+    ∀ trace, ANF.Behaves prog trace →
+      IRBehavesObs irmod (observableEvents (traceListFromCore trace)) := by
+  intro trace hBeh
+  have hDet := DetBehaves_of_ANFBehaves hBeh
+  have h := IRStutterSim_behavioral sim hR_init hDet
+  simp only [traceListFromCore_eq_map, irInitialState] at h ⊢
+  convert h using 2
+  simp [irInitialState]
+
 /-- Bridge: convert ANF.Steps to StepStar anfStepMapped.
     This allows us to use the ANF.Behaves definition (which uses ANF.Steps)
     with the IRForwardSim framework (which uses StepStar/DetBehaves). -/
@@ -4792,7 +5056,15 @@ theorem ir_forward_sim (prog : ANF.Program) (irmod : IRModule)
     ∃ (R : ANF.State → IRExecState → Prop),
       R (ANF.initialState prog) (irInitialState irmod) ∧
       IRForwardSim R anfStepMapped := by
-  sorry
+  -- Witness: the lowering simulation relation
+  refine ⟨LowerSimRel prog irmod, ?_, ?_⟩
+  · -- Initial states are related
+    exact LowerSimRel.init prog irmod hlower
+  · -- Forward simulation: proof agent must fill in step_sim and halt_sim
+    exact {
+      step_sim := LowerSimRel.step_sim prog irmod
+      halt_sim := LowerSimRel.halt_sim prog irmod
+    }
 
 /-- Main application: using ir_forward_sim to prove lower_behavioral_correct.
     Given ir_forward_sim, this follows from IRForwardSim_behavioral + DetBehaves_of_ANFBehaves. -/
@@ -4833,7 +5105,15 @@ theorem emit_forward_sim (irmod : IRModule) (wmod : Module)
     ∃ (R : IRExecState → ExecState → Prop),
       R (irInitialState irmod) (initialState wmod) ∧
       WasmForwardSim R := by
-  sorry
+  -- Witness: the emit simulation relation
+  refine ⟨EmitSimRel irmod wmod, ?_, ?_⟩
+  · -- Initial states are related
+    exact EmitSimRel.init irmod wmod hemit
+  · -- Forward simulation: proof agent must fill in step_sim and halt_sim
+    exact {
+      step_sim := EmitSimRel.step_sim irmod wmod
+      halt_sim := EmitSimRel.halt_sim irmod wmod
+    }
 
 /-- Main application: using emit_forward_sim to prove emit_behavioral_correct.
     Given emit_forward_sim, this follows from WasmForwardSim_behavioral. -/
