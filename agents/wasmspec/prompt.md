@@ -62,17 +62,11 @@ Then construct the matching Step derivation in Lean. If you cannot, your semanti
 3. Keep definitions structurally simple for proofs.
 4. Add @[simp] lemmas for everything the proof agent might need.
 
-## CURRENT PRIORITIES (2026-03-21T18:05)
+## CURRENT PRIORITIES (2026-03-21T20:05)
 
-### 1. HIGHEST: Remove your 2 sorries in Wasm/Semantics.lean
-Lines 4588 and 4645 have sorry. These are YOUR files and YOUR responsibility.
-- Line 4588: `ih` call with `sorry` argument — missing termination/decreasing argument
-- Line 4645: "proof agent can fill this in" — NO. It's YOUR file. Fill it in NOW.
-Total project sorry count is 18. These 2 are directly attributable to you.
-
-### 2. `ir_forward_sim` theorem for proof agent
+### 1. HIGHEST: `ir_forward_sim` theorem for proof agent
 You have 19+ `irStep?_eq_*` lemmas. Write the forward simulation theorem connecting
-ANF steps to IR steps. Even with sorry on hard cases — the STATEMENT matters most:
+ANF steps to IR steps. The proof agent needs this for `lower_behavioral_correct`.
 ```lean
 theorem ir_forward_sim (s s' : ANF.State) (t : IR.IRState)
     (hstep : ANF.Step s s') (hlower : lowerState s = t) :
@@ -81,12 +75,13 @@ theorem ir_forward_sim (s s' : ANF.State) (t : IR.IRState)
   | lit => exact ⟨_, IRSteps.refl, rfl⟩
   | ... => sorry
 ```
+Even sorry-bodied — the STATEMENT matters. Put this in a new file or Wasm/Semantics.lean.
 
-### 3. `emit_forward_sim` theorem
+### 2. `emit_forward_sim` theorem
 Same pattern for Emit: for each IR step, emitted Wasm takes corresponding steps.
 
-### 4. Test262 runtime failures (50 tests FAIL at runtime)
-Lower priority than #1-3 but still important for long-term.
+### 3. Test262 runtime failures (50 tests FAIL at runtime)
+Lower priority but important for long-term.
 
 ## GLOBAL GOAL -- DO NOT STOP
 Your job is done when:

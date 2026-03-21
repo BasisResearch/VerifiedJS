@@ -63,54 +63,38 @@ Read `logs/test262_summary.md` for failure categories. Fix compiler bugs that ca
 3. Duper is NOT available. Use grind, aesop, omega, simp.
 4. DO NOT WAIT for anyone. Just prove things.
 
-## CURRENT STATUS (2026-03-21T18:05) — 8 proof sorries remain
+## CURRENT STATUS (2026-03-21T20:05) — 6 sorries remain in Proofs/
 
-### !!!! IMMEDIATE ACTION: `elaborate_correct` — 30-SECOND WIN !!!!
+**elaborate_correct: PROVED** (done). **optimize_correct: PROVED** (done).
 
-**THIS IS YOUR #1 PRIORITY. DO THIS BEFORE ANYTHING ELSE.**
+**BUILD IS BROKEN** — jsspec's Core/Semantics.lean has 57 errors (stuck_implies_lit simp loop).
+Build individual modules: `lake build VerifiedJS.Proofs.ANFConvertCorrect` etc.
 
-Replace the ENTIRE contents of `VerifiedJS/Proofs/ElaborateCorrect.lean` with:
-```lean
-/-
-  VerifiedJS — Elaboration Correctness Proof
-  JS.AST → JS.Core semantic preservation.
--/
+### Remaining 6 sorries (in priority order):
 
-import VerifiedJS.Core.Elaborate
-import VerifiedJS.Core.Semantics
+**#1: `anfConvert_halt_star`** (ANFConvertCorrect.lean:529 `all_goals sorry`)
+~28 constructor cases remaining. Pattern: show normalizeExpr produces ANF that always steps (not stuck).
+- Category 1 (bindComplex): 16 constructors always produce `.let`, which steps → contradiction
+- Category 2 (control flow): throw/return/yield/await/labeled → fixed ANF output, step? returns some → contradiction
+- Category 3 (recursive): let/seq/if/while_ → chase monadic bind + IH
+- Category 4 (pass-through): var/this → depends on continuation k
 
-namespace VerifiedJS.Proofs
-
-/-- Elaboration preserves behavior: if elaboration produces Core program `t`,
-    then every Core behavior of `t` is a Source behavior of `s`. -/
-theorem elaborate_correct (s : Source.Program) (t : Core.Program)
-    (h : Core.elaborate s = .ok t) :
-    ∀ b, Core.Behaves t b → Source.Behaves s b := by
-  intro b hb
-  exact ⟨t, h, hb⟩
-
-end VerifiedJS.Proofs
-```
-This is trivially correct because `Source.Behaves` is defined as `∃ coreProg, elaborate p = .ok coreProg ∧ Core.Behaves coreProg b`. Just do it. NOW.
-
-### Sorry #1: `anfConvert_halt_star` — tryCatch/while_ monadic bind chains
-ANFConvertCorrect.lean lines 321, 516, 699 have `all_goals sorry` for tryCatch and var/this/seq.
-- Line 321: tryCatch/while_ in `normalizeExpr_not_trivial_family` — need to chase monadic bind chains
-- Line 516: var/this/seq in halt preservation — need multi-step Flat reasoning
-- Line 699: tryCatch bind chains in halt preservation — same pattern as 321
-
-### Sorry #2: `anfConvert_step_star` (ANFConvertCorrect.lean:84)
+**#2: `anfConvert_step_star`** (ANFConvertCorrect.lean:84)
 Stuttering forward simulation. Case analysis on ANF.Step over all expression forms.
 
-### Sorry #3: `closureConvert_step_simulation` (ClosureConvertCorrect.lean:138)
-One-step backward simulation. 200+ line case analysis on Flat.Step.
+**#3: `closureConvert_step_simulation`** (ClosureConvertCorrect.lean:138)
+One-step backward simulation. 200+ line case analysis on Flat.Step with convertExpr equation lemmas (now available since convertExpr is non-partial).
 
-### Sorry #4-6: `lower_behavioral_correct`, `emit_behavioral_correct`, `flat_to_wasm_correct`
-These compose the chain. wasmspec has 19+ `irStep?_eq_*` lemmas ready.
-- Start with lower_behavioral_correct (LowerCorrect.lean:51)
-- Use IRSteps composition helpers from wasmspec
+**#4: `lower_behavioral_correct`** (LowerCorrect.lean:51)
+Forward simulation ANF→IR. wasmspec has 19+ `irStep?_eq_*` lemmas and IRSteps composition helpers.
 
-**Strategy**: Do elaborate_correct FIRST (30 sec), then ANF sorries (#1-2), then CC (#3), then Lower/Emit (#4-6).
+**#5: `emit_behavioral_correct`** (EmitCorrect.lean:44)
+Forward simulation IR→Wasm.
+
+**#6: `flat_to_wasm_correct`** (EndToEnd.lean:55)
+Composition of #3-5. Proves itself once components are done.
+
+**Strategy**: Focus on #1 (anfConvert_halt_star) — most cases are mechanical. Then #3 (CC step_sim). Then #4-5 (Lower/Emit).
 
 ## GLOBAL GOAL -- DO NOT STOP
 Your job is done when:

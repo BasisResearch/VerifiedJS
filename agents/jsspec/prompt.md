@@ -60,43 +60,77 @@ If you CANNOT construct it, your semantics is wrong. Fix it.
 3. Test262 tells you what to formalize. Reduce skips by adding missing features.
 4. Your relations must be INHABITED with concrete derivations.
 
-## URGENT: Prove `stuck_implies_lit` sorry cases (2026-03-21T18:05)
+## !!!!! CRITICAL BUILD BREAK — FIX IMMEDIATELY (2026-03-21T20:05) !!!!!
 
-You have 8 sorry cases in `stuck_implies_lit` (Core/Semantics.lean:2233-2240):
-`binary`, `getIndex`, `setProp`, `setIndex`, `objectLit`, `arrayLit`, `tryCatch`, `call`.
+**The ENTIRE project build is broken because of YOUR file: Core/Semantics.lean.**
+57 errors in `stuck_implies_lit` (lines 2173-2248). BUILD HAS BEEN BROKEN FOR 6+ HOURS.
 
-These 8 sorries account for almost HALF the project's total sorry count. They are **YOUR responsibility**.
+**Root cause**: Lines 2173-2213 use `simp [step?, h]` or `simp only [step?, h]` which triggers
+`step?.eq_1` simp loop. Lines after `split` use bare `simp at hstuck` which also loops.
 
-**Technique**: Same pattern as the working cases above them (lines 2214-2230):
+**EXACT FIX**: Replace lines 2173-2213 with this (every case uses `unfold step?` + `simp [-step?]`):
+
 ```lean
-| binary op lhs rhs =>
-    unfold step? at hstuck; simp [-step?, h] at hstuck
+  | var _ => unfold step? at hstuck; simp [-step?] at hstuck; split at hstuck <;> simp [-step?] at hstuck
+  | while_ _ _ => unfold step? at hstuck; simp [-step?] at hstuck
+  | «break» _ => unfold step? at hstuck; simp [-step?] at hstuck
+  | «continue» _ => unfold step? at hstuck; simp [-step?] at hstuck
+  | labeled _ _ => unfold step? at hstuck; simp [-step?] at hstuck
+  | newObj _ _ => unfold step? at hstuck; simp [-step?] at hstuck
+  | this => unfold step? at hstuck; simp [-step?] at hstuck; split at hstuck <;> simp [-step?] at hstuck
+  | functionDef _ _ _ _ _ => unfold step? at hstuck; simp [-step?] at hstuck
+  | «let» _ init _ =>
+    unfold step? at hstuck; simp only [-step?] at hstuck; split at hstuck <;> simp [-step?] at hstuck
     split at hstuck <;> simp [-step?] at hstuck
+  | assign _ rhs =>
+    unfold step? at hstuck; simp only [-step?] at hstuck; split at hstuck <;> simp [-step?] at hstuck
     split at hstuck <;> simp [-step?] at hstuck
-    -- repeat split/simp as needed until all branches close
+  | seq a _ =>
+    unfold step? at hstuck; simp only [-step?] at hstuck; split at hstuck <;> simp [-step?] at hstuck
+    split at hstuck <;> simp [-step?] at hstuck
+  | «if» cond _ _ =>
+    unfold step? at hstuck; simp only [-step?] at hstuck; split at hstuck <;> simp [-step?] at hstuck
+    split at hstuck <;> simp [-step?] at hstuck
+  | unary _ arg =>
+    unfold step? at hstuck; simp only [-step?] at hstuck; split at hstuck <;> simp [-step?] at hstuck
+    split at hstuck <;> simp [-step?] at hstuck
+  | throw arg =>
+    unfold step? at hstuck; simp only [-step?] at hstuck; split at hstuck <;> simp [-step?] at hstuck
+    split at hstuck <;> simp [-step?] at hstuck
+  | typeof arg =>
+    unfold step? at hstuck; simp only [-step?] at hstuck; split at hstuck <;> simp [-step?] at hstuck
+    split at hstuck <;> simp [-step?] at hstuck
+  | getProp obj _ =>
+    unfold step? at hstuck; simp only [-step?] at hstuck; split at hstuck <;> simp [-step?] at hstuck
+    split at hstuck <;> simp [-step?] at hstuck
+  | deleteProp obj _ =>
+    unfold step? at hstuck; simp only [-step?] at hstuck; split at hstuck <;> simp [-step?] at hstuck
+    split at hstuck <;> simp [-step?] at hstuck
+  | forIn _ obj _ =>
+    unfold step? at hstuck; simp only [-step?] at hstuck; split at hstuck <;> simp [-step?] at hstuck
+    split at hstuck <;> simp [-step?] at hstuck
+  | forOf _ iterable _ =>
+    unfold step? at hstuck; simp only [-step?] at hstuck; split at hstuck <;> simp [-step?] at hstuck
+    split at hstuck <;> simp [-step?] at hstuck
 ```
 
-Key rules:
-- ALWAYS use `unfold step? at hstuck` (NOT `simp [step?, ...]` — causes infinite loop)
-- ALWAYS include `-step?` in all simp calls
-- Use `split at hstuck` to case-split on match expressions
-- Each constructor just needs enough splits to show step? ≠ none
+Also fix lines 2215-2230 (await/return/yield): replace `simp [-step?] at hstuck` with `simp_all [-step?]` if "simp made no progress", or add `split at hstuck <;>` before the simp.
 
-**DO THIS FIRST.** These are blocking the proof chain.
+**GOLDEN RULE**: NEVER pass `step?` to `simp`. Always use `unfold step?` then `simp [-step?]`.
 
-## THEN: Test262 Skips (2026-03-21T15:05)
+**After fixing stuck_implies_lit, verify build**: `lake build VerifiedJS.Core.Semantics`
+
+## THEN: Test262 Skips
 
 Test262 has been stuck at 2/93 pass, 31 skip for **31+ hours**. Fix the skips:
 - **unsupported-flags**: 14 skips — add strict mode/module parser flags
 - **class-declaration**: 5 skips — add class declaration parsing
 - **for-in-of**: 5 skips — add for-in/for-of elaboration
 - **negative language**: 4 skips — parser error reporting
-- **other**: 3 skips (annex-b, destructuring, fixture)
 
 DO NOT write new e2e tests. We have 120+.
 
 ## GLOBAL GOAL -- DO NOT STOP
 Your job is done when:
-1. 100% ECMAScript 2020 coverage in Core/Semantics.lean
-2. Every test262 test has a corresponding Step derivation
-3. Zero test262 skips from missing parser/AST/semantics
+1. Core/Semantics.lean builds cleanly (ZERO errors)
+2. Zero test262 skips from missing parser/AST/semantics
