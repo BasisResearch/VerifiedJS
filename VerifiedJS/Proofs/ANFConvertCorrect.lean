@@ -523,10 +523,52 @@ private theorem anfConvert_halt_star
     refine ⟨sf, [], .refl sf, ?_, rfl, ?_⟩
     · rw [hsf]; exact Flat.step?_lit_none sf v
     · exact ⟨hheap, htrace, k, n, m, hsa_expr ▸ hconv⟩
-  | var _ | this | seq _ _ =>
-    -- These constructors can produce .trivial because normalizeExpr calls k directly
-    -- (var/this) or chains through to k (seq). Multi-step Flat reasoning needed.
-    all_goals sorry
+  | this =>
+    -- normalizeExpr .this k = k (.var "this"). Flat.step? on .this always returns
+    -- some (.silent, ...) regardless of whether "this" is bound. One silent step.
+    rw [hlit] at hconv
+    simp only [ANF.normalizeExpr] at hconv
+    -- hconv : (k (ANF.Trivial.var "this")).run n = .ok (.trivial tv, m)
+    -- Flat steps: .this → .lit v (one silent step)
+    have hsf : sf = { sf with expr := .this } := by cases sf; simp_all
+    cases hlk : sf.env.lookup "this" with
+    | some v =>
+      -- "this" found in env: step to .lit v
+      have hstep : Flat.step? sf = some (.silent, Flat.pushTrace { sf with expr := .lit v } .silent) := by
+        rw [hsf]; simp [Flat.step?, hlk]
+      let sf' := Flat.pushTrace { sf with expr := .lit v } .silent
+      refine ⟨sf', [.silent], .tail (.mk hstep) (.refl sf'), ?_, ?_, ?_⟩
+      · simp [Flat.pushTrace, Flat.step?]
+      · rfl
+      · unfold ANF_SimRel
+        simp only [Flat.pushTrace]
+        refine ⟨hheap, ?_, ?_⟩
+        · simp [observableTrace, htrace]
+        · refine ⟨fun _ => pure (.trivial tv), n, m, ?_⟩
+          simp [ANF.normalizeExpr, ANF.trivialOfFlatValue]
+          cases v <;> simp [ANF.trivialOfFlatValue, pure, Pure.pure, StateT.pure, Except.pure]
+    | none =>
+      -- "this" not found: step to .lit .undefined (still silent)
+      have hstep : Flat.step? sf = some (.silent, Flat.pushTrace { sf with expr := .lit .undefined } .silent) := by
+        rw [hsf]; simp [Flat.step?, hlk]
+      let sf' := Flat.pushTrace { sf with expr := .lit .undefined } .silent
+      refine ⟨sf', [.silent], .tail (.mk hstep) (.refl sf'), ?_, ?_, ?_⟩
+      · simp [Flat.pushTrace, Flat.step?]
+      · rfl
+      · unfold ANF_SimRel
+        simp only [Flat.pushTrace]
+        refine ⟨hheap, ?_, ?_⟩
+        · simp [observableTrace, htrace]
+        · refine ⟨fun _ => pure (.trivial tv), n, m, ?_⟩
+          simp [ANF.normalizeExpr, ANF.trivialOfFlatValue, pure, Pure.pure, StateT.pure, Except.pure]
+  | var name =>
+    -- normalizeExpr (.var name) k = k (.var name). Flat.step? on .var always steps.
+    -- Need env correspondence to ensure lookup succeeds (silent step).
+    sorry
+  | seq a b =>
+    -- normalizeExpr (.seq a b) k = normalizeExpr a (fun _ => normalizeExpr b k)
+    -- Multi-step Flat reasoning needed: evaluate seq components.
+    sorry
   -- For all remaining constructors, normalizeExpr wraps k's output through
   -- bindComplex (→ .let), or ignores k entirely. The INNER continuation passed
   -- to sub-expression normalization never produces .trivial, so by
