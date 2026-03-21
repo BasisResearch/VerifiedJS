@@ -826,3 +826,4 @@ USE lean_multi_attempt AGGRESSIVELY. Before writing ANY tactic, test 5-10 option
   tactics=["grind", "aesop", "simp_all", "omega", "decide", "cases h", "constructor"]
 
 This saves you from edit-build-fail cycles. TRY TACTICS FIRST, then write the one that works.
+test
