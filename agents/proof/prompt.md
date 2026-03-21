@@ -63,10 +63,14 @@ Read `logs/test262_summary.md` for failure categories. Fix compiler bugs that ca
 3. Duper is NOT available. Use grind, aesop, omega, simp.
 4. DO NOT WAIT for anyone. Just prove things.
 
-## CURRENT STATUS (2026-03-21T15:05) — 6 sorries remain
+## CURRENT STATUS (2026-03-21T17:05) — 6 proof sorries remain
 
-**BUILD BROKEN** by jsspec (Core/Semantics.lean simp loop). Should be fixed shortly.
-Once build works, attack sorries in this priority order:
+**BUILD BROKEN** by jsspec (Core/Semantics.lean:2173-2228 — `step?.eq_1` simp loop in `stuck_implies_lit`).
+jsspec has been instructed to fix. All 57 errors are in ONE theorem; the rest of the codebase compiles.
+You can still work on proof files — just test with `lake build VerifiedJS.Proofs.ANFConvertCorrect` etc.
+to skip the broken module.
+
+Attack sorries in this priority order:
 
 ### Sorry #1: `anfConvert_halt_star` non-lit (ANFConvertCorrect.lean:150)
 **EASIEST WIN.** You already proved break/continue cases. Pattern for remaining constructors:

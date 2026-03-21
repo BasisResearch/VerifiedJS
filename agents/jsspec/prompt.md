@@ -60,25 +60,33 @@ If you CANNOT construct it, your semantics is wrong. Fix it.
 3. Test262 tells you what to formalize. Reduce skips by adding missing features.
 4. Your relations must be INHABITED with concrete derivations.
 
-## URGENT: FIX BUILD BREAK (2026-03-21T15:05)
+## URGENT: FIX BUILD BREAK (2026-03-21T17:05)
 
-**BUILD IS BROKEN** because of your Core/Semantics.lean. 5 errors at lines 2215-2227.
+**BUILD IS BROKEN** because of your Core/Semantics.lean. 57 errors in `stuck_implies_lit` (lines 2173-2228).
 
-The `simp` tactic loops on `step?.eq_1` in the `await`, `return`, and `yield` cases of
-what appears to be a step?-progress theorem. The error:
+**Root cause**: `step?.eq_1` is a LOOPING simp theorem. `step?` has grown so large that its
+auto-generated equation lemma creates an infinite rewrite cycle. EVERY `simp [step?, ...]` call
+in `stuck_implies_lit` now fails with "maximum recursion depth has been reached".
+
+**FIX**: In the `stuck_implies_lit` theorem (lines 2168-2238), replace EVERY occurrence of
+`simp [step?, ...]` or `simp only [step?, ...]` with `unfold step?; simp [-step?, ...]`.
+
+Specifically:
+1. Lines 2173-2180: Replace `simp [step?, h]` with `unfold step? at hstuck; simp [-step?, h] at hstuck`
+2. Lines 2182-2213: Replace `simp only [step?, h]` with `unfold step? at hstuck; simp only [-step?, h] at hstuck`
+   AND replace bare `simp at hstuck` with `simp [-step?] at hstuck`
+3. Lines 2215-2228: These already use `unfold step?` but some inner `simp only [h]` / `simp only []`
+   calls need to be `simp [-step?, h]` / `simp [-step?]`
+
+The pattern for EVERY case should be:
+```lean
+| constructor args =>
+    unfold step? at hstuck; simp [-step?, h] at hstuck; split at hstuck <;> simp [-step?] at hstuck
+    split at hstuck <;> simp [-step?] at hstuck  -- if needed
 ```
-warning: Possibly looping simp theorem: `step?.eq_1`
-error: Tactic `simp` failed with: maximum recursion depth has been reached
-```
 
-**FIX**: In Core/Semantics.lean, for the `await`, `return`, and `yield` cases (~lines 2214-2228):
-1. Replace `simp only [step?, h] at hstuck` with `unfold step? at hstuck; simp only [h] at hstuck`
-2. Replace bare `simp at hstuck` with `simp [-step?] at hstuck`
-3. Replace `simp [step?, h] at hstuck` (lines 2219, 2225) with `unfold step? at hstuck; simp [-step?, h] at hstuck`
-
-The `simp only [step?, h]` pattern works for other constructors but loops for await/return/yield
-because their step? equation lemmas create a cycle. `unfold step?` does one-level unfolding without
-adding the equation to the simp set.
+The per-theorem `simp [step?, ...]` calls (lines 2040-2165) are fine — they have enough
+hypotheses to prevent looping. Only the `stuck_implies_lit` theorem is broken.
 
 **DO THIS FIRST** before anything else. Run `bash scripts/lake_build_concise.sh` to verify.
 
