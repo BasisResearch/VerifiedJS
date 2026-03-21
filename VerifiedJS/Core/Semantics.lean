@@ -2229,15 +2229,75 @@ theorem stuck_implies_lit {s : State} (hstuck : step? s = none) :
       · split at hstuck <;> simp [-step?] at hstuck
       · split at hstuck <;> simp [-step?] at hstuck
   -- The remaining constructors have deeply nested match structures.
-  -- Each is provably non-stuck but requires many split/simp steps.
-  | binary _ _ _ => sorry
-  | getIndex _ _ => sorry
-  | setProp _ _ _ => sorry
-  | setIndex _ _ _ => sorry
-  | objectLit _ => sorry
-  | arrayLit _ => sorry
-  | tryCatch _ _ _ _ => sorry
-  | call _ _ => sorry
+  -- Each is provably non-stuck: unfold step? then split/simp on each match level.
+  | binary _ _ _ =>
+    unfold step? at hstuck; simp [-step?] at hstuck
+    split at hstuck <;> simp [-step?] at hstuck
+    · split at hstuck <;> simp [-step?] at hstuck
+    · split at hstuck <;> simp [-step?] at hstuck
+      split at hstuck <;> simp [-step?] at hstuck
+  | getIndex _ _ =>
+    unfold step? at hstuck; simp [-step?] at hstuck
+    split at hstuck <;> simp [-step?] at hstuck
+    · split at hstuck <;> simp [-step?] at hstuck
+    · split at hstuck <;> simp [-step?] at hstuck
+    · split at hstuck <;> simp [-step?] at hstuck
+      split at hstuck <;> simp [-step?] at hstuck
+      · split at hstuck <;> simp [-step?] at hstuck
+        split at hstuck <;> simp [-step?] at hstuck
+      · split at hstuck <;> simp [-step?] at hstuck
+        split at hstuck <;> simp [-step?] at hstuck
+  | setProp _ _ _ =>
+    unfold step? at hstuck; simp [-step?] at hstuck
+    split at hstuck <;> simp [-step?] at hstuck
+    · split at hstuck <;> simp [-step?] at hstuck
+    · split at hstuck <;> simp [-step?] at hstuck
+      · split at hstuck <;> simp [-step?] at hstuck
+      · split at hstuck <;> simp [-step?] at hstuck
+        split at hstuck <;> simp [-step?] at hstuck
+  | setIndex _ _ _ =>
+    unfold step? at hstuck; simp [-step?] at hstuck
+    split at hstuck <;> simp [-step?] at hstuck
+    · split at hstuck <;> simp [-step?] at hstuck
+    · split at hstuck <;> simp [-step?] at hstuck
+    · split at hstuck <;> simp [-step?] at hstuck
+    · split at hstuck <;> simp [-step?] at hstuck
+      split at hstuck <;> simp [-step?] at hstuck
+      · split at hstuck <;> simp [-step?] at hstuck
+  | objectLit _ =>
+    unfold step? at hstuck; simp [-step?] at hstuck
+    split at hstuck <;> simp [-step?] at hstuck
+    split at hstuck <;> simp [-step?] at hstuck
+  | arrayLit _ =>
+    unfold step? at hstuck; simp [-step?] at hstuck
+    split at hstuck <;> simp [-step?] at hstuck
+    split at hstuck <;> simp [-step?] at hstuck
+  | tryCatch _ _ _ _ =>
+    unfold step? at hstuck; simp [-step?] at hstuck
+    split at hstuck <;> simp [-step?] at hstuck
+    · -- body is a value
+      split at hstuck <;> simp [-step?] at hstuck
+      split at hstuck <;> simp [-step?] at hstuck
+    · -- body is not a value: step the body
+      split at hstuck <;> simp [-step?] at hstuck
+      split at hstuck <;> simp [-step?] at hstuck
+      · split at hstuck <;> simp [-step?] at hstuck
+        split at hstuck <;> simp [-step?] at hstuck
+      · split at hstuck <;> simp [-step?] at hstuck
+  | call _ _ =>
+    unfold step? at hstuck; simp [-step?] at hstuck
+    split at hstuck <;> simp [-step?] at hstuck
+    · -- callee not a value: step callee
+      split at hstuck <;> simp [-step?] at hstuck
+    · -- callee is a value
+      split at hstuck <;> simp [-step?] at hstuck
+      · -- allValues = some: perform the call
+        split at hstuck <;> simp [-step?] at hstuck
+        · split at hstuck <;> simp [-step?] at hstuck
+          split at hstuck <;> simp [-step?] at hstuck
+      · -- allValues = none: step first non-value arg
+        split at hstuck <;> simp [-step?] at hstuck
+        split at hstuck <;> simp [-step?] at hstuck
 
 /-- Behaves implies the final state has a literal expression. -/
 theorem Behaves_final_lit {p : Program} {b : List TraceEvent}
