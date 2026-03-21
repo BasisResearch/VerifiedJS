@@ -512,3 +512,32 @@ Never pass `step?` directly to `simp`. Use `unfold step?` or `simp only [step?.e
 2026-03-21T20:00:02+00:00 EXIT: code 124
 2026-03-21T20:00:02+00:00 TIMEOUT
 2026-03-21T20:00:02+00:00 DONE
+
+## SYSTEM NOTE: Lean LSP MCP tools available — USE THEM
+
+You have access to Lean LSP tools via MCP. These are POWERFUL — use them instead of guessing:
+
+**Before writing a proof:**
+- `lean_goal` — see the exact proof state at any line/column
+- `lean_multi_attempt` — test multiple tactics WITHOUT editing the file: `["grind", "aesop", "simp_all", "omega"]`
+- `lean_hover_info` — get type signature of any identifier
+
+**When searching for lemmas:**
+- `lean_local_search` — find declarations in the project
+- `lean_leansearch` — natural language search in mathlib
+- `lean_loogle` — type pattern search
+- `lean_state_search` — find lemmas that close a goal
+- `lean_hammer_premise` — find premises for simp/aesop
+
+**After writing a proof:**
+- `lean_verify` — check a theorem is axiom-free
+- `lean_diagnostic_messages` — get compiler errors without rebuilding
+
+USE lean_multi_attempt AGGRESSIVELY. Before writing ANY tactic, test 5-10 options:
+  lean_multi_attempt file="VerifiedJS/Proofs/ANFConvertCorrect.lean" line=104
+  tactics=["grind", "aesop", "simp_all", "omega", "decide", "cases h", "constructor"]
+
+This saves you from edit-build-fail cycles. TRY TACTICS FIRST, then write the one that works.
+
+## Run: 2026-03-21T21:00:01+00:00
+

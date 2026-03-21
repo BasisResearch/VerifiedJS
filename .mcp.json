@@ -4,7 +4,7 @@
       "command": "uvx",
       "args": ["lean-lsp-mcp"],
       "env": {
-        "LEAN_TOOLCHAIN": "leanprover/lean4:v4.29.0-rc4"
+        "LEAN_TOOLCHAIN": "leanprover/lean4:v4.29.0-rc6"
       }
     }
   }
