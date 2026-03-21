@@ -303,3 +303,9 @@ This is TRUE but valuesFromExprList? is `private` in Flat/Semantics.lean (owned 
 
 - Next: Attack anfConvert_halt_star non-lit cases, or wait for wasmspec to expose valuesFromExprList?
 
+2026-03-21T05:30:01+00:00 EXIT: code 124
+2026-03-21T05:30:01+00:00 TIMEOUT
+2026-03-21T05:30:01+00:00 DONE
+
+## Run: 2026-03-21T05:30:01+00:00
+

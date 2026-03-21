@@ -1,4 +1,34 @@
 
+## Run: 2026-03-21T05:15:01+00:00
+
+- Implemented:
+  - **Made `valuesFromExprList?` PUBLIC** in Flat/Semantics.lean (was `private`). This directly unblocks the proof agent's sorry #2 (`step?_none_implies_lit_aux` wildcard cases in ClosureConvertCorrect.lean:427).
+  - **Added bridge lemma `firstNonValueExpr_none_implies_values`**: Proves `firstNonValueExpr l = none → ∃ vs, valuesFromExprList? l = some vs`. This is the exact theorem the proof agent needs.
+  - **Added 2 @[simp] lemmas for `valuesFromExprList?`**: `valuesFromExprList?_nil` and `valuesFromExprList?_cons_lit` for compositional reasoning.
+  - **4 new IR @[simp] lemmas** completing coverage for ALL compiler-emitted IR instructions:
+    - `irStep?_ir_load`: memory load with in-bounds i32 address succeeds (§4.4.7.1)
+    - `irStep?_ir_store`: memory store with in-bounds i32 value+address succeeds (§4.4.7.2)
+    - `irStep?_ir_store8`: byte store with in-bounds i32 value+address succeeds (§4.4.7.2)
+    - `irStep?_ir_callIndirect`: indirect call with valid function index succeeds (§4.4.8.7)
+  - **Memory store+load inhabitedness example**: `exMemModule` demonstrates i32 store at addr 0, load back yields same value (99), verified by `native_decide`.
+
+- Files changed:
+  - VerifiedJS/Flat/Semantics.lean (removed `private` from `valuesFromExprList?`, added bridge lemma + 2 simp lemmas)
+  - VerifiedJS/Wasm/Semantics.lean (added 4 IR @[simp] lemmas + memory round-trip example)
+
+- Build: PASS (0 errors, 53 warnings — all warnings from other files)
+
+- Gaps remaining:
+  - Runtime/Regex.lean: NFA construction and matching missing (~60%)
+  - Runtime/Generators.lean: execution/resumption semantics missing (~70%)
+  - Wasm type soundness: `well_typed → step? ≠ none` not yet proven
+  - Source.Behaves: UNDEFINED (no owner)
+
+- Next:
+  - Check if proof agent can now complete sorry #2 with the public `valuesFromExprList?`
+  - Consider Wasm type soundness theorem for progress guarantee
+  - Port more WasmCert-Coq patterns if needed
+
 ## Run: 2026-03-21T04:15:01+00:00
 
 - Implemented:
@@ -662,3 +692,4 @@ lake build works. ANFConvertCorrect.lean has broken code — proof agent must fi
 
 ## Run: 2026-03-21T05:15:01+00:00
 
+2026-03-21T05:29:44+00:00 DONE

@@ -3625,10 +3625,11 @@ theorem irStep?_ir_callIndirect (s : IRExecState) (rest : List IRInstr)
     (hfunc : s.module.functions[funcIdx.toNat]? = some fn)
     (hargs : fn.params.length ≤ stk.length) :
     ∃ te s', irStep? s = some (te, s') := by
-  simp only [irStep?, hcode, hstack, irPop1?, hfunc, irPopN?]
-  split
-  · omega
-  · simp [irPushTrace]
+  simp only [irStep?, hcode, hstack, irPop1?, hfunc]
+  unfold irPopN?
+  have hlt : ¬ (stk.length < fn.params.length) := by omega
+  rw [if_neg hlt]
+  exact ⟨.silent, _, rfl⟩
 
 /-! ### IRSteps Composition Helpers -/
 
@@ -3761,5 +3762,32 @@ private def exDivModule : IRModule :=
 
 /-- 42 / 7 = 6 -/
 example : (irRun 20 (irInitialState exDivModule)).2.stack == [.i32 6] := by native_decide
+
+/-- A module demonstrating memory store + load round-trip.
+    Stores i32 value 99 at address 0, then loads it back. -/
+private def exMemModule : IRModule :=
+  { functions := #[{
+      name := "memRoundTrip"
+      params := []
+      results := [.i32]
+      locals := []
+      body := [
+        IRInstr.const_ .i32 "0",      -- address
+        IRInstr.const_ .i32 "99",     -- value to store
+        IRInstr.store .i32 0,          -- store 99 at addr 0
+        IRInstr.const_ .i32 "0",      -- address to load from
+        IRInstr.load .i32 0,           -- load from addr 0
+        IRInstr.return_
+      ]
+    }]
+    memories := #[{ lim := { min := 1, max := none } }]  -- 1 page (64KB)
+    globals := #[]
+    exports := #[]
+    dataSegments := #[]
+    startFunc := some 0
+    tableEntries := #[] }
+
+/-- Memory store + load round-trip: store 99 at offset 0, load back yields 99. -/
+example : (irRun 20 (irInitialState exMemModule)).2.stack == [.i32 99] := by native_decide
 
 end VerifiedJS.Wasm.IR
