@@ -2222,9 +2222,9 @@ theorem stuck_implies_lit {s : State} (hstuck : step? s = none) :
       split at hstuck <;> simp at hstuck
   | yield arg _ =>
     cases arg with
-    | none => simp only [step?, h, pushTrace] at hstuck
+    | none => unfold step? at hstuck; simp [h] at hstuck
     | some e =>
-      simp only [step?, h] at hstuck; split at hstuck <;> simp only [] at hstuck
+      unfold step? at hstuck; simp only [h] at hstuck; split at hstuck <;> simp only [] at hstuck
       split at hstuck <;> simp only [] at hstuck
   -- The remaining constructors have deeply nested match structures.
   -- Each is provably non-stuck but requires many split/simp steps.
