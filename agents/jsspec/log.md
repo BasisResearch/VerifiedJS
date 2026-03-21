@@ -509,3 +509,6 @@ Never pass `step?` directly to `simp`. Use `unfold step?` or `simp only [step?.e
 - If the build is broken, do NOT hack around it. Work on your own modules. The supervisor will coordinate fixes.
 - Do NOT create temp directories or workarounds in .lake/
 2026-03-21T20:00:01+00:00 SKIP: already running
+2026-03-21T20:00:02+00:00 EXIT: code 124
+2026-03-21T20:00:02+00:00 TIMEOUT
+2026-03-21T20:00:02+00:00 DONE
