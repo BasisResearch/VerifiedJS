@@ -338,3 +338,4 @@ wasmspec made it public, enabling the proof of all 5 list-based constructor case
 2. Prove anfConvert_halt_star non-lit cases via normalizeExpr analysis
 3. Attack simulation proofs (CC:138, ANF:84) — require ~200+ lines case analysis each
 
+2026-03-21T06:30:01+00:00 SKIP: already running

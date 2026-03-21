@@ -3698,23 +3698,24 @@ theorem irStep?_eq_drop (s : IRExecState) (rest : List IRInstr)
         trace := s.trace ++ [.silent] }) := by
   simp [irStep?, hcode, hstack, irPop1?, irPushTrace]
 
-/-- Exact state after block: pushes label, enters body code. -/
+/-- Exact state after block: pushes label (onBranch=rest, onExit=rest), enters body. -/
 theorem irStep?_eq_block (s : IRExecState) (label : String) (body rest : List IRInstr)
     (hcode : s.code = IRInstr.block label body :: rest) :
     irStep? s = some (.silent,
       { s with
         code := body
-        labels := { name := label, onBranch := [], onExit := rest, isLoop := false } :: s.labels
+        labels := { name := label, onBranch := rest, onExit := rest, isLoop := false } :: s.labels
         trace := s.trace ++ [.silent] }) := by
   simp [irStep?, hcode, irPushTrace]
 
-/-- Exact state after loop: pushes loop label, enters body code. -/
+/-- Exact state after loop: pushes loop label (onBranch=loop+rest, onExit=rest), enters body. -/
 theorem irStep?_eq_loop (s : IRExecState) (label : String) (body rest : List IRInstr)
     (hcode : s.code = IRInstr.loop label body :: rest) :
     irStep? s = some (.silent,
       { s with
         code := body
-        labels := { name := label, onBranch := body, onExit := rest, isLoop := true } :: s.labels
+        labels := { name := label, onBranch := [IRInstr.loop label body] ++ rest,
+                     onExit := rest, isLoop := true } :: s.labels
         trace := s.trace ++ [.silent] }) := by
   simp [irStep?, hcode, irPushTrace]
 
@@ -3793,6 +3794,82 @@ theorem irStep?_eq_labelDone (s : IRExecState) (label : IRLabel) (rest : List IR
         labels := rest
         trace := s.trace ++ [.silent] }) := by
   simp [irStep?, hcode, hlabels, irPushTrace]
+
+/-- Exact state after br: jumps to label's onBranch code, pops labels above.
+    REF: Wasm §4.4.8.1 (br label) -/
+theorem irStep?_eq_br (s : IRExecState) (label : String) (rest : List IRInstr)
+    (idx : Nat) (lbl : IRLabel)
+    (hcode : s.code = IRInstr.br label :: rest)
+    (hfind : irFindLabel? s.labels label = some (idx, lbl)) :
+    irStep? s = some (.silent,
+      { s with
+        code := lbl.onBranch
+        labels := s.labels.drop (idx + 1)
+        trace := s.trace ++ [.silent] }) := by
+  simp [irStep?, hcode, hfind, irPushTrace]
+
+/-- Exact state after br_if with true condition (cond ≠ 0): branches to label. -/
+theorem irStep?_eq_brIf_true (s : IRExecState) (label : String) (rest : List IRInstr)
+    (cond : UInt32) (stk : List IRValue) (idx : Nat) (lbl : IRLabel)
+    (hcode : s.code = IRInstr.brIf label :: rest)
+    (hstack : s.stack = .i32 cond :: stk)
+    (hcond : cond ≠ 0)
+    (hfind : irFindLabel? s.labels label = some (idx, lbl)) :
+    irStep? s = some (.silent,
+      { s with
+        code := lbl.onBranch
+        stack := stk
+        labels := s.labels.drop (idx + 1)
+        trace := s.trace ++ [.silent] }) := by
+  simp only [irStep?, hcode, hstack, irPop1?, irPushTrace]
+  have : (cond != 0) = true := by simp [bne_iff_ne, hcond]
+  simp [this, hfind]
+
+/-- Exact state after br_if with false condition (cond = 0): falls through. -/
+theorem irStep?_eq_brIf_false (s : IRExecState) (label : String) (rest : List IRInstr)
+    (stk : List IRValue)
+    (hcode : s.code = IRInstr.brIf label :: rest)
+    (hstack : s.stack = .i32 0 :: stk) :
+    irStep? s = some (.silent,
+      { s with
+        code := rest
+        stack := stk
+        trace := s.trace ++ [.silent] }) := by
+  simp [irStep?, hcode, hstack, irPop1?, irPushTrace]
+
+/-- Exact state after call: creates callee frame, enters function body.
+    REF: Wasm §4.4.6 / WasmCert-Coq r_invoke_native -/
+theorem irStep?_eq_call (s : IRExecState) (funcIdx : Nat) (rest : List IRInstr)
+    (fn : IRFunc) (args callerStack : List IRValue)
+    (hcode : s.code = IRInstr.call funcIdx :: rest)
+    (hfunc : s.module.functions[funcIdx]? = some fn)
+    (hpopn : irPopN? s.stack fn.params.length = some (args, callerStack)) :
+    irStep? s = some (.silent,
+      { s with
+        stack := callerStack
+        frames := { locals := (args ++ fn.locals.map IRValue.default).toArray
+                    returnArity := fn.results.length
+                    savedCode := rest
+                    savedLabels := s.labels } :: s.frames
+        code := fn.body
+        labels := []
+        trace := s.trace ++ [.silent] }) := by
+  simp [irStep?, hcode, hfunc, hpopn, irPushTrace]
+
+/-- Exact state after frame return (no code, no labels, multi-frame):
+    pops callee frame, restores caller context. -/
+theorem irStep?_eq_frameReturn (s : IRExecState)
+    (calleeFrame callerFrame : IRFrame) (frest : List IRFrame)
+    (hcode : s.code = []) (hlabels : s.labels = [])
+    (hframes : s.frames = calleeFrame :: callerFrame :: frest) :
+    irStep? s = some (.silent,
+      { s with
+        stack := s.stack.take calleeFrame.returnArity
+        frames := callerFrame :: frest
+        code := calleeFrame.savedCode
+        labels := calleeFrame.savedLabels
+        trace := s.trace ++ [.silent] }) := by
+  simp [irStep?, hcode, hlabels, hframes, irPushTrace]
 
 /-! ### IRSteps Composition Helpers -/
 

@@ -1,4 +1,28 @@
 
+## Run: 2026-03-21T06:15:02+00:00
+
+- Implemented:
+  - **14 exact-value equation lemmas** for irStep? — these give the EXACT resulting state (not just existential ∃ t s'), which the proof agent needs for forward simulation proofs in LowerCorrect and EmitCorrect:
+    - `irStep?_eq_i32Const`, `irStep?_eq_f64Const`, `irStep?_eq_localGet`, `irStep?_eq_localSet`, `irStep?_eq_drop`, `irStep?_eq_block`, `irStep?_eq_loop`, `irStep?_eq_if_true`, `irStep?_eq_if_false`, `irStep?_eq_globalGet`, `irStep?_eq_globalSet`, `irStep?_eq_return_callee`, `irStep?_eq_labelDone`
+  - **7 IRSteps composition helpers**: `IRSteps_two`, `IRSteps_three`, `IRSteps_cons`, `IRStep_of_irStep?`, `IRSteps_of_irStep?`
+
+- Files changed:
+  - VerifiedJS/Wasm/Semantics.lean (added ~150 lines: 14 exact-value lemmas + 7 composition helpers)
+
+- Build: PASS (0 errors, 56 warnings — all warnings from other files)
+
+- Gaps remaining:
+  - Runtime/Regex.lean: NFA construction and matching missing (~60%)
+  - Runtime/Generators.lean: execution/resumption semantics missing (~70%)
+  - Runtime/GC.lean: mark/sweep phases missing (~70%)
+  - Wasm type soundness: `well_typed → step? ≠ none` not yet proven
+  - PROOF_BLOCKERS.md still says sorry #2 is blocked (permission denied to update)
+
+- Next:
+  - Consider Wasm type soundness / progress theorem
+  - Add exact-value lemmas for call and callIndirect
+  - Port more WasmCert-Coq patterns if proof agent requests
+
 ## Run: 2026-03-21T05:15:01+00:00
 
 - Implemented:
