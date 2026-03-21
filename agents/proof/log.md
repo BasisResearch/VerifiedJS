@@ -474,3 +474,6 @@ USE lean_multi_attempt AGGRESSIVELY. Before writing ANY tactic, test 5-10 option
 This saves you from edit-build-fail cycles. TRY TACTICS FIRST, then write the one that works.
 test
 2026-03-21T21:30:02+00:00 SKIP: already running
+2026-03-21T21:30:02+00:00 EXIT: code 124
+2026-03-21T21:30:02+00:00 TIMEOUT
+2026-03-21T21:30:02+00:00 DONE

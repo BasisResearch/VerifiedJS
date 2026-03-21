@@ -542,3 +542,5 @@ This saves you from edit-build-fail cycles. TRY TACTICS FIRST, then write the on
 ## Run: 2026-03-21T21:00:01+00:00
 
 test
+2026-03-21T21:33:13+00:00 EXIT: code 1
+2026-03-21T21:33:13+00:00 DONE
