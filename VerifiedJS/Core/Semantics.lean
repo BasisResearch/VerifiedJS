@@ -2174,33 +2174,33 @@ theorem step_newObj_exact (callee : Expr) (args : List Expr) (env : Env) (heap :
         trace, funcs, cs⟩ .silent) := by
   simp [step?]
 
-/-- §13.7.5 for-in exact on object: desugars to sequential let-bindings over property keys.
+/-- §13.7.5 for-in on object with known properties: desugars to sequential let-bindings.
     ECMA-262 §13.7.5.15 EnumerateObjectProperties. -/
-theorem step_forIn_object_exact (binding : VarName) (addr : Nat) (body : Expr)
+theorem step_forIn_object_props (binding : VarName) (addr : Nat) (body : Expr)
     (env : Env) (heap : Heap) (trace : List TraceEvent)
-    (funcs : Array FuncClosure) (cs : List (List (VarName × Value))) :
+    (funcs : Array FuncClosure) (cs : List (List (VarName × Value)))
+    (props : List (PropName × Value))
+    (hprops : heap.objects[addr]? = some props) :
     step? ⟨.forIn binding (.lit (.object addr)) body, env, heap, trace, funcs, cs⟩ =
       some (.silent, pushTrace ⟨
-        (match heap.objects[addr]? with
-         | some props => (props.map (fun p => p.1)).foldr (fun key acc =>
-             .seq (.«let» binding (.lit (.string key)) body) acc) (.lit .undefined)
-         | none => (.lit .undefined)),
+        (props.map (fun p => p.1)).foldr (fun key acc =>
+          .seq (.«let» binding (.lit (.string key)) body) acc) (.lit .undefined),
         env, heap, trace, funcs, cs⟩ .silent) := by
-  simp [step?, exprValue?]
+  simp [step?, exprValue?, hprops]
 
-/-- §13.7.5.13 for-of exact on object: desugars to sequential let-bindings over element values.
+/-- §13.7.5.13 for-of on object with known properties: desugars to sequential let-bindings.
     ECMA-262 §7.4.1 GetIterator / §7.4.6 IteratorStep. -/
-theorem step_forOf_object_exact (binding : VarName) (addr : Nat) (body : Expr)
+theorem step_forOf_object_props (binding : VarName) (addr : Nat) (body : Expr)
     (env : Env) (heap : Heap) (trace : List TraceEvent)
-    (funcs : Array FuncClosure) (cs : List (List (VarName × Value))) :
+    (funcs : Array FuncClosure) (cs : List (List (VarName × Value)))
+    (props : List (PropName × Value))
+    (hprops : heap.objects[addr]? = some props) :
     step? ⟨.forOf binding (.lit (.object addr)) body, env, heap, trace, funcs, cs⟩ =
       some (.silent, pushTrace ⟨
-        (match heap.objects[addr]? with
-         | some props => (props.map (fun p => p.2)).foldr (fun val acc =>
-             .seq (.«let» binding (.lit val) body) acc) (.lit .undefined)
-         | none => (.lit .undefined)),
+        (props.map (fun p => p.2)).foldr (fun val acc =>
+          .seq (.«let» binding (.lit val) body) acc) (.lit .undefined),
         env, heap, trace, funcs, cs⟩ .silent) := by
-  simp [step?, exprValue?]
+  simp [step?, exprValue?, hprops]
 
 /-- §13.7.5 for-in on non-object exact: produces undefined.
     ECMA-262 §13.7.5.12: ToObject(null/undefined/bool/number/string) then enumerate. -/

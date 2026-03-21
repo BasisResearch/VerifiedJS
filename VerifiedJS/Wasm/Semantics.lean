@@ -4913,26 +4913,36 @@ when 1:1 step correspondence is too restrictive. The proof agent may
 choose either framework depending on the lowering structure. -/
 
 /-- Observable events: filter out `.silent` from a trace. -/
-def observableEvents : List TraceEvent → List TraceEvent :=
-  List.filter (· ≠ .silent)
+def observableEvents : List TraceEvent → List TraceEvent
+  | [] => []
+  | .silent :: ts => observableEvents ts
+  | t :: ts => t :: observableEvents ts
 
 @[simp] theorem observableEvents_nil : observableEvents ([] : List TraceEvent) = [] := rfl
 
 @[simp] theorem observableEvents_cons_silent (ts : List TraceEvent) :
-    observableEvents (.silent :: ts) = observableEvents ts := by
-  simp [observableEvents, List.filter]
+    observableEvents (.silent :: ts) = observableEvents ts := rfl
 
 @[simp] theorem observableEvents_cons_log (s : String) (ts : List TraceEvent) :
-    observableEvents (.log s :: ts) = .log s :: observableEvents ts := by
-  simp [observableEvents, List.filter]
+    observableEvents (.log s :: ts) = .log s :: observableEvents ts := rfl
 
 @[simp] theorem observableEvents_cons_error (s : String) (ts : List TraceEvent) :
-    observableEvents (.error s :: ts) = .error s :: observableEvents ts := by
-  simp [observableEvents, List.filter]
+    observableEvents (.error s :: ts) = .error s :: observableEvents ts := rfl
 
 @[simp] theorem observableEvents_cons_trap (s : String) (ts : List TraceEvent) :
-    observableEvents (.trap s :: ts) = .trap s :: observableEvents ts := by
-  simp [observableEvents, List.filter]
+    observableEvents (.trap s :: ts) = .trap s :: observableEvents ts := rfl
+
+/-- Observable events distributes over append. -/
+@[simp] theorem observableEvents_append (ts1 ts2 : List TraceEvent) :
+    observableEvents (ts1 ++ ts2) = observableEvents ts1 ++ observableEvents ts2 := by
+  induction ts1 with
+  | nil => simp [observableEvents]
+  | cons t ts1 ih =>
+    cases t with
+    | silent => simp [observableEvents, ih]
+    | trap msg => simp [observableEvents, ih]
+    | log msg => simp [observableEvents, ih]
+    | error msg => simp [observableEvents, ih]
 
 /-- Stuttering forward simulation: one source step corresponds to one or more
     target IR steps. The target steps produce a trace whose observable events
@@ -4971,8 +4981,8 @@ theorem IRStutterSim_steps {S : Type} {R : S → IRExecState → Prop}
       sim.step_sim _ s2_init _ _ hR_init hstep
     obtain ⟨s2_final, ir_rest, hIRsteps_rest, hR_final, hobs_rest⟩ := ih hR_mid
     refine ⟨s2_final, ir_t ++ ir_rest, IRSteps_trans hIRsteps_mid hIRsteps_rest, hR_final, ?_⟩
-    -- Observable events: filter distributes over append
-    simp only [observableEvents, List.filter_append, hobs_mid, hobs_rest]
+    -- Observable events distributes over append
+    rw [observableEvents_append, hobs_mid, observableEvents_append, hobs_rest]
 
 /-- Behavioral equivalence up to silent events.
     The IR produces a trace whose observable events match the mapped source trace.
@@ -5004,7 +5014,7 @@ theorem IRStutterSim_behavioral {S : Type} {R : S → IRExecState → Prop}
     When using the stuttering framework for lowering, this connects
     ANF behavioral semantics to observable IR behavioral semantics. -/
 theorem lower_behavioral_obs (prog : ANF.Program) (irmod : IRModule)
-    (hlower : Wasm.lower prog = .ok irmod)
+    (_hlower : Wasm.lower prog = .ok irmod)
     {R : ANF.State → IRExecState → Prop}
     (hR_init : R (ANF.initialState prog) (irInitialState irmod))
     (sim : IRStutterSim R anfStepMapped) :
@@ -5013,9 +5023,8 @@ theorem lower_behavioral_obs (prog : ANF.Program) (irmod : IRModule)
   intro trace hBeh
   have hDet := DetBehaves_of_ANFBehaves hBeh
   have h := IRStutterSim_behavioral sim hR_init hDet
-  simp only [traceListFromCore_eq_map, irInitialState] at h ⊢
-  convert h using 2
-  simp [irInitialState]
+  simp only [traceListFromCore_eq_map] at h ⊢
+  exact h
 
 /-- Bridge: convert ANF.Steps to StepStar anfStepMapped.
     This allows us to use the ANF.Behaves definition (which uses ANF.Steps)

@@ -91,6 +91,7 @@ arithmetic, boolean_logic, conditionals, do_while, for_loop, functions, let_bind
 | 2026-03-21T17:05 | **16** | **~120/123 (est.)** | **BUILD STILL BROKEN**: jsspec Core/Semantics.lean now has 57 errors — ALL in `stuck_implies_lit` theorem (lines 2173-2228). Root cause: `step?.eq_1` simp loop. Sorry UP from 6→16: jsspec added 8 sorries (step?-progress theorem for binary/getIndex/setProp/setIndex/objectLit/arrayLit/tryCatch/call), wasmspec has 2 sorries (Wasm/Semantics.lean:4588,4645), 6 proof sorries unchanged. Proof agent ran at 16:30, still going. jsspec started new run at 17:00 with updated fix instructions. Test262: 2/93 (UNCHANGED 30+ hours). |
 | 2026-03-21T20:05 | **6** | **~120/123 (est.)** | **BUILD STILL BROKEN** (jsspec Core/Semantics.lean, 57 errors in stuck_implies_lit, 6+ hours). Sorry DOWN from 16→6: wasmspec cleared 2 sorries, jsspec's 8 stuck_implies_lit were build errors not real sorries. **elaborate_correct PROVED** (first non-trivial pass). 6 Proofs/ sorries remain. All agents timing out (EXIT 124). Test262: 2/93 (UNCHANGED 30+ hours). |
 | 2026-03-21T22:05 | **9** | **~120/123 (est.)** | **BUILD STILL BROKEN** (Core/Semantics.lean: 81 errors in stuck_implies_lit — jsspec keeps re-expanding then failing). Sorry UP 6→9 (sorry_report counts 9; 7 unique in Proofs/ + 2 in Core). jsspec DEAD (EXIT 1 in 10s, not fixing). wasmspec alive but doing no sorry reduction. proof DEAD. Test262: 2/93 (UNCHANGED 32+ hours). Rewrote jsspec prompt with simplest fix (sorry the whole theorem). |
+| 2026-03-21T22:24 | **10** | **~120/123 (est.)** | Build PASS (49 jobs). Sorry 10: 1 Core (stuck_implies_lit, unused), 4 Wasm/Semantics (wasmspec sim theorems — BLOCK proof chain), 3 ANF + 1 CC + 1 Lower + 1 Emit + 1 E2E (proof). **KEY**: 4 wasmspec sorries are critical path — LowerCorrect/EmitCorrect/EndToEnd cannot proceed without step_sim/halt_sim. Test262: 2/93 (UNCHANGED 34+ hours). All agents restarting. |
 
 - Test262 pass rate: 2/93 (fast mode), deterministic full sample reached 274/500 passes (2026-03-08)
 - Flagship parse rate: 96.30% (1976/2052)
@@ -108,19 +109,19 @@ arithmetic, boolean_logic, conditionals, do_while, for_loop, functions, let_bind
 | Pass | Theorem | Statement OK? | Proved? | Blocker |
 |------|---------|--------------|---------|---------|
 | Elaborate | elaborate_correct | YES | **PROVED** | — |
-| ClosureConvert | closureConvert_correct | YES — trace preservation with NoForInForOf | 1 sorry | step_simulation (ClosureConvertCorrect.lean:138) |
-| ANFConvert | anfConvert_correct | YES — observable trace preservation | 3 sorry | step_star (ANFConvertCorrect.lean:84), halt_star (:567, :571) |
+| ClosureConvert | closureConvert_correct | YES — trace preservation with NoForInForOf | 1 sorry | CC_SimRel needs env/heap correspondence (ClosureConvertCorrect.lean:170) |
+| ANFConvert | anfConvert_correct | YES — observable trace preservation | 3 sorry | step_star (:84), var case (:567), seq case (:571) |
 | Optimize | optimize_correct | YES — `∀ b, ANF.Behaves (optimize p) b ↔ ANF.Behaves p b` | **PROVED** | Identity pass — trivially correct |
-| Lower | lower_behavioral_correct | YES — `∀ trace, ANF.Behaves → IR.IRBehaves` | 1 sorry | LowerCorrect.lean:51. Needs ir_forward_sim from wasmspec |
-| Emit | emit_behavioral_correct | YES — `∀ trace, IR.IRBehaves → Wasm.Behaves` | 1 sorry | EmitCorrect.lean:44. Needs emit_forward_sim from wasmspec |
+| Lower | lower_behavioral_correct | YES — `∀ trace, ANF.Behaves → IR.IRBehaves` | 1 sorry | LowerCorrect.lean:51. **BLOCKED on wasmspec** step_sim+halt_sim (Wasm/Semantics.lean:4823,4838) |
+| Emit | emit_behavioral_correct | YES — `∀ trace, IR.IRBehaves → Wasm.Behaves` | 1 sorry | EmitCorrect.lean:44. **BLOCKED on wasmspec** step_sim+halt_sim (Wasm/Semantics.lean:4886,4899) |
 | EndToEnd | flat_to_wasm_correct | YES — partial composition (Flat→Wasm) | 1 sorry | EndToEnd.lean:55. Composition of above; last to prove |
 
-**Chain status**: All 6 Behaves relations DEFINED. All theorem STATEMENTS correct. Trace bridges exist (`traceFromCore`, `traceListToWasm`). **2 passes FULLY PROVED** (Elaborate, Optimize). **Sorry count in proof chain: 7** (1 CC, 3 ANF, 1 Lower, 1 Emit, 1 EndToEnd).
+**Chain status**: All 6 Behaves relations DEFINED. All theorem STATEMENTS correct. Trace bridges exist (`traceFromCore`, `traceListToWasm`). **2 passes FULLY PROVED** (Elaborate, Optimize). **Sorry count in proof chain: 7** (1 CC, 3 ANF, 1 Lower, 1 Emit, 1 EndToEnd). **Critical path**: wasmspec must prove 4 simulation theorems to unblock Lower+Emit+EndToEnd.
 
 ## Agent Health
 
-| Agent | Status (2026-03-21T22:05) | Notes |
+| Agent | Status (2026-03-21T22:24) | Notes |
 |-------|---------------------|-------|
-| jsspec | **DEAD** (EXIT 1 in 10s) — **BUILD BREAKER** | Core/Semantics.lean has 81 errors in stuck_implies_lit. Prompt rewritten with simplest fix (sorry it). Test262: 2/93 (unchanged 32+ hrs). |
-| wasmspec | **ALIVE** but not reducing sorries | 0 sorries in own files. Needs to write ir_forward_sim and emit_forward_sim for proof agent. |
-| proof | **DEAD** (EXIT 124 timeout) | 7 sorries in Proofs/. elaborate_correct PROVED. Blocked on build break for verification. |
+| jsspec | Restarting (new run 22:24) | Build FIXED (stuck_implies_lit has sorry). Redirected to test262 skip reduction. Test262: 2/93 (unchanged 34+ hrs). |
+| wasmspec | Restarting (new run 22:24) | **4 sorries in Wasm/Semantics.lean** (step_sim+halt_sim for Lower+Emit). These BLOCK proof chain. Prompt updated with exact instructions. |
+| proof | Restarting (new run 22:25) | 7 sorries in Proofs/. CC+ANF unblocked. Lower/Emit/EndToEnd blocked on wasmspec. Prompt updated with detailed action plan. |

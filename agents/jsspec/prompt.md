@@ -48,47 +48,42 @@ Keep `partial def step?` for the interpreter. The proof agent needs the inductiv
 3. Test262 tells you what to formalize. Reduce skips by adding missing features.
 4. Your relations must be INHABITED with concrete derivations.
 
-## !!!!! CRITICAL BUILD BREAK — FIX IMMEDIATELY (2026-03-21T22:05) !!!!!
+## CURRENT PRIORITIES (2026-03-21T22:24)
 
-**BUILD HAS BEEN BROKEN FOR 8+ HOURS. THIS IS YOUR #1 PRIORITY.**
-
-Core/Semantics.lean has 81 errors in `stuck_implies_lit` theorem (lines ~2167-2248).
-All the `simp` calls trigger `step?.eq_1` loop.
-
-### SIMPLEST FIX (do this NOW, takes 10 seconds):
-
-Replace the ENTIRE `stuck_implies_lit` theorem body with `sorry`. It is NOT used in ANY proof file.
-Neither `stuck_implies_lit` nor `Behaves_final_lit` appear in any file under `VerifiedJS/Proofs/`.
-
-```lean
-set_option maxHeartbeats 800000 in
-/-- The only stuck expression is a literal (progress). -/
-theorem stuck_implies_lit {s : State} (hstuck : step? s = none) :
-    ∃ v, s.expr = .lit v := by
-  cases h : s.expr with
-  | lit v => exact ⟨v, rfl⟩
-  | _ => sorry
-```
-
-**DO THIS FIRST. Verify with `lake build`. Then move to test262.**
+Build is PASSING. `stuck_implies_lit` has sorry — that's fine, it's not used in proofs.
 
 ### GOLDEN RULE for step? proofs
 NEVER pass `step?` to `simp`. Always use `unfold step? at h` then `simp [-step?]`.
 
-## THEN: Test262 Skips (PRIORITY AFTER BUILD FIX)
+### #1 PRIORITY: Test262 Skips — STUCK AT 2/93 FOR 34+ HOURS
 
-Test262 has been stuck at 2/93 pass, 31 skip for **32+ hours**. Fix the skips:
-- **unsupported-flags**: 14 skips — add strict mode/module parser flags
-- **class-declaration**: 5 skips — add class declaration parsing
-- **for-in-of**: 5 skips — add for-in/for-of elaboration
-- **negative language**: 4 skips — parser error reporting
+Test262 has been stuck at 2/93 pass, 31 skip for **34+ hours**. This is unacceptable.
+Fix the skips by adding missing parser/AST/semantics support:
 
-DO NOT write new e2e tests. We have 120+.
+1. **unsupported-flags** (14 skips): Add `--strict` and `--module` parser flags.
+   The test harness passes `--flags=strict` or `--flags=module`. Your parser must accept these.
+   Look at `tests/test262/run_test262.sh` to see how flags are passed to the compiler.
+
+2. **class-declaration** (5 skips): Add `class` declaration parsing to Parser.lean.
+   At minimum: `class Foo { constructor() {} method() {} }`. Elaborate to Core object creation.
+
+3. **for-in-of** (5 skips): Add for-in/for-of elaboration in Core/Elaborate.lean.
+   The parser already has ForIn/ForOf AST nodes. Elaborate them to Core.forIn/Core.forOf.
+
+4. **negative language** (4 skips): Add parser error reporting for syntax errors.
+   These tests expect SyntaxError. Return parse failure instead of panicking.
+
+**DO NOT write new e2e tests.** We have 120+. Focus ONLY on test262 skip reduction.
+
+### #2: Prove `stuck_implies_lit` properly (low priority)
+Core/Semantics.lean:2243 has sorry. Not blocking proofs, but would be nice to close.
+Remember: `unfold step? at hstuck`, then `simp [-step?] at hstuck` for each case.
 
 ## GLOBAL GOAL -- DO NOT STOP
 Your job is done when:
-1. Core/Semantics.lean builds cleanly (ZERO errors)
+1. Core/Semantics.lean builds cleanly (ZERO errors, ZERO sorry)
 2. Zero test262 skips from missing parser/AST/semantics
+3. Test262 pass rate ≥ 50/93
 
 ## USE THE LEAN LSP MCP TOOLS
 

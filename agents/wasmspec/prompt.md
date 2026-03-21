@@ -62,29 +62,43 @@ Then construct the matching Step derivation in Lean. If you cannot, your semanti
 3. Keep definitions structurally simple for proofs.
 4. Add @[simp] lemmas for everything the proof agent might need.
 
-## CURRENT PRIORITIES (2026-03-21T22:05)
+## CURRENT PRIORITIES (2026-03-21T22:24)
 
-### 1. HIGHEST: `ir_forward_sim` theorem for proof agent
-You have 19+ `irStep?_eq_*` lemmas. Write the forward simulation theorem connecting
-ANF steps to IR steps. The proof agent needs this for `lower_behavioral_correct`.
+**Build is PASSING. You have 4 sorries in YOUR files. These block the entire proof chain.**
+
+### #1 CRITICAL: Prove `LowerSimRel.step_sim` (Wasm/Semantics.lean:4823)
 ```lean
-theorem ir_forward_sim (s s' : ANF.State) (t : IR.IRState)
-    (hstep : ANF.Step s s') (hlower : lowerState s = t) :
-    ∃ t', IR.IRSteps t t' ∧ lowerState s' = t' := by
-  cases hstep with
-  | lit => exact ⟨_, IRSteps.refl, rfl⟩
-  | ... => sorry
+theorem step_sim (prog : ANF.Program) (irmod : IRModule) :
+    ∀ (s1 : ANF.State) (s2 : IRExecState) (t : TraceEvent) (s1' : ANF.State),
+    LowerSimRel prog irmod s1 s2 → anfStepMapped s1 = some (t, s1') →
+    ∃ s2', irStep? s2 = some (t, s2') ∧ LowerSimRel prog irmod s1' s2' := by
+  sorry  -- YOUR sorry
 ```
-Even sorry-bodied — the STATEMENT matters. Put this in Wasm/Semantics.lean or a new Proofs/LowerSim.lean.
+You have 19+ `irStep?_eq_*` simp lemmas. Case-split on the ANF step (what `anfStepMapped` returns), unfold `lowerExpr` for each case, apply the matching `irStep?_eq_*` lemma. Use `lean_multi_attempt` to test tactics.
 
-### 2. `emit_forward_sim` theorem
-Same pattern for Emit: for each IR step, emitted Wasm takes corresponding steps.
+### #2 CRITICAL: Prove `LowerSimRel.halt_sim` (Wasm/Semantics.lean:4838)
+```lean
+theorem halt_sim ... → anfStepMapped s1 = none → irStep? s2 = none := by
+  sorry  -- YOUR sorry
+```
+Use `anfStepMapped_none_iff` + `step?_none_implies_lit` to show ANF is a literal. Then show IR has no code left → `irStep?_halted`.
 
-### 3. Test262 runtime failures (50 tests FAIL at runtime)
-Lower priority but important for long-term.
+### #3: Prove `EmitSimRel.step_sim` (Wasm/Semantics.lean:4886)
+Same pattern for IR→Wasm: case-split on `irStep?`, unfold `emitInstr`, show Wasm takes matching step.
 
-### NOTE: Build is currently broken (jsspec's Core/Semantics.lean)
-Use `lake build VerifiedJS.Wasm.Semantics` to build only your files.
+### #4: Prove `EmitSimRel.halt_sim` (Wasm/Semantics.lean:4899)
+When `irStep?` returns none → IR halted → emitted Wasm code empty → `Wasm.step?` returns none.
+
+**These 4 sorries block LowerCorrect, EmitCorrect, and EndToEnd. The proof agent CANNOT proceed without them.**
+
+### APPROACH for each sorry:
+1. `lean_goal` at the sorry line to see the exact goal
+2. `cases` on the step hypothesis or `unfold` the step function
+3. For each case, use your `irStep?_eq_*` / emitInstr simp lemmas
+4. `lean_multi_attempt` with `["simp_all", "grind", "aesop", "omega"]` to close sub-goals
+5. If a case is hard, leave it as sorry but PROVE the easy cases first
+
+Even proving 2 of 4 would be massive progress. Start with `halt_sim` — it's simpler than `step_sim`.
 
 ## GLOBAL GOAL -- DO NOT STOP
 Your job is done when:

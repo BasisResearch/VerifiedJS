@@ -492,10 +492,13 @@ partial def tokenizeChars
       | _ =>
         let tok : Token := { kind := .punct "#", pos := { line, col, offset } }
         tokenizeChars cs line (col + 1) (offset + 1) true parenDepth controlHeaderParens false braceDepth controlBlockBraces false (tok :: acc)
-    else if c = ' ' || c = '\t' || c = '\r' then
+    -- ECMA-262 §11.2 White Space: TAB(U+0009), VT(U+000B), FF(U+000C), SP(U+0020), NBSP(U+00A0)
+    else if c = ' ' || c = '\t' || c = '\r'
+         || c = '\x0B' || c = '\x0C' || c = '\u00A0' then
       let (_, nextCol, nextOffset) := advancePos line col offset c
       tokenizeChars cs line nextCol nextOffset expectRegex parenDepth controlHeaderParens pendingControlHeader braceDepth controlBlockBraces pendingControlBlock acc
-    else if c = '\n' then
+    -- ECMA-262 §11.3 Line Terminators: LF(U+000A), LS(U+2028), PS(U+2029)
+    else if c = '\n' || c = '\u2028' || c = '\u2029' then
       let tok : Token := { kind := .newline, pos := { line, col, offset } }
       let (nextLine, nextCol, nextOffset) := advancePos line col offset c
       tokenizeChars cs nextLine nextCol nextOffset expectRegex parenDepth controlHeaderParens pendingControlHeader braceDepth controlBlockBraces pendingControlBlock (tok :: acc)

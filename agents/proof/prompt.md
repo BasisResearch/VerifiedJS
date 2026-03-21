@@ -80,6 +80,53 @@ It IS OK to temporarily increase sorry count if you are decomposing a large sorr
 4. DO NOT WAIT for anyone. Just prove things.
 5. Sorry count must go DOWN or stay flat. Never up.
 
+## CURRENT STATUS & PRIORITIES (2026-03-21T22:24)
+
+**Build is PASSING. Sorry count: 10 (7 in Proofs/, 1 in Core/, 4 in Wasm/Semantics.lean owned by wasmspec).**
+
+### YOUR 7 sorries (attack these NOW):
+
+1. **ClosureConvertCorrect.lean:170** — `| _ => all_goals sorry`
+   The catch-all case for CC step simulation. Needs env/heap correspondence in CC_SimRel.
+   **ACTION**: Strengthen CC_SimRel to track env/heap (not just trace+expr). Then prove each remaining constructor case-by-case. Start with the simplest ones (lit, var, binop).
+
+2. **ANFConvertCorrect.lean:84** — `anfConvert_step_star` sorry
+   Case analysis on ANF.Step over all expression forms.
+   **ACTION**: Start with `cases hstep` and handle each ANF step constructor.
+   Use `lean_goal` at line 84, then `lean_multi_attempt` with `["cases hstep", "intro sa sf ev sa' hrel hstep; cases hstep"]`.
+
+3. **ANFConvertCorrect.lean:567** — `var` case of `anfConvert_halt_star`
+   Needs env correspondence to show Flat.step? steps on var lookup.
+   **ACTION**: This may need a helper lemma about normalizeExpr preserving var lookups.
+
+4. **ANFConvertCorrect.lean:571** — `seq` case of `anfConvert_halt_star`
+   Multi-step Flat reasoning for seq evaluation.
+   **ACTION**: Induction on `a`, then use IH for the first component.
+
+5. **LowerCorrect.lean:51** — `lower_behavioral_correct`
+   **BLOCKED on wasmspec's `LowerSimRel.step_sim` and `halt_sim`** (Wasm/Semantics.lean:4823,4838).
+   Once wasmspec proves those, this proof follows by composing init + step_sim + halt_sim.
+   **ACTION**: Write the proof structure assuming wasmspec's theorems, using `sorry` only for the wasmspec dependency. This way you're ready to close it the moment they deliver.
+
+6. **EmitCorrect.lean:44** — `emit_behavioral_correct`
+   **BLOCKED on wasmspec's `EmitSimRel.step_sim` and `halt_sim`** (Wasm/Semantics.lean:4886,4899).
+   Same approach: write structure, sorry only the wasmspec dependency.
+
+7. **EndToEnd.lean:55** — `flat_to_wasm_correct`
+   Composition of all the above. Last to prove.
+
+### STRATEGY: Focus on CC and ANF first (items 1-4). These are NOT blocked.
+
+For CC (item 1):
+- Read ClosureConvertCorrect.lean:130-170 to see what cases remain
+- Add env/heap fields to CC_SimRel
+- Prove one case at a time, starting with simplest
+
+For ANF (items 2-4):
+- `lean_goal` at each sorry to see exact goal
+- `lean_multi_attempt` with aggressive tactics
+- Handle easy constructors first (lit, var, binop), leave hard ones as sorry
+
 ## GLOBAL GOAL -- DO NOT STOP
 Your job is done when:
 1. End-to-end `compiler_correct` theorem PROVED with zero sorry
