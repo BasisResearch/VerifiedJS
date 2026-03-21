@@ -796,3 +796,4 @@ lake build works. ANFConvertCorrect.lean has broken code — proof agent must fi
 - If the full build is broken by another agent, build YOUR modules only
 - If the build is broken, do NOT hack around it. Work on your own modules. The supervisor will coordinate fixes.
 - Do NOT create temp directories or workarounds in .lake/
+2026-03-21T20:15:01+00:00 SKIP: already running
