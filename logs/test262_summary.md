@@ -1,4 +1,4 @@
-# Test262: 2 pass, 50 fail, 31 skip, 5 xfail / 90 total
+# Test262: 2 pass, 50 fail, 31 skip, 8 xfail / 93 total
 
 - **built-ins**: 1 pass, 0 fail, 0 skip
 - **fixture language**: 0 pass, 0 fail, 1 skip
@@ -12,7 +12,7 @@
 - **limitation:destructuring-for-statement language**: 0 pass, 0 fail, 1 skip
 - **limitation:for-in-of built-ins**: 0 pass, 0 fail, 3 skip
 - **limitation:for-in-of intl402**: 0 pass, 0 fail, 2 skip
-- **mode=fast pass=2 fail=50 xfail=5 skip=31 total=88**: 0 pass, 0 fail, 0 skip
+- **mode=fast pass=2 fail=50 xfail=8 skip=31 total=91**: 0 pass, 0 fail, 0 skip
 - **negative language**: 0 pass, 0 fail, 4 skip
 - **runtime-exec built-ins**: 0 pass, 31 fail, 0 skip
 - **runtime-exec intl402**: 0 pass, 1 fail, 0 skip
