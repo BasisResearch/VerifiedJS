@@ -4786,10 +4786,13 @@ def LowerSimRel (prog : ANF.Program) (irmod : IRModule)
   Wasm.lower prog = .ok irmod ∧
   /- Module identity. -/
   ir.module = irmod ∧
-  /- Code correspondence: the IR code at this synchronization point was
-     produced by lowering the current ANF expression. This is abstract;
-     the proof agent instantiates it by unfolding lowerExpr. -/
-  (∃ irCode : List IRInstr, ir.code = irCode) ∧
+  /- Halt correspondence: when the ANF expression is a final value (step? = none),
+     the IR has also finished executing (all lowered instructions consumed).
+     At synchronization points after each ANF step, this holds because the
+     IR code for that step has been fully executed. At init, this holds because
+     lower always sets startFunc := none (WASI convention), making the IR
+     initial state immediately halted. -/
+  (anfStepMapped s = none → ir.halted) ∧
   /- Environment correspondence: every ANF environment binding has a
      corresponding IR local variable with the encoded value. -/
   (∀ name v, s.env.lookup name = some v →
@@ -4804,10 +4807,15 @@ namespace LowerSimRel
 theorem init (prog : ANF.Program) (irmod : IRModule)
     (hlower : Wasm.lower prog = .ok irmod) :
     LowerSimRel prog irmod (ANF.initialState prog) (irInitialState irmod) := by
-  refine ⟨hlower, rfl, ⟨_, rfl⟩, ?_⟩
-  intro name v hlookup
-  -- Initial ANF env is empty, so lookup always returns none
-  simp [ANF.initialState, ANF.Env.empty, ANF.Env.lookup] at hlookup
+  refine ⟨hlower, rfl, ?_, ?_⟩
+  · -- Halt correspondence at init: irInitialState is already halted because
+    -- lower always sets startFunc := none (WASI convention).
+    intro _
+    have hsf := lower_startFunc_none prog irmod hlower
+    simp [IRExecState.halted, irInitialState, hsf]
+  · intro name v hlookup
+    -- Initial ANF env is empty, so lookup always returns none
+    simp [ANF.initialState, ANF.Env.empty, ANF.Env.lookup] at hlookup
 
 /-- Step simulation: if the ANF takes one step, the IR takes a matching step.
     SORRY: Requires case analysis on every ANF expression constructor and
@@ -4837,7 +4845,8 @@ theorem step_sim (prog : ANF.Program) (irmod : IRModule) :
 theorem halt_sim (prog : ANF.Program) (irmod : IRModule) :
     ∀ (s1 : ANF.State) (s2 : IRExecState),
     LowerSimRel prog irmod s1 s2 → anfStepMapped s1 = none → irStep? s2 = none := by
-  sorry
+  intro s1 s2 ⟨_, _, hhalt, _⟩ hstep
+  exact irStep?_halted (hhalt hstep)
 
 end LowerSimRel
 
@@ -4856,9 +4865,13 @@ def EmitSimRel (irmod : IRModule) (wmod : Module)
   /- Stack correspondence: each IR value on the stack maps to the
      corresponding Wasm value on the Wasm stack. -/
   ir.stack.length = w.stack.length ∧
-  /- Code correspondence: the Wasm code is the emitted form of the IR code.
-     Abstract relation; the proof agent instantiates by unfolding emitInstr. -/
-  (∃ wasmCode, w.code = wasmCode)
+  /- Halt correspondence: when the IR has finished executing (irStep? = none),
+     the Wasm state has also finished (step? = none). At synchronization points
+     after each IR step, this holds because the emitted Wasm instructions for
+     that step have been fully executed. At init, this holds because emit
+     preserves startFunc as the Wasm start section, so both initial states
+     have the same entry code structure. -/
+  (irStep? ir = none → Wasm.step? w = none)
 
 namespace EmitSimRel
 
@@ -4869,8 +4882,33 @@ namespace EmitSimRel
 theorem init (irmod : IRModule) (wmod : Module)
     (hemit : emit irmod = .ok wmod) :
     EmitSimRel irmod wmod (irInitialState irmod) (Wasm.initialState wmod) := by
-  refine ⟨hemit, ?_, ⟨_, rfl⟩⟩
-  simp [irInitialState, Wasm.initialState]
+  refine ⟨hemit, ?_, ?_⟩
+  · -- Stack lengths: both start with empty stacks
+    simp [irInitialState, Wasm.initialState]
+  · -- Halt correspondence at init: emit preserves startFunc as start section.
+    -- Both initial states use the same start function index, so both have the
+    -- same code = [] or code = [call idx] structure.
+    intro hirHalt
+    rw [irStep?_none_iff_halted] at hirHalt
+    obtain ⟨hc, hl, _⟩ := hirHalt
+    apply step?_halted
+    constructor
+    · -- Wasm code is empty: irInitialState code depends on startFunc, and
+      -- initialState code depends on start (= startFunc via emit/buildModule).
+      -- If IR code is empty, then startFunc was none (or matched), so start is also none.
+      simp [irInitialState] at hc
+      split at hc
+      · -- startFunc = some idx: code = [call idx], contradicts code = []
+        simp at hc
+      · -- startFunc = none: code = []
+        rename_i hsf
+        -- emit preserves startFunc as start: buildModule sets start := m.startFunc
+        have hstart : wmod.start = irmod.startFunc := by
+          simp [emit, Bind.bind, Except.bind] at hemit
+          split at hemit <;> simp_all [Pure.pure, Except.pure, buildModule]
+        simp [Wasm.initialState, hstart, hsf]
+    · -- Wasm labels empty: initialState always has labels = []
+      simp [Wasm.initialState]
 
 /-- Step simulation: if the IR takes one step, the Wasm takes a matching step.
     SORRY: Requires case analysis on every IR instruction and showing the
@@ -4898,7 +4936,8 @@ theorem step_sim (irmod : IRModule) (wmod : Module) :
 theorem halt_sim (irmod : IRModule) (wmod : Module) :
     ∀ (s1 : IRExecState) (s2 : ExecState),
     EmitSimRel irmod wmod s1 s2 → irStep? s1 = none → Wasm.step? s2 = none := by
-  sorry
+  intro s1 s2 ⟨_, _, hhalt⟩ hstep
+  exact hhalt hstep
 
 end EmitSimRel
 
