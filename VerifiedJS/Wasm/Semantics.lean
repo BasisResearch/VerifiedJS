@@ -4650,8 +4650,8 @@ theorem StepStar_of_Steps_generic {S : Type} {step : S → Option (TraceEvent ×
       stepsRel s_init ts s_final → P s_init ts s_final)
     (hSteps : stepsRel s_init ts s_final) :
     StepStar step s_init ts s_final :=
-  hElim
-    (fun s => StepStar.refl)
+  hElim (P := fun s ts s' => StepStar step s ts s')
+    (fun s => StepStar.refl s)
     (fun s1 t s2 ts s3 hStep _hSteps' ih =>
       StepStar.step ((step_iff s1 t s2).mp hStep) ih)
     hSteps
@@ -4693,7 +4693,7 @@ theorem WasmForwardSim_behavioral (R : IRExecState → ExecState → Prop)
   | tail hstep _ ih =>
     obtain ⟨h_irStep⟩ := hstep
     obtain ⟨w_mid, hW_step, hR_mid⟩ := sim.step_sim _ w_init _ _ hR h_irStep
-    have ⟨w_final, hW_rest, hR_final⟩ := ih w_mid hR_mid
+    have ⟨w_final, hW_rest, hR_final⟩ := ih hR_mid
     exact ⟨w_final, Steps.tail ⟨hW_step⟩ hW_rest, hR_final⟩
 
 /-- Convenience: combining IRForwardSim_behavioral and WasmForwardSim_behavioral
