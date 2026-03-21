@@ -137,12 +137,16 @@ example : CharClass.any.matches '\n' = false := by native_decide
 structure NFAFragment where
   startState : Nat
   acceptState : Nat
-  deriving Repr
+  deriving Repr, Nonempty
 
 /-- Builder state accumulating NFA states during construction. -/
 structure NFABuilder where
   states : Array NFAState
   deriving Repr
+
+instance : Nonempty NFABuilder := ⟨{ states := #[] }⟩
+instance : Inhabited NFABuilder where default := { states := #[] }
+instance : Inhabited NFAFragment where default := { startState := 0, acceptState := 0 }
 
 /-- Create a fresh NFA state and return its index. -/
 def NFABuilder.newState (b : NFABuilder) (s : NFAState := { transitions := [] }) :
@@ -217,23 +221,59 @@ partial def compilePattern (b : NFABuilder) (p : Pattern) : NFAFragment × NFABu
       ({ startState := s, acceptState := a }, b)
   | .repeat_ p1 lo hi =>
       -- a{lo,hi}: concatenate lo mandatory copies, then (hi-lo) optional copies
-      let rec buildRepeat (b : NFABuilder) (n : Nat) (mandatory : Bool) :
-          NFAFragment × NFABuilder :=
-        if n == 0 then
-          compilePattern b .empty
-        else
-          let (f1, b) := compilePattern b p1
-          let (fRest, b) := buildRepeat b (n - 1) mandatory
-          let b := b.addTransition f1.acceptState (.epsilon fRest.startState)
-          if !mandatory then
-            -- Optional: can skip this copy
-            let b := b.addTransition f1.startState (.epsilon fRest.acceptState)
-            ({ startState := f1.startState, acceptState := fRest.acceptState }, b)
-          else
-            ({ startState := f1.startState, acceptState := fRest.acceptState }, b)
-      let (fMandatory, b) := buildRepeat b lo true
+      -- Build mandatory part: lo sequential copies
+      let (fMandatory, b) := Id.run do
+        let mut b := b
+        let mut prevAccept : Option Nat := none
+        let mut startState := 0
+        for i in List.range lo do
+          let (f1, b') := compilePattern b p1
+          b := b'
+          if i == 0 then startState := f1.startState
+          match prevAccept with
+          | some prev => b := b.addTransition prev (.epsilon f1.startState)
+          | none => pure ()
+          prevAccept := some f1.acceptState
+        match prevAccept with
+        | some acc => return ({ startState, acceptState := acc : NFAFragment }, b)
+        | none =>
+          -- lo = 0: empty mandatory part
+          let (s, b') := b.newState
+          let (a, b'') := b'.newState
+          let b''' := b''.addTransition s (.epsilon a)
+          return ({ startState := s, acceptState := a : NFAFragment }, b''')
+      -- Build optional part: (hi - lo) optional copies
       let optCount := hi - lo
-      let (fOptional, b) := buildRepeat b optCount false
+      let (fOptional, b) := Id.run do
+        let mut b := b
+        let mut prevAccept : Option Nat := none
+        let mut startState := 0
+        let mut firstAccept := 0
+        for i in List.range optCount do
+          let (f1, b') := compilePattern b p1
+          b := b'
+          if i == 0 then
+            startState := f1.startState
+            firstAccept := f1.acceptState
+          match prevAccept with
+          | some prev => b := b.addTransition prev (.epsilon f1.startState)
+          | none => pure ()
+          prevAccept := some f1.acceptState
+        match prevAccept with
+        | some acc =>
+          -- Add skip edges for optionality
+          let (exit, b') := b.newState
+          b := b'
+          b := b.addTransition acc (.epsilon exit)
+          -- Allow skipping from start to exit
+          b := b.addTransition startState (.epsilon exit)
+          return ({ startState, acceptState := exit : NFAFragment }, b)
+        | none =>
+          -- optCount = 0: empty optional part
+          let (s, b') := b.newState
+          let (a, b'') := b'.newState
+          let b''' := b''.addTransition s (.epsilon a)
+          return ({ startState := s, acceptState := a : NFAFragment }, b''')
       let b := b.addTransition fMandatory.acceptState (.epsilon fOptional.startState)
       ({ startState := fMandatory.startState, acceptState := fOptional.acceptState }, b)
   | .group _idx p1 =>
