@@ -379,10 +379,10 @@ private theorem normalizeExpr_not_trivial_family :
       | cons p rest =>
         obtain ⟨pn, pe⟩ := p
         simp only [ANF.normalizeProps]
-        exact ihe pe (fun pt => ANF.normalizeProps rest (fun pts => k ((⟨pn.toString⟩, pt) :: pts)))
+        exact ihe pe (fun pt => ANF.normalizeProps rest (fun pts => k ((pn, pt) :: pts)))
           (by intro x n' m' t'
-              exact ihps rest (fun pts => k ((⟨pn.toString⟩, x) :: pts))
-                (by intro xs n'' m'' t''; exact hk ((⟨pn.toString⟩, x) :: xs) n'' m'' t'')
+              exact ihps rest (fun pts => k ((pn, x) :: pts))
+                (by intro xs n'' m'' t''; exact hk ((pn, x) :: xs) n'' m'' t'')
                 (by simp [Flat.Expr.propListDepth] at hd ⊢; omega) n' m' t')
           (by simp [Flat.Expr.propListDepth] at hd ⊢; omega) n m t
 
