@@ -87,6 +87,325 @@ private theorem anfConvert_step_star
   -- Key: use the normalizeExpr correspondence to construct Flat multi-steps.
   -- The continuation k changes at each step, tracking the "remaining computation".
 
+/-! ### normalizeExpr output characterization -/
+
+/-- normalizeExpr never produces .trivial when the continuation k never produces .trivial.
+    This is the KEY lemma for proving anfConvert_halt_star: most Flat constructors
+    produce ANF expressions that always step, so ANF.step? = none is impossible.
+
+    Proof by well-founded induction matching normalizeExpr's termination measure. -/
+private theorem normalizeExpr_not_trivial
+    (e : Flat.Expr) (k : ANF.Trivial → ANF.ConvM ANF.Expr)
+    (hk : ∀ x n' m' t, (k x).run n' ≠ .ok (.trivial t, m'))
+    (n m : Nat) (t : ANF.Trivial) :
+    (ANF.normalizeExpr e k).run n ≠ .ok (.trivial t, m) := by
+  induction e generalizing k n m t with
+  | lit v =>
+    simp only [ANF.normalizeExpr]
+    cases ANF.trivialOfFlatValue v with
+    | ok tv => exact hk tv n m t
+    | error _ => simp [StateT.run, Except.bind]
+  | var name =>
+    simp only [ANF.normalizeExpr]
+    exact hk (.var name) n m t
+  | this =>
+    simp only [ANF.normalizeExpr]
+    exact hk (.var "this") n m t
+  | «break» label =>
+    simp only [ANF.normalizeExpr, pure, Pure.pure, StateT.pure, Except.pure]
+    intro habs; exact ANF.Expr.noConfusion (Prod.mk.inj habs).1
+  | «continue» label =>
+    simp only [ANF.normalizeExpr, pure, Pure.pure, StateT.pure, Except.pure]
+    intro habs; exact ANF.Expr.noConfusion (Prod.mk.inj habs).1
+  | «return» arg =>
+    cases arg with
+    | none =>
+      simp only [ANF.normalizeExpr, pure, Pure.pure, StateT.pure, Except.pure]
+      intro habs; exact ANF.Expr.noConfusion (Prod.mk.inj habs).1
+    | some value =>
+      simp only [ANF.normalizeExpr]
+      apply normalizeExpr_not_trivial value
+      intro x n' m' t' habs
+      simp only [pure, Pure.pure, StateT.pure, Except.pure] at habs
+      exact ANF.Expr.noConfusion (Prod.mk.inj habs).1
+  | yield arg delegate =>
+    cases arg with
+    | none =>
+      simp only [ANF.normalizeExpr, pure, Pure.pure, StateT.pure, Except.pure]
+      intro habs; exact ANF.Expr.noConfusion (Prod.mk.inj habs).1
+    | some value =>
+      simp only [ANF.normalizeExpr]
+      apply normalizeExpr_not_trivial value
+      intro x n' m' t' habs
+      simp only [pure, Pure.pure, StateT.pure, Except.pure] at habs
+      exact ANF.Expr.noConfusion (Prod.mk.inj habs).1
+  | throw arg =>
+    simp only [ANF.normalizeExpr]
+    apply normalizeExpr_not_trivial arg
+    intro x n' m' t' habs
+    simp only [pure, Pure.pure, StateT.pure, Except.pure] at habs
+    exact ANF.Expr.noConfusion (Prod.mk.inj habs).1
+  | await arg =>
+    simp only [ANF.normalizeExpr]
+    apply normalizeExpr_not_trivial arg
+    intro x n' m' t' habs
+    simp only [pure, Pure.pure, StateT.pure, Except.pure] at habs
+    exact ANF.Expr.noConfusion (Prod.mk.inj habs).1
+  | assign name value =>
+    simp only [ANF.normalizeExpr]
+    apply normalizeExpr_not_trivial value
+    intro x n' m' t'
+    simp only [ANF.bindComplex, ANF.freshName, bind, Bind.bind, StateT.bind, Except.bind,
+               get, GetElem.getElem, MonadState.get, StateT.get, set, MonadState.set,
+               StateT.set, pure, Pure.pure, StateT.pure, Except.pure]
+    intro habs; exact ANF.Expr.noConfusion (Prod.mk.inj habs).1
+  | «let» name init body ih_init ih_body =>
+    simp only [ANF.normalizeExpr]
+    apply ih_init
+    intro x n' m' t'
+    simp only [bind, Bind.bind, StateT.bind, Except.bind]
+    intro habs
+    -- After normalizeExpr body k, the result is wrapped in .let
+    split at habs
+    · simp at habs
+    · simp only [pure, Pure.pure, StateT.pure, Except.pure, Except.ok.injEq] at habs
+      exact ANF.Expr.noConfusion (Prod.mk.inj habs).1
+  | «if» cond then_ else_ ih_cond ih_then ih_else =>
+    simp only [ANF.normalizeExpr]
+    apply ih_cond
+    intro x n' m' t'
+    simp only [bind, Bind.bind, StateT.bind, Except.bind]
+    intro habs
+    split at habs <;> (try split at habs) <;>
+      simp only [pure, Pure.pure, StateT.pure, Except.pure, Except.ok.injEq] at habs
+    exact ANF.Expr.noConfusion (Prod.mk.inj habs).1
+  | seq a b ih_a ih_b =>
+    simp only [ANF.normalizeExpr]
+    apply ih_a
+    intro x n' m' t'
+    exact ih_b k hk n' m' t'
+  | labeled label body ih_body =>
+    simp only [ANF.normalizeExpr, bind, Bind.bind, StateT.bind, Except.bind]
+    intro habs
+    split at habs
+    · simp at habs
+    · simp only [pure, Pure.pure, StateT.pure, Except.pure, Except.ok.injEq] at habs
+      exact ANF.Expr.noConfusion (Prod.mk.inj habs).1
+  | while_ cond body =>
+    simp only [ANF.normalizeExpr, bind, Bind.bind, StateT.bind, Except.bind]
+    intro habs
+    -- Result is .seq (.while_ ...) rest, never .trivial
+    repeat (first | split at habs | simp at habs)
+    simp only [pure, Pure.pure, StateT.pure, Except.pure, Except.ok.injEq] at habs
+    exact ANF.Expr.noConfusion (Prod.mk.inj habs).1
+  | tryCatch body catchParam catchBody finally_ =>
+    simp only [ANF.normalizeExpr, bind, Bind.bind, StateT.bind, Except.bind]
+    intro habs
+    repeat (first | split at habs | simp at habs)
+    all_goals (
+      try simp only [pure, Pure.pure, StateT.pure, Except.pure, Except.ok.injEq, Functor.map,
+                      StateT.map] at habs
+      try exact ANF.Expr.noConfusion (Prod.mk.inj habs).1)
+    all_goals sorry -- tryCatch monadic unfolding
+  | unary op arg =>
+    simp only [ANF.normalizeExpr]
+    apply normalizeExpr_not_trivial arg
+    intro x n' m' t'
+    simp only [ANF.bindComplex, ANF.freshName, bind, Bind.bind, StateT.bind, Except.bind,
+               get, GetElem.getElem, MonadState.get, StateT.get, set, MonadState.set,
+               StateT.set, pure, Pure.pure, StateT.pure, Except.pure]
+    intro habs; exact ANF.Expr.noConfusion (Prod.mk.inj habs).1
+  | binary op lhs rhs =>
+    simp only [ANF.normalizeExpr]
+    apply normalizeExpr_not_trivial lhs
+    intro x n' m' t'
+    apply normalizeExpr_not_trivial rhs
+    intro y n'' m'' t''
+    simp only [ANF.bindComplex, ANF.freshName, bind, Bind.bind, StateT.bind, Except.bind,
+               get, GetElem.getElem, MonadState.get, StateT.get, set, MonadState.set,
+               StateT.set, pure, Pure.pure, StateT.pure, Except.pure]
+    intro habs; exact ANF.Expr.noConfusion (Prod.mk.inj habs).1
+  | getProp obj prop =>
+    simp only [ANF.normalizeExpr]
+    apply normalizeExpr_not_trivial obj
+    intro x n' m' t'
+    simp only [ANF.bindComplex, ANF.freshName, bind, Bind.bind, StateT.bind, Except.bind,
+               get, GetElem.getElem, MonadState.get, StateT.get, set, MonadState.set,
+               StateT.set, pure, Pure.pure, StateT.pure, Except.pure]
+    intro habs; exact ANF.Expr.noConfusion (Prod.mk.inj habs).1
+  | deleteProp obj prop =>
+    simp only [ANF.normalizeExpr]
+    apply normalizeExpr_not_trivial obj
+    intro x n' m' t'
+    simp only [ANF.bindComplex, ANF.freshName, bind, Bind.bind, StateT.bind, Except.bind,
+               get, GetElem.getElem, MonadState.get, StateT.get, set, MonadState.set,
+               StateT.set, pure, Pure.pure, StateT.pure, Except.pure]
+    intro habs; exact ANF.Expr.noConfusion (Prod.mk.inj habs).1
+  | typeof arg =>
+    simp only [ANF.normalizeExpr]
+    apply normalizeExpr_not_trivial arg
+    intro x n' m' t'
+    simp only [ANF.bindComplex, ANF.freshName, bind, Bind.bind, StateT.bind, Except.bind,
+               get, GetElem.getElem, MonadState.get, StateT.get, set, MonadState.set,
+               StateT.set, pure, Pure.pure, StateT.pure, Except.pure]
+    intro habs; exact ANF.Expr.noConfusion (Prod.mk.inj habs).1
+  | getEnv envPtr idx =>
+    simp only [ANF.normalizeExpr]
+    apply normalizeExpr_not_trivial envPtr
+    intro x n' m' t'
+    simp only [ANF.bindComplex, ANF.freshName, bind, Bind.bind, StateT.bind, Except.bind,
+               get, GetElem.getElem, MonadState.get, StateT.get, set, MonadState.set,
+               StateT.set, pure, Pure.pure, StateT.pure, Except.pure]
+    intro habs; exact ANF.Expr.noConfusion (Prod.mk.inj habs).1
+  | makeClosure funcIdx env =>
+    simp only [ANF.normalizeExpr]
+    apply normalizeExpr_not_trivial env
+    intro x n' m' t'
+    simp only [ANF.bindComplex, ANF.freshName, bind, Bind.bind, StateT.bind, Except.bind,
+               get, GetElem.getElem, MonadState.get, StateT.get, set, MonadState.set,
+               StateT.set, pure, Pure.pure, StateT.pure, Except.pure]
+    intro habs; exact ANF.Expr.noConfusion (Prod.mk.inj habs).1
+  | setProp obj prop value =>
+    simp only [ANF.normalizeExpr]
+    apply normalizeExpr_not_trivial obj
+    intro x n' m' t'
+    apply normalizeExpr_not_trivial value
+    intro y n'' m'' t''
+    simp only [ANF.bindComplex, ANF.freshName, bind, Bind.bind, StateT.bind, Except.bind,
+               get, GetElem.getElem, MonadState.get, StateT.get, set, MonadState.set,
+               StateT.set, pure, Pure.pure, StateT.pure, Except.pure]
+    intro habs; exact ANF.Expr.noConfusion (Prod.mk.inj habs).1
+  | getIndex obj idx =>
+    simp only [ANF.normalizeExpr]
+    apply normalizeExpr_not_trivial obj
+    intro x n' m' t'
+    apply normalizeExpr_not_trivial idx
+    intro y n'' m'' t''
+    simp only [ANF.bindComplex, ANF.freshName, bind, Bind.bind, StateT.bind, Except.bind,
+               get, GetElem.getElem, MonadState.get, StateT.get, set, MonadState.set,
+               StateT.set, pure, Pure.pure, StateT.pure, Except.pure]
+    intro habs; exact ANF.Expr.noConfusion (Prod.mk.inj habs).1
+  | setIndex obj idx value =>
+    simp only [ANF.normalizeExpr]
+    apply normalizeExpr_not_trivial obj
+    intro x n' m' t'
+    apply normalizeExpr_not_trivial idx
+    intro y n'' m'' t''
+    apply normalizeExpr_not_trivial value
+    intro z n''' m''' t'''
+    simp only [ANF.bindComplex, ANF.freshName, bind, Bind.bind, StateT.bind, Except.bind,
+               get, GetElem.getElem, MonadState.get, StateT.get, set, MonadState.set,
+               StateT.set, pure, Pure.pure, StateT.pure, Except.pure]
+    intro habs; exact ANF.Expr.noConfusion (Prod.mk.inj habs).1
+  | call funcIdx envPtr args =>
+    simp only [ANF.normalizeExpr]
+    apply normalizeExpr_not_trivial funcIdx
+    intro x n' m' t'
+    apply normalizeExpr_not_trivial envPtr
+    intro y n'' m'' t''
+    sorry -- normalizeExprList + bindComplex, needs mutual induction
+  | newObj funcIdx envPtr args =>
+    simp only [ANF.normalizeExpr]
+    apply normalizeExpr_not_trivial funcIdx
+    intro x n' m' t'
+    apply normalizeExpr_not_trivial envPtr
+    intro y n'' m'' t''
+    sorry -- normalizeExprList + bindComplex, needs mutual induction
+  | makeEnv values =>
+    sorry -- normalizeExprList + bindComplex, needs mutual induction
+  | objectLit props =>
+    sorry -- normalizeProps + bindComplex, needs mutual induction
+  | arrayLit elems =>
+    sorry -- normalizeExprList + bindComplex, needs mutual induction
+  | functionDef =>
+    sorry -- functionDef case in normalizeExpr
+
+/-! ### ANF step? characterization -/
+
+/-- ANF.step? returns none only when the expression is a non-variable trivial literal.
+    Proved by strong induction on expression depth. The recursive cases (seq, while_,
+    tryCatch) are impossible because their sub-expression would need to be stuck
+    (step? = none), which by IH means it's a trivial literal, but then exprValue?
+    returns some, contradicting the branch condition. -/
+private theorem ANF_step?_none_implies_trivial_aux :
+    ∀ (n : Nat) (s : ANF.State), s.expr.depth ≤ n → ANF.step? s = none →
+    ∃ t, s.expr = .trivial t ∧ ∀ name, t ≠ .var name := by
+  intro n
+  induction n with
+  | zero =>
+    intro s hd h
+    cases he : s.expr with
+    | trivial t =>
+      cases t with
+      | var name => exfalso; unfold ANF.step? at h; simp at h
+      | _ => exact ⟨_, he, fun _ habs => ANF.Trivial.noConfusion habs⟩
+    | «break» _ => exfalso; simp [ANF.step?] at h
+    | «continue» _ => exfalso; simp [ANF.step?] at h
+    | _ => exfalso; simp [ANF.Expr.depth] at hd
+  | succ k ih =>
+    intro s hd h
+    cases he : s.expr with
+    | trivial t =>
+      cases t with
+      | var name => exfalso; unfold ANF.step? at h; simp at h
+      | _ => exact ⟨_, he, fun _ habs => ANF.Trivial.noConfusion habs⟩
+    | «let» _ _ _ => exfalso; simp [ANF.step?] at h
+    | «if» _ _ _ =>
+      exfalso; unfold ANF.step? at h; split at h <;> simp at h
+    | throw _ =>
+      exfalso; unfold ANF.step? at h; split at h <;> simp at h
+    | «return» arg =>
+      exfalso; cases arg with
+      | none => simp [ANF.step?] at h
+      | some t => unfold ANF.step? at h; split at h <;> simp at h
+    | yield arg delegate =>
+      exfalso; cases arg with
+      | none => simp [ANF.step?] at h
+      | some t => unfold ANF.step? at h; split at h <;> simp at h
+    | await _ =>
+      exfalso; unfold ANF.step? at h; split at h <;> simp at h
+    | labeled _ _ => exfalso; simp [ANF.step?] at h
+    | «break» _ => exfalso; simp [ANF.step?] at h
+    | «continue» _ => exfalso; simp [ANF.step?] at h
+    | seq a b =>
+      exfalso; unfold ANF.step? at h
+      split at h
+      next => simp at h
+      next hev =>
+        split at h
+        next => simp at h
+        next hstep =>
+          have ⟨t, ht, _⟩ := ih ⟨a, s.env, s.heap, s.trace⟩
+            (by simp [ANF.Expr.depth] at hd ⊢; omega) hstep
+          simp at ht; rw [ht] at hev; simp [ANF.exprValue?, ANF.trivialValue?] at hev
+    | while_ cond body =>
+      exfalso; unfold ANF.step? at h
+      split at h
+      next => simp at h
+      next hev =>
+        split at h
+        next => simp at h
+        next hstep =>
+          have ⟨t, ht, _⟩ := ih ⟨cond, s.env, s.heap, s.trace⟩
+            (by simp [ANF.Expr.depth] at hd ⊢; omega) hstep
+          simp at ht; rw [ht] at hev; simp [ANF.exprValue?, ANF.trivialValue?] at hev
+    | tryCatch body catchParam catchBody finally_ =>
+      exfalso; unfold ANF.step? at h
+      split at h
+      next => simp at h
+      next hev =>
+        split at h
+        next => simp at h
+        next => simp at h
+        next hstep =>
+          have ⟨t, ht, _⟩ := ih ⟨body, s.env, s.heap, s.trace⟩
+            (by cases finally_ <;> simp [ANF.Expr.depth] at hd ⊢ <;> omega) hstep
+          simp at ht; rw [ht] at hev; simp [ANF.exprValue?, ANF.trivialValue?] at hev
+
+private theorem ANF_step?_none_implies_trivial (s : ANF.State) (h : ANF.step? s = none) :
+    ∃ t, s.expr = .trivial t ∧ ∀ name, t ≠ .var name :=
+  ANF_step?_none_implies_trivial_aux s.expr.depth s (Nat.le_refl _) h
+
 /-- When ANF reaches a terminal state (step? = none), Flat can also reach a
     terminal state after zero or more silent steps.
     ANF.step? = none ↔ expr is a non-variable trivial (literal value).
