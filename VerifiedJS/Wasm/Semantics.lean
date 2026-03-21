@@ -3631,12 +3631,196 @@ theorem irStep?_ir_callIndirect (s : IRExecState) (rest : List IRInstr)
   rw [if_neg hlt]
   exact ⟨.silent, _, rfl⟩
 
+/-! ### Exact-Value Equation Lemmas for Forward Simulation
+
+These lemmas give the EXACT resulting state (not just existence), which the proof
+agent needs for forward simulation proofs in LowerCorrect and EmitCorrect.
+Each returns `irStep? s = some (.silent, s')` with s' fully specified. -/
+
+/-- Exact state after i32.const: pushes i32 value, advances code. -/
+theorem irStep?_eq_i32Const (s : IRExecState) (v : String) (n : Nat) (rest : List IRInstr)
+    (hcode : s.code = IRInstr.const_ .i32 v :: rest) (hv : v.toNat? = some n) :
+    irStep? s = some (.silent,
+      { s with code := rest, stack := .i32 n.toUInt32 :: s.stack,
+        trace := s.trace ++ [.silent] }) := by
+  simp [irStep?, hcode, hv, irPushTrace]
+
+/-- Exact state after f64.const: pushes f64 value, advances code. -/
+theorem irStep?_eq_f64Const (s : IRExecState) (v : String) (rest : List IRInstr)
+    (hcode : s.code = IRInstr.const_ .f64 v :: rest) :
+    irStep? s = some (.silent,
+      { s with code := rest,
+        stack := .f64 (v.toNat?.map (fun n => Float.ofNat n) |>.getD 0.0) :: s.stack,
+        trace := s.trace ++ [.silent] }) := by
+  simp [irStep?, hcode, irPushTrace]
+
+/-- Exact state after local.get: pushes local value, advances code. -/
+theorem irStep?_eq_localGet (s : IRExecState) (idx : Nat) (rest : List IRInstr)
+    (frame : IRFrame) (frest : List IRFrame) (val : IRValue)
+    (hcode : s.code = IRInstr.localGet idx :: rest)
+    (hframes : s.frames = frame :: frest)
+    (hlocal : frame.locals[idx]? = some val) :
+    irStep? s = some (.silent,
+      { s with code := rest, stack := val :: s.stack,
+        trace := s.trace ++ [.silent] }) := by
+  simp [irStep?, hcode, hframes, hlocal, irPushTrace]
+
+/-- Exact state after local.set: pops stack, updates local, advances code. -/
+theorem irStep?_eq_localSet (s : IRExecState) (idx : Nat) (rest : List IRInstr)
+    (v : IRValue) (stk : List IRValue)
+    (frame : IRFrame) (frest : List IRFrame)
+    (hcode : s.code = IRInstr.localSet idx :: rest)
+    (hstack : s.stack = v :: stk)
+    (hframes : s.frames = frame :: frest)
+    (hbounds : idx < frame.locals.size) :
+    irStep? s = some (.silent,
+      { s with code := rest, stack := stk,
+        frames := { frame with locals := frame.locals.set! idx v } :: frest,
+        trace := s.trace ++ [.silent] }) := by
+  simp [irStep?, hcode, hstack, hframes, irPop1?, irPushTrace, hbounds]
+
+/-- Exact state after drop: pops top of stack, advances code. -/
+theorem irStep?_eq_drop (s : IRExecState) (rest : List IRInstr)
+    (v : IRValue) (stk : List IRValue)
+    (hcode : s.code = IRInstr.drop :: rest)
+    (hstack : s.stack = v :: stk) :
+    irStep? s = some (.silent,
+      { s with code := rest, stack := stk,
+        trace := s.trace ++ [.silent] }) := by
+  simp [irStep?, hcode, hstack, irPop1?, irPushTrace]
+
+/-- Exact state after block: pushes label, enters body code. -/
+theorem irStep?_eq_block (s : IRExecState) (label : String) (body rest : List IRInstr)
+    (hcode : s.code = IRInstr.block label body :: rest) :
+    irStep? s = some (.silent,
+      { s with code := body,
+        labels := { name := label, onBranch := [], onExit := rest, isLoop := false } :: s.labels,
+        trace := s.trace ++ [.silent] }) := by
+  simp [irStep?, hcode, irPushTrace]
+
+/-- Exact state after loop: pushes loop label, enters body code. -/
+theorem irStep?_eq_loop (s : IRExecState) (label : String) (body rest : List IRInstr)
+    (hcode : s.code = IRInstr.loop label body :: rest) :
+    irStep? s = some (.silent,
+      { s with code := body,
+        labels := { name := label, onBranch := body, onExit := rest, isLoop := true } :: s.labels,
+        trace := s.trace ++ [.silent] }) := by
+  simp [irStep?, hcode, irPushTrace]
+
+/-- Exact state after if_ with true condition (cond ≠ 0): enters then branch. -/
+theorem irStep?_eq_if_true (s : IRExecState) (result : Option IRType)
+    (then_ else_ rest : List IRInstr) (cond : UInt32) (stk : List IRValue)
+    (hcode : s.code = IRInstr.if_ result then_ else_ :: rest)
+    (hstack : s.stack = .i32 cond :: stk)
+    (hcond : cond ≠ 0) :
+    irStep? s = some (.silent,
+      { s with code := then_, stack := stk,
+        labels := { name := "", onBranch := [], onExit := rest, isLoop := false } :: s.labels,
+        trace := s.trace ++ [.silent] }) := by
+  simp [irStep?, hcode, hstack, irPop1?, irPushTrace, hcond]
+
+/-- Exact state after if_ with false condition (cond = 0): enters else branch. -/
+theorem irStep?_eq_if_false (s : IRExecState) (result : Option IRType)
+    (then_ else_ rest : List IRInstr) (stk : List IRValue)
+    (hcode : s.code = IRInstr.if_ result then_ else_ :: rest)
+    (hstack : s.stack = .i32 0 :: stk) :
+    irStep? s = some (.silent,
+      { s with code := else_, stack := stk,
+        labels := { name := "", onBranch := [], onExit := rest, isLoop := false } :: s.labels,
+        trace := s.trace ++ [.silent] }) := by
+  simp [irStep?, hcode, hstack, irPop1?, irPushTrace]
+
+/-- Exact state after global.get: pushes global value, advances code. -/
+theorem irStep?_eq_globalGet (s : IRExecState) (idx : Nat) (rest : List IRInstr)
+    (val : IRValue)
+    (hcode : s.code = IRInstr.globalGet idx :: rest)
+    (hglobal : s.globals[idx]? = some val) :
+    irStep? s = some (.silent,
+      { s with code := rest, stack := val :: s.stack,
+        trace := s.trace ++ [.silent] }) := by
+  simp [irStep?, hcode, hglobal, irPushTrace]
+
+/-- Exact state after global.set: pops stack, updates global, advances code. -/
+theorem irStep?_eq_globalSet (s : IRExecState) (idx : Nat) (rest : List IRInstr)
+    (v : IRValue) (stk : List IRValue)
+    (hcode : s.code = IRInstr.globalSet idx :: rest)
+    (hstack : s.stack = v :: stk)
+    (hbounds : idx < s.globals.size) :
+    irStep? s = some (.silent,
+      { s with code := rest, stack := stk,
+        globals := s.globals.set! idx v,
+        trace := s.trace ++ [.silent] }) := by
+  simp [irStep?, hcode, hstack, irPop1?, irPushTrace, hbounds]
+
+/-- Exact state after return_ with callee frame: pops frame, restores caller. -/
+theorem irStep?_eq_return_callee (s : IRExecState) (rest : List IRInstr)
+    (calleeFrame callerFrame : IRFrame) (frest : List IRFrame)
+    (hcode : s.code = IRInstr.return_ :: rest)
+    (hframes : s.frames = calleeFrame :: callerFrame :: frest) :
+    irStep? s = some (.silent,
+      { s with code := calleeFrame.savedCode,
+        stack := s.stack.take calleeFrame.returnArity,
+        frames := callerFrame :: frest,
+        labels := calleeFrame.savedLabels,
+        trace := s.trace ++ [.silent] }) := by
+  simp [irStep?, hcode, hframes, irPushTrace]
+
+/-- Exact state after label completion: pops label, continues with onExit code. -/
+theorem irStep?_eq_labelDone (s : IRExecState) (label : IRLabel) (rest : List IRLabel)
+    (hcode : s.code = []) (hlabels : s.labels = label :: rest) :
+    irStep? s = some (.silent,
+      { s with code := label.onExit, labels := rest,
+        trace := s.trace ++ [.silent] }) := by
+  simp [irStep?, hcode, hlabels, irPushTrace]
+
 /-! ### IRSteps Composition Helpers -/
 
 /-- Build a single-step IRSteps. -/
 theorem IRSteps_single {s1 s2 : IRExecState} {t : TraceEvent}
     (h : IRStep s1 t s2) : IRSteps s1 [t] s2 :=
   .tail h (.refl _)
+
+/-- Compose two single IR steps into a two-step IRSteps. -/
+theorem IRSteps_two {s1 s2 s3 : IRExecState} {t1 t2 : TraceEvent}
+    (h1 : IRStep s1 t1 s2) (h2 : IRStep s2 t2 s3) : IRSteps s1 [t1, t2] s3 :=
+  .tail h1 (IRSteps_single h2)
+
+/-- Compose three single IR steps. -/
+theorem IRSteps_three {s1 s2 s3 s4 : IRExecState} {t1 t2 t3 : TraceEvent}
+    (h1 : IRStep s1 t1 s2) (h2 : IRStep s2 t2 s3) (h3 : IRStep s3 t3 s4) :
+    IRSteps s1 [t1, t2, t3] s4 :=
+  .tail h1 (IRSteps_two h2 h3)
+
+/-- Prepend a step to an IRSteps sequence (cons variant of IRSteps_snoc). -/
+theorem IRSteps_cons {s1 s2 s3 : IRExecState} {t : TraceEvent} {ts : List TraceEvent}
+    (h1 : IRStep s1 t s2) (h2 : IRSteps s2 ts s3) : IRSteps s1 (t :: ts) s3 :=
+  .tail h1 h2
+
+/-- Convert irStep? = some to an IRStep proposition. -/
+theorem IRStep_of_irStep? {s : IRExecState} {t : TraceEvent} {s' : IRExecState}
+    (h : irStep? s = some (t, s')) : IRStep s t s' :=
+  IRStep_iff_irStep?.mpr h
+
+/-- If irStep? returns some, we can build IRSteps with that single step. -/
+theorem IRSteps_of_irStep? {s : IRExecState} {t : TraceEvent} {s' : IRExecState}
+    (h : irStep? s = some (t, s')) : IRSteps s [t] s' :=
+  IRSteps_single (IRStep_of_irStep? h)
+
+/-- All silent steps: if every event in a trace is silent, the trace is List.replicate n .silent. -/
+theorem IRSteps_silent_trace {s1 s2 : IRExecState} {ts : List TraceEvent}
+    (h : IRSteps s1 ts s2) (hall : ∀ t ∈ ts, t = .silent) :
+    ts = List.replicate ts.length .silent := by
+  induction ts with
+  | nil => rfl
+  | cons t ts ih =>
+    simp at hall
+    simp [hall.1, List.replicate_succ]
+    exact ih (h.tail_steps) hall.2
+  where
+    IRSteps.tail_steps {s1 s2 : IRExecState} {t : TraceEvent} {ts : List TraceEvent}
+      (h : IRSteps s1 (t :: ts) s2) : ∃ s', IRSteps s' ts s2 := by
+      cases h with
+      | tail h1 h2 => exact ⟨_, h2⟩
 
 /-! ### Inhabitedness Examples -/
 

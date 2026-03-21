@@ -1774,6 +1774,194 @@ theorem Steps_nil_eq {s1 s2 : State} (h : Steps s1 [] s2) : s1 = s2 := by
   cases h with
   | refl => rfl
 
+/-- evalBinary always returns a value (total function). ECMA-262 §12–§13. -/
+theorem evalBinary_returns_value (op : BinOp) (a b : Value) :
+    ∃ v, evalBinary op a b = v :=
+  ⟨evalBinary op a b, rfl⟩
+
+/-- evalUnary always returns a value (total function). ECMA-262 §13.5. -/
+theorem evalUnary_returns_value (op : UnaryOp) (v : Value) :
+    ∃ w, evalUnary op v = w :=
+  ⟨evalUnary op v, rfl⟩
+
+/-- valueToString always returns a string. ECMA-262 §7.1.12. -/
+theorem valueToString_returns (v : Value) : ∃ s, valueToString v = s :=
+  ⟨valueToString v, rfl⟩
+
+/-- valueToString on true is "true". ECMA-262 §7.1.12. -/
+theorem valueToString_true : valueToString (.bool true) = "true" := by
+  simp [valueToString]
+
+/-- valueToString on false is "false". ECMA-262 §7.1.12. -/
+theorem valueToString_false : valueToString (.bool false) = "false" := by
+  simp [valueToString]
+
+/-- step? on call with non-function callee value and all-value args
+    returns undefined (not stuck). ECMA-262 §13.3.1. -/
+theorem step_call_nonfunc (v : Value) (args : List Expr) (vs : List Value)
+    (env : Env) (heap : Heap) (trace : List TraceEvent)
+    (funcs : Array FuncClosure) (cs : List (List (VarName × Value)))
+    (hv : ∀ idx, v ≠ .function idx) (hargs : allValues args = some vs) :
+    (step? ⟨.call (.lit v) args, env, heap, trace, funcs, cs⟩).isSome = true := by
+  cases v with
+  | function idx => exact absurd rfl (hv idx)
+  | _ => simp [step?, exprValue?, hargs]
+
+/-- step? on let with non-value init and steppable init, steps the init. -/
+theorem step_let_step_init (name : VarName) (init body : Expr) (env : Env) (heap : Heap)
+    (trace : List TraceEvent) (funcs : Array FuncClosure)
+    (cs : List (List (VarName × Value)))
+    (hinit : exprValue? init = none)
+    (t : TraceEvent) (si : State)
+    (hstep : step? ⟨init, env, heap, trace, funcs, cs⟩ = some (t, si)) :
+    step? ⟨.let name init body, env, heap, trace, funcs, cs⟩ =
+      some (t, pushTrace { si with expr := .let name si.expr body, trace := trace } t) := by
+  simp [step?, hinit, hstep]
+
+/-- step? on assign with non-value rhs and steppable rhs, steps the rhs. -/
+theorem step_assign_step_rhs (name : VarName) (rhs : Expr) (env : Env) (heap : Heap)
+    (trace : List TraceEvent) (funcs : Array FuncClosure)
+    (cs : List (List (VarName × Value)))
+    (hrhs : exprValue? rhs = none)
+    (t : TraceEvent) (sr : State)
+    (hstep : step? ⟨rhs, env, heap, trace, funcs, cs⟩ = some (t, sr)) :
+    step? ⟨.assign name rhs, env, heap, trace, funcs, cs⟩ =
+      some (t, pushTrace { sr with expr := .assign name sr.expr, trace := trace } t) := by
+  simp [step?, hrhs, hstep]
+
+/-- step? on if with non-value cond and steppable cond, steps the cond. -/
+theorem step_if_step_cond (cond then_ else_ : Expr) (env : Env) (heap : Heap)
+    (trace : List TraceEvent) (funcs : Array FuncClosure)
+    (cs : List (List (VarName × Value)))
+    (hcond : exprValue? cond = none)
+    (t : TraceEvent) (sc : State)
+    (hstep : step? ⟨cond, env, heap, trace, funcs, cs⟩ = some (t, sc)) :
+    step? ⟨.if cond then_ else_, env, heap, trace, funcs, cs⟩ =
+      some (t, pushTrace { sc with expr := .if sc.expr then_ else_, trace := trace } t) := by
+  simp [step?, hcond, hstep]
+
+/-- step? on unary with non-value arg and steppable arg, steps the arg. -/
+theorem step_unary_step_arg (op : UnaryOp) (arg : Expr) (env : Env) (heap : Heap)
+    (trace : List TraceEvent) (funcs : Array FuncClosure)
+    (cs : List (List (VarName × Value)))
+    (harg : exprValue? arg = none)
+    (t : TraceEvent) (sa : State)
+    (hstep : step? ⟨arg, env, heap, trace, funcs, cs⟩ = some (t, sa)) :
+    step? ⟨.unary op arg, env, heap, trace, funcs, cs⟩ =
+      some (t, pushTrace { sa with expr := .unary op sa.expr, trace := trace } t) := by
+  simp [step?, harg, hstep]
+
+/-- step? on throw with non-value arg and steppable arg, steps the arg. -/
+theorem step_throw_step_arg (arg : Expr) (env : Env) (heap : Heap)
+    (trace : List TraceEvent) (funcs : Array FuncClosure)
+    (cs : List (List (VarName × Value)))
+    (harg : exprValue? arg = none)
+    (t : TraceEvent) (sa : State)
+    (hstep : step? ⟨arg, env, heap, trace, funcs, cs⟩ = some (t, sa)) :
+    step? ⟨.throw arg, env, heap, trace, funcs, cs⟩ =
+      some (t, pushTrace { sa with expr := .throw sa.expr, trace := trace } t) := by
+  simp [step?, harg, hstep]
+
+/-- step? on typeof with non-value arg and steppable arg, steps the arg. -/
+theorem step_typeof_step_arg (arg : Expr) (env : Env) (heap : Heap)
+    (trace : List TraceEvent) (funcs : Array FuncClosure)
+    (cs : List (List (VarName × Value)))
+    (harg : exprValue? arg = none)
+    (t : TraceEvent) (sa : State)
+    (hstep : step? ⟨arg, env, heap, trace, funcs, cs⟩ = some (t, sa)) :
+    step? ⟨.typeof arg, env, heap, trace, funcs, cs⟩ =
+      some (t, pushTrace { sa with expr := .typeof sa.expr, trace := trace } t) := by
+  simp [step?, harg, hstep]
+
+/-- step? on getProp with non-value obj and steppable obj, steps the obj. -/
+theorem step_getProp_step_obj (obj : Expr) (prop : PropName) (env : Env) (heap : Heap)
+    (trace : List TraceEvent) (funcs : Array FuncClosure)
+    (cs : List (List (VarName × Value)))
+    (hobj : exprValue? obj = none)
+    (t : TraceEvent) (so : State)
+    (hstep : step? ⟨obj, env, heap, trace, funcs, cs⟩ = some (t, so)) :
+    step? ⟨.getProp obj prop, env, heap, trace, funcs, cs⟩ =
+      some (t, pushTrace { so with expr := .getProp so.expr prop, trace := trace } t) := by
+  simp [step?, hobj, hstep]
+
+/-- Behaves is deterministic: a program produces at most one trace. -/
+theorem Behaves_deterministic {p : Program} {b1 b2 : List TraceEvent}
+    (h1 : Behaves p b1) (h2 : Behaves p b2) :
+    b1 = b2 := by
+  obtain ⟨sf1, hsteps1, hhalt1⟩ := h1
+  obtain ⟨sf2, hsteps2, hhalt2⟩ := h2
+  -- Both traces start from the same initialState. By step determinism,
+  -- the traces must be equal. This requires induction on Steps.
+  sorry -- TODO: requires Steps_deterministic induction lemma
+
+/-- exprValue? returns none for all non-literal constructors. -/
+theorem exprValue_non_lit (e : Expr) (h : ∀ v, e ≠ .lit v) : exprValue? e = none := by
+  cases e with
+  | lit v => exact absurd rfl (h v)
+  | _ => rfl
+
+/-- step_binary_value: binary op on two values computes directly. ECMA-262 §12. -/
+theorem step_binary_value (op : BinOp) (a b : Value) (env : Env) (heap : Heap)
+    (trace : List TraceEvent) (funcs : Array FuncClosure)
+    (cs : List (List (VarName × Value))) :
+    step? ⟨.binary op (.lit a) (.lit b), env, heap, trace, funcs, cs⟩ =
+      some (.silent, pushTrace ⟨.lit (evalBinary op a b), env, heap, trace, funcs, cs⟩ .silent) := by
+  simp [step?, exprValue?]
+
+/-- step? on deleteProp with non-value obj and steppable obj, steps the obj. -/
+theorem step_deleteProp_step_obj (obj : Expr) (prop : PropName) (env : Env) (heap : Heap)
+    (trace : List TraceEvent) (funcs : Array FuncClosure)
+    (cs : List (List (VarName × Value)))
+    (hobj : exprValue? obj = none)
+    (t : TraceEvent) (so : State)
+    (hstep : step? ⟨obj, env, heap, trace, funcs, cs⟩ = some (t, so)) :
+    step? ⟨.deleteProp obj prop, env, heap, trace, funcs, cs⟩ =
+      some (t, pushTrace { so with expr := .deleteProp so.expr prop, trace := trace } t) := by
+  simp [step?, hobj, hstep]
+
+/-- Env.lookup_extend_same' — more precise version returning the actual result. -/
+theorem Env.lookup_extend_eq (env : Env) (name : VarName) (v : Value) :
+    (Env.extend env name v).lookup name = some v := by
+  simp [Env.extend, Env.lookup, List.find?]
+
+/-- step? on forIn with non-value obj and steppable obj, steps the obj. -/
+theorem step_forIn_step_obj (binding : VarName) (obj body : Expr) (env : Env) (heap : Heap)
+    (trace : List TraceEvent) (funcs : Array FuncClosure)
+    (cs : List (List (VarName × Value)))
+    (hobj : exprValue? obj = none)
+    (t : TraceEvent) (so : State)
+    (hstep : step? ⟨obj, env, heap, trace, funcs, cs⟩ = some (t, so)) :
+    step? ⟨.forIn binding obj body, env, heap, trace, funcs, cs⟩ =
+      some (t, pushTrace { so with expr := .forIn binding so.expr body, trace := trace } t) := by
+  simp [step?, hobj, hstep]
+
+/-- step? on forOf with non-value iterable and steppable iterable, steps the iterable. -/
+theorem step_forOf_step_obj (binding : VarName) (iterable body : Expr) (env : Env) (heap : Heap)
+    (trace : List TraceEvent) (funcs : Array FuncClosure)
+    (cs : List (List (VarName × Value)))
+    (hiter : exprValue? iterable = none)
+    (t : TraceEvent) (so : State)
+    (hstep : step? ⟨iterable, env, heap, trace, funcs, cs⟩ = some (t, so)) :
+    step? ⟨.forOf binding iterable body, env, heap, trace, funcs, cs⟩ =
+      some (t, pushTrace { so with expr := .forOf binding so.expr body, trace := trace } t) := by
+  simp [step?, hiter, hstep]
+
+/-- §7.2.14 abstractEq: null/null is true. -/
+theorem abstractEq_null_self : abstractEq .null .null = true := by
+  simp [abstractEq]
+
+/-- §7.2.14 abstractEq: undefined/undefined is true. -/
+theorem abstractEq_undef_self : abstractEq .undefined .undefined = true := by
+  simp [abstractEq]
+
+/-- §7.2.14 abstractEq: bool/bool delegates to BEq. -/
+theorem abstractEq_bool (a b : Bool) : abstractEq (.bool a) (.bool b) = (a == b) := by
+  simp [abstractEq]
+
+/-- §7.2.14 abstractEq: string/string delegates to BEq. -/
+theorem abstractEq_string (a b : String) : abstractEq (.string a) (.string b) = (a == b) := by
+  simp [abstractEq]
+
 end VerifiedJS.Core
 
 namespace VerifiedJS.Source
