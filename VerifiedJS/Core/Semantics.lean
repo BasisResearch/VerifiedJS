@@ -146,7 +146,7 @@ def valueToString : Value → String
 
 /-- ECMA-262 §7.2.14 Abstract Equality Comparison (simplified core subset).
     Handles null/undefined equivalence and type coercion. -/
-private def abstractEq : Value → Value → Bool
+def abstractEq : Value → Value → Bool
   -- §7.2.14 step 1: same type → strict equality
   | .null, .null => true
   | .undefined, .undefined => true
@@ -171,7 +171,7 @@ private def abstractEq : Value → Value → Bool
   | _, _ => false
 
 /-- ECMA-262 §7.2.13 Abstract Relational Comparison (string-aware). -/
-private def abstractLt : Value → Value → Bool
+def abstractLt : Value → Value → Bool
   | .string a, .string b => a < b  -- lexicographic comparison
   | a, b => toNumber a < toNumber b
 
@@ -234,10 +234,11 @@ def evalBinary : BinOp → Value → Value → Value
       let ia := toNumber a |>.toUInt32; let ib := (toNumber b |>.toUInt32) % 32
       .number ((ia >>> ib).toFloat)
 
-/-- Built-in function index for console.log (reserved at index 0). -/
-private def consoleLogIdx : FuncIdx := 0
+/-- Built-in function index for console.log (reserved at index 0, §18.2). -/
+def consoleLogIdx : FuncIdx := 0
 
-private def pushTrace (s : State) (t : TraceEvent) : State :=
+/-- Push a trace event onto the state's trace list. -/
+def pushTrace (s : State) (t : TraceEvent) : State :=
   { s with trace := s.trace ++ [t] }
 
 /-- One deterministic Core small-step transition with emitted trace event. -/
