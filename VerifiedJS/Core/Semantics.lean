@@ -2164,6 +2164,169 @@ theorem step_return_some_value_exact (v : Value) (env : Env) (heap : Heap)
           (.error ("return:" ++ toString (repr v)))) := by
   simp [step?, exprValue?]
 
+/-! ## Inhabitedness Proofs — Concrete Step Derivations
+
+For every semantic rule, we construct a concrete derivation for a real JS program,
+proving that the Step relation is inhabited. Per §8.3: if a derivation cannot be
+constructed, the semantics is wrong. -/
+
+/-- JS: `1 + 2` → Core: `binary .add (lit 1) (lit 2)` steps to `lit 3`.
+    ECMA-262 §13.15: binary addition on two number values. -/
+example : Step
+    ⟨.binary .add (.lit (.number 1)) (.lit (.number 2)),
+     Env.empty, Heap.empty, [], #[], []⟩
+    .silent
+    (pushTrace ⟨.lit (.number 3), Env.empty, Heap.empty, [], #[], []⟩ .silent) :=
+  Step.mk (by simp [step?, exprValue?, evalBinary, toNumber])
+
+/-- JS: `var x = 42; ...` → Core: `let "x" (lit 42) body` steps to `body` with x bound.
+    ECMA-262 §8.1.1.1 CreateMutableBinding: variable initialization. -/
+example : Step
+    ⟨.«let» "x" (.lit (.number 42)) (.var "x"),
+     Env.empty, Heap.empty, [], #[], []⟩
+    .silent
+    (pushTrace ⟨.var "x", Env.empty.extend "x" (.number 42), Heap.empty, [], #[], []⟩ .silent) :=
+  Step.mk (by simp [step?, exprValue?])
+
+/-- JS: `x` where env has `x = 10` → steps to `lit 10`.
+    ECMA-262 §8.1.1.4 GetBindingValue: variable lookup. -/
+example : Step
+    ⟨.var "x", { bindings := [("x", .number 10)] }, Heap.empty, [], #[], []⟩
+    .silent
+    (pushTrace ⟨.lit (.number 10), { bindings := [("x", .number 10)] }, Heap.empty, [], #[], []⟩ .silent) :=
+  Step.mk (by simp [step?, Env.lookup, List.find?])
+
+/-- JS: `while(cond) body` → desugars to `if(cond) { body; while(cond) body } else undefined`.
+    ECMA-262 §13.7.3: while loop unrolling. -/
+example : Step
+    ⟨.while_ (.lit (.bool false)) (.lit (.number 1)),
+     Env.empty, Heap.empty, [], #[], []⟩
+    .silent
+    (pushTrace ⟨.if (.lit (.bool false))
+      (.seq (.lit (.number 1)) (.while_ (.lit (.bool false)) (.lit (.number 1))))
+      (.lit .undefined), Env.empty, Heap.empty, [], #[], []⟩ .silent) :=
+  Step.mk (by simp [step?])
+
+/-- JS: `break` → produces error event "break:" and steps to `lit undefined`.
+    ECMA-262 §13.8: break statement as abrupt completion. -/
+example : Step
+    ⟨.«break» none, Env.empty, Heap.empty, [], #[], []⟩
+    (.error "break:")
+    (pushTrace ⟨.lit .undefined, Env.empty, Heap.empty, [], #[], []⟩ (.error "break:")) :=
+  Step.mk (by simp [step?])
+
+/-- JS: `continue` → produces error event "continue:" and steps to `lit undefined`.
+    ECMA-262 §13.9: continue statement as abrupt completion. -/
+example : Step
+    ⟨.«continue» none, Env.empty, Heap.empty, [], #[], []⟩
+    (.error "continue:")
+    (pushTrace ⟨.lit .undefined, Env.empty, Heap.empty, [], #[], []⟩ (.error "continue:")) :=
+  Step.mk (by simp [step?])
+
+/-- JS: `throw "err"` → produces error event and steps to `lit undefined`.
+    ECMA-262 §13.14: throw statement. -/
+example : Step
+    ⟨.throw (.lit (.string "err")), Env.empty, Heap.empty, [], #[], []⟩
+    (.error "err")
+    (pushTrace ⟨.lit .undefined, Env.empty, Heap.empty, [], #[], []⟩ (.error "err")) :=
+  Step.mk (by simp [step?, exprValue?, valueToString])
+
+/-- JS: `typeof 42` → steps to `lit "number"`.
+    ECMA-262 §12.5.6: typeof operator. -/
+example : Step
+    ⟨.typeof (.lit (.number 42)), Env.empty, Heap.empty, [], #[], []⟩
+    .silent
+    (pushTrace ⟨.lit (.string "number"), Env.empty, Heap.empty, [], #[], []⟩ .silent) :=
+  Step.mk (by simp [step?, exprValue?])
+
+/-- JS: `function f(x) { x }` → captures closure and produces function value.
+    ECMA-262 §14.1 Function Definitions: closure capture. -/
+example : Step
+    ⟨.functionDef (some "f") ["x"] (.var "x") false false,
+     Env.empty, Heap.empty, [], #[], []⟩
+    .silent
+    (pushTrace ⟨.lit (.function 0), Env.empty, Heap.empty, [],
+     #[⟨some "f", ["x"], .var "x", []⟩], []⟩ .silent) :=
+  Step.mk (by simp [step?, FuncClosure.mk, Env.empty])
+
+/-- JS: `new Foo()` → allocates empty object on heap.
+    ECMA-262 §12.3.3: new operator (simplified). -/
+example : Step
+    ⟨.newObj (.lit (.function 0)) [.lit (.number 1)],
+     Env.empty, Heap.empty, [], #[], []⟩
+    .silent
+    (pushTrace ⟨.lit (.object 0), Env.empty,
+     { objects := #[[]], nextAddr := 1 }, [], #[], []⟩ .silent) :=
+  Step.mk (by simp [step?, Heap.empty])
+
+/-- JS: `for (var k in obj) body` where obj is non-object → steps to `lit undefined`.
+    ECMA-262 §13.7.5.15: for-in on non-object produces no iteration. -/
+example : Step
+    ⟨.forIn "k" (.lit (.number 42)) (.var "k"),
+     Env.empty, Heap.empty, [], #[], []⟩
+    .silent
+    (pushTrace ⟨.lit .undefined, Env.empty, Heap.empty, [], #[], []⟩ .silent) :=
+  Step.mk (by simp [step?, exprValue?])
+
+/-- JS: `for (var v of arr) body` where arr is non-object → steps to `lit undefined`.
+    ECMA-262 §13.7.5.13: for-of on non-iterable produces no iteration. -/
+example : Step
+    ⟨.forOf "v" (.lit (.string "abc")) (.var "v"),
+     Env.empty, Heap.empty, [], #[], []⟩
+    .silent
+    (pushTrace ⟨.lit .undefined, Env.empty, Heap.empty, [], #[], []⟩ .silent) :=
+  Step.mk (by simp [step?, exprValue?])
+
+/-- JS: `label: body` → labeled statement immediately steps to body.
+    ECMA-262 §13.13: labeled statement. -/
+example : Step
+    ⟨.labeled "loop" (.lit (.number 1)), Env.empty, Heap.empty, [], #[], []⟩
+    .silent
+    (pushTrace ⟨.lit (.number 1), Env.empty, Heap.empty, [], #[], []⟩ .silent) :=
+  Step.mk (by simp [step?])
+
+/-- JS: `this` when no `this` binding → steps to `lit undefined`.
+    ECMA-262 §12.1.1: this in global context resolves to undefined. -/
+example : Step
+    ⟨.this, Env.empty, Heap.empty, [], #[], []⟩
+    .silent
+    (pushTrace ⟨.lit .undefined, Env.empty, Heap.empty, [], #[], []⟩ .silent) :=
+  Step.mk (by simp [step?, Env.lookup, Env.empty, List.find?])
+
+/-- JS: `return` (no value) → produces return error event.
+    ECMA-262 §13.6: return with no argument. -/
+example : Step
+    ⟨.«return» none, Env.empty, Heap.empty, [], #[], []⟩
+    (.error "return:undefined")
+    (pushTrace ⟨.lit .undefined, Env.empty, Heap.empty, [], #[], []⟩ (.error "return:undefined")) :=
+  Step.mk (by simp [step?])
+
+/-- Multi-step: `let x = 1 + 2; x` → `3` in two Steps.
+    ECMA-262 §13.15 + §8.1.1.1: binary add then variable binding. -/
+example : Steps
+    ⟨.«let» "x" (.binary .add (.lit (.number 1)) (.lit (.number 2))) (.var "x"),
+     Env.empty, Heap.empty, [], #[], []⟩
+    [.silent, .silent, .silent]
+    (pushTrace
+      (pushTrace
+        (pushTrace
+          ⟨.lit (.number 3),
+           { bindings := [("x", .number 3)] },
+           Heap.empty, [], #[], []⟩
+          .silent)
+        .silent)
+      .silent) := by
+  apply Steps.tail
+  · -- Step 1: binary add reduces 1+2 → 3, then let binds x = 3 and steps to body
+    exact Step.mk (by simp [step?, exprValue?, evalBinary, toNumber])
+  apply Steps.tail
+  · -- Step 2: let with value 3, extends env with x=3 and steps to var "x"
+    exact Step.mk (by simp [step?, exprValue?, pushTrace])
+  apply Steps.tail
+  · -- Step 3: var "x" looks up x=3 in env
+    exact Step.mk (by simp [step?, Env.lookup, pushTrace, Env.extend, List.find?])
+  exact Steps.refl _
+
 set_option maxHeartbeats 800000 in
 /-- The only stuck expression is a literal (progress). -/
 theorem stuck_implies_lit {s : State} (hstuck : step? s = none) :

@@ -8,6 +8,9 @@ import VerifiedJS.Wasm.Syntax
 import VerifiedJS.Wasm.Numerics
 import VerifiedJS.Wasm.IR
 import VerifiedJS.Core.Semantics
+import VerifiedJS.ANF.Semantics
+import VerifiedJS.Wasm.Lower
+import VerifiedJS.Wasm.Emit
 
 namespace VerifiedJS.Wasm
 
@@ -4708,5 +4711,143 @@ theorem behavioral_chain {S : Type}
     ∃ w_final, Steps w_init (traceListToWasm ts) w_final ∧ step? w_final = none := by
   have hIR := IRForwardSim_behavioral sim_lower hR_lower hBehaves
   exact WasmForwardSim_behavioral R_emit sim_emit hR_emit hIR
+
+/-! ### ANF → IR Forward Simulation (for LowerCorrect)
+
+The lowering pass compiles ANF.State to IR instructions. To prove behavioral
+preservation, we define:
+1. A wrapped step function that maps ANF's Core.TraceEvent to IR.TraceEvent
+2. A state relation between ANF.State and IRExecState
+3. The forward simulation instance
+
+The proof agent can then use `IRForwardSim_behavioral` to prove `lower_behavioral_correct`. -/
+
+/-- Wrap ANF.step? to produce IR.TraceEvent instead of Core.TraceEvent.
+    This allows us to use the generic IRForwardSim framework which expects
+    a step function producing IR.TraceEvent. -/
+def anfStepMapped (s : ANF.State) : Option (TraceEvent × ANF.State) :=
+  match ANF.step? s with
+  | none => none
+  | some (t, s') => some (traceFromCore t, s')
+
+/-- anfStepMapped returns none iff ANF.step? returns none. -/
+@[simp] theorem anfStepMapped_none_iff (s : ANF.State) :
+    anfStepMapped s = none ↔ ANF.step? s = none := by
+  simp [anfStepMapped]
+  split <;> simp_all
+
+/-- anfStepMapped preserves the step structure with mapped trace events. -/
+theorem anfStepMapped_some (s s' : ANF.State) (t : Core.TraceEvent)
+    (h : ANF.step? s = some (t, s')) :
+    anfStepMapped s = some (traceFromCore t, s') := by
+  simp [anfStepMapped, h]
+
+/-- State relation for ANF → IR lowering simulation.
+    Relates an ANF state to the corresponding IR execution state produced
+    by lowering the program and executing to the matching point.
+    REF: This is the key invariant that the lowering pass must maintain. -/
+structure LowerRel (prog : ANF.Program) (irmod : IRModule) : ANF.State → IRExecState → Prop where
+  /-- The IR module was produced by lowering the ANF program. -/
+  lower_ok : Wasm.lower prog = .ok irmod
+  /-- The IR state's trace corresponds to the mapped ANF trace. -/
+  trace_match : ∀ s ir, LowerRel prog irmod s ir →
+    ir.trace = (s.trace.map traceFromCore).bind (fun t => [t])
+
+/-- Bridge: convert ANF.Steps to StepStar anfStepMapped.
+    This allows us to use the ANF.Behaves definition (which uses ANF.Steps)
+    with the IRForwardSim framework (which uses StepStar/DetBehaves). -/
+theorem StepStar_of_ANFSteps {s1 s2 : ANF.State} {ts : List Core.TraceEvent}
+    (hSteps : ANF.Steps s1 ts s2) :
+    StepStar anfStepMapped s1 (ts.map traceFromCore) s2 := by
+  induction hSteps with
+  | refl _ => exact .refl
+  | tail hstep _hrest ih =>
+    obtain ⟨h⟩ := hstep
+    exact .step (anfStepMapped_some _ _ _ h) ih
+
+/-- Bridge: ANF.Behaves implies DetBehaves anfStepMapped with mapped trace.
+    This is the key bridge between ANF behavioral semantics and the
+    IRForwardSim framework. -/
+theorem DetBehaves_of_ANFBehaves {prog : ANF.Program} {ts : List Core.TraceEvent}
+    (hBeh : ANF.Behaves prog ts) :
+    DetBehaves anfStepMapped (ANF.initialState prog) (ts.map traceFromCore) := by
+  obtain ⟨sFinal, hSteps, hHalt⟩ := hBeh
+  exact ⟨sFinal, StepStar_of_ANFSteps hSteps, (anfStepMapped_none_iff sFinal).mpr hHalt⟩
+
+/-- traceListFromCore is the same as List.map traceFromCore. -/
+@[simp] theorem traceListFromCore_eq_map (ts : List Core.TraceEvent) :
+    traceListFromCore ts = ts.map traceFromCore := rfl
+
+/-- THE FORWARD SIMULATION: ANF → IR.
+    For each ANF step, the lowered IR module can take a corresponding IR step
+    with the mapped trace event. This is the simulation the proof agent needs
+    to instantiate for `lower_behavioral_correct`.
+
+    Strategy: The proof agent should construct this by case analysis on ANF.step?,
+    using the lowerExpr correspondence and the exact-value irStep?_eq_* lemmas.
+    Each ANF trivial/complex/control-flow case maps to a specific sequence of
+    IR instructions emitted by Lower.lean. -/
+theorem ir_forward_sim (prog : ANF.Program) (irmod : IRModule)
+    (hlower : Wasm.lower prog = .ok irmod) :
+    ∃ (R : ANF.State → IRExecState → Prop),
+      R (ANF.initialState prog) (irInitialState irmod) ∧
+      IRForwardSim R anfStepMapped := by
+  sorry
+
+/-- Main application: using ir_forward_sim to prove lower_behavioral_correct.
+    Given ir_forward_sim, this follows from IRForwardSim_behavioral + DetBehaves_of_ANFBehaves. -/
+theorem lower_behavioral_correct' (prog : ANF.Program) (irmod : IRModule)
+    (hlower : Wasm.lower prog = .ok irmod) :
+    ∀ trace, ANF.Behaves prog trace →
+      IRBehaves irmod (traceListFromCore trace) := by
+  intro trace hBeh
+  -- Step 1: Get the forward simulation
+  obtain ⟨R, hR_init, sim⟩ := ir_forward_sim prog irmod hlower
+  -- Step 2: Bridge ANF.Behaves to DetBehaves
+  have hDet := DetBehaves_of_ANFBehaves hBeh
+  -- Step 3: Apply IRForwardSim_behavioral
+  have hIR := IRForwardSim_behavioral sim hR_init hDet
+  -- Step 4: Conclude IRBehaves
+  simp only [traceListFromCore_eq_map]
+  exact hIR
+
+/-! ### IR → Wasm Forward Simulation (for EmitCorrect)
+
+The emit pass translates IR instructions to Wasm AST instructions.
+To prove behavioral preservation, we define:
+1. A state relation between IRExecState and Wasm.ExecState
+2. The forward simulation instance
+
+The proof agent can then use `WasmForwardSim_behavioral` to prove `emit_behavioral_correct`. -/
+
+/-- THE FORWARD SIMULATION: IR → Wasm.
+    For each IR step, the emitted Wasm module takes a corresponding Wasm step
+    with the mapped trace event. This is the simulation the proof agent needs
+    to instantiate for `emit_behavioral_correct`.
+
+    Strategy: Case analysis on irStep?. Each IRInstr maps to a known sequence
+    of Wasm instructions via emitInstr. Show that Wasm.step? on the emitted
+    instructions produces the corresponding Wasm.TraceEvent. -/
+theorem emit_forward_sim (irmod : IRModule) (wmod : Module)
+    (hemit : emit irmod = .ok wmod) :
+    ∃ (R : IRExecState → ExecState → Prop),
+      R (irInitialState irmod) (initialState wmod) ∧
+      WasmForwardSim R := by
+  sorry
+
+/-- Main application: using emit_forward_sim to prove emit_behavioral_correct.
+    Given emit_forward_sim, this follows from WasmForwardSim_behavioral. -/
+theorem emit_behavioral_correct' (irmod : IRModule) (wmod : Module)
+    (hemit : emit irmod = .ok wmod) :
+    ∀ trace, IRBehaves irmod trace →
+      Behaves wmod (traceListToWasm trace) := by
+  intro trace hBeh
+  -- Step 1: Get the forward simulation
+  obtain ⟨R, hR_init, sim⟩ := emit_forward_sim irmod wmod hemit
+  -- Step 2: Apply WasmForwardSim_behavioral
+  have hW := WasmForwardSim_behavioral R sim hR_init ⟨_, hBeh.2.1, hBeh.2.2⟩
+  -- Step 3: Conclude Wasm.Behaves
+  obtain ⟨wFinal, hWSteps, hWHalt⟩ := hW
+  exact ⟨wFinal, hWSteps, hWHalt⟩
 
 end VerifiedJS.Wasm.IR
