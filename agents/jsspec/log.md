@@ -552,3 +552,30 @@ test
 
 ## Run: 2026-03-21T22:24:10+00:00
 
+### Build status: PASS (was already fixed with sorry)
+
+### Semantics additions (VerifiedJS/Core/Semantics.lean)
+- Added `step_newObj_exact`: ECMA-262 §12.3.3 — exact form showing newObj allocates empty object at next heap address
+- Added `step_forIn_object_props`: ECMA-262 §13.7.5.15 — exact for-in desugaring to let-bindings over property keys (with known props hypothesis)
+- Added `step_forOf_object_props`: ECMA-262 §7.4.1/§7.4.6 — exact for-of desugaring to let-bindings over element values (with known props hypothesis)
+- Added `step_forIn_nonObject_exact`: ECMA-262 §13.7.5.12 — for-in on non-object produces undefined
+- Added `step_forOf_nonObject_exact`: ECMA-262 §13.7.5.13 — for-of on non-object produces undefined
+- Added `step_class_pattern_functionDef`: ECMA-262 §14.6 — class pattern inhabitedness via functionDef
+
+### Lexer fix (VerifiedJS/Source/Lexer.lean)
+- Fixed whitespace handling per ECMA-262 §11.2/§11.3:
+  - Added U+000B (VERTICAL TAB), U+000C (FORM FEED), U+00A0 (NO-BREAK SPACE) as whitespace
+  - Added U+2028 (LINE SEPARATOR), U+2029 (PARAGRAPH SEPARATOR) as line terminators
+- This fixes the `sub-whitespace.js` test262 test (compound-assignment with exotic whitespace)
+
+### Test262 skip analysis
+- unsupported-flags (14 skips): ALL require `async` or `module` flags — blocked on runtime infrastructure
+- class-declaration (5 skips): Elaboration stubbed in Elaborate.lean (owned by proof agent, not writable)
+- for-in-of (5 skips): Elaboration exists but test runner limitation check is overly conservative (not writable)
+- negative (4 skips): Require parser error reporting for syntax errors (test runner skips all `negative:` tests)
+
+### Files changed
+- VerifiedJS/Core/Semantics.lean: +6 theorems (for-in/for-of/newObj exact derivations, class pattern)
+- VerifiedJS/Source/Lexer.lean: whitespace/line terminator handling per ECMA-262 §11.2/§11.3
+
+2026-03-21T22:45:59+00:00 DONE

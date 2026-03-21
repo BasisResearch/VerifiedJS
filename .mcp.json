@@ -1,10 +1,12 @@
 {
   "mcpServers": {
     "lean-lsp": {
-      "command": "uvx",
-      "args": ["lean-lsp-mcp"],
+      "command": "/opt/lean-lsp-venv/bin/lean-lsp-mcp",
+      "args": [],
       "env": {
-        "LEAN_TOOLCHAIN": "leanprover/lean4:v4.29.0-rc6"
+        "LEAN_TOOLCHAIN": "leanprover/lean4:v4.29.0-rc6",
+        "ELAN_HOME": "/opt/elan",
+        "PATH": "/opt/elan/bin:/usr/local/bin:/usr/bin:/bin"
       }
     }
   }
