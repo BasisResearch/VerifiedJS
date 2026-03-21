@@ -4068,4 +4068,362 @@ private def exMemModule : IRModule :=
 /-- Memory store + load round-trip: store 99 at offset 0, load back yields 99. -/
 example : (irRun 20 (irInitialState exMemModule)).2.stack == [.i32 99] := by native_decide
 
+/-! ### Exact-Value Equation Lemmas for i64/ptr Constants
+
+Lower.lean emits `const_ .i64` and `const_ .ptr` instructions (NaN-boxing).
+The proof agent needs exact-value lemmas to build forward simulations. -/
+
+/-- Exact state after i64.const: pushes i64 value, advances code.
+    REF: Wasm §4.4.1.1 (i64.const) -/
+theorem irStep?_eq_i64Const (s : IRExecState) (v : String) (n : Nat) (rest : List IRInstr)
+    (hcode : s.code = IRInstr.const_ .i64 v :: rest) (hv : v.toNat? = some n) :
+    irStep? s = some (.silent,
+      { s with
+        code := rest
+        stack := .i64 n.toUInt64 :: s.stack
+        trace := s.trace ++ [.silent] }) := by
+  simp [irStep?, hcode, hv, irPushTrace]
+
+/-- Exact state after ptr.const: pushes i32 value (ptr = i32), advances code.
+    Lower.lean uses `const_ .ptr` for string references and memory offsets. -/
+theorem irStep?_eq_ptrConst (s : IRExecState) (v : String) (n : Nat) (rest : List IRInstr)
+    (hcode : s.code = IRInstr.const_ .ptr v :: rest) (hv : v.toNat? = some n) :
+    irStep? s = some (.silent,
+      { s with
+        code := rest
+        stack := .i32 n.toUInt32 :: s.stack
+        trace := s.trace ++ [.silent] }) := by
+  simp [irStep?, hcode, hv, irPushTrace]
+
+/-- i64 const @[simp] lemma: with valid numeric string, step always succeeds. -/
+@[simp]
+theorem irStep?_ir_i64Const (s : IRExecState) (v : String) (n : Nat) (rest : List IRInstr)
+    (hcode : s.code = IRInstr.const_ .i64 v :: rest) (hv : v.toNat? = some n) :
+    ∃ t s', irStep? s = some (t, s') := by
+  simp [irStep?, hcode, hv, irPushTrace]
+
+/-- ptr const @[simp] lemma: with valid numeric string, step always succeeds. -/
+@[simp]
+theorem irStep?_ir_ptrConst (s : IRExecState) (v : String) (n : Nat) (rest : List IRInstr)
+    (hcode : s.code = IRInstr.const_ .ptr v :: rest) (hv : v.toNat? = some n) :
+    ∃ t s', irStep? s = some (t, s') := by
+  simp [irStep?, hcode, hv, irPushTrace]
+
+/-! ### Exact-Value Equation Lemmas for Memory Operations
+
+Lower.lean emits load/store/store8 for heap access. The proof agent needs
+exact resulting states for forward simulation. -/
+
+/-- Exact state after load: reads 4 bytes little-endian from memory, pushes i32.
+    REF: Wasm §4.4.7.1 (memory.load) -/
+theorem irStep?_eq_load (s : IRExecState) (rest : List IRInstr) (t : IRType)
+    (offset : Nat) (addr : UInt32) (stk : List IRValue)
+    (hcode : s.code = IRInstr.load t offset :: rest)
+    (hstack : s.stack = .i32 addr :: stk)
+    (hbounds : addr.toNat + offset + 4 ≤ s.memory.size) :
+    let byteAddr := addr.toNat + offset
+    let b0 := s.memory.get! byteAddr
+    let b1 := s.memory.get! (byteAddr + 1)
+    let b2 := s.memory.get! (byteAddr + 2)
+    let b3 := s.memory.get! (byteAddr + 3)
+    let val : UInt32 := b0.toUInt32 ||| (b1.toUInt32 <<< 8) ||| (b2.toUInt32 <<< 16) ||| (b3.toUInt32 <<< 24)
+    irStep? s = some (.silent,
+      { s with
+        code := rest
+        stack := .i32 val :: stk
+        trace := s.trace ++ [.silent] }) := by
+  simp [irStep?, hcode, hstack, irPop1?, irPushTrace, hbounds]
+
+/-- Exact state after store: writes 4 bytes little-endian to memory.
+    REF: Wasm §4.4.7.2 (memory.store) -/
+theorem irStep?_eq_store (s : IRExecState) (rest : List IRInstr) (t : IRType)
+    (offset : Nat) (val addr : UInt32) (stk : List IRValue)
+    (hcode : s.code = IRInstr.store t offset :: rest)
+    (hstack : s.stack = .i32 val :: .i32 addr :: stk)
+    (hbounds : addr.toNat + offset + 4 ≤ s.memory.size) :
+    let byteAddr := addr.toNat + offset
+    let mem := s.memory
+      |>.set! byteAddr (val.toUInt8)
+      |>.set! (byteAddr + 1) ((val >>> 8).toUInt8)
+      |>.set! (byteAddr + 2) ((val >>> 16).toUInt8)
+      |>.set! (byteAddr + 3) ((val >>> 24).toUInt8)
+    irStep? s = some (.silent,
+      { s with
+        code := rest
+        stack := stk
+        memory := mem
+        trace := s.trace ++ [.silent] }) := by
+  simp [irStep?, hcode, hstack, irPop2?, irPushTrace, hbounds]
+
+/-- Exact state after store8: writes 1 byte to memory.
+    REF: Wasm §4.4.7.2 (memory.store, 1-byte variant) -/
+theorem irStep?_eq_store8 (s : IRExecState) (rest : List IRInstr)
+    (offset : Nat) (val addr : UInt32) (stk : List IRValue)
+    (hcode : s.code = IRInstr.store8 offset :: rest)
+    (hstack : s.stack = .i32 val :: .i32 addr :: stk)
+    (hbounds : addr.toNat + offset < s.memory.size) :
+    let byteAddr := addr.toNat + offset
+    let mem := s.memory.set! byteAddr val.toUInt8
+    irStep? s = some (.silent,
+      { s with
+        code := rest
+        stack := stk
+        memory := mem
+        trace := s.trace ++ [.silent] }) := by
+  simp [irStep?, hcode, hstack, irPop2?, irPushTrace, hbounds]
+
+/-- Exact state after callIndirect: creates callee frame, enters function body.
+    REF: Wasm §4.4.8.7 / WasmCert-Coq r_call_indirect_success -/
+theorem irStep?_eq_callIndirect (s : IRExecState) (rest : List IRInstr)
+    (typeIdx : Nat) (funcIdx : UInt32) (stk : List IRValue) (fn : IRFunc)
+    (args callerStack : List IRValue)
+    (hcode : s.code = IRInstr.callIndirect typeIdx :: rest)
+    (hstack : s.stack = .i32 funcIdx :: stk)
+    (hfunc : s.module.functions[funcIdx.toNat]? = some fn)
+    (hpopn : irPopN? stk fn.params.length = some (args, callerStack)) :
+    irStep? s = some (.silent,
+      { s with
+        stack := callerStack
+        frames := { locals := (args ++ fn.locals.map IRValue.default).toArray
+                    returnArity := fn.results.length
+                    savedCode := rest
+                    savedLabels := s.labels } :: s.frames
+        code := fn.body
+        labels := []
+        trace := s.trace ++ [.silent] }) := by
+  simp [irStep?, hcode, hstack, irPop1?, hfunc, hpopn, irPushTrace]
+
+/-- Exact state after memoryGrow (success): grows memory, pushes old page count.
+    REF: Wasm §4.4.7.6 (memory.grow) -/
+theorem irStep?_eq_memoryGrow_ok (s : IRExecState) (rest : List IRInstr)
+    (pages : UInt32) (stk : List IRValue)
+    (hcode : s.code = IRInstr.memoryGrow :: rest)
+    (hstack : s.stack = .i32 pages :: stk)
+    (hsize : s.memory.size + pages.toNat * 65536 ≤ 65536 * 65536) :
+    let oldPages := s.memory.size / 65536
+    let grown := ByteArray.mk (s.memory.toList.toArray ++ Array.replicate (pages.toNat * 65536) 0)
+    irStep? s = some (.silent,
+      { s with
+        code := rest
+        stack := .i32 oldPages.toUInt32 :: stk
+        memory := grown
+        trace := s.trace ++ [.silent] }) := by
+  simp only [irStep?, hcode, hstack, irPop1?, irPushTrace]
+  have hle : ¬ (65536 * 65536 < s.memory.size + pages.toNat * 65536) := by omega
+  simp [hle]
+
+/-! ### IR Step? Totality (Progress Theorem)
+
+Key property for the proof chain: every non-halted IR state can step.
+This is the IR-level analogue of Wasm type soundness. -/
+
+/-- Every IR state is either halted or can take a step.
+    This is the fundamental progress property — compiled code never gets stuck
+    in an undefined state (it either completes or traps). -/
+theorem irStep?_progress (s : IRExecState) :
+    s.halted ∨ ∃ t s', irStep? s = some (t, s') := by
+  unfold IRExecState.halted
+  match hc : s.code with
+  | instr :: rest =>
+    right
+    simp only [irStep?, hc]
+    -- Every instruction branch of irStep? returns some (either a value or a trap)
+    match instr with
+    | .const_ .i32 v => cases v.toNat? <;> exact ⟨_, _, rfl⟩
+    | .const_ .i64 v => cases v.toNat? <;> exact ⟨_, _, rfl⟩
+    | .const_ .f64 _ => exact ⟨_, _, rfl⟩
+    | .const_ .ptr v => cases v.toNat? <;> exact ⟨_, _, rfl⟩
+    | .localGet idx =>
+      match s.frames with
+      | [] => exact ⟨_, _, rfl⟩
+      | frame :: _ =>
+        cases frame.locals[idx]? <;> exact ⟨_, _, rfl⟩
+    | .localSet idx =>
+      match irPop1? ({ s with code := rest }).stack, s.frames with
+      | some (_, _), frame :: _ =>
+        cases Nat.decLt idx frame.locals.size with
+        | isTrue h => simp [h]; exact ⟨_, _, rfl⟩
+        | isFalse h => simp [Nat.not_lt.mp h]; exact ⟨_, _, rfl⟩
+      | _, [] => exact ⟨_, _, rfl⟩
+      | none, _ => exact ⟨_, _, rfl⟩
+    | .globalGet idx =>
+      cases ({ s with code := rest }).globals[idx]? <;> exact ⟨_, _, rfl⟩
+    | .globalSet idx =>
+      match irPop1? ({ s with code := rest }).stack with
+      | some (_, _) =>
+        cases Nat.decLt idx ({ s with code := rest }).globals.size with
+        | isTrue h => simp [h]; exact ⟨_, _, rfl⟩
+        | isFalse h => simp [Nat.not_lt.mp h]; exact ⟨_, _, rfl⟩
+      | none => exact ⟨_, _, rfl⟩
+    | .binOp t op =>
+      match t with
+      | .i32 =>
+        match irPop2? ({ s with code := rest }).stack with
+        | some (.i32 rhs, .i32 lhs, stk) =>
+          match op with
+          | "div_s" => cases Numerics.i32DivS? lhs rhs <;> exact ⟨_, _, rfl⟩
+          | "div_u" => cases Numerics.i32DivU? lhs rhs <;> exact ⟨_, _, rfl⟩
+          | "rem_s" => cases Numerics.i32RemS? lhs rhs <;> exact ⟨_, _, rfl⟩
+          | "rem_u" => cases Numerics.i32RemU? lhs rhs <;> exact ⟨_, _, rfl⟩
+          | _ => exact ⟨_, _, rfl⟩
+        | some _ => exact ⟨_, _, rfl⟩
+        | none => exact ⟨_, _, rfl⟩
+      | .i64 =>
+        match irPop2? ({ s with code := rest }).stack with
+        | some (.i64 rhs, .i64 lhs, stk) =>
+          match op with
+          | "div_s" => cases Numerics.i64DivS? lhs rhs <;> exact ⟨_, _, rfl⟩
+          | "div_u" => cases Numerics.i64DivU? lhs rhs <;> exact ⟨_, _, rfl⟩
+          | "rem_s" => cases Numerics.i64RemS? lhs rhs <;> exact ⟨_, _, rfl⟩
+          | "rem_u" => cases Numerics.i64RemU? lhs rhs <;> exact ⟨_, _, rfl⟩
+          | _ => exact ⟨_, _, rfl⟩
+        | some _ => exact ⟨_, _, rfl⟩
+        | none => exact ⟨_, _, rfl⟩
+      | .f64 =>
+        match irPop2? ({ s with code := rest }).stack with
+        | some (.f64 _, .f64 _, _) => exact ⟨_, _, rfl⟩
+        | some _ => exact ⟨_, _, rfl⟩
+        | none => exact ⟨_, _, rfl⟩
+      | .ptr =>
+        match irPop2? ({ s with code := rest }).stack with
+        | some (.i32 _, .i32 _, _) => exact ⟨_, _, rfl⟩
+        | some _ => exact ⟨_, _, rfl⟩
+        | none => exact ⟨_, _, rfl⟩
+    | .unOp t op =>
+      match t with
+      | .i32 =>
+        match irPop1? ({ s with code := rest }).stack with
+        | some (.i32 _, _) => exact ⟨_, _, rfl⟩
+        | some (.i64 _, stk) =>
+          cases op <;> exact ⟨_, _, rfl⟩
+        | some _ => exact ⟨_, _, rfl⟩
+        | none => exact ⟨_, _, rfl⟩
+      | .i64 =>
+        match irPop1? ({ s with code := rest }).stack with
+        | some (.i64 _, _) => exact ⟨_, _, rfl⟩
+        | some (.i32 _, stk) =>
+          cases op <;> exact ⟨_, _, rfl⟩
+        | some (.f64 _, stk) =>
+          cases op <;> exact ⟨_, _, rfl⟩
+        | none => exact ⟨_, _, rfl⟩
+      | .f64 =>
+        match irPop1? ({ s with code := rest }).stack with
+        | some (.f64 _, _) => exact ⟨_, _, rfl⟩
+        | some (.i32 _, stk) =>
+          cases op <;> exact ⟨_, _, rfl⟩
+        | some (.i64 _, stk) =>
+          cases op <;> exact ⟨_, _, rfl⟩
+        | none => exact ⟨_, _, rfl⟩
+      | .ptr =>
+        match irPop1? ({ s with code := rest }).stack with
+        | some (.i32 _, _) => exact ⟨_, _, rfl⟩
+        | some _ => exact ⟨_, _, rfl⟩
+        | none => exact ⟨_, _, rfl⟩
+    | .load _ offset =>
+      match irPop1? ({ s with code := rest }).stack with
+      | some (.i32 addr, stk) =>
+        cases Nat.decLe (addr.toNat + offset + 4) ({ s with code := rest }).memory.size with
+        | isTrue h => simp [h]; exact ⟨_, _, rfl⟩
+        | isFalse h => simp [Nat.not_le.mp h]; exact ⟨_, _, rfl⟩
+      | some _ => exact ⟨_, _, rfl⟩
+      | none => exact ⟨_, _, rfl⟩
+    | .store _ offset =>
+      match irPop2? ({ s with code := rest }).stack with
+      | some (.i32 _, .i32 addr, stk) =>
+        cases Nat.decLe (addr.toNat + offset + 4) ({ s with code := rest }).memory.size with
+        | isTrue h => simp [h]; exact ⟨_, _, rfl⟩
+        | isFalse h => simp [Nat.not_le.mp h]; exact ⟨_, _, rfl⟩
+      | some _ => exact ⟨_, _, rfl⟩
+      | none => exact ⟨_, _, rfl⟩
+    | .store8 offset =>
+      match irPop2? ({ s with code := rest }).stack with
+      | some (.i32 _, .i32 addr, stk) =>
+        cases Nat.decLt (addr.toNat + offset) ({ s with code := rest }).memory.size with
+        | isTrue h => simp [h]; exact ⟨_, _, rfl⟩
+        | isFalse h => simp [Nat.not_lt.mp h]; exact ⟨_, _, rfl⟩
+      | some _ => exact ⟨_, _, rfl⟩
+      | none => exact ⟨_, _, rfl⟩
+    | .block _ _ => exact ⟨_, _, rfl⟩
+    | .loop _ _ => exact ⟨_, _, rfl⟩
+    | .if_ _ _ _ =>
+      match irPop1? ({ s with code := rest }).stack with
+      | some (.i32 _, _) => exact ⟨_, _, rfl⟩
+      | some _ => exact ⟨_, _, rfl⟩
+      | none => exact ⟨_, _, rfl⟩
+    | .br label =>
+      cases irFindLabel? s.labels label <;> exact ⟨_, _, rfl⟩
+    | .brIf label =>
+      match irPop1? ({ s with code := rest }).stack with
+      | some (.i32 cond, stk) =>
+        cases Nat.decEq cond.toNat 0 with
+        | isTrue _ =>
+          simp_all; exact ⟨_, _, rfl⟩
+        | isFalse _ =>
+          cases irFindLabel? s.labels label <;> exact ⟨_, _, rfl⟩
+      | some _ => exact ⟨_, _, rfl⟩
+      | none => exact ⟨_, _, rfl⟩
+    | .return_ =>
+      match s.frames with
+      | [] => exact ⟨_, _, rfl⟩
+      | [_] => exact ⟨_, _, rfl⟩
+      | _ :: _ :: _ => exact ⟨_, _, rfl⟩
+    | .drop =>
+      match irPop1? ({ s with code := rest }).stack with
+      | some _ => exact ⟨_, _, rfl⟩
+      | none => exact ⟨_, _, rfl⟩
+    | .call funcIdx =>
+      match ({ s with code := rest }).module.functions[funcIdx]? with
+      | none => exact ⟨_, _, rfl⟩
+      | some fn =>
+        match irPopN? ({ s with code := rest }).stack fn.params.length with
+        | none => exact ⟨_, _, rfl⟩
+        | some _ => exact ⟨_, _, rfl⟩
+    | .callIndirect _ =>
+      match irPop1? ({ s with code := rest }).stack with
+      | some (.i32 funcIdx, stk) =>
+        match ({ s with code := rest }).module.functions[funcIdx.toNat]? with
+        | none => exact ⟨_, _, rfl⟩
+        | some fn =>
+          match irPopN? stk fn.params.length with
+          | none => exact ⟨_, _, rfl⟩
+          | some _ => exact ⟨_, _, rfl⟩
+      | some _ => exact ⟨_, _, rfl⟩
+      | none => exact ⟨_, _, rfl⟩
+    | .memoryGrow =>
+      match irPop1? ({ s with code := rest }).stack with
+      | some (.i32 pages, stk) =>
+        cases Nat.decLe (({ s with code := rest }).memory.size + pages.toNat * 65536) (65536 * 65536) with
+        | isTrue h => simp [h]; exact ⟨_, _, rfl⟩
+        | isFalse h => simp [Nat.not_le.mp h]; exact ⟨_, _, rfl⟩
+      | some _ => exact ⟨_, _, rfl⟩
+      | none => exact ⟨_, _, rfl⟩
+  | [] =>
+    match hl : s.labels with
+    | _ :: _ =>
+      right; simp [irStep?, hc, hl]; exact ⟨_, _, rfl⟩
+    | [] =>
+      match hf : s.frames with
+      | [] => left; exact ⟨hc, hl, by simp [hf]⟩
+      | [_] => left; exact ⟨hc, hl, by simp [hf]⟩
+      | _ :: _ :: _ =>
+        right; simp [irStep?, hc, hl, hf]; exact ⟨_, _, rfl⟩
+
+/-- Corollary: if irStep? returns none, the state is halted. -/
+theorem irStep?_none_iff_halted (s : IRExecState) :
+    irStep? s = none ↔ s.halted := by
+  constructor
+  · intro h
+    rcases irStep?_progress s with hh | ⟨t, s', hs⟩
+    · exact hh
+    · rw [h] at hs; exact absurd hs (by simp)
+  · intro h; exact irStep?_halted h
+
+/-! ### IRSteps Append Lemma -/
+
+/-- Append a single step at the end of an IRSteps sequence. -/
+theorem IRSteps_snoc {s1 s2 s3 : IRExecState} {ts : List TraceEvent} {t : TraceEvent}
+    (h1 : IRSteps s1 ts s2) (h2 : IRStep s2 t s3) :
+    IRSteps s1 (ts ++ [t]) s3 :=
+  IRSteps_trans h1 (.tail h2 (.refl _))
+
 end VerifiedJS.Wasm.IR

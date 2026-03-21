@@ -660,25 +660,28 @@ private theorem closureConvert_steps_simulation
 
 private theorem closureConvert_trace_reflection
     (s : Core.Program) (t : Flat.Program)
-    (h : Flat.closureConvert s = .ok t) :
+    (h : Flat.closureConvert s = .ok t)
+    (hnofor : ∀ sc tr, Core.Steps (Core.initialState s) tr sc →
+        (∀ b o f, sc.expr ≠ .forIn b o f) ∧ (∀ b i f, sc.expr ≠ .forOf b i f)) :
     ∀ b, Flat.Behaves t b → Core.Behaves s b := by
   intro b ⟨sf, hsteps, hhalt⟩
   have hinit := closureConvert_init_related s t h
   obtain ⟨sc, hcsteps, hrel⟩ :=
     closureConvert_steps_simulation s t h _ _ _ _ hinit hsteps
-  -- noForInOf invariant: Core.Step does not introduce forIn/forOf.
-  -- TRUE but requires showing the source has no forIn/forOf and stepping preserves this.
-  have hnoFor : (∀ b o f, sc.expr ≠ .forIn b o f) ∧
-                (∀ b i f, sc.expr ≠ .forOf b i f) := sorry
+  have hnoFor := hnofor sc _ hcsteps
   exact ⟨sc, hcsteps,
     closureConvert_halt_preservation s t h _ _ hrel hhalt hnoFor.1 hnoFor.2⟩
 
+/-- Closure conversion preserves behavior, assuming the source program
+    never reaches a forIn/forOf expression (unimplemented in closure conversion). -/
 theorem closureConvert_correct (s : Core.Program) (t : Flat.Program)
-    (h : Flat.closureConvert s = .ok t) :
+    (h : Flat.closureConvert s = .ok t)
+    (hnofor : ∀ sc tr, Core.Steps (Core.initialState s) tr sc →
+        (∀ b o f, sc.expr ≠ .forIn b o f) ∧ (∀ b i f, sc.expr ≠ .forOf b i f)) :
     ∀ b, Flat.Behaves t b → ∃ b', Core.Behaves s b' ∧ b = b' :=
 by
   intro b hb
   refine ⟨b, ?_, rfl⟩
-  exact closureConvert_trace_reflection s t h b hb
+  exact closureConvert_trace_reflection s t h hnofor b hb
 
 end VerifiedJS.Proofs

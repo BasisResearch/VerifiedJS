@@ -36,14 +36,17 @@ The end-to-end theorem chains them: Wasm.Behaves ← ... ← Core.Behaves.
 /-- Partial end-to-end: Flat → Wasm.
     Composes closure conversion (backward) + ANF conversion (backward) +
     optimization (identity) + lowering (forward) + emit (forward).
-    Relates Wasm behavior back to Flat behavior via trace mappings. -/
+    Relates Wasm behavior back to Flat behavior via trace mappings.
+    Precondition: the Core program never reaches forIn/forOf (unimplemented). -/
 theorem flat_to_wasm_correct
     (flat : Flat.Program) (core : Core.Program)
     (anf : ANF.Program) (ir : IR.IRModule) (wasm : Wasm.Module)
     (hcc : Flat.closureConvert core = .ok flat)
     (hanf : ANF.convert flat = .ok anf)
     (hlower : Wasm.lower (ANF.optimize anf) = .ok ir)
-    (hemit : emit ir = .ok wasm) :
+    (hemit : emit ir = .ok wasm)
+    (hnofor : ∀ sc tr, Core.Steps (Core.initialState core) tr sc →
+        (∀ b o f, sc.expr ≠ .forIn b o f) ∧ (∀ b i f, sc.expr ≠ .forOf b i f)) :
     ∀ wasmTrace, Wasm.Behaves wasm wasmTrace →
       -- There exist intermediate traces through the pipeline
       ∃ (irTrace : List IR.TraceEvent),
