@@ -4,6 +4,7 @@
 -/
 
 import VerifiedJS.Wasm.Emit
+import VerifiedJS.Wasm.Semantics
 
 namespace VerifiedJS.Proofs
 
@@ -27,9 +28,19 @@ theorem emit_single_import (m : IR.IRModule) (w : Module)
   · simp at h
   · simp only [Except.ok.injEq] at h; rw [← h]; exact buildModule_imports_size m _
 
--- TODO: State and prove full emit correctness (semantic preservation)
--- theorem emit_correct (s : Wasm.IR.IRModule) (t : Wasm.Module)
---     (h : Wasm.emit s = .ok t) :
---     ∀ trace, IR.Behaves s trace → Wasm.Behaves t trace
+/-! ### Behavioral Correctness: IR.IRBehaves → Wasm.Behaves
+
+The REAL correctness theorem for emit: if the IR module produces a trace,
+the emitted Wasm module produces the corresponding Wasm trace.
+IR uses IR.TraceEvent (log/error/silent/trap); Wasm uses Wasm.TraceEvent (silent/trap).
+Observable events (log/error) become silent at the Wasm level because they are
+implemented via host calls (fd_write). The mapping is via IR.traceListToWasm. -/
+
+/-- Emit preserves behavior: every IR trace maps to a Wasm trace. -/
+theorem emit_behavioral_correct (s : IR.IRModule) (t : Wasm.Module)
+    (h : emit s = .ok t) :
+    ∀ trace, IR.IRBehaves s trace →
+      Wasm.Behaves t (IR.traceListToWasm trace) := by
+  sorry
 
 end VerifiedJS.Proofs
