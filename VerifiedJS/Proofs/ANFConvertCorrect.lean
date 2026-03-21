@@ -93,10 +93,13 @@ private theorem anfConvert_step_star
 private theorem bindComplex_not_trivial (rhs : ANF.ComplexExpr) (k : ANF.Trivial → ANF.ConvM ANF.Expr)
     (n m : Nat) (t : ANF.Trivial) :
     (ANF.bindComplex rhs k).run n ≠ .ok (.trivial t, m) := by
+  show ANF.bindComplex rhs k n ≠ .ok (.trivial t, m)
   simp only [ANF.bindComplex, ANF.freshName, bind, Bind.bind, StateT.bind, Except.bind,
              get, GetElem.getElem, MonadState.get, StateT.get, set, MonadState.set,
-             StateT.set, pure, Pure.pure, StateT.pure, Except.pure]
-  intro habs; exact ANF.Expr.noConfusion (Prod.mk.inj habs).1
+             StateT.set, pure, Pure.pure, StateT.pure, Except.pure, getThe, MonadStateOf.get]
+  cases hk : k (.var (toString "_anf" ++ toString (Nat.repr n))) (n + 1) with
+  | error => simp [hk]
+  | ok v => intro habs; exact ANF.Expr.noConfusion (Prod.mk.inj habs).1
 
 /-- normalizeExpr never produces .trivial when the continuation k never produces .trivial.
     Combined with normalizeExprList and normalizeProps by strong induction on depth. -/
