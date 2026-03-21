@@ -9,6 +9,45 @@ import VerifiedJS.Flat.Semantics
 
 namespace VerifiedJS.Proofs
 
+/-! ### Helper lemmas for list-based constructor cases in step?_none_implies_lit -/
+
+/-- The target returned by firstNonValueExpr is never a literal. -/
+private theorem firstNonValueExpr_not_lit {l : List Flat.Expr} {done target rest}
+    (h : Flat.firstNonValueExpr l = some (done, target, rest)) :
+    ∀ v, target ≠ .lit v := by
+  induction l generalizing done target rest with
+  | nil => simp [Flat.firstNonValueExpr] at h
+  | cons e tl ih =>
+    unfold Flat.firstNonValueExpr at h
+    split at h
+    · -- e = .lit _
+      split at h
+      · next heq => simp at h; obtain ⟨_, rfl, rfl⟩ := h; exact ih heq
+      · simp at h
+    · -- e is not a lit
+      next hne =>
+        simp at h; obtain ⟨_, rfl, _⟩ := h
+        intro v hv; rw [hv] at hne; exact hne ⟨v, rfl⟩
+
+/-- The target returned by firstNonValueProp is never a literal. -/
+private theorem firstNonValueProp_not_lit {l : List (Flat.PropName × Flat.Expr)} {done name target rest}
+    (h : Flat.firstNonValueProp l = some (done, name, target, rest)) :
+    ∀ v, target ≠ .lit v := by
+  induction l generalizing done name target rest with
+  | nil => simp [Flat.firstNonValueProp] at h
+  | cons p tl ih =>
+    obtain ⟨pn, pe⟩ := p
+    unfold Flat.firstNonValueProp at h
+    split at h
+    · -- pe = .lit _
+      split at h
+      · next heq => simp at h; obtain ⟨_, _, rfl, rfl⟩ := h; exact ih heq
+      · simp at h
+    · -- pe is not a lit
+      next hne =>
+        simp at h; obtain ⟨_, _, rfl, _⟩ := h
+        intro v hv; rw [hv] at hne; exact hne ⟨v, rfl⟩
+
 /-- Simulation relation for closure conversion: Flat and Core states
     have matching traces, and expression correspondence through the conversion. -/
 private def CC_SimRel (_s : Core.Program) (_t : Flat.Program)
