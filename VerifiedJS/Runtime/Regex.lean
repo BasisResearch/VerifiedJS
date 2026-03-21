@@ -265,16 +265,19 @@ partial def compilePattern (b : NFABuilder) (p : Pattern) : NFAFragment × NFABu
     REF: Thompson's construction — start from empty builder. -/
 def buildNFA (p : Pattern) : NFA :=
   let b : NFABuilder := { states := #[] }
-  let (frag, b) := compilePattern b p
-  -- Mark the accept state
-  let builderStates := b.states
+  let result : NFAFragment × NFABuilder := compilePattern b p
+  let frag : NFAFragment := result.1
+  let builder : NFABuilder := result.2
+  let builderStates : Array NFAState := builder.states
+  let acceptIdx : Nat := frag.acceptState
+  let startIdx : Nat := frag.startState
   let states : Array NFAState :=
-    if h : frag.acceptState < builderStates.size then
-      let st := builderStates[frag.acceptState]
-      builderStates.set! frag.acceptState { st with isAccept := true }
+    if h : acceptIdx < builderStates.size then
+      let st : NFAState := builderStates[acceptIdx]
+      builderStates.set! acceptIdx { st with isAccept := true }
     else
       builderStates
-  { states := states, start := frag.startState }
+  { states := states, start := startIdx }
 
 /-! ## NFA Simulation (Thompson's algorithm)
 
