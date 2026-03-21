@@ -2226,10 +2226,16 @@ theorem stuck_implies_lit {s : State} (hstuck : step? s = none) :
     | some e =>
       simp only [step?, h] at hstuck; split at hstuck <;> simp at hstuck
       split at hstuck <;> simp at hstuck
-  | all_goals (
-      -- binary, getIndex, setProp, setIndex, objectLit, arrayLit, tryCatch, call
-      -- These have deeper nesting; use sorry for now
-      sorry)
+  -- The remaining constructors have deeply nested match structures.
+  -- Each is provably non-stuck but requires many split/simp steps.
+  | binary _ _ _ => sorry
+  | getIndex _ _ => sorry
+  | setProp _ _ _ => sorry
+  | setIndex _ _ _ => sorry
+  | objectLit _ => sorry
+  | arrayLit _ => sorry
+  | tryCatch _ _ _ _ => sorry
+  | call _ _ => sorry
 
 /-- Behaves implies the final state has a literal expression. -/
 theorem Behaves_final_lit {p : Program} {b : List TraceEvent}
