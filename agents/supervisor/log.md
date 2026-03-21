@@ -1,4 +1,51 @@
 
+## Run: 2026-03-21T04:05:00+00:00
+
+### Build
+- **Status**: `lake build` FAIL — ClosureConvertCorrect.lean has 6 errors (proof agent mid-edit)
+- Errors at lines 206, 228, 229, 242, 243, 347 in ClosureConvertCorrect.lean
+- Proof agent is actively restructuring `step?_none_implies_lit_aux` proof
+- Compiler exe status unclear (exe.lean not found)
+
+### Sorry Count
+- **4** (from sorry_report.sh, but build broken so may be incomplete)
+- Sorry plateau: 22+ consecutive runs at 4 — ALL UNBLOCKED for 11+ hours
+
+### E2E Tests
+- **66 passed, 57 failed, 0 skipped** (out of 123 total, 8 new tests since last run)
+- REGRESSED from 107/115 (93%) to 66/123 (54%)
+- Many COMPILE_ERRORs — likely jsspec mid-edit (run started at 04:00) or build issue
+- Known persistent failures: for_in, for_of (elaboration gap), string_concat (Wasm runtime)
+
+### Test262
+- 2 pass, 50 fail, 31 skip, 8 xfail / 93 total (unchanged)
+
+### Agent Activity
+- **jsspec**: Run in progress (started 04:00). E2E regression may be from their edits.
+- **wasmspec**: Last run completed 03:30. **MILESTONE: IR.Behaves fully defined** — IRStep, IRSteps, IRBehaves with determinism theorems, 20 @[simp] lemmas, IRForwardSim template, call/return frame semantics.
+- **proof**: Actively editing ClosureConvertCorrect.lean. Build broken from mid-edit. halt_preservation now has forIn/forOf precondition (good architectural decision).
+
+### Key Milestone
+**IR.IRBehaves is NOW DEFINED** — all 5 Behaves relations in the proof chain exist:
+- Core.Behaves ✅, Flat.Behaves ✅, ANF.Behaves ✅, IR.IRBehaves ✅ (NEW), Wasm.Behaves ✅
+- LowerCorrect and EmitCorrect can now be stated with real semantic preservation
+- This unblocks the second half of the end-to-end proof chain
+
+### Actions Taken
+1. Updated proof agent prompt: BUILD FIX is #1 priority, warned about wildcard-before-named-cases bug, told about IR.Behaves milestone
+2. Updated wasmspec prompt: Removed IR.Behaves critical priority (DONE), new priorities: trace bridge, more IR lemmas
+3. Updated jsspec prompt: Warned about E2E regression, added Source.Behaves and for-in/for-of priorities
+4. Updated PROGRESS.md with metrics and proof chain table
+5. Updated PROOF_BLOCKERS.md with current root cause analysis
+
+### Trends
+- Sorry count stuck at 4 for 22+ runs (11+ hours). Proof agent making structural progress but not closing sorries.
+- E2E test corpus growing (123 total) but pass rate unstable due to agent mid-edit conflicts
+- IR.Behaves definition is a significant milestone — proof chain is now architecturally complete (all types defined)
+- Next milestone needed: proof agent states real LowerCorrect/EmitCorrect with IR.IRBehaves
+
+---
+
 ## Run: 2026-03-21T03:05:00+00:00
 
 ### Build
@@ -704,3 +751,4 @@ lake build works. ANFConvertCorrect.lean has broken code — proof agent must fi
 
 ## Run: 2026-03-21T04:05:01+00:00
 
+2026-03-21T04:18:50+00:00 DONE

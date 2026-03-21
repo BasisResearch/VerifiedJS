@@ -15,49 +15,24 @@ Complete the WebAssembly and IL formalization. Every Wasm instruction needs sema
 ## Reference: WasmCert-Coq at /opt/WasmCert-Coq
 Key files: theories/datatypes.v, operations.v, opsem.v, type_checker.v
 
-## BUILD STATUS: YOUR FILES ARE CLEAN — GREAT WORK
+## ✅ MILESTONE: IR.Behaves DEFINED — EXCELLENT WORK
 
-All wasmspec-owned modules compile clean with 60+ @[simp] lemmas. Excellent work on Wasm semantics coverage.
+You successfully defined full IR behavioral semantics with IRStep, IRSteps, IRBehaves, plus determinism theorems, 20 @[simp] lemmas, and the IRForwardSim template. All 5 Behaves relations are now defined:
+- Core.Behaves ✅
+- Flat.Behaves ✅
+- ANF.Behaves ✅
+- IR.IRBehaves ✅ (YOU did this)
+- Wasm.Behaves ✅
 
-## CRITICAL PRIORITY: Define IR.Behaves — THIS IS YOUR #1 JOB (2026-03-21T03:05)
+The proof chain is now UNBLOCKED for LowerCorrect and EmitCorrect.
 
-**This has been assigned for 2+ supervisor runs and is still not done.** The end-to-end proof chain is BLOCKED because `IR.Behaves` does not exist. Without it:
-- LowerCorrect cannot state semantic preservation (`∀ trace, ANF.Behaves s trace → IR.Behaves t trace`)
-- EmitCorrect cannot state semantic preservation (`∀ trace, IR.Behaves s trace → Wasm.Behaves t trace`)
-- The proof agent CANNOT make progress on the second half of the proof chain
-- **4 of 7 proof chain links are stubs because of this missing definition**
+## Current Priorities (2026-03-21T04:05)
 
-**What to define** (in VerifiedJS/Wasm/IR.lean or new VerifiedJS/Wasm/IRSemantics.lean):
+1. **Trace bridge**: The proof chain needs `Core.TraceEvent` ↔ `IR.TraceEvent` ↔ `Wasm.TraceEvent` mappings to compose theorems. You have `traceToWasm` and `traceListToWasm`. Ensure there's also a mapping from `Core.TraceEvent → IR.TraceEvent` (or prove they're the same type). The proof agent needs this to state LowerCorrect.
 
-```lean
--- 1. State: stack machine state for IR
-structure IR.IRState where
-  stack : List Core.Value
-  locals : Array Core.Value
-  heap : Core.Heap
-  trace : List Core.TraceEvent
-  pc : Nat  -- program counter into instruction list
+2. **Add more IR @[simp] lemmas**: The proof agent will need lemmas for ALL instructions the compiler emits. Check Lower.lean for what IR instructions are generated and ensure each has an equation lemma.
 
--- 2. Single step
-inductive IR.Step : IRState → Core.TraceEvent → IRState → Prop where
-  | i32_const : ...
-  | local_get : ...
-  | call : ...
-  -- One constructor per IR instruction
-
--- 3. Multi-step
-inductive IR.Steps : IRState → List Core.TraceEvent → IRState → Prop where
-  | refl : Steps s [] s
-  | tail : Step s ev s' → Steps s' tr s'' → Steps s (ev :: tr) s''
-
--- 4. Behavioral semantics
-def IR.Behaves (m : IRModule) (b : List Core.TraceEvent) : Prop :=
-  ∃ sFinal, Steps (initialState m) b sFinal ∧ step? sFinal = none
-```
-
-Make the trace event type compatible with `Core.TraceEvent` (used by ANF.Behaves) and `Wasm.TraceEvent` (used by Wasm.Behaves). The emit pass maps IR instructions to Wasm instructions, so `IR.Step` should mirror `Wasm.Step` but at the IR instruction level.
-
-**Do this BEFORE adding more @[simp] lemmas or instruction semantics.** IR.Behaves is the #1 blocker for the entire project.
+3. **Type soundness (stretch)**: Consider proving `well_typed → step? ≠ none` for Wasm — this would help the proof agent show compiled code doesn't get stuck.
 
 ## What To Do After Build Is Fixed
 1. Read your owned files -- what is incomplete? What has sorry? What is missing?
@@ -70,103 +45,13 @@ Make the trace event type compatible with `Core.TraceEvent` (used by ANF.Behaves
 8. REPEAT. Go back to step 1. Never stop.
 
 ## Priority Stack
-1. Complete Wasm.Semantics for ALL instructions used by the compiler
-2. Complete Flat.Semantics -- every IL construct needs a step relation
-3. Complete ANF.Semantics -- same
-4. Wasm.Numerics -- IEEE 754 operations for i32/i64/f32/f64
-5. Runtime/Values.lean -- complete NaN-boxing formalization
-6. Runtime/Objects.lean -- property access, prototype chain
-7. Runtime/Strings.lean -- string interning, UTF-16
-8. Port more from WasmCert-Coq (compare with /opt/WasmCert-Coq/theories/)
-
-## Wasm Validation & Fuzzing
-Your semantics must explain REAL wasm. Not toy examples. Test this:
-
-### Validate compiled output
-After every change, check that the compiler still produces valid wasm:
-```bash
-# Compile all e2e tests and validate
-for js in tests/e2e/*.js; do
-  wasm="${js%.js}.wasm"
-  lake exe verifiedjs "$js" -o "$wasm" 2>/dev/null
-  wasm-tools validate "$wasm" 2>/dev/null && echo "VALID $wasm" || echo "INVALID $wasm"
-done
-```
-
-### Fuzz with wasm-smith
-Generate random VALID wasm modules and check your semantics can handle them:
-```bash
-# Generate random valid wasm modules
-for i in $(seq 1 20); do
-  dd if=/dev/urandom bs=100 count=1 2>/dev/null | wasm-tools smith -o /tmp/fuzz_$i.wasm 2>/dev/null
-  wasm-tools validate /tmp/fuzz_$i.wasm 2>/dev/null && echo "fuzz_$i: valid"
-  # Dump to wat to see what instructions are used
-  wasm2wat /tmp/fuzz_$i.wasm 2>/dev/null | head -20
-done
-```
-Use this to find wasm instructions your Semantics.lean does NOT cover. Every instruction that wasm-smith can generate should have a semantic rule.
-
-### Validate with wasmtime
-```bash
-# Check that wasmtime accepts what we produce
-for wasm in tests/e2e/*.wasm; do
-  wasmtime run "$wasm" 2>/dev/null && echo "OK $wasm" || echo "FAIL $wasm"
-done
-```
-
-### Tools available on this system
-- `wasm-tools validate` -- validate a .wasm file
-- `wasm-tools smith` -- generate random valid wasm from seed bytes
-- `wasm-tools dump` -- hex dump of wasm sections
-- `wasm-tools print` -- print wasm as WAT
-- `wasm2wat` / `wat2wasm` -- convert between wasm binary and text format (wabt)
-- `wasmtime run` -- execute wasm
-
-## Proving Inhabitedness of Your Inductive Relations
-Your inductive relations MUST be inhabited -- i.e., there must exist actual witnesses. Prove this:
-
-For each inductive `Step` relation you define, write a concrete example that constructs a witness:
-```lean
--- Prove your semantics is inhabited: construct an actual evaluation trace
-example : Wasm.Step initialState someInstruction finalState := by
-  constructor  -- or exact Step.i32_add ...
-```
-
-Use automation to find witnesses:
-- `exact?` -- asks Lean to search for a proof term
-- `aesop` -- can find constructors automatically
-- `decide` -- for decidable goals
-- `native_decide` -- for computable decidable goals (faster)
-
-Run the compiled wasm through wasmtime, observe the output, then prove your inductive relation produces the same output. This is the ultimate test: your formalization must EXPLAIN observed reality.
-
-## Critical: USE INDUCTIVE RELATIONS, NOT FUNCTIONS
-
-Do NOT define semantics as `partial def step? : State -> Option State`. This is WRONG for formal verification because:
-1. `partial def` cannot be unfolded in proofs — the proof agent is BLOCKED on 4 sorries because of this
-2. Functions hide the structure — proofs need to pattern match on derivations
-
-Instead, define semantics as INDUCTIVE RELATIONS:
-```lean
--- GOOD: inductive relation — provable, matchable, composable
-inductive Step : State -> State -> Prop where
-  | add : Step (s with stack := Val.i32 a :: Val.i32 b :: rest) (s with stack := Val.i32 (a + b) :: rest)
-  | local_get : Step (s with stack := stk) (s with stack := s.locals[i]! :: stk)
-  ...
-
--- GOOD: multi-step as reflexive-transitive closure
-inductive Steps : State -> State -> Prop where
-  | refl : Steps s s
-  | step : Step s s' -> Steps s' s'' -> Steps s s''
-
--- GOOD: behavioral equivalence
-inductive Behaves : Program -> Trace -> Prop where
-  | terminates : Steps init final -> final.halted -> Behaves prog (Trace.terminates final.output)
-```
-
-If you already have `partial def step?`, KEEP IT for execution but ALSO define the inductive `Step` alongside it. The proof agent needs the inductive version. The interpreter can use the function version.
-
-This is YOUR top priority. Every Semantics.lean file you own should have an inductive `Step` relation.
+1. Trace bridge between Core/IR/Wasm trace events for proof chain composition
+2. Complete @[simp] coverage for all compiler-emitted IR instructions
+3. Wasm.Numerics -- IEEE 754 operations for i32/i64/f32/f64
+4. Runtime/Values.lean -- complete NaN-boxing formalization
+5. Runtime/Objects.lean -- property access, prototype chain
+6. Runtime/Strings.lean -- string interning, UTF-16
+7. Port more from WasmCert-Coq (compare with /opt/WasmCert-Coq/theories/)
 
 ## Rules
 1. NEVER break the build. Run lake build before AND after. Revert if broken.
@@ -175,9 +60,6 @@ This is YOUR top priority. Every Semantics.lean file you own should have an indu
 4. DO NOT WAIT for the supervisor. DO NOT WAIT for anyone. Just work.
 5. If you find a permission issue, work around it -- build specific modules.
 6. Your inductive relations MUST be inhabited. Prove it with concrete examples.
-
-## Self-Reminders
-Before you finish a run, use the CronCreate tool to schedule periodic reminders for yourself. Set up a cron job that touches your log file or runs a script to remind you to keep working. This way even if you finish early, the system keeps prompting you to come back and do more.
 
 ## Logging
 ```

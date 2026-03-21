@@ -41,7 +41,6 @@ A cron job runs test262 hourly (200 test sample). Read the SUMMARY only:
 - `logs/test262_summary.md` -- categorized failure reasons (READ THIS FIRST, it is short)
 - `logs/test262_failures.txt` -- first 50 failure lines (for specific file names)
 - DO NOT read `logs/test262_latest.txt` -- it is huge and will waste your context
-Use the summary to understand what JS features are failing and prioritize compiler fixes.
 
 ## Secondary: Improve Compiler
 After proving things, also:
@@ -50,53 +49,74 @@ After proving things, also:
 - Handle new JS constructs that jsspec adds (check Core/Syntax.lean for new cases)
 - Make sure all Interp.lean interpreters handle every case (no unimplemented branches)
 
-## CRITICAL: 6 SORRIES — NEW ROOT CAUSE ANALYSIS (2026-03-21T03:05)
+## ⚠️ BUILD IS BROKEN — FIX THIS FIRST (2026-03-21T04:05)
 
-The sorry count went from 4→6 because your restructuring exposed sub-goals. That's OK — you're making structural progress. But 2 of the 6 sorries are **GENUINELY FALSE** and need a different approach.
+ClosureConvertCorrect.lean has MULTIPLE build errors. The build MUST pass before anything else.
 
-### URGENT: closureConvert_halt_preservation forIn/forOf (lines 142-143) are UNSOUND
+Current errors:
+- Line 206: unsolved goals
+- Line 228: Application type mismatch
+- Line 229: rewrite failed — motive not type correct
+- Line 242: Application type mismatch
+- Line 243: rewrite failed — motive not type correct
+- Line 347: omega could not prove the goal
 
-The theorem claims: if Flat halts and CC_SimRel holds, then Core halts.
-But `convertExpr (.forIn iter body fallback)` returns `(.lit .undefined, st)` — a STUB.
-Meanwhile `Core.step? { expr := .forIn iter body fallback, ... }` returns `some _`.
-So the theorem is **FALSE** for programs with forIn/forOf.
+**YOUR #1 PRIORITY IS TO MAKE `lake build` PASS.** If you cannot fix all errors immediately, simplify the proof by reverting broken cases to `sorry` temporarily. A building codebase with sorry is ALWAYS better than a broken build.
 
-**FIX**: Add a precondition to `closureConvert_halt_preservation`:
+### Build Fix Strategy:
+1. For the `step?_none_implies_lit_aux` proof: if cases are broken, replace them with `| _ => all_goals sorry` TEMPORARILY
+2. Ensure NO explicit constructor cases appear AFTER a `| _ =>` wildcard — Lean 4 processes cases in order, so a wildcard catches all remaining constructors
+3. Run `lake build` after EVERY change. Stop when it passes.
+4. Then go back and fix the sorry'd cases one at a time, building after each.
+
+### IMPORTANT: Do NOT put named cases after a wildcard
+In Lean 4's `cases ... with` syntax:
 ```lean
-private theorem closureConvert_halt_preservation
-    (s : Core.Program) (t : Flat.Program)
-    (h : Flat.closureConvert s = .ok t) :
-    ∀ sf sc, CC_SimRel s t sf sc →
-      Flat.step? sf = none →
-      (∀ v, sc.expr ≠ .forIn v _ _ ∧ sc.expr ≠ .forOf v _ _) →  -- ADD THIS
-      Core.step? sc = none := by
+-- WRONG: objectLit has no goal because _ caught it
+| tryCatch ... => ...
+| _ => all_goals sorry   -- catches call, newObj, makeEnv, arrayLit, objectLit, etc.
+| call ... => ...         -- ERROR: No goals to be solved
+| objectLit ... => ...    -- ERROR: No goals to be solved
 ```
-This makes the theorem TRUE. The excluded cases (forIn/forOf) will be handled when closureConvert properly implements them.
 
-Alternatively, update `closureConvert_correct` to have the same precondition — the end-to-end chain will need it until forIn/forOf is properly converted.
+```lean
+-- RIGHT: explicit cases first, wildcard last
+| tryCatch ... => ...
+| call ... => ...
+| objectLit ... => ...
+| _ => all_goals sorry   -- catches only truly unhandled cases
+```
 
-### Priority order (updated):
+## Sorry Status (4 sorries when build passes):
 
-1. **FIX halt_preservation soundness** (lines 142-143) — add precondition or fix closureConvert. Cannot count unsound sorry as progress.
-2. **Finish step?_none_implies_lit_aux** (line 114) — you handled 10+ cases, remaining compound exprs should follow same pattern (IH + contradiction with exprValue?)
-3. **Finish anfConvert_halt_star** (line 127) — lit case done, for each remaining Flat.Expr constructor show normalizeExpr produces non-stuck ANF → contradiction with hhalt
-4. **anfConvert_step_star** (line 84) — hardest, continue after others are done
-5. **closureConvert_step_simulation** (line 50) — hardest, continue after others are done
+### Remaining sorry locations:
+1. **closureConvert_step_simulation** — one-step simulation (HARDEST)
+2. **closureConvert_trace_reflection** — forIn/forOf precondition (needs NoForInForOf invariant)
+3. **anfConvert_step_star** — ANF one-step stuttering simulation (HARDEST)
+4. **anfConvert_halt_star** — non-lit cases (most cases should be contradictions)
 
-### Concrete tactic hints for step?_none_implies_lit_aux remaining cases:
+### GENUINELY FALSE: closureConvert_halt_preservation forIn/forOf
 
-The `| _ => all_goals sorry` at line 114 covers compound cases. For each:
-- `assign`, `binary`, `unary`, `call`, `arrayLit`, `objectLit`, `if_`, `functionDef`, `tryCatch (some f)`, `delete`, `typeof_`:
-  These all have `depth > 0` (handled by `succ k` case). Unfold `Flat.step?`, show it returns `some _` (not none), contradiction with `h`.
-  Pattern: `exfalso; unfold Flat.step? at h; split at h <;> simp at h` (possibly with IH for sub-cases)
+The theorem is FALSE for programs with forIn/forOf because `convertExpr (.forIn ...)` returns `(.lit .undefined, st)` (stub) but `Core.step? (.forIn ...)` returns `some _`.
 
-### Do NOT add more E2E tests or compiler features. ONLY prove sorries.
+**Your fix (already applied)**: preconditions excluding forIn/forOf. Now you need to prove `closureConvert_trace_reflection` by showing the Core program at halt point has no forIn/forOf — either via an invariant on Core.Steps or by restricting the top-level theorem.
+
+## MILESTONE: IR.Behaves NOW EXISTS
+
+wasmspec defined full IR behavioral semantics in Wasm/Semantics.lean:
+- `IR.IRStep`, `IR.IRSteps`, `IR.IRBehaves` — all defined with no sorry
+- `IRStep_deterministic`, `IRSteps_trans`, `IRBehaves_deterministic` — proved
+- 20 @[simp] equation lemmas for irStep? covering all common IR instructions
+- `IRForwardSim` template structure for simulation proofs
+
+**This means you can now:**
+1. State REAL LowerCorrect: `∀ trace, ANF.Behaves s trace → IR.IRBehaves t trace`
+2. State REAL EmitCorrect: `∀ trace, IR.IRBehaves s trace → Wasm.Behaves t (traceListToWasm trace)`
+3. Start building the EndToEnd proof chain
+
+**After fixing the build, your NEXT priority should be stating these theorems** (even with sorry proofs) so the proof chain structure is visible.
 
 ## Proof Strategy -- USE AUTOMATION FIRST
-
-The project uses Aesop (rule-based automation) and has access to grind. USE THEM. Do not waste time on manual proofs when automation can handle it.
-
-### Step 1: Try automated tactics AGGRESSIVELY on every sorry
 
 Try IN THIS ORDER on every goal:
 1. `grind` -- congruence closure + case splitting. Try FIRST.
@@ -106,66 +126,18 @@ Try IN THIS ORDER on every goal:
 5. `simp [lemma1, lemma2]` -- simplification with specific lemmas.
 6. `simp_all` -- simplify everything in context.
 
-### Break goals down, then automate each piece:
-```lean
--- Split conjunctions, then automate each subgoal:
-constructor
-· grind
-· aesop
-
--- Case split, then automate:
-cases h with
-| inl h => grind
-| inr h => aesop
-
--- Introduce, then automate:
-intro h
-grind
-```
-
 DO NOT write manual proof terms unless ALL of the above fail on ALL subgoals.
-
-### Step 2: Break down goals for automation
-If the full goal fails, break it down:
-```
-constructor        -- split And goals
-· grind            -- subgoal 1
-· aesop            -- subgoal 2
-intro h            -- peel off forall
-cases h with       -- case split
-| case1 => grind
-| case2 => grind
-```
-
-### Step 3: Manual only as LAST resort
-Only write manual proof terms if ALL of the above fail. Even then, try `grind` on subgoals.
 
 ### Anti-patterns to AVOID
 - Do NOT write 20-line manual proofs when `grind` closes it in one line
 - Duper has been REMOVED from deps. Do NOT import Duper. Use grind, aesop, omega, simp instead.
-- Do NOT use `sorry` without first trying ALL automated tactics
 - Do NOT prove trivial structural properties and call them "correctness theorems"
 
 ### What counts as a REAL correctness theorem
-A correctness theorem must relate the BEHAVIOR of the input program to the BEHAVIOR of the output.
+A correctness theorem must relate BEHAVIOR of input to BEHAVIOR of output.
 
-GOOD (semantic preservation):
-```
-theorem lower_correct (s : ANF.Program) (t : Wasm.IR.IRModule)
-    (h : Wasm.lower s = .ok t) :
-    forall trace, ANF.Behaves s trace -> Wasm.IR.Behaves t trace
-```
-
-BAD (trivial structural fact, tells you nothing about correctness):
-```
-theorem lower_correct ... : t.startFunc = none
-theorem lower_exports_correct ... : t.exports.length > 0
-theorem lower_memory_correct ... : t.memory = some (1, none)
-```
-
-These "theorems" are horseshit. They say the output has certain fields set to certain values. That is not a proof of anything. A compiler that outputs `nop` would satisfy all of them.
-
-The real question is always: does `eval(compile(program)) = eval(program)`? State THAT and prove THAT.
+GOOD: `∀ trace, ANF.Behaves s trace → IR.IRBehaves t trace`
+BAD: `t.startFunc = none` (tells nothing about correctness)
 
 ## Rules
 1. NEVER break the build. NEVER. Run lake build before AND after. Revert immediately if broken.
@@ -174,11 +146,8 @@ The real question is always: does `eval(compile(program)) = eval(program)`? Stat
 4. Prefer short, maintainable proofs.
 5. DO NOT WAIT for the supervisor. DO NOT WAIT for anyone. Just prove things.
 6. Check if jsspec/wasmspec changed any Syntax/Semantics files -- update your passes to match.
-7. DO NOT GIVE UP on hard proofs. If ClosureConvertCorrect needs 600 lines of case analysis, WRITE 600 LINES. That is literally your job. Do not say "this is hard" and go do something easy instead. Attack the hardest sorry first. If you can't close it in one run, make PROGRESS on it — prove helper lemmas, establish the simulation relation, handle some cases. Leave the remaining cases as sorry with clear notes.
-8. The build MUST pass. If ANFConvertCorrect.lean is broken, FIX IT FIRST before doing anything else.
-
-## Self-Reminders
-Before you finish a run, use the CronCreate tool to schedule periodic reminders for yourself. Set up a cron job that touches your log file or runs a script to remind you to keep working. Example: create a cron that runs every 30 minutes to remind you about pending sorries. This way even if you finish early, the system keeps prompting you to come back and do more.
+7. DO NOT GIVE UP on hard proofs. Attack the hardest sorry first.
+8. The build MUST pass. Fix build errors FIRST before doing anything else.
 
 ## Logging
 ```

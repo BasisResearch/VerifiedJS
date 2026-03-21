@@ -2660,6 +2660,26 @@ def irStep? (s : IRExecState) : Option (TraceEvent × IRExecState) :=
       | .binOp .i32 op =>
           match irPop2? base.stack with
           | some (.i32 rhs, .i32 lhs, stk) =>
+              -- Trapping ops (div/rem by zero) — REF: Wasm §4.3.2
+              match op with
+              | "div_s" =>
+                  match Numerics.i32DivS? lhs rhs with
+                  | some r => some (.silent, irPushTrace { base with stack := .i32 r :: stk } .silent)
+                  | none => some (irTrapState base "integer divide by zero")
+              | "div_u" =>
+                  match Numerics.i32DivU? lhs rhs with
+                  | some r => some (.silent, irPushTrace { base with stack := .i32 r :: stk } .silent)
+                  | none => some (irTrapState base "integer divide by zero")
+              | "rem_s" =>
+                  match Numerics.i32RemS? lhs rhs with
+                  | some r => some (.silent, irPushTrace { base with stack := .i32 r :: stk } .silent)
+                  | none => some (irTrapState base "integer divide by zero")
+              | "rem_u" =>
+                  match Numerics.i32RemU? lhs rhs with
+                  | some r => some (.silent, irPushTrace { base with stack := .i32 r :: stk } .silent)
+                  | none => some (irTrapState base "integer divide by zero")
+              | _ =>
+              -- Total ops (always succeed)
               let result := match op with
                 | "add" => IRValue.i32 (Numerics.i32Add lhs rhs)
                 | "sub" => IRValue.i32 (Numerics.i32Sub lhs rhs)
@@ -2670,6 +2690,8 @@ def irStep? (s : IRExecState) : Option (TraceEvent × IRExecState) :=
                 | "shl" => IRValue.i32 (Numerics.i32Shl lhs rhs)
                 | "shr_s" => IRValue.i32 (Numerics.i32ShrS lhs rhs)
                 | "shr_u" => IRValue.i32 (Numerics.i32ShrU lhs rhs)
+                | "rotl" => IRValue.i32 (Numerics.i32Rotl lhs rhs)
+                | "rotr" => IRValue.i32 (Numerics.i32Rotr lhs rhs)
                 | "eq"  => irBoolToI32 (Numerics.i32Eq lhs rhs)
                 | "ne"  => irBoolToI32 (Numerics.i32Ne lhs rhs)
                 | "lt_s" => irBoolToI32 (Numerics.i32Lts lhs rhs)
@@ -2688,10 +2710,48 @@ def irStep? (s : IRExecState) : Option (TraceEvent × IRExecState) :=
       | .binOp .i64 op =>
           match irPop2? base.stack with
           | some (.i64 rhs, .i64 lhs, stk) =>
+              -- Trapping ops (div/rem by zero) — REF: Wasm §4.3.2
+              match op with
+              | "div_s" =>
+                  match Numerics.i64DivS? lhs rhs with
+                  | some r => some (.silent, irPushTrace { base with stack := .i64 r :: stk } .silent)
+                  | none => some (irTrapState base "integer divide by zero")
+              | "div_u" =>
+                  match Numerics.i64DivU? lhs rhs with
+                  | some r => some (.silent, irPushTrace { base with stack := .i64 r :: stk } .silent)
+                  | none => some (irTrapState base "integer divide by zero")
+              | "rem_s" =>
+                  match Numerics.i64RemS? lhs rhs with
+                  | some r => some (.silent, irPushTrace { base with stack := .i64 r :: stk } .silent)
+                  | none => some (irTrapState base "integer divide by zero")
+              | "rem_u" =>
+                  match Numerics.i64RemU? lhs rhs with
+                  | some r => some (.silent, irPushTrace { base with stack := .i64 r :: stk } .silent)
+                  | none => some (irTrapState base "integer divide by zero")
+              | _ =>
+              -- Total ops (always succeed)
               let result := match op with
                 | "add" => IRValue.i64 (Numerics.i64Add lhs rhs)
                 | "sub" => IRValue.i64 (Numerics.i64Sub lhs rhs)
                 | "mul" => IRValue.i64 (Numerics.i64Mul lhs rhs)
+                | "and" => IRValue.i64 (Numerics.i64And lhs rhs)
+                | "or"  => IRValue.i64 (Numerics.i64Or lhs rhs)
+                | "xor" => IRValue.i64 (Numerics.i64Xor lhs rhs)
+                | "shl" => IRValue.i64 (Numerics.i64Shl lhs rhs)
+                | "shr_s" => IRValue.i64 (Numerics.i64ShrS lhs rhs)
+                | "shr_u" => IRValue.i64 (Numerics.i64ShrU lhs rhs)
+                | "rotl" => IRValue.i64 (Numerics.i64Rotl lhs rhs)
+                | "rotr" => IRValue.i64 (Numerics.i64Rotr lhs rhs)
+                | "eq"  => irBoolToI32 (Numerics.i64Eq lhs rhs)
+                | "ne"  => irBoolToI32 (Numerics.i64Ne lhs rhs)
+                | "lt_s" => irBoolToI32 (Numerics.i64Lts lhs rhs)
+                | "lt_u" => irBoolToI32 (Numerics.i64Ltu lhs rhs)
+                | "gt_s" => irBoolToI32 (Numerics.i64Gts lhs rhs)
+                | "gt_u" => irBoolToI32 (Numerics.i64Gtu lhs rhs)
+                | "le_s" => irBoolToI32 (Numerics.i64Les lhs rhs)
+                | "le_u" => irBoolToI32 (Numerics.i64Leu lhs rhs)
+                | "ge_s" => irBoolToI32 (Numerics.i64Ges lhs rhs)
+                | "ge_u" => irBoolToI32 (Numerics.i64Geu lhs rhs)
                 | _ => IRValue.i64 0
               some (.silent, irPushTrace { base with stack := result :: stk } .silent)
           | some _ => some (irTrapState base s!"type mismatch in i64.{op}")
@@ -3087,6 +3147,81 @@ theorem IRSteps_snoc {s1 s2 s3 : IRExecState} {ts : List TraceEvent} {t : TraceE
 @[simp] theorem traceListToWasm_append (t1 t2 : List TraceEvent) :
     traceListToWasm (t1 ++ t2) = traceListToWasm t1 ++ traceListToWasm t2 := by
   simp [traceListToWasm, List.map_append]
+
+/-! ### Core ↔ IR Trace Event Mappings (for LowerCorrect proof chain)
+
+The lowering pass bridges ANF (which uses Core.TraceEvent) to IR (which uses IR.TraceEvent).
+These mappings allow LowerCorrect to relate the two trace types. -/
+
+/-- Map a Core.TraceEvent to an IR.TraceEvent.
+    Used by LowerCorrect: ∀ trace, ANF.Behaves s trace → IR.Behaves t (map traceFromCore trace).
+    REF: Core.TraceEvent has log/error/silent; IR.TraceEvent adds trap. -/
+def traceFromCore : Core.TraceEvent → TraceEvent
+  | .log s => .log s
+  | .error s => .error s
+  | .silent => .silent
+
+/-- Map an IR.TraceEvent back to a Core.TraceEvent (lossy: trap maps to error).
+    Used when relating IR traces back to source-level traces. -/
+def traceToCore : TraceEvent → Core.TraceEvent
+  | .silent => .silent
+  | .trap msg => .error msg
+  | .log s => .log s
+  | .error s => .error s
+
+/-- Map a full Core trace to an IR trace. -/
+def traceListFromCore : List Core.TraceEvent → List TraceEvent :=
+  List.map traceFromCore
+
+/-- Map a full IR trace to a Core trace (lossy). -/
+def traceListToCore : List TraceEvent → List Core.TraceEvent :=
+  List.map traceToCore
+
+/-! #### Core ↔ IR Trace Mapping Lemmas -/
+
+@[simp] theorem traceFromCore_silent : traceFromCore .silent = .silent := rfl
+@[simp] theorem traceFromCore_log (s : String) : traceFromCore (.log s) = .log s := rfl
+@[simp] theorem traceFromCore_error (s : String) : traceFromCore (.error s) = .error s := rfl
+
+@[simp] theorem traceToCore_silent : traceToCore .silent = .silent := rfl
+@[simp] theorem traceToCore_trap (msg : String) : traceToCore (.trap msg) = .error msg := rfl
+@[simp] theorem traceToCore_log (s : String) : traceToCore (.log s) = .log s := rfl
+@[simp] theorem traceToCore_error (s : String) : traceToCore (.error s) = .error s := rfl
+
+@[simp] theorem traceListFromCore_nil : traceListFromCore [] = [] := rfl
+@[simp] theorem traceListFromCore_cons (t : Core.TraceEvent) (ts : List Core.TraceEvent) :
+    traceListFromCore (t :: ts) = traceFromCore t :: traceListFromCore ts := rfl
+
+@[simp] theorem traceListFromCore_append (t1 t2 : List Core.TraceEvent) :
+    traceListFromCore (t1 ++ t2) = traceListFromCore t1 ++ traceListFromCore t2 := by
+  simp [traceListFromCore, List.map_append]
+
+@[simp] theorem traceListToCore_nil : traceListToCore [] = [] := rfl
+@[simp] theorem traceListToCore_cons (t : TraceEvent) (ts : List TraceEvent) :
+    traceListToCore (t :: ts) = traceToCore t :: traceListToCore ts := rfl
+
+@[simp] theorem traceListToCore_append (t1 t2 : List TraceEvent) :
+    traceListToCore (t1 ++ t2) = traceListToCore t1 ++ traceListToCore t2 := by
+  simp [traceListToCore, List.map_append]
+
+/-- Round-trip: Core → IR → Core is identity (no traps introduced by conversion). -/
+@[simp] theorem traceToCore_traceFromCore (t : Core.TraceEvent) :
+    traceToCore (traceFromCore t) = t := by
+  cases t <;> rfl
+
+/-- Round-trip for lists: Core → IR → Core is identity. -/
+@[simp] theorem traceListToCore_traceListFromCore (ts : List Core.TraceEvent) :
+    traceListToCore (traceListFromCore ts) = ts := by
+  simp [traceListToCore, traceListFromCore, List.map_map, Function.comp]
+
+/-- Composing Core→IR→Wasm trace maps: traceToWasm ∘ traceFromCore.
+    Observable events (log/error) become silent at the Wasm level. -/
+@[simp] theorem traceToWasm_traceFromCore (t : Core.TraceEvent) :
+    traceToWasm (traceFromCore t) = match t with
+      | .silent => .silent
+      | .log _ => .silent
+      | .error _ => .silent := by
+  cases t <;> rfl
 
 /-! ### Simulation Framework for Proof Chain
 

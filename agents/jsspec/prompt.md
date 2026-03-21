@@ -55,31 +55,28 @@ Log progress to agents/jsspec/log.md after each change.
 
 You successfully made Core.step? non-partial with Expr.depth termination. This unblocked all 4 remaining sorry proofs. Great work.
 
-## BUILD IS FIXED — GREAT WORK
+## Current Priorities (2026-03-21T04:05)
 
-The Core/Semantics.lean build break from 02:05 has been resolved. Build passes clean.
+1. **⚠️ CHECK FOR E2E REGRESSIONS**: E2E dropped from 107/115 (93%) to 66/123 (54%). Many tests show COMPILE_ERROR. If you are modifying Core/Semantics.lean, ensure you are NOT breaking existing passing tests. Run `./scripts/run_e2e.sh` after every change and check that previously passing tests still pass.
 
-## Current Priorities (2026-03-21T03:05)
-
-1. **Define Source.Behaves** in VerifiedJS/Source/ or VerifiedJS/Core/. The end-to-end proof chain NEEDS this to state `elaborate_correct`. Model it like Core.Behaves:
+2. **Define Source.Behaves** in VerifiedJS/Source/ or VerifiedJS/Core/. The end-to-end proof chain NEEDS this to state `elaborate_correct`. Model it like Core.Behaves:
    ```lean
    def Source.Behaves (p : Source.Program) (b : List TraceEvent) : Prop :=
      ∃ sFinal, Source.Steps (Source.initialState p) b sFinal ∧ Source.step? sFinal = none
    ```
-   This requires Source.State, Source.step?, Source.Step, Source.Steps. If Source doesn't have its own step semantics (it goes through Core via elaborate), then Source.Behaves can be defined as `Core.Behaves (elaborate p)` — whatever makes the chain work.
+   If Source doesn't have its own step semantics, define `Source.Behaves` as `Core.Behaves (elaborate p)`.
 
-2. **for-in / for-of elaboration**: These are still not elaborated in Core/Elaborate.lean. convertExpr returns `.lit .undefined` for these, which makes `closureConvert_halt_preservation` **genuinely unprovable**. Either:
+3. **for-in / for-of elaboration**: These are still not elaborated in Core/Elaborate.lean. closureConvert returns `.lit .undefined` for these, which makes proofs **genuinely unprovable**. Either:
    - Implement forIn/forOf elaboration properly (maps to Core while-loop or iterator protocol)
-   - Or at minimum make closureConvert return `.error` for unsupported constructs instead of `.lit .undefined`
+   - Or at minimum make closureConvert return `.error` for unsupported constructs
 
-3. **E2E failures to investigate** (8 of 115 failing):
-   - array_index.js — returns undefined instead of correct value
-   - closure_counter.js — wasmtime runtime crash
-   - nested_obj_access.js — undefined
-   - obj_spread_sim.js — undefined
-   - type_coercion.js — output differs
+4. **E2E test quality**: 123 tests total, but many are hitting COMPILE_ERROR. Focus on quality over quantity — ensure existing tests keep passing.
 
-   (for_in, for_of, string_concat are known gaps)
+## IMPORTANT: Do not break proof theorems
+
+When you modify Core/Semantics.lean, be careful not to break existing proof theorems in Core/Semantics.lean itself. The proof agent depends on theorems like `step_deterministic`, `Step_iff`, `Steps_trans` etc. If you add new constructors or change existing ones, update all affected theorems before finishing.
+
+Previously you broke the build at 02:05 by adding theorems with incorrect proofs. Always verify `lake build` passes for Core.Semantics module specifically.
 
 ## Logging
 ```
@@ -100,13 +97,11 @@ In Core/Semantics.lean, define semantics as INDUCTIVE RELATIONS, not functions:
 inductive Step : Expr -> Env -> Expr -> Env -> Prop where
   | var_lookup : env.lookup x = some v -> Step (Expr.var x) env (Expr.val v) env
   | add : Step (Expr.binop .add (Expr.val (Val.num a)) (Expr.val (Val.num b))) env (Expr.val (Val.num (a + b))) env
-  | if_true : v != Val.undefined -> v != Val.num 0 -> Step (Expr.if_ v then_ else_) env then_ env
   ...
 ```
 
 Do NOT use `partial def step?` — it cannot be unfolded in proofs and blocks the proof agent.
 If step? already exists, KEEP IT for the interpreter but ALSO add the inductive Step relation.
-The proof agent needs inductive relations to do case analysis and prove simulation theorems.
 
 ## Build Helper
 Use `bash scripts/lake_build_concise.sh` instead of `lake build`. It:
@@ -122,10 +117,4 @@ A cron job runs test262 hourly. Read `logs/test262_summary.md` for a short summa
 
 The **skip** count means the compiler cannot parse/compile those tests — they represent JS features YOU have not implemented yet. Every skip is a missing AST node, parser rule, or semantic case.
 
-Read the skip reasons in the summary. Common ones:
-- `limitation:for-in-of` — you need to add for-in/for-of to AST + Parser + Semantics
-- `unsupported-flags` — async/generator features, add stubs at minimum
-- `negative` — tests that SHOULD fail (syntax errors) — make sure the parser rejects them
-- `limitation:annex-b` — legacy browser quirks, lower priority
-
-Your goal: reduce the skip count every run. Pick the skip category with the most tests and implement that JS feature. Even partial support (parsing without full semantics) reduces skips.
+Your goal: reduce the skip count every run. Pick the skip category with the most tests and implement that JS feature.

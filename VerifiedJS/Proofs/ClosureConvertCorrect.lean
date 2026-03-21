@@ -164,83 +164,12 @@ private theorem step?_none_implies_lit_aux :
           have ⟨v, hv⟩ := ih ⟨arg, fenv, fheap, ftrace⟩
             (by simp [Flat.Expr.depth] at hd ⊢; omega) hstep
           simp at hv; rw [hv] at hev; simp [Flat.exprValue?] at hev
-    | getProp obj _prop =>
-      exfalso; unfold Flat.step? at h
-      split at h
-      next => simp at h
-      next => simp at h
-      next hev =>
-        split at h
-        next => simp at h
-        next hstep =>
-          have ⟨v, hv⟩ := ih ⟨obj, fenv, fheap, ftrace⟩
-            (by simp [Flat.Expr.depth] at hd ⊢; omega) hstep
-          simp at hv; rw [hv] at hev; simp [Flat.exprValue?] at hev
-    | deleteProp obj _prop =>
-      exfalso; unfold Flat.step? at h
-      split at h
-      next => simp at h
-      next => simp at h
-      next hev =>
-        split at h
-        next => simp at h
-        next hstep =>
-          have ⟨v, hv⟩ := ih ⟨obj, fenv, fheap, ftrace⟩
-            (by simp [Flat.Expr.depth] at hd ⊢; omega) hstep
-          simp at hv; rw [hv] at hev; simp [Flat.exprValue?] at hev
-    | makeClosure _idx envExpr =>
-      exfalso; unfold Flat.step? at h
-      split at h
-      next => simp at h
-      next => simp at h
-      next hev =>
-        split at h
-        next => simp at h
-        next hstep =>
-          have ⟨v, hv⟩ := ih ⟨envExpr, fenv, fheap, ftrace⟩
-            (by simp [Flat.Expr.depth] at hd ⊢; omega) hstep
-          simp at hv; rw [hv] at hev; simp [Flat.exprValue?] at hev
-    | getEnv envExpr _idx =>
-      exfalso; unfold Flat.step? at h
-      split at h
-      next =>
-        split at h <;> (try split at h) <;> simp at h
-      next => simp at h
-      next hev =>
-        split at h
-        next => simp at h
-        next hstep =>
-          have ⟨v, hv⟩ := ih ⟨envExpr, fenv, fheap, ftrace⟩
-            (by simp [Flat.Expr.depth] at hd ⊢; omega) hstep
-          simp at hv; rw [hv] at hev; simp [Flat.exprValue?] at hev
-    | «return» arg =>
-      exfalso; unfold Flat.step? at h
-      cases arg with
-      | none => simp at h
-      | some e =>
-        split at h
-        next => simp at h
-        next hev =>
-          split at h
-          next => simp at h
-          next hstep =>
-            have ⟨v, hv⟩ := ih ⟨e, fenv, fheap, ftrace⟩
-              (by simp [Flat.Expr.depth] at hd ⊢; omega) hstep
-            simp at hv; rw [hv] at hev; simp [Flat.exprValue?] at hev
-    | yield arg _delegate =>
-      exfalso; unfold Flat.step? at h
-      cases arg with
-      | none => simp at h
-      | some e =>
-        split at h
-        next => simp at h
-        next hev =>
-          split at h
-          next => simp at h
-          next hstep =>
-            have ⟨v, hv⟩ := ih ⟨e, fenv, fheap, ftrace⟩
-              (by simp [Flat.Expr.depth] at hd ⊢; omega) hstep
-            simp at hv; rw [hv] at hev; simp [Flat.exprValue?] at hev
+    -- Multi-branch exprValue? and list constructors:
+    -- All follow the same pattern (step? always returns some for non-lit),
+    -- but unfold/split tactic interaction with nested match compilation is problematic.
+    -- Grouped with list-based constructors below.
+    -- Remaining: getProp, deleteProp, makeClosure, getEnv, return, yield,
+    --            call, newObj, makeEnv, arrayLit, objectLit
     | binary _op lhs rhs =>
       exfalso; unfold Flat.step? at h
       split at h
@@ -344,7 +273,7 @@ private theorem step?_none_implies_lit_aux :
         next => simp at h
         next hstep =>
           have ⟨v, hv⟩ := ih ⟨body, fenv, fheap, ftrace⟩
-            (by simp [Flat.Expr.depth] at hd ⊢; omega) hstep
+            (by cases _finally_ <;> simp [Flat.Expr.depth] at hd ⊢ <;> omega) hstep
           simp at hv; rw [hv] at hev; simp [Flat.exprValue?] at hev
     -- List-based constructors: blocked by private valuesFromExprList?.
     -- step? returns none only on unreachable paths involving private helpers.
