@@ -2438,6 +2438,292 @@ private theorem withI32Rel_some (s : ExecState) (op : UInt32 → UInt32 → Bool
     ∃ t s', withI32Rel s op name = some (t, s') := by
   simp [withI32Rel, pop2?, hstk]
 
+/-! ## i64 bitwise @[simp] lemmas (used by Emit.lean) -/
+
+/-- i64.and on two i64 values. -/
+@[simp]
+theorem step?_i64And (s : ExecState) (a b : UInt64) (stk : List WasmValue) (rest : List Instr) :
+    step? { s with code := .i64And :: rest, stack := .i64 b :: .i64 a :: stk } =
+      some (.silent, pushTrace { s with code := rest, stack := .i64 (Numerics.i64And a b) :: stk } .silent) := by
+  unfold step?; simp [withI64Bin, pop2?]
+
+/-- i64.or on two i64 values. -/
+@[simp]
+theorem step?_i64Or (s : ExecState) (a b : UInt64) (stk : List WasmValue) (rest : List Instr) :
+    step? { s with code := .i64Or :: rest, stack := .i64 b :: .i64 a :: stk } =
+      some (.silent, pushTrace { s with code := rest, stack := .i64 (Numerics.i64Or a b) :: stk } .silent) := by
+  unfold step?; simp [withI64Bin, pop2?]
+
+/-- i64.xor on two i64 values. -/
+@[simp]
+theorem step?_i64Xor (s : ExecState) (a b : UInt64) (stk : List WasmValue) (rest : List Instr) :
+    step? { s with code := .i64Xor :: rest, stack := .i64 b :: .i64 a :: stk } =
+      some (.silent, pushTrace { s with code := rest, stack := .i64 (Numerics.i64Xor a b) :: stk } .silent) := by
+  unfold step?; simp [withI64Bin, pop2?]
+
+/-- i64.shl on two i64 values. -/
+@[simp]
+theorem step?_i64Shl (s : ExecState) (a b : UInt64) (stk : List WasmValue) (rest : List Instr) :
+    step? { s with code := .i64Shl :: rest, stack := .i64 b :: .i64 a :: stk } =
+      some (.silent, pushTrace { s with code := rest, stack := .i64 (Numerics.i64Shl a b) :: stk } .silent) := by
+  unfold step?; simp [withI64Bin, pop2?]
+
+/-- i64.shr_s on two i64 values. -/
+@[simp]
+theorem step?_i64ShrS (s : ExecState) (a b : UInt64) (stk : List WasmValue) (rest : List Instr) :
+    step? { s with code := .i64ShrS :: rest, stack := .i64 b :: .i64 a :: stk } =
+      some (.silent, pushTrace { s with code := rest, stack := .i64 (Numerics.i64ShrS a b) :: stk } .silent) := by
+  unfold step?; simp [withI64Bin, pop2?]
+
+/-- i64.shr_u on two i64 values. -/
+@[simp]
+theorem step?_i64ShrU (s : ExecState) (a b : UInt64) (stk : List WasmValue) (rest : List Instr) :
+    step? { s with code := .i64ShrU :: rest, stack := .i64 b :: .i64 a :: stk } =
+      some (.silent, pushTrace { s with code := rest, stack := .i64 (Numerics.i64ShrU a b) :: stk } .silent) := by
+  unfold step?; simp [withI64Bin, pop2?]
+
+/-! ## i64 relational @[simp] lemmas (used by Emit.lean) -/
+
+/-- i64.eq comparison. -/
+@[simp]
+theorem step?_i64Eq (s : ExecState) (a b : UInt64) (stk : List WasmValue) (rest : List Instr) :
+    step? { s with code := .i64Eq :: rest, stack := .i64 b :: .i64 a :: stk } =
+      some (.silent, pushTrace { s with code := rest, stack := boolToI32 (Numerics.i64Eq a b) :: stk } .silent) := by
+  unfold step?; simp [withI64Rel, pop2?]
+
+/-- i64.ne comparison. -/
+@[simp]
+theorem step?_i64Ne (s : ExecState) (a b : UInt64) (stk : List WasmValue) (rest : List Instr) :
+    step? { s with code := .i64Ne :: rest, stack := .i64 b :: .i64 a :: stk } =
+      some (.silent, pushTrace { s with code := rest, stack := boolToI32 (Numerics.i64Ne a b) :: stk } .silent) := by
+  unfold step?; simp [withI64Rel, pop2?]
+
+/-- i64.lt_s comparison. -/
+@[simp]
+theorem step?_i64Lts (s : ExecState) (a b : UInt64) (stk : List WasmValue) (rest : List Instr) :
+    step? { s with code := .i64Lts :: rest, stack := .i64 b :: .i64 a :: stk } =
+      some (.silent, pushTrace { s with code := rest, stack := boolToI32 (Numerics.i64Lts a b) :: stk } .silent) := by
+  unfold step?; simp [withI64Rel, pop2?]
+
+/-- i64.gt_s comparison. -/
+@[simp]
+theorem step?_i64Gts (s : ExecState) (a b : UInt64) (stk : List WasmValue) (rest : List Instr) :
+    step? { s with code := .i64Gts :: rest, stack := .i64 b :: .i64 a :: stk } =
+      some (.silent, pushTrace { s with code := rest, stack := boolToI32 (Numerics.i64Gts a b) :: stk } .silent) := by
+  unfold step?; simp [withI64Rel, pop2?]
+
+/-- i64.le_s comparison. -/
+@[simp]
+theorem step?_i64Les (s : ExecState) (a b : UInt64) (stk : List WasmValue) (rest : List Instr) :
+    step? { s with code := .i64Les :: rest, stack := .i64 b :: .i64 a :: stk } =
+      some (.silent, pushTrace { s with code := rest, stack := boolToI32 (Numerics.i64Les a b) :: stk } .silent) := by
+  unfold step?; simp [withI64Rel, pop2?]
+
+/-- i64.ge_s comparison. -/
+@[simp]
+theorem step?_i64Ges (s : ExecState) (a b : UInt64) (stk : List WasmValue) (rest : List Instr) :
+    step? { s with code := .i64Ges :: rest, stack := .i64 b :: .i64 a :: stk } =
+      some (.silent, pushTrace { s with code := rest, stack := boolToI32 (Numerics.i64Ges a b) :: stk } .silent) := by
+  unfold step?; simp [withI64Rel, pop2?]
+
+/-- i64.lt_u comparison. -/
+@[simp]
+theorem step?_i64Ltu (s : ExecState) (a b : UInt64) (stk : List WasmValue) (rest : List Instr) :
+    step? { s with code := .i64Ltu :: rest, stack := .i64 b :: .i64 a :: stk } =
+      some (.silent, pushTrace { s with code := rest, stack := boolToI32 (Numerics.i64Ltu a b) :: stk } .silent) := by
+  unfold step?; simp [withI64Rel, pop2?]
+
+/-- i64.gt_u comparison. -/
+@[simp]
+theorem step?_i64Gtu (s : ExecState) (a b : UInt64) (stk : List WasmValue) (rest : List Instr) :
+    step? { s with code := .i64Gtu :: rest, stack := .i64 b :: .i64 a :: stk } =
+      some (.silent, pushTrace { s with code := rest, stack := boolToI32 (Numerics.i64Gtu a b) :: stk } .silent) := by
+  unfold step?; simp [withI64Rel, pop2?]
+
+/-- i64.le_u comparison. -/
+@[simp]
+theorem step?_i64Leu (s : ExecState) (a b : UInt64) (stk : List WasmValue) (rest : List Instr) :
+    step? { s with code := .i64Leu :: rest, stack := .i64 b :: .i64 a :: stk } =
+      some (.silent, pushTrace { s with code := rest, stack := boolToI32 (Numerics.i64Leu a b) :: stk } .silent) := by
+  unfold step?; simp [withI64Rel, pop2?]
+
+/-- i64.ge_u comparison. -/
+@[simp]
+theorem step?_i64Geu (s : ExecState) (a b : UInt64) (stk : List WasmValue) (rest : List Instr) :
+    step? { s with code := .i64Geu :: rest, stack := .i64 b :: .i64 a :: stk } =
+      some (.silent, pushTrace { s with code := rest, stack := boolToI32 (Numerics.i64Geu a b) :: stk } .silent) := by
+  unfold step?; simp [withI64Rel, pop2?]
+
+/-! ## i64 conversion @[simp] lemmas -/
+
+/-- i64.rotl on two i64 values. -/
+@[simp]
+theorem step?_i64Rotl (s : ExecState) (a b : UInt64) (stk : List WasmValue) (rest : List Instr) :
+    step? { s with code := .i64Rotl :: rest, stack := .i64 b :: .i64 a :: stk } =
+      some (.silent, pushTrace { s with code := rest, stack := .i64 (Numerics.i64Rotl a b) :: stk } .silent) := by
+  unfold step?; simp [withI64Bin, pop2?]
+
+/-- i64.rotr on two i64 values. -/
+@[simp]
+theorem step?_i64Rotr (s : ExecState) (a b : UInt64) (stk : List WasmValue) (rest : List Instr) :
+    step? { s with code := .i64Rotr :: rest, stack := .i64 b :: .i64 a :: stk } =
+      some (.silent, pushTrace { s with code := rest, stack := .i64 (Numerics.i64Rotr a b) :: stk } .silent) := by
+  unfold step?; simp [withI64Bin, pop2?]
+
+/-- i64.clz on an i64 value. -/
+@[simp]
+theorem step?_i64Clz (s : ExecState) (n : UInt64) (stk : List WasmValue) (rest : List Instr) :
+    step? { s with code := .i64Clz :: rest, stack := .i64 n :: stk } =
+      some (.silent, pushTrace { s with code := rest, stack := .i64 (Numerics.i64Clz n) :: stk } .silent) := by
+  unfold step?; simp [pop1?]
+
+/-- i64.ctz on an i64 value. -/
+@[simp]
+theorem step?_i64Ctz (s : ExecState) (n : UInt64) (stk : List WasmValue) (rest : List Instr) :
+    step? { s with code := .i64Ctz :: rest, stack := .i64 n :: stk } =
+      some (.silent, pushTrace { s with code := rest, stack := .i64 (Numerics.i64Ctz n) :: stk } .silent) := by
+  unfold step?; simp [pop1?]
+
+/-- i64.popcnt on an i64 value. -/
+@[simp]
+theorem step?_i64Popcnt (s : ExecState) (n : UInt64) (stk : List WasmValue) (rest : List Instr) :
+    step? { s with code := .i64Popcnt :: rest, stack := .i64 n :: stk } =
+      some (.silent, pushTrace { s with code := rest, stack := .i64 (Numerics.i64Popcnt n) :: stk } .silent) := by
+  unfold step?; simp [pop1?]
+
+/-! ## f32 binary @[simp] lemmas -/
+
+/-- f32.eq comparison. -/
+@[simp]
+theorem step?_f32Eq (s : ExecState) (a b : Float) (stk : List WasmValue) (rest : List Instr) :
+    step? { s with code := .f32Eq :: rest, stack := .f32 b :: .f32 a :: stk } =
+      some (.silent, pushTrace { s with code := rest, stack := boolToI32 (Numerics.f32Eq a b) :: stk } .silent) := by
+  unfold step?; simp [withF32Rel, pop2?]
+
+/-- f32.ne comparison. -/
+@[simp]
+theorem step?_f32Ne (s : ExecState) (a b : Float) (stk : List WasmValue) (rest : List Instr) :
+    step? { s with code := .f32Ne :: rest, stack := .f32 b :: .f32 a :: stk } =
+      some (.silent, pushTrace { s with code := rest, stack := boolToI32 (Numerics.f32Ne a b) :: stk } .silent) := by
+  unfold step?; simp [withF32Rel, pop2?]
+
+/-- f32.lt comparison. -/
+@[simp]
+theorem step?_f32Lt (s : ExecState) (a b : Float) (stk : List WasmValue) (rest : List Instr) :
+    step? { s with code := .f32Lt :: rest, stack := .f32 b :: .f32 a :: stk } =
+      some (.silent, pushTrace { s with code := rest, stack := boolToI32 (Numerics.f32Lt a b) :: stk } .silent) := by
+  unfold step?; simp [withF32Rel, pop2?]
+
+/-- f32.gt comparison. -/
+@[simp]
+theorem step?_f32Gt (s : ExecState) (a b : Float) (stk : List WasmValue) (rest : List Instr) :
+    step? { s with code := .f32Gt :: rest, stack := .f32 b :: .f32 a :: stk } =
+      some (.silent, pushTrace { s with code := rest, stack := boolToI32 (Numerics.f32Gt a b) :: stk } .silent) := by
+  unfold step?; simp [withF32Rel, pop2?]
+
+/-- f32.le comparison. -/
+@[simp]
+theorem step?_f32Le (s : ExecState) (a b : Float) (stk : List WasmValue) (rest : List Instr) :
+    step? { s with code := .f32Le :: rest, stack := .f32 b :: .f32 a :: stk } =
+      some (.silent, pushTrace { s with code := rest, stack := boolToI32 (Numerics.f32Le a b) :: stk } .silent) := by
+  unfold step?; simp [withF32Rel, pop2?]
+
+/-- f32.ge comparison. -/
+@[simp]
+theorem step?_f32Ge (s : ExecState) (a b : Float) (stk : List WasmValue) (rest : List Instr) :
+    step? { s with code := .f32Ge :: rest, stack := .f32 b :: .f32 a :: stk } =
+      some (.silent, pushTrace { s with code := rest, stack := boolToI32 (Numerics.f32Ge a b) :: stk } .silent) := by
+  unfold step?; simp [withF32Rel, pop2?]
+
+/-- f32.add on two f32 values. -/
+@[simp]
+theorem step?_f32Add (s : ExecState) (a b : Float) (stk : List WasmValue) (rest : List Instr) :
+    step? { s with code := .f32Add :: rest, stack := .f32 b :: .f32 a :: stk } =
+      some (.silent, pushTrace { s with code := rest, stack := .f32 (Numerics.f32Add a b) :: stk } .silent) := by
+  unfold step?; simp [withF32Bin, pop2?]
+
+/-- f32.sub on two f32 values. -/
+@[simp]
+theorem step?_f32Sub (s : ExecState) (a b : Float) (stk : List WasmValue) (rest : List Instr) :
+    step? { s with code := .f32Sub :: rest, stack := .f32 b :: .f32 a :: stk } =
+      some (.silent, pushTrace { s with code := rest, stack := .f32 (Numerics.f32Sub a b) :: stk } .silent) := by
+  unfold step?; simp [withF32Bin, pop2?]
+
+/-- f32.mul on two f32 values. -/
+@[simp]
+theorem step?_f32Mul (s : ExecState) (a b : Float) (stk : List WasmValue) (rest : List Instr) :
+    step? { s with code := .f32Mul :: rest, stack := .f32 b :: .f32 a :: stk } =
+      some (.silent, pushTrace { s with code := rest, stack := .f32 (Numerics.f32Mul a b) :: stk } .silent) := by
+  unfold step?; simp [withF32Bin, pop2?]
+
+/-- f32.div on two f32 values. -/
+@[simp]
+theorem step?_f32Div (s : ExecState) (a b : Float) (stk : List WasmValue) (rest : List Instr) :
+    step? { s with code := .f32Div :: rest, stack := .f32 b :: .f32 a :: stk } =
+      some (.silent, pushTrace { s with code := rest, stack := .f32 (Numerics.f32Div a b) :: stk } .silent) := by
+  unfold step?; simp [withF32Bin, pop2?]
+
+/-- f32.min on two f32 values. -/
+@[simp]
+theorem step?_f32Min (s : ExecState) (a b : Float) (stk : List WasmValue) (rest : List Instr) :
+    step? { s with code := .f32Min :: rest, stack := .f32 b :: .f32 a :: stk } =
+      some (.silent, pushTrace { s with code := rest, stack := .f32 (Numerics.f32Min a b) :: stk } .silent) := by
+  unfold step?; simp [withF32Bin, pop2?]
+
+/-- f32.max on two f32 values. -/
+@[simp]
+theorem step?_f32Max (s : ExecState) (a b : Float) (stk : List WasmValue) (rest : List Instr) :
+    step? { s with code := .f32Max :: rest, stack := .f32 b :: .f32 a :: stk } =
+      some (.silent, pushTrace { s with code := rest, stack := .f32 (Numerics.f32Max a b) :: stk } .silent) := by
+  unfold step?; simp [withF32Bin, pop2?]
+
+/-- f32.copysign on two f32 values. -/
+@[simp]
+theorem step?_f32Copysign (s : ExecState) (a b : Float) (stk : List WasmValue) (rest : List Instr) :
+    step? { s with code := .f32Copysign :: rest, stack := .f32 b :: .f32 a :: stk } =
+      some (.silent, pushTrace { s with code := rest, stack := .f32 (Numerics.f32Copysign a b) :: stk } .silent) := by
+  unfold step?; simp [withF32Bin, pop2?]
+
+/-! ## Wasm step? Progress (type soundness analog)
+
+    Every non-halted Wasm state can take a step.
+    This is the Wasm-level analog of irStep?_progress. -/
+
+/-- Every Wasm state with non-empty code can take a step (produces some or traps).
+    SPEC: Wasm §4 — every instruction either reduces or traps. -/
+theorem step?_code_nonempty (s : ExecState) (instr : Instr) (rest : List Instr)
+    (hc : s.code = instr :: rest) :
+    ∃ t s', step? s = some (t, s') := by
+  unfold step?; rw [hc]
+  cases instr <;> simp_all only [] <;> (
+    first
+    | exact ⟨_, _, rfl⟩
+    | (split <;> (first | exact ⟨_, _, rfl⟩ | (split <;> (first | exact ⟨_, _, rfl⟩ | (split <;> (first | exact ⟨_, _, rfl⟩ | (split <;> (first | exact ⟨_, _, rfl⟩ | (split <;> (first | exact ⟨_, _, rfl⟩ | (split <;> (first | exact ⟨_, _, rfl⟩ | (split <;> (first | exact ⟨_, _, rfl⟩ | (split <;> (first | exact ⟨_, _, rfl⟩ | (split <;> (first | exact ⟨_, _, rfl⟩ | (split <;> (first | exact ⟨_, _, rfl⟩ | (split <;> (first | exact ⟨_, _, rfl⟩ | (split <;> exact ⟨_, _, rfl⟩))))))))))))))))))))))))
+
+/-- Every Wasm state is either halted or can take a step (full progress theorem).
+    SPEC: Wasm type soundness analog — well-formed states always make progress.
+    REF: WasmCert-Coq progress theorem for reduce. -/
+theorem step?_progress (s : ExecState) :
+    s.halted ∨ ∃ t s', step? s = some (t, s') := by
+  match hc : s.code with
+  | instr :: rest => exact Or.inr (step?_code_nonempty s instr rest hc)
+  | [] =>
+    match hl : s.labels with
+    | l :: ls =>
+      right; simp [step?, hc, hl, pushTrace]
+    | [] =>
+      left; exact ⟨hc, hl⟩
+
+/-- Corollary: step? returns none if and only if the state is halted. -/
+theorem step?_none_iff_halted (s : ExecState) :
+    step? s = none ↔ s.halted := by
+  constructor
+  · intro h
+    rcases step?_progress s with hh | ⟨t, s', hs⟩
+    · exact hh
+    · rw [h] at hs; exact absurd hs (by simp)
+  · intro h; exact step?_halted h
+
 end VerifiedJS.Wasm
 
 /-! ----------------------------------------------------------------

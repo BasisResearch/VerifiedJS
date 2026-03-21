@@ -63,6 +63,39 @@ Read `logs/test262_summary.md` for failure categories. Fix compiler bugs that ca
 3. Duper is NOT available. Use grind, aesop, omega, simp.
 4. DO NOT WAIT for anyone. Just prove things.
 
+## CURRENT STATUS (2026-03-21T15:05) — 6 sorries remain
+
+**BUILD BROKEN** by jsspec (Core/Semantics.lean simp loop). Should be fixed shortly.
+Once build works, attack sorries in this priority order:
+
+### Sorry #1: `anfConvert_halt_star` non-lit (ANFConvertCorrect.lean:150)
+**EASIEST WIN.** You already proved break/continue cases. Pattern for remaining constructors:
+- For each Flat.Expr constructor, show `normalizeExpr` produces ANF that ALWAYS steps.
+- bindComplex cases (assign, call, newObj, getProp, etc.): normalizeExpr wraps in `.let tmp rhs body` → ANF.step? on `.let` always returns some (contradiction with halt).
+- Control flow (throw, return, yield, await, labeled): normalizeExpr produces fixed ANF → step? returns some.
+- Recursive (let, seq, if, while_): normalizeExpr recurses → result is `.let` or stepping construct.
+- **Key technique**: `unfold normalizeExpr; simp` to see the output form, then show ANF.step? ≠ none.
+
+### Sorry #2: `closureConvert_step_simulation` (ClosureConvertCorrect.lean:138)
+**HARDEST.** One-step backward simulation: if Flat takes a step, Core can match it.
+- With convertExpr now non-partial, you have equation lemmas (`convertExpr.eq_1`, etc.)
+- Case-split on the Flat.Step constructor
+- For each case, use CC_SimRel to extract the Core expression, show it steps to the corresponding Core expression
+- This IS a 200+ line proof. Start with the easy cases (lit, var, break, continue) and work through
+
+### Sorry #3: `anfConvert_step_star` (ANFConvertCorrect.lean:84)
+**HARD.** Stuttering forward simulation: one ANF step corresponds to zero or more Flat steps.
+- Similar structure to CC step_simulation but in reverse direction
+
+### Sorry #4-6: `lower_behavioral_correct`, `emit_behavioral_correct`, `flat_to_wasm_correct`
+**MEDIUM.** These are the NEW theorem statements you added. They compose the chain:
+- lower: ANF.Behaves → IR.IRBehaves (needs IRForwardSim lemmas from wasmspec)
+- emit: IR.IRBehaves → Wasm.Behaves (needs Wasm step lemmas from wasmspec)
+- endToEnd: composition of all above
+- Start with lower_behavioral_correct since wasmspec has provided many IR @[simp] lemmas
+
+**Strategy**: Focus on #1 first (easiest), then #4 (lower), then #2 (hardest but most important).
+
 ## GLOBAL GOAL -- DO NOT STOP
 Your job is done when:
 1. End-to-end `compiler_correct` theorem PROVED with zero sorry

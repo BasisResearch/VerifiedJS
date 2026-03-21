@@ -86,10 +86,11 @@ arithmetic, boolean_logic, conditionals, do_while, for_loop, functions, let_bind
 | 2026-03-21T04:05 | **4** | **66/123 (54%) REGRESSED** | **BUILD BROKEN**: ClosureConvertCorrect.lean has 6 errors (proof agent mid-edit). Sorry count 4 (from report, but build broken so may be incomplete). E2E REGRESSED from 107/115 to 66/123 — many COMPILE_ERRORs. Proof agent is actively restructuring step?_none_implies_lit_aux (introduced errors at lines 206, 228, 229, 242, 243, 347). **MILESTONE: IR.Behaves NOW DEFINED** by wasmspec — all 5 Behaves relations exist, proof chain unblocked for LowerCorrect/EmitCorrect. jsspec run in progress (04:00). Test262: 2/93 (unchanged). |
 | 2026-03-21T05:05 | **13** | **~120/123 (est.)** | Build PASS (49 jobs, clean). Sorry count 13 (includes transitive uses; 8 unique sorry locations in Proofs/). **BUILD RECOVERED** from last run's breakage. Proof agent completed ClosureConvertCorrect restructuring — halt_preservation proved for all cases except forIn/forOf (preconditioned out). **Proof chain progress**: lower_behavioral_correct, emit_behavioral_correct, flat_to_wasm_correct all STATED with correct Behaves-based form (sorry proofs). wasmspec completed trace bridge (traceFromCore, traceListToWasm with round-trip proofs). 74 Core proof theorems by jsspec. E2E still running (estimated from last good: ~120/123). Test262: 2/93. |
 | 2026-03-21T13:20 | **7** | **~120/123 (est.)** | Build PASS (49 jobs). **Sorry DOWN from 13→7** (direct sorry count; 8→7 unique locations since 05:05). valuesFromExprList? blocker RESOLVED — wasmspec made it public, proof agent used it to close step?_none_implies_lit_aux wildcard cases. **ALL 3 AGENTS STUCK** (EXIT code 1) for 6+ hours (since ~07:00). No sorry progress since 05:30. E2E script timed out (estimated ~120/123 from last known). Test262: 2/91 pass, 50 fail, 31 skip, 8 xfail (unchanged). |
+| 2026-03-21T15:05 | **6** | **~120/123 (est.)** | **BUILD BROKEN**: jsspec Core/Semantics.lean has 5 `simp` loop errors (step?.eq_1 at lines 2215-2227, await/return/yield cases). Sorry DOWN from 7→6: proof eliminated CC trace_reflection sorry via NoForInForOf precondition; partial progress on anfConvert_halt_star (break/continue done). Agents restarted from STUCK at ~13:20 but jsspec broke build again at 14:05. E2E can't run (build broken). Test262: 2/93 pass, 50 fail, 31 skip, 8 xfail (UNCHANGED 24+ hours). Wrote EXACT build fix to jsspec prompt. Redirected jsspec to test262 skip reduction. |
 
-- Test262 pass rate: 2/91 (fast mode), deterministic full sample reached 274/500 passes (2026-03-08)
+- Test262 pass rate: 2/93 (fast mode), deterministic full sample reached 274/500 passes (2026-03-08)
 - Flagship parse rate: 96.30% (1976/2052)
-- E2E tests: ~123 handcrafted JS programs, ~120 passing (estimated, e2e script timed out)
+- E2E tests: ~123 handcrafted JS programs, ~120 passing (estimated, build broken)
 
 ## Infrastructure Issues
 
@@ -103,7 +104,7 @@ arithmetic, boolean_logic, conditionals, do_while, for_loop, functions, let_bind
 | Pass | Theorem | Statement OK? | Proved? | Blocker |
 |------|---------|--------------|---------|---------|
 | Elaborate | elaborate_correct | STUB (commented out) | No | No Source.Behaves defined; jsspec asked to define it |
-| ClosureConvert | closureConvert_correct | YES — `∀ b, Flat.Behaves t b → ∃ b', Core.Behaves s b' ∧ b = b'` | 2 sorry | step_simulation (hardest ~200+ lines case analysis), trace_reflection (depends on step_simulation) |
+| ClosureConvert | closureConvert_correct | YES — `∀ b, Flat.Behaves t b → ∃ b', Core.Behaves s b' ∧ b = b'` | 1 sorry | step_simulation (hardest ~200+ lines case analysis). trace_reflection PROVED via NoForInForOf precondition. |
 | ANFConvert | anfConvert_correct | YES — observable trace preservation | 2 sorry | step_star (hardest), halt_star (partial — lit case done) |
 | Optimize | optimize_correct | YES — `∀ b, ANF.Behaves (optimize p) b ↔ ANF.Behaves p b` | **PROVED** | Identity pass — trivially correct |
 | Lower | lower_behavioral_correct | **YES** — `∀ trace, ANF.Behaves → IR.IRBehaves` | 1 sorry | Theorem correctly stated! Needs proof via IRForwardSim |
@@ -114,8 +115,8 @@ arithmetic, boolean_logic, conditionals, do_while, for_loop, functions, let_bind
 
 ## Agent Health
 
-| Agent | Status (2026-03-21T13:20) | Notes |
+| Agent | Status (2026-03-21T15:05) | Notes |
 |-------|---------------------|-------|
-| jsspec | **STUCK** (EXIT code 1 since ~08:00) | 97+ proved Core theorems. Priorities: Source.Behaves definition, for-in/for-of elaboration, Test262 skip reduction (31 skips). |
-| wasmspec | **STUCK** (EXIT code 1 since ~07:30) | valuesFromExprList? DONE ✅. 19+ exact-value IR lemmas. Priorities: more IR @[simp] coverage, Wasm type soundness. |
-| proof | **STUCK** (EXIT code 1 since ~07:30) | 7 sorry locations (2 CC, 2 ANF, 1 Lower, 1 Emit, 1 EndToEnd). valuesFromExprList? blocker resolved. Priorities: anfConvert_halt_star non-lit, lower_behavioral_correct, CC step_simulation. |
+| jsspec | **RUNNING** (since ~15:00) — **BROKE BUILD** | 97+ proved Core theorems. BROKE BUILD at 14:05 (simp loop). Given exact fix + redirected to test262 skip reduction (31 skips unchanged 24+ hrs). |
+| wasmspec | **RUNNING** (since ~15:00) | 19+ exact-value IR lemmas. Given priority: ir_forward_sim helper for proof agent, emit step lemmas. |
+| proof | **RUNNING** (since ~14:30) | 6 sorry locations (1 CC, 2 ANF, 1 Lower, 1 Emit, 1 EndToEnd). Given priority order: anfConvert_halt_star → lower_behavioral_correct → CC step_simulation. |

@@ -62,6 +62,34 @@ Then construct the matching Step derivation in Lean. If you cannot, your semanti
 3. Keep definitions structurally simple for proofs.
 4. Add @[simp] lemmas for everything the proof agent might need.
 
+## CURRENT PRIORITIES (2026-03-21T15:05)
+
+The proof agent needs your help with 2 sorry theorems:
+
+### 1. `lower_behavioral_correct` (LowerCorrect.lean:51)
+Statement: `∀ trace, ANF.Behaves s trace → IR.IRBehaves t (traceListFromCore trace)`
+Proof agent needs an **IRForwardSim** lemma: for each ANF.Step, there exists a corresponding
+sequence of IR steps. You've written 19+ `irStep?_eq_*` lemmas — the proof agent needs these
+packaged into a forward simulation theorem. Consider adding:
+```lean
+theorem ir_forward_sim (anfStep : ANF.Step s s') (lower : lower s = t) :
+    ∃ t', IRSteps t t' ∧ lower s' = t' := sorry
+```
+Even a sorry-marked statement helps the proof agent structure the proof.
+
+### 2. `emit_behavioral_correct` (EmitCorrect.lean:44)
+Statement: `∀ trace, IR.IRBehaves s trace → Wasm.Behaves t (traceListToWasm trace)`
+Needs Wasm.Step lemmas that show emitted Wasm instructions execute correctly.
+
+### 3. Test262 runtime failures
+50 test262 tests FAIL at runtime. Many are `runtime-exec` failures in built-ins (31), language (15),
+staging (2), intl402 (1). These likely need more Wasm runtime support:
+- String operations (Strings.lean)
+- Object property enumeration
+- Array methods
+
+Focus on #1 and #2 — they directly unblock the proof chain.
+
 ## GLOBAL GOAL -- DO NOT STOP
 Your job is done when:
 1. 100% WasmCert-Coq port to Lean 4
