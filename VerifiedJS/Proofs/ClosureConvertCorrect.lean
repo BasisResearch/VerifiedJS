@@ -546,24 +546,24 @@ private theorem step?_none_implies_lit_aux :
           have ⟨vs, hvs⟩ := firstNonValueExpr_none_values_some hfnv
           rw [hvs] at hvals; simp at hvals
     | objectLit props =>
-      exfalso; unfold Flat.step? at h
-      split at h
-      next => simp at h  -- all prop values → allocFreshObject → some
-      next _ =>
-        split at h
-        next hfnv =>
-          split at h
-          next => simp at h
-          next hstep =>
-            have hevt := firstNonValueProp_exprValue_none hfnv
-            obtain ⟨v, hv⟩ := ih ⟨_, fenv, fheap, ftrace⟩
-              (by simp [Flat.Expr.depth] at hd ⊢
-                  have := Flat.firstNonValueProp_depth hfnv; omega) hstep
-            simp at hv; rw [hv] at hevt; simp [Flat.exprValue?] at hevt
-        next hfnv =>
-          rename_i hvals
-          have ⟨vs, hvs⟩ := firstNonValueProp_none_values_some hfnv
-          rw [hvs] at hvals; simp at hvals
+      exfalso
+      -- step? for objectLit uses let vals := props.map Prod.snd
+      -- Case split on valuesFromExprList? and firstNonValueProp to avoid unfold issues
+      unfold Flat.step? at h
+      -- The unfolded expression has nested matches; repeatedly split
+      repeat split at h
+      all_goals (first
+        | exact absurd h (by simp)
+        | (rename_i hfnv _ hstep
+           have hevt := firstNonValueProp_exprValue_none hfnv
+           obtain ⟨v, hv⟩ := ih ⟨_, fenv, fheap, ftrace⟩
+             (by simp [Flat.Expr.depth] at hd ⊢
+                 have := Flat.firstNonValueProp_depth hfnv; omega) hstep
+           simp at hv; rw [hv] at hevt; simp [Flat.exprValue?] at hevt)
+        | (rename_i hfnv
+           have := firstNonValueProp_none_values_some hfnv
+           simp_all)
+        | simp at h)
 
 private theorem step?_none_implies_lit (s : Flat.State) (h : Flat.step? s = none) :
     ∃ v, s.expr = .lit v :=

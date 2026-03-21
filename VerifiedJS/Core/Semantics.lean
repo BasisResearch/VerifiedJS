@@ -5,6 +5,7 @@
 -/
 
 import VerifiedJS.Core.Syntax
+import VerifiedJS.Core.Elaborate
 
 namespace VerifiedJS.Core
 
@@ -1414,4 +1415,154 @@ theorem step_consoleLog (msg : String) (env : Env) (heap : Heap)
         pushTrace ⟨.lit .undefined, env, heap, trace, funcs, cs⟩ (.log msg)) := by
   simp [step?, exprValue?, allValues, consoleLogIdx, valueToString]
 
+/-- initialState produces a state with empty trace. -/
+theorem initialState_trace (p : Program) : (initialState p).trace = [] := by
+  simp [initialState]
+
+/-- initialState produces a state whose expr is the program body. -/
+theorem initialState_expr (p : Program) : (initialState p).expr = p.body := by
+  simp [initialState]
+
+/-- A stuck state on a literal expression. -/
+theorem stuck_lit_expr {v : Value} {env : Env} {heap : Heap} {trace : List TraceEvent}
+    {funcs : Array FuncClosure} {cs : List (List (VarName × Value))} :
+    step? ⟨.lit v, env, heap, trace, funcs, cs⟩ = none := by
+  simp [step?]
+
+/-- seq with two values steps to the second value. ECMA-262 §13.2. -/
+theorem step_seq_two_values (v1 v2 : Value) (env : Env) (heap : Heap)
+    (trace : List TraceEvent) (funcs : Array FuncClosure)
+    (cs : List (List (VarName × Value))) :
+    step? ⟨.seq (.lit v1) (.lit v2), env, heap, trace, funcs, cs⟩ =
+      some (.silent, pushTrace ⟨.lit v2, env, heap, trace, funcs, cs⟩ .silent) := by
+  simp [step?, exprValue?]
+
+/-- Assign on unbound name extends the environment. -/
+theorem Env.assign_fresh (env : Env) (name : VarName) (v : Value)
+    (h : env.bindings.any (fun kv => kv.fst == name) = false) :
+    (env.assign name v).bindings = (name, v) :: env.bindings := by
+  simp [Env.assign, h]
+
+/-- toNumber on a number is identity. ECMA-262 §7.1.3. -/
+theorem toNumber_number (n : Float) : toNumber (.number n) = n := by
+  simp [toNumber]
+
+/-- toNumber on true is 1.0. ECMA-262 §7.1.3. -/
+theorem toNumber_true : toNumber (.bool true) = 1.0 := by
+  simp [toNumber]
+
+/-- toNumber on false is 0.0. ECMA-262 §7.1.3. -/
+theorem toNumber_false : toNumber (.bool false) = 0.0 := by
+  simp [toNumber]
+
+/-- toNumber on null is 0.0. ECMA-262 §7.1.3. -/
+theorem toNumber_null : toNumber .null = 0.0 := by
+  simp [toNumber]
+
+/-- toBoolean on a non-empty string is true. ECMA-262 §7.2.14. -/
+theorem toBoolean_nonempty_string (s : String) (h : ¬s.isEmpty) :
+    toBoolean (.string s) = true := by
+  simp [toBoolean, h]
+
+/-- toBoolean on empty string is false. ECMA-262 §7.2.14. -/
+theorem toBoolean_empty_string : toBoolean (.string "") = false := by
+  simp [toBoolean]
+
+/-- toBoolean on null is false. ECMA-262 §7.2.14. -/
+theorem toBoolean_null : toBoolean .null = false := by
+  simp [toBoolean]
+
+/-- toBoolean on undefined is false. ECMA-262 §7.2.14. -/
+theorem toBoolean_undefined : toBoolean .undefined = false := by
+  simp [toBoolean]
+
+/-- toBoolean on object is true. ECMA-262 §7.2.14. -/
+theorem toBoolean_object (addr : Nat) : toBoolean (.object addr) = true := by
+  simp [toBoolean]
+
+/-- valueToString on string is identity. ECMA-262 §7.1.12. -/
+theorem valueToString_string (s : String) : valueToString (.string s) = s := by
+  simp [valueToString]
+
+/-- valueToString on null is "null". ECMA-262 §7.1.12. -/
+theorem valueToString_null : valueToString .null = "null" := by
+  simp [valueToString]
+
+/-- valueToString on undefined is "undefined". ECMA-262 §7.1.12. -/
+theorem valueToString_undefined : valueToString .undefined = "undefined" := by
+  simp [valueToString]
+
+/-- valueToString on true is "true". ECMA-262 §7.1.12. -/
+theorem valueToString_true : valueToString (.bool true) = "true" := by
+  simp [valueToString]
+
+/-- valueToString on false is "false". ECMA-262 §7.1.12. -/
+theorem valueToString_false : valueToString (.bool false) = "false" := by
+  simp [valueToString]
+
+/-- abstractEq: null == undefined is true. ECMA-262 §7.2.14. -/
+theorem abstractEq_null_undef : abstractEq .null .undefined = true := by
+  simp [abstractEq]
+
+/-- abstractEq: undefined == null is true. ECMA-262 §7.2.14. -/
+theorem abstractEq_undef_null : abstractEq .undefined .null = true := by
+  simp [abstractEq]
+
+/-- abstractEq: same booleans are equal. ECMA-262 §7.2.14. -/
+theorem abstractEq_bool_same (b : Bool) : abstractEq (.bool b) (.bool b) = true := by
+  simp [abstractEq]
+
+/-- abstractEq: same strings are equal. ECMA-262 §7.2.14. -/
+theorem abstractEq_string_same (s : String) : abstractEq (.string s) (.string s) = true := by
+  simp [abstractEq]
+
+/-- abstractEq: null == null is true. ECMA-262 §7.2.14. -/
+theorem abstractEq_null_null : abstractEq .null .null = true := by
+  simp [abstractEq]
+
+/-- abstractEq: undefined == undefined is true. ECMA-262 §7.2.14. -/
+theorem abstractEq_undef_undef : abstractEq .undefined .undefined = true := by
+  simp [abstractEq]
+
+/-- Step on a stuck state is impossible. -/
+theorem Step_stuck {s : State} (hStuck : step? s = none) :
+    ¬∃ t s', Step s t s' := by
+  intro ⟨t, s', hStep⟩
+  cases hStep with | mk h => rw [hStuck] at h; exact absurd h (by simp)
+
+/-- Steps concatenation: ts ++ [] = ts. -/
+theorem Steps_append_nil {s1 s2 : State} {ts : List TraceEvent}
+    (h : Steps s1 ts s2) : Steps s1 (ts ++ []) s2 := by
+  rw [List.append_nil]; exact h
+
 end VerifiedJS.Core
+
+namespace VerifiedJS.Source
+
+open VerifiedJS.Core in
+/-- Source.Behaves: A source program produces trace `b` iff elaboration to Core
+    succeeds and the resulting Core program produces that trace.
+    This bridges Source.Program → Core.Behaves via the elaborate pass,
+    enabling the end-to-end proof chain (elaborate_correct).
+    ECMA-262 §15.1 (Script evaluation) / §15.2 (Module evaluation). -/
+def Behaves (p : Source.Program) (b : List Core.TraceEvent) : Prop :=
+  ∃ coreProg : Core.Program, Core.elaborate p = .ok coreProg ∧ Core.Behaves coreProg b
+
+open VerifiedJS.Core in
+/-- Source.Behaves is monotone: if elaboration produces the same Core program,
+    Core behavior implies Source behavior. -/
+theorem Behaves_of_elaborate {p : Source.Program} {cp : Core.Program}
+    {b : List Core.TraceEvent}
+    (hElab : Core.elaborate p = .ok cp) (hBehaves : Core.Behaves cp b) :
+    Behaves p b :=
+  ⟨cp, hElab, hBehaves⟩
+
+open VerifiedJS.Core in
+/-- elaborate_correct: elaboration preserves observable behavior.
+    Every Core-level trace of the elaborated program is a valid Source-level trace. -/
+theorem elaborate_correct (p : Source.Program) (cp : Core.Program)
+    (hElab : Core.elaborate p = .ok cp) :
+    ∀ b, Core.Behaves cp b → Behaves p b :=
+  fun _ hB => Behaves_of_elaborate hElab hB
+
+end VerifiedJS.Source
