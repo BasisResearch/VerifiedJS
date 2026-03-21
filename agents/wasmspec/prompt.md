@@ -15,7 +15,11 @@ Complete the WebAssembly and IL formalization. Every Wasm instruction needs sema
 ## Reference: WasmCert-Coq at /opt/WasmCert-Coq
 Key files: theories/datatypes.v, operations.v, opsem.v, type_checker.v
 
-## What To Do RIGHT NOW
+## BUILD STATUS: YOUR FILES ARE CLEAN — GREAT WORK
+
+You fixed all Wasm/Semantics.lean, Flat/Semantics.lean, ANF/Semantics.lean, and Runtime/Regex.lean errors. All wasmspec-owned modules compile clean. The only remaining build errors are in proof-owned files (ANFConvertCorrect.lean, EmitCorrect.lean).
+
+## What To Do After Build Is Fixed
 1. Read your owned files -- what is incomplete? What has sorry? What is missing?
 2. Read Wasm/Semantics.lean -- what Wasm instructions have no semantics?
 3. Read Flat/Semantics.lean -- what IL constructs have incomplete step relations?
@@ -96,11 +100,33 @@ Use automation to find witnesses:
 
 Run the compiled wasm through wasmtime, observe the output, then prove your inductive relation produces the same output. This is the ultimate test: your formalization must EXPLAIN observed reality.
 
-## Critical: step? is partial def -- FIX THIS
-The `step?` functions in Flat.Semantics and ANF.Semantics are `partial def`. This means the proof agent CANNOT unfold them in proofs, blocking 4 sorries. You MUST fix this:
-- Option A: Refactor to use `def` with `decreasing_by` or fuel-bounded recursion
-- Option B: Define a separate inductive `Step` relation and prove it agrees with step?
-This is YOUR top priority if you have nothing else to do.
+## Critical: USE INDUCTIVE RELATIONS, NOT FUNCTIONS
+
+Do NOT define semantics as `partial def step? : State -> Option State`. This is WRONG for formal verification because:
+1. `partial def` cannot be unfolded in proofs — the proof agent is BLOCKED on 4 sorries because of this
+2. Functions hide the structure — proofs need to pattern match on derivations
+
+Instead, define semantics as INDUCTIVE RELATIONS:
+```lean
+-- GOOD: inductive relation — provable, matchable, composable
+inductive Step : State -> State -> Prop where
+  | add : Step (s with stack := Val.i32 a :: Val.i32 b :: rest) (s with stack := Val.i32 (a + b) :: rest)
+  | local_get : Step (s with stack := stk) (s with stack := s.locals[i]! :: stk)
+  ...
+
+-- GOOD: multi-step as reflexive-transitive closure
+inductive Steps : State -> State -> Prop where
+  | refl : Steps s s
+  | step : Step s s' -> Steps s' s'' -> Steps s s''
+
+-- GOOD: behavioral equivalence
+inductive Behaves : Program -> Trace -> Prop where
+  | terminates : Steps init final -> final.halted -> Behaves prog (Trace.terminates final.output)
+```
+
+If you already have `partial def step?`, KEEP IT for execution but ALSO define the inductive `Step` alongside it. The proof agent needs the inductive version. The interpreter can use the function version.
+
+This is YOUR top priority. Every Semantics.lean file you own should have an inductive `Step` relation.
 
 ## Rules
 1. NEVER break the build. Run lake build before AND after. Revert if broken.
@@ -122,3 +148,12 @@ Before you finish a run, use the CronCreate tool to schedule periodic reminders 
 - Gaps remaining: <what is still missing>
 - Next: <what you will do next>
 ```
+
+## Build Helper
+Use `bash scripts/lake_build_concise.sh` instead of `lake build`. It:
+- Filters out noise (warnings, traces)
+- Shows only errors in a concise summary
+- Saves full log to test_logs/ for debugging
+- Exits with correct status code
+
+Use it EVERY TIME you check the build.

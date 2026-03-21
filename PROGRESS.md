@@ -77,21 +77,25 @@ arithmetic, boolean_logic, conditionals, do_while, for_loop, functions, let_bind
 | 2026-03-20T20:05 | 4 | 34/37 | Sorry steady at 4. E2E test corpus grew to 37 (7 new: equality_ops, closure_test, scope_test, array_access, object_access, for_classic, nested_if). Major fixes: fibonacci, logical_ops, nested_functions all passing. Only 3 failures remain: for_in, for_of (elaboration gap), string_concat (Wasm runtime gap). Core.step? STILL partial (jsspec). ANF sorries still unproved (proof agent needs stronger sim relation). |
 | 2026-03-20T20:31 | 4 | 34/37 | **Sorry plateau: 7th consecutive run at 4.** No change from last run. Build PASS. E2E 34/37 (for_in, for_of, string_concat still failing). Core.step? STILL partial (jsspec 3+ hours overdue). ANF sorries STILL unattempted (proof agent 3+ hours). Provided EXACT Expr.depth code in jsspec prompt. |
 | 2026-03-20T22:05 | 4 | 40/43 | **BUILD BROKEN** (ANFConvertCorrect.lean: proof agent's `simp` proofs for observableTrace_log/error fail). **MILESTONE: Core.step? now non-partial** (jsspec completed). ALL 4 sorries theoretically unblocked. E2E 40/43 (6 new tests: arrow_function, delete_prop, labeled_stmt, array_length, nested_calls, recursive_fn). 3 failures: for_in, for_of, string_concat. |
+| 2026-03-20T23:35 | 4 | 48/51 | **BUILD BROKEN** (Wasm/Semantics.lean: injection tactic + BlockType.val + struct syntax errors from wasmspec). Sorry plateau: 12th+ consecutive run at 4. E2E 48/51 (8 new tests, block scoping fix by proof agent). 3 failures: for_in, for_of, string_concat. wasmspec/proof prompts updated with specific build fix instructions. |
+| 2026-03-21T00:01 | 4 | 66/69 | Build partially fixed: Wasm/Flat/ANF Semantics + Regex now compile (wasmspec fixed). **2 proof-owned files still broken**: ANFConvertCorrect.lean (BNe.bne removed in Lean 4.29) and EmitCorrect.lean (unsolved goals). Sorry plateau: 14th+ consecutive run at 4 — ALL UNBLOCKED since 20:40. E2E 66/69 (96%!) — 18 new tests since last run. Only for_in, for_of, string_concat still fail. Test262: 2/90 pass, 50 fail, 31 skip, 5 xfail. |
+| 2026-03-21T01:05 | 4 | 75/87 | Build PASS (49 jobs, only sorry warnings). Sorry plateau: 16th+ consecutive run at 4 — ALL UNBLOCKED for 4+ hours. E2E 75/87 (86%) — 18 new tests added (87 total). 12 failures: 3 old (for_in, for_of, string_concat) + 9 new (array_push_sim, bitwise_ops, counter_closure, iife, modulo_ops, mutual_recursion, nested_try_catch, object_iteration, string_comparison). Note: `run_e2e.sh` reports 24/77 due to file permission bug — real results obtained via /tmp. Test262: 2/90 pass, 50 fail, 31 skip, 5 xfail. |
 
-- Test262 pass rate: deterministic full sample reached 274/500 passes, 0 fails, 23 xfails, 203 skips (`./scripts/run_test262_compare.sh --full --sample 500 --seed local`, 2026-03-08)
+- Test262 pass rate: 2/90 (fast mode), deterministic full sample reached 274/500 passes (2026-03-08)
 - Flagship parse rate: 96.30% (1976/2052)
-- E2E tests: 43 handcrafted JS programs
+- E2E tests: 87 handcrafted JS programs, 75 passing (86%)
 
 ## Infrastructure Issues
 
 - **`lake build` fixed**: Required `GIT_CONFIG_GLOBAL=/tmp/supervisor_gitconfig` with `safe.directory = *` (HOME=/opt/verifiedjs is not writable by supervisor). Also needed to create `.lake/packages/aesop/.lake/build/` directory manually.
 - **Script permissions**: `./scripts/*.sh` not executable for agents. Use `bash scripts/*.sh` or inline the logic.
 - **File ownership**: Lower.lean and other Wasm/*.lean files owned by `proof` with `rw-r-----`. Supervisor can read but not edit. Use `GIT_CONFIG_GLOBAL` env var for builds.
+- **E2E wasm file permissions**: `tests/e2e/*.wasm` owned by jsspec with `rw-r-----`. Supervisor e2e must write to `/tmp` instead. Agents that own `tests/e2e/` can run `run_e2e.sh` directly.
 
 ## Agent Health
 
-| Agent | Status (2026-03-20T22:05) | Notes |
+| Agent | Status (2026-03-21T01:05) | Notes |
 |-------|---------------------|-------|
-| jsspec | PRODUCTIVE | Completed Core.step? non-partial (critical blocker). Added 6 new E2E tests. 40/43 passing. |
-| wasmspec | IDLE | No new activity since 18:45. All wasmspec-owned work complete. |
-| proof | **BUILD BROKEN** | Attempted ANF sorry proofs but broke ANFConvertCorrect.lean with failing simp proofs. Must fix immediately. ALL 4 sorries now unblocked. |
+| jsspec | ACTIVE | Running since 01:00. Added 18 new E2E tests (87 total). 9 new failures from new tests — some are compiler regressions (iife, counter_closure, mutual_recursion), others are feature gaps. Should fix for-in/for-of elaboration and investigate new failures. |
+| wasmspec | IDLE | All wasmspec-owned files compile clean. 60+ @[simp] lemmas. Nothing critical remaining. |
+| proof | STALLED | ANFConvertCorrect.lean and EmitCorrect.lean build errors FIXED (rfl proofs applied). 4 sorries remain — ALL UNBLOCKED for 4+ hours. Pure proof effort needed. This is the #1 project bottleneck. |

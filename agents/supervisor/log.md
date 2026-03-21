@@ -369,3 +369,174 @@ lake build works. ANFConvertCorrect.lean has broken code — proof agent must fi
 
 ## Run: 2026-03-20T22:49:06+00:00
 
+
+## Run: 2026-03-20T23:34:51+00:00
+
+### Build
+- **Status**: **BROKEN** (4 modules fail: Wasm.Semantics, Flat.Semantics, ANF.Semantics, Runtime.Regex)
+- **Root cause**: Wasm/Semantics.lean (wasmspec-owned) has multiple errors:
+  1. Line 1579: `Step_deterministic` — `injection` tactic fails in Lean 4.29
+  2. Line 1720: `BlockType.val` — should be `.valType`
+  3. Lines 1671, 1679, 1695, 1724: struct update syntax errors in theorem proofs
+- **Cascade**: Flat/Semantics and ANF/Semantics fail downstream
+- **E2E unaffected**: `lake exe verifiedjs` works from cache
+
+### Sorry Count
+- **Current**: 4 (unchanged — 12th+ consecutive run at 4)
+- **Remaining**: 2 in ClosureConvertCorrect (step_simulation, halt_preservation), 2 in ANFConvertCorrect (step_star, halt_star)
+- **All 4 UNBLOCKED**: All step? functions non-partial. No architectural blockers remain.
+- **CC sorry comments STILL stale**: Say "step? is partial def" — FALSE since 20:40
+
+### E2E Tests
+- **Result**: 48/51 per proof agent (22:52 run)
+- **Improvements since last supervisor run**: proof agent fixed block scoping (Elaborate.lean), E2E grew from 43 to 51
+- **Still failing (3)**: for_in, for_of (elaboration gap), string_concat (Wasm runtime gap)
+
+### Agent Activity (since 22:05)
+- **jsspec** (22:50): Skipped (already running). Last productive at 20:40.
+- **wasmspec**: No new log entry. BROKE the build — Wasm/Semantics.lean has multiple errors.
+- **proof** (22:52): Fixed block scoping in Elaborate.lean. Attempted ANFConvertCorrect fix but linter reverted and changed ownership. Verified `rfl` works for observableTrace proofs. E2E 48/51. Blocked by Wasm/Semantics cascade.
+
+### Theorem Quality Audit
+- ClosureConvertCorrect: MEANINGFUL behavioral preservation. 2 sorries (both unblocked, comments stale).
+- ANFConvertCorrect: MEANINGFUL observable trace preservation. 2 sorries (unblocked, build errors need fixing first).
+- LowerCorrect: Still contains WORTHLESS structural theorems (flagged previously).
+- OptimizeCorrect: Trivially correct (identity pass). Legitimate.
+- ElaborateCorrect, EmitCorrect, EndToEnd: Still stubs.
+
+### Actions Taken
+1. **Updated wasmspec prompt**: URGENT build fix with exact code for all 4 error categories
+2. **Updated proof prompt**: Exact ANFConvertCorrect fix code, updated sorry status to UNBLOCKED, removed stale Duper references
+3. **Updated PROGRESS.md**: New metrics row, updated agent health table
+4. **Updated FAILURES.md**: Added Wasm/Semantics.lean build breakage entry
+5. **Updated PROOF_BLOCKERS.md**: Updated summary with current build status, marked CC comments as stale
+
+### Key Observations
+- **Sorry plateau at 4 for 12+ consecutive runs** (since 17:15, ~6 hours). All blockers resolved. The remaining work is pure proof effort.
+- **Build must be fixed first**: wasmspec needs to fix Wasm/Semantics.lean before proof agent can make progress on CC proofs (Flat.Semantics dependency).
+- **E2E trajectory excellent**: 8/10 → 48/51 over the session (94% pass rate, 51 total tests).
+- **Critical path**: wasmspec fixes build → proof agent fixes ANFConvertCorrect observableTrace proofs → proof agent proves 4 remaining sorries.
+
+2026-03-20T23:35:00+00:00 DONE
+
+2026-03-20T23:53:39+00:00 DONE
+
+## Run: 2026-03-21T00:01:14+00:00
+
+### Build
+- **Status**: **PARTIALLY BROKEN** (47/49 jobs pass, 2 fail)
+- **Fixed since last run**: wasmspec fixed Wasm/Semantics.lean, Flat/Semantics.lean, ANF/Semantics.lean, Runtime/Regex.lean — all compile clean now
+- **Still broken** (proof-owned):
+  - ANFConvertCorrect.lean: `BNe.bne` removed in Lean 4.29 (lines 37-46), `congr 1` type mismatch (line 111)
+  - EmitCorrect.lean: `emit_single_import` unsolved goals (line 32)
+
+### Sorry Count
+- **Current**: 4 (unchanged — 14th+ consecutive run at 4)
+- **Remaining**: 2 in ClosureConvertCorrect (step_simulation, halt_preservation), 2 in ANFConvertCorrect (step_star, halt_star)
+- **ALL 4 UNBLOCKED** since 2026-03-20T20:40 — ALL step? functions are non-partial
+- **Sorry plateau duration**: 7+ hours. No architectural blockers remain. Pure proof effort needed.
+
+### E2E Tests
+- **Result**: 66/69 passed, 3 failed (69 total, up from 51)
+- **Note**: `run_e2e.sh` shows 8/61 due to file permission issue (wasm files owned by jsspec, supervisor can't write to tests/e2e/). Actual results obtained by writing to /tmp: **66/69 (96%)**
+- **18 new tests since last supervisor run**: arrow_closure, callback_fn, compound_assign, destructure_array, destructure_obj, fibonacci_iter, global_var, higher_order, if_else_chain, math_ops, multi_assign, nested_fn_call, nested_loops, nullish_coalesce, object_method, recursive_sum, scope_block, short_circuit, string_methods, switch_default, template_literal, ternary_nested, truthiness, try_rethrow, while_break, while_continue
+- **Still failing (3)**:
+  - for_in.js — for-in not elaborated in Elaborate.lean
+  - for_of.js — for-of not elaborated in Elaborate.lean
+  - string_concat.js — Wasm binaryAdd doesn't handle string operands
+
+### Test262
+- **Result**: 2 pass, 50 fail, 31 skip, 5 xfail / 90 total (fast mode)
+- Skip reasons: class-declaration (5), for-in-of (5), destructuring (1), unsupported-flags (14), negative (4), annex-b (1), fixture (1)
+- Fail reasons: runtime-exec (49), language (1) — mostly runtime execution failures
+
+### Agent Activity
+- **jsspec**: Running since 00:00. Last productive: added many new E2E tests, Core.step? non-partial, full Expr constructor coverage. 69 tests total.
+- **wasmspec**: Running since 00:02. FIXED all wasmspec-owned build errors this run. Added 14 @[simp] equation lemmas, structural theorems (Step_deterministic, Steps_trans), full regex/generator specs, bulk memory operations.
+- **proof**: Running since 00:03. Fixed block scoping in Elaborate.lean. E2E improved from ~44 to ~48 last session. ANFConvertCorrect fix attempted but linter reverted.
+
+### Theorem Quality Audit
+- **ClosureConvertCorrect**: MEANINGFUL behavioral preservation. 2 sorries (UNBLOCKED, comments STALE — still say "step? is partial def").
+- **ANFConvertCorrect**: MEANINGFUL observable trace preservation. 2 sorries (UNBLOCKED). Build errors must be fixed first.
+- **EmitCorrect**: Build broken at line 32. Previous theorems (emit_preserves_start) are structural — not ideal but not worthless.
+- **LowerCorrect**: Still contains WORTHLESS structural theorems (flagged previously).
+- **OptimizeCorrect**: Trivially correct (identity pass). Legitimate.
+
+### Actions Taken
+1. Updated PROGRESS.md: new metrics row (66/69 E2E, 4 sorries, build partially broken), updated agent health, E2E test count to 69
+2. Updated FAILURES.md: marked Wasm/Semantics build errors FIXED, added EmitCorrect.lean build error, updated ANFConvertCorrect status
+3. Updated PROOF_BLOCKERS.md: updated summary with current state, noted sorry plateau at 14+ runs
+4. Updated proof prompt: added EmitCorrect.lean fix suggestion, updated build fix instructions
+5. Updated wasmspec prompt: removed stale URGENT build fix section, acknowledged clean build
+6. Updated jsspec prompt: prioritized for-in/for-of elaboration (HIGH IMPACT — last 2 fixable E2E failures)
+7. Identified infrastructure issue: E2E wasm file permissions prevent supervisor from running tests — must write to /tmp
+
+### Key Observations
+- **E2E trajectory excellent**: 8/10 → 66/69 over the session (96% pass rate, 69 total tests). Only 3 failures remain.
+- **Sorry plateau at 4 for 14+ consecutive runs (7+ hours)**. ALL blockers resolved. The remaining work is pure proof effort. This is the #1 project issue.
+- **Build nearly clean**: 47/49 pass. Only 2 proof-owned files have trivial fix errors (BNe.bne removal, simp tactic).
+- **Critical path**: proof agent fixes 2 build errors → proof agent proves 4 remaining sorries.
+- **wasmspec has nothing critical left to do** — all owned files compile clean, extensive specs written.
+- **jsspec should focus on for-in/for-of** — fixing these takes E2E to 68/69.
+
+2026-03-21T00:20:00+00:00 DONE
+2026-03-21T00:18:25+00:00 DONE
+
+## Run: 2026-03-21T01:05:01+00:00
+
+### Build
+- **Status**: PASS (49 jobs, only sorry warnings in ClosureConvertCorrect and ANFConvertCorrect)
+
+### Sorry Count
+- **Current**: 4 (unchanged — 16th+ consecutive run at 4)
+- **Remaining**: 2 in ClosureConvertCorrect (step_simulation, halt_preservation), 2 in ANFConvertCorrect (step_star, halt_star)
+- **ALL 4 UNBLOCKED** since 2026-03-20T20:40 — ALL step? functions are non-partial
+- **Sorry plateau duration**: 8+ hours. No architectural blockers remain. Pure proof effort needed.
+
+### E2E Tests
+- **Real result**: 75/87 passed, 12 failed (87 total, up from 69)
+- **run_e2e.sh reports 24/77**: FILE PERMISSION BUG — .wasm files owned by jsspec with rw-r----- permissions. Supervisor can't overwrite them. Real results obtained by writing to /tmp.
+- **New tests since last run (18)**: array_push_sim, bitwise_ops, counter_closure, iife, modulo_ops, mutual_recursion, nested_try_catch, object_iteration, string_comparison, typeof_values, and several others
+- **New failures (9)**:
+  - array_push_sim — undefined (missing Array.push)
+  - bitwise_ops — wrong XOR result (known old bug, re-added test)
+  - counter_closure — wasm runtime error (indirect call type mismatch)
+  - iife — undefined (IIFE not handled)
+  - modulo_ops — wrong result (3 instead of 1)
+  - mutual_recursion — wasm runtime error
+  - nested_try_catch — wasm compilation error
+  - object_iteration — undefined (for-in not elaborated)
+  - string_comparison — wrong result (0 instead of 1)
+- **Old failures (3)**: for_in, for_of, string_concat (unchanged)
+
+### Test262
+- **Result**: 2 pass, 50 fail, 31 skip, 5 xfail / 90 total (fast mode)
+- Unchanged from last run
+
+### Agent Activity (since 00:01)
+- **jsspec** (01:00): Running. Added 18 new E2E tests (87 total). Some new tests expose compiler bugs (iife, counter_closure, mutual_recursion). 75/87 passing. Good test coverage expansion but 9 new failures introduced.
+- **wasmspec**: No new log entry since 00:26. IDLE — all owned files clean, extensive lemma coverage.
+- **proof** (00:03-00:51): Fixed ANFConvertCorrect.lean build errors (rfl proofs). Restructured ANF_SimRel. Fixed indirect call type mismatch in Emit.lean/Lower.lean. E2E 74/77 at end of run. BUT DID NOT PROVE ANY SORRIES despite all being unblocked.
+
+### Theorem Quality Audit
+- **ClosureConvertCorrect**: MEANINGFUL behavioral preservation. 2 sorries (UNBLOCKED). CC_SimRel still trace-equality only — too weak.
+- **ANFConvertCorrect**: MEANINGFUL observable trace preservation. 2 sorries (UNBLOCKED). ANF_SimRel is heap+trace equality — too weak.
+- Both need EXPRESSION CORRESPONDENCE added to the simulation relation before the sorry proofs can proceed.
+- **LowerCorrect**: Still contains WORTHLESS structural theorems (flagged previously).
+
+### Actions Taken
+1. Updated PROGRESS.md: new metrics row (75/87 E2E, 4 sorries, build PASS), updated agent health
+2. Updated FAILURES.md: added 9 new E2E failure entries with details
+3. Updated PROOF_BLOCKERS.md: updated summary with current build status and sorry plateau at 16+ runs
+4. Identified run_e2e.sh file permission bug — real E2E is 75/87, not 24/77
+
+### Key Observations
+- **Sorry plateau at 4 for 16+ consecutive runs (8+ hours)**. ALL blockers resolved for 4+ hours. The remaining work is pure proof effort: strengthen the simulation relations to include expression/environment correspondence, then do case analysis. This is the #1 project bottleneck.
+- **E2E test corpus growing well**: 69 → 87 tests. 75 pass (86%). The pass rate dipped from 96% due to new tests exposing real bugs (modulo, bitwise, IIFE, mutual recursion, nested try/catch).
+- **wasmspec has nothing critical left** — all owned files compile clean, 60+ @[simp] lemmas.
+- **jsspec adding good tests** but needs to investigate new failures, especially IIFE and counter_closure which suggest compiler regressions.
+- **Proof agent is the critical path** — must strengthen SimRel and prove sorries.
+
+2026-03-21T01:10:00+00:00 DONE
+
+2026-03-21T01:11:27+00:00 DONE

@@ -132,4 +132,78 @@ lake build works. ANFConvertCorrect.lean has broken code — proof agent must fi
 
 
 ## Run: 2026-03-20T22:52:24+00:00
+- Sorries before: 4, after: 4 (delta: 0)
+- Proved: (none — ClosureConvertCorrect blocked by broken Flat.Semantics.lean; ANFConvertCorrect.lean is root-owned and unwritable)
+- Implemented:
+  - **Block scoping fix** (Elaborate.lean): Added save-restore pattern for `let`/`const` declarations inside blocks (ECMA-262 §13.3.1). Blocks that shadow outer variables now correctly restore the outer binding after the block ends. Added `collectBlockLetNames` and `wrapSaveRestore` helpers, refactored `elabStmtsList` to `elabStmtsListScoped` with `declaredVars` tracking.
+  - **ANFConvertCorrect.lean fix attempted**: Fixed `observableTrace_silent/log/error` proofs (use `rfl` instead of broken `simp [BNe.bne]`), fixed `∃` syntax for Lean 4.29, fixed `anfConvert_steps_star` proof. All fixes verified to compile. However, a linter process reverted changes AND changed file ownership to root:root, making the file unwritable.
+- Files changed: VerifiedJS/Core/Elaborate.lean
+- Build status:
+  - VerifiedJS.Core.Elaborate: PASS
+  - VerifiedJS.Wasm.Lower, Emit, Binary, Print: PASS
+  - VerifiedJS.Proofs.ClosureConvertCorrect: BLOCKED by Flat.Semantics.lean:754 (wasmspec-owned, `injection` tactic failure)
+  - VerifiedJS.Proofs.ANFConvertCorrect: BLOCKED by root-owned file with broken `BNe.bne` references
+  - VerifiedJS.Wasm.Semantics: BLOCKED by Array.get! deprecation (wasmspec-owned)
+- E2E: 48/51 passing (up from ~44 last run)
+  - Remaining failures: for_in, for_of (not implemented), string_concat (needs dynamic string allocation)
+- Remaining sorries (4):
+  - `closureConvert_step_simulation` (ClosureConvertCorrect.lean:31) — needs strong SimRel + case analysis on 600+ line step functions
+  - `closureConvert_halt_preservation` (ClosureConvertCorrect.lean:37) — same
+  - `anfConvert_step_star` (ANFConvertCorrect.lean:70) — file unwritable (root-owned)
+  - `anfConvert_halt_star` (ANFConvertCorrect.lean:86) — file unwritable (root-owned)
+
+### Blocker Analysis
+1. **ANFConvertCorrect.lean**: File ownership changed to root:root by linter. Fixes verified but reverted. Need supervisor to restore permissions.
+2. **Flat/Semantics.lean**: wasmspec broke `Step_deterministic` proof at line 754 (`injection` tactic changed in Lean 4.29). Blocks all proof files that import Flat.Semantics.
+3. **Wasm/Semantics.lean**: wasmspec uses deprecated `Array.get!`. Blocks full build but not compiler exe.
+4. **CC step simulation**: Even with unblocked dependencies, this requires a full expression/environment correspondence relation through closure conversion — a major proof effort.
+
+### ANFConvertCorrect.lean Fix (for when permissions are restored)
+Replace all three observableTrace proofs with `rfl`:
+```lean
+theorem observableTrace_silent ... := rfl
+theorem observableTrace_log ... := rfl
+theorem observableTrace_error ... := rfl
+```
+Fix `anfConvert_steps_star` proof line 111: replace `congr 1` with:
+```lean
+by rw [show ∀ (a : Core.TraceEvent) l, a :: l = [a] ++ l from fun _ _ => rfl,
+       observableTrace_append, observableTrace_append, hobsev, hobstr]
+```
+
+- Next: Wait for external blockers to be resolved. Could implement string concatenation runtime or add for-in/for-of support.
+2026-03-20T23:45:00+00:00 DONE
+2026-03-20T23:52:24+00:00 EXIT: code 124
+2026-03-20T23:52:24+00:00 TIMEOUT
+2026-03-20T23:52:24+00:00 DONE
+
+## Run: 2026-03-21T00:03:29+00:00
+- Sorries before: 4, after: 4 (delta: 0)
+- Build fixes:
+  - **ANFConvertCorrect.lean**: Fixed `observableTrace_silent/log/error` proofs (use `rfl`), fixed `anfConvert_steps_star` congr 1 → explicit rewrite. File now compiles.
+  - **ANFConvertCorrect.lean restructured**: Introduced `ANF_SimRel` simulation relation, rewrote theorem statements to use it instead of bare trace/heap equality. Previous statements were unprovable (quantified over ALL state pairs without expression correspondence). New structure is architecturally correct.
+  - **ClosureConvertCorrect.lean**: Updated stale comments (was "step? is partial def", now correctly notes need for strong SimRel)
+- Compiler improvements:
+  - **Fixed indirect call type mismatch** (Emit.lean + Lower.lean): `__rt_call` trampoline only supported 1-arg functions via `call_indirect` with fixed type. Replaced with inline `call_indirect` at each call site with arity-based type index. Pre-registered arity types 0-8 in emit phase for deterministic type index mapping. Fixes `arrow_closure.js`, `callback_fn.js`, `chained_calls.js`, `multi_param_fn.js`, `nested_fn_call.js`, etc.
+  - **EmitCorrect.lean**: Refactored `emit` to expose `buildModule` helper. Fixed proofs of `emit_preserves_start` and `emit_single_import` that broke from arity type pre-registration. Added `buildModule_start` and `buildModule_imports_size` simp lemmas.
+- Files changed: VerifiedJS/Wasm/Lower.lean, VerifiedJS/Wasm/Emit.lean, VerifiedJS/Proofs/ANFConvertCorrect.lean, VerifiedJS/Proofs/ClosureConvertCorrect.lean, VerifiedJS/Proofs/EmitCorrect.lean
+- Build: PASS (34/34 owned modules; Flat/Wasm/ANF Semantics broken by wasmspec — not our files)
+- E2E: 74/77 passing (up from ~48/51 last logged run)
+  - Remaining failures: for_in.js, for_of.js (not implemented), string_concat.js (needs dynamic string alloc)
+- Remaining sorries (4):
+  - `anfConvert_step_star` (ANFConvertCorrect.lean:72) — needs full case analysis over ANF expression forms
+  - `anfConvert_halt_star` (ANFConvertCorrect.lean:93) — needs to show Flat reaches literal when ANF halts
+  - `closureConvert_step_simulation` (ClosureConvertCorrect.lean:25) — needs strong SimRel with expr/env correspondence
+  - `closureConvert_halt_preservation` (ClosureConvertCorrect.lean:33) — same
+
+### Blocker Analysis
+1. **Flat/Semantics.lean:754**: wasmspec broke `Step_deterministic` proof (`injection` changed in Lean 4.29). Fix: replace `obtain ⟨rfl, rfl⟩ := Prod.mk.inj h2` with `cases h2; exact ⟨rfl, rfl⟩`. Not our file.
+2. **4 remaining sorries**: All require a strong simulation relation that tracks expression/environment correspondence through the conversion. The `ANF_SimRel` is currently defined as heap+trace equality (too weak). Needs strengthening to include: `∃ k, sa.expr = normalizeExpr sf.expr k` and env correspondence. This is a major proof effort (~200+ lines of case analysis).
+3. **Closure conversion**: `convertExpr` is `partial def`, making the expression correspondence even harder to formalize.
+
+- Next: Could implement string concatenation in `binaryAdd` runtime to fix string_concat.js. Could also attempt to strengthen ANF_SimRel and prove halt_star (simpler of the two ANF sorries).
+2026-03-21T00:45:00+00:00 DONE
+2026-03-21T00:51:25+00:00 DONE
+
+## Run: 2026-03-21T01:30:01+00:00
 

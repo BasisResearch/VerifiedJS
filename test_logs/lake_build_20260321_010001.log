@@ -1,0 +1,87 @@
+⚠ [3/49] Replayed VerifiedJS.Source.Lexer
+warning: VerifiedJS/Source/Lexer.lean:143:22: `String.mk` has been deprecated: Use `String.ofList` instead
+warning: VerifiedJS/Source/Lexer.lean:145:20: `String.mk` has been deprecated: Use `String.ofList` instead
+warning: VerifiedJS/Source/Lexer.lean:147:14: `String.mk` has been deprecated: Use `String.ofList` instead
+warning: VerifiedJS/Source/Lexer.lean:201:11: `String.mk` has been deprecated: Use `String.ofList` instead
+warning: VerifiedJS/Source/Lexer.lean:277:15: `String.mk` has been deprecated: Use `String.ofList` instead
+warning: VerifiedJS/Source/Lexer.lean:280:15: `String.mk` has been deprecated: Use `String.ofList` instead
+warning: VerifiedJS/Source/Lexer.lean:283:15: `String.mk` has been deprecated: Use `String.ofList` instead
+warning: VerifiedJS/Source/Lexer.lean:286:15: `String.mk` has been deprecated: Use `String.ofList` instead
+warning: VerifiedJS/Source/Lexer.lean:289:15: `String.mk` has been deprecated: Use `String.ofList` instead
+warning: VerifiedJS/Source/Lexer.lean:292:15: `String.mk` has been deprecated: Use `String.ofList` instead
+warning: VerifiedJS/Source/Lexer.lean:295:21: `String.mk` has been deprecated: Use `String.ofList` instead
+warning: VerifiedJS/Source/Lexer.lean:300:20: `String.mk` has been deprecated: Use `String.ofList` instead
+warning: VerifiedJS/Source/Lexer.lean:311:32: `String.mk` has been deprecated: Use `String.ofList` instead
+warning: VerifiedJS/Source/Lexer.lean:319:32: `String.mk` has been deprecated: Use `String.ofList` instead
+warning: VerifiedJS/Source/Lexer.lean:362:13: `String.mk` has been deprecated: Use `String.ofList` instead
+warning: VerifiedJS/Source/Lexer.lean:366:9: `String.mk` has been deprecated: Use `String.ofList` instead
+warning: VerifiedJS/Source/Lexer.lean:375:13: `String.mk` has been deprecated: Use `String.ofList` instead
+warning: VerifiedJS/Source/Lexer.lean:382:9: `String.mk` has been deprecated: Use `String.ofList` instead
+warning: VerifiedJS/Source/Lexer.lean:390:13: `String.mk` has been deprecated: Use `String.ofList` instead
+warning: VerifiedJS/Source/Lexer.lean:391:20: `String.mk` has been deprecated: Use `String.ofList` instead
+warning: VerifiedJS/Source/Lexer.lean:403:19: `String.mk` has been deprecated: Use `String.ofList` instead
+warning: VerifiedJS/Source/Lexer.lean:405:7: `String.mk` has been deprecated: Use `String.ofList` instead
+warning: VerifiedJS/Source/Lexer.lean:425:14: `String.mk` has been deprecated: Use `String.ofList` instead
+warning: VerifiedJS/Source/Lexer.lean:429:16: `String.mk` has been deprecated: Use `String.ofList` instead
+warning: VerifiedJS/Source/Lexer.lean:433:18: `String.mk` has been deprecated: Use `String.ofList` instead
+warning: VerifiedJS/Source/Lexer.lean:437:11: `String.mk` has been deprecated: Use `String.ofList` instead
+warning: VerifiedJS/Source/Lexer.lean:439:14: `String.mk` has been deprecated: Use `String.ofList` instead
+warning: VerifiedJS/Source/Lexer.lean:443:16: `String.mk` has been deprecated: Use `String.ofList` instead
+warning: VerifiedJS/Source/Lexer.lean:447:9: `String.mk` has been deprecated: Use `String.ofList` instead
+warning: VerifiedJS/Source/Lexer.lean:449:14: `String.mk` has been deprecated: Use `String.ofList` instead
+warning: VerifiedJS/Source/Lexer.lean:453:7: `String.mk` has been deprecated: Use `String.ofList` instead
+warning: VerifiedJS/Source/Lexer.lean:454:18: `String.mk` has been deprecated: Use `String.ofList` instead
+warning: VerifiedJS/Source/Lexer.lean:519:31: `String.mk` has been deprecated: Use `String.ofList` instead
+⚠ [20/49] Replayed VerifiedJS.ANF.Convert
+warning: VerifiedJS/ANF/Convert.lean:136:88: This simp argument is unused:
+  Flat.Expr.listDepth
+
+Hint: Omit it from the simp argument list.
+  simp_all [Flat.Expr.depth,
+  ̲  ̲ ̲ ̲F̵l̵a̵t̵.̵E̵x̵p̵r̵.̵l̵i̵s̵t̵D̵e̵p̵t̵h̵,̵ ̵Flat.Expr.propListDepth]
+
+Note: This linter can be disabled with `set_option linter.unusedSimpArgs false`
+warning: VerifiedJS/ANF/Convert.lean:136:109: This simp argument is unused:
+  Flat.Expr.propListDepth
+
+Hint: Omit it from the simp argument list.
+  simp_all [Flat.Expr.depth,
+  ̲  ̲ ̲ ̲F̵l̵a̵t̵.̵E̵x̵p̵r̵.̵l̵i̵s̵t̵D̵e̵p̵t̵h̵,̵ ̵F̵l̵a̵t̵.̵E̵x̵p̵r̵.̵p̵r̵o̵p̵L̵i̵s̵t̵D̵e̵p̵t̵h̵]̵F̲l̲a̲t̲.̲E̲x̲p̲r̲.̲l̲i̲s̲t̲D̲e̲p̲t̲h̲]̲
+
+Note: This linter can be disabled with `set_option linter.unusedSimpArgs false`
+warning: VerifiedJS/ANF/Convert.lean:146:36: This simp argument is unused:
+  Flat.Expr.depth
+
+Hint: Omit it from the simp argument list.
+  simp_all [̵F̵l̵a̵t̵.̵E̵x̵p̵r̵.̵d̵e̵p̵t̵h̵,̵ ̵F̵l̵a̵t̵.̵E̵x̵p̵r̵.̵l̵i̵s̵t̵D̵e̵p̵t̵h̵,̵[̲F̲l̲a̲t̲.̲E̲x̲p̲r̲.̲l̲i̲s̲t̲D̲e̲p̲t̲h̲,̲ Flat.Expr.propListDepth]
+
+Note: This linter can be disabled with `set_option linter.unusedSimpArgs false`
+warning: VerifiedJS/ANF/Convert.lean:146:74: This simp argument is unused:
+  Flat.Expr.propListDepth
+
+Hint: Omit it from the simp argument list.
+  simp_all [Flat.Expr.depth, Flat.Expr.listDepth,̵ ̵F̵l̵a̵t̵.̵E̵x̵p̵r̵.̵p̵r̵o̵p̵L̵i̵s̵t̵D̵e̵p̵t̵h̵]
+
+Note: This linter can be disabled with `set_option linter.unusedSimpArgs false`
+warning: VerifiedJS/ANF/Convert.lean:156:36: This simp argument is unused:
+  Flat.Expr.depth
+
+Hint: Omit it from the simp argument list.
+  simp_all [̵F̵l̵a̵t̵.̵E̵x̵p̵r̵.̵d̵e̵p̵t̵h̵,̵ ̵F̵l̵a̵t̵.̵E̵x̵p̵r̵.̵l̵i̵s̵t̵D̵e̵p̵t̵h̵,̵[̲F̲l̲a̲t̲.̲E̲x̲p̲r̲.̲l̲i̲s̲t̲D̲e̲p̲t̲h̲,̲ Flat.Expr.propListDepth]
+
+Note: This linter can be disabled with `set_option linter.unusedSimpArgs false`
+warning: VerifiedJS/ANF/Convert.lean:156:53: This simp argument is unused:
+  Flat.Expr.listDepth
+
+Hint: Omit it from the simp argument list.
+  simp_all [Flat.Expr.depth, F̵l̵a̵t̵.̵E̵x̵p̵r̵.̵l̵i̵s̵t̵D̵e̵p̵t̵h̵,̵ ̵Flat.Expr.propListDepth]
+
+Note: This linter can be disabled with `set_option linter.unusedSimpArgs false`
+⚠ [41/49] Replayed VerifiedJS.Proofs.ClosureConvertCorrect
+warning: VerifiedJS/Proofs/ClosureConvertCorrect.lean:25:16: declaration uses `sorry`
+warning: VerifiedJS/Proofs/ClosureConvertCorrect.lean:33:16: declaration uses `sorry`
+⚠ [42/49] Replayed VerifiedJS.Proofs.ANFConvertCorrect
+warning: VerifiedJS/Proofs/ANFConvertCorrect.lean:72:16: declaration uses `sorry`
+warning: VerifiedJS/Proofs/ANFConvertCorrect.lean:93:16: declaration uses `sorry`
+✔ [48/49] Built VerifiedJS (581ms)
+Build completed successfully (49 jobs).

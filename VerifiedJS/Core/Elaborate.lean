@@ -104,6 +104,29 @@ private def propKeyToString : Source.PropertyKey → String
   | .private_ name => "_private_" ++ name
   | .computed _   => "__computed__"
 
+/-- Collect let/const variable names declared directly in a statement list (non-recursive). -/
+private def collectBlockLetNames : List Source.Stmt → List String
+  | [] => []
+  | (.varDecl .let_ decls) :: rest =>
+    decls.map (fun (.mk pat _) => patternToName pat) ++ collectBlockLetNames rest
+  | (.varDecl .const_ decls) :: rest =>
+    decls.map (fun (.mk pat _) => patternToName pat) ++ collectBlockLetNames rest
+  | _ :: rest => collectBlockLetNames rest
+
+/-- Wrap block expression with save-restore for shadowed variables.
+    Generates: let __save_x = x in seq blockExpr (let x = __save_x in restExpr)
+    This ensures block-scoped let/const declarations don't leak (ECMA-262 §13.3.1). -/
+private def wrapSaveRestore (shadowedNames : List String) (blockExpr : Core.Expr) (restExpr : Core.Expr) : Core.Expr :=
+  match shadowedNames with
+  | [] => .seq blockExpr restExpr
+  | _ =>
+    let saveName n := "__blk_save_" ++ n
+    -- Restore bindings after block: let x = __save_x in ... for each shadowed var
+    let withRestores := shadowedNames.foldr (fun n body => .«let» n (.var (saveName n)) body) restExpr
+    let withBlock := .seq blockExpr withRestores
+    -- Save bindings before block: let __save_x = x in ...
+    shadowedNames.foldr (fun n body => .«let» (saveName n) (.var n) body) withBlock
+
 mutual
 
 private partial def propKeyAccessExpr (obj : Core.Expr) (k : Source.PropertyKey) : ElabM Core.Expr := do
@@ -437,9 +460,29 @@ private partial def elabStmt (s : Source.Stmt) : ElabM Core.Expr := do
     let whileBody := .seq bodyExpr updateExpr
     pure (.seq initExpr (.while_ condExpr whileBody))
 
-  | .forIn _ _ _ _ => pure undef  -- for-in not supported
-  | .forOf _ _ _ _ => pure undef  -- for-of not supported
-  | .forOfEx _ _ _ _ _ => pure undef
+  | .forIn _kind lhs rhs body => do
+    -- Desugar: for (var key in obj) body  =>  Core.forIn "key" (elabExpr obj) (elabStmt body)
+    let binding := match lhs with
+      | .pattern p => patternToName p
+      | .varDecl _ p => patternToName p
+    let objExpr ← elabExpr rhs
+    let bodyExpr ← elabStmt body
+    pure (.forIn binding objExpr bodyExpr)
+  | .forOf _kind lhs rhs body => do
+    -- Desugar: for (var item of arr) body  =>  Core.forOf "item" (elabExpr arr) (elabStmt body)
+    let binding := match lhs with
+      | .pattern p => patternToName p
+      | .varDecl _ p => patternToName p
+    let iterExpr ← elabExpr rhs
+    let bodyExpr ← elabStmt body
+    pure (.forOf binding iterExpr bodyExpr)
+  | .forOfEx _kind lhs rhs body _mode => do
+    let binding := match lhs with
+      | .pattern p => patternToName p
+      | .varDecl _ p => patternToName p
+    let iterExpr ← elabExpr rhs
+    let bodyExpr ← elabStmt body
+    pure (.forOf binding iterExpr bodyExpr)
 
   | .«switch» disc cases => do
     let d ← elabExpr disc
@@ -513,26 +556,37 @@ private partial def elabVarDecls (decls : List Source.VarDeclarator) : ElabM Cor
 
 /-- Elaborate a list of statements, threading var decls into subsequent code. -/
 private partial def elabStmts (stmts : List Source.Stmt) : ElabM Core.Expr := do
-  elabStmtsList stmts
+  elabStmtsListScoped stmts []
 
-/-- Helper to elaborate a list of statements, threading let-bindings forward. -/
-private partial def elabStmtsList (stmts : List Source.Stmt) : ElabM Core.Expr := do
+/-- Helper to elaborate a list of statements, threading let-bindings forward.
+    declaredVars tracks variable names declared in the enclosing scope,
+    used to detect shadowing in nested blocks. -/
+private partial def elabStmtsListScoped (stmts : List Source.Stmt) (declaredVars : List String) : ElabM Core.Expr := do
   match stmts with
   | [] => pure undef
   | [s] => elabStmt s
-  | (.varDecl _kind decls) :: rest => do
+  | (.varDecl kind decls) :: rest => do
     -- Thread variable declarations as let-bindings around the rest
-    let restExpr ← elabStmtsList rest
+    let newNames := decls.map (fun (.mk pat _) => patternToName pat)
+    let declaredVars' := if kind != .var then newNames ++ declaredVars else declaredVars
+    let restExpr ← elabStmtsListScoped rest declaredVars'
     elabVarDeclsWithBody decls restExpr
   | (.functionDecl name params body isAsync isGenerator) :: rest => do
     -- Thread function declarations as let-bindings (proper scoping for closure conversion)
     let bodyExpr ← elabStmts body
     let funcExpr := Core.Expr.functionDef (some name) (paramsToNames params) bodyExpr isAsync isGenerator
-    let restExpr ← elabStmtsList rest
+    let restExpr ← elabStmtsListScoped rest (name :: declaredVars)
     pure (.«let» name funcExpr restExpr)
+  | (.block blockStmts) :: rest => do
+    let e ← elabStmt (.block blockStmts)
+    let r ← elabStmtsListScoped rest declaredVars
+    -- Determine which block let/const declarations shadow outer variables
+    let blockLetNames := collectBlockLetNames blockStmts
+    let shadowedNames := blockLetNames.filter (fun n => declaredVars.contains n)
+    pure (wrapSaveRestore shadowedNames e r)
   | s :: rest => do
     let e ← elabStmt s
-    let r ← elabStmtsList rest
+    let r ← elabStmtsListScoped rest declaredVars
     pure (.seq e r)
 
 /-- Wrap variable declarations as nested let-bindings around a body expression. -/

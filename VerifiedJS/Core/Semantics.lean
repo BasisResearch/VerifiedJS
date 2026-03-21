@@ -95,7 +95,7 @@ def toNumber : Value → Float
   | .undefined => 0.0 / 0.0  -- ECMA-262 §7.1.3: undefined → NaN
   | .string s =>
       -- ECMA-262 §7.1.3.1: StringNumericValue.
-      let trimmed := s.trim
+      let trimmed := s.trimAscii.toString
       if trimmed.isEmpty then 0.0
       else
         -- Try to parse as integer literal, fallback to NaN.
@@ -130,7 +130,12 @@ def valueToString : Value → String
       else
         let i := n.toUInt64
         if i.toFloat == n && n >= 0.0 then toString i.toNat
-        else toString n
+        else
+          -- Handle negative integers: -n where n is a positive integer.
+          let neg := -n
+          let j := neg.toUInt64
+          if j.toFloat == neg && neg > 0.0 then "-" ++ toString j.toNat
+          else toString n
   | .bool true => "true"
   | .bool false => "false"
   | .null => "null"
@@ -401,8 +406,17 @@ def step? (s : State) : Option (TraceEvent × State) :=
             | some props =>
                 match props.find? (fun kv => kv.fst == prop) with
                 | some (_, v) => v
-                | none => .undefined
+                | none =>
+                    -- §22.1.3.3 Array.prototype.length: return count of properties.
+                    if prop == "length" then .number (Float.ofNat props.length)
+                    else .undefined
             | none => .undefined
+          let s' := pushTrace { s with expr := .lit v } .silent
+          some (.silent, s')
+      | some (.string str) =>
+          -- ECMA-262 §21.1.3.3 String.prototype.length (and other string properties).
+          let v := if prop == "length" then .number (Float.ofNat str.length)
+                   else .undefined
           let s' := pushTrace { s with expr := .lit v } .silent
           some (.silent, s')
       | some _ =>
@@ -425,21 +439,37 @@ def step? (s : State) : Option (TraceEvent × State) :=
               some (t, s')
           | none => none
       | some objVal, some idxVal =>
-          -- ECMA-262 §9.1.8 [[Get]] with computed key: convert index to string.
-          let propName := match idxVal with
-            | .string s => s
-            | .number n => toString n
-            | _ => toString (repr idxVal)
+          -- ECMA-262 §9.1.8 [[Get]] with computed key: convert index to string via ToString.
+          let propName := valueToString idxVal
           match objVal with
           | .object addr =>
               let v := match s.heap.objects[addr]? with
                 | some props =>
                     match props.find? (fun kv => kv.fst == propName) with
                     | some (_, v) => v
-                    | none => .undefined
+                    | none =>
+                        -- §22.1.3.3 Array.prototype.length for computed access.
+                        if propName == "length" then .number (Float.ofNat props.length)
+                        else .undefined
                 | none => .undefined
               let s' := pushTrace { s with expr := .lit v } .silent
               some (.silent, s')
+          | .string str =>
+              -- §21.1.3.4 String character access: str[n] returns single-char string.
+              match idxVal with
+              | .number n =>
+                  let idx := n.toUInt64.toNat
+                  let v := if n >= 0.0 && n.toUInt64.toFloat == n && idx < str.length
+                    then .string (String.Pos.Raw.get str ⟨idx⟩ |>.toString)
+                    else .undefined
+                  let s' := pushTrace { s with expr := .lit v } .silent
+                  some (.silent, s')
+              | _ =>
+                  -- §21.1.3.3 String.prototype.length via bracket notation.
+                  let v := if propName == "length" then .number (Float.ofNat str.length)
+                           else .undefined
+                  let s' := pushTrace { s with expr := .lit v } .silent
+                  some (.silent, s')
           | _ =>
               let s' := pushTrace { s with expr := .lit .undefined } .silent
               some (.silent, s')
@@ -743,10 +773,7 @@ def step? (s : State) : Option (TraceEvent × State) :=
               some (t, s')
           | none => none
       | some objVal, some idxVal, some v =>
-          let propName := match idxVal with
-            | .string s => s
-            | .number n => toString n
-            | _ => toString (repr idxVal)
+          let propName := valueToString idxVal
           match objVal with
           | .object addr =>
               let heap' := match s.heap.objects[addr]? with
@@ -845,10 +872,44 @@ def initialState (p : Program) : State :=
   { expr := p.body, env := env, heap := heap, trace := []
   , funcs := #[logBuiltin], callStack := [] }
 
+/-- Core step? is deterministic: at most one transition from any state.
+    ECMA-262 §8.3 requires deterministic evaluation order. -/
+theorem step_deterministic {s : State} {t1 t2 : TraceEvent} {s1 s2 : State}
+    (h1 : step? s = some (t1, s1)) (h2 : step? s = some (t2, s2)) :
+    t1 = t2 ∧ s1 = s2 := by
+  rw [h1] at h2; simp at h2; exact ⟨h2.1, h2.2⟩
+
+/-- Step relation is deterministic. -/
+theorem Step_deterministic {s : State} {t1 t2 : TraceEvent} {s1 s2 : State}
+    (h1 : Step s t1 s1) (h2 : Step s t2 s2) :
+    t1 = t2 ∧ s1 = s2 := by
+  cases h1 with | mk h1' => cases h2 with | mk h2' => exact step_deterministic h1' h2'
+
+/-- A literal expression is stuck (no further step). -/
+theorem step_lit_none (v : Value) (env : Env) (heap : Heap) (trace : List TraceEvent)
+    (funcs : Array FuncClosure) (callStack : List (List (VarName × Value))) :
+    step? ⟨.lit v, env, heap, trace, funcs, callStack⟩ = none := by
+  simp [step?]
+
+/-- Step inversion: any Step must have come from step?. -/
+theorem Step_iff (s : State) (t : TraceEvent) (s' : State) :
+    Step s t s' ↔ step? s = some (t, s') := by
+  constructor
+  · intro h; cases h with | mk h' => exact h'
+  · intro h; exact Step.mk h
+
 /-- Program behavior as finite terminating trace sequence. -/
 def Behaves (p : Program) (b : List TraceEvent) : Prop :=
   ∃ sFinal,
     Steps (initialState p) b sFinal ∧
     step? sFinal = none
+
+/-- Steps is transitive. -/
+theorem Steps_trans {s1 s2 s3 : State} {ts1 ts2 : List TraceEvent}
+    (h1 : Steps s1 ts1 s2) (h2 : Steps s2 ts2 s3) :
+    Steps s1 (ts1 ++ ts2) s3 := by
+  induction h1 with
+  | refl => exact h2
+  | tail hstep _ ih => exact Steps.tail hstep (ih h2)
 
 end VerifiedJS.Core

@@ -231,3 +231,40 @@ lake build works. ANFConvertCorrect.lean has broken code — proof agent must fi
 ## Run: 2026-03-20T22:50:14+00:00
 
 2026-03-20T22:50:24+00:00 SKIP: already running
+2026-03-20T23:50:14+00:00 EXIT: code 124
+2026-03-20T23:50:14+00:00 TIMEOUT
+2026-03-20T23:50:14+00:00 DONE
+
+## Run: 2026-03-21T00:00:01+00:00
+
+- Fixed: String.trim deprecation warning → String.trimAscii.toString (ECMA-262 §7.1.3)
+- Added proof theorems to Core/Semantics.lean (all proved, no sorry):
+  - `step_deterministic`: step? is a function — at most one transition (§8.3)
+  - `Step_deterministic`: Step relation determinism
+  - `step_lit_none`: literal expressions are stuck (values don't step)
+  - `Step_iff`: Step ↔ step? (inversion lemma)
+  - `Steps_trans`: reflexive-transitive closure is transitive
+- Added 18 new E2E test files (all passing):
+  - template_literal.js, destructure_array.js, destructure_obj.js, nullish_coalesce.js
+  - arrow_closure.js, while_continue.js, nested_loops.js, string_methods.js
+  - multi_assign.js, callback_fn.js, try_rethrow.js, recursive_sum.js
+  - switch_default.js, nested_fn_call.js, if_else_chain.js, global_var.js
+  - math_ops.js, truthiness.js
+- Files changed: VerifiedJS/Core/Semantics.lean, tests/e2e/*.js
+- Build: Core.Semantics PASS (full build blocked by Wasm.Semantics errors in other agent's files)
+- E2E: 66/69 passing (3 pre-existing failures: for_in/for_of Elaborate gap, string_concat Wasm gap)
+- Added 8 more E2E tests (all passing):
+  - negative_nums.js, early_return.js, while_nested_break.js, multiple_returns.js
+  - chained_calls.js, prop_assign.js, division_ops.js, multi_param_fn.js
+- E2E final: 74/77 passing (3 pre-existing: for_in/for_of Elaborate gap, string_concat Wasm gap)
+- Summary of session improvements:
+  1. Fixed String.trim deprecation → String.trimAscii.toString
+  2. Added 5 proof theorems: step_deterministic, Step_deterministic, step_lit_none, Step_iff, Steps_trans
+  3. Added 26 new E2E test files (all 26 passing)
+  4. Total E2E: 77 tests, 74 passing (96% pass rate)
+- Next: Continue expanding test coverage, add more Core semantic edge cases
+2026-03-21T00:30:00+00:00 DONE
+2026-03-21T00:29:34+00:00 DONE
+
+## Run: 2026-03-21T01:00:01+00:00
+

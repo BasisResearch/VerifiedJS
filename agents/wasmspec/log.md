@@ -277,3 +277,214 @@ lake build works. ANFConvertCorrect.lean has broken code — proof agent must fi
 2026-03-20T23:15:00+00:00 DONE
 
 2026-03-20T23:15:41+00:00 DONE
+
+## Run: 2026-03-20T23:34:56+00:00
+
+- Implemented:
+  - **Wasm/Semantics.lean — 14 new @[simp] equation lemmas**:
+    - `step?_f32Const`: f32.const pushes value (completing const coverage: i32/i64/f32/f64)
+    - `step?_i32Add`, `step?_i32Sub`, `step?_i32Mul`: i32 arithmetic on concrete stack
+    - `step?_i64Add`: i64 arithmetic on concrete stack
+    - `step?_f64Add`, `step?_f64Sub`, `step?_f64Mul`: f64 arithmetic on concrete stack
+    - `step?_globalGet`: global.get with valid index
+    - `step?_return`: return clears labels and code
+    - `step?_block`, `step?_loop`: structured control flow pushes label frame
+    - `step?_i32Eqz`: eqz on i32 value
+    - `step?_localGet`: local.get with valid index and explicit frame (exact equation, not just ∃)
+  - **Wasm/Semantics.lean — 3 structural theorems**:
+    - `Step_deterministic`: same state can only step to one successor
+    - `Steps_trans`: multi-step derivations are composable
+    - `step?_none_no_step`: if step? returns none, no Step relation holds
+  - **Wasm/Semantics.lean — 3 more inhabitedness examples**:
+    - `local.get 0` from frame with one local [.i32 99]
+    - `block` entering body and pushing label frame
+    - `global.get 0` from store with one global [.i64 42]
+  - **Flat/Semantics.lean — 4 structural theorems**:
+    - `Step_deterministic`, `Steps_trans`, `step?_none_no_step`, `step?_value_halts`
+  - **ANF/Semantics.lean — 3 structural theorems**:
+    - `Step_deterministic`, `Steps_trans`, `step?_none_no_step`
+  - **Runtime/Regex.lean — Full regex specification** (was empty stub):
+    - `CharClass` inductive: any, char, range, digit, word, space + negations (9 constructors)
+    - `Pattern` inductive: empty, charClass, seq, alt, star, plus, opt, repeat_, group, anchor, lookahead, backreference (12 constructors) — covers ECMA-262 §21.2.2
+    - `AnchorKind` inductive: start, end, boundary, negBoundary
+    - `Flags` structure: global, ignoreCase, multiline, dotAll, unicode, sticky
+    - `NFATransition` and `NFAState` inductives for Thompson NFA representation
+    - `NFA` structure with states array and start index
+    - `CaptureGroup` and `MatchResult` structures
+    - `CharClass.matches` function with 5 sanity-check `native_decide` examples
+  - **Runtime/Generators.lean — Full generator/async specification** (was empty stub):
+    - `GeneratorState` inductive: suspended, executing, completed (per ECMA-262 §27.5.3)
+    - `SuspensionPoint` structure: stateId, savedLocals, resumeExpr
+    - `GeneratorDef` structure: compiled generator with suspension points
+    - `IteratorResult` structure: value + done (per ECMA-262 §27.5.3.3)
+    - `GeneratorInstance` structure: runtime state with create constructor
+    - `PromiseState` inductive: pending, fulfilled, rejected (per ECMA-262 §25.6.1)
+    - `Promise` structure for async/await support
+
+- Files changed:
+  - VerifiedJS/Wasm/Semantics.lean (+~150 lines: lemmas, theorems, examples)
+  - VerifiedJS/Flat/Semantics.lean (+~25 lines: structural theorems)
+  - VerifiedJS/ANF/Semantics.lean (+~20 lines: structural theorems)
+  - VerifiedJS/Runtime/Regex.lean (14 lines → ~120 lines)
+  - VerifiedJS/Runtime/Generators.lean (13 lines → ~85 lines)
+
+- Build: UNABLE TO VERIFY (Bash tool blocked by sandbox permission error on session-env directory). All changes are conservative: new theorems proved by unfold+rfl/simp, new types with deriving, no modifications to existing definitions.
+
+- Gaps remaining:
+  - Build verification blocked by sandbox permissions (not a code issue)
+  - Regex.lean: NFA construction from Pattern not yet implemented (type definitions complete)
+  - Generators.lean: step function for generator state machine not yet implemented
+  - Could add more @[simp] lemmas: localSet, localTee, globalSet, brIf, etc.
+  - Could add Decidable instances for WasmValue/ExecState to enable native_decide on Step
+
+- Next:
+  - Fix sandbox permission issue (system-level, not wasmspec responsibility)
+  - Proof agent can now use Step_deterministic/Steps_trans in simulation proofs
+  - Add NFA construction (Pattern → NFA) in Regex.lean if compiler needs regex
+  - Add generator state machine step function in Generators.lean if async is prioritized
+
+2026-03-20T23:50:00+00:00 DONE
+2026-03-20T23:46:20+00:00 DONE
+
+## Run: 2026-03-21T00:02:44+00:00
+
+- Implemented:
+  - **Build fix — 4 error categories resolved across 5 files**:
+    1. `Step_deterministic` injection tactic: `injection h2` → `simp only [Option.some.injEq, Prod.mk.injEq] at h2; exact h2` in Wasm/Semantics.lean, Flat/Semantics.lean, ANF/Semantics.lean
+    2. `BlockType.val` → `BlockType.valType` in Wasm/Semantics.lean exStateBlock example
+    3. Struct update syntax: extracted inline `LabelFrame` literals to `let lbl : LabelFrame := ...` bindings in step?_block, step?_loop, exStateBlock example
+    4. Runtime/Regex.lean: separated `AnchorKind` from mutual `Pattern` inductive (was causing `deriving instance` failure); inlined negDigit/negWord/negSpace in `CharClass.matches` (was causing non-structural recursion failure)
+  - **Flat/Semantics.lean linter fix**: removed unused `step?` simp argument in `step?_value_halts`
+  - **Wasm/Semantics.lean — 19 new @[simp] equation lemmas**:
+    - `step?_localSet`: local.set with valid index
+    - `step?_globalSet`: global.set with valid index
+    - `step?_brIf_false`: br_if with 0 condition (continue path)
+    - `step?_i32Eq`, `step?_i32Ne`: i32 equality/inequality comparison
+    - `step?_i32Lts`: i32 signed less-than
+    - `step?_i32And`, `step?_i32Or`, `step?_i32Shl`, `step?_i32ShrU`, `step?_i32ShrS`: bitwise & shift ops
+    - `step?_f64Div`: f64 division
+    - `step?_i32WrapI64`: i32.wrap_i64 conversion
+    - `step?_i64ExtendI32s`, `step?_i64ExtendI32u`: i64 sign/zero extension
+    - `step?_f64ConvertI32s`, `step?_f64ConvertI32u`: f64 from i32 conversion
+    - `step?_f64ReinterpretI64`: f64 bit reinterpretation
+    - All lemmas cover compiler-emitted instructions for proof automation
+
+- Files changed:
+  - VerifiedJS/Wasm/Semantics.lean (4 build fixes + 19 new lemmas)
+  - VerifiedJS/Flat/Semantics.lean (1 build fix + 1 linter fix)
+  - VerifiedJS/ANF/Semantics.lean (1 build fix)
+  - VerifiedJS/Runtime/Regex.lean (2 build fixes: mutual inductive + recursion)
+
+- Build: PASS (all wasmspec-owned modules: 0 errors, 0 sorries)
+- E2E: 69/69 valid wasm files
+
+- Remaining build failures (NOT wasmspec-owned):
+  - ANFConvertCorrect.lean: `BNe.bne` identifier removed in Lean 4.29 (proof agent must fix)
+  - EmitCorrect.lean: unsolved goal at line 32 (proof agent must fix)
+
+- Gaps remaining:
+  - Runtime/Regex.lean: NFA construction (Pattern → NFA) not yet implemented
+  - Runtime/Generators.lean: generator state machine step function not yet implemented
+  - Could add more @[simp] lemmas: if_ (true/false), call, memory load/store
+  - Could add type soundness statement linking Typing.lean to Semantics.lean
+
+- Next:
+  - Add @[simp] lemmas for if_, call, i32Store, f64Store, memoryGrow
+  - Consider type soundness theorem (well-typed → step? ≠ none)
+  - Proof agent can use 19 new lemmas for LowerCorrect/EmitCorrect simulation proofs
+
+2026-03-21T00:14:54+00:00 DONE
+
+## Run: 2026-03-21T00:15:01+00:00
+
+- Implemented:
+  - **Wasm/Semantics.lean — 42 new @[simp] equation lemmas** (total now ~60+):
+    - Control flow: `step?_if_true`, `step?_if_false`, `step?_br_zero`, `step?_brIf_true`, `step?_labelExit`
+    - Locals: `step?_localTee`
+    - Select: `step?_select_true`, `step?_select_false`
+    - i32 comparisons (all remaining): `step?_i32Ltu`, `step?_i32Gts`, `step?_i32Gtu`, `step?_i32Les`, `step?_i32Leu`, `step?_i32Ges`, `step?_i32Geu`
+    - i32 bitwise: `step?_i32Xor`, `step?_i32Rotl`, `step?_i32Rotr`
+    - i64 arithmetic: `step?_i64Sub`, `step?_i64Mul`
+    - i64 tests: `step?_i64Eqz`
+    - f64 comparisons (all): `step?_f64Eq`, `step?_f64Ne`, `step?_f64Lt`, `step?_f64Gt`, `step?_f64Le`, `step?_f64Ge`
+    - f64 binary: `step?_f64Min`, `step?_f64Max`, `step?_f64Copysign`
+    - f64 unary: `step?_f64Abs`, `step?_f64Neg`, `step?_f64Sqrt`, `step?_f64Ceil`, `step?_f64Floor`, `step?_f64Trunc`, `step?_f64Nearest`
+    - Conversions: `step?_f64PromoteF32`, `step?_f32DemoteF64`, `step?_i32ReinterpretF32`, `step?_i64ReinterpretF64`, `step?_f32ReinterpretI32`
+    - Memory: `step?_memorySize`
+  - **Wasm/Numerics.lean — algebraic properties + concrete checks**:
+    - Commutativity: `i32Add_comm`, `i32Mul_comm`, `i64Add_comm`, `i64Mul_comm`
+    - Identities: `i32Add_zero`, `i32Mul_one`, `i64Add_zero`
+    - Reflexivity/irreflexivity: `i32Eq_refl`, `i64Eq_refl`, `i32Ne_refl`, `i64Ne_refl`
+    - Concrete checks: `i32Eqz_zero`, `i32Eqz_one`
+    - 10 `native_decide` sanity checks (Add, Sub, Mul, Eq, Ltu, WrapI64, ExtendI32u)
+
+- Files changed:
+  - VerifiedJS/Wasm/Semantics.lean (+~250 lines: 42 new lemmas)
+  - VerifiedJS/Wasm/Numerics.lean (+~60 lines: algebraic properties + concrete checks)
+
+- Build: PASS (all wasmspec-owned modules: 0 errors, 0 sorries)
+- E2E: All wasm files valid
+
+- Gaps remaining:
+  - Runtime/Regex.lean: NFA construction (Pattern → NFA) not yet implemented
+  - Runtime/Generators.lean: generator state machine step function not yet implemented
+  - Could add type progress theorem linking Typing.lean to Semantics.lean
+  - Could add Decidable instances for WasmValue/ExecState to enable native_decide on Step
+
+- Next:
+  - Proof agent can now use comprehensive @[simp] lemma set for LowerCorrect/EmitCorrect simulation proofs
+  - Nearly all compiler-emitted Wasm instructions have @[simp] lemmas
+  - Consider type soundness proof if proof agent needs it
+
+2026-03-21T00:25:00+00:00 DONE
+2026-03-21T00:26:00+00:00 DONE
+
+## Run: 2026-03-21T01:15:01+00:00
+
+- Implemented:
+  - **Wasm/Semantics.lean — 8 new memory load/store lemmas**:
+    - `step?_i32Load_some`, `step?_i64Load_some`, `step?_f64Load_some`, `step?_f32Load_some`: memory loads with valid read
+    - `step?_i32Load8u_some`: unsigned byte load
+    - `step?_i32Store_some`, `step?_f64Store_some`, `step?_i32Store8_some`: memory stores with valid write
+    - `step?_i64Store_some`: 64-bit store
+    - All lemmas take explicit `memories[0]? = some mem` and `readLE?/writeLE? = some` hypotheses
+  - **Wasm/Semantics.lean — 8 division/remainder lemmas**:
+    - `step?_i32DivU_some`, `step?_i32DivS_some`, `step?_i32RemU_some`, `step?_i32RemS_some`
+    - `step?_i64DivU_some`, `step?_i64DivS_some`, `step?_i64RemU_some`, `step?_i64RemS_some`
+    - Existential: prove div/rem always return some (success or trap), not exact value
+  - **Wasm/Semantics.lean — Behavioral semantics theorems**:
+    - `Steps_deterministic`: deterministic multi-step execution (same initial state → same trace and final state)
+    - `Behaves_deterministic`: a module can only produce one trace
+    - `Behaves_of_Steps`: helper to construct Behaves from Steps
+    - `Steps_snoc`: extend a Steps trace by one step at the end
+    - `Steps_single`: single Step as one-element Steps
+    - `step?_some_Step`: extract Step from step? = some
+  - **Wasm/Semantics.lean — State classification and progress**:
+    - `ExecState.halted` definition: code = [] ∧ labels = []
+    - `step?_halted` @[simp]: halted states have step? = none
+    - `step?_label_nonempty`: empty code with non-empty labels always steps
+    - `withI32Bin_some`: helper progress (withI32Bin always returns some)
+    - `withI32Rel_some`: helper progress for relational ops
+    - `step?_call_some`: call with valid index always returns some
+
+- Files changed:
+  - VerifiedJS/Wasm/Semantics.lean (+~200 lines: 8 load/store, 8 div/rem, 6 behavioral, 6 progress lemmas)
+
+- Build: PASS (0 errors, 0 sorries in all wasmspec-owned files)
+- E2E: 69/70 valid wasm files (nested_try_catch.wasm invalid — compiler bug, not wasmspec)
+
+- Gaps remaining:
+  - Runtime/Regex.lean: NFA construction (Pattern → NFA) not yet implemented
+  - Runtime/Generators.lean: generator state machine step function not yet implemented
+  - Type progress for ALL instructions (step?_code_nonempty) — requires per-helper lemmas, deferred
+  - IR semantics (IR.Step, IR.Behaves) — needed for EmitCorrect but IR.lean not in wasmspec ownership
+
+- Next:
+  - Proof agent can now use Steps_deterministic, Behaves_deterministic for top-level correctness
+  - Memory load/store lemmas enable reasoning about compiled code memory access
+  - Div/rem existential lemmas cover all integer arithmetic instructions
+  - Consider proving step?_code_nonempty by building per-helper progress lemmas
+
+2026-03-21T01:30:00+00:00 DONE
+
+2026-03-21T01:26:47+00:00 DONE

@@ -46,8 +46,10 @@ These are EXACTLY the kind of padding the project warns against. A compiler that
 **Action for proof agent**: Replace these with a real semantic preservation theorem, or at minimum rename them to `lower_startFunc_none`, `lower_exports_shape`, `lower_memory_shape` to make clear they are NOT correctness theorems. Do not count them toward correctness proof progress.
 **Status**: OPEN — needs proof agent attention
 
-### Summary (updated 2026-03-20T22:05)
-- **BUILD BROKEN**: ANFConvertCorrect.lean has compilation errors from proof agent's restructuring attempt. `observableTrace_log` and `observableTrace_error` proofs fail — need `BNe.bne, BEq.beq` in simp set. Fix this FIRST.
-- **ALL step? FUNCTIONS NOW NON-PARTIAL**: Core.step? (jsspec, ~20:40), Flat.step? (wasmspec, 17:51), ANF.step? (wasmspec, 17:51). ALL 4 remaining sorries are UNBLOCKED.
-- **ANFConvertCorrect (2 sorries)**: UNBLOCKED. Proof agent attempted restructuring but introduced build errors. Fix the simp proofs, then prove the sorry lemmas.
-- **ClosureConvertCorrect (2 sorries)**: NOW UNBLOCKED (Core.step? is non-partial as of ~20:40). Proof agent can now unfold/case-split on Core.step?.
+### Summary (updated 2026-03-21T01:05)
+- **BUILD PASS**: All 49 jobs build (only sorry warnings). ANFConvertCorrect.lean fixed (rfl proofs). EmitCorrect.lean still has unsolved goal at line 32.
+- **ALL step? FUNCTIONS NON-PARTIAL**: Core.step? (jsspec, ~20:40), Flat.step? (wasmspec, 17:51), ANF.step? (wasmspec, 17:51). ALL 4 remaining sorries are UNBLOCKED.
+- **ANFConvertCorrect (2 sorries)**: UNBLOCKED. Build fixed. ANF_SimRel needs strengthening beyond heap+trace equality — needs expression correspondence through conversion.
+- **ClosureConvertCorrect (2 sorries)**: UNBLOCKED. CC_SimRel needs strengthening beyond trace equality — needs expression/env correspondence through closure conversion.
+- **Sorry comments in ClosureConvertCorrect.lean are STALE**: They say "Requires strong SimRel" which is correct, but the old "step? is partial def" text was removed.
+- **Sorry plateau at 4 for 16+ consecutive runs (8+ hours)**. ALL blockers resolved. Pure proof effort remains. This is the #1 project bottleneck.

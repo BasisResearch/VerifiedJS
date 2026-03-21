@@ -50,9 +50,46 @@ After proving things, also:
 - Handle new JS constructs that jsspec adds (check Core/Syntax.lean for new cases)
 - Make sure all Interp.lean interpreters handle every case (no unimplemented branches)
 
+## PRIORITY: PROVE THE 4 REMAINING SORRIES — BUILD IS CLEAN
+
+The build passes (49 jobs). ANFConvertCorrect.lean is fixed. ALL step? functions are non-partial. There are NO blockers. The sorry count has been stuck at 4 for 8+ hours across 16+ supervisor runs. This is the #1 project bottleneck.
+
+### The problem: Simulation relations are too weak
+Both `CC_SimRel` and `ANF_SimRel` only relate traces (and heaps for ANF). This is insufficient to prove the step simulations because you need to know HOW the expressions relate through the conversion.
+
+### What you need to do:
+
+**Step 1: Strengthen CC_SimRel** (ClosureConvertCorrect.lean:14)
+Currently: `sf.trace = sc.trace` (too weak)
+Needs: Expression correspondence through closure conversion:
+```lean
+private def CC_SimRel (s : Core.Program) (t : Flat.Program)
+    (sf : Flat.State) (sc : Core.State) : Prop :=
+  sf.trace = sc.trace ∧
+  sf.heap = sc.heap ∧
+  -- The Flat expression is the closure-converted form of the Core expression
+  -- (or they are both values/stuck)
+  (sf.expr = Flat.closureConvert_expr sc.expr ∨
+   (Flat.step? sf = none ∧ Core.step? sc = none))
+```
+You need to trace through `closureConvert_expr` to establish what expression correspondence looks like.
+
+**Step 2: Strengthen ANF_SimRel** (ANFConvertCorrect.lean:56)
+Currently: `sa.heap = sf.heap ∧ observableTrace sa.trace = observableTrace sf.trace`
+Needs: Expression correspondence through ANF conversion.
+
+**Step 3: Case analysis**
+For each sorry, do case analysis on the Step inductive. For each expression form, show the simulation holds. This may be 100+ lines per sorry — that is expected and necessary.
+
+**Priority 1**: anfConvert_step_star and anfConvert_halt_star (ANFConvertCorrect.lean:72, :93)
+**Priority 2**: closureConvert_step_simulation and closureConvert_halt_preservation (ClosureConvertCorrect.lean:25, :33)
+
+### EmitCorrect.lean line 32 — still broken
+The `emit_single_import` proof needs fixing. Try `unfold emit at h; simp only [Bind.bind, Except.bind] at h; split at h <;> simp_all`
+
 ## Proof Strategy -- USE AUTOMATION FIRST
 
-The project imports Duper (first-order prover), Aesop (rule-based automation), and has access to grind. USE THEM. Do not waste time on manual proofs when automation can handle it.
+The project uses Aesop (rule-based automation) and has access to grind. USE THEM. Do not waste time on manual proofs when automation can handle it.
 
 ### Step 1: Try automated tactics AGGRESSIVELY on every sorry
 
@@ -92,7 +129,7 @@ constructor        -- split And goals
 intro h            -- peel off forall
 cases h with       -- case split
 | case1 => grind
-| case2 => duper
+| case2 => grind
 ```
 
 ### Step 3: Manual only as LAST resort
@@ -100,7 +137,7 @@ Only write manual proof terms if ALL of the above fail. Even then, try `grind` o
 
 ### Anti-patterns to AVOID
 - Do NOT write 20-line manual proofs when `grind` closes it in one line
-- Do NOT skip `duper` -- it is available via `import Duper` and is very powerful
+- Duper has been REMOVED from deps. Do NOT import Duper. Use grind, aesop, omega, simp instead.
 - Do NOT use `sorry` without first trying ALL automated tactics
 - Do NOT prove trivial structural properties and call them "correctness theorems"
 
@@ -148,3 +185,12 @@ Before you finish a run, use the CronCreate tool to schedule periodic reminders 
 - E2E: X/Y passing
 - Next: <what you will attack next>
 ```
+
+## Build Helper
+Use `bash scripts/lake_build_concise.sh` instead of `lake build`. It:
+- Filters out noise (warnings, traces)
+- Shows only errors in a concise summary
+- Saves full log to test_logs/ for debugging
+- Exits with correct status code
+
+Use it EVERY TIME you check the build.

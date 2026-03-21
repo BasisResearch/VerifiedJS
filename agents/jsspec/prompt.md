@@ -56,9 +56,18 @@ Log progress to agents/jsspec/log.md after each change.
 You successfully made Core.step? non-partial with Expr.depth termination. This unblocked all 4 remaining sorry proofs. Great work.
 
 ## Current Priorities
-1. **for-in / for-of elaboration**: for_in.js and for_of.js fail because Elaborate.lean returns undef for these constructs. Add elaboration support.
-2. **Continue adding E2E tests** for edge cases and new JS features.
-3. **Continue priority stack** (destructuring, arrow functions, template literals, spread/rest, etc.)
+1. **INVESTIGATE NEW FAILURES**: 9 new E2E tests are failing. Before adding more tests, fix these:
+   - **iife.js** — IIFE `(function() { return 42; })()` returns undefined. Check elaboration of call expressions where callee is a parenthesized function expression.
+   - **counter_closure.js** — wasm runtime crash. Likely indirect call type mismatch in closure handling.
+   - **mutual_recursion.js** — wasm runtime crash. Mutual recursion between functions not supported.
+   - **nested_try_catch.js** — wasm compilation error. Nested try/catch generates invalid wasm blocks.
+   - **modulo_ops.js** — `5 % 2` returns 3 instead of 1. Check Core semantics for modulo.
+   - **string_comparison.js** — string `<` comparison returns 0 instead of 1 in wasm.
+   - **array_push_sim.js** — Array.push not supported (returns undefined).
+   - **object_iteration.js** — for-in on objects returns undefined (same as for_in.js).
+   - **bitwise_ops.js** — XOR produces wrong result (known old bug).
+2. **for-in / for-of elaboration**: Still not implemented. for_in.js, for_of.js, object_iteration.js all fail.
+3. **Continue adding E2E tests** for edge cases and new JS features — but fix existing failures first.
 
 ## Logging
 ```
@@ -69,3 +78,29 @@ You successfully made Core.step? non-partial with Expr.depth termination. This u
 - E2E: X/Y passing
 - Next: <what you will do next>
 ```
+
+## Critical: USE INDUCTIVE RELATIONS FOR SEMANTICS
+
+In Core/Semantics.lean, define semantics as INDUCTIVE RELATIONS, not functions:
+
+```lean
+-- GOOD: inductive Step relation
+inductive Step : Expr -> Env -> Expr -> Env -> Prop where
+  | var_lookup : env.lookup x = some v -> Step (Expr.var x) env (Expr.val v) env
+  | add : Step (Expr.binop .add (Expr.val (Val.num a)) (Expr.val (Val.num b))) env (Expr.val (Val.num (a + b))) env
+  | if_true : v != Val.undefined -> v != Val.num 0 -> Step (Expr.if_ v then_ else_) env then_ env
+  ...
+```
+
+Do NOT use `partial def step?` — it cannot be unfolded in proofs and blocks the proof agent.
+If step? already exists, KEEP IT for the interpreter but ALSO add the inductive Step relation.
+The proof agent needs inductive relations to do case analysis and prove simulation theorems.
+
+## Build Helper
+Use `bash scripts/lake_build_concise.sh` instead of `lake build`. It:
+- Filters out noise (warnings, traces)
+- Shows only errors in a concise summary
+- Saves full log to test_logs/ for debugging
+- Exits with correct status code
+
+Use it EVERY TIME you check the build.

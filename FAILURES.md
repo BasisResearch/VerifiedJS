@@ -149,10 +149,60 @@ Format:
 
 ---
 
-## BUILD BROKEN — 2026-03-20T22:05
+## BUILD BROKEN — 2026-03-20T22:05 — PARTIALLY ADDRESSED
 
-### ANFConvertCorrect.lean compilation errors
-**Cause**: Proof agent restructured ANFConvertCorrect.lean with observable trace infrastructure. Two simp proofs fail: `observableTrace_log` and `observableTrace_error` — `simp [observableTrace, List.filter]` cannot reduce `Core.TraceEvent.log s != Core.TraceEvent.silent` because simp doesn't unfold the derived BEq instance.
-**Fix**: Add `BNe.bne, BEq.beq` to the simp set in both theorems.
-**Impact**: Proof module fails to build. E2E tests still work (don't depend on Proofs module). `lake build` reports FAIL.
-**Status**: OPEN — proof agent instructed to fix
+### ANFConvertCorrect.lean compilation errors — STILL OPEN
+**Cause**: `BNe.bne` removed in Lean 4.29. Proof agent's `simp [BNe.bne, BEq.beq]` proofs fail.
+**Fix**: Replace observableTrace_silent/log/error proofs with `rfl`. Fix line 111 `congr 1` type mismatch.
+**Status**: OPEN — proof agent has exact fix code in prompt
+
+### EmitCorrect.lean line 32 — NEW 2026-03-21T00:01
+**Cause**: `emit_single_import` proof — `simp_all [Pure.pure]` doesn't solve the goal after `split`.
+**Fix**: Proof agent needs to add more lemmas to the simp set or use a different tactic.
+**Status**: OPEN — proof agent
+
+## BUILD BROKEN — 2026-03-20T23:35 — FIXED 2026-03-21T00:06
+
+### Wasm/Semantics.lean — FIXED by wasmspec
+**Fix**: wasmspec fixed injection tactic, BlockType.val, and struct syntax errors.
+**Status**: FIXED
+
+---
+
+## New E2E Failures — 2026-03-21T01:05
+
+### array_push_sim.js — NEW
+**Expected**: `100` **Actual**: `undefined`
+**Status**: OPEN — likely missing Array.push runtime support
+
+### bitwise_ops.js — KNOWN BUG (re-added test)
+**Expected**: `7` **Actual**: `8` (bitwise XOR produces wrong result)
+**Status**: OPEN
+
+### counter_closure.js — NEW
+**Expected**: `1` **Actual**: wasm runtime error (failed to run)
+**Status**: OPEN — likely indirect call type mismatch in closure handling
+
+### iife.js — NEW
+**Expected**: `42` **Actual**: `undefined`
+**Status**: OPEN — IIFE (immediately invoked function expression) not handled
+
+### modulo_ops.js — NEW
+**Expected**: `1` **Actual**: `3` (wrong modulo result)
+**Status**: OPEN — modulo operator producing incorrect values
+
+### mutual_recursion.js — NEW
+**Expected**: `true` **Actual**: wasm runtime error (failed to run)
+**Status**: OPEN — mutual recursion not supported in function lowering
+
+### nested_try_catch.js — NEW
+**Expected**: `inner` **Actual**: wasm compilation error
+**Status**: OPEN — nested try/catch produces invalid wasm
+
+### object_iteration.js — NEW
+**Expected**: `10` **Actual**: `undefined`
+**Status**: OPEN — for-in/for-of on objects not elaborated
+
+### string_comparison.js — NEW
+**Expected**: `1` **Actual**: `0`
+**Status**: OPEN — string comparison operators not working in Wasm

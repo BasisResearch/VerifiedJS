@@ -441,4 +441,69 @@ def i64Extend32s (n : UInt64) : UInt64 :=
   if v < 2^31 then UInt64.ofNat v
   else UInt64.ofInt (Int.ofNat v - Int.ofNat (2^32))
 
+/-! ## Algebraic properties for proof automation -/
+
+/-- i32.add is commutative. -/
+theorem i32Add_comm (a b : UInt32) : i32Add a b = i32Add b a := by
+  simp [i32Add, UInt32.add_comm]
+
+/-- i32.add identity: adding 0. -/
+@[simp] theorem i32Add_zero (a : UInt32) : i32Add a 0 = a := by
+  simp [i32Add]
+
+/-- i32.mul is commutative. -/
+theorem i32Mul_comm (a b : UInt32) : i32Mul a b = i32Mul b a := by
+  simp [i32Mul, UInt32.mul_comm]
+
+/-- i32.mul identity: multiplying by 1. -/
+@[simp] theorem i32Mul_one (a : UInt32) : i32Mul a 1 = a := by
+  simp [i32Mul]
+
+/-- i32.eqz on 0 is true. -/
+@[simp] theorem i32Eqz_zero : i32Eqz 0 = true := by native_decide
+
+/-- i32.eqz on 1 is false. -/
+@[simp] theorem i32Eqz_one : i32Eqz 1 = false := by native_decide
+
+/-- i64.add is commutative. -/
+theorem i64Add_comm (a b : UInt64) : i64Add a b = i64Add b a := by
+  simp [i64Add, UInt64.add_comm]
+
+/-- i64.add identity: adding 0. -/
+@[simp] theorem i64Add_zero (a : UInt64) : i64Add a 0 = a := by
+  simp [i64Add]
+
+/-- i64.mul is commutative. -/
+theorem i64Mul_comm (a b : UInt64) : i64Mul a b = i64Mul b a := by
+  simp [i64Mul, UInt64.mul_comm]
+
+/-- i32.eq is reflexive. -/
+@[simp] theorem i32Eq_refl (a : UInt32) : i32Eq a a = true := by
+  simp [i32Eq]
+
+/-- i64.eq is reflexive. -/
+@[simp] theorem i64Eq_refl (a : UInt64) : i64Eq a a = true := by
+  simp [i64Eq]
+
+/-- i32.ne is irreflexive. -/
+@[simp] theorem i32Ne_refl (a : UInt32) : i32Ne a a = false := by
+  simp [i32Ne]
+
+/-- i64.ne is irreflexive. -/
+@[simp] theorem i64Ne_refl (a : UInt64) : i64Ne a a = false := by
+  simp [i64Ne]
+
+/-! ## Concrete evaluation sanity checks -/
+
+example : i32Add 3 5 = 8 := by native_decide
+example : i32Sub 10 3 = 7 := by native_decide
+example : i32Mul 4 5 = 20 := by native_decide
+example : i64Add 100 200 = 300 := by native_decide
+example : i32Eq 42 42 = true := by native_decide
+example : i32Eq 1 2 = false := by native_decide
+example : i32Ltu 1 2 = true := by native_decide
+example : i32Ltu 2 1 = false := by native_decide
+example : i32WrapI64 (UInt64.ofNat (2^32 + 5)) = 5 := by native_decide
+example : i64ExtendI32u 42 = 42 := by native_decide
+
 end VerifiedJS.Wasm.Numerics

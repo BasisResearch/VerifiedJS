@@ -746,4 +746,29 @@ theorem Steps_nil_iff (s s' : State) :
     Steps s [] s' ↔ s = s' :=
   ⟨fun h => by cases h; rfl, fun h => h ▸ Steps.refl s⟩
 
+/-! ## Structural theorems for Flat Step/Steps -/
+
+/-- Flat.Step is deterministic. -/
+theorem Step_deterministic {s : State} {t1 t2 : Core.TraceEvent} {s1 s2 : State} :
+    Step s t1 s1 → Step s t2 s2 → t1 = t2 ∧ s1 = s2 := by
+  intro ⟨h1⟩ ⟨h2⟩; rw [h1] at h2; simp only [Option.some.injEq, Prod.mk.injEq] at h2; exact h2
+
+/-- Flat.Steps is transitive. -/
+theorem Steps_trans {s1 s2 s3 : State} {t1 t2 : List Core.TraceEvent} :
+    Steps s1 t1 s2 → Steps s2 t2 s3 → Steps s1 (t1 ++ t2) s3 := by
+  intro h1 h2
+  induction h1 with
+  | refl _ => exact h2
+  | tail hstep _ ih => exact Steps.tail hstep (ih h2)
+
+/-- If step? returns none, no Step can be taken. -/
+theorem step?_none_no_step {s : State} (h : step? s = none) :
+    ∀ t s', ¬ Step s t s' := by
+  intro t s' ⟨hs⟩; rw [hs] at h; exact absurd h (by simp)
+
+/-- A literal value halts (step? returns none). -/
+theorem step?_value_halts (s : State) (v : Value) :
+    step? { s with expr := .lit v } = none := by
+  simp
+
 end VerifiedJS.Flat

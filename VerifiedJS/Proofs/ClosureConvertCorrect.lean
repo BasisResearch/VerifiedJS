@@ -28,13 +28,13 @@ private theorem closureConvert_step_simulation
     ∀ (sf : Flat.State) (sc : Core.State) (ev : Core.TraceEvent) (sf' : Flat.State),
       CC_SimRel s t sf sc → Flat.Step sf ev sf' →
       ∃ sc', Core.Step sc ev sc' ∧ CC_SimRel s t sf' sc' := by
-  sorry -- BLOCKED: step? is partial def, cannot unfold/reason about behavior.
+  sorry -- Requires strong SimRel: expression/env correspondence through closure conversion
 
 private theorem closureConvert_halt_preservation
     (s : Core.Program) (t : Flat.Program)
     (h : Flat.closureConvert s = .ok t) :
     ∀ sf sc, CC_SimRel s t sf sc → Flat.step? sf = none → Core.step? sc = none := by
-  sorry -- BLOCKED: step? is partial def, cannot unfold/reason about behavior.
+  sorry -- Requires strong SimRel: when Flat halts on literal, Core also has literal
 
 private theorem closureConvert_steps_simulation
     (s : Core.Program) (t : Flat.Program)

@@ -1,0 +1,305 @@
+⚠ [3/49] Replayed VerifiedJS.Source.Lexer
+warning: VerifiedJS/Source/Lexer.lean:143:22: `String.mk` has been deprecated: Use `String.ofList` instead
+warning: VerifiedJS/Source/Lexer.lean:145:20: `String.mk` has been deprecated: Use `String.ofList` instead
+warning: VerifiedJS/Source/Lexer.lean:147:14: `String.mk` has been deprecated: Use `String.ofList` instead
+warning: VerifiedJS/Source/Lexer.lean:201:11: `String.mk` has been deprecated: Use `String.ofList` instead
+warning: VerifiedJS/Source/Lexer.lean:277:15: `String.mk` has been deprecated: Use `String.ofList` instead
+warning: VerifiedJS/Source/Lexer.lean:280:15: `String.mk` has been deprecated: Use `String.ofList` instead
+warning: VerifiedJS/Source/Lexer.lean:283:15: `String.mk` has been deprecated: Use `String.ofList` instead
+warning: VerifiedJS/Source/Lexer.lean:286:15: `String.mk` has been deprecated: Use `String.ofList` instead
+warning: VerifiedJS/Source/Lexer.lean:289:15: `String.mk` has been deprecated: Use `String.ofList` instead
+warning: VerifiedJS/Source/Lexer.lean:292:15: `String.mk` has been deprecated: Use `String.ofList` instead
+warning: VerifiedJS/Source/Lexer.lean:295:21: `String.mk` has been deprecated: Use `String.ofList` instead
+warning: VerifiedJS/Source/Lexer.lean:300:20: `String.mk` has been deprecated: Use `String.ofList` instead
+warning: VerifiedJS/Source/Lexer.lean:311:32: `String.mk` has been deprecated: Use `String.ofList` instead
+warning: VerifiedJS/Source/Lexer.lean:319:32: `String.mk` has been deprecated: Use `String.ofList` instead
+warning: VerifiedJS/Source/Lexer.lean:362:13: `String.mk` has been deprecated: Use `String.ofList` instead
+warning: VerifiedJS/Source/Lexer.lean:366:9: `String.mk` has been deprecated: Use `String.ofList` instead
+warning: VerifiedJS/Source/Lexer.lean:375:13: `String.mk` has been deprecated: Use `String.ofList` instead
+warning: VerifiedJS/Source/Lexer.lean:382:9: `String.mk` has been deprecated: Use `String.ofList` instead
+warning: VerifiedJS/Source/Lexer.lean:390:13: `String.mk` has been deprecated: Use `String.ofList` instead
+warning: VerifiedJS/Source/Lexer.lean:391:20: `String.mk` has been deprecated: Use `String.ofList` instead
+warning: VerifiedJS/Source/Lexer.lean:403:19: `String.mk` has been deprecated: Use `String.ofList` instead
+warning: VerifiedJS/Source/Lexer.lean:405:7: `String.mk` has been deprecated: Use `String.ofList` instead
+warning: VerifiedJS/Source/Lexer.lean:425:14: `String.mk` has been deprecated: Use `String.ofList` instead
+warning: VerifiedJS/Source/Lexer.lean:429:16: `String.mk` has been deprecated: Use `String.ofList` instead
+warning: VerifiedJS/Source/Lexer.lean:433:18: `String.mk` has been deprecated: Use `String.ofList` instead
+warning: VerifiedJS/Source/Lexer.lean:437:11: `String.mk` has been deprecated: Use `String.ofList` instead
+warning: VerifiedJS/Source/Lexer.lean:439:14: `String.mk` has been deprecated: Use `String.ofList` instead
+warning: VerifiedJS/Source/Lexer.lean:443:16: `String.mk` has been deprecated: Use `String.ofList` instead
+warning: VerifiedJS/Source/Lexer.lean:447:9: `String.mk` has been deprecated: Use `String.ofList` instead
+warning: VerifiedJS/Source/Lexer.lean:449:14: `String.mk` has been deprecated: Use `String.ofList` instead
+warning: VerifiedJS/Source/Lexer.lean:453:7: `String.mk` has been deprecated: Use `String.ofList` instead
+warning: VerifiedJS/Source/Lexer.lean:454:18: `String.mk` has been deprecated: Use `String.ofList` instead
+warning: VerifiedJS/Source/Lexer.lean:519:31: `String.mk` has been deprecated: Use `String.ofList` instead
+⚠ [20/49] Replayed VerifiedJS.ANF.Convert
+warning: VerifiedJS/ANF/Convert.lean:136:88: This simp argument is unused:
+  Flat.Expr.listDepth
+
+Hint: Omit it from the simp argument list.
+  simp_all [Flat.Expr.depth,
+  ̲  ̲ ̲ ̲F̵l̵a̵t̵.̵E̵x̵p̵r̵.̵l̵i̵s̵t̵D̵e̵p̵t̵h̵,̵ ̵Flat.Expr.propListDepth]
+
+Note: This linter can be disabled with `set_option linter.unusedSimpArgs false`
+warning: VerifiedJS/ANF/Convert.lean:136:109: This simp argument is unused:
+  Flat.Expr.propListDepth
+
+Hint: Omit it from the simp argument list.
+  simp_all [Flat.Expr.depth,
+  ̲  ̲ ̲ ̲F̵l̵a̵t̵.̵E̵x̵p̵r̵.̵l̵i̵s̵t̵D̵e̵p̵t̵h̵,̵ ̵F̵l̵a̵t̵.̵E̵x̵p̵r̵.̵p̵r̵o̵p̵L̵i̵s̵t̵D̵e̵p̵t̵h̵]̵F̲l̲a̲t̲.̲E̲x̲p̲r̲.̲l̲i̲s̲t̲D̲e̲p̲t̲h̲]̲
+
+Note: This linter can be disabled with `set_option linter.unusedSimpArgs false`
+warning: VerifiedJS/ANF/Convert.lean:146:36: This simp argument is unused:
+  Flat.Expr.depth
+
+Hint: Omit it from the simp argument list.
+  simp_all [̵F̵l̵a̵t̵.̵E̵x̵p̵r̵.̵d̵e̵p̵t̵h̵,̵ ̵F̵l̵a̵t̵.̵E̵x̵p̵r̵.̵l̵i̵s̵t̵D̵e̵p̵t̵h̵,̵[̲F̲l̲a̲t̲.̲E̲x̲p̲r̲.̲l̲i̲s̲t̲D̲e̲p̲t̲h̲,̲ Flat.Expr.propListDepth]
+
+Note: This linter can be disabled with `set_option linter.unusedSimpArgs false`
+warning: VerifiedJS/ANF/Convert.lean:146:74: This simp argument is unused:
+  Flat.Expr.propListDepth
+
+Hint: Omit it from the simp argument list.
+  simp_all [Flat.Expr.depth, Flat.Expr.listDepth,̵ ̵F̵l̵a̵t̵.̵E̵x̵p̵r̵.̵p̵r̵o̵p̵L̵i̵s̵t̵D̵e̵p̵t̵h̵]
+
+Note: This linter can be disabled with `set_option linter.unusedSimpArgs false`
+warning: VerifiedJS/ANF/Convert.lean:156:36: This simp argument is unused:
+  Flat.Expr.depth
+
+Hint: Omit it from the simp argument list.
+  simp_all [̵F̵l̵a̵t̵.̵E̵x̵p̵r̵.̵d̵e̵p̵t̵h̵,̵ ̵F̵l̵a̵t̵.̵E̵x̵p̵r̵.̵l̵i̵s̵t̵D̵e̵p̵t̵h̵,̵[̲F̲l̲a̲t̲.̲E̲x̲p̲r̲.̲l̲i̲s̲t̲D̲e̲p̲t̲h̲,̲ Flat.Expr.propListDepth]
+
+Note: This linter can be disabled with `set_option linter.unusedSimpArgs false`
+warning: VerifiedJS/ANF/Convert.lean:156:53: This simp argument is unused:
+  Flat.Expr.listDepth
+
+Hint: Omit it from the simp argument list.
+  simp_all [Flat.Expr.depth, F̵l̵a̵t̵.̵E̵x̵p̵r̵.̵l̵i̵s̵t̵D̵e̵p̵t̵h̵,̵ ̵Flat.Expr.propListDepth]
+
+Note: This linter can be disabled with `set_option linter.unusedSimpArgs false`
+⚠ [38/49] Replayed VerifiedJS.Proofs.ClosureConvertCorrect
+warning: VerifiedJS/Proofs/ClosureConvertCorrect.lean:25:16: declaration uses `sorry`
+warning: VerifiedJS/Proofs/ClosureConvertCorrect.lean:33:16: declaration uses `sorry`
+✖ [42/49] Building VerifiedJS.Proofs.ANFConvertCorrect (1.0s)
+trace: .> LEAN_PATH=/opt/verifiedjs/.lake/packages/Cli/.lake/build/lib/lean:/opt/verifiedjs/.lake/packages/batteries/.lake/build/lib/lean:/opt/verifiedjs/.lake/packages/Qq/.lake/build/lib/lean:/opt/verifiedjs/.lake/packages/aesop/.lake/build/lib/lean:/opt/verifiedjs/.lake/packages/proofwidgets/.lake/build/lib/lean:/opt/verifiedjs/.lake/packages/importGraph/.lake/build/lib/lean:/opt/verifiedjs/.lake/packages/LeanSearchClient/.lake/build/lib/lean:/opt/verifiedjs/.lake/packages/plausible/.lake/build/lib/lean:/opt/verifiedjs/.lake/packages/mathlib/.lake/build/lib/lean:/opt/verifiedjs/.lake/build/lib/lean /opt/elan/toolchains/leanprover--lean4---v4.29.0-rc6/bin/lean /opt/verifiedjs/VerifiedJS/Proofs/ANFConvertCorrect.lean -o /opt/verifiedjs/.lake/build/lib/lean/VerifiedJS/Proofs/ANFConvertCorrect.olean -i /opt/verifiedjs/.lake/build/lib/lean/VerifiedJS/Proofs/ANFConvertCorrect.ilean -c /opt/verifiedjs/.lake/build/ir/VerifiedJS/Proofs/ANFConvertCorrect.c --setup /opt/verifiedjs/.lake/build/ir/VerifiedJS/Proofs/ANFConvertCorrect.setup.json --json
+error: VerifiedJS/Proofs/ANFConvertCorrect.lean:38:38: Unknown identifier `BNe.bne`
+error: VerifiedJS/Proofs/ANFConvertCorrect.lean:37:64: unsolved goals
+rest : List Core.TraceEvent
+⊢ (match Core.TraceEvent.silent != Core.TraceEvent.silent with
+    | true => Core.TraceEvent.silent :: List.filter (fun x => x != Core.TraceEvent.silent) rest
+    | false => List.filter (fun x => x != Core.TraceEvent.silent) rest) =
+    List.filter (fun x => x != Core.TraceEvent.silent) rest
+warning: VerifiedJS/Proofs/ANFConvertCorrect.lean:38:47: This simp argument is unused:
+  BEq.beq
+
+Hint: Omit it from the simp argument list.
+  simp [observableTrace, List.filter, BNe.bne,̵ ̵B̵E̵q̵.̵b̵e̵q̵]
+
+Note: This linter can be disabled with `set_option linter.unusedSimpArgs false`
+error: VerifiedJS/Proofs/ANFConvertCorrect.lean:42:38: Unknown identifier `BNe.bne`
+error: VerifiedJS/Proofs/ANFConvertCorrect.lean:41:73: unsolved goals
+s : String
+rest : List Core.TraceEvent
+⊢ (match Core.TraceEvent.log s != Core.TraceEvent.silent with
+    | true => Core.TraceEvent.log s :: List.filter (fun x => x != Core.TraceEvent.silent) rest
+    | false => List.filter (fun x => x != Core.TraceEvent.silent) rest) =
+    Core.TraceEvent.log s :: List.filter (fun x => x != Core.TraceEvent.silent) rest
+warning: VerifiedJS/Proofs/ANFConvertCorrect.lean:42:47: This simp argument is unused:
+  BEq.beq
+
+Hint: Omit it from the simp argument list.
+  simp [observableTrace, List.filter, BNe.bne,̵ ̵B̵E̵q̵.̵b̵e̵q̵]
+
+Note: This linter can be disabled with `set_option linter.unusedSimpArgs false`
+error: VerifiedJS/Proofs/ANFConvertCorrect.lean:46:38: Unknown identifier `BNe.bne`
+error: VerifiedJS/Proofs/ANFConvertCorrect.lean:45:77: unsolved goals
+s : String
+rest : List Core.TraceEvent
+⊢ (match Core.TraceEvent.error s != Core.TraceEvent.silent with
+    | true => Core.TraceEvent.error s :: List.filter (fun x => x != Core.TraceEvent.silent) rest
+    | false => List.filter (fun x => x != Core.TraceEvent.silent) rest) =
+    Core.TraceEvent.error s :: List.filter (fun x => x != Core.TraceEvent.silent) rest
+warning: VerifiedJS/Proofs/ANFConvertCorrect.lean:46:47: This simp argument is unused:
+  BEq.beq
+
+Hint: Omit it from the simp argument list.
+  simp [observableTrace, List.filter, BNe.bne,̵ ̵B̵E̵q̵.̵b̵e̵q̵]
+
+Note: This linter can be disabled with `set_option linter.unusedSimpArgs false`
+warning: VerifiedJS/Proofs/ANFConvertCorrect.lean:58:16: declaration uses `sorry`
+warning: VerifiedJS/Proofs/ANFConvertCorrect.lean:74:16: declaration uses `sorry`
+error: VerifiedJS/Proofs/ANFConvertCorrect.lean:111:47: Type mismatch
+  hobsev
+has type
+  observableTrace [t✝] = observableTrace evs1
+but is expected to have type
+  observableTrace (t✝ :: ts✝) = observableTrace evs1 ++ observableTrace evs2
+error: Lean exited with code 1
+✖ [43/49] Building VerifiedJS.Proofs.EmitCorrect (1.0s)
+trace: .> LEAN_PATH=/opt/verifiedjs/.lake/packages/Cli/.lake/build/lib/lean:/opt/verifiedjs/.lake/packages/batteries/.lake/build/lib/lean:/opt/verifiedjs/.lake/packages/Qq/.lake/build/lib/lean:/opt/verifiedjs/.lake/packages/aesop/.lake/build/lib/lean:/opt/verifiedjs/.lake/packages/proofwidgets/.lake/build/lib/lean:/opt/verifiedjs/.lake/packages/importGraph/.lake/build/lib/lean:/opt/verifiedjs/.lake/packages/LeanSearchClient/.lake/build/lib/lean:/opt/verifiedjs/.lake/packages/plausible/.lake/build/lib/lean:/opt/verifiedjs/.lake/packages/mathlib/.lake/build/lib/lean:/opt/verifiedjs/.lake/build/lib/lean /opt/elan/toolchains/leanprover--lean4---v4.29.0-rc6/bin/lean /opt/verifiedjs/VerifiedJS/Proofs/EmitCorrect.lean -o /opt/verifiedjs/.lake/build/lib/lean/VerifiedJS/Proofs/EmitCorrect.olean -i /opt/verifiedjs/.lake/build/lib/lean/VerifiedJS/Proofs/EmitCorrect.ilean -c /opt/verifiedjs/.lake/build/ir/VerifiedJS/Proofs/EmitCorrect.c --setup /opt/verifiedjs/.lake/build/ir/VerifiedJS/Proofs/EmitCorrect.setup.json --json
+warning: VerifiedJS/Proofs/EmitCorrect.lean:21:15: This simp argument is unused:
+  Pure.pure
+
+Hint: Omit it from the simp argument list.
+  simp only [P̵u̵r̵e̵.̵p̵u̵r̵e̵,̵ ̵Except.ok.injEq] at h
+
+Note: This linter can be disabled with `set_option linter.unusedSimpArgs false`
+error: VerifiedJS/Proofs/EmitCorrect.lean:32:2: unsolved goals
+case h_2
+m : IR.IRModule
+w : Module
+x✝ : Except String VerifiedJS.Wasm.EmitAcc✝
+v✝ : VerifiedJS.Wasm.EmitAcc✝
+hemit :
+  List.foldlM VerifiedJS.Wasm.emitOneFunc✝
+      (pure
+          (forIn (List.range 9) { } fun n r =>
+            pure
+              (ForInStep.yield
+                {
+                  types :=
+                    (VerifiedJS.Wasm.EmitAcc.types✝ r).push
+                      { params := List.replicate n ValType.f64, results := [ValType.f64] },
+                  typeMap :=
+                    ({ params := List.replicate n ValType.f64, results := [ValType.f64] }, n) ::
+                      VerifiedJS.Wasm.EmitAcc.typeMap✝ r,
+                  funcs := VerifiedJS.Wasm.EmitAcc.funcs✝ r }))).run
+      m.functions.toList =
+    Except.ok v✝
+h :
+  {
+      types :=
+        (match
+            List.find?
+              (fun x =>
+                x.fst == { params := [ValType.i32, ValType.i32, ValType.i32, ValType.i32], results := [ValType.i32] })
+              (VerifiedJS.Wasm.EmitAcc.typeMap✝ v✝) with
+          | some (fst, idx) => (VerifiedJS.Wasm.EmitAcc.types✝ v✝, idx)
+          | none =>
+            ((VerifiedJS.Wasm.EmitAcc.types✝¹ v✝).push
+                { params := [ValType.i32, ValType.i32, ValType.i32, ValType.i32], results := [ValType.i32] },
+              (VerifiedJS.Wasm.EmitAcc.types✝² v✝).size)).fst,
+      imports :=
+        #[{ module_ := "wasi_snapshot_preview1", name := "fd_write",
+            desc :=
+              ImportDesc.func
+                (match
+                    List.find?
+                      (fun x =>
+                        x.fst ==
+                          { params := [ValType.i32, ValType.i32, ValType.i32, ValType.i32], results := [ValType.i32] })
+                      (VerifiedJS.Wasm.EmitAcc.typeMap✝¹ v✝) with
+                  | some (fst, idx) => (VerifiedJS.Wasm.EmitAcc.types✝³ v✝, idx)
+                  | none =>
+                    ((VerifiedJS.Wasm.EmitAcc.types✝⁴ v✝).push
+                        { params := [ValType.i32, ValType.i32, ValType.i32, ValType.i32], results := [ValType.i32] },
+                      (VerifiedJS.Wasm.EmitAcc.types✝⁵ v✝).size)).snd }],
+      funcs := VerifiedJS.Wasm.EmitAcc.funcs✝ v✝,
+      tables :=
+        if m.tableEntries.isEmpty = true then #[]
+        else #[{ elem := ElemType.funcref, lim := { min := m.tableEntries.size, max := some m.tableEntries.size } }],
+      memories := m.memories.toList.toArray,
+      globals :=
+        (List.map
+            (fun x =>
+              {
+                type :=
+                  { val := VerifiedJS.Wasm.irTypeToValType✝ x.fst,
+                    mutability := if x.2.fst = true then Mut.var else Mut.const_ },
+                init :=
+                  match VerifiedJS.Wasm.irTypeToValType✝¹ x.fst with
+                  | ValType.i32 => [Instr.i32Const (UInt32.ofNat (x.2.snd.toNat?.getD 0))]
+                  | ValType.i64 => [Instr.i64Const (UInt64.ofNat (x.2.snd.toNat?.getD 0))]
+                  | ValType.f64 =>
+                    if x.2.snd.trimAscii.toString.startsWith "bits:" = true then
+                      match (x.2.snd.trimAscii.toString.drop 5).toString.toNat? with
+                      | some n => [Instr.i64Const (UInt64.ofNat n), Instr.f64ReinterpretI64]
+                      | none => [Instr.f64Const 0.0]
+                    else [Instr.f64Const ((VerifiedJS.Wasm.parseF64Literal?✝ x.2.snd).getD 0.0)]
+                  | ValType.f32 => [Instr.f32Const 0.0] })
+            m.globals.toList).toArray,
+      exports :=
+        (List.map (fun x => { name := x.fst, desc := ExportDesc.func x.snd }) m.exports.toList ++
+            [{ name := "memory", desc := ExportDesc.memory 0 }]).toArray,
+      start := m.startFunc,
+      elems :=
+        if m.tableEntries.isEmpty = true then #[]
+        else #[{ tableIdx := 0, offset := [Instr.i32Const 0], funcIdxs := m.tableEntries.toList }],
+      datas :=
+        (List.map (fun x => { memIdx := 0, offset := [Instr.i32Const (UInt32.ofNat x.fst)], init := x.snd })
+            m.dataSegments.toList).toArray } =
+    w
+⊢ {
+          types :=
+            (match
+                List.find?
+                  (fun x =>
+                    x.fst ==
+                      { params := [ValType.i32, ValType.i32, ValType.i32, ValType.i32], results := [ValType.i32] })
+                  (VerifiedJS.Wasm.EmitAcc.typeMap✝ v✝) with
+              | some (fst, idx) => (VerifiedJS.Wasm.EmitAcc.types✝ v✝, idx)
+              | none =>
+                ((VerifiedJS.Wasm.EmitAcc.types✝¹ v✝).push
+                    { params := [ValType.i32, ValType.i32, ValType.i32, ValType.i32], results := [ValType.i32] },
+                  (VerifiedJS.Wasm.EmitAcc.types✝² v✝).size)).fst,
+          imports :=
+            #[{ module_ := "wasi_snapshot_preview1", name := "fd_write",
+                desc :=
+                  ImportDesc.func
+                    (match
+                        List.find?
+                          (fun x =>
+                            x.fst ==
+                              { params := [ValType.i32, ValType.i32, ValType.i32, ValType.i32],
+                                results := [ValType.i32] })
+                          (VerifiedJS.Wasm.EmitAcc.typeMap✝¹ v✝) with
+                      | some (fst, idx) => (VerifiedJS.Wasm.EmitAcc.types✝³ v✝, idx)
+                      | none =>
+                        ((VerifiedJS.Wasm.EmitAcc.types✝⁴ v✝).push
+                            { params := [ValType.i32, ValType.i32, ValType.i32, ValType.i32],
+                              results := [ValType.i32] },
+                          (VerifiedJS.Wasm.EmitAcc.types✝⁵ v✝).size)).snd }],
+          funcs := VerifiedJS.Wasm.EmitAcc.funcs✝ v✝,
+          tables :=
+            if m.tableEntries.isEmpty = true then #[]
+            else
+              #[{ elem := ElemType.funcref, lim := { min := m.tableEntries.size, max := some m.tableEntries.size } }],
+          memories := m.memories.toList.toArray,
+          globals :=
+            (List.map
+                (fun x =>
+                  {
+                    type :=
+                      { val := VerifiedJS.Wasm.irTypeToValType✝ x.fst,
+                        mutability := if x.2.fst = true then Mut.var else Mut.const_ },
+                    init :=
+                      match VerifiedJS.Wasm.irTypeToValType✝¹ x.fst with
+                      | ValType.i32 => [Instr.i32Const (UInt32.ofNat (x.2.snd.toNat?.getD 0))]
+                      | ValType.i64 => [Instr.i64Const (UInt64.ofNat (x.2.snd.toNat?.getD 0))]
+                      | ValType.f64 =>
+                        if x.2.snd.trimAscii.toString.startsWith "bits:" = true then
+                          match (x.2.snd.trimAscii.toString.drop 5).toString.toNat? with
+                          | some n => [Instr.i64Const (UInt64.ofNat n), Instr.f64ReinterpretI64]
+                          | none => [Instr.f64Const 0.0]
+                        else [Instr.f64Const ((VerifiedJS.Wasm.parseF64Literal?✝ x.2.snd).getD 0.0)]
+                      | ValType.f32 => [Instr.f32Const 0.0] })
+                m.globals.toList).toArray,
+          exports :=
+            (List.map (fun x => { name := x.fst, desc := ExportDesc.func x.snd }) m.exports.toList ++
+                [{ name := "memory", desc := ExportDesc.memory 0 }]).toArray,
+          start := m.startFunc,
+          elems :=
+            if m.tableEntries.isEmpty = true then #[]
+            else #[{ tableIdx := 0, offset := [Instr.i32Const 0], funcIdxs := m.tableEntries.toList }],
+          datas :=
+            (List.map (fun x => { memIdx := 0, offset := [Instr.i32Const (UInt32.ofNat x.fst)], init := x.snd })
+                m.dataSegments.toList).toArray }.imports.size =
+    1
+error: Lean exited with code 1
+✔ [45/49] Built VerifiedJS.Wasm.Numerics (1.9s)
+✔ [46/49] Built VerifiedJS.Wasm.Semantics (9.3s)
+✔ [47/49] Built VerifiedJS.Wasm.Interp (644ms)
+Some required targets logged failures:
+- VerifiedJS.Proofs.ANFConvertCorrect
+- VerifiedJS.Proofs.EmitCorrect
+error: build failed

@@ -300,16 +300,23 @@ private partial def lowerComplex (ctx : LowerCtx) : ANF.ComplexExpr → LowerM (
             let envCode ← lowerTrivialM ctx env
             pure (argsCode ++ envCode ++ [IR.IRInstr.call funcIdx])
         | none => do
-            let calleeCode ← lowerTrivialM ctx callee
-            let envCode ← lowerTrivialM ctx env
-            let firstArgCode ←
-              match args with
-              | a :: _ => lowerTrivialM ctx a
-              | [] => pure [mkBoxedConst encodeUndefinedBox]
+            -- Indirect call: inline call_indirect with correct arity.
+            -- Stack layout for call_indirect: arg0:f64 ... argN:f64 env:f64 funcIdx:i32
             let argsCode ← lowerTrivialList ctx args
+            let envCode ← lowerTrivialM ctx env
+            let calleeCode ← lowerTrivialM ctx callee
+            -- Extract func index from closure NaN-boxing: payload / 65536
+            let extractFuncIdx : List IR.IRInstr :=
+              [ IR.IRInstr.unOp .i64 "reinterpret_f64"
+              , IR.IRInstr.const_ .i64 s!"{Runtime.NanBoxed.payloadMask.toNat}"
+              , IR.IRInstr.binOp .i64 "and"
+              , IR.IRInstr.unOp .i32 "wrap_i64"
+              , IR.IRInstr.const_ .i32 "65536"
+              , IR.IRInstr.binOp .i32 "div_u" ]
+            let arity := args.length + 1  -- user args + env param
             pure
-              (calleeCode ++ envCode ++ firstArgCode ++ argsCode ++ drops args.length ++
-                [IR.IRInstr.call RuntimeIdx.call])
+              (argsCode ++ envCode ++ calleeCode ++ extractFuncIdx ++
+                [IR.IRInstr.callIndirect arity])
   | .newObj callee env args => do
       let calleeCode ← lowerTrivialM ctx callee
       let envCode ← lowerTrivialM ctx env
@@ -592,8 +599,8 @@ private def runtimeHelpers : Array IR.IRFunc :=
         , IR.IRInstr.localGet 2  -- firstArg (param 0 of callee)
         , IR.IRInstr.localGet 1  -- env (param 1 of callee)
         , IR.IRInstr.localGet 3  -- funcIdx as table index (i32)
-        -- call_indirect with type (f64, f64) → f64 (type index 1 in typical emission)
-        , IR.IRInstr.callIndirect 1
+        -- call_indirect with arity 2: (f64, f64) → f64
+        , IR.IRInstr.callIndirect 2
         , IR.IRInstr.return_ ] },
     { name := "__rt_construct", params := [.f64, .f64], results := [.f64], locals := [.i32]
       body :=

@@ -273,22 +273,15 @@ private def emitOneFunc (acc : EmitAcc) (f : IR.IRFunc) : Except String EmitAcc 
           typeMap := (funcType, idx) :: acc.typeMap
           funcs := acc.funcs.push { func with typeIdx := idx } }
 
-/-- Emit a Wasm AST module from Wasm IR -/
-def emit (m : IR.IRModule) : Except String Module := do
+/-- Build the final Wasm module from an IR module and emitted function accumulator. -/
+def buildModule (m : IR.IRModule) (acc : EmitAcc) : Module :=
   let hostImportType : FuncType := { params := [.i32, .i32, .i32, .i32], results := [.i32] }
-
-  -- Emit all functions, collecting types
-  let acc ← m.functions.toList.foldlM emitOneFunc {}
-
-  -- Ensure the host print import type exists.
   let (types, hostImportTypeIdx) :=
     match acc.typeMap.find? (fun (ft, _) => ft == hostImportType) with
     | some (_, idx) => (acc.types, idx)
     | none =>
       let idx := acc.types.size
       (acc.types.push hostImportType, idx)
-
-  -- Convert globals
   let globals := m.globals.toList.map fun (t, isMut, initStr) =>
     let valType := irTypeToValType t
     let mutability := if isMut then Mut.var else Mut.const_
@@ -304,21 +297,15 @@ def emit (m : IR.IRModule) : Except String Module := do
             [.f64Const (parseF64Literal? initStr |>.getD 0.0)]
       | .f32 => [.f32Const (0.0)]
     { type := { val := valType, mutability := mutability }, init := initExpr : Global }
-
-  -- Convert exports
   let funcExports := m.exports.toList.map fun (name, funcIdx) =>
     { name := name, desc := ExportDesc.func funcIdx : Export }
   let memExport : Export := { name := "memory", desc := ExportDesc.memory 0 }
   let exports := (funcExports ++ [memExport]).toArray
-
-  -- Convert data segments
   let datas := m.dataSegments.toList.map fun (offset, bytes) =>
     { memIdx := 0
       offset := [Instr.i32Const (UInt32.ofNat offset)]
       init := bytes : DataSegment }
-
-  .ok {
-    types := types
+  { types := types
     imports := #[
       { module_ := "wasi_snapshot_preview1"
       , name := "fd_write"
@@ -336,5 +323,28 @@ def emit (m : IR.IRModule) : Except String Module := do
              else #[{ tableIdx := 0, offset := [.i32Const 0], funcIdxs := m.tableEntries.toList }]
     datas := datas.toArray
   }
+
+@[simp] theorem buildModule_start (m : IR.IRModule) (acc : EmitAcc) :
+    (buildModule m acc).start = m.startFunc := by rfl
+
+@[simp] theorem buildModule_imports_size (m : IR.IRModule) (acc : EmitAcc) :
+    (buildModule m acc).imports.size = 1 := by rfl
+
+/-- Emit a Wasm AST module from Wasm IR -/
+def emit (m : IR.IRModule) : Except String Module := do
+  -- Pre-register arity types: type index n = (f64^n) -> f64, for n in 0..8.
+  -- This ensures callIndirect n in the IR maps to the correct Wasm type index.
+  let initAcc : EmitAcc := Id.run do
+    let mut acc : EmitAcc := {}
+    for n in List.range 9 do
+      let ft : FuncType := { params := List.replicate n .f64, results := [.f64] }
+      acc := { types := acc.types.push ft
+               typeMap := (ft, n) :: acc.typeMap
+               funcs := acc.funcs }
+    pure acc
+
+  -- Emit all functions, collecting types (reusing pre-registered arity types)
+  let acc ← m.functions.toList.foldlM emitOneFunc initAcc
+  .ok (buildModule m acc)
 
 end VerifiedJS.Wasm
