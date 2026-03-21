@@ -1,4 +1,36 @@
 
+## Run: 2026-03-21T04:15:01+00:00
+
+- Implemented:
+  - **Core↔IR↔Wasm trace event mappings**: `traceFromCore`, `traceToCore`, `traceListFromCore`, `traceListToCore` with full @[simp] lemma suite including round-trip proof (`traceToCore_traceFromCore` is identity), list variants, and composed Core→IR→Wasm lemmas. These enable the proof agent to state LowerCorrect and EmitCorrect as trace-mapping semantic preservation theorems.
+  - **i32 div/rem with trap handling**: `div_s`, `div_u`, `rem_s`, `rem_u` in IR `irStep?` now use `Numerics.i32DivS?`/`i32DivU?`/`i32RemS?`/`i32RemU?` (Option-returning) with proper trap on divide-by-zero. Matches Wasm §4.3.2.
+  - **i64 complete binary ops**: Expanded from 3 ops (add/sub/mul) to 22 ops: add, sub, mul, and, or, xor, shl, shr_s, shr_u, rotl, rotr, div_s/u, rem_s/u (with traps), eq, ne, lt_s/u, gt_s/u, le_s/u, ge_s/u.
+  - **i32 rotl/rotr**: Added rotation ops to i32 binary ops.
+  - **f64 binary ops**: Added min, max, copysign.
+  - **f64 unary ops**: Added explicit f64 unary case with abs, neg, ceil, floor, trunc, nearest, sqrt via Numerics.
+  - **i32/i64 unary ops**: Added clz, ctz, popcnt.
+  - **ptr unary ops**: Added explicit ptr unary case (eqz).
+  - **New @[simp] lemmas**: `irStep?_ir_i64BinOp`, `irStep?_ir_f64UnOp`, `irStep?_ir_br`, `irStep?_ir_brIf`. Updated `irStep?_ir_i32BinOp` proof to handle div/rem branching.
+
+- Files changed:
+  - VerifiedJS/Wasm/Semantics.lean (added ~120 lines: trace mappings, ops, simp lemmas)
+
+- Build: PASS (0 errors, 48 warnings — all warnings from ClosureConvertCorrect.lean, not our files)
+
+- Gaps remaining:
+  - Runtime/Regex.lean: NFA construction and matching missing (~60%)
+  - Runtime/Generators.lean: execution/resumption semantics missing (~70%)
+  - Wasm/Interp.lean: execution loop stub
+  - LowerCorrect.lean: still trivial structural facts, not semantic preservation (proof agent's domain)
+  - EmitCorrect.lean: still stub (proof agent's domain)
+  - Source.Behaves: UNDEFINED (no owner)
+
+- Next:
+  - Add more inhabitedness examples using the new ops (div trap, i64 arithmetic)
+  - Consider adding conversion ops to IR (i32.wrap_i64, i64.extend_i32_s/u, etc.)
+  - Fill Regex.lean NFA construction if needed
+  - Port more WasmCert-Coq patterns for proof compatibility
+
 ## Run: 2026-03-20T16:32:23+00:00
 
 - Implemented:

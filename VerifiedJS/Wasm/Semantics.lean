@@ -7,6 +7,7 @@
 import VerifiedJS.Wasm.Syntax
 import VerifiedJS.Wasm.Numerics
 import VerifiedJS.Wasm.IR
+import VerifiedJS.Core.Semantics
 
 namespace VerifiedJS.Wasm
 
@@ -2765,6 +2766,9 @@ def irStep? (s : IRExecState) : Option (TraceEvent × IRExecState) :=
                 | "sub" => IRValue.f64 (Numerics.f64Sub lhs rhs)
                 | "mul" => IRValue.f64 (Numerics.f64Mul lhs rhs)
                 | "div" => IRValue.f64 (Numerics.f64Div lhs rhs)
+                | "min" => IRValue.f64 (Numerics.f64Min lhs rhs)
+                | "max" => IRValue.f64 (Numerics.f64Max lhs rhs)
+                | "copysign" => IRValue.f64 (Numerics.f64Copysign lhs rhs)
                 | "eq"  => irBoolToI32 (Numerics.f64Eq lhs rhs)
                 | "ne"  => irBoolToI32 (Numerics.f64Ne lhs rhs)
                 | "lt"  => irBoolToI32 (Numerics.f64Lt lhs rhs)
@@ -2793,6 +2797,9 @@ def irStep? (s : IRExecState) : Option (TraceEvent × IRExecState) :=
           | some (.i32 v, stk) =>
               let result := match op with
                 | "eqz" => irBoolToI32 (Numerics.i32Eqz v)
+                | "clz" => IRValue.i32 (Numerics.i32Clz v)
+                | "ctz" => IRValue.i32 (Numerics.i32Ctz v)
+                | "popcnt" => IRValue.i32 (Numerics.i32Popcnt v)
                 | _ => IRValue.i32 0
               some (.silent, irPushTrace { base with stack := result :: stk } .silent)
           | some _ => some (irTrapState base s!"type mismatch in unary i32.{op}")
@@ -2802,14 +2809,37 @@ def irStep? (s : IRExecState) : Option (TraceEvent × IRExecState) :=
           | some (.i64 v, stk) =>
               let result := match op with
                 | "eqz" => irBoolToI32 (Numerics.i64Eqz v)
+                | "clz" => IRValue.i64 (Numerics.i64Clz v)
+                | "ctz" => IRValue.i64 (Numerics.i64Ctz v)
+                | "popcnt" => IRValue.i64 (Numerics.i64Popcnt v)
                 | _ => IRValue.i64 0
               some (.silent, irPushTrace { base with stack := result :: stk } .silent)
           | some _ => some (irTrapState base s!"type mismatch in unary i64.{op}")
           | none => some (irTrapState base s!"stack underflow in unary i64.{op}")
-      | .unOp _ _ =>
+      | .unOp .f64 op =>
           match irPop1? base.stack with
-          | some (_, stk) => some (.silent, irPushTrace { base with stack := .i32 0 :: stk } .silent)
-          | none => some (irTrapState base "stack underflow in unOp")
+          | some (.f64 v, stk) =>
+              let result := match op with
+                | "abs" => IRValue.f64 (Numerics.f64Abs v)
+                | "neg" => IRValue.f64 (Numerics.f64Neg v)
+                | "ceil" => IRValue.f64 (Numerics.f64Ceil v)
+                | "floor" => IRValue.f64 (Numerics.f64Floor v)
+                | "trunc" => IRValue.f64 (Numerics.f64Trunc v)
+                | "nearest" => IRValue.f64 (Numerics.f64Nearest v)
+                | "sqrt" => IRValue.f64 (Numerics.f64Sqrt v)
+                | _ => IRValue.f64 0.0
+              some (.silent, irPushTrace { base with stack := result :: stk } .silent)
+          | some _ => some (irTrapState base s!"type mismatch in unary f64.{op}")
+          | none => some (irTrapState base s!"stack underflow in unary f64.{op}")
+      | .unOp .ptr op =>
+          match irPop1? base.stack with
+          | some (.i32 v, stk) =>
+              let result := match op with
+                | "eqz" => irBoolToI32 (Numerics.i32Eqz v)
+                | _ => IRValue.i32 0
+              some (.silent, irPushTrace { base with stack := result :: stk } .silent)
+          | some _ => some (irTrapState base s!"type mismatch in unary ptr.{op}")
+          | none => some (irTrapState base s!"stack underflow in unary ptr.{op}")
 
       -- Memory: load (4-byte little-endian i32)
       | .load _t offset =>
@@ -3212,16 +3242,20 @@ def traceListToCore : List TraceEvent → List Core.TraceEvent :=
 /-- Round-trip for lists: Core → IR → Core is identity. -/
 @[simp] theorem traceListToCore_traceListFromCore (ts : List Core.TraceEvent) :
     traceListToCore (traceListFromCore ts) = ts := by
-  simp [traceListToCore, traceListFromCore, List.map_map, Function.comp]
+  simp only [traceListToCore, traceListFromCore, List.map_map]
+  have : (traceToCore ∘ traceFromCore) = id := by
+    funext t; exact traceToCore_traceFromCore t
+  rw [this, List.map_id]
 
-/-- Composing Core→IR→Wasm trace maps: traceToWasm ∘ traceFromCore.
-    Observable events (log/error) become silent at the Wasm level. -/
-@[simp] theorem traceToWasm_traceFromCore (t : Core.TraceEvent) :
-    traceToWasm (traceFromCore t) = match t with
-      | .silent => .silent
-      | .log _ => .silent
-      | .error _ => .silent := by
-  cases t <;> rfl
+/-- Composing Core→IR→Wasm trace maps: silent Core events map to silent Wasm events. -/
+@[simp] theorem traceToWasm_traceFromCore_silent :
+    traceToWasm (traceFromCore .silent) = Wasm.TraceEvent.silent := rfl
+
+@[simp] theorem traceToWasm_traceFromCore_log (s : String) :
+    traceToWasm (traceFromCore (.log s)) = Wasm.TraceEvent.silent := rfl
+
+@[simp] theorem traceToWasm_traceFromCore_error (s : String) :
+    traceToWasm (traceFromCore (.error s)) = Wasm.TraceEvent.silent := rfl
 
 /-! ### Simulation Framework for Proof Chain
 
@@ -3330,14 +3364,17 @@ theorem irStep?_ir_if (s : IRExecState) (result : Option IRType)
     ∃ t s', irStep? s = some (t, s') := by
   simp [irStep?, hcode, hstack, irPop1?, irPushTrace]
 
-/-- irStep? for i32 binop with valid operands always succeeds. -/
+/-- irStep? for i32 binop with valid operands always produces a result
+    (either a value or a trap for div/rem by zero). -/
 @[simp]
 theorem irStep?_ir_i32BinOp (s : IRExecState) (op : String) (rest : List IRInstr)
     (lhs rhs : UInt32) (stk : List IRValue)
     (hcode : s.code = IRInstr.binOp .i32 op :: rest)
     (hstack : s.stack = .i32 rhs :: .i32 lhs :: stk) :
     ∃ t s', irStep? s = some (t, s') := by
-  simp [irStep?, hcode, hstack, irPop2?, irPushTrace]
+  simp only [irStep?, hcode, hstack, irPop2?]
+  -- The outer match on op splits into trapping (div/rem) and total branches
+  split <;> (try (split <;> exact ⟨_, _, rfl⟩)) <;> exact ⟨_, _, rfl⟩
 
 /-- irStep? for f64 binop with valid operands always succeeds. -/
 @[simp]
@@ -3406,6 +3443,50 @@ theorem irStep?_ir_frameReturn (s : IRExecState)
     (hframes : s.frames = calleeFrame :: callerFrame :: frest) :
     ∃ t s', irStep? s = some (t, s') := by
   simp [irStep?, hcode, hlabels, hframes, irPushTrace]
+
+/-- irStep? for i64 binop with valid operands always produces a result. -/
+@[simp]
+theorem irStep?_ir_i64BinOp (s : IRExecState) (op : String) (rest : List IRInstr)
+    (lhs rhs : UInt64) (stk : List IRValue)
+    (hcode : s.code = IRInstr.binOp .i64 op :: rest)
+    (hstack : s.stack = .i64 rhs :: .i64 lhs :: stk) :
+    ∃ t s', irStep? s = some (t, s') := by
+  simp only [irStep?, hcode, hstack, irPop2?]
+  split <;> (try (split <;> exact ⟨_, _, rfl⟩)) <;> exact ⟨_, _, rfl⟩
+
+/-- irStep? for f64 unary op with valid operand always succeeds. -/
+@[simp]
+theorem irStep?_ir_f64UnOp (s : IRExecState) (op : String) (rest : List IRInstr)
+    (v : Float) (stk : List IRValue)
+    (hcode : s.code = IRInstr.unOp .f64 op :: rest)
+    (hstack : s.stack = .f64 v :: stk) :
+    ∃ t s', irStep? s = some (t, s') := by
+  simp [irStep?, hcode, hstack, irPop1?, irPushTrace]
+
+/-- irStep? for br with a matching label always succeeds. -/
+@[simp]
+theorem irStep?_ir_br (s : IRExecState) (label : String) (rest : List IRInstr)
+    (idx : Nat) (lbl : IRLabel)
+    (hcode : s.code = IRInstr.br label :: rest)
+    (hfind : irFindLabel? s.labels label = some (idx, lbl)) :
+    ∃ t s', irStep? s = some (t, s') := by
+  simp [irStep?, hcode, hfind, irPushTrace]
+
+/-- irStep? for br_if with i32 condition on stack always succeeds. -/
+@[simp]
+theorem irStep?_ir_brIf (s : IRExecState) (label : String) (rest : List IRInstr)
+    (cond : UInt32) (stk : List IRValue)
+    (hcode : s.code = IRInstr.brIf label :: rest)
+    (hstack : s.stack = .i32 cond :: stk) :
+    ∃ t s', irStep? s = some (t, s') := by
+  simp only [irStep?, hcode, hstack, irPop1?]
+  split
+  · -- cond ≠ 0: branch taken
+    split
+    · exact ⟨_, _, rfl⟩
+    · exact ⟨_, _, rfl⟩
+  · -- cond = 0: fall through
+    exact ⟨_, _, rfl⟩
 
 /-! ### IRSteps Composition Helpers -/
 
