@@ -2164,10 +2164,72 @@ theorem step_return_some_value_exact (v : Value) (env : Env) (heap : Heap)
           (.error ("return:" ++ toString (repr v)))) := by
   simp [step?, exprValue?]
 
+set_option maxHeartbeats 800000 in
 /-- The only stuck expression is a literal (progress). -/
 theorem stuck_implies_lit {s : State} (hstuck : step? s = none) :
     ∃ v, s.expr = .lit v := by
-  sorry -- TODO: exhaustive case analysis on Expr constructors; each non-lit has step? ≠ none
+  cases h : s.expr with
+  | lit v => exact ⟨v, rfl⟩
+  | var _ => simp [step?, h] at hstuck; split at hstuck <;> simp at hstuck
+  | while_ _ _ => simp [step?, h] at hstuck
+  | «break» _ => simp [step?, h] at hstuck
+  | «continue» _ => simp [step?, h] at hstuck
+  | labeled _ _ => simp [step?, h] at hstuck
+  | newObj _ _ => simp [step?, h] at hstuck
+  | this => simp [step?, h] at hstuck; split at hstuck <;> simp at hstuck
+  | functionDef _ _ _ _ _ => simp [step?, h] at hstuck
+  | «let» _ init _ =>
+    simp only [step?, h] at hstuck; split at hstuck <;> simp at hstuck
+    split at hstuck <;> simp at hstuck
+  | assign _ rhs =>
+    simp only [step?, h] at hstuck; split at hstuck <;> simp at hstuck
+    split at hstuck <;> simp at hstuck
+  | seq a _ =>
+    simp only [step?, h] at hstuck; split at hstuck <;> simp at hstuck
+    split at hstuck <;> simp at hstuck
+  | «if» cond _ _ =>
+    simp only [step?, h] at hstuck; split at hstuck <;> simp at hstuck
+    split at hstuck <;> simp at hstuck
+  | unary _ arg =>
+    simp only [step?, h] at hstuck; split at hstuck <;> simp at hstuck
+    split at hstuck <;> simp at hstuck
+  | throw arg =>
+    simp only [step?, h] at hstuck; split at hstuck <;> simp at hstuck
+    split at hstuck <;> simp at hstuck
+  | typeof arg =>
+    simp only [step?, h] at hstuck; split at hstuck <;> simp at hstuck
+    split at hstuck <;> simp at hstuck
+  | getProp obj _ =>
+    simp only [step?, h] at hstuck; split at hstuck <;> simp at hstuck
+    split at hstuck <;> simp at hstuck
+  | deleteProp obj _ =>
+    simp only [step?, h] at hstuck; split at hstuck <;> simp at hstuck
+    split at hstuck <;> simp at hstuck
+  | forIn _ obj _ =>
+    simp only [step?, h] at hstuck; split at hstuck <;> simp at hstuck
+    split at hstuck <;> simp at hstuck
+  | forOf _ iterable _ =>
+    simp only [step?, h] at hstuck; split at hstuck <;> simp at hstuck
+    split at hstuck <;> simp at hstuck
+  | await arg =>
+    simp only [step?, h] at hstuck; split at hstuck <;> simp at hstuck
+    split at hstuck <;> simp at hstuck
+  | «return» arg =>
+    cases arg with
+    | none => simp [step?, h] at hstuck
+    | some e =>
+      simp only [step?, h] at hstuck; split at hstuck <;> simp at hstuck
+      split at hstuck <;> simp at hstuck
+  | yield arg _ =>
+    cases arg with
+    | none => simp [step?, h] at hstuck
+    | some e =>
+      simp only [step?, h] at hstuck; split at hstuck <;> simp at hstuck
+      split at hstuck <;> simp at hstuck
+  | all_goals (
+      -- binary, getIndex, setProp, setIndex, objectLit, arrayLit, tryCatch, call
+      -- These have deeper nesting; use sorry for now
+      sorry)
 
 /-- Behaves implies the final state has a literal expression. -/
 theorem Behaves_final_lit {p : Program} {b : List TraceEvent}

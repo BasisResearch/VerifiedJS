@@ -4242,13 +4242,13 @@ theorem irStep?_progress (s : IRExecState) :
   | [] =>
     match hl : s.labels with
     | label :: lrest =>
-      right; simp [irStep?, hc, hl, irPushTrace]; exact ⟨_, _, rfl⟩
+      right; simp [irStep?, hc, hl, irPushTrace]
     | [] =>
       match hf : s.frames with
       | [] => left; exact ⟨hc, hl, by simp [hf]⟩
       | [_] => left; exact ⟨hc, hl, by simp [hf]⟩
       | _ :: _ :: _ =>
-        right; simp [irStep?, hc, hl, hf, irPushTrace]; exact ⟨_, _, rfl⟩
+        right; simp [irStep?, hc, hl, hf, irPushTrace]
 
 /-- Corollary: irStep? returns none if and only if the state is halted. -/
 theorem irStep?_none_iff_halted (s : IRExecState) :
@@ -4259,13 +4259,5 @@ theorem irStep?_none_iff_halted (s : IRExecState) :
     · exact hh
     · rw [h] at hs; exact absurd hs (by simp)
   · intro h; exact irStep?_halted h
-
-/-! ### IRSteps Append Lemma -/
-
-/-- Append a single step at the end of an IRSteps sequence. -/
-theorem IRSteps_snoc {s1 s2 s3 : IRExecState} {ts : List TraceEvent} {t : TraceEvent}
-    (h1 : IRSteps s1 ts s2) (h2 : IRStep s2 t s3) :
-    IRSteps s1 (ts ++ [t]) s3 :=
-  IRSteps_trans h1 (.tail h2 (.refl _))
 
 end VerifiedJS.Wasm.IR

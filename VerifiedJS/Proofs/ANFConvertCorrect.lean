@@ -128,16 +128,18 @@ private theorem anfConvert_halt_star
   -- Pattern: unfold normalizeExpr → show result always steps → exfalso
   | «break» label =>
     -- normalizeExpr (.break label) k = pure (.break label)
-    -- ANF.step? on .break always returns some
+    -- ANF.step? on .break always returns some → contradiction
     exfalso; rw [hlit] at hconv
-    simp only [ANF.normalizeExpr, pure, Pure.pure, StateT.pure, Except.pure] at hconv
-    have := (Prod.mk.inj (Except.ok.inj hconv)).1; rw [← this] at hhalt
-    simp [ANF.step?] at hhalt
+    simp only [ANF.normalizeExpr, pure, Pure.pure, StateT.pure, Except.pure,
+               Except.ok.injEq, Prod.mk.injEq] at hconv
+    have hsa : sa = { sa with expr := .break label } := by cases sa; simp [hconv.1.symm]
+    rw [hsa] at hhalt; simp [ANF.step?] at hhalt
   | «continue» label =>
     exfalso; rw [hlit] at hconv
-    simp only [ANF.normalizeExpr, pure, Pure.pure, StateT.pure, Except.pure] at hconv
-    have := (Prod.mk.inj (Except.ok.inj hconv)).1; rw [← this] at hhalt
-    simp [ANF.step?] at hhalt
+    simp only [ANF.normalizeExpr, pure, Pure.pure, StateT.pure, Except.pure,
+               Except.ok.injEq, Prod.mk.injEq] at hconv
+    have hsa : sa = { sa with expr := .continue label } := by cases sa; simp [hconv.1.symm]
+    rw [hsa] at hhalt; simp [ANF.step?] at hhalt
   | _ =>
     -- Remaining non-lit cases: var, this, let, assign, if, seq, call, newObj,
     -- getProp, setProp, getIndex, setIndex, deleteProp, typeof, getEnv, makeEnv,
