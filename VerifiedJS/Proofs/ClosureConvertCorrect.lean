@@ -18,13 +18,27 @@ private theorem firstNonValueExpr_not_lit {l : List Flat.Expr} {done target rest
   induction l generalizing done target rest with
   | nil => simp [Flat.firstNonValueExpr] at h
   | cons e tl ih =>
-    unfold Flat.firstNonValueExpr at h
     cases e with
     | lit w =>
-      split at h
-      · next heq => simp at h; obtain ⟨_, rfl, rfl⟩ := h; exact ih heq
-      · simp at h
-    | _ => all_goals (simp at h; obtain ⟨_, rfl, _⟩ := h; intro v habs; exact Flat.Expr.noConfusion habs)
+      have hred : Flat.firstNonValueExpr (.lit w :: tl) =
+          (match Flat.firstNonValueExpr tl with
+           | some (d, t, r) => some (.lit w :: d, t, r) | none => none) := rfl
+      rw [hred] at h
+      cases heq : Flat.firstNonValueExpr tl with
+      | none => simp [heq] at h
+      | some val =>
+        obtain ⟨d, t, r⟩ := val
+        simp only [heq, Option.some.injEq, Prod.mk.injEq] at h
+        obtain ⟨_, rfl, rfl⟩ := h; exact ih heq
+    | _ =>
+      -- For all non-lit constructors, firstNonValueExpr returns some ([], e, tl)
+      -- The key: after cases, e IS the specific constructor, so rfl reduces the match
+      all_goals (
+        dsimp only [Flat.firstNonValueExpr] at h
+        simp only [Option.some.injEq, Prod.mk.injEq] at h
+        obtain ⟨_, rfl, _⟩ := h
+        intro v habs; exact Flat.Expr.noConfusion habs
+      )
 
 /-- The target returned by firstNonValueProp is never a literal. -/
 private theorem firstNonValueProp_not_lit {l : List (Flat.PropName × Flat.Expr)} {done name target rest}
@@ -34,13 +48,25 @@ private theorem firstNonValueProp_not_lit {l : List (Flat.PropName × Flat.Expr)
   | nil => simp [Flat.firstNonValueProp] at h
   | cons p tl ih =>
     obtain ⟨pn, pe⟩ := p
-    unfold Flat.firstNonValueProp at h
     cases pe with
     | lit w =>
-      split at h
-      · next heq => simp at h; obtain ⟨_, _, rfl, rfl⟩ := h; exact ih heq
-      · simp at h
-    | _ => all_goals (simp at h; obtain ⟨_, _, rfl, _⟩ := h; intro v habs; exact Flat.Expr.noConfusion habs)
+      have hred : Flat.firstNonValueProp (⟨pn, .lit w⟩ :: tl) =
+          (match Flat.firstNonValueProp tl with
+           | some (d, n, t, r) => some (⟨pn, .lit w⟩ :: d, n, t, r) | none => none) := rfl
+      rw [hred] at h
+      cases heq : Flat.firstNonValueProp tl with
+      | none => simp [heq] at h
+      | some val =>
+        obtain ⟨d, n, t, r⟩ := val
+        simp only [heq, Option.some.injEq, Prod.mk.injEq] at h
+        obtain ⟨_, _, rfl, rfl⟩ := h; exact ih heq
+    | _ =>
+      all_goals (
+        dsimp only [Flat.firstNonValueProp] at h
+        simp only [Option.some.injEq, Prod.mk.injEq] at h
+        obtain ⟨_, _, rfl, _⟩ := h
+        intro v habs; exact Flat.Expr.noConfusion habs
+      )
 
 /-- Simulation relation for closure conversion: Flat and Core states
     have matching traces, and expression correspondence through the conversion. -/

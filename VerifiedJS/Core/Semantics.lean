@@ -1481,6 +1481,40 @@ theorem valueToString_object (addr : Nat) : valueToString (.object addr) = "[obj
 theorem valueToString_function (idx : FuncIdx) : valueToString (.function idx) = "function" := by
   simp [valueToString]
 
+/-- pushTrace preserves the expression. -/
+theorem pushTrace_expr (s : State) (t : TraceEvent) :
+    (pushTrace s t).expr = s.expr := by
+  simp [pushTrace]
+
+/-- pushTrace preserves the environment. -/
+theorem pushTrace_env (s : State) (t : TraceEvent) :
+    (pushTrace s t).env = s.env := by
+  simp [pushTrace]
+
+/-- pushTrace preserves the heap. -/
+theorem pushTrace_heap (s : State) (t : TraceEvent) :
+    (pushTrace s t).heap = s.heap := by
+  simp [pushTrace]
+
+/-- pushTrace appends to the trace. -/
+theorem pushTrace_trace (s : State) (t : TraceEvent) :
+    (pushTrace s t).trace = s.trace ++ [t] := by
+  simp [pushTrace]
+
+/-- pushTrace preserves funcs. -/
+theorem pushTrace_funcs (s : State) (t : TraceEvent) :
+    (pushTrace s t).funcs = s.funcs := by
+  simp [pushTrace]
+
+/-- pushTrace preserves callStack. -/
+theorem pushTrace_callStack (s : State) (t : TraceEvent) :
+    (pushTrace s t).callStack = s.callStack := by
+  simp [pushTrace]
+
+/-- Env.lookup on empty env returns none. -/
+theorem Env.lookup_empty (name : VarName) : Env.empty.lookup name = none := by
+  simp [Env.empty, Env.lookup, List.find?]
+
 end VerifiedJS.Core
 
 namespace VerifiedJS.Source
