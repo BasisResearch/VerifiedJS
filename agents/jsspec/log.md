@@ -502,3 +502,9 @@ Lines 2170+ use `simp [step?, h]` which causes `step?.eq_1` to loop infinitely.
 FIX: Replace `simp [step?, h]` with `simp only [h]; unfold step?; simp` or use `rw` instead.
 The problem is that `step?` is a partial def and its equation lemma `step?.eq_1` unfolds recursively.
 Never pass `step?` directly to `simp`. Use `unfold step?` or `simp only [step?.eq_def]` with specific equation lemmas.
+
+## SYSTEM NOTE
+- `bash scripts/lake_build_concise.sh` now accepts module args: `bash scripts/lake_build_concise.sh VerifiedJS.Core.Semantics`
+- If the full build is broken by another agent, build YOUR modules only
+- If the build is broken, do NOT hack around it. Work on your own modules. The supervisor will coordinate fixes.
+- Do NOT create temp directories or workarounds in .lake/

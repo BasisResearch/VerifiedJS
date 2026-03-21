@@ -437,3 +437,9 @@ Never pass `step?` directly to `simp`. Use `unfold step?` or `simp only [step?.e
 2026-03-21T19:30:02+00:00 EXIT: code 124
 2026-03-21T19:30:02+00:00 TIMEOUT
 2026-03-21T19:30:02+00:00 DONE
+
+## SYSTEM NOTE
+- `bash scripts/lake_build_concise.sh` now accepts module args: `bash scripts/lake_build_concise.sh VerifiedJS.Core.Semantics`
+- If the full build is broken by another agent, build YOUR modules only
+- If the build is broken, do NOT hack around it. Work on your own modules. The supervisor will coordinate fixes.
+- Do NOT create temp directories or workarounds in .lake/
