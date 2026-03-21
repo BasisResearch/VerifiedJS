@@ -2698,10 +2698,14 @@ theorem step?_code_nonempty (s : ExecState) (instr : Instr) (rest : List Instr)
     (hc : s.code = instr :: rest) :
     ∃ t s', step? s = some (t, s') := by
   unfold step?; rw [hc]
-  cases instr <;> simp_all only [] <;> (
-    first
-    | exact ⟨_, _, rfl⟩
-    | (split <;> (first | exact ⟨_, _, rfl⟩ | (split <;> (first | exact ⟨_, _, rfl⟩ | (split <;> (first | exact ⟨_, _, rfl⟩ | (split <;> (first | exact ⟨_, _, rfl⟩ | (split <;> (first | exact ⟨_, _, rfl⟩ | (split <;> (first | exact ⟨_, _, rfl⟩ | (split <;> (first | exact ⟨_, _, rfl⟩ | (split <;> (first | exact ⟨_, _, rfl⟩ | (split <;> (first | exact ⟨_, _, rfl⟩ | (split <;> (first | exact ⟨_, _, rfl⟩ | (split <;> (first | exact ⟨_, _, rfl⟩ | (split <;> exact ⟨_, _, rfl⟩))))))))))))))))))))))))
+  cases instr <;> simp_all only [] <;>
+    first | exact ⟨_, _, rfl⟩ | (split <;> first | exact ⟨_, _, rfl⟩ |
+      (split <;> first | exact ⟨_, _, rfl⟩ | (split <;> first | exact ⟨_, _, rfl⟩ |
+        (split <;> first | exact ⟨_, _, rfl⟩ | (split <;> first | exact ⟨_, _, rfl⟩ |
+          (split <;> first | exact ⟨_, _, rfl⟩ | (split <;> first | exact ⟨_, _, rfl⟩ |
+            (split <;> first | exact ⟨_, _, rfl⟩ | (split <;> first | exact ⟨_, _, rfl⟩ |
+              (split <;> first | exact ⟨_, _, rfl⟩ | (split <;> first | exact ⟨_, _, rfl⟩ |
+                (split <;> first | exact ⟨_, _, rfl⟩ | (split <;> exact ⟨_, _, rfl⟩)))))))))))))
 
 /-- Every Wasm state is either halted or can take a step (full progress theorem).
     SPEC: Wasm type soundness analog — well-formed states always make progress.

@@ -163,68 +163,15 @@ private theorem closureConvert_step_simulation
     have hsf : sf.expr = .lit .undefined := by cases sf; simp_all [(Prod.mk.inj hconv).1]
     have : Flat.step? sf = none := by rw [show sf = { sf with expr := .lit .undefined } from by cases sf; simp_all]; exact Flat.step?_lit_none sf .undefined
     simp [this] at hstep
-  | «break» label =>
-    -- convertExpr (.break label) = (.break label, st). Both step with .error.
-    rw [hsc] at hconv; simp only [Flat.convertExpr, Prod.mk.injEq] at hconv
-    obtain ⟨hsf_expr, _⟩ := hconv
-    -- Extract sf fields
-    obtain ⟨sf_expr, sf_env, sf_heap, sf_trace⟩ := sf
-    simp only at hsf_expr; subst hsf_expr
-    -- step? on .break gives .error
-    simp only [Flat.step?] at hstep
-    -- From hstep we get ev and sf'
-    -- Core.step? on .break gives same error
-    obtain ⟨sc_expr, sc_env, sc_heap, sc_trace, sc_funcs, sc_cs⟩ := sc
-    simp only at hsc; subst hsc
-    refine ⟨Core.pushTrace { expr := .lit .undefined, env := sc_env, heap := sc_heap,
-      trace := sc_trace, funcs := sc_funcs, callStack := sc_cs }
-      (.error (match label with | some s => "break:" ++ s | none => "break:")), ?_, ?_⟩
-    · exact ⟨by simp [Core.step?]⟩
-    · constructor
-      · simp only [Core.pushTrace]
-        simp only [Flat.pushTrace] at hstep
-        simp only [Option.some.injEq, Prod.mk.injEq] at hstep
-        obtain ⟨rfl, rfl⟩ := hstep
-        simp [htrace]
-        cases label <;> simp
-      · refine ⟨scope, envVar, envMap, st, st, ?_⟩
-        simp only [Flat.pushTrace] at hstep
-        simp only [Option.some.injEq, Prod.mk.injEq] at hstep
-        obtain ⟨_, rfl⟩ := hstep
-        simp [Flat.convertExpr]
-  | «continue» label =>
-    -- Same structure as break
-    rw [hsc] at hconv; simp only [Flat.convertExpr, Prod.mk.injEq] at hconv
-    obtain ⟨hsf_expr, _⟩ := hconv
-    obtain ⟨sf_expr, sf_env, sf_heap, sf_trace⟩ := sf
-    simp only at hsf_expr; subst hsf_expr
-    simp only [Flat.step?] at hstep
-    obtain ⟨sc_expr, sc_env, sc_heap, sc_trace, sc_funcs, sc_cs⟩ := sc
-    simp only at hsc; subst hsc
-    refine ⟨Core.pushTrace { expr := .lit .undefined, env := sc_env, heap := sc_heap,
-      trace := sc_trace, funcs := sc_funcs, callStack := sc_cs }
-      (.error (match label with | some s => "continue:" ++ s | none => "continue:")), ?_, ?_⟩
-    · exact ⟨by simp [Core.step?]⟩
-    · constructor
-      · simp only [Core.pushTrace]
-        simp only [Flat.pushTrace] at hstep
-        simp only [Option.some.injEq, Prod.mk.injEq] at hstep
-        obtain ⟨rfl, rfl⟩ := hstep
-        simp [htrace]
-        cases label <;> simp
-      · refine ⟨scope, envVar, envMap, st, st, ?_⟩
-        simp only [Flat.pushTrace] at hstep
-        simp only [Option.some.injEq, Prod.mk.injEq] at hstep
-        obtain ⟨_, rfl⟩ := hstep
-        simp [Flat.convertExpr]
-  | labeled label body =>
-    -- convertExpr (.labeled l b) = (.labeled l b', st1). Both step .silent to body.
-    rw [hsc] at hconv
-    sorry
-  -- All remaining constructors require env/heap correspondence
-  -- to connect Flat steps back to Core steps. The current CC_SimRel
-  -- tracks only trace + expression correspondence but not env/heap.
-  -- TODO: Strengthen CC_SimRel with env/heap correspondence.
+  -- All remaining constructors: env/heap correspondence needed for full proof.
+  -- CC_SimRel currently only tracks trace + expression correspondence.
+  -- TODO: Strengthen CC_SimRel to include env/heap/funcs correspondence,
+  -- then prove each constructor case. Key architectural issue: the convertExpr
+  -- correspondence breaks after control-flow unrolling (e.g., while_ → if/seq/while)
+  -- because re-converting the unrolled expression may produce different fresh names.
+  -- Fix: either (a) prove convertExpr is state-independent for functionDef-free exprs,
+  -- (b) use a weaker structural bisimulation instead of convertExpr correspondence, or
+  -- (c) use a logical/step-indexed relation.
   | _ => all_goals sorry
 
 /-! ### step?_none_implies_lit -/

@@ -563,8 +563,31 @@ private theorem anfConvert_halt_star
           simp [ANF.normalizeExpr, ANF.trivialOfFlatValue, pure, Pure.pure, StateT.pure, Except.pure]
   | var name =>
     -- normalizeExpr (.var name) k = k (.var name). Flat.step? on .var always steps.
-    -- Need env correspondence to ensure lookup succeeds (silent step).
-    sorry
+    rw [hlit] at hconv
+    simp only [ANF.normalizeExpr] at hconv
+    -- hconv : (k (ANF.Trivial.var name)).run n = .ok (.trivial tv, m)
+    have hsf : sf = { sf with expr := .var name } := by cases sf; simp_all
+    cases hlk : sf.env.lookup name with
+    | some v =>
+      -- Variable found: step to .lit v (silent)
+      have hstep : Flat.step? sf = some (.silent, Flat.pushTrace { sf with expr := .lit v } .silent) := by
+        rw [hsf]; exact Flat.step?_var_found sf name v hlk
+      let sf' := Flat.pushTrace { sf with expr := .lit v } .silent
+      refine ⟨sf', [.silent], .tail (.mk hstep) (.refl sf'), ?_, ?_, ?_⟩
+      · simp [Flat.pushTrace, Flat.step?]
+      · rfl
+      · unfold ANF_SimRel
+        simp only [Flat.pushTrace]
+        refine ⟨hheap, ?_, ?_⟩
+        · simp [observableTrace, htrace]
+        · refine ⟨fun _ => pure (.trivial tv), n, m, ?_⟩
+          simp [ANF.normalizeExpr, ANF.trivialOfFlatValue]
+          cases v <;> simp [ANF.trivialOfFlatValue, pure, Pure.pure, StateT.pure, Except.pure]
+    | none =>
+      -- Variable not found: produces .error event (observable).
+      -- Cannot prove observableTrace evs = [] in this case.
+      -- Requires well-formedness precondition on environments.
+      sorry
   | seq a b =>
     -- normalizeExpr (.seq a b) k = normalizeExpr a (fun _ => normalizeExpr b k)
     -- Multi-step Flat reasoning needed: evaluate seq components.
