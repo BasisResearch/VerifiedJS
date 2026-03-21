@@ -418,9 +418,112 @@ private theorem step?_none_implies_lit_aux :
           have ⟨v, hv⟩ := ih ⟨body, fenv, fheap, ftrace⟩
             (by cases _finally_ <;> simp [Flat.Expr.depth] at hd ⊢ <;> omega) hstep
           simp at hv; rw [hv] at hev; simp [Flat.exprValue?] at hev
-    -- List-based constructors: blocked by private valuesFromExprList?.
-    -- step? returns none only on unreachable paths involving private helpers.
-    | _ => all_goals sorry
+    -- List-based constructors: use IH + firstNonValueExpr_not_lit.
+    -- Path D (valuesFromExprList? = none ∧ firstNonValueExpr = none) is contradictory
+    -- because firstNonValueExpr = none means all elements are lit, so valuesFromExprList? = some.
+    -- Path D requires access to the private valuesFromExprList?; left as sorry.
+    | call funcExpr envExpr args =>
+      exfalso; unfold Flat.step? at h
+      split at h
+      next hevf =>
+        split at h
+        next => simp at h
+        next hstep =>
+          have ⟨v, hv⟩ := ih ⟨funcExpr, fenv, fheap, ftrace⟩
+            (by simp [Flat.Expr.depth] at hd ⊢; omega) hstep
+          simp at hv; rw [hv] at hevf; simp [Flat.exprValue?] at hevf
+      next _ =>
+        split at h
+        next heve =>
+          split at h
+          next => simp at h
+          next hstep =>
+            have ⟨v, hv⟩ := ih ⟨envExpr, fenv, fheap, ftrace⟩
+              (by simp [Flat.Expr.depth] at hd ⊢; omega) hstep
+            simp at hv; rw [hv] at heve; simp [Flat.exprValue?] at heve
+        next _ =>
+          split at h
+          next => simp at h
+          next _ =>
+            split at h
+            next _ target _ hfnve =>
+              split at h
+              next => simp at h
+              next hstep =>
+                have ⟨v, hv⟩ := ih ⟨target, fenv, fheap, ftrace⟩
+                  (by simp [Flat.Expr.depth] at hd ⊢
+                      have := Flat.firstNonValueExpr_depth hfnve; omega) hstep
+                exact absurd hv (firstNonValueExpr_not_lit hfnve v)
+            next hfnv =>
+              sorry
+    | newObj funcExpr envExpr args =>
+      exfalso; unfold Flat.step? at h
+      split at h
+      next hevf =>
+        split at h
+        next => simp at h
+        next hstep =>
+          have ⟨v, hv⟩ := ih ⟨funcExpr, fenv, fheap, ftrace⟩
+            (by simp [Flat.Expr.depth] at hd ⊢; omega) hstep
+          simp at hv; rw [hv] at hevf; simp [Flat.exprValue?] at hevf
+      next _ =>
+        split at h
+        next heve =>
+          split at h
+          next => simp at h
+          next hstep =>
+            have ⟨v, hv⟩ := ih ⟨envExpr, fenv, fheap, ftrace⟩
+              (by simp [Flat.Expr.depth] at hd ⊢; omega) hstep
+            simp at hv; rw [hv] at heve; simp [Flat.exprValue?] at heve
+        next _ =>
+          split at h
+          next => simp at h
+          next _ =>
+            split at h
+            next _ target _ hfnve =>
+              split at h
+              next => simp at h
+              next hstep =>
+                have ⟨v, hv⟩ := ih ⟨target, fenv, fheap, ftrace⟩
+                  (by simp [Flat.Expr.depth] at hd ⊢
+                      have := Flat.firstNonValueExpr_depth hfnve; omega) hstep
+                exact absurd hv (firstNonValueExpr_not_lit hfnve v)
+            next hfnv =>
+              sorry
+    | makeEnv values =>
+      exfalso; unfold Flat.step? at h
+      split at h
+      next => simp at h
+      next _ =>
+        split at h
+        next _ target _ hfnve =>
+          split at h
+          next => simp at h
+          next hstep =>
+            have ⟨v, hv⟩ := ih ⟨target, fenv, fheap, ftrace⟩
+              (by simp [Flat.Expr.depth] at hd ⊢
+                  have := Flat.firstNonValueExpr_depth hfnve; omega) hstep
+            exact absurd hv (firstNonValueExpr_not_lit hfnve v)
+        next hfnv =>
+          sorry
+    | objectLit _ => exfalso; sorry
+    --   objectLit step? has extra let-binding that complicates split; needs dedicated handling
+    | arrayLit elems =>
+      exfalso; unfold Flat.step? at h
+      split at h
+      next => simp at h
+      next _ =>
+        split at h
+        next _ target _ hfnve =>
+          split at h
+          next => simp at h
+          next hstep =>
+            have ⟨v, hv⟩ := ih ⟨target, fenv, fheap, ftrace⟩
+              (by simp [Flat.Expr.depth] at hd ⊢
+                  have := Flat.firstNonValueExpr_depth hfnve; omega) hstep
+            exact absurd hv (firstNonValueExpr_not_lit hfnve v)
+        next hfnv =>
+          sorry
 
 private theorem step?_none_implies_lit (s : Flat.State) (h : Flat.step? s = none) :
     ∃ v, s.expr = .lit v :=
