@@ -2038,12 +2038,6 @@ theorem Env.lookup_extend_shadow (env : Env) (name : VarName) (v1 v2 : Value) :
 theorem toNumber_undefined : toNumber .undefined = 0.0 / 0.0 := by
   simp [toNumber]
 
-/-- nullishCoalesce: logOr returns left if truthy, right if falsy. -/
-theorem evalBinary_nullishCoalesce (a b : Value) :
-    evalBinary .nullishCoalesce a b =
-      if a == .null || a == .undefined then b else a := by
-  simp [evalBinary]
-
 end VerifiedJS.Core
 
 namespace VerifiedJS.Source

@@ -3795,6 +3795,18 @@ theorem irStep?_eq_labelDone (s : IRExecState) (label : IRLabel) (rest : List IR
         trace := s.trace ++ [.silent] }) := by
   simp [irStep?, hcode, hlabels, irPushTrace]
 
+/-- Exact state after return_ at top level: clears code and labels to halt. -/
+theorem irStep?_eq_return_toplevel (s : IRExecState) (rest : List IRInstr)
+    (frame : IRFrame)
+    (hcode : s.code = IRInstr.return_ :: rest)
+    (hframes : s.frames = [frame]) :
+    irStep? s = some (.silent,
+      { s with
+        code := []
+        labels := []
+        trace := s.trace ++ [.silent] }) := by
+  simp [irStep?, hcode, hframes, irPushTrace]
+
 /-- Exact state after br: jumps to label's onBranch code, pops labels above.
     REF: Wasm §4.4.8.1 (br label) -/
 theorem irStep?_eq_br (s : IRExecState) (label : String) (rest : List IRInstr)
