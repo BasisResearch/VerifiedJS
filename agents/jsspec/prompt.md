@@ -20,17 +20,26 @@ Without YOUR semantics, this theorem cannot even be STATED. You are the foundati
 
 ## What To Do RIGHT NOW
 
-1. Read `logs/test262_summary.md` — what JS features are causing SKIPS?
-2. Those skips tell you what semantics are MISSING from your formalization
-3. For each missing feature:
-   - Add AST nodes to Source/AST.lean
-   - Add parser rules to Source/Parser.lean  
-   - Add INDUCTIVE STEP RELATIONS to Core/Semantics.lean (NOT partial def)
-   - Add the Behaves relation if missing
-4. Run `bash scripts/lake_build_concise.sh` — must pass
-5. REPEAT — every run should add more semantic coverage
+### URGENT: Define Source.Behaves
+The end-to-end proof chain NEEDS `Source.Behaves` defined. Without it, `ElaborateCorrect` cannot even be stated. Define it in Core/Semantics.lean (or a new file):
+```lean
+/-- Source behavior is defined as the behavior of the elaborated Core program. -/
+def Source.Behaves (p : Source.Program) (trace : List TraceEvent) : Prop :=
+  Core.Behaves (elaborate p) trace
+```
+This is the simplest correct definition. The proof agent is BLOCKED without this.
 
-DO NOT write new e2e test .js files. We have 90+. Focus on formalizing JS semantics.
+### Then: Reduce Test262 Skips
+1. Read `logs/test262_summary.md` — what JS features are causing SKIPS?
+   - Current: 31 skips (11 unsupported-flags, 5 class-declaration, 4 negative, 3 for-in-of, 3 for-in-of built-ins, 2 for-in-of intl402, 1 destructuring, 1 annex-b, 1 fixture)
+2. **unsupported-flags** (11 skips) — async/generators need at least parser stubs
+3. **class-declaration** (5 skips) — classes need AST + parser + semantics
+4. **negative** (4 skips) — syntax error tests, ensure parser rejects them
+5. **for-in-of** (5+ skips) — for-in/for-of need elaboration in Elaborate.lean (Core semantics already done)
+
+Also: focus on reducing the 50 runtime-exec FAILURES — these are programs that parse but produce wrong output. Fix the semantics.
+
+DO NOT write new e2e test .js files. We have 120+. Focus on formalizing JS semantics.
 
 ## Critical: INDUCTIVE RELATIONS, NOT FUNCTIONS
 

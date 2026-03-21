@@ -4219,174 +4219,20 @@ This is the IR-level analogue of Wasm type soundness. -/
 
 /-- Every IR state with non-empty code can take a step.
     Every instruction in irStep? either executes successfully or produces a trap;
-    no instruction path returns none. This is the fundamental progress property. -/
+    no instruction path returns none. This is the fundamental progress property.
+    SPEC: Wasm §4 — every well-formed instruction reduces or traps. -/
 theorem irStep?_code_nonempty (s : IRExecState) (instr : IRInstr) (rest : List IRInstr)
     (hc : s.code = instr :: rest) :
     ∃ t s', irStep? s = some (t, s') := by
-  simp only [irStep?, hc]
-  cases instr with
-  | const_ t v =>
-    cases t with
-    | i32 => cases v.toNat? <;> simp_all [irPushTrace, irTrapState]
-    | i64 => cases v.toNat? <;> simp_all [irPushTrace, irTrapState]
-    | f64 => simp [irPushTrace]
-    | ptr => cases v.toNat? <;> simp_all [irPushTrace, irTrapState]
-  | localGet idx =>
-    cases s.frames with
-    | nil => simp [irTrapState]
-    | cons frame _ => cases frame.locals[idx]? <;> simp [irPushTrace, irTrapState]
-  | localSet idx =>
-    cases h1 : irPop1? ({ s with code := rest }).stack with
-    | none => simp [h1, irTrapState]; cases s.frames <;> simp [irTrapState]
-    | some p =>
-      obtain ⟨v, stk⟩ := p
-      simp only [h1]
-      cases s.frames with
-      | nil => simp [irTrapState]
-      | cons frame frest =>
-        cases Nat.decLt idx frame.locals.size with
-        | isTrue h => simp [h, irPushTrace]
-        | isFalse h => simp [Nat.not_lt.mp h, irTrapState]
-  | globalGet idx =>
-    cases ({ s with code := rest }).globals[idx]? <;> simp [irPushTrace, irTrapState]
-  | globalSet idx =>
-    cases h1 : irPop1? ({ s with code := rest }).stack with
-    | none => simp [h1, irTrapState]
-    | some p =>
-      obtain ⟨v, stk⟩ := p
-      simp only [h1]
-      cases Nat.decLt idx ({ s with code := rest }).globals.size with
-      | isTrue h => simp [h, irPushTrace]
-      | isFalse h => simp [Nat.not_lt.mp h, irTrapState]
-  | binOp t op =>
-    cases t <;> (
-      cases h1 : irPop2? ({ s with code := rest }).stack with
-      | none => simp [h1, irTrapState]
-      | some p =>
-        obtain ⟨a, b, stk⟩ := p
-        simp only [h1]
-        cases a <;> cases b <;> (
-          try { simp [irTrapState]; done }
-          try {
-            simp only []
-            split <;> (try (split <;> simp [irPushTrace, irTrapState])) <;> simp [irPushTrace, irTrapState]
-            done
-          }))
-  | unOp t op =>
-    cases t <;> (
-      cases h1 : irPop1? ({ s with code := rest }).stack with
-      | none => simp [h1, irTrapState]
-      | some p =>
-        obtain ⟨v, stk⟩ := p
-        simp only [h1]
-        cases v <;> (
-          try { simp [irTrapState]; done }
-          try { simp [irPushTrace]; done }
-          try {
-            simp only []
-            split <;> simp [irPushTrace, irTrapState]
-            done
-          }))
-  | load t offset =>
-    cases h1 : irPop1? ({ s with code := rest }).stack with
-    | none => simp [h1, irTrapState]
-    | some p =>
-      obtain ⟨v, stk⟩ := p
-      simp only [h1]
-      cases v <;> (try { simp [irTrapState]; done })
-      rename_i addr
-      split <;> simp [irPushTrace, irTrapState]
-  | store t offset =>
-    cases h1 : irPop2? ({ s with code := rest }).stack with
-    | none => simp [h1, irTrapState]
-    | some p =>
-      obtain ⟨a, b, stk⟩ := p
-      simp only [h1]
-      cases a <;> cases b <;> (try { simp [irTrapState]; done })
-      rename_i val addr
-      split <;> simp [irPushTrace, irTrapState]
-  | store8 offset =>
-    cases h1 : irPop2? ({ s with code := rest }).stack with
-    | none => simp [h1, irTrapState]
-    | some p =>
-      obtain ⟨a, b, stk⟩ := p
-      simp only [h1]
-      cases a <;> cases b <;> (try { simp [irTrapState]; done })
-      rename_i val addr
-      split <;> simp [irPushTrace, irTrapState]
-  | block label body => simp [irPushTrace]
-  | loop label body => simp [irPushTrace]
-  | if_ result then_ else_ =>
-    cases h1 : irPop1? ({ s with code := rest }).stack with
-    | none => simp [h1, irTrapState]
-    | some p =>
-      obtain ⟨v, stk⟩ := p
-      simp only [h1]
-      cases v <;> (try { simp [irTrapState]; done })
-      simp [irPushTrace]
-  | br label =>
-    cases irFindLabel? s.labels label <;> simp [irPushTrace, irTrapState]
-  | brIf label =>
-    cases h1 : irPop1? ({ s with code := rest }).stack with
-    | none => simp [h1, irTrapState]
-    | some p =>
-      obtain ⟨v, stk⟩ := p
-      simp only [h1]
-      cases v <;> (try { simp [irTrapState]; done })
-      rename_i cond
-      simp only []
-      split
-      · cases irFindLabel? s.labels label <;> simp [irPushTrace, irTrapState]
-      · simp [irPushTrace]
-  | return_ =>
-    cases s.frames with
-    | nil => simp [irTrapState]
-    | cons f fs =>
-      cases fs with
-      | nil => simp [irPushTrace]
-      | cons f2 fs2 => simp [irPushTrace]
-  | drop =>
-    cases h1 : irPop1? ({ s with code := rest }).stack with
-    | none => simp [h1, irTrapState]
-    | some p =>
-      obtain ⟨_, stk⟩ := p
-      simp only [h1, irPushTrace]
-  | call funcIdx =>
-    cases h1 : ({ s with code := rest }).module.functions[funcIdx]? with
-    | none => simp [h1, irTrapState]
-    | some fn =>
-      simp only [h1]
-      cases h2 : irPopN? ({ s with code := rest }).stack fn.params.length with
-      | none => simp [h2, irTrapState]
-      | some p =>
-        obtain ⟨args, callerStack⟩ := p
-        simp only [h2, irPushTrace]
-  | callIndirect typeIdx =>
-    cases h1 : irPop1? ({ s with code := rest }).stack with
-    | none => simp [h1, irTrapState]
-    | some p =>
-      obtain ⟨v, stk⟩ := p
-      simp only [h1]
-      cases v <;> (try { simp [irTrapState]; done })
-      rename_i funcIdx
-      cases h2 : ({ s with code := rest }).module.functions[funcIdx.toNat]? with
-      | none => simp [h2, irTrapState]
-      | some fn =>
-        simp only [h2]
-        cases h3 : irPopN? stk fn.params.length with
-        | none => simp [h3, irTrapState]
-        | some p2 =>
-          obtain ⟨args, callerStack⟩ := p2
-          simp only [h3, irPushTrace]
-  | memoryGrow =>
-    cases h1 : irPop1? ({ s with code := rest }).stack with
-    | none => simp [h1, irTrapState]
-    | some p =>
-      obtain ⟨v, stk⟩ := p
-      simp only [h1]
-      cases v <;> (try { simp [irTrapState]; done })
-      rename_i pages
-      split <;> simp [irPushTrace]
+  -- irStep? always returns some when code is non-empty: every instruction
+  -- either computes a value (pushTrace) or produces a trap (trapState).
+  -- Both are `some`. The only `none` paths are when code=[] ∧ labels=[] ∧ frames≤1.
+  unfold irStep?
+  rw [hc]
+  cases instr <;> simp_all only [] <;> (
+    first
+    | exact ⟨_, _, rfl⟩
+    | (split <;> (first | exact ⟨_, _, rfl⟩ | (split <;> (first | exact ⟨_, _, rfl⟩ | (split <;> (first | exact ⟨_, _, rfl⟩ | (split <;> (first | exact ⟨_, _, rfl⟩ | (split <;> (first | exact ⟨_, _, rfl⟩ | (split <;> (first | exact ⟨_, _, rfl⟩ | (split <;> (first | exact ⟨_, _, rfl⟩ | (split <;> (first | exact ⟨_, _, rfl⟩ | (split <;> exact ⟨_, _, rfl⟩))))))))))))))))))
 
 /-- Every IR state is either halted or can take a step (full progress theorem). -/
 theorem irStep?_progress (s : IRExecState) :

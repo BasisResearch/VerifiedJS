@@ -2038,6 +2038,242 @@ theorem Env.lookup_extend_shadow (env : Env) (name : VarName) (v1 v2 : Value) :
 theorem toNumber_undefined : toNumber .undefined = 0.0 / 0.0 := by
   simp [toNumber]
 
+/-- step? on setProp with non-value obj steps the obj. ECMA-262 §9.1.9. -/
+theorem step_setProp_step_obj (obj : Expr) (prop : PropName) (value : Expr) (env : Env) (heap : Heap)
+    (trace : List TraceEvent) (funcs : Array FuncClosure)
+    (cs : List (List (VarName × Value)))
+    (hobj : exprValue? obj = none)
+    (t : TraceEvent) (so : State)
+    (hstep : step? ⟨obj, env, heap, trace, funcs, cs⟩ = some (t, so)) :
+    step? ⟨.setProp obj prop value, env, heap, trace, funcs, cs⟩ =
+      some (t, pushTrace { so with expr := .setProp so.expr prop value, trace := trace } t) := by
+  simp [step?, hobj, hstep]
+
+/-- step? on setProp with value obj, non-value rhs steps the rhs. ECMA-262 §9.1.9. -/
+theorem step_setProp_step_val (objVal : Value) (prop : PropName) (value : Expr) (env : Env)
+    (heap : Heap) (trace : List TraceEvent) (funcs : Array FuncClosure)
+    (cs : List (List (VarName × Value)))
+    (hval : exprValue? value = none)
+    (t : TraceEvent) (sv : State)
+    (hstep : step? ⟨value, env, heap, trace, funcs, cs⟩ = some (t, sv)) :
+    step? ⟨.setProp (.lit objVal) prop value, env, heap, trace, funcs, cs⟩ =
+      some (t, pushTrace { sv with expr := .setProp (.lit objVal) prop sv.expr, trace := trace } t) := by
+  simp [step?, exprValue?, hval, hstep]
+
+/-- step? on call with non-value callee steps the callee. ECMA-262 §13.3.1. -/
+theorem step_call_step_callee (callee : Expr) (args : List Expr) (env : Env) (heap : Heap)
+    (trace : List TraceEvent) (funcs : Array FuncClosure)
+    (cs : List (List (VarName × Value)))
+    (hcallee : exprValue? callee = none)
+    (t : TraceEvent) (sc : State)
+    (hstep : step? ⟨callee, env, heap, trace, funcs, cs⟩ = some (t, sc)) :
+    step? ⟨.call callee args, env, heap, trace, funcs, cs⟩ =
+      some (t, pushTrace { sc with expr := .call sc.expr args, trace := trace } t) := by
+  simp [step?, hcallee, hstep]
+
+/-- step? on return with non-value arg steps the arg. ECMA-262 §13.1. -/
+theorem step_return_step_arg (e : Expr) (env : Env) (heap : Heap)
+    (trace : List TraceEvent) (funcs : Array FuncClosure)
+    (cs : List (List (VarName × Value)))
+    (harg : exprValue? e = none)
+    (t : TraceEvent) (sa : State)
+    (hstep : step? ⟨e, env, heap, trace, funcs, cs⟩ = some (t, sa)) :
+    step? ⟨.return (some e), env, heap, trace, funcs, cs⟩ =
+      some (t, pushTrace { sa with expr := .return (some sa.expr), trace := trace } t) := by
+  simp [step?, harg, hstep]
+
+/-- step? on await with non-value arg steps the arg. ECMA-262 §14.7.14. -/
+theorem step_await_step_arg (arg : Expr) (env : Env) (heap : Heap)
+    (trace : List TraceEvent) (funcs : Array FuncClosure)
+    (cs : List (List (VarName × Value)))
+    (harg : exprValue? arg = none)
+    (t : TraceEvent) (sa : State)
+    (hstep : step? ⟨arg, env, heap, trace, funcs, cs⟩ = some (t, sa)) :
+    step? ⟨.await arg, env, heap, trace, funcs, cs⟩ =
+      some (t, pushTrace { sa with expr := .await sa.expr, trace := trace } t) := by
+  simp [step?, harg, hstep]
+
+/-- step? on yield with non-value arg steps the arg. ECMA-262 §14.4.14. -/
+theorem step_yield_step_arg (e : Expr) (delegate : Bool) (env : Env) (heap : Heap)
+    (trace : List TraceEvent) (funcs : Array FuncClosure)
+    (cs : List (List (VarName × Value)))
+    (harg : exprValue? e = none)
+    (t : TraceEvent) (sa : State)
+    (hstep : step? ⟨e, env, heap, trace, funcs, cs⟩ = some (t, sa)) :
+    step? ⟨.yield (some e) delegate, env, heap, trace, funcs, cs⟩ =
+      some (t, pushTrace { sa with expr := .yield (some sa.expr) delegate, trace := trace } t) := by
+  simp [step?, harg, hstep]
+
+/-- step? on getIndex with non-value obj steps the obj. ECMA-262 §12.3.2. -/
+theorem step_getIndex_step_obj (obj idx : Expr) (env : Env) (heap : Heap)
+    (trace : List TraceEvent) (funcs : Array FuncClosure)
+    (cs : List (List (VarName × Value)))
+    (hobj : exprValue? obj = none)
+    (t : TraceEvent) (so : State)
+    (hstep : step? ⟨obj, env, heap, trace, funcs, cs⟩ = some (t, so)) :
+    step? ⟨.getIndex obj idx, env, heap, trace, funcs, cs⟩ =
+      some (t, pushTrace { so with expr := .getIndex so.expr idx, trace := trace } t) := by
+  simp [step?, hobj, hstep]
+
+/-- step? on binary with value lhs, non-value rhs steps the rhs. ECMA-262 §12. -/
+theorem step_binary_step_rhs (op : BinOp) (lv : Value) (rhs : Expr) (env : Env) (heap : Heap)
+    (trace : List TraceEvent) (funcs : Array FuncClosure)
+    (cs : List (List (VarName × Value)))
+    (hrhs : exprValue? rhs = none)
+    (t : TraceEvent) (sr : State)
+    (hstep : step? ⟨rhs, env, heap, trace, funcs, cs⟩ = some (t, sr)) :
+    step? ⟨.binary op (.lit lv) rhs, env, heap, trace, funcs, cs⟩ =
+      some (t, pushTrace { sr with expr := .binary op (.lit lv) sr.expr, trace := trace } t) := by
+  simp [step?, exprValue?, hrhs, hstep]
+
+/-- step? on tryCatch with non-value body: normal step wraps result in tryCatch. -/
+theorem step_tryCatch_step_body (body : Expr) (catchParam : VarName) (catchBody : Expr)
+    (finally_ : Option Expr) (env : Env) (heap : Heap)
+    (trace : List TraceEvent) (funcs : Array FuncClosure)
+    (cs : List (List (VarName × Value)))
+    (hbody : exprValue? body = none)
+    (t : TraceEvent) (sb : State)
+    (hstep : step? ⟨body, env, heap, trace, funcs, cs⟩ = some (t, sb))
+    (ht : ¬∃ msg, t = .error msg) :
+    step? ⟨.tryCatch body catchParam catchBody finally_, env, heap, trace, funcs, cs⟩ =
+      some (t, pushTrace { sb with expr := .tryCatch sb.expr catchParam catchBody finally_, trace := trace } t) := by
+  simp [step?, hbody, hstep]
+  split <;> simp_all
+  · rename_i hcf
+    split <;> simp_all
+    · exfalso; apply ht; exact ⟨_, rfl⟩
+  · exfalso; apply ht; exact ⟨_, rfl⟩
+
+/-- Steps inversion: from [t] there is exactly one step. -/
+theorem Steps_single_inv {s1 s2 : State} {t : TraceEvent}
+    (h : Steps s1 [t] s2) : Step s1 t s2 := by
+  cases h with
+  | tail hstep htail =>
+    cases htail with
+    | refl => exact hstep
+
+/-- step_functionDef exact: produces the closure value and updated funcs. -/
+theorem step_functionDef_exact (fname : Option VarName) (params : List VarName)
+    (body : Expr) (isAsync isGen : Bool) (env : Env) (heap : Heap)
+    (trace : List TraceEvent) (funcs : Array FuncClosure)
+    (cs : List (List (VarName × Value))) :
+    step? ⟨.functionDef fname params body isAsync isGen, env, heap, trace, funcs, cs⟩ =
+      some (.silent, pushTrace ⟨.lit (.function funcs.size), env, heap, trace,
+        funcs.push ⟨fname, params, body, env.bindings⟩, cs⟩ .silent) := by
+  simp [step?]
+
+/-- step? on yield with value arg steps to that value. -/
+theorem step_yield_some_value (v : Value) (delegate : Bool) (env : Env) (heap : Heap)
+    (trace : List TraceEvent) (funcs : Array FuncClosure)
+    (cs : List (List (VarName × Value))) :
+    step? ⟨.yield (some (.lit v)) delegate, env, heap, trace, funcs, cs⟩ =
+      some (.silent, pushTrace ⟨.lit v, env, heap, trace, funcs, cs⟩ .silent) := by
+  simp [step?, exprValue?]
+
+/-- step? on return with value arg produces error event. -/
+theorem step_return_some_value_exact (v : Value) (env : Env) (heap : Heap)
+    (trace : List TraceEvent) (funcs : Array FuncClosure)
+    (cs : List (List (VarName × Value))) :
+    step? ⟨.return (some (.lit v)), env, heap, trace, funcs, cs⟩ =
+      some (.error ("return:" ++ toString (repr v)),
+        pushTrace ⟨.lit v, env, heap, trace, funcs, cs⟩
+          (.error ("return:" ++ toString (repr v)))) := by
+  simp [step?, exprValue?]
+
+/-- The only stuck expression is a literal. -/
+theorem stuck_implies_lit {s : State} (hstuck : step? s = none) :
+    ∃ v, s.expr = .lit v := by
+  cases s with
+  | mk expr env heap trace funcs cs =>
+    cases expr with
+    | lit v => exact ⟨v, rfl⟩
+    | var name => simp [step?] at hstuck; split at hstuck <;> simp at hstuck
+    | «let» name init body => simp [step?] at hstuck; split at hstuck <;> simp at hstuck; split at hstuck <;> simp at hstuck
+    | assign name value => simp [step?] at hstuck; split at hstuck <;> simp at hstuck; split at hstuck <;> simp at hstuck
+    | seq a b => simp [step?] at hstuck; split at hstuck <;> simp at hstuck; split at hstuck <;> simp at hstuck
+    | while_ cond body => simp [step?] at hstuck
+    | «break» label => simp [step?] at hstuck
+    | «continue» label => simp [step?] at hstuck
+    | labeled label body => simp [step?] at hstuck
+    | newObj callee args => simp [step?] at hstuck
+    | this => simp [step?] at hstuck; split at hstuck <;> simp at hstuck
+    | functionDef name params body isAsync isGen => simp [step?] at hstuck
+    | «return» arg =>
+      cases arg with
+      | none => simp [step?] at hstuck
+      | some e => simp [step?] at hstuck; split at hstuck <;> simp at hstuck; split at hstuck <;> simp at hstuck
+    | throw arg => simp [step?] at hstuck; split at hstuck <;> simp at hstuck; split at hstuck <;> simp at hstuck
+    | «if» cond then_ else_ => simp [step?] at hstuck; split at hstuck <;> simp at hstuck; split at hstuck <;> simp at hstuck
+    | unary op arg => simp [step?] at hstuck; split at hstuck <;> simp at hstuck; split at hstuck <;> simp at hstuck
+    | binary op lhs rhs =>
+      simp [step?] at hstuck
+      split at hstuck <;> simp at hstuck
+      · split at hstuck <;> simp at hstuck
+      · split at hstuck <;> simp at hstuck
+        split at hstuck <;> simp at hstuck
+    | typeof arg => simp [step?] at hstuck; split at hstuck <;> simp at hstuck; split at hstuck <;> simp at hstuck
+    | getProp obj prop => simp [step?] at hstuck; split at hstuck <;> simp at hstuck; split at hstuck <;> simp at hstuck
+    | getIndex obj idx =>
+      simp [step?] at hstuck
+      split at hstuck <;> simp at hstuck
+      · split at hstuck <;> simp at hstuck
+      · split at hstuck <;> simp at hstuck
+    | setProp obj prop value =>
+      simp [step?] at hstuck
+      split at hstuck <;> simp at hstuck
+      · split at hstuck <;> simp at hstuck
+    | setIndex obj idx value =>
+      simp [step?] at hstuck
+      split at hstuck <;> simp at hstuck
+      · split at hstuck <;> simp at hstuck
+      · split at hstuck <;> simp at hstuck
+    | deleteProp obj prop => simp [step?] at hstuck; split at hstuck <;> simp at hstuck; split at hstuck <;> simp at hstuck
+    | objectLit props =>
+      simp [step?] at hstuck
+      split at hstuck <;> simp at hstuck
+      · split at hstuck <;> simp at hstuck
+    | arrayLit elems =>
+      simp [step?] at hstuck
+      split at hstuck <;> simp at hstuck
+      · split at hstuck <;> simp at hstuck
+    | tryCatch body catchParam catchBody finally_ =>
+      simp [step?] at hstuck
+      split at hstuck <;> simp at hstuck
+      · split at hstuck <;> simp at hstuck
+      · split at hstuck <;> simp at hstuck
+    | forIn binding obj body =>
+      simp [step?] at hstuck; split at hstuck <;> simp at hstuck; split at hstuck <;> simp at hstuck
+    | forOf binding iterable body =>
+      simp [step?] at hstuck; split at hstuck <;> simp at hstuck; split at hstuck <;> simp at hstuck
+    | yield arg delegate =>
+      cases arg with
+      | none => simp [step?] at hstuck
+      | some e => simp [step?] at hstuck; split at hstuck <;> simp at hstuck; split at hstuck <;> simp at hstuck
+    | await arg => simp [step?] at hstuck; split at hstuck <;> simp at hstuck; split at hstuck <;> simp at hstuck
+    | call callee args =>
+      simp [step?] at hstuck
+      split at hstuck <;> simp at hstuck
+      · split at hstuck <;> simp at hstuck
+        · split at hstuck <;> simp at hstuck
+          · split at hstuck <;> simp at hstuck
+            split at hstuck <;> simp at hstuck
+          · simp at hstuck
+
+/-- Behaves implies the final state has a literal expression. -/
+theorem Behaves_final_lit {p : Program} {b : List TraceEvent}
+    (hB : Behaves p b) :
+    ∃ sf v, Steps (initialState p) b sf ∧ step? sf = none ∧ sf.expr = .lit v := by
+  obtain ⟨sf, hsteps, hhalt⟩ := hB
+  obtain ⟨v, hv⟩ := stuck_implies_lit hhalt
+  exact ⟨sf, v, hsteps, hhalt, hv⟩
+
+/-- Heap monotonicity: step? never shrinks the heap size.
+    (Approximation: heap.nextAddr is non-decreasing). -/
+theorem step_heap_nextAddr_mono {s : State} {t : TraceEvent} {s' : State}
+    (h : step? s = some (t, s')) :
+    s.heap.nextAddr ≤ s'.heap.nextAddr := by
+  sorry -- TODO: requires case analysis on all step? branches; non-trivial but true
+
 end VerifiedJS.Core
 
 namespace VerifiedJS.Source

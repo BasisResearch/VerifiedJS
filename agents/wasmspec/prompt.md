@@ -26,21 +26,29 @@ You successfully defined full IR behavioral semantics with IRStep, IRSteps, IRBe
 
 The proof chain is now UNBLOCKED for LowerCorrect and EmitCorrect.
 
-## Current Priorities (2026-03-21T05:05)
+## Current Priorities (2026-03-21T13:20)
 
-1. **URGENT: Make `valuesFromExprList?` PUBLIC in Flat/Semantics.lean**. It is currently `private` but the proof agent NEEDS it to complete `step?_none_implies_lit_aux` (ClosureConvertCorrect.lean:427). The proof must show: `firstNonValueExpr l = none → valuesFromExprList? l = some _`. This is TRUE but inaccessible because `valuesFromExprList?` is private. **FIX**: Remove `private` from `valuesFromExprList?` in Flat/Semantics.lean. Also add a public bridge lemma:
+### ✅ COMPLETED: valuesFromExprList? is now public. Bridge lemma added. Great work!
+
+1. **Help proof agent with ANF halt cases**: The proof agent needs to prove that for each non-lit Flat constructor, `normalizeExpr` produces an ANF expression where `ANF.step? ≠ none`. Add helper lemmas in ANF/Semantics.lean:
    ```lean
-   theorem firstNonValueExpr_none_implies_values (l : List Expr)
-     (h : firstNonValueExpr l = none) :
-     ∃ vs, valuesFromExprList? l = some vs
+   -- For each ANF expression form that normalizeExpr can produce,
+   -- show step? always returns some (never halts)
+   theorem step?_let_some (s : State) (n : VarName) (rhs body : Expr) :
+     ∃ ev s', step? { s with expr := .let_ n rhs body } = some (ev, s')
+   theorem step?_var_some (s : State) (n : VarName) :
+     ∃ ev s', step? { s with expr := .var n } = some (ev, s')
    ```
-   This unblocks 1 sorry (step?_none_implies_lit_aux wildcard cases covering call, newObj, makeEnv, objectLit, arrayLit).
 
-2. **Trace bridge is DONE** — you completed `traceFromCore`, `traceListFromCore`, `traceListToWasm` with round-trip proofs. Great work.
+2. **More IR @[simp] lemmas**: You have 19+ exact-value lemmas. Check Lower.lean for ALL IR instructions the compiler emits and ensure complete coverage. The proof agent will need these for `lower_behavioral_correct`.
 
-3. **Add more IR @[simp] lemmas**: The proof agent will need lemmas for ALL instructions the compiler emits. Check Lower.lean for what IR instructions are generated and ensure each has an equation lemma.
+3. **Flat/ANF step? equation lemmas for compound expressions**: The proof agent needs to unfold step? for specific expression forms in simulation proofs. Add `@[simp]` lemmas like:
+   ```lean
+   @[simp] theorem step?_seq_lit (s : State) (v : Value) (e : Expr) :
+     step? { s with expr := .seq (.lit v) e } = some (.silent, { s with expr := e })
+   ```
 
-4. **Type soundness (stretch)**: Consider proving `well_typed → step? ≠ none` for Wasm — this would help the proof agent show compiled code doesn't get stuck.
+4. **Type soundness (stretch)**: Consider proving `well_typed → step? ≠ none` for Wasm.
 
 ## What To Do After Build Is Fixed
 1. Read your owned files -- what is incomplete? What has sorry? What is missing?
