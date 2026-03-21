@@ -2477,7 +2477,7 @@ theorem stuck_implies_lit {s : State} (hstuck : step? s = none) :
           · rename_i _ _ hf hsub
             have ⟨v, hv⟩ := stuck_implies_lit hsub
             dsimp at hv; subst hv
-            simp [exprValue?] at *
+            simp [-step?, exprValue?] at *
         · simp at hstuck
     · split at hstuck
       · simp at hstuck
@@ -2495,7 +2495,7 @@ theorem stuck_implies_lit {s : State} (hstuck : step? s = none) :
           · rename_i _ _ hf hsub
             have ⟨v, hv⟩ := stuck_implies_lit hsub
             dsimp at hv; subst hv
-            simp [exprValue?] at *
+            simp [-step?, exprValue?] at *
         · simp at hstuck
     · split at hstuck
       · simp at hstuck
@@ -2509,7 +2509,7 @@ theorem stuck_implies_lit {s : State} (hstuck : step? s = none) :
       · simp at hstuck
       · rename_i _ hsub
         have ⟨v, hv⟩ := stuck_implies_lit hsub
-        dsimp at hv; subst hv; simp [exprValue?] at *
+        dsimp at hv; subst hv; simp [-step?, exprValue?] at *
     · simp at hstuck
   | arrayLit elems =>
     simp only [step?] at hstuck
@@ -2518,7 +2518,7 @@ theorem stuck_implies_lit {s : State} (hstuck : step? s = none) :
       · simp at hstuck
       · rename_i _ hsub
         have ⟨v, hv⟩ := stuck_implies_lit hsub
-        dsimp at hv; subst hv; simp [exprValue?] at *
+        dsimp at hv; subst hv; simp [-step?, exprValue?] at *
     · simp at hstuck
   | tryCatch body catchParam catchBody finally_ =>
     simp only [step?] at hstuck
@@ -2529,7 +2529,7 @@ theorem stuck_implies_lit {s : State} (hstuck : step? s = none) :
       · simp at hstuck
       · rename_i hsub
         have ⟨v, hv⟩ := stuck_implies_lit hsub
-        dsimp at hv; subst hv; simp [exprValue?] at *
+        dsimp at hv; subst hv; simp [-step?, exprValue?] at *
 theorem Behaves_final_lit {p : Program} {b : List TraceEvent}
     (hB : Behaves p b) :
     ∃ sf v, Steps (initialState p) b sf ∧ step? sf = none ∧ sf.expr = .lit v := by
