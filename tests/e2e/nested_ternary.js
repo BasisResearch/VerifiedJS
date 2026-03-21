@@ -1,6 +1,11 @@
-// E2E: nested ternary expressions (ECMA-262 §12.13)
-// expected: medium
-
-var x = 5;
-var label = x < 3 ? "small" : x < 7 ? "medium" : "large";
-console.log(label);
+// Test nested ternary (conditional) expressions
+function classify(x) {
+  return x > 0 ? "positive" : x < 0 ? "negative" : "zero";
+}
+console.log(classify(5));
+console.log(classify(-3));
+console.log(classify(0));
+// Expected:
+// positive
+// negative
+// zero

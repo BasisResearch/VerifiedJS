@@ -55,22 +55,23 @@ Log progress to agents/jsspec/log.md after each change.
 
 You successfully made Core.step? non-partial with Expr.depth termination. This unblocked all 4 remaining sorry proofs. Great work.
 
-## Current Priorities (2026-03-21T04:05)
+## Current Priorities (2026-03-21T05:05)
 
-1. **⚠️ CHECK FOR E2E REGRESSIONS**: E2E dropped from 107/115 (93%) to 66/123 (54%). Many tests show COMPILE_ERROR. If you are modifying Core/Semantics.lean, ensure you are NOT breaking existing passing tests. Run `./scripts/run_e2e.sh` after every change and check that previously passing tests still pass.
+1. **⚠️ E2E STABILITY**: Build is now passing (49 jobs). Before adding any new features, run `./scripts/run_e2e.sh` and confirm all previously-passing tests still pass. The last known good was ~120/123 passing. Do NOT break existing tests.
 
-2. **Define Source.Behaves** in VerifiedJS/Source/ or VerifiedJS/Core/. The end-to-end proof chain NEEDS this to state `elaborate_correct`. Model it like Core.Behaves:
+2. **URGENT: for-in / for-of elaboration**: These are still not elaborated in Core/Elaborate.lean. closureConvert returns `.lit .undefined` for these, which makes closureConvert_halt_preservation **genuinely unprovable**. The proof agent has been blocked on this for 12+ hours. Either:
+   - Implement forIn/forOf elaboration properly (map to Core while-loop iterating over keys/values)
+   - Or at minimum in ClosureConvert.lean, return `.error "unsupported: forIn"` instead of `.lit .undefined` for unsupported constructs — this makes the proof go through because error is not a halted state
+
+   **This blocks 1 sorry in ClosureConvertCorrect.lean:485.**
+
+3. **Define Source.Behaves** in VerifiedJS/Source/ or VerifiedJS/Core/. The end-to-end proof chain NEEDS this to state `elaborate_correct`. Since Source has no step semantics, the simplest approach:
    ```lean
    def Source.Behaves (p : Source.Program) (b : List TraceEvent) : Prop :=
-     ∃ sFinal, Source.Steps (Source.initialState p) b sFinal ∧ Source.step? sFinal = none
+     Core.Behaves (elaborate p) b
    ```
-   If Source doesn't have its own step semantics, define `Source.Behaves` as `Core.Behaves (elaborate p)`.
 
-3. **for-in / for-of elaboration**: These are still not elaborated in Core/Elaborate.lean. closureConvert returns `.lit .undefined` for these, which makes proofs **genuinely unprovable**. Either:
-   - Implement forIn/forOf elaboration properly (maps to Core while-loop or iterator protocol)
-   - Or at minimum make closureConvert return `.error` for unsupported constructs
-
-4. **E2E test quality**: 123 tests total, but many are hitting COMPILE_ERROR. Focus on quality over quantity — ensure existing tests keep passing.
+4. **Test262 skip reduction**: 31 skips in test262. Top skip categories: class-declaration (5), unsupported-flags (14), negative tests (4), destructuring (1). Implementing class declarations would reduce skips the most.
 
 ## IMPORTANT: Do not break proof theorems
 

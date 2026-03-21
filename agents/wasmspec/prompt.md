@@ -26,13 +26,21 @@ You successfully defined full IR behavioral semantics with IRStep, IRSteps, IRBe
 
 The proof chain is now UNBLOCKED for LowerCorrect and EmitCorrect.
 
-## Current Priorities (2026-03-21T04:05)
+## Current Priorities (2026-03-21T05:05)
 
-1. **Trace bridge**: The proof chain needs `Core.TraceEvent` ↔ `IR.TraceEvent` ↔ `Wasm.TraceEvent` mappings to compose theorems. You have `traceToWasm` and `traceListToWasm`. Ensure there's also a mapping from `Core.TraceEvent → IR.TraceEvent` (or prove they're the same type). The proof agent needs this to state LowerCorrect.
+1. **URGENT: Make `valuesFromExprList?` PUBLIC in Flat/Semantics.lean**. It is currently `private` but the proof agent NEEDS it to complete `step?_none_implies_lit_aux` (ClosureConvertCorrect.lean:427). The proof must show: `firstNonValueExpr l = none → valuesFromExprList? l = some _`. This is TRUE but inaccessible because `valuesFromExprList?` is private. **FIX**: Remove `private` from `valuesFromExprList?` in Flat/Semantics.lean. Also add a public bridge lemma:
+   ```lean
+   theorem firstNonValueExpr_none_implies_values (l : List Expr)
+     (h : firstNonValueExpr l = none) :
+     ∃ vs, valuesFromExprList? l = some vs
+   ```
+   This unblocks 1 sorry (step?_none_implies_lit_aux wildcard cases covering call, newObj, makeEnv, objectLit, arrayLit).
 
-2. **Add more IR @[simp] lemmas**: The proof agent will need lemmas for ALL instructions the compiler emits. Check Lower.lean for what IR instructions are generated and ensure each has an equation lemma.
+2. **Trace bridge is DONE** — you completed `traceFromCore`, `traceListFromCore`, `traceListToWasm` with round-trip proofs. Great work.
 
-3. **Type soundness (stretch)**: Consider proving `well_typed → step? ≠ none` for Wasm — this would help the proof agent show compiled code doesn't get stuck.
+3. **Add more IR @[simp] lemmas**: The proof agent will need lemmas for ALL instructions the compiler emits. Check Lower.lean for what IR instructions are generated and ensure each has an equation lemma.
+
+4. **Type soundness (stretch)**: Consider proving `well_typed → step? ≠ none` for Wasm — this would help the proof agent show compiled code doesn't get stuck.
 
 ## What To Do After Build Is Fixed
 1. Read your owned files -- what is incomplete? What has sorry? What is missing?

@@ -1515,6 +1515,221 @@ theorem pushTrace_callStack (s : State) (t : TraceEvent) :
 theorem Env.lookup_empty (name : VarName) : Env.empty.lookup name = none := by
   simp [Env.empty, Env.lookup, List.find?]
 
+/-- §12.8.3 Adding a number to a string concatenates after ToString. -/
+theorem evalBinary_add_num_string (n : Float) (s : String) :
+    evalBinary .add (.number n) (.string s) = .string (valueToString (.number n) ++ s) := by
+  simp [evalBinary]
+
+/-- §12.8.3 Adding a string to a number concatenates after ToString. -/
+theorem evalBinary_add_string_num (s : String) (n : Float) :
+    evalBinary .add (.string s) (.number n) = .string (s ++ valueToString (.number n)) := by
+  simp [evalBinary]
+
+/-- §7.2.15 Strict inequality is negation of equality. -/
+theorem evalBinary_strictNeq (a b : Value) :
+    evalBinary .strictNeq a b = .bool (a != b) := by
+  simp [evalBinary]
+
+/-- §7.2.14 Abstract inequality is negation of abstract equality. -/
+theorem evalBinary_neq (a b : Value) :
+    evalBinary .neq a b = .bool (!abstractEq a b) := by
+  simp [evalBinary]
+
+/-- §7.2.13 Greater-than produces a bool. -/
+theorem evalBinary_gt_bool (a b : Value) :
+    ∃ bl, evalBinary .gt a b = .bool bl := by
+  exact ⟨abstractLt b a, by simp [evalBinary]⟩
+
+/-- §7.2.13 Less-or-equal produces a bool. -/
+theorem evalBinary_le_bool (a b : Value) :
+    ∃ bl, evalBinary .le a b = .bool bl := by
+  exact ⟨!abstractLt b a, by simp [evalBinary]⟩
+
+/-- §7.2.13 Greater-or-equal produces a bool. -/
+theorem evalBinary_ge_bool (a b : Value) :
+    ∃ bl, evalBinary .ge a b = .bool bl := by
+  exact ⟨!abstractLt a b, by simp [evalBinary]⟩
+
+/-- §12.9 Modulus produces a number. -/
+theorem evalBinary_mod (a b : Value) :
+    ∃ n, evalBinary .mod a b = .number n := by
+  simp only [evalBinary]
+  split <;> exact ⟨_, rfl⟩
+
+/-- §12.9 Exponentiation produces a number. -/
+theorem evalBinary_exp (a b : Value) :
+    ∃ n, evalBinary .exp a b = .number n := by
+  simp only [evalBinary]
+  exact ⟨_, rfl⟩
+
+/-- §12.12 Bitwise AND produces a number. -/
+theorem evalBinary_bitAnd (a b : Value) :
+    ∃ n, evalBinary .bitAnd a b = .number n := by
+  simp only [evalBinary]; exact ⟨_, rfl⟩
+
+/-- §12.12 Bitwise OR produces a number. -/
+theorem evalBinary_bitOr (a b : Value) :
+    ∃ n, evalBinary .bitOr a b = .number n := by
+  simp only [evalBinary]; exact ⟨_, rfl⟩
+
+/-- §12.12 Bitwise XOR produces a number. -/
+theorem evalBinary_bitXor (a b : Value) :
+    ∃ n, evalBinary .bitXor a b = .number n := by
+  simp only [evalBinary]; exact ⟨_, rfl⟩
+
+/-- §12.9.3 Left shift produces a number. -/
+theorem evalBinary_shl (a b : Value) :
+    ∃ n, evalBinary .shl a b = .number n := by
+  simp only [evalBinary]; exact ⟨_, rfl⟩
+
+/-- §12.9.3 Signed right shift produces a number. -/
+theorem evalBinary_shr (a b : Value) :
+    ∃ n, evalBinary .shr a b = .number n := by
+  simp only [evalBinary]; exact ⟨_, rfl⟩
+
+/-- §12.9.3 Unsigned right shift produces a number. -/
+theorem evalBinary_ushr (a b : Value) :
+    ∃ n, evalBinary .ushr a b = .number n := by
+  simp only [evalBinary]; exact ⟨_, rfl⟩
+
+/-- §12.10.4 instanceof produces a bool. -/
+theorem evalBinary_instanceof_bool (a b : Value) :
+    ∃ bl, evalBinary .instanceof a b = .bool bl := by
+  simp only [evalBinary]; split <;> exact ⟨_, rfl⟩
+
+/-- §12.10.2 in operator produces a bool. -/
+theorem evalBinary_in_bool (a b : Value) :
+    ∃ bl, evalBinary .«in» a b = .bool bl := by
+  simp only [evalBinary]; split <;> exact ⟨_, rfl⟩
+
+/-- §13.5 Positive unary produces a number. -/
+theorem evalUnary_pos (v : Value) :
+    evalUnary .pos v = .number (toNumber v) := by
+  simp [evalUnary]
+
+/-- §12.5.8 Bitwise NOT produces a number. -/
+theorem evalUnary_bitNot (v : Value) :
+    ∃ n, evalUnary .bitNot v = .number n := by
+  exact ⟨_, by simp [evalUnary]⟩
+
+/-- step? on a binary with non-value lhs steps the lhs. -/
+theorem step_binary_nonvalue_lhs (op : BinOp) (lhs rhs : Expr) (env : Env) (heap : Heap)
+    (trace : List TraceEvent) (funcs : Array FuncClosure)
+    (cs : List (List (VarName × Value)))
+    (hlhs : exprValue? lhs = none)
+    (t : TraceEvent) (sl : State)
+    (hstep : step? ⟨lhs, env, heap, trace, funcs, cs⟩ = some (t, sl)) :
+    step? ⟨.binary op lhs rhs, env, heap, trace, funcs, cs⟩ =
+      some (t, pushTrace { sl with expr := .binary op sl.expr rhs, trace := trace } t) := by
+  simp [step?, hlhs, hstep]
+
+/-- step? on a seq with non-value left steps the left. -/
+theorem step_seq_nonvalue_lhs (a b : Expr) (env : Env) (heap : Heap)
+    (trace : List TraceEvent) (funcs : Array FuncClosure)
+    (cs : List (List (VarName × Value)))
+    (ha : exprValue? a = none)
+    (t : TraceEvent) (sa : State)
+    (hstep : step? ⟨a, env, heap, trace, funcs, cs⟩ = some (t, sa)) :
+    step? ⟨.seq a b, env, heap, trace, funcs, cs⟩ =
+      some (t, pushTrace { sa with expr := .seq sa.expr b, trace := trace } t) := by
+  simp [step?, ha, hstep]
+
+/-- Stepping a var always produces a lit expression. -/
+theorem step_var_produces_lit (name : VarName) (env : Env) (heap : Heap)
+    (trace : List TraceEvent) (funcs : Array FuncClosure)
+    (cs : List (List (VarName × Value)))
+    (t : TraceEvent) (s' : State)
+    (h : step? ⟨.var name, env, heap, trace, funcs, cs⟩ = some (t, s')) :
+    ∃ v, s'.expr = .lit v := by
+  simp [step?] at h
+  split at h <;> simp at h <;> exact ⟨_, by rw [← h.2]; simp [pushTrace]⟩
+
+/-- Step on let with value init produces body with extended env. -/
+theorem step_let_value_eq (name : VarName) (v : Value) (body : Expr) (env : Env)
+    (heap : Heap) (trace : List TraceEvent) (funcs : Array FuncClosure)
+    (cs : List (List (VarName × Value)))
+    (t : TraceEvent) (s' : State)
+    (h : step? ⟨.let name (.lit v) body, env, heap, trace, funcs, cs⟩ = some (t, s')) :
+    s'.expr = body ∧ s'.env = env.extend name v := by
+  simp [step?, exprValue?] at h
+  exact ⟨by rw [← h.2]; simp [pushTrace], by rw [← h.2]; simp [pushTrace]⟩
+
+/-- Behaves on a single-step program. -/
+theorem Behaves_single {p : Program} {t : TraceEvent} {s' : State}
+    (hstep : Step (initialState p) t s')
+    (hhalt : step? s' = none) :
+    Behaves p [t] :=
+  ⟨s', Steps_single hstep, hhalt⟩
+
+/-- If a program's body is already a literal, it halts immediately with empty trace. -/
+theorem Behaves_lit (body : Value) (funcs : Array (List VarName × Expr)) :
+    Behaves ⟨.lit body, funcs⟩ [] :=
+  ⟨initialState ⟨.lit body, funcs⟩, Steps.refl _, by simp [initialState, step?]⟩
+
+/-- Steps preserves: if s1 steps to s2 via ts, and s2 steps to s3 via t, then
+    s1 steps to s3 via ts ++ [t]. -/
+theorem Steps_snoc {s1 s2 s3 : State} {ts : List TraceEvent} {t : TraceEvent}
+    (h1 : Steps s1 ts s2) (h2 : Step s2 t s3) :
+    Steps s1 (ts ++ [t]) s3 :=
+  Steps_trans h1 (Steps_single h2)
+
+/-- step? on getIndex with two values always produces some result. -/
+theorem step_getIndex_values (objVal idxVal : Value) (env : Env) (heap : Heap)
+    (trace : List TraceEvent) (funcs : Array FuncClosure)
+    (cs : List (List (VarName × Value))) :
+    (step? ⟨.getIndex (.lit objVal) (.lit idxVal), env, heap, trace, funcs, cs⟩).isSome = true := by
+  simp [step?, exprValue?]
+  split <;> simp
+
+/-- step? on setIndex with three values always produces some result. -/
+theorem step_setIndex_values (objVal idxVal v : Value) (env : Env) (heap : Heap)
+    (trace : List TraceEvent) (funcs : Array FuncClosure)
+    (cs : List (List (VarName × Value))) :
+    (step? ⟨.setIndex (.lit objVal) (.lit idxVal) (.lit v), env, heap, trace, funcs, cs⟩).isSome = true := by
+  simp [step?, exprValue?]
+  split <;> simp
+
+/-- Nullish coalescing: logOr with non-falsy left returns the left operand. -/
+theorem evalBinary_logOr_truthy (a b : Value) (h : toBoolean a = true) :
+    evalBinary .logOr a b = a := by
+  simp [evalBinary, h]
+
+/-- Nullish coalescing: logOr with falsy left returns the right operand. -/
+theorem evalBinary_logOr_falsy (a b : Value) (h : toBoolean a = false) :
+    evalBinary .logOr a b = b := by
+  simp [evalBinary, h]
+
+/-- Logical AND with truthy left returns right operand. -/
+theorem evalBinary_logAnd_truthy (a b : Value) (h : toBoolean a = true) :
+    evalBinary .logAnd a b = b := by
+  simp [evalBinary, h]
+
+/-- Logical AND with falsy left returns left operand. -/
+theorem evalBinary_logAnd_falsy (a b : Value) (h : toBoolean a = false) :
+    evalBinary .logAnd a b = a := by
+  simp [evalBinary, h]
+
+/-- abstractEq is reflexive on numbers. -/
+theorem abstractEq_number_refl (n : Float) (h : ¬n.isNaN) :
+    abstractEq (.number n) (.number n) = (n == n) := by
+  simp [abstractEq]
+
+/-- abstractEq: different type, both non-null/undefined → check coercion. -/
+theorem abstractEq_null_null : abstractEq .null .null = true := by
+  simp [abstractEq]
+
+/-- abstractEq: undefined with itself is true. -/
+theorem abstractEq_undefined_undefined : abstractEq .undefined .undefined = true := by
+  simp [abstractEq]
+
+/-- toBoolean on a positive number is true. -/
+theorem toBoolean_number_pos (n : Float) (hpos : n > 0.0) (hnan : ¬n.isNaN) :
+    toBoolean (.number n) = true := by
+  simp [toBoolean]
+  intro h; cases h with
+  | inl h => linarith
+  | inr h => exact absurd h hnan
+
 end VerifiedJS.Core
 
 namespace VerifiedJS.Source
