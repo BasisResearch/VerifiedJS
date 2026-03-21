@@ -2791,7 +2791,8 @@ def irStep? (s : IRExecState) : Option (TraceEvent × IRExecState) :=
           | some _ => some (irTrapState base s!"type mismatch in ptr.{op}")
           | none => some (irTrapState base s!"stack underflow in ptr.{op}")
 
-      -- Unary operations
+      -- Unary operations (i32)
+      -- REF: Wasm §4.4.3.1 (i32 unary), §4.4.5.1 (i32.wrap_i64)
       | .unOp .i32 op =>
           match irPop1? base.stack with
           | some (.i32 v, stk) =>
@@ -2802,8 +2803,15 @@ def irStep? (s : IRExecState) : Option (TraceEvent × IRExecState) :=
                 | "popcnt" => IRValue.i32 (Numerics.i32Popcnt v)
                 | _ => IRValue.i32 0
               some (.silent, irPushTrace { base with stack := result :: stk } .silent)
+          -- Cross-type: wrap_i64 takes i64 → i32
+          | some (.i64 v, stk) =>
+              match op with
+              | "wrap_i64" => some (.silent, irPushTrace { base with stack := .i32 (Numerics.i32WrapI64 v) :: stk } .silent)
+              | _ => some (irTrapState base s!"type mismatch in unary i32.{op} (got i64)")
           | some _ => some (irTrapState base s!"type mismatch in unary i32.{op}")
           | none => some (irTrapState base s!"stack underflow in unary i32.{op}")
+      -- Unary operations (i64)
+      -- REF: Wasm §4.4.3.1 (i64 unary), §4.4.5.2-3 (extends, reinterpret)
       | .unOp .i64 op =>
           match irPop1? base.stack with
           | some (.i64 v, stk) =>
@@ -2814,8 +2822,20 @@ def irStep? (s : IRExecState) : Option (TraceEvent × IRExecState) :=
                 | "popcnt" => IRValue.i64 (Numerics.i64Popcnt v)
                 | _ => IRValue.i64 0
               some (.silent, irPushTrace { base with stack := result :: stk } .silent)
-          | some _ => some (irTrapState base s!"type mismatch in unary i64.{op}")
+          -- Cross-type: extend_i32_s/u takes i32 → i64
+          | some (.i32 v, stk) =>
+              match op with
+              | "extend_i32_s" => some (.silent, irPushTrace { base with stack := .i64 (Numerics.i64ExtendI32s v) :: stk } .silent)
+              | "extend_i32_u" => some (.silent, irPushTrace { base with stack := .i64 (Numerics.i64ExtendI32u v) :: stk } .silent)
+              | _ => some (irTrapState base s!"type mismatch in unary i64.{op} (got i32)")
+          -- Cross-type: reinterpret_f64 takes f64 → i64
+          | some (.f64 v, stk) =>
+              match op with
+              | "reinterpret_f64" => some (.silent, irPushTrace { base with stack := .i64 (Numerics.i64ReinterpretF64 v) :: stk } .silent)
+              | _ => some (irTrapState base s!"type mismatch in unary i64.{op} (got f64)")
           | none => some (irTrapState base s!"stack underflow in unary i64.{op}")
+      -- Unary operations (f64)
+      -- REF: Wasm §4.4.3.1 (f64 unary), §4.4.5.4-5 (converts, reinterpret)
       | .unOp .f64 op =>
           match irPop1? base.stack with
           | some (.f64 v, stk) =>
@@ -2829,8 +2849,19 @@ def irStep? (s : IRExecState) : Option (TraceEvent × IRExecState) :=
                 | "sqrt" => IRValue.f64 (Numerics.f64Sqrt v)
                 | _ => IRValue.f64 0.0
               some (.silent, irPushTrace { base with stack := result :: stk } .silent)
-          | some _ => some (irTrapState base s!"type mismatch in unary f64.{op}")
+          -- Cross-type: convert_i32_s/u takes i32 → f64
+          | some (.i32 v, stk) =>
+              match op with
+              | "convert_i32_s" => some (.silent, irPushTrace { base with stack := .f64 (Numerics.f64ConvertI32s v) :: stk } .silent)
+              | "convert_i32_u" => some (.silent, irPushTrace { base with stack := .f64 (Numerics.f64ConvertI32u v) :: stk } .silent)
+              | _ => some (irTrapState base s!"type mismatch in unary f64.{op} (got i32)")
+          -- Cross-type: reinterpret_i64 takes i64 → f64
+          | some (.i64 v, stk) =>
+              match op with
+              | "reinterpret_i64" => some (.silent, irPushTrace { base with stack := .f64 (Numerics.f64ReinterpretI64 v) :: stk } .silent)
+              | _ => some (irTrapState base s!"type mismatch in unary f64.{op} (got i64)")
           | none => some (irTrapState base s!"stack underflow in unary f64.{op}")
+      -- Unary operations (ptr = i32)
       | .unOp .ptr op =>
           match irPop1? base.stack with
           | some (.i32 v, stk) =>
@@ -3488,6 +3519,69 @@ theorem irStep?_ir_brIf (s : IRExecState) (label : String) (rest : List IRInstr)
   · -- cond = 0: fall through
     exact ⟨_, _, rfl⟩
 
+/-- irStep? for i32.wrap_i64 with i64 on stack succeeds. -/
+@[simp]
+theorem irStep?_ir_wrap_i64 (s : IRExecState) (rest : List IRInstr)
+    (v : UInt64) (stk : List IRValue)
+    (hcode : s.code = IRInstr.unOp .i32 "wrap_i64" :: rest)
+    (hstack : s.stack = .i64 v :: stk) :
+    ∃ t s', irStep? s = some (t, s') := by
+  simp [irStep?, hcode, hstack, irPop1?, irPushTrace]
+
+/-- irStep? for i64.extend_i32_u with i32 on stack succeeds. -/
+@[simp]
+theorem irStep?_ir_extend_i32_u (s : IRExecState) (rest : List IRInstr)
+    (v : UInt32) (stk : List IRValue)
+    (hcode : s.code = IRInstr.unOp .i64 "extend_i32_u" :: rest)
+    (hstack : s.stack = .i32 v :: stk) :
+    ∃ t s', irStep? s = some (t, s') := by
+  simp [irStep?, hcode, hstack, irPop1?, irPushTrace]
+
+/-- irStep? for i64.extend_i32_s with i32 on stack succeeds. -/
+@[simp]
+theorem irStep?_ir_extend_i32_s (s : IRExecState) (rest : List IRInstr)
+    (v : UInt32) (stk : List IRValue)
+    (hcode : s.code = IRInstr.unOp .i64 "extend_i32_s" :: rest)
+    (hstack : s.stack = .i32 v :: stk) :
+    ∃ t s', irStep? s = some (t, s') := by
+  simp [irStep?, hcode, hstack, irPop1?, irPushTrace]
+
+/-- irStep? for i64.reinterpret_f64 with f64 on stack succeeds. -/
+@[simp]
+theorem irStep?_ir_reinterpret_f64 (s : IRExecState) (rest : List IRInstr)
+    (v : Float) (stk : List IRValue)
+    (hcode : s.code = IRInstr.unOp .i64 "reinterpret_f64" :: rest)
+    (hstack : s.stack = .f64 v :: stk) :
+    ∃ t s', irStep? s = some (t, s') := by
+  simp [irStep?, hcode, hstack, irPop1?, irPushTrace]
+
+/-- irStep? for f64.reinterpret_i64 with i64 on stack succeeds. -/
+@[simp]
+theorem irStep?_ir_reinterpret_i64 (s : IRExecState) (rest : List IRInstr)
+    (v : UInt64) (stk : List IRValue)
+    (hcode : s.code = IRInstr.unOp .f64 "reinterpret_i64" :: rest)
+    (hstack : s.stack = .i64 v :: stk) :
+    ∃ t s', irStep? s = some (t, s') := by
+  simp [irStep?, hcode, hstack, irPop1?, irPushTrace]
+
+/-- irStep? for f64.convert_i32_s with i32 on stack succeeds. -/
+@[simp]
+theorem irStep?_ir_convert_i32_s (s : IRExecState) (rest : List IRInstr)
+    (v : UInt32) (stk : List IRValue)
+    (hcode : s.code = IRInstr.unOp .f64 "convert_i32_s" :: rest)
+    (hstack : s.stack = .i32 v :: stk) :
+    ∃ t s', irStep? s = some (t, s') := by
+  simp [irStep?, hcode, hstack, irPop1?, irPushTrace]
+
+/-- irStep? for f64.convert_i32_u with i32 on stack succeeds. -/
+@[simp]
+theorem irStep?_ir_convert_i32_u (s : IRExecState) (rest : List IRInstr)
+    (v : UInt32) (stk : List IRValue)
+    (hcode : s.code = IRInstr.unOp .f64 "convert_i32_u" :: rest)
+    (hstack : s.stack = .i32 v :: stk) :
+    ∃ t s', irStep? s = some (t, s') := by
+  simp [irStep?, hcode, hstack, irPop1?, irPushTrace]
+
 /-! ### IRSteps Composition Helpers -/
 
 /-- Build a single-step IRSteps. -/
@@ -3541,5 +3635,83 @@ example : (irRun 10 (irInitialState exCallModule)).2.code = [] := by native_deci
 
 /-- After execution, the stack has [i32 42] (the returned value). -/
 example : (irRun 10 (irInitialState exCallModule)).2.stack == [.i32 42] := by native_decide
+
+/-- A module demonstrating NaN-boxing conversion ops: f64 → i64 → i32 (tag extraction).
+    This is the pattern the compiler generates for runtime type checks. -/
+private def exNanBoxModule : IRModule :=
+  { functions := #[{
+      name := "getTag"
+      params := [.f64]    -- f64 NaN-boxed value as parameter
+      results := [.i32]
+      locals := []
+      body := [
+        IRInstr.localGet 0,                    -- push f64 param
+        IRInstr.unOp .i64 "reinterpret_f64",   -- f64 → i64 (raw bits)
+        IRInstr.const_ .i64 "281474976710656",  -- 0x0001_0000_0000_0000 (tag mask shift)
+        IRInstr.binOp .i64 "and",               -- mask tag bits
+        IRInstr.unOp .i32 "wrap_i64",           -- i64 → i32 (take low 32 bits)
+        IRInstr.return_
+      ]
+    }]
+    memories := #[]
+    globals := #[]
+    exports := #[]
+    dataSegments := #[]
+    startFunc := some 0
+    tableEntries := #[] }
+
+/-- The NaN-box module executes without getting stuck. -/
+example : (irRun 20 (irInitialState exNanBoxModule)).2.code = [] := by native_decide
+
+/-- A module demonstrating i32 → i64 → f64 conversion (number encoding path).
+    This is the pattern for encoding an i32 integer as a NaN-boxed f64. -/
+private def exEncodeModule : IRModule :=
+  { functions := #[{
+      name := "encodeInt"
+      params := [.i32]    -- i32 value to encode
+      results := [.f64]
+      locals := []
+      body := [
+        IRInstr.localGet 0,                    -- push i32 param
+        IRInstr.unOp .i64 "extend_i32_u",      -- i32 → i64 (zero-extend)
+        IRInstr.const_ .i64 "281474976710656",  -- tag bits
+        IRInstr.binOp .i64 "or",                -- apply tag
+        IRInstr.unOp .f64 "reinterpret_i64",    -- i64 → f64 (reinterpret as NaN-boxed)
+        IRInstr.return_
+      ]
+    }]
+    memories := #[]
+    globals := #[]
+    exports := #[]
+    dataSegments := #[]
+    startFunc := some 0
+    tableEntries := #[] }
+
+/-- The encode module executes without getting stuck. -/
+example : (irRun 20 (irInitialState exEncodeModule)).2.code = [] := by native_decide
+
+/-- A module with i32 division that does NOT trap (non-zero divisor). -/
+private def exDivModule : IRModule :=
+  { functions := #[{
+      name := "div"
+      params := []
+      results := [.i32]
+      locals := []
+      body := [
+        IRInstr.const_ .i32 "42",
+        IRInstr.const_ .i32 "7",
+        IRInstr.binOp .i32 "div_u",
+        IRInstr.return_
+      ]
+    }]
+    memories := #[]
+    globals := #[]
+    exports := #[]
+    dataSegments := #[]
+    startFunc := some 0
+    tableEntries := #[] }
+
+/-- 42 / 7 = 6 -/
+example : (irRun 20 (irInitialState exDivModule)).2.stack == [.i32 6] := by native_decide
 
 end VerifiedJS.Wasm.IR

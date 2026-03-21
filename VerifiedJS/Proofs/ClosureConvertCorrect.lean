@@ -164,12 +164,96 @@ private theorem step?_none_implies_lit_aux :
           have ⟨v, hv⟩ := ih ⟨arg, fenv, fheap, ftrace⟩
             (by simp [Flat.Expr.depth] at hd ⊢; omega) hstep
           simp at hv; rw [hv] at hev; simp [Flat.exprValue?] at hev
-    -- Multi-branch exprValue? and list constructors:
-    -- All follow the same pattern (step? always returns some for non-lit),
-    -- but unfold/split tactic interaction with nested match compilation is problematic.
-    -- Grouped with list-based constructors below.
-    -- Remaining: getProp, deleteProp, makeClosure, getEnv, return, yield,
-    --            call, newObj, makeEnv, arrayLit, objectLit
+    -- Multi-branch exprValue? constructors: case split on exprValue? first,
+    -- then unfold step? and use the known exprValue? result to simplify.
+    | getProp obj _prop =>
+      exfalso
+      cases hev : Flat.exprValue? obj with
+      | some v =>
+        unfold Flat.step? at h; simp only [hev] at h
+        split at h <;> contradiction
+      | none =>
+        cases hstep : Flat.step? ⟨obj, fenv, fheap, ftrace⟩ with
+        | some r =>
+          unfold Flat.step? at h; simp only [hev, hstep] at h; contradiction
+        | none =>
+          have ⟨v, hv⟩ := ih ⟨obj, fenv, fheap, ftrace⟩
+            (by simp [Flat.Expr.depth] at hd ⊢; omega) hstep
+          simp at hv; rw [hv] at hev; simp [Flat.exprValue?] at hev
+    | deleteProp obj _prop =>
+      exfalso
+      cases hev : Flat.exprValue? obj with
+      | some v =>
+        unfold Flat.step? at h; simp only [hev] at h
+        split at h <;> contradiction
+      | none =>
+        cases hstep : Flat.step? ⟨obj, fenv, fheap, ftrace⟩ with
+        | some r =>
+          unfold Flat.step? at h; simp only [hev, hstep] at h; contradiction
+        | none =>
+          have ⟨v, hv⟩ := ih ⟨obj, fenv, fheap, ftrace⟩
+            (by simp [Flat.Expr.depth] at hd ⊢; omega) hstep
+          simp at hv; rw [hv] at hev; simp [Flat.exprValue?] at hev
+    | makeClosure _idx envExpr =>
+      exfalso
+      cases hev : Flat.exprValue? envExpr with
+      | some v =>
+        unfold Flat.step? at h; simp only [hev] at h
+        split at h <;> contradiction
+      | none =>
+        cases hstep : Flat.step? ⟨envExpr, fenv, fheap, ftrace⟩ with
+        | some r =>
+          unfold Flat.step? at h; simp only [hev, hstep] at h; contradiction
+        | none =>
+          have ⟨v, hv⟩ := ih ⟨envExpr, fenv, fheap, ftrace⟩
+            (by simp [Flat.Expr.depth] at hd ⊢; omega) hstep
+          simp at hv; rw [hv] at hev; simp [Flat.exprValue?] at hev
+    | getEnv envExpr _idx =>
+      exfalso
+      cases hev : Flat.exprValue? envExpr with
+      | some v =>
+        unfold Flat.step? at h; simp only [hev] at h
+        repeat (first | contradiction | split at h)
+      | none =>
+        cases hstep : Flat.step? ⟨envExpr, fenv, fheap, ftrace⟩ with
+        | some r =>
+          unfold Flat.step? at h; simp only [hev, hstep] at h; contradiction
+        | none =>
+          have ⟨v, hv⟩ := ih ⟨envExpr, fenv, fheap, ftrace⟩
+            (by simp [Flat.Expr.depth] at hd ⊢; omega) hstep
+          simp at hv; rw [hv] at hev; simp [Flat.exprValue?] at hev
+    | «return» arg =>
+      cases arg with
+      | none => exfalso; simp [Flat.step?] at h
+      | some e =>
+        exfalso
+        cases hev : Flat.exprValue? e with
+        | some v =>
+          unfold Flat.step? at h; simp only [hev] at h; contradiction
+        | none =>
+          cases hstep : Flat.step? ⟨e, fenv, fheap, ftrace⟩ with
+          | some r =>
+            unfold Flat.step? at h; simp only [hev, hstep] at h; contradiction
+          | none =>
+            have ⟨v, hv⟩ := ih ⟨e, fenv, fheap, ftrace⟩
+              (by simp [Flat.Expr.depth] at hd ⊢; omega) hstep
+            simp at hv; rw [hv] at hev; simp [Flat.exprValue?] at hev
+    | yield arg _delegate =>
+      cases arg with
+      | none => exfalso; simp [Flat.step?] at h
+      | some e =>
+        exfalso
+        cases hev : Flat.exprValue? e with
+        | some v =>
+          unfold Flat.step? at h; simp only [hev] at h; contradiction
+        | none =>
+          cases hstep : Flat.step? ⟨e, fenv, fheap, ftrace⟩ with
+          | some r =>
+            unfold Flat.step? at h; simp only [hev, hstep] at h; contradiction
+          | none =>
+            have ⟨v, hv⟩ := ih ⟨e, fenv, fheap, ftrace⟩
+              (by simp [Flat.Expr.depth] at hd ⊢; omega) hstep
+            simp at hv; rw [hv] at hev; simp [Flat.exprValue?] at hev
     | binary _op lhs rhs =>
       exfalso; unfold Flat.step? at h
       split at h

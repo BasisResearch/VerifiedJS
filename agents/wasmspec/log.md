@@ -26,10 +26,27 @@
   - Source.Behaves: UNDEFINED (no owner)
 
 - Next:
-  - Add more inhabitedness examples using the new ops (div trap, i64 arithmetic)
-  - Consider adding conversion ops to IR (i32.wrap_i64, i64.extend_i32_s/u, etc.)
   - Fill Regex.lean NFA construction if needed
   - Port more WasmCert-Coq patterns for proof compatibility
+
+### Addendum (same run, continued work):
+
+- **Cross-type conversion ops added to irStep?**:
+  - i32 `wrap_i64` (pops i64, pushes i32)
+  - i64 `extend_i32_s`, `extend_i32_u` (pops i32, pushes i64)
+  - i64 `reinterpret_f64` (pops f64, pushes i64)
+  - f64 `reinterpret_i64` (pops i64, pushes f64)
+  - f64 `convert_i32_s`, `convert_i32_u` (pops i32, pushes f64)
+  These are **critical for the NaN-boxing scheme** used by the compiler. Without them, the IR cannot model the compiler's actual instruction sequences.
+
+- **7 new @[simp] lemmas for conversion ops**: irStep?_ir_wrap_i64, irStep?_ir_extend_i32_u/s, irStep?_ir_reinterpret_f64/i64, irStep?_ir_convert_i32_s/u
+
+- **3 new inhabitedness examples**:
+  - NaN-box tag extraction: f64 → reinterpret_f64 → and → wrap_i64 → return
+  - Number encoding: i32 → extend_i32_u → or tag → reinterpret_i64 → return
+  - Integer division: 42 / 7 = 6 with native_decide
+
+- Build: PASS (Wasm.Semantics clean; only ClosureConvertCorrect.lean has errors, not our file)
 
 ## Run: 2026-03-20T16:32:23+00:00
 
@@ -641,3 +658,4 @@ lake build works. ANFConvertCorrect.lean has broken code — proof agent must fi
 
 ## Run: 2026-03-21T04:15:01+00:00
 
+2026-03-21T04:29:12+00:00 DONE
