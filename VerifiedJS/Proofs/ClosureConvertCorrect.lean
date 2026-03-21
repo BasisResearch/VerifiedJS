@@ -68,6 +68,42 @@ private theorem firstNonValueProp_not_lit {l : List (Flat.PropName × Flat.Expr)
         intro v habs; exact Flat.Expr.noConfusion habs
       )
 
+/-- If firstNonValueExpr returns none, all elements are literals,
+    so valuesFromExprList? returns some. -/
+private theorem firstNonValueExpr_none_implies_values (l : List Flat.Expr) :
+    Flat.firstNonValueExpr l = none → ∃ vs, Flat.valuesFromExprList? l = some vs := by
+  induction l with
+  | nil => intro _; exact ⟨[], rfl⟩
+  | cons e tl ih =>
+    intro h
+    cases e with
+    | lit v =>
+      simp [Flat.firstNonValueExpr] at h
+      split at h
+      · simp at h
+      · obtain ⟨vs, hvs⟩ := ih h
+        exact ⟨v :: vs, by simp [Flat.valuesFromExprList?, Flat.exprValue?, hvs]⟩
+    | _ => all_goals (simp [Flat.firstNonValueExpr] at h)
+
+/-- If firstNonValueProp returns none, all property values are literals,
+    so valuesFromExprList? on the values returns some. -/
+private theorem firstNonValueProp_none_implies_values (l : List (Flat.PropName × Flat.Expr)) :
+    Flat.firstNonValueProp l = none →
+    ∃ vs, Flat.valuesFromExprList? (l.map Prod.snd) = some vs := by
+  induction l with
+  | nil => intro _; exact ⟨[], rfl⟩
+  | cons p tl ih =>
+    obtain ⟨pn, pe⟩ := p
+    intro h
+    cases pe with
+    | lit v =>
+      simp [Flat.firstNonValueProp] at h
+      split at h
+      · simp at h
+      · obtain ⟨vs, hvs⟩ := ih h
+        exact ⟨v :: vs, by simp [Flat.valuesFromExprList?, Flat.exprValue?, hvs]⟩
+    | _ => all_goals (simp [Flat.firstNonValueProp] at h)
+
 /-- Simulation relation for closure conversion: Flat and Core states
     have matching traces, and expression correspondence through the conversion. -/
 private def CC_SimRel (_s : Core.Program) (_t : Flat.Program)
@@ -418,13 +454,142 @@ private theorem step?_none_implies_lit_aux :
           have ⟨v, hv⟩ := ih ⟨body, fenv, fheap, ftrace⟩
             (by cases _finally_ <;> simp [Flat.Expr.depth] at hd ⊢ <;> omega) hstep
           simp at hv; rw [hv] at hev; simp [Flat.exprValue?] at hev
-    -- List-based constructors (call, newObj, makeEnv, objectLit, arrayLit):
-    -- Most paths close by IH + firstNonValueExpr_not_lit.
-    -- The remaining "path D" (valuesFromExprList? = none ∧ firstNonValueExpr = none)
-    -- is contradictory but requires access to the private valuesFromExprList? definition.
-    -- PROOF STRATEGY: make valuesFromExprList? public in Flat/Semantics.lean, then
-    -- use firstNonValueExpr_not_lit + firstNonValueProp_not_lit (proved above) to close all paths.
-    | _ => all_goals sorry
+    -- List-based constructors: derive contradiction via IH + key lemmas.
+    -- Pattern: valuesFromExprList? = some → step? returns some (contradiction).
+    --          valuesFromExprList? = none, firstNonValueExpr = some → target is non-lit but IH says lit (contradiction).
+    --          valuesFromExprList? = none, firstNonValueExpr = none → firstNonValueExpr_none_implies_values contradicts valuesFromExprList? = none.
+    | call funcExpr envExpr args =>
+      exfalso; unfold Flat.step? at h
+      split at h  -- exprValue? funcExpr
+      · -- funcExpr not a value
+        split at h
+        next => simp at h
+        next hstep =>
+          have ⟨v, hv⟩ := ih ⟨funcExpr, fenv, fheap, ftrace⟩
+            (by simp [Flat.Expr.depth] at hd ⊢; omega) hstep
+          simp at hv; rw [hv] at *; simp [Flat.exprValue?] at *
+      · -- funcExpr is a value
+        split at h  -- exprValue? envExpr
+        · -- envExpr not a value
+          split at h
+          next => simp at h
+          next hstep =>
+            have ⟨v, hv⟩ := ih ⟨envExpr, fenv, fheap, ftrace⟩
+              (by simp [Flat.Expr.depth] at hd ⊢; omega) hstep
+            simp at hv; rw [hv] at *; simp [Flat.exprValue?] at *
+        · -- envExpr is a value
+          split at h  -- valuesFromExprList? args
+          next => simp at h
+          next hvals =>
+            split at h  -- firstNonValueExpr args
+            next hfnv =>
+              match hf : Flat.firstNonValueExpr args, hfnv with
+              | some (done, target, remaining), _ =>
+                split at h
+                next => simp at h
+                next hstep =>
+                  have ⟨v, hv⟩ := ih ⟨target, fenv, fheap, ftrace⟩
+                    (by simp [Flat.Expr.depth] at hd ⊢
+                        have := Flat.firstNonValueExpr_depth hf; omega) hstep
+                  exact absurd hv (firstNonValueExpr_not_lit hf v)
+              | none, _ =>
+                have ⟨vs, hvs⟩ := firstNonValueExpr_none_implies_values args hf
+                simp [hvs] at hvals
+            next => simp at h
+    | newObj funcExpr envExpr args =>
+      exfalso; unfold Flat.step? at h
+      split at h
+      · split at h
+        next => simp at h
+        next hstep =>
+          have ⟨v, hv⟩ := ih ⟨funcExpr, fenv, fheap, ftrace⟩
+            (by simp [Flat.Expr.depth] at hd ⊢; omega) hstep
+          simp at hv; rw [hv] at *; simp [Flat.exprValue?] at *
+      · split at h
+        · split at h
+          next => simp at h
+          next hstep =>
+            have ⟨v, hv⟩ := ih ⟨envExpr, fenv, fheap, ftrace⟩
+              (by simp [Flat.Expr.depth] at hd ⊢; omega) hstep
+            simp at hv; rw [hv] at *; simp [Flat.exprValue?] at *
+        · split at h
+          next => simp at h
+          next hvals =>
+            split at h
+            next hfnv =>
+              match hf : Flat.firstNonValueExpr args, hfnv with
+              | some (done, target, remaining), _ =>
+                split at h
+                next => simp at h
+                next hstep =>
+                  have ⟨v, hv⟩ := ih ⟨target, fenv, fheap, ftrace⟩
+                    (by simp [Flat.Expr.depth] at hd ⊢
+                        have := Flat.firstNonValueExpr_depth hf; omega) hstep
+                  exact absurd hv (firstNonValueExpr_not_lit hf v)
+              | none, _ =>
+                have ⟨vs, hvs⟩ := firstNonValueExpr_none_implies_values args hf
+                simp [hvs] at hvals
+            next => simp at h
+    | makeEnv values =>
+      exfalso; unfold Flat.step? at h
+      split at h
+      next => simp at h
+      next hvals =>
+        split at h
+        next hfnv =>
+          match hf : Flat.firstNonValueExpr values, hfnv with
+          | some (done, target, remaining), _ =>
+            split at h
+            next => simp at h
+            next hstep =>
+              have ⟨v, hv⟩ := ih ⟨target, fenv, fheap, ftrace⟩
+                (by simp [Flat.Expr.depth] at hd ⊢
+                    have := Flat.firstNonValueExpr_depth hf; omega) hstep
+              exact absurd hv (firstNonValueExpr_not_lit hf v)
+          | none, _ =>
+            have ⟨vs, hvs⟩ := firstNonValueExpr_none_implies_values values hf
+            simp [hvs] at hvals
+        next => simp at h
+    | objectLit props =>
+      exfalso; unfold Flat.step? at h
+      split at h
+      next => simp at h
+      next hvals =>
+        split at h
+        next hfnv =>
+          match hf : Flat.firstNonValueProp props, hfnv with
+          | some (done, propName, target, remaining), _ =>
+            split at h
+            next => simp at h
+            next hstep =>
+              have ⟨v, hv⟩ := ih ⟨target, fenv, fheap, ftrace⟩
+                (by simp [Flat.Expr.depth] at hd ⊢
+                    have := Flat.firstNonValueProp_depth hf; omega) hstep
+              exact absurd hv (firstNonValueProp_not_lit hf v)
+          | none, _ =>
+            have ⟨vs, hvs⟩ := firstNonValueProp_none_implies_values props hf
+            simp [hvs] at hvals
+        next => simp at h
+    | arrayLit elems =>
+      exfalso; unfold Flat.step? at h
+      split at h
+      next => simp at h
+      next hvals =>
+        split at h
+        next hfnv =>
+          match hf : Flat.firstNonValueExpr elems, hfnv with
+          | some (done, target, remaining), _ =>
+            split at h
+            next => simp at h
+            next hstep =>
+              have ⟨v, hv⟩ := ih ⟨target, fenv, fheap, ftrace⟩
+                (by simp [Flat.Expr.depth] at hd ⊢
+                    have := Flat.firstNonValueExpr_depth hf; omega) hstep
+              exact absurd hv (firstNonValueExpr_not_lit hf v)
+          | none, _ =>
+            have ⟨vs, hvs⟩ := firstNonValueExpr_none_implies_values elems hf
+            simp [hvs] at hvals
+        next => simp at h
 
 private theorem step?_none_implies_lit (s : Flat.State) (h : Flat.step? s = none) :
     ∃ v, s.expr = .lit v :=
