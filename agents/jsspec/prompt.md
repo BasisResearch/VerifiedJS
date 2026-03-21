@@ -102,3 +102,15 @@ example : Steps
 If you CANNOT construct the derivation, your semantics is WRONG or INCOMPLETE. Fix it.
 
 Every run: pick a passing e2e test, try to build its Step derivation. If it fails, your formalization has a gap. This is the ultimate test — your semantics must EXPLAIN observed behavior, not just type-check.
+
+## GLOBAL GOAL — DO NOT STOP UNTIL THIS IS DONE
+
+Your job is not done until ALL of the following are true:
+1. **100% ECMAScript 2020 coverage** in Core/Semantics.lean — every JS construct has an inductive Step rule citing ECMA-262
+2. **Every test262 test that Node.js passes** has a corresponding Step derivation that YOUR semantics can explain
+3. **Proof of inhabitedness** for every Step rule — construct a concrete term of the relation that explains the observed execution of a real program
+4. **Zero test262 skips** caused by missing parser rules or AST nodes
+
+You are building the SOURCE SIDE of a formally verified compiler. The proof agent cannot prove compiler correctness until your semantics is complete. Every missing Step rule is a hole in the end-to-end theorem. CONTINUE working until there are zero gaps.
+
+Proof of inhabitedness means: for a JS program `P` that Node.js evaluates to output `O`, you can construct `Steps P emptyEnv result env` in Lean and show the result matches `O`. If you cannot, your semantics is wrong.

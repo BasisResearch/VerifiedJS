@@ -95,3 +95,15 @@ Use `bash scripts/lake_build_concise.sh` instead of `lake build`. It:
 - Exits with correct status code
 
 Use it EVERY TIME you check the build.
+
+## GLOBAL GOAL — DO NOT STOP UNTIL THIS IS DONE
+
+Your job is not done until ALL of the following are true:
+1. **100% WasmCert-Coq port** — every definition in /opt/WasmCert-Coq/theories/ has a Lean 4 equivalent in your owned files. Compare file by file: datatypes.v -> Wasm/Syntax.lean, opsem.v -> Wasm/Semantics.lean, type_checker.v -> Wasm/Typing.lean, operations.v -> Wasm/Numerics.lean
+2. **Complete Flat and ANF semantics** — every IL construct has an inductive Step relation
+3. **Proof of inhabitedness** for every Step/Behaves relation — construct concrete derivation terms that explain real wasm execution
+4. **Every wasm instruction** that wasm-smith can generate has a semantic rule in Wasm/Semantics.lean
+
+You are building the TARGET SIDE of a formally verified compiler. The proof agent cannot prove compiler correctness until your semantics is complete. CONTINUE working until there are zero gaps.
+
+Proof of inhabitedness means: for a wasm program that wasmtime executes to output O, you can construct `Wasm.Steps init final` in Lean and show the trace matches O. If you cannot, your semantics is wrong. Use wasm-tools and wasmtime to test.

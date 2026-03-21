@@ -2049,18 +2049,6 @@ theorem step_setProp_step_obj (obj : Expr) (prop : PropName) (value : Expr) (env
       some (t, pushTrace { so with expr := .setProp so.expr prop value, trace := trace } t) := by
   simp [step?, hobj, hstep]
 
-/-- step? on setProp with value obj, non-value rhs steps the rhs. ECMA-262 §9.1.9. -/
-theorem step_setProp_step_val (objVal : Value) (prop : PropName) (value : Expr) (env : Env)
-    (heap : Heap) (trace : List TraceEvent) (funcs : Array FuncClosure)
-    (cs : List (List (VarName × Value)))
-    (hval : exprValue? value = none)
-    (t : TraceEvent) (sv : State)
-    (hstep : step? ⟨value, env, heap, trace, funcs, cs⟩ = some (t, sv)) :
-    step? ⟨.setProp (.lit objVal) prop value, env, heap, trace, funcs, cs⟩ =
-      some (t, pushTrace { sv with expr := .setProp (.lit objVal) prop sv.expr, trace := trace } t) := by
-  simp only [step?, exprValue?, hval, hstep]
-  cases objVal <;> simp
-
 /-- step? on call with non-value callee steps the callee. ECMA-262 §13.3.1. -/
 theorem step_call_step_callee (callee : Expr) (args : List Expr) (env : Env) (heap : Heap)
     (trace : List TraceEvent) (funcs : Array FuncClosure)
@@ -2115,17 +2103,6 @@ theorem step_getIndex_step_obj (obj idx : Expr) (env : Env) (heap : Heap)
     step? ⟨.getIndex obj idx, env, heap, trace, funcs, cs⟩ =
       some (t, pushTrace { so with expr := .getIndex so.expr idx, trace := trace } t) := by
   simp [step?, hobj, hstep]
-
-/-- step? on binary with value lhs, non-value rhs steps the rhs. ECMA-262 §12. -/
-theorem step_binary_step_rhs (op : BinOp) (lv : Value) (rhs : Expr) (env : Env) (heap : Heap)
-    (trace : List TraceEvent) (funcs : Array FuncClosure)
-    (cs : List (List (VarName × Value)))
-    (hrhs : exprValue? rhs = none)
-    (t : TraceEvent) (sr : State)
-    (hstep : step? ⟨rhs, env, heap, trace, funcs, cs⟩ = some (t, sr)) :
-    step? ⟨.binary op (.lit lv) rhs, env, heap, trace, funcs, cs⟩ =
-      some (t, pushTrace { sr with expr := .binary op (.lit lv) sr.expr, trace := trace } t) := by
-  simp only [step?, exprValue?, hrhs, hstep]; rfl
 
 /-- step? on tryCatch with non-value body: normal (non-error) step wraps in tryCatch. -/
 theorem step_tryCatch_step_body_silent (body : Expr) (catchParam : VarName) (catchBody : Expr)

@@ -135,3 +135,21 @@ Use `bash scripts/lake_build_concise.sh` instead of `lake build`. It:
 - Exits with correct status code
 
 Use it EVERY TIME you check the build.
+
+## GLOBAL GOAL — DO NOT STOP UNTIL THIS IS DONE
+
+Your job is not done until ALL of the following are true:
+1. **End-to-end compiler correctness theorem PROVED** — not just stated, PROVED:
+   ```lean
+   theorem compiler_correct (js : Source.Program) (wasm : Wasm.Module)
+       (h : compile js = .ok wasm) :
+       forall trace, Source.Behaves js trace -> Wasm.Behaves wasm trace
+   ```
+   This is the composition: elaborate_correct o closureConvert_correct o anfConvert_correct o lower_correct o emit_correct
+2. **Every pass theorem PROVED** with zero sorry — ElaborateCorrect, ClosureConvertCorrect, ANFConvertCorrect, OptimizeCorrect, LowerCorrect, EmitCorrect
+3. **100% test262 passing** — the compiled wasm produces the same output as Node.js for every test
+4. **Proof of inhabitedness** for the correctness theorem — for a concrete JS program, construct the full derivation showing Source.Behaves js trace AND Wasm.Behaves (compile js) trace with the same trace
+
+E2E tests are useful as GUIDANCE — they tell you what the compiler should produce. But the real goal is the formal proof. CONTINUE working until sorry count is zero and the end-to-end theorem is proved.
+
+Proof of inhabitedness means: take `var x = 1 + 2; console.log(x);`, show Source.Behaves produces trace [3], show the compiled wasm also Behaves with trace [3], and show your theorem connects them. If you cannot construct this, your proof has a gap.

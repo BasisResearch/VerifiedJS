@@ -123,7 +123,28 @@ private theorem anfConvert_halt_star
     refine ⟨sf, [], .refl sf, ?_, rfl, ?_⟩
     · rw [hsf]; exact Flat.step?_lit_none sf v
     · exact ⟨hheap, htrace, k, n, m, hconv⟩
+  -- For most non-lit constructors, normalizeExpr produces an ANF expression
+  -- where step? always returns some, contradicting hhalt.
+  -- Pattern: unfold normalizeExpr → show result always steps → exfalso
+  | «break» label =>
+    -- normalizeExpr (.break label) k = pure (.break label)
+    -- ANF.step? on .break always returns some
+    exfalso; rw [hlit] at hconv
+    simp only [ANF.normalizeExpr, pure, Pure.pure, StateT.pure, Except.pure] at hconv
+    have := (Prod.mk.inj (Except.ok.inj hconv)).1; rw [← this] at hhalt
+    simp [ANF.step?] at hhalt
+  | «continue» label =>
+    exfalso; rw [hlit] at hconv
+    simp only [ANF.normalizeExpr, pure, Pure.pure, StateT.pure, Except.pure] at hconv
+    have := (Prod.mk.inj (Except.ok.inj hconv)).1; rw [← this] at hhalt
+    simp [ANF.step?] at hhalt
   | _ =>
+    -- Remaining non-lit cases: var, this, let, assign, if, seq, call, newObj,
+    -- getProp, setProp, getIndex, setIndex, deleteProp, typeof, getEnv, makeEnv,
+    -- makeClosure, objectLit, arrayLit, throw, tryCatch, while_, labeled,
+    -- return, yield, await, unary, binary, functionDef
+    -- Each requires showing normalizeExpr produces .let/.throw/etc that always steps,
+    -- or (for var/this/seq/tryCatch) multi-step Flat reasoning.
     all_goals sorry
 
 /-- Multi-step simulation derived from single-step stuttering simulation. -/
