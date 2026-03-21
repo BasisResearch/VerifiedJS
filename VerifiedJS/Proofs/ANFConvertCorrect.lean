@@ -99,7 +99,7 @@ private theorem bindComplex_not_trivial (rhs : ANF.ComplexExpr) (k : ANF.Trivial
              StateT.set, pure, Pure.pure, StateT.pure, Except.pure, getThe, MonadStateOf.get]
   cases hk : k (.var (toString "_anf" ++ toString (Nat.repr n))) (n + 1) with
   | error => simp [hk]
-  | ok v => intro habs; exact ANF.Expr.noConfusion (Prod.mk.inj habs).1
+  | ok v => intro habs; exact ANF.Expr.noConfusion (Prod.mk.inj (Except.ok.inj habs)).1
 
 /-- normalizeExpr never produces .trivial when the continuation k never produces .trivial.
     Combined with normalizeExprList and normalizeProps by strong induction on depth. -/
@@ -130,21 +130,21 @@ private theorem normalizeExpr_not_trivial_family :
       | this => simp only [ANF.normalizeExpr]; exact hk (.var "this") n m t
       | «break» _ =>
         simp only [ANF.normalizeExpr, pure, Pure.pure, StateT.pure, Except.pure]
-        intro habs; exact ANF.Expr.noConfusion (Prod.mk.inj habs).1
+        intro habs; exact ANF.Expr.noConfusion (Prod.mk.inj (Except.ok.inj habs)).1
       | «continue» _ =>
         simp only [ANF.normalizeExpr, pure, Pure.pure, StateT.pure, Except.pure]
-        intro habs; exact ANF.Expr.noConfusion (Prod.mk.inj habs).1
+        intro habs; exact ANF.Expr.noConfusion (Prod.mk.inj (Except.ok.inj habs)).1
       | «return» arg =>
         cases arg with
         | none =>
           simp only [ANF.normalizeExpr, pure, Pure.pure, StateT.pure, Except.pure]
-          intro habs; exact ANF.Expr.noConfusion (Prod.mk.inj habs).1
+          intro habs; exact ANF.Expr.noConfusion (Prod.mk.inj (Except.ok.inj habs)).1
         | some _ => exfalso; simp [Flat.Expr.depth] at hd
       | yield arg _ =>
         cases arg with
         | none =>
           simp only [ANF.normalizeExpr, pure, Pure.pure, StateT.pure, Except.pure]
-          intro habs; exact ANF.Expr.noConfusion (Prod.mk.inj habs).1
+          intro habs; exact ANF.Expr.noConfusion (Prod.mk.inj (Except.ok.inj habs)).1
         | some _ => exfalso; simp [Flat.Expr.depth] at hd
       | _ => exfalso; simp [Flat.Expr.depth] at hd
     · intro es k hk hd n m t
@@ -170,43 +170,39 @@ private theorem normalizeExpr_not_trivial_family :
       | this => simp only [ANF.normalizeExpr]; exact hk (.var "this") n m t
       | «break» _ =>
         simp only [ANF.normalizeExpr, pure, Pure.pure, StateT.pure, Except.pure]
-        intro habs; exact ANF.Expr.noConfusion (Prod.mk.inj habs).1
+        intro habs; exact ANF.Expr.noConfusion (Prod.mk.inj (Except.ok.inj habs)).1
       | «continue» _ =>
         simp only [ANF.normalizeExpr, pure, Pure.pure, StateT.pure, Except.pure]
-        intro habs; exact ANF.Expr.noConfusion (Prod.mk.inj habs).1
+        intro habs; exact ANF.Expr.noConfusion (Prod.mk.inj (Except.ok.inj habs)).1
       | «return» arg =>
         cases arg with
         | none =>
           simp only [ANF.normalizeExpr, pure, Pure.pure, StateT.pure, Except.pure]
-          intro habs; exact ANF.Expr.noConfusion (Prod.mk.inj habs).1
+          intro habs; exact ANF.Expr.noConfusion (Prod.mk.inj (Except.ok.inj habs)).1
         | some value =>
           simp only [ANF.normalizeExpr]
           exact ihe value (fun t => pure (.return (some t)))
-            (by intro x n' m' t' habs; simp [pure, Pure.pure, StateT.pure, Except.pure] at habs
-                exact ANF.Expr.noConfusion (Prod.mk.inj habs).1)
+            (by intro x n' m' t' habs; simp [pure, Pure.pure, StateT.pure, Except.pure] at habs)
             (by simp [Flat.Expr.depth] at hd ⊢; omega) n m t
       | yield arg delegate =>
         cases arg with
         | none =>
           simp only [ANF.normalizeExpr, pure, Pure.pure, StateT.pure, Except.pure]
-          intro habs; exact ANF.Expr.noConfusion (Prod.mk.inj habs).1
+          intro habs; exact ANF.Expr.noConfusion (Prod.mk.inj (Except.ok.inj habs)).1
         | some value =>
           simp only [ANF.normalizeExpr]
           exact ihe value (fun t => pure (.yield (some t) delegate))
-            (by intro x n' m' t' habs; simp [pure, Pure.pure, StateT.pure, Except.pure] at habs
-                exact ANF.Expr.noConfusion (Prod.mk.inj habs).1)
+            (by intro x n' m' t' habs; simp [pure, Pure.pure, StateT.pure, Except.pure] at habs)
             (by simp [Flat.Expr.depth] at hd ⊢; omega) n m t
       | throw arg =>
         simp only [ANF.normalizeExpr]
         exact ihe arg (fun t => pure (.throw t))
-          (by intro x n' m' t' habs; simp [pure, Pure.pure, StateT.pure, Except.pure] at habs
-              exact ANF.Expr.noConfusion (Prod.mk.inj habs).1)
+          (by intro x n' m' t' habs; simp [pure, Pure.pure, StateT.pure, Except.pure] at habs)
           (by simp [Flat.Expr.depth] at hd ⊢; omega) n m t
       | await arg =>
         simp only [ANF.normalizeExpr]
         exact ihe arg (fun t => pure (.await t))
-          (by intro x n' m' t' habs; simp [pure, Pure.pure, StateT.pure, Except.pure] at habs
-              exact ANF.Expr.noConfusion (Prod.mk.inj habs).1)
+          (by intro x n' m' t' habs; simp [pure, Pure.pure, StateT.pure, Except.pure] at habs)
           (by simp [Flat.Expr.depth] at hd ⊢; omega) n m t
       | assign name value =>
         simp only [ANF.normalizeExpr]
@@ -290,7 +286,7 @@ private theorem normalizeExpr_not_trivial_family :
               intro habs; split at habs
               · simp at habs
               · simp only [pure, Pure.pure, StateT.pure, Except.pure, Except.ok.injEq] at habs
-                exact ANF.Expr.noConfusion (Prod.mk.inj habs).1)
+                exact ANF.Expr.noConfusion (Prod.mk.inj (Except.ok.inj habs)).1)
           (by simp [Flat.Expr.depth] at hd ⊢; omega) n m t
       | «if» cond then_ else_ =>
         simp only [ANF.normalizeExpr]
@@ -303,7 +299,7 @@ private theorem normalizeExpr_not_trivial_family :
               intro habs
               repeat (first | split at habs | simp at habs)
               all_goals (simp only [pure, Pure.pure, StateT.pure, Except.pure, Except.ok.injEq] at habs)
-              all_goals (exact ANF.Expr.noConfusion (Prod.mk.inj habs).1))
+              all_goals (exact ANF.Expr.noConfusion (Prod.mk.inj (Except.ok.inj habs)).1))
           (by simp [Flat.Expr.depth] at hd ⊢; omega) n m t
       | seq a b =>
         simp only [ANF.normalizeExpr]
@@ -317,14 +313,14 @@ private theorem normalizeExpr_not_trivial_family :
         split at habs
         · simp at habs
         · simp only [pure, Pure.pure, StateT.pure, Except.pure, Except.ok.injEq] at habs
-          exact ANF.Expr.noConfusion (Prod.mk.inj habs).1
+          exact ANF.Expr.noConfusion (Prod.mk.inj (Except.ok.inj habs)).1
       | while_ cond body =>
         simp only [ANF.normalizeExpr, bind, Bind.bind, StateT.bind, Except.bind]
         intro habs
         repeat (first | split at habs | simp at habs)
         all_goals (
           try simp only [pure, Pure.pure, StateT.pure, Except.pure, Except.ok.injEq] at habs
-          try exact ANF.Expr.noConfusion (Prod.mk.inj habs).1)
+          try exact ANF.Expr.noConfusion (Prod.mk.inj (Except.ok.inj habs)).1)
       | tryCatch body catchParam catchBody finally_ =>
         simp only [ANF.normalizeExpr, bind, Bind.bind, StateT.bind, Except.bind]
         intro habs
@@ -340,13 +336,13 @@ private theorem normalizeExpr_not_trivial_family :
             cases finally_ with
             | none =>
               simp only [pure, Pure.pure, StateT.pure, Except.pure, Except.ok.injEq] at habs
-              exact ANF.Expr.noConfusion (Prod.mk.inj habs).1
+              exact ANF.Expr.noConfusion (Prod.mk.inj (Except.ok.inj habs)).1
             | some fin =>
               simp only [Functor.map, StateT.map, bind, Bind.bind, StateT.bind, Except.bind] at habs
               split at habs
               · simp at habs
               · simp only [pure, Pure.pure, StateT.pure, Except.pure, Except.ok.injEq] at habs
-                exact ANF.Expr.noConfusion (Prod.mk.inj habs).1
+                exact ANF.Expr.noConfusion (Prod.mk.inj (Except.ok.inj habs)).1
       | call funcIdx envPtr args =>
         simp only [ANF.normalizeExpr]
         exact ihe funcIdx (fun ft => ANF.normalizeExpr envPtr (fun et =>
@@ -635,7 +631,7 @@ private theorem anfConvert_halt_star
       simp only [ANF.normalizeExpr] at hconv
       exact normalizeExpr_not_trivial value (fun t => pure (.return (some t)))
         (by intro x n' m' t' habs; simp [pure, Pure.pure, StateT.pure, Except.pure] at habs
-            exact ANF.Expr.noConfusion (Prod.mk.inj habs).1)
+            exact ANF.Expr.noConfusion (Prod.mk.inj (Except.ok.inj habs)).1)
         n m tv hconv
   | yield arg delegate =>
     exfalso; rw [hlit] at hconv
@@ -649,19 +645,19 @@ private theorem anfConvert_halt_star
       simp only [ANF.normalizeExpr] at hconv
       exact normalizeExpr_not_trivial value (fun t => pure (.yield (some t) delegate))
         (by intro x n' m' t' habs; simp [pure, Pure.pure, StateT.pure, Except.pure] at habs
-            exact ANF.Expr.noConfusion (Prod.mk.inj habs).1)
+            exact ANF.Expr.noConfusion (Prod.mk.inj (Except.ok.inj habs)).1)
         n m tv hconv
   | throw arg =>
     exfalso; rw [hlit] at hconv; simp only [ANF.normalizeExpr] at hconv
     exact normalizeExpr_not_trivial arg (fun t => pure (.throw t))
       (by intro x n' m' t' habs; simp [pure, Pure.pure, StateT.pure, Except.pure] at habs
-          exact ANF.Expr.noConfusion (Prod.mk.inj habs).1)
+          exact ANF.Expr.noConfusion (Prod.mk.inj (Except.ok.inj habs)).1)
       n m tv hconv
   | await arg =>
     exfalso; rw [hlit] at hconv; simp only [ANF.normalizeExpr] at hconv
     exact normalizeExpr_not_trivial arg (fun t => pure (.await t))
       (by intro x n' m' t' habs; simp [pure, Pure.pure, StateT.pure, Except.pure] at habs
-          exact ANF.Expr.noConfusion (Prod.mk.inj habs).1)
+          exact ANF.Expr.noConfusion (Prod.mk.inj (Except.ok.inj habs)).1)
       n m tv hconv
   | assign name value =>
     exfalso; rw [hlit] at hconv; simp only [ANF.normalizeExpr] at hconv
@@ -752,7 +748,7 @@ private theorem anfConvert_halt_star
           intro habs; split at habs
           · simp at habs
           · simp only [pure, Pure.pure, StateT.pure, Except.pure, Except.ok.injEq] at habs
-            exact ANF.Expr.noConfusion (Prod.mk.inj habs).1)
+            exact ANF.Expr.noConfusion (Prod.mk.inj (Except.ok.inj habs)).1)
       n m tv hconv
   | «if» cond then_ else_ =>
     exfalso; rw [hlit] at hconv; simp only [ANF.normalizeExpr] at hconv
@@ -765,7 +761,7 @@ private theorem anfConvert_halt_star
           intro habs
           repeat (first | split at habs | simp at habs)
           all_goals (simp only [pure, Pure.pure, StateT.pure, Except.pure, Except.ok.injEq] at habs)
-          all_goals (exact ANF.Expr.noConfusion (Prod.mk.inj habs).1))
+          all_goals (exact ANF.Expr.noConfusion (Prod.mk.inj (Except.ok.inj habs)).1))
       n m tv hconv
   | labeled label body =>
     exfalso; rw [hlit] at hconv

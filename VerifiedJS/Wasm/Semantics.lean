@@ -4636,11 +4636,11 @@ theorem IRForwardSim_behavioral {S : Type} {R : S → IRExecState → Prop}
 /-- StepStar is equivalent to the ANF.Steps relation when the step function is ANF.step?.
     This bridges the ANF.Behaves definition (which uses ANF.Steps) to the DetBehaves
     definition (which uses StepStar). -/
-theorem StepStar_of_Steps_generic {S α : Type} {step : S → Option (α × S)}
-    {stepRel : S → α → S → Prop}
+theorem StepStar_of_Steps_generic {S : Type} {step : S → Option (TraceEvent × S)}
+    {stepRel : S → TraceEvent → S → Prop}
     (step_iff : ∀ s t s', stepRel s t s' ↔ step s = some (t, s'))
-    {stepsRel : S → List α → S → Prop}
-    {s_init s_final : S} {ts : List α}
+    {stepsRel : S → List TraceEvent → S → Prop}
+    {s_init s_final : S} {ts : List TraceEvent}
     (_hRefl : ∀ s, stepsRel s [] s)
     (_hTail : ∀ s1 t s2 ts s3, stepRel s1 t s2 → stepsRel s2 ts s3 → stepsRel s1 (t :: ts) s3)
     -- Induction principle for the stepsRel relation (matches the inductive structure)
@@ -4753,7 +4753,7 @@ theorem anfStepMapped_some (s s' : ANF.State) (t : Core.TraceEvent)
     REF: This is the key invariant that the lowering pass must maintain. -/
 def LowerRel (prog : ANF.Program) (irmod : IRModule) (s : ANF.State) (ir : IRExecState) : Prop :=
   Wasm.lower prog = .ok irmod ∧
-  ir.trace = (s.trace.map traceFromCore).flatMap (fun t => [t])
+  ir.trace = s.trace.map traceFromCore
 
 /-! ### Concrete Simulation Relations
 
@@ -4796,7 +4796,7 @@ def LowerSimRel (prog : ANF.Program) (irmod : IRModule)
   /- Environment correspondence: every ANF environment binding has a
      corresponding IR local variable with the encoded value. -/
   (∀ name v, s.env.lookup name = some v →
-    ∃ idx val, (ir.frames.head?.bind (fun f => f.locals[idx]?)) = some val)
+    ∃ idx val, (Option.bind ir.frames.head? (fun f => f.locals[idx]?)) = some val)
 
 namespace LowerSimRel
 
@@ -4993,7 +4993,7 @@ structure IRStutterSim {S : Type} (R : S → IRExecState → Prop)
   /-- One source step → one or more IR steps with matching observable events. -/
   step_sim : ∀ (s1 : S) (s2 : IRExecState) (t : TraceEvent) (s1' : S),
     R s1 s2 → step_src s1 = some (t, s1') →
-    ∃ s2' (ir_trace : List TraceEvent),
+    ∃ (s2' : IRExecState) (ir_trace : List TraceEvent),
       IRSteps s2 ir_trace s2' ∧
       R s1' s2' ∧
       observableEvents ir_trace = observableEvents [t]
@@ -5010,7 +5010,7 @@ theorem IRStutterSim_steps {S : Type} {R : S → IRExecState → Prop}
     {ts : List TraceEvent} {s1_final : S}
     (hR_init : R s1_init s2_init)
     (hExec : StepStar step_src s1_init ts s1_final) :
-    ∃ s2_final (ir_trace : List TraceEvent),
+    ∃ (s2_final : IRExecState) (ir_trace : List TraceEvent),
       IRSteps s2_init ir_trace s2_final ∧
       R s1_final s2_final ∧
       observableEvents ir_trace = observableEvents ts := by
@@ -5029,7 +5029,7 @@ theorem IRStutterSim_steps {S : Type} {R : S → IRExecState → Prop}
     The IR produces a trace whose observable events match the mapped source trace.
     This is the correct behavioral equivalence for stuttering simulation. -/
 def IRBehavesObs (m : IRModule) (obs : List TraceEvent) : Prop :=
-  ∃ sFinal (ir_trace : List TraceEvent),
+  ∃ (sFinal : IRExecState) (ir_trace : List TraceEvent),
     IRSteps (irInitialState m) ir_trace sFinal ∧
     irStep? sFinal = none ∧
     observableEvents ir_trace = obs
