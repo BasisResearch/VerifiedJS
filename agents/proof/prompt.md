@@ -57,41 +57,28 @@ If ClosureConvertCorrect needs 600 lines of case analysis, WRITE 600 LINES. That
 ## Test262
 Read `logs/test262_summary.md` for failure categories. Fix compiler bugs that cause test262 failures.
 
+## Rules on Adding Sorry
+Do NOT add new sorries casually. Every sorry you add is a hole in the end-to-end proof.
+
+Before adding a sorry, ask: "Does this sorry block `compiler_correct`?" If yes, you MUST attempt to prove it first. Use lean_multi_attempt to test tactics before giving up.
+
+It is OK to have sorry in:
+- Helper lemmas that factor out part of a larger proof (as stepping stones)
+- Theorems whose statement you are still refining
+
+It is NOT OK to:
+- Add sorry to "come back to later" and then go do something easier
+- Add sorry to a pass theorem (ElaborateCorrect, ClosureConvertCorrect, etc.) without exhausting all tactic options
+- Increase the total sorry count — every run should decrease it or hold steady, never increase
+
+It IS OK to temporarily increase sorry count if you are decomposing a large sorry into smaller, more tractable sub-lemmas. Breaking `sorry` into 5 helper lemmas each with `sorry` is PROGRESS — you've identified the proof structure. But the total should trend down over time.
+
 ## Rules
 1. NEVER break the build.
 2. Use `bash scripts/lake_build_concise.sh` for builds.
 3. Duper is NOT available. Use grind, aesop, omega, simp.
 4. DO NOT WAIT for anyone. Just prove things.
-
-## CURRENT STATUS (2026-03-21T22:05) — 7 sorries remain in Proofs/
-
-**elaborate_correct: PROVED** (done). **optimize_correct: PROVED** (done).
-
-**BUILD IS BROKEN** — jsspec's Core/Semantics.lean has 81 errors (stuck_implies_lit simp loop).
-Build individual Proof modules with: `lake build VerifiedJS.Proofs.ANFConvertCorrect` etc.
-jsspec has been told to sorry it — should be fixed soon.
-
-### Remaining 7 sorries (in priority order):
-
-**#1: `anfConvert_step_star`** (ANFConvertCorrect.lean:84)
-Stuttering forward simulation. Case analysis on ANF.Step over all expression forms.
-
-**#2: `anfConvert_halt_star`** (ANFConvertCorrect.lean:567 and :571)
-2 sorries. Show normalizeExpr produces ANF that always steps (not stuck).
-
-**#3: `closureConvert_step_simulation`** (ClosureConvertCorrect.lean:138)
-One-step backward simulation. 200+ line case analysis on Flat.Step.
-
-**#4: `lower_behavioral_correct`** (LowerCorrect.lean:51)
-Forward simulation ANF→IR.
-
-**#5: `emit_behavioral_correct`** (EmitCorrect.lean:44)
-Forward simulation IR→Wasm.
-
-**#6: `flat_to_wasm_correct`** (EndToEnd.lean:55)
-Composition of #3-5. Last to prove.
-
-**Strategy**: Focus on #1 (anfConvert_step_star) — the hardest but most impactful. Then #3 (CC step_sim). #4-6 depend on wasmspec's forward sim theorems.
+5. Sorry count must go DOWN or stay flat. Never up.
 
 ## GLOBAL GOAL -- DO NOT STOP
 Your job is done when:
@@ -99,18 +86,3 @@ Your job is done when:
 2. Every pass theorem proved: Elaborate, ClosureConvert, ANFConvert, Optimize, Lower, Emit
 3. 100% test262 passing
 4. Inhabitedness proof for the full chain on a concrete program
-
-## USE THE LEAN LSP MCP TOOLS
-
-You have Lean LSP tools via MCP. USE THEM on every proof attempt:
-
-- **lean_multi_attempt**: Test tactics WITHOUT editing. Use BEFORE writing any tactic:
-  `lean_multi_attempt(file_path="VerifiedJS/Proofs/X.lean", line=N, snippets=["grind","aesop","simp_all","omega","decide"])`
-- **lean_goal**: See exact proof state at a line
-- **lean_hover_info**: Get type of any identifier  
-- **lean_diagnostic_messages**: Get errors without rebuilding
-- **lean_state_search**: Find lemmas that close a goal
-- **lean_local_search**: Find project declarations
-
-WORKFLOW: lean_goal to see state → lean_multi_attempt to test tactics → edit the one that works.
-DO NOT guess tactics. TEST FIRST with lean_multi_attempt.
