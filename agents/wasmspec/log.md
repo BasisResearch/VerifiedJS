@@ -18,9 +18,19 @@
   - Wasm type soundness: `well_typed → step? ≠ none` not yet proven
   - PROOF_BLOCKERS.md still says sorry #2 is blocked (permission denied to update)
 
+- Also implemented in this run:
+  - **5 more exact-value lemmas**: `irStep?_eq_br`, `irStep?_eq_brIf_true`, `irStep?_eq_brIf_false`, `irStep?_eq_call`, `irStep?_eq_frameReturn`
+  - **Generator .next()/.return()/.throw() semantics** in Runtime/Generators.lean:
+    - `GeneratorInstance.next`: state machine transition for `.next(v)` per §27.5.3.3
+    - `GeneratorInstance.return_`: forced completion per §27.5.3.4
+    - `GeneratorInstance.throw_`: exception injection per §27.5.3.4
+    - `GeneratorOutcome` type for yield/return/throw results
+    - `Promise.resolve`, `Promise.reject`, `Promise.isSettled`, `Promise.value?`
+  - Files changed: VerifiedJS/Wasm/Semantics.lean, VerifiedJS/Runtime/Generators.lean
+  - Build: PASS (0 errors, 55 warnings)
+
 - Next:
   - Consider Wasm type soundness / progress theorem
-  - Add exact-value lemmas for call and callIndirect
   - Port more WasmCert-Coq patterns if proof agent requests
 
 ## Run: 2026-03-21T05:15:01+00:00

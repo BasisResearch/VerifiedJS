@@ -418,7 +418,12 @@ lake build works. ANFConvertCorrect.lean has broken code — proof agent must fi
 - Files changed: VerifiedJS/Core/Semantics.lean, tests/e2e/*.js
 - Build: PASS (0 errors, 56 warnings)
 - E2E: ~173 total tests, ~95% pass rate on sample (known failures: for_in/for_of Elaborate gap, string_concat Wasm gap, nested_object_literal)
-- Total Core proof theorems: ~95 (74 previous + ~21 new)
+- PROVED: Behaves_deterministic — programs have unique traces (was sorry, now fully proved)
+  - Added Steps_stuck: steps from stuck state are empty
+  - Added Steps_deterministic: steps from same start are unique (induction + step_deterministic)
+  - Behaves_deterministic follows directly — THIS IS A KEY RESULT
+- Total Core proof theorems: ~97 (74 previous + ~23 new), 0 sorry in Core/Semantics.lean
+- Build: Core.Semantics PASS (0 errors). Full build has 3 errors in Runtime/Generators.lean (not our file)
 - Next: Continue adding proof lemmas and E2E tests
-2026-03-21T06:30:00+00:00 DONE
+2026-03-21T06:35:00+00:00 DONE
 

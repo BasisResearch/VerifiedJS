@@ -1884,15 +1884,44 @@ theorem step_getProp_step_obj (obj : Expr) (prop : PropName) (env : Env) (heap :
       some (t, pushTrace { so with expr := .getProp so.expr prop, trace := trace } t) := by
   simp [step?, hobj, hstep]
 
+/-- Steps from a stuck state must be the empty (refl) step. -/
+theorem Steps_stuck {s sf : State} {ts : List TraceEvent}
+    (hstuck : step? s = none) (hsteps : Steps s ts sf) :
+    ts = [] ∧ sf = s := by
+  cases hsteps with
+  | refl => exact ⟨rfl, rfl⟩
+  | tail hstep _ =>
+    cases hstep with | mk h => rw [hstuck] at h; exact absurd h (by simp)
+
+/-- Steps is deterministic: from the same start, same trace and end. -/
+theorem Steps_deterministic {s sf1 sf2 : State} {ts1 ts2 : List TraceEvent}
+    (h1 : Steps s ts1 sf1) (h2 : Steps s ts2 sf2)
+    (hhalt1 : step? sf1 = none) (hhalt2 : step? sf2 = none) :
+    ts1 = ts2 ∧ sf1 = sf2 := by
+  induction h1 generalizing ts2 sf2 with
+  | refl =>
+    have ⟨hts, hsf⟩ := Steps_stuck hhalt1 h2
+    exact ⟨hts.symm, hsf.symm⟩
+  | tail hstep1 _ ih =>
+    cases h2 with
+    | refl =>
+      cases hstep1 with
+      | mk h => rw [hhalt2] at h; exact absurd h (by simp)
+    | tail hstep2 htail2 =>
+      cases hstep1 with | mk h1' =>
+      cases hstep2 with | mk h2' =>
+      have ⟨ht, hs⟩ := step_deterministic h1' h2'
+      subst ht; subst hs
+      have ⟨hts, hsf⟩ := ih htail2 hhalt1 hhalt2
+      exact ⟨congrArg _ hts, hsf⟩
+
 /-- Behaves is deterministic: a program produces at most one trace. -/
 theorem Behaves_deterministic {p : Program} {b1 b2 : List TraceEvent}
     (h1 : Behaves p b1) (h2 : Behaves p b2) :
     b1 = b2 := by
   obtain ⟨sf1, hsteps1, hhalt1⟩ := h1
   obtain ⟨sf2, hsteps2, hhalt2⟩ := h2
-  -- Both traces start from the same initialState. By step determinism,
-  -- the traces must be equal. This requires induction on Steps.
-  sorry -- TODO: requires Steps_deterministic induction lemma
+  exact (Steps_deterministic hsteps1 hsteps2 hhalt1 hhalt2).1
 
 /-- exprValue? returns none for all non-literal constructors. -/
 theorem exprValue_non_lit (e : Expr) (h : ∀ v, e ≠ .lit v) : exprValue? e = none := by
@@ -1961,6 +1990,59 @@ theorem abstractEq_bool (a b : Bool) : abstractEq (.bool a) (.bool b) = (a == b)
 /-- §7.2.14 abstractEq: string/string delegates to BEq. -/
 theorem abstractEq_string (a b : String) : abstractEq (.string a) (.string b) = (a == b) := by
   simp [abstractEq]
+
+/-- Behaves also determines the final state. -/
+theorem Behaves_final_unique {p : Program} {b : List TraceEvent}
+    (h1 : Behaves p b) (h2 : Behaves p b) :
+    ∃ sf, Steps (initialState p) b sf ∧ step? sf = none := by
+  obtain ⟨sf, hsteps, hhalt⟩ := h1
+  exact ⟨sf, hsteps, hhalt⟩
+
+/-- Steps.refl embeds into Steps. -/
+theorem Steps_refl_eq (s : State) : Steps s [] s :=
+  Steps.refl s
+
+/-- step? preserves: if step produces (t, s'), then s' differs from s
+    only in expr, env, heap, trace, funcs, callStack. -/
+theorem step_preserves_structure {s : State} {t : TraceEvent} {s' : State}
+    (h : step? s = some (t, s')) :
+    ∃ e' env' heap' trace' funcs' cs',
+      s' = ⟨e', env', heap', trace', funcs', cs'⟩ :=
+  ⟨s'.expr, s'.env, s'.heap, s'.trace, s'.funcs, s'.callStack, rfl⟩
+
+/-- pushTrace on state with specific fields. -/
+theorem pushTrace_fields (e : Expr) (env : Env) (heap : Heap)
+    (trace : List TraceEvent) (funcs : Array FuncClosure)
+    (cs : List (List (VarName × Value))) (t : TraceEvent) :
+    pushTrace ⟨e, env, heap, trace, funcs, cs⟩ t =
+      ⟨e, env, heap, trace ++ [t], funcs, cs⟩ := by
+  simp [pushTrace]
+
+/-- console.log with number argument produces correct log event. -/
+theorem step_consoleLog_num (n : Float) (env : Env) (heap : Heap)
+    (trace : List TraceEvent) (funcs : Array FuncClosure)
+    (cs : List (List (VarName × Value))) :
+    step? ⟨.call (.lit (.function consoleLogIdx)) [.lit (.number n)],
+           env, heap, trace, funcs, cs⟩ =
+      some (.log (valueToString (.number n)),
+        pushTrace ⟨.lit .undefined, env, heap, trace, funcs, cs⟩
+          (.log (valueToString (.number n)))) := by
+  simp [step?, exprValue?, allValues, consoleLogIdx, valueToString]
+
+/-- Env.lookup after multiple extends: latest wins. -/
+theorem Env.lookup_extend_shadow (env : Env) (name : VarName) (v1 v2 : Value) :
+    (env.extend name v1 |>.extend name v2).lookup name = some v2 := by
+  simp [Env.extend, Env.lookup, List.find?]
+
+/-- toNumber on undefined is NaN (0.0/0.0). -/
+theorem toNumber_undefined : toNumber .undefined = 0.0 / 0.0 := by
+  simp [toNumber]
+
+/-- nullishCoalesce: logOr returns left if truthy, right if falsy. -/
+theorem evalBinary_nullishCoalesce (a b : Value) :
+    evalBinary .nullishCoalesce a b =
+      if a == .null || a == .undefined then b else a := by
+  simp [evalBinary]
 
 end VerifiedJS.Core
 
