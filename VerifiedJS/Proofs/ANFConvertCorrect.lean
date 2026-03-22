@@ -721,7 +721,37 @@ private theorem anfConvert_halt_star
     rw [hat] at hnorm
     exact absurd (hfaithful (.var "this") n m t hnorm) (hnovar "this")
   | seq a b =>
-    sorry -- .seq can produce .trivial through recursion; needs constructive multi-step handling
+    -- normalizeExpr (.seq a b) k = normalizeExpr a (fun _ => normalizeExpr b k)
+    -- Can produce .trivial only when a is trivial (lit/var/this) or .seq
+    rw [hsf] at hnorm; simp only [ANF.normalizeExpr] at hnorm
+    rw [hat] at hnorm
+    -- hnorm: (normalizeExpr a (fun _ => normalizeExpr b k)).run n = .ok (.trivial t, m)
+    -- Case split on a to isolate the problematic sub-cases
+    cases ha : a with
+    | var name =>
+      -- normalizeExpr (.var name) k' = k' (.var name) = normalizeExpr b k
+      -- Flat must evaluate .var name (might error). Needs well-formedness precondition.
+      sorry
+    | this =>
+      -- normalizeExpr (.this) k' = k' (.var "this") = normalizeExpr b k
+      -- Same issue: Flat evaluates .this (might give undefined silently, but env state varies)
+      sorry
+    | lit v =>
+      -- normalizeExpr (.lit v) k' = k' (trivialOfFlatValue v) = normalizeExpr b k
+      -- Flat steps silently from .seq (.lit v) b to b. Need halt_star for b (depth induction).
+      sorry
+    | seq a1 a2 =>
+      -- normalizeExpr (.seq a1 a2) k' recurses. Same structure, needs depth induction.
+      sorry
+    | _ =>
+      -- All compound non-seq, non-atom a: contradiction
+      -- normalizeExpr on compound a wraps result in non-.trivial constructor
+      exfalso; rw [ha] at hnorm
+      exact absurd hnorm (normalizeExpr_compound_not_trivial a _
+        (by intro v; rw [ha]; exact Flat.Expr.noConfusion)
+        (by intro nm; rw [ha]; exact Flat.Expr.noConfusion)
+        (by rw [ha]; exact Flat.Expr.noConfusion)
+        (by intro a' b'; rw [ha]; exact Flat.Expr.noConfusion) n m t)
   | _ =>
     -- All compound non-seq constructors: normalizeExpr wraps in non-.trivial constructor
     exfalso; rw [hat] at hnorm

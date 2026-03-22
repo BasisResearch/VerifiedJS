@@ -80,44 +80,34 @@ It IS OK to temporarily increase sorry count if you are decomposing a large sorr
 4. DO NOT WAIT for anyone. Just prove things.
 5. Sorry count must go DOWN or stay flat. Never up.
 
-## CURRENT STATUS & PRIORITIES (2026-03-22T02:05)
+## CURRENT STATUS & PRIORITIES (2026-03-22T03:05)
 
-### GREAT PROGRESS LAST RUN! 🎯
-- ClosureConvert: **FULLY PROVED** (0 sorry!) — well done on the 27-case simulation
-- ANF_step?_none_implies_trivial_aux: **FULLY PROVED** — strong induction approach worked
-- ANF_SimRel strengthened with `sa.env = sf.env` — good structural improvement
-- Sorry count: 12 total (down from 15)
+### PROGRESS CONTINUES!
+- halt_star: `.var`, `.this`, and compound cases all PROVED. Only `.seq` remains (line 724).
+- Sorry count: 8 total (down from 12). Your files: 2 sorry locations.
 
-### YOUR 2 remaining theorems (4 sorry locations):
+### YOUR 2 remaining sorries:
 
-#### #1 PRIORITY: `anfConvert_halt_star` (ANFConvertCorrect.lean:536,539,543)
-Three sub-case sorries remain: `.var`, `.this`, and compound expressions.
+#### #1 PRIORITY: `anfConvert_halt_star` `.seq` case (ANFConvertCorrect.lean:724)
 
-You already proved `.lit` and added `sa.env = sf.env` to ANF_SimRel. Now:
+The `.seq a b` case in halt_star is the LAST sub-case. The comment says ".seq can produce .trivial through recursion; needs constructive multi-step handling".
 
-**For `.var name` (line 536)**:
-- `Flat.step? { expr := .var name, ... }` does `env.lookup name` → produces `.lit v`
-- Since `sa.env = sf.env`, the ANF state must also have the same value
-- `normalizeExpr (.var name) k` = `k (.var name)`, so ANF.step? on `.trivial (.var name)` does the same lookup
-- BUT wait — `ANF_step?_none_implies_trivial` says the trivial is NOT a var. So `.var` case is contradicted by `hstep : ANF.step? sa = none` + the trivial non-var property. Try:
-```lean
-  | var name =>
-    have ⟨t, ht, hnotvar⟩ := ANF_step?_none_implies_trivial ...
-    -- ht says sa.expr = .trivial t, but sa.expr matches sf.expr through normalizeExpr
-    -- If sf.expr = .var, normalizeExpr (.var name) k = k (.var name)
-    -- So ANF expr would be .trivial (.var name), contradicting hnotvar
-    sorry
-```
-Use `lean_goal` at line 536 to see the exact state. The key insight: if Flat expr is `.var`, normalizeExpr maps it to `.trivial (.var name)`, but `hnotvar` says the trivial can't be a var — **this might be a contradiction case** that can be closed with `exact absurd rfl (hnotvar name)`.
+**Analysis**: `normalizeExpr (.seq a b) k` recursively normalizes `a`, then `b`. If the final ANF form is `.trivial t` (meaning `ANF.step? sa = none`), then the seq has fully reduced.
 
-**For `.this` (line 539)**: Same pattern — normalizeExpr maps `.this` to `.trivial (.this)`, and `.this` is not `.var`, so `hnotvar` is satisfied. This case is REAL (not contradictory). Flat.step? on `.this` does env lookup for "this". Show the ANF state matches.
+**Approach**:
+- `normalizeExpr (.seq a b) k` = `do let ea ← normalizeExpr a (fun _ => normalizeExpr b k); pure ea` (or similar recursive structure)
+- If the result is `.trivial t`, the seq has been fully evaluated in both sub-expressions
+- You need to show Flat can execute `.seq a b` by stepping through `a`, then `b`
+- This likely requires an INDUCTIVE argument on the structure of `a` and `b`
 
-**For compound (line 543)**: normalizeExpr on compound expressions produces `.let` bindings, not `.trivial`. So if `ANF.step? sa = none` and `sa.expr` came from normalizeExpr on a compound expression, there's likely a contradiction (ANF.step? on a `.let` always returns some).
+Try `lean_goal` at line 724 to see the exact proof state. Consider:
+1. Can you use the halt_star theorem RECURSIVELY on `a` and `b` separately?
+2. Is there a helper lemma about `normalizeExpr (.seq a b)` producing `.trivial` only when both sub-expressions are trivial?
+3. Could you factor this into a sub-lemma `normalizeExpr_seq_trivial_implies` that decomposes the problem?
 
-Use `lean_multi_attempt` at each sorry line to test `contradiction`, `simp_all`, `exact absurd ...`.
+#### #2 HARDER: `anfConvert_step_star` (ANFConvertCorrect.lean:94)
 
-#### #2 HARDER: `anfConvert_step_star` (ANFConvertCorrect.lean:89)
-Stuttering forward simulation. This is the hardest theorem.
+Stuttering forward simulation — the hardest remaining theorem. One ANF step → one or more Flat steps.
 
 **Strategy**: `intro sa sf ev sa' hrel hstep; cases hstep` to case-split on ANF.Step.
 For each ANF step form, show the corresponding Flat multi-step execution:
@@ -125,12 +115,12 @@ For each ANF step form, show the corresponding Flat multi-step execution:
 - The Flat state has the corresponding un-normalized expression
 - Flat takes multiple steps to evaluate the same RHS step-by-step
 
-Try proving EASY cases first (e.g., trivial expression evaluation, literal steps) and sorry the rest. Even reducing from 1 sorry to "5 sub-case sorries" is progress because it maps out the proof structure.
+Try proving EASY cases first (e.g., trivial expression evaluation, literal steps) and sorry the rest. Break the single sorry into sub-case sorries — that maps out the proof structure and is progress.
 
 ### STRATEGY
-1. Attack `anfConvert_halt_star` first — the 3 sub-cases may be closeable with contradiction/simple reasoning
+1. Attack `.seq` case in halt_star — may need a helper lemma about normalizeExpr on seq
 2. Then attempt `anfConvert_step_star` — case split and prove easy cases
-3. Lower/Emit/EndToEnd depend on wasmspec step_sim — nothing you can do until those are proved
+3. Lower/Emit/EndToEnd: wasmspec now has clean 2-sorry step_sim theorems. Once they prove those, your EndToEnd composes automatically.
 
 ## GLOBAL GOAL -- DO NOT STOP
 Your job is done when:

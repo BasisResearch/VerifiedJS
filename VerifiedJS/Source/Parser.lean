@@ -292,6 +292,25 @@ private partial def parsePatternFromExpr (e : Expr) : Option Pattern :=
         | .pattern p => some (.assign p rhs)
         | _ => none
       | _ => none
+    | .array elems =>
+      let rec goElems (es : List (Option Expr)) (acc : List (Option Pattern)) :
+          Option (List (Option Pattern) × Option Pattern) :=
+        match es with
+        | [] => some (acc.reverse, none)
+        | some (.spread spreadExpr) :: [] =>
+          match go spreadExpr with
+          | some restPat => some (acc.reverse, some restPat)
+          | none => none
+        | e :: tl =>
+          match e with
+          | none => goElems tl (none :: acc)
+          | some expr =>
+            match go expr with
+            | some pat => goElems tl (some pat :: acc)
+            | none => none
+      match goElems elems [] with
+      | some (patElems, rest) => some (.array patElems rest)
+      | none => none
     | .object props =>
       let rec goProps (ps : List Property) (acc : List PatternProp) (rest : Option Pattern) :
           Option (List PatternProp × Option Pattern) :=
@@ -537,8 +556,10 @@ private partial def parseClassBody : ParserM (List ClassMember) := do
 
 private partial def parseFunctionExpr : ParserM Expr := do
   expectKeyword "function"
+  skipNewlines
   let isGen <- consumePunct? "*"
   let _ := isGen
+  skipNewlines
   let name <- (do
     let t <- peek
     match t.kind with
@@ -546,6 +567,7 @@ private partial def parseFunctionExpr : ParserM Expr := do
       let _ <- bump
       pure (some n)
     | _ => pure none)
+  skipNewlines
   let params <- parseParamList
   skipNewlines
   let body <- parseFunctionBody
@@ -1262,8 +1284,11 @@ private partial def parseForStmt : ParserM Stmt := do
 
 private partial def parseFunctionDecl (isAsync : Bool) : ParserM Stmt := do
   expectKeyword "function"
+  skipNewlines
   let isGenerator <- consumePunct? "*"
+  skipNewlines
   let name <- expectIdent
+  skipNewlines
   let params <- parseParamList
   skipNewlines
   let body <- match (← parseBlockStmt) with

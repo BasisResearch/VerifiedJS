@@ -581,4 +581,34 @@ Sorry inventory (4 locations, 2 theorems):
 2026-03-22T02:10:46+00:00 DONE
 
 ## Run: 2026-03-22T02:30:01+00:00
+- Sorries before: 4 (in Proofs/), after: 2 (delta: -2)
+- Proved (eliminated sorry):
+  - `anfConvert_halt_star` .var case (ANFConvertCorrect.lean:709→712) — proved by CONTRADICTION via faithful k constraint. normalizeExpr (.var name) k = k (.var name), so if result is .trivial t, faithfulness gives t = .var name, contradicting hnovar.
+  - `anfConvert_halt_star` .this case (ANFConvertCorrect.lean:715→722) — same pattern via k (.var "this").
+  - `anfConvert_halt_star` 27 compound constructor cases (ANFConvertCorrect.lean:725→731) — ALL proved by contradiction via `normalizeExpr_compound_not_trivial`. For each non-atom, non-seq constructor, normalizeExpr wraps result in non-.trivial constructor (via bindComplex → .let, or direct wrapper like .if/.labeled/.while_/etc.)
+- New helper lemmas (no sorry):
+  - `normalizeExprList_not_trivial`: normalizeExprList never produces .trivial when k doesn't
+  - `normalizeProps_not_trivial`: normalizeProps never produces .trivial when k doesn't
+  - `normalizeExpr_compound_not_trivial`: normalizeExpr on ANY non-atom, non-seq expression NEVER produces .trivial, regardless of k. Covers all 27 compound constructors by cases: break/continue (direct pure contradiction), bindComplex cases (assign, unary, typeof, getProp, deleteProp, getEnv, makeClosure, setProp, getIndex, setIndex, binary, call, newObj, makeEnv, objectLit, arrayLit — all route through bindComplex → .let), wrapper cases (let → .let, if → .if, labeled → .labeled, while_ → .seq, tryCatch → .tryCatch), and recurse-produce cases (throw → .throw, await → .await, return → .return, yield → .yield)
+- SimRel strengthening: Added "faithful k" constraint to ANF_SimRel:
+  `∀ (arg : ANF.Trivial) (n' m' : Nat) (t : ANF.Trivial), (k arg).run n' = .ok (.trivial t, m') → t = arg`
+  This constrains k to preserve trivial arguments when producing .trivial results. Holds for initial k = fun t => pure (.trivial t). Stronger obligation for sorry'd step_star (must maintain faithfulness).
+- Files changed: VerifiedJS/Proofs/ANFConvertCorrect.lean
+- Build: PASS
+- E2E: pending (running)
+- Remaining sorries (2):
+  1. `anfConvert_step_star` (line 94) — stuttering forward simulation, HARDEST theorem. One ANF step (evalComplex on let-binding RHS) → multiple Flat steps (evaluate sub-expressions one at a time). Requires detailed case analysis over all ANF expression forms with normalizeExpr correspondence.
+  2. `anfConvert_halt_star` .seq case (line 724) — normalizeExpr (.seq a b) k = normalizeExpr a (fun _ => normalizeExpr b k) can produce .trivial when a is trivial (lit/var/this) or .seq. For a = .lit, Flat steps silently and case recurses on b (needs depth induction). For a = .var/.this, Flat steps a but lookup might fail with error event → theorem possibly FALSE without well-formedness precondition. For a = compound non-seq, contradiction via normalizeExpr_compound_not_trivial.
+
+### Key finding: semantic mismatch in normalizeExpr for .seq
+normalizeExpr (.seq a b) k DROPS the evaluation of a when a is trivial (var/lit/this). But Flat.step? on .seq a b evaluates a first, which can produce observable effects (ReferenceError if var is undefined). This means `anfConvert_correct` may be FALSE for programs like `undefined_var; 3` without a well-formedness precondition. The .seq sorry at line 724 reflects this genuine semantic issue.
+
+### Proof chain status (2 sorry in Proofs/)
+- ElaborateCorrect: proved (trivial)
+- ClosureConvertCorrect: proved (0 sorry)
+- ANFConvertCorrect: 2 sorry (step_star + halt_star .seq)
+- OptimizeCorrect: proved (identity)
+- LowerCorrect: proved (depends on wasmspec sorry)
+- EmitCorrect: proved (depends on wasmspec sorry)
+- EndToEnd: proved (composition, depends on above)
 
