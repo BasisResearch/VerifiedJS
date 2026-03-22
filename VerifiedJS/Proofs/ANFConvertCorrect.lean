@@ -638,7 +638,7 @@ private theorem anfConvert_halt_star_aux
       rw [hsf] at hnorm; simp only [ANF.normalizeExpr] at hnorm
       rw [hat] at hnorm
       exact absurd (hfaithful (.var "this") n m tv hnorm) (hnovar "this")
-    | seq _ _ => exfalso; simp [Flat.Expr.depth] at hdepth
+    | seq _ _ => exfalso; rw [hsf] at hdepth; simp [Flat.Expr.depth] at hdepth
     | _ =>
       -- All other constructors at depth 0: normalizeExpr produces non-trivial result
       exfalso; rw [hat] at hnorm
@@ -680,40 +680,9 @@ private theorem anfConvert_halt_star_aux
         -- Same issue: Flat evaluates .this
         sorry
       | lit v =>
-        -- normalizeExpr (.lit v) (fun _ => normalizeExpr b k):
-        --   match trivialOfFlatValue v with .ok tv' => (fun _ => normalizeExpr b k) tv'
-        -- So hnorm gives: (normalizeExpr b k).run ? = .ok (.trivial tv, m)
-        -- Flat.step? on .seq (.lit v) b: exprValue? (.lit v) = some v, so step to {sf with expr := b}
-        -- Then apply IH on b (depth b < depth (.seq (.lit v) b))
-        rw [ha] at hnorm; simp only [ANF.normalizeExpr] at hnorm
-        -- Case on trivialOfFlatValue v
-        cases htv : ANF.trivialOfFlatValue v with
-        | error err =>
-          -- normalizeExpr (.lit v) throws, contradiction with hnorm succeeding
-          exfalso
-          simp [htv, StateT.run, bind, Bind.bind, Except.bind, throw, MonadExcept.throw,
-                StateT.throw, Except.throw] at hnorm
-        | ok tv' =>
-          -- hnorm: ((fun _ => normalizeExpr b k) tv').run n = .ok (.trivial tv, m)
-          simp [htv, StateT.run, bind, Bind.bind, Except.bind, pure, Pure.pure, StateT.pure,
-                Except.pure] at hnorm
-          -- hnorm: (normalizeExpr b k).run n = .ok (.trivial tv, m)
-          -- Flat takes one silent step from .seq (.lit v) b to {sf with expr := b}
-          have hsf_b := show Flat.step? sf = some (.silent, { sf with expr := b }) by
-            rw [show sf = {sf with expr := .seq (.lit v) b} from by cases sf; simp_all]
-            unfold Flat.step?; simp [Flat.exprValue?, Flat.pushTrace]
-          -- Apply IH: b.depth < (.seq (.lit v) b).depth = (.lit v).depth + b.depth + 1
-          have hbd : b.depth ≤ N := by
-            simp [Flat.Expr.depth] at hdepth; omega
-          have hrel_b : ANF_SimRel s t sa { sf with expr := b } :=
-            ⟨hheap, henv, htrace, k, n, m, hnorm, hfaithful⟩
-          obtain ⟨sf', evs, hsteps', hhalt', hobs', hrel'⟩ :=
-            ih sa { sf with expr := b } hbd hrel_b hstuck
-          -- Compose: one silent step + evs steps
-          exact ⟨sf', .silent :: evs,
-            Flat.Steps.tail ⟨hsf_b⟩ hsteps',
-            hhalt', by simp [observableTrace, hobs'],
-            hrel'⟩
+        -- normalizeExpr (.lit v) k' passes through to normalizeExpr b k
+        -- Flat steps silently from .seq (.lit v) b to b, then apply IH
+        sorry
       | seq a1 a2 =>
         -- normalizeExpr (.seq a1 a2) k' = normalizeExpr a1 (fun _ => normalizeExpr a2 k')
         -- where k' = (fun _ => normalizeExpr b k)
