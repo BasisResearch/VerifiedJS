@@ -5103,7 +5103,7 @@ theorem IRStutterSim_behavioral {S : Type} {R : S → IRExecState → Prop}
   obtain ⟨s_final, hExec, hHalt⟩ := hBehaves
   obtain ⟨ir_final, ir_trace, hIRSteps, hR_final, hObs⟩ :=
     IRStutterSim_steps sim hR hExec
-  subst hInit
+  rw [hInit] at hIRSteps
   exact ⟨ir_final, ir_trace, hIRSteps, sim.halt_sim _ _ hR_final hHalt, hObs⟩
 
 /-- Bridge: ANF.Behaves → IRBehavesObs via stuttering simulation.
@@ -5116,8 +5116,7 @@ theorem lower_behavioral_obs (prog : ANF.Program) (irmod : IRModule)
     (sim : IRStutterSim R anfStepMapped) :
     ∀ trace, ANF.Behaves prog trace →
       IRBehavesObs irmod (observableEvents (traceListFromCore trace)) := by
-  -- Uses IRStutterSim_behavioral which has a structural issue (see above).
-  -- Once that's fixed: intro trace hBeh; apply IRStutterSim_behavioral sim hR_init (DetBehaves_of_ANFBehaves hBeh)
+  -- Proof: see lower_behavioral_obs' below (defined after helper lemmas).
   sorry
 
 /-- Bridge: convert ANF.Steps to StepStar anfStepMapped.
@@ -5144,6 +5143,22 @@ theorem DetBehaves_of_ANFBehaves {prog : ANF.Program} {ts : List Core.TraceEvent
 /-- traceListFromCore is the same as List.map traceFromCore. -/
 @[simp] theorem traceListFromCore_eq_map (ts : List Core.TraceEvent) :
     traceListFromCore ts = ts.map traceFromCore := rfl
+
+/-- Bridge (proved): ANF.Behaves → IRBehavesObs via stuttering simulation.
+    This is the version of lower_behavioral_obs that can reference all helpers. -/
+theorem lower_behavioral_obs' (prog : ANF.Program) (irmod : IRModule)
+    (_hlower : Wasm.lower prog = .ok irmod)
+    {R : ANF.State → IRExecState → Prop}
+    (hR_init : R (ANF.initialState prog) (irInitialState irmod))
+    (sim : IRStutterSim R anfStepMapped) :
+    ∀ trace, ANF.Behaves prog trace →
+      IRBehavesObs irmod (observableEvents (traceListFromCore trace)) := by
+  intro trace hBeh
+  have hDet := DetBehaves_of_ANFBehaves hBeh
+  have hInitEq : irInitialState irmod = irInitialState (irInitialState irmod).module := by
+    simp [irInitialState]
+  rw [traceListFromCore_eq_map]
+  exact IRStutterSim_behavioral sim hR_init hInitEq hDet
 
 /-- THE FORWARD SIMULATION: ANF → IR.
     For each ANF step, the lowered IR module can take a corresponding IR step

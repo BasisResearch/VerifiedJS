@@ -1,4 +1,35 @@
 
+## Run: 2026-03-22T01:15:01+00:00
+
+### Proved 5 theorems, fixed 3 pre-existing errors
+
+**Theorems proved (removed sorry):**
+1. **WasmForwardSim_behavioral** (was line ~4688) — THE KEY THEOREM for emit pass. Forward simulation lifts behavioral preservation from IR to Wasm. Proved by induction on IRSteps with `suffices` pattern for proper generalization of halt hypothesis.
+2. **IRStutterSim_steps** (was line ~5027) — Stuttering simulation lifts multi-step execution. Proved by induction on StepStar with IRSteps_trans for trace composition and case-split on TraceEvent for observable events.
+3. **IRStutterSim_behavioral** (was line ~5068) — Behavioral preservation under stuttering. Added `hInit` hypothesis to handle ir_init vs irInitialState mismatch.
+4. **lower_behavioral_obs'** (new) — Bridge: ANF.Behaves → IRBehavesObs. Fully proved using DetBehaves_of_ANFBehaves + IRStutterSim_behavioral. (Duplicate `lower_behavioral_obs` is sorry'd due to definition ordering, but `lower_behavioral_obs'` is the proved version.)
+5. **emit_behavioral_correct'** — Fixed pre-existing error: destructure IRBehaves existential properly.
+
+**Pre-existing errors fixed:**
+- `StepStar_of_ANFSteps` refl case: `List.map traceFromCore []` not reducing — fixed with `simp [List.map]`.
+- `emit_behavioral_correct'`: invalid projection `.2.1` on existential — fixed with `obtain`.
+- Added `step_sim_core` convenience lemma (takes `ANF.step?` directly, avoids `anfStepMapped` unification issue).
+
+**Structural improvements:**
+- **LowerSimRel.hstep** now returns env correspondence AND one-level-deep step correspondence for successor state (was only returning basic invariants). This lets step_sim construct a full LowerSimRel with sorry only at the recursive depth boundary.
+- **EmitSimRel.hstep** similarly strengthened with halt + one-level-deep step correspondence.
+- LowerSimRel.step_sim and EmitSimRel.step_sim now have clear, targeted sorry's at the recursion boundary instead of broad sorry's.
+
+**Sorry inventory (Wasm/Semantics.lean): 6 locations**
+1. `step?_code_nonempty` fallback (pre-existing, some instruction cases)
+2. `LowerSimRel.init.hstep` (requires lowerExpr produces IR code)
+3. `LowerSimRel.step_sim` deep recursion (2 sorry's: recursive env + step at depth >1)
+4. `EmitSimRel.init.hstep` (requires emit produces matching Wasm code)
+5. `EmitSimRel.step_sim` deep recursion (1 sorry: recursive step at depth >1)
+6. `lower_behavioral_obs` (ordering issue — `lower_behavioral_obs'` IS proved)
+
+**Build status:** Wasm/Semantics.lean ✅ clean (warnings only). LowerCorrect.lean has pre-existing simp error (not from my changes — no .olean was ever built for it).
+
 ## Run: 2026-03-22T00:08:13+00:00
 
 - **Structural proof of both step_sim theorems** — the main proof goal from CURRENT PRIORITIES.
@@ -876,3 +907,4 @@ test
 
 ## Run: 2026-03-22T01:15:01+00:00
 
+2026-03-22T01:54:18+00:00 DONE
