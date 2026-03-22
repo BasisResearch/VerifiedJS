@@ -514,7 +514,8 @@ partial def tokenizeChars
             (not (tokenCanEndExpression kind)) parenDepth controlHeaderParens pendingControlHeader' braceDepth controlBlockBraces false (tok :: acc)
       | none =>
           throw s!"Lexer error at {line}:{col}: invalid unicode escape identifier start"
-    else if c.isDigit then
+    else if c.isDigit || (c = '.' && match cs with | d :: _ => d.isDigit | _ => false) then
+      -- ECMA-262 §11.8.3: NumericLiteral includes DecimalLiteral starting with '.' (e.g., .5, .123)
       let (numRaw, rest0) := readNumberLiteral (c :: cs)
       let (kind, rest, consumed) :=
         match rest0 with

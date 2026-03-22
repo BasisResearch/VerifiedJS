@@ -1,4 +1,41 @@
 
+## Run: 2026-03-22T13:42:00+00:00
+- Sorries before: 7, after: 8 (delta: +1, but net progress — decomposed 1 sorry into 3 sub-cases, proved 2 cases)
+- Fixed:
+  - `LowerCorrect.lean:58` build error — fixed `anfStepMapped` usage with `anfStepMapped_some` helper
+- Proved (eliminated sorry):
+  - `anfConvert_halt_star_aux` `.seq.this` case (ANFConvertCorrect.lean) — .this always steps silently regardless of env, 2 Flat steps + IH on depth
+  - `anfConvert_halt_star_aux` `.seq.var` `some v` branch (ANFConvertCorrect.lean) — var in scope produces 2 silent steps, same pattern as .this
+  - `closureConvert_step_simulation` `.break` case (ClosureConvertCorrect.lean) — Core and Flat produce same error event, traces match, convertExpr(.lit .undefined) = (.lit .undefined)
+  - `closureConvert_step_simulation` `.continue` case (ClosureConvertCorrect.lean) — same pattern as .break
+- Decomposed:
+  - `.seq.seq.(var|this|seq)` catch-all sorry → 3 specific sub-sorries: .var (well-formedness needed), .this (provable, same 2-step pattern), .seq (recursive)
+- Files changed: VerifiedJS/Proofs/LowerCorrect.lean, VerifiedJS/Proofs/ANFConvertCorrect.lean, VerifiedJS/Proofs/ClosureConvertCorrect.lean
+- Build: PASS
+- E2E: running (pending result)
+- Remaining sorries (8 total, 6 in my files):
+  - `anfConvert_step_star` (ANFConvertCorrect.lean:94) — full theorem, hardest
+  - `.seq.var` `none` branch (ANFConvertCorrect.lean:713) — BLOCKER: needs well-formedness precondition
+  - `.seq.seq.var` (ANFConvertCorrect.lean:829) — same well-formedness blocker
+  - `.seq.seq.this` (ANFConvertCorrect.lean:833) — provable, same 2-step pattern
+  - `.seq.seq.seq` (ANFConvertCorrect.lean:836) — recursive nested seq
+  - `closureConvert_step_simulation` catch-all (ClosureConvertCorrect.lean:258) — needs CC_SimRel strengthening
+  - `LowerSimRel.step_sim` (Wasm/Semantics.lean:4956) — not my file
+  - `EmitSimRel.step_sim` (Wasm/Semantics.lean:5058) — not my file
+
+### Key Blockers
+1. **Well-formedness for .seq.var**: When `sf.env.lookup name = none`, Flat produces `.error` which is observable. ANF halted silently. Need `∀ name ∈ FV(sf.expr), sf.env.lookup name ≠ none` precondition on halt_star_aux. This blocks `.seq.var/none` and `.seq.seq.var`.
+2. **CC_SimRel env/heap correspondence**: The catch-all sorry in ClosureConvertCorrect needs CC_SimRel to track env/heap/funcs correspondence, not just trace + expr.
+3. **pushTrace is private**: Flat.pushTrace and Core.pushTrace are private, making trace property extraction tedious. Need public lemmas or ext theorem for State.
+
+### Strategy for Next Run
+1. Prove `.seq.seq.this` (same 2-step pattern, just nested deeper)
+2. Add well-formedness precondition to ANF_SimRel or halt_star_aux
+3. Close `.seq.var/none` and `.seq.seq.var` with well-formedness
+4. Attack `anfConvert_step_star` (the big one)
+
+2026-03-22T14:25:00+00:00 DONE
+
 ## Run: 2026-03-20T16:33:23+00:00
 - Sorries before: 11, after: 6 (delta: -5)
 - Proved:
@@ -740,3 +777,4 @@ normalizeExpr (.seq a b) k DROPS the evaluation of a when a is trivial (var/lit/
 ## Run: 2026-03-22T13:42:39+00:00
 
 test_write
+2026-03-22T14:30:01+00:00 SKIP: already running

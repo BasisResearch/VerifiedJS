@@ -1252,6 +1252,8 @@ private partial def parseForStmt : ParserM Stmt := do
   expectKeyword "for"
   let asyncForOf <- consumeKeyword? "await"
   expectPunct "("
+  -- ECMA-262 §13.7: Newlines inside for(...) header are not significant (no ASI).
+  skipNewlines
   if (← consumePunct? ";") then
     let cond <- if (← consumePunct? ";") then pure none else (some <$> parseExprM <* expectPunct ";")
     let update <- if (← consumePunct? ")") then pure none else (some <$> parseExprM <* expectPunct ")")
@@ -1398,6 +1400,9 @@ private partial def parseStmt : ParserM Stmt := do
   | .kw "do" =>
     let _ <- bump
     let body <- parseStmt
+    -- ECMA-262 §13.7.2: `do Statement while ( Expression ) ;`
+    -- Newlines between the closing `}` and `while` are NOT semicolons here.
+    skipNewlines
     expectKeyword "while"
     expectPunct "("
     let cond <- parseExprM
