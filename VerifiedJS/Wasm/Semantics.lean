@@ -5493,12 +5493,16 @@ end LowerSimRel
 inductive EmitCodeCorr : List IRInstr → List Instr → Prop where
   /-- Empty IR code maps to empty Wasm code. -/
   | nil : EmitCodeCorr [] []
-  /-- i32 const maps to i32.const. -/
-  | const_i32 (v : String) (n : UInt32) (rest_ir : List IRInstr) (rest_w : List Instr) :
+  /-- i32 const maps to i32.const.
+      `hparse` ensures the IR string value parses to the same number. -/
+  | const_i32 (v : String) (n : UInt32) (rest_ir : List IRInstr) (rest_w : List Instr)
+      (hparse : v.toNat? = some n.toNat) :
       EmitCodeCorr rest_ir rest_w →
       EmitCodeCorr (.const_ .i32 v :: rest_ir) (.i32Const n :: rest_w)
-  /-- i64 const maps to i64.const. -/
-  | const_i64 (v : String) (n : UInt64) (rest_ir : List IRInstr) (rest_w : List Instr) :
+  /-- i64 const maps to i64.const.
+      `hparse` ensures the IR string value parses to the same number. -/
+  | const_i64 (v : String) (n : UInt64) (rest_ir : List IRInstr) (rest_w : List Instr)
+      (hparse : v.toNat? = some n.toNat) :
       EmitCodeCorr rest_ir rest_w →
       EmitCodeCorr (.const_ .i64 v :: rest_ir) (.i64Const n :: rest_w)
   /-- f64 const maps to f64.const. -/
@@ -5626,10 +5630,10 @@ theorem EmitCodeCorr.globalSet_inv {idx : Nat} {rest : List IRInstr} {wcode : Li
 /-- Inversion for const_ .i32 :: rest. -/
 theorem EmitCodeCorr.const_i32_inv {v : String} {rest : List IRInstr} {wcode : List Instr}
     (h : EmitCodeCorr (IRInstr.const_ .i32 v :: rest) wcode) :
-    (∃ n rest_w, wcode = Instr.i32Const n :: rest_w ∧ EmitCodeCorr rest rest_w) ∨
+    (∃ n rest_w, wcode = Instr.i32Const n :: rest_w ∧ v.toNat? = some n.toNat ∧ EmitCodeCorr rest rest_w) ∨
     (∃ wasm_instrs rest_w, wcode = wasm_instrs ++ rest_w ∧ EmitCodeCorr rest rest_w) := by
   cases h with
-  | const_i32 _ n _ rw hrw => left; exact ⟨n, rw, rfl, hrw⟩
+  | const_i32 _ n _ rw hp hrw => left; exact ⟨n, rw, rfl, hp, hrw⟩
   | general _ wi _ rw hrw => right; exact ⟨wi, rw, rfl, hrw⟩
 
 /-- Inversion for const_ .f64 :: rest. -/
@@ -5646,8 +5650,8 @@ theorem EmitCodeCorr.cons_inv {instr : IRInstr} {rest : List IRInstr} {wcode : L
     (h : EmitCodeCorr (instr :: rest) wcode) :
     ∃ wasm_prefix rest_w, wcode = wasm_prefix ++ rest_w ∧ EmitCodeCorr rest rest_w := by
   cases h with
-  | const_i32 _ _ _ rw hrw => exact ⟨[_], rw, rfl, hrw⟩
-  | const_i64 _ _ _ rw hrw => exact ⟨[_], rw, rfl, hrw⟩
+  | const_i32 _ _ _ rw _ hrw => exact ⟨[_], rw, rfl, hrw⟩
+  | const_i64 _ _ _ rw _ hrw => exact ⟨[_], rw, rfl, hrw⟩
   | const_f64 _ _ _ rw hrw => exact ⟨[_], rw, rfl, hrw⟩
   | localGet _ _ rw hrw => exact ⟨[_], rw, rfl, hrw⟩
   | localSet _ _ rw hrw => exact ⟨[_], rw, rfl, hrw⟩
