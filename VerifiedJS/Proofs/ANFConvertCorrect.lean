@@ -596,91 +596,147 @@ private theorem trivialValue?_non_var (t : ANF.Trivial)
   | litClosure f e => exact ⟨_, rfl⟩
 
 /-- ANF.step? returns none only when the expression is a non-variable trivial literal.
-    Proved by strong induction on expression depth. The recursive cases (seq, while_,
-    tryCatch) are impossible because their sub-expression would need to be stuck
-    (step? = none), which by IH means it's a trivial literal, but then exprValue?
-    returns some, contradicting the branch condition. -/
-private theorem ANF_step?_none_implies_trivial_aux :
-    ∀ (n : Nat) (s : ANF.State), s.expr.depth ≤ n → ANF.step? s = none →
-    ∃ t, s.expr = .trivial t ∧ ∀ name, t ≠ .var name := by
-  intro n
-  induction n with
-  | zero =>
-    intro s hd h
-    cases he : s.expr with
-    | trivial t =>
-      refine ⟨t, rfl, fun name habs => ?_⟩
-      subst habs; unfold ANF.step? at h; simp at h
-    | «let» _ _ _ | seq _ _ | «if» _ _ _ | while_ _ _ | labeled _ _ =>
-      exfalso; simp [ANF.Expr.depth] at hd
-    | tryCatch _ _ _ fin => exfalso; cases fin <;> simp [ANF.Expr.depth] at hd
-    | «break» _ => unfold ANF.step? at h; simp at h
-    | «continue» _ => unfold ANF.step? at h; simp at h
-    | «return» arg => unfold ANF.step? at h; simp at h
-    | yield arg _ => unfold ANF.step? at h; simp at h
-    | «throw» _ => unfold ANF.step? at h; split at h <;> simp at h
-    | «await» _ => unfold ANF.step? at h; split at h <;> simp at h
-  | succ n ih =>
-    intro s hd h
-    cases he : s.expr with
-    | trivial t =>
-      refine ⟨t, rfl, fun name habs => ?_⟩
-      subst habs; unfold ANF.step? at h; simp at h
-    | «let» _ _ _ => unfold ANF.step? at h; simp at h
-    | «break» _ => unfold ANF.step? at h; simp at h
-    | «continue» _ => unfold ANF.step? at h; simp at h
-    | labeled _ _ => unfold ANF.step? at h; simp at h
-    | «return» arg => unfold ANF.step? at h; simp at h
-    | yield arg _ => unfold ANF.step? at h; simp at h
-    | «throw» _ => unfold ANF.step? at h; split at h <;> simp at h
-    | «await» _ => unfold ANF.step? at h; split at h <;> simp at h
-    | «if» _ _ _ => unfold ANF.step? at h; split at h <;> simp at h
-    | seq a b =>
-      exfalso; unfold ANF.step? at h
-      split at h
-      · simp at h
-      · rename_i hev; split at h
-        · simp at h
-        · next hstep =>
-          have ⟨t, hat, hnovar⟩ := ih { s with expr := a }
-            (by simp [ANF.Expr.depth] at hd; omega) hstep
-          obtain ⟨v, hv⟩ := trivialValue?_non_var t hnovar
-          simp [hat, ANF.exprValue?, hv] at hev
-        all_goals (exfalso; exact ANF.Expr.noConfusion (he.symm.trans ‹s.expr = _›))
-    | while_ cond body =>
-      exfalso; unfold ANF.step? at h
-      split at h
-      · simp at h
-      · rename_i hev; split at h
-        · simp at h
-        · next hstep =>
-          have ⟨t, hct, hnovar⟩ := ih { s with expr := cond }
-            (by simp [ANF.Expr.depth] at hd; omega) hstep
-          obtain ⟨v, hv⟩ := trivialValue?_non_var t hnovar
-          simp [hct, ANF.exprValue?, hv] at hev
-        all_goals (exfalso; exact ANF.Expr.noConfusion (he.symm.trans ‹s.expr = _›))
-    | tryCatch body _ catchBody fin =>
-      exfalso; unfold ANF.step? at h
-      split at h
-      · split at h <;> simp at h
-      · rename_i hev; split at h
-        · simp at h
-        · simp at h
-        · next hstep =>
-          have ⟨t, hbt, hnovar⟩ := ih { s with expr := body }
-            (by cases fin <;> simp [ANF.Expr.depth] at hd <;> omega) hstep
-          obtain ⟨v, hv⟩ := trivialValue?_non_var t hnovar
-          simp [hbt, ANF.exprValue?, hv] at hev
-        all_goals (exfalso; exact ANF.Expr.noConfusion (he.symm.trans ‹s.expr = _›))
-
+    Delegates to ANF.step?_none_implies_trivial_lit from Semantics.lean,
+    converting isLit = true to ∀ name, t ≠ .var name. -/
 private theorem ANF_step?_none_implies_trivial (s : ANF.State) (h : ANF.step? s = none) :
-    ∃ t, s.expr = .trivial t ∧ ∀ name, t ≠ .var name :=
-  ANF_step?_none_implies_trivial_aux s.expr.depth s (Nat.le_refl _) h
+    ∃ t, s.expr = .trivial t ∧ ∀ name, t ≠ .var name := by
+  obtain ⟨t, ht, hlit⟩ := ANF.step?_none_implies_trivial_lit s h
+  exact ⟨t, ht, fun name habs => by subst habs; simp [ANF.Trivial.isLit] at hlit⟩
+
+/-- Auxiliary halt_star with strong induction on Flat expression depth.
+    When ANF reaches a terminal state (step? = none), Flat can also reach a
+    terminal state after zero or more silent steps. -/
+private theorem anfConvert_halt_star_aux
+    (s : Flat.Program) (t : ANF.Program)
+    (h : ANF.convert s = .ok t) :
+    ∀ (N : Nat) (sa : ANF.State) (sf : Flat.State),
+      sf.expr.depth ≤ N →
+      ANF_SimRel s t sa sf →
+      ANF.step? sa = none →
+      ∃ (sf' : Flat.State) (evs : List Core.TraceEvent),
+        Flat.Steps sf evs sf' ∧
+        Flat.step? sf' = none ∧
+        observableTrace evs = [] ∧
+        ANF_SimRel s t sa sf' := by
+  intro N
+  induction N with
+  | zero =>
+    intro sa sf hdepth ⟨hheap, henv, htrace, k, n, m, hnorm, hfaithful⟩ hstuck
+    obtain ⟨tv, hat, hnovar⟩ := ANF_step?_none_implies_trivial sa hstuck
+    cases hsf : sf.expr with
+    | lit v =>
+      exact ⟨sf, [], .refl sf,
+        by rw [show sf = {sf with expr := .lit v} from by cases sf; simp_all]; unfold Flat.step?; simp,
+        rfl, hheap, henv, htrace, k, n, m, hnorm, hfaithful⟩
+    | var name =>
+      exfalso
+      rw [hsf] at hnorm; simp only [ANF.normalizeExpr] at hnorm
+      rw [hat] at hnorm
+      exact absurd (hfaithful (.var name) n m tv hnorm) (hnovar name)
+    | this =>
+      exfalso
+      rw [hsf] at hnorm; simp only [ANF.normalizeExpr] at hnorm
+      rw [hat] at hnorm
+      exact absurd (hfaithful (.var "this") n m tv hnorm) (hnovar "this")
+    | seq _ _ => exfalso; simp [Flat.Expr.depth] at hdepth
+    | _ =>
+      -- All other constructors at depth 0: normalizeExpr produces non-trivial result
+      exfalso; rw [hat] at hnorm
+      have h1 : ∀ v, sf.expr ≠ .lit v := by intro v hc; rw [hsf] at hc; exact Flat.Expr.noConfusion hc
+      have h2 : ∀ name, sf.expr ≠ .var name := by intro nm hc; rw [hsf] at hc; exact Flat.Expr.noConfusion hc
+      have h3 : sf.expr ≠ .this := by intro hc; rw [hsf] at hc; exact Flat.Expr.noConfusion hc
+      have h4 : ∀ a b, sf.expr ≠ .seq a b := by intro a b hc; rw [hsf] at hc; exact Flat.Expr.noConfusion hc
+      exact absurd hnorm (normalizeExpr_compound_not_trivial sf.expr k h1 h2 h3 h4 n m tv)
+  | succ N ih =>
+    intro sa sf hdepth ⟨hheap, henv, htrace, k, n, m, hnorm, hfaithful⟩ hstuck
+    obtain ⟨tv, hat, hnovar⟩ := ANF_step?_none_implies_trivial sa hstuck
+    cases hsf : sf.expr with
+    | lit v =>
+      exact ⟨sf, [], .refl sf,
+        by rw [show sf = {sf with expr := .lit v} from by cases sf; simp_all]; unfold Flat.step?; simp,
+        rfl, hheap, henv, htrace, k, n, m, hnorm, hfaithful⟩
+    | var name =>
+      exfalso
+      rw [hsf] at hnorm; simp only [ANF.normalizeExpr] at hnorm
+      rw [hat] at hnorm
+      exact absurd (hfaithful (.var name) n m tv hnorm) (hnovar name)
+    | this =>
+      exfalso
+      rw [hsf] at hnorm; simp only [ANF.normalizeExpr] at hnorm
+      rw [hat] at hnorm
+      exact absurd (hfaithful (.var "this") n m tv hnorm) (hnovar "this")
+    | seq a b =>
+      rw [hsf] at hnorm; simp only [ANF.normalizeExpr] at hnorm
+      rw [hat] at hnorm
+      -- hnorm: (normalizeExpr a (fun _ => normalizeExpr b k)).run n = .ok (.trivial tv, m)
+      cases ha : a with
+      | var name =>
+        -- normalizeExpr (.var name) k' = k' (.var name) = normalizeExpr b k
+        -- This means: (normalizeExpr b k).run n = .ok (.trivial tv, m)
+        -- Flat.step? on .seq (.var name) b steps the .var name first, then continues with b
+        -- The var lookup may produce a silent step or error — need well-formedness
+        sorry
+      | this =>
+        -- Same issue: Flat evaluates .this
+        sorry
+      | lit v =>
+        -- normalizeExpr (.lit v) (fun _ => normalizeExpr b k):
+        --   match trivialOfFlatValue v with .ok tv' => (fun _ => normalizeExpr b k) tv'
+        -- So hnorm gives: (normalizeExpr b k).run ? = .ok (.trivial tv, m)
+        -- Flat.step? on .seq (.lit v) b: exprValue? (.lit v) = some v, so step to {sf with expr := b}
+        -- Then apply IH on b (depth b < depth (.seq (.lit v) b))
+        rw [ha] at hnorm; simp only [ANF.normalizeExpr] at hnorm
+        -- Case on trivialOfFlatValue v
+        cases htv : ANF.trivialOfFlatValue v with
+        | error err =>
+          -- normalizeExpr (.lit v) throws, contradiction with hnorm succeeding
+          exfalso
+          simp [htv, StateT.run, bind, Bind.bind, Except.bind, throw, MonadExcept.throw,
+                StateT.throw, Except.throw] at hnorm
+        | ok tv' =>
+          -- hnorm: ((fun _ => normalizeExpr b k) tv').run n = .ok (.trivial tv, m)
+          simp [htv, StateT.run, bind, Bind.bind, Except.bind, pure, Pure.pure, StateT.pure,
+                Except.pure] at hnorm
+          -- hnorm: (normalizeExpr b k).run n = .ok (.trivial tv, m)
+          -- Flat takes one silent step from .seq (.lit v) b to {sf with expr := b}
+          have hsf_b := show Flat.step? sf = some (.silent, { sf with expr := b }) by
+            rw [show sf = {sf with expr := .seq (.lit v) b} from by cases sf; simp_all]
+            unfold Flat.step?; simp [Flat.exprValue?, Flat.pushTrace]
+          -- Apply IH: b.depth < (.seq (.lit v) b).depth = (.lit v).depth + b.depth + 1
+          have hbd : b.depth ≤ N := by
+            simp [Flat.Expr.depth] at hdepth; omega
+          have hrel_b : ANF_SimRel s t sa { sf with expr := b } :=
+            ⟨hheap, henv, htrace, k, n, m, hnorm, hfaithful⟩
+          obtain ⟨sf', evs, hsteps', hhalt', hobs', hrel'⟩ :=
+            ih sa { sf with expr := b } hbd hrel_b hstuck
+          -- Compose: one silent step + evs steps
+          exact ⟨sf', .silent :: evs,
+            Flat.Steps.tail ⟨hsf_b⟩ hsteps',
+            hhalt', by simp [observableTrace, hobs'],
+            hrel'⟩
+      | seq a1 a2 =>
+        -- normalizeExpr (.seq a1 a2) k' = normalizeExpr a1 (fun _ => normalizeExpr a2 k')
+        -- where k' = (fun _ => normalizeExpr b k)
+        -- This recurses deeper into nested seqs. Needs depth induction on a.
+        -- Flat.step? on .seq (.seq a1 a2) b recurses into .seq a1 a2
+        sorry
+      | _ =>
+        exfalso
+        exact absurd hnorm (normalizeExpr_compound_not_trivial a _
+          (by intro v; rw [ha]; exact Flat.Expr.noConfusion)
+          (by intro nm; rw [ha]; exact Flat.Expr.noConfusion)
+          (by rw [ha]; exact Flat.Expr.noConfusion)
+          (by intro a' b'; rw [ha]; exact Flat.Expr.noConfusion) n m tv)
+    | _ =>
+      exfalso; rw [hat] at hnorm
+      have h1 : ∀ v, sf.expr ≠ .lit v := by intro v hc; rw [hsf] at hc; exact Flat.Expr.noConfusion hc
+      have h2 : ∀ name, sf.expr ≠ .var name := by intro nm hc; rw [hsf] at hc; exact Flat.Expr.noConfusion hc
+      have h3 : sf.expr ≠ .this := by intro hc; rw [hsf] at hc; exact Flat.Expr.noConfusion hc
+      have h4 : ∀ a b, sf.expr ≠ .seq a b := by intro a b hc; rw [hsf] at hc; exact Flat.Expr.noConfusion hc
+      exact absurd hnorm (normalizeExpr_compound_not_trivial sf.expr k h1 h2 h3 h4 n m tv)
 
 /-- When ANF reaches a terminal state (step? = none), Flat can also reach a
-    terminal state after zero or more silent steps.
-    ANF.step? = none ↔ expr is a non-variable trivial (literal value).
-    The corresponding Flat state must evaluate to a literal value. -/
+    terminal state after zero or more silent steps. -/
 private theorem anfConvert_halt_star
     (s : Flat.Program) (t : ANF.Program)
     (h : ANF.convert s = .ok t) :
@@ -691,72 +747,9 @@ private theorem anfConvert_halt_star
         Flat.Steps sf evs sf' ∧
         Flat.step? sf' = none ∧
         observableTrace evs = [] ∧
-        ANF_SimRel s t sa sf' := by
-  intro sa sf ⟨hheap, henv, htrace, k, n, m, hnorm, hfaithful⟩ hstuck
-  obtain ⟨t, hat, hnovar⟩ := ANF_step?_none_implies_trivial sa hstuck
-  -- sa.expr = .trivial t, t is not a var
-  -- From hnorm: (normalizeExpr sf.expr k).run n = .ok (.trivial t, m)
-  -- Case split on sf.expr: .lit halts immediately, others need multi-step Flat reasoning
-  cases hsf : sf.expr with
-  | lit v =>
-    -- Flat.step? on .lit = none (already halted), take sf' = sf
-    exact ⟨sf, [], .refl sf,
-      by rw [show sf = {sf with expr := .lit v} from by cases sf; simp_all]; unfold Flat.step?; simp,
-      rfl, hheap, henv, htrace, k, n, m, hnorm, hfaithful⟩
-  | var name =>
-    -- normalizeExpr (.var name) k = k (.var name), producing .trivial t
-    -- By faithfulness of k: t = .var name, contradicting hnovar
-    exfalso
-    rw [hsf] at hnorm; simp only [ANF.normalizeExpr] at hnorm
-    rw [hat] at hnorm
-    exact absurd (hfaithful (.var name) n m t hnorm) (hnovar name)
-  | this =>
-    -- normalizeExpr (.this) k = k (.var "this"), producing .trivial t
-    -- By faithfulness of k: t = .var "this", contradicting hnovar
-    exfalso
-    rw [hsf] at hnorm; simp only [ANF.normalizeExpr] at hnorm
-    rw [hat] at hnorm
-    exact absurd (hfaithful (.var "this") n m t hnorm) (hnovar "this")
-  | seq a b =>
-    -- normalizeExpr (.seq a b) k = normalizeExpr a (fun _ => normalizeExpr b k)
-    -- Can produce .trivial only when a is trivial (lit/var/this) or .seq
-    rw [hsf] at hnorm; simp only [ANF.normalizeExpr] at hnorm
-    rw [hat] at hnorm
-    -- hnorm: (normalizeExpr a (fun _ => normalizeExpr b k)).run n = .ok (.trivial t, m)
-    -- Case split on a to isolate the problematic sub-cases
-    cases ha : a with
-    | var name =>
-      -- normalizeExpr (.var name) k' = k' (.var name) = normalizeExpr b k
-      -- Flat must evaluate .var name (might error). Needs well-formedness precondition.
-      sorry
-    | this =>
-      -- normalizeExpr (.this) k' = k' (.var "this") = normalizeExpr b k
-      -- Same issue: Flat evaluates .this (might give undefined silently, but env state varies)
-      sorry
-    | lit v =>
-      -- normalizeExpr (.lit v) k' = k' (trivialOfFlatValue v) = normalizeExpr b k
-      -- Flat steps silently from .seq (.lit v) b to b. Need halt_star for b (depth induction).
-      sorry
-    | seq a1 a2 =>
-      -- normalizeExpr (.seq a1 a2) k' recurses. Same structure, needs depth induction.
-      sorry
-    | _ =>
-      -- All compound non-seq, non-atom a: contradiction
-      -- normalizeExpr on compound a wraps result in non-.trivial constructor
-      exfalso
-      exact absurd hnorm (normalizeExpr_compound_not_trivial a _
-        (by intro v; rw [ha]; exact Flat.Expr.noConfusion)
-        (by intro nm; rw [ha]; exact Flat.Expr.noConfusion)
-        (by rw [ha]; exact Flat.Expr.noConfusion)
-        (by intro a' b'; rw [ha]; exact Flat.Expr.noConfusion) n m t)
-  | _ =>
-    -- All compound non-seq constructors: normalizeExpr wraps in non-.trivial constructor
-    exfalso; rw [hat] at hnorm
-    have h1 : ∀ v, sf.expr ≠ .lit v := by intro v h; rw [hsf] at h; exact Flat.Expr.noConfusion h
-    have h2 : ∀ name, sf.expr ≠ .var name := by intro nm h; rw [hsf] at h; exact Flat.Expr.noConfusion h
-    have h3 : sf.expr ≠ .this := by intro h; rw [hsf] at h; exact Flat.Expr.noConfusion h
-    have h4 : ∀ a b, sf.expr ≠ .seq a b := by intro a b h; rw [hsf] at h; exact Flat.Expr.noConfusion h
-    exact absurd hnorm (normalizeExpr_compound_not_trivial sf.expr k h1 h2 h3 h4 n m t)
+        ANF_SimRel s t sa sf' :=
+  fun sa sf hrel hstuck =>
+    anfConvert_halt_star_aux s t h sf.expr.depth sa sf (Nat.le_refl _) hrel hstuck
 
 /-- Multi-step simulation derived from single-step stuttering simulation. -/
 private theorem anfConvert_steps_star

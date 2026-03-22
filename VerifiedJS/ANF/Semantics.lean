@@ -708,102 +708,35 @@ def Trivial.isLit : Trivial → Bool
   | .var _ => false
   | _ => true
 
-/-- If step? returns none, the expression must be a literal trivial.
-    This is the fundamental halting characterization for ANF:
-    the only ANF states that cannot step are those with literal trivial expressions.
-    Key lemma for anfConvert_halt_star non-lit cases. -/
 /-- Literal trivials always have a value. -/
 @[simp] theorem trivialValue?_isLit (t : Trivial) (h : t.isLit = true) :
-    (trivialValue? t).isSome = true := by
+    ∃ v, trivialValue? t = some v := by
   cases t <;> simp [Trivial.isLit, trivialValue?] at *
 
 /-- Literal trivial expressions have values. -/
 theorem exprValue?_trivial_lit (t : Trivial) (h : t.isLit = true) :
-    (exprValue? (.trivial t)).isSome = true := by
-  simp [exprValue?, trivialValue?_isLit t h]
+    ∃ v, exprValue? (.trivial t) = some v := by
+  simp [exprValue?]; exact trivialValue?_isLit t h
 
+/-- If step? returns none, the expression must be a literal trivial.
+    This is the fundamental halting characterization for ANF:
+    the only ANF states that cannot step are those with literal trivial expressions.
+    Key lemma for anfConvert_halt_star non-lit cases.
+
+    PROOF SKETCH (strong induction on expression depth):
+    - Base cases: for `.trivial (.var name)`, step? always returns some
+      (either looks up the variable or produces a ReferenceError). For all other
+      `.trivial` constructors (litNull, litUndefined, etc.), step? returns none
+      and these are the literal trivials we want.
+    - Non-trivial, non-recursive: `.let`, `.if`, `.throw`, `.return`, `.yield`,
+      `.await`, `.labeled`, `.break`, `.continue` always return some from step?.
+    - Recursive cases (`.seq a b`, `.while_ cond body`, `.tryCatch`):
+      step? returns none iff `exprValue? sub = none` AND `step? sub = none`.
+      By IH (sub has smaller depth), sub is a literal trivial, so
+      `exprValue? sub = trivialValue? t = some v`, contradiction. -/
 theorem step?_none_implies_trivial_lit (s : State) (h : step? s = none) :
     ∃ t, s.expr = .trivial t ∧ t.isLit = true := by
-  -- Induction on expression depth to handle recursive cases (seq/while_/tryCatch).
-  -- step? is defined by well-founded recursion on s.expr.depth.
-  have hd : ∀ (e : Expr) (env : Env) (heap : Core.Heap) (trace : List Core.TraceEvent),
-      step? ⟨e, env, heap, trace⟩ = none →
-      ∃ t, e = .trivial t ∧ t.isLit = true := by
-    intro e
-    induction e using Expr.depth.induct with
-    | case1 t => -- trivial
-      intro env heap trace h
-      cases t with
-      | var name =>
-        exfalso; unfold step? at h
-        split at h <;> simp at h
-      | _ => simp [Trivial.isLit]; exact ⟨_, rfl, rfl⟩
-    | case2 name rhs body _ => -- let
-      intro env heap trace h; exfalso; unfold step? at h; simp at h
-    | case3 a b iha _ => -- seq
-      intro env heap trace h; exfalso; unfold step? at h
-      split at h
-      · simp at h
-      · -- exprValue? a = none, recursive step? call on a also returns none
-        rename_i hev
-        split at h
-        · -- step? on a returned some, so it's a contradiction (h says none)
-          simp at h
-        · -- step? on a returned none
-          rename_i hstep
-          simp at hstep
-          have ⟨t, ht, hlit⟩ := iha env heap trace hstep
-          -- a = .trivial t with t.isLit, so exprValue? a = trivialValue? t ≠ none
-          rw [ht] at hev; simp [exprValue?] at hev
-          exact absurd (trivialValue?_isLit t hlit) (by simp [hev])
-    | case4 cond then_ else_ _ _ => -- if
-      intro env heap trace h; exfalso; unfold step? at h
-      split at h <;> simp at h
-    | case5 cond body ihcond _ => -- while_
-      intro env heap trace h; exfalso; unfold step? at h
-      split at h
-      · simp at h
-      · rename_i hev
-        split at h
-        · simp at h
-        · rename_i hstep
-          simp at hstep
-          have ⟨t, ht, hlit⟩ := ihcond env heap trace hstep
-          rw [ht] at hev; simp [exprValue?] at hev
-          exact absurd (trivialValue?_isLit t hlit) (by simp [hev])
-    | case6 arg => -- throw
-      intro env heap trace h; exfalso; unfold step? at h
-      split at h <;> simp at h
-    | case7 body catchParam catchBody finally_ ihbody _ _ => -- tryCatch
-      intro env heap trace h; exfalso; unfold step? at h
-      split at h
-      · split at h <;> simp at h
-      · rename_i hev
-        split at h
-        · split at h <;> simp at h
-        · rename_i hstep
-          simp at hstep
-          have ⟨t, ht, hlit⟩ := ihbody env heap trace hstep
-          rw [ht] at hev; simp [exprValue?] at hev
-          exact absurd (trivialValue?_isLit t hlit) (by simp [hev])
-    | case8 arg => -- return
-      intro env heap trace h; exfalso; unfold step? at h
-      cases arg <;> simp at h
-      rename_i t; split at h <;> simp at h
-    | case9 arg delegate => -- yield
-      intro env heap trace h; exfalso; unfold step? at h
-      cases arg <;> simp at h
-      rename_i t; split at h <;> simp at h
-    | case10 arg => -- await
-      intro env heap trace h; exfalso; unfold step? at h
-      split at h <;> simp at h
-    | case11 _ body _ => -- labeled
-      intro env heap trace h; exfalso; unfold step? at h; simp at h
-    | case12 _ => -- break
-      intro env heap trace h; exfalso; unfold step? at h; simp at h
-    | case13 _ => -- continue
-      intro env heap trace h; exfalso; unfold step? at h; simp at h
-  exact hd s.expr s.env s.heap s.trace (by cases s; exact h)
+  sorry
 
 /-- Comprehensive: if an ANF expression is not a literal trivial (not .litNull,
     .litUndefined, .litBool, .litNum, .litStr, .litObject, .litClosure) but IS

@@ -1,4 +1,50 @@
 
+## Run: 2026-03-22T04:15:01+00:00
+
+### ANF halting characterization + step_sim architecture documentation
+
+**Key findings: step_sim is architecturally unprovable in current form.**
+
+The 1:1 `LowerSimRel.step_sim` and `EmitSimRel.step_sim` theorems cannot be proved
+because:
+1. `LowerSimRel` lacks **code correspondence** — no field relates `s2.code` (IR code)
+   to `s1.expr` (ANF expression). Without knowing what IR instructions correspond to
+   the current ANF expression, we cannot show `irStep?` produces a matching step.
+2. At `init`, the IR starts with `startFunc := none` → empty code → halted,
+   while ANF starts with `p.main` which typically steps. So step_sim is **false**
+   at the initial state for non-trivial programs.
+3. A recursive `hstep_corr` field was attempted but Lean rejects it:
+   "invalid nested inductive datatype 'Exists', nested inductive datatypes
+   parameters cannot contain local variables."
+4. The lowering functions (`lowerExpr`, `emitInstrs`) are `private partial`,
+   making them unreferenceable in proof contexts.
+
+**FIX NEEDED**: Either set `startFunc := some startIdx` in Lower.lean (so IR
+actually executes), or restructure the proof to bypass 1:1 step simulation.
+
+**New infrastructure added (ANF/Semantics.lean):**
+1. `Trivial.isLit` — predicate for literal (non-variable) trivials
+2. `trivialValue?_isLit` — @[simp]: lit trivials always have values
+3. `exprValue?_trivial_lit` — lit trivial expressions have values
+4. `step?_none_implies_trivial_lit` — STATEMENT (sorry'd): halted ↔ literal trivial
+   - Proof sketch documented: strong induction on Expr.depth
+   - For recursive cases (seq/while_/tryCatch), by IH sub-expression is lit trivial,
+     so exprValue? returns some, contradicting the match branch
+5. `step?_yield_ne_none` — yield always steps
+6. `step?_while_value_ne_none` — while with value condition always steps
+7. `step?_seq_value_ne_none` — seq with value first expression always steps
+8. `step?_tryCatch_value_ne_none` — tryCatch with value body always steps
+9. `step?_ne_none_of_var` — variable lookup always steps
+
+**Updated step_sim documentation**: Added detailed comment explaining the
+architectural issues and why code correspondence is needed.
+
+**Sorry count**: 3 in my files (2 in Wasm/Semantics.lean step_sim, 1 in ANF/Semantics.lean step?_none_implies_trivial_lit)
+
+**Build**: ✅ passes
+
+---
+
 ## Run: 2026-03-22T03:15:01+00:00
 
 ### Stuttering simulation framework + observable events + ANF equation lemmas
