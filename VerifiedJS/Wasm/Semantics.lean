@@ -4152,6 +4152,17 @@ theorem irStep?_eq_drop (s : IRExecState) (rest : List IRInstr)
         trace := s.trace ++ [.silent] }) := by
   simp [irStep?, hcode, hstack, irPop1?, irPushTrace]
 
+/-- Exact state after drop with empty stack: traps. -/
+theorem irStep?_eq_drop_empty (s : IRExecState) (rest : List IRInstr)
+    (hcode : s.code = IRInstr.drop :: rest)
+    (hstack : s.stack = []) :
+    irStep? s = some (.trap "stack underflow in drop",
+      { s with
+        code := []
+        stack := []
+        trace := s.trace ++ [.trap "stack underflow in drop"] }) := by
+  simp [irStep?, hcode, hstack, irPop1?, irTrapState, irPushTrace]
+
 /-- Exact state after block: pushes label (onBranch=rest, onExit=rest), enters body. -/
 theorem irStep?_eq_block (s : IRExecState) (label : String) (body rest : List IRInstr)
     (hcode : s.code = IRInstr.block label body :: rest) :
@@ -5833,8 +5844,46 @@ theorem step_sim (irmod : IRModule) (wmod : Module) :
           -- return from function
           sorry
       | .drop =>
-          -- drop top of stack
-          sorry
+          -- drop: IR and Wasm both pop top of stack (or both trap on empty stack)
+          -- Invert EmitCodeCorr to get Wasm code structure
+          have hc : EmitCodeCorr (IRInstr.drop :: rest) s2.code := hcode_ir ▸ hrel.hcode
+          rcases hc.drop_inv with ⟨rest_w, hcw, hrest⟩ | ⟨wasm_instrs, rest_w, hcw, hrest⟩
+          · -- Specific case: Wasm code = .drop :: rest_w
+            match hstk : s1.stack with
+            | [] =>
+              -- Empty stack: both sides trap
+              have hir := irStep?_eq_drop_empty s1 rest hcode_ir hstk
+              rw [hir] at hstep; obtain ⟨rfl, rfl⟩ := Prod.mk.inj (Option.some.inj hstep)
+              -- Wasm stack also empty (by length correspondence)
+              have hs2 : s2.stack = [] := by
+                have := hrel.hstack; simp [hstk] at this
+                match s2.stack, this with | [], _ => rfl
+              refine ⟨_, ?_, ?_⟩
+              · -- Wasm step: trap
+                simp [traceToWasm]
+                exact step?_eq_drop_empty s2 rest_w hcw hs2
+              · -- New EmitSimRel
+                exact ⟨hrel.hemit, .nil, by simp [hs2], by simp,
+                  hhalt_of_structural .nil (by simp)⟩
+            | v :: stk =>
+              -- Non-empty stack: both sides drop silently
+              have hir := irStep?_eq_drop s1 rest v stk hcode_ir hstk
+              rw [hir] at hstep; obtain ⟨rfl, rfl⟩ := Prod.mk.inj (Option.some.inj hstep)
+              -- Wasm stack also non-empty (by length correspondence)
+              have hlen := hrel.hstack; simp [hstk] at hlen
+              match hs2 : s2.stack with
+              | [] => simp at hlen
+              | w :: stk_w =>
+                refine ⟨_, ?_, ?_⟩
+                · -- Wasm step: drop
+                  simp [traceToWasm]
+                  exact step?_eq_drop s2 rest_w w stk_w hcw hs2
+                · -- New EmitSimRel
+                  have hlen' : stk.length = stk_w.length := by omega
+                  exact ⟨hrel.hemit, hrest, hlen', hrel.hlabels,
+                    hhalt_of_structural hrest hrel.hlabels⟩
+          · -- General case (EmitCodeCorr.general): unknown Wasm instructions
+            sorry
       | .memoryGrow =>
           -- grow memory
           sorry
