@@ -1,4 +1,56 @@
 
+## Run: 2026-03-22T00:05:00+00:00
+
+### Build
+- **Status**: `lake build` FAIL — Core/Semantics.lean has ~30 errors in `stuck_implies_lit`
+- **Root cause**: `rename_i hev hsub` misnames variables after Lean update. `hev` gets type `Option (TraceEvent × State)` (a term), not a prop. `simp [exprValue?] at hev` fails because `hev` is not a hypothesis.
+- **Fix**: Replace `dsimp at hv; subst hv; simp [exprValue?] at hev` with `simp_all [exprValue?]` — tested and verified via `lean_multi_attempt` at line 2260.
+
+### Sorry Report
+- **Count**: 10 (sorry_report says 11 but includes transitive uses)
+- **Unique locations**: 7 in Proofs/ (1 CC, 3 ANF, 1 Lower, 1 Emit, 1 EndToEnd) + 3 in Wasm/Semantics.lean (2 step_sim + 1 match sorry)
+- **Change**: Steady at 10 since 22:24 (no progress)
+
+### E2E Tests
+- **Cannot run** (build broken)
+- Test corpus grew to 203 files (from ~123 last measured)
+- Estimated pass rate ~96% when build works
+
+### Test262
+- **2/93** pass, 50 fail, 31 skip, 8 xfail — **UNCHANGED for 48+ hours**
+
+### Agent Health
+| Agent | Last run | Status |
+|-------|----------|--------|
+| jsspec | 22:51 → TIMEOUT (23:51) | Started new run 00:01 |
+| wasmspec | 22:52 → TIMEOUT (23:52) | Dead, needs restart |
+| proof | 22:52 → TIMEOUT (23:52) | Dead, needs restart |
+
+### Actions Taken
+1. **jsspec prompt**: Rewrote with EXACT build fix (`simp_all [exprValue?]`) and fallback (sorry the whole theorem). Emphasized: FIX BUILD FIRST, then test262 skips.
+2. **wasmspec prompt**: Updated sorry line numbers (4837, 4934). Clarified 3 sorries remain.
+3. **proof prompt**: Updated sorry locations (ANFConvertCorrect lines shifted: 88, 416, 440). Updated strategy.
+4. **PROGRESS.md**: Added new metrics row.
+
+### Proof Chain Status
+| Pass | Statement OK? | Proved? | Blocker |
+|------|--------------|---------|---------|
+| Elaborate | YES | **PROVED** | — |
+| ClosureConvert | YES | 1 sorry | CC_SimRel (ClosureConvertCorrect.lean:175) |
+| ANFConvert | YES | 3 sorry | step_star(:88), trivial_aux(:416), halt_star(:440) |
+| Optimize | YES | **PROVED** | — |
+| Lower | YES | 1 sorry | BLOCKED on wasmspec step_sim (Wasm/Semantics.lean:4837) |
+| Emit | YES | 1 sorry | BLOCKED on wasmspec step_sim (Wasm/Semantics.lean:4934) |
+| EndToEnd | YES | 1 sorry | Composition of above |
+
+### Assessment
+- **CRITICAL**: Build has been broken (on and off) for ~10 hours due to jsspec's `stuck_implies_lit` theorem. This is the 4th+ time jsspec has broken it. The theorem is NOT used in the proof chain — it should be sorryed if the fix is too complex.
+- **Sorry plateau**: 10 sorries for 3+ runs. No progress since 22:24. Agents are timing out without making changes.
+- **Test262 stagnation**: 48+ hours at 2/93. jsspec keeps adding semantics theorems instead of fixing the test harness. Prompt now explicitly directs to harness changes (negative tests, unsupported-flags).
+- **Proof chain**: 2/6 passes fully proved (Elaborate, Optimize). Both halt_sim proved. Critical path: wasmspec's 2 step_sim theorems.
+
+---
+
 ## Run: 2026-03-21T22:51:00+00:00
 
 ### Build
@@ -1309,3 +1361,4 @@ lake build works. ANFConvertCorrect.lean has broken code — proof agent must fi
 ## Run: 2026-03-22T00:05:01+00:00
 
 2026-03-22T00:07:43+00:00 SKIP: already running
+2026-03-22T00:11:39+00:00 DONE

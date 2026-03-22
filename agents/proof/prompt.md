@@ -80,48 +80,50 @@ It IS OK to temporarily increase sorry count if you are decomposing a large sorr
 4. DO NOT WAIT for anyone. Just prove things.
 5. Sorry count must go DOWN or stay flat. Never up.
 
-## CURRENT STATUS & PRIORITIES (2026-03-21T22:51)
+## CURRENT STATUS & PRIORITIES (2026-03-22T00:05)
 
-**Build is PASSING. Sorry count: 10 total (7 in Proofs/, 2+1 in Wasm/Semantics.lean owned by wasmspec, 0 in Core).**
+**BUILD IS BROKEN** — jsspec's Core/Semantics.lean has errors in `stuck_implies_lit`. Fix written to jsspec prompt. Your Proofs/ files should still be editable.
 
-**PROGRESS**: Wasmspec proved both `halt_sim` theorems! LowerCorrect and EmitCorrect are now PARTIALLY unblocked — only `step_sim` remains.
+**Sorry count: 10 total** (7 in Proofs/, 3 in Wasm/Semantics.lean owned by wasmspec).
 
 ### YOUR 7 sorries (attack these NOW):
 
 **UNBLOCKED — do these FIRST:**
 
 1. **ClosureConvertCorrect.lean:175** — `| _ => all_goals sorry`
-   Catch-all for CC step simulation. The comment at lines 166-174 explains: CC_SimRel needs env/heap/funcs correspondence, and convertExpr correspondence breaks after control-flow unrolling.
-   **ACTION**: Start with option (b) from the comment — use a weaker structural bisimulation that doesn't depend on convertExpr exact equality. Or prove easy constructor cases (lit, binop, unop) individually before the catch-all.
+   CC step simulation catch-all. CC_SimRel needs env/heap/funcs correspondence.
+   **ACTION**: Prove easy cases first (lit, binop, unop) before the catch-all. Use `lean_multi_attempt` aggressively.
 
-2. **ANFConvertCorrect.lean:84** — `anfConvert_step_star` sorry
+2. **ANFConvertCorrect.lean:88** — `anfConvert_step_star` sorry
+   Case analysis on ANF.Step over all expression forms.
    **ACTION**: `intro sa sf ev sa' hrel hstep; cases hstep` then handle each constructor.
-   Use `lean_multi_attempt` at line 84 with `["intro sa sf ev sa' hrel hstep; cases hstep; all_goals simp_all"]`.
 
-3. **ANFConvertCorrect.lean:593** — `var` case: variable not found produces .error event
-   Comment says: "Requires well-formedness precondition on environments."
-   **ACTION**: Either add a well-formedness precondition to `anfConvert_halt_star`, or handle the error case by showing the error trace is observable.
+3. **ANFConvertCorrect.lean:416** — `ANF_step?_none_implies_trivial_aux` sorry
+   ANF.step? definition changed; needs full rewrite. Theorem says step? = none only at non-variable trivial literals.
+   **ACTION**: `intro n; induction n with | zero => ... | succ n ih => ...` then cases on `s.expr`.
 
-4. **ANFConvertCorrect.lean:597** — `seq` case
-   **ACTION**: `normalizeExpr (.seq a b) k = normalizeExpr a (fun _ => normalizeExpr b k)`. Use induction on the `a` term with IH.
+4. **ANFConvertCorrect.lean:440** — `anfConvert_halt_star` sorry
+   Broken by Flat.Semantics changes. Was 2 sorries (var + seq), consolidated to 1.
+   **ACTION**: Case split on `sf.expr`, construct Flat multi-steps for lit/var/this cases.
 
 **PARTIALLY BLOCKED — write proof structure NOW:**
 
 5. **LowerCorrect.lean:51** — `lower_behavioral_correct`
-   `halt_sim` is PROVED. Only `step_sim` (Wasm/Semantics.lean:4833) remains.
-   **ACTION**: Write the proof using `LowerSimRel.init`, `LowerSimRel.step_sim`, and `LowerSimRel.halt_sim`. The sorry will be ONLY in the step_sim application. This makes the sorry trivially closable once wasmspec delivers.
+   `halt_sim` is PROVED. Only `step_sim` (Wasm/Semantics.lean:4837) remains.
+   **ACTION**: Write the proof using `LowerSimRel.init`, `LowerSimRel.step_sim`, and `LowerSimRel.halt_sim`. Sorry only the step_sim application.
 
 6. **EmitCorrect.lean:44** — `emit_behavioral_correct`
-   Same: `halt_sim` is PROVED. Only `step_sim` (Wasm/Semantics.lean:4926) remains.
+   Same: `halt_sim` is PROVED. Only `step_sim` (Wasm/Semantics.lean:4934) remains.
    **ACTION**: Same approach — write proof structure, sorry only the step_sim call.
 
 7. **EndToEnd.lean:55** — `flat_to_wasm_correct`
    Composition. Write structure using all pass theorems.
 
 ### STRATEGY
-1. Items 5-6 first — they're 15 minutes of work each and show the proof chain is structurally complete
-2. Then items 2-4 (ANF) — concrete case analysis work
-3. Then item 1 (CC) — hardest, needs SimRel redesign
+1. Items 5-7 first — 15 min each, shows proof chain is structurally complete
+2. Items 3-4 (ANF termination) — concrete case analysis
+3. Item 2 (ANF step) — biggest, most cases
+4. Item 1 (CC) — hardest, needs SimRel redesign
 
 ## GLOBAL GOAL -- DO NOT STOP
 Your job is done when:

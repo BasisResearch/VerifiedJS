@@ -62,20 +62,13 @@ Then construct the matching Step derivation in Lean. If you cannot, your semanti
 3. Keep definitions structurally simple for proofs.
 4. Add @[simp] lemmas for everything the proof agent might need.
 
-## CURRENT PRIORITIES (2026-03-21T22:51)
+## CURRENT PRIORITIES (2026-03-22T00:05)
 
-**GREAT WORK proving both halt_sim theorems! You went from 4 → 2 sorries. Now finish the job.**
+Build is BROKEN (jsspec Core/Semantics.lean, not your file). YOUR files compile fine.
 
-Build is PASSING. You have **2 sorries** remaining in YOUR files. Both are step_sim theorems. These are the LAST blockers for LowerCorrect, EmitCorrect, and EndToEnd.
+**You have 3 sorries** remaining in YOUR files. The 2 step_sim theorems are the LAST blockers for the entire proof chain.
 
-### #1 CRITICAL: Prove `LowerSimRel.step_sim` (Wasm/Semantics.lean:4833)
-```lean
-theorem step_sim (prog : ANF.Program) (irmod : IRModule) :
-    ∀ (s1 : ANF.State) (s2 : IRExecState) (t : TraceEvent) (s1' : ANF.State),
-    LowerSimRel prog irmod s1 s2 → anfStepMapped s1 = some (t, s1') →
-    ∃ s2', irStep? s2 = some (t, s2') ∧ LowerSimRel prog irmod s1' s2' := by
-  sorry
-```
+### #1 CRITICAL: Prove `LowerSimRel.step_sim` (Wasm/Semantics.lean:4837)
 APPROACH:
 1. `intro s1 s2 t s1' hrel hstep`
 2. Unfold `anfStepMapped` at `hstep` to expose `ANF.step?`
@@ -84,25 +77,18 @@ APPROACH:
 5. Apply the matching `irStep?_eq_*` simp lemma to show IR takes matching step
 6. Reconstruct `LowerSimRel` for the new states
 7. Use `lean_multi_attempt` AGGRESSIVELY — test 10+ tactics per sub-goal
+8. Prove EASY cases first (lit, const, trivial), leave hard cases as sorry
 
-### #2 CRITICAL: Prove `EmitSimRel.step_sim` (Wasm/Semantics.lean:4926)
-```lean
-theorem step_sim (irmod : IRModule) (wmod : Module) :
-    ∀ (s1 : IRExecState) (s2 : ExecState) (t : TraceEvent) (s1' : IRExecState),
-    EmitSimRel irmod wmod s1 s2 → irStep? s1 = some (t, s1') →
-    ∃ s2', Wasm.step? s2 = some (traceToWasm t, s2') ∧
-      EmitSimRel irmod wmod s1' s2' := by
-  sorry
-```
+### #2 CRITICAL: Prove `EmitSimRel.step_sim` (Wasm/Semantics.lean:4934)
 Same pattern: case-split on `irStep?`, unfold `emitInstr`, show Wasm takes matching step.
 
-### #3 LOW PRIORITY: Fix sorry at line 2708
-The `| sorry)` in the `step?_eq_some` match is a minor issue but should be fixed when you have time.
+### #3 LOW PRIORITY: Fix `| sorry)` at line 2708
 
 ### STRATEGY
 - Start with whichever step_sim has fewer cases
 - Prove the EASY cases first (lit, const, trivial operations), leave hard cases as sorry
 - Any progress (even 3/10 cases proved) is valuable — it shows the approach works
+- Use `lean_multi_attempt` before writing ANY tactic
 
 ## GLOBAL GOAL -- DO NOT STOP
 Your job is done when:

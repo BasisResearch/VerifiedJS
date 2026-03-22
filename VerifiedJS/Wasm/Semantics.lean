@@ -2702,10 +2702,7 @@ theorem step?_code_nonempty (s : ExecState) (instr : Instr) (rest : List Instr)
   -- either directly ⟨_, _, rfl⟩ or requires splitting match expressions until
   -- all goals become ⟨_, _, rfl⟩. TODO: Restore once step? stabilizes.
   unfold step?; rw [hc]
-  cases instr <;> simp_all only [] <;> (
-    first
-    | exact ⟨_, _, rfl⟩
-    | sorry)
+  cases instr <;> simp_all only [] <;> exact ⟨_, _, rfl⟩
 
 /-- Every Wasm state is either halted or can take a step (full progress theorem).
     SPEC: Wasm type soundness analog — well-formed states always make progress.
@@ -4834,7 +4831,16 @@ theorem step_sim (prog : ANF.Program) (irmod : IRModule) :
     ∀ (s1 : ANF.State) (s2 : IRExecState) (t : TraceEvent) (s1' : ANF.State),
     LowerSimRel prog irmod s1 s2 → anfStepMapped s1 = some (t, s1') →
     ∃ s2', irStep? s2 = some (t, s2') ∧ LowerSimRel prog irmod s1' s2' := by
-  sorry
+  intro s1 s2 t s1' hrel hstep
+  obtain ⟨hlower, hmod, hhalt, henv⟩ := hrel
+  unfold anfStepMapped at hstep
+  split at hstep
+  · simp at hstep
+  · rename_i ct s1'' heq
+    simp only [Option.some.injEq, Prod.mk.injEq] at hstep
+    obtain ⟨ht, hs1'⟩ := hstep
+    subst ht hs1'
+    sorry
 
 /-- Halt simulation: if ANF halts, the IR halts.
     SORRY: When ANF.step? returns none, the ANF expression is a literal trivial
