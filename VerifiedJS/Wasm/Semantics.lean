@@ -4656,7 +4656,7 @@ theorem StepStar_of_Steps_generic {S : Type} {step : S → Option (TraceEvent ×
     StepStar step s_init ts s_final :=
   hElim (P := fun s ts s' => StepStar step s ts s')
     (fun s => StepStar.refl s)
-    (fun s1 t s2 ts s3 hStep _hSteps' ih =>
+    (fun s1 t s2 _ts _s3 hStep _hSteps' ih =>
       StepStar.step ((step_iff s1 t s2).mp hStep) ih)
     hSteps
 
@@ -4885,8 +4885,8 @@ private theorem emit_preserves_start (irmod : IRModule) (wmod : Module)
   unfold emit at hemit
   simp only [Bind.bind, Except.bind] at hemit
   split at hemit
-  · simp [Pure.pure, Except.pure] at hemit
-  · simp only [Pure.pure, Except.pure, Except.ok.injEq] at hemit
+  · simp at hemit
+  · simp only [Except.ok.injEq] at hemit
     rw [← hemit]; rfl
 
 /-- Initial states are related: the IR initial state corresponds to the Wasm initial state.

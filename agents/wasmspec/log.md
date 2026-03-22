@@ -24,7 +24,11 @@ The root cause of the recursive sorry pattern: `LowerSimRel` and `EmitSimRel` ha
 
 **Also proved: `step?_code_nonempty`** — the Wasm progress theorem that every non-halted state with non-empty code can take a step. Fixed by unfolding private helper functions (withI32Bin, withI64Bin, etc.) and splitting match expressions to 5 levels deep. All 166 instruction cases now close.
 
-**Build status:** PASSING
+**Cleanup:** Fixed unused variable warnings (ts, s3 → _ts, _s3) and unused simp args (Pure.pure, Except.pure).
+
+**WasmCert-Coq port status:** Major infrastructure (50+ irStep? equation lemmas, 30+ step? equation lemmas) is in place. Remaining gaps (SIMD, vector types, full reduce_simple inductive) are not needed for the JS→Wasm compiler's step_sim proofs.
+
+**Build status:** PASSING, warnings-clean (only 2 sorry warnings)
 
 ## Run: 2026-03-22T01:15:01+00:00
 
@@ -938,3 +942,4 @@ test
 
 ## Run: 2026-03-22T02:15:01+00:00
 
+2026-03-22T02:36:46+00:00 DONE
