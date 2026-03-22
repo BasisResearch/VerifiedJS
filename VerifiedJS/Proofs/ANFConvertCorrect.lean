@@ -72,11 +72,11 @@ private theorem anfConvert_init_related
     (h : ANF.convert s = .ok t) :
     ANF_SimRel s t (ANF.initialState t) (Flat.initialState s) := by
   simp only [ANF.initialState, Flat.initialState]
-  refine ⟨rfl, rfl, rfl, fun t => pure (.trivial t), 0, ?_, ?_⟩
-  · exact ANF.convert_main_from_normalizeExpr s t h
-  · intro arg n' m' t' hk
-    simp [pure, Pure.pure, StateT.pure, Except.pure] at hk
-    exact (Prod.mk.inj (Except.ok.inj hk)).1
+  obtain ⟨m, hm⟩ := ANF.convert_main_from_normalizeExpr s t h
+  refine ⟨rfl, rfl, rfl, fun t => pure (.trivial t), 0, m, hm, ?_⟩
+  intro arg n' m' t' hk
+  simp [pure, Pure.pure, StateT.pure, Except.pure] at hk
+  exact (Prod.mk.inj (Except.ok.inj hk)).1
 
 /-- Stuttering simulation: one ANF step corresponds to one or more Flat steps,
     preserving observable events and the simulation relation.
@@ -533,34 +533,31 @@ private theorem normalizeExpr_compound_not_trivial
     simp only [ANF.normalizeExpr]
     exact normalizeExpr_not_trivial init _
       (by intro x n' m' t'
-          simp only [bind, Bind.bind, StateT.bind, Except.bind]
-          intro habs; split at habs
-          · cases habs
-          · simp [pure, Pure.pure, StateT.pure, Except.pure] at habs) n m t
+          intro habs; simp [StateT.bind, StateT.run, bind, Bind.bind, Except.bind] at habs
+          split at habs <;> simp_all [pure, Pure.pure, StateT.pure, Except.pure]) n m t
   | «if» cond then_ else_ =>
     simp only [ANF.normalizeExpr]
     exact normalizeExpr_not_trivial cond _
       (by intro x n' m' t'
-          simp only [bind, Bind.bind, StateT.bind, Except.bind]
-          intro habs
-          repeat (first | split at habs | simp [pure, Pure.pure, StateT.pure, Except.pure] at habs)) n m t
+          intro habs; simp [StateT.bind, StateT.run, bind, Bind.bind, Except.bind] at habs
+          repeat (first | split at habs | simp_all [pure, Pure.pure, StateT.pure, Except.pure])) n m t
   | labeled label body =>
-    simp only [ANF.normalizeExpr, bind, Bind.bind, StateT.bind, Except.bind]
-    intro habs; split at habs
-    · cases habs
-    · simp [pure, Pure.pure, StateT.pure, Except.pure] at habs
+    simp only [ANF.normalizeExpr]
+    intro habs; simp [StateT.bind, StateT.run, bind, Bind.bind, Except.bind] at habs
+    split at habs <;> simp_all [pure, Pure.pure, StateT.pure, Except.pure]
   | while_ cond body =>
-    simp only [ANF.normalizeExpr, bind, Bind.bind, StateT.bind, Except.bind]
-    intro habs
-    repeat (first | split at habs | simp [pure, Pure.pure, StateT.pure, Except.pure] at habs | cases habs)
+    simp only [ANF.normalizeExpr]
+    intro habs; simp [StateT.bind, StateT.run, bind, Bind.bind, Except.bind] at habs
+    repeat (first | split at habs | simp_all [pure, Pure.pure, StateT.pure, Except.pure] | cases habs)
   | tryCatch body catchParam catchBody finally_ =>
-    simp only [ANF.normalizeExpr, bind, Bind.bind, StateT.bind, Except.bind]
-    intro habs; cases finally_ with
+    simp only [ANF.normalizeExpr]
+    intro habs; simp [StateT.bind, StateT.run, bind, Bind.bind, Except.bind] at habs
+    cases finally_ with
     | none =>
-      repeat (first | split at habs | simp [pure, Pure.pure, StateT.pure, Except.pure] at habs | cases habs)
+      repeat (first | split at habs | simp_all [pure, Pure.pure, StateT.pure, Except.pure] | cases habs)
     | some fin =>
-      simp only [Functor.map, StateT.map, bind, Bind.bind, StateT.bind, Except.bind] at habs
-      repeat (first | split at habs | simp [pure, Pure.pure, StateT.pure, Except.pure] at habs | cases habs)
+      simp only [Functor.map, StateT.map, StateT.bind, StateT.run, bind, Bind.bind, Except.bind] at habs
+      repeat (first | split at habs | simp_all [pure, Pure.pure, StateT.pure, Except.pure] | cases habs)
   | «return» arg =>
     cases arg with
     | none =>

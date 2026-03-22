@@ -674,6 +674,72 @@ theorem step?_await_ne_none (s : State) (arg : Trivial) :
   simp [step?]
   cases evalTrivial s.env arg <;> simp
 
+/-- Yield always steps. -/
+theorem step?_yield_ne_none (s : State) (arg : Option Trivial) (delegate : Bool) :
+    step? { s with expr := .yield arg delegate } ≠ none := by
+  simp [step?]
+  cases arg with
+  | none => simp
+  | some t =>
+    intro h; cases h1 : evalTrivial s.env t <;> simp_all
+
+/-- While with a value condition always steps.
+    Note: while_ with a non-value cond that can't step might NOT step. -/
+theorem step?_while_value_ne_none (s : State) (cond : Expr) (body : Expr) (v : Flat.Value)
+    (h : exprValue? cond = some v) :
+    step? { s with expr := .while_ cond body } ≠ none := by
+  simp [step?, h]
+
+/-- Seq with a value first expression always steps. -/
+theorem step?_seq_value_ne_none (s : State) (a b : Expr) (v : Flat.Value)
+    (h : exprValue? a = some v) :
+    step? { s with expr := .seq a b } ≠ none := by
+  simp [step?, h]
+
+/-- TryCatch with a value body always steps. -/
+theorem step?_tryCatch_value_ne_none (s : State) (body : Expr) (catchParam : VarName)
+    (catchBody : Expr) (finally_ : Option Expr) (v : Flat.Value)
+    (h : exprValue? body = some v) :
+    step? { s with expr := .tryCatch body catchParam catchBody finally_ } ≠ none := by
+  simp [step?, h]
+  cases finally_ <;> simp
+
+/-- Comprehensive: for each non-trivial ANF expression form, step? ≠ none
+    when the expression is "ready to step" (no stuck sub-expressions).
+    This is the key lemma for proving anfConvert_halt_star non-lit cases:
+    if an expression is not a literal trivial, it can step (possibly with
+    conditions on sub-expression values). -/
+theorem step?_ne_none_of_non_trivial_lit (s : State) :
+    (∀ (t : Trivial), s.expr = .trivial t → ∃ name, t = .var name) →
+    step? s ≠ none := by
+  intro hnot_lit
+  cases hcase : s.expr with
+  | trivial t =>
+    obtain ⟨name, rfl⟩ := hnot_lit t rfl
+    simp [step?]
+    cases s.env.lookup name <;> simp
+  | «let» name rhs body => exact step?_let_ne_none s name rhs body
+  | «if» cond then_ else_ => exact step?_if_ne_none s cond then_ else_
+  | throw arg => exact step?_throw_ne_none s arg
+  | «return» arg => exact step?_return_ne_none s arg
+  | await arg => exact step?_await_ne_none s arg
+  | yield arg delegate => exact step?_yield_ne_none s arg delegate
+  | labeled label body => exact step?_labeled_ne_none s label body
+  | «break» label => exact step?_break_ne_none s label
+  | «continue» label => exact step?_continue_ne_none s label
+  | seq a b =>
+    simp [step?]
+    cases exprValue? a <;> simp
+    intro hstep; exact absurd hstep (by simp)
+  | while_ cond body =>
+    simp [step?]
+    cases exprValue? cond <;> simp
+    intro hstep; exact absurd hstep (by simp)
+  | tryCatch body catchParam catchBody finally_ =>
+    simp [step?]
+    cases exprValue? body <;> simp
+    intro hstep; exact absurd hstep (by simp)
+
 /-- Step relation is equivalent to step? returning some. -/
 theorem Step_iff (s : State) (t : Core.TraceEvent) (s' : State) :
     Step s t s' ↔ step? s = some (t, s') :=
