@@ -1,4 +1,50 @@
 
+## Run: 2026-03-22T19:30:00+00:00
+- Sorries before: 29 (25 CC + 3 ANF + 1 Lower), after: 30 (26 CC + 3 ANF + 1 Lower)
+- Net sorry delta: +1 (but significant proof architecture improvement)
+- **Key achievement: Strengthened CC_SimRel with EnvCorr (Priority #1 from prompt)**
+
+### What was done:
+1. **Added EnvCorr to CC_SimRel** (the #1 priority per prompt)
+   - Defined `EnvCorr` as Flat⊆Core direction: every Flat binding has a corresponding Core binding (modulo convertValue)
+   - Holds vacuously for initial state (Flat env is empty)
+   - Updated CC_SimRel to include EnvCorr as a conjunct
+   - Updated all destructuring (step_simulation, halt_preservation) and construction sites (break, continue, labeled)
+   - Proved EnvCorr preservation for break/continue/labeled cases (env unchanged by these steps)
+
+2. **Proved `.this` case** (mostly — 1 sorry for edge case)
+   - When Flat finds "this": EnvCorr gives Core also has it with matching value → full proof ✓
+   - When Flat doesn't find "this" AND Core doesn't: both produce .lit .undefined → full proof ✓
+   - When Flat doesn't find "this" BUT Core does: sorry (needs Core⊆Flat direction or Flat builtins fix)
+
+3. **Proved `.var name` case** (partially — 2 sorries)
+   - In-scope (lookupEnv = none), Flat finds var: EnvCorr gives Core match → full proof ✓
+   - In-scope, both don't find var: both produce ReferenceError → full proof ✓
+   - Captured (lookupEnv = some idx): sorry (needs heap correspondence for .getEnv)
+   - In-scope, Flat doesn't find but Core does: sorry (needs Core⊆Flat direction)
+
+4. **Proved `.return none` case** — both produce .error "return:undefined" → full proof ✓
+   - Note: prompt claimed .return/.yield produce different events in Core vs Flat — this is WRONG (both produce same events now)
+
+5. **Proved `.yield none` case** — both produce .silent → full proof ✓
+
+### Architectural findings:
+1. **Core.initialState vs Flat.initialState mismatch**: Core has "console" binding + heap object, Flat has empty env/heap. This prevents bidirectional EnvCorr. The Flat⊆Core direction works (vacuously for init) but Core⊆Flat is unprovable without fixing Flat.initialState.
+
+2. **Compound CC cases need induction on expression depth**: The sub-stepping cases (.unary, .binary, .seq, .if, .let, .assign, .throw, .typeof, .await) recursively call step? on sub-expressions. The step simulation needs to hold recursively, requiring proof by strong induction on sf.expr.depth. Current proof uses `cases sc.expr` without induction.
+
+3. **.while_ case breaks convertExpr correspondence**: The while-unfolding .while_ c b → .if c (.seq b (.while_ c b)) (.lit .undefined) creates a fresh copy of cond/body. convertExpr of the unfolded expression threads CCState differently, so expr correspondence breaks unless convertExpr is state-independent (true for functionDef-free expressions).
+
+4. **ANF .seq.seq.seq needs seq_steps_lift lemma**: Lifting Flat steps from inner expression to outer .seq wrapper. Non-trivial but standard evaluation context lemma.
+
+### Strategy for next run:
+1. **Prove seq_steps_lift lemma** for ANF .seq.seq.seq case (eliminate 1 sorry)
+2. **Restructure CC step_simulation** to use strong induction on sf.expr.depth — this unlocks all sub-stepping cases
+3. **Prove convertExpr state-independence** for functionDef-free expressions — this unlocks .while_ case
+4. Consider proposing Flat.initialState fix to include builtins (for Core⊆Flat direction)
+
+2026-03-22T20:05:00+00:00 DONE
+
 ## Run: 2026-03-22T17:30:00+00:00
 - Sorries before: 8 (in my files) + ~37 (Wasm/Semantics), after: 4 (in my files, net) + 25 (CC expanded) + ~37 (Wasm/Semantics)
 - Fixed:
