@@ -3566,7 +3566,8 @@ theorem IRSteps_snoc {s1 s2 s3 : IRExecState} {ts : List TraceEvent} {t : TraceE
 @[simp] theorem observableWasmEvents_traceListToWasm_cons (t : TraceEvent) (ts : List TraceEvent) :
     Wasm.observableWasmEvents (traceListToWasm (t :: ts)) =
       Wasm.observableWasmEvents [traceToWasm t] ++ Wasm.observableWasmEvents (traceListToWasm ts) := by
-  simp [traceListToWasm, Wasm.observableWasmEvents_append]
+  rw [show traceListToWasm (t :: ts) = [traceToWasm t] ++ traceListToWasm ts from rfl]
+  exact Wasm.observableWasmEvents_append _ _
 
 /-- observableWasmEvents of traceListToWasm only keeps traps. -/
 theorem observableWasmEvents_traceListToWasm (ts : List TraceEvent) :
@@ -3575,11 +3576,12 @@ theorem observableWasmEvents_traceListToWasm (ts : List TraceEvent) :
   induction ts with
   | nil => simp [traceListToWasm]
   | cons t ts ih =>
+    simp only [traceListToWasm, List.map] at ih ⊢
     cases t with
-    | silent => simp [traceListToWasm, Wasm.observableWasmEvents, List.filter, ih]
-    | trap msg => simp [traceListToWasm, Wasm.observableWasmEvents, List.filter, ih]
-    | log msg => simp [traceListToWasm, Wasm.observableWasmEvents, List.filter, ih]
-    | error msg => simp [traceListToWasm, Wasm.observableWasmEvents, List.filter, ih]
+    | silent => simp [traceToWasm, Wasm.observableWasmEvents, List.filter, ih]
+    | trap msg => simp [traceToWasm, Wasm.observableWasmEvents, List.filter, ih]
+    | log msg => simp [traceToWasm, Wasm.observableWasmEvents, List.filter, ih]
+    | error msg => simp [traceToWasm, Wasm.observableWasmEvents, List.filter, ih]
 
 /-! ### Core ↔ IR Trace Event Mappings (for LowerCorrect proof chain)
 
@@ -5295,7 +5297,9 @@ theorem WasmStutterSim_steps {R : IRExecState → ExecState → Prop}
     obtain ⟨w_mid, w_trace1, hwSteps1, hR_mid, hObs1⟩ := sim.step_sim _ _ _ _ hR hirEq
     obtain ⟨w_final, w_trace2, hwSteps2, hR_final, hObs2⟩ := ih hR_mid
     refine ⟨w_final, w_trace1 ++ w_trace2, Wasm.Steps_trans hwSteps1 hwSteps2, hR_final, ?_⟩
-    simp only [Wasm.observableWasmEvents_append, hObs1, hObs2, traceListToWasm, List.map]
+    rw [Wasm.observableWasmEvents_append, hObs1, hObs2]
+    rw [show traceToWasm t :: List.map traceToWasm ts' = [traceToWasm t] ++ List.map traceToWasm ts' from rfl]
+    rw [Wasm.observableWasmEvents_append]
 
 /-- Behavioral equivalence at the Wasm level up to silent events. -/
 def WasmBehavesObs (m : Module) (obs : List Wasm.TraceEvent) : Prop :=
