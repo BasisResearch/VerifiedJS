@@ -5223,7 +5223,10 @@ structure LowerSimRel (prog : ANF.Program) (irmod : IRModule)
   hcode : LowerCodeCorr s.expr ir.code
   /- Halt correspondence. -/
   hhalt : anfStepMapped s = none → ir.halted
-  /- Environment correspondence: each ANF variable maps to an IR local. -/
+  /- Frame non-emptiness: the IR always has at least one frame. -/
+  hframes : ir.frames ≠ []
+  /- Environment correspondence: each ANF variable maps to an IR local.
+     The idx corresponds to the local index the compiler assigned to the variable. -/
   henv : ∀ name v, s.env.lookup name = some v →
     ∃ (idx : Nat) (val : IRValue), (Option.bind ir.frames.head? (fun f => f.locals[idx]?)) = some val
 
@@ -5248,6 +5251,7 @@ theorem init (prog : ANF.Program) (irmod : IRModule)
     intro _
     have hsf := lower_startFunc_none prog irmod hlower
     simp [IRExecState.halted, irInitialState, hsf]
+  hframes := by simp [irInitialState]
   henv := by
     intro name v hlookup
     -- Initial ANF env is empty, so lookup always returns none
