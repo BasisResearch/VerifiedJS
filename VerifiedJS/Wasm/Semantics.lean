@@ -5537,9 +5537,9 @@ theorem hhalt_of_structural {ir : IRExecState} {w : ExecState}
   apply step?_halted
   constructor
   · rw [hc] at hcode; exact EmitCodeCorr.nil_inv hcode
-  · cases w.labels with
+  · cases hlw : w.labels with
     | nil => rfl
-    | cons _ _ => simp [hl] at hl; rw [hl] at h; simp at h
+    | cons _ _ => rw [hl, hlw] at hlabels; simp at hlabels
 
 /-- Step simulation (1:1): if the IR takes one step, the Wasm takes a matching step.
     Now provable with EmitCodeCorr: case analysis on the IR instruction form
