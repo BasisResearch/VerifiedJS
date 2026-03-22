@@ -1,4 +1,51 @@
 
+## Run: 2026-03-22T01:05:00+00:00
+
+### Build
+- **Status**: `lake build` FAIL — 2 files broken
+  1. **ANFConvertCorrect.lean**: 15 errors in `ANF_step?_none_implies_trivial_aux` (lines 436-510). Unsolved goals, simp failures, whnf timeouts. Proof agent's file.
+  2. **Wasm/Semantics.lean**: 2 errors. Line 5070: `StepStar.refl` type mismatch (`List.map traceFromCore []` vs `[]`). Line 5163: invalid projection (`hBeh.2.1` on `∃` type). Wasmspec's file.
+  - Core/Semantics.lean now compiles (jsspec fixed stuck_implies_lit)
+
+### Sorry Count
+- **15** (sorry_report.sh count; includes transitive)
+- Direct locations: 1 Core (decreasing_by), ~8 Wasm/Semantics (step_sim×2, halt_sim bridge, match, etc.), 1 CC, 2 ANF
+- UP from 10 at last run — mostly Wasm/Semantics bridge theorems added by wasmspec
+
+### Test262
+- 2/93 pass (UNCHANGED 50+ hours)
+- 50 fail, 31 skip, 8 xfail
+
+### E2E
+- 203 test files, cannot run (build broken)
+- Estimated ~96% pass rate when build works
+
+### Agent Status
+- **jsspec**: Completed 00:57. Core/Semantics.lean BUILD FIXED. Test262 untouched.
+- **wasmspec**: Completed 00:51. Added bridge theorems (StepStar_of_ANFSteps, emit_behavioral_correct') but introduced 2 build errors.
+- **proof**: Completed 00:49. ANF_step?_none_implies_trivial_aux has 15 build errors (bad simp/case analysis).
+
+### Actions Taken
+1. **wasmspec prompt**: Added ‼️ FIX BUILD section with EXACT fixes for both errors (simp [List.map] for :5070, obtain destructuring for :5163)
+2. **proof prompt**: Added ‼️ FIX BUILD section — sorry the broken aux theorem first, then attack CC:175 and ANF:88
+3. **jsspec prompt**: Removed build fix section (no longer needed). Redirected entirely to test262 skip/failure reduction (50+ hours stuck at 2/93)
+4. **PROGRESS.md**: Updated metrics, proof chain table, agent health
+
+### Proof Chain
+| Pass | Proved? | Blocker |
+|------|---------|---------|
+| Elaborate | ✅ PROVED | — |
+| ClosureConvert | 1 sorry | CC step simulation (:175) |
+| ANFConvert | 2 sorry + BUILD ERRORS | step_star (:88), halt_star (:531), aux theorem broken (:427) |
+| Optimize | ✅ PROVED | — |
+| Lower | 1 sorry | BLOCKED on wasmspec step_sim |
+| Emit | 1 sorry | BLOCKED on wasmspec step_sim |
+| EndToEnd | 1 sorry | Composition of above |
+
+**Critical path**: (1) Fix build in ANFConvertCorrect + Wasm/Semantics. (2) wasmspec proves step_sim. (3) Proof agent closes CC+ANF sorries.
+
+---
+
 ## Run: 2026-03-22T00:05:00+00:00
 
 ### Build
@@ -1365,3 +1412,4 @@ lake build works. ANFConvertCorrect.lean has broken code — proof agent must fi
 
 ## Run: 2026-03-22T01:05:01+00:00
 
+2026-03-22T01:13:10+00:00 DONE

@@ -62,13 +62,37 @@ Then construct the matching Step derivation in Lean. If you cannot, your semanti
 3. Keep definitions structurally simple for proofs.
 4. Add @[simp] lemmas for everything the proof agent might need.
 
-## CURRENT PRIORITIES (2026-03-22T00:05)
+## CURRENT PRIORITIES (2026-03-22T01:05)
 
-Build is BROKEN (jsspec Core/Semantics.lean, not your file). YOUR files compile fine.
+### ‼️ #0 FIX BUILD FIRST — YOUR FILE IS BROKEN ‼️
 
-**You have 3 sorries** remaining in YOUR files. The 2 step_sim theorems are the LAST blockers for the entire proof chain.
+Wasm/Semantics.lean has 2 build errors. FIX THESE BEFORE ANYTHING ELSE.
 
-### #1 CRITICAL: Prove `LowerSimRel.step_sim` (Wasm/Semantics.lean:4837)
+**Error 1: Line 5070** — `StepStar.refl` type mismatch.
+Goal: `StepStar anfStepMapped s✝ (List.map traceFromCore []) s✝`
+But `.refl` gives `StepStar _ s [] s` and Lean doesn't reduce `List.map traceFromCore []` to `[]`.
+FIX: Replace `| refl _ => exact .refl` with:
+```lean
+  | refl _ => simp [List.map]; exact StepStar.refl _
+```
+Or try: `| refl _ => exact show StepStar _ _ [] _ from .refl`
+
+**Error 2: Line 5163** — `(kernel) invalid projection hBeh.2.1`.
+`hBeh : IRBehaves irmod trace` is `∃ sFinal, IRSteps ... ∧ irStep? ... = none`.
+You can't project an `∃` with `.2.1`. FIX: Destructure first.
+Replace lines 5167-5174 with:
+```lean
+  intro trace hBeh
+  obtain ⟨sFinal_ir, hIRSteps, hIRHalt⟩ := hBeh
+  obtain ⟨R, hR_init, sim⟩ := emit_forward_sim irmod wmod hemit
+  have hW := WasmForwardSim_behavioral R sim hR_init ⟨sFinal_ir, hIRSteps, hIRHalt⟩
+  obtain ⟨wFinal, hWSteps, hWHalt⟩ := hW
+  exact ⟨wFinal, hWSteps, hWHalt⟩
+```
+
+Use `lean_diagnostic_messages` to verify ZERO errors after fixing.
+
+### #1 CRITICAL: Prove `LowerSimRel.step_sim` (Wasm/Semantics.lean:~4840)
 APPROACH:
 1. `intro s1 s2 t s1' hrel hstep`
 2. Unfold `anfStepMapped` at `hstep` to expose `ANF.step?`
@@ -79,15 +103,14 @@ APPROACH:
 7. Use `lean_multi_attempt` AGGRESSIVELY — test 10+ tactics per sub-goal
 8. Prove EASY cases first (lit, const, trivial), leave hard cases as sorry
 
-### #2 CRITICAL: Prove `EmitSimRel.step_sim` (Wasm/Semantics.lean:4934)
+### #2 CRITICAL: Prove `EmitSimRel.step_sim` (Wasm/Semantics.lean:~4940)
 Same pattern: case-split on `irStep?`, unfold `emitInstr`, show Wasm takes matching step.
 
-### #3 LOW PRIORITY: Fix `| sorry)` at line 2708
-
 ### STRATEGY
-- Start with whichever step_sim has fewer cases
-- Prove the EASY cases first (lit, const, trivial operations), leave hard cases as sorry
-- Any progress (even 3/10 cases proved) is valuable — it shows the approach works
+- FIX BUILD FIRST (5 min fix)
+- Then attack step_sim theorems — these are the LAST blockers for the entire proof chain
+- Prove EASY cases first (lit, const, trivial operations), leave hard cases as sorry
+- Any progress (even 3/10 cases proved) is valuable
 - Use `lean_multi_attempt` before writing ANY tactic
 
 ## GLOBAL GOAL -- DO NOT STOP

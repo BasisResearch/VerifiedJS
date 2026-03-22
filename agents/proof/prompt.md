@@ -80,50 +80,45 @@ It IS OK to temporarily increase sorry count if you are decomposing a large sorr
 4. DO NOT WAIT for anyone. Just prove things.
 5. Sorry count must go DOWN or stay flat. Never up.
 
-## CURRENT STATUS & PRIORITIES (2026-03-22T00:05)
+## CURRENT STATUS & PRIORITIES (2026-03-22T01:05)
 
-**BUILD IS BROKEN** — jsspec's Core/Semantics.lean has errors in `stuck_implies_lit`. Fix written to jsspec prompt. Your Proofs/ files should still be editable.
+### ‼️ FIX BUILD FIRST — YOUR FILE IS BROKEN ‼️
 
-**Sorry count: 10 total** (7 in Proofs/, 3 in Wasm/Semantics.lean owned by wasmspec).
+**ANFConvertCorrect.lean has 15 build errors** in `ANF_step?_none_implies_trivial_aux` (lines 422-510).
+Errors: unsolved goals (:438×5, :440), simp failures (:437, :442×2, :444×2), whnf timeout (:445, :422), type mismatch (:436).
+Line 512 `ANF_step?_none_implies_trivial` fails because the aux theorem doesn't compile.
 
-### YOUR 7 sorries (attack these NOW):
+**FASTEST FIX**: Sorry the entire `ANF_step?_none_implies_trivial_aux` theorem body:
+```lean
+private theorem ANF_step?_none_implies_trivial_aux :
+    ∀ (n : Nat) (s : ANF.State), s.expr.depth ≤ n → ANF.step? s = none →
+    ∃ t, s.expr = .trivial t ∧ ∀ name, t ≠ .var name := by
+  sorry
+```
+This adds 1 sorry but UNBLOCKS THE BUILD. Then you can fix the proof properly.
 
-**UNBLOCKED — do these FIRST:**
+**ROOT CAUSE**: The `simp [ANF.step?, he]` and `simp [ANF.Expr.depth]` calls fail — likely ANF.step? definition changed since this proof was written. The approach (induction on depth, cases on expr) is correct but the simp lemmas need updating.
+
+**IF YOU WANT TO FIX PROPERLY** (instead of sorry): Use `lean_goal` at each failing line to see the actual proof state. Use `lean_multi_attempt` to find working tactics. The `| zero =>` base case needs `omega` or different simp set for depth. The `| succ n ih =>` recursive cases need correct unfolding of the new `step?` definition.
+
+After fixing the build, verify with `lean_diagnostic_messages(file_path="VerifiedJS/Proofs/ANFConvertCorrect.lean", severity="error")`.
+
+### YOUR 3 sorries (after build is fixed):
 
 1. **ClosureConvertCorrect.lean:175** — `| _ => all_goals sorry`
-   CC step simulation catch-all. CC_SimRel needs env/heap/funcs correspondence.
-   **ACTION**: Prove easy cases first (lit, binop, unop) before the catch-all. Use `lean_multi_attempt` aggressively.
+   CC step simulation catch-all.
+   **ACTION**: Prove easy cases first (lit, binop, unop). Use `lean_multi_attempt`.
 
 2. **ANFConvertCorrect.lean:88** — `anfConvert_step_star` sorry
-   Case analysis on ANF.Step over all expression forms.
    **ACTION**: `intro sa sf ev sa' hrel hstep; cases hstep` then handle each constructor.
 
-3. **ANFConvertCorrect.lean:416** — `ANF_step?_none_implies_trivial_aux` sorry
-   ANF.step? definition changed; needs full rewrite. Theorem says step? = none only at non-variable trivial literals.
-   **ACTION**: `intro n; induction n with | zero => ... | succ n ih => ...` then cases on `s.expr`.
-
-4. **ANFConvertCorrect.lean:440** — `anfConvert_halt_star` sorry
-   Broken by Flat.Semantics changes. Was 2 sorries (var + seq), consolidated to 1.
-   **ACTION**: Case split on `sf.expr`, construct Flat multi-steps for lit/var/this cases.
-
-**PARTIALLY BLOCKED — write proof structure NOW:**
-
-5. **LowerCorrect.lean:51** — `lower_behavioral_correct`
-   `halt_sim` is PROVED. Only `step_sim` (Wasm/Semantics.lean:4837) remains.
-   **ACTION**: Write the proof using `LowerSimRel.init`, `LowerSimRel.step_sim`, and `LowerSimRel.halt_sim`. Sorry only the step_sim application.
-
-6. **EmitCorrect.lean:44** — `emit_behavioral_correct`
-   Same: `halt_sim` is PROVED. Only `step_sim` (Wasm/Semantics.lean:4934) remains.
-   **ACTION**: Same approach — write proof structure, sorry only the step_sim call.
-
-7. **EndToEnd.lean:55** — `flat_to_wasm_correct`
-   Composition. Write structure using all pass theorems.
+3. **ANFConvertCorrect.lean:531** — `anfConvert_halt_star` sorry
+   **ACTION**: Case split on `sf.expr`, use `ANF_step?_none_implies_trivial` to get that ANF expr is a non-var trivial, then construct matching Flat halted state.
 
 ### STRATEGY
-1. Items 5-7 first — 15 min each, shows proof chain is structurally complete
-2. Items 3-4 (ANF termination) — concrete case analysis
-3. Item 2 (ANF step) — biggest, most cases
-4. Item 1 (CC) — hardest, needs SimRel redesign
+1. Fix build (5 min — sorry the aux theorem)
+2. Then attack CC:175 and ANF:88 — these are YOUR biggest wins
+3. Lower/Emit/EndToEnd depend on wasmspec step_sim — nothing you can do until those are proved
 
 ## GLOBAL GOAL -- DO NOT STOP
 Your job is done when:

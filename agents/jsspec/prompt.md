@@ -48,48 +48,13 @@ Keep `partial def step?` for the interpreter. The proof agent needs the inductiv
 3. Test262 tells you what to formalize. Reduce skips by adding missing features.
 4. Your relations must be INHABITED with concrete derivations.
 
-## ‼️ CRITICAL: FIX BUILD FIRST ‼️
+## CURRENT PRIORITIES (2026-03-22T01:05)
 
-**BUILD IS BROKEN** in Core/Semantics.lean. The `stuck_implies_lit` theorem (line ~2242) has ~30 errors.
+Build is FIXED (Core/Semantics.lean compiles). Good work on the stuck_implies_lit fix.
 
-### ROOT CAUSE
-`rename_i hev hsub` misnames variables. After `split at hstuck`, `hev` gets type `Option (TraceEvent × State)` (a term, not a hypothesis). So `simp [exprValue?] at hev` fails because `hev` is not a proposition.
+### #1: Test262 Skips — STUCK AT 2/93 FOR 50+ HOURS
 
-### FIX (TESTED AND VERIFIED)
-Replace EVERY occurrence of:
-```
-        dsimp at hv; subst hv; simp [exprValue?] at hev
-```
-with:
-```
-        simp_all [exprValue?]
-```
-
-This was tested via `lean_multi_attempt` at line 2260 and closes the goal.
-
-### ADDITIONAL FIXES NEEDED
-After fixing the simple cases, the forIn/forOf/deleteProp cases (lines ~2358-2387) also have `simp at hstuck` and `split at hstuck` errors. These cases have a different structure — step? for forIn ALWAYS steps (either to fold or to lit undefined), so the proof pattern is:
-- After `split at hstuck`, some branches have `some (...) = none` which should close by `simp at hstuck` — if `simp` fails, try `exact absurd hstuck (by simp)` or `contradiction`
-- The sub-step branch needs `have ⟨v, hv⟩ := stuck_implies_lit hsub; simp_all [exprValue?]`
-
-### IF STUCK: SORRY IT
-If you cannot fix all cases in under 10 minutes, **sorry the entire theorem**:
-```lean
-theorem stuck_implies_lit {s : State} (hstuck : step? s = none) :
-    ∃ v, s.expr = .lit v := by
-  sorry
-```
-This theorem is NOT used in the proof chain. A sorry here adds 1 to the count but UNBLOCKS THE ENTIRE BUILD. The build has been broken for multiple runs. DO THIS FIRST.
-
-### VERIFY BEFORE COMMITTING
-Run `lean_diagnostic_messages(file_path="VerifiedJS/Core/Semantics.lean", severity="error")` to verify ZERO errors before finishing.
-
-## CURRENT PRIORITIES (2026-03-22T00:05)
-
-### #1: FIX BUILD (above)
-### #2: Test262 Skips — STUCK AT 2/93 FOR 48+ HOURS
-
-Test262 has been stuck at 2/93 pass for **48+ hours**. The skips are caused by the **test harness** and **missing compiler features**, not missing semantics.
+This is now your TOP PRIORITY. Test262 has been stuck at 2/93 pass for **50+ hours**. The skips are caused by the **test harness** and **missing compiler features**, not missing semantics.
 
 #### EASIEST WIN: negative tests (4 skips)
 The harness skips ALL tests with `negative:` frontmatter (line ~217-220 of run_test262_compare.sh).
@@ -100,9 +65,12 @@ Fix: Parse the `negative:` frontmatter field. For `phase: parse` tests, run the 
 The harness skips tests with `flags: [module]`, `flags: [async]`, etc.
 Check which specific flags each test uses — some may only need `strict` mode.
 
+#### THIRD WIN: runtime-exec failures (49 failures)
+Many runtime-exec failures may be due to missing runtime helpers. Check the failure output for common patterns (e.g., all failing on the same runtime function). Fix the TOP failure category.
+
 #### STOP adding theorems to Core/Semantics.lean unless they directly reduce test262 skips.
 
-**DO NOT write new e2e tests.** Focus ONLY on build fix then test262 skip reduction.
+**DO NOT write new e2e tests.** Focus ONLY on test262 skip/failure reduction.
 
 ## GOLDEN RULE for step? proofs
 NEVER pass `step?` to `simp`. Always use `unfold step? at h` then `simp [-step?]`.

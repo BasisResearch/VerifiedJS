@@ -94,10 +94,11 @@ arithmetic, boolean_logic, conditionals, do_while, for_loop, functions, let_bind
 | 2026-03-21T22:24 | **10** | **~120/123 (est.)** | Build PASS (49 jobs). Sorry 10: 1 Core (stuck_implies_lit, unused), 4 Wasm/Semantics (wasmspec sim theorems — BLOCK proof chain), 3 ANF + 1 CC + 1 Lower + 1 Emit + 1 E2E (proof). **KEY**: 4 wasmspec sorries are critical path — LowerCorrect/EmitCorrect/EndToEnd cannot proceed without step_sim/halt_sim. Test262: 2/93 (UNCHANGED 34+ hours). All agents restarting. |
 | 2026-03-21T22:51 | **10** | **~120/123 (est.)** | Build PASS. **PROGRESS**: wasmspec proved BOTH halt_sim theorems (LowerSimRel.halt_sim and EmitSimRel.halt_sim). Wasmspec sorries: 4→2 (only step_sim remain). Core sorry CLOSED by jsspec (stuck_implies_lit proved). jsspec added 6 semantics theorems + lexer whitespace fix. Net sorry: ~10 (7 Proofs + 2 Wasm step_sim + 1 Wasm match). Test262: 2/93 (UNCHANGED 36+ hrs). Critical path: wasmspec's 2 step_sim theorems. |
 | 2026-03-22T00:05 | **10** | **~203 tests (est.)** | **BUILD BROKEN**: jsspec Core/Semantics.lean `stuck_implies_lit` has ~30 errors (`simp [exprValue?]` fails — `rename_i hev` misnames; `hev` is a term not a prop). Fix: `simp_all [exprValue?]` (tested via lean_multi_attempt). Sorry steady at 10 (7 Proofs + 3 Wasm/Semantics). No sorry progress. E2E corpus grew to 203 tests but can't run (build broken). Test262: 2/93 (UNCHANGED 48+ hrs). All agents timed out last run. Wrote exact build fix to jsspec prompt. |
+| 2026-03-22T01:05 | **15** | **~203 tests (est.)** | **BUILD BROKEN**: 2 files. (1) ANFConvertCorrect.lean: `ANF_step?_none_implies_trivial_aux` has ~15 errors — unsolved goals, simp failures, whnf timeouts at lines 436-445. (2) Wasm/Semantics.lean: 2 errors — StepStar.refl type mismatch at :5070 (List.map traceFromCore [] vs []), invalid projection at :5163 (hBeh.2.1 on ∃ type). Core/Semantics.lean BUILD FIXED by jsspec. Sorry UP 10→15 (1 Core decreasing_by + ~10 Wasm/Semantics + 1 CC + 2 ANF + build errors masking count). E2E: 203 tests, can't run (build broken). Test262: 2/93 (UNCHANGED 50+ hrs). |
 
 - Test262 pass rate: 2/93 (fast mode), deterministic full sample reached 274/500 passes (2026-03-08)
 - Flagship parse rate: 96.30% (1976/2052)
-- E2E tests: ~203 handcrafted JS programs (estimated pass rate ~96% when build works)
+- E2E tests: 203 handcrafted JS programs (estimated pass rate ~96% when build works)
 
 ## Infrastructure Issues
 
@@ -112,7 +113,7 @@ arithmetic, boolean_logic, conditionals, do_while, for_loop, functions, let_bind
 |------|---------|--------------|---------|---------|
 | Elaborate | elaborate_correct | YES | **PROVED** | — |
 | ClosureConvert | closureConvert_correct | YES — trace preservation with NoForInForOf | 1 sorry | CC_SimRel needs env/heap correspondence (ClosureConvertCorrect.lean:170) |
-| ANFConvert | anfConvert_correct | YES — observable trace preservation | 3 sorry | step_star (:84), var case (:567), seq case (:571) |
+| ANFConvert | anfConvert_correct | YES — observable trace preservation | 2 sorry + BUILD ERRORS | step_star (:88), halt_star (:531). ANF_step?_none_implies_trivial_aux (:427) has 15 build errors (simp failures, whnf timeout) |
 | Optimize | optimize_correct | YES — `∀ b, ANF.Behaves (optimize p) b ↔ ANF.Behaves p b` | **PROVED** | Identity pass — trivially correct |
 | Lower | lower_behavioral_correct | YES — `∀ trace, ANF.Behaves → IR.IRBehaves` | 1 sorry | LowerCorrect.lean:51. halt_sim PROVED. **BLOCKED on wasmspec** step_sim (Wasm/Semantics.lean:4833) |
 | Emit | emit_behavioral_correct | YES — `∀ trace, IR.IRBehaves → Wasm.Behaves` | 1 sorry | EmitCorrect.lean:44. halt_sim PROVED. **BLOCKED on wasmspec** step_sim (Wasm/Semantics.lean:4926) |
@@ -122,8 +123,8 @@ arithmetic, boolean_logic, conditionals, do_while, for_loop, functions, let_bind
 
 ## Agent Health
 
-| Agent | Status (2026-03-22T00:05) | Notes |
+| Agent | Status (2026-03-22T01:05) | Notes |
 |-------|---------------------|-------|
-| jsspec | Starting (run 00:01) | Previous run timed out. BUILD BROKEN (stuck_implies_lit ~30 errors). Prompt rewritten with exact fix (`simp_all [exprValue?]`). Test262: 2/93 (unchanged 48+ hrs). |
-| wasmspec | Dead (timed out 23:52) | 3 sorries remain (2 step_sim + 1 match). step_sim theorems are CRITICAL PATH for proof chain. |
-| proof | Dead (timed out 23:52) | 7 sorries in Proofs/ unchanged. Lower/Emit blocked on wasmspec step_sim. CC+ANF fully unblocked. |
+| jsspec | Completed (00:57) | Core/Semantics.lean BUILD FIXED. stuck_implies_lit resolved. Test262: 2/93 (unchanged 50+ hrs). Must focus on test262 skip reduction. |
+| wasmspec | Completed (00:51) | 2 build errors in Wasm/Semantics.lean (StepStar.refl :5070, projection :5163). ~8 sorries remain (2 step_sim CRITICAL, others bridge/match). |
+| proof | Completed (00:49) | ANFConvertCorrect.lean has 15 build errors in ANF_step?_none_implies_trivial_aux. 3 sorries in Proofs/ (1 CC, 2 ANF). Lower/Emit/EndToEnd structurally complete but blocked on wasmspec step_sim. |
