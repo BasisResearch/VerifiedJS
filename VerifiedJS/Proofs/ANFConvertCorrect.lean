@@ -713,9 +713,58 @@ private theorem anfConvert_halt_star_aux
       | seq a1 a2 =>
         -- normalizeExpr (.seq a1 a2) k' = normalizeExpr a1 (fun _ => normalizeExpr a2 k')
         -- where k' = (fun _ => normalizeExpr b k)
-        -- This recurses deeper into nested seqs. Needs depth induction on a.
-        -- Flat.step? on .seq (.seq a1 a2) b recurses into .seq a1 a2
-        sorry
+        rw [ha] at hnorm; simp only [ANF.normalizeExpr] at hnorm
+        -- hnorm : (normalizeExpr a1 (fun _ => normalizeExpr a2 (fun _ => normalizeExpr b k))).run n = ...
+        cases ha1 : a1 with
+        | lit v1 =>
+          -- a1 is a literal: Flat steps .seq (.seq (.lit v1) a2) b to .seq a2 b (one silent step)
+          rw [ha1] at hnorm; simp only [ANF.normalizeExpr, ANF.trivialOfFlatValue] at hnorm
+          cases v1 <;> simp at hnorm <;> (
+            have hbd : (Flat.Expr.seq a2 b).depth ≤ N := by
+              have : (Flat.Expr.seq a2 b).depth = a2.depth + b.depth + 1 := by
+                simp [Flat.Expr.depth]
+              rw [this]
+              rw [hsf] at hdepth; rw [ha, ha1] at hdepth
+              simp [Flat.Expr.depth] at hdepth; omega
+            obtain ⟨sf2, hstep_eq⟩ : ∃ sf2, Flat.step? sf = some (.silent, sf2) := by
+              rw [show sf = {sf with expr := .seq a b} from by cases sf; simp_all]
+              rw [ha, ha1]; unfold Flat.step? Flat.exprValue?
+              unfold Flat.step? Flat.exprValue?; exact ⟨_, rfl⟩
+            have hsf2_props : sf2.expr = .seq a2 b ∧ sf2.env = sf.env ∧ sf2.heap = sf.heap ∧
+                observableTrace sf2.trace = observableTrace sf.trace := by
+              have h0 := hstep_eq
+              rw [show sf = {sf with expr := .seq a b} from by cases sf; simp_all] at h0
+              rw [ha, ha1] at h0; unfold Flat.step? Flat.exprValue? at h0
+              unfold Flat.step? Flat.exprValue? at h0
+              have heq := (Prod.mk.inj (Option.some.inj h0)).2
+              constructor; exact congrArg Flat.State.expr heq ▸ rfl
+              constructor; exact congrArg Flat.State.env heq ▸ rfl
+              constructor; exact congrArg Flat.State.heap heq ▸ rfl
+              subst heq; show observableTrace (sf.trace ++ [.silent]) = observableTrace sf.trace
+              simp [observableTrace, List.filter_append]; decide
+            obtain ⟨he, henv2, hheap2, htrace2⟩ := hsf2_props
+            have hrel2 : ANF_SimRel s t sa sf2 := by
+              refine ⟨hheap.trans hheap2.symm, henv.trans henv2.symm, htrace.trans htrace2.symm, k, n, m, ?_, hfaithful⟩
+              rw [he]; simp only [ANF.normalizeExpr]; rw [hat]; exact hnorm
+            have hbd2 : sf2.expr.depth ≤ N := by rw [he]; exact hbd
+            obtain ⟨sf', evs, hsteps', hhalt', hobs', hrel'⟩ :=
+              ih sa sf2 hbd2 hrel2 hstuck
+            exact ⟨sf', .silent :: evs,
+              Flat.Steps.tail ⟨hstep_eq⟩ hsteps',
+              hhalt', by show observableTrace (.silent :: evs) = []; simp [observableTrace_silent, hobs'],
+              hrel'⟩)
+        | var _ | «this» | seq _ _ =>
+          -- .var/.this need well-formedness (var in scope)
+          -- .seq is recursive, eventually hits .var/.this or .lit (proved above)
+          sorry
+        | _ =>
+          -- Compound a1: normalizeExpr a1 never produces .trivial → contradiction
+          exfalso
+          exact absurd hnorm (normalizeExpr_compound_not_trivial a1 _
+            (by intro v; rw [ha1]; exact Flat.Expr.noConfusion)
+            (by intro nm; rw [ha1]; exact Flat.Expr.noConfusion)
+            (by rw [ha1]; exact Flat.Expr.noConfusion)
+            (by intro a' b'; rw [ha1]; exact Flat.Expr.noConfusion) n m tv)
       | _ =>
         exfalso
         exact absurd hnorm (normalizeExpr_compound_not_trivial a _
