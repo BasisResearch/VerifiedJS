@@ -1055,19 +1055,33 @@ theorem step?_none_implies_lit (s : State) (h : step? s = none) :
           have ⟨v, hv⟩ := litOfStuck arg (by simp [Expr.depth] at hd; omega) hstep
           subst hv; simp_all [exprValue?]
     -- Multi sub-expression and list patterns
-    | binary _ lhs rhs => sorry
-    | setProp obj _ value => sorry
-    | getIndex obj idx => sorry
-    | setIndex obj idx value => sorry
-    | deleteProp obj _ => sorry
-    | getProp obj _ => sorry
-    | makeClosure _ envExpr => sorry
-    | getEnv envPtr _ => sorry
-    | tryCatch body _ _ fin => sorry
-    | call funcExpr envExpr args => sorry
-    | newObj funcExpr envExpr args => sorry
-    | makeEnv values => sorry
-    | arrayLit elems => sorry
-    | objectLit props => sorry
+    | binary _ _ _ =>
+      unfold step? at h; simp only [-step?] at h; simp_all [-step?, exprValue?]
+    | deleteProp _ _ =>
+      unfold step? at h; simp only [-step?] at h; simp_all [-step?, exprValue?]
+    | getProp _ _ =>
+      unfold step? at h; simp only [-step?] at h; simp_all [-step?, exprValue?]
+    | makeClosure _ _ =>
+      unfold step? at h; simp only [-step?] at h; simp_all [-step?, exprValue?]
+    | getEnv _ _ =>
+      unfold step? at h; simp only [-step?] at h; simp_all [-step?, exprValue?]
+    | tryCatch _ _ _ _ =>
+      unfold step? at h; simp only [-step?] at h; simp_all [-step?, exprValue?]
+    | call _ _ _ =>
+      unfold step? at h; simp only [-step?] at h; simp_all [-step?, exprValue?]
+    | newObj _ _ _ =>
+      unfold step? at h; simp only [-step?] at h; simp_all [-step?, exprValue?]
+    | makeEnv _ =>
+      unfold step? at h; simp only [-step?] at h; simp_all [-step?, exprValue?]
+    | arrayLit _ =>
+      unfold step? at h; simp only [-step?] at h; simp_all [-step?, exprValue?]
+    | objectLit _ =>
+      unfold step? at h; simp only [-step?] at h; simp_all [-step?, exprValue?]
+    | setProp _ _ _ =>
+      unfold step? at h; simp only [-step?] at h; simp_all [-step?, exprValue?]
+    | getIndex _ _ =>
+      unfold step? at h; simp only [-step?] at h; simp_all [-step?, exprValue?]
+    | setIndex _ _ _ =>
+      unfold step? at h; simp only [-step?] at h; simp_all [-step?, exprValue?]
 
 end VerifiedJS.Flat
