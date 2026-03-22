@@ -1054,17 +1054,277 @@ theorem step?_none_implies_lit (s : State) (h : step? s = none) :
         · next hval hstep =>
           have ⟨v, hv⟩ := litOfStuck arg (by simp [Expr.depth] at hd; omega) hstep
           subst hv; simp_all [exprValue?]
-    -- Multi sub-expression and list patterns: same IH contradiction technique.
-    -- For each: unfold step?, split on exprValue? and step? of sub-expressions.
-    -- In the none/none branch, IH gives sub = .lit, contradicting exprValue? = none.
-    | binary _ _ _ | deleteProp _ _ | getProp _ _ | makeClosure _ _
-    | getEnv _ _ | setProp _ _ _ | getIndex _ _ | setIndex _ _ _ =>
-      -- These have value-matching patterns (e.g., some (.object _)) or multiple sub-exprs.
-      -- The proof is mechanical but requires careful split handling.
-      sorry
-    | tryCatch _ _ _ _ | call _ _ _ | newObj _ _ _ | makeEnv _ | arrayLit _ | objectLit _ =>
-      -- These involve list patterns with firstNonValueExpr / firstNonValueProp.
-      -- The proof uses firstNonValueExpr_target_not_lit and firstNonValueExpr_none_implies_values.
-      sorry
+    -- Multi sub-expression cases: unfold step?, split on exprValue?/step? of sub-exprs,
+    -- use IH (litOfStuck) to derive literal, contradict exprValue? = none.
+    | binary _ lhs rhs =>
+      unfold step? at h; simp only [-step?] at h
+      split at h
+      · -- exprValue? lhs = none
+        split at h
+        · simp at h
+        · next hval hstep =>
+          have ⟨v, hv⟩ := litOfStuck lhs (by simp [Expr.depth] at hd; omega) hstep
+          subst hv; simp_all [exprValue?]
+      · -- exprValue? lhs = some _
+        split at h
+        · -- exprValue? rhs = none
+          split at h
+          · simp at h
+          · next hval hstep =>
+            have ⟨v, hv⟩ := litOfStuck rhs (by simp [Expr.depth] at hd; omega) hstep
+            subst hv; simp_all [exprValue?]
+        · -- exprValue? rhs = some _ → step? returns some
+          simp at h
+    | deleteProp _ obj _ =>
+      unfold step? at h; simp only [-step?] at h
+      split at h
+      · simp at h  -- some (.object _) → returns some
+      · simp at h  -- some _ → returns some
+      · -- exprValue? obj = none
+        split at h
+        · simp at h
+        · next hval hstep =>
+          have ⟨v, hv⟩ := litOfStuck obj (by simp [Expr.depth] at hd; omega) hstep
+          subst hv; simp_all [exprValue?]
+    | getProp obj _ =>
+      unfold step? at h; simp only [-step?] at h
+      split at h
+      · simp at h  -- some (.object _) → returns some
+      · simp at h  -- some _ → returns some
+      · -- exprValue? obj = none
+        split at h
+        · simp at h
+        · next hval hstep =>
+          have ⟨v, hv⟩ := litOfStuck obj (by simp [Expr.depth] at hd; omega) hstep
+          subst hv; simp_all [exprValue?]
+    | makeClosure _ envExpr =>
+      unfold step? at h; simp only [-step?] at h
+      split at h
+      · simp at h  -- some (.object _) → returns some
+      · simp at h  -- some _ → returns some
+      · -- exprValue? envExpr = none
+        split at h
+        · simp at h
+        · next hval hstep =>
+          have ⟨v, hv⟩ := litOfStuck envExpr (by simp [Expr.depth] at hd; omega) hstep
+          subst hv; simp_all [exprValue?]
+    | getEnv envExpr _ =>
+      unfold step? at h; simp only [-step?] at h
+      split at h
+      · -- some (.object _) → nested matches, all return some
+        split at h
+        · split at h <;> simp at h
+        · simp at h
+      · simp at h  -- some _ → returns some
+      · -- exprValue? envExpr = none
+        split at h
+        · simp at h
+        · next hval hstep =>
+          have ⟨v, hv⟩ := litOfStuck envExpr (by simp [Expr.depth] at hd; omega) hstep
+          subst hv; simp_all [exprValue?]
+    | setProp obj _ value =>
+      unfold step? at h; simp only [-step?] at h
+      split at h
+      · -- exprValue? obj = none
+        split at h
+        · simp at h
+        · next hval hstep =>
+          have ⟨v, hv⟩ := litOfStuck obj (by simp [Expr.depth] at hd; omega) hstep
+          subst hv; simp_all [exprValue?]
+      · -- exprValue? obj = some (.object _)
+        split at h
+        · simp at h  -- exprValue? value = some → returns some
+        · -- exprValue? value = none
+          split at h
+          · simp at h
+          · next hval hstep =>
+            have ⟨v, hv⟩ := litOfStuck value (by simp [Expr.depth] at hd; omega) hstep
+            subst hv; simp_all [exprValue?]
+      · simp at h  -- some _ (non-object) → returns some
+    | getIndex obj idx =>
+      unfold step? at h; simp only [-step?] at h
+      split at h
+      · -- exprValue? obj = none
+        split at h
+        · simp at h
+        · next hval hstep =>
+          have ⟨v, hv⟩ := litOfStuck obj (by simp [Expr.depth] at hd; omega) hstep
+          subst hv; simp_all [exprValue?]
+      · -- exprValue? obj = some (.object _)
+        split at h
+        · simp at h  -- exprValue? idx = some → returns some
+        · -- exprValue? idx = none
+          split at h
+          · simp at h
+          · next hval hstep =>
+            have ⟨v, hv⟩ := litOfStuck idx (by simp [Expr.depth] at hd; omega) hstep
+            subst hv; simp_all [exprValue?]
+      · simp at h  -- some _ (non-object) → returns some
+    | setIndex obj idx value =>
+      unfold step? at h; simp only [-step?] at h
+      split at h
+      · -- exprValue? obj = none
+        split at h
+        · simp at h
+        · next hval hstep =>
+          have ⟨v, hv⟩ := litOfStuck obj (by simp [Expr.depth] at hd; omega) hstep
+          subst hv; simp_all [exprValue?]
+      · -- exprValue? obj = some (.object _)
+        split at h
+        · -- exprValue? idx = none
+          split at h
+          · simp at h
+          · next hval hstep =>
+            have ⟨v, hv⟩ := litOfStuck idx (by simp [Expr.depth] at hd; omega) hstep
+            subst hv; simp_all [exprValue?]
+        · -- exprValue? idx = some _
+          split at h
+          · simp at h  -- exprValue? value = some → returns some
+          · -- exprValue? value = none
+            split at h
+            · simp at h
+            · next hval hstep =>
+              have ⟨v, hv⟩ := litOfStuck value (by simp [Expr.depth] at hd; omega) hstep
+              subst hv; simp_all [exprValue?]
+      · simp at h  -- some _ (non-object) → returns some
+    -- List-pattern cases: firstNonValueExpr / firstNonValueProp with IH contradiction.
+    | tryCatch body _ _ _ =>
+      unfold step? at h; simp only [-step?] at h
+      split at h
+      · -- exprValue? body = some → returns some (both finally branches)
+        split at h <;> simp at h
+      · -- exprValue? body = none
+        split at h
+        · simp at h  -- step? body = some (.error ..) → returns some
+        · simp at h  -- step? body = some (t, _) → returns some
+        · next hval hstep =>  -- step? body = none
+          have ⟨v, hv⟩ := litOfStuck body (by simp [Expr.depth] at hd; omega) hstep
+          subst hv; simp_all [exprValue?]
+    | call funcExpr envExpr args =>
+      unfold step? at h; simp only [-step?] at h
+      split at h
+      · -- exprValue? funcExpr = none
+        split at h
+        · simp at h
+        · next hval hstep =>
+          have ⟨v, hv⟩ := litOfStuck funcExpr (by simp [Expr.depth] at hd; omega) hstep
+          subst hv; simp_all [exprValue?]
+      · -- exprValue? funcExpr = some _
+        split at h
+        · -- exprValue? envExpr = none
+          split at h
+          · simp at h
+          · next hval hstep =>
+            have ⟨v, hv⟩ := litOfStuck envExpr (by simp [Expr.depth] at hd; omega) hstep
+            subst hv; simp_all [exprValue?]
+        · -- exprValue? envExpr = some _
+          split at h
+          · simp at h  -- valuesFromExprList? = some → returns some
+          · -- valuesFromExprList? = none
+            split at h
+            · -- firstNonValueExpr = some (done, target, remaining)
+              split at h
+              · simp at h
+              · next hf hstep =>
+                -- target is not a literal (by firstNonValueExpr_target_not_lit)
+                -- but IH says it must be
+                have htgt : ∀ v, target ≠ .lit v :=
+                  fun v hv => firstNonValueExpr_target_not_lit hf (hv ▸ rfl)
+                have ⟨v, hv⟩ := litOfStuck target
+                  (by simp [Expr.depth] at hd; have := firstNonValueExpr_depth hf; omega) hstep
+                exact absurd hv (htgt v)
+            · -- firstNonValueExpr = none → valuesFromExprList? should be some (contradiction)
+              next hvnone hfnone =>
+                have ⟨vs, hvs⟩ := firstNonValueExpr_none_implies_values args hfnone
+                simp_all
+    | newObj funcExpr envExpr args =>
+      unfold step? at h; simp only [-step?] at h
+      split at h
+      · -- exprValue? funcExpr = none
+        split at h
+        · simp at h
+        · next hval hstep =>
+          have ⟨v, hv⟩ := litOfStuck funcExpr (by simp [Expr.depth] at hd; omega) hstep
+          subst hv; simp_all [exprValue?]
+      · -- exprValue? funcExpr = some _
+        split at h
+        · -- exprValue? envExpr = none
+          split at h
+          · simp at h
+          · next hval hstep =>
+            have ⟨v, hv⟩ := litOfStuck envExpr (by simp [Expr.depth] at hd; omega) hstep
+            subst hv; simp_all [exprValue?]
+        · -- exprValue? envExpr = some _
+          split at h
+          · simp at h  -- valuesFromExprList? = some → returns some
+          · -- valuesFromExprList? = none
+            split at h
+            · -- firstNonValueExpr = some
+              split at h
+              · simp at h
+              · next hf hstep =>
+                have htgt : ∀ v, target ≠ .lit v :=
+                  fun v hv => firstNonValueExpr_target_not_lit hf (hv ▸ rfl)
+                have ⟨v, hv⟩ := litOfStuck target
+                  (by simp [Expr.depth] at hd; have := firstNonValueExpr_depth hf; omega) hstep
+                exact absurd hv (htgt v)
+            · next hvnone hfnone =>
+                have ⟨vs, hvs⟩ := firstNonValueExpr_none_implies_values args hfnone
+                simp_all
+    | makeEnv values =>
+      unfold step? at h; simp only [-step?] at h
+      split at h
+      · simp at h  -- valuesFromExprList? = some → returns some
+      · -- valuesFromExprList? = none
+        split at h
+        · -- firstNonValueExpr = some
+          split at h
+          · simp at h
+          · next hf hstep =>
+            have htgt : ∀ v, target ≠ .lit v :=
+              fun v hv => firstNonValueExpr_target_not_lit hf (hv ▸ rfl)
+            have ⟨v, hv⟩ := litOfStuck target
+              (by simp [Expr.depth] at hd; have := firstNonValueExpr_depth hf; omega) hstep
+            exact absurd hv (htgt v)
+        · next hvnone hfnone =>
+            have ⟨vs, hvs⟩ := firstNonValueExpr_none_implies_values values hfnone
+            simp_all
+    | arrayLit elems =>
+      unfold step? at h; simp only [-step?] at h
+      split at h
+      · simp at h  -- valuesFromExprList? = some → returns some
+      · -- valuesFromExprList? = none
+        split at h
+        · -- firstNonValueExpr = some
+          split at h
+          · simp at h
+          · next hf hstep =>
+            have htgt : ∀ v, target ≠ .lit v :=
+              fun v hv => firstNonValueExpr_target_not_lit hf (hv ▸ rfl)
+            have ⟨v, hv⟩ := litOfStuck target
+              (by simp [Expr.depth] at hd; have := firstNonValueExpr_depth hf; omega) hstep
+            exact absurd hv (htgt v)
+        · next hvnone hfnone =>
+            have ⟨vs, hvs⟩ := firstNonValueExpr_none_implies_values elems hfnone
+            simp_all
+    | objectLit props =>
+      unfold step? at h; simp only [-step?] at h
+      split at h
+      · simp at h  -- valuesFromExprList? (props.map Prod.snd) = some → returns some
+      · -- valuesFromExprList? = none
+        split at h
+        · -- firstNonValueProp = some
+          split at h
+          · simp at h
+          · next hf hstep =>
+            have htgt : ∀ v, target ≠ .lit v :=
+              fun v hv => firstNonValueProp_target_not_lit hf (hv ▸ rfl)
+            have ⟨v, hv⟩ := litOfStuck target
+              (by simp [Expr.depth] at hd; have := firstNonValueProp_depth hf; omega) hstep
+            exact absurd hv (htgt v)
+        · -- firstNonValueProp = none
+          -- All props are values, so valuesFromExprList? (props.map Prod.snd) should be some
+          -- Need to show contradiction with valuesFromExprList? = none
+          simp at h
 
 end VerifiedJS.Flat
