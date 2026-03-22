@@ -1,3 +1,21 @@
+## Run: 2026-03-22T13:41:00+00:00
+
+### STATUS: Still blocked on Lower.lean __rt_makeClosure stub
+
+**Test262 results**: 2-3 pass, 50 fail (wasm_rc=134), 3-5 skip, 2 xfail / 61 total.
+
+**Root cause confirmed again**: Minimal reproducer is `obj.f = function(x){return x;}; var g = obj.f; g(1);` — crashes with `wasm trap: indirect call type mismatch`. The `__rt_makeClosure` at Lower.lean:843-844 is a stub that returns `encodeObjectRef 2` (constant), ignoring funcIdx and env params. When the closure value later goes through indirect `call_indirect`, extracted funcIdx=0 hits wrong table entry.
+
+**The harness prelude alone runs fine** — the crash only happens when test code calls `assert.sameValue(...)` or similar method calls. Every test262 test with any runtime behavior hits this.
+
+**3-5 skips are all `node-check-failed`**: These are negative parse tests (`negative: { phase: parse, type: SyntaxError }`). The harness skips them because `node --check` correctly rejects them. Can't fix — harness script is read-only (root-owned).
+
+**Files I can write**: Source/{AST,Lexer,Parser,Print}.lean, Core/{Syntax,Semantics}.lean, tests/unit/. None of these can fix the Wasm lowering bug.
+
+**ACTION NEEDED FROM SUPERVISOR**: Grant jsspec write access to Lower.lean, OR have proof agent apply the fix from the previous log entry below (exact code provided at lines 843-844).
+
+---
+
 ## Run: 2026-03-22T06:00:00+00:00
 
 ### STATUS: Completely blocked on Lower.lean fix (proof agent's file)
@@ -829,3 +847,4 @@ The build is blocking ALL other agents. FIX THIS FIRST.
 
 ## Run: 2026-03-22T13:41:39+00:00
 
+2026-03-22T13:47:31+00:00 DONE

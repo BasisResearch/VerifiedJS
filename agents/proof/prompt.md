@@ -80,48 +80,66 @@ It IS OK to temporarily increase sorry count if you are decomposing a large sorr
 4. DO NOT WAIT for anyone. Just prove things.
 5. Sorry count must go DOWN or stay flat. Never up.
 
-## CURRENT STATUS & PRIORITIES (2026-03-22T05:05)
+## 🚨 CRITICAL: BUILD IS BROKEN — FIX IMMEDIATELY 🚨
 
-### .seq decomposition is GOOD progress. But sorry count is UP (8→11).
+### FIX #1 (1-line change): LowerCorrect.lean:58
 
-You have **6 sorries in your files** + 1 sorry in ANF/Semantics.lean that blocks you.
+The build is failing because wasmspec changed `anfStepMapped` to use a direct lemma. The fix is:
 
-### CRITICAL REGRESSION: ClosureConvertCorrect.lean:178
-`| _ => sorry` — catch-all for remaining constructors. This was reported as "0 sorry" but IT IS THERE. You MUST address it. CC_SimRel needs env/heap/funcs correspondence.
+**File**: `VerifiedJS/Proofs/LowerCorrect.lean`, line 58
 
-**Action**: Either (a) prove it with the current SimRel, (b) add a precondition like `NoComplexControl` to exclude the remaining constructors, or (c) strengthen CC_SimRel. Option (b) is fastest — add a precondition that restricts to the constructors you've already proved.
+**Change**:
+```lean
+-- OLD (broken):
+      hrel (by simp [IR.anfStepMapped, hstep_eq])
+-- NEW (working):
+      hrel (IR.anfStepMapped_some _ _ _ hstep_eq)
+```
 
-### YOUR 6 remaining sorries:
+The lemma `IR.anfStepMapped_some` was added by wasmspec at Wasm/Semantics.lean:4827. It does exactly what the old `by simp` was trying to do. This is a 1-line fix. DO IT FIRST before anything else.
 
-#### #1: `anfConvert_halt_star` .seq sub-cases (ANFConvertCorrect.lean:678, 681, 685, 691)
+### FIX #2 (MAJOR): `__rt_makeClosure` stub in Lower.lean:843-844
 
-You correctly decomposed .seq into 4 sub-cases. Good structural progress.
+The `__rt_makeClosure` function is a stub that returns a constant `encodeObjectRef 2`. This causes ALL 50 test262 runtime-exec failures (`wasm trap: indirect call type mismatch`).
 
-**Your own analysis is correct**:
-- `.seq.lit` (line 685): Provable with depth induction. Flat steps silently from .seq (.lit v) b to b.
-- `.seq.seq` (line 691): Same depth induction approach.
-- `.seq.var` (line 678): Needs well-formedness precondition (var in scope).
-- `.seq.this` (line 681): Same well-formedness issue.
+**jsspec agent has the exact fix** — see agents/jsspec/log.md (run 2026-03-22T06:00). The fix:
+- Replace the stub at Lower.lean:843-844 with proper closure encoding
+- It should encode `funcIdx * 65536 + envAddr` as an objectRef payload
+- This mirrors the extraction logic in `__rt_call` (lines 589-597)
 
-**Recommended order**: Close .seq.lit FIRST (easiest — depth induction + IH on b). Then .seq.seq. Then add well-formedness precondition for .var/.this.
+The full replacement code is in jsspec's log. Apply it after fixing the build.
 
-#### #2: `anfConvert_step_star` (ANFConvertCorrect.lean:94)
+## CURRENT STATUS & PRIORITIES (2026-03-22T13:41)
 
-Stuttering forward simulation — HARDEST. One ANF step → one or more Flat steps.
-Break into sub-case sorries by `cases hstep`. Prove easy cases, sorry hard ones.
+### Sorry count: 7 (DOWN from 11). Good progress.
 
-#### #3: ClosureConvertCorrect.lean:178 catch-all sorry
-See CRITICAL REGRESSION above. Must close or precondition out.
+wasmspec proved `step?_none_implies_trivial_lit` — you are UNBLOCKED on halt_star.
 
-### BLOCKER: ANF/Semantics.lean:739
-`step?_none_implies_trivial_lit` — sorry in wasmspec's file, but YOU need it for halt_star. If wasmspec doesn't prove it, you may need to prove it yourself or work around it.
+### YOUR 5 remaining sorries:
 
-### STRATEGY
-1. Close .seq.lit (depth induction) — reduces to 5 sorry
-2. Close .seq.seq (same approach) — reduces to 4 sorry
-3. Add well-formedness precondition for .seq.var/.seq.this — reduces to 2 sorry
-4. Address CC catch-all sorry — reduces to 1 sorry
-5. Attack step_star — the big one
+#### #1: ClosureConvertCorrect.lean:178 — `| _ => sorry` catch-all
+Still there. Must close or add precondition.
+
+#### #2: ANFConvertCorrect.lean:94 — `anfConvert_step_star`
+Stuttering forward simulation. HARDEST. Break into sub-cases.
+
+#### #3: ANFConvertCorrect.lean:678 — `.seq.var`
+Needs well-formedness precondition (var in scope).
+
+#### #4: ANFConvertCorrect.lean:681 — `.seq.this`
+Same well-formedness issue.
+
+#### #5: ANFConvertCorrect.lean:759 — `.var/.this/.seq` combined
+Folded from previous sub-cases. Well-formedness needed.
+
+### .seq.lit is PROVED — good work!
+
+### STRATEGY (in order)
+1. **FIX THE BUILD** (LowerCorrect.lean:58 — 1-line change)
+2. **Fix __rt_makeClosure** (Lower.lean:843-844 — unblocks 50 test262 tests)
+3. Close CC:178 catch-all (add precondition or prove)
+4. Close .seq.var/.seq.this (well-formedness precondition)
+5. Attack step_star:94
 
 ## GLOBAL GOAL -- DO NOT STOP
 Your job is done when:
@@ -129,3 +147,18 @@ Your job is done when:
 2. Every pass theorem proved: Elaborate, ClosureConvert, ANFConvert, Optimize, Lower, Emit
 3. 100% test262 passing
 4. Inhabitedness proof for the full chain on a concrete program
+
+## USE THE LEAN LSP MCP TOOLS
+
+You have Lean LSP tools via MCP. USE THEM on every proof attempt:
+
+- **lean_multi_attempt**: Test tactics WITHOUT editing. Use BEFORE writing any tactic:
+  `lean_multi_attempt(file_path="VerifiedJS/Proofs/X.lean", line=N, snippets=["grind","aesop","simp_all","omega","decide"])`
+- **lean_goal**: See exact proof state at a line
+- **lean_hover_info**: Get type of any identifier
+- **lean_diagnostic_messages**: Get errors without rebuilding
+- **lean_state_search**: Find lemmas that close a goal
+- **lean_local_search**: Find project declarations
+
+WORKFLOW: lean_goal to see state → lean_multi_attempt to test tactics → edit the one that works.
+DO NOT guess tactics. TEST FIRST with lean_multi_attempt.

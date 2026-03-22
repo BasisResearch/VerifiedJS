@@ -48,42 +48,39 @@ Keep `partial def step?` for the interpreter. The proof agent needs the inductiv
 3. Test262 tells you what to formalize. Reduce skips by adding missing features.
 4. Your relations must be INHABITED with concrete derivations.
 
-## CURRENT PRIORITIES (2026-03-22T05:05)
+## CURRENT PRIORITIES (2026-03-22T13:41)
 
-### ⚠️ Test262 STUCK at 3/61 for 36+ HOURS. You've been doing code quality work, NOT reducing failures.
+### UPDATE: `__rt_makeClosure` fix has been ESCALATED to proof agent
 
-Your last 3 runs fixed warnings and deprecations — that's nice but NOT YOUR JOB. Your job is test262 pass rate.
+You correctly identified the root cause of ALL 50 runtime-exec failures: the `__rt_makeClosure` stub in Lower.lean:843-844. Your proposed fix has been included verbatim in the proof agent's prompt. They have been told to apply it.
 
-Build is PASSING. Test262: 3/61 pass, 50 fail, 3 skip. **50 runtime-exec failures with wasm_rc=134.**
+### Current test262: 3/61 pass, 50 fail (wasm backend), 3 skip (node parse), 5 xfail
 
-### #1 ONLY PRIORITY: Fix wasm_rc=134 crashes
+### What you CAN do while waiting for the `__rt_makeClosure` fix:
 
-The 50 runtime-exec failures ALL crash with Wasm trap (rc=134). These are NOT semantics issues — they are Wasm backend bugs. But YOU can diagnose them.
+#### #1: Investigate the 3 node-check-failed skips
+These are `node-check-failed language` tests that get skipped because `node --check` rejects them. Understand WHY:
+- Are they using syntax your parser doesn't support?
+- Are they negative tests that SHOULD fail parse?
+- Can the harness be adjusted to handle them correctly?
 
-**YOUR FIRST ACTION** — run ONE failing test with verbose output:
+Even if the harness script is read-only, document what change is needed and I'll escalate.
+
+#### #2: Investigate which test262 tests SHOULD pass after `__rt_makeClosure` fix
+Run a few failing tests manually and trace through the expected behavior:
 ```bash
-bash scripts/run_test262_compare.sh "$(ls tests/test262/test/language/expressions/typeof/*.js 2>/dev/null | head -1)" 2>&1
+# Pick a simple one
+cat tests/test262/test/language/expressions/typeof/typeof-*.js | head -20
 ```
+Understand if there are OTHER issues beyond `__rt_makeClosure` that will prevent tests from passing. This analysis will be valuable for the next cycle.
 
-Look at the Wasm trap message. Common causes:
-1. Missing `__rt_*` runtime import → the Wasm binary imports functions that don't exist
-2. Wasm validation error → the emitted Wasm is malformed
-3. Stack underflow → lowering generates wrong instruction sequences
-
-If the issue is in files you DON'T own (Wasm/Lower.lean, Wasm/Emit.lean — owned by proof agent), then:
-- Document the exact error in your log
-- Tell the supervisor what needs fixing and in which file
-- Move on to other test262 issues you CAN fix
+#### #3: If you find new parser/semantics gaps, implement them
+Any JS feature missing from your AST/Parser/Semantics that shows up in test262 failures — implement it.
 
 ### DO NOT:
 - Fix warnings or deprecations
 - Write new e2e tests
-- Add theorems
-- Do ANYTHING that doesn't directly increase test262 pass count
-
-### #2: If wasm issues are out of scope
-If ALL 50 failures are Wasm backend issues you can't fix, investigate the 3 skips:
-- `node-check-failed language`: 3 tests. Can you understand why Node.js can't parse them?
+- Do code quality work
 
 ## GOLDEN RULE for step? proofs
 NEVER pass `step?` to `simp`. Always use `unfold step? at h` then `simp [-step?]`.

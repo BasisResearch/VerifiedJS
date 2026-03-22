@@ -62,50 +62,39 @@ Then construct the matching Step derivation in Lean. If you cannot, your semanti
 3. Keep definitions structurally simple for proofs.
 4. Add @[simp] lemmas for everything the proof agent might need.
 
-## CURRENT PRIORITIES (2026-03-22T05:05)
+## CURRENT PRIORITIES (2026-03-22T13:41)
 
-### 3 SORRIES IN YOUR FILES — NO PROGRESS ON step_sim FOR 2 HOURS
+### EXCELLENT WORK proving step?_none_implies_trivial_lit! 🎯
 
-You have been completing runs but logging NO details. Your step_sim sorries have NOT moved. The proof agent is BLOCKED on you.
+You proved the ANF halting characterization AND fixed 50+ pre-existing build errors. The proof agent is now UNBLOCKED. Sorry count dropped from 11 to 7.
 
-### Your 3 remaining sorries:
+**NOTE**: Your changes caused a downstream build break in LowerCorrect.lean:58. The proof agent has been instructed to fix it (1-line change to use your new `anfStepMapped_some` lemma).
+
+### Your 2 remaining sorries:
 
 | Line | Theorem | Description |
 |------|---------|-------------|
-| 4951 | LowerSimRel.step_sim | Case analysis on ANF instruction → matching IR step |
-| 5049 | EmitSimRel.step_sim | Case analysis on IR instruction → matching Wasm step |
-| 739 (ANF/Semantics.lean) | step?_none_implies_trivial_lit | Halting characterization for ANF |
+| 4956 | LowerSimRel.step_sim | Case analysis on ANF instruction → matching IR step |
+| 5058 | EmitSimRel.step_sim | Case analysis on IR instruction → matching Wasm step |
 
-### #1 NEW: `step?_none_implies_trivial_lit` (ANF/Semantics.lean:739)
+### #1 CRITICAL: `LowerSimRel.step_sim` (Wasm/Semantics.lean:4956)
 
-You added this theorem but left it sorry. The proof agent NEEDS this for halt_star. Prove it NOW.
-
-**Proof sketch** (from your own doc comment):
-- Strong induction on expression depth
-- `.trivial (.var name)`: step? always returns some (env lookup or ReferenceError)
-- `.trivial (lit*)`: step? returns none — these ARE the literal trivials
-- `.let`, `.if`, `.throw`, etc.: step? always returns some
-- `.seq a b`, `.while_`, `.tryCatch`: step? returns none iff sub-expression stuck. By IH, sub is literal trivial, so exprValue? returns some, contradiction.
-
-This should be a straightforward case analysis. Use `lean_multi_attempt` to test.
-
-### #2 CRITICAL: `LowerSimRel.step_sim` (line 4951)
-
-KEY blocker for end-to-end proof. Strategy unchanged:
+This is the KEY remaining blocker for end-to-end proof. Strategy:
 1. `intro s1 s2 t s1' hrel hstep`
 2. `simp only [anfStepMapped] at hstep` — unfold the step mapping
 3. `split at hstep` on the ANF.step? result
 4. Case-split on `s1.expr` — start with EASIEST cases (`.trivial (.lit v)`, `.trivial (.var x)`)
 5. Sorry harder cases (let-bindings, function calls)
 
-### #3: `EmitSimRel.step_sim` (line 5049)
+Even if the full theorem can't be proved now, breaking it into sub-case sorries is PROGRESS. Get the easy cases done.
 
-Same pattern for IR→Wasm.
+### #2: `EmitSimRel.step_sim` (Wasm/Semantics.lean:5058)
+Same pattern for IR→Wasm. Lower priority — do step_sim for Lower first.
 
 ### STRATEGY
-1. **FIRST**: Prove step?_none_implies_trivial_lit (ANF/Semantics.lean:739) — UNBLOCKS proof agent
-2. Then LowerSimRel.step_sim — break into sub-case sorries, prove easy ones
-3. Then EmitSimRel.step_sim — same pattern
+1. Break LowerSimRel.step_sim into sub-case sorries
+2. Prove easy cases (.trivial .lit, .trivial .var)
+3. Apply same approach to EmitSimRel.step_sim
 4. Use `lean_goal` → `lean_multi_attempt` → edit workflow
 
 ## GLOBAL GOAL -- DO NOT STOP
@@ -122,7 +111,7 @@ You have Lean LSP tools via MCP. USE THEM on every proof attempt:
 - **lean_multi_attempt**: Test tactics WITHOUT editing. Use BEFORE writing any tactic:
   `lean_multi_attempt(file_path="VerifiedJS/Proofs/X.lean", line=N, snippets=["grind","aesop","simp_all","omega","decide"])`
 - **lean_goal**: See exact proof state at a line
-- **lean_hover_info**: Get type of any identifier  
+- **lean_hover_info**: Get type of any identifier
 - **lean_diagnostic_messages**: Get errors without rebuilding
 - **lean_state_search**: Find lemmas that close a goal
 - **lean_local_search**: Find project declarations
