@@ -183,7 +183,7 @@ private theorem closureConvert_step_simulation
       simp only [Core.step?]; cases label <;> exact ⟨_, rfl⟩
     have hflat_ev : ev = .error ("break:" ++ (label.getD "")) := by
       rw [show sf = {sf with expr := .«break» label} from by cases sf; simp_all] at hstep
-      simp only [Flat.step?] at hstep; exact (Prod.mk.inj (Option.some.inj hstep)).1
+      simp only [Flat.step?] at hstep; exact (Prod.mk.inj (Option.some.inj hstep)).1.symm
     subst hflat_ev
     refine ⟨sc', ⟨hcstep⟩, ?_⟩
     have hsf'_expr : sf'.expr = .lit .undefined := by
@@ -200,13 +200,20 @@ private theorem closureConvert_step_simulation
       have hf := hstep; have hc := hcstep
       rw [show sf = {sf with expr := .«break» label} from by cases sf; simp_all] at hf
       rw [show sc = {sc with expr := .«break» label} from by cases sc; simp_all] at hc
-      simp only [Flat.step?] at hf; simp only [Core.step?] at hc
-      have heqf := (Prod.mk.inj (Option.some.inj hf)).2
-      cases label <;> (
+      cases label with
+      | some l =>
+        simp only [Flat.step?, Option.getD] at hf; simp only [Core.step?] at hc
+        have heqf := (Prod.mk.inj (Option.some.inj hf)).2
         have heqc := (Prod.mk.inj (Option.some.inj hc)).2
         subst heqf; subst heqc
-        show sf.trace ++ _ = sc.trace ++ _
-        rw [htrace])
+        show sf.trace ++ _ = sc.trace ++ _; rw [htrace]
+      | none =>
+        simp only [Flat.step?, Option.getD, String.append_empty] at hf
+        simp only [Core.step?] at hc
+        have heqf := (Prod.mk.inj (Option.some.inj hf)).2
+        have heqc := (Prod.mk.inj (Option.some.inj hc)).2
+        subst heqf; subst heqc
+        show sf.trace ++ _ = sc.trace ++ _; rw [htrace]
     exact ⟨hsf'_trace_eq_sc'_trace, [], "", [], st', st', by rw [hsc'_expr]; simp [Flat.convertExpr, Flat.convertValue, hsf'_expr]⟩
   | «continue» label =>
     rw [hsc] at hconv; simp only [Flat.convertExpr] at hconv
@@ -216,7 +223,7 @@ private theorem closureConvert_step_simulation
       simp only [Core.step?]; cases label <;> exact ⟨_, rfl⟩
     have hflat_ev : ev = .error ("continue:" ++ (label.getD "")) := by
       rw [show sf = {sf with expr := .«continue» label} from by cases sf; simp_all] at hstep
-      simp only [Flat.step?] at hstep; exact (Prod.mk.inj (Option.some.inj hstep)).1
+      simp only [Flat.step?] at hstep; exact (Prod.mk.inj (Option.some.inj hstep)).1.symm
     subst hflat_ev
     refine ⟨sc', ⟨hcstep⟩, ?_⟩
     have hsf'_expr : sf'.expr = .lit .undefined := by
@@ -233,13 +240,20 @@ private theorem closureConvert_step_simulation
       have hf := hstep; have hc := hcstep
       rw [show sf = {sf with expr := .«continue» label} from by cases sf; simp_all] at hf
       rw [show sc = {sc with expr := .«continue» label} from by cases sc; simp_all] at hc
-      simp only [Flat.step?] at hf; simp only [Core.step?] at hc
-      have heqf := (Prod.mk.inj (Option.some.inj hf)).2
-      cases label <;> (
+      simp only [Flat.step?] at hf
+      cases label with
+      | some l =>
+        simp only [Core.step?] at hc
+        have heqf := (Prod.mk.inj (Option.some.inj hf)).2
         have heqc := (Prod.mk.inj (Option.some.inj hc)).2
         subst heqf; subst heqc
-        show sf.trace ++ _ = sc.trace ++ _
-        rw [htrace])
+        show sf.trace ++ _ = sc.trace ++ _; rw [htrace]
+      | none =>
+        simp only [Core.step?] at hc
+        have heqf := (Prod.mk.inj (Option.some.inj hf)).2
+        have heqc := (Prod.mk.inj (Option.some.inj hc)).2
+        subst heqf; subst heqc
+        show sf.trace ++ _ = sc.trace ++ _; rw [htrace]
     exact ⟨hsf'_trace_eq_sc'_trace, [], "", [], st', st', by rw [hsc'_expr]; simp [Flat.convertExpr, Flat.convertValue, hsf'_expr]⟩
   | _ => sorry
 

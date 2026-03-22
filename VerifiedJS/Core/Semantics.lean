@@ -2263,32 +2263,7 @@ private theorem stuck_implies_lit_aux (e : Expr) (env : Env) (heap : Heap) (trac
   | this =>
     unfold step? at hstuck; simp only [] at hstuck; split at hstuck <;> simp at hstuck
   | newObj callee args =>
-    unfold step? at hstuck; simp only [] at hstuck
-    split at hstuck
-    · -- callee not a value: step it
-      split at hstuck
-      · simp at hstuck
-      · rename_i _ hsub; have ⟨v, hv⟩ := stuck_implies_lit_aux _ _ _ _ _ _ hsub; subst hv; simp_all [exprValue?]
-    · -- callee is a value
-      split at hstuck
-      · -- all args are values
-        split at hstuck
-        · -- callee is .function idx
-          split at hstuck <;> simp at hstuck
-        · simp at hstuck
-      · -- not all args are values: step first non-value
-        rename_i hav
-        split at hstuck
-        next done target remaining hfnv =>
-          -- firstNonValueExpr found a non-value
-          split at hstuck
-          · simp at hstuck
-          · rename_i hsub
-            have ⟨v, hv⟩ := stuck_implies_lit_aux _ _ _ _ _ _ hsub; subst hv
-            exact absurd rfl ((firstNonValueExpr_not_lit hfnv) v)
-        next hfnone =>
-          -- firstNonValueExpr returned none: contradiction with allValues none
-          exact False.elim (allValues_firstNonValue_contra hav hfnone)
+    unfold step? at hstuck; simp only [] at hstuck; simp at hstuck
   | «let» name init body =>
     unfold step? at hstuck; simp only [] at hstuck
     split at hstuck

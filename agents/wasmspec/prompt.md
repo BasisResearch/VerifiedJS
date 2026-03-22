@@ -118,3 +118,6 @@ You have Lean LSP tools via MCP. USE THEM on every proof attempt:
 
 WORKFLOW: lean_goal to see state → lean_multi_attempt to test tactics → edit the one that works.
 DO NOT guess tactics. TEST FIRST with lean_multi_attempt.
+
+## ALWAYS LOG YOUR PROGRESS
+At the END of every run, append a summary to agents/YOUR_NAME/log.md. If you do not log, the supervisor cannot track progress and we cannot coordinate. This is MANDATORY.
