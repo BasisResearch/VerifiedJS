@@ -868,11 +868,11 @@ private theorem anfConvert_halt_star_aux
           -- Well-formedness gives us name1 is bound in env
           have hname1_bound : sf.env.lookup name1 ≠ none := by
             apply hwf name1
-            rw [hsf]; exact .seq_l _ _ _ (.seq_l _ _ _ (.var _))
+            rw [hsf, ha, ha1]; exact .seq_l _ _ _ (.seq_l _ _ _ (.var _))
           obtain ⟨val, hval⟩ : ∃ v, sf.env.lookup name1 = some v := by
-            cases sf.env.lookup name1 with
+            cases hlu : sf.env.lookup name1 with
             | some v => exact ⟨v, rfl⟩
-            | none => exact absurd rfl hname1_bound
+            | none => exact absurd hlu hname1_bound
           -- Step 1: .seq (.seq (.var name1) a2) b → .seq (.seq (.lit val) a2) b
           have hstep1 : Flat.step? sf = some (.silent,
               { expr := .seq (.seq (.lit val) a2) b, env := sf.env, heap := sf.heap, trace := sf.trace ++ [.silent] }) := by
@@ -973,8 +973,16 @@ private theorem anfConvert_halt_star_aux
           have hobsAll : observableTrace (.silent :: .silent :: evs) = [] := by simp [observableTrace_silent, hobs']
           exact ⟨sf', .silent :: .silent :: evs, steps12, hhalt', hobsAll, hrel'⟩
         | seq c d =>
-          -- .seq(.seq(.seq c d) a2) b: recursive, needs multiple steps
-          sorry -- TODO: nested seq reduction
+          -- .seq(.seq(.seq c d) a2) b: needs seq_left lifting lemma
+          -- Approach: apply IH on {sf with expr = .seq (.seq c d) a2} (depth ≤ N)
+          -- with k' = fun _ => normalizeExpr b k, then lift Flat.Steps
+          -- through the .seq ... b wrapper. Requires:
+          --   lemma seq_steps_lift : Flat.Steps {expr=e, ...} evs {expr=e', ...} →
+          --     exprValue? e = none → exprValue? e' = some v →
+          --     Flat.Steps {expr=.seq e b, ...} evs' {expr=.seq e' b, ...}
+          -- OR: strengthen induction measure to (depth, non_lit_count) so single
+          -- steps that don't reduce depth (e.g., .var → .lit) still make progress.
+          sorry
         | _ =>
           -- Compound a1: normalizeExpr a1 never produces .trivial → contradiction
           exfalso
