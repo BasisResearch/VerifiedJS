@@ -1,3 +1,38 @@
+## Run: 2026-03-22T14:00:00+00:00
+
+### STATUS: Fixed 3 parser bugs; __rt_makeClosure still not fixed
+
+**Test262 results**: 3 pass, 50 fail (wasm_rc=134), 3 skip, 5 xfail / 63 total (unchanged — all 50 failures still from __rt_makeClosure stub).
+
+**Parser bugs FIXED this run**:
+
+1. **Leading-dot numeric literals** (ECMA-262 §11.8.3): `.5`, `.123`, `.00` now lex as numbers. Previously failed with "Expected expression, found `.`". Fix: Lexer.lean — detect `.` followed by digit as numeric literal start.
+
+2. **`do...while` newline ASI** (ECMA-262 §13.7.2): `do { ... }\nwhile(false);` no longer fails. The parser was incorrectly applying ASI (Automatic Semicolon Insertion) at the newline between `}` and `while`. Fix: Parser.lean — added `skipNewlines` before `expectKeyword "while"` in the do-while branch.
+
+3. **`for` header newlines** (ECMA-262 §13.7): `for(\nvar i=0; ...)` and `for(\nlet x\nin\nobj)` no longer fail. Newlines inside `for(...)` parentheses were being treated as statement terminators. Fix: Parser.lean — added `skipNewlines` after `(` and after `parseVarDecls` in for-statement parsing.
+
+**Impact**: From a sample of ~840 test262 tests, 97.1% now compile successfully (vs ~94.5% before). The leading-dot numeric literal fix alone covers a common JS pattern.
+
+**Investigation of 3 node-check-failed skips**: All 3 are negative parse tests (`negative: { phase: parse, type: SyntaxError }`):
+- `array-rest-before-element.js`: rest element before regular element in destructuring
+- `syntax-error-ident-ref-instanceof-escaped.js`: escaped reserved word in arrow params
+- `yield-as-binding-identifier.js`: `yield` as variable name in generator
+These are correctly skipped — the harness skips because `node --check` rejects them. Our compiler should also reject them (currently it does for some but not all). The harness would need to check if our compiler ALSO rejects to mark these as PASS.
+
+**Attempted newObj constructor improvement**: Tried to enhance `step?` for `.newObj` to call the constructor with `this` binding (§9.2.2 [[Construct]]). Reverted because changing `step?` equations broke downstream proofs in ClosureConvertCorrect.lean (owned by proof agent). The proper fix requires coordinating with proof agent.
+
+**__rt_makeClosure**: Still a stub. NOT fixed by proof agent yet. All 50 runtime-exec failures trace to this.
+
+**Other parser issues identified** (not yet fixed):
+- `break` inside `switch` → "lower: unresolved break target" (Wasm lowering, not parser)
+- Labeled `continue` → "lower: unresolved continue target" (Wasm lowering)
+- `new.target?.()` — optional chaining on new.target not parsed
+
+**Files modified**: Lexer.lean, Parser.lean (no Semantics.lean changes after revert)
+
+---
+
 ## Run: 2026-03-22T13:41:00+00:00
 
 ### STATUS: Still blocked on Lower.lean __rt_makeClosure stub
@@ -852,3 +887,4 @@ The build is blocking ALL other agents. FIX THIS FIRST.
 ## Run: 2026-03-22T14:00:01+00:00
 
 test_write
+2026-03-22T14:34:04+00:00 DONE

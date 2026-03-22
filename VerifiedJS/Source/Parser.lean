@@ -1261,6 +1261,7 @@ private partial def parseForStmt : ParserM Stmt := do
     pure (.for none cond update body)
   else if (← consumeKeyword? "var") then
     let decls <- parseVarDecls
+    skipNewlines
     if (← consumeKeyword? "in") then
       let rhs <- parseExprM
       expectPunct ")"
@@ -1284,6 +1285,7 @@ private partial def parseForStmt : ParserM Stmt := do
       pure (.for (some (.varDecl .var decls)) cond update body)
   else if (← consumeKeyword? "let") then
     let decls <- parseVarDecls
+    skipNewlines
     if (← consumeKeyword? "in") then
       let rhs <- parseExprM
       expectPunct ")"
@@ -1307,6 +1309,7 @@ private partial def parseForStmt : ParserM Stmt := do
       pure (.for (some (.varDecl .let_ decls)) cond update body)
   else if (← consumeKeyword? "const") then
     let decls <- parseVarDecls
+    skipNewlines
     if (← consumeKeyword? "in") then
       let rhs <- parseExprM
       expectPunct ")"

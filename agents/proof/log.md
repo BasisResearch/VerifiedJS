@@ -12,7 +12,7 @@
   - `.seq.seq.(var|this|seq)` catch-all sorry → 3 specific sub-sorries: .var (well-formedness needed), .this (provable, same 2-step pattern), .seq (recursive)
 - Files changed: VerifiedJS/Proofs/LowerCorrect.lean, VerifiedJS/Proofs/ANFConvertCorrect.lean, VerifiedJS/Proofs/ClosureConvertCorrect.lean
 - Build: PASS
-- E2E: running (pending result)
+- E2E: running (script still executing)
 - Remaining sorries (8 total, 6 in my files):
   - `anfConvert_step_star` (ANFConvertCorrect.lean:94) — full theorem, hardest
   - `.seq.var` `none` branch (ANFConvertCorrect.lean:713) — BLOCKER: needs well-formedness precondition

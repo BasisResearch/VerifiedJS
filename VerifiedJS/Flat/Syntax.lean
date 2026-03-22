@@ -174,6 +174,59 @@ theorem firstNonValueProp_depth {l : List (PropName × Expr)} {done name target 
     · -- pe is not a lit
       simp at h; obtain ⟨_, _, rfl, _⟩ := h; simp [Expr.propListDepth]; omega
 
+/-- firstNonValueExpr returns targets that are NOT literals. -/
+theorem firstNonValueExpr_target_not_lit {l : List Expr} {done target rest}
+    (h : firstNonValueExpr l = some (done, target, rest)) :
+    ∀ v, target ≠ .lit v := by
+  induction l generalizing done target rest with
+  | nil => simp [firstNonValueExpr] at h
+  | cons e tl ih =>
+    unfold firstNonValueExpr at h
+    match e with
+    | .lit _ =>
+      match heq : firstNonValueExpr tl with
+      | some (d, t, r) =>
+        simp only [heq, Option.some.injEq, Prod.mk.injEq] at h
+        obtain ⟨_, rfl, rfl⟩ := h
+        exact ih heq
+      | none => simp [heq] at h
+    | .var _ | .«let» _ _ _ | .assign _ _ | .«if» _ _ _ | .seq _ _ | .call _ _ _
+    | .newObj _ _ _ | .getProp _ _ | .setProp _ _ _ | .getIndex _ _ | .setIndex _ _ _
+    | .deleteProp _ _ | .typeof _ | .getEnv _ _ | .makeEnv _ | .makeClosure _ _
+    | .objectLit _ | .arrayLit _ | .throw _ | .tryCatch _ _ _ _ | .while_ _ _
+    | .«break» _ | .«continue» _ | .labeled _ _ | .«return» _ | .yield _ _
+    | .await _ | .this | .unary _ _ | .binary _ _ _ =>
+      simp only [Option.some.injEq, Prod.mk.injEq] at h
+      obtain ⟨_, rfl, _⟩ := h
+      intro v hv; exact absurd hv (by intro h; cases h)
+
+/-- firstNonValueProp returns targets that are NOT literals. -/
+theorem firstNonValueProp_target_not_lit {l : List (PropName × Expr)} {done name target rest}
+    (h : firstNonValueProp l = some (done, name, target, rest)) :
+    ∀ v, target ≠ .lit v := by
+  induction l generalizing done name target rest with
+  | nil => simp [firstNonValueProp] at h
+  | cons p tl ih =>
+    obtain ⟨pn, pe⟩ := p
+    unfold firstNonValueProp at h
+    match pe with
+    | .lit _ =>
+      match heq : firstNonValueProp tl with
+      | some (d, n, t, r) =>
+        simp only [heq, Option.some.injEq, Prod.mk.injEq] at h
+        obtain ⟨_, _, rfl, rfl⟩ := h
+        exact ih heq
+      | none => simp [heq] at h
+    | .var _ | .«let» _ _ _ | .assign _ _ | .«if» _ _ _ | .seq _ _ | .call _ _ _
+    | .newObj _ _ _ | .getProp _ _ | .setProp _ _ _ | .getIndex _ _ | .setIndex _ _ _
+    | .deleteProp _ _ | .typeof _ | .getEnv _ _ | .makeEnv _ | .makeClosure _ _
+    | .objectLit _ | .arrayLit _ | .throw _ | .tryCatch _ _ _ _ | .while_ _ _
+    | .«break» _ | .«continue» _ | .labeled _ _ | .«return» _ | .yield _ _
+    | .await _ | .this | .unary _ _ | .binary _ _ _ =>
+      simp only [Option.some.injEq, Prod.mk.injEq] at h
+      obtain ⟨_, _, rfl, _⟩ := h
+      intro v hv; exact absurd hv (by intro h; cases h)
+
 /-- ECMA-262 §10.2 ECMAScript Function Objects (closure-converted form). -/
 structure FuncDef where
   name : VarName

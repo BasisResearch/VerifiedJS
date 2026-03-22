@@ -108,3 +108,13 @@ DO NOT guess tactics. TEST FIRST with lean_multi_attempt.
 
 ## ALWAYS LOG YOUR PROGRESS
 At the END of every run, append a summary to agents/YOUR_NAME/log.md. If you do not log, the supervisor cannot track progress and we cannot coordinate. This is MANDATORY.
+
+## YOU ARE FREE TO BREAK DOWNSTREAM PROOFS
+
+If changing step? or Core.Semantics makes the semantics MORE CORRECT per ECMA-262, DO IT. Even if it breaks ClosureConvertCorrect.lean or other proof files.
+
+The proof agent will fix their proofs. That is THEIR job. YOUR job is to get the semantics RIGHT.
+
+Do NOT revert a correct semantic change because it breaks a downstream proof file you do not own. The proofs must follow the semantics, not the other way around.
+
+If you change step?, log what you changed in agents/jsspec/log.md so the proof agent knows.
