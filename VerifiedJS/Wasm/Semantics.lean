@@ -5525,6 +5525,22 @@ theorem init (irmod : IRModule) (wmod : Module)
       · rename_i hsf; simp [Wasm.initialState, hstart, hsf]
     · simp [Wasm.initialState]
 
+/-- Derive halt correspondence from code + label correspondence.
+    Used to reconstruct `hhalt` in step_sim proofs. -/
+theorem hhalt_of_structural {ir : IRExecState} {w : ExecState}
+    (hcode : EmitCodeCorr ir.code w.code)
+    (hlabels : ir.labels.length = w.labels.length) :
+    irStep? ir = none → Wasm.step? w = none := by
+  intro h
+  rw [irStep?_none_iff_halted] at h
+  obtain ⟨hc, hl, _⟩ := h
+  apply step?_halted
+  constructor
+  · rw [hc] at hcode; exact EmitCodeCorr.nil_inv hcode
+  · cases w.labels with
+    | nil => rfl
+    | cons _ _ => simp [hl] at hl; rw [hl] at h; simp at h
+
 /-- Step simulation (1:1): if the IR takes one step, the Wasm takes a matching step.
     Now provable with EmitCodeCorr: case analysis on the IR instruction form
     tells us what the Wasm code looks like, which determines what Wasm.step? returns.
