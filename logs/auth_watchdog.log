@@ -60,3 +60,6 @@ Done
 [5.7s] Got 1513 bytes, clean: '─────────────────────────────\r\r\n❯\xa0\r\r\n────────────────────────────────────────────────────────────────────────────────\r\r\n?forshortcuts\r\r\n\x1b[?2026l\x1b[?2004h\x1b[?1004h\x1b[?2026h\r◐medium·/effort\r\r\n\x1b[?2026l\x1b[>0q'
 [SENT] /exit
 Done
+2026-03-22T22:30:02+00:00 FIXED: jsspec re-authed
+2026-03-22T22:30:02+00:00 FIXED: wasmspec re-authed
+2026-03-22T22:30:02+00:00 FIXED: supervisor re-authed
