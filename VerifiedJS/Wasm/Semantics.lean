@@ -5862,20 +5862,22 @@ theorem step_sim (irmod : IRModule) (wmod : Module) :
               simp only [Option.some.injEq, Prod.mk.injEq] at hstep
               obtain ⟨rfl, rfl⟩ := hstep
               -- Wasm stack also non-empty (by length correspondence)
-              have hlen := hrel.hstack; rw [hstk] at hlen; simp at hlen
+              have hlen := hrel.hstack
+              rw [hstk] at hlen
               match hs2 : s2.stack with
-              | [] => simp [hs2] at hlen
-              | wv :: stk_w =>
-                have hw_step := step?_eq_drop s2 rest_w wv stk_w hcw hs2
-                let s2' := { s2 with code := rest_w, stack := stk_w, trace := s2.trace ++ [WasmEvent.silent] }
-                refine ⟨s2', ?_, ?_⟩
+              | [] => simp_all
+              | w :: stk_w =>
+                simp [hs2] at hlen
+                have hw_step := step?_eq_drop s2 rest_w w stk_w hcw hs2
+                refine ⟨_, ?_, ?_⟩
                 · -- Wasm step matches
+                  show Wasm.step? s2 = some (traceToWasm .silent, _)
                   simp [traceToWasm]; exact hw_step
                 · -- New EmitSimRel
                   exact {
                     hemit := hrel.hemit
                     hcode := hrest
-                    hstack := by simp [s2'] at hlen ⊢; omega
+                    hstack := by simp at hlen ⊢; omega
                     hlabels := hrel.hlabels
                     hhalt := hhalt_of_structural hrest hrel.hlabels
                   }
