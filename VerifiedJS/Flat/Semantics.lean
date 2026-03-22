@@ -814,6 +814,57 @@ theorem step?_seq_this_isSome (s : State) (b : Expr) :
     (step? { s with expr := .seq .this b }).isSome = true := by
   cases h : s.env.lookup "this" <;> simp [step?, h]
 
+/-- `.seq (.var name) b` when var is found: steps to `.seq (.lit v) b`. -/
+theorem step?_seq_var_found (s : State) (name : VarName) (v : Value) (b : Expr)
+    (h : s.env.lookup name = some v) :
+    step? { s with expr := .seq (.var name) b } =
+      some (.silent, pushTrace { s with expr := .seq (.lit v) b } .silent) := by
+  simp [step?, exprValue?, h]
+
+/-- `.seq (.var name) b` when var is not found: steps with ReferenceError. -/
+theorem step?_seq_var_not_found (s : State) (name : VarName) (b : Expr)
+    (h : s.env.lookup name = none) :
+    step? { s with expr := .seq (.var name) b } =
+      some (.error ("ReferenceError: " ++ name),
+            pushTrace { s with expr := .seq (.lit .undefined) b } (.error ("ReferenceError: " ++ name))) := by
+  simp [step?, exprValue?, h]
+
+/-- `.seq .this b` when `this` binding exists: steps to `.seq (.lit v) b`. -/
+theorem step?_seq_this_found (s : State) (v : Value) (b : Expr)
+    (h : s.env.lookup "this" = some v) :
+    step? { s with expr := .seq .this b } =
+      some (.silent, pushTrace { s with expr := .seq (.lit v) b } .silent) := by
+  simp [step?, exprValue?, h]
+
+/-- `.seq .this b` when no `this` binding: steps to `.seq (.lit .undefined) b`. -/
+theorem step?_seq_this_not_found (s : State) (b : Expr)
+    (h : s.env.lookup "this" = none) :
+    step? { s with expr := .seq .this b } =
+      some (.silent, pushTrace { s with expr := .seq (.lit .undefined) b } .silent) := by
+  simp [step?, exprValue?, h]
+
+/-- `.var` always produces some result (existential form for case splitting). -/
+theorem step?_var_some (s : State) (name : VarName) :
+    ∃ t s', step? { s with expr := .var name } = some (t, s') := by
+  cases h : s.env.lookup name with
+  | some v => exact ⟨_, _, step?_var_found _ _ _ h⟩
+  | none => exact ⟨_, _, step?_var_not_found _ _ h⟩
+
+/-- `.this` always produces some result (existential form for case splitting). -/
+theorem step?_this_some (s : State) :
+    ∃ t s', step? { s with expr := .this } = some (t, s') := by
+  cases h : s.env.lookup "this" with
+  | some v => exact ⟨_, _, step?_this_found _ _ h⟩
+  | none => exact ⟨_, _, step?_this_not_found _ h⟩
+
+/-- `.var` result is always a literal expression (for proving halt characterization). -/
+theorem step?_var_result_is_lit (s : State) (name : VarName) (t : Core.TraceEvent) (s' : State)
+    (h : step? { s with expr := .var name } = some (t, s')) :
+    ∃ v, s'.expr = .lit v := by
+  cases henv : s.env.lookup name with
+  | some v => rw [step?_var_found _ _ _ henv] at h; simp at h; rw [← h.2]; exact ⟨v, by simp [pushTrace]⟩
+  | none => rw [step?_var_not_found _ _ henv] at h; simp at h; rw [← h.2]; exact ⟨.undefined, by simp [pushTrace]⟩
+
 /-- If firstNonValueExpr returns none (all elements are literals),
     then valuesFromExprList? returns some list of values.
     This bridges the two representations for the proof agent. -/

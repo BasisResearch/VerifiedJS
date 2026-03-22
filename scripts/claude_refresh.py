@@ -11,7 +11,6 @@ def refresh_claude_auth():
     pid = os.fork()
 
     if pid == 0:
-        # Child: become the claude process
         os.setsid()
         os.dup2(slave, 0)
         os.dup2(slave, 1)
@@ -20,37 +19,50 @@ def refresh_claude_auth():
         os.close(slave)
         os.execvp("claude", ["claude"])
 
-    # Parent: interact with claude
     os.close(slave)
     output = b""
     start = time.time()
+    sent_trust = False
+    sent_hi = False
+    sent_exit = False
 
-    while time.time() - start < 30:
-        r, _, _ = select.select([master], [], [], 1.0)
+    while time.time() - start < 45:
+        r, _, _ = select.select([master], [], [], 0.5)
         if r:
             try:
                 data = os.read(master, 4096)
+                if not data:
+                    break
                 output += data
                 text = output.decode("utf-8", errors="replace")
+                # Strip ANSI codes for matching
+                import re
+                clean = re.sub(r'\x1b\[[0-9;]*[a-zA-Z]|\x1b\][^\x07]*\x07|\x1b[^[a-zA-Z]', '', text)
 
-                # Trust dialog
-                if "trust" in text.lower() and ("yes" in text.lower() or "1." in text):
+                print(f"[{time.time()-start:.1f}s] Got {len(data)} bytes, clean: {repr(clean[-200:])}", file=sys.stderr)
+
+                if not sent_trust and ("trust" in clean.lower() or "Yes," in clean):
                     time.sleep(0.5)
-                    os.write(master, b"1\n")  # Select "Yes, I trust"
+                    os.write(master, b"\r")  # Enter = confirm default (yes)
+                    sent_trust = True
                     output = b""
+                    print("[SENT] trust confirmation", file=sys.stderr)
                     continue
 
-                # Claude is ready (shows prompt or greeting)
-                if any(x in text for x in ["Claude", "How can", "help you", "❯", ">"]):
-                    time.sleep(0.5)
-                    os.write(master, b"hi\n")
+                if not sent_hi and any(x in clean for x in ["How can", "help", "Claude", "❯"]):
+                    time.sleep(1)
+                    os.write(master, b"hi\r")
+                    sent_hi = True
+                    output = b""
+                    print("[SENT] hi", file=sys.stderr)
+                    continue
+
+                if sent_hi and not sent_exit and len(clean) > 10:
+                    # Wait for response
                     time.sleep(2)
-                    # Read response
-                    r2, _, _ = select.select([master], [], [], 5)
-                    if r2:
-                        resp = os.read(master, 4096).decode("utf-8", errors="replace")
-                        print(f"Response: {resp[:100]}")
-                    os.write(master, b"/exit\n")
+                    os.write(master, b"/exit\r")
+                    sent_exit = True
+                    print("[SENT] /exit", file=sys.stderr)
                     time.sleep(1)
                     break
 
@@ -58,8 +70,11 @@ def refresh_claude_auth():
                 break
 
     os.close(master)
-    os.waitpid(pid, 0)
-    print("Done - token should be refreshed")
+    try:
+        os.waitpid(pid, 0)
+    except:
+        pass
+    print("Done", file=sys.stderr)
 
 if __name__ == "__main__":
     refresh_claude_auth()
