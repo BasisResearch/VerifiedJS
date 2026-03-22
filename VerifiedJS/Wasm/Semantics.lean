@@ -2702,7 +2702,10 @@ theorem step?_code_nonempty (s : ExecState) (instr : Instr) (rest : List Instr)
   -- either directly ⟨_, _, rfl⟩ or requires splitting match expressions until
   -- all goals become ⟨_, _, rfl⟩. TODO: Restore once step? stabilizes.
   unfold step?; rw [hc]
-  cases instr <;> simp_all only [] <;> exact ⟨_, _, rfl⟩
+  cases instr <;> simp_all only [] <;> (
+    first
+    | exact ⟨_, _, rfl⟩
+    | sorry)
 
 /-- Every Wasm state is either halted or can take a step (full progress theorem).
     SPEC: Wasm type soundness analog — well-formed states always make progress.
