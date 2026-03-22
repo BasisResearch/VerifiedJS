@@ -4595,7 +4595,9 @@ theorem irStep?_eq_i32BinOp_total (s : IRExecState) (op : String) (rest : List I
     (hstack : s.stack = .i32 rhs :: .i32 lhs :: stk)
     (hnondiv : op ≠ "div_s" ∧ op ≠ "div_u" ∧ op ≠ "rem_s" ∧ op ≠ "rem_u") :
     ∃ result, irStep? s = some (.silent,
-      { s with code := rest, stack := result :: stk,
+      { s with
+        code := rest
+        stack := result :: stk
         trace := s.trace ++ [.silent] }) := by
   unfold irStep?; rw [hcode, hstack]
   simp only [irPop2?, irPushTrace]
@@ -4609,7 +4611,9 @@ theorem irStep?_eq_i32BinOp_total (s : IRExecState) (op : String) (rest : List I
     (hcode : s.code = IRInstr.binOp .i32 "add" :: rest)
     (hstack : s.stack = .i32 rhs :: .i32 lhs :: stk) :
     irStep? s = some (.silent,
-      { s with code := rest, stack := .i32 (Numerics.i32Add lhs rhs) :: stk,
+      { s with
+        code := rest
+        stack := .i32 (Numerics.i32Add lhs rhs) :: stk
         trace := s.trace ++ [.silent] }) := by
   unfold irStep?; rw [hcode, hstack]; simp [irPop2?, irPushTrace]
 
@@ -4619,7 +4623,9 @@ theorem irStep?_eq_i32BinOp_total (s : IRExecState) (op : String) (rest : List I
     (hcode : s.code = IRInstr.binOp .i32 "sub" :: rest)
     (hstack : s.stack = .i32 rhs :: .i32 lhs :: stk) :
     irStep? s = some (.silent,
-      { s with code := rest, stack := .i32 (Numerics.i32Sub lhs rhs) :: stk,
+      { s with
+        code := rest
+        stack := .i32 (Numerics.i32Sub lhs rhs) :: stk
         trace := s.trace ++ [.silent] }) := by
   unfold irStep?; rw [hcode, hstack]; simp [irPop2?, irPushTrace]
 
@@ -4629,7 +4635,9 @@ theorem irStep?_eq_i32BinOp_total (s : IRExecState) (op : String) (rest : List I
     (hcode : s.code = IRInstr.binOp .i32 "mul" :: rest)
     (hstack : s.stack = .i32 rhs :: .i32 lhs :: stk) :
     irStep? s = some (.silent,
-      { s with code := rest, stack := .i32 (Numerics.i32Mul lhs rhs) :: stk,
+      { s with
+        code := rest
+        stack := .i32 (Numerics.i32Mul lhs rhs) :: stk
         trace := s.trace ++ [.silent] }) := by
   unfold irStep?; rw [hcode, hstack]; simp [irPop2?, irPushTrace]
 
@@ -4639,7 +4647,9 @@ theorem irStep?_eq_i32BinOp_total (s : IRExecState) (op : String) (rest : List I
     (hcode : s.code = IRInstr.binOp .i32 "and" :: rest)
     (hstack : s.stack = .i32 rhs :: .i32 lhs :: stk) :
     irStep? s = some (.silent,
-      { s with code := rest, stack := .i32 (Numerics.i32And lhs rhs) :: stk,
+      { s with
+        code := rest
+        stack := .i32 (Numerics.i32And lhs rhs) :: stk
         trace := s.trace ++ [.silent] }) := by
   unfold irStep?; rw [hcode, hstack]; simp [irPop2?, irPushTrace]
 
@@ -4649,7 +4659,9 @@ theorem irStep?_eq_i32BinOp_total (s : IRExecState) (op : String) (rest : List I
     (hcode : s.code = IRInstr.binOp .i32 "or" :: rest)
     (hstack : s.stack = .i32 rhs :: .i32 lhs :: stk) :
     irStep? s = some (.silent,
-      { s with code := rest, stack := .i32 (Numerics.i32Or lhs rhs) :: stk,
+      { s with
+        code := rest
+        stack := .i32 (Numerics.i32Or lhs rhs) :: stk
         trace := s.trace ++ [.silent] }) := by
   unfold irStep?; rw [hcode, hstack]; simp [irPop2?, irPushTrace]
 
@@ -4660,7 +4672,9 @@ theorem irStep?_eq_f64BinOp_total (s : IRExecState) (op : String) (rest : List I
     (hcode : s.code = IRInstr.binOp .f64 op :: rest)
     (hstack : s.stack = .f64 rhs :: .f64 lhs :: stk) :
     ∃ result, irStep? s = some (.silent,
-      { s with code := rest, stack := result :: stk,
+      { s with
+        code := rest
+        stack := result :: stk
         trace := s.trace ++ [.silent] }) := by
   unfold irStep?; rw [hcode, hstack]
   simp only [irPop2?, irPushTrace]
@@ -4672,7 +4686,9 @@ theorem irStep?_eq_f64BinOp_total (s : IRExecState) (op : String) (rest : List I
     (hcode : s.code = IRInstr.binOp .f64 "add" :: rest)
     (hstack : s.stack = .f64 rhs :: .f64 lhs :: stk) :
     irStep? s = some (.silent,
-      { s with code := rest, stack := .f64 (Numerics.f64Add lhs rhs) :: stk,
+      { s with
+        code := rest
+        stack := .f64 (Numerics.f64Add lhs rhs) :: stk
         trace := s.trace ++ [.silent] }) := by
   unfold irStep?; rw [hcode, hstack]; simp [irPop2?, irPushTrace]
 
@@ -4682,7 +4698,9 @@ theorem irStep?_eq_f64BinOp_total (s : IRExecState) (op : String) (rest : List I
     (hcode : s.code = IRInstr.binOp .f64 "sub" :: rest)
     (hstack : s.stack = .f64 rhs :: .f64 lhs :: stk) :
     irStep? s = some (.silent,
-      { s with code := rest, stack := .f64 (Numerics.f64Sub lhs rhs) :: stk,
+      { s with
+        code := rest
+        stack := .f64 (Numerics.f64Sub lhs rhs) :: stk
         trace := s.trace ++ [.silent] }) := by
   unfold irStep?; rw [hcode, hstack]; simp [irPop2?, irPushTrace]
 
@@ -4692,7 +4710,9 @@ theorem irStep?_eq_f64BinOp_total (s : IRExecState) (op : String) (rest : List I
     (hcode : s.code = IRInstr.binOp .f64 "mul" :: rest)
     (hstack : s.stack = .f64 rhs :: .f64 lhs :: stk) :
     irStep? s = some (.silent,
-      { s with code := rest, stack := .f64 (Numerics.f64Mul lhs rhs) :: stk,
+      { s with
+        code := rest
+        stack := .f64 (Numerics.f64Mul lhs rhs) :: stk
         trace := s.trace ++ [.silent] }) := by
   unfold irStep?; rw [hcode, hstack]; simp [irPop2?, irPushTrace]
 
@@ -4702,7 +4722,9 @@ theorem irStep?_eq_f64BinOp_total (s : IRExecState) (op : String) (rest : List I
     (hcode : s.code = IRInstr.binOp .f64 "div" :: rest)
     (hstack : s.stack = .f64 rhs :: .f64 lhs :: stk) :
     irStep? s = some (.silent,
-      { s with code := rest, stack := .f64 (Numerics.f64Div lhs rhs) :: stk,
+      { s with
+        code := rest
+        stack := .f64 (Numerics.f64Div lhs rhs) :: stk
         trace := s.trace ++ [.silent] }) := by
   unfold irStep?; rw [hcode, hstack]; simp [irPop2?, irPushTrace]
 
@@ -4714,7 +4736,9 @@ theorem irStep?_eq_f64BinOp_total (s : IRExecState) (op : String) (rest : List I
     (hcode : s.code = IRInstr.unOp .i32 "eqz" :: rest)
     (hstack : s.stack = .i32 v :: stk) :
     irStep? s = some (.silent,
-      { s with code := rest, stack := irBoolToI32 (Numerics.i32Eqz v) :: stk,
+      { s with
+        code := rest
+        stack := irBoolToI32 (Numerics.i32Eqz v) :: stk
         trace := s.trace ++ [.silent] }) := by
   unfold irStep?; rw [hcode, hstack]; simp [irPop1?, irPushTrace]
 
@@ -4724,7 +4748,9 @@ theorem irStep?_eq_f64BinOp_total (s : IRExecState) (op : String) (rest : List I
     (hcode : s.code = IRInstr.unOp .i32 "wrap_i64" :: rest)
     (hstack : s.stack = .i64 v :: stk) :
     irStep? s = some (.silent,
-      { s with code := rest, stack := .i32 (Numerics.i32WrapI64 v) :: stk,
+      { s with
+        code := rest
+        stack := .i32 (Numerics.i32WrapI64 v) :: stk
         trace := s.trace ++ [.silent] }) := by
   unfold irStep?; rw [hcode, hstack]; simp [irPop1?, irPushTrace]
 
@@ -4736,7 +4762,9 @@ theorem irStep?_eq_f64BinOp_total (s : IRExecState) (op : String) (rest : List I
     (hcode : s.code = IRInstr.binOp .f64 "eq" :: rest)
     (hstack : s.stack = .f64 rhs :: .f64 lhs :: stk) :
     irStep? s = some (.silent,
-      { s with code := rest, stack := irBoolToI32 (Numerics.f64Eq lhs rhs) :: stk,
+      { s with
+        code := rest
+        stack := irBoolToI32 (Numerics.f64Eq lhs rhs) :: stk
         trace := s.trace ++ [.silent] }) := by
   unfold irStep?; rw [hcode, hstack]; simp [irPop2?, irPushTrace]
 
@@ -4745,7 +4773,9 @@ theorem irStep?_eq_f64BinOp_total (s : IRExecState) (op : String) (rest : List I
     (hcode : s.code = IRInstr.binOp .f64 "lt" :: rest)
     (hstack : s.stack = .f64 rhs :: .f64 lhs :: stk) :
     irStep? s = some (.silent,
-      { s with code := rest, stack := irBoolToI32 (Numerics.f64Lt lhs rhs) :: stk,
+      { s with
+        code := rest
+        stack := irBoolToI32 (Numerics.f64Lt lhs rhs) :: stk
         trace := s.trace ++ [.silent] }) := by
   unfold irStep?; rw [hcode, hstack]; simp [irPop2?, irPushTrace]
 
@@ -4754,7 +4784,9 @@ theorem irStep?_eq_f64BinOp_total (s : IRExecState) (op : String) (rest : List I
     (hcode : s.code = IRInstr.binOp .f64 "le" :: rest)
     (hstack : s.stack = .f64 rhs :: .f64 lhs :: stk) :
     irStep? s = some (.silent,
-      { s with code := rest, stack := irBoolToI32 (Numerics.f64Le lhs rhs) :: stk,
+      { s with
+        code := rest
+        stack := irBoolToI32 (Numerics.f64Le lhs rhs) :: stk
         trace := s.trace ++ [.silent] }) := by
   unfold irStep?; rw [hcode, hstack]; simp [irPop2?, irPushTrace]
 
