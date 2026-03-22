@@ -492,8 +492,16 @@ private partial def parseObjectLiteral : ParserM Expr := do
         else
           match key with
           | .ident name =>
-            let _ <- consumePunct? ","
-            loop (.shorthand name :: acc)
+            -- Check for shorthand with default value: { x = expr }
+            -- This is valid in destructuring assignment patterns (ECMA-262 §12.15.5)
+            if (← consumePunct? "=") then
+              let defaultExpr <- parseAssignmentM
+              let _ <- consumePunct? ","
+              loop (.keyValue (.ident name)
+                (.assign .assign (.ident name) defaultExpr) :: acc)
+            else
+              let _ <- consumePunct? ","
+              loop (.shorthand name :: acc)
           | _ =>
             throw "Object literal property must be key:value or method"
   loop []
@@ -641,8 +649,9 @@ private partial def parsePrimaryM : ParserM Expr := do
     match parseKeywordLiteral k with
     | some e => pure e
     | none =>
-      if k = "import" then
-        pure (.ident "import")
+      -- yield/await/let/of can be used as identifiers in sloppy mode (ECMA-262 §12.1)
+      if k = "import" || k = "yield" || k = "await" || k = "let" || k = "of" then
+        pure (.ident k)
       else
         throw s!"Unsupported keyword expression `{k}` at {t.pos.line}:{t.pos.col}"
   | .template parts =>
@@ -745,12 +754,16 @@ private partial def parseUnaryM : ParserM Expr := do
     return .await (← parseUnaryM)
   if (← consumeKeyword? "yield") then
     let delegated <- consumePunct? "*"
-    let t <- peek
-    match t.kind with
-    | .newline | .punct ";" | .punct ")" | .eof =>
-      return .yield none delegated
-    | _ =>
-      return .yield (some (← parseAssignmentM)) delegated
+    if !delegated then
+      -- In sloppy mode, 'yield' can be used as an identifier (ECMA-262 §12.1.1)
+      -- Treat bare 'yield' (not followed by an expression) as an identifier reference
+      let t <- peek
+      match t.kind with
+      | .newline | .punct ";" | .punct ")" | .punct "}" | .punct "]"
+      | .punct "," | .punct "." | .punct "?" | .eof =>
+        return .ident "yield"
+      | _ => pure ()
+    return .yield (some (← parseAssignmentM)) delegated
   if (← consumeKeyword? "new") then
     let callee <- parsePostfixM
     let args <- if (← consumePunct? "(") then parseExprListUntil ")" else pure []

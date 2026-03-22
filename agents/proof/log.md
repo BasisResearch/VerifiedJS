@@ -600,15 +600,39 @@ Sorry inventory (4 locations, 2 theorems):
   1. `anfConvert_step_star` (line 94) — stuttering forward simulation, HARDEST theorem. One ANF step (evalComplex on let-binding RHS) → multiple Flat steps (evaluate sub-expressions one at a time). Requires detailed case analysis over all ANF expression forms with normalizeExpr correspondence.
   2. `anfConvert_halt_star` .seq case (line 724) — normalizeExpr (.seq a b) k = normalizeExpr a (fun _ => normalizeExpr b k) can produce .trivial when a is trivial (lit/var/this) or .seq. For a = .lit, Flat steps silently and case recurses on b (needs depth induction). For a = .var/.this, Flat steps a but lookup might fail with error event → theorem possibly FALSE without well-formedness precondition. For a = compound non-seq, contradiction via normalizeExpr_compound_not_trivial.
 
+### .seq decomposition analysis
+The .seq halt_star sorry was decomposed into 4 sub-cases:
+1. `.seq (.var name) b` — sorry: Flat must evaluate .var name (might ReferenceError). Needs well-formedness.
+2. `.seq (.this) b` — sorry: Same issue with env lookup for "this".
+3. `.seq (.lit v) b` — sorry: Flat steps silently to b. Provable with depth induction (IH on b). Key insight: cases on b close by faithfulness (.var/.this) or compound lemma, EXCEPT b = .seq (recurse).
+4. `.seq (.seq a1 a2) b` — sorry: Recursion needed. Provable with depth induction if all nested .seq prefixes are .lit. Otherwise hits .var/.this issue.
+5. `.seq (compound) b` — PROVED: contradiction via normalizeExpr_compound_not_trivial on `a`.
+
+To close sub-cases 3-4: add depth induction (suffices with Nat induction on sf.expr.depth). IH works because depth(b) < depth(.seq (.lit v) b).
+To close sub-cases 1-2: need well-formedness precondition (all variables in scope) or semantic fix to normalizeExpr for .seq.
+
 ### Key finding: semantic mismatch in normalizeExpr for .seq
 normalizeExpr (.seq a b) k DROPS the evaluation of a when a is trivial (var/lit/this). But Flat.step? on .seq a b evaluates a first, which can produce observable effects (ReferenceError if var is undefined). This means `anfConvert_correct` may be FALSE for programs like `undefined_var; 3` without a well-formedness precondition. The .seq sorry at line 724 reflects this genuine semantic issue.
 
-### Proof chain status (2 sorry in Proofs/)
+### Sorry inventory (5 locations, 2 theorems):
+1. `anfConvert_step_star` (line 94) — 1 sorry, HARDEST
+2. `anfConvert_halt_star` .seq.var (line 734) — needs well-formedness
+3. `anfConvert_halt_star` .seq.this (line 738) — needs well-formedness
+4. `anfConvert_halt_star` .seq.lit (line 742) — needs depth induction
+5. `anfConvert_halt_star` .seq.seq (line 745) — needs depth induction
+
+### Proof chain status
 - ElaborateCorrect: proved (trivial)
 - ClosureConvertCorrect: proved (0 sorry)
-- ANFConvertCorrect: 2 sorry (step_star + halt_star .seq)
+- ANFConvertCorrect: 5 sorry (1 step_star + 4 halt_star .seq sub-cases)
 - OptimizeCorrect: proved (identity)
 - LowerCorrect: proved (depends on wasmspec sorry)
 - EmitCorrect: proved (depends on wasmspec sorry)
 - EndToEnd: proved (composition, depends on above)
 
+### Next priorities
+1. Add depth induction to halt_star to close .seq.lit and .seq.seq (reduces to 3 sorry)
+2. Add `NoUndefinedVarInSeq` precondition to close .seq.var/.seq.this (reduces to 1 sorry)
+3. Attack step_star — case analysis on ANF.Step over all expression forms
+
+2026-03-22T03:30:00+00:00 DONE

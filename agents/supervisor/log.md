@@ -1,4 +1,53 @@
 
+## Run: 2026-03-22T03:05:00+00:00
+
+### Build
+- **Status**: `lake build` PASS (clean)
+
+### Sorry Count
+- **8** (down from 12, delta -4)
+- 5 sorry lines: ANFConvertCorrect (:94, :724), Wasm/Semantics (:4836, :4931), Core/Semantics (:2461 decreasing_by, not in proof chain)
+- What was proved: wasmspec removed hstep from SimRel (7→2 sorry), proof closed halt_star .var/.this/compound
+
+### Test262
+- **3/61 pass** (UNCHANGED), 50 fail, 3 skip, 5 xfail
+- jsspec IDLE since 2026-03-20 — no progress for 30+ hours
+
+### E2E
+- Running (timed out during data gathering, estimated ~96% from last known)
+
+### Agent Status
+- **jsspec**: IDLE since 03-20. No new runs. Test262 stuck.
+- **wasmspec**: Completed (02:15). **MILESTONE**: SimRel restructured — removed hstep field, eliminated recursive sorry pattern. 7→2 sorries. step?_code_nonempty proved (166 cases). lower_behavioral_obs proved.
+- **proof**: Completed (02:25). halt_star .var/.this/compound cases proved (contradiction + normalizeExpr reasoning). 4→2 sorries in ANFConvertCorrect.
+
+### Actions Taken
+1. **wasmspec prompt**: REWROTE — old prompt was stale (still described 7-sorry recursive pattern that's been FIXED). Updated with current 2 sorry locations (LowerSimRel.step_sim :4836, EmitSimRel.step_sim :4931). Gave case-analysis proof strategy: start with easy cases (.trivial .lit, .trivial .var), sorry harder ones.
+2. **proof prompt**: Updated — removed completed halt_star sub-case guidance. Focused on remaining 2 sorries: halt_star .seq (:724) and step_star (:94). Suggested helper lemma for normalizeExpr on seq.
+3. **jsspec prompt**: Added URGENCY — agent IDLE 30+ hours while test262 stuck at 3/61. First action must be diagnosing runtime-exec wasm_rc=134 crashes across 50 failures.
+4. **PROGRESS.md**: Updated metrics, proof chain table, agent health.
+
+### Proof Chain
+| Pass | Proved? | Blocker |
+|------|---------|---------|
+| Elaborate | ✅ PROVED | — |
+| ClosureConvert | ✅ PROVED | — |
+| ANFConvert | 2 sorry | step_star (:94), halt_star .seq (:724) |
+| Optimize | ✅ PROVED | — |
+| Lower | 1 sorry | BLOCKED on wasmspec LowerSimRel.step_sim (:4836) |
+| Emit | 1 sorry | BLOCKED on wasmspec EmitSimRel.step_sim (:4931) |
+| EndToEnd | 1 sorry | Composition of above |
+
+### Theorem Quality Audit
+- All proved theorems relate BEHAVIOR of input to BEHAVIOR of output ✅
+- wasmspec SimRel now architecturally sound — state correspondence only, step correspondence is the theorem ✅
+- lower_behavioral_obs PROVED (was sorry last run) ✅
+- Core/Semantics `decreasing_by sorry` is NOT in the proof chain — acceptable
+
+**Critical path**: (1) wasmspec proves step_sim by case analysis (2 theorems). (2) proof closes halt_star .seq + step_star. (3) EndToEnd composes automatically.
+
+---
+
 ## Run: 2026-03-22T02:05:00+00:00
 
 ### Build
