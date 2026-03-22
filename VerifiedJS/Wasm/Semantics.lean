@@ -4812,6 +4812,42 @@ Key invariants maintained by each relation:
 The step_sim and halt_sim proofs require case analysis on every source step,
 showing the target takes a matching step. These are sorry'd for the proof agent. -/
 
+/-! ### Observable Events (IR level) -/
+
+/-- Observable events: filter out `.silent` from an IR trace. -/
+def observableEvents : List TraceEvent → List TraceEvent
+  | [] => []
+  | .silent :: ts => observableEvents ts
+  | t :: ts => t :: observableEvents ts
+
+@[simp] theorem observableEvents_nil : observableEvents ([] : List TraceEvent) = [] := rfl
+
+@[simp] theorem observableEvents_cons_silent (ts : List TraceEvent) :
+    observableEvents (.silent :: ts) = observableEvents ts := rfl
+
+@[simp] theorem observableEvents_cons_log (s : String) (ts : List TraceEvent) :
+    observableEvents (.log s :: ts) = .log s :: observableEvents ts := rfl
+
+@[simp] theorem observableEvents_cons_error (s : String) (ts : List TraceEvent) :
+    observableEvents (.error s :: ts) = .error s :: observableEvents ts := rfl
+
+@[simp] theorem observableEvents_cons_trap (s : String) (ts : List TraceEvent) :
+    observableEvents (.trap s :: ts) = .trap s :: observableEvents ts := rfl
+
+/-- Observable events distributes over append. -/
+@[simp] theorem observableEvents_append (ts1 ts2 : List TraceEvent) :
+    observableEvents (ts1 ++ ts2) = observableEvents ts1 ++ observableEvents ts2 := by
+  induction ts1 with
+  | nil => simp [observableEvents]
+  | cons t ts1 ih =>
+    cases t with
+    | silent => simp [observableEvents, ih]
+    | trap msg => simp [observableEvents, ih]
+    | log msg => simp [observableEvents, ih]
+    | error msg => simp [observableEvents, ih]
+
+/-! ### Simulation Relations -/
+
 /-- Simulation relation for ANF → IR lowering.
     The step correspondence field references LowerSimRel coinductively:
     at each synchronization point, if the ANF takes a step, the IR takes a
@@ -4999,38 +5035,6 @@ This framework provides an alternative path to behavioral preservation
 when 1:1 step correspondence is too restrictive. The proof agent may
 choose either framework depending on the lowering structure. -/
 
-/-- Observable events: filter out `.silent` from a trace. -/
-def observableEvents : List TraceEvent → List TraceEvent
-  | [] => []
-  | .silent :: ts => observableEvents ts
-  | t :: ts => t :: observableEvents ts
-
-@[simp] theorem observableEvents_nil : observableEvents ([] : List TraceEvent) = [] := rfl
-
-@[simp] theorem observableEvents_cons_silent (ts : List TraceEvent) :
-    observableEvents (.silent :: ts) = observableEvents ts := rfl
-
-@[simp] theorem observableEvents_cons_log (s : String) (ts : List TraceEvent) :
-    observableEvents (.log s :: ts) = .log s :: observableEvents ts := rfl
-
-@[simp] theorem observableEvents_cons_error (s : String) (ts : List TraceEvent) :
-    observableEvents (.error s :: ts) = .error s :: observableEvents ts := rfl
-
-@[simp] theorem observableEvents_cons_trap (s : String) (ts : List TraceEvent) :
-    observableEvents (.trap s :: ts) = .trap s :: observableEvents ts := rfl
-
-/-- Observable events distributes over append. -/
-@[simp] theorem observableEvents_append (ts1 ts2 : List TraceEvent) :
-    observableEvents (ts1 ++ ts2) = observableEvents ts1 ++ observableEvents ts2 := by
-  induction ts1 with
-  | nil => simp [observableEvents]
-  | cons t ts1 ih =>
-    cases t with
-    | silent => simp [observableEvents, ih]
-    | trap msg => simp [observableEvents, ih]
-    | log msg => simp [observableEvents, ih]
-    | error msg => simp [observableEvents, ih]
-
 /-- Stuttering forward simulation: one source step corresponds to one or more
     target IR steps. The target steps produce a trace whose observable events
     match the source step's observable event. -/
@@ -5141,16 +5145,23 @@ theorem lower_behavioral_obs (prog : ANF.Program) (irmod : IRModule)
   rw [traceListFromCore_eq_map]
   exact IRStutterSim_behavioral sim hR_init hInitEq hDet
 
-/-- THE STUTTERING SIMULATION: ANF → IR.
-    For each ANF step, the lowered IR module takes one or more corresponding IR steps
-    with matching observable events. This is the simulation the proof agent needs
-    to instantiate for `lower_behavioral_correct`.
+/-- THE FORWARD SIMULATION: ANF → IR (1:1 version for LowerCorrect.lean).
+    For each ANF step, the lowered IR module can take a corresponding IR step
+    with the mapped trace event. Used by the existing proof chain. -/
+theorem ir_forward_sim (prog : ANF.Program) (irmod : IRModule)
+    (hlower : Wasm.lower prog = .ok irmod) :
+    ∃ (R : ANF.State → IRExecState → Prop),
+      R (ANF.initialState prog) (irInitialState irmod) ∧
+      IRForwardSim R anfStepMapped := by
+  refine ⟨LowerSimRel prog irmod, ?_, ?_⟩
+  · exact LowerSimRel.init prog irmod hlower
+  · exact {
+      step_sim := LowerSimRel.step_sim prog irmod
+      halt_sim := LowerSimRel.halt_sim prog irmod
+    }
 
-    Strategy: The proof agent should construct this by case analysis on ANF.step?,
-    using the lowerExpr correspondence and the exact-value irStep?_eq_* lemmas.
-    Each ANF trivial/complex/control-flow case maps to a specific sequence of
-    IR instructions emitted by Lower.lean. One ANF step (e.g. let-binding)
-    typically corresponds to multiple IR steps. -/
+/-- THE STUTTERING SIMULATION: ANF → IR (architecturally correct version).
+    One ANF step → one or more IR steps with matching observable events. -/
 theorem ir_stutter_sim (prog : ANF.Program) (irmod : IRModule)
     (hlower : Wasm.lower prog = .ok irmod) :
     ∃ (R : ANF.State → IRExecState → Prop),
@@ -5159,19 +5170,30 @@ theorem ir_stutter_sim (prog : ANF.Program) (irmod : IRModule)
   refine ⟨LowerSimRel prog irmod, ?_, ?_⟩
   · exact LowerSimRel.init prog irmod hlower
   · exact {
-      step_sim := LowerSimRel.step_sim prog irmod
+      step_sim := LowerSimRel.step_sim_stutter prog irmod
       halt_sim := LowerSimRel.halt_sim prog irmod
     }
 
-/-- Main application: using ir_stutter_sim to prove lower_behavioral_correct.
-    Composes ir_stutter_sim with IRStutterSim_behavioral + DetBehaves_of_ANFBehaves. -/
+/-- 1:1 version: lower_behavioral_correct using IRForwardSim (for LowerCorrect.lean). -/
 theorem lower_behavioral_correct' (prog : ANF.Program) (irmod : IRModule)
+    (hlower : Wasm.lower prog = .ok irmod) :
+    ∀ trace, ANF.Behaves prog trace →
+      IRBehaves irmod (traceListFromCore trace) := by
+  intro trace hBeh
+  obtain ⟨R, hR_init, sim⟩ := ir_forward_sim prog irmod hlower
+  have hDet := DetBehaves_of_ANFBehaves hBeh
+  have hIR := IRForwardSim_behavioral sim hR_init hDet
+  simp only [traceListFromCore_eq_map]
+  exact hIR
+
+/-- Stuttering version: lower_behavioral_correct using observable events. -/
+theorem lower_behavioral_obs_correct (prog : ANF.Program) (irmod : IRModule)
     (hlower : Wasm.lower prog = .ok irmod) :
     ∀ trace, ANF.Behaves prog trace →
       IRBehavesObs irmod (observableEvents (traceListFromCore trace)) := by
   exact lower_behavioral_obs prog irmod hlower
     (LowerSimRel.init prog irmod hlower)
-    { step_sim := LowerSimRel.step_sim prog irmod
+    { step_sim := LowerSimRel.step_sim_stutter prog irmod
       halt_sim := LowerSimRel.halt_sim prog irmod }
 
 /-! ### IR → Wasm Stuttering Forward Simulation (for EmitCorrect)
@@ -5214,7 +5236,7 @@ theorem WasmStutterSim_steps {R : IRExecState → ExecState → Prop}
     obtain ⟨w_mid, w_trace1, hwSteps1, hR_mid, hObs1⟩ := sim.step_sim _ _ _ _ hR hirEq
     obtain ⟨w_final, w_trace2, hwSteps2, hR_final, hObs2⟩ := ih hR_mid
     refine ⟨w_final, w_trace1 ++ w_trace2, Wasm.Steps_trans hwSteps1 hwSteps2, hR_final, ?_⟩
-    simp only [Wasm.observableWasmEvents_append, hObs1, hObs2, traceListToWasm]
+    simp only [Wasm.observableWasmEvents_append, hObs1, hObs2, traceListToWasm, List.map]
 
 /-- Behavioral equivalence at the Wasm level up to silent events. -/
 def WasmBehavesObs (m : Module) (obs : List Wasm.TraceEvent) : Prop :=
@@ -5223,12 +5245,13 @@ def WasmBehavesObs (m : Module) (obs : List Wasm.TraceEvent) : Prop :=
     Wasm.step? sFinal = none ∧
     Wasm.observableWasmEvents w_trace = obs
 
-/-- Stuttering simulation preserves observable Wasm behavior. -/
+/-- Stuttering simulation preserves observable Wasm behavior.
+    Given a WasmStutterSim, if IR executes with trace `ts` and halts,
+    the Wasm executes with a trace whose observable events match. -/
 theorem WasmStutterSim_behavioral {R : IRExecState → ExecState → Prop}
     (sim : WasmStutterSim R)
     {ir_init : IRExecState} {w_init : ExecState}
     (hR : R ir_init w_init)
-    (hW_init : w_init = initialState w_init.store.module)
     {ts : List TraceEvent}
     (hBehaves : ∃ ir_final, IRSteps ir_init ts ir_final ∧ irStep? ir_final = none) :
     ∃ (sFinal : ExecState) (w_trace : List Wasm.TraceEvent),
@@ -5241,7 +5264,20 @@ theorem WasmStutterSim_behavioral {R : IRExecState → ExecState → Prop}
     WasmStutterSim_steps sim hR hIRSteps
   exact ⟨w_final, w_trace, hwSteps, sim.halt_sim _ _ hR_final hIRHalt, hObs⟩
 
-/-- THE STUTTERING SIMULATION: IR → Wasm. -/
+/-- THE FORWARD SIMULATION: IR → Wasm (1:1 version for EmitCorrect.lean). -/
+theorem emit_forward_sim (irmod : IRModule) (wmod : Module)
+    (hemit : emit irmod = .ok wmod) :
+    ∃ (R : IRExecState → ExecState → Prop),
+      R (irInitialState irmod) (initialState wmod) ∧
+      WasmForwardSim R := by
+  refine ⟨EmitSimRel irmod wmod, ?_, ?_⟩
+  · exact EmitSimRel.init irmod wmod hemit
+  · exact {
+      step_sim := EmitSimRel.step_sim irmod wmod
+      halt_sim := EmitSimRel.halt_sim irmod wmod
+    }
+
+/-- THE STUTTERING SIMULATION: IR → Wasm (architecturally correct version). -/
 theorem emit_stutter_sim (irmod : IRModule) (wmod : Module)
     (hemit : emit irmod = .ok wmod) :
     ∃ (R : IRExecState → ExecState → Prop),
@@ -5250,13 +5286,24 @@ theorem emit_stutter_sim (irmod : IRModule) (wmod : Module)
   refine ⟨EmitSimRel irmod wmod, ?_, ?_⟩
   · exact EmitSimRel.init irmod wmod hemit
   · exact {
-      step_sim := EmitSimRel.step_sim irmod wmod
+      step_sim := EmitSimRel.step_sim_stutter irmod wmod
       halt_sim := EmitSimRel.halt_sim irmod wmod
     }
 
-/-- Main application: IR behavioral preservation lifts to Wasm behavioral preservation
-    up to observable events. -/
+/-- 1:1 version: emit_behavioral_correct using WasmForwardSim (for EmitCorrect.lean). -/
 theorem emit_behavioral_correct' (irmod : IRModule) (wmod : Module)
+    (hemit : emit irmod = .ok wmod) :
+    ∀ trace, IRBehaves irmod trace →
+      Behaves wmod (traceListToWasm trace) := by
+  intro trace hBeh
+  obtain ⟨sFinal_ir, hIRSteps, hIRHalt⟩ := hBeh
+  obtain ⟨R, hR_init, sim⟩ := emit_forward_sim irmod wmod hemit
+  have hW := WasmForwardSim_behavioral R sim hR_init ⟨sFinal_ir, hIRSteps, hIRHalt⟩
+  obtain ⟨wFinal, hWSteps, hWHalt⟩ := hW
+  exact ⟨wFinal, hWSteps, hWHalt⟩
+
+/-- Stuttering version: emit_behavioral_correct with observable events. -/
+theorem emit_behavioral_obs_correct (irmod : IRModule) (wmod : Module)
     (hemit : emit irmod = .ok wmod) :
     ∀ (ir_trace : List TraceEvent),
     (∃ ir_final, IRSteps (irInitialState irmod) ir_trace ir_final ∧
@@ -5268,6 +5315,6 @@ theorem emit_behavioral_correct' (irmod : IRModule) (wmod : Module)
         Wasm.observableWasmEvents (traceListToWasm ir_trace) := by
   intro ir_trace hIR
   obtain ⟨R, hR_init, sim⟩ := emit_stutter_sim irmod wmod hemit
-  exact WasmStutterSim_behavioral sim hR_init (by simp [initialState]) hIR
+  exact WasmStutterSim_behavioral sim hR_init hIR
 
 end VerifiedJS.Wasm.IR
