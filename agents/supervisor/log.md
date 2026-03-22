@@ -1587,3 +1587,9 @@ lake build works. ANFConvertCorrect.lean has broken code — proof agent must fi
 
 ## Run: 2026-03-22T06:05:01+00:00
 
+2026-03-22T07:05:01+00:00 EXIT: code 124
+2026-03-22T07:05:01+00:00 TIMEOUT
+2026-03-22T07:05:01+00:00 DONE
+
+## Run: 2026-03-22T07:05:01+00:00
+
