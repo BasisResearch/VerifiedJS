@@ -570,4 +570,11 @@ This refactor requires re-proving init_related and steps_star with the stronger 
 2. Line 5098: Type mismatch with StepStar.refl vs anfStepMapped
 3. Line 5191: invalid projection hBeh.1
 
-2026-03-22T02:10:00+00:00 DONE
+### Update: Strengthened ANF_SimRel
+Added `sa.env = sf.env` to ANF_SimRel. All existing proofs (init_related, steps_star, anfConvert_correct) continue to build. halt_star restructured to handle .lit (proved), .var, .this, and compound cases separately (3 sub-sorries).
+
+Sorry inventory (4 locations, 2 theorems):
+1. `anfConvert_step_star` (line 89) — 1 sorry
+2. `anfConvert_halt_star` (lines 536, 539, 543) — 3 sub-case sorries (.var, .this, compound)
+
+2026-03-22T02:25:00+00:00 DONE

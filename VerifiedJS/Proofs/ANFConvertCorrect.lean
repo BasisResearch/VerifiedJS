@@ -528,10 +528,18 @@ private theorem anfConvert_halt_star
     exact ⟨sf, [], .refl sf,
       by rw [show sf = {sf with expr := .lit v} from by cases sf; simp_all]; unfold Flat.step?; simp,
       rfl, hheap, henv, htrace, k, n, m, hnorm⟩
+  | var name =>
+    -- Flat.step? on .var name: env lookup
+    -- normalizeExpr (.var name) k = k (.var name), gives .trivial t with t non-var
+    -- After var step, Flat reaches .lit v; then step? = none
+    -- ANF is at .trivial t; need to show correspondence via env equality
+    sorry
+  | this =>
+    -- Similar to var: Flat.step? on .this does env lookup for "this"
+    sorry
   | _ =>
-    -- For var/this: normalizeExpr applies k directly, need env correspondence
-    -- For compound: normalizeExpr may still produce .trivial through simple sub-expressions
-    -- Both require env/heap correspondence not in current SimRel
+    -- Compound expressions: normalizeExpr uses bindComplex/recursive calls
+    -- May still produce .trivial through simple sub-expressions
     sorry
 
 /-- Multi-step simulation derived from single-step stuttering simulation. -/

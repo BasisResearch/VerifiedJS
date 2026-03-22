@@ -936,7 +936,7 @@ theorem evalUnary_total (op : UnaryOp) (v : Value) : ∃ w, evalUnary op v = w :
 /-- A variable lookup in a non-empty env that contains the name succeeds. -/
 theorem Env.lookup_extend_same (env : Env) (name : VarName) (v : Value) :
     (env.extend name v).lookup name = some v := by
-  simp [Env.extend, Env.lookup, List.find?]
+  simp [Env.extend, Env.lookup]
 
 /-- var lookup steps to the bound value. -/
 theorem step_var_lookup (env : Env) (name : VarName) (v : Value) (heap : Heap)
@@ -1515,7 +1515,7 @@ theorem pushTrace_callStack (s : State) (t : TraceEvent) :
 
 /-- Env.lookup on empty env returns none. -/
 theorem Env.lookup_empty (name : VarName) : Env.empty.lookup name = none := by
-  simp [Env.empty, Env.lookup, List.find?]
+  simp [Env.empty, Env.lookup]
 
 /-- §12.8.3 Adding a number to a string concatenates after ToString. -/
 theorem evalBinary_add_num_string (n : Float) (s : String) :
@@ -1685,7 +1685,7 @@ theorem evalBinary_logAnd_falsy (a b : Value) (h : toBoolean a = false) :
   simp [evalBinary, h]
 
 /-- abstractEq is reflexive on numbers. -/
-theorem abstractEq_number_refl (n : Float) (h : ¬n.isNaN) :
+theorem abstractEq_number_refl (n : Float) (_h : ¬n.isNaN) :
     abstractEq (.number n) (.number n) = (n == n) := by
   simp [abstractEq]
 
@@ -1953,7 +1953,7 @@ theorem step_deleteProp_step_obj (obj : Expr) (prop : PropName) (env : Env) (hea
 /-- Env.lookup_extend_same' — more precise version returning the actual result. -/
 theorem Env.lookup_extend_eq (env : Env) (name : VarName) (v : Value) :
     (Env.extend env name v).lookup name = some v := by
-  simp [Env.extend, Env.lookup, List.find?]
+  simp [Env.extend, Env.lookup]
 
 /-- step? on forIn with non-value obj and steppable obj, steps the obj. -/
 theorem step_forIn_step_obj (binding : VarName) (obj body : Expr) (env : Env) (heap : Heap)
@@ -1995,7 +1995,7 @@ theorem abstractEq_string (a b : String) : abstractEq (.string a) (.string b) = 
 
 /-- Behaves also determines the final state. -/
 theorem Behaves_final_unique {p : Program} {b : List TraceEvent}
-    (h1 : Behaves p b) (h2 : Behaves p b) :
+    (h1 : Behaves p b) (_h2 : Behaves p b) :
     ∃ sf, Steps (initialState p) b sf ∧ step? sf = none := by
   obtain ⟨sf, hsteps, hhalt⟩ := h1
   exact ⟨sf, hsteps, hhalt⟩
@@ -2007,7 +2007,7 @@ theorem Steps_refl_eq (s : State) : Steps s [] s :=
 /-- step? preserves: if step produces (t, s'), then s' differs from s
     only in expr, env, heap, trace, funcs, callStack. -/
 theorem step_preserves_structure {s : State} {t : TraceEvent} {s' : State}
-    (h : step? s = some (t, s')) :
+    (_h : step? s = some (t, s')) :
     ∃ e' env' heap' trace' funcs' cs',
       s' = ⟨e', env', heap', trace', funcs', cs'⟩ :=
   ⟨s'.expr, s'.env, s'.heap, s'.trace, s'.funcs, s'.callStack, rfl⟩
@@ -2034,7 +2034,7 @@ theorem step_consoleLog_num (n : Float) (env : Env) (heap : Heap)
 /-- Env.lookup after multiple extends: latest wins. -/
 theorem Env.lookup_extend_shadow (env : Env) (name : VarName) (v1 v2 : Value) :
     (env.extend name v1 |>.extend name v2).lookup name = some v2 := by
-  simp [Env.extend, Env.lookup, List.find?]
+  simp [Env.extend, Env.lookup]
 
 /-- toNumber on undefined is NaN (0.0/0.0). -/
 theorem toNumber_undefined : toNumber .undefined = 0.0 / 0.0 := by
