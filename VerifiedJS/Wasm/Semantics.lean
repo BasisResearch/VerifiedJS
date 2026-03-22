@@ -4791,11 +4791,22 @@ structure LowerSimRel (prog : ANF.Program) (irmod : IRModule)
   henv : ∀ name v, s.env.lookup name = some v →
     ∃ (idx : Nat) (val : IRValue), (Option.bind ir.frames.head? (fun f => f.locals[idx]?)) = some val
   /- Step correspondence: when the ANF takes a step, the IR takes a matching step.
-     The new IR state satisfies all basic invariants of the relation. -/
+     The new IR state satisfies all basic invariants of the relation.
+     NOTE: Cannot return full LowerSimRel due to Lean's restriction on nested inductives
+     in structure fields. The step_sim theorem constructs the full relation using sorry
+     for the recursive env/step fields. -/
   hstep : ∀ ct s', ANF.step? s = some (ct, s') →
     ∃ ir', irStep? ir = some (traceFromCore ct, ir') ∧
       Wasm.lower prog = .ok irmod ∧ ir'.module = irmod ∧
-      (anfStepMapped s' = none → ir'.halted)
+      (anfStepMapped s' = none → ir'.halted) ∧
+      -- Environment correspondence for successor state
+      (∀ name v, s'.env.lookup name = some v →
+        ∃ (idx : Nat) (val : IRValue), (Option.bind ir'.frames.head? (fun f => f.locals[idx]?)) = some val) ∧
+      -- Step correspondence for successor state (one level deep)
+      (∀ ct' s'', ANF.step? s' = some (ct', s'') →
+        ∃ ir'', irStep? ir' = some (traceFromCore ct', ir'') ∧
+          Wasm.lower prog = .ok irmod ∧ ir''.module = irmod ∧
+          (anfStepMapped s'' = none → ir''.halted))
 
 namespace LowerSimRel
 
@@ -4842,17 +4853,18 @@ theorem step_sim (prog : ANF.Program) (irmod : IRModule) :
     obtain ⟨ht, hs1'⟩ := hstep
     subst ht hs1'
     -- Apply step correspondence from the relation
-    obtain ⟨ir', hirStep, hlower', hmod', hhalt'⟩ := hrel.hstep ct s1'' heq
+    obtain ⟨ir', hirStep, hlower', hmod', hhalt', henv', hstep'⟩ := hrel.hstep ct s1'' heq
     exact ⟨ir', hirStep, {
       hlower := hlower'
       hmod := hmod'
       hhalt := hhalt'
-      -- Environment correspondence for the new state:
-      -- The IR step preserves environment encoding.
-      henv := by sorry
-      -- Step correspondence for the new state:
-      -- The next IR code corresponds to the lowered ANF expression.
-      hstep := by sorry
+      henv := henv'
+      -- Recursive step correspondence: use the one-level-deep step info from hstep',
+      -- but need deeper recursion for the full invariant
+      hstep := by
+        intro ct' s'' heq'
+        obtain ⟨ir'', hirStep'', hlower'', hmod'', hhalt''⟩ := hstep' ct' s'' heq'
+        exact ⟨ir'', hirStep'', hlower'', hmod'', hhalt'', by sorry, by sorry⟩
     }⟩
 
 /-- Convenience: step_sim from ANF.step? directly (avoids anfStepMapped unification). -/
@@ -4894,11 +4906,17 @@ structure EmitSimRel (irmod : IRModule) (wmod : Module)
   /- Halt correspondence. -/
   hhalt : irStep? ir = none → Wasm.step? w = none
   /- Step correspondence: when the IR takes a step, the Wasm takes a matching step.
-     The new states satisfy basic invariants. -/
+     The new states satisfy all basic invariants of the relation.
+     NOTE: Cannot return full EmitSimRel due to Lean nested inductive restrictions. -/
   hstep : ∀ t ir', irStep? ir = some (t, ir') →
     ∃ w', Wasm.step? w = some (traceToWasm t, w') ∧
       emit irmod = .ok wmod ∧ ir'.stack.length = w'.stack.length ∧
-      (irStep? ir' = none → Wasm.step? w' = none)
+      (irStep? ir' = none → Wasm.step? w' = none) ∧
+      -- Step correspondence for successor state (one level deep)
+      (∀ t' ir'', irStep? ir' = some (t', ir'') →
+        ∃ w'', Wasm.step? w' = some (traceToWasm t', w'') ∧
+          emit irmod = .ok wmod ∧ ir''.stack.length = w''.stack.length ∧
+          (irStep? ir'' = none → Wasm.step? w'' = none))
 
 namespace EmitSimRel
 
@@ -4952,13 +4970,17 @@ theorem step_sim (irmod : IRModule) (wmod : Module) :
     ∃ s2', Wasm.step? s2 = some (traceToWasm t, s2') ∧
       EmitSimRel irmod wmod s1' s2' := by
   intro s1 s2 t s1' hrel hstep
-  obtain ⟨w', hwStep, hemit', hstack', hhalt'⟩ := hrel.hstep t s1' hstep
+  -- Apply step correspondence from the relation
+  obtain ⟨w', hwStep, hemit', hstack', hhalt', hstep'⟩ := hrel.hstep t s1' hstep
   exact ⟨w', hwStep, {
     hemit := hemit'
     hstack := hstack'
     hhalt := hhalt'
-    -- Step correspondence for the new state
-    hstep := by sorry
+    -- Recursive step correspondence: use one-level-deep info, sorry deeper recursion
+    hstep := by
+      intro t' ir'' hirStep
+      obtain ⟨w'', hwStep'', hemit'', hstack'', hhalt''⟩ := hstep' t' ir'' hirStep
+      exact ⟨w'', hwStep'', hemit'', hstack'', hhalt'', by sorry⟩
   }⟩
 
 /-- Halt simulation: if IR halts, Wasm halts.
@@ -5074,16 +5096,15 @@ theorem IRStutterSim_behavioral {S : Type} {R : S → IRExecState → Prop}
     (sim : IRStutterSim R step_src)
     {s_init : S} {ir_init : IRExecState}
     (hR : R s_init ir_init)
+    (hInit : ir_init = irInitialState ir_init.module)
     {ts : List TraceEvent}
     (hBehaves : DetBehaves step_src s_init ts) :
     IRBehavesObs ir_init.module (observableEvents ts) := by
   obtain ⟨s_final, hExec, hHalt⟩ := hBehaves
   obtain ⟨ir_final, ir_trace, hIRSteps, hR_final, hObs⟩ :=
     IRStutterSim_steps sim hR hExec
-  -- IRSteps starts from ir_init, but IRBehavesObs needs irInitialState ir_init.module.
-  -- This requires ir_init = irInitialState ir_init.module (true at call sites).
-  -- TODO: Add hypothesis ir_init = irInitialState ir_init.module or refactor IRBehavesObs.
-  sorry
+  subst hInit
+  exact ⟨ir_final, ir_trace, hIRSteps, sim.halt_sim _ _ hR_final hHalt, hObs⟩
 
 /-- Bridge: ANF.Behaves → IRBehavesObs via stuttering simulation.
     When using the stuttering framework for lowering, this connects
