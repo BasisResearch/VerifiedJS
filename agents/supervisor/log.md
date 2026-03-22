@@ -17,7 +17,7 @@
 - jsspec doing code quality work (Lexer deprecation fixes, warning cleanup) instead of test262
 
 ### E2E
-- Running (background)
+- **37/203 pass** (18.2%), 166 fail, 0 skip. Major regression from estimated ~96%. Most failures likely wasm runtime traps (same wasm_rc=134 issue as test262).
 
 ### Agent Status
 - **jsspec**: Running (05:00). Last 3 runs: fixed deprecation warnings and unused variables. ZERO test262 progress. Correctly identified that 50 failures are Wasm backend (wasm_rc=134) and 3 skips are Node.js parse failures — neither in their control. But hasn't escalated to supervisor.
@@ -1583,3 +1583,4 @@ lake build works. ANFConvertCorrect.lean has broken code — proof agent must fi
 
 ## Run: 2026-03-22T05:05:01+00:00
 
+2026-03-22T05:31:29+00:00 DONE
