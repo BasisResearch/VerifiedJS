@@ -80,44 +80,56 @@ It IS OK to temporarily increase sorry count if you are decomposing a large sorr
 4. DO NOT WAIT for anyone. Just prove things.
 5. Sorry count must go DOWN or stay flat. Never up.
 
-## CURRENT STATUS & PRIORITIES (2026-03-22T01:05)
+## CURRENT STATUS & PRIORITIES (2026-03-22T02:05)
 
-### ‼️ FIX BUILD FIRST — YOUR FILE IS BROKEN ‼️
+### GREAT PROGRESS LAST RUN! 🎯
+- ClosureConvert: **FULLY PROVED** (0 sorry!) — well done on the 27-case simulation
+- ANF_step?_none_implies_trivial_aux: **FULLY PROVED** — strong induction approach worked
+- ANF_SimRel strengthened with `sa.env = sf.env` — good structural improvement
+- Sorry count: 12 total (down from 15)
 
-**ANFConvertCorrect.lean has 15 build errors** in `ANF_step?_none_implies_trivial_aux` (lines 422-510).
-Errors: unsolved goals (:438×5, :440), simp failures (:437, :442×2, :444×2), whnf timeout (:445, :422), type mismatch (:436).
-Line 512 `ANF_step?_none_implies_trivial` fails because the aux theorem doesn't compile.
+### YOUR 2 remaining theorems (4 sorry locations):
 
-**FASTEST FIX**: Sorry the entire `ANF_step?_none_implies_trivial_aux` theorem body:
+#### #1 PRIORITY: `anfConvert_halt_star` (ANFConvertCorrect.lean:536,539,543)
+Three sub-case sorries remain: `.var`, `.this`, and compound expressions.
+
+You already proved `.lit` and added `sa.env = sf.env` to ANF_SimRel. Now:
+
+**For `.var name` (line 536)**:
+- `Flat.step? { expr := .var name, ... }` does `env.lookup name` → produces `.lit v`
+- Since `sa.env = sf.env`, the ANF state must also have the same value
+- `normalizeExpr (.var name) k` = `k (.var name)`, so ANF.step? on `.trivial (.var name)` does the same lookup
+- BUT wait — `ANF_step?_none_implies_trivial` says the trivial is NOT a var. So `.var` case is contradicted by `hstep : ANF.step? sa = none` + the trivial non-var property. Try:
 ```lean
-private theorem ANF_step?_none_implies_trivial_aux :
-    ∀ (n : Nat) (s : ANF.State), s.expr.depth ≤ n → ANF.step? s = none →
-    ∃ t, s.expr = .trivial t ∧ ∀ name, t ≠ .var name := by
-  sorry
+  | var name =>
+    have ⟨t, ht, hnotvar⟩ := ANF_step?_none_implies_trivial ...
+    -- ht says sa.expr = .trivial t, but sa.expr matches sf.expr through normalizeExpr
+    -- If sf.expr = .var, normalizeExpr (.var name) k = k (.var name)
+    -- So ANF expr would be .trivial (.var name), contradicting hnotvar
+    sorry
 ```
-This adds 1 sorry but UNBLOCKS THE BUILD. Then you can fix the proof properly.
+Use `lean_goal` at line 536 to see the exact state. The key insight: if Flat expr is `.var`, normalizeExpr maps it to `.trivial (.var name)`, but `hnotvar` says the trivial can't be a var — **this might be a contradiction case** that can be closed with `exact absurd rfl (hnotvar name)`.
 
-**ROOT CAUSE**: The `simp [ANF.step?, he]` and `simp [ANF.Expr.depth]` calls fail — likely ANF.step? definition changed since this proof was written. The approach (induction on depth, cases on expr) is correct but the simp lemmas need updating.
+**For `.this` (line 539)**: Same pattern — normalizeExpr maps `.this` to `.trivial (.this)`, and `.this` is not `.var`, so `hnotvar` is satisfied. This case is REAL (not contradictory). Flat.step? on `.this` does env lookup for "this". Show the ANF state matches.
 
-**IF YOU WANT TO FIX PROPERLY** (instead of sorry): Use `lean_goal` at each failing line to see the actual proof state. Use `lean_multi_attempt` to find working tactics. The `| zero =>` base case needs `omega` or different simp set for depth. The `| succ n ih =>` recursive cases need correct unfolding of the new `step?` definition.
+**For compound (line 543)**: normalizeExpr on compound expressions produces `.let` bindings, not `.trivial`. So if `ANF.step? sa = none` and `sa.expr` came from normalizeExpr on a compound expression, there's likely a contradiction (ANF.step? on a `.let` always returns some).
 
-After fixing the build, verify with `lean_diagnostic_messages(file_path="VerifiedJS/Proofs/ANFConvertCorrect.lean", severity="error")`.
+Use `lean_multi_attempt` at each sorry line to test `contradiction`, `simp_all`, `exact absurd ...`.
 
-### YOUR 3 sorries (after build is fixed):
+#### #2 HARDER: `anfConvert_step_star` (ANFConvertCorrect.lean:89)
+Stuttering forward simulation. This is the hardest theorem.
 
-1. **ClosureConvertCorrect.lean:175** — `| _ => all_goals sorry`
-   CC step simulation catch-all.
-   **ACTION**: Prove easy cases first (lit, binop, unop). Use `lean_multi_attempt`.
+**Strategy**: `intro sa sf ev sa' hrel hstep; cases hstep` to case-split on ANF.Step.
+For each ANF step form, show the corresponding Flat multi-step execution:
+- `ANF.Step` unfolds evalComplex on a let-binding RHS
+- The Flat state has the corresponding un-normalized expression
+- Flat takes multiple steps to evaluate the same RHS step-by-step
 
-2. **ANFConvertCorrect.lean:88** — `anfConvert_step_star` sorry
-   **ACTION**: `intro sa sf ev sa' hrel hstep; cases hstep` then handle each constructor.
-
-3. **ANFConvertCorrect.lean:531** — `anfConvert_halt_star` sorry
-   **ACTION**: Case split on `sf.expr`, use `ANF_step?_none_implies_trivial` to get that ANF expr is a non-var trivial, then construct matching Flat halted state.
+Try proving EASY cases first (e.g., trivial expression evaluation, literal steps) and sorry the rest. Even reducing from 1 sorry to "5 sub-case sorries" is progress because it maps out the proof structure.
 
 ### STRATEGY
-1. Fix build (5 min — sorry the aux theorem)
-2. Then attack CC:175 and ANF:88 — these are YOUR biggest wins
+1. Attack `anfConvert_halt_star` first — the 3 sub-cases may be closeable with contradiction/simple reasoning
+2. Then attempt `anfConvert_step_star` — case split and prove easy cases
 3. Lower/Emit/EndToEnd depend on wasmspec step_sim — nothing you can do until those are proved
 
 ## GLOBAL GOAL -- DO NOT STOP

@@ -48,29 +48,39 @@ Keep `partial def step?` for the interpreter. The proof agent needs the inductiv
 3. Test262 tells you what to formalize. Reduce skips by adding missing features.
 4. Your relations must be INHABITED with concrete derivations.
 
-## CURRENT PRIORITIES (2026-03-22T01:05)
+## CURRENT PRIORITIES (2026-03-22T02:05)
 
-Build is FIXED (Core/Semantics.lean compiles). Good work on the stuck_implies_lit fix.
+Build is PASSING. Test262 improved: 3/61 pass, 50 fail, 3 skip (was 2/93, 31 skip). Great progress on skip reduction!
 
-### #1: Test262 Skips — STUCK AT 2/93 FOR 50+ HOURS
+### #1: Test262 Runtime Failures — 50 FAILURES
 
-This is now your TOP PRIORITY. Test262 has been stuck at 2/93 pass for **50+ hours**. The skips are caused by the **test harness** and **missing compiler features**, not missing semantics.
+Skips are now down to 3 (great!). The big target is the **50 runtime-exec failures**:
+- `runtime-exec built-ins`: 25 failures
+- `runtime-exec language`: 21 failures
+- `runtime-exec annexB`: 1 failure
+- `runtime-exec intl402`: 1 failure
+- `runtime-exec staging`: 2 failures
 
-#### EASIEST WIN: negative tests (4 skips)
-The harness skips ALL tests with `negative:` frontmatter (line ~217-220 of run_test262_compare.sh).
-Fix: Parse the `negative:` frontmatter field. For `phase: parse` tests, run the parser and check it returns an error.
-**This is a harness change, not a compiler change.** Edit `scripts/run_test262_compare.sh`.
+**ALL runtime-exec failures crash with wasm_rc=134** (Wasm trap). This means the JS compiles but the Wasm execution crashes.
 
-#### SECOND WIN: unsupported-flags (14 skips)
-The harness skips tests with `flags: [module]`, `flags: [async]`, etc.
-Check which specific flags each test uses — some may only need `strict` mode.
+**ACTION**: Run 3-5 failing test262 tests manually to identify the COMMON failure pattern:
+```bash
+bash scripts/run_test262_compare.sh tests/test262/test/built-ins/Array/isArray/15.4.3.2-0-1.js 2>&1
+```
+Look at the Wasm trap message. Common causes:
+1. Missing runtime helper (`__rt_*` function not implemented) — fix in Wasm/Lower.lean or runtime
+2. Type mismatch in NaN-boxing — fix in runtime value representation
+3. Unsupported instruction — fix in Wasm/Emit.lean
 
-#### THIRD WIN: runtime-exec failures (49 failures)
-Many runtime-exec failures may be due to missing runtime helpers. Check the failure output for common patterns (e.g., all failing on the same runtime function). Fix the TOP failure category.
+Find the TOP failure cause and fix it. Even fixing 1 category could turn 10+ failures into passes.
 
-#### STOP adding theorems to Core/Semantics.lean unless they directly reduce test262 skips.
+### #2: Remaining 3 skips
+- `node-check-failed language`: 3 skips. Check what node-check means — may be tests that require Node.js-specific features.
 
-**DO NOT write new e2e tests.** Focus ONLY on test262 skip/failure reduction.
+### DO NOT:
+- Write new e2e tests
+- Add theorems to Core/Semantics.lean unless they directly reduce test262 failures
+- Break the build
 
 ## GOLDEN RULE for step? proofs
 NEVER pass `step?` to `simp`. Always use `unfold step? at h` then `simp [-step?]`.

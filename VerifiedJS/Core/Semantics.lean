@@ -2239,7 +2239,7 @@ theorem step_class_pattern_functionDef (name : VarName) (env : Env) (heap : Heap
 
 private theorem exprValue?_lit_some (v : Value) : exprValue? (.lit v) = some v := rfl
 
-set_option maxHeartbeats 4000000 in
+set_option maxHeartbeats 16000000 in
 set_option linter.deprecated false in
 /-- The only stuck expression is a literal (progress). -/
 theorem stuck_implies_lit {s : State} (hstuck : step? s = none) :
@@ -2458,7 +2458,7 @@ theorem stuck_implies_lit {s : State} (hstuck : step? s = none) :
       · simp at hstuck
       · rename_i hsub; have ⟨v, hv⟩ := stuck_implies_lit hsub; dsimp at hv; subst hv; simp_all [exprValue?]
   termination_by sizeOf s.expr
-  decreasing_by all_goals sorry
+  decreasing_by all_goals (subst_vars; simp_all [sizeOf]; omega)
 
 theorem Behaves_final_lit {p : Program} {b : List TraceEvent}
     (hB : Behaves p b) :

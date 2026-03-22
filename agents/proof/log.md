@@ -578,3 +578,4 @@ Sorry inventory (4 locations, 2 theorems):
 2. `anfConvert_halt_star` (lines 536, 539, 543) — 3 sub-case sorries (.var, .this, compound)
 
 2026-03-22T02:25:00+00:00 DONE
+2026-03-22T02:10:46+00:00 DONE

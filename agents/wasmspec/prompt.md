@@ -62,56 +62,57 @@ Then construct the matching Step derivation in Lean. If you cannot, your semanti
 3. Keep definitions structurally simple for proofs.
 4. Add @[simp] lemmas for everything the proof agent might need.
 
-## CURRENT PRIORITIES (2026-03-22T01:05)
+## CURRENT PRIORITIES (2026-03-22T02:05)
 
-### ‼️ #0 FIX BUILD FIRST — YOUR FILE IS BROKEN ‼️
+### BUILD IS PASSING — good work fixing the errors from last run.
 
-Wasm/Semantics.lean has 2 build errors. FIX THESE BEFORE ANYTHING ELSE.
+### Your sorry inventory (7 locations):
 
-**Error 1: Line 5070** — `StepStar.refl` type mismatch.
-Goal: `StepStar anfStepMapped s✝ (List.map traceFromCore []) s✝`
-But `.refl` gives `StepStar _ s [] s` and Lean doesn't reduce `List.map traceFromCore []` to `[]`.
-FIX: Replace `| refl _ => exact .refl` with:
-```lean
-  | refl _ => simp [List.map]; exact StepStar.refl _
+| Line | Theorem | Description |
+|------|---------|-------------|
+| 4836 | LowerSimRel init hstep | Init step correspondence for Lower |
+| 4867 | LowerSimRel step_sim | Recursive step correspondence (×2 by sorry) |
+| 4961 | EmitSimRel init hstep | Init step correspondence for Emit |
+| 4983 | EmitSimRel step_sim | Recursive step correspondence (×1 by sorry) |
+| 5120 | lower_behavioral_obs | Full behavioral observation theorem |
+
+### #1 CRITICAL: Fix the recursive sorry pattern in step_sim
+
+Both `LowerSimRel.step_sim` (line 4867) and `EmitSimRel.step_sim` (line 4983) have the SAME bug:
+you prove one level of step correspondence, then sorry the deeper recursion.
+
+**The fix**: The `hstep` field in `LowerSimRel`/`EmitSimRel` should NOT be infinitely recursive.
+Instead, you only need to show: "for any SINGLE step from state s1, there exists a matching step from s2".
+The step_sim THEOREM (which is proved by extracting from `hrel.hstep`) should simply USE `hrel.hstep` directly — it already has the right type.
+
+Look at the structure:
 ```
-Or try: `| refl _ => exact show StepStar _ _ [] _ from .refl`
-
-**Error 2: Line 5163** — `(kernel) invalid projection hBeh.2.1`.
-`hBeh : IRBehaves irmod trace` is `∃ sFinal, IRSteps ... ∧ irStep? ... = none`.
-You can't project an `∃` with `.2.1`. FIX: Destructure first.
-Replace lines 5167-5174 with:
-```lean
-  intro trace hBeh
-  obtain ⟨sFinal_ir, hIRSteps, hIRHalt⟩ := hBeh
-  obtain ⟨R, hR_init, sim⟩ := emit_forward_sim irmod wmod hemit
-  have hW := WasmForwardSim_behavioral R sim hR_init ⟨sFinal_ir, hIRSteps, hIRHalt⟩
-  obtain ⟨wFinal, hWSteps, hWHalt⟩ := hW
-  exact ⟨wFinal, hWSteps, hWHalt⟩
+hstep' := hrel.hstep ct' s'' heq'   -- this gives ⟨ir'', hirStep'', hlower'', hmod'', hhalt''⟩
+-- But then you try to reconstruct the FULL relation including hstep for the NEW state
+-- That's where the sorry comes from — you can't provide the recursive hstep field
 ```
 
-Use `lean_diagnostic_messages` to verify ZERO errors after fixing.
+**FIX APPROACH**: Change the SimRel structure so `hstep` is NOT a field. Instead, make step_sim a SEPARATE coinductive/well-founded proof. Or: make step_sim take the simulation relation as a parameter and prove it by induction on the number of steps (not by packing hstep into the relation).
 
-### #1 CRITICAL: Prove `LowerSimRel.step_sim` (Wasm/Semantics.lean:~4840)
-APPROACH:
-1. `intro s1 s2 t s1' hrel hstep`
-2. Unfold `anfStepMapped` at `hstep` to expose `ANF.step?`
-3. Cases on `s1.expr` — each ANF expression form has different lowering
-4. For each case, unfold `lowerExpr` to get the IR instruction sequence
-5. Apply the matching `irStep?_eq_*` simp lemma to show IR takes matching step
-6. Reconstruct `LowerSimRel` for the new states
-7. Use `lean_multi_attempt` AGGRESSIVELY — test 10+ tactics per sub-goal
-8. Prove EASY cases first (lit, const, trivial), leave hard cases as sorry
+Alternatively, the SIMPLEST fix: remove `hstep` from the SimRel structure entirely. The step_sim theorem should be proved by:
+1. Unfolding `anfStepMapped`/`irStep?` at the hypothesis
+2. Case-splitting on the instruction
+3. Constructing the matching step directly from the lowering/emit correspondence
 
-### #2 CRITICAL: Prove `EmitSimRel.step_sim` (Wasm/Semantics.lean:~4940)
-Same pattern: case-split on `irStep?`, unfold `emitInstr`, show Wasm takes matching step.
+This is the architecturally correct approach. The SimRel should only carry STATE correspondence (heap, stack, code pointer). The STEP correspondence is the THEOREM you're proving, not an assumption.
+
+### #2: `lower_behavioral_obs` (line 5120)
+This sorry connects ANF behavioral semantics to IR behavioral semantics using the stuttering framework. It likely follows from `step_sim` + `halt_sim` (which you already proved) once step_sim is properly proved.
+
+### #3: Init hstep sorries (lines 4836, 4961)
+These follow the same pattern — they try to prove step correspondence at the initial state. Once you restructure SimRel (removing hstep field), these disappear.
 
 ### STRATEGY
-- FIX BUILD FIRST (5 min fix)
-- Then attack step_sim theorems — these are the LAST blockers for the entire proof chain
-- Prove EASY cases first (lit, const, trivial operations), leave hard cases as sorry
-- Any progress (even 3/10 cases proved) is valuable
-- Use `lean_multi_attempt` before writing ANY tactic
+1. **Restructure LowerSimRel/EmitSimRel**: Remove `hstep` field. Keep only state correspondence (halted, env, code pointer).
+2. **Prove step_sim directly**: case-split on instruction, unfold lower/emit, match steps.
+3. **Prove lower_behavioral_obs**: compose step_sim + halt_sim.
+4. Use `lean_multi_attempt` before writing ANY tactic.
+5. Prove EASY cases first, sorry hard cases. Any progress is valuable.
 
 ## GLOBAL GOAL -- DO NOT STOP
 Your job is done when:
