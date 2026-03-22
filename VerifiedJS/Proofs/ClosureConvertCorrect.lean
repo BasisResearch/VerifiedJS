@@ -255,6 +255,45 @@ private theorem closureConvert_step_simulation
         subst heqf; subst heqc
         show sf.trace ++ _ = sc.trace ++ _; rw [htrace]
     exact ⟨hsf'_trace_eq_sc'_trace, [], "", [], st', st', by rw [hsc'_expr]; simp [Flat.convertExpr, Flat.convertValue, hsf'_expr]⟩
+  | labeled label body =>
+    rw [hsc] at hconv; simp only [Flat.convertExpr] at hconv
+    -- convertExpr (.labeled label body) = (.labeled label body', st1)
+    -- where (body', st1) = convertExpr body scope envVar envMap st
+    have hsf_expr : sf.expr = .labeled label (Flat.convertExpr body scope envVar envMap st).1 := by
+      cases sf; simp_all [(Prod.mk.inj hconv).1]
+    -- Flat.step? on .labeled produces .silent and steps to body'
+    have hflat_ev : ev = .silent := by
+      rw [show sf = {sf with expr := .labeled label (Flat.convertExpr body scope envVar envMap st).1} from by cases sf; simp_all] at hstep
+      simp only [Flat.step?] at hstep; exact (Prod.mk.inj (Option.some.inj hstep)).1.symm
+    subst hflat_ev
+    -- Core.step? on .labeled produces .silent and steps to body
+    obtain ⟨sc', hcstep⟩ : ∃ sc', Core.step? sc = some (.silent, sc') := by
+      rw [show sc = {sc with expr := .labeled label body} from by cases sc; simp_all]
+      simp only [Core.step?]; exact ⟨_, rfl⟩
+    refine ⟨sc', ⟨hcstep⟩, ?_⟩
+    -- Show CC_SimRel for resulting states
+    have hsf'_expr : sf'.expr = (Flat.convertExpr body scope envVar envMap st).1 := by
+      have h0 := hstep
+      rw [show sf = {sf with expr := .labeled label (Flat.convertExpr body scope envVar envMap st).1} from by cases sf; simp_all] at h0
+      simp only [Flat.step?] at h0
+      exact congrArg Flat.State.expr (Prod.mk.inj (Option.some.inj h0)).2 ▸ rfl
+    have hsc'_expr : sc'.expr = body := by
+      have h0 := hcstep
+      rw [show sc = {sc with expr := .labeled label body} from by cases sc; simp_all] at h0
+      simp only [Core.step?] at h0
+      exact congrArg Core.State.expr (Prod.mk.inj (Option.some.inj h0)).2 ▸ rfl
+    have hsf'_trace_eq_sc'_trace : sf'.trace = sc'.trace := by
+      have hf := hstep; have hc := hcstep
+      rw [show sf = {sf with expr := .labeled label (Flat.convertExpr body scope envVar envMap st).1} from by cases sf; simp_all] at hf
+      rw [show sc = {sc with expr := .labeled label body} from by cases sc; simp_all] at hc
+      simp only [Flat.step?] at hf; simp only [Core.step?] at hc
+      have heqf := (Prod.mk.inj (Option.some.inj hf)).2
+      have heqc := (Prod.mk.inj (Option.some.inj hc)).2
+      subst heqf; subst heqc
+      show sf.trace ++ _ = sc.trace ++ _; rw [htrace]
+    exact ⟨hsf'_trace_eq_sc'_trace, scope, envVar, envMap, st,
+      (Flat.convertExpr body scope envVar envMap st).2,
+      by rw [hsc'_expr]; simp [Flat.convertExpr, hsf'_expr]⟩
   | _ => sorry
 
 /-! ### step?_none_implies_lit -/
