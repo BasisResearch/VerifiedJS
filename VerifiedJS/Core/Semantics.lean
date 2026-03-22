@@ -2244,7 +2244,221 @@ set_option linter.deprecated false in
 /-- The only stuck expression is a literal (progress). -/
 theorem stuck_implies_lit {s : State} (hstuck : step? s = none) :
     ∃ v, s.expr = .lit v := by
-  sorry
+  obtain ⟨e, env, heap, trace, funcs, cs⟩ := s
+  dsimp only at hstuck ⊢
+  cases e with
+  | lit v => exact ⟨v, rfl⟩
+  | var name =>
+    unfold step? at hstuck; simp only [] at hstuck; split at hstuck <;> simp at hstuck
+  | functionDef name params body isAsync isGen =>
+    unfold step? at hstuck; simp only [] at hstuck; simp at hstuck
+  | «break» label =>
+    unfold step? at hstuck; simp only [] at hstuck; simp at hstuck
+  | «continue» label =>
+    unfold step? at hstuck; simp only [] at hstuck; simp at hstuck
+  | while_ cond body =>
+    unfold step? at hstuck; simp only [] at hstuck; simp at hstuck
+  | labeled label body =>
+    unfold step? at hstuck; simp only [] at hstuck; simp at hstuck
+  | this =>
+    unfold step? at hstuck; simp only [] at hstuck; split at hstuck <;> simp at hstuck
+  | newObj callee args =>
+    unfold step? at hstuck; simp only [] at hstuck; simp at hstuck
+  | «let» name init body =>
+    unfold step? at hstuck; simp only [] at hstuck
+    split at hstuck
+    · simp at hstuck
+    · split at hstuck
+      · simp at hstuck
+      · rename_i _ hsub; have ⟨v, hv⟩ := stuck_implies_lit hsub; dsimp at hv; subst hv; simp_all [exprValue?]
+  | assign name rhs =>
+    unfold step? at hstuck; simp only [] at hstuck
+    split at hstuck
+    · simp at hstuck
+    · split at hstuck
+      · simp at hstuck
+      · rename_i _ hsub; have ⟨v, hv⟩ := stuck_implies_lit hsub; dsimp at hv; subst hv; simp_all [exprValue?]
+  | «if» cond then_ else_ =>
+    unfold step? at hstuck; simp only [] at hstuck
+    split at hstuck
+    · simp at hstuck
+    · split at hstuck
+      · simp at hstuck
+      · rename_i _ hsub; have ⟨v, hv⟩ := stuck_implies_lit hsub; dsimp at hv; subst hv; simp_all [exprValue?]
+  | seq a b =>
+    unfold step? at hstuck; simp only [] at hstuck
+    split at hstuck
+    · simp at hstuck
+    · split at hstuck
+      · simp at hstuck
+      · rename_i _ hsub; have ⟨v, hv⟩ := stuck_implies_lit hsub; dsimp at hv; subst hv; simp_all [exprValue?]
+  | unary op arg =>
+    unfold step? at hstuck; simp only [] at hstuck
+    split at hstuck
+    · simp at hstuck
+    · split at hstuck
+      · simp at hstuck
+      · rename_i _ hsub; have ⟨v, hv⟩ := stuck_implies_lit hsub; dsimp at hv; subst hv; simp_all [exprValue?]
+  | typeof arg =>
+    unfold step? at hstuck; simp only [] at hstuck
+    split at hstuck
+    · simp at hstuck
+    · split at hstuck
+      · simp at hstuck
+      · rename_i _ hsub; have ⟨v, hv⟩ := stuck_implies_lit hsub; dsimp at hv; subst hv; simp_all [exprValue?]
+  | throw arg =>
+    unfold step? at hstuck; simp only [] at hstuck
+    split at hstuck
+    · simp at hstuck
+    · split at hstuck
+      · simp at hstuck
+      · rename_i _ hsub; have ⟨v, hv⟩ := stuck_implies_lit hsub; dsimp at hv; subst hv; simp_all [exprValue?]
+  | await arg =>
+    unfold step? at hstuck; simp only [] at hstuck
+    split at hstuck
+    · simp at hstuck
+    · split at hstuck
+      · simp at hstuck
+      · rename_i _ hsub; have ⟨v, hv⟩ := stuck_implies_lit hsub; dsimp at hv; subst hv; simp_all [exprValue?]
+  | «return» arg =>
+    unfold step? at hstuck; simp only [] at hstuck
+    split at hstuck
+    · split at hstuck
+      · simp at hstuck
+      · split at hstuck
+        · simp at hstuck
+        · rename_i _ _ hsub; have ⟨v, hv⟩ := stuck_implies_lit hsub; dsimp at hv; subst hv; simp_all [exprValue?]
+    · simp at hstuck
+  | yield arg delegate =>
+    unfold step? at hstuck; simp only [] at hstuck
+    split at hstuck
+    · split at hstuck
+      · simp at hstuck
+      · split at hstuck
+        · simp at hstuck
+        · rename_i _ _ hsub; have ⟨v, hv⟩ := stuck_implies_lit hsub; dsimp at hv; subst hv; simp_all [exprValue?]
+    · simp at hstuck
+  | forIn binding obj body =>
+    unfold step? at hstuck; simp only [] at hstuck
+    split at hstuck
+    · split at hstuck
+      · simp at hstuck
+      · rename_i hsub; have ⟨v, hv⟩ := stuck_implies_lit hsub; dsimp at hv; subst hv; simp_all [exprValue?]
+    · simp at hstuck
+    · simp at hstuck
+  | forOf binding iterable body =>
+    unfold step? at hstuck; simp only [] at hstuck
+    split at hstuck
+    · split at hstuck
+      · simp at hstuck
+      · rename_i hsub; have ⟨v, hv⟩ := stuck_implies_lit hsub; dsimp at hv; subst hv; simp_all [exprValue?]
+    · simp at hstuck
+    · simp at hstuck
+  | deleteProp obj prop =>
+    unfold step? at hstuck; simp only [] at hstuck
+    split at hstuck
+    · split at hstuck
+      · simp at hstuck
+      · rename_i hsub; have ⟨v, hv⟩ := stuck_implies_lit hsub; dsimp at hv; subst hv; simp_all [exprValue?]
+    · simp at hstuck
+    · simp at hstuck
+  | getProp obj prop =>
+    unfold step? at hstuck; simp only [] at hstuck
+    split at hstuck
+    · split at hstuck
+      · simp at hstuck
+      · rename_i hsub; have ⟨v, hv⟩ := stuck_implies_lit hsub; dsimp at hv; subst hv; simp_all [exprValue?]
+    · simp at hstuck
+    · simp at hstuck
+    · simp at hstuck
+  | binary op lhs rhs =>
+    unfold step? at hstuck; simp only [] at hstuck
+    split at hstuck
+    · split at hstuck
+      · simp at hstuck
+      · rename_i hsub; have ⟨v, hv⟩ := stuck_implies_lit hsub; dsimp at hv; subst hv; simp_all [exprValue?]
+    · split at hstuck
+      · split at hstuck
+        · simp at hstuck
+        · rename_i hsub; have ⟨v, hv⟩ := stuck_implies_lit hsub; dsimp at hv; subst hv; simp_all [exprValue?]
+      · simp at hstuck
+  | setProp obj prop value =>
+    unfold step? at hstuck; simp only [] at hstuck
+    split at hstuck
+    · split at hstuck
+      · simp at hstuck
+      · rename_i hsub; have ⟨v, hv⟩ := stuck_implies_lit hsub; dsimp at hv; subst hv; simp_all [exprValue?]
+    · split at hstuck
+      · split at hstuck
+        · simp at hstuck
+        · rename_i hsub; have ⟨v, hv⟩ := stuck_implies_lit hsub; dsimp at hv; subst hv; simp_all [exprValue?]
+      · split at hstuck <;> simp at hstuck
+  | getIndex obj idx =>
+    unfold step? at hstuck; simp only [] at hstuck
+    split at hstuck
+    · split at hstuck
+      · simp at hstuck
+      · rename_i hsub; have ⟨v, hv⟩ := stuck_implies_lit hsub; dsimp at hv; subst hv; simp_all [exprValue?]
+    · split at hstuck
+      · simp at hstuck
+      · rename_i hsub; have ⟨v, hv⟩ := stuck_implies_lit hsub; dsimp at hv; subst hv; simp_all [exprValue?]
+    · split at hstuck <;> (try split at hstuck) <;> simp at hstuck
+  | setIndex obj idx value =>
+    unfold step? at hstuck; simp only [] at hstuck
+    split at hstuck
+    · split at hstuck
+      · simp at hstuck
+      · rename_i hsub; have ⟨v, hv⟩ := stuck_implies_lit hsub; dsimp at hv; subst hv; simp_all [exprValue?]
+    · split at hstuck
+      · simp at hstuck
+      · rename_i hsub; have ⟨v, hv⟩ := stuck_implies_lit hsub; dsimp at hv; subst hv; simp_all [exprValue?]
+    · split at hstuck
+      · simp at hstuck
+      · rename_i hsub; have ⟨v, hv⟩ := stuck_implies_lit hsub; dsimp at hv; subst hv; simp_all [exprValue?]
+    · split at hstuck <;> simp at hstuck
+  | call callee args =>
+    unfold step? at hstuck; simp only [] at hstuck
+    split at hstuck
+    · split at hstuck
+      · simp at hstuck
+      · rename_i hsub; have ⟨v, hv⟩ := stuck_implies_lit hsub; dsimp at hv; subst hv; simp_all [exprValue?]
+    · split at hstuck
+      · split at hstuck <;> (try split at hstuck) <;> (try split at hstuck) <;> simp at hstuck
+      · split at hstuck
+        · split at hstuck
+          · simp at hstuck
+          · rename_i _ _ _ hsub
+            have ⟨v, hv⟩ := stuck_implies_lit hsub; dsimp at hv; subst hv
+            exfalso; exact firstNonValueExpr_not_lit (by assumption) _ rfl
+        · exfalso; exact allValues_firstNonValue_contra (by assumption) (by assumption)
+  | objectLit props =>
+    unfold step? at hstuck; simp only [] at hstuck
+    split at hstuck
+    · split at hstuck
+      · simp at hstuck
+      · rename_i _ hsub
+        have ⟨v, hv⟩ := stuck_implies_lit hsub; dsimp at hv; subst hv
+        exfalso; exact firstNonValueProp_not_lit (by assumption) _ rfl
+    · simp at hstuck
+  | arrayLit elems =>
+    unfold step? at hstuck; simp only [] at hstuck
+    split at hstuck
+    · split at hstuck
+      · simp at hstuck
+      · rename_i _ hsub
+        have ⟨v, hv⟩ := stuck_implies_lit hsub; dsimp at hv; subst hv
+        exfalso; exact firstNonValueExpr_not_lit (by assumption) _ rfl
+    · simp at hstuck
+  | tryCatch body catchParam catchBody finally_ =>
+    unfold step? at hstuck; simp only [] at hstuck
+    split at hstuck
+    · split at hstuck <;> (try split at hstuck) <;> simp at hstuck
+    · split at hstuck
+      · split at hstuck <;> (try split at hstuck) <;> (try split at hstuck) <;> simp at hstuck
+      · simp at hstuck
+      · rename_i hsub; have ⟨v, hv⟩ := stuck_implies_lit hsub; dsimp at hv; subst hv; simp_all [exprValue?]
+  termination_by sizeOf s.expr
+  decreasing_by all_goals sorry
 
 theorem Behaves_final_lit {p : Program} {b : List TraceEvent}
     (hB : Behaves p b) :
