@@ -4790,23 +4790,6 @@ structure LowerSimRel (prog : ANF.Program) (irmod : IRModule)
   /- Environment correspondence. -/
   henv : ∀ name v, s.env.lookup name = some v →
     ∃ (idx : Nat) (val : IRValue), (Option.bind ir.frames.head? (fun f => f.locals[idx]?)) = some val
-  /- Step correspondence: when the ANF takes a step, the IR takes a matching step.
-     The new IR state satisfies all basic invariants of the relation.
-     NOTE: Cannot return full LowerSimRel due to Lean's restriction on nested inductives
-     in structure fields. The step_sim theorem constructs the full relation using sorry
-     for the recursive env/step fields. -/
-  hstep : ∀ ct s', ANF.step? s = some (ct, s') →
-    ∃ ir', irStep? ir = some (traceFromCore ct, ir') ∧
-      Wasm.lower prog = .ok irmod ∧ ir'.module = irmod ∧
-      (anfStepMapped s' = none → ir'.halted) ∧
-      -- Environment correspondence for successor state
-      (∀ name v, s'.env.lookup name = some v →
-        ∃ (idx : Nat) (val : IRValue), (Option.bind ir'.frames.head? (fun f => f.locals[idx]?)) = some val) ∧
-      -- Step correspondence for successor state (one level deep)
-      (∀ ct' s'', ANF.step? s' = some (ct', s'') →
-        ∃ ir'', irStep? ir' = some (traceFromCore ct', ir'') ∧
-          Wasm.lower prog = .ok irmod ∧ ir''.module = irmod ∧
-          (anfStepMapped s'' = none → ir''.halted))
 
 namespace LowerSimRel
 
@@ -4829,43 +4812,24 @@ theorem init (prog : ANF.Program) (irmod : IRModule)
     intro name v hlookup
     -- Initial ANF env is empty, so lookup always returns none
     simp [ANF.initialState, ANF.Env.empty, ANF.Env.lookup] at hlookup
-  hstep := by
-    -- Step correspondence at init: for any ANF step from the initial state,
-    -- the IR initial state can take a matching step.
-    -- SORRY: requires showing lowerExpr on prog.main produces the IR code.
-    sorry
 
 /-- Step simulation: if the ANF takes one step, the IR takes a matching step.
-    Proof: Extract the step correspondence from LowerSimRel.
-    The step correspondence field directly provides the matching IR step
-    and the preservation of the simulation relation. -/
+    Proof strategy: case analysis on the ANF instruction being stepped, using
+    the lowering correspondence (hlower) and irStep?_eq_* exact-value lemmas.
+    The SimRel carries only state correspondence — step correspondence is this
+    theorem, not a field of the relation.
+    REF: Standard forward simulation diagram. -/
 theorem step_sim (prog : ANF.Program) (irmod : IRModule) :
     ∀ (s1 : ANF.State) (s2 : IRExecState) (t : TraceEvent) (s1' : ANF.State),
     LowerSimRel prog irmod s1 s2 → anfStepMapped s1 = some (t, s1') →
     ∃ s2', irStep? s2 = some (t, s2') ∧ LowerSimRel prog irmod s1' s2' := by
   intro s1 s2 t s1' hrel hstep
-  -- Extract the ANF step from anfStepMapped
-  unfold anfStepMapped at hstep
-  split at hstep
-  · simp at hstep
-  · rename_i ct s1'' heq
-    simp only [Option.some.injEq, Prod.mk.injEq] at hstep
-    obtain ⟨ht, hs1'⟩ := hstep
-    subst ht hs1'
-    -- Apply step correspondence from the relation
-    obtain ⟨ir', hirStep, hlower', hmod', hhalt', henv', hstep'⟩ := hrel.hstep ct s1'' heq
-    exact ⟨ir', hirStep, {
-      hlower := hlower'
-      hmod := hmod'
-      hhalt := hhalt'
-      henv := henv'
-      -- Recursive step correspondence: use the one-level-deep step info from hstep',
-      -- but need deeper recursion for the full invariant
-      hstep := by
-        intro ct' s'' heq'
-        obtain ⟨ir'', hirStep'', hlower'', hmod'', hhalt''⟩ := hstep' ct' s'' heq'
-        exact ⟨ir'', hirStep'', hlower'', hmod'', hhalt'', by sorry, by sorry⟩
-    }⟩
+  -- SORRY: requires case analysis on ANF.step? for each instruction type,
+  -- constructing the matching IR step from the lowering correspondence.
+  -- Each case uses irStep?_eq_* lemmas and the hlower/hmod invariants.
+  -- The successor LowerSimRel follows because lower is deterministic
+  -- (hlower preserved) and the IR module is unchanged (hmod preserved).
+  sorry
 
 /-- Convenience: step_sim from ANF.step? directly (avoids anfStepMapped unification). -/
 theorem step_sim_core (prog : ANF.Program) (irmod : IRModule) :
@@ -4905,18 +4869,6 @@ structure EmitSimRel (irmod : IRModule) (wmod : Module)
   hstack : ir.stack.length = w.stack.length
   /- Halt correspondence. -/
   hhalt : irStep? ir = none → Wasm.step? w = none
-  /- Step correspondence: when the IR takes a step, the Wasm takes a matching step.
-     The new states satisfy all basic invariants of the relation.
-     NOTE: Cannot return full EmitSimRel due to Lean nested inductive restrictions. -/
-  hstep : ∀ t ir', irStep? ir = some (t, ir') →
-    ∃ w', Wasm.step? w = some (traceToWasm t, w') ∧
-      emit irmod = .ok wmod ∧ ir'.stack.length = w'.stack.length ∧
-      (irStep? ir' = none → Wasm.step? w' = none) ∧
-      -- Step correspondence for successor state (one level deep)
-      (∀ t' ir'', irStep? ir' = some (t', ir'') →
-        ∃ w'', Wasm.step? w' = some (traceToWasm t', w'') ∧
-          emit irmod = .ok wmod ∧ ir''.stack.length = w''.stack.length ∧
-          (irStep? ir'' = none → Wasm.step? w'' = none))
 
 namespace EmitSimRel
 
@@ -4954,34 +4906,25 @@ theorem init (irmod : IRModule) (wmod : Module)
       · simp at hc
       · rename_i hsf; simp [Wasm.initialState, hstart, hsf]
     · simp [Wasm.initialState]
-  hstep := by
-    -- Step correspondence at init: for any IR step from the initial state,
-    -- the Wasm initial state can take a matching step.
-    -- SORRY: requires showing emitted Wasm code matches IR code structure.
-    sorry
 
 /-- Step simulation: if the IR takes one step, the Wasm takes a matching step.
-    Proof: Extract the step correspondence from EmitSimRel.
-    The step correspondence field directly provides the matching Wasm step
-    and the preservation of the simulation relation. -/
+    Proof strategy: case analysis on the IR instruction being stepped, using
+    the emit correspondence (hemit) and instruction-level emit lemmas.
+    The SimRel carries only state correspondence — step correspondence is this
+    theorem, not a field of the relation.
+    REF: Standard forward simulation diagram. -/
 theorem step_sim (irmod : IRModule) (wmod : Module) :
     ∀ (s1 : IRExecState) (s2 : ExecState) (t : TraceEvent) (s1' : IRExecState),
     EmitSimRel irmod wmod s1 s2 → irStep? s1 = some (t, s1') →
     ∃ s2', Wasm.step? s2 = some (traceToWasm t, s2') ∧
       EmitSimRel irmod wmod s1' s2' := by
   intro s1 s2 t s1' hrel hstep
-  -- Apply step correspondence from the relation
-  obtain ⟨w', hwStep, hemit', hstack', hhalt', hstep'⟩ := hrel.hstep t s1' hstep
-  exact ⟨w', hwStep, {
-    hemit := hemit'
-    hstack := hstack'
-    hhalt := hhalt'
-    -- Recursive step correspondence: use one-level-deep info, sorry deeper recursion
-    hstep := by
-      intro t' ir'' hirStep
-      obtain ⟨w'', hwStep'', hemit'', hstack'', hhalt''⟩ := hstep' t' ir'' hirStep
-      exact ⟨w'', hwStep'', hemit'', hstack'', hhalt'', by sorry⟩
-  }⟩
+  -- SORRY: requires case analysis on irStep? for each IR instruction type,
+  -- constructing the matching Wasm step from the emit correspondence.
+  -- Each IR instruction emits to a specific Wasm instruction sequence.
+  -- The successor EmitSimRel follows because emit is deterministic
+  -- (hemit preserved) and stack lengths track (hstack preserved).
+  sorry
 
 /-- Halt simulation: if IR halts, Wasm halts.
     Proof: Extract halt correspondence from EmitSimRel. -/
@@ -5106,19 +5049,6 @@ theorem IRStutterSim_behavioral {S : Type} {R : S → IRExecState → Prop}
   rw [hInit] at hIRSteps
   exact ⟨ir_final, ir_trace, hIRSteps, sim.halt_sim _ _ hR_final hHalt, hObs⟩
 
-/-- Bridge: ANF.Behaves → IRBehavesObs via stuttering simulation.
-    When using the stuttering framework for lowering, this connects
-    ANF behavioral semantics to observable IR behavioral semantics. -/
-theorem lower_behavioral_obs (prog : ANF.Program) (irmod : IRModule)
-    (_hlower : Wasm.lower prog = .ok irmod)
-    {R : ANF.State → IRExecState → Prop}
-    (hR_init : R (ANF.initialState prog) (irInitialState irmod))
-    (sim : IRStutterSim R anfStepMapped) :
-    ∀ trace, ANF.Behaves prog trace →
-      IRBehavesObs irmod (observableEvents (traceListFromCore trace)) := by
-  -- Proof: see lower_behavioral_obs' below (defined after helper lemmas).
-  sorry
-
 /-- Bridge: convert ANF.Steps to StepStar anfStepMapped.
     This allows us to use the ANF.Behaves definition (which uses ANF.Steps)
     with the IRForwardSim framework (which uses StepStar/DetBehaves). -/
@@ -5145,8 +5075,8 @@ theorem DetBehaves_of_ANFBehaves {prog : ANF.Program} {ts : List Core.TraceEvent
     traceListFromCore ts = ts.map traceFromCore := rfl
 
 /-- Bridge (proved): ANF.Behaves → IRBehavesObs via stuttering simulation.
-    This is the version of lower_behavioral_obs that can reference all helpers. -/
-theorem lower_behavioral_obs' (prog : ANF.Program) (irmod : IRModule)
+    Composes DetBehaves_of_ANFBehaves with IRStutterSim_behavioral. -/
+theorem lower_behavioral_obs (prog : ANF.Program) (irmod : IRModule)
     (_hlower : Wasm.lower prog = .ok irmod)
     {R : ANF.State → IRExecState → Prop}
     (hR_init : R (ANF.initialState prog) (irInitialState irmod))
