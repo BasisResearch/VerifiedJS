@@ -265,6 +265,7 @@ private def asAssignTarget (e : Expr) : Option AssignTarget :=
   | .ident n => some (.ident n)
   | .member obj prop => some (.member obj prop)
   | .index obj prop => some (.index obj prop)
+  | .privateMember obj name => some (.privateMember obj name)
   | _ => none
 
 private def parsePatternFromIdent (name : String) : Pattern :=

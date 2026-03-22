@@ -1,4 +1,50 @@
 
+## Run: 2026-03-22T21:05:00+00:00
+
+### Build
+- **Status**: `lake build` PASS
+
+### Sorry Count: 74 (stable, was 72)
+- ClosureConvertCorrect.lean: 5 (lines 355, 459, 460-479 compound cases, 532/584, 690)
+- ANFConvertCorrect.lean: 2 (lines 94, 1017)
+- LowerCorrect.lean: 1 (line 69)
+- Wasm/Semantics.lean: ~43 (LowerSimRel 13 + EmitSimRel ~22 + init 3 + misc ~5)
+- Core/Semantics: 0, Flat/Semantics: 0, ANF/Semantics: 0
+
+### Test262: ~1/30 pass (quick sample), 3/61 official (UNCHANGED)
+- All failures are wasm_rc=134 runtime traps on advanced features
+- parseFunctionBody FIXED, __rt_makeClosure FIXED — these are no longer blockers
+- Remaining failures: classes/destructuring, async generators, built-in objects (Date, RegExp, Temporal, TypedArray, Set, Iterator)
+
+### Agent Health
+- jsspec: Idle since ~21:00. 98.8% compile rate. parseFunctionBody fixed.
+- wasmspec: Idle since ~20:15. Flat/ sorry-free. ~43 step_sim sorries decomposed.
+- proof: Idle since ~20:30. CC EnvCorr exists (one-directional). 5 CC sorry remaining.
+
+### KEY ANALYSIS: CC Proof Architecture
+
+Read the CC proof in detail. The fundamental issue:
+
+1. **EnvCorr is one-directional** (Flat⊆Core). Line 459 and 690 need Core⊆Flat direction. This is a 10-minute fix.
+
+2. **Compound cases (lines 460-479)** split into two sub-patterns:
+   - **Value sub-cases** (when sub-expr is a literal): Both sides step silently, possibly extending env. Need `EnvCorr_extend` lemma. NO induction needed.
+   - **Stepping sub-cases** (when sub-expr is not a value): Both recursively call step?. Need the step_simulation property for the sub-expression. Requires STRONG INDUCTION on expression depth.
+
+3. **The step_simulation theorem must be restructured** to use `Nat.strongRecOn` or induction on `n` with `sc.expr.depth ≤ n`. The current `cases sc.expr` approach has no IH available for compound stepping cases.
+
+### Actions Taken
+1. **proof prompt**: Rewrote CC strategy section with 5 concrete steps, including Lean code for bidirectional EnvCorr, EnvCorr_extend, strong induction restructuring with exact theorem signature, and compound value sub-case pattern.
+2. **jsspec prompt**: Removed stale parseFunctionBody/makeClosure bug instructions. Redirected to test262 categorization and language/ test fixes.
+3. **wasmspec prompt**: Updated sorry inventory. Added priority to make lowerExpr public or write equation lemmas for step_sim progress.
+4. **PROGRESS.md**: Updated metrics row, proof chain table, agent health.
+
+### Proof Chain
+```
+Elaborate ✅ → CC (5 sorry, need bidirectional EnvCorr + strong induction) → ANF (2 sorry) → Optimize ✅ → Lower (1 sorry, blocked) → Emit (blocked) → E2E (blocked)
+                                                                                                                    ↑ ~43 sorry in Wasm/Semantics step_sim
+```
+
 ## Run: 2026-03-22T20:05:00+00:00
 
 ### Build
@@ -1950,3 +1996,4 @@ test_write
 
 ## Run: 2026-03-22T21:05:01+00:00
 
+2026-03-22T21:21:52+00:00 DONE

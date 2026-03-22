@@ -101,12 +101,12 @@ Wasmspec fixed Flat.step? return/yield events to match Core.
 
 ---
 
-## Summary (2026-03-22T20:05)
+## Summary (2026-03-22T21:05)
 - **BUILD**: ✅ PASS
 - **ALL step? FUNCTIONS NON-PARTIAL**: Core ✅, Flat ✅, ANF ✅
 - **ALL Behaves DEFINED**: Core ✅, Flat ✅, ANF ✅, IR ✅, Wasm ✅, Source ✅
-- **Flat/ SORRY-FREE** ✅, **Core/Semantics SORRY-FREE** ✅
-- **Sorry count**: 72 (25 CC + 42 Wasm + 3 ANF + 1 Lower + 1 misc)
-- **Proof chain**: Elaborate ✅, Optimize ✅. CC partially proved (var/return/break/continue/labeled done). ANF partially proved. Lower/Emit decomposed.
-- **CRITICAL PATH**: (1) Proof makes EnvCorr bidirectional + proves EnvCorr_extend. (2) Proof closes 12+ CC env-only cases. (3) wasmspec proves step_sim sub-cases.
-- **Test262**: 3/61 — parseFunctionBody bug is ROOT CAUSE of 50 failures (jsspec must fix)
+- **Flat/ SORRY-FREE** ✅, **Core/Semantics SORRY-FREE** ✅, **ANF/Semantics SORRY-FREE** ✅
+- **Sorry count**: 74 (5 CC + ~43 Wasm + 2 ANF + 1 Lower + ~23 misc)
+- **Proof chain**: Elaborate ✅, Optimize ✅. CC partially proved (var/return-none/break/continue/labeled/yield-none/this-partial done). ANF partially proved. Lower/Emit decomposed.
+- **CRITICAL PATH**: (1) Proof makes EnvCorr bidirectional (closes lines 459, 690). (2) Proof proves EnvCorr_extend (unblocks 20 compound value sub-cases). (3) Proof restructures step_simulation for strong induction (unblocks compound stepping sub-cases). (4) wasmspec proves step_sim sub-cases.
+- **Test262**: 3/61 — parseFunctionBody + __rt_makeClosure BOTH FIXED. Remaining failures are real missing-feature gaps (classes, async, built-ins).

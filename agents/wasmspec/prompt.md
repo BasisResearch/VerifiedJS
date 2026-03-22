@@ -62,34 +62,37 @@ Then construct the matching Step derivation in Lean. If you cannot, your semanti
 3. Keep definitions structurally simple for proofs.
 4. Add @[simp] lemmas for everything the proof agent might need.
 
-## CURRENT PRIORITIES (2026-03-22T20:05)
+## CURRENT PRIORITIES (2026-03-22T21:05)
 
-### MILESTONE: return/yield event mismatch FIXED. Decomposed step_sim 37 fine-grained cases.
+### MILESTONE: Flat/ SORRY-FREE. Decomposed step_sim into ~37 fine-grained cases (7 proved by contradiction).
 
-Great work fixing Flat.return/yield events to match Core. The CC proof agent can now prove `.return` cases.
-
-### Your sorry inventory (~42 in Wasm/Semantics.lean):
+### Your sorry inventory (~43 in Wasm/Semantics.lean):
 
 | Category | Count | Description |
 |----------|-------|-------------|
 | LowerSimRel.step_sim sub-cases | 13 | var, let, seq, if, while, throw, tryCatch, return, yield, await, labeled, break, continue |
-| EmitSimRel.step_sim sub-cases | 22 | 1 empty-code + 21 IR instruction cases |
+| EmitSimRel.step_sim sub-cases | ~22 | 1 empty-code + ~21 IR instruction cases |
 | LowerSimRel.init hcode | 3 | Blocked on lowerExpr being private |
-| Misc | 4 | Various |
+| Misc | ~5 | Various |
 
-### #1: Continue proving LowerSimRel.step_sim sub-cases
+### #1: Make `lowerExpr` and `emitInstr` public (or add @[simp] equation lemmas)
 
-You already proved 7 literal cases by contradiction. Now attack the expression cases. For each:
-1. Use `lean_goal` to see the exact goal
-2. The `hcode : LowerCodeCorr s.expr ir.code` invariant tells you what IR code corresponds
-3. Show that `irStep?` on that code produces the matching step
-4. Use the irStep? equation lemmas you already wrote (47+)
+The LowerSimRel.init `hcode` sorry needs to show that `lowerExpr` produces code matching `LowerCodeCorr`. But `lowerExpr` is private in Lower.lean (owned by proof agent). You have two options:
+- **Ask proof agent** to make `lowerExpr` public (add to your log)
+- **Write equation lemmas** in Wasm/Semantics.lean that state the correspondence without accessing the private def
 
-Start with `.trivial (.lit v)` and `.trivial (.var x)` — these are the simplest.
+### #2: Prove LowerSimRel.step_sim for `.trivial (.lit v)` and `.trivial (.var x)`
 
-### #3: Prove EmitSimRel.step_sim sub-cases
+These are the simplest expression cases. The IR code for a literal is just `[const v, return]`. Show irStep? takes matching steps using your equation lemmas.
 
-Same strategy. `hcode : EmitCodeCorr ir.code w.code` tells you what Wasm instructions correspond. Show `Wasm.step?` takes matching steps.
+For `.trivial (.lit v)`:
+1. `hcode : LowerCodeCorr (.trivial (.lit v)) ir.code`
+2. By LowerCodeCorr, `ir.code = [IRInstr.const_ .f64 (encodeValue v), IRInstr.return_]`
+3. `irStep?` executes const then return → matching trace
+
+### #3: Prove EmitSimRel.step_sim for simple IR instructions
+
+Start with `IRInstr.const_`, `IRInstr.return_`, `IRInstr.localGet`, `IRInstr.localSet`. These map 1:1 to Wasm instructions.
 
 ## GLOBAL GOAL -- DO NOT STOP
 Your job is done when:
