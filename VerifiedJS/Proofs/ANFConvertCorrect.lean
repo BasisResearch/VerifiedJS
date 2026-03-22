@@ -91,11 +91,43 @@ private theorem anfConvert_step_star
         Flat.Steps sf evs sf' ∧
         observableTrace [ev] = observableTrace evs ∧
         ANF_SimRel s t sa' sf' := by
-  sorry -- Requires case analysis on ANF.Step over all expression forms:
-  -- For each ANF step (via evalComplex on a let-binding RHS), show the
-  -- corresponding Flat execution evaluates the same subexpressions step-by-step.
-  -- Key: use the normalizeExpr correspondence to construct Flat multi-steps.
-  -- The continuation k changes at each step, tracking the "remaining computation".
+  sorry
+  -- PROOF ARCHITECTURE for anfConvert_step_star:
+  --
+  -- Structure: strong induction on sf.expr.depth
+  --
+  -- Case 1: sf.expr = .seq (.lit v) b (seq-lit wrapper)
+  --   Take one silent Flat step: sf → {expr = b, ...}
+  --   normalizeExpr (.seq (.lit v) b) k = normalizeExpr b k (lit is consumed by k which is ignored)
+  --   Apply IH (depth decreases)
+  --
+  -- Case 2: sf.expr = .break label / .continue label
+  --   normalizeExpr produces .break/.continue directly (ignores k)
+  --   Both ANF and Flat produce same error event → match directly
+  --   New SimRel: sf'.expr = .lit .undefined, sa'.expr = .trivial .litUndefined
+  --   with k' = fun t => pure (.trivial t) (identity continuation)
+  --
+  -- Case 3: sf.expr = .lit v (terminal in Flat)
+  --   normalizeExpr (.lit v) k = k (trivialOfFlatValue v)
+  --   sa.expr = whatever k produces. Since sf is terminal, ev must be .silent
+  --   (all ANF work is "internal" — let-binding evaluation via evalComplex)
+  --   Take 0 Flat steps. New SimRel needs careful k' construction.
+  --   KEY DIFFICULTY: k can produce any ANF.Expr (.let, .seq, etc.)
+  --   so sa.expr varies widely. Need case analysis on sa.expr too.
+  --
+  -- Case 4: sf.expr = .var name / .this
+  --   Similar to .lit but the Flat side also steps (var lookup)
+  --   After Flat step, sf'.expr = .lit v, then falls into Case 3
+  --
+  -- Case 5: sf.expr = .seq a b where a is NOT a value
+  --   normalizeExpr (.seq a b) k = normalizeExpr a (fun _ => normalizeExpr b k)
+  --   Need to step inner a, relate to ANF step
+  --   Most complex case — requires relating inner Flat steps to ANF steps
+  --
+  -- Case 6: sf.expr = compound (.let, .if, .call, etc.)
+  --   normalizeExpr decomposes into ANF let-bindings with evalComplex
+  --   ANF step evaluates one evalComplex; Flat steps evaluate sub-expressions
+  --   Requires showing Flat multi-step matches ANF single-step
 
 /-! ### normalizeExpr output characterization -/
 
