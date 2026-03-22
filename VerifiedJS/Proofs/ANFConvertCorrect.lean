@@ -848,8 +848,8 @@ private theorem anfConvert_halt_star_aux
               rw [he, henv2]; intro x hfx
               apply hwf x; rw [hsf]
               cases hfx with
-              | seq_l hfx' => rw [ha]; exact .seq_l _ _ _ (.seq_r _ _ _ hfx')
-              | seq_r hfx' => exact .seq_r _ _ _ hfx'
+              | seq_l _ _ hfx' => rw [ha]; exact .seq_l _ _ _ (.seq_r _ _ _ hfx')
+              | seq_r _ _ hfx' => exact .seq_r _ _ _ hfx'
             obtain ⟨sf', evs, hsteps', hhalt', hobs', hrel'⟩ :=
               ih sa sf2 hbd2 hrel2 hstuck hwf2
             exact ⟨sf', .silent :: evs,
@@ -908,10 +908,10 @@ private theorem anfConvert_halt_star_aux
           have hwf3 : ExprWellFormed sf3.expr sf3.env := by
             rw [hsf3_expr, hsf3_env]; intro x hfx
             cases hfx with
-            | seq_l h' =>
+            | seq_l _ _ h' =>
               have : VarFreeIn x (Flat.Expr.seq a b) := by rw [ha]; exact .seq_l _ _ _ (.seq_r _ _ _ h')
               exact hwf x (by rw [hsf]; exact this)
-            | seq_r h' =>
+            | seq_r _ _ h' =>
               exact hwf x (by rw [hsf]; exact .seq_r _ _ _ h')
           obtain ⟨sf', evs, hsteps', hhalt', hobs', hrel'⟩ := ih sa sf3 hbd3 hrel3 hstuck hwf3
           let steps12 := Flat.Steps.tail (⟨hstep1⟩ : Flat.Step sf .silent sf2) (Flat.Steps.tail (⟨hstep2_eq⟩ : Flat.Step sf2 .silent sf3) hsteps')

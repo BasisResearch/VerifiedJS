@@ -5278,19 +5278,33 @@ theorem step_sim (prog : ANF.Program) (irmod : IRModule) :
         sorry
     | .trivial .litNull =>
         -- Literal null: ANF.step? returns none for literals, contradiction with heq
-        have h := ANF.step?_litNull s1; rw [show { s1 with expr := ANF.Expr.trivial .litNull } = s1 from by rw [hexpr]] at h; simp [h] at heq
+        have h := ANF.step?_litNull s1
+        have : { s1 with expr := ANF.Expr.trivial .litNull } = s1 := by cases s1; simp_all
+        rw [this] at h; simp [h] at heq
     | .trivial .litUndefined =>
-        have h := ANF.step?_litUndefined s1; rw [show { s1 with expr := ANF.Expr.trivial .litUndefined } = s1 from by rw [hexpr]] at h; simp [h] at heq
+        have h := ANF.step?_litUndefined s1
+        have : { s1 with expr := ANF.Expr.trivial .litUndefined } = s1 := by cases s1; simp_all
+        rw [this] at h; simp [h] at heq
     | .trivial (.litBool b) =>
-        have h := ANF.step?_litBool s1 b; rw [show { s1 with expr := ANF.Expr.trivial (.litBool b) } = s1 from by rw [hexpr]] at h; simp [h] at heq
+        have h := ANF.step?_litBool s1 b
+        have : { s1 with expr := ANF.Expr.trivial (.litBool b) } = s1 := by cases s1; simp_all
+        rw [this] at h; simp [h] at heq
     | .trivial (.litNum n) =>
-        have h := ANF.step?_litNum s1 n; rw [show { s1 with expr := ANF.Expr.trivial (.litNum n) } = s1 from by rw [hexpr]] at h; simp [h] at heq
+        have h := ANF.step?_litNum s1 n
+        have : { s1 with expr := ANF.Expr.trivial (.litNum n) } = s1 := by cases s1; simp_all
+        rw [this] at h; simp [h] at heq
     | .trivial (.litStr str) =>
-        have h := ANF.step?_litStr s1 str; rw [show { s1 with expr := ANF.Expr.trivial (.litStr str) } = s1 from by rw [hexpr]] at h; simp [h] at heq
+        have h := ANF.step?_litStr s1 str
+        have : { s1 with expr := ANF.Expr.trivial (.litStr str) } = s1 := by cases s1; simp_all
+        rw [this] at h; simp [h] at heq
     | .trivial (.litObject addr) =>
-        have h := ANF.step?_litObject s1 addr; rw [show { s1 with expr := ANF.Expr.trivial (.litObject addr) } = s1 from by rw [hexpr]] at h; simp [h] at heq
+        have h := ANF.step?_litObject s1 addr
+        have : { s1 with expr := ANF.Expr.trivial (.litObject addr) } = s1 := by cases s1; simp_all
+        rw [this] at h; simp [h] at heq
     | .trivial (.litClosure fi ep) =>
-        have h := ANF.step?_litClosure s1 fi ep; rw [show { s1 with expr := ANF.Expr.trivial (.litClosure fi ep) } = s1 from by rw [hexpr]] at h; simp [h] at heq
+        have h := ANF.step?_litClosure s1 fi ep
+        have : { s1 with expr := ANF.Expr.trivial (.litClosure fi ep) } = s1 := by cases s1; simp_all
+        rw [this] at h; simp [h] at heq
     | .«let» name rhs body =>
         -- Let-binding: ANF evaluates rhs and binds result
         -- IR code is rhsCode ++ [localSet idx] ++ bodyCode

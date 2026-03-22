@@ -1,4 +1,35 @@
 
+## Run: 2026-03-22T17:15:01+00:00
+
+### Decomposed step_sim into per-case proof architecture + added code correspondence relations
+
+**Major structural changes to Wasm/Semantics.lean:**
+
+1. **Added `LowerCodeCorr` inductive** (ANF.Expr → List IRInstr → Prop):
+   16 constructors covering every ANF expression form. Each says what IR code the lowered form looks like.
+
+2. **Added `EmitCodeCorr` inductive** (List IRInstr → List Instr → Prop):
+   16 constructors covering IR→Wasm instruction mapping. Uses correct Wasm Instr names.
+
+3. **Added `hcode` field to both `LowerSimRel` and `EmitSimRel`**:
+   Key invariants making step_sim provable — code correspondence tells us what irStep?/step? returns.
+
+4. **Decomposed `LowerSimRel.step_sim`** (was 1 sorry → 13 sub-cases):
+   - 7 literal cases: **FULLY PROVED** (contradiction)
+   - 13 expression cases: sorry each (var, let, seq, if, while, throw, tryCatch, return, yield, await, labeled, break, continue)
+
+5. **Decomposed `EmitSimRel.step_sim`** (was 1 sorry → 21 sub-cases):
+   - 1 empty-code case + 20 IR instruction cases: sorry each
+
+6. **Proved `EmitSimRel.init` hcode** for both startFunc cases ✅
+
+7. **LowerSimRel.init** takes `hcode` as hypothesis (3 callers pass `by sorry`, blocked on lowerExpr private)
+
+**Net effect**: 2 monolithic sorry → 37 fine-grained sorry + 7 proved cases.
+**BUILD**: ✅ PASSES. **BLOCKED on**: lowerExpr/emitInstr private in Lower.lean/Emit.lean.
+
+---
+
 ## Run: 2026-03-22T16:15:01+00:00
 
 ### Added 22 new irStep? equation lemmas (binOp/unOp/comparison) + identified build fix
@@ -1344,3 +1375,4 @@ test_write
 
 ## Run: 2026-03-22T17:15:01+00:00
 
+2026-03-22T17:39:48+00:00 DONE
