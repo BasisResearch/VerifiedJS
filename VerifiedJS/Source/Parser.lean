@@ -1316,8 +1316,10 @@ private partial def parseForStmt : ParserM Stmt := do
         pure (.forOf (some .var) lhs rhs body)
     else
       expectPunct ";"
-      let cond <- if (← consumePunct? ";") then pure none else (some <$> parseExprM <* expectPunct ";")
-      let update <- if (← consumePunct? ")") then pure none else (some <$> parseExprM <* expectPunct ")")
+      skipNewlines
+      let cond <- if (← consumePunct? ";") then pure none else (some <$> parseExprM <* (skipNewlines *> expectPunct ";"))
+      skipNewlines
+      let update <- if (← consumePunct? ")") then pure none else (some <$> parseExprM <* (skipNewlines *> expectPunct ")"))
       let body <- parseStmt
       pure (.for (some (.varDecl .var decls)) cond update body)
   else if (← do
@@ -1349,8 +1351,10 @@ private partial def parseForStmt : ParserM Stmt := do
         pure (.forOf (some .let_) lhs rhs body)
     else
       expectPunct ";"
-      let cond <- if (← consumePunct? ";") then pure none else (some <$> parseExprM <* expectPunct ";")
-      let update <- if (← consumePunct? ")") then pure none else (some <$> parseExprM <* expectPunct ")")
+      skipNewlines
+      let cond <- if (← consumePunct? ";") then pure none else (some <$> parseExprM <* (skipNewlines *> expectPunct ";"))
+      skipNewlines
+      let update <- if (← consumePunct? ")") then pure none else (some <$> parseExprM <* (skipNewlines *> expectPunct ")"))
       let body <- parseStmt
       pure (.for (some (.varDecl .let_ decls)) cond update body)
   else if (← consumeKeyword? "const") then
@@ -1373,8 +1377,10 @@ private partial def parseForStmt : ParserM Stmt := do
         pure (.forOf (some .const_) lhs rhs body)
     else
       expectPunct ";"
-      let cond <- if (← consumePunct? ";") then pure none else (some <$> parseExprM <* expectPunct ";")
-      let update <- if (← consumePunct? ")") then pure none else (some <$> parseExprM <* expectPunct ")")
+      skipNewlines
+      let cond <- if (← consumePunct? ";") then pure none else (some <$> parseExprM <* (skipNewlines *> expectPunct ";"))
+      skipNewlines
+      let update <- if (← consumePunct? ")") then pure none else (some <$> parseExprM <* (skipNewlines *> expectPunct ")"))
       let body <- parseStmt
       pure (.for (some (.varDecl .const_ decls)) cond update body)
   else
@@ -1401,8 +1407,10 @@ private partial def parseForStmt : ParserM Stmt := do
         pure (.forOf none lhs rhs body)
     else
       expectPunct ";"
-      let cond <- if (← consumePunct? ";") then pure none else (some <$> parseExprM <* expectPunct ";")
-      let update <- if (← consumePunct? ")") then pure none else (some <$> parseExprM <* expectPunct ")")
+      skipNewlines
+      let cond <- if (← consumePunct? ";") then pure none else (some <$> parseExprM <* (skipNewlines *> expectPunct ";"))
+      skipNewlines
+      let update <- if (← consumePunct? ")") then pure none else (some <$> parseExprM <* (skipNewlines *> expectPunct ")"))
       let body <- parseStmt
       pure (.for (some (.expr initExpr)) cond update body)
 
