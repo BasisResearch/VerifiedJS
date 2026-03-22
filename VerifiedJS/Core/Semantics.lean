@@ -2241,9 +2241,7 @@ set_option maxHeartbeats 4000000 in
 /-- The only stuck expression is a literal (progress). -/
 theorem stuck_implies_lit {s : State} (hstuck : step? s = none) :
     ∃ v, s.expr = .lit v := by
-  obtain ⟨e, env, heap, trace, funcs, cs⟩ := s
-  dsimp only at hstuck ⊢
-  cases e with
+  cases he : s.expr with
   | lit v => exact ⟨v, rfl⟩
   -- Cases that always return some (no stuck path):
   | var name =>
@@ -2435,9 +2433,8 @@ theorem stuck_implies_lit {s : State} (hstuck : step? s = none) :
           · simp at hstuck
           · rename_i _ _ _ hsub
             have ⟨v, hv⟩ := stuck_implies_lit hsub; dsimp at hv; subst hv
-            rename_i hfnv _ _; exact absurd rfl (firstNonValueExpr_not_lit hfnv v)
-        · rename_i _ hall hfnv; exact absurd hstuck (by
-            have := allValues_firstNonValue_contra hall hfnv; exact this.elim)
+            exfalso; exact firstNonValueExpr_not_lit (by assumption) _ rfl
+        · exfalso; exact allValues_firstNonValue_contra (by assumption) (by assumption)
   -- objectLit: firstNonValueProp + step?
   | objectLit props =>
     unfold step? at hstuck; simp only [] at hstuck
@@ -2446,7 +2443,7 @@ theorem stuck_implies_lit {s : State} (hstuck : step? s = none) :
       · simp at hstuck
       · rename_i _ hsub
         have ⟨v, hv⟩ := stuck_implies_lit hsub; dsimp at hv; subst hv
-        rename_i hfnv _; exact absurd rfl (firstNonValueProp_not_lit hfnv v)
+        exfalso; exact firstNonValueProp_not_lit (by assumption) _ rfl
     · simp at hstuck
   -- arrayLit: firstNonValueExpr + step?
   | arrayLit elems =>
@@ -2456,7 +2453,7 @@ theorem stuck_implies_lit {s : State} (hstuck : step? s = none) :
       · simp at hstuck
       · rename_i _ hsub
         have ⟨v, hv⟩ := stuck_implies_lit hsub; dsimp at hv; subst hv
-        rename_i hfnv _; exact absurd rfl (firstNonValueExpr_not_lit hfnv v)
+        exfalso; exact firstNonValueExpr_not_lit (by assumption) _ rfl
     · simp at hstuck
   -- tryCatch: exprValue? body; some => some (with if/match); none => step? body (3 arms)
   | tryCatch body catchParam catchBody finally_ =>
