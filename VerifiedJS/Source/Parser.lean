@@ -807,7 +807,8 @@ private partial def parseUnaryM : ParserM Expr := do
     let _ <- bump
     let _ <- bump
     let _ <- bump
-    return .newTarget
+    -- ECMA-262 §12.3.7: new.target is a MetaProperty that supports postfix ops (e.g. new.target?.())
+    return (← parsePostfixFrom .newTarget)
   | _, _, _ => pure ()
   if (← consumePunct? "++") then
     return .unary .preInc (← parseUnaryM)
