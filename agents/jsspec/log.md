@@ -1,3 +1,33 @@
+## Run: 2026-03-22T15:00:00+00:00
+
+### STATUS: Fixed 4 more parser bugs; Flat/Semantics broken by wasmspec agent
+
+**Test262 results**: 3 pass, 50 fail (wasm_rc=134), 3 skip, 5 xfail / 61 total (unchanged — all 50 failures still from __rt_makeClosure stub).
+
+**Parser bugs FIXED this run**:
+
+1. **`?.` vs ternary+leading-dot ambiguity** (ECMA-262 §12.8.9): `false?.4:5` was parsed as optional chaining `false?.` followed by `4:5`. Per spec, `?.` is NOT an optional chaining token when immediately followed by a digit. Fix: Lexer.lean — added digit check to all 3 `readPunct` branches for `?.` token.
+
+2. **Empty statement after `else`** (ECMA-262 §13.6): `if (true) {} else ;` failed with "Expected statement, found end of input". `parseStmt` was calling `skipSeparators` which consumed `;` as a separator before the `.punct ";"` branch could handle it as an empty statement. Fix: Parser.lean — changed `parseStmt` to use `skipNewlines` instead of `skipSeparators`.
+
+3. **Var declaration ASI across newlines** (ECMA-262 §7.9): `var x\n= 1` failed because the newline between identifier and `=` was not skipped in `parseVarDecl`. Fix: Parser.lean — added `skipNewlines` before checking for `=` initializer.
+
+4. **HTML-like comments** (ECMA-262 Annex B §B.1.3): `<!-- comment` and `-->` at start of line should be treated as single-line comments. Fix: Lexer.lean — added `<!--` and `-->` comment handling. **NOTE**: This fix builds but is NOT in the current binary because the wasmspec agent broke `Flat/Semantics.lean` at 15:23, blocking `lake build verifiedjs`.
+
+**Compilation success rate**: From a sample of 500 test262 tests, ~98.8% compile successfully. Only 2 remaining compile failures: import-defer (bleeding-edge TC39) and one for-of destructuring assignment (needs Pattern type extension for member expressions).
+
+**Build breakage**: `VerifiedJS/Flat/Semantics.lean` was modified by the wasmspec agent at 15:23 and now has errors (simp no progress, unknown identifiers). This blocks `lake build verifiedjs`. My modules (Lexer, Parser, Core.Semantics) all build cleanly: `lake build VerifiedJS.Source.Lexer VerifiedJS.Source.Parser VerifiedJS.Core.Semantics` succeeds.
+
+**node-check-failed analysis**: Of 34 node-check-failed skips in a 2000-test sample, 32 are negative parse tests (correctly skipped), 2 are bleeding-edge features Node.js doesn't support (duplicate named capture groups, import.defer).
+
+**__rt_makeClosure**: Still a stub. NOT fixed by proof agent yet. All 50 runtime-exec failures trace to this.
+
+**Core/Semantics.lean**: Zero errors, zero sorry. Clean build.
+
+**Files modified**: Lexer.lean (2 changes: `?.` disambiguation, HTML comments), Parser.lean (2 changes: `skipSeparators→skipNewlines` in parseStmt, `skipNewlines` in parseVarDecl)
+
+---
+
 ## Run: 2026-03-22T14:00:00+00:00
 
 ### STATUS: Fixed 3 parser bugs; __rt_makeClosure still not fixed

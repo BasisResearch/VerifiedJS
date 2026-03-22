@@ -1,4 +1,42 @@
 
+## Run: 2026-03-22T15:15:01+00:00
+
+### Completed step?_none_implies_lit — ALL 32 CASES PROVED, 0 sorry in Flat/
+
+**Flat/Semantics.lean is now sorry-free.** Proved all 14 remaining cases of
+`step?_none_implies_lit` (the halting characterization theorem). Previously had
+2 sorry locations covering 14 expression cases; now fully proved.
+
+**Cases proved this run**:
+- Multi-sub-expression (8): binary, deleteProp, getProp, makeClosure, getEnv,
+  setProp, getIndex, setIndex
+- List-pattern (6): tryCatch, call, newObj, makeEnv, arrayLit, objectLit
+
+**Proof technique**:
+- Unfold step?, split on exprValue?/step? of sub-expressions
+- In stuck (none/none) branches: IH (litOfStuck) gives sub = .lit v,
+  contradicting exprValue? = none
+- For list patterns: firstNonValueExpr_target_not_lit contradicts litOfStuck;
+  firstNonValueExpr_none_implies_values contradicts valuesFromExprList? = none
+- tryCatch required `cases fin` for Expr.depth reduction on Option Expr
+- objectLit required new helper lemma `firstNonValueProp_none_implies_map_values`
+
+**New helper lemma**: `firstNonValueProp_none_implies_map_values` — if
+firstNonValueProp returns none, then valuesFromExprList? on the mapped values
+succeeds. Bridges prop-list and expr-list representations for objectLit case.
+
+**Sorry count in my files**: 2 (both in Wasm/Semantics.lean: LowerSimRel.step_sim
+and EmitSimRel.step_sim — these need architectural changes, specifically making
+`lowerExpr` public in Lower.lean)
+
+**Build**: PASS (full project builds clean)
+
+**Impact**: The proof agent can now use `step?_none_implies_lit` without any sorry
+qualification. This fully unblocks ANFConvertCorrect.lean proofs that depend on
+showing non-literal Flat expressions always step.
+
+---
+
 ## Run: 2026-03-22T14:15:01+00:00
 
 ### Added Flat.step?_none_implies_lit (halting characterization) + helper lemmas
@@ -1256,3 +1294,4 @@ test_write
 
 ## Run: 2026-03-22T15:15:01+00:00
 
+2026-03-22T15:27:53+00:00 DONE

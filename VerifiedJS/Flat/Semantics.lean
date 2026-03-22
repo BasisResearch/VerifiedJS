@@ -915,14 +915,20 @@ theorem firstNonValueProp_none_implies_map_values (props : List (PropName × Exp
   | cons p rest ih =>
     obtain ⟨name, e⟩ := p
     unfold firstNonValueProp at h
-    simp at h
-    match e, h with
-    | .lit v, h =>
+    match e with
+    | .lit v =>
+      simp at h
       split at h
       · contradiction
       · next hrest =>
         have ⟨vs, hvs⟩ := ih hrest
         exact ⟨v :: vs, by simp [valuesFromExprList?, exprValue?, hvs]⟩
+    | .var _ | .«let» _ _ _ | .assign _ _ | .«if» _ _ _ | .seq _ _ | .call _ _ _
+    | .newObj _ _ _ | .getProp _ _ | .setProp _ _ _ | .getIndex _ _ | .setIndex _ _ _
+    | .deleteProp _ _ | .typeof _ | .getEnv _ _ | .makeEnv _ | .makeClosure _ _
+    | .objectLit _ | .arrayLit _ | .throw _ | .tryCatch _ _ _ _ | .while_ _ _
+    | .«break» _ | .«continue» _ | .labeled _ _ | .«return» _ | .yield _ _
+    | .await _ | .this | .unary _ _ | .binary _ _ _ => simp at h
 
 /-! ## Halting characterization -/
 
@@ -1206,17 +1212,18 @@ theorem step?_none_implies_lit (s : State) (h : step? s = none) :
               subst hv; simp_all [exprValue?]
       · simp at h  -- some _ (non-object) → returns some
     -- List-pattern cases: firstNonValueExpr / firstNonValueProp with IH contradiction.
-    | tryCatch body _ _ _ =>
+    | tryCatch body _ _ fin =>
       unfold step? at h; simp only [-step?] at h
       split at h
       · -- exprValue? body = some → returns some (both finally branches)
-        cases finally_ <;> simp at h
+        cases fin <;> simp at h
       · -- exprValue? body = none
         split at h
         · simp at h  -- step? body = some (.error ..) → returns some
         · simp at h  -- step? body = some (t, _) → returns some
-        · next hval hstep =>  -- step? body = none
-          have ⟨v, hv⟩ := litOfStuck body (by simp [Expr.depth] at hd; omega) hstep
+        · -- step? body = none
+          rename_i _ hstep
+          have ⟨v, hv⟩ := litOfStuck body (by cases fin <;> simp [Expr.depth] at hd <;> omega) hstep
           subst hv; simp_all [exprValue?]
     | call funcExpr envExpr args =>
       unfold step? at h; simp only [-step?] at h

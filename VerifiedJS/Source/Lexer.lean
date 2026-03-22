@@ -570,9 +570,14 @@ partial def tokenizeChars
       let (rest, consumedComment) := skipLineComment tail
       let consumed := consumedComment + 4
       tokenizeChars rest line (col + consumed) (offset + consumed) expectRegex parenDepth controlHeaderParens pendingControlHeader braceDepth controlBlockBraces pendingControlBlock acc
-    -- `-->` at start of line is a single-line comment
+    -- ECMA-262 Annex B §B.1.3: `-->` is a single-line comment when no tokens
+    -- have been emitted on the current line (start of line, or after block comments)
     else if c = '-' && (match cs with | '-' :: '>' :: _ => true | _ => false)
-         && (match acc with | [] => true | { kind := .newline, .. } :: _ => true | _ => false) then
+         && (match acc with
+             | [] => true
+             | { kind := .newline, .. } :: _ => true
+             | { pos := p, .. } :: _ => p.line < line
+             ) then
       let tail := cs.drop 2
       let (rest, consumedComment) := skipLineComment tail
       let consumed := consumedComment + 3
