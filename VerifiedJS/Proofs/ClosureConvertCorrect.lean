@@ -345,7 +345,118 @@ private theorem closureConvert_step_simulation
   -- ARCHITECTURAL NOTE: `.return`, `.yield`, `.await` produce DIFFERENT events
   -- in Core (.error) vs Flat (.silent), so step_simulation as stated is FALSE
   -- for those cases. Need observable-trace equivalence instead.
-  | var _ => sorry -- needs env correspondence
+  | var name =>
+    rw [hsc] at hconv; simp only [Flat.convertExpr] at hconv
+    -- Case split on whether the variable is captured
+    cases hlookup : Flat.lookupEnv envMap name with
+    | some idx =>
+      -- Captured variable: convertExpr produces .getEnv (.var envVar) idx
+      -- Needs heap correspondence to prove — leave for later
+      sorry
+    | none =>
+      -- In-scope variable: convertExpr produces .var name
+      have hsf_expr : sf.expr = .var name := by
+        rw [hlookup] at hconv; cases sf; simp_all [(Prod.mk.inj hconv).1]
+      -- Case split on Flat env lookup
+      cases hfenv : sf.env.lookup name with
+      | some fv =>
+        -- EnvCorr gives Core also has this variable
+        obtain ⟨cv, hcenv, hfv_eq⟩ := henvCorr name fv hfenv
+        -- Flat produces .silent, Core produces .silent
+        have hflat_ev : ev = .silent := by
+          rw [show sf = {sf with expr := .var name} from by cases sf; simp_all] at hstep
+          simp only [Flat.step?, hfenv] at hstep
+          exact (Prod.mk.inj (Option.some.inj hstep)).1.symm
+        subst hflat_ev
+        obtain ⟨sc', hcstep⟩ : ∃ sc', Core.step? sc = some (.silent, sc') := by
+          rw [show sc = {sc with expr := .var name} from by cases sc; simp_all]
+          simp only [Core.step?, hcenv]; exact ⟨_, rfl⟩
+        refine ⟨sc', ⟨hcstep⟩, ?_⟩
+        have hsf'_trace : sf'.trace = sc'.trace := by
+          have hf := hstep; have hc := hcstep
+          rw [show sf = {sf with expr := .var name} from by cases sf; simp_all] at hf
+          rw [show sc = {sc with expr := .var name} from by cases sc; simp_all] at hc
+          simp only [Flat.step?, hfenv] at hf; simp only [Core.step?, hcenv] at hc
+          have heqf := (Prod.mk.inj (Option.some.inj hf)).2
+          have heqc := (Prod.mk.inj (Option.some.inj hc)).2
+          subst heqf; subst heqc
+          show sf.trace ++ _ = sc.trace ++ _; rw [htrace]
+        have henv' : EnvCorr sc'.env sf'.env := by
+          have hsf'_env : sf'.env = sf.env := by
+            have h0 := hstep
+            rw [show sf = {sf with expr := .var name} from by cases sf; simp_all] at h0
+            simp only [Flat.step?, hfenv] at h0
+            have heq := (Prod.mk.inj (Option.some.inj h0)).2; subst heq; rfl
+          have hsc'_env : sc'.env = sc.env := by
+            have h0 := hcstep
+            rw [show sc = {sc with expr := .var name} from by cases sc; simp_all] at h0
+            simp only [Core.step?, hcenv] at h0
+            have heq := (Prod.mk.inj (Option.some.inj h0)).2; subst heq; rfl
+          rw [hsc'_env, hsf'_env]; exact henvCorr
+        have hsf'_expr : sf'.expr = .lit fv := by
+          have h0 := hstep
+          rw [show sf = {sf with expr := .var name} from by cases sf; simp_all] at h0
+          simp only [Flat.step?, hfenv] at h0
+          exact congrArg Flat.State.expr (Prod.mk.inj (Option.some.inj h0)).2 ▸ rfl
+        have hsc'_expr : sc'.expr = .lit cv := by
+          have h0 := hcstep
+          rw [show sc = {sc with expr := .var name} from by cases sc; simp_all] at h0
+          simp only [Core.step?, hcenv] at h0
+          exact congrArg Core.State.expr (Prod.mk.inj (Option.some.inj h0)).2 ▸ rfl
+        exact ⟨hsf'_trace, henv', scope, envVar, envMap, st,
+          (Flat.convertExpr (.lit cv) scope envVar envMap st).2,
+          by rw [hsc'_expr]; simp [Flat.convertExpr, hsf'_expr, hfv_eq]⟩
+      | none =>
+        -- Flat doesn't find var → produces ReferenceError
+        have hflat_ev : ev = .error ("ReferenceError: " ++ name) := by
+          rw [show sf = {sf with expr := .var name} from by cases sf; simp_all] at hstep
+          simp only [Flat.step?, hfenv] at hstep
+          exact (Prod.mk.inj (Option.some.inj hstep)).1.symm
+        subst hflat_ev
+        cases hcenv : sc.env.lookup name with
+        | none =>
+          -- Both produce ReferenceError
+          obtain ⟨sc', hcstep⟩ : ∃ sc', Core.step? sc = some (.error ("ReferenceError: " ++ name), sc') := by
+            rw [show sc = {sc with expr := .var name} from by cases sc; simp_all]
+            simp only [Core.step?, hcenv]; exact ⟨_, rfl⟩
+          refine ⟨sc', ⟨hcstep⟩, ?_⟩
+          have hsf'_trace : sf'.trace = sc'.trace := by
+            have hf := hstep; have hc := hcstep
+            rw [show sf = {sf with expr := .var name} from by cases sf; simp_all] at hf
+            rw [show sc = {sc with expr := .var name} from by cases sc; simp_all] at hc
+            simp only [Flat.step?, hfenv] at hf; simp only [Core.step?, hcenv] at hc
+            have heqf := (Prod.mk.inj (Option.some.inj hf)).2
+            have heqc := (Prod.mk.inj (Option.some.inj hc)).2
+            subst heqf; subst heqc
+            show sf.trace ++ _ = sc.trace ++ _; rw [htrace]
+          have henv' : EnvCorr sc'.env sf'.env := by
+            have hsf'_env : sf'.env = sf.env := by
+              have h0 := hstep
+              rw [show sf = {sf with expr := .var name} from by cases sf; simp_all] at h0
+              simp only [Flat.step?, hfenv] at h0
+              have heq := (Prod.mk.inj (Option.some.inj h0)).2; subst heq; rfl
+            have hsc'_env : sc'.env = sc.env := by
+              have h0 := hcstep
+              rw [show sc = {sc with expr := .var name} from by cases sc; simp_all] at h0
+              simp only [Core.step?, hcenv] at h0
+              have heq := (Prod.mk.inj (Option.some.inj h0)).2; subst heq; rfl
+            rw [hsc'_env, hsf'_env]; exact henvCorr
+          have hsf'_expr : sf'.expr = .lit .undefined := by
+            have h0 := hstep
+            rw [show sf = {sf with expr := .var name} from by cases sf; simp_all] at h0
+            simp only [Flat.step?, hfenv] at h0
+            exact congrArg Flat.State.expr (Prod.mk.inj (Option.some.inj h0)).2 ▸ rfl
+          have hsc'_expr : sc'.expr = .lit .undefined := by
+            have h0 := hcstep
+            rw [show sc = {sc with expr := .var name} from by cases sc; simp_all] at h0
+            simp only [Core.step?, hcenv] at h0
+            exact congrArg Core.State.expr (Prod.mk.inj (Option.some.inj h0)).2 ▸ rfl
+          exact ⟨hsf'_trace, henv', [], "", [], st, st,
+            by rw [hsc'_expr]; simp [Flat.convertExpr, Flat.convertValue, hsf'_expr]⟩
+        | some cv =>
+          -- Flat produces ReferenceError but Core finds the var → event mismatch.
+          -- Needs Core⊆Flat direction in EnvCorr or Flat.initialState to include builtins.
+          sorry
   | «let» _ _ _ => sorry -- needs env correspondence (let-binding extends env)
   | assign _ _ => sorry -- needs env correspondence
   | «if» _ _ _ => sorry -- needs env correspondence (cond evaluation)
@@ -366,8 +477,60 @@ private theorem closureConvert_step_simulation
   | throw _ => sorry -- needs env correspondence (sub-stepping)
   | tryCatch _ _ _ _ => sorry -- needs env correspondence
   | while_ _ _ => sorry -- needs env correspondence
-  | «return» _ => sorry -- FALSE as stated: Core→error, Flat→silent
-  | yield _ _ => sorry -- FALSE as stated: Core→error, Flat→silent
+  | «return» arg =>
+    rw [hsc] at hconv; simp only [Flat.convertExpr] at hconv
+    -- convertExpr (.return arg) = (.return arg', st1) where arg' = convertOptExpr arg
+    cases arg with
+    | none =>
+      -- .return none: both produce .error "return:undefined" and step to .lit .undefined
+      have hsf_expr : sf.expr = .«return» none := by
+        simp only [Flat.convertOptExpr] at hconv; cases sf; simp_all [(Prod.mk.inj hconv).1]
+      have hflat_ev : ev = .error "return:undefined" := by
+        rw [show sf = {sf with expr := .«return» none} from by cases sf; simp_all] at hstep
+        simp only [Flat.step?] at hstep
+        exact (Prod.mk.inj (Option.some.inj hstep)).1.symm
+      subst hflat_ev
+      obtain ⟨sc', hcstep⟩ : ∃ sc', Core.step? sc = some (.error "return:undefined", sc') := by
+        rw [show sc = {sc with expr := .«return» none} from by cases sc; simp_all]
+        simp only [Core.step?]; exact ⟨_, rfl⟩
+      refine ⟨sc', ⟨hcstep⟩, ?_⟩
+      have hsf'_trace : sf'.trace = sc'.trace := by
+        have hf := hstep; have hc := hcstep
+        rw [show sf = {sf with expr := .«return» none} from by cases sf; simp_all] at hf
+        rw [show sc = {sc with expr := .«return» none} from by cases sc; simp_all] at hc
+        simp only [Flat.step?] at hf; simp only [Core.step?] at hc
+        have heqf := (Prod.mk.inj (Option.some.inj hf)).2
+        have heqc := (Prod.mk.inj (Option.some.inj hc)).2
+        subst heqf; subst heqc
+        show sf.trace ++ _ = sc.trace ++ _; rw [htrace]
+      have henv' : EnvCorr sc'.env sf'.env := by
+        have hsf'_env : sf'.env = sf.env := by
+          have h0 := hstep
+          rw [show sf = {sf with expr := .«return» none} from by cases sf; simp_all] at h0
+          simp only [Flat.step?] at h0
+          have heq := (Prod.mk.inj (Option.some.inj h0)).2; subst heq; rfl
+        have hsc'_env : sc'.env = sc.env := by
+          have h0 := hcstep
+          rw [show sc = {sc with expr := .«return» none} from by cases sc; simp_all] at h0
+          simp only [Core.step?] at h0
+          have heq := (Prod.mk.inj (Option.some.inj h0)).2; subst heq; rfl
+        rw [hsc'_env, hsf'_env]; exact henvCorr
+      have hsf'_expr : sf'.expr = .lit .undefined := by
+        have h0 := hstep
+        rw [show sf = {sf with expr := .«return» none} from by cases sf; simp_all] at h0
+        simp only [Flat.step?] at h0
+        exact congrArg Flat.State.expr (Prod.mk.inj (Option.some.inj h0)).2 ▸ rfl
+      have hsc'_expr : sc'.expr = .lit .undefined := by
+        have h0 := hcstep
+        rw [show sc = {sc with expr := .«return» none} from by cases sc; simp_all] at h0
+        simp only [Core.step?] at h0
+        exact congrArg Core.State.expr (Prod.mk.inj (Option.some.inj h0)).2 ▸ rfl
+      exact ⟨hsf'_trace, henv', [], "", [], st, st,
+        by rw [hsc'_expr]; simp [Flat.convertExpr, Flat.convertValue, hsf'_expr]⟩
+    | some e =>
+      -- .return (some e): sub-stepping needed for non-value case
+      sorry
+  | yield _ _ => sorry -- sub-stepping needed for value case
   | await _ => sorry -- needs env correspondence
   | this =>
     rw [hsc] at hconv; simp only [Flat.convertExpr] at hconv
