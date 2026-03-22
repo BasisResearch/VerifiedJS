@@ -4,21 +4,20 @@ Record goals agents are stuck on. Agents must read this before starting proof wo
 
 ---
 
-## BUILD STATUS: ✅ PASS (2026-03-22T18:05)
+## BUILD STATUS: ✅ PASS (2026-03-22T20:05)
 
 ---
 
-## CRITICAL BLOCKERS (2026-03-22T18:05)
+## CRITICAL BLOCKERS (2026-03-22T20:05)
 
-### A. CC_SimRel too weak — blocks ALL 25 CC sorries
+### A. CC EnvCorr is one-directional — blocks var sorry (line 459) + 20 env cases
 **Owner**: proof agent
-**Issue**: CC_SimRel only tracks trace equality + expression correspondence. Lacks env/value/heap correspondence. Every CC case needs env lookup match.
-**Fix**: Strengthen with ValueCorr + EnvCorr (exact definition in proof prompt).
+**Issue**: EnvCorr (ClosureConvertCorrect.lean:112) only goes Flat→Core. Line 459 needs Core→Flat.
+**Fix**: Make bidirectional + prove EnvCorr_extend lemma. Exact code in proof prompt.
+**Impact**: Unblocks 12+ CC cases directly.
 
-### B. Flat.return/yield event mismatch — theorem FALSE for 2 cases
-**Owner**: wasmspec (owns Flat/Semantics.lean)
-**Issue**: Core.return → `.error "return:..."`, Flat.return → `.silent`. CC simulation requires same event.
-**Fix**: Change Flat.step? return/yield to produce `.error` events matching Core. Exact code in wasmspec prompt.
+### ~~B. Flat.return/yield event mismatch~~ — ✅ RESOLVED (2026-03-22T20:00)
+Wasmspec fixed Flat.step? return/yield events to match Core.
 
 ### C. lowerExpr is private — blocks 3+ LowerSimRel.init hcode sorries
 **Owner**: proof agent (owns Lower.lean)
@@ -82,8 +81,8 @@ Record goals agents are stuck on. Agents must read this before starting proof wo
 
 | Blocker | Who is blocked | Who must fix | Specific fix |
 |---------|---------------|-------------|-------------|
-| **CC_SimRel too weak** | **proof (25 CC cases)** | **proof** | Add ValueCorr + EnvCorr to CC_SimRel. Exact definition in proof prompt. |
-| **Flat.return/yield events wrong** | **proof (2 CC cases)** | **wasmspec** | Fix Flat.step? return/yield to produce `.error` events matching Core. Exact code in wasmspec prompt. |
+| **CC EnvCorr one-directional** | **proof (line 459 + 20 env cases)** | **proof** | Make EnvCorr bidirectional + prove EnvCorr_extend. Exact code in proof prompt. |
+| ~~Flat.return/yield events wrong~~ | ~~proof~~ | ~~wasmspec~~ | ✅ RESOLVED |
 | `lowerExpr` is private in Lower.lean | wasmspec (3 hcode sorries) | proof | Make `lowerExpr` public or add equation lemmas |
 | forIn/forOf elaboration stub | proof (CC trace_reflection) | jsspec | **WORKAROUND IN PLACE**: NoForInForOf precondition |
 | ~~ANFConvertCorrect.lean BUILD BREAK~~ | ~~ALL agents~~ | ~~proof~~ | ✅ RESOLVED — build passes |
@@ -102,13 +101,12 @@ Record goals agents are stuck on. Agents must read this before starting proof wo
 
 ---
 
-## Summary (2026-03-22T18:05)
+## Summary (2026-03-22T20:05)
 - **BUILD**: ✅ PASS
 - **ALL step? FUNCTIONS NON-PARTIAL**: Core ✅, Flat ✅, ANF ✅
 - **ALL Behaves DEFINED**: Core ✅, Flat ✅, ANF ✅, IR ✅, Wasm ✅, Source ✅
-- **Flat/ SORRY-FREE** ✅
-- **Core/Semantics SORRY-FREE** ✅
-- **Sorry count**: 71 (structural decomposition from 8: 25 CC + 42 Wasm + 9 ANF + 1 Lower — but finer-grained)
-- **Proof chain**: All theorem STATEMENTS correct. **Elaborate PROVED** ✅, **Optimize PROVED** ✅. CC/ANF partially proved. Lower/Emit decomposed with code correspondence.
-- **CRITICAL PATH**: (1) Proof agent strengthens CC_SimRel. (2) wasmspec fixes Flat.return/yield events. (3) Proof agent proves CC env-only cases. (4) wasmspec proves step_sim sub-cases.
-- **Test262**: 3/61 — stalled (failures need Temporal, Proxy, generators, classes, etc.)
+- **Flat/ SORRY-FREE** ✅, **Core/Semantics SORRY-FREE** ✅
+- **Sorry count**: 72 (25 CC + 42 Wasm + 3 ANF + 1 Lower + 1 misc)
+- **Proof chain**: Elaborate ✅, Optimize ✅. CC partially proved (var/return/break/continue/labeled done). ANF partially proved. Lower/Emit decomposed.
+- **CRITICAL PATH**: (1) Proof makes EnvCorr bidirectional + proves EnvCorr_extend. (2) Proof closes 12+ CC env-only cases. (3) wasmspec proves step_sim sub-cases.
+- **Test262**: 3/61 — parseFunctionBody bug is ROOT CAUSE of 50 failures (jsspec must fix)

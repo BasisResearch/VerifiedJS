@@ -1,4 +1,51 @@
 
+## Run: 2026-03-22T20:05:00+00:00
+
+### Build
+- **Status**: `lake build` PASS
+
+### Sorry Count: 72 (stable, was 71)
+- ClosureConvertCorrect.lean: ~25 (var captured + 20 env cases + return/some + yield + await)
+- ANFConvertCorrect.lean: 3 (step_star, seq.seq.lit, WF preservation)
+- LowerCorrect.lean: 1 (init hcode)
+- Wasm/Semantics.lean: ~42 (Lower 13 + Emit 22 + init 3 + misc 4)
+
+### Test262: 3/61 pass, 50 fail, 3 skip, 5 xfail (UNCHANGED)
+
+### Agent Health
+- jsspec: **DEAD** — EXIT 143 (killed) for 9 consecutive runs since 16:00. Not fixing parseFunctionBody bug.
+- wasmspec: Timed out at 18:15. Fixed Flat.return/yield events (GOOD). Idle since.
+- proof: Currently running (started 19:30, still active). Last completed run proved var/return/break/continue/labeled CC cases.
+
+### KEY DISCOVERIES THIS RUN
+
+#### 1. Flat.return/yield event mismatch is FIXED ✅
+Wasmspec changed Flat.step? `.return none` from `.silent` to `.error "return:undefined"` matching Core. CC `.return` cases now provable.
+
+#### 2. CC EnvCorr needs bidirectional direction
+Current EnvCorr (Flat→Core) proved var/in-scope/found case. But line 459 sorry shows: Flat doesn't find var → Core does → event mismatch. Fix: add Core→Flat direction. Then:
+- Line 459 becomes trivially closed (EnvCorr guarantees Flat finds it if Core does)
+- EnvCorr_extend lemma unblocks 12+ env-only cases (let, assign, if, seq, etc.)
+
+#### 3. parseFunctionBody bug STILL UNFIXED — jsspec agent dead
+Parser.lean:461-464 returns `pure []` for all function expression bodies. ROOT CAUSE of all 50 test262 runtime failures. jsspec has been crashing (EXIT 143) for 4+ hours. Wrote exact fix in jsspec prompt.
+
+#### 4. CC proof making real progress despite sorry count plateau
+Proof agent proved var (in-scope found + not-found), return none, break, continue, labeled. These are REAL proofs with env correspondence, not stubs. Pattern is replicable to all remaining env-only cases once EnvCorr is bidirectional.
+
+### Proof Chain
+```
+Elaborate ✅ → CC (25 sorry, 5 cases PROVED) → ANF (3 sorry) → Optimize ✅ → Lower (1+13 sorry) → Emit (1+22 sorry) → E2E (blocked)
+              EnvCorr exists but one-directional
+```
+
+### Actions Taken
+1. **proof prompt**: Updated return/yield section (now FIXED). Wrote bidirectional EnvCorr definition + EnvCorr_extend helper lemma. Updated sorry inventory with line numbers and status. Reordered priorities: (1) bidirectional EnvCorr, (2) EnvCorr_extend, (3) return cases, (4) ANF lifting lemma.
+2. **wasmspec prompt**: Acknowledged return/yield fix. Removed stale fix instructions. Refocused on step_sim sub-cases.
+3. **jsspec prompt**: Wrote CRITICAL parseFunctionBody bug fix as #1 priority with exact replacement code. Elevated above all other work.
+4. **PROOF_BLOCKERS.md**: Updated blocker A (CC_SimRel → EnvCorr directional), resolved blocker B, updated summary/dependencies.
+5. **PROGRESS.md**: Added metrics row.
+
 ## Run: 2026-03-22T18:05:00+00:00
 
 ### Build
@@ -1899,3 +1946,4 @@ test_write
 
 ## Run: 2026-03-22T20:05:01+00:00
 
+2026-03-22T20:11:46+00:00 DONE
