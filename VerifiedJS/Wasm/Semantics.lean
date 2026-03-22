@@ -2705,7 +2705,10 @@ theorem step?_code_nonempty (s : ExecState) (instr : Instr) (rest : List Instr)
   cases instr <;> simp_all only [] <;> (
     first
     | exact ⟨_, _, rfl⟩
-    | sorry)
+    | (unfold withI32Bin withI64Bin withF32Bin withF64Bin
+             withI32Rel withI64Rel withF32Rel withF64Rel
+             withI32Div withI32Rem withI64Div withI64Rem
+       split <;> (first | exact ⟨_, _, rfl⟩ | (split <;> (first | exact ⟨_, _, rfl⟩ | (split <;> (first | exact ⟨_, _, rfl⟩ | (split <;> (first | exact ⟨_, _, rfl⟩ | (split <;> exact ⟨_, _, rfl⟩))))))))))
 
 /-- Every Wasm state is either halted or can take a step (full progress theorem).
     SPEC: Wasm type soundness analog — well-formed states always make progress.
