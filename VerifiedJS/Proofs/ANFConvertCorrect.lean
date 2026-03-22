@@ -61,7 +61,9 @@ private def ANF_SimRel (_s : Flat.Program) (_t : ANF.Program) (sa : ANF.State) (
   sa.env = sf.env ∧
   observableTrace sa.trace = observableTrace sf.trace ∧
   ∃ (k : ANF.Trivial → ANF.ConvM ANF.Expr) (n m : Nat),
-    (ANF.normalizeExpr sf.expr k).run n = Except.ok (sa.expr, m)
+    (ANF.normalizeExpr sf.expr k).run n = Except.ok (sa.expr, m) ∧
+    (∀ (arg : ANF.Trivial) (n' m' : Nat) (t : ANF.Trivial),
+      (k arg).run n' = .ok (.trivial t, m') → t = arg)
 
 /-- Initial states are related: both have empty traces and heaps,
     and the ANF main expression is the normalization of the Flat main. -/
@@ -70,8 +72,11 @@ private theorem anfConvert_init_related
     (h : ANF.convert s = .ok t) :
     ANF_SimRel s t (ANF.initialState t) (Flat.initialState s) := by
   simp only [ANF.initialState, Flat.initialState]
-  refine ⟨rfl, rfl, rfl, fun t => pure (.trivial t), 0, ?_⟩
-  exact ANF.convert_main_from_normalizeExpr s t h
+  refine ⟨rfl, rfl, rfl, fun t => pure (.trivial t), 0, ?_, ?_⟩
+  · exact ANF.convert_main_from_normalizeExpr s t h
+  · intro arg n' m' t' hk
+    simp [pure, Pure.pure, StateT.pure, Except.pure] at hk
+    exact (Prod.mk.inj (Except.ok.inj hk)).1
 
 /-- Stuttering simulation: one ANF step corresponds to one or more Flat steps,
     preserving observable events and the simulation relation.
@@ -690,7 +695,7 @@ private theorem anfConvert_halt_star
         Flat.step? sf' = none ∧
         observableTrace evs = [] ∧
         ANF_SimRel s t sa sf' := by
-  intro sa sf ⟨hheap, henv, htrace, k, n, m, hnorm⟩ hstuck
+  intro sa sf ⟨hheap, henv, htrace, k, n, m, hnorm, hfaithful⟩ hstuck
   obtain ⟨t, hat, hnovar⟩ := ANF_step?_none_implies_trivial sa hstuck
   -- sa.expr = .trivial t, t is not a var
   -- From hnorm: (normalizeExpr sf.expr k).run n = .ok (.trivial t, m)
@@ -700,16 +705,21 @@ private theorem anfConvert_halt_star
     -- Flat.step? on .lit = none (already halted), take sf' = sf
     exact ⟨sf, [], .refl sf,
       by rw [show sf = {sf with expr := .lit v} from by cases sf; simp_all]; unfold Flat.step?; simp,
-      rfl, hheap, henv, htrace, k, n, m, hnorm⟩
+      rfl, hheap, henv, htrace, k, n, m, hnorm, hfaithful⟩
   | var name =>
-    -- Flat.step? on .var name: env lookup
-    -- normalizeExpr (.var name) k = k (.var name), gives .trivial t with t non-var
-    -- After var step, Flat reaches .lit v; then step? = none
-    -- ANF is at .trivial t; need to show correspondence via env equality
-    sorry
+    -- normalizeExpr (.var name) k = k (.var name), producing .trivial t
+    -- By faithfulness of k: t = .var name, contradicting hnovar
+    exfalso
+    rw [hsf] at hnorm; simp only [ANF.normalizeExpr] at hnorm
+    rw [hat] at hnorm
+    exact absurd (hfaithful (.var name) n m t hnorm) (hnovar name)
   | this =>
-    -- Similar to var: Flat.step? on .this does env lookup for "this"
-    sorry
+    -- normalizeExpr (.this) k = k (.var "this"), producing .trivial t
+    -- By faithfulness of k: t = .var "this", contradicting hnovar
+    exfalso
+    rw [hsf] at hnorm; simp only [ANF.normalizeExpr] at hnorm
+    rw [hat] at hnorm
+    exact absurd (hfaithful (.var "this") n m t hnorm) (hnovar "this")
   | seq a b =>
     sorry -- .seq can produce .trivial through recursion; needs constructive multi-step handling
   | _ =>
