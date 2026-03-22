@@ -62,47 +62,74 @@ Then construct the matching Step derivation in Lean. If you cannot, your semanti
 3. Keep definitions structurally simple for proofs.
 4. Add @[simp] lemmas for everything the proof agent might need.
 
-## CURRENT PRIORITIES (2026-03-22T17:05)
+## CURRENT PRIORITIES (2026-03-22T18:05)
 
-### MILESTONE: Flat/ is SORRY-FREE — outstanding work.
+### MILESTONE: Decomposed step_sim into 37 fine-grained cases — great structural progress.
 
-### Your sorry inventory (2 in your files):
+### Your sorry inventory (42 in your files, all in Wasm/Semantics.lean):
 
-| File | Line | Theorem | Description |
-|------|------|---------|-------------|
-| Wasm/Semantics.lean | 5212 | LowerSimRel.step_sim | ANF→IR step correspondence |
-| Wasm/Semantics.lean | 5314 | EmitSimRel.step_sim | IR→Wasm step correspondence |
+| Category | Count | Description |
+|----------|-------|-------------|
+| LowerSimRel.step_sim sub-cases | 13 | var, let, seq, if, while, throw, tryCatch, return, yield, await, labeled, break, continue |
+| EmitSimRel.step_sim sub-cases | 22 | 1 empty-code + 21 IR instruction cases |
+| LowerSimRel.init hcode | 3 | Blocked on lowerExpr being private |
+| Misc | 4 | Various |
 
-### #1 CRITICAL: Decompose step_sim into ANF expression cases
+### #1 CRITICAL: Fix Flat.return/yield EVENT MISMATCH
 
-Both step_sim theorems are sorry'd. These are the ONLY things blocking the end-to-end proof chain for Lower and Emit.
+**This is blocking the CC proof.** The proof agent cannot prove `closureConvert_step_simulation` for `.return` and `.yield` because:
 
-**LowerSimRel.step_sim** (line 5212): The goal after `split` has two branches:
-1. `anfStepMapped s1 = none` case → contradiction with `hstep`
-2. `anfStepMapped s1 = some (t, s1')` case → need to show IR takes matching step
+- `Core.step?` for `.return none` produces event `.error "return:undefined"`
+- `Flat.step?` for `.return none` produces event `.silent`
 
-For the `some` case, do case analysis on the ANF expression form (`s1.expr`):
-- `.trivial (.lit v)` — const push
-- `.trivial (.var x)` — local.get
-- `.let x rhs body` — evaluate rhs then bind
-- `.seq a b` — evaluate a then b
-- `.if cond then_ else_` — conditional branch
+The CC simulation theorem requires the SAME event. These events DON'T MATCH → theorem is FALSE.
 
-Each case reveals what `LowerSimRel` invariants are needed. Even if each sub-case is sorry, this is STRUCTURAL PROGRESS because it defines the proof architecture.
+**You own Flat/Semantics.lean. Fix Flat.step? for `.return` and `.yield` to produce the SAME events as Core:**
 
-**BLOCKER**: `lowerExpr` is `private partial` in Lower.lean (proof agent's file). You need either:
-1. Ask proof agent to make `lowerExpr` public (write in PROOF_BLOCKERS.md)
-2. Define abstract code correspondence: `LowerSimRel` should include `irCode : List IRInstr` field that relates to the lowered form of the ANF expression
+In `Flat/Semantics.lean`, change the `.return` case:
+```lean
+-- CURRENT (WRONG — produces .silent):
+| .«return» arg =>
+    match arg with
+    | none =>
+        let s' := pushTrace { s with expr := .lit .undefined } .silent
+        some (.silent, s')
+    | some e =>
+        match exprValue? e with
+        | some v =>
+            let s' := pushTrace { s with expr := .lit v } .silent
+            some (.silent, s')
 
-### #2: EmitSimRel.step_sim (line 5314)
+-- FIX (match Core — produce .error):
+| .«return» arg =>
+    match arg with
+    | none =>
+        let s' := pushTrace { s with expr := .lit .undefined } (.error "return:undefined")
+        some (.error "return:undefined", s')
+    | some e =>
+        match exprValue? e with
+        | some v =>
+            let s' := pushTrace { s with expr := .lit v } (.error ("return:" ++ toString (repr v)))
+            some (.error ("return:" ++ toString (repr v)), s')
+```
 
-Same pattern. Decompose by IR instruction form. The emit pass maps each IR instruction to 1+ Wasm instructions, so this may need stuttering (1:many) simulation.
+Do the same for `.yield`: match Core's event production exactly.
 
-### STRATEGY
-1. Write to PROOF_BLOCKERS.md requesting `lowerExpr` be made public
-2. Decompose LowerSimRel.step_sim by ANF expression form (5+ cases with sorry each)
-3. Decompose EmitSimRel.step_sim by IR instruction form
-4. Each decomposed sorry tells us exactly what SimRel invariants are needed
+**IMPORTANT**: After changing these, run `bash scripts/lake_build_concise.sh` to verify nothing downstream breaks (Flat.step?_none_implies_lit, etc.).
+
+### #2: Continue proving LowerSimRel.step_sim sub-cases
+
+You already proved 7 literal cases by contradiction. Now attack the expression cases. For each:
+1. Use `lean_goal` to see the exact goal
+2. The `hcode : LowerCodeCorr s.expr ir.code` invariant tells you what IR code corresponds
+3. Show that `irStep?` on that code produces the matching step
+4. Use the irStep? equation lemmas you already wrote (47+)
+
+Start with `.trivial (.lit v)` and `.trivial (.var x)` — these are the simplest.
+
+### #3: Prove EmitSimRel.step_sim sub-cases
+
+Same strategy. `hcode : EmitCodeCorr ir.code w.code` tells you what Wasm instructions correspond. Show `Wasm.step?` takes matching steps.
 
 ## GLOBAL GOAL -- DO NOT STOP
 Your job is done when:

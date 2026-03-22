@@ -57,117 +57,124 @@ If ClosureConvertCorrect needs 600 lines of case analysis, WRITE 600 LINES. That
 ## Test262
 Read `logs/test262_summary.md` for failure categories. Fix compiler bugs that cause test262 failures.
 
-## ⚠️⚠️⚠️ FIX BUILD FIRST — ANFConvertCorrect.lean ERRORS ⚠️⚠️⚠️
+## ⚠️⚠️⚠️ CRITICAL: CC_SimRel IS TOO WEAK — STRENGTHEN IT FIRST ⚠️⚠️⚠️
 
-**BUILD IS BROKEN. Fix these errors before doing ANYTHING else.**
+**Build passes. The #1 blocker is that `CC_SimRel` only tracks trace equality + expression correspondence. It does NOT track environment or value correspondence, so ALL 25 CC cases are unprovable.**
 
-ANFConvertCorrect.lean has 16 errors, all in TWO locations. Root cause: `cases hfx with | seq_l hfx' =>` does NOT bind `hfx'` because `VarFreeIn.seq_l` takes 3 explicit args `(x : String) (a b : Flat.Expr)` plus the proof. You must name all constructor args.
+### The Problem
 
-### Error 1: Lines 850-852
-
-**Current (BROKEN):**
+Current CC_SimRel:
 ```lean
-              cases hfx with
-              | seq_l hfx' => rw [ha]; exact .seq_l _ _ _ (.seq_r _ _ _ hfx')
-              | seq_r hfx' => exact .seq_r _ _ _ hfx'
+private def CC_SimRel (_s : Core.Program) (_t : Flat.Program)
+    (sf : Flat.State) (sc : Core.State) : Prop :=
+  sf.trace = sc.trace ∧
+  ∃ (scope : List String) (envVar : String) (envMap : Flat.EnvMapping) (st st' : Flat.CCState),
+    (sf.expr, st') = Flat.convertExpr sc.expr scope envVar envMap st
 ```
 
-**Fix — add `_ _ _` before the proof name:**
+This tells you the *expressions* correspond, but NOT the *environments*. When you reach a `.var name` case, you know `sf.expr = .var name` (or `.getEnv ...`), and `Flat.step?` will look up `name` in `sf.env`. But you have NO hypothesis relating `sf.env` to `sc.env`. So you can't show Core produces the same value.
+
+### The Fix — Add Value and Environment Correspondence
+
+Define these BEFORE CC_SimRel:
+
 ```lean
-              cases hfx with
-              | seq_l _ _ _ hfx' => rw [ha]; exact .seq_l _ _ _ (.seq_r _ _ _ hfx')
-              | seq_r _ _ _ hfx' => exact .seq_r _ _ _ hfx'
+/-- Value correspondence: Core values map to Flat values through convertValue. -/
+private def ValueCorr (cv : Core.Value) (fv : Flat.Value) : Prop :=
+  fv = Flat.convertValue cv
+
+/-- Environment correspondence for closure conversion.
+    For in-scope variables: direct lookup with value correspondence.
+    For captured variables: lookup through env object. -/
+private def EnvCorr (scope : List String) (envVar : String) (envMap : Flat.EnvMapping)
+    (cenv : Core.Env) (fenv : Flat.Env) : Prop :=
+  -- Every Core binding has a corresponding Flat binding
+  (∀ name cv, cenv.lookup name = some cv →
+    -- Case 1: variable is in scope (not captured) → direct lookup
+    (Flat.lookupEnv envMap name = none →
+      ∃ fv, fenv.lookup name = some fv ∧ ValueCorr cv fv) ∧
+    -- Case 2: variable is captured → accessible through env object
+    (∀ idx, Flat.lookupEnv envMap name = some idx →
+      ∃ envObj, fenv.lookup envVar = some envObj))
 ```
 
-### Error 2: Lines 910-915
-
-**Current (BROKEN):**
+Then strengthen CC_SimRel:
 ```lean
-            cases hfx with
-            | seq_l h' =>
-              have : VarFreeIn x (Flat.Expr.seq a b) := by rw [ha]; exact .seq_l _ _ _ (.seq_r _ _ _ h')
-              exact hwf x (by rw [hsf]; exact this)
-            | seq_r h' =>
-              exact hwf x (by rw [hsf]; exact .seq_r _ _ _ h')
+private def CC_SimRel (_s : Core.Program) (_t : Flat.Program)
+    (sf : Flat.State) (sc : Core.State) : Prop :=
+  sf.trace = sc.trace ∧
+  ∃ (scope : List String) (envVar : String) (envMap : Flat.EnvMapping) (st st' : Flat.CCState),
+    (sf.expr, st') = Flat.convertExpr sc.expr scope envVar envMap st ∧
+    EnvCorr scope envVar envMap sc.env sf.env ∧
+    sf.heap = sc.heap  -- heaps correspond (CC doesn't change heap structure)
 ```
 
-**Fix — add `_ _ _` before the proof name:**
-```lean
-            cases hfx with
-            | seq_l _ _ _ h' =>
-              have : VarFreeIn x (Flat.Expr.seq a b) := by rw [ha]; exact .seq_l _ _ _ (.seq_r _ _ _ h')
-              exact hwf x (by rw [hsf]; exact this)
-            | seq_r _ _ _ h' =>
-              exact hwf x (by rw [hsf]; exact .seq_r _ _ _ h')
-```
+**You must also re-prove `closureConvert_init_related` for the strengthened SimRel.** The init state has empty envs, so EnvCorr holds vacuously (no bindings to correspond).
 
-**Run `bash scripts/lake_build_concise.sh` to verify the build is clean before proceeding.**
+### ALSO: `.return` and `.yield` are FALSE as stated
 
-## PROOF STRATEGY — Current Sorry Inventory (8 total)
+Core.step? for `.return none` produces event `.error "return:undefined"`.
+Flat.step? for `.return none` produces event `.silent`.
 
-### Sorries in YOUR files (5):
+**These events DON'T MATCH**, so `closureConvert_step_simulation` is UNPROVABLE for `.return` and `.yield`.
 
-| # | File:Line | Description | Strategy |
-|---|-----------|-------------|----------|
-| 1 | ANFConvertCorrect:94 | `anfConvert_step_star` | Full theorem — hardest, do last |
-| 2 | ANFConvertCorrect:862 | `.seq.seq.var` none | Needs WellFormed precondition |
-| 3 | ANFConvertCorrect:922 | `.seq.seq.seq` | Nested seq reduction — recursive pattern |
-| 4 | ANFConvertCorrect:1002 | WellFormed preservation | Prove step preserves WF |
-| 5 | ClosureConvertCorrect:297 | catch-all `\| _ => sorry` | 23 Core.Expr cases remaining |
+**Fix**: Skip `.return` and `.yield` for now (leave as sorry with a note). The wasmspec agent has been asked to fix Flat.return/yield to produce the same events as Core. Once fixed, these cases will follow the same pattern as all others.
 
-### Sorries in wasmspec files (2 — NOT your responsibility):
+## PROOF STRATEGY — Current Sorry Inventory
 
-| # | File:Line | Description |
-|---|-----------|-------------|
-| 6 | Wasm/Semantics:5212 | LowerSimRel.step_sim |
-| 7 | Wasm/Semantics:5314 | EmitSimRel.step_sim |
+### Sorries in YOUR files:
 
-### Priority order after build fix:
+| # | File | Count | Description |
+|---|------|-------|-------------|
+| 1 | ClosureConvertCorrect.lean | 25 | 25 individual Core.Expr cases (was catch-all) |
+| 2 | ANFConvertCorrect.lean | 9 | step_star, seq cases, WF preservation |
+| 3 | LowerCorrect.lean | 1 | init hcode (blocked on wasmspec) |
 
-**#1: CC catch-all (:297) — THIS IS YOUR HIGHEST-IMPACT WORK**
+### Sorries in wasmspec files (42 — NOT your responsibility):
 
-The catch-all has 23 remaining Core.Expr cases. Each goal looks like:
-```
-hconv : (sf.expr, st') = Flat.convertExpr sc.expr scope envVar envMap st
-hstep : Flat.step? sf = some (ev, sf')
-hsc : sc.expr = Core.Expr.XXX ...
-⊢ ∃ sc', Core.Step sc ev sc' ∧ CC_SimRel s t sf' sc'
-```
+| # | File | Count | Description |
+|---|------|-------|-------------|
+| 4 | Wasm/Semantics.lean | 42 | Decomposed step_sim (37 sub-cases + 3 init + misc) |
 
-Strategy for each case: substitute `hsc` into `hconv`, unfold `Flat.convertExpr` to learn what `sf.expr` is, then unfold `Flat.step?` using `hstep` to learn what `ev` and `sf'` are. Then construct the matching `Core.Step` and re-establish `CC_SimRel`.
+### Priority order:
 
-**Easiest cases to start with (structurally similar to already-proved cases):**
-1. `.var` — convertExpr maps to env lookup or `.var`. Core.step? does the same lookup.
-2. `.this` — convertExpr maps to `.var envVar`. Both step to the value in env.
-3. `.let` — convertExpr recurses on init and body. Step reduces init first.
-4. `.assign` — similar to `.let`.
-5. `.seq` — convertExpr recurses on both sides. Step reduces left side.
+**#1: STRENGTHEN CC_SimRel (see above) — do this FIRST**
 
-**Template for each case (e.g., var):**
-```lean
-  | var =>
-    simp [Core.Expr.var] at hsc
-    rw [hsc] at hconv
-    simp [Flat.convertExpr] at hconv
-    rw [show sf.expr = ... from by cases sf; simp_all] at hstep
-    simp [Flat.step?, Flat.exprValue?] at hstep
-    -- Now hstep tells you what ev and sf' are
-    -- Construct Core.Step and CC_SimRel
-    sorry -- fill in
-```
+Without env correspondence, NONE of the 25 CC cases can be proved. This is the single highest-leverage change in the entire project.
 
-Do at least 5 cases per run. Replace `| _ => sorry` with explicit `| var => sorry | let => sorry | ...` so we can track progress.
+**#2: Prove CC cases that only need env correspondence (no heap)**
 
-**#2: WF preservation (:1002)**
-Show `Flat.step? s = some (ev, s') → ExprWellFormed s.expr s.env → ExprWellFormed s'.expr s'.env`.
-Straightforward: step? only extends env or reduces expression depth.
+After strengthening CC_SimRel, these cases become provable:
+1. `.this` — convertExpr maps to `.this`. Both look up `"this"` in env. EnvCorr gives value match.
+2. `.var name` (in-scope) — convertExpr maps to `.var name`. EnvCorr gives `fenv.lookup name = some fv`.
+3. `.typeof arg` — convertExpr recurses on arg. Step reduces arg.
+4. `.unary op arg` — same pattern.
+5. `.binary op lhs rhs` — same pattern.
+6. `.seq a b` — convertExpr recurses. Step reduces left side.
+7. `.if cond then_ else_` — convertExpr recurses. Step reduces cond.
+8. `.let name init body` — Step reduces init. Need to show EnvCorr extends with new binding.
+9. `.assign name value` — Step reduces value.
+10. `.throw arg` — Step reduces arg or produces error event.
+11. `.while_ cond body` — Step unfolds to if/seq.
+12. `.tryCatch body catch handler` — Step reduces body.
 
-**#3: `.seq.seq.var` (:862)**
-After WF is proved, use it: WF gives `sf.env.lookup name1 = some v`, so var steps silently.
+Leave `.call`, `.newObj`, `.functionDef`, `.objectLit`, `.arrayLit`, `.getProp`, `.setProp`, `.getIndex`, `.setIndex`, `.deleteProp`, `.return`, `.yield`, `.await` for later — these need heap or funcs correspondence.
 
-**#4: `.seq.seq.seq` (:922)**
-Key insight: `sf.expr = .seq (.seq (.seq c d) a2) b`. The inner `.seq c d` steps first.
-This needs the IH with `sf.expr.depth ≤ N`. Since depth(.seq(.seq c d) a2) < depth(.seq(.seq(.seq c d) a2) b), the IH applies. Use the same pattern as the `.lit v1` case above it.
+**#3: ANF WellFormedness preservation**
+
+The blocker at ANFConvertCorrect.lean:1183 says ExprWellFormed is NOT a general Flat.step? invariant. Investigate WHY:
+- Does `.let name init body` add `name` to env but WF didn't account for it?
+- Does some step change the expression to one with new free variables?
+
+Use `lean_goal` at line 1183 to see the exact goal. Then decide if WF needs to be weakened or if step? really does preserve it.
+
+**#4: ANF seq cases**
+
+After WF is proved, `.seq.seq.var` and `.seq.seq.seq` should follow.
+
+### Key Lean 4 pitfall — AVOID `cases ... with` inside `<;>` blocks
+
+When you need to case-split an inductive inside a `<;>` combinator, use term-mode `match` instead of `cases ... with | ctor name =>`. The `<;>` combinator does not properly bind pattern variable names from `with` syntax.
 
 ### Key Lean 4 pitfall — AVOID `cases ... with` inside `<;>` blocks
 

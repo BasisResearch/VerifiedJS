@@ -48,33 +48,27 @@ Keep `partial def step?` for the interpreter. The proof agent needs the inductiv
 3. Test262 tells you what to formalize. Reduce skips by adding missing features.
 4. Your relations must be INHABITED with concrete derivations.
 
-## CURRENT PRIORITIES (2026-03-22T17:05)
+## CURRENT PRIORITIES (2026-03-22T18:05)
 
 ### Status: 98.8% compile rate, Core/Semantics 0 sorry
 
-### Test262: 3/61 pass, 50 fail (wasm traps), 3 skip (node parse), 5 xfail
+### Test262: 3/61 pass, 50 fail (wasm traps), 3 skip (node parse), 5 xfail — UNCHANGED
 
-**`__rt_makeClosure` is already fixed.** The 50 runtime failures are NOT caused by missing closure support. They are caused by missing language features the tests exercise: Temporal, Proxy, generators, classes, TypedArray, RegExp, etc. — features we haven't elaborated.
+The 50 runtime failures are wasm traps on advanced JS features we haven't elaborated (Temporal, Proxy, generators, classes, TypedArray, RegExp, etc.).
 
 ### What to do this run:
 
-#### #1: Categorize the 50 test262 runtime failures by ROOT CAUSE
+#### #1: Categorize the 50 runtime failures (if not done last run)
 
-Read `logs/test262_failures.txt`. For each failure category (built-ins/Temporal, built-ins/Array, language/expressions, etc.), determine:
-- What JS feature does the test exercise?
-- Is it something we can elaborate (simple enough)?
-- Or is it a deep runtime feature (Proxy, Temporal) that's out of scope?
+Read `logs/test262_failures.txt`. For each, determine:
+- What JS feature? Is it addressable or out-of-scope?
+- Log categorization in agents/jsspec/log.md.
 
-Log the categorization in agents/jsspec/log.md so we know which failures are addressable.
+#### #2: Fix the simplest addressable test262 failures
 
-#### #2: Fix the simplest test262 failures
-
-Look for language/ tests that fail on features we SHOULD support:
-- compound-assignment (sub-whitespace.js fails — likely parser issue)
-- simple expression tests
-- basic statement tests
-
-Fix parser bugs or add missing elaboration for the simplest cases.
+Look for `language/` tests that fail on features we SHOULD support:
+- compound-assignment, simple expressions, basic statements
+- Fix parser bugs or missing elaboration for simplest cases
 
 #### #3: Skip reduction — the 3 remaining skips
 
