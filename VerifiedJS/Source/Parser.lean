@@ -459,9 +459,9 @@ private partial def parseParamList : ParserM (List Pattern) := do
   parseParamListAfterOpen
 
 private partial def parseFunctionBody : ParserM (List Stmt) := do
-  expectPunct "{"
-  skipBalancedBlock 1
-  pure []
+  match (← parseBlockStmt) with
+  | .block stmts => pure stmts
+  | s => pure [s]
 
 private partial def parsePropertyKey : ParserM PropertyKey := do
   if (← consumePunct? "#") then
@@ -1156,8 +1156,6 @@ private partial def parseExprM : ParserM Expr := do
       | many => pure (.sequence many)
   loop [first]
 
-end
-
 private partial def parseVarDecl : ParserM VarDeclarator := do
   let pat <- parseBindingPatternM
   skipNewlines
@@ -1178,7 +1176,7 @@ private partial def parseVarDecls : ParserM (List VarDeclarator) := do
       pure acc.reverse
   loop [first]
 
-private def expectStringLit : ParserM String := do
+private partial def expectStringLit : ParserM String := do
   let t <- peek
   match t.kind with
   | .string s =>
@@ -1234,17 +1232,15 @@ private partial def parseImportSpecifiers : ParserM (List ImportSpecifier) := do
     else
       pure [defaultSpec]
 
-private def parseForLHSFromExpr (e : Expr) : Except String ForLHS :=
+private partial def parseForLHSFromExpr (e : Expr) : Except String ForLHS :=
   match parsePatternFromExpr e with
   | some p => pure (.pattern p)
   | none => .error "Invalid for-in/of left-hand side"
 
-private def parseForLHSFromDecls (kind : VarKind) (decls : List VarDeclarator) : Except String ForLHS :=
+private partial def parseForLHSFromDecls (kind : VarKind) (decls : List VarDeclarator) : Except String ForLHS :=
   match decls with
   | [ .mk pat _ ] => pure (.varDecl kind pat)
   | _ => .error "for-in/of with declarations requires exactly one binding"
-
-mutual
 
 private partial def parseBlockStmt : ParserM Stmt := do
   expectPunct "{"
