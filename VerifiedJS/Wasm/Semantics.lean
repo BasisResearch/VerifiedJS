@@ -5451,6 +5451,12 @@ inductive EmitCodeCorr : List IRInstr → List Instr → Prop where
       EmitCodeCorr rest_ir rest_w →
       EmitCodeCorr (ir_instr :: rest_ir) (wasm_instrs ++ rest_w)
 
+/-- EmitCodeCorr [] implies wasm code is also []. -/
+theorem EmitCodeCorr.nil_inv {wcode : List Instr}
+    (h : EmitCodeCorr [] wcode) : wcode = [] := by
+  cases h with
+  | nil => rfl
+
 /-- Simulation relation for IR → Wasm emit.
     The step correspondence field provides the matching Wasm step for each IR step.
     REF: Standard forward simulation diagram. -/
@@ -5462,6 +5468,8 @@ structure EmitSimRel (irmod : IRModule) (wmod : Module)
   hcode : EmitCodeCorr ir.code w.code
   /- Stack correspondence. -/
   hstack : ir.stack.length = w.stack.length
+  /- Label correspondence (needed for halt derivation). -/
+  hlabels : ir.labels.length = w.labels.length
   /- Halt correspondence. -/
   hhalt : irStep? ir = none → Wasm.step? w = none
 
@@ -5503,6 +5511,7 @@ theorem init (irmod : IRModule) (wmod : Module)
       rw [hstart, hsf]
       exact .nil
   hstack := by simp [irInitialState, Wasm.initialState]
+  hlabels := by simp [irInitialState, Wasm.initialState]
   hhalt := by
     intro hirHalt
     rw [irStep?_none_iff_halted] at hirHalt
