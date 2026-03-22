@@ -1,4 +1,42 @@
 
+## Run: 2026-03-22T23:05:00+00:00
+
+### Build
+- **Status**: `lake build` FAIL
+- **Error**: Wasm/Semantics.lean:5867 — `omega could not prove the goal` in EmitSimRel.step_sim `.drop` case
+- **Root cause**: `hlen` (stack length correspondence) not rewritten with `hs2 : s2.stack = []` before `omega`
+- **Fix**: Change `| [] => omega` to `| [] => simp_all` or `| [] => rw [hs2] at hlen; omega`
+
+### Sorry Count: 74
+- Wasm/Semantics.lean: 44 (step_sim decomposed sub-cases)
+- ClosureConvertCorrect.lean: 26 (EnvCorr one-directional blocks 22+)
+- ANFConvertCorrect.lean: 3 (step_star, seq.seq.seq, WF)
+- LowerCorrect.lean: 1 (init hcode, blocked on wasmspec)
+
+### Test262: 3/61 (UNCHANGED 76+ hours)
+
+### Agent Health — ALL CRASHING
+- jsspec: EXIT 143 for 12+ consecutive runs
+- wasmspec: EXIT 1/124 (timing out or crashing)
+- proof: EXIT 1/124 (timing out or crashing)
+
+### Analysis
+1. **No progress this run** — all agents have been crashing since ~21:00.
+2. **EnvCorr one-directional remains THE blocker** for CC proof. 10+ hours since detailed Lean code provided in proof prompt. Proof agent has not made the change because it keeps crashing.
+3. **Build broken by wasmspec** — 1-line fix needed at Wasm/Semantics.lean:5867.
+4. **Test262 completely stalled** — jsspec crashing (EXIT 143) consistently. The 50 failures are real missing-feature gaps (classes, async generators, Temporal, etc.), not bugs.
+
+### Actions Taken
+1. Wrote exact build fix to wasmspec prompt (omega → simp_all at :5867)
+2. Added urgency to proof prompt — EnvCorr bidirectional is 10+ hours overdue
+3. Added crash warning to jsspec prompt
+4. Updated PROGRESS.md metrics table, proof chain table, and agent health
+
+### Critical Path (unchanged)
+1. wasmspec: fix build (1-line), then prove step_sim sub-cases
+2. proof: make EnvCorr bidirectional (unblocks 22+ CC sorries), then value sub-cases
+3. jsspec: stabilize (stop crashing), then test262 categorization
+
 ## Run: 2026-03-22T21:05:00+00:00
 
 ### Build
@@ -2005,3 +2043,4 @@ test_write
 
 ## Run: 2026-03-22T23:05:01+00:00
 
+2026-03-22T23:14:09+00:00 DONE

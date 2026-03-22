@@ -59,7 +59,7 @@ Read `logs/test262_summary.md` for failure categories. Fix compiler bugs that ca
 
 ## ⚠️⚠️⚠️ CC PROOF: STEP-BY-STEP PLAN (do these IN ORDER) ⚠️⚠️⚠️
 
-### Current state: CC_SimRel has EnvCorr (Flat⊆Core direction). 5 sorries remain.
+### Current state: CC has 26 sorries. EnvCorr is STILL ONE-DIRECTIONAL (Flat⊆Core). This has been the #1 blocker for 10+ hours. DO STEP 1 IMMEDIATELY.
 
 **Build passes. You have trace + env correspondence + expression correspondence. The 5 remaining sorries are at lines 355, 459, 460-479 (20 compound cases), 532/584 (return/yield some), 690 (this mismatch).**
 
@@ -195,19 +195,21 @@ private theorem closureConvert_step_simulation ... := by
 
 These need heap correspondence or sub-expression stepping. Lower priority.
 
-## PROOF STRATEGY — Current Sorry Inventory (2026-03-22T21:05)
+## PROOF STRATEGY — Current Sorry Inventory (2026-03-22T23:05)
 
-### Sorries in YOUR files:
+### Sorries in YOUR files (26 CC + 3 ANF + 1 Lower = 30 total):
 
-| # | File | Line | Description | Priority |
-|---|------|------|-------------|----------|
-| 1 | ClosureConvertCorrect.lean | 459,690 | var/this mismatch (Core finds, Flat doesn't) | **STEP 1: bidirectional EnvCorr** |
-| 2 | ClosureConvertCorrect.lean | 460-479 | 20 compound cases (let/assign/if/seq/etc) | **STEP 3: value sub-cases first** |
-| 3 | ClosureConvertCorrect.lean | 355 | .var captured (lookupEnv = some idx) | Later (needs heap) |
-| 4 | ClosureConvertCorrect.lean | 532,584 | return/yield some | Later (sub-stepping) |
-| 5 | ANFConvertCorrect.lean | 94 | anfConvert_step_star | Later |
-| 6 | ANFConvertCorrect.lean | 1017 | .seq.seq.seq | Later |
-| 7 | LowerCorrect.lean | 69 | init hcode | Blocked on wasmspec |
+| # | File | Lines | Count | Description | Priority |
+|---|------|-------|-------|-------------|----------|
+| 1 | ClosureConvertCorrect.lean | 112-114 | 0 | **EnvCorr is ONE-DIRECTIONAL** — root cause of 22+ sorries | **FIX NOW** |
+| 2 | ClosureConvertCorrect.lean | 459 | 1 | var Core→Flat mismatch | Unblocked by bidirectional EnvCorr |
+| 3 | ClosureConvertCorrect.lean | 460-479 | 20 | compound cases (let/assign/if/seq/etc) | Value sub-cases first, then strong induction |
+| 4 | ClosureConvertCorrect.lean | 355 | 1 | .var captured | Later (needs heap) |
+| 5 | ClosureConvertCorrect.lean | 532,584,585 | 3 | return/yield/await some | Later (sub-stepping) |
+| 6 | ClosureConvertCorrect.lean | 690 | 1 | this mismatch | Unblocked by bidirectional EnvCorr |
+| 7 | ANFConvertCorrect.lean | 94 | 1 | anfConvert_step_star | Later |
+| 8 | ANFConvertCorrect.lean | 1017,1097 | 2 | .seq.seq.seq + WF blocker | Later |
+| 9 | LowerCorrect.lean | 69 | 1 | init hcode | Blocked on wasmspec |
 
 ### Key Lean 4 pitfall — AVOID `cases ... with` inside `<;>` blocks
 

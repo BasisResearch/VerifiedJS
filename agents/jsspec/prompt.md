@@ -48,10 +48,11 @@ Keep `partial def step?` for the interpreter. The proof agent needs the inductiv
 3. Test262 tells you what to formalize. Reduce skips by adding missing features.
 4. Your relations must be INHABITED with concrete derivations.
 
-## CURRENT PRIORITIES (2026-03-22T21:05)
+## CURRENT PRIORITIES (2026-03-22T23:05)
 
 ### Status: parseFunctionBody FIXED. __rt_makeClosure FIXED. 98.8% compile rate. Core/Semantics 0 sorry.
-### Test262: 3/61 pass, 50 fail — but the 50 failures are now REAL missing-feature gaps, not a single bug.
+### Test262: 3/61 pass, 50 fail — the 50 failures are REAL missing-feature gaps (runtime traps on advanced features).
+### WARNING: You have been crashing (EXIT 143) for 12+ consecutive runs. Keep your work SMALL and FOCUSED.
 
 **The test262 failures are runtime traps (wasm_rc=134) on advanced JS features the compiler doesn't support:**
 - Classes with destructuring (async generators, private methods)

@@ -62,37 +62,47 @@ Then construct the matching Step derivation in Lean. If you cannot, your semanti
 3. Keep definitions structurally simple for proofs.
 4. Add @[simp] lemmas for everything the proof agent might need.
 
-## CURRENT PRIORITIES (2026-03-22T21:05)
+## CURRENT PRIORITIES (2026-03-22T23:05)
 
-### MILESTONE: Flat/ SORRY-FREE. Decomposed step_sim into ~37 fine-grained cases (7 proved by contradiction).
+### ⚠️ BUILD BROKEN — FIX FIRST ⚠️
 
-### Your sorry inventory (~43 in Wasm/Semantics.lean):
+**Error**: `Wasm/Semantics.lean:5867:22: omega could not prove the goal`
+
+The `| [] => omega` branch in EmitSimRel.step_sim `.drop` case fails because `hlen` (from `hrel.hstack`) was simplified before the match on `s2.stack`, so `omega` doesn't know `s2.stack = []`. Fix:
+
+```lean
+-- Line 5867: change
+| [] => omega
+-- to
+| [] => rw [hs2] at hlen; omega
+-- or simply
+| [] => simp_all
+```
+
+This is a 1-line fix. Do it FIRST before anything else.
+
+### MILESTONE: Flat/ SORRY-FREE. ~44 sorries in Wasm/Semantics.lean (step_sim decomposed).
+
+### Your sorry inventory (~44 in Wasm/Semantics.lean):
 
 | Category | Count | Description |
 |----------|-------|-------------|
-| LowerSimRel.step_sim sub-cases | 13 | var, let, seq, if, while, throw, tryCatch, return, yield, await, labeled, break, continue |
-| EmitSimRel.step_sim sub-cases | ~22 | 1 empty-code + ~21 IR instruction cases |
+| LowerSimRel.step_sim sub-cases | ~13 | var, let, seq, if, while, throw, tryCatch, return, yield, await, labeled, break, continue |
+| EmitSimRel.step_sim sub-cases | ~22 | 1 empty-code + ~21 IR instruction cases (drop trap, general, etc.) |
 | LowerSimRel.init hcode | 3 | Blocked on lowerExpr being private |
-| Misc | ~5 | Various |
+| Misc | ~6 | Various |
 
-### #1: Make `lowerExpr` and `emitInstr` public (or add @[simp] equation lemmas)
+### #1: Prove EmitSimRel.step_sim for simple 1:1 IR→Wasm instructions
 
-The LowerSimRel.init `hcode` sorry needs to show that `lowerExpr` produces code matching `LowerCodeCorr`. But `lowerExpr` is private in Lower.lean (owned by proof agent). You have two options:
-- **Ask proof agent** to make `lowerExpr` public (add to your log)
-- **Write equation lemmas** in Wasm/Semantics.lean that state the correspondence without accessing the private def
+Start with `IRInstr.const_`, `IRInstr.return_`, `IRInstr.localGet`, `IRInstr.localSet`, `IRInstr.drop` (non-empty case already done, just close trap case). These map 1:1 to Wasm instructions.
 
 ### #2: Prove LowerSimRel.step_sim for `.trivial (.lit v)` and `.trivial (.var x)`
 
-These are the simplest expression cases. The IR code for a literal is just `[const v, return]`. Show irStep? takes matching steps using your equation lemmas.
+These are the simplest expression cases. The IR code for a literal is just `[const v, return]`.
 
-For `.trivial (.lit v)`:
-1. `hcode : LowerCodeCorr (.trivial (.lit v)) ir.code`
-2. By LowerCodeCorr, `ir.code = [IRInstr.const_ .f64 (encodeValue v), IRInstr.return_]`
-3. `irStep?` executes const then return → matching trace
+### #3: Make `lowerExpr` public or add equation lemmas
 
-### #3: Prove EmitSimRel.step_sim for simple IR instructions
-
-Start with `IRInstr.const_`, `IRInstr.return_`, `IRInstr.localGet`, `IRInstr.localSet`. These map 1:1 to Wasm instructions.
+The LowerSimRel.init `hcode` sorry needs `lowerExpr` correspondence. Either ask proof agent to make it public, or state equation lemmas in Wasm/Semantics.lean.
 
 ## GLOBAL GOAL -- DO NOT STOP
 Your job is done when:
