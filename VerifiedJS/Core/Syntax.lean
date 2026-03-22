@@ -190,6 +190,43 @@ theorem firstNonValueProp_depth {l : List (PropName × Expr)} {done name target 
     · -- pe is not a lit
       simp at h; obtain ⟨_, _, rfl, _⟩ := h; simp [Expr.propListDepth]; omega
 
+/-- firstNonValueExpr never returns a literal as the target. -/
+theorem firstNonValueExpr_not_lit {l : List Expr} {d t r}
+    (h : firstNonValueExpr l = some (d, t, r)) : ∀ v, t ≠ .lit v := by
+  induction l generalizing d t r with
+  | nil => simp [firstNonValueExpr] at h
+  | cons e tl ih =>
+    unfold firstNonValueExpr at h
+    split at h
+    · split at h
+      · next heq => simp at h; obtain ⟨_, rfl, rfl⟩ := h; exact ih heq
+      · simp at h
+    · simp at h; obtain ⟨_, rfl, _⟩ := h; intro v hv; cases hv; rename_i hlit; split at hlit <;> simp_all
+
+/-- firstNonValueProp never returns a literal as the target. -/
+theorem firstNonValueProp_not_lit {l : List (PropName × Expr)} {d k t r}
+    (h : firstNonValueProp l = some (d, k, t, r)) : ∀ v, t ≠ .lit v := by
+  induction l generalizing d k t r with
+  | nil => simp [firstNonValueProp] at h
+  | cons p tl ih =>
+    obtain ⟨pn, pe⟩ := p
+    unfold firstNonValueProp at h
+    split at h
+    · split at h
+      · next heq => simp at h; obtain ⟨_, _, rfl, rfl⟩ := h; exact ih heq
+      · simp at h
+    · simp at h; obtain ⟨_, _, rfl, _⟩ := h; intro v hv; cases hv; rename_i hlit; split at hlit <;> simp_all
+
+/-- allValues = none and firstNonValueExpr = none are contradictory. -/
+theorem allValues_firstNonValue_contra {l : List Expr}
+    (h1 : allValues l = none) (h2 : firstNonValueExpr l = none) : False := by
+  induction l with
+  | nil => simp [allValues] at h1
+  | cons e rest ih =>
+    cases e with
+    | lit v => simp [allValues, firstNonValueExpr] at h1 h2; exact ih h1 h2
+    | _ => all_goals simp [firstNonValueExpr] at h2
+
 /-- Extract values from a list of expressions, returning none if any is not a value. -/
 def allValues : List Expr → Option (List Value)
   | [] => some []

@@ -405,6 +405,20 @@ private theorem normalizeExpr_not_trivial
 
 /-! ### ANF step? characterization -/
 
+/-- Non-variable trivial always has a concrete value. -/
+private theorem trivialValue?_non_var (t : ANF.Trivial)
+    (h : ∀ name, t ≠ .var name) :
+    ∃ v, ANF.trivialValue? t = some v := by
+  cases t with
+  | var name => exact absurd rfl (h name)
+  | litNull => exact ⟨_, rfl⟩
+  | litUndefined => exact ⟨_, rfl⟩
+  | litBool b => exact ⟨_, rfl⟩
+  | litNum n => exact ⟨_, rfl⟩
+  | litStr s => exact ⟨_, rfl⟩
+  | litObject addr => exact ⟨_, rfl⟩
+  | litClosure f e => exact ⟨_, rfl⟩
+
 /-- ANF.step? returns none only when the expression is a non-variable trivial literal.
     Proved by strong induction on expression depth. The recursive cases (seq, while_,
     tryCatch) are impossible because their sub-expression would need to be stuck
@@ -413,10 +427,87 @@ private theorem normalizeExpr_not_trivial
 private theorem ANF_step?_none_implies_trivial_aux :
     ∀ (n : Nat) (s : ANF.State), s.expr.depth ≤ n → ANF.step? s = none →
     ∃ t, s.expr = .trivial t ∧ ∀ name, t ≠ .var name := by
-  sorry -- ANF.step? definition changed; needs full rewrite of case analysis
-  -- The theorem is correct: step? returns none only at non-variable trivial literals.
-  -- All other expression forms have step? returning some.
-  -- Blocked by step? equation lemma changes (simp [ANF.step?] loops).
+  intro n
+  induction n with
+  | zero =>
+    intro s hd h
+    cases he : s.expr with
+    | trivial t =>
+      exact ⟨t, he, fun name habs => by
+        subst habs; cases hlk : s.env.lookup name <;> simp [ANF.step?, he, hlk] at h⟩
+    | «let» _ _ _ | seq _ _ | «if» _ _ _ | while_ _ _ | labeled _ _ =>
+      exfalso; simp [ANF.Expr.depth] at hd
+    | tryCatch _ _ _ fin => exfalso; cases fin <;> simp [ANF.Expr.depth] at hd
+    | throw _ | await _ =>
+      exfalso; simp [ANF.step?, he] at h; split at h <;> simp at h
+    | «break» _ | «continue» _ =>
+      exfalso; simp [ANF.step?, he] at h
+    | «return» arg =>
+      cases arg with
+      | none => exfalso; simp [ANF.step?, he] at h
+      | some _ => exfalso; simp [ANF.step?, he] at h; split at h <;> simp at h
+    | yield arg _ =>
+      cases arg with
+      | none => exfalso; simp [ANF.step?, he] at h
+      | some _ => exfalso; simp [ANF.step?, he] at h; split at h <;> simp at h
+  | succ n ih =>
+    intro s hd h
+    cases he : s.expr with
+    | trivial t =>
+      exact ⟨t, he, fun name habs => by
+        subst habs; cases hlk : s.env.lookup name <;> simp [ANF.step?, he, hlk] at h⟩
+    -- Non-recursive always-stepping cases
+    | «let» _ _ _ => exfalso; simp [ANF.step?, he] at h
+    | «if» _ _ _ | throw _ | await _ | labeled _ _ =>
+      exfalso; simp [ANF.step?, he] at h; split at h <;> simp at h
+    | «break» _ | «continue» _ =>
+      exfalso; simp [ANF.step?, he] at h
+    | «return» arg =>
+      cases arg with
+      | none => exfalso; simp [ANF.step?, he] at h
+      | some _ => exfalso; simp [ANF.step?, he] at h; split at h <;> simp at h
+    | yield arg _ =>
+      cases arg with
+      | none => exfalso; simp [ANF.step?, he] at h
+      | some _ => exfalso; simp [ANF.step?, he] at h; split at h <;> simp at h
+    -- Recursive cases: step? returns none only via recursive call returning none.
+    -- By IH, recursive call none → sub-expr is non-var trivial → exprValue? = some → contradiction.
+    | seq a b =>
+      exfalso; simp only [ANF.step?, he] at h
+      split at h
+      · simp at h
+      · rename_i hev; split at h
+        · simp at h
+        · rename_i hstep
+          have ⟨t, hat, hnovar⟩ := ih { s with expr := a }
+            (by rw [he] at hd; simp [ANF.Expr.depth] at hd; omega) hstep
+          obtain ⟨v, hv⟩ := trivialValue?_non_var t hnovar
+          rw [hat] at hev; simp [ANF.exprValue?, hv] at hev
+    | while_ cond body =>
+      exfalso; simp only [ANF.step?, he] at h
+      split at h
+      · simp at h
+      · rename_i hev; split at h
+        · simp at h
+        · rename_i hstep
+          have ⟨t, hct, hnovar⟩ := ih { s with expr := cond }
+            (by rw [he] at hd; simp [ANF.Expr.depth] at hd; omega) hstep
+          obtain ⟨v, hv⟩ := trivialValue?_non_var t hnovar
+          rw [hct] at hev; simp [ANF.exprValue?, hv] at hev
+    | tryCatch body _ catchBody fin =>
+      exfalso; simp only [ANF.step?, he] at h
+      split at h
+      · -- exprValue? body = some: match on finally_, both give some
+        split at h <;> simp at h
+      · -- exprValue? body = none: match on step? result
+        rename_i hev; split at h
+        · simp at h
+        · simp at h
+        · rename_i hstep
+          have ⟨t, hbt, hnovar⟩ := ih { s with expr := body }
+            (by rw [he] at hd; cases fin <;> simp [ANF.Expr.depth] at hd <;> omega) hstep
+          obtain ⟨v, hv⟩ := trivialValue?_non_var t hnovar
+          rw [hbt] at hev; simp [ANF.exprValue?, hv] at hev
 
 private theorem ANF_step?_none_implies_trivial (s : ANF.State) (h : ANF.step? s = none) :
     ∃ t, s.expr = .trivial t ∧ ∀ name, t ≠ .var name :=
