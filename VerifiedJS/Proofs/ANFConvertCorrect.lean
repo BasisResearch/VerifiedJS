@@ -516,10 +516,22 @@ private theorem anfConvert_halt_star
         Flat.step? sf' = none ∧
         observableTrace evs = [] ∧
         ANF_SimRel s t sa sf' := by
-  sorry -- Proof broken by Flat.Semantics changes (pushTrace now private, step? changed).
-  -- Previously had 2 sorries (var-not-found case + seq case). Consolidated to 1.
-  -- Approach: case split on sf.expr, use normalizeExpr_not_trivial for exfalso cases,
-  -- construct Flat multi-steps for lit/var/this cases using pushTrace = { s with trace := ... ++ [t] }.
+  intro sa sf ⟨hheap, htrace, k, n, m, hnorm⟩ hstuck
+  obtain ⟨t, hat, hnovar⟩ := ANF_step?_none_implies_trivial sa hstuck
+  -- sa.expr = .trivial t, t is not a var
+  -- From hnorm: (normalizeExpr sf.expr k).run n = .ok (.trivial t, m)
+  -- Case split on sf.expr: .lit halts immediately, others need multi-step Flat reasoning
+  cases hsf : sf.expr with
+  | lit v =>
+    -- Flat.step? on .lit = none (already halted), take sf' = sf
+    exact ⟨sf, [], .refl sf,
+      by rw [show sf = {sf with expr := .lit v} from by cases sf; simp_all]; unfold Flat.step?; simp,
+      rfl, hheap, htrace, k, n, m, hnorm⟩
+  | _ =>
+    -- For var/this: normalizeExpr applies k directly, need env correspondence
+    -- For compound: normalizeExpr may still produce .trivial through simple sub-expressions
+    -- Both require env/heap correspondence not in current SimRel
+    sorry
 
 /-- Multi-step simulation derived from single-step stuttering simulation. -/
 private theorem anfConvert_steps_star
