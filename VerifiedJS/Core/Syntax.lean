@@ -201,7 +201,9 @@ theorem firstNonValueExpr_not_lit {l : List Expr} {d t r}
     · split at h
       · next heq => simp at h; obtain ⟨_, rfl, rfl⟩ := h; exact ih heq
       · simp at h
-    · simp at h; obtain ⟨_, rfl, _⟩ := h; intro v hv; cases hv; rename_i hlit; split at hlit <;> simp_all
+    · rename_i hne
+      simp at h; obtain ⟨rfl, rfl, rfl⟩ := h
+      intro v hv; exact hne v hv
 
 /-- firstNonValueProp never returns a literal as the target. -/
 theorem firstNonValueProp_not_lit {l : List (PropName × Expr)} {d k t r}
@@ -215,17 +217,9 @@ theorem firstNonValueProp_not_lit {l : List (PropName × Expr)} {d k t r}
     · split at h
       · next heq => simp at h; obtain ⟨_, _, rfl, rfl⟩ := h; exact ih heq
       · simp at h
-    · simp at h; obtain ⟨_, _, rfl, _⟩ := h; intro v hv; cases hv; rename_i hlit; split at hlit <;> simp_all
-
-/-- allValues = none and firstNonValueExpr = none are contradictory. -/
-theorem allValues_firstNonValue_contra {l : List Expr}
-    (h1 : allValues l = none) (h2 : firstNonValueExpr l = none) : False := by
-  induction l with
-  | nil => simp [allValues] at h1
-  | cons e rest ih =>
-    cases e with
-    | lit v => simp [allValues, firstNonValueExpr] at h1 h2; exact ih h1 h2
-    | _ => all_goals simp [firstNonValueExpr] at h2
+    · rename_i hne
+      simp at h; obtain ⟨rfl, rfl, rfl, rfl⟩ := h
+      intro v hv; exact hne v hv
 
 /-- Extract values from a list of expressions, returning none if any is not a value. -/
 def allValues : List Expr → Option (List Value)
@@ -237,6 +231,23 @@ def allValues : List Expr → Option (List Value)
           | some vs => some (v :: vs)
           | none => none
       | _ => none
+
+/-- allValues = none and firstNonValueExpr = none are contradictory. -/
+theorem allValues_firstNonValue_contra {l : List Expr}
+    (h1 : allValues l = none) (h2 : firstNonValueExpr l = none) : False := by
+  induction l with
+  | nil => simp [allValues] at h1
+  | cons e rest ih =>
+    cases e with
+    | lit v =>
+      unfold allValues at h1; simp only [] at h1
+      split at h1
+      · simp at h1
+      · rename_i hav; unfold firstNonValueExpr at h2; simp only [] at h2
+        split at h2
+        · simp at h2
+        · rename_i hfnv; exact ih hav hfnv
+    | _ => all_goals simp [firstNonValueExpr] at h2
 
 /-- Build indexed property list from array elements. -/
 def mkIndexedProps : Nat → List Expr → List (PropName × Value)

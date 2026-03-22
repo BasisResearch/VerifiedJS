@@ -4776,15 +4776,6 @@ The step_sim and halt_sim proofs require case analysis on every source step,
 showing the target takes a matching step. These are sorry'd for the proof agent. -/
 
 /-- Simulation relation for ANF → IR lowering.
-    The IR state is at a *synchronization point* where:
-    - The IR code remaining is the lowered form of the ANF expression remaining
-    - The IR locals encode the ANF environment bindings
-    - The IR memory encodes the ANF heap
-    - The accumulated traces correspond via traceFromCore
-
-    The proof agent should case-split on ANF.step? and use the irStep?_eq_* lemmas
-    to show that the IR takes a matching step. -/
-/-- Simulation relation for ANF → IR lowering.
     The step correspondence field references LowerSimRel coinductively:
     at each synchronization point, if the ANF takes a step, the IR takes a
     matching step and the resulting states are again related.
@@ -4843,19 +4834,27 @@ theorem step_sim (prog : ANF.Program) (irmod : IRModule) :
     LowerSimRel prog irmod s1 s2 → anfStepMapped s1 = some (t, s1') →
     ∃ s2', irStep? s2 = some (t, s2') ∧ LowerSimRel prog irmod s1' s2' := by
   intro s1 s2 t s1' hrel hstep
-  cases hrel with
-  | mk hlower hmod hhalt henv hstepCorr =>
-    -- Extract the ANF step from anfStepMapped
-    unfold anfStepMapped at hstep
-    split at hstep
-    · simp at hstep
-    · rename_i ct s1'' heq
-      simp only [Option.some.injEq, Prod.mk.injEq] at hstep
-      obtain ⟨ht, hs1'⟩ := hstep
-      subst ht hs1'
-      -- Apply step correspondence: it gives us the matching IR step and
-      -- preserves the simulation relation for the new states.
-      exact hstepCorr ct s1'' heq
+  -- Extract the ANF step from anfStepMapped
+  unfold anfStepMapped at hstep
+  split at hstep
+  · simp at hstep
+  · rename_i ct s1'' heq
+    simp only [Option.some.injEq, Prod.mk.injEq] at hstep
+    obtain ⟨ht, hs1'⟩ := hstep
+    subst ht hs1'
+    -- Apply step correspondence from the relation
+    obtain ⟨ir', hirStep, hlower', hmod', hhalt'⟩ := hrel.hstep ct s1'' heq
+    exact ⟨ir', hirStep, {
+      hlower := hlower'
+      hmod := hmod'
+      hhalt := hhalt'
+      -- Environment correspondence for the new state:
+      -- The IR step preserves environment encoding.
+      henv := by sorry
+      -- Step correspondence for the new state:
+      -- The next IR code corresponds to the lowered ANF expression.
+      hstep := by sorry
+    }⟩
 
 /-- Halt simulation: if ANF halts, the IR halts.
     SORRY: When ANF.step? returns none, the ANF expression is a literal trivial
@@ -4871,38 +4870,27 @@ theorem halt_sim (prog : ANF.Program) (irmod : IRModule) :
     ∀ (s1 : ANF.State) (s2 : IRExecState),
     LowerSimRel prog irmod s1 s2 → anfStepMapped s1 = none → irStep? s2 = none := by
   intro s1 s2 hrel hstep
-  cases hrel with
-  | mk _ _ hhalt _ _ => exact irStep?_halted (hhalt hstep)
+  exact irStep?_halted (hrel.hhalt hstep)
 
 end LowerSimRel
 
 /-- Simulation relation for IR → Wasm emit.
-    The Wasm state is at a synchronization point where:
-    - The Wasm code remaining is the emitted form of the IR code remaining
-    - The Wasm store corresponds to the IR module's state (globals, memory, tables)
-    - The accumulated traces correspond via traceToWasm
-
-    The proof agent should case-split on irStep? and use the corresponding
-    Wasm step? behavior of the emitted instructions. -/
-/-- Simulation relation for IR → Wasm emit.
-    Defined as an inductive proposition to allow the step correspondence field
-    to reference EmitSimRel itself (strict positivity is satisfied).
+    The step correspondence field provides the matching Wasm step for each IR step.
     REF: Standard forward simulation diagram. -/
-inductive EmitSimRel (irmod : IRModule) (wmod : Module) :
-    IRExecState → ExecState → Prop where
-  | mk :
-    /- The Wasm module is the result of emitting the IR module. -/
-    (hemit : emit irmod = .ok wmod) →
-    /- Stack correspondence. -/
-    (hstack : ir.stack.length = w.stack.length) →
-    /- Halt correspondence. -/
-    (hhalt : irStep? ir = none → Wasm.step? w = none) →
-    /- Step correspondence: when the IR takes a step, the Wasm takes a matching step
-       and the resulting states are again related. -/
-    (hstep : ∀ t ir', irStep? ir = some (t, ir') →
-      ∃ w', Wasm.step? w = some (traceToWasm t, w') ∧
-        EmitSimRel irmod wmod ir' w') →
-    EmitSimRel irmod wmod ir w
+structure EmitSimRel (irmod : IRModule) (wmod : Module)
+    (ir : IRExecState) (w : ExecState) : Prop where
+  /- The Wasm module is the result of emitting the IR module. -/
+  hemit : emit irmod = .ok wmod
+  /- Stack correspondence. -/
+  hstack : ir.stack.length = w.stack.length
+  /- Halt correspondence. -/
+  hhalt : irStep? ir = none → Wasm.step? w = none
+  /- Step correspondence: when the IR takes a step, the Wasm takes a matching step.
+     The new states satisfy basic invariants. -/
+  hstep : ∀ t ir', irStep? ir = some (t, ir') →
+    ∃ w', Wasm.step? w = some (traceToWasm t, w') ∧
+      emit irmod = .ok wmod ∧ ir'.stack.length = w'.stack.length ∧
+      (irStep? ir' = none → Wasm.step? w' = none)
 
 namespace EmitSimRel
 
@@ -4925,26 +4913,23 @@ private theorem emit_preserves_start (irmod : IRModule) (wmod : Module)
     the same (emit preserves the start function field). -/
 theorem init (irmod : IRModule) (wmod : Module)
     (hemit : emit irmod = .ok wmod) :
-    EmitSimRel irmod wmod (irInitialState irmod) (Wasm.initialState wmod) := by
-  apply EmitSimRel.mk hemit
-  · -- Stack lengths: both start with empty stacks
-    simp [irInitialState, Wasm.initialState]
-  · -- Halt correspondence at init: both initial states have the same code structure
-    -- (determined by startFunc/start), so if IR halts then Wasm halts.
+    EmitSimRel irmod wmod (irInitialState irmod) (Wasm.initialState wmod) where
+  hemit := hemit
+  hstack := by simp [irInitialState, Wasm.initialState]
+  hhalt := by
     intro hirHalt
     rw [irStep?_none_iff_halted] at hirHalt
     obtain ⟨hc, hl, _⟩ := hirHalt
     have hstart := emit_preserves_start irmod wmod hemit
     apply step?_halted
     constructor
-    · -- Code is empty
-      simp [irInitialState] at hc
+    · simp [irInitialState] at hc
       split at hc
       · simp at hc
       · rename_i hsf; simp [Wasm.initialState, hstart, hsf]
-    · -- Labels empty
-      simp [Wasm.initialState]
-  · -- Step correspondence at init: for any IR step from the initial state,
+    · simp [Wasm.initialState]
+  hstep := by
+    -- Step correspondence at init: for any IR step from the initial state,
     -- the Wasm initial state can take a matching step.
     -- SORRY: requires showing emitted Wasm code matches IR code structure.
     sorry
@@ -4959,8 +4944,14 @@ theorem step_sim (irmod : IRModule) (wmod : Module) :
     ∃ s2', Wasm.step? s2 = some (traceToWasm t, s2') ∧
       EmitSimRel irmod wmod s1' s2' := by
   intro s1 s2 t s1' hrel hstep
-  cases hrel with
-  | mk _ _ _ hstepCorr => exact hstepCorr t s1' hstep
+  obtain ⟨w', hwStep, hemit', hstack', hhalt'⟩ := hrel.hstep t s1' hstep
+  exact ⟨w', hwStep, {
+    hemit := hemit'
+    hstack := hstack'
+    hhalt := hhalt'
+    -- Step correspondence for the new state
+    hstep := by sorry
+  }⟩
 
 /-- Halt simulation: if IR halts, Wasm halts.
     Proof: Extract halt correspondence from EmitSimRel. -/
@@ -4968,8 +4959,7 @@ theorem halt_sim (irmod : IRModule) (wmod : Module) :
     ∀ (s1 : IRExecState) (s2 : ExecState),
     EmitSimRel irmod wmod s1 s2 → irStep? s1 = none → Wasm.step? s2 = none := by
   intro s1 s2 hrel hstep
-  cases hrel with
-  | mk _ _ hhalt _ => exact hhalt hstep
+  exact hrel.hhalt hstep
 
 end EmitSimRel
 
