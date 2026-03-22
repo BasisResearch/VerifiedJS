@@ -2697,19 +2697,17 @@ theorem step?_f32Copysign (s : ExecState) (a b : Float) (stk : List WasmValue) (
 theorem step?_code_nonempty (s : ExecState) (instr : Instr) (rest : List Instr)
     (hc : s.code = instr :: rest) :
     ∃ t s', step? s = some (t, s') := by
-  -- NOTE: The original tactic (nested split chains) broke after a dependency update.
-  -- The proof structure is: unfold step?, case-split on instr, each case is
-  -- either directly ⟨_, _, rfl⟩ or requires splitting match expressions until
-  -- all goals become ⟨_, _, rfl⟩. TODO: Restore once step? stabilizes.
+  -- Proof: unfold step?, case-split on instr, each case is either directly
+  -- ⟨_, _, rfl⟩ or requires unfolding helper functions and splitting.
   unfold step?; rw [hc]
-  cases instr <;> simp_all only [] <;> (
+  cases instr <;> simp_all only [] <;>
     first
     | exact ⟨_, _, rfl⟩
-    | (try unfold withI32Bin; try unfold withI64Bin; try unfold withF32Bin
-       try unfold withF64Bin; try unfold withI32Rel; try unfold withI64Rel
-       try unfold withF32Rel; try unfold withF64Rel; try unfold withI32Div
-       try unfold withI32Rem; try unfold withI64Div; try unfold withI64Rem
-       split <;> (first | exact ⟨_, _, rfl⟩ | (split <;> (first | exact ⟨_, _, rfl⟩ | (split <;> (first | exact ⟨_, _, rfl⟩ | (split <;> (first | exact ⟨_, _, rfl⟩ | (split <;> exact ⟨_, _, rfl⟩))))))))))
+    | (try simp only [withI32Bin, withI64Bin, withF32Bin, withF64Bin,
+                       withI32Rel, withI64Rel, withF32Rel, withF64Rel,
+                       withI32Div, withI32Rem, withI64Div, withI64Rem,
+                       pop2?, pop1?, pop3?]
+       repeat (first | exact ⟨_, _, rfl⟩ | split))
 
 /-- Every Wasm state is either halted or can take a step (full progress theorem).
     SPEC: Wasm type soundness analog — well-formed states always make progress.
