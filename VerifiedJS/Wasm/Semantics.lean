@@ -5862,9 +5862,9 @@ theorem step_sim (irmod : IRModule) (wmod : Module) :
               simp only [Option.some.injEq, Prod.mk.injEq] at hstep
               obtain ⟨rfl, rfl⟩ := hstep
               -- Wasm stack also non-empty (by length correspondence)
-              have hlen := hrel.hstack; rw [hstk] at hlen; simp at hlen
+              have hlen := hrel.hstack; rw [hstk] at hlen
               match hs2 : s2.stack with
-              | [] => rw [hs2] at hlen; omega
+              | [] => rw [hs2] at hlen; simp at hlen
               | w :: stk_w =>
                 have hw_step := step?_eq_drop s2 rest_w w stk_w hcw hs2
                 refine ⟨_, ?_, ?_⟩
