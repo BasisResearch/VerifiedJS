@@ -1237,11 +1237,7 @@ private partial def parseImportSpecifiers : ParserM (List ImportSpecifier) := do
 private def parseForLHSFromExpr (e : Expr) : Except String ForLHS :=
   match parsePatternFromExpr e with
   | some p => pure (.pattern p)
-  | none =>
-    -- ECMA-262 §13.7: any LeftHandSideExpression is valid (e.g. obj.prop, arr[idx])
-    match e with
-    | .member _ _ | .index _ _ | .privateMember _ _ => pure (.expr e)
-    | _ => .error "Invalid for-in/of left-hand side"
+  | none => .error "Invalid for-in/of left-hand side"
 
 private def parseForLHSFromDecls (kind : VarKind) (decls : List VarDeclarator) : Except String ForLHS :=
   match decls with

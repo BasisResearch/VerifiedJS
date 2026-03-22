@@ -4584,6 +4584,180 @@ theorem irStep?_eq_memoryGrow_ok (s : IRExecState) (rest : List IRInstr)
   have hle : ¬ (65536 * 65536 < s.memory.size + pages.toNat * 65536) := by omega
   simp [hle]
 
+/-! ### IR Step? Equation Lemmas: Binary Operations -/
+
+/-- i32 total binary op equation lemma. Covers add, sub, mul, and, or, xor, shl, shr_u, shr_s, rotl, rotr.
+    For trapping ops (div_s, div_u, rem_s, rem_u), use specific lemmas below.
+    REF: Wasm §4.3.2 (i32 binop) -/
+theorem irStep?_eq_i32BinOp_total (s : IRExecState) (op : String) (rest : List IRInstr)
+    (lhs rhs : UInt32) (stk : List IRValue)
+    (hcode : s.code = IRInstr.binOp .i32 op :: rest)
+    (hstack : s.stack = .i32 rhs :: .i32 lhs :: stk)
+    (hnondiv : op ≠ "div_s" ∧ op ≠ "div_u" ∧ op ≠ "rem_s" ∧ op ≠ "rem_u") :
+    ∃ result, irStep? s = some (.silent,
+      { s with code := rest, stack := result :: stk,
+        trace := s.trace ++ [.silent] }) := by
+  unfold irStep?; rw [hcode, hstack]
+  simp only [irPop2?, irPushTrace]
+  obtain ⟨hnd1, hnd2, hnd3, hnd4⟩ := hnondiv
+  simp only [hnd1, hnd2, hnd3, hnd4, ↓reduceIte, false_and, ite_false]
+  exact ⟨_, rfl⟩
+
+/-- i32 add equation lemma. REF: Wasm §4.3.2 -/
+@[simp] theorem irStep?_eq_i32Add (s : IRExecState) (rest : List IRInstr)
+    (lhs rhs : UInt32) (stk : List IRValue)
+    (hcode : s.code = IRInstr.binOp .i32 "add" :: rest)
+    (hstack : s.stack = .i32 rhs :: .i32 lhs :: stk) :
+    irStep? s = some (.silent,
+      { s with code := rest, stack := .i32 (Numerics.i32Add lhs rhs) :: stk,
+        trace := s.trace ++ [.silent] }) := by
+  unfold irStep?; rw [hcode, hstack]; simp [irPop2?, irPushTrace]
+
+/-- i32 sub equation lemma. REF: Wasm §4.3.2 -/
+@[simp] theorem irStep?_eq_i32Sub (s : IRExecState) (rest : List IRInstr)
+    (lhs rhs : UInt32) (stk : List IRValue)
+    (hcode : s.code = IRInstr.binOp .i32 "sub" :: rest)
+    (hstack : s.stack = .i32 rhs :: .i32 lhs :: stk) :
+    irStep? s = some (.silent,
+      { s with code := rest, stack := .i32 (Numerics.i32Sub lhs rhs) :: stk,
+        trace := s.trace ++ [.silent] }) := by
+  unfold irStep?; rw [hcode, hstack]; simp [irPop2?, irPushTrace]
+
+/-- i32 mul equation lemma. REF: Wasm §4.3.2 -/
+@[simp] theorem irStep?_eq_i32Mul (s : IRExecState) (rest : List IRInstr)
+    (lhs rhs : UInt32) (stk : List IRValue)
+    (hcode : s.code = IRInstr.binOp .i32 "mul" :: rest)
+    (hstack : s.stack = .i32 rhs :: .i32 lhs :: stk) :
+    irStep? s = some (.silent,
+      { s with code := rest, stack := .i32 (Numerics.i32Mul lhs rhs) :: stk,
+        trace := s.trace ++ [.silent] }) := by
+  unfold irStep?; rw [hcode, hstack]; simp [irPop2?, irPushTrace]
+
+/-- i32 and equation lemma. REF: Wasm §4.3.2 -/
+@[simp] theorem irStep?_eq_i32And (s : IRExecState) (rest : List IRInstr)
+    (lhs rhs : UInt32) (stk : List IRValue)
+    (hcode : s.code = IRInstr.binOp .i32 "and" :: rest)
+    (hstack : s.stack = .i32 rhs :: .i32 lhs :: stk) :
+    irStep? s = some (.silent,
+      { s with code := rest, stack := .i32 (Numerics.i32And lhs rhs) :: stk,
+        trace := s.trace ++ [.silent] }) := by
+  unfold irStep?; rw [hcode, hstack]; simp [irPop2?, irPushTrace]
+
+/-- i32 or equation lemma. REF: Wasm §4.3.2 -/
+@[simp] theorem irStep?_eq_i32Or (s : IRExecState) (rest : List IRInstr)
+    (lhs rhs : UInt32) (stk : List IRValue)
+    (hcode : s.code = IRInstr.binOp .i32 "or" :: rest)
+    (hstack : s.stack = .i32 rhs :: .i32 lhs :: stk) :
+    irStep? s = some (.silent,
+      { s with code := rest, stack := .i32 (Numerics.i32Or lhs rhs) :: stk,
+        trace := s.trace ++ [.silent] }) := by
+  unfold irStep?; rw [hcode, hstack]; simp [irPop2?, irPushTrace]
+
+/-- f64 total binary op equation lemma. Covers add, sub, mul, div, min, max, copysign.
+    REF: Wasm §4.3.3 (f64 binop) -/
+theorem irStep?_eq_f64BinOp_total (s : IRExecState) (op : String) (rest : List IRInstr)
+    (lhs rhs : Float) (stk : List IRValue)
+    (hcode : s.code = IRInstr.binOp .f64 op :: rest)
+    (hstack : s.stack = .f64 rhs :: .f64 lhs :: stk) :
+    ∃ result, irStep? s = some (.silent,
+      { s with code := rest, stack := result :: stk,
+        trace := s.trace ++ [.silent] }) := by
+  unfold irStep?; rw [hcode, hstack]
+  simp only [irPop2?, irPushTrace]
+  exact ⟨_, rfl⟩
+
+/-- f64 add equation lemma. REF: Wasm §4.3.3 -/
+@[simp] theorem irStep?_eq_f64Add (s : IRExecState) (rest : List IRInstr)
+    (lhs rhs : Float) (stk : List IRValue)
+    (hcode : s.code = IRInstr.binOp .f64 "add" :: rest)
+    (hstack : s.stack = .f64 rhs :: .f64 lhs :: stk) :
+    irStep? s = some (.silent,
+      { s with code := rest, stack := .f64 (Numerics.f64Add lhs rhs) :: stk,
+        trace := s.trace ++ [.silent] }) := by
+  unfold irStep?; rw [hcode, hstack]; simp [irPop2?, irPushTrace]
+
+/-- f64 sub equation lemma. REF: Wasm §4.3.3 -/
+@[simp] theorem irStep?_eq_f64Sub (s : IRExecState) (rest : List IRInstr)
+    (lhs rhs : Float) (stk : List IRValue)
+    (hcode : s.code = IRInstr.binOp .f64 "sub" :: rest)
+    (hstack : s.stack = .f64 rhs :: .f64 lhs :: stk) :
+    irStep? s = some (.silent,
+      { s with code := rest, stack := .f64 (Numerics.f64Sub lhs rhs) :: stk,
+        trace := s.trace ++ [.silent] }) := by
+  unfold irStep?; rw [hcode, hstack]; simp [irPop2?, irPushTrace]
+
+/-- f64 mul equation lemma. REF: Wasm §4.3.3 -/
+@[simp] theorem irStep?_eq_f64Mul (s : IRExecState) (rest : List IRInstr)
+    (lhs rhs : Float) (stk : List IRValue)
+    (hcode : s.code = IRInstr.binOp .f64 "mul" :: rest)
+    (hstack : s.stack = .f64 rhs :: .f64 lhs :: stk) :
+    irStep? s = some (.silent,
+      { s with code := rest, stack := .f64 (Numerics.f64Mul lhs rhs) :: stk,
+        trace := s.trace ++ [.silent] }) := by
+  unfold irStep?; rw [hcode, hstack]; simp [irPop2?, irPushTrace]
+
+/-- f64 div equation lemma. REF: Wasm §4.3.3 -/
+@[simp] theorem irStep?_eq_f64Div (s : IRExecState) (rest : List IRInstr)
+    (lhs rhs : Float) (stk : List IRValue)
+    (hcode : s.code = IRInstr.binOp .f64 "div" :: rest)
+    (hstack : s.stack = .f64 rhs :: .f64 lhs :: stk) :
+    irStep? s = some (.silent,
+      { s with code := rest, stack := .f64 (Numerics.f64Div lhs rhs) :: stk,
+        trace := s.trace ++ [.silent] }) := by
+  unfold irStep?; rw [hcode, hstack]; simp [irPop2?, irPushTrace]
+
+/-! ### IR Step? Equation Lemmas: Unary Operations -/
+
+/-- i32 eqz equation lemma. REF: Wasm §4.3.2 -/
+@[simp] theorem irStep?_eq_i32Eqz (s : IRExecState) (rest : List IRInstr)
+    (v : UInt32) (stk : List IRValue)
+    (hcode : s.code = IRInstr.unOp .i32 "eqz" :: rest)
+    (hstack : s.stack = .i32 v :: stk) :
+    irStep? s = some (.silent,
+      { s with code := rest, stack := irBoolToI32 (Numerics.i32Eqz v) :: stk,
+        trace := s.trace ++ [.silent] }) := by
+  unfold irStep?; rw [hcode, hstack]; simp [irPop1?, irPushTrace]
+
+/-- i32 wrap_i64 equation lemma (cross-type unary). REF: Wasm §4.3.4 -/
+@[simp] theorem irStep?_eq_i32WrapI64 (s : IRExecState) (rest : List IRInstr)
+    (v : UInt64) (stk : List IRValue)
+    (hcode : s.code = IRInstr.unOp .i32 "wrap_i64" :: rest)
+    (hstack : s.stack = .i64 v :: stk) :
+    irStep? s = some (.silent,
+      { s with code := rest, stack := .i32 (Numerics.i32WrapI64 v) :: stk,
+        trace := s.trace ++ [.silent] }) := by
+  unfold irStep?; rw [hcode, hstack]; simp [irPop1?, irPushTrace]
+
+/-! ### IR Step? Equation Lemmas: Comparison Operations -/
+
+/-- f64 comparison ops produce i32 results. REF: Wasm §4.3.3 -/
+@[simp] theorem irStep?_eq_f64Eq (s : IRExecState) (rest : List IRInstr)
+    (lhs rhs : Float) (stk : List IRValue)
+    (hcode : s.code = IRInstr.binOp .f64 "eq" :: rest)
+    (hstack : s.stack = .f64 rhs :: .f64 lhs :: stk) :
+    irStep? s = some (.silent,
+      { s with code := rest, stack := irBoolToI32 (Numerics.f64Eq lhs rhs) :: stk,
+        trace := s.trace ++ [.silent] }) := by
+  unfold irStep?; rw [hcode, hstack]; simp [irPop2?, irPushTrace]
+
+@[simp] theorem irStep?_eq_f64Lt (s : IRExecState) (rest : List IRInstr)
+    (lhs rhs : Float) (stk : List IRValue)
+    (hcode : s.code = IRInstr.binOp .f64 "lt" :: rest)
+    (hstack : s.stack = .f64 rhs :: .f64 lhs :: stk) :
+    irStep? s = some (.silent,
+      { s with code := rest, stack := irBoolToI32 (Numerics.f64Lt lhs rhs) :: stk,
+        trace := s.trace ++ [.silent] }) := by
+  unfold irStep?; rw [hcode, hstack]; simp [irPop2?, irPushTrace]
+
+@[simp] theorem irStep?_eq_f64Le (s : IRExecState) (rest : List IRInstr)
+    (lhs rhs : Float) (stk : List IRValue)
+    (hcode : s.code = IRInstr.binOp .f64 "le" :: rest)
+    (hstack : s.stack = .f64 rhs :: .f64 lhs :: stk) :
+    irStep? s = some (.silent,
+      { s with code := rest, stack := irBoolToI32 (Numerics.f64Le lhs rhs) :: stk,
+        trace := s.trace ++ [.silent] }) := by
+  unfold irStep?; rw [hcode, hstack]; simp [irPop2?, irPushTrace]
+
 /-! ### IR Step? Totality (Progress Theorem)
 
 Key property for the proof chain: every non-halted IR state can step.

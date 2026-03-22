@@ -182,7 +182,6 @@ inductive ForInit where
 inductive ForLHS where
   | pattern (p : Pattern)
   | varDecl (kind : VarKind) (pat : Pattern)
-  | expr (e : Expr)  -- ECMA-262 §13.7: LeftHandSideExpression (e.g. obj.prop, arr[idx])
 
 /-- ECMA-262 §13.12 Switch Statement clauses -/
 inductive SwitchCase where
