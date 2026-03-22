@@ -5457,6 +5457,110 @@ theorem EmitCodeCorr.nil_inv {wcode : List Instr}
   cases h with
   | nil => rfl
 
+/-! ### EmitCodeCorr inversion lemmas
+    These extract structure from EmitCodeCorr without dependent elimination issues. -/
+
+/-- Inversion for drop :: rest. -/
+theorem EmitCodeCorr.drop_inv {rest : List IRInstr} {wcode : List Instr}
+    (h : EmitCodeCorr (IRInstr.drop :: rest) wcode) :
+    (∃ rest_w, wcode = Instr.drop :: rest_w ∧ EmitCodeCorr rest rest_w) ∨
+    (∃ wasm_instrs rest_w, wcode = wasm_instrs ++ rest_w ∧ EmitCodeCorr rest rest_w) := by
+  cases h with
+  | drop_ rest_w hrest => left; exact ⟨rest_w, rfl, hrest⟩
+  | general _ wasm_instrs _ rest_w hrest => right; exact ⟨wasm_instrs, rest_w, rfl, hrest⟩
+
+/-- Inversion for return_ :: rest. -/
+theorem EmitCodeCorr.return_inv {rest : List IRInstr} {wcode : List Instr}
+    (h : EmitCodeCorr (IRInstr.return_ :: rest) wcode) :
+    (∃ rest_w, wcode = Instr.return_ :: rest_w ∧ EmitCodeCorr rest rest_w) ∨
+    (∃ wasm_instrs rest_w, wcode = wasm_instrs ++ rest_w ∧ EmitCodeCorr rest rest_w) := by
+  cases h with
+  | return__ rest_w hrest => left; exact ⟨rest_w, rfl, hrest⟩
+  | general _ wasm_instrs _ rest_w hrest => right; exact ⟨wasm_instrs, rest_w, rfl, hrest⟩
+
+/-- Inversion for call :: rest. -/
+theorem EmitCodeCorr.call_inv {funcIdx : Nat} {rest : List IRInstr} {wcode : List Instr}
+    (h : EmitCodeCorr (IRInstr.call funcIdx :: rest) wcode) :
+    (∃ rest_w, wcode = Instr.call funcIdx :: rest_w ∧ EmitCodeCorr rest rest_w) ∨
+    (∃ wasm_instrs rest_w, wcode = wasm_instrs ++ rest_w ∧ EmitCodeCorr rest rest_w) := by
+  cases h with
+  | call_ _ rest_w hrest => left; exact ⟨rest_w, rfl, hrest⟩
+  | general _ wasm_instrs _ rest_w hrest => right; exact ⟨wasm_instrs, rest_w, rfl, hrest⟩
+
+/-- Inversion for localGet :: rest. -/
+theorem EmitCodeCorr.localGet_inv {idx : Nat} {rest : List IRInstr} {wcode : List Instr}
+    (h : EmitCodeCorr (IRInstr.localGet idx :: rest) wcode) :
+    (∃ rest_w, wcode = Instr.localGet idx :: rest_w ∧ EmitCodeCorr rest rest_w) ∨
+    (∃ wasm_instrs rest_w, wcode = wasm_instrs ++ rest_w ∧ EmitCodeCorr rest rest_w) := by
+  cases h with
+  | localGet _ rest_w hrest => left; exact ⟨rest_w, rfl, hrest⟩
+  | general _ wasm_instrs _ rest_w hrest => right; exact ⟨wasm_instrs, rest_w, rfl, hrest⟩
+
+/-- Inversion for localSet :: rest. -/
+theorem EmitCodeCorr.localSet_inv {idx : Nat} {rest : List IRInstr} {wcode : List Instr}
+    (h : EmitCodeCorr (IRInstr.localSet idx :: rest) wcode) :
+    (∃ rest_w, wcode = Instr.localSet idx :: rest_w ∧ EmitCodeCorr rest rest_w) ∨
+    (∃ wasm_instrs rest_w, wcode = wasm_instrs ++ rest_w ∧ EmitCodeCorr rest rest_w) := by
+  cases h with
+  | localSet _ rest_w hrest => left; exact ⟨rest_w, rfl, hrest⟩
+  | general _ wasm_instrs _ rest_w hrest => right; exact ⟨wasm_instrs, rest_w, rfl, hrest⟩
+
+/-- Inversion for globalGet :: rest. -/
+theorem EmitCodeCorr.globalGet_inv {idx : Nat} {rest : List IRInstr} {wcode : List Instr}
+    (h : EmitCodeCorr (IRInstr.globalGet idx :: rest) wcode) :
+    (∃ rest_w, wcode = Instr.globalGet idx :: rest_w ∧ EmitCodeCorr rest rest_w) ∨
+    (∃ wasm_instrs rest_w, wcode = wasm_instrs ++ rest_w ∧ EmitCodeCorr rest rest_w) := by
+  cases h with
+  | globalGet _ rest_w hrest => left; exact ⟨rest_w, rfl, hrest⟩
+  | general _ wasm_instrs _ rest_w hrest => right; exact ⟨wasm_instrs, rest_w, rfl, hrest⟩
+
+/-- Inversion for globalSet :: rest. -/
+theorem EmitCodeCorr.globalSet_inv {idx : Nat} {rest : List IRInstr} {wcode : List Instr}
+    (h : EmitCodeCorr (IRInstr.globalSet idx :: rest) wcode) :
+    (∃ rest_w, wcode = Instr.globalSet idx :: rest_w ∧ EmitCodeCorr rest rest_w) ∨
+    (∃ wasm_instrs rest_w, wcode = wasm_instrs ++ rest_w ∧ EmitCodeCorr rest rest_w) := by
+  cases h with
+  | globalSet _ rest_w hrest => left; exact ⟨rest_w, rfl, hrest⟩
+  | general _ wasm_instrs _ rest_w hrest => right; exact ⟨wasm_instrs, rest_w, rfl, hrest⟩
+
+/-- Inversion for const_ .i32 :: rest. -/
+theorem EmitCodeCorr.const_i32_inv {v : String} {rest : List IRInstr} {wcode : List Instr}
+    (h : EmitCodeCorr (IRInstr.const_ .i32 v :: rest) wcode) :
+    (∃ n rest_w, wcode = Instr.i32Const n :: rest_w ∧ EmitCodeCorr rest rest_w) ∨
+    (∃ wasm_instrs rest_w, wcode = wasm_instrs ++ rest_w ∧ EmitCodeCorr rest rest_w) := by
+  cases h with
+  | const_i32 _ n _ rest_w hrest => left; exact ⟨n, rest_w, rfl, hrest⟩
+  | general _ wasm_instrs _ rest_w hrest => right; exact ⟨wasm_instrs, rest_w, rfl, hrest⟩
+
+/-- Inversion for const_ .f64 :: rest. -/
+theorem EmitCodeCorr.const_f64_inv {v : String} {rest : List IRInstr} {wcode : List Instr}
+    (h : EmitCodeCorr (IRInstr.const_ .f64 v :: rest) wcode) :
+    (∃ f rest_w, wcode = Instr.f64Const f :: rest_w ∧ EmitCodeCorr rest rest_w) ∨
+    (∃ wasm_instrs rest_w, wcode = wasm_instrs ++ rest_w ∧ EmitCodeCorr rest rest_w) := by
+  cases h with
+  | const_f64 _ f _ rest_w hrest => left; exact ⟨f, rest_w, rfl, hrest⟩
+  | general _ wasm_instrs _ rest_w hrest => right; exact ⟨wasm_instrs, rest_w, rfl, hrest⟩
+
+/-- General inversion for any IR instruction. -/
+theorem EmitCodeCorr.cons_inv {instr : IRInstr} {rest : List IRInstr} {wcode : List Instr}
+    (h : EmitCodeCorr (instr :: rest) wcode) :
+    ∃ wasm_prefix rest_w, wcode = wasm_prefix ++ rest_w ∧ EmitCodeCorr rest rest_w := by
+  cases h with
+  | const_i32 _ _ _ rest_w hrest => exact ⟨[_], rest_w, rfl, hrest⟩
+  | const_i64 _ _ _ rest_w hrest => exact ⟨[_], rest_w, rfl, hrest⟩
+  | const_f64 _ _ _ rest_w hrest => exact ⟨[_], rest_w, rfl, hrest⟩
+  | localGet _ _ rest_w hrest => exact ⟨[_], rest_w, rfl, hrest⟩
+  | localSet _ _ rest_w hrest => exact ⟨[_], rest_w, rfl, hrest⟩
+  | globalGet _ _ rest_w hrest => exact ⟨[_], rest_w, rfl, hrest⟩
+  | globalSet _ _ rest_w hrest => exact ⟨[_], rest_w, rfl, hrest⟩
+  | binOp_i32_add _ rest_w hrest => exact ⟨[_], rest_w, rfl, hrest⟩
+  | binOp_i32_sub _ rest_w hrest => exact ⟨[_], rest_w, rfl, hrest⟩
+  | binOp_i32_mul _ rest_w hrest => exact ⟨[_], rest_w, rfl, hrest⟩
+  | call_ _ _ rest_w hrest => exact ⟨[_], rest_w, rfl, hrest⟩
+  | drop_ _ rest_w hrest => exact ⟨[_], rest_w, rfl, hrest⟩
+  | return__ _ rest_w hrest => exact ⟨[_], rest_w, rfl, hrest⟩
+  | general _ wasm_instrs _ rest_w hrest => exact ⟨wasm_instrs, rest_w, rfl, hrest⟩
+
 /-- Simulation relation for IR → Wasm emit.
     The step correspondence field provides the matching Wasm step for each IR step.
     REF: Standard forward simulation diagram. -/
