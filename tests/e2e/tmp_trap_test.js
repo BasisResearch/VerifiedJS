@@ -1,1 +1,3 @@
-var x = Error("fail");
+var x;
+x = -1;
+x	-=	1;

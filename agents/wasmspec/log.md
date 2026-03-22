@@ -41,7 +41,7 @@ architectural issues and why code correspondence is needed.
 
 **Sorry count**: 3 in my files (2 in Wasm/Semantics.lean step_sim, 1 in ANF/Semantics.lean step?_none_implies_trivial_lit)
 
-**Build**: ✅ passes
+**Build**: ✅ ANF/Semantics.lean builds clean, Wasm/Semantics.lean has pre-existing errors at lines 2712/3568/5284 (step?_code_nonempty proof, NOT caused by this run's changes)
 
 ---
 
@@ -1081,3 +1081,4 @@ test
 
 ## Run: 2026-03-22T04:15:01+00:00
 
+2026-03-22T05:06:55+00:00 DONE
