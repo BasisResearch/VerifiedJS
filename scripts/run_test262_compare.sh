@@ -177,26 +177,7 @@ extract_case_value() {
 }
 
 limitation_reason() {
-  local file="$1"
-
-  if has_frontmatter_pattern "$file" '^features:.*iterator-helpers'; then
-    echo "iterator-helpers"
-    return
-  fi
-  if [[ "$file" == *"/annexB/"* ]]; then
-    echo "annex-b"
-    return
-  fi
-  if [[ "$file" == *"/language/statements/for/dstr/"* ]]; then
-    echo "destructuring-for-statement"
-    return
-  fi
-  if grep -Eq '\?\.|\?\?' "$file"; then
-  fi
-  if grep -Eq '(^|[^[:alnum:]_])class[[:space:]]+[[:alpha:]_$]' "$file"; then
-  fi
-  if grep -Eq 'for[[:space:]]*\([^\)]*\b(in|of)\b' "$file"; then
-  fi
+  # All limitations removed — compiler should handle everything
   echo ""
 }
 
@@ -208,20 +189,8 @@ is_meta_skip() {
     return
   fi
 
-  if has_frontmatter_pattern "$file" '^negative:'; then
-    echo "negative"
-    return
-  fi
-
-  if has_frontmatter_pattern "$file" '^flags:.*\b(module|async|raw|CanBlockIsTrue)\b'; then
-    echo "unsupported-flags"
-    return
-  fi
-
-  if grep -q '\$DONOTEVALUATE();' "$file"; then
-    echo "parse-only"
-    return
-  fi
+  # All features enabled — the compiler should handle everything.
+  # negative tests, async, modules, parse-only — all attempted.
 
   echo ""
 }

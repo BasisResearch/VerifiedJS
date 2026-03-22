@@ -5039,13 +5039,12 @@ theorem IRStutterSim_steps {S : Type} {R : S → IRExecState → Prop}
   | refl _ =>
     exact ⟨s2_init, [], IRSteps.refl _, hR_init, rfl⟩
   | step hSrcStep _hRest ih =>
-    rename_i t ts' s_mid s_final
     obtain ⟨ir_mid, ir_trace1, hIR1, hR_mid, hObs1⟩ :=
       sim.step_sim _ _ _ _ hR_init hSrcStep
     obtain ⟨ir_final, ir_trace2, hIR2, hR_final, hObs2⟩ := ih hR_mid
     refine ⟨ir_final, ir_trace1 ++ ir_trace2,
       IRSteps_trans hIR1 hIR2, hR_final, ?_⟩
-    rw [observableEvents_append, hObs1, hObs2, ← observableEvents_append]
+    simp only [observableEvents_append, hObs1, hObs2]
 
 /-- Behavioral equivalence up to silent events.
     The IR produces a trace whose observable events match the mapped source trace.
