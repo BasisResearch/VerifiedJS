@@ -4855,6 +4855,15 @@ theorem step_sim (prog : ANF.Program) (irmod : IRModule) :
       hstep := by sorry
     }⟩
 
+/-- Convenience: step_sim from ANF.step? directly (avoids anfStepMapped unification). -/
+theorem step_sim_core (prog : ANF.Program) (irmod : IRModule) :
+    ∀ (s1 : ANF.State) (s2 : IRExecState) (ct : Core.TraceEvent) (s1' : ANF.State),
+    LowerSimRel prog irmod s1 s2 → ANF.step? s1 = some (ct, s1') →
+    ∃ s2', irStep? s2 = some (traceFromCore ct, s2') ∧
+      LowerSimRel prog irmod s1' s2' := by
+  intro s1 s2 ct s1' hrel hstep
+  exact step_sim prog irmod s1 s2 (traceFromCore ct) s1' hrel (anfStepMapped_some _ _ _ hstep)
+
 /-- Halt simulation: if ANF halts, the IR halts.
     SORRY: When ANF.step? returns none, the ANF expression is a literal trivial
     (by step?_none_implies_lit). The lowered IR for a literal is a const push

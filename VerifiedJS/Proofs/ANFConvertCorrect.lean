@@ -427,7 +427,75 @@ private theorem trivialValue?_non_var (t : ANF.Trivial)
 private theorem ANF_step?_none_implies_trivial_aux :
     ∀ (n : Nat) (s : ANF.State), s.expr.depth ≤ n → ANF.step? s = none →
     ∃ t, s.expr = .trivial t ∧ ∀ name, t ≠ .var name := by
-  sorry
+  intro n
+  induction n with
+  | zero =>
+    intro s hd h
+    cases he : s.expr with
+    | trivial t =>
+      refine ⟨t, rfl, fun name habs => ?_⟩
+      subst habs; unfold ANF.step? at h; simp at h
+    | «let» _ _ _ | seq _ _ | «if» _ _ _ | while_ _ _ | labeled _ _ =>
+      exfalso; simp [ANF.Expr.depth] at hd
+    | tryCatch _ _ _ fin => exfalso; cases fin <;> simp [ANF.Expr.depth] at hd
+    | «break» _ => unfold ANF.step? at h; simp at h
+    | «continue» _ => unfold ANF.step? at h; simp at h
+    | «return» arg => unfold ANF.step? at h; simp at h
+    | yield arg _ => unfold ANF.step? at h; simp at h
+    | «throw» _ => unfold ANF.step? at h; split at h <;> simp at h
+    | «await» _ => unfold ANF.step? at h; split at h <;> simp at h
+  | succ n ih =>
+    intro s hd h
+    cases he : s.expr with
+    | trivial t =>
+      refine ⟨t, rfl, fun name habs => ?_⟩
+      subst habs; unfold ANF.step? at h; simp at h
+    | «let» _ _ _ => unfold ANF.step? at h; simp at h
+    | «break» _ => unfold ANF.step? at h; simp at h
+    | «continue» _ => unfold ANF.step? at h; simp at h
+    | labeled _ _ => unfold ANF.step? at h; simp at h
+    | «return» arg => unfold ANF.step? at h; simp at h
+    | yield arg _ => unfold ANF.step? at h; simp at h
+    | «throw» _ => unfold ANF.step? at h; split at h <;> simp at h
+    | «await» _ => unfold ANF.step? at h; split at h <;> simp at h
+    | «if» _ _ _ => unfold ANF.step? at h; split at h <;> simp at h
+    | seq a b =>
+      exfalso; unfold ANF.step? at h
+      split at h
+      · simp at h
+      · rename_i hev; split at h
+        · simp at h
+        · next hstep =>
+          have ⟨t, hat, hnovar⟩ := ih { s with expr := a }
+            (by simp [ANF.Expr.depth] at hd; omega) hstep
+          obtain ⟨v, hv⟩ := trivialValue?_non_var t hnovar
+          simp [hat, ANF.exprValue?, hv] at hev
+        all_goals (exfalso; exact ANF.Expr.noConfusion (he.symm.trans ‹s.expr = _›))
+    | while_ cond body =>
+      exfalso; unfold ANF.step? at h
+      split at h
+      · simp at h
+      · rename_i hev; split at h
+        · simp at h
+        · next hstep =>
+          have ⟨t, hct, hnovar⟩ := ih { s with expr := cond }
+            (by simp [ANF.Expr.depth] at hd; omega) hstep
+          obtain ⟨v, hv⟩ := trivialValue?_non_var t hnovar
+          simp [hct, ANF.exprValue?, hv] at hev
+        all_goals (exfalso; exact ANF.Expr.noConfusion (he.symm.trans ‹s.expr = _›))
+    | tryCatch body _ catchBody fin =>
+      exfalso; unfold ANF.step? at h
+      split at h
+      · split at h <;> simp at h
+      · rename_i hev; split at h
+        · simp at h
+        · simp at h
+        · next hstep =>
+          have ⟨t, hbt, hnovar⟩ := ih { s with expr := body }
+            (by cases fin <;> simp [ANF.Expr.depth] at hd <;> omega) hstep
+          obtain ⟨v, hv⟩ := trivialValue?_non_var t hnovar
+          simp [hbt, ANF.exprValue?, hv] at hev
+        all_goals (exfalso; exact ANF.Expr.noConfusion (he.symm.trans ‹s.expr = _›))
 
 private theorem ANF_step?_none_implies_trivial (s : ANF.State) (h : ANF.step? s = none) :
     ∃ t, s.expr = .trivial t ∧ ∀ name, t ≠ .var name :=
