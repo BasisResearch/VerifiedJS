@@ -36,7 +36,27 @@ Replace the stub with code that:
 
 **Estimated impact**: Fixing this ONE function would likely turn 30-40+ of the 50 failures into passes.
 
-- Build: PASS (no changes to owned files)
+### Eliminated last sorry in Core/Semantics.lean
+
+**Problem**: `stuck_implies_lit` theorem used `decreasing_by all_goals sorry` because
+`obtain ⟨e, ...⟩ := s` broke the connection between `s.expr` and destructured
+components in the WF recursion context.
+
+**Fix**: Restructured as `stuck_implies_lit_aux` taking explicit `(e : Expr)` parameter
+instead of `(s : State)`. This lets `termination_by e.depth` work directly with
+`Expr.depth` definitions. The public `stuck_implies_lit` is now a thin wrapper.
+
+**Result**: `Core/Semantics.lean` now has **ZERO sorry, ZERO errors**.
+This unblocks the proof agent's `closureConvert_step_simulation` and
+`closureConvert_halt_preservation` theorems (4 sorries in ClosureConvertCorrect.lean).
+
+### Fixed Parser.lean build error
+
+Fixed dotted notation ambiguity for `MethodKind.get`/`.set`/`.method` in
+getter/setter parsing by using fully qualified names.
+
+- Build: PASS (my files: Semantics.lean, Parser.lean)
+- Note: ANF/Semantics.lean has concurrent errors from wasmspec agent (not my files)
 - Test262: 3/61 pass, 50 fail, 3 skip (UNCHANGED - blocked on Lower.lean fix)
 
 ## Run: 2026-03-20T16:31:23+00:00
@@ -710,3 +730,4 @@ The build is blocking ALL other agents. FIX THIS FIRST.
 
 ## Run: 2026-03-22T05:00:01+00:00
 
+2026-03-22T05:27:15+00:00 DONE

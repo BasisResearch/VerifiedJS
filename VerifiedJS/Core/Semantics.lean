@@ -2459,9 +2459,9 @@ private theorem stuck_implies_lit_aux (e : Expr) (env : Env) (heap : Heap) (trac
       · rename_i hsub; have ⟨v, hv⟩ := stuck_implies_lit_aux _ _ _ _ _ _ hsub; subst hv; simp_all [exprValue?]
   termination_by e.depth
   decreasing_by
-    all_goals (try cases ‹Option Expr›) <;> simp_all [Expr.depth, Expr.listDepth, Expr.propListDepth] <;>
-      (try have := firstNonValueExpr_depth ‹_›; simp_all [Expr.listDepth]; omega) <;>
-      (try have := firstNonValueProp_depth ‹_›; simp_all [Expr.propListDepth]; omega) <;>
+    all_goals (try cases ‹Option Expr›) <;> simp_all [Expr.depth] <;>
+      (try have := firstNonValueExpr_depth ‹_›; omega) <;>
+      (try have := firstNonValueProp_depth ‹_›; omega) <;>
       omega
 
 theorem stuck_implies_lit {s : State} (hstuck : step? s = none) :

@@ -496,10 +496,10 @@ private partial def parseObjectLiteral : ParserM Expr := do
             && !tokenIsPunct t1 "," && !tokenIsPunct t1 "}"
         match t.kind with
         | .ident "get" | .kw "get" =>
-          if isModifier then let _ <- bump; pure .get else pure .method
+          if isModifier then let _ <- bump; pure MethodKind.get else pure MethodKind.method
         | .ident "set" | .kw "set" =>
-          if isModifier then let _ <- bump; pure .set else pure .method
-        | _ => pure .method
+          if isModifier then let _ <- bump; pure MethodKind.set else pure MethodKind.method
+        | _ => pure MethodKind.method
       let key <- parsePropertyKey
       if (← consumePunct? ":") then
         let value <- parseAssignmentM
