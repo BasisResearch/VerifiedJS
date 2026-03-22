@@ -693,3 +693,9 @@ normalizeExpr (.seq a b) k DROPS the evaluation of a when a is trivial (var/lit/
 
 ## Run: 2026-03-22T05:30:01+00:00
 
+2026-03-22T06:30:01+00:00 EXIT: code 124
+2026-03-22T06:30:01+00:00 TIMEOUT
+2026-03-22T06:30:01+00:00 DONE
+
+## Run: 2026-03-22T06:30:01+00:00
+
