@@ -927,10 +927,16 @@ theorem step?_none_implies_lit (s : State) (h : step? s = none) :
     | lit v => exact ⟨v, rfl⟩
     | var => unfold step? at h; split at h <;> simp at h
     | this => unfold step? at h; split at h <;> simp at h
-    | «break» => simp [step?] at h
-    | «continue» => simp [step?] at h
-    | «return» arg => cases arg <;> simp [step?, Expr.depth] at *
-    | yield arg => cases arg <;> simp [step?, Expr.depth] at *
+    | «break» => unfold step? at h; simp [-step?] at h
+    | «continue» => unfold step? at h; simp [-step?] at h
+    | «return» arg =>
+      cases arg with
+      | none => unfold step? at h; simp [-step?] at h
+      | some => simp [Expr.depth] at hd
+    | yield arg =>
+      cases arg with
+      | none => unfold step? at h; simp [-step?] at h
+      | some => simp [Expr.depth] at hd
     | «let» => simp [Expr.depth] at hd
     | assign => simp [Expr.depth] at hd
     | «if» => simp [Expr.depth] at hd
@@ -961,99 +967,94 @@ theorem step?_none_implies_lit (s : State) (h : step? s = none) :
     have litOfStuck : ∀ (sub : Expr), sub.depth ≤ k →
         step? ⟨sub, env, heap, trace⟩ = none → ∃ v, sub = .lit v :=
       fun sub hds hs => ih sub env heap trace hds hs
-    -- Helper: derive contradiction when a sub-expr is stuck but exprValue? = none
-    have stuckContra : ∀ (sub : Expr), sub.depth ≤ k →
-        step? ⟨sub, env, heap, trace⟩ = none → exprValue? sub = none → False := by
-      intro sub hds hs hval
-      have ⟨v, hv⟩ := litOfStuck sub hds hs
-      rw [hv] at hval; simp [exprValue?] at hval
     cases e with
     | lit v => exact ⟨v, rfl⟩
-    -- Always-step constructors: contradiction with h
+    -- Always-step constructors
     | var => unfold step? at h; split at h <;> simp at h
     | this => unfold step? at h; split at h <;> simp at h
     | while_ => unfold step? at h; simp [-step?] at h
     | labeled => unfold step? at h; simp [-step?] at h
     | «break» => unfold step? at h; simp [-step?] at h
     | «continue» => unfold step? at h; simp [-step?] at h
-    -- Single sub-expression: step? returns none iff sub is stuck but not a value
-    | «let» _ init _ =>
-      unfold step? at h; dsimp at h; split at h
-      · simp at h
-      · split at h
-        · simp at h
-        · exact absurd h (by intro; exact stuckContra init (by simp [Expr.depth] at hd; omega)
-            ‹_› ‹_› |>.elim)
-    | assign _ rhs =>
-      unfold step? at h; dsimp at h; split at h
-      · simp at h
-      · split at h
-        · simp at h
-        · exact absurd h (by intro; exact stuckContra rhs (by simp [Expr.depth] at hd; omega)
-            ‹_› ‹_› |>.elim)
-    | «if» cond _ _ =>
-      unfold step? at h; dsimp at h; split at h
-      · simp at h
-      · split at h
-        · simp at h
-        · exact absurd h (by intro; exact stuckContra cond (by simp [Expr.depth] at hd; omega)
-            ‹_› ‹_› |>.elim)
-    | seq a _ =>
-      unfold step? at h; dsimp at h; split at h
-      · simp at h
-      · split at h
-        · simp at h
-        · exact absurd h (by intro; exact stuckContra a (by simp [Expr.depth] at hd; omega)
-            ‹_› ‹_› |>.elim)
-    | unary _ arg =>
-      unfold step? at h; dsimp at h; split at h
-      · simp at h
-      · split at h
-        · simp at h
-        · exact absurd h (by intro; exact stuckContra arg (by simp [Expr.depth] at hd; omega)
-            ‹_› ‹_› |>.elim)
-    | typeof arg =>
-      unfold step? at h; dsimp at h; split at h
-      · simp at h
-      · split at h
-        · simp at h
-        · exact absurd h (by intro; exact stuckContra arg (by simp [Expr.depth] at hd; omega)
-            ‹_› ‹_› |>.elim)
-    | throw arg =>
-      unfold step? at h; dsimp at h; split at h
-      · simp at h
-      · split at h
-        · simp at h
-        · exact absurd h (by intro; exact stuckContra arg (by simp [Expr.depth] at hd; omega)
-            ‹_› ‹_› |>.elim)
-    | await arg =>
-      unfold step? at h; dsimp at h; split at h
-      · simp at h
-      · split at h
-        · simp at h
-        · exact absurd h (by intro; exact stuckContra arg (by simp [Expr.depth] at hd; omega)
-            ‹_› ‹_› |>.elim)
     | «return» arg =>
       cases arg with
       | none => unfold step? at h; simp [-step?] at h
       | some e =>
-        unfold step? at h; dsimp at h; split at h
-        · simp at h
-        · split at h
-          · simp at h
-          · exact absurd h (by intro; exact stuckContra e (by simp [Expr.depth] at hd; omega)
-              ‹_› ‹_› |>.elim)
+        unfold step? at h; simp only [-step?] at h
+        split at h; · simp at h
+        · split at h; · simp at h
+          · next hval hstep =>
+            have ⟨v, hv⟩ := litOfStuck e (by simp [Expr.depth] at hd; omega) hstep
+            subst hv; simp_all [exprValue?]
     | yield arg _ =>
       cases arg with
       | none => unfold step? at h; simp [-step?] at h
       | some e =>
-        unfold step? at h; dsimp at h; split at h
-        · simp at h
-        · split at h
-          · simp at h
-          · exact absurd h (by intro; exact stuckContra e (by simp [Expr.depth] at hd; omega)
-              ‹_› ‹_› |>.elim)
-    -- Remaining compound cases: sorry for now, prove iteratively
+        unfold step? at h; simp only [-step?] at h
+        split at h; · simp at h
+        · split at h; · simp at h
+          · next hval hstep =>
+            have ⟨v, hv⟩ := litOfStuck e (by simp [Expr.depth] at hd; omega) hstep
+            subst hv; simp_all [exprValue?]
+    -- Single sub-expression patterns: unfold, split on exprValue?, split on step?,
+    -- use IH to get literal, contradiction with exprValue? = none
+    | «let» _ init _ =>
+      unfold step? at h; simp only [-step?] at h
+      split at h; · simp at h
+      · split at h; · simp at h
+        · next hval hstep =>
+          have ⟨v, hv⟩ := litOfStuck init (by simp [Expr.depth] at hd; omega) hstep
+          subst hv; simp_all [exprValue?]
+    | assign _ rhs =>
+      unfold step? at h; simp only [-step?] at h
+      split at h; · simp at h
+      · split at h; · simp at h
+        · next hval hstep =>
+          have ⟨v, hv⟩ := litOfStuck rhs (by simp [Expr.depth] at hd; omega) hstep
+          subst hv; simp_all [exprValue?]
+    | «if» cond _ _ =>
+      unfold step? at h; simp only [-step?] at h
+      split at h; · simp at h
+      · split at h; · simp at h
+        · next hval hstep =>
+          have ⟨v, hv⟩ := litOfStuck cond (by simp [Expr.depth] at hd; omega) hstep
+          subst hv; simp_all [exprValue?]
+    | seq a _ =>
+      unfold step? at h; simp only [-step?] at h
+      split at h; · simp at h
+      · split at h; · simp at h
+        · next hval hstep =>
+          have ⟨v, hv⟩ := litOfStuck a (by simp [Expr.depth] at hd; omega) hstep
+          subst hv; simp_all [exprValue?]
+    | unary _ arg =>
+      unfold step? at h; simp only [-step?] at h
+      split at h; · simp at h
+      · split at h; · simp at h
+        · next hval hstep =>
+          have ⟨v, hv⟩ := litOfStuck arg (by simp [Expr.depth] at hd; omega) hstep
+          subst hv; simp_all [exprValue?]
+    | typeof arg =>
+      unfold step? at h; simp only [-step?] at h
+      split at h; · simp at h
+      · split at h; · simp at h
+        · next hval hstep =>
+          have ⟨v, hv⟩ := litOfStuck arg (by simp [Expr.depth] at hd; omega) hstep
+          subst hv; simp_all [exprValue?]
+    | throw arg =>
+      unfold step? at h; simp only [-step?] at h
+      split at h; · simp at h
+      · split at h; · simp at h
+        · next hval hstep =>
+          have ⟨v, hv⟩ := litOfStuck arg (by simp [Expr.depth] at hd; omega) hstep
+          subst hv; simp_all [exprValue?]
+    | await arg =>
+      unfold step? at h; simp only [-step?] at h
+      split at h; · simp at h
+      · split at h; · simp at h
+        · next hval hstep =>
+          have ⟨v, hv⟩ := litOfStuck arg (by simp [Expr.depth] at hd; omega) hstep
+          subst hv; simp_all [exprValue?]
+    -- Multi sub-expression and list patterns
     | binary _ lhs rhs => sorry
     | setProp obj _ value => sorry
     | getIndex obj idx => sorry
