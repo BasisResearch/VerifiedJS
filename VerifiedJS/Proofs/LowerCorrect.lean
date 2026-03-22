@@ -54,9 +54,10 @@ private theorem lower_sim_steps (s : ANF.Program) (t : Wasm.IR.IRModule)
   | refl => exact ⟨ir, .refl ir, hrel⟩
   | tail hstep _ ih =>
     obtain ⟨hstep_eq⟩ := hstep
-    obtain ⟨ir₂, hirStep, hrel₂⟩ := IR.LowerSimRel.step_sim s t _ _ _ _
-      hrel (by simp [IR.anfStepMapped, hstep_eq])
+    have hmapped := IR.anfStepMapped_some _ _ _ hstep_eq
+    obtain ⟨ir₂, hirStep, hrel₂⟩ := IR.LowerSimRel.step_sim s t _ _ _ _ hrel hmapped
     obtain ⟨ir₃, hirSteps, hrel₃⟩ := ih ir₂ hrel₂
+    simp only [IR.traceListFromCore, List.map]
     exact ⟨ir₃, .tail (.mk hirStep) hirSteps, hrel₃⟩
 
 /-- Lowering preserves behavior: every ANF trace maps to an IR trace. -/
