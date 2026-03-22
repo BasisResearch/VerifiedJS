@@ -688,57 +688,96 @@ theorem step?_yield_ne_none (s : State) (arg : Option Trivial) (delegate : Bool)
 theorem step?_while_value_ne_none (s : State) (cond : Expr) (body : Expr) (v : Flat.Value)
     (h : exprValue? cond = some v) :
     step? { s with expr := .while_ cond body } ≠ none := by
-  simp [step?, h]
+  unfold step?; simp only [h]; exact fun h => by simp at h
 
 /-- Seq with a value first expression always steps. -/
 theorem step?_seq_value_ne_none (s : State) (a b : Expr) (v : Flat.Value)
     (h : exprValue? a = some v) :
     step? { s with expr := .seq a b } ≠ none := by
-  simp [step?, h]
+  unfold step?; simp only [h]; exact fun h => by simp at h
 
 /-- TryCatch with a value body always steps. -/
 theorem step?_tryCatch_value_ne_none (s : State) (body : Expr) (catchParam : VarName)
     (catchBody : Expr) (finally_ : Option Expr) (v : Flat.Value)
     (h : exprValue? body = some v) :
     step? { s with expr := .tryCatch body catchParam catchBody finally_ } ≠ none := by
-  simp [step?, h]
-  cases finally_ <;> simp
+  unfold step?; simp only [h]; cases finally_ <;> exact fun h => by simp at h
 
-/-- Comprehensive: for each non-trivial ANF expression form, step? ≠ none
-    when the expression is "ready to step" (no stuck sub-expressions).
-    This is the key lemma for proving anfConvert_halt_star non-lit cases:
-    if an expression is not a literal trivial, it can step (possibly with
-    conditions on sub-expression values). -/
-theorem step?_ne_none_of_non_trivial_lit (s : State) :
-    (∀ (t : Trivial), s.expr = .trivial t → ∃ name, t = .var name) →
-    step? s ≠ none := by
-  intro hnot_lit
-  cases hcase : s.expr with
-  | trivial t =>
-    obtain ⟨name, rfl⟩ := hnot_lit t rfl
-    simp [step?]
-    cases s.env.lookup name <;> simp
-  | «let» name rhs body => exact step?_let_ne_none s name rhs body
-  | «if» cond then_ else_ => exact step?_if_ne_none s cond then_ else_
-  | throw arg => exact step?_throw_ne_none s arg
-  | «return» arg => exact step?_return_ne_none s arg
-  | await arg => exact step?_await_ne_none s arg
-  | yield arg delegate => exact step?_yield_ne_none s arg delegate
-  | labeled label body => exact step?_labeled_ne_none s label body
-  | «break» label => exact step?_break_ne_none s label
-  | «continue» label => exact step?_continue_ne_none s label
-  | seq a b =>
-    simp [step?]
-    cases exprValue? a <;> simp
-    intro hstep; exact absurd hstep (by simp)
-  | while_ cond body =>
-    simp [step?]
-    cases exprValue? cond <;> simp
-    intro hstep; exact absurd hstep (by simp)
-  | tryCatch body catchParam catchBody finally_ =>
-    simp [step?]
-    cases exprValue? body <;> simp
-    intro hstep; exact absurd hstep (by simp)
+/-- A trivial is a literal value (not a variable reference). -/
+def Trivial.isLit : Trivial → Bool
+  | .var _ => false
+  | _ => true
+
+/-- If step? returns none, the expression must be a literal trivial.
+    This is the fundamental halting characterization for ANF:
+    the only ANF states that cannot step are those with literal trivial expressions.
+    Key lemma for anfConvert_halt_star non-lit cases. -/
+theorem step?_none_implies_trivial_lit (s : State) (h : step? s = none) :
+    ∃ t, s.expr = .trivial t ∧ t.isLit = true := by
+  -- step? case-splits on s.expr. We unfold and match.
+  unfold step? at h
+  split at h
+  · -- trivial t
+    rename_i t
+    split at h
+    · -- var name: step? always returns some (either value or error)
+      rename_i name
+      cases h1 : s.env.lookup name <;> simp_all
+    · -- non-var trivial: step? returns none, so this is the halting case
+      rename_i t' ht
+      -- t' is the remaining trivial after .var is excluded
+      cases t <;> simp_all [Trivial.isLit]
+  · -- let: step? always returns some
+    simp at h
+  · -- seq
+    rename_i a b
+    split at h
+    · simp at h
+    · -- step? recursive call returns none
+      split at h <;> simp at h
+  · -- if
+    rename_i cond then_ else_
+    cases evalTrivial s.env cond <;> simp at h
+  · -- while_
+    rename_i cond body
+    split at h
+    · simp at h
+    · split at h <;> simp at h
+  · -- throw
+    cases evalTrivial s.env ‹Trivial› <;> simp at h
+  · -- tryCatch
+    rename_i body catchParam catchBody finally_
+    split at h
+    · cases finally_ <;> simp at h
+    · split at h
+      · split at h <;> simp at h
+      · simp at h
+  · -- return
+    rename_i arg
+    cases arg <;> simp at h
+    rename_i t
+    cases evalTrivial s.env t <;> simp at h
+  · -- yield
+    rename_i arg delegate
+    cases arg <;> simp at h
+    rename_i t
+    cases evalTrivial s.env t <;> simp at h
+  · -- await
+    cases evalTrivial s.env ‹Trivial› <;> simp at h
+  · simp at h  -- labeled
+  · simp at h  -- break
+  · simp at h  -- continue
+
+/-- Comprehensive: if an ANF expression is not a literal trivial (not .litNull,
+    .litUndefined, .litBool, .litNum, .litStr, .litObject, .litClosure) but IS
+    a variable, let, if, throw, return, await, yield, labeled, break, or continue,
+    then step? ≠ none. For seq/while_/tryCatch, step? may return none if a
+    sub-expression is stuck — those cases need separate handling.
+    Key lemma for anfConvert_halt_star: halted ANF states must be literal trivials. -/
+theorem step?_ne_none_of_var (s : State) (name : VarName) :
+    step? { s with expr := .trivial (.var name) } ≠ none := by
+  simp [step?]
+  cases s.env.lookup name <;> simp
 
 /-- Step relation is equivalent to step? returning some. -/
 theorem Step_iff (s : State) (t : Core.TraceEvent) (s' : State) :

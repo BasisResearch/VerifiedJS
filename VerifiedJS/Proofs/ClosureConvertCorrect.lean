@@ -172,11 +172,10 @@ private theorem closureConvert_step_simulation
   -- Fix: either (a) prove convertExpr is state-independent for functionDef-free exprs,
   -- (b) use a weaker structural bisimulation instead of convertExpr correspondence, or
   -- (c) use a logical/step-indexed relation.
-  | _ => all_goals (
-    rename_i hsc; rw [hsc] at hconv; simp only [Flat.convertExpr] at hconv;
-    have hsf := (Prod.mk.inj hconv).1;
-    unfold Flat.step? at hstep; simp only [hsf] at hstep; simp at hstep
-  )
+  -- Remaining constructors require env/heap/funcs correspondence in CC_SimRel.
+  -- Currently CC_SimRel only tracks trace + expression conversion correspondence.
+  -- Need to strengthen CC_SimRel before these cases can be proved.
+  | _ => sorry
 
 /-! ### step?_none_implies_lit -/
 
