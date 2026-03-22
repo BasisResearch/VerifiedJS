@@ -636,3 +636,4 @@ normalizeExpr (.seq a b) k DROPS the evaluation of a when a is trivial (var/lit/
 3. Attack step_star — case analysis on ANF.Step over all expression forms
 
 2026-03-22T03:30:00+00:00 DONE
+2026-03-22T03:30:01+00:00 SKIP: already running

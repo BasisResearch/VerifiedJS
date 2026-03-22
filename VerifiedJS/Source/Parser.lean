@@ -751,6 +751,13 @@ private partial def parseUnaryM : ParserM Expr := do
   if (← consumeKeyword? "delete") then
     return .unary .delete (← parseUnaryM)
   if (← consumeKeyword? "await") then
+    -- In non-async context, 'await' can be used as an identifier (ECMA-262 §12.1.1)
+    let t <- peek
+    match t.kind with
+    | .newline | .punct ";" | .punct ")" | .punct "}" | .punct "]"
+    | .punct "," | .punct "." | .punct "?" | .eof =>
+      return .ident "await"
+    | _ => pure ()
     return .await (← parseUnaryM)
   if (← consumeKeyword? "yield") then
     let delegated <- consumePunct? "*"
