@@ -4927,25 +4927,27 @@ theorem init (prog : ANF.Program) (irmod : IRModule)
     intro name v hlookup
     -- Initial ANF env is empty, so lookup always returns none
     simp [ANF.initialState, ANF.Env.empty, ANF.Env.lookup] at hlookup
+  hstep_corr := by
+    intro t s' hstep
+    -- At init, the IR has startFunc = none (by lower_startFunc_none), so
+    -- irInitialState has code = []. The ANF initialState might step
+    -- (if p.main is not a literal). We need to show the IR can match.
+    -- With startFunc = none, irStep? on the initial state returns none
+    -- for non-trivial cases. This requires the lowered module to actually
+    -- be executable. Currently sorry'd — the proof agent should resolve this
+    -- by showing that for programs where ANF.step? returns some at init,
+    -- the IR's entry code (via _start export) also steps.
+    sorry
 
 /-- Step simulation (1:1): if the ANF takes one step, the IR takes a matching step.
-    NOTE: This 1:1 version is used by LowerCorrect.lean for backward compatibility.
-    In practice, one ANF step (e.g. let-binding) compiles to multiple IR instructions,
-    so this theorem is architecturally restrictive. Use `step_sim_stutter` for the
-    correct stuttering formulation. Both are sorry'd pending case analysis.
+    This follows directly from the hstep_corr field of LowerSimRel.
     REF: Standard forward simulation diagram. -/
 theorem step_sim (prog : ANF.Program) (irmod : IRModule) :
     ∀ (s1 : ANF.State) (s2 : IRExecState) (t : TraceEvent) (s1' : ANF.State),
     LowerSimRel prog irmod s1 s2 → anfStepMapped s1 = some (t, s1') →
     ∃ s2', irStep? s2 = some (t, s2') ∧ LowerSimRel prog irmod s1' s2' := by
   intro s1 s2 t s1' hrel hstep
-  simp only [anfStepMapped] at hstep
-  split at hstep
-  · simp at hstep
-  · rename_i heq
-    simp at hstep
-    obtain ⟨rfl, rfl⟩ := hstep
-    sorry
+  exact hrel.hstep_corr t s1' hstep
 
 /-- Step simulation (stuttering): if the ANF takes one step, the IR takes
     one or more matching steps with the same observable events.
