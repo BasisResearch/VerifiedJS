@@ -431,7 +431,8 @@ private def readPunct (chars : List Char) : String × List Char :=
         (s3, d :: rest)
       else
         let s2 := String.ofList [a, b]
-        if punct2Set.contains s2 then
+        -- ECMA-262 §12.8.9: `?.` is NOT optional chaining when followed by a digit
+        if punct2Set.contains s2 && !(s2 == "?." && c.isDigit) then
           (s2, c :: d :: rest)
         else
           (String.ofList [a], b :: c :: d :: rest)
@@ -441,13 +442,15 @@ private def readPunct (chars : List Char) : String × List Char :=
       (s3, rest)
     else
       let s2 := String.ofList [a, b]
-      if punct2Set.contains s2 then
+      -- ECMA-262 §12.8.9: `?.` is NOT optional chaining when followed by a digit
+      if punct2Set.contains s2 && !(s2 == "?." && c.isDigit) then
         (s2, c :: rest)
       else
         (String.ofList [a], b :: c :: rest)
   | a :: b :: rest =>
     let s2 := String.ofList [a, b]
-    if punct2Set.contains s2 then
+    -- ECMA-262 §12.8.9: `?.` is NOT optional chaining when followed by a digit
+    if punct2Set.contains s2 && !(s2 == "?." && (rest.head?.map Char.isDigit |>.getD false)) then
       (s2, rest)
     else
       (String.ofList [a], b :: rest)
