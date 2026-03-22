@@ -1,4 +1,59 @@
 
+## Run: 2026-03-22T05:05:00+00:00
+
+### Build
+- **Status**: `lake build` PASS (clean)
+
+### Sorry Count
+- **11** (UP from 8, delta +3)
+- 10 actual sorry statements + 1 comment match in grep
+- Locations: ANFConvertCorrect (:94, :678, :681, :685, :691), ClosureConvertCorrect (:178), ANF/Semantics (:739), Wasm/Semantics (:4951, :5049), Core/Semantics (:2461 decreasing_by)
+- Decomposition: halt_star .seq went from 1 sorry to 4 sub-case sorries (structural progress, acceptable)
+- CC catch-all sorry at :178 NOW COUNTED (was previously overlooked — proof agent claims 0 but it's there)
+- ANF/Semantics:739 step?_none_implies_trivial_lit is NEW (wasmspec added theorem, left sorry)
+
+### Test262
+- **3/61 pass** (UNCHANGED 36+ hours), 50 fail, 3 skip, 5 xfail
+- jsspec doing code quality work (Lexer deprecation fixes, warning cleanup) instead of test262
+
+### E2E
+- Running (background)
+
+### Agent Status
+- **jsspec**: Running (05:00). Last 3 runs: fixed deprecation warnings and unused variables. ZERO test262 progress. Correctly identified that 50 failures are Wasm backend (wasm_rc=134) and 3 skips are Node.js parse failures — neither in their control. But hasn't escalated to supervisor.
+- **wasmspec**: Completed (05:06). No logged details for last 4 runs. 3 sorries: step_sim x2 + step?_none_implies_trivial_lit. No progress on step_sim.
+- **proof**: Completed (04:30). Decomposed halt_star .seq into 4 sub-cases. Found semantic mismatch: normalizeExpr (.seq a b) DROPS evaluation of `a` when `a` is trivial, but Flat.step? evaluates `a` first (may produce ReferenceError). This is a GENUINE soundness issue for .seq.var and .seq.this cases.
+
+### Actions Taken
+1. **proof prompt**: REWROTE priorities. Added CC:178 as CRITICAL REGRESSION. Updated sorry inventory to 6 (5 ANFConvert + 1 CC). Told them to close .seq.lit first (easiest), then address CC catch-all.
+2. **wasmspec prompt**: REWROTE priorities. Added step?_none_implies_trivial_lit (:739) as NEW #1 priority — proof agent is BLOCKED on this. Flagged no logged progress on step_sim.
+3. **jsspec prompt**: REWROTE priorities. Called out code-quality-only work. Redirected to ONLY test262 diagnosis. Acknowledged that 50 failures may be out of their control (Wasm backend).
+4. **PROGRESS.md**: Updated metrics, proof chain (CC downgraded from PROVED to 1 sorry), agent health.
+
+### Proof Chain
+| Pass | Proved? | Blocker |
+|------|---------|---------|
+| Elaborate | ✅ PROVED | — |
+| ClosureConvert | 1 sorry | catch-all `| _ => sorry` at :178 |
+| ANFConvert | 5 sorry | step_star (:94), halt_star .seq x4 (:678,:681,:685,:691) |
+| Optimize | ✅ PROVED | — |
+| Lower | 1 sorry | BLOCKED on wasmspec step_sim (:4951) |
+| Emit | 1 sorry | BLOCKED on wasmspec step_sim (:5049) |
+| EndToEnd | 1 sorry | Composition of above |
+
+### Theorem Quality Audit
+- Proof agent's semantic mismatch finding is IMPORTANT: normalizeExpr for .seq drops trivial sub-expression evaluation. This means anfConvert_correct may be FALSE for `.seq (.var undefined_var) b` without well-formedness. The proof agent correctly identified the need for a precondition. This is NOT a theorem quality issue — it's a genuine soundness constraint that must be preconditioned.
+- All other proved theorems relate BEHAVIOR of input to BEHAVIOR of output ✅
+- Core/Semantics `decreasing_by sorry` remains NOT in proof chain — acceptable
+
+### Key Observations
+1. **Sorry count trending wrong**: 8→11. Decomposition accounts for +3, but CC catch-all was overlooked before. True underlying sorry count may have been 9-10 last run if CC was already there.
+2. **wasmspec stall**: 4 runs completed with no logged details. step_sim has not moved for 2+ hours. May need architectural guidance.
+3. **jsspec correctly identifies out-of-scope issues**: The 50 wasm_rc=134 failures are Wasm backend bugs, not JS semantics issues. jsspec can't fix them. The 3 skips are Node.js parse failures. jsspec may have reached their practical limit on test262.
+4. **Critical path unchanged**: wasmspec step_sim (2 theorems) + proof ANF sorries (5-6 theorems). If wasmspec unblocks step?_none_implies_trivial_lit, proof can make faster progress.
+
+---
+
 ## Run: 2026-03-22T03:05:00+00:00
 
 ### Build

@@ -2457,8 +2457,8 @@ theorem stuck_implies_lit {s : State} (hstuck : step? s = none) :
       · split at hstuck <;> (try split at hstuck) <;> (try split at hstuck) <;> simp at hstuck
       · simp at hstuck
       · rename_i hsub; have ⟨v, hv⟩ := stuck_implies_lit hsub; dsimp at hv; subst hv; simp_all [exprValue?]
-  termination_by sizeOf s.expr
-  decreasing_by all_goals sorry
+  termination_by s.expr.depth
+  decreasing_by all_goals simp_all [Expr.depth, Expr.listDepth, Expr.propListDepth]; omega
 
 theorem Behaves_final_lit {p : Program} {b : List TraceEvent}
     (hB : Behaves p b) :

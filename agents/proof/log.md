@@ -662,3 +662,13 @@ normalizeExpr (.seq a b) k DROPS the evaluation of a when a is trivial (var/lit/
   6. `closureConvert_step_simulation` catch-all (CC:178) — needs CC_SimRel strengthening
 - Total project sorry count: 11 (6 mine, 5 others)
 - E2E: running
+
+### Update: Proved .seq.lit case in halt_star
+- `anfConvert_halt_star_aux` .seq.lit case: PROVED using depth induction
+  - Flat takes one silent step from .seq (.lit v) b to {expr=b}
+  - IH applies since b.depth < (.seq (.lit v) b).depth
+  - Observable trace preserved: silent events are filtered
+  - Key technique: extract sf2 from step? existentially, prove its properties (expr, env, heap, trace) via congrArg on the step equation, then apply IH
+- Sorry count: 5 in my files (was 6), 11 total project (was 11, net -1 in my files)
+- Build: PASS
+

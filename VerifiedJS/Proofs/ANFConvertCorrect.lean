@@ -682,7 +682,34 @@ private theorem anfConvert_halt_star_aux
       | lit v =>
         -- normalizeExpr (.lit v) k' passes through to normalizeExpr b k
         -- Flat steps silently from .seq (.lit v) b to b, then apply IH
-        sorry
+        rw [ha] at hnorm
+        simp only [ANF.normalizeExpr, ANF.trivialOfFlatValue] at hnorm
+        cases v <;> simp at hnorm <;> (
+          have hbd : b.depth ≤ N := by rw [hsf] at hdepth; simp [Flat.Expr.depth] at hdepth; omega
+          obtain ⟨sf2, hstep_eq⟩ : ∃ sf2, Flat.step? sf = some (.silent, sf2) := by
+            rw [show sf = {sf with expr := .seq a b} from by cases sf; simp_all]
+            rw [ha]; simp only [Flat.step?, Flat.exprValue?]; exact ⟨_, rfl⟩
+          have hsf2_props : sf2.expr = b ∧ sf2.env = sf.env ∧ sf2.heap = sf.heap ∧ observableTrace sf2.trace = observableTrace sf.trace := by
+            have h0 := hstep_eq
+            rw [show sf = {sf with expr := .seq a b} from by cases sf; simp_all] at h0
+            rw [ha] at h0; simp only [Flat.step?, Flat.exprValue?] at h0
+            have heq := (Prod.mk.inj (Option.some.inj h0)).2
+            constructor; exact congrArg Flat.State.expr heq ▸ rfl
+            constructor; exact congrArg Flat.State.env heq ▸ rfl
+            constructor; exact congrArg Flat.State.heap heq ▸ rfl
+            subst heq; show observableTrace (sf.trace ++ [.silent]) = observableTrace sf.trace
+            simp [observableTrace, List.filter_append]; decide
+          obtain ⟨he, henv2, hheap2, htrace2⟩ := hsf2_props
+          have hrel2 : ANF_SimRel s t sa sf2 := by
+            refine ⟨hheap.trans hheap2.symm, henv.trans henv2.symm, htrace.trans htrace2.symm, k, n, m, ?_, hfaithful⟩
+            rw [he, hat]; exact hnorm
+          have hbd2 : sf2.expr.depth ≤ N := by rw [he]; exact hbd
+          obtain ⟨sf', evs, hsteps', hhalt', hobs', hrel'⟩ :=
+            ih sa sf2 hbd2 hrel2 hstuck
+          exact ⟨sf', .silent :: evs,
+            Flat.Steps.tail ⟨hstep_eq⟩ hsteps',
+            hhalt', by show observableTrace (.silent :: evs) = []; simp [observableTrace_silent, hobs'],
+            hrel'⟩)
       | seq a1 a2 =>
         -- normalizeExpr (.seq a1 a2) k' = normalizeExpr a1 (fun _ => normalizeExpr a2 k')
         -- where k' = (fun _ => normalizeExpr b k)

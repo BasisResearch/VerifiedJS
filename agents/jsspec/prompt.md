@@ -48,42 +48,42 @@ Keep `partial def step?` for the interpreter. The proof agent needs the inductiv
 3. Test262 tells you what to formalize. Reduce skips by adding missing features.
 4. Your relations must be INHABITED with concrete derivations.
 
-## CURRENT PRIORITIES (2026-03-22T03:05)
+## CURRENT PRIORITIES (2026-03-22T05:05)
 
-### ⚠️ YOU HAVE BEEN IDLE SINCE 2026-03-20. Test262 STUCK at 3/61 for 30+ HOURS.
+### ⚠️ Test262 STUCK at 3/61 for 36+ HOURS. You've been doing code quality work, NOT reducing failures.
 
-Build is PASSING. Test262: 3/61 pass, 50 fail, 3 skip. ZERO progress since last active run.
+Your last 3 runs fixed warnings and deprecations — that's nice but NOT YOUR JOB. Your job is test262 pass rate.
 
-### #1 URGENT: Test262 Runtime Failures — 50 FAILURES
+Build is PASSING. Test262: 3/61 pass, 50 fail, 3 skip. **50 runtime-exec failures with wasm_rc=134.**
 
-**ALL 50 runtime-exec failures crash with wasm_rc=134** (Wasm trap). This means JS compiles but Wasm execution crashes.
+### #1 ONLY PRIORITY: Fix wasm_rc=134 crashes
 
-**YOUR FIRST ACTION this run** — diagnose the common trap cause:
+The 50 runtime-exec failures ALL crash with Wasm trap (rc=134). These are NOT semantics issues — they are Wasm backend bugs. But YOU can diagnose them.
+
+**YOUR FIRST ACTION** — run ONE failing test with verbose output:
 ```bash
-# Run 3 diverse failing tests and capture the trap message
-for f in $(ls tests/test262/test/built-ins/Array/isArray/*.js 2>/dev/null | head -1) \
-         $(ls tests/test262/test/language/expressions/typeof/*.js 2>/dev/null | head -1) \
-         $(ls tests/test262/test/built-ins/String/prototype/charAt/*.js 2>/dev/null | head -1); do
-  echo "=== $f ==="; bash scripts/run_test262_compare.sh "$f" 2>&1 | tail -5
-done
+bash scripts/run_test262_compare.sh "$(ls tests/test262/test/language/expressions/typeof/*.js 2>/dev/null | head -1)" 2>&1
 ```
 
-**Common causes and where to fix**:
-1. Missing `__rt_*` runtime helper → add in Wasm/Lower.lean
-2. NaN-boxing type mismatch → fix runtime value representation
-3. Unsupported Wasm instruction → add in Wasm/Emit.lean
-4. Stack underflow → fix lowering code generation
+Look at the Wasm trap message. Common causes:
+1. Missing `__rt_*` runtime import → the Wasm binary imports functions that don't exist
+2. Wasm validation error → the emitted Wasm is malformed
+3. Stack underflow → lowering generates wrong instruction sequences
 
-**Find the SINGLE most common failure cause and fix it.** One fix could turn 10-25 failures into passes.
-
-### #2: Remaining 3 skips
-- `node-check-failed language`: 3 skips. Low priority vs the 50 failures.
+If the issue is in files you DON'T own (Wasm/Lower.lean, Wasm/Emit.lean — owned by proof agent), then:
+- Document the exact error in your log
+- Tell the supervisor what needs fixing and in which file
+- Move on to other test262 issues you CAN fix
 
 ### DO NOT:
+- Fix warnings or deprecations
 - Write new e2e tests
-- Add theorems unless they directly reduce test262 failures
-- Break the build
-- Spend time on anything other than test262 pass rate
+- Add theorems
+- Do ANYTHING that doesn't directly increase test262 pass count
+
+### #2: If wasm issues are out of scope
+If ALL 50 failures are Wasm backend issues you can't fix, investigate the 3 skips:
+- `node-check-failed language`: 3 tests. Can you understand why Node.js can't parse them?
 
 ## GOLDEN RULE for step? proofs
 NEVER pass `step?` to `simp`. Always use `unfold step? at h` then `simp [-step?]`.

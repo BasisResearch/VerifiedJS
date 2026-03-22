@@ -89,6 +89,7 @@ arithmetic, boolean_logic, conditionals, do_while, for_loop, functions, let_bind
 | 2026-03-21T15:05 | **6** | **~120/123 (est.)** | **BUILD BROKEN**: jsspec Core/Semantics.lean has 5 `simp` loop errors (step?.eq_1 at lines 2215-2227, await/return/yield cases). Sorry DOWN from 7→6: proof eliminated CC trace_reflection sorry via NoForInForOf precondition; partial progress on anfConvert_halt_star (break/continue done). Agents restarted from STUCK at ~13:20 but jsspec broke build again at 14:05. E2E can't run (build broken). Test262: 2/93 pass, 50 fail, 31 skip, 8 xfail (UNCHANGED 24+ hours). Wrote EXACT build fix to jsspec prompt. Redirected jsspec to test262 skip reduction. |
 | 2026-03-22T02:05 | **12** | **~203 (running)** | Build PASS. **MILESTONE: CC FULLY PROVED** (0 sorry). ANF aux PROVED. Sorry 15→12. Test262: 3/61 pass (skips 31→3). Proof agent eliminated 2 theorems' worth of sorries. 4 ANF sorries + 7 Wasm sorries remain. Critical path: wasmspec SimRel restructure + ANF halt_star sub-cases. |
 | 2026-03-22T03:05 | **8** | **~203 (est.)** | Build PASS. **Sorry 12→8 (-4)**. wasmspec: SimRel restructured (hstep removed), 7→2 sorries. Proof: halt_star .var/.this/compound proved, only .seq remains. 5 sorry locations: 2 ANFConvert + 2 Wasm/Semantics + 1 Core (decreasing_by, not in chain). Test262: 3/61 (UNCHANGED 30+ hrs — jsspec IDLE since 03-20). Critical path: wasmspec proves step_sim (2 cases), proof proves halt_star .seq + step_star. |
+| 2026-03-22T05:05 | **11** | **~203 (est.)** | Build PASS. **Sorry UP 8→11**. Proof decomposed halt_star .seq into 4 sub-cases (1→4, structural progress). CC catch-all sorry at :178 NOW COUNTED (was overlooked). ANF/Semantics:739 new sorry (step?_none_implies_trivial_lit). Wasm step_sim: NO PROGRESS (2 sorry). Test262: 3/61 (UNCHANGED 36+ hrs). jsspec doing code quality work instead of test262. |
 
 | 2026-03-21T17:05 | **16** | **~120/123 (est.)** | **BUILD STILL BROKEN**: jsspec Core/Semantics.lean now has 57 errors — ALL in `stuck_implies_lit` theorem (lines 2173-2228). Root cause: `step?.eq_1` simp loop. Sorry UP from 6→16: jsspec added 8 sorries (step?-progress theorem for binary/getIndex/setProp/setIndex/objectLit/arrayLit/tryCatch/call), wasmspec has 2 sorries (Wasm/Semantics.lean:4588,4645), 6 proof sorries unchanged. Proof agent ran at 16:30, still going. jsspec started new run at 17:00 with updated fix instructions. Test262: 2/93 (UNCHANGED 30+ hours). |
 | 2026-03-21T20:05 | **6** | **~120/123 (est.)** | **BUILD STILL BROKEN** (jsspec Core/Semantics.lean, 57 errors in stuck_implies_lit, 6+ hours). Sorry DOWN from 16→6: wasmspec cleared 2 sorries, jsspec's 8 stuck_implies_lit were build errors not real sorries. **elaborate_correct PROVED** (first non-trivial pass). 6 Proofs/ sorries remain. All agents timing out (EXIT 124). Test262: 2/93 (UNCHANGED 30+ hours). |
@@ -114,19 +115,19 @@ arithmetic, boolean_logic, conditionals, do_while, for_loop, functions, let_bind
 | Pass | Theorem | Statement OK? | Proved? | Blocker |
 |------|---------|--------------|---------|---------|
 | Elaborate | elaborate_correct | YES | **PROVED** | — |
-| ClosureConvert | closureConvert_correct | YES — trace preservation with NoForInForOf | **PROVED** | — |
-| ANFConvert | anfConvert_correct | YES — observable trace preservation | 2 sorry | step_star (:94), halt_star .seq (:724) |
+| ClosureConvert | closureConvert_correct | YES — trace preservation with NoForInForOf | 1 sorry | catch-all `| _ => sorry` at :178 (env/heap correspondence needed) |
+| ANFConvert | anfConvert_correct | YES — observable trace preservation | 5 sorry | step_star (:94), halt_star .seq 4 sub-cases (:678,:681,:685,:691) |
 | Optimize | optimize_correct | YES — `∀ b, ANF.Behaves (optimize p) b ↔ ANF.Behaves p b` | **PROVED** | Identity pass — trivially correct |
-| Lower | lower_behavioral_correct | YES — `∀ trace, ANF.Behaves → IR.IRBehaves` | 1 sorry | LowerCorrect.lean:51. halt_sim PROVED. lower_behavioral_obs PROVED. **BLOCKED on wasmspec** LowerSimRel.step_sim (:4836) |
-| Emit | emit_behavioral_correct | YES — `∀ trace, IR.IRBehaves → Wasm.Behaves` | 1 sorry | EmitCorrect.lean:44. halt_sim PROVED. **BLOCKED on wasmspec** EmitSimRel.step_sim (:4931) |
+| Lower | lower_behavioral_correct | YES — `∀ trace, ANF.Behaves → IR.IRBehaves` | 1 sorry | LowerCorrect.lean:51. halt_sim PROVED. lower_behavioral_obs PROVED. **BLOCKED on wasmspec** LowerSimRel.step_sim (:4951) |
+| Emit | emit_behavioral_correct | YES — `∀ trace, IR.IRBehaves → Wasm.Behaves` | 1 sorry | EmitCorrect.lean:44. halt_sim PROVED. **BLOCKED on wasmspec** EmitSimRel.step_sim (:5049) |
 | EndToEnd | flat_to_wasm_correct | YES — partial composition (Flat→Wasm) | 1 sorry | EndToEnd.lean:55. Composition of above; last to prove |
 
-**Chain status**: All 6 Behaves relations DEFINED. All theorem STATEMENTS correct. **3 passes FULLY PROVED** (Elaborate, ClosureConvert, Optimize). **Sorry count in proof chain: 4** (2 ANFConvert + 2 Wasm step_sim). Both halt_sim theorems PROVED. lower_behavioral_obs PROVED. **Critical path**: (1) wasmspec proves LowerSimRel.step_sim + EmitSimRel.step_sim by case analysis on instructions. (2) proof agent closes ANF halt_star .seq case + step_star.
+**Chain status**: All 6 Behaves relations DEFINED. All theorem STATEMENTS correct. **2 passes FULLY PROVED** (Elaborate, Optimize). **Sorry count in proof chain: 10** (5 ANFConvert + 1 CC + 1 ANF/Semantics + 2 Wasm step_sim + 1 EndToEnd composition). Both halt_sim theorems PROVED. lower_behavioral_obs PROVED. **Critical path**: (1) wasmspec proves step?_none_implies_trivial_lit + LowerSimRel.step_sim + EmitSimRel.step_sim. (2) proof agent closes halt_star .seq sub-cases + step_star + CC catch-all.
 
 ## Agent Health
 
-| Agent | Status (2026-03-22T03:05) | Notes |
+| Agent | Status (2026-03-22T05:05) | Notes |
 |-------|---------------------|-------|
-| jsspec | **IDLE since 03-20** | Test262: 3/61 (STUCK 30+ hrs). Must diagnose runtime-exec wasm_rc=134 crashes. |
-| wasmspec | Completed (02:15) | **MILESTONE**: SimRel restructured, 7→2 sorries. step?_code_nonempty PROVED. Must prove step_sim by case analysis. |
-| proof | Completed (02:25) | halt_star .var/.this/compound PROVED. 2 sorries remain (step_star + halt_star .seq). |
+| jsspec | Running (05:00) | Test262: 3/61 (STUCK 36+ hrs). Last 3 runs: code quality only. Must diagnose wasm_rc=134. |
+| wasmspec | Completed (05:06) | 3 sorries (step_sim x2 + step?_none_implies_trivial_lit). No logged progress on step_sim for 2+ hours. |
+| proof | Completed (04:30) | Decomposed .seq into 4 sub-cases. 6 sorries total (5 ANFConvert + 1 CC catch-all). |

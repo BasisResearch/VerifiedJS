@@ -62,48 +62,51 @@ Then construct the matching Step derivation in Lean. If you cannot, your semanti
 3. Keep definitions structurally simple for proofs.
 4. Add @[simp] lemmas for everything the proof agent might need.
 
-## CURRENT PRIORITIES (2026-03-22T03:05)
+## CURRENT PRIORITIES (2026-03-22T05:05)
 
-### EXCELLENT WORK LAST RUN! Sorry count 7→2.
+### 3 SORRIES IN YOUR FILES — NO PROGRESS ON step_sim FOR 2 HOURS
 
-You successfully:
-- Removed `hstep` field from LowerSimRel/EmitSimRel (the recursive regress fix)
-- Fully proved LowerSimRel.init, EmitSimRel.init, lower_behavioral_obs
-- Proved step?_code_nonempty (166 instruction cases!)
+You have been completing runs but logging NO details. Your step_sim sorries have NOT moved. The proof agent is BLOCKED on you.
 
-### Your 2 remaining sorries:
+### Your 3 remaining sorries:
 
 | Line | Theorem | Description |
 |------|---------|-------------|
-| 4836 | LowerSimRel.step_sim | Case analysis on ANF instruction → matching IR step |
-| 4931 | EmitSimRel.step_sim | Case analysis on IR instruction → matching Wasm step |
+| 4951 | LowerSimRel.step_sim | Case analysis on ANF instruction → matching IR step |
+| 5049 | EmitSimRel.step_sim | Case analysis on IR instruction → matching Wasm step |
+| 739 (ANF/Semantics.lean) | step?_none_implies_trivial_lit | Halting characterization for ANF |
 
-### #1 CRITICAL: `LowerSimRel.step_sim` (line 4836)
+### #1 NEW: `step?_none_implies_trivial_lit` (ANF/Semantics.lean:739)
 
-This is the KEY blocker for the entire end-to-end proof. The architecture is now correct — SimRel has only state correspondence, step correspondence is this theorem.
+You added this theorem but left it sorry. The proof agent NEEDS this for halt_star. Prove it NOW.
 
-**Proof strategy**:
+**Proof sketch** (from your own doc comment):
+- Strong induction on expression depth
+- `.trivial (.var name)`: step? always returns some (env lookup or ReferenceError)
+- `.trivial (lit*)`: step? returns none — these ARE the literal trivials
+- `.let`, `.if`, `.throw`, etc.: step? always returns some
+- `.seq a b`, `.while_`, `.tryCatch`: step? returns none iff sub-expression stuck. By IH, sub is literal trivial, so exprValue? returns some, contradiction.
+
+This should be a straightforward case analysis. Use `lean_multi_attempt` to test.
+
+### #2 CRITICAL: `LowerSimRel.step_sim` (line 4951)
+
+KEY blocker for end-to-end proof. Strategy unchanged:
 1. `intro s1 s2 t s1' hrel hstep`
-2. Unfold `anfStepMapped` in `hstep` to get `ANF.step? s1 = some (ct, s1')`
-3. Unfold `ANF.step?` — case-split on `s1.expr`
-4. For each ANF expression form, use `hrel.hlower` to find the corresponding IR code
-5. Show `irStep?` on that IR code produces a matching step
-6. Construct the successor `LowerSimRel` (hlower preserved since lower is deterministic, hmod preserved since module unchanged)
+2. `simp only [anfStepMapped] at hstep` — unfold the step mapping
+3. `split at hstep` on the ANF.step? result
+4. Case-split on `s1.expr` — start with EASIEST cases (`.trivial (.lit v)`, `.trivial (.var x)`)
+5. Sorry harder cases (let-bindings, function calls)
 
-Start with the EASIEST cases: `.trivial (.lit v)`, `.trivial (.var x)`. These lower to simple IR instructions (const push, local.get). Sorry the harder cases (let-bindings, function calls) and come back to them.
+### #3: `EmitSimRel.step_sim` (line 5049)
 
-Use `lean_multi_attempt` at line 4836 to test: `["intro s1 s2 t s1' hrel hstep; simp [anfStepMapped] at hstep", "intro s1 s2 t s1' hrel hstep; unfold anfStepMapped at hstep"]`
-
-### #2: `EmitSimRel.step_sim` (line 4931)
-
-Same pattern as LowerSimRel.step_sim but for IR→Wasm. Each IR instruction emits specific Wasm instructions. Case-split on `irStep?` and show matching `Wasm.step?`.
+Same pattern for IR→Wasm.
 
 ### STRATEGY
-1. Attack `LowerSimRel.step_sim` — prove easy cases, sorry hard ones
-2. Then `EmitSimRel.step_sim` — same pattern
-3. Use `lean_goal` at each sorry to see exact proof state
-4. Use `lean_multi_attempt` BEFORE writing any tactic
-5. Each case proved unblocks the end-to-end theorem
+1. **FIRST**: Prove step?_none_implies_trivial_lit (ANF/Semantics.lean:739) — UNBLOCKS proof agent
+2. Then LowerSimRel.step_sim — break into sub-case sorries, prove easy ones
+3. Then EmitSimRel.step_sim — same pattern
+4. Use `lean_goal` → `lean_multi_attempt` → edit workflow
 
 ## GLOBAL GOAL -- DO NOT STOP
 Your job is done when:
