@@ -846,12 +846,10 @@ private theorem anfConvert_halt_star_aux
             have hbd2 : sf2.expr.depth ≤ N := by rw [he]; exact hbd
             have hwf2 : ExprWellFormed sf2.expr sf2.env := by
               rw [he, henv2]; intro x hfx
+              apply hwf x; rw [hsf]
               cases hfx with
-              | seq_l h' =>
-                have : VarFreeIn x (Flat.Expr.seq a b) := by rw [ha]; exact .seq_l _ _ _ (.seq_r _ _ _ h')
-                exact hwf x (by rw [hsf]; exact this)
-              | seq_r h' =>
-                exact hwf x (by rw [hsf]; exact .seq_r _ _ _ h')
+              | seq_l hfx' => rw [ha]; exact .seq_l _ _ _ (.seq_r _ _ _ hfx')
+              | seq_r hfx' => exact .seq_r _ _ _ hfx'
             obtain ⟨sf', evs, hsteps', hhalt', hobs', hrel'⟩ :=
               ih sa sf2 hbd2 hrel2 hstuck hwf2
             exact ⟨sf', .silent :: evs,
@@ -910,11 +908,11 @@ private theorem anfConvert_halt_star_aux
           have hwf3 : ExprWellFormed sf3.expr sf3.env := by
             rw [hsf3_expr, hsf3_env]; intro x hfx
             cases hfx with
-            | seq_l hfa2 =>
-              have : VarFreeIn x (Flat.Expr.seq a b) := by rw [ha]; exact .seq_l _ _ _ (.seq_r _ _ _ hfa2)
+            | seq_l h' =>
+              have : VarFreeIn x (Flat.Expr.seq a b) := by rw [ha]; exact .seq_l _ _ _ (.seq_r _ _ _ h')
               exact hwf x (by rw [hsf]; exact this)
-            | seq_r hfb =>
-              exact hwf x (by rw [hsf]; exact .seq_r _ _ _ hfb)
+            | seq_r h' =>
+              exact hwf x (by rw [hsf]; exact .seq_r _ _ _ h')
           obtain ⟨sf', evs, hsteps', hhalt', hobs', hrel'⟩ := ih sa sf3 hbd3 hrel3 hstuck hwf3
           let steps12 := Flat.Steps.tail (⟨hstep1⟩ : Flat.Step sf .silent sf2) (Flat.Steps.tail (⟨hstep2_eq⟩ : Flat.Step sf2 .silent sf3) hsteps')
           have hobsAll : observableTrace (.silent :: .silent :: evs) = [] := by simp [observableTrace_silent, hobs']

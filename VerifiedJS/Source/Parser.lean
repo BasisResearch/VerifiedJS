@@ -19,6 +19,7 @@ namespace VerifiedJS.Source
 structure ParserState where
   tokens : Array Token
   pos : Nat
+  noIn : Bool := false  -- ECMA-262 §13.7: suppress `in` as binary operator inside for-loop headers
   deriving Repr
 
 private def parseKeywordLiteral (s : String) : Option Expr :=
@@ -922,14 +923,19 @@ private partial def parseRelationalM : ParserM Expr := do
     else if (← consumePunct? ">") then
       let rhs <- parseShiftM
       loop (.binary .gt acc rhs)
-    else if (← consumeKeyword? "in") then
-      let rhs <- parseShiftM
-      loop (.binary .in acc rhs)
     else if (← consumeKeyword? "instanceof") then
       let rhs <- parseShiftM
       loop (.binary .instanceof acc rhs)
     else
-      pure acc
+      -- ECMA-262 §13.7: `in` suppressed in for-loop initializer (Expression[~In])
+      if !(← get).noIn then
+        if (← consumeKeyword? "in") then
+          let rhs <- parseShiftM
+          loop (.binary .in acc rhs)
+        else
+          pure acc
+      else
+        pure acc
   loop lhs
 
 private partial def parseEqualityM : ParserM Expr := do
@@ -1363,7 +1369,12 @@ private partial def parseForStmt : ParserM Stmt := do
       let body <- parseStmt
       pure (.for (some (.varDecl .const_ decls)) cond update body)
   else
+    -- ECMA-262 §13.7: for-loop initializer uses Expression[~In] to disambiguate for-in/of
+    let saved <- get
+    set { saved with noIn := true }
     let initExpr <- parseExprM
+    let st <- get
+    set { st with noIn := saved.noIn }
     if (← consumeKeyword? "in") then
       let rhs <- parseExprM
       expectPunct ")"
