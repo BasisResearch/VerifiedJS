@@ -5278,19 +5278,19 @@ theorem step_sim (prog : ANF.Program) (irmod : IRModule) :
         sorry
     | .trivial .litNull =>
         -- Literal null: ANF.step? returns none for literals, contradiction with heq
-        simp [ANF.step?] at heq
+        have h := ANF.step?_litNull s1; rw [show { s1 with expr := ANF.Expr.trivial .litNull } = s1 from by rw [hexpr]] at h; simp [h] at heq
     | .trivial .litUndefined =>
-        simp [ANF.step?] at heq
-    | .trivial (.litBool _) =>
-        simp [ANF.step?] at heq
-    | .trivial (.litNum _) =>
-        simp [ANF.step?] at heq
-    | .trivial (.litStr _) =>
-        simp [ANF.step?] at heq
-    | .trivial (.litObject _) =>
-        simp [ANF.step?] at heq
-    | .trivial (.litClosure _ _) =>
-        simp [ANF.step?] at heq
+        have h := ANF.step?_litUndefined s1; rw [show { s1 with expr := ANF.Expr.trivial .litUndefined } = s1 from by rw [hexpr]] at h; simp [h] at heq
+    | .trivial (.litBool b) =>
+        have h := ANF.step?_litBool s1 b; rw [show { s1 with expr := ANF.Expr.trivial (.litBool b) } = s1 from by rw [hexpr]] at h; simp [h] at heq
+    | .trivial (.litNum n) =>
+        have h := ANF.step?_litNum s1 n; rw [show { s1 with expr := ANF.Expr.trivial (.litNum n) } = s1 from by rw [hexpr]] at h; simp [h] at heq
+    | .trivial (.litStr str) =>
+        have h := ANF.step?_litStr s1 str; rw [show { s1 with expr := ANF.Expr.trivial (.litStr str) } = s1 from by rw [hexpr]] at h; simp [h] at heq
+    | .trivial (.litObject addr) =>
+        have h := ANF.step?_litObject s1 addr; rw [show { s1 with expr := ANF.Expr.trivial (.litObject addr) } = s1 from by rw [hexpr]] at h; simp [h] at heq
+    | .trivial (.litClosure fi ep) =>
+        have h := ANF.step?_litClosure s1 fi ep; rw [show { s1 with expr := ANF.Expr.trivial (.litClosure fi ep) } = s1 from by rw [hexpr]] at h; simp [h] at heq
     | .«let» name rhs body =>
         -- Let-binding: ANF evaluates rhs and binds result
         -- IR code is rhsCode ++ [localSet idx] ++ bodyCode
@@ -5744,7 +5744,8 @@ theorem ir_forward_sim (prog : ANF.Program) (irmod : IRModule)
       R (ANF.initialState prog) (irInitialState irmod) ∧
       IRForwardSim R anfStepMapped := by
   refine ⟨LowerSimRel prog irmod, ?_, ?_⟩
-  · exact LowerSimRel.init prog irmod hlower
+  · -- BLOCKED: requires LowerCodeCorr for initial program (needs lowerExpr public)
+    exact LowerSimRel.init prog irmod hlower (by sorry)
   · exact {
       step_sim := LowerSimRel.step_sim prog irmod
       halt_sim := LowerSimRel.halt_sim prog irmod
@@ -5758,7 +5759,8 @@ theorem ir_stutter_sim (prog : ANF.Program) (irmod : IRModule)
       R (ANF.initialState prog) (irInitialState irmod) ∧
       IRStutterSim R anfStepMapped := by
   refine ⟨LowerSimRel prog irmod, ?_, ?_⟩
-  · exact LowerSimRel.init prog irmod hlower
+  · -- BLOCKED: requires LowerCodeCorr for initial program (needs lowerExpr public)
+    exact LowerSimRel.init prog irmod hlower (by sorry)
   · exact {
       step_sim := LowerSimRel.step_sim_stutter prog irmod
       halt_sim := LowerSimRel.halt_sim prog irmod
@@ -5782,7 +5784,7 @@ theorem lower_behavioral_obs_correct (prog : ANF.Program) (irmod : IRModule)
     ∀ trace, ANF.Behaves prog trace →
       IRBehavesObs irmod (observableEvents (traceListFromCore trace)) := by
   exact lower_behavioral_obs prog irmod hlower
-    (LowerSimRel.init prog irmod hlower)
+    (LowerSimRel.init prog irmod hlower (by sorry))
     { step_sim := LowerSimRel.step_sim_stutter prog irmod
       halt_sim := LowerSimRel.halt_sim prog irmod }
 
