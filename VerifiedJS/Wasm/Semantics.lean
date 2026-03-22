@@ -5161,6 +5161,10 @@ inductive LowerCodeCorr : ANF.Expr → List IRInstr → Prop where
   | lit_object (addr : Nat) (s : String) : LowerCodeCorr (.trivial (.litObject addr)) [.const_ .i32 s]
   | lit_closure (fi : ANF.FuncIdx) (ep : Nat) (instrs : List IRInstr) :
       LowerCodeCorr (.trivial (.litClosure fi ep)) instrs
+  /-- Post-step halted: a non-variable trivial with empty code (both sides halted).
+      This arises after a var lookup or other step resolves to a literal value. -/
+  | value_done (t : ANF.Trivial) (ht : ∀ name, t ≠ .var name) :
+      LowerCodeCorr (.trivial t) []
   /-- A variable reference lowers to a local.get. -/
   | var (name : ANF.VarName) (idx : Nat) :
       LowerCodeCorr (.trivial (.var name)) [.localGet idx]
