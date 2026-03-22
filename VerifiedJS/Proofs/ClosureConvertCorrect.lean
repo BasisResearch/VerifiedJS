@@ -106,11 +106,20 @@ private theorem firstNonValueProp_none_implies_values (l : List (Flat.PropName �
         exact ⟨v :: vs, by simp [Flat.valuesFromExprList?, Flat.exprValue?, hvs]⟩
     | _ => all_goals (simp [Flat.firstNonValueProp] at h)
 
+/-- Environment correspondence: every Flat binding has a corresponding Core binding
+    (modulo value conversion). This is the Flat⊆Core direction, which holds vacuously
+    for the initial state (empty Flat env). -/
+private def EnvCorr (cenv : Core.Env) (fenv : Flat.Env) : Prop :=
+  ∀ name fv, fenv.lookup name = some fv →
+    ∃ cv, cenv.lookup name = some cv ∧ fv = Flat.convertValue cv
+
 /-- Simulation relation for closure conversion: Flat and Core states
-    have matching traces, and expression correspondence through the conversion. -/
+    have matching traces, environment correspondence, and expression
+    correspondence through the conversion. -/
 private def CC_SimRel (_s : Core.Program) (_t : Flat.Program)
     (sf : Flat.State) (sc : Core.State) : Prop :=
   sf.trace = sc.trace ∧
+  EnvCorr sc.env sf.env ∧
   ∃ (scope : List String) (envVar : String) (envMap : Flat.EnvMapping) (st st' : Flat.CCState),
     (sf.expr, st') = Flat.convertExpr sc.expr scope envVar envMap st
 
@@ -119,8 +128,10 @@ private theorem closureConvert_init_related
     (h : Flat.closureConvert s = .ok t) :
     CC_SimRel s t (Flat.initialState t) (Core.initialState s) := by
   unfold CC_SimRel Flat.initialState Core.initialState
-  constructor
-  · rfl
+  refine ⟨rfl, ?_, ?_⟩
+  · -- EnvCorr: Flat env is empty, so vacuously true
+    intro name fv hlookup
+    simp [Flat.Env.empty, Flat.Env.lookup] at hlookup
   · unfold Flat.closureConvert at h
     simp only [Except.ok.injEq] at h
     let st2 := (Flat.convertFuncDefs s.functions.toList Flat.CCState.empty).fst.foldl
@@ -135,7 +146,7 @@ private theorem closureConvert_step_simulation
     ∀ (sf : Flat.State) (sc : Core.State) (ev : Core.TraceEvent) (sf' : Flat.State),
       CC_SimRel s t sf sc → Flat.Step sf ev sf' →
       ∃ sc', Core.Step sc ev sc' ∧ CC_SimRel s t sf' sc' := by
-  intro sf sc ev sf' ⟨htrace, scope, envVar, envMap, st, st', hconv⟩ ⟨hstep⟩
+  intro sf sc ev sf' ⟨htrace, henvCorr, scope, envVar, envMap, st, st', hconv⟩ ⟨hstep⟩
   -- Case analysis on the Core expression sc.expr.
   -- convertExpr maps sc.expr to sf.expr; step? sf = some (ev, sf').
   cases hsc : sc.expr with
