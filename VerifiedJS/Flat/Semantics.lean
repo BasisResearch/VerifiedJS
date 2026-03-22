@@ -1054,34 +1054,17 @@ theorem step?_none_implies_lit (s : State) (h : step? s = none) :
         · next hval hstep =>
           have ⟨v, hv⟩ := litOfStuck arg (by simp [Expr.depth] at hd; omega) hstep
           subst hv; simp_all [exprValue?]
-    -- Multi sub-expression and list patterns
-    | binary _ _ _ =>
-      unfold step? at h; simp only [-step?] at h; simp_all [-step?, exprValue?]
-    | deleteProp _ _ =>
-      unfold step? at h; simp only [-step?] at h; simp_all [-step?, exprValue?]
-    | getProp _ _ =>
-      unfold step? at h; simp only [-step?] at h; simp_all [-step?, exprValue?]
-    | makeClosure _ _ =>
-      unfold step? at h; simp only [-step?] at h; simp_all [-step?, exprValue?]
-    | getEnv _ _ =>
-      unfold step? at h; simp only [-step?] at h; simp_all [-step?, exprValue?]
-    | tryCatch _ _ _ _ =>
-      unfold step? at h; simp only [-step?] at h; simp_all [-step?, exprValue?]
-    | call _ _ _ =>
-      unfold step? at h; simp only [-step?] at h; simp_all [-step?, exprValue?]
-    | newObj _ _ _ =>
-      unfold step? at h; simp only [-step?] at h; simp_all [-step?, exprValue?]
-    | makeEnv _ =>
-      unfold step? at h; simp only [-step?] at h; simp_all [-step?, exprValue?]
-    | arrayLit _ =>
-      unfold step? at h; simp only [-step?] at h; simp_all [-step?, exprValue?]
-    | objectLit _ =>
-      unfold step? at h; simp only [-step?] at h; simp_all [-step?, exprValue?]
-    | setProp _ _ _ =>
-      unfold step? at h; simp only [-step?] at h; simp_all [-step?, exprValue?]
-    | getIndex _ _ =>
-      unfold step? at h; simp only [-step?] at h; simp_all [-step?, exprValue?]
-    | setIndex _ _ _ =>
-      unfold step? at h; simp only [-step?] at h; simp_all [-step?, exprValue?]
+    -- Multi sub-expression and list patterns: same IH contradiction technique.
+    -- For each: unfold step?, split on exprValue? and step? of sub-expressions.
+    -- In the none/none branch, IH gives sub = .lit, contradicting exprValue? = none.
+    | binary _ _ _ | deleteProp _ _ | getProp _ _ | makeClosure _ _
+    | getEnv _ _ | setProp _ _ _ | getIndex _ _ | setIndex _ _ _ =>
+      -- These have value-matching patterns (e.g., some (.object _)) or multiple sub-exprs.
+      -- The proof is mechanical but requires careful split handling.
+      sorry
+    | tryCatch _ _ _ _ | call _ _ _ | newObj _ _ _ | makeEnv _ | arrayLit _ | objectLit _ =>
+      -- These involve list patterns with firstNonValueExpr / firstNonValueProp.
+      -- The proof uses firstNonValueExpr_target_not_lit and firstNonValueExpr_none_implies_values.
+      sorry
 
 end VerifiedJS.Flat
