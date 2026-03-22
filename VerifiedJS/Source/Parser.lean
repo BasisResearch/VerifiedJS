@@ -167,6 +167,7 @@ private partial def parseImportDeclStmt : ParserM Stmt := do
     match tk.kind with
     | .string s => let _ <- bump; pure s
     | _ => throw "Expected import source string literal"
+  let skipImportAttributes := skipImportExportAttributes
 
   let parseNamedSpecifiers : ParserM (List ImportSpecifier) := do
     expectPunct "{"
@@ -203,15 +204,20 @@ private partial def parseImportDeclStmt : ParserM Stmt := do
   match next.kind with
   | .string source =>
     let _ <- bump
+    skipImportAttributes
     pure (.import_ [] source)
   | .punct "*" =>
     let ns <- parseNamespaceSpecifier
     expectWord "from"
-    pure (.import_ [ns] (← parseSourceString))
+    let src <- parseSourceString
+    skipImportAttributes
+    pure (.import_ [ns] src)
   | .punct "{" =>
     let named <- parseNamedSpecifiers
     expectWord "from"
-    pure (.import_ named (← parseSourceString))
+    let src <- parseSourceString
+    skipImportAttributes
+    pure (.import_ named src)
   | .ident _ | .kw _ =>
     let defaultBinding <- parseIdentLike
     let defaultSpec := ImportSpecifier.default_ defaultBinding
@@ -226,10 +232,14 @@ private partial def parseImportDeclStmt : ParserM Stmt := do
           pure (defaultSpec :: named)
         | _ => throw "Expected `*` or `{` after default import binding"
       expectWord "from"
-      pure (.import_ combined (← parseSourceString))
+      let src <- parseSourceString
+      skipImportAttributes
+      pure (.import_ combined src)
     else
       expectWord "from"
-      pure (.import_ [defaultSpec] (← parseSourceString))
+      let src <- parseSourceString
+      skipImportAttributes
+      pure (.import_ [defaultSpec] src)
   | _ =>
     throw "Invalid import declaration"
 
@@ -258,6 +268,16 @@ private partial def skipBalancedPunct (openP closeP : String) (depth : Nat := 1)
       else
         skipBalancedPunct openP closeP depth
     | _ => skipBalancedPunct openP closeP depth
+
+/-- ECMA-262 §16.2.2 Import Attributes: skip optional `with { ... }` after source -/
+private partial def skipImportExportAttributes : ParserM Unit := do
+  skipNewlines
+  if (← consumeKeyword? "with") then
+    skipNewlines
+    expectPunct "{"
+    skipBalancedPunct "{" "}"
+  else
+    pure ()
 
 private partial def parseBindingPatternM : ParserM Pattern := do
   skipNewlines
@@ -1568,6 +1588,7 @@ private partial def parseStmt : ParserM Stmt := do
         match tk.kind with
         | .string s => let _ <- bump; pure s
         | _ => throw "Expected export source string literal")
+      skipImportExportAttributes
       parseSemiOpt
       pure (.export_ (.all source alias_))
     else if (← consumePunct? "{") then
@@ -1599,7 +1620,7 @@ private partial def parseStmt : ParserM Stmt := do
         if (← consumeWord? "from") then
           let tk <- peek
           match tk.kind with
-          | .string s => let _ <- bump; pure (some s)
+          | .string s => let _ <- bump; skipImportExportAttributes; pure (some s)
           | _ => throw "Expected export source string literal"
         else
           pure none

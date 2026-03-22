@@ -840,8 +840,32 @@ private def runtimeHelpers : Array IR.IRFunc :=
       body := [mkBoxedConst encodeUndefinedBox, IR.IRInstr.return_] },
     { name := "__rt_makeEnv", params := [], results := [.f64], locals := []
       body := [mkBoxedConst (Runtime.NanBoxed.encodeObjectRef 1), IR.IRInstr.return_] },
-    { name := "__rt_makeClosure", params := [.f64, .f64], results := [.f64], locals := []
-      body := [mkBoxedConst (Runtime.NanBoxed.encodeObjectRef 2), IR.IRInstr.return_] },
+    { name := "__rt_makeClosure", params := [.f64, .f64], results := [.f64], locals := [.i32, .i32]
+      body :=
+        [ -- param 0 = funcIdx (NaN-boxed Int32), param 1 = env (NaN-boxed value)
+          -- local 2 = funcIdx (i32), local 3 = envAddr (i32)
+          IR.IRInstr.localGet 0
+        , IR.IRInstr.unOp .i64 "reinterpret_f64"
+        , IR.IRInstr.const_ .i64 s!"{Runtime.NanBoxed.payloadMask.toNat}"
+        , IR.IRInstr.binOp .i64 "and"
+        , IR.IRInstr.unOp .i32 "wrap_i64"
+        , IR.IRInstr.localSet 2
+        , IR.IRInstr.localGet 1
+        , IR.IRInstr.unOp .i64 "reinterpret_f64"
+        , IR.IRInstr.const_ .i64 s!"{Runtime.NanBoxed.payloadMask.toNat}"
+        , IR.IRInstr.binOp .i64 "and"
+        , IR.IRInstr.unOp .i32 "wrap_i64"
+        , IR.IRInstr.localSet 3
+        , IR.IRInstr.localGet 2
+        , IR.IRInstr.const_ .i32 "65536"
+        , IR.IRInstr.binOp .i32 "mul"
+        , IR.IRInstr.localGet 3
+        , IR.IRInstr.binOp .i32 "add"
+        , IR.IRInstr.unOp .i64 "extend_i32_u"
+        , IR.IRInstr.const_ .i64 s!"{(Runtime.NanBoxed.encodeObjectRef 0).bits.toNat}"
+        , IR.IRInstr.binOp .i64 "or"
+        , IR.IRInstr.unOp .f64 "reinterpret_i64"
+        , IR.IRInstr.return_ ] },
     { name := "__rt_objectLit", params := [], results := [.f64], locals := [.i32]
       body :=
         [ -- Allocate empty object on heap
