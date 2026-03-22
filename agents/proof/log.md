@@ -643,3 +643,22 @@ normalizeExpr (.seq a b) k DROPS the evaluation of a when a is trivial (var/lit/
 
 ## Run: 2026-03-22T04:30:01+00:00
 
+- Build: PASS (ANFConvertCorrect + ClosureConvertCorrect)
+- Fixed build breakages caused by wasmspec modifying ANF.Semantics (step? became recursive):
+  - Redirected ANF_step?_none_implies_trivial to use wasmspec's step?_none_implies_trivial_lit
+  - Fixed anfConvert_init_related (extract existential from convert_main_from_normalizeExpr)
+  - Fixed normalizeExpr_compound_not_trivial: updated simp calls for StateT.bind/run changes
+  - Restored CC step_simulation sorry (catch-all pattern was broken for non-lit constructors)
+- Restructured anfConvert_halt_star with strong induction on sf.expr.depth:
+  - Created anfConvert_halt_star_aux with fuel parameter N
+  - Base case (depth 0): lit halts, var/this contradiction, seq impossible, others compound
+  - Inductive case: lit/var/this same, seq cases split on a
+- Sorry inventory (6 locations, 2 theorems in my files):
+  1. `anfConvert_step_star` (line 94) — 1 sorry, stuttering simulation
+  2. `anfConvert_halt_star_aux` .seq.var (line 678) — needs well-formedness
+  3. `anfConvert_halt_star_aux` .seq.this (line 681) — needs well-formedness
+  4. `anfConvert_halt_star_aux` .seq.lit (line 685) — provable with IH, needs pushTrace handling
+  5. `anfConvert_halt_star_aux` .seq.seq (line 691) — needs recursive Flat stepping
+  6. `closureConvert_step_simulation` catch-all (CC:178) — needs CC_SimRel strengthening
+- Total project sorry count: 11 (6 mine, 5 others)
+- E2E: running

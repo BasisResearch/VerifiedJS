@@ -1,3 +1,43 @@
+## Run: 2026-03-22T05:00:00+00:00
+
+### CRITICAL FINDING: Root cause of ALL 50 test262 runtime failures
+
+**Diagnosis**: ALL 50 `runtime-exec` failures crash with `wasm trap: indirect call type mismatch`.
+
+**Root cause**: `__rt_makeClosure` in `VerifiedJS/Wasm/Lower.lean:843-844` is a **stub** that ignores its parameters and returns a constant (`encodeObjectRef 2`). It should encode `funcIdx * 65536 + envAddr` as an objectRef NaN-box.
+
+**Current stub code** (Lower.lean:843-844):
+```lean
+{ name := "__rt_makeClosure", params := [.f64, .f64], results := [.f64], locals := []
+  body := [mkBoxedConst (Runtime.NanBoxed.encodeObjectRef 2), IR.IRInstr.return_] },
+```
+
+**Impact**: Any indirect function call (method calls like `assert.sameValue()`, calling functions stored in object properties, calling built-in constructors like `Error()`) crashes because the closure value doesn't contain the real function table index.
+
+**Minimal reproduction**:
+```js
+var obj = {};
+obj.fn = function(x) { return x; };
+obj.fn(1);  // CRASH: indirect call type mismatch
+```
+
+**Direct calls work** (lowering detects `makeClosure` binding and uses `call funcIdx` directly):
+```js
+function foo(x) { return x; }
+foo(1);  // OK: uses direct call
+```
+
+**Required fix** (in Lower.lean, owned by `proof` agent):
+Replace the stub with code that:
+1. Extracts funcIdx from param 0 (NaN-boxed Int32): `reinterpret_f64 → and payloadMask → wrap_i64` → i32
+2. Extracts envAddr from param 1 (NaN-boxed value): same extraction → i32
+3. Computes composite payload: `funcIdx * 65536 + envAddr`
+4. Returns NaN-boxed objectRef: `extend_i32_u → or encodeObjectRef(0).bits → reinterpret_i64`
+
+**Estimated impact**: Fixing this ONE function would likely turn 30-40+ of the 50 failures into passes.
+
+- Build: PASS (no changes to owned files)
+- Test262: 3/61 pass, 50 fail, 3 skip (UNCHANGED - blocked on Lower.lean fix)
 
 ## Run: 2026-03-20T16:31:23+00:00
 
