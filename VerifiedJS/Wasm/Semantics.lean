@@ -5383,53 +5383,53 @@ inductive EmitCodeCorr : List IRInstr → List Instr → Prop where
   /-- i32 const maps to i32.const. -/
   | const_i32 (v : String) (n : UInt32) (rest_ir : List IRInstr) (rest_w : List Instr) :
       EmitCodeCorr rest_ir rest_w →
-      EmitCodeCorr (.const_ .i32 v :: rest_ir) (.i32_const n :: rest_w)
+      EmitCodeCorr (.const_ .i32 v :: rest_ir) (.i32Const n :: rest_w)
   /-- i64 const maps to i64.const. -/
   | const_i64 (v : String) (n : UInt64) (rest_ir : List IRInstr) (rest_w : List Instr) :
       EmitCodeCorr rest_ir rest_w →
-      EmitCodeCorr (.const_ .i64 v :: rest_ir) (.i64_const n :: rest_w)
+      EmitCodeCorr (.const_ .i64 v :: rest_ir) (.i64Const n :: rest_w)
   /-- f64 const maps to f64.const. -/
   | const_f64 (v : String) (f : Float) (rest_ir : List IRInstr) (rest_w : List Instr) :
       EmitCodeCorr rest_ir rest_w →
-      EmitCodeCorr (.const_ .f64 v :: rest_ir) (.f64_const f :: rest_w)
+      EmitCodeCorr (.const_ .f64 v :: rest_ir) (.f64Const f :: rest_w)
   /-- localGet maps to local.get. -/
   | localGet (idx : Nat) (rest_ir : List IRInstr) (rest_w : List Instr) :
       EmitCodeCorr rest_ir rest_w →
-      EmitCodeCorr (.localGet idx :: rest_ir) (.local_get idx :: rest_w)
+      EmitCodeCorr (.localGet idx :: rest_ir) (.localGet idx :: rest_w)
   /-- localSet maps to local.set. -/
   | localSet (idx : Nat) (rest_ir : List IRInstr) (rest_w : List Instr) :
       EmitCodeCorr rest_ir rest_w →
-      EmitCodeCorr (.localSet idx :: rest_ir) (.local_set idx :: rest_w)
+      EmitCodeCorr (.localSet idx :: rest_ir) (.localSet idx :: rest_w)
   /-- globalGet maps to global.get. -/
   | globalGet (idx : Nat) (rest_ir : List IRInstr) (rest_w : List Instr) :
       EmitCodeCorr rest_ir rest_w →
-      EmitCodeCorr (.globalGet idx :: rest_ir) (.global_get idx :: rest_w)
+      EmitCodeCorr (.globalGet idx :: rest_ir) (.globalGet idx :: rest_w)
   /-- globalSet maps to global.set. -/
   | globalSet (idx : Nat) (rest_ir : List IRInstr) (rest_w : List Instr) :
       EmitCodeCorr rest_ir rest_w →
-      EmitCodeCorr (.globalSet idx :: rest_ir) (.global_set idx :: rest_w)
+      EmitCodeCorr (.globalSet idx :: rest_ir) (.globalSet idx :: rest_w)
   /-- binOp i32 "add" maps to i32.add. -/
   | binOp_i32_add (rest_ir : List IRInstr) (rest_w : List Instr) :
       EmitCodeCorr rest_ir rest_w →
-      EmitCodeCorr (.binOp .i32 "add" :: rest_ir) (.i32_add :: rest_w)
+      EmitCodeCorr (.binOp .i32 "add" :: rest_ir) (.i32Add :: rest_w)
   /-- binOp i32 "sub" maps to i32.sub. -/
   | binOp_i32_sub (rest_ir : List IRInstr) (rest_w : List Instr) :
       EmitCodeCorr rest_ir rest_w →
-      EmitCodeCorr (.binOp .i32 "sub" :: rest_ir) (.i32_sub :: rest_w)
+      EmitCodeCorr (.binOp .i32 "sub" :: rest_ir) (.i32Sub :: rest_w)
   /-- binOp i32 "mul" maps to i32.mul. -/
   | binOp_i32_mul (rest_ir : List IRInstr) (rest_w : List Instr) :
       EmitCodeCorr rest_ir rest_w →
-      EmitCodeCorr (.binOp .i32 "mul" :: rest_ir) (.i32_mul :: rest_w)
+      EmitCodeCorr (.binOp .i32 "mul" :: rest_ir) (.i32Mul :: rest_w)
   /-- call maps to call. -/
-  | call (funcIdx : Nat) (rest_ir : List IRInstr) (rest_w : List Instr) :
+  | call_ (funcIdx : Nat) (rest_ir : List IRInstr) (rest_w : List Instr) :
       EmitCodeCorr rest_ir rest_w →
       EmitCodeCorr (.call funcIdx :: rest_ir) (.call funcIdx :: rest_w)
   /-- drop maps to drop. -/
-  | drop (rest_ir : List IRInstr) (rest_w : List Instr) :
+  | drop_ (rest_ir : List IRInstr) (rest_w : List Instr) :
       EmitCodeCorr rest_ir rest_w →
       EmitCodeCorr (.drop :: rest_ir) (.drop :: rest_w)
   /-- return_ maps to return. -/
-  | return_ (rest_ir : List IRInstr) (rest_w : List Instr) :
+  | return__ (rest_ir : List IRInstr) (rest_w : List Instr) :
       EmitCodeCorr rest_ir rest_w →
       EmitCodeCorr (.return_ :: rest_ir) (.return_ :: rest_w)
   /-- General case for instructions not yet decomposed. -/
@@ -5484,7 +5484,7 @@ theorem init (irmod : IRModule) (wmod : Module)
     · -- startFunc = some idx: IR has [call idx], Wasm has [call idx] (by hstart)
       rename_i idx hsf
       rw [hstart, hsf]
-      exact .call idx [] [] .nil
+      exact .call_ idx [] [] .nil
     · -- startFunc = none: both have []
       rename_i hsf
       rw [hstart, hsf]
