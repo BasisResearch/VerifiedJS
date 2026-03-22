@@ -528,13 +528,37 @@ private partial def parseArrayLiteral : ParserM Expr := do
   loop []
 
 private partial def parseClassElement : ParserM ClassMember := do
-  let isStatic <- consumeKeyword? "static"
-  let kind : MethodKind <-
-    if (← consumeKeyword? "get") then pure .get
-    else if (← consumeKeyword? "set") then pure .set
-    else pure .method
+  let isStatic <- consumeWord? "static"
+  -- Static initialization block: static { ... } (ECMA-262 §14.6 ClassStaticBlock)
+  if isStatic then do
+    let t <- peek
+    if tokenIsPunct t "{" then do
+      let _ <- bump  -- consume '{'
+      skipBalancedBlock 1
+      return .staticBlock []
+  -- get/set/async are contextual keywords: only treated as modifiers
+  -- when followed by a property name (not by '(' which means they ARE the name)
+  let kind : MethodKind <- do
+    let t <- peek
+    let t1 <- peekN 1
+    let isModifier := !tokenIsPunct t1 "(" && !tokenIsPunct t1 "="
+        && !tokenIsPunct t1 ";" && !tokenIsPunct t1 "}" && !tokenIsPunct t1 ","
+    match t.kind with
+    | .ident "get" | .kw "get" =>
+      if isModifier then let _ <- bump; pure .get else pure .method
+    | .ident "set" | .kw "set" =>
+      if isModifier then let _ <- bump; pure .set else pure .method
+    | _ => pure .method
   let isGenerator <- consumePunct? "*"
-  let isAsync <- consumeKeyword? "async"
+  let isAsync <- do
+    let t <- peek
+    let t1 <- peekN 1
+    match t.kind with
+    | .ident "async" | .kw "async" =>
+      if !tokenIsPunct t1 "(" && !tokenIsPunct t1 "=" then
+        let _ <- bump; pure true
+      else pure false
+    | _ => pure false
   let key <- parsePropertyKey
   if (← consumePunct? "(") then
     let st <- get

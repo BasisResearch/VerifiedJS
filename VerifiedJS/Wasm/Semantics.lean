@@ -2761,6 +2761,13 @@ def observableWasmEvents : List TraceEvent → List TraceEvent
     | silent => simp [observableWasmEvents, ih]
     | trap msg => simp [observableWasmEvents, ih]
 
+/-- observableWasmEvents of a singleton: only traps are observable. -/
+@[simp] theorem observableWasmEvents_singleton_silent :
+    observableWasmEvents [TraceEvent.silent] = [] := rfl
+
+@[simp] theorem observableWasmEvents_singleton_trap (msg : String) :
+    observableWasmEvents [TraceEvent.trap msg] = [.trap msg] := rfl
+
 /-- Behavioral equivalence up to silent events at the Wasm level.
     The Wasm module produces a trace whose observable events match `obs`. -/
 def BehavesObs (m : Module) (obs : List TraceEvent) : Prop :=
@@ -3539,6 +3546,40 @@ theorem IRSteps_snoc {s1 s2 s3 : IRExecState} {ts : List TraceEvent} {t : TraceE
 @[simp] theorem traceListToWasm_append (t1 t2 : List TraceEvent) :
     traceListToWasm (t1 ++ t2) = traceListToWasm t1 ++ traceListToWasm t2 := by
   simp [traceListToWasm, List.map_append]
+
+/-! ### observableWasmEvents ∘ traceToWasm composition lemmas -/
+
+/-- observableWasmEvents of a single traceToWasm application. -/
+@[simp] theorem observableWasmEvents_traceToWasm_silent :
+    Wasm.observableWasmEvents [traceToWasm .silent] = [] := rfl
+@[simp] theorem observableWasmEvents_traceToWasm_trap (msg : String) :
+    Wasm.observableWasmEvents [traceToWasm (.trap msg)] = [.trap msg] := rfl
+@[simp] theorem observableWasmEvents_traceToWasm_log (s : String) :
+    Wasm.observableWasmEvents [traceToWasm (.log s)] = [] := rfl
+@[simp] theorem observableWasmEvents_traceToWasm_error (s : String) :
+    Wasm.observableWasmEvents [traceToWasm (.error s)] = [] := rfl
+
+/-- observableWasmEvents distributes through traceListToWasm. -/
+@[simp] theorem observableWasmEvents_traceListToWasm_nil :
+    Wasm.observableWasmEvents (traceListToWasm []) = [] := rfl
+
+@[simp] theorem observableWasmEvents_traceListToWasm_cons (t : TraceEvent) (ts : List TraceEvent) :
+    Wasm.observableWasmEvents (traceListToWasm (t :: ts)) =
+      Wasm.observableWasmEvents [traceToWasm t] ++ Wasm.observableWasmEvents (traceListToWasm ts) := by
+  simp [traceListToWasm, Wasm.observableWasmEvents_append]
+
+/-- observableWasmEvents of traceListToWasm only keeps traps. -/
+theorem observableWasmEvents_traceListToWasm (ts : List TraceEvent) :
+    Wasm.observableWasmEvents (traceListToWasm ts) =
+      (ts.filter (fun t => match t with | .trap _ => true | _ => false)).map traceToWasm := by
+  induction ts with
+  | nil => simp [traceListToWasm]
+  | cons t ts ih =>
+    cases t with
+    | silent => simp [traceListToWasm, Wasm.observableWasmEvents, List.filter, ih]
+    | trap msg => simp [traceListToWasm, Wasm.observableWasmEvents, List.filter, ih]
+    | log msg => simp [traceListToWasm, Wasm.observableWasmEvents, List.filter, ih]
+    | error msg => simp [traceListToWasm, Wasm.observableWasmEvents, List.filter, ih]
 
 /-! ### Core ↔ IR Trace Event Mappings (for LowerCorrect proof chain)
 

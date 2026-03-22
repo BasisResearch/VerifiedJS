@@ -1,4 +1,77 @@
 
+## Run: 2026-03-22T03:15:01+00:00
+
+### Stuttering simulation framework + observable event infrastructure
+
+**Key architectural fix: added stuttering simulation alongside 1:1 framework.**
+
+The 1:1 `IRForwardSim` and `WasmForwardSim` require exactly one target step per source step.
+This is architecturally wrong because:
+- Lower: one ANF step (e.g. `.let name rhs body` evaluating entire RHS) compiles to
+  multiple IR instructions (rhsCode ++ [localSet idx] ++ bodyCode)
+- Emit: some IR instructions (e.g. f64 const, negation) emit to multiple Wasm instructions
+
+**Solution**: Added stuttering simulation framework that allows one source step to correspond
+to one or more target steps, with observable event equivalence.
+
+**Changes:**
+1. **Wasm namespace** (before line 2738):
+   - Added `observableWasmEvents` function + `@[simp]` lemmas (nil, cons_silent, cons_trap, append)
+   - Added `observableWasmEvents_singleton_*` simp lemmas
+   - Added `BehavesObs` definition (Wasm behavioral equiv up to silent events)
+
+2. **IR namespace — observable events moved earlier** (before SimRels):
+   - Moved `observableEvents` and all its simp lemmas to before `LowerSimRel`/`EmitSimRel`
+   - This allows step_sim_stutter theorems to reference `observableEvents` in their types
+
+3. **LowerSimRel** (lines ~4890-4920):
+   - `step_sim` (1:1): kept for backward compat with LowerCorrect.lean
+   - `step_sim_stutter` (NEW): returns `IRSteps` (multi-step) with `observableEvents` match
+   - Derived from `step_sim` (1:1 implies stuttering with single-element trace)
+
+4. **EmitSimRel** (lines ~4990-5020):
+   - `step_sim` (1:1): kept for backward compat with EmitCorrect.lean
+   - `step_sim_stutter` (NEW): returns `Wasm.Steps` (multi-step) with `observableWasmEvents` match
+   - Derived from `step_sim`
+
+5. **New stuttering framework for emit** (lines ~5200-5270):
+   - `WasmStutterSim` structure (IR→Wasm stuttering)
+   - `WasmStutterSim_steps` theorem (composition through multi-step)
+   - `WasmBehavesObs` definition
+   - `WasmStutterSim_behavioral` theorem (behavioral preservation)
+   - `emit_stutter_sim`: constructs `WasmStutterSim` from `EmitSimRel`
+   - `emit_behavioral_obs_correct`: IR execution → Wasm behavioral obs
+
+6. **Restored 1:1 framework** (for backward compatibility):
+   - `ir_forward_sim` and `lower_behavioral_correct'` (1:1, used by LowerCorrect.lean)
+   - `emit_forward_sim` and `emit_behavioral_correct'` (1:1, used by EmitCorrect.lean)
+
+7. **Added stuttering framework**:
+   - `ir_stutter_sim` and `lower_behavioral_obs_correct` (stuttering, architecturally correct)
+
+8. **Composition lemmas** (IR namespace):
+   - `observableWasmEvents_traceToWasm_*` — 4 simp lemmas for each IR event type
+   - `observableWasmEvents_traceListToWasm_nil/cons` — distributes through traceListToWasm
+   - `observableWasmEvents_traceListToWasm` — only traps survive the IR→Wasm trace mapping
+
+**Sorry inventory: 2 locations** (unchanged)
+1. `LowerSimRel.step_sim` (line ~4901) — 1:1 ANF→IR, sorry
+2. `EmitSimRel.step_sim` (line ~4999) — 1:1 IR→Wasm, sorry
+
+Both `step_sim_stutter` variants derive from the 1:1 versions (sorry propagates).
+The `step_sim_stutter` theorems have the CORRECT architecture for future proof work
+once code correspondence is added to the SimRels.
+
+**Build status:** PASSING, only 2 sorry warnings
+
+**Architecture note for proof agent:** When switching to stuttering, the proof files
+(LowerCorrect.lean, EmitCorrect.lean, EndToEnd.lean) need to be updated to use
+`IRStutterSim`/`WasmStutterSim` instead of `IRForwardSim`/`WasmForwardSim`. The
+stuttering versions are available: `ir_stutter_sim`, `emit_stutter_sim`,
+`lower_behavioral_obs_correct`, `emit_behavioral_obs_correct`. The 1:1 versions
+are kept for backward compatibility but are architecturally wrong (unprovable
+without code correspondence for multi-instruction lowering/emission).
+
 ## Run: 2026-03-22T02:15:01+00:00
 
 ### Eliminated recursive sorry pattern — sorry count 7→3
