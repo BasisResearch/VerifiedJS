@@ -2474,8 +2474,7 @@ theorem stuck_implies_lit {s : State} (hstuck : step? s = none) :
     all_goals
       simp only [State.mk.injEq, true_and] at *
       subst_vars
-      simp_all [sizeOf, Nat.lt_add_of_pos_right, Nat.lt_add_of_pos_left]
-      omega
+      first | simp +arith [sizeOf, Expr._sizeOf_1] | (simp +arith [sizeOf, Expr._sizeOf_1]; omega)
 
 theorem Behaves_final_lit {p : Program} {b : List TraceEvent}
     (hB : Behaves p b) :
