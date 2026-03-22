@@ -294,7 +294,35 @@ private theorem closureConvert_step_simulation
     exact ⟨hsf'_trace_eq_sc'_trace, scope, envVar, envMap, st,
       (Flat.convertExpr body scope envVar envMap st).2,
       by rw [hsc'_expr]; simp [Flat.convertExpr, hsf'_expr]⟩
-  | _ => sorry
+  -- Remaining cases require env/heap correspondence in CC_SimRel.
+  -- ARCHITECTURAL NOTE: `.return`, `.yield`, `.await` produce DIFFERENT events
+  -- in Core (.error) vs Flat (.silent), so step_simulation as stated is FALSE
+  -- for those cases. Need observable-trace equivalence instead.
+  | var _ => sorry -- needs env correspondence
+  | «let» _ _ _ => sorry -- needs env correspondence (let-binding extends env)
+  | assign _ _ => sorry -- needs env correspondence
+  | «if» _ _ _ => sorry -- needs env correspondence (cond evaluation)
+  | seq _ _ => sorry -- needs env correspondence (sub-stepping)
+  | call _ _ => sorry -- needs env/heap/funcs correspondence
+  | newObj _ _ => sorry -- needs env/heap correspondence
+  | getProp _ _ => sorry -- needs env/heap correspondence
+  | setProp _ _ _ => sorry -- needs env/heap correspondence
+  | getIndex _ _ => sorry -- needs env/heap correspondence
+  | setIndex _ _ _ => sorry -- needs env/heap correspondence
+  | deleteProp _ _ => sorry -- needs env/heap correspondence
+  | typeof _ => sorry -- needs env correspondence
+  | unary _ _ => sorry -- needs env correspondence (sub-stepping)
+  | binary _ _ _ => sorry -- needs env correspondence (sub-stepping)
+  | objectLit _ => sorry -- needs env/heap correspondence
+  | arrayLit _ => sorry -- needs env/heap correspondence
+  | functionDef _ _ _ _ _ => sorry -- needs env/heap/funcs + CC state
+  | throw _ => sorry -- needs env correspondence (sub-stepping)
+  | tryCatch _ _ _ _ => sorry -- needs env correspondence
+  | while_ _ _ => sorry -- needs env correspondence
+  | «return» _ => sorry -- FALSE as stated: Core→error, Flat→silent
+  | yield _ _ => sorry -- FALSE as stated: Core→error, Flat→silent
+  | await _ => sorry -- needs env correspondence
+  | this => sorry -- needs env correspondence
 
 /-! ### step?_none_implies_lit -/
 
