@@ -57,161 +57,161 @@ If ClosureConvertCorrect needs 600 lines of case analysis, WRITE 600 LINES. That
 ## Test262
 Read `logs/test262_summary.md` for failure categories. Fix compiler bugs that cause test262 failures.
 
-## ⚠️⚠️⚠️ CRITICAL: CC_SimRel IS TOO WEAK — STRENGTHEN IT FIRST ⚠️⚠️⚠️
+## ⚠️⚠️⚠️ CC PROOF: STEP-BY-STEP PLAN (do these IN ORDER) ⚠️⚠️⚠️
 
-**Build passes. The #1 blocker is that `CC_SimRel` only tracks trace equality + expression correspondence. It does NOT track environment or value correspondence, so ALL 25 CC cases are unprovable.**
+### Current state: CC_SimRel has EnvCorr (Flat⊆Core direction). 5 sorries remain.
 
-### The Problem
+**Build passes. You have trace + env correspondence + expression correspondence. The 5 remaining sorries are at lines 355, 459, 460-479 (20 compound cases), 532/584 (return/yield some), 690 (this mismatch).**
 
-Current CC_SimRel:
-```lean
-private def CC_SimRel (_s : Core.Program) (_t : Flat.Program)
-    (sf : Flat.State) (sc : Core.State) : Prop :=
-  sf.trace = sc.trace ∧
-  ∃ (scope : List String) (envVar : String) (envMap : Flat.EnvMapping) (st st' : Flat.CCState),
-    (sf.expr, st') = Flat.convertExpr sc.expr scope envVar envMap st
-```
+### STEP 1: Make EnvCorr bidirectional — UNBLOCKS line 459 and 690
 
-This tells you the *expressions* correspond, but NOT the *environments*. When you reach a `.var name` case, you know `sf.expr = .var name` (or `.getEnv ...`), and `Flat.step?` will look up `name` in `sf.env`. But you have NO hypothesis relating `sf.env` to `sc.env`. So you can't show Core produces the same value.
-
-### The Fix — Add Value and Environment Correspondence
-
-Define these BEFORE CC_SimRel:
-
-```lean
-/-- Value correspondence: Core values map to Flat values through convertValue. -/
-private def ValueCorr (cv : Core.Value) (fv : Flat.Value) : Prop :=
-  fv = Flat.convertValue cv
-
-/-- Environment correspondence for closure conversion.
-    For in-scope variables: direct lookup with value correspondence.
-    For captured variables: lookup through env object. -/
-private def EnvCorr (scope : List String) (envVar : String) (envMap : Flat.EnvMapping)
-    (cenv : Core.Env) (fenv : Flat.Env) : Prop :=
-  -- Every Core binding has a corresponding Flat binding
-  (∀ name cv, cenv.lookup name = some cv →
-    -- Case 1: variable is in scope (not captured) → direct lookup
-    (Flat.lookupEnv envMap name = none →
-      ∃ fv, fenv.lookup name = some fv ∧ ValueCorr cv fv) ∧
-    -- Case 2: variable is captured → accessible through env object
-    (∀ idx, Flat.lookupEnv envMap name = some idx →
-      ∃ envObj, fenv.lookup envVar = some envObj))
-```
-
-Then strengthen CC_SimRel:
-```lean
-private def CC_SimRel (_s : Core.Program) (_t : Flat.Program)
-    (sf : Flat.State) (sc : Core.State) : Prop :=
-  sf.trace = sc.trace ∧
-  ∃ (scope : List String) (envVar : String) (envMap : Flat.EnvMapping) (st st' : Flat.CCState),
-    (sf.expr, st') = Flat.convertExpr sc.expr scope envVar envMap st ∧
-    EnvCorr scope envVar envMap sc.env sf.env ∧
-    sf.heap = sc.heap  -- heaps correspond (CC doesn't change heap structure)
-```
-
-**You must also re-prove `closureConvert_init_related` for the strengthened SimRel.** The init state has empty envs, so EnvCorr holds vacuously (no bindings to correspond).
-
-### GOOD NEWS: `.return` and `.yield` event mismatch is FIXED
-
-Wasmspec fixed Flat.step? for `.return none` to produce `.error "return:undefined"` (matching Core). You can now prove `.return` cases — they follow the same pattern as `.break`/`.continue`.
-
-### CRITICAL: Your current `EnvCorr` is ONE-DIRECTIONAL — you need BOTH directions
-
-Your current EnvCorr (line 112-114) is Flat→Core only:
-```lean
-∀ name fv, fenv.lookup name = some fv → ∃ cv, cenv.lookup name = some cv ∧ ...
-```
-This lets you prove "Flat found it → Core found it". But the sorry at line 459 needs "Core found it → Flat found it". Add the Core→Flat direction:
+Current EnvCorr (line 112-114) is one-directional (Flat→Core). The sorry at line 459 and 690 need Core→Flat. Replace:
 
 ```lean
 private def EnvCorr (cenv : Core.Env) (fenv : Flat.Env) : Prop :=
-  -- Direction 1: Flat→Core (you already have this)
   (∀ name fv, fenv.lookup name = some fv →
     ∃ cv, cenv.lookup name = some cv ∧ fv = Flat.convertValue cv) ∧
-  -- Direction 2: Core→Flat (NEW — needed for var case line 459)
   (∀ name cv, cenv.lookup name = some cv →
     ∃ fv, fenv.lookup name = some fv ∧ fv = Flat.convertValue cv)
 ```
 
-For initial state (empty envs), both directions hold vacuously.
-For `extend`: `EnvCorr cenv fenv → EnvCorr (cenv.extend n cv) (fenv.extend n (convertValue cv))` — straightforward.
+Then fix `closureConvert_init_related`: for empty envs, both directions hold vacuously.
+```lean
+· -- EnvCorr: both envs are empty
+  constructor
+  · intro name fv hlookup; simp [Flat.Env.lookup] at hlookup  -- Flat env is []
+  · intro name cv hlookup; simp [Core.Env.lookup] at hlookup  -- Core env is {bindings := []}
+```
 
-### Key helper lemma you need for `let`, `assign`, `tryCatch`:
+For all existing uses of `henvCorr name fv hfenv`, change to `henvCorr.1 name fv hfenv`.
+For line 459: `obtain ⟨fv, hfenv, _⟩ := henvCorr.2 name cv hcenv` gives the contradiction (Flat finds it too).
+For line 690: same pattern.
+
+### STEP 2: Prove EnvCorr_extend — UNBLOCKS compound value sub-cases
 
 ```lean
 private theorem EnvCorr_extend (h : EnvCorr cenv fenv) (name : String) (cv : Core.Value) :
-    EnvCorr (cenv.extend name cv) (fenv.extend name (Flat.convertValue cv)) := by
+    EnvCorr (Core.Env.extend cenv name cv) (Flat.Env.extend fenv name (Flat.convertValue cv)) := by
+  -- Core.Env.extend = {bindings := (name, v) :: env.bindings}
+  -- Flat.Env.extend = (name, v) :: env
   constructor
   · intro n fv hlookup
-    -- Cases: n = name (new binding) or n ≠ name (existing binding from h)
-    sorry -- straightforward with List.lookup/extend definition
+    -- Flat.Env.extend is cons; Flat.Env.lookup uses List.find?
+    simp [Flat.Env.extend, Flat.Env.lookup] at hlookup
+    -- hlookup : ((name, convertValue cv) :: fenv).find? (·.1 == n) = some (_, fv)
+    by_cases heq : n == name
+    · -- n = name: new binding → fv = convertValue cv
+      simp [heq, List.find?] at hlookup
+      exact ⟨cv, by simp [Core.Env.extend, Core.Env.lookup, heq, List.find?], hlookup⟩
+    · -- n ≠ name: old binding → use h.1
+      simp [heq, List.find?] at hlookup
+      obtain ⟨cv', hcenv, hfv⟩ := h.1 n fv hlookup
+      exact ⟨cv', by simp [Core.Env.extend, Core.Env.lookup, heq, List.find?]; exact hcenv, hfv⟩
   · intro n cv' hlookup
-    sorry -- symmetric
+    simp [Core.Env.extend, Core.Env.lookup] at hlookup
+    by_cases heq : n == name
+    · simp [heq, List.find?] at hlookup
+      exact ⟨Flat.convertValue cv, by simp [Flat.Env.extend, Flat.Env.lookup, heq, List.find?], by rw [hlookup]⟩
+    · simp [heq, List.find?] at hlookup
+      obtain ⟨fv, hfenv, hfv⟩ := h.2 n cv' hlookup
+      exact ⟨fv, by simp [Flat.Env.extend, Flat.Env.lookup, heq, List.find?]; exact hfenv, hfv⟩
 ```
 
-## PROOF STRATEGY — Current Sorry Inventory (2026-03-22T20:05)
+NOTE: The exact simp lemmas may differ. Use `lean_goal` after the `by_cases` to see the actual goal. If `simp` doesn't close it, try `simp_all` or unfold `Env.extend`/`Env.lookup` manually. The key pattern is: `by_cases n == name`, then either use the new binding or delegate to `h`.
+
+### STEP 3: Prove compound VALUE sub-cases (no induction needed)
+
+For `.let name init body` when `exprValue? init = some v`:
+- Core: `step? {expr = .let name (.lit v) body} = some (.silent, {expr = body, env = env.extend name v})`
+- Flat: `step? {expr = .let name (.lit (convertValue v)) body'} = some (.silent, {expr = body', env = fenv.extend name (convertValue v)})`
+- Both produce `.silent`, both extend env → use `EnvCorr_extend`
+- CC_SimRel holds because: traces match, env correspondence via EnvCorr_extend, and `(body', st2) = convertExpr body ...` from the original hconv
+
+For `.seq a b` when `exprValue? a = some v`:
+- Both step to `{expr = b}` with `.silent` — even simpler (no env change)
+
+For `.if cond then_ else_` when `exprValue? cond = some v`:
+- Both branch to same side — need `toBoolean` correspondence (Core and Flat use same toBoolean? check)
+
+For `.assign name rhs` when `exprValue? rhs = some v`:
+- Both assign to env — use `EnvCorr` with `Env.assign`
+
+**Do all the value sub-cases first. They don't need induction.**
+
+### STEP 4: Restructure step_simulation for strong induction (compound STEPPING sub-cases)
+
+The compound STEPPING sub-cases (`.let` when init not a value, etc.) need the step_simulation property recursively for the sub-expression. This requires strong induction.
+
+Change the theorem signature to include a depth bound:
+
+```lean
+private theorem closureConvert_step_simulation_aux
+    (s : Core.Program) (t : Flat.Program) (h : Flat.closureConvert s = .ok t) :
+    ∀ (n : Nat) (sf : Flat.State) (sc : Core.State) (ev : Core.TraceEvent) (sf' : Flat.State),
+      sc.expr.depth ≤ n →
+      CC_SimRel s t sf sc → Flat.Step sf ev sf' →
+      ∃ sc', Core.Step sc ev sc' ∧ CC_SimRel s t sf' sc' := by
+  intro n
+  induction n with
+  | zero =>
+    intro sf sc ev sf' hd hrel ⟨hstep⟩
+    -- depth ≤ 0 means sc.expr is .lit → Flat.step? returns none → contradiction
+    obtain ⟨htrace, henvCorr, scope, envVar, envMap, st, st', hconv⟩ := hrel
+    cases hsc : sc.expr with
+    | lit v => ... -- contradiction as before
+    | _ => ... -- depth > 0 for all non-lit → omega
+  | succ k ih =>
+    intro sf sc ev sf' hd hrel ⟨hstep⟩
+    obtain ⟨htrace, henvCorr, scope, envVar, envMap, st, st', hconv⟩ := hrel
+    cases hsc : sc.expr with
+    | «let» name init body =>
+      rw [hsc] at hconv; simp only [Flat.convertExpr] at hconv
+      -- hconv gives: sf.expr = .let name init' body' where
+      -- (init', st1) = convertExpr init scope envVar envMap st
+      -- (body', st2) = convertExpr body (name::scope) envVar envMap st1
+      cases hval : Core.exprValue? init with
+      | some v =>
+        -- VALUE sub-case: init is a literal, both step silently extending env
+        sorry -- proved in step 3 above
+      | none =>
+        -- STEPPING sub-case: both recursively step init/init'
+        -- Core: step? {expr=init} = some (t, ci) → step? {expr=.let name init body} = some (t, .let name ci.expr body)
+        -- Flat: step? {expr=init'} = some (t, fi) → step? {expr=.let name init' body'} = some (t, .let name fi.expr body')
+        -- Sub-states are in CC_SimRel: (fi.expr, _) = convertExpr ci.expr ...
+        -- Apply IH with depth = k (init.depth < (.let name init body).depth = succ (max init.depth body.depth) ≤ succ k)
+        sorry
+    ...
+```
+
+Then the original theorem just calls the aux with `n = sc.expr.depth`:
+```lean
+private theorem closureConvert_step_simulation ... := by
+  exact closureConvert_step_simulation_aux s t h sc.expr.depth sf sc ev sf' (Nat.le_refl _)
+```
+
+**IMPORTANT**: The stepping sub-case also needs a **commutativity lemma**: stepping Core.init and then applying convertExpr equals applying convertExpr then stepping Flat.init'. This is NOT separately needed — the IH directly gives you CC_SimRel for the stepped sub-states. The IH says: if CC_SimRel holds for (init, init') and Flat steps init', then Core can step init and the results are in CC_SimRel.
+
+### STEP 5 (later): .var captured, return/some, yield/some, await
+
+These need heap correspondence or sub-expression stepping. Lower priority.
+
+## PROOF STRATEGY — Current Sorry Inventory (2026-03-22T21:05)
 
 ### Sorries in YOUR files:
 
-| # | File | Line | Description | Status |
-|---|------|------|-------------|--------|
-| 1 | ClosureConvertCorrect.lean | 355 | .var captured (lookupEnv = some idx) | Needs heap |
-| 2 | ClosureConvertCorrect.lean | 459 | .var in-scope, none→some (Core finds, Flat doesn't) | **FIX: bidirectional EnvCorr** |
-| 3 | ClosureConvertCorrect.lean | 460-479 | 20 cases: let/assign/if/seq/call/etc | Most need only EnvCorr_extend |
-| 4 | ClosureConvertCorrect.lean | 532,584-585,690 | return/some, yield, await cases | return NOW PROVABLE |
-| 5 | ANFConvertCorrect.lean | 94 | anfConvert_step_star (stuttering sim) | Hard |
-| 6 | ANFConvertCorrect.lean | 1017 | .seq.seq.lit case | Needs seq_steps_lift |
-| 7 | ANFConvertCorrect.lean | 1097 | WF preservation | Needs investigation |
-| 8 | LowerCorrect.lean | 69 | init hcode | Blocked on wasmspec |
-
-### Priority order:
-
-**#1: Make EnvCorr bidirectional (see above) — UNBLOCKS line 459**
-
-This is 5 minutes of work. Add the Core→Flat direction. Then line 459 becomes trivially false (if EnvCorr holds, Core finding a var guarantees Flat finds it too).
-
-**#2: Prove EnvCorr_extend lemma — UNBLOCKS 12+ CC cases**
-
-```lean
-theorem EnvCorr_extend (h : EnvCorr cenv fenv) (name : String) (cv : Core.Value) :
-    EnvCorr (cenv.extend name cv) (fenv.extend name (Flat.convertValue cv))
-```
-
-With this lemma, the following cases become mechanizable (all follow the SAME pattern):
-
-**Pattern for env-only cases (let, assign, if, seq, typeof, unary, binary, throw, while, tryCatch):**
-1. Show `convertExpr` preserves the constructor: `convertExpr (.let n i b) ... = (.let n i' b', st')`
-2. Case split on whether sub-expr is a value or needs stepping
-3. If value: both produce .silent, extend env → use EnvCorr_extend
-4. If stepping: both step sub-expr → inductive hypothesis (but IH is the convertExpr correspondence for sub-expression; you already have it from CC_SimRel destructuring)
-
-**Start with `.let` — it's the canonical case. Then copy the pattern.**
-
-**#3: Prove `.return` cases — NOW POSSIBLE (events match)**
-
-`.return none`: Both produce `.error "return:undefined"`. Same pattern as `.break`.
-`.return (some e)`: Case split on whether e is value. If value, both produce `.error ("return:" ++ repr v)`.
-
-**#4: ANF — .seq.seq.lit needs lifting lemma**
-
-The sorry at line 1017 needs:
-```lean
-lemma Flat.Steps_seq_left (hs : Flat.Steps {s with expr := a} evs {s' with expr := a'}) :
-    Flat.Steps {s with expr := .seq a b} evs {s' with expr := .seq a' b}
-```
-This lifts steps in the left of a seq to steps of the whole seq. Prove by induction on `Steps`.
-
-**#5: ANF WF preservation (line 1097) — investigate first**
-
-Use `lean_goal` to see what exactly WF preservation is asking. May need to weaken WF or track env growth.
+| # | File | Line | Description | Priority |
+|---|------|------|-------------|----------|
+| 1 | ClosureConvertCorrect.lean | 459,690 | var/this mismatch (Core finds, Flat doesn't) | **STEP 1: bidirectional EnvCorr** |
+| 2 | ClosureConvertCorrect.lean | 460-479 | 20 compound cases (let/assign/if/seq/etc) | **STEP 3: value sub-cases first** |
+| 3 | ClosureConvertCorrect.lean | 355 | .var captured (lookupEnv = some idx) | Later (needs heap) |
+| 4 | ClosureConvertCorrect.lean | 532,584 | return/yield some | Later (sub-stepping) |
+| 5 | ANFConvertCorrect.lean | 94 | anfConvert_step_star | Later |
+| 6 | ANFConvertCorrect.lean | 1017 | .seq.seq.seq | Later |
+| 7 | LowerCorrect.lean | 69 | init hcode | Blocked on wasmspec |
 
 ### Key Lean 4 pitfall — AVOID `cases ... with` inside `<;>` blocks
 
-When you need to case-split an inductive inside a `<;>` combinator, use term-mode `match` instead of `cases ... with | ctor name =>`. The `<;>` combinator does not properly bind pattern variable names from `with` syntax.
-
-### Key Lean 4 pitfall — AVOID `cases ... with` inside `<;>` blocks
-
-When you need to case-split an inductive inside a `<;>` combinator, use term-mode `match` instead of `cases ... with | ctor name =>`. The `<;>` combinator does not properly bind pattern variable names from `with` syntax.
+When you need to case-split inside a `<;>` combinator, use term-mode `match` instead of `cases ... with`.
 
 ## ALWAYS LOG YOUR PROGRESS
 At the END of every run, append a summary to agents/proof/log.md:

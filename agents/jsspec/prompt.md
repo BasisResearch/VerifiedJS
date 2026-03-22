@@ -48,45 +48,35 @@ Keep `partial def step?` for the interpreter. The proof agent needs the inductiv
 3. Test262 tells you what to formalize. Reduce skips by adding missing features.
 4. Your relations must be INHABITED with concrete derivations.
 
-## CURRENT PRIORITIES (2026-03-22T20:05)
+## CURRENT PRIORITIES (2026-03-22T21:05)
 
-### ⚠️⚠️⚠️ CRITICAL BUG #1: `parseFunctionBody` RETURNS EMPTY BODY ⚠️⚠️⚠️
+### Status: parseFunctionBody FIXED. __rt_makeClosure FIXED. 98.8% compile rate. Core/Semantics 0 sorry.
+### Test262: 3/61 pass, 50 fail — but the 50 failures are now REAL missing-feature gaps, not a single bug.
 
-**This is the ROOT CAUSE of ALL 50 test262 runtime failures.**
+**The test262 failures are runtime traps (wasm_rc=134) on advanced JS features the compiler doesn't support:**
+- Classes with destructuring (async generators, private methods)
+- Built-in objects (Date, RegExp, TypedArray, Set, Iterator, Uint8Array, Temporal)
+- `for-await-of`, `async` generators, `yield` delegation
+- `void` operator, `eval` in strict mode
 
-`Parser.lean:461-464`:
-```lean
-private partial def parseFunctionBody : ParserM (List Stmt) := do
-  expectPunct "{"
-  skipBalancedBlock 1
-  pure []          -- ← BUG: discards ALL tokens in the body!
-```
+### #1: Run a fresh test262 sample and categorize failures
 
-All function expression bodies, arrow function block bodies, and class method bodies compile with EMPTY bodies. Function declarations work because `parseFunctionDecl` uses `parseBlockStmt` correctly.
+Run `bash scripts/run_test262_compare.sh --fast --sample 100 --seed fresh 2>&1 | tail -30` and categorize:
+- How many now PASS (with parseFunctionBody + makeClosure fixes)?
+- For failures: which are `language/` tests on features we SHOULD support?
+- Which failures are on built-ins we can't support (Date, RegExp, Temporal)?
 
-**FIX** — replace the body of `parseFunctionBody`:
-```lean
-private partial def parseFunctionBody : ParserM (List Stmt) := do
-  match (← parseBlockStmt) with
-  | .block stmts => pure stmts
-  | s => pure [s]
-```
+### #2: Fix the simplest `language/` test262 failures
 
-**DO THIS FIRST.** Nothing else matters until this is fixed. After fixing:
-1. Run `bash scripts/lake_build_concise.sh` — must pass
-2. Run test262 to see how many of the 50 failures are now passing
-3. Log the results
+Focus on `language/expressions/` and `language/statements/` tests — these test core JS semantics we control. Look for patterns:
+- `void` operator → needs elaboration support (simple: `void expr` → evaluate expr, return undefined)
+- `typeof` edge cases → may need fixes in Core.step?
+- Comma operator → should work if elaboration handles it
+- Labeled statements with `break` inside `switch` → may need Wasm lowering fix
 
-### Status: 98.8% compile rate, Core/Semantics 0 sorry
-### Test262: 3/61 pass, 50 fail, 3 skip, 5 xfail
+### #3: Fix any remaining parser bugs exposed by test262
 
-### After fixing parseFunctionBody:
-
-#### #2: Categorize remaining runtime failures
-Many of the 50 may now pass. For those still failing, categorize by JS feature.
-
-#### #3: Fix the simplest addressable failures
-Look for `language/` tests on features we should support.
+If any tests fail with COMPILE_ERROR or PARSE_ERROR, fix the parser/lexer.
 
 ### DO NOT:
 - Fix warnings or deprecations
