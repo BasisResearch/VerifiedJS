@@ -530,7 +530,58 @@ private theorem closureConvert_step_simulation
     | some e =>
       -- .return (some e): sub-stepping needed for non-value case
       sorry
-  | yield _ _ => sorry -- sub-stepping needed for value case
+  | yield arg delegate =>
+    rw [hsc] at hconv; simp only [Flat.convertExpr] at hconv
+    cases arg with
+    | none =>
+      -- .yield none: both produce .silent and step to .lit .undefined
+      have hsf_expr : sf.expr = .yield none delegate := by
+        simp only [Flat.convertOptExpr] at hconv; cases sf; simp_all [(Prod.mk.inj hconv).1]
+      have hflat_ev : ev = .silent := by
+        rw [show sf = {sf with expr := .yield none delegate} from by cases sf; simp_all] at hstep
+        simp only [Flat.step?] at hstep
+        exact (Prod.mk.inj (Option.some.inj hstep)).1.symm
+      subst hflat_ev
+      obtain ⟨sc', hcstep⟩ : ∃ sc', Core.step? sc = some (.silent, sc') := by
+        rw [show sc = {sc with expr := .yield none delegate} from by cases sc; simp_all]
+        simp only [Core.step?]; exact ⟨_, rfl⟩
+      refine ⟨sc', ⟨hcstep⟩, ?_⟩
+      have hsf'_trace : sf'.trace = sc'.trace := by
+        have hf := hstep; have hc := hcstep
+        rw [show sf = {sf with expr := .yield none delegate} from by cases sf; simp_all] at hf
+        rw [show sc = {sc with expr := .yield none delegate} from by cases sc; simp_all] at hc
+        simp only [Flat.step?] at hf; simp only [Core.step?] at hc
+        have heqf := (Prod.mk.inj (Option.some.inj hf)).2
+        have heqc := (Prod.mk.inj (Option.some.inj hc)).2
+        subst heqf; subst heqc
+        show sf.trace ++ _ = sc.trace ++ _; rw [htrace]
+      have henv' : EnvCorr sc'.env sf'.env := by
+        have hsf'_env : sf'.env = sf.env := by
+          have h0 := hstep
+          rw [show sf = {sf with expr := .yield none delegate} from by cases sf; simp_all] at h0
+          simp only [Flat.step?] at h0
+          have heq := (Prod.mk.inj (Option.some.inj h0)).2; subst heq; rfl
+        have hsc'_env : sc'.env = sc.env := by
+          have h0 := hcstep
+          rw [show sc = {sc with expr := .yield none delegate} from by cases sc; simp_all] at h0
+          simp only [Core.step?] at h0
+          have heq := (Prod.mk.inj (Option.some.inj h0)).2; subst heq; rfl
+        rw [hsc'_env, hsf'_env]; exact henvCorr
+      have hsf'_expr : sf'.expr = .lit .undefined := by
+        have h0 := hstep
+        rw [show sf = {sf with expr := .yield none delegate} from by cases sf; simp_all] at h0
+        simp only [Flat.step?] at h0
+        exact congrArg Flat.State.expr (Prod.mk.inj (Option.some.inj h0)).2 ▸ rfl
+      have hsc'_expr : sc'.expr = .lit .undefined := by
+        have h0 := hcstep
+        rw [show sc = {sc with expr := .yield none delegate} from by cases sc; simp_all] at h0
+        simp only [Core.step?] at h0
+        exact congrArg Core.State.expr (Prod.mk.inj (Option.some.inj h0)).2 ▸ rfl
+      exact ⟨hsf'_trace, henv', [], "", [], st, st,
+        by rw [hsc'_expr]; simp [Flat.convertExpr, Flat.convertValue, hsf'_expr]⟩
+    | some e =>
+      -- .yield (some e): sub-stepping needed for non-value case
+      sorry
   | await _ => sorry -- needs env correspondence
   | this =>
     rw [hsc] at hconv; simp only [Flat.convertExpr] at hconv
