@@ -4939,7 +4939,13 @@ theorem step_sim (prog : ANF.Program) (irmod : IRModule) :
     LowerSimRel prog irmod s1 s2 → anfStepMapped s1 = some (t, s1') →
     ∃ s2', irStep? s2 = some (t, s2') ∧ LowerSimRel prog irmod s1' s2' := by
   intro s1 s2 t s1' hrel hstep
-  sorry
+  simp only [anfStepMapped] at hstep
+  split at hstep
+  · simp at hstep
+  · rename_i heq
+    simp at hstep
+    obtain ⟨rfl, rfl⟩ := hstep
+    sorry
 
 /-- Step simulation (stuttering): if the ANF takes one step, the IR takes
     one or more matching steps with the same observable events.
