@@ -175,6 +175,72 @@ private theorem closureConvert_step_simulation
   -- Remaining constructors require env/heap/funcs correspondence in CC_SimRel.
   -- Currently CC_SimRel only tracks trace + expression conversion correspondence.
   -- Need to strengthen CC_SimRel before these cases can be proved.
+  | «break» label =>
+    rw [hsc] at hconv; simp only [Flat.convertExpr] at hconv
+    have hsf_expr : sf.expr = .«break» label := by cases sf; simp_all [(Prod.mk.inj hconv).1]
+    obtain ⟨sc', hcstep⟩ : ∃ sc', Core.step? sc = some (.error ("break:" ++ (label.getD "")), sc') := by
+      rw [show sc = {sc with expr := .«break» label} from by cases sc; simp_all]
+      simp only [Core.step?]; cases label <;> exact ⟨_, rfl⟩
+    have hflat_ev : ev = .error ("break:" ++ (label.getD "")) := by
+      rw [show sf = {sf with expr := .«break» label} from by cases sf; simp_all] at hstep
+      simp only [Flat.step?] at hstep; exact (Prod.mk.inj (Option.some.inj hstep)).1
+    subst hflat_ev
+    refine ⟨sc', ⟨hcstep⟩, ?_⟩
+    have hsf'_expr : sf'.expr = .lit .undefined := by
+      have h0 := hstep
+      rw [show sf = {sf with expr := .«break» label} from by cases sf; simp_all] at h0
+      simp only [Flat.step?] at h0
+      exact congrArg Flat.State.expr (Prod.mk.inj (Option.some.inj h0)).2 ▸ rfl
+    have hsc'_expr : sc'.expr = .lit .undefined := by
+      have h0 := hcstep
+      rw [show sc = {sc with expr := .«break» label} from by cases sc; simp_all] at h0
+      simp only [Core.step?] at h0
+      cases label <;> (exact congrArg Core.State.expr (Prod.mk.inj (Option.some.inj h0)).2 ▸ rfl)
+    have hsf'_trace_eq_sc'_trace : sf'.trace = sc'.trace := by
+      have hf := hstep; have hc := hcstep
+      rw [show sf = {sf with expr := .«break» label} from by cases sf; simp_all] at hf
+      rw [show sc = {sc with expr := .«break» label} from by cases sc; simp_all] at hc
+      simp only [Flat.step?] at hf; simp only [Core.step?] at hc
+      have heqf := (Prod.mk.inj (Option.some.inj hf)).2
+      cases label <;> (
+        have heqc := (Prod.mk.inj (Option.some.inj hc)).2
+        subst heqf; subst heqc
+        show sf.trace ++ _ = sc.trace ++ _
+        rw [htrace])
+    exact ⟨hsf'_trace_eq_sc'_trace, [], "", [], st', st', by rw [hsc'_expr]; simp [Flat.convertExpr, Flat.convertValue, hsf'_expr]⟩
+  | «continue» label =>
+    rw [hsc] at hconv; simp only [Flat.convertExpr] at hconv
+    have hsf_expr : sf.expr = .«continue» label := by cases sf; simp_all [(Prod.mk.inj hconv).1]
+    obtain ⟨sc', hcstep⟩ : ∃ sc', Core.step? sc = some (.error ("continue:" ++ (label.getD "")), sc') := by
+      rw [show sc = {sc with expr := .«continue» label} from by cases sc; simp_all]
+      simp only [Core.step?]; cases label <;> exact ⟨_, rfl⟩
+    have hflat_ev : ev = .error ("continue:" ++ (label.getD "")) := by
+      rw [show sf = {sf with expr := .«continue» label} from by cases sf; simp_all] at hstep
+      simp only [Flat.step?] at hstep; exact (Prod.mk.inj (Option.some.inj hstep)).1
+    subst hflat_ev
+    refine ⟨sc', ⟨hcstep⟩, ?_⟩
+    have hsf'_expr : sf'.expr = .lit .undefined := by
+      have h0 := hstep
+      rw [show sf = {sf with expr := .«continue» label} from by cases sf; simp_all] at h0
+      simp only [Flat.step?] at h0
+      exact congrArg Flat.State.expr (Prod.mk.inj (Option.some.inj h0)).2 ▸ rfl
+    have hsc'_expr : sc'.expr = .lit .undefined := by
+      have h0 := hcstep
+      rw [show sc = {sc with expr := .«continue» label} from by cases sc; simp_all] at h0
+      simp only [Core.step?] at h0
+      cases label <;> (exact congrArg Core.State.expr (Prod.mk.inj (Option.some.inj h0)).2 ▸ rfl)
+    have hsf'_trace_eq_sc'_trace : sf'.trace = sc'.trace := by
+      have hf := hstep; have hc := hcstep
+      rw [show sf = {sf with expr := .«continue» label} from by cases sf; simp_all] at hf
+      rw [show sc = {sc with expr := .«continue» label} from by cases sc; simp_all] at hc
+      simp only [Flat.step?] at hf; simp only [Core.step?] at hc
+      have heqf := (Prod.mk.inj (Option.some.inj hf)).2
+      cases label <;> (
+        have heqc := (Prod.mk.inj (Option.some.inj hc)).2
+        subst heqf; subst heqc
+        show sf.trace ++ _ = sc.trace ++ _
+        rw [htrace])
+    exact ⟨hsf'_trace_eq_sc'_trace, [], "", [], st', st', by rw [hsc'_expr]; simp [Flat.convertExpr, Flat.convertValue, hsf'_expr]⟩
   | _ => sorry
 
 /-! ### step?_none_implies_lit -/

@@ -689,22 +689,31 @@ private theorem anfConvert_halt_star_aux
           | none => exact ⟨.undefined, rfl⟩
         let sf2 : Flat.State := { expr := .seq (.lit val) b, env := sf.env, heap := sf.heap, trace := sf.trace ++ [.silent] }
         -- Step 2: .seq (.lit val) b → b
-        have hstep2 : Flat.step? sf2 = some (.silent, { expr := b, env := sf.env, heap := sf.heap, trace := sf.trace ++ [.silent, .silent] }) := by
-          simp only [sf2]; unfold Flat.step? Flat.exprValue?
-          simp [List.append_assoc]
-        let sf3 : Flat.State := { expr := b, env := sf.env, heap := sf.heap, trace := sf.trace ++ [.silent, .silent] }
+        obtain ⟨sf3, hstep2⟩ : ∃ sf3, Flat.step? sf2 = some (.silent, sf3) := by
+          simp only [sf2]; simp only [Flat.step?, Flat.exprValue?]; exact ⟨_, rfl⟩
+        have hsf3_expr : sf3.expr = b := by
+          have h0 := hstep2; simp only [sf2, Flat.step?, Flat.exprValue?] at h0
+          exact congrArg Flat.State.expr (Prod.mk.inj (Option.some.inj h0)).2 ▸ rfl
+        have hsf3_env : sf3.env = sf.env := by
+          have h0 := hstep2; simp only [sf2, Flat.step?, Flat.exprValue?] at h0
+          exact congrArg Flat.State.env (Prod.mk.inj (Option.some.inj h0)).2 ▸ rfl
+        have hsf3_heap : sf3.heap = sf.heap := by
+          have h0 := hstep2; simp only [sf2, Flat.step?, Flat.exprValue?] at h0
+          exact congrArg Flat.State.heap (Prod.mk.inj (Option.some.inj h0)).2 ▸ rfl
+        have hsf3_trace : observableTrace sf3.trace = observableTrace sf.trace := by
+          have h0 := hstep2; simp only [sf2, Flat.step?, Flat.exprValue?] at h0
+          have heq := (Prod.mk.inj (Option.some.inj h0)).2; subst heq
+          show observableTrace (sf2.trace ++ [.silent]) = observableTrace sf.trace
+          simp only [sf2]; show observableTrace ((sf.trace ++ [.silent]) ++ [.silent]) = observableTrace sf.trace
+          simp [observableTrace, List.filter_append]; decide
         have hrel3 : ANF_SimRel s t sa sf3 := by
-          refine ⟨hheap, henv, ?_, k, n, m, ?_, hfaithful⟩
-          · simp only [sf3, observableTrace, List.filter_append]
-            simp [observableTrace] at htrace; exact htrace
-          · simp only [sf3]; rw [hat]; exact hnorm
-        have hbd3 : sf3.expr.depth ≤ N := hbd
+          refine ⟨hheap.trans hsf3_heap.symm, henv.trans hsf3_env.symm, htrace.trans hsf3_trace.symm, k, n, m, ?_, hfaithful⟩
+          rw [hsf3_expr, hat]; exact hnorm
+        have hbd3 : sf3.expr.depth ≤ N := by rw [hsf3_expr]; exact hbd
         obtain ⟨sf', evs, hsteps', hhalt', hobs', hrel'⟩ := ih sa sf3 hbd3 hrel3 hstuck
-        exact ⟨sf', .silent :: .silent :: evs,
-          Flat.Steps.tail ⟨hstep1⟩ (Flat.Steps.tail ⟨hstep2⟩ hsteps'),
-          hhalt',
-          by simp [observableTrace_silent, hobs'],
-          hrel'⟩
+        let steps12 := Flat.Steps.tail (⟨hstep1⟩ : Flat.Step sf .silent sf2) (Flat.Steps.tail (⟨hstep2⟩ : Flat.Step sf2 .silent sf3) hsteps')
+        have hobsAll : observableTrace (.silent :: .silent :: evs) = [] := by simp [observableTrace_silent, hobs']
+        exact ⟨sf', .silent :: .silent :: evs, steps12, hhalt', hobsAll, hrel'⟩
       | lit v =>
         -- normalizeExpr (.lit v) k' passes through to normalizeExpr b k
         -- Flat steps silently from .seq (.lit v) b to b, then apply IH

@@ -814,34 +814,45 @@ theorem step?_seq_this_isSome (s : State) (b : Expr) :
     (step? { s with expr := .seq .this b }).isSome = true := by
   cases h : s.env.lookup "this" <;> simp [step?, h]
 
-/-- `.seq (.var name) b` when var is found: steps to `.seq (.lit v) b`. -/
-theorem step?_seq_var_found (s : State) (name : VarName) (v : Value) (b : Expr)
-    (h : s.env.lookup name = some v) :
+/-- `.seq (.var name) b` when var is found: steps silently to `.seq (.lit v) b`.
+    Result uses explicit struct — proof agent can destructure directly. -/
+theorem step?_seq_var_found_explicit (s : State) (name : VarName) (v : Value) (b : Expr)
+    (henv : s.env.lookup name = some v) :
     step? { s with expr := .seq (.var name) b } =
-      some (.silent, pushTrace { s with expr := .seq (.lit v) b } .silent) := by
-  simp [step?, exprValue?, h]
+      some (.silent, { expr := .seq (.lit v) b, env := s.env, heap := s.heap,
+                       trace := s.trace ++ [.silent] }) := by
+  simp [step?, exprValue?, henv, pushTrace]
 
-/-- `.seq (.var name) b` when var is not found: steps with ReferenceError. -/
-theorem step?_seq_var_not_found (s : State) (name : VarName) (b : Expr)
-    (h : s.env.lookup name = none) :
+/-- `.seq (.var name) b` when var not found: steps with ReferenceError.
+    Result uses explicit struct — proof agent can destructure directly. -/
+theorem step?_seq_var_not_found_explicit (s : State) (name : VarName) (b : Expr)
+    (henv : s.env.lookup name = none) :
     step? { s with expr := .seq (.var name) b } =
       some (.error ("ReferenceError: " ++ name),
-            pushTrace { s with expr := .seq (.lit .undefined) b } (.error ("ReferenceError: " ++ name))) := by
-  simp [step?, exprValue?, h]
+            { expr := .seq (.lit .undefined) b, env := s.env, heap := s.heap,
+              trace := s.trace ++ [.error ("ReferenceError: " ++ name)] }) := by
+  simp [step?, exprValue?, henv, pushTrace]
 
-/-- `.seq .this b` when `this` binding exists: steps to `.seq (.lit v) b`. -/
-theorem step?_seq_this_found (s : State) (v : Value) (b : Expr)
-    (h : s.env.lookup "this" = some v) :
-    step? { s with expr := .seq .this b } =
-      some (.silent, pushTrace { s with expr := .seq (.lit v) b } .silent) := by
-  simp [step?, exprValue?, h]
+/-- `.seq (.var name) b` always steps to a state with `.seq (.lit val) b` for some val.
+    This is the key existential the proof agent needs for anfConvert_halt_star. -/
+theorem step?_seq_var_steps_to_lit (s : State) (name : VarName) (b : Expr) :
+    ∃ val ev, step? { s with expr := .seq (.var name) b } =
+      some (ev, { expr := .seq (.lit val) b, env := s.env, heap := s.heap,
+                  trace := s.trace ++ [ev] }) := by
+  cases henv : s.env.lookup name with
+  | some v => exact ⟨v, .silent, by simp [step?, exprValue?, henv, pushTrace]⟩
+  | none => exact ⟨.undefined, .error ("ReferenceError: " ++ name),
+                    by simp [step?, exprValue?, henv, pushTrace]⟩
 
-/-- `.seq .this b` when no `this` binding: steps to `.seq (.lit .undefined) b`. -/
-theorem step?_seq_this_not_found (s : State) (b : Expr)
-    (h : s.env.lookup "this" = none) :
-    step? { s with expr := .seq .this b } =
-      some (.silent, pushTrace { s with expr := .seq (.lit .undefined) b } .silent) := by
-  simp [step?, exprValue?, h]
+/-- `.seq .this b` always steps to a state with `.seq (.lit val) b` for some val.
+    This is the key existential the proof agent needs for anfConvert_halt_star. -/
+theorem step?_seq_this_steps_to_lit (s : State) (b : Expr) :
+    ∃ val, step? { s with expr := .seq .this b } =
+      some (.silent, { expr := .seq (.lit val) b, env := s.env, heap := s.heap,
+                       trace := s.trace ++ [.silent] }) := by
+  cases henv : s.env.lookup "this" with
+  | some v => exact ⟨v, by simp [step?, exprValue?, henv, pushTrace]⟩
+  | none => exact ⟨.undefined, by simp [step?, exprValue?, henv, pushTrace]⟩
 
 /-- `.var` always produces some result (existential form for case splitting). -/
 theorem step?_var_some (s : State) (name : VarName) :

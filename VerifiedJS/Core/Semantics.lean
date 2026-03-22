@@ -812,12 +812,69 @@ def step? (s : State) : Option (TraceEvent × State) :=
       | some _ =>
           let s' := pushTrace { s with expr := .lit (.bool true) } .silent
           some (.silent, s')
-  -- ECMA-262 §12.3.3 new operator (simplified: allocate empty object).
-  | .newObj _callee _args =>
-      let addr := s.heap.nextAddr
-      let heap' := { objects := s.heap.objects.push [], nextAddr := addr + 1 }
-      let s' := pushTrace { s with expr := .lit (.object addr), heap := heap' } .silent
-      some (.silent, s')
+  -- ECMA-262 §12.3.3 new operator: §9.2.2 [[Construct]].
+  -- Allocates empty object, calls constructor with `this` = new object, returns new object.
+  | .newObj callee args =>
+      -- Step 1: Step callee to a value.
+      match exprValue? callee with
+      | none =>
+          match step? { s with expr := callee } with
+          | some (t, sc) =>
+              let s' := pushTrace { sc with expr := .newObj sc.expr args, trace := s.trace } t
+              some (t, s')
+          | none => none
+      | some cv =>
+          -- Step 2: Step all arguments to values (left-to-right).
+          match allValues args with
+          | some argVals =>
+              -- Step 3: Allocate empty object on heap.
+              let addr := s.heap.nextAddr
+              let heap' := { objects := s.heap.objects.push [], nextAddr := addr + 1 }
+              match cv with
+              | .function idx =>
+                  match s.funcs[idx]? with
+                  | some closure =>
+                      -- §9.2.2 step 8: Bind `this` to newly created object.
+                      let pairs := closure.params.zip argVals
+                      let bodyBindings :=
+                        pairs.foldr (fun pv bs => (pv.1, pv.2) :: bs) closure.capturedEnv
+                      let bodyEnv : Env := { bindings := ("this", .object addr) :: bodyBindings }
+                      -- Bind function name for recursion (§14.1.20).
+                      let bodyEnv' : Env := match closure.name with
+                        | some n => { bindings := (n, .function idx) :: bodyEnv.bindings }
+                        | none => bodyEnv
+                      -- §9.2.2 step 13: Execute constructor body, then return `this` object.
+                      -- Wrap body in tryCatch to handle returns, then yield new object via seq.
+                      let wrapped := .seq
+                        (.tryCatch closure.body "__call_frame_return__"
+                          (.var "__call_frame_return__") none)
+                        (.lit (.object addr))
+                      let s' := pushTrace { s with
+                        expr := wrapped
+                        env := bodyEnv'
+                        heap := heap'
+                        callStack := s.env.bindings :: s.callStack } .silent
+                      some (.silent, s')
+                  | none =>
+                      -- Unknown function index: just return new empty object.
+                      let s' := pushTrace { s with expr := .lit (.object addr), heap := heap' } .silent
+                      some (.silent, s')
+              | _ =>
+                  -- Non-function callee: return new empty object (per spec, should throw TypeError).
+                  let s' := pushTrace { s with expr := .lit (.object addr), heap := heap' } .silent
+                  some (.silent, s')
+          | none =>
+              -- Step first non-value argument (left-to-right evaluation §12.3.4.1).
+              match hf : firstNonValueExpr args with
+              | some (done, target, remaining) =>
+                  have : Expr.depth target < Expr.depth s.expr := by
+                    rw [h]; simp [Expr.depth]; have := firstNonValueExpr_depth hf; omega
+                  match step? { s with expr := target } with
+                  | some (t, sa) =>
+                      let s' := pushTrace { sa with expr := .newObj (.lit cv) (done ++ [sa.expr] ++ remaining), trace := s.trace } t
+                      some (t, s')
+                  | none => none
+              | none => none
   -- ECMA-262 §14.4.14 yield: simplified — evaluate argument and return it.
   | .yield arg _delegate =>
       match arg with
@@ -1056,12 +1113,13 @@ theorem step_objectLit_allValues (props : List (PropName × Expr)) (env : Env) (
     (step? ⟨.objectLit props, env, heap, trace, funcs, cs⟩).isSome = true := by
   unfold step?; split <;> simp_all
 
-/-- §12.3.3 newObj always steps (allocates empty object). -/
-theorem step_newObj (callee : Expr) (args : List Expr) (env : Env) (heap : Heap)
-    (trace : List TraceEvent) (funcs : Array FuncClosure)
-    (cs : List (List (VarName × Value))) :
-    (step? ⟨.newObj callee args, env, heap, trace, funcs, cs⟩).isSome = true := by
-  simp [step?]
+/-- §12.3.3 newObj with value callee and all value args always steps. -/
+theorem step_newObj_values (v : Value) (args : List Expr) (argVals : List Value)
+    (env : Env) (heap : Heap) (trace : List TraceEvent) (funcs : Array FuncClosure)
+    (cs : List (List (VarName × Value)))
+    (hargs : allValues args = some argVals) :
+    (step? ⟨.newObj (.lit v) args, env, heap, trace, funcs, cs⟩).isSome = true := by
+  simp [step?, exprValue?, hargs]
 
 /-- Labeled statement just unwraps to body. -/
 theorem step_labeled (label : LabelName) (body : Expr) (env : Env) (heap : Heap)
@@ -1746,12 +1804,12 @@ theorem step_while_isSome' (cond body : Expr) (env : Env) (heap : Heap)
     (step? ⟨.while_ cond body, env, heap, trace, funcs, cs⟩).isSome = true := by
   simp [step?]
 
-/-- step? on newObj always produces some result. -/
-theorem step_newObj_isSome (callee : Expr) (args : List Expr) (env : Env) (heap : Heap)
+/-- step? on newObj with value callee and no args always produces some result. -/
+theorem step_newObj_value_noArgs (v : Value) (env : Env) (heap : Heap)
     (trace : List TraceEvent) (funcs : Array FuncClosure)
     (cs : List (List (VarName × Value))) :
-    (step? ⟨.newObj callee args, env, heap, trace, funcs, cs⟩).isSome = true := by
-  simp [step?]
+    (step? ⟨.newObj (.lit v) [], env, heap, trace, funcs, cs⟩).isSome = true := by
+  simp [step?, exprValue?, allValues]
 
 /-- step? on functionDef always produces some result. -/
 theorem step_functionDef_isSome (fname : Option VarName) (params : List VarName)
@@ -2166,15 +2224,15 @@ theorem step_return_some_value_exact (v : Value) (env : Env) (heap : Heap)
           (.error ("return:" ++ toString (repr v)))) := by
   simp [step?, exprValue?]
 
-/-- §12.3.3 newObj exact: allocates empty object at next heap address. -/
-theorem step_newObj_exact (callee : Expr) (args : List Expr) (env : Env) (heap : Heap)
+/-- §12.3.3 newObj with null callee and no args: allocates empty object. -/
+theorem step_newObj_null_exact (env : Env) (heap : Heap)
     (trace : List TraceEvent) (funcs : Array FuncClosure)
     (cs : List (List (VarName × Value))) :
-    step? ⟨.newObj callee args, env, heap, trace, funcs, cs⟩ =
+    step? ⟨.newObj (.lit .null) [], env, heap, trace, funcs, cs⟩ =
       some (.silent, pushTrace ⟨.lit (.object heap.nextAddr), env,
         { objects := heap.objects.push [], nextAddr := heap.nextAddr + 1 },
         trace, funcs, cs⟩ .silent) := by
-  simp [step?]
+  simp [step?, exprValue?, allValues]
 
 /-- §13.7.5 for-in on object with known properties: desugars to sequential let-bindings.
     ECMA-262 §13.7.5.15 EnumerateObjectProperties. -/
@@ -2263,7 +2321,33 @@ private theorem stuck_implies_lit_aux (e : Expr) (env : Env) (heap : Heap) (trac
   | this =>
     unfold step? at hstuck; simp only [] at hstuck; split at hstuck <;> simp at hstuck
   | newObj callee args =>
-    unfold step? at hstuck; simp only [] at hstuck; simp at hstuck
+    unfold step? at hstuck; simp only [] at hstuck
+    split at hstuck
+    · -- callee not a value: step it
+      split at hstuck
+      · simp at hstuck
+      · rename_i _ hsub; have ⟨v, hv⟩ := stuck_implies_lit_aux _ _ _ _ _ _ hsub; subst hv; simp_all [exprValue?]
+    · -- callee is a value
+      split at hstuck
+      · -- all args are values
+        split at hstuck
+        · -- callee is .function idx
+          split at hstuck <;> simp at hstuck
+        · simp at hstuck
+        · simp at hstuck
+      · -- not all args are values: step first non-value
+        rename_i hav
+        split at hstuck
+        next done target remaining hfnv =>
+          -- firstNonValueExpr found a non-value
+          split at hstuck
+          · simp at hstuck
+          · rename_i hsub
+            have ⟨v, hv⟩ := stuck_implies_lit_aux _ _ _ _ _ _ hsub; subst hv
+            exact absurd rfl ((firstNonValueExpr_not_lit hfnv) v)
+        next hfnone =>
+          -- firstNonValueExpr returned none: contradiction with allValues none
+          exact absurd rfl (allValues_firstNonValue_contra hav hfnone).elim
   | «let» name init body =>
     unfold step? at hstuck; simp only [] at hstuck
     split at hstuck
