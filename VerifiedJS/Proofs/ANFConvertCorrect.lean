@@ -1062,7 +1062,13 @@ theorem anfConvert_correct (s : Flat.Program) (t : ANF.Program)
     anfConvert_steps_star s t h _ _ _ _ hinit hsteps
   -- Halt preservation (well-formedness: all reachable states have vars in scope)
   have hwf_sf : ExprWellFormed sf.expr sf.env := by
-    sorry -- TODO: prove that Flat stepping preserves ExprWellFormed
+    sorry -- BLOCKER: ExprWellFormed is NOT a general Flat.step? invariant.
+    -- VarFreeIn only tracks .var in .seq chains (not through .let/.if/.call/etc).
+    -- After .let stepping: ExprWellFormed (.let ..) is vacuously true but
+    -- ExprWellFormed body may not be. Need either:
+    -- (a) Strengthen VarFreeIn to track all free vars, OR
+    -- (b) Carry WF as part of ANF_SimRel (proved in anfConvert_step_star), OR
+    -- (c) Add initial-program well-formedness precondition + stronger preservation
   obtain ⟨sf', evs', hfsteps', hhalt', hobsevs, hrel'⟩ :=
     anfConvert_halt_star s t h _ _ hrel hhalt hwf_sf
   -- Combine: Flat reaches sf via tr', then sf' via evs' (all silent)
