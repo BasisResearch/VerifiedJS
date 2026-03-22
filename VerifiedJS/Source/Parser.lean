@@ -167,7 +167,23 @@ private partial def parseImportDeclStmt : ParserM Stmt := do
     match tk.kind with
     | .string s => let _ <- bump; pure s
     | _ => throw "Expected import source string literal"
-  let skipImportAttributes := skipImportExportAttributes
+  -- ECMA-262 §16.2.2 Import Attributes: skip optional `with { ... }` after source
+  let skipImportAttributes : ParserM Unit := do
+    skipNewlines
+    if (← consumeKeyword? "with") then
+      skipNewlines
+      expectPunct "{"
+      let rec skipBraces (depth : Nat) : ParserM Unit := do
+        if depth = 0 then pure ()
+        else
+          let t <- bump
+          match t.kind with
+          | .eof => throw "Unterminated import attributes"
+          | .punct "{" => skipBraces (depth + 1)
+          | .punct "}" => skipBraces (depth - 1)
+          | _ => skipBraces depth
+      skipBraces 1
+    else pure ()
 
   let parseNamedSpecifiers : ParserM (List ImportSpecifier) := do
     expectPunct "{"
@@ -268,16 +284,6 @@ private partial def skipBalancedPunct (openP closeP : String) (depth : Nat := 1)
       else
         skipBalancedPunct openP closeP depth
     | _ => skipBalancedPunct openP closeP depth
-
-/-- ECMA-262 §16.2.2 Import Attributes: skip optional `with { ... }` after source -/
-private partial def skipImportExportAttributes : ParserM Unit := do
-  skipNewlines
-  if (← consumeKeyword? "with") then
-    skipNewlines
-    expectPunct "{"
-    skipBalancedPunct "{" "}"
-  else
-    pure ()
 
 private partial def parseBindingPatternM : ParserM Pattern := do
   skipNewlines
@@ -1588,7 +1594,11 @@ private partial def parseStmt : ParserM Stmt := do
         match tk.kind with
         | .string s => let _ <- bump; pure s
         | _ => throw "Expected export source string literal")
-      skipImportExportAttributes
+      skipNewlines
+      if (← consumeKeyword? "with") then
+        skipNewlines
+        expectPunct "{"
+        skipBalancedPunct "{" "}"
       parseSemiOpt
       pure (.export_ (.all source alias_))
     else if (← consumePunct? "{") then
@@ -1620,7 +1630,14 @@ private partial def parseStmt : ParserM Stmt := do
         if (← consumeWord? "from") then
           let tk <- peek
           match tk.kind with
-          | .string s => let _ <- bump; skipImportExportAttributes; pure (some s)
+          | .string s =>
+            let _ <- bump
+            skipNewlines
+            if (← consumeKeyword? "with") then
+              skipNewlines
+              expectPunct "{"
+              skipBalancedPunct "{" "}"
+            pure (some s)
           | _ => throw "Expected export source string literal"
         else
           pure none
