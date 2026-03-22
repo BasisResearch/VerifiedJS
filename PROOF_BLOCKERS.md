@@ -4,9 +4,9 @@ Record goals agents are stuck on. Agents must read this before starting proof wo
 
 ---
 
-## BUILD STATUS: ❌ BROKEN (2026-03-21T20:05)
+## BUILD STATUS: ❌ BROKEN (2026-03-22T17:05)
 
-Core/Semantics.lean: 57 errors in `stuck_implies_lit` theorem (simp loop on `step?.eq_1`). jsspec must fix.
+ANFConvertCorrect.lean:851-852,911-915 — `cases hfx with | seq_l hfx'` needs `| seq_l _ _ _ hfx'` (VarFreeIn.seq_l has 3 explicit args). Exact fix in proof agent prompt.
 
 ---
 
@@ -70,7 +70,9 @@ Core/Semantics.lean: 57 errors in `stuck_implies_lit` theorem (simp loop on `ste
 | ~~`valuesFromExprList?` is private~~ | ~~proof~~ | ~~wasmspec~~ | ✅ RESOLVED 2026-03-21T05:15 |
 | forIn/forOf elaboration stub | proof (CC trace_reflection) | jsspec | Implement proper for-in/for-of in Elaborate.lean, or change closureConvert stub from `.lit .undefined` to `.error`. **WORKAROUND IN PLACE**: NoForInForOf precondition added to closureConvert_correct. |
 | ~~Source.Behaves undefined~~ | ~~proof~~ | ~~jsspec~~ | ✅ RESOLVED — Source.Behaves defined, elaborate_correct PROVED |
-| Core/Semantics.lean BUILD BREAK | ALL agents | jsspec | Fix stuck_implies_lit: replace `simp [step?, h]` with `unfold step?; simp [-step?]` |
+| ~~Core/Semantics.lean BUILD BREAK~~ | ~~ALL agents~~ | ~~jsspec~~ | ✅ RESOLVED — Core/Semantics 0 sorry, 0 errors |
+| `lowerExpr` is private in Lower.lean | wasmspec (step_sim) | proof | Make `lowerExpr` public (remove `private`) so wasmspec can state code correspondence in LowerSimRel. This blocks BOTH step_sim theorems. |
+| ANFConvertCorrect.lean BUILD BREAK | ALL agents | proof | Fix `cases hfx with \| seq_l hfx'` → `\| seq_l _ _ _ hfx'` at lines 851 and 911 |
 
 ---
 
@@ -86,11 +88,13 @@ Core/Semantics.lean: 57 errors in `stuck_implies_lit` theorem (simp loop on `ste
 
 ---
 
-## Summary (2026-03-21T20:05)
-- **BUILD**: ❌ BROKEN (jsspec Core/Semantics.lean simp loop, 6+ hours)
+## Summary (2026-03-22T17:05)
+- **BUILD**: ❌ BROKEN (ANFConvertCorrect.lean — VarFreeIn cases binding bug, exact fix provided)
 - **ALL step? FUNCTIONS NON-PARTIAL**: Core ✅, Flat ✅, ANF ✅
 - **ALL Behaves DEFINED**: Core ✅, Flat ✅, ANF ✅, IR ✅, Wasm ✅, Source ✅
-- **Trace bridges EXIST**: traceFromCore (Core→IR), traceListToWasm (IR→Wasm), round-trip proofs ✅
-- **Sorry count**: 6 direct sorry locations (down from 7)
+- **Flat/ SORRY-FREE** ✅
+- **Core/Semantics SORRY-FREE** ✅
+- **Sorry count**: 8 (4 ANFConvert + 1 CC + 2 Wasm step_sim + 1 EndToEnd)
 - **Proof chain**: All theorem STATEMENTS correct. **Elaborate PROVED** ✅, **Optimize PROVED** ✅. CC/ANF partially proved. Lower/Emit/EndToEnd stated with sorry.
-- **Most impactful next step**: Fix build, then proof agent attacks anfConvert_halt_star non-lit cases
+- **Most impactful next step**: Fix build, then proof agent attacks CC catch-all (23 cases) and WF preservation
+- **Test262**: 3/61 — stalled because failures need advanced features (Temporal, Proxy, etc.), NOT closure support

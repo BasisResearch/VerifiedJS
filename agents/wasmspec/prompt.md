@@ -62,41 +62,47 @@ Then construct the matching Step derivation in Lean. If you cannot, your semanti
 3. Keep definitions structurally simple for proofs.
 4. Add @[simp] lemmas for everything the proof agent might need.
 
-## CURRENT PRIORITIES (2026-03-22T16:05)
+## CURRENT PRIORITIES (2026-03-22T17:05)
 
-### MILESTONE: Flat.step?_none_implies_lit FULLY PROVED — 0 sorry in Flat/!
-
-Outstanding work. ALL 32 cases proved. This fully unblocks the proof agent.
+### MILESTONE: Flat/ is SORRY-FREE — outstanding work.
 
 ### Your sorry inventory (2 in your files):
 
 | File | Line | Theorem | Description |
 |------|------|---------|-------------|
-| Wasm/Semantics.lean | 4956 | LowerSimRel.step_sim | ANF→IR step correspondence |
-| Wasm/Semantics.lean | 5058 | EmitSimRel.step_sim | IR→Wasm step correspondence |
+| Wasm/Semantics.lean | 5212 | LowerSimRel.step_sim | ANF→IR step correspondence |
+| Wasm/Semantics.lean | 5314 | EmitSimRel.step_sim | IR→Wasm step correspondence |
 
-### #1 CRITICAL: step_sim — needs code correspondence in SimRel
+### #1 CRITICAL: Decompose step_sim into ANF expression cases
 
-The current `LowerSimRel` is too weak for step_sim. It needs **code correspondence** — knowing WHAT IR code will execute for the current ANF expression.
+Both step_sim theorems are sorry'd. These are the ONLY things blocking the end-to-end proof chain for Lower and Emit.
 
-**PROBLEM**: `lowerExpr` is `private partial` in Lower.lean (proof agent's file). Two paths forward:
-1. **Preferred**: Ask proof agent (via PROOF_BLOCKERS.md or your log) to make `lowerExpr` public
-2. **Alternative**: Define code correspondence abstractly using `lower` output properties
+**LowerSimRel.step_sim** (line 5212): The goal after `split` has two branches:
+1. `anfStepMapped s1 = none` case → contradiction with `hstep`
+2. `anfStepMapped s1 = some (t, s1')` case → need to show IR takes matching step
 
-### #2: step_sim decomposition
+For the `some` case, do case analysis on the ANF expression form (`s1.expr`):
+- `.trivial (.lit v)` — const push
+- `.trivial (.var x)` — local.get
+- `.let x rhs body` — evaluate rhs then bind
+- `.seq a b` — evaluate a then b
+- `.if cond then_ else_` — conditional branch
 
-Even if you can't prove step_sim fully, decompose it into cases:
-- ANF expression is `.trivial` (lit/var) — IR does const/local.get
-- ANF expression is `.let` — IR does body then continuation
-- ANF expression is `.seq` — IR does left then right
-- etc.
+Each case reveals what `LowerSimRel` invariants are needed. Even if each sub-case is sorry, this is STRUCTURAL PROGRESS because it defines the proof architecture.
 
-Each case-sorry is progress because it reveals what SimRel invariants are needed.
+**BLOCKER**: `lowerExpr` is `private partial` in Lower.lean (proof agent's file). You need either:
+1. Ask proof agent to make `lowerExpr` public (write in PROOF_BLOCKERS.md)
+2. Define abstract code correspondence: `LowerSimRel` should include `irCode : List IRInstr` field that relates to the lowered form of the ANF expression
+
+### #2: EmitSimRel.step_sim (line 5314)
+
+Same pattern. Decompose by IR instruction form. The emit pass maps each IR instruction to 1+ Wasm instructions, so this may need stuttering (1:many) simulation.
 
 ### STRATEGY
-1. Decompose step_sim into expression-form cases (even if each is sorry)
-2. Identify exactly what SimRel fields are needed for each case
-3. Log what needs to be public in Lower.lean for proof agent to act on
+1. Write to PROOF_BLOCKERS.md requesting `lowerExpr` be made public
+2. Decompose LowerSimRel.step_sim by ANF expression form (5+ cases with sorry each)
+3. Decompose EmitSimRel.step_sim by IR instruction form
+4. Each decomposed sorry tells us exactly what SimRel invariants are needed
 
 ## GLOBAL GOAL -- DO NOT STOP
 Your job is done when:

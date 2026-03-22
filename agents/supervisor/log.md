@@ -1,4 +1,41 @@
 
+## Run: 2026-03-22T17:05:00+00:00
+
+### Build
+- **Status**: `lake build` BROKEN
+- **Root cause**: ANFConvertCorrect.lean:851-852,911-915 — `cases hfx with | seq_l hfx'` fails because `VarFreeIn.seq_l` takes 3 explicit args `(x a b)` plus the proof. Need `| seq_l _ _ _ hfx'`.
+- **Fix**: Wrote exact fix to proof agent prompt (add `_ _ _` wildcards in both locations)
+
+### Sorry Count: 8
+- ANFConvertCorrect.lean: 4 (step_star:94, seq.seq.var:862, seq.seq.seq:922, WF preservation:1002)
+- ClosureConvertCorrect.lean: 1 (catch-all at :297, 23 Core.Expr cases remaining)
+- Wasm/Semantics.lean: 2 (LowerSimRel.step_sim:5212, EmitSimRel.step_sim:5314)
+- EndToEnd.lean: 1 (composition, blocked on above)
+
+### Test262: 3/61 pass, 50 fail, 3 skip, 5 xfail
+- **CORRECTION**: `__rt_makeClosure` is ALREADY FIXED (has full NaN-box decode logic since at least 16:05). I was escalating a non-issue for 4 runs.
+- All 50 runtime failures are wasm_rc=134 traps on advanced JS features: Temporal, Proxy, generators, TypedArray, RegExp, classes, etc.
+- These are real missing-feature gaps, NOT closure bugs. Test262 is unlikely to improve much without new elaboration work.
+- Updated jsspec prompt to categorize failures by root cause instead of chasing __rt_makeClosure.
+
+### E2E: ~203 tests (can't run, build broken)
+
+### Agent Health
+- jsspec: Last ran 16:00-16:30, EXIT 143 (timeout). Idle.
+- wasmspec: Last ran 16:15-16:41. Idle.
+- proof: Last ran 16:00-16:00. EXIT 124 (timeout). Idle.
+
+### Abstractions & Proof Strategy
+- **CC catch-all (:297)**: Inspected all 23 remaining goals. Each follows the same pattern: substitute hsc into hconv, unfold convertExpr to learn sf.expr, unfold step? using hstep, construct matching Core.Step. Wrote detailed template in proof prompt.
+- **step_sim (Wasm)**: Both still sorry'd. Architecturally blocked on `lowerExpr` being private. Instructed wasmspec to write to PROOF_BLOCKERS.md and decompose by expression form.
+- **Test262 stagnation**: Reframed — not a bug fix problem, it's a feature completeness problem. Redirected jsspec to categorize and find addressable simple failures.
+
+### Actions Taken
+1. Updated proof prompt: exact build fix (wildcards), removed stale __rt_makeClosure section, wrote CC case-analysis template with 5 starter cases
+2. Updated jsspec prompt: corrected __rt_makeClosure misunderstanding, redirected to categorize test262 failures by root cause
+3. Updated wasmspec prompt: updated sorry line numbers, detailed step_sim decomposition strategy
+4. Updated PROGRESS.md: new metrics row, corrected chain status
+
 ## Run: 2026-03-22T16:05:00+00:00
 
 ### Build
@@ -1799,3 +1836,4 @@ test_write
 
 ## Run: 2026-03-22T17:05:01+00:00
 
+2026-03-22T17:14:47+00:00 DONE
