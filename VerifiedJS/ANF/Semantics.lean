@@ -718,25 +718,110 @@ theorem exprValue?_trivial_lit (t : Trivial) (h : t.isLit = true) :
     ∃ v, exprValue? (.trivial t) = some v := by
   simp [exprValue?]; exact trivialValue?_isLit t h
 
+/-- When step? returns none on a seq expression, both exprValue? and the
+    recursive step? on the first sub-expression must be none. -/
+theorem step?_seq_none (s : State) (a b : Expr) (he : s.expr = .seq a b)
+    (h : step? s = none) :
+    exprValue? a = none ∧ step? { s with expr := a } = none := by
+  rw [show s = { s with expr := .seq a b } from by simp [he]] at h
+  unfold step? at h; simp only [] at h
+  split at h
+  · simp at h
+  · split at h
+    · simp at h
+    · constructor <;> [skip; assumption]
+      rename_i hv _; exact hv
+
+/-- When step? returns none on a while_ expression, both exprValue? and the
+    recursive step? on the condition must be none. -/
+theorem step?_while_none (s : State) (cond body : Expr) (he : s.expr = .while_ cond body)
+    (h : step? s = none) :
+    exprValue? cond = none ∧ step? { s with expr := cond } = none := by
+  rw [show s = { s with expr := .while_ cond body } from by simp [he]] at h
+  unfold step? at h; simp only [] at h
+  split at h
+  · simp at h
+  · split at h
+    · simp at h
+    · constructor <;> [skip; assumption]
+      rename_i hv _; exact hv
+
+/-- When step? returns none on a tryCatch expression, both exprValue? and the
+    recursive step? on the body must be none. -/
+theorem step?_tryCatch_none (s : State) (body : Expr) (cp : VarName) (cb : Expr)
+    (fin : Option Expr) (he : s.expr = .tryCatch body cp cb fin)
+    (h : step? s = none) :
+    exprValue? body = none ∧ step? { s with expr := body } = none := by
+  rw [show s = { s with expr := .tryCatch body cp cb fin } from by simp [he]] at h
+  unfold step? at h; simp only [] at h
+  split at h
+  · cases fin <;> simp at h
+  · split at h
+    · simp at h
+    · split at h
+      · simp at h
+      · constructor <;> [skip; assumption]
+        rename_i hv _ _; exact hv
+
 /-- If step? returns none, the expression must be a literal trivial.
     This is the fundamental halting characterization for ANF:
     the only ANF states that cannot step are those with literal trivial expressions.
-    Key lemma for anfConvert_halt_star non-lit cases.
-
-    PROOF SKETCH (strong induction on expression depth):
-    - Base cases: for `.trivial (.var name)`, step? always returns some
-      (either looks up the variable or produces a ReferenceError). For all other
-      `.trivial` constructors (litNull, litUndefined, etc.), step? returns none
-      and these are the literal trivials we want.
-    - Non-trivial, non-recursive: `.let`, `.if`, `.throw`, `.return`, `.yield`,
-      `.await`, `.labeled`, `.break`, `.continue` always return some from step?.
-    - Recursive cases (`.seq a b`, `.while_ cond body`, `.tryCatch`):
-      step? returns none iff `exprValue? sub = none` AND `step? sub = none`.
-      By IH (sub has smaller depth), sub is a literal trivial, so
-      `exprValue? sub = trivialValue? t = some v`, contradiction. -/
+    Key lemma for anfConvert_halt_star non-lit cases. -/
 theorem step?_none_implies_trivial_lit (s : State) (h : step? s = none) :
     ∃ t, s.expr = .trivial t ∧ t.isLit = true := by
-  sorry
+  generalize he : s.expr = e at h
+  induction e generalizing s with
+  | trivial t =>
+    cases t with
+    | var name =>
+      rw [show s = { s with expr := .trivial (.var name) } from by simp [he]] at h
+      exact absurd h (step?_ne_none_of_var _ name)
+    | _ => exact ⟨_, he, rfl⟩
+  | «let» name rhs body _ =>
+    rw [show s = { s with expr := .let name rhs body } from by simp [he]] at h
+    exact absurd h (step?_let_ne_none _ name rhs body)
+  | «if» c t e _ _ =>
+    rw [show s = { s with expr := .if c t e } from by simp [he]] at h
+    exact absurd h (step?_if_ne_none _ c t e)
+  | throw arg =>
+    rw [show s = { s with expr := .throw arg } from by simp [he]] at h
+    exact absurd h (step?_throw_ne_none _ arg)
+  | «return» arg =>
+    rw [show s = { s with expr := .return arg } from by simp [he]] at h
+    exact absurd h (step?_return_ne_none _ arg)
+  | yield arg d =>
+    rw [show s = { s with expr := .yield arg d } from by simp [he]] at h
+    exact absurd h (step?_yield_ne_none _ arg d)
+  | await arg =>
+    rw [show s = { s with expr := .await arg } from by simp [he]] at h
+    exact absurd h (step?_await_ne_none _ arg)
+  | labeled l b _ =>
+    rw [show s = { s with expr := .labeled l b } from by simp [he]] at h
+    exact absurd h (step?_labeled_ne_none _ l b)
+  | «break» l =>
+    rw [show s = { s with expr := .break l } from by simp [he]] at h
+    exact absurd h (step?_break_ne_none _ l)
+  | «continue» l =>
+    rw [show s = { s with expr := .continue l } from by simp [he]] at h
+    exact absurd h (step?_continue_ne_none _ l)
+  | seq a b iha _ =>
+    have ⟨hv, hs⟩ := step?_seq_none s a b he h
+    have ⟨t, ht, hlit⟩ := iha { s with expr := a } rfl hs
+    simp at ht; rw [ht] at hv
+    have ⟨v, hv'⟩ := exprValue?_trivial_lit t hlit
+    simp [hv'] at hv
+  | while_ c b iha _ =>
+    have ⟨hv, hs⟩ := step?_while_none s c b he h
+    have ⟨t, ht, hlit⟩ := iha { s with expr := c } rfl hs
+    simp at ht; rw [ht] at hv
+    have ⟨v, hv'⟩ := exprValue?_trivial_lit t hlit
+    simp [hv'] at hv
+  | tryCatch body cp cb fin iha _ _ =>
+    have ⟨hv, hs⟩ := step?_tryCatch_none s body cp cb fin he h
+    have ⟨t, ht, hlit⟩ := iha { s with expr := body } rfl hs
+    simp at ht; rw [ht] at hv
+    have ⟨v, hv'⟩ := exprValue?_trivial_lit t hlit
+    simp [hv'] at hv
 
 /-- Comprehensive: if an ANF expression is not a literal trivial (not .litNull,
     .litUndefined, .litBool, .litNum, .litStr, .litObject, .litClosure) but IS

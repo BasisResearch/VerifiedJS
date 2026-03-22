@@ -672,3 +672,18 @@ normalizeExpr (.seq a b) k DROPS the evaluation of a when a is trivial (var/lit/
 - Sorry count: 5 in my files (was 6), 11 total project (was 11, net -1 in my files)
 - Build: PASS
 
+
+### Summary
+- Sorries before: 6 in my files, after: 5 (delta: -1)
+- Proved: anfConvert_halt_star .seq.lit case (depth induction + IH)
+- Fixed: Multiple build breakages from wasmspec's step? changes
+- Build: PASS for my files (Parser.lean + Wasm/Semantics.lean still broken by other agents)
+- E2E: blocked by Parser.lean build failure
+- Remaining sorries (5 in my files):
+  1. anfConvert_step_star (line 94) — stuttering simulation
+  2. anfConvert_halt_star .seq.var (line 678) — needs well-formedness
+  3. anfConvert_halt_star .seq.this (line 681) — needs well-formedness
+  4. anfConvert_halt_star .seq.seq (line 718) — needs recursive stepping
+  5. closureConvert_step_simulation (CC:178) — needs CC_SimRel strengthening
+
+2026-03-22T05:10:00+00:00 DONE
