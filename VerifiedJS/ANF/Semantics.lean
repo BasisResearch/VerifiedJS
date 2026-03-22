@@ -666,7 +666,7 @@ theorem step?_return_ne_none (s : State) (arg : Option Trivial) :
   cases arg with
   | none => simp
   | some t =>
-    intro h; split at h <;> simp at h
+    intro h; cases h1 : evalTrivial s.env t <;> simp_all
 
 /-- Await always steps. -/
 theorem step?_await_ne_none (s : State) (arg : Trivial) :
