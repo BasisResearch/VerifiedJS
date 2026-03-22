@@ -671,11 +671,46 @@ private theorem anfConvert_halt_star_aux
       -- hnorm: (normalizeExpr a (fun _ => normalizeExpr b k)).run n = .ok (.trivial tv, m)
       cases ha : a with
       | var name =>
-        -- normalizeExpr (.var name) k' = k' (.var name) = normalizeExpr b k
-        -- This means: (normalizeExpr b k).run n = .ok (.trivial tv, m)
-        -- Flat.step? on .seq (.var name) b steps the .var name first, then continues with b
-        -- The var lookup may produce a silent step or error — need well-formedness
-        sorry
+        rw [ha] at hnorm; simp only [ANF.normalizeExpr] at hnorm
+        have hbd : b.depth ≤ N := by rw [hsf] at hdepth; simp [Flat.Expr.depth] at hdepth; omega
+        cases hvar : sf.env.lookup name with
+        | some v =>
+          -- Var in scope: 2 silent steps to reach b
+          obtain ⟨val, hstep1⟩ : ∃ val, Flat.step? sf = some (.silent, { expr := .seq (.lit val) b, env := sf.env, heap := sf.heap, trace := sf.trace ++ [.silent] }) := by
+            rw [show sf = {sf with expr := .seq a b} from by cases sf; simp_all]
+            rw [ha]; unfold Flat.step? Flat.exprValue?
+            unfold Flat.step?
+            rw [hvar]; exact ⟨v, rfl⟩
+          let sf2 : Flat.State := { expr := .seq (.lit val) b, env := sf.env, heap := sf.heap, trace := sf.trace ++ [.silent] }
+          obtain ⟨sf3, hstep2⟩ : ∃ sf3, Flat.step? sf2 = some (.silent, sf3) := by
+            simp only [sf2]; simp only [Flat.step?, Flat.exprValue?]; exact ⟨_, rfl⟩
+          have hsf3_expr : sf3.expr = b := by
+            have h0 := hstep2; simp only [sf2, Flat.step?, Flat.exprValue?] at h0
+            exact congrArg Flat.State.expr (Prod.mk.inj (Option.some.inj h0)).2 ▸ rfl
+          have hsf3_env : sf3.env = sf.env := by
+            have h0 := hstep2; simp only [sf2, Flat.step?, Flat.exprValue?] at h0
+            exact congrArg Flat.State.env (Prod.mk.inj (Option.some.inj h0)).2 ▸ rfl
+          have hsf3_heap : sf3.heap = sf.heap := by
+            have h0 := hstep2; simp only [sf2, Flat.step?, Flat.exprValue?] at h0
+            exact congrArg Flat.State.heap (Prod.mk.inj (Option.some.inj h0)).2 ▸ rfl
+          have hsf3_trace : observableTrace sf3.trace = observableTrace sf.trace := by
+            have h0 := hstep2; simp only [sf2, Flat.step?, Flat.exprValue?] at h0
+            have heq := (Prod.mk.inj (Option.some.inj h0)).2; subst heq
+            show observableTrace (sf2.trace ++ [.silent]) = observableTrace sf.trace
+            simp only [sf2]; show observableTrace ((sf.trace ++ [.silent]) ++ [.silent]) = observableTrace sf.trace
+            simp [observableTrace, List.filter_append]; decide
+          have hrel3 : ANF_SimRel s t sa sf3 := by
+            refine ⟨hheap.trans hsf3_heap.symm, henv.trans hsf3_env.symm, htrace.trans hsf3_trace.symm, k, n, m, ?_, hfaithful⟩
+            rw [hsf3_expr, hat]; exact hnorm
+          have hbd3 : sf3.expr.depth ≤ N := by rw [hsf3_expr]; exact hbd
+          obtain ⟨sf', evs, hsteps', hhalt', hobs', hrel'⟩ := ih sa sf3 hbd3 hrel3 hstuck
+          let steps12 := Flat.Steps.tail (⟨hstep1⟩ : Flat.Step sf .silent sf2) (Flat.Steps.tail (⟨hstep2⟩ : Flat.Step sf2 .silent sf3) hsteps')
+          have hobsAll : observableTrace (.silent :: .silent :: evs) = [] := by simp [observableTrace_silent, hobs']
+          exact ⟨sf', .silent :: .silent :: evs, steps12, hhalt', hobsAll, hrel'⟩
+        | none =>
+          -- Var not in scope: produces error event, contradicts observableTrace = []
+          -- BLOCKER: Requires well-formedness precondition (all free vars in scope)
+          sorry
       | this =>
         rw [ha] at hnorm; simp only [ANF.normalizeExpr] at hnorm
         have hbd : b.depth ≤ N := by rw [hsf] at hdepth; simp [Flat.Expr.depth] at hdepth; omega
@@ -788,10 +823,17 @@ private theorem anfConvert_halt_star_aux
               Flat.Steps.tail ⟨hstep_eq⟩ hsteps',
               hhalt', by show observableTrace (.silent :: evs) = []; simp [observableTrace_silent, hobs'],
               hrel'⟩)
-        | var _ | «this» | seq _ _ =>
-          -- .var/.this need well-formedness (var in scope)
-          -- .seq is recursive, eventually hits .var/.this or .lit (proved above)
-          sorry
+        | var name1 =>
+          -- .var needs well-formedness (var in scope for silent step)
+          rw [ha1] at hnorm; simp only [ANF.normalizeExpr] at hnorm
+          sorry -- BLOCKER: well-formedness needed for .seq(.seq(.var name1) a2) b
+        | «this» =>
+          -- .this always steps silently: take 2 steps to .seq a2 b, then IH
+          rw [ha1] at hnorm; simp only [ANF.normalizeExpr] at hnorm
+          sorry -- TODO: same 2-step pattern as .seq.this case
+        | seq c d =>
+          -- .seq(.seq(.seq c d) a2) b: recursive, needs multiple steps
+          sorry -- TODO: nested seq reduction
         | _ =>
           -- Compound a1: normalizeExpr a1 never produces .trivial → contradiction
           exfalso

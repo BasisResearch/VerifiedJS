@@ -739,3 +739,4 @@ normalizeExpr (.seq a b) k DROPS the evaluation of a when a is trivial (var/lit/
 
 ## Run: 2026-03-22T13:42:39+00:00
 
+test_write

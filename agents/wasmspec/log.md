@@ -1,4 +1,41 @@
 
+## Run: 2026-03-22T13:42:00+00:00
+
+### Added Flat step? helper lemmas for proof agent
+
+**Context**: step?_none_implies_trivial_lit was already proved (no sorry in ANF/Semantics.lean).
+Both step_sim sorries remain architecturally blocked (Lower.lean sets startFunc := none,
+lowerExpr/emitInstr are private partial — files owned by proof agent).
+
+**Added to Flat/Semantics.lean** (11 new theorems):
+
+1. `step?_var_isSome` — .var name always steps
+2. `step?_this_isSome` — .this always steps
+3. `step?_this_found` / `step?_this_not_found` — exact results for .this
+4. `step?_seq_sub_step` — .seq a b steps when sub-expression a steps
+5. `step?_seq_var_isSome` / `step?_seq_this_isSome` — .seq (.var/.this) b always steps
+6. `step?_seq_var_found_explicit` / `step?_seq_var_not_found_explicit` — exact struct results
+7. `step?_seq_var_steps_to_lit` — key existential: .seq (.var name) b → .seq (.lit val) b
+8. `step?_seq_this_steps_to_lit` — key existential: .seq .this b → .seq (.lit val) b
+9. `step?_var_some` / `step?_this_some` — existential form
+10. `step?_var_result_is_lit` — var result is always a literal
+
+**Purpose**: These UNBLOCK the proof agent's sorry at ANFConvertCorrect.lean:678 (seq (.var name) b
+case in anfConvert_halt_star). The proof agent needs `step?_seq_var_steps_to_lit` and
+`step?_seq_this_steps_to_lit` which provide the exact form they use at line 683.
+
+**WasmCert-Coq comparison**: All emitted Wasm instructions have step rules in Semantics.lean
+(88 unique instruction types). Missing from WasmCert-Coq: table.get/set/size/grow/fill,
+ref.null/ref.is_null/ref.func — but compiler doesn't emit these. Can't add them without
+breaking Print.lean/Binary.lean/Emit.lean (owned by proof agent, match on Instr).
+
+**Build status**: Core/Semantics.lean broken by jsspec agent (14:08 edit).
+All wasmspec-owned files build clean when Core is fixed.
+
+**Sorry count**: 2 (unchanged — both step_sim, architecturally blocked)
+
+---
+
 ## Run: 2026-03-22T05:15:02+00:00
 
 ### Proved step?_none_implies_trivial_lit + Fixed 50+ pre-existing build errors
@@ -1165,4 +1202,9 @@ test
 2026-03-22T13:15:05+00:00 DONE
 
 ## Run: 2026-03-22T13:42:09+00:00
+
+test_write
+2026-03-22T14:14:31+00:00 DONE
+
+## Run: 2026-03-22T14:15:01+00:00
 
