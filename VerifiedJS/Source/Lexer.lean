@@ -140,11 +140,11 @@ private partial def readIdentifierWithEscapes (chars : List Char) : Option (Stri
               if isIdentContinue escCh then
                 loop rest' (escCh :: accRev) (consumed + escConsumed)
               else
-                some (String.mk accRev.reverse, rest, consumed)
+                some (String.ofList accRev.reverse, rest, consumed)
           | none =>
-              some (String.mk accRev.reverse, rest, consumed)
+              some (String.ofList accRev.reverse, rest, consumed)
     | [] =>
-        some (String.mk accRev.reverse, [], consumed)
+        some (String.ofList accRev.reverse, [], consumed)
   match chars with
   | c :: cs =>
       if isIdentStart c then
@@ -198,7 +198,7 @@ private def parseUnsignedDecimal? (cs : List Char) : Option Nat :=
     parseNatBase? 10 cs
 
 private def parseNumberFloat (raw : String) : Float :=
-  let s := String.mk (stripUnderscoresChars raw.toList)
+  let s := String.ofList (stripUnderscoresChars raw.toList)
   if s.startsWith "0x" || s.startsWith "0X" then
     let hexPart := (s.drop 2).toString.toList
     match parseNatBase? 16 hexPart with
@@ -274,30 +274,30 @@ private def readNumberLiteral (chars : List Char) : String × List Char :=
   match chars with
   | '0' :: ('x' :: cs) =>
       let (restDigits, rest) := readWhileChars cs (fun ch => ch.isDigit || (ch >= 'a' && ch <= 'f') || (ch >= 'A' && ch <= 'F') || ch = '_')
-      ("0x" ++ String.mk restDigits, rest)
+      ("0x" ++ String.ofList restDigits, rest)
   | '0' :: ('X' :: cs) =>
       let (restDigits, rest) := readWhileChars cs (fun ch => ch.isDigit || (ch >= 'a' && ch <= 'f') || (ch >= 'A' && ch <= 'F') || ch = '_')
-      ("0X" ++ String.mk restDigits, rest)
+      ("0X" ++ String.ofList restDigits, rest)
   | '0' :: ('b' :: cs) =>
       let (restDigits, rest) := readWhileChars cs (fun ch => ch = '0' || ch = '1' || ch = '_')
-      ("0b" ++ String.mk restDigits, rest)
+      ("0b" ++ String.ofList restDigits, rest)
   | '0' :: ('B' :: cs) =>
       let (restDigits, rest) := readWhileChars cs (fun ch => ch = '0' || ch = '1' || ch = '_')
-      ("0B" ++ String.mk restDigits, rest)
+      ("0B" ++ String.ofList restDigits, rest)
   | '0' :: ('o' :: cs) =>
       let (restDigits, rest) := readWhileChars cs (fun ch => ((ch >= '0' && ch <= '7') || ch = '_'))
-      ("0o" ++ String.mk restDigits, rest)
+      ("0o" ++ String.ofList restDigits, rest)
   | '0' :: ('O' :: cs) =>
       let (restDigits, rest) := readWhileChars cs (fun ch => ((ch >= '0' && ch <= '7') || ch = '_'))
-      ("0O" ++ String.mk restDigits, rest)
+      ("0O" ++ String.ofList restDigits, rest)
   | _ =>
       let (intDigits, rest0) := readWhileChars chars (fun ch => ch.isDigit || ch = '_')
-      let intPart := String.mk intDigits
+      let intPart := String.ofList intDigits
       let (fracPart, rest1) :=
         match rest0 with
         | '.' :: tail =>
             let (fracDigits, restTail) := readWhileChars tail (fun ch => ch.isDigit || ch = '_')
-            ("." ++ String.mk fracDigits, restTail)
+            ("." ++ String.ofList fracDigits, restTail)
         | _ => ("", rest0)
       let (expPart, rest2) :=
         match rest1 with
@@ -308,7 +308,7 @@ private def readNumberLiteral (chars : List Char) : String × List Char :=
               | ('-' :: more) => ("-", more)
               | _ => ("", tail)
             let (expDigits, restTail) := readWhileChars tail1 (fun ch => ch.isDigit || ch = '_')
-            ("e" ++ signPart ++ String.mk expDigits, restTail)
+            ("e" ++ signPart ++ String.ofList expDigits, restTail)
         | ('E' :: tail) =>
             let (signPart, tail1) :=
               match tail with
@@ -316,7 +316,7 @@ private def readNumberLiteral (chars : List Char) : String × List Char :=
               | ('-' :: more) => ("-", more)
               | _ => ("", tail)
             let (expDigits, restTail) := readWhileChars tail1 (fun ch => ch.isDigit || ch = '_')
-            ("E" ++ signPart ++ String.mk expDigits, restTail)
+            ("E" ++ signPart ++ String.ofList expDigits, restTail)
         | _ => ("", rest1)
       (intPart ++ fracPart ++ expPart, rest2)
 
@@ -359,11 +359,11 @@ private def readStringBody (quote : Char) (chars : List Char) :
     String × List Char × Nat :=
   let rec go (rest acc : List Char) (consumed : Nat) :=
     match rest with
-    | [] => (String.mk acc.reverse, [], consumed)
+    | [] => (String.ofList acc.reverse, [], consumed)
     | '\\' :: c :: cs => go cs (c :: '\\' :: acc) (consumed + 2)
     | c :: cs =>
       if c = quote then
-        (String.mk acc.reverse, cs, consumed + 1)
+        (String.ofList acc.reverse, cs, consumed + 1)
       else
         go cs (c :: acc) (consumed + 1)
   go chars [] 0
@@ -372,14 +372,14 @@ private def readTemplateBody (chars : List Char) :
     String × List Char × Nat × Bool :=
   let rec go (rest acc : List Char) (consumed : Nat) (escaped : Bool) :=
     match rest with
-    | [] => (String.mk acc.reverse, [], consumed, false)
+    | [] => (String.ofList acc.reverse, [], consumed, false)
     | c :: cs =>
       if escaped then
         go cs (c :: acc) (consumed + 1) false
       else if c = '\\' then
         go cs (c :: acc) (consumed + 1) true
       else if c = '`' then
-        (String.mk acc.reverse, cs, consumed + 1, true)
+        (String.ofList acc.reverse, cs, consumed + 1, true)
       else
         go cs (c :: acc) (consumed + 1) false
   go chars [] 0 false
@@ -387,8 +387,8 @@ private def readTemplateBody (chars : List Char) :
 private def readRegexBody (chars : List Char) : String × String × List Char × Nat × Bool :=
   let rec body (rest acc : List Char) (consumed : Nat) (inClass escaped : Bool) :=
     match rest with
-    | [] => (String.mk acc.reverse, "", [], consumed, false)
-    | '\n' :: _ => (String.mk acc.reverse, "", rest, consumed, false)
+    | [] => (String.ofList acc.reverse, "", [], consumed, false)
+    | '\n' :: _ => (String.ofList acc.reverse, "", rest, consumed, false)
     | c :: cs =>
       if escaped then
         body cs (c :: acc) (consumed + 1) inClass false
@@ -400,9 +400,9 @@ private def readRegexBody (chars : List Char) : String × String × List Char ×
         body cs (c :: acc) (consumed + 1) false false
       else if c = '/' && !inClass then
       let (flagsChars, tail) := readWhile cs (fun c => c.isAlpha)
-      let flags := String.mk flagsChars
+      let flags := String.ofList flagsChars
       let consumedFlags := flagsChars.length + 1
-      (String.mk acc.reverse, flags, tail, consumed + consumedFlags, true)
+      (String.ofList acc.reverse, flags, tail, consumed + consumedFlags, true)
       else
         body cs (c :: acc) (consumed + 1) inClass false
   body chars [] 0 false false
@@ -422,36 +422,36 @@ private def punct4Set : List String :=
 private def readPunct (chars : List Char) : String × List Char :=
   match chars with
   | a :: b :: c :: d :: rest =>
-    let s4 := String.mk [a, b, c, d]
+    let s4 := String.ofList [a, b, c, d]
     if punct4Set.contains s4 then
       (s4, rest)
     else
-      let s3 := String.mk [a, b, c]
+      let s3 := String.ofList [a, b, c]
       if punct3Set.contains s3 then
         (s3, d :: rest)
       else
-        let s2 := String.mk [a, b]
+        let s2 := String.ofList [a, b]
         if punct2Set.contains s2 then
           (s2, c :: d :: rest)
         else
-          (String.mk [a], b :: c :: d :: rest)
+          (String.ofList [a], b :: c :: d :: rest)
   | a :: b :: c :: rest =>
-    let s3 := String.mk [a, b, c]
+    let s3 := String.ofList [a, b, c]
     if punct3Set.contains s3 then
       (s3, rest)
     else
-      let s2 := String.mk [a, b]
+      let s2 := String.ofList [a, b]
       if punct2Set.contains s2 then
         (s2, c :: rest)
       else
-        (String.mk [a], b :: c :: rest)
+        (String.ofList [a], b :: c :: rest)
   | a :: b :: rest =>
-    let s2 := String.mk [a, b]
+    let s2 := String.ofList [a, b]
     if punct2Set.contains s2 then
       (s2, rest)
     else
-      (String.mk [a], b :: rest)
-  | a :: rest => (String.mk [a], rest)
+      (String.ofList [a], b :: rest)
+  | a :: rest => (String.ofList [a], rest)
   | [] => ("", [])
 
 /-- Tokenize the full source string. -/
@@ -519,7 +519,7 @@ partial def tokenizeChars
       let (kind, rest, consumed) :=
         match rest0 with
         | 'n' :: tail =>
-            (TokenKind.bigint (String.mk (stripUnderscoresChars numRaw.toList)), tail, numRaw.length + 1)
+            (TokenKind.bigint (String.ofList (stripUnderscoresChars numRaw.toList)), tail, numRaw.length + 1)
         | _ =>
             (TokenKind.number (parseNumberFloat numRaw), rest0, numRaw.length)
       let tok : Token := { kind, pos := { line, col, offset } }

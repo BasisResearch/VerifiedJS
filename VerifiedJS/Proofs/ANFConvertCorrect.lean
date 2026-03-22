@@ -58,6 +58,7 @@ theorem observableTrace_append (a b : List Core.TraceEvent) :
       the Flat expression under some continuation k with counter state n -/
 private def ANF_SimRel (_s : Flat.Program) (_t : ANF.Program) (sa : ANF.State) (sf : Flat.State) : Prop :=
   sa.heap = sf.heap ∧
+  sa.env = sf.env ∧
   observableTrace sa.trace = observableTrace sf.trace ∧
   ∃ (k : ANF.Trivial → ANF.ConvM ANF.Expr) (n m : Nat),
     (ANF.normalizeExpr sf.expr k).run n = Except.ok (sa.expr, m)
@@ -69,7 +70,7 @@ private theorem anfConvert_init_related
     (h : ANF.convert s = .ok t) :
     ANF_SimRel s t (ANF.initialState t) (Flat.initialState s) := by
   simp only [ANF.initialState, Flat.initialState]
-  refine ⟨rfl, rfl, fun t => pure (.trivial t), 0, ?_⟩
+  refine ⟨rfl, rfl, rfl, fun t => pure (.trivial t), 0, ?_⟩
   exact ANF.convert_main_from_normalizeExpr s t h
 
 /-- Stuttering simulation: one ANF step corresponds to one or more Flat steps,
@@ -516,7 +517,7 @@ private theorem anfConvert_halt_star
         Flat.step? sf' = none ∧
         observableTrace evs = [] ∧
         ANF_SimRel s t sa sf' := by
-  intro sa sf ⟨hheap, htrace, k, n, m, hnorm⟩ hstuck
+  intro sa sf ⟨hheap, henv, htrace, k, n, m, hnorm⟩ hstuck
   obtain ⟨t, hat, hnovar⟩ := ANF_step?_none_implies_trivial sa hstuck
   -- sa.expr = .trivial t, t is not a var
   -- From hnorm: (normalizeExpr sf.expr k).run n = .ok (.trivial t, m)
@@ -526,7 +527,7 @@ private theorem anfConvert_halt_star
     -- Flat.step? on .lit = none (already halted), take sf' = sf
     exact ⟨sf, [], .refl sf,
       by rw [show sf = {sf with expr := .lit v} from by cases sf; simp_all]; unfold Flat.step?; simp,
-      rfl, hheap, htrace, k, n, m, hnorm⟩
+      rfl, hheap, henv, htrace, k, n, m, hnorm⟩
   | _ =>
     -- For var/this: normalizeExpr applies k directly, need env correspondence
     -- For compound: normalizeExpr may still produce .trivial through simple sub-expressions

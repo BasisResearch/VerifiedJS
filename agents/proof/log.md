@@ -533,4 +533,41 @@ The end-to-end proof chain is now STRUCTURALLY COMPLETE:
 2026-03-22T00:49:39+00:00 DONE
 
 ## Run: 2026-03-22T01:30:01+00:00
+- Sorries before: 3 (in Proofs/) + 1 broken theorem, after: 2 (delta: -2)
+- Proved (eliminated sorry):
+  - `ANF_step?_none_implies_trivial_aux` (ANFConvertCorrect.lean:427→497) — fully proved, was broken with 15 build errors. Proved by strong induction on depth: base cases use `unfold ANF.step?` + `simp`, recursive cases (seq/while_/tryCatch) by IH + trivialValue?_non_var + exprValue? contradiction. Key technique for stray goals from recursive unfold: `exact ANF.Expr.noConfusion (he.symm.trans ‹s.expr = _›)`.
+  - `closureConvert_step_simulation` (ClosureConvertCorrect.lean:175) — ALL 27 constructor cases proved by a single 3-line tactic: `rw [hsc] at hconv; simp only [Flat.convertExpr] at hconv; have hsf := (Prod.mk.inj hconv).1; unfold Flat.step? at hstep; simp only [hsf] at hstep; simp at hstep`. This works because: (1) convertExpr maps each Core constructor to a Flat constructor, (2) unfolding Flat.step? on the known expression and simplifying produces a concrete equation, (3) simp closes by either finding a contradiction or completing the proof. Core.step? being non-partial (NEW since 2026-03-21) was key enabler.
+- Partial progress:
+  - `anfConvert_halt_star` (ANFConvertCorrect.lean:519→534) — proved .lit case (Flat already halted, take sf'=sf). Remaining sorry covers .var/.this/compound cases needing env/heap correspondence not in ANF_SimRel.
+- Files changed: VerifiedJS/Proofs/ANFConvertCorrect.lean, VerifiedJS/Proofs/ClosureConvertCorrect.lean
+- Build: PASS for all owned proof modules (ANFConvertCorrect, ClosureConvertCorrect, Driver). Wasm/Semantics.lean (wasmspec) has 3 errors blocking LowerCorrect/EmitCorrect/EndToEnd builds.
+- Remaining sorries (2):
+  1. `anfConvert_step_star` (ANF:88) — stuttering forward simulation: one ANF step → multiple Flat steps. HARDEST theorem. Requires showing evalComplex (atomic ANF evaluation) corresponds to multi-step Flat evaluation through normalizeExpr transformation. Needs detailed case analysis over all ANF expression forms with normalizeExpr correspondence + env/heap tracking.
+  2. `anfConvert_halt_star` non-.lit cases (ANF:534) — needs env correspondence in SimRel to handle .var/.this Flat states that haven't been evaluated yet.
 
+### Key unblock: Core.step? now non-partial
+Core.step? was made non-partial (termination_by s.expr.depth) since the last proof run. This unblocked closureConvert_step_simulation which was previously impossible to prove (couldn't unfold Core.step? or construct Core.Step).
+
+### Strategy for remaining 2 sorries
+Both remaining sorries require strengthening ANF_SimRel to include env/heap correspondence:
+```lean
+private def ANF_SimRel (...) : Prop :=
+  sa.heap = sf.heap ∧
+  observableTrace sa.trace = observableTrace sf.trace ∧
+  sa.env ≈ sf.env ∧  -- NEW: env correspondence
+  ∃ (k : ANF.Trivial → ANF.ConvM ANF.Expr) (n m : Nat),
+    (ANF.normalizeExpr sf.expr k).run n = Except.ok (sa.expr, m)
+```
+With env correspondence:
+- halt_star .var case: Flat.step? on .var does env lookup; since envs agree, produces same result as ANF.step? on .trivial (.var name). Both step with .silent, reaching .lit v. SimRel maintained.
+- step_star .let case: evalComplex evaluates rhs atomically using env/heap; Flat evaluates subexpressions step by step using same env/heap. Correspondence preserved.
+
+This refactor requires re-proving init_related and steps_star with the stronger relation.
+
+### Blocker: Wasm/Semantics.lean (wasmspec)
+3 errors in wasmspec's file block LowerCorrect/EmitCorrect/EndToEnd builds:
+1. Line 5041: unsolved goal in StepStar observableEvents lemma
+2. Line 5098: Type mismatch with StepStar.refl vs anfStepMapped
+3. Line 5191: invalid projection hBeh.1
+
+2026-03-22T02:10:00+00:00 DONE
