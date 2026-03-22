@@ -404,6 +404,179 @@ private theorem normalizeExpr_not_trivial
     (ANF.normalizeExpr e k).run n ≠ .ok (.trivial t, m) :=
   (normalizeExpr_not_trivial_family e.depth).1 e k hk (Nat.le_refl _) n m t
 
+/-- Convenience wrapper: normalizeExprList never produces .trivial when k doesn't. -/
+private theorem normalizeExprList_not_trivial
+    (es : List Flat.Expr) (k : List ANF.Trivial → ANF.ConvM ANF.Expr)
+    (hk : ∀ xs n' m' t, (k xs).run n' ≠ .ok (.trivial t, m'))
+    (n m : Nat) (t : ANF.Trivial) :
+    (ANF.normalizeExprList es k).run n ≠ .ok (.trivial t, m) :=
+  (normalizeExpr_not_trivial_family (Flat.Expr.listDepth es)).2.1 es k hk (Nat.le_refl _) n m t
+
+/-- Convenience wrapper: normalizeProps never produces .trivial when k doesn't. -/
+private theorem normalizeProps_not_trivial
+    (ps : List (Flat.PropName × Flat.Expr))
+    (k : List (ANF.PropName × ANF.Trivial) → ANF.ConvM ANF.Expr)
+    (hk : ∀ xs n' m' t, (k xs).run n' ≠ .ok (.trivial t, m'))
+    (n m : Nat) (t : ANF.Trivial) :
+    (ANF.normalizeProps ps k).run n ≠ .ok (.trivial t, m) :=
+  (normalizeExpr_not_trivial_family (Flat.Expr.propListDepth ps)).2.2 ps k hk (Nat.le_refl _) n m t
+
+/-- normalizeExpr on compound expressions (non-atom, non-seq) never produces .trivial,
+    regardless of the continuation k. All compound constructors either wrap the result
+    in a non-trivial constructor (let, if, labeled, etc.) or route through bindComplex
+    (which always produces .let). -/
+private theorem normalizeExpr_compound_not_trivial
+    (e : Flat.Expr) (k : ANF.Trivial → ANF.ConvM ANF.Expr)
+    (h1 : ∀ v, e ≠ .lit v) (h2 : ∀ name, e ≠ .var name) (h3 : e ≠ .this)
+    (h4 : ∀ a b, e ≠ .seq a b) (n m : Nat) (t : ANF.Trivial) :
+    (ANF.normalizeExpr e k).run n ≠ .ok (.trivial t, m) := by
+  cases e with
+  | lit v => exact absurd rfl (h1 v)
+  | var name => exact absurd rfl (h2 name)
+  | this => exact absurd rfl h3
+  | seq a b => exact absurd rfl (h4 a b)
+  | «break» _ =>
+    simp only [ANF.normalizeExpr, pure, Pure.pure, StateT.pure, Except.pure]
+    intro h; exact ANF.Expr.noConfusion (Prod.mk.inj (Except.ok.inj h)).1
+  | «continue» _ =>
+    simp only [ANF.normalizeExpr, pure, Pure.pure, StateT.pure, Except.pure]
+    intro h; exact ANF.Expr.noConfusion (Prod.mk.inj (Except.ok.inj h)).1
+  | assign name value =>
+    simp only [ANF.normalizeExpr]
+    exact normalizeExpr_not_trivial value _
+      (fun x n' m' t' => bindComplex_not_trivial _ k n' m' t') n m t
+  | unary op arg =>
+    simp only [ANF.normalizeExpr]
+    exact normalizeExpr_not_trivial arg _
+      (fun x n' m' t' => bindComplex_not_trivial _ k n' m' t') n m t
+  | typeof arg =>
+    simp only [ANF.normalizeExpr]
+    exact normalizeExpr_not_trivial arg _
+      (fun x n' m' t' => bindComplex_not_trivial _ k n' m' t') n m t
+  | getProp obj prop =>
+    simp only [ANF.normalizeExpr]
+    exact normalizeExpr_not_trivial obj _
+      (fun x n' m' t' => bindComplex_not_trivial _ k n' m' t') n m t
+  | deleteProp obj prop =>
+    simp only [ANF.normalizeExpr]
+    exact normalizeExpr_not_trivial obj _
+      (fun x n' m' t' => bindComplex_not_trivial _ k n' m' t') n m t
+  | getEnv envPtr idx =>
+    simp only [ANF.normalizeExpr]
+    exact normalizeExpr_not_trivial envPtr _
+      (fun x n' m' t' => bindComplex_not_trivial _ k n' m' t') n m t
+  | makeClosure funcIdx env =>
+    simp only [ANF.normalizeExpr]
+    exact normalizeExpr_not_trivial env _
+      (fun x n' m' t' => bindComplex_not_trivial _ k n' m' t') n m t
+  | setProp obj prop value =>
+    simp only [ANF.normalizeExpr]
+    exact normalizeExpr_not_trivial obj _
+      (fun x n' m' t' => normalizeExpr_not_trivial value _
+        (fun y n'' m'' t'' => bindComplex_not_trivial _ k n'' m'' t'') n' m' t') n m t
+  | getIndex obj idx =>
+    simp only [ANF.normalizeExpr]
+    exact normalizeExpr_not_trivial obj _
+      (fun x n' m' t' => normalizeExpr_not_trivial idx _
+        (fun y n'' m'' t'' => bindComplex_not_trivial _ k n'' m'' t'') n' m' t') n m t
+  | binary op lhs rhs =>
+    simp only [ANF.normalizeExpr]
+    exact normalizeExpr_not_trivial lhs _
+      (fun x n' m' t' => normalizeExpr_not_trivial rhs _
+        (fun y n'' m'' t'' => bindComplex_not_trivial _ k n'' m'' t'') n' m' t') n m t
+  | setIndex obj idx value =>
+    simp only [ANF.normalizeExpr]
+    exact normalizeExpr_not_trivial obj _
+      (fun x n' m' t' => normalizeExpr_not_trivial idx _
+        (fun y n'' m'' t'' => normalizeExpr_not_trivial value _
+          (fun z n3 m3 t3 => bindComplex_not_trivial _ k n3 m3 t3) n'' m'' t'') n' m' t') n m t
+  | call funcIdx envPtr args =>
+    simp only [ANF.normalizeExpr]
+    exact normalizeExpr_not_trivial funcIdx _
+      (fun x n' m' t' => normalizeExpr_not_trivial envPtr _
+        (fun y n'' m'' t'' => normalizeExprList_not_trivial args _
+          (fun xs n3 m3 t3 => bindComplex_not_trivial _ k n3 m3 t3) n'' m'' t'') n' m' t') n m t
+  | newObj funcIdx envPtr args =>
+    simp only [ANF.normalizeExpr]
+    exact normalizeExpr_not_trivial funcIdx _
+      (fun x n' m' t' => normalizeExpr_not_trivial envPtr _
+        (fun y n'' m'' t'' => normalizeExprList_not_trivial args _
+          (fun xs n3 m3 t3 => bindComplex_not_trivial _ k n3 m3 t3) n'' m'' t'') n' m' t') n m t
+  | makeEnv values =>
+    simp only [ANF.normalizeExpr]
+    exact normalizeExprList_not_trivial values _
+      (fun xs n' m' t' => bindComplex_not_trivial _ k n' m' t') n m t
+  | objectLit props =>
+    simp only [ANF.normalizeExpr]
+    exact normalizeProps_not_trivial props _
+      (fun xs n' m' t' => bindComplex_not_trivial _ k n' m' t') n m t
+  | arrayLit elems =>
+    simp only [ANF.normalizeExpr]
+    exact normalizeExprList_not_trivial elems _
+      (fun xs n' m' t' => bindComplex_not_trivial _ k n' m' t') n m t
+  | throw arg =>
+    simp only [ANF.normalizeExpr]
+    exact normalizeExpr_not_trivial arg _
+      (by intro x n' m' t'; simp [pure, Pure.pure, StateT.pure, Except.pure]
+          intro h; exact ANF.Expr.noConfusion (Prod.mk.inj (Except.ok.inj h)).1) n m t
+  | await arg =>
+    simp only [ANF.normalizeExpr]
+    exact normalizeExpr_not_trivial arg _
+      (by intro x n' m' t'; simp [pure, Pure.pure, StateT.pure, Except.pure]
+          intro h; exact ANF.Expr.noConfusion (Prod.mk.inj (Except.ok.inj h)).1) n m t
+  | «let» name init body =>
+    simp only [ANF.normalizeExpr]
+    exact normalizeExpr_not_trivial init _
+      (by intro x n' m' t'
+          simp only [bind, Bind.bind, StateT.bind, Except.bind]
+          intro habs; split at habs
+          · cases habs
+          · simp [pure, Pure.pure, StateT.pure, Except.pure] at habs) n m t
+  | «if» cond then_ else_ =>
+    simp only [ANF.normalizeExpr]
+    exact normalizeExpr_not_trivial cond _
+      (by intro x n' m' t'
+          simp only [bind, Bind.bind, StateT.bind, Except.bind]
+          intro habs
+          repeat (first | split at habs | simp [pure, Pure.pure, StateT.pure, Except.pure] at habs)) n m t
+  | labeled label body =>
+    simp only [ANF.normalizeExpr, bind, Bind.bind, StateT.bind, Except.bind]
+    intro habs; split at habs
+    · cases habs
+    · simp [pure, Pure.pure, StateT.pure, Except.pure] at habs
+  | while_ cond body =>
+    simp only [ANF.normalizeExpr, bind, Bind.bind, StateT.bind, Except.bind]
+    intro habs
+    repeat (first | split at habs | simp [pure, Pure.pure, StateT.pure, Except.pure] at habs | cases habs)
+  | tryCatch body catchParam catchBody finally_ =>
+    simp only [ANF.normalizeExpr, bind, Bind.bind, StateT.bind, Except.bind]
+    intro habs; cases finally_ with
+    | none =>
+      repeat (first | split at habs | simp [pure, Pure.pure, StateT.pure, Except.pure] at habs | cases habs)
+    | some fin =>
+      simp only [Functor.map, StateT.map, bind, Bind.bind, StateT.bind, Except.bind] at habs
+      repeat (first | split at habs | simp [pure, Pure.pure, StateT.pure, Except.pure] at habs | cases habs)
+  | «return» arg =>
+    cases arg with
+    | none =>
+      simp only [ANF.normalizeExpr, pure, Pure.pure, StateT.pure, Except.pure]
+      intro h; exact ANF.Expr.noConfusion (Prod.mk.inj (Except.ok.inj h)).1
+    | some value =>
+      simp only [ANF.normalizeExpr]
+      exact normalizeExpr_not_trivial value _
+        (by intro x n' m' t'; simp [pure, Pure.pure, StateT.pure, Except.pure]
+            intro h; exact ANF.Expr.noConfusion (Prod.mk.inj (Except.ok.inj h)).1) n m t
+  | yield arg delegate =>
+    cases arg with
+    | none =>
+      simp only [ANF.normalizeExpr, pure, Pure.pure, StateT.pure, Except.pure]
+      intro h; exact ANF.Expr.noConfusion (Prod.mk.inj (Except.ok.inj h)).1
+    | some value =>
+      simp only [ANF.normalizeExpr]
+      exact normalizeExpr_not_trivial value _
+        (by intro x n' m' t'; simp [pure, Pure.pure, StateT.pure, Except.pure]
+            intro h; exact ANF.Expr.noConfusion (Prod.mk.inj (Except.ok.inj h)).1) n m t
+
 /-! ### ANF step? characterization -/
 
 /-- Non-variable trivial always has a concrete value. -/
@@ -537,10 +710,16 @@ private theorem anfConvert_halt_star
   | this =>
     -- Similar to var: Flat.step? on .this does env lookup for "this"
     sorry
+  | seq a b =>
+    sorry -- .seq can produce .trivial through recursion; needs constructive multi-step handling
   | _ =>
-    -- Compound expressions: normalizeExpr uses bindComplex/recursive calls
-    -- May still produce .trivial through simple sub-expressions
-    sorry
+    -- All compound non-seq constructors: normalizeExpr wraps in non-.trivial constructor
+    exfalso; rw [hat] at hnorm
+    have h1 : ∀ v, sf.expr ≠ .lit v := by intro v h; rw [hsf] at h; exact Flat.Expr.noConfusion h
+    have h2 : ∀ name, sf.expr ≠ .var name := by intro nm h; rw [hsf] at h; exact Flat.Expr.noConfusion h
+    have h3 : sf.expr ≠ .this := by intro h; rw [hsf] at h; exact Flat.Expr.noConfusion h
+    have h4 : ∀ a b, sf.expr ≠ .seq a b := by intro a b h; rw [hsf] at h; exact Flat.Expr.noConfusion h
+    exact absurd hnorm (normalizeExpr_compound_not_trivial sf.expr k h1 h2 h3 h4 n m t)
 
 /-- Multi-step simulation derived from single-step stuttering simulation. -/
 private theorem anfConvert_steps_star
