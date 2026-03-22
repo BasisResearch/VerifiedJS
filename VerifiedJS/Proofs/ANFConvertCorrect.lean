@@ -677,8 +677,34 @@ private theorem anfConvert_halt_star_aux
         -- The var lookup may produce a silent step or error — need well-formedness
         sorry
       | this =>
-        -- Same issue: Flat evaluates .this
-        sorry
+        rw [ha] at hnorm; simp only [ANF.normalizeExpr] at hnorm
+        have hbd : b.depth ≤ N := by rw [hsf] at hdepth; simp [Flat.Expr.depth] at hdepth; omega
+        -- Both cases (.this in env or not) produce .silent and .seq (.lit val) b
+        obtain ⟨val, hstep1⟩ : ∃ val, Flat.step? sf = some (.silent, { expr := .seq (.lit val) b, env := sf.env, heap := sf.heap, trace := sf.trace ++ [.silent] }) := by
+          rw [show sf = {sf with expr := .seq a b} from by cases sf; simp_all]
+          rw [ha]; unfold Flat.step? Flat.exprValue?
+          unfold Flat.step?
+          cases sf.env.lookup "this" with
+          | some v => exact ⟨v, rfl⟩
+          | none => exact ⟨.undefined, rfl⟩
+        let sf2 : Flat.State := { expr := .seq (.lit val) b, env := sf.env, heap := sf.heap, trace := sf.trace ++ [.silent] }
+        -- Step 2: .seq (.lit val) b → b
+        have hstep2 : Flat.step? sf2 = some (.silent, { expr := b, env := sf.env, heap := sf.heap, trace := sf.trace ++ [.silent, .silent] }) := by
+          simp only [sf2]; unfold Flat.step? Flat.exprValue?
+          simp [List.append_assoc]
+        let sf3 : Flat.State := { expr := b, env := sf.env, heap := sf.heap, trace := sf.trace ++ [.silent, .silent] }
+        have hrel3 : ANF_SimRel s t sa sf3 := by
+          refine ⟨hheap, henv, ?_, k, n, m, ?_, hfaithful⟩
+          · simp only [sf3, observableTrace, List.filter_append]
+            simp [observableTrace] at htrace; exact htrace
+          · simp only [sf3]; rw [hat]; exact hnorm
+        have hbd3 : sf3.expr.depth ≤ N := hbd
+        obtain ⟨sf', evs, hsteps', hhalt', hobs', hrel'⟩ := ih sa sf3 hbd3 hrel3 hstuck
+        exact ⟨sf', .silent :: .silent :: evs,
+          Flat.Steps.tail ⟨hstep1⟩ (Flat.Steps.tail ⟨hstep2⟩ hsteps'),
+          hhalt',
+          by simp [observableTrace_silent, hobs'],
+          hrel'⟩
       | lit v =>
         -- normalizeExpr (.lit v) k' passes through to normalizeExpr b k
         -- Flat steps silently from .seq (.lit v) b to b, then apply IH
