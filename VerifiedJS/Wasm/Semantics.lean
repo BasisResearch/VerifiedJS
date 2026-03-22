@@ -5045,6 +5045,8 @@ theorem IRStutterSim_steps {S : Type} {R : S → IRExecState → Prop}
     refine ⟨ir_final, ir_trace1 ++ ir_trace2,
       IRSteps_trans hIR1 hIR2, hR_final, ?_⟩
     simp only [observableEvents_append, hObs1, hObs2]
+    rename_i t_ev _
+    cases t_ev <;> simp [observableEvents]
 
 /-- Behavioral equivalence up to silent events.
     The IR produces a trace whose observable events match the mapped source trace.
@@ -5095,7 +5097,7 @@ theorem StepStar_of_ANFSteps {s1 s2 : ANF.State} {ts : List Core.TraceEvent}
     (hSteps : ANF.Steps s1 ts s2) :
     StepStar anfStepMapped s1 (ts.map traceFromCore) s2 := by
   induction hSteps with
-  | refl _ => exact .refl
+  | refl _ => simp [List.map]; exact StepStar.refl _
   | tail hstep _hrest ih =>
     obtain ⟨h⟩ := hstep
     exact .step (anfStepMapped_some _ _ _ h) ih
@@ -5193,10 +5195,11 @@ theorem emit_behavioral_correct' (irmod : IRModule) (wmod : Module)
     ∀ trace, IRBehaves irmod trace →
       Behaves wmod (traceListToWasm trace) := by
   intro trace hBeh
+  obtain ⟨sFinal_ir, hIRSteps, hIRHalt⟩ := hBeh
   -- Step 1: Get the forward simulation
   obtain ⟨R, hR_init, sim⟩ := emit_forward_sim irmod wmod hemit
   -- Step 2: Apply WasmForwardSim_behavioral
-  have hW := WasmForwardSim_behavioral R sim hR_init ⟨_, hBeh.2.1, hBeh.2.2⟩
+  have hW := WasmForwardSim_behavioral R sim hR_init ⟨sFinal_ir, hIRSteps, hIRHalt⟩
   -- Step 3: Conclude Wasm.Behaves
   obtain ⟨wFinal, hWSteps, hWHalt⟩ := hW
   exact ⟨wFinal, hWSteps, hWHalt⟩
