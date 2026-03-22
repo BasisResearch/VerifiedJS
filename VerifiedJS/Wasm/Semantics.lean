@@ -2705,9 +2705,10 @@ theorem step?_code_nonempty (s : ExecState) (instr : Instr) (rest : List Instr)
   cases instr <;> simp_all only [] <;> (
     first
     | exact ⟨_, _, rfl⟩
-    | (unfold withI32Bin withI64Bin withF32Bin withF64Bin
-             withI32Rel withI64Rel withF32Rel withF64Rel
-             withI32Div withI32Rem withI64Div withI64Rem
+    | (try unfold withI32Bin; try unfold withI64Bin; try unfold withF32Bin
+       try unfold withF64Bin; try unfold withI32Rel; try unfold withI64Rel
+       try unfold withF32Rel; try unfold withF64Rel; try unfold withI32Div
+       try unfold withI32Rem; try unfold withI64Div; try unfold withI64Rem
        split <;> (first | exact ⟨_, _, rfl⟩ | (split <;> (first | exact ⟨_, _, rfl⟩ | (split <;> (first | exact ⟨_, _, rfl⟩ | (split <;> (first | exact ⟨_, _, rfl⟩ | (split <;> exact ⟨_, _, rfl⟩))))))))))
 
 /-- Every Wasm state is either halted or can take a step (full progress theorem).

@@ -18,10 +18,11 @@ The root cause of the recursive sorry pattern: `LowerSimRel` and `EmitSimRel` ha
 6. **EmitSimRel.step_sim**: Clean single sorry (was 1 sorry in recursive depth). Now provable by case analysis on irStep?.
 7. **lower_behavioral_obs**: Fully proved — deleted forward-reference version, renamed `lower_behavioral_obs'` to `lower_behavioral_obs`.
 
-**Sorry inventory (Wasm/Semantics.lean): 3 locations** (down from 7)
-1. `step?_code_nonempty` fallback (line 2708, pre-existing, some instruction cases)
-2. `LowerSimRel.step_sim` (line 4832, clean — needs case analysis on ANF instructions)
-3. `EmitSimRel.step_sim` (line 4927, clean — needs case analysis on IR instructions)
+**Sorry inventory (Wasm/Semantics.lean): 2 locations** (down from 7)
+1. `LowerSimRel.step_sim` (line 4836, clean — needs case analysis on ANF instructions)
+2. `EmitSimRel.step_sim` (line 4931, clean — needs case analysis on IR instructions)
+
+**Also proved: `step?_code_nonempty`** — the Wasm progress theorem that every non-halted state with non-empty code can take a step. Fixed by unfolding private helper functions (withI32Bin, withI64Bin, etc.) and splitting match expressions to 5 levels deep. All 166 instruction cases now close.
 
 **Build status:** PASSING
 
