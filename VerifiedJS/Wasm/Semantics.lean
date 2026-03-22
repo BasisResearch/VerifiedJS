@@ -4602,7 +4602,7 @@ theorem irStep?_eq_i32BinOp_total (s : IRExecState) (op : String) (rest : List I
   unfold irStep?; rw [hcode, hstack]
   simp only [irPop2?, irPushTrace]
   obtain ⟨hnd1, hnd2, hnd3, hnd4⟩ := hnondiv
-  simp only [hnd1, hnd2, hnd3, hnd4, ↓reduceIte, false_and, ite_false]
+  simp only [hnd1, hnd2, hnd3, hnd4]
   exact ⟨_, rfl⟩
 
 /-- i32 add equation lemma. REF: Wasm §4.3.2 -/
@@ -4787,6 +4787,56 @@ theorem irStep?_eq_f64BinOp_total (s : IRExecState) (op : String) (rest : List I
       { s with
         code := rest
         stack := irBoolToI32 (Numerics.f64Le lhs rhs) :: stk
+        trace := s.trace ++ [.silent] }) := by
+  unfold irStep?; rw [hcode, hstack]; simp [irPop2?, irPushTrace]
+
+/-! ### IR Step? Equation Lemmas: i32 Comparison Operations -/
+
+/-- i32 eq comparison. REF: Wasm §4.3.2 -/
+@[simp] theorem irStep?_eq_i32Eq (s : IRExecState) (rest : List IRInstr)
+    (lhs rhs : UInt32) (stk : List IRValue)
+    (hcode : s.code = IRInstr.binOp .i32 "eq" :: rest)
+    (hstack : s.stack = .i32 rhs :: .i32 lhs :: stk) :
+    irStep? s = some (.silent,
+      { s with
+        code := rest
+        stack := irBoolToI32 (Numerics.i32Eq lhs rhs) :: stk
+        trace := s.trace ++ [.silent] }) := by
+  unfold irStep?; rw [hcode, hstack]; simp [irPop2?, irPushTrace]
+
+/-- i32 ne comparison. REF: Wasm §4.3.2 -/
+@[simp] theorem irStep?_eq_i32Ne (s : IRExecState) (rest : List IRInstr)
+    (lhs rhs : UInt32) (stk : List IRValue)
+    (hcode : s.code = IRInstr.binOp .i32 "ne" :: rest)
+    (hstack : s.stack = .i32 rhs :: .i32 lhs :: stk) :
+    irStep? s = some (.silent,
+      { s with
+        code := rest
+        stack := irBoolToI32 (Numerics.i32Ne lhs rhs) :: stk
+        trace := s.trace ++ [.silent] }) := by
+  unfold irStep?; rw [hcode, hstack]; simp [irPop2?, irPushTrace]
+
+/-- i32 lt_s comparison. REF: Wasm §4.3.2 -/
+@[simp] theorem irStep?_eq_i32Lts (s : IRExecState) (rest : List IRInstr)
+    (lhs rhs : UInt32) (stk : List IRValue)
+    (hcode : s.code = IRInstr.binOp .i32 "lt_s" :: rest)
+    (hstack : s.stack = .i32 rhs :: .i32 lhs :: stk) :
+    irStep? s = some (.silent,
+      { s with
+        code := rest
+        stack := irBoolToI32 (Numerics.i32Lts lhs rhs) :: stk
+        trace := s.trace ++ [.silent] }) := by
+  unfold irStep?; rw [hcode, hstack]; simp [irPop2?, irPushTrace]
+
+/-- i32 gt_s comparison. REF: Wasm §4.3.2 -/
+@[simp] theorem irStep?_eq_i32Gts (s : IRExecState) (rest : List IRInstr)
+    (lhs rhs : UInt32) (stk : List IRValue)
+    (hcode : s.code = IRInstr.binOp .i32 "gt_s" :: rest)
+    (hstack : s.stack = .i32 rhs :: .i32 lhs :: stk) :
+    irStep? s = some (.silent,
+      { s with
+        code := rest
+        stack := irBoolToI32 (Numerics.i32Gts lhs rhs) :: stk
         trace := s.trace ++ [.silent] }) := by
   unfold irStep?; rw [hcode, hstack]; simp [irPop2?, irPushTrace]
 
