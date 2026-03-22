@@ -4824,7 +4824,7 @@ def anfStepMapped (s : ANF.State) : Option (TraceEvent × ANF.State) :=
   split <;> simp_all
 
 /-- anfStepMapped preserves the step structure with mapped trace events. -/
-@[simp] theorem anfStepMapped_some (s s' : ANF.State) (t : Core.TraceEvent)
+theorem anfStepMapped_some (s s' : ANF.State) (t : Core.TraceEvent)
     (h : ANF.step? s = some (t, s')) :
     anfStepMapped s = some (traceFromCore t, s') := by
   simp [anfStepMapped, h]

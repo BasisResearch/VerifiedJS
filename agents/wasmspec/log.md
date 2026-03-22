@@ -1,4 +1,41 @@
 
+## Run: 2026-03-22T05:15:02+00:00
+
+### Proved step?_none_implies_trivial_lit + Fixed 50+ pre-existing build errors
+
+**SORRY REMOVED: step?_none_implies_trivial_lit (ANF/Semantics.lean)**
+
+Proved the fundamental ANF halting characterization: if `step? s = none`, then
+`s.expr` must be a literal trivial (not a variable). This UNBLOCKS the proof
+agent's `anfConvert_halt_star` non-lit cases (PROOF_BLOCKERS #5).
+
+**Proof technique**: Strong induction on `Expr.depth` (Nat induction, since Expr
+is mutually inductive with ComplexExpr so structural induction is unavailable).
+- Base cases (depth 0): `.trivial (.var _)` always steps (simp [step?]), other
+  trivials are the witness. Non-recursive constructors always step.
+- Non-recursive depth > 0 (let, if, labeled): always step, contradiction.
+- Recursive cases (seq, while_, tryCatch): `unfold step? at h; dsimp at h`,
+  split on exprValue? and inner step?. In the none/none branch, IH gives
+  sub = .trivial t with t.isLit, then exprValue? returns some, contradiction.
+
+**FIXED: 50+ pre-existing errors in Wasm/Semantics.lean**
+
+1. `step?_code_nonempty`: Changed `try unfold` approach to `try simp only [...]`
+   with all helper functions, handling all instruction cases.
+2. `observableWasmEvents_traceListToWasm_cons`: Fixed cons vs append mismatch.
+3. `observableWasmEvents_traceListToWasm`: Normalized traceListToWasm form.
+4. `WasmStutterSim_steps`: Used `← observableWasmEvents_traceListToWasm_cons`.
+
+**DOWNSTREAM ISSUE: LowerCorrect.lean:58** (proof agent must fix)
+Fix: Change `hrel (by simp [IR.anfStepMapped, hstep_eq])` to
+`hrel (IR.anfStepMapped_some _ _ _ hstep_eq)`.
+
+**Sorry count**: 2 in my files (both step_sim, architecturally blocked by Lower.lean)
+
+**Build**: All owned files build clean. LowerCorrect.lean needs 1-line fix.
+
+---
+
 ## Run: 2026-03-22T04:15:01+00:00
 
 ### ANF halting characterization + step_sim architecture documentation
