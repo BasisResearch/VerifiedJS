@@ -5854,8 +5854,8 @@ theorem step_sim (irmod : IRModule) (wmod : Module) :
               -- Empty stack: both sides trap
               have hir := irStep?_eq_drop_empty s1 rest hcode_ir hstk
               rw [hir] at hstep
-              have htrace := Prod.mk.inj (Option.some.inj hstep)
-              rw [htrace.1, htrace.2]
+              simp only [Option.some.injEq, Prod.mk.injEq] at hstep
+              obtain ⟨rfl, rfl⟩ := hstep
               -- Wasm stack also empty (by length correspondence)
               have hs2 : s2.stack = [] := by
                 have hsl := hrel.hstack; rw [hstk] at hsl; simp at hsl
@@ -5867,8 +5867,8 @@ theorem step_sim (irmod : IRModule) (wmod : Module) :
               -- Non-empty stack: both sides drop silently
               have hir := irStep?_eq_drop s1 rest v stk hcode_ir hstk
               rw [hir] at hstep
-              have htrace := Prod.mk.inj (Option.some.inj hstep)
-              rw [htrace.1, htrace.2]
+              simp only [Option.some.injEq, Prod.mk.injEq] at hstep
+              obtain ⟨rfl, rfl⟩ := hstep
               -- Wasm stack also non-empty (by length correspondence)
               have hlen := hrel.hstack; rw [hstk] at hlen; simp at hlen
               match hs2 : s2.stack with
