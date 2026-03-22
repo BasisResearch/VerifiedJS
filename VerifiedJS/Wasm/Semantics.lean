@@ -2315,6 +2315,88 @@ theorem step?_i64Store_some (s : ExecState) (ma : MemArg) (val : UInt64) (addr :
       some (.silent, pushTrace { s with code := rest, stack := stk, store := store' } .silent) := by
   unfold step?; simp [pop2?, hmem0, hwrite]
 
+/-! ### Hypothesis-form equation lemmas for step?
+    These take code/stack hypotheses instead of requiring { s with ... } form.
+    Useful for simulation proofs where we know the state structure from invariants. -/
+
+/-- Exact step? result for drop with hypothesis-form arguments. -/
+theorem step?_eq_drop (s : ExecState) (rest : List Instr)
+    (v : WasmValue) (stk : List WasmValue)
+    (hcode : s.code = Instr.drop :: rest)
+    (hstack : s.stack = v :: stk) :
+    step? s = some (.silent,
+      { s with
+        code := rest
+        stack := stk
+        trace := s.trace ++ [.silent] }) := by
+  have : { s with code := Instr.drop :: rest, stack := v :: stk } = s := by
+    cases s; simp_all
+  rw [← this]
+  simp [step?_drop, pushTrace]
+
+/-- Exact step? result for drop with empty stack (trap). -/
+theorem step?_eq_drop_empty (s : ExecState) (rest : List Instr)
+    (hcode : s.code = Instr.drop :: rest)
+    (hstack : s.stack = []) :
+    step? s = some (.trap "stack underflow in drop",
+      { s with
+        code := []
+        stack := []
+        trace := s.trace ++ [.trap "stack underflow in drop"] }) := by
+  simp [step?, hcode, hstack, pop1?, trapState, pushTrace]
+
+/-- Exact step? result for i32.const with hypothesis-form arguments. -/
+theorem step?_eq_i32Const (s : ExecState) (n : UInt32) (rest : List Instr)
+    (hcode : s.code = Instr.i32Const n :: rest) :
+    step? s = some (.silent,
+      { s with
+        code := rest
+        stack := .i32 n :: s.stack
+        trace := s.trace ++ [.silent] }) := by
+  have : { s with code := Instr.i32Const n :: rest } = s := by
+    cases s; simp_all
+  rw [← this]
+  simp [step?_i32Const, pushTrace]
+
+/-- Exact step? result for i64.const with hypothesis-form arguments. -/
+theorem step?_eq_i64Const (s : ExecState) (n : UInt64) (rest : List Instr)
+    (hcode : s.code = Instr.i64Const n :: rest) :
+    step? s = some (.silent,
+      { s with
+        code := rest
+        stack := .i64 n :: s.stack
+        trace := s.trace ++ [.silent] }) := by
+  have : { s with code := Instr.i64Const n :: rest } = s := by
+    cases s; simp_all
+  rw [← this]
+  simp [step?_i64Const, pushTrace]
+
+/-- Exact step? result for f64.const with hypothesis-form arguments. -/
+theorem step?_eq_f64Const (s : ExecState) (f : Float) (rest : List Instr)
+    (hcode : s.code = Instr.f64Const f :: rest) :
+    step? s = some (.silent,
+      { s with
+        code := rest
+        stack := .f64 f :: s.stack
+        trace := s.trace ++ [.silent] }) := by
+  have : { s with code := Instr.f64Const f :: rest } = s := by
+    cases s; simp_all
+  rw [← this]
+  simp [step?_f64Const, pushTrace]
+
+/-- Exact step? result for return with hypothesis-form arguments. -/
+theorem step?_eq_return (s : ExecState) (rest : List Instr)
+    (hcode : s.code = Instr.return_ :: rest) :
+    step? s = some (.silent,
+      { s with
+        code := []
+        labels := []
+        trace := s.trace ++ [.silent] }) := by
+  have : { s with code := Instr.return_ :: rest } = s := by
+    cases s; simp_all
+  rw [← this]
+  simp [step?_return, pushTrace]
+
 /-! ## Behavioral semantics theorems -/
 
 /-- Deterministic execution: Steps from the same state yield the same trace and final state. -/
@@ -5229,6 +5311,13 @@ structure LowerSimRel (prog : ANF.Program) (irmod : IRModule)
      The idx corresponds to the local index the compiler assigned to the variable. -/
   henv : ∀ name v, s.env.lookup name = some v →
     ∃ (idx : Nat) (val : IRValue), (Option.bind ir.frames.head? (fun f => f.locals[idx]?)) = some val
+  /- Variable correspondence: when the ANF expression is a variable reference
+     and the IR code is a localGet, the variable is in scope and the local is valid.
+     This connects the code correspondence (which index) to the env (which value).
+     After a var step, both sides are literal/empty, so this holds vacuously. -/
+  hvar : ∀ name idx, s.expr = .trivial (.var name) → ir.code = [IRInstr.localGet idx] →
+    (∃ v, s.env.lookup name = some v) ∧
+    ∃ val, (Option.bind ir.frames.head? (fun f => f.locals[idx]?)) = some val
 
 namespace LowerSimRel
 
@@ -5256,6 +5345,13 @@ theorem init (prog : ANF.Program) (irmod : IRModule)
     intro name v hlookup
     -- Initial ANF env is empty, so lookup always returns none
     simp [ANF.initialState, ANF.Env.empty, ANF.Env.lookup] at hlookup
+  hvar := by
+    intro name idx hexpr hcode_ir
+    -- Initial ANF env is empty, so if expr is a var, lookup fails.
+    -- But we still need this to hold — it's vacuously true if the program
+    -- doesn't start with a bare variable reference (well-formed programs don't).
+    -- For now, blocked on lowerExpr being private.
+    sorry
 
 /-- Step simulation (1:1): if the ANF takes one step, the IR takes a matching step.
     Now provable with LowerCodeCorr: case analysis on the ANF expression form

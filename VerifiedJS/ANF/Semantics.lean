@@ -74,6 +74,11 @@ private def trivialOfValue : Flat.Value → Trivial
   | .object addr => .litObject addr
   | .closure funcIdx envPtr => .litClosure funcIdx envPtr
 
+/-- trivialOfValue never produces a variable reference — it always produces a literal. -/
+theorem trivialOfValue_ne_var (v : Flat.Value) (name : VarName) :
+    trivialOfValue v ≠ .var name := by
+  cases v <;> simp [trivialOfValue]
+
 /-- Evaluate a trivial in the current environment (variables may fail with ReferenceError). -/
 def evalTrivial (env : Env) : Trivial → Except String Flat.Value
   | .var name =>
