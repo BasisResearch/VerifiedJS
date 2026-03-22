@@ -240,15 +240,15 @@ private theorem closureConvert_step_simulation
       have hf := hstep; have hc := hcstep
       rw [show sf = {sf with expr := .«continue» label} from by cases sf; simp_all] at hf
       rw [show sc = {sc with expr := .«continue» label} from by cases sc; simp_all] at hc
-      simp only [Flat.step?] at hf
       cases label with
       | some l =>
-        simp only [Core.step?] at hc
+        simp only [Flat.step?, Option.getD] at hf; simp only [Core.step?] at hc
         have heqf := (Prod.mk.inj (Option.some.inj hf)).2
         have heqc := (Prod.mk.inj (Option.some.inj hc)).2
         subst heqf; subst heqc
         show sf.trace ++ _ = sc.trace ++ _; rw [htrace]
       | none =>
+        simp only [Flat.step?, Option.getD, String.append_empty] at hf
         simp only [Core.step?] at hc
         have heqf := (Prod.mk.inj (Option.some.inj hf)).2
         have heqc := (Prod.mk.inj (Option.some.inj hc)).2
