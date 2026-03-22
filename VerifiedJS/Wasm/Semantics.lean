@@ -5145,11 +5145,6 @@ def observableEvents : List TraceEvent → List TraceEvent
 
 /-! ### Simulation Relations -/
 
-/-- Simulation relation for ANF → IR lowering.
-    The step correspondence field references LowerSimRel coinductively:
-    at each synchronization point, if the ANF takes a step, the IR takes a
-    matching step and the resulting states are again related.
-    REF: Standard forward simulation diagram / bisimulation. -/
 /-- Abstract code correspondence: the IR code is the lowered form of the ANF expression.
     Since `lowerExpr` in Lower.lean is `private partial`, we cannot reference it directly.
     Instead, this inductive captures what the lowered code looks like for each ANF form.
