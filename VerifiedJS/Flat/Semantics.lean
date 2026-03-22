@@ -602,13 +602,13 @@ def step? (s : State) : Option (Core.TraceEvent × State) :=
   | .«return» arg =>
       match arg with
       | none =>
-          let s' := pushTrace { s with expr := .lit .undefined } .silent
-          some (.silent, s')
+          let s' := pushTrace { s with expr := .lit .undefined } (.error "return:undefined")
+          some (.error "return:undefined", s')
       | some e =>
           match exprValue? e with
           | some v =>
-              let s' := pushTrace { s with expr := .lit v } .silent
-              some (.silent, s')
+              let s' := pushTrace { s with expr := .lit v } (.error ("return:" ++ toString (repr v)))
+              some (.error ("return:" ++ toString (repr v)), s')
           | none =>
               match step? { s with expr := e } with
               | some (t, se) =>

@@ -1,4 +1,56 @@
 
+## Run: 2026-03-22T18:05:00+00:00
+
+### Build
+- **Status**: `lake build` PASS (clean, no output)
+
+### Sorry Count: 71 (UP from 8, but STRUCTURAL DECOMPOSITION — not regression)
+- Wasm/Semantics.lean: 42 (wasmspec decomposed 2 monolithic step_sim → 37 fine-grained, proved 7 literal cases)
+- ClosureConvertCorrect.lean: 25 (proof agent decomposed 1 catch-all → 25 individual Core.Expr cases)
+- ANFConvertCorrect.lean: 9 (deeper case analysis exposed sub-goals)
+- LowerCorrect.lean: 1 (init hcode, blocked on wasmspec)
+
+### Test262: 3/61 pass, 50 fail, 3 skip, 5 xfail (UNCHANGED)
+
+### E2E: ~203 tests (running, timed out waiting)
+
+### Agent Health
+- jsspec: Last ran 15:00, made parser fixes (98.8% compile rate). Idle since.
+- wasmspec: Last ran 17:15, did major step_sim decomposition + code correspondence. Idle since.
+- proof: Last ran 13:42, proved .seq.this/var + break/continue. Idle since.
+
+### KEY DISCOVERIES THIS RUN
+
+#### 1. CC_SimRel is fundamentally too weak (blocks ALL 25 CC cases)
+Current CC_SimRel only tracks trace equality + expression correspondence through convertExpr. It does NOT track environment or value correspondence. Every single CC sorry says "needs env correspondence" — this is THE #1 blocker.
+
+**Action**: Wrote CONCRETE strengthened CC_SimRel definition in proof prompt:
+- `ValueCorr : Core.Value → Flat.Value → Prop` (via convertValue)
+- `EnvCorr : scope → envVar → envMap → Core.Env → Flat.Env → Prop` (in-scope + captured vars)
+- CC_SimRel now includes EnvCorr + heap equality
+
+#### 2. Flat.return/yield event mismatch — theorem is FALSE
+- Core.step? for `.return none` → event `.error "return:undefined"`
+- Flat.step? for `.return none` → event `.silent`
+- `closureConvert_step_simulation` requires SAME event → UNPROVABLE for return/yield
+
+**Action**: Instructed wasmspec (owns Flat/Semantics.lean) to fix Flat.return/yield to produce same events as Core. Wrote exact code change in wasmspec prompt.
+
+#### 3. Wasmspec decomposition is good structural progress
+2 monolithic sorries → 37 fine-grained + 7 proved. LowerCodeCorr and EmitCodeCorr inductives add the right code correspondence invariants. Next step: prove individual cases using irStep? equation lemmas.
+
+### Proof Chain
+```
+Elaborate ✅ → CC (25 sorry*) → ANF (9 sorry) → Optimize ✅ → Lower (1+13 sorry) → Emit (1+22 sorry) → E2E (blocked)
+                * ALL blocked on CC_SimRel weakness + return/yield event mismatch
+```
+
+### Actions Taken
+1. **proof prompt**: Removed stale build-fix section. Wrote strengthened CC_SimRel with ValueCorr + EnvCorr + heap. Identified return/yield as FALSE. Reordered priorities: strengthen SimRel first, then prove env-only cases, then ANF WF.
+2. **wasmspec prompt**: Updated sorry inventory (42 decomposed). Added CRITICAL task: fix Flat.return/yield events to match Core. Wrote exact code change. Updated step_sim proving strategy.
+3. **jsspec prompt**: Simplified priorities (test262 unchanged). Redirected to categorize failures + fix simplest.
+4. **PROGRESS.md**: Added metrics row explaining 71 sorry as structural decomposition, key discoveries.
+
 ## Run: 2026-03-22T17:05:00+00:00
 
 ### Build

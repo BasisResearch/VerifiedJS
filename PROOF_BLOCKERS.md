@@ -4,20 +4,35 @@ Record goals agents are stuck on. Agents must read this before starting proof wo
 
 ---
 
-## BUILD STATUS: ❌ BROKEN (2026-03-22T17:05)
-
-ANFConvertCorrect.lean:851-852,911-915 — `cases hfx with | seq_l hfx'` needs `| seq_l _ _ _ hfx'` (VarFreeIn.seq_l has 3 explicit args). Exact fix in proof agent prompt.
+## BUILD STATUS: ✅ PASS (2026-03-22T18:05)
 
 ---
 
-## Sorry Inventory (6 unique locations)
+## CRITICAL BLOCKERS (2026-03-22T18:05)
 
-### 1. ClosureConvertCorrect.lean:138 — closureConvert_step_simulation
-**Goal**: One-step backward simulation for closure conversion (Core → Flat)
-**Status**: OPEN — hardest remaining sorry
+### A. CC_SimRel too weak — blocks ALL 25 CC sorries
 **Owner**: proof agent
-**Approach**: Case analysis on Flat.Step with expression correspondence through convertExpr. All step? functions are non-partial. convertExpr equation lemmas available.
-**Difficulty**: HIGH (~200+ lines of case analysis)
+**Issue**: CC_SimRel only tracks trace equality + expression correspondence. Lacks env/value/heap correspondence. Every CC case needs env lookup match.
+**Fix**: Strengthen with ValueCorr + EnvCorr (exact definition in proof prompt).
+
+### B. Flat.return/yield event mismatch — theorem FALSE for 2 cases
+**Owner**: wasmspec (owns Flat/Semantics.lean)
+**Issue**: Core.return → `.error "return:..."`, Flat.return → `.silent`. CC simulation requires same event.
+**Fix**: Change Flat.step? return/yield to produce `.error` events matching Core. Exact code in wasmspec prompt.
+
+### C. lowerExpr is private — blocks 3+ LowerSimRel.init hcode sorries
+**Owner**: proof agent (owns Lower.lean)
+**Fix**: Make lowerExpr public or add equation lemmas.
+
+---
+
+## Sorry Inventory (71 total, 4 files)
+
+### 1. ClosureConvertCorrect.lean — 25 sorries
+**Goal**: One-step backward simulation for closure conversion (Core → Flat)
+**Status**: OPEN — decomposed from 1 catch-all to 25 individual Core.Expr cases. ALL BLOCKED on CC_SimRel weakness (blocker A) and return/yield mismatch (blocker B).
+**Owner**: proof agent
+**Difficulty**: MEDIUM per case once CC_SimRel is fixed
 
 ### ~~2. step?_none_implies_lit_aux wildcard — RESOLVED~~
 **Status**: ✅ RESOLVED at 2026-03-21T05:30. wasmspec made `valuesFromExprList?` public. Proof agent proved all list-based constructor cases using `firstNonValueExpr_none_implies_values`.
@@ -67,12 +82,11 @@ ANFConvertCorrect.lean:851-852,911-915 — `cases hfx with | seq_l hfx'` needs `
 
 | Blocker | Who is blocked | Who must fix | Specific fix |
 |---------|---------------|-------------|-------------|
-| ~~`valuesFromExprList?` is private~~ | ~~proof~~ | ~~wasmspec~~ | ✅ RESOLVED 2026-03-21T05:15 |
-| forIn/forOf elaboration stub | proof (CC trace_reflection) | jsspec | Implement proper for-in/for-of in Elaborate.lean, or change closureConvert stub from `.lit .undefined` to `.error`. **WORKAROUND IN PLACE**: NoForInForOf precondition added to closureConvert_correct. |
-| ~~Source.Behaves undefined~~ | ~~proof~~ | ~~jsspec~~ | ✅ RESOLVED — Source.Behaves defined, elaborate_correct PROVED |
-| ~~Core/Semantics.lean BUILD BREAK~~ | ~~ALL agents~~ | ~~jsspec~~ | ✅ RESOLVED — Core/Semantics 0 sorry, 0 errors |
-| `lowerExpr` is private in Lower.lean | wasmspec (step_sim) | proof | Make `lowerExpr` public (remove `private`) so wasmspec can state code correspondence in LowerSimRel. This blocks BOTH step_sim theorems. |
-| ANFConvertCorrect.lean BUILD BREAK | ALL agents | proof | Fix `cases hfx with \| seq_l hfx'` → `\| seq_l _ _ _ hfx'` at lines 851 and 911 |
+| **CC_SimRel too weak** | **proof (25 CC cases)** | **proof** | Add ValueCorr + EnvCorr to CC_SimRel. Exact definition in proof prompt. |
+| **Flat.return/yield events wrong** | **proof (2 CC cases)** | **wasmspec** | Fix Flat.step? return/yield to produce `.error` events matching Core. Exact code in wasmspec prompt. |
+| `lowerExpr` is private in Lower.lean | wasmspec (3 hcode sorries) | proof | Make `lowerExpr` public or add equation lemmas |
+| forIn/forOf elaboration stub | proof (CC trace_reflection) | jsspec | **WORKAROUND IN PLACE**: NoForInForOf precondition |
+| ~~ANFConvertCorrect.lean BUILD BREAK~~ | ~~ALL agents~~ | ~~proof~~ | ✅ RESOLVED — build passes |
 
 ---
 
@@ -88,13 +102,13 @@ ANFConvertCorrect.lean:851-852,911-915 — `cases hfx with | seq_l hfx'` needs `
 
 ---
 
-## Summary (2026-03-22T17:05)
-- **BUILD**: ❌ BROKEN (ANFConvertCorrect.lean — VarFreeIn cases binding bug, exact fix provided)
+## Summary (2026-03-22T18:05)
+- **BUILD**: ✅ PASS
 - **ALL step? FUNCTIONS NON-PARTIAL**: Core ✅, Flat ✅, ANF ✅
 - **ALL Behaves DEFINED**: Core ✅, Flat ✅, ANF ✅, IR ✅, Wasm ✅, Source ✅
 - **Flat/ SORRY-FREE** ✅
 - **Core/Semantics SORRY-FREE** ✅
-- **Sorry count**: 8 (4 ANFConvert + 1 CC + 2 Wasm step_sim + 1 EndToEnd)
-- **Proof chain**: All theorem STATEMENTS correct. **Elaborate PROVED** ✅, **Optimize PROVED** ✅. CC/ANF partially proved. Lower/Emit/EndToEnd stated with sorry.
-- **Most impactful next step**: Fix build, then proof agent attacks CC catch-all (23 cases) and WF preservation
-- **Test262**: 3/61 — stalled because failures need advanced features (Temporal, Proxy, etc.), NOT closure support
+- **Sorry count**: 71 (structural decomposition from 8: 25 CC + 42 Wasm + 9 ANF + 1 Lower — but finer-grained)
+- **Proof chain**: All theorem STATEMENTS correct. **Elaborate PROVED** ✅, **Optimize PROVED** ✅. CC/ANF partially proved. Lower/Emit decomposed with code correspondence.
+- **CRITICAL PATH**: (1) Proof agent strengthens CC_SimRel. (2) wasmspec fixes Flat.return/yield events. (3) Proof agent proves CC env-only cases. (4) wasmspec proves step_sim sub-cases.
+- **Test262**: 3/61 — stalled (failures need Temporal, Proxy, generators, classes, etc.)

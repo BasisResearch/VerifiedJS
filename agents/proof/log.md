@@ -1,4 +1,40 @@
 
+## Run: 2026-03-22T17:30:00+00:00
+- Sorries before: 8 (in my files) + ~37 (Wasm/Semantics), after: 4 (in my files, net) + 25 (CC expanded) + ~37 (Wasm/Semantics)
+- Fixed:
+  - ANFConvertCorrect.lean build errors: `cases hfx with | seq_l/seq_r` needed 2 extra names (not 3 as prompt suggested). Fix: `| seq_l _ _ hfx' =>` (2 names for `a b`, not 3 for `x a b`)
+  - LowerCorrect.lean:69 build error: `LowerSimRel.init` now requires `LowerCodeCorr` argument. Fix: added `(by sorry)` matching Semantics.lean pattern
+  - Semantics.lean errors were cascading from ANFConvertCorrect — fixed by fixing ANFConvertCorrect first
+- Proved (eliminated sorry):
+  - `anfConvert_halt_star_aux` `.seq.seq.var` case (ANFConvertCorrect.lean) — well-formedness gives variable is bound, then 2 silent steps (.var → .lit, .seq .lit → skip) to reach .seq a2 b, then IH on depth ≤ N
+- Decomposed:
+  - ClosureConvertCorrect.lean catch-all `| _ => sorry` → 25 individual sorries by Core.Expr constructor, with annotations about what each needs (env/heap correspondence, or FALSE as stated for return/yield)
+- Analysis:
+  - **anfConvert_step_star (the big sorry)**: Documented proof architecture (6 cases). Key difficulty: continuation k can produce arbitrary ANF expressions from terminal Flat states (.lit). Need careful k' construction for new SimRel.
+  - **.seq.seq.seq case**: Documented blocker — needs seq_steps lifting lemma or strengthened induction measure (depth, non_lit_count). The IH on depth alone doesn't suffice because single steps may not reduce depth.
+  - **ExprWellFormed preservation**: Discovered it's NOT a general Flat.step? invariant. VarFreeIn only tracks .var in .seq chains (no .let/.if/.call propagation), so ExprWellFormed(.let ...) is vacuously true but ExprWellFormed(body) after stepping may fail.
+  - **CC step_simulation for .return/.yield**: FALSE as stated — Core produces `.error "return:..."` but Flat produces `.silent`. Need observable-trace equivalence instead of event-by-event matching.
+- Files changed: VerifiedJS/Proofs/ANFConvertCorrect.lean, VerifiedJS/Proofs/ClosureConvertCorrect.lean, VerifiedJS/Proofs/LowerCorrect.lean
+- Build: PASS (49/49 jobs)
+- Remaining sorries in my files:
+  - `anfConvert_step_star` (ANFConvertCorrect.lean:94) — full step simulation, documented architecture
+  - `.seq.seq.seq` (ANFConvertCorrect.lean:1017) — needs lifting lemma
+  - WF preservation (ANFConvertCorrect.lean:1097) — needs architectural change
+  - LowerCorrect.lean:69 — `(by sorry)` for LowerCodeCorr
+  - ClosureConvertCorrect.lean:301-325 — 25 individual case sorries (was 1 catch-all)
+
+### Key Architectural Issues Identified
+1. **anfConvert_step_star**: The continuation-passing style in normalizeExpr makes case analysis on sf.expr insufficient — the continuation k can inject arbitrary ANF expressions. Need to case-analyze sa.expr (ANF side) and then reconstruct what sf.expr must be.
+2. **CC event mismatch**: .return/.yield produce different events in Core (.error) vs Flat (.silent). The step_simulation theorem is FALSE for these cases. Fix: change to observable-trace equivalence (filter out control-flow errors).
+3. **ExprWellFormed too weak**: VarFreeIn only tracks .var in .seq chains. After .let stepping, body may have unbound vars. Fix: either strengthen VarFreeIn or carry WF as part of SimRel.
+
+### Strategy for Next Run
+1. Start proving anfConvert_step_star by case-analyzing sa.expr (ANF side), handling .break/.continue first
+2. Write seq_steps lifting lemma for .seq.seq.seq case
+3. Address CC event mismatch by proposing observable-trace theorem variant
+
+2026-03-22T18:15:00+00:00 DONE
+
 ## Run: 2026-03-22T13:42:00+00:00
 - Sorries before: 7, after: 8 (delta: +1, but net progress — decomposed 1 sorry into 3 sub-cases, proved 2 cases)
 - Fixed:
