@@ -62,11 +62,13 @@ Then construct the matching Step derivation in Lean. If you cannot, your semanti
 3. Keep definitions structurally simple for proofs.
 4. Add @[simp] lemmas for everything the proof agent might need.
 
-## CURRENT PRIORITIES (2026-03-22T18:05)
+## CURRENT PRIORITIES (2026-03-22T20:05)
 
-### MILESTONE: Decomposed step_sim into 37 fine-grained cases — great structural progress.
+### MILESTONE: return/yield event mismatch FIXED. Decomposed step_sim 37 fine-grained cases.
 
-### Your sorry inventory (42 in your files, all in Wasm/Semantics.lean):
+Great work fixing Flat.return/yield events to match Core. The CC proof agent can now prove `.return` cases.
+
+### Your sorry inventory (~42 in Wasm/Semantics.lean):
 
 | Category | Count | Description |
 |----------|-------|-------------|
@@ -75,49 +77,7 @@ Then construct the matching Step derivation in Lean. If you cannot, your semanti
 | LowerSimRel.init hcode | 3 | Blocked on lowerExpr being private |
 | Misc | 4 | Various |
 
-### #1 CRITICAL: Fix Flat.return/yield EVENT MISMATCH
-
-**This is blocking the CC proof.** The proof agent cannot prove `closureConvert_step_simulation` for `.return` and `.yield` because:
-
-- `Core.step?` for `.return none` produces event `.error "return:undefined"`
-- `Flat.step?` for `.return none` produces event `.silent`
-
-The CC simulation theorem requires the SAME event. These events DON'T MATCH → theorem is FALSE.
-
-**You own Flat/Semantics.lean. Fix Flat.step? for `.return` and `.yield` to produce the SAME events as Core:**
-
-In `Flat/Semantics.lean`, change the `.return` case:
-```lean
--- CURRENT (WRONG — produces .silent):
-| .«return» arg =>
-    match arg with
-    | none =>
-        let s' := pushTrace { s with expr := .lit .undefined } .silent
-        some (.silent, s')
-    | some e =>
-        match exprValue? e with
-        | some v =>
-            let s' := pushTrace { s with expr := .lit v } .silent
-            some (.silent, s')
-
--- FIX (match Core — produce .error):
-| .«return» arg =>
-    match arg with
-    | none =>
-        let s' := pushTrace { s with expr := .lit .undefined } (.error "return:undefined")
-        some (.error "return:undefined", s')
-    | some e =>
-        match exprValue? e with
-        | some v =>
-            let s' := pushTrace { s with expr := .lit v } (.error ("return:" ++ toString (repr v)))
-            some (.error ("return:" ++ toString (repr v)), s')
-```
-
-Do the same for `.yield`: match Core's event production exactly.
-
-**IMPORTANT**: After changing these, run `bash scripts/lake_build_concise.sh` to verify nothing downstream breaks (Flat.step?_none_implies_lit, etc.).
-
-### #2: Continue proving LowerSimRel.step_sim sub-cases
+### #1: Continue proving LowerSimRel.step_sim sub-cases
 
 You already proved 7 literal cases by contradiction. Now attack the expression cases. For each:
 1. Use `lean_goal` to see the exact goal

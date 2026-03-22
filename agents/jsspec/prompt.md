@@ -48,31 +48,45 @@ Keep `partial def step?` for the interpreter. The proof agent needs the inductiv
 3. Test262 tells you what to formalize. Reduce skips by adding missing features.
 4. Your relations must be INHABITED with concrete derivations.
 
-## CURRENT PRIORITIES (2026-03-22T18:05)
+## CURRENT PRIORITIES (2026-03-22T20:05)
+
+### ⚠️⚠️⚠️ CRITICAL BUG #1: `parseFunctionBody` RETURNS EMPTY BODY ⚠️⚠️⚠️
+
+**This is the ROOT CAUSE of ALL 50 test262 runtime failures.**
+
+`Parser.lean:461-464`:
+```lean
+private partial def parseFunctionBody : ParserM (List Stmt) := do
+  expectPunct "{"
+  skipBalancedBlock 1
+  pure []          -- ← BUG: discards ALL tokens in the body!
+```
+
+All function expression bodies, arrow function block bodies, and class method bodies compile with EMPTY bodies. Function declarations work because `parseFunctionDecl` uses `parseBlockStmt` correctly.
+
+**FIX** — replace the body of `parseFunctionBody`:
+```lean
+private partial def parseFunctionBody : ParserM (List Stmt) := do
+  match (← parseBlockStmt) with
+  | .block stmts => pure stmts
+  | s => pure [s]
+```
+
+**DO THIS FIRST.** Nothing else matters until this is fixed. After fixing:
+1. Run `bash scripts/lake_build_concise.sh` — must pass
+2. Run test262 to see how many of the 50 failures are now passing
+3. Log the results
 
 ### Status: 98.8% compile rate, Core/Semantics 0 sorry
+### Test262: 3/61 pass, 50 fail, 3 skip, 5 xfail
 
-### Test262: 3/61 pass, 50 fail (wasm traps), 3 skip (node parse), 5 xfail — UNCHANGED
+### After fixing parseFunctionBody:
 
-The 50 runtime failures are wasm traps on advanced JS features we haven't elaborated (Temporal, Proxy, generators, classes, TypedArray, RegExp, etc.).
+#### #2: Categorize remaining runtime failures
+Many of the 50 may now pass. For those still failing, categorize by JS feature.
 
-### What to do this run:
-
-#### #1: Categorize the 50 runtime failures (if not done last run)
-
-Read `logs/test262_failures.txt`. For each, determine:
-- What JS feature? Is it addressable or out-of-scope?
-- Log categorization in agents/jsspec/log.md.
-
-#### #2: Fix the simplest addressable test262 failures
-
-Look for `language/` tests that fail on features we SHOULD support:
-- compound-assignment, simple expressions, basic statements
-- Fix parser bugs or missing elaboration for simplest cases
-
-#### #3: Skip reduction — the 3 remaining skips
-
-Check if the 3 remaining node-check-failed skips can be addressed.
+#### #3: Fix the simplest addressable failures
+Look for `language/` tests on features we should support.
 
 ### DO NOT:
 - Fix warnings or deprecations
