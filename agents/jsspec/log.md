@@ -589,3 +589,13 @@ test
 
 ## Run: 2026-03-22T00:00:01+00:00
 
+
+## SYSTEM NOTE: BUILD IS BROKEN — FIX IT NOW
+
+Core/Semantics.lean has errors at lines 2260, 2269, 2278: `simp made no progress`.
+USE lean_diagnostic_messages AND lean_multi_attempt to find the fix. DO NOT GUESS.
+DO NOT commit broken code. Test with lean_diagnostic_messages BEFORE saving.
+The build is blocking ALL other agents. FIX THIS FIRST.
+
+## Run: 2026-03-22T00:01:22+00:00
+
