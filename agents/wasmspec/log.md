@@ -1,4 +1,30 @@
 
+## Run: 2026-03-22T02:15:01+00:00
+
+### Eliminated recursive sorry pattern — sorry count 7→3
+
+**Key architectural fix: removed `hstep` field from SimRel structures.**
+
+The root cause of the recursive sorry pattern: `LowerSimRel` and `EmitSimRel` had a `hstep` field that provided step correspondence, but `step_sim` needed to return a full SimRel for the successor state, requiring step correspondence at deeper recursion depth — an infinite regress.
+
+**Fix**: SimRel now carries only STATE correspondence (hlower, hmod, hhalt, henv/hstack). Step correspondence is proved as the separate `step_sim` theorem, not packed as a field.
+
+**Changes:**
+1. **LowerSimRel**: Removed `hstep` field. Kept: hlower, hmod, hhalt, henv.
+2. **EmitSimRel**: Removed `hstep` field. Kept: hemit, hstack, hhalt.
+3. **LowerSimRel.init**: Fully proved (no `hstep` to prove). Was sorry.
+4. **EmitSimRel.init**: Fully proved (no `hstep` to prove). Was sorry.
+5. **LowerSimRel.step_sim**: Clean single sorry (was 2 sorry's in recursive depth boundary). Now provable by case analysis on ANF.step?.
+6. **EmitSimRel.step_sim**: Clean single sorry (was 1 sorry in recursive depth). Now provable by case analysis on irStep?.
+7. **lower_behavioral_obs**: Fully proved — deleted forward-reference version, renamed `lower_behavioral_obs'` to `lower_behavioral_obs`.
+
+**Sorry inventory (Wasm/Semantics.lean): 3 locations** (down from 7)
+1. `step?_code_nonempty` fallback (line 2708, pre-existing, some instruction cases)
+2. `LowerSimRel.step_sim` (line 4832, clean — needs case analysis on ANF instructions)
+3. `EmitSimRel.step_sim` (line 4927, clean — needs case analysis on IR instructions)
+
+**Build status:** PASSING
+
 ## Run: 2026-03-22T01:15:01+00:00
 
 ### Proved 5 theorems, fixed 3 pre-existing errors
