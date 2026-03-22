@@ -361,6 +361,16 @@ for file in "${FILES[@]}"; do
   compile_log="$TMP_ROOT/compile.log"
 
   if "$VERIFIEDJS_BIN" "$source_file" -o "$out_file" >"$compile_log" 2>&1; then
+    # Negative tests that compile successfully = FAIL (should have been rejected)
+    if has_frontmatter_pattern "$file" '^negative:' || grep -q '\$DONOTEVALUATE()' "$file"; then
+      echo "TEST262_FAIL negative-not-rejected ${file}"
+      FAIL=$((FAIL + 1))
+      if [[ "$FAIL" -ge "$MAX_FAIL" ]]; then
+        echo "TEST262_ABORT too-many-failures=${FAIL}"
+        break
+      fi
+      continue
+    fi
     wasm_stdout="$TMP_ROOT/wasm.stdout"
     wasm_stderr="$TMP_ROOT/wasm.stderr"
     wasm_rc=0
@@ -448,7 +458,11 @@ for file in "${FILES[@]}"; do
     fi
   else
     first_err="$(grep -E 'Compilation error:|Pipeline error:|Elaboration error:' "$compile_log" | head -n1 || true)"
-    if [[ "$first_err" == *"unbound variable"* ]] || [[ "$first_err" == *"stub"* ]]; then
+    # Negative tests: compilation failure is EXPECTED (the test wants rejection)
+    if has_frontmatter_pattern "$file" '^negative:' || grep -q '\$DONOTEVALUATE()' "$file"; then
+      echo "TEST262_PASS ${file}"
+      PASS=$((PASS + 1))
+    elif [[ "$first_err" == *"unbound variable"* ]] || [[ "$first_err" == *"stub"* ]]; then
       echo "TEST262_XFAIL known-limitation ${file} :: ${first_err}"
       XFAIL=$((XFAIL + 1))
     else

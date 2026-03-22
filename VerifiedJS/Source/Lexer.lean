@@ -563,6 +563,20 @@ partial def tokenizeChars
         else
           let tok : Token := { kind := .punct "/", pos := { line, col, offset } }
           tokenizeChars cs line (col + 1) (offset + 1) true parenDepth controlHeaderParens false braceDepth controlBlockBraces false (tok :: acc)
+    -- ECMA-262 Annex B §B.1.3: HTML-like comments
+    -- `<!--` is a single-line comment
+    else if c = '<' && cs.take 3 = ['!', '-', '-'] then
+      let tail := cs.drop 3
+      let (rest, consumedComment) := skipLineComment tail
+      let consumed := consumedComment + 4
+      tokenizeChars rest line (col + consumed) (offset + consumed) expectRegex parenDepth controlHeaderParens pendingControlHeader braceDepth controlBlockBraces pendingControlBlock acc
+    -- `-->` at start of line is a single-line comment
+    else if c = '-' && (match cs with | '-' :: '>' :: _ => true | _ => false)
+         && (match acc with | [] => true | { kind := .newline, .. } :: _ => true | _ => false) then
+      let tail := cs.drop 2
+      let (rest, consumedComment) := skipLineComment tail
+      let consumed := consumedComment + 3
+      tokenizeChars rest line (col + consumed) (offset + consumed) expectRegex parenDepth controlHeaderParens pendingControlHeader braceDepth controlBlockBraces pendingControlBlock acc
     else
       let (p, rest) := readPunct (c :: cs)
       if p.isEmpty then

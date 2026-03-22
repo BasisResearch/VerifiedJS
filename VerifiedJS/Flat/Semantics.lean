@@ -906,6 +906,24 @@ theorem firstNonValueExpr_none_implies_values (l : List Expr)
   simp [valuesFromExprList?, exprValue?]
   cases valuesFromExprList? rest <;> simp [Option.map]
 
+/-- If firstNonValueProp returns none, then valuesFromExprList? on the mapped values succeeds. -/
+theorem firstNonValueProp_none_implies_map_values (props : List (PropName × Expr))
+    (h : firstNonValueProp props = none) :
+    ∃ vs, valuesFromExprList? (props.map Prod.snd) = some vs := by
+  induction props with
+  | nil => exact ⟨[], rfl⟩
+  | cons p rest ih =>
+    obtain ⟨name, e⟩ := p
+    unfold firstNonValueProp at h
+    simp at h
+    match e, h with
+    | .lit v, h =>
+      split at h
+      · contradiction
+      · next hrest =>
+        have ⟨vs, hvs⟩ := ih hrest
+        exact ⟨v :: vs, by simp [valuesFromExprList?, exprValue?, hvs]⟩
+
 /-! ## Halting characterization -/
 
 /-- The only Flat expression where step? returns none is a literal value.
@@ -1075,7 +1093,7 @@ theorem step?_none_implies_lit (s : State) (h : step? s = none) :
             subst hv; simp_all [exprValue?]
         · -- exprValue? rhs = some _ → step? returns some
           simp at h
-    | deleteProp _ obj _ =>
+    | deleteProp obj _ =>
       unfold step? at h; simp only [-step?] at h
       split at h
       · simp at h  -- some (.object _) → returns some
@@ -1192,7 +1210,7 @@ theorem step?_none_implies_lit (s : State) (h : step? s = none) :
       unfold step? at h; simp only [-step?] at h
       split at h
       · -- exprValue? body = some → returns some (both finally branches)
-        split at h <;> simp at h
+        cases finally_ <;> simp at h
       · -- exprValue? body = none
         split at h
         · simp at h  -- step? body = some (.error ..) → returns some
@@ -1225,18 +1243,16 @@ theorem step?_none_implies_lit (s : State) (h : step? s = none) :
             · -- firstNonValueExpr = some (done, target, remaining)
               split at h
               · simp at h
-              · next hf hstep =>
-                -- target is not a literal (by firstNonValueExpr_target_not_lit)
-                -- but IH says it must be
-                have htgt : ∀ v, target ≠ .lit v :=
-                  fun v hv => firstNonValueExpr_target_not_lit hf (hv ▸ rfl)
-                have ⟨v, hv⟩ := litOfStuck target
-                  (by simp [Expr.depth] at hd; have := firstNonValueExpr_depth hf; omega) hstep
+              · -- step? target = none → target must be lit → contradiction
+                rename_i done' target' remaining' hfnve _ hstep
+                have htgt := firstNonValueExpr_target_not_lit hfnve
+                have ⟨v, hv⟩ := litOfStuck target'
+                  (by simp [Expr.depth] at hd; have := firstNonValueExpr_depth hfnve; omega) hstep
                 exact absurd hv (htgt v)
-            · -- firstNonValueExpr = none → valuesFromExprList? should be some (contradiction)
-              next hvnone hfnone =>
-                have ⟨vs, hvs⟩ := firstNonValueExpr_none_implies_values args hfnone
-                simp_all
+            · -- firstNonValueExpr = none → contradiction with valuesFromExprList? = none
+              rename_i _ hvfnone hfnone
+              have ⟨vs, hvs⟩ := firstNonValueExpr_none_implies_values args hfnone
+              simp_all
     | newObj funcExpr envExpr args =>
       unfold step? at h; simp only [-step?] at h
       split at h
@@ -1262,15 +1278,14 @@ theorem step?_none_implies_lit (s : State) (h : step? s = none) :
             · -- firstNonValueExpr = some
               split at h
               · simp at h
-              · next hf hstep =>
-                have htgt : ∀ v, target ≠ .lit v :=
-                  fun v hv => firstNonValueExpr_target_not_lit hf (hv ▸ rfl)
-                have ⟨v, hv⟩ := litOfStuck target
-                  (by simp [Expr.depth] at hd; have := firstNonValueExpr_depth hf; omega) hstep
+              · rename_i done' target' remaining' hfnve _ hstep
+                have htgt := firstNonValueExpr_target_not_lit hfnve
+                have ⟨v, hv⟩ := litOfStuck target'
+                  (by simp [Expr.depth] at hd; have := firstNonValueExpr_depth hfnve; omega) hstep
                 exact absurd hv (htgt v)
-            · next hvnone hfnone =>
-                have ⟨vs, hvs⟩ := firstNonValueExpr_none_implies_values args hfnone
-                simp_all
+            · rename_i _ hvfnone hfnone
+              have ⟨vs, hvs⟩ := firstNonValueExpr_none_implies_values args hfnone
+              simp_all
     | makeEnv values =>
       unfold step? at h; simp only [-step?] at h
       split at h
@@ -1280,15 +1295,14 @@ theorem step?_none_implies_lit (s : State) (h : step? s = none) :
         · -- firstNonValueExpr = some
           split at h
           · simp at h
-          · next hf hstep =>
-            have htgt : ∀ v, target ≠ .lit v :=
-              fun v hv => firstNonValueExpr_target_not_lit hf (hv ▸ rfl)
-            have ⟨v, hv⟩ := litOfStuck target
-              (by simp [Expr.depth] at hd; have := firstNonValueExpr_depth hf; omega) hstep
+          · rename_i done' target' remaining' hfnve _ hstep
+            have htgt := firstNonValueExpr_target_not_lit hfnve
+            have ⟨v, hv⟩ := litOfStuck target'
+              (by simp [Expr.depth] at hd; have := firstNonValueExpr_depth hfnve; omega) hstep
             exact absurd hv (htgt v)
-        · next hvnone hfnone =>
-            have ⟨vs, hvs⟩ := firstNonValueExpr_none_implies_values values hfnone
-            simp_all
+        · rename_i hvfnone hfnone
+          have ⟨vs, hvs⟩ := firstNonValueExpr_none_implies_values values hfnone
+          simp_all
     | arrayLit elems =>
       unfold step? at h; simp only [-step?] at h
       split at h
@@ -1298,15 +1312,14 @@ theorem step?_none_implies_lit (s : State) (h : step? s = none) :
         · -- firstNonValueExpr = some
           split at h
           · simp at h
-          · next hf hstep =>
-            have htgt : ∀ v, target ≠ .lit v :=
-              fun v hv => firstNonValueExpr_target_not_lit hf (hv ▸ rfl)
-            have ⟨v, hv⟩ := litOfStuck target
-              (by simp [Expr.depth] at hd; have := firstNonValueExpr_depth hf; omega) hstep
+          · rename_i done' target' remaining' hfnve _ hstep
+            have htgt := firstNonValueExpr_target_not_lit hfnve
+            have ⟨v, hv⟩ := litOfStuck target'
+              (by simp [Expr.depth] at hd; have := firstNonValueExpr_depth hfnve; omega) hstep
             exact absurd hv (htgt v)
-        · next hvnone hfnone =>
-            have ⟨vs, hvs⟩ := firstNonValueExpr_none_implies_values elems hfnone
-            simp_all
+        · rename_i hvfnone hfnone
+          have ⟨vs, hvs⟩ := firstNonValueExpr_none_implies_values elems hfnone
+          simp_all
     | objectLit props =>
       unfold step? at h; simp only [-step?] at h
       split at h
@@ -1316,15 +1329,14 @@ theorem step?_none_implies_lit (s : State) (h : step? s = none) :
         · -- firstNonValueProp = some
           split at h
           · simp at h
-          · next hf hstep =>
-            have htgt : ∀ v, target ≠ .lit v :=
-              fun v hv => firstNonValueProp_target_not_lit hf (hv ▸ rfl)
-            have ⟨v, hv⟩ := litOfStuck target
-              (by simp [Expr.depth] at hd; have := firstNonValueProp_depth hf; omega) hstep
+          · rename_i done' propName' target' remaining' hfnvp _ hstep
+            have htgt := firstNonValueProp_target_not_lit hfnvp
+            have ⟨v, hv⟩ := litOfStuck target'
+              (by simp [Expr.depth] at hd; have := firstNonValueProp_depth hfnvp; omega) hstep
             exact absurd hv (htgt v)
-        · -- firstNonValueProp = none
-          -- All props are values, so valuesFromExprList? (props.map Prod.snd) should be some
-          -- Need to show contradiction with valuesFromExprList? = none
-          simp at h
+        · -- firstNonValueProp = none → contradiction with valuesFromExprList? = none
+          rename_i hvfnone hfnone
+          have ⟨vs, hvs⟩ := firstNonValueProp_none_implies_map_values props hfnone
+          simp_all
 
 end VerifiedJS.Flat
