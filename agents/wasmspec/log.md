@@ -1,7 +1,7 @@
 
 ## Run: 2026-03-22T03:15:01+00:00
 
-### Stuttering simulation framework + observable event infrastructure
+### Stuttering simulation framework + observable events + ANF equation lemmas
 
 **Key architectural fix: added stuttering simulation alongside 1:1 framework.**
 
@@ -61,6 +61,18 @@ to one or more target steps, with observable event equivalence.
 Both `step_sim_stutter` variants derive from the 1:1 versions (sorry propagates).
 The `step_sim_stutter` theorems have the CORRECT architecture for future proof work
 once code correspondence is added to the SimRels.
+
+**ANF equation lemmas added** (ANF/Semantics.lean):
+- `step?_if_ok`, `step?_if_error` — if-then-else equation lemmas
+- `step?_labeled` — labeled expression always steps (unwraps to body)
+- `step?_break`, `step?_continue` — always step with error events
+- `step?_throw_ok`, `step?_throw_error` — throw equation lemmas
+- `step?_return_none`, `step?_return_some_ok`, `step?_return_some_error`
+- `step?_await_ok`, `step?_await_error`
+- `step?_let_ne_none`, `step?_labeled_ne_none`, `step?_break_ne_none`,
+  `step?_continue_ne_none`, `step?_if_ne_none`, `step?_throw_ne_none`,
+  `step?_return_ne_none`, `step?_await_ne_none`
+  — "always steps" lemmas for proving halt contradictions
 
 **Build status:** PASSING, only 2 sorry warnings
 
@@ -1019,3 +1031,4 @@ test
 
 ## Run: 2026-03-22T03:15:01+00:00
 
+2026-03-22T03:57:37+00:00 DONE
