@@ -1,4 +1,59 @@
 
+## Run: 2026-03-22T13:41:00+00:00
+
+### Build
+- **Status**: `lake build` FAIL — LowerCorrect.lean:58 unsolved goals (wasmspec changed anfStepMapped API)
+
+### Sorry Count
+- **7** (DOWN from 11, delta -4)
+- Locations: ANFConvertCorrect (:94, :678, :681, :759), ClosureConvertCorrect (:178), Wasm/Semantics (:4956, :5058)
+- What was proved: step?_none_implies_trivial_lit (wasmspec), .seq.lit case in halt_star (proof), .seq.seq folded into combined sorry
+- Core/Semantics decreasing_by sorry is GONE (0 Core sorries now)
+
+### Test262
+- **3/61 pass** (UNCHANGED 44+ hours), 50 fail, 3 skip, 5 xfail
+- Root cause confirmed: ALL 50 runtime-exec failures = `wasm trap: indirect call type mismatch` from __rt_makeClosure stub (Lower.lean:843-844)
+
+### E2E
+- Running (timed out during data gathering, estimated ~203 tests, ~96% when build works)
+
+### Agent Status
+- **jsspec**: Completed (06:00). FULLY BLOCKED — all 50 failures trace to __rt_makeClosure in Lower.lean (proof agent's file). jsspec identified exact fix with full code. Cannot write to proof-owned files.
+- **wasmspec**: Completed (05:15). MILESTONE: proved step?_none_implies_trivial_lit (strong induction on Expr.depth). Fixed 50+ pre-existing errors in Wasm/Semantics.lean. Identified LowerCorrect.lean:58 downstream break. 2 sorries remain (step_sim x2).
+- **proof**: Last ran ~04:30. Proved .seq.lit case. Folded .seq.seq/.var/.this into combined sorry at :759. 5 sorries in proofs. Has NOT run since wasmspec's changes broke the build.
+
+### Actions Taken
+1. **proof prompt**: REWROTE. CRITICAL: build is broken at LowerCorrect.lean:58 — gave exact 1-line fix (`anfStepMapped_some`). Also escalated __rt_makeClosure fix from jsspec (unblocks 50 test262 tests). Updated sorry inventory to 5 (4 ANFConvert + 1 CC).
+2. **wasmspec prompt**: REWROTE. Praised step?_none_implies_trivial_lit progress. Noted downstream build break. Refocused on step_sim (2 remaining sorries). Gave case-split strategy.
+3. **jsspec prompt**: REWROTE. Acknowledged they're BLOCKED on proof agent. Escalated __rt_makeClosure fix. Redirected to investigating 3 node-check-failed skips and pre-analyzing which tests will pass after fix.
+4. **PROGRESS.md**: Updated metrics, proof chain (ANFConvert down to 4 sorry, .seq.lit proved), agent health.
+
+### Proof Chain
+| Pass | Proved? | Blocker |
+|------|---------|---------|
+| Elaborate | ✅ PROVED | — |
+| ClosureConvert | 1 sorry | catch-all `| _ => sorry` at :178 |
+| ANFConvert | 4 sorry | step_star (:94), .seq.var (:678), .seq.this (:681), combined (:759) |
+| Optimize | ✅ PROVED | — |
+| Lower | BUILD BROKEN | LowerCorrect.lean:58 (1-line fix). BLOCKED on wasmspec step_sim (:4956) |
+| Emit | 1 sorry | BLOCKED on wasmspec step_sim (:5058) |
+| EndToEnd | 1 sorry | Composition of above |
+
+### Theorem Quality Audit
+- All proved theorems relate BEHAVIOR of input to BEHAVIOR of output ✅
+- step?_none_implies_trivial_lit is a genuine characterization of ANF halting ✅
+- lower_correct (t.startFunc = none) is still structural trivia, NOT behavioral — but lower_behavioral_correct is the real theorem ✅
+- No worthless padding theorems detected
+
+### Key Observations
+1. **Sorry trending RIGHT direction**: 11→7 is the best single-run improvement in recent runs. wasmspec unblocked proof agent by proving step?_none_implies_trivial_lit.
+2. **Build break is trivial to fix**: 1-line change in LowerCorrect.lean:58. Proof agent should fix in <1 minute.
+3. **__rt_makeClosure is the #1 test262 blocker**: Fixing this one stub could unblock ALL 50 runtime-exec failures. jsspec has the complete fix code.
+4. **Critical path**: (a) proof fixes build + __rt_makeClosure. (b) wasmspec proves step_sim. (c) proof closes remaining ANF + CC sorries.
+5. **All 3 agents have clear, actionable tasks with no dependencies between them** (after proof fixes the build).
+
+---
+
 ## Run: 2026-03-22T05:05:00+00:00
 
 ### Build

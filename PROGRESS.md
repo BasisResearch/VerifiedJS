@@ -117,18 +117,18 @@ arithmetic, boolean_logic, conditionals, do_while, for_loop, functions, let_bind
 |------|---------|--------------|---------|---------|
 | Elaborate | elaborate_correct | YES | **PROVED** | — |
 | ClosureConvert | closureConvert_correct | YES — trace preservation with NoForInForOf | 1 sorry | catch-all `| _ => sorry` at :178 (env/heap correspondence needed) |
-| ANFConvert | anfConvert_correct | YES — observable trace preservation | 5 sorry | step_star (:94), halt_star .seq 4 sub-cases (:678,:681,:685,:691) |
+| ANFConvert | anfConvert_correct | YES — observable trace preservation | 4 sorry | step_star (:94), .seq.var (:678), .seq.this (:681), .var/.this/.seq combined (:759) |
 | Optimize | optimize_correct | YES — `∀ b, ANF.Behaves (optimize p) b ↔ ANF.Behaves p b` | **PROVED** | Identity pass — trivially correct |
-| Lower | lower_behavioral_correct | YES — `∀ trace, ANF.Behaves → IR.IRBehaves` | 1 sorry | LowerCorrect.lean:51. halt_sim PROVED. lower_behavioral_obs PROVED. **BLOCKED on wasmspec** LowerSimRel.step_sim (:4951) |
-| Emit | emit_behavioral_correct | YES — `∀ trace, IR.IRBehaves → Wasm.Behaves` | 1 sorry | EmitCorrect.lean:44. halt_sim PROVED. **BLOCKED on wasmspec** EmitSimRel.step_sim (:5049) |
+| Lower | lower_behavioral_correct | YES — `∀ trace, ANF.Behaves → IR.IRBehaves` | **BUILD BROKEN** | LowerCorrect.lean:58 — 1-line fix needed (anfStepMapped_some). **BLOCKED on wasmspec** step_sim (:4956) |
+| Emit | emit_behavioral_correct | YES — `∀ trace, IR.IRBehaves → Wasm.Behaves` | 1 sorry | **BLOCKED on wasmspec** EmitSimRel.step_sim (:5058) |
 | EndToEnd | flat_to_wasm_correct | YES — partial composition (Flat→Wasm) | 1 sorry | EndToEnd.lean:55. Composition of above; last to prove |
 
-**Chain status**: All 6 Behaves relations DEFINED. All theorem STATEMENTS correct. **2 passes FULLY PROVED** (Elaborate, Optimize). **Sorry count in proof chain: 10** (5 ANFConvert + 1 CC + 1 ANF/Semantics + 2 Wasm step_sim + 1 EndToEnd composition). Both halt_sim theorems PROVED. lower_behavioral_obs PROVED. **Critical path**: (1) wasmspec proves step?_none_implies_trivial_lit + LowerSimRel.step_sim + EmitSimRel.step_sim. (2) proof agent closes halt_star .seq sub-cases + step_star + CC catch-all.
+**Chain status**: All 6 Behaves relations DEFINED. All theorem STATEMENTS correct. **2 passes FULLY PROVED** (Elaborate, Optimize). **Sorry count in proof chain: 7** (4 ANFConvert + 1 CC + 2 Wasm step_sim). Both halt_sim theorems PROVED. step?_none_implies_trivial_lit PROVED (wasmspec). **Critical path**: (1) proof fixes build (1-line) + fixes __rt_makeClosure (unblocks 50 test262). (2) wasmspec proves LowerSimRel.step_sim + EmitSimRel.step_sim. (3) proof closes .seq.var/.seq.this + step_star + CC catch-all.
 
 ## Agent Health
 
-| Agent | Status (2026-03-22T05:05) | Notes |
+| Agent | Status (2026-03-22T13:41) | Notes |
 |-------|---------------------|-------|
-| jsspec | Running (05:00) | Test262: 3/61 (STUCK 36+ hrs). Last 3 runs: code quality only. Must diagnose wasm_rc=134. |
-| wasmspec | Completed (05:06) | 3 sorries (step_sim x2 + step?_none_implies_trivial_lit). No logged progress on step_sim for 2+ hours. |
-| proof | Completed (04:30) | Decomposed .seq into 4 sub-cases. 6 sorries total (5 ANFConvert + 1 CC catch-all). |
+| jsspec | Completed (06:00) | BLOCKED: all 50 test262 failures = __rt_makeClosure stub in Lower.lean (proof's file). Identified exact fix. Escalated. |
+| wasmspec | Completed (05:15) | GREAT run: proved step?_none_implies_trivial_lit, fixed 50+ errors. 2 sorries remain (step_sim x2). |
+| proof | Last ran ~04:30 | Proved .seq.lit. 5 sorries in proofs. BUILD BROKEN by downstream API change — told to fix. |

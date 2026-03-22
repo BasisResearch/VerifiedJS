@@ -771,6 +771,54 @@ theorem step?_value_halts (s : State) (v : Value) :
     step? { s with expr := .lit v } = none := by
   simp
 
+/-- `.var name` always steps (either found or not found). -/
+@[simp] theorem step?_var_isSome (s : State) (name : VarName) :
+    (step? { s with expr := .var name }).isSome = true := by
+  simp [step?]
+  split <;> simp
+
+/-- `.this` always steps (resolves `this` binding or defaults to undefined). -/
+@[simp] theorem step?_this_isSome (s : State) :
+    (step? { s with expr := .this }).isSome = true := by
+  simp [step?]
+  split <;> simp
+
+/-- `.this` result when binding exists. -/
+theorem step?_this_found (s : State) (v : Value)
+    (h : s.env.lookup "this" = some v) :
+    step? { s with expr := .this } =
+      some (.silent, pushTrace { s with expr := .lit v } .silent) := by
+  simp [step?, h]
+
+/-- `.this` result when no binding. -/
+theorem step?_this_not_found (s : State)
+    (h : s.env.lookup "this" = none) :
+    step? { s with expr := .this } =
+      some (.silent, pushTrace { s with expr := .lit .undefined } .silent) := by
+  simp [step?, h]
+
+/-- `.seq a b` steps when `a` is not a value but steps.
+    REF: WasmCert-Coq reduction under evaluation context. -/
+theorem step?_seq_sub_step (s : State) (a b : Expr)
+    (hnotval : exprValue? a = none)
+    (hstep : ∃ t sa, step? { s with expr := a } = some (t, sa)) :
+    ∃ t s', step? { s with expr := .seq a b } = some (t, s') := by
+  obtain ⟨t, sa, ha⟩ := hstep
+  simp [step?, hnotval, ha]
+  exact ⟨t, _, rfl⟩
+
+/-- `.seq (.var name) b` always steps (var always steps, seq delegates). -/
+theorem step?_seq_var_isSome (s : State) (name : VarName) (b : Expr) :
+    (step? { s with expr := .seq (.var name) b }).isSome = true := by
+  simp [step?, exprValue?]
+  split <;> simp
+
+/-- `.seq .this b` always steps (.this always steps, seq delegates). -/
+theorem step?_seq_this_isSome (s : State) (b : Expr) :
+    (step? { s with expr := .seq .this b }).isSome = true := by
+  simp [step?, exprValue?]
+  split <;> simp
+
 /-- If firstNonValueExpr returns none (all elements are literals),
     then valuesFromExprList? returns some list of values.
     This bridges the two representations for the proof agent. -/
