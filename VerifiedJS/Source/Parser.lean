@@ -1290,8 +1290,10 @@ private partial def parseForStmt : ParserM Stmt := do
   -- ECMA-262 §13.7: Newlines inside for(...) header are not significant (no ASI).
   skipNewlines
   if (← consumePunct? ";") then
-    let cond <- if (← consumePunct? ";") then pure none else (some <$> parseExprM <* expectPunct ";")
-    let update <- if (← consumePunct? ")") then pure none else (some <$> parseExprM <* expectPunct ")")
+    skipNewlines
+    let cond <- if (← consumePunct? ";") then pure none else (some <$> parseExprM <* (skipNewlines *> expectPunct ";"))
+    skipNewlines
+    let update <- if (← consumePunct? ")") then pure none else (some <$> parseExprM <* (skipNewlines *> expectPunct ")"))
     let body <- parseStmt
     pure (.for none cond update body)
   else if (← consumeKeyword? "var") then
