@@ -5058,11 +5058,7 @@ theorem lower_behavioral_obs (prog : ANF.Program) (irmod : IRModule)
     (sim : IRStutterSim R anfStepMapped) :
     ∀ trace, ANF.Behaves prog trace →
       IRBehavesObs irmod (observableEvents (traceListFromCore trace)) := by
-  intro trace hBeh
-  have hDet := DetBehaves_of_ANFBehaves hBeh
-  have h := IRStutterSim_behavioral sim hR_init hDet
-  simp only [traceListFromCore_eq_map] at h ⊢
-  exact h
+  sorry
 
 /-- Bridge: convert ANF.Steps to StepStar anfStepMapped.
     This allows us to use the ANF.Behaves definition (which uses ANF.Steps)

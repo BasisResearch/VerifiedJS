@@ -9,6 +9,8 @@ import VerifiedJS.Core.Elaborate
 
 namespace VerifiedJS.Core
 
+set_option linter.deprecated false
+
 /-- Observable trace events emitted by Core execution. -/
 inductive TraceEvent where
   | log (s : String)
@@ -2238,6 +2240,7 @@ theorem step_class_pattern_functionDef (name : VarName) (env : Env) (heap : Heap
 private theorem exprValue?_lit_some (v : Value) : exprValue? (.lit v) = some v := rfl
 
 set_option maxHeartbeats 4000000 in
+set_option linter.deprecated false in
 /-- The only stuck expression is a literal (progress). -/
 theorem stuck_implies_lit {s : State} (hstuck : step? s = none) :
     ∃ v, s.expr = .lit v := by
@@ -2471,7 +2474,7 @@ theorem stuck_implies_lit {s : State} (hstuck : step? s = none) :
     all_goals
       simp only [State.mk.injEq, true_and] at *
       subst_vars
-      simp_arith [sizeOf, Expr._sizeOf_1]
+      simp_all [sizeOf, Nat.lt_add_of_pos_right, Nat.lt_add_of_pos_left]
       omega
 
 theorem Behaves_final_lit {p : Program} {b : List TraceEvent}
