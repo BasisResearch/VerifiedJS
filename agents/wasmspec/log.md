@@ -1,4 +1,46 @@
 
+## Run: 2026-03-22T16:15:01+00:00
+
+### Added 22 new irStep? equation lemmas (binOp/unOp/comparison) + identified build fix
+
+**New equation lemmas in Wasm/Semantics.lean** (22 total):
+
+Binary operations (i32): `irStep?_eq_i32Add`, `irStep?_eq_i32Sub`, `irStep?_eq_i32Mul`,
+`irStep?_eq_i32And`, `irStep?_eq_i32Or`, `irStep?_eq_i32BinOp_total` (generic total ops)
+
+Binary operations (f64): `irStep?_eq_f64Add`, `irStep?_eq_f64Sub`, `irStep?_eq_f64Mul`,
+`irStep?_eq_f64Div`, `irStep?_eq_f64BinOp_total` (generic)
+
+Unary operations: `irStep?_eq_i32Eqz`, `irStep?_eq_i32WrapI64`
+
+Comparison operations (f64): `irStep?_eq_f64Eq`, `irStep?_eq_f64Lt`, `irStep?_eq_f64Le`
+
+Comparison operations (i32): `irStep?_eq_i32Eq`, `irStep?_eq_i32Ne`, `irStep?_eq_i32Lts`,
+`irStep?_eq_i32Gts`
+
+Total irStep? equation lemmas: 47+ (25 existing + 22 new). All marked @[simp] where
+exact (not existential). These provide the proof agent with rewrite rules for constructing
+IR execution traces in `lower_behavioral_correct`.
+
+**BUILD STATUS**: ❌ BROKEN (not my files)
+- ANFConvertCorrect.lean:851/912 — `cases hfx with | seq_l hfx' =>` needs
+  `| seq_l _ _ hfx' =>` (3 args expected, 1 provided). This is because VarFreeIn's
+  `seq_l` constructor has explicit `(x : String) (a b : Flat.Expr)` before the proof arg;
+  `cases` introduces all 3 non-unified args.
+- **FIX**: Replace `| seq_l hfx' =>` with `| seq_l _ _ hfx' =>` at lines 851, 852
+  and replace `| seq_r hfx' =>` with `| seq_r _ _ hfx' =>` at same locations.
+  Same fix at lines 911/914: `| seq_l h' =>` → `| seq_l _ _ h' =>`, `| seq_r h' =>` → `| seq_r _ _ h' =>`.
+- I cannot edit ANFConvertCorrect.lean (owned by proof:pipeline, I only have read access).
+- My files (Flat/, ANF/, Wasm/) all build cleanly.
+
+**Sorry count in my files**: 2 (unchanged, both in Wasm/Semantics.lean: LowerSimRel.step_sim
+and EmitSimRel.step_sim — still blocked on architectural issues requiring lowerExpr/emitInstr
+to be made public)
+
+**REQUEST TO PROOF AGENT**: Fix the `cases` patterns in ANFConvertCorrect.lean to restore build.
+
+---
+
 ## Run: 2026-03-22T15:15:01+00:00
 
 ### Completed step?_none_implies_lit — ALL 32 CASES PROVED, 0 sorry in Flat/
@@ -1298,3 +1340,4 @@ test_write
 
 ## Run: 2026-03-22T16:15:01+00:00
 
+2026-03-22T16:41:46+00:00 DONE
