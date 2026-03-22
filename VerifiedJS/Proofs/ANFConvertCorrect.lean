@@ -603,9 +603,21 @@ private theorem ANF_step?_none_implies_trivial (s : ANF.State) (h : ANF.step? s 
   obtain ⟨t, ht, hlit⟩ := ANF.step?_none_implies_trivial_lit s h
   exact ⟨t, ht, fun name habs => by subst habs; simp [ANF.Trivial.isLit] at hlit⟩
 
+/-- x appears as a free variable reference in expression e.
+    Used as precondition to rule out stuck .var lookups in halt_star. -/
+private inductive VarFreeIn : String → Flat.Expr → Prop where
+  | var (x : String) : VarFreeIn x (.var x)
+  | seq_l (x : String) (a b : Flat.Expr) : VarFreeIn x a → VarFreeIn x (.seq a b)
+  | seq_r (x : String) (a b : Flat.Expr) : VarFreeIn x b → VarFreeIn x (.seq a b)
+
+/-- All variable references in the expression are bound in the environment. -/
+private def ExprWellFormed (expr : Flat.Expr) (env : Flat.Env) : Prop :=
+  ∀ x, VarFreeIn x expr → env.lookup x ≠ none
+
 /-- Auxiliary halt_star with strong induction on Flat expression depth.
     When ANF reaches a terminal state (step? = none), Flat can also reach a
-    terminal state after zero or more silent steps. -/
+    terminal state after zero or more silent steps.
+    Requires well-formedness: all free .var references are bound in the env. -/
 private theorem anfConvert_halt_star_aux
     (s : Flat.Program) (t : ANF.Program)
     (h : ANF.convert s = .ok t) :
@@ -613,6 +625,7 @@ private theorem anfConvert_halt_star_aux
       sf.expr.depth ≤ N →
       ANF_SimRel s t sa sf →
       ANF.step? sa = none →
+      ExprWellFormed sf.expr sf.env →
       ∃ (sf' : Flat.State) (evs : List Core.TraceEvent),
         Flat.Steps sf evs sf' ∧
         Flat.step? sf' = none ∧
@@ -621,7 +634,7 @@ private theorem anfConvert_halt_star_aux
   intro N
   induction N with
   | zero =>
-    intro sa sf hdepth ⟨hheap, henv, htrace, k, n, m, hnorm, hfaithful⟩ hstuck
+    intro sa sf hdepth ⟨hheap, henv, htrace, k, n, m, hnorm, hfaithful⟩ hstuck hwf
     obtain ⟨tv, hat, hnovar⟩ := ANF_step?_none_implies_trivial sa hstuck
     cases hsf : sf.expr with
     | lit v =>
@@ -648,7 +661,7 @@ private theorem anfConvert_halt_star_aux
       have h4 : ∀ a b, sf.expr ≠ .seq a b := by intro a b hc; rw [hsf] at hc; exact Flat.Expr.noConfusion hc
       exact absurd hnorm (normalizeExpr_compound_not_trivial sf.expr k h1 h2 h3 h4 n m tv)
   | succ N ih =>
-    intro sa sf hdepth ⟨hheap, henv, htrace, k, n, m, hnorm, hfaithful⟩ hstuck
+    intro sa sf hdepth ⟨hheap, henv, htrace, k, n, m, hnorm, hfaithful⟩ hstuck hwf
     obtain ⟨tv, hat, hnovar⟩ := ANF_step?_none_implies_trivial sa hstuck
     cases hsf : sf.expr with
     | lit v =>
@@ -703,14 +716,18 @@ private theorem anfConvert_halt_star_aux
             refine ⟨hheap.trans hsf3_heap.symm, henv.trans hsf3_env.symm, htrace.trans hsf3_trace.symm, k, n, m, ?_, hfaithful⟩
             rw [hsf3_expr, hat]; exact hnorm
           have hbd3 : sf3.expr.depth ≤ N := by rw [hsf3_expr]; exact hbd
-          obtain ⟨sf', evs, hsteps', hhalt', hobs', hrel'⟩ := ih sa sf3 hbd3 hrel3 hstuck
+          have hwf3 : ExprWellFormed sf3.expr sf3.env := by
+            rw [hsf3_expr, hsf3_env]; intro x hfx
+            exact hwf x (by rw [hsf]; exact .seq_r x a b (ha ▸ hfx))
+          obtain ⟨sf', evs, hsteps', hhalt', hobs', hrel'⟩ := ih sa sf3 hbd3 hrel3 hstuck hwf3
           let steps12 := Flat.Steps.tail (⟨hstep1⟩ : Flat.Step sf .silent sf2) (Flat.Steps.tail (⟨hstep2⟩ : Flat.Step sf2 .silent sf3) hsteps')
           have hobsAll : observableTrace (.silent :: .silent :: evs) = [] := by simp [observableTrace_silent, hobs']
           exact ⟨sf', .silent :: .silent :: evs, steps12, hhalt', hobsAll, hrel'⟩
         | none =>
-          -- Var not in scope: produces error event, contradicts observableTrace = []
-          -- BLOCKER: Requires well-formedness precondition (all free vars in scope)
-          sorry
+          -- Var not in scope: contradicts well-formedness
+          exfalso
+          have : sf.env.lookup name ≠ none := hwf name (by rw [hsf]; exact .seq_l name (.var name) b (.var name))
+          exact this hvar
       | this =>
         rw [ha] at hnorm; simp only [ANF.normalizeExpr] at hnorm
         have hbd : b.depth ≤ N := by rw [hsf] at hdepth; simp [Flat.Expr.depth] at hdepth; omega
@@ -745,7 +762,10 @@ private theorem anfConvert_halt_star_aux
           refine ⟨hheap.trans hsf3_heap.symm, henv.trans hsf3_env.symm, htrace.trans hsf3_trace.symm, k, n, m, ?_, hfaithful⟩
           rw [hsf3_expr, hat]; exact hnorm
         have hbd3 : sf3.expr.depth ≤ N := by rw [hsf3_expr]; exact hbd
-        obtain ⟨sf', evs, hsteps', hhalt', hobs', hrel'⟩ := ih sa sf3 hbd3 hrel3 hstuck
+        have hwf3 : ExprWellFormed sf3.expr sf3.env := by
+          rw [hsf3_expr, hsf3_env]; intro x hfx
+          exact hwf x (by rw [hsf]; exact .seq_r x a b (ha ▸ hfx))
+        obtain ⟨sf', evs, hsteps', hhalt', hobs', hrel'⟩ := ih sa sf3 hbd3 hrel3 hstuck hwf3
         let steps12 := Flat.Steps.tail (⟨hstep1⟩ : Flat.Step sf .silent sf2) (Flat.Steps.tail (⟨hstep2⟩ : Flat.Step sf2 .silent sf3) hsteps')
         have hobsAll : observableTrace (.silent :: .silent :: evs) = [] := by simp [observableTrace_silent, hobs']
         exact ⟨sf', .silent :: .silent :: evs, steps12, hhalt', hobsAll, hrel'⟩
@@ -774,8 +794,12 @@ private theorem anfConvert_halt_star_aux
             refine ⟨hheap.trans hheap2.symm, henv.trans henv2.symm, htrace.trans htrace2.symm, k, n, m, ?_, hfaithful⟩
             rw [he, hat]; exact hnorm
           have hbd2 : sf2.expr.depth ≤ N := by rw [he]; exact hbd
+          have hwf2 : ExprWellFormed sf2.expr sf2.env := by
+            obtain ⟨he', henv2, _, _⟩ := hsf2_props
+            rw [he', henv2]; intro x hfx
+            exact hwf x (by rw [hsf]; exact .seq_r x a b (ha ▸ hfx))
           obtain ⟨sf', evs, hsteps', hhalt', hobs', hrel'⟩ :=
-            ih sa sf2 hbd2 hrel2 hstuck
+            ih sa sf2 hbd2 hrel2 hstuck hwf2
           exact ⟨sf', .silent :: evs,
             Flat.Steps.tail ⟨hstep_eq⟩ hsteps',
             hhalt', by show observableTrace (.silent :: evs) = []; simp [observableTrace_silent, hobs'],

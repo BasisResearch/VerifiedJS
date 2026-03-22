@@ -783,4 +783,38 @@ test_write
 2026-03-22T14:42:39+00:00 DONE
 
 ## Run: 2026-03-22T15:30:01+00:00
+- Sorries before: 6 in my files, after: 5 (delta: -1)
+- Fixed:
+  - `__rt_makeClosure` in Lower.lean:843 — replaced stub (constant encodeObjectRef 2) with proper NaN-boxing logic that packs funcIdx * 65536 + envAddr. Mirrors `__rt_call`'s extraction logic.
+- Proved (eliminated sorry):
+  - `anfConvert_halt_star_aux` `.seq.seq.this` case (ANFConvertCorrect.lean:833→removed) — 2 Flat steps: `.seq (.seq .this a2) b` → `.seq (.seq (.lit v) a2) b` → `.seq a2 b`, then IH on smaller depth.
+- New cases proved (no sorry reduction since catch-all remains):
+  - `closureConvert_step_simulation` `.labeled` case (ClosureConvertCorrect.lean:258→now explicit case before catch-all) — both Core and Flat produce .silent, stepping to the body. CC_SimRel maintained via convertExpr structural preservation.
+- Discovered CRITICAL BUG:
+  - **Parser.lean:460-463 `parseFunctionBody` returns `pure []`** — it calls `skipBalancedBlock` to skip over the function body tokens without parsing them! This means ALL function expression bodies, arrow function block bodies, and class method bodies are compiled with empty bodies. This is the ROOT CAUSE of ALL 50 test262 runtime-exec failures (not `__rt_makeClosure`). The fix: replace with `match (← parseBlockStmt) with | .block stmts => pure stmts | _ => throw "..."`. Parser.lean is NOT in my writable files (owned by parser agent). BLOCKER for test262 progress.
+  - Function declarations (`parseFunctionDecl`) correctly use `parseBlockStmt`, only function expressions are broken.
+- Files changed: VerifiedJS/Wasm/Lower.lean, VerifiedJS/Proofs/ANFConvertCorrect.lean, VerifiedJS/Proofs/ClosureConvertCorrect.lean
+- Build: PASS
+- E2E: pending
+- Remaining sorries (5 in my files, 7 total):
+  1. `anfConvert_step_star` (ANFConvertCorrect.lean:94) — stuttering simulation, hardest
+  2. `.seq.var/none` (ANFConvertCorrect.lean:713) — BLOCKER: needs well-formedness precondition
+  3. `.seq.seq.var` (ANFConvertCorrect.lean:829) — same well-formedness blocker
+  4. `.seq.seq.seq` (ANFConvertCorrect.lean:881) — needs different induction measure (depth alone insufficient for nested seqs)
+  5. `closureConvert_step_simulation` catch-all (ClosureConvertCorrect.lean:297) — needs CC_SimRel env/heap correspondence
+  6. `LowerSimRel.step_sim` (Wasm/Semantics.lean:4956) — not my file
+  7. `EmitSimRel.step_sim` (Wasm/Semantics.lean:5058) — not my file
+
+### Key Blockers
+1. **parseFunctionBody bug**: Root cause of test262 failures. Parser agent must fix. File: Parser.lean:460-463.
+2. **Well-formedness for .seq.var**: Need `FreeIn` inductive + `WellFormed` predicate as precondition on halt_star_aux.
+3. **CC_SimRel env/heap**: catch-all cases (var, this, let, assign, if, seq, etc.) all need env/heap correspondence.
+4. **Nested seq induction measure**: `.seq.seq.seq` needs lexicographic or size-based measure instead of depth.
+
+### Strategy for Next Run
+1. Define `FreeIn` inductive + `Flat.WellFormed` (unblocks .seq.var/none and .seq.seq.var)
+2. Investigate size-based measure for .seq.seq.seq
+3. Start strengthening CC_SimRel with env correspondence
+
+2026-03-22T16:00:00+00:00 DONE
 

@@ -742,8 +742,7 @@ private partial def parsePrimaryM : ParserM Expr := do
     parseObjectLiteral
   | _ => failExpected "expression"
 
-private partial def parsePostfixM : ParserM Expr := do
-  let base <- parsePrimaryM
+private partial def parsePostfixFrom (base : Expr) : ParserM Expr := do
   let rec loop (e : Expr) : ParserM Expr := do
     skipNewlines
     if (← consumePunct? ".") then
@@ -791,6 +790,10 @@ private partial def parsePostfixM : ParserM Expr := do
     pure (.unary .postDec withPost)
   else
     pure withPost
+
+private partial def parsePostfixM : ParserM Expr := do
+  let base <- parsePrimaryM
+  parsePostfixFrom base
 
 private partial def parseUnaryM : ParserM Expr := do
   -- Prefix operators may appear after line terminators inside expressions.
