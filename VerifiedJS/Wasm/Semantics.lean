@@ -4824,7 +4824,7 @@ def anfStepMapped (s : ANF.State) : Option (TraceEvent × ANF.State) :=
   split <;> simp_all
 
 /-- anfStepMapped preserves the step structure with mapped trace events. -/
-theorem anfStepMapped_some (s s' : ANF.State) (t : Core.TraceEvent)
+@[simp] theorem anfStepMapped_some (s s' : ANF.State) (t : Core.TraceEvent)
     (h : ANF.step? s = some (t, s')) :
     anfStepMapped s = some (traceFromCore t, s') := by
   simp [anfStepMapped, h]
@@ -5295,9 +5295,8 @@ theorem WasmStutterSim_steps {R : IRExecState → ExecState → Prop}
     obtain ⟨w_mid, w_trace1, hwSteps1, hR_mid, hObs1⟩ := sim.step_sim _ _ _ _ hR hirEq
     obtain ⟨w_final, w_trace2, hwSteps2, hR_final, hObs2⟩ := ih hR_mid
     refine ⟨w_final, w_trace1 ++ w_trace2, Wasm.Steps_trans hwSteps1 hwSteps2, hR_final, ?_⟩
-    rw [Wasm.observableWasmEvents_append, hObs1, hObs2]
-    rw [show traceToWasm t :: List.map traceToWasm ts' = [traceToWasm t] ++ List.map traceToWasm ts' from rfl]
-    rw [Wasm.observableWasmEvents_append]
+    rw [Wasm.observableWasmEvents_append, hObs1, hObs2,
+        ← observableWasmEvents_traceListToWasm_cons]
 
 /-- Behavioral equivalence at the Wasm level up to silent events. -/
 def WasmBehavesObs (m : Module) (obs : List Wasm.TraceEvent) : Prop :=
