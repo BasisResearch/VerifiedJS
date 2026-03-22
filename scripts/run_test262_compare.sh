@@ -192,16 +192,10 @@ limitation_reason() {
     return
   fi
   if grep -Eq '\?\.|\?\?' "$file"; then
-    echo "optional-chaining-or-nullish"
-    return
   fi
   if grep -Eq '(^|[^[:alnum:]_])class[[:space:]]+[[:alpha:]_$]' "$file"; then
-    echo "class-declaration"
-    return
   fi
   if grep -Eq 'for[[:space:]]*\([^\)]*\b(in|of)\b' "$file"; then
-    echo "for-in-of"
-    return
   fi
   echo ""
 }

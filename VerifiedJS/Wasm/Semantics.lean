@@ -4696,7 +4696,7 @@ theorem WasmForwardSim_behavioral (R : IRExecState → ExecState → Prop)
   | @tail s1 s2 s3 t ts' hIRStep _hIRRest ih =>
     obtain ⟨hirEq⟩ := hIRStep
     obtain ⟨w_mid, hwStep, hR_mid⟩ := sim.step_sim _ _ _ _ hR' hirEq
-    obtain ⟨w_final, hwRest, hwHalt⟩ := ih hR_mid
+    obtain ⟨w_final, hwRest, hwHalt⟩ := ih w_mid hR_mid hHalt
     exact ⟨w_final, Steps.tail (Step.mk hwStep) hwRest, hwHalt⟩
 
 /-- Convenience: combining IRForwardSim_behavioral and WasmForwardSim_behavioral
@@ -5045,8 +5045,7 @@ theorem IRStutterSim_steps {S : Type} {R : S → IRExecState → Prop}
     obtain ⟨ir_final, ir_trace2, hIR2, hR_final, hObs2⟩ := ih hR_mid
     refine ⟨ir_final, ir_trace1 ++ ir_trace2,
       IRSteps_trans hIR1 hIR2, hR_final, ?_⟩
-    rw [observableEvents_append, hObs1, hObs2]
-    cases t <;> simp [observableEvents]
+    rw [observableEvents_append, hObs1, hObs2, ← observableEvents_append]
 
 /-- Behavioral equivalence up to silent events.
     The IR produces a trace whose observable events match the mapped source trace.
