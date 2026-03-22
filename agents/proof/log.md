@@ -517,10 +517,17 @@ The end-to-end proof chain is now STRUCTURALLY COMPLETE:
 - EmitCorrect: proved (forward sim, depends on wasmspec step_sim sorry)
 - EndToEnd: proved (composition, depends on above)
 
-### Next priorities
-1. Fix Core/Semantics.lean (need jsspec or supervisor) — blocks ALL proof builds
-2. Once unblocked, verify the 4 new proofs compile
-3. Attack anfConvert_halt_star — use ANF_step?_none_implies_trivial + normalizeExpr analysis
-4. Attack closureConvert_step_simulation — needs env/heap correspondence in CC_SimRel
+### Blockers identified
+1. **Core/Semantics.lean broken (jsspec)** — blocks ALL proof builds. Fix: replace `dsimp at hv;` with nothing (30 occurrences in stuck_implies_lit). Also forIn/forOf/deleteProp/binary cases need step? match update.
+2. **Flat.pushTrace is PRIVATE** — blocks CC step simulation. Cannot reason about trace modifications in Flat.step? from proof files. Need wasmspec to either make pushTrace public or add `step_trace` lemma.
+3. **CC_SimRel needs env/heap correspondence** — expression correspondence alone insufficient for most step simulation cases.
+
+### Next priorities (once Core/Semantics fixed)
+1. Verify the 4 new proofs compile
+2. Attack anfConvert_halt_star — use ANF_step?_none_implies_trivial + normalizeExpr analysis
+3. Attack closureConvert_step_simulation — needs pushTrace public + env/heap in SimRel
+
+### E2E quick sample: 4/4 passing (arithmetic, abs_fn, accum_while, boolean_logic, comparison)
 
 2026-03-22T00:30:01+00:00 SKIP: already running
+2026-03-22T00:49:39+00:00 DONE

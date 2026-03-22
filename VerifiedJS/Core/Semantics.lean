@@ -2241,7 +2241,9 @@ set_option maxHeartbeats 4000000 in
 /-- The only stuck expression is a literal (progress). -/
 theorem stuck_implies_lit {s : State} (hstuck : step? s = none) :
     ∃ v, s.expr = .lit v := by
-  cases he : s.expr with
+  obtain ⟨e, env, heap, trace, funcs, cs⟩ := s
+  dsimp only at hstuck ⊢
+  cases e with
   | lit v => exact ⟨v, rfl⟩
   -- Cases that always return some (no stuck path):
   | var name =>
@@ -2465,7 +2467,12 @@ theorem stuck_implies_lit {s : State} (hstuck : step? s = none) :
       · simp at hstuck -- normal step case
       · rename_i hsub; have ⟨v, hv⟩ := stuck_implies_lit hsub; dsimp at hv; subst hv; simp_all [exprValue?]
   termination_by sizeOf s.expr
-  decreasing_by all_goals simp_all [State.mk.injEq]; omega
+  decreasing_by
+    all_goals
+      simp only [State.mk.injEq, true_and] at *
+      subst_vars
+      simp_arith [sizeOf, Expr._sizeOf_1]
+      omega
 
 theorem Behaves_final_lit {p : Program} {b : List TraceEvent}
     (hB : Behaves p b) :
