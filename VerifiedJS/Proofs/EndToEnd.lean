@@ -33,10 +33,9 @@ Passes 5-6 use forward simulation (source behavior implies target behavior).
 The end-to-end theorem chains them: Wasm.Behaves ← ... ← Core.Behaves.
 -/
 
-/-- Partial end-to-end: Flat → Wasm.
-    Composes closure conversion (backward) + ANF conversion (backward) +
-    optimization (identity) + lowering (forward) + emit (forward).
-    Relates Wasm behavior back to Flat behavior via trace mappings.
+/-- Partial end-to-end: Core → Wasm (forward + backward).
+    Forward: ANF behavior → Wasm behavior (via lower + emit).
+    Backward: ANF behavior → Core behavior (via ANF conversion + closure conversion).
     Precondition: the Core program never reaches forIn/forOf (unimplemented). -/
 theorem flat_to_wasm_correct
     (flat : Flat.Program) (core : Core.Program)
@@ -47,11 +46,21 @@ theorem flat_to_wasm_correct
     (hemit : emit ir = .ok wasm)
     (hnofor : ∀ sc tr, Core.Steps (Core.initialState core) tr sc →
         (∀ b o f, sc.expr ≠ .forIn b o f) ∧ (∀ b i f, sc.expr ≠ .forOf b i f)) :
-    ∀ wasmTrace, Wasm.Behaves wasm wasmTrace →
-      -- There exist intermediate traces through the pipeline
-      ∃ (irTrace : List IR.TraceEvent),
-        IR.traceListToWasm irTrace = wasmTrace ∧
-        IR.IRBehaves ir irTrace := by
-  sorry
+    ∀ anfTrace, ANF.Behaves anf anfTrace →
+      -- Forward: ANF → Wasm behavioral preservation
+      Wasm.Behaves wasm (IR.traceListToWasm (IR.traceListFromCore anfTrace)) ∧
+      -- Backward: ANF → Core trace correspondence
+      ∃ coreTrace, Core.Behaves core coreTrace ∧
+        observableTrace anfTrace = observableTrace coreTrace := by
+  intro anfTrace hanfb
+  constructor
+  · -- Forward: ANF → optimize → lower → emit → Wasm
+    exact emit_behavioral_correct ir wasm hemit _
+      (lower_behavioral_correct _ ir hlower _
+        ((optimize_correct anf anfTrace).mpr hanfb))
+  · -- Backward: ANF → Flat → Core
+    obtain ⟨flatTrace, hflatb, hobs⟩ := anfConvert_correct flat anf hanf anfTrace hanfb
+    obtain ⟨coreTrace, hcoreb, heq⟩ := closureConvert_correct core flat hcc hnofor flatTrace hflatb
+    exact ⟨coreTrace, hcoreb, by rw [hobs, heq]⟩
 
 end VerifiedJS.Proofs

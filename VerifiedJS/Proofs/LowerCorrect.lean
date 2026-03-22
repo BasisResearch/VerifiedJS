@@ -43,11 +43,30 @@ trace, the lowered IR module produces the corresponding IR trace.
 ANF uses Core.TraceEvent; IR uses IR.TraceEvent. The mapping is via
 IR.traceFromCore (log↦log, error↦error, silent↦silent). -/
 
+/-- Lift a forward simulation through multi-step ANF execution to produce IR steps. -/
+private theorem lower_sim_steps (s : ANF.Program) (t : Wasm.IR.IRModule)
+    (h : Wasm.lower s = .ok t) :
+    ∀ (sa : ANF.State) (ir : IR.IRExecState) (tr : List Core.TraceEvent) (sa' : ANF.State),
+      IR.LowerSimRel s t sa ir → ANF.Steps sa tr sa' →
+      ∃ ir', IR.IRSteps ir (IR.traceListFromCore tr) ir' ∧ IR.LowerSimRel s t sa' ir' := by
+  intro sa ir tr sa' hrel hsteps
+  induction hsteps generalizing ir with
+  | refl => exact ⟨ir, .refl ir, hrel⟩
+  | tail hstep _ ih =>
+    obtain ⟨hstep_eq⟩ := hstep
+    obtain ⟨ir₂, hirStep, hrel₂⟩ := IR.LowerSimRel.step_sim s t _ _ _ _
+      hrel (by simp [IR.anfStepMapped, hstep_eq])
+    obtain ⟨ir₃, hirSteps, hrel₃⟩ := ih ir₂ hrel₂
+    exact ⟨ir₃, .tail (.mk hirStep) hirSteps, hrel₃⟩
+
 /-- Lowering preserves behavior: every ANF trace maps to an IR trace. -/
 theorem lower_behavioral_correct (s : ANF.Program) (t : Wasm.IR.IRModule)
     (h : Wasm.lower s = .ok t) :
     ∀ trace, ANF.Behaves s trace →
       IR.IRBehaves t (IR.traceListFromCore trace) := by
-  sorry
+  intro trace ⟨sf, hsteps, hhalt⟩
+  obtain ⟨ir', hirsteps, hrel'⟩ := lower_sim_steps s t h _ _ _ _ (IR.LowerSimRel.init s t h) hsteps
+  exact ⟨ir', hirsteps,
+    IR.LowerSimRel.halt_sim s t _ _ hrel' ((IR.anfStepMapped_none_iff sf).mpr hhalt)⟩
 
 end VerifiedJS.Proofs

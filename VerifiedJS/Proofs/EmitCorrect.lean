@@ -36,11 +36,28 @@ IR uses IR.TraceEvent (log/error/silent/trap); Wasm uses Wasm.TraceEvent (silent
 Observable events (log/error) become silent at the Wasm level because they are
 implemented via host calls (fd_write). The mapping is via IR.traceListToWasm. -/
 
+/-- Lift a forward simulation through multi-step IR execution to produce Wasm steps. -/
+private theorem emit_sim_steps (s : IR.IRModule) (t : Wasm.Module)
+    (h : emit s = .ok t) :
+    ∀ (ir : IR.IRExecState) (w : ExecState) (tr : List IR.TraceEvent) (ir' : IR.IRExecState),
+      IR.EmitSimRel s t ir w → IR.IRSteps ir tr ir' →
+      ∃ w', Steps w (IR.traceListToWasm tr) w' ∧ IR.EmitSimRel s t ir' w' := by
+  intro ir w tr ir' hrel hsteps
+  induction hsteps generalizing w with
+  | refl => exact ⟨w, .refl w, hrel⟩
+  | tail hstep _ ih =>
+    obtain ⟨hstep_eq⟩ := hstep
+    obtain ⟨w₂, hwStep, hrel₂⟩ := IR.EmitSimRel.step_sim s t _ _ _ _ hrel hstep_eq
+    obtain ⟨w₃, hwSteps, hrel₃⟩ := ih w₂ hrel₂
+    exact ⟨w₃, .tail (.mk hwStep) hwSteps, hrel₃⟩
+
 /-- Emit preserves behavior: every IR trace maps to a Wasm trace. -/
 theorem emit_behavioral_correct (s : IR.IRModule) (t : Wasm.Module)
     (h : emit s = .ok t) :
     ∀ trace, IR.IRBehaves s trace →
       Wasm.Behaves t (IR.traceListToWasm trace) := by
-  sorry
+  intro trace ⟨sf, hsteps, hhalt⟩
+  obtain ⟨w', hwsteps, hrel'⟩ := emit_sim_steps s t h _ _ _ _ (IR.EmitSimRel.init s t h) hsteps
+  exact ⟨w', hwsteps, IR.EmitSimRel.halt_sim s t _ _ hrel' hhalt⟩
 
 end VerifiedJS.Proofs
