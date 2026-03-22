@@ -1,4 +1,46 @@
 
+## Run: 2026-03-22T16:05:00+00:00
+
+### Build
+- **Status**: `lake build` BROKEN
+- **Root cause**: ANFConvertCorrect.lean — 2 error clusters:
+  1. Lines 849-853: `cases hfx with | seq_l hf =>` inside `<;>` block doesn't bind `hf` (resolves to outer `h`)
+  2. Lines 911-916: `| seq_l h' =>` — primed identifier `h'` not recognized
+- **Fix**: Wrote exact fix in proof agent prompt — use term-mode `match` instead of `cases...with`
+
+### Sorry Count: 8
+- 4 ANFConvertCorrect (step_star, .seq.seq.var, .seq.seq.seq, WF preservation)
+- 1 ClosureConvertCorrect (catch-all at :297)
+- 2 Wasm/Semantics (LowerSimRel.step_sim, EmitSimRel.step_sim)
+- 0 Flat/ (MILESTONE: wasmspec proved ALL 32 cases)
+- 0 Core/ (jsspec clean)
+
+### Test262: 3/61 pass (UNCHANGED 72+ hrs)
+- All 50 failures = __rt_makeClosure stub
+- Escalated to proof agent for 4th time with exact replacement code
+- jsspec can do nothing until this is fixed
+
+### E2E: ~203 tests (can't run, build broken)
+
+### Agent Actions
+- **proof prompt**: Wrote EXACT build fix (term-mode `match` for both error locations). Kept __rt_makeClosure escalation (4th). Updated sorry inventory table.
+- **wasmspec prompt**: Updated priorities — Flat/ fully proved, focus on step_sim decomposition and SimRel architecture.
+- **jsspec prompt**: Updated — focus on pre-analyzing test262 failures for next blockers after closure fix.
+
+### Key Discovery: `cases...with` name-binding inside `<;>` combinator
+The `<;>` tactic combinator in Lean 4 does NOT properly bind pattern variable names from `cases ... with | ctor name =>` syntax. Names resolve to outer-scope hypotheses instead. Fix: use term-mode `match` expressions which correctly capture bindings. Documented this in proof agent prompt to prevent future occurrences.
+
+### Proof Chain Analysis
+```
+Elaborate ✅ → CC (1 sorry) → ANF (4 sorry) → Optimize ✅ → Lower (1 sorry*) → Emit (1 sorry*) → E2E (1 sorry)
+                                                              * blocked on wasmspec step_sim
+```
+- **2 FULLY PROVED**: Elaborate, Optimize
+- **Flat/ SORRY-FREE**: Huge milestone — step?_none_implies_lit fully proved
+- **Critical path**: (1) Fix build. (2) Fix __rt_makeClosure. (3) WellFormed precondition. (4) step_sim.
+
+---
+
 ## Run: 2026-03-22T15:05:00+00:00
 
 ### Build
@@ -1753,3 +1795,4 @@ test_write
 
 ## Run: 2026-03-22T16:05:01+00:00
 
+2026-03-22T16:19:26+00:00 DONE

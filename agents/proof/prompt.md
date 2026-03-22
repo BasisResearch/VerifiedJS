@@ -57,103 +57,93 @@ If ClosureConvertCorrect needs 600 lines of case analysis, WRITE 600 LINES. That
 ## Test262
 Read `logs/test262_summary.md` for failure categories. Fix compiler bugs that cause test262 failures.
 
-## ⚠️⚠️⚠️ ABSOLUTE TOP PRIORITY: Fix __rt_makeClosure ⚠️⚠️⚠️
+## ⚠️⚠️⚠️ FIX BUILD FIRST — ANFConvertCorrect.lean ERRORS ⚠️⚠️⚠️
 
-**THIS HAS BEEN ESCALATED 3 TIMES AND NOT DONE. DO THIS BEFORE ANYTHING ELSE.**
+**BUILD IS BROKEN. Fix these errors before doing ANYTHING else.**
 
-ALL 50 test262 runtime-exec failures are caused by the `__rt_makeClosure` stub in Lower.lean:843-844. The current stub returns a constant `encodeObjectRef 2`, which breaks ALL function calls. Fixing this one function will likely turn 30-40+ failures into passes INSTANTLY.
+ANFConvertCorrect.lean has errors at two locations. Both are name-binding bugs in `cases ... with` inside tactic blocks.
 
-**Current code** (Lower.lean:843-844):
+### Error 1: Lines 849-853 (inside `<;>` block in `.seq a1 a2` / `.lit v1` case)
+
+The `cases hfx with | seq_l hf =>` syntax does NOT properly bind `hf` inside the `<;>` combinator — `hf` resolves to the outer `h : ANF.convert s = Except.ok t` instead.
+
+**Fix**: Replace lines 849-853 with term-mode `match`:
 ```lean
-    { name := "__rt_makeClosure", params := [.f64, .f64], results := [.f64], locals := []
-      body := [mkBoxedConst (Runtime.NanBoxed.encodeObjectRef 2), IR.IRInstr.return_] },
+              have : VarFreeIn x (Flat.Expr.seq a b) := by
+                rw [ha]; exact match hfx with
+                | .seq_l hf => .seq_l _ _ _ (.seq_r _ _ _ hf)
+                | .seq_r hf => .seq_r _ _ _ hf
+              exact hwf x (by rw [hsf]; exact this)
 ```
 
-**Replace with** (jsspec provided this exact code — it mirrors `__rt_call`'s extraction logic):
+### Error 2: Lines 911-916 (in `.this` case)
+
+The `| seq_l h' =>` syntax has an identifier issue — `h'` is not recognized as a bound variable.
+
+**Fix**: Replace lines 911-916 with term-mode `match`:
+```lean
+            have : VarFreeIn x (Flat.Expr.seq a b) := by
+              rw [ha]; exact match hfx with
+              | .seq_l hf => .seq_l _ _ _ (.seq_r _ _ _ hf)
+              | .seq_r hf => .seq_r _ _ _ hf
+            exact hwf x (by rw [hsf]; exact this)
+```
+
+**Run `bash scripts/lake_build_concise.sh` to verify the build is clean before proceeding.**
+
+## ⚠️ NEXT: Fix __rt_makeClosure (4th escalation)
+
+ALL 50 test262 runtime-exec failures are caused by the `__rt_makeClosure` stub in Lower.lean. **Test262 has been stuck at 3/61 for 72+ hours because of this.** Search Lower.lean for `__rt_makeClosure` and replace the stub body with the proper NaN-box decoding logic (same pattern as `__rt_call`):
+
 ```lean
     { name := "__rt_makeClosure", params := [.f64, .f64], results := [.f64], locals := [.i32, .i32]
       body :=
-        [ -- param 0 = funcIdx (NaN-boxed Int32), param 1 = env (NaN-boxed value)
-          -- local 2 = funcIdx (i32), local 3 = envAddr (i32)
-          IR.IRInstr.localGet 0
-        , IR.IRInstr.unOp .i64 "reinterpret_f64"
+        [ IR.IRInstr.localGet 0, IR.IRInstr.unOp .i64 "reinterpret_f64"
         , IR.IRInstr.const_ .i64 s!"{Runtime.NanBoxed.payloadMask.toNat}"
-        , IR.IRInstr.binOp .i64 "and"
-        , IR.IRInstr.unOp .i32 "wrap_i64"
-        , IR.IRInstr.localSet 2
-        , IR.IRInstr.localGet 1
-        , IR.IRInstr.unOp .i64 "reinterpret_f64"
+        , IR.IRInstr.binOp .i64 "and", IR.IRInstr.unOp .i32 "wrap_i64", IR.IRInstr.localSet 2
+        , IR.IRInstr.localGet 1, IR.IRInstr.unOp .i64 "reinterpret_f64"
         , IR.IRInstr.const_ .i64 s!"{Runtime.NanBoxed.payloadMask.toNat}"
-        , IR.IRInstr.binOp .i64 "and"
-        , IR.IRInstr.unOp .i32 "wrap_i64"
-        , IR.IRInstr.localSet 3
-        , IR.IRInstr.localGet 2
-        , IR.IRInstr.const_ .i32 "65536"
-        , IR.IRInstr.binOp .i32 "mul"
-        , IR.IRInstr.localGet 3
-        , IR.IRInstr.binOp .i32 "add"
+        , IR.IRInstr.binOp .i64 "and", IR.IRInstr.unOp .i32 "wrap_i64", IR.IRInstr.localSet 3
+        , IR.IRInstr.localGet 2, IR.IRInstr.const_ .i32 "65536", IR.IRInstr.binOp .i32 "mul"
+        , IR.IRInstr.localGet 3, IR.IRInstr.binOp .i32 "add"
         , IR.IRInstr.unOp .i64 "extend_i32_u"
         , IR.IRInstr.const_ .i64 s!"{(Runtime.NanBoxed.encodeObjectRef 0).bits.toNat}"
-        , IR.IRInstr.binOp .i64 "or"
-        , IR.IRInstr.unOp .f64 "reinterpret_i64"
+        , IR.IRInstr.binOp .i64 "or", IR.IRInstr.unOp .f64 "reinterpret_i64"
         , IR.IRInstr.return_ ] },
 ```
 
-**DO THIS FIRST. BEFORE ANY SORRY WORK. Test262 has been stuck at 3/61 for 48+ hours because of this.**
+Then run: `bash scripts/run_test262.sh --fast 2>&1 | tail -5`
 
-After fixing, run: `bash scripts/run_test262.sh --fast 2>&1 | tail -5`
+## PROOF STRATEGY — Current Sorry Inventory (8 total)
 
-## ABSTRACTIONS OVER SORRY-HUNTING
+### Sorries in YOUR files (6):
 
-Sorry count is a BAD metric for proof progress. A proof with 10 well-decomposed sorries where you know HOW to close each one is better than a proof with 3 sorries where you're stuck.
+| # | File:Line | Description | Strategy |
+|---|-----------|-------------|----------|
+| 1 | ANFConvertCorrect:94 | `anfConvert_step_star` | Full theorem — hardest, do last |
+| 2 | ANFConvertCorrect:862 | `.seq.seq.var` none | Needs WellFormed precondition |
+| 3 | ANFConvertCorrect:922 | `.seq.seq.seq` | Nested seq reduction — recursive pattern |
+| 4 | ANFConvertCorrect:1002 | WellFormed preservation | Prove step preserves WF |
+| 5 | ClosureConvertCorrect:297 | catch-all `\| _ => sorry` | Case-by-case: .let, .assign, .if, .seq first |
+| 6 | (none) | — | — |
 
-Your REAL job is to develop the right ABSTRACTIONS:
+### Sorries in wasmspec files (2 — NOT your responsibility):
 
-### For ANFConvert: Well-Formedness Precondition (CONCRETE)
+| # | File:Line | Description |
+|---|-----------|-------------|
+| 7 | Wasm/Semantics:4956 | LowerSimRel.step_sim |
+| 8 | Wasm/Semantics:5058 | EmitSimRel.step_sim |
 
-Your .seq.var `none` sorry at :713 and .seq.seq.var sorry at :829 are stuck because `env.lookup name = none` produces an observable `.error` event, contradicting `observableTrace = []`. You CANNOT prove this without a precondition.
+### Priority order after build fix + __rt_makeClosure:
+1. **CC catch-all (:297)**: Prove `.let` and `.assign` cases (both Core and Flat step the same way)
+2. **WF preservation (:1002)**: Show Flat.step? preserves ExprWellFormed — straightforward induction
+3. **`.seq.seq.var` (:862)**: Use WF precondition to get `some v` and take silent step
+4. **`.seq.seq.seq` (:922)**: Recursive — needs strong IH or depth argument
+5. **`anfConvert_step_star` (:94)**: Full theorem, depends on everything above
 
-Define well-formedness as an inductive predicate on Flat.Expr (NOT using the partial `freeVars` function):
+### Key Lean 4 pitfall — AVOID `cases ... with` inside `<;>` blocks
 
-```lean
-/-- x appears free in expression e -/
-inductive FreeIn : String → Flat.Expr → Prop where
-  | var : FreeIn x (.var x)
-  | seq_l : FreeIn x a → FreeIn x (.seq a b)
-  | seq_r : FreeIn x b → FreeIn x (.seq a b)
-  | let_init : FreeIn x init → FreeIn x (.let name init body)
-  | let_body : FreeIn x body → x ≠ name → FreeIn x (.let name init body)
-  -- ... other cases as needed
-
-/-- A state is well-formed: all free variables are in scope -/
-def Flat.WellFormed (s : Flat.State) : Prop :=
-  ∀ x, FreeIn x s.expr → s.env.lookup x ≠ none
-
-/-- Well-formed .var always steps (never stuck with error) -/
-theorem wf_var_steps (s : Flat.State) (h : s.expr = .var x) (hwf : Flat.WellFormed s) :
-    ∃ v, s.env.lookup x = some v := by
-  have := hwf x (h ▸ FreeIn.var)
-  exact Option.ne_none_iff_exists.mp this
-```
-
-Then add `Flat.WellFormed sf` as a precondition to `anfConvert_halt_star_aux`. This is sound because:
-1. Initial states are well-formed (programs don't have unbound variables)
-2. Stepping preserves well-formedness (let-bindings add vars to scope)
-
-### For ClosureConvert catch-all at :258
-
-The CC catch-all sorry covers ALL remaining Core expression forms. The approach that worked for .break/.continue (match step? results) should work for most remaining cases:
-- `.let`, `.assign`, `.if`, `.seq`: same pattern — both Core and Flat take matching steps
-- `.function`, `.call`, `.newObj`: need env/heap correspondence (ValRel/EnvRel as in previous prompt)
-- Focus on `.let` and `.assign` first (simplest), then `.if` and `.seq`
-
-### Process
-1. Define FreeIn inductive + WellFormed (unblocks .seq.var and .seq.seq.var)
-2. Prove `.seq.seq.this` (same 2-step pattern you already used, just nested)
-3. Attack CC catch-all case by case (`.let` first)
-4. `anfConvert_step_star` last (hardest)
-
-It is FINE to add new sorries if each one is a clear sub-lemma. Decomposition IS progress.
+When you need to case-split an inductive inside a `<;>` combinator, use term-mode `match` instead of `cases ... with | ctor name =>`. The `<;>` combinator does not properly bind pattern variable names from `with` syntax.
 
 ## ALWAYS LOG YOUR PROGRESS
 At the END of every run, append a summary to agents/proof/log.md:

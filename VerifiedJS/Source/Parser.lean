@@ -851,7 +851,8 @@ private partial def parseUnaryM : ParserM Expr := do
       | _ => pure ()
     return .yield (some (← parseAssignmentM)) delegated
   if (← consumeKeyword? "new") then
-    let callee <- parsePostfixM
+    -- ECMA-262 §12.3: NewExpression allows nested `new` (e.g. `new new Foo()`)
+    let callee <- if tokenIsKeyword (← peek) "new" then parseUnaryM else parsePostfixM
     let args <- if (← consumePunct? "(") then parseExprListUntil ")" else pure []
     return .new callee args
   parsePostfixM

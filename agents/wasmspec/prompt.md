@@ -62,66 +62,41 @@ Then construct the matching Step derivation in Lean. If you cannot, your semanti
 3. Keep definitions structurally simple for proofs.
 4. Add @[simp] lemmas for everything the proof agent might need.
 
-## CURRENT PRIORITIES (2026-03-22T15:05)
+## CURRENT PRIORITIES (2026-03-22T16:05)
 
-### Great work on Flat.step?_none_implies_lit + helper lemmas!
+### MILESTONE: Flat.step?_none_implies_lit FULLY PROVED — 0 sorry in Flat/!
 
-You proved 18/32 cases of step?_none_implies_lit and added 11 helper lemmas for the proof agent. Build passes.
+Outstanding work. ALL 32 cases proved. This fully unblocks the proof agent.
 
-### Your sorry inventory (4 in your files):
+### Your sorry inventory (2 in your files):
 
 | File | Line | Theorem | Description |
 |------|------|---------|-------------|
-| Flat/Semantics.lean | 1064 | step?_none_implies_lit_aux | 6 expression cases (binary, deleteProp, etc.) |
-| Flat/Semantics.lean | 1068 | step?_none_implies_lit_aux | 6 expression cases (tryCatch, call, etc.) |
 | Wasm/Semantics.lean | 4956 | LowerSimRel.step_sim | ANF→IR step correspondence |
 | Wasm/Semantics.lean | 5058 | EmitSimRel.step_sim | IR→Wasm step correspondence |
 
-### #1 CRITICAL: step_sim needs STRONGER SimRel (ARCHITECTURAL ISSUE)
+### #1 CRITICAL: step_sim — needs code correspondence in SimRel
 
-The current `LowerSimRel` is too weak for step_sim. It has:
-- `hlower : Wasm.lower prog = .ok irmod` (module exists)
-- `henv : ∀ name v, s.env.lookup name = some v → ∃ idx val, ...` (vars exist)
+The current `LowerSimRel` is too weak for step_sim. It needs **code correspondence** — knowing WHAT IR code will execute for the current ANF expression.
 
-But step_sim needs to know: **WHAT IR code will execute**, and **WHAT values the IR variables hold**. Without code correspondence, you can't predict what `irStep?` does.
+**PROBLEM**: `lowerExpr` is `private partial` in Lower.lean (proof agent's file). Two paths forward:
+1. **Preferred**: Ask proof agent (via PROOF_BLOCKERS.md or your log) to make `lowerExpr` public
+2. **Alternative**: Define code correspondence abstractly using `lower` output properties
 
-**What's missing — Code Correspondence**:
+### #2: step_sim decomposition
 
-```lean
-structure LowerSimRel (prog : ANF.Program) (irmod : IRModule)
-    (s : ANF.State) (ir : IRExecState) : Prop where
-  hlower : Wasm.lower prog = .ok irmod
-  hmod : ir.module = irmod
-  hhalt : anfStepMapped s = none → ir.halted
-  henv : ∀ name v, s.env.lookup name = some v →
-    ∃ (idx : Nat) (val : IRValue),
-      (Option.bind ir.frames.head? (fun f => f.locals[idx]?)) = some val
-  -- NEW: code corresponds to compiled expression
-  hcode : ∃ instrs, lowerExpr s.expr = .ok instrs ∧
-    ir.currentCode = instrs  -- IR is about to execute the lowered code
-  -- NEW: value correspondence (not just existence)
-  hval : ∀ name v, s.env.lookup name = some v →
-    ∃ idx, ir.getLocal idx = some (lowerValue v)
-```
+Even if you can't prove step_sim fully, decompose it into cases:
+- ANF expression is `.trivial` (lit/var) — IR does const/local.get
+- ANF expression is `.let` — IR does body then continuation
+- ANF expression is `.seq` — IR does left then right
+- etc.
 
-**PROBLEM**: `lowerExpr` is `private partial` in Lower.lean (proof agent's file). You CANNOT unfold it. Two options:
-1. Ask proof agent to make `lowerExpr` `public` (preferred — add this to your log)
-2. Define the code correspondence abstractly using the `lower` output
-
-For now, focus on **completing step?_none_implies_lit** (the 14 remaining cases) since that directly unblocks the proof agent. The step_sim theorems require architectural changes that need proof agent cooperation.
-
-### #2: Complete step?_none_implies_lit remaining cases
-
-The 14 remaining cases at :1064/:1068 follow the same mechanical pattern you described:
-- Unfold step?, split on exprValue?/step? of sub-expressions
-- In none/none branch, IH gives sub = .lit, contradicting exprValue? = none
-
-This is YOUR highest-impact work right now — the proof agent uses this theorem.
+Each case-sorry is progress because it reveals what SimRel invariants are needed.
 
 ### STRATEGY
-1. Complete step?_none_implies_lit (14 remaining cases)
-2. Log that step_sim needs lowerExpr to be public
-3. If time, decompose step_sim into sub-case sorries
+1. Decompose step_sim into expression-form cases (even if each is sorry)
+2. Identify exactly what SimRel fields are needed for each case
+3. Log what needs to be public in Lower.lean for proof agent to act on
 
 ## GLOBAL GOAL -- DO NOT STOP
 Your job is done when:

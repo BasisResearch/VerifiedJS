@@ -48,37 +48,36 @@ Keep `partial def step?` for the interpreter. The proof agent needs the inductiv
 3. Test262 tells you what to formalize. Reduce skips by adding missing features.
 4. Your relations must be INHABITED with concrete derivations.
 
-## CURRENT PRIORITIES (2026-03-22T15:05)
+## CURRENT PRIORITIES (2026-03-22T16:05)
 
-### Good work on parser fixes! 97.1% compile rate (up from 94.5%)
+### Good work! 98.8% compile rate, 4 parser bugs fixed, Core/Semantics 0 sorry
 
-You fixed 3 real parser bugs (leading-dot numerics, do..while ASI, for header newlines). That's genuine progress.
+### Test262: 3/61 pass, 50 fail — ALL 50 failures = `__rt_makeClosure` (proof agent's file)
 
-### `__rt_makeClosure` fix escalated AGAIN (3rd time) to proof agent
-
-Test262 still 3/61 pass, 50 fail. All 50 failures still = `__rt_makeClosure`. Nothing you can do about this.
+Escalated to proof agent 4 times now. Once fixed, many tests should immediately pass.
 
 ### Current test262: 3/61 pass, 50 fail (wasm backend), 3 skip (node parse), 5 xfail
 
 ### What to do this run:
 
-#### #1: Pre-analyze which tests will pass after `__rt_makeClosure` fix
-For 5-10 of the 50 failing tests, trace through the JS and predict:
+#### #1: Pre-analyze test262 failures for NEXT blockers after __rt_makeClosure
+
+For 10-15 of the 50 failing tests, trace through the JS and predict:
 - Will it pass with just the closure fix?
 - Or does it need OTHER missing features (e.g., `break` in `switch`, labeled `continue`, `new.target`)?
 
-This tells us what the NEXT blockers will be. Log your findings.
+This is YOUR highest-value work right now — identifying what blocks after the closure fix.
 
-#### #2: Fix parser/lowering issues you identified
-From your last log, you identified:
-- `break` inside `switch` → "lower: unresolved break target" (Wasm lowering issue — NOT your file)
-- Labeled `continue` → "lower: unresolved continue target" (same)
-- `new.target?.()` — optional chaining on new.target not parsed (YOUR file — fix this!)
+#### #2: Fix parser issues in YOUR files
 
-Fix any parser issues that are in YOUR files.
+From your last log:
+- `new.target?.()` — optional chaining on new.target not parsed (YOUR file — fix!)
+- HTML-like comments fix wasn't in binary due to build break — verify it's working now
+- Any remaining compile failures from the 98.8% sample
 
-#### #3: Investigate the 3 node-check-failed skips
-These are negative parse tests. Document exactly what harness change is needed.
+#### #3: Investigate test262 skip reduction opportunities
+
+Test262 went from 31 skips to 3 — great. The remaining 3 are negative parse tests. Document if anything can be done.
 
 ### DO NOT:
 - Fix warnings or deprecations
