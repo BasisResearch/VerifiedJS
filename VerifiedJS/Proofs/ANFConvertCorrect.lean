@@ -75,8 +75,8 @@ private theorem anfConvert_init_related
   obtain ⟨m, hm⟩ := ANF.convert_main_from_normalizeExpr s t h
   refine ⟨rfl, rfl, rfl, fun t => pure (.trivial t), 0, m, hm, ?_⟩
   intro arg n' m' t' hk
-  simp [pure, Pure.pure, StateT.pure, Except.pure] at hk
-  exact (Prod.mk.inj (Except.ok.inj hk)).1
+  have := (Prod.mk.inj (Except.ok.inj hk)).1
+  exact ANF.Expr.trivial.inj this.symm
 
 /-- Stuttering simulation: one ANF step corresponds to one or more Flat steps,
     preserving observable events and the simulation relation.
@@ -743,7 +743,7 @@ private theorem anfConvert_halt_star
     | _ =>
       -- All compound non-seq, non-atom a: contradiction
       -- normalizeExpr on compound a wraps result in non-.trivial constructor
-      exfalso; rw [ha] at hnorm
+      exfalso
       exact absurd hnorm (normalizeExpr_compound_not_trivial a _
         (by intro v; rw [ha]; exact Flat.Expr.noConfusion)
         (by intro nm; rw [ha]; exact Flat.Expr.noConfusion)

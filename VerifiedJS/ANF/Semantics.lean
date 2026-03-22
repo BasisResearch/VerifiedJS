@@ -712,61 +712,98 @@ def Trivial.isLit : Trivial → Bool
     This is the fundamental halting characterization for ANF:
     the only ANF states that cannot step are those with literal trivial expressions.
     Key lemma for anfConvert_halt_star non-lit cases. -/
+/-- Literal trivials always have a value. -/
+@[simp] theorem trivialValue?_isLit (t : Trivial) (h : t.isLit = true) :
+    (trivialValue? t).isSome = true := by
+  cases t <;> simp [Trivial.isLit, trivialValue?] at *
+
+/-- Literal trivial expressions have values. -/
+theorem exprValue?_trivial_lit (t : Trivial) (h : t.isLit = true) :
+    (exprValue? (.trivial t)).isSome = true := by
+  simp [exprValue?, trivialValue?_isLit t h]
+
 theorem step?_none_implies_trivial_lit (s : State) (h : step? s = none) :
     ∃ t, s.expr = .trivial t ∧ t.isLit = true := by
-  -- step? case-splits on s.expr. We unfold and match.
-  unfold step? at h
-  split at h
-  · -- trivial t
-    rename_i t
-    split at h
-    · -- var name: step? always returns some (either value or error)
-      rename_i name
-      cases h1 : s.env.lookup name <;> simp_all
-    · -- non-var trivial: step? returns none, so this is the halting case
-      rename_i t' ht
-      -- t' is the remaining trivial after .var is excluded
-      cases t <;> simp_all [Trivial.isLit]
-  · -- let: step? always returns some
-    simp at h
-  · -- seq
-    rename_i a b
-    split at h
-    · simp at h
-    · -- step? recursive call returns none
-      split at h <;> simp at h
-  · -- if
-    rename_i cond then_ else_
-    cases evalTrivial s.env cond <;> simp at h
-  · -- while_
-    rename_i cond body
-    split at h
-    · simp at h
-    · split at h <;> simp at h
-  · -- throw
-    cases evalTrivial s.env ‹Trivial› <;> simp at h
-  · -- tryCatch
-    rename_i body catchParam catchBody finally_
-    split at h
-    · cases finally_ <;> simp at h
-    · split at h
-      · split at h <;> simp at h
+  -- Induction on expression depth to handle recursive cases (seq/while_/tryCatch).
+  -- step? is defined by well-founded recursion on s.expr.depth.
+  have hd : ∀ (e : Expr) (env : Env) (heap : Core.Heap) (trace : List Core.TraceEvent),
+      step? ⟨e, env, heap, trace⟩ = none →
+      ∃ t, e = .trivial t ∧ t.isLit = true := by
+    intro e
+    induction e using Expr.depth.induct with
+    | case1 t => -- trivial
+      intro env heap trace h
+      cases t with
+      | var name =>
+        exfalso; unfold step? at h
+        split at h <;> simp at h
+      | _ => simp [Trivial.isLit]; exact ⟨_, rfl, rfl⟩
+    | case2 name rhs body _ => -- let
+      intro env heap trace h; exfalso; unfold step? at h; simp at h
+    | case3 a b iha _ => -- seq
+      intro env heap trace h; exfalso; unfold step? at h
+      split at h
       · simp at h
-  · -- return
-    rename_i arg
-    cases arg <;> simp at h
-    rename_i t
-    cases evalTrivial s.env t <;> simp at h
-  · -- yield
-    rename_i arg delegate
-    cases arg <;> simp at h
-    rename_i t
-    cases evalTrivial s.env t <;> simp at h
-  · -- await
-    cases evalTrivial s.env ‹Trivial› <;> simp at h
-  · simp at h  -- labeled
-  · simp at h  -- break
-  · simp at h  -- continue
+      · -- exprValue? a = none, recursive step? call on a also returns none
+        rename_i hev
+        split at h
+        · -- step? on a returned some, so it's a contradiction (h says none)
+          simp at h
+        · -- step? on a returned none
+          rename_i hstep
+          simp at hstep
+          have ⟨t, ht, hlit⟩ := iha env heap trace hstep
+          -- a = .trivial t with t.isLit, so exprValue? a = trivialValue? t ≠ none
+          rw [ht] at hev; simp [exprValue?] at hev
+          exact absurd (trivialValue?_isLit t hlit) (by simp [hev])
+    | case4 cond then_ else_ _ _ => -- if
+      intro env heap trace h; exfalso; unfold step? at h
+      split at h <;> simp at h
+    | case5 cond body ihcond _ => -- while_
+      intro env heap trace h; exfalso; unfold step? at h
+      split at h
+      · simp at h
+      · rename_i hev
+        split at h
+        · simp at h
+        · rename_i hstep
+          simp at hstep
+          have ⟨t, ht, hlit⟩ := ihcond env heap trace hstep
+          rw [ht] at hev; simp [exprValue?] at hev
+          exact absurd (trivialValue?_isLit t hlit) (by simp [hev])
+    | case6 arg => -- throw
+      intro env heap trace h; exfalso; unfold step? at h
+      split at h <;> simp at h
+    | case7 body catchParam catchBody finally_ ihbody _ _ => -- tryCatch
+      intro env heap trace h; exfalso; unfold step? at h
+      split at h
+      · split at h <;> simp at h
+      · rename_i hev
+        split at h
+        · split at h <;> simp at h
+        · rename_i hstep
+          simp at hstep
+          have ⟨t, ht, hlit⟩ := ihbody env heap trace hstep
+          rw [ht] at hev; simp [exprValue?] at hev
+          exact absurd (trivialValue?_isLit t hlit) (by simp [hev])
+    | case8 arg => -- return
+      intro env heap trace h; exfalso; unfold step? at h
+      cases arg <;> simp at h
+      rename_i t; split at h <;> simp at h
+    | case9 arg delegate => -- yield
+      intro env heap trace h; exfalso; unfold step? at h
+      cases arg <;> simp at h
+      rename_i t; split at h <;> simp at h
+    | case10 arg => -- await
+      intro env heap trace h; exfalso; unfold step? at h
+      split at h <;> simp at h
+    | case11 _ body _ => -- labeled
+      intro env heap trace h; exfalso; unfold step? at h; simp at h
+    | case12 _ => -- break
+      intro env heap trace h; exfalso; unfold step? at h; simp at h
+    | case13 _ => -- continue
+      intro env heap trace h; exfalso; unfold step? at h; simp at h
+  exact hd s.expr s.env s.heap s.trace (by cases s; exact h)
 
 /-- Comprehensive: if an ANF expression is not a literal trivial (not .litNull,
     .litUndefined, .litBool, .litNum, .litStr, .litObject, .litClosure) but IS
