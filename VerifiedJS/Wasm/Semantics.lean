@@ -5853,35 +5853,30 @@ theorem step_sim (irmod : IRModule) (wmod : Module) :
             | [] =>
               -- Empty stack: both sides trap
               have hir := irStep?_eq_drop_empty s1 rest hcode_ir hstk
-              rw [hir] at hstep; obtain ⟨rfl, rfl⟩ := Prod.mk.inj (Option.some.inj hstep)
+              rw [hir] at hstep
+              have htrace := Prod.mk.inj (Option.some.inj hstep)
+              rw [htrace.1, htrace.2]
               -- Wasm stack also empty (by length correspondence)
               have hs2 : s2.stack = [] := by
-                have := hrel.hstack; simp [hstk] at this
-                match s2.stack, this with | [], _ => rfl
-              refine ⟨_, ?_, ?_⟩
-              · -- Wasm step: trap
-                simp [traceToWasm]
-                exact step?_eq_drop_empty s2 rest_w hcw hs2
-              · -- New EmitSimRel
-                exact ⟨hrel.hemit, .nil, by simp [hs2], by simp,
-                  hhalt_of_structural .nil (by simp)⟩
+                have hsl := hrel.hstack; rw [hstk] at hsl; simp at hsl
+                match s2.stack, hsl with | [], _ => rfl
+              exact ⟨_, by simp [traceToWasm]; exact step?_eq_drop_empty s2 rest_w hcw hs2,
+                hrel.hemit, .nil, by simp [hs2], by simp,
+                hhalt_of_structural .nil (by simp)⟩
             | v :: stk =>
               -- Non-empty stack: both sides drop silently
               have hir := irStep?_eq_drop s1 rest v stk hcode_ir hstk
-              rw [hir] at hstep; obtain ⟨rfl, rfl⟩ := Prod.mk.inj (Option.some.inj hstep)
+              rw [hir] at hstep
+              have htrace := Prod.mk.inj (Option.some.inj hstep)
+              rw [htrace.1, htrace.2]
               -- Wasm stack also non-empty (by length correspondence)
-              have hlen := hrel.hstack; simp [hstk] at hlen
+              have hlen := hrel.hstack; rw [hstk] at hlen; simp at hlen
               match hs2 : s2.stack with
-              | [] => simp at hlen
+              | [] => omega
               | w :: stk_w =>
-                refine ⟨_, ?_, ?_⟩
-                · -- Wasm step: drop
-                  simp [traceToWasm]
-                  exact step?_eq_drop s2 rest_w w stk_w hcw hs2
-                · -- New EmitSimRel
-                  have hlen' : stk.length = stk_w.length := by omega
-                  exact ⟨hrel.hemit, hrest, hlen', hrel.hlabels,
-                    hhalt_of_structural hrest hrel.hlabels⟩
+                exact ⟨_, by simp [traceToWasm]; exact step?_eq_drop s2 rest_w w stk_w hcw hs2,
+                  hrel.hemit, hrest, by simp at hlen ⊢; omega, hrel.hlabels,
+                  hhalt_of_structural hrest hrel.hlabels⟩
           · -- General case (EmitCodeCorr.general): unknown Wasm instructions
             sorry
       | .memoryGrow =>
