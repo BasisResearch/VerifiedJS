@@ -4929,13 +4929,18 @@ theorem init (prog : ANF.Program) (irmod : IRModule)
     simp [ANF.initialState, ANF.Env.empty, ANF.Env.lookup] at hlookup
 
 /-- Step simulation (1:1): if the ANF takes one step, the IR takes a matching step.
-    NOTE: This theorem is architecturally challenging because ANF is an expression
-    evaluator while IR is a stack machine. One ANF step (e.g. let-binding) maps to
-    multiple IR instructions. Additionally, at the initial state, the ANF can step
-    (if p.main is non-trivial) but the IR starts with empty code (startFunc = none).
-    PROOF STRATEGY: Case-split on ANF.step? to determine the expression form,
-    then use the lowering correspondence (hlower) to determine the IR code,
-    and show irStep? produces a matching step.
+    BLOCKER: This theorem is UNPROVABLE with the current LowerSimRel because:
+    1. Lower.lean sets `startFunc := none`, so `irInitialState` has empty code → halted.
+       But the ANF starts with `prog.main` which typically steps. So at init, step_sim
+       is FALSE for non-trivial programs.
+    2. LowerSimRel has no code correspondence: no field relates `s2.code` (IR instructions)
+       to `s1.expr` (ANF expression). Without this, we cannot determine what `irStep?`
+       returns for a given ANF step.
+    3. `lowerExpr` in Lower.lean is `private partial`, so it cannot be referenced in proofs.
+    FIX NEEDED (requires changes to Lower.lean — not owned by wasmspec agent):
+    - Option A: Set `startFunc := some startIdx` in Lower.lean so IR actually executes.
+    - Option B: Change `irInitialState` to use the `_start` export (WASI model).
+    - Either way, also need code correspondence in LowerSimRel (requires making lowerExpr public).
     REF: Standard forward simulation diagram. -/
 theorem step_sim (prog : ANF.Program) (irmod : IRModule) :
     ∀ (s1 : ANF.State) (s2 : IRExecState) (t : TraceEvent) (s1' : ANF.State),
@@ -5036,9 +5041,13 @@ theorem init (irmod : IRModule) (wmod : Module)
     · simp [Wasm.initialState]
 
 /-- Step simulation (1:1): if the IR takes one step, the Wasm takes a matching step.
-    NOTE: This 1:1 version is used by EmitCorrect.lean for backward compatibility.
-    In practice, some IR instructions (e.g. f64 const, negation) emit to multiple
-    Wasm instructions. Use `step_sim_stutter` for the correct formulation.
+    BLOCKER: Like LowerSimRel.step_sim, this is unprovable because EmitSimRel lacks
+    code correspondence: no field relates `s1.code` (IR instructions) to `s2.code`
+    (Wasm instructions). The emit pass in Emit.lean maps IR instructions to Wasm, but
+    emitInstr is private, so the correspondence cannot be stated. Additionally, some IR
+    instructions emit to multiple Wasm instructions, making 1:1 step_sim false.
+    FIX: Either add code correspondence to EmitSimRel (requires making emitInstr public
+    in Emit.lean), or use step_sim_stutter which allows 1-to-many stepping.
     REF: Standard forward simulation diagram. -/
 theorem step_sim (irmod : IRModule) (wmod : Module) :
     ∀ (s1 : IRExecState) (s2 : ExecState) (t : TraceEvent) (s1' : IRExecState),
