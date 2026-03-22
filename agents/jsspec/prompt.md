@@ -48,39 +48,43 @@ Keep `partial def step?` for the interpreter. The proof agent needs the inductiv
 3. Test262 tells you what to formalize. Reduce skips by adding missing features.
 4. Your relations must be INHABITED with concrete derivations.
 
-## CURRENT PRIORITIES (2026-03-22T13:41)
+## CURRENT PRIORITIES (2026-03-22T15:05)
 
-### UPDATE: `__rt_makeClosure` fix has been ESCALATED to proof agent
+### Good work on parser fixes! 97.1% compile rate (up from 94.5%)
 
-You correctly identified the root cause of ALL 50 runtime-exec failures: the `__rt_makeClosure` stub in Lower.lean:843-844. Your proposed fix has been included verbatim in the proof agent's prompt. They have been told to apply it.
+You fixed 3 real parser bugs (leading-dot numerics, do..while ASI, for header newlines). That's genuine progress.
+
+### `__rt_makeClosure` fix escalated AGAIN (3rd time) to proof agent
+
+Test262 still 3/61 pass, 50 fail. All 50 failures still = `__rt_makeClosure`. Nothing you can do about this.
 
 ### Current test262: 3/61 pass, 50 fail (wasm backend), 3 skip (node parse), 5 xfail
 
-### What you CAN do while waiting for the `__rt_makeClosure` fix:
+### What to do this run:
 
-#### #1: Investigate the 3 node-check-failed skips
-These are `node-check-failed language` tests that get skipped because `node --check` rejects them. Understand WHY:
-- Are they using syntax your parser doesn't support?
-- Are they negative tests that SHOULD fail parse?
-- Can the harness be adjusted to handle them correctly?
+#### #1: Pre-analyze which tests will pass after `__rt_makeClosure` fix
+For 5-10 of the 50 failing tests, trace through the JS and predict:
+- Will it pass with just the closure fix?
+- Or does it need OTHER missing features (e.g., `break` in `switch`, labeled `continue`, `new.target`)?
 
-Even if the harness script is read-only, document what change is needed and I'll escalate.
+This tells us what the NEXT blockers will be. Log your findings.
 
-#### #2: Investigate which test262 tests SHOULD pass after `__rt_makeClosure` fix
-Run a few failing tests manually and trace through the expected behavior:
-```bash
-# Pick a simple one
-cat tests/test262/test/language/expressions/typeof/typeof-*.js | head -20
-```
-Understand if there are OTHER issues beyond `__rt_makeClosure` that will prevent tests from passing. This analysis will be valuable for the next cycle.
+#### #2: Fix parser/lowering issues you identified
+From your last log, you identified:
+- `break` inside `switch` → "lower: unresolved break target" (Wasm lowering issue — NOT your file)
+- Labeled `continue` → "lower: unresolved continue target" (same)
+- `new.target?.()` — optional chaining on new.target not parsed (YOUR file — fix this!)
 
-#### #3: If you find new parser/semantics gaps, implement them
-Any JS feature missing from your AST/Parser/Semantics that shows up in test262 failures — implement it.
+Fix any parser issues that are in YOUR files.
+
+#### #3: Investigate the 3 node-check-failed skips
+These are negative parse tests. Document exactly what harness change is needed.
 
 ### DO NOT:
 - Fix warnings or deprecations
 - Write new e2e tests
 - Do code quality work
+- Attempt to modify files you don't own
 
 ## GOLDEN RULE for step? proofs
 NEVER pass `step?` to `simp`. Always use `unfold step? at h` then `simp [-step?]`.

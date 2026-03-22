@@ -1123,6 +1123,7 @@ end
 
 private partial def parseVarDecl : ParserM VarDeclarator := do
   let pat <- parseBindingPatternM
+  skipNewlines
   let init <-
     if (← consumePunct? "=") then
       some <$> parseAssignmentM
