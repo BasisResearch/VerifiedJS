@@ -4682,10 +4682,20 @@ theorem WasmForwardSim_behavioral (R : IRExecState → ExecState → Prop)
     {ts : List TraceEvent}
     (hBehaves : ∃ ir_final, IRSteps ir_init ts ir_final ∧ irStep? ir_final = none) :
     ∃ w_final, Steps w_init (traceListToWasm ts) w_final ∧ step? w_final = none := by
-  -- Induction on IRSteps, using sim.step_sim for each step and sim.halt_sim at the end.
-  -- TODO: Fix induction generalization — the suffices/induction pattern needs careful
-  -- handling of hIRHalt across the induction.
-  sorry
+  obtain ⟨ir_final, hIRSteps, hIRHalt⟩ := hBehaves
+  -- Induction on IRSteps, generalizing the Wasm state and simulation relation
+  induction hIRSteps generalizing w_init with
+  | refl _ =>
+    exact ⟨w_init, Steps.refl w_init, sim.halt_sim _ _ hR hIRHalt⟩
+  | @tail s1 s2 s3 t ts' hIRStep hIRRest ih =>
+    -- Extract irStep? equation from IRStep
+    obtain ⟨hirEq⟩ := hIRStep
+    -- Use step_sim to get matching Wasm step
+    obtain ⟨w_mid, hwStep, hR_mid⟩ := sim.step_sim _ _ _ _ hR hirEq
+    -- Apply IH for the remaining steps
+    obtain ⟨w_final, hwRest, hwHalt⟩ := ih hR_mid
+    -- Compose the Wasm steps
+    exact ⟨w_final, Steps.tail (Step.mk hwStep) hwRest, hwHalt⟩
 
 /-- Convenience: combining IRForwardSim_behavioral and WasmForwardSim_behavioral
     gives end-to-end ANF → Wasm behavioral preservation. The proof agent can chain:
@@ -5023,8 +5033,17 @@ theorem IRStutterSim_steps {S : Type} {R : S → IRExecState → Prop}
       IRSteps s2_init ir_trace s2_final ∧
       R s1_final s2_final ∧
       observableEvents ir_trace = observableEvents ts := by
-  -- TODO: Fix induction generalization for stuttering simulation steps
-  sorry
+  induction hExec generalizing s2_init with
+  | refl _ =>
+    exact ⟨s2_init, [], IRSteps.refl _, hR_init, rfl⟩
+  | step hSrcStep _hRest ih =>
+    rename_i t ts' s_mid s_final
+    obtain ⟨ir_mid, ir_trace1, hIR1, hR_mid, hObs1⟩ :=
+      sim.step_sim _ _ _ _ hR_init hSrcStep
+    obtain ⟨ir_final, ir_trace2, hIR2, hR_final, hObs2⟩ := ih hR_mid
+    exact ⟨ir_final, ir_trace1 ++ ir_trace2,
+      IRSteps_trans hIR1 hIR2, hR_final,
+      by simp [observableEvents_append, hObs1, hObs2]⟩
 
 /-- Behavioral equivalence up to silent events.
     The IR produces a trace whose observable events match the mapped source trace.
@@ -5046,7 +5065,10 @@ theorem IRStutterSim_behavioral {S : Type} {R : S → IRExecState → Prop}
     {ts : List TraceEvent}
     (hBehaves : DetBehaves step_src s_init ts) :
     IRBehavesObs ir_init.module (observableEvents ts) := by
-  sorry
+  obtain ⟨s_final, hExec, hHalt⟩ := hBehaves
+  obtain ⟨ir_final, ir_trace, hIRSteps, hR_final, hObs⟩ :=
+    IRStutterSim_steps sim hR hExec
+  exact ⟨ir_final, ir_trace, hIRSteps, sim.halt_sim _ _ hR_final hHalt, hObs⟩
 
 /-- Bridge: ANF.Behaves → IRBehavesObs via stuttering simulation.
     When using the stuttering framework for lowering, this connects
@@ -5058,7 +5080,11 @@ theorem lower_behavioral_obs (prog : ANF.Program) (irmod : IRModule)
     (sim : IRStutterSim R anfStepMapped) :
     ∀ trace, ANF.Behaves prog trace →
       IRBehavesObs irmod (observableEvents (traceListFromCore trace)) := by
-  sorry
+  intro trace hBeh
+  have hDet := DetBehaves_of_ANFBehaves hBeh
+  have hIR := IRStutterSim_behavioral sim hR_init hDet
+  simp [traceListFromCore_eq_map] at hIR ⊢
+  exact hIR
 
 /-- Bridge: convert ANF.Steps to StepStar anfStepMapped.
     This allows us to use the ANF.Behaves definition (which uses ANF.Steps)
