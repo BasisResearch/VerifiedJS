@@ -57,57 +57,103 @@ If ClosureConvertCorrect needs 600 lines of case analysis, WRITE 600 LINES. That
 ## Test262
 Read `logs/test262_summary.md` for failure categories. Fix compiler bugs that cause test262 failures.
 
+## ⚠️⚠️⚠️ ABSOLUTE TOP PRIORITY: Fix __rt_makeClosure ⚠️⚠️⚠️
+
+**THIS HAS BEEN ESCALATED 3 TIMES AND NOT DONE. DO THIS BEFORE ANYTHING ELSE.**
+
+ALL 50 test262 runtime-exec failures are caused by the `__rt_makeClosure` stub in Lower.lean:843-844. The current stub returns a constant `encodeObjectRef 2`, which breaks ALL function calls. Fixing this one function will likely turn 30-40+ failures into passes INSTANTLY.
+
+**Current code** (Lower.lean:843-844):
+```lean
+    { name := "__rt_makeClosure", params := [.f64, .f64], results := [.f64], locals := []
+      body := [mkBoxedConst (Runtime.NanBoxed.encodeObjectRef 2), IR.IRInstr.return_] },
+```
+
+**Replace with** (jsspec provided this exact code — it mirrors `__rt_call`'s extraction logic):
+```lean
+    { name := "__rt_makeClosure", params := [.f64, .f64], results := [.f64], locals := [.i32, .i32]
+      body :=
+        [ -- param 0 = funcIdx (NaN-boxed Int32), param 1 = env (NaN-boxed value)
+          -- local 2 = funcIdx (i32), local 3 = envAddr (i32)
+          IR.IRInstr.localGet 0
+        , IR.IRInstr.unOp .i64 "reinterpret_f64"
+        , IR.IRInstr.const_ .i64 s!"{Runtime.NanBoxed.payloadMask.toNat}"
+        , IR.IRInstr.binOp .i64 "and"
+        , IR.IRInstr.unOp .i32 "wrap_i64"
+        , IR.IRInstr.localSet 2
+        , IR.IRInstr.localGet 1
+        , IR.IRInstr.unOp .i64 "reinterpret_f64"
+        , IR.IRInstr.const_ .i64 s!"{Runtime.NanBoxed.payloadMask.toNat}"
+        , IR.IRInstr.binOp .i64 "and"
+        , IR.IRInstr.unOp .i32 "wrap_i64"
+        , IR.IRInstr.localSet 3
+        , IR.IRInstr.localGet 2
+        , IR.IRInstr.const_ .i32 "65536"
+        , IR.IRInstr.binOp .i32 "mul"
+        , IR.IRInstr.localGet 3
+        , IR.IRInstr.binOp .i32 "add"
+        , IR.IRInstr.unOp .i64 "extend_i32_u"
+        , IR.IRInstr.const_ .i64 s!"{(Runtime.NanBoxed.encodeObjectRef 0).bits.toNat}"
+        , IR.IRInstr.binOp .i64 "or"
+        , IR.IRInstr.unOp .f64 "reinterpret_i64"
+        , IR.IRInstr.return_ ] },
+```
+
+**DO THIS FIRST. BEFORE ANY SORRY WORK. Test262 has been stuck at 3/61 for 48+ hours because of this.**
+
+After fixing, run: `bash scripts/run_test262.sh --fast 2>&1 | tail -5`
+
 ## ABSTRACTIONS OVER SORRY-HUNTING
 
 Sorry count is a BAD metric for proof progress. A proof with 10 well-decomposed sorries where you know HOW to close each one is better than a proof with 3 sorries where you're stuck.
 
 Your REAL job is to develop the right ABSTRACTIONS:
 
-### For ClosureConvert: You Need Logical Relations
-The catch-all sorry in step_simulation keeps failing because CC_SimRel is too weak. You need:
+### For ANFConvert: Well-Formedness Precondition (CONCRETE)
+
+Your .seq.var `none` sorry at :713 and .seq.seq.var sorry at :829 are stuck because `env.lookup name = none` produces an observable `.error` event, contradicting `observableTrace = []`. You CANNOT prove this without a precondition.
+
+Define well-formedness as an inductive predicate on Flat.Expr (NOT using the partial `freeVars` function):
 
 ```lean
--- Value relation: Core values correspond to Flat values
-inductive ValRel : Core.Value -> Flat.Value -> Prop where
-  | num : ValRel (Core.Value.num n) (Flat.Value.num n)
-  | str : ValRel (Core.Value.str s) (Flat.Value.str s)
-  | bool : ValRel (Core.Value.bool b) (Flat.Value.bool b)
-  | closure : -- Core closure maps to Flat function index + captured env
-    ValRel (Core.Value.function idx) (Flat.Value.function flatIdx)
+/-- x appears free in expression e -/
+inductive FreeIn : String → Flat.Expr → Prop where
+  | var : FreeIn x (.var x)
+  | seq_l : FreeIn x a → FreeIn x (.seq a b)
+  | seq_r : FreeIn x b → FreeIn x (.seq a b)
+  | let_init : FreeIn x init → FreeIn x (.let name init body)
+  | let_body : FreeIn x body → x ≠ name → FreeIn x (.let name init body)
+  -- ... other cases as needed
 
--- Environment relation: Core env corresponds to Flat env through value relation
-def EnvRel (envC : Core.Env) (envF : Flat.Env) : Prop :=
-  forall x v, envC.lookup x = some v -> exists v', envF.lookup x = some v' /\ ValRel v v'
+/-- A state is well-formed: all free variables are in scope -/
+def Flat.WellFormed (s : Flat.State) : Prop :=
+  ∀ x, FreeIn x s.expr → s.env.lookup x ≠ none
 
--- THEN CC_SimRel uses these:
-def CC_SimRel ... : Prop :=
-  sf.trace = sc.trace /\ EnvRel sc.env sf.env /\ ExprRel sc.expr sf.expr
+/-- Well-formed .var always steps (never stuck with error) -/
+theorem wf_var_steps (s : Flat.State) (h : s.expr = .var x) (hwf : Flat.WellFormed s) :
+    ∃ v, s.env.lookup x = some v := by
+  have := hwf x (h ▸ FreeIn.var)
+  exact Option.ne_none_iff_exists.mp this
 ```
 
-With this, step_simulation becomes: given related states and a Flat step, construct the Core step using the value/env relations.
+Then add `Flat.WellFormed sf` as a precondition to `anfConvert_halt_star_aux`. This is sound because:
+1. Initial states are well-formed (programs don't have unbound variables)
+2. Stepping preserves well-formedness (let-bindings add vars to scope)
 
-### For ANFConvert halt_star: You Need Well-Formedness
-The .seq.var and .seq.this cases fail because you can't show step? returns some. You need:
+### For ClosureConvert catch-all at :258
 
-```lean
--- A state is well-formed if all variables in the expression are bound in the environment
-def WellFormed (s : Flat.State) : Prop :=
-  forall x, x ∈ s.expr.freeVars -> s.env.lookup x ≠ none
-
--- Well-formedness is preserved by stepping
-theorem step_preserves_wf : WellFormed s -> Flat.Step s ev s' -> WellFormed s'
-
--- Well-formed var/this always step (never stuck)
-theorem wf_var_steps : WellFormed s -> s.expr = .var x -> step? s ≠ none
-```
+The CC catch-all sorry covers ALL remaining Core expression forms. The approach that worked for .break/.continue (match step? results) should work for most remaining cases:
+- `.let`, `.assign`, `.if`, `.seq`: same pattern — both Core and Flat take matching steps
+- `.function`, `.call`, `.newObj`: need env/heap correspondence (ValRel/EnvRel as in previous prompt)
+- Focus on `.let` and `.assign` first (simplest), then `.if` and `.seq`
 
 ### Process
-1. Identify which abstraction is missing (value relation? invariant? measure?)
-2. Define it as a Lean structure/inductive
-3. Prove the key lemmas about it (preservation, adequacy)
-4. THEN use it to close the sorry
+1. Define FreeIn inductive + WellFormed (unblocks .seq.var and .seq.seq.var)
+2. Prove `.seq.seq.this` (same 2-step pattern you already used, just nested)
+3. Attack CC catch-all case by case (`.let` first)
+4. `anfConvert_step_star` last (hardest)
 
-It is FINE to add 5 new sorries if each one is a clear sub-lemma of a known strategy. Decomposition IS progress.
+It is FINE to add new sorries if each one is a clear sub-lemma. Decomposition IS progress.
 
 ## ALWAYS LOG YOUR PROGRESS
 At the END of every run, append a summary to agents/proof/log.md:

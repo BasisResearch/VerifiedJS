@@ -62,40 +62,66 @@ Then construct the matching Step derivation in Lean. If you cannot, your semanti
 3. Keep definitions structurally simple for proofs.
 4. Add @[simp] lemmas for everything the proof agent might need.
 
-## CURRENT PRIORITIES (2026-03-22T13:41)
+## CURRENT PRIORITIES (2026-03-22T15:05)
 
-### EXCELLENT WORK proving step?_none_implies_trivial_lit! 🎯
+### Great work on Flat.step?_none_implies_lit + helper lemmas!
 
-You proved the ANF halting characterization AND fixed 50+ pre-existing build errors. The proof agent is now UNBLOCKED. Sorry count dropped from 11 to 7.
+You proved 18/32 cases of step?_none_implies_lit and added 11 helper lemmas for the proof agent. Build passes.
 
-**NOTE**: Your changes caused a downstream build break in LowerCorrect.lean:58. The proof agent has been instructed to fix it (1-line change to use your new `anfStepMapped_some` lemma).
+### Your sorry inventory (4 in your files):
 
-### Your 2 remaining sorries:
+| File | Line | Theorem | Description |
+|------|------|---------|-------------|
+| Flat/Semantics.lean | 1064 | step?_none_implies_lit_aux | 6 expression cases (binary, deleteProp, etc.) |
+| Flat/Semantics.lean | 1068 | step?_none_implies_lit_aux | 6 expression cases (tryCatch, call, etc.) |
+| Wasm/Semantics.lean | 4956 | LowerSimRel.step_sim | ANF→IR step correspondence |
+| Wasm/Semantics.lean | 5058 | EmitSimRel.step_sim | IR→Wasm step correspondence |
 
-| Line | Theorem | Description |
-|------|---------|-------------|
-| 4956 | LowerSimRel.step_sim | Case analysis on ANF instruction → matching IR step |
-| 5058 | EmitSimRel.step_sim | Case analysis on IR instruction → matching Wasm step |
+### #1 CRITICAL: step_sim needs STRONGER SimRel (ARCHITECTURAL ISSUE)
 
-### #1 CRITICAL: `LowerSimRel.step_sim` (Wasm/Semantics.lean:4956)
+The current `LowerSimRel` is too weak for step_sim. It has:
+- `hlower : Wasm.lower prog = .ok irmod` (module exists)
+- `henv : ∀ name v, s.env.lookup name = some v → ∃ idx val, ...` (vars exist)
 
-This is the KEY remaining blocker for end-to-end proof. Strategy:
-1. `intro s1 s2 t s1' hrel hstep`
-2. `simp only [anfStepMapped] at hstep` — unfold the step mapping
-3. `split at hstep` on the ANF.step? result
-4. Case-split on `s1.expr` — start with EASIEST cases (`.trivial (.lit v)`, `.trivial (.var x)`)
-5. Sorry harder cases (let-bindings, function calls)
+But step_sim needs to know: **WHAT IR code will execute**, and **WHAT values the IR variables hold**. Without code correspondence, you can't predict what `irStep?` does.
 
-Even if the full theorem can't be proved now, breaking it into sub-case sorries is PROGRESS. Get the easy cases done.
+**What's missing — Code Correspondence**:
 
-### #2: `EmitSimRel.step_sim` (Wasm/Semantics.lean:5058)
-Same pattern for IR→Wasm. Lower priority — do step_sim for Lower first.
+```lean
+structure LowerSimRel (prog : ANF.Program) (irmod : IRModule)
+    (s : ANF.State) (ir : IRExecState) : Prop where
+  hlower : Wasm.lower prog = .ok irmod
+  hmod : ir.module = irmod
+  hhalt : anfStepMapped s = none → ir.halted
+  henv : ∀ name v, s.env.lookup name = some v →
+    ∃ (idx : Nat) (val : IRValue),
+      (Option.bind ir.frames.head? (fun f => f.locals[idx]?)) = some val
+  -- NEW: code corresponds to compiled expression
+  hcode : ∃ instrs, lowerExpr s.expr = .ok instrs ∧
+    ir.currentCode = instrs  -- IR is about to execute the lowered code
+  -- NEW: value correspondence (not just existence)
+  hval : ∀ name v, s.env.lookup name = some v →
+    ∃ idx, ir.getLocal idx = some (lowerValue v)
+```
+
+**PROBLEM**: `lowerExpr` is `private partial` in Lower.lean (proof agent's file). You CANNOT unfold it. Two options:
+1. Ask proof agent to make `lowerExpr` `public` (preferred — add this to your log)
+2. Define the code correspondence abstractly using the `lower` output
+
+For now, focus on **completing step?_none_implies_lit** (the 14 remaining cases) since that directly unblocks the proof agent. The step_sim theorems require architectural changes that need proof agent cooperation.
+
+### #2: Complete step?_none_implies_lit remaining cases
+
+The 14 remaining cases at :1064/:1068 follow the same mechanical pattern you described:
+- Unfold step?, split on exprValue?/step? of sub-expressions
+- In none/none branch, IH gives sub = .lit, contradicting exprValue? = none
+
+This is YOUR highest-impact work right now — the proof agent uses this theorem.
 
 ### STRATEGY
-1. Break LowerSimRel.step_sim into sub-case sorries
-2. Prove easy cases (.trivial .lit, .trivial .var)
-3. Apply same approach to EmitSimRel.step_sim
-4. Use `lean_goal` → `lean_multi_attempt` → edit workflow
+1. Complete step?_none_implies_lit (14 remaining cases)
+2. Log that step_sim needs lowerExpr to be public
+3. If time, decompose step_sim into sub-case sorries
 
 ## GLOBAL GOAL -- DO NOT STOP
 Your job is done when:

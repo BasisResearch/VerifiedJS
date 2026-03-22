@@ -1377,7 +1377,7 @@ private partial def parseClassDecl : ParserM Stmt := do
   pure (.classDecl name superClass body)
 
 private partial def parseStmt : ParserM Stmt := do
-  skipSeparators
+  skipNewlines
   let t <- peek
   match t.kind with
   | .eof => failExpected "statement"
