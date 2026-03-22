@@ -1237,7 +1237,11 @@ private partial def parseImportSpecifiers : ParserM (List ImportSpecifier) := do
 private def parseForLHSFromExpr (e : Expr) : Except String ForLHS :=
   match parsePatternFromExpr e with
   | some p => pure (.pattern p)
-  | none => .error "Invalid for-in/of left-hand side"
+  | none =>
+    -- ECMA-262 §13.7: any LeftHandSideExpression is valid (e.g. obj.prop, arr[idx])
+    match e with
+    | .member _ _ | .index _ _ | .privateMember _ _ => pure (.expr e)
+    | _ => .error "Invalid for-in/of left-hand side"
 
 private def parseForLHSFromDecls (kind : VarKind) (decls : List VarDeclarator) : Except String ForLHS :=
   match decls with
@@ -1321,7 +1325,16 @@ private partial def parseForStmt : ParserM Stmt := do
       let update <- if (← consumePunct? ")") then pure none else (some <$> parseExprM <* expectPunct ")")
       let body <- parseStmt
       pure (.for (some (.varDecl .var decls)) cond update body)
-  else if (← consumeKeyword? "let") then
+  else if (← do
+    -- ECMA-262 §13.7: `let` in for-header is a keyword declaration ONLY when followed
+    -- by an identifier or `[` (destructuring). If followed by `in`, `of`, `;`, etc.,
+    -- it is an identifier reference (sloppy mode). Peek ahead before consuming.
+    let t0 <- peek
+    if !tokenIsKeyword t0 "let" then return false
+    let t1 <- peekN 1
+    match t1.kind with
+    | .ident _ | .punct "[" | .punct "{" | .kw "yield" | .kw "await" => let _ <- bump; return true
+    | _ => return false) then
     let decls <- parseVarDecls
     skipNewlines
     if (← consumeKeyword? "in") then
