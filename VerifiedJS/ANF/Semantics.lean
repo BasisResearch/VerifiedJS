@@ -525,6 +525,155 @@ theorem step?_let (s : State) (name : VarName) (rhs : ComplexExpr) (body : Expr)
       some (r.event, pushTrace { s with expr := body, env := r.env.extend name r.value, heap := r.heap } r.event) := by
   simp [step?]
 
+/-- If-then-else with successful condition eval always steps. -/
+@[simp]
+theorem step?_if_ok (s : State) (cond : Trivial) (then_ else_ : Expr) (v : Flat.Value)
+    (h : evalTrivial s.env cond = .ok v) :
+    step? { s with expr := .if cond then_ else_ } =
+      some (.silent, pushTrace { s with expr := if toBoolean v then then_ else else_ } .silent) := by
+  simp [step?, h]
+
+/-- If-then-else with failed condition eval produces an error. -/
+@[simp]
+theorem step?_if_error (s : State) (cond : Trivial) (then_ else_ : Expr) (msg : String)
+    (h : evalTrivial s.env cond = .error msg) :
+    step? { s with expr := .if cond then_ else_ } =
+      some (.error msg, pushTrace { s with expr := .trivial .litUndefined } (.error msg)) := by
+  simp [step?, h]
+
+/-- Labeled expression always steps by unwrapping to body. -/
+@[simp]
+theorem step?_labeled (s : State) (label : String) (body : Expr) :
+    step? { s with expr := .labeled label body } =
+      some (.silent, pushTrace { s with expr := body } .silent) := by
+  simp [step?]
+
+/-- Break always steps with an error event. -/
+@[simp]
+theorem step?_break (s : State) (label : Option String) :
+    step? { s with expr := .break label } =
+      some (.error ("break:" ++ label.getD ""),
+            pushTrace { s with expr := .trivial .litUndefined } (.error ("break:" ++ label.getD ""))) := by
+  simp [step?]
+
+/-- Continue always steps with an error event. -/
+@[simp]
+theorem step?_continue (s : State) (label : Option String) :
+    step? { s with expr := .continue label } =
+      some (.error ("continue:" ++ label.getD ""),
+            pushTrace { s with expr := .trivial .litUndefined } (.error ("continue:" ++ label.getD ""))) := by
+  simp [step?]
+
+/-- Throw with successful eval always steps with an error event. -/
+@[simp]
+theorem step?_throw_ok (s : State) (arg : Trivial) (v : Flat.Value)
+    (h : evalTrivial s.env arg = .ok v) :
+    step? { s with expr := .throw arg } =
+      some (.error "throw",
+            pushTrace { s with expr := .trivial .litUndefined } (.error "throw")) := by
+  simp [step?, h]
+
+/-- Throw with failed eval always steps with an error event. -/
+@[simp]
+theorem step?_throw_error (s : State) (arg : Trivial) (msg : String)
+    (h : evalTrivial s.env arg = .error msg) :
+    step? { s with expr := .throw arg } =
+      some (.error msg,
+            pushTrace { s with expr := .trivial .litUndefined } (.error msg)) := by
+  simp [step?, h]
+
+/-- Return with no argument always steps. -/
+@[simp]
+theorem step?_return_none (s : State) :
+    step? { s with expr := .return none } =
+      some (.silent, pushTrace { s with expr := .trivial .litUndefined } .silent) := by
+  simp [step?]
+
+/-- Return with successful arg eval always steps. -/
+@[simp]
+theorem step?_return_some_ok (s : State) (t : Trivial) (v : Flat.Value)
+    (h : evalTrivial s.env t = .ok v) :
+    step? { s with expr := .return (some t) } =
+      some (.silent, pushTrace { s with expr := .trivial (trivialOfValue v) } .silent) := by
+  simp [step?, h]
+
+/-- Return with failed arg eval produces an error. -/
+@[simp]
+theorem step?_return_some_error (s : State) (t : Trivial) (msg : String)
+    (h : evalTrivial s.env t = .error msg) :
+    step? { s with expr := .return (some t) } =
+      some (.error msg,
+            pushTrace { s with expr := .trivial .litUndefined } (.error msg)) := by
+  simp [step?, h]
+
+/-- Await with successful eval always steps. -/
+@[simp]
+theorem step?_await_ok (s : State) (arg : Trivial) (v : Flat.Value)
+    (h : evalTrivial s.env arg = .ok v) :
+    step? { s with expr := .await arg } =
+      some (.silent, pushTrace { s with expr := .trivial (trivialOfValue v) } .silent) := by
+  simp [step?, h]
+
+/-- Await with failed eval produces an error. -/
+@[simp]
+theorem step?_await_error (s : State) (arg : Trivial) (msg : String)
+    (h : evalTrivial s.env arg = .error msg) :
+    step? { s with expr := .await arg } =
+      some (.error msg,
+            pushTrace { s with expr := .trivial .litUndefined } (.error msg)) := by
+  simp [step?, h]
+
+/-! ### Non-trivial expressions always step -/
+
+/-- Let-binding expressions always step (step? ≠ none).
+    Useful for proving halt contradictions: if an ANF state has a let-binding,
+    it cannot be halted. -/
+theorem step?_let_ne_none (s : State) (name : VarName) (rhs : ComplexExpr) (body : Expr) :
+    step? { s with expr := .let name rhs body } ≠ none := by
+  simp [step?]
+
+/-- Labeled expressions always step. -/
+theorem step?_labeled_ne_none (s : State) (label : String) (body : Expr) :
+    step? { s with expr := .labeled label body } ≠ none := by
+  simp [step?]
+
+/-- Break always steps. -/
+theorem step?_break_ne_none (s : State) (label : Option String) :
+    step? { s with expr := .break label } ≠ none := by
+  simp [step?]
+
+/-- Continue always steps. -/
+theorem step?_continue_ne_none (s : State) (label : Option String) :
+    step? { s with expr := .continue label } ≠ none := by
+  simp [step?]
+
+/-- If-then-else always steps. -/
+theorem step?_if_ne_none (s : State) (cond : Trivial) (then_ else_ : Expr) :
+    step? { s with expr := .if cond then_ else_ } ≠ none := by
+  simp [step?]
+  cases evalTrivial s.env cond <;> simp
+
+/-- Throw always steps. -/
+theorem step?_throw_ne_none (s : State) (arg : Trivial) :
+    step? { s with expr := .throw arg } ≠ none := by
+  simp [step?]
+  cases evalTrivial s.env arg <;> simp
+
+/-- Return always steps. -/
+theorem step?_return_ne_none (s : State) (arg : Option Trivial) :
+    step? { s with expr := .return arg } ≠ none := by
+  simp [step?]
+  cases arg with
+  | none => simp
+  | some t =>
+    intro h; split at h <;> simp at h
+
+/-- Await always steps. -/
+theorem step?_await_ne_none (s : State) (arg : Trivial) :
+    step? { s with expr := .await arg } ≠ none := by
+  simp [step?]
+  cases evalTrivial s.env arg <;> simp
+
 /-- Step relation is equivalent to step? returning some. -/
 theorem Step_iff (s : State) (t : Core.TraceEvent) (s' : State) :
     Step s t s' ↔ step? s = some (t, s') :=

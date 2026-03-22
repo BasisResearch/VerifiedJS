@@ -470,13 +470,36 @@ private partial def parseObjectLiteral : ParserM Expr := do
       let spreadExpr <- parseAssignmentM
       let _ <- consumePunct? ","
       loop (.spread spreadExpr :: acc)
-    else if (← consumePunct? "*") then
-      let key <- parsePropertyKey
-      let params <- parseParamList
-      let body <- parseFunctionBody
-      let _ <- consumePunct? ","
-      loop (.method .method key params body false true :: acc)
     else
+      -- Handle async/get/set/generator modifiers (ECMA-262 §12.2.6)
+      let isAsync <- do
+        let t <- peek
+        let t1 <- peekN 1
+        match t.kind with
+        | .ident "async" | .kw "async" =>
+          if !tokenIsPunct t1 "(" && !tokenIsPunct t1 ":" && !tokenIsPunct t1 ","
+             && !tokenIsPunct t1 "}" then
+            let _ <- bump; pure true
+          else pure false
+        | _ => pure false
+      if (← consumePunct? "*") then
+        let key <- parsePropertyKey
+        let params <- parseParamList
+        let body <- parseFunctionBody
+        let _ <- consumePunct? ","
+        loop (.method .method key params body isAsync true :: acc)
+      else
+      let methodKind : MethodKind <- do
+        let t <- peek
+        let t1 <- peekN 1
+        let isModifier := !tokenIsPunct t1 "(" && !tokenIsPunct t1 ":"
+            && !tokenIsPunct t1 "," && !tokenIsPunct t1 "}"
+        match t.kind with
+        | .ident "get" | .kw "get" =>
+          if isModifier then let _ <- bump; pure .get else pure .method
+        | .ident "set" | .kw "set" =>
+          if isModifier then let _ <- bump; pure .set else pure .method
+        | _ => pure .method
       let key <- parsePropertyKey
       if (← consumePunct? ":") then
         let value <- parseAssignmentM
@@ -536,8 +559,19 @@ private partial def parseClassElement : ParserM ClassMember := do
       let _ <- bump  -- consume '{'
       skipBalancedBlock 1
       return .staticBlock []
-  -- get/set/async are contextual keywords: only treated as modifiers
-  -- when followed by a property name (not by '(' which means they ARE the name)
+  -- Contextual keywords: [async] [*] [get|set] name (ECMA-262 §14.6)
+  -- async must be checked first since syntax is: async *generator()
+  let isAsync <- do
+    let t <- peek
+    let t1 <- peekN 1
+    match t.kind with
+    | .ident "async" | .kw "async" =>
+      if !tokenIsPunct t1 "(" && !tokenIsPunct t1 "=" then
+        let _ <- bump; pure true
+      else pure false
+    | _ => pure false
+  let isGenerator <- consumePunct? "*"
+  -- get/set are modifiers only when followed by a property name (not '(' or '=')
   let kind : MethodKind <- do
     let t <- peek
     let t1 <- peekN 1
@@ -549,16 +583,6 @@ private partial def parseClassElement : ParserM ClassMember := do
     | .ident "set" | .kw "set" =>
       if isModifier then let _ <- bump; pure .set else pure .method
     | _ => pure .method
-  let isGenerator <- consumePunct? "*"
-  let isAsync <- do
-    let t <- peek
-    let t1 <- peekN 1
-    match t.kind with
-    | .ident "async" | .kw "async" =>
-      if !tokenIsPunct t1 "(" && !tokenIsPunct t1 "=" then
-        let _ <- bump; pure true
-      else pure false
-    | _ => pure false
   let key <- parsePropertyKey
   if (← consumePunct? "(") then
     let st <- get
