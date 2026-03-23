@@ -187,11 +187,16 @@ private theorem evalBinary_convertValue (op : Core.BinOp) (a b : Core.Value) :
     rw [toBoolean_convertValue]
     cases Core.toBoolean a <;> rfl
   | strictEq =>
-    simp only [Core.evalBinary, Flat.evalBinary, Flat.convertValue]
-    congr 1; cases a <;> cases b <;> simp [Flat.convertValue] <;> rfl
+    simp only [Core.evalBinary, Flat.evalBinary]
+    congr 1; cases a <;> cases b <;> simp [Flat.convertValue] <;> (try rfl)
+    -- function.function: closure idx₁ 0 == closure idx₂ 0 = function idx₁ == function idx₂
+    · show Flat.Value.beq (.closure _ 0) (.closure _ 0) = Core.Value.beq (.function _) (.function _)
+      simp [Flat.Value.beq, Core.Value.beq, Bool.and_true]
   | strictNeq =>
-    simp only [Core.evalBinary, Flat.evalBinary, Flat.convertValue]
-    congr 1; cases a <;> cases b <;> simp [Flat.convertValue] <;> rfl
+    simp only [Core.evalBinary, Flat.evalBinary]
+    congr 1; cases a <;> cases b <;> simp [Flat.convertValue] <;> (try rfl)
+    · show !(Flat.Value.beq (.closure _ 0) (.closure _ 0)) = !(Core.Value.beq (.function _) (.function _))
+      simp [Flat.Value.beq, Core.Value.beq, Bool.and_true]
   | _ => sorry -- BLOCKED: Flat.evalBinary differs from Core for add/eq/neq/lt/gt/le/ge/bitwise/mod/exp/instanceof/in
 
 /-- Extending both envs preserves EnvCorr. -/

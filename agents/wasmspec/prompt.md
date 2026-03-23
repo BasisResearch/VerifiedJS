@@ -62,73 +62,93 @@ Then construct the matching Step derivation in Lean. If you cannot, your semanti
 3. Keep definitions structurally simple for proofs.
 4. Add @[simp] lemmas for everything the proof agent might need.
 
-## CURRENT PRIORITIES (2026-03-23T06:30)
+## CURRENT PRIORITIES (2026-03-23T07:05)
 
-### ⚠️⚠️⚠️ TASK 0: FIX BUILD BREAK — TWO ERRORS IN Wasm/Semantics.lean ⚠️⚠️⚠️
+### TASK 0 (DONE): Build fixed ✅. stack_corr_cons/tail shadowing + f64 subst all resolved.
 
-**BUILD IS BROKEN.** Two type mismatch errors at lines 6076 (i64) and 6090 (f64).
+### TASK 1 (TOP PRIORITY): Align Flat.evalBinary with Core.evalBinary
 
-**ROOT CAUSE**: `stack_corr_cons` (line 5910) has a variable shadowing bug. In the conclusion:
+The proof agent needs `Flat.evalBinary op (convertValue a) (convertValue b) = convertValue (Core.evalBinary op a b)` for ALL operators. Currently BLOCKED on mismatches. This unblocks the `.binary` sorry in CC proof.
+
+**Step 1**: Add `abstractEq` and `abstractLt` to Flat/Semantics.lean (before `evalBinary`):
+
 ```lean
-∃ irv wv, (iv :: istk)[i]? = some irv ∧ (wv :: wstk)[i]? = some wv ∧ IRValueToWasmValue irv wv
-```
-The `wv` in `(wv :: wstk)` is bound by `∃`, NOT the function parameter `wv`. So the result type has the existential variable in the cons position instead of the concrete `WasmValue.i64 n` or `WasmValue.f64 f`.
+/-- ECMA-262 §7.2.14 Abstract Equality Comparison (Flat — must match Core.abstractEq on convertValue). -/
+def abstractEq : Value → Value → Bool
+  | .null, .null => true
+  | .undefined, .undefined => true
+  | .null, .undefined => true
+  | .undefined, .null => true
+  | .bool a, .bool b => a == b
+  | .number a, .number b => a == b
+  | .string a, .string b => a == b
+  | .object a, .object b => a == b
+  | .closure a _, .closure b _ => a == b
+  | .number a, .string b => a == toNumber (.string b)
+  | .string a, .number b => toNumber (.string a) == b
+  | .bool a, .number b => (toNumber (.bool a)) == b
+  | .bool a, .string b => (toNumber (.bool a)) == (toNumber (.string b))
+  | .number a, .bool b => a == (toNumber (.bool b))
+  | .string a, .bool b => (toNumber (.string a)) == (toNumber (.bool b))
+  | _, _ => false
 
-**FIX 1** — `stack_corr_cons` (line 5910-5925): rename existential `wv` to `wv'`:
-```lean
-theorem stack_corr_cons {istk : List IRValue} {wstk : List WasmValue}
-    {iv : IRValue} {wv : WasmValue}
-    (hlen : istk.length = wstk.length)
-    (helems : ∀ i, i < istk.length → ∃ irv wv', istk[i]? = some irv ∧ wstk[i]? = some wv' ∧ IRValueToWasmValue irv wv')
-    (hv : IRValueToWasmValue iv wv) :
-    (iv :: istk).length = (wv :: wstk).length ∧
-    ∀ i, i < (iv :: istk).length →
-      ∃ irv wv', (iv :: istk)[i]? = some irv ∧ (wv :: wstk)[i]? = some wv' ∧ IRValueToWasmValue irv wv' := by
-  constructor
-  · simp; exact hlen
-  · intro i hi
-    match i with
-    | 0 => exact ⟨iv, wv, rfl, rfl, hv⟩
-    | i + 1 =>
-      simp at hi
-      exact helems i (by omega)
-```
-
-**FIX 2** — `stack_corr_tail` (line 5928-5939) has the SAME shadowing bug in `helems`. Fix:
-```lean
-theorem stack_corr_tail {iv : IRValue} {wv : WasmValue}
-    {istk : List IRValue} {wstk : List WasmValue}
-    (hlen : (iv :: istk).length = (wv :: wstk).length)
-    (helems : ∀ i, i < (iv :: istk).length → ∃ irv wv', (iv :: istk)[i]? = some irv ∧ (wv :: wstk)[i]? = some wv' ∧ IRValueToWasmValue irv wv') :
-    istk.length = wstk.length ∧
-    ∀ i, i < istk.length →
-      ∃ irv wv', istk[i]? = some irv ∧ wstk[i]? = some wv' ∧ IRValueToWasmValue irv wv' := by
-  constructor
-  · simp at hlen; exact hlen
-  · intro i hi
-    have := helems (i + 1) (by simp; omega)
-    simpa using this
+/-- ECMA-262 §7.2.13 Abstract Relational Comparison (Flat — must match Core.abstractLt on convertValue). -/
+def abstractLt : Value → Value → Bool
+  | .string a, .string b => a < b
+  | a, b => toNumber a < toNumber b
 ```
 
-**FIX 3** — f64 const case (line 6081-6090): add `subst hfeq` after rcases:
+**Step 2**: Fix `evalBinary` to use these + add missing cases:
+
 ```lean
-          rcases hc.const_f64_inv with ⟨f, rest_w, hcw, hfeq, hrest⟩ | ⟨wasm_instrs, rest_w, hcw, hrest⟩
-          · subst hfeq
-            have hir := irStep?_eq_f64Const s1 v rest hcode_ir
-            rw [hir] at hstep
-            simp only [Option.some.injEq, Prod.mk.injEq] at hstep
-            obtain ⟨rfl, rfl⟩ := hstep
-            have hw := step?_eq_f64Const s2 _ rest_w hcw
-            refine ⟨_, hw, ⟨hrel.hemit, hrest, ?_, hrel.hlabels, hhalt_of_structural hrest hrel.hlabels⟩⟩
-            dsimp only []
-            exact stack_corr_cons hrel.hstack.1 hrel.hstack.2 (.f64 _)
+def evalBinary : Core.BinOp → Value → Value → Value
+  | .add, .string a, .string b => .string (a ++ b)
+  | .add, .string a, b => .string (a ++ valueToString b)    -- NEW: mixed string
+  | .add, a, .string b => .string (valueToString a ++ b)    -- NEW: mixed string
+  | .add, a, b => .number (toNumber a + toNumber b)
+  | .sub, a, b => .number (toNumber a - toNumber b)
+  | .mul, a, b => .number (toNumber a * toNumber b)
+  | .div, a, b => .number (toNumber a / toNumber b)
+  | .eq, a, b => .bool (abstractEq a b)                     -- CHANGED: was a == b
+  | .neq, a, b => .bool (!abstractEq a b)                   -- CHANGED: was a != b
+  | .strictEq, a, b => .bool (a == b)
+  | .strictNeq, a, b => .bool (a != b)
+  | .lt, a, b => .bool (abstractLt a b)                     -- CHANGED: was toNumber
+  | .gt, a, b => .bool (abstractLt b a)                     -- CHANGED: was toNumber
+  | .le, a, b => .bool (!abstractLt b a)                    -- CHANGED: was toNumber
+  | .ge, a, b => .bool (!abstractLt a b)                    -- CHANGED: was toNumber
+  | .logAnd, a, b => if toBoolean a then b else a
+  | .logOr, a, b => if toBoolean a then a else b
+  | .instanceof, .object _, .closure _ _ => .bool true      -- CHANGED: was .undefined
+  | .instanceof, _, .closure _ _ => .bool false
+  | .instanceof, _, _ => .bool false
+  | .«in», .string _, .object _ => .bool true
+  | .«in», _, _ => .bool false
+  | .mod, a, b =>                                           -- NEW: was .undefined
+      let na := toNumber a; let nb := toNumber b
+      if nb == 0.0 then .number (0.0 / 0.0) else .number (na - nb * (na / nb).floor)
+  | .exp, a, b => .number (Float.pow (toNumber a) (toNumber b))  -- NEW
+  | .bitAnd, a, b => .number ((toNumber a |>.toUInt32 &&& toNumber b |>.toUInt32).toFloat)
+  | .bitOr, a, b => .number ((toNumber a |>.toUInt32 ||| toNumber b |>.toUInt32).toFloat)
+  | .bitXor, a, b => .number ((toNumber a |>.toUInt32 ^^^ toNumber b |>.toUInt32).toFloat)
+  | .shl, a, b =>
+      let ia := toNumber a |>.toUInt32; let ib := (toNumber b |>.toUInt32) % 32
+      .number ((ia <<< ib).toFloat)
+  | .shr, a, b =>
+      let ia := toNumber a |>.toUInt32; let ib := (toNumber b |>.toUInt32) % 32
+      .number ((ia >>> ib).toFloat)
+  | .ushr, a, b =>
+      let ia := toNumber a |>.toUInt32; let ib := (toNumber b |>.toUInt32) % 32
+      .number ((ia >>> ib).toFloat)
 ```
 
-Apply all 3 fixes. Build must pass before anything else.
+**Key**: `convertValue (.function idx) = .closure idx 0`, so `.closure a _, .closure b _ => a == b` matches Core's `.function a, .function b => a == b`.
 
-### MILESTONE: All 6 Flat bugs FIXED ✅. 46 sorries in Wasm/Semantics.lean. Fix build (3 fixes above), then continue.
+After fixing, also add `@[simp]` lemmas for `abstractEq` and `abstractLt` cases.
 
-### TASK 1: Continue EmitSimRel.step_sim cases (biggest sorry reduction)
+**VERIFY**: After editing, run `bash scripts/lake_build_concise.sh` to ensure build passes. Also check that the ANF/Semantics.lean `evalBinary` (if it has one) matches too.
+
+### TASK 2: Continue EmitSimRel.step_sim cases
 
 You proved i32/i64/f64 const. Continue with:
 - `localGet` — lookup frame local, push to stack
@@ -138,19 +158,9 @@ You proved i32/i64/f64 const. Continue with:
 
 Each is ~5-10 lines following the same pattern as const cases.
 
-### TASK 2: Prove LowerSimRel.step_sim sub-cases
+### TASK 3: Prove LowerSimRel.step_sim sub-cases
 
 Start with `.var` (simplest — just a localGet). Then `.seq` value case.
-
-### TASK 3: Align Flat.evalBinary with Core.evalBinary
-
-The proof agent has `evalBinary_convertValue` as sorry because Flat.evalBinary disagrees with Core.evalBinary. Key mismatches:
-- `.add` with mixed string/non-string types
-- `.eq` uses `==` not `abstractEq`
-- `.lt` uses numeric comparison not `abstractLt`
-- Bitwise/mod/exp/instanceof/in return `.undefined`
-
-Fix these so `Flat.evalBinary op (convertValue a) (convertValue b) = convertValue (Core.evalBinary op a b)` holds.
 
 ## GLOBAL GOAL -- DO NOT STOP
 Your job is done when:
