@@ -6056,9 +6056,9 @@ theorem step_sim (irmod : IRModule) (wmod : Module) :
             simp only [Option.some.injEq, Prod.mk.injEq] at hstep
             obtain ⟨rfl, rfl⟩ := hstep
             have hw := step?_eq_i32Const s2 n rest_w hcw
-            exact ⟨_, hw, ⟨hrel.hemit, hrest, by
-              show _ ∧ _; exact stack_corr_cons hrel.hstack.1 hrel.hstack.2 (.i32 n),
-              hrel.hlabels, hhalt_of_structural hrest hrel.hlabels⟩⟩
+            refine ⟨_, hw, ⟨hrel.hemit, hrest, ?_, hrel.hlabels, hhalt_of_structural hrest hrel.hlabels⟩⟩
+            dsimp only []
+            exact stack_corr_cons hrel.hstack.1 hrel.hstack.2 (.i32 n)
           · -- General case (EmitCodeCorr.general)
             sorry
       | .const_ .i64 v =>
@@ -6071,9 +6071,9 @@ theorem step_sim (irmod : IRModule) (wmod : Module) :
             simp only [Option.some.injEq, Prod.mk.injEq] at hstep
             obtain ⟨rfl, rfl⟩ := hstep
             have hw := step?_eq_i64Const s2 n rest_w hcw
-            exact ⟨_, hw, ⟨hrel.hemit, hrest, by
-              show _ ∧ _; exact stack_corr_cons hrel.hstack.1 hrel.hstack.2 (.i64 n),
-              hrel.hlabels, hhalt_of_structural hrest hrel.hlabels⟩⟩
+            refine ⟨_, hw, ⟨hrel.hemit, hrest, ?_, hrel.hlabels, hhalt_of_structural hrest hrel.hlabels⟩⟩
+            dsimp only []
+            exact stack_corr_cons hrel.hstack.1 hrel.hstack.2 (.i64 n)
           · sorry -- general case
       | .const_ .f64 v =>
           -- f64 const: same pattern as i32
@@ -6085,9 +6085,9 @@ theorem step_sim (irmod : IRModule) (wmod : Module) :
             simp only [Option.some.injEq, Prod.mk.injEq] at hstep
             obtain ⟨rfl, rfl⟩ := hstep
             have hw := step?_eq_f64Const s2 f rest_w hcw
-            exact ⟨_, hw, ⟨hrel.hemit, hrest, by
-              show _ ∧ _; exact stack_corr_cons hrel.hstack.1 hrel.hstack.2 (.f64 f),
-              hrel.hlabels, hhalt_of_structural hrest hrel.hlabels⟩⟩
+            refine ⟨_, hw, ⟨hrel.hemit, hrest, ?_, hrel.hlabels, hhalt_of_structural hrest hrel.hlabels⟩⟩
+            dsimp only []
+            exact stack_corr_cons hrel.hstack.1 hrel.hstack.2 (.f64 f)
           · sorry -- general case
       | .const_ .ptr v =>
           -- ptr const (same as i32 in Wasm)

@@ -702,8 +702,8 @@ def step? (s : State) : Option (TraceEvent × State) :=
       | some e =>
           match exprValue? e with
           | some v =>
-              let s' := pushTrace { s with expr := .lit v } (.error ("return:" ++ toString (repr v)))
-              some (.error ("return:" ++ toString (repr v)), s')
+              let s' := pushTrace { s with expr := .lit v } (.error ("return:" ++ valueToString v))
+              some (.error ("return:" ++ valueToString v), s')
           | none =>
               match step? { s with expr := e } with
               | some (t, sa) =>
@@ -2161,9 +2161,9 @@ theorem step_return_some_value_exact (v : Value) (env : Env) (heap : Heap)
     (trace : List TraceEvent) (funcs : Array FuncClosure)
     (cs : List (List (VarName × Value))) :
     step? ⟨.return (some (.lit v)), env, heap, trace, funcs, cs⟩ =
-      some (.error ("return:" ++ toString (repr v)),
+      some (.error ("return:" ++ valueToString v),
         pushTrace ⟨.lit v, env, heap, trace, funcs, cs⟩
-          (.error ("return:" ++ toString (repr v)))) := by
+          (.error ("return:" ++ valueToString v))) := by
   simp [step?, exprValue?]
 
 /-- §12.3.3 newObj exact: allocates empty object at next heap address. -/
