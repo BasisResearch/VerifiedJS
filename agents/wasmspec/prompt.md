@@ -62,32 +62,35 @@ Then construct the matching Step derivation in Lean. If you cannot, your semanti
 3. Keep definitions structurally simple for proofs.
 4. Add @[simp] lemmas for everything the proof agent might need.
 
-## CURRENT PRIORITIES (2026-03-23T00:05)
+## CURRENT PRIORITIES (2026-03-23T01:05)
 
-### ⚠️ YOU HAVE BEEN CRASHING/TIMING OUT. Keep edits SMALL. Build-test after EVERY change. ⚠️
+### ⚠️ Keep edits SMALL. Build-test after EVERY change. ⚠️
 
-### MILESTONE: Flat/ SORRY-FREE. ~44 sorries in Wasm/Semantics.lean (step_sim decomposed).
+### MILESTONE: Flat/ SORRY-FREE. 44 sorries in Wasm/Semantics.lean. Build PASSES.
 
-### CRITICAL DISCOVERY: Your simulation relations have STRUCTURAL FLAWS that make step_sim UNPROVABLE
+### ⚠️⚠️⚠️ TASK 0 (DO FIRST — 1 minute, unblocks CC proof): Fix Flat.initialState ⚠️⚠️⚠️
 
-#### Problem 1: LowerCodeCorr is TRIVIALLY SATISFIABLE for 9 constructors
+**BUG**: Core.initialState has `console` binding (`env = Env.empty.extend "console" (.object 0)`) with heap object at address 0. But `Flat.initialState` uses `Env.empty` and `Heap.empty`. This makes the CC proof's `EnvCorr` FALSE at initialization — the Core→Flat direction fails because Core has "console" but Flat doesn't.
 
-These constructors accept `instrs : List IRInstr` with NO constraint on what the instructions are:
+**FIX** in `Flat/Semantics.lean` line 665-666. Change:
 ```lean
-| while_ (cond body : ANF.Expr) (instrs : List IRInstr) : LowerCodeCorr (.while_ cond body) instrs
-| throw (arg : ANF.Trivial) (instrs : List IRInstr) : LowerCodeCorr (.throw arg) instrs
-| tryCatch ... (instrs : List IRInstr) : LowerCodeCorr (.tryCatch ...) instrs
-| return_ ... (instrs : List IRInstr) : LowerCodeCorr (.«return» ...) instrs
-| yield ... (instrs : List IRInstr) : LowerCodeCorr (.yield ...) instrs
-| await ... (instrs : List IRInstr) : LowerCodeCorr (.await ...) instrs
-| labeled ... (instrs : List IRInstr) : LowerCodeCorr (.labeled ...) instrs
-| break_ ... (instrs : List IRInstr) : LowerCodeCorr (.«break» ...) instrs
-| continue_ ... (instrs : List IRInstr) : LowerCodeCorr (.«continue» ...) instrs
+def initialState (p : Program) : State :=
+  { expr := p.main, env := Env.empty, heap := Core.Heap.empty, trace := [] }
+```
+to:
+```lean
+def initialState (p : Program) : State :=
+  let consoleProps : List (Core.PropName × Core.Value) := [("log", .function Core.consoleLogIdx)]
+  let heap : Core.Heap := { objects := #[consoleProps], nextAddr := 1 }
+  let env : Env := [("console", convertValue (.object 0))]
+  { expr := p.main, env := env, heap := heap, trace := [] }
 ```
 
-**WHY THIS IS A PROBLEM**: `LowerCodeCorr (.while_ cond body) instrs` says "while_ lowers to ANY instruction list." In step_sim, when you case-split on `hrel.hcode`, you get `instrs` with NO information about what instructions are in it. You cannot prove what `irStep?` does.
+This mirrors Core.initialState exactly (modulo convertValue). Build, verify it passes, then move on.
 
-**FIX**: Each constructor must specify the ACTUAL instruction shape. Look at `lowerExpr` in Lower.lean (it's private, but you can read it) to see what each expression form lowers to. Example:
+### TASK 1: Fix LowerCodeCorr constructors (MOST IMPACTFUL — unblocks step_sim)
+
+9 constructors accept `instrs : List IRInstr` with NO constraint. Each must specify the ACTUAL instruction shape from `lowerExpr` in Lower.lean. Example:
 ```lean
 | while_ (cond body : ANF.Expr) (condCode bodyCode : List IRInstr) :
     LowerCodeCorr cond condCode → LowerCodeCorr body bodyCode →
@@ -95,40 +98,15 @@ These constructors accept `instrs : List IRInstr` with NO constraint on what the
       ([.block none ([.loop none (condCode ++ [.brIf 1] ++ bodyCode ++ [.br 0])])])
 ```
 
-**DO THIS FIRST**: Fix LowerCodeCorr for `while_`, `throw`, `return_`, `break_`, `continue_` — check Lower.lean for the actual lowered shapes. Leave the complex ones (tryCatch, yield, await) with `instrs` for now.
+Fix `while_`, `throw`, `return_`, `break_`, `continue_` first. Check Lower.lean for actual shapes.
 
-#### Problem 2: LowerSimRel.henv lacks VALUE correspondence
+### TASK 2: Add ValueCorr to LowerSimRel.henv
 
-Current:
-```lean
-henv : ∀ name v, s.env.lookup name = some v →
-  ∃ (idx : Nat) (val : IRValue), (Option.bind ir.frames.head? (fun f => f.locals[idx]?)) = some val
-```
-This says "a local exists" but NOT "its value matches the ANF value." You need:
-```lean
-henv : ∀ name v, s.env.lookup name = some v →
-  ∃ (idx : Nat) (val : IRValue), (Option.bind ir.frames.head? (fun f => f.locals[idx]?)) = some val ∧
-    ValueCorr v val
-```
-where `ValueCorr` relates ANF values to IR values (numbers→f64, bools→i32, etc.).
+Current `henv` says "a local exists" but NOT "its value matches." Add `∧ ValueCorr v val`.
 
-#### Problem 3: EmitSimRel.hstack tracks only LENGTH
+### TASK 3: Strengthen EmitSimRel.hstack
 
-Current: `hstack : ir.stack.length = w.stack.length`
-This doesn't say the values MATCH. You need:
-```lean
-hstack : List.Forall₂ IRValueToWasmValue ir.stack w.stack
-```
-or at minimum:
-```lean
-hstack : ir.stack.map irToWasm = w.stack
-```
-
-### Priority order:
-1. Fix LowerCodeCorr constructors (MOST IMPACTFUL — unblocks step_sim cases)
-2. Add ValueCorr to LowerSimRel.henv
-3. Strengthen EmitSimRel.hstack
-4. Then prove step_sim sub-cases (they'll be provable with the right relations)
+Current tracks only length. Need `List.Forall₂ IRValueToWasmValue ir.stack w.stack` or `ir.stack.map irToWasm = w.stack`.
 
 ## GLOBAL GOAL -- DO NOT STOP
 Your job is done when:

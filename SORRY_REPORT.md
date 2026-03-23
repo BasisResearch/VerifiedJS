@@ -1,35 +1,34 @@
-# Sorry Report (Mon Mar 23 12:09:15 AM UTC 2026)
+# Sorry Report (Mon Mar 23 01:05:32 AM UTC 2026)
 
 - [ ] `VerifiedJS/Proofs/LowerCorrect.lean:69` — `theorem lower_behavioral_correct` — `obtain ⟨ir, hirsteps, hrel⟩ := lower_sim_steps s t h _ _ _ _ (IR.LowerSimRel.init s t h (by sorry)) hsteps`
 - [ ] `VerifiedJS/Proofs/ANFConvertCorrect.lean:94` — `theorem anfConvert_step_star` — `sorry`
 - [ ] `VerifiedJS/Proofs/ANFConvertCorrect.lean:1017` — `lemma seq_steps_lift` — `sorry`
 - [ ] `VerifiedJS/Proofs/ANFConvertCorrect.lean:1097` — `theorem anfConvert_correct` — `sorry -- BLOCKER: ExprWellFormed is NOT a general Flat.step? invariant.`
-- [ ] `VerifiedJS/Proofs/ClosureConvertCorrect.lean:355` — `theorem closureConvert_step_simulation` — `sorry`
-- [ ] `VerifiedJS/Proofs/ClosureConvertCorrect.lean:459` — `theorem closureConvert_step_simulation` — `sorry`
-- [ ] `VerifiedJS/Proofs/ClosureConvertCorrect.lean:460` — `theorem closureConvert_step_simulation` — `| «let» _ _ _ => sorry -- needs env correspondence (let-binding extends env)`
-- [ ] `VerifiedJS/Proofs/ClosureConvertCorrect.lean:461` — `theorem closureConvert_step_simulation` — `| assign _ _ => sorry -- needs env correspondence`
-- [ ] `VerifiedJS/Proofs/ClosureConvertCorrect.lean:462` — `theorem closureConvert_step_simulation` — `| «if» _ _ _ => sorry -- needs env correspondence (cond evaluation)`
-- [ ] `VerifiedJS/Proofs/ClosureConvertCorrect.lean:463` — `theorem closureConvert_step_simulation` — `| seq _ _ => sorry -- needs env correspondence (sub-stepping)`
-- [ ] `VerifiedJS/Proofs/ClosureConvertCorrect.lean:464` — `theorem closureConvert_step_simulation` — `| call _ _ => sorry -- needs env/heap/funcs correspondence`
-- [ ] `VerifiedJS/Proofs/ClosureConvertCorrect.lean:465` — `theorem closureConvert_step_simulation` — `| newObj _ _ => sorry -- needs env/heap correspondence`
-- [ ] `VerifiedJS/Proofs/ClosureConvertCorrect.lean:466` — `theorem closureConvert_step_simulation` — `| getProp _ _ => sorry -- needs env/heap correspondence`
-- [ ] `VerifiedJS/Proofs/ClosureConvertCorrect.lean:467` — `theorem closureConvert_step_simulation` — `| setProp _ _ _ => sorry -- needs env/heap correspondence`
-- [ ] `VerifiedJS/Proofs/ClosureConvertCorrect.lean:468` — `theorem closureConvert_step_simulation` — `| getIndex _ _ => sorry -- needs env/heap correspondence`
-- [ ] `VerifiedJS/Proofs/ClosureConvertCorrect.lean:469` — `theorem closureConvert_step_simulation` — `| setIndex _ _ _ => sorry -- needs env/heap correspondence`
-- [ ] `VerifiedJS/Proofs/ClosureConvertCorrect.lean:470` — `theorem closureConvert_step_simulation` — `| deleteProp _ _ => sorry -- needs env/heap correspondence`
-- [ ] `VerifiedJS/Proofs/ClosureConvertCorrect.lean:471` — `theorem closureConvert_step_simulation` — `| typeof _ => sorry -- needs env correspondence`
-- [ ] `VerifiedJS/Proofs/ClosureConvertCorrect.lean:472` — `theorem closureConvert_step_simulation` — `| unary _ _ => sorry -- needs env correspondence (sub-stepping)`
-- [ ] `VerifiedJS/Proofs/ClosureConvertCorrect.lean:473` — `theorem closureConvert_step_simulation` — `| binary _ _ _ => sorry -- needs env correspondence (sub-stepping)`
-- [ ] `VerifiedJS/Proofs/ClosureConvertCorrect.lean:474` — `theorem closureConvert_step_simulation` — `| objectLit _ => sorry -- needs env/heap correspondence`
-- [ ] `VerifiedJS/Proofs/ClosureConvertCorrect.lean:475` — `theorem closureConvert_step_simulation` — `| arrayLit _ => sorry -- needs env/heap correspondence`
-- [ ] `VerifiedJS/Proofs/ClosureConvertCorrect.lean:476` — `theorem closureConvert_step_simulation` — `| functionDef _ _ _ _ _ => sorry -- needs env/heap/funcs + CC state`
-- [ ] `VerifiedJS/Proofs/ClosureConvertCorrect.lean:477` — `theorem closureConvert_step_simulation` — `| throw _ => sorry -- needs env correspondence (sub-stepping)`
-- [ ] `VerifiedJS/Proofs/ClosureConvertCorrect.lean:478` — `theorem closureConvert_step_simulation` — `| tryCatch _ _ _ _ => sorry -- needs env correspondence`
-- [ ] `VerifiedJS/Proofs/ClosureConvertCorrect.lean:479` — `theorem closureConvert_step_simulation` — `| while_ _ _ => sorry -- needs env correspondence`
-- [ ] `VerifiedJS/Proofs/ClosureConvertCorrect.lean:532` — `theorem closureConvert_step_simulation` — `sorry`
-- [ ] `VerifiedJS/Proofs/ClosureConvertCorrect.lean:584` — `theorem closureConvert_step_simulation` — `sorry`
-- [ ] `VerifiedJS/Proofs/ClosureConvertCorrect.lean:585` — `theorem closureConvert_step_simulation` — `| await _ => sorry -- needs env correspondence`
-- [ ] `VerifiedJS/Proofs/ClosureConvertCorrect.lean:690` — `theorem closureConvert_step_simulation` — `sorry`
+- [ ] `VerifiedJS/Proofs/ClosureConvertCorrect.lean:171` — `theorem closureConvert_init_related` — `sorry`
+- [ ] `VerifiedJS/Proofs/ClosureConvertCorrect.lean:392` — `theorem closureConvert_step_simulation` — `sorry`
+- [ ] `VerifiedJS/Proofs/ClosureConvertCorrect.lean:498` — `theorem closureConvert_step_simulation` — `| «let» _ _ _ => sorry -- needs env correspondence (let-binding extends env)`
+- [ ] `VerifiedJS/Proofs/ClosureConvertCorrect.lean:499` — `theorem closureConvert_step_simulation` — `| assign _ _ => sorry -- needs env correspondence`
+- [ ] `VerifiedJS/Proofs/ClosureConvertCorrect.lean:500` — `theorem closureConvert_step_simulation` — `| «if» _ _ _ => sorry -- needs env correspondence (cond evaluation)`
+- [ ] `VerifiedJS/Proofs/ClosureConvertCorrect.lean:565` — `theorem closureConvert_step_simulation` — `sorry`
+- [ ] `VerifiedJS/Proofs/ClosureConvertCorrect.lean:566` — `theorem closureConvert_step_simulation` — `| call _ _ => sorry -- needs env/heap/funcs correspondence`
+- [ ] `VerifiedJS/Proofs/ClosureConvertCorrect.lean:567` — `theorem closureConvert_step_simulation` — `| newObj _ _ => sorry -- needs env/heap correspondence`
+- [ ] `VerifiedJS/Proofs/ClosureConvertCorrect.lean:568` — `theorem closureConvert_step_simulation` — `| getProp _ _ => sorry -- needs env/heap correspondence`
+- [ ] `VerifiedJS/Proofs/ClosureConvertCorrect.lean:569` — `theorem closureConvert_step_simulation` — `| setProp _ _ _ => sorry -- needs env/heap correspondence`
+- [ ] `VerifiedJS/Proofs/ClosureConvertCorrect.lean:570` — `theorem closureConvert_step_simulation` — `| getIndex _ _ => sorry -- needs env/heap correspondence`
+- [ ] `VerifiedJS/Proofs/ClosureConvertCorrect.lean:571` — `theorem closureConvert_step_simulation` — `| setIndex _ _ _ => sorry -- needs env/heap correspondence`
+- [ ] `VerifiedJS/Proofs/ClosureConvertCorrect.lean:572` — `theorem closureConvert_step_simulation` — `| deleteProp _ _ => sorry -- needs env/heap correspondence`
+- [ ] `VerifiedJS/Proofs/ClosureConvertCorrect.lean:573` — `theorem closureConvert_step_simulation` — `| typeof _ => sorry -- needs env correspondence`
+- [ ] `VerifiedJS/Proofs/ClosureConvertCorrect.lean:574` — `theorem closureConvert_step_simulation` — `| unary _ _ => sorry -- needs env correspondence (sub-stepping)`
+- [ ] `VerifiedJS/Proofs/ClosureConvertCorrect.lean:575` — `theorem closureConvert_step_simulation` — `| binary _ _ _ => sorry -- needs env correspondence (sub-stepping)`
+- [ ] `VerifiedJS/Proofs/ClosureConvertCorrect.lean:576` — `theorem closureConvert_step_simulation` — `| objectLit _ => sorry -- needs env/heap correspondence`
+- [ ] `VerifiedJS/Proofs/ClosureConvertCorrect.lean:577` — `theorem closureConvert_step_simulation` — `| arrayLit _ => sorry -- needs env/heap correspondence`
+- [ ] `VerifiedJS/Proofs/ClosureConvertCorrect.lean:578` — `theorem closureConvert_step_simulation` — `| functionDef _ _ _ _ _ => sorry -- needs env/heap/funcs + CC state`
+- [ ] `VerifiedJS/Proofs/ClosureConvertCorrect.lean:579` — `theorem closureConvert_step_simulation` — `| throw _ => sorry -- needs env correspondence (sub-stepping)`
+- [ ] `VerifiedJS/Proofs/ClosureConvertCorrect.lean:580` — `theorem closureConvert_step_simulation` — `| tryCatch _ _ _ _ => sorry -- needs env correspondence`
+- [ ] `VerifiedJS/Proofs/ClosureConvertCorrect.lean:581` — `theorem closureConvert_step_simulation` — `| while_ _ _ => sorry -- needs env correspondence`
+- [ ] `VerifiedJS/Proofs/ClosureConvertCorrect.lean:634` — `theorem closureConvert_step_simulation` — `sorry`
+- [ ] `VerifiedJS/Proofs/ClosureConvertCorrect.lean:686` — `theorem closureConvert_step_simulation` — `sorry`
+- [ ] `VerifiedJS/Proofs/ClosureConvertCorrect.lean:687` — `theorem closureConvert_step_simulation` — `| await _ => sorry -- needs env correspondence`
 - [ ] `VerifiedJS/Wasm/Semantics.lean:5203` — `def LowerRel` — `showing the target takes a matching step. These are`
 - [ ] `VerifiedJS/Wasm/Semantics.lean:5365` — `theorem init` — `sorry`
 - [ ] `VerifiedJS/Wasm/Semantics.lean:5370` — `theorem init` — `Each case is decomposed below; each sub-case may still be`
@@ -69,10 +68,10 @@
 - [ ] `VerifiedJS/Wasm/Semantics.lean:5842` — `theorem step_sim` — `sorry`
 - [ ] `VerifiedJS/Wasm/Semantics.lean:5845` — `theorem step_sim` — `sorry`
 - [ ] `VerifiedJS/Wasm/Semantics.lean:5857` — `theorem step_sim` — `sorry -- trap case: needs careful state construction`
-- [ ] `VerifiedJS/Wasm/Semantics.lean:5885` — `theorem step_sim` — `sorry`
-- [ ] `VerifiedJS/Wasm/Semantics.lean:5888` — `theorem step_sim` — `sorry`
-- [ ] `VerifiedJS/Wasm/Semantics.lean:6047` — `theorem ir_forward_sim` — `exact LowerSimRel.init prog irmod hlower (by sorry)`
-- [ ] `VerifiedJS/Wasm/Semantics.lean:6062` — `theorem ir_stutter_sim` — `exact LowerSimRel.init prog irmod hlower (by sorry)`
-- [ ] `VerifiedJS/Wasm/Semantics.lean:6086` — `theorem lower_behavioral_obs_correct` — `(LowerSimRel.init prog irmod hlower (by sorry))`
+- [ ] `VerifiedJS/Wasm/Semantics.lean:5880` — `theorem step_sim` — `sorry`
+- [ ] `VerifiedJS/Wasm/Semantics.lean:5883` — `theorem step_sim` — `sorry`
+- [ ] `VerifiedJS/Wasm/Semantics.lean:6042` — `theorem ir_forward_sim` — `exact LowerSimRel.init prog irmod hlower (by sorry)`
+- [ ] `VerifiedJS/Wasm/Semantics.lean:6057` — `theorem ir_stutter_sim` — `exact LowerSimRel.init prog irmod hlower (by sorry)`
+- [ ] `VerifiedJS/Wasm/Semantics.lean:6081` — `theorem lower_behavioral_obs_correct` — `(LowerSimRel.init prog irmod hlower (by sorry))`
 
-**Total: 74 sorries**
+**Total: 73 sorries**
