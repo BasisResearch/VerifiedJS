@@ -1464,4 +1464,62 @@ theorem step?_none_implies_lit (s : State) (h : step? s = none) :
     updateBindingList ((n, old) :: rest) m v = (n, old) :: updateBindingList rest m v := by
   simp [updateBindingList, h]
 
+/-- Lookup after updateBindingList for the same name. -/
+@[simp] theorem lookup_updateBindingList_eq (xs : Env) (name : VarName) (v : Value)
+    (h : xs.any (fun kv => kv.fst == name) = true) :
+    Env.lookup (updateBindingList xs name v) name = some v := by
+  induction xs with
+  | nil => simp at h
+  | cons hd tl ih =>
+    obtain ⟨n, old⟩ := hd
+    simp only [List.any, Bool.or_eq_true] at h
+    cases hn : (n == name) with
+    | true => simp [updateBindingList, hn, Env.lookup, List.find?]
+    | false =>
+      simp only [updateBindingList, hn, ↓reduceIte, Env.lookup, List.find?, hn]
+      have htl : tl.any (fun kv => kv.fst == name) = true := by
+        cases h with
+        | inl h => simp [hn] at h
+        | inr h => exact h
+      exact ih htl
+
+/-- Lookup after updateBindingList for a different name. -/
+@[simp] theorem lookup_updateBindingList_ne (xs : Env) (name other : VarName) (v : Value)
+    (hne : (other == name) = false) :
+    Env.lookup (updateBindingList xs name v) other = Env.lookup xs other := by
+  induction xs with
+  | nil => simp [updateBindingList, Env.lookup]
+  | cons hd tl ih =>
+    obtain ⟨n, old⟩ := hd
+    cases hn : (n == name) with
+    | true =>
+      have hno : (n == other) = false := by
+        have : n = name := by simpa using hn
+        rw [this]; simpa using hne
+      simp [updateBindingList, hn, Env.lookup, List.find?, hno]
+    | false =>
+      simp only [updateBindingList, hn, ↓reduceIte, Env.lookup, List.find?]
+      split <;> [rfl; exact ih]
+
+/-- Lookup after assign for the same name (existing binding). -/
+@[simp] theorem Env.lookup_assign_eq (env : Env) (name : VarName) (v : Value)
+    (h : env.any (fun kv => kv.fst == name) = true) :
+    (env.assign name v).lookup name = some v := by
+  simp [Env.assign, h, lookup_updateBindingList_eq]
+
+/-- Lookup after assign for a different name. -/
+@[simp] theorem Env.lookup_assign_ne (env : Env) (name other : VarName) (v : Value)
+    (hne : (other == name) = false) :
+    (env.assign name v).lookup other = env.lookup other := by
+  simp only [Env.assign]
+  split
+  · exact lookup_updateBindingList_ne env name other v hne
+  · simp [Env.lookup, List.find?, hne]
+
+/-- Lookup after assign for the same name (new binding). -/
+@[simp] theorem Env.lookup_assign_new (env : Env) (name : VarName) (v : Value)
+    (h : env.any (fun kv => kv.fst == name) = false) :
+    (env.assign name v).lookup name = some v := by
+  simp [Env.assign, h, Env.lookup, List.find?, beq_self_eq_true]
+
 end VerifiedJS.Flat
