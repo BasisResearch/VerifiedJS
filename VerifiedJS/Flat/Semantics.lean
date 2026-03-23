@@ -92,25 +92,6 @@ def evalUnary : Core.UnaryOp → Value → Value
   | .void, _ => .undefined
   | .bitNot, v => .number (~~~(toNumber v |>.toUInt32)).toFloat
 
-/-- ECMA-262 §13.15 Runtime Semantics: Evaluation (Flat binary subset). -/
-def evalBinary : Core.BinOp → Value → Value → Value
-  | .add, .string a, .string b => .string (a ++ b)
-  | .add, a, b => .number (toNumber a + toNumber b)
-  | .sub, a, b => .number (toNumber a - toNumber b)
-  | .mul, a, b => .number (toNumber a * toNumber b)
-  | .div, a, b => .number (toNumber a / toNumber b)
-  | .eq, a, b => .bool (a == b)
-  | .neq, a, b => .bool (a != b)
-  | .strictEq, a, b => .bool (a == b)
-  | .strictNeq, a, b => .bool (a != b)
-  | .lt, a, b => .bool (toNumber a < toNumber b)
-  | .gt, a, b => .bool (toNumber a > toNumber b)
-  | .le, a, b => .bool (toNumber a <= toNumber b)
-  | .ge, a, b => .bool (toNumber a >= toNumber b)
-  | .logAnd, a, b => if toBoolean a then b else a
-  | .logOr, a, b => if toBoolean a then a else b
-  | _, _, _ => .undefined
-
 /-- ECMA-262 §7.1.12 ToString (Flat — must match Core.valueToString on convertValue). -/
 def valueToString : Value → String
   | .string s => s
@@ -132,6 +113,77 @@ def valueToString : Value → String
   | .undefined => "undefined"
   | .object _ => "[object Object]"
   | .closure _ _ => "function"
+
+/-- ECMA-262 §7.2.14 Abstract Equality Comparison (Flat — must match Core.abstractEq on convertValue). -/
+def abstractEq : Value → Value → Bool
+  | .null, .null => true
+  | .undefined, .undefined => true
+  | .null, .undefined => true
+  | .undefined, .null => true
+  | .bool a, .bool b => a == b
+  | .number a, .number b => a == b
+  | .string a, .string b => a == b
+  | .object a, .object b => a == b
+  | .closure a _, .closure b _ => a == b
+  | .number a, .string b => a == toNumber (.string b)
+  | .string a, .number b => toNumber (.string a) == b
+  | .bool a, .number b => (toNumber (.bool a)) == b
+  | .bool a, .string b => (toNumber (.bool a)) == (toNumber (.string b))
+  | .number a, .bool b => a == (toNumber (.bool b))
+  | .string a, .bool b => (toNumber (.string a)) == (toNumber (.bool b))
+  | _, _ => false
+
+/-- ECMA-262 §7.2.13 Abstract Relational Comparison (Flat — must match Core.abstractLt on convertValue). -/
+def abstractLt : Value → Value → Bool
+  | .string a, .string b => a < b
+  | a, b => toNumber a < toNumber b
+
+/-- ECMA-262 §13.15 Runtime Semantics: Evaluation (Flat binary subset — aligned with Core.evalBinary). -/
+def evalBinary : Core.BinOp → Value → Value → Value
+  | .add, .string a, .string b => .string (a ++ b)
+  | .add, .string a, b => .string (a ++ valueToString b)
+  | .add, a, .string b => .string (valueToString a ++ b)
+  | .add, a, b => .number (toNumber a + toNumber b)
+  | .sub, a, b => .number (toNumber a - toNumber b)
+  | .mul, a, b => .number (toNumber a * toNumber b)
+  | .div, a, b => .number (toNumber a / toNumber b)
+  | .eq, a, b => .bool (abstractEq a b)
+  | .neq, a, b => .bool (!abstractEq a b)
+  | .strictEq, a, b => .bool (a == b)
+  | .strictNeq, a, b => .bool (a != b)
+  | .lt, a, b => .bool (abstractLt a b)
+  | .gt, a, b => .bool (abstractLt b a)
+  | .le, a, b => .bool (!abstractLt b a)
+  | .ge, a, b => .bool (!abstractLt a b)
+  | .logAnd, a, b => if toBoolean a then b else a
+  | .logOr, a, b => if toBoolean a then a else b
+  | .instanceof, .object _, .closure _ _ => .bool true
+  | .instanceof, _, .closure _ _ => .bool false
+  | .instanceof, _, _ => .bool false
+  | .«in», .string _, .object _ => .bool true
+  | .«in», _, _ => .bool false
+  | .mod, a, b =>
+      let na := toNumber a; let nb := toNumber b
+      if nb == 0.0 then .number (0.0 / 0.0) else .number (na - nb * (na / nb).floor)
+  | .exp, a, b => .number (Float.pow (toNumber a) (toNumber b))
+  | .bitAnd, a, b =>
+      let ia := toNumber a |>.toUInt32; let ib := toNumber b |>.toUInt32
+      .number ((ia &&& ib).toFloat)
+  | .bitOr, a, b =>
+      let ia := toNumber a |>.toUInt32; let ib := toNumber b |>.toUInt32
+      .number ((ia ||| ib).toFloat)
+  | .bitXor, a, b =>
+      let ia := toNumber a |>.toUInt32; let ib := toNumber b |>.toUInt32
+      .number ((ia ^^^ ib).toFloat)
+  | .shl, a, b =>
+      let ia := toNumber a |>.toUInt32; let ib := (toNumber b |>.toUInt32) % 32
+      .number ((ia <<< ib).toFloat)
+  | .shr, a, b =>
+      let ia := toNumber a |>.toUInt32; let ib := (toNumber b |>.toUInt32) % 32
+      .number ((ia >>> ib).toFloat)
+  | .ushr, a, b =>
+      let ia := toNumber a |>.toUInt32; let ib := (toNumber b |>.toUInt32) % 32
+      .number ((ia >>> ib).toFloat)
 
 private def pushTrace (s : State) (t : Core.TraceEvent) : State :=
   { s with trace := s.trace ++ [t] }

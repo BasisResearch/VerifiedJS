@@ -92,15 +92,25 @@ Strategy:
 5. For the `some` case: value is a literal, Flat does the assign. Construct the matching `Core.Step` using `Core.step?` for assign. Use `EnvCorr_assign` helper (you need to prove this).
 6. For the `none` case: it's a stepping sub-case (leave as sorry for TASK 2)
 
-### TASK 2: Stepping sub-cases — USE `sorry` DECOMPOSITION, not depth induction
+### TASK 2: Stepping sub-cases — The theorem needs STRUCTURAL INDUCTION
 
-Instead of trying one big `step_sim_depth` theorem, close individual stepping sorries by:
-1. Read the exact goal with lean_goal
-2. The goal is usually: given Flat steps, show Core steps matching
-3. For each: unfold step?, match on the sub-expression shape, apply the IH
-4. If IH is not available, leave as sorry with a note
+All 11 stepping sorries have the SAME shape: a compound expression where a sub-expression is not a value. The recursive call is to the same theorem on a smaller expression.
 
-Start with the SIMPLEST stepping sorry (e.g., .if stepping where condition is being evaluated).
+**The fix**: `closureConvert_step_simulation` must be proved by STRUCTURAL INDUCTION on `sc.expr`, not by case analysis. Change the theorem to use `induction sc.expr` (or equivalently, make it a `theorem ... := by induction hsc : sc.expr with ...`). Then each recursive stepping sorry becomes an application of the induction hypothesis.
+
+If structural induction doesn't work (because the theorem statement doesn't directly recurse on expr), add an explicit fuel/depth parameter:
+
+```lean
+private theorem step_sim_aux (fuel : Nat) :
+    ∀ sf sc ev sf', CC_SimRel s t sf sc → Flat.step? sf = some (ev, sf') →
+    sc.expr.depth ≤ fuel →
+    ∃ sc', Core.Step sc ev sc' ∧ CC_SimRel s t sf' sc' := by
+  induction fuel with
+  | zero => intro sf sc _ _ hrel hstep hdepth; ...
+  | succ n ih => intro sf sc _ _ hrel hstep hdepth; cases sc.expr <;> ...
+```
+
+But DO NOT attempt this in one run. First: fix the build. Then: try ONE stepping sorry with the IH approach. If it works, commit and log.
 
 ### TASK 3: ANF sorries (lines 106, 1018)
 
