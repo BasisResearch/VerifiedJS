@@ -1,4 +1,58 @@
 
+## Run: 2026-03-23T18:05:01+00:00
+
+### Build
+- **Status**: `lake build` **PASS** ✅ — BUILD RECOVERED (fallback sorries applied)
+
+### Sorry Report
+- **Count**: 72 (threshold: 100)
+- **Delta**: 0 from last run (72→72)
+- **Breakdown**: 25 CC + 44 Wasm + 2 ANF + 1 Lower
+
+### Test262
+- 3 pass, 50 fail, 3 skip, 5 xfail / 63 total (UNCHANGED 114+ hours)
+- Spec coverage: 0% (0 refs, 0 mismatches)
+
+### Agent Health
+- **proof**: 4 consecutive TIMEOUTS (15:00, 16:30 both timed out at 1hr mark). Not making progress.
+- **wasmspec**: Healthy — completed 17:40, no new run yet.
+- **jsspec**: Running since 18:00.
+
+### Architectural Analysis
+
+**KEY ABSTRACTION DISCOVERED: Stepping sub-case pattern**
+
+The 10 CC stepping sub-cases (lines 763, 817, 892, 957, 1026, 1081, 1125-1126, 1183, 1359, 1460, 1511) ALL follow the same structure:
+1. Sub-expression `e` is not a value (`Core.exprValue? e = none`)
+2. Flat.step? steps `e` within a compound expression
+3. Core.step? does the same
+4. IH applies because `e.depth < compound.depth`
+
+Missing helper: `convertExpr_not_value` — proves that `Core.exprValue? e = none` implies `Flat.exprValue? (convertExpr e ...).fst = none`. Provable by `cases e <;> simp [...]`.
+
+**CC Sorry Categories** (25 total):
+- Stepping sub-cases (~10): Need `convertExpr_not_value` + IH pattern — HIGHEST ROI
+- Heap/env/funcs (~8): call, newObj, getProp, etc. — need stronger CC_SimRel (deferred)
+- Var captured (1): needs heap correspondence (deferred)
+- Other (~6): mixed difficulty
+
+### Actions Taken
+1. **proof prompt**: Complete rewrite. Build is CLEAN. TASK 0 = write `convertExpr_not_value` helper (exact Lean code provided). TASK 1 = close `let` stepping sub-case at line 763 (full proof skeleton provided with depth argument, sub-state SimRel construction, IH application). Explicitly told NOT to attempt heap/funcs cases.
+2. **wasmspec prompt**: Updated priorities. Flat @[simp] lemmas DONE ✅. TASK 0 = close ONE easy step_sim case (break/continue/labeled/return — simple control flow).
+3. **jsspec prompt**: Updated priorities. Core @[simp] lemmas DONE ✅. TASK 0 = investigate test262 failures for fixable parsing/semantics issues.
+4. **PROGRESS.md**: Added metrics entry.
+
+### Proof Agent Timeout Root Cause
+
+The proof agent has been timing out for 4 consecutive runs. Possible causes:
+- Previous prompt had BUILD FIX instructions that may have been confusing after build was already fixed
+- Large prompts with many detailed fix instructions slow down the agent
+- New prompt is streamlined: just 2 concrete tasks with Lean code
+
+2026-03-23T18:05:01+00:00 DONE
+
+---
+
 ## Run: 2026-03-23T16:05:02+00:00
 
 ### Build
@@ -3033,3 +3087,4 @@ When reviewing jsspec work, CHECK that test filenames match their actual content
 
 ## Run: 2026-03-23T18:05:01+00:00
 
+2026-03-23T18:19:26+00:00 DONE

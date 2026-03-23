@@ -57,71 +57,79 @@ If ClosureConvertCorrect needs 600 lines of case analysis, WRITE 600 LINES. That
 ## Test262
 Read `logs/test262_summary.md` for failure categories. Fix compiler bugs that cause test262 failures.
 
-## CURRENT PRIORITIES (2026-03-23T16:05)
+## CURRENT PRIORITIES (2026-03-23T18:05)
 
-### Build: FAIL ❌. Sorry: 72.
+### Build: PASS ✅. Sorry: 72 (25 CC + 44 Wasm + 2 ANF + 1 Lower).
 
-**BUILD IS BROKEN** in ClosureConvertCorrect.lean. Your 12:30 run introduced errors. FIX IMMEDIATELY.
+The build is clean. Your job now is to close CC sorries.
 
-### TASK 0 (MANDATORY): FIX BUILD — all fixes VERIFIED by supervisor
+### CC Sorry Categories (25 total):
+- **Stepping sub-cases** (~10): lines 763, 817, 892, 957, 1026, 1081, 1125-1126, 1183, 1359, 1460, 1511
+- **Heap/env/funcs** (~8): lines 958-964, 1127-1129 (call, newObj, getProp, etc.)
+- **Var captured** (1): line 603
+- **Other** (~6): lines 1184, 1254, etc.
 
-All fixes verified via `lean_multi_attempt` on 2026-03-23T16:05. Apply them, then build.
+### TASK 0: Add `convertExpr_not_value` helper lemma
 
-**Fix 1 — Line 207** (evalBinary `add` case): Replace the ENTIRE line 207 with:
+Add this lemma BEFORE `closureConvert_step_simulation`. It's needed for ALL stepping sub-cases:
+
 ```lean
-    sorry -- TODO: add case needs toNumber/valueToString case analysis
+private theorem convertExpr_not_value (e : Core.Expr)
+    (h : Core.exprValue? e = none)
+    (scope : List String) (envVar : String) (envMap : Flat.EnvMapping) (st : Flat.CCState) :
+    Flat.exprValue? (Flat.convertExpr e scope envVar envMap st).fst = none := by
+  cases e <;> simp [Core.exprValue?] at h <;> simp [Flat.convertExpr, Flat.exprValue?]
+  all_goals (first | rfl | simp [Flat.exprValue?])
 ```
 
-**Fix 2 — Line 240** (evalBinary wildcard `| _ =>`): Replace `rfl)` with `sorry)`:
+If `cases e` leaves goals, try adding `<;> (try split <;> simp [Flat.exprValue?])`.
+
+### TASK 1: Close ONE stepping sub-case (line 763 — `let` case)
+
+The `let` case at line 763 has `hval : Core.exprValue? init = none`. Here is the complete proof strategy:
+
+**What Flat does**: `Flat.step?` for `let name init body` when `exprValue? init = none`:
+1. Steps sub-expression: `step? { sf with expr := init_flat } = some (ev, si)`
+2. Returns `pushTrace { sf with expr := .let name si.expr body_flat, env := si.env, heap := si.heap } ev`
+
+**What Core does**: Identical structure — steps init, wraps in let.
+
+**Proof skeleton**:
 ```lean
-  | _ => all_goals (simp only [Core.evalBinary, Flat.evalBinary, Flat.convertValue]; sorry)
+    | none =>
+      -- 1. Show Flat.exprValue? of converted init is also none
+      have hval_flat : Flat.exprValue? (Flat.convertExpr init scope envVar envMap st).fst = none :=
+        convertExpr_not_value init hval scope envVar envMap st
+      -- 2. Rewrite sf as concrete struct for simp
+      have hsf_rw : sf = ⟨Flat.Expr.«let» name (Flat.convertExpr init scope envVar envMap st).fst
+          (Flat.convertExpr body (name :: scope) envVar envMap (Flat.convertExpr init scope envVar envMap st).snd).fst,
+          sf.env, sf.heap, sf.trace⟩ := by cases sf; simp_all
+      -- 3. Extract Flat sub-step from hstep
+      rw [hsf_rw] at hstep
+      simp only [Flat.step?, Flat.exprValue?, hval_flat] at hstep
+      -- Now hstep should be: match Flat.step? {expr := init_flat, env := sf.env, ...} with ...
+      -- 4. Build CC_SimRel for sub-states (init has smaller depth)
+      have hdepth : Core.Expr.depth init < n := by rw [← hd]; simp [Core.Expr.depth]; omega
+      -- 5. The sub-state has CC_SimRel:
+      --    sf_sub = { sf with expr := (convertExpr init ...).fst }
+      --    sc_sub = { sc with expr := init }
+      --    EnvCorr carries over, trace carries over, convertExpr matches
+      -- 6. Apply ih_depth with smaller depth
+      -- 7. From Core sub-step, construct Core.step? for full let expression
+      -- 8. Reconstruct CC_SimRel for post-step states
+      sorry -- Work through steps 3-8 using lean_goal to see intermediate state
 ```
 
-**Fix 3 — Line 302** (BEq direction mismatch): Replace line 302 entirely with:
-```lean
-        subst this; exact Bool.eq_false_iff.mpr (fun h => by simp [beq_iff_eq] at h; rw [h] at hne; simp at hne)
-```
+**Key insight**: Step 4 uses `omega` because `depth (.let name init body) = depth init + depth body + 1 > depth init`.
 
-**Fix 4 — Line 320** (Flat_lookup_assign_ne isFalse case): Replace line 320:
-```lean
-  · sorry -- BEq direction
-```
+Step 5 needs: `⟨htrace, henvCorr, scope, envVar, envMap, st, (Flat.convertExpr init scope envVar envMap st).snd, rfl⟩`
 
-**Fix 5 — Line 333** (EnvCorr_assign, Core.Env.lookup_assign_eq needs precondition): Replace line 333:
-```lean
-      exact ⟨cv, by sorry, rfl⟩
-```
-
-**Fix 6 — Lines 345-348** (EnvCorr_assign, Core⊆Flat): Replace ALL of lines 345-348:
-```lean
-        · rw [Core.lookup_updateBindingList_eq cenv.bindings n cv (by assumption)] at hlookup; exact (Option.some.inj hlookup).symm
-        · simp [Core.Env.lookup, List.find?, beq_self_eq_true] at hlookup; exact hlookup.symm
-      subst hcv
-      exact ⟨Flat.convertValue cv, Flat_lookup_assign_eq _ _ _, rfl⟩
-```
-
-**FALLBACK**: If individual fixes confuse you, just sorry the broken helpers entirely:
-```lean
--- For Flat_lookup_updateBindingList_ne (line 289-303): sorry the entire proof body
--- For Flat_lookup_assign_ne (line 314-320): sorry the entire proof body
--- For EnvCorr_assign (line 323-352): sorry the entire proof body
-```
-This will fix the build. You can close the sorries later.
-
-**After fixes**: `bash scripts/lake_build_concise.sh`. Build MUST pass.
-
-### TASK 1: Close Fix 4 sorry (Flat_lookup_assign_ne)
-
-Replace the sorry on line 320 with:
-```lean
-  · have hne' : (name == other) = false := Bool.eq_false_iff.mpr (fun h => by simp [beq_iff_eq] at h; rw [h] at hne; simp at hne)
-    simp only [Flat.Env.lookup, List.find?, hne']
-```
+Once you close line 763, the SAME pattern applies to ALL other stepping sub-cases (817, 892, 957, 1026, 1081, 1125-1126, 1183, 1359, 1460, 1511). Extract a tactic or copy-paste the pattern.
 
 ### ABSOLUTELY DO NOT:
-- Skip TASK 0 — the build is broken
-- Attempt more than these 2 tasks
-- Refactor or "improve" any existing proofs
+- Attempt heap/funcs cases (call, newObj, getProp, etc.) — those need a stronger SimRel
+- Refactor existing proofs
+- Spend more than 2 minutes on any approach that doesn't work — move to the next sorry
 
 ## Key pitfall — AVOID `cases ... with` inside `<;>` blocks
 

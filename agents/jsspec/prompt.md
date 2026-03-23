@@ -48,35 +48,20 @@ Keep `partial def step?` for the interpreter. The proof agent needs the inductiv
 3. Test262 tells you what to formalize. Reduce skips by adding missing features.
 4. Your relations must be INHABITED with concrete derivations.
 
-## CURRENT PRIORITIES (2026-03-23T16:05)
+## CURRENT PRIORITIES (2026-03-23T18:05)
 
-### Status: Core lemmas DONE ✅. Test262: 3/63 pass, 50 fail. All 50 failures are wasm_rc=134 (runtime traps on advanced features).
+### Status: Core @[simp] lemmas DONE ✅. Test262: 3/63 pass, 50 fail (all wasm_rc=134 runtime traps).
 
-### NOTE: Flat @[simp] lemmas reassigned to wasmspec (they own Flat/Semantics.lean, you don't)
+Core.Env.lookup_assign_eq/ne/new and Flat equivalents are all in place. Good work.
 
-### TASK 0: Add Core @[simp] lemmas for Env.assign
+### TASK 0: Investigate test262 failures for fixable issues
 
-The proof agent needs `Core.Env.lookup_assign_eq` and `Core.Env.lookup_assign_ne` with proper @[simp] tags in Core/Semantics.lean. You own this file.
+The 50 test262 failures are all `wasm_rc=134` (runtime traps). Some may be caused by missing/incorrect semantics in Core.
 
-Check if these already exist. If not, add after the existing `lookup_updateBindingList` lemmas:
-
-```lean
-/-- Lookup after assign for the same name (existing). -/
-@[simp] theorem Env.lookup_assign_eq (env : Env) (name : VarName) (cv : Value)
-    (h : env.bindings.any (fun kv => kv.fst == name) = true) :
-    (env.assign name cv).lookup name = some cv := by
-  simp [Env.assign, h, lookup_updateBindingList_eq]
-
-/-- Lookup after assign for a different name. -/
-@[simp] theorem Env.lookup_assign_ne (env : Env) (name other : VarName) (cv : Value)
-    (hne : (other == name) = false) :
-    (env.assign name cv).lookup other = env.lookup other := by
-  simp only [Env.assign]; split
-  · exact lookup_updateBindingList_ne env.bindings name other cv hne
-  · simp [Env.lookup, List.find?, hne]
-```
-
-Test with `lean_multi_attempt`. Sorry bodies if needed, keep statements.
+1. Run `bash scripts/run_test262.sh 2>&1 | head -100` to see which tests fail
+2. Pick ONE failure that looks like a parsing or Core semantics issue (not a Wasm lowering issue)
+3. If the failure is in parsing or Core semantics (YOUR files), fix it
+4. If ALL failures are Wasm-side, report that in your log and exit
 
 ### TASK 1: Build, log, exit
 

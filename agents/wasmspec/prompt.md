@@ -62,90 +62,29 @@ Then construct the matching Step derivation in Lean. If you cannot, your semanti
 3. Keep definitions structurally simple for proofs.
 4. Add @[simp] lemmas for everything the proof agent might need.
 
-## CURRENT PRIORITIES (2026-03-23T16:05)
+## CURRENT PRIORITIES (2026-03-23T18:05)
 
-### Build: Your Wasm/Semantics.lean is clean ✅. CC build still broken (proof agent's file). Sorry: 72.
+### Build: PASS ✅. Sorry: 72 (44 in Wasm/Semantics.lean). Flat @[simp] lemmas ALL DONE ✅.
 
 ### ⚠️ TIMEOUT PREVENTION: DO EXACTLY 1 TASK, then build, log, EXIT.
 
-### TASK 0 (HIGH PRIORITY): Add Flat @[simp] lemmas to Flat/Semantics.lean
+### TASK 0: Close ONE step_sim case in Wasm/Semantics.lean
 
-The proof agent NEEDS these for EnvCorr_assign and downstream CC proofs. YOU own Flat/Semantics.lean.
+Pick the EASIEST case from these (simple control flow, no sub-expression stepping):
 
-Add after the existing `updateBindingList_cons_ne` lemma (around line 1465):
+1. **`break` (line 5841)** — ANF produces break event, IR should too
+2. **`continue` (line 5843)** — ANF produces continue event, IR should too
+3. **`labeled` (line 5838)** — ANF enters labeled block
+4. **`return` (line 5829)** — ANF evaluates return value
 
-```lean
-/-- Lookup after updateBindingList for the same name. -/
-@[simp] theorem lookup_updateBindingList_eq (xs : Env) (name : VarName) (v : Value)
-    (h : xs.any (fun kv => kv.fst == name) = true) :
-    Env.lookup (updateBindingList xs name v) name = some v := by
-  induction xs with
-  | nil => simp at h
-  | cons hd tl ih =>
-    obtain ⟨n, old⟩ := hd
-    simp only [List.any, Bool.or_eq_true] at h
-    cases hn : (n == name) with
-    | true => simp [updateBindingList, hn, Env.lookup, List.find?]
-    | false =>
-      simp only [updateBindingList, hn, ↓reduceIte, Env.lookup, List.find?, hn]
-      have htl : tl.any (fun kv => kv.fst == name) = true := by
-        cases h with
-        | inl h => simp [hn] at h
-        | inr h => exact h
-      exact ih htl
+For each: use `lean_goal` to see the goal state, then `lean_multi_attempt` to test tactics.
 
-/-- Lookup after updateBindingList for a different name. -/
-@[simp] theorem lookup_updateBindingList_ne (xs : Env) (name other : VarName) (v : Value)
-    (hne : (other == name) = false) :
-    Env.lookup (updateBindingList xs name v) other = Env.lookup xs other := by
-  induction xs with
-  | nil => simp [updateBindingList, Env.lookup]
-  | cons hd tl ih =>
-    obtain ⟨n, old⟩ := hd
-    cases hn : (n == name) with
-    | true =>
-      have hno : (n == other) = false := by
-        have : n = name := by simpa using hn
-        rw [this]; simpa using hne
-      simp [updateBindingList, hn, Env.lookup, List.find?, hno]
-    | false =>
-      simp only [updateBindingList, hn, ↓reduceIte, Env.lookup, List.find?]
-      split <;> [rfl; exact ih]
-
-/-- Lookup after assign for the same name (existing binding). -/
-@[simp] theorem Env.lookup_assign_eq (env : Env) (name : VarName) (v : Value)
-    (h : env.any (fun kv => kv.fst == name) = true) :
-    (env.assign name v).lookup name = some v := by
-  simp [Env.assign, h, lookup_updateBindingList_eq]
-
-/-- Lookup after assign for a different name. -/
-@[simp] theorem Env.lookup_assign_ne (env : Env) (name other : VarName) (v : Value)
-    (hne : (other == name) = false) :
-    (env.assign name v).lookup other = env.lookup other := by
-  simp only [Env.assign]
-  split
-  · exact lookup_updateBindingList_ne env name other v hne
-  · simp [Env.lookup, List.find?, hne]
-
-/-- Lookup after assign for the same name (new binding). -/
-@[simp] theorem Env.lookup_assign_new (env : Env) (name : VarName) (v : Value)
-    (h : env.any (fun kv => kv.fst == name) = false) :
-    (env.assign name v).lookup name = some v := by
-  simp [Env.assign, h, Env.lookup, List.find?, beq_self_eq_true]
-```
-
-Use `lean_multi_attempt` to test each proof. If any fails, **sorry the body but keep the @[simp] statement**.
-
-Then `lake build VerifiedJS.Flat.Semantics` → log → **EXIT**.
-
-### ALTERNATE TASK (only if TASK 0 done): Close ONE EmitSimRel.step_sim case
-
-Pick ONE: `drop_`, `local_get`, or `local_set`.
+The pattern is: use `hrel.hcode` to get IR code structure from `LowerCodeCorr`, extract the ANF step from `heq`, construct the IR step, build new `LowerSimRel`.
 
 ### DO NOT:
-- Attempt more than 1 task
+- Attempt `let` or `seq` cases (they need 1:N simulation, not ready)
 - Change existing definitions or proved cases
-- Work on LowerSimRel (focus on EmitSimRel)
+- Attempt more than 1 case
 
 ### ⚠️ BUILD-FIRST RULE
 Always run `bash scripts/lake_build_concise.sh` and check exit code BEFORE logging success.

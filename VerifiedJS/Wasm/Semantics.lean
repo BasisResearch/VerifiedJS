@@ -2585,6 +2585,18 @@ theorem step?_eq_block (s : ExecState) (bt : BlockType) (body : List Instr) (res
     cases s; simp_all
   rw [← this]; simp [step?_block, pushTrace]
 
+/-- Exact state after executing a loop instruction: enters body with loop label frame. -/
+theorem step?_eq_loop (s : ExecState) (bt : BlockType) (body : List Instr) (rest : List Instr)
+    (hcode : s.code = Instr.loop bt body :: rest) :
+    step? s = some (.silent,
+      { s with
+        code := body
+        labels := { onBranch := body, onExit := rest, isLoop := true } :: s.labels
+        trace := s.trace ++ [.silent] }) := by
+  have : { s with code := Instr.loop bt body :: rest } = s := by
+    cases s; simp_all
+  rw [← this]; simp [step?_loop, pushTrace]
+
 /-! ## Behavioral semantics theorems -/
 
 /-- Deterministic execution: Steps from the same state yield the same trace and final state. -/
@@ -6827,8 +6839,23 @@ theorem step_sim (irmod : IRModule) (wmod : Module) :
           · -- General case (EmitCodeCorr.general)
             sorry
       | .loop label body =>
-          -- loop: enter loop scope
-          sorry
+          -- loop: push loop label frame, enter body. Both IR and Wasm do the same.
+          -- Key difference from block: onBranch points to body (re-enter loop), not rest.
+          have hc : EmitCodeCorr (IRInstr.loop label body :: rest) s2.code := hcode_ir ▸ hrel.hcode
+          rcases hc.loop_inv with ⟨body_w, rest_w, hcw, hbody, hrest⟩ | ⟨wasm_instrs, rest_w, hcw, hrest⟩
+          · -- Specific case: Wasm code = loop .none body_w :: rest_w
+            have hir := irStep?_eq_loop s1 label body rest hcode_ir
+            rw [hir] at hstep
+            simp only [Option.some.injEq, Prod.mk.injEq] at hstep
+            obtain ⟨rfl, rfl⟩ := hstep
+            have hw := step?_eq_loop s2 .none body_w rest_w hcw
+            refine ⟨_, hw, hrel.hemit, hbody, hrel.hstack, hrel.hframes_len, hrel.hframes_locals, hrel.hframes_vals, ?_, ?_⟩
+            · -- Labels length: both increase by 1
+              simp; exact hrel.hlabels
+            · -- Halt correspondence
+              exact hhalt_of_structural hbody (by simp; exact hrel.hlabels)
+          · -- General case (EmitCodeCorr.general)
+            sorry
       | .if_ result then_ else_ =>
           -- if: conditional branch
           sorry
