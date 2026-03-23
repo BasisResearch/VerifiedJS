@@ -839,7 +839,13 @@ def step? (s : State) : Option (TraceEvent × State) :=
       let funcs' := s.funcs.push closure
       let s' := pushTrace { s with expr := .lit (.function idx), funcs := funcs' } .silent
       some (.silent, s')
-  -- ECMA-262 §12.2.6 Object Initializer.
+  -- SPEC: L15122-L15128
+  -- | ObjectLiteral : \`{\` \`}\` 1. Return
+  -- | OrdinaryObjectCreate(%Object.prototype%). ObjectLiteral : \`{\`
+  -- | PropertyDefinitionList \`}\` \`{\` PropertyDefinitionList \`,\` \`}\` 1.
+  -- | Let \_obj\_ be OrdinaryObjectCreate(%Object.prototype%). 1. Perform ?
+  -- | PropertyDefinitionEvaluation of \|PropertyDefinitionList\| with argument
+  -- | \_obj\_. 1. Return \_obj\_.
   | .objectLit props =>
       match hf : firstNonValueProp props with
       | some (done, k, target, rest) =>
@@ -860,7 +866,18 @@ def step? (s : State) : Option (TraceEvent × State) :=
           let heap' := { objects := s.heap.objects.push heapProps, nextAddr := addr + 1 }
           let s' := pushTrace { s with expr := .lit (.object addr), heap := heap' } .silent
           some (.silent, s')
-  -- ECMA-262 §12.2.5 Array Initializer.
+  -- SPEC: L15014-L15025
+  -- | ArrayLiteral : \`\[\` Elision? \`\]\` 1. Let \_array\_ be !
+  -- | ArrayCreate(0). 1. If \|Elision\| is present, then 1. Perform ?
+  -- | ArrayAccumulation of \|Elision\| with arguments \_array\_ and 0. 1.
+  -- | Return \_array\_. ArrayLiteral : \`\[\` ElementList \`\]\` 1. Let
+  -- | \_array\_ be ! ArrayCreate(0). 1. Perform ? ArrayAccumulation of
+  -- | \|ElementList\| with arguments \_array\_ and 0. 1. Return \_array\_.
+  -- | ArrayLiteral : \`\[\` ElementList \`,\` Elision? \`\]\` 1. Let \_array\_
+  -- | be ! ArrayCreate(0). 1. Let \_nextIndex\_ be ? ArrayAccumulation of
+  -- | \|ElementList\| with arguments \_array\_ and 0. 1. If \|Elision\| is
+  -- | present, then 1. Perform ? ArrayAccumulation of \|Elision\| with
+  -- | arguments \_array\_ and \_nextIndex\_. 1. Return \_array\_.
   | .arrayLit elems =>
       match hf : firstNonValueExpr elems with
       | some (done, target, rest) =>
@@ -891,8 +908,12 @@ def step? (s : State) : Option (TraceEvent × State) :=
       let lowered := .if cond (.seq body (.while_ cond body)) (.lit .undefined)
       let s' := pushTrace { s with expr := lowered } .silent
       some (.silent, s')
-  -- ECMA-262 §13.7.5 for-in: EnumerateObjectProperties (§13.7.5.15).
-  -- Desugars to sequential iteration over property keys of the object.
+  -- SPEC: L17932-L17936
+  -- | ForInOfStatement : \`for\` \`(\` LeftHandSideExpression \`in\`
+  -- | Expression \`)\` Statement 1. Let \_keyResult\_ be ?
+  -- | ForIn/OfHeadEvaluation(« », \|Expression\|, \~enumerate\~). 1. Return ?
+  -- | ForIn/OfBodyEvaluation(\|LeftHandSideExpression\|, \|Statement\|,
+  -- | \_keyResult\_, \~enumerate\~, \~assignment\~, \_labelSet\_).
   | .forIn binding obj body =>
       match exprValue? obj with
       | none =>
@@ -916,8 +937,13 @@ def step? (s : State) : Option (TraceEvent × State) :=
           -- for-in on non-object: no iteration (per spec, ToObject then enumerate).
           let s' := pushTrace { s with expr := .lit .undefined } .silent
           some (.silent, s')
-  -- ECMA-262 §13.7.5.13 for-of: GetIterator (§7.4.1) / IteratorStep.
-  -- Simplified: for arrays on heap, iterate over stored elements.
+  -- SPEC: L17948-L17952
+  -- | ForInOfStatement : \`for\` \`(\` LeftHandSideExpression \`of\`
+  -- | AssignmentExpression \`)\` Statement 1. Let \_keyResult\_ be ?
+  -- | ForIn/OfHeadEvaluation(« », \|AssignmentExpression\|, \~iterate\~). 1.
+  -- | Return ? ForIn/OfBodyEvaluation(\|LeftHandSideExpression\|,
+  -- | \|Statement\|, \_keyResult\_, \~iterate\~, \~assignment\~,
+  -- | \_labelSet\_).
   | .forOf binding iterable body =>
       match exprValue? iterable with
       | none =>
@@ -941,6 +967,9 @@ def step? (s : State) : Option (TraceEvent × State) :=
           -- for-of on non-iterable: no iteration.
           let s' := pushTrace { s with expr := .lit .undefined } .silent
           some (.silent, s')
+  -- SPEC: L18488-L18489
+  -- | LabelledStatement : LabelIdentifier \`:\` LabelledItem 1. Return ?
+  -- | LabelledEvaluation of this \|LabelledStatement\| with argument « ».
   | .labeled _ body =>
       let s' := pushTrace { s with expr := body } .silent
       some (.silent, s')
@@ -1050,6 +1079,8 @@ def step? (s : State) : Option (TraceEvent × State) :=
                         , trace := s.trace } t
               some (t, s')
           | none => none
+  -- SPEC: L14917-L14917
+  -- | PrimaryExpression : \`this\` 1. Return ? ResolveThisBinding().
   | .this =>
       match s.env.lookup "this" with
       | some v =>
@@ -1116,10 +1147,24 @@ def step? (s : State) : Option (TraceEvent × State) :=
       | none =>
           let s' := pushTrace { s with expr := .lit .undefined } (.error "return:undefined")
           some (.error "return:undefined", s')
+  -- SPEC: L18267-L18272
+  -- | BreakStatement : \`break\` \`;\` 1. Return Completion Record {
+  -- | \[\[Type\]\]: \~break\~, \[\[Value\]\]: \~empty\~, \[\[Target\]\]:
+  -- | \~empty\~ }. BreakStatement : \`break\` LabelIdentifier \`;\` 1. Let
+  -- | \_label\_ be the StringValue of \|LabelIdentifier\|. 1. Return
+  -- | Completion Record { \[\[Type\]\]: \~break\~, \[\[Value\]\]: \~empty\~,
+  -- | \[\[Target\]\]: \_label\_ }.
   | .«break» label =>
       let l := match label with | some s => "break:" ++ s | none => "break:"
       let s' := pushTrace { s with expr := .lit .undefined } (.error l)
       some (.error l, s')
+  -- SPEC: L18242-L18247
+  -- | ContinueStatement : \`continue\` \`;\` 1. Return Completion Record {
+  -- | \[\[Type\]\]: \~continue\~, \[\[Value\]\]: \~empty\~, \[\[Target\]\]:
+  -- | \~empty\~ }. ContinueStatement : \`continue\` LabelIdentifier \`;\` 1.
+  -- | Let \_label\_ be the StringValue of \|LabelIdentifier\|. 1. Return
+  -- | Completion Record { \[\[Type\]\]: \~continue\~, \[\[Value\]\]:
+  -- | \~empty\~, \[\[Target\]\]: \_label\_ }.
   | .«continue» label =>
       let l := match label with | some s => "continue:" ++ s | none => "continue:"
       let s' := pushTrace { s with expr := .lit .undefined } (.error l)
@@ -1195,7 +1240,22 @@ def step? (s : State) : Option (TraceEvent × State) :=
           | _ =>
               let s' := pushTrace { s with expr := .lit v } .silent
               some (.silent, s')
-  -- ECMA-262 §12.4.3 delete operator on object properties.
+  -- SPEC: L16118-L16135
+  -- | UnaryExpression : \`delete\` UnaryExpression 1. Let \_ref\_ be ?
+  -- | Evaluation of \|UnaryExpression\|. 1. If \_ref\_ is not a Reference
+  -- | Record, return \*true\*. 1. If IsUnresolvableReference(\_ref\_) is
+  -- | \*true\*, then 1. Assert: \_ref\_.\[\[Strict\]\] is \*false\*. 1. Return
+  -- | \*true\*. 1. If IsPropertyReference(\_ref\_) is \*true\*, then 1.
+  -- | Assert: IsPrivateReference(\_ref\_) is \*false\*. 1. If
+  -- | IsSuperReference(\_ref\_) is \*true\*, throw a \*ReferenceError\*
+  -- | exception. 1. \[id=\"step-delete-operator-toobject\"\] Let \_baseObj\_
+  -- | be ? ToObject(\_ref\_.\[\[Base\]\]). 1. If
+  -- | \_ref\_.\[\[ReferencedName\]\] is not a property key, then 1. Set
+  -- | \_ref\_.\[\[ReferencedName\]\] to ?
+  -- | ToPropertyKey(\_ref\_.\[\[ReferencedName\]\]). 1. Let \_deleteStatus\_
+  -- | be ? \_baseObj\_.\[\[Delete\]\](\_ref\_.\[\[ReferencedName\]\]). 1. If
+  -- | \_deleteStatus\_ is \*false\* and \_ref\_.\[\[Strict\]\] is \*true\*,
+  -- | throw a \*TypeError\* exception. 1. Return \_deleteStatus\_.
   | .deleteProp obj prop =>
       match exprValue? obj with
       | none =>
@@ -1215,7 +1275,15 @@ def step? (s : State) : Option (TraceEvent × State) :=
       | some _ =>
           let s' := pushTrace { s with expr := .lit (.bool true) } .silent
           some (.silent, s')
-  -- ECMA-262 §12.3.3 new operator (simplified: allocate empty object).
+  -- SPEC: L15627-L15635
+  -- | # EvaluateNew ( \_constructExpr\_: a \|NewExpression\| Parse Node or a \|MemberExpression\| Parse Node, \_arguments\_: \~empty\~ or an \|Arguments\| Parse Node, ): either a normal completion containing an ECMAScript language value or an abrupt completion
+  -- |
+  -- | 1\. Let \_ref\_ be ? Evaluation of \_constructExpr\_. 1. Let
+  -- | \_constructor\_ be ? GetValue(\_ref\_). 1. If \_arguments\_ is
+  -- | \~empty\~, then 1. Let \_argList\_ be a new empty List. 1. Else, 1. Let
+  -- | \_argList\_ be ? ArgumentListEvaluation of \_arguments\_. 1. If
+  -- | IsConstructor(\_constructor\_) is \*false\*, throw a \*TypeError\*
+  -- | exception. 1. Return ? Construct(\_constructor\_, \_argList\_).
   | .newObj _callee _args =>
       let addr := s.heap.nextAddr
       let heap' := { objects := s.heap.objects.push [], nextAddr := addr + 1 }
