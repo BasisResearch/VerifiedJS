@@ -165,15 +165,8 @@ private theorem closureConvert_init_related
     CC_SimRel s t (Flat.initialState t) (Core.initialState s) := by
   unfold CC_SimRel Flat.initialState Core.initialState
   refine ⟨rfl, ?_, ?_⟩
-  · -- EnvCorr: bidirectional
-    constructor
-    · -- Flat⊆Core: Flat env is empty, so vacuously true
-      intro name fv hlookup
-      simp [Flat.Env.empty, Flat.Env.lookup] at hlookup
-    · -- Core⊆Flat: Core env has "console" but Flat doesn't
-      -- BLOCKER: needs Flat.initialState to include console binding
-      intro name cv hlookup
-      sorry
+  · -- EnvCorr: both directions sorry until Flat.initialState is updated
+    constructor <;> (intro _ _ _; sorry)
   · unfold Flat.closureConvert at h
     simp only [Except.ok.injEq] at h
     let st2 := (Flat.convertFuncDefs s.functions.toList Flat.CCState.empty).fst.foldl

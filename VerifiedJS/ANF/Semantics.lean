@@ -50,7 +50,8 @@ def Env.assign (env : Env) (name : VarName) (v : Flat.Value) : Env :=
 def Env.extend (env : Env) (name : VarName) (v : Flat.Value) : Env :=
   (name, v) :: env
 
-private def pushTrace (s : State) (t : Core.TraceEvent) : State :=
+/-- Append a trace event to the state's trace list. -/
+def pushTrace (s : State) (t : Core.TraceEvent) : State :=
   { s with trace := s.trace ++ [t] }
 
 /-- Convert an ANF literal-like trivial to a Flat value when possible. -/
@@ -65,7 +66,8 @@ def trivialValue? : Trivial → Option Flat.Value
   | .litObject addr => some (.object addr)
   | .litClosure funcIdx envPtr => some (.closure funcIdx envPtr)
 
-private def trivialOfValue : Flat.Value → Trivial
+/-- Convert a Flat value to its corresponding ANF literal trivial. -/
+def trivialOfValue : Flat.Value → Trivial
   | .null => .litNull
   | .undefined => .litUndefined
   | .bool b => .litBool b
