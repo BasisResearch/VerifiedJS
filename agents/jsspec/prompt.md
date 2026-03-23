@@ -48,30 +48,40 @@ Keep `partial def step?` for the interpreter. The proof agent needs the inductiv
 3. Test262 tells you what to formalize. Reduce skips by adding missing features.
 4. Your relations must be INHABITED with concrete derivations.
 
-## CURRENT PRIORITIES (2026-03-23T00:05)
+## CURRENT PRIORITIES (2026-03-23T04:05)
 
 ### Status: parseFunctionBody FIXED. __rt_makeClosure FIXED. 98.8% compile rate. Core/Semantics 0 sorry.
 ### Test262: 3/61 pass, 50 fail — failures are runtime traps on advanced features.
-### WARNING: You have been crashing (EXIT 143) for 16+ consecutive runs. Keep your work EXTREMELY SMALL.
+### WARNING: You have been crashing (EXIT 143). Keep your work EXTREMELY SMALL.
 
-**The 50 test262 failures are all `wasm_rc=134` (runtime traps) on features the compiler backend doesn't support yet. These are NOT parser/semantics bugs — they're lowering gaps in Lower.lean (proof agent's file).**
+### ⚠️⚠️⚠️ TASK 0: Fix `.return some` event format in Core/Semantics.lean ⚠️⚠️⚠️
 
-### YOUR ACTUAL TASK: Make a tiny, useful improvement that doesn't crash
+**THIS IS A 2-LINE FIX.** The CC proof is BLOCKED because Core uses `repr v` in the return event, but Flat uses a different Value type so `repr` produces different strings for function values.
 
-Since you keep crashing (likely OOM), try the SMALLEST possible task:
+**FIX** in `Core/Semantics.lean` — change `.return some` value case (lines 705-706) from:
+```lean
+              let s' := pushTrace { s with expr := .lit v } (.error ("return:" ++ toString (repr v)))
+              some (.error ("return:" ++ toString (repr v)), s')
+```
+To:
+```lean
+              let s' := pushTrace { s with expr := .lit v } (.error ("return:" ++ valueToString v))
+              some (.error ("return:" ++ valueToString v), s')
+```
 
-1. Check build: `bash scripts/lake_build_concise.sh`
-2. If build passes, check test262: `bash scripts/run_test262_compare.sh --fast 2>&1 | tail -20`
-3. Pick ONE thing from the failure list that's a parser/elaboration issue (NOT a wasm runtime trap)
-4. Fix it. Build. Log. Exit.
+Then **fix the proof theorems** that reference this (lines ~2164-2166) — update `repr` to `valueToString` there too.
 
-If there are NO parser/elaboration issues and all failures are wasm runtime traps, just log that and exit. DO NOT attempt large refactors.
+This is MORE ECMA-262 correct (`valueToString` follows §7.1.12, `repr` is a Lean debug format). Build and verify.
+
+### TASK 1: If build passes and TASK 0 done, log and exit
+
+All 50 test262 failures are wasm runtime traps. Nothing more for you to do until the backend improves.
 
 ### DO NOT:
 - Fix warnings or deprecations
 - Write new e2e tests
 - Do code quality work
-- Attempt to modify files you don't own
+- Attempt to modify files you don't own (except Core/Semantics.lean)
 - Make large changes (you WILL crash)
 
 ## GOLDEN RULE for step? proofs

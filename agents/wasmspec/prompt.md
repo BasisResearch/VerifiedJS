@@ -62,22 +62,92 @@ Then construct the matching Step derivation in Lean. If you cannot, your semanti
 3. Keep definitions structurally simple for proofs.
 4. Add @[simp] lemmas for everything the proof agent might need.
 
-## CURRENT PRIORITIES (2026-03-23T03:05)
+## CURRENT PRIORITIES (2026-03-23T04:05)
 
 ### ⚠️ Keep edits SMALL. Build-test after EVERY change. ⚠️
 
-### MILESTONE: Flat/ SORRY-FREE. 46 sorries in Wasm/Semantics.lean. Build PASSES.
-### LowerCodeCorr, ValueCorr, EmitCodeCorr infrastructure DONE ✅.
+### MILESTONE: Flat/ SORRY-FREE. 49 sorries in Wasm/Semantics.lean. Build PASSES.
 
-### ⚠️⚠️⚠️ TASK 0: Fix Flat.initialState — DO THIS NOW ⚠️⚠️⚠️
+### ⚠️⚠️⚠️ TASK 0: Fix 4 Flat/Semantics.lean bugs — CC PROOF BLOCKED ON THESE ⚠️⚠️⚠️
 
-**STATUS: UNBLOCKED.** The proof agent has ALREADY sorried both EnvCorr directions at ClosureConvertCorrect.lean line 168-169:
+**The proof agent CANNOT PROCEED on 5+ CC cases because Flat semantics DISAGREE with Core.**
+You have been asked to fix initialState for 4+ runs. DO ALL FOUR FIXES IN ORDER. Build after each.
+
+**FIX 0a: `toNumber`** (line 66-72) — Core returns NaN for undefined/string/objects, Flat returns 0.0.
+Replace the entire function:
 ```lean
-    constructor <;> (intro _ _ _; sorry)
+/-- ECMA-262 §7.1.3 ToNumber (Flat subset — must match Core). -/
+def toNumber : Value → Float
+  | .number n => n
+  | .bool true => 1.0
+  | .bool false => 0.0
+  | .null => 0.0
+  | .undefined => 0.0 / 0.0  -- NaN, matching Core
+  | .string s =>
+      let trimmed := s.trimAscii.toString
+      if trimmed.isEmpty then 0.0
+      else match trimmed.toNat? with
+        | some n => Float.ofNat n
+        | none =>
+            if trimmed.startsWith "-" then
+              match (trimmed.drop 1).toNat? with
+              | some n => -(Float.ofNat n)
+              | none => 0.0 / 0.0
+            else 0.0 / 0.0
+  | .object _ => 0.0 / 0.0
+  | .closure _ _ => 0.0 / 0.0
 ```
-This means your change to Flat.initialState WILL NOT break the build. PROCEED IMMEDIATELY.
 
-**FIX** in `Flat/Semantics.lean` — change `initialState` (currently at line 665-666):
+**FIX 0b: `evalUnary .bitNot`** (line 80) — Core does actual bitwise NOT, Flat returns `.undefined`.
+Change line 80 from:
+```lean
+  | .bitNot, _ => .undefined
+```
+To:
+```lean
+  | .bitNot, v => .number (~~~(toNumber v |>.toUInt32)).toFloat
+```
+
+**FIX 0c: Define `valueToString` + fix `.throw` event** — Core uses `valueToString v`, Flat uses literal `"throw"`.
+Add after `evalBinary` (around line 100):
+```lean
+/-- ECMA-262 §7.1.12 ToString (Flat — must match Core.valueToString on convertValue). -/
+def valueToString : Value → String
+  | .string s => s
+  | .number n =>
+      if n.isNaN then "NaN"
+      else if n == 1.0/0.0 then "Infinity"
+      else if n == -1.0/0.0 then "-Infinity"
+      else
+        let i := n.toUInt64
+        if i.toFloat == n && n >= 0.0 then toString i.toNat
+        else
+          let neg := -n
+          let j := neg.toUInt64
+          if j.toFloat == neg && neg > 0.0 then "-" ++ toString j.toNat
+          else toString n
+  | .bool true => "true"
+  | .bool false => "false"
+  | .null => "null"
+  | .undefined => "undefined"
+  | .object _ => "[object Object]"
+  | .closure _ _ => "function"
+```
+Then fix `.throw` (line ~457-459) from:
+```lean
+      | some _ =>
+          let s' := pushTrace { s with expr := .lit .undefined } (.error "throw")
+          some (.error "throw", s')
+```
+To:
+```lean
+      | some v =>
+          let msg := valueToString v
+          let s' := pushTrace { s with expr := .lit .undefined } (.error msg)
+          some (.error msg, s')
+```
+
+**FIX 0d: Fix `initialState`** (line 665-666) — STILL uses Env.empty after 4 runs of asking.
 ```lean
 def initialState (p : Program) : State :=
   let consoleProps : List (Core.PropName × Core.Value) := [("log", .function Core.consoleLogIdx)]
@@ -85,37 +155,29 @@ def initialState (p : Program) : State :=
   { expr := p.main, env := Env.empty.extend "console" (.object 0), heap := heap, trace := [] }
 ```
 
-Note: `convertValue (.object 0) = .object 0` so `.object 0` is correct for Flat. Build and verify immediately.
+**FIX 0e: Make `updateBindingList` public** (line 30) — proof needs equation lemmas for EnvCorr_assign.
+Just remove the `private` keyword.
+
+**FIX 0f: Fix `.return some` event format** (line 610-611) — `repr` differs between Core.Value and Flat.Value for function/closure. Use `valueToString` instead:
+```lean
+          | some v =>
+              let s' := pushTrace { s with expr := .lit v } (.error ("return:" ++ valueToString v))
+              some (.error ("return:" ++ valueToString v), s')
+```
+
+**DO THESE IN ORDER: 0a, 0b, 0c, 0d, 0e, 0f. Build after EACH ONE.**
 
 ### TASK 1: Prove EmitSimRel.step_sim EASY cases (biggest sorry reduction opportunity)
 
-You have 21+ EmitSimRel sorry cases. Many are MECHANICAL — both IR and Wasm execute the same instruction. Start with these quick wins:
-
-**`const_i32` (line ~6023)**: IR pushes `.i32 n`, Wasm pushes `Val.i32 n`. Show `IRValueToWasmValue (.i32 n) (.i32 n)`. Then update hstack with the new element. The `general` sub-case is the hard one — skip it.
-
-**`const_i64`, `const_f64`, `const_ptr`**: Same pattern as `const_i32`.
-
-**`localGet` (line ~6037)**: IR reads local idx, Wasm reads local idx. Both get the same value (by hlocals correspondence).
-
-**`localSet` (line ~6039)**: Both pop value, set local. Update hlocals.
-
-**`drop_` (line ~6093)**: Both pop one value. Update hstack.
-
-**`binOp`, `unOp`**: Both pop operands, apply same operation, push result.
-
-These 10+ cases are LOW-HANGING FRUIT. Each should be ~5-10 lines. Use `lean_goal` to see exact state, `lean_multi_attempt` to test.
+Same as before — const_i32/i64/f64/ptr, localGet, localSet, drop_, binOp, unOp. Each ~5-10 lines.
 
 ### TASK 2: Address trace mismatch for break/continue
 
-**Options**:
-1. Change ANF.step? for break/continue to produce `.silent` (SIMPLEST — control flow is not observable)
-2. Use `traceFromCoreForIR` in `anfStepMapped`
-
-Option 1 is cleanest. Check if ANF→Core proof chain depends on break/continue `.error` events. If not, just change them.
+Change ANF.step? for break/continue to produce `.silent` (SIMPLEST).
 
 ### TASK 3: Prove LowerSimRel.step_sim sub-cases
 
-13 expression cases with sorry. Infrastructure in place. Start with `.var` (simplest — just a localGet). Then `.seq` value case (drop + continue with bCode).
+Start with `.var` (simplest — just a localGet). Then `.seq` value case.
 
 ## GLOBAL GOAL -- DO NOT STOP
 Your job is done when:

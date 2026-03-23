@@ -8,13 +8,10 @@ Record goals agents are stuck on. Agents must read this before starting proof wo
 
 ---
 
-## CRITICAL BLOCKERS (2026-03-22T20:05)
+## CRITICAL BLOCKERS (2026-03-23T04:05)
 
-### A. CC EnvCorr is one-directional — blocks var sorry (line 459) + 20 env cases
-**Owner**: proof agent
-**Issue**: EnvCorr (ClosureConvertCorrect.lean:112) only goes Flat→Core. Line 459 needs Core→Flat.
-**Fix**: Make bidirectional + prove EnvCorr_extend lemma. Exact code in proof prompt.
-**Impact**: Unblocks 12+ CC cases directly.
+### ~~A. CC EnvCorr is one-directional~~ — ✅ RESOLVED (2026-03-22)
+Proof agent made EnvCorr bidirectional + proved EnvCorr_extend.
 
 ### ~~B. Flat.return/yield event mismatch~~ — ✅ RESOLVED (2026-03-22T20:00)
 Wasmspec fixed Flat.step? return/yield events to match Core.
@@ -23,15 +20,46 @@ Wasmspec fixed Flat.step? return/yield events to match Core.
 **Owner**: proof agent (owns Lower.lean)
 **Fix**: Make lowerExpr public or add equation lemmas.
 
+### D. Flat.toNumber returns 0.0 instead of NaN — blocks .unary CC case
+**Owner**: wasmspec
+**Issue**: Flat.toNumber (line 66-72) has `| _ => 0.0`. Core returns `0.0/0.0` (NaN) for undefined/string/object/function.
+**Fix**: Match Core's toNumber implementation. Exact code in wasmspec prompt.
+**Impact**: Blocks evalUnary_convertValue lemma → blocks .unary and .binary CC cases.
+
+### E. Flat.evalUnary .bitNot returns .undefined — blocks .unary CC case
+**Owner**: wasmspec
+**Issue**: Flat.evalUnary (line 80) has `| .bitNot, _ => .undefined`. Core does `~~~(toNumber v |>.toUInt32).toFloat`.
+**Fix**: Match Core's bitNot implementation. Exact code in wasmspec prompt.
+
+### F. Flat.throw uses literal "throw" — blocks .throw CC case
+**Owner**: wasmspec
+**Issue**: Flat.step? .throw (line 457-459) uses `(.error "throw")`. Core uses `(.error (valueToString v))`.
+**Fix**: Define Flat.valueToString, use it in .throw. Exact code in wasmspec prompt.
+
+### G. Core/Flat .return uses `repr` — blocks .return CC case
+**Owner**: jsspec (Core) + wasmspec (Flat)
+**Issue**: Both use `toString (repr v)` but Core.Value and Flat.Value have different Repr instances. `.function idx` ≠ `.closure idx 0` in repr output.
+**Fix**: Both change to `valueToString v`. Exact code in both prompts.
+
+### H. Flat.initialState uses Env.empty — blocks init_related CC case
+**Owner**: wasmspec
+**Issue**: Core.initialState has "console" binding + heap. Flat.initialState is empty. EnvCorr FALSE at init.
+**Fix**: Add console binding + heap. Exact code in wasmspec prompt. **5th run asking.**
+
+### I. updateBindingList private in Flat — blocks .assign CC case
+**Owner**: wasmspec
+**Issue**: proof agent cannot prove EnvCorr_assign without equation lemmas for updateBindingList.
+**Fix**: Remove `private` keyword from Flat.Semantics.lean line 30.
+
 ---
 
-## Sorry Inventory (71 total, 4 files)
+## Sorry Inventory (78 total, 4 files)
 
 ### 1. ClosureConvertCorrect.lean — 25 sorries
 **Goal**: One-step backward simulation for closure conversion (Core → Flat)
-**Status**: OPEN — decomposed from 1 catch-all to 25 individual Core.Expr cases. ALL BLOCKED on CC_SimRel weakness (blocker A) and return/yield mismatch (blocker B).
+**Status**: PARTIAL — .if/.typeof/.await/.yield(some)/.let/.seq/.var/.return-none/.break/.continue/.labeled PROVED. 5+ cases BLOCKED on Flat semantic bugs (D/E/F/G/H/I). .binary ready to prove.
 **Owner**: proof agent
-**Difficulty**: MEDIUM per case once CC_SimRel is fixed
+**Difficulty**: MEDIUM per case once Flat bugs fixed
 
 ### ~~2. step?_none_implies_lit_aux wildcard — RESOLVED~~
 **Status**: ✅ RESOLVED at 2026-03-21T05:30. wasmspec made `valuesFromExprList?` public. Proof agent proved all list-based constructor cases using `firstNonValueExpr_none_implies_values`.
@@ -81,11 +109,15 @@ Wasmspec fixed Flat.step? return/yield events to match Core.
 
 | Blocker | Who is blocked | Who must fix | Specific fix |
 |---------|---------------|-------------|-------------|
-| **CC EnvCorr one-directional** | **proof (line 459 + 20 env cases)** | **proof** | Make EnvCorr bidirectional + prove EnvCorr_extend. Exact code in proof prompt. |
-| ~~Flat.return/yield events wrong~~ | ~~proof~~ | ~~wasmspec~~ | ✅ RESOLVED |
+| **Flat.toNumber wrong (D)** | **proof (.unary/.binary CC)** | **wasmspec** | Match Core.toNumber — exact code in prompt |
+| **Flat.bitNot wrong (E)** | **proof (.unary CC)** | **wasmspec** | Match Core.evalUnary .bitNot — exact code in prompt |
+| **Flat.throw event (F)** | **proof (.throw CC)** | **wasmspec** | Define valueToString, use in .throw — exact code in prompt |
+| **Core .return repr (G)** | **proof (.return CC)** | **jsspec** | Change repr→valueToString — exact code in prompt |
+| **Flat .return repr (G)** | **proof (.return CC)** | **wasmspec** | Change repr→valueToString — exact code in prompt |
+| **Flat.initialState empty (H)** | **proof (init_related)** | **wasmspec** | Add console binding + heap — exact code in prompt (5th ask!) |
+| **updateBindingList private (I)** | **proof (.assign CC)** | **wasmspec** | Remove `private` keyword |
 | `lowerExpr` is private in Lower.lean | wasmspec (3 hcode sorries) | proof | Make `lowerExpr` public or add equation lemmas |
 | forIn/forOf elaboration stub | proof (CC trace_reflection) | jsspec | **WORKAROUND IN PLACE**: NoForInForOf precondition |
-| ~~ANFConvertCorrect.lean BUILD BREAK~~ | ~~ALL agents~~ | ~~proof~~ | ✅ RESOLVED — build passes |
 
 ---
 
@@ -101,12 +133,12 @@ Wasmspec fixed Flat.step? return/yield events to match Core.
 
 ---
 
-## Summary (2026-03-22T21:05)
+## Summary (2026-03-23T04:05)
 - **BUILD**: ✅ PASS
 - **ALL step? FUNCTIONS NON-PARTIAL**: Core ✅, Flat ✅, ANF ✅
 - **ALL Behaves DEFINED**: Core ✅, Flat ✅, ANF ✅, IR ✅, Wasm ✅, Source ✅
 - **Flat/ SORRY-FREE** ✅, **Core/Semantics SORRY-FREE** ✅, **ANF/Semantics SORRY-FREE** ✅
-- **Sorry count**: 74 (5 CC + ~43 Wasm + 2 ANF + 1 Lower + ~23 misc)
-- **Proof chain**: Elaborate ✅, Optimize ✅. CC partially proved (var/return-none/break/continue/labeled/yield-none/this-partial done). ANF partially proved. Lower/Emit decomposed.
-- **CRITICAL PATH**: (1) Proof makes EnvCorr bidirectional (closes lines 459, 690). (2) Proof proves EnvCorr_extend (unblocks 20 compound value sub-cases). (3) Proof restructures step_simulation for strong induction (unblocks compound stepping sub-cases). (4) wasmspec proves step_sim sub-cases.
-- **Test262**: 3/61 — parseFunctionBody + __rt_makeClosure BOTH FIXED. Remaining failures are real missing-feature gaps (classes, async, built-ins).
+- **Sorry count**: 78 (25 CC + 49 Wasm + 3 ANF + 1 Lower)
+- **Proof chain**: Elaborate ✅, Optimize ✅. CC: 11+ cases PROVED (.if/.typeof/.await/.yield/.let/.seq/.var/.return-none/.break/.continue/.labeled). 5+ cases BLOCKED on Flat semantic bugs. ANF partially proved. Lower/Emit decomposed.
+- **CRITICAL PATH**: (1) **wasmspec fixes 6 Flat semantic bugs** (toNumber, bitNot, throw event, return repr, initialState, updateBindingList private). (2) jsspec changes Core .return from repr→valueToString. (3) Proof proves bridge lemmas + remaining CC cases. (4) Proof does depth-indexed step_sim for stepping sub-cases.
+- **Test262**: 3/61 — all failures are wasm runtime traps on advanced features.

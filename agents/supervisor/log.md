@@ -2272,3 +2272,48 @@ test_write
 
 ## Run: 2026-03-23T04:05:01+00:00
 
+
+## Run: 2026-03-23T04:05:01+00:00
+
+### Build
+- **Status**: `lake build` PASS (no errors, only warnings)
+
+### Sorry Report
+- **Count**: 78 (up from 76 — wasmspec +3, proof -1)
+- **Distribution**: 49 Wasm/Semantics + 25 CC + 3 ANF + 1 Lower
+
+### Test262
+- 3 pass, 50 fail, 3 skip, 5 xfail / 63 total (UNCHANGED 88+ hours)
+
+### Agent Health
+- **jsspec**: Completed at 04:03. IDLE — all test262 failures are wasm runtime traps.
+- **wasmspec**: Last completed 01:57, timed out 03:15. Has NOT done Flat.initialState (5th run asking).
+- **proof**: Last completed 02:30. PROVED .if/.typeof/.await/.yield(some) value sub-cases ✅. Found 5 BLOCKED items.
+
+### Key Discovery: 5 Flat Semantic Bugs Block CC Proof
+
+The proof agent discovered that 5+ CC sub-cases are PROVABLY IMPOSSIBLE because Flat semantics DISAGREE with Core:
+
+1. **Flat.toNumber** (line 66-72): Returns `0.0` for undefined/string/object. Core returns `NaN`. Makes `evalUnary_convertValue` FALSE.
+2. **Flat.evalUnary .bitNot** (line 80): Returns `.undefined`. Core does actual `~~~(toNumber v |>.toUInt32).toFloat`. Makes `.unary` CC case FALSE.
+3. **Flat.throw event** (line 457-459): Uses literal `(.error "throw")`. Core uses `(.error (valueToString v))`. Events don't match → CC theorem FALSE for `.throw`.
+4. **Core/Flat .return event** (lines 705-706 Core, 610-611 Flat): Both use `toString (repr v)` but `Core.Value.function idx` and `Flat.Value.closure idx 0` have different `Repr` instances. Events don't match → CC theorem FALSE for `.return some` with function values.
+5. **Flat.updateBindingList private** (line 30): Proof agent can't prove `EnvCorr_assign` without equation lemmas.
+
+Plus **Flat.initialState** STILL empty (5th run asking).
+
+### Actions Taken
+1. **wasmspec prompt**: Complete rewrite of TASK 0. Listed 6 concrete fixes with EXACT Lean code: (0a) toNumber, (0b) bitNot, (0c) valueToString + throw, (0d) initialState, (0e) updateBindingList public, (0f) return repr→valueToString. DO THESE IN ORDER, BUILD AFTER EACH.
+2. **jsspec prompt**: Added TASK 0 — change Core `.return some` from `repr v` to `valueToString v` (2-line fix + proof theorem updates).
+3. **proof prompt**: Updated to acknowledge BLOCKED items. Redirected to: (1) .binary value sub-case (only unblocked CC case), (2) ANF sorries (CC mostly blocked). Added TASK 4 with bridge lemma code (valueToString_convertValue, toNumber_convertValue, evalUnary_convertValue).
+4. **PROOF_BLOCKERS.md**: Added blockers D/E/F/G/H/I. Updated cross-agent dependency table.
+5. **PROGRESS.md**: Added run entry.
+
+### Proof Chain Analysis
+- **Elaborate**: PROVED ✅
+- **Optimize**: PROVED ✅ (identity)
+- **ClosureConvert**: 25 sorry. 11+ cases proved. 5+ BLOCKED on Flat semantic bugs. .binary ready.
+- **ANFConvert**: 3 sorry. step_star + WF invariant.
+- **Lower**: 1 sorry. Blocked on wasmspec step_sim.
+- **Emit**: In Wasm/Semantics (49 sorry). EmitSimRel decomposed.
+2026-03-23T04:14:43+00:00 DONE
