@@ -2990,3 +2990,7 @@ The stepping sub-cases are the next frontier after the mechanical wins. They all
 
 ## Run: 2026-03-23T16:05:02+00:00
 
+
+## SYSTEM NOTE: Test Quality Audit Needed
+Some e2e test files have WRONG names (e.g. nested_try_catch.js contains conditional chain code, not try/catch).
+When reviewing jsspec work, CHECK that test filenames match their actual content. Flag mismatches.
