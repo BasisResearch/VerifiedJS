@@ -404,7 +404,7 @@ private def lookupContinueTarget (stack : List CtrlFrame) (label : Option String
 
 mutual
 
-private partial def lowerExprWithExn (ctx : LowerCtx) (exnTarget : Option String)
+partial def lowerExprWithExn (ctx : LowerCtx) (exnTarget : Option String)
     (ctrlStack : List CtrlFrame) :
     ANF.Expr → LowerM (List IR.IRInstr)
   | .trivial t => lowerTrivialM ctx t
@@ -503,7 +503,7 @@ private partial def lowerExprWithExn (ctx : LowerCtx) (exnTarget : Option String
       | some target => pure [IR.IRInstr.br target]
       | none => throw s!"lower: unresolved continue target {label.getD "<unlabeled>"}"
 
-private partial def lowerWhile (ctx : LowerCtx) (exnTarget : Option String) (ctrlStack : List CtrlFrame)
+partial def lowerWhile (ctx : LowerCtx) (exnTarget : Option String) (ctrlStack : List CtrlFrame)
     (userLabel : Option String) (cond body : ANF.Expr) : LowerM (List IR.IRInstr) := do
   let exitLbl ← freshLabel "while_exit"
   let loopLbl ← freshLabel "while_loop"
@@ -527,7 +527,7 @@ private partial def lowerWhile (ctx : LowerCtx) (exnTarget : Option String) (ctr
 
 end
 
-private partial def lowerExpr (ctx : LowerCtx) : ANF.Expr → LowerM (List IR.IRInstr) :=
+partial def lowerExpr (ctx : LowerCtx) : ANF.Expr → LowerM (List IR.IRInstr) :=
   lowerExprWithExn ctx none []
 
 private def mkInitialCtx (params : List ANF.VarName) (envParam : ANF.VarName)

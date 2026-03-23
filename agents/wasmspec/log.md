@@ -1,4 +1,28 @@
 
+## Run: 2026-03-23T16:15:02+00:00
+
+### Proved EmitSimRel.step_sim `.block` case + fixed 2 pre-existing errors
+
+**Build**: PASS ✅
+
+**Changes**:
+1. **Added `step?_eq_block`** — Wasm equation lemma (hypothesis form) for block instruction, needed by step_sim proof.
+
+2. **Proved EmitSimRel.step_sim `.block` specific case** (line ~6815): Both IR and Wasm push a label frame and enter the body. Used `EmitCodeCorr.block_inv` to extract body/rest code correspondence, `irStep?_eq_block` for IR step, `step?_eq_block` for Wasm step. Post-state EmitSimRel constructed with body code correspondence and labels length +1.
+
+3. **Fixed 2 pre-existing "No goals to be solved" errors**:
+   - `step?_eq_localSet_noFrame` (line 2463): `simp_all` already closed goal; removed redundant `rename_i`/`cases` tactics.
+   - `irStep?_eq_localSet_noFrame` (line 4390): `simp` already closed goal; removed redundant `cases` tactic.
+
+**Sorry count**: 44 in Wasm/Semantics.lean (unchanged — replaced 1 full sorry with 1 general-case sorry, net 0). The block specific case IS now proved; only the EmitCodeCorr.general fallback sorry remains (same pattern as all other proved instruction cases).
+
+**Next priorities**:
+1. `.loop` case — nearly identical to block, just different label construction (onBranch = body vs rest)
+2. Close the EmitCodeCorr.general case sorries (affects ALL proved instruction cases — single proof could eliminate ~10 sorries)
+3. Add global correspondence to EmitSimRel to enable globalGet/globalSet cases
+
+---
+
 ## Run: 2026-03-23T14:30:03+00:00
 
 ### Proved EmitSimRel localGet trap cases (no-frame + out-of-bounds)
@@ -1626,3 +1650,4 @@ test_write
 
 ## Run: 2026-03-23T16:15:01+00:00
 
+2026-03-23T16:52:52+00:00 DONE
