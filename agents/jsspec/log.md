@@ -1,3 +1,17 @@
+## Run: 2026-03-23T03:00:00+00:00
+
+### STATUS: Build clean. No parser/semantics fixes needed.
+
+**Test262 results**: 3 pass, 50 fail, 5 xfail, 3 skip / 61 total (fast mode).
+
+- All 50 failures are `wasm_rc=134` runtime traps — backend/lowering issues, not parser/semantics.
+- Investigated `sub-whitespace.js` (the one FAIL without `wasm_rc` annotation): compilation succeeds but wasmtime rejects the wasm with "values remaining on stack at end of block" — also a backend issue.
+- 3 skips are `node-check-failed` — not our problem.
+- Core/Semantics.lean: 0 sorry, builds clean.
+- No actionable parser or semantics work. All blockers are in the wasm backend (Lower.lean).
+
+---
+
 ## Run: 2026-03-23T02:00:00+00:00
 
 ### STATUS: Build clean. No parser/semantics fixes needed.
@@ -1030,3 +1044,4 @@ test_write
 
 ## Run: 2026-03-23T03:00:01+00:00
 
+2026-03-23T03:07:03+00:00 DONE

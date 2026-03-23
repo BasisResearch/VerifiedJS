@@ -6020,17 +6020,31 @@ theorem step_sim (irmod : IRModule) (wmod : Module) :
             simp only [Option.some.injEq, Prod.mk.injEq] at hstep
             obtain ⟨rfl, rfl⟩ := hstep
             have hw := step?_eq_i32Const s2 n rest_w hcw
-            exact ⟨_, hw, { hemit := hrel.hemit, hcode := hrest,
-              hstack := by sorry, hlabels := hrel.hlabels,
-              hhalt := hhalt_of_structural hrest hrel.hlabels }⟩
+            exact ⟨_, hw, ⟨hrel.hemit, hrest, by sorry, hrel.hlabels, hhalt_of_structural hrest hrel.hlabels⟩⟩
           · -- General case (EmitCodeCorr.general)
             sorry
       | .const_ .i64 v =>
-          -- i64 const
-          sorry
+          -- i64 const: same pattern as i32
+          have hc : EmitCodeCorr (IRInstr.const_ .i64 v :: rest) s2.code := hcode_ir ▸ hrel.hcode
+          rcases hc.const_i64_inv with ⟨n, rest_w, hcw, hparse, hrest⟩ | ⟨wasm_instrs, rest_w, hcw, hrest⟩
+          · have hir := irStep?_eq_i64Const s1 v n.toNat rest hcode_ir hparse
+            rw [hir] at hstep
+            simp only [Option.some.injEq, Prod.mk.injEq] at hstep
+            obtain ⟨rfl, rfl⟩ := hstep
+            have hw := step?_eq_i64Const s2 n rest_w hcw
+            exact ⟨_, hw, ⟨hrel.hemit, hrest, by sorry, hrel.hlabels, hhalt_of_structural hrest hrel.hlabels⟩⟩
+          · sorry -- general case
       | .const_ .f64 v =>
-          -- f64 const
-          sorry
+          -- f64 const: same pattern as i32
+          have hc : EmitCodeCorr (IRInstr.const_ .f64 v :: rest) s2.code := hcode_ir ▸ hrel.hcode
+          rcases hc.const_f64_inv with ⟨f, rest_w, hcw, hrest⟩ | ⟨wasm_instrs, rest_w, hcw, hrest⟩
+          · have hir := irStep?_eq_f64Const s1 v rest hcode_ir
+            rw [hir] at hstep
+            simp only [Option.some.injEq, Prod.mk.injEq] at hstep
+            obtain ⟨rfl, rfl⟩ := hstep
+            have hw := step?_eq_f64Const s2 f rest_w hcw
+            exact ⟨_, hw, ⟨hrel.hemit, hrest, by sorry, hrel.hlabels, hhalt_of_structural hrest hrel.hlabels⟩⟩
+          · sorry -- general case
       | .const_ .ptr v =>
           -- ptr const (same as i32 in Wasm)
           sorry
