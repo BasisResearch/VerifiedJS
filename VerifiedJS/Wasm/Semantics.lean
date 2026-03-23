@@ -4566,6 +4566,24 @@ theorem irStep?_eq_globalSet (s : IRExecState) (idx : Nat) (rest : List IRInstr)
         trace := s.trace ++ [.silent] }) := by
   simp [irStep?, hcode, hstack, irPop1?, irPushTrace, hbounds]
 
+/-- Exact state after global.set with empty stack: traps. -/
+theorem irStep?_eq_globalSet_emptyStack (s : IRExecState) (idx : Nat) (rest : List IRInstr)
+    (hcode : s.code = IRInstr.globalSet idx :: rest)
+    (hstack : s.stack = []) :
+    irStep? s = some (.trap "stack underflow in global.set",
+      { s with code := [], trace := s.trace ++ [.trap "stack underflow in global.set"] }) := by
+  simp [irStep?, hcode, hstack, irPop1?, irTrapState, irPushTrace]
+
+/-- Exact state after global.set with out-of-bounds index: traps. -/
+theorem irStep?_eq_globalSet_oob (s : IRExecState) (idx : Nat) (rest : List IRInstr)
+    (v : IRValue) (stk : List IRValue)
+    (hcode : s.code = IRInstr.globalSet idx :: rest)
+    (hstack : s.stack = v :: stk)
+    (hbounds : ¬(idx < s.globals.size)) :
+    irStep? s = some (.trap s!"global.set out of bounds: {idx}",
+      { s with code := [], trace := s.trace ++ [.trap s!"global.set out of bounds: {idx}"] }) := by
+  simp [irStep?, hcode, hstack, irPop1?, irTrapState, irPushTrace, hbounds]
+
 /-- Exact state after return_ with callee frame: pops frame, restores caller. -/
 theorem irStep?_eq_return_callee (s : IRExecState) (rest : List IRInstr)
     (calleeFrame callerFrame : IRFrame) (frest : List IRFrame)
@@ -6936,8 +6954,113 @@ theorem step_sim (irmod : IRModule) (wmod : Module) :
                       hhalt := hhalt_of_structural .nil hrel.hlabels }
           · sorry -- general case
       | .globalSet idx =>
-          -- global.set
-          sorry
+          -- global.set: pop value from stack, set globals[idx]
+          have hc : EmitCodeCorr (IRInstr.globalSet idx :: rest) s2.code := hcode_ir ▸ hrel.hcode
+          rcases hc.globalSet_inv with ⟨rest_w, hcw, hrest⟩ | ⟨wasm_instrs, rest_w, hcw, hrest⟩
+          · -- Specific case: Wasm code = globalSet idx :: rest_w
+            match hstk : s1.stack with
+            | [] =>
+              -- Empty stack: both sides trap
+              have hir := irStep?_eq_globalSet_emptyStack s1 idx rest hcode_ir hstk
+              rw [hir] at hstep
+              simp only [Option.some.injEq, Prod.mk.injEq] at hstep
+              obtain ⟨rfl, rfl⟩ := hstep
+              -- Wasm also has empty stack
+              have hstk_rel := hrel.hstack; rw [hstk] at hstk_rel
+              have hstk_w : s2.stack = [] := by
+                cases hs : s2.stack with | nil => rfl | cons => simp [hs] at hstk_rel
+              have hw := step?_eq_globalSet_emptyStack s2 idx rest_w hcw hstk_w
+              simp only [traceToWasm]
+              refine ⟨_, hw, ?_⟩
+              exact { hemit := hrel.hemit
+                      hcode := .nil
+                      hstack := by dsimp only []; exact hrel.hstack
+                      hframes_len := hrel.hframes_len
+                      hframes_locals := hrel.hframes_locals
+                      hframes_vals := hrel.hframes_vals
+                      hglobals := hrel.hglobals
+                      hlabels := by dsimp only []; exact hrel.hlabels
+                      hhalt := hhalt_of_structural .nil hrel.hlabels }
+            | irv :: irstk =>
+              -- Non-empty stack: check bounds
+              if hbounds : idx < s1.globals.size then
+                -- Valid index: update globals
+                have hir := irStep?_eq_globalSet s1 idx rest irv irstk hcode_ir hstk hbounds
+                rw [hir] at hstep
+                simp only [Option.some.injEq, Prod.mk.injEq] at hstep
+                obtain ⟨rfl, rfl⟩ := hstep
+                -- Derive Wasm stack from stack correspondence
+                have hstk_rel := hrel.hstack; rw [hstk] at hstk_rel
+                match hstk_w : s2.stack with
+                | [] => simp [hstk_w] at hstk_rel
+                | wv :: wstk =>
+                  -- Get value correspondence for top of stack
+                  have ⟨irv', wv', hirv', hwv', hval_corr⟩ := hstk_rel.2 0 (by simp)
+                  simp at hirv' hwv'
+                  have : irv' = irv := by injection hirv'
+                  have : wv' = wv := by injection hwv'
+                  subst_vars
+                  -- Wasm bounds from globals correspondence
+                  have hglen := hrel.hglobals.1
+                  have hbounds_w : idx < s2.store.globals.size := by omega
+                  -- Wasm step
+                  have hw := step?_eq_globalSet_valid s2 idx rest_w wv wstk hcw hstk_w hbounds_w
+                  simp only [traceToWasm]
+                  refine ⟨_, hw, ?_⟩
+                  exact { hemit := hrel.hemit
+                          hcode := hrest
+                          hstack := by dsimp only []; exact stack_corr_tail hstk_rel.1 hstk_rel.2
+                          hframes_len := hrel.hframes_len
+                          hframes_locals := hrel.hframes_locals
+                          hframes_vals := hrel.hframes_vals
+                          hglobals := by
+                            dsimp only []
+                            constructor
+                            · simp [Array.size_set!]; exact hglen
+                            · intro j hj
+                              simp [Array.size_set!] at hj
+                              by_cases hjidx : j = idx
+                              · subst hjidx
+                                refine ⟨irv, wv, ?_, ?_, hval_corr⟩
+                                · simp [Array.getElem?_set!, hbounds, hj]
+                                · simp [Array.getElem?_set!, hbounds_w, hj]
+                              · have hj_ir : j < s1.globals.size := hj
+                                have hj_w : j < s2.store.globals.size := by omega
+                                obtain ⟨irv'', wv'', hirv'', hwv'', hcorr''⟩ := hrel.hglobals.2 j hj_ir
+                                refine ⟨irv'', wv'', ?_, ?_, hcorr''⟩
+                                · rw [Array.getElem?_set! (h := hbounds)]
+                                  simp [hjidx, hirv'']
+                                · rw [Array.getElem?_set! (h := hbounds_w)]
+                                  simp [hjidx, hwv'']
+                          hlabels := hrel.hlabels
+                          hhalt := hhalt_of_structural hrest hrel.hlabels }
+              else
+                -- Out-of-bounds: both sides trap
+                have hir := irStep?_eq_globalSet_oob s1 idx rest irv irstk hcode_ir hstk hbounds
+                rw [hir] at hstep
+                simp only [Option.some.injEq, Prod.mk.injEq] at hstep
+                obtain ⟨rfl, rfl⟩ := hstep
+                -- Derive Wasm stack from stack correspondence
+                have hstk_rel := hrel.hstack; rw [hstk] at hstk_rel
+                match hstk_w : s2.stack with
+                | [] => simp [hstk_w] at hstk_rel
+                | wv :: wstk =>
+                  -- Wasm also out of bounds
+                  have hglen := hrel.hglobals.1
+                  have hbounds_w : ¬(idx < s2.store.globals.size) := by omega
+                  have hw := step?_eq_globalSet_oob s2 idx rest_w wv wstk hcw hstk_w hbounds_w
+                  simp only [traceToWasm]
+                  refine ⟨_, hw, ?_⟩
+                  exact { hemit := hrel.hemit
+                          hcode := .nil
+                          hstack := by dsimp only []; exact hrel.hstack
+                          hframes_len := hrel.hframes_len
+                          hframes_locals := hrel.hframes_locals
+                          hframes_vals := hrel.hframes_vals
+                          hglobals := hrel.hglobals
+                          hlabels := by dsimp only []; exact hrel.hlabels
+                          hhalt := hhalt_of_structural .nil hrel.hlabels }
+          · sorry -- general case
       | .load t offset =>
           -- memory load
           sorry
