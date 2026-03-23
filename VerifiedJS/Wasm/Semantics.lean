@@ -5866,9 +5866,9 @@ theorem step_sim (irmod : IRModule) (wmod : Module) :
               rw [hstk] at hlen
               match hs2 : s2.stack with
               | [] => simp_all
-              | w :: stk_w =>
+              | wval :: stk_w =>
                 simp [hs2] at hlen
-                have hw_step := step?_eq_drop s2 rest_w w stk_w hcw hs2
+                have hw_step := step?_eq_drop s2 rest_w wval stk_w hcw hs2
                 refine ⟨_, ?_, ?_⟩
                 · -- Wasm step matches
                   show Wasm.step? s2 = some (traceToWasm .silent, _)
