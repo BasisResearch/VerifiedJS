@@ -113,6 +113,29 @@ def Env.assign (env : Env) (name : VarName) (v : Value) : Env :=
   else
     { bindings := (name, v) :: env.bindings }
 
+/-- Lookup after assign for the same name (existing binding). -/
+@[simp] theorem Env.lookup_assign_eq (env : Env) (name : VarName) (v : Value)
+    (h : env.bindings.any (fun kv => kv.fst == name) = true) :
+    (env.assign name v).lookup name = some v := by
+  simp [Env.assign, h, lookup_updateBindingList_eq]
+
+/-- Lookup after assign for a different name. -/
+@[simp] theorem Env.lookup_assign_ne (env : Env) (name other : VarName) (v : Value)
+    (hne : (other == name) = false) :
+    (env.assign name v).lookup other = env.lookup other := by
+  simp only [Env.assign]
+  split
+  · simp [lookup_updateBindingList_ne, hne]
+  · have hne' : (name == other) = false :=
+      Bool.eq_false_iff.mpr (by intro h; have := beq_iff_eq.mp h; rw [this] at hne; simp at hne)
+    simp [Env.lookup, List.find?, hne']
+
+/-- Lookup after assign for the same name (new binding). -/
+@[simp] theorem Env.lookup_assign_new (env : Env) (name : VarName) (v : Value)
+    (h : env.bindings.any (fun kv => kv.fst == name) = false) :
+    (env.assign name v).lookup name = some v := by
+  simp [Env.assign, h, Env.lookup, List.find?, beq_self_eq_true]
+
 /-- ECMA-262 §8.1.1.1.2 CreateMutableBinding + §8.1.1.1.5 InitializeBinding. -/
 def Env.extend (env : Env) (name : VarName) (v : Value) : Env :=
   { bindings := (name, v) :: env.bindings }
