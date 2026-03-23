@@ -6212,14 +6212,13 @@ theorem step_sim (irmod : IRModule) (wmod : Module) :
                     -- Wasm stack correspondence: need wv on top
                     have hstk_rel := hrel.hstack; rw [hstk] at hstk_rel
                     match hstk_w : s2.stack with
-                    | [] => simp at hstk_rel
+                    | [] => simp [hstk_w] at hstk_rel
                     | wv :: wstk =>
                       -- idx in bounds for wasm frame
                       have hloc_sz := hrel.hframes_locals irf wf irfs wfs hfr_ir hfr_w
                       have hlt_w : idx < wf.locals.size := hloc_sz ▸ hlt
                       -- Head value correspondence
                       have hhead := hstk_rel.2 0 (by simp)
-                      rw [hstk] at hhead; simp at hhead
                       rw [hstk_w] at hhead; simp at hhead
                       obtain ⟨_, _, h1, h2, hval_corr⟩ := hhead
                       simp at h1 h2; subst h1; subst h2
@@ -6227,7 +6226,7 @@ theorem step_sim (irmod : IRModule) (wmod : Module) :
                       have hw := step?_eq_localSet s2 idx rest_w wv wstk wf wfs hcw hstk_w hfr_w hlt_w
                       refine ⟨_, hw, hrel.hemit, hrest, ?_, ?_, ?_, ?_, hrel.hlabels, hhalt_of_structural hrest hrel.hlabels⟩
                       · -- Stack correspondence (tail after pop)
-                        rw [hstk, hstk_w] at hstk_rel
+                        rw [hstk_w] at hstk_rel
                         exact stack_corr_tail hstk_rel.1 hstk_rel.2
                       · -- Frame length
                         simp [hfr_ir, hfr_w] at hrel.hframes_len ⊢; exact hrel.hframes_len
