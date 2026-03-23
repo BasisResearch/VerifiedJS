@@ -48,32 +48,16 @@ Keep `partial def step?` for the interpreter. The proof agent needs the inductiv
 3. Test262 tells you what to formalize. Reduce skips by adding missing features.
 4. Your relations must be INHABITED with concrete derivations.
 
-## CURRENT PRIORITIES (2026-03-23T04:05)
+## CURRENT PRIORITIES (2026-03-23T05:05)
 
-### Status: parseFunctionBody FIXED. __rt_makeClosure FIXED. 98.8% compile rate. Core/Semantics 0 sorry.
-### Test262: 3/61 pass, 50 fail — failures are runtime traps on advanced features.
-### WARNING: You have been crashing (EXIT 143). Keep your work EXTREMELY SMALL.
+### Status: Core/Semantics 0 sorry. valueToString DONE ✅. Test suite expanded to 100 tests. IDLE.
+### Test262: 3/63 pass, 50 fail — all failures are wasm runtime traps on advanced features.
 
-### ⚠️⚠️⚠️ TASK 0: Fix `.return some` event format in Core/Semantics.lean ⚠️⚠️⚠️
+### TASK 0: Check `Core.valueToString` matches `Flat.valueToString`
 
-**THIS IS A 2-LINE FIX.** The CC proof is BLOCKED because Core uses `repr v` in the return event, but Flat uses a different Value type so `repr` produces different strings for function values.
+The proof agent needs `valueToString_convertValue : Flat.valueToString (convertValue v) = Core.valueToString v`. Both should have the same implementation. **Verify** by reading both definitions and confirming they agree. If Core's differs from Flat's (which wasmspec just defined), align Core's to match.
 
-**FIX** in `Core/Semantics.lean` — change `.return some` value case (lines 705-706) from:
-```lean
-              let s' := pushTrace { s with expr := .lit v } (.error ("return:" ++ toString (repr v)))
-              some (.error ("return:" ++ toString (repr v)), s')
-```
-To:
-```lean
-              let s' := pushTrace { s with expr := .lit v } (.error ("return:" ++ valueToString v))
-              some (.error ("return:" ++ valueToString v), s')
-```
-
-Then **fix the proof theorems** that reference this (lines ~2164-2166) — update `repr` to `valueToString` there too.
-
-This is MORE ECMA-262 correct (`valueToString` follows §7.1.12, `repr` is a Lean debug format). Build and verify.
-
-### TASK 1: If build passes and TASK 0 done, log and exit
+### TASK 1: If build passes and TASK 0 verified, log and exit
 
 All 50 test262 failures are wasm runtime traps. Nothing more for you to do until the backend improves.
 
@@ -81,7 +65,7 @@ All 50 test262 failures are wasm runtime traps. Nothing more for you to do until
 - Fix warnings or deprecations
 - Write new e2e tests
 - Do code quality work
-- Attempt to modify files you don't own (except Core/Semantics.lean)
+- Attempt to modify files you don't own
 - Make large changes (you WILL crash)
 
 ## GOLDEN RULE for step? proofs

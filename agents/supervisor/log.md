@@ -1,4 +1,60 @@
 
+## Run: 2026-03-23T05:05:00+00:00
+
+### Build
+- **Status**: `lake build` **FAIL** — Wasm/Semantics.lean:6090 type mismatch (wasmspec const_f64 proof)
+
+### Sorry Report
+- **Count**: 78 (46 Wasm/Semantics + 28 CC + 3 ANF + 1 Lower)
+- **Delta**: +2 from last run (CC 25→28: binary explicit sorry + sub-case splits)
+
+### Test262
+- 3 pass, 50 fail, 3 skip, 5 xfail / 63 total (UNCHANGED 90+ hours)
+- jsspec expanded suite to 100 tests (92 xfail added)
+
+### Agent Health
+- **jsspec**: Completed at 04:00. Build clean, 0 sorry. Expanded test suite. IDLE — all failures are wasm runtime traps.
+- **wasmspec**: Completed at 04:15. **BROKE BUILD** (const_f64 type mismatch). But GREAT run: fixed ALL 6 Flat bugs, ANF break/continue→.silent, proved 3 EmitSimRel const cases.
+- **proof**: Idle since ~01:15. CC 28 sorry. 5 value sub-cases NOW UNBLOCKED by Flat fixes.
+
+### 🎉 MAJOR MILESTONE: All 6 Flat Semantic Bugs FIXED
+
+wasmspec completed ALL 6 Flat fixes that were blocking the CC proof:
+1. ✅ `toNumber` returns NaN for undefined/string/object/closure
+2. ✅ `evalUnary .bitNot` does actual bitwise NOT
+3. ✅ `valueToString` defined + `.throw` uses it
+4. ✅ `initialState` includes console binding + heap
+5. ✅ `updateBindingList` made public
+6. ✅ `.return some` uses `valueToString`
+7. ✅ ANF break/continue → `.silent` (trace mismatch fixed)
+8. ✅ 17 @[simp] lemmas added for proof automation
+
+This unblocks 5+ CC cases: `.unary`, `.throw`, `.return some`, `.assign`, `init_related` (both dirs).
+
+### Build Break Analysis
+wasmspec's const_f64 proof at line 6090 has `f` (from `const_f64_inv` rcases) not unified with the IR-computed expression `(Option.map (fun n => Float.ofNat n) v.toNat?).getD 0.0`. Fix: add `subst hfeq` after rcases. Wrote exact fix to wasmspec prompt.
+
+### Proof Chain Analysis
+- **Elaborate**: PROVED ✅
+- **Optimize**: PROVED ✅ (identity)
+- **ClosureConvert**: 28 sorry. 5 cases UNBLOCKED by Flat fixes. Bridge lemmas needed first (toNumber_convertValue, valueToString_convertValue, evalUnary_convertValue, EnvCorr_assign).
+- **ANFConvert**: 3 sorry. step_star + WF invariant blockers.
+- **Lower**: 1 sorry. Blocked on wasmspec step_sim.
+- **Emit**: Implicit in Wasm/Semantics. 46 sorry in step_sim. 3 const cases proved.
+- **EndToEnd**: Composition of above.
+
+### Actions Taken
+1. **wasmspec prompt**: CRITICAL BUILD FIX with exact code (subst hfeq). Removed completed TASK 0 (all 6 Flat bugs). New priorities: (1) fix build, (2) EmitSimRel remaining cases, (3) LowerSimRel cases, (4) align Flat.evalBinary with Core.evalBinary.
+2. **proof prompt**: MAJOR REWRITE — 5 CC cases marked UNBLOCKED. New TASK 1: bridge lemmas (toNumber/valueToString/evalUnary_convertValue). TASK 2: close 5 CC cases using bridges. TASK 3: binary (blocked on evalBinary). TASK 4: ANF. TASK 5: depth-indexed step_sim.
+3. **PROGRESS.md**: Added run entry. Updated proof chain (CC 28 sorry). Moved 7 items to RESOLVED. Updated critical path and agent health.
+
+### Next Run Priorities
+1. Verify wasmspec fixes build (const_f64 subst)
+2. Verify proof agent proves bridge lemmas (toNumber/valueToString/evalUnary_convertValue)
+3. Verify proof agent closes 5 CC cases (unary/throw/return/assign/init) — target -7 sorry
+4. Monitor wasmspec EmitSimRel remaining cases
+5. Monitor for evalBinary alignment
+
 ## Run: 2026-03-23T03:05:00+00:00
 
 ### Build
@@ -2320,3 +2376,4 @@ Plus **Flat.initialState** STILL empty (5th run asking).
 
 ## Run: 2026-03-23T05:05:02+00:00
 
+2026-03-23T05:28:10+00:00 DONE

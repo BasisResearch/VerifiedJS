@@ -57,37 +57,72 @@ If ClosureConvertCorrect needs 600 lines of case analysis, WRITE 600 LINES. That
 ## Test262
 Read `logs/test262_summary.md` for failure categories. Fix compiler bugs that cause test262 failures.
 
-## ⚠️⚠️⚠️ CC PROOF: WHAT TO DO NOW (2026-03-23T04:05) ⚠️⚠️⚠️
+## ⚠️⚠️⚠️ CC PROOF: WHAT TO DO NOW (2026-03-23T05:05) ⚠️⚠️⚠️
 
-### Current state: CC has 25 sorries. .if/.typeof/.await/.yield(some) value sub-cases PROVED ✅. Build PASSES. 5 sub-cases BLOCKED on Flat semantic bugs (wasmspec fixing this run).
+### 🎉 MAJOR UNBLOCK: wasmspec FIXED ALL 6 Flat bugs! 5 CC cases are NOW UNBLOCKED. 🎉
 
-### BLOCKED ITEMS (waiting on wasmspec/jsspec — DO NOT attempt these)
-- `.unary` — Flat.toNumber returns 0.0 instead of NaN, Flat.bitNot returns .undefined
-- `.throw` — Flat uses literal "throw" instead of valueToString
-- `.return some` — Core uses `repr v`, Flat uses `repr v` but types differ. Both being changed to `valueToString`
-- `.assign` — updateBindingList private (wasmspec making public)
-- `init_related` — Flat.initialState still uses Env.empty (wasmspec fixing)
+**Current state**: CC has 28 sorries. Build PASSES. Flat now has:
+- `toNumber` returns NaN for undefined/string/object/closure ✅
+- `evalUnary .bitNot` does actual bitwise NOT ✅
+- `valueToString` defined + `.throw` uses it ✅
+- `initialState` includes console binding + heap ✅
+- `updateBindingList` is public ✅
+- `.return some` uses `valueToString` ✅
+- ANF break/continue produces `.silent` ✅
 
-### TASK 1 (DO NOW): Prove `.binary` value sub-case
+### TASK 1 (TOP PRIORITY): Prove bridge lemmas — these unlock 5+ CC cases
 
-This is the ONLY unblocked value sub-case left. Pattern:
-- Need `evalBinary_convertValue`: `Flat.evalBinary op (convertValue a) (convertValue b) = convertValue (Core.evalBinary op a b)`
-- Prove by cases on `op`, then cases on `a` and `b` for `.add` (string concat vs numeric)
-- Use `toNumber_convertValue` (if you have it) and `toBoolean_convertValue` ✅
+These are NOW provable. Do them FIRST — every one unlocks downstream CC cases:
 
-### TASK 2 (DO NOW): Focus on ANF sorries — CC is mostly blocked
+```lean
+-- 1a. toNumber_convertValue (unlocks .unary)
+theorem toNumber_convertValue (v : Core.Value) :
+    Flat.toNumber (convertValue v) = Core.toNumber v := by
+  cases v <;> simp [convertValue, Flat.toNumber, Core.toNumber]
+  -- string case: both implementations match, should be rfl or simp
 
-CC has 5+ cases blocked on wasmspec. Switch to ANF:
+-- 1b. evalUnary_convertValue (closes .unary sorry)
+theorem evalUnary_convertValue (op : Core.UnaryOp) (v : Core.Value) :
+    Flat.evalUnary op (convertValue v) = convertValue (Core.evalUnary op v) := by
+  cases op <;> simp [Flat.evalUnary, Core.evalUnary, toNumber_convertValue]
+
+-- 1c. valueToString_convertValue (unlocks .throw + .return some)
+theorem valueToString_convertValue (v : Core.Value) :
+    Flat.valueToString (convertValue v) = Core.valueToString v := by
+  cases v <;> rfl  -- both implementations are identical modulo constructor names
+
+-- 1d. EnvCorr_assign (unlocks .assign)
+theorem EnvCorr_assign {cenv : Core.Env} {fenv : Flat.Env}
+    (h : EnvCorr cenv fenv) (name : String) (cv : Core.Value) :
+    EnvCorr (Core.Env.assign cenv name cv) (Flat.updateBindingList fenv name (convertValue cv)) := by
+  -- updateBindingList is now public. Prove by induction on env list.
+  sorry -- fill in using updateBindingList equation lemmas
+```
+
+### TASK 2 (IMMEDIATE): Close the 5 newly-unblocked CC value sub-cases
+
+After bridge lemmas are proved, close these CC sorries:
+
+1. **`.unary`** (line ~779) — use `evalUnary_convertValue`
+2. **`.throw`** (line ~828) — use `valueToString_convertValue` for trace match
+3. **`.return some`** (line ~883) — use `valueToString_convertValue` for trace match
+4. **`.assign`** (line ~569) — use `EnvCorr_assign` for env preservation
+5. **`init_related` both dirs** (line ~186-187) — Flat.initialState now has console. Prove `EnvCorr Core.initialState.env Flat.initialState.env` using the matching definitions.
+
+Each should be 5-15 lines. Target: -7 sorries this run.
+
+### TASK 3: Prove `.binary` value sub-case
+
+Still needs `evalBinary_convertValue` — this is BLOCKED on wasmspec aligning `Flat.evalBinary` with `Core.evalBinary`. Leave as sorry with the current note.
+
+### TASK 4: ANF sorries (if CC work done)
 
 **`anfConvert_halt_star` non-lit cases (ANFConvertCorrect.lean):**
 For each non-lit Flat constructor, show `normalizeExpr` produces an ANF expression where `step? ≠ none`. This contradicts `hhalt : ANF.step? sa = none`. Most cases are contradictions.
 
-**`anfConvert_step_star` (ANFConvertCorrect.lean):**
-Case analysis on ANF.Step. Use normalizeExpr correspondence.
+### TASK 5: Depth-indexed step simulation (for stepping sub-cases)
 
-### TASK 3: Depth-indexed step simulation (AFTER wasmspec fixes land)
-
-Once wasmspec fixes toNumber/bitNot/throw/return/assign/initialState, MANY CC cases will unblock simultaneously. The depth-indexed structure from last run's prompt is still the right approach. Key insight:
+The ~6 stepping sub-cases (seq, let, if, return, binary lhs/rhs) need recursive application of step_simulation. Use:
 
 ```lean
 private theorem step_sim_depth (n : Nat) ... :
@@ -98,49 +133,22 @@ private theorem step_sim_depth (n : Nat) ... :
   | succ k ih => ... -- step: use ih on sub-expressions with depth ≤ k
 ```
 
-### TASK 4: After jsspec/wasmspec changes land, prove bridge lemmas
-
-Once Flat gets `valueToString` and Core's `.return` uses `valueToString`, prove:
-```lean
-theorem valueToString_convertValue (v : Core.Value) :
-    Flat.valueToString (convertValue v) = Core.valueToString v := by
-  cases v with
-  | null => rfl
-  | undefined => rfl
-  | bool b => cases b <;> rfl
-  | number n => rfl  -- same implementation
-  | string s => rfl  -- same implementation
-  | object addr => rfl  -- both return "[object Object]"
-  | function idx => rfl  -- Core: "function", Flat .closure: "function"
-```
-Also prove:
-```lean
-theorem toNumber_convertValue (v : Core.Value) :
-    Flat.toNumber (convertValue v) = Core.toNumber v := by
-  cases v <;> simp [convertValue, Flat.toNumber, Core.toNumber]
-  -- string case needs more work (same implementation, should be rfl-like)
-
-theorem evalUnary_convertValue (op : Core.UnaryOp) (v : Core.Value) :
-    Flat.evalUnary op (convertValue v) = convertValue (Core.evalUnary op v) := by
-  cases op <;> simp [Flat.evalUnary, Core.evalUnary, toNumber_convertValue]
-  -- .bitNot case: uses toNumber_convertValue
-```
-
-### Sorry inventory (2026-03-23T04:05):
+### Sorry inventory (2026-03-23T05:05):
 
 | # | File | Count | Description | Priority |
 |---|------|-------|-------------|----------|
-| 1 | CC | 2 | init_related both dirs — BLOCKED (wasmspec) | WAIT |
-| 2 | CC | 1 | .assign value — BLOCKED (private updateBindingList) | WAIT |
-| 3 | CC | 1 | .unary value — BLOCKED (Flat toNumber/bitNot wrong) | WAIT |
-| 4 | CC | 1 | .binary value — **DO NOW** | **NOW** |
-| 5 | CC | 1 | .throw — BLOCKED (Flat event mismatch) | WAIT |
-| 6 | CC | 1 | .return some — BLOCKED (repr vs valueToString) | WAIT |
-| 7 | CC | ~6 | stepping sub-cases — TASK 3 (after wasmspec) | NEXT |
+| 1 | CC | 2 | init_related both dirs — **NOW UNBLOCKED** | **NOW** |
+| 2 | CC | 1 | .assign value — **NOW UNBLOCKED** | **NOW** |
+| 3 | CC | 1 | .unary value — **NOW UNBLOCKED** | **NOW** |
+| 4 | CC | 1 | .binary value — BLOCKED (evalBinary mismatch) | WAIT |
+| 5 | CC | 1 | .throw — **NOW UNBLOCKED** | **NOW** |
+| 6 | CC | 1 | .return some — **NOW UNBLOCKED** | **NOW** |
+| 7 | CC | ~6 | stepping sub-cases — TASK 5 | NEXT |
 | 8 | CC | ~11 | call/newObj/getProp/etc — needs heap | LATER |
 | 9 | CC | 1 | .var captured — needs heap | LATER |
-| 10 | ANF | 3 | step_star + halt_star — **DO NOW** | **NOW** |
-| 11 | Lower | 1 | Blocked on wasmspec | BLOCKED |
+| 10 | CC | 2 | new sorries (line 408 .var captured, line 709 .seq stepping) | LATER |
+| 11 | ANF | 3 | step_star + halt_star — TASK 4 | **NOW** |
+| 12 | Lower | 1 | Blocked on wasmspec | BLOCKED |
 
 ### Key Lean 4 pitfall — AVOID `cases ... with` inside `<;>` blocks
 

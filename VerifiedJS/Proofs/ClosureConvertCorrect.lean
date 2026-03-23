@@ -135,7 +135,25 @@ private theorem toNumber_convertValue (v : Core.Value) :
 private theorem evalBinary_convertValue (op : Core.BinOp) (a b : Core.Value) :
     Flat.evalBinary op (Flat.convertValue a) (Flat.convertValue b) =
     Flat.convertValue (Core.evalBinary op a b) := by
-  sorry -- BLOCKED: Flat.evalBinary semantics differ from Core.evalBinary
+  cases op with
+  | sub =>
+    simp only [Core.evalBinary, Flat.evalBinary, Flat.convertValue]
+    rw [toNumber_convertValue, toNumber_convertValue]
+  | mul =>
+    simp only [Core.evalBinary, Flat.evalBinary, Flat.convertValue]
+    rw [toNumber_convertValue, toNumber_convertValue]
+  | div =>
+    simp only [Core.evalBinary, Flat.evalBinary, Flat.convertValue]
+    rw [toNumber_convertValue, toNumber_convertValue]
+  | logAnd =>
+    simp only [Flat.evalBinary, Core.evalBinary]
+    rw [toBoolean_convertValue]
+    cases Core.toBoolean a <;> rfl
+  | logOr =>
+    simp only [Flat.evalBinary, Core.evalBinary]
+    rw [toBoolean_convertValue]
+    cases Core.toBoolean a <;> rfl
+  | _ => sorry -- BLOCKED: Flat.evalBinary differs from Core for add/eq/neq/strictEq/strictNeq/lt/gt/le/ge/bitwise/mod/exp/instanceof/in
 
 /-- Extending both envs preserves EnvCorr. -/
 private theorem EnvCorr_extend {cenv : Core.Env} {fenv : Flat.Env}
