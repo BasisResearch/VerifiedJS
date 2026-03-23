@@ -1683,6 +1683,36 @@ theorem step?_eq_globalGet_oob (s : ExecState) (idx : Nat) (rest : List Instr)
       { s with code := [], trace := s.trace ++ [.trap msg] }) := by
   cases s; simp_all [step?, trapState, pushTrace]
 
+/-- global.set with valid index and non-empty stack updates the store. -/
+theorem step?_eq_globalSet_valid (s : ExecState) (idx : Nat) (rest : List Instr)
+    (v : WasmValue) (stk : List WasmValue)
+    (hcode : s.code = Instr.globalSet idx :: rest)
+    (hstack : s.stack = v :: stk)
+    (h : idx < s.store.globals.size) :
+    step? s = some (.silent,
+      { s with code := rest, stack := stk,
+        store := { s.store with globals := s.store.globals.set! idx v },
+        trace := s.trace ++ [.silent] }) := by
+  cases s; simp_all [step?, pop1?, pushTrace]
+
+/-- global.set with empty stack traps. -/
+theorem step?_eq_globalSet_emptyStack (s : ExecState) (idx : Nat) (rest : List Instr)
+    (hcode : s.code = Instr.globalSet idx :: rest)
+    (hstack : s.stack = []) :
+    step? s = some (.trap "stack underflow in global.set",
+      { s with code := [], trace := s.trace ++ [.trap "stack underflow in global.set"] }) := by
+  cases s; simp_all [step?, pop1?, trapState, pushTrace]
+
+/-- global.set with out-of-bounds index traps. -/
+theorem step?_eq_globalSet_oob (s : ExecState) (idx : Nat) (rest : List Instr)
+    (v : WasmValue) (stk : List WasmValue)
+    (hcode : s.code = Instr.globalSet idx :: rest)
+    (hstack : s.stack = v :: stk)
+    (h : ¬(idx < s.store.globals.size)) :
+    step? s = some (.trap s!"unknown global index {idx}",
+      { s with code := [], trace := s.trace ++ [.trap s!"unknown global index {idx}"] }) := by
+  cases s; simp_all [step?, pop1?, trapState, pushTrace]
+
 /-- return clears labels and code. -/
 @[simp]
 theorem step?_return (s : ExecState) (rest : List Instr) :

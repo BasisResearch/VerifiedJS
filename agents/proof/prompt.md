@@ -57,54 +57,47 @@ If ClosureConvertCorrect needs 600 lines of case analysis, WRITE 600 LINES. That
 ## Test262
 Read `logs/test262_summary.md` for failure categories. Fix compiler bugs that cause test262 failures.
 
-## CURRENT PRIORITIES (2026-03-23T20:05)
+## CURRENT PRIORITIES (2026-03-23T21:05)
 
-### Build: PASS ✅. Sorry: 74 (25 CC + 46 Wasm + 2 ANF + 1 Lower).
+### Build: PASS ✅. Sorry: 73 (24 CC + 46 Wasm + 2 ANF + 1 Lower).
 
-### ⚠️ YOU HAVE BEEN TIMING OUT EVERY RUN FOR 7.5+ HOURS. FIX THIS.
+### ✅ YOU RECOVERED FROM TIMEOUTS! Keep up the momentum.
 
-Your last productive run was 12:30 (proved 8 evalBinary cases). Since then: ALL runs timeout at 60 min or crash. You are making ZERO progress.
+You went from 74→73 sorries in the 20:30 run. Your infrastructure work (firstNonValueExpr/Prop lemmas) is paying off. Keep going with this approach — small, targeted changes that build toward stepping sub-cases.
 
-**ROOT CAUSE**: You're spending too long on lake build + complex proofs. Fix:
-1. Do NOT run `lake build` at the start. The build is passing. Skip it.
-2. Use `lean_diagnostic_messages` to check individual files instead of full rebuilds.
-3. Only run `lake build` ONCE at the very end to verify.
+**TIME MANAGEMENT**: Keep doing what worked this run:
+1. Do NOT run `lake build` at the start. Use `lean_diagnostic_messages` instead.
+2. Only run `lake build` ONCE at the end to verify.
+3. If stuck for 15 minutes on a sorry, move on.
 
-### TASK 0: Prove the `convertExpr_not_value` helper lemma
+### TASK 0: Close the captured variable sorry at line 758
 
-This is a standalone lemma needed by ALL 12 stepping sub-cases. Add it BEFORE `closureConvert_step_simulation`:
+`lean_goal` at line 758 to see the exact state. This is the `.var name` case when `lookupEnv envMap name = some idx`. The convertExpr produces `.getEnv (.var envVar) idx`. You need to show that if Core steps `.var name` to a value (via env lookup), Flat steps `.getEnv (.var envVar) idx` correspondingly. This requires:
+1. The env correspondence maps `name` in Core's env to a heap slot at `idx`
+2. Flat's `.getEnv` steps by looking up envVar, then indexing into the closure env
 
-```lean
-private theorem convertExpr_not_value (e : Core.Expr)
-    (h : Core.exprValue? e = none)
-    (scope : List String) (envVar : String) (envMap : Flat.EnvMapping) (st : Flat.CCState) :
-    Flat.exprValue? (Flat.convertExpr e scope envVar envMap st).fst = none := by
-  cases e <;> simp [Core.exprValue?] at h <;> simp [Flat.convertExpr, Flat.exprValue?]
-  all_goals (first | rfl | (try split) <;> simp [Flat.exprValue?])
-```
+If the CC_SimRel doesn't track heap correspondence yet, `sorry` it with a note and move to TASK 1.
 
-Just add this lemma, check with lean_diagnostic_messages, done. This is 5 minutes of work.
+### TASK 1: Close stepping sub-cases (lines 918, 972, 1047, 1315, etc.)
 
-### TASK 1: Close ONE stepping sub-case — `.typeof` at line 1171
+You have 9+ stepping sub-cases all following the same pattern. Pick the simplest one (e.g., line 918 — let-binding stepping). The approach:
+1. `lean_goal` at the sorry line
+2. The Flat sub-expression is not a value (use infrastructure you built)
+3. Both Flat.step? and Core.step? delegate to the sub-expression
+4. Apply `ih_depth` for the recursive case
+5. Reconstruct CC_SimRel for the result
 
-After adding the helper, tackle typeof. The approach:
-1. `lean_goal` at line 1171 to see exact proof state
-2. Key insight: both Flat.step? and Core.step? delegate to stepping the sub-expression `arg`, then wrap result in `.typeof`
-3. Use `convertExpr_not_value` to show Flat arg is not a value
-4. Use `ih_depth` at `Core.Expr.depth arg < n` (from `omega`) to get the Core sub-step
-5. Reconstruct the full Core step by showing Core.step? on `.typeof arg` delegates to the sub-step
+Even closing 1-2 of these validates the pattern for all 9.
 
-If you get stuck after 20 minutes, sorry it and move to TASK 2.
+### TASK 2: If stuck on above, close any "easy" sorry
 
-### TASK 2 (ONLY if TASK 1 is stuck): Close the `while` loop sorry at line 1399
-
-`lean_goal` at line 1399 to see what's needed. The CC_SimRel for while desugaring needs to show convertExpr distributes over the if/seq/while_ expansion.
+Run `lean_multi_attempt` on each sorry line with `["grind", "aesop", "simp_all", "omega", "decide"]`. If any close automatically, take the free win.
 
 ### ABSOLUTELY DO NOT:
 - Run `lake build` at the start of your run
-- Attempt heap/funcs cases (call, newObj, getProp, etc.)
+- Attempt heap/funcs cases (call, newObj, getProp, etc.) — these need CC_SimRel changes
 - Refactor existing proved cases
-- Spend more than 20 minutes on any single sorry
+- Spend more than 15 minutes on any single sorry
 
 ## Key pitfall — AVOID `cases ... with` inside `<;>` blocks
 

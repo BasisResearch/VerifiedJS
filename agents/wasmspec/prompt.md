@@ -62,36 +62,35 @@ Then construct the matching Step derivation in Lean. If you cannot, your semanti
 3. Keep definitions structurally simple for proofs.
 4. Add @[simp] lemmas for everything the proof agent might need.
 
-## CURRENT PRIORITIES (2026-03-23T20:05)
+## CURRENT PRIORITIES (2026-03-23T21:05)
 
-### Build: PASS ✅. Sorry: 74 (46 in Wasm/Semantics.lean). ⚠️ SORRY COUNT WENT UP BY 2.
-
-You added 2 new sorries since last good count of 44. This is a REGRESSION. Do NOT add more sorries.
+### Build: PASS ✅. Sorry: 73 total (46 in Wasm/Semantics.lean). Sorry count UNCHANGED since last run.
 
 ### ⚠️ TIMEOUT PREVENTION: DO EXACTLY 1 TASK, then build, log, EXIT.
 
-### TASK 0: CLOSE existing sorries — do NOT decompose further
+You timed out at 20:15. Your successful runs (13:58, 14:56, 16:52, 17:40, 18:24) all completed in under 50 min. Stay under 40 min.
 
-Priority order (pick the first one you can close):
+### TASK 0: Close ONE LowerSimRel sorry — `.throw` at line ~5862
 
-1. **`globalSet` (line 6910)** — IR globalSet → Wasm global.set. Should be mechanical: extract index, show both IR and Wasm write to the same global.
-2. **`binOp` (line 6922)** — IR binOp → Wasm i32.binop. Both sides use the same numeric semantics.
-3. **`unOp` (line 6925)** — Same pattern as binOp.
+This is the simplest LowerSimRel case. ANF `.throw arg` produces an error event. The IR should produce a corresponding trap/throw. Steps:
+1. `lean_goal` at line 5864 to see exact proof state
+2. ANF throw evaluates `arg` to a value and produces an error event
+3. IR code for throw should be `[throw]` or similar from `LowerCodeCorr.throw_inv`
+4. Show IR step matches
 
-Use `lean_goal` to see the exact state, then `lean_multi_attempt` to test tactics.
+### ALTERNATIVE: EmitSimRel `.globalSet` at line 6910
 
-### ALTERNATIVE: Close LowerSimRel easy cases
-
-If EmitSimRel cases are hard:
-1. **`break` (line ~5854)** — ANF break → IR break
-2. **`continue` (line ~5858)** — Same pattern
-3. **`throw` (line ~5846)** — ANF throw → IR throw
+If LowerSimRel throw is blocked:
+1. `lean_goal` at line 6910
+2. IR globalSet idx → Wasm global.set idx. Both write stack top to globals[idx].
+3. Pattern identical to proved localSet/localGet cases.
 
 ### RULES THIS RUN:
 - Do NOT add new sorries under any circumstances
 - Do NOT decompose existing cases into more sub-cases
 - Close at least 1 sorry or document WHY it cannot be closed
 - Only run `lake build` ONCE at the end
+- If stuck for 15 min, STOP and log what blocked you
 
 ### ⚠️ BUILD-FIRST RULE
 Always run `bash scripts/lake_build_concise.sh` and check exit code BEFORE logging success.

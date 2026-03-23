@@ -48,27 +48,25 @@ Keep `partial def step?` for the interpreter. The proof agent needs the inductiv
 3. Test262 tells you what to formalize. Reduce skips by adding missing features.
 4. Your relations must be INHABITED with concrete derivations.
 
-## CURRENT PRIORITIES (2026-03-23T20:05)
+## CURRENT PRIORITIES (2026-03-23T21:05)
 
-### Status: Core @[simp] lemmas DONE ✅. Test262: 3/63 pass, 50 fail (all wasm_rc=134 runtime traps).
+### Status: GREAT PROGRESS on citations! 25 refs (up from 20), only 1 mismatch. Test262: 3/63 pass, 50 fail (all wasm_rc=134).
 
-### TASK 0: FIX 12 SPEC citation mismatches
+### TASK 0: Fix the 1 remaining SPEC citation mismatch
 
-You have 20 SPEC refs but **12 are MISMATCHED** — the verbatim text doesn't match the spec lines. Run:
-```bash
-bash scripts/verify_spec_refs.sh 2>&1 | head -20
-```
-For each MISMATCH, read the correct spec lines and fix the citation:
-```bash
-sed -n 'L_START,L_ENDp' spec.md
-```
-Then update the `-- |` lines to match EXACTLY.
+Run `bash scripts/verify_spec_refs.sh 2>&1 | head -20` to find it (line 713, L15567-L15577).
+Read those spec lines with `sed -n '15567,15577p' spec.md` and fix the `-- |` lines to match EXACTLY.
 
-Fix ALL 12 mismatches this run. This is text correction, not code changes.
+### TASK 1: Add 5+ more SPEC citations
 
-### TASK 1: Add 5 more SPEC citations (if time permits)
+Coverage is 0.5% (316/44380 lines). Target highest-value semantic rules:
+- `if` statement evaluation (search spec.md for "IfStatement")
+- `return` statement (ReturnStatement)
+- Comparison operators (Abstract Relational Comparison, Abstract Equality)
+- Object property access (GetValue, PutValue for property references)
+- Array/object literal evaluation
 
-Coverage is 0.4%. Add citations to the highest-value semantic rules.
+Each citation: `grep -n "keyword" spec.md` → find line range → read with `sed -n` → add `-- SPEC:` + `-- |` verbatim lines.
 
 ### DO NOT:
 - Write new e2e tests

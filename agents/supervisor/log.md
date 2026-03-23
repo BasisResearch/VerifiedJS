@@ -3194,3 +3194,47 @@ The `convertExpr_not_value` helper is the KEY ENABLER — once proved, it unbloc
 
 ## Run: 2026-03-23T21:05:01+00:00
 
+
+### Build
+- **Status**: `lake build` **PASS** ✅
+
+### Metrics
+- **Sorry count**: 73 (threshold 100) — 24 CC + 46 Wasm + 2 ANF + 1 Lower
+- **Delta**: DOWN from 74 (-1, CC 25→24)
+- **Test262**: 3 pass, 50 fail, 3 skip, 5 xfail / 63 total (UNCHANGED 120+ hrs)
+- **Spec coverage**: 0.5% (25 refs, 1 mismatch — improved from 20 refs/12 mismatches)
+- **WasmCert refs**: 0 checked, 0 mismatches
+
+### Proof Chain Status
+```
+Source ──[elaborate]──> Core ──[closureConvert]──> Flat ──[anfConvert]──> ANF ──[lower]──> Wasm.IR ──[emit]──> Wasm
+         ✅ proved       24 sorry                    2 sorry              1 sorry          46 sorry
+```
+
+### Agent Status
+- **proof**: RECOVERED ✅ from 8hr timeout streak! The 20:30 run went 74→75→73 — actively committing, writing substantial infrastructure (firstNonValueExpr/Prop helper lemmas, ~100 LOC). Still running as of 21:05. This is the first productive run since 12:30.
+- **wasmspec**: Stalling. Timed out at 20:15. Last productive run: 18:15 (proved loop case, net 0 sorry). 46 sorry unchanged.
+- **jsspec**: Healthy — completing every run. Added 5 more spec citations (25 total, 1 mismatch down from 12). Good steady progress.
+
+### Abstraction Discovery
+
+**Proof agent's infrastructure approach**: The proof agent is building `firstNonValueExpr_not_lit`, `firstNonValueProp_not_lit`, `firstNonValueExpr_none_implies_values`, `firstNonValueProp_none_implies_values` — these are exactly the helper lemmas needed for the stepping sub-cases. The agent independently discovered the right abstractions (these are needed to show that when a list-based constructor has a non-value element, step? delegates to stepping that element). This is a good sign — the agent is thinking architecturally rather than just trying random tactics.
+
+**CC Sorry Taxonomy (24 remaining)**:
+- **Stepping sub-cases (9)**: Lines 918, 972, 1047, 1315, 1359, 1360, 1417, 1593, 1694. Need depth IH + firstNonValue infrastructure.
+- **Captured var (1)**: Line 758. Needs heap correspondence in CC_SimRel.
+- **Env/heap/funcs (7)**: Lines 1113-1119. Need CC_SimRel to track heap+funcs.
+- **Other (7)**: objectLit/arrayLit/functionDef/while/tryCatch/misc.
+
+The firstNonValue lemmas being built NOW are prerequisites for the 9 stepping sub-cases. If the proof agent completes this infrastructure, it could close 2-3 stepping cases per run.
+
+### Actions Taken
+1. ✅ Updated proof prompt (2026-03-23T21:05): Acknowledged recovery. TASK 0 = captured var (line 758). TASK 1 = stepping sub-cases (let/assign/etc.). TASK 2 = try lean_multi_attempt on every sorry for free wins. Kept time management rules.
+2. ✅ Updated wasmspec prompt (2026-03-23T21:05): Simplified to 1 task. TASK 0 = LowerSimRel `.throw` (line 5864). ALTERNATIVE = EmitSimRel globalSet (line 6910). Strict no-new-sorry rule.
+3. ✅ Updated jsspec prompt (2026-03-23T21:05): Only 1 mismatch left — fix it. Then continue adding 5+ citations.
+4. ✅ Updated PROGRESS.md: metrics table, proof chain (CC 25→24), open abstractions.
+
+### Next Run Focus
+- Monitor proof agent's run — is it completing or timing out? If it completes with sorry reduction, the infrastructure approach is validated.
+- Check wasmspec — did it close a LowerSimRel case?
+- Track jsspec spec citation count (target: 30+ refs, 0 mismatches)
