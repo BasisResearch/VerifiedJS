@@ -6501,9 +6501,7 @@ theorem step_sim (irmod : IRModule) (wmod : Module) :
                         -- Get head value correspondence from stack
                         have hhead := hstk_rel.2 0 (by simp)
                         simp [hstk_w] at hhead
-                        obtain ⟨irv, hirv, wv', hwv', hcorr⟩ := hhead
-                        simp at hirv hwv'
-                        rw [hirv] at hcorr; rw [hwv'] at hcorr
+                        -- hhead : IRValueToWasmValue iv wv
                         -- Case split: j = idx vs j ≠ idx
                         simp only [Array.set!] at hj hj' ⊢
                         unfold Array.setIfInBounds at hj hj' ⊢
@@ -6511,7 +6509,7 @@ theorem step_sim (irmod : IRModule) (wmod : Module) :
                         if heq : j = idx then
                           subst heq
                           simp [Array.getElem_set]
-                          exact hcorr
+                          exact hhead
                         else
                           simp [Array.getElem_set, heq]
                           exact hrel.hframes_vals irf wf irfs wfs hfr_ir hfr_w j

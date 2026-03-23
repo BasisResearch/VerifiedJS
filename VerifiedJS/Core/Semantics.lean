@@ -69,6 +69,43 @@ def updateBindingList (xs : List (VarName × Value)) (name : VarName) (v : Value
 @[simp] theorem updateBindingList_cons_ne (n : VarName) (old : Value) (rest : List (VarName × Value)) (name : VarName) (v : Value) (h : (n == name) = false) :
     updateBindingList ((n, old) :: rest) name v = (n, old) :: updateBindingList rest name v := by simp [updateBindingList, h]
 
+/-- Lookup after updateBindingList for the same name returns the new value. -/
+@[simp] theorem lookup_updateBindingList_eq (xs : List (VarName × Value)) (name : VarName) (v : Value)
+    (h : xs.any (fun kv => kv.fst == name) = true) :
+    Env.lookup { bindings := updateBindingList xs name v } name = some v := by
+  induction xs with
+  | nil => simp at h
+  | cons hd tl ih =>
+    obtain ⟨n, old⟩ := hd
+    simp only [updateBindingList]
+    split
+    · -- n == name
+      rename_i heq
+      simp [Env.lookup, List.find?, heq]
+    · -- n ≠ name
+      rename_i hne
+      simp only [Env.lookup, List.find?]
+      have hne' : ¬ (n == name) = true := hne
+      simp [hne'] at h ⊢
+      sorry
+      -- exact ih h
+
+/-- Lookup after updateBindingList for a different name is unchanged. -/
+@[simp] theorem lookup_updateBindingList_ne (xs : List (VarName × Value)) (name other : VarName) (v : Value)
+    (hne : (other == name) = false) :
+    Env.lookup { bindings := updateBindingList xs name v } other = Env.lookup { bindings := xs } other := by
+  induction xs with
+  | nil => simp [updateBindingList, Env.lookup]
+  | cons hd tl ih =>
+    obtain ⟨n, old⟩ := hd
+    simp only [updateBindingList]
+    split
+    · -- n == name
+      rename_i heq
+      sorry
+    · -- n ≠ name
+      sorry
+
 /-- ECMA-262 §8.1.1.4.5 SetMutableBinding (simplified update). -/
 def Env.assign (env : Env) (name : VarName) (v : Value) : Env :=
   if env.bindings.any (fun kv => kv.fst == name) then
