@@ -5363,6 +5363,24 @@ inductive LowerCodeCorr : ANF.Expr → List IRInstr → Prop where
   | continue_ (label : Option String) (target : String) :
       LowerCodeCorr (.«continue» label) [.br target]
 
+/-- Inversion: LowerCodeCorr for a variable must be the `var` constructor. -/
+theorem LowerCodeCorr.var_inv {name : ANF.VarName} {code : List IRInstr}
+    (h : LowerCodeCorr (.trivial (.var name)) code) :
+    ∃ idx, code = [.localGet idx] := by
+  cases h; exact ⟨_, rfl⟩
+
+/-- Inversion: LowerCodeCorr for break must be the `break_` constructor. -/
+theorem LowerCodeCorr.break_inv {label : Option String} {code : List IRInstr}
+    (h : LowerCodeCorr (.«break» label) code) :
+    ∃ target, code = [.br target] := by
+  cases h; exact ⟨_, rfl⟩
+
+/-- Inversion: LowerCodeCorr for continue must be the `continue_` constructor. -/
+theorem LowerCodeCorr.continue_inv {label : Option String} {code : List IRInstr}
+    (h : LowerCodeCorr (.«continue» label) code) :
+    ∃ target, code = [.br target] := by
+  cases h; exact ⟨_, rfl⟩
+
 structure LowerSimRel (prog : ANF.Program) (irmod : IRModule)
     (s : ANF.State) (ir : IRExecState) : Prop where
   /- The IR module is the result of lowering. -/
