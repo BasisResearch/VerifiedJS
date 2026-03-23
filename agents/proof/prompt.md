@@ -161,3 +161,14 @@ You have Lean LSP tools via MCP. USE THEM on every proof attempt:
 
 WORKFLOW: lean_goal to see state → lean_multi_attempt to test tactics → edit the one that works.
 DO NOT guess tactics. TEST FIRST with lean_multi_attempt.
+
+## URGENT: closureConvert_step_simulation — THE PLAN IS IN YOUR LOG
+
+Read agents/proof/log.md NOW. There is a concrete step-by-step plan for HeapCorr.
+This is a SYNTACTIC simulation — no logical relations needed. Just:
+1. Define HeapCorr (heap lengths match, entries correspond via convertValue)
+2. Add to CC_SimRel
+3. Prove preservation (alloc, update, get)
+4. Close the 17 sorries one by one
+
+This is not hard. It is tedious. DO THE WORK. Complete the proof BY ALL MEANS NECESSARY.

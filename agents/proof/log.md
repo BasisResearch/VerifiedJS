@@ -1232,3 +1232,87 @@ test_write
 ## Run: 2026-03-23T23:00:03+00:00
 
 2026-03-23T23:30:01+00:00 SKIP: already running
+## SYSTEM NOTE: Plan for closureConvert_step_simulation
+
+You have 17 sorries. Here is the exact plan.
+
+### Do We Need Logical Relations or Separation Logic?
+
+No — not for closure conversion. Closure conversion is a SYNTACTIC transformation:
+closures become struct+index pairs, free variables become environment lookups. The
+heap structure is isomorphic — same addresses, same property names, values mapped
+through convertValue. This is a simple SIMULATION proof, not a logical relations argument.
+
+Logical relations would be needed if values could be observed at different types
+(e.g., polymorphism, existential types). Separation logic would be needed if we
+had shared mutable state with aliasing concerns. Neither applies here.
+
+What you need is: HeapCorr + FuncsCorr in the simulation relation, plus preservation
+lemmas for heap operations.
+
+### What you already have (good):
+- CC_SimRel with EnvCorr (bidirectional via convertValue)
+- EnvCorr_extend proved
+- Expression correspondence via convertExpr
+- ~20 constructor cases proved
+
+### Step 1: Define HeapCorr
+
+```
+private def HeapCorr (cheap : Core.Heap) (fheap : Flat.Heap) : Prop :=
+  cheap.length = fheap.length /\
+  forall addr, addr < cheap.length ->
+    match cheap.get? addr, fheap.get? addr with
+    | some cprops, some fprops =>
+      fprops = cprops.map (fun (k, v) => (k, Flat.convertValue v))
+    | _, _ => False
+```
+
+This says: same number of heap objects, and each object's properties correspond via convertValue.
+
+### Step 2: Define FuncsCorr
+
+```
+private def FuncsCorr (cfuncs : Core.FuncTable) (ffuncs : Flat.FuncTable) : Prop :=
+  cfuncs.length = ffuncs.length
+```
+
+Simple length equality suffices because convertFuncDefs maps 1-to-1.
+
+### Step 3: Update CC_SimRel
+
+Add HeapCorr and FuncsCorr to the conjunction. Then fix init_related
+(initial heaps are both [console_obj] so HeapCorr holds by convertValue on the console object).
+
+### Step 4: Prove preservation lemmas
+
+```
+theorem HeapCorr_alloc (h : HeapCorr ch fh) (cprops fprops : Props)
+    (hconv : fprops = cprops.map (fun (k,v) => (k, Flat.convertValue v))) :
+    HeapCorr (ch.push cprops) (fh.push fprops)
+
+theorem HeapCorr_update (h : HeapCorr ch fh) (addr : Nat) (cprops fprops : Props)
+    (hconv : fprops = cprops.map (fun (k,v) => (k, Flat.convertValue v))) :
+    HeapCorr (ch.set addr cprops) (fh.set addr fprops)
+
+theorem HeapCorr_get (h : HeapCorr ch fh) (addr : Nat) (cprops : Props)
+    (hget : ch.get? addr = some cprops) :
+    fh.get? addr = some (cprops.map (fun (k,v) => (k, Flat.convertValue v)))
+```
+
+### Step 5: Close sorries in order
+
+1. getProp — simplest heap case. Flat.step? on getProp reads from heap.
+   Use HeapCorr_get to show Core heap has corresponding entry. Build Core.Step.
+2. setProp — uses HeapCorr_update
+3. deleteProp, getIndex, setIndex — similar to getProp/setProp
+4. newObj, objectLit, arrayLit — uses HeapCorr_alloc
+5. call — uses FuncsCorr for function index lookup
+6. functionDef — uses FuncsCorr + HeapCorr
+7. tryCatch — uses EnvCorr through catch variable binding
+8. "stepping sub-case" sorries — recursive, use IH from the strong induction
+
+### This is straightforward. Do not overcomplicate it.
+
+## Run: 2026-03-23T23:53:49+00:00
+
