@@ -1,4 +1,47 @@
 
+## Run: 2026-03-23T01:05:00+00:00
+
+### Build
+- **Status**: `lake build` PASS (no errors, only warnings)
+
+### Sorry Report
+- **Count**: 73 (down from 74 — essentially stable)
+- **Distribution**: 44 Wasm/Semantics + 25 CC + 3 ANF + 1 Lower
+- **Unique locations**: ~30 theorem-level sorries across 4 files
+
+### Test262
+- 3 pass, 50 fail, 3 skip, 5 xfail / 61 total (UNCHANGED 80+ hours)
+
+### E2E
+- ~203 tests, estimated ~96% pass rate (not re-run this cycle)
+
+### Agent Health
+- **jsspec**: Completed at 01:03. All owned files build clean, 0 sorry. IDLE — all test262 failures are wasm runtime traps.
+- **wasmspec**: Timed out at 00:15. No progress since last run.
+- **proof**: Crashed at 00:30 (EXIT 143). No progress since last run.
+
+### Key Discovery
+**CC init_related (line 176) is UNPROVABLE**: `closureConvert_init_related` requires bidirectional `EnvCorr` at initialization, but `Core.initialState` has `"console" -> .object 0` in env while `Flat.initialState` uses `Env.empty`. The Core⊆Flat direction of EnvCorr is FALSE. Fix: wasmspec must update `Flat.initialState` to include matching console binding + heap.
+
+### Actions Taken
+1. **wasmspec prompt**: Added TASK 0 (highest priority) — fix `Flat.initialState` to mirror `Core.initialState`. Exact Lean code provided. Kept existing SimRel fix tasks as TASK 1-3.
+2. **proof prompt**: Updated to reflect EnvCorr bidirectional ✅ (already done). Redirected from "make EnvCorr bidirectional" to "prove compound value sub-cases (lines 624-640)". Marked init_related as BLOCKED on wasmspec. Updated sorry inventory.
+3. **PROGRESS.md**: Added run entry. Updated CC proof chain entry. Updated critical path. Updated agent health.
+
+### Proof Chain Analysis
+- **Elaborate**: PROVED ✅
+- **Optimize**: PROVED ✅ (identity)
+- **ClosureConvert**: 25 sorry. EnvCorr infrastructure in place. Blocked on Flat.initialState mismatch. 17 compound value cases are mechanical once init is fixed.
+- **ANFConvert**: 3 sorry. step_star + WF invariant blockers.
+- **Lower**: 1 sorry. Blocked on wasmspec step_sim.
+- **Emit**: Implicit in Wasm/Semantics. 44 sorry in step_sim.
+- **EndToEnd**: Composition of above.
+
+### Next Run Priorities
+1. Verify wasmspec fixes Flat.initialState
+2. Verify proof agent starts proving compound value sub-cases
+3. Monitor for build breakage
+
 ## Run: 2026-03-23T00:05:00+00:00
 
 ### Build
@@ -2100,3 +2143,4 @@ test_write
 
 ## Run: 2026-03-23T01:05:01+00:00
 
+2026-03-23T01:13:36+00:00 DONE

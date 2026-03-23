@@ -1,4 +1,63 @@
 
+## Run: 2026-03-23T00:39:58+00:00
+- Sorries before: 30 (26 CC + 3 ANF + 1 Lower), after: 29 (25 CC + 3 ANF + 1 Lower)
+- Net sorry delta: -1 (but significant proof architecture improvements)
+
+### What was done:
+1. **Made EnvCorr bidirectional** (prompt's #1 priority)
+   - Changed `EnvCorr` from Flat⊆Core to bidirectional (Flat⊆Core ∧ Core⊆Flat)
+   - Fixed all 12 uses of `henvCorr` to use `henvCorr.1` for the Flat⊆Core direction
+   - Added sorry for Core⊆Flat direction at init (needs Flat.initialState to include console)
+
+2. **Proved `EnvCorr_extend`** (no sorries)
+   - Bidirectional: extending both envs with (name, cv) / (name, convertValue cv) preserves EnvCorr
+   - Proof by `by_cases name == n`, then either new binding or delegate to `h.1`/`h.2`
+
+3. **Proved `toBoolean_convertValue`** (no sorries)
+   - `Flat.toBoolean (convertValue v) = Core.toBoolean v` — by cases on `v`
+
+4. **Closed 2 sorries using bidirectional EnvCorr**
+   - Line 459 (var: Flat doesn't find, Core does) → `exfalso` via `henvCorr.2`
+   - Line 690 (this: Flat doesn't find, Core does) → same pattern
+
+5. **Proved `.seq` value sub-case** (line 471 → split into value+stepping)
+   - When `exprValue? a = some v`: both step to body with `.silent`, env unchanged
+   - Stepping sub-case left as sorry
+
+6. **Proved `.let` value sub-case** (line 468 → split into value+stepping)
+   - When `exprValue? init = some v`: both step to body with `.silent`, env extended
+   - Uses `EnvCorr_extend` for env correspondence in new state
+   - Stepping sub-case left as sorry
+
+### Key findings:
+1. **Core.initialState vs Flat.initialState mismatch persists**: Core has "console" binding, Flat doesn't. Bidirectional EnvCorr at init requires Flat.initialState to include console. This is 1 sorry blocking 22+ sorries.
+
+2. **Flat.pushTrace is private**: Can't unfold `pushTrace` in proofs module. The `.seq`/`.let` cases work because `rfl` sees through it definitionally, but `.if` case fails because `congrArg` on the wrong goal level. Future fix: make pushTrace `@[simp]` or non-private.
+
+3. **Flat has no console.log support**: Flat.step? never produces `.log` events. The simulation is technically sound (Flat never logs, so no mismatch), but the end-to-end chain can't prove trace preservation for logging programs. Architectural issue, not fixable in proofs alone.
+
+### Remaining sorries (29 total):
+| # | File | Count | Description |
+|---|------|-------|-------------|
+| 1 | CC | 1 | Init Core⊆Flat (needs Flat.initialState fix) |
+| 2 | CC | 1 | .var captured (needs heap correspondence) |
+| 3 | CC | 1 | .seq stepping sub-case (needs recursion) |
+| 4 | CC | 1 | .let stepping sub-case (needs recursion) |
+| 5 | CC | 1 | .if (pushTrace private + stepping) |
+| 6 | CC | 14 | Other compound cases (assign, call, newObj, etc.) |
+| 7 | CC | 3 | .return some, .yield some, .await |
+| 8 | CC | 3 | .while_, .tryCatch, .throw |
+| 9 | ANF | 3 | step_star, .seq.var, WF |
+| 10 | Lower | 1 | Blocked on wasmspec |
+
+### Strategy for next run:
+1. Fix Flat.initialState to include console (unblocks init sorry → closes 1 sorry)
+2. Prove more value sub-cases (assign, unary, binary) using same pattern
+3. Add `@[simp]` or make `pushTrace` non-private to unblock `.if` case
+4. Consider restructuring for strong induction (unblocks all stepping sub-cases)
+
+2026-03-23T01:15:00+00:00 DONE
+
 ## Run: 2026-03-22T19:30:00+00:00
 - Sorries before: 29 (25 CC + 3 ANF + 1 Lower), after: 30 (26 CC + 3 ANF + 1 Lower)
 - Net sorry delta: +1 (but significant proof architecture improvement)

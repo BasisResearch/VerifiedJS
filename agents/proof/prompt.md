@@ -57,69 +57,17 @@ If ClosureConvertCorrect needs 600 lines of case analysis, WRITE 600 LINES. That
 ## Test262
 Read `logs/test262_summary.md` for failure categories. Fix compiler bugs that cause test262 failures.
 
-## ⚠️⚠️⚠️ CC PROOF: STEP-BY-STEP PLAN (do these IN ORDER) ⚠️⚠️⚠️
+## ⚠️⚠️⚠️ CC PROOF: WHAT TO DO NOW (2026-03-23T01:05) ⚠️⚠️⚠️
 
-### Current state: CC has 26 sorries. EnvCorr is STILL ONE-DIRECTIONAL (Flat⊆Core). This has been the #1 blocker for 10+ hours. DO STEP 1 IMMEDIATELY.
+### Current state: CC has 25 sorries. EnvCorr IS bidirectional ✅. EnvCorr_extend EXISTS ✅. Build PASSES.
 
-**Build passes. You have trace + env correspondence + expression correspondence. The 5 remaining sorries are at lines 355, 459, 460-479 (20 compound cases), 532/584 (return/yield some), 690 (this mismatch).**
+**Line 176 (init_related)**: BLOCKED — wasmspec will fix Flat.initialState to include console. SKIP THIS.
 
-### STEP 1: Make EnvCorr bidirectional — UNBLOCKS line 459 and 690
+**Your 25 sorries are at: 176, 397, 557-559, 624-640, 693, 745-746. Focus on 557-640 (the compound cases).**
 
-Current EnvCorr (line 112-114) is one-directional (Flat→Core). The sorry at line 459 and 690 need Core→Flat. Replace:
+### STEP 1 (DONE ✅): EnvCorr is bidirectional, EnvCorr_extend exists
 
-```lean
-private def EnvCorr (cenv : Core.Env) (fenv : Flat.Env) : Prop :=
-  (∀ name fv, fenv.lookup name = some fv →
-    ∃ cv, cenv.lookup name = some cv ∧ fv = Flat.convertValue cv) ∧
-  (∀ name cv, cenv.lookup name = some cv →
-    ∃ fv, fenv.lookup name = some fv ∧ fv = Flat.convertValue cv)
-```
-
-Then fix `closureConvert_init_related`: for empty envs, both directions hold vacuously.
-```lean
-· -- EnvCorr: both envs are empty
-  constructor
-  · intro name fv hlookup; simp [Flat.Env.lookup] at hlookup  -- Flat env is []
-  · intro name cv hlookup; simp [Core.Env.lookup] at hlookup  -- Core env is {bindings := []}
-```
-
-For all existing uses of `henvCorr name fv hfenv`, change to `henvCorr.1 name fv hfenv`.
-For line 459: `obtain ⟨fv, hfenv, _⟩ := henvCorr.2 name cv hcenv` gives the contradiction (Flat finds it too).
-For line 690: same pattern.
-
-### STEP 2: Prove EnvCorr_extend — UNBLOCKS compound value sub-cases
-
-```lean
-private theorem EnvCorr_extend (h : EnvCorr cenv fenv) (name : String) (cv : Core.Value) :
-    EnvCorr (Core.Env.extend cenv name cv) (Flat.Env.extend fenv name (Flat.convertValue cv)) := by
-  -- Core.Env.extend = {bindings := (name, v) :: env.bindings}
-  -- Flat.Env.extend = (name, v) :: env
-  constructor
-  · intro n fv hlookup
-    -- Flat.Env.extend is cons; Flat.Env.lookup uses List.find?
-    simp [Flat.Env.extend, Flat.Env.lookup] at hlookup
-    -- hlookup : ((name, convertValue cv) :: fenv).find? (·.1 == n) = some (_, fv)
-    by_cases heq : n == name
-    · -- n = name: new binding → fv = convertValue cv
-      simp [heq, List.find?] at hlookup
-      exact ⟨cv, by simp [Core.Env.extend, Core.Env.lookup, heq, List.find?], hlookup⟩
-    · -- n ≠ name: old binding → use h.1
-      simp [heq, List.find?] at hlookup
-      obtain ⟨cv', hcenv, hfv⟩ := h.1 n fv hlookup
-      exact ⟨cv', by simp [Core.Env.extend, Core.Env.lookup, heq, List.find?]; exact hcenv, hfv⟩
-  · intro n cv' hlookup
-    simp [Core.Env.extend, Core.Env.lookup] at hlookup
-    by_cases heq : n == name
-    · simp [heq, List.find?] at hlookup
-      exact ⟨Flat.convertValue cv, by simp [Flat.Env.extend, Flat.Env.lookup, heq, List.find?], by rw [hlookup]⟩
-    · simp [heq, List.find?] at hlookup
-      obtain ⟨fv, hfenv, hfv⟩ := h.2 n cv' hlookup
-      exact ⟨fv, by simp [Flat.Env.extend, Flat.Env.lookup, heq, List.find?]; exact hfenv, hfv⟩
-```
-
-NOTE: The exact simp lemmas may differ. Use `lean_goal` after the `by_cases` to see the actual goal. If `simp` doesn't close it, try `simp_all` or unfold `Env.extend`/`Env.lookup` manually. The key pattern is: `by_cases n == name`, then either use the new binding or delegate to `h`.
-
-### STEP 3: Prove compound VALUE sub-cases (no induction needed)
+### STEP 2: Prove compound VALUE sub-cases — START HERE
 
 For `.let name init body` when `exprValue? init = some v`:
 - Core: `step? {expr = .let name (.lit v) body} = some (.silent, {expr = body, env = env.extend name v})`
@@ -199,57 +147,27 @@ These need heap correspondence or sub-expression stepping. Lower priority.
 
 ### ⚠️ YOU HAVE BEEN CRASHING FOR 12+ HOURS. Keep edits SMALL. One sorry per run. Build-test after EVERY change. ⚠️
 
-### THE ONE THING TO DO: Make EnvCorr bidirectional (unblocks 22+ sorries)
+### THE ONE THING TO DO: Prove .seq value sub-case (line 624)
 
-This is a SMALL, MECHANICAL change. Do ONLY this, then build, then stop.
+This is the SIMPLEST sorry to close. `.seq a b` when `exprValue? a = some v`:
+- Both Core and Flat step to `{expr = b}` with event `.silent` (no env change)
+- CC_SimRel holds: traces match (both append .silent), env unchanged (same henvCorr), expr from hconv
 
-**Step A** — Change lines 112-114 from:
-```lean
-private def EnvCorr (cenv : Core.Env) (fenv : Flat.Env) : Prop :=
-  ∀ name fv, fenv.lookup name = some fv →
-    ∃ cv, cenv.lookup name = some cv ∧ fv = Flat.convertValue cv
-```
-to:
-```lean
-private def EnvCorr (cenv : Core.Env) (fenv : Flat.Env) : Prop :=
-  (∀ name fv, fenv.lookup name = some fv →
-    ∃ cv, cenv.lookup name = some cv ∧ fv = Flat.convertValue cv) ∧
-  (∀ name cv, cenv.lookup name = some cv →
-    ∃ fv, fenv.lookup name = some fv ∧ fv = Flat.convertValue cv)
-```
+Use `lean_goal` at line 624, then prove it. Build. Then do `.let` (line 557), then the others.
 
-**Step B** — Fix `closureConvert_init_related` (around line 129-134). Replace:
-```lean
-  · -- EnvCorr: Flat env is empty, so vacuously true
-    intro name fv hlookup
-    simp [Flat.Env.empty, Flat.Env.lookup] at hlookup
-```
-with:
-```lean
-  · -- EnvCorr: both envs are empty
-    constructor
-    · intro name fv hlookup; simp [Flat.Env.empty, Flat.Env.lookup] at hlookup
-    · intro name cv hlookup; simp [Core.Env.lookup] at hlookup
-```
-(The Core initial env may have bindings — check what `Core.initialState` sets. If it also uses an empty env, `simp [Core.Env.lookup]` closes it.)
+**Keep edits SMALL. One sorry at a time. Build after each.**
 
-**Step C** — Every existing use of `henvCorr name fv hfenv` needs `.1`:
-Replace `henvCorr name fv hfenv` → `henvCorr.1 name fv hfenv` everywhere it appears. Search for all occurrences.
-
-**Step D** — Build. If it passes, STOP. If not, fix the build errors.
-
-That's it. Do NOT touch any other sorry this run. Do NOT restructure anything.
-
-### Remaining sorries (for future runs, NOT this one):
+### Sorry inventory (2026-03-23T01:05):
 
 | # | File | Lines | Count | Description |
 |---|------|-------|-------|-------------|
-| 1 | ClosureConvertCorrect.lean | 459, 690 | 2 | Now provable with bidirectional EnvCorr |
-| 2 | ClosureConvertCorrect.lean | 460-479 | 20 | Compound cases — value sub-cases first |
-| 3 | ClosureConvertCorrect.lean | 355 | 1 | Captured var (needs heap) |
-| 4 | ClosureConvertCorrect.lean | 532,584,585 | 3 | return/yield/await some |
-| 5 | ANFConvertCorrect.lean | 94,1017,1097 | 3 | step_star + .seq.seq.seq + WF |
-| 6 | LowerCorrect.lean | 69 | 1 | Blocked on wasmspec |
+| 1 | ClosureConvertCorrect.lean | 176 | 1 | init_related Core⊆Flat — BLOCKED on wasmspec Flat.initialState |
+| 2 | ClosureConvertCorrect.lean | 397 | 1 | Captured var (.getEnv) — needs heap correspondence |
+| 3 | ClosureConvertCorrect.lean | 557-559 | 3 | let/assign/if value cases — USE EnvCorr_extend |
+| 4 | ClosureConvertCorrect.lean | 624-640 | 17 | seq + compound value cases — EASIEST, do first |
+| 5 | ClosureConvertCorrect.lean | 693, 745-746 | 3 | return/yield/await some — need sub-stepping |
+| 6 | ANFConvertCorrect.lean | 94,1017,1097 | 3 | step_star + .seq.seq.seq + WF |
+| 7 | LowerCorrect.lean | 69 | 1 | Blocked on wasmspec step_sim |
 
 ### Key Lean 4 pitfall — AVOID `cases ... with` inside `<;>` blocks
 

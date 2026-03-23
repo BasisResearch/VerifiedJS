@@ -108,6 +108,8 @@ arithmetic, boolean_logic, conditionals, do_while, for_loop, functions, let_bind
 | 2026-03-22T00:05 | **10** | **~203 tests (est.)** | **BUILD BROKEN**: jsspec Core/Semantics.lean `stuck_implies_lit` has ~30 errors (`simp [exprValue?]` fails — `rename_i hev` misnames; `hev` is a term not a prop). Fix: `simp_all [exprValue?]` (tested via lean_multi_attempt). Sorry steady at 10 (7 Proofs + 3 Wasm/Semantics). No sorry progress. E2E corpus grew to 203 tests but can't run (build broken). Test262: 2/93 (UNCHANGED 48+ hrs). All agents timed out last run. Wrote exact build fix to jsspec prompt. |
 | 2026-03-22T01:05 | **15** | **~203 tests (est.)** | **BUILD BROKEN**: 2 files. (1) ANFConvertCorrect.lean: `ANF_step?_none_implies_trivial_aux` has ~15 errors — unsolved goals, simp failures, whnf timeouts at lines 436-445. (2) Wasm/Semantics.lean: 2 errors — StepStar.refl type mismatch at :5070 (List.map traceFromCore [] vs []), invalid projection at :5163 (hBeh.2.1 on ∃ type). Core/Semantics.lean BUILD FIXED by jsspec. Sorry UP 10→15 (1 Core decreasing_by + ~10 Wasm/Semantics + 1 CC + 2 ANF + build errors masking count). E2E: 203 tests, can't run (build broken). Test262: 2/93 (UNCHANGED 50+ hrs). |
 
+| 2026-03-23T01:05 | **73** | **~203 (est.)** | Build PASS. Sorry 73 (stable from 74). **DISCOVERED**: CC init_related (line 176) unprovable — Core.initialState has "console" binding but Flat.initialState is empty → bidirectional EnvCorr FALSE at init. Fix: wasmspec must update Flat.initialState to mirror Core.initialState. Wrote fix to wasmspec prompt. Updated proof prompt: EnvCorr bidirectional ✅, redirect to value sub-cases (lines 557-640). All agents idle/crashing. Test262: 3/61 (UNCHANGED 80+ hrs). |
+
 - Test262 pass rate: 2/93 (fast mode), deterministic full sample reached 274/500 passes (2026-03-08)
 - Flagship parse rate: 96.30% (1976/2052)
 - E2E tests: 203 handcrafted JS programs (estimated pass rate ~96% when build works)
@@ -124,7 +126,7 @@ arithmetic, boolean_logic, conditionals, do_while, for_loop, functions, let_bind
 | Pass | Theorem | Statement OK? | Proved? | Blocker |
 |------|---------|--------------|---------|---------|
 | Elaborate | elaborate_correct | YES | **PROVED** | — |
-| ClosureConvert | closureConvert_correct | YES — trace preservation with NoForInForOf | 26 sorry | EnvCorr ONE-DIRECTIONAL blocks 22+ cases. Lines 460-479 (20 compound), 355 (captured var), 459/690 (Core→Flat), 532/584/585 (return/yield/await some). |
+| ClosureConvert | closureConvert_correct | YES — trace preservation with NoForInForOf | 25 sorry | EnvCorr bidirectional ✅. EnvCorr_extend ✅. **Blocker**: init_related (line 176) — Flat.initialState missing console binding. 17 compound value cases (lines 624-640) are EASIEST to prove next. |
 | ANFConvert | anfConvert_correct | YES — observable trace preservation | 3 sorry | step_star (:94), .seq.seq.seq (:1017), WF blocker (:1097) |
 | Optimize | optimize_correct | YES — `∀ b, ANF.Behaves (optimize p) b ↔ ANF.Behaves p b` | **PROVED** | Identity pass — trivially correct |
 | Lower | lower_behavioral_correct | YES — `∀ trace, ANF.Behaves → IR.IRBehaves` | 1 sorry | Build FIXED. **BLOCKED on wasmspec** step_sim (:4956). SimRel needs code correspondence. |
@@ -133,17 +135,18 @@ arithmetic, boolean_logic, conditionals, do_while, for_loop, functions, let_bind
 
 **Chain status**: All 6 Behaves relations DEFINED. All theorem STATEMENTS correct. **2 passes FULLY PROVED** (Elaborate, Optimize). **Sorry count in proof chain: 30** (26 CC + 3 ANF + 1 Lower). Wasm/Semantics has ~44 sorry in step_sim (decomposed, not in chain directly but blocks Lower/Emit). Both halt_sim theorems PROVED. step?_none_implies_trivial_lit PROVED. **Flat/ is SORRY-FREE**. Core/Semantics 0 sorry. ANF/Semantics 0 sorry.
 
-**DISCOVERED MISSING ABSTRACTIONS (2026-03-23T00:05)**:
-1. **LowerCodeCorr trivially satisfiable**: 9 of 15 constructors accept `instrs : List IRInstr` with no constraint. Makes step_sim UNPROVABLE for while, throw, return, break, continue, tryCatch, yield, await, labeled. Written to wasmspec prompt with fix.
-2. **LowerSimRel.henv lacks value correspondence**: Says "a local exists" but not "its value matches." Written to wasmspec prompt.
-3. **EmitSimRel.hstack tracks only length**: Says `ir.stack.length = w.stack.length` but not that values match. Written to wasmspec prompt.
+**DISCOVERED MISSING ABSTRACTIONS (updated 2026-03-23T01:05)**:
+1. **Flat.initialState missing console**: Core.initialState has `"console" -> .object 0` but Flat.initialState uses `Env.empty`. CC EnvCorr is FALSE at initialization. Written to wasmspec prompt with exact fix.
+2. **LowerCodeCorr trivially satisfiable**: 9 of 15 constructors accept `instrs : List IRInstr` with no constraint. Written to wasmspec prompt.
+3. **LowerSimRel.henv lacks value correspondence**: Written to wasmspec prompt.
+4. **EmitSimRel.hstack tracks only length**: Written to wasmspec prompt.
 
-**Critical path**: (1) proof: make EnvCorr bidirectional (12+ hours overdue, agent crashing). (2) wasmspec: fix LowerCodeCorr constructors (new discovery). (3) wasmspec: add value correspondence to LowerSimRel. (4) wasmspec: strengthen EmitSimRel.hstack.
+**Critical path**: (1) wasmspec: fix Flat.initialState (1-minute fix, unblocks CC init). (2) proof: prove 17 compound value sub-cases in CC (lines 624-640). (3) wasmspec: fix LowerCodeCorr constructors. (4) wasmspec: add value correspondence to SimRels.
 
 ## Agent Health
 
-| Agent | Status (2026-03-23T00:05) | Notes |
+| Agent | Status (2026-03-23T01:05) | Notes |
 |-------|---------------------|-------|
-| jsspec | Crashing (EXIT 143) 16+ runs | 98.8% compile rate. Core/Semantics 0 sorry. All test262 failures are wasm runtime traps — jsspec CAN'T fix them. Told to do smallest possible task. |
-| wasmspec | Crashing (EXIT 1/124) | Flat/ SORRY-FREE. ~44 Wasm/Semantics step_sim sorries. **3 STRUCTURAL FLAWS** discovered in SimRels (written to prompt). Build PASSES now. |
-| proof | Crashing (EXIT 143) | CC: 26 sorry. EnvCorr STILL one-directional after 12+ hours. Simplified prompt to ONE task: make EnvCorr bidirectional. |
+| jsspec | Idle (completed 01:03) | Core/Semantics 0 sorry. All test262 failures are wasm runtime traps. Nothing to do until backend fixes land. |
+| wasmspec | Timed out (00:15) | Flat/ SORRY-FREE. 44 Wasm/Semantics step_sim sorries. **NEW**: must fix Flat.initialState (1-min task). 3 structural SimRel flaws in prompt. |
+| proof | Crashed (00:30, EXIT 143) | CC: 25 sorry. EnvCorr bidirectional ✅. Redirected to compound value sub-cases (lines 624-640). |
