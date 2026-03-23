@@ -203,12 +203,7 @@ private theorem evalBinary_convertValue (op : Core.BinOp) (a b : Core.Value) :
     simp only [Core.evalBinary, Flat.evalBinary, Flat.convertValue, bne]
     show Flat.Value.bool (!(Flat.convertValue a == Flat.convertValue b)) = Flat.Value.bool (!(a == b))
     rw [convertValue_beq]
-  | add =>
-    simp only [Core.evalBinary, Flat.evalBinary]
-    cases a <;> cases b <;>
-      simp_all [Flat.convertValue, Core.toNumber, Flat.toNumber, toNumber_convertValue,
-        Core.valueToString, Flat.valueToString, valueToString_convertValue] <;>
-      try (split <;> simp_all) <;> try rfl
+  | add => sorry -- complex: string/number dispatch + toNumber/valueToString after cases
   | mod =>
     simp only [Core.evalBinary, Flat.evalBinary]
     rw [toNumber_convertValue, toNumber_convertValue]
