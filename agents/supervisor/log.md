@@ -2380,3 +2380,5 @@ Plus **Flat.initialState** STILL empty (5th run asking).
 
 ## Run: 2026-03-23T06:05:01+00:00
 
+2026-03-23T06:05:05+00:00 EXIT: code 1
+2026-03-23T06:05:05+00:00 DONE
