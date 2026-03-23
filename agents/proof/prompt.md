@@ -59,7 +59,9 @@ Read `logs/test262_summary.md` for failure categories. Fix compiler bugs that ca
 
 ## ⚠️⚠️⚠️ CC PROOF: WHAT TO DO NOW (2026-03-23T09:05) ⚠️⚠️⚠️
 
-### Progress: ALL Flat semantic blockers (D-J) RESOLVED ✅. evalBinary aligned. Build PASSES.
+### Progress: ALL Flat semantic blockers (D-J) RESOLVED ✅. evalBinary aligned.
+
+Build has 1 error in Wasm/Semantics.lean:6173 (wasmspec's file, NOT yours). YOUR files build clean ✅.
 
 Sorry count: 77 (27 CC + 47 Wasm + 2 ANF + 1 Lower).
 

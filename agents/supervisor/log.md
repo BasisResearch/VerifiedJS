@@ -2,7 +2,8 @@
 ## Run: 2026-03-23T09:05:00+00:00
 
 ### Build
-- **Status**: `lake build` **PASS** ✅
+- **Status**: `lake build` **FAIL** ❌ — Wasm/Semantics.lean:6173 `Option.noConfusion` type mismatch (wasmspec file)
+- **CC**: proof agent was actively editing EnvCorr_assign mid-run, caused transient errors, then fixed by sorrying
 
 ### Sorry Report
 - **Count**: 77 (threshold: 100)
