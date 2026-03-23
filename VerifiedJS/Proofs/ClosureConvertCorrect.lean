@@ -252,44 +252,51 @@ private theorem EnvCorr_assign {cenv : Core.Env} {fenv : Flat.Env}
     -- Core has name but Flat doesn't → contradiction via EnvCorr
     exfalso
     obtain ⟨cv', hmem⟩ := hcexists
-    -- (name, cv') ∈ cenv.bindings → cenv.lookup name ≠ none
-    have hfind : cenv.bindings.find? (fun kv => kv.fst == name) ≠ none := by
-      intro habs
-      have := List.find?_eq_none.mp habs ⟨name, cv'⟩ hmem
-      simp at this
-    -- So cenv.lookup name = some _
-    have ⟨v', hlookup⟩ : ∃ v', cenv.lookup name = some v' := by
+    -- (name, cv') ∈ cenv.bindings → cenv.lookup name = some _
+    have hlookup : ∃ v', cenv.lookup name = some v' := by
       simp only [Core.Env.lookup]
-      match hfind' : cenv.bindings.find? (fun kv => kv.fst == name) with
-      | some kv => exact ⟨kv.snd, rfl⟩
-      | none => exact absurd rfl hfind
-    -- EnvCorr.2 gives fenv.lookup name = some _
-    obtain ⟨fv, hflookup, _⟩ := h.2 name v' hlookup
-    -- But then (name, fv) ∈ fenv
+      induction cenv.bindings with
+      | nil => exact absurd hmem (List.not_mem_nil _)
+      | cons hd tl ih =>
+        simp only [List.find?]
+        by_cases heq : hd.fst == name
+        · simp [heq]; exact ⟨_, rfl⟩
+        · simp [heq]
+          rcases List.mem_cons.mp hmem with rfl | htl
+          · simp at heq
+          · exact ih htl
+    obtain ⟨v', hv'⟩ := hlookup
+    obtain ⟨fv, hflookup, _⟩ := h.2 name v' hv'
+    -- fenv.lookup name = some fv, but fenv has no entry with name → contradiction
     simp only [Flat.Env.lookup] at hflookup
     match hff : fenv.find? (fun kv => kv.fst == name) with
-    | some kv =>
-      simp [hff] at hflookup
-      exact hfnot kv.snd (List.find?_mem hff ▸ by rw [← hflookup]; exact List.find?_mem hff)
+    | some fkv =>
+      have hmem_f := List.mem_of_find?_eq_some hff
+      exact hfnot fkv.snd hmem_f
     | none => simp [hff] at hflookup
-  case isFalse.isTrue hfexists hcnot =>
+  case isFalse.isTrue hcnot hfexists =>
     -- Flat has name but Core doesn't → contradiction via EnvCorr
     exfalso
     obtain ⟨fv', hmem⟩ := hfexists
-    have hfind : fenv.find? (fun kv => kv.fst == name) ≠ none := by
-      intro habs
-      have := List.find?_eq_none.mp habs ⟨name, fv'⟩ hmem
-      simp at this
-    have ⟨v', hlookup⟩ : ∃ v', fenv.lookup name = some v' := by
+    have hlookup : ∃ v', fenv.lookup name = some v' := by
       simp only [Flat.Env.lookup]
-      match hfind' : fenv.find? (fun kv => kv.fst == name) with
-      | some kv => exact ⟨kv.snd, rfl⟩
-      | none => exact absurd rfl hfind
-    obtain ⟨cv', hclookup, _⟩ := h.1 name v' hlookup
+      induction fenv with
+      | nil => exact absurd hmem (List.not_mem_nil _)
+      | cons hd tl ih =>
+        simp only [List.find?]
+        by_cases heq : hd.fst == name
+        · simp [heq]; exact ⟨_, rfl⟩
+        · simp [heq]
+          rcases List.mem_cons.mp hmem with rfl | htl
+          · simp at heq
+          · exact ih htl
+    obtain ⟨v', hv'⟩ := hlookup
+    obtain ⟨cv', hclookup, _⟩ := h.1 name v' hv'
     simp only [Core.Env.lookup] at hclookup
     match hcf : cenv.bindings.find? (fun kv => kv.fst == name) with
-    | some kv =>
-      exact hcnot kv.snd (List.find?_mem hcf ▸ by exact List.find?_mem hcf)
+    | some ckv =>
+      have hmem_c := List.mem_of_find?_eq_some hcf
+      exact hcnot ckv.snd hmem_c
     | none => simp [hcf] at hclookup
   case isFalse.isFalse hcnot hfnot =>
     -- Neither has name → both prepend → exactly EnvCorr_extend
