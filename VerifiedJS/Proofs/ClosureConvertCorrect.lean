@@ -269,14 +269,84 @@ private theorem EnvCorr_extend {cenv : Core.Env} {fenv : Flat.Env}
       obtain ⟨fv, hfenv, hfv⟩ := h.2 n cv' hlookup'
       subst hfv; exact hfenv
 
-/-- Assigning the same name in both envs preserves EnvCorr.
-    PROOF STRATEGY: Requires auxiliary lemmas about lookup after assign/updateBindingList.
-    Core.updateBindingList is private, so we need to unfold Core.Env.assign and reason
-    about the resulting terms using simp/omega. -/
+/-- Lookup after updateBindingList for the same name returns the new value (Flat). -/
+private theorem Flat_lookup_updateBindingList_eq (xs : Flat.Env) (name : Flat.VarName) (v : Flat.Value)
+    (h : xs.any (fun kv => kv.fst == name) = true) :
+    Flat.Env.lookup (Flat.updateBindingList xs name v) name = some v := by
+  induction xs with
+  | nil => simp at h
+  | cons hd tl ih =>
+    obtain ⟨n, old⟩ := hd
+    cases hn : (n == name)
+    · simp only [Flat.updateBindingList, hn, ↓reduceIte, Flat.Env.lookup, List.find?, Bool.false_eq_true]
+      have htl : tl.any (fun kv => kv.fst == name) = true := by
+        simp only [List.any, hn, Bool.false_or] at h; exact h
+      exact ih htl
+    · simp only [Flat.updateBindingList, hn, ↓reduceIte, Flat.Env.lookup, List.find?, ↓reduceCtorEq]
+
+/-- Lookup after updateBindingList for a different name is unchanged (Flat). -/
+private theorem Flat_lookup_updateBindingList_ne (xs : Flat.Env) (name other : Flat.VarName) (v : Flat.Value)
+    (hne : (other == name) = false) :
+    Flat.Env.lookup (Flat.updateBindingList xs name v) other = Flat.Env.lookup xs other := by
+  induction xs with
+  | nil => simp [Flat.updateBindingList, Flat.Env.lookup]
+  | cons hd tl ih =>
+    obtain ⟨n, old⟩ := hd
+    cases hn : (n == name)
+    · simp only [Flat.updateBindingList, hn, Bool.false_eq_true, ↓reduceIte, Flat.Env.lookup, List.find?]
+      cases hno : (n == other)
+      · exact ih
+      · rfl
+    · have hno : (n == other) = false := by
+        have : n = name := by simpa using hn
+        subst this; exact hne
+      simp only [Flat.updateBindingList, hn, ↓reduceIte, Flat.Env.lookup, List.find?, hno]
+
+/-- Lookup after Flat.Env.assign for the same name. -/
+private theorem Flat_lookup_assign_eq (env : Flat.Env) (name : Flat.VarName) (v : Flat.Value) :
+    (env.assign name v).lookup name = some v := by
+  simp only [Flat.Env.assign]
+  split
+  · exact Flat_lookup_updateBindingList_eq env name v (by assumption)
+  · simp [Flat.Env.lookup, List.find?, beq_self_eq_true]
+
+/-- Lookup after Flat.Env.assign for a different name. -/
+private theorem Flat_lookup_assign_ne (env : Flat.Env) (name other : Flat.VarName) (v : Flat.Value)
+    (hne : (other == name) = false) :
+    (env.assign name v).lookup other = env.lookup other := by
+  simp only [Flat.Env.assign]
+  split
+  · exact Flat_lookup_updateBindingList_ne env name other v hne
+  · simp only [Flat.Env.lookup, List.find?, hne, Bool.false_eq_true, ↓reduceIte]
+
+/-- Assigning the same name in both envs preserves EnvCorr. -/
 private theorem EnvCorr_assign {cenv : Core.Env} {fenv : Flat.Env}
     (h : EnvCorr cenv fenv) (name : String) (cv : Core.Value) :
     EnvCorr (Core.Env.assign cenv name cv) (Flat.Env.assign fenv name (Flat.convertValue cv)) := by
-  sorry
+  constructor
+  · -- Flat⊆Core: if Flat.assign lookup finds fv, show Core.assign lookup finds cv with fv = convertValue cv
+    intro n fv hlookup
+    by_cases hname : n = name
+    · subst hname
+      rw [Flat_lookup_assign_eq] at hlookup
+      simp at hlookup; subst hlookup
+      exact ⟨cv, by simp [Core.Env.lookup_assign_eq], rfl⟩
+    · have hne : (n == name) = false := by simp [beq_eq_false_iff_ne, hname]
+      rw [Flat_lookup_assign_ne _ _ _ _ hne] at hlookup
+      obtain ⟨cv', hcv', hfv⟩ := h.1 n fv hlookup
+      exact ⟨cv', by rw [Core.Env.lookup_assign_ne _ _ _ _ hne]; exact hcv', hfv⟩
+  · -- Core⊆Flat: symmetric
+    intro n cv' hlookup
+    by_cases hname : n = name
+    · subst hname
+      simp [Core.Env.lookup_assign_eq] at hlookup
+      · subst hlookup
+        exact ⟨Flat.convertValue cv, Flat_lookup_assign_eq _ _ _, rfl⟩
+      · sorry -- need: cenv.bindings.any ... = true; may not hold if name is new
+    · have hne : (n == name) = false := by simp [beq_eq_false_iff_ne, hname]
+      rw [Core.Env.lookup_assign_ne _ _ _ _ hne] at hlookup
+      obtain ⟨fv, hfv, hconv⟩ := h.2 n cv' hlookup
+      exact ⟨fv, by rw [Flat_lookup_assign_ne _ _ _ _ hne]; exact hfv, hconv⟩
 
 /-- Simulation relation for closure conversion: Flat and Core states
     have matching traces, environment correspondence, and expression
