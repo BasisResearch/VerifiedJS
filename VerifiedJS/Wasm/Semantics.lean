@@ -6148,7 +6148,42 @@ theorem step_sim (irmod : IRModule) (wmod : Module) :
           sorry
       | .localGet idx =>
           -- local.get: both IR and Wasm look up local variable
-          sorry
+          have hc : EmitCodeCorr (IRInstr.localGet idx :: rest) s2.code := hcode_ir ▸ hrel.hcode
+          rcases hc.localGet_inv with ⟨rest_w, hcw, hrest⟩ | ⟨wasm_instrs, rest_w, hcw, hrest⟩
+          · -- IR has localGet idx, Wasm has localGet idx
+            -- Case split on IR frames and local lookup
+            match hfr_ir : s1.frames with
+            | [] => sorry -- trap: no active frame
+            | irf :: irfs =>
+              match hlocal : irf.locals[idx]? with
+              | none => sorry -- trap: local out of bounds
+              | some val =>
+                have hir := irStep?_eq_localGet s1 idx rest irf irfs val hcode_ir hfr_ir hlocal
+                rw [hir] at hstep
+                simp only [Option.some.injEq, Prod.mk.injEq] at hstep
+                obtain ⟨rfl, rfl⟩ := hstep
+                -- Derive Wasm frame from frame correspondence
+                have hflen := hrel.hframes_len; rw [hfr_ir] at hflen
+                match hfr_w : s2.frames with
+                | [] => simp [hfr_w] at hflen
+                | wf :: wfs =>
+                  -- idx < irf.locals.size
+                  have hidx_ir : idx < irf.locals.size := by
+                    if h : idx < irf.locals.size then exact h
+                    else exact absurd hlocal (by rw [getElem?_neg a idx h]; exact Option.noConfusion)
+                  -- idx < wf.locals.size
+                  have hloc_sz := hrel.hframes_locals irf wf irfs wfs hfr_ir hfr_w
+                  have hidx_w : idx < wf.locals.size := hloc_sz ▸ hidx_ir
+                  -- Wasm step
+                  have hw := step?_eq_localGet s2 idx rest_w wf wfs hcw hfr_w hidx_w
+                  -- Value correspondence
+                  have hval_corr := hrel.hframes_vals irf wf irfs wfs hfr_ir hfr_w idx hidx_ir hidx_w
+                  have hval_eq : val = irf.locals[idx]'hidx_ir := by
+                    have := getElem?_pos irf.locals idx hidx_ir
+                    rw [this] at hlocal; exact (Option.some.inj hlocal).symm
+                  rw [hval_eq]
+                  exact ⟨_, hw, hrel.hemit, hrest, by dsimp only []; exact stack_corr_cons hrel.hstack.1 hrel.hstack.2 hval_corr, hrel.hframes_len, hrel.hframes_locals, hrel.hframes_vals, hrel.hlabels, hhalt_of_structural hrest hrel.hlabels⟩
+          · sorry -- general case
       | .localSet idx =>
           -- local.set: both pop value and set local
           sorry
