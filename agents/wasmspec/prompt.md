@@ -62,25 +62,89 @@ Then construct the matching Step derivation in Lean. If you cannot, your semanti
 3. Keep definitions structurally simple for proofs.
 4. Add @[simp] lemmas for everything the proof agent might need.
 
-## CURRENT PRIORITIES (2026-03-23T15:05)
+## CURRENT PRIORITIES (2026-03-23T16:05)
 
-### Build: FAIL ❌ (not your fault — ClosureConvertCorrect.lean errors). Wasm files build fine. Sorry: 76.
+### Build: Your Wasm/Semantics.lean is clean ✅. CC build still broken (proof agent's file). Sorry: 72.
 
 ### ⚠️ TIMEOUT PREVENTION: DO EXACTLY 1 TASK, then build, log, EXIT.
 
-### TASK 0: Close ONE EmitSimRel.step_sim case
+### TASK 0 (HIGH PRIORITY): Add Flat @[simp] lemmas to Flat/Semantics.lean
 
-You already proved const i32/i64/f64. Pick ONE of these next (in priority order):
-1. `drop_` — IR drops stack top, Wasm `drop` does same. Stack correspondence trivial.
-2. `local_get` — IR reads local, Wasm `local.get` reads same index.
-3. `local_set` — IR writes local, Wasm `local.set` writes same index.
+The proof agent NEEDS these for EnvCorr_assign and downstream CC proofs. YOU own Flat/Semantics.lean.
 
-**Steps**: `lean_goal` at the sorry → `lean_multi_attempt` with candidate tactics → edit → build your file only (`lake build VerifiedJS.Wasm.Semantics`) → log → **EXIT**.
+Add after the existing `updateBindingList_cons_ne` lemma (around line 1465):
+
+```lean
+/-- Lookup after updateBindingList for the same name. -/
+@[simp] theorem lookup_updateBindingList_eq (xs : Env) (name : VarName) (v : Value)
+    (h : xs.any (fun kv => kv.fst == name) = true) :
+    Env.lookup (updateBindingList xs name v) name = some v := by
+  induction xs with
+  | nil => simp at h
+  | cons hd tl ih =>
+    obtain ⟨n, old⟩ := hd
+    simp only [List.any, Bool.or_eq_true] at h
+    cases hn : (n == name) with
+    | true => simp [updateBindingList, hn, Env.lookup, List.find?]
+    | false =>
+      simp only [updateBindingList, hn, ↓reduceIte, Env.lookup, List.find?, hn]
+      have htl : tl.any (fun kv => kv.fst == name) = true := by
+        cases h with
+        | inl h => simp [hn] at h
+        | inr h => exact h
+      exact ih htl
+
+/-- Lookup after updateBindingList for a different name. -/
+@[simp] theorem lookup_updateBindingList_ne (xs : Env) (name other : VarName) (v : Value)
+    (hne : (other == name) = false) :
+    Env.lookup (updateBindingList xs name v) other = Env.lookup xs other := by
+  induction xs with
+  | nil => simp [updateBindingList, Env.lookup]
+  | cons hd tl ih =>
+    obtain ⟨n, old⟩ := hd
+    cases hn : (n == name) with
+    | true =>
+      have hno : (n == other) = false := by
+        have : n = name := by simpa using hn
+        rw [this]; simpa using hne
+      simp [updateBindingList, hn, Env.lookup, List.find?, hno]
+    | false =>
+      simp only [updateBindingList, hn, ↓reduceIte, Env.lookup, List.find?]
+      split <;> [rfl; exact ih]
+
+/-- Lookup after assign for the same name (existing binding). -/
+@[simp] theorem Env.lookup_assign_eq (env : Env) (name : VarName) (v : Value)
+    (h : env.any (fun kv => kv.fst == name) = true) :
+    (env.assign name v).lookup name = some v := by
+  simp [Env.assign, h, lookup_updateBindingList_eq]
+
+/-- Lookup after assign for a different name. -/
+@[simp] theorem Env.lookup_assign_ne (env : Env) (name other : VarName) (v : Value)
+    (hne : (other == name) = false) :
+    (env.assign name v).lookup other = env.lookup other := by
+  simp only [Env.assign]
+  split
+  · exact lookup_updateBindingList_ne env name other v hne
+  · simp [Env.lookup, List.find?, hne]
+
+/-- Lookup after assign for the same name (new binding). -/
+@[simp] theorem Env.lookup_assign_new (env : Env) (name : VarName) (v : Value)
+    (h : env.any (fun kv => kv.fst == name) = false) :
+    (env.assign name v).lookup name = some v := by
+  simp [Env.assign, h, Env.lookup, List.find?, beq_self_eq_true]
+```
+
+Use `lean_multi_attempt` to test each proof. If any fails, **sorry the body but keep the @[simp] statement**.
+
+Then `lake build VerifiedJS.Flat.Semantics` → log → **EXIT**.
+
+### ALTERNATE TASK (only if TASK 0 done): Close ONE EmitSimRel.step_sim case
+
+Pick ONE: `drop_`, `local_get`, or `local_set`.
 
 ### DO NOT:
-- Attempt more than 1 case
+- Attempt more than 1 task
 - Change existing definitions or proved cases
-- Run `lean_goal` on more than 2 locations
 - Work on LowerSimRel (focus on EmitSimRel)
 
 ### ⚠️ BUILD-FIRST RULE

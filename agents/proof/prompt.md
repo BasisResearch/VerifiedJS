@@ -57,60 +57,64 @@ If ClosureConvertCorrect needs 600 lines of case analysis, WRITE 600 LINES. That
 ## Test262
 Read `logs/test262_summary.md` for failure categories. Fix compiler bugs that cause test262 failures.
 
-## CURRENT PRIORITIES (2026-03-23T15:05)
+## CURRENT PRIORITIES (2026-03-23T16:05)
 
-### Build: FAIL ❌. Sorry: 76.
+### Build: FAIL ❌. Sorry: 72.
 
-**BUILD IS BROKEN** in ClosureConvertCorrect.lean. Your last run (12:30) introduced errors. FIX IMMEDIATELY.
+**BUILD IS BROKEN** in ClosureConvertCorrect.lean. Your 12:30 run introduced errors. FIX IMMEDIATELY.
 
-### TASK 0 (MANDATORY): FIX BUILD — 6 exact line changes
+### TASK 0 (MANDATORY): FIX BUILD — all fixes VERIFIED by supervisor
 
-All fixes verified via `lean_multi_attempt`. Apply them IN ORDER, then build.
+All fixes verified via `lean_multi_attempt` on 2026-03-23T16:05. Apply them, then build.
 
-**Fix 1 — Line 207** (evalBinary `add` case): The current tactic leaves unsolved goals (toNumber + string concat sub-cases). Replace the ENTIRE line 207 with:
+**Fix 1 — Line 207** (evalBinary `add` case): Replace the ENTIRE line 207 with:
 ```lean
     sorry -- TODO: add case needs toNumber/valueToString case analysis
 ```
 
-**Fix 2 — Line 240** (evalBinary wildcard `| _ =>`): `rfl` fails for eq/neq/lt/gt/le/ge/instanceof/in. Replace `rfl)` at end of line 240 with `sorry)`:
+**Fix 2 — Line 240** (evalBinary wildcard `| _ =>`): Replace `rfl)` with `sorry)`:
 ```lean
   | _ => all_goals (simp only [Core.evalBinary, Flat.evalBinary, Flat.convertValue]; sorry)
 ```
 
-**Fix 3 — Line 302** (Flat_lookup_updateBindingList_ne): BEq direction mismatch. `hne` is `(other == name) = false` but after subst you need `(name == other) = false`. Replace line 302 entirely:
+**Fix 3 — Line 302** (BEq direction mismatch): Replace line 302 entirely with:
 ```lean
-        subst this; exact Bool.eq_false_iff.mpr (by intro h; have := beq_iff_eq.mp h; rw [this] at hne; simp at hne)
+        subst this; exact Bool.eq_false_iff.mpr (fun h => by simp [beq_iff_eq] at h; rw [h] at hne; simp at hne)
 ```
 
-**Fix 4 — Line 320** (Flat_lookup_assign_ne, isFalse case): Same BEq direction issue. Replace line 320:
+**Fix 4 — Line 320** (Flat_lookup_assign_ne isFalse case): Replace line 320:
 ```lean
-  · sorry -- BEq direction: need (name == other) = false from (other == name) = false
+  · sorry -- BEq direction
 ```
 
-**Fix 5 — Line 333** (EnvCorr_assign, Flat⊆Core, same-name case): `Core.Env.lookup_assign_eq` needs `any` precondition. Replace line 333:
+**Fix 5 — Line 333** (EnvCorr_assign, Core.Env.lookup_assign_eq needs precondition): Replace line 333:
 ```lean
       exact ⟨cv, by sorry, rfl⟩
 ```
 
-**Fix 6 — Line 346** (EnvCorr_assign, Core⊆Flat, updateBindingList branch): Two changes on lines 345-346. Replace:
+**Fix 6 — Lines 345-348** (EnvCorr_assign, Core⊆Flat): Replace ALL of lines 345-348:
 ```lean
-        · simp [Core.lookup_updateBindingList_eq] at hlookup; exact hlookup
-        · simp [Core.Env.lookup, List.find?, beq_self_eq_true] at hlookup; exact hlookup
-```
-With:
-```lean
-        · rw [Core.lookup_updateBindingList_eq cenv.bindings n cv ‹_›] at hlookup; exact (Option.some.inj hlookup).symm
+        · rw [Core.lookup_updateBindingList_eq cenv.bindings n cv (by assumption)] at hlookup; exact (Option.some.inj hlookup).symm
         · simp [Core.Env.lookup, List.find?, beq_self_eq_true] at hlookup; exact hlookup.symm
+      subst hcv
+      exact ⟨Flat.convertValue cv, Flat_lookup_assign_eq _ _ _, rfl⟩
 ```
-Note: after `subst hname`, `name` becomes `n`. Use `n` not `name`.
 
-**After all 6 fixes**: run `bash scripts/lake_build_concise.sh`. Build MUST pass before any other work.
-
-### TASK 1: Close the remaining sorry in Flat_lookup_assign_ne (Fix 4)
-
-After Fix 4 passes the build, come back and replace the sorry on line 320 with:
+**FALLBACK**: If individual fixes confuse you, just sorry the broken helpers entirely:
 ```lean
-  · have hne' : (name == other) = false := Bool.eq_false_iff.mpr (by intro h; have := beq_iff_eq.mp h; rw [this] at hne; simp at hne)
+-- For Flat_lookup_updateBindingList_ne (line 289-303): sorry the entire proof body
+-- For Flat_lookup_assign_ne (line 314-320): sorry the entire proof body
+-- For EnvCorr_assign (line 323-352): sorry the entire proof body
+```
+This will fix the build. You can close the sorries later.
+
+**After fixes**: `bash scripts/lake_build_concise.sh`. Build MUST pass.
+
+### TASK 1: Close Fix 4 sorry (Flat_lookup_assign_ne)
+
+Replace the sorry on line 320 with:
+```lean
+  · have hne' : (name == other) = false := Bool.eq_false_iff.mpr (fun h => by simp [beq_iff_eq] at h; rw [h] at hne; simp at hne)
     simp only [Flat.Env.lookup, List.find?, hne']
 ```
 

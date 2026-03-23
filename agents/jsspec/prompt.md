@@ -48,87 +48,42 @@ Keep `partial def step?` for the interpreter. The proof agent needs the inductiv
 3. Test262 tells you what to formalize. Reduce skips by adding missing features.
 4. Your relations must be INHABITED with concrete derivations.
 
-## CURRENT PRIORITIES (2026-03-23T15:05)
+## CURRENT PRIORITIES (2026-03-23T16:05)
 
-### Status: Core `lookup_updateBindingList` lemmas DONE ✅. Test262: 3/63 pass, 50 fail.
+### Status: Core lemmas DONE ✅. Test262: 3/63 pass, 50 fail. All 50 failures are wasm_rc=134 (runtime traps on advanced features).
 
-### TASK 0: Add Flat `Env.lookup_assign_eq/ne/new` @[simp] lemmas
+### NOTE: Flat @[simp] lemmas reassigned to wasmspec (they own Flat/Semantics.lean, you don't)
 
-The proof agent wrote PRIVATE helper versions in ClosureConvertCorrect.lean but they have bugs. Having canonical @[simp] versions in Flat/Semantics.lean is still needed for long-term proof stability.
+### TASK 0: Add Core @[simp] lemmas for Env.assign
 
-This is assigned for the 3rd time. Please complete it this run.
+The proof agent needs `Core.Env.lookup_assign_eq` and `Core.Env.lookup_assign_ne` with proper @[simp] tags in Core/Semantics.lean. You own this file.
 
-Add in `VerifiedJS/Flat/Semantics.lean` after line 1465 (after the existing `updateBindingList_cons_ne` lemma):
+Check if these already exist. If not, add after the existing `lookup_updateBindingList` lemmas:
 
 ```lean
-/-- Lookup after updateBindingList for the same name. -/
-@[simp] theorem lookup_updateBindingList_eq (xs : Env) (name : VarName) (v : Value)
-    (h : xs.any (fun kv => kv.fst == name) = true) :
-    Env.lookup (updateBindingList xs name v) name = some v := by
-  induction xs with
-  | nil => simp at h
-  | cons hd tl ih =>
-    obtain ⟨n, old⟩ := hd
-    simp only [List.any, Bool.or_eq_true] at h
-    cases hn : (n == name) with
-    | true => simp [updateBindingList, hn, Env.lookup, List.find?]
-    | false =>
-      simp only [updateBindingList, hn, ↓reduceIte, Env.lookup, List.find?, hn]
-      have htl : tl.any (fun kv => kv.fst == name) = true := by
-        cases h with
-        | inl h => simp [hn] at h
-        | inr h => exact h
-      exact ih htl
-
-/-- Lookup after updateBindingList for a different name. -/
-@[simp] theorem lookup_updateBindingList_ne (xs : Env) (name other : VarName) (v : Value)
-    (hne : (other == name) = false) :
-    Env.lookup (updateBindingList xs name v) other = Env.lookup xs other := by
-  induction xs with
-  | nil => simp [updateBindingList, Env.lookup]
-  | cons hd tl ih =>
-    obtain ⟨n, old⟩ := hd
-    cases hn : (n == name) with
-    | true =>
-      have hno : (n == other) = false := by
-        have : n = name := by simpa using hn
-        rw [this]; simpa using hne
-      simp [updateBindingList, hn, Env.lookup, List.find?, hno]
-    | false =>
-      simp only [updateBindingList, hn, ↓reduceIte, Env.lookup, List.find?]
-      split <;> [rfl; exact ih]
-
 /-- Lookup after assign for the same name (existing). -/
-@[simp] theorem Env.lookup_assign_eq (env : Env) (name : VarName) (v : Value)
-    (h : env.any (fun kv => kv.fst == name) = true) :
-    (env.assign name v).lookup name = some v := by
+@[simp] theorem Env.lookup_assign_eq (env : Env) (name : VarName) (cv : Value)
+    (h : env.bindings.any (fun kv => kv.fst == name) = true) :
+    (env.assign name cv).lookup name = some cv := by
   simp [Env.assign, h, lookup_updateBindingList_eq]
 
 /-- Lookup after assign for a different name. -/
-@[simp] theorem Env.lookup_assign_ne (env : Env) (name other : VarName) (v : Value)
+@[simp] theorem Env.lookup_assign_ne (env : Env) (name other : VarName) (cv : Value)
     (hne : (other == name) = false) :
-    (env.assign name v).lookup other = env.lookup other := by
-  simp only [Env.assign]
-  split
-  · exact lookup_updateBindingList_ne env name other v hne
-  · simp [Env.lookup, List.find?]
-    intro h; simp [beq_comm] at hne; exact absurd h (by simpa using hne)
-
-/-- Lookup after assign for the same name (new). -/
-@[simp] theorem Env.lookup_assign_new (env : Env) (name : VarName) (v : Value)
-    (h : env.any (fun kv => kv.fst == name) = false) :
-    (env.assign name v).lookup name = some v := by
-  simp [Env.assign, h, Env.lookup, List.find?, beq_self_eq_true]
+    (env.assign name cv).lookup other = env.lookup other := by
+  simp only [Env.assign]; split
+  · exact lookup_updateBindingList_ne env.bindings name other cv hne
+  · simp [Env.lookup, List.find?, hne]
 ```
 
-Use `lean_multi_attempt` to test each proof. If a proof fails, **sorry the body but keep the @[simp] statement** — the STATEMENTS are what the proof agent needs.
+Test with `lean_multi_attempt`. Sorry bodies if needed, keep statements.
 
 ### TASK 1: Build, log, exit
 
 ### DO NOT:
 - Fix warnings or deprecations
 - Write new e2e tests
-- Attempt to modify files you don't own
+- Attempt to modify files you don't own (especially Flat/Semantics.lean)
 
 ## GOLDEN RULE for step? proofs
 NEVER pass `step?` to `simp`. Always use `unfold step? at h` then `simp [-step?]`.
