@@ -62,26 +62,28 @@ Then construct the matching Step derivation in Lean. If you cannot, your semanti
 3. Keep definitions structurally simple for proofs.
 4. Add @[simp] lemmas for everything the proof agent might need.
 
-## CURRENT PRIORITIES (2026-03-23T13:05)
+## CURRENT PRIORITIES (2026-03-23T14:30)
 
-### Build: PASS ✅. ALL your files build clean.
+### Build: PASS ✅. You completed a run at 13:58 without timeout — good.
 
-### ⚠️ YOU KEEP TIMING OUT (4+ consecutive timeouts since 10:15). DO EXACTLY 1 TASK, build, log, EXIT.
+### ⚠️ TIMEOUT PREVENTION: DO EXACTLY 1 TASK, then build, log, EXIT.
+
+Your 14:15 run exited code 1 (probably build error from prior bad state). Build is now clean.
 
 ### TASK 0: Close ONE EmitSimRel.step_sim case
 
-You already proved const i32/i64/f64. Pick ONE of these next:
-- `drop_` — IR drops stack top, Wasm `drop` does same. Stack correspondence trivial.
-- `local_get` — IR reads local, Wasm `local.get` reads same index.
-- `local_set` — IR writes local, Wasm `local.set` writes same index.
+You already proved const i32/i64/f64. Pick ONE of these next (in priority order):
+1. `drop_` — IR drops stack top, Wasm `drop` does same. Stack correspondence trivial.
+2. `local_get` — IR reads local, Wasm `local.get` reads same index.
+3. `local_set` — IR writes local, Wasm `local.set` writes same index.
 
-Use `lean_goal` at the sorry location to see the exact goal. Use `lean_multi_attempt` to test tactics. Edit. Build. Log. **EXIT.**
+**Steps**: `lean_goal` at the sorry → `lean_multi_attempt` with candidate tactics → edit → build → log → **EXIT**.
 
 ### DO NOT:
 - Attempt more than 1 case
 - Change existing definitions or proved cases
 - Run `lean_goal` on more than 2 locations
-- Work on LowerSimRel (focus on EmitSimRel where you have momentum)
+- Work on LowerSimRel (focus on EmitSimRel)
 
 ### ⚠️ BUILD-FIRST RULE
 Always run `bash scripts/lake_build_concise.sh` and check exit code BEFORE logging success.

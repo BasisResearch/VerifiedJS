@@ -2871,3 +2871,58 @@ Wrote BOTH exact tactics verbatim in proof prompt. These should close on the nex
 
 ## Run: 2026-03-23T14:30:04+00:00
 
+
+## Run: 2026-03-23T14:30:00+00:00
+
+### Build
+- **Status**: `lake build` **PASS** ✅ (49 jobs)
+
+### Sorry Report
+- **Count**: 80 (threshold: 100)
+- **Delta**: UNCHANGED from last run (80→80)
+- **Breakdown**: 27 CC + 49 Wasm/Semantics + 2 ANF + 1 Lower + 1 other
+
+### Test262
+- 3 pass, 50 fail, 3 skip, 5 xfail / 63 total (UNCHANGED 108+ hours)
+
+### Agent Health
+- **jsspec**: Active (last completed 14:10). Running consistently but DID NOT complete TASK 0 (Flat lookup_assign lemmas) despite being assigned 2 runs ago. Prompt updated with stronger urgency.
+- **wasmspec**: Currently running (started 14:30). Completed 13:58 run without timeout (improvement). 14:15 run exited code 1 (9 seconds).
+- **proof**: CRASHING — exited code 1 after 9 seconds at 14:30:11. Not making progress. evalBinary sorries STILL open despite being verified closable for 14+ hours.
+
+### Key Findings
+1. **evalBinary `add` + `_ => sorry` RE-VERIFIED CLOSABLE** — tested 3 tactics each with lean_multi_attempt, all produce "No goals to be solved". Proof agent just needs to paste these in.
+2. **Flat lookup_assign lemmas STILL MISSING** — jsspec has not delivered despite 2 runs since assignment. This blocks EnvCorr_assign (CC line 278).
+3. **Proof agent crash pattern** — exits code 1 in <10 seconds. May be hitting a permissions error, build issue, or configuration problem. Previous good run was at 12:30 where it proved 8 evalBinary cases.
+
+### Proof Chain Analysis
+- **Elaborate**: PROVED ✅
+- **Optimize**: PROVED ✅ (identity)
+- **ClosureConvert**: 27 sorry.
+  - evalBinary add + catch-all (2): VERIFIED CLOSABLE, FREE
+  - EnvCorr_assign (1): Blocked on Flat lookup_assign lemmas
+  - var captured (1): needs heap correspondence
+  - stepping sub-cases (10): need depth-indexed induction
+  - call/obj/prop/etc (7): need env/heap correspondence
+  - other (6): mixed difficulty
+- **ANFConvert**: 2 sorry (step_star + nested seq)
+- **Lower**: 1 sorry (blocked on wasmspec step_sim)
+- **Emit**: ~49 sorry in Wasm/Semantics step_sim (decomposed)
+- **EndToEnd**: Composition of above
+
+### Actions Taken
+1. **proof prompt**: Updated priorities (2026-03-23T14:30). TASK 0 = close evalBinary add + catch-all (exact verified tactics provided). TASK 1 = EnvCorr_assign (concrete unfold strategy with Flat updateBindingList simp lemmas). Added warning about code 1 crashes.
+2. **jsspec prompt**: Updated priorities (2026-03-23T14:30). TASK 0 = add Flat Env.lookup_assign_eq/ne/new + lookup_updateBindingList_eq/ne @[simp] lemmas. Emphasized this was NOT done last run and is blocking proof agent.
+3. **wasmspec prompt**: Updated priorities (2026-03-23T14:30). Acknowledged successful 13:58 completion. TASK 0 = close ONE EmitSimRel.step_sim case (drop/local_get/local_set).
+4. **PROGRESS.md**: Added metrics entry.
+
+### Architectural Observation
+
+The CC proof has 27 sorries but they fall into distinct categories with different proof strategies:
+- **Mechanical** (3 sorries): evalBinary cases — just simp/rfl, verified closable
+- **Lemma-dependent** (1 sorry): EnvCorr_assign — needs Flat lookup lemmas (jsspec)
+- **Structural** (10 sorries): stepping sub-cases — need depth-indexed step simulation
+- **Feature-blocked** (13 sorries): call/obj/prop/heap — need CC_SimRel to track heap+env correspondence
+
+The stepping sub-cases are the next frontier after the mechanical wins. They all follow the same pattern: "Core steps in sub-expression, need to show Flat also steps correspondingly." This requires CC_SimRel to be inductive or depth-indexed.
+2026-03-23T14:42:00+00:00 DONE

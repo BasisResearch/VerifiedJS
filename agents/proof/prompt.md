@@ -57,59 +57,65 @@ If ClosureConvertCorrect needs 600 lines of case analysis, WRITE 600 LINES. That
 ## Test262
 Read `logs/test262_summary.md` for failure categories. Fix compiler bugs that cause test262 failures.
 
-## CURRENT PRIORITIES (2026-03-23T13:05)
+## CURRENT PRIORITIES (2026-03-23T14:30)
 
-### Build: PASS ✅. ExprWellFormed private FIXED ✅ (good work).
+### Build: PASS ✅. Sorry: 80.
 
-You are now making commits again (sorry bouncing 79-80). Keep momentum.
+⚠️ You exited with code 1 after 9 seconds last run. Something is wrong with your startup. If the build fails, check `lean_diagnostic_messages` before giving up. If you hit a permissions error, log it and move on to the next task.
 
-### TASK 0 (FREE — 2 VERIFIED TACTICS): Close evalBinary remaining cases
+### TASK 0 (FREE — VERIFIED CLOSABLE): Close evalBinary `add` + catch-all
 
-Two sorries in `ClosureConvertCorrect.lean` are **verified closable** via `lean_multi_attempt`:
+I just re-verified these with `lean_multi_attempt`. Both produce "No goals to be solved":
 
-**Line 206** (`add` case) — replace:
-```lean
-  | add => sorry -- complex: string/number dispatch + toNumber/valueToString after cases
-```
-with:
+**Line 206** (`add` case) — replace the entire line with:
 ```lean
   | add =>
-    simp only [Core.evalBinary, Flat.evalBinary]
-    split <;> simp_all [Flat.convertValue, toNumber_convertValue, valueToString_convertValue]
+    simp only [Core.evalBinary, Flat.evalBinary]; split <;> (try rfl) <;> simp_all [Flat.convertValue, toNumber_convertValue, valueToString_convertValue]
 ```
 
-**Line 240** (`_ => sorry` — eq/neq/lt/gt/le/ge/instanceof/in) — replace:
-```lean
-  | _ => sorry -- remaining: eq, neq, lt, gt, le, ge, instanceof, in
-```
-with:
+**Line 239** (`_ => sorry`) — replace the entire line with:
 ```lean
   | _ => all_goals (simp only [Core.evalBinary, Flat.evalBinary, Flat.convertValue]; rfl)
 ```
 
-Both verified: "No goals to be solved". Do BOTH, build, log. **-2 sorries guaranteed.**
+These are COPY-PASTE. Do NOT modify. Do NOT "improve". Just paste, build, verify. **-2 sorries.**
 
-### TASK 1 (IF TIME): `EnvCorr_assign` (line 278)
+### TASK 1: `EnvCorr_assign` (line 278)
 
-After unfolding, the goal splits on whether name exists in env. Structure:
+The goal is:
+```
+EnvCorr (cenv.assign name cv) (fenv.assign name (Flat.convertValue cv))
+```
+
+**Strategy**: Use `Env.lookup_assign_eq/ne/new` from Core side. Flat side does NOT have these yet, so you need to unfold `Flat.Env.assign` and reason about `updateBindingList` using the existing `updateBindingList_cons_eq/ne/nil` @[simp] lemmas.
+
+Concrete approach:
 ```lean
   unfold EnvCorr at h ⊢
   constructor
-  · -- Flat→Core direction
+  · -- Flat→Core: if Flat assigns, show Core also has the value
     intro name₁ fv hlookup
-    by_cases hname : (name₁ == name)
-    · -- same name: both assign/updateBindingList store the new value
-      sorry
-    · -- different name: both sides leave other bindings unchanged
-      sorry
-  · -- Core→Flat direction
-    intro name₁ cv₁ hlookup
-    by_cases hname : (name₁ == name)
-    · sorry
-    · sorry
+    simp only [Flat.Env.assign] at hlookup
+    split at hlookup  -- case split: name exists or new
+    · -- existing: updateBindingList was used
+      by_cases hname : (name₁ == name)
+      · -- same name: updateBindingList stored the new value
+        -- Use updateBindingList lemmas + convertValue injectivity
+        sorry
+      · -- different name: lookup unchanged through updateBindingList
+        sorry
+    · -- new: (name, v) :: env
+      simp only [Flat.Env.lookup, List.find?] at hlookup
+      split at hlookup
+      · -- found at head
+        sorry
+      · -- found deeper
+        sorry
+  · -- Core→Flat direction: symmetric
+    sorry
 ```
 
-Each sub-case needs `lookup_updateBindingList_eq/ne` lemmas. Core-side lemmas exist. **Flat-side being added by jsspec** (may not be there yet — use `lean_local_search` to check for `Flat.lookup_updateBindingList`).
+The `updateBindingList_cons_eq/ne` simp lemmas should handle most cases. Try `simp_all [Flat.updateBindingList, Flat.Env.lookup, Flat.Env.assign]` on each sub-goal.
 
 ### ABSOLUTELY DO NOT:
 - Attempt more than 2 tasks
