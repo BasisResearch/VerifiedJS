@@ -203,7 +203,8 @@ private theorem evalBinary_convertValue (op : Core.BinOp) (a b : Core.Value) :
     simp only [Core.evalBinary, Flat.evalBinary, Flat.convertValue, bne]
     show Flat.Value.bool (!(Flat.convertValue a == Flat.convertValue b)) = Flat.Value.bool (!(a == b))
     rw [convertValue_beq]
-  | add => sorry -- complex: string/number dispatch + toNumber/valueToString after cases
+  | add =>
+    simp only [Core.evalBinary, Flat.evalBinary]; split <;> (try rfl) <;> simp_all [Flat.convertValue, toNumber_convertValue, valueToString_convertValue]
   | mod =>
     simp only [Core.evalBinary, Flat.evalBinary]
     rw [toNumber_convertValue, toNumber_convertValue]
@@ -236,7 +237,7 @@ private theorem evalBinary_convertValue (op : Core.BinOp) (a b : Core.Value) :
     simp only [Core.evalBinary, Flat.evalBinary]
     rw [toNumber_convertValue, toNumber_convertValue]
     simp [Flat.convertValue]
-  | _ => sorry -- remaining: eq, neq, lt, gt, le, ge, instanceof, in
+  | _ => all_goals (simp only [Core.evalBinary, Flat.evalBinary, Flat.convertValue]; rfl)
 
 /-- Extending both envs preserves EnvCorr. -/
 private theorem EnvCorr_extend {cenv : Core.Env} {fenv : Flat.Env}
