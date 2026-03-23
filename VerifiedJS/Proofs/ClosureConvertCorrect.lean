@@ -121,17 +121,28 @@ private theorem EnvCorr_extend {cenv : Core.Env} {fenv : Flat.Env}
   constructor
   · -- Flat⊆Core direction
     intro n fv hlookup
-    simp [Flat.Env.extend, Flat.Env.lookup] at hlookup
-    -- hlookup: ((name, convertValue cv) :: fenv).find? (·.1 == n) = some (_, fv)
-    simp [Core.Env.extend, Core.Env.lookup]
-    -- After extend, Core env is (name, cv) :: cenv.bindings
-    -- Both use List.find? with (·.1 == n)
-    sorry
+    simp only [Flat.Env.extend, Flat.Env.lookup] at hlookup
+    simp only [Core.Env.extend, Core.Env.lookup]
+    -- Case split on whether n matches the new binding name
+    by_cases heq : name == n
+    · -- n = name: found the new binding
+      simp [List.find?, heq] at hlookup ⊢
+      exact hlookup.symm
+    · -- n ≠ name: delegate to old env via h.1
+      simp [List.find?, heq] at hlookup ⊢
+      have hlookup' : fenv.lookup n = some fv := hlookup
+      exact h.1 n fv hlookup'
   · -- Core⊆Flat direction
     intro n cv' hlookup
-    simp [Core.Env.extend, Core.Env.lookup] at hlookup
-    simp [Flat.Env.extend, Flat.Env.lookup]
-    sorry
+    simp only [Core.Env.extend, Core.Env.lookup] at hlookup
+    simp only [Flat.Env.extend, Flat.Env.lookup]
+    by_cases heq : name == n
+    · simp [List.find?, heq] at hlookup ⊢
+      rw [hlookup]
+    · simp [List.find?, heq] at hlookup ⊢
+      have hlookup' : cenv.lookup n = some cv' := hlookup
+      obtain ⟨fv, hfenv, hfv⟩ := h.2 n cv' hlookup'
+      subst hfv; exact hfenv
 
 /-- Simulation relation for closure conversion: Flat and Core states
     have matching traces, environment correspondence, and expression
@@ -487,7 +498,76 @@ private theorem closureConvert_step_simulation
   | «let» _ _ _ => sorry -- needs env correspondence (let-binding extends env)
   | assign _ _ => sorry -- needs env correspondence
   | «if» _ _ _ => sorry -- needs env correspondence (cond evaluation)
-  | seq _ _ => sorry -- needs env correspondence (sub-stepping)
+  | seq a b =>
+    rw [hsc] at hconv; simp only [Flat.convertExpr] at hconv
+    -- Extract: sf.expr = .seq a' b' where a' = convertExpr a, b' = convertExpr b
+    let a' := (Flat.convertExpr a scope envVar envMap st).1
+    let st1 := (Flat.convertExpr a scope envVar envMap st).2
+    let b' := (Flat.convertExpr b scope envVar envMap st1).1
+    have hsf_expr : sf.expr = .seq a' b' := by
+      cases sf; simp_all [(Prod.mk.inj hconv).1]
+    -- Case split on whether a is already a value
+    cases hval : Core.exprValue? a with
+    | some v =>
+      -- a is .lit v
+      have ha_lit : a = .lit v := by cases a <;> simp [Core.exprValue?] at hval ⊢ <;> exact hval
+      subst ha_lit
+      -- a' = .lit (convertValue v)
+      have ha'_lit : a' = .lit (Flat.convertValue v) := by simp [a', Flat.convertExpr]
+      -- Flat steps: .seq (.lit fv) b' → b' with .silent
+      have hflat_ev : ev = .silent := by
+        rw [show sf = {sf with expr := .seq a' b'} from by cases sf; simp_all] at hstep
+        simp only [Flat.step?, ha'_lit, Flat.exprValue?] at hstep
+        exact (Prod.mk.inj (Option.some.inj hstep)).1.symm
+      subst hflat_ev
+      -- Core steps: .seq (.lit v) b → b with .silent
+      obtain ⟨sc', hcstep⟩ : ∃ sc', Core.step? sc = some (.silent, sc') := by
+        rw [show sc = {sc with expr := .seq (.lit v) b} from by cases sc; simp_all]
+        simp only [Core.step?, Core.exprValue?, Core.pushTrace]; exact ⟨_, rfl⟩
+      refine ⟨sc', ⟨hcstep⟩, ?_⟩
+      -- Trace preservation
+      have hsf'_trace : sf'.trace = sc'.trace := by
+        have hf := hstep; have hc := hcstep
+        rw [show sf = {sf with expr := .seq a' b'} from by cases sf; simp_all] at hf
+        rw [show sc = {sc with expr := .seq (.lit v) b} from by cases sc; simp_all] at hc
+        simp only [Flat.step?, ha'_lit, Flat.exprValue?, Flat.pushTrace] at hf
+        simp only [Core.step?, Core.exprValue?, Core.pushTrace] at hc
+        have heqf := (Prod.mk.inj (Option.some.inj hf)).2
+        have heqc := (Prod.mk.inj (Option.some.inj hc)).2
+        subst heqf; subst heqc
+        show sf.trace ++ _ = sc.trace ++ _; rw [htrace]
+      -- Env preservation (unchanged by .seq value step)
+      have henv' : EnvCorr sc'.env sf'.env := by
+        have hsf'_env : sf'.env = sf.env := by
+          have h0 := hstep
+          rw [show sf = {sf with expr := .seq a' b'} from by cases sf; simp_all] at h0
+          simp only [Flat.step?, ha'_lit, Flat.exprValue?, Flat.pushTrace] at h0
+          have heq := (Prod.mk.inj (Option.some.inj h0)).2; subst heq; rfl
+        have hsc'_env : sc'.env = sc.env := by
+          have h0 := hcstep
+          rw [show sc = {sc with expr := .seq (.lit v) b} from by cases sc; simp_all] at h0
+          simp only [Core.step?, Core.exprValue?, Core.pushTrace] at h0
+          have heq := (Prod.mk.inj (Option.some.inj h0)).2; subst heq; rfl
+        rw [hsc'_env, hsf'_env]; exact henvCorr
+      -- Expression correspondence: sf'.expr = b', sc'.expr = b
+      have hsf'_expr : sf'.expr = b' := by
+        have h0 := hstep
+        rw [show sf = {sf with expr := .seq a' b'} from by cases sf; simp_all] at h0
+        simp only [Flat.step?, ha'_lit, Flat.exprValue?, Flat.pushTrace] at h0
+        exact congrArg Flat.State.expr (Prod.mk.inj (Option.some.inj h0)).2 ▸ rfl
+      have hsc'_expr : sc'.expr = b := by
+        have h0 := hcstep
+        rw [show sc = {sc with expr := .seq (.lit v) b} from by cases sc; simp_all] at h0
+        simp only [Core.step?, Core.exprValue?, Core.pushTrace] at h0
+        exact congrArg Core.State.expr (Prod.mk.inj (Option.some.inj h0)).2 ▸ rfl
+      -- st1 = st for .lit case (convertExpr (.lit v) doesn't change state)
+      have hst1_eq : st1 = st := by simp [st1, Flat.convertExpr]
+      exact ⟨hsf'_trace, henv', scope, envVar, envMap, st1,
+        (Flat.convertExpr b scope envVar envMap st1).2,
+        by rw [hsc'_expr]; simp [Flat.convertExpr, hsf'_expr, b']⟩
+    | none =>
+      -- Stepping sub-case: a is not a value, need recursive step simulation
+      sorry
   | call _ _ => sorry -- needs env/heap/funcs correspondence
   | newObj _ _ => sorry -- needs env/heap correspondence
   | getProp _ _ => sorry -- needs env/heap correspondence
