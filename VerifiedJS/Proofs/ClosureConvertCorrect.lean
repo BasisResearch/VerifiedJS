@@ -242,78 +242,7 @@ private theorem EnvCorr_extend {cenv : Core.Env} {fenv : Flat.Env}
 private theorem EnvCorr_assign {cenv : Core.Env} {fenv : Flat.Env}
     (h : EnvCorr cenv fenv) (name : String) (cv : Core.Value) :
     EnvCorr (Core.Env.assign cenv name cv) (Flat.Env.assign fenv name (Flat.convertValue cv)) := by
-  -- Helper: convert between `any` and `lookup` for both env types
-  suffices h_aux : ∀ (bs : List (String × Core.Value)) (fs : List (String × Flat.Value)),
-      EnvCorr ⟨bs⟩ fs →
-      EnvCorr (Core.Env.assign ⟨bs⟩ name cv) (Flat.Env.assign fs name (Flat.convertValue cv)) by
-    exact h_aux cenv.bindings fenv h
-  intro bs fs henv
-  simp only [Core.Env.assign, Flat.Env.assign]
-  -- Both envs agree on whether name is bound (via EnvCorr bidirectionality)
-  -- Prove a helper: any_to_lookup and lookup_to_any in terms of lists
-  have any_to_lookup_bs : bs.any (fun kv => kv.fst == name) = true →
-      ∃ v', Core.Env.lookup ⟨bs⟩ name = some v' := by
-    intro hany; simp only [Core.Env.lookup]
-    induction bs with
-    | nil => simp [List.any] at hany
-    | cons hd tl ih =>
-      simp only [List.find?]
-      by_cases heq : hd.fst == name
-      · simp [heq]; exact ⟨_, rfl⟩
-      · simp [heq]; exact ih (by simp [List.any_cons, heq] at hany; exact hany)
-  have any_to_lookup_fs : fs.any (fun kv => kv.fst == name) = true →
-      ∃ v', Flat.Env.lookup fs name = some v' := by
-    intro hany; simp only [Flat.Env.lookup]
-    induction fs with
-    | nil => simp [List.any] at hany
-    | cons hd tl ih =>
-      simp only [List.find?]
-      by_cases heq : hd.fst == name
-      · simp [heq]; exact ⟨_, rfl⟩
-      · simp [heq]; exact ih (by simp [List.any_cons, heq] at hany; exact hany)
-  have lookup_to_any_bs : (∃ v', Core.Env.lookup ⟨bs⟩ name = some v') →
-      bs.any (fun kv => kv.fst == name) = true := by
-    intro ⟨v', hv'⟩; simp only [Core.Env.lookup] at hv'
-    induction bs with
-    | nil => simp [List.find?] at hv'
-    | cons hd tl ih =>
-      simp only [List.any_cons, Bool.or_eq_true]
-      by_cases heq : hd.fst == name
-      · exact Or.inl heq
-      · exact Or.inr (ih (by simp [List.find?, heq] at hv'; exact ⟨v', hv'⟩))
-  have lookup_to_any_fs : (∃ v', Flat.Env.lookup fs name = some v') →
-      fs.any (fun kv => kv.fst == name) = true := by
-    intro ⟨v', hv'⟩; simp only [Flat.Env.lookup] at hv'
-    induction fs with
-    | nil => simp [List.find?] at hv'
-    | cons hd tl ih =>
-      simp only [List.any_cons, Bool.or_eq_true]
-      by_cases heq : hd.fst == name
-      · exact Or.inl heq
-      · exact Or.inr (ih (by simp [List.find?, heq] at hv'; exact ⟨v', hv'⟩))
-  have hany_agree : bs.any (fun kv => kv.fst == name) =
-      fs.any (fun kv => kv.fst == name) := by
-    cases hf : fs.any (fun kv => kv.fst == name) with
-    | true =>
-      obtain ⟨fv, hfv⟩ := any_to_lookup_fs hf
-      obtain ⟨cv', hcv', _⟩ := henv.1 name fv hfv
-      cases hc : bs.any (fun kv => kv.fst == name)
-      · exfalso; exact absurd (lookup_to_any_bs ⟨cv', hcv'⟩) (by simp [hc])
-      · rfl
-    | false =>
-      cases hc : bs.any (fun kv => kv.fst == name) with
-      | false => rfl
-      | true =>
-        exfalso
-        obtain ⟨cv', hcv'⟩ := any_to_lookup_bs hc
-        obtain ⟨fv, hfv, _⟩ := henv.2 name cv' hcv'
-        exact absurd (lookup_to_any_fs ⟨fv, hfv⟩) (by simp [hf])
-  rw [hany_agree]
-  split
-  · -- Both envs have name → both use updateBindingList
-    sorry
-  · -- Neither has name → both prepend → exactly EnvCorr_extend
-    exact EnvCorr_extend henv name cv
+  sorry
 
 /-- Simulation relation for closure conversion: Flat and Core states
     have matching traces, environment correspondence, and expression
@@ -1137,7 +1066,76 @@ private theorem closureConvert_step_simulation
     | none =>
       sorry -- stepping sub-case: needs recursive step simulation
   | tryCatch _ _ _ _ => sorry -- needs env correspondence
-  | while_ _ _ => sorry -- needs env correspondence
+  | while_ cond body =>
+    rw [hsc] at hconv; simp only [Flat.convertExpr] at hconv
+    -- convertExpr (.while_ cond body) = (.while_ cond' body', st2)
+    have hsf_expr : sf.expr = .while_ (Flat.convertExpr cond scope envVar envMap st).fst
+        (Flat.convertExpr body scope envVar envMap (Flat.convertExpr cond scope envVar envMap st).snd).fst := by
+      cases sf; simp_all [(Prod.mk.inj hconv).1]
+    -- Both step with .silent, unfolding while to if-then-seq-while
+    have hsf_rw : sf = ⟨Flat.Expr.while_
+        (Flat.convertExpr cond scope envVar envMap st).fst
+        (Flat.convertExpr body scope envVar envMap (Flat.convertExpr cond scope envVar envMap st).snd).fst,
+        sf.env, sf.heap, sf.trace⟩ := by
+      cases sf; simp_all
+    have hsc_rw : sc = ⟨Core.Expr.while_ cond body, sc.env, sc.heap, sc.trace, sc.funcs, sc.callStack⟩ := by
+      cases sc; simp only [] at hsc ⊢; congr
+    -- Flat steps with .silent
+    have hflat_ev : ev = .silent := by
+      rw [hsf_rw] at hstep; simp only [Flat.step?] at hstep
+      exact (Prod.mk.inj (Option.some.inj hstep)).1.symm
+    subst hflat_ev
+    -- Core also steps with .silent
+    obtain ⟨sc', hcstep⟩ : ∃ sc', Core.step? sc = some (.silent, sc') := by
+      rw [hsc_rw]; simp only [Core.step?]; exact ⟨_, rfl⟩
+    refine ⟨sc', ⟨hcstep⟩, ?_⟩
+    -- Trace preservation
+    have hsf'_trace : sf'.trace = sc'.trace := by
+      have hf := hstep; have hc := hcstep
+      rw [hsf_rw] at hf; rw [hsc_rw] at hc
+      simp only [Flat.step?] at hf
+      simp only [Core.step?] at hc
+      have heqf := (Prod.mk.inj (Option.some.inj hf)).2
+      have heqc := (Prod.mk.inj (Option.some.inj hc)).2
+      subst heqf; subst heqc
+      show sf.trace ++ _ = sc.trace ++ _; rw [htrace]
+    -- Env preservation (while_ doesn't change env)
+    have henv' : EnvCorr sc'.env sf'.env := by
+      have hsf'_env : sf'.env = sf.env := by
+        have h0 := hstep; rw [hsf_rw] at h0
+        simp only [Flat.step?] at h0
+        have heq := (Prod.mk.inj (Option.some.inj h0)).2; subst heq; rfl
+      have hsc'_env : sc'.env = sc.env := by
+        have h0 := hcstep; rw [hsc_rw] at h0
+        simp only [Core.step?] at h0
+        have heq := (Prod.mk.inj (Option.some.inj h0)).2; subst heq; rfl
+      rw [hsc'_env, hsf'_env]; exact henvCorr
+    -- Expression correspondence: both lower to if cond (seq body (while_ cond body)) (lit undefined)
+    -- sc'.expr = .if cond (.seq body (.while_ cond body)) (.lit .undefined)
+    -- sf'.expr = .if cond' (.seq body' (.while_ cond' body')) (.lit .undefined)
+    -- where cond' = convertExpr cond ..., body' = convertExpr body ...
+    -- This should match convertExpr (.if cond (.seq body (.while_ cond body)) (.lit .undefined))
+    have hsf'_expr : sf'.expr = .«if»
+        (Flat.convertExpr cond scope envVar envMap st).fst
+        (.seq (Flat.convertExpr body scope envVar envMap (Flat.convertExpr cond scope envVar envMap st).snd).fst
+          (.while_ (Flat.convertExpr cond scope envVar envMap st).fst
+            (Flat.convertExpr body scope envVar envMap (Flat.convertExpr cond scope envVar envMap st).snd).fst))
+        (.lit .undefined) := by
+      have h0 := hstep; rw [hsf_rw] at h0
+      simp only [Flat.step?] at h0
+      exact congrArg Flat.State.expr (Prod.mk.inj (Option.some.inj h0)).2 ▸ rfl
+    have hsc'_expr : sc'.expr = .«if» cond (.seq body (.while_ cond body)) (.lit .undefined) := by
+      have h0 := hcstep; rw [hsc_rw] at h0
+      simp only [Core.step?] at h0
+      exact congrArg Core.State.expr (Prod.mk.inj (Option.some.inj h0)).2 ▸ rfl
+    -- Now show CC_SimRel for the resulting states
+    -- convertExpr (.if cond (.seq body (.while_ cond body)) (.lit .undefined)) scope envVar envMap st
+    -- should produce: .if cond' (.seq body' (.while_ cond' body')) (.lit .undefined)
+    -- but this doesn't hold exactly because convertExpr processes the if/seq/while_ recursively
+    -- with different st values at each sub-expression.
+    -- Need to show: ∃ scope' envVar' envMap' st0 st0',
+    --   (sf'.expr, st0') = convertExpr sc'.expr scope' envVar' envMap' st0
+    sorry
   | «return» arg =>
     rw [hsc] at hconv; simp only [Flat.convertExpr] at hconv
     -- convertExpr (.return arg) = (.return arg', st1) where arg' = convertOptExpr arg
