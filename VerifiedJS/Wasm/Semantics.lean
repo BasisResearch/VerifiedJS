@@ -5596,6 +5596,63 @@ inductive EmitCodeCorr : List IRInstr → List Instr → Prop where
   | return__ (rest_ir : List IRInstr) (rest_w : List Instr) :
       EmitCodeCorr rest_ir rest_w →
       EmitCodeCorr (.return_ :: rest_ir) (.return_ :: rest_w)
+  /-- callIndirect maps to call_indirect. REF: Emit.lean line 109. -/
+  | callIndirect_ (typeIdx : Nat) (rest_ir : List IRInstr) (rest_w : List Instr) :
+      EmitCodeCorr rest_ir rest_w →
+      EmitCodeCorr (.callIndirect typeIdx :: rest_ir) (.callIndirect typeIdx 0 :: rest_w)
+  /-- i32.load maps to i32.load. REF: Emit.lean line 91. -/
+  | load_i32 (offset : Nat) (rest_ir : List IRInstr) (rest_w : List Instr) :
+      EmitCodeCorr rest_ir rest_w →
+      EmitCodeCorr (.load .i32 offset :: rest_ir)
+        (.i32Load { offset := offset, align := 2 } :: rest_w)
+  /-- i32.store maps to i32.store. REF: Emit.lean line 95. -/
+  | store_i32 (offset : Nat) (rest_ir : List IRInstr) (rest_w : List Instr) :
+      EmitCodeCorr rest_ir rest_w →
+      EmitCodeCorr (.store .i32 offset :: rest_ir)
+        (.i32Store { offset := offset, align := 2 } :: rest_w)
+  /-- f64.load maps to f64.load. REF: Emit.lean line 93. -/
+  | load_f64 (offset : Nat) (rest_ir : List IRInstr) (rest_w : List Instr) :
+      EmitCodeCorr rest_ir rest_w →
+      EmitCodeCorr (.load .f64 offset :: rest_ir)
+        (.f64Load { offset := offset, align := 3 } :: rest_w)
+  /-- f64.store maps to f64.store. REF: Emit.lean line 97. -/
+  | store_f64 (offset : Nat) (rest_ir : List IRInstr) (rest_w : List Instr) :
+      EmitCodeCorr rest_ir rest_w →
+      EmitCodeCorr (.store .f64 offset :: rest_ir)
+        (.f64Store { offset := offset, align := 3 } :: rest_w)
+  /-- i32.store8 maps to i32.store8. REF: Emit.lean line 99. -/
+  | store8_ (offset : Nat) (rest_ir : List IRInstr) (rest_w : List Instr) :
+      EmitCodeCorr rest_ir rest_w →
+      EmitCodeCorr (.store8 offset :: rest_ir)
+        (.i32Store8 { offset := offset, align := 0 } :: rest_w)
+  /-- block maps to block (body recursively mapped). REF: Emit.lean line 110-113. -/
+  | block_ (label : String) (body_ir : List IRInstr) (body_w : List Instr)
+      (rest_ir : List IRInstr) (rest_w : List Instr) :
+      EmitCodeCorr body_ir body_w → EmitCodeCorr rest_ir rest_w →
+      EmitCodeCorr (.block label body_ir :: rest_ir) (.block .none body_w :: rest_w)
+  /-- loop maps to loop (body recursively mapped). REF: Emit.lean line 114-117. -/
+  | loop_ (label : String) (body_ir : List IRInstr) (body_w : List Instr)
+      (rest_ir : List IRInstr) (rest_w : List Instr) :
+      EmitCodeCorr body_ir body_w → EmitCodeCorr rest_ir rest_w →
+      EmitCodeCorr (.loop label body_ir :: rest_ir) (.loop .none body_w :: rest_w)
+  /-- if_ maps to if_ (branches recursively mapped). REF: Emit.lean line 118-124. -/
+  | if__ (result : Option IRType) (then_ir else_ir : List IRInstr) (then_w else_w : List Instr)
+      (bt : BlockType) (rest_ir : List IRInstr) (rest_w : List Instr) :
+      EmitCodeCorr then_ir then_w → EmitCodeCorr else_ir else_w →
+      EmitCodeCorr rest_ir rest_w →
+      EmitCodeCorr (.if_ result then_ir else_ir :: rest_ir) (.if_ bt then_w else_w :: rest_w)
+  /-- br maps to br (label index resolved). REF: Emit.lean line 125-127. -/
+  | br_ (label : String) (idx : Nat) (rest_ir : List IRInstr) (rest_w : List Instr) :
+      EmitCodeCorr rest_ir rest_w →
+      EmitCodeCorr (.br label :: rest_ir) (.br idx :: rest_w)
+  /-- brIf maps to br_if (label index resolved). REF: Emit.lean line 128-130. -/
+  | brIf_ (label : String) (idx : Nat) (rest_ir : List IRInstr) (rest_w : List Instr) :
+      EmitCodeCorr rest_ir rest_w →
+      EmitCodeCorr (.brIf label :: rest_ir) (.brIf idx :: rest_w)
+  /-- memoryGrow maps to memory.grow 0. REF: Emit.lean line 133. -/
+  | memoryGrow_ (rest_ir : List IRInstr) (rest_w : List Instr) :
+      EmitCodeCorr rest_ir rest_w →
+      EmitCodeCorr (.memoryGrow :: rest_ir) (.memoryGrow 0 :: rest_w)
   /-- General case for instructions not yet decomposed. -/
   | general (ir_instr : IRInstr) (wasm_instrs : List Instr)
       (rest_ir : List IRInstr) (rest_w : List Instr) :
@@ -5692,6 +5749,75 @@ theorem EmitCodeCorr.const_f64_inv {v : String} {rest : List IRInstr} {wcode : L
   | const_f64 _ f _ rw hrw => left; exact ⟨f, rw, rfl, hrw⟩
   | general _ wi _ rw hrw => right; exact ⟨wi, rw, rfl, hrw⟩
 
+/-- Inversion for const_ .i64 :: rest. -/
+theorem EmitCodeCorr.const_i64_inv {v : String} {rest : List IRInstr} {wcode : List Instr}
+    (h : EmitCodeCorr (IRInstr.const_ .i64 v :: rest) wcode) :
+    (∃ n rest_w, wcode = Instr.i64Const n :: rest_w ∧ v.toNat? = some n.toNat ∧ EmitCodeCorr rest rest_w) ∨
+    (∃ wasm_instrs rest_w, wcode = wasm_instrs ++ rest_w ∧ EmitCodeCorr rest rest_w) := by
+  cases h with
+  | const_i64 _ n _ rw hp hrw => left; exact ⟨n, rw, rfl, hp, hrw⟩
+  | general _ wi _ rw hrw => right; exact ⟨wi, rw, rfl, hrw⟩
+
+/-- Inversion for block :: rest. -/
+theorem EmitCodeCorr.block_inv {label : String} {body_ir : List IRInstr}
+    {rest : List IRInstr} {wcode : List Instr}
+    (h : EmitCodeCorr (IRInstr.block label body_ir :: rest) wcode) :
+    (∃ body_w rest_w, wcode = Instr.block .none body_w :: rest_w ∧
+      EmitCodeCorr body_ir body_w ∧ EmitCodeCorr rest rest_w) ∨
+    (∃ wasm_instrs rest_w, wcode = wasm_instrs ++ rest_w ∧ EmitCodeCorr rest rest_w) := by
+  cases h with
+  | block_ _ _ bw _ rw hb hrw => left; exact ⟨bw, rw, rfl, hb, hrw⟩
+  | general _ wi _ rw hrw => right; exact ⟨wi, rw, rfl, hrw⟩
+
+/-- Inversion for loop :: rest. -/
+theorem EmitCodeCorr.loop_inv {label : String} {body_ir : List IRInstr}
+    {rest : List IRInstr} {wcode : List Instr}
+    (h : EmitCodeCorr (IRInstr.loop label body_ir :: rest) wcode) :
+    (∃ body_w rest_w, wcode = Instr.loop .none body_w :: rest_w ∧
+      EmitCodeCorr body_ir body_w ∧ EmitCodeCorr rest rest_w) ∨
+    (∃ wasm_instrs rest_w, wcode = wasm_instrs ++ rest_w ∧ EmitCodeCorr rest rest_w) := by
+  cases h with
+  | loop_ _ _ bw _ rw hb hrw => left; exact ⟨bw, rw, rfl, hb, hrw⟩
+  | general _ wi _ rw hrw => right; exact ⟨wi, rw, rfl, hrw⟩
+
+/-- Inversion for if_ :: rest. -/
+theorem EmitCodeCorr.if_inv {result : Option IRType} {then_ir else_ir : List IRInstr}
+    {rest : List IRInstr} {wcode : List Instr}
+    (h : EmitCodeCorr (IRInstr.if_ result then_ir else_ir :: rest) wcode) :
+    (∃ bt then_w else_w rest_w, wcode = Instr.if_ bt then_w else_w :: rest_w ∧
+      EmitCodeCorr then_ir then_w ∧ EmitCodeCorr else_ir else_w ∧ EmitCodeCorr rest rest_w) ∨
+    (∃ wasm_instrs rest_w, wcode = wasm_instrs ++ rest_w ∧ EmitCodeCorr rest rest_w) := by
+  cases h with
+  | if__ _ _ _ tw ew _ _ rw ht he hrw => left; exact ⟨_, tw, ew, rw, rfl, ht, he, hrw⟩
+  | general _ wi _ rw hrw => right; exact ⟨wi, rw, rfl, hrw⟩
+
+/-- Inversion for br :: rest. -/
+theorem EmitCodeCorr.br_inv {label : String} {rest : List IRInstr} {wcode : List Instr}
+    (h : EmitCodeCorr (IRInstr.br label :: rest) wcode) :
+    (∃ idx rest_w, wcode = Instr.br idx :: rest_w ∧ EmitCodeCorr rest rest_w) ∨
+    (∃ wasm_instrs rest_w, wcode = wasm_instrs ++ rest_w ∧ EmitCodeCorr rest rest_w) := by
+  cases h with
+  | br_ _ idx _ rw hrw => left; exact ⟨idx, rw, rfl, hrw⟩
+  | general _ wi _ rw hrw => right; exact ⟨wi, rw, rfl, hrw⟩
+
+/-- Inversion for brIf :: rest. -/
+theorem EmitCodeCorr.brIf_inv {label : String} {rest : List IRInstr} {wcode : List Instr}
+    (h : EmitCodeCorr (IRInstr.brIf label :: rest) wcode) :
+    (∃ idx rest_w, wcode = Instr.brIf idx :: rest_w ∧ EmitCodeCorr rest rest_w) ∨
+    (∃ wasm_instrs rest_w, wcode = wasm_instrs ++ rest_w ∧ EmitCodeCorr rest rest_w) := by
+  cases h with
+  | brIf_ _ idx _ rw hrw => left; exact ⟨idx, rw, rfl, hrw⟩
+  | general _ wi _ rw hrw => right; exact ⟨wi, rw, rfl, hrw⟩
+
+/-- Inversion for memoryGrow :: rest. -/
+theorem EmitCodeCorr.memoryGrow_inv {rest : List IRInstr} {wcode : List Instr}
+    (h : EmitCodeCorr (IRInstr.memoryGrow :: rest) wcode) :
+    (∃ rest_w, wcode = Instr.memoryGrow 0 :: rest_w ∧ EmitCodeCorr rest rest_w) ∨
+    (∃ wasm_instrs rest_w, wcode = wasm_instrs ++ rest_w ∧ EmitCodeCorr rest rest_w) := by
+  cases h with
+  | memoryGrow_ _ rw hrw => left; exact ⟨rw, rfl, hrw⟩
+  | general _ wi _ rw hrw => right; exact ⟨wi, rw, rfl, hrw⟩
+
 /-- General inversion for any IR instruction. -/
 theorem EmitCodeCorr.cons_inv {instr : IRInstr} {rest : List IRInstr} {wcode : List Instr}
     (h : EmitCodeCorr (instr :: rest) wcode) :
@@ -5710,6 +5836,18 @@ theorem EmitCodeCorr.cons_inv {instr : IRInstr} {rest : List IRInstr} {wcode : L
   | call_ _ _ rw hrw => exact ⟨[_], rw, rfl, hrw⟩
   | drop_ _ rw hrw => exact ⟨[_], rw, rfl, hrw⟩
   | return__ _ rw hrw => exact ⟨[_], rw, rfl, hrw⟩
+  | callIndirect_ _ _ rw hrw => exact ⟨[_], rw, rfl, hrw⟩
+  | load_i32 _ _ rw hrw => exact ⟨[_], rw, rfl, hrw⟩
+  | store_i32 _ _ rw hrw => exact ⟨[_], rw, rfl, hrw⟩
+  | load_f64 _ _ rw hrw => exact ⟨[_], rw, rfl, hrw⟩
+  | store_f64 _ _ rw hrw => exact ⟨[_], rw, rfl, hrw⟩
+  | store8_ _ _ rw hrw => exact ⟨[_], rw, rfl, hrw⟩
+  | block_ _ _ _ _ rw _ hrw => exact ⟨[_], rw, rfl, hrw⟩
+  | loop_ _ _ _ _ rw _ hrw => exact ⟨[_], rw, rfl, hrw⟩
+  | if__ _ _ _ _ _ _ _ rw _ _ hrw => exact ⟨[_], rw, rfl, hrw⟩
+  | br_ _ _ _ rw hrw => exact ⟨[_], rw, rfl, hrw⟩
+  | brIf_ _ _ _ rw hrw => exact ⟨[_], rw, rfl, hrw⟩
+  | memoryGrow_ _ rw hrw => exact ⟨[_], rw, rfl, hrw⟩
   | general _ wi _ rw hrw => exact ⟨wi, rw, rfl, hrw⟩
 
 /-- Value correspondence for IR → Wasm: each IR value maps to the corresponding Wasm value.
