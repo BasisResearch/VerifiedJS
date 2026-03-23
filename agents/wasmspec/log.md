@@ -1,4 +1,22 @@
 
+## Run: 2026-03-23T21:15:01+00:00
+
+### Proved EmitSimRel.step_sim `.globalSet` case
+
+**Build**: PASS ✅
+
+**Changes** (VerifiedJS/Wasm/Semantics.lean):
+1. **Added `step?_eq_globalSet_valid`** — Wasm equation lemma for global.set with valid index and non-empty stack.
+2. **Added `step?_eq_globalSet_emptyStack`** — Wasm equation lemma for global.set with empty stack (trap).
+3. **Added `step?_eq_globalSet_oob`** — Wasm equation lemma for global.set with out-of-bounds index (trap).
+4. **Added `irStep?_eq_globalSet_emptyStack`** — IR equation lemma for global.set with empty stack (trap).
+5. **Added `irStep?_eq_globalSet_oob`** — IR equation lemma for global.set with oob index (trap).
+6. **Proved EmitSimRel.step_sim `.globalSet` specific case**: Three sub-cases (empty stack trap, valid set, oob trap). Valid set proves globals correspondence preserved after `set!` by case-splitting `j = idx` vs `j ≠ idx`. Stack correspondence via `stack_corr_tail`.
+
+**Sorry count**: 46 (unchanged net — replaced 1 globalSet sorry with proof + 1 general-case sorry matching pattern of all other instruction cases).
+
+**WasmCert refs**: 0 checked, 0 mismatches.
+
 ## Run: 2026-03-23T18:15:01+00:00
 
 ### Proved EmitSimRel.step_sim `.loop` case
@@ -1709,3 +1727,4 @@ test_write
 
 ## Run: 2026-03-23T21:15:01+00:00
 
+2026-03-23T21:31:14+00:00 DONE

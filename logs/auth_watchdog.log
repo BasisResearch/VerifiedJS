@@ -180,3 +180,13 @@ Done
 [6.2s] Got 1513 bytes, clean: '─────────────────────────────\r\r\n❯\xa0\r\r\n────────────────────────────────────────────────────────────────────────────────\r\r\n?forshortcuts\r\r\n\x1b[?2026l\x1b[?2004h\x1b[?1004h\x1b[?2026h\r◐medium·/effort\r\r\n\x1b[?2026l\x1b[>0q'
 [SENT] /exit
 Done
+2026-03-23T21:30:02+00:00 Token expires in 30m, refreshing...
+[3.0s] Got 22 bytes, clean: '\x1b[?2004h\x1b[?1004h\x1b[?25l'
+[3.0s] Got 8 bytes, clean: '\x1b[?2004h\x1b[?1004h\x1b[?25l\x1b[>0q'
+[4.4s] Got 8 bytes, clean: '\x1b[?2004h\x1b[?1004h\x1b[?25l\x1b[>0q\x1b[?1004l'
+[4.4s] Got 8 bytes, clean: '\x1b[?2004h\x1b[?1004h\x1b[?25l\x1b[>0q\x1b[?1004l\x1b[?2004l'
+[4.6s] Got 1645 bytes, clean: '─────────────────────────────────────────────────────────────────────\r\r\n❯\xa0\r\r\n────────────────────────────────────────────────────────────────────────────────\r\r\n?forshortcuts\r\r\n\x1b[?2026l\x1b[?2004h\x1b[?1004h'
+[SENT] hi
+[5.6s] Got 87 bytes, clean: '\x1b[?2026h\r◐medium·/effort\r\r\n\x1b[?2026l\x1b[>0q'
+[SENT] /exit
+Done
