@@ -57,45 +57,63 @@ If ClosureConvertCorrect needs 600 lines of case analysis, WRITE 600 LINES. That
 ## Test262
 Read `logs/test262_summary.md` for failure categories. Fix compiler bugs that cause test262 failures.
 
-## CURRENT PRIORITIES (2026-03-23T21:05)
+## CURRENT PRIORITIES (2026-03-23T22:30)
 
-### Build: PASS ✅. Sorry: 73 (24 CC + 46 Wasm + 2 ANF + 1 Lower).
+### Build: PASS ✅. Sorry: 69 (20 CC + 46 Wasm + 2 ANF + 1 Lower).
 
-### ✅ YOU RECOVERED FROM TIMEOUTS! Keep up the momentum.
+### GREAT PROGRESS: CC 24→20! You proved typeof, unary, throw, return stepping sub-cases.
 
-You went from 74→73 sorries in the 20:30 run. Your infrastructure work (firstNonValueExpr/Prop lemmas) is paying off. Keep going with this approach — small, targeted changes that build toward stepping sub-cases.
+Your firstNonValue infrastructure + depth IH pattern is WORKING. 7 stepping sub-cases remain. Each one follows the IDENTICAL pattern as the typeof case at lines 1180-1260.
 
-**TIME MANAGEMENT**: Keep doing what worked this run:
+**TIME MANAGEMENT**:
 1. Do NOT run `lake build` at the start. Use `lean_diagnostic_messages` instead.
 2. Only run `lake build` ONCE at the end to verify.
-3. If stuck for 15 minutes on a sorry, move on.
+3. If stuck for 15 minutes on a sorry, move on to the next.
 
-### TASK 0: Close the captured variable sorry at line 758
+### TASK 0: Close 3+ stepping sub-cases using the PROVEN typeof template
 
-`lean_goal` at line 758 to see the exact state. This is the `.var name` case when `lookupEnv envMap name = some idx`. The convertExpr produces `.getEnv (.var envVar) idx`. You need to show that if Core steps `.var name` to a value (via env lookup), Flat steps `.getEnv (.var envVar) idx` correspondingly. This requires:
-1. The env correspondence maps `name` in Core's env to a heap slot at `idx`
-2. Flat's `.getEnv` steps by looking up envVar, then indexing into the closure env
+The 7 remaining stepping sub-cases at lines 918, 972, 1047, 1112, 1409, 1410, 1936 ALL follow the typeof pattern (lines 1180-1260). Here is exactly what each needs:
 
-If the CC_SimRel doesn't track heap correspondence yet, `sorry` it with a note and move to TASK 1.
+**Line 918 — let (init not value)**: Copy typeof pattern. Use `Core.step_let_step_init`. The expression wrap is `.let name X body` instead of `.typeof X`. At the end, `convertExpr (.let name sc_arg.expr body)` decomposes as:
+```lean
+simp only [Flat.convertExpr]
+rw [show Flat.convertExpr sc_arg.expr scope' envVar' envMap' st_a = (sa_flat.expr, st_a') from hconv_arg.symm]
+```
+The difference: convertExpr for `.let` threads state through `init` then `body`. The IH gives you `(sa_flat.expr, st_a')` for init. For body, the state `st_a'` flows through. You need `scope' = scope` and `envVar' = envVar` etc. from the IH's CC_SimRel.
 
-### TASK 1: Close stepping sub-cases (lines 918, 972, 1047, 1315, etc.)
+**Line 972 — assign (rhs not value)**: Same pattern. Use `Core.step_assign_step_rhs`. Wrap is `.assign name X`.
 
-You have 9+ stepping sub-cases all following the same pattern. Pick the simplest one (e.g., line 918 — let-binding stepping). The approach:
-1. `lean_goal` at the sorry line
-2. The Flat sub-expression is not a value (use infrastructure you built)
-3. Both Flat.step? and Core.step? delegate to the sub-expression
-4. Apply `ih_depth` for the recursive case
-5. Reconstruct CC_SimRel for the result
+**Line 1047 — if (cond not value)**: Same pattern. Use `Core.step_if_step_cond`. Wrap is `.if X then_ else_`. convertExpr threads through cond, then_, else_.
 
-Even closing 1-2 of these validates the pattern for all 9.
+**Line 1112 — seq (lhs not value)**: Same pattern. Use `Core.step_seq_nonvalue_lhs`. Wrap is `.seq X b`.
 
-### TASK 2: If stuck on above, close any "easy" sorry
+**Line 1410 — binary (lhs not value)**: Same pattern. Use `Core.step_binary_nonvalue_lhs`. Wrap is `.binary op X rhs`.
 
-Run `lean_multi_attempt` on each sorry line with `["grind", "aesop", "simp_all", "omega", "decide"]`. If any close automatically, take the free win.
+**Line 1936 — await (arg not value)**: Same pattern. Use `Core.step_await_step_arg`. Wrap is `.await X`.
+
+**Line 1409 — binary (rhs not value, lhs IS value)**: This is special. You need to ADD a helper lemma to Core/Semantics.lean first:
+```lean
+theorem step_binary_value_lhs_nonvalue_rhs (op : BinOp) (lv : Value) (rhs : Expr) (env : Env) (heap : Heap)
+    (trace : List TraceEvent) (funcs : Array FuncClosure)
+    (cs : List (List (VarName × Value)))
+    (hrhs : exprValue? rhs = none)
+    (t : TraceEvent) (sr : State)
+    (hstep : step? ⟨rhs, env, heap, trace, funcs, cs⟩ = some (t, sr)) :
+    step? ⟨.binary op (.lit lv) rhs, env, heap, trace, funcs, cs⟩ =
+      some (t, pushTrace { sr with expr := .binary op (.lit lv) sr.expr, trace := trace } t) := by
+  simp [step?, exprValue?, hrhs, hstep]
+```
+Then use it like `step_binary_nonvalue_lhs`.
+
+**START with line 1112 (seq)** — it's the simplest wrapper (just `.seq X b`, no extra convertExpr state threading beyond what typeof has). Then do 972 (assign), then 918 (let).
+
+### TASK 1: If stuck on stepping sub-cases, try lean_multi_attempt on other sorries
+
+Run `lean_multi_attempt` on lines 758, 1411, 1412, 1413, 1515, 1585 with `["grind", "aesop", "simp_all", "omega", "decide"]`. Take any free wins.
 
 ### ABSOLUTELY DO NOT:
 - Run `lake build` at the start of your run
-- Attempt heap/funcs cases (call, newObj, getProp, etc.) — these need CC_SimRel changes
+- Attempt heap/funcs cases (lines 1113-1119) — these need CC_SimRel changes
 - Refactor existing proved cases
 - Spend more than 15 minutes on any single sorry
 

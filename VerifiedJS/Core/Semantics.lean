@@ -839,13 +839,13 @@ def step? (s : State) : Option (TraceEvent × State) :=
       let funcs' := s.funcs.push closure
       let s' := pushTrace { s with expr := .lit (.function idx), funcs := funcs' } .silent
       some (.silent, s')
-  -- SPEC: L15122-L15128
+  -- SPEC: L15122-L15127
   -- | ObjectLiteral : \`{\` \`}\` 1. Return
   -- | OrdinaryObjectCreate(%Object.prototype%). ObjectLiteral : \`{\`
   -- | PropertyDefinitionList \`}\` \`{\` PropertyDefinitionList \`,\` \`}\` 1.
   -- | Let \_obj\_ be OrdinaryObjectCreate(%Object.prototype%). 1. Perform ?
   -- | PropertyDefinitionEvaluation of \|PropertyDefinitionList\| with argument
-  -- | \_obj\_. 1. Return \_obj\_.
+  -- | \_obj\_. 1. Return \_obj\_. LiteralPropertyName : IdentifierName 1.
   | .objectLit props =>
       match hf : firstNonValueProp props with
       | some (done, k, target, rest) =>
@@ -908,7 +908,7 @@ def step? (s : State) : Option (TraceEvent × State) :=
       let lowered := .if cond (.seq body (.while_ cond body)) (.lit .undefined)
       let s' := pushTrace { s with expr := lowered } .silent
       some (.silent, s')
-  -- SPEC: L17932-L17936
+  -- SPEC: L17933-L17937
   -- | ForInOfStatement : \`for\` \`(\` LeftHandSideExpression \`in\`
   -- | Expression \`)\` Statement 1. Let \_keyResult\_ be ?
   -- | ForIn/OfHeadEvaluation(« », \|Expression\|, \~enumerate\~). 1. Return ?
@@ -938,12 +938,11 @@ def step? (s : State) : Option (TraceEvent × State) :=
           let s' := pushTrace { s with expr := .lit .undefined } .silent
           some (.silent, s')
   -- SPEC: L17948-L17952
-  -- | ForInOfStatement : \`for\` \`(\` LeftHandSideExpression \`of\`
-  -- | AssignmentExpression \`)\` Statement 1. Let \_keyResult\_ be ?
-  -- | ForIn/OfHeadEvaluation(« », \|AssignmentExpression\|, \~iterate\~). 1.
-  -- | Return ? ForIn/OfBodyEvaluation(\|LeftHandSideExpression\|,
-  -- | \|Statement\|, \_keyResult\_, \~iterate\~, \~assignment\~,
-  -- | \_labelSet\_).
+  -- | \`for\` \`(\` LeftHandSideExpression \`of\` AssignmentExpression \`)\`
+  -- | Statement 1. Let \_keyResult\_ be ? ForIn/OfHeadEvaluation(« »,
+  -- | \|AssignmentExpression\|, \~iterate\~). 1. Return ?
+  -- | ForIn/OfBodyEvaluation(\|LeftHandSideExpression\|, \|Statement\|,
+  -- | \_keyResult\_, \~iterate\~, \~assignment\~, \_labelSet\_).
   | .forOf binding iterable body =>
       match exprValue? iterable with
       | none =>
@@ -1255,7 +1254,10 @@ def step? (s : State) : Option (TraceEvent × State) :=
   -- | ToPropertyKey(\_ref\_.\[\[ReferencedName\]\]). 1. Let \_deleteStatus\_
   -- | be ? \_baseObj\_.\[\[Delete\]\](\_ref\_.\[\[ReferencedName\]\]). 1. If
   -- | \_deleteStatus\_ is \*false\* and \_ref\_.\[\[Strict\]\] is \*true\*,
-  -- | throw a \*TypeError\* exception. 1. Return \_deleteStatus\_.
+  -- | throw a \*TypeError\* exception. 1. Return \_deleteStatus\_. 1. Let
+  -- | \_base\_ be \_ref\_.\[\[Base\]\]. 1. Assert: \_base\_ is an Environment
+  -- | Record. 1. Return ?
+  -- | \_base\_.DeleteBinding(\_ref\_.\[\[ReferencedName\]\]).
   | .deleteProp obj prop =>
       match exprValue? obj with
       | none =>

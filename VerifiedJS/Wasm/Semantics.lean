@@ -6543,10 +6543,29 @@ theorem init (irmod : IRModule) (wmod : Module)
     intro j hj hj'
     simp at hj
   hglobals := by
-    simp [irInitialState, Wasm.initialState]
-    constructor
-    · sorry -- globals size correspondence from emit
-    · intro j hj; sorry -- globals values correspondence from emit
+    simp only [irInitialState, Wasm.initialState, initialStore]
+    refine ⟨?_, ?_⟩
+    · -- Size: (initIRGlobals irmod).size = (initGlobals wmod).size
+      simp only [initIRGlobals, initGlobals, Array.size_map]
+      exact (emit_preserves_globals_size irmod wmod hemit).symm
+    · -- Values: element-wise correspondence
+      intro j hj
+      simp only [initIRGlobals, Array.size_map] at hj
+      have hj_w : j < wmod.globals.size := by
+        rw [emit_preserves_globals_size irmod wmod hemit]; exact hj
+      simp only [initIRGlobals, initGlobals]
+      refine ⟨IRValue.default (irmod.globals[j]'hj).1,
+             defaultValue (wmod.globals[j]'hj_w).type.val,
+             ?_, ?_, ?_⟩
+      · rw [Array.getElem?_map (h := hj)]
+      · rw [Array.getElem?_map (h := hj_w)]
+      · -- IRValue.default t corresponds to defaultValue (wmod.globals[j].type.val)
+        -- where wmod.globals[j].type.val = irTypeToValType t (from emit/buildModule)
+        -- Unfold emit to extract this relationship
+        have : ∀ (t : IRType), IRValueToWasmValue (IRValue.default t) (defaultValue (match t with
+          | .i32 => ValType.i32 | .i64 => .i64 | .f64 => .f64 | .ptr => .i32)) :=
+          irValueDefault_corr
+        sorry -- values correspondence: needs buildModule globals type extraction
   hlabels := by simp [irInitialState, Wasm.initialState]
   hhalt := by
     intro hirHalt
