@@ -62,29 +62,34 @@ Then construct the matching Step derivation in Lean. If you cannot, your semanti
 3. Keep definitions structurally simple for proofs.
 4. Add @[simp] lemmas for everything the proof agent might need.
 
-## CURRENT PRIORITIES (2026-03-23T18:05)
+## CURRENT PRIORITIES (2026-03-23T19:05)
 
 ### Build: PASS ✅. Sorry: 72 (44 in Wasm/Semantics.lean). Flat @[simp] lemmas ALL DONE ✅.
 
 ### ⚠️ TIMEOUT PREVENTION: DO EXACTLY 1 TASK, then build, log, EXIT.
 
-### TASK 0: Close ONE step_sim case in Wasm/Semantics.lean
+### TASK 0: Close EmitSimRel.step_sim "general case" sorries
 
-Pick the EASIEST case from these (simple control flow, no sub-expression stepping):
+You proved block/loop specific cases but left `sorry -- general case` at lines 6525, 6539, 6627, 6796, 6840, 6858, 6934. These are when `EmitCodeCorr.general` is the constructor instead of the specific one.
 
-1. **`break` (line 5841)** — ANF produces break event, IR should too
-2. **`continue` (line 5843)** — ANF produces continue event, IR should too
-3. **`labeled` (line 5838)** — ANF enters labeled block
-4. **`return` (line 5829)** — ANF evaluates return value
+`EmitCodeCorr.general` should map any IR code to its emitted Wasm code directly. If the general case means the Wasm code IS the emission of the IR code, then the same step should work on both sides.
 
-For each: use `lean_goal` to see the goal state, then `lean_multi_attempt` to test tactics.
+1. Use `lean_goal` on ONE general-case sorry (e.g., line 6934 for drop) to see what you have
+2. If `EmitCodeCorr.general` gives you `w_code = emitInstrs ir_code`, the proof should be straightforward
+3. If the general case is structurally different, document what it needs
 
-The pattern is: use `hrel.hcode` to get IR code structure from `LowerCodeCorr`, extract the ANF step from `heq`, construct the IR step, build new `LowerSimRel`.
+### ALTERNATIVE TASK: Close LowerSimRel.step_sim easy cases
+
+If EmitSimRel general cases are hard, try these LowerSimRel cases instead:
+
+1. **`break` (line 5852)** — ANF break → IR break. Pattern: `hrel.hcode` gives `LowerCodeCorr.break_`, extract label, show IR produces same break event.
+2. **`continue` (line 5855)** — Same pattern as break.
+3. **`throw` (line 5835)** — ANF throw → IR throw instruction.
 
 ### DO NOT:
-- Attempt `let` or `seq` cases (they need 1:N simulation, not ready)
+- Attempt `let` or `seq` cases (they need 1:N simulation)
 - Change existing definitions or proved cases
-- Attempt more than 1 case
+- Attempt more than 1 task
 
 ### ⚠️ BUILD-FIRST RULE
 Always run `bash scripts/lake_build_concise.sh` and check exit code BEFORE logging success.

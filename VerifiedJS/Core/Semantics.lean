@@ -48,6 +48,11 @@ def Env.empty : Env :=
 def Heap.empty : Heap :=
   { objects := #[], nextAddr := 0 }
 
+-- SPEC: L8965-L8979
+-- | 1. Assert: _envRec_ has a binding for _N_. 1. If the binding for
+-- | _N_ in _envRec_ is an uninitialized binding, throw a
+-- | *ReferenceError* exception. 1. Return the value currently bound to
+-- | _N_ in _envRec_.
 /-- ECMA-262 §8.1.1.4 GetBindingValue (modeled as lookup in lexical bindings). -/
 def Env.lookup (env : Env) (name : VarName) : Option Value :=
   match env.bindings.find? (fun kv => kv.fst == name) with
@@ -106,6 +111,13 @@ def updateBindingList (xs : List (VarName × Value)) (name : VarName) (v : Value
         exact Bool.eq_false_iff.mpr (by intro h; have := beq_iff_eq.mp h; rw [this] at hne; simp at hne)
       simp only [updateBindingList, hn, ↓reduceIte, Env.lookup, List.find?, hno]
 
+-- SPEC: L8933-L8964
+-- | 1. If _envRec_ does not have a binding for _N_, then 1. If _S_ is
+-- | *true*, throw a *ReferenceError* exception. 1. Perform !
+-- | _envRec_.CreateMutableBinding(_N_, *true*). 1. Perform !
+-- | _envRec_.InitializeBinding(_N_, _V_). 1. Return ~unused~.
+-- | 1. Else if the binding for _N_ in _envRec_ is a mutable binding, then
+-- | 1. Change its bound value to _V_.
 /-- ECMA-262 §8.1.1.4.5 SetMutableBinding (simplified update). -/
 def Env.assign (env : Env) (name : VarName) (v : Value) : Env :=
   if env.bindings.any (fun kv => kv.fst == name) then
@@ -136,6 +148,12 @@ def Env.assign (env : Env) (name : VarName) (v : Value) : Env :=
     (env.assign name v).lookup name = some v := by
   simp [Env.assign, h, Env.lookup, List.find?, beq_self_eq_true]
 
+-- SPEC: L8885-L8901
+-- | 1. Assert: _envRec_ does not already have a binding for _N_. 1.
+-- | Create a mutable binding in _envRec_ for _N_ and record that it is
+-- | uninitialized. If _D_ is *true*, record that the newly created
+-- | binding may be deleted by a subsequent DeleteBinding call. 1. Return
+-- | ~unused~.
 /-- ECMA-262 §8.1.1.1.2 CreateMutableBinding + §8.1.1.1.5 InitializeBinding. -/
 def Env.extend (env : Env) (name : VarName) (v : Value) : Env :=
   { bindings := (name, v) :: env.bindings }
@@ -145,6 +163,10 @@ def exprValue? : Expr → Option Value
   | .lit v => some v
   | _ => none
 
+-- SPEC: L5982-L5994
+-- | 1. If _argument_ is a Boolean, return _argument_. 1. If
+-- | _argument_ is one of *undefined*, *null*, *+0*~𝔽~, *-0*~𝔽~,
+-- | *NaN*, *0*~ℤ~, or the empty String, return *false*. 1. Return *true*.
 /-- ECMA-262 §7.2.14 ToBoolean (core subset). -/
 def toBoolean : Value → Bool
   | .undefined => false
@@ -155,6 +177,13 @@ def toBoolean : Value → Bool
   | .object _ => true
   | .function _ => true
 
+-- SPEC: L6004-L6017
+-- | 1. If _argument_ is a Number, return _argument_. 1. If _argument_
+-- | is either a Symbol or a BigInt, throw a *TypeError* exception. 1. If
+-- | _argument_ is *undefined*, return *NaN*. 1. If _argument_ is
+-- | either *null* or *false*, return *+0*~𝔽~. 1. If _argument_ is
+-- | *true*, return *1*~𝔽~. 1. If _argument_ is a String, return
+-- | StringToNumber(_argument_).
 /-- ECMA-262 §7.1.3 ToNumber (core subset). -/
 def toNumber : Value → Float
   | .number n => n
@@ -179,6 +208,21 @@ def toNumber : Value → Float
             else 0.0 / 0.0  -- NaN for non-numeric strings
   | _ => 0.0 / 0.0  -- NaN for objects/functions
 
+-- SPEC: L16187-L16225
+-- | UnaryExpression : `+` UnaryExpression 1. Let _expr_ be ? Evaluation
+-- | of |UnaryExpression|. 1. Return ? ToNumber(? GetValue(_expr_)).
+-- | UnaryExpression : `-` UnaryExpression 1. Let _expr_ be ? Evaluation
+-- | of |UnaryExpression|. 1. Let _oldValue_ be ? ToNumeric(?
+-- | GetValue(_expr_)). 1. If _oldValue_ is a Number, return
+-- | Number::unaryMinus(_oldValue_).
+-- | UnaryExpression : `~` UnaryExpression 1. Let _expr_ be ? Evaluation
+-- | of |UnaryExpression|. 1. Let _oldValue_ be ? ToNumeric(?
+-- | GetValue(_expr_)). 1. If _oldValue_ is a Number, return
+-- | Number::bitwiseNOT(_oldValue_).
+-- | UnaryExpression : `!` UnaryExpression 1. Let _expr_ be ? Evaluation
+-- | of |UnaryExpression|. 1. Let _oldValue_ be ToBoolean(?
+-- | GetValue(_expr_)). 1. If _oldValue_ is *true*, return
+-- | *false*. 1. Return *true*.
 /-- ECMA-262 §13.5 Runtime Semantics: Evaluation (core unary subset). -/
 def evalUnary : UnaryOp → Value → Value
   | .neg, v => .number (-toNumber v)
@@ -212,6 +256,17 @@ def valueToString : Value → String
   | .object _ => "[object Object]"
   | .function _ => "function"
 
+-- SPEC: L6573-L6605
+-- | 1. If SameType(_x_, _y_) is *true*, then 1. Return
+-- | IsStrictlyEqual(_x_, _y_). 1. If _x_ is *null* and _y_ is
+-- | *undefined*, return *true*. 1. If _x_ is *undefined* and _y_
+-- | is *null*, return *true*.
+-- | 1. If _x_ is a Number and _y_ is a String, return ! IsLooselyEqual(_x_,
+-- | ! ToNumber(_y_)).
+-- | 1. If _x_ is a Boolean, return ! IsLooselyEqual(! ToNumber(_x_),
+-- | _y_). 1. If _y_ is a Boolean, return ! IsLooselyEqual(_x_, !
+-- | ToNumber(_y_)).
+-- | 1. Return *false*.
 /-- ECMA-262 §7.2.14 Abstract Equality Comparison (simplified core subset).
     Handles null/undefined equivalence and type coercion. -/
 def abstractEq : Value → Value → Bool
@@ -344,6 +399,13 @@ def step? (s : State) : Option (TraceEvent × State) :=
               let s' := pushTrace { sr with expr := .assign name sr.expr, trace := s.trace } t
               some (t, s')
           | none => none
+  -- SPEC: L17607-L17620
+  -- | IfStatement : `if` `(` Expression `)` Statement `else`
+  -- | Statement 1. Let _exprRef_ be ? Evaluation of |Expression|. 1. Let
+  -- | _exprValue_ be ToBoolean(? GetValue(_exprRef_)). 1. If _exprValue_
+  -- | is *true*, then 1. Let _stmtCompletion_ be Completion(Evaluation of
+  -- | the first |Statement|). 1. Else, 1. Let _stmtCompletion_ be
+  -- | Completion(Evaluation of the second |Statement|).
   | .if cond then_ else_ =>
       match exprValue? cond with
       | some v =>

@@ -48,27 +48,33 @@ Keep `partial def step?` for the interpreter. The proof agent needs the inductiv
 3. Test262 tells you what to formalize. Reduce skips by adding missing features.
 4. Your relations must be INHABITED with concrete derivations.
 
-## CURRENT PRIORITIES (2026-03-23T18:05)
+## CURRENT PRIORITIES (2026-03-23T19:05)
 
 ### Status: Core @[simp] lemmas DONE ✅. Test262: 3/63 pass, 50 fail (all wasm_rc=134 runtime traps).
 
-Core.Env.lookup_assign_eq/ne/new and Flat equivalents are all in place. Good work.
+All 50 test262 failures are Wasm-side runtime traps, not parser/semantics issues.
 
-### TASK 0: Investigate test262 failures for fixable issues
+### TASK 0: Add SPEC citations to Core/Semantics.lean
 
-The 50 test262 failures are all `wasm_rc=134` (runtime traps). Some may be caused by missing/incorrect semantics in Core.
+Spec coverage is at 0%. Every semantic rule should cite ECMA-262 with verbatim text from the spec.
 
-1. Run `bash scripts/run_test262.sh 2>&1 | head -100` to see which tests fail
-2. Pick ONE failure that looks like a parsing or Core semantics issue (not a Wasm lowering issue)
-3. If the failure is in parsing or Core semantics (YOUR files), fix it
-4. If ALL failures are Wasm-side, report that in your log and exit
+Format: `-- SPEC: §12.3.4.1 "The result of evaluating ..."` (with the actual spec text)
+
+Start with the most important rules:
+1. Variable lookup (§8.1.1)
+2. Assignment (§13.15.2)
+3. If statement (§13.6)
+4. Binary operators (§13.15)
+5. Function call (§13.3.6)
+
+Add at least 5 SPEC citations this run.
 
 ### TASK 1: Build, log, exit
 
 ### DO NOT:
-- Fix warnings or deprecations
 - Write new e2e tests
-- Attempt to modify files you don't own (especially Flat/Semantics.lean)
+- Modify files you don't own
+- Fix warnings or deprecations
 
 ## GOLDEN RULE for step? proofs
 NEVER pass `step?` to `simp`. Always use `unfold step? at h` then `simp [-step?]`.

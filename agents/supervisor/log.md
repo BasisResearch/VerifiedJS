@@ -1,4 +1,55 @@
 
+## Run: 2026-03-23T19:05:01+00:00
+
+### Build
+- **Status**: `lake build` **PASS** ✅
+
+### Metrics
+- **Sorry count**: 72 (threshold 100) — 25 CC + 44 Wasm + 2 ANF + 1 Lower
+- **Test262**: 3 pass, 50 fail, 3 skip, 5 xfail / 63 total
+- **Spec coverage**: 0% (0 refs, 0 mismatches)
+- **WasmCert refs**: 0 checked, 0 mismatches
+
+### Proof Chain Status
+```
+Source ──[elaborate]──> Core ──[closureConvert]──> Flat ──[anfConvert]──> ANF ──[lower]──> Wasm.IR ──[emit]──> Wasm
+         ✅ proved       25 sorry                    2 sorry              1 sorry          44 sorry
+```
+
+### Agent Status
+- **jsspec**: Goals 1&2 met. Test262 50 failures all Wasm-side (wasm_rc=134). No actionable parser/semantics work. Redirected to spec citations.
+- **proof**: Last completed run 16:30. Built strong induction wrapper + convertExpr_scope_irrelevant. 25 CC sorries split into: ~10 stepping sub-cases (need IH pattern), ~8 heap/env correspondence, ~7 other. Value sub-cases (typeof/unary/binary/throw) are PROVED for the value case but NOT the stepping case.
+- **wasmspec**: Healthy. Proved EmitSimRel block+loop specific cases. Added 5 Flat @[simp] lemmas (ALL DONE). 44 Wasm sorries: ~13 LowerSimRel.step_sim + ~31 EmitSimRel.step_sim (many are "general case" fallbacks for already-proved specific cases).
+
+### Abstraction Discovery (CRITICAL)
+
+**CC Stepping Sub-case Pattern**: Deep analysis confirmed ALL ~10 stepping sub-cases follow an identical template:
+
+1. **Decompose**: Flat.step? on `.typeof arg'` (when arg' not a value) calls `step? {s with expr := arg'}` and wraps result
+2. **Sub-SimRel**: Construct CC_SimRel for `{sf with expr := arg'}` vs `{sc with expr := arg}` — trivially holds since convertExpr correspondence is exactly the sub-expression part
+3. **IH**: Apply `ih_depth` at `depth(arg) < depth(.typeof arg)` (immediate from `omega`)
+4. **Lift**: Core.step? on `.typeof arg` does the same delegation, so the Core sub-step gives us the Core typeof step
+5. **Reconstruct**: CC_SimRel for result wraps sub-expression CC_SimRel back into `.typeof`
+
+This pattern applies identically to: typeof, unary, assign, let (init stepping), if (cond stepping), seq (lhs stepping), binary (lhs/rhs stepping), return, yield, await.
+
+Wrote COMPLETE proof skeleton with Lean code to proof prompt (lines 1171 typeof case).
+
+**EmitSimRel General Cases**: 6+ sorry lines are "general case" fallbacks for instructions where the specific EmitCodeCorr constructor was already proved. These should be mechanical once we understand what EmitCodeCorr.general provides. Redirected wasmspec to investigate.
+
+### Actions Taken
+1. ✅ Updated proof prompt: complete typeof stepping sub-case proof skeleton with Lean code
+2. ✅ Updated wasmspec prompt: redirected from control-flow cases to EmitSimRel general-case sorries
+3. ✅ Updated jsspec prompt: redirected to spec citations (0% coverage)
+4. ✅ Updated PROGRESS.md metrics table
+
+### Next Run Focus
+- Monitor if proof agent applies the stepping sub-case pattern (even 1 closed would validate the approach)
+- Check if wasmspec makes progress on general-case sorries
+- Track spec citation coverage
+
+---
+
 ## Run: 2026-03-23T18:05:01+00:00
 
 ### Build
@@ -3091,3 +3142,4 @@ When reviewing jsspec work, CHECK that test filenames match their actual content
 
 ## Run: 2026-03-23T19:05:01+00:00
 
+2026-03-23T19:27:39+00:00 DONE

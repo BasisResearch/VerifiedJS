@@ -6463,6 +6463,11 @@ theorem init (irmod : IRModule) (wmod : Module)
     obtain ⟨rfl, rfl⟩ := hwf
     intro j hj hj'
     simp at hj
+  hglobals := by
+    simp [irInitialState, Wasm.initialState]
+    constructor
+    · sorry -- globals size correspondence from emit
+    · intro j hj; sorry -- globals values correspondence from emit
   hlabels := by simp [irInitialState, Wasm.initialState]
   hhalt := by
     intro hirHalt
@@ -6586,6 +6591,7 @@ theorem step_sim (irmod : IRModule) (wmod : Module) :
                   hframes_len := by dsimp only []; exact hrel.hframes_len
                   hframes_locals := hrel.hframes_locals
                   hframes_vals := hrel.hframes_vals
+                  hglobals := hrel.hglobals
                   hlabels := by dsimp only []; exact hrel.hlabels
                   hhalt := hhalt_of_structural .nil hrel.hlabels }⟩
             | irf :: irfs =>
@@ -6616,6 +6622,7 @@ theorem step_sim (irmod : IRModule) (wmod : Module) :
                       hframes_len := by dsimp only []; exact hrel.hframes_len
                       hframes_locals := hrel.hframes_locals
                       hframes_vals := hrel.hframes_vals
+                      hglobals := hrel.hglobals
                       hlabels := by dsimp only []; exact hrel.hlabels
                       hhalt := hhalt_of_structural .nil hrel.hlabels }⟩
               | some val =>
@@ -6674,6 +6681,7 @@ theorem step_sim (irmod : IRModule) (wmod : Module) :
                     hframes_len := by dsimp only []; exact hrel.hframes_len
                     hframes_locals := hrel.hframes_locals
                     hframes_vals := hrel.hframes_vals
+                    hglobals := hrel.hglobals
                     hlabels := by dsimp only []; exact hrel.hlabels
                     hhalt := hhalt_of_structural .nil hrel.hlabels }⟩
               | irf :: irfs =>
@@ -6700,6 +6708,7 @@ theorem step_sim (irmod : IRModule) (wmod : Module) :
                       hframes_len := by dsimp only []; exact hrel.hframes_len
                       hframes_locals := hrel.hframes_locals
                       hframes_vals := hrel.hframes_vals
+                      hglobals := hrel.hglobals
                       hlabels := by dsimp only []; exact hrel.hlabels
                       hhalt := hhalt_of_structural .nil hrel.hlabels }⟩
             | iv :: istk =>
@@ -6724,6 +6733,7 @@ theorem step_sim (irmod : IRModule) (wmod : Module) :
                     hframes_len := by dsimp only []; exact hrel.hframes_len
                     hframes_locals := hrel.hframes_locals
                     hframes_vals := hrel.hframes_vals
+                    hglobals := hrel.hglobals
                     hlabels := by dsimp only []; exact hrel.hlabels
                     hhalt := hhalt_of_structural .nil hrel.hlabels }⟩
               | irf :: irfs =>
@@ -6749,7 +6759,7 @@ theorem step_sim (irmod : IRModule) (wmod : Module) :
                       have hlt_w : idx < wf.locals.size := hloc_sz ▸ hlt
                       -- Wasm step
                       have hw := step?_eq_localSet s2 idx rest_w wv wstk wf wfs hcw hstk_w hfr_w hlt_w
-                      refine ⟨_, hw, hrel.hemit, hrest, ?_, ?_, ?_, ?_, hrel.hlabels, hhalt_of_structural hrest hrel.hlabels⟩
+                      refine ⟨_, hw, hrel.hemit, hrest, ?_, ?_, ?_, ?_, hrel.hglobals, hrel.hlabels, hhalt_of_structural hrest hrel.hlabels⟩
                       · -- Stack correspondence (tail after pop)
                         rw [hstk_w] at hstk_rel
                         exact stack_corr_tail hstk_rel.1 hstk_rel.2
@@ -6811,12 +6821,70 @@ theorem step_sim (irmod : IRModule) (wmod : Module) :
                           hframes_len := by dsimp only []; exact hrel.hframes_len
                           hframes_locals := hrel.hframes_locals
                           hframes_vals := hrel.hframes_vals
+                          hglobals := hrel.hglobals
                           hlabels := by dsimp only []; exact hrel.hlabels
                           hhalt := hhalt_of_structural .nil hrel.hlabels }⟩
           · sorry -- general case
       | .globalGet idx =>
-          -- global.get
-          sorry
+          -- global.get: IR pushes globals[idx], Wasm pushes store.globals[idx]
+          have hc : EmitCodeCorr (IRInstr.globalGet idx :: rest) s2.code := hcode_ir ▸ hrel.hcode
+          rcases hc.globalGet_inv with ⟨rest_w, hcw, hrest⟩ | ⟨wasm_instrs, rest_w, hcw, hrest⟩
+          · -- Specific case: Wasm code = globalGet idx :: rest_w
+            match hglob : s1.globals[idx]? with
+            | some val =>
+              -- Valid global: IR pushes val, Wasm pushes store.globals[idx]
+              have hir := irStep?_eq_globalGet s1 idx rest val hcode_ir hglob
+              rw [hir] at hstep
+              simp only [Option.some.injEq, Prod.mk.injEq] at hstep
+              obtain ⟨rfl, rfl⟩ := hstep
+              -- Derive idx < globals.size from globals[idx]? = some
+              have hidx_ir : idx < s1.globals.size := by
+                rwa [Array.getElem?_lt_iff] at hglob
+              -- Get Wasm bounds from globals correspondence
+              have hglen := hrel.hglobals.1
+              have hidx_w : idx < s2.store.globals.size := by omega
+              -- Wasm step
+              have hw := step?_globalGet s2 idx rest_w hidx_w
+              -- Value correspondence
+              have ⟨irv, wv, hirv, hwv, hval_corr⟩ := hrel.hglobals.2 idx hidx_ir
+              -- irv = val
+              have hirv_eq : irv = val := by
+                simp [Array.getElem?_lt_iff, hidx_ir] at hirv hglob
+                rw [hirv] at hglob; exact (Option.some.inj hglob).symm
+              subst hirv_eq
+              -- wv = s2.store.globals[idx]
+              have hwv_eq : wv = s2.store.globals[idx] := by
+                simp [Array.getElem?_lt_iff, hidx_w] at hwv
+                exact hwv
+              subst hwv_eq
+              refine ⟨_, hw, hrel.hemit, hrest, ?_, hrel.hframes_len, hrel.hframes_locals, hrel.hframes_vals, hrel.hglobals, hrel.hlabels, hhalt_of_structural hrest hrel.hlabels⟩
+              dsimp only []
+              exact stack_corr_cons hrel.hstack.1 hrel.hstack.2 hval_corr
+            | none =>
+              -- Out-of-bounds: both sides trap
+              have hir := irStep?_eq_globalGet_oob s1 idx rest hcode_ir hglob
+              rw [hir] at hstep
+              simp only [Option.some.injEq, Prod.mk.injEq] at hstep
+              obtain ⟨rfl, rfl⟩ := hstep
+              -- Derive ¬(idx < globals.size) from globals[idx]? = none
+              have hidx_ir : ¬(idx < s1.globals.size) := by
+                intro h; simp [Array.getElem?_lt_iff, h] at hglob
+              -- Wasm also out of bounds
+              have hglen := hrel.hglobals.1
+              have hidx_w : ¬(idx < s2.store.globals.size) := by omega
+              have hw := step?_globalGet_oob s2 idx rest_w hidx_w
+              exact ⟨_,
+                by simp [traceToWasm]; exact hw,
+                { hemit := hrel.hemit
+                  hcode := .nil
+                  hstack := by dsimp only []; exact hrel.hstack
+                  hframes_len := hrel.hframes_len
+                  hframes_locals := hrel.hframes_locals
+                  hframes_vals := hrel.hframes_vals
+                  hglobals := hrel.hglobals
+                  hlabels := by dsimp only []; exact hrel.hlabels
+                  hhalt := hhalt_of_structural .nil hrel.hlabels }⟩
+          · sorry -- general case
       | .globalSet idx =>
           -- global.set
           sorry
@@ -6851,7 +6919,7 @@ theorem step_sim (irmod : IRModule) (wmod : Module) :
             simp only [Option.some.injEq, Prod.mk.injEq] at hstep
             obtain ⟨rfl, rfl⟩ := hstep
             have hw := step?_eq_block s2 .none body_w rest_w hcw
-            refine ⟨_, hw, hrel.hemit, hbody, hrel.hstack, hrel.hframes_len, hrel.hframes_locals, hrel.hframes_vals, ?_, ?_⟩
+            refine ⟨_, hw, hrel.hemit, hbody, hrel.hstack, hrel.hframes_len, hrel.hframes_locals, hrel.hframes_vals, hrel.hglobals, ?_, ?_⟩
             · -- Labels length: both increase by 1
               simp; exact hrel.hlabels
             · -- Halt correspondence
@@ -6869,7 +6937,7 @@ theorem step_sim (irmod : IRModule) (wmod : Module) :
             simp only [Option.some.injEq, Prod.mk.injEq] at hstep
             obtain ⟨rfl, rfl⟩ := hstep
             have hw := step?_eq_loop s2 .none body_w rest_w hcw
-            refine ⟨_, hw, hrel.hemit, hbody, hrel.hstack, hrel.hframes_len, hrel.hframes_locals, hrel.hframes_vals, ?_, ?_⟩
+            refine ⟨_, hw, hrel.hemit, hbody, hrel.hstack, hrel.hframes_len, hrel.hframes_locals, hrel.hframes_vals, hrel.hglobals, ?_, ?_⟩
             · -- Labels length: both increase by 1
               simp; exact hrel.hlabels
             · -- Halt correspondence
@@ -6918,6 +6986,7 @@ theorem step_sim (irmod : IRModule) (wmod : Module) :
                   hframes_len := hrel.hframes_len
                   hframes_locals := hrel.hframes_locals
                   hframes_vals := hrel.hframes_vals
+                  hglobals := hrel.hglobals
                   hlabels := hrel.hlabels
                   hhalt := hhalt_of_structural .nil hrel.hlabels }⟩
             | v :: stk =>
@@ -6948,6 +7017,7 @@ theorem step_sim (irmod : IRModule) (wmod : Module) :
                     hframes_len := hrel.hframes_len
                     hframes_locals := hrel.hframes_locals
                     hframes_vals := hrel.hframes_vals
+                    hglobals := hrel.hglobals
                     hlabels := hrel.hlabels
                     hhalt := hhalt_of_structural hrest hrel.hlabels }⟩
           · -- General case (EmitCodeCorr.general): unknown Wasm instructions
