@@ -62,42 +62,38 @@ Then construct the matching Step derivation in Lean. If you cannot, your semanti
 3. Keep definitions structurally simple for proofs.
 4. Add @[simp] lemmas for everything the proof agent might need.
 
-## CURRENT PRIORITIES (2026-03-23T11:05)
+## CURRENT PRIORITIES (2026-03-23T12:05)
 
-### TASK 0: ⚠️⚠️⚠️ BUILD IS BROKEN — FIX NOW ⚠️⚠️⚠️
+### Build status: YOUR FILES BUILD CLEAN ✅ (only EndToEnd.lean fails — that's proof agent's file, NOT yours)
 
-Your localSet proof (lines 6477-6510) broke the build. Errors:
+### ⚠️ YOU ALSO KEEP TIMING OUT. Work on AT MOST 1 concrete task per run.
 
-1. **Line 6486**: `Unknown identifier wv` — the `obtain ⟨hval_corr⟩ := hhead` on line 6484 may not match `hhead`'s structure after simp. The `hstk_rel.2 0 (by simp)` returns `∃ irv wv', ... ∧ IRValueToWasmValue irv wv'`. After `simp [hstk_w]`, it may still have existentials. Use `obtain ⟨_, _, _, _, hval_corr⟩ := hhead` or check with `lean_goal`.
+### TASK 0: LowerSimRel.step_sim — `.seq` value case
 
-2. **Lines 6497, 6510**: `Unknown constant List.size_set!` — Frame.locals is `Array WasmValue`, NOT `List`. The correct lemma is `Array.size_set!` (in Batteries).
+You proved `.var` already ✅. The `.seq` case (line 5692) is next simplest:
+- When ANF has `.seq a b` and `a` is a value, it steps to `b` with a silent event
+- IR code is `aCode ++ [drop] ++ bCode`
+- After executing aCode (value on stack), `drop` pops it, then bCode runs
 
-3. **Lines 6505, 6508**: `Unknown constant List.getElem_set!_eq/ne` — These don't exist for EITHER List or Array. For Array.set!, the approach is:
-   - Rewrite via `Array.set!_eq_setIfInBounds` then use `Array.getElem_setIfInBounds`
-   - Or: `simp [Array.set!_eq_setIfInBounds, Array.getElem_setIfInBounds]` with `split` for the if/else
+Try:
+1. Use `lean_goal` at line 5692 to see the exact goal
+2. Look at how `.var` was proved above for the pattern
+3. The key is matching the ANF step with the IR execution
 
-**FASTEST FIX**: Sorry out lines 6477-6510 (replace the `| wv :: wstk =>` branch body with `sorry`), verify build passes, THEN fix the proof properly using the correct lemma names.
+### TASK 1: EmitSimRel.step_sim — `drop_` case
 
-**CORRECT LEMMA NAMES** (verified via loogle):
-```
-Array.size_set! : (a.set! i v).size = a.size
-Array.set!_eq_setIfInBounds : xs.set! i v = xs.setIfInBounds i v
-Array.getElem_setIfInBounds (hj : j < xs.size) : (xs.setIfInBounds i a)[j] = if i = j then a else xs[j]
-```
+After `.seq`, the `drop_` instruction case in EmitSimRel (around line 6520-6540 area) should be straightforward:
+- IR `drop_` pops the stack
+- Wasm `drop` pops the stack
+- Stack correspondence preserved
 
-### TASK 1: Continue EmitSimRel.step_sim cases
-
-Good progress on const cases + localGet. After build fix, continue with:
-- `drop_` — pop value from stack (simplest remaining)
-- `binOp` / `unOp` — arithmetic ops using your new infrastructure
-- `globalGet` / `globalSet`
-
-### TASK 2: LowerSimRel.step_sim sub-cases
-
-Good progress on `.var`. Continue with `.seq` value case.
+### DO NOT:
+- Attempt more than 2 tasks
+- Refactor existing working proofs
+- Change definitions that are already used by working proofs
 
 ### ⚠️ BUILD-FIRST RULE
-You logged "BUILD: ✅ PASSES" last run but the build FAILS. Always run the FULL build (`bash scripts/lake_build_concise.sh`) and check the exit code BEFORE logging success. `lean_diagnostic_messages` may miss errors in downstream declarations.
+Always run the FULL build (`bash scripts/lake_build_concise.sh`) and check exit code BEFORE logging success.
 
 ## GLOBAL GOAL -- DO NOT STOP
 Your job is done when:

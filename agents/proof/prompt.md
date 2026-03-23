@@ -57,75 +57,64 @@ If ClosureConvertCorrect needs 600 lines of case analysis, WRITE 600 LINES. That
 ## Test262
 Read `logs/test262_summary.md` for failure categories. Fix compiler bugs that cause test262 failures.
 
-## ⚠️⚠️⚠️ CC PROOF: WHAT TO DO NOW (2026-03-23T11:05) ⚠️⚠️⚠️
+## ⚠️⚠️⚠️ URGENT: YOU KEEP TIMING OUT (2026-03-23T12:05) ⚠️⚠️⚠️
 
-### Status: Build broken in Wasm/Semantics.lean (wasmspec's file, NOT yours). YOUR files should build clean.
+You have TIMED OUT on every single run since 03:30 — that is 8.5 HOURS of zero progress.
 
-Sorry count: 80 (27 CC + 50 Wasm + 2 ANF + 1 Lower).
+### THE PROBLEM: You are doing too much per run.
 
-⚠️ YOU KEEP TIMING OUT. Work on AT MOST 2 tasks per run:
-1. Pick the EASIEST sorry first.
-2. Use `lean_goal` + `lean_multi_attempt` to test before editing.
-3. Build. Log. Exit.
+### THE FIX: Do EXACTLY ONE task, then build, log, and EXIT.
 
-### TASK 1 (EASIEST — 30 SECONDS): Close `evalBinary_convertValue` sorry (line 206)
+Do NOT attempt Task 2 until Task 1 is done and committed. Do NOT explore. Do NOT research. Just execute.
 
-Replace `| _ => sorry` at line 206 with:
+### TASK 0 (FIX BUILD — 10 SECONDS): Remove `private` from `ExprWellFormed`
+
+EndToEnd.lean:49 fails with `Unknown identifier ExprWellFormed` because it's defined as `private` in ANFConvertCorrect.lean:88.
+
+**Exact fix**: In `VerifiedJS/Proofs/ANFConvertCorrect.lean`, line 88, change:
+```lean
+private def ExprWellFormed (expr : Flat.Expr) (env : Flat.Env) : Prop :=
+```
+to:
+```lean
+def ExprWellFormed (expr : Flat.Expr) (env : Flat.Env) : Prop :=
+```
+
+That's it. One word deleted. Build. Verify EndToEnd.lean compiles. Log. **STOP HERE IF YOU HAVE LESS THAN 30 MINUTES LEFT.**
+
+### TASK 1 (IF TIME): Close `evalBinary_convertValue` sorry (line 206)
+
+In `VerifiedJS/Proofs/ClosureConvertCorrect.lean`, line 206, replace:
+```lean
+  | _ => sorry -- BLOCKED: Flat.evalBinary differs from Core for add/eq/neq/lt/gt/le/ge/bitwise/mod/exp/instanceof/in
+```
+with:
 ```lean
   | _ => cases a <;> cases b <;> simp [Core.evalBinary, Flat.evalBinary, Flat.convertValue, Core.toNumber, Flat.toNumber, toNumber_convertValue, Core.valueToString, Flat.valueToString, valueToString_convertValue]
 ```
 
-I verified this with `lean_multi_attempt` — "No goals to be solved". It closes ALL 17 remaining operator cases. **Do this first — it's free.**
+I verified this with `lean_multi_attempt` — "No goals to be solved". It closes ALL 17 remaining operator cases. **Do this ONLY after Task 0 succeeds.**
 
-### TASK 2 (NOW UNBLOCKED!): `.assign` sorry (line 245 — `EnvCorr_assign`)
+### TASK 2 (IF TIME — unlikely): `.assign` sorry (line 245)
 
-`Core.updateBindingList` is NOW PUBLIC. jsspec made the change + added @[simp] lemmas:
-- `updateBindingList_nil`, `updateBindingList_cons_eq`, `updateBindingList_cons_ne`
-Both Core and Flat have these.
-
-**Proof skeleton:**
+`EnvCorr_assign` — unfold both `assign`, split on the `any` check, then use `updateBindingList` simp lemmas. Try:
 ```lean
-private theorem EnvCorr_assign {cenv : Core.Env} {fenv : Flat.Env}
-    (h : EnvCorr cenv fenv) (name : String) (cv : Core.Value) :
-    EnvCorr (cenv.assign name cv) (fenv.assign name (Flat.convertValue cv)) := by
-  unfold Core.Env.assign Flat.Env.assign
-  -- Both have: if name exists then updateBindingList else prepend
-  -- Need helper: updateBindingList_lookup preserves EnvCorr
-  -- Strategy: split on (env.any ...) for both sides, then for each branch:
-  --   For updateBindingList branch: induction on binding list
-  --   For prepend branch: similar to EnvCorr_extend
   sorry
 ```
-
-Key insight: You need an auxiliary lemma showing `updateBindingList` commutes with `convertValue` for lookups:
+→
 ```lean
--- Helper: if EnvCorr holds and name exists, then name exists in both envs
--- Helper: updateBindingList preserves lookup for other names
--- Helper: updateBindingList sets lookup for the target name
+  unfold Core.Env.assign Flat.Env.assign
+  simp only [EnvCorr] at h ⊢
+  sorry -- see what's left
 ```
 
-Use `induction cenv.bindings` (or `induction fenv` for Flat) with the @[simp] lemmas.
+### ABSOLUTELY DO NOT:
+- Attempt more than 1 task if you have less than 30 minutes
+- Research or explore code you don't need
+- Run `lean_goal` on more than 3 locations
+- Refactor or reorganize existing proofs
 
-**If this seems too complex, try `simp_all [Core.Env.assign, Flat.Env.assign, Core.updateBindingList, Flat.updateBindingList]` first** — simp might close it with the @[simp] lemmas.
-
-### TASK 3: Stepping sub-cases (lines 647, 701, 776, 910, 965, 1009, 1010, 1067, 1243, 1344, 1395)
-
-These all need recursive step simulation. Consider: can any be closed with `sorry`-free helper lemmas?
-
-### Sorry inventory (2026-03-23T11:05):
-
-| # | File | Lines | Count | Description | Priority |
-|---|------|-------|-------|-------------|----------|
-| 1 | CC | 206 | 1 | evalBinary_convertValue catch-all — **VERIFIED CLOSABLE** | **TASK 1** |
-| 2 | CC | 245 | 1 | .assign — NOW UNBLOCKED | **TASK 2** |
-| 3 | CC | 487 | 1 | .var captured — needs heap corr | LATER |
-| 4 | CC | 647,701,776,910,965,1009,1010,1067,1243,1344,1395 | 11 | stepping sub-cases | TASK 3 |
-| 5 | CC | 841-848 | 7 | call/obj/prop — BLOCKED on Flat.call semantics | BLOCKED |
-| 6 | CC | 1011-1013,1068,1138 | 5 | objLit/arrayLit/funcDef/tryCatch/while | LATER |
-| 7 | ANF | 2 | 2 | step_star + nested seq | LATER |
-| 8 | Lower | 1 | 1 | Blocked on wasmspec | BLOCKED |
-
-### Key pitfall — AVOID `cases ... with` inside `<;>` blocks
+## Key pitfall — AVOID `cases ... with` inside `<;>` blocks
 
 Use term-mode `match` instead of `cases ... with`.
 
@@ -153,3 +142,18 @@ Your job is done when:
 2. Every pass theorem proved: Elaborate, ClosureConvert, ANFConvert, Optimize, Lower, Emit
 3. 100% test262 passing
 4. Inhabitedness proof for the full chain on a concrete program
+
+## USE THE LEAN LSP MCP TOOLS
+
+You have Lean LSP tools via MCP. USE THEM on every proof attempt:
+
+- **lean_multi_attempt**: Test tactics WITHOUT editing. Use BEFORE writing any tactic:
+  `lean_multi_attempt(file_path="VerifiedJS/Proofs/X.lean", line=N, snippets=["grind","aesop","simp_all","omega","decide"])`
+- **lean_goal**: See exact proof state at a line
+- **lean_hover_info**: Get type of any identifier
+- **lean_diagnostic_messages**: Get errors without rebuilding
+- **lean_state_search**: Find lemmas that close a goal
+- **lean_local_search**: Find project declarations
+
+WORKFLOW: lean_goal to see state → lean_multi_attempt to test tactics → edit the one that works.
+DO NOT guess tactics. TEST FIRST with lean_multi_attempt.
