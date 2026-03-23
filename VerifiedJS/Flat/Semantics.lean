@@ -1384,4 +1384,32 @@ theorem step?_none_implies_lit (s : State) (h : step? s = none) :
           have ⟨vs, hvs⟩ := firstNonValueProp_none_implies_map_values props hfnone
           simp_all
 
+/-! ## Equation lemmas for toNumber, valueToString, updateBindingList -/
+
+@[simp] theorem toNumber_number (n : Float) : toNumber (.number n) = n := rfl
+@[simp] theorem toNumber_bool_true : toNumber (.bool true) = 1.0 := rfl
+@[simp] theorem toNumber_bool_false : toNumber (.bool false) = 0.0 := rfl
+@[simp] theorem toNumber_null : toNumber .null = 0.0 := rfl
+@[simp] theorem toNumber_undefined : toNumber .undefined = 0.0 / 0.0 := rfl
+@[simp] theorem toNumber_object (a : Nat) : toNumber (.object a) = 0.0 / 0.0 := rfl
+@[simp] theorem toNumber_closure (i e : Nat) : toNumber (.closure i e) = 0.0 / 0.0 := rfl
+
+@[simp] theorem valueToString_string (s : String) : valueToString (.string s) = s := rfl
+@[simp] theorem valueToString_bool_true : valueToString (.bool true) = "true" := rfl
+@[simp] theorem valueToString_bool_false : valueToString (.bool false) = "false" := rfl
+@[simp] theorem valueToString_null : valueToString .null = "null" := rfl
+@[simp] theorem valueToString_undefined : valueToString .undefined = "undefined" := rfl
+@[simp] theorem valueToString_object (a : Nat) : valueToString (.object a) = "[object Object]" := rfl
+@[simp] theorem valueToString_closure (i e : Nat) : valueToString (.closure i e) = "function" := rfl
+
+@[simp] theorem updateBindingList_nil (name : VarName) (v : Value) :
+    updateBindingList [] name v = [] := rfl
+@[simp] theorem updateBindingList_cons_eq (n : VarName) (old : Value) (rest : Env) (v : Value) :
+    updateBindingList ((n, old) :: rest) n v = (n, v) :: rest := by
+  simp [updateBindingList]
+@[simp] theorem updateBindingList_cons_ne (n m : VarName) (old : Value) (rest : Env) (v : Value)
+    (h : ¬(n == m)) :
+    updateBindingList ((n, old) :: rest) m v = (n, old) :: updateBindingList rest m v := by
+  simp [updateBindingList, h]
+
 end VerifiedJS.Flat
