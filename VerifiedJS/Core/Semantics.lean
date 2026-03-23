@@ -721,7 +721,7 @@ def step? (s : State) : Option (TraceEvent × State) :=
   -- | \_baseValue\_ be ? GetValue(\_baseReference\_). 1. Let \_strict\_ be
   -- | IsStrict(this \|MemberExpression\|). 1. Return
   -- | EvaluatePropertyAccessWithIdentifierKey(\_baseValue\_,
-  -- | \|IdentifierName\|, \_strict\_).
+  -- | \|IdentifierName\|, \_strict\_). MemberExpression : MemberExpression
   | .getProp obj prop =>
       match exprValue? obj with
       | none =>
