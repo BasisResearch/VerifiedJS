@@ -351,6 +351,151 @@ private theorem EnvCorr_assign {cenv : Core.Env} {fenv : Flat.Env}
       obtain ⟨fv, hfv, hconv⟩ := h.2 n cv' hlookup
       exact ⟨fv, by rw [Flat_lookup_assign_ne _ _ _ _ hne]; exact hfv, hconv⟩
 
+/-! ### Scope irrelevance: `scope` is a dead parameter in convertExpr.
+
+  The `scope` parameter is threaded through `convertExpr` recursion but never
+  consumed — every case either passes it to recursive calls unchanged, extends
+  it (`.let`, `.tryCatch`), or replaces it entirely (`.functionDef` uses
+  `params` as `innerScope`).  Therefore the output is independent of `scope`. -/
+
+mutual
+private theorem convertExpr_scope_irrelevant (e : Core.Expr)
+    (scope1 scope2 : List String) (envVar : String) (envMap : Flat.EnvMapping) (st : Flat.CCState) :
+    Flat.convertExpr e scope1 envVar envMap st = Flat.convertExpr e scope2 envVar envMap st := by
+  cases e with
+  | lit v => simp [Flat.convertExpr]
+  | var n => simp [Flat.convertExpr]
+  | this => simp [Flat.convertExpr]
+  | «break» l => simp [Flat.convertExpr]
+  | «continue» l => simp [Flat.convertExpr]
+  | forIn _ _ _ => simp [Flat.convertExpr]
+  | forOf _ _ _ => simp [Flat.convertExpr]
+  | «let» name init body =>
+    simp only [Flat.convertExpr]
+    rw [convertExpr_scope_irrelevant init scope1 scope2]
+    rw [convertExpr_scope_irrelevant body (name :: scope1) (name :: scope2)]
+  | assign name value =>
+    simp only [Flat.convertExpr]
+    rw [convertExpr_scope_irrelevant value scope1 scope2]
+  | «if» cond then_ else_ =>
+    simp only [Flat.convertExpr]
+    rw [convertExpr_scope_irrelevant cond scope1 scope2]
+    rw [convertExpr_scope_irrelevant then_ scope1 scope2]
+    rw [convertExpr_scope_irrelevant else_ scope1 scope2]
+  | seq a b =>
+    simp only [Flat.convertExpr]
+    rw [convertExpr_scope_irrelevant a scope1 scope2]
+    rw [convertExpr_scope_irrelevant b scope1 scope2]
+  | call callee args =>
+    simp only [Flat.convertExpr]
+    rw [convertExpr_scope_irrelevant callee scope1 scope2]
+    rw [convertExprList_scope_irrelevant args scope1 scope2]
+  | newObj callee args =>
+    simp only [Flat.convertExpr]
+    rw [convertExpr_scope_irrelevant callee scope1 scope2]
+    rw [convertExprList_scope_irrelevant args scope1 scope2]
+  | getProp obj prop =>
+    simp only [Flat.convertExpr]
+    rw [convertExpr_scope_irrelevant obj scope1 scope2]
+  | setProp obj prop value =>
+    simp only [Flat.convertExpr]
+    rw [convertExpr_scope_irrelevant obj scope1 scope2]
+    rw [convertExpr_scope_irrelevant value scope1 scope2]
+  | getIndex obj idx =>
+    simp only [Flat.convertExpr]
+    rw [convertExpr_scope_irrelevant obj scope1 scope2]
+    rw [convertExpr_scope_irrelevant idx scope1 scope2]
+  | setIndex obj idx value =>
+    simp only [Flat.convertExpr]
+    rw [convertExpr_scope_irrelevant obj scope1 scope2]
+    rw [convertExpr_scope_irrelevant idx scope1 scope2]
+    rw [convertExpr_scope_irrelevant value scope1 scope2]
+  | deleteProp obj prop =>
+    simp only [Flat.convertExpr]
+    rw [convertExpr_scope_irrelevant obj scope1 scope2]
+  | typeof arg =>
+    simp only [Flat.convertExpr]
+    rw [convertExpr_scope_irrelevant arg scope1 scope2]
+  | unary op arg =>
+    simp only [Flat.convertExpr]
+    rw [convertExpr_scope_irrelevant arg scope1 scope2]
+  | binary op lhs rhs =>
+    simp only [Flat.convertExpr]
+    rw [convertExpr_scope_irrelevant lhs scope1 scope2]
+    rw [convertExpr_scope_irrelevant rhs scope1 scope2]
+  | objectLit props =>
+    simp only [Flat.convertExpr]
+    rw [convertPropList_scope_irrelevant props scope1 scope2]
+  | arrayLit elems =>
+    simp only [Flat.convertExpr]
+    rw [convertExprList_scope_irrelevant elems scope1 scope2]
+  | functionDef fname params body isAsync isGenerator =>
+    -- scope is NOT used: innerScope := params
+    simp only [Flat.convertExpr]
+  | throw arg =>
+    simp only [Flat.convertExpr]
+    rw [convertExpr_scope_irrelevant arg scope1 scope2]
+  | tryCatch body catchParam catchBody finally_ =>
+    simp only [Flat.convertExpr]
+    rw [convertExpr_scope_irrelevant body scope1 scope2]
+    rw [convertExpr_scope_irrelevant catchBody (catchParam :: scope1) (catchParam :: scope2)]
+    rw [convertOptExpr_scope_irrelevant finally_ scope1 scope2]
+  | while_ cond body =>
+    simp only [Flat.convertExpr]
+    rw [convertExpr_scope_irrelevant cond scope1 scope2]
+    rw [convertExpr_scope_irrelevant body scope1 scope2]
+  | «return» arg =>
+    simp only [Flat.convertExpr]
+    rw [convertOptExpr_scope_irrelevant arg scope1 scope2]
+  | labeled label body =>
+    simp only [Flat.convertExpr]
+    rw [convertExpr_scope_irrelevant body scope1 scope2]
+  | yield arg delegate =>
+    simp only [Flat.convertExpr]
+    rw [convertOptExpr_scope_irrelevant arg scope1 scope2]
+  | await arg =>
+    simp only [Flat.convertExpr]
+    rw [convertExpr_scope_irrelevant arg scope1 scope2]
+  termination_by sizeOf e
+  decreasing_by all_goals (try cases ‹Option Core.Expr›) <;> simp_all <;> omega
+
+private theorem convertExprList_scope_irrelevant (es : List Core.Expr)
+    (scope1 scope2 : List String) (envVar : String) (envMap : Flat.EnvMapping) (st : Flat.CCState) :
+    Flat.convertExprList es scope1 envVar envMap st = Flat.convertExprList es scope2 envVar envMap st := by
+  cases es with
+  | nil => simp [Flat.convertExprList]
+  | cons e rest =>
+    simp only [Flat.convertExprList]
+    rw [convertExpr_scope_irrelevant e scope1 scope2]
+    rw [convertExprList_scope_irrelevant rest scope1 scope2]
+  termination_by sizeOf es
+  decreasing_by all_goals simp_all <;> omega
+
+private theorem convertPropList_scope_irrelevant (ps : List (Core.PropName × Core.Expr))
+    (scope1 scope2 : List String) (envVar : String) (envMap : Flat.EnvMapping) (st : Flat.CCState) :
+    Flat.convertPropList ps scope1 envVar envMap st = Flat.convertPropList ps scope2 envVar envMap st := by
+  cases ps with
+  | nil => simp [Flat.convertPropList]
+  | cons p rest =>
+    obtain ⟨pn, pe⟩ := p
+    simp only [Flat.convertPropList]
+    rw [convertExpr_scope_irrelevant pe scope1 scope2]
+    rw [convertPropList_scope_irrelevant rest scope1 scope2]
+  termination_by sizeOf ps
+  decreasing_by all_goals simp_all <;> omega
+
+private theorem convertOptExpr_scope_irrelevant (oe : Option Core.Expr)
+    (scope1 scope2 : List String) (envVar : String) (envMap : Flat.EnvMapping) (st : Flat.CCState) :
+    Flat.convertOptExpr oe scope1 envVar envMap st = Flat.convertOptExpr oe scope2 envVar envMap st := by
+  cases oe with
+  | none => simp [Flat.convertOptExpr]
+  | some e =>
+    simp only [Flat.convertOptExpr]
+    rw [convertExpr_scope_irrelevant e scope1 scope2]
+  termination_by sizeOf oe
+  decreasing_by all_goals simp_all <;> omega
+end
+
 /-- Simulation relation for closure conversion: Flat and Core states
     have matching traces, environment correspondence, and expression
     correspondence through the conversion. -/
