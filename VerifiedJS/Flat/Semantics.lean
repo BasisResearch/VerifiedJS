@@ -663,10 +663,7 @@ inductive Steps : State → List Core.TraceEvent → State → Prop where
 
 /-- Initial Flat machine state for a program entry expression. -/
 def initialState (p : Program) : State :=
-  -- Mirror Core.initialState: reserve heap address 0 for the console object.
-  let consoleProps : List (Core.PropName × Core.Value) := [("log", .function Core.consoleLogIdx)]
-  let heap : Core.Heap := { objects := #[consoleProps], nextAddr := 1 }
-  { expr := p.main, env := Env.empty.extend "console" (.object 0), heap := heap, trace := [] }
+  { expr := p.main, env := Env.empty, heap := Core.Heap.empty, trace := [] }
 
 /-- Behavioral semantics -/
 def Behaves (p : Program) (b : List Core.TraceEvent) : Prop :=
