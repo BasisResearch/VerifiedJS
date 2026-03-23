@@ -6173,9 +6173,10 @@ theorem step_sim (irmod : IRModule) (wmod : Module) :
                 | wf :: wfs =>
                   -- idx < irf.locals.size (from getElem? returning some)
                   have hidx_ir : idx < irf.locals.size := by
-                    by_contra h; simp only [not_lt] at h
+                    by_contra h
+                    have hge : ¬(idx < irf.locals.size) := h
                     have : irf.locals[idx]? = none := by
-                      simp only [Array.getElem?_def, show ¬(idx < irf.locals.size) from by omega, ↓reduceDIte]
+                      simp only [Array.getElem?_def, hge, ↓reduceDIte]
                     simp [this] at hlocal
                   -- irf.locals.size = wf.locals.size
                   have hloc_sz := hrel.hframes_locals irf wf irfs wfs hfr_ir hfr_w
