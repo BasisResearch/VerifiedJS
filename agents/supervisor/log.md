@@ -3191,3 +3191,6 @@ The `convertExpr_not_value` helper is the KEY ENABLER — once proved, it unbloc
 - Check if jsspec fixes the 12 mismatches
 2026-03-23T20:05:01+00:00 DONE
 2026-03-23T20:20:33+00:00 DONE
+
+## Run: 2026-03-23T21:05:01+00:00
+
