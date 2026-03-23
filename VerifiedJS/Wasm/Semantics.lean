@@ -1668,8 +1668,9 @@ theorem step?_eq_globalGet_valid (s : ExecState) (idx : Nat) (rest : List Instr)
     (hcode : s.code = Instr.globalGet idx :: rest)
     (h : idx < s.store.globals.size)
     (hv : s.store.globals[idx] = v) :
+    let stk := s.stack
     step? s = some (.silent,
-      { s with code := rest, stack := v :: s.stack,
+      { s with code := rest, stack := v :: stk,
         trace := s.trace ++ [.silent] }) := by
   subst hv; cases s; simp_all [step?, pushTrace]
 
@@ -1677,8 +1678,9 @@ theorem step?_eq_globalGet_valid (s : ExecState) (idx : Nat) (rest : List Instr)
 theorem step?_eq_globalGet_oob (s : ExecState) (idx : Nat) (rest : List Instr)
     (hcode : s.code = Instr.globalGet idx :: rest)
     (h : ¬(idx < s.store.globals.size)) :
-    step? s = some (.trap s!"unknown global index {idx}",
-      { s with code := [], trace := s.trace ++ [.trap s!"unknown global index {idx}"] }) := by
+    let msg := s!"unknown global index {idx}"
+    step? s = some (.trap msg,
+      { s with code := [], trace := s.trace ++ [.trap msg] }) := by
   cases s; simp_all [step?, trapState, pushTrace]
 
 /-- return clears labels and code. -/
