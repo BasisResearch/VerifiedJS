@@ -164,7 +164,8 @@ private theorem convertValue_beq (a b : Core.Value) :
   -- function.function: (.closure idx₁ 0 == .closure idx₂ 0) = (.function idx₁ == .function idx₂)
   -- Both reduce to idx₁ == idx₂ but BEq instances differ structurally.
   · rename_i idx₁ idx₂
-    cases h : (idx₁ == idx₂) <;> rfl
+    change (idx₁ == idx₂ && (0 : Nat) == 0) = (idx₁ == idx₂)
+    simp
 
 /-- evalBinary commutes with convertValue for operators where Flat matches Core.
     NOTE: This is NOT true for all operators — Flat.evalBinary is simplified
@@ -199,9 +200,8 @@ private theorem evalBinary_convertValue (op : Core.BinOp) (a b : Core.Value) :
     simp only [Core.evalBinary, Flat.evalBinary]
     congr 1; exact convertValue_beq a b
   | strictNeq =>
-    simp only [Core.evalBinary, Flat.evalBinary]
-    congr 1; show !(Flat.convertValue a == Flat.convertValue b) = !(a == b)
-    congr 1; exact convertValue_beq a b
+    simp only [Core.evalBinary, Flat.evalBinary, bne, Flat.convertValue]
+    congr 1; rw [convertValue_beq]
   | _ => sorry -- BLOCKED: Flat.evalBinary differs from Core for add/eq/neq/lt/gt/le/ge/bitwise/mod/exp/instanceof/in
 
 /-- Extending both envs preserves EnvCorr. -/
