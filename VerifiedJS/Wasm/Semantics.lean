@@ -6488,9 +6488,7 @@ theorem step_sim (irmod : IRModule) (wmod : Module) :
               | none =>
                 -- Trap: local index out of bounds
                 have hidx_oob : ¬(idx < irf.locals.size) := by
-                  intro h
-                  have := getElem?_pos irf.locals idx h
-                  rw [this] at hlocal; exact Option.noConfusion hlocal
+                  intro h; simp_all
                 have hir := irStep?_eq_localGet_oob s1 idx rest irf irfs hcode_ir hfr_ir hlocal
                 rw [hir] at hstep
                 simp only [Option.some.injEq, Prod.mk.injEq] at hstep
