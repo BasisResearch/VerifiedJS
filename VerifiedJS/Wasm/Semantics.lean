@@ -5712,6 +5712,54 @@ inductive EmitCodeCorr : List IRInstr → List Instr → Prop where
   | binOp_i32_mul (rest_ir : List IRInstr) (rest_w : List Instr) :
       EmitCodeCorr rest_ir rest_w →
       EmitCodeCorr (.binOp .i32 "mul" :: rest_ir) (.i32Mul :: rest_w)
+  /-- binOp i32 "and" maps to i32.and. -/
+  | binOp_i32_and (rest_ir : List IRInstr) (rest_w : List Instr) :
+      EmitCodeCorr rest_ir rest_w →
+      EmitCodeCorr (.binOp .i32 "and" :: rest_ir) (.i32And :: rest_w)
+  /-- binOp i32 "or" maps to i32.or. -/
+  | binOp_i32_or (rest_ir : List IRInstr) (rest_w : List Instr) :
+      EmitCodeCorr rest_ir rest_w →
+      EmitCodeCorr (.binOp .i32 "or" :: rest_ir) (.i32Or :: rest_w)
+  /-- binOp i32 "eq" maps to i32.eq. -/
+  | binOp_i32_eq (rest_ir : List IRInstr) (rest_w : List Instr) :
+      EmitCodeCorr rest_ir rest_w →
+      EmitCodeCorr (.binOp .i32 "eq" :: rest_ir) (.i32Eq :: rest_w)
+  /-- binOp i32 "ne" maps to i32.ne. -/
+  | binOp_i32_ne (rest_ir : List IRInstr) (rest_w : List Instr) :
+      EmitCodeCorr rest_ir rest_w →
+      EmitCodeCorr (.binOp .i32 "ne" :: rest_ir) (.i32Ne :: rest_w)
+  /-- binOp i32 "lt_s" maps to i32.lt_s. -/
+  | binOp_i32_lts (rest_ir : List IRInstr) (rest_w : List Instr) :
+      EmitCodeCorr rest_ir rest_w →
+      EmitCodeCorr (.binOp .i32 "lt_s" :: rest_ir) (.i32Lts :: rest_w)
+  /-- binOp i32 "gt_s" maps to i32.gt_s. -/
+  | binOp_i32_gts (rest_ir : List IRInstr) (rest_w : List Instr) :
+      EmitCodeCorr rest_ir rest_w →
+      EmitCodeCorr (.binOp .i32 "gt_s" :: rest_ir) (.i32Gts :: rest_w)
+  /-- binOp f64 "add" maps to f64.add. -/
+  | binOp_f64_add (rest_ir : List IRInstr) (rest_w : List Instr) :
+      EmitCodeCorr rest_ir rest_w →
+      EmitCodeCorr (.binOp .f64 "add" :: rest_ir) (.f64Add :: rest_w)
+  /-- binOp f64 "sub" maps to f64.sub. -/
+  | binOp_f64_sub (rest_ir : List IRInstr) (rest_w : List Instr) :
+      EmitCodeCorr rest_ir rest_w →
+      EmitCodeCorr (.binOp .f64 "sub" :: rest_ir) (.f64Sub :: rest_w)
+  /-- binOp f64 "mul" maps to f64.mul. -/
+  | binOp_f64_mul (rest_ir : List IRInstr) (rest_w : List Instr) :
+      EmitCodeCorr rest_ir rest_w →
+      EmitCodeCorr (.binOp .f64 "mul" :: rest_ir) (.f64Mul :: rest_w)
+  /-- binOp f64 "div" maps to f64.div. -/
+  | binOp_f64_div (rest_ir : List IRInstr) (rest_w : List Instr) :
+      EmitCodeCorr rest_ir rest_w →
+      EmitCodeCorr (.binOp .f64 "div" :: rest_ir) (.f64Div :: rest_w)
+  /-- unOp i32 "eqz" maps to i32.eqz. -/
+  | unOp_i32_eqz (rest_ir : List IRInstr) (rest_w : List Instr) :
+      EmitCodeCorr rest_ir rest_w →
+      EmitCodeCorr (.unOp .i32 "eqz" :: rest_ir) (.i32Eqz :: rest_w)
+  /-- unOp i32 "wrap_i64" maps to i32.wrap_i64. -/
+  | unOp_i32_wrapI64 (rest_ir : List IRInstr) (rest_w : List Instr) :
+      EmitCodeCorr rest_ir rest_w →
+      EmitCodeCorr (.unOp .i32 "wrap_i64" :: rest_ir) (.i32WrapI64 :: rest_w)
   /-- call maps to call. -/
   | call_ (funcIdx : Nat) (rest_ir : List IRInstr) (rest_w : List Instr) :
       EmitCodeCorr rest_ir rest_w →
@@ -5947,6 +5995,57 @@ theorem EmitCodeCorr.memoryGrow_inv {rest : List IRInstr} {wcode : List Instr}
   | memoryGrow_ _ rw hrw => left; exact ⟨rw, rfl, hrw⟩
   | general _ wi _ rw hrw => right; exact ⟨wi, rw, rfl, hrw⟩
 
+/-- Inversion for binOp .i32 op :: rest. -/
+theorem EmitCodeCorr.binOp_i32_inv {op : String} {rest : List IRInstr} {wcode : List Instr}
+    (h : EmitCodeCorr (IRInstr.binOp .i32 op :: rest) wcode) :
+    (op = "add" ∧ ∃ rest_w, wcode = Instr.i32Add :: rest_w ∧ EmitCodeCorr rest rest_w) ∨
+    (op = "sub" ∧ ∃ rest_w, wcode = Instr.i32Sub :: rest_w ∧ EmitCodeCorr rest rest_w) ∨
+    (op = "mul" ∧ ∃ rest_w, wcode = Instr.i32Mul :: rest_w ∧ EmitCodeCorr rest rest_w) ∨
+    (op = "and" ∧ ∃ rest_w, wcode = Instr.i32And :: rest_w ∧ EmitCodeCorr rest rest_w) ∨
+    (op = "or" ∧ ∃ rest_w, wcode = Instr.i32Or :: rest_w ∧ EmitCodeCorr rest rest_w) ∨
+    (op = "eq" ∧ ∃ rest_w, wcode = Instr.i32Eq :: rest_w ∧ EmitCodeCorr rest rest_w) ∨
+    (op = "ne" ∧ ∃ rest_w, wcode = Instr.i32Ne :: rest_w ∧ EmitCodeCorr rest rest_w) ∨
+    (op = "lt_s" ∧ ∃ rest_w, wcode = Instr.i32Lts :: rest_w ∧ EmitCodeCorr rest rest_w) ∨
+    (op = "gt_s" ∧ ∃ rest_w, wcode = Instr.i32Gts :: rest_w ∧ EmitCodeCorr rest rest_w) ∨
+    (∃ wasm_instrs rest_w, wcode = wasm_instrs ++ rest_w ∧ EmitCodeCorr rest rest_w) := by
+  cases h with
+  | binOp_i32_add _ rw hrw => left; exact ⟨rfl, rw, rfl, hrw⟩
+  | binOp_i32_sub _ rw hrw => right; left; exact ⟨rfl, rw, rfl, hrw⟩
+  | binOp_i32_mul _ rw hrw => right; right; left; exact ⟨rfl, rw, rfl, hrw⟩
+  | binOp_i32_and _ rw hrw => right; right; right; left; exact ⟨rfl, rw, rfl, hrw⟩
+  | binOp_i32_or _ rw hrw => right; right; right; right; left; exact ⟨rfl, rw, rfl, hrw⟩
+  | binOp_i32_eq _ rw hrw => right; right; right; right; right; left; exact ⟨rfl, rw, rfl, hrw⟩
+  | binOp_i32_ne _ rw hrw => right; right; right; right; right; right; left; exact ⟨rfl, rw, rfl, hrw⟩
+  | binOp_i32_lts _ rw hrw => right; right; right; right; right; right; right; left; exact ⟨rfl, rw, rfl, hrw⟩
+  | binOp_i32_gts _ rw hrw => right; right; right; right; right; right; right; right; left; exact ⟨rfl, rw, rfl, hrw⟩
+  | general _ wi _ rw hrw => right; right; right; right; right; right; right; right; right; exact ⟨wi, rw, rfl, hrw⟩
+
+/-- Inversion for binOp .f64 op :: rest. -/
+theorem EmitCodeCorr.binOp_f64_inv {op : String} {rest : List IRInstr} {wcode : List Instr}
+    (h : EmitCodeCorr (IRInstr.binOp .f64 op :: rest) wcode) :
+    (op = "add" ∧ ∃ rest_w, wcode = Instr.f64Add :: rest_w ∧ EmitCodeCorr rest rest_w) ∨
+    (op = "sub" ∧ ∃ rest_w, wcode = Instr.f64Sub :: rest_w ∧ EmitCodeCorr rest rest_w) ∨
+    (op = "mul" ∧ ∃ rest_w, wcode = Instr.f64Mul :: rest_w ∧ EmitCodeCorr rest rest_w) ∨
+    (op = "div" ∧ ∃ rest_w, wcode = Instr.f64Div :: rest_w ∧ EmitCodeCorr rest rest_w) ∨
+    (∃ wasm_instrs rest_w, wcode = wasm_instrs ++ rest_w ∧ EmitCodeCorr rest rest_w) := by
+  cases h with
+  | binOp_f64_add _ rw hrw => left; exact ⟨rfl, rw, rfl, hrw⟩
+  | binOp_f64_sub _ rw hrw => right; left; exact ⟨rfl, rw, rfl, hrw⟩
+  | binOp_f64_mul _ rw hrw => right; right; left; exact ⟨rfl, rw, rfl, hrw⟩
+  | binOp_f64_div _ rw hrw => right; right; right; left; exact ⟨rfl, rw, rfl, hrw⟩
+  | general _ wi _ rw hrw => right; right; right; right; exact ⟨wi, rw, rfl, hrw⟩
+
+/-- Inversion for unOp .i32 op :: rest. -/
+theorem EmitCodeCorr.unOp_i32_inv {op : String} {rest : List IRInstr} {wcode : List Instr}
+    (h : EmitCodeCorr (IRInstr.unOp .i32 op :: rest) wcode) :
+    (op = "eqz" ∧ ∃ rest_w, wcode = Instr.i32Eqz :: rest_w ∧ EmitCodeCorr rest rest_w) ∨
+    (op = "wrap_i64" ∧ ∃ rest_w, wcode = Instr.i32WrapI64 :: rest_w ∧ EmitCodeCorr rest rest_w) ∨
+    (∃ wasm_instrs rest_w, wcode = wasm_instrs ++ rest_w ∧ EmitCodeCorr rest rest_w) := by
+  cases h with
+  | unOp_i32_eqz _ rw hrw => left; exact ⟨rfl, rw, rfl, hrw⟩
+  | unOp_i32_wrapI64 _ rw hrw => right; left; exact ⟨rfl, rw, rfl, hrw⟩
+  | general _ wi _ rw hrw => right; right; exact ⟨wi, rw, rfl, hrw⟩
+
 /-- General inversion for any IR instruction. -/
 theorem EmitCodeCorr.cons_inv {instr : IRInstr} {rest : List IRInstr} {wcode : List Instr}
     (h : EmitCodeCorr (instr :: rest) wcode) :
@@ -5962,6 +6061,18 @@ theorem EmitCodeCorr.cons_inv {instr : IRInstr} {rest : List IRInstr} {wcode : L
   | binOp_i32_add _ rw hrw => exact ⟨[_], rw, rfl, hrw⟩
   | binOp_i32_sub _ rw hrw => exact ⟨[_], rw, rfl, hrw⟩
   | binOp_i32_mul _ rw hrw => exact ⟨[_], rw, rfl, hrw⟩
+  | binOp_i32_and _ rw hrw => exact ⟨[_], rw, rfl, hrw⟩
+  | binOp_i32_or _ rw hrw => exact ⟨[_], rw, rfl, hrw⟩
+  | binOp_i32_eq _ rw hrw => exact ⟨[_], rw, rfl, hrw⟩
+  | binOp_i32_ne _ rw hrw => exact ⟨[_], rw, rfl, hrw⟩
+  | binOp_i32_lts _ rw hrw => exact ⟨[_], rw, rfl, hrw⟩
+  | binOp_i32_gts _ rw hrw => exact ⟨[_], rw, rfl, hrw⟩
+  | binOp_f64_add _ rw hrw => exact ⟨[_], rw, rfl, hrw⟩
+  | binOp_f64_sub _ rw hrw => exact ⟨[_], rw, rfl, hrw⟩
+  | binOp_f64_mul _ rw hrw => exact ⟨[_], rw, rfl, hrw⟩
+  | binOp_f64_div _ rw hrw => exact ⟨[_], rw, rfl, hrw⟩
+  | unOp_i32_eqz _ rw hrw => exact ⟨[_], rw, rfl, hrw⟩
+  | unOp_i32_wrapI64 _ rw hrw => exact ⟨[_], rw, rfl, hrw⟩
   | call_ _ _ rw hrw => exact ⟨[_], rw, rfl, hrw⟩
   | drop_ _ rw hrw => exact ⟨[_], rw, rfl, hrw⟩
   | return__ _ rw hrw => exact ⟨[_], rw, rfl, hrw⟩
