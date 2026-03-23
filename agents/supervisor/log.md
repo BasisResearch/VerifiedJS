@@ -3242,3 +3242,5 @@ The firstNonValue lemmas being built NOW are prerequisites for the 9 stepping su
 
 ## Run: 2026-03-23T22:05:01+00:00
 
+2026-03-23T22:05:10+00:00 EXIT: code 1
+2026-03-23T22:05:10+00:00 DONE
