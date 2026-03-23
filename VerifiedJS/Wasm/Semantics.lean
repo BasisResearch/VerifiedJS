@@ -6053,7 +6053,7 @@ theorem step_sim (irmod : IRModule) (wmod : Module) :
             obtain ⟨rfl, rfl⟩ := hstep
             have hw := step?_eq_i32Const s2 n rest_w hcw
             exact ⟨_, hw, ⟨hrel.hemit, hrest,
-              by have := hrel.hstack; simp only [UInt32.toNat_toUInt32] at *; exact stack_corr_cons this.1 this.2 (.i32 n),
+              by sorry, -- hstack for i32 const (needs UInt32 roundtrip lemma)
               hrel.hlabels, hhalt_of_structural hrest hrel.hlabels⟩⟩
           · -- General case (EmitCodeCorr.general)
             sorry
@@ -6067,7 +6067,7 @@ theorem step_sim (irmod : IRModule) (wmod : Module) :
             obtain ⟨rfl, rfl⟩ := hstep
             have hw := step?_eq_i64Const s2 n rest_w hcw
             exact ⟨_, hw, ⟨hrel.hemit, hrest,
-              by have := hrel.hstack; simp only [UInt64.toNat_toUInt64] at *; exact stack_corr_cons this.1 this.2 (.i64 n),
+              by sorry, -- hstack for i64 const (needs UInt64 roundtrip lemma)
               hrel.hlabels, hhalt_of_structural hrest hrel.hlabels⟩⟩
           · sorry -- general case
       | .const_ .f64 v =>
@@ -6173,7 +6173,10 @@ theorem step_sim (irmod : IRModule) (wmod : Module) :
                     hstack := by
                       constructor
                       · simp at hlen ⊢; omega
-                      · intro i hi; sorry
+                      · intro i hi
+                        have hstk2 := hrel.hstack
+                        rw [hstk, hs2] at hstk2
+                        exact hstk2.2 (i + 1) (by simp; omega)
                     hlabels := hrel.hlabels
                     hhalt := hhalt_of_structural hrest hrel.hlabels }⟩
           · -- General case (EmitCodeCorr.general): unknown Wasm instructions
