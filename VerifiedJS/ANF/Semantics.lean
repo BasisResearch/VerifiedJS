@@ -436,15 +436,11 @@ def step? (s : State) : Option (Core.TraceEvent × State) :=
       let s' := pushTrace { s with expr := body } .silent
       some (.silent, s')
   | .«break» label =>
-      let l := label.getD ""
-      let msg := "break:" ++ l
-      let s' := pushTrace { s with expr := .trivial .litUndefined } (.error msg)
-      some (.error msg, s')
+      let s' := pushTrace { s with expr := .trivial .litUndefined } .silent
+      some (.silent, s')
   | .«continue» label =>
-      let l := label.getD ""
-      let msg := "continue:" ++ l
-      let s' := pushTrace { s with expr := .trivial .litUndefined } (.error msg)
-      some (.error msg, s')
+      let s' := pushTrace { s with expr := .trivial .litUndefined } .silent
+      some (.silent, s')
   termination_by s.expr.depth
   decreasing_by all_goals (try cases ‹Option Expr›) <;> simp_all [Expr.depth] <;> omega
 
@@ -557,20 +553,20 @@ theorem step?_labeled (s : State) (label : String) (body : Expr) :
       some (.silent, pushTrace { s with expr := body } .silent) := by
   simp [step?]
 
-/-- Break always steps with an error event. -/
+/-- Break always steps silently (control-flow signal handled by while/labeled). -/
 @[simp]
 theorem step?_break (s : State) (label : Option String) :
     step? { s with expr := .break label } =
-      some (.error ("break:" ++ label.getD ""),
-            pushTrace { s with expr := .trivial .litUndefined } (.error ("break:" ++ label.getD ""))) := by
+      some (.silent,
+            pushTrace { s with expr := .trivial .litUndefined } .silent) := by
   simp [step?]
 
-/-- Continue always steps with an error event. -/
+/-- Continue always steps silently (control-flow signal handled by while/labeled). -/
 @[simp]
 theorem step?_continue (s : State) (label : Option String) :
     step? { s with expr := .continue label } =
-      some (.error ("continue:" ++ label.getD ""),
-            pushTrace { s with expr := .trivial .litUndefined } (.error ("continue:" ++ label.getD ""))) := by
+      some (.silent,
+            pushTrace { s with expr := .trivial .litUndefined } .silent) := by
   simp [step?]
 
 /-- Throw with successful eval always steps with an error event. -/

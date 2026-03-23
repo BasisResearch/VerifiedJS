@@ -5435,8 +5435,9 @@ theorem init (prog : ANF.Program) (irmod : IRModule)
   hframes := by simp [irInitialState]
   henv := by
     intro name v hlookup
-    -- Initial ANF env is empty, so lookup always returns none
-    simp [ANF.initialState, ANF.Env.empty, ANF.Env.lookup] at hlookup
+    -- Initial ANF env has console binding; needs IR local correspondence
+    simp [ANF.initialState, ANF.Env.extend, ANF.Env.lookup] at hlookup
+    sorry
   hvar := by
     intro name idx hexpr hcode_ir
     -- Initial ANF env is empty, so if expr is a var, lookup fails.
