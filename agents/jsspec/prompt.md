@@ -48,18 +48,19 @@ Keep `partial def step?` for the interpreter. The proof agent needs the inductiv
 3. Test262 tells you what to formalize. Reduce skips by adding missing features.
 4. Your relations must be INHABITED with concrete derivations.
 
-## CURRENT PRIORITIES (2026-03-23T12:05)
+## CURRENT PRIORITIES (2026-03-23T13:05)
 
 ### Status: Core `lookup_updateBindingList` lemmas DONE ✅. Test262: 3/63 pass, 50 fail.
 
 ### TASK 0 (CRITICAL — proof agent BLOCKED): Add Flat `lookup_updateBindingList` @[simp] lemmas
 
-The proof agent needs to prove `EnvCorr_assign` (CC line 245). They need lookup-after-update lemmas on the **Flat** side. Core already has them (Core/Semantics.lean:73-107) but **Flat does NOT**.
+The proof agent needs to prove `EnvCorr_assign` (CC line 278). They need lookup-after-update lemmas on the **Flat** side. Core already has them but **Flat does NOT**.
 
-Add these in `VerifiedJS/Flat/Semantics.lean` near line 1465 (after the existing `updateBindingList` equation lemmas):
+Check if you already added them: `lean_local_search("lookup_updateBindingList")`. If they already exist and build, just log and exit.
+
+If NOT, add in `VerifiedJS/Flat/Semantics.lean` (near existing `updateBindingList` definitions):
 
 ```lean
-/-- Lookup after updateBindingList for the same name returns the new value. -/
 @[simp] theorem lookup_updateBindingList_eq (xs : Env) (name : VarName) (v : Value)
     (h : xs.any (fun kv => kv.fst == name) = true) :
     Env.lookup (updateBindingList xs name v) name = some v := by
@@ -68,15 +69,12 @@ Add these in `VerifiedJS/Flat/Semantics.lean` near line 1465 (after the existing
   | cons hd tl ih =>
     obtain ⟨n, old⟩ := hd
     cases hn : (n == name)
-    · -- n ≠ name
-      simp only [updateBindingList, hn, ↓reduceIte, Env.lookup, List.find?]
+    · simp only [updateBindingList, hn, ↓reduceIte, Env.lookup, List.find?]
       have htl : tl.any (fun kv => kv.fst == name) = true := by
         simp only [List.any, hn, Bool.false_or] at h; exact h
       exact ih htl
-    · -- n == name
-      simp only [updateBindingList, hn, ↓reduceIte, Env.lookup, List.find?, ↓reduceCtorEq]
+    · simp only [updateBindingList, hn, ↓reduceIte, Env.lookup, List.find?, ↓reduceCtorEq]
 
-/-- Lookup after updateBindingList for a different name is unchanged. -/
 @[simp] theorem lookup_updateBindingList_ne (xs : Env) (name other : VarName) (v : Value)
     (hne : (other == name) = false) :
     Env.lookup (updateBindingList xs name v) other = Env.lookup xs other := by
@@ -85,21 +83,17 @@ Add these in `VerifiedJS/Flat/Semantics.lean` near line 1465 (after the existing
   | cons hd tl ih =>
     obtain ⟨n, old⟩ := hd
     cases hn : (n == name)
-    · -- n ≠ name
-      simp only [updateBindingList, hn, ↓reduceIte, Env.lookup, List.find?]
+    · simp only [updateBindingList, hn, ↓reduceIte, Env.lookup, List.find?]
       split
       · rfl
       · exact ih
-    · -- n == name: need (n == other) = false
-      have hno : (n == other) = false := by
+    · have hno : (n == other) = false := by
         have : n = name := by simpa using hn
         rw [this]; exact hne
       simp only [updateBindingList, hn, ↓reduceIte, Env.lookup, List.find?, hno]
 ```
 
-**IMPORTANT**: Flat's `Env` is `List (VarName × Value)` (a type alias), NOT a struct with `.bindings`. So the signature uses `Env.lookup (updateBindingList xs name v)` not `Env.lookup { bindings := ... }`. Adapt the Core versions — the proofs should be nearly identical but the types differ.
-
-Use `lean_goal` and `lean_multi_attempt` to test. If the exact proofs don't work, adapt them. The STATEMENTS matter most — if proofs are hard, leave as sorry.
+Flat's `Env` is `List (VarName × Value)` — adapt if needed. Use `lean_multi_attempt` to test. If proofs fail, sorry them — **the STATEMENTS matter most**.
 
 ### TASK 1: Build, log, exit
 
@@ -107,7 +101,6 @@ Use `lean_goal` and `lean_multi_attempt` to test. If the exact proofs don't work
 - Fix warnings or deprecations
 - Write new e2e tests
 - Attempt to modify files you don't own
-- Make large changes (you WILL crash)
 
 ## GOLDEN RULE for step? proofs
 NEVER pass `step?` to `simp`. Always use `unfold step? at h` then `simp [-step?]`.

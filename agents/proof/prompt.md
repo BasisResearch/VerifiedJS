@@ -57,62 +57,64 @@ If ClosureConvertCorrect needs 600 lines of case analysis, WRITE 600 LINES. That
 ## Test262
 Read `logs/test262_summary.md` for failure categories. Fix compiler bugs that cause test262 failures.
 
-## ⚠️⚠️⚠️ URGENT: YOU KEEP TIMING OUT (2026-03-23T12:05) ⚠️⚠️⚠️
+## CURRENT PRIORITIES (2026-03-23T13:05)
 
-You have TIMED OUT on every single run since 03:30 — that is 8.5 HOURS of zero progress.
+### Build: PASS ✅. ExprWellFormed private FIXED ✅ (good work).
 
-### THE PROBLEM: You are doing too much per run.
+You are now making commits again (sorry bouncing 79-80). Keep momentum.
 
-### THE FIX: Do EXACTLY ONE task, then build, log, and EXIT.
+### TASK 0 (FREE — 2 VERIFIED TACTICS): Close evalBinary remaining cases
 
-Do NOT attempt Task 2 until Task 1 is done and committed. Do NOT explore. Do NOT research. Just execute.
+Two sorries in `ClosureConvertCorrect.lean` are **verified closable** via `lean_multi_attempt`:
 
-### TASK 0 (FIX BUILD — 10 SECONDS): Remove `private` from `ExprWellFormed`
-
-EndToEnd.lean:49 fails with `Unknown identifier ExprWellFormed` because it's defined as `private` in ANFConvertCorrect.lean:88.
-
-**Exact fix**: In `VerifiedJS/Proofs/ANFConvertCorrect.lean`, line 88, change:
+**Line 206** (`add` case) — replace:
 ```lean
-private def ExprWellFormed (expr : Flat.Expr) (env : Flat.Env) : Prop :=
-```
-to:
-```lean
-def ExprWellFormed (expr : Flat.Expr) (env : Flat.Env) : Prop :=
-```
-
-That's it. One word deleted. Build. Verify EndToEnd.lean compiles. Log. **STOP HERE IF YOU HAVE LESS THAN 30 MINUTES LEFT.**
-
-### TASK 1 (IF TIME): Close `evalBinary_convertValue` sorry (line 206)
-
-In `VerifiedJS/Proofs/ClosureConvertCorrect.lean`, line 206, replace:
-```lean
-  | _ => sorry -- BLOCKED: Flat.evalBinary differs from Core for add/eq/neq/lt/gt/le/ge/bitwise/mod/exp/instanceof/in
+  | add => sorry -- complex: string/number dispatch + toNumber/valueToString after cases
 ```
 with:
 ```lean
-  | _ => cases a <;> cases b <;> simp [Core.evalBinary, Flat.evalBinary, Flat.convertValue, Core.toNumber, Flat.toNumber, toNumber_convertValue, Core.valueToString, Flat.valueToString, valueToString_convertValue]
+  | add =>
+    simp only [Core.evalBinary, Flat.evalBinary]
+    split <;> simp_all [Flat.convertValue, toNumber_convertValue, valueToString_convertValue]
 ```
 
-I verified this with `lean_multi_attempt` — "No goals to be solved". It closes ALL 17 remaining operator cases. **Do this ONLY after Task 0 succeeds.**
-
-### TASK 2 (IF TIME — unlikely): `.assign` sorry (line 245)
-
-`EnvCorr_assign` — unfold both `assign`, split on the `any` check, then use `updateBindingList` simp lemmas. Try:
+**Line 240** (`_ => sorry` — eq/neq/lt/gt/le/ge/instanceof/in) — replace:
 ```lean
-  sorry
+  | _ => sorry -- remaining: eq, neq, lt, gt, le, ge, instanceof, in
 ```
-→
+with:
 ```lean
-  unfold Core.Env.assign Flat.Env.assign
-  simp only [EnvCorr] at h ⊢
-  sorry -- see what's left
+  | _ => all_goals (simp only [Core.evalBinary, Flat.evalBinary, Flat.convertValue]; rfl)
 ```
+
+Both verified: "No goals to be solved". Do BOTH, build, log. **-2 sorries guaranteed.**
+
+### TASK 1 (IF TIME): `EnvCorr_assign` (line 278)
+
+After unfolding, the goal splits on whether name exists in env. Structure:
+```lean
+  unfold EnvCorr at h ⊢
+  constructor
+  · -- Flat→Core direction
+    intro name₁ fv hlookup
+    by_cases hname : (name₁ == name)
+    · -- same name: both assign/updateBindingList store the new value
+      sorry
+    · -- different name: both sides leave other bindings unchanged
+      sorry
+  · -- Core→Flat direction
+    intro name₁ cv₁ hlookup
+    by_cases hname : (name₁ == name)
+    · sorry
+    · sorry
+```
+
+Each sub-case needs `lookup_updateBindingList_eq/ne` lemmas. Core-side lemmas exist. **Flat-side being added by jsspec** (may not be there yet — use `lean_local_search` to check for `Flat.lookup_updateBindingList`).
 
 ### ABSOLUTELY DO NOT:
-- Attempt more than 1 task if you have less than 30 minutes
-- Research or explore code you don't need
+- Attempt more than 2 tasks
 - Run `lean_goal` on more than 3 locations
-- Refactor or reorganize existing proofs
+- Refactor existing proofs
 
 ## Key pitfall — AVOID `cases ... with` inside `<;>` blocks
 

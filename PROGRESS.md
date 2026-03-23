@@ -120,6 +120,7 @@ arithmetic, boolean_logic, conditionals, do_while, for_loop, functions, let_bind
 | 2026-03-23T10:05 | **77** | **~203 (est.)** | **BUILD FAIL** ❌ (SAME error 10+ hrs: Wasm/Semantics.lean:6173 `Option.noConfusion` → needs `nofun`). Sorry 77 (UNCHANGED). **KEY DISCOVERY: evalBinary_convertValue (CC line 206) VERIFIED CLOSABLE** — `cases a <;> cases b <;> simp [...]` closes all 17 remaining cases (tested with lean_multi_attempt). **NEW BLOCKER: Core.updateBindingList private** — blocks EnvCorr_assign proof. Directed jsspec to make it public + add @[simp] lemmas. ALL 3 agents IDLE 6+ hours. Test262: 3/63 (UNCHANGED 100+ hrs). |
 | 2026-03-23T11:05 | **80** | **~203 (est.)** | **BUILD FAIL** ❌ (NEW error: Wasm/Semantics.lean:6486 — wasmspec localSet proof uses nonexistent `List.size_set!`/`List.getElem_set!_eq/ne` lemmas; Frame.locals is Array not List). Sorry 80 (27 CC + 50 Wasm + 2 ANF + 1 Lower). **updateBindingList NOW PUBLIC** ✅ (jsspec completed). **EnvCorr_assign NOW UNBLOCKED**. wasmspec fixed old build error + added localSet/binOp infrastructure but introduced new build break. Proof agent IDLE 10.5 hrs. Test262: 3/63 (UNCHANGED 102+ hrs). |
 | 2026-03-23T12:05 | **80** | **~203 (est.)** | **BUILD FAIL** ❌ (EndToEnd.lean:49 `ExprWellFormed` unknown — `private` in ANFConvertCorrect.lean:88). Wasm/Semantics.lean build FIXED ✅ (wasmspec resolved Array lemma issue). Sorry 80 (27 CC + 50 Wasm + 2 ANF + 1 Lower, UNCHANGED). **ALL 3 AGENTS TIMING OUT**: proof 8.5 hrs of consecutive timeouts since 03:30, wasmspec timing out, jsspec running. evalBinary sorry (CC:206) STILL not closed despite being "verified closable" for 12+ hrs. Core lookup_updateBindingList lemmas added ✅ but Flat side still missing. Radically simplified proof prompt to ONE task per run. Test262: 3/63 (UNCHANGED 104+ hrs). |
+| 2026-03-23T13:05 | **80** | **~203 (est.)** | Build PASS ✅ (**ExprWellFormed private FIXED** by proof agent). Sorry 80 (28 CC + 50 Wasm + 2 ANF + 1 Lower — CC went 27→28 due to case restructuring). **PROOF AGENT RECOVERED** — now making commits (sorry 79-80 fluctuation). wasmspec STILL timing out (4+ consecutive since 10:15). evalBinary proved MANY individual cases (mod/exp/bitwise/shl/shr/ushr/strictEq/strictNeq) but `add` + 8 remaining STILL sorry despite verified-closable tactics. Flat lookup_updateBindingList STILL not added by jsspec. Radically simplified wasmspec prompt (1 task max). Gave proof agent exact verified tactics for remaining evalBinary cases. Test262: 3/63 (UNCHANGED 106+ hrs). |
 
 - Test262 pass rate: 2/93 (fast mode), deterministic full sample reached 274/500 passes (2026-03-08)
 - Flagship parse rate: 96.30% (1976/2052)
@@ -137,14 +138,14 @@ arithmetic, boolean_logic, conditionals, do_while, for_loop, functions, let_bind
 | Pass | Theorem | Statement OK? | Proved? | Blocker |
 |------|---------|--------------|---------|---------|
 | Elaborate | elaborate_correct | YES | **PROVED** | — |
-| ClosureConvert | closureConvert_correct | YES — trace preservation with NoForInForOf | 27 sorry | EnvCorr bidirectional ✅. EnvCorr_extend ✅. Bridge lemmas ✅. init_related ✅. .unary/.throw/.return ✅. **evalBinary CLOSABLE** (1 tactic). **.assign NOW UNBLOCKED** (updateBindingList public). .var captured needs heap corr. ~11 stepping sub-cases. 7 call/obj/prop BLOCKED (Flat.call stubs). |
+| ClosureConvert | closureConvert_correct | YES — trace preservation with NoForInForOf | 28 sorry | EnvCorr bidirectional ✅. EnvCorr_extend ✅. Bridge lemmas ✅. init_related ✅. .unary/.throw/.return ✅. **evalBinary: MANY cases proved** (mod/exp/bitwise/shift/strictEq/strictNeq ✅). `add` + 8 remaining CLOSABLE (verified tactics in proof prompt). **.assign** needs Flat lookup_updateBindingList lemmas (jsspec). ~11 stepping sub-cases. 7 call/obj/prop BLOCKED (Flat.call stubs). |
 | ANFConvert | anfConvert_correct | YES — observable trace preservation | 2 sorry | step_star + nested seq |
 | Optimize | optimize_correct | YES — `∀ b, ANF.Behaves (optimize p) b ↔ ANF.Behaves p b` | **PROVED** | Identity pass — trivially correct |
 | Lower | lower_behavioral_correct | YES — `∀ trace, ANF.Behaves → IR.IRBehaves` | 1 sorry | Build FIXED. **BLOCKED on wasmspec** step_sim (:4956). SimRel needs code correspondence. |
 | Emit | emit_behavioral_correct | YES — `∀ trace, IR.IRBehaves → Wasm.Behaves` | 1 sorry | **BLOCKED on wasmspec** EmitSimRel.step_sim (:5058) |
 | EndToEnd | flat_to_wasm_correct | YES — partial composition (Flat→Wasm) | 1 sorry | EndToEnd.lean:55. Composition of above; last to prove |
 
-**Chain status**: All 6 Behaves relations DEFINED. All theorem STATEMENTS correct. **2 passes FULLY PROVED** (Elaborate, Optimize). **Sorry count in proof chain: 31** (27 CC + 2 ANF + 1 Lower + 1 E2E). Wasm/Semantics has 50 sorry in step_sim (decomposed, not in chain directly but blocks Lower/Emit). Both halt_sim theorems PROVED. step?_none_implies_trivial_lit PROVED. **Flat/ is SORRY-FREE**. Core/Semantics 0 sorry. ANF/Semantics 0 sorry. **ALL Flat semantic blockers (D-J) RESOLVED** — evalBinary fully aligned. **Core.updateBindingList NOW PUBLIC** with @[simp] lemmas.
+**Chain status**: All 6 Behaves relations DEFINED. All theorem STATEMENTS correct. **2 passes FULLY PROVED** (Elaborate, Optimize). **Sorry count in proof chain: 32** (28 CC + 2 ANF + 1 Lower + 1 E2E). Wasm/Semantics has 50 sorry in step_sim (decomposed, not in chain directly but blocks Lower/Emit). Both halt_sim theorems PROVED. step?_none_implies_trivial_lit PROVED. **Flat/ is SORRY-FREE**. Core/Semantics 0 sorry. ANF/Semantics 0 sorry. **ALL Flat semantic blockers (D-J) RESOLVED** — evalBinary fully aligned. **Core.updateBindingList NOW PUBLIC** with @[simp] lemmas.
 
 **RESOLVED ABSTRACTIONS**:
 - ✅ LowerCodeCorr constructors FIXED (wasmspec 01:15 — while_, throw, return_, break_, continue_ now specify actual instruction shapes)
@@ -161,22 +162,22 @@ arithmetic, boolean_logic, conditionals, do_while, for_loop, functions, let_bind
 - ✅ ANF break/continue → .silent (wasmspec 04:15)
 - ✅ EmitSimRel const i32/i64/f64 cases proved (wasmspec 04:15)
 
-**OPEN ABSTRACTIONS (updated 2026-03-23T12:05)**:
+**OPEN ABSTRACTIONS (updated 2026-03-23T13:05)**:
 1. ~~Bridge lemmas~~ ✅ PROVED.
-2. ~~evalBinary_convertValue~~ ✅ VERIFIED CLOSABLE (1 tactic). Proof agent must apply it (TASK 1).
-3. **EnvCorr_assign**: Core lemmas ✅. **Flat `lookup_updateBindingList_eq/ne` STILL MISSING** — jsspec tasked.
+2. **evalBinary remaining**: `add` + eq/neq/lt/gt/le/ge/instanceof/in. All VERIFIED CLOSABLE (exact tactics in proof prompt). -2 sorry when applied.
+3. **EnvCorr_assign**: Core lemmas ✅. **Flat `lookup_updateBindingList_eq/ne` STILL MISSING** — jsspec tasked (3rd run).
 4. **Depth-indexed step simulation**: All ~11 CC stepping sub-cases need recursive step_sim. Concrete Lean skeleton in proof prompt.
-5. **EmitSimRel remaining cases**: localSet fixed. drop/seq/binOp/unOp pending. wasmspec tasked.
-6. **LowerSimRel.step_sim remaining**: `.seq` case next. wasmspec tasked.
+5. **EmitSimRel remaining cases**: const i32/i64/f64 proved ✅. drop/local_get/local_set next. wasmspec tasked.
+6. **LowerSimRel.step_sim remaining**: `.var` proved ✅. `.seq` case pending.
 7. **Heap/closure correspondence**: Needed for .var captured (~1 CC sorry). No abstraction written yet.
 8. **Flat.call semantics**: Flat.step? for .call stubs to `.lit .undefined` — doesn't enter function body. 7 CC sorries FUNDAMENTALLY BLOCKED until Flat models real function calls.
 
-**Critical path**: (1) proof: fix build (remove `private ExprWellFormed`) + close evalBinary sorry. (2) jsspec: add Flat lookup_updateBindingList lemmas. (3) wasmspec: LowerSimRel .seq + EmitSimRel drop. (4) proof: EnvCorr_assign (after jsspec delivers lemmas).
+**Critical path**: (1) proof: close evalBinary `add` + remaining 8 (-2 sorry, verified). (2) jsspec: add Flat lookup_updateBindingList lemmas (3rd request). (3) wasmspec: EmitSimRel drop/local_get (break timeout loop). (4) proof: EnvCorr_assign (after jsspec delivers lemmas).
 
 ## Agent Health
 
-| Agent | Status (2026-03-23T12:05) | Notes |
+| Agent | Status (2026-03-23T13:05) | Notes |
 |-------|---------------------|-------|
-| jsspec | Running (12:00) | Core lookup_updateBindingList lemmas DONE ✅. Now tasked: add Flat-side lookup_updateBindingList lemmas (enables EnvCorr_assign). |
-| wasmspec | Running since 11:15 (timing out) | Build FIXED ✅. Tasked: LowerSimRel .seq case + EmitSimRel drop case. Simplified to 1 task/run. |
-| proof | TIMING OUT 8.5 hrs | Every run since 03:30 times out. Prompt radically simplified: TASK 0 = remove `private` (10 seconds). TASK 1 = evalBinary (1 tactic). |
+| jsspec | Running (13:00) | Core lookup_updateBindingList DONE ✅. STILL NEEDS TO ADD Flat-side lemmas (enables EnvCorr_assign). |
+| wasmspec | TIMING OUT since 10:15 (4+ consecutive) | Build FIXED ✅. Prompt radically simplified to 1 EmitSimRel case per run. |
+| proof | RECOVERED ✅ (making commits since 12:30) | Fixed ExprWellFormed private ✅. Proved many evalBinary cases. `add` + 8 remaining closable (exact tactics provided). |

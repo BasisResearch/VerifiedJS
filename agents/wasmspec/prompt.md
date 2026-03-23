@@ -62,38 +62,29 @@ Then construct the matching Step derivation in Lean. If you cannot, your semanti
 3. Keep definitions structurally simple for proofs.
 4. Add @[simp] lemmas for everything the proof agent might need.
 
-## CURRENT PRIORITIES (2026-03-23T12:05)
+## CURRENT PRIORITIES (2026-03-23T13:05)
 
-### Build status: YOUR FILES BUILD CLEAN ✅ (only EndToEnd.lean fails — that's proof agent's file, NOT yours)
+### Build: PASS ✅. ALL your files build clean.
 
-### ⚠️ YOU ALSO KEEP TIMING OUT. Work on AT MOST 1 concrete task per run.
+### ⚠️ YOU KEEP TIMING OUT (4+ consecutive timeouts since 10:15). DO EXACTLY 1 TASK, build, log, EXIT.
 
-### TASK 0: LowerSimRel.step_sim — `.seq` value case
+### TASK 0: Close ONE EmitSimRel.step_sim case
 
-You proved `.var` already ✅. The `.seq` case (line 5692) is next simplest:
-- When ANF has `.seq a b` and `a` is a value, it steps to `b` with a silent event
-- IR code is `aCode ++ [drop] ++ bCode`
-- After executing aCode (value on stack), `drop` pops it, then bCode runs
+You already proved const i32/i64/f64. Pick ONE of these next:
+- `drop_` — IR drops stack top, Wasm `drop` does same. Stack correspondence trivial.
+- `local_get` — IR reads local, Wasm `local.get` reads same index.
+- `local_set` — IR writes local, Wasm `local.set` writes same index.
 
-Try:
-1. Use `lean_goal` at line 5692 to see the exact goal
-2. Look at how `.var` was proved above for the pattern
-3. The key is matching the ANF step with the IR execution
-
-### TASK 1: EmitSimRel.step_sim — `drop_` case
-
-After `.seq`, the `drop_` instruction case in EmitSimRel (around line 6520-6540 area) should be straightforward:
-- IR `drop_` pops the stack
-- Wasm `drop` pops the stack
-- Stack correspondence preserved
+Use `lean_goal` at the sorry location to see the exact goal. Use `lean_multi_attempt` to test tactics. Edit. Build. Log. **EXIT.**
 
 ### DO NOT:
-- Attempt more than 2 tasks
-- Refactor existing working proofs
-- Change definitions that are already used by working proofs
+- Attempt more than 1 case
+- Change existing definitions or proved cases
+- Run `lean_goal` on more than 2 locations
+- Work on LowerSimRel (focus on EmitSimRel where you have momentum)
 
 ### ⚠️ BUILD-FIRST RULE
-Always run the FULL build (`bash scripts/lake_build_concise.sh`) and check exit code BEFORE logging success.
+Always run `bash scripts/lake_build_concise.sh` and check exit code BEFORE logging success.
 
 ## GLOBAL GOAL -- DO NOT STOP
 Your job is done when:

@@ -6571,7 +6571,28 @@ theorem step_sim (irmod : IRModule) (wmod : Module) :
             match hstk : s1.stack with
             | [] =>
               -- Empty stack: both sides trap with "stack underflow in drop"
-              sorry -- trap case
+              have hir := irStep?_eq_drop_empty s1 rest hcode_ir hstk
+              rw [hir] at hstep
+              simp only [Option.some.injEq, Prod.mk.injEq] at hstep
+              obtain ⟨rfl, rfl⟩ := hstep
+              -- Wasm stack also empty (by length correspondence)
+              have hlen := hrel.hstack
+              rw [hstk] at hlen
+              have hs2 : s2.stack = [] := by
+                cases s2.stack with
+                | nil => rfl
+                | cons => simp at hlen
+              have hw_step := step?_eq_drop_empty s2 rest_w hcw hs2
+              exact ⟨{ s2 with code := [], stack := [], trace := s2.trace ++ [.trap "stack underflow in drop"] },
+                by simp [traceToWasm]; exact hw_step,
+                { hemit := hrel.hemit
+                  hcode := .nil
+                  hstack := by simp
+                  hframes_len := hrel.hframes_len
+                  hframes_locals := hrel.hframes_locals
+                  hframes_vals := hrel.hframes_vals
+                  hlabels := hrel.hlabels
+                  hhalt := hhalt_of_structural .nil hrel.hlabels }⟩
             | v :: stk =>
               -- Non-empty stack: both sides drop silently
               have hir := irStep?_eq_drop s1 rest v stk hcode_ir hstk

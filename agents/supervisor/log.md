@@ -2812,3 +2812,54 @@ The proof agent has been timing out for 8.5 hours. Analysis:
 
 ## Run: 2026-03-23T13:05:01+00:00
 
+
+### Build
+- **Status**: `lake build` PASS ✅ (49 jobs, only sorry warnings)
+- **ExprWellFormed private**: FIXED by proof agent ✅
+
+### Sorry Report
+- **Count**: 80 (threshold: 100)
+- **Delta**: UNCHANGED from last run
+- **Breakdown**: 50 Wasm/Semantics + 28 CC + 2 ANF + 1 Lower (CC went 27→28 from case restructuring)
+
+### Test262
+- 3 pass, 50 fail, 3 skip, 5 xfail / 63 total (UNCHANGED 106+ hours)
+
+### Agent Health
+- **jsspec**: Running (13:00). Flat lookup_updateBindingList lemmas STILL NOT ADDED (3rd request).
+- **wasmspec**: TIMING OUT since 10:15 (4+ consecutive). Prompt radically simplified to 1 task.
+- **proof**: RECOVERED ✅ — making commits since 12:30 (sorry 79-80 fluctuation). Fixed ExprWellFormed private. Proved many evalBinary individual cases (mod/exp/bitwise/shift/strictEq/strictNeq). `add` + 8 remaining STILL sorry.
+
+### Key Changes Since Last Run
+1. **Proof agent RECOVERED** from timeout loop — now active and committing.
+2. **Build PASS** — ExprWellFormed private issue resolved.
+3. **evalBinary major progress**: Proof agent proved ~10 individual operator cases. Only `add` and 8 abstract comparison/membership ops remain.
+4. **wasmspec entered timeout loop** — same pattern as proof agent previously. Radically simplified prompt.
+
+### Proof Chain Analysis
+- **Elaborate**: PROVED ✅
+- **Optimize**: PROVED ✅ (identity)
+- **ClosureConvert**: 28 sorry. evalBinary: many cases proved, `add` + 8 remaining VERIFIED CLOSABLE (exact tactics provided). .assign blocked on Flat lemmas.
+- **ANFConvert**: 2 sorry (step_star + nested seq).
+- **Lower**: 1 sorry (blocked on wasmspec step_sim).
+- **Emit**: ~50 sorry in Wasm/Semantics step_sim (decomposed, const i32/i64/f64 proved).
+- **EndToEnd**: Build PASS, depends on above.
+
+### Architectural Analysis
+
+**evalBinary — WHY the proof agent can't close these trivial cases?**
+
+The proof agent individually proved 10+ cases with manual tactics (simp + rw + split) but keeps leaving `add` and the `_ => sorry` catch-all. The `lean_multi_attempt` confirms:
+- `add`: `simp only [Core.evalBinary, Flat.evalBinary]; split <;> simp_all [Flat.convertValue, toNumber_convertValue, valueToString_convertValue]` → "No goals"
+- `_ => sorry` (8 cases): `all_goals (simp only [Core.evalBinary, Flat.evalBinary, Flat.convertValue]; rfl)` → "No goals"
+
+Wrote BOTH exact tactics verbatim in proof prompt. These should close on the next run.
+
+**wasmspec timeout analysis**: Same pattern as proof agent — runs for 60min, gets killed. Likely getting stuck on heavy Lean elaboration in the massive Wasm/Semantics.lean (6500+ lines). Reduced to EXACTLY 1 EmitSimRel case per run.
+
+### Actions Taken
+1. **proof prompt**: Removed timeout panic text (agent recovered). Added exact verified tactics for evalBinary `add` (line 206) and `_ => sorry` (line 240). Added EnvCorr_assign skeleton with by_cases structure. -2 sorries guaranteed when applied.
+2. **wasmspec prompt**: RADICAL SIMPLIFICATION. Only 1 EmitSimRel case per run (drop/local_get/local_set). Explicit "DO NOT attempt more than 1 case" rule.
+3. **jsspec prompt**: Re-emphasized Flat lookup_updateBindingList (3rd request). Added "check if already added" instruction.
+4. **PROGRESS.md**: Added metrics entry. Updated proof chain (CC 27→28), agent health, open abstractions, critical path.
+2026-03-23T13:23:08+00:00 DONE
