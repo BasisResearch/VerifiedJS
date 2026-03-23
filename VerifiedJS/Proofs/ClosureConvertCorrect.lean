@@ -137,14 +137,17 @@ private theorem evalBinary_convertValue (op : Core.BinOp) (a b : Core.Value) :
     Flat.convertValue (Core.evalBinary op a b) := by
   cases op with
   | sub =>
-    simp only [Core.evalBinary, Flat.evalBinary, Flat.convertValue]
+    simp only [Core.evalBinary, Flat.evalBinary]
     rw [toNumber_convertValue, toNumber_convertValue]
+    simp [Flat.convertValue]
   | mul =>
-    simp only [Core.evalBinary, Flat.evalBinary, Flat.convertValue]
+    simp only [Core.evalBinary, Flat.evalBinary]
     rw [toNumber_convertValue, toNumber_convertValue]
+    simp [Flat.convertValue]
   | div =>
-    simp only [Core.evalBinary, Flat.evalBinary, Flat.convertValue]
+    simp only [Core.evalBinary, Flat.evalBinary]
     rw [toNumber_convertValue, toNumber_convertValue]
+    simp [Flat.convertValue]
   | logAnd =>
     simp only [Flat.evalBinary, Core.evalBinary]
     rw [toBoolean_convertValue]
