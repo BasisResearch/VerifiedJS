@@ -6035,13 +6035,20 @@ theorem init (irmod : IRModule) (wmod : Module)
   hstack := by simp [irInitialState, Wasm.initialState]
   hframes_len := by simp [irInitialState, Wasm.initialState]
   hframes_locals := by
-    simp [irInitialState, Wasm.initialState]
     intro irf wf irfs wfs hirf hwf
-    simp_all
+    simp [irInitialState] at hirf
+    simp [Wasm.initialState] at hwf
+    obtain ⟨rfl, rfl⟩ := hirf
+    obtain ⟨rfl, rfl⟩ := hwf
+    simp
   hframes_vals := by
-    simp [irInitialState, Wasm.initialState]
     intro irf wf irfs wfs hirf hwf
-    simp_all
+    simp [irInitialState] at hirf
+    simp [Wasm.initialState] at hwf
+    obtain ⟨rfl, rfl⟩ := hirf
+    obtain ⟨rfl, rfl⟩ := hwf
+    intro j hj hj'
+    simp at hj
   hlabels := by simp [irInitialState, Wasm.initialState]
   hhalt := by
     intro hirHalt
