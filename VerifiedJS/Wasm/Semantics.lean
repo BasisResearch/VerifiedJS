@@ -6462,10 +6462,57 @@ theorem step_sim (irmod : IRModule) (wmod : Module) :
           · -- IR has localGet idx, Wasm has localGet idx
             -- Case split on IR frames and local lookup
             match hfr_ir : s1.frames with
-            | [] => sorry -- trap: no active frame
+            | [] =>
+              -- Trap: no active frame for localGet
+              have hir := irStep?_eq_localGet_noFrame s1 idx rest hcode_ir hfr_ir
+              rw [hir] at hstep
+              simp only [Option.some.injEq, Prod.mk.injEq] at hstep
+              obtain ⟨rfl, rfl⟩ := hstep
+              -- Wasm also has no frame (by frame length correspondence)
+              have hflen := hrel.hframes_len; rw [hfr_ir] at hflen; simp at hflen
+              have hfr_w : s2.frames = [] := by
+                cases hs : s2.frames with | nil => rfl | cons => simp [hs] at hflen
+              have hw := step?_eq_localGet_noFrame s2 idx rest_w hcw hfr_w
+              exact ⟨_, by simp [traceToWasm]; exact hw,
+                { hemit := hrel.hemit
+                  hcode := .nil
+                  hstack := hrel.hstack
+                  hframes_len := hrel.hframes_len
+                  hframes_locals := hrel.hframes_locals
+                  hframes_vals := hrel.hframes_vals
+                  hlabels := hrel.hlabels
+                  hhalt := hhalt_of_structural .nil hrel.hlabels }⟩
             | irf :: irfs =>
               match hlocal : irf.locals[idx]? with
-              | none => sorry -- trap: local out of bounds
+              | none =>
+                -- Trap: local index out of bounds
+                have hir := irStep?_eq_localGet_oob s1 idx rest irf irfs hcode_ir hfr_ir hlocal
+                rw [hir] at hstep
+                simp only [Option.some.injEq, Prod.mk.injEq] at hstep
+                obtain ⟨rfl, rfl⟩ := hstep
+                -- Wasm also has a frame but idx out of bounds
+                have hflen := hrel.hframes_len; rw [hfr_ir] at hflen
+                match hfr_w : s2.frames with
+                | [] => simp [hfr_w] at hflen
+                | wf :: wfs =>
+                  -- idx is NOT in bounds for IR frame
+                  have hidx_oob : ¬(idx < irf.locals.size) := by
+                    intro h
+                    have := getElem?_pos irf.locals idx h
+                    rw [this] at hlocal; exact Option.noConfusion hlocal
+                  -- idx is also NOT in bounds for Wasm frame (same size)
+                  have hloc_sz := hrel.hframes_locals irf wf irfs wfs hfr_ir hfr_w
+                  have hidx_oob_w : ¬(idx < wf.locals.size) := by omega
+                  have hw := step?_eq_localGet_oob s2 idx rest_w wf wfs hcw hfr_w hidx_oob_w
+                  exact ⟨_, by simp [traceToWasm]; exact hw,
+                    { hemit := hrel.hemit
+                      hcode := .nil
+                      hstack := hrel.hstack
+                      hframes_len := hrel.hframes_len
+                      hframes_locals := hrel.hframes_locals
+                      hframes_vals := hrel.hframes_vals
+                      hlabels := hrel.hlabels
+                      hhalt := hhalt_of_structural .nil hrel.hlabels }⟩
               | some val =>
                 have hir := irStep?_eq_localGet s1 idx rest irf irfs val hcode_ir hfr_ir hlocal
                 rw [hir] at hstep
