@@ -106,12 +106,13 @@ private theorem firstNonValueProp_none_implies_values (l : List (Flat.PropName �
         exact ⟨v :: vs, by simp [Flat.valuesFromExprList?, Flat.exprValue?, hvs]⟩
     | _ => all_goals (simp [Flat.firstNonValueProp] at h)
 
-/-- Environment correspondence: every Flat binding has a corresponding Core binding
-    (modulo value conversion). This is the Flat⊆Core direction, which holds vacuously
-    for the initial state (empty Flat env). -/
+/-- Environment correspondence: bidirectional — every Flat binding has a corresponding
+    Core binding and vice versa (modulo value conversion). -/
 private def EnvCorr (cenv : Core.Env) (fenv : Flat.Env) : Prop :=
-  ∀ name fv, fenv.lookup name = some fv →
-    ∃ cv, cenv.lookup name = some cv ∧ fv = Flat.convertValue cv
+  (∀ name fv, fenv.lookup name = some fv →
+    ∃ cv, cenv.lookup name = some cv ∧ fv = Flat.convertValue cv) ∧
+  (∀ name cv, cenv.lookup name = some cv →
+    ∃ fv, fenv.lookup name = some fv ∧ fv = Flat.convertValue cv)
 
 /-- Simulation relation for closure conversion: Flat and Core states
     have matching traces, environment correspondence, and expression
@@ -129,9 +130,15 @@ private theorem closureConvert_init_related
     CC_SimRel s t (Flat.initialState t) (Core.initialState s) := by
   unfold CC_SimRel Flat.initialState Core.initialState
   refine ⟨rfl, ?_, ?_⟩
-  · -- EnvCorr: Flat env is empty, so vacuously true
-    intro name fv hlookup
-    simp [Flat.Env.empty, Flat.Env.lookup] at hlookup
+  · -- EnvCorr: bidirectional
+    constructor
+    · -- Flat⊆Core: Flat env is empty, so vacuously true
+      intro name fv hlookup
+      simp [Flat.Env.empty, Flat.Env.lookup] at hlookup
+    · -- Core⊆Flat: Core env has "console" but Flat doesn't
+      -- BLOCKER: needs Flat.initialState to include console binding
+      intro name cv hlookup
+      sorry
   · unfold Flat.closureConvert at h
     simp only [Except.ok.injEq] at h
     let st2 := (Flat.convertFuncDefs s.functions.toList Flat.CCState.empty).fst.foldl
@@ -361,7 +368,7 @@ private theorem closureConvert_step_simulation
       cases hfenv : sf.env.lookup name with
       | some fv =>
         -- EnvCorr gives Core also has this variable
-        obtain ⟨cv, hcenv, hfv_eq⟩ := henvCorr name fv hfenv
+        obtain ⟨cv, hcenv, hfv_eq⟩ := henvCorr.1 name fv hfenv
         -- Flat produces .silent, Core produces .silent
         have hflat_ev : ev = .silent := by
           rw [show sf = {sf with expr := .var name} from by cases sf; simp_all] at hstep
@@ -454,9 +461,10 @@ private theorem closureConvert_step_simulation
           exact ⟨hsf'_trace, henv', [], "", [], st, st,
             by rw [hsc'_expr]; simp [Flat.convertExpr, Flat.convertValue, hsf'_expr]⟩
         | some cv =>
-          -- Flat produces ReferenceError but Core finds the var → event mismatch.
-          -- Needs Core⊆Flat direction in EnvCorr or Flat.initialState to include builtins.
-          sorry
+          -- Core has the var but Flat doesn't → contradiction via EnvCorr.2
+          exfalso
+          obtain ⟨fv, hfenv', _⟩ := henvCorr.2 name cv hcenv
+          simp [hfenv] at hfenv'
   | «let» _ _ _ => sorry -- needs env correspondence (let-binding extends env)
   | assign _ _ => sorry -- needs env correspondence
   | «if» _ _ _ => sorry -- needs env correspondence (cond evaluation)
@@ -596,7 +604,7 @@ private theorem closureConvert_step_simulation
     cases hfenv : sf.env.lookup "this" with
     | some fv =>
       -- EnvCorr gives us Core also has "this"
-      obtain ⟨cv, hcenv, hfv_eq⟩ := henvCorr "this" fv hfenv
+      obtain ⟨cv, hcenv, hfv_eq⟩ := henvCorr.1 "this" fv hfenv
       -- Core step
       obtain ⟨sc', hcstep⟩ : ∃ sc', Core.step? sc = some (.silent, sc') := by
         rw [show sc = {sc with expr := .this} from by cases sc; simp_all]
@@ -683,11 +691,10 @@ private theorem closureConvert_step_simulation
         exact ⟨hsf'_trace, henv', [], "", [], st, st,
           by rw [hsc'_expr]; simp [Flat.convertExpr, Flat.convertValue, hsf'_expr]⟩
       | some cv =>
-        -- Flat doesn't find "this" but Core does — mismatch.
-        -- This case shouldn't occur in correct CC (Flat should have all Core bindings
-        -- for non-builtin variables), but EnvCorr (Flat⊆Core) is too weak to rule it out.
-        -- Needs Core⊆Flat direction OR Flat.initialState to include builtins.
-        sorry
+        -- Core has "this" but Flat doesn't → contradiction via EnvCorr.2
+        exfalso
+        obtain ⟨fv, hfenv', _⟩ := henvCorr.2 "this" cv hcenv
+        simp [hfenv] at hfenv'
 
 /-! ### step?_none_implies_lit -/
 
