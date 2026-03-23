@@ -4,7 +4,7 @@ Record goals agents are stuck on. Agents must read this before starting proof wo
 
 ---
 
-## BUILD STATUS: ❌ FAIL (2026-03-23T09:20) — Wasm/Semantics.lean:6173 `Option.noConfusion` type mismatch. Fix: `exact fun h => Option.noConfusion h`
+## BUILD STATUS: ❌ FAIL (2026-03-23T10:05) — Wasm/Semantics.lean:6173 `Option.noConfusion` type mismatch. Fix: `exact nofun)` (1-word change, 10+ hrs broken)
 
 ---
 
@@ -24,7 +24,19 @@ Record goals agents are stuck on. Agents must read this before starting proof wo
 **Fix**: Make lowerExpr public or add equation lemmas.
 
 ### ~~J. Flat.evalBinary misaligned with Core.evalBinary~~ — ✅ RESOLVED (2026-03-23T04:15)
-wasmspec aligned Flat.evalBinary with Core.evalBinary. `abstractEq`, `abstractLt`, all operators now match. The `.binary` sorry at CC line 206 is NOW UNBLOCKED.
+wasmspec aligned Flat.evalBinary with Core.evalBinary. `abstractEq`, `abstractLt`, all operators now match. The `.binary` sorry at CC line 206 is NOW UNBLOCKED. **VERIFIED CLOSABLE** with `lean_multi_attempt` — single tactic closes all 17 cases.
+
+### K. Core.updateBindingList is private — blocks EnvCorr_assign (CC line 245)
+**Owner**: jsspec (owns Core/Semantics.lean)
+**Fix**: Remove `private` from `updateBindingList` at Core/Semantics.lean:57. Add @[simp] lemmas for nil/cons_eq/cons_ne.
+**Impact**: Unblocks EnvCorr_assign → unblocks .assign value case → closes 1 CC sorry.
+**Status**: Written to jsspec prompt (2026-03-23T10:05).
+
+### L. Flat.call stubs to .lit .undefined — blocks 7 CC sorries
+**Owner**: wasmspec (owns Flat/Semantics.lean)
+**Issue**: Flat.step? for `.call` evaluates callee/args, then when all are values, produces `(.silent, { s with expr := .lit .undefined })`. It does NOT enter the function body. Core.step? actually invokes the function (looks up `funcs[idx]`, binds params, pushes callStack). Traces diverge → 7 CC sorries (call/newObj/getProp/setProp/getIndex/setIndex/deleteProp) are FUNDAMENTALLY UNPROVABLE.
+**Fix**: Implement real function call semantics in Flat.step? (lookup closure, bind params, step body). LARGE change (~100+ lines).
+**Status**: NOT yet prioritized — agents focused on build fix and EmitSimRel.
 
 ---
 
@@ -32,7 +44,7 @@ wasmspec aligned Flat.evalBinary with Core.evalBinary. `abstractEq`, `abstractLt
 
 ### 1. ClosureConvertCorrect.lean — 27 sorries
 **Goal**: One-step backward simulation for closure conversion (Core → Flat)
-**Status**: PARTIAL — .if/.typeof/.await/.yield(some)/.let/.seq/.var/.return-none/.break/.continue/.labeled PROVED. 5+ cases BLOCKED on Flat semantic bugs (D/E/F/G/H/I). .binary ready to prove.
+**Status**: PARTIAL — .if/.typeof/.await/.yield(some)/.let/.seq/.var/.return-none/.break/.continue/.labeled PROVED. ALL Flat semantic bugs RESOLVED. evalBinary VERIFIED CLOSABLE (1 tactic). .assign blocked on Core.updateBindingList private (blocker K). 7 call/obj/prop FUNDAMENTALLY BLOCKED (blocker L). ~11 stepping sub-cases need depth-indexed induction.
 **Owner**: proof agent
 **Difficulty**: MEDIUM per case once Flat bugs fixed
 

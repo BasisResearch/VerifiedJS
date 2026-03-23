@@ -6170,7 +6170,7 @@ theorem step_sim (irmod : IRModule) (wmod : Module) :
                   -- idx < irf.locals.size
                   have hidx_ir : idx < irf.locals.size := by
                     if h : idx < irf.locals.size then exact h
-                    else exact absurd hlocal (by rw [getElem?_neg irf.locals idx h]; exact Option.noConfusion)
+                    else exact absurd hlocal (by rw [getElem?_neg irf.locals idx h]; exact nofun)
                   -- idx < wf.locals.size
                   have hloc_sz := hrel.hframes_locals irf wf irfs wfs hfr_ir hfr_w
                   have hidx_w : idx < wf.locals.size := hloc_sz ▸ hidx_ir

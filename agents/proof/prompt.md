@@ -72,54 +72,34 @@ Sorry count: 77 (27 CC + 47 Wasm + 2 ANF + 1 Lower).
 4. If it works, edit. If not, move on to next sorry.
 5. Build. Log. Exit. Do NOT try to close 5 sorries in one run.
 
-### TASK 1 (TOP PRIORITY — NEWLY UNBLOCKED): Complete `evalBinary_convertValue` (line 206)
+### TASK 1 (EASIEST — 30 SECONDS): Close `evalBinary_convertValue` sorry (line 206)
 
-The Flat.evalBinary is NOW ALIGNED with Core.evalBinary. The catch-all `| _ => sorry` at line 206 can be closed. You already proved `sub`, `mul`, `div`, `logAnd`, `logOr`, `strictEq`, `strictNeq`. The remaining cases are:
+⚠️ I VERIFIED THIS WITH lean_multi_attempt — it works. Just do it:
 
-**Step 1: Prove `abstractEq_convertValue` bridge lemma** (ADD before `evalBinary_convertValue`):
+Replace `| _ => sorry` at line 206 with:
 ```lean
-private theorem abstractEq_convertValue (a b : Core.Value) :
-    Flat.abstractEq (Flat.convertValue a) (Flat.convertValue b) = Core.abstractEq a b := by
-  cases a <;> cases b <;> simp [Core.abstractEq, Flat.abstractEq, Flat.convertValue, Core.toNumber, Flat.toNumber, toNumber_convertValue]
-```
-If `simp` doesn't close all cases, try adding `<;> rfl` or doing explicit sub-cases for the cross-type coercion arms (number/string, bool/number, etc).
-
-**Step 2: Prove `abstractLt_convertValue` bridge lemma**:
-```lean
-private theorem abstractLt_convertValue (a b : Core.Value) :
-    Flat.abstractLt (Flat.convertValue a) (Flat.convertValue b) = Core.abstractLt a b := by
-  cases a <;> cases b <;> simp [Core.abstractLt, Flat.abstractLt, Flat.convertValue, toNumber_convertValue]
+  | _ => cases a <;> cases b <;> simp [Core.evalBinary, Flat.evalBinary, Flat.convertValue, Core.toNumber, Flat.toNumber, toNumber_convertValue, Core.valueToString, Flat.valueToString, valueToString_convertValue]
 ```
 
-**Step 3: Fill in remaining `evalBinary_convertValue` cases**:
-Replace `| _ => sorry` with:
+This single tactic closes ALL 17 remaining cases (add, eq, neq, lt, gt, le, ge, mod, exp, bitAnd, bitOr, bitXor, shl, shr, ushr, instanceof, in). I tested it — "No goals to be solved" confirms it works. **Do this first — it's free.**
+
+### TASK 2: `.assign` sorry (line 245 — `EnvCorr_assign`)
+
+**BLOCKER**: `Core.updateBindingList` is private in Core/Semantics.lean (jsspec's file). I've asked jsspec to make it public. Once it's public, the proof strategy is:
+
 ```lean
-  | add => cases a <;> cases b <;> simp [Core.evalBinary, Flat.evalBinary, Flat.convertValue, toNumber_convertValue, valueToString_convertValue]
-  | eq => simp [Core.evalBinary, Flat.evalBinary, Flat.convertValue]; exact congrArg _ (abstractEq_convertValue a b)
-  | neq => simp [Core.evalBinary, Flat.evalBinary, Flat.convertValue]; exact congrArg _ (congrArg _ (abstractEq_convertValue a b))
-  | lt => simp [Core.evalBinary, Flat.evalBinary, Flat.convertValue]; exact congrArg _ (abstractLt_convertValue a b)
-  | gt => simp [Core.evalBinary, Flat.evalBinary, Flat.convertValue]; exact congrArg _ (abstractLt_convertValue b a)
-  | le => simp [Core.evalBinary, Flat.evalBinary, Flat.convertValue]; exact congrArg _ (congrArg _ (abstractLt_convertValue b a))
-  | ge => simp [Core.evalBinary, Flat.evalBinary, Flat.convertValue]; exact congrArg _ (congrArg _ (abstractLt_convertValue a b))
-  | mod => simp [Core.evalBinary, Flat.evalBinary, Flat.convertValue, toNumber_convertValue]
-  | exp => simp [Core.evalBinary, Flat.evalBinary, Flat.convertValue, toNumber_convertValue]
-  | bitAnd => simp [Core.evalBinary, Flat.evalBinary, Flat.convertValue, toNumber_convertValue]
-  | bitOr => simp [Core.evalBinary, Flat.evalBinary, Flat.convertValue, toNumber_convertValue]
-  | bitXor => simp [Core.evalBinary, Flat.evalBinary, Flat.convertValue, toNumber_convertValue]
-  | shl => simp [Core.evalBinary, Flat.evalBinary, Flat.convertValue, toNumber_convertValue]
-  | shr => simp [Core.evalBinary, Flat.evalBinary, Flat.convertValue, toNumber_convertValue]
-  | ushr => simp [Core.evalBinary, Flat.evalBinary, Flat.convertValue, toNumber_convertValue]
-  | instanceof => cases a <;> cases b <;> simp [Core.evalBinary, Flat.evalBinary, Flat.convertValue]
-  | «in» => cases a <;> cases b <;> simp [Core.evalBinary, Flat.evalBinary, Flat.convertValue]
+private theorem EnvCorr_assign {cenv : Core.Env} {fenv : Flat.Env}
+    (h : EnvCorr cenv fenv) (name : String) (cv : Core.Value) :
+    EnvCorr (cenv.assign name cv) (fenv.assign name (Flat.convertValue cv)) := by
+  unfold Core.Env.assign Flat.Env.assign
+  -- Case split: does name exist in the env?
+  -- Both branches need: updateBindingList preserves lookup for other names,
+  -- and updates lookup for the assigned name.
+  -- Need induction on the binding list to show updateBindingList commutes with convertValue.
+  sorry
 ```
 
-Use `lean_multi_attempt` on each case. If simp alone doesn't work, unfold more or add `<;> rfl`.
-
-This should close the sorry at line 206 AND the `.binary` value sub-case in CC step_simulation (around line 1008). HIGH IMPACT: resolves 1 sorry directly + unblocks .binary case.
-
-### TASK 2: `.assign` sorry (line 647) — needs `EnvCorr_assign` (line 245)
-
-Strategy: prove `EnvCorr_assign` by unfolding `Core.Env.assign` and `Flat.Env.assign`, case splitting on whether the name exists in the env, and delegating to `h.1`/`h.2`.
+If `Core.updateBindingList` is still private when you run, SKIP this task and do TASK 3 instead.
 
 ### TASK 3: Stepping sub-cases — STRUCTURAL INDUCTION
 
@@ -131,8 +111,8 @@ All stepping sorries have the SAME shape. Add explicit fuel/depth parameter for 
 
 | # | File | Lines | Count | Description | Priority |
 |---|------|-------|-------|-------------|----------|
-| 1 | CC | 206 | 1 | evalBinary_convertValue catch-all — **NOW PROVABLE** | **TASK 1** |
-| 2 | CC | 245 | 1 | .assign — needs EnvCorr_assign | **TASK 2** |
+| 1 | CC | 206 | 1 | evalBinary_convertValue catch-all — **VERIFIED CLOSABLE: 1 tactic** | **TASK 1** |
+| 2 | CC | 245 | 1 | .assign — needs EnvCorr_assign (BLOCKED: Core.updateBindingList private) | **TASK 2** |
 | 3 | CC | 487 | 1 | .var captured — needs heap corr | LATER |
 | 4 | CC | 647,701,776,910,965,1009,1010,1067,1174,1275,1326 | 11 | stepping sub-cases | TASK 3 |
 | 5 | CC | 841-848 | 7 | call/obj/prop — **FUNDAMENTALLY BLOCKED**: Flat.step? for .call stubs to .lit .undefined, doesn't call function bodies. Core.step? enters function body. Traces diverge. Needs Flat semantics rewrite to model calls. | BLOCKED |

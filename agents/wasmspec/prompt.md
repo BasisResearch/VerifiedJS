@@ -64,21 +64,20 @@ Then construct the matching Step derivation in Lean. If you cannot, your semanti
 
 ## CURRENT PRIORITIES (2026-03-23T09:05)
 
-### TASK 0: ⚠️ BUILD IS BROKEN — FIX THIS 1-LINE BUG FIRST ⚠️
+### TASK 0: ⚠️⚠️⚠️ BUILD IS BROKEN FOR 10+ HOURS — FIX THIS NOW ⚠️⚠️⚠️
 
-Wasm/Semantics.lean:6173:86 has a type error:
-```
-Option.noConfusion has type ?m = ?m → ... but is expected to have type ¬none = some val
-```
-**EXACT FIX**: On line 6173, change:
+Wasm/Semantics.lean:6173:86 has a type error. **This has been broken since 09:05 and is blocking ALL agents.**
+
+**EXACT FIX** — line 6173, change:
 ```
 exact Option.noConfusion)
 ```
 to:
 ```
-exact fun h => Option.noConfusion h)
+exact nofun)
 ```
-Or simply use `exact nofun)`. This is a 1-second fix. DO IT FIRST.
+
+That's it. One word change. `nofun` proves `¬(none = some val)` which is what the goal needs. DO THIS BEFORE ANYTHING ELSE. Build, verify it passes, then move on.
 
 ### TASK 1 (TOP PRIORITY): Continue EmitSimRel.step_sim cases
 

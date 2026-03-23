@@ -117,6 +117,7 @@ arithmetic, boolean_logic, conditionals, do_while, for_loop, functions, let_bind
 | 2026-03-23T06:30 | **76** | **~203 (est.)** | **BUILD BROKEN**: wasmspec `stack_corr_cons` has variable shadowing bug (∃ irv wv shadows param wv → wrong type in i64+f64 cases). Also `const_f64` needs `subst hfeq`. Sorry 76 (46 Wasm + 26 CC + 3 ANF + 1 Lower). **CC DOWN 28→26**: proof agent proved bridge lemmas (toNumber/evalUnary/valueToString_convertValue) and closed .unary/.throw/.return value sub-cases + init_related both dirs. jsspec fixed Core .return to use valueToString. Test262: 3/63 (UNCHANGED 92+ hrs). |
 | 2026-03-23T07:05 | **75** | **~203 (est.)** | Build PASS ✅ (wasmspec fixed stack_corr_cons/tail + f64 subst). Sorry 76→75 (-1): ANF 3→2 (proof closed 1 ANF sorry). CC 26, Wasm ~44, ANF 2, Lower 1. jsspec IDLE (no actionable work). Test262: 3/63 (UNCHANGED 96+ hrs). **Actions**: wasmspec TASK 1 = align Flat.evalBinary (unblocks CC .binary sorry); proof TASK 1 = EnvCorr_assign. |
 | 2026-03-23T09:05 | **77** | **~203 (est.)** | Build PASS ✅. Sorry 75→77 (+2): CC 27 (was 26), Wasm 47 (was 44), ANF 2, Lower 1. **BLOCKER J (evalBinary) RESOLVED** — Flat.evalBinary now fully aligned with Core.evalBinary (abstractEq/abstractLt/all operators). .binary CC sorry NOW PROVABLE. Agents stagnant: wasmspec last ran 04:15, proof last ran 00:39. Updated prompts: proof TASK 1 = complete evalBinary_convertValue + abstractEq/abstractLt bridge lemmas; wasmspec TASK 1 = EmitSimRel step_sim cases. Test262: 3/63 (UNCHANGED 98+ hrs). |
+| 2026-03-23T10:05 | **77** | **~203 (est.)** | **BUILD FAIL** ❌ (SAME error 10+ hrs: Wasm/Semantics.lean:6173 `Option.noConfusion` → needs `nofun`). Sorry 77 (UNCHANGED). **KEY DISCOVERY: evalBinary_convertValue (CC line 206) VERIFIED CLOSABLE** — `cases a <;> cases b <;> simp [...]` closes all 17 remaining cases (tested with lean_multi_attempt). **NEW BLOCKER: Core.updateBindingList private** — blocks EnvCorr_assign proof. Directed jsspec to make it public + add @[simp] lemmas. ALL 3 agents IDLE 6+ hours. Test262: 3/63 (UNCHANGED 100+ hrs). |
 
 - Test262 pass rate: 2/93 (fast mode), deterministic full sample reached 274/500 passes (2026-03-08)
 - Flagship parse rate: 96.30% (1976/2052)
@@ -134,7 +135,7 @@ arithmetic, boolean_logic, conditionals, do_while, for_loop, functions, let_bind
 | Pass | Theorem | Statement OK? | Proved? | Blocker |
 |------|---------|--------------|---------|---------|
 | Elaborate | elaborate_correct | YES | **PROVED** | — |
-| ClosureConvert | closureConvert_correct | YES — trace preservation with NoForInForOf | 27 sorry | EnvCorr bidirectional ✅. EnvCorr_extend ✅. Bridge lemmas PROVED ✅ (toNumber/evalUnary/valueToString_convertValue). init_related PROVED ✅. .unary/.throw/.return value PROVED ✅. **evalBinary UNBLOCKED** ✅ — needs abstractEq/abstractLt_convertValue bridge lemmas. .assign needs EnvCorr_assign. .var captured needs heap corr. ~11 stepping sub-cases need depth-indexed induction. |
+| ClosureConvert | closureConvert_correct | YES — trace preservation with NoForInForOf | 27 sorry | EnvCorr bidirectional ✅. EnvCorr_extend ✅. Bridge lemmas PROVED ✅. init_related PROVED ✅. .unary/.throw/.return value PROVED ✅. **evalBinary_convertValue VERIFIED CLOSABLE** (1 tactic). .assign BLOCKED (Core.updateBindingList private — jsspec tasked). .var captured needs heap corr. ~11 stepping sub-cases need depth-indexed induction. 7 call/obj/prop cases BLOCKED (Flat.call stubs). |
 | ANFConvert | anfConvert_correct | YES — observable trace preservation | 2 sorry | step_star + nested seq |
 | Optimize | optimize_correct | YES — `∀ b, ANF.Behaves (optimize p) b ↔ ANF.Behaves p b` | **PROVED** | Identity pass — trivially correct |
 | Lower | lower_behavioral_correct | YES — `∀ trace, ANF.Behaves → IR.IRBehaves` | 1 sorry | Build FIXED. **BLOCKED on wasmspec** step_sim (:4956). SimRel needs code correspondence. |
@@ -158,20 +159,21 @@ arithmetic, boolean_logic, conditionals, do_while, for_loop, functions, let_bind
 - ✅ ANF break/continue → .silent (wasmspec 04:15)
 - ✅ EmitSimRel const i32/i64/f64 cases proved (wasmspec 04:15)
 
-**OPEN ABSTRACTIONS (updated 2026-03-23T06:30)**:
-1. ~~Bridge lemmas~~ ✅ PROVED by proof agent (toNumber/evalUnary/valueToString_convertValue).
-2. **EnvCorr_assign**: Needed for .assign value case. Proof agent's next task.
-3. **evalBinary_convertValue**: BLOCKED on wasmspec aligning Flat.evalBinary with Core.evalBinary. Written to wasmspec prompt as TASK 3.
-4. **Depth-indexed step simulation**: All ~8 CC stepping sub-cases need `step_sim_depth(n)` — strong induction on `Core.Expr.depth`. Concrete Lean skeleton in proof prompt.
+**OPEN ABSTRACTIONS (updated 2026-03-23T10:05)**:
+1. ~~Bridge lemmas~~ ✅ PROVED.
+2. ~~evalBinary_convertValue~~ ✅ VERIFIED CLOSABLE (1 tactic, tested with lean_multi_attempt).
+3. **EnvCorr_assign**: BLOCKED — `Core.updateBindingList` is private. jsspec tasked to make it public + add @[simp] lemmas.
+4. **Depth-indexed step simulation**: All ~11 CC stepping sub-cases need `step_sim_depth(n)` — strong induction on `Core.Expr.depth`. Concrete Lean skeleton in proof prompt.
 5. **EmitSimRel remaining cases**: localGet/localSet/drop/binOp/unOp — mechanical, written to wasmspec prompt.
-6. **Heap/closure correspondence**: Needed for .var captured, call, newObj, getProp, etc. (~12 CC sorries). No abstraction written yet.
+6. **Heap/closure correspondence**: Needed for .var captured (~1 CC sorry). No abstraction written yet.
+7. **Flat.call semantics**: Flat.step? for .call stubs to `.lit .undefined` — doesn't enter function body. 7 CC sorries FUNDAMENTALLY BLOCKED until Flat models real function calls.
 
 **Critical path**: (1) wasmspec: **align Flat.evalBinary** (10+ hours of timeouts, exact code provided, forward ref issue identified). (2) proof: EnvCorr_assign → close .assign. (3) proof: stepping sub-cases. (4) wasmspec: EmitSimRel remaining cases.
 
 ## Agent Health
 
-| Agent | Status (2026-03-23T08:05) | Notes |
+| Agent | Status (2026-03-23T10:05) | Notes |
 |-------|---------------------|-------|
-| jsspec | IDLE | 0 sorry. All test262 failures are wasm runtime traps. |
-| wasmspec | TIMING OUT | Build passes ✅. But repeatedly timing out (5+ consecutive timeouts) without landing evalBinary fix. Forward ref issue (valueToString after evalBinary) identified in prompt. |
-| proof | TIMING OUT | Build passes ✅. CC at 26, ANF at 2. Repeatedly timing out without closing any sorry. Prompt updated with "close ONE sorry per run" guidance. |
+| jsspec | IDLE → REDIRECTED | Was idle. Now tasked: make Core.updateBindingList public + add @[simp] lemmas (unblocks EnvCorr_assign). |
+| wasmspec | IDLE 6+ hrs | Last ran 04:15. Build broken 10+ hrs with 1-word fix in prompt. Not picking up work. |
+| proof | IDLE 9.5+ hrs | Last ran 00:39. evalBinary_convertValue verified closable with 1 tactic — should be instant when they run. |

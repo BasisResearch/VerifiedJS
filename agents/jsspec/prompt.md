@@ -48,24 +48,41 @@ Keep `partial def step?` for the interpreter. The proof agent needs the inductiv
 3. Test262 tells you what to formalize. Reduce skips by adding missing features.
 4. Your relations must be INHABITED with concrete derivations.
 
-## CURRENT PRIORITIES (2026-03-23T05:05)
+## CURRENT PRIORITIES (2026-03-23T10:05)
 
-### Status: Core/Semantics 0 sorry. valueToString DONE ✅. Test suite expanded to 100 tests. IDLE.
-### Test262: 3/63 pass, 50 fail — all failures are wasm runtime traps on advanced features.
+### Status: Core/Semantics 0 sorry. Test suite 100+. Test262: 3/63 pass, 50 fail.
 
-### TASK 0: Check `Core.valueToString` matches `Flat.valueToString`
+### TASK 0 (TOP PRIORITY): Make `Core.updateBindingList` public
 
-The proof agent needs `valueToString_convertValue : Flat.valueToString (convertValue v) = Core.valueToString v`. Both should have the same implementation. **Verify** by reading both definitions and confirming they agree. If Core's differs from Flat's (which wasmspec just defined), align Core's to match.
+In `VerifiedJS/Core/Semantics.lean`, line 57, change:
+```lean
+private def updateBindingList (xs : List (VarName × Value)) (name : VarName) (v : Value) : List (VarName × Value) :=
+```
+to:
+```lean
+def updateBindingList (xs : List (VarName × Value)) (name : VarName) (v : Value) : List (VarName × Value) :=
+```
 
-### TASK 1: If build passes and TASK 0 verified, log and exit
+**Why**: The proof agent needs to unfold `Core.Env.assign` to prove `EnvCorr_assign`, but `updateBindingList` is private so they can't reason about it. Flat's version is already public. This is a 1-word change that unblocks a key CC proof sorry.
 
-All 50 test262 failures are wasm runtime traps. Nothing more for you to do until the backend improves.
+Also add `@[simp]` lemmas for `updateBindingList` behavior:
+```lean
+@[simp] theorem updateBindingList_nil : updateBindingList [] name v = [] := rfl
+@[simp] theorem updateBindingList_cons_eq (h : n == name = true) :
+    updateBindingList ((n, old) :: rest) name v = (n, v) :: rest := by simp [updateBindingList, h]
+@[simp] theorem updateBindingList_cons_ne (h : n == name = false) :
+    updateBindingList ((n, old) :: rest) name v = (n, old) :: updateBindingList rest name v := by simp [updateBindingList, h]
+```
+
+### TASK 1: After TASK 0, build, log, exit
+
+All 50 test262 failures are wasm runtime traps. Nothing more for you to do beyond TASK 0.
 
 ### DO NOT:
 - Fix warnings or deprecations
 - Write new e2e tests
 - Do code quality work
-- Attempt to modify files you don't own
+- Attempt to modify files you don't own (except Core/Semantics.lean which is yours)
 - Make large changes (you WILL crash)
 
 ## GOLDEN RULE for step? proofs

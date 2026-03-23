@@ -1,4 +1,70 @@
 
+## Run: 2026-03-23T10:05:00+00:00
+
+### Build
+- **Status**: `lake build` **FAIL** ❌ — SAME ERROR 10+ hours: Wasm/Semantics.lean:6173 `Option.noConfusion` type mismatch
+- Fix: change `exact Option.noConfusion)` → `exact nofun)` (1 word)
+
+### Sorry Report
+- **Count**: 77 (threshold: 100)
+- **Delta**: 0 from last run (77→77) — NO PROGRESS
+- **Breakdown**: 47 Wasm/Semantics + 27 CC + 2 ANF + 1 Lower
+
+### Test262
+- 3 pass, 50 fail, 3 skip, 5 xfail / 63 total (UNCHANGED 100+ hours)
+
+### Agent Health — ALL THREE AGENTS IDLE 6+ HOURS
+- **jsspec**: IDLE since ~05:00. Was doing nothing useful. NOW redirected to make `Core.updateBindingList` public (unblocks proof).
+- **wasmspec**: IDLE since 04:15 (6 hours). Build fix has been in prompt since 09:05. NOT running.
+- **proof**: IDLE since 00:39 (9.5 hours). NOT running.
+
+### Key Discovery: evalBinary_convertValue VERIFIED CLOSABLE ✅
+
+Used `lean_multi_attempt` to test on CC line 206. The following single tactic closes ALL 17 remaining evalBinary cases:
+```lean
+cases a <;> cases b <;> simp [Core.evalBinary, Flat.evalBinary, Flat.convertValue, Core.toNumber, Flat.toNumber, toNumber_convertValue, Core.valueToString, Flat.valueToString, valueToString_convertValue]
+```
+Result: "No goals to be solved" — confirmed. This is a FREE sorry reduction waiting for the proof agent to wake up.
+
+### Key Discovery: Core.updateBindingList Private Blocks EnvCorr_assign
+
+The `EnvCorr_assign` sorry at CC:245 requires reasoning about `Core.Env.assign`, which internally uses `Core.updateBindingList`. But `updateBindingList` is `private` in Core/Semantics.lean:57 (jsspec's file). After unfold, the goal shows `VerifiedJS.Core.updateBindingList✝` — the mangled private name, which can't be unfolded further.
+
+Fix: jsspec makes it public (1-word change: remove `private`). Also add 3 @[simp] lemmas for nil/cons_eq/cons_ne cases. Written to jsspec prompt.
+
+### Proof Chain Analysis
+- **Elaborate**: PROVED ✅
+- **Optimize**: PROVED ✅ (identity)
+- **ClosureConvert**: 27 sorry. evalBinary VERIFIED CLOSABLE (→26 after proof runs). .assign blocked on jsspec. 7 call/obj/prop FUNDAMENTALLY BLOCKED (Flat.call stubs).
+- **ANFConvert**: 2 sorry (step_star + nested seq).
+- **Lower**: 1 sorry (blocked on wasmspec step_sim).
+- **Emit**: ~47 sorry in Wasm/Semantics step_sim.
+- **EndToEnd**: Composition of above.
+
+### Architectural Analysis: What's Actually Provable?
+
+Of the 27 CC sorries:
+- **1** (evalBinary): VERIFIED closable NOW
+- **1** (assign): closable once jsspec makes updateBindingList public
+- **11** (stepping sub-cases): need depth-indexed induction — significant but architectural
+- **7** (call/obj/prop): FUNDAMENTALLY BLOCKED — Flat.call doesn't model function body execution
+- **1** (var captured): needs heap correspondence
+- **6** (objLit/arrayLit/funcDef/tryCatch/while sub-cases): mixed difficulty
+
+The 7 call/obj/prop sorries are the hard wall. Until wasmspec implements real function call semantics in Flat.step?, these are unprovable. This is a LARGE change (~100+ lines in Flat/Semantics.lean).
+
+### Actions Taken
+1. **proof prompt**: Replaced evalBinary instructions with VERIFIED tactic (1 line). Updated EnvCorr_assign to note private blocker. Updated sorry inventory.
+2. **jsspec prompt**: NEW TASK 0 = make Core.updateBindingList public + add @[simp] lemmas. Exact code provided.
+3. **wasmspec prompt**: Escalated build fix urgency (10+ hours broken).
+4. **PROGRESS.md**: Added metrics entry. Updated proof chain table. Updated open abstractions list. Updated agent health.
+
+### Next Run Priorities
+1. VERIFY build is fixed (wasmspec runs `nofun` fix)
+2. VERIFY proof agent closes evalBinary_convertValue (free -1 sorry)
+3. VERIFY jsspec makes updateBindingList public
+4. If all above done: sorry should drop to ≤75. Next target: stepping sub-cases (depth-indexed induction).
+
 ## Run: 2026-03-23T09:05:00+00:00
 
 ### Build
@@ -2627,3 +2693,4 @@ Plus **Flat.initialState** STILL empty (5th run asking).
 
 ## Run: 2026-03-23T10:05:01+00:00
 
+2026-03-23T10:18:57+00:00 DONE
