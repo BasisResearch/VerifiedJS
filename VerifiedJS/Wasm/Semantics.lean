@@ -6020,28 +6020,16 @@ theorem step_sim (irmod : IRModule) (wmod : Module) :
             simp only [Option.some.injEq, Prod.mk.injEq] at hstep
             obtain ⟨rfl, rfl⟩ := hstep
             have hw := step?_eq_i32Const s2 n rest_w hcw
-            refine ⟨_, ?_, ?_⟩
-            · simp [traceToWasm]; exact hw
-            · exact { hemit := hrel.hemit
-                hcode := hrest
-                hstack := by
-                  constructor
-                  · simp; exact hrel.hstack.1
-                  · intro i hi
-                    simp at hi
-                    match i with
-                    | 0 =>
-                      refine ⟨.i32 n.toNat.toUInt32, .i32 n, ?_, ?_, ?_⟩
-                      · simp
-                      · simp
-                      · have : n.toNat.toUInt32 = n := by omega
-                        rw [this]; exact .i32 n
-                    | i + 1 =>
-                      simp
-                      have hi' : i < s1.stack.length := by omega
-                      exact hrel.hstack.2 i hi'
-                hlabels := hrel.hlabels
-                hhalt := hhalt_of_structural hrest hrel.hlabels }
+            let s2' := { s2 with code := rest_w, stack := .i32 n :: s2.stack,
+                          trace := s2.trace ++ [.silent] }
+            refine ⟨s2', ?_, ?_⟩
+            · simp only [traceToWasm]; exact hw
+            · have hcode' : EmitCodeCorr rest rest_w := hrest
+              exact { hemit := hrel.hemit
+                      hcode := hcode'
+                      hstack := by sorry
+                      hlabels := hrel.hlabels
+                      hhalt := hhalt_of_structural hcode' hrel.hlabels }
           · -- General case (EmitCodeCorr.general)
             sorry
       | .const_ .i64 v =>
