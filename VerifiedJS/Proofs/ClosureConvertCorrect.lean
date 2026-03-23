@@ -127,6 +127,36 @@ private theorem toNumber_convertValue (v : Core.Value) :
   | string s => rfl
   | _ => rfl
 
+/-- evalUnary commutes with convertValue. -/
+private theorem evalUnary_convertValue (op : Core.UnaryOp) (v : Core.Value) :
+    Flat.evalUnary op (Flat.convertValue v) = Flat.convertValue (Core.evalUnary op v) := by
+  cases op with
+  | neg =>
+    simp only [Core.evalUnary, Flat.evalUnary]
+    rw [toNumber_convertValue]; simp [Flat.convertValue]
+  | pos =>
+    simp only [Core.evalUnary, Flat.evalUnary]
+    rw [toNumber_convertValue]; simp [Flat.convertValue]
+  | logNot =>
+    simp only [Core.evalUnary, Flat.evalUnary]
+    rw [toBoolean_convertValue]; simp [Flat.convertValue]
+  | void => rfl
+  | bitNot =>
+    simp only [Core.evalUnary, Flat.evalUnary]
+    rw [toNumber_convertValue]; simp [Flat.convertValue]
+
+/-- valueToString commutes with convertValue. -/
+private theorem valueToString_convertValue (v : Core.Value) :
+    Flat.valueToString (Flat.convertValue v) = Core.valueToString v := by
+  cases v with
+  | bool b => cases b <;> rfl
+  | string => rfl
+  | number => rfl
+  | null => rfl
+  | undefined => rfl
+  | object => rfl
+  | function => rfl
+
 /-- evalBinary commutes with convertValue for operators where Flat matches Core.
     NOTE: This is NOT true for all operators — Flat.evalBinary is simplified
     (e.g., .add with mixed string/non-string, .eq uses == not abstractEq,
