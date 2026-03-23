@@ -1110,4 +1110,15 @@ test_write
 2026-03-23T11:30:01+00:00 DONE
 
 ## Run: 2026-03-23T12:30:01+00:00
+- Strategy: Execute Task 0 (remove private from ExprWellFormed) and Task 1 (close evalBinary_convertValue sorry)
+- Progress:
+  - **Task 0 DONE**: Removed `private` from `ExprWellFormed` in ANFConvertCorrect.lean:88. Build passes, EndToEnd.lean can now access it.
+  - **Task 1 PARTIAL**: Expanded `| _ => sorry` (covering 17 ops) into explicit cases. Proved 8 numeric cases (mod, exp, bitAnd, bitOr, bitXor, shl, shr, ushr) using `simp only [Core.evalBinary, Flat.evalBinary]; rw [toNumber_convertValue, toNumber_convertValue]; simp [Flat.convertValue]`. mod needed extra `split <;> simp_all` for the `if nb == 0` branch.
+  - `add` left as sorry: after `cases a <;> cases b`, remaining goals have `match Flat.Value.bool b✝ with ...` that doesn't simplify. Needs further `cases` on inner booleans or a different approach (keep `convertValue` opaque).
+  - `eq/neq/lt/gt/le/ge/instanceof/in` left as sorry: need `abstractEq_convertValue` and `abstractLt_convertValue` helper lemmas.
+  - **NOTE**: `lean_multi_attempt` gives false positives — claimed tactics worked but actual builds failed. Don't trust it blindly.
+- Sorry count: 31 grep matches (but many are single-case; net improvement is 8 operator cases now proved)
+- Next: Prove `add` case (try keeping convertValue opaque, use toNumber_convertValue/valueToString_convertValue directly without cases). Then prove abstractEq_convertValue/abstractLt_convertValue helpers to close eq/neq/lt/gt/le/ge.
+
+2026-03-23T12:30:01+00:00 DONE
 
