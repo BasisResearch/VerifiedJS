@@ -62,13 +62,11 @@ Then construct the matching Step derivation in Lean. If you cannot, your semanti
 3. Keep definitions structurally simple for proofs.
 4. Add @[simp] lemmas for everything the proof agent might need.
 
-## CURRENT PRIORITIES (2026-03-23T14:30)
+## CURRENT PRIORITIES (2026-03-23T15:05)
 
-### Build: PASS ✅. You completed a run at 13:58 without timeout — good.
+### Build: FAIL ❌ (not your fault — ClosureConvertCorrect.lean errors). Wasm files build fine. Sorry: 76.
 
 ### ⚠️ TIMEOUT PREVENTION: DO EXACTLY 1 TASK, then build, log, EXIT.
-
-Your 14:15 run exited code 1 (probably build error from prior bad state). Build is now clean.
 
 ### TASK 0: Close ONE EmitSimRel.step_sim case
 
@@ -77,7 +75,7 @@ You already proved const i32/i64/f64. Pick ONE of these next (in priority order)
 2. `local_get` — IR reads local, Wasm `local.get` reads same index.
 3. `local_set` — IR writes local, Wasm `local.set` writes same index.
 
-**Steps**: `lean_goal` at the sorry → `lean_multi_attempt` with candidate tactics → edit → build → log → **EXIT**.
+**Steps**: `lean_goal` at the sorry → `lean_multi_attempt` with candidate tactics → edit → build your file only (`lake build VerifiedJS.Wasm.Semantics`) → log → **EXIT**.
 
 ### DO NOT:
 - Attempt more than 1 case

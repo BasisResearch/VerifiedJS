@@ -1,4 +1,61 @@
 
+## Run: 2026-03-23T15:05:01+00:00
+
+### Build
+- **Status**: `lake build` **FAIL** ❌ — ClosureConvertCorrect.lean has 13 errors
+- **Root cause**: Proof agent's 12:30 run proved evalBinary cases + wrote EnvCorr_assign helpers, but introduced:
+  1. Line 207: `add` case tactic leaves unsolved toNumber/string goals
+  2. Line 240: `rfl` fails for wildcard ops (eq/neq/lt/gt/le/ge/instanceof/in)
+  3. Line 302: BEq direction mismatch — `(other == name)` vs `(name == other)`, `beq_comm` doesn't exist
+  4. Line 320: Same BEq direction issue in Flat_lookup_assign_ne
+  5. Line 333: `Core.Env.lookup_assign_eq` needs `any` precondition that simp can't solve
+  6. Lines 345-346: `simp` no progress + wrong `hlookup` direction (need `.symm`)
+- **Fixes verified via `lean_multi_attempt`**: All 6 have confirmed working tactics
+- **Action**: Exact fix instructions written to proof prompt (TASK 0)
+
+### Sorry Report
+- **Count**: 76 (threshold: 100)
+- **Delta**: -4 from last run (80→76) — proof agent proved 8 evalBinary + EnvCorr_assign partial
+- **Breakdown**: 26 CC + 47 Wasm + 2 ANF + 1 Lower
+
+### Test262
+- 3 pass, 50 fail, 3 skip, 5 xfail / 63 total (UNCHANGED 110+ hours)
+- All 50 failures: `wasm_rc=134` runtime traps on advanced features
+
+### Agent Health
+- **jsspec**: Running at 15:00. Still hasn't completed TASK 0 (Flat @[simp] lemmas) despite 3+ assignments.
+- **wasmspec**: Last completed 14:56. Has been timing out frequently but recovering. Focused on EmitSimRel step_sim cases.
+- **proof**: Last ran 12:30 (made structural progress). 14:30 run crashed (EXIT 1, 9s). BUILD BROKEN by its last edits. Prompt updated with verified fixes.
+
+### Proof Chain Analysis
+- **Elaborate**: PROVED ✅
+- **Optimize**: PROVED ✅ (identity)
+- **ClosureConvert**: 26 sorry (BUILD BROKEN). evalBinary ~10 cases proved. EnvCorr_assign partially done (helpers written, bugs found). ~10 stepping sub-cases + 7 call/obj/prop BLOCKED.
+- **ANFConvert**: 2 sorry (step_star + nested seq).
+- **Lower**: 1 sorry (blocked on wasmspec step_sim).
+- **Emit**: ~47 sorry in Wasm/Semantics step_sim (decomposed). const i32/i64/f64 PROVED.
+- **EndToEnd**: Composition of above.
+
+### Architectural Analysis: What's Actually Needed Next
+
+**CRITICAL PATH**: Build fix → EnvCorr_assign completion → evalBinary remaining cases → stepping sub-cases (depth-indexed induction)
+
+The ~10 "stepping sub-cases" in CC (let/if/seq/typeof/while/yield/await) all need **depth-indexed step simulation**. These share the same pattern: the Core step produces a sub-expression that needs recursive simulation. Once one is proved, the pattern extends to all.
+
+**For the depth-indexed approach**:
+```lean
+theorem step_sim_depth (n : Nat) (hs : Core.step? sc = some sc')
+    (hsim : CC_SimRel s t sf sc) (hdepth : sc.expr.depth ≤ n) :
+    ∃ sf', Flat.step? sf = some sf' ∧ CC_SimRel s t sf' sc'
+```
+Induct on `n`, using `Expr.depth` decrease at each step. Both Core.step? and Flat.step? already terminate by Expr.depth.
+
+### Actions Taken
+1. **proof prompt**: TASK 0 = FIX BUILD (6 exact verified changes with line numbers). TASK 1 = close Flat_lookup_assign_ne sorry.
+2. **wasmspec prompt**: Updated build status. TASK = close 1 EmitSimRel step_sim case (drop_/local_get/local_set).
+3. **jsspec prompt**: TASK 0 = Flat @[simp] lemmas (3rd assignment).
+4. **PROGRESS.md**: Added metrics entry. Updated proof chain.
+
 ## Run: 2026-03-23T11:05:00+00:00
 
 ### Build
@@ -2929,3 +2986,4 @@ The stepping sub-cases are the next frontier after the mechanical wins. They all
 
 ## Run: 2026-03-23T15:05:01+00:00
 
+2026-03-23T15:51:49+00:00 DONE

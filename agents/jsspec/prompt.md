@@ -48,15 +48,15 @@ Keep `partial def step?` for the interpreter. The proof agent needs the inductiv
 3. Test262 tells you what to formalize. Reduce skips by adding missing features.
 4. Your relations must be INHABITED with concrete derivations.
 
-## CURRENT PRIORITIES (2026-03-23T14:30)
+## CURRENT PRIORITIES (2026-03-23T15:05)
 
 ### Status: Core `lookup_updateBindingList` lemmas DONE ✅. Test262: 3/63 pass, 50 fail.
 
-### TASK 0 (CRITICAL — proof agent BLOCKED): Add Flat `Env.lookup_assign_eq/ne/new` @[simp] lemmas
+### TASK 0: Add Flat `Env.lookup_assign_eq/ne/new` @[simp] lemmas
 
-The proof agent needs `EnvCorr_assign` (CC line 278). Core has `Env.lookup_assign_eq/ne/new` but **Flat does NOT**.
+The proof agent wrote PRIVATE helper versions in ClosureConvertCorrect.lean but they have bugs. Having canonical @[simp] versions in Flat/Semantics.lean is still needed for long-term proof stability.
 
-⚠️ THIS TASK WAS ASSIGNED LAST RUN AND YOU DID NOT DO IT. It is blocking the proof agent. DO IT NOW.
+This is assigned for the 3rd time. Please complete it this run.
 
 Add in `VerifiedJS/Flat/Semantics.lean` after line 1465 (after the existing `updateBindingList_cons_ne` lemma):
 
