@@ -119,6 +119,21 @@ private theorem toBoolean_convertValue (v : Core.Value) :
     Flat.toBoolean (Flat.convertValue v) = Core.toBoolean v := by
   cases v <;> simp [Flat.convertValue, Flat.toBoolean, Core.toBoolean]
 
+/-- toNumber commutes with convertValue. -/
+private theorem toNumber_convertValue (v : Core.Value) :
+    Flat.toNumber (Flat.convertValue v) = Core.toNumber v := by
+  cases v <;> simp [Flat.convertValue, Flat.toNumber, Core.toNumber]
+
+/-- evalBinary commutes with convertValue for operators where Flat matches Core.
+    NOTE: This is NOT true for all operators — Flat.evalBinary is simplified
+    (e.g., .add with mixed string/non-string, .eq uses == not abstractEq,
+    .lt uses numeric not abstractLt, bitwise/mod/exp/instanceof/in return .undefined).
+    BLOCKED: waiting for wasmspec to align Flat.evalBinary with Core. -/
+private theorem evalBinary_convertValue (op : Core.BinOp) (a b : Core.Value) :
+    Flat.evalBinary op (Flat.convertValue a) (Flat.convertValue b) =
+    Flat.convertValue (Core.evalBinary op a b) := by
+  sorry -- BLOCKED: Flat.evalBinary semantics differ from Core.evalBinary
+
 /-- Extending both envs preserves EnvCorr. -/
 private theorem EnvCorr_extend {cenv : Core.Env} {fenv : Flat.Env}
     (h : EnvCorr cenv fenv) (name : String) (cv : Core.Value) :

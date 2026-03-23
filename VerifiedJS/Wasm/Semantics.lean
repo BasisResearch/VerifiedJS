@@ -6054,7 +6054,8 @@ theorem step_sim (irmod : IRModule) (wmod : Module) :
             obtain ⟨rfl, rfl⟩ := hstep
             have hw := step?_eq_i32Const s2 n rest_w hcw
             exact ⟨_, hw, ⟨hrel.hemit, hrest,
-              by sorry, -- hstack for i32 const (needs UInt32 roundtrip lemma)
+              by have hrr : n.toNat.toUInt32 = n := by simp
+                 rw [hrr]; exact stack_corr_cons hrel.hstack.1 hrel.hstack.2 (.i32 n),
               hrel.hlabels, hhalt_of_structural hrest hrel.hlabels⟩⟩
           · -- General case (EmitCodeCorr.general)
             sorry
@@ -6068,7 +6069,8 @@ theorem step_sim (irmod : IRModule) (wmod : Module) :
             obtain ⟨rfl, rfl⟩ := hstep
             have hw := step?_eq_i64Const s2 n rest_w hcw
             exact ⟨_, hw, ⟨hrel.hemit, hrest,
-              by sorry, -- hstack for i64 const (needs UInt64 roundtrip lemma)
+              by have hrr : n.toNat.toUInt64 = n := by simp
+                 rw [hrr]; exact stack_corr_cons hrel.hstack.1 hrel.hstack.2 (.i64 n),
               hrel.hlabels, hhalt_of_structural hrest hrel.hlabels⟩⟩
           · sorry -- general case
       | .const_ .f64 v =>
