@@ -135,3 +135,10 @@ To find the right section:
 ```bash
 grep -n "reduce_simple" /opt/WasmCert-Coq/theories/opsem.v | head -10
 ```
+
+## EVERY RUN: Check WasmCert Coverage
+At the START of every run:
+```bash
+bash scripts/verify_wasmcert_refs.sh
+```
+At the END of every run, run it again and report results in your log.

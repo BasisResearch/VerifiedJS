@@ -132,3 +132,13 @@ grep -n "AssignmentExpression" spec.md | head -10
 
 Read the TOC at the top of spec.md for section locations.
 DO NOT cite section numbers from memory — look them up in the actual file.
+
+## EVERY RUN: Check Spec Coverage
+At the START of every run:
+```bash
+bash scripts/verify_spec_refs.sh
+```
+At the END of every run, run it again and report results in your log.
+
+spec.md has a TOC in the first ~2356 lines. Use `head -2356 spec.md` to browse it.
+DO NOT read the whole file — it is 44K lines. Use `sed -n` to read specific line ranges.
