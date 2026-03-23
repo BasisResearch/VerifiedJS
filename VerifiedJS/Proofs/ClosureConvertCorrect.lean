@@ -205,7 +205,10 @@ private theorem evalBinary_convertValue (op : Core.BinOp) (a b : Core.Value) :
     rw [convertValue_beq]
   | add =>
     simp only [Core.evalBinary, Flat.evalBinary]
-    cases a <;> cases b <;> simp_all [Flat.convertValue, Core.toNumber, Flat.toNumber, toNumber_convertValue, Core.valueToString, Flat.valueToString, valueToString_convertValue]
+    cases a <;> cases b <;>
+      simp_all [Flat.convertValue, Core.toNumber, Flat.toNumber, toNumber_convertValue,
+        Core.valueToString, Flat.valueToString, valueToString_convertValue] <;>
+      try (split <;> simp_all) <;> try rfl
   | mod =>
     simp only [Core.evalBinary, Flat.evalBinary]
     rw [toNumber_convertValue, toNumber_convertValue]
