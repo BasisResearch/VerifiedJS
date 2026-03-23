@@ -2444,6 +2444,37 @@ theorem step?_eq_localSet (s : ExecState) (idx : Nat) (rest : List Instr)
         trace := s.trace ++ [.silent] }) := by
   cases s; simp_all [step?, pop1?, hlocal, pushTrace, updateHeadFrame]
 
+/-- step? for localSet with empty stack: traps. -/
+theorem step?_eq_localSet_emptyStack (s : ExecState) (idx : Nat) (rest : List Instr)
+    (fr : Frame) (frs : List Frame)
+    (hcode : s.code = Instr.localSet idx :: rest)
+    (hstack : s.stack = [])
+    (hframes : s.frames = fr :: frs) :
+    step? s = some (.trap "stack underflow in local.set",
+      { s with code := [], stack := [], trace := s.trace ++ [.trap "stack underflow in local.set"] }) := by
+  cases s; simp_all [step?, pop1?, trapState, pushTrace]
+
+/-- step? for localSet with no active frame: traps regardless of stack. -/
+theorem step?_eq_localSet_noFrame (s : ExecState) (idx : Nat) (rest : List Instr)
+    (hcode : s.code = Instr.localSet idx :: rest)
+    (hframes : s.frames = []) :
+    step? s = some (.trap "local.set without active frame",
+      { s with code := [], trace := s.trace ++ [.trap "local.set without active frame"] }) := by
+  cases s; simp_all [step?, pop1?, trapState, pushTrace]
+  cases ‹List WasmValue› <;> simp [pop1?]
+
+/-- step? for localSet with local index out of bounds: traps. -/
+theorem step?_eq_localSet_oob (s : ExecState) (idx : Nat) (rest : List Instr)
+    (v : WasmValue) (stk : List WasmValue)
+    (fr : Frame) (frs : List Frame)
+    (hcode : s.code = Instr.localSet idx :: rest)
+    (hstack : s.stack = v :: stk)
+    (hframes : s.frames = fr :: frs)
+    (hlocal : ¬(idx < fr.locals.size)) :
+    step? s = some (.trap s!"unknown local index {idx}",
+      { s with code := [], trace := s.trace ++ [.trap s!"unknown local index {idx}"] }) := by
+  cases s; simp_all [step?, pop1?, trapState, pushTrace]
+
 /-- Exact step? result for i32.add with hypothesis-form arguments. -/
 theorem step?_eq_i32Add (s : ExecState) (rest : List Instr)
     (a b : UInt32) (stk : List WasmValue)
@@ -4325,6 +4356,37 @@ theorem irStep?_eq_localSet (s : IRExecState) (idx : Nat) (rest : List IRInstr)
         frames := { frame with locals := frame.locals.set! idx v } :: frest
         trace := s.trace ++ [.silent] }) := by
   simp [irStep?, hcode, hstack, hframes, irPop1?, irPushTrace, hbounds]
+
+/-- irStep? for localSet with empty stack: traps. -/
+theorem irStep?_eq_localSet_emptyStack (s : IRExecState) (idx : Nat) (rest : List IRInstr)
+    (frame : IRFrame) (frest : List IRFrame)
+    (hcode : s.code = IRInstr.localSet idx :: rest)
+    (hstack : s.stack = [])
+    (hframes : s.frames = frame :: frest) :
+    irStep? s = some (.trap "stack underflow in local.set",
+      { s with code := [], stack := [], trace := s.trace ++ [.trap "stack underflow in local.set"] }) := by
+  simp [irStep?, hcode, hstack, hframes, irPop1?, irTrapState, irPushTrace]
+
+/-- irStep? for localSet with no active frame: traps regardless of stack. -/
+theorem irStep?_eq_localSet_noFrame (s : IRExecState) (idx : Nat) (rest : List IRInstr)
+    (hcode : s.code = IRInstr.localSet idx :: rest)
+    (hframes : s.frames = []) :
+    irStep? s = some (.trap "local.set without active frame",
+      { s with code := [], trace := s.trace ++ [.trap "local.set without active frame"] }) := by
+  simp [irStep?, hcode, hframes, irTrapState, irPushTrace]
+  cases s.stack <;> simp [irPop1?]
+
+/-- irStep? for localSet with local index out of bounds: traps. -/
+theorem irStep?_eq_localSet_oob (s : IRExecState) (idx : Nat) (rest : List IRInstr)
+    (v : IRValue) (stk : List IRValue)
+    (frame : IRFrame) (frest : List IRFrame)
+    (hcode : s.code = IRInstr.localSet idx :: rest)
+    (hstack : s.stack = v :: stk)
+    (hframes : s.frames = frame :: frest)
+    (hbounds : ¬(idx < frame.locals.size)) :
+    irStep? s = some (.trap s!"unknown local index {idx}",
+      { s with code := [], trace := s.trace ++ [.trap s!"unknown local index {idx}"] }) := by
+  simp [irStep?, hcode, hstack, hframes, irPop1?, irTrapState, irPushTrace, hbounds]
 
 /-- Exact state after drop: pops top of stack, advances code. -/
 theorem irStep?_eq_drop (s : IRExecState) (rest : List IRInstr)
@@ -6547,11 +6609,77 @@ theorem step_sim (irmod : IRModule) (wmod : Module) :
           · -- Specific case: Wasm code = localSet idx :: rest_w
             -- Need a value on stack
             match hstk : s1.stack with
-            | [] => sorry -- trap: empty stack
+            | [] =>
+              -- Empty stack: sub-case on frames (IR match order: no-frame wins over empty-stack)
+              match hfr_ir0 : s1.frames with
+              | [] =>
+                -- No frame AND no stack: IR traps "local.set without active frame"
+                have hir := irStep?_eq_localSet_noFrame s1 idx rest hcode_ir hfr_ir0
+                rw [hir] at hstep
+                simp only [Option.some.injEq, Prod.mk.injEq] at hstep
+                obtain ⟨rfl, rfl⟩ := hstep
+                -- Wasm also has no frames
+                have hflen := hrel.hframes_len; rw [hfr_ir0] at hflen; simp at hflen
+                have hfr_w : s2.frames = [] := by
+                  cases hs : s2.frames with | nil => rfl | cons => simp [hs] at hflen
+                have hw := step?_eq_localSet_noFrame s2 idx rest_w hcw hfr_w
+                exact ⟨_, by simp [traceToWasm]; exact hw,
+                  { hemit := hrel.hemit
+                    hcode := .nil
+                    hstack := by dsimp only []; exact hrel.hstack
+                    hframes_len := by dsimp only []; exact hrel.hframes_len
+                    hframes_locals := hrel.hframes_locals
+                    hframes_vals := hrel.hframes_vals
+                    hlabels := hrel.hlabels
+                    hhalt := hhalt_of_structural .nil hrel.hlabels }⟩
+              | irf :: irfs =>
+                -- Has frame but empty stack: IR traps "stack underflow in local.set"
+                have hir := irStep?_eq_localSet_emptyStack s1 idx rest irf irfs hcode_ir hstk hfr_ir0
+                rw [hir] at hstep
+                simp only [Option.some.injEq, Prod.mk.injEq] at hstep
+                obtain ⟨rfl, rfl⟩ := hstep
+                -- Wasm stack also empty
+                have hlen_eq := hrel.hstack.1; rw [hstk] at hlen_eq; simp at hlen_eq
+                have hs2 : s2.stack = [] := by
+                  cases hs : s2.stack with | nil => rfl | cons => simp [hs] at hlen_eq
+                -- Wasm also has frames (by frame length correspondence)
+                have hflen := hrel.hframes_len; rw [hfr_ir0] at hflen
+                match hfr_w : s2.frames with
+                | [] => simp [hfr_w] at hflen
+                | wf :: wfs =>
+                  have hw := step?_eq_localSet_emptyStack s2 idx rest_w wf wfs hcw hs2 hfr_w
+                  exact ⟨_, by simp [traceToWasm]; exact hw,
+                    { hemit := hrel.hemit
+                      hcode := .nil
+                      hstack := by simp [hs2]
+                      hframes_len := hrel.hframes_len
+                      hframes_locals := hrel.hframes_locals
+                      hframes_vals := hrel.hframes_vals
+                      hlabels := hrel.hlabels
+                      hhalt := hhalt_of_structural .nil hrel.hlabels }⟩
             | iv :: istk =>
               -- Need a frame
               match hfr_ir : s1.frames with
-              | [] => sorry -- trap: no active frame
+              | [] =>
+                -- No frame: IR traps "local.set without active frame"
+                have hir := irStep?_eq_localSet_noFrame s1 idx rest hcode_ir hfr_ir
+                rw [hir] at hstep
+                simp only [Option.some.injEq, Prod.mk.injEq] at hstep
+                obtain ⟨rfl, rfl⟩ := hstep
+                -- Wasm also has no frames
+                have hflen := hrel.hframes_len; rw [hfr_ir] at hflen; simp at hflen
+                have hfr_w : s2.frames = [] := by
+                  cases hs : s2.frames with | nil => rfl | cons => simp [hs] at hflen
+                have hw := step?_eq_localSet_noFrame s2 idx rest_w hcw hfr_w
+                exact ⟨_, by simp [traceToWasm]; exact hw,
+                  { hemit := hrel.hemit
+                    hcode := .nil
+                    hstack := by dsimp only []; exact hrel.hstack
+                    hframes_len := by dsimp only []; exact hrel.hframes_len
+                    hframes_locals := hrel.hframes_locals
+                    hframes_vals := hrel.hframes_vals
+                    hlabels := hrel.hlabels
+                    hhalt := hhalt_of_structural .nil hrel.hlabels }⟩
               | irf :: irfs =>
                 -- Need idx in bounds
                 if hlt : idx < irf.locals.size then
@@ -6610,7 +6738,34 @@ theorem step_sim (irmod : IRModule) (wmod : Module) :
                           simp [Array.getElem_set, heq, hne]
                           exact hrel.hframes_vals irf wf irfs wfs hfr_ir hfr_w j
                             (by omega) (by omega)
-                else sorry -- trap: local out of bounds
+                else
+                  -- idx out of bounds: IR traps "unknown local index {idx}"
+                  have hir := irStep?_eq_localSet_oob s1 idx rest iv istk irf irfs hcode_ir hstk hfr_ir hlt
+                  rw [hir] at hstep
+                  simp only [Option.some.injEq, Prod.mk.injEq] at hstep
+                  obtain ⟨rfl, rfl⟩ := hstep
+                  -- Wasm also has a frame with same locals size, so idx also out of bounds
+                  have hflen := hrel.hframes_len; rw [hfr_ir] at hflen
+                  match hfr_w : s2.frames with
+                  | [] => simp [hfr_w] at hflen
+                  | wf :: wfs =>
+                    have hloc_sz := hrel.hframes_locals irf wf irfs wfs hfr_ir hfr_w
+                    have hlt_w : ¬(idx < wf.locals.size) := by omega
+                    -- Derive Wasm stack from stack correspondence
+                    have hstk_rel := hrel.hstack; rw [hstk] at hstk_rel
+                    match hstk_w : s2.stack with
+                    | [] => simp [hstk_w] at hstk_rel
+                    | wv :: wstk =>
+                      have hw := step?_eq_localSet_oob s2 idx rest_w wv wstk wf wfs hcw hstk_w hfr_w hlt_w
+                      exact ⟨_, by simp [traceToWasm]; exact hw,
+                        { hemit := hrel.hemit
+                          hcode := .nil
+                          hstack := by dsimp only []; exact hrel.hstack
+                          hframes_len := by dsimp only []; exact hrel.hframes_len
+                          hframes_locals := hrel.hframes_locals
+                          hframes_vals := hrel.hframes_vals
+                          hlabels := hrel.hlabels
+                          hhalt := hhalt_of_structural .nil hrel.hlabels }⟩
           · sorry -- general case
       | .globalGet idx =>
           -- global.get
