@@ -77,18 +77,14 @@ def updateBindingList (xs : List (VarName × Value)) (name : VarName) (v : Value
   | nil => simp at h
   | cons hd tl ih =>
     obtain ⟨n, old⟩ := hd
-    simp only [updateBindingList]
-    split
-    · -- n == name
-      rename_i heq
-      simp [Env.lookup, List.find?, heq]
+    cases hn : (n == name)
     · -- n ≠ name
-      rename_i hne
-      simp only [Env.lookup, List.find?]
-      have hne' : ¬ (n == name) = true := hne
-      simp [hne'] at h ⊢
-      sorry
-      -- exact ih h
+      simp only [updateBindingList, hn, ↓reduceIte, Env.lookup, List.find?, Bool.false_eq_true]
+      have htl : tl.any (fun kv => kv.fst == name) = true := by
+        simp only [List.any, hn, Bool.false_or] at h; exact h
+      exact ih htl
+    · -- n == name
+      simp only [updateBindingList, hn, ↓reduceIte, Env.lookup, List.find?, ↓reduceCtorEq]
 
 /-- Lookup after updateBindingList for a different name is unchanged. -/
 @[simp] theorem lookup_updateBindingList_ne (xs : List (VarName × Value)) (name other : VarName) (v : Value)
@@ -98,13 +94,17 @@ def updateBindingList (xs : List (VarName × Value)) (name : VarName) (v : Value
   | nil => simp [updateBindingList, Env.lookup]
   | cons hd tl ih =>
     obtain ⟨n, old⟩ := hd
-    simp only [updateBindingList]
-    split
-    · -- n == name
-      rename_i heq
-      sorry
+    cases hn : (n == name)
     · -- n ≠ name
-      sorry
+      simp only [updateBindingList, hn, ↓reduceIte, Env.lookup, List.find?]
+      split
+      · rfl
+      · exact ih
+    · -- n == name: need (n == other) = false
+      have hno : (n == other) = false := by
+        have : n = name := by simpa using hn
+        rw [this]; exact hne
+      simp only [updateBindingList, hn, ↓reduceIte, Env.lookup, List.find?, hno]
 
 /-- ECMA-262 §8.1.1.4.5 SetMutableBinding (simplified update). -/
 def Env.assign (env : Env) (name : VarName) (v : Value) : Env :=

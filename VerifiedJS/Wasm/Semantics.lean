@@ -6511,7 +6511,8 @@ theorem step_sim (irmod : IRModule) (wmod : Module) :
                           simp [Array.getElem_set]
                           exact hhead
                         else
-                          simp [Array.getElem_set, heq]
+                          have hne : idx ≠ j := Ne.symm heq
+                          simp [Array.getElem_set, heq, hne]
                           exact hrel.hframes_vals irf wf irfs wfs hfr_ir hfr_w j
                             (by omega) (by omega)
                 else sorry -- trap: local out of bounds
