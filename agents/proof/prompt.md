@@ -135,7 +135,7 @@ All stepping sorries have the SAME shape. Add explicit fuel/depth parameter for 
 | 2 | CC | 245 | 1 | .assign — needs EnvCorr_assign | **TASK 2** |
 | 3 | CC | 487 | 1 | .var captured — needs heap corr | LATER |
 | 4 | CC | 647,701,776,910,965,1009,1010,1067,1174,1275,1326 | 11 | stepping sub-cases | TASK 3 |
-| 5 | CC | 841-848 | 7 | call/obj/prop — needs heap | LATER |
+| 5 | CC | 841-848 | 7 | call/obj/prop — **FUNDAMENTALLY BLOCKED**: Flat.step? for .call stubs to .lit .undefined, doesn't call function bodies. Core.step? enters function body. Traces diverge. Needs Flat semantics rewrite to model calls. | BLOCKED |
 | 6 | CC | 1011-1013,1068-1069 | 5 | objLit/arrayLit/funcDef/tryCatch/while | LATER |
 | 7 | ANF | 2 | 2 | step_star + nested seq | **TASK 4** |
 | 8 | Lower | 1 | 1 | Blocked on wasmspec | BLOCKED |

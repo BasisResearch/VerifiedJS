@@ -54,10 +54,19 @@ The `evalBinary_convertValue` lemma at CC:175 has a `| _ => sorry` catch-all at 
 3. **wasmspec prompt**: Marked TASK 1 (evalBinary alignment) as DONE. Redirected to EmitSimRel step_sim cases.
 4. **PROGRESS.md**: Added metrics entry. Updated proof chain table. Marked evalBinary as unblocked.
 
+### Architectural Discovery: Flat.call Semantics Stub
+
+Flat's `.call` case in `step?` (Flat/Semantics.lean:349-383) evaluates callee/args, then when all are values, produces `(.silent, { s with expr := .lit .undefined })`. It does NOT enter the function body. Core's `.call` actually invokes the function (looks up `funcs[idx]`, binds params, pushes callStack).
+
+This means the 7 CC sorries for call/newObj/getProp/setProp/getIndex/setIndex/deleteProp are **FUNDAMENTALLY UNPROVABLE** with current Flat semantics — traces diverge because Flat doesn't model function body execution.
+
+Fix: wasmspec must implement real function call semantics in Flat.step? (lookup closure, bind params, step body). This is a LARGE change. For now, these 7 sorries should be marked BLOCKED, not "later".
+
 ### Next Run Priorities
-1. VERIFY proof agent completes evalBinary_convertValue (closes 1 sorry, unblocks .binary case)
-2. VERIFY agents are actually RUNNING (both have been idle 5-8 hours)
-3. Monitor sorry trend — if still 77+ next run, consider doing proof work directly
+1. wasmspec must fix Wasm/Semantics.lean:6173 build error (1-line fix)
+2. VERIFY proof agent completes evalBinary_convertValue (closes 1 sorry)
+3. Consider whether Flat call semantics needs to be implemented (would unblock 7+ CC sorries but is a large change)
+4. Monitor sorry trend
 
 ## Run: 2026-03-23T08:05:00+00:00
 
@@ -2614,3 +2623,4 @@ Plus **Flat.initialState** STILL empty (5th run asking).
 
 ## Run: 2026-03-23T09:05:01+00:00
 
+2026-03-23T09:37:07+00:00 DONE

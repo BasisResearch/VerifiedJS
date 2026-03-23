@@ -64,13 +64,21 @@ Then construct the matching Step derivation in Lean. If you cannot, your semanti
 
 ## CURRENT PRIORITIES (2026-03-23T09:05)
 
-### TASK 0: ⚠️ BUILD IS BROKEN — FIX FIRST ⚠️
+### TASK 0: ⚠️ BUILD IS BROKEN — FIX THIS 1-LINE BUG FIRST ⚠️
 
-Wasm/Semantics.lean:6173 has a type error:
+Wasm/Semantics.lean:6173:86 has a type error:
 ```
-Option.noConfusion has type ... but is expected to have type ¬none = some val
+Option.noConfusion has type ?m = ?m → ... but is expected to have type ¬none = some val
 ```
-Fix line 6173: change `exact Option.noConfusion` to `exact fun h => Option.noConfusion h` (or `exact nofun`).
+**EXACT FIX**: On line 6173, change:
+```
+exact Option.noConfusion)
+```
+to:
+```
+exact fun h => Option.noConfusion h)
+```
+Or simply use `exact nofun)`. This is a 1-second fix. DO IT FIRST.
 
 ### TASK 1 (TOP PRIORITY): Continue EmitSimRel.step_sim cases
 
