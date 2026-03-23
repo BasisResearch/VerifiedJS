@@ -114,6 +114,7 @@ arithmetic, boolean_logic, conditionals, do_while, for_loop, functions, let_bind
 | 2026-03-23T03:05 | **76** | **~203 (est.)** | Build PASS. Sorry 76 (74→76: proof +1 for bidirectional init sorry, wasmspec +1 for infrastructure). **MILESTONE: Flat.initialState protocol Step 1 DONE** — proof sorried both EnvCorr directions (line 168-169), wasmspec safe to proceed. **KEY DISCOVERY: Depth-indexed step simulation** — the ~8 "stepping sub-cases" in CC all need recursive step_sim. Solution: `step_sim_depth(n)` with induction on `n`, using `Expr.depth`. Both Core.step? and Flat.step? already terminate by Expr.depth. Wrote concrete Lean skeleton to proof prompt. Redirected wasmspec to easy EmitSimRel wins (const/localGet/localSet/drop — 10+ mechanical cases). Test262: 3/61 (UNCHANGED 86+ hrs). |
 | 2026-03-23T04:05 | **78** | **~203 (est.)** | Build PASS. Sorry 78 (49 Wasm + 25 CC + 3 ANF + 1 Lower). CC down 26→25 (proof proved .if/.typeof/.await/.yield value sub-cases ✅). **CRITICAL DISCOVERY: 5 Flat semantic bugs block CC proof** — (1) toNumber: Flat returns 0.0 for undefined/string, Core returns NaN, (2) bitNot: Flat returns .undefined, Core does real bit ops, (3) .throw: Flat uses "throw", Core uses valueToString, (4) .return: both use `repr` but Flat.Value ≠ Core.Value types, (5) updateBindingList private. Flat.initialState STILL empty (5th run asking). Wrote EXACT code for all 6 fixes to wasmspec prompt. Told jsspec to change Core .return from repr→valueToString. Redirected proof to .binary + ANF. Test262: 3/61 (UNCHANGED 88+ hrs). |
 | 2026-03-23T05:05 | **78** | **~203 (est.)** | **BUILD BROKEN**: wasmspec const_f64 proof has type mismatch at Wasm/Semantics.lean:6090 (`f` not unified with computed expression — needs `subst hfeq`). Sorry 78 (46 Wasm + 28 CC + 3 ANF + 1 Lower). **🎉 MAJOR MILESTONE: ALL 6 Flat bugs FIXED by wasmspec** — toNumber/bitNot/valueToString/initialState/updateBindingList/.return all done. ANF break/continue→.silent ✅. 3 EmitSimRel hstack cases proved (const i32/i64/f64). CC UP 25→28 (binary explicit sorry + sub-case splits). **5+ CC cases NOW UNBLOCKED** (unary/throw/return/assign/init). jsspec expanded test suite to 100 tests. Test262: 3/63 (UNCHANGED 90+ hrs). Wrote exact build fix to wasmspec. Rewrote proof prompt: bridge lemmas (toNumber/valueToString/evalUnary_convertValue) → close 5 CC cases → depth-indexed step_sim. |
+| 2026-03-23T06:30 | **76** | **~203 (est.)** | **BUILD BROKEN**: wasmspec `stack_corr_cons` has variable shadowing bug (∃ irv wv shadows param wv → wrong type in i64+f64 cases). Also `const_f64` needs `subst hfeq`. Sorry 76 (46 Wasm + 26 CC + 3 ANF + 1 Lower). **CC DOWN 28→26**: proof agent proved bridge lemmas (toNumber/evalUnary/valueToString_convertValue) and closed .unary/.throw/.return value sub-cases + init_related both dirs. jsspec fixed Core .return to use valueToString. Test262: 3/63 (UNCHANGED 92+ hrs). |
 
 - Test262 pass rate: 2/93 (fast mode), deterministic full sample reached 274/500 passes (2026-03-08)
 - Flagship parse rate: 96.30% (1976/2052)
@@ -131,14 +132,14 @@ arithmetic, boolean_logic, conditionals, do_while, for_loop, functions, let_bind
 | Pass | Theorem | Statement OK? | Proved? | Blocker |
 |------|---------|--------------|---------|---------|
 | Elaborate | elaborate_correct | YES | **PROVED** | — |
-| ClosureConvert | closureConvert_correct | YES — trace preservation with NoForInForOf | 28 sorry | EnvCorr bidirectional ✅. EnvCorr_extend ✅. if/typeof/await/yield PROVED ✅. **5 value sub-cases NOW UNBLOCKED** (unary/throw/return/assign/init) — need bridge lemmas first. binary BLOCKED (evalBinary mismatch). ~6 stepping sub-cases need depth-indexed induction. |
+| ClosureConvert | closureConvert_correct | YES — trace preservation with NoForInForOf | 26 sorry | EnvCorr bidirectional ✅. EnvCorr_extend ✅. Bridge lemmas PROVED ✅ (toNumber/evalUnary/valueToString_convertValue). init_related PROVED ✅. .unary/.throw/.return value PROVED ✅. .assign needs EnvCorr_assign. .var captured needs heap corr. binary BLOCKED (evalBinary mismatch). ~8 stepping sub-cases need depth-indexed induction. |
 | ANFConvert | anfConvert_correct | YES — observable trace preservation | 3 sorry | step_star (:94), .seq.seq.seq (:1017), WF blocker (:1097) |
 | Optimize | optimize_correct | YES — `∀ b, ANF.Behaves (optimize p) b ↔ ANF.Behaves p b` | **PROVED** | Identity pass — trivially correct |
 | Lower | lower_behavioral_correct | YES — `∀ trace, ANF.Behaves → IR.IRBehaves` | 1 sorry | Build FIXED. **BLOCKED on wasmspec** step_sim (:4956). SimRel needs code correspondence. |
 | Emit | emit_behavioral_correct | YES — `∀ trace, IR.IRBehaves → Wasm.Behaves` | 1 sorry | **BLOCKED on wasmspec** EmitSimRel.step_sim (:5058) |
 | EndToEnd | flat_to_wasm_correct | YES — partial composition (Flat→Wasm) | 1 sorry | EndToEnd.lean:55. Composition of above; last to prove |
 
-**Chain status**: All 6 Behaves relations DEFINED. All theorem STATEMENTS correct. **2 passes FULLY PROVED** (Elaborate, Optimize). **Sorry count in proof chain: 32** (28 CC + 3 ANF + 1 Lower). Wasm/Semantics has 46 sorry in step_sim (decomposed, not in chain directly but blocks Lower/Emit). Both halt_sim theorems PROVED. step?_none_implies_trivial_lit PROVED. **Flat/ is SORRY-FREE**. Core/Semantics 0 sorry. ANF/Semantics 0 sorry.
+**Chain status**: All 6 Behaves relations DEFINED. All theorem STATEMENTS correct. **2 passes FULLY PROVED** (Elaborate, Optimize). **Sorry count in proof chain: 30** (26 CC + 3 ANF + 1 Lower). Wasm/Semantics has 46 sorry in step_sim (decomposed, not in chain directly but blocks Lower/Emit). Both halt_sim theorems PROVED. step?_none_implies_trivial_lit PROVED. **Flat/ is SORRY-FREE**. Core/Semantics 0 sorry. ANF/Semantics 0 sorry.
 
 **RESOLVED ABSTRACTIONS**:
 - ✅ LowerCodeCorr constructors FIXED (wasmspec 01:15 — while_, throw, return_, break_, continue_ now specify actual instruction shapes)
@@ -155,18 +156,20 @@ arithmetic, boolean_logic, conditionals, do_while, for_loop, functions, let_bind
 - ✅ ANF break/continue → .silent (wasmspec 04:15)
 - ✅ EmitSimRel const i32/i64/f64 cases proved (wasmspec 04:15)
 
-**OPEN ABSTRACTIONS (updated 2026-03-23T05:05)**:
-1. **Bridge lemmas needed**: toNumber_convertValue, valueToString_convertValue, evalUnary_convertValue, EnvCorr_assign — all NOW provable with Flat fixes. Written to proof prompt.
-2. **evalBinary_convertValue**: BLOCKED on wasmspec aligning Flat.evalBinary with Core.evalBinary. Written to wasmspec prompt as TASK 3.
-3. **Depth-indexed step simulation**: All ~6 CC stepping sub-cases need `step_sim_depth(n)` — strong induction on `Core.Expr.depth`. Concrete Lean skeleton in proof prompt.
-4. **EmitSimRel remaining cases**: localGet/localSet/drop/binOp/unOp — mechanical, written to wasmspec prompt.
+**OPEN ABSTRACTIONS (updated 2026-03-23T06:30)**:
+1. ~~Bridge lemmas~~ ✅ PROVED by proof agent (toNumber/evalUnary/valueToString_convertValue).
+2. **EnvCorr_assign**: Needed for .assign value case. Proof agent's next task.
+3. **evalBinary_convertValue**: BLOCKED on wasmspec aligning Flat.evalBinary with Core.evalBinary. Written to wasmspec prompt as TASK 3.
+4. **Depth-indexed step simulation**: All ~8 CC stepping sub-cases need `step_sim_depth(n)` — strong induction on `Core.Expr.depth`. Concrete Lean skeleton in proof prompt.
+5. **EmitSimRel remaining cases**: localGet/localSet/drop/binOp/unOp — mechanical, written to wasmspec prompt.
+6. **Heap/closure correspondence**: Needed for .var captured, call, newObj, getProp, etc. (~12 CC sorries). No abstraction written yet.
 
-**Critical path**: (1) wasmspec: FIX BUILD BREAK (const_f64 subst). (2) proof: bridge lemmas → close 5 CC cases (-7 sorry). (3) wasmspec: align Flat.evalBinary. (4) proof: depth-indexed step_sim. (5) wasmspec: EmitSimRel remaining cases.
+**Critical path**: (1) wasmspec: FIX BUILD BREAK (stack_corr_cons shadowing + const_f64 subst). (2) proof: EnvCorr_assign → close .assign. (3) proof: depth-indexed step_sim → close ~8 stepping sub-cases. (4) wasmspec: align Flat.evalBinary. (5) proof: binary value case. (6) wasmspec: EmitSimRel remaining cases.
 
 ## Agent Health
 
-| Agent | Status (2026-03-23T05:05) | Notes |
+| Agent | Status (2026-03-23T06:30) | Notes |
 |-------|---------------------|-------|
-| jsspec | Completed (04:00) | Core/Semantics 0 sorry. Expanded test suite to 100 tests. All failures are wasm runtime traps. No actionable work. |
-| wasmspec | Completed (04:15) | **BROKE BUILD** (const_f64 type mismatch). Fixed ALL 6 Flat bugs ✅. ANF break/continue ✅. 3 EmitSimRel const cases proved. 46 Wasm/Semantics sorries. Must fix build first. |
-| proof | Idle (last ran ~01:15) | CC 28 sorry. 5 cases NOW UNBLOCKED by Flat fixes. Needs bridge lemmas → close CC cases. |
+| jsspec | Completed (05:00) | Core .return→valueToString ✅. 0 sorry. All failures are wasm runtime traps. IDLE. |
+| wasmspec | Completed (04:15) | **BUILD BROKEN** (stack_corr_cons shadowing + const_f64 subst). 3 fixes written to prompt. 46 Wasm/Semantics sorries. |
+| proof | Completed (~05:54) | CC DOWN 28→26. Bridge lemmas PROVED ✅. init/unary/throw/return closed ✅. Didn't log. Next: EnvCorr_assign, depth-indexed step_sim. |

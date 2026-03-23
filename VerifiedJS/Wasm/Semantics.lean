@@ -5910,11 +5910,11 @@ inductive IRValueToWasmValue : IRValue → WasmValue → Prop where
 theorem stack_corr_cons {istk : List IRValue} {wstk : List WasmValue}
     {iv : IRValue} {wv : WasmValue}
     (hlen : istk.length = wstk.length)
-    (helems : ∀ i, i < istk.length → ∃ irv wv, istk[i]? = some irv ∧ wstk[i]? = some wv ∧ IRValueToWasmValue irv wv)
+    (helems : ∀ i, i < istk.length → ∃ irv wv', istk[i]? = some irv ∧ wstk[i]? = some wv' ∧ IRValueToWasmValue irv wv')
     (hv : IRValueToWasmValue iv wv) :
     (iv :: istk).length = (wv :: wstk).length ∧
     ∀ i, i < (iv :: istk).length →
-      ∃ irv wv, (iv :: istk)[i]? = some irv ∧ (wv :: wstk)[i]? = some wv ∧ IRValueToWasmValue irv wv := by
+      ∃ irv wv', (iv :: istk)[i]? = some irv ∧ (wv :: wstk)[i]? = some wv' ∧ IRValueToWasmValue irv wv' := by
   constructor
   · simp; exact hlen
   · intro i hi
@@ -5928,10 +5928,10 @@ theorem stack_corr_cons {istk : List IRValue} {wstk : List WasmValue}
 theorem stack_corr_tail {iv : IRValue} {wv : WasmValue}
     {istk : List IRValue} {wstk : List WasmValue}
     (hlen : (iv :: istk).length = (wv :: wstk).length)
-    (helems : ∀ i, i < (iv :: istk).length → ∃ irv wv, (iv :: istk)[i]? = some irv ∧ (wv :: wstk)[i]? = some wv ∧ IRValueToWasmValue irv wv) :
+    (helems : ∀ i, i < (iv :: istk).length → ∃ irv wv', (iv :: istk)[i]? = some irv ∧ (wv :: wstk)[i]? = some wv' ∧ IRValueToWasmValue irv wv') :
     istk.length = wstk.length ∧
     ∀ i, i < istk.length →
-      ∃ irv wv, istk[i]? = some irv ∧ wstk[i]? = some wv ∧ IRValueToWasmValue irv wv := by
+      ∃ irv wv', istk[i]? = some irv ∧ wstk[i]? = some wv' ∧ IRValueToWasmValue irv wv' := by
   constructor
   · simp at hlen; exact hlen
   · intro i hi
@@ -6079,15 +6079,15 @@ theorem step_sim (irmod : IRModule) (wmod : Module) :
           -- f64 const: same pattern as i32
           have hc : EmitCodeCorr (IRInstr.const_ .f64 v :: rest) s2.code := hcode_ir ▸ hrel.hcode
           rcases hc.const_f64_inv with ⟨f, rest_w, hcw, hfeq, hrest⟩ | ⟨wasm_instrs, rest_w, hcw, hrest⟩
-          · have hir := irStep?_eq_f64Const s1 v rest hcode_ir
-            simp only [hfeq] at hir
+          · subst hfeq
+            have hir := irStep?_eq_f64Const s1 v rest hcode_ir
             rw [hir] at hstep
             simp only [Option.some.injEq, Prod.mk.injEq] at hstep
             obtain ⟨rfl, rfl⟩ := hstep
-            have hw := step?_eq_f64Const s2 f rest_w hcw
+            have hw := step?_eq_f64Const s2 _ rest_w hcw
             refine ⟨_, hw, ⟨hrel.hemit, hrest, ?_, hrel.hlabels, hhalt_of_structural hrest hrel.hlabels⟩⟩
             dsimp only []
-            exact stack_corr_cons hrel.hstack.1 hrel.hstack.2 (.f64 f)
+            exact stack_corr_cons hrel.hstack.1 hrel.hstack.2 (.f64 _)
           · sorry -- general case
       | .const_ .ptr v =>
           -- ptr const (same as i32 in Wasm)

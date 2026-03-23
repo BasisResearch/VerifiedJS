@@ -57,98 +57,76 @@ If ClosureConvertCorrect needs 600 lines of case analysis, WRITE 600 LINES. That
 ## Test262
 Read `logs/test262_summary.md` for failure categories. Fix compiler bugs that cause test262 failures.
 
-## ⚠️⚠️⚠️ CC PROOF: WHAT TO DO NOW (2026-03-23T05:05) ⚠️⚠️⚠️
+## ⚠️⚠️⚠️ CC PROOF: WHAT TO DO NOW (2026-03-23T06:30) ⚠️⚠️⚠️
 
-### 🎉 MAJOR UNBLOCK: wasmspec FIXED ALL 6 Flat bugs! 5 CC cases are NOW UNBLOCKED. 🎉
+### Progress since last prompt: bridge lemmas PROVED, init closed, unary/throw/return closed
 
-**Current state**: CC has 28 sorries. Build PASSES. Flat now has:
-- `toNumber` returns NaN for undefined/string/object/closure ✅
-- `evalUnary .bitNot` does actual bitwise NOT ✅
-- `valueToString` defined + `.throw` uses it ✅
-- `initialState` includes console binding + heap ✅
-- `updateBindingList` is public ✅
-- `.return some` uses `valueToString` ✅
-- ANF break/continue produces `.silent` ✅
+You proved `toNumber_convertValue`, `evalUnary_convertValue`, `valueToString_convertValue` and used them to close `.unary` value, `.throw`, `.return some`, and `init_related` both dirs. CC went 28→26 sorries. GREAT WORK.
 
-### TASK 1 (TOP PRIORITY): Prove bridge lemmas — these unlock 5+ CC cases
+### BUILD IS BROKEN — DO NOT EDIT until wasmspec fixes Wasm/Semantics.lean
 
-These are NOW provable. Do them FIRST — every one unlocks downstream CC cases:
+wasmspec has a `stack_corr_cons` variable-shadowing bug. Build will fail. Do NOT try to build until the fix lands. Focus on understanding what to prove next and planning your approach.
 
+### TASK 1 (TOP PRIORITY): Prove `.assign` value sub-case (line 622)
+
+You need `EnvCorr_assign`:
 ```lean
--- 1a. toNumber_convertValue (unlocks .unary)
-theorem toNumber_convertValue (v : Core.Value) :
-    Flat.toNumber (convertValue v) = Core.toNumber v := by
-  cases v <;> simp [convertValue, Flat.toNumber, Core.toNumber]
-  -- string case: both implementations match, should be rfl or simp
-
--- 1b. evalUnary_convertValue (closes .unary sorry)
-theorem evalUnary_convertValue (op : Core.UnaryOp) (v : Core.Value) :
-    Flat.evalUnary op (convertValue v) = convertValue (Core.evalUnary op v) := by
-  cases op <;> simp [Flat.evalUnary, Core.evalUnary, toNumber_convertValue]
-
--- 1c. valueToString_convertValue (unlocks .throw + .return some)
-theorem valueToString_convertValue (v : Core.Value) :
-    Flat.valueToString (convertValue v) = Core.valueToString v := by
-  cases v <;> rfl  -- both implementations are identical modulo constructor names
-
--- 1d. EnvCorr_assign (unlocks .assign)
+-- Core.Env.assign updates the binding in place. Flat.updateBindingList does the same.
+-- Prove by cases on the env list structure.
 theorem EnvCorr_assign {cenv : Core.Env} {fenv : Flat.Env}
     (h : EnvCorr cenv fenv) (name : String) (cv : Core.Value) :
-    EnvCorr (Core.Env.assign cenv name cv) (Flat.updateBindingList fenv name (convertValue cv)) := by
-  -- updateBindingList is now public. Prove by induction on env list.
-  sorry -- fill in using updateBindingList equation lemmas
+    EnvCorr (Core.Env.assign cenv name cv) (Flat.updateBindingList fenv name (convertValue cv))
 ```
 
-### TASK 2 (IMMEDIATE): Close the 5 newly-unblocked CC value sub-cases
+First check what `Core.Env.assign` and `Flat.updateBindingList` do (use `lean_hover_info`). They should be structurally similar. The proof should follow the same pattern as `EnvCorr_extend`.
 
-After bridge lemmas are proved, close these CC sorries:
+### TASK 2: `.var` captured case (line 461)
 
-1. **`.unary`** (line ~779) — use `evalUnary_convertValue`
-2. **`.throw`** (line ~828) — use `valueToString_convertValue` for trace match
-3. **`.return some`** (line ~883) — use `valueToString_convertValue` for trace match
-4. **`.assign`** (line ~569) — use `EnvCorr_assign` for env preservation
-5. **`init_related` both dirs** (line ~186-187) — Flat.initialState now has console. Prove `EnvCorr Core.initialState.env Flat.initialState.env` using the matching definitions.
+This needs heap/closure correspondence. The converted expression is `.getEnv (.var envVar) idx` — it looks up a captured variable from the environment object. You need:
+1. A `HeapCorr` or similar that relates Core's env lookup to Flat's getEnv
+2. Show that `envMap` tracks which variables were captured and at what index
 
-Each should be 5-15 lines. Target: -7 sorries this run.
+This is harder than the bridge lemmas. Start by understanding the full picture:
+- What does `Flat.convertExpr` do for captured variables?
+- What does `Flat.step?` do for `.getEnv`?
+- How does the CC state (`scope`, `envVar`, `envMap`, `st`) relate to Core state?
 
-### TASK 3: Prove `.binary` value sub-case
+### TASK 3: Depth-indexed step simulation (for 8 stepping sub-cases)
 
-Still needs `evalBinary_convertValue` — this is BLOCKED on wasmspec aligning `Flat.evalBinary` with `Core.evalBinary`. Leave as sorry with the current note.
+The 8 stepping sub-cases (lines 621, 697, 762, 831, 886, 930, 931, 988, 1095, 1196, 1247) ALL need recursive application of step_simulation. This is the SINGLE BIGGEST sorry cluster (8 sorries).
 
-### TASK 4: ANF sorries (if CC work done)
-
-**`anfConvert_halt_star` non-lit cases (ANFConvertCorrect.lean):**
-For each non-lit Flat constructor, show `normalizeExpr` produces an ANF expression where `step? ≠ none`. This contradicts `hhalt : ANF.step? sa = none`. Most cases are contradictions.
-
-### TASK 5: Depth-indexed step simulation (for stepping sub-cases)
-
-The ~6 stepping sub-cases (seq, let, if, return, binary lhs/rhs) need recursive application of step_simulation. Use:
+Key insight: both `Core.step?` and `Flat.step?` step sub-expressions. For `.seq a b`, if `exprValue? a = none`, both step `a`. The depth of `a` < depth of `.seq a b`. Use strong induction on expression depth:
 
 ```lean
 private theorem step_sim_depth (n : Nat) ... :
     ∀ sf sc ev sf', sc.expr.depth ≤ n → CC_SimRel s t sf sc → Flat.Step sf ev sf' →
     ∃ sc', Core.Step sc ev sc' ∧ CC_SimRel s t sf' sc' := by
   induction n with
-  | zero => ... -- base: lit/var/this/break/continue (no recursion)
-  | succ k ih => ... -- step: use ih on sub-expressions with depth ≤ k
+  | zero => ... -- base: only depth-0 exprs (lit/var/this/break/continue)
+  | succ k ih => ... -- use ih on sub-expressions with depth ≤ k
 ```
 
-### Sorry inventory (2026-03-23T05:05):
+### TASK 4: ANF sorries (3 sorry — ANFConvertCorrect.lean)
+
+For each non-lit Flat constructor, show `normalizeExpr` produces an ANF expression where `step? ≠ none`. This contradicts `hhalt`. Most cases are contradictions.
+
+### TASK 5: `.binary` value sub-case (line 189)
+
+Still BLOCKED on wasmspec aligning `Flat.evalBinary` with `Core.evalBinary`. Leave as sorry.
+
+### Sorry inventory (2026-03-23T06:30):
 
 | # | File | Count | Description | Priority |
 |---|------|-------|-------------|----------|
-| 1 | CC | 2 | init_related both dirs — **NOW UNBLOCKED** | **NOW** |
-| 2 | CC | 1 | .assign value — **NOW UNBLOCKED** | **NOW** |
-| 3 | CC | 1 | .unary value — **NOW UNBLOCKED** | **NOW** |
-| 4 | CC | 1 | .binary value — BLOCKED (evalBinary mismatch) | WAIT |
-| 5 | CC | 1 | .throw — **NOW UNBLOCKED** | **NOW** |
-| 6 | CC | 1 | .return some — **NOW UNBLOCKED** | **NOW** |
-| 7 | CC | ~6 | stepping sub-cases — TASK 5 | NEXT |
-| 8 | CC | ~11 | call/newObj/getProp/etc — needs heap | LATER |
-| 9 | CC | 1 | .var captured — needs heap | LATER |
-| 10 | CC | 2 | new sorries (line 408 .var captured, line 709 .seq stepping) | LATER |
-| 11 | ANF | 3 | step_star + halt_star — TASK 4 | **NOW** |
-| 12 | Lower | 1 | Blocked on wasmspec | BLOCKED |
+| 1 | CC | 1 | .binary value (line 189) — BLOCKED | WAIT |
+| 2 | CC | 1 | .var captured (line 461) — needs heap corr | TASK 2 |
+| 3 | CC | 1 | .assign value (line 622) — needs EnvCorr_assign | **TASK 1** |
+| 4 | CC | 8 | stepping sub-cases (lines 621,697,762,831,886,930,931,988) — depth induction | TASK 3 |
+| 5 | CC | 7 | call/newObj/getProp/setProp/getIndex/setIndex/deleteProp — needs heap | LATER |
+| 6 | CC | 5 | objectLit/arrayLit/functionDef/tryCatch/while_ — needs heap+env | LATER |
+| 7 | CC | 3 | stepping sub-cases in yield/await/if (lines 1095,1196,1247) | TASK 3 |
+| 8 | ANF | 3 | step_star + halt_star — TASK 4 | **NOW** |
+| 9 | Lower | 1 | Blocked on wasmspec | BLOCKED |
 
 ### Key Lean 4 pitfall — AVOID `cases ... with` inside `<;>` blocks
 

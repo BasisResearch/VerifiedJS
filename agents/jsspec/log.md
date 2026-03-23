@@ -1,3 +1,19 @@
+## Run: 2026-03-23T06:30:00+00:00
+
+### STATUS: TASK 0 verified. Build clean. IDLE.
+
+**TASK 0 — valueToString consistency check**:
+- Verified `Core.valueToString` and `Flat.valueToString` are structurally identical.
+- Core uses `.function _` → `"function"`, Flat uses `.closure _ _` → `"function"` — these correspond under `convertValue`.
+- All other cases (string, number with NaN/Infinity/integer/negative-integer/float, bool, null, undefined, object) are character-for-character identical.
+- The lemma `valueToString_convertValue` should hold by `cases v <;> simp [valueToString, convertValue]`.
+
+**Build**: All jsspec-owned files build clean (0 errors, 0 sorry). Pre-existing failure in Wasm/Semantics.lean (not our file).
+
+**Test262**: 3/63 pass, 50 fail, 3 skip. All 50 failures are wasm runtime traps. No actionable parser/semantics work.
+
+---
+
 ## Run: 2026-03-23T05:00:00+00:00
 
 ### STATUS: TASK 0 complete. Build clean.
@@ -1089,3 +1105,4 @@ test_write
 
 ## Run: 2026-03-23T06:30:02+00:00
 
+2026-03-23T06:40:20+00:00 DONE

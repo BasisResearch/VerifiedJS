@@ -1,4 +1,66 @@
 
+## Run: 2026-03-23T06:30:00+00:00
+
+### Build
+- **Status**: `lake build` **FAIL** — Wasm/Semantics.lean: two type mismatches at lines 6076 (i64 const) and 6090 (f64 const)
+
+### Sorry Report
+- **Count**: 76 (46 Wasm/Semantics + 26 CC + 3 ANF + 1 Lower)
+- **Delta**: -2 from last run (CC 28→26: proof agent proved bridge lemmas + closed value sub-cases)
+
+### Test262
+- 3 pass, 50 fail, 3 skip, 5 xfail / 63 total (UNCHANGED 92+ hours)
+
+### Agent Health
+- **jsspec**: Completed at 05:00. Fixed Core `.return some` to use `valueToString`. 0 sorry. IDLE.
+- **wasmspec**: Completed at 04:15. BUILD STILL BROKEN (same errors from last run, fix not applied yet).
+- **proof**: Completed at ~05:54 (file modified but NO LOG written). CC 28→26.
+
+### Proof Agent Progress (unlogged)
+The proof agent ran between 05:05 and 05:54 but didn't write to agents/proof/log.md. Based on diff analysis:
+1. **PROVED bridge lemmas**: `toNumber_convertValue`, `evalUnary_convertValue`, `valueToString_convertValue` — all complete, used in downstream proofs
+2. **Closed `.unary` value sub-case** (line ~878) — uses `evalUnary_convertValue`
+3. **Closed `.throw` case** (line ~950) — uses `valueToString_convertValue` for trace match
+4. **Closed `.return some` case** (line ~1057) — uses `valueToString_convertValue`
+5. **Closed `init_related` both directions** — Flat.initialState now includes console, so EnvCorr holds
+
+Net: -2 CC sorries (28→26). Remaining 26 CC sorries: 1 binary (blocked), 1 var captured (heap), 1 assign (EnvCorr_assign), 8 stepping (depth induction), 12 heap-dependent (call/newObj/etc), 3 compound (tryCatch/while_/functionDef)
+
+### Build Break Root Cause Analysis (UPDATED)
+Last run's fix was INCOMPLETE. The real root cause is TWO bugs:
+
+**Bug 1: `stack_corr_cons` variable shadowing** (lines 5910-5925)
+In the conclusion `∃ irv wv, (iv :: istk)[i]? = some irv ∧ (wv :: wstk)[i]? = some wv`, the `wv` in `(wv :: wstk)` is the EXISTENTIALLY BOUND variable, not the function parameter. This makes the result type wrong — it produces `(wv_existential :: wstk)` instead of `(WasmValue.i64 n :: wstk)` at call sites. Fix: rename `∃ irv wv,` to `∃ irv wv',` in the conclusion.
+
+**Bug 2: Same shadowing in `stack_corr_tail`** (lines 5928-5939)
+The `helems` parameter has `∃ irv wv, (iv :: istk)[i]? ... ∧ (wv :: wstk)[i]?` where `wv` is existential, not parameter. Same fix needed.
+
+**Bug 3: f64 const `hfeq` not substituted** (line 6081-6090)
+After `rcases const_f64_inv`, `f` is a fresh variable with `hfeq : f = (...)`. Need `subst hfeq` to unify `f` with the computed expression.
+
+All 3 fixes written to wasmspec prompt with exact replacement code.
+
+### Proof Chain Analysis
+- **Elaborate**: PROVED ✅
+- **Optimize**: PROVED ✅ (identity)
+- **ClosureConvert**: 26 sorry. Bridge lemmas DONE ✅. init DONE ✅. unary/throw/return DONE ✅. Next: assign (EnvCorr_assign), depth-indexed step_sim (~8 cases), heap correspondence (~12 cases).
+- **ANFConvert**: 3 sorry. step_star + WF invariant blockers.
+- **Lower**: 1 sorry. Blocked on wasmspec step_sim.
+- **Emit**: Implicit in Wasm/Semantics. 46 sorry in step_sim. 3 const cases proved but build broken.
+- **EndToEnd**: Composition of above.
+
+### Actions Taken
+1. **wasmspec prompt**: REWROTE TASK 0 with corrected root cause analysis. 3 fixes: (1) stack_corr_cons shadowing, (2) stack_corr_tail shadowing, (3) f64 subst hfeq. Exact replacement code provided.
+2. **proof prompt**: Updated current state — acknowledged bridge lemma + init + unary/throw/return progress. New TASK 1: EnvCorr_assign. TASK 2: .var captured (heap). TASK 3: depth-indexed step_sim. Updated sorry inventory (26 CC).
+3. **PROGRESS.md**: Added run entry. Updated proof chain (CC 26 sorry). Updated resolved/open abstractions. Updated agent health. Updated critical path.
+
+### Next Run Priorities
+1. Verify wasmspec fixes build (all 3 fixes: stack_corr_cons, stack_corr_tail, f64 subst)
+2. Verify proof agent proves EnvCorr_assign → closes .assign sorry
+3. Monitor proof agent: depth-indexed step_sim (biggest remaining cluster at 8 sorries)
+4. Monitor wasmspec: EmitSimRel remaining cases after build is fixed
+5. Test262 stagnant 92+ hours — no actionable work for jsspec (all failures are wasm runtime traps)
+
 ## Run: 2026-03-23T05:05:00+00:00
 
 ### Build
@@ -2385,3 +2447,4 @@ Plus **Flat.initialState** STILL empty (5th run asking).
 
 ## Run: 2026-03-23T06:30:06+00:00
 
+2026-03-23T06:43:41+00:00 DONE
