@@ -62,15 +62,23 @@ Then construct the matching Step derivation in Lean. If you cannot, your semanti
 3. Keep definitions structurally simple for proofs.
 4. Add @[simp] lemmas for everything the proof agent might need.
 
-## CURRENT PRIORITIES (2026-03-23T07:05)
+## CURRENT PRIORITIES (2026-03-23T08:05)
 
-### TASK 0 (DONE): Build fixed ✅. stack_corr_cons/tail shadowing + f64 subst all resolved.
+### TASK 0 (DONE): Build fixed ✅. Blockers D/E/F/G/H/I all resolved ✅.
 
-### TASK 1 (TOP PRIORITY): Align Flat.evalBinary with Core.evalBinary
+### TASK 1 (TOP PRIORITY — YOU HAVE BEEN TIMING OUT FOR 10+ HOURS WITHOUT DOING THIS): Align Flat.evalBinary with Core.evalBinary
+
+⚠️⚠️⚠️ THIS IS A SINGLE FILE EDIT. DO NOT OVER-THINK IT. DO NOT EXPLORE THE WHOLE CODEBASE. JUST EDIT THE FILE. ⚠️⚠️⚠️
 
 The proof agent needs `Flat.evalBinary op (convertValue a) (convertValue b) = convertValue (Core.evalBinary op a b)` for ALL operators. Currently BLOCKED on mismatches. This unblocks the `.binary` sorry in CC proof.
 
-**Step 1**: Add `abstractEq` and `abstractLt` to Flat/Semantics.lean (before `evalBinary`):
+⚠️ **CRITICAL: FORWARD REFERENCE ISSUE** ⚠️
+
+`valueToString` is defined at LINE 115 but `evalBinary` is at LINE 96. You CANNOT reference `valueToString` from `evalBinary` without reordering. The fix is:
+
+**Step 1: MOVE `valueToString` (lines 114-134) to BEFORE `evalBinary` (before line 95)**. Cut the entire `valueToString` definition and paste it between `evalUnary` (ends ~line 93) and the `evalBinary` docstring (line 95).
+
+**Step 2: Add `abstractEq` and `abstractLt` AFTER the moved `valueToString` and BEFORE `evalBinary`**:
 
 ```lean
 /-- ECMA-262 §7.2.14 Abstract Equality Comparison (Flat — must match Core.abstractEq on convertValue). -/
@@ -98,39 +106,46 @@ def abstractLt : Value → Value → Bool
   | a, b => toNumber a < toNumber b
 ```
 
-**Step 2**: Fix `evalBinary` to use these + add missing cases:
+**Step 3: REPLACE the entire `evalBinary` function** with this exact code:
 
 ```lean
+/-- ECMA-262 §13.15 Runtime Semantics: Evaluation (Flat binary subset — aligned with Core.evalBinary). -/
 def evalBinary : Core.BinOp → Value → Value → Value
   | .add, .string a, .string b => .string (a ++ b)
-  | .add, .string a, b => .string (a ++ valueToString b)    -- NEW: mixed string
-  | .add, a, .string b => .string (valueToString a ++ b)    -- NEW: mixed string
+  | .add, .string a, b => .string (a ++ valueToString b)
+  | .add, a, .string b => .string (valueToString a ++ b)
   | .add, a, b => .number (toNumber a + toNumber b)
   | .sub, a, b => .number (toNumber a - toNumber b)
   | .mul, a, b => .number (toNumber a * toNumber b)
   | .div, a, b => .number (toNumber a / toNumber b)
-  | .eq, a, b => .bool (abstractEq a b)                     -- CHANGED: was a == b
-  | .neq, a, b => .bool (!abstractEq a b)                   -- CHANGED: was a != b
+  | .eq, a, b => .bool (abstractEq a b)
+  | .neq, a, b => .bool (!abstractEq a b)
   | .strictEq, a, b => .bool (a == b)
   | .strictNeq, a, b => .bool (a != b)
-  | .lt, a, b => .bool (abstractLt a b)                     -- CHANGED: was toNumber
-  | .gt, a, b => .bool (abstractLt b a)                     -- CHANGED: was toNumber
-  | .le, a, b => .bool (!abstractLt b a)                    -- CHANGED: was toNumber
-  | .ge, a, b => .bool (!abstractLt a b)                    -- CHANGED: was toNumber
+  | .lt, a, b => .bool (abstractLt a b)
+  | .gt, a, b => .bool (abstractLt b a)
+  | .le, a, b => .bool (!abstractLt b a)
+  | .ge, a, b => .bool (!abstractLt a b)
   | .logAnd, a, b => if toBoolean a then b else a
   | .logOr, a, b => if toBoolean a then a else b
-  | .instanceof, .object _, .closure _ _ => .bool true      -- CHANGED: was .undefined
+  | .instanceof, .object _, .closure _ _ => .bool true
   | .instanceof, _, .closure _ _ => .bool false
   | .instanceof, _, _ => .bool false
   | .«in», .string _, .object _ => .bool true
   | .«in», _, _ => .bool false
-  | .mod, a, b =>                                           -- NEW: was .undefined
+  | .mod, a, b =>
       let na := toNumber a; let nb := toNumber b
       if nb == 0.0 then .number (0.0 / 0.0) else .number (na - nb * (na / nb).floor)
-  | .exp, a, b => .number (Float.pow (toNumber a) (toNumber b))  -- NEW
-  | .bitAnd, a, b => .number ((toNumber a |>.toUInt32 &&& toNumber b |>.toUInt32).toFloat)
-  | .bitOr, a, b => .number ((toNumber a |>.toUInt32 ||| toNumber b |>.toUInt32).toFloat)
-  | .bitXor, a, b => .number ((toNumber a |>.toUInt32 ^^^ toNumber b |>.toUInt32).toFloat)
+  | .exp, a, b => .number (Float.pow (toNumber a) (toNumber b))
+  | .bitAnd, a, b =>
+      let ia := toNumber a |>.toUInt32; let ib := toNumber b |>.toUInt32
+      .number ((ia &&& ib).toFloat)
+  | .bitOr, a, b =>
+      let ia := toNumber a |>.toUInt32; let ib := toNumber b |>.toUInt32
+      .number ((ia ||| ib).toFloat)
+  | .bitXor, a, b =>
+      let ia := toNumber a |>.toUInt32; let ib := toNumber b |>.toUInt32
+      .number ((ia ^^^ ib).toFloat)
   | .shl, a, b =>
       let ia := toNumber a |>.toUInt32; let ib := (toNumber b |>.toUInt32) % 32
       .number ((ia <<< ib).toFloat)
@@ -142,11 +157,13 @@ def evalBinary : Core.BinOp → Value → Value → Value
       .number ((ia >>> ib).toFloat)
 ```
 
-**Key**: `convertValue (.function idx) = .closure idx 0`, so `.closure a _, .closure b _ => a == b` matches Core's `.function a, .function b => a == b`.
+**Step 4: Remove the old `valueToString` location** (it was moved in Step 1, so delete the original).
 
-After fixing, also add `@[simp]` lemmas for `abstractEq` and `abstractLt` cases.
+**Step 5: ALSO remove the wildcard case `| _, _, _ => .undefined`** — the new definition is total (exhaustive).
 
-**VERIFY**: After editing, run `bash scripts/lake_build_concise.sh` to ensure build passes. Also check that the ANF/Semantics.lean `evalBinary` (if it has one) matches too.
+**Step 6: Build** with `bash scripts/lake_build_concise.sh`. Fix any downstream issues (e.g. Flat step? binary case or simp lemmas referencing old evalBinary shape).
+
+DO NOT DO ANYTHING ELSE UNTIL THIS IS DONE. This is a 5-minute edit. STOP TIMING OUT.
 
 ### TASK 2: Continue EmitSimRel.step_sim cases
 

@@ -57,99 +57,63 @@ If ClosureConvertCorrect needs 600 lines of case analysis, WRITE 600 LINES. That
 ## Test262
 Read `logs/test262_summary.md` for failure categories. Fix compiler bugs that cause test262 failures.
 
-## ⚠️⚠️⚠️ CC PROOF: WHAT TO DO NOW (2026-03-23T07:05) ⚠️⚠️⚠️
+## ⚠️⚠️⚠️ CC PROOF: WHAT TO DO NOW (2026-03-23T08:05) ⚠️⚠️⚠️
 
-### Progress: bridge lemmas PROVED, init closed, unary/throw/return closed, ANF 3→2 ✅
+### Progress: bridge lemmas PROVED, init closed, unary/throw/return closed, ANF 3→2 ✅. All Flat semantic blockers (D-I) RESOLVED ✅
 
-BUILD IS NOW PASSING ✅. You can build freely.
+BUILD PASSING ✅. Sorry count STUCK at 75 — you are timing out every run. STOP TIMING OUT. Pick ONE sorry, close it, build, log, exit.
 
-### TASK 1 (TOP PRIORITY): Prove `EnvCorr_assign` → close `.assign` sorry (line 628)
+⚠️ YOU KEEP TIMING OUT. Here is how to avoid this:
+1. Pick the EASIEST sorry first (not the most important).
+2. Use lean_goal to see the exact goal.
+3. Use lean_multi_attempt to test tactics.
+4. If it works, edit. If not, move on to next sorry.
+5. Build. Log. Exit. Do NOT try to close 5 sorries in one run.
 
-`Core.Env.assign` (Core/Semantics.lean:67) has TWO branches:
-```lean
-def Env.assign (env : Env) (name : VarName) (v : Value) : Env :=
-  if env.bindings.any (fun kv => kv.fst == name) then
-    { bindings := updateBindingList env.bindings name v }
-  else
-    { bindings := (name, v) :: env.bindings }
-```
+### TASK 1 (TOP PRIORITY): `.assign` sorry (line 639)
 
-`Flat.updateBindingList` (Flat/Semantics.lean:30) is recursive:
-```lean
-def updateBindingList (xs : Env) (name : VarName) (v : Value) : Env :=
-  match xs with
-  | [] => []
-  | (n, old) :: rest => if n == name then (n, v) :: rest
-                         else (n, old) :: updateBindingList rest name v
-```
-
-**IMPORTANT**: These are NOT structurally identical. If `name` is NOT in `env`, Core prepends while Flat returns `[]` for the tail. You need to prove `EnvCorr_assign` WITH the assumption that `name` IS in the env (assign only updates existing bindings in JS semantics). If CC_SimRel guarantees the var exists in both envs, then:
+Prove `EnvCorr_assign` helper. `Core.Env.assign` prepends if name not found, `Flat.updateBindingList` returns unchanged tail. Prove WITH assumption `name IS in the env`:
 
 ```lean
--- Helper: if name is in the list, updateBindingList preserves it
-private theorem updateBindingList_found {xs : Flat.Env} {name : String} {v : Flat.Value}
-    (h : xs.any (fun kv => kv.1 == name)) :
-    (Flat.updateBindingList xs name v).any (fun kv => kv.1 == name) := by
-  induction xs with
-  | nil => simp at h
-  | cons x rest ih =>
-    simp [Flat.updateBindingList]
-    by_cases heq : x.1 == name
-    · simp [heq]
-    · simp [heq]; exact ih (by simp [List.any_cons, heq] at h; exact h)
-
--- Then EnvCorr_assign: if name exists in both envs
 private theorem EnvCorr_assign {cenv : Core.Env} {fenv : Flat.Env}
     (h : EnvCorr cenv fenv) (name : String) (cv : Core.Value)
     (hexists : cenv.bindings.any (fun kv => kv.1 == name)) :
     EnvCorr { bindings := Core.updateBindingList cenv.bindings name cv }
-            (Flat.updateBindingList fenv name (Flat.convertValue cv))
+            (Flat.updateBindingList fenv name (Flat.convertValue cv)) := by
+  -- induction on cenv.bindings
+  sorry
 ```
 
-Use induction on `cenv.bindings` and `fenv` together, applying bidirectional EnvCorr at each step.
+### TASK 2: Stepping sub-cases — USE `sorry` DECOMPOSITION, not depth induction
 
-### TASK 2: Depth-indexed step simulation (BIGGEST cluster: 8+ stepping sorries)
+Instead of trying one big `step_sim_depth` theorem, close individual stepping sorries by:
+1. Read the exact goal with lean_goal
+2. The goal is usually: given Flat steps, show Core steps matching
+3. For each: unfold step?, match on the sub-expression shape, apply the IH
+4. If IH is not available, leave as sorry with a note
 
-Lines 627, 703, 768, 837, 892, 936, 937, 994, 1101, 1202, 1253 ALL need recursive step_simulation. Use strong induction on expression depth:
+Start with the SIMPLEST stepping sorry (e.g., .if stepping where condition is being evaluated).
 
-```lean
-private theorem step_sim_depth (n : Nat) :
-    ∀ sf sc ev sf', sc.expr.depth ≤ n → CC_SimRel s t sf sc → Flat.Step sf ev sf' →
-    ∃ sc', Core.Step sc ev sc' ∧ CC_SimRel s t sf' sc' := by
-  induction n with
-  | zero => ... -- base: depth-0 exprs only (lit/var/this/break/continue)
-  | succ k ih => ... -- use ih on sub-expressions with depth ≤ k
-```
+### TASK 3: ANF sorries (lines 106, 1018)
 
-### TASK 3: Close remaining ANF sorry (line 106 and 1018)
+### TASK 4: `.binary` value sub-case (line 206) — WAIT for wasmspec to land evalBinary fix
 
-You closed one ANF sorry already (3→2). The remaining 2:
-- Line 106: `anfConvert_step_star` body — the full simulation proof
-- Line 1018: nested seq case — needs IH application or lifted Flat.Steps
+### Sorry inventory (2026-03-23T08:05):
 
-### TASK 4: `.binary` value sub-case (line 195)
+| # | File | Lines | Count | Description | Priority |
+|---|------|-------|-------|-------------|----------|
+| 1 | CC | 206 | 1 | .binary value — WAIT for wasmspec | WAIT |
+| 2 | CC | 478 | 1 | .var captured — needs heap corr | LATER |
+| 3 | CC | 639 | 1 | .assign — needs EnvCorr_assign | **TASK 1** |
+| 4 | CC | 638,714,779,848,903,947,948,1005,1112,1213,1264 | 11 | stepping sub-cases | TASK 2 |
+| 5 | CC | 780-786 | 7 | call/obj/prop — needs heap | LATER |
+| 6 | CC | 949-951,1006-1007 | 5 | objLit/arrayLit/funcDef/tryCatch/while | LATER |
+| 7 | ANF | 106,1018 | 2 | step_star + nested seq | **TASK 3** |
+| 8 | Lower | 69 | 1 | Blocked on wasmspec | BLOCKED |
 
-wasmspec is fixing `Flat.evalBinary` alignment NOW. Once they land the fix, `evalBinary_convertValue` should be provable by `cases op <;> cases a <;> cases b <;> simp [...]`. Check if the fix has landed before attempting.
+### Key pitfall — AVOID `cases ... with` inside `<;>` blocks
 
-### TASK 5: `.var` captured case (line 467) — needs heap correspondence
-
-### Sorry inventory (2026-03-23T07:05):
-
-| # | File | Count | Description | Priority |
-|---|------|-------|-------------|----------|
-| 1 | CC | 1 | .binary value (line 195) — WAIT for wasmspec | WAIT |
-| 2 | CC | 1 | .var captured (line 467) — needs heap corr | TASK 5 |
-| 3 | CC | 1 | .assign value (line 628) — needs EnvCorr_assign | **TASK 1** |
-| 4 | CC | 8 | stepping sub-cases — depth induction | **TASK 2** |
-| 5 | CC | 7 | call/newObj/getProp/setProp/getIndex/setIndex/deleteProp — needs heap | LATER |
-| 6 | CC | 5 | objectLit/arrayLit/functionDef/tryCatch/while_ — needs heap+env | LATER |
-| 7 | CC | 3 | stepping sub-cases in yield/await/if | TASK 2 |
-| 8 | ANF | 2 | step_star body + nested seq | **TASK 3** |
-| 9 | Lower | 1 | Blocked on wasmspec | BLOCKED |
-
-### Key Lean 4 pitfall — AVOID `cases ... with` inside `<;>` blocks
-
-When you need to case-split inside a `<;>` combinator, use term-mode `match` instead of `cases ... with`.
+Use term-mode `match` instead of `cases ... with`.
 
 ## ALWAYS LOG YOUR PROGRESS
 At the END of every run, append a summary to agents/proof/log.md:
