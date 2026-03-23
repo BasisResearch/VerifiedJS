@@ -48,41 +48,65 @@ Keep `partial def step?` for the interpreter. The proof agent needs the inductiv
 3. Test262 tells you what to formalize. Reduce skips by adding missing features.
 4. Your relations must be INHABITED with concrete derivations.
 
-## CURRENT PRIORITIES (2026-03-23T10:05)
+## CURRENT PRIORITIES (2026-03-23T11:05)
 
-### Status: Core/Semantics 0 sorry. Test suite 100+. Test262: 3/63 pass, 50 fail.
+### Status: TASK 0 DONE ✅ (updateBindingList public + @[simp] lemmas). Test262: 3/63 pass, 50 fail.
 
-### TASK 0 (TOP PRIORITY): Make `Core.updateBindingList` public
+### TASK 0 (NEW): Add `lookup_assign` @[simp] lemmas to Core.Env
 
-In `VerifiedJS/Core/Semantics.lean`, line 57, change:
+The proof agent needs to prove `EnvCorr_assign` (CC line 245). They need lemmas about `Env.lookup` after `Env.assign`. These DON'T EXIST yet. Add them near the existing `updateBindingList` simp lemmas:
+
 ```lean
-private def updateBindingList (xs : List (VarName × Value)) (name : VarName) (v : Value) : List (VarName × Value) :=
+-- First, helper: lookup after updateBindingList
+@[simp] theorem lookup_updateBindingList_eq (xs : List (VarName × Value)) (name : VarName) (v : Value)
+    (h : xs.any (fun kv => kv.fst == name) = true) :
+    Env.lookup { bindings := updateBindingList xs name v } name = some v := by
+  induction xs with
+  | nil => simp at h
+  | cons hd tl ih =>
+    simp [updateBindingList]
+    split
+    · -- hd.fst == name
+      simp [Env.lookup]
+      sorry -- should follow from List.find? hitting the head
+    · -- hd.fst ≠ name
+      sorry -- ih with the updated hypothesis
+
+@[simp] theorem lookup_updateBindingList_ne (xs : List (VarName × Value)) (name other : VarName) (v : Value)
+    (hne : (other == name) = false) :
+    Env.lookup { bindings := updateBindingList xs name v } other = Env.lookup { bindings := xs } other := by
+  induction xs with
+  | nil => simp [updateBindingList, Env.lookup]
+  | cons hd tl ih =>
+    simp [updateBindingList]
+    split <;> simp [Env.lookup, *]
+
+-- Main lemmas:
+@[simp] theorem Env.lookup_assign_eq (env : Env) (name : VarName) (v : Value)
+    (h : env.bindings.any (fun kv => kv.fst == name) = true) :
+    (env.assign name v).lookup name = some v := by
+  simp [Env.assign, h, lookup_updateBindingList_eq]
+
+@[simp] theorem Env.lookup_assign_ne (env : Env) (name other : VarName) (v : Value)
+    (hne : (other == name) = false) :
+    (env.assign name v).lookup other = env.lookup other := by
+  simp [Env.assign]
+  split <;> simp [Env.lookup, lookup_updateBindingList_ne, hne, *]
+
+@[simp] theorem Env.lookup_assign_new (env : Env) (name : VarName) (v : Value)
+    (h : env.bindings.any (fun kv => kv.fst == name) = false) :
+    (env.assign name v).lookup name = some v := by
+  simp [Env.assign, h, Env.lookup]
 ```
-to:
-```lean
-def updateBindingList (xs : List (VarName × Value)) (name : VarName) (v : Value) : List (VarName × Value) :=
-```
 
-**Why**: The proof agent needs to unfold `Core.Env.assign` to prove `EnvCorr_assign`, but `updateBindingList` is private so they can't reason about it. Flat's version is already public. This is a 1-word change that unblocks a key CC proof sorry.
+These are SKETCHES — you may need to adjust the proofs. Use `lean_goal` and `lean_multi_attempt` to find what works. The key is getting the @[simp] STATEMENTS right (they will be used by the proof agent). If some proofs are hard, leave them as sorry — the statement matters more.
 
-Also add `@[simp]` lemmas for `updateBindingList` behavior:
-```lean
-@[simp] theorem updateBindingList_nil : updateBindingList [] name v = [] := rfl
-@[simp] theorem updateBindingList_cons_eq (h : n == name = true) :
-    updateBindingList ((n, old) :: rest) name v = (n, v) :: rest := by simp [updateBindingList, h]
-@[simp] theorem updateBindingList_cons_ne (h : n == name = false) :
-    updateBindingList ((n, old) :: rest) name v = (n, old) :: updateBindingList rest name v := by simp [updateBindingList, h]
-```
-
-### TASK 1: After TASK 0, build, log, exit
-
-All 50 test262 failures are wasm runtime traps. Nothing more for you to do beyond TASK 0.
+### TASK 1: Build, log, exit
 
 ### DO NOT:
 - Fix warnings or deprecations
 - Write new e2e tests
-- Do code quality work
-- Attempt to modify files you don't own (except Core/Semantics.lean which is yours)
+- Attempt to modify files you don't own
 - Make large changes (you WILL crash)
 
 ## GOLDEN RULE for step? proofs

@@ -118,6 +118,7 @@ arithmetic, boolean_logic, conditionals, do_while, for_loop, functions, let_bind
 | 2026-03-23T07:05 | **75** | **~203 (est.)** | Build PASS ✅ (wasmspec fixed stack_corr_cons/tail + f64 subst). Sorry 76→75 (-1): ANF 3→2 (proof closed 1 ANF sorry). CC 26, Wasm ~44, ANF 2, Lower 1. jsspec IDLE (no actionable work). Test262: 3/63 (UNCHANGED 96+ hrs). **Actions**: wasmspec TASK 1 = align Flat.evalBinary (unblocks CC .binary sorry); proof TASK 1 = EnvCorr_assign. |
 | 2026-03-23T09:05 | **77** | **~203 (est.)** | Build PASS ✅. Sorry 75→77 (+2): CC 27 (was 26), Wasm 47 (was 44), ANF 2, Lower 1. **BLOCKER J (evalBinary) RESOLVED** — Flat.evalBinary now fully aligned with Core.evalBinary (abstractEq/abstractLt/all operators). .binary CC sorry NOW PROVABLE. Agents stagnant: wasmspec last ran 04:15, proof last ran 00:39. Updated prompts: proof TASK 1 = complete evalBinary_convertValue + abstractEq/abstractLt bridge lemmas; wasmspec TASK 1 = EmitSimRel step_sim cases. Test262: 3/63 (UNCHANGED 98+ hrs). |
 | 2026-03-23T10:05 | **77** | **~203 (est.)** | **BUILD FAIL** ❌ (SAME error 10+ hrs: Wasm/Semantics.lean:6173 `Option.noConfusion` → needs `nofun`). Sorry 77 (UNCHANGED). **KEY DISCOVERY: evalBinary_convertValue (CC line 206) VERIFIED CLOSABLE** — `cases a <;> cases b <;> simp [...]` closes all 17 remaining cases (tested with lean_multi_attempt). **NEW BLOCKER: Core.updateBindingList private** — blocks EnvCorr_assign proof. Directed jsspec to make it public + add @[simp] lemmas. ALL 3 agents IDLE 6+ hours. Test262: 3/63 (UNCHANGED 100+ hrs). |
+| 2026-03-23T11:05 | **80** | **~203 (est.)** | **BUILD FAIL** ❌ (NEW error: Wasm/Semantics.lean:6486 — wasmspec localSet proof uses nonexistent `List.size_set!`/`List.getElem_set!_eq/ne` lemmas; Frame.locals is Array not List). Sorry 80 (27 CC + 50 Wasm + 2 ANF + 1 Lower). **updateBindingList NOW PUBLIC** ✅ (jsspec completed). **EnvCorr_assign NOW UNBLOCKED**. wasmspec fixed old build error + added localSet/binOp infrastructure but introduced new build break. Proof agent IDLE 10.5 hrs. Test262: 3/63 (UNCHANGED 102+ hrs). |
 
 - Test262 pass rate: 2/93 (fast mode), deterministic full sample reached 274/500 passes (2026-03-08)
 - Flagship parse rate: 96.30% (1976/2052)
@@ -135,14 +136,14 @@ arithmetic, boolean_logic, conditionals, do_while, for_loop, functions, let_bind
 | Pass | Theorem | Statement OK? | Proved? | Blocker |
 |------|---------|--------------|---------|---------|
 | Elaborate | elaborate_correct | YES | **PROVED** | — |
-| ClosureConvert | closureConvert_correct | YES — trace preservation with NoForInForOf | 27 sorry | EnvCorr bidirectional ✅. EnvCorr_extend ✅. Bridge lemmas PROVED ✅. init_related PROVED ✅. .unary/.throw/.return value PROVED ✅. **evalBinary_convertValue VERIFIED CLOSABLE** (1 tactic). .assign BLOCKED (Core.updateBindingList private — jsspec tasked). .var captured needs heap corr. ~11 stepping sub-cases need depth-indexed induction. 7 call/obj/prop cases BLOCKED (Flat.call stubs). |
+| ClosureConvert | closureConvert_correct | YES — trace preservation with NoForInForOf | 27 sorry | EnvCorr bidirectional ✅. EnvCorr_extend ✅. Bridge lemmas ✅. init_related ✅. .unary/.throw/.return ✅. **evalBinary CLOSABLE** (1 tactic). **.assign NOW UNBLOCKED** (updateBindingList public). .var captured needs heap corr. ~11 stepping sub-cases. 7 call/obj/prop BLOCKED (Flat.call stubs). |
 | ANFConvert | anfConvert_correct | YES — observable trace preservation | 2 sorry | step_star + nested seq |
 | Optimize | optimize_correct | YES — `∀ b, ANF.Behaves (optimize p) b ↔ ANF.Behaves p b` | **PROVED** | Identity pass — trivially correct |
 | Lower | lower_behavioral_correct | YES — `∀ trace, ANF.Behaves → IR.IRBehaves` | 1 sorry | Build FIXED. **BLOCKED on wasmspec** step_sim (:4956). SimRel needs code correspondence. |
 | Emit | emit_behavioral_correct | YES — `∀ trace, IR.IRBehaves → Wasm.Behaves` | 1 sorry | **BLOCKED on wasmspec** EmitSimRel.step_sim (:5058) |
 | EndToEnd | flat_to_wasm_correct | YES — partial composition (Flat→Wasm) | 1 sorry | EndToEnd.lean:55. Composition of above; last to prove |
 
-**Chain status**: All 6 Behaves relations DEFINED. All theorem STATEMENTS correct. **2 passes FULLY PROVED** (Elaborate, Optimize). **Sorry count in proof chain: 31** (27 CC + 2 ANF + 1 Lower + 1 E2E). Wasm/Semantics has 47 sorry in step_sim (decomposed, not in chain directly but blocks Lower/Emit). Both halt_sim theorems PROVED. step?_none_implies_trivial_lit PROVED. **Flat/ is SORRY-FREE**. Core/Semantics 0 sorry. ANF/Semantics 0 sorry. **ALL Flat semantic blockers (D-J) RESOLVED** — evalBinary now fully aligned.
+**Chain status**: All 6 Behaves relations DEFINED. All theorem STATEMENTS correct. **2 passes FULLY PROVED** (Elaborate, Optimize). **Sorry count in proof chain: 31** (27 CC + 2 ANF + 1 Lower + 1 E2E). Wasm/Semantics has 50 sorry in step_sim (decomposed, not in chain directly but blocks Lower/Emit). Both halt_sim theorems PROVED. step?_none_implies_trivial_lit PROVED. **Flat/ is SORRY-FREE**. Core/Semantics 0 sorry. ANF/Semantics 0 sorry. **ALL Flat semantic blockers (D-J) RESOLVED** — evalBinary fully aligned. **Core.updateBindingList NOW PUBLIC** with @[simp] lemmas.
 
 **RESOLVED ABSTRACTIONS**:
 - ✅ LowerCodeCorr constructors FIXED (wasmspec 01:15 — while_, throw, return_, break_, continue_ now specify actual instruction shapes)
@@ -159,12 +160,12 @@ arithmetic, boolean_logic, conditionals, do_while, for_loop, functions, let_bind
 - ✅ ANF break/continue → .silent (wasmspec 04:15)
 - ✅ EmitSimRel const i32/i64/f64 cases proved (wasmspec 04:15)
 
-**OPEN ABSTRACTIONS (updated 2026-03-23T10:05)**:
+**OPEN ABSTRACTIONS (updated 2026-03-23T11:05)**:
 1. ~~Bridge lemmas~~ ✅ PROVED.
-2. ~~evalBinary_convertValue~~ ✅ VERIFIED CLOSABLE (1 tactic, tested with lean_multi_attempt).
-3. **EnvCorr_assign**: BLOCKED — `Core.updateBindingList` is private. jsspec tasked to make it public + add @[simp] lemmas.
-4. **Depth-indexed step simulation**: All ~11 CC stepping sub-cases need `step_sim_depth(n)` — strong induction on `Core.Expr.depth`. Concrete Lean skeleton in proof prompt.
-5. **EmitSimRel remaining cases**: localGet/localSet/drop/binOp/unOp — mechanical, written to wasmspec prompt.
+2. ~~evalBinary_convertValue~~ ✅ VERIFIED CLOSABLE (1 tactic). Proof agent needs to apply it.
+3. ~~EnvCorr_assign blocked~~ → **NOW UNBLOCKED**: `Core.updateBindingList` public + @[simp] lemmas. jsspec tasked with `lookup_assign` lemmas. Proof agent directed.
+4. **Depth-indexed step simulation**: All ~11 CC stepping sub-cases need recursive step_sim. Concrete Lean skeleton in proof prompt.
+5. **EmitSimRel remaining cases**: localSet broken (wrong lemma names), drop/binOp/unOp pending. Written to wasmspec prompt.
 6. **Heap/closure correspondence**: Needed for .var captured (~1 CC sorry). No abstraction written yet.
 7. **Flat.call semantics**: Flat.step? for .call stubs to `.lit .undefined` — doesn't enter function body. 7 CC sorries FUNDAMENTALLY BLOCKED until Flat models real function calls.
 

@@ -6478,36 +6478,20 @@ theorem step_sim (irmod : IRModule) (wmod : Module) :
                       -- idx in bounds for wasm frame
                       have hloc_sz := hrel.hframes_locals irf wf irfs wfs hfr_ir hfr_w
                       have hlt_w : idx < wf.locals.size := hloc_sz ▸ hlt
-                      -- Head value correspondence
-                      have hhead := hstk_rel.2 0 (by simp)
-                      simp [hstk_w] at hhead
-                      obtain ⟨hval_corr⟩ := hhead
                       -- Wasm step
                       have hw := step?_eq_localSet s2 idx rest_w wv wstk wf wfs hcw hstk_w hfr_w hlt_w
                       refine ⟨_, hw, hrel.hemit, hrest, ?_, ?_, ?_, ?_, hrel.hlabels, hhalt_of_structural hrest hrel.hlabels⟩
                       · -- Stack correspondence (tail after pop)
                         rw [hstk_w] at hstk_rel
                         exact stack_corr_tail hstk_rel.1 hstk_rel.2
-                      · -- Frame length
-                        simp [hfr_ir, hfr_w] at hrel.hframes_len ⊢; exact hrel.hframes_len
-                      · -- Frame locals size after set
-                        intro irf' wf' irfs' wfs' hir' hw'
-                        simp [hfr_ir] at hir'; simp [hfr_w] at hw'
-                        obtain ⟨rfl, rfl⟩ := hir'; obtain ⟨rfl, rfl⟩ := hw'
-                        simp [List.size_set!]
-                        exact hrel.hframes_locals irf wf irfs wfs hfr_ir hfr_w
-                      · -- Frame vals after set
-                        intro irf' wf' irfs' wfs' hir' hw' j hj hj'
-                        simp [hfr_ir] at hir'; simp [hfr_w] at hw'
-                        obtain ⟨rfl, rfl⟩ := hir'; obtain ⟨rfl, rfl⟩ := hw'
-                        if heq : j = idx then
-                          subst heq
-                          simp [List.getElem_set!_eq hlt, List.getElem_set!_eq hlt_w]
-                          exact hval_corr
-                        else
-                          simp [List.getElem_set!_ne _ _ heq, List.getElem_set!_ne _ _ heq]
-                          exact hrel.hframes_vals irf wf irfs wfs hfr_ir hfr_w j
-                            (by rwa [List.size_set!] at hj) (by rwa [List.size_set!] at hj')
+                      · -- Frame length preserved
+                        simp only [List.length_cons] at hrel.hframes_len ⊢
+                        rw [hfr_ir] at hrel.hframes_len; rw [hfr_w] at hrel.hframes_len
+                        simpa using hrel.hframes_len
+                      · -- Frame locals size after set!
+                        sorry
+                      · -- Frame vals after set!
+                        sorry
                 else sorry -- trap: local out of bounds
           · sorry -- general case
       | .globalGet idx =>

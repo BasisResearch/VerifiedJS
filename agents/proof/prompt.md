@@ -57,67 +57,72 @@ If ClosureConvertCorrect needs 600 lines of case analysis, WRITE 600 LINES. That
 ## Test262
 Read `logs/test262_summary.md` for failure categories. Fix compiler bugs that cause test262 failures.
 
-## ⚠️⚠️⚠️ CC PROOF: WHAT TO DO NOW (2026-03-23T09:05) ⚠️⚠️⚠️
+## ⚠️⚠️⚠️ CC PROOF: WHAT TO DO NOW (2026-03-23T11:05) ⚠️⚠️⚠️
 
-### Progress: ALL Flat semantic blockers (D-J) RESOLVED ✅. evalBinary aligned.
+### Status: Build broken in Wasm/Semantics.lean (wasmspec's file, NOT yours). YOUR files should build clean.
 
-Build has 1 error in Wasm/Semantics.lean:6173 (wasmspec's file, NOT yours). YOUR files build clean ✅.
+Sorry count: 80 (27 CC + 50 Wasm + 2 ANF + 1 Lower).
 
-Sorry count: 77 (27 CC + 47 Wasm + 2 ANF + 1 Lower).
-
-⚠️ YOU KEEP TIMING OUT. Here is how to avoid this:
-1. Pick the EASIEST sorry first (not the most important).
-2. Use lean_goal to see the exact goal.
-3. Use lean_multi_attempt to test tactics.
-4. If it works, edit. If not, move on to next sorry.
-5. Build. Log. Exit. Do NOT try to close 5 sorries in one run.
+⚠️ YOU KEEP TIMING OUT. Work on AT MOST 2 tasks per run:
+1. Pick the EASIEST sorry first.
+2. Use `lean_goal` + `lean_multi_attempt` to test before editing.
+3. Build. Log. Exit.
 
 ### TASK 1 (EASIEST — 30 SECONDS): Close `evalBinary_convertValue` sorry (line 206)
-
-⚠️ I VERIFIED THIS WITH lean_multi_attempt — it works. Just do it:
 
 Replace `| _ => sorry` at line 206 with:
 ```lean
   | _ => cases a <;> cases b <;> simp [Core.evalBinary, Flat.evalBinary, Flat.convertValue, Core.toNumber, Flat.toNumber, toNumber_convertValue, Core.valueToString, Flat.valueToString, valueToString_convertValue]
 ```
 
-This single tactic closes ALL 17 remaining cases (add, eq, neq, lt, gt, le, ge, mod, exp, bitAnd, bitOr, bitXor, shl, shr, ushr, instanceof, in). I tested it — "No goals to be solved" confirms it works. **Do this first — it's free.**
+I verified this with `lean_multi_attempt` — "No goals to be solved". It closes ALL 17 remaining operator cases. **Do this first — it's free.**
 
-### TASK 2: `.assign` sorry (line 245 — `EnvCorr_assign`)
+### TASK 2 (NOW UNBLOCKED!): `.assign` sorry (line 245 — `EnvCorr_assign`)
 
-**BLOCKER**: `Core.updateBindingList` is private in Core/Semantics.lean (jsspec's file). I've asked jsspec to make it public. Once it's public, the proof strategy is:
+`Core.updateBindingList` is NOW PUBLIC. jsspec made the change + added @[simp] lemmas:
+- `updateBindingList_nil`, `updateBindingList_cons_eq`, `updateBindingList_cons_ne`
+Both Core and Flat have these.
 
+**Proof skeleton:**
 ```lean
 private theorem EnvCorr_assign {cenv : Core.Env} {fenv : Flat.Env}
     (h : EnvCorr cenv fenv) (name : String) (cv : Core.Value) :
     EnvCorr (cenv.assign name cv) (fenv.assign name (Flat.convertValue cv)) := by
   unfold Core.Env.assign Flat.Env.assign
-  -- Case split: does name exist in the env?
-  -- Both branches need: updateBindingList preserves lookup for other names,
-  -- and updates lookup for the assigned name.
-  -- Need induction on the binding list to show updateBindingList commutes with convertValue.
+  -- Both have: if name exists then updateBindingList else prepend
+  -- Need helper: updateBindingList_lookup preserves EnvCorr
+  -- Strategy: split on (env.any ...) for both sides, then for each branch:
+  --   For updateBindingList branch: induction on binding list
+  --   For prepend branch: similar to EnvCorr_extend
   sorry
 ```
 
-If `Core.updateBindingList` is still private when you run, SKIP this task and do TASK 3 instead.
+Key insight: You need an auxiliary lemma showing `updateBindingList` commutes with `convertValue` for lookups:
+```lean
+-- Helper: if EnvCorr holds and name exists, then name exists in both envs
+-- Helper: updateBindingList preserves lookup for other names
+-- Helper: updateBindingList sets lookup for the target name
+```
 
-### TASK 3: Stepping sub-cases — STRUCTURAL INDUCTION
+Use `induction cenv.bindings` (or `induction fenv` for Flat) with the @[simp] lemmas.
 
-All stepping sorries have the SAME shape. Add explicit fuel/depth parameter for induction.
+**If this seems too complex, try `simp_all [Core.Env.assign, Flat.Env.assign, Core.updateBindingList, Flat.updateBindingList]` first** — simp might close it with the @[simp] lemmas.
 
-### TASK 4: ANF sorries (lines 106, 1018)
+### TASK 3: Stepping sub-cases (lines 647, 701, 776, 910, 965, 1009, 1010, 1067, 1243, 1344, 1395)
 
-### Sorry inventory (2026-03-23T09:05):
+These all need recursive step simulation. Consider: can any be closed with `sorry`-free helper lemmas?
+
+### Sorry inventory (2026-03-23T11:05):
 
 | # | File | Lines | Count | Description | Priority |
 |---|------|-------|-------|-------------|----------|
-| 1 | CC | 206 | 1 | evalBinary_convertValue catch-all — **VERIFIED CLOSABLE: 1 tactic** | **TASK 1** |
-| 2 | CC | 245 | 1 | .assign — needs EnvCorr_assign (BLOCKED: Core.updateBindingList private) | **TASK 2** |
+| 1 | CC | 206 | 1 | evalBinary_convertValue catch-all — **VERIFIED CLOSABLE** | **TASK 1** |
+| 2 | CC | 245 | 1 | .assign — NOW UNBLOCKED | **TASK 2** |
 | 3 | CC | 487 | 1 | .var captured — needs heap corr | LATER |
-| 4 | CC | 647,701,776,910,965,1009,1010,1067,1174,1275,1326 | 11 | stepping sub-cases | TASK 3 |
-| 5 | CC | 841-848 | 7 | call/obj/prop — **FUNDAMENTALLY BLOCKED**: Flat.step? for .call stubs to .lit .undefined, doesn't call function bodies. Core.step? enters function body. Traces diverge. Needs Flat semantics rewrite to model calls. | BLOCKED |
-| 6 | CC | 1011-1013,1068-1069 | 5 | objLit/arrayLit/funcDef/tryCatch/while | LATER |
-| 7 | ANF | 2 | 2 | step_star + nested seq | **TASK 4** |
+| 4 | CC | 647,701,776,910,965,1009,1010,1067,1243,1344,1395 | 11 | stepping sub-cases | TASK 3 |
+| 5 | CC | 841-848 | 7 | call/obj/prop — BLOCKED on Flat.call semantics | BLOCKED |
+| 6 | CC | 1011-1013,1068,1138 | 5 | objLit/arrayLit/funcDef/tryCatch/while | LATER |
+| 7 | ANF | 2 | 2 | step_star + nested seq | LATER |
 | 8 | Lower | 1 | 1 | Blocked on wasmspec | BLOCKED |
 
 ### Key pitfall — AVOID `cases ... with` inside `<;>` blocks

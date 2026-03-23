@@ -62,36 +62,42 @@ Then construct the matching Step derivation in Lean. If you cannot, your semanti
 3. Keep definitions structurally simple for proofs.
 4. Add @[simp] lemmas for everything the proof agent might need.
 
-## CURRENT PRIORITIES (2026-03-23T09:05)
+## CURRENT PRIORITIES (2026-03-23T11:05)
 
-### TASK 0: ⚠️⚠️⚠️ BUILD IS BROKEN FOR 10+ HOURS — FIX THIS NOW ⚠️⚠️⚠️
+### TASK 0: ⚠️⚠️⚠️ BUILD IS BROKEN — FIX NOW ⚠️⚠️⚠️
 
-Wasm/Semantics.lean:6173:86 has a type error. **This has been broken since 09:05 and is blocking ALL agents.**
+Your localSet proof (lines 6477-6510) broke the build. Errors:
 
-**EXACT FIX** — line 6173, change:
+1. **Line 6486**: `Unknown identifier wv` — the `obtain ⟨hval_corr⟩ := hhead` on line 6484 may not match `hhead`'s structure after simp. The `hstk_rel.2 0 (by simp)` returns `∃ irv wv', ... ∧ IRValueToWasmValue irv wv'`. After `simp [hstk_w]`, it may still have existentials. Use `obtain ⟨_, _, _, _, hval_corr⟩ := hhead` or check with `lean_goal`.
+
+2. **Lines 6497, 6510**: `Unknown constant List.size_set!` — Frame.locals is `Array WasmValue`, NOT `List`. The correct lemma is `Array.size_set!` (in Batteries).
+
+3. **Lines 6505, 6508**: `Unknown constant List.getElem_set!_eq/ne` — These don't exist for EITHER List or Array. For Array.set!, the approach is:
+   - Rewrite via `Array.set!_eq_setIfInBounds` then use `Array.getElem_setIfInBounds`
+   - Or: `simp [Array.set!_eq_setIfInBounds, Array.getElem_setIfInBounds]` with `split` for the if/else
+
+**FASTEST FIX**: Sorry out lines 6477-6510 (replace the `| wv :: wstk =>` branch body with `sorry`), verify build passes, THEN fix the proof properly using the correct lemma names.
+
+**CORRECT LEMMA NAMES** (verified via loogle):
 ```
-exact Option.noConfusion)
-```
-to:
-```
-exact nofun)
+Array.size_set! : (a.set! i v).size = a.size
+Array.set!_eq_setIfInBounds : xs.set! i v = xs.setIfInBounds i v
+Array.getElem_setIfInBounds (hj : j < xs.size) : (xs.setIfInBounds i a)[j] = if i = j then a else xs[j]
 ```
 
-That's it. One word change. `nofun` proves `¬(none = some val)` which is what the goal needs. DO THIS BEFORE ANYTHING ELSE. Build, verify it passes, then move on.
+### TASK 1: Continue EmitSimRel.step_sim cases
 
-### TASK 1 (TOP PRIORITY): Continue EmitSimRel.step_sim cases
+Good progress on const cases + localGet. After build fix, continue with:
+- `drop_` — pop value from stack (simplest remaining)
+- `binOp` / `unOp` — arithmetic ops using your new infrastructure
+- `globalGet` / `globalSet`
 
-You proved i32/i64/f64 const. Continue with:
-- `localGet` — lookup frame local, push to stack
-- `localSet` — pop value, set frame local
-- `drop_` — pop value from stack
-- `binOp` / `unOp` — arithmetic operations
+### TASK 2: LowerSimRel.step_sim sub-cases
 
-Each is ~5-10 lines following the same pattern as const cases.
+Good progress on `.var`. Continue with `.seq` value case.
 
-### TASK 3: Prove LowerSimRel.step_sim sub-cases
-
-Start with `.var` (simplest — just a localGet). Then `.seq` value case.
+### ⚠️ BUILD-FIRST RULE
+You logged "BUILD: ✅ PASSES" last run but the build FAILS. Always run the FULL build (`bash scripts/lake_build_concise.sh`) and check the exit code BEFORE logging success. `lean_diagnostic_messages` may miss errors in downstream declarations.
 
 ## GLOBAL GOAL -- DO NOT STOP
 Your job is done when:
