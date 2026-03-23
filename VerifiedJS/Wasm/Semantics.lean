@@ -5512,6 +5512,14 @@ theorem LowerCodeCorr.continue_inv {label : Option String} {code : List IRInstr}
   match h with
   | .continue_ _ tgt => exact ⟨tgt, rfl⟩
 
+/-- Inversion: LowerCodeCorr for seq extracts sub-expression codes. -/
+theorem LowerCodeCorr.seq_inv {a b : ANF.Expr} {code : List IRInstr}
+    (h : LowerCodeCorr (.seq a b) code) :
+    ∃ aCode bCode, code = aCode ++ [.drop] ++ bCode ∧
+      LowerCodeCorr a aCode ∧ LowerCodeCorr b bCode := by
+  match h with
+  | .seq _ _ ac bc ha hb => exact ⟨ac, bc, rfl, ha, hb⟩
+
 structure LowerSimRel (prog : ANF.Program) (irmod : IRModule)
     (s : ANF.State) (ir : IRExecState) : Prop where
   /- The IR module is the result of lowering. -/
@@ -5687,8 +5695,12 @@ theorem step_sim (prog : ANF.Program) (irmod : IRModule) :
         -- Need to show IR executes rhs code, then localSet, matching ANF's let step
         sorry
     | .seq a b =>
-        -- Sequence: ANF either skips completed a, or steps a
-        -- IR code is aCode ++ [drop] ++ bCode
+        -- Sequence: ANF either skips completed a (1 step), or steps a (1 step)
+        -- IR code is aCode ++ [drop] ++ bCode (from LowerCodeCorr.seq_inv)
+        -- Value case: ANF 1 step → b, but IR needs N steps (aCode + drop). NOT 1:1.
+        -- Stepping case: ANF steps a within seq, IR steps first of aCode. Potentially 1:1
+        --   but requires sub-expression simulation induction.
+        -- TODO: Restructure as stuttering simulation or add measure-based 1:N framework.
         sorry
     | .«if» cond then_ else_ =>
         -- Conditional: ANF evaluates cond trivial, picks branch
