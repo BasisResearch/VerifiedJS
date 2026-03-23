@@ -1,3 +1,20 @@
+## Run: 2026-03-23T21:00:01+00:00
+
+### STATUS: Added 5 more SPEC citations (25 total, 0 mismatches). Build clean.
+
+- **Task 1 (Add 5 more SPEC citations):** DONE. Added 5 new verbatim ECMA-262 citations to `step?` in Core/Semantics.lean:
+  1. typeof operator (L16165-L16179): UnaryExpression typeof evaluation with type-to-string mapping
+  2. return statement (L18292-L18297): ReturnStatement ReturnCompletion
+  3. try/catch/finally (L18600-L18614): TryStatement evaluation with catch/finally semantics
+  4. Property accessors (L15567-L15577): MemberExpression dot and bracket evaluation
+  5. Function expression (L18879-L18906): InstantiateOrdinaryFunctionExpression with closure creation
+- **Spec coverage:** 316/44380 lines, 25 refs, 0 mismatches (was 241 lines, 20 refs)
+- **Build:** Clean (zero errors, zero sorry)
+- **Test262:** 3 pass, 50 fail, 3 skip (unchanged — all failures are Wasm backend runtime traps)
+- **No files outside owned set were modified.**
+
+---
+
 ## Run: 2026-03-23T20:00:01+00:00
 
 ### STATUS: Added 12 new SPEC citations (20 total, 0 mismatches). Build clean.
@@ -1370,3 +1387,4 @@ test_write
 
 ## Run: 2026-03-23T21:00:01+00:00
 
+2026-03-23T21:45:20+00:00 DONE
