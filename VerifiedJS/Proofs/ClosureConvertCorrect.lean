@@ -319,16 +319,12 @@ private theorem Flat_lookup_assign_ne (env : Flat.Env) (name other : Flat.VarNam
   · exact Flat_lookup_updateBindingList_ne env name other v hne
   · simp only [Flat.Env.lookup, List.find?, hne, Bool.false_eq_true, ↓reduceIte]
 
-private theorem Core_lookup_assign_eq (env : Core.Env) (name : Core.VarName) (v : Core.Value) :
+private theorem Core_lookup_assign_eq (env : Core.Env) (name : String) (v : Core.Value) :
     (env.assign name v).lookup name = some v := by
-  simp only [Core.Env.assign]
+  unfold Core.Env.assign
   split
   · exact Core.lookup_updateBindingList_eq env.bindings name v (by assumption)
   · simp [Core.Env.lookup, List.find?, beq_self_eq_true]
-
-private theorem Core_lookup_assign_inj (env : Core.Env) (name : Core.VarName) (v v' : Core.Value)
-    (h : (env.assign name v).lookup name = some v') : v' = v := by
-  rw [Core_lookup_assign_eq] at h; exact Option.some.inj h
 
 /-- Assigning the same name in both envs preserves EnvCorr. -/
 private theorem EnvCorr_assign {cenv : Core.Env} {fenv : Flat.Env}
@@ -350,7 +346,8 @@ private theorem EnvCorr_assign {cenv : Core.Env} {fenv : Flat.Env}
     intro n cv' hlookup
     by_cases hname : n = name
     · subst hname
-      subst (Core_lookup_assign_inj _ _ _ _ hlookup)
+      rw [Core_lookup_assign_eq] at hlookup
+      cases hlookup
       exact ⟨Flat.convertValue cv, Flat_lookup_assign_eq _ _ _, rfl⟩
     · have hne : (n == name) = false := by simp [beq_eq_false_iff_ne, hname]
       rw [Core.Env.lookup_assign_ne _ _ _ _ hne] at hlookup
