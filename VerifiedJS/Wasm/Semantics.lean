@@ -5873,7 +5873,7 @@ theorem EmitCodeCorr.cons_inv {instr : IRInstr} {rest : List IRInstr} {wcode : L
   cases h with
   | const_i32 _ _ _ rw _ hrw => exact ⟨[_], rw, rfl, hrw⟩
   | const_i64 _ _ _ rw _ hrw => exact ⟨[_], rw, rfl, hrw⟩
-  | const_f64 _ _ _ rw hrw => exact ⟨[_], rw, rfl, hrw⟩
+  | const_f64 _ _ _ rw _ hrw => exact ⟨[_], rw, rfl, hrw⟩
   | localGet _ _ rw hrw => exact ⟨[_], rw, rfl, hrw⟩
   | localSet _ _ rw hrw => exact ⟨[_], rw, rfl, hrw⟩
   | globalGet _ _ rw hrw => exact ⟨[_], rw, rfl, hrw⟩
@@ -6051,13 +6051,13 @@ theorem step_sim (irmod : IRModule) (wmod : Module) :
           rcases hc.const_i32_inv with ⟨n, rest_w, hcw, hparse, hrest⟩ | ⟨wasm_instrs, rest_w, hcw, hrest⟩
           · -- Specific case: Wasm code = i32Const n :: rest_w
             have hir := irStep?_eq_i32Const s1 v n.toNat rest hcode_ir hparse
+            simp only [show n.toNat.toUInt32 = n from by simp] at hir
             rw [hir] at hstep
             simp only [Option.some.injEq, Prod.mk.injEq] at hstep
             obtain ⟨rfl, rfl⟩ := hstep
             have hw := step?_eq_i32Const s2 n rest_w hcw
-            exact ⟨_, hw, ⟨hrel.hemit, hrest,
-              by have hrr : n.toNat.toUInt32 = n := by simp
-                 rw [hrr]; exact stack_corr_cons hrel.hstack.1 hrel.hstack.2 (.i32 n),
+            exact ⟨_, hw, ⟨hrel.hemit, hrest, by
+              show _ ∧ _; exact stack_corr_cons hrel.hstack.1 hrel.hstack.2 (.i32 n),
               hrel.hlabels, hhalt_of_structural hrest hrel.hlabels⟩⟩
           · -- General case (EmitCodeCorr.general)
             sorry
@@ -6066,13 +6066,13 @@ theorem step_sim (irmod : IRModule) (wmod : Module) :
           have hc : EmitCodeCorr (IRInstr.const_ .i64 v :: rest) s2.code := hcode_ir ▸ hrel.hcode
           rcases hc.const_i64_inv with ⟨n, rest_w, hcw, hparse, hrest⟩ | ⟨wasm_instrs, rest_w, hcw, hrest⟩
           · have hir := irStep?_eq_i64Const s1 v n.toNat rest hcode_ir hparse
+            simp only [show n.toNat.toUInt64 = n from by simp] at hir
             rw [hir] at hstep
             simp only [Option.some.injEq, Prod.mk.injEq] at hstep
             obtain ⟨rfl, rfl⟩ := hstep
             have hw := step?_eq_i64Const s2 n rest_w hcw
-            exact ⟨_, hw, ⟨hrel.hemit, hrest,
-              by have hrr : n.toNat.toUInt64 = n := by simp
-                 rw [hrr]; exact stack_corr_cons hrel.hstack.1 hrel.hstack.2 (.i64 n),
+            exact ⟨_, hw, ⟨hrel.hemit, hrest, by
+              show _ ∧ _; exact stack_corr_cons hrel.hstack.1 hrel.hstack.2 (.i64 n),
               hrel.hlabels, hhalt_of_structural hrest hrel.hlabels⟩⟩
           · sorry -- general case
       | .const_ .f64 v =>
@@ -6080,12 +6080,13 @@ theorem step_sim (irmod : IRModule) (wmod : Module) :
           have hc : EmitCodeCorr (IRInstr.const_ .f64 v :: rest) s2.code := hcode_ir ▸ hrel.hcode
           rcases hc.const_f64_inv with ⟨f, rest_w, hcw, hfeq, hrest⟩ | ⟨wasm_instrs, rest_w, hcw, hrest⟩
           · have hir := irStep?_eq_f64Const s1 v rest hcode_ir
+            simp only [hfeq] at hir
             rw [hir] at hstep
             simp only [Option.some.injEq, Prod.mk.injEq] at hstep
             obtain ⟨rfl, rfl⟩ := hstep
             have hw := step?_eq_f64Const s2 f rest_w hcw
-            exact ⟨_, hw, ⟨hrel.hemit, hrest,
-              by rw [hfeq]; exact stack_corr_cons hrel.hstack.1 hrel.hstack.2 (.f64 _),
+            exact ⟨_, hw, ⟨hrel.hemit, hrest, by
+              show _ ∧ _; exact stack_corr_cons hrel.hstack.1 hrel.hstack.2 (.f64 f),
               hrel.hlabels, hhalt_of_structural hrest hrel.hlabels⟩⟩
           · sorry -- general case
       | .const_ .ptr v =>
