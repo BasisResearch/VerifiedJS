@@ -477,6 +477,11 @@ def pushTrace (s : State) (t : TraceEvent) : State :=
 def step? (s : State) : Option (TraceEvent × State) :=
   match h : s.expr with
   | .lit _ => none
+  -- SPEC: L14868-L14871
+  -- | IdentifierReference : Identifier 1. Return ? ResolveBinding(StringValue
+  -- | of |Identifier|). IdentifierReference : `yield` 1. Return ?
+  -- | ResolveBinding(*"yield"*). IdentifierReference : `await` 1. Return
+  -- | ? ResolveBinding(*"await"*).
   | .var name =>
       match s.env.lookup name with
       | some v =>
@@ -486,6 +491,15 @@ def step? (s : State) : Option (TraceEvent × State) :=
           let msg := "ReferenceError: " ++ name
           let s' := pushTrace { s with expr := .lit .undefined } (.error msg)
           some (.error msg, s')
+  -- SPEC: L17386-L17394
+  -- | LexicalBinding : BindingIdentifier Initializer 1. Let _bindingId_ be
+  -- | the StringValue of |BindingIdentifier|. 1. Let _lhs_ be !
+  -- | ResolveBinding(_bindingId_). 1. If
+  -- | IsAnonymousFunctionDefinition(|Initializer|) is *true*, then 1. Let
+  -- | _value_ be ? NamedEvaluation of |Initializer| with argument
+  -- | _bindingId_. 1. Else, 1. Let _rhs_ be ? Evaluation of
+  -- | |Initializer|. 1. Let _value_ be ? GetValue(_rhs_). 1. Perform !
+  -- | InitializeReferencedBinding(_lhs_, _value_). 1. Return ~empty~.
   | .let name init body =>
       match exprValue? init with
       | some v =>
@@ -497,6 +511,13 @@ def step? (s : State) : Option (TraceEvent × State) :=
               let s' := pushTrace { si with expr := .let name si.expr body, trace := s.trace } t
               some (t, s')
           | none => none
+  -- SPEC: L16640-L16655
+  -- | AssignmentExpression : LeftHandSideExpression `=`
+  -- | AssignmentExpression 1. If |LeftHandSideExpression| is neither an
+  -- | |ObjectLiteral| nor an |ArrayLiteral|, then 1. Let _lRef_ be ?
+  -- | Evaluation of |LeftHandSideExpression|. 1. Else, 1. Let _rRef_ be ?
+  -- | Evaluation of |AssignmentExpression|. 1. Let _rVal_ be ?
+  -- | GetValue(_rRef_). 1. Perform ? PutValue(_lRef_, _rVal_). 1. Return _rVal_.
   | .assign name rhs =>
       match exprValue? rhs with
       | some v =>
@@ -534,6 +555,10 @@ def step? (s : State) : Option (TraceEvent × State) :=
               let s' := pushTrace { sc with expr := .if sc.expr then_ else_, trace := s.trace } t
               some (t, s')
           | none => none
+  -- SPEC: L17277-L17279
+  -- | StatementList : StatementList StatementListItem 1. Let _sl_ be ?
+  -- | Evaluation of |StatementList|. 1. Let _s_ be Completion(Evaluation
+  -- | of |StatementListItem|). 1. Return ? UpdateEmpty(_s_, _sl_).
   | .seq a b =>
       match exprValue? a with
       | some _ =>
@@ -545,6 +570,19 @@ def step? (s : State) : Option (TraceEvent × State) :=
               let s' := pushTrace { sa with expr := .seq sa.expr b, trace := s.trace } t
               some (t, s')
           | none => none
+  -- SPEC: L16186-L16188
+  -- | UnaryExpression : `+` UnaryExpression 1. Let _expr_ be ? Evaluation
+  -- | of |UnaryExpression|. 1. Return ? ToNumber(? GetValue(_expr_)).
+  -- SPEC: L16197-L16201
+  -- | UnaryExpression : `-` UnaryExpression 1. Let _expr_ be ? Evaluation
+  -- | of |UnaryExpression|. 1. Let _oldValue_ be ? ToNumeric(?
+  -- | GetValue(_expr_)). 1. If _oldValue_ is a Number, return
+  -- | Number::unaryMinus(_oldValue_).
+  -- SPEC: L16218-L16222
+  -- | UnaryExpression : `!` UnaryExpression 1. Let _expr_ be ? Evaluation
+  -- | of |UnaryExpression|. 1. Let _oldValue_ be ToBoolean(?
+  -- | GetValue(_expr_)). 1. If _oldValue_ is *true*, return
+  -- | *false*. 1. Return *true*.
   | .unary op arg =>
       match exprValue? arg with
       | some v =>
@@ -556,6 +594,16 @@ def step? (s : State) : Option (TraceEvent × State) :=
               let s' := pushTrace { sa with expr := .unary op sa.expr, trace := s.trace } t
               some (t, s')
           | none => none
+  -- SPEC: L16278-L16280
+  -- | AdditiveExpression : AdditiveExpression `+`
+  -- | MultiplicativeExpression 1. Return ?
+  -- | EvaluateStringOrNumericBinaryExpression(|AdditiveExpression|, `+`,
+  -- | |MultiplicativeExpression|).
+  -- SPEC: L16286-L16288
+  -- | AdditiveExpression : AdditiveExpression `-`
+  -- | MultiplicativeExpression 1. Return ?
+  -- | EvaluateStringOrNumericBinaryExpression(|AdditiveExpression|, `-`,
+  -- | |MultiplicativeExpression|).
   | .binary op lhs rhs =>
       match exprValue? lhs with
       | none =>
@@ -575,7 +623,15 @@ def step? (s : State) : Option (TraceEvent × State) :=
           | some rv =>
               let s' := pushTrace { s with expr := .lit (evalBinary op lv rv) } .silent
               some (.silent, s')
-  -- ECMA-262 §13.3.1 function call with closure invocation.
+  -- SPEC: L15668-L15681
+  -- | # EvaluateCall ( _func_: an ECMAScript language value, _ref_: an ECMAScript
+  -- | language value or a Reference Record, _arguments_: a Parse Node,
+  -- | _tailPosition_: a Boolean, ): either a normal completion containing an
+  -- | ECMAScript language value or an abrupt completion
+  -- | 1. Let _argList_ be ? ArgumentListEvaluation of _arguments_.
+  -- | 1. If _func_ is not an Object, throw a *TypeError* exception.
+  -- | 1. If IsCallable(_func_) is *false*, throw a *TypeError* exception.
+  -- | 1. Return ? Call(_func_, _thisValue_, _argList_).
   | .call callee args =>
       -- Step 1: Step callee to a value.
       match exprValue? callee with
@@ -768,6 +824,15 @@ def step? (s : State) : Option (TraceEvent × State) :=
           let heap' := { objects := s.heap.objects.push heapProps, nextAddr := addr + 1 }
           let s' := pushTrace { s with expr := .lit (.object addr), heap := heap' } .silent
           some (.silent, s')
+  -- SPEC: L17703-L17710
+  -- | WhileStatement : `while` `(` Expression `)` Statement 1. Let _V_
+  -- | be *undefined*. 1. Repeat, 1. Let _exprRef_ be ? Evaluation of
+  -- | |Expression|. 1. Let _exprValue_ be ? GetValue(_exprRef_). 1. If
+  -- | ToBoolean(_exprValue_) is *false*, return _V_. 1. Let
+  -- | _stmtResult_ be Completion(Evaluation of |Statement|). 1. If
+  -- | LoopContinues(_stmtResult_, _labelSet_) is *false*, return ?
+  -- | UpdateEmpty(_stmtResult_, _V_). 1. If _stmtResult_.[[Value]]
+  -- | is not ~empty~, set _V_ to _stmtResult_.[[Value]].
   | .while_ cond body =>
       let lowered := .if cond (.seq body (.while_ cond body)) (.lit .undefined)
       let s' := pushTrace { s with expr := lowered } .silent
@@ -825,6 +890,10 @@ def step? (s : State) : Option (TraceEvent × State) :=
   | .labeled _ body =>
       let s' := pushTrace { s with expr := body } .silent
       some (.silent, s')
+  -- SPEC: L18539-L18541
+  -- | ThrowStatement : `throw` Expression `;` 1. Let _exprRef_ be ?
+  -- | Evaluation of |Expression|. 1. Let _exprValue_ be ?
+  -- | GetValue(_exprRef_). 1. Return ThrowCompletion(_exprValue_).
   | .throw arg =>
       match exprValue? arg with
       | some v =>
