@@ -6485,6 +6485,24 @@ private theorem emit_preserves_start (irmod : IRModule) (wmod : Module)
   · simp only [Except.ok.injEq] at hemit
     rw [← hemit]; rfl
 
+/-- emit preserves the number of globals. -/
+private theorem emit_preserves_globals_size (irmod : IRModule) (wmod : Module)
+    (hemit : emit irmod = .ok wmod) :
+    wmod.globals.size = irmod.globals.size := by
+  unfold emit at hemit
+  simp only [Bind.bind, Except.bind] at hemit
+  split at hemit
+  · simp at hemit
+  · simp only [Except.ok.injEq] at hemit
+    rw [← hemit]
+    simp [buildModule, Array.size_toArray, List.length_map, List.length_toList]
+
+/-- IRValue.default corresponds to Wasm defaultValue for each IR type. -/
+private theorem irValueDefault_corr (t : IRType) :
+    IRValueToWasmValue (IRValue.default t) (defaultValue (match t with
+      | .i32 => ValType.i32 | .i64 => .i64 | .f64 => .f64 | .ptr => .i32)) := by
+  cases t <;> simp [IRValue.default, defaultValue] <;> constructor
+
 /-- Initial states are related: the IR initial state corresponds to the Wasm initial state.
     Proof: `emit irmod = .ok wmod` ensures module correspondence.
     Both start with empty stacks, and the entry code (start function call) is
