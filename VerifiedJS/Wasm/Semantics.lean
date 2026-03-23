@@ -6198,8 +6198,7 @@ theorem step_sim (irmod : IRModule) (wmod : Module) :
               | [] => sorry -- trap: no active frame
               | irf :: irfs =>
                 -- Need idx in bounds
-                match hbnd : decide (idx < irf.locals.size) with
-                | isTrue hlt =>
+                if hlt : idx < irf.locals.size then
                   -- IR step
                   have hir := irStep?_eq_localSet s1 idx rest iv istk irf irfs hcode_ir hstk hfr_ir hlt
                   rw [hir] at hstep
@@ -6250,7 +6249,7 @@ theorem step_sim (irmod : IRModule) (wmod : Module) :
                           simp [List.getElem_set!_ne _ _ heq, List.getElem_set!_ne _ _ heq]
                           exact hrel.hframes_vals irf wf irfs wfs hfr_ir hfr_w j
                             (by rwa [List.size_set!] at hj) (by rwa [List.size_set!] at hj')
-                | isFalse hge => sorry -- trap: local out of bounds
+                else sorry -- trap: local out of bounds
           · sorry -- general case
       | .globalGet idx =>
           -- global.get
