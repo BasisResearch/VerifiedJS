@@ -385,7 +385,16 @@ private theorem closureConvert_step_simulation
     ∀ (sf : Flat.State) (sc : Core.State) (ev : Core.TraceEvent) (sf' : Flat.State),
       CC_SimRel s t sf sc → Flat.Step sf ev sf' →
       ∃ sc', Core.Step sc ev sc' ∧ CC_SimRel s t sf' sc' := by
-  intro sf sc ev sf' ⟨htrace, henvCorr, scope, envVar, envMap, st, st', hconv⟩ ⟨hstep⟩
+  -- Strong induction on expression depth enables proving stepping sub-cases.
+  suffices ∀ (n : Nat) (sf : Flat.State) (sc : Core.State) (ev : Core.TraceEvent) (sf' : Flat.State),
+      sc.expr.depth = n → CC_SimRel s t sf sc → Flat.Step sf ev sf' →
+      ∃ sc', Core.Step sc ev sc' ∧ CC_SimRel s t sf' sc' by
+    intro sf sc ev sf' hsim hstep
+    exact this sc.expr.depth sf sc ev sf' rfl hsim hstep
+  intro n
+  induction n using Nat.strongRecOn with
+  | _ n ih_depth =>
+  intro sf sc ev sf' hd ⟨htrace, henvCorr, scope, envVar, envMap, st, st', hconv⟩ ⟨hstep⟩
   -- Case analysis on the Core expression sc.expr.
   -- convertExpr maps sc.expr to sf.expr; step? sf = some (ev, sf').
   cases hsc : sc.expr with
