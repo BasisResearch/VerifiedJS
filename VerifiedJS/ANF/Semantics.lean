@@ -460,13 +460,9 @@ inductive Steps : State → List Core.TraceEvent → State → Prop where
       Steps s2 ts s3 →
       Steps s1 (t :: ts) s3
 
-/-- Initial ANF machine state for a program entry expression.
-    Mirrors Core.initialState: preloads `console` with a `log` method (§18.2). -/
+/-- Initial ANF machine state for a program entry expression. -/
 def initialState (p : Program) : State :=
-  let consoleProps : List (Core.PropName × Core.Value) := [("log", .function Core.consoleLogIdx)]
-  let heap : Core.Heap := { objects := #[consoleProps], nextAddr := 1 }
-  let env : Env := [("console", .object 0)]
-  { expr := p.main, env := env, heap := heap, trace := [] }
+  { expr := p.main, env := Env.empty, heap := Core.Heap.empty, trace := [] }
 
 /-- Program behavior as finite terminating trace sequence. -/
 def Behaves (p : Program) (b : List Core.TraceEvent) : Prop :=

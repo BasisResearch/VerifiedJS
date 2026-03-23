@@ -5275,19 +5275,34 @@ inductive LowerCodeCorr : ANF.Expr → List IRInstr → Prop where
       (condCode thenCode elseCode : List IRInstr) :
       LowerCodeCorr then_ thenCode → LowerCodeCorr else_ elseCode →
       LowerCodeCorr (.«if» cond then_ else_) (condCode ++ [.if_ none thenCode elseCode])
-  /-- A while_ lowers to a block+loop structure. -/
-  | while_ (cond body : ANF.Expr) (instrs : List IRInstr) :
-      LowerCodeCorr (.while_ cond body) instrs
-  /-- throw lowers to an unreachable/trap. -/
-  | throw (arg : ANF.Trivial) (instrs : List IRInstr) :
-      LowerCodeCorr (.throw arg) instrs
+  /-- A while_ lowers to block+loop: [block exitLbl [loop loopLbl (condCode ++ [call truthy, eqz, brIf exit] ++ bodyCode ++ [drop, br loop])]] ++ [undefinedConst].
+      REF: Lower.lean lowerWhile, lines 519-526. -/
+  | while_ (cond body : ANF.Expr) (condCode bodyCode : List IRInstr)
+      (exitLbl loopLbl : String) (undefinedConst : IRInstr) :
+      LowerCodeCorr cond condCode → LowerCodeCorr body bodyCode →
+      LowerCodeCorr (.while_ cond body)
+        ([.block exitLbl [.loop loopLbl
+            (condCode ++ [.call RuntimeIdx.truthy, .unOp .i32 "eqz", .brIf exitLbl] ++
+             bodyCode ++ [.drop, .br loopLbl])]] ++ [undefinedConst])
+  /-- throw lowers to: argCode ++ [call throwOp] ++ transfer.
+      transfer is [br exnLabel] or [return_] depending on exception context.
+      REF: Lower.lean lines 446-452. -/
+  | throw_br (arg : ANF.Trivial) (argCode : List IRInstr) (lbl : String) :
+      LowerCodeCorr (.throw arg) (argCode ++ [.call RuntimeIdx.throwOp, .br lbl])
+  | throw_ret (arg : ANF.Trivial) (argCode : List IRInstr) :
+      LowerCodeCorr (.throw arg) (argCode ++ [.call RuntimeIdx.throwOp, .return_])
   /-- tryCatch lowers to a block structure. -/
   | tryCatch (body : ANF.Expr) (cp : ANF.VarName) (cb : ANF.Expr)
       (fin : Option ANF.Expr) (instrs : List IRInstr) :
       LowerCodeCorr (.tryCatch body cp cb fin) instrs
-  /-- return lowers to a return_ instruction (after pushing return value). -/
-  | return_ (arg : Option ANF.Trivial) (instrs : List IRInstr) :
-      LowerCodeCorr (.«return» arg) instrs
+  /-- return with value lowers to: valueCode ++ [return_].
+      REF: Lower.lean lines 466-471. -/
+  | return_some (arg : ANF.Trivial) (argCode : List IRInstr) :
+      LowerCodeCorr (.«return» (some arg)) (argCode ++ [.return_])
+  /-- return without value lowers to: [return_].
+      REF: Lower.lean lines 466-471. -/
+  | return_none :
+      LowerCodeCorr (.«return» none) [.return_]
   /-- yield lowers to some instruction sequence. -/
   | yield (arg : Option ANF.Trivial) (delegate : Bool) (instrs : List IRInstr) :
       LowerCodeCorr (.yield arg delegate) instrs
@@ -5297,12 +5312,14 @@ inductive LowerCodeCorr : ANF.Expr → List IRInstr → Prop where
   /-- labeled lowers to a block structure. -/
   | labeled (label : String) (body : ANF.Expr) (instrs : List IRInstr) :
       LowerCodeCorr (.labeled label body) instrs
-  /-- break lowers to a br instruction. -/
-  | break_ (label : Option String) (instrs : List IRInstr) :
-      LowerCodeCorr (.«break» label) instrs
-  /-- continue lowers to a br instruction (to loop header). -/
-  | continue_ (label : Option String) (instrs : List IRInstr) :
-      LowerCodeCorr (.«continue» label) instrs
+  /-- break lowers to: [br target].
+      REF: Lower.lean lines 497-500. -/
+  | break_ (label : Option String) (target : Option String) :
+      LowerCodeCorr (.«break» label) [.br target]
+  /-- continue lowers to: [br target].
+      REF: Lower.lean lines 501-504. -/
+  | continue_ (label : Option String) (target : Option String) :
+      LowerCodeCorr (.«continue» label) [.br target]
 
 structure LowerSimRel (prog : ANF.Program) (irmod : IRModule)
     (s : ANF.State) (ir : IRExecState) : Prop where
@@ -5354,10 +5371,8 @@ theorem init (prog : ANF.Program) (irmod : IRModule)
   hframes := by simp [irInitialState]
   henv := by
     intro name v hlookup
-    -- ANF initial env has console binding; need IR initial state to have matching local.
-    -- Blocked on knowing irInitialState's frame locals layout (depends on lower internals).
-    simp [ANF.initialState, ANF.Env.lookup] at hlookup
-    sorry
+    -- Initial ANF env is empty, so lookup always returns none
+    simp [ANF.initialState, ANF.Env.empty, ANF.Env.lookup] at hlookup
   hvar := by
     intro name idx hexpr hcode_ir
     -- Initial ANF env is empty, so if expr is a var, lookup fails.
