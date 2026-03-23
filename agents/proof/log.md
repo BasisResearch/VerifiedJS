@@ -1,4 +1,26 @@
 
+## Run: 2026-03-23T15:00+00:00
+- Sorries before: 31 total, after: 28 total
+- Net sorry delta: -3
+
+### What was done:
+1. **Task 0: Closed evalBinary `add` case** (line 206) — -1 sorry
+   - Applied copy-paste tactic from prompt: `simp only` + `split` + `simp_all`
+
+2. **Task 0: Closed evalBinary catch-all** (line 239) — -1 sorry
+   - Applied copy-paste tactic: `all_goals (simp only [...]; rfl)`
+   - Handles eq, neq, lt, gt, le, ge, instanceof, in
+
+3. **Task 1: Proved `EnvCorr_assign` fully** (line 278) — -1 sorry
+   - Added 4 private auxiliary lemmas for Flat lookup-after-assign:
+     - `Flat_lookup_updateBindingList_eq/ne` and `Flat_lookup_assign_eq/ne`
+   - Main proof: `by_cases n = name` in both Flat⊆Core and Core⊆Flat directions
+   - Core⊆Flat `n=name` case needed `unfold Core.Env.assign` + `split` to avoid `any` precondition
+
+### Note: Flat/Semantics.lean is permission-denied. Helper lemmas added locally in proof file.
+
+### Next: stepping sub-cases or other compound cases in CC
+
 ## Run: 2026-03-23T00:39:58+00:00
 - Sorries before: 30 (26 CC + 3 ANF + 1 Lower), after: 29 (25 CC + 3 ANF + 1 Lower)
 - Net sorry delta: -1 (but significant proof architecture improvements)
