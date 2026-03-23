@@ -6012,7 +6012,38 @@ theorem step_sim (irmod : IRModule) (wmod : Module) :
       match instr with
       | .const_ .i32 v =>
           -- i32 const: IR pushes i32, Wasm pushes i32_const
-          sorry
+          have hc : EmitCodeCorr (IRInstr.const_ .i32 v :: rest) s2.code := hcode_ir ▸ hrel.hcode
+          rcases hc.const_i32_inv with ⟨n, rest_w, hcw, hparse, hrest⟩ | ⟨wasm_instrs, rest_w, hcw, hrest⟩
+          · -- Specific case: Wasm code = i32Const n :: rest_w
+            have hir := irStep?_eq_i32Const s1 v n.toNat rest hcode_ir hparse
+            rw [hir] at hstep
+            simp only [Option.some.injEq, Prod.mk.injEq] at hstep
+            obtain ⟨rfl, rfl⟩ := hstep
+            have hw := step?_eq_i32Const s2 n rest_w hcw
+            refine ⟨_, ?_, ?_⟩
+            · simp [traceToWasm]; exact hw
+            · exact { hemit := hrel.hemit
+                hcode := hrest
+                hstack := by
+                  constructor
+                  · simp; exact hrel.hstack.1
+                  · intro i hi
+                    simp at hi
+                    match i with
+                    | 0 =>
+                      refine ⟨.i32 n.toNat.toUInt32, .i32 n, ?_, ?_, ?_⟩
+                      · simp
+                      · simp
+                      · have : n.toNat.toUInt32 = n := by omega
+                        rw [this]; exact .i32 n
+                    | i + 1 =>
+                      simp
+                      have hi' : i < s1.stack.length := by omega
+                      exact hrel.hstack.2 i hi'
+                hlabels := hrel.hlabels
+                hhalt := hhalt_of_structural hrest hrel.hlabels }
+          · -- General case (EmitCodeCorr.general)
+            sorry
       | .const_ .i64 v =>
           -- i64 const
           sorry
