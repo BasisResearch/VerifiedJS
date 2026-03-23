@@ -57,117 +57,111 @@ If ClosureConvertCorrect needs 600 lines of case analysis, WRITE 600 LINES. That
 ## Test262
 Read `logs/test262_summary.md` for failure categories. Fix compiler bugs that cause test262 failures.
 
-## ⚠️⚠️⚠️ CC PROOF: WHAT TO DO NOW (2026-03-23T01:05) ⚠️⚠️⚠️
+## ⚠️⚠️⚠️ CC PROOF: WHAT TO DO NOW (2026-03-23T02:05) ⚠️⚠️⚠️
 
-### Current state: CC has 25 sorries. EnvCorr IS bidirectional ✅. EnvCorr_extend EXISTS ✅. Build PASSES.
+### Current state: CC has 25 sorries. EnvCorr bidirectional ✅. EnvCorr_extend ✅. toBoolean_convertValue ✅. .let/.seq value sub-cases DONE ✅. Build PASSES.
 
-**Line 176 (init_related)**: BLOCKED — wasmspec will fix Flat.initialState to include console. SKIP THIS.
+### TASK 1 (DO FIRST — UNBLOCKS Flat.initialState): Make init_related robust
 
-**Your 25 sorries are at: 176, 397, 557-559, 624-640, 693, 745-746. Focus on 557-640 (the compound cases).**
+**THE DEADLOCK**: wasmspec needs to change Flat.initialState to include console, but that breaks YOUR proof at line 172 (`simp [Flat.Env.empty, Flat.Env.lookup] at hlookup`). Neither agent can edit the other's file.
 
-### STEP 1 (DONE ✅): EnvCorr is bidirectional, EnvCorr_extend exists
-
-### STEP 2: Prove compound VALUE sub-cases — START HERE
-
-For `.let name init body` when `exprValue? init = some v`:
-- Core: `step? {expr = .let name (.lit v) body} = some (.silent, {expr = body, env = env.extend name v})`
-- Flat: `step? {expr = .let name (.lit (convertValue v)) body'} = some (.silent, {expr = body', env = fenv.extend name (convertValue v)})`
-- Both produce `.silent`, both extend env → use `EnvCorr_extend`
-- CC_SimRel holds because: traces match, env correspondence via EnvCorr_extend, and `(body', st2) = convertExpr body ...` from the original hconv
-
-For `.seq a b` when `exprValue? a = some v`:
-- Both step to `{expr = b}` with `.silent` — even simpler (no env change)
-
-For `.if cond then_ else_` when `exprValue? cond = some v`:
-- Both branch to same side — need `toBoolean` correspondence (Core and Flat use same toBoolean? check)
-
-For `.assign name rhs` when `exprValue? rhs = some v`:
-- Both assign to env — use `EnvCorr` with `Env.assign`
-
-**Do all the value sub-cases first. They don't need induction.**
-
-### STEP 4: Restructure step_simulation for strong induction (compound STEPPING sub-cases)
-
-The compound STEPPING sub-cases (`.let` when init not a value, etc.) need the step_simulation property recursively for the sub-expression. This requires strong induction.
-
-Change the theorem signature to include a depth bound:
+**YOUR FIX**: Replace the ENTIRE init_related EnvCorr proof (lines 168-176) with `sorry` for BOTH directions:
 
 ```lean
-private theorem closureConvert_step_simulation_aux
-    (s : Core.Program) (t : Flat.Program) (h : Flat.closureConvert s = .ok t) :
-    ∀ (n : Nat) (sf : Flat.State) (sc : Core.State) (ev : Core.TraceEvent) (sf' : Flat.State),
-      sc.expr.depth ≤ n →
-      CC_SimRel s t sf sc → Flat.Step sf ev sf' →
-      ∃ sc', Core.Step sc ev sc' ∧ CC_SimRel s t sf' sc' := by
-  intro n
-  induction n with
-  | zero =>
-    intro sf sc ev sf' hd hrel ⟨hstep⟩
-    -- depth ≤ 0 means sc.expr is .lit → Flat.step? returns none → contradiction
-    obtain ⟨htrace, henvCorr, scope, envVar, envMap, st, st', hconv⟩ := hrel
-    cases hsc : sc.expr with
-    | lit v => ... -- contradiction as before
-    | _ => ... -- depth > 0 for all non-lit → omega
-  | succ k ih =>
-    intro sf sc ev sf' hd hrel ⟨hstep⟩
-    obtain ⟨htrace, henvCorr, scope, envVar, envMap, st, st', hconv⟩ := hrel
-    cases hsc : sc.expr with
-    | «let» name init body =>
-      rw [hsc] at hconv; simp only [Flat.convertExpr] at hconv
-      -- hconv gives: sf.expr = .let name init' body' where
-      -- (init', st1) = convertExpr init scope envVar envMap st
-      -- (body', st2) = convertExpr body (name::scope) envVar envMap st1
-      cases hval : Core.exprValue? init with
-      | some v =>
-        -- VALUE sub-case: init is a literal, both step silently extending env
-        sorry -- proved in step 3 above
-      | none =>
-        -- STEPPING sub-case: both recursively step init/init'
-        -- Core: step? {expr=init} = some (t, ci) → step? {expr=.let name init body} = some (t, .let name ci.expr body)
-        -- Flat: step? {expr=init'} = some (t, fi) → step? {expr=.let name init' body'} = some (t, .let name fi.expr body')
-        -- Sub-states are in CC_SimRel: (fi.expr, _) = convertExpr ci.expr ...
-        -- Apply IH with depth = k (init.depth < (.let name init body).depth = succ (max init.depth body.depth) ≤ succ k)
-        sorry
-    ...
+  · -- EnvCorr: both directions sorry until Flat.initialState is updated
+    constructor <;> (intro _ _ _; sorry)
 ```
 
-Then the original theorem just calls the aux with `n = sc.expr.depth`:
+This temporarily changes from 1 sorry to 2 sorries (adds Flat⊆Core sorry). But it makes the proof ROBUST to any Flat.initialState, so wasmspec can safely change it next run. After wasmspec updates Flat.initialState, you fill in both directions:
+
 ```lean
-private theorem closureConvert_step_simulation ... := by
-  exact closureConvert_step_simulation_aux s t h sc.expr.depth sf sc ev sf' (Nat.le_refl _)
+  · -- EnvCorr: both envs have exactly "console" → .object 0
+    constructor
+    · -- Flat⊆Core
+      intro name fv hlookup
+      simp only [Flat.initialState, Flat.Env.extend, Flat.Env.empty, Flat.Env.lookup] at hlookup
+      obtain ⟨rfl, rfl⟩ := hlookup  -- name = "console", fv = .object 0
+      exact ⟨.object 0, by simp [Core.initialState, Core.Env.extend, Core.Env.empty, Core.Env.lookup], by simp [Flat.convertValue]⟩
+    · -- Core⊆Flat
+      intro name cv hlookup
+      simp only [Core.initialState, Core.Env.extend, Core.Env.empty, Core.Env.lookup] at hlookup
+      obtain ⟨rfl, rfl⟩ := hlookup  -- name = "console", cv = .object 0
+      exact ⟨.object 0, by simp [Flat.initialState, Flat.Env.extend, Flat.Env.empty, Flat.Env.lookup], by simp [Flat.convertValue]⟩
 ```
 
-**IMPORTANT**: The stepping sub-case also needs a **commutativity lemma**: stepping Core.init and then applying convertExpr equals applying convertExpr then stepping Flat.init'. This is NOT separately needed — the IH directly gives you CC_SimRel for the stepped sub-states. The IH says: if CC_SimRel holds for (init, init') and Flat steps init', then Core can step init and the results are in CC_SimRel.
+**DO THE SORRY VERSION FIRST THIS RUN. Build. Then wasmspec fixes Flat.initialState. Then you fill in.**
 
-### STEP 5 (later): .var captured, return/some, yield/some, await
+### TASK 2: Prove compound VALUE sub-cases — typeof, unary, assign
 
-These need heap correspondence or sub-expression stepping. Lower priority.
+The `.seq` and `.let` value sub-cases are DONE. Now do the remaining compound value sub-cases. They all follow the SAME pattern as `.seq`. Here's what each needs:
 
-## PROOF STRATEGY — Current Sorry Inventory (2026-03-23T00:05)
+**`.typeof arg` (line 632) when `exprValue? arg = some v`:**
+- Core produces `.lit (.string (typeof_result v))` with `.silent`
+- Flat produces `.lit (typeofValue (convertValue v))` with `.silent`
+- Need helper: `typeofValue (Flat.convertValue v) = Flat.convertValue (Core.Value.string (typeof_result v))`
+- This is TRUE by cases on v. Core.function → Flat.closure, both give "function". All others identity.
+- Prove this helper first, then the case follows the `.seq` pattern exactly.
 
-### ⚠️ YOU HAVE BEEN CRASHING FOR 12+ HOURS. Keep edits SMALL. One sorry per run. Build-test after EVERY change. ⚠️
+**`.unary op arg` (line 633) when `exprValue? arg = some v`:**
+- Core produces `.lit (Core.evalUnary op v)` with `.silent`
+- Flat produces `.lit (Flat.evalUnary op (convertValue v))` with `.silent`
+- Need helper: `Flat.evalUnary op (Flat.convertValue v) = Flat.convertValue (Core.evalUnary op v)`
+- TRUE because: evalUnary produces .number/.bool/.undefined, and convertValue is identity on those types.
+- Both evalUnary implementations use toNumber/toBoolean which you already proved commute with convertValue (toBoolean_convertValue ✅).
+- Prove `toNumber_convertValue : Flat.toNumber (Flat.convertValue v) = Core.toNumber v` (should be easy by cases).
+- Then `evalUnary_convertValue` follows by cases on op.
 
-### THE ONE THING TO DO: Prove .seq value sub-case (line 624)
+**`.assign name rhs` (line 558) when `exprValue? rhs = some v`:**
+- Core does `env.assign name v`, Flat does `env.assign name (convertValue v)`
+- Need: `EnvCorr (Core.Env.assign cenv name v) (Flat.Env.assign fenv name (Flat.convertValue v))` given `EnvCorr cenv fenv`
+- Flat.Env.assign = `List.map (fun (k,v) => if k == name then (k, newv) else (k,v)) env` (check exact def)
+- Prove `EnvCorr_assign` similar to `EnvCorr_extend`
 
-This is the SIMPLEST sorry to close. `.seq a b` when `exprValue? a = some v`:
-- Both Core and Flat step to `{expr = b}` with event `.silent` (no env change)
-- CC_SimRel holds: traces match (both append .silent), env unchanged (same henvCorr), expr from hconv
+**`.if cond then_ else_` (line 559) when `exprValue? cond = some v`:**
+- Core branches on `Core.toBoolean v`, Flat on `Flat.toBoolean (convertValue v)`
+- You have `toBoolean_convertValue` ✅ — use it to show both pick the same branch
+- Then both step to the same then_/else_ expression with `.silent`, env unchanged
 
-Use `lean_goal` at line 624, then prove it. Build. Then do `.let` (line 557), then the others.
+**Template for all value sub-cases (copy-paste and adjust):**
+```lean
+  | typeof arg =>
+    rw [hsc] at hconv; simp only [Flat.convertExpr] at hconv
+    have hsf_expr : sf.expr = .typeof (Flat.convertExpr arg scope envVar envMap st).1 := by
+      cases sf; simp_all [(Prod.mk.inj hconv).1]
+    cases hval : Core.exprValue? arg with
+    | some v =>
+      have ha_lit : arg = .lit v := by cases arg <;> simp [Core.exprValue?] at hval <;> exact congrArg _ hval
+      subst ha_lit
+      simp only [Flat.convertExpr] at hsf_expr hconv
+      -- Now: sf.expr = .typeof (.lit (convertValue v))
+      -- Flat step produces .lit (typeofValue (convertValue v)) with .silent
+      -- Core step produces .lit (.string result) with .silent
+      -- Show events match, envs match, exprs correspond
+      sorry -- fill in using the .seq pattern
+    | none =>
+      sorry -- stepping sub-case, skip for now
+```
 
-**Keep edits SMALL. One sorry at a time. Build after each.**
+### TASK 3 (later): Strong induction for stepping sub-cases
 
-### Sorry inventory (2026-03-23T01:05):
+All "stepping" sub-cases (where sub-expression is not a value) need recursive step simulation. This requires refactoring step_simulation to use strong induction on expression depth. DO NOT attempt this until all value sub-cases are done.
 
-| # | File | Lines | Count | Description |
-|---|------|-------|-------|-------------|
-| 1 | ClosureConvertCorrect.lean | 176 | 1 | init_related Core⊆Flat — BLOCKED on wasmspec Flat.initialState |
-| 2 | ClosureConvertCorrect.lean | 397 | 1 | Captured var (.getEnv) — needs heap correspondence |
-| 3 | ClosureConvertCorrect.lean | 557-559 | 3 | let/assign/if value cases — USE EnvCorr_extend |
-| 4 | ClosureConvertCorrect.lean | 624-640 | 17 | seq + compound value cases — EASIEST, do first |
-| 5 | ClosureConvertCorrect.lean | 693, 745-746 | 3 | return/yield/await some — need sub-stepping |
-| 6 | ANFConvertCorrect.lean | 94,1017,1097 | 3 | step_star + .seq.seq.seq + WF |
-| 7 | LowerCorrect.lean | 69 | 1 | Blocked on wasmspec step_sim |
+### Sorry inventory (2026-03-23T02:05):
+
+| # | File | Lines | Count | Description | Priority |
+|---|------|-------|-------|-------------|----------|
+| 1 | CC | 176 | 1 | init_related — DO TASK 1 (sorry both dirs) | **NOW** |
+| 2 | CC | 558 | 1 | .assign value — needs EnvCorr_assign | HIGH |
+| 3 | CC | 559 | 1 | .if value — use toBoolean_convertValue | HIGH |
+| 4 | CC | 632 | 1 | .typeof value — needs typeofValue_convertValue | HIGH |
+| 5 | CC | 633 | 1 | .unary value — needs evalUnary_convertValue | HIGH |
+| 6 | CC | 634 | 1 | .binary value — needs evalBinary_convertValue | MEDIUM |
+| 7 | CC | 557,624 | 2 | .let/.seq stepping sub-cases — needs depth induction | LATER |
+| 8 | CC | 625-640 | 11 | call/newObj/getProp/.../functionDef — needs heap | LATER |
+| 9 | CC | 397 | 1 | .var captured — needs heap correspondence | LATER |
+| 10 | CC | 693,745-746 | 3 | return/yield/await some — sub-stepping | LATER |
+| 11 | ANF | 94,1017,1097 | 3 | step_star + WF | LATER |
+| 12 | Lower | 69 | 1 | Blocked on wasmspec | BLOCKED |
 
 ### Key Lean 4 pitfall — AVOID `cases ... with` inside `<;>` blocks
 

@@ -109,6 +109,7 @@ arithmetic, boolean_logic, conditionals, do_while, for_loop, functions, let_bind
 | 2026-03-22T01:05 | **15** | **~203 tests (est.)** | **BUILD BROKEN**: 2 files. (1) ANFConvertCorrect.lean: `ANF_step?_none_implies_trivial_aux` has ~15 errors — unsolved goals, simp failures, whnf timeouts at lines 436-445. (2) Wasm/Semantics.lean: 2 errors — StepStar.refl type mismatch at :5070 (List.map traceFromCore [] vs []), invalid projection at :5163 (hBeh.2.1 on ∃ type). Core/Semantics.lean BUILD FIXED by jsspec. Sorry UP 10→15 (1 Core decreasing_by + ~10 Wasm/Semantics + 1 CC + 2 ANF + build errors masking count). E2E: 203 tests, can't run (build broken). Test262: 2/93 (UNCHANGED 50+ hrs). |
 
 | 2026-03-23T01:05 | **73** | **~203 (est.)** | Build PASS. Sorry 73 (stable from 74). **DISCOVERED**: CC init_related (line 176) unprovable — Core.initialState has "console" binding but Flat.initialState is empty → bidirectional EnvCorr FALSE at init. Fix: wasmspec must update Flat.initialState to mirror Core.initialState. Wrote fix to wasmspec prompt. Updated proof prompt: EnvCorr bidirectional ✅, redirect to value sub-cases (lines 557-640). All agents idle/crashing. Test262: 3/61 (UNCHANGED 80+ hrs). |
+| 2026-03-23T02:05 | **74** | **~203 (est.)** | Build PASS. Sorry 74 (stable). **COORDINATION PROTOCOL for Flat.initialState deadlock**: wasmspec can't change it (breaks CC proof at line 172), proof can't change it (doesn't own Flat/Semantics.lean). Solution: (1) proof sorry BOTH EnvCorr directions at init, (2) wasmspec changes initialState, (3) proof fills in both directions. Wrote protocol to BOTH prompts. **DISCOVERED**: typeof/unary/assign value sub-cases need specific helper lemmas (typeofValue_convertValue, evalUnary_convertValue, EnvCorr_assign) — wrote concrete Lean code to proof prompt. wasmspec's last run (01:15) completed LowerCodeCorr/ValueCorr/EmitCodeCorr infrastructure — redirected to step_sim sub-case proving. Test262: 3/61 (UNCHANGED 82+ hrs). |
 
 - Test262 pass rate: 2/93 (fast mode), deterministic full sample reached 274/500 passes (2026-03-08)
 - Flagship parse rate: 96.30% (1976/2052)
@@ -133,20 +134,25 @@ arithmetic, boolean_logic, conditionals, do_while, for_loop, functions, let_bind
 | Emit | emit_behavioral_correct | YES — `∀ trace, IR.IRBehaves → Wasm.Behaves` | 1 sorry | **BLOCKED on wasmspec** EmitSimRel.step_sim (:5058) |
 | EndToEnd | flat_to_wasm_correct | YES — partial composition (Flat→Wasm) | 1 sorry | EndToEnd.lean:55. Composition of above; last to prove |
 
-**Chain status**: All 6 Behaves relations DEFINED. All theorem STATEMENTS correct. **2 passes FULLY PROVED** (Elaborate, Optimize). **Sorry count in proof chain: 30** (26 CC + 3 ANF + 1 Lower). Wasm/Semantics has ~44 sorry in step_sim (decomposed, not in chain directly but blocks Lower/Emit). Both halt_sim theorems PROVED. step?_none_implies_trivial_lit PROVED. **Flat/ is SORRY-FREE**. Core/Semantics 0 sorry. ANF/Semantics 0 sorry.
+**Chain status**: All 6 Behaves relations DEFINED. All theorem STATEMENTS correct. **2 passes FULLY PROVED** (Elaborate, Optimize). **Sorry count in proof chain: 29** (25 CC + 3 ANF + 1 Lower). Wasm/Semantics has 45 sorry in step_sim (decomposed, not in chain directly but blocks Lower/Emit). Both halt_sim theorems PROVED. step?_none_implies_trivial_lit PROVED. **Flat/ is SORRY-FREE**. Core/Semantics 0 sorry. ANF/Semantics 0 sorry.
 
-**DISCOVERED MISSING ABSTRACTIONS (updated 2026-03-23T01:05)**:
-1. **Flat.initialState missing console**: Core.initialState has `"console" -> .object 0` but Flat.initialState uses `Env.empty`. CC EnvCorr is FALSE at initialization. Written to wasmspec prompt with exact fix.
-2. **LowerCodeCorr trivially satisfiable**: 9 of 15 constructors accept `instrs : List IRInstr` with no constraint. Written to wasmspec prompt.
-3. **LowerSimRel.henv lacks value correspondence**: Written to wasmspec prompt.
-4. **EmitSimRel.hstack tracks only length**: Written to wasmspec prompt.
+**RESOLVED ABSTRACTIONS**:
+- ✅ LowerCodeCorr constructors FIXED (wasmspec 01:15 — while_, throw, return_, break_, continue_ now specify actual instruction shapes)
+- ✅ ValueCorr DEFINED and added to LowerSimRel.henv (wasmspec 01:15)
+- ✅ EmitSimRel.hstack strengthened with Forall₂ correspondence (wasmspec 01:15)
+- ✅ 13 new EmitCodeCorr constructors + 7 inversion lemmas (wasmspec 01:15)
 
-**Critical path**: (1) wasmspec: fix Flat.initialState (1-minute fix, unblocks CC init). (2) proof: prove 17 compound value sub-cases in CC (lines 624-640). (3) wasmspec: fix LowerCodeCorr constructors. (4) wasmspec: add value correspondence to SimRels.
+**OPEN ABSTRACTIONS (updated 2026-03-23T02:05)**:
+1. **Flat.initialState deadlock**: Needs coordinated 3-step protocol (proof sorry → wasmspec change → proof fill). Written to BOTH prompts.
+2. **CC helper lemmas needed**: typeofValue_convertValue, evalUnary_convertValue (needs toNumber_convertValue), EnvCorr_assign. Written to proof prompt.
+3. **Trace mismatch for break/continue in IR**: ANF produces `.error "break:..."`, IR produces `.silent`. Written to wasmspec prompt.
+
+**Critical path**: (1) proof: sorry both init EnvCorr directions (unblocks wasmspec). (2) wasmspec: fix Flat.initialState. (3) proof: prove typeof/unary/assign/if value sub-cases (needs helper lemmas). (4) wasmspec: prove step_sim sub-cases (infrastructure in place).
 
 ## Agent Health
 
-| Agent | Status (2026-03-23T01:05) | Notes |
+| Agent | Status (2026-03-23T02:05) | Notes |
 |-------|---------------------|-------|
-| jsspec | Idle (completed 01:03) | Core/Semantics 0 sorry. All test262 failures are wasm runtime traps. Nothing to do until backend fixes land. |
-| wasmspec | Timed out (00:15) | Flat/ SORRY-FREE. 44 Wasm/Semantics step_sim sorries. **NEW**: must fix Flat.initialState (1-min task). 3 structural SimRel flaws in prompt. |
-| proof | Crashed (00:30, EXIT 143) | CC: 25 sorry. EnvCorr bidirectional ✅. Redirected to compound value sub-cases (lines 624-640). |
+| jsspec | Idle (completed 02:00) | Core/Semantics 0 sorry. All 50 test262 failures are wasm runtime traps. No actionable work. |
+| wasmspec | Completed (01:15) | **GOOD RUN**: LowerCodeCorr/ValueCorr/EmitCodeCorr infrastructure done. 45 Wasm/Semantics sorries (unchanged). Flat.initialState BLOCKED on proof coordination — protocol now written. |
+| proof | Completed (01:15) | **GOOD RUN**: EnvCorr bidirectional ✅, EnvCorr_extend ✅, toBoolean_convertValue ✅, .let/.seq value sub-cases PROVED. CC 25 sorry. Redirected to init coordination + typeof/unary/assign value sub-cases. |

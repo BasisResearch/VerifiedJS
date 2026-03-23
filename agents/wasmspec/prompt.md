@@ -62,51 +62,58 @@ Then construct the matching Step derivation in Lean. If you cannot, your semanti
 3. Keep definitions structurally simple for proofs.
 4. Add @[simp] lemmas for everything the proof agent might need.
 
-## CURRENT PRIORITIES (2026-03-23T01:05)
+## CURRENT PRIORITIES (2026-03-23T02:05)
 
 ### ⚠️ Keep edits SMALL. Build-test after EVERY change. ⚠️
 
-### MILESTONE: Flat/ SORRY-FREE. 44 sorries in Wasm/Semantics.lean. Build PASSES.
+### MILESTONE: Flat/ SORRY-FREE. 45 sorries in Wasm/Semantics.lean. Build PASSES.
+### LowerCodeCorr, ValueCorr, EmitCodeCorr infrastructure DONE ✅ from last run.
 
-### ⚠️⚠️⚠️ TASK 0 (DO FIRST — 1 minute, unblocks CC proof): Fix Flat.initialState ⚠️⚠️⚠️
+### ⚠️⚠️⚠️ TASK 0: Fix Flat.initialState — SAFE TO DO NOW ⚠️⚠️⚠️
 
-**BUG**: Core.initialState has `console` binding (`env = Env.empty.extend "console" (.object 0)`) with heap object at address 0. But `Flat.initialState` uses `Env.empty` and `Heap.empty`. This makes the CC proof's `EnvCorr` FALSE at initialization — the Core→Flat direction fails because Core has "console" but Flat doesn't.
+**COORDINATION**: The proof agent is making the CC proof at line 168-176 robust (sorry both EnvCorr directions) THIS RUN. After that, your change WILL NOT break the build.
 
-**FIX** in `Flat/Semantics.lean` line 665-666. Change:
-```lean
-def initialState (p : Program) : State :=
-  { expr := p.main, env := Env.empty, heap := Core.Heap.empty, trace := [] }
-```
-to:
+**Check first**: Read ClosureConvertCorrect.lean line 168-176. If you see `constructor <;> (intro _ _ _; sorry)` or similar (both directions sorry), it's safe to proceed. If you still see `simp [Flat.Env.empty, Flat.Env.lookup] at hlookup`, WAIT — the proof agent hasn't run yet.
+
+**FIX** in `Flat/Semantics.lean` — change `initialState`:
 ```lean
 def initialState (p : Program) : State :=
   let consoleProps : List (Core.PropName × Core.Value) := [("log", .function Core.consoleLogIdx)]
   let heap : Core.Heap := { objects := #[consoleProps], nextAddr := 1 }
-  let env : Env := [("console", convertValue (.object 0))]
-  { expr := p.main, env := env, heap := heap, trace := [] }
+  { expr := p.main, env := Env.empty.extend "console" (.object 0), heap := heap, trace := [] }
 ```
 
-This mirrors Core.initialState exactly (modulo convertValue). Build, verify it passes, then move on.
+Note: `convertValue (.object 0) = .object 0` so we can use `.object 0` directly. Build and verify.
 
-### TASK 1: Fix LowerCodeCorr constructors (MOST IMPACTFUL — unblocks step_sim)
+### TASK 1: Prove LowerSimRel.step_sim sub-cases
 
-9 constructors accept `instrs : List IRInstr` with NO constraint. Each must specify the ACTUAL instruction shape from `lowerExpr` in Lower.lean. Example:
-```lean
-| while_ (cond body : ANF.Expr) (condCode bodyCode : List IRInstr) :
-    LowerCodeCorr cond condCode → LowerCodeCorr body bodyCode →
-    LowerCodeCorr (.while_ cond body)
-      ([.block none ([.loop none (condCode ++ [.brIf 1] ++ bodyCode ++ [.br 0])])])
-```
+You have 13 expression cases with sorry in step_sim. The infrastructure (LowerCodeCorr constructors, ValueCorr, hcode) is in place. Now PROVE cases. Start with the easiest:
 
-Fix `while_`, `throw`, `return_`, `break_`, `continue_` first. Check Lower.lean for actual shapes.
+**`.var` case** (line ~?): LowerCodeCorr for `.var` gives `[.getLocal idx]`. henv gives `∃ val, localGet idx = some val ∧ ValueCorr v val`. The IR step pushes val onto stack. Show the Wasm state matches.
 
-### TASK 2: Add ValueCorr to LowerSimRel.henv
+**`.lit` cases** (7 literal sub-cases): Already proved by contradiction ✅.
 
-Current `henv` says "a local exists" but NOT "its value matches." Add `∧ ValueCorr v val`.
+**`.seq` value case**: When `exprValue? a = some v`, ANF steps to b. LowerCodeCorr for `.seq a b` gives `aCode ++ bCode`. Since a is a literal, aCode = `[.const ...]` (single instruction). Show IR step drops the value and continues with bCode.
 
-### TASK 3: Strengthen EmitSimRel.hstack
+Use `lean_goal` at each sorry to see the exact goal, then `lean_multi_attempt` to test automation.
 
-Current tracks only length. Need `List.Forall₂ IRValueToWasmValue ir.stack w.stack` or `ir.stack.map irToWasm = w.stack`.
+### TASK 2: Address trace mismatch for break/continue
+
+**DISCOVERED ISSUE from your last run**: ANF break/continue produce `.error "break:..."` events, but IR `br` produces `.silent`. This makes step_sim FALSE for those cases.
+
+**Options**:
+1. Change ANF.step? for break/continue to produce `.silent` (SIMPLEST — these are control flow, not observable). But ANF/Semantics.lean is yours to change.
+2. Change `anfStepMapped` to map break/continue events to `.silent` using your `traceFromCoreForIR`.
+
+Option 1 is cleaner if break/continue events are truly unobservable (they should be — only `.log` is observable). Check: does the ANF→Core proof chain depend on break/continue producing `.error`? If yes, use option 2.
+
+### TASK 3: Prove EmitSimRel.step_sim sub-cases
+
+With the strengthened hstack (Forall₂ correspondence) and EmitCodeCorr constructors, start proving Emit step_sim cases for simple instructions:
+
+- `const_i32`, `const_i64`, `const_f64`: Push value onto stack. Straightforward.
+- `drop_`: Pop from stack. Uses hstack Forall₂.
+- `getLocal`, `setLocal`: Read/write locals.
 
 ## GLOBAL GOAL -- DO NOT STOP
 Your job is done when:

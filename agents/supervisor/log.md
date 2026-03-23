@@ -1,4 +1,62 @@
 
+## Run: 2026-03-23T02:05:00+00:00
+
+### Build
+- **Status**: `lake build` PASS (no errors, only warnings)
+
+### Sorry Report
+- **Count**: 74 (unchanged from last run)
+- **Distribution**: 45 Wasm/Semantics + 25 CC + 3 ANF + 1 Lower
+
+### Test262
+- 3 pass, 50 fail, 3 skip, 5 xfail / 61 total (UNCHANGED 82+ hours)
+
+### Agent Health
+- **jsspec**: Completed at 02:00. Build clean, 0 sorry. IDLE — all test262 failures are wasm runtime traps.
+- **wasmspec**: Completed at 01:15. GOOD RUN — completed LowerCodeCorr/ValueCorr/EmitCodeCorr infrastructure. 45 Wasm/Semantics sorry. Flat.initialState BLOCKED on coordination.
+- **proof**: Completed at 01:15. GOOD RUN — EnvCorr bidirectional, EnvCorr_extend, toBoolean_convertValue, .let/.seq value sub-cases proved. 25 CC sorry.
+
+### Key Discovery: Flat.initialState Deadlock + Resolution Protocol
+**DEADLOCK**: wasmspec can't change Flat.initialState (breaks CC proof at line 172 — `simp [Flat.Env.empty]`). Proof agent can't change Flat.initialState (doesn't own Flat/Semantics.lean). File permissions enforce ownership.
+
+**RESOLUTION PROTOCOL** (written to BOTH prompts):
+1. Proof agent: sorry BOTH EnvCorr directions at init (temporarily +1 sorry, makes proof robust to any initialState)
+2. Wasmspec agent: change Flat.initialState to include console binding + heap (safe because both dirs are sorry)
+3. Proof agent: fill in both EnvCorr directions using the matching envs (net -2 sorry)
+
+### Discovery: Concrete Helper Lemmas for CC Value Sub-Cases
+Analyzed Core vs Flat semantics for typeof/unary/assign. Identified exact helper lemmas needed:
+- `typeofValue_convertValue`: Flat.typeofValue (convertValue v) = convertValue (Core.typeof_result v) — by cases on v, .function→.closure both give "function"
+- `evalUnary_convertValue`: Flat.evalUnary op (convertValue v) = convertValue (Core.evalUnary op v) — needs toNumber_convertValue first
+- `EnvCorr_assign`: env.assign preserves EnvCorr (analogous to EnvCorr_extend)
+- `.if` value case: use existing toBoolean_convertValue ✅
+
+Wrote concrete Lean code + templates to proof prompt.
+
+### Discovery: Trace Mismatch for break/continue in IR
+wasmspec's last run discovered ANF break/continue produce `.error "break:..."` but IR `br` produces `.silent`. This makes step_sim FALSE. Two options written to wasmspec prompt: (1) change ANF.step? for break/continue to `.silent`, (2) use traceFromCoreForIR mapping.
+
+### Actions Taken
+1. **proof prompt**: Complete rewrite of priorities section. Added 3-step coordination protocol for Flat.initialState. Wrote concrete helper lemma specifications (typeofValue, evalUnary, EnvCorr_assign). Updated sorry inventory with priorities. Template code for all value sub-cases.
+2. **wasmspec prompt**: Updated TASK 0 with coordination protocol (check CC proof first, then change). Added TASK 1 (prove step_sim sub-cases with new infrastructure). Added TASK 2 (trace mismatch fix for break/continue). Removed completed tasks (LowerCodeCorr, ValueCorr, EmitSimRel.hstack all done).
+3. **PROGRESS.md**: Updated metrics, proof chain, resolved/open abstractions, agent health, critical path.
+
+### Proof Chain Analysis
+- **Elaborate**: PROVED ✅
+- **Optimize**: PROVED ✅ (identity)
+- **ClosureConvert**: 25 sorry. EnvCorr infrastructure complete. BLOCKED on Flat.initialState coordination (protocol written). ~5 value sub-cases provable with helper lemmas.
+- **ANFConvert**: 3 sorry. step_star + WF invariant blockers.
+- **Lower**: 1 sorry. Blocked on wasmspec step_sim. Infrastructure now in place (LowerCodeCorr, ValueCorr).
+- **Emit**: Implicit in Wasm/Semantics. 45 sorry in step_sim. Infrastructure now in place (EmitCodeCorr, IRValueToWasmValue).
+- **EndToEnd**: Composition of above.
+
+### Next Run Priorities
+1. Verify proof agent sorries both init EnvCorr directions (enables wasmspec)
+2. Verify wasmspec changes Flat.initialState (once proof is ready)
+3. Verify proof agent starts proving typeof/unary/assign value sub-cases
+4. Monitor wasmspec step_sim sub-case proving
+5. Monitor for build breakage
+
 ## Run: 2026-03-23T01:05:00+00:00
 
 ### Build
