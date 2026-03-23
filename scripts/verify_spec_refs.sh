@@ -1,94 +1,60 @@
 #!/bin/bash
-# Verify that all spec references in Lean files contain verbatim spec text.
-#
-# Convention: In Lean files, use this comment syntax:
-#   -- SPEC: L1234-L1240
-#   -- | verbatim line 1 from spec.md
-#   -- | verbatim line 2 from spec.md
-#
-# This script checks that the quoted text matches spec.md exactly.
-# Exit 1 if any mismatches found.
-
+# Verify SPEC: references in Lean files contain verbatim spec text.
 set -euo pipefail
 
 SPEC="${1:-spec.md}"
 LEAN_DIR="${2:-VerifiedJS}"
-
-if [ ! -f "$SPEC" ]; then
-  echo "ERROR: spec file not found: $SPEC"
-  exit 1
-fi
-
 ERRORS=0
 REFS=0
-COVERED_LINES=""
+TMPFILE=$(mktemp)
 
-find "$LEAN_DIR" -name "*.lean" | while read lean_file; do
-  line_no=0
-  while IFS= read -r line; do
-    line_no=$((line_no + 1))
+if [ ! -f "$SPEC" ]; then
+  echo "ERROR: spec not found: $SPEC"; exit 1
+fi
 
-    # Match: -- SPEC: L<start>-L<end>
-    if echo "$line" | grep -qE '^\s*-- SPEC: L[0-9]+-L[0-9]+'; then
-      REFS=$((REFS + 1))
-      spec_range=$(echo "$line" | grep -oE 'L[0-9]+-L[0-9]+')
-      start=$(echo "$spec_range" | grep -oE '^L[0-9]+' | tr -d 'L')
-      end=$(echo "$spec_range" | grep -oE 'L[0-9]+$' | tr -d 'L')
+for lean_file in $(find "$LEAN_DIR" -name "*.lean" 2>/dev/null); do
+  while IFS= read -r line_info; do
+    line_no=$(echo "$line_info" | cut -d: -f1)
+    line=$(echo "$line_info" | cut -d: -f2-)
 
-      # Collect the -- | lines that follow
-      quoted_lines=""
-      next_line=$((line_no + 1))
-      while IFS= read -r qline; do
-        if echo "$qline" | grep -qE '^\s*-- \|'; then
-          content=$(echo "$qline" | sed 's/^\s*-- | //' | sed 's/^\s*-- |//')
-          quoted_lines="${quoted_lines}${content}\n"
-          next_line=$((next_line + 1))
-        else
-          break
-        fi
-      done < <(tail -n +$((line_no + 1)) "$lean_file")
+    spec_range=$(echo "$line" | grep -oE 'L[0-9]+-L[0-9]+' || true)
+    [ -z "$spec_range" ] && continue
+    start=$(echo "$spec_range" | grep -oE '^L[0-9]+' | tr -d 'L')
+    end=$(echo "$spec_range" | grep -oE 'L[0-9]+$' | tr -d 'L')
+    REFS=$((REFS + 1))
 
-      if [ -z "$quoted_lines" ]; then
-        echo "WARN: $lean_file:$line_no: SPEC ref L${start}-L${end} has no quoted text (add -- | lines)"
-        continue
+    # Collect -- | lines after this line
+    next=$((line_no + 1))
+    quoted=""
+    while IFS= read -r qline; do
+      if echo "$qline" | grep -qE '^\s*-- \|'; then
+        content=$(echo "$qline" | sed 's/^\s*-- | \?//')
+        quoted="${quoted}${content}
+"
+      else
+        break
       fi
+    done < <(sed -n "${next},\$p" "$lean_file")
 
-      # Extract spec lines
-      spec_text=$(sed -n "${start},${end}p" "$SPEC")
-      quoted_clean=$(printf "$quoted_lines" | sed '/^$/d')
-      spec_clean=$(echo "$spec_text" | sed '/^$/d')
+    [ -z "$quoted" ] && continue
 
-      # Compare
-      if [ "$quoted_clean" != "$spec_clean" ]; then
-        echo "MISMATCH: $lean_file:$line_no: SPEC ref L${start}-L${end}"
-        echo "  Expected (from spec.md):"
-        echo "$spec_clean" | head -3 | sed 's/^/    /'
-        echo "  Got (in lean file):"
-        echo "$quoted_clean" | head -3 | sed 's/^/    /'
-        ERRORS=$((ERRORS + 1))
-      fi
+    spec_text=$(sed -n "${start},${end}p" "$SPEC")
+    q_clean=$(echo "$quoted" | sed '/^$/d')
+    s_clean=$(echo "$spec_text" | sed '/^$/d')
 
-      # Track coverage
-      for i in $(seq $start $end); do
-        COVERED_LINES="$COVERED_LINES $i"
-      done
+    if [ "$q_clean" != "$s_clean" ]; then
+      echo "MISMATCH $lean_file:$line_no L${start}-L${end}"
+      ERRORS=$((ERRORS + 1))
     fi
-  done < "$lean_file"
+
+    # Track covered lines
+    seq "$start" "$end" >> "$TMPFILE"
+  done < <(grep -n "SPEC: L[0-9]" "$lean_file" 2>/dev/null || true)
 done
 
-# Count coverage
-TOTAL_SPEC_LINES=$(wc -l < "$SPEC")
-UNIQUE_COVERED=$(echo "$COVERED_LINES" | tr ' ' '\n' | sort -un | wc -l)
+COVERED=$(sort -u "$TMPFILE" | wc -l)
+TOTAL=$(wc -l < "$SPEC")
+rm -f "$TMPFILE"
 
-echo ""
-echo "=== Spec Reference Summary ==="
-echo "Total spec lines: $TOTAL_SPEC_LINES"
-echo "Lines covered by refs: $UNIQUE_COVERED"
-echo "Coverage: $(( UNIQUE_COVERED * 100 / TOTAL_SPEC_LINES ))%"
-echo "Mismatches: $ERRORS"
-
-if [ "$ERRORS" -gt 0 ]; then
-  echo "FAIL: $ERRORS spec references have stale/incorrect quoted text"
-  exit 1
-fi
-echo "PASS: All spec references are up to date"
+echo "Spec coverage: $COVERED/$TOTAL lines ($(( COVERED * 100 / TOTAL ))%), $REFS refs, $ERRORS mismatches"
+[ "$ERRORS" -gt 0 ] && exit 1 || exit 0
