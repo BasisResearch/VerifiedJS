@@ -203,7 +203,7 @@ private theorem evalBinary_convertValue (op : Core.BinOp) (a b : Core.Value) :
     simp only [Core.evalBinary, Flat.evalBinary, Flat.convertValue, bne]
     show Flat.Value.bool (!(Flat.convertValue a == Flat.convertValue b)) = Flat.Value.bool (!(a == b))
     rw [convertValue_beq]
-  | _ => sorry -- BLOCKED: Flat.evalBinary differs from Core for add/eq/neq/lt/gt/le/ge/bitwise/mod/exp/instanceof/in
+  | _ => all_goals (simp [Core.evalBinary, Flat.evalBinary, Flat.convertValue, Core.toNumber, Flat.toNumber, toNumber_convertValue]; try cases a <;> cases b <;> simp_all [Flat.convertValue, Core.toNumber, Flat.toNumber, toNumber_convertValue])
 
 /-- Extending both envs preserves EnvCorr. -/
 private theorem EnvCorr_extend {cenv : Core.Env} {fenv : Flat.Env}
