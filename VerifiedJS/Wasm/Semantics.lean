@@ -5600,6 +5600,7 @@ inductive EmitCodeCorr : List IRInstr → List Instr → Prop where
       EmitCodeCorr (.const_ .i64 v :: rest_ir) (.i64Const n :: rest_w)
   /-- f64 const maps to f64.const. -/
   | const_f64 (v : String) (f : Float) (rest_ir : List IRInstr) (rest_w : List Instr) :
+      f = (v.toNat?.map (fun n => Float.ofNat n) |>.getD 0.0) →
       EmitCodeCorr rest_ir rest_w →
       EmitCodeCorr (.const_ .f64 v :: rest_ir) (.f64Const f :: rest_w)
   /-- localGet maps to local.get. -/
@@ -5789,10 +5790,11 @@ theorem EmitCodeCorr.const_i32_inv {v : String} {rest : List IRInstr} {wcode : L
 /-- Inversion for const_ .f64 :: rest. -/
 theorem EmitCodeCorr.const_f64_inv {v : String} {rest : List IRInstr} {wcode : List Instr}
     (h : EmitCodeCorr (IRInstr.const_ .f64 v :: rest) wcode) :
-    (∃ f rest_w, wcode = Instr.f64Const f :: rest_w ∧ EmitCodeCorr rest rest_w) ∨
+    (∃ f rest_w, wcode = Instr.f64Const f :: rest_w ∧
+      f = (v.toNat?.map (fun n => Float.ofNat n) |>.getD 0.0) ∧ EmitCodeCorr rest rest_w) ∨
     (∃ wasm_instrs rest_w, wcode = wasm_instrs ++ rest_w ∧ EmitCodeCorr rest rest_w) := by
   cases h with
-  | const_f64 _ f _ rw hrw => left; exact ⟨f, rw, rfl, hrw⟩
+  | const_f64 _ f _ rw hf hrw => left; exact ⟨f, rw, rfl, hf, hrw⟩
   | general _ wi _ rw hrw => right; exact ⟨wi, rw, rfl, hrw⟩
 
 /-- Inversion for const_ .i64 :: rest. -/
@@ -6076,13 +6078,15 @@ theorem step_sim (irmod : IRModule) (wmod : Module) :
       | .const_ .f64 v =>
           -- f64 const: same pattern as i32
           have hc : EmitCodeCorr (IRInstr.const_ .f64 v :: rest) s2.code := hcode_ir ▸ hrel.hcode
-          rcases hc.const_f64_inv with ⟨f, rest_w, hcw, hrest⟩ | ⟨wasm_instrs, rest_w, hcw, hrest⟩
+          rcases hc.const_f64_inv with ⟨f, rest_w, hcw, hfeq, hrest⟩ | ⟨wasm_instrs, rest_w, hcw, hrest⟩
           · have hir := irStep?_eq_f64Const s1 v rest hcode_ir
             rw [hir] at hstep
             simp only [Option.some.injEq, Prod.mk.injEq] at hstep
             obtain ⟨rfl, rfl⟩ := hstep
             have hw := step?_eq_f64Const s2 f rest_w hcw
-            exact ⟨_, hw, ⟨hrel.hemit, hrest, by sorry, hrel.hlabels, hhalt_of_structural hrest hrel.hlabels⟩⟩
+            exact ⟨_, hw, ⟨hrel.hemit, hrest,
+              by rw [hfeq]; exact stack_corr_cons hrel.hstack.1 hrel.hstack.2 (.f64 _),
+              hrel.hlabels, hhalt_of_structural hrest hrel.hlabels⟩⟩
           · sorry -- general case
       | .const_ .ptr v =>
           -- ptr const (same as i32 in Wasm)

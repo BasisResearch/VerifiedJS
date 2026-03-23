@@ -122,7 +122,10 @@ private theorem toBoolean_convertValue (v : Core.Value) :
 /-- toNumber commutes with convertValue. -/
 private theorem toNumber_convertValue (v : Core.Value) :
     Flat.toNumber (Flat.convertValue v) = Core.toNumber v := by
-  cases v <;> simp [Flat.convertValue, Flat.toNumber, Core.toNumber]
+  cases v with
+  | bool b => cases b <;> rfl
+  | string s => rfl
+  | _ => rfl
 
 /-- evalBinary commutes with convertValue for operators where Flat matches Core.
     NOTE: This is NOT true for all operators — Flat.evalBinary is simplified
@@ -774,7 +777,51 @@ private theorem closureConvert_step_simulation
     | none =>
       sorry -- stepping sub-case: needs recursive step simulation
   | unary _ _ => sorry -- needs env correspondence (sub-stepping)
-  | binary _ _ _ => sorry -- needs env correspondence (sub-stepping)
+  | binary op lhs rhs =>
+    rw [hsc] at hconv; simp only [Flat.convertExpr] at hconv
+    cases hval_l : Core.exprValue? lhs with
+    | some lv =>
+      cases hval_r : Core.exprValue? rhs with
+      | some rv =>
+        -- VALUE SUB-CASE: both operands are values
+        have hlhs_lit : lhs = .lit lv := by
+          cases lhs <;> simp [Core.exprValue?] at hval_l <;> exact congrArg _ hval_l
+        have hrhs_lit : rhs = .lit rv := by
+          cases rhs <;> simp [Core.exprValue?] at hval_r <;> exact congrArg _ hval_r
+        subst hlhs_lit; subst hrhs_lit
+        simp only [Flat.convertExpr] at hconv
+        have hsf_rw : sf = ⟨Flat.Expr.binary op (.lit (Flat.convertValue lv)) (.lit (Flat.convertValue rv)),
+            sf.env, sf.heap, sf.trace⟩ := by
+          cases sf; simp_all [(Prod.mk.inj hconv).1]
+        have hsc_rw : sc = ⟨Core.Expr.binary op (.lit lv) (.lit rv),
+            sc.env, sc.heap, sc.trace, sc.funcs, sc.callStack⟩ := by
+          cases sc; simp only [] at hsc ⊢; congr
+        -- Both produce .silent
+        have hflat_ev : ev = .silent := by
+          rw [hsf_rw] at hstep; simp only [Flat.step?, Flat.exprValue?] at hstep
+          exact (Prod.mk.inj (Option.some.inj hstep)).1.symm
+        subst hflat_ev
+        obtain ⟨sc', hcstep⟩ : ∃ sc', Core.step? sc = some (.silent, sc') := by
+          rw [hsc_rw]; simp only [Core.step?, Core.exprValue?]; exact ⟨_, rfl⟩
+        refine ⟨sc', ⟨hcstep⟩, ?_⟩
+        -- Trace correspondence
+        have hsf'_sub := hstep; rw [hsf_rw] at hsf'_sub
+        simp only [Flat.step?, Flat.exprValue?] at hsf'_sub
+        have hsc'_sub := hcstep; rw [hsc_rw] at hsc'_sub
+        simp only [Core.step?, Core.exprValue?] at hsc'_sub
+        have heqf := (Prod.mk.inj (Option.some.inj hsf'_sub)).2
+        have heqc := (Prod.mk.inj (Option.some.inj hsc'_sub)).2
+        subst heqf; subst heqc
+        -- Now sf' has expr .lit (Flat.evalBinary ...) and sc' has expr .lit (Core.evalBinary ...)
+        refine ⟨by show sf.trace ++ _ = sc.trace ++ _; rw [htrace], henvCorr,
+          scope, envVar, envMap, st, st, ?_⟩
+        -- Expression correspondence via evalBinary_convertValue
+        show (Flat.Expr.lit (Flat.evalBinary op (Flat.convertValue lv) (Flat.convertValue rv)), st) =
+             Flat.convertExpr (.lit (Core.evalBinary op lv rv)) scope envVar envMap st
+        simp only [Flat.convertExpr]
+        congr 1; exact congrArg _ (evalBinary_convertValue op lv rv)
+      | none => sorry -- stepping sub-case: rhs needs evaluation
+    | none => sorry -- stepping sub-case: lhs needs evaluation
   | objectLit _ => sorry -- needs env/heap correspondence
   | arrayLit _ => sorry -- needs env/heap correspondence
   | functionDef _ _ _ _ _ => sorry -- needs env/heap/funcs + CC state
