@@ -3298,3 +3298,48 @@ Source ──[elaborate]──> Core ──[closureConvert]──> Flat ──[a
 
 ## Run: 2026-03-23T23:05:01+00:00
 
+
+### Build
+- **Status**: `lake build` **PASS** ✅
+
+### Metrics
+- **Sorry count**: 65 (threshold 100) — 18 CC + 42 Wasm + 2 ANF + 1 Lower
+- **Delta**: DOWN from 69 (-4, CC 20→18, Wasm 46→42)
+- **Test262**: 3 pass, 50 fail, 3 skip, 5 xfail / 63 total (UNCHANGED 124+ hrs)
+- **Spec coverage**: 0.9% (35 refs, 0 mismatches — all 4 mismatches FIXED)
+- **WasmCert refs**: 0 checked, 0 mismatches
+
+### Proof Chain Status
+```
+Source ──[elaborate]──> Core ──[closureConvert]──> Flat ──[anfConvert]──> ANF ──[lower]──> Wasm.IR ──[emit]──> Wasm
+         ✅ proved       18 sorry                    2 sorry              1 sorry          42 sorry
+```
+
+### Agent Status
+- **proof**: Active and productive. Closed 2 more CC stepping sub-cases (20→18). Last completed run: 23:07. Currently running again. The stepping sub-case pattern (depth IH + convertExpr_not_value + Core step helper) continues to work reliably.
+- **wasmspec**: RECOVERED from stall! Closed 4 Wasm sorries (46→42). Completed runs at 21:31 and 23:07. This is the first Wasm sorry reduction in 6+ runs. The "general case" EmitSimRel strategy is working.
+- **jsspec**: Healthy. Fixed all 4 spec citation mismatches (35 refs, 0 mismatches). Completing every run.
+
+### Abstraction Discovery
+
+**CC Sorry Taxonomy (18 remaining)**:
+- **Stepping sub-cases (5)**: Lines 918 (let), 1113 (if-cond), 1178 (seq-lhs), 1475 (binary-rhs), 1476 (binary-lhs). ALL use the proven typeof template.
+- **Heap/env/funcs (7)**: Lines 1179 (call), 1180 (newObj), 1181 (getProp), 1182 (setProp), 1183 (getIndex), 1184 (setIndex), 1185 (deleteProp). ALL blocked on CC_SimRel lacking heap correspondence.
+- **Constructor/control (6)**: 758 (captured var), 1477 (objectLit), 1478 (arrayLit), 1479 (functionDef), 1581 (tryCatch), 1651 (while — fundamentally hard due to convertExpr fresh name divergence on unrolling).
+
+**Next architectural wall**: After stepping sub-cases are done (should be 1-2 more runs), the proof agent hits the heap/env/funcs wall (7 sorries). CC_SimRel needs to be strengthened with HeapCorr and FuncsCorr. Wrote concrete CC_SimRel strengthening plan to proof prompt (TASK 1) — not to be attempted until stepping sub-cases are done.
+
+**While case (line 1651)**: This is fundamentally different — while → if/seq/while unrolling means convertExpr produces different fresh names on re-conversion. May need logical relation or step-indexed approach instead of convertExpr correspondence. Flagged but not blocking current work.
+
+### Actions Taken
+1. ✅ Updated proof prompt (2026-03-23T23:05): Updated sorry count, listed 5 remaining stepping sub-cases with exact lines. Added CC_SimRel strengthening plan as TASK 1 (for after stepping cases are done).
+2. ✅ Updated wasmspec prompt (2026-03-23T23:05): Acknowledged 46→42 progress. Updated sorry line numbers. Encouraged continuing general-case approach.
+3. ✅ Updated jsspec prompt (2026-03-23T23:05): Acknowledged 0 mismatches. Focused on adding 5+ more citations (target 40+).
+4. ✅ Updated PROGRESS.md: metrics table, proof chain (CC 20→18, Wasm 46→42).
+
+### Next Run Focus
+- Monitor proof agent: can it close 2+ more stepping sub-cases? seq (1178) should be first.
+- Check wasmspec: continuing to close general-case sorries?
+- Track jsspec citation count (target: 40+ refs)
+2026-03-23T23:05:01+00:00 DONE
+2026-03-23T23:20:51+00:00 DONE
