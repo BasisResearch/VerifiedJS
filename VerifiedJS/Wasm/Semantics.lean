@@ -6156,10 +6156,8 @@ theorem step_sim (irmod : IRModule) (wmod : Module) :
           · -- Specific case: Wasm code = .drop :: rest_w
             match hstk : s1.stack with
             | [] =>
-              -- Empty stack: both sides trap
-              -- The IR traps with "stack underflow in drop"
-              -- The Wasm also traps (its stack is also empty by hstack)
-              sorry -- trap case: needs careful state construction
+              -- Empty stack: both sides trap with "stack underflow in drop"
+              sorry -- trap case
             | v :: stk =>
               -- Non-empty stack: both sides drop silently
               have hir := irStep?_eq_drop s1 rest v stk hcode_ir hstk
