@@ -5501,7 +5501,59 @@ theorem step_sim (prog : ANF.Program) (irmod : IRModule) :
     | .trivial (.var name) =>
         -- Variable reference: IR code is [localGet idx]
         -- ANF steps by looking up name in env, IR steps by localGet
-        sorry
+        -- Get IR code structure from LowerCodeCorr
+        have hc := hrel.hcode; rw [hexpr] at hc
+        obtain ⟨idx, hcode_eq⟩ := hc.var_inv
+        -- Get var/local existence from hvar
+        have ⟨⟨v, henv_lookup⟩, ⟨irval, hlocal⟩⟩ := hrel.hvar name idx hexpr hcode_eq
+        -- ANF step for var found: produces silent, new expr = trivialOfValue v
+        have hs1eq : { s1 with expr := ANF.Expr.trivial (.var name) } = s1 := by
+          cases s1; simp_all
+        have hanf := ANF.step?_var_found s1 name v henv_lookup
+        rw [hs1eq] at hanf
+        rw [hanf] at heq
+        simp only [Option.some.injEq, Prod.mk.injEq] at heq
+        obtain ⟨rfl, rfl⟩ := heq
+        -- IR step for localGet
+        -- Extract frame from hframes
+        obtain ⟨fr, frs, hfr_eq⟩ : ∃ fr frs, s2.frames = fr :: frs := by
+          cases hf : s2.frames with
+          | nil => exact absurd hf hrel.hframes
+          | cons fr frs => exact ⟨fr, frs, rfl⟩
+        -- Extract local value from hlocal
+        simp [hfr_eq] at hlocal
+        have hlocal_val : fr.locals[idx]? = some irval := hlocal
+        have hir := irStep?_eq_localGet s2 idx [] fr frs irval hcode_eq hfr_eq hlocal_val
+        -- The IR produces (.silent, ...), and traceFromCore .silent = .silent
+        simp only [traceFromCore]
+        refine ⟨_, hir, ?_⟩
+        -- Construct new LowerSimRel for the post-step states
+        -- ANF: pushTrace { s1 with expr := .trivial (trivialOfValue v) } .silent
+        -- IR: { s2 with code := [], stack := irval :: s2.stack, trace := ... }
+        exact {
+          hlower := hrel.hlower
+          hmod := hrel.hmod
+          hcode := by
+            -- new ANF expr = .trivial (trivialOfValue v), new IR code = []
+            simp [ANF.pushTrace]
+            exact .value_done (ANF.trivialOfValue v) (ANF.trivialOfValue_ne_var v)
+          hhalt := by
+            intro hhalt_anf
+            -- After localGet, IR code = []. Need labels = [] ∧ frames ≤ 1.
+            -- This requires program structure invariants (single-frame, no labels for var).
+            simp [IRExecState.halted]
+            sorry
+          hframes := by simp [hfr_eq]
+          henv := by
+            intro n w hlk
+            simp [ANF.pushTrace] at hlk
+            exact hrel.henv n w hlk
+          hvar := by
+            intro n' idx' hexpr' _
+            simp [ANF.pushTrace] at hexpr'
+            -- trivialOfValue never produces var
+            exact absurd hexpr' (by cases v <;> simp [ANF.trivialOfValue])
+        }
     | .trivial .litNull =>
         -- Literal null: ANF.step? returns none for literals, contradiction with heq
         have h := ANF.step?_litNull s1
