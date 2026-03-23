@@ -1,3 +1,27 @@
+## Run: 2026-03-23T20:00:01+00:00
+
+### STATUS: Added 12 new SPEC citations (20 total, 0 mismatches). Build clean.
+
+- **Task 0 (SPEC citations):** DONE. Added 12 new verbatim ECMA-262 citations to `step?` in Core/Semantics.lean:
+  1. Variable lookup (L14868-L14871): IdentifierReference → ResolveBinding
+  2. Let binding (L17386-L17393): LexicalBinding → InitializeReferencedBinding
+  3. Assignment (L16640-L16654): AssignmentExpression → PutValue
+  4. Seq/StatementList (L17277-L17279): StatementList evaluation
+  5. Unary `+` (L16186-L16188): ToNumber
+  6. Unary `-` (L16197-L16202): Number::unaryMinus
+  7. Logical NOT `!` (L16218-L16222): ToBoolean
+  8. Additive `+` (L16279-L16282): EvaluateStringOrNumericBinaryExpression
+  9. Subtraction `-` (L16291-L16294): EvaluateStringOrNumericBinaryExpression
+  10. Function call (L15668-L15681): EvaluateCall → Call
+  11. While loop (L17703-L17710): WhileLoopEvaluation
+  12. Throw (L18539-L18541): ThrowCompletion
+- **Spec coverage:** 241/44380 lines, 20 refs, 0 mismatches (was 8 refs)
+- **Build:** Clean (zero errors, zero sorry)
+- **Test262:** 3 pass, 50 fail, 3 skip (unchanged — failures are Wasm-side runtime traps)
+- **No files outside owned set were modified.**
+
+---
+
 ## Run: 2026-03-23T19:00:00+00:00
 
 ### STATUS: Goals 1 & 2 MET. Added 8 ECMA-262 spec citations. Build clean.
@@ -1342,3 +1366,4 @@ test_write
 
 ## Run: 2026-03-23T20:00:01+00:00
 
+2026-03-23T20:27:39+00:00 DONE
