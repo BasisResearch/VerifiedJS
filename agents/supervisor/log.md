@@ -3146,3 +3146,48 @@ When reviewing jsspec work, CHECK that test filenames match their actual content
 
 ## Run: 2026-03-23T20:05:01+00:00
 
+
+### Build
+- **Status**: `lake build` **PASS** ✅
+
+### Metrics
+- **Sorry count**: 74 (threshold 100) — 25 CC + 46 Wasm + 2 ANF + 1 Lower
+- **Delta**: UP from 72 (+2 in Wasm — regression)
+- **Test262**: 3 pass, 50 fail, 3 skip, 5 xfail / 63 total (UNCHANGED 118+ hrs)
+- **Spec coverage**: 0.4% (20 refs, 12 mismatches)
+- **WasmCert refs**: 0 checked, 0 mismatches
+
+### Proof Chain Status
+```
+Source ──[elaborate]──> Core ──[closureConvert]──> Flat ──[anfConvert]──> ANF ──[lower]──> Wasm.IR ──[emit]──> Wasm
+         ✅ proved       25 sorry                    2 sorry              1 sorry          46 sorry
+```
+
+### Agent Status
+- **proof**: CRITICAL — timing out EVERY run for 7.5+ hours (since 12:30). Last productive: 12:30 (proved 8 evalBinary cases, ALL evalBinary now closed). The typeof stepping skeleton was too complex — simplified prompt to: (1) add convertExpr_not_value helper lemma, (2) then attempt typeof. Told agent to SKIP lake build at start (save 15+ min).
+- **wasmspec**: Running but REGRESSED (44→46 sorry). Completed 18:24 and 19:15 runs. Told to CLOSE sorries only, no more decomposition.
+- **jsspec**: Running consistently (completed every run). Spec citations have 12 mismatches — redirected to fix those first.
+
+### Abstraction Discovery
+
+**CC Sorry Taxonomy (25 sorry, ALL evalBinary now proved)**:
+1. **Stepping sub-cases (12)**: Lines 908, 962, 1037, 1102, 1171, 1226, 1270, 1271, 1328, 1504, 1605, 1656. ALL need `convertExpr_not_value` helper + depth-indexed IH. The typeof case (1171) is simplest.
+2. **Env/heap correspondence (7)**: Lines 1103-1109. Need CC_SimRel to track heap+funcs.
+3. **Other (6)**: captured var (748), while loop CC_SimRel (1399), tryCatch env (1329), objectLit/arrayLit/functionDef (1272-1274).
+
+The `convertExpr_not_value` helper is the KEY ENABLER — once proved, it unblocks all 12 stepping sub-cases. This is why I made it TASK 0 for the proof agent (standalone, 5 minutes).
+
+**Wasm Sorry Regression**: 44→46. wasmspec decomposed or added infrastructure sorries. Redirected to closing mode only.
+
+### Actions Taken
+1. ✅ Updated proof prompt: RADICALLY simplified — skip lake build, TASK 0 = just add convertExpr_not_value helper, TASK 1 = typeof stepping case (simplified). Removed 45-line skeleton that was too complex.
+2. ✅ Updated wasmspec prompt: sorry regression warning, NO NEW SORRIES rule, focus on closing globalSet/binOp/unOp or LowerSimRel break/continue/throw.
+3. ✅ Updated jsspec prompt: fix 12 spec citation mismatches (was adding refs with wrong verbatim text).
+4. ✅ Updated PROGRESS.md: metrics + proof chain + evalBinary milestone.
+
+### Next Run Focus
+- Monitor proof agent timeout pattern — if still timing out, need to investigate root cause (maybe Lean elaboration of CC file is too slow?)
+- Check if wasmspec sorry count goes DOWN
+- Check if jsspec fixes the 12 mismatches
+2026-03-23T20:05:01+00:00 DONE
+2026-03-23T20:20:33+00:00 DONE
