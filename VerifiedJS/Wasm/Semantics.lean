@@ -1663,12 +1663,15 @@ theorem step?_globalGet (s : ExecState) (idx : Nat) (rest : List Instr)
   unfold step?; simp [h]
 
 /-- global.get (hcode version) with valid index pushes the global's value. -/
-theorem step?_eq_globalGet (s : ExecState) (idx : Nat) (rest : List Instr)
-    (hcode : s.code = Instr.globalGet idx :: rest) (h : idx < s.store.globals.size) :
+theorem step?_eq_globalGet_valid (s : ExecState) (idx : Nat) (rest : List Instr)
+    (v : WasmValue)
+    (hcode : s.code = Instr.globalGet idx :: rest)
+    (h : idx < s.store.globals.size)
+    (hv : s.store.globals[idx] = v) :
     step? s = some (.silent,
-      { s with code := rest, stack := s.store.globals[idx] :: s.stack,
+      { s with code := rest, stack := v :: s.stack,
         trace := s.trace ++ [.silent] }) := by
-  cases s; simp_all [step?, pushTrace]
+  subst hv; cases s; simp_all [step?, pushTrace]
 
 /-- global.get with out-of-bounds index traps. -/
 theorem step?_eq_globalGet_oob (s : ExecState) (idx : Nat) (rest : List Instr)
@@ -6847,26 +6850,34 @@ theorem step_sim (irmod : IRModule) (wmod : Module) :
               obtain ⟨rfl, rfl⟩ := hstep
               -- Derive idx < globals.size from globals[idx]? = some
               have hidx_ir : idx < s1.globals.size := by
-                rwa [Array.getElem?_lt_iff] at hglob
+                by_contra h; simp [Array.getElem?_none (by omega)] at hglob
               -- Get Wasm bounds from globals correspondence
               have hglen := hrel.hglobals.1
               have hidx_w : idx < s2.store.globals.size := by omega
-              -- Wasm step
-              have hw := step?_eq_globalGet s2 idx rest_w hcw hidx_w
               -- Value correspondence
               have ⟨irv, wv, hirv, hwv, hval_corr⟩ := hrel.hglobals.2 idx hidx_ir
-              -- irv = val
-              have hirv_eq : irv = val := by
-                simp [Array.getElem?_lt_iff, hidx_ir] at hirv hglob
-                rw [hirv] at hglob; exact (Option.some.inj hglob).symm
+              -- irv = val (both are globals[idx])
+              have : s1.globals[idx]? = some irv := hirv
+              rw [hglob] at this; have hirv_eq : irv = val := by injection this
               subst hirv_eq
-              -- wv = s2.store.globals[idx]
-              have hwv_eq : wv = s2.store.globals[idx] := by
-                simp [Array.getElem?_lt_iff, hidx_w] at hwv
-                exact hwv
+              -- wv = store.globals[idx]
+              have : s2.store.globals[idx]? = some wv := hwv
+              have hwv_eq : wv = s2.store.globals[idx]'hidx_w := by
+                rw [Array.getElem?_eq_getElem hidx_w] at this; injection this
               subst hwv_eq
-              exact ⟨_, by simp [traceToWasm]; exact hw,
-                hrel.hemit, hrest, by dsimp only []; exact stack_corr_cons hrel.hstack.1 hrel.hstack.2 hval_corr, hrel.hframes_len, hrel.hframes_locals, hrel.hframes_vals, hrel.hglobals, hrel.hlabels, hhalt_of_structural hrest hrel.hlabels⟩
+              -- Wasm step
+              have hw := step?_eq_globalGet_valid s2 idx rest_w (s2.store.globals[idx]'hidx_w) hcw hidx_w rfl
+              simp only [traceToWasm]
+              refine ⟨_, hw, ?_⟩
+              exact { hemit := hrel.hemit
+                      hcode := hrest
+                      hstack := by dsimp only []; exact stack_corr_cons hrel.hstack.1 hrel.hstack.2 hval_corr
+                      hframes_len := hrel.hframes_len
+                      hframes_locals := hrel.hframes_locals
+                      hframes_vals := hrel.hframes_vals
+                      hglobals := hrel.hglobals
+                      hlabels := hrel.hlabels
+                      hhalt := hhalt_of_structural hrest hrel.hlabels }
             | none =>
               -- Out-of-bounds: both sides trap
               have hir := irStep?_eq_globalGet_oob s1 idx rest hcode_ir hglob
@@ -6875,22 +6886,22 @@ theorem step_sim (irmod : IRModule) (wmod : Module) :
               obtain ⟨rfl, rfl⟩ := hstep
               -- Derive ¬(idx < globals.size) from globals[idx]? = none
               have hidx_ir : ¬(idx < s1.globals.size) := by
-                intro h; simp [Array.getElem?_lt_iff, h] at hglob
+                intro h; rw [Array.getElem?_eq_getElem h] at hglob; exact absurd hglob (by simp)
               -- Wasm also out of bounds
               have hglen := hrel.hglobals.1
               have hidx_w : ¬(idx < s2.store.globals.size) := by omega
               have hw := step?_eq_globalGet_oob s2 idx rest_w hcw hidx_w
-              exact ⟨_,
-                by simp [traceToWasm]; exact hw,
-                { hemit := hrel.hemit
-                  hcode := .nil
-                  hstack := by dsimp only []; exact hrel.hstack
-                  hframes_len := hrel.hframes_len
-                  hframes_locals := hrel.hframes_locals
-                  hframes_vals := hrel.hframes_vals
-                  hglobals := hrel.hglobals
-                  hlabels := by dsimp only []; exact hrel.hlabels
-                  hhalt := hhalt_of_structural .nil hrel.hlabels }⟩
+              simp only [traceToWasm]
+              refine ⟨_, hw, ?_⟩
+              exact { hemit := hrel.hemit
+                      hcode := .nil
+                      hstack := by dsimp only []; exact hrel.hstack
+                      hframes_len := hrel.hframes_len
+                      hframes_locals := hrel.hframes_locals
+                      hframes_vals := hrel.hframes_vals
+                      hglobals := hrel.hglobals
+                      hlabels := by dsimp only []; exact hrel.hlabels
+                      hhalt := hhalt_of_structural .nil hrel.hlabels }
           · sorry -- general case
       | .globalSet idx =>
           -- global.set
