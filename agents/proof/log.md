@@ -1006,4 +1006,64 @@ test_write
 2026-03-23T01:39:58+00:00 DONE
 
 ## Run: 2026-03-23T02:30:02+00:00
+- Sorries before: 29 (25 CC + 3 ANF + 1 Lower), after: 30 (26 CC + 3 ANF + 1 Lower)
+- Net sorry delta: +1 (intentional: init_related sorryed both directions per prompt TASK 1)
+
+### What was done:
+1. **TASK 1: init_related made robust** (1→2 sorries, intentional)
+   - Replaced single Core⊆Flat sorry with bidirectional sorry: `constructor <;> (intro _ _ _; sorry)`
+   - This unblocks wasmspec from changing Flat.initialState without breaking the proof
+
+2. **Proved `.if` value sub-case** (no net sorry change)
+   - When `exprValue? cond = some v`: both Core and Flat branch on the condition
+   - Used `toBoolean_convertValue` to show both pick the same branch (true→then, false→else)
+   - Case split on `Core.toBoolean v` to provide correct CCState for each branch
+
+3. **Proved `.typeof` value sub-case** (no net sorry change)
+   - When `exprValue? arg = some v`: Core produces `.string (typeof_result v)`, Flat produces `typeofValue (convertValue v)`
+   - `typeofValue` is private — worked around by `cases v with | null => rfl | ...` (7 cases)
+   - Each case closes by kernel reduction of both sides
+
+4. **Proved `.await` value sub-case** (no net sorry change)
+   - When `exprValue? arg = some v`: both produce `.silent` and `.lit v`/`.lit (convertValue v)`
+   - Straightforward — follows `.seq` value pattern exactly
+
+5. **Proved `.yield (some e)` value sub-case** (no net sorry change)
+   - When `exprValue? e = some v`: both produce `.silent` and `.lit v`/`.lit (convertValue v)`
+   - Similar to `.await` but inside the `| some e =>` branch of yield
+
+### Key findings / blockers discovered:
+1. **`.unary` BLOCKED**: `toNumber` differs (Core: undefined→NaN, string→parse; Flat: all→0.0). Also `.bitNot` differs (Core: actual bit ops; Flat: returns .undefined). Cannot prove `evalUnary_convertValue`.
+2. **`.assign` BLOCKED**: `updateBindingList` is private in both Core and Flat semantics. Can't prove `EnvCorr_assign` without lookup-assign interaction lemmas.
+3. **`.throw` BLOCKED**: Core event = `.error (valueToString v)`, Flat event = `.error "throw"`. Event strings differ.
+4. **`.return some` BLOCKED**: Core event = `.error ("return:" ++ repr v)`, Flat event = `.error ("return:" ++ repr (convertValue v))`. Events differ for function values.
+5. **`.while_` BLOCKED**: CCState commutation issue — Flat's step produces `.while_ cond' body'` but Core's lowering + CC produces `.while_ cond'' body''` with different CCState (different fresh variable IDs).
+
+### Remaining sorries (30 total):
+| # | File | Lines | Count | Description | Status |
+|---|------|-------|-------|-------------|--------|
+| 1 | CC | 169 | 2 | init_related — intentionally sorryed both dirs | WAITING for Flat.initialState update |
+| 2 | CC | 390 | 1 | .var captured — needs heap correspondence | LATER |
+| 3 | CC | 550 | 1 | .let stepping — needs recursive step simulation | LATER |
+| 4 | CC | 551 | 1 | .assign value — updateBindingList private | BLOCKED |
+| 5 | CC | 626 | 1 | .if stepping — needs recursive step simulation | LATER |
+| 6 | CC | 691 | 1 | .seq stepping — needs recursive step simulation | LATER |
+| 7 | CC | 692-698 | 7 | call/newObj/getProp/setProp/getIndex/setIndex/deleteProp | LATER (heap) |
+| 8 | CC | 760 | 1 | .typeof stepping — needs recursive step simulation | LATER |
+| 9 | CC | 761-762 | 2 | .unary/.binary — toNumber/bitNot mismatch | BLOCKED |
+| 10 | CC | 763-764 | 2 | objectLit/arrayLit — needs heap | LATER |
+| 11 | CC | 765 | 1 | functionDef — needs heap/funcs + CC state | LATER |
+| 12 | CC | 766-768 | 3 | throw/tryCatch/while_ — event/CCState mismatch | BLOCKED |
+| 13 | CC | 821 | 1 | .return some — event string mismatch | BLOCKED |
+| 14 | CC | 922 | 1 | .yield some stepping — needs recursive step | LATER |
+| 15 | CC | 973 | 1 | .await stepping — needs recursive step | LATER |
+| 16 | ANF | 94,1017,1097 | 3 | step_star + WF | LATER |
+| 17 | Lower | 69 | 1 | Blocked on wasmspec | BLOCKED |
+
+### Strategy for Next Run
+1. Document all BLOCKED items in PROOF_BLOCKERS.md so other agents can fix the semantic mismatches
+2. Focus on ANF sorries if CC is mostly blocked
+3. If Flat.initialState gets updated, fill in init_related immediately
+
+2026-03-23T02:30:02+00:00 DONE
 
