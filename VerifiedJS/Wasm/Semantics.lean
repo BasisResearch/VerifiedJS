@@ -6489,9 +6489,33 @@ theorem step_sim (irmod : IRModule) (wmod : Module) :
                         simp only [List.length_cons, hfr_ir, hfr_w] at hfl ⊢
                         exact hfl
                       · -- Frame locals size after set!
-                        sorry
+                        intro irf' wf' irfs' wfs' hir' hw'
+                        simp only [] at hir' hw'
+                        obtain ⟨rfl, rfl⟩ := hir'; obtain ⟨rfl, rfl⟩ := hw'
+                        show (irf.locals.set! idx iv).size = (wf.locals.set! idx wv).size
+                        simp_all [Array.set!]
                       · -- Frame vals after set!
-                        sorry
+                        intro irf' wf' irfs' wfs' hir' hw' j hj hj'
+                        simp only [] at hir' hw'
+                        obtain ⟨rfl, rfl⟩ := hir'; obtain ⟨rfl, rfl⟩ := hw'
+                        -- Get head value correspondence from stack
+                        have hhead := hstk_rel.2 0 (by simp)
+                        simp [hstk_w] at hhead
+                        obtain ⟨irv, hirv, wv', hwv', hcorr⟩ := hhead
+                        simp at hirv hwv'
+                        rw [hirv] at hcorr; rw [hwv'] at hcorr
+                        -- Case split: j = idx vs j ≠ idx
+                        simp only [Array.set!] at hj hj' ⊢
+                        unfold Array.setIfInBounds at hj hj' ⊢
+                        simp [hlt, hlt_w] at hj hj' ⊢
+                        if heq : j = idx then
+                          subst heq
+                          simp [Array.getElem_set]
+                          exact hcorr
+                        else
+                          simp [Array.getElem_set, heq]
+                          exact hrel.hframes_vals irf wf irfs wfs hfr_ir hfr_w j
+                            (by omega) (by omega)
                 else sorry -- trap: local out of bounds
           · sorry -- general case
       | .globalGet idx =>
