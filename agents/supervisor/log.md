@@ -3247,3 +3247,51 @@ The firstNonValue lemmas being built NOW are prerequisites for the 9 stepping su
 
 ## Run: 2026-03-23T22:30:05+00:00
 
+
+### Build
+- **Status**: `lake build` **PASS** ✅
+
+### Metrics
+- **Sorry count**: 69 (threshold 100) — 20 CC + 46 Wasm + 2 ANF + 1 Lower
+- **Delta**: DOWN from 73 (-4 in CC: 24→20)
+- **Test262**: 3 pass, 50 fail, 3 skip, 5 xfail / 63 total (UNCHANGED 122+ hrs)
+- **Spec coverage**: 35 refs, 4 mismatches (up from 25 refs/1 mismatch — more refs but also more mismatches)
+- **WasmCert refs**: 0 checked, 0 mismatches
+
+### Proof Chain Status
+```
+Source ──[elaborate]──> Core ──[closureConvert]──> Flat ──[anfConvert]──> ANF ──[lower]──> Wasm.IR ──[emit]──> Wasm
+         ✅ proved       20 sorry                    2 sorry              1 sorry          46 sorry
+```
+
+### Agent Status
+- **proof**: Proved 4 more stepping sub-cases (typeof, unary, throw, return, yield + await value). CC 24→20. Still timing out most runs (16:30-21:30 all timeout/crash). 22:30 exited code 1 immediately. Infrastructure (firstNonValue lemmas, convertExpr_not_value, depth-indexed IH) is solid and paying off.
+- **wasmspec**: Stalling at 46 sorry for 4+ runs. Timed out at 20:15, exited code 1 at 22:15. No progress on step_sim cases.
+- **jsspec**: Healthy — completing runs, added 10 more spec citations (25→35). But now has 4 mismatches (was 1). Exited code 1 at 22:00.
+
+### Abstraction Discovery
+
+**CC Stepping Sub-case Pattern VALIDATED**: The proof agent proved 5 more stepping sub-cases using the identical template: `convertExpr_not_value` + depth-indexed IH + Core step helper + CC_SimRel reconstruction. 7 remain, all following the same pattern. The Core step helpers exist for ALL except `step_binary_value_lhs_nonvalue_rhs` (needed for line 1409).
+
+**CC Sorry Taxonomy (20 remaining)**:
+- **Stepping sub-cases (7)**: Lines 918 (let), 972 (assign), 1047 (if), 1112 (seq), 1409 (binary rhs), 1410 (binary lhs), 1936 (await). ALL use the proved typeof template.
+- **Captured var (1)**: Line 758. Needs heap correspondence in CC_SimRel.
+- **Env/heap/funcs (7)**: Lines 1113-1119. Need CC_SimRel to track heap+funcs.
+- **Constructor/control (5)**: Lines 1411 (objectLit), 1412 (arrayLit), 1413 (functionDef), 1515 (tryCatch), 1585 (while).
+
+**Missing Core helper**: `step_binary_value_lhs_nonvalue_rhs` — binary op when lhs is a value (.lit lv) but rhs is not a value. Wrote exact Lean code to proof prompt.
+
+**EmitSimRel general cases**: 6 sorry lines marked "general case" at 6629, 6643, 6733, 6906, 6973, 7081. These are fallback branches where specific constructors were already proved. Redirected wasmspec to investigate.
+
+### Actions Taken
+1. ✅ Updated proof prompt (2026-03-23T22:30): Detailed stepping sub-case template for all 7 remaining cases. Start with seq (simplest), then assign, then let. Added exact `step_binary_value_lhs_nonvalue_rhs` Lean code to write.
+2. ✅ Updated wasmspec prompt (2026-03-23T22:30): Focus on 6 "general case" EmitSimRel sorries (may be closable by contradiction). Alternative: LowerSimRel .throw.
+3. ✅ Updated jsspec prompt (2026-03-23T22:30): Fix 4 spec citation mismatches (listed exact locations). Then add 5+ more citations.
+4. ✅ Updated PROGRESS.md: metrics table, proof chain (CC 24→20), open abstractions.
+
+### Next Run Focus
+- Monitor proof agent: can it close 3+ stepping sub-cases in one run? seq→assign→let is the target.
+- Check wasmspec: did it close any general-case sorries?
+- Track jsspec mismatches (should go from 4→0)
+2026-03-23T22:30:05+00:00 DONE
+2026-03-23T22:46:50+00:00 DONE

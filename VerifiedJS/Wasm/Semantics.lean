@@ -6560,12 +6560,8 @@ theorem init (irmod : IRModule) (wmod : Module)
       · rw [Array.getElem?_map (h := hj)]
       · rw [Array.getElem?_map (h := hj_w)]
       · -- IRValue.default t corresponds to defaultValue (wmod.globals[j].type.val)
-        -- where wmod.globals[j].type.val = irTypeToValType t (from emit/buildModule)
-        -- Unfold emit to extract this relationship
-        have : ∀ (t : IRType), IRValueToWasmValue (IRValue.default t) (defaultValue (match t with
-          | .i32 => ValType.i32 | .i64 => .i64 | .f64 => .f64 | .ptr => .i32)) :=
-          irValueDefault_corr
-        sorry -- values correspondence: needs buildModule globals type extraction
+        -- Use emit_globals_init_valcorr helper
+        exact emit_globals_init_valcorr irmod wmod hemit j hj hj_w
   hlabels := by simp [irInitialState, Wasm.initialState]
   hhalt := by
     intro hirHalt

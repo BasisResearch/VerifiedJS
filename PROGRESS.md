@@ -129,6 +129,7 @@ arithmetic, boolean_logic, conditionals, do_while, for_loop, functions, let_bind
 | 2026-03-23T19:05 | **72** | **~203 (est.)** | Build PASS ✅. Sorry 72 (UNCHANGED: 25 CC + 44 Wasm + 2 ANF + 1 Lower). **DEEP ANALYSIS**: Proved all stepping sub-cases follow identical pattern (typeof/unary/assign/let/if/seq/etc.): decompose Flat step → construct sub-CC_SimRel → apply IH at smaller depth → lift back. Wrote COMPLETE proof skeleton for `.typeof` stepping case (line 1171) to proof prompt — most concrete guidance yet. Redirected wasmspec to EmitSimRel "general case" sorries (6+ mechanical). jsspec redirected to spec citations (0% coverage). Proof agent completed 16:30 run (made strong induction + scope_irrelevant). wasmspec proved block+loop EmitSimRel cases + added 5 Flat @[simp] lemmas. jsspec goals 1&2 met, test262 blocked on Wasm. Test262: 3/63 (UNCHANGED 116+ hrs). |
 | 2026-03-23T20:05 | **74** | **~203 (est.)** | Build PASS ✅. **Sorry UP 72→74 (+2)**: Wasm 44→46 (wasmspec regression), CC 25 (unchanged), ANF 2, Lower 1. **PROOF AGENT STUCK 7.5+ HOURS** — every run since 12:30 times out (60min) or crashes. Last productive: 12:30 (proved 8 evalBinary cases — ALL evalBinary now closed). typeof skeleton too complex — simplified to helper lemma first. **jsspec spec citations**: 20 refs but 12 MISMATCHED — redirected to fix mismatches. **wasmspec sorry regression** — added 2 sorries, redirected to CLOSE not decompose. Test262: 3/63 (UNCHANGED 118+ hrs). |
 | 2026-03-23T21:05 | **73** | **~203 (est.)** | Build PASS ✅. Sorry 74→73 (-1): CC 25→24, Wasm 46 (unchanged), ANF 2, Lower 1. **PROOF AGENT RECOVERED** from 8hr timeout streak — now actively committing (74→75→73 in 20:30 run), writing substantial infrastructure (firstNonValueExpr/Prop lemmas). jsspec healthy: 25 spec refs (up from 20), only 1 mismatch remaining. wasmspec timed out at 20:15 — still struggling. Test262: 3/63 (UNCHANGED 120+ hrs). |
+| 2026-03-23T22:30 | **69** | **~203 (est.)** | Build PASS ✅. **Sorry DOWN 73→69 (-4)**: CC 24→20 (proof proved typeof, unary, throw, return, yield stepping sub-cases + await value case). Wasm 46, ANF 2, Lower 1. **7 stepping sub-cases remain** (let, assign, if, seq, binary lhs, binary rhs, await). All Core step helpers exist EXCEPT `step_binary_value_lhs_nonvalue_rhs`. jsspec: 35 refs (up from 25), 4 mismatches. wasmspec: 46 sorry (unchanged 4 runs). Test262: 3/63 (UNCHANGED 122+ hrs). |
 
 - Test262 pass rate: 3/63 (fast mode), deterministic full sample reached 274/500 passes (2026-03-08)
 - Flagship parse rate: 96.30% (1976/2052)
@@ -146,14 +147,14 @@ arithmetic, boolean_logic, conditionals, do_while, for_loop, functions, let_bind
 | Pass | Theorem | Statement OK? | Proved? | Blocker |
 |------|---------|--------------|---------|---------|
 | Elaborate | elaborate_correct | YES | **PROVED** | — |
-| ClosureConvert | closureConvert_correct | YES — trace preservation with NoForInForOf | 24 sorry | EnvCorr bidirectional ✅. Bridge lemmas ✅. init_related ✅. **ALL evalBinary PROVED** ✅. Proof agent building infrastructure (firstNonValueExpr/Prop lemmas). Remaining: 9 stepping sub-cases (need depth IH), 1 captured var (heap corr), 7 call/obj/prop (heap/funcs), 1 while loop, 1 tryCatch, 5 misc. |
+| ClosureConvert | closureConvert_correct | YES — trace preservation with NoForInForOf | 20 sorry | EnvCorr bidirectional ✅. Bridge lemmas ✅. init_related ✅. **ALL evalBinary PROVED** ✅. typeof/unary/throw/return/yield stepping sub-cases PROVED ✅. Remaining: 7 stepping sub-cases (let/assign/if/seq/binary×2/await — same pattern, all Core helpers exist), 1 captured var (heap corr), 7 call/obj/prop (heap/funcs), 3 objectLit/arrayLit/functionDef, 1 while, 1 tryCatch. |
 | ANFConvert | anfConvert_correct | YES — observable trace preservation | 2 sorry | step_star + nested seq |
 | Optimize | optimize_correct | YES — `∀ b, ANF.Behaves (optimize p) b ↔ ANF.Behaves p b` | **PROVED** | Identity pass — trivially correct |
 | Lower | lower_behavioral_correct | YES — `∀ trace, ANF.Behaves → IR.IRBehaves` | 1 sorry | Build FIXED. **BLOCKED on wasmspec** step_sim (:4956). SimRel needs code correspondence. |
 | Emit | emit_behavioral_correct | YES — `∀ trace, IR.IRBehaves → Wasm.Behaves` | 1 sorry | **BLOCKED on wasmspec** EmitSimRel.step_sim (:5058) |
 | EndToEnd | flat_to_wasm_correct | YES — partial composition (Flat→Wasm) | 1 sorry | EndToEnd.lean:55. Composition of above; last to prove |
 
-**Chain status**: All 6 Behaves relations DEFINED. All theorem STATEMENTS correct. **2 passes FULLY PROVED** (Elaborate, Optimize). **Sorry count in proof chain: 30** (24 CC + 2 ANF + 1 Lower + 1 Emit + 1 E2E + 1 other). Wasm/Semantics has 46 sorry in step_sim (decomposed, not in chain directly but blocks Lower/Emit). Both halt_sim theorems PROVED. step?_none_implies_trivial_lit PROVED. **Flat/ is SORRY-FREE**. Core/Semantics 0 sorry. ANF/Semantics 0 sorry. **ALL Flat semantic blockers RESOLVED**. **ALL evalBinary cases PROVED** (CC). Core.updateBindingList public with @[simp] lemmas.
+**Chain status**: All 6 Behaves relations DEFINED. All theorem STATEMENTS correct. **2 passes FULLY PROVED** (Elaborate, Optimize). **Sorry count in proof chain: 26** (20 CC + 2 ANF + 1 Lower + 1 Emit + 1 E2E + 1 other). Wasm/Semantics has 46 sorry in step_sim (decomposed, not in chain directly but blocks Lower/Emit). Both halt_sim theorems PROVED. step?_none_implies_trivial_lit PROVED. **Flat/ is SORRY-FREE**. Core/Semantics 0 sorry. ANF/Semantics 0 sorry. **ALL Flat semantic blockers RESOLVED**. **ALL evalBinary cases PROVED** (CC). **typeof/unary/throw/return/yield stepping sub-cases PROVED** (CC). Core.updateBindingList public with @[simp] lemmas.
 
 **RESOLVED ABSTRACTIONS**:
 - ✅ LowerCodeCorr constructors FIXED (wasmspec 01:15 — while_, throw, return_, break_, continue_ now specify actual instruction shapes)
@@ -170,11 +171,14 @@ arithmetic, boolean_logic, conditionals, do_while, for_loop, functions, let_bind
 - ✅ ANF break/continue → .silent (wasmspec 04:15)
 - ✅ EmitSimRel const i32/i64/f64 cases proved (wasmspec 04:15)
 
-**OPEN ABSTRACTIONS (updated 2026-03-23T21:05)**:
+**OPEN ABSTRACTIONS (updated 2026-03-23T22:30)**:
 1. ~~Bridge lemmas~~ ✅ PROVED.
 2. ~~evalBinary~~ ✅ ALL PROVED.
-3. **Stepping sub-cases (9 CC sorry)**: All need depth-indexed IH. Proof agent building infrastructure (firstNonValueExpr/Prop lemmas). Pattern validated — one closure should unlock the rest.
-4. **Captured var / heap correspondence (1 CC sorry)**: CC_SimRel needs heap tracking for `.var` captured case (line 758).
+3. ~~typeof/unary/throw/return/yield stepping~~ ✅ PROVED.
+4. **Stepping sub-cases (7 CC sorry)**: let(918), assign(972), if(1047), seq(1112), binary-lhs(1410), binary-rhs(1409), await(1936). All follow proved typeof template (lines 1180-1260). All Core step helpers exist EXCEPT `step_binary_value_lhs_nonvalue_rhs` (needed for 1409).
+5. **Captured var / heap correspondence (1 CC sorry, line 758)**: CC_SimRel needs heap tracking.
+6. **Env/heap cases (7 CC sorry, lines 1113-1119)**: call/newObj/getProp/setProp/getIndex/setIndex/deleteProp need CC_SimRel to track heap+funcs.
+7. **Wasm step_sim (46 sorry)**: ~15 LowerSimRel + ~26 EmitSimRel + 3 init. 6 "general case" sorries may be closable by contradiction.
 5. **EmitSimRel step_sim (46 Wasm sorry)**: const i32/i64/f64 + block + loop proved. ~30 remaining cases (globalSet/binOp/unOp next easiest). Many are "general case" fallbacks.
 6. **LowerSimRel step_sim (~6 Wasm sorry)**: `.let`/`.seq`/`.if`/`.while`/`.throw`/`.tryCatch` cases. `.throw` simplest.
 7. **EnvCorr_assign**: Core lemmas ✅. Flat side done. Proof needs to connect them.
