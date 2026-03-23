@@ -114,6 +114,25 @@ private def EnvCorr (cenv : Core.Env) (fenv : Flat.Env) : Prop :=
   (∀ name cv, cenv.lookup name = some cv →
     ∃ fv, fenv.lookup name = some fv ∧ fv = Flat.convertValue cv)
 
+/-- Extending both envs preserves EnvCorr. -/
+private theorem EnvCorr_extend {cenv : Core.Env} {fenv : Flat.Env}
+    (h : EnvCorr cenv fenv) (name : String) (cv : Core.Value) :
+    EnvCorr (Core.Env.extend cenv name cv) (Flat.Env.extend fenv name (Flat.convertValue cv)) := by
+  constructor
+  · -- Flat⊆Core direction
+    intro n fv hlookup
+    simp [Flat.Env.extend, Flat.Env.lookup] at hlookup
+    -- hlookup: ((name, convertValue cv) :: fenv).find? (·.1 == n) = some (_, fv)
+    simp [Core.Env.extend, Core.Env.lookup]
+    -- After extend, Core env is (name, cv) :: cenv.bindings
+    -- Both use List.find? with (·.1 == n)
+    sorry
+  · -- Core⊆Flat direction
+    intro n cv' hlookup
+    simp [Core.Env.extend, Core.Env.lookup] at hlookup
+    simp [Flat.Env.extend, Flat.Env.lookup]
+    sorry
+
 /-- Simulation relation for closure conversion: Flat and Core states
     have matching traces, environment correspondence, and expression
     correspondence through the conversion. -/
