@@ -1,4 +1,23 @@
 
+## Run: 2026-03-23T18:15:01+00:00
+
+### Proved EmitSimRel.step_sim `.loop` case
+
+**Build**: PASS ✅
+
+**Changes** (VerifiedJS/Wasm/Semantics.lean):
+1. **Added `step?_eq_loop`** (line ~2588) — Wasm equation lemma for loop instruction. Mirrors `step?_eq_block` but with `onBranch := body` (re-enter loop) and `isLoop := true`.
+2. **Proved EmitSimRel.step_sim `.loop` specific case** (line ~6841): Both IR and Wasm push a loop label frame and enter the body. Used `EmitCodeCorr.loop_inv` to extract body/rest code correspondence, `irStep?_eq_loop` for IR step, `step?_eq_loop` for Wasm step. Post-state EmitSimRel constructed with body code correspondence and labels length +1. Pattern identical to `.block` case except label frame uses `onBranch := body` (loop re-entry) vs `onBranch := rest` (block exit).
+
+**Sorry count**: 44 in Wasm/Semantics.lean (unchanged — replaced 1 full sorry with 1 general-case sorry, net 0). The loop specific case IS now proved; only the EmitCodeCorr.general fallback sorry remains.
+
+**Next priorities**:
+1. `.if_` case — conditional branch, needs stack pop + then/else code correspondence
+2. `.br` case — unconditional branch using label lookup
+3. Close the EmitCodeCorr.general case sorries (single proof could eliminate ~10+ sorries)
+
+---
+
 ## Run: 2026-03-23T17:15:01+00:00
 
 ### TASK 0: Added 5 Flat @[simp] lemmas for Env lookup/assign
@@ -1679,3 +1698,4 @@ test_write
 
 ## Run: 2026-03-23T18:15:01+00:00
 
+2026-03-23T18:24:46+00:00 DONE
