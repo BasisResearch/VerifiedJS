@@ -512,25 +512,25 @@ private theorem closureConvert_step_simulation
       -- After subst, convertExpr (.lit v) = (.lit (convertValue v), st)
       simp only [Flat.convertExpr] at hsf_expr hconv
       -- Now sf.expr = .seq (.lit (convertValue v)) b' where b' = convertExpr b ... st
-      -- Abbreviations for the converted subexprs
-      have hb' := (Flat.convertExpr b scope envVar envMap st).1
-      -- Flat.step? unfolds seq(.lit _, _) → .silent, body
-      have hsf_eq : sf = { sf with expr := Flat.Expr.seq (.lit (Flat.convertValue v)) hb' } := by
+      -- hsf_expr: sf.expr = .seq (.lit (convertValue v)) (convertExpr b ... st).1
+      -- Reconstruct sf with known expr for rewriting
+      have hsf_rw : sf = ⟨Flat.Expr.seq (.lit (Flat.convertValue v)) (Flat.convertExpr b scope envVar envMap st).fst, sf.env, sf.heap, sf.trace⟩ := by
         cases sf; simp_all
+      have hsc_rw : sc = ⟨Core.Expr.seq (.lit v) b, sc.env, sc.heap, sc.trace, sc.funcs, sc.callStack⟩ := by
+        cases sc; simp only [] at hsc ⊢; congr
       -- Flat event is .silent
       have hflat_ev : ev = .silent := by
-        rw [hsf_eq] at hstep; simp only [Flat.step?, Flat.exprValue?] at hstep
+        rw [hsf_rw] at hstep; simp only [Flat.step?, Flat.exprValue?] at hstep
         exact (Prod.mk.inj (Option.some.inj hstep)).1.symm
       subst hflat_ev
-      -- Core event is .silent
-      have hsc_eq : sc = { sc with expr := Core.Expr.seq (.lit v) b } := by cases sc; simp_all
+      -- Core step
       obtain ⟨sc', hcstep⟩ : ∃ sc', Core.step? sc = some (.silent, sc') := by
-        rw [hsc_eq]; simp only [Core.step?, Core.exprValue?]; exact ⟨_, rfl⟩
+        rw [hsc_rw]; simp only [Core.step?, Core.exprValue?]; exact ⟨_, rfl⟩
       refine ⟨sc', ⟨hcstep⟩, ?_⟩
       -- Trace preservation
       have hsf'_trace : sf'.trace = sc'.trace := by
         have hf := hstep; have hc := hcstep
-        rw [hsf_eq] at hf; rw [hsc_eq] at hc
+        rw [hsf_rw] at hf; rw [hsc_rw] at hc
         simp only [Flat.step?, Flat.exprValue?] at hf
         simp only [Core.step?, Core.exprValue?] at hc
         have heqf := (Prod.mk.inj (Option.some.inj hf)).2
@@ -540,26 +540,26 @@ private theorem closureConvert_step_simulation
       -- Env preservation
       have henv' : EnvCorr sc'.env sf'.env := by
         have hsf'_env : sf'.env = sf.env := by
-          have h0 := hstep; rw [hsf_eq] at h0
+          have h0 := hstep; rw [hsf_rw] at h0
           simp only [Flat.step?, Flat.exprValue?] at h0
           have heq := (Prod.mk.inj (Option.some.inj h0)).2; subst heq; rfl
         have hsc'_env : sc'.env = sc.env := by
-          have h0 := hcstep; rw [hsc_eq] at h0
+          have h0 := hcstep; rw [hsc_rw] at h0
           simp only [Core.step?, Core.exprValue?] at h0
           have heq := (Prod.mk.inj (Option.some.inj h0)).2; subst heq; rfl
         rw [hsc'_env, hsf'_env]; exact henvCorr
       -- Expression correspondence
-      have hsf'_expr : sf'.expr = hb' := by
-        have h0 := hstep; rw [hsf_eq] at h0
+      have hsf'_expr : sf'.expr = (Flat.convertExpr b scope envVar envMap st).fst := by
+        have h0 := hstep; rw [hsf_rw] at h0
         simp only [Flat.step?, Flat.exprValue?] at h0
         exact congrArg Flat.State.expr (Prod.mk.inj (Option.some.inj h0)).2 ▸ rfl
       have hsc'_expr : sc'.expr = b := by
-        have h0 := hcstep; rw [hsc_eq] at h0
+        have h0 := hcstep; rw [hsc_rw] at h0
         simp only [Core.step?, Core.exprValue?] at h0
         exact congrArg Core.State.expr (Prod.mk.inj (Option.some.inj h0)).2 ▸ rfl
       exact ⟨hsf'_trace, henv', scope, envVar, envMap, st,
         (Flat.convertExpr b scope envVar envMap st).2,
-        by rw [hsc'_expr]; simp [Flat.convertExpr, hsf'_expr, hb']⟩
+        by rw [hsc'_expr]; simp [Flat.convertExpr, hsf'_expr]⟩
     | none =>
       -- Stepping sub-case: a is not a value, need recursive step simulation
       sorry
