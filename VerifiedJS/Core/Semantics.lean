@@ -49,10 +49,20 @@ def Heap.empty : Heap :=
   { objects := #[], nextAddr := 0 }
 
 -- SPEC: L8965-L8979
--- | 1. Assert: _envRec_ has a binding for _N_. 1. If the binding for
--- | _N_ in _envRec_ is an uninitialized binding, throw a
--- | *ReferenceError* exception. 1. Return the value currently bound to
--- | _N_ in _envRec_.
+-- | # GetBindingValue ( \_N\_: a String, \_S\_: a Boolean, ): either a normal completion containing an ECMAScript language value or a throw completion
+-- |
+-- | for
+-- | :   a Declarative Environment Record \_envRec\_
+-- |
+-- | description
+-- | :   It returns the value of its bound identifier whose name is \_N\_. If
+-- |     the binding exists but is uninitialized a \*ReferenceError\* is
+-- |     thrown, regardless of the value of \_S\_.
+-- |
+-- | 1\. Assert: \_envRec\_ has a binding for \_N\_. 1. If the binding for
+-- | \_N\_ in \_envRec\_ is an uninitialized binding, throw a
+-- | \*ReferenceError\* exception. 1. Return the value currently bound to
+-- | \_N\_ in \_envRec\_.
 /-- ECMA-262 §8.1.1.4 GetBindingValue (modeled as lookup in lexical bindings). -/
 def Env.lookup (env : Env) (name : VarName) : Option Value :=
   match env.bindings.find? (fun kv => kv.fst == name) with
@@ -112,12 +122,37 @@ def updateBindingList (xs : List (VarName × Value)) (name : VarName) (v : Value
       simp only [updateBindingList, hn, ↓reduceIte, Env.lookup, List.find?, hno]
 
 -- SPEC: L8933-L8964
--- | 1. If _envRec_ does not have a binding for _N_, then 1. If _S_ is
--- | *true*, throw a *ReferenceError* exception. 1. Perform !
--- | _envRec_.CreateMutableBinding(_N_, *true*). 1. Perform !
--- | _envRec_.InitializeBinding(_N_, _V_). 1. Return ~unused~.
--- | 1. Else if the binding for _N_ in _envRec_ is a mutable binding, then
--- | 1. Change its bound value to _V_.
+-- | # SetMutableBinding ( \_N\_: a String, \_V\_: an ECMAScript language value, \_S\_: a Boolean, ): either a normal completion containing \~unused\~ or a throw completion
+-- |
+-- | for
+-- | :   a Declarative Environment Record \_envRec\_
+-- |
+-- | description
+-- | :   It attempts to change the bound value of the current binding of the
+-- |     identifier whose name is \_N\_ to the value \_V\_. A binding for
+-- |     \_N\_ normally already exists, but in rare cases it may not. If the
+-- |     binding is an immutable binding, a \*TypeError\* is thrown if \_S\_
+-- |     is \*true\*.
+-- |
+-- | 1\. \[id=\"step-setmutablebinding-missing-binding\"\] If \_envRec\_ does
+-- | not have a binding for \_N\_, then 1. If \_S\_ is \*true\*, throw a
+-- | \*ReferenceError\* exception. 1. Perform !
+-- | \_envRec\_.CreateMutableBinding(\_N\_, \*true\*). 1. Perform !
+-- | \_envRec\_.InitializeBinding(\_N\_, \_V\_). 1. Return \~unused\~. 1. If
+-- | the binding for \_N\_ in \_envRec\_ is a strict binding, set \_S\_ to
+-- | \*true\*. 1. If the binding for \_N\_ in \_envRec\_ has not yet been
+-- | initialized, then 1. Throw a \*ReferenceError\* exception. 1. Else if
+-- | the binding for \_N\_ in \_envRec\_ is a mutable binding, then 1. Change
+-- | its bound value to \_V\_. 1. Else, 1. Assert: This is an attempt to
+-- | change the value of an immutable binding. 1. If \_S\_ is \*true\*, throw
+-- | a \*TypeError\* exception. 1. Return \~unused\~.
+-- |
+-- | An example of ECMAScript code that results in a missing binding at step
+-- | is:
+-- |
+-- | ``` javascript
+-- | function f() { eval("var x; x = (delete x, 0);"); }
+-- | ```
 /-- ECMA-262 §8.1.1.4.5 SetMutableBinding (simplified update). -/
 def Env.assign (env : Env) (name : VarName) (v : Value) : Env :=
   if env.bindings.any (fun kv => kv.fst == name) then
@@ -149,11 +184,22 @@ def Env.assign (env : Env) (name : VarName) (v : Value) : Env :=
   simp [Env.assign, h, Env.lookup, List.find?, beq_self_eq_true]
 
 -- SPEC: L8885-L8901
--- | 1. Assert: _envRec_ does not already have a binding for _N_. 1.
--- | Create a mutable binding in _envRec_ for _N_ and record that it is
--- | uninitialized. If _D_ is *true*, record that the newly created
+-- | # CreateMutableBinding ( \_N\_: a String, \_D\_: a Boolean, ): a normal completion containing \~unused\~
+-- |
+-- | for
+-- | :   a Declarative Environment Record \_envRec\_
+-- |
+-- | description
+-- | :   It creates a new mutable binding for the name \_N\_ that is
+-- |     uninitialized. A binding must not already exist in this Environment
+-- |     Record for \_N\_. If \_D\_ is \*true\*, the new binding is marked as
+-- |     being subject to deletion.
+-- |
+-- | 1\. Assert: \_envRec\_ does not already have a binding for \_N\_. 1.
+-- | Create a mutable binding in \_envRec\_ for \_N\_ and record that it is
+-- | uninitialized. If \_D\_ is \*true\*, record that the newly created
 -- | binding may be deleted by a subsequent DeleteBinding call. 1. Return
--- | ~unused~.
+-- | \~unused\~.
 /-- ECMA-262 §8.1.1.1.2 CreateMutableBinding + §8.1.1.1.5 InitializeBinding. -/
 def Env.extend (env : Env) (name : VarName) (v : Value) : Env :=
   { bindings := (name, v) :: env.bindings }
@@ -164,9 +210,18 @@ def exprValue? : Expr → Option Value
   | _ => none
 
 -- SPEC: L5982-L5994
--- | 1. If _argument_ is a Boolean, return _argument_. 1. If
--- | _argument_ is one of *undefined*, *null*, *+0*~𝔽~, *-0*~𝔽~,
--- | *NaN*, *0*~ℤ~, or the empty String, return *false*. 1. Return *true*.
+-- | # ToBoolean ( \_argument\_: an ECMAScript language value, ): a Boolean
+-- |
+-- | description
+-- | :   It converts \_argument\_ to a value of type Boolean.
+-- |
+-- | 1\. If \_argument\_ is a Boolean, return \_argument\_. 1. If
+-- | \_argument\_ is one of \*undefined\*, \*null\*, \*+0\*~𝔽~, \*-0\*~𝔽~,
+-- | \*NaN\*, \*0\*~ℤ~, or the empty String, return \*false\*. 1.
+-- | \[id=\"step-to-boolean-web-compat-insertion-point\",
+-- | normative-optional\] If the host is a web browser or otherwise supports
+-- | , then 1. If \_argument\_ is an Object and \_argument\_ has an
+-- | \[\[IsHTMLDDA\]\] internal slot, return \*false\*. 1. Return \*true\*.
 /-- ECMA-262 §7.2.14 ToBoolean (core subset). -/
 def toBoolean : Value → Bool
   | .undefined => false
@@ -178,12 +233,19 @@ def toBoolean : Value → Bool
   | .function _ => true
 
 -- SPEC: L6004-L6017
--- | 1. If _argument_ is a Number, return _argument_. 1. If _argument_
--- | is either a Symbol or a BigInt, throw a *TypeError* exception. 1. If
--- | _argument_ is *undefined*, return *NaN*. 1. If _argument_ is
--- | either *null* or *false*, return *+0*~𝔽~. 1. If _argument_ is
--- | *true*, return *1*~𝔽~. 1. If _argument_ is a String, return
--- | StringToNumber(_argument_).
+-- | # ToNumber ( \_argument\_: an ECMAScript language value, ): either a normal completion containing a Number or a throw completion
+-- |
+-- | description
+-- | :   It converts \_argument\_ to a value of type Number.
+-- |
+-- | 1\. If \_argument\_ is a Number, return \_argument\_. 1. If \_argument\_
+-- | is either a Symbol or a BigInt, throw a \*TypeError\* exception. 1. If
+-- | \_argument\_ is \*undefined\*, return \*NaN\*. 1. If \_argument\_ is
+-- | either \*null\* or \*false\*, return \*+0\*~𝔽~. 1. If \_argument\_ is
+-- | \*true\*, return \*1\*~𝔽~. 1. If \_argument\_ is a String, return
+-- | StringToNumber(\_argument\_). 1. Assert: \_argument\_ is an Object. 1.
+-- | Let \_primValue\_ be ? ToPrimitive(\_argument\_, \~number\~). 1. Assert:
+-- | \_primValue\_ is not an Object. 1. Return ? ToNumber(\_primValue\_).
 /-- ECMA-262 §7.1.3 ToNumber (core subset). -/
 def toNumber : Value → Float
   | .number n => n
@@ -209,20 +271,45 @@ def toNumber : Value → Float
   | _ => 0.0 / 0.0  -- NaN for objects/functions
 
 -- SPEC: L16187-L16225
--- | UnaryExpression : `+` UnaryExpression 1. Let _expr_ be ? Evaluation
--- | of |UnaryExpression|. 1. Return ? ToNumber(? GetValue(_expr_)).
--- | UnaryExpression : `-` UnaryExpression 1. Let _expr_ be ? Evaluation
--- | of |UnaryExpression|. 1. Let _oldValue_ be ? ToNumeric(?
--- | GetValue(_expr_)). 1. If _oldValue_ is a Number, return
--- | Number::unaryMinus(_oldValue_).
--- | UnaryExpression : `~` UnaryExpression 1. Let _expr_ be ? Evaluation
--- | of |UnaryExpression|. 1. Let _oldValue_ be ? ToNumeric(?
--- | GetValue(_expr_)). 1. If _oldValue_ is a Number, return
--- | Number::bitwiseNOT(_oldValue_).
--- | UnaryExpression : `!` UnaryExpression 1. Let _expr_ be ? Evaluation
--- | of |UnaryExpression|. 1. Let _oldValue_ be ToBoolean(?
--- | GetValue(_expr_)). 1. If _oldValue_ is *true*, return
--- | *false*. 1. Return *true*.
+-- | UnaryExpression : \`+\` UnaryExpression 1. Let \_expr\_ be ? Evaluation
+-- | of \|UnaryExpression\|. 1. Return ? ToNumber(? GetValue(\_expr\_)).
+-- |
+-- | # Unary \`-\` Operator
+-- |
+-- | The unary \`-\` operator converts its operand to a numeric value and
+-- | then negates it. Negating \*+0\*~𝔽~ produces \*-0\*~𝔽~, and negating
+-- | \*-0\*~𝔽~ produces \*+0\*~𝔽~.
+-- |
+-- | # Runtime Semantics: Evaluation
+-- |
+-- | UnaryExpression : \`-\` UnaryExpression 1. Let \_expr\_ be ? Evaluation
+-- | of \|UnaryExpression\|. 1. Let \_oldValue\_ be ? ToNumeric(?
+-- | GetValue(\_expr\_)). 1. If \_oldValue\_ is a Number, return
+-- | Number::unaryMinus(\_oldValue\_). 1. Assert: \_oldValue\_ is a
+-- | BigInt. 1. Return BigInt::unaryMinus(\_oldValue\_).
+-- |
+-- | # Bitwise NOT Operator ( \`\~\` )
+-- |
+-- | # Runtime Semantics: Evaluation
+-- |
+-- | UnaryExpression : \`\~\` UnaryExpression 1. Let \_expr\_ be ? Evaluation
+-- | of \|UnaryExpression\|. 1. Let \_oldValue\_ be ? ToNumeric(?
+-- | GetValue(\_expr\_)). 1. If \_oldValue\_ is a Number, return
+-- | Number::bitwiseNOT(\_oldValue\_). 1. Assert: \_oldValue\_ is a
+-- | BigInt. 1. Return BigInt::bitwiseNOT(\_oldValue\_).
+-- |
+-- | # Logical NOT Operator ( \`!\` )
+-- |
+-- | # Runtime Semantics: Evaluation
+-- |
+-- | UnaryExpression : \`!\` UnaryExpression 1. Let \_expr\_ be ? Evaluation
+-- | of \|UnaryExpression\|. 1. Let \_oldValue\_ be ToBoolean(?
+-- | GetValue(\_expr\_)). 1. If \_oldValue\_ is \*true\*, return
+-- | \*false\*. 1. Return \*true\*.
+-- |
+-- | # Exponentiation Operator
+-- |
+-- | ## Syntax
 /-- ECMA-262 §13.5 Runtime Semantics: Evaluation (core unary subset). -/
 def evalUnary : UnaryOp → Value → Value
   | .neg, v => .number (-toNumber v)
@@ -257,16 +344,38 @@ def valueToString : Value → String
   | .function _ => "function"
 
 -- SPEC: L6573-L6605
--- | 1. If SameType(_x_, _y_) is *true*, then 1. Return
--- | IsStrictlyEqual(_x_, _y_). 1. If _x_ is *null* and _y_ is
--- | *undefined*, return *true*. 1. If _x_ is *undefined* and _y_
--- | is *null*, return *true*.
--- | 1. If _x_ is a Number and _y_ is a String, return ! IsLooselyEqual(_x_,
--- | ! ToNumber(_y_)).
--- | 1. If _x_ is a Boolean, return ! IsLooselyEqual(! ToNumber(_x_),
--- | _y_). 1. If _y_ is a Boolean, return ! IsLooselyEqual(_x_, !
--- | ToNumber(_y_)).
--- | 1. Return *false*.
+-- | # IsLooselyEqual ( \_x\_: an ECMAScript language value, \_y\_: an ECMAScript language value, ): either a normal completion containing a Boolean or a throw completion
+-- |
+-- | description
+-- | :   It provides the semantics for the \`==\` operator.
+-- |
+-- | 1\. If SameType(\_x\_, \_y\_) is \*true\*, then 1. Return
+-- | IsStrictlyEqual(\_x\_, \_y\_). 1. If \_x\_ is \*null\* and \_y\_ is
+-- | \*undefined\*, return \*true\*. 1. If \_x\_ is \*undefined\* and \_y\_
+-- | is \*null\*, return \*true\*. 1.
+-- | \[id=\"step-abstract-equality-comparison-web-compat-insertion-point\",
+-- | normative-optional\] If the host is a web browser or otherwise supports
+-- | , then 1. If \_x\_ is an Object, \_x\_ has an \[\[IsHTMLDDA\]\] internal
+-- | slot, and \_y\_ is either \*undefined\* or \*null\*, return \*true\*. 1.
+-- | If \_x\_ is either \*undefined\* or \*null\*, \_y\_ is an Object, and
+-- | \_y\_ has an \[\[IsHTMLDDA\]\] internal slot, return \*true\*. 1. If
+-- | \_x\_ is a Number and \_y\_ is a String, return ! IsLooselyEqual(\_x\_,
+-- | ! ToNumber(\_y\_)). 1. If \_x\_ is a String and \_y\_ is a Number,
+-- | return ! IsLooselyEqual(! ToNumber(\_x\_), \_y\_). 1. If \_x\_ is a
+-- | BigInt and \_y\_ is a String, then 1. Let \_n\_ be
+-- | StringToBigInt(\_y\_). 1. If \_n\_ is \*undefined\*, return
+-- | \*false\*. 1. Return ! IsLooselyEqual(\_x\_, \_n\_). 1. If \_x\_ is a
+-- | String and \_y\_ is a BigInt, return ! IsLooselyEqual(\_y\_, \_x\_). 1.
+-- | If \_x\_ is a Boolean, return ! IsLooselyEqual(! ToNumber(\_x\_),
+-- | \_y\_). 1. If \_y\_ is a Boolean, return ! IsLooselyEqual(\_x\_, !
+-- | ToNumber(\_y\_)). 1. If \_x\_ is either a String, a Number, a BigInt, or
+-- | a Symbol and \_y\_ is an Object, return ! IsLooselyEqual(\_x\_, ?
+-- | ToPrimitive(\_y\_)). 1. If \_x\_ is an Object and \_y\_ is either a
+-- | String, a Number, a BigInt, or a Symbol, return ! IsLooselyEqual(?
+-- | ToPrimitive(\_x\_), \_y\_). 1. If \_x\_ is a BigInt and \_y\_ is a
+-- | Number, or if \_x\_ is a Number and \_y\_ is a BigInt, then 1. If \_x\_
+-- | is not finite or \_y\_ is not finite, return \*false\*. 1. If ℝ(\_x\_) =
+-- | ℝ(\_y\_), return \*true\*. 1. Return \*false\*. 1. Return \*false\*.
 /-- ECMA-262 §7.2.14 Abstract Equality Comparison (simplified core subset).
     Handles null/undefined equivalence and type coercion. -/
 def abstractEq : Value → Value → Bool
@@ -400,12 +509,19 @@ def step? (s : State) : Option (TraceEvent × State) :=
               some (t, s')
           | none => none
   -- SPEC: L17607-L17620
-  -- | IfStatement : `if` `(` Expression `)` Statement `else`
-  -- | Statement 1. Let _exprRef_ be ? Evaluation of |Expression|. 1. Let
-  -- | _exprValue_ be ToBoolean(? GetValue(_exprRef_)). 1. If _exprValue_
-  -- | is *true*, then 1. Let _stmtCompletion_ be Completion(Evaluation of
-  -- | the first |Statement|). 1. Else, 1. Let _stmtCompletion_ be
-  -- | Completion(Evaluation of the second |Statement|).
+  -- | IfStatement : \`if\` \`(\` Expression \`)\` Statement \`else\`
+  -- | Statement 1. Let \_exprRef\_ be ? Evaluation of \|Expression\|. 1. Let
+  -- | \_exprValue\_ be ToBoolean(? GetValue(\_exprRef\_)). 1. If \_exprValue\_
+  -- | is \*true\*, then 1. Let \_stmtCompletion\_ be Completion(Evaluation of
+  -- | the first \|Statement\|). 1. Else, 1. Let \_stmtCompletion\_ be
+  -- | Completion(Evaluation of the second \|Statement\|). 1. Return ?
+  -- | UpdateEmpty(\_stmtCompletion\_, \*undefined\*). IfStatement : \`if\`
+  -- | \`(\` Expression \`)\` Statement 1. Let \_exprRef\_ be ? Evaluation of
+  -- | \|Expression\|. 1. Let \_exprValue\_ be ToBoolean(?
+  -- | GetValue(\_exprRef\_)). 1. If \_exprValue\_ is \*false\*, return
+  -- | \*undefined\*. 1. Let \_stmtCompletion\_ be Completion(Evaluation of
+  -- | \|Statement\|). 1. Return ? UpdateEmpty(\_stmtCompletion\_,
+  -- | \*undefined\*).
   | .if cond then_ else_ =>
       match exprValue? cond with
       | some v =>

@@ -1667,8 +1667,8 @@ theorem step?_globalGet_oob (s : ExecState) (idx : Nat) (rest : List Instr)
     (h : ¬(idx < s.store.globals.size)) :
     step? { s with code := .globalGet idx :: rest } =
       some (.trap s!"unknown global index {idx}",
-        trapState { s with code := .globalGet idx :: rest } s!"unknown global index {idx}") := by
-  unfold step?; simp [h]
+        { s with code := [], trace := s.trace ++ [.trap s!"unknown global index {idx}"] }) := by
+  unfold step?; simp [h, trapState, pushTrace]
 
 /-- return clears labels and code. -/
 @[simp]
@@ -3274,7 +3274,7 @@ def irStep? (s : IRExecState) : Option (TraceEvent × IRExecState) :=
       | .globalGet idx =>
           match base.globals[idx]? with
           | some v => some (.silent, irPushTrace { base with stack := v :: base.stack } .silent)
-          | none => some (irTrapState base s!"global.get out of bounds: {idx}")
+          | none => some (irTrapState base s!"unknown global index {idx}")
       | .globalSet idx =>
           match irPop1? base.stack with
           | some (v, stk) =>
@@ -4505,9 +4505,9 @@ theorem irStep?_eq_globalGet (s : IRExecState) (idx : Nat) (rest : List IRInstr)
 theorem irStep?_eq_globalGet_oob (s : IRExecState) (idx : Nat) (rest : List IRInstr)
     (hcode : s.code = IRInstr.globalGet idx :: rest)
     (hglobal : s.globals[idx]? = none) :
-    irStep? s = some (.trap s!"global.get out of bounds: {idx}",
-      irTrapState { s with code := rest } s!"global.get out of bounds: {idx}") := by
-  simp [irStep?, hcode, hglobal, irPushTrace]
+    irStep? s = some (.trap s!"unknown global index {idx}",
+      { s with code := [], trace := s.trace ++ [.trap s!"unknown global index {idx}"] }) := by
+  simp [irStep?, hcode, hglobal, irPushTrace, irTrapState]
 
 /-- Exact state after global.set: pops stack, updates global, advances code. -/
 theorem irStep?_eq_globalSet (s : IRExecState) (idx : Nat) (rest : List IRInstr)
