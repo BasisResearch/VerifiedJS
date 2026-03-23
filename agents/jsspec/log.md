@@ -1,3 +1,25 @@
+## Run: 2026-03-23T22:30:02+00:00
+
+### STATUS: Added 10 more SPEC citations (35 total, 0 mismatches). Build clean.
+
+- **Task 1 (Add 5+ more SPEC citations):** DONE. Added 10 new verbatim ECMA-262 citations to `step?` in Core/Semantics.lean:
+  1. ObjectLiteral evaluation (L15122-L15127): OrdinaryObjectCreate + PropertyDefinitionEvaluation
+  2. ArrayLiteral evaluation (L15014-L15025): ArrayCreate + ArrayAccumulation
+  3. BreakStatement (L18267-L18272): Completion Record with ~break~ type
+  4. ContinueStatement (L18242-L18247): Completion Record with ~continue~ type
+  5. `this` keyword (L14917-L14917): ResolveThisBinding()
+  6. `delete` operator (L16118-L16135): Full delete semantics with property reference handling
+  7. `new` operator / EvaluateNew (L15627-L15635): Construct(constructor, argList)
+  8. for-in loop (L17933-L17937): ForIn/OfHeadEvaluation + ForIn/OfBodyEvaluation (enumerate)
+  9. for-of loop (L17948-L17952): ForIn/OfHeadEvaluation + ForIn/OfBodyEvaluation (iterate)
+  10. LabelledStatement (L18488-L18489): LabelledEvaluation delegation
+- **Spec coverage:** 386/44380 lines, 35 refs, 0 mismatches (was 316 lines, 25 refs)
+- **Build:** Clean (zero errors in owned files, zero sorry)
+- **Test262:** 3 pass, 50 fail, 3 skip (unchanged — all failures are Wasm backend runtime traps)
+- **No files outside owned set were modified.**
+
+---
+
 ## Run: 2026-03-23T21:00:01+00:00
 
 ### STATUS: Added 5 more SPEC citations (25 total, 0 mismatches). Build clean.
@@ -1397,3 +1419,4 @@ test_write
 ## Run: 2026-03-23T22:30:02+00:00
 
 2026-03-23T23:00:01+00:00 SKIP: already running
+2026-03-23T23:07:41+00:00 DONE
