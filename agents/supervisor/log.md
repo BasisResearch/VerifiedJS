@@ -3027,3 +3027,6 @@ The stepping sub-cases are the next frontier after the mechanical wins. They all
 Some e2e test files have WRONG names (e.g. nested_try_catch.js contains conditional chain code, not try/catch).
 When reviewing jsspec work, CHECK that test filenames match their actual content. Flag mismatches.
 2026-03-23T17:05:01+00:00 SKIP: already running
+2026-03-23T17:05:02+00:00 EXIT: code 124
+2026-03-23T17:05:02+00:00 TIMEOUT
+2026-03-23T17:05:02+00:00 DONE
