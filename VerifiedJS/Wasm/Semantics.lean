@@ -5903,6 +5903,38 @@ inductive IRValueToWasmValue : IRValue → WasmValue → Prop where
   | i64 (n : UInt64) : IRValueToWasmValue (.i64 n) (.i64 n)
   | f64 (n : Float) : IRValueToWasmValue (.f64 n) (.f64 n)
 
+/-- Stack correspondence is preserved by pushing matching values. -/
+theorem stack_corr_cons {istk : List IRValue} {wstk : List WasmValue}
+    {iv : IRValue} {wv : WasmValue}
+    (hlen : istk.length = wstk.length)
+    (helems : ∀ i, i < istk.length → ∃ irv wv, istk[i]? = some irv ∧ wstk[i]? = some wv ∧ IRValueToWasmValue irv wv)
+    (hv : IRValueToWasmValue iv wv) :
+    (iv :: istk).length = (wv :: wstk).length ∧
+    ∀ i, i < (iv :: istk).length →
+      ∃ irv wv, (iv :: istk)[i]? = some irv ∧ (wv :: wstk)[i]? = some wv ∧ IRValueToWasmValue irv wv := by
+  constructor
+  · simp; exact hlen
+  · intro i hi
+    match i with
+    | 0 => exact ⟨iv, wv, rfl, rfl, hv⟩
+    | i + 1 =>
+      simp at hi
+      exact helems i (by omega)
+
+/-- Stack correspondence is preserved by popping. -/
+theorem stack_corr_tail {iv : IRValue} {wv : WasmValue}
+    {istk : List IRValue} {wstk : List WasmValue}
+    (hlen : (iv :: istk).length = (wv :: wstk).length)
+    (helems : ∀ i, i < (iv :: istk).length → ∃ irv wv, (iv :: istk)[i]? = some irv ∧ (wv :: wstk)[i]? = some wv ∧ IRValueToWasmValue irv wv) :
+    istk.length = wstk.length ∧
+    ∀ i, i < istk.length →
+      ∃ irv wv, istk[i]? = some irv ∧ wstk[i]? = some wv ∧ IRValueToWasmValue irv wv := by
+  constructor
+  · simp at hlen; exact hlen
+  · intro i hi
+    have := helems (i + 1) (by simp; omega)
+    simpa using this
+
 /-- Simulation relation for IR → Wasm emit.
     The step correspondence field provides the matching Wasm step for each IR step.
     REF: Standard forward simulation diagram. -/
@@ -6050,7 +6082,12 @@ theorem step_sim (irmod : IRModule) (wmod : Module) :
           sorry
       | .localGet idx =>
           -- local.get: both IR and Wasm look up local variable
-          sorry
+          have hc : EmitCodeCorr (IRInstr.localGet idx :: rest) s2.code := hcode_ir ▸ hrel.hcode
+          rcases hc.localGet_inv with ⟨rest_w, hcw, hrest⟩ | ⟨wasm_instrs, rest_w, hcw, hrest⟩
+          · -- IR has localGet idx, Wasm has localGet idx
+            -- Both look up the same frame local
+            sorry -- needs frame correspondence (not yet in EmitSimRel)
+          · sorry -- general case
       | .localSet idx =>
           -- local.set: both pop value and set local
           sorry

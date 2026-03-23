@@ -62,20 +62,22 @@ Then construct the matching Step derivation in Lean. If you cannot, your semanti
 3. Keep definitions structurally simple for proofs.
 4. Add @[simp] lemmas for everything the proof agent might need.
 
-## CURRENT PRIORITIES (2026-03-23T02:05)
+## CURRENT PRIORITIES (2026-03-23T03:05)
 
 ### ⚠️ Keep edits SMALL. Build-test after EVERY change. ⚠️
 
-### MILESTONE: Flat/ SORRY-FREE. 45 sorries in Wasm/Semantics.lean. Build PASSES.
-### LowerCodeCorr, ValueCorr, EmitCodeCorr infrastructure DONE ✅ from last run.
+### MILESTONE: Flat/ SORRY-FREE. 46 sorries in Wasm/Semantics.lean. Build PASSES.
+### LowerCodeCorr, ValueCorr, EmitCodeCorr infrastructure DONE ✅.
 
-### ⚠️⚠️⚠️ TASK 0: Fix Flat.initialState — SAFE TO DO NOW ⚠️⚠️⚠️
+### ⚠️⚠️⚠️ TASK 0: Fix Flat.initialState — DO THIS NOW ⚠️⚠️⚠️
 
-**COORDINATION**: The proof agent is making the CC proof at line 168-176 robust (sorry both EnvCorr directions) THIS RUN. After that, your change WILL NOT break the build.
+**STATUS: UNBLOCKED.** The proof agent has ALREADY sorried both EnvCorr directions at ClosureConvertCorrect.lean line 168-169:
+```lean
+    constructor <;> (intro _ _ _; sorry)
+```
+This means your change to Flat.initialState WILL NOT break the build. PROCEED IMMEDIATELY.
 
-**Check first**: Read ClosureConvertCorrect.lean line 168-176. If you see `constructor <;> (intro _ _ _; sorry)` or similar (both directions sorry), it's safe to proceed. If you still see `simp [Flat.Env.empty, Flat.Env.lookup] at hlookup`, WAIT — the proof agent hasn't run yet.
-
-**FIX** in `Flat/Semantics.lean` — change `initialState`:
+**FIX** in `Flat/Semantics.lean` — change `initialState` (currently at line 665-666):
 ```lean
 def initialState (p : Program) : State :=
   let consoleProps : List (Core.PropName × Core.Value) := [("log", .function Core.consoleLogIdx)]
@@ -83,37 +85,37 @@ def initialState (p : Program) : State :=
   { expr := p.main, env := Env.empty.extend "console" (.object 0), heap := heap, trace := [] }
 ```
 
-Note: `convertValue (.object 0) = .object 0` so we can use `.object 0` directly. Build and verify.
+Note: `convertValue (.object 0) = .object 0` so `.object 0` is correct for Flat. Build and verify immediately.
 
-### TASK 1: Prove LowerSimRel.step_sim sub-cases
+### TASK 1: Prove EmitSimRel.step_sim EASY cases (biggest sorry reduction opportunity)
 
-You have 13 expression cases with sorry in step_sim. The infrastructure (LowerCodeCorr constructors, ValueCorr, hcode) is in place. Now PROVE cases. Start with the easiest:
+You have 21+ EmitSimRel sorry cases. Many are MECHANICAL — both IR and Wasm execute the same instruction. Start with these quick wins:
 
-**`.var` case** (line ~?): LowerCodeCorr for `.var` gives `[.getLocal idx]`. henv gives `∃ val, localGet idx = some val ∧ ValueCorr v val`. The IR step pushes val onto stack. Show the Wasm state matches.
+**`const_i32` (line ~6023)**: IR pushes `.i32 n`, Wasm pushes `Val.i32 n`. Show `IRValueToWasmValue (.i32 n) (.i32 n)`. Then update hstack with the new element. The `general` sub-case is the hard one — skip it.
 
-**`.lit` cases** (7 literal sub-cases): Already proved by contradiction ✅.
+**`const_i64`, `const_f64`, `const_ptr`**: Same pattern as `const_i32`.
 
-**`.seq` value case**: When `exprValue? a = some v`, ANF steps to b. LowerCodeCorr for `.seq a b` gives `aCode ++ bCode`. Since a is a literal, aCode = `[.const ...]` (single instruction). Show IR step drops the value and continues with bCode.
+**`localGet` (line ~6037)**: IR reads local idx, Wasm reads local idx. Both get the same value (by hlocals correspondence).
 
-Use `lean_goal` at each sorry to see the exact goal, then `lean_multi_attempt` to test automation.
+**`localSet` (line ~6039)**: Both pop value, set local. Update hlocals.
+
+**`drop_` (line ~6093)**: Both pop one value. Update hstack.
+
+**`binOp`, `unOp`**: Both pop operands, apply same operation, push result.
+
+These 10+ cases are LOW-HANGING FRUIT. Each should be ~5-10 lines. Use `lean_goal` to see exact state, `lean_multi_attempt` to test.
 
 ### TASK 2: Address trace mismatch for break/continue
 
-**DISCOVERED ISSUE from your last run**: ANF break/continue produce `.error "break:..."` events, but IR `br` produces `.silent`. This makes step_sim FALSE for those cases.
-
 **Options**:
-1. Change ANF.step? for break/continue to produce `.silent` (SIMPLEST — these are control flow, not observable). But ANF/Semantics.lean is yours to change.
-2. Change `anfStepMapped` to map break/continue events to `.silent` using your `traceFromCoreForIR`.
+1. Change ANF.step? for break/continue to produce `.silent` (SIMPLEST — control flow is not observable)
+2. Use `traceFromCoreForIR` in `anfStepMapped`
 
-Option 1 is cleaner if break/continue events are truly unobservable (they should be — only `.log` is observable). Check: does the ANF→Core proof chain depend on break/continue producing `.error`? If yes, use option 2.
+Option 1 is cleanest. Check if ANF→Core proof chain depends on break/continue `.error` events. If not, just change them.
 
-### TASK 3: Prove EmitSimRel.step_sim sub-cases
+### TASK 3: Prove LowerSimRel.step_sim sub-cases
 
-With the strengthened hstack (Forall₂ correspondence) and EmitCodeCorr constructors, start proving Emit step_sim cases for simple instructions:
-
-- `const_i32`, `const_i64`, `const_f64`: Push value onto stack. Straightforward.
-- `drop_`: Pop from stack. Uses hstack Forall₂.
-- `getLocal`, `setLocal`: Read/write locals.
+13 expression cases with sorry. Infrastructure in place. Start with `.var` (simplest — just a localGet). Then `.seq` value case (drop + continue with bCode).
 
 ## GLOBAL GOAL -- DO NOT STOP
 Your job is done when:

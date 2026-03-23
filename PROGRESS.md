@@ -111,6 +111,8 @@ arithmetic, boolean_logic, conditionals, do_while, for_loop, functions, let_bind
 | 2026-03-23T01:05 | **73** | **~203 (est.)** | Build PASS. Sorry 73 (stable from 74). **DISCOVERED**: CC init_related (line 176) unprovable — Core.initialState has "console" binding but Flat.initialState is empty → bidirectional EnvCorr FALSE at init. Fix: wasmspec must update Flat.initialState to mirror Core.initialState. Wrote fix to wasmspec prompt. Updated proof prompt: EnvCorr bidirectional ✅, redirect to value sub-cases (lines 557-640). All agents idle/crashing. Test262: 3/61 (UNCHANGED 80+ hrs). |
 | 2026-03-23T02:05 | **74** | **~203 (est.)** | Build PASS. Sorry 74 (stable). **COORDINATION PROTOCOL for Flat.initialState deadlock**: wasmspec can't change it (breaks CC proof at line 172), proof can't change it (doesn't own Flat/Semantics.lean). Solution: (1) proof sorry BOTH EnvCorr directions at init, (2) wasmspec changes initialState, (3) proof fills in both directions. Wrote protocol to BOTH prompts. **DISCOVERED**: typeof/unary/assign value sub-cases need specific helper lemmas (typeofValue_convertValue, evalUnary_convertValue, EnvCorr_assign) — wrote concrete Lean code to proof prompt. wasmspec's last run (01:15) completed LowerCodeCorr/ValueCorr/EmitCodeCorr infrastructure — redirected to step_sim sub-case proving. Test262: 3/61 (UNCHANGED 82+ hrs). |
 
+| 2026-03-23T03:05 | **76** | **~203 (est.)** | Build PASS. Sorry 76 (74→76: proof +1 for bidirectional init sorry, wasmspec +1 for infrastructure). **MILESTONE: Flat.initialState protocol Step 1 DONE** — proof sorried both EnvCorr directions (line 168-169), wasmspec safe to proceed. **KEY DISCOVERY: Depth-indexed step simulation** — the ~8 "stepping sub-cases" in CC all need recursive step_sim. Solution: `step_sim_depth(n)` with induction on `n`, using `Expr.depth`. Both Core.step? and Flat.step? already terminate by Expr.depth. Wrote concrete Lean skeleton to proof prompt. Redirected wasmspec to easy EmitSimRel wins (const/localGet/localSet/drop — 10+ mechanical cases). Test262: 3/61 (UNCHANGED 86+ hrs). |
+
 - Test262 pass rate: 2/93 (fast mode), deterministic full sample reached 274/500 passes (2026-03-08)
 - Flagship parse rate: 96.30% (1976/2052)
 - E2E tests: 203 handcrafted JS programs (estimated pass rate ~96% when build works)
@@ -127,14 +129,14 @@ arithmetic, boolean_logic, conditionals, do_while, for_loop, functions, let_bind
 | Pass | Theorem | Statement OK? | Proved? | Blocker |
 |------|---------|--------------|---------|---------|
 | Elaborate | elaborate_correct | YES | **PROVED** | — |
-| ClosureConvert | closureConvert_correct | YES — trace preservation with NoForInForOf | 25 sorry | EnvCorr bidirectional ✅. EnvCorr_extend ✅. **Blocker**: init_related (line 176) — Flat.initialState missing console binding. 17 compound value cases (lines 624-640) are EASIEST to prove next. |
+| ClosureConvert | closureConvert_correct | YES — trace preservation with NoForInForOf | 26 sorry | EnvCorr bidirectional ✅. EnvCorr_extend ✅. Init both-dirs sorry ✅ (unblocks wasmspec). ~5 value sub-cases (typeof/unary/assign/if/binary) READY. ~8 stepping sub-cases need depth-indexed induction. |
 | ANFConvert | anfConvert_correct | YES — observable trace preservation | 3 sorry | step_star (:94), .seq.seq.seq (:1017), WF blocker (:1097) |
 | Optimize | optimize_correct | YES — `∀ b, ANF.Behaves (optimize p) b ↔ ANF.Behaves p b` | **PROVED** | Identity pass — trivially correct |
 | Lower | lower_behavioral_correct | YES — `∀ trace, ANF.Behaves → IR.IRBehaves` | 1 sorry | Build FIXED. **BLOCKED on wasmspec** step_sim (:4956). SimRel needs code correspondence. |
 | Emit | emit_behavioral_correct | YES — `∀ trace, IR.IRBehaves → Wasm.Behaves` | 1 sorry | **BLOCKED on wasmspec** EmitSimRel.step_sim (:5058) |
 | EndToEnd | flat_to_wasm_correct | YES — partial composition (Flat→Wasm) | 1 sorry | EndToEnd.lean:55. Composition of above; last to prove |
 
-**Chain status**: All 6 Behaves relations DEFINED. All theorem STATEMENTS correct. **2 passes FULLY PROVED** (Elaborate, Optimize). **Sorry count in proof chain: 29** (25 CC + 3 ANF + 1 Lower). Wasm/Semantics has 45 sorry in step_sim (decomposed, not in chain directly but blocks Lower/Emit). Both halt_sim theorems PROVED. step?_none_implies_trivial_lit PROVED. **Flat/ is SORRY-FREE**. Core/Semantics 0 sorry. ANF/Semantics 0 sorry.
+**Chain status**: All 6 Behaves relations DEFINED. All theorem STATEMENTS correct. **2 passes FULLY PROVED** (Elaborate, Optimize). **Sorry count in proof chain: 30** (26 CC + 3 ANF + 1 Lower). Wasm/Semantics has 46 sorry in step_sim (decomposed, not in chain directly but blocks Lower/Emit). Both halt_sim theorems PROVED. step?_none_implies_trivial_lit PROVED. **Flat/ is SORRY-FREE**. Core/Semantics 0 sorry. ANF/Semantics 0 sorry.
 
 **RESOLVED ABSTRACTIONS**:
 - ✅ LowerCodeCorr constructors FIXED (wasmspec 01:15 — while_, throw, return_, break_, continue_ now specify actual instruction shapes)
@@ -142,17 +144,18 @@ arithmetic, boolean_logic, conditionals, do_while, for_loop, functions, let_bind
 - ✅ EmitSimRel.hstack strengthened with Forall₂ correspondence (wasmspec 01:15)
 - ✅ 13 new EmitCodeCorr constructors + 7 inversion lemmas (wasmspec 01:15)
 
-**OPEN ABSTRACTIONS (updated 2026-03-23T02:05)**:
-1. **Flat.initialState deadlock**: Needs coordinated 3-step protocol (proof sorry → wasmspec change → proof fill). Written to BOTH prompts.
+**OPEN ABSTRACTIONS (updated 2026-03-23T03:05)**:
+1. **Flat.initialState**: Step 1 (sorry both dirs) DONE ✅. Step 2 (wasmspec change) IN PROGRESS. Step 3 (proof fill in) PENDING.
 2. **CC helper lemmas needed**: typeofValue_convertValue, evalUnary_convertValue (needs toNumber_convertValue), EnvCorr_assign. Written to proof prompt.
-3. **Trace mismatch for break/continue in IR**: ANF produces `.error "break:..."`, IR produces `.silent`. Written to wasmspec prompt.
+3. **Depth-indexed step simulation** (**NEW, KEY DISCOVERY**): All ~8 CC stepping sub-cases need `step_sim_depth(n)` — strong induction on `Core.Expr.depth`. Both step? functions already terminate by Expr.depth. Concrete Lean skeleton written to proof prompt.
+4. **Trace mismatch for break/continue in IR**: ANF `.error "break:..."` vs IR `.silent`. Written to wasmspec prompt.
 
-**Critical path**: (1) proof: sorry both init EnvCorr directions (unblocks wasmspec). (2) wasmspec: fix Flat.initialState. (3) proof: prove typeof/unary/assign/if value sub-cases (needs helper lemmas). (4) wasmspec: prove step_sim sub-cases (infrastructure in place).
+**Critical path**: (1) wasmspec: fix Flat.initialState NOW (unblocked). (2) proof: value sub-cases (typeof/unary/assign/if). (3) proof: depth-indexed step_sim for stepping sub-cases. (4) wasmspec: EmitSimRel easy cases (const/localGet/localSet/drop).
 
 ## Agent Health
 
-| Agent | Status (2026-03-23T02:05) | Notes |
+| Agent | Status (2026-03-23T03:05) | Notes |
 |-------|---------------------|-------|
-| jsspec | Idle (completed 02:00) | Core/Semantics 0 sorry. All 50 test262 failures are wasm runtime traps. No actionable work. |
-| wasmspec | Completed (01:15) | **GOOD RUN**: LowerCodeCorr/ValueCorr/EmitCodeCorr infrastructure done. 45 Wasm/Semantics sorries (unchanged). Flat.initialState BLOCKED on proof coordination — protocol now written. |
-| proof | Completed (01:15) | **GOOD RUN**: EnvCorr bidirectional ✅, EnvCorr_extend ✅, toBoolean_convertValue ✅, .let/.seq value sub-cases PROVED. CC 25 sorry. Redirected to init coordination + typeof/unary/assign value sub-cases. |
+| jsspec | Idle (completed 03:00) | Core/Semantics 0 sorry. All 50 test262 failures are wasm runtime traps. No actionable work. |
+| wasmspec | Completed (01:15) | LowerCodeCorr/ValueCorr/EmitCodeCorr infrastructure done. 46 Wasm/Semantics sorries. Flat.initialState NOW UNBLOCKED — must proceed this run. Redirected to EmitSimRel easy wins. |
+| proof | Completed (01:15) | EnvCorr bidirectional ✅, init both-dirs sorry ✅, .let/.seq value sub-cases ✅. CC 26 sorry. Redirected to value sub-cases + depth-indexed step_sim. |

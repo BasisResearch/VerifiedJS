@@ -1,4 +1,63 @@
 
+## Run: 2026-03-23T03:05:00+00:00
+
+### Build
+- **Status**: `lake build` PASS (no errors, only warnings)
+
+### Sorry Report
+- **Count**: 76 (up from 74 — expected: protocol adds temp sorries)
+- **Distribution**: 46 Wasm/Semantics + 26 CC + 3 ANF + 1 Lower
+
+### Test262
+- 3 pass, 50 fail, 3 skip, 5 xfail / 61 total (UNCHANGED 86+ hours)
+
+### Agent Health
+- **jsspec**: Completed at 03:00. Build clean, 0 sorry. IDLE — all test262 failures are wasm runtime traps.
+- **wasmspec**: Completed at 01:15. Flat.initialState blocked (thought CC proof not ready). NOW UNBLOCKED — proof agent already sorried both init EnvCorr directions.
+- **proof**: Completed at 01:15. Init both-dirs sorry DONE ✅. CC 26 sorry.
+
+### Key Discovery: Depth-Indexed Step Simulation
+**THE SINGLE MOST IMPORTANT ABSTRACTION for CC proof right now.** The ~8 "stepping sub-cases" (where a sub-expression is NOT a value) ALL need recursive application of step_simulation. Both `Core.step?` and `Flat.step?` call themselves recursively on sub-expressions, terminating by `Expr.depth`. The proof needs the SAME recursive structure:
+
+```lean
+private theorem step_sim_depth (n : Nat) ... :
+    ∀ sf sc ev sf', sc.expr.depth ≤ n → CC_SimRel s t sf sc → Flat.Step sf ev sf' →
+    ∃ sc', Core.Step sc ev sc' ∧ CC_SimRel s t sf' sc' := by
+  induction n with
+  | zero => ... -- only depth-0 exprs (lit/var/this/break/continue)
+  | succ k ih => ... -- use ih for sub-expressions with depth ≤ k
+```
+
+For `.seq a b` stepping sub-case at depth k+1: `a.depth ≤ k` (since `a.depth + b.depth + 1 ≤ k+1`), so `ih` applies to sub-expression `a`. This pattern applies to ALL compound stepping sub-cases.
+
+Wrote complete Lean skeleton to proof prompt as TASK 3.
+
+### Flat.initialState Protocol Status
+- **Step 1** ✅ DONE: Proof agent sorried both EnvCorr directions (CC line 168-169)
+- **Step 2** ❌ PENDING: wasmspec must change Flat.initialState (NOW SAFE — updated prompt with explicit "PROCEED IMMEDIATELY")
+- **Step 3** ❌ PENDING: Proof agent fills in both directions after wasmspec
+
+### Actions Taken
+1. **proof prompt**: Rewrote priorities section (2026-03-23T03:05). Marked TASK 1 as DONE. Kept TASK 2 (value sub-cases). Replaced vague TASK 3 with **concrete depth-indexed step_sim Lean skeleton** — the key new discovery. Updated sorry inventory.
+2. **wasmspec prompt**: Updated priorities section. Changed TASK 0 from "check first" to "PROCEED IMMEDIATELY" (proof ready). Replaced TASK 1 with EmitSimRel easy wins (const/localGet/localSet/drop — 10+ mechanical cases, biggest sorry reduction opportunity). Kept TASK 2 (trace mismatch) and TASK 3 (LowerSimRel cases).
+3. **PROGRESS.md**: Added run entry. Updated proof chain (CC 26 sorry). Added depth-indexed step_sim to open abstractions. Updated critical path. Updated agent health.
+
+### Proof Chain Analysis
+- **Elaborate**: PROVED ✅
+- **Optimize**: PROVED ✅ (identity)
+- **ClosureConvert**: 26 sorry. Init protocol in progress. ~5 value sub-cases ready (typeof/unary/assign/if/binary). ~8 stepping sub-cases need depth-indexed induction (skeleton written).
+- **ANFConvert**: 3 sorry. step_star + WF invariant blockers.
+- **Lower**: 1 sorry. Blocked on wasmspec step_sim.
+- **Emit**: Implicit in Wasm/Semantics. 46 sorry in step_sim. EmitSimRel easy wins redirected.
+- **EndToEnd**: Composition of above.
+
+### Next Run Priorities
+1. Verify wasmspec changes Flat.initialState (protocol step 2)
+2. Verify proof agent fills in init EnvCorr (protocol step 3)
+3. Verify proof agent starts value sub-cases (typeof/unary/assign/if)
+4. Monitor wasmspec EmitSimRel easy wins (const/localGet/etc)
+5. Monitor for build breakage
+
 ## Run: 2026-03-23T02:05:00+00:00
 
 ### Build

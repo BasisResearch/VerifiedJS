@@ -57,111 +57,125 @@ If ClosureConvertCorrect needs 600 lines of case analysis, WRITE 600 LINES. That
 ## Test262
 Read `logs/test262_summary.md` for failure categories. Fix compiler bugs that cause test262 failures.
 
-## ⚠️⚠️⚠️ CC PROOF: WHAT TO DO NOW (2026-03-23T02:05) ⚠️⚠️⚠️
+## ⚠️⚠️⚠️ CC PROOF: WHAT TO DO NOW (2026-03-23T03:05) ⚠️⚠️⚠️
 
-### Current state: CC has 25 sorries. EnvCorr bidirectional ✅. EnvCorr_extend ✅. toBoolean_convertValue ✅. .let/.seq value sub-cases DONE ✅. Build PASSES.
+### Current state: CC has 26 sorries. init_related both-dirs sorry DONE ✅. EnvCorr bidirectional ✅. EnvCorr_extend ✅. toBoolean_convertValue ✅. .let/.seq value sub-cases DONE ✅. Build PASSES.
 
-### TASK 1 (DO FIRST — UNBLOCKS Flat.initialState): Make init_related robust
+### TASK 1 (HIGHEST PRIORITY): Fill in init_related EnvCorr after Flat.initialState update
 
-**THE DEADLOCK**: wasmspec needs to change Flat.initialState to include console, but that breaks YOUR proof at line 172 (`simp [Flat.Env.empty, Flat.Env.lookup] at hlookup`). Neither agent can edit the other's file.
-
-**YOUR FIX**: Replace the ENTIRE init_related EnvCorr proof (lines 168-176) with `sorry` for BOTH directions:
-
+wasmspec is changing Flat.initialState THIS RUN to include console binding + heap (matching Core.initialState). After that, fill in both EnvCorr directions at line 168-169. Replace:
 ```lean
-  · -- EnvCorr: both directions sorry until Flat.initialState is updated
     constructor <;> (intro _ _ _; sorry)
 ```
-
-This temporarily changes from 1 sorry to 2 sorries (adds Flat⊆Core sorry). But it makes the proof ROBUST to any Flat.initialState, so wasmspec can safely change it next run. After wasmspec updates Flat.initialState, you fill in both directions:
-
+With:
 ```lean
-  · -- EnvCorr: both envs have exactly "console" → .object 0
     constructor
-    · -- Flat⊆Core
+    · -- Flat⊆Core: Flat env has "console" → .object 0, show Core also has it
       intro name fv hlookup
       simp only [Flat.initialState, Flat.Env.extend, Flat.Env.empty, Flat.Env.lookup] at hlookup
-      obtain ⟨rfl, rfl⟩ := hlookup  -- name = "console", fv = .object 0
-      exact ⟨.object 0, by simp [Core.initialState, Core.Env.extend, Core.Env.empty, Core.Env.lookup], by simp [Flat.convertValue]⟩
-    · -- Core⊆Flat
+      split at hlookup <;> simp_all
+    · -- Core⊆Flat: Core env has "console" → .object 0, show Flat also has it
       intro name cv hlookup
       simp only [Core.initialState, Core.Env.extend, Core.Env.empty, Core.Env.lookup] at hlookup
-      obtain ⟨rfl, rfl⟩ := hlookup  -- name = "console", cv = .object 0
-      exact ⟨.object 0, by simp [Flat.initialState, Flat.Env.extend, Flat.Env.empty, Flat.Env.lookup], by simp [Flat.convertValue]⟩
+      split at hlookup <;> simp_all [Flat.convertValue]
 ```
+**CHECK FIRST**: Read Flat/Semantics.lean `initialState`. If it still uses `Env.empty`, wasmspec hasn't run yet — skip this task and proceed to TASK 2. Come back to this next run.
 
-**DO THE SORRY VERSION FIRST THIS RUN. Build. Then wasmspec fixes Flat.initialState. Then you fill in.**
+### TASK 2: Prove compound VALUE sub-cases — typeof, unary, assign, if
 
-### TASK 2: Prove compound VALUE sub-cases — typeof, unary, assign
+Same pattern as `.seq`/`.let` value sub-cases. Each needs a helper lemma first:
 
-The `.seq` and `.let` value sub-cases are DONE. Now do the remaining compound value sub-cases. They all follow the SAME pattern as `.seq`. Here's what each needs:
+**`.assign name rhs` when `exprValue? rhs = some v`:**
+- Need `EnvCorr_assign`: `EnvCorr cenv fenv → EnvCorr (Core.Env.assign cenv name v) (Flat.Env.assign fenv name (convertValue v))`
+- Prove by structural induction on the env list, similar to `EnvCorr_extend`
 
-**`.typeof arg` (line 632) when `exprValue? arg = some v`:**
-- Core produces `.lit (.string (typeof_result v))` with `.silent`
-- Flat produces `.lit (typeofValue (convertValue v))` with `.silent`
-- Need helper: `typeofValue (Flat.convertValue v) = Flat.convertValue (Core.Value.string (typeof_result v))`
-- This is TRUE by cases on v. Core.function → Flat.closure, both give "function". All others identity.
-- Prove this helper first, then the case follows the `.seq` pattern exactly.
+**`.if cond then_ else_` when `exprValue? cond = some v`:**
+- Use `toBoolean_convertValue` ✅ to show both pick same branch
+- Both step to then_/else_ with `.silent`, env unchanged — direct
 
-**`.unary op arg` (line 633) when `exprValue? arg = some v`:**
-- Core produces `.lit (Core.evalUnary op v)` with `.silent`
-- Flat produces `.lit (Flat.evalUnary op (convertValue v))` with `.silent`
-- Need helper: `Flat.evalUnary op (Flat.convertValue v) = Flat.convertValue (Core.evalUnary op v)`
-- TRUE because: evalUnary produces .number/.bool/.undefined, and convertValue is identity on those types.
-- Both evalUnary implementations use toNumber/toBoolean which you already proved commute with convertValue (toBoolean_convertValue ✅).
-- Prove `toNumber_convertValue : Flat.toNumber (Flat.convertValue v) = Core.toNumber v` (should be easy by cases).
-- Then `evalUnary_convertValue` follows by cases on op.
+**`.typeof arg` when `exprValue? arg = some v`:**
+- Need helper: `typeofValue (convertValue v) = convertValue (.string (typeof_result v))` — by cases on v
 
-**`.assign name rhs` (line 558) when `exprValue? rhs = some v`:**
-- Core does `env.assign name v`, Flat does `env.assign name (convertValue v)`
-- Need: `EnvCorr (Core.Env.assign cenv name v) (Flat.Env.assign fenv name (Flat.convertValue v))` given `EnvCorr cenv fenv`
-- Flat.Env.assign = `List.map (fun (k,v) => if k == name then (k, newv) else (k,v)) env` (check exact def)
-- Prove `EnvCorr_assign` similar to `EnvCorr_extend`
+**`.unary op arg` when `exprValue? arg = some v`:**
+- Need `toNumber_convertValue` first (by cases on v, easy)
+- Then `evalUnary_convertValue` by cases on op
 
-**`.if cond then_ else_` (line 559) when `exprValue? cond = some v`:**
-- Core branches on `Core.toBoolean v`, Flat on `Flat.toBoolean (convertValue v)`
-- You have `toBoolean_convertValue` ✅ — use it to show both pick the same branch
-- Then both step to the same then_/else_ expression with `.silent`, env unchanged
+### TASK 3 (KEY ABSTRACTION): Depth-indexed step simulation
 
-**Template for all value sub-cases (copy-paste and adjust):**
+**THIS IS THE BREAKTHROUGH that unblocks ~8 stepping sub-cases.** Both `Core.step?` and `Flat.step?` use `Expr.depth` for termination. When `.seq a b` has `a` not a value, both call `step?` recursively on `a`. The simulation proof needs the SAME recursive structure.
+
+**Restructure `closureConvert_step_simulation` as follows:**
+
 ```lean
-  | typeof arg =>
-    rw [hsc] at hconv; simp only [Flat.convertExpr] at hconv
-    have hsf_expr : sf.expr = .typeof (Flat.convertExpr arg scope envVar envMap st).1 := by
-      cases sf; simp_all [(Prod.mk.inj hconv).1]
-    cases hval : Core.exprValue? arg with
-    | some v =>
-      have ha_lit : arg = .lit v := by cases arg <;> simp [Core.exprValue?] at hval <;> exact congrArg _ hval
-      subst ha_lit
-      simp only [Flat.convertExpr] at hsf_expr hconv
-      -- Now: sf.expr = .typeof (.lit (convertValue v))
-      -- Flat step produces .lit (typeofValue (convertValue v)) with .silent
-      -- Core step produces .lit (.string result) with .silent
-      -- Show events match, envs match, exprs correspond
-      sorry -- fill in using the .seq pattern
-    | none =>
-      sorry -- stepping sub-case, skip for now
+/-- Step simulation indexed by expression depth. This enables recursive
+    application in "stepping sub-cases" where step? calls itself on sub-expressions. -/
+private theorem step_sim_depth (n : Nat)
+    (s : Core.Program) (t : Flat.Program) (h : Flat.closureConvert s = .ok t) :
+    ∀ sf sc ev sf', sc.expr.depth ≤ n → CC_SimRel s t sf sc → Flat.Step sf ev sf' →
+    ∃ sc', Core.Step sc ev sc' ∧ CC_SimRel s t sf' sc' := by
+  induction n with
+  | zero =>
+    intro sf sc ev sf' hdepth hrel hstep
+    -- depth 0 means sc.expr is .lit, .var, .this, .break, or .continue
+    -- These either don't step or step directly (no sub-expression recursion)
+    cases hsc : sc.expr with
+    | lit _ => simp [Core.Expr.depth] at hdepth  -- lit doesn't step (contradiction)
+    | var name => sorry -- direct step, no recursion needed — same as current proof
+    | this => sorry -- same
+    | «break» _ => sorry -- same
+    | «continue» _ => sorry -- same
+    | _ => simp [Core.Expr.depth] at hdepth  -- all others have depth ≥ 1
+  | succ k ih =>
+    intro sf sc ev sf' hdepth hrel hstep
+    cases hsc : sc.expr with
+    | seq a b =>
+      -- ... value sub-case as before ...
+      -- STEPPING SUB-CASE: a is not a value
+      -- Flat.step? calls itself on {sf with expr := convertExpr a ...}
+      -- Core.step? calls itself on {sc with expr := a}
+      -- a.depth < (.seq a b).depth = a.depth + b.depth + 1 ≤ k+1
+      -- So a.depth ≤ k, and ih applies!
+      have ha_depth : a.depth ≤ k := by
+        simp [Core.Expr.depth] at hdepth; omega
+      -- Build CC_SimRel for sub-expression states
+      have hsub_rel : CC_SimRel s t {sf with expr := convertExpr a ...} {sc with expr := a} := by
+        sorry -- same env, same trace, convertExpr correspondence
+      -- Apply IH
+      obtain ⟨sc_sub', hcore_sub, hrel_sub⟩ := ih {sf with expr := convertExpr a ...}
+        {sc with expr := a} ev _ ha_depth hsub_rel (by sorry)
+      -- Wrap result: Core steps .seq a b → .seq sc_sub'.expr b
+      sorry -- construct the final Core.Step and CC_SimRel
+    | «let» name init body =>
+      -- Same pattern: init.depth ≤ k, apply ih
+      sorry
+    -- ... all other cases same as current proof ...
+    | _ => sorry
+
+/-- Main step simulation follows from depth-indexed version. -/
+private theorem closureConvert_step_simulation ... := by
+  intro sf sc ev sf' hrel hstep
+  exact step_sim_depth sc.expr.depth s t h sf sc ev sf' (le_refl _) hrel hstep
 ```
 
-### TASK 3 (later): Strong induction for stepping sub-cases
+**WHY THIS WORKS**: `Core.Expr.depth (.seq a b) = a.depth + b.depth + 1`. When we recurse on `a`, `a.depth ≤ k` since `a.depth + b.depth + 1 ≤ k + 1`. The `ih` for `k` gives us the sub-simulation. Same for `.let`, `.assign`, `.if`, `.typeof`, `.unary`, `.binary`, `.return`, `.yield`, `.await`.
 
-All "stepping" sub-cases (where sub-expression is not a value) need recursive step simulation. This requires refactoring step_simulation to use strong induction on expression depth. DO NOT attempt this until all value sub-cases are done.
+**DO NOT attempt TASK 3 until TASK 2 value sub-cases are done.** The value sub-cases are the base cases of this induction — they must work first.
 
-### Sorry inventory (2026-03-23T02:05):
+### Sorry inventory (2026-03-23T03:05):
 
-| # | File | Lines | Count | Description | Priority |
-|---|------|-------|-------|-------------|----------|
-| 1 | CC | 176 | 1 | init_related — DO TASK 1 (sorry both dirs) | **NOW** |
-| 2 | CC | 558 | 1 | .assign value — needs EnvCorr_assign | HIGH |
-| 3 | CC | 559 | 1 | .if value — use toBoolean_convertValue | HIGH |
-| 4 | CC | 632 | 1 | .typeof value — needs typeofValue_convertValue | HIGH |
-| 5 | CC | 633 | 1 | .unary value — needs evalUnary_convertValue | HIGH |
-| 6 | CC | 634 | 1 | .binary value — needs evalBinary_convertValue | MEDIUM |
-| 7 | CC | 557,624 | 2 | .let/.seq stepping sub-cases — needs depth induction | LATER |
-| 8 | CC | 625-640 | 11 | call/newObj/getProp/.../functionDef — needs heap | LATER |
-| 9 | CC | 397 | 1 | .var captured — needs heap correspondence | LATER |
-| 10 | CC | 693,745-746 | 3 | return/yield/await some — sub-stepping | LATER |
-| 11 | ANF | 94,1017,1097 | 3 | step_star + WF | LATER |
-| 12 | Lower | 69 | 1 | Blocked on wasmspec | BLOCKED |
+| # | File | Count | Description | Priority |
+|---|------|-------|-------------|----------|
+| 1 | CC | 2 | init_related both dirs — TASK 1 (wait for wasmspec) | **READY SOON** |
+| 2 | CC | 1 | .assign value — needs EnvCorr_assign | **NOW** |
+| 3 | CC | 1 | .if value — use toBoolean_convertValue | **NOW** |
+| 4 | CC | 1 | .typeof value — needs typeofValue helper | **NOW** |
+| 5 | CC | 1 | .unary value — needs evalUnary helper | **NOW** |
+| 6 | CC | 1 | .binary value — needs evalBinary helper | HIGH |
+| 7 | CC | ~8 | stepping sub-cases (.let/.seq/.if/etc) — TASK 3 depth induction | NEXT |
+| 8 | CC | ~11 | call/newObj/getProp/etc — needs heap correspondence | LATER |
+| 9 | CC | 1 | .var captured — needs heap correspondence | LATER |
+| 10 | ANF | 3 | step_star + WF | LATER |
+| 11 | Lower | 1 | Blocked on wasmspec | BLOCKED |
 
 ### Key Lean 4 pitfall — AVOID `cases ... with` inside `<;>` blocks
 
