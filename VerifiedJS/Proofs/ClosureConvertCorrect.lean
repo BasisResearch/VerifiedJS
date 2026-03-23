@@ -200,8 +200,9 @@ private theorem evalBinary_convertValue (op : Core.BinOp) (a b : Core.Value) :
     simp only [Core.evalBinary, Flat.evalBinary]
     congr 1; exact convertValue_beq a b
   | strictNeq =>
-    simp only [Core.evalBinary, Flat.evalBinary, bne, Flat.convertValue]
-    congr 1; rw [convertValue_beq]
+    simp only [Core.evalBinary, Flat.evalBinary, Flat.convertValue, bne]
+    show Flat.Value.bool (!(Flat.convertValue a == Flat.convertValue b)) = Flat.Value.bool (!(a == b))
+    rw [convertValue_beq]
   | _ => sorry -- BLOCKED: Flat.evalBinary differs from Core for add/eq/neq/lt/gt/le/ge/bitwise/mod/exp/instanceof/in
 
 /-- Extending both envs preserves EnvCorr. -/
