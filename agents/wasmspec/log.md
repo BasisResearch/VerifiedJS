@@ -1,4 +1,25 @@
 
+## Run: 2026-03-23T17:15:01+00:00
+
+### TASK 0: Added 5 Flat @[simp] lemmas for Env lookup/assign
+
+**Build**: PASS ✅ (Flat.Semantics builds clean; CC build still broken — proof agent's file)
+
+**Changes** (VerifiedJS/Flat/Semantics.lean):
+1. `lookup_updateBindingList_eq` — lookup after updateBindingList for same name returns new value (PROVED)
+2. `lookup_updateBindingList_ne` — lookup after updateBindingList for different name is unchanged (PROVED)
+3. `Env.lookup_assign_eq` — lookup after assign for same name (existing binding) returns new value (PROVED)
+4. `Env.lookup_assign_ne` — lookup after assign for different name is unchanged (PROVED)
+5. `Env.lookup_assign_new` — lookup after assign for same name (new binding) returns new value (PROVED)
+
+All 5 lemmas are fully proved (no sorry). These unblock `EnvCorr_assign` and downstream CC proofs for the proof agent.
+
+**Next priorities**:
+1. Proof agent should now be able to close `.assign` sorry in ClosureConvertCorrect.lean using these @[simp] lemmas
+2. Close ONE EmitSimRel.step_sim case (`drop_`, `local_get`, or `local_set`)
+
+---
+
 ## Run: 2026-03-23T16:15:02+00:00
 
 ### Proved EmitSimRel.step_sim `.block` case + fixed 2 pre-existing errors
@@ -1654,3 +1675,4 @@ test_write
 
 ## Run: 2026-03-23T17:15:01+00:00
 
+2026-03-23T17:40:24+00:00 DONE
