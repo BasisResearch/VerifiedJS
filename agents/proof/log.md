@@ -1,4 +1,46 @@
 
+## Run: 2026-03-23T16:30+00:00
+- Sorries before: 28, after: 28
+- Net sorry delta: 0 (infrastructure improvements, no sorry reduction)
+
+### What was done:
+1. **Build verified clean** — TASK 0 and TASK 1 from prompt already completed by previous run.
+
+2. **Made lowerExpr/lowerExprWithExn/lowerWhile public** in Wasm/Lower.lean
+   - Resolves blocker C in PROOF_BLOCKERS.md
+   - Unblocks 3+ `LowerSimRel.init hcode` sorries in Wasm/Semantics.lean
+   - Build passes ✅
+
+3. **Added strong induction wrapper** to `closureConvert_step_simulation`
+   - Changed proof to use `suffices ... Nat.strongRecOn` with depth parameter
+   - `ih_depth` is now available in all case branches for recursive sub-expression proofs
+   - Build passes ✅ (ih_depth is unused in existing branches)
+
+4. **Deep analysis of CC stepping sub-case architecture**
+   - The 11 stepping sub-case sorries CANNOT be closed with current `CC_SimRel`
+   - Root cause: `CC_SimRel` uses existential `∃ scope envVar envMap st st'` for convertExpr correspondence
+   - After inner expression steps, the IH produces CC_SimRel with SOME scope'/envVar'/envMap'
+   - For the outer expression (e.g., `.let name inner' body`), body was converted with the ORIGINAL scope
+   - If scope' ≠ scope (e.g., after inner `.let` evaluates), the body conversion doesn't match
+   - **Fix requires one of:**
+     a. `convertExpr_scope_irrelevant`: adding unused vars to scope doesn't change output (needs free-var analysis)
+     b. `convertExpr_fst_state_independent`: first component independent of CCState (needs mutual induction on convertExpr/convertExprList/etc.)
+     c. Strengthen CC_SimRel to carry scope/envVar/envMap explicitly (large refactor)
+   - Option (a) is most promising: prove that variables bound inside `init` don't appear free in `body` (well-formedness), so extra scope entries don't affect conversion
+
+### Architectural finding:
+The CC stepping sub-cases are blocked on a **scope compositionality** issue:
+- When `.let name init body` steps the inner `init`, the resulting scope may grow (e.g., if init is `.let y v body2`)
+- The body's conversion was done with the original scope, not the grown scope
+- For well-formed programs, the extra scope entries are never referenced, so the conversion is the same
+- Need: `convertExpr_scope_irrelevant` lemma + well-formedness tracking
+
+### Next:
+1. Prove `convertExpr_scope_irrelevant` (standalone lemma in ClosureConvertCorrect.lean)
+2. Add well-formedness predicate for Core.Expr
+3. Use both to close stepping sub-cases via the ih_depth + scope irrelevance
+4. Alternatively: prove `convertExpr_fst_state_independent` for functionDef-free expressions
+
 ## Run: 2026-03-23T15:00+00:00
 - Sorries before: 31 total, after: 28 total
 - Net sorry delta: -3
@@ -1163,3 +1205,4 @@ test_write
 
 ## Run: 2026-03-23T16:30:02+00:00
 
+2026-03-23T17:30:01+00:00 SKIP: already running
