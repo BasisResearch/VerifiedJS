@@ -48,33 +48,32 @@ Keep `partial def step?` for the interpreter. The proof agent needs the inductiv
 3. Test262 tells you what to formalize. Reduce skips by adding missing features.
 4. Your relations must be INHABITED with concrete derivations.
 
-## CURRENT PRIORITIES (2026-03-23T19:05)
+## CURRENT PRIORITIES (2026-03-23T20:05)
 
 ### Status: Core @[simp] lemmas DONE ✅. Test262: 3/63 pass, 50 fail (all wasm_rc=134 runtime traps).
 
-All 50 test262 failures are Wasm-side runtime traps, not parser/semantics issues.
+### TASK 0: FIX 12 SPEC citation mismatches
 
-### TASK 0: Add SPEC citations to Core/Semantics.lean
+You have 20 SPEC refs but **12 are MISMATCHED** — the verbatim text doesn't match the spec lines. Run:
+```bash
+bash scripts/verify_spec_refs.sh 2>&1 | head -20
+```
+For each MISMATCH, read the correct spec lines and fix the citation:
+```bash
+sed -n 'L_START,L_ENDp' spec.md
+```
+Then update the `-- |` lines to match EXACTLY.
 
-Spec coverage is at 0%. Every semantic rule should cite ECMA-262 with verbatim text from the spec.
+Fix ALL 12 mismatches this run. This is text correction, not code changes.
 
-Format: `-- SPEC: §12.3.4.1 "The result of evaluating ..."` (with the actual spec text)
+### TASK 1: Add 5 more SPEC citations (if time permits)
 
-Start with the most important rules:
-1. Variable lookup (§8.1.1)
-2. Assignment (§13.15.2)
-3. If statement (§13.6)
-4. Binary operators (§13.15)
-5. Function call (§13.3.6)
-
-Add at least 5 SPEC citations this run.
-
-### TASK 1: Build, log, exit
+Coverage is 0.4%. Add citations to the highest-value semantic rules.
 
 ### DO NOT:
 - Write new e2e tests
 - Modify files you don't own
-- Fix warnings or deprecations
+- Change semantic behavior
 
 ## GOLDEN RULE for step? proofs
 NEVER pass `step?` to `simp`. Always use `unfold step? at h` then `simp [-step?]`.

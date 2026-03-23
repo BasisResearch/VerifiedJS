@@ -57,26 +57,23 @@ If ClosureConvertCorrect needs 600 lines of case analysis, WRITE 600 LINES. That
 ## Test262
 Read `logs/test262_summary.md` for failure categories. Fix compiler bugs that cause test262 failures.
 
-## CURRENT PRIORITIES (2026-03-23T19:05)
+## CURRENT PRIORITIES (2026-03-23T20:05)
 
-### Build: PASS ✅. Sorry: 72 (25 CC + 44 Wasm + 2 ANF + 1 Lower).
+### Build: PASS ✅. Sorry: 74 (25 CC + 46 Wasm + 2 ANF + 1 Lower).
 
-### TASK 0: Close the `.typeof` stepping sub-case (line 1171)
+### ⚠️ YOU HAVE BEEN TIMING OUT EVERY RUN FOR 7.5+ HOURS. FIX THIS.
 
-This is the SIMPLEST stepping sub-case. All others follow the same pattern.
+Your last productive run was 12:30 (proved 8 evalBinary cases). Since then: ALL runs timeout at 60 min or crash. You are making ZERO progress.
 
-**Context at line 1171**: `Core.exprValue? arg = none`, so both Flat and Core step the inner `arg`.
+**ROOT CAUSE**: You're spending too long on lake build + complex proofs. Fix:
+1. Do NOT run `lake build` at the start. The build is passing. Skip it.
+2. Use `lean_diagnostic_messages` to check individual files instead of full rebuilds.
+3. Only run `lake build` ONCE at the very end to verify.
 
-**How Flat.step? works for `.typeof arg'` when `exprValue? arg' = none`** (Flat/Semantics.lean:528-538):
-```
-step? { s with expr := arg } = some (t, sa)  →
-result = { s with expr := .typeof sa.expr, env := sa.env, heap := sa.heap, trace := ... }
-```
+### TASK 0: Prove the `convertExpr_not_value` helper lemma
 
-**How Core.step? works for `.typeof arg` when `exprValue? arg = none`** (Core/Semantics.lean:759-764):
-Same pattern — delegates to `step? { s with expr := arg }`, wraps result as `.typeof sa.expr`.
+This is a standalone lemma needed by ALL 12 stepping sub-cases. Add it BEFORE `closureConvert_step_simulation`:
 
-**Key lemma needed first** — add BEFORE `closureConvert_step_simulation` if not already present:
 ```lean
 private theorem convertExpr_not_value (e : Core.Expr)
     (h : Core.exprValue? e = none)
@@ -86,70 +83,28 @@ private theorem convertExpr_not_value (e : Core.Expr)
   all_goals (first | rfl | (try split) <;> simp [Flat.exprValue?])
 ```
 
-**Complete proof for the stepping sub-case at line 1171**:
+Just add this lemma, check with lean_diagnostic_messages, done. This is 5 minutes of work.
 
-Replace `sorry -- stepping sub-case: needs recursive step simulation` with:
-```lean
-      -- arg is not a value, both Flat and Core step the inner sub-expression
-      have harg_flat : Flat.exprValue? (Flat.convertExpr arg scope envVar envMap st).fst = none :=
-        convertExpr_not_value arg hval scope envVar envMap st
-      -- Decompose hstep: Flat.step? on .typeof arg' delegates to stepping arg'
-      rw [hsf_expr] at hstep
-      simp only [Flat.step?, Flat.exprValue?, harg_flat] at hstep
-      -- hstep now has form: match step? {expr:=arg', ...} with | some (t,sa) => ... | none => ...
-      -- Split on the sub-step
-      split at hstep
-      case h_1 heq_sub => -- sub-step exists: step? sub_state = some (ev_sub, sa_sub)
-        -- Extract the sub-step result
-        rename_i ev_sa
-        obtain ⟨ev_sub, sa_sub⟩ := ev_sa
-        simp only at hstep heq_sub
-        -- Build CC_SimRel for the sub-expression level
-        have hdepth : (Core.Expr.depth arg) < n := by
-          rw [← hd]; simp [Core.Expr.depth]; omega
-        have hsub_sim : CC_SimRel s t
-            ⟨(Flat.convertExpr arg scope envVar envMap st).fst, sf.env, sf.heap, sf.trace⟩
-            ⟨arg, sc.env, sc.heap, sc.trace, sc.funcs, sc.callStack⟩ :=
-          ⟨htrace, henvCorr, scope, envVar, envMap, st,
-           (Flat.convertExpr arg scope envVar envMap st).snd, rfl⟩
-        -- Apply IH at smaller depth
-        have hsub_step : Flat.Step
-            ⟨(Flat.convertExpr arg scope envVar envMap st).fst, sf.env, sf.heap, sf.trace⟩
-            ev_sub sa_sub := ⟨heq_sub⟩
-        obtain ⟨sc_sub', ⟨hcore_sub⟩, hsim'⟩ := ih_depth (Core.Expr.depth arg) hdepth
-            _ _ _ _ rfl hsub_sim hsub_step
-        -- Lift Core sub-step to full typeof step
-        obtain ⟨htrace', henv', scope', envVar', envMap', st_a, st_a', hconv'⟩ := hsim'
-        -- Core steps .typeof arg by stepping arg
-        have hsc_rw : sc = ⟨Core.Expr.typeof arg, sc.env, sc.heap, sc.trace, sc.funcs, sc.callStack⟩ := by
-          cases sc; simp only [] at hsc ⊢; congr
-        have hcore_typeof : Core.step? sc = Core.step?
-            ⟨Core.Expr.typeof arg, sc.env, sc.heap, sc.trace, sc.funcs, sc.callStack⟩ := by
-          rw [hsc_rw]
-        -- Core.step? on .typeof arg with exprValue? arg = none delegates to step? on arg
-        rw [hsc_rw] at hcore_typeof
-        -- Use hcore_sub to construct the full Core step
-        -- This part needs careful simp on Core.step? (.typeof arg) with hval and hcore_sub
-        sorry -- TODO: construct Core.Step for .typeof from Core sub-step, build final CC_SimRel
-      case h_2 => -- sub-step doesn't exist
-        simp at hstep -- contradiction: Flat.step? sf = some but sub-step is none
-```
+### TASK 1: Close ONE stepping sub-case — `.typeof` at line 1171
 
-This skeleton gets you 80% of the way. The final `sorry` needs:
-1. Show `Core.step? sc = some (ev_sub, ⟨.typeof sc_sub'.expr, sc_sub'.env, ...⟩)` using hval + hcore_sub
-2. Build CC_SimRel: trace from htrace', env from henv', expr = `convertExpr (.typeof sc_sub'.expr)` = `.typeof (convertExpr sc_sub'.expr)`, use hconv'
+After adding the helper, tackle typeof. The approach:
+1. `lean_goal` at line 1171 to see exact proof state
+2. Key insight: both Flat.step? and Core.step? delegate to stepping the sub-expression `arg`, then wrap result in `.typeof`
+3. Use `convertExpr_not_value` to show Flat arg is not a value
+4. Use `ih_depth` at `Core.Expr.depth arg < n` (from `omega`) to get the Core sub-step
+5. Reconstruct the full Core step by showing Core.step? on `.typeof arg` delegates to the sub-step
 
-### TASK 1: After typeof works, copy pattern to `.unary` (line 1226) and `.assign` (line 962)
+If you get stuck after 20 minutes, sorry it and move to TASK 2.
 
-All three have identical structure. The only differences:
-- `.unary op arg` wraps with `.unary op sa.expr` instead of `.typeof sa.expr`
-- `.assign name value` wraps with `.assign name sa.expr`
-- Depth inequality: `.unary op arg` → `depth arg < depth (.unary op arg)`, etc.
+### TASK 2 (ONLY if TASK 1 is stuck): Close the `while` loop sorry at line 1399
+
+`lean_goal` at line 1399 to see what's needed. The CC_SimRel for while desugaring needs to show convertExpr distributes over the if/seq/while_ expansion.
 
 ### ABSOLUTELY DO NOT:
+- Run `lake build` at the start of your run
 - Attempt heap/funcs cases (call, newObj, getProp, etc.)
 - Refactor existing proved cases
-- Spend more than 5 minutes on any approach — if stuck, sorry it and move on
+- Spend more than 20 minutes on any single sorry
 
 ## Key pitfall — AVOID `cases ... with` inside `<;>` blocks
 

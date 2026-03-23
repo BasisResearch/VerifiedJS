@@ -479,9 +479,9 @@ def step? (s : State) : Option (TraceEvent × State) :=
   | .lit _ => none
   -- SPEC: L14868-L14871
   -- | IdentifierReference : Identifier 1. Return ? ResolveBinding(StringValue
-  -- | of |Identifier|). IdentifierReference : `yield` 1. Return ?
-  -- | ResolveBinding(*"yield"*). IdentifierReference : `await` 1. Return
-  -- | ? ResolveBinding(*"await"*).
+  -- | of \|Identifier\|). IdentifierReference : \`yield\` 1. Return ?
+  -- | ResolveBinding(\*\"yield\"\*). IdentifierReference : \`await\` 1. Return
+  -- | ? ResolveBinding(\*\"await\"\*).
   | .var name =>
       match s.env.lookup name with
       | some v =>
@@ -491,15 +491,15 @@ def step? (s : State) : Option (TraceEvent × State) :=
           let msg := "ReferenceError: " ++ name
           let s' := pushTrace { s with expr := .lit .undefined } (.error msg)
           some (.error msg, s')
-  -- SPEC: L17386-L17394
-  -- | LexicalBinding : BindingIdentifier Initializer 1. Let _bindingId_ be
-  -- | the StringValue of |BindingIdentifier|. 1. Let _lhs_ be !
-  -- | ResolveBinding(_bindingId_). 1. If
-  -- | IsAnonymousFunctionDefinition(|Initializer|) is *true*, then 1. Let
-  -- | _value_ be ? NamedEvaluation of |Initializer| with argument
-  -- | _bindingId_. 1. Else, 1. Let _rhs_ be ? Evaluation of
-  -- | |Initializer|. 1. Let _value_ be ? GetValue(_rhs_). 1. Perform !
-  -- | InitializeReferencedBinding(_lhs_, _value_). 1. Return ~empty~.
+  -- SPEC: L17386-L17393
+  -- | LexicalBinding : BindingIdentifier Initializer 1. Let \_bindingId\_ be
+  -- | the StringValue of \|BindingIdentifier\|. 1. Let \_lhs\_ be !
+  -- | ResolveBinding(\_bindingId\_). 1. If
+  -- | IsAnonymousFunctionDefinition(\|Initializer\|) is \*true\*, then 1. Let
+  -- | \_value\_ be ? NamedEvaluation of \|Initializer\| with argument
+  -- | \_bindingId\_. 1. Else, 1. Let \_rhs\_ be ? Evaluation of
+  -- | \|Initializer\|. 1. Let \_value\_ be ? GetValue(\_rhs\_). 1. Perform !
+  -- | InitializeReferencedBinding(\_lhs\_, \_value\_). 1. Return \~empty\~.
   | .let name init body =>
       match exprValue? init with
       | some v =>
@@ -511,13 +511,22 @@ def step? (s : State) : Option (TraceEvent × State) :=
               let s' := pushTrace { si with expr := .let name si.expr body, trace := s.trace } t
               some (t, s')
           | none => none
-  -- SPEC: L16640-L16655
-  -- | AssignmentExpression : LeftHandSideExpression `=`
-  -- | AssignmentExpression 1. If |LeftHandSideExpression| is neither an
-  -- | |ObjectLiteral| nor an |ArrayLiteral|, then 1. Let _lRef_ be ?
-  -- | Evaluation of |LeftHandSideExpression|. 1. Else, 1. Let _rRef_ be ?
-  -- | Evaluation of |AssignmentExpression|. 1. Let _rVal_ be ?
-  -- | GetValue(_rRef_). 1. Perform ? PutValue(_lRef_, _rVal_). 1. Return _rVal_.
+  -- SPEC: L16640-L16654
+  -- | AssignmentExpression : LeftHandSideExpression \`=\`
+  -- | AssignmentExpression 1. If \|LeftHandSideExpression\| is neither an
+  -- | \|ObjectLiteral\| nor an \|ArrayLiteral\|, then 1. Let \_lRef\_ be ?
+  -- | Evaluation of \|LeftHandSideExpression\|. 1. If the AssignmentTargetType
+  -- | of \|LeftHandSideExpression\| is \~web-compat\~, throw a
+  -- | \*ReferenceError\* exception. 1. If
+  -- | IsAnonymousFunctionDefinition(\|AssignmentExpression\|) is \*true\* and
+  -- | IsIdentifierRef of \|LeftHandSideExpression\| is \*true\*, then 1. Let
+  -- | \_lhs\_ be the StringValue of \|LeftHandSideExpression\|. 1. Let
+  -- | \_rVal\_ be ? NamedEvaluation of \|AssignmentExpression\| with argument
+  -- | \_lhs\_. 1. Else, 1. Let \_rRef\_ be ? Evaluation of
+  -- | \|AssignmentExpression\|. 1. Let \_rVal\_ be ? GetValue(\_rRef\_). 1.
+  -- | \[id=\"step-assignmentexpression-evaluation-simple-putvalue\"\] Perform
+  -- | ? PutValue(\_lRef\_, \_rVal\_). 1. Return \_rVal\_. 1. Let
+  -- | \_assignmentPattern\_ be the \|AssignmentPattern\| that is covered by
   | .assign name rhs =>
       match exprValue? rhs with
       | some v =>
@@ -556,9 +565,9 @@ def step? (s : State) : Option (TraceEvent × State) :=
               some (t, s')
           | none => none
   -- SPEC: L17277-L17279
-  -- | StatementList : StatementList StatementListItem 1. Let _sl_ be ?
-  -- | Evaluation of |StatementList|. 1. Let _s_ be Completion(Evaluation
-  -- | of |StatementListItem|). 1. Return ? UpdateEmpty(_s_, _sl_).
+  -- | StatementList : StatementList StatementListItem 1. Let \_sl\_ be ?
+  -- | Evaluation of \|StatementList\|. 1. Let \_s\_ be Completion(Evaluation
+  -- | of \|StatementListItem\|). 1. Return ? UpdateEmpty(\_s\_, \_sl\_).
   | .seq a b =>
       match exprValue? a with
       | some _ =>
@@ -571,18 +580,19 @@ def step? (s : State) : Option (TraceEvent × State) :=
               some (t, s')
           | none => none
   -- SPEC: L16186-L16188
-  -- | UnaryExpression : `+` UnaryExpression 1. Let _expr_ be ? Evaluation
-  -- | of |UnaryExpression|. 1. Return ? ToNumber(? GetValue(_expr_)).
-  -- SPEC: L16197-L16201
-  -- | UnaryExpression : `-` UnaryExpression 1. Let _expr_ be ? Evaluation
-  -- | of |UnaryExpression|. 1. Let _oldValue_ be ? ToNumeric(?
-  -- | GetValue(_expr_)). 1. If _oldValue_ is a Number, return
-  -- | Number::unaryMinus(_oldValue_).
+  -- | UnaryExpression : \`+\` UnaryExpression 1. Let \_expr\_ be ? Evaluation
+  -- | of \|UnaryExpression\|. 1. Return ? ToNumber(? GetValue(\_expr\_)).
+  -- SPEC: L16197-L16202
+  -- | UnaryExpression : \`-\` UnaryExpression 1. Let \_expr\_ be ? Evaluation
+  -- | of \|UnaryExpression\|. 1. Let \_oldValue\_ be ? ToNumeric(?
+  -- | GetValue(\_expr\_)). 1. If \_oldValue\_ is a Number, return
+  -- | Number::unaryMinus(\_oldValue\_). 1. Assert: \_oldValue\_ is a
+  -- | BigInt. 1. Return BigInt::unaryMinus(\_oldValue\_).
   -- SPEC: L16218-L16222
-  -- | UnaryExpression : `!` UnaryExpression 1. Let _expr_ be ? Evaluation
-  -- | of |UnaryExpression|. 1. Let _oldValue_ be ToBoolean(?
-  -- | GetValue(_expr_)). 1. If _oldValue_ is *true*, return
-  -- | *false*. 1. Return *true*.
+  -- | UnaryExpression : \`!\` UnaryExpression 1. Let \_expr\_ be ? Evaluation
+  -- | of \|UnaryExpression\|. 1. Let \_oldValue\_ be ToBoolean(?
+  -- | GetValue(\_expr\_)). 1. If \_oldValue\_ is \*true\*, return
+  -- | \*false\*. 1. Return \*true\*.
   | .unary op arg =>
       match exprValue? arg with
       | some v =>
@@ -594,16 +604,16 @@ def step? (s : State) : Option (TraceEvent × State) :=
               let s' := pushTrace { sa with expr := .unary op sa.expr, trace := s.trace } t
               some (t, s')
           | none => none
-  -- SPEC: L16278-L16280
-  -- | AdditiveExpression : AdditiveExpression `+`
+  -- SPEC: L16279-L16282
+  -- | AdditiveExpression : AdditiveExpression \`+\`
   -- | MultiplicativeExpression 1. Return ?
-  -- | EvaluateStringOrNumericBinaryExpression(|AdditiveExpression|, `+`,
-  -- | |MultiplicativeExpression|).
-  -- SPEC: L16286-L16288
-  -- | AdditiveExpression : AdditiveExpression `-`
+  -- | EvaluateStringOrNumericBinaryExpression(\|AdditiveExpression\|, \`+\`,
+  -- | \|MultiplicativeExpression\|).
+  -- SPEC: L16291-L16294
+  -- | AdditiveExpression : AdditiveExpression \`-\`
   -- | MultiplicativeExpression 1. Return ?
-  -- | EvaluateStringOrNumericBinaryExpression(|AdditiveExpression|, `-`,
-  -- | |MultiplicativeExpression|).
+  -- | EvaluateStringOrNumericBinaryExpression(\|AdditiveExpression\|, \`-\`,
+  -- | \|MultiplicativeExpression\|).
   | .binary op lhs rhs =>
       match exprValue? lhs with
       | none =>
@@ -624,14 +634,19 @@ def step? (s : State) : Option (TraceEvent × State) :=
               let s' := pushTrace { s with expr := .lit (evalBinary op lv rv) } .silent
               some (.silent, s')
   -- SPEC: L15668-L15681
-  -- | # EvaluateCall ( _func_: an ECMAScript language value, _ref_: an ECMAScript
-  -- | language value or a Reference Record, _arguments_: a Parse Node,
-  -- | _tailPosition_: a Boolean, ): either a normal completion containing an
-  -- | ECMAScript language value or an abrupt completion
-  -- | 1. Let _argList_ be ? ArgumentListEvaluation of _arguments_.
-  -- | 1. If _func_ is not an Object, throw a *TypeError* exception.
-  -- | 1. If IsCallable(_func_) is *false*, throw a *TypeError* exception.
-  -- | 1. Return ? Call(_func_, _thisValue_, _argList_).
+  -- | # EvaluateCall ( \_func\_: an ECMAScript language value, \_ref\_: an ECMAScript language value or a Reference Record, \_arguments\_: a Parse Node, \_tailPosition\_: a Boolean, ): either a normal completion containing an ECMAScript language value or an abrupt completion
+  -- |
+  -- | 1\. If \_ref\_ is a Reference Record, then 1. If
+  -- | IsPropertyReference(\_ref\_) is \*true\*, then 1. Let \_thisValue\_ be
+  -- | GetThisValue(\_ref\_). 1. Else, 1. Let \_refEnv\_ be
+  -- | \_ref\_.\[\[Base\]\]. 1. Assert: \_refEnv\_ is an Environment Record. 1.
+  -- | Let \_thisValue\_ be \_refEnv\_.WithBaseObject(). 1. Else, 1. Let
+  -- | \_thisValue\_ be \*undefined\*. 1. Let \_argList\_ be ?
+  -- | ArgumentListEvaluation of \_arguments\_. 1. If \_func\_ is not an
+  -- | Object, throw a \*TypeError\* exception. 1. If IsCallable(\_func\_) is
+  -- | \*false\*, throw a \*TypeError\* exception. 1. If \_tailPosition\_ is
+  -- | \*true\*, perform PrepareForTailCall(). 1. Return ? Call(\_func\_,
+  -- | \_thisValue\_, \_argList\_).
   | .call callee args =>
       -- Step 1: Step callee to a value.
       match exprValue? callee with
@@ -825,14 +840,14 @@ def step? (s : State) : Option (TraceEvent × State) :=
           let s' := pushTrace { s with expr := .lit (.object addr), heap := heap' } .silent
           some (.silent, s')
   -- SPEC: L17703-L17710
-  -- | WhileStatement : `while` `(` Expression `)` Statement 1. Let _V_
-  -- | be *undefined*. 1. Repeat, 1. Let _exprRef_ be ? Evaluation of
-  -- | |Expression|. 1. Let _exprValue_ be ? GetValue(_exprRef_). 1. If
-  -- | ToBoolean(_exprValue_) is *false*, return _V_. 1. Let
-  -- | _stmtResult_ be Completion(Evaluation of |Statement|). 1. If
-  -- | LoopContinues(_stmtResult_, _labelSet_) is *false*, return ?
-  -- | UpdateEmpty(_stmtResult_, _V_). 1. If _stmtResult_.[[Value]]
-  -- | is not ~empty~, set _V_ to _stmtResult_.[[Value]].
+  -- | WhileStatement : \`while\` \`(\` Expression \`)\` Statement 1. Let \_V\_
+  -- | be \*undefined\*. 1. Repeat, 1. Let \_exprRef\_ be ? Evaluation of
+  -- | \|Expression\|. 1. Let \_exprValue\_ be ? GetValue(\_exprRef\_). 1. If
+  -- | ToBoolean(\_exprValue\_) is \*false\*, return \_V\_. 1. Let
+  -- | \_stmtResult\_ be Completion(Evaluation of \|Statement\|). 1. If
+  -- | LoopContinues(\_stmtResult\_, \_labelSet\_) is \*false\*, return ?
+  -- | UpdateEmpty(\_stmtResult\_, \_V\_). 1. If \_stmtResult\_.\[\[Value\]\]
+  -- | is not \~empty\~, set \_V\_ to \_stmtResult\_.\[\[Value\]\].
   | .while_ cond body =>
       let lowered := .if cond (.seq body (.while_ cond body)) (.lit .undefined)
       let s' := pushTrace { s with expr := lowered } .silent
@@ -891,9 +906,9 @@ def step? (s : State) : Option (TraceEvent × State) :=
       let s' := pushTrace { s with expr := body } .silent
       some (.silent, s')
   -- SPEC: L18539-L18541
-  -- | ThrowStatement : `throw` Expression `;` 1. Let _exprRef_ be ?
-  -- | Evaluation of |Expression|. 1. Let _exprValue_ be ?
-  -- | GetValue(_exprRef_). 1. Return ThrowCompletion(_exprValue_).
+  -- | ThrowStatement : \`throw\` Expression \`;\` 1. Let \_exprRef\_ be ?
+  -- | Evaluation of \|Expression\|. 1. Let \_exprValue\_ be ?
+  -- | GetValue(\_exprRef\_). 1. Return ThrowCompletion(\_exprValue\_).
   | .throw arg =>
       match exprValue? arg with
       | some v =>

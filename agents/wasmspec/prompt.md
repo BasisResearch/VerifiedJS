@@ -62,34 +62,36 @@ Then construct the matching Step derivation in Lean. If you cannot, your semanti
 3. Keep definitions structurally simple for proofs.
 4. Add @[simp] lemmas for everything the proof agent might need.
 
-## CURRENT PRIORITIES (2026-03-23T19:05)
+## CURRENT PRIORITIES (2026-03-23T20:05)
 
-### Build: PASS ✅. Sorry: 72 (44 in Wasm/Semantics.lean). Flat @[simp] lemmas ALL DONE ✅.
+### Build: PASS ✅. Sorry: 74 (46 in Wasm/Semantics.lean). ⚠️ SORRY COUNT WENT UP BY 2.
+
+You added 2 new sorries since last good count of 44. This is a REGRESSION. Do NOT add more sorries.
 
 ### ⚠️ TIMEOUT PREVENTION: DO EXACTLY 1 TASK, then build, log, EXIT.
 
-### TASK 0: Close EmitSimRel.step_sim "general case" sorries
+### TASK 0: CLOSE existing sorries — do NOT decompose further
 
-You proved block/loop specific cases but left `sorry -- general case` at lines 6525, 6539, 6627, 6796, 6840, 6858, 6934. These are when `EmitCodeCorr.general` is the constructor instead of the specific one.
+Priority order (pick the first one you can close):
 
-`EmitCodeCorr.general` should map any IR code to its emitted Wasm code directly. If the general case means the Wasm code IS the emission of the IR code, then the same step should work on both sides.
+1. **`globalSet` (line 6910)** — IR globalSet → Wasm global.set. Should be mechanical: extract index, show both IR and Wasm write to the same global.
+2. **`binOp` (line 6922)** — IR binOp → Wasm i32.binop. Both sides use the same numeric semantics.
+3. **`unOp` (line 6925)** — Same pattern as binOp.
 
-1. Use `lean_goal` on ONE general-case sorry (e.g., line 6934 for drop) to see what you have
-2. If `EmitCodeCorr.general` gives you `w_code = emitInstrs ir_code`, the proof should be straightforward
-3. If the general case is structurally different, document what it needs
+Use `lean_goal` to see the exact state, then `lean_multi_attempt` to test tactics.
 
-### ALTERNATIVE TASK: Close LowerSimRel.step_sim easy cases
+### ALTERNATIVE: Close LowerSimRel easy cases
 
-If EmitSimRel general cases are hard, try these LowerSimRel cases instead:
+If EmitSimRel cases are hard:
+1. **`break` (line ~5854)** — ANF break → IR break
+2. **`continue` (line ~5858)** — Same pattern
+3. **`throw` (line ~5846)** — ANF throw → IR throw
 
-1. **`break` (line 5852)** — ANF break → IR break. Pattern: `hrel.hcode` gives `LowerCodeCorr.break_`, extract label, show IR produces same break event.
-2. **`continue` (line 5855)** — Same pattern as break.
-3. **`throw` (line 5835)** — ANF throw → IR throw instruction.
-
-### DO NOT:
-- Attempt `let` or `seq` cases (they need 1:N simulation)
-- Change existing definitions or proved cases
-- Attempt more than 1 task
+### RULES THIS RUN:
+- Do NOT add new sorries under any circumstances
+- Do NOT decompose existing cases into more sub-cases
+- Close at least 1 sorry or document WHY it cannot be closed
+- Only run `lake build` ONCE at the end
 
 ### ⚠️ BUILD-FIRST RULE
 Always run `bash scripts/lake_build_concise.sh` and check exit code BEFORE logging success.
