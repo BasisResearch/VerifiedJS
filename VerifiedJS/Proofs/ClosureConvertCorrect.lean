@@ -242,65 +242,78 @@ private theorem EnvCorr_extend {cenv : Core.Env} {fenv : Flat.Env}
 private theorem EnvCorr_assign {cenv : Core.Env} {fenv : Flat.Env}
     (h : EnvCorr cenv fenv) (name : String) (cv : Core.Value) :
     EnvCorr (Core.Env.assign cenv name cv) (Flat.Env.assign fenv name (Flat.convertValue cv)) := by
-  unfold Core.Env.assign Flat.Env.assign
-  split <;> split <;> simp_all
-  case isTrue.isTrue hcexists hfexists =>
-    -- Both envs have name → both use updateBindingList
-    -- This case requires reasoning about updateBindingList (private in Core)
+  -- Helper: convert between `any` and `lookup` for both env types
+  suffices h_aux : ∀ (bs : List (String × Core.Value)) (fs : List (String × Flat.Value)),
+      EnvCorr ⟨bs⟩ fs →
+      EnvCorr (Core.Env.assign ⟨bs⟩ name cv) (Flat.Env.assign fs name (Flat.convertValue cv)) by
+    exact h_aux cenv.bindings fenv h
+  intro bs fs henv
+  simp only [Core.Env.assign, Flat.Env.assign]
+  -- Both envs agree on whether name is bound (via EnvCorr bidirectionality)
+  -- Prove a helper: any_to_lookup and lookup_to_any in terms of lists
+  have any_to_lookup_bs : bs.any (fun kv => kv.fst == name) = true →
+      ∃ v', Core.Env.lookup ⟨bs⟩ name = some v' := by
+    intro hany; simp only [Core.Env.lookup]
+    induction bs with
+    | nil => simp [List.any] at hany
+    | cons hd tl ih =>
+      simp only [List.find?]
+      by_cases heq : hd.fst == name
+      · simp [heq]; exact ⟨_, rfl⟩
+      · simp [heq]; exact ih (by simp [List.any_cons, heq] at hany; exact hany)
+  have any_to_lookup_fs : fs.any (fun kv => kv.fst == name) = true →
+      ∃ v', Flat.Env.lookup fs name = some v' := by
+    intro hany; simp only [Flat.Env.lookup]
+    induction fs with
+    | nil => simp [List.any] at hany
+    | cons hd tl ih =>
+      simp only [List.find?]
+      by_cases heq : hd.fst == name
+      · simp [heq]; exact ⟨_, rfl⟩
+      · simp [heq]; exact ih (by simp [List.any_cons, heq] at hany; exact hany)
+  have lookup_to_any_bs : (∃ v', Core.Env.lookup ⟨bs⟩ name = some v') →
+      bs.any (fun kv => kv.fst == name) = true := by
+    intro ⟨v', hv'⟩; simp only [Core.Env.lookup] at hv'
+    induction bs with
+    | nil => simp [List.find?] at hv'
+    | cons hd tl ih =>
+      simp only [List.any_cons, Bool.or_eq_true]
+      by_cases heq : hd.fst == name
+      · exact Or.inl heq
+      · exact Or.inr (ih (by simp [List.find?, heq] at hv'; exact ⟨v', hv'⟩))
+  have lookup_to_any_fs : (∃ v', Flat.Env.lookup fs name = some v') →
+      fs.any (fun kv => kv.fst == name) = true := by
+    intro ⟨v', hv'⟩; simp only [Flat.Env.lookup] at hv'
+    induction fs with
+    | nil => simp [List.find?] at hv'
+    | cons hd tl ih =>
+      simp only [List.any_cons, Bool.or_eq_true]
+      by_cases heq : hd.fst == name
+      · exact Or.inl heq
+      · exact Or.inr (ih (by simp [List.find?, heq] at hv'; exact ⟨v', hv'⟩))
+  have hany_agree : bs.any (fun kv => kv.fst == name) =
+      fs.any (fun kv => kv.fst == name) := by
+    cases hf : fs.any (fun kv => kv.fst == name) with
+    | true =>
+      obtain ⟨fv, hfv⟩ := any_to_lookup_fs hf
+      obtain ⟨cv', hcv', _⟩ := henv.1 name fv hfv
+      cases hc : bs.any (fun kv => kv.fst == name)
+      · exfalso; exact absurd (lookup_to_any_bs ⟨cv', hcv'⟩) (by simp [hc])
+      · rfl
+    | false =>
+      cases hc : bs.any (fun kv => kv.fst == name) with
+      | false => rfl
+      | true =>
+        exfalso
+        obtain ⟨cv', hcv'⟩ := any_to_lookup_bs hc
+        obtain ⟨fv, hfv, _⟩ := henv.2 name cv' hcv'
+        exact absurd (lookup_to_any_fs ⟨fv, hfv⟩) (by simp [hf])
+  rw [hany_agree]
+  split
+  · -- Both envs have name → both use updateBindingList
     sorry
-  case isTrue.isFalse hcexists hfnot =>
-    -- Core has name but Flat doesn't → contradiction via EnvCorr
-    exfalso
-    obtain ⟨cv', hmem⟩ := hcexists
-    -- (name, cv') ∈ cenv.bindings → cenv.lookup name = some _
-    have hlookup : ∃ v', cenv.lookup name = some v' := by
-      simp only [Core.Env.lookup]
-      induction cenv.bindings with
-      | nil => exact absurd hmem (List.not_mem_nil _)
-      | cons hd tl ih =>
-        simp only [List.find?]
-        by_cases heq : hd.fst == name
-        · simp [heq]; exact ⟨_, rfl⟩
-        · simp [heq]
-          rcases List.mem_cons.mp hmem with rfl | htl
-          · simp at heq
-          · exact ih htl
-    obtain ⟨v', hv'⟩ := hlookup
-    obtain ⟨fv, hflookup, _⟩ := h.2 name v' hv'
-    -- fenv.lookup name = some fv, but fenv has no entry with name → contradiction
-    simp only [Flat.Env.lookup] at hflookup
-    match hff : fenv.find? (fun kv => kv.fst == name) with
-    | some fkv =>
-      have hmem_f := List.mem_of_find?_eq_some hff
-      exact hfnot fkv.snd hmem_f
-    | none => simp [hff] at hflookup
-  case isFalse.isTrue hcnot hfexists =>
-    -- Flat has name but Core doesn't → contradiction via EnvCorr
-    exfalso
-    obtain ⟨fv', hmem⟩ := hfexists
-    have hlookup : ∃ v', fenv.lookup name = some v' := by
-      simp only [Flat.Env.lookup]
-      induction fenv with
-      | nil => exact absurd hmem (List.not_mem_nil _)
-      | cons hd tl ih =>
-        simp only [List.find?]
-        by_cases heq : hd.fst == name
-        · simp [heq]; exact ⟨_, rfl⟩
-        · simp [heq]
-          rcases List.mem_cons.mp hmem with rfl | htl
-          · simp at heq
-          · exact ih htl
-    obtain ⟨v', hv'⟩ := hlookup
-    obtain ⟨cv', hclookup, _⟩ := h.1 name v' hv'
-    simp only [Core.Env.lookup] at hclookup
-    match hcf : cenv.bindings.find? (fun kv => kv.fst == name) with
-    | some ckv =>
-      have hmem_c := List.mem_of_find?_eq_some hcf
-      exact hcnot ckv.snd hmem_c
-    | none => simp [hcf] at hclookup
-  case isFalse.isFalse hcnot hfnot =>
-    -- Neither has name → both prepend → exactly EnvCorr_extend
-    exact EnvCorr_extend h name cv
+  · -- Neither has name → both prepend → exactly EnvCorr_extend
+    exact EnvCorr_extend henv name cv
 
 /-- Simulation relation for closure conversion: Flat and Core states
     have matching traces, environment correspondence, and expression
