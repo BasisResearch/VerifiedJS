@@ -6623,14 +6623,15 @@ theorem step_sim (irmod : IRModule) (wmod : Module) :
                 have hfr_w : s2.frames = [] := by
                   cases hs : s2.frames with | nil => rfl | cons => simp [hs] at hflen
                 have hw := step?_eq_localSet_noFrame s2 idx rest_w hcw hfr_w
-                exact ⟨_, by simp [traceToWasm]; exact hw,
+                exact ⟨{ s2 with code := [], trace := s2.trace ++ [.trap "local.set without active frame"] },
+                  by simp [traceToWasm]; exact hw,
                   { hemit := hrel.hemit
                     hcode := .nil
                     hstack := by dsimp only []; exact hrel.hstack
                     hframes_len := by dsimp only []; exact hrel.hframes_len
                     hframes_locals := hrel.hframes_locals
                     hframes_vals := hrel.hframes_vals
-                    hlabels := hrel.hlabels
+                    hlabels := by dsimp only []; exact hrel.hlabels
                     hhalt := hhalt_of_structural .nil hrel.hlabels }⟩
               | irf :: irfs =>
                 -- Has frame but empty stack: IR traps "stack underflow in local.set"
@@ -6648,14 +6649,15 @@ theorem step_sim (irmod : IRModule) (wmod : Module) :
                 | [] => simp [hfr_w] at hflen
                 | wf :: wfs =>
                   have hw := step?_eq_localSet_emptyStack s2 idx rest_w wf wfs hcw hs2 hfr_w
-                  exact ⟨_, by simp [traceToWasm]; exact hw,
+                  exact ⟨{ s2 with code := [], stack := [], trace := s2.trace ++ [.trap "stack underflow in local.set"] },
+                    by simp [traceToWasm]; exact hw,
                     { hemit := hrel.hemit
                       hcode := .nil
                       hstack := by simp [hs2]
-                      hframes_len := hrel.hframes_len
+                      hframes_len := by dsimp only []; exact hrel.hframes_len
                       hframes_locals := hrel.hframes_locals
                       hframes_vals := hrel.hframes_vals
-                      hlabels := hrel.hlabels
+                      hlabels := by dsimp only []; exact hrel.hlabels
                       hhalt := hhalt_of_structural .nil hrel.hlabels }⟩
             | iv :: istk =>
               -- Need a frame
@@ -6671,14 +6673,15 @@ theorem step_sim (irmod : IRModule) (wmod : Module) :
                 have hfr_w : s2.frames = [] := by
                   cases hs : s2.frames with | nil => rfl | cons => simp [hs] at hflen
                 have hw := step?_eq_localSet_noFrame s2 idx rest_w hcw hfr_w
-                exact ⟨_, by simp [traceToWasm]; exact hw,
+                exact ⟨{ s2 with code := [], trace := s2.trace ++ [.trap "local.set without active frame"] },
+                  by simp [traceToWasm]; exact hw,
                   { hemit := hrel.hemit
                     hcode := .nil
                     hstack := by dsimp only []; exact hrel.hstack
                     hframes_len := by dsimp only []; exact hrel.hframes_len
                     hframes_locals := hrel.hframes_locals
                     hframes_vals := hrel.hframes_vals
-                    hlabels := hrel.hlabels
+                    hlabels := by dsimp only []; exact hrel.hlabels
                     hhalt := hhalt_of_structural .nil hrel.hlabels }⟩
               | irf :: irfs =>
                 -- Need idx in bounds
@@ -6757,14 +6760,15 @@ theorem step_sim (irmod : IRModule) (wmod : Module) :
                     | [] => simp [hstk_w] at hstk_rel
                     | wv :: wstk =>
                       have hw := step?_eq_localSet_oob s2 idx rest_w wv wstk wf wfs hcw hstk_w hfr_w hlt_w
-                      exact ⟨_, by simp [traceToWasm]; exact hw,
+                      exact ⟨{ s2 with code := [], trace := s2.trace ++ [.trap s!"unknown local index {idx}"] },
+                        by simp [traceToWasm]; exact hw,
                         { hemit := hrel.hemit
                           hcode := .nil
                           hstack := by dsimp only []; exact hrel.hstack
                           hframes_len := by dsimp only []; exact hrel.hframes_len
                           hframes_locals := hrel.hframes_locals
                           hframes_vals := hrel.hframes_vals
-                          hlabels := hrel.hlabels
+                          hlabels := by dsimp only []; exact hrel.hlabels
                           hhalt := hhalt_of_structural .nil hrel.hlabels }⟩
           · sorry -- general case
       | .globalGet idx =>
