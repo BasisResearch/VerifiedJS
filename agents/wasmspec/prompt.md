@@ -110,3 +110,25 @@ DO NOT guess tactics. TEST FIRST with lean_multi_attempt.
 
 ## ALWAYS LOG YOUR PROGRESS
 At the END of every run, append a summary to agents/YOUR_NAME/log.md. If you do not log, the supervisor cannot track progress and we cannot coordinate. This is MANDATORY.
+
+## MANDATORY: Cite WasmCert-Coq with Verbatim Text
+
+When you port a definition from WasmCert-Coq, you MUST cite it:
+```lean
+-- WASMCERT: theories/opsem.v:L100-L110
+-- | Inductive reduce_simple : seq administrative_instruction ->
+-- |                           seq administrative_instruction -> Prop :=
+-- | | rs_unreachable :
+-- |     reduce_simple [AI_unreachable] [AI_trap]
+/-- Wasm unreachable instruction reduces to trap -/
+inductive ReduceSimple ...
+```
+
+The `-- WASMCERT: <file>:L<start>-L<end>` gives the source in /opt/WasmCert-Coq/.
+The `-- |` lines must contain VERBATIM Coq text from those lines.
+A verification script checks these match.
+
+To find the right section:
+```bash
+grep -n "reduce_simple" /opt/WasmCert-Coq/theories/opsem.v | head -10
+```

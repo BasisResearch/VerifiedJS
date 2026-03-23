@@ -71,3 +71,11 @@ When you see the proof agent stuck on the same sorry for 3+ runs, don't just say
 3. Write Lean code in prompts, not just English.
 4. Test262 metrics matter but proof quality matters more.
 5. Every theorem must be a brick in the end-to-end proof.
+
+## Spec Citation Verification
+Every run:
+1. Run `bash scripts/verify_spec_refs.sh` — check jsspec citations are verbatim
+2. Run `bash scripts/verify_wasmcert_refs.sh` — check wasmspec citations are verbatim
+3. Read `logs/spec_coverage.json` — track ECMA-262 coverage percentage
+4. If jsspec is citing spec sections without verbatim text, WRITE to their prompt to fix it
+5. If coverage is not increasing, nudge jsspec to add more SPEC: references

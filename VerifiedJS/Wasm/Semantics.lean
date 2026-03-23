@@ -2574,6 +2574,19 @@ theorem step?_eq_f64Div (s : ExecState) (rest : List Instr)
     cases s; simp_all
   rw [← this]; simp [step?_f64Div, pushTrace]
 
+/-- Exact step? result for block with hypothesis-form arguments.
+    REF: Wasm §4.4.8.2 -/
+theorem step?_eq_block (s : ExecState) (bt : BlockType) (body : List Instr) (rest : List Instr)
+    (hcode : s.code = Instr.block bt body :: rest) :
+    step? s = some (.silent,
+      { s with
+        code := body
+        labels := { onBranch := rest, onExit := rest, isLoop := false } :: s.labels
+        trace := s.trace ++ [.silent] }) := by
+  have : { s with code := Instr.block bt body :: rest } = s := by
+    cases s; simp_all
+  rw [← this]; simp [step?_block, pushTrace]
+
 /-! ## Behavioral semantics theorems -/
 
 /-- Deterministic execution: Steps from the same state yield the same trace and final state. -/
@@ -6800,8 +6813,22 @@ theorem step_sim (irmod : IRModule) (wmod : Module) :
           -- indirect call
           sorry
       | .block label body =>
-          -- block: enter block scope
-          sorry
+          -- block: push label frame, enter body. Both IR and Wasm do the same.
+          have hc : EmitCodeCorr (IRInstr.block label body :: rest) s2.code := hcode_ir ▸ hrel.hcode
+          rcases hc.block_inv with ⟨body_w, rest_w, hcw, hbody, hrest⟩ | ⟨wasm_instrs, rest_w, hcw, hrest⟩
+          · -- Specific case: Wasm code = block .none body_w :: rest_w
+            have hir := irStep?_eq_block s1 label body rest hcode_ir
+            rw [hir] at hstep
+            simp only [Option.some.injEq, Prod.mk.injEq] at hstep
+            obtain ⟨rfl, rfl⟩ := hstep
+            have hw := step?_eq_block s2 .none body_w rest_w hcw
+            refine ⟨_, hw, hrel.hemit, hbody, hrel.hstack, hrel.hframes_len, hrel.hframes_locals, hrel.hframes_vals, ?_, ?_⟩
+            · -- Labels length: both increase by 1
+              simp; exact hrel.hlabels
+            · -- Halt correspondence
+              exact hhalt_of_structural hbody (by simp; exact hrel.hlabels)
+          · -- General case (EmitCodeCorr.general)
+            sorry
       | .loop label body =>
           -- loop: enter loop scope
           sorry

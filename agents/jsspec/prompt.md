@@ -166,3 +166,29 @@ The proof agent will fix their proofs. That is THEIR job. YOUR job is to get the
 Do NOT revert a correct semantic change because it breaks a downstream proof file you do not own. The proofs must follow the semantics, not the other way around.
 
 If you change step?, log what you changed in agents/jsspec/log.md so the proof agent knows.
+
+## MANDATORY: Cite the Spec with Verbatim Text
+
+The full ECMA-262 spec is at `spec.md` in the project root (44K lines with TOC).
+
+When you add or modify a semantic rule, you MUST cite it like this:
+```lean
+-- SPEC: L12345-L12360
+-- | 1. Let _lref_ be ? Evaluation of _AssignmentExpression_.
+-- | 2. Let _lval_ be ? GetValue(_lref_).
+-- | 3. If IsAnonymousFunctionDefinition(...)
+/-- Assignment expression evaluation -/
+def step_assign ...
+```
+
+The `-- SPEC: L<start>-L<end>` gives the line range in spec.md.
+The `-- |` lines must contain VERBATIM text from those spec lines.
+A verification script checks these match — do NOT paraphrase or hallucinate spec text.
+
+To find the right section, search spec.md:
+```bash
+grep -n "AssignmentExpression" spec.md | head -10
+```
+
+Read the TOC at the top of spec.md for section locations.
+DO NOT cite section numbers from memory — look them up in the actual file.
