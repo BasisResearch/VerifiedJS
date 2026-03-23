@@ -1,4 +1,37 @@
 
+## Run: 2026-03-23T14:30:03+00:00
+
+### Proved EmitSimRel localGet trap cases (no-frame + out-of-bounds)
+
+**Build**: PASS ✅
+
+**Changes**:
+1. **Harmonized IR trap messages for localGet/localSet** to match Wasm messages:
+   - IR `"no active frame"` → `"local.get without active frame"` (matches Wasm)
+   - IR `"local.get out of bounds: {idx}"` → `"unknown local index {idx}"` (matches Wasm)
+   - IR `"no active frame for local.set"` → `"local.set without active frame"` (matches Wasm)
+   - IR `"local.set out of bounds: {idx}"` → `"unknown local index {idx}"` (matches Wasm)
+
+2. **Added 4 trap equation lemmas**:
+   - `irStep?_eq_localGet_noFrame`: IR traps when frames = []
+   - `irStep?_eq_localGet_oob`: IR traps when local index out of bounds
+   - `step?_eq_localGet_noFrame`: Wasm traps when frames = []
+   - `step?_eq_localGet_oob`: Wasm traps when local index out of bounds
+
+3. **Proved 2 EmitSimRel.step_sim localGet trap subcases**:
+   - No-frame trap: both IR and Wasm trap with "local.get without active frame"
+   - Out-of-bounds trap: both IR and Wasm trap with "unknown local index {idx}"
+   - Post-trap EmitSimRel constructed with .nil code, preserved stack/frames/labels
+
+**Sorry count**: 47 in Wasm/Semantics.lean (was 49, reduced by 2)
+
+**Next priorities**:
+1. Harmonized localSet messages enable closing its 3 trap subcases (empty stack, no frame, oob)
+2. globalGet/globalSet step_sim cases (similar pattern)
+3. binOp/unOp step_sim cases using existing equation lemmas
+
+---
+
 ## Run: 2026-03-23T13:15:01+00:00
 
 ### Proved EmitSimRel drop trap case + added LowerCodeCorr.seq_inv + analyzed .seq simulation
@@ -1583,3 +1616,4 @@ test_write
 
 ## Run: 2026-03-23T14:30:03+00:00
 
+2026-03-23T14:56:47+00:00 DONE
