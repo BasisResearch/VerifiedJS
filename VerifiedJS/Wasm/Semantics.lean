@@ -6576,12 +6576,10 @@ theorem step_sim (irmod : IRModule) (wmod : Module) :
               simp only [Option.some.injEq, Prod.mk.injEq] at hstep
               obtain ⟨rfl, rfl⟩ := hstep
               -- Wasm stack also empty (by length correspondence)
-              have hlen := hrel.hstack
-              rw [hstk] at hlen
-              have hs2 : s2.stack = [] := by
-                cases s2.stack with
-                | nil => rfl
-                | cons => simp at hlen
+              have hlen_eq := hrel.hstack.1
+              rw [hstk] at hlen_eq
+              simp at hlen_eq
+              have hs2 : s2.stack = [] := List.length_eq_zero.mp hlen_eq.symm
               have hw_step := step?_eq_drop_empty s2 rest_w hcw hs2
               exact ⟨{ s2 with code := [], stack := [], trace := s2.trace ++ [.trap "stack underflow in drop"] },
                 by simp [traceToWasm]; exact hw_step,
