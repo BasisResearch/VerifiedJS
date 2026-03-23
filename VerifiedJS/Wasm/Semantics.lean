@@ -2460,9 +2460,7 @@ theorem step?_eq_localSet_noFrame (s : ExecState) (idx : Nat) (rest : List Instr
     (hframes : s.frames = []) :
     step? s = some (.trap "local.set without active frame",
       { s with code := [], trace := s.trace ++ [.trap "local.set without active frame"] }) := by
-  cases s; simp_all [step?, trapState, pushTrace]
-  rename_i stack _ _ _ _ _
-  cases stack <;> simp [pop1?]
+  cases s; simp_all [step?, trapState, pushTrace, pop1?]
 
 /-- step? for localSet with local index out of bounds: traps. -/
 theorem step?_eq_localSet_oob (s : ExecState) (idx : Nat) (rest : List Instr)
@@ -4387,8 +4385,7 @@ theorem irStep?_eq_localSet_noFrame (s : IRExecState) (idx : Nat) (rest : List I
     (hframes : s.frames = []) :
     irStep? s = some (.trap "local.set without active frame",
       { s with code := [], trace := s.trace ++ [.trap "local.set without active frame"] }) := by
-  simp [irStep?, hcode, hframes, irTrapState, irPushTrace]
-  cases s.stack <;> simp [irPop1?]
+  simp [irStep?, hcode, hframes, irTrapState, irPushTrace, irPop1?]
 
 /-- irStep? for localSet with local index out of bounds: traps. -/
 theorem irStep?_eq_localSet_oob (s : IRExecState) (idx : Nat) (rest : List IRInstr)
