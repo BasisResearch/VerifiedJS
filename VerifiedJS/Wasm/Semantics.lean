@@ -3668,14 +3668,6 @@ theorem observableWasmEvents_traceListToWasm (ts : List TraceEvent) :
 The lowering pass bridges ANF (which uses Core.TraceEvent) to IR (which uses IR.TraceEvent).
 These mappings allow LowerCorrect to relate the two trace types. -/
 
-/-- Map a Core.TraceEvent to an IR.TraceEvent.
-    Used by LowerCorrect: ∀ trace, ANF.Behaves s trace → IR.Behaves t (map traceFromCore trace).
-    REF: Core.TraceEvent has log/error/silent; IR.TraceEvent adds trap. -/
-def traceFromCore : Core.TraceEvent → TraceEvent
-  | .log s => .log s
-  | .error s => .error s
-  | .silent => .silent
-
 /-- Is this a control-flow signal error (break/continue/return/throw)?
     These are internal signaling events in Core/ANF semantics, not observable behavior.
     In the IR, these become structured control flow (br/return) and emit .silent. -/
@@ -3683,13 +3675,18 @@ def isControlFlowSignal (msg : String) : Bool :=
   msg.startsWith "break:" || msg.startsWith "continue:" ||
   msg.startsWith "return:" || msg.startsWith "throw:"
 
-/-- Map a Core.TraceEvent to an IR.TraceEvent, with control-flow signals silenced.
+/-- Map a Core.TraceEvent to an IR.TraceEvent.
+    Used by LowerCorrect: ∀ trace, ANF.Behaves s trace → IR.Behaves t (map traceFromCore trace).
     Control-flow signal errors (break/continue/return/throw) are mapped to .silent because
-    they become structured control flow (br/return) in the IR. -/
-def traceFromCoreForIR : Core.TraceEvent → TraceEvent
+    they become structured control flow (br/return) in the IR.
+    REF: Core.TraceEvent has log/error/silent; IR.TraceEvent adds trap. -/
+def traceFromCore : Core.TraceEvent → TraceEvent
   | .log s => .log s
   | .error s => if isControlFlowSignal s then .silent else .error s
   | .silent => .silent
+
+/-- Alias for backwards compatibility. -/
+abbrev traceFromCoreForIR := traceFromCore
 
 /-- Map an IR.TraceEvent back to a Core.TraceEvent (lossy: trap maps to error).
     Used when relating IR traces back to source-level traces. -/
@@ -3711,14 +3708,18 @@ def traceListToCore : List TraceEvent → List Core.TraceEvent :=
 
 @[simp] theorem traceFromCore_silent : traceFromCore .silent = .silent := rfl
 @[simp] theorem traceFromCore_log (s : String) : traceFromCore (.log s) = .log s := rfl
-@[simp] theorem traceFromCore_error (s : String) : traceFromCore (.error s) = .error s := rfl
+@[simp] theorem traceFromCore_error_nonCF (s : String) (h : isControlFlowSignal s = false) :
+    traceFromCore (.error s) = .error s := by simp [traceFromCore, h]
+@[simp] theorem traceFromCore_error_CF (s : String) (h : isControlFlowSignal s = true) :
+    traceFromCore (.error s) = .silent := by simp [traceFromCore, h]
 
+-- Backwards-compatible aliases
 @[simp] theorem traceFromCoreForIR_silent : traceFromCoreForIR .silent = .silent := rfl
 @[simp] theorem traceFromCoreForIR_log (s : String) : traceFromCoreForIR (.log s) = .log s := rfl
 @[simp] theorem traceFromCoreForIR_error_nonCF (s : String) (h : isControlFlowSignal s = false) :
-    traceFromCoreForIR (.error s) = .error s := by simp [traceFromCoreForIR, h]
+    traceFromCoreForIR (.error s) = .error s := by simp [traceFromCore, h]
 @[simp] theorem traceFromCoreForIR_error_CF (s : String) (h : isControlFlowSignal s = true) :
-    traceFromCoreForIR (.error s) = .silent := by simp [traceFromCoreForIR, h]
+    traceFromCoreForIR (.error s) = .silent := by simp [traceFromCore, h]
 
 @[simp] theorem traceToCore_silent : traceToCore .silent = .silent := rfl
 @[simp] theorem traceToCore_trap (msg : String) : traceToCore (.trap msg) = .error msg := rfl
@@ -3741,18 +3742,16 @@ def traceListToCore : List TraceEvent → List Core.TraceEvent :=
     traceListToCore (t1 ++ t2) = traceListToCore t1 ++ traceListToCore t2 := by
   simp [traceListToCore, List.map_append]
 
-/-- Round-trip: Core → IR → Core is identity (no traps introduced by conversion). -/
-@[simp] theorem traceToCore_traceFromCore (t : Core.TraceEvent) :
-    traceToCore (traceFromCore t) = t := by
-  cases t <;> rfl
-
-/-- Round-trip for lists: Core → IR → Core is identity. -/
-@[simp] theorem traceListToCore_traceListFromCore (ts : List Core.TraceEvent) :
-    traceListToCore (traceListFromCore ts) = ts := by
-  simp only [traceListToCore, traceListFromCore, List.map_map]
-  have : (traceToCore ∘ traceFromCore) = id := by
-    funext t; exact traceToCore_traceFromCore t
-  rw [this, List.map_id]
+/-- Round-trip: Core → IR → Core is identity for non-control-flow events.
+    Control-flow signal errors (break/continue/return/throw) are silenced by traceFromCore,
+    so the round-trip maps them to .silent instead. -/
+@[simp] theorem traceToCore_traceFromCore_silent :
+    traceToCore (traceFromCore .silent) = .silent := rfl
+@[simp] theorem traceToCore_traceFromCore_log (s : String) :
+    traceToCore (traceFromCore (.log s)) = .log s := rfl
+@[simp] theorem traceToCore_traceFromCore_error_nonCF (s : String) (h : isControlFlowSignal s = false) :
+    traceToCore (traceFromCore (.error s)) = .error s := by
+  simp [traceFromCore, h]
 
 /-- Composing Core→IR→Wasm trace maps: silent Core events map to silent Wasm events. -/
 @[simp] theorem traceToWasm_traceFromCore_silent :
@@ -3762,7 +3761,9 @@ def traceListToCore : List TraceEvent → List Core.TraceEvent :=
     traceToWasm (traceFromCore (.log s)) = Wasm.TraceEvent.silent := rfl
 
 @[simp] theorem traceToWasm_traceFromCore_error (s : String) :
-    traceToWasm (traceFromCore (.error s)) = Wasm.TraceEvent.silent := rfl
+    traceToWasm (traceFromCore (.error s)) = Wasm.TraceEvent.silent := by
+  simp only [traceFromCore]
+  split <;> simp [traceToWasm]
 
 /-! ### Simulation Framework for Proof Chain
 
