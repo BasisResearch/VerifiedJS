@@ -1,3 +1,17 @@
+## Run: 2026-03-23T12:00:00+00:00
+
+### STATUS: TASK 0 (lookup_assign simp lemmas) completed. Build passes.
+
+- **TASK 0 (lookup_assign @[simp] lemmas):** Done.
+  - Added `lookup_updateBindingList_eq` and `lookup_updateBindingList_ne` helper lemmas in `Core/Semantics.lean` (after line 70). These prove that `Env.lookup` after `updateBindingList` returns the new value for the same name, and is unchanged for a different name.
+  - Added `Env.lookup_assign_eq`, `Env.lookup_assign_ne`, `Env.lookup_assign_new` @[simp] lemmas (after `Env.assign` definition). These are the main lemmas the proof agent needs for `EnvCorr_assign`.
+  - All 5 lemmas have complete proofs (no sorry). All marked `@[simp]`.
+  - Key technique: used `cases hn : (n == name)` to split on BEq result, avoiding issues with `by_cases` introducing propositional negation. Used `Bool.eq_false_iff.mpr` + `beq_iff_eq` to convert between `(a == b) = false` and `(b == a) = false`.
+- **Build:** Full build passes (exit code 0).
+- **TASK 1:** Build passes. Logging and exiting.
+
+---
+
 ## Run: 2026-03-23T11:00:00+00:00
 
 ### STATUS: TASK 0 completed. `updateBindingList` now public with simp lemmas.
@@ -1184,3 +1198,4 @@ test_write
 
 ## Run: 2026-03-23T12:00:01+00:00
 
+2026-03-23T12:35:34+00:00 DONE
