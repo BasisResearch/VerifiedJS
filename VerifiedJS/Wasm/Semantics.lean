@@ -6052,7 +6052,9 @@ theorem step_sim (irmod : IRModule) (wmod : Module) :
             simp only [Option.some.injEq, Prod.mk.injEq] at hstep
             obtain ⟨rfl, rfl⟩ := hstep
             have hw := step?_eq_i32Const s2 n rest_w hcw
-            exact ⟨_, hw, ⟨hrel.hemit, hrest, by sorry, hrel.hlabels, hhalt_of_structural hrest hrel.hlabels⟩⟩
+            exact ⟨_, hw, ⟨hrel.hemit, hrest,
+              by have := hrel.hstack; simp only [UInt32.toNat_toUInt32] at *; exact stack_corr_cons this.1 this.2 (.i32 n),
+              hrel.hlabels, hhalt_of_structural hrest hrel.hlabels⟩⟩
           · -- General case (EmitCodeCorr.general)
             sorry
       | .const_ .i64 v =>
@@ -6064,7 +6066,9 @@ theorem step_sim (irmod : IRModule) (wmod : Module) :
             simp only [Option.some.injEq, Prod.mk.injEq] at hstep
             obtain ⟨rfl, rfl⟩ := hstep
             have hw := step?_eq_i64Const s2 n rest_w hcw
-            exact ⟨_, hw, ⟨hrel.hemit, hrest, by sorry, hrel.hlabels, hhalt_of_structural hrest hrel.hlabels⟩⟩
+            exact ⟨_, hw, ⟨hrel.hemit, hrest,
+              by have := hrel.hstack; simp only [UInt64.toNat_toUInt64] at *; exact stack_corr_cons this.1 this.2 (.i64 n),
+              hrel.hlabels, hhalt_of_structural hrest hrel.hlabels⟩⟩
           · sorry -- general case
       | .const_ .f64 v =>
           -- f64 const: same pattern as i32

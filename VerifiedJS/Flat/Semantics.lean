@@ -27,7 +27,7 @@ def Env.lookup (env : Env) (name : VarName) : Option Value :=
   | some kv => some kv.snd
   | none => none
 
-private def updateBindingList (xs : Env) (name : VarName) (v : Value) : Env :=
+def updateBindingList (xs : Env) (name : VarName) (v : Value) : Env :=
   match xs with
   | [] => []
   | (n, old) :: rest =>
@@ -63,13 +63,26 @@ def toBoolean : Value → Bool
   | .object _ => true
   | .closure _ _ => true
 
-/-- ECMA-262 §7.1.3 ToNumber (Flat subset). -/
+/-- ECMA-262 §7.1.3 ToNumber (Flat subset — must match Core). -/
 def toNumber : Value → Float
   | .number n => n
   | .bool true => 1.0
   | .bool false => 0.0
   | .null => 0.0
-  | _ => 0.0
+  | .undefined => 0.0 / 0.0  -- NaN, matching Core
+  | .string s =>
+      let trimmed := s.trimAscii.toString
+      if trimmed.isEmpty then 0.0
+      else match trimmed.toNat? with
+        | some n => Float.ofNat n
+        | none =>
+            if trimmed.startsWith "-" then
+              match (trimmed.drop 1).toNat? with
+              | some n => -(Float.ofNat n)
+              | none => 0.0 / 0.0
+            else 0.0 / 0.0
+  | .object _ => 0.0 / 0.0
+  | .closure _ _ => 0.0 / 0.0
 
 /-- ECMA-262 §13.5 Runtime Semantics: Evaluation (Flat unary subset). -/
 def evalUnary : Core.UnaryOp → Value → Value
@@ -77,7 +90,7 @@ def evalUnary : Core.UnaryOp → Value → Value
   | .pos, v => .number (toNumber v)
   | .logNot, v => .bool (!toBoolean v)
   | .void, _ => .undefined
-  | .bitNot, _ => .undefined
+  | .bitNot, v => .number (~~~(toNumber v |>.toUInt32)).toFloat
 
 /-- ECMA-262 §13.15 Runtime Semantics: Evaluation (Flat binary subset). -/
 def evalBinary : Core.BinOp → Value → Value → Value
@@ -97,6 +110,28 @@ def evalBinary : Core.BinOp → Value → Value → Value
   | .logAnd, a, b => if toBoolean a then b else a
   | .logOr, a, b => if toBoolean a then a else b
   | _, _, _ => .undefined
+
+/-- ECMA-262 §7.1.12 ToString (Flat — must match Core.valueToString on convertValue). -/
+def valueToString : Value → String
+  | .string s => s
+  | .number n =>
+      if n.isNaN then "NaN"
+      else if n == 1.0/0.0 then "Infinity"
+      else if n == -1.0/0.0 then "-Infinity"
+      else
+        let i := n.toUInt64
+        if i.toFloat == n && n >= 0.0 then toString i.toNat
+        else
+          let neg := -n
+          let j := neg.toUInt64
+          if j.toFloat == neg && neg > 0.0 then "-" ++ toString j.toNat
+          else toString n
+  | .bool true => "true"
+  | .bool false => "false"
+  | .null => "null"
+  | .undefined => "undefined"
+  | .object _ => "[object Object]"
+  | .closure _ _ => "function"
 
 private def pushTrace (s : State) (t : Core.TraceEvent) : State :=
   { s with trace := s.trace ++ [t] }
@@ -454,9 +489,10 @@ def step? (s : State) : Option (Core.TraceEvent × State) :=
       some (.silent, s')
   | .throw arg =>
       match exprValue? arg with
-      | some _ =>
-          let s' := pushTrace { s with expr := .lit .undefined } (.error "throw")
-          some (.error "throw", s')
+      | some v =>
+          let msg := valueToString v
+          let s' := pushTrace { s with expr := .lit .undefined } (.error msg)
+          some (.error msg, s')
       | none =>
           match step? { s with expr := arg } with
           | some (t, sa) =>
@@ -607,8 +643,8 @@ def step? (s : State) : Option (Core.TraceEvent × State) :=
       | some e =>
           match exprValue? e with
           | some v =>
-              let s' := pushTrace { s with expr := .lit v } (.error ("return:" ++ toString (repr v)))
-              some (.error ("return:" ++ toString (repr v)), s')
+              let s' := pushTrace { s with expr := .lit v } (.error ("return:" ++ valueToString v))
+              some (.error ("return:" ++ valueToString v), s')
           | none =>
               match step? { s with expr := e } with
               | some (t, se) =>
@@ -663,7 +699,9 @@ inductive Steps : State → List Core.TraceEvent → State → Prop where
 
 /-- Initial Flat machine state for a program entry expression. -/
 def initialState (p : Program) : State :=
-  { expr := p.main, env := Env.empty, heap := Core.Heap.empty, trace := [] }
+  let consoleProps : List (Core.PropName × Core.Value) := [("log", .function Core.consoleLogIdx)]
+  let heap : Core.Heap := { objects := #[consoleProps], nextAddr := 1 }
+  { expr := p.main, env := Env.empty.extend "console" (.object 0), heap := heap, trace := [] }
 
 /-- Behavioral semantics -/
 def Behaves (p : Program) (b : List Core.TraceEvent) : Prop :=
