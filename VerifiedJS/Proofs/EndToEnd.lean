@@ -45,7 +45,8 @@ theorem flat_to_wasm_correct
     (hlower : Wasm.lower (ANF.optimize anf) = .ok ir)
     (hemit : emit ir = .ok wasm)
     (hnofor : ∀ sc tr, Core.Steps (Core.initialState core) tr sc →
-        (∀ b o f, sc.expr ≠ .forIn b o f) ∧ (∀ b i f, sc.expr ≠ .forOf b i f)) :
+        (∀ b o f, sc.expr ≠ .forIn b o f) ∧ (∀ b i f, sc.expr ≠ .forOf b i f))
+    (hwf_flat : ExprWellFormed flat.main (Flat.initialState flat).env) :
     ∀ anfTrace, ANF.Behaves anf anfTrace →
       -- Forward: ANF → Wasm behavioral preservation
       Wasm.Behaves wasm (IR.traceListToWasm (IR.traceListFromCore anfTrace)) ∧
@@ -59,7 +60,7 @@ theorem flat_to_wasm_correct
       (lower_behavioral_correct _ ir hlower _
         ((optimize_correct anf anfTrace).mpr hanfb))
   · -- Backward: ANF → Flat → Core
-    obtain ⟨flatTrace, hflatb, hobs⟩ := anfConvert_correct flat anf hanf anfTrace hanfb
+    obtain ⟨flatTrace, hflatb, hobs⟩ := anfConvert_correct flat anf hanf hwf_flat anfTrace hanfb
     obtain ⟨coreTrace, hcoreb, heq⟩ := closureConvert_correct core flat hcc hnofor flatTrace hflatb
     exact ⟨coreTrace, hcoreb, by rw [hobs, heq]⟩
 

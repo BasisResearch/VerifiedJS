@@ -1085,20 +1085,18 @@ private theorem anfConvert_steps_star
 
 /-- ANF conversion preserves observable behavior:
     For every terminating ANF execution, there exists a terminating Flat
-    execution with the same observable trace (non-silent events). -/
+    execution with the same observable trace (non-silent events).
+    Precondition: the initial expression is well-scoped (all top-level
+    free .var references in .seq chains are bound in the initial env). -/
 theorem anfConvert_correct (s : Flat.Program) (t : ANF.Program)
-    (h : ANF.convert s = .ok t) :
+    (h : ANF.convert s = .ok t)
+    (hwf_prog : ExprWellFormed s.main (Flat.initialState s).env) :
     ∀ b, ANF.Behaves t b →
       ∃ b', Flat.Behaves s b' ∧ observableTrace b = observableTrace b' := by
   intro b ⟨sa, hsteps, hhalt⟩
   have hinit := anfConvert_init_related s t h
-  -- Initial state is well-formed (no free variables in an empty env is vacuously true,
-  -- or the program's free vars are bound in the initial env)
-  have hwf_init : ExprWellFormed (Flat.initialState s).expr (Flat.initialState s).env := by
-    intro x hfx; simp [Flat.initialState, Flat.Env.lookup]
-    -- VarFreeIn' only tracks .var in .seq chains; in the initial program
-    -- this is vacuously true for well-formed programs. Sorry for now.
-    sorry
+  have hwf_init : ExprWellFormed (Flat.initialState s).expr (Flat.initialState s).env :=
+    hwf_prog
   -- Multi-step simulation (now threads WF)
   obtain ⟨sf, tr', hfsteps, hobstr, hrel, hwf_sf⟩ :=
     anfConvert_steps_star s t h _ _ _ _ hinit hwf_init hsteps

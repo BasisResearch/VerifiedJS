@@ -6097,7 +6097,7 @@ theorem step_sim (irmod : IRModule) (wmod : Module) :
             simp only [Option.some.injEq, Prod.mk.injEq] at hstep
             obtain ⟨rfl, rfl⟩ := hstep
             have hw := step?_eq_i32Const s2 n rest_w hcw
-            refine ⟨_, hw, ⟨hrel.hemit, hrest, ?_, hrel.hlabels, hhalt_of_structural hrest hrel.hlabels⟩⟩
+            refine ⟨_, hw, ⟨hrel.hemit, hrest, ?_, hrel.hframes, hrel.hlabels, hhalt_of_structural hrest hrel.hlabels⟩⟩
             dsimp only []
             exact stack_corr_cons hrel.hstack.1 hrel.hstack.2 (.i32 n)
           · -- General case (EmitCodeCorr.general)
@@ -6112,7 +6112,7 @@ theorem step_sim (irmod : IRModule) (wmod : Module) :
             simp only [Option.some.injEq, Prod.mk.injEq] at hstep
             obtain ⟨rfl, rfl⟩ := hstep
             have hw := step?_eq_i64Const s2 n rest_w hcw
-            refine ⟨_, hw, ⟨hrel.hemit, hrest, ?_, hrel.hlabels, hhalt_of_structural hrest hrel.hlabels⟩⟩
+            refine ⟨_, hw, ⟨hrel.hemit, hrest, ?_, hrel.hframes, hrel.hlabels, hhalt_of_structural hrest hrel.hlabels⟩⟩
             dsimp only []
             exact stack_corr_cons hrel.hstack.1 hrel.hstack.2 (.i64 n)
           · sorry -- general case
@@ -6126,7 +6126,7 @@ theorem step_sim (irmod : IRModule) (wmod : Module) :
             simp only [Option.some.injEq, Prod.mk.injEq] at hstep
             obtain ⟨rfl, rfl⟩ := hstep
             have hw := step?_eq_f64Const s2 _ rest_w hcw
-            refine ⟨_, hw, ⟨hrel.hemit, hrest, ?_, hrel.hlabels, hhalt_of_structural hrest hrel.hlabels⟩⟩
+            refine ⟨_, hw, ⟨hrel.hemit, hrest, ?_, hrel.hframes, hrel.hlabels, hhalt_of_structural hrest hrel.hlabels⟩⟩
             dsimp only []
             exact stack_corr_cons hrel.hstack.1 hrel.hstack.2 (.f64 _)
           · sorry -- general case
