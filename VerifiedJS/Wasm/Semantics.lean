@@ -2452,7 +2452,7 @@ theorem step?_eq_localSet_emptyStack (s : ExecState) (idx : Nat) (rest : List In
     (hframes : s.frames = fr :: frs) :
     step? s = some (.trap "stack underflow in local.set",
       { s with code := [], stack := [], trace := s.trace ++ [.trap "stack underflow in local.set"] }) := by
-  subst hcode; subst hstack; subst hframes; simp [step?, pop1?, trapState, pushTrace]
+  cases s; simp_all [step?, pop1?, trapState, pushTrace]
 
 /-- step? for localSet with no active frame: traps regardless of stack. -/
 theorem step?_eq_localSet_noFrame (s : ExecState) (idx : Nat) (rest : List Instr)
@@ -2460,8 +2460,9 @@ theorem step?_eq_localSet_noFrame (s : ExecState) (idx : Nat) (rest : List Instr
     (hframes : s.frames = []) :
     step? s = some (.trap "local.set without active frame",
       { s with code := [], trace := s.trace ++ [.trap "local.set without active frame"] }) := by
-  subst hcode; subst hframes; simp [step?, trapState, pushTrace]
-  cases s.stack <;> simp [pop1?]
+  cases s; simp_all [step?, trapState, pushTrace]
+  rename_i stack _ _ _ _ _
+  cases stack <;> simp [pop1?]
 
 /-- step? for localSet with local index out of bounds: traps. -/
 theorem step?_eq_localSet_oob (s : ExecState) (idx : Nat) (rest : List Instr)
@@ -2473,7 +2474,7 @@ theorem step?_eq_localSet_oob (s : ExecState) (idx : Nat) (rest : List Instr)
     (hlocal : ¬(idx < fr.locals.size)) :
     step? s = some (.trap s!"unknown local index {idx}",
       { s with code := [], trace := s.trace ++ [.trap s!"unknown local index {idx}"] }) := by
-  subst hcode; subst hstack; subst hframes; simp [step?, pop1?, trapState, pushTrace, hlocal]
+  cases s; simp_all [step?, pop1?, trapState, pushTrace, hlocal]
 
 /-- Exact step? result for i32.add with hypothesis-form arguments. -/
 theorem step?_eq_i32Add (s : ExecState) (rest : List Instr)
@@ -4365,7 +4366,7 @@ theorem irStep?_eq_localSet_emptyStack (s : IRExecState) (idx : Nat) (rest : Lis
     (hframes : s.frames = frame :: frest) :
     irStep? s = some (.trap "stack underflow in local.set",
       { s with code := [], stack := [], trace := s.trace ++ [.trap "stack underflow in local.set"] }) := by
-  subst hcode; subst hstack; subst hframes; simp [irStep?, irPop1?, irTrapState, irPushTrace]
+  simp [irStep?, hcode, hstack, hframes, irPop1?, irTrapState, irPushTrace]
 
 /-- irStep? for localSet with no active frame: traps regardless of stack. -/
 theorem irStep?_eq_localSet_noFrame (s : IRExecState) (idx : Nat) (rest : List IRInstr)
@@ -4373,7 +4374,7 @@ theorem irStep?_eq_localSet_noFrame (s : IRExecState) (idx : Nat) (rest : List I
     (hframes : s.frames = []) :
     irStep? s = some (.trap "local.set without active frame",
       { s with code := [], trace := s.trace ++ [.trap "local.set without active frame"] }) := by
-  subst hcode; subst hframes; simp [irStep?, irTrapState, irPushTrace]
+  simp [irStep?, hcode, hframes, irTrapState, irPushTrace]
   cases s.stack <;> simp [irPop1?]
 
 /-- irStep? for localSet with local index out of bounds: traps. -/
@@ -4386,7 +4387,7 @@ theorem irStep?_eq_localSet_oob (s : IRExecState) (idx : Nat) (rest : List IRIns
     (hbounds : ¬(idx < frame.locals.size)) :
     irStep? s = some (.trap s!"unknown local index {idx}",
       { s with code := [], trace := s.trace ++ [.trap s!"unknown local index {idx}"] }) := by
-  subst hcode; subst hstack; subst hframes; simp [irStep?, irPop1?, irTrapState, irPushTrace, hbounds]
+  simp [irStep?, hcode, hstack, hframes, irPop1?, irTrapState, irPushTrace, hbounds]
 
 /-- Exact state after drop: pops top of stack, advances code. -/
 theorem irStep?_eq_drop (s : IRExecState) (rest : List IRInstr)
