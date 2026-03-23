@@ -54,7 +54,7 @@ def Env.lookup (env : Env) (name : VarName) : Option Value :=
   | some kv => some kv.snd
   | none => none
 
-private def updateBindingList (xs : List (VarName × Value)) (name : VarName) (v : Value) : List (VarName × Value) :=
+def updateBindingList (xs : List (VarName × Value)) (name : VarName) (v : Value) : List (VarName × Value) :=
   match xs with
   | [] => []
   | (n, old) :: rest =>
@@ -62,6 +62,12 @@ private def updateBindingList (xs : List (VarName × Value)) (name : VarName) (v
         (n, v) :: rest
       else
         (n, old) :: updateBindingList rest name v
+
+@[simp] theorem updateBindingList_nil (name : VarName) (v : Value) : updateBindingList [] name v = [] := rfl
+@[simp] theorem updateBindingList_cons_eq (n : VarName) (old : Value) (rest : List (VarName × Value)) (name : VarName) (v : Value) (h : (n == name) = true) :
+    updateBindingList ((n, old) :: rest) name v = (n, v) :: rest := by simp [updateBindingList, h]
+@[simp] theorem updateBindingList_cons_ne (n : VarName) (old : Value) (rest : List (VarName × Value)) (name : VarName) (v : Value) (h : (n == name) = false) :
+    updateBindingList ((n, old) :: rest) name v = (n, old) :: updateBindingList rest name v := by simp [updateBindingList, h]
 
 /-- ECMA-262 §8.1.1.4.5 SetMutableBinding (simplified update). -/
 def Env.assign (env : Env) (name : VarName) (v : Value) : Env :=

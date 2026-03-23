@@ -2426,6 +2426,104 @@ theorem step?_eq_localSet (s : ExecState) (idx : Nat) (rest : List Instr)
         trace := s.trace ++ [.silent] }) := by
   cases s; simp_all [step?, pop1?, hlocal, pushTrace, updateHeadFrame]
 
+/-- Exact step? result for i32.add with hypothesis-form arguments. -/
+theorem step?_eq_i32Add (s : ExecState) (rest : List Instr)
+    (a b : UInt32) (stk : List WasmValue)
+    (hcode : s.code = Instr.i32Add :: rest)
+    (hstack : s.stack = .i32 b :: .i32 a :: stk) :
+    step? s = some (.silent,
+      { s with
+        code := rest
+        stack := .i32 (Numerics.i32Add a b) :: stk
+        trace := s.trace ++ [.silent] }) := by
+  have : { s with code := Instr.i32Add :: rest, stack := .i32 b :: .i32 a :: stk } = s := by
+    cases s; simp_all
+  rw [← this]; simp [step?_i32Add, pushTrace]
+
+/-- Exact step? result for i32.sub with hypothesis-form arguments. -/
+theorem step?_eq_i32Sub (s : ExecState) (rest : List Instr)
+    (a b : UInt32) (stk : List WasmValue)
+    (hcode : s.code = Instr.i32Sub :: rest)
+    (hstack : s.stack = .i32 b :: .i32 a :: stk) :
+    step? s = some (.silent,
+      { s with
+        code := rest
+        stack := .i32 (Numerics.i32Sub a b) :: stk
+        trace := s.trace ++ [.silent] }) := by
+  have : { s with code := Instr.i32Sub :: rest, stack := .i32 b :: .i32 a :: stk } = s := by
+    cases s; simp_all
+  rw [← this]; simp [step?_i32Sub, pushTrace]
+
+/-- Exact step? result for i32.mul with hypothesis-form arguments. -/
+theorem step?_eq_i32Mul (s : ExecState) (rest : List Instr)
+    (a b : UInt32) (stk : List WasmValue)
+    (hcode : s.code = Instr.i32Mul :: rest)
+    (hstack : s.stack = .i32 b :: .i32 a :: stk) :
+    step? s = some (.silent,
+      { s with
+        code := rest
+        stack := .i32 (Numerics.i32Mul a b) :: stk
+        trace := s.trace ++ [.silent] }) := by
+  have : { s with code := Instr.i32Mul :: rest, stack := .i32 b :: .i32 a :: stk } = s := by
+    cases s; simp_all
+  rw [← this]; simp [step?_i32Mul, pushTrace]
+
+/-- Exact step? result for f64.add with hypothesis-form arguments. -/
+theorem step?_eq_f64Add (s : ExecState) (rest : List Instr)
+    (a b : Float) (stk : List WasmValue)
+    (hcode : s.code = Instr.f64Add :: rest)
+    (hstack : s.stack = .f64 b :: .f64 a :: stk) :
+    step? s = some (.silent,
+      { s with
+        code := rest
+        stack := .f64 (Numerics.f64Add a b) :: stk
+        trace := s.trace ++ [.silent] }) := by
+  have : { s with code := Instr.f64Add :: rest, stack := .f64 b :: .f64 a :: stk } = s := by
+    cases s; simp_all
+  rw [← this]; simp [step?_f64Add, pushTrace]
+
+/-- Exact step? result for f64.sub with hypothesis-form arguments. -/
+theorem step?_eq_f64Sub (s : ExecState) (rest : List Instr)
+    (a b : Float) (stk : List WasmValue)
+    (hcode : s.code = Instr.f64Sub :: rest)
+    (hstack : s.stack = .f64 b :: .f64 a :: stk) :
+    step? s = some (.silent,
+      { s with
+        code := rest
+        stack := .f64 (Numerics.f64Sub a b) :: stk
+        trace := s.trace ++ [.silent] }) := by
+  have : { s with code := Instr.f64Sub :: rest, stack := .f64 b :: .f64 a :: stk } = s := by
+    cases s; simp_all
+  rw [← this]; simp [step?_f64Sub, pushTrace]
+
+/-- Exact step? result for f64.mul with hypothesis-form arguments. -/
+theorem step?_eq_f64Mul (s : ExecState) (rest : List Instr)
+    (a b : Float) (stk : List WasmValue)
+    (hcode : s.code = Instr.f64Mul :: rest)
+    (hstack : s.stack = .f64 b :: .f64 a :: stk) :
+    step? s = some (.silent,
+      { s with
+        code := rest
+        stack := .f64 (Numerics.f64Mul a b) :: stk
+        trace := s.trace ++ [.silent] }) := by
+  have : { s with code := Instr.f64Mul :: rest, stack := .f64 b :: .f64 a :: stk } = s := by
+    cases s; simp_all
+  rw [← this]; simp [step?_f64Mul, pushTrace]
+
+/-- Exact step? result for f64.div with hypothesis-form arguments. -/
+theorem step?_eq_f64Div (s : ExecState) (rest : List Instr)
+    (a b : Float) (stk : List WasmValue)
+    (hcode : s.code = Instr.f64Div :: rest)
+    (hstack : s.stack = .f64 b :: .f64 a :: stk) :
+    step? s = some (.silent,
+      { s with
+        code := rest
+        stack := .f64 (Numerics.f64Div a b) :: stk
+        trace := s.trace ++ [.silent] }) := by
+  have : { s with code := Instr.f64Div :: rest, stack := .f64 b :: .f64 a :: stk } = s := by
+    cases s; simp_all
+  rw [← this]; simp [step?_f64Div, pushTrace]
+
 /-! ## Behavioral semantics theorems -/
 
 /-- Deterministic execution: Steps from the same state yield the same trace and final state. -/
