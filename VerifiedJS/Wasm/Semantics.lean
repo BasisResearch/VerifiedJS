@@ -5712,6 +5712,14 @@ theorem EmitCodeCorr.cons_inv {instr : IRInstr} {rest : List IRInstr} {wcode : L
   | return__ _ rw hrw => exact ⟨[_], rw, rfl, hrw⟩
   | general _ wi _ rw hrw => exact ⟨wi, rw, rfl, hrw⟩
 
+/-- Value correspondence for IR → Wasm: each IR value maps to the corresponding Wasm value.
+    IR uses i32/i64/f64; Wasm adds f32 but emit only produces the same three types.
+    REF: Emit.lean emitInstr. -/
+inductive IRValueToWasmValue : IRValue → WasmValue → Prop where
+  | i32 (n : UInt32) : IRValueToWasmValue (.i32 n) (.i32 n)
+  | i64 (n : UInt64) : IRValueToWasmValue (.i64 n) (.i64 n)
+  | f64 (n : Float) : IRValueToWasmValue (.f64 n) (.f64 n)
+
 /-- Simulation relation for IR → Wasm emit.
     The step correspondence field provides the matching Wasm step for each IR step.
     REF: Standard forward simulation diagram. -/
@@ -5721,8 +5729,11 @@ structure EmitSimRel (irmod : IRModule) (wmod : Module)
   hemit : emit irmod = .ok wmod
   /- Code correspondence: the Wasm code is the emitted form of the IR code. -/
   hcode : EmitCodeCorr ir.code w.code
-  /- Stack correspondence. -/
-  hstack : ir.stack.length = w.stack.length
+  /- Stack correspondence: IR and Wasm stacks have matching values element-wise.
+     ir.stack.map irToWasm = w.stack where the mapping is the natural embedding. -/
+  hstack : ir.stack.length = w.stack.length ∧
+    ∀ (i : Nat), i < ir.stack.length →
+      ∃ irv wv, ir.stack[i]? = some irv ∧ w.stack[i]? = some wv ∧ IRValueToWasmValue irv wv
   /- Label correspondence (needed for halt derivation). -/
   hlabels : ir.labels.length = w.labels.length
   /- Halt correspondence. -/
@@ -5909,7 +5920,10 @@ theorem step_sim (irmod : IRModule) (wmod : Module) :
                   by simp [traceToWasm]; exact hw_step,
                   { hemit := hrel.hemit
                     hcode := hrest
-                    hstack := by simp at hlen ⊢; omega
+                    hstack := by
+                      constructor
+                      · simp at hlen ⊢; omega
+                      · intro i hi; sorry
                     hlabels := hrel.hlabels
                     hhalt := hhalt_of_structural hrest hrel.hlabels }⟩
           · -- General case (EmitCodeCorr.general): unknown Wasm instructions
