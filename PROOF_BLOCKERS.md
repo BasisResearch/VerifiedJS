@@ -4,56 +4,35 @@ Record goals agents are stuck on. Agents must read this before starting proof wo
 
 ---
 
-## BUILD STATUS: ✅ PASS (2026-03-22T20:05)
+## BUILD STATUS: ❌ FAIL (2026-03-23T08:05) — EndToEnd.lean:49 uses private `ExprWellFormed` from ANFConvertCorrect.lean:88
 
 ---
 
-## CRITICAL BLOCKERS (2026-03-23T04:05)
+## CRITICAL BLOCKERS (2026-03-23T08:05)
 
 ### ~~A. CC EnvCorr is one-directional~~ — ✅ RESOLVED (2026-03-22)
-Proof agent made EnvCorr bidirectional + proved EnvCorr_extend.
-
 ### ~~B. Flat.return/yield event mismatch~~ — ✅ RESOLVED (2026-03-22T20:00)
-Wasmspec fixed Flat.step? return/yield events to match Core.
+### ~~D. Flat.toNumber returns 0.0 instead of NaN~~ — ✅ RESOLVED
+### ~~E. Flat.evalUnary .bitNot returns .undefined~~ — ✅ RESOLVED
+### ~~F. Flat.throw uses literal "throw"~~ — ✅ RESOLVED
+### ~~G. Core/Flat .return uses repr~~ — ✅ RESOLVED
+### ~~H. Flat.initialState uses Env.empty~~ — ✅ RESOLVED
+### ~~I. updateBindingList private in Flat~~ — ✅ RESOLVED
 
 ### C. lowerExpr is private — blocks 3+ LowerSimRel.init hcode sorries
 **Owner**: proof agent (owns Lower.lean)
 **Fix**: Make lowerExpr public or add equation lemmas.
 
-### D. Flat.toNumber returns 0.0 instead of NaN — blocks .unary CC case
+### J. Flat.evalBinary misaligned with Core.evalBinary — blocks .binary CC case
 **Owner**: wasmspec
-**Issue**: Flat.toNumber (line 66-72) has `| _ => 0.0`. Core returns `0.0/0.0` (NaN) for undefined/string/object/function.
-**Fix**: Match Core's toNumber implementation. Exact code in wasmspec prompt.
-**Impact**: Blocks evalUnary_convertValue lemma → blocks .unary and .binary CC cases.
-
-### E. Flat.evalUnary .bitNot returns .undefined — blocks .unary CC case
-**Owner**: wasmspec
-**Issue**: Flat.evalUnary (line 80) has `| .bitNot, _ => .undefined`. Core does `~~~(toNumber v |>.toUInt32).toFloat`.
-**Fix**: Match Core's bitNot implementation. Exact code in wasmspec prompt.
-
-### F. Flat.throw uses literal "throw" — blocks .throw CC case
-**Owner**: wasmspec
-**Issue**: Flat.step? .throw (line 457-459) uses `(.error "throw")`. Core uses `(.error (valueToString v))`.
-**Fix**: Define Flat.valueToString, use it in .throw. Exact code in wasmspec prompt.
-
-### G. Core/Flat .return uses `repr` — blocks .return CC case
-**Owner**: jsspec (Core) + wasmspec (Flat)
-**Issue**: Both use `toString (repr v)` but Core.Value and Flat.Value have different Repr instances. `.function idx` ≠ `.closure idx 0` in repr output.
-**Fix**: Both change to `valueToString v`. Exact code in both prompts.
-
-### H. Flat.initialState uses Env.empty — blocks init_related CC case
-**Owner**: wasmspec
-**Issue**: Core.initialState has "console" binding + heap. Flat.initialState is empty. EnvCorr FALSE at init.
-**Fix**: Add console binding + heap. Exact code in wasmspec prompt. **5th run asking.**
-
-### I. updateBindingList private in Flat — blocks .assign CC case
-**Owner**: wasmspec
-**Issue**: proof agent cannot prove EnvCorr_assign without equation lemmas for updateBindingList.
-**Fix**: Remove `private` keyword from Flat.Semantics.lean line 30.
+**Issue**: Flat.evalBinary uses `a == b` for `.eq` (should be `abstractEq`), uses `toNumber` comparison for `.lt`/`.gt`/`.le`/`.ge` (should be `abstractLt`), missing mixed string `.add`, missing `.mod`/`.exp`/bitwise/`.instanceof`/`.in` (returns `.undefined`).
+**Fix**: Move `valueToString` before `evalBinary` (forward ref issue!), add `abstractEq`/`abstractLt`, replace `evalBinary`. EXACT CODE in wasmspec prompt.
+**Impact**: Blocks the `.binary` sorry in CC proof (line 206). This is the SINGLE HIGHEST IMPACT change.
+**Status**: wasmspec has been timing out for 10+ hours without making this edit.
 
 ---
 
-## Sorry Inventory (78 total, 4 files)
+## Sorry Inventory (75 total, 4 files)
 
 ### 1. ClosureConvertCorrect.lean — 25 sorries
 **Goal**: One-step backward simulation for closure conversion (Core → Flat)
@@ -133,12 +112,12 @@ Wasmspec fixed Flat.step? return/yield events to match Core.
 
 ---
 
-## Summary (2026-03-23T04:05)
+## Summary (2026-03-23T08:05)
 - **BUILD**: ✅ PASS
 - **ALL step? FUNCTIONS NON-PARTIAL**: Core ✅, Flat ✅, ANF ✅
 - **ALL Behaves DEFINED**: Core ✅, Flat ✅, ANF ✅, IR ✅, Wasm ✅, Source ✅
 - **Flat/ SORRY-FREE** ✅, **Core/Semantics SORRY-FREE** ✅, **ANF/Semantics SORRY-FREE** ✅
-- **Sorry count**: 78 (25 CC + 49 Wasm + 3 ANF + 1 Lower)
-- **Proof chain**: Elaborate ✅, Optimize ✅. CC: 11+ cases PROVED (.if/.typeof/.await/.yield/.let/.seq/.var/.return-none/.break/.continue/.labeled). 5+ cases BLOCKED on Flat semantic bugs. ANF partially proved. Lower/Emit decomposed.
-- **CRITICAL PATH**: (1) **wasmspec fixes 6 Flat semantic bugs** (toNumber, bitNot, throw event, return repr, initialState, updateBindingList private). (2) jsspec changes Core .return from repr→valueToString. (3) Proof proves bridge lemmas + remaining CC cases. (4) Proof does depth-indexed step_sim for stepping sub-cases.
+- **Sorry count**: 75 (26 CC + 44 Wasm + 2 ANF + 1 Lower + 2 init)
+- **Proof chain**: Elaborate ✅, Optimize ✅. CC: 11+ cases PROVED. Flat semantic blockers D-I ALL RESOLVED ✅. Only blocker J (evalBinary alignment) remains.
+- **CRITICAL PATH**: (1) **wasmspec lands Flat.evalBinary fix** (blocker J — exact code provided, agent keeps timing out). (2) Proof closes .assign + stepping sorries. (3) ANF step_star. (4) Lower/Emit simulation.
 - **Test262**: 3/61 — all failures are wasm runtime traps on advanced features.

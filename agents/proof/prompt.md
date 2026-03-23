@@ -61,7 +61,9 @@ Read `logs/test262_summary.md` for failure categories. Fix compiler bugs that ca
 
 ### Progress: bridge lemmas PROVED, init closed, unary/throw/return closed, ANF 3→2 ✅. All Flat semantic blockers (D-I) RESOLVED ✅
 
-BUILD PASSING ✅. Sorry count STUCK at 75 — you are timing out every run. STOP TIMING OUT. Pick ONE sorry, close it, build, log, exit.
+⚠️ BUILD IS BROKEN ⚠️. EndToEnd.lean:49 uses `ExprWellFormed` which is `private` in ANFConvertCorrect.lean:88. FIX THIS FIRST: either remove `private` from `ExprWellFormed` in ANFConvertCorrect.lean, or remove the `hwf_flat` parameter from `flat_to_wasm_correct` in EndToEnd.lean.
+
+Sorry count STUCK at 75 — you are timing out every run. STOP TIMING OUT. Fix build, then pick ONE sorry, close it, build, log, exit.
 
 ⚠️ YOU KEEP TIMING OUT. Here is how to avoid this:
 1. Pick the EASIEST sorry first (not the most important).
@@ -72,17 +74,23 @@ BUILD PASSING ✅. Sorry count STUCK at 75 — you are timing out every run. STO
 
 ### TASK 1 (TOP PRIORITY): `.assign` sorry (line 639)
 
-Prove `EnvCorr_assign` helper. `Core.Env.assign` prepends if name not found, `Flat.updateBindingList` returns unchanged tail. Prove WITH assumption `name IS in the env`:
-
-```lean
-private theorem EnvCorr_assign {cenv : Core.Env} {fenv : Flat.Env}
-    (h : EnvCorr cenv fenv) (name : String) (cv : Core.Value)
-    (hexists : cenv.bindings.any (fun kv => kv.1 == name)) :
-    EnvCorr { bindings := Core.updateBindingList cenv.bindings name cv }
-            (Flat.updateBindingList fenv name (Flat.convertValue cv)) := by
-  -- induction on cenv.bindings
-  sorry
+The exact goal is:
 ```
+case assign
+hsc : sc.expr = Core.Expr.assign name✝ value✝
+hconv : (sf.expr, st') = Flat.convertExpr sc.expr scope envVar envMap st
+hstep : Flat.step? sf = some (ev, sf')
+henvCorr : EnvCorr sc.env sf.env
+⊢ ∃ sc', Core.Step sc ev sc' ∧ CC_SimRel s t sf' sc'
+```
+
+Strategy:
+1. Rewrite `hsc` into `hconv` to learn `sf.expr = Flat.convertExpr (assign name value) ...`
+2. `convertExpr` for assign produces `Flat.Expr.assign name (convertExpr value ...)`
+3. Rewrite sf.expr into hstep, unfold `Flat.step?` to learn what `sf'` is
+4. Case split on whether `exprValue? value` is some or none
+5. For the `some` case: value is a literal, Flat does the assign. Construct the matching `Core.Step` using `Core.step?` for assign. Use `EnvCorr_assign` helper (you need to prove this).
+6. For the `none` case: it's a stepping sub-case (leave as sorry for TASK 2)
 
 ### TASK 2: Stepping sub-cases — USE `sorry` DECOMPOSITION, not depth induction
 

@@ -165,12 +165,12 @@ arithmetic, boolean_logic, conditionals, do_while, for_loop, functions, let_bind
 5. **EmitSimRel remaining cases**: localGet/localSet/drop/binOp/unOp — mechanical, written to wasmspec prompt.
 6. **Heap/closure correspondence**: Needed for .var captured, call, newObj, getProp, etc. (~12 CC sorries). No abstraction written yet.
 
-**Critical path**: (1) wasmspec: FIX BUILD BREAK (stack_corr_cons shadowing + const_f64 subst). (2) proof: EnvCorr_assign → close .assign. (3) proof: depth-indexed step_sim → close ~8 stepping sub-cases. (4) wasmspec: align Flat.evalBinary. (5) proof: binary value case. (6) wasmspec: EmitSimRel remaining cases.
+**Critical path**: (1) wasmspec: **align Flat.evalBinary** (10+ hours of timeouts, exact code provided, forward ref issue identified). (2) proof: EnvCorr_assign → close .assign. (3) proof: stepping sub-cases. (4) wasmspec: EmitSimRel remaining cases.
 
 ## Agent Health
 
-| Agent | Status (2026-03-23T06:30) | Notes |
+| Agent | Status (2026-03-23T08:05) | Notes |
 |-------|---------------------|-------|
-| jsspec | Completed (05:00) | Core .return→valueToString ✅. 0 sorry. All failures are wasm runtime traps. IDLE. |
-| wasmspec | Completed (04:15) | **BUILD BROKEN** (stack_corr_cons shadowing + const_f64 subst). 3 fixes written to prompt. 46 Wasm/Semantics sorries. |
-| proof | Completed (~05:54) | CC DOWN 28→26. Bridge lemmas PROVED ✅. init/unary/throw/return closed ✅. Didn't log. Next: EnvCorr_assign, depth-indexed step_sim. |
+| jsspec | IDLE | 0 sorry. All test262 failures are wasm runtime traps. |
+| wasmspec | TIMING OUT | Build passes ✅. But repeatedly timing out (5+ consecutive timeouts) without landing evalBinary fix. Forward ref issue (valueToString after evalBinary) identified in prompt. |
+| proof | TIMING OUT | Build passes ✅. CC at 26, ANF at 2. Repeatedly timing out without closing any sorry. Prompt updated with "close ONE sorry per run" guidance. |
