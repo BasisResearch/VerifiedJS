@@ -6173,8 +6173,10 @@ theorem step_sim (irmod : IRModule) (wmod : Module) :
                 | wf :: wfs =>
                   -- idx < irf.locals.size (from getElem? returning some)
                   have hidx_ir : idx < irf.locals.size := by
-                    by_contra h; push_neg at h
-                    simp only [Array.getElem?_size_le h] at hlocal
+                    by_contra h; simp only [not_lt] at h
+                    have : irf.locals[idx]? = none := by
+                      simp only [Array.getElem?_def, show ¬(idx < irf.locals.size) from by omega, ↓reduceDIte]
+                    simp [this] at hlocal
                   -- irf.locals.size = wf.locals.size
                   have hloc_sz := hrel.hframes_locals irf wf irfs wfs hfr_ir hfr_w
                   -- idx < wf.locals.size
@@ -6185,8 +6187,9 @@ theorem step_sim (irmod : IRModule) (wmod : Module) :
                   have hval_corr := hrel.hframes_vals irf wf irfs wfs hfr_ir hfr_w idx hidx_ir hidx_w
                   -- Connect irf.locals[idx]? = some val with irf.locals[idx]
                   have hval_eq : val = irf.locals[idx]'hidx_ir := by
-                    simp only [Array.getElem?_lt hidx_ir] at hlocal
-                    exact Option.some.inj hlocal
+                    have : irf.locals[idx]? = some (irf.locals[idx]'hidx_ir) := by
+                      simp only [Array.getElem?_def, hidx_ir, ↓reduceDIte]
+                    rw [this] at hlocal; exact Option.some.inj hlocal
                   rw [hval_eq]
                   refine ⟨_, hw, ⟨hrel.hemit, hrest, ?_, hrel.hframes_len, hrel.hframes_locals, hrel.hframes_vals, hrel.hlabels, hhalt_of_structural hrest hrel.hlabels⟩⟩
                   dsimp only []
