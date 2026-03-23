@@ -1662,13 +1662,21 @@ theorem step?_globalGet (s : ExecState) (idx : Nat) (rest : List Instr)
       some (.silent, pushTrace { s with code := rest, stack := s.store.globals[idx] :: s.stack } .silent) := by
   unfold step?; simp [h]
 
+/-- global.get (hcode version) with valid index pushes the global's value. -/
+theorem step?_eq_globalGet (s : ExecState) (idx : Nat) (rest : List Instr)
+    (hcode : s.code = Instr.globalGet idx :: rest) (h : idx < s.store.globals.size) :
+    step? s = some (.silent,
+      { s with code := rest, stack := s.store.globals[idx] :: s.stack,
+        trace := s.trace ++ [.silent] }) := by
+  cases s; simp_all [step?, pushTrace]
+
 /-- global.get with out-of-bounds index traps. -/
-theorem step?_globalGet_oob (s : ExecState) (idx : Nat) (rest : List Instr)
+theorem step?_eq_globalGet_oob (s : ExecState) (idx : Nat) (rest : List Instr)
+    (hcode : s.code = Instr.globalGet idx :: rest)
     (h : ¬(idx < s.store.globals.size)) :
-    step? { s with code := .globalGet idx :: rest } =
-      some (.trap s!"unknown global index {idx}",
-        { s with code := [], trace := s.trace ++ [.trap s!"unknown global index {idx}"] }) := by
-  unfold step?; simp [h, trapState, pushTrace]
+    step? s = some (.trap s!"unknown global index {idx}",
+      { s with code := [], trace := s.trace ++ [.trap s!"unknown global index {idx}"] }) := by
+  cases s; simp_all [step?, trapState, pushTrace]
 
 /-- return clears labels and code. -/
 @[simp]
@@ -6844,7 +6852,7 @@ theorem step_sim (irmod : IRModule) (wmod : Module) :
               have hglen := hrel.hglobals.1
               have hidx_w : idx < s2.store.globals.size := by omega
               -- Wasm step
-              have hw := step?_globalGet s2 idx rest_w hidx_w
+              have hw := step?_eq_globalGet s2 idx rest_w hcw hidx_w
               -- Value correspondence
               have ⟨irv, wv, hirv, hwv, hval_corr⟩ := hrel.hglobals.2 idx hidx_ir
               -- irv = val
@@ -6857,9 +6865,8 @@ theorem step_sim (irmod : IRModule) (wmod : Module) :
                 simp [Array.getElem?_lt_iff, hidx_w] at hwv
                 exact hwv
               subst hwv_eq
-              refine ⟨_, hw, hrel.hemit, hrest, ?_, hrel.hframes_len, hrel.hframes_locals, hrel.hframes_vals, hrel.hglobals, hrel.hlabels, hhalt_of_structural hrest hrel.hlabels⟩
-              dsimp only []
-              exact stack_corr_cons hrel.hstack.1 hrel.hstack.2 hval_corr
+              exact ⟨_, by simp [traceToWasm]; exact hw,
+                hrel.hemit, hrest, by dsimp only []; exact stack_corr_cons hrel.hstack.1 hrel.hstack.2 hval_corr, hrel.hframes_len, hrel.hframes_locals, hrel.hframes_vals, hrel.hglobals, hrel.hlabels, hhalt_of_structural hrest hrel.hlabels⟩
             | none =>
               -- Out-of-bounds: both sides trap
               have hir := irStep?_eq_globalGet_oob s1 idx rest hcode_ir hglob
@@ -6872,7 +6879,7 @@ theorem step_sim (irmod : IRModule) (wmod : Module) :
               -- Wasm also out of bounds
               have hglen := hrel.hglobals.1
               have hidx_w : ¬(idx < s2.store.globals.size) := by omega
-              have hw := step?_globalGet_oob s2 idx rest_w hidx_w
+              have hw := step?_eq_globalGet_oob s2 idx rest_w hcw hidx_w
               exact ⟨_,
                 by simp [traceToWasm]; exact hw,
                 { hemit := hrel.hemit
