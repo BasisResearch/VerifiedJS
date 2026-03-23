@@ -524,6 +524,13 @@ private theorem closureConvert_init_related
       (Flat.convertExpr s.body [] "__env_main" [] st2).2, ?_⟩
     rw [← h]
 
+private theorem convertExpr_not_value (e : Core.Expr)
+    (h : Core.exprValue? e = none)
+    (scope : List String) (envVar : String) (envMap : Flat.EnvMapping) (st : Flat.CCState) :
+    Flat.exprValue? (Flat.convertExpr e scope envVar envMap st).fst = none := by
+  cases e <;> simp [Core.exprValue?] at h <;> simp [Flat.convertExpr, Flat.exprValue?]
+  all_goals (first | rfl | (try split) <;> simp [Flat.exprValue?])
+
 private theorem closureConvert_step_simulation
     (s : Core.Program) (t : Flat.Program)
     (h : Flat.closureConvert s = .ok t) :
