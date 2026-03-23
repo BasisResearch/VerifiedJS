@@ -735,24 +735,27 @@ private theorem closureConvert_step_simulation
           simp only [Core.step?, Core.exprValue?] at h0
           have heq := (Prod.mk.inj (Option.some.inj h0)).2; subst heq; rfl
         rw [hsc'_env, hsf'_env]; exact henvCorr
-      -- Expression correspondence: need typeofValue (convertValue v) = convertValue (core_typeof v)
-      -- Since typeofValue is private, we case split on v to let the kernel reduce
-      -- First extract sc'.expr
-      have hsc'_expr_rw : sc'.expr = .lit (.string (match v with | .undefined => "undefined"
-          | .null => "object" | .bool _ => "boolean" | .number _ => "number"
-          | .string _ => "string" | .function _ => "function" | .object _ => "object")) := by
-        have h0 := hcstep; rw [hsc_rw] at h0
-        simp only [Core.step?, Core.exprValue?] at h0
-        exact congrArg Core.State.expr (Prod.mk.inj (Option.some.inj h0)).2 ▸ rfl
-      -- Now prove the CC_SimRel expr part by cases on v
-      cases v <;> (
-        simp only [] at hsc'_expr_rw;
-        exact ⟨hsf'_trace, henv', scope, envVar, envMap, st,
-          (Flat.convertExpr _ scope envVar envMap st).snd, by
-          rw [hsc'_expr_rw]; simp only [Flat.convertExpr, Flat.convertValue]
-          have h0 := hstep; rw [hsf_rw] at h0
-          simp only [Flat.step?, Flat.exprValue?] at h0
-          exact congrArg Flat.State.expr (Prod.mk.inj (Option.some.inj h0)).2 ▸ rfl⟩)
+      -- Expression correspondence: subst sf' and sc', then cases v
+      have hsf'_sub := hstep; rw [hsf_rw] at hsf'_sub
+      simp only [Flat.step?, Flat.exprValue?] at hsf'_sub
+      have hsc'_sub := hcstep; rw [hsc_rw] at hsc'_sub
+      simp only [Core.step?, Core.exprValue?] at hsc'_sub
+      -- After simp: hsf'_sub and hsc'_sub give concrete sf' and sc'
+      have heqf := (Prod.mk.inj (Option.some.inj hsf'_sub)).2
+      have heqc := (Prod.mk.inj (Option.some.inj hsc'_sub)).2
+      subst heqf; subst heqc
+      -- Now need: CC_SimRel with typeofValue (convertValue v) vs .string (core_typeof_result)
+      -- cases v to let kernel reduce typeofValue (convertValue v)
+      refine ⟨by show sf.trace ++ _ = sc.trace ++ _; rw [htrace], henvCorr,
+        scope, envVar, envMap, st, st, ?_⟩
+      cases v with
+      | null => simp [Flat.convertExpr, Flat.convertValue, Core.pushTrace]; rfl
+      | undefined => simp [Flat.convertExpr, Flat.convertValue, Core.pushTrace]; rfl
+      | bool => simp [Flat.convertExpr, Flat.convertValue, Core.pushTrace]; rfl
+      | number => simp [Flat.convertExpr, Flat.convertValue, Core.pushTrace]; rfl
+      | string => simp [Flat.convertExpr, Flat.convertValue, Core.pushTrace]; rfl
+      | function => simp [Flat.convertExpr, Flat.convertValue, Core.pushTrace]; rfl
+      | object => simp [Flat.convertExpr, Flat.convertValue, Core.pushTrace]; rfl
     | none =>
       sorry -- stepping sub-case: needs recursive step simulation
   | unary _ _ => sorry -- needs env correspondence (sub-stepping)

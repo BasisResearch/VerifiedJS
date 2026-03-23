@@ -5369,6 +5369,7 @@ theorem LowerCodeCorr.var_inv {name : ANF.VarName} {code : List IRInstr}
     ∃ idx, code = [.localGet idx] := by
   match h with
   | .var _ idx => exact ⟨idx, rfl⟩
+  | .value_done _ ht => exact absurd rfl (ht name)
 
 /-- Inversion: LowerCodeCorr for break must be the `break_` constructor. -/
 theorem LowerCodeCorr.break_inv {label : Option String} {code : List IRInstr}
