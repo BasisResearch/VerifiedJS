@@ -242,7 +242,58 @@ private theorem EnvCorr_extend {cenv : Core.Env} {fenv : Flat.Env}
 private theorem EnvCorr_assign {cenv : Core.Env} {fenv : Flat.Env}
     (h : EnvCorr cenv fenv) (name : String) (cv : Core.Value) :
     EnvCorr (Core.Env.assign cenv name cv) (Flat.Env.assign fenv name (Flat.convertValue cv)) := by
-  sorry
+  unfold Core.Env.assign Flat.Env.assign
+  split <;> split <;> simp_all
+  case isTrue.isTrue hcexists hfexists =>
+    -- Both envs have name → both use updateBindingList
+    -- This case requires reasoning about updateBindingList (private in Core)
+    sorry
+  case isTrue.isFalse hcexists hfnot =>
+    -- Core has name but Flat doesn't → contradiction via EnvCorr
+    exfalso
+    obtain ⟨cv', hmem⟩ := hcexists
+    -- (name, cv') ∈ cenv.bindings → cenv.lookup name ≠ none
+    have hfind : cenv.bindings.find? (fun kv => kv.fst == name) ≠ none := by
+      intro habs
+      have := List.find?_eq_none.mp habs ⟨name, cv'⟩ hmem
+      simp at this
+    -- So cenv.lookup name = some _
+    have ⟨v', hlookup⟩ : ∃ v', cenv.lookup name = some v' := by
+      simp only [Core.Env.lookup]
+      match hfind' : cenv.bindings.find? (fun kv => kv.fst == name) with
+      | some kv => exact ⟨kv.snd, rfl⟩
+      | none => exact absurd rfl hfind
+    -- EnvCorr.2 gives fenv.lookup name = some _
+    obtain ⟨fv, hflookup, _⟩ := h.2 name v' hlookup
+    -- But then (name, fv) ∈ fenv
+    simp only [Flat.Env.lookup] at hflookup
+    match hff : fenv.find? (fun kv => kv.fst == name) with
+    | some kv =>
+      simp [hff] at hflookup
+      exact hfnot kv.snd (List.find?_mem hff ▸ by rw [← hflookup]; exact List.find?_mem hff)
+    | none => simp [hff] at hflookup
+  case isFalse.isTrue hfexists hcnot =>
+    -- Flat has name but Core doesn't → contradiction via EnvCorr
+    exfalso
+    obtain ⟨fv', hmem⟩ := hfexists
+    have hfind : fenv.find? (fun kv => kv.fst == name) ≠ none := by
+      intro habs
+      have := List.find?_eq_none.mp habs ⟨name, fv'⟩ hmem
+      simp at this
+    have ⟨v', hlookup⟩ : ∃ v', fenv.lookup name = some v' := by
+      simp only [Flat.Env.lookup]
+      match hfind' : fenv.find? (fun kv => kv.fst == name) with
+      | some kv => exact ⟨kv.snd, rfl⟩
+      | none => exact absurd rfl hfind
+    obtain ⟨cv', hclookup, _⟩ := h.1 name v' hlookup
+    simp only [Core.Env.lookup] at hclookup
+    match hcf : cenv.bindings.find? (fun kv => kv.fst == name) with
+    | some kv =>
+      exact hcnot kv.snd (List.find?_mem hcf ▸ by exact List.find?_mem hcf)
+    | none => simp [hcf] at hclookup
+  case isFalse.isFalse hcnot hfnot =>
+    -- Neither has name → both prepend → exactly EnvCorr_extend
+    exact EnvCorr_extend h name cv
 
 /-- Simulation relation for closure conversion: Flat and Core states
     have matching traces, environment correspondence, and expression

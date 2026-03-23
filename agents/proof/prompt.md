@@ -57,13 +57,11 @@ If ClosureConvertCorrect needs 600 lines of case analysis, WRITE 600 LINES. That
 ## Test262
 Read `logs/test262_summary.md` for failure categories. Fix compiler bugs that cause test262 failures.
 
-## ⚠️⚠️⚠️ CC PROOF: WHAT TO DO NOW (2026-03-23T08:05) ⚠️⚠️⚠️
+## ⚠️⚠️⚠️ CC PROOF: WHAT TO DO NOW (2026-03-23T09:05) ⚠️⚠️⚠️
 
-### Progress: bridge lemmas PROVED, init closed, unary/throw/return closed, ANF 3→2 ✅. All Flat semantic blockers (D-I) RESOLVED ✅
+### Progress: ALL Flat semantic blockers (D-J) RESOLVED ✅. evalBinary aligned. Build PASSES.
 
-⚠️ BUILD IS BROKEN ⚠️. EndToEnd.lean:49 uses `ExprWellFormed` which is `private` in ANFConvertCorrect.lean:88. FIX THIS FIRST: either remove `private` from `ExprWellFormed` in ANFConvertCorrect.lean, or remove the `hwf_flat` parameter from `flat_to_wasm_correct` in EndToEnd.lean.
-
-Sorry count STUCK at 75 — you are timing out every run. STOP TIMING OUT. Fix build, then pick ONE sorry, close it, build, log, exit.
+Sorry count: 77 (27 CC + 47 Wasm + 2 ANF + 1 Lower).
 
 ⚠️ YOU KEEP TIMING OUT. Here is how to avoid this:
 1. Pick the EASIEST sorry first (not the most important).
@@ -72,62 +70,73 @@ Sorry count STUCK at 75 — you are timing out every run. STOP TIMING OUT. Fix b
 4. If it works, edit. If not, move on to next sorry.
 5. Build. Log. Exit. Do NOT try to close 5 sorries in one run.
 
-### TASK 1 (TOP PRIORITY): `.assign` sorry (line 639)
+### TASK 1 (TOP PRIORITY — NEWLY UNBLOCKED): Complete `evalBinary_convertValue` (line 206)
 
-The exact goal is:
-```
-case assign
-hsc : sc.expr = Core.Expr.assign name✝ value✝
-hconv : (sf.expr, st') = Flat.convertExpr sc.expr scope envVar envMap st
-hstep : Flat.step? sf = some (ev, sf')
-henvCorr : EnvCorr sc.env sf.env
-⊢ ∃ sc', Core.Step sc ev sc' ∧ CC_SimRel s t sf' sc'
-```
+The Flat.evalBinary is NOW ALIGNED with Core.evalBinary. The catch-all `| _ => sorry` at line 206 can be closed. You already proved `sub`, `mul`, `div`, `logAnd`, `logOr`, `strictEq`, `strictNeq`. The remaining cases are:
 
-Strategy:
-1. Rewrite `hsc` into `hconv` to learn `sf.expr = Flat.convertExpr (assign name value) ...`
-2. `convertExpr` for assign produces `Flat.Expr.assign name (convertExpr value ...)`
-3. Rewrite sf.expr into hstep, unfold `Flat.step?` to learn what `sf'` is
-4. Case split on whether `exprValue? value` is some or none
-5. For the `some` case: value is a literal, Flat does the assign. Construct the matching `Core.Step` using `Core.step?` for assign. Use `EnvCorr_assign` helper (you need to prove this).
-6. For the `none` case: it's a stepping sub-case (leave as sorry for TASK 2)
-
-### TASK 2: Stepping sub-cases — The theorem needs STRUCTURAL INDUCTION
-
-All 11 stepping sorries have the SAME shape: a compound expression where a sub-expression is not a value. The recursive call is to the same theorem on a smaller expression.
-
-**The fix**: `closureConvert_step_simulation` must be proved by STRUCTURAL INDUCTION on `sc.expr`, not by case analysis. Change the theorem to use `induction sc.expr` (or equivalently, make it a `theorem ... := by induction hsc : sc.expr with ...`). Then each recursive stepping sorry becomes an application of the induction hypothesis.
-
-If structural induction doesn't work (because the theorem statement doesn't directly recurse on expr), add an explicit fuel/depth parameter:
-
+**Step 1: Prove `abstractEq_convertValue` bridge lemma** (ADD before `evalBinary_convertValue`):
 ```lean
-private theorem step_sim_aux (fuel : Nat) :
-    ∀ sf sc ev sf', CC_SimRel s t sf sc → Flat.step? sf = some (ev, sf') →
-    sc.expr.depth ≤ fuel →
-    ∃ sc', Core.Step sc ev sc' ∧ CC_SimRel s t sf' sc' := by
-  induction fuel with
-  | zero => intro sf sc _ _ hrel hstep hdepth; ...
-  | succ n ih => intro sf sc _ _ hrel hstep hdepth; cases sc.expr <;> ...
+private theorem abstractEq_convertValue (a b : Core.Value) :
+    Flat.abstractEq (Flat.convertValue a) (Flat.convertValue b) = Core.abstractEq a b := by
+  cases a <;> cases b <;> simp [Core.abstractEq, Flat.abstractEq, Flat.convertValue, Core.toNumber, Flat.toNumber, toNumber_convertValue]
+```
+If `simp` doesn't close all cases, try adding `<;> rfl` or doing explicit sub-cases for the cross-type coercion arms (number/string, bool/number, etc).
+
+**Step 2: Prove `abstractLt_convertValue` bridge lemma**:
+```lean
+private theorem abstractLt_convertValue (a b : Core.Value) :
+    Flat.abstractLt (Flat.convertValue a) (Flat.convertValue b) = Core.abstractLt a b := by
+  cases a <;> cases b <;> simp [Core.abstractLt, Flat.abstractLt, Flat.convertValue, toNumber_convertValue]
 ```
 
-But DO NOT attempt this in one run. First: fix the build. Then: try ONE stepping sorry with the IH approach. If it works, commit and log.
+**Step 3: Fill in remaining `evalBinary_convertValue` cases**:
+Replace `| _ => sorry` with:
+```lean
+  | add => cases a <;> cases b <;> simp [Core.evalBinary, Flat.evalBinary, Flat.convertValue, toNumber_convertValue, valueToString_convertValue]
+  | eq => simp [Core.evalBinary, Flat.evalBinary, Flat.convertValue]; exact congrArg _ (abstractEq_convertValue a b)
+  | neq => simp [Core.evalBinary, Flat.evalBinary, Flat.convertValue]; exact congrArg _ (congrArg _ (abstractEq_convertValue a b))
+  | lt => simp [Core.evalBinary, Flat.evalBinary, Flat.convertValue]; exact congrArg _ (abstractLt_convertValue a b)
+  | gt => simp [Core.evalBinary, Flat.evalBinary, Flat.convertValue]; exact congrArg _ (abstractLt_convertValue b a)
+  | le => simp [Core.evalBinary, Flat.evalBinary, Flat.convertValue]; exact congrArg _ (congrArg _ (abstractLt_convertValue b a))
+  | ge => simp [Core.evalBinary, Flat.evalBinary, Flat.convertValue]; exact congrArg _ (congrArg _ (abstractLt_convertValue a b))
+  | mod => simp [Core.evalBinary, Flat.evalBinary, Flat.convertValue, toNumber_convertValue]
+  | exp => simp [Core.evalBinary, Flat.evalBinary, Flat.convertValue, toNumber_convertValue]
+  | bitAnd => simp [Core.evalBinary, Flat.evalBinary, Flat.convertValue, toNumber_convertValue]
+  | bitOr => simp [Core.evalBinary, Flat.evalBinary, Flat.convertValue, toNumber_convertValue]
+  | bitXor => simp [Core.evalBinary, Flat.evalBinary, Flat.convertValue, toNumber_convertValue]
+  | shl => simp [Core.evalBinary, Flat.evalBinary, Flat.convertValue, toNumber_convertValue]
+  | shr => simp [Core.evalBinary, Flat.evalBinary, Flat.convertValue, toNumber_convertValue]
+  | ushr => simp [Core.evalBinary, Flat.evalBinary, Flat.convertValue, toNumber_convertValue]
+  | instanceof => cases a <;> cases b <;> simp [Core.evalBinary, Flat.evalBinary, Flat.convertValue]
+  | «in» => cases a <;> cases b <;> simp [Core.evalBinary, Flat.evalBinary, Flat.convertValue]
+```
 
-### TASK 3: ANF sorries (lines 106, 1018)
+Use `lean_multi_attempt` on each case. If simp alone doesn't work, unfold more or add `<;> rfl`.
 
-### TASK 4: `.binary` value sub-case (line 206) — WAIT for wasmspec to land evalBinary fix
+This should close the sorry at line 206 AND the `.binary` value sub-case in CC step_simulation (around line 1008). HIGH IMPACT: resolves 1 sorry directly + unblocks .binary case.
 
-### Sorry inventory (2026-03-23T08:05):
+### TASK 2: `.assign` sorry (line 647) — needs `EnvCorr_assign` (line 245)
+
+Strategy: prove `EnvCorr_assign` by unfolding `Core.Env.assign` and `Flat.Env.assign`, case splitting on whether the name exists in the env, and delegating to `h.1`/`h.2`.
+
+### TASK 3: Stepping sub-cases — STRUCTURAL INDUCTION
+
+All stepping sorries have the SAME shape. Add explicit fuel/depth parameter for induction.
+
+### TASK 4: ANF sorries (lines 106, 1018)
+
+### Sorry inventory (2026-03-23T09:05):
 
 | # | File | Lines | Count | Description | Priority |
 |---|------|-------|-------|-------------|----------|
-| 1 | CC | 206 | 1 | .binary value — WAIT for wasmspec | WAIT |
-| 2 | CC | 478 | 1 | .var captured — needs heap corr | LATER |
-| 3 | CC | 639 | 1 | .assign — needs EnvCorr_assign | **TASK 1** |
-| 4 | CC | 638,714,779,848,903,947,948,1005,1112,1213,1264 | 11 | stepping sub-cases | TASK 2 |
-| 5 | CC | 780-786 | 7 | call/obj/prop — needs heap | LATER |
-| 6 | CC | 949-951,1006-1007 | 5 | objLit/arrayLit/funcDef/tryCatch/while | LATER |
-| 7 | ANF | 106,1018 | 2 | step_star + nested seq | **TASK 3** |
-| 8 | Lower | 69 | 1 | Blocked on wasmspec | BLOCKED |
+| 1 | CC | 206 | 1 | evalBinary_convertValue catch-all — **NOW PROVABLE** | **TASK 1** |
+| 2 | CC | 245 | 1 | .assign — needs EnvCorr_assign | **TASK 2** |
+| 3 | CC | 487 | 1 | .var captured — needs heap corr | LATER |
+| 4 | CC | 647,701,776,910,965,1009,1010,1067,1174,1275,1326 | 11 | stepping sub-cases | TASK 3 |
+| 5 | CC | 841-848 | 7 | call/obj/prop — needs heap | LATER |
+| 6 | CC | 1011-1013,1068-1069 | 5 | objLit/arrayLit/funcDef/tryCatch/while | LATER |
+| 7 | ANF | 2 | 2 | step_star + nested seq | **TASK 4** |
+| 8 | Lower | 1 | 1 | Blocked on wasmspec | BLOCKED |
 
 ### Key pitfall — AVOID `cases ... with` inside `<;>` blocks
 

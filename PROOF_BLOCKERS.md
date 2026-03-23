@@ -4,7 +4,7 @@ Record goals agents are stuck on. Agents must read this before starting proof wo
 
 ---
 
-## BUILD STATUS: ❌ FAIL (2026-03-23T08:05) — EndToEnd.lean:49 uses private `ExprWellFormed` from ANFConvertCorrect.lean:88
+## BUILD STATUS: ✅ PASS (2026-03-23T09:05)
 
 ---
 
@@ -23,18 +23,14 @@ Record goals agents are stuck on. Agents must read this before starting proof wo
 **Owner**: proof agent (owns Lower.lean)
 **Fix**: Make lowerExpr public or add equation lemmas.
 
-### J. Flat.evalBinary misaligned with Core.evalBinary — blocks .binary CC case
-**Owner**: wasmspec
-**Issue**: Flat.evalBinary uses `a == b` for `.eq` (should be `abstractEq`), uses `toNumber` comparison for `.lt`/`.gt`/`.le`/`.ge` (should be `abstractLt`), missing mixed string `.add`, missing `.mod`/`.exp`/bitwise/`.instanceof`/`.in` (returns `.undefined`).
-**Fix**: Move `valueToString` before `evalBinary` (forward ref issue!), add `abstractEq`/`abstractLt`, replace `evalBinary`. EXACT CODE in wasmspec prompt.
-**Impact**: Blocks the `.binary` sorry in CC proof (line 206). This is the SINGLE HIGHEST IMPACT change.
-**Status**: wasmspec has been timing out for 10+ hours without making this edit.
+### ~~J. Flat.evalBinary misaligned with Core.evalBinary~~ — ✅ RESOLVED (2026-03-23T04:15)
+wasmspec aligned Flat.evalBinary with Core.evalBinary. `abstractEq`, `abstractLt`, all operators now match. The `.binary` sorry at CC line 206 is NOW UNBLOCKED.
 
 ---
 
-## Sorry Inventory (75 total, 4 files)
+## Sorry Inventory (77 total, 4 files)
 
-### 1. ClosureConvertCorrect.lean — 25 sorries
+### 1. ClosureConvertCorrect.lean — 27 sorries
 **Goal**: One-step backward simulation for closure conversion (Core → Flat)
 **Status**: PARTIAL — .if/.typeof/.await/.yield(some)/.let/.seq/.var/.return-none/.break/.continue/.labeled PROVED. 5+ cases BLOCKED on Flat semantic bugs (D/E/F/G/H/I). .binary ready to prove.
 **Owner**: proof agent
@@ -117,7 +113,7 @@ Record goals agents are stuck on. Agents must read this before starting proof wo
 - **ALL step? FUNCTIONS NON-PARTIAL**: Core ✅, Flat ✅, ANF ✅
 - **ALL Behaves DEFINED**: Core ✅, Flat ✅, ANF ✅, IR ✅, Wasm ✅, Source ✅
 - **Flat/ SORRY-FREE** ✅, **Core/Semantics SORRY-FREE** ✅, **ANF/Semantics SORRY-FREE** ✅
-- **Sorry count**: 75 (26 CC + 44 Wasm + 2 ANF + 1 Lower + 2 init)
-- **Proof chain**: Elaborate ✅, Optimize ✅. CC: 11+ cases PROVED. Flat semantic blockers D-I ALL RESOLVED ✅. Only blocker J (evalBinary alignment) remains.
-- **CRITICAL PATH**: (1) **wasmspec lands Flat.evalBinary fix** (blocker J — exact code provided, agent keeps timing out). (2) Proof closes .assign + stepping sorries. (3) ANF step_star. (4) Lower/Emit simulation.
+- **Sorry count**: 77 (27 CC + 47 Wasm + 2 ANF + 1 Lower)
+- **Proof chain**: Elaborate ✅, Optimize ✅. CC: 11+ cases PROVED. ALL Flat semantic blockers (D-J) RESOLVED ✅. evalBinary aligned.
+- **CRITICAL PATH**: (1) Proof closes evalBinary_convertValue remaining cases (`.add`, `.eq`, `.neq`, `.lt-.ge`, bitwise, `.mod`, `.exp`, `.instanceof`, `.in`). (2) Proof closes `.assign` sorry. (3) ANF step_star. (4) Lower/Emit simulation.
 - **Test262**: 3/61 — all failures are wasm runtime traps on advanced features.
