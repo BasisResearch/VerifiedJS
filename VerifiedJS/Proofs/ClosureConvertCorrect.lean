@@ -1235,14 +1235,29 @@ private theorem closureConvert_step_simulation
           show sf.trace ++ [ev_sub] = sc.trace ++ [ev_sub]
           rw [htrace]
         constructor
-        · -- EnvCorr
+        · -- EnvCorr: pushTrace doesn't change env
+          -- sc'.env = sc_arg.env (pushTrace only changes trace)
+          -- sf'.env = sa_flat.env (from Flat step? decomposition)
           have hsf'_eq := (Prod.mk.inj (Option.some.inj hstep)).2
-          rw [← hsf'_eq]
-          show EnvCorr (Core.pushTrace { sc_arg with expr := .typeof sc_arg.expr, trace := sc.trace } ev_sub).env sf'.env
-          simp only [Core.pushTrace]
-          sorry -- env correspondence from hrel_arg
+          have hsc'_env : sc'.env = sc_arg.env := by simp [sc', Core.pushTrace]
+          rw [hsc'_env]
+          convert henvCorr_arg using 1
+          -- Need: sf'.env = sa_flat.env
+          rw [← hsf'_eq]; rfl
         · -- Expression correspondence
-          sorry
+          refine ⟨scope', envVar', envMap', st_a, st_a', ?_⟩
+          have hsf'_eq := (Prod.mk.inj (Option.some.inj hstep)).2
+          -- sf'.expr = .typeof sa_flat.expr (from Flat step?)
+          -- sc'.expr = .typeof sc_arg.expr (from Core pushTrace)
+          have hsf'_expr : sf'.expr = .typeof sa_flat.expr := by rw [← hsf'_eq]; rfl
+          have hsc'_expr : sc'.expr = .typeof sc_arg.expr := by simp [sc', Core.pushTrace]
+          rw [hsc'_expr, hsf'_expr]
+          -- Need: (.typeof sa_flat.expr, st_a') = Flat.convertExpr (.typeof sc_arg.expr) scope' envVar' envMap' st_a
+          -- convertExpr (.typeof e) = let (e', st1) := convertExpr e scope envVar envMap st; (.typeof e', st1)
+          simp only [Flat.convertExpr]
+          -- From hconv_arg: (sa_flat.expr, st_a') = convertExpr sc_arg.expr scope' envVar' envMap' st_a
+          rw [show Flat.convertExpr sc_arg.expr scope' envVar' envMap' st_a =
+            (sa_flat.expr, st_a') from hconv_arg.symm]
   | unary op arg =>
     rw [hsc] at hconv; simp only [Flat.convertExpr] at hconv
     have hsf_expr : sf.expr = .unary op (Flat.convertExpr arg scope envVar envMap st).1 := by
