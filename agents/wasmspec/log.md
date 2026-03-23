@@ -1,4 +1,52 @@
 
+## Run: 2026-03-23T01:15:01+00:00
+
+### Strengthened LowerCodeCorr/EmitCodeCorr + added ValueCorr/IRValueToWasmValue + infrastructure
+
+**Changes to Wasm/Semantics.lean:**
+
+1. **TASK 0 (Flat.initialState console) — BLOCKED**: Cannot apply because ClosureConvertCorrect.lean (proof-owned, read-only) breaks. Proof agent must update CC proof first. Documented in this log for coordination.
+
+2. **TASK 1: Fixed LowerCodeCorr constructors** ✅
+   - `while_`: Now requires `condCode`, `bodyCode` with recursive `LowerCodeCorr` + specific block/loop/brIf/br shape (REF: Lower.lean lowerWhile)
+   - `throw`: Split into `throw_br` (with exception handler) and `throw_ret` (no handler), specifying `argCode ++ [call throwOp, br/return]`
+   - `return_`: Split into `return_some` (argCode ++ [return]) and `return_none` ([return])
+   - `break_`: Now `[.br target]` with specific String target
+   - `continue_`: Now `[.br target]` with specific String target
+
+3. **TASK 2: Added ValueCorr** ✅
+   - Defined `nanBoxValue : Flat.Value → Runtime.NanBoxed` (NaN-box encoding function)
+   - Defined `ValueCorr : Flat.Value → IRValue → Prop` (value correspondence via NaN-boxing)
+   - Strengthened `LowerSimRel.henv` to include `∧ ValueCorr v val` alongside local existence
+
+4. **TASK 3: Strengthened EmitSimRel.hstack** ✅
+   - Defined `IRValueToWasmValue : IRValue → WasmValue → Prop` (i32/i64/f64 correspondence)
+   - Changed `hstack` from `ir.stack.length = w.stack.length` to include element-wise `IRValueToWasmValue` correspondence
+
+5. **Added 13 new EmitCodeCorr constructors** (up from 13 to 26):
+   - `callIndirect_`, `load_i32`, `store_i32`, `load_f64`, `store_f64`, `store8_`
+   - `block_`, `loop_`, `if__` (with recursive body correspondence)
+   - `br_`, `brIf_` (with resolved label index)
+   - `memoryGrow_`
+
+6. **Added 7 new EmitCodeCorr inversion lemmas**:
+   - `const_i64_inv`, `block_inv`, `loop_inv`, `if_inv`, `br_inv`, `brIf_inv`, `memoryGrow_inv`
+
+7. **Added trace infrastructure for control-flow signals**:
+   - `isControlFlowSignal : String → Bool` — detects break/continue/return/throw signal events
+   - `traceFromCoreForIR : Core.TraceEvent → TraceEvent` — maps control-flow signals to .silent
+   - NOTE: Not yet integrated into `anfStepMapped` (would require proof agent coordination)
+
+**Discovered issue: LowerSimRel.step_sim trace mismatch for break/continue**:
+- ANF break/continue produce `.error "break:..."` / `.error "continue:..."` trace events
+- IR `br` produces `.silent` trace events
+- step_sim requires matching traces, so break/continue cases are currently UNPROVABLE
+- Fix requires either: (a) change ANF semantics for break/continue, or (b) use `traceFromCoreForIR` in anfStepMapped (requires proof agent to update their files)
+
+**BUILD**: ✅ PASSES. **Sorry count**: 45 in Wasm/Semantics.lean (unchanged — changes were structural/infrastructure).
+
+---
+
 ## Run: 2026-03-22T17:15:01+00:00
 
 ### Decomposed step_sim into per-case proof architecture + added code correspondence relations
@@ -1405,3 +1453,4 @@ test_write
 
 ## Run: 2026-03-23T01:15:01+00:00
 
+2026-03-23T01:57:56+00:00 DONE

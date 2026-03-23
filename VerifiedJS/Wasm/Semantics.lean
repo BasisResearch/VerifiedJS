@@ -5182,13 +5182,11 @@ The proof agent can then use `IRForwardSim_behavioral` to prove `lower_behaviora
 
 /-- Wrap ANF.step? to produce IR.TraceEvent instead of Core.TraceEvent.
     This allows us to use the generic IRForwardSim framework which expects
-    a step function producing IR.TraceEvent.
-    Uses traceFromCoreForIR which silences control-flow signals (break/continue/etc.)
-    that become silent br/return instructions in the IR. -/
+    a step function producing IR.TraceEvent. -/
 def anfStepMapped (s : ANF.State) : Option (TraceEvent × ANF.State) :=
   match ANF.step? s with
   | none => none
-  | some (t, s') => some (traceFromCoreForIR t, s')
+  | some (t, s') => some (traceFromCore t, s')
 
 /-- anfStepMapped returns none iff ANF.step? returns none. -/
 @[simp] theorem anfStepMapped_none_iff (s : ANF.State) :
@@ -5199,7 +5197,7 @@ def anfStepMapped (s : ANF.State) : Option (TraceEvent × ANF.State) :=
 /-- anfStepMapped preserves the step structure with mapped trace events. -/
 theorem anfStepMapped_some (s s' : ANF.State) (t : Core.TraceEvent)
     (h : ANF.step? s = some (t, s')) :
-    anfStepMapped s = some (traceFromCoreForIR t, s') := by
+    anfStepMapped s = some (traceFromCore t, s') := by
   simp [anfStepMapped, h]
 
 /-- State relation for ANF → IR lowering simulation (deprecated, use LowerSimRel).
@@ -6205,7 +6203,7 @@ theorem IRStutterSim_behavioral {S : Type} {R : S → IRExecState → Prop}
     with the IRForwardSim framework (which uses StepStar/DetBehaves). -/
 theorem StepStar_of_ANFSteps {s1 s2 : ANF.State} {ts : List Core.TraceEvent}
     (hSteps : ANF.Steps s1 ts s2) :
-    StepStar anfStepMapped s1 (ts.map traceFromCoreForIR) s2 := by
+    StepStar anfStepMapped s1 (ts.map traceFromCore) s2 := by
   induction hSteps with
   | refl _ => simp [List.map]; exact StepStar.refl _
   | tail hstep _hrest ih =>
@@ -6217,7 +6215,7 @@ theorem StepStar_of_ANFSteps {s1 s2 : ANF.State} {ts : List Core.TraceEvent}
     IRForwardSim framework. -/
 theorem DetBehaves_of_ANFBehaves {prog : ANF.Program} {ts : List Core.TraceEvent}
     (hBeh : ANF.Behaves prog ts) :
-    DetBehaves anfStepMapped (ANF.initialState prog) (ts.map traceFromCoreForIR) := by
+    DetBehaves anfStepMapped (ANF.initialState prog) (ts.map traceFromCore) := by
   obtain ⟨sFinal, hSteps, hHalt⟩ := hBeh
   exact ⟨sFinal, StepStar_of_ANFSteps hSteps, (anfStepMapped_none_iff sFinal).mpr hHalt⟩
 
