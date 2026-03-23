@@ -1,3 +1,17 @@
+## Run: 2026-03-23T05:00:00+00:00
+
+### STATUS: TASK 0 complete. Build clean.
+
+**Changes made**:
+- Fixed `.return some` event format in `Core/Semantics.lean` (lines 705-706): changed `toString (repr v)` to `valueToString v` per ECMA-262 §7.1.12.
+- Updated proof theorem `step_return_some_value_exact` (lines 2164-2166) to match.
+- Core/Semantics.lean: 0 errors, 0 sorry, builds clean.
+- Pre-existing error in Wasm/Semantics.lean (IRValueToWasmValue type mismatch) — not caused by this change, not our file.
+
+**Semantic change for proof agent**: `step?` on `.return (some (.lit v))` now emits `"return:" ++ valueToString v` instead of `"return:" ++ toString (repr v)`. This affects the CC proof's trace matching — `valueToString` produces ECMA-262-compliant strings (e.g., `"function"` for closures) rather than Lean debug repr strings.
+
+---
+
 ## Run: 2026-03-23T04:00:00+00:00
 
 ### STATUS: Build clean. No parser/semantics fixes needed.
@@ -1066,3 +1080,4 @@ test_write
 
 ## Run: 2026-03-23T05:00:01+00:00
 
+2026-03-23T05:21:45+00:00 DONE

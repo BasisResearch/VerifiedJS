@@ -62,122 +62,63 @@ Then construct the matching Step derivation in Lean. If you cannot, your semanti
 3. Keep definitions structurally simple for proofs.
 4. Add @[simp] lemmas for everything the proof agent might need.
 
-## CURRENT PRIORITIES (2026-03-23T04:05)
+## CURRENT PRIORITIES (2026-03-23T05:05)
 
-### ⚠️ Keep edits SMALL. Build-test after EVERY change. ⚠️
+### ⚠️⚠️⚠️ TASK 0: FIX BUILD BREAK — YOUR LAST COMMIT BROKE THE BUILD ⚠️⚠️⚠️
 
-### MILESTONE: Flat/ SORRY-FREE. 49 sorries in Wasm/Semantics.lean. Build PASSES.
-
-### ⚠️⚠️⚠️ TASK 0: Fix 4 Flat/Semantics.lean bugs — CC PROOF BLOCKED ON THESE ⚠️⚠️⚠️
-
-**The proof agent CANNOT PROCEED on 5+ CC cases because Flat semantics DISAGREE with Core.**
-You have been asked to fix initialState for 4+ runs. DO ALL FOUR FIXES IN ORDER. Build after each.
-
-**FIX 0a: `toNumber`** (line 66-72) — Core returns NaN for undefined/string/objects, Flat returns 0.0.
-Replace the entire function:
-```lean
-/-- ECMA-262 §7.1.3 ToNumber (Flat subset — must match Core). -/
-def toNumber : Value → Float
-  | .number n => n
-  | .bool true => 1.0
-  | .bool false => 0.0
-  | .null => 0.0
-  | .undefined => 0.0 / 0.0  -- NaN, matching Core
-  | .string s =>
-      let trimmed := s.trimAscii.toString
-      if trimmed.isEmpty then 0.0
-      else match trimmed.toNat? with
-        | some n => Float.ofNat n
-        | none =>
-            if trimmed.startsWith "-" then
-              match (trimmed.drop 1).toNat? with
-              | some n => -(Float.ofNat n)
-              | none => 0.0 / 0.0
-            else 0.0 / 0.0
-  | .object _ => 0.0 / 0.0
-  | .closure _ _ => 0.0 / 0.0
+**BUILD IS BROKEN.** Error at `Wasm/Semantics.lean:6090`:
+```
+Type mismatch
+  stack_corr_cons hrel.hstack.left hrel.hstack.right (IRValueToWasmValue.f64 f)
+has type ... IRValue.f64 f ...
+but is expected to have type ... IRValue.f64 ((Option.map (fun n => Float.ofNat n) v.toNat?).getD 0.0) ...
 ```
 
-**FIX 0b: `evalUnary .bitNot`** (line 80) — Core does actual bitwise NOT, Flat returns `.undefined`.
-Change line 80 from:
-```lean
-  | .bitNot, _ => .undefined
-```
-To:
-```lean
-  | .bitNot, v => .number (~~~(toNumber v |>.toUInt32)).toFloat
-```
+**ROOT CAUSE**: After `rcases hc.const_f64_inv with ⟨f, rest_w, hcw, hfeq, hrest⟩`, you have `hfeq : f = (v.toNat?.map ...).getD 0.0` but `f` and the computed expression aren't unified in the goal.
 
-**FIX 0c: Define `valueToString` + fix `.throw` event** — Core uses `valueToString v`, Flat uses literal `"throw"`.
-Add after `evalBinary` (around line 100):
+**EXACT FIX** — replace lines 6081-6090:
 ```lean
-/-- ECMA-262 §7.1.12 ToString (Flat — must match Core.valueToString on convertValue). -/
-def valueToString : Value → String
-  | .string s => s
-  | .number n =>
-      if n.isNaN then "NaN"
-      else if n == 1.0/0.0 then "Infinity"
-      else if n == -1.0/0.0 then "-Infinity"
-      else
-        let i := n.toUInt64
-        if i.toFloat == n && n >= 0.0 then toString i.toNat
-        else
-          let neg := -n
-          let j := neg.toUInt64
-          if j.toFloat == neg && neg > 0.0 then "-" ++ toString j.toNat
-          else toString n
-  | .bool true => "true"
-  | .bool false => "false"
-  | .null => "null"
-  | .undefined => "undefined"
-  | .object _ => "[object Object]"
-  | .closure _ _ => "function"
-```
-Then fix `.throw` (line ~457-459) from:
-```lean
-      | some _ =>
-          let s' := pushTrace { s with expr := .lit .undefined } (.error "throw")
-          some (.error "throw", s')
-```
-To:
-```lean
-      | some v =>
-          let msg := valueToString v
-          let s' := pushTrace { s with expr := .lit .undefined } (.error msg)
-          some (.error msg, s')
+          rcases hc.const_f64_inv with ⟨f, rest_w, hcw, hfeq, hrest⟩ | ⟨wasm_instrs, rest_w, hcw, hrest⟩
+          · subst hfeq
+            have hir := irStep?_eq_f64Const s1 v rest hcode_ir
+            rw [hir] at hstep
+            simp only [Option.some.injEq, Prod.mk.injEq] at hstep
+            obtain ⟨rfl, rfl⟩ := hstep
+            have hw := step?_eq_f64Const s2 _ rest_w hcw
+            refine ⟨_, hw, ⟨hrel.hemit, hrest, ?_, hrel.hlabels, hhalt_of_structural hrest hrel.hlabels⟩⟩
+            dsimp only []
+            exact stack_corr_cons hrel.hstack.1 hrel.hstack.2 (.f64 _)
 ```
 
-**FIX 0d: Fix `initialState`** (line 665-666) — STILL uses Env.empty after 4 runs of asking.
-```lean
-def initialState (p : Program) : State :=
-  let consoleProps : List (Core.PropName × Core.Value) := [("log", .function Core.consoleLogIdx)]
-  let heap : Core.Heap := { objects := #[consoleProps], nextAddr := 1 }
-  { expr := p.main, env := Env.empty.extend "console" (.object 0), heap := heap, trace := [] }
-```
+The key change: add `subst hfeq` right after rcases. This substitutes `f` with the expression everywhere, making the types unify. Also remove the now-unnecessary `simp only [hfeq] at hir` and use `_` for inferred args.
 
-**FIX 0e: Make `updateBindingList` public** (line 30) — proof needs equation lemmas for EnvCorr_assign.
-Just remove the `private` keyword.
+**DO THIS FIRST. Build must pass before anything else.**
 
-**FIX 0f: Fix `.return some` event format** (line 610-611) — `repr` differs between Core.Value and Flat.Value for function/closure. Use `valueToString` instead:
-```lean
-          | some v =>
-              let s' := pushTrace { s with expr := .lit v } (.error ("return:" ++ valueToString v))
-              some (.error ("return:" ++ valueToString v), s')
-```
+### MILESTONE: All 6 Flat bugs FIXED ✅. 46 sorries in Wasm/Semantics.lean. Fix build, then continue.
 
-**DO THESE IN ORDER: 0a, 0b, 0c, 0d, 0e, 0f. Build after EACH ONE.**
+### TASK 1: Continue EmitSimRel.step_sim cases (biggest sorry reduction)
 
-### TASK 1: Prove EmitSimRel.step_sim EASY cases (biggest sorry reduction opportunity)
+You proved i32/i64/f64 const. Continue with:
+- `localGet` — lookup frame local, push to stack
+- `localSet` — pop value, set frame local
+- `drop_` — pop value from stack
+- `binOp` / `unOp` — arithmetic operations
 
-Same as before — const_i32/i64/f64/ptr, localGet, localSet, drop_, binOp, unOp. Each ~5-10 lines.
+Each is ~5-10 lines following the same pattern as const cases.
 
-### TASK 2: Address trace mismatch for break/continue
-
-Change ANF.step? for break/continue to produce `.silent` (SIMPLEST).
-
-### TASK 3: Prove LowerSimRel.step_sim sub-cases
+### TASK 2: Prove LowerSimRel.step_sim sub-cases
 
 Start with `.var` (simplest — just a localGet). Then `.seq` value case.
+
+### TASK 3: Align Flat.evalBinary with Core.evalBinary
+
+The proof agent has `evalBinary_convertValue` as sorry because Flat.evalBinary disagrees with Core.evalBinary. Key mismatches:
+- `.add` with mixed string/non-string types
+- `.eq` uses `==` not `abstractEq`
+- `.lt` uses numeric comparison not `abstractLt`
+- Bitwise/mod/exp/instanceof/in return `.undefined`
+
+Fix these so `Flat.evalBinary op (convertValue a) (convertValue b) = convertValue (Core.evalBinary op a b)` holds.
 
 ## GLOBAL GOAL -- DO NOT STOP
 Your job is done when:
