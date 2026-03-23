@@ -1,4 +1,53 @@
 
+## Run: 2026-03-23T07:05:00+00:00
+
+### Build
+- **Status**: `lake build` **PASS** ✅ (was FAIL last run — wasmspec fixed all 3 issues)
+
+### Sorry Report
+- **Count**: 75 (threshold: 100)
+- **Delta**: -1 from last run (76→75)
+- **Breakdown**: ~44 Wasm/Semantics + 26 CC + 2 ANF + 1 Lower
+- **Change**: ANF 3→2 (proof agent closed 1 ANF sorry)
+
+### Test262
+- 3 pass, 50 fail, 3 skip, 5 xfail / 63 total (UNCHANGED 96+ hours)
+
+### Agent Health
+- **jsspec**: IDLE. Build clean. No actionable work (all test262 failures are wasm runtime traps on advanced features).
+- **wasmspec**: Fixed build (stack_corr_cons/tail shadowing + f64 subst). Now IDLE.
+- **proof**: Closed 1 ANF sorry (3→2). CC steady at 26. Now IDLE.
+
+### Proof Chain Analysis
+- **Elaborate**: PROVED ✅
+- **Optimize**: PROVED ✅ (identity)
+- **ClosureConvert**: 26 sorry. Bridge lemmas ✅, init ✅, unary/throw/return ✅. Next: assign, stepping, heap.
+- **ANFConvert**: 2 sorry (was 3). step_star + nested seq.
+- **Lower**: 1 sorry (blocked on wasmspec step_sim).
+- **Emit**: ~44 sorry in Wasm/Semantics step_sim. Const i32/i64/f64 proved.
+- **EndToEnd**: Composition of above.
+
+### Key Analysis: Flat.evalBinary Misalignment
+
+The BIGGEST proof-blocking issue is Flat.evalBinary disagreeing with Core.evalBinary for 12+ operators:
+- `.add`: missing mixed string coercion (str+non-str, non-str+str)
+- `.eq`/`.neq`: using `==`/`!=` instead of `abstractEq`
+- `.lt`/`.gt`/`.le`/`.ge`: using numeric comparison instead of `abstractLt` (string-aware)
+- `.mod`/`.exp`/bitwise/`.instanceof`/`.in`: returning `.undefined` instead of computing
+
+This blocks the `.binary` sorry at CC line 195. Fixing this is the HIGHEST-IMPACT change possible.
+
+### Actions Taken
+1. **wasmspec prompt**: Rewrote priorities. TASK 0 marked DONE (build fixed). NEW TASK 1 (TOP PRIORITY): align Flat.evalBinary with Core.evalBinary — provided EXACT replacement code for `abstractEq`, `abstractLt`, and full `evalBinary` with all operators. TASK 2: EmitSimRel cases. TASK 3: LowerSimRel.
+2. **proof prompt**: Updated — build now passing. Provided detailed `EnvCorr_assign` analysis (Core.Env.assign has 2 branches vs Flat.updateBindingList recursive — they differ when name not in env). Updated sorry inventory (ANF 3→2). Kept depth-indexed step_sim as TASK 2.
+3. **PROGRESS.md**: Added run entry with metrics.
+
+### Next Run Priorities
+1. Verify wasmspec lands Flat.evalBinary alignment → proof can close .binary sorry
+2. Verify proof agent proves EnvCorr_assign → closes .assign sorry
+3. Monitor ANF sorry progress (2 remaining)
+4. Test262 stagnant 96+ hours — no actionable work for jsspec
+
 ## Run: 2026-03-23T06:30:00+00:00
 
 ### Build
@@ -2451,3 +2500,4 @@ Plus **Flat.initialState** STILL empty (5th run asking).
 
 ## Run: 2026-03-23T07:05:01+00:00
 
+2026-03-23T07:16:23+00:00 DONE

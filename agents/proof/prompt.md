@@ -57,75 +57,94 @@ If ClosureConvertCorrect needs 600 lines of case analysis, WRITE 600 LINES. That
 ## Test262
 Read `logs/test262_summary.md` for failure categories. Fix compiler bugs that cause test262 failures.
 
-## ⚠️⚠️⚠️ CC PROOF: WHAT TO DO NOW (2026-03-23T06:30) ⚠️⚠️⚠️
+## ⚠️⚠️⚠️ CC PROOF: WHAT TO DO NOW (2026-03-23T07:05) ⚠️⚠️⚠️
 
-### Progress since last prompt: bridge lemmas PROVED, init closed, unary/throw/return closed
+### Progress: bridge lemmas PROVED, init closed, unary/throw/return closed, ANF 3→2 ✅
 
-You proved `toNumber_convertValue`, `evalUnary_convertValue`, `valueToString_convertValue` and used them to close `.unary` value, `.throw`, `.return some`, and `init_related` both dirs. CC went 28→26 sorries. GREAT WORK.
+BUILD IS NOW PASSING ✅. You can build freely.
 
-### BUILD IS BROKEN — DO NOT EDIT until wasmspec fixes Wasm/Semantics.lean
+### TASK 1 (TOP PRIORITY): Prove `EnvCorr_assign` → close `.assign` sorry (line 628)
 
-wasmspec has a `stack_corr_cons` variable-shadowing bug. Build will fail. Do NOT try to build until the fix lands. Focus on understanding what to prove next and planning your approach.
-
-### TASK 1 (TOP PRIORITY): Prove `.assign` value sub-case (line 622)
-
-You need `EnvCorr_assign`:
+`Core.Env.assign` (Core/Semantics.lean:67) has TWO branches:
 ```lean
--- Core.Env.assign updates the binding in place. Flat.updateBindingList does the same.
--- Prove by cases on the env list structure.
-theorem EnvCorr_assign {cenv : Core.Env} {fenv : Flat.Env}
-    (h : EnvCorr cenv fenv) (name : String) (cv : Core.Value) :
-    EnvCorr (Core.Env.assign cenv name cv) (Flat.updateBindingList fenv name (convertValue cv))
+def Env.assign (env : Env) (name : VarName) (v : Value) : Env :=
+  if env.bindings.any (fun kv => kv.fst == name) then
+    { bindings := updateBindingList env.bindings name v }
+  else
+    { bindings := (name, v) :: env.bindings }
 ```
 
-First check what `Core.Env.assign` and `Flat.updateBindingList` do (use `lean_hover_info`). They should be structurally similar. The proof should follow the same pattern as `EnvCorr_extend`.
+`Flat.updateBindingList` (Flat/Semantics.lean:30) is recursive:
+```lean
+def updateBindingList (xs : Env) (name : VarName) (v : Value) : Env :=
+  match xs with
+  | [] => []
+  | (n, old) :: rest => if n == name then (n, v) :: rest
+                         else (n, old) :: updateBindingList rest name v
+```
 
-### TASK 2: `.var` captured case (line 461)
-
-This needs heap/closure correspondence. The converted expression is `.getEnv (.var envVar) idx` — it looks up a captured variable from the environment object. You need:
-1. A `HeapCorr` or similar that relates Core's env lookup to Flat's getEnv
-2. Show that `envMap` tracks which variables were captured and at what index
-
-This is harder than the bridge lemmas. Start by understanding the full picture:
-- What does `Flat.convertExpr` do for captured variables?
-- What does `Flat.step?` do for `.getEnv`?
-- How does the CC state (`scope`, `envVar`, `envMap`, `st`) relate to Core state?
-
-### TASK 3: Depth-indexed step simulation (for 8 stepping sub-cases)
-
-The 8 stepping sub-cases (lines 621, 697, 762, 831, 886, 930, 931, 988, 1095, 1196, 1247) ALL need recursive application of step_simulation. This is the SINGLE BIGGEST sorry cluster (8 sorries).
-
-Key insight: both `Core.step?` and `Flat.step?` step sub-expressions. For `.seq a b`, if `exprValue? a = none`, both step `a`. The depth of `a` < depth of `.seq a b`. Use strong induction on expression depth:
+**IMPORTANT**: These are NOT structurally identical. If `name` is NOT in `env`, Core prepends while Flat returns `[]` for the tail. You need to prove `EnvCorr_assign` WITH the assumption that `name` IS in the env (assign only updates existing bindings in JS semantics). If CC_SimRel guarantees the var exists in both envs, then:
 
 ```lean
-private theorem step_sim_depth (n : Nat) ... :
+-- Helper: if name is in the list, updateBindingList preserves it
+private theorem updateBindingList_found {xs : Flat.Env} {name : String} {v : Flat.Value}
+    (h : xs.any (fun kv => kv.1 == name)) :
+    (Flat.updateBindingList xs name v).any (fun kv => kv.1 == name) := by
+  induction xs with
+  | nil => simp at h
+  | cons x rest ih =>
+    simp [Flat.updateBindingList]
+    by_cases heq : x.1 == name
+    · simp [heq]
+    · simp [heq]; exact ih (by simp [List.any_cons, heq] at h; exact h)
+
+-- Then EnvCorr_assign: if name exists in both envs
+private theorem EnvCorr_assign {cenv : Core.Env} {fenv : Flat.Env}
+    (h : EnvCorr cenv fenv) (name : String) (cv : Core.Value)
+    (hexists : cenv.bindings.any (fun kv => kv.1 == name)) :
+    EnvCorr { bindings := Core.updateBindingList cenv.bindings name cv }
+            (Flat.updateBindingList fenv name (Flat.convertValue cv))
+```
+
+Use induction on `cenv.bindings` and `fenv` together, applying bidirectional EnvCorr at each step.
+
+### TASK 2: Depth-indexed step simulation (BIGGEST cluster: 8+ stepping sorries)
+
+Lines 627, 703, 768, 837, 892, 936, 937, 994, 1101, 1202, 1253 ALL need recursive step_simulation. Use strong induction on expression depth:
+
+```lean
+private theorem step_sim_depth (n : Nat) :
     ∀ sf sc ev sf', sc.expr.depth ≤ n → CC_SimRel s t sf sc → Flat.Step sf ev sf' →
     ∃ sc', Core.Step sc ev sc' ∧ CC_SimRel s t sf' sc' := by
   induction n with
-  | zero => ... -- base: only depth-0 exprs (lit/var/this/break/continue)
+  | zero => ... -- base: depth-0 exprs only (lit/var/this/break/continue)
   | succ k ih => ... -- use ih on sub-expressions with depth ≤ k
 ```
 
-### TASK 4: ANF sorries (3 sorry — ANFConvertCorrect.lean)
+### TASK 3: Close remaining ANF sorry (line 106 and 1018)
 
-For each non-lit Flat constructor, show `normalizeExpr` produces an ANF expression where `step? ≠ none`. This contradicts `hhalt`. Most cases are contradictions.
+You closed one ANF sorry already (3→2). The remaining 2:
+- Line 106: `anfConvert_step_star` body — the full simulation proof
+- Line 1018: nested seq case — needs IH application or lifted Flat.Steps
 
-### TASK 5: `.binary` value sub-case (line 189)
+### TASK 4: `.binary` value sub-case (line 195)
 
-Still BLOCKED on wasmspec aligning `Flat.evalBinary` with `Core.evalBinary`. Leave as sorry.
+wasmspec is fixing `Flat.evalBinary` alignment NOW. Once they land the fix, `evalBinary_convertValue` should be provable by `cases op <;> cases a <;> cases b <;> simp [...]`. Check if the fix has landed before attempting.
 
-### Sorry inventory (2026-03-23T06:30):
+### TASK 5: `.var` captured case (line 467) — needs heap correspondence
+
+### Sorry inventory (2026-03-23T07:05):
 
 | # | File | Count | Description | Priority |
 |---|------|-------|-------------|----------|
-| 1 | CC | 1 | .binary value (line 189) — BLOCKED | WAIT |
-| 2 | CC | 1 | .var captured (line 461) — needs heap corr | TASK 2 |
-| 3 | CC | 1 | .assign value (line 622) — needs EnvCorr_assign | **TASK 1** |
-| 4 | CC | 8 | stepping sub-cases (lines 621,697,762,831,886,930,931,988) — depth induction | TASK 3 |
+| 1 | CC | 1 | .binary value (line 195) — WAIT for wasmspec | WAIT |
+| 2 | CC | 1 | .var captured (line 467) — needs heap corr | TASK 5 |
+| 3 | CC | 1 | .assign value (line 628) — needs EnvCorr_assign | **TASK 1** |
+| 4 | CC | 8 | stepping sub-cases — depth induction | **TASK 2** |
 | 5 | CC | 7 | call/newObj/getProp/setProp/getIndex/setIndex/deleteProp — needs heap | LATER |
 | 6 | CC | 5 | objectLit/arrayLit/functionDef/tryCatch/while_ — needs heap+env | LATER |
-| 7 | CC | 3 | stepping sub-cases in yield/await/if (lines 1095,1196,1247) | TASK 3 |
-| 8 | ANF | 3 | step_star + halt_star — TASK 4 | **NOW** |
+| 7 | CC | 3 | stepping sub-cases in yield/await/if | TASK 2 |
+| 8 | ANF | 2 | step_star body + nested seq | **TASK 3** |
 | 9 | Lower | 1 | Blocked on wasmspec | BLOCKED |
 
 ### Key Lean 4 pitfall — AVOID `cases ... with` inside `<;>` blocks

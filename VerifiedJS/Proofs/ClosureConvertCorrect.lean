@@ -157,6 +157,15 @@ private theorem valueToString_convertValue (v : Core.Value) :
   | object => rfl
   | function => rfl
 
+/-- convertValue preserves BEq: (convertValue a == convertValue b) = (a == b). -/
+private theorem convertValue_beq (a b : Core.Value) :
+    (Flat.convertValue a == Flat.convertValue b) = (a == b) := by
+  cases a <;> cases b <;> simp [Flat.convertValue] <;> (try rfl)
+  -- function.function: (.closure idx₁ 0 == .closure idx₂ 0) = (.function idx₁ == .function idx₂)
+  -- Both reduce to idx₁ == idx₂ but BEq instances differ structurally.
+  · rename_i idx₁ idx₂
+    cases h : (idx₁ == idx₂) <;> rfl
+
 /-- evalBinary commutes with convertValue for operators where Flat matches Core.
     NOTE: This is NOT true for all operators — Flat.evalBinary is simplified
     (e.g., .add with mixed string/non-string, .eq uses == not abstractEq,
@@ -188,15 +197,11 @@ private theorem evalBinary_convertValue (op : Core.BinOp) (a b : Core.Value) :
     cases Core.toBoolean a <;> rfl
   | strictEq =>
     simp only [Core.evalBinary, Flat.evalBinary]
-    congr 1; cases a <;> cases b <;> simp [Flat.convertValue] <;> (try rfl)
-    -- function.function: closure idx₁ 0 == closure idx₂ 0 = function idx₁ == function idx₂
-    · show Flat.Value.beq (.closure _ 0) (.closure _ 0) = Core.Value.beq (.function _) (.function _)
-      simp [Flat.Value.beq, Core.Value.beq, Bool.and_true]
+    congr 1; exact convertValue_beq a b
   | strictNeq =>
     simp only [Core.evalBinary, Flat.evalBinary]
-    congr 1; cases a <;> cases b <;> simp [Flat.convertValue] <;> (try rfl)
-    · show !(Flat.Value.beq (.closure _ 0) (.closure _ 0)) = !(Core.Value.beq (.function _) (.function _))
-      simp [Flat.Value.beq, Core.Value.beq, Bool.and_true]
+    congr 1; show !(Flat.convertValue a == Flat.convertValue b) = !(a == b)
+    congr 1; exact convertValue_beq a b
   | _ => sorry -- BLOCKED: Flat.evalBinary differs from Core for add/eq/neq/lt/gt/le/ge/bitwise/mod/exp/instanceof/in
 
 /-- Extending both envs preserves EnvCorr. -/
