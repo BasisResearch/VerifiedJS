@@ -6503,6 +6503,30 @@ private theorem irValueDefault_corr (t : IRType) :
       | .i32 => ValType.i32 | .i64 => .i64 | .f64 => .f64 | .ptr => .i32)) := by
   cases t <;> simp [IRValue.default, defaultValue] <;> constructor
 
+/-- Initial IR global value corresponds to initial Wasm global value for each position.
+    Proven by unfolding emit to extract buildModule, then case-splitting on IR type. -/
+private theorem emit_globals_init_valcorr (irmod : IRModule) (wmod : Module)
+    (hemit : emit irmod = .ok wmod) (j : Nat) (hj : j < irmod.globals.size)
+    (hj_w : j < wmod.globals.size) :
+    IRValueToWasmValue (IRValue.default (irmod.globals[j]'hj).1)
+                       (defaultValue (wmod.globals[j]'hj_w).type.val) := by
+  -- Unfold emit to get wmod = buildModule irmod acc
+  have hemit' := hemit
+  unfold emit at hemit'
+  simp only [Bind.bind, Except.bind] at hemit'
+  split at hemit'
+  · simp at hemit'
+  · simp only [Except.ok.injEq] at hemit'
+    subst hemit'
+    -- Now wmod = buildModule irmod acc
+    -- (buildModule irmod acc).globals = (irmod.globals.toList.map f).toArray
+    -- where f maps (t, _, _) to { type := { val := irTypeToValType t, ... }, ... }
+    -- So globals[j].type.val = irTypeToValType (irmod.globals[j].1)
+    -- Case split on the IR type to close the goal
+    cases ht : (irmod.globals[j]'hj).1 <;>
+      simp [IRValue.default, defaultValue, ht, buildModule] <;>
+      constructor
+
 /-- Initial states are related: the IR initial state corresponds to the Wasm initial state.
     Proof: `emit irmod = .ok wmod` ensures module correspondence.
     Both start with empty stacks, and the entry code (start function call) is
