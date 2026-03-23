@@ -1,4 +1,19 @@
 
+## Run: 2026-03-23T13:15:01+00:00
+
+### Proved EmitSimRel drop trap case + added LowerCodeCorr.seq_inv + analyzed .seq simulation
+
+**Build**: PASS ✅
+
+**Changes**:
+1. **EmitSimRel.step_sim `.drop` trap case** (line ~6572): Proved the empty-stack trap sub-case for `drop` instruction. When both IR and Wasm stacks are empty, both sides trap with "stack underflow in drop". Used `irStep?_eq_drop_empty` and `step?_eq_drop_empty` with stack length correspondence. The non-empty case was already proved; only the "general" EmitCodeCorr case remains sorry'd.
+
+2. **LowerCodeCorr.seq_inv** (line ~5515): Added inversion lemma for `.seq` code correspondence — extracts `aCode`, `bCode`, and sub-proofs from `LowerCodeCorr (.seq a b) code`.
+
+3. **Analyzed LowerSimRel `.seq` value case**: The 1:1 step_sim cannot handle `.seq a b` when `a` is a value. ANF takes 1 step (skip to `b`), but IR needs N steps (`aCode` instructions + `drop`). Added detailed comment explaining the 1:1 vs 1:N mismatch. This case needs either: (a) restructuring as stuttering simulation, or (b) a measure-based multi-step framework.
+
+**Sorry count**: 49 in Wasm/Semantics.lean (was 50, reduced by 1)
+
 ## Run: 2026-03-23T10:15:01+00:00
 
 ### Fixed build + proved EmitSimRel localSet + LowerSimRel .var + added binOp infrastructure
@@ -1559,3 +1574,4 @@ test_write
 
 ## Run: 2026-03-23T13:15:01+00:00
 
+2026-03-23T13:58:50+00:00 DONE
