@@ -2397,6 +2397,35 @@ theorem step?_eq_return (s : ExecState) (rest : List Instr)
   rw [← this]
   simp [step?_return, pushTrace]
 
+/-- Exact step? result for local.get with hypothesis-form arguments. -/
+theorem step?_eq_localGet (s : ExecState) (idx : Nat) (rest : List Instr)
+    (fr : Frame) (frs : List Frame)
+    (hcode : s.code = Instr.localGet idx :: rest)
+    (hframes : s.frames = fr :: frs)
+    (hlocal : idx < fr.locals.size) :
+    step? s = some (.silent,
+      { s with
+        code := rest
+        stack := fr.locals[idx] :: s.stack
+        trace := s.trace ++ [.silent] }) := by
+  cases s; simp_all [step?, hlocal, pushTrace]
+
+/-- Exact step? result for local.set with hypothesis-form arguments. -/
+theorem step?_eq_localSet (s : ExecState) (idx : Nat) (rest : List Instr)
+    (v : WasmValue) (stk : List WasmValue)
+    (fr : Frame) (frs : List Frame)
+    (hcode : s.code = Instr.localSet idx :: rest)
+    (hstack : s.stack = v :: stk)
+    (hframes : s.frames = fr :: frs)
+    (hlocal : idx < fr.locals.size) :
+    step? s = some (.silent,
+      { s with
+        code := rest
+        stack := stk
+        frames := { fr with locals := fr.locals.set! idx v } :: frs
+        trace := s.trace ++ [.silent] }) := by
+  cases s; simp_all [step?, pop1?, hlocal, pushTrace, updateHeadFrame]
+
 /-! ## Behavioral semantics theorems -/
 
 /-- Deterministic execution: Steps from the same state yield the same trace and final state. -/
@@ -5952,6 +5981,12 @@ structure EmitSimRel (irmod : IRModule) (wmod : Module)
   hstack : ir.stack.length = w.stack.length ∧
     ∀ (i : Nat), i < ir.stack.length →
       ∃ irv wv, ir.stack[i]? = some irv ∧ w.stack[i]? = some wv ∧ IRValueToWasmValue irv wv
+  /- Frame correspondence: matching number of frames with element-wise local correspondence. -/
+  hframes : ir.frames.length = w.frames.length ∧
+    ∀ (i : Nat), i < ir.frames.length →
+      (ir.frames[i]!).locals.size = (w.frames[i]!).locals.size ∧
+      ∀ (j : Nat), j < (ir.frames[i]!).locals.size →
+        IRValueToWasmValue (ir.frames[i]!).locals[j]! (w.frames[i]!).locals[j]!
   /- Label correspondence (needed for halt derivation). -/
   hlabels : ir.labels.length = w.labels.length
   /- Halt correspondence. -/
@@ -5995,6 +6030,12 @@ theorem init (irmod : IRModule) (wmod : Module)
       rw [hstart, hsf]
       exact .nil
   hstack := by simp [irInitialState, Wasm.initialState]
+  hframes := by
+    simp [irInitialState, Wasm.initialState]
+    intro i hi
+    simp at hi
+    subst hi
+    simp
   hlabels := by simp [irInitialState, Wasm.initialState]
   hhalt := by
     intro hirHalt
@@ -6183,6 +6224,7 @@ theorem step_sim (irmod : IRModule) (wmod : Module) :
                         have hstk2 := hrel.hstack
                         rw [hstk, hs2] at hstk2
                         exact hstk2.2 (i + 1) (by simp; omega)
+                    hframes := hrel.hframes
                     hlabels := hrel.hlabels
                     hhalt := hhalt_of_structural hrest hrel.hlabels }⟩
           · -- General case (EmitCodeCorr.general): unknown Wasm instructions
