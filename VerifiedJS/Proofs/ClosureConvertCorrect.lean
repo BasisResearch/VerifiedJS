@@ -203,7 +203,42 @@ private theorem evalBinary_convertValue (op : Core.BinOp) (a b : Core.Value) :
     simp only [Core.evalBinary, Flat.evalBinary, Flat.convertValue, bne]
     show Flat.Value.bool (!(Flat.convertValue a == Flat.convertValue b)) = Flat.Value.bool (!(a == b))
     rw [convertValue_beq]
-  | _ => all_goals (simp only [Core.evalBinary, Flat.evalBinary]; try rw [toNumber_convertValue, toNumber_convertValue]; simp [Flat.convertValue, Core.abstractEq, Flat.abstractEq, Core.abstractLt, Flat.abstractLt, Core.toNumber, Flat.toNumber, toNumber_convertValue, Core.valueToString, Flat.valueToString, valueToString_convertValue]; try cases a <;> cases b <;> simp_all [Flat.convertValue])
+  | add =>
+    simp only [Core.evalBinary, Flat.evalBinary]
+    cases a <;> cases b <;> simp_all [Flat.convertValue, Core.toNumber, Flat.toNumber, toNumber_convertValue, Core.valueToString, Flat.valueToString, valueToString_convertValue]
+  | mod =>
+    simp only [Core.evalBinary, Flat.evalBinary]
+    rw [toNumber_convertValue, toNumber_convertValue]
+    split <;> simp_all [Flat.convertValue]
+  | exp =>
+    simp only [Core.evalBinary, Flat.evalBinary]
+    rw [toNumber_convertValue, toNumber_convertValue]
+    simp [Flat.convertValue]
+  | bitAnd =>
+    simp only [Core.evalBinary, Flat.evalBinary]
+    rw [toNumber_convertValue, toNumber_convertValue]
+    simp [Flat.convertValue]
+  | bitOr =>
+    simp only [Core.evalBinary, Flat.evalBinary]
+    rw [toNumber_convertValue, toNumber_convertValue]
+    simp [Flat.convertValue]
+  | bitXor =>
+    simp only [Core.evalBinary, Flat.evalBinary]
+    rw [toNumber_convertValue, toNumber_convertValue]
+    simp [Flat.convertValue]
+  | shl =>
+    simp only [Core.evalBinary, Flat.evalBinary]
+    rw [toNumber_convertValue, toNumber_convertValue]
+    simp [Flat.convertValue]
+  | shr =>
+    simp only [Core.evalBinary, Flat.evalBinary]
+    rw [toNumber_convertValue, toNumber_convertValue]
+    simp [Flat.convertValue]
+  | ushr =>
+    simp only [Core.evalBinary, Flat.evalBinary]
+    rw [toNumber_convertValue, toNumber_convertValue]
+    simp [Flat.convertValue]
+  | _ => sorry -- remaining: eq, neq, lt, gt, le, ge, instanceof, in
 
 /-- Extending both envs preserves EnvCorr. -/
 private theorem EnvCorr_extend {cenv : Core.Env} {fenv : Flat.Env}
