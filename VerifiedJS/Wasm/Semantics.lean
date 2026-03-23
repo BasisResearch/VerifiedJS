@@ -5238,6 +5238,25 @@ def observableEvents : List TraceEvent → List TraceEvent
 
 /-! ### Simulation Relations -/
 
+/-- NaN-box encoding of a Flat/ANF value to UInt64 bit pattern.
+    REF: Runtime/Values.lean NanBoxed, Lower.lean lowerTrivial. -/
+def nanBoxValue : Flat.Value → Runtime.NanBoxed
+  | .null => Runtime.NanBoxed.encodeNull
+  | .undefined => Runtime.NanBoxed.encodeUndefined
+  | .bool b => Runtime.NanBoxed.encodeBool b
+  | .number n => Runtime.NanBoxed.encodeNumber n
+  | .string _ => Runtime.NanBoxed.encodeStringRef 0  -- placeholder; string interning needed
+  | .object addr => Runtime.NanBoxed.encodeObjectRef addr
+  | .closure fi ep => Runtime.NanBoxed.encodeObjectRef (fi * 65536 + ep)
+
+/-- Value correspondence: a Flat/ANF value corresponds to an IR value via NaN-boxing.
+    JS values are NaN-boxed into f64 for the IR stack machine.
+    The IRValue is an f64 whose UInt64 bit pattern equals the NaN-boxed encoding
+    of the JS value.
+    REF: Lower.lean lowerTrivial, Runtime/Values.lean NanBoxed encoding. -/
+def ValueCorr (v : Flat.Value) (irv : IRValue) : Prop :=
+  ∃ (f : Float), irv = .f64 f ∧ f.toUInt64 = (nanBoxValue v).bits
+
 /-- Abstract code correspondence: the IR code is the lowered form of the ANF expression.
     Since `lowerExpr` in Lower.lean is `private partial`, we cannot reference it directly.
     Instead, this inductive captures what the lowered code looks like for each ANF form.
@@ -5314,11 +5333,11 @@ inductive LowerCodeCorr : ANF.Expr → List IRInstr → Prop where
       LowerCodeCorr (.labeled label body) instrs
   /-- break lowers to: [br target].
       REF: Lower.lean lines 497-500. -/
-  | break_ (label : Option String) (target : Option String) :
+  | break_ (label : Option String) (target : String) :
       LowerCodeCorr (.«break» label) [.br target]
   /-- continue lowers to: [br target].
       REF: Lower.lean lines 501-504. -/
-  | continue_ (label : Option String) (target : Option String) :
+  | continue_ (label : Option String) (target : String) :
       LowerCodeCorr (.«continue» label) [.br target]
 
 structure LowerSimRel (prog : ANF.Program) (irmod : IRModule)
@@ -5335,10 +5354,10 @@ structure LowerSimRel (prog : ANF.Program) (irmod : IRModule)
   hhalt : anfStepMapped s = none → ir.halted
   /- Frame non-emptiness: the IR always has at least one frame. -/
   hframes : ir.frames ≠ []
-  /- Environment correspondence: each ANF variable maps to an IR local.
+  /- Environment correspondence: each ANF variable maps to an IR local whose value matches.
      The idx corresponds to the local index the compiler assigned to the variable. -/
   henv : ∀ name v, s.env.lookup name = some v →
-    ∃ (idx : Nat) (val : IRValue), (Option.bind ir.frames.head? (fun f => f.locals[idx]?)) = some val
+    ∃ (idx : Nat) (val : IRValue), (Option.bind ir.frames.head? (fun f => f.locals[idx]?)) = some val ∧ ValueCorr v val
   /- Variable correspondence: when the ANF expression is a variable reference
      and the IR code is a localGet, the variable is in scope and the local is valid.
      This connects the code correspondence (which index) to the env (which value).
