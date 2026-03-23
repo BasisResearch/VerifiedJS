@@ -1,4 +1,61 @@
 
+## Run: 2026-03-23T11:05:00+00:00
+
+### Build
+- **Status**: `lake build` **FAIL** ❌ — NEW error: Wasm/Semantics.lean:6486 `Unknown identifier wv` + nonexistent `List.size_set!`/`List.getElem_set!_eq/ne` lemmas
+- **Root cause**: wasmspec's localSet proof uses `List.*` lemmas but `Frame.locals` is `Array WasmValue`. Correct lemmas: `Array.size_set!`, `Array.set!_eq_setIfInBounds`, `Array.getElem_setIfInBounds`
+- **Action**: Written exact fix to wasmspec prompt (sorry the section, then re-prove with correct names)
+
+### Sorry Report
+- **Count**: 80 (threshold: 100)
+- **Delta**: +3 from last run (77→80) — wasmspec added infrastructure sorries
+- **Breakdown**: 50 Wasm/Semantics + 27 CC + 2 ANF + 1 Lower
+
+### Test262
+- 3 pass, 50 fail, 3 skip, 5 xfail / 63 total (UNCHANGED 102+ hours)
+
+### Agent Health
+- **jsspec**: Active (11:00). COMPLETED: `updateBindingList` public + @[simp] lemmas ✅. Now tasked with `lookup_assign` lemmas.
+- **wasmspec**: Active (10:15). Fixed old build error, added localSet/binOp/var infrastructure. BUT introduced new build break (wrong lemma names). Prompt updated with correct names.
+- **proof**: IDLE since 00:39 (10.5 hours). NOT running. Prompt updated with fresh tasks.
+
+### Key Changes Since Last Run
+1. **updateBindingList NOW PUBLIC** ✅ — jsspec completed. EnvCorr_assign unblocked.
+2. **Old build error (Option.noConfusion) FIXED** by wasmspec → replaced with NEW build error (Array lemma names)
+3. **wasmspec infrastructure**: Added 7 `step?_eq_*` lemmas, 13 EmitCodeCorr constructors, 3 inversion lemmas, LowerSimRel.var proved
+
+### Proof Chain Analysis
+- **Elaborate**: PROVED ✅
+- **Optimize**: PROVED ✅ (identity)
+- **ClosureConvert**: 27 sorry. evalBinary CLOSABLE (1 tactic, untouched). .assign NOW UNBLOCKED. 7 call/obj/prop BLOCKED.
+- **ANFConvert**: 2 sorry (step_star + nested seq).
+- **Lower**: 1 sorry (blocked on wasmspec step_sim).
+- **Emit**: ~50 sorry in Wasm/Semantics step_sim (decomposed).
+- **EndToEnd**: Composition of above.
+
+### Architectural Analysis: What's Actually Provable?
+
+Of the 27 CC sorries:
+- **1** (evalBinary line 206): VERIFIED closable, FREE — proof agent just needs to apply it
+- **1** (assign line 245): NOW UNBLOCKED — updateBindingList public, @[simp] lemmas available
+- **11** (stepping sub-cases): need depth-indexed induction — significant architectural work
+- **7** (call/obj/prop lines 841-848): FUNDAMENTALLY BLOCKED — Flat.call doesn't model body exec
+- **1** (var captured line 487): needs heap correspondence
+- **6** (objLit/arrayLit/funcDef/tryCatch/while/other): mixed difficulty
+
+### Actions Taken
+1. **wasmspec prompt**: TASK 0 = FIX BUILD (exact correct Array lemma names provided). TASK 1 = EmitSimRel cases. Build-first rule enforced.
+2. **proof prompt**: Updated sorry inventory. TASK 1 = evalBinary (free). TASK 2 = EnvCorr_assign (now unblocked, concrete skeleton). Updated line numbers.
+3. **jsspec prompt**: TASK 0 done ✅. NEW TASK = add `lookup_assign` @[simp] lemmas (helps proof agent with EnvCorr_assign).
+4. **PROGRESS.md**: Added metrics entry. Updated proof chain. Updated open abstractions.
+
+### Next Run Priorities
+1. VERIFY build is fixed (wasmspec fixes Array lemma names or sorries the section)
+2. VERIFY proof agent closes evalBinary_convertValue (free -1 sorry → 26 CC)
+3. VERIFY proof agent attempts EnvCorr_assign (now unblocked)
+4. If jsspec adds lookup_assign lemmas, EnvCorr_assign becomes much easier
+5. Target sorry: ≤78 (build fix + evalBinary + assign)
+
 ## Run: 2026-03-23T10:05:00+00:00
 
 ### Build
@@ -2697,3 +2754,4 @@ Plus **Flat.initialState** STILL empty (5th run asking).
 
 ## Run: 2026-03-23T11:05:01+00:00
 
+2026-03-23T11:30:37+00:00 DONE

@@ -6485,9 +6485,9 @@ theorem step_sim (irmod : IRModule) (wmod : Module) :
                         rw [hstk_w] at hstk_rel
                         exact stack_corr_tail hstk_rel.1 hstk_rel.2
                       · -- Frame length preserved
-                        simp only [List.length_cons] at hrel.hframes_len ⊢
-                        rw [hfr_ir] at hrel.hframes_len; rw [hfr_w] at hrel.hframes_len
-                        simpa using hrel.hframes_len
+                        have hfl := hrel.hframes_len
+                        simp only [List.length_cons, hfr_ir, hfr_w] at hfl ⊢
+                        exact hfl
                       · -- Frame locals size after set!
                         sorry
                       · -- Frame vals after set!
