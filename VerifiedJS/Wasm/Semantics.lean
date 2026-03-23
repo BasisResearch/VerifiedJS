@@ -3668,19 +3668,25 @@ theorem observableWasmEvents_traceListToWasm (ts : List TraceEvent) :
 The lowering pass bridges ANF (which uses Core.TraceEvent) to IR (which uses IR.TraceEvent).
 These mappings allow LowerCorrect to relate the two trace types. -/
 
+/-- Map a Core.TraceEvent to an IR.TraceEvent.
+    Used by LowerCorrect: ∀ trace, ANF.Behaves s trace → IR.Behaves t (map traceFromCore trace).
+    REF: Core.TraceEvent has log/error/silent; IR.TraceEvent adds trap. -/
+def traceFromCore : Core.TraceEvent → TraceEvent
+  | .log s => .log s
+  | .error s => .error s
+  | .silent => .silent
+
 /-- Is this a control-flow signal error (break/continue/return/throw)?
     These are internal signaling events in Core/ANF semantics, not observable behavior.
     In the IR, these become structured control flow (br/return) and emit .silent. -/
-private def isControlFlowSignal (msg : String) : Bool :=
+def isControlFlowSignal (msg : String) : Bool :=
   msg.startsWith "break:" || msg.startsWith "continue:" ||
   msg.startsWith "return:" || msg.startsWith "throw:"
 
-/-- Map a Core.TraceEvent to an IR.TraceEvent.
-    Used by LowerCorrect: ∀ trace, ANF.Behaves s trace → IR.Behaves t (map traceFromCore trace).
+/-- Map a Core.TraceEvent to an IR.TraceEvent, with control-flow signals silenced.
     Control-flow signal errors (break/continue/return/throw) are mapped to .silent because
-    they become structured control flow (br/return) in the IR.
-    REF: Core.TraceEvent has log/error/silent; IR.TraceEvent adds trap. -/
-def traceFromCore : Core.TraceEvent → TraceEvent
+    they become structured control flow (br/return) in the IR. -/
+def traceFromCoreForIR : Core.TraceEvent → TraceEvent
   | .log s => .log s
   | .error s => if isControlFlowSignal s then .silent else .error s
   | .silent => .silent
@@ -3705,12 +3711,14 @@ def traceListToCore : List TraceEvent → List Core.TraceEvent :=
 
 @[simp] theorem traceFromCore_silent : traceFromCore .silent = .silent := rfl
 @[simp] theorem traceFromCore_log (s : String) : traceFromCore (.log s) = .log s := rfl
-@[simp] theorem traceFromCore_error (s : String) :
-    traceFromCore (.error s) = if isControlFlowSignal s then .silent else .error s := rfl
-@[simp] theorem traceFromCore_error_nonCF (s : String) (h : isControlFlowSignal s = false) :
-    traceFromCore (.error s) = .error s := by simp [traceFromCore, h]
-@[simp] theorem traceFromCore_error_CF (s : String) (h : isControlFlowSignal s = true) :
-    traceFromCore (.error s) = .silent := by simp [traceFromCore, h]
+@[simp] theorem traceFromCore_error (s : String) : traceFromCore (.error s) = .error s := rfl
+
+@[simp] theorem traceFromCoreForIR_silent : traceFromCoreForIR .silent = .silent := rfl
+@[simp] theorem traceFromCoreForIR_log (s : String) : traceFromCoreForIR (.log s) = .log s := rfl
+@[simp] theorem traceFromCoreForIR_error_nonCF (s : String) (h : isControlFlowSignal s = false) :
+    traceFromCoreForIR (.error s) = .error s := by simp [traceFromCoreForIR, h]
+@[simp] theorem traceFromCoreForIR_error_CF (s : String) (h : isControlFlowSignal s = true) :
+    traceFromCoreForIR (.error s) = .silent := by simp [traceFromCoreForIR, h]
 
 @[simp] theorem traceToCore_silent : traceToCore .silent = .silent := rfl
 @[simp] theorem traceToCore_trap (msg : String) : traceToCore (.trap msg) = .error msg := rfl
@@ -3733,38 +3741,18 @@ def traceListToCore : List TraceEvent → List Core.TraceEvent :=
     traceListToCore (t1 ++ t2) = traceListToCore t1 ++ traceListToCore t2 := by
   simp [traceListToCore, List.map_append]
 
-/-- Round-trip: Core → IR → Core is identity for non-control-flow events.
-    Control-flow signal errors become .silent in IR, so the round-trip loses them. -/
+/-- Round-trip: Core → IR → Core is identity (no traps introduced by conversion). -/
 @[simp] theorem traceToCore_traceFromCore (t : Core.TraceEvent) :
-    traceToCore (traceFromCore t) = t ∨
-    ∃ msg, t = .error msg ∧ isControlFlowSignal msg = true ∧ traceToCore (traceFromCore t) = .silent := by
-  cases t with
-  | silent => left; rfl
-  | log s => left; rfl
-  | error s =>
-    simp [traceFromCore]
-    split
-    · right; exact ⟨s, rfl, ‹_›, rfl⟩
-    · left; rfl
-
-/-- Round-trip: Core → IR → Core is identity for non-control-flow error events. -/
-@[simp] theorem traceToCore_traceFromCore_nonCF (t : Core.TraceEvent)
-    (h : ∀ msg, t = .error msg → isControlFlowSignal msg = false) :
     traceToCore (traceFromCore t) = t := by
-  cases t with
-  | silent => rfl
-  | log s => rfl
-  | error s => simp [traceFromCore, h s rfl]
+  cases t <;> rfl
 
-/-- Round-trip for lists: Core → IR → Core is identity when no control-flow signals. -/
-@[simp] theorem traceListToCore_traceListFromCore (ts : List Core.TraceEvent)
-    (h : ∀ t ∈ ts, ∀ msg, t = .error msg → isControlFlowSignal msg = false) :
+/-- Round-trip for lists: Core → IR → Core is identity. -/
+@[simp] theorem traceListToCore_traceListFromCore (ts : List Core.TraceEvent) :
     traceListToCore (traceListFromCore ts) = ts := by
   simp only [traceListToCore, traceListFromCore, List.map_map]
-  have : ∀ t ∈ ts, (traceToCore ∘ traceFromCore) t = t := by
-    intro t ht
-    exact traceToCore_traceFromCore_nonCF t (h t ht)
-  rw [List.map_congr this, List.map_id]
+  have : (traceToCore ∘ traceFromCore) = id := by
+    funext t; exact traceToCore_traceFromCore t
+  rw [this, List.map_id]
 
 /-- Composing Core→IR→Wasm trace maps: silent Core events map to silent Wasm events. -/
 @[simp] theorem traceToWasm_traceFromCore_silent :
@@ -3774,9 +3762,7 @@ def traceListToCore : List TraceEvent → List Core.TraceEvent :=
     traceToWasm (traceFromCore (.log s)) = Wasm.TraceEvent.silent := rfl
 
 @[simp] theorem traceToWasm_traceFromCore_error (s : String) :
-    traceToWasm (traceFromCore (.error s)) = Wasm.TraceEvent.silent := by
-  simp [traceFromCore, traceToWasm]
-  split <;> rfl
+    traceToWasm (traceFromCore (.error s)) = Wasm.TraceEvent.silent := rfl
 
 /-! ### Simulation Framework for Proof Chain
 
@@ -5196,11 +5182,13 @@ The proof agent can then use `IRForwardSim_behavioral` to prove `lower_behaviora
 
 /-- Wrap ANF.step? to produce IR.TraceEvent instead of Core.TraceEvent.
     This allows us to use the generic IRForwardSim framework which expects
-    a step function producing IR.TraceEvent. -/
+    a step function producing IR.TraceEvent.
+    Uses traceFromCoreForIR which silences control-flow signals (break/continue/etc.)
+    that become silent br/return instructions in the IR. -/
 def anfStepMapped (s : ANF.State) : Option (TraceEvent × ANF.State) :=
   match ANF.step? s with
   | none => none
-  | some (t, s') => some (traceFromCore t, s')
+  | some (t, s') => some (traceFromCoreForIR t, s')
 
 /-- anfStepMapped returns none iff ANF.step? returns none. -/
 @[simp] theorem anfStepMapped_none_iff (s : ANF.State) :
@@ -5211,7 +5199,7 @@ def anfStepMapped (s : ANF.State) : Option (TraceEvent × ANF.State) :=
 /-- anfStepMapped preserves the step structure with mapped trace events. -/
 theorem anfStepMapped_some (s s' : ANF.State) (t : Core.TraceEvent)
     (h : ANF.step? s = some (t, s')) :
-    anfStepMapped s = some (traceFromCore t, s') := by
+    anfStepMapped s = some (traceFromCoreForIR t, s') := by
   simp [anfStepMapped, h]
 
 /-- State relation for ANF → IR lowering simulation (deprecated, use LowerSimRel).
@@ -6217,7 +6205,7 @@ theorem IRStutterSim_behavioral {S : Type} {R : S → IRExecState → Prop}
     with the IRForwardSim framework (which uses StepStar/DetBehaves). -/
 theorem StepStar_of_ANFSteps {s1 s2 : ANF.State} {ts : List Core.TraceEvent}
     (hSteps : ANF.Steps s1 ts s2) :
-    StepStar anfStepMapped s1 (ts.map traceFromCore) s2 := by
+    StepStar anfStepMapped s1 (ts.map traceFromCoreForIR) s2 := by
   induction hSteps with
   | refl _ => simp [List.map]; exact StepStar.refl _
   | tail hstep _hrest ih =>
@@ -6229,7 +6217,7 @@ theorem StepStar_of_ANFSteps {s1 s2 : ANF.State} {ts : List Core.TraceEvent}
     IRForwardSim framework. -/
 theorem DetBehaves_of_ANFBehaves {prog : ANF.Program} {ts : List Core.TraceEvent}
     (hBeh : ANF.Behaves prog ts) :
-    DetBehaves anfStepMapped (ANF.initialState prog) (ts.map traceFromCore) := by
+    DetBehaves anfStepMapped (ANF.initialState prog) (ts.map traceFromCoreForIR) := by
   obtain ⟨sFinal, hSteps, hHalt⟩ := hBeh
   exact ⟨sFinal, StepStar_of_ANFSteps hSteps, (anfStepMapped_none_iff sFinal).mpr hHalt⟩
 
