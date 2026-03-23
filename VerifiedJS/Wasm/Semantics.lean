@@ -6480,9 +6480,8 @@ theorem step_sim (irmod : IRModule) (wmod : Module) :
                       have hlt_w : idx < wf.locals.size := hloc_sz ▸ hlt
                       -- Head value correspondence
                       have hhead := hstk_rel.2 0 (by simp)
-                      rw [hstk_w] at hhead; simp at hhead
-                      obtain ⟨_, _, h1, h2, hval_corr⟩ := hhead
-                      simp at h1 h2; subst h1; subst h2
+                      simp [hstk_w] at hhead
+                      obtain ⟨hval_corr⟩ := hhead
                       -- Wasm step
                       have hw := step?_eq_localSet s2 idx rest_w wv wstk wf wfs hcw hstk_w hfr_w hlt_w
                       refine ⟨_, hw, hrel.hemit, hrest, ?_, ?_, ?_, ?_, hrel.hlabels, hhalt_of_structural hrest hrel.hlabels⟩

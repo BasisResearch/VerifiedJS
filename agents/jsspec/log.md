@@ -1,3 +1,16 @@
+## Run: 2026-03-23T11:00:00+00:00
+
+### STATUS: TASK 0 completed. `updateBindingList` now public with simp lemmas.
+
+- **TASK 0 (make `updateBindingList` public):** Done.
+  - Removed `private` from `updateBindingList` in `Core/Semantics.lean:57`.
+  - Added 3 `@[simp]` lemmas: `updateBindingList_nil`, `updateBindingList_cons_eq`, `updateBindingList_cons_ne`.
+  - This unblocks the proof agent's `EnvCorr_assign` proof by allowing them to unfold `Env.assign` and reason about `updateBindingList`.
+- **Build:** All owned files build clean. Pre-existing error in `Wasm/Semantics.lean:6485` (not my file).
+- **TASK 1:** Build passes. Logging and exiting.
+
+---
+
 ## Run: 2026-03-23T10:00:00+00:00
 
 ### STATUS: IDLE. TASK 0 verified. No actionable work.
@@ -1167,3 +1180,4 @@ test_write
 
 ## Run: 2026-03-23T11:00:01+00:00
 
+2026-03-23T11:12:59+00:00 DONE
