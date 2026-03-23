@@ -62,21 +62,55 @@ Then construct the matching Step derivation in Lean. If you cannot, your semanti
 3. Keep definitions structurally simple for proofs.
 4. Add @[simp] lemmas for everything the proof agent might need.
 
-## CURRENT PRIORITIES (2026-03-23T05:05)
+## CURRENT PRIORITIES (2026-03-23T06:30)
 
-### ⚠️⚠️⚠️ TASK 0: FIX BUILD BREAK — YOUR LAST COMMIT BROKE THE BUILD ⚠️⚠️⚠️
+### ⚠️⚠️⚠️ TASK 0: FIX BUILD BREAK — TWO ERRORS IN Wasm/Semantics.lean ⚠️⚠️⚠️
 
-**BUILD IS BROKEN.** Error at `Wasm/Semantics.lean:6090`:
+**BUILD IS BROKEN.** Two type mismatch errors at lines 6076 (i64) and 6090 (f64).
+
+**ROOT CAUSE**: `stack_corr_cons` (line 5910) has a variable shadowing bug. In the conclusion:
+```lean
+∃ irv wv, (iv :: istk)[i]? = some irv ∧ (wv :: wstk)[i]? = some wv ∧ IRValueToWasmValue irv wv
 ```
-Type mismatch
-  stack_corr_cons hrel.hstack.left hrel.hstack.right (IRValueToWasmValue.f64 f)
-has type ... IRValue.f64 f ...
-but is expected to have type ... IRValue.f64 ((Option.map (fun n => Float.ofNat n) v.toNat?).getD 0.0) ...
+The `wv` in `(wv :: wstk)` is bound by `∃`, NOT the function parameter `wv`. So the result type has the existential variable in the cons position instead of the concrete `WasmValue.i64 n` or `WasmValue.f64 f`.
+
+**FIX 1** — `stack_corr_cons` (line 5910-5925): rename existential `wv` to `wv'`:
+```lean
+theorem stack_corr_cons {istk : List IRValue} {wstk : List WasmValue}
+    {iv : IRValue} {wv : WasmValue}
+    (hlen : istk.length = wstk.length)
+    (helems : ∀ i, i < istk.length → ∃ irv wv', istk[i]? = some irv ∧ wstk[i]? = some wv' ∧ IRValueToWasmValue irv wv')
+    (hv : IRValueToWasmValue iv wv) :
+    (iv :: istk).length = (wv :: wstk).length ∧
+    ∀ i, i < (iv :: istk).length →
+      ∃ irv wv', (iv :: istk)[i]? = some irv ∧ (wv :: wstk)[i]? = some wv' ∧ IRValueToWasmValue irv wv' := by
+  constructor
+  · simp; exact hlen
+  · intro i hi
+    match i with
+    | 0 => exact ⟨iv, wv, rfl, rfl, hv⟩
+    | i + 1 =>
+      simp at hi
+      exact helems i (by omega)
 ```
 
-**ROOT CAUSE**: After `rcases hc.const_f64_inv with ⟨f, rest_w, hcw, hfeq, hrest⟩`, you have `hfeq : f = (v.toNat?.map ...).getD 0.0` but `f` and the computed expression aren't unified in the goal.
+**FIX 2** — `stack_corr_tail` (line 5928-5939) has the SAME shadowing bug in `helems`. Fix:
+```lean
+theorem stack_corr_tail {iv : IRValue} {wv : WasmValue}
+    {istk : List IRValue} {wstk : List WasmValue}
+    (hlen : (iv :: istk).length = (wv :: wstk).length)
+    (helems : ∀ i, i < (iv :: istk).length → ∃ irv wv', (iv :: istk)[i]? = some irv ∧ (wv :: wstk)[i]? = some wv' ∧ IRValueToWasmValue irv wv') :
+    istk.length = wstk.length ∧
+    ∀ i, i < istk.length →
+      ∃ irv wv', istk[i]? = some irv ∧ wstk[i]? = some wv' ∧ IRValueToWasmValue irv wv' := by
+  constructor
+  · simp at hlen; exact hlen
+  · intro i hi
+    have := helems (i + 1) (by simp; omega)
+    simpa using this
+```
 
-**EXACT FIX** — replace lines 6081-6090:
+**FIX 3** — f64 const case (line 6081-6090): add `subst hfeq` after rcases:
 ```lean
           rcases hc.const_f64_inv with ⟨f, rest_w, hcw, hfeq, hrest⟩ | ⟨wasm_instrs, rest_w, hcw, hrest⟩
           · subst hfeq
@@ -90,11 +124,9 @@ but is expected to have type ... IRValue.f64 ((Option.map (fun n => Float.ofNat 
             exact stack_corr_cons hrel.hstack.1 hrel.hstack.2 (.f64 _)
 ```
 
-The key change: add `subst hfeq` right after rcases. This substitutes `f` with the expression everywhere, making the types unify. Also remove the now-unnecessary `simp only [hfeq] at hir` and use `_` for inferred args.
+Apply all 3 fixes. Build must pass before anything else.
 
-**DO THIS FIRST. Build must pass before anything else.**
-
-### MILESTONE: All 6 Flat bugs FIXED ✅. 46 sorries in Wasm/Semantics.lean. Fix build, then continue.
+### MILESTONE: All 6 Flat bugs FIXED ✅. 46 sorries in Wasm/Semantics.lean. Fix build (3 fixes above), then continue.
 
 ### TASK 1: Continue EmitSimRel.step_sim cases (biggest sorry reduction)
 
