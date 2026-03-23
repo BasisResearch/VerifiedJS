@@ -96,14 +96,14 @@ def updateBindingList (xs : List (VarName × Value)) (name : VarName) (v : Value
     obtain ⟨n, old⟩ := hd
     cases hn : (n == name)
     · -- n ≠ name
-      simp only [updateBindingList, hn, ↓reduceIte, Env.lookup, List.find?]
-      split
+      simp only [updateBindingList, hn, Bool.false_eq_true, ↓reduceIte, Env.lookup, List.find?]
+      cases hno : (n == other)
+      · simp only [hno, Env.lookup] at ih; exact ih
       · rfl
-      · exact ih
     · -- n == name: need (n == other) = false
       have hno : (n == other) = false := by
-        have : n = name := by simpa using hn
-        rw [this]; exact hne
+        simp only [show n = name from by simpa using hn]
+        exact Bool.eq_false_iff.mpr (by intro h; have := beq_iff_eq.mp h; rw [this] at hne; simp at hne)
       simp only [updateBindingList, hn, ↓reduceIte, Env.lookup, List.find?, hno]
 
 /-- ECMA-262 §8.1.1.4.5 SetMutableBinding (simplified update). -/
