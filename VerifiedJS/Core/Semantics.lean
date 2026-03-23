@@ -710,7 +710,18 @@ def step? (s : State) : Option (TraceEvent × State) :=
                       some (t, s')
                   | none => none
               | none => none
-  -- ECMA-262 §12.3.2 Property Accessors.
+  -- SPEC: L15567-L15577
+  -- | MemberExpression : MemberExpression \`\[\` Expression \`\]\` 1. Let
+  -- | \_baseReference\_ be ? Evaluation of \|MemberExpression\|. 1. Let
+  -- | \_baseValue\_ be ? GetValue(\_baseReference\_). 1. Let \_strict\_ be
+  -- | IsStrict(this \|MemberExpression\|). 1. Return ?
+  -- | EvaluatePropertyAccessWithExpressionKey(\_baseValue\_, \|Expression\|,
+  -- | \_strict\_). MemberExpression : MemberExpression \`.\` IdentifierName 1.
+  -- | Let \_baseReference\_ be ? Evaluation of \|MemberExpression\|. 1. Let
+  -- | \_baseValue\_ be ? GetValue(\_baseReference\_). 1. Let \_strict\_ be
+  -- | IsStrict(this \|MemberExpression\|). 1. Return
+  -- | EvaluatePropertyAccessWithIdentifierKey(\_baseValue\_,
+  -- | \|IdentifierName\|, \_strict\_).
   | .getProp obj prop =>
       match exprValue? obj with
       | none =>
@@ -792,7 +803,35 @@ def step? (s : State) : Option (TraceEvent × State) :=
           | _ =>
               let s' := pushTrace { s with expr := .lit .undefined } .silent
               some (.silent, s')
-  -- ECMA-262 §14.1 Function Definitions — capture closure as function value.
+  -- SPEC: L18879-L18906
+  -- | # Runtime Semantics: InstantiateOrdinaryFunctionExpression ( optional \_name\_: a property key or a Private Name, ): an ECMAScript function object
+  -- |
+  -- | FunctionExpression : \`function\` \`(\` FormalParameters \`)\` \`{\`
+  -- | FunctionBody \`}\` 1. If \_name\_ is not present, set \_name\_ to
+  -- | \*\"\"\*. 1. Let \_env\_ be the LexicalEnvironment of the running
+  -- | execution context. 1. Let \_privateEnv\_ be the running execution
+  -- | context\'s PrivateEnvironment. 1. Let \_sourceText\_ be the source text
+  -- | matched by \|FunctionExpression\|. 1. Let \_closure\_ be
+  -- | OrdinaryFunctionCreate(%Function.prototype%, \_sourceText\_,
+  -- | \|FormalParameters\|, \|FunctionBody\|, \~non-lexical-this\~, \_env\_,
+  -- | \_privateEnv\_). 1. Perform SetFunctionName(\_closure\_, \_name\_). 1.
+  -- | Perform MakeConstructor(\_closure\_). 1. Return \_closure\_.
+  -- | FunctionExpression : \`function\` BindingIdentifier \`(\`
+  -- | FormalParameters \`)\` \`{\` FunctionBody \`}\` 1. Assert: \_name\_ is
+  -- | not present. 1. Set \_name\_ to the StringValue of
+  -- | \|BindingIdentifier\|. 1. Let \_outerEnv\_ be the running execution
+  -- | context\'s LexicalEnvironment. 1. Let \_funcEnv\_ be
+  -- | NewDeclarativeEnvironment(\_outerEnv\_). 1. Perform !
+  -- | \_funcEnv\_.CreateImmutableBinding(\_name\_, \*false\*). 1. Let
+  -- | \_privateEnv\_ be the running execution context\'s
+  -- | PrivateEnvironment. 1. Let \_sourceText\_ be the source text matched by
+  -- | \|FunctionExpression\|. 1. Let \_closure\_ be
+  -- | OrdinaryFunctionCreate(%Function.prototype%, \_sourceText\_,
+  -- | \|FormalParameters\|, \|FunctionBody\|, \~non-lexical-this\~,
+  -- | \_funcEnv\_, \_privateEnv\_). 1. Perform SetFunctionName(\_closure\_,
+  -- | \_name\_). 1. Perform MakeConstructor(\_closure\_). 1. Perform !
+  -- | \_funcEnv\_.InitializeBinding(\_name\_, \_closure\_). 1. Return
+  -- | \_closure\_.
   | .functionDef fname params body _isAsync _isGenerator =>
       -- §10.2: Create a function closure capturing the current lexical environment.
       let closure : FuncClosure := ⟨fname, params, body, s.env.bindings⟩
@@ -922,7 +961,22 @@ def step? (s : State) : Option (TraceEvent × State) :=
               let s' := pushTrace { sa with expr := .throw sa.expr, trace := s.trace } t
               some (t, s')
           | none => none
-  -- ECMA-262 §13.15 try/catch/finally: exception handling.
+  -- SPEC: L18600-L18614
+  -- | TryStatement : \`try\` Block Catch 1. Let \_B\_ be Completion(Evaluation
+  -- | of \|Block\|). 1. If \_B\_ is a throw completion, let \_C\_ be
+  -- | Completion(CatchClauseEvaluation of \|Catch\| with argument
+  -- | \_B\_.\[\[Value\]\]). 1. Else, let \_C\_ be \_B\_. 1. Return ?
+  -- | UpdateEmpty(\_C\_, \*undefined\*). TryStatement : \`try\` Block
+  -- | Finally 1. Let \_B\_ be Completion(Evaluation of \|Block\|). 1. Let
+  -- | \_F\_ be Completion(Evaluation of \|Finally\|). 1. If \_F\_ is a normal
+  -- | completion, set \_F\_ to \_B\_. 1. Return ? UpdateEmpty(\_F\_,
+  -- | \*undefined\*). TryStatement : \`try\` Block Catch Finally 1. Let \_B\_
+  -- | be Completion(Evaluation of \|Block\|). 1. If \_B\_ is a throw
+  -- | completion, let \_C\_ be Completion(CatchClauseEvaluation of \|Catch\|
+  -- | with argument \_B\_.\[\[Value\]\]). 1. Else, let \_C\_ be \_B\_. 1. Let
+  -- | \_F\_ be Completion(Evaluation of \|Finally\|). 1. If \_F\_ is a normal
+  -- | completion, set \_F\_ to \_C\_. 1. Return ? UpdateEmpty(\_F\_,
+  -- | \*undefined\*).
   | .tryCatch body catchParam catchBody finally_ =>
       let isCallFrame := catchParam == "__call_frame_return__"
       match exprValue? body with
@@ -1004,7 +1058,22 @@ def step? (s : State) : Option (TraceEvent × State) :=
       | none =>
           let s' := pushTrace { s with expr := .lit .undefined } .silent
           some (.silent, s')
-  -- ECMA-262 §12.5.6 typeof operator.
+  -- SPEC: L16165-L16179
+  -- | UnaryExpression : \`typeof\` UnaryExpression 1. Let \_val\_ be ?
+  -- | Evaluation of \|UnaryExpression\|. 1. If \_val\_ is a Reference Record,
+  -- | then 1. If IsUnresolvableReference(\_val\_) is \*true\*, return
+  -- | \*\"undefined\"\*. 1. Set \_val\_ to ? GetValue(\_val\_). 1. If \_val\_
+  -- | is \*undefined\*, return \*\"undefined\"\*. 1. If \_val\_ is \*null\*,
+  -- | return \*\"object\"\*. 1. If \_val\_ is a String, return
+  -- | \*\"string\"\*. 1. If \_val\_ is a Symbol, return \*\"symbol\"\*. 1. If
+  -- | \_val\_ is a Boolean, return \*\"boolean\"\*. 1. If \_val\_ is a Number,
+  -- | return \*\"number\"\*. 1. If \_val\_ is a BigInt, return
+  -- | \*\"bigint\"\*. 1. Assert: \_val\_ is an Object. 1.
+  -- | \[id=\"step-typeof-web-compat-insertion-point\", normative-optional\] If
+  -- | the host is a web browser or otherwise supports , then 1. If \_val\_ has
+  -- | an \[\[IsHTMLDDA\]\] internal slot, return \*\"undefined\"\*. 1. If
+  -- | \_val\_ has a \[\[Call\]\] internal method, return \*\"function\"\*. 1.
+  -- | Return \*\"object\"\*.
   | .typeof arg =>
       match exprValue? arg with
       | some v =>
@@ -1024,7 +1093,13 @@ def step? (s : State) : Option (TraceEvent × State) :=
               let s' := pushTrace { sa with expr := .typeof sa.expr, trace := s.trace } t
               some (t, s')
           | none => none
-  -- ECMA-262 §13.1 Block statement / §13.6 return / §13.8 break / §13.9 continue
+  -- SPEC: L18292-L18297
+  -- | ReturnStatement : \`return\` \`;\` 1. Return
+  -- | ReturnCompletion(\*undefined\*). ReturnStatement : \`return\` Expression
+  -- | \`;\` 1. Let \_exprRef\_ be ? Evaluation of \|Expression\|. 1. Let
+  -- | \_exprValue\_ be ? GetValue(\_exprRef\_). 1. If GetGeneratorKind() is
+  -- | \~async\~, set \_exprValue\_ to ? Await(\_exprValue\_). 1. Return
+  -- | ReturnCompletion(\_exprValue\_).
   | .«return» arg =>
       match arg with
       | some e =>
