@@ -6185,8 +6185,73 @@ theorem step_sim (irmod : IRModule) (wmod : Module) :
                   exact ⟨_, hw, hrel.hemit, hrest, by dsimp only []; exact stack_corr_cons hrel.hstack.1 hrel.hstack.2 hval_corr, hrel.hframes_len, hrel.hframes_locals, hrel.hframes_vals, hrel.hlabels, hhalt_of_structural hrest hrel.hlabels⟩
           · sorry -- general case
       | .localSet idx =>
-          -- local.set: both pop value and set local
-          sorry
+          -- local.set: pop value from stack, set local[idx]
+          have hc : EmitCodeCorr (IRInstr.localSet idx :: rest) s2.code := hcode_ir ▸ hrel.hcode
+          rcases hc.localSet_inv with ⟨rest_w, hcw, hrest⟩ | ⟨wasm_instrs, rest_w, hcw, hrest⟩
+          · -- Specific case: Wasm code = localSet idx :: rest_w
+            -- Need a value on stack
+            match hstk : s1.stack with
+            | [] => sorry -- trap: empty stack
+            | iv :: istk =>
+              -- Need a frame
+              match hfr_ir : s1.frames with
+              | [] => sorry -- trap: no active frame
+              | irf :: irfs =>
+                -- Need idx in bounds
+                match hbnd : decide (idx < irf.locals.size) with
+                | isTrue hlt =>
+                  -- IR step
+                  have hir := irStep?_eq_localSet s1 idx rest iv istk irf irfs hcode_ir hstk hfr_ir hlt
+                  rw [hir] at hstep
+                  simp only [Option.some.injEq, Prod.mk.injEq] at hstep
+                  obtain ⟨rfl, rfl⟩ := hstep
+                  -- Derive Wasm frame from frame correspondence
+                  have hflen := hrel.hframes_len; rw [hfr_ir] at hflen
+                  match hfr_w : s2.frames with
+                  | [] => simp [hfr_w] at hflen
+                  | wf :: wfs =>
+                    -- Wasm stack correspondence: need wv on top
+                    have hstk_rel := hrel.hstack; rw [hstk] at hstk_rel
+                    match hstk_w : s2.stack with
+                    | [] => simp at hstk_rel
+                    | wv :: wstk =>
+                      -- idx in bounds for wasm frame
+                      have hloc_sz := hrel.hframes_locals irf wf irfs wfs hfr_ir hfr_w
+                      have hlt_w : idx < wf.locals.size := hloc_sz ▸ hlt
+                      -- Head value correspondence
+                      have hhead := hstk_rel.2 0 (by simp)
+                      rw [hstk] at hhead; simp at hhead
+                      rw [hstk_w] at hhead; simp at hhead
+                      obtain ⟨_, _, h1, h2, hval_corr⟩ := hhead
+                      simp at h1 h2; subst h1; subst h2
+                      -- Wasm step
+                      have hw := step?_eq_localSet s2 idx rest_w wv wstk wf wfs hcw hstk_w hfr_w hlt_w
+                      refine ⟨_, hw, hrel.hemit, hrest, ?_, ?_, ?_, ?_, hrel.hlabels, hhalt_of_structural hrest hrel.hlabels⟩
+                      · -- Stack correspondence (tail after pop)
+                        rw [hstk, hstk_w] at hstk_rel
+                        exact stack_corr_tail hstk_rel.1 hstk_rel.2
+                      · -- Frame length
+                        simp [hfr_ir, hfr_w] at hrel.hframes_len ⊢; exact hrel.hframes_len
+                      · -- Frame locals size after set
+                        intro irf' wf' irfs' wfs' hir' hw'
+                        simp [hfr_ir] at hir'; simp [hfr_w] at hw'
+                        obtain ⟨rfl, rfl⟩ := hir'; obtain ⟨rfl, rfl⟩ := hw'
+                        simp [List.size_set!]
+                        exact hrel.hframes_locals irf wf irfs wfs hfr_ir hfr_w
+                      · -- Frame vals after set
+                        intro irf' wf' irfs' wfs' hir' hw' j hj hj'
+                        simp [hfr_ir] at hir'; simp [hfr_w] at hw'
+                        obtain ⟨rfl, rfl⟩ := hir'; obtain ⟨rfl, rfl⟩ := hw'
+                        if heq : j = idx then
+                          subst heq
+                          simp [List.getElem_set!_eq hlt, List.getElem_set!_eq hlt_w]
+                          exact hval_corr
+                        else
+                          simp [List.getElem_set!_ne _ _ heq, List.getElem_set!_ne _ _ heq]
+                          exact hrel.hframes_vals irf wf irfs wfs hfr_ir hfr_w j
+                            (by rwa [List.size_set!] at hj) (by rwa [List.size_set!] at hj')
+                | isFalse hge => sorry -- trap: local out of bounds
+          · sorry -- general case
       | .globalGet idx =>
           -- global.get
           sorry
