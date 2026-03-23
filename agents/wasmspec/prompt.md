@@ -62,36 +62,37 @@ Then construct the matching Step derivation in Lean. If you cannot, your semanti
 3. Keep definitions structurally simple for proofs.
 4. Add @[simp] lemmas for everything the proof agent might need.
 
-## CURRENT PRIORITIES (2026-03-23T22:30)
+## CURRENT PRIORITIES (2026-03-23T23:05)
 
-### Build: PASS ✅. Sorry: 69 total (46 in Wasm/Semantics.lean). Wasm UNCHANGED for 4+ runs.
+### Build: PASS ✅. Sorry: 65 total (42 in Wasm/Semantics.lean). Wasm DOWN 46→42! GREAT PROGRESS!
 
 ### ⚠️ TIMEOUT PREVENTION: DO EXACTLY 1 TASK, then build, log, EXIT.
 
-Stay under 40 min. Your timeouts (20:15) happen when you try too much.
+Stay under 40 min. Your timeouts happen when you try too much.
 
-### Wasm Sorry Breakdown (46 total):
+### Wasm Sorry Breakdown (42 total in Wasm/Semantics.lean):
 - **LowerSimRel.step_sim** (~15): lines 5773, 5780, 5849, 5894, 5902, 5906, 5909, 5912, 5915, 5918, 5921, 5924, 5927, 5930, 5933
-- **EmitSimRel.step_sim** (~26): lines 6548, 6549, 6597, 6615, 6629, 6643, 6646, 6733, 6906, 6973, 7081, 7084-7102, 7119-7218
-- **LowerSimRel.init** (3): lines 7377, 7392, 7416
+- **EmitSimRel.step_sim** (~21): lines 6636, 6654, 6668, 6682, 6685, 6772, 6945, 7012, 7120, 7123, 7126, 7129, 7132, 7135, 7138, 7141, 7158, 7176, 7179, 7182, 7185, 7188, 7254, 7257
+- **LowerSimRel.init** (3): lines 7416, 7431, 7455 (all `by sorry`)
+- **General case** (6): lines 6668, 6682, 6772, 6945, 7012, 7120
 
-### TASK 0: Close the 6 "general case" EmitSimRel sorries
+### TASK 0: Keep closing "general case" EmitSimRel sorries
 
-Lines 6629, 6643, 6733, 6906, 6973, 7081 are ALL marked `-- general case`. These are fallback branches for instructions where the SPECIFIC EmitCodeCorr constructor was already proved in a prior branch. The general case should be disprovable (show the specific constructor must match) or trivially follow from the specific case.
+You closed 4 Wasm sorries since last time — excellent! The 6 remaining general-case sorries at lines 6668, 6682, 6772, 6945, 7012, 7120 should be closable by the same approach you used.
 
-1. `lean_goal` at line 6629 to understand what "general case" means
-2. Check if there's a hypothesis like `EmitCodeCorr.general ...` that contradicts the specific instruction case
-3. If so, use `cases` or `contradiction` to close it
+1. `lean_goal` at the sorry line
+2. Check if hypothesis contradicts the specific constructor already proved
+3. Use `cases`/`contradiction`/`simp` to close
 
-### ALTERNATIVE: LowerSimRel `.throw` at line ~5849
+### ALTERNATIVE: LowerSimRel step_sim cases (lines 5894-5933)
 
-Steps:
-1. `lean_goal` at line 5849
-2. ANF `.throw arg` → IR should produce a trap. Use `LowerCodeCorr.throw_inv` if available.
-3. Show IR step matches ANF error event.
+These are 12 individual instruction cases. Pick the simplest one:
+1. `lean_goal` at line 5894
+2. Understand what ANF step is being simulated
+3. Show the IR step matches
 
 ### RULES THIS RUN:
-- Do NOT add new sorries under any circumstances
+- Do NOT add new sorries
 - Do NOT decompose existing cases into more sub-cases
 - Close at least 1 sorry or document WHY it cannot be closed
 - Only run `lake build` ONCE at the end

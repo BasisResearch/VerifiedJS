@@ -57,13 +57,11 @@ If ClosureConvertCorrect needs 600 lines of case analysis, WRITE 600 LINES. That
 ## Test262
 Read `logs/test262_summary.md` for failure categories. Fix compiler bugs that cause test262 failures.
 
-## CURRENT PRIORITIES (2026-03-23T22:30)
+## CURRENT PRIORITIES (2026-03-23T23:05)
 
-### Build: PASS ✅. Sorry: 69 (20 CC + 46 Wasm + 2 ANF + 1 Lower).
+### Build: PASS ✅. Sorry: 65 (18 CC + 42 Wasm + 2 ANF + 1 Lower). CC DOWN 20→18!
 
-### GREAT PROGRESS: CC 24→20! You proved typeof, unary, throw, return stepping sub-cases.
-
-Your firstNonValue infrastructure + depth IH pattern is WORKING. 7 stepping sub-cases remain. Each one follows the IDENTICAL pattern as the typeof case at lines 1180-1260.
+### You proved assign + if value cases. 5 stepping sub-cases remain — all identical pattern.
 
 **TIME MANAGEMENT**:
 1. Do NOT run `lake build` at the start. Use `lean_diagnostic_messages` instead.
@@ -72,26 +70,17 @@ Your firstNonValue infrastructure + depth IH pattern is WORKING. 7 stepping sub-
 
 ### TASK 0: Close 3+ stepping sub-cases using the PROVEN typeof template
 
-The 7 remaining stepping sub-cases at lines 918, 972, 1047, 1112, 1409, 1410, 1936 ALL follow the typeof pattern (lines 1180-1260). Here is exactly what each needs:
+The 5 remaining stepping sub-cases ALL follow the typeof pattern (see lines ~1260-1310 for template). Each is a `| none =>` branch where the sub-expression is not a value:
 
-**Line 918 — let (init not value)**: Copy typeof pattern. Use `Core.step_let_step_init`. The expression wrap is `.let name X body` instead of `.typeof X`. At the end, `convertExpr (.let name sc_arg.expr body)` decomposes as:
-```lean
-simp only [Flat.convertExpr]
-rw [show Flat.convertExpr sc_arg.expr scope' envVar' envMap' st_a = (sa_flat.expr, st_a') from hconv_arg.symm]
-```
-The difference: convertExpr for `.let` threads state through `init` then `body`. The IH gives you `(sa_flat.expr, st_a')` for init. For body, the state `st_a'` flows through. You need `scope' = scope` and `envVar' = envVar` etc. from the IH's CC_SimRel.
+**Line 918 — let (init not value)**: Use `Core.step_let_step_init`. Wrap is `.let name X body`. convertExpr for `.let` threads state through init then body. The IH on depth gives you init correspondence; body state `st_a'` flows through.
 
-**Line 972 — assign (rhs not value)**: Same pattern. Use `Core.step_assign_step_rhs`. Wrap is `.assign name X`.
+**Line 1113 — if (cond not value)**: Use `Core.step_if_step_cond`. Wrap is `.if X then_ else_`. convertExpr threads through cond, then_, else_.
 
-**Line 1047 — if (cond not value)**: Same pattern. Use `Core.step_if_step_cond`. Wrap is `.if X then_ else_`. convertExpr threads through cond, then_, else_.
+**Line 1178 — seq (lhs not value)**: Use `Core.step_seq_nonvalue_lhs`. Wrap is `.seq X b`. Simplest one — just `.seq X b`, no extra state threading.
 
-**Line 1112 — seq (lhs not value)**: Same pattern. Use `Core.step_seq_nonvalue_lhs`. Wrap is `.seq X b`.
+**Line 1476 — binary (lhs not value)**: Use `Core.step_binary_nonvalue_lhs`. Wrap is `.binary op X rhs`.
 
-**Line 1410 — binary (lhs not value)**: Same pattern. Use `Core.step_binary_nonvalue_lhs`. Wrap is `.binary op X rhs`.
-
-**Line 1936 — await (arg not value)**: Same pattern. Use `Core.step_await_step_arg`. Wrap is `.await X`.
-
-**Line 1409 — binary (rhs not value, lhs IS value)**: This is special. You need to ADD a helper lemma to Core/Semantics.lean first:
+**Line 1475 — binary (rhs not value, lhs IS value)**: Special case. You need a Core helper:
 ```lean
 theorem step_binary_value_lhs_nonvalue_rhs (op : BinOp) (lv : Value) (rhs : Expr) (env : Env) (heap : Heap)
     (trace : List TraceEvent) (funcs : Array FuncClosure)
@@ -103,17 +92,29 @@ theorem step_binary_value_lhs_nonvalue_rhs (op : BinOp) (lv : Value) (rhs : Expr
       some (t, pushTrace { sr with expr := .binary op (.lit lv) sr.expr, trace := trace } t) := by
   simp [step?, exprValue?, hrhs, hstep]
 ```
-Then use it like `step_binary_nonvalue_lhs`.
 
-**START with line 1112 (seq)** — it's the simplest wrapper (just `.seq X b`, no extra convertExpr state threading beyond what typeof has). Then do 972 (assign), then 918 (let).
+**START with line 1178 (seq)** — simplest. Then 1113 (if), then 918 (let).
 
-### TASK 1: If stuck on stepping sub-cases, try lean_multi_attempt on other sorries
+### TASK 1: After stepping sub-cases, prepare for heap/env strengthening
 
-Run `lean_multi_attempt` on lines 758, 1411, 1412, 1413, 1515, 1585 with `["grind", "aesop", "simp_all", "omega", "decide"]`. Take any free wins.
+Lines 1179-1185 (call, newObj, getProp, setProp, getIndex, setIndex, deleteProp) are 7 sorries that ALL need CC_SimRel to track heap correspondence. Current CC_SimRel only has `sf.trace = sc.trace ∧ EnvCorr sc.env sf.env ∧ ∃ ... convertExpr`. After closing stepping sub-cases, the next architectural step is:
+
+Add to CC_SimRel:
+```lean
+private def CC_SimRel (_s : Core.Program) (_t : Flat.Program)
+    (sf : Flat.State) (sc : Core.State) : Prop :=
+  sf.trace = sc.trace ∧
+  EnvCorr sc.env sf.env ∧
+  HeapCorr sc.heap sf.heap ∧  -- NEW: heap objects correspond
+  FuncsCorr sc.funcs sf.funcs ∧  -- NEW: function closures correspond
+  ∃ (scope : List String) (envVar : String) (envMap : Flat.EnvMapping) (st st' : Flat.CCState),
+    (sf.expr, st') = Flat.convertExpr sc.expr scope envVar envMap st
+```
+Don't attempt this yet — finish stepping sub-cases first.
 
 ### ABSOLUTELY DO NOT:
 - Run `lake build` at the start of your run
-- Attempt heap/funcs cases (lines 1113-1119) — these need CC_SimRel changes
+- Attempt heap/funcs cases (lines 1179-1185) — these need CC_SimRel changes
 - Refactor existing proved cases
 - Spend more than 15 minutes on any single sorry
 

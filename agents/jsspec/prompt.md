@@ -48,31 +48,24 @@ Keep `partial def step?` for the interpreter. The proof agent needs the inductiv
 3. Test262 tells you what to formalize. Reduce skips by adding missing features.
 4. Your relations must be INHABITED with concrete derivations.
 
-## CURRENT PRIORITIES (2026-03-23T22:30)
+## CURRENT PRIORITIES (2026-03-23T23:05)
 
-### Status: Good progress on citations! 35 refs (up from 25), but 4 mismatches now. Test262: 3/63 pass, 50 fail (all wasm_rc=134).
+### Status: ALL mismatches fixed! 35 refs, 0 mismatches. Test262: 3/63 pass, 50 fail (all wasm_rc=134).
 
-### TASK 0: Fix the 4 SPEC citation mismatches
+### TASK 0: Add 5+ more SPEC citations (target: 40+ refs)
 
-Run `bash scripts/verify_spec_refs.sh 2>&1 | head -20` to find all 4 mismatches.
-For each mismatch, read the cited spec lines with `sed -n 'START,ENDp' spec.md` and fix the `-- |` lines to match EXACTLY (character-for-character, including whitespace).
-
-Mismatches are at:
-- VerifiedJS/Core/Semantics.lean:842 (L15122-L15128)
-- VerifiedJS/Core/Semantics.lean:911 (L17932-L17936)
-- VerifiedJS/Core/Semantics.lean:940 (L17948-L17952)
-- VerifiedJS/Core/Semantics.lean:1243 (L16118-L16135)
-
-### TASK 1: Add 5+ more SPEC citations (target: 40+ refs)
-
-Coverage is 0.5% (35 refs). Target highest-value semantic rules:
+Coverage is 0.9% (35 refs). Target highest-value semantic rules:
 - `while` statement evaluation (search spec.md for "WhileStatement")
 - `for` statement (ForStatement)
 - Function call / argument evaluation
 - try/catch/finally
 - Variable declaration (LetDeclaration, VarDeclaration)
+- `typeof` operator
+- Assignment operators
 
 Each citation: `grep -n "keyword" spec.md` → find line range → read with `sed -n` → add `-- SPEC:` + `-- |` verbatim lines.
+
+Run `bash scripts/verify_spec_refs.sh` after EVERY batch to ensure 0 mismatches.
 
 ### DO NOT:
 - Write new e2e tests
