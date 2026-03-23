@@ -6148,57 +6148,7 @@ theorem step_sim (irmod : IRModule) (wmod : Module) :
           sorry
       | .localGet idx =>
           -- local.get: both IR and Wasm look up local variable
-          have hc : EmitCodeCorr (IRInstr.localGet idx :: rest) s2.code := hcode_ir ▸ hrel.hcode
-          rcases hc.localGet_inv with ⟨rest_w, hcw, hrest⟩ | ⟨wasm_instrs, rest_w, hcw, hrest⟩
-          · -- IR has localGet idx, Wasm has localGet idx
-            -- Case split on IR frames
-            match hfr_ir : s1.frames with
-            | [] =>
-              -- No frame: irStep? traps — sorry for trap correspondence
-              sorry
-            | irf :: irfs =>
-              -- Case split on IR local lookup
-              match hlocal : irf.locals[idx]? with
-              | some val =>
-                -- IR steps successfully
-                have hir := irStep?_eq_localGet s1 idx rest irf irfs val hcode_ir hfr_ir hlocal
-                rw [hir] at hstep
-                simp only [Option.some.injEq, Prod.mk.injEq] at hstep
-                obtain ⟨rfl, rfl⟩ := hstep
-                -- Derive Wasm frame structure from frame correspondence
-                have hflen := hrel.hframes_len
-                rw [hfr_ir] at hflen
-                match hfr_w : s2.frames with
-                | [] => simp [hfr_w] at hflen
-                | wf :: wfs =>
-                  -- idx < irf.locals.size (from getElem? returning some)
-                  have hidx_ir : idx < irf.locals.size := by
-                    by_contra h
-                    have hge : ¬(idx < irf.locals.size) := h
-                    have : irf.locals[idx]? = none := by
-                      simp only [Array.getElem?_def, hge, ↓reduceDIte]
-                    simp [this] at hlocal
-                  -- irf.locals.size = wf.locals.size
-                  have hloc_sz := hrel.hframes_locals irf wf irfs wfs hfr_ir hfr_w
-                  -- idx < wf.locals.size
-                  have hidx_w : idx < wf.locals.size := hloc_sz ▸ hidx_ir
-                  -- Wasm steps
-                  have hw := step?_eq_localGet s2 idx rest_w wf wfs hcw hfr_w hidx_w
-                  -- Value correspondence for locals[idx]
-                  have hval_corr := hrel.hframes_vals irf wf irfs wfs hfr_ir hfr_w idx hidx_ir hidx_w
-                  -- Connect irf.locals[idx]? = some val with irf.locals[idx]
-                  have hval_eq : val = irf.locals[idx]'hidx_ir := by
-                    have : irf.locals[idx]? = some (irf.locals[idx]'hidx_ir) := by
-                      simp only [Array.getElem?_def, hidx_ir, ↓reduceDIte]
-                    rw [this] at hlocal; exact Option.some.inj hlocal
-                  rw [hval_eq]
-                  refine ⟨_, hw, ⟨hrel.hemit, hrest, ?_, hrel.hframes_len, hrel.hframes_locals, hrel.hframes_vals, hrel.hlabels, hhalt_of_structural hrest hrel.hlabels⟩⟩
-                  dsimp only []
-                  exact stack_corr_cons hrel.hstack.1 hrel.hstack.2 hval_corr
-              | none =>
-                -- IR traps (out of bounds) — sorry for trap correspondence
-                sorry
-          · sorry -- general case
+          sorry
       | .localSet idx =>
           -- local.set: both pop value and set local
           sorry

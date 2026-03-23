@@ -235,11 +235,214 @@ private theorem EnvCorr_extend {cenv : Core.Env} {fenv : Flat.Env}
       obtain ⟨fv, hfenv, hfv⟩ := h.2 n cv' hlookup'
       subst hfv; exact hfenv
 
+/-- lookup on updateBindingList: if n == name, returns the new value. -/
+private theorem flat_lookup_updateBindingList_eq (env : Flat.Env) (name : String) (v : Flat.Value)
+    (hexists : env.any (fun kv => kv.fst == name) = true) :
+    (Flat.updateBindingList env name v).lookup name = some v := by
+  induction env with
+  | nil => simp [List.any] at hexists
+  | cons hd tl ih =>
+    simp only [Flat.updateBindingList]
+    by_cases heq : hd.fst == name
+    · simp only [if_pos heq, Flat.Env.lookup, List.find?]
+      simp only [beq_eq_true_iff_eq] at heq
+      simp [heq]
+    · simp only [if_neg heq, Flat.Env.lookup, List.find?]
+      simp only [heq, ↓reduceIte, Bool.false_eq_true, cond_false]
+      have htl : tl.any (fun kv => kv.fst == name) = true := by
+        simp only [List.any, Bool.or_eq_true] at hexists
+        rcases hexists with h | h
+        · exact absurd h heq
+        · exact h
+      have := ih htl
+      simp only [Flat.Env.lookup] at this
+      exact this
+
+/-- lookup on updateBindingList: if n ≠ name, returns the old value. -/
+private theorem flat_lookup_updateBindingList_ne (env : Flat.Env) (name : String) (v : Flat.Value)
+    (n : String) (hne : ¬(name == n) = true) :
+    (Flat.updateBindingList env name v).lookup n = env.lookup n := by
+  induction env with
+  | nil => simp [Flat.updateBindingList, Flat.Env.lookup]
+  | cons hd tl ih =>
+    simp only [Flat.updateBindingList]
+    by_cases heq : hd.fst == name
+    · simp only [if_pos heq]
+      simp only [Flat.Env.lookup, List.find?]
+      have hne' : ¬(hd.fst == n) = true := by
+        simp only [beq_eq_true_iff_eq] at heq hne ⊢
+        intro h; rw [heq] at h; exact hne (beq_self_eq_true name ▸ rfl)
+      simp [hne']
+    · simp only [if_neg heq]
+      simp only [Flat.Env.lookup, List.find?]
+      by_cases hn : hd.fst == n
+      · simp [hn]
+      · simp [hn]
+        exact ih
+
+/-- lookup on Core updateBindingList: if n == name, returns the new value. -/
+private theorem core_lookup_updateBindingList_eq (bindings : List (Core.VarName × Core.Value))
+    (name : String) (v : Core.Value)
+    (hexists : bindings.any (fun kv => kv.fst == name) = true) :
+    (Core.updateBindingList bindings name v).find? (fun kv => kv.fst == name) = some (name, v) := by
+  induction bindings with
+  | nil => simp [List.any] at hexists
+  | cons hd tl ih =>
+    simp only [Core.updateBindingList]
+    by_cases heq : hd.fst == name
+    · simp only [if_pos heq, List.find?]
+      simp [heq]
+    · simp only [if_neg heq, List.find?]
+      simp [heq]
+      have htl : tl.any (fun kv => kv.fst == name) = true := by
+        simp only [List.any, Bool.or_eq_true] at hexists
+        rcases hexists with h | h
+        · exact absurd h heq
+        · exact h
+      exact ih htl
+
+/-- lookup on Core updateBindingList: if n ≠ name, returns the old value. -/
+private theorem core_lookup_updateBindingList_ne (bindings : List (Core.VarName × Core.Value))
+    (name : String) (v : Core.Value)
+    (n : String) (hne : ¬(name == n) = true) :
+    (Core.updateBindingList bindings name v).find? (fun kv => kv.fst == n) =
+    bindings.find? (fun kv => kv.fst == n) := by
+  induction bindings with
+  | nil => simp [Core.updateBindingList]
+  | cons hd tl ih =>
+    simp only [Core.updateBindingList]
+    by_cases heq : hd.fst == name
+    · simp only [if_pos heq, List.find?]
+      have hne' : ¬(hd.fst == n) = true := by
+        simp only [beq_eq_true_iff_eq] at heq hne ⊢
+        intro h; rw [heq] at h; exact hne (beq_self_eq_true name ▸ rfl)
+      simp [hne']
+    · simp only [if_neg heq, List.find?]
+      by_cases hn : hd.fst == n
+      · simp [hn]
+      · simp [hn]; exact ih
+
 /-- Assigning the same name in both envs preserves EnvCorr. -/
 private theorem EnvCorr_assign {cenv : Core.Env} {fenv : Flat.Env}
     (h : EnvCorr cenv fenv) (name : String) (cv : Core.Value) :
     EnvCorr (Core.Env.assign cenv name cv) (Flat.Env.assign fenv name (Flat.convertValue cv)) := by
-  sorry
+  constructor
+  · -- Flat⊆Core direction
+    intro n fv hlookup
+    simp only [Core.Env.assign, Flat.Env.assign] at hlookup ⊢
+    by_cases heq : name == n
+    · -- n = name: both assigned the new value
+      simp only [beq_eq_true_iff_eq] at heq; subst heq
+      simp only [Core.Env.lookup]
+      -- In both branches of assign, lookup name returns the assigned value
+      split at hlookup <;> split
+      all_goals (simp only [Flat.Env.lookup] at hlookup)
+      · -- Both exist: updateBindingList case
+        next hfexists hexists =>
+        have := flat_lookup_updateBindingList_eq fenv name (Flat.convertValue cv) hfexists
+        simp only [Flat.Env.lookup] at this
+        rw [this] at hlookup; cases hlookup
+        have := core_lookup_updateBindingList_eq cenv.bindings name cv hexists
+        simp [this]; exact ⟨cv, rfl, rfl⟩
+      · -- Flat exists, Core doesn't: Core prepends
+        next hfexists hcnotexists =>
+        have := flat_lookup_updateBindingList_eq fenv name (Flat.convertValue cv) hfexists
+        simp only [Flat.Env.lookup] at this
+        rw [this] at hlookup; cases hlookup
+        simp [List.find?, beq_self_eq_true]; exact ⟨cv, rfl, rfl⟩
+      · -- Flat doesn't exist, Core exists: Flat prepends
+        next hfnotexists hexists =>
+        simp [List.find?, beq_self_eq_true] at hlookup
+        cases hlookup
+        have := core_lookup_updateBindingList_eq cenv.bindings name cv hexists
+        simp [this]; exact ⟨cv, rfl, rfl⟩
+      · -- Neither exists: both prepend
+        next hfnotexists hcnotexists =>
+        simp [List.find?, beq_self_eq_true] at hlookup ⊢
+        cases hlookup; exact ⟨cv, rfl, rfl⟩
+    · -- n ≠ name: delegate to original EnvCorr
+      simp only [Core.Env.lookup]
+      split at hlookup <;> split
+      all_goals (simp only [Flat.Env.lookup] at hlookup)
+      · next hfexists hexists =>
+        have := flat_lookup_updateBindingList_ne fenv name (Flat.convertValue cv) n heq
+        simp only [Flat.Env.lookup] at this; rw [this] at hlookup
+        have hcne := core_lookup_updateBindingList_ne cenv.bindings name cv n heq
+        rw [hcne]
+        exact h.1 n fv hlookup
+      · next hfexists hcnotexists =>
+        have := flat_lookup_updateBindingList_ne fenv name (Flat.convertValue cv) n heq
+        simp only [Flat.Env.lookup] at this; rw [this] at hlookup
+        simp [List.find?]; simp [heq]
+        have := h.1 n fv hlookup
+        simp only [Core.Env.lookup] at this; exact this
+      · next hfnotexists hexists =>
+        simp [List.find?] at hlookup
+        simp [heq] at hlookup
+        have hcne := core_lookup_updateBindingList_ne cenv.bindings name cv n heq
+        rw [hcne]
+        exact h.1 n fv hlookup
+      · next hfnotexists hcnotexists =>
+        simp [List.find?] at hlookup
+        simp [heq] at hlookup
+        simp [List.find?, heq]
+        exact h.1 n fv hlookup
+  · -- Core⊆Flat direction
+    intro n cv' hlookup
+    simp only [Core.Env.assign, Flat.Env.assign] at hlookup ⊢
+    by_cases heq : name == n
+    · -- n = name: both assigned the new value
+      simp only [beq_eq_true_iff_eq] at heq; subst heq
+      simp only [Flat.Env.lookup]
+      split at hlookup <;> split
+      all_goals (simp only [Core.Env.lookup] at hlookup)
+      · next hexists hfexists =>
+        have := core_lookup_updateBindingList_eq cenv.bindings name cv hexists
+        rw [this] at hlookup
+        simp only [Option.some.injEq, Prod.mk.injEq] at hlookup
+        obtain ⟨_, rfl⟩ := hlookup
+        have := flat_lookup_updateBindingList_eq fenv name (Flat.convertValue cv) hfexists
+        simp only [Flat.Env.lookup] at this
+        exact ⟨Flat.convertValue cv, this, rfl⟩
+      · next hexists hfnotexists =>
+        have := core_lookup_updateBindingList_eq cenv.bindings name cv hexists
+        rw [this] at hlookup
+        simp only [Option.some.injEq, Prod.mk.injEq] at hlookup
+        obtain ⟨_, rfl⟩ := hlookup
+        simp [List.find?, beq_self_eq_true]
+      · next hcnotexists hfexists =>
+        simp [List.find?, beq_self_eq_true] at hlookup
+        cases hlookup
+        have := flat_lookup_updateBindingList_eq fenv name (Flat.convertValue cv) hfexists
+        simp only [Flat.Env.lookup] at this
+        exact ⟨Flat.convertValue cv, this, rfl⟩
+      · next hcnotexists hfnotexists =>
+        simp [List.find?, beq_self_eq_true] at hlookup ⊢
+        cases hlookup; exact rfl
+    · -- n ≠ name: delegate to original EnvCorr
+      simp only [Flat.Env.lookup]
+      split at hlookup <;> split
+      all_goals (simp only [Core.Env.lookup] at hlookup)
+      · next hexists hfexists =>
+        have hcne := core_lookup_updateBindingList_ne cenv.bindings name cv n heq
+        rw [hcne] at hlookup
+        have := flat_lookup_updateBindingList_ne fenv name (Flat.convertValue cv) n heq
+        simp only [Flat.Env.lookup] at this; rw [this]
+        exact h.2 n cv' hlookup
+      · next hexists hfnotexists =>
+        have hcne := core_lookup_updateBindingList_ne cenv.bindings name cv n heq
+        rw [hcne] at hlookup
+        simp [List.find?, heq]
+        exact h.2 n cv' hlookup
+      · next hcnotexists hfexists =>
+        simp [List.find?, heq] at hlookup
+        have := flat_lookup_updateBindingList_ne fenv name (Flat.convertValue cv) n heq
+        simp only [Flat.Env.lookup] at this; rw [this]
+        exact h.2 n cv' hlookup
+      · next hcnotexists hfnotexists =>
+        simp [List.find?, heq] at hlookup
+        simp [List.find?, heq]
+        exact h.2 n cv' hlookup
 
 /-- Simulation relation for closure conversion: Flat and Core states
     have matching traces, environment correspondence, and expression
