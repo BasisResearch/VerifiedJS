@@ -85,7 +85,7 @@ private inductive VarFreeIn : String → Flat.Expr → Prop where
   | seq_r (x : String) (a b : Flat.Expr) : VarFreeIn x b → VarFreeIn x (.seq a b)
 
 /-- An expression is well-formed w.r.t. an environment if all free vars are bound. -/
-private def ExprWellFormed (expr : Flat.Expr) (env : Flat.Env) : Prop :=
+def ExprWellFormed (expr : Flat.Expr) (env : Flat.Env) : Prop :=
   ∀ x, VarFreeIn x expr → env.lookup x ≠ none
 
 /-- Stuttering simulation: one ANF step corresponds to one or more Flat steps,
