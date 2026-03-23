@@ -339,10 +339,13 @@ private theorem EnvCorr_assign {cenv : Core.Env} {fenv : Flat.Env}
     intro n cv' hlookup
     by_cases hname : n = name
     · subst hname
-      simp [Core.Env.lookup_assign_eq] at hlookup
-      · subst hlookup
-        exact ⟨Flat.convertValue cv, Flat_lookup_assign_eq _ _ _, rfl⟩
-      · sorry -- need: cenv.bindings.any ... = true; may not hold if name is new
+      have hcv : cv' = cv := by
+        unfold Core.Env.assign at hlookup
+        split at hlookup
+        · simp [Core.lookup_updateBindingList_eq] at hlookup; exact hlookup
+        · simp [Core.Env.lookup, List.find?, beq_self_eq_true] at hlookup; exact hlookup
+      subst hcv
+      exact ⟨Flat.convertValue cv, Flat_lookup_assign_eq _ _ _, rfl⟩
     · have hne : (n == name) = false := by simp [beq_eq_false_iff_ne, hname]
       rw [Core.Env.lookup_assign_ne _ _ _ _ hne] at hlookup
       obtain ⟨fv, hfv, hconv⟩ := h.2 n cv' hlookup
