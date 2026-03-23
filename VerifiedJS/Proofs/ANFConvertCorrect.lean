@@ -78,6 +78,16 @@ private theorem anfConvert_init_related
   have := (Prod.mk.inj (Except.ok.inj hk)).1
   exact ANF.Expr.trivial.inj this.symm
 
+/-- A variable name is free in a Flat expression (tracks .var in .seq chains). -/
+private inductive VarFreeIn : String → Flat.Expr → Prop where
+  | var (x : String) : VarFreeIn x (.var x)
+  | seq_l (x : String) (a b : Flat.Expr) : VarFreeIn x a → VarFreeIn x (.seq a b)
+  | seq_r (x : String) (a b : Flat.Expr) : VarFreeIn x b → VarFreeIn x (.seq a b)
+
+/-- An expression is well-formed w.r.t. an environment if all free vars are bound. -/
+private def ExprWellFormed (expr : Flat.Expr) (env : Flat.Env) : Prop :=
+  ∀ x, VarFreeIn x expr → env.lookup x ≠ none
+
 /-- Stuttering simulation: one ANF step corresponds to one or more Flat steps,
     preserving observable events and the simulation relation.
     This is the key theorem requiring detailed case analysis over expression forms. -/
@@ -86,11 +96,13 @@ private theorem anfConvert_step_star
     (h : ANF.convert s = .ok t) :
     ∀ (sa : ANF.State) (sf : Flat.State) (ev : Core.TraceEvent) (sa' : ANF.State),
       ANF_SimRel s t sa sf →
+      ExprWellFormed sf.expr sf.env →
       ANF.Step sa ev sa' →
       ∃ (sf' : Flat.State) (evs : List Core.TraceEvent),
         Flat.Steps sf evs sf' ∧
         observableTrace [ev] = observableTrace evs ∧
-        ANF_SimRel s t sa' sf' := by
+        ANF_SimRel s t sa' sf' ∧
+        ExprWellFormed sf'.expr sf'.env := by
   sorry
   -- PROOF ARCHITECTURE for anfConvert_step_star:
   --
@@ -635,17 +647,6 @@ private theorem ANF_step?_none_implies_trivial (s : ANF.State) (h : ANF.step? s 
   obtain ⟨t, ht, hlit⟩ := ANF.step?_none_implies_trivial_lit s h
   exact ⟨t, ht, fun name habs => by subst habs; simp [ANF.Trivial.isLit] at hlit⟩
 
-/-- x appears as a free variable reference in expression e.
-    Used as precondition to rule out stuck .var lookups in halt_star. -/
-private inductive VarFreeIn : String → Flat.Expr → Prop where
-  | var (x : String) : VarFreeIn x (.var x)
-  | seq_l (x : String) (a b : Flat.Expr) : VarFreeIn x a → VarFreeIn x (.seq a b)
-  | seq_r (x : String) (a b : Flat.Expr) : VarFreeIn x b → VarFreeIn x (.seq a b)
-
-/-- All variable references in the expression are bound in the environment. -/
-private def ExprWellFormed (expr : Flat.Expr) (env : Flat.Env) : Prop :=
-  ∀ x, VarFreeIn x expr → env.lookup x ≠ none
-
 /-- Auxiliary halt_star with strong induction on Flat expression depth.
     When ANF reaches a terminal state (step? = none), Flat can also reach a
     terminal state after zero or more silent steps.
@@ -1061,24 +1062,26 @@ private theorem anfConvert_steps_star
     (h : ANF.convert s = .ok t) :
     ∀ (sa : ANF.State) (sf : Flat.State) (tr : List Core.TraceEvent) (sa' : ANF.State),
       ANF_SimRel s t sa sf →
+      ExprWellFormed sf.expr sf.env →
       ANF.Steps sa tr sa' →
       ∃ (sf' : Flat.State) (tr' : List Core.TraceEvent),
         Flat.Steps sf tr' sf' ∧
         observableTrace tr = observableTrace tr' ∧
-        ANF_SimRel s t sa' sf' := by
-  intro sa sf tr sa' hrel hsteps
+        ANF_SimRel s t sa' sf' ∧
+        ExprWellFormed sf'.expr sf'.env := by
+  intro sa sf tr sa' hrel hwf hsteps
   induction hsteps generalizing sf with
-  | refl => exact ⟨sf, [], .refl sf, rfl, hrel⟩
+  | refl => exact ⟨sf, [], .refl sf, rfl, hrel, hwf⟩
   | tail hstep _ ih =>
-    obtain ⟨sf2, evs1, hfsteps1, hobsev, hrel2⟩ :=
-      anfConvert_step_star s t h _ _ _ _ hrel hstep
-    obtain ⟨sf3, evs2, hfsteps2, hobstr, hrel3⟩ :=
-      ih sf2 hrel2
+    obtain ⟨sf2, evs1, hfsteps1, hobsev, hrel2, hwf2⟩ :=
+      anfConvert_step_star s t h _ _ _ _ hrel hwf hstep
+    obtain ⟨sf3, evs2, hfsteps2, hobstr, hrel3, hwf3⟩ :=
+      ih sf2 hrel2 hwf2
     exact ⟨sf3, evs1 ++ evs2,
       Flat.Steps.append hfsteps1 hfsteps2,
       by rw [show ∀ (a : Core.TraceEvent) l, a :: l = [a] ++ l from fun _ _ => rfl,
              observableTrace_append, observableTrace_append, hobsev, hobstr],
-      hrel3⟩
+      hrel3, hwf3⟩
 
 /-- ANF conversion preserves observable behavior:
     For every terminating ANF execution, there exists a terminating Flat
@@ -1089,18 +1092,16 @@ theorem anfConvert_correct (s : Flat.Program) (t : ANF.Program)
       ∃ b', Flat.Behaves s b' ∧ observableTrace b = observableTrace b' := by
   intro b ⟨sa, hsteps, hhalt⟩
   have hinit := anfConvert_init_related s t h
-  -- Multi-step simulation
-  obtain ⟨sf, tr', hfsteps, hobstr, hrel⟩ :=
-    anfConvert_steps_star s t h _ _ _ _ hinit hsteps
-  -- Halt preservation (well-formedness: all reachable states have vars in scope)
-  have hwf_sf : ExprWellFormed sf.expr sf.env := by
-    sorry -- BLOCKER: ExprWellFormed is NOT a general Flat.step? invariant.
-    -- VarFreeIn only tracks .var in .seq chains (not through .let/.if/.call/etc).
-    -- After .let stepping: ExprWellFormed (.let ..) is vacuously true but
-    -- ExprWellFormed body may not be. Need either:
-    -- (a) Strengthen VarFreeIn to track all free vars, OR
-    -- (b) Carry WF as part of ANF_SimRel (proved in anfConvert_step_star), OR
-    -- (c) Add initial-program well-formedness precondition + stronger preservation
+  -- Initial state is well-formed (no free variables in an empty env is vacuously true,
+  -- or the program's free vars are bound in the initial env)
+  have hwf_init : ExprWellFormed (Flat.initialState s).expr (Flat.initialState s).env := by
+    intro x hfx; simp [Flat.initialState, Flat.Env.lookup]
+    -- VarFreeIn' only tracks .var in .seq chains; in the initial program
+    -- this is vacuously true for well-formed programs. Sorry for now.
+    sorry
+  -- Multi-step simulation (now threads WF)
+  obtain ⟨sf, tr', hfsteps, hobstr, hrel, hwf_sf⟩ :=
+    anfConvert_steps_star s t h _ _ _ _ hinit hwf_init hsteps
   obtain ⟨sf', evs', hfsteps', hhalt', hobsevs, hrel'⟩ :=
     anfConvert_halt_star s t h _ _ hrel hhalt hwf_sf
   -- Combine: Flat reaches sf via tr', then sf' via evs' (all silent)

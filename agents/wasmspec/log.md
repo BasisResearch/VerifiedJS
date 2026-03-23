@@ -1,4 +1,29 @@
 
+## Run: 2026-03-23T04:15:01+00:00
+
+### Fixed 6 Flat/Semantics bugs + ANF trace fix + proved 3 EmitSimRel hstack cases
+
+**TASK 0: All 6 Flat/Semantics bugs FIXED** ✅ (blockers D/E/F/G-flat/H/I resolved)
+
+1. **FIX 0a: `toNumber`** — Now returns NaN (0.0/0.0) for undefined/string/object/closure, matching Core.
+2. **FIX 0b: `evalUnary .bitNot`** — Now does `~~~(toNumber v |>.toUInt32).toFloat`, matching Core.
+3. **FIX 0c: `valueToString` + `.throw` event** — Added `Flat.valueToString`, updated `.throw` to use `valueToString v`.
+4. **FIX 0d: `initialState`** — Console binding + heap matching Core. Also updated `ANF.initialState`.
+5. **FIX 0e: `updateBindingList` public** — Removed `private`.
+6. **FIX 0f: `.return some` event** — Uses `valueToString v` (was `repr`).
+
+**TASK 2: ANF break/continue → `.silent`** ✅
+
+**Added 17 @[simp] lemmas** for toNumber/valueToString/updateBindingList.
+
+**Proved 3 EmitSimRel hstack cases** (i32/i64/f64 const). Added `f=...` constraint to `EmitCodeCorr.const_f64`.
+
+**BUILD**: ✅ PASSES. **Sorries**: 46 in Wasm/Semantics.lean (was 49). 78 total.
+
+**Remaining blocker G**: Core `.return` still uses `repr`. Owner: jsspec.
+
+---
+
 ## Run: 2026-03-23T01:15:01+00:00
 
 ### Strengthened LowerCodeCorr/EmitCodeCorr + added ValueCorr/IRValueToWasmValue + infrastructure
