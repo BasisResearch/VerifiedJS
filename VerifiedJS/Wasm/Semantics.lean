@@ -5981,12 +5981,15 @@ structure EmitSimRel (irmod : IRModule) (wmod : Module)
   hstack : ir.stack.length = w.stack.length ∧
     ∀ (i : Nat), i < ir.stack.length →
       ∃ irv wv, ir.stack[i]? = some irv ∧ w.stack[i]? = some wv ∧ IRValueToWasmValue irv wv
-  /- Frame correspondence: matching number of frames with element-wise local correspondence. -/
-  hframes : ir.frames.length = w.frames.length ∧
-    ∀ (i : Nat), i < ir.frames.length →
-      (ir.frames[i]!).locals.size = (w.frames[i]!).locals.size ∧
-      ∀ (j : Nat), j < (ir.frames[i]!).locals.size →
-        IRValueToWasmValue (ir.frames[i]!).locals[j]! (w.frames[i]!).locals[j]!
+  /- Frame correspondence: head frames (if any) have matching locals. -/
+  hframes_len : ir.frames.length = w.frames.length
+  hframes_locals : ∀ (irf : IRFrame) (wf : Frame) (irfs : List IRFrame) (wfs : List Frame),
+      ir.frames = irf :: irfs → w.frames = wf :: wfs →
+        irf.locals.size = wf.locals.size
+  hframes_vals : ∀ (irf : IRFrame) (wf : Frame) (irfs : List IRFrame) (wfs : List Frame),
+      ir.frames = irf :: irfs → w.frames = wf :: wfs →
+        ∀ (j : Nat) (hj : j < irf.locals.size) (hj' : j < wf.locals.size),
+          IRValueToWasmValue (irf.locals[j]'hj) (wf.locals[j]'hj')
   /- Label correspondence (needed for halt derivation). -/
   hlabels : ir.labels.length = w.labels.length
   /- Halt correspondence. -/
@@ -6030,12 +6033,15 @@ theorem init (irmod : IRModule) (wmod : Module)
       rw [hstart, hsf]
       exact .nil
   hstack := by simp [irInitialState, Wasm.initialState]
-  hframes := by
+  hframes_len := by simp [irInitialState, Wasm.initialState]
+  hframes_locals := by
     simp [irInitialState, Wasm.initialState]
-    intro i hi
-    simp at hi
-    subst hi
-    simp
+    intro irf wf irfs wfs hirf hwf
+    simp_all
+  hframes_vals := by
+    simp [irInitialState, Wasm.initialState]
+    intro irf wf irfs wfs hirf hwf
+    simp_all
   hlabels := by simp [irInitialState, Wasm.initialState]
   hhalt := by
     intro hirHalt
@@ -6097,7 +6103,7 @@ theorem step_sim (irmod : IRModule) (wmod : Module) :
             simp only [Option.some.injEq, Prod.mk.injEq] at hstep
             obtain ⟨rfl, rfl⟩ := hstep
             have hw := step?_eq_i32Const s2 n rest_w hcw
-            refine ⟨_, hw, ⟨hrel.hemit, hrest, ?_, hrel.hframes, hrel.hlabels, hhalt_of_structural hrest hrel.hlabels⟩⟩
+            refine ⟨_, hw, ⟨hrel.hemit, hrest, ?_, hrel.hframes_len, hrel.hframes_locals, hrel.hframes_vals, hrel.hlabels, hhalt_of_structural hrest hrel.hlabels⟩⟩
             dsimp only []
             exact stack_corr_cons hrel.hstack.1 hrel.hstack.2 (.i32 n)
           · -- General case (EmitCodeCorr.general)
@@ -6112,7 +6118,7 @@ theorem step_sim (irmod : IRModule) (wmod : Module) :
             simp only [Option.some.injEq, Prod.mk.injEq] at hstep
             obtain ⟨rfl, rfl⟩ := hstep
             have hw := step?_eq_i64Const s2 n rest_w hcw
-            refine ⟨_, hw, ⟨hrel.hemit, hrest, ?_, hrel.hframes, hrel.hlabels, hhalt_of_structural hrest hrel.hlabels⟩⟩
+            refine ⟨_, hw, ⟨hrel.hemit, hrest, ?_, hrel.hframes_len, hrel.hframes_locals, hrel.hframes_vals, hrel.hlabels, hhalt_of_structural hrest hrel.hlabels⟩⟩
             dsimp only []
             exact stack_corr_cons hrel.hstack.1 hrel.hstack.2 (.i64 n)
           · sorry -- general case
@@ -6126,7 +6132,7 @@ theorem step_sim (irmod : IRModule) (wmod : Module) :
             simp only [Option.some.injEq, Prod.mk.injEq] at hstep
             obtain ⟨rfl, rfl⟩ := hstep
             have hw := step?_eq_f64Const s2 _ rest_w hcw
-            refine ⟨_, hw, ⟨hrel.hemit, hrest, ?_, hrel.hframes, hrel.hlabels, hhalt_of_structural hrest hrel.hlabels⟩⟩
+            refine ⟨_, hw, ⟨hrel.hemit, hrest, ?_, hrel.hframes_len, hrel.hframes_locals, hrel.hframes_vals, hrel.hlabels, hhalt_of_structural hrest hrel.hlabels⟩⟩
             dsimp only []
             exact stack_corr_cons hrel.hstack.1 hrel.hstack.2 (.f64 _)
           · sorry -- general case
@@ -6224,7 +6230,9 @@ theorem step_sim (irmod : IRModule) (wmod : Module) :
                         have hstk2 := hrel.hstack
                         rw [hstk, hs2] at hstk2
                         exact hstk2.2 (i + 1) (by simp; omega)
-                    hframes := hrel.hframes
+                    hframes_len := hrel.hframes_len
+                    hframes_locals := hrel.hframes_locals
+                    hframes_vals := hrel.hframes_vals
                     hlabels := hrel.hlabels
                     hhalt := hhalt_of_structural hrest hrel.hlabels }⟩
           · -- General case (EmitCodeCorr.general): unknown Wasm instructions
