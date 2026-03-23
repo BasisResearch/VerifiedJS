@@ -1,4 +1,53 @@
 
+## Run: 2026-03-23T00:05:00+00:00
+
+### Build
+- **Status**: `lake build` PASS
+
+### Sorry Count: 74 (unchanged 3 runs)
+- Wasm/Semantics.lean: 44 (LowerSimRel 13 + EmitSimRel 22+ + misc)
+- ClosureConvertCorrect.lean: 26 (EnvCorr one-directional blocks 22+)
+- ANFConvertCorrect.lean: 3 (step_star, seq.seq.seq, WF)
+- LowerCorrect.lean: 1 (init hcode)
+
+### Test262: 3/61 (UNCHANGED 78+ hours)
+
+### Agent Health — ALL STILL CRASHING
+- jsspec: EXIT 143 for 16+ consecutive runs
+- wasmspec: EXIT 1/124 (timing out or crashing)
+- proof: EXIT 143 (crashing)
+
+### Key Discovery: 3 Structural Flaws in Wasm Simulation Relations
+
+**THIS IS THE MOST IMPORTANT FINDING THIS RUN.**
+
+1. **LowerCodeCorr trivially satisfiable**: 9 of 15 constructors (while_, throw, tryCatch, return, yield, await, labeled, break, continue) use `instrs : List IRInstr` — universally quantified over ANY instruction list. This gives zero information about what IR instructions exist, making step_sim UNPROVABLE for those cases. Fix: specify actual instruction shapes from Lower.lean's `lowerExpr`.
+
+2. **LowerSimRel.henv no value correspondence**: `henv` says `∃ (idx : Nat) (val : IRValue), ... = some val` but doesn't say `val` corresponds to the ANF value. Need `∧ ValueCorr v val`.
+
+3. **EmitSimRel.hstack length-only**: `hstack : ir.stack.length = w.stack.length` doesn't say the stack VALUES match. Need `List.Forall₂ IRValueToWasmValue ir.stack w.stack` or similar.
+
+These explain why the 44 Wasm/Semantics sorries have been stuck for days — the relations are structurally too weak.
+
+### Actions Taken
+1. **Wrote wasmspec prompt** with all 3 structural flaw discoveries + concrete Lean code fixes
+2. **Simplified proof prompt** to ONE task: make EnvCorr bidirectional. Step-by-step instructions. Emphasized "do NOT touch anything else this run."
+3. **Simplified jsspec prompt** — acknowledged test262 failures are wasm runtime traps (not jsspec's problem). Told to do smallest possible task to avoid crashes.
+4. **Updated PROGRESS.md** with metrics, discovered abstractions, and proof chain status
+
+### Analysis
+1. **No progress for 3 runs (6 hours)** — all agents crashing. The sorry count has been 74 for 6 hours.
+2. **EnvCorr bidirectional is 12+ hours overdue** — proof agent physically cannot execute because it crashes every run. Simplified the prompt to the absolute minimum task.
+3. **The Wasm SimRel flaws are a deeper problem** than individual sorry grinding. Even if the wasmspec agent was working, it would hit a wall on step_sim because the relations are too weak. The discovered abstractions are the path forward.
+4. **jsspec has nothing useful to do** — all 50 test262 failures are wasm runtime traps on advanced features. The parser and core semantics are in good shape.
+
+### Critical Path (updated)
+1. proof: EnvCorr bidirectional (12+ hours overdue, minimal change, unblocks 22+ CC sorries)
+2. wasmspec: fix LowerCodeCorr constructors (NEW — unblocks 9 step_sim cases)
+3. wasmspec: add ValueCorr to LowerSimRel (NEW — needed for var, let, seq step_sim)
+4. wasmspec: strengthen EmitSimRel.hstack (NEW — needed for EmitSimRel step_sim)
+5. proof: CC compound value sub-cases (needs EnvCorr_extend, documented in prompt)
+
 ## Run: 2026-03-22T23:05:00+00:00
 
 ### Build
@@ -2047,3 +2096,4 @@ test_write
 
 ## Run: 2026-03-23T00:05:01+00:00
 
+2026-03-23T00:14:16+00:00 DONE

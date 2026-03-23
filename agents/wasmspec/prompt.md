@@ -62,47 +62,73 @@ Then construct the matching Step derivation in Lean. If you cannot, your semanti
 3. Keep definitions structurally simple for proofs.
 4. Add @[simp] lemmas for everything the proof agent might need.
 
-## CURRENT PRIORITIES (2026-03-22T23:05)
+## CURRENT PRIORITIES (2026-03-23T00:05)
 
-### ⚠️ BUILD BROKEN — FIX FIRST ⚠️
-
-**Error**: `Wasm/Semantics.lean:5867:22: omega could not prove the goal`
-
-The `| [] => omega` branch in EmitSimRel.step_sim `.drop` case fails because `hlen` (from `hrel.hstack`) was simplified before the match on `s2.stack`, so `omega` doesn't know `s2.stack = []`. Fix:
-
-```lean
--- Line 5867: change
-| [] => omega
--- to
-| [] => rw [hs2] at hlen; omega
--- or simply
-| [] => simp_all
-```
-
-This is a 1-line fix. Do it FIRST before anything else.
+### ⚠️ YOU HAVE BEEN CRASHING/TIMING OUT. Keep edits SMALL. Build-test after EVERY change. ⚠️
 
 ### MILESTONE: Flat/ SORRY-FREE. ~44 sorries in Wasm/Semantics.lean (step_sim decomposed).
 
-### Your sorry inventory (~44 in Wasm/Semantics.lean):
+### CRITICAL DISCOVERY: Your simulation relations have STRUCTURAL FLAWS that make step_sim UNPROVABLE
 
-| Category | Count | Description |
-|----------|-------|-------------|
-| LowerSimRel.step_sim sub-cases | ~13 | var, let, seq, if, while, throw, tryCatch, return, yield, await, labeled, break, continue |
-| EmitSimRel.step_sim sub-cases | ~22 | 1 empty-code + ~21 IR instruction cases (drop trap, general, etc.) |
-| LowerSimRel.init hcode | 3 | Blocked on lowerExpr being private |
-| Misc | ~6 | Various |
+#### Problem 1: LowerCodeCorr is TRIVIALLY SATISFIABLE for 9 constructors
 
-### #1: Prove EmitSimRel.step_sim for simple 1:1 IR→Wasm instructions
+These constructors accept `instrs : List IRInstr` with NO constraint on what the instructions are:
+```lean
+| while_ (cond body : ANF.Expr) (instrs : List IRInstr) : LowerCodeCorr (.while_ cond body) instrs
+| throw (arg : ANF.Trivial) (instrs : List IRInstr) : LowerCodeCorr (.throw arg) instrs
+| tryCatch ... (instrs : List IRInstr) : LowerCodeCorr (.tryCatch ...) instrs
+| return_ ... (instrs : List IRInstr) : LowerCodeCorr (.«return» ...) instrs
+| yield ... (instrs : List IRInstr) : LowerCodeCorr (.yield ...) instrs
+| await ... (instrs : List IRInstr) : LowerCodeCorr (.await ...) instrs
+| labeled ... (instrs : List IRInstr) : LowerCodeCorr (.labeled ...) instrs
+| break_ ... (instrs : List IRInstr) : LowerCodeCorr (.«break» ...) instrs
+| continue_ ... (instrs : List IRInstr) : LowerCodeCorr (.«continue» ...) instrs
+```
 
-Start with `IRInstr.const_`, `IRInstr.return_`, `IRInstr.localGet`, `IRInstr.localSet`, `IRInstr.drop` (non-empty case already done, just close trap case). These map 1:1 to Wasm instructions.
+**WHY THIS IS A PROBLEM**: `LowerCodeCorr (.while_ cond body) instrs` says "while_ lowers to ANY instruction list." In step_sim, when you case-split on `hrel.hcode`, you get `instrs` with NO information about what instructions are in it. You cannot prove what `irStep?` does.
 
-### #2: Prove LowerSimRel.step_sim for `.trivial (.lit v)` and `.trivial (.var x)`
+**FIX**: Each constructor must specify the ACTUAL instruction shape. Look at `lowerExpr` in Lower.lean (it's private, but you can read it) to see what each expression form lowers to. Example:
+```lean
+| while_ (cond body : ANF.Expr) (condCode bodyCode : List IRInstr) :
+    LowerCodeCorr cond condCode → LowerCodeCorr body bodyCode →
+    LowerCodeCorr (.while_ cond body)
+      ([.block none ([.loop none (condCode ++ [.brIf 1] ++ bodyCode ++ [.br 0])])])
+```
 
-These are the simplest expression cases. The IR code for a literal is just `[const v, return]`.
+**DO THIS FIRST**: Fix LowerCodeCorr for `while_`, `throw`, `return_`, `break_`, `continue_` — check Lower.lean for the actual lowered shapes. Leave the complex ones (tryCatch, yield, await) with `instrs` for now.
 
-### #3: Make `lowerExpr` public or add equation lemmas
+#### Problem 2: LowerSimRel.henv lacks VALUE correspondence
 
-The LowerSimRel.init `hcode` sorry needs `lowerExpr` correspondence. Either ask proof agent to make it public, or state equation lemmas in Wasm/Semantics.lean.
+Current:
+```lean
+henv : ∀ name v, s.env.lookup name = some v →
+  ∃ (idx : Nat) (val : IRValue), (Option.bind ir.frames.head? (fun f => f.locals[idx]?)) = some val
+```
+This says "a local exists" but NOT "its value matches the ANF value." You need:
+```lean
+henv : ∀ name v, s.env.lookup name = some v →
+  ∃ (idx : Nat) (val : IRValue), (Option.bind ir.frames.head? (fun f => f.locals[idx]?)) = some val ∧
+    ValueCorr v val
+```
+where `ValueCorr` relates ANF values to IR values (numbers→f64, bools→i32, etc.).
+
+#### Problem 3: EmitSimRel.hstack tracks only LENGTH
+
+Current: `hstack : ir.stack.length = w.stack.length`
+This doesn't say the values MATCH. You need:
+```lean
+hstack : List.Forall₂ IRValueToWasmValue ir.stack w.stack
+```
+or at minimum:
+```lean
+hstack : ir.stack.map irToWasm = w.stack
+```
+
+### Priority order:
+1. Fix LowerCodeCorr constructors (MOST IMPACTFUL — unblocks step_sim cases)
+2. Add ValueCorr to LowerSimRel.henv
+3. Strengthen EmitSimRel.hstack
+4. Then prove step_sim sub-cases (they'll be provable with the right relations)
 
 ## GLOBAL GOAL -- DO NOT STOP
 Your job is done when:

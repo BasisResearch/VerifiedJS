@@ -48,42 +48,31 @@ Keep `partial def step?` for the interpreter. The proof agent needs the inductiv
 3. Test262 tells you what to formalize. Reduce skips by adding missing features.
 4. Your relations must be INHABITED with concrete derivations.
 
-## CURRENT PRIORITIES (2026-03-22T23:05)
+## CURRENT PRIORITIES (2026-03-23T00:05)
 
 ### Status: parseFunctionBody FIXED. __rt_makeClosure FIXED. 98.8% compile rate. Core/Semantics 0 sorry.
-### Test262: 3/61 pass, 50 fail — the 50 failures are REAL missing-feature gaps (runtime traps on advanced features).
-### WARNING: You have been crashing (EXIT 143) for 12+ consecutive runs. Keep your work SMALL and FOCUSED.
+### Test262: 3/61 pass, 50 fail — failures are runtime traps on advanced features.
+### WARNING: You have been crashing (EXIT 143) for 16+ consecutive runs. Keep your work EXTREMELY SMALL.
 
-**The test262 failures are runtime traps (wasm_rc=134) on advanced JS features the compiler doesn't support:**
-- Classes with destructuring (async generators, private methods)
-- Built-in objects (Date, RegExp, TypedArray, Set, Iterator, Uint8Array, Temporal)
-- `for-await-of`, `async` generators, `yield` delegation
-- `void` operator, `eval` in strict mode
+**The 50 test262 failures are all `wasm_rc=134` (runtime traps) on features the compiler backend doesn't support yet. These are NOT parser/semantics bugs — they're lowering gaps in Lower.lean (proof agent's file).**
 
-### #1: Run a fresh test262 sample and categorize failures
+### YOUR ACTUAL TASK: Make a tiny, useful improvement that doesn't crash
 
-Run `bash scripts/run_test262_compare.sh --fast --sample 100 --seed fresh 2>&1 | tail -30` and categorize:
-- How many now PASS (with parseFunctionBody + makeClosure fixes)?
-- For failures: which are `language/` tests on features we SHOULD support?
-- Which failures are on built-ins we can't support (Date, RegExp, Temporal)?
+Since you keep crashing (likely OOM), try the SMALLEST possible task:
 
-### #2: Fix the simplest `language/` test262 failures
+1. Check build: `bash scripts/lake_build_concise.sh`
+2. If build passes, check test262: `bash scripts/run_test262_compare.sh --fast 2>&1 | tail -20`
+3. Pick ONE thing from the failure list that's a parser/elaboration issue (NOT a wasm runtime trap)
+4. Fix it. Build. Log. Exit.
 
-Focus on `language/expressions/` and `language/statements/` tests — these test core JS semantics we control. Look for patterns:
-- `void` operator → needs elaboration support (simple: `void expr` → evaluate expr, return undefined)
-- `typeof` edge cases → may need fixes in Core.step?
-- Comma operator → should work if elaboration handles it
-- Labeled statements with `break` inside `switch` → may need Wasm lowering fix
-
-### #3: Fix any remaining parser bugs exposed by test262
-
-If any tests fail with COMPILE_ERROR or PARSE_ERROR, fix the parser/lexer.
+If there are NO parser/elaboration issues and all failures are wasm runtime traps, just log that and exit. DO NOT attempt large refactors.
 
 ### DO NOT:
 - Fix warnings or deprecations
 - Write new e2e tests
 - Do code quality work
 - Attempt to modify files you don't own
+- Make large changes (you WILL crash)
 
 ## GOLDEN RULE for step? proofs
 NEVER pass `step?` to `simp`. Always use `unfold step? at h` then `simp [-step?]`.

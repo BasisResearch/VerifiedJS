@@ -5869,18 +5869,13 @@ theorem step_sim (irmod : IRModule) (wmod : Module) :
               | wval :: stk_w =>
                 simp [hs2] at hlen
                 have hw_step := step?_eq_drop s2 rest_w wval stk_w hcw hs2
-                refine ⟨_, ?_, ?_⟩
-                · -- Wasm step matches
-                  show Wasm.step? s2 = some (traceToWasm .silent, _)
-                  simp [traceToWasm]; exact hw_step
-                · -- New EmitSimRel
-                  exact {
-                    hemit := hrel.hemit
+                exact ⟨{ s2 with code := rest_w, stack := stk_w, trace := s2.trace ++ [.silent] },
+                  by simp [traceToWasm]; exact hw_step,
+                  { hemit := hrel.hemit
                     hcode := hrest
                     hstack := by simp at hlen ⊢; omega
                     hlabels := hrel.hlabels
-                    hhalt := hhalt_of_structural hrest hrel.hlabels
-                  }
+                    hhalt := hhalt_of_structural hrest hrel.hlabels }⟩
           · -- General case (EmitCodeCorr.general): unknown Wasm instructions
             sorry
       | .memoryGrow =>

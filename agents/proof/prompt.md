@@ -195,21 +195,61 @@ private theorem closureConvert_step_simulation ... := by
 
 These need heap correspondence or sub-expression stepping. Lower priority.
 
-## PROOF STRATEGY — Current Sorry Inventory (2026-03-22T23:05)
+## PROOF STRATEGY — Current Sorry Inventory (2026-03-23T00:05)
 
-### Sorries in YOUR files (26 CC + 3 ANF + 1 Lower = 30 total):
+### ⚠️ YOU HAVE BEEN CRASHING FOR 12+ HOURS. Keep edits SMALL. One sorry per run. Build-test after EVERY change. ⚠️
 
-| # | File | Lines | Count | Description | Priority |
-|---|------|-------|-------|-------------|----------|
-| 1 | ClosureConvertCorrect.lean | 112-114 | 0 | **EnvCorr is ONE-DIRECTIONAL** — root cause of 22+ sorries | **FIX NOW** |
-| 2 | ClosureConvertCorrect.lean | 459 | 1 | var Core→Flat mismatch | Unblocked by bidirectional EnvCorr |
-| 3 | ClosureConvertCorrect.lean | 460-479 | 20 | compound cases (let/assign/if/seq/etc) | Value sub-cases first, then strong induction |
-| 4 | ClosureConvertCorrect.lean | 355 | 1 | .var captured | Later (needs heap) |
-| 5 | ClosureConvertCorrect.lean | 532,584,585 | 3 | return/yield/await some | Later (sub-stepping) |
-| 6 | ClosureConvertCorrect.lean | 690 | 1 | this mismatch | Unblocked by bidirectional EnvCorr |
-| 7 | ANFConvertCorrect.lean | 94 | 1 | anfConvert_step_star | Later |
-| 8 | ANFConvertCorrect.lean | 1017,1097 | 2 | .seq.seq.seq + WF blocker | Later |
-| 9 | LowerCorrect.lean | 69 | 1 | init hcode | Blocked on wasmspec |
+### THE ONE THING TO DO: Make EnvCorr bidirectional (unblocks 22+ sorries)
+
+This is a SMALL, MECHANICAL change. Do ONLY this, then build, then stop.
+
+**Step A** — Change lines 112-114 from:
+```lean
+private def EnvCorr (cenv : Core.Env) (fenv : Flat.Env) : Prop :=
+  ∀ name fv, fenv.lookup name = some fv →
+    ∃ cv, cenv.lookup name = some cv ∧ fv = Flat.convertValue cv
+```
+to:
+```lean
+private def EnvCorr (cenv : Core.Env) (fenv : Flat.Env) : Prop :=
+  (∀ name fv, fenv.lookup name = some fv →
+    ∃ cv, cenv.lookup name = some cv ∧ fv = Flat.convertValue cv) ∧
+  (∀ name cv, cenv.lookup name = some cv →
+    ∃ fv, fenv.lookup name = some fv ∧ fv = Flat.convertValue cv)
+```
+
+**Step B** — Fix `closureConvert_init_related` (around line 129-134). Replace:
+```lean
+  · -- EnvCorr: Flat env is empty, so vacuously true
+    intro name fv hlookup
+    simp [Flat.Env.empty, Flat.Env.lookup] at hlookup
+```
+with:
+```lean
+  · -- EnvCorr: both envs are empty
+    constructor
+    · intro name fv hlookup; simp [Flat.Env.empty, Flat.Env.lookup] at hlookup
+    · intro name cv hlookup; simp [Core.Env.lookup] at hlookup
+```
+(The Core initial env may have bindings — check what `Core.initialState` sets. If it also uses an empty env, `simp [Core.Env.lookup]` closes it.)
+
+**Step C** — Every existing use of `henvCorr name fv hfenv` needs `.1`:
+Replace `henvCorr name fv hfenv` → `henvCorr.1 name fv hfenv` everywhere it appears. Search for all occurrences.
+
+**Step D** — Build. If it passes, STOP. If not, fix the build errors.
+
+That's it. Do NOT touch any other sorry this run. Do NOT restructure anything.
+
+### Remaining sorries (for future runs, NOT this one):
+
+| # | File | Lines | Count | Description |
+|---|------|-------|-------|-------------|
+| 1 | ClosureConvertCorrect.lean | 459, 690 | 2 | Now provable with bidirectional EnvCorr |
+| 2 | ClosureConvertCorrect.lean | 460-479 | 20 | Compound cases — value sub-cases first |
+| 3 | ClosureConvertCorrect.lean | 355 | 1 | Captured var (needs heap) |
+| 4 | ClosureConvertCorrect.lean | 532,584,585 | 3 | return/yield/await some |
+| 5 | ANFConvertCorrect.lean | 94,1017,1097 | 3 | step_star + .seq.seq.seq + WF |
+| 6 | LowerCorrect.lean | 69 | 1 | Blocked on wasmspec |
 
 ### Key Lean 4 pitfall — AVOID `cases ... with` inside `<;>` blocks
 
