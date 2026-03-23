@@ -2410,6 +2410,24 @@ theorem step?_eq_localGet (s : ExecState) (idx : Nat) (rest : List Instr)
         trace := s.trace ++ [.silent] }) := by
   cases s; simp_all [step?, hlocal, pushTrace]
 
+/-- step? for localGet with no active frame: traps. -/
+theorem step?_eq_localGet_noFrame (s : ExecState) (idx : Nat) (rest : List Instr)
+    (hcode : s.code = Instr.localGet idx :: rest)
+    (hframes : s.frames = []) :
+    step? s = some (.trap "local.get without active frame",
+      { s with code := [], trace := s.trace ++ [.trap "local.get without active frame"] }) := by
+  cases s; simp_all [step?, trapState, pushTrace]
+
+/-- step? for localGet with local index out of bounds: traps. -/
+theorem step?_eq_localGet_oob (s : ExecState) (idx : Nat) (rest : List Instr)
+    (fr : Frame) (frs : List Frame)
+    (hcode : s.code = Instr.localGet idx :: rest)
+    (hframes : s.frames = fr :: frs)
+    (hlocal : ¬(idx < fr.locals.size)) :
+    step? s = some (.trap s!"unknown local index {idx}",
+      { s with code := [], trace := s.trace ++ [.trap s!"unknown local index {idx}"] }) := by
+  cases s; simp_all [step?, trapState, pushTrace]
+
 /-- Exact step? result for local.set with hypothesis-form arguments. -/
 theorem step?_eq_localSet (s : ExecState) (idx : Nat) (rest : List Instr)
     (v : WasmValue) (stk : List WasmValue)
@@ -3174,19 +3192,19 @@ def irStep? (s : IRExecState) : Option (TraceEvent × IRExecState) :=
       -- Local variables
       | .localGet idx =>
           match s.frames with
-          | [] => some (irTrapState base "no active frame")
+          | [] => some (irTrapState base "local.get without active frame")
           | frame :: _ =>
               match frame.locals[idx]? with
               | some v => some (.silent, irPushTrace { base with stack := v :: base.stack } .silent)
-              | none => some (irTrapState base s!"local.get out of bounds: {idx}")
+              | none => some (irTrapState base s!"unknown local index {idx}")
       | .localSet idx =>
           match irPop1? base.stack, s.frames with
           | some (v, stk), frame :: frest =>
               if idx < frame.locals.size then
                 let frame' := { frame with locals := frame.locals.set! idx v }
                 some (.silent, irPushTrace { base with stack := stk, frames := frame' :: frest } .silent)
-              else some (irTrapState base s!"local.set out of bounds: {idx}")
-          | _, [] => some (irTrapState base "no active frame for local.set")
+              else some (irTrapState base s!"unknown local index {idx}")
+          | _, [] => some (irTrapState base "local.set without active frame")
           | none, _ => some (irTrapState base "stack underflow in local.set")
 
       -- Global variables
@@ -4273,6 +4291,24 @@ theorem irStep?_eq_localGet (s : IRExecState) (idx : Nat) (rest : List IRInstr)
         stack := val :: s.stack
         trace := s.trace ++ [.silent] }) := by
   simp [irStep?, hcode, hframes, hlocal, irPushTrace]
+
+/-- irStep? for localGet with no active frame: traps. -/
+theorem irStep?_eq_localGet_noFrame (s : IRExecState) (idx : Nat) (rest : List IRInstr)
+    (hcode : s.code = IRInstr.localGet idx :: rest)
+    (hframes : s.frames = []) :
+    irStep? s = some (.trap "local.get without active frame",
+      { s with code := [], trace := s.trace ++ [.trap "local.get without active frame"] }) := by
+  simp [irStep?, hcode, hframes, irTrapState, irPushTrace]
+
+/-- irStep? for localGet with local index out of bounds: traps. -/
+theorem irStep?_eq_localGet_oob (s : IRExecState) (idx : Nat) (rest : List IRInstr)
+    (frame : IRFrame) (frest : List IRFrame)
+    (hcode : s.code = IRInstr.localGet idx :: rest)
+    (hframes : s.frames = frame :: frest)
+    (hlocal : frame.locals[idx]? = none) :
+    irStep? s = some (.trap s!"unknown local index {idx}",
+      { s with code := [], trace := s.trace ++ [.trap s!"unknown local index {idx}"] }) := by
+  simp [irStep?, hcode, hframes, hlocal, irTrapState, irPushTrace]
 
 /-- Exact state after local.set: pops stack, updates local, advances code. -/
 theorem irStep?_eq_localSet (s : IRExecState) (idx : Nat) (rest : List IRInstr)
