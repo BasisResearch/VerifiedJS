@@ -222,6 +222,19 @@ def exprValue? : Expr → Option Value
 -- | normative-optional\] If the host is a web browser or otherwise supports
 -- | , then 1. If \_argument\_ is an Object and \_argument\_ has an
 -- | \[\[IsHTMLDDA\]\] internal slot, return \*false\*. 1. Return \*true\*.
+-- SPEC: L5982-L5994
+-- | # ToBoolean ( \_argument\_: an ECMAScript language value, ): a Boolean
+-- |
+-- | description
+-- | :   It converts \_argument\_ to a value of type Boolean.
+-- |
+-- | 1\. If \_argument\_ is a Boolean, return \_argument\_. 1. If
+-- | \_argument\_ is one of \*undefined\*, \*null\*, \*+0\*~𝔽~, \*-0\*~𝔽~,
+-- | \*NaN\*, \*0\*~ℤ~, or the empty String, return \*false\*. 1.
+-- | \[id=\"step-to-boolean-web-compat-insertion-point\",
+-- | normative-optional\] If the host is a web browser or otherwise supports
+-- | , then 1. If \_argument\_ is an Object and \_argument\_ has an
+-- | \[\[IsHTMLDDA\]\] internal slot, return \*false\*. 1. Return \*true\*.
 /-- ECMA-262 §7.2.14 ToBoolean (core subset). -/
 def toBoolean : Value → Bool
   | .undefined => false
@@ -365,6 +378,23 @@ def evalUnary : UnaryOp → Value → Value
   -- | 𝔽(\_int32bit\_ - 2^32^). 1. Return 𝔽(\_int32bit\_).
   | .bitNot, v => .number (~~~(toNumber v |>.toUInt32)).toFloat
 
+-- SPEC: L6305-L6321
+-- | # ToString ( \_argument\_: an ECMAScript language value, ): either a normal completion containing a String or a throw completion
+-- |
+-- | description
+-- | :   It converts \_argument\_ to a value of type String.
+-- |
+-- | 1\. If \_argument\_ is a String, return \_argument\_. 1. If \_argument\_
+-- | is a Symbol, throw a \*TypeError\* exception. 1. If \_argument\_ is
+-- | \*undefined\*, return \*\"undefined\"\*. 1. If \_argument\_ is \*null\*,
+-- | return \*\"null\"\*. 1. If \_argument\_ is \*true\*, return
+-- | \*\"true\"\*. 1. If \_argument\_ is \*false\*, return \*\"false\"\*. 1.
+-- | If \_argument\_ is a Number, return Number::toString(\_argument\_,
+-- | 10). 1. If \_argument\_ is a BigInt, return
+-- | BigInt::toString(\_argument\_, 10). 1. Assert: \_argument\_ is an
+-- | Object. 1. Let \_primValue\_ be ? ToPrimitive(\_argument\_,
+-- | \~string\~). 1. Assert: \_primValue\_ is not an Object. 1. Return ?
+-- | ToString(\_primValue\_).
 -- SPEC: L6305-L6321
 -- | # ToString ( \_argument\_: an ECMAScript language value, ): either a normal completion containing a String or a throw completion
 -- |
@@ -1313,7 +1343,18 @@ def step? (s : State) : Option (TraceEvent × State) :=
               some (t, s')
           | none => none
       | some (.object addr) =>
-          -- ECMA-262 §9.1.8 [[Get]]: look up property on heap object.
+          -- SPEC: L10878-L10889
+          -- | # OrdinaryGet ( \_O\_: an Object, \_P\_: a property key, \_Receiver\_: an ECMAScript language value, ): either a normal completion containing an ECMAScript language value or a throw completion
+          -- |
+          -- | 1\. Let \_desc\_ be ? \_O\_.\[\[GetOwnProperty\]\](\_P\_). 1. If
+          -- | \_desc\_ is \*undefined\*, then 1. Let \_parent\_ be ?
+          -- | \_O\_.\[\[GetPrototypeOf\]\](). 1. If \_parent\_ is \*null\*, return
+          -- | \*undefined\*. 1. Return ? \_parent\_.\[\[Get\]\](\_P\_,
+          -- | \_Receiver\_). 1. If IsDataDescriptor(\_desc\_) is \*true\*, return
+          -- | \_desc\_.\[\[Value\]\]. 1. Assert: IsAccessorDescriptor(\_desc\_) is
+          -- | \*true\*. 1. Let \_getter\_ be \_desc\_.\[\[Get\]\]. 1. If \_getter\_ is
+          -- | \*undefined\*, return \*undefined\*. 1. Return ? Call(\_getter\_,
+          -- | \_Receiver\_).
           let v := match s.heap.objects[addr]? with
             | some props =>
                 match props.find? (fun kv => kv.fst == prop) with
@@ -1536,7 +1577,34 @@ def step? (s : State) : Option (TraceEvent × State) :=
               some (t, s')
           | none => none
       | some (.object addr) =>
-          -- §13.7.5.15 EnumerateObjectProperties: iterate over own enumerable string-keyed properties.
+          -- SPEC: L18074-L18100
+          -- | # EnumerateObjectProperties ( \_O\_: an Object, ): an iterator object
+          -- |
+          -- | 1\. Return an iterator object whose \`next\` method iterates over all
+          -- | the String-valued keys of enumerable properties of \_O\_. The iterator
+          -- | object is never directly accessible to ECMAScript code. The mechanics
+          -- | and order of enumerating the properties is not specified but must
+          -- | conform to the rules specified below.
+          -- |
+          -- | The iterator\'s \`throw\` and \`return\` methods are \*null\* and are
+          -- | never invoked. The iterator\'s \`next\` method processes object
+          -- | properties to determine whether the property key should be returned as
+          -- | an iterator value. Returned property keys do not include keys that are
+          -- | Symbols. Properties of the target object may be deleted during
+          -- | enumeration. A property that is deleted before it is processed by the
+          -- | iterator\'s \`next\` method is ignored. If new properties are added to
+          -- | the target object during enumeration, the newly added properties are not
+          -- | guaranteed to be processed in the active enumeration. A property name
+          -- | will be returned by the iterator\'s \`next\` method at most once in any
+          -- | enumeration.
+          -- |
+          -- | Enumerating the properties of the target object includes enumerating
+          -- | properties of its prototype, and the prototype of the prototype, and so
+          -- | on, recursively; but a property of a prototype is not processed if it
+          -- | has the same name as a property that has already been processed by the
+          -- | iterator\'s \`next\` method. The values of \[\[Enumerable\]\] attributes
+          -- | are not considered when determining if a property of a prototype object
+          -- | has already been processed. The enumerable property names of prototype
           let keys : List PropName := match s.heap.objects[addr]? with
             | some props => props.map (fun p : PropName × Value => p.1)
             | none => []
@@ -1693,6 +1761,15 @@ def step? (s : State) : Option (TraceEvent × State) :=
           | none => none
   -- SPEC: L14917-L14917
   -- | PrimaryExpression : \`this\` 1. Return ? ResolveThisBinding().
+  -- SPEC: L10002-L10010
+  -- | # ResolveThisBinding ( ): either a normal completion containing an ECMAScript language value or a throw completion
+  -- |
+  -- | description
+  -- | :   It determines the binding of the keyword \`this\` using the
+  -- |     LexicalEnvironment of the running execution context.
+  -- |
+  -- | 1\. Let \_envRec\_ be GetThisEnvironment(). 1. Return ?
+  -- | \_envRec\_.GetThisBinding().
   | .this =>
       match s.env.lookup "this" with
       | some v =>
