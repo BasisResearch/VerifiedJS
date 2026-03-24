@@ -315,8 +315,25 @@ def evalUnary : UnaryOp → Value → Value
   | .neg, v => .number (-toNumber v)
   | .pos, v => .number (toNumber v)
   | .logNot, v => .bool (!toBoolean v)
+  -- SPEC: L16148-L16157
+  -- | # The \`void\` Operator
+  -- |
+  -- | # Runtime Semantics: Evaluation
+  -- |
+  -- | UnaryExpression : \`void\` UnaryExpression 1. Let \_expr\_ be ?
+  -- | Evaluation of \|UnaryExpression\|. 1. Perform ? GetValue(\_expr\_). 1.
+  -- | Return \*undefined\*.
   | .void, _ => .undefined
-  -- ECMA-262 §12.5.8 Bitwise NOT: ~ToInt32(x).
+  -- SPEC: L16204-L16213
+  -- | # Bitwise NOT Operator ( \`\~\` )
+  -- |
+  -- | # Runtime Semantics: Evaluation
+  -- |
+  -- | UnaryExpression : \`\~\` UnaryExpression 1. Let \_expr\_ be ? Evaluation
+  -- | of \|UnaryExpression\|. 1. Let \_oldValue\_ be ? ToNumeric(?
+  -- | GetValue(\_expr\_)). 1. If \_oldValue\_ is a Number, return
+  -- | Number::bitwiseNOT(\_oldValue\_). 1. Assert: \_oldValue\_ is a
+  -- | BigInt. 1. Return BigInt::bitwiseNOT(\_oldValue\_).
   | .bitNot, v => .number (~~~(toNumber v |>.toUInt32)).toFloat
 
 -- SPEC: L6305-L6321
@@ -654,7 +671,29 @@ def evalBinary : BinOp → Value → Value → Value
   | .sub, a, b => .number (toNumber a - toNumber b)
   | .mul, a, b => .number (toNumber a * toNumber b)
   | .div, a, b => .number (toNumber a / toNumber b)
-  -- §7.2.14 Abstract Equality (with type coercion).
+  -- SPEC: L16451-L16489
+  -- | EqualityExpression : EqualityExpression \`==\` RelationalExpression 1.
+  -- | Let \_lRef\_ be ? Evaluation of \|EqualityExpression\|. 1. Let \_lVal\_
+  -- | be ? GetValue(\_lRef\_). 1. Let \_rRef\_ be ? Evaluation of
+  -- | \|RelationalExpression\|. 1. Let \_rVal\_ be ? GetValue(\_rRef\_). 1.
+  -- | Return ? IsLooselyEqual(\_rVal\_, \_lVal\_). EqualityExpression :
+  -- | EqualityExpression \`!=\` RelationalExpression 1. Let \_lRef\_ be ?
+  -- | Evaluation of \|EqualityExpression\|. 1. Let \_lVal\_ be ?
+  -- | GetValue(\_lRef\_). 1. Let \_rRef\_ be ? Evaluation of
+  -- | \|RelationalExpression\|. 1. Let \_rVal\_ be ? GetValue(\_rRef\_). 1.
+  -- | Let \_r\_ be ? IsLooselyEqual(\_rVal\_, \_lVal\_). 1. If \_r\_ is
+  -- | \*true\*, return \*false\*. 1. Return \*true\*. EqualityExpression :
+  -- | EqualityExpression \`===\` RelationalExpression 1. Let \_lRef\_ be ?
+  -- | Evaluation of \|EqualityExpression\|. 1. Let \_lVal\_ be ?
+  -- | GetValue(\_lRef\_). 1. Let \_rRef\_ be ? Evaluation of
+  -- | \|RelationalExpression\|. 1. Let \_rVal\_ be ? GetValue(\_rRef\_). 1.
+  -- | Return IsStrictlyEqual(\_rVal\_, \_lVal\_). EqualityExpression :
+  -- | EqualityExpression \`!==\` RelationalExpression 1. Let \_lRef\_ be ?
+  -- | Evaluation of \|EqualityExpression\|. 1. Let \_lVal\_ be ?
+  -- | GetValue(\_lRef\_). 1. Let \_rRef\_ be ? Evaluation of
+  -- | \|RelationalExpression\|. 1. Let \_rVal\_ be ? GetValue(\_rRef\_). 1.
+  -- | Let \_r\_ be IsStrictlyEqual(\_rVal\_, \_lVal\_). 1. If \_r\_ is
+  -- | \*true\*, return \*false\*. 1. Return \*true\*.
   | .eq, a, b => .bool (abstractEq a b)
   | .neq, a, b => .bool (!abstractEq a b)
   -- SPEC: L6606-L6617
@@ -666,6 +705,25 @@ def evalBinary : BinOp → Value → Value → Value
   -- | SameValueNonNumber(\_x\_, \_y\_).
   -- | This algorithm differs from the SameValue Algorithm in its treatment of
   -- | signed zeroes and NaNs.
+  -- SPEC: L4590-L4596
+  -- | # Number::equal ( \_x\_: a Number, \_y\_: a Number, ): a Boolean
+  -- |
+  -- | 1\. If \_x\_ is \*NaN\*, return \*false\*. 1. If \_y\_ is \*NaN\*,
+  -- | return \*false\*. 1. If \_x\_ is \_y\_, return \*true\*. 1. If \_x\_ is
+  -- | \*+0\*~𝔽~ and \_y\_ is \*-0\*~𝔽~, return \*true\*. 1. If \_x\_ is
+  -- | \*-0\*~𝔽~ and \_y\_ is \*+0\*~𝔽~, return \*true\*. 1. Return \*false\*.
+  -- SPEC: L6499-L6513
+  -- | # SameValueNonNumber ( \_x\_: an ECMAScript language value, but not a Number, \_y\_: an ECMAScript language value, but not a Number, ): a Boolean
+  -- |
+  -- | 1\. Assert: SameType(\_x\_, \_y\_) is \*true\*. 1. If \_x\_ is either
+  -- | \*undefined\* or \*null\*, return \*true\*. 1. If \_x\_ is a BigInt,
+  -- | then 1. Return BigInt::equal(\_x\_, \_y\_). 1. If \_x\_ is a String,
+  -- | then 1. If \_x\_ and \_y\_ have the same length and the same code units
+  -- | in the same positions, return \*true\*. 1. Return \*false\*. 1. If \_x\_
+  -- | is a Boolean, then 1. If \_x\_ and \_y\_ are both \*true\* or both
+  -- | \*false\*, return \*true\*. 1. Return \*false\*. 1. NOTE: All other
+  -- | ECMAScript language values are compared by identity. 1. If \_x\_ is
+  -- | \_y\_, return \*true\*. 1. Return \*false\*.
   | .strictEq, a, b => .bool (a == b)
   | .strictNeq, a, b => .bool (a != b)
   -- SPEC: L16365-L16388
@@ -765,6 +823,36 @@ def evalBinary : BinOp → Value → Value → Value
   -- | ExponentiationExpression 1. Return ?
   -- | EvaluateStringOrNumericBinaryExpression(\|UpdateExpression\|, \`\*\*\`,
   -- | \|ExponentiationExpression\|).
+  -- SPEC: L4417-L4454
+  -- | # Number::exponentiate ( \_base\_: a Number, \_exponent\_: a Number, ): a Number
+  -- |
+  -- | description
+  -- | :   It returns an implementation-approximated value representing the
+  -- |     result of raising \_base\_ to the \_exponent\_ power.
+  -- |
+  -- | 1\. If \_exponent\_ is \*NaN\*, return \*NaN\*. 1. If \_exponent\_ is
+  -- | either \*+0\*~𝔽~ or \*-0\*~𝔽~, return \*1\*~𝔽~. 1. If \_base\_ is
+  -- | \*NaN\*, return \*NaN\*. 1. If \_base\_ is \*+∞\*~𝔽~, then 1. If
+  -- | \_exponent\_ \> \*+0\*~𝔽~, return \*+∞\*~𝔽~. 1. Return \*+0\*~𝔽~. 1. If
+  -- | \_base\_ is \*-∞\*~𝔽~, then 1. If \_exponent\_ \> \*+0\*~𝔽~, then 1. If
+  -- | \_exponent\_ is an odd integral Number, return \*-∞\*~𝔽~. 1. Return
+  -- | \*+∞\*~𝔽~. 1. If \_exponent\_ is an odd integral Number, return
+  -- | \*-0\*~𝔽~. 1. Return \*+0\*~𝔽~. 1. If \_base\_ is \*+0\*~𝔽~, then 1. If
+  -- | \_exponent\_ \> \*+0\*~𝔽~, return \*+0\*~𝔽~. 1. Return \*+∞\*~𝔽~. 1. If
+  -- | \_base\_ is \*-0\*~𝔽~, then 1. If \_exponent\_ \> \*+0\*~𝔽~, then 1. If
+  -- | \_exponent\_ is an odd integral Number, return \*-0\*~𝔽~. 1. Return
+  -- | \*+0\*~𝔽~. 1. If \_exponent\_ is an odd integral Number, return
+  -- | \*-∞\*~𝔽~. 1. Return \*+∞\*~𝔽~. 1. Assert: \_base\_ is finite and is
+  -- | neither \*+0\*~𝔽~ nor \*-0\*~𝔽~. 1. If \_exponent\_ is \*+∞\*~𝔽~,
+  -- | then 1. If abs(ℝ(\_base\_)) \> 1, return \*+∞\*~𝔽~. 1. If
+  -- | abs(ℝ(\_base\_)) = 1, return \*NaN\*. 1. Return \*+0\*~𝔽~. 1. If
+  -- | \_exponent\_ is \*-∞\*~𝔽~, then 1. If abs(ℝ(\_base\_)) \> 1, return
+  -- | \*+0\*~𝔽~. 1. If abs(ℝ(\_base\_)) = 1, return \*NaN\*. 1. Return
+  -- | \*+∞\*~𝔽~. 1. Assert: \_exponent\_ is finite and is neither \*+0\*~𝔽~
+  -- | nor \*-0\*~𝔽~. 1. If \_base\_ \< \*-0\*~𝔽~ and \_exponent\_ is not an
+  -- | integral Number, return \*NaN\*. 1. Return an
+  -- | implementation-approximated Number value representing the result of
+  -- | raising ℝ(\_base\_) to the ℝ(\_exponent\_) power.
   | .exp, a, b => .number (Float.pow (toNumber a) (toNumber b))
   -- SPEC: L6150-L6160
   -- | # ToUint32 ( \_argument\_: an ECMAScript language value, ): either a normal completion containing an integral Number or a throw completion
