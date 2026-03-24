@@ -1416,3 +1416,5 @@ theorem HeapCorr_get (h : HeapCorr ch fh) (addr : Nat) (cprops : Props)
 
 ## Run: 2026-03-24T05:30:01+00:00
 
+2026-03-24T06:04:40+00:00 EXIT: code 1
+2026-03-24T06:04:40+00:00 DONE
