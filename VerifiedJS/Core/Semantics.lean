@@ -5174,6 +5174,28 @@ def pushTrace (s : State) (t : TraceEvent) : State :=
 -- |
 -- | ParenthesizedExpression\[Yield, Await\] : \`(\` Expression\[+In, ?Yield,
 -- | ?Await\] \`)\`
+-- SPEC: L15405-L15425
+-- | # The Grouping Operator
+-- |
+-- | # Static Semantics: Early Errors
+-- |
+-- | PrimaryExpression : CoverParenthesizedExpressionAndArrowParameterList
+-- |
+-- | - \|CoverParenthesizedExpressionAndArrowParameterList\| must cover a
+-- |   \|ParenthesizedExpression\|.
+-- |
+-- | # Runtime Semantics: Evaluation
+-- |
+-- | PrimaryExpression : CoverParenthesizedExpressionAndArrowParameterList 1.
+-- | Let \_expr\_ be the \|ParenthesizedExpression\| that is covered by
+-- | \|CoverParenthesizedExpressionAndArrowParameterList\|. 1. Return ?
+-- | Evaluation of \_expr\_. ParenthesizedExpression : \`(\` Expression
+-- | \`)\` 1. Return ? Evaluation of \|Expression\|. This may be of type
+-- | Reference.
+-- |
+-- | This algorithm does not apply GetValue to Evaluation of \|Expression\|.
+-- | The principal motivation for this is so that operators such as
+-- | \`delete\` and \`typeof\` may be applied to parenthesized expressions.
 -- SPEC: L15177-L15188
 -- | # Function Defining Expressions
 -- |
@@ -5538,6 +5560,25 @@ def step? (s : State) : Option (TraceEvent × State) :=
   -- | AssignmentExpression\[?In, ?Yield, ?Await\] // emu-format ignore
   -- | AssignmentOperator : one of \`\*=\` \`/=\` \`%=\` \`+=\` \`-=\`
   -- | \`\<\<=\` \`\>\>=\` \`\>\>\>=\` \`&=\` \`\^=\` \`\|=\` \`\*\*=\`
+  -- SPEC: L16936-L16953
+  -- | # Destructuring Assignment
+  -- |
+  -- | ## Supplemental Syntax
+  -- |
+  -- | In certain circumstances when processing an instance of the production\
+  -- | AssignmentExpression : LeftHandSideExpression \`=\`
+  -- | AssignmentExpression\
+  -- | the interpretation of \|LeftHandSideExpression\| is refined using the
+  -- | following grammar:
+  -- |
+  -- | AssignmentPattern\[Yield, Await\] : ObjectAssignmentPattern\[?Yield,
+  -- | ?Await\] ArrayAssignmentPattern\[?Yield, ?Await\]
+  -- | ObjectAssignmentPattern\[Yield, Await\] : \`{\` \`}\` \`{\`
+  -- | AssignmentRestProperty\[?Yield, ?Await\] \`}\` \`{\`
+  -- | AssignmentPropertyList\[?Yield, ?Await\] \`}\` \`{\`
+  -- | AssignmentPropertyList\[?Yield, ?Await\] \`,\`
+  -- | AssignmentRestProperty\[?Yield, ?Await\]? \`}\`
+  -- | ArrayAssignmentPattern\[Yield, Await\] : \`\[\` Elision?
   -- SPEC: L16527-L16547
   -- | # Binary Logical Operators
   -- |
@@ -6008,6 +6049,16 @@ def step? (s : State) : Option (TraceEvent × State) :=
   -- | of \|CallExpression\|. 1. Let \_func\_ be ? GetValue(\_ref\_). 1. Let
   -- | \_thisCall\_ be this \|CallExpression\|. 1. Let \_tailCall\_ be
   -- | IsInTailPosition(\_thisCall\_). 1. Return ? EvaluateCall(\_func\_,
+  -- SPEC: L6408-L6416
+  -- | # IsCallable ( \_argument\_: an ECMAScript language value, ): a Boolean
+  -- |
+  -- | description
+  -- | :   It determines if \_argument\_ is a callable function with a
+  -- |     \[\[Call\]\] internal method.
+  -- |
+  -- | 1\. If \_argument\_ is not an Object, return \*false\*. 1. If
+  -- | \_argument\_ has a \[\[Call\]\] internal method, return \*true\*. 1.
+  -- | Return \*false\*.
   -- SPEC: L15668-L15681
   -- | # EvaluateCall ( \_func\_: an ECMAScript language value, \_ref\_: an ECMAScript language value or a Reference Record, \_arguments\_: a Parse Node, \_tailPosition\_: a Boolean, ): either a normal completion containing an ECMAScript language value or an abrupt completion
   -- |
@@ -6662,6 +6713,21 @@ def step? (s : State) : Option (TraceEvent × State) :=
       let funcs' := s.funcs.push closure
       let s' := pushTrace { s with expr := .lit (.function idx), funcs := funcs' } .silent
       some (.silent, s')
+  -- SPEC: L10647-L10660
+  -- | # Ordinary Object Internal Methods and Internal Slots
+  -- |
+  -- | All ordinary objects have an internal slot called \[\[Prototype\]\]. The
+  -- | value of this internal slot is either \*null\* or an object and is used
+  -- | for implementing inheritance. Assume a property named \_P\_ is missing
+  -- | from an ordinary object \_O\_ but exists on its \[\[Prototype\]\]
+  -- | object. If \_P\_ refers to a data property on the \[\[Prototype\]\]
+  -- | object, \_O\_ inherits it for get access, making it behave as if \_P\_
+  -- | was a property of \_O\_. If \_P\_ refers to a writable data property on
+  -- | the \[\[Prototype\]\] object, set access of \_P\_ on \_O\_ creates a new
+  -- | data property named \_P\_ on \_O\_. If \_P\_ refers to a non-writable
+  -- | data property on the \[\[Prototype\]\] object, set access of \_P\_ on
+  -- | \_O\_ fails. If \_P\_ refers to an accessor property on the
+  -- | \[\[Prototype\]\] object, the accessor is inherited by \_O\_ for both
   -- SPEC: L15026-L15033
   -- | # Object Initializer
   -- |
@@ -8031,6 +8097,20 @@ def step? (s : State) : Option (TraceEvent × State) :=
   -- | \_flags\_ be CodePointsToString(FlagText of
   -- | \|RegularExpressionLiteral\|). 1. Return ! RegExpCreate(\_pattern\_,
   -- | \_flags\_).
+  -- SPEC: L15231-L15244
+  -- | # Template Literals
+  -- |
+  -- | ## Syntax
+  -- |
+  -- | TemplateLiteral\[Yield, Await, Tagged\] : NoSubstitutionTemplate
+  -- | SubstitutionTemplate\[?Yield, ?Await, ?Tagged\]
+  -- | SubstitutionTemplate\[Yield, Await, Tagged\] : TemplateHead
+  -- | Expression\[+In, ?Yield, ?Await\] TemplateSpans\[?Yield, ?Await,
+  -- | ?Tagged\] TemplateSpans\[Yield, Await, Tagged\] : TemplateTail
+  -- | TemplateMiddleList\[?Yield, ?Await, ?Tagged\] TemplateTail
+  -- | TemplateMiddleList\[Yield, Await, Tagged\] : TemplateMiddle
+  -- | Expression\[+In, ?Yield, ?Await\] TemplateMiddleList\[?Yield, ?Await,
+  -- | ?Tagged\] TemplateMiddle Expression\[+In, ?Yield, ?Await\]
   -- SPEC: L15367-L15404
   -- | # Runtime Semantics: Evaluation
   -- |
@@ -8309,6 +8389,21 @@ def step? (s : State) : Option (TraceEvent × State) :=
       let heap' := { objects := s.heap.objects.push [], nextAddr := addr + 1 }
       let s' := pushTrace { s with expr := .lit (.object addr), heap := heap' } .silent
       some (.silent, s')
+  -- SPEC: L19206-L19220
+  -- | # Generator Function Definitions
+  -- |
+  -- | ## Syntax
+  -- |
+  -- | GeneratorDeclaration\[Yield, Await, Default\] : \`function\` \`\*\`
+  -- | BindingIdentifier\[?Yield, ?Await\] \`(\` FormalParameters\[+Yield,
+  -- | \~Await\] \`)\` \`{\` GeneratorBody \`}\` \[+Default\] \`function\`
+  -- | \`\*\` \`(\` FormalParameters\[+Yield, \~Await\] \`)\` \`{\`
+  -- | GeneratorBody \`}\` GeneratorExpression : \`function\` \`\*\`
+  -- | BindingIdentifier\[+Yield, \~Await\]? \`(\` FormalParameters\[+Yield,
+  -- | \~Await\] \`)\` \`{\` GeneratorBody \`}\` GeneratorMethod\[Yield,
+  -- | Await\] : \`\*\` ClassElementName\[?Yield, ?Await\] \`(\`
+  -- | UniqueFormalParameters\[+Yield, \~Await\] \`)\` \`{\` GeneratorBody
+  -- | \`}\` GeneratorBody : FunctionBody\[+Yield, \~Await\]
   -- SPEC: L19369-L19372
   -- | YieldExpression : \`yield\` 1. Return ? Yield(\*undefined\*).
   -- | YieldExpression : \`yield\` AssignmentExpression 1. Let \_exprRef\_ be ?
@@ -8330,6 +8425,20 @@ def step? (s : State) : Option (TraceEvent × State) :=
       | none =>
           let s' := pushTrace { s with expr := .lit .undefined } .silent
           some (.silent, s')
+  -- SPEC: L20107-L20120
+  -- | # Async Function Definitions
+  -- |
+  -- | ## Syntax
+  -- |
+  -- | AsyncFunctionDeclaration\[Yield, Await, Default\] : \`async\` \[no
+  -- | LineTerminator here\] \`function\` BindingIdentifier\[?Yield, ?Await\]
+  -- | \`(\` FormalParameters\[\~Yield, +Await\] \`)\` \`{\` AsyncFunctionBody
+  -- | \`}\` \[+Default\] \`async\` \[no LineTerminator here\] \`function\`
+  -- | \`(\` FormalParameters\[\~Yield, +Await\] \`)\` \`{\` AsyncFunctionBody
+  -- | \`}\` AsyncFunctionExpression : \`async\` \[no LineTerminator here\]
+  -- | \`function\` BindingIdentifier\[\~Yield, +Await\]? \`(\`
+  -- | FormalParameters\[\~Yield, +Await\] \`)\` \`{\` AsyncFunctionBody \`}\`
+  -- | AsyncMethod\[Yield, Await\] : \`async\` \[no LineTerminator here\]
   -- SPEC: L20265-L20268
   -- | AwaitExpression : \`await\` UnaryExpression 1. Let \_exprRef\_ be ?
   -- | Evaluation of \|UnaryExpression\|. 1. Let \_value\_ be ?
