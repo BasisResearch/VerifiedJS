@@ -3710,19 +3710,20 @@ def irStep? (s : IRExecState) : Option (TraceEvent × IRExecState) :=
       | .unOp .i32 op =>
           match irPop1? base.stack with
           | some (.i32 v, stk) =>
-              match op with
-                | "eqz" => some (.silent, irPushTrace { base with stack := irBoolToI32 (Numerics.i32Eqz v) :: stk } .silent)
-                | "clz" => some (.silent, irPushTrace { base with stack := IRValue.i32 (Numerics.i32Clz v) :: stk } .silent)
-                | "ctz" => some (.silent, irPushTrace { base with stack := IRValue.i32 (Numerics.i32Ctz v) :: stk } .silent)
-                | "popcnt" => some (.silent, irPushTrace { base with stack := IRValue.i32 (Numerics.i32Popcnt v) :: stk } .silent)
-                | _ => some (irTrapState base s!"type mismatch in i32.{op}")
+              let result := match op with
+                | "eqz" => irBoolToI32 (Numerics.i32Eqz v)
+                | "clz" => IRValue.i32 (Numerics.i32Clz v)
+                | "ctz" => IRValue.i32 (Numerics.i32Ctz v)
+                | "popcnt" => IRValue.i32 (Numerics.i32Popcnt v)
+                | _ => IRValue.i32 0
+              some (.silent, irPushTrace { base with stack := result :: stk } .silent)
           -- Cross-type: wrap_i64 takes i64 → i32
           | some (.i64 v, stk) =>
               match op with
               | "wrap_i64" => some (.silent, irPushTrace { base with stack := .i32 (Numerics.i32WrapI64 v) :: stk } .silent)
-              | _ => some (irTrapState base s!"type mismatch in i32.{op}")
-          | some _ => some (irTrapState base s!"type mismatch in i32.{op}")
-          | none => some (irTrapState base s!"stack underflow in i32.{op}")
+              | _ => some (irTrapState base s!"type mismatch in unary i32.{op} (got i64)")
+          | some _ => some (irTrapState base s!"type mismatch in unary i32.{op}")
+          | none => some (irTrapState base s!"stack underflow in unary i32.{op}")
       -- Unary operations (i64)
       -- REF: Wasm §4.4.3.1 (i64 unary), §4.4.5.2-3 (extends, reinterpret)
       | .unOp .i64 op =>
