@@ -1,16 +1,38 @@
-# Sorry Report (Tue Mar 24 12:10:30 PM UTC 2026)
+# Sorry Report (Tue Mar 24 01:10:23 PM UTC 2026)
 
 - [ ] `VerifiedJS/Proofs/LowerCorrect.lean:69` — `theorem lower_behavioral_correct` — `obtain ⟨ir, hirsteps, hrel⟩ := lower_sim_steps s t h _ _ _ _ (IR.LowerSimRel.init s t h (by sorry)) hsteps`
 - [ ] `VerifiedJS/Proofs/ANFConvertCorrect.lean:106` — `theorem anfConvert_step_star` — `sorry`
 - [ ] `VerifiedJS/Proofs/ANFConvertCorrect.lean:1181` — `theorem anfConvert_halt_star_aux` — `sorry`
-- [ ] `VerifiedJS/Proofs/ClosureConvertCorrect.lean:813` — `theorem closureConvert_step_simulation` — `sorry`
-- [ ] `VerifiedJS/Proofs/ClosureConvertCorrect.lean:1523` — `theorem closureConvert_step_simulation` — `| call _ _ => sorry -- needs env/heap/funcs correspondence`
-- [ ] `VerifiedJS/Proofs/ClosureConvertCorrect.lean:1524` — `theorem closureConvert_step_simulation` — `| newObj _ _ => sorry -- needs env/heap correspondence`
-- [ ] `VerifiedJS/Proofs/ClosureConvertCorrect.lean:2890` — `def hst3_def` — `| objectLit _ => sorry -- needs env/heap correspondence`
-- [ ] `VerifiedJS/Proofs/ClosureConvertCorrect.lean:2891` — `def hst3_def` — `| arrayLit _ => sorry -- needs env/heap correspondence`
-- [ ] `VerifiedJS/Proofs/ClosureConvertCorrect.lean:2892` — `def hst3_def` — `| functionDef _ _ _ _ _ => sorry -- needs env/heap/funcs + CC state`
-- [ ] `VerifiedJS/Proofs/ClosureConvertCorrect.lean:3026` — `def hst3_def` — `sorry -- unreachable for source programs but no well-formedness precondition`
-- [ ] `VerifiedJS/Proofs/ClosureConvertCorrect.lean:3139` — `def hst3_def` — `sorry -- unreachable for`
+- [ ] `VerifiedJS/Proofs/ClosureConvertCorrect.lean:857` — `theorem closureConvert_step_simulation` — `sorry`
+- [ ] `VerifiedJS/Proofs/ClosureConvertCorrect.lean:1063` — `theorem closureConvert_step_simulation` — `ev_sub sa_flat rfl htrace henvCorr hheap sorry`
+- [ ] `VerifiedJS/Proofs/ClosureConvertCorrect.lean:1196` — `theorem closureConvert_step_simulation` — `ev_sub sa_flat rfl htrace henvCorr hheap sorry`
+- [ ] `VerifiedJS/Proofs/ClosureConvertCorrect.lean:1345` — `theorem closureConvert_step_simulation` — `ev_sub sa_flat rfl htrace henvCorr hheap sorry`
+- [ ] `VerifiedJS/Proofs/ClosureConvertCorrect.lean:1503` — `theorem closureConvert_step_simulation` — `ev_sub sa_flat rfl htrace henvCorr hheap sorry`
+- [ ] `VerifiedJS/Proofs/ClosureConvertCorrect.lean:1567` — `theorem closureConvert_step_simulation` — `| call _ _ => sorry -- needs env/heap/funcs correspondence`
+- [ ] `VerifiedJS/Proofs/ClosureConvertCorrect.lean:1568` — `theorem closureConvert_step_simulation` — `| newObj _ _ => sorry -- needs env/heap correspondence`
+- [ ] `VerifiedJS/Proofs/ClosureConvertCorrect.lean:1672` — `theorem closureConvert_step_simulation` — `ev_sub sa_flat rfl htrace henvCorr hheap sorry`
+- [ ] `VerifiedJS/Proofs/ClosureConvertCorrect.lean:1733` — `theorem closureConvert_step_simulation` — `ev_sub sa_flat rfl htrace henvCorr hheap sorry`
+- [ ] `VerifiedJS/Proofs/ClosureConvertCorrect.lean:1857` — `def hst2_def` — `ev_sub sa_flat rfl htrace henvCorr hheap sorry`
+- [ ] `VerifiedJS/Proofs/ClosureConvertCorrect.lean:1932` — `def hst2_def` — `ev_sub sa_flat rfl htrace henvCorr hheap sorry`
+- [ ] `VerifiedJS/Proofs/ClosureConvertCorrect.lean:2051` — `def hst2_def` — `ev_sub sa_flat rfl htrace henvCorr hheap sorry`
+- [ ] `VerifiedJS/Proofs/ClosureConvertCorrect.lean:2128` — `def hst2_def` — `ev_sub sa_flat rfl htrace henvCorr hheap sorry`
+- [ ] `VerifiedJS/Proofs/ClosureConvertCorrect.lean:2217` — `def hst1_def` — `ev_sub sa_flat rfl htrace henvCorr hheap sorry`
+- [ ] `VerifiedJS/Proofs/ClosureConvertCorrect.lean:2352` — `def hst3_def` — `ev_sub sa_flat rfl htrace henvCorr hheap sorry`
+- [ ] `VerifiedJS/Proofs/ClosureConvertCorrect.lean:2488` — `def hst3_def` — `ev_sub sa_flat rfl htrace henvCorr hheap sorry`
+- [ ] `VerifiedJS/Proofs/ClosureConvertCorrect.lean:2608` — `def hst3_def` — `ev_sub sa_flat rfl htrace henvCorr hheap sorry`
+- [ ] `VerifiedJS/Proofs/ClosureConvertCorrect.lean:2732` — `def hst3_def` — `ev_sub sa_flat rfl htrace henvCorr hheap sorry`
+- [ ] `VerifiedJS/Proofs/ClosureConvertCorrect.lean:2836` — `def hst3_def` — `ev_sub sa_flat rfl htrace henvCorr hheap sorry`
+- [ ] `VerifiedJS/Proofs/ClosureConvertCorrect.lean:2891` — `def hst3_def` — `ev_sub sa_flat rfl htrace henvCorr hheap sorry`
+- [ ] `VerifiedJS/Proofs/ClosureConvertCorrect.lean:2934` — `def hst3_def` — `| objectLit _ => sorry -- needs env/heap correspondence`
+- [ ] `VerifiedJS/Proofs/ClosureConvertCorrect.lean:2935` — `def hst3_def` — `| arrayLit _ => sorry -- needs env/heap correspondence`
+- [ ] `VerifiedJS/Proofs/ClosureConvertCorrect.lean:2936` — `def hst3_def` — `| functionDef _ _ _ _ _ => sorry -- needs env/heap/funcs + CC state`
+- [ ] `VerifiedJS/Proofs/ClosureConvertCorrect.lean:3013` — `def hst3_def` — `ev_sub sa_flat rfl htrace henvCorr hheap sorry`
+- [ ] `VerifiedJS/Proofs/ClosureConvertCorrect.lean:3184` — `def hst3_def` — `(.error msg) sa_flat rfl htrace henvCorr hheap sorry`
+- [ ] `VerifiedJS/Proofs/ClosureConvertCorrect.lean:3274` — `def hst3_def` — `.silent sa_flat rfl htrace henvCorr hheap sorry`
+- [ ] `VerifiedJS/Proofs/ClosureConvertCorrect.lean:3349` — `def hst3_def` — `(.log msg) sa_flat rfl htrace henvCorr hheap sorry`
+- [ ] `VerifiedJS/Proofs/ClosureConvertCorrect.lean:3624` — `def hst3_def` — `ev_sub sa_flat rfl htrace henvCorr hheap sorry`
+- [ ] `VerifiedJS/Proofs/ClosureConvertCorrect.lean:3788` — `def hst3_def` — `ev_sub sa_flat rfl htrace henvCorr hheap sorry`
+- [ ] `VerifiedJS/Proofs/ClosureConvertCorrect.lean:3902` — `def hst3_def` — `ev_sub sa_flat rfl htrace henvCorr hheap sorry`
 - [ ] `VerifiedJS/Wasm/Semantics.lean:5700` — `def LowerRel` — `showing the target takes a matching step. These are`
 - [ ] `VerifiedJS/Wasm/Semantics.lean:5922` — `theorem init` — `sorry`
 - [ ] `VerifiedJS/Wasm/Semantics.lean:5931` — `theorem init` — `Each case is decomposed below; each sub-case may still be`
@@ -36,13 +58,12 @@
 - [ ] `VerifiedJS/Wasm/Semantics.lean:7340` — `theorem step_sim` — `sorry`
 - [ ] `VerifiedJS/Wasm/Semantics.lean:7343` — `theorem step_sim` — `sorry`
 - [ ] `VerifiedJS/Wasm/Semantics.lean:7346` — `theorem step_sim` — `sorry`
-- [ ] `VerifiedJS/Wasm/Semantics.lean:7481` — `theorem step_sim` — `sorry`
-- [ ] `VerifiedJS/Wasm/Semantics.lean:7485` — `theorem step_sim` — `sorry`
-- [ ] `VerifiedJS/Wasm/Semantics.lean:7488` — `theorem step_sim` — `sorry`
-- [ ] `VerifiedJS/Wasm/Semantics.lean:7491` — `theorem step_sim` — `sorry`
-- [ ] `VerifiedJS/Wasm/Semantics.lean:7559` — `theorem step_sim` — `sorry`
-- [ ] `VerifiedJS/Wasm/Semantics.lean:7718` — `theorem ir_forward_sim` — `exact LowerSimRel.init prog irmod hlower (by sorry)`
-- [ ] `VerifiedJS/Wasm/Semantics.lean:7733` — `theorem ir_stutter_sim` — `exact LowerSimRel.init prog irmod hlower (by sorry)`
-- [ ] `VerifiedJS/Wasm/Semantics.lean:7757` — `theorem lower_behavioral_obs_correct` — `(LowerSimRel.init prog irmod hlower (by sorry))`
+- [ ] `VerifiedJS/Wasm/Semantics.lean:7544` — `theorem step_sim` — `sorry`
+- [ ] `VerifiedJS/Wasm/Semantics.lean:7547` — `theorem step_sim` — `sorry`
+- [ ] `VerifiedJS/Wasm/Semantics.lean:7550` — `theorem step_sim` — `sorry`
+- [ ] `VerifiedJS/Wasm/Semantics.lean:7618` — `theorem step_sim` — `sorry`
+- [ ] `VerifiedJS/Wasm/Semantics.lean:7777` — `theorem ir_forward_sim` — `exact LowerSimRel.init prog irmod hlower (by sorry)`
+- [ ] `VerifiedJS/Wasm/Semantics.lean:7792` — `theorem ir_stutter_sim` — `exact LowerSimRel.init prog irmod hlower (by sorry)`
+- [ ] `VerifiedJS/Wasm/Semantics.lean:7816` — `theorem lower_behavioral_obs_correct` — `(LowerSimRel.init prog irmod hlower (by sorry))`
 
-**Total: 44 sorries**
+**Total: 65 sorries**
