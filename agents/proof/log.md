@@ -1708,4 +1708,51 @@ This unblocks 10+ sorries. DO THIS FIRST next run.
 
 ## Run: 2026-03-24T22:30:04+00:00
 
+### TASK 0: ExprAddrWF_mono — Already completed (verified proof in place)
+
+### TASK 1: Close ExprAddrWF sorries — 38 of 42 CLOSED
+
+**Sorries before**: 54 CC total (8 non-ExprAddrWF + 44 ExprAddrWF + 1 ExprAddrWF_mono + 1 init)
+**Sorries after**: 10 CC total (6 non-ExprAddrWF + 4 ExprAddrWF needing EnvAddrWF/HeapAddrWF)
+**Net delta**: −44 CC sorries
+
+**What was done**:
+1. **Closed 22 Pattern B (IH call) sorries**: Each passed ExprAddrWF to `ih_depth`/`ev_sub` by decomposing `hexprwf` with `rw [hsc]; simp [ExprAddrWF]`:
+   - Single-child exprs (getProp, deleteProp, typeof, unary, throw, return, yield, await): `exact h`
+   - Two-child exprs (seq, setProp, getIndex, binary): `exact h.1` or `h.2`
+   - Three-child exprs (if, setIndex): `exact h.1`, `h.2.1`, `h.2.2`
+   - tryCatch body: `exact h.1`
+
+2. **Closed 14 Pattern A (conclusion tuple) sorries**: ExprAddrWF for resulting states:
+   - Sub-expression results (labeled, if branches, seq rhs): decompose hexprwf
+   - Literal .undefined results (var not found, throw value, return none, yield none, this not found): `simp [ExprAddrWF, ValueAddrWF]`
+   - Value pass-through (assign, return some, yield some, await, tryCatch no-finally): `exact h` or `h.1` from hexprwf
+
+3. **Closed 2 complex Pattern A sorries**:
+   - while (.while_ → .if cond (.seq body (.while_ cond body)) (.lit .undefined)): `⟨h.1, h.2, h.1, h.2⟩`
+   - tryCatch with finally (.tryCatch (.lit v) _ _ (some fin) → .seq fin (.lit v)): `⟨h.2.2, h.1⟩`
+
+4. **TASK 2: Closed init sorry** (L4812): Threaded `ExprAddrWF s.body 1` hypothesis through `closureConvert_trace_reflection` and public `closureConvert_correct` theorem. Made `ExprAddrWF` non-private. Updated EndToEnd.lean call site.
+
+**Build status**: ✅ CC and EndToEnd build clean. Pre-existing ANF errors unchanged.
+
+**4 remaining ExprAddrWF sorries (BLOCKED — need new invariants)**:
+| Line | Case | Blocker |
+|------|------|---------|
+| 1063 | var captured → .lit cv | Need EnvAddrWF: env values satisfy ValueAddrWF |
+| 1768 | getProp value → heap lookup | Need HeapAddrWF: heap values satisfy ValueAddrWF |
+| 2173 | getIndex value → heap lookup | Need HeapAddrWF: heap values satisfy ValueAddrWF |
+| 4222 | this found → .lit cv | Need EnvAddrWF: env values satisfy ValueAddrWF |
+
+**6 remaining non-ExprAddrWF sorries (unchanged)**:
+| Line | Case | Blocker |
+|------|------|---------|
+| 1003 | captured var | Needs multi-step simulation |
+| 1713 | call | Needs env/heap/funcs correspondence |
+| 1714 | newObj | BLOCKED: Flat allocFreshObject pushes [] |
+| 3153 | objectLit | BLOCKED: Flat allocFreshObject pushes [] |
+| 3154 | arrayLit | BLOCKED: Flat allocFreshObject pushes [] |
+| 3155 | functionDef | Needs full CC state |
+
 2026-03-24T23:30:01+00:00 SKIP: already running
+2026-03-24T23:34:09+00:00 DONE
