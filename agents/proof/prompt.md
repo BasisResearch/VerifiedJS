@@ -57,23 +57,28 @@ If ClosureConvertCorrect needs 600 lines of case analysis, WRITE 600 LINES. That
 ## Test262
 Read `logs/test262_summary.md` for failure categories. Fix compiler bugs that cause test262 failures.
 
-## CURRENT PRIORITIES (2026-03-24T09:05)
+## CURRENT PRIORITIES (2026-03-24T10:05)
 
-### Build: PASS ✅. Sorry: 45 (11 CC + 31 Wasm + 2 ANF + 1 Lower). DOWN from 48!
+### Build: PASS ✅. Sorry: 46 (10 CC + 33 Wasm + 2 ANF + 1 Lower).
 
-### 🎉 GREAT PROGRESS: getProp + deleteProp CLOSED! tryCatch mostly proved!
+### 🎉 setProp CLOSED! CC down to 10.
 
-You proved getProp and deleteProp despite private visibility — excellent work navigating around it structurally. tryCatch is mostly proved, leaving only 2 isCallFrame sorries (unreachable for source programs).
+You closed setProp using the same structural pattern as getProp/deleteProp. **Private visibility is NOW FIXED** — `coreToFlatValue`, `flatToCoreValue`, `heapObjectAt?` are all PUBLIC. You can now unfold them directly.
 
-### CC Sorry Map (11 total):
+### CC Sorry Map (10 total):
 - **1 captured var**: line 813 (Flat.getEnv 2 steps vs Core.var 1 step)
 - **1 call BLOCKED**: line 1523 (Flat returns `.undefined` instead of invoking function)
 - **1 newObj**: line 1524 (Flat allocates fresh object, same as Core — provable)
-- **3 heap ops**: lines 1659-1661 (setProp, getIndex, setIndex) — use same pattern as your getProp proof!
-- **3 heap/funcs**: lines 2199-2201 (objectLit, arrayLit, functionDef)
-- **2 isCallFrame**: lines 2335, 2448 (unreachable for CC'd source programs — needs well-formedness)
+- **2 heap ops**: lines 1858-1859 (getIndex, setIndex) — SAME pattern as your getProp/setProp proof!
+- **3 heap/funcs**: lines 2397-2399 (objectLit, arrayLit, functionDef)
+- **2 isCallFrame**: lines 2533, 2646 (unreachable for CC'd source programs)
 
-### TASK 0: Close isCallFrame sorries (lines 2335, 2448) — EASIEST WIN
+### TASK 0: Close getIndex + setIndex (lines 1858-1859) — EXACT SAME PATTERN as getProp/setProp
+
+Private visibility is FIXED. You can now use `coreToFlatValue`/`flatToCoreValue`/`heapObjectAt?` directly.
+Copy your getProp/setProp proof structure. These should be mechanical.
+
+### TASK 1: Close isCallFrame sorries (lines 2533, 2646) — EASIEST WIN
 
 These are unreachable: `catchParam = "__call_frame_return__"` never happens for source programs. Add a well-formedness predicate:
 ```lean
@@ -81,14 +86,7 @@ These are unreachable: `catchParam = "__call_frame_return__"` never happens for 
 -- h_wf : catchParam ≠ "__call_frame_return__"
 -- Then: contradiction closes both sorries
 ```
-Check with `lean_goal` at lines 2335 and 2448 to see exact state.
-
-### TASK 1: Close setProp/getIndex/setIndex (lines 1659-1661) — SAME PATTERN AS getProp!
-
-You already proved getProp at line 1525. These 3 follow the EXACT same pattern:
-- `sf.heap = sc.heap` → same heap → same lookup
-- `convertValue` maps Core result to Flat result
-Copy your getProp proof structure for each.
+Check with `lean_goal` at lines 2533 and 2646 to see exact state.
 
 ### TASK 2: Close captured var (line 813)
 
@@ -156,4 +154,4 @@ This is confirmed in the CC_SimRel definition (line 509). For heap operations (g
 - `coreToFlatValue` is identical to `Flat.convertValue` (both in ClosureConvert.lean)
 - So: Flat result = `convertValue (Core result)` which is exactly what `convertExpr (.lit v)` produces
 
-Once `coreToFlatValue` visibility is fixed by wasmspec, these proofs are MECHANICAL.
+**`coreToFlatValue`/`flatToCoreValue`/`heapObjectAt?` are NOW PUBLIC** — you can unfold them directly. These proofs should be MECHANICAL now.
