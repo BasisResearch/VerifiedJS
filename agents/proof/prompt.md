@@ -1,89 +1,66 @@
-# proof — Close ExprAddrWF sorries (44 of them) then remaining CC
+# proof — Close ExprAddrWF sorries (44 mechanical) then remaining CC/ANF
 
-You own Proofs/*.lean and compiler passes. HeapCorr is DONE. ExprAddrWF is DEFINED and in CC_SimRel.
+You own Proofs/*.lean and compiler passes. HeapCorr is DONE. ExprAddrWF is DEFINED and in CC_SimRel. ExprAddrWF_mono is PROVED.
 
-## TASK 0 (DO FIRST): Fix ExprAddrWF_mono (L657) — VERIFIED PROOF
+## TASK 0 (DO FIRST): Close 44 `sorry /- ExprAddrWF -/` sites
 
-Replace `sorry` at line 657 with this EXACT code (verified via lean_multi_attempt — "No goals"):
+There are ~44 instances of `sorry /- ExprAddrWF -/` in ClosureConvertCorrect.lean. Two patterns:
 
+### Pattern A — Tuple positions (e.g. L989, L1063, L1120, L1310, L1451, ...)
+These fill the ExprAddrWF slot in a CC_SimRel tuple. The sorry is in term mode inside `exact ⟨..., sorry /- ExprAddrWF -/, ...⟩`.
+
+**Sub-expression case** (heap unchanged, result is sub-expression of `sc.expr`):
+Replace `sorry /- ExprAddrWF -/` with:
 ```lean
-  match e with
-  | .lit v => exact ValueAddrWF_mono h hle
-  | .var _ | .call _ _ | .newObj _ _ | .objectLit _ | .arrayLit _ | .break _ | .continue _ | .return none | .yield none _ | .this => trivial
-  | .«let» _ init body => exact ⟨ExprAddrWF_mono h.1 hle, ExprAddrWF_mono h.2 hle⟩
-  | .assign _ value => exact ExprAddrWF_mono h hle
-  | .«if» cond t el => exact ⟨ExprAddrWF_mono h.1 hle, ExprAddrWF_mono h.2.1 hle, ExprAddrWF_mono h.2.2 hle⟩
-  | .seq a b => exact ⟨ExprAddrWF_mono h.1 hle, ExprAddrWF_mono h.2 hle⟩
-  | .getProp obj _ => exact ExprAddrWF_mono h hle
-  | .setProp o _ v => exact ⟨ExprAddrWF_mono h.1 hle, ExprAddrWF_mono h.2 hle⟩
-  | .getIndex e1 e2 => exact ⟨ExprAddrWF_mono h.1 hle, ExprAddrWF_mono h.2 hle⟩
-  | .setIndex o i v => exact ⟨ExprAddrWF_mono h.1 hle, ExprAddrWF_mono h.2.1 hle, ExprAddrWF_mono h.2.2 hle⟩
-  | .deleteProp obj _ => exact ExprAddrWF_mono h hle
-  | .typeof arg => exact ExprAddrWF_mono h hle
-  | .unary _ arg => exact ExprAddrWF_mono h hle
-  | .binary _ l r => exact ⟨ExprAddrWF_mono h.1 hle, ExprAddrWF_mono h.2 hle⟩
-  | .functionDef _ _ body _ _ => exact ExprAddrWF_mono h hle
-  | .throw arg => exact ExprAddrWF_mono h hle
-  | .tryCatch b _ c none => exact ⟨ExprAddrWF_mono h.1 hle, ExprAddrWF_mono h.2 hle⟩
-  | .tryCatch b _ c (some fe) => exact ⟨ExprAddrWF_mono h.1 hle, ExprAddrWF_mono h.2.1 hle, ExprAddrWF_mono h.2.2 hle⟩
-  | .while_ c b => exact ⟨ExprAddrWF_mono h.1 hle, ExprAddrWF_mono h.2 hle⟩
-  | .forIn _ o b => exact ⟨ExprAddrWF_mono h.1 hle, ExprAddrWF_mono h.2 hle⟩
-  | .forOf _ i b => exact ⟨ExprAddrWF_mono h.1 hle, ExprAddrWF_mono h.2 hle⟩
-  | .return (some arg) => exact ExprAddrWF_mono h hle
-  | .yield (some arg) _ => exact ExprAddrWF_mono h hle
-  | .labeled _ b => exact ExprAddrWF_mono h hle
-  | .await arg => exact ExprAddrWF_mono h hle
+(by have h := hexprwf; rw [hsc] at h; simp [ExprAddrWF] at h; rw [hsc'_expr]; exact h)
+```
+For nested sub-expressions, project: `exact h.1`, `exact h.2`, `exact h.2.1`, `exact h.2.2`
+
+**Literal result** (result is `.lit v` for non-object):
+```lean
+(by simp [ExprAddrWF, ValueAddrWF])
 ```
 
-## TASK 1: Close 44 `sorry /- ExprAddrWF -/` sites
-
-There are 44 instances. Two patterns:
-
-### Pattern A — Conclusion tuples (e.g. L964, L1038, L1095, L1285, L1743, ...)
-These need `ExprAddrWF sc'.expr sc'.heap.objects.size`. Three sub-patterns:
-
-**A1. Heap unchanged, result is sub-expression** (labeled, typeof, unary, break, continue, var, etc.):
-- `sc'.expr` is a sub-expression of `sc.expr`, heap unchanged
-- Extract from `hexprwf` (the CC_SimRel ExprAddrWF component)
-- Replace `sorry /- ExprAddrWF -/` with:
-  ```lean
-  by have h := hexprwf; rw [hsc] at h; simp [ExprAddrWF] at h; exact h
-  ```
-  or for nested (e.g. `.let` body): `exact h.2` or `exact h.1`
-
-**A2. Result is `.lit (.object addr)` where `addr = old heap size`** (objectLit, arrayLit, newObj, setProp, setIndex):
-- New heap size = old + 1, addr = old size
-- Replace with: `by simp [ExprAddrWF, ValueAddrWF]; omega`
-
-**A3. Result is `.lit v` for non-object `v`** (break→undefined, continue→undefined, return→undefined, etc.):
-- Replace with: `by simp [ExprAddrWF, ValueAddrWF]`
-
-### Pattern B — IH calls (e.g. L1184, L1317, L1466, L1624, ...)
-These pass ExprAddrWF to `ih_depth` or `ev_sub`. Need `ExprAddrWF sub_expr sc.heap.objects.size`.
-
-- Extract from `hexprwf` by decomposing: `rw [hsc] at hexprwf; simp [ExprAddrWF] at hexprwf`
-- Then `exact hexprwf.1` or `exact hexprwf.2` or `exact hexprwf.2.1` etc.
-- Replace `sorry /- ExprAddrWF -/` with:
-  ```lean
-  by have h := hexprwf; rw [hsc] at h; simp [ExprAddrWF] at h; exact h.1
-  ```
-
-### IMPORTANT: Use `lean_multi_attempt` to test each fix before editing!
-
-Try these tactics at each sorry site:
-```
-["by have h := hexprwf; rw [hsc] at h; simp [ExprAddrWF] at h; exact h",
- "by have h := hexprwf; rw [hsc] at h; simp [ExprAddrWF] at h; exact h.1",
- "by have h := hexprwf; rw [hsc] at h; simp [ExprAddrWF] at h; exact h.2",
- "by simp [ExprAddrWF, ValueAddrWF]",
- "by simp [ExprAddrWF, ValueAddrWF]; omega"]
+**New heap object** (result is `.lit (.object addr)` where `addr = old heap size`):
+```lean
+(by simp [ExprAddrWF, ValueAddrWF]; omega)
 ```
 
-## TASK 2: Remaining CC sorries (after ExprAddrWF)
+### Pattern B — IH call arguments (e.g. L1491, L1649, L1820, L1881, ...)
+These pass ExprAddrWF to `ev_sub` or `ih_depth`. VERIFIED at L1491 — all 3 tactics close:
+```lean
+(by have h := hexprwf; rw [hsc] at h; simp [ExprAddrWF] at h; exact h.1)
+(by have h := hexprwf; rw [hsc] at h; simp [ExprAddrWF] at h; exact h)
+(by simp [ExprAddrWF, ValueAddrWF]; omega)
+```
 
-Only 2 non-ExprAddrWF CC sorries remain:
-- **L978**: captured variable case
-- **L4787**: init sorry (`closureConvert_init_related`)
+### WORKFLOW: For each sorry site:
+1. `lean_multi_attempt` with these 5 tactics (omit `by` if already in tactic mode):
+   ```
+   ["(by have h := hexprwf; rw [hsc] at h; simp [ExprAddrWF] at h; exact h)",
+    "(by have h := hexprwf; rw [hsc] at h; simp [ExprAddrWF] at h; exact h.1)",
+    "(by have h := hexprwf; rw [hsc] at h; simp [ExprAddrWF] at h; exact h.2)",
+    "(by simp [ExprAddrWF, ValueAddrWF])",
+    "(by simp [ExprAddrWF, ValueAddrWF]; omega)"]
+   ```
+2. Replace `sorry /- ExprAddrWF -/` with the one that succeeds
+3. Move to next sorry site
+
+## TASK 1: Remaining CC sorries (5 non-ExprAddrWF)
+
+After ExprAddrWF, only these remain:
+- **L1003**: captured variable case (needs getEnv proof)
+- **L1713**: call (needs env/heap/funcs correspondence)
+- **L1714**: newObj (needs env/heap correspondence)
+- **L3153**: objectLit (needs heap with allocObjectWithProps)
+- **L3154**: arrayLit (needs heap with allocObjectWithProps)
+- **L3155**: functionDef (needs env/heap/funcs + CC state)
+- **L4812**: init sorry in closureConvert_init_related
+
+## TASK 2: ANF sorries (2 remain)
+
+- **ANFConvertCorrect.lean:106**: main theorem
+- **ANFConvertCorrect.lean:1181**: induction case
 
 ## Rules
 - `bash scripts/lake_build_concise.sh` to build (only ONCE at end)

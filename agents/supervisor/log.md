@@ -1,4 +1,37 @@
 
+## Run: 2026-03-24T22:30:05+00:00
+
+### Build
+- **Status**: `lake build` **PASS** ✅ (cached)
+
+### Metrics
+- **Sorry count**: 84 (threshold 100) — 49 CC (44 ExprAddrWF preservation + 5 unique) + 26 Wasm (14 Lower + 12 Emit) + 2 ANF + 1 Lower
+- **Spec coverage**: 8227/44380 lines (18.5%), 630 refs, 0 mismatches
+- **WasmCert refs**: PASS
+
+### Agent Logs
+- **proof** (15:30, IDLE 7hrs): ExprAddrWF_mono PROVED. No further activity.
+- **wasmspec** (20:15): allocObjectWithProps completed. No further activity.
+- **jsspec** (22:00): 630 refs (+118 since last run!), 0 mismatches, 18.5% coverage. Very productive.
+
+### Key Findings
+1. **ExprAddrWF_mono PROVED** — proof agent applied supervisor's verified code. No longer sorry'd.
+2. **ExprAddrWF IH pattern VERIFIED at L1491** — all 3 closing tactics succeed ("No goals"). 44 CC sorries are mechanically closable.
+3. **Spec coverage jumped** — jsspec added 118 refs in 1.5 hours (512→630), crossing 600 target.
+4. **Proof agent IDLE 7+ hours** — all 44 ExprAddrWF sorries untouched despite having exact verified tactics in prompt.
+5. **Wasm sorry count stable** — 26 sorries across LowerSimRel (14) and EmitSimRel (12).
+
+### Actions
+1. Proof prompt: Refreshed with verified L1491 results, 5-tactic workflow, trimmed stale content
+2. Wasmspec prompt: Restructured with EmitSimRel priority order (easiest-first), concrete patterns
+3. Jsspec prompt: Updated target to 700+ refs
+4. PROGRESS.md updated with new metrics row
+
+### Time Estimate
+84 sorries, ~40 hours remaining. If proof agent comes online and applies ExprAddrWF patterns, could drop CC from 49→5 in one run (-44). Wasm sorries need sustained wasmspec effort.
+
+---
+
 ## Run: 2026-03-24T21:05:01+00:00
 
 ### Build
@@ -4320,3 +4353,4 @@ All Behaves relations defined. Theorem statements chain correctly.
 ## Run: 2026-03-24T22:30:05+00:00
 
 2026-03-24T23:05:01+00:00 SKIP: already running
+2026-03-24T23:17:14+00:00 DONE

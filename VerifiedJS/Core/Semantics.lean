@@ -3085,6 +3085,39 @@ def toNumber : Value → Float
 -- | \*undefined\*, throw a \*TypeError\* exception. 1. Let \_setter\_ be
 -- | \_entry\_.\[\[Set\]\]. 1. Perform ? Call(\_setter\_, \_O\_, « \_value\_
 -- | »). 1. Return \~unused\~.
+-- SPEC: L16081-L16093
+-- | # Unary Operators
+-- |
+-- | ## Syntax
+-- |
+-- | UnaryExpression\[Yield, Await\] : UpdateExpression\[?Yield, ?Await\]
+-- | \`delete\` UnaryExpression\[?Yield, ?Await\] \`void\`
+-- | UnaryExpression\[?Yield, ?Await\] \`typeof\` UnaryExpression\[?Yield,
+-- | ?Await\] \`+\` UnaryExpression\[?Yield, ?Await\] \`-\`
+-- | UnaryExpression\[?Yield, ?Await\] \`\~\` UnaryExpression\[?Yield,
+-- | ?Await\] \`!\` UnaryExpression\[?Yield, ?Await\] \[+Await\]
+-- | AwaitExpression\[?Yield\]
+-- SPEC: L16117-L16149
+-- | # Runtime Semantics: Evaluation
+-- |
+-- | UnaryExpression : \`delete\` UnaryExpression 1. Let \_ref\_ be ?
+-- | Evaluation of \|UnaryExpression\|. 1. If \_ref\_ is not a Reference
+-- | Record, return \*true\*. 1. If IsUnresolvableReference(\_ref\_) is
+-- | \*true\*, then 1. Assert: \_ref\_.\[\[Strict\]\] is \*false\*. 1. Return
+-- | \*true\*. 1. If IsPropertyReference(\_ref\_) is \*true\*, then 1.
+-- | Assert: IsPrivateReference(\_ref\_) is \*false\*. 1. If
+-- | IsSuperReference(\_ref\_) is \*true\*, throw a \*ReferenceError\*
+-- | exception. 1. \[id=\"step-delete-operator-toobject\"\] Let \_baseObj\_
+-- | be ? ToObject(\_ref\_.\[\[Base\]\]). 1. If
+-- | \_ref\_.\[\[ReferencedName\]\] is not a property key, then 1. Set
+-- | \_ref\_.\[\[ReferencedName\]\] to ?
+-- | ToPropertyKey(\_ref\_.\[\[ReferencedName\]\]). 1. Let \_deleteStatus\_
+-- | be ? \_baseObj\_.\[\[Delete\]\](\_ref\_.\[\[ReferencedName\]\]). 1. If
+-- | \_deleteStatus\_ is \*false\* and \_ref\_.\[\[Strict\]\] is \*true\*,
+-- | throw a \*TypeError\* exception. 1. Return \_deleteStatus\_. 1. Let
+-- | \_base\_ be \_ref\_.\[\[Base\]\]. 1. Assert: \_base\_ is an Environment
+-- | Record. 1. Return ?
+-- | \_base\_.DeleteBinding(\_ref\_.\[\[ReferencedName\]\]).
 def evalUnary : UnaryOp → Value → Value
   -- SPEC: L16190-L16202
   -- | # Unary \`-\` Operator
@@ -4153,6 +4186,70 @@ def abstractLt : Value → Value → Bool
 -- | 1\. If \_x\_ \< \*0\*~ℤ~, return the string-concatenation of \*\"-\"\*
 -- | and BigInt::toString(-\_x\_, \_radix\_). 1. Return the String value
 -- | consisting of the representation of \_x\_ using radix \_radix\_.
+-- SPEC: L16238-L16262
+-- | # Multiplicative Operators
+-- |
+-- | ## Syntax
+-- |
+-- | MultiplicativeExpression\[Yield, Await\] :
+-- | ExponentiationExpression\[?Yield, ?Await\]
+-- | MultiplicativeExpression\[?Yield, ?Await\] MultiplicativeOperator
+-- | ExponentiationExpression\[?Yield, ?Await\] MultiplicativeOperator : one
+-- | of \`\*\` \`/\` \`%\`
+-- |
+-- | - The \`\*\` operator performs multiplication, producing the product of
+-- |   its operands.
+-- | - The \`/\` operator performs division, producing the quotient of its
+-- |   operands.
+-- | - The \`%\` operator yields the remainder of its operands from an
+-- |   implied division.
+-- |
+-- | # Runtime Semantics: Evaluation
+-- |
+-- | MultiplicativeExpression : MultiplicativeExpression
+-- | MultiplicativeOperator ExponentiationExpression 1. Let \_opText\_ be the
+-- | source text matched by \|MultiplicativeOperator\|. 1. Return ?
+-- | EvaluateStringOrNumericBinaryExpression(\|MultiplicativeExpression\|,
+-- | \_opText\_, \|ExponentiationExpression\|).
+-- SPEC: L16786-L16810
+-- | # ApplyStringOrNumericBinaryOperator ( \_lVal\_: an ECMAScript language value, \_opText\_: \`\*\*\`, \`\*\`, \`/\`, \`%\`, \`+\`, \`-\`, \`\<\<\`, \`\>\>\`, \`\>\>\>\`, \`&\`, \`\^\`, or \`\|\`, \_rVal\_: an ECMAScript language value, ): either a normal completion containing either a String, a BigInt, or a Number, or a throw completion
+-- |
+-- | 1\. If \_opText\_ is \`+\`, then 1.
+-- | \[id=\"step-binary-op-toprimitive-lval\"\] Let \_lPrim\_ be ?
+-- | ToPrimitive(\_lVal\_). 1. \[id=\"step-binary-op-toprimitive-rval\"\] Let
+-- | \_rPrim\_ be ? ToPrimitive(\_rVal\_). 1.
+-- | \[id=\"step-binary-op-string-check\"\] If \_lPrim\_ is a String or
+-- | \_rPrim\_ is a String, then 1. Let \_lStr\_ be ? ToString(\_lPrim\_). 1.
+-- | Let \_rStr\_ be ? ToString(\_rPrim\_). 1. Return the
+-- | string-concatenation of \_lStr\_ and \_rStr\_. 1. Set \_lVal\_ to
+-- | \_lPrim\_. 1. Set \_rVal\_ to \_rPrim\_. 1. NOTE: At this point, it must
+-- | be a numeric operation. 1. Let \_lNum\_ be ? ToNumeric(\_lVal\_). 1. Let
+-- | \_rNum\_ be ? ToNumeric(\_rVal\_). 1. If SameType(\_lNum\_, \_rNum\_) is
+-- | \*false\*, throw a \*TypeError\* exception. 1. If \_lNum\_ is a BigInt,
+-- | then 1. If \_opText\_ is \`\*\*\`, return ?
+-- | BigInt::exponentiate(\_lNum\_, \_rNum\_). 1. If \_opText\_ is \`/\`,
+-- | return ? BigInt::divide(\_lNum\_, \_rNum\_). 1. If \_opText\_ is \`%\`,
+-- | return ? BigInt::remainder(\_lNum\_, \_rNum\_). 1. If \_opText\_ is
+-- | \`\>\>\>\`, return ? BigInt::unsignedRightShift(\_lNum\_, \_rNum\_).
+-- SPEC: L4638-L4660
+-- | # Number::toString ( \_x\_: a Number, \_radix\_: an integer in the inclusive interval from 2 to 36, ): a String
+-- |
+-- | description
+-- | :   It represents \_x\_ as a String using a positional numeral system
+-- |     with radix \_radix\_. The digits used in the representation of a
+-- |     number using radix \_r\_ are taken from the first \_r\_ code units
+-- |     of \*\"0123456789abcdefghijklmnopqrstuvwxyz\"\* in order. The
+-- |     representation of numbers with magnitude greater than or equal to
+-- |     \*1\*~𝔽~ never includes leading zeroes.
+-- |
+-- | 1\. If \_x\_ is \*NaN\*, return \*\"NaN\"\*. 1. If \_x\_ is either
+-- | \*+0\*~𝔽~ or \*-0\*~𝔽~, return \*\"0\"\*. 1. If \_x\_ \< \*-0\*~𝔽~,
+-- | return the string-concatenation of \*\"-\"\* and
+-- | Number::toString(-\_x\_, \_radix\_). 1. If \_x\_ is \*+∞\*~𝔽~, return
+-- | \*\"Infinity\"\*. 1. \[id=\"step-number-tostring-intermediate-values\"\]
+-- | Let \_n\_, \_k\_, and \_s\_ be integers such that \_k\_ ≥ 1,
+-- | \_radix\_^\_k\_\ -\ 1^ ≤ \_s\_ \< \_radix\_^\_k\_^, 𝔽(\_s\_ ×
+-- | \_radix\_^\_n\_\ -\ \_k\_^) is \_x\_, and \_k\_ is as small as possible.
 def evalBinary : BinOp → Value → Value → Value
   | .add, .string a, .string b => .string (a ++ b)
   | .add, .string a, b => .string (a ++ valueToString b)
@@ -4444,6 +4541,79 @@ def evalBinary : BinOp → Value → Value → Value
   -- | implementation-approximated Number value representing the result of
   -- | raising ℝ(\_base\_) to the ℝ(\_exponent\_) power.
   | .exp, a, b => .number (Float.pow (toNumber a) (toNumber b))
+  -- SPEC: L4526-L4541
+  -- | # Number::add ( \_x\_: a Number, \_y\_: a Number, ): a Number
+  -- |
+  -- | description
+  -- | :   It performs addition according to the rules of IEEE 754-2019 binary
+  -- |     double-precision arithmetic, producing the sum of its arguments.
+  -- |
+  -- | 1\. If \_x\_ is \*NaN\* or \_y\_ is \*NaN\*, return \*NaN\*. 1. If \_x\_
+  -- | is \*+∞\*~𝔽~ and \_y\_ is \*-∞\*~𝔽~, return \*NaN\*. 1. If \_x\_ is
+  -- | \*-∞\*~𝔽~ and \_y\_ is \*+∞\*~𝔽~, return \*NaN\*. 1. If \_x\_ is either
+  -- | \*+∞\*~𝔽~ or \*-∞\*~𝔽~, return \_x\_. 1. If \_y\_ is either \*+∞\*~𝔽~ or
+  -- | \*-∞\*~𝔽~, return \_y\_. 1. Assert: \_x\_ and \_y\_ are both finite. 1.
+  -- | If \_x\_ is \*-0\*~𝔽~ and \_y\_ is \*-0\*~𝔽~, return \*-0\*~𝔽~. 1.
+  -- | Return 𝔽(ℝ(\_x\_) + ℝ(\_y\_)).
+  -- SPEC: L4553-L4560
+  -- | # Number::leftShift ( \_x\_: a Number, \_y\_: a Number, ): an integral Number
+  -- |
+  -- | 1\. Let \_lNum\_ be ! ToInt32(\_x\_). 1. Let \_rNum\_ be !
+  -- | ToUint32(\_y\_). 1. Let \_shiftCount\_ be ℝ(\_rNum\_) modulo 32. 1.
+  -- | Return the result of left shifting \_lNum\_ by \_shiftCount\_ bits. The
+  -- | mathematical value of the result is exactly representable as a 32-bit
+  -- | two\'s complement bit string.
+  -- SPEC: L4561-L4569
+  -- | # Number::signedRightShift ( \_x\_: a Number, \_y\_: a Number, ): an integral Number
+  -- |
+  -- | 1\. Let \_lNum\_ be ! ToInt32(\_x\_). 1. Let \_rNum\_ be !
+  -- | ToUint32(\_y\_). 1. Let \_shiftCount\_ be ℝ(\_rNum\_) modulo 32. 1.
+  -- | Return the result of performing a sign-extending right shift of \_lNum\_
+  -- | by \_shiftCount\_ bits. The most significant bit is propagated. The
+  -- | mathematical value of the result is exactly representable as a 32-bit
+  -- | two\'s complement bit string.
+  -- SPEC: L4570-L4578
+  -- | # Number::unsignedRightShift ( \_x\_: a Number, \_y\_: a Number, ): an integral Number
+  -- |
+  -- | 1\. Let \_lNum\_ be ! ToUint32(\_x\_). 1. Let \_rNum\_ be !
+  -- | ToUint32(\_y\_). 1. Let \_shiftCount\_ be ℝ(\_rNum\_) modulo 32. 1.
+  -- | Return the result of performing a zero-filling right shift of \_lNum\_
+  -- | by \_shiftCount\_ bits. Vacated bits are filled with zero. The
+  -- | mathematical value of the result is exactly representable as a 32-bit
+  -- | unsigned bit string.
+  -- SPEC: L4590-L4596
+  -- | # Number::equal ( \_x\_: a Number, \_y\_: a Number, ): a Boolean
+  -- |
+  -- | 1\. If \_x\_ is \*NaN\*, return \*false\*. 1. If \_y\_ is \*NaN\*,
+  -- | return \*false\*. 1. If \_x\_ is \_y\_, return \*true\*. 1. If \_x\_ is
+  -- | \*+0\*~𝔽~ and \_y\_ is \*-0\*~𝔽~, return \*true\*. 1. If \_x\_ is
+  -- | \*-0\*~𝔽~ and \_y\_ is \*+0\*~𝔽~, return \*true\*. 1. Return \*false\*.
+  -- SPEC: L4626-L4629
+  -- | # Number::bitwiseAND ( \_x\_: a Number, \_y\_: a Number, ): an integral Number
+  -- |
+  -- | 1\. Return NumberBitwiseOp(\`&\`, \_x\_, \_y\_).
+  -- SPEC: L4630-L4633
+  -- | # Number::bitwiseXOR ( \_x\_: a Number, \_y\_: a Number, ): an integral Number
+  -- |
+  -- | 1\. Return NumberBitwiseOp(\`\^\`, \_x\_, \_y\_).
+  -- SPEC: L4634-L4637
+  -- | # Number::bitwiseOR ( \_x\_: a Number, \_y\_: a Number, ): an integral Number
+  -- |
+  -- | 1\. Return NumberBitwiseOp(\`\|\`, \_x\_, \_y\_).
+  -- SPEC: L4611-L4625
+  -- | # NumberBitwiseOp ( \_op\_: \`&\`, \`\^\`, or \`\|\`, \_x\_: a Number, \_y\_: a Number, ): an integral Number
+  -- |
+  -- | 1\. Let \_lNum\_ be ! ToInt32(\_x\_). 1. Let \_rNum\_ be !
+  -- | ToInt32(\_y\_). 1. Let \_lBits\_ be the 32-bit two\'s complement bit
+  -- | string representing ℝ(\_lNum\_). 1. Let \_rBits\_ be the 32-bit
+  -- | two\'s complement bit string representing ℝ(\_rNum\_). 1. If \_op\_ is
+  -- | \`&\`, then 1. Let \_result\_ be the result of applying the bitwise AND
+  -- | operation to \_lBits\_ and \_rBits\_. 1. Else if \_op\_ is \`\^\`, then 1.
+  -- | Let \_result\_ be the result of applying the bitwise exclusive OR (XOR)
+  -- | operation to \_lBits\_ and \_rBits\_. 1. Else, 1. Assert: \_op\_ is
+  -- | \`\|\`. 1. Let \_result\_ be the result of applying the bitwise
+  -- | inclusive OR operation to \_lBits\_ and \_rBits\_. 1. Return the Number
+  -- | value for the integer represented by \_result\_.
   -- SPEC: L6150-L6160
   -- | # ToUint32 ( \_argument\_: an ECMAScript language value, ): either a normal completion containing an integral Number or a throw completion
   -- |
@@ -9087,6 +9257,69 @@ def step? (s : State) : Option (TraceEvent × State) :=
   -- | throw completion, return ? \_innerResult\_. 1. If
   -- | \_innerResult\_.\[\[Value\]\] is not an Object, throw a \*TypeError\*
   -- | exception. 1. Return ? \_completion\_.
+  -- SPEC: L7133-L7146
+  -- | # Iterator Records
+  -- |
+  -- | An [Iterator Record]{.dfn variants="Iterator Records"} is a Record value
+  -- | used to encapsulate an iterator or async iterator along with the
+  -- | \`next\` method.
+  -- |
+  -- | Iterator Records have the fields listed in .
+  -- |
+  -- |   Field Name           Value                          Meaning
+  -- |   -------------------- ------------------------------ ------------------------------------------------------------------------------------
+  -- |   \[\[Iterator\]\]     an Object                      An object that conforms to the iterator interface or the async iterator interface.
+  -- |   \[\[NextMethod\]\]   an ECMAScript language value   The \`next\` method of the \[\[Iterator\]\] object.
+  -- |   \[\[Done\]\]         a Boolean                      Whether the iterator has completed or been closed.
+  -- SPEC: L7154-L7159
+  -- | # GetIteratorFromMethod ( \_obj\_: an ECMAScript language value, \_method\_: a function object, ): either a normal completion containing an Iterator Record or a throw completion
+  -- |
+  -- | 1\. Let \_iterator\_ be ? Call(\_method\_, \_obj\_). 1. If \_iterator\_
+  -- | is not an Object, throw a \*TypeError\* exception. 1. Return ?
+  -- | GetIteratorDirect(\_iterator\_).
+  -- SPEC: L7173-L7184
+  -- | # GetIteratorFlattenable ( \_obj\_: an ECMAScript language value, \_primitiveHandling\_: \~iterate-string-primitives\~ or \~reject-primitives\~, ): either a normal completion containing an Iterator Record or a throw completion
+  -- |
+  -- | 1\. If \_obj\_ is not an Object, then 1. If \_primitiveHandling\_ is
+  -- | \~reject-primitives\~, throw a \*TypeError\* exception. 1. Assert:
+  -- | \_primitiveHandling\_ is \~iterate-string-primitives\~. 1. If \_obj\_ is
+  -- | not a String, throw a \*TypeError\* exception. 1. Let \_method\_ be ?
+  -- | GetMethod(\_obj\_, %Symbol.iterator%). 1. If \_method\_ is
+  -- | \*undefined\*, then 1. Let \_iterator\_ be \_obj\_. 1. Else, 1. Let
+  -- | \_iterator\_ be ? Call(\_method\_, \_obj\_). 1. If \_iterator\_ is not
+  -- | an Object, throw a \*TypeError\* exception. 1. Return ?
+  -- | GetIteratorDirect(\_iterator\_).
+  -- SPEC: L7221-L7234
+  -- | # IteratorStepValue ( \_iteratorRecord\_: an Iterator Record, ): either a normal completion containing either an ECMAScript language value or \~done\~, or a throw completion
+  -- |
+  -- | description
+  -- | :   It requests the next value from \_iteratorRecord\_.\[\[Iterator\]\]
+  -- |     by calling \_iteratorRecord\_.\[\[NextMethod\]\] and returns either
+  -- |     \~done\~ indicating that the iterator has reached its end or the
+  -- |     value from the IteratorResult object if a next value is available.
+  -- |
+  -- | 1\. Let \_result\_ be ? IteratorStep(\_iteratorRecord\_). 1. If
+  -- | \_result\_ is \~done\~, then 1. Return \~done\~. 1. Let \_value\_ be
+  -- | Completion(IteratorValue(\_result\_)). 1. If \_value\_ is a throw
+  -- | completion, then 1. Set \_iteratorRecord\_.\[\[Done\]\] to \*true\*. 1.
+  -- | Return ? \_value\_.
+  -- SPEC: L6909-L6924
+  -- | # OrdinaryHasInstance ( \_C\_: an ECMAScript language value, \_O\_: an ECMAScript language value, ): either a normal completion containing a Boolean or a throw completion
+  -- |
+  -- | description
+  -- | :   It implements the default algorithm for determining if \_O\_
+  -- |     inherits from the instance object inheritance path provided by
+  -- |     \_C\_.
+  -- |
+  -- | 1\. If IsCallable(\_C\_) is \*false\*, return \*false\*. 1. If \_C\_ has
+  -- | a \[\[BoundTargetFunction\]\] internal slot, then 1. Let \_BC\_ be
+  -- | \_C\_.\[\[BoundTargetFunction\]\]. 1. Return ?
+  -- | InstanceofOperator(\_O\_, \_BC\_). 1. If \_O\_ is not an Object, return
+  -- | \*false\*. 1. Let \_P\_ be ? Get(\_C\_, \*\"prototype\"\*). 1. If \_P\_
+  -- | is not an Object, throw a \*TypeError\* exception. 1. Repeat, 1. Set
+  -- | \_O\_ to ? \_O\_.\[\[GetPrototypeOf\]\](). 1. If \_O\_ is \*null\*,
+  -- | return \*false\*. 1. If SameValue(\_P\_, \_O\_) is \*true\*, return
+  -- | \*true\*.
   -- SPEC: L7309-L7318
   -- | # CreateIteratorResultObject ( \_value\_: an ECMAScript language value, \_done\_: a Boolean, ): an Object that conforms to the IteratorResult interface
   -- |
@@ -9471,6 +9704,29 @@ def step? (s : State) : Option (TraceEvent × State) :=
   -- |
   -- | # Static Semantics: Early Errors
   -- |
+  -- SPEC: L18615-L18630
+  -- | # Runtime Semantics: CatchClauseEvaluation ( \_thrownValue\_: an ECMAScript language value, ): either a normal completion containing an ECMAScript language value or an abrupt completion
+  -- |
+  -- | Catch : \`catch\` \`(\` CatchParameter \`)\` Block 1. Let \_oldEnv\_
+  -- | be the running execution context\'s LexicalEnvironment. 1. Let
+  -- | \_catchEnv\_ be NewDeclarativeEnvironment(\_oldEnv\_). 1. For each
+  -- | element \_argName\_ of the BoundNames of \|CatchParameter\|, do 1.
+  -- | Perform ! \_catchEnv\_.CreateMutableBinding(\_argName\_, \*false\*). 1.
+  -- | Set the running execution context\'s LexicalEnvironment to
+  -- | \_catchEnv\_. 1. Let \_status\_ be Completion(BindingInitialization of
+  -- | \|CatchParameter\| with arguments \_thrownValue\_ and \_catchEnv\_). 1.
+  -- | If \_status\_ is an abrupt completion, then 1. Set the running
+  -- | execution context\'s LexicalEnvironment to \_oldEnv\_. 1. Return ?
+  -- | \_status\_.
+  -- SPEC: L18631-L18638
+  -- | Catch : \`catch\` Block 1. Return ? Evaluation of \|Block\|.
+  -- |
+  -- | No matter how control leaves the \|Block\| the LexicalEnvironment is
+  -- | always restored to its former state.
+  -- |
+  -- | CaseClause : \`case\` Expression \`:\` 1. Return \~empty\~. CaseClause
+  -- | : \`case\` Expression \`:\` StatementList 1. Return ? Evaluation of
+  -- | \|StatementList\|.
   | .tryCatch body catchParam catchBody finally_ =>
       let isCallFrame := catchParam == "__call_frame_return__"
       match exprValue? body with

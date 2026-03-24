@@ -7577,9 +7577,35 @@ theorem step_sim (irmod : IRModule) (wmod : Module) :
                   hlabels := hrel.hlabels
                   hhalt := hhalt_of_structural hrest hrel.hlabels
                 }
-              | v1 :: v2 :: stk =>
+              | .i64 _ :: _ :: _ | .f64 _ :: _ :: _ | .i32 _ :: .i64 _ :: _ | .i32 _ :: .f64 _ :: _ =>
                 -- Type mismatch (at least one non-i32): both trap
-                sorry)
+                -- IR step: type mismatch → trap
+                simp [irStep?, hcode_ir, hstk, irPop2?, irTrapState, irPushTrace] at hstep
+                obtain ⟨rfl, rfl⟩ := hstep
+                -- Extract Wasm stack structure from correspondence
+                have hlen := hrel.hstack.1; rw [hstk] at hlen
+                match hs2 : s2.stack with
+                | [] => simp at hlen
+                | [_] => simp at hlen
+                | w1 :: w2 :: wstk =>
+                  have h0 := hrel.hstack.2 0 (by simp [hstk])
+                  have h1 := hrel.hstack.2 1 (by simp [hstk]; omega)
+                  obtain ⟨_, _, h0a, h0b, h0c⟩ := h0
+                  obtain ⟨_, _, h1a, h1b, h1c⟩ := h1
+                  simp [hstk] at h0a h1a; subst h0a; subst h1a
+                  simp [hs2] at h0b h1b; obtain rfl := h0b; obtain rfl := h1b
+                  -- Case split on value correspondences to get concrete Wasm value types
+                  cases h0c <;> cases h1c <;> (
+                    exact ⟨_, by simp [traceToWasm, step?, hcw, hs2, pop2?,
+                        withI32Bin, withI32Rel, trapState, pushTrace],
+                      { hemit := hrel.hemit, hcode := .nil,
+                        hstack := by dsimp only []; exact hrel.hstack,
+                        hframes_len := hrel.hframes_len,
+                        hframes_locals := hrel.hframes_locals,
+                        hframes_vals := hrel.hframes_vals,
+                        hglobals := hrel.hglobals,
+                        hlabels := hrel.hlabels,
+                        hhalt := hhalt_of_structural .nil hrel.hlabels }))
           | .f64 =>
             rcases hc.binOp_f64_inv with
               ⟨rfl, rest_w, hcw, hrest⟩ | ⟨rfl, rest_w, hcw, hrest⟩ |
@@ -7645,9 +7671,32 @@ theorem step_sim (irmod : IRModule) (wmod : Module) :
                   hlabels := hrel.hlabels
                   hhalt := hhalt_of_structural hrest hrel.hlabels
                 }
-              | v1 :: v2 :: stk =>
+              | .i32 _ :: _ :: _ | .i64 _ :: _ :: _ | .f64 _ :: .i32 _ :: _ | .f64 _ :: .i64 _ :: _ =>
                 -- Type mismatch (at least one non-f64): both trap
-                sorry)
+                simp [irStep?, hcode_ir, hstk, irPop2?, irTrapState, irPushTrace] at hstep
+                obtain ⟨rfl, rfl⟩ := hstep
+                have hlen := hrel.hstack.1; rw [hstk] at hlen
+                match hs2 : s2.stack with
+                | [] => simp at hlen
+                | [_] => simp at hlen
+                | w1 :: w2 :: wstk =>
+                  have h0 := hrel.hstack.2 0 (by simp [hstk])
+                  have h1 := hrel.hstack.2 1 (by simp [hstk]; omega)
+                  obtain ⟨_, _, h0a, h0b, h0c⟩ := h0
+                  obtain ⟨_, _, h1a, h1b, h1c⟩ := h1
+                  simp [hstk] at h0a h1a; subst h0a; subst h1a
+                  simp [hs2] at h0b h1b; obtain rfl := h0b; obtain rfl := h1b
+                  cases h0c <;> cases h1c <;> (
+                    exact ⟨_, by simp [traceToWasm, step?, hcw, hs2, pop2?,
+                        withF64Bin, trapState, pushTrace],
+                      { hemit := hrel.hemit, hcode := .nil,
+                        hstack := by dsimp only []; exact hrel.hstack,
+                        hframes_len := hrel.hframes_len,
+                        hframes_locals := hrel.hframes_locals,
+                        hframes_vals := hrel.hframes_vals,
+                        hglobals := hrel.hglobals,
+                        hlabels := hrel.hlabels,
+                        hhalt := hhalt_of_structural .nil hrel.hlabels }))
           | .i64 | .ptr =>
             -- No EmitCodeCorr constructor for i64/ptr binOps
             exfalso; generalize s2.code = wcode at hc
