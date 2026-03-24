@@ -2208,6 +2208,17 @@ def exprValue? : Expr → Option Value
 -- | The BigInt type has no implicit conversions in the ECMAScript language;
 -- | programmers must call BigInt explicitly to convert values from other
 -- | types.
+-- SPEC: L5933-L5942
+-- | # Type Conversion
+-- |
+-- | The ECMAScript language implicitly performs automatic type conversion as
+-- | needed. To clarify the semantics of certain constructs it is useful to
+-- | define a set of conversion abstract operations. The conversion abstract
+-- | operations are polymorphic; they can accept a value of any ECMAScript
+-- | language type. But no other specification types are used with these
+-- | operations.
+-- |
+-- | The BigInt type has no implicit conversions in the ECMAScript language;
 -- SPEC: L5982-L5994
 -- | # ToBoolean ( \_argument\_: an ECMAScript language value, ): a Boolean
 -- |
@@ -3160,6 +3171,9 @@ def valueToString : Value → String
 -- | \*true\*. 1. If \_x\_ is a String and \_y\_ is a String, return
 -- | \*true\*. 1. If \_x\_ is an Object and \_y\_ is an Object, return
 -- | \*true\*. 1. Return \*false\*.
+-- SPEC: L6388-L6389
+-- | # Testing and Comparison Operations
+-- |
 -- SPEC: L6473-L6485
 -- | # SameValue ( \_x\_: an ECMAScript language value, \_y\_: an ECMAScript language value, ): a Boolean
 -- |
@@ -6598,6 +6612,32 @@ def step? (s : State) : Option (TraceEvent × State) :=
   -- | \|ArrowParameters\|, \|ConciseBody\|, \~lexical-this\~, \_env\_,
   -- | \_privateEnv\_). 1. Perform SetFunctionName(\_closure\_, \_name\_). 1.
   -- | Return \_closure\_.
+  -- SPEC: L11036-L11048
+  -- | # ECMAScript Function Objects
+  -- |
+  -- | ECMAScript function objects encapsulate parameterized ECMAScript code
+  -- | closed over a lexical environment and support the dynamic evaluation of
+  -- | that code. An ECMAScript function object is an ordinary object and has
+  -- | the same internal slots and the same internal methods as other ordinary
+  -- | objects. The code of an ECMAScript function object may be either strict
+  -- | mode code () or non-strict code. An ECMAScript function object whose
+  -- | code is strict mode code is called a [strict function]{#strict-function
+  -- | .dfn variants="strict functions"}. One whose code is not strict mode
+  -- | code is called a [non-strict function]{#non-strict-function .dfn
+  -- | variants="non-strict functions"}.
+  -- SPEC: L18938-L18950
+  -- | # Arrow Function Definitions
+  -- |
+  -- | ## Syntax
+  -- |
+  -- | ArrowFunction\[In, Yield, Await\] : ArrowParameters\[?Yield, ?Await\]
+  -- | \[no LineTerminator here\] \`=\>\` ConciseBody\[?In\]
+  -- | ArrowParameters\[Yield, Await\] : BindingIdentifier\[?Yield, ?Await\]
+  -- | CoverParenthesizedExpressionAndArrowParameterList\[?Yield, ?Await\]
+  -- | #parencover ConciseBody\[In\] : \[lookahead != \`{\`\]
+  -- | ExpressionBody\[?In, \~Await\] \`{\` FunctionBody\[\~Yield, \~Await\]
+  -- | \`}\` ExpressionBody\[In, Await\] : AssignmentExpression\[?In, \~Yield,
+  -- | ?Await\]
   -- SPEC: L11354-L11370
   -- | # FunctionDeclarationInstantiation ( \_func\_: an ECMAScript function object, \_argumentsList\_: a List of ECMAScript language values, ): either a normal completion containing \~unused\~ or a throw completion
   -- |
