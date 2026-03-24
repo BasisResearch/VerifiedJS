@@ -1,4 +1,59 @@
 
+## Run: 2026-03-24T00:00+00:00
+- Sorries before: 21 total (18 CC + 2 ANF + 1 Lower), after: 16 total (13 CC + 2 ANF + 1 Lower)
+- Net sorry delta: -5
+
+### What was done:
+1. **Major refactor: carry envVar/envMap through IH** — Changed the `suffices` in `closureConvert_step_simulation` to universally quantify `envVar` and `envMap` in the induction, so the IH preserves them across recursive calls. This was the architectural blocker for ALL compound stepping sub-cases. Updated ~30 sites: result constructions, IH applications, IH destructurings.
+
+2. **Closed seq stepping sub-case (line 1178)** — -1 sorry
+   - Applied IH to sub-expression `a`, got `scope', st_a, st_a'` with SAME envVar/envMap
+   - Used `step_seq_nonvalue_lhs` for Core step construction
+   - Expression correspondence: used `convertExpr_scope_irrelevant` + `rfl` to close state matching
+   - Key insight: after `simp [Flat.convertExpr]` and rewriting with IH's `hconv_arg`, the state matching becomes definitional equality (`rfl`)
+
+3. **Closed if stepping sub-case (line 1119)** — -1 sorry
+   - Same pattern as seq but with 3 sub-expressions (cond, then_, else_)
+   - Used `step_if_step_cond` helper
+   - Used `convertExpr_scope_irrelevant` for both then_ and else_ branches
+
+4. **Closed let stepping sub-case (line 928)** — -1 sorry
+   - Same pattern, with `step_let_step_init` helper
+   - Scope for body is `name :: scope` → used `convertExpr_scope_irrelevant body (name :: scope) (name :: scope')`
+
+5. **Closed binary lhs stepping sub-case (line 1714)** — -1 sorry
+   - Used `step_binary_nonvalue_lhs` helper
+   - Same `congr 1 + rfl` pattern for rhs correspondence
+
+6. **Closed binary rhs stepping sub-case (line 1713)** — -1 sorry
+   - Special case: lhs IS a value (.lit lv), rhs is not
+   - Proved Core step inline via `simp [Core.step?, Core.exprValue?, hval_r, hcore_substep]`
+   - No rhs' to match (only one sub-expr stepped), so simpler expression correspondence
+
+### Key architectural finding:
+The `convertExpr_scope_irrelevant` lemma combined with the envVar/envMap refactor makes ALL stepping sub-cases closeable! After `simp [Flat.convertExpr]` + rewriting with the IH's conversion equation, the state matching for "other" sub-expressions (b in seq, then_/else_ in if, body in let, rhs in binary) resolves to `rfl` because:
+- `convertExpr` for the "other" sub-expression uses the SAME envVar/envMap (from refactor)
+- `convertExpr_scope_irrelevant` handles scope differences
+- After rewriting `convertExpr stepped_expr` with the IH equation, the state flows correctly
+
+### Remaining sorries (16 total):
+| File | Count | Description |
+|------|-------|-------------|
+| CC | 1 | .var captured (line 768, needs heap correspondence) |
+| CC | 7 | call, newObj, getProp, setProp, getIndex, setIndex, deleteProp (need heap/funcs) |
+| CC | 3 | objectLit, arrayLit, functionDef (need heap/funcs + CC state) |
+| CC | 1 | tryCatch (needs env correspondence for catch) |
+| CC | 1 | init Core⊆Flat direction (line 2004) |
+| ANF | 2 | step_star, WF |
+| Lower | 1 | Blocked on wasmspec |
+
+### Next steps:
+1. The 7 heap/funcs cases (call, newObj, etc.) ALL need HeapCorr/FuncsCorr in CC_SimRel
+2. Define HeapCorr and FuncsCorr, add to CC_SimRel
+3. Prove preservation lemmas for alloc/update/get
+4. The tryCatch case needs env correspondence for the catch clause
+5. The objectLit/arrayLit/functionDef cases need full heap/funcs + CC state management
+
 ## Run: 2026-03-23T16:30+00:00
 - Sorries before: 28, after: 28
 - Net sorry delta: 0 (infrastructure improvements, no sorry reduction)
