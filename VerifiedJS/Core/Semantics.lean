@@ -2636,8 +2636,38 @@ def toNumber : Value → Float
 -- | sign.
 /-- ECMA-262 §13.5 Runtime Semantics: Evaluation (core unary subset). -/
 def evalUnary : UnaryOp → Value → Value
+  -- SPEC: L16190-L16202
+  -- | # Unary \`-\` Operator
+  -- |
+  -- | The unary \`-\` operator converts its operand to a numeric value and
+  -- | then negates it. Negating \*+0\*~𝔽~ produces \*-0\*~𝔽~, and negating
+  -- | \*-0\*~𝔽~ produces \*+0\*~𝔽~.
+  -- |
+  -- | # Runtime Semantics: Evaluation
+  -- |
+  -- | UnaryExpression : \`-\` UnaryExpression 1. Let \_expr\_ be ? Evaluation
+  -- | of \|UnaryExpression\|. 1. Let \_oldValue\_ be ? ToNumeric(?
+  -- | GetValue(\_expr\_)). 1. If \_oldValue\_ is a Number, return
+  -- | Number::unaryMinus(\_oldValue\_). 1. Assert: \_oldValue\_ is a
+  -- | BigInt. 1. Return BigInt::unaryMinus(\_oldValue\_).
   | .neg, v => .number (-toNumber v)
+  -- SPEC: L16183-L16189
+  -- | The unary + operator converts its operand to Number type.
+  -- |
+  -- | # Runtime Semantics: Evaluation
+  -- |
+  -- | UnaryExpression : \`+\` UnaryExpression 1. Let \_expr\_ be ? Evaluation
+  -- | of \|UnaryExpression\|. 1. Return ? ToNumber(? GetValue(\_expr\_)).
   | .pos, v => .number (toNumber v)
+  -- SPEC: L16213-L16222
+  -- | # Logical NOT Operator ( \`!\` )
+  -- |
+  -- | # Runtime Semantics: Evaluation
+  -- |
+  -- | UnaryExpression : \`!\` UnaryExpression 1. Let \_expr\_ be ? Evaluation
+  -- | of \|UnaryExpression\|. 1. Let \_oldValue\_ be ToBoolean(?
+  -- | GetValue(\_expr\_)). 1. If \_oldValue\_ is \*true\*, return
+  -- | \*false\*. 1. Return \*true\*.
   | .logNot, v => .bool (!toBoolean v)
   -- SPEC: L16150-L16156
   -- | # The \`void\` Operator
@@ -2993,6 +3023,23 @@ def evalUnary : UnaryOp → Value → Value
 -- | using radix \_radix\_, that \_s\_ is not divisible by \_radix\_, and
 -- | that the least significant digit of \_s\_ is not necessarily uniquely
 -- | determined by these criteria. 1. If \_radix\_ ≠ 10 or \_n\_ is in the
+-- SPEC: L6305-L6321
+-- | # ToString ( \_argument\_: an ECMAScript language value, ): either a normal completion containing a String or a throw completion
+-- |
+-- | description
+-- | :   It converts \_argument\_ to a value of type String.
+-- |
+-- | 1\. If \_argument\_ is a String, return \_argument\_. 1. If \_argument\_
+-- | is a Symbol, throw a \*TypeError\* exception. 1. If \_argument\_ is
+-- | \*undefined\*, return \*\"undefined\"\*. 1. If \_argument\_ is \*null\*,
+-- | return \*\"null\"\*. 1. If \_argument\_ is \*true\*, return
+-- | \*\"true\"\*. 1. If \_argument\_ is \*false\*, return \*\"false\"\*. 1.
+-- | If \_argument\_ is a Number, return Number::toString(\_argument\_,
+-- | 10). 1. If \_argument\_ is a BigInt, return
+-- | BigInt::toString(\_argument\_, 10). 1. Assert: \_argument\_ is an
+-- | Object. 1. Let \_primValue\_ be ? ToPrimitive(\_argument\_,
+-- | \~string\~). 1. Assert: \_primValue\_ is not an Object. 1. Return ?
+-- | ToString(\_primValue\_).
 /-- ECMA-262 §7.1.12 ToString / §6.1.6.1.20 Number::toString (core subset). -/
 def valueToString : Value → String
   | .string s => s
@@ -3098,6 +3145,34 @@ def valueToString : Value → String
 -- | \_x\_ is \*+0\*~𝔽~ and \_y\_ is \*-0\*~𝔽~, return \*true\*. 1. If \_x\_
 -- | is \*-0\*~𝔽~ and \_y\_ is \*+0\*~𝔽~, return \*true\*. 1. If \_x\_ is
 -- | \_y\_, return \*true\*. 1. Return \*false\*.
+-- SPEC: L6458-L6476
+-- | # SameType ( \_x\_: an ECMAScript language value, \_y\_: an ECMAScript language value, ): a Boolean
+-- |
+-- | description
+-- | :   It determines whether or not the two arguments are the same type.
+-- |
+-- | 1\. If \_x\_ is \*undefined\* and \_y\_ is \*undefined\*, return
+-- | \*true\*. 1. If \_x\_ is \*null\* and \_y\_ is \*null\*, return
+-- | \*true\*. 1. If \_x\_ is a Boolean and \_y\_ is a Boolean, return
+-- | \*true\*. 1. If \_x\_ is a Number and \_y\_ is a Number, return
+-- | \*true\*. 1. If \_x\_ is a BigInt and \_y\_ is a BigInt, return
+-- | \*true\*. 1. If \_x\_ is a Symbol and \_y\_ is a Symbol, return
+-- | \*true\*. 1. If \_x\_ is a String and \_y\_ is a String, return
+-- | \*true\*. 1. If \_x\_ is an Object and \_y\_ is an Object, return
+-- | \*true\*. 1. Return \*false\*.
+-- SPEC: L6478-L6490
+-- | # SameValue ( \_x\_: an ECMAScript language value, \_y\_: an ECMAScript language value, ): a Boolean
+-- |
+-- | description
+-- | :   It determines whether or not the two arguments are the same value.
+-- |
+-- | 1\. If SameType(\_x\_, \_y\_) is \*false\*, return \*false\*. 1. If
+-- | \_x\_ is a Number, then 1. Return Number::sameValue(\_x\_, \_y\_). 1.
+-- | Return SameValueNonNumber(\_x\_, \_y\_).
+-- |
+-- | This algorithm differs from the IsStrictlyEqual Algorithm by treating
+-- | all \*NaN\* values as equivalent and by differentiating \*+0\*~𝔽~ from
+-- | \*-0\*~𝔽~.
 /-- ECMA-262 §7.2.14 Abstract Equality Comparison (simplified core subset).
     Handles null/undefined equivalence and type coercion. -/
 def abstractEq : Value → Value → Bool
@@ -6626,6 +6701,34 @@ def step? (s : State) : Option (TraceEvent × State) :=
           let heap' := { objects := s.heap.objects.push heapProps, nextAddr := addr + 1 }
           let s' := pushTrace { s with expr := .lit (.object addr), heap := heap' } .silent
           some (.silent, s')
+  -- SPEC: L14938-L14965
+  -- | # Array Initializer
+  -- |
+  -- | An \|ArrayLiteral\| is an expression describing the initialization of an
+  -- | Array, using a list, of zero or more expressions each of which
+  -- | represents an array element, enclosed in square brackets. The elements
+  -- | need not be literals; they are evaluated each time the array initializer
+  -- | is evaluated.
+  -- |
+  -- | Array elements may be elided at the beginning, middle or end of the
+  -- | element list. Whenever a comma in the element list is not preceded by an
+  -- | \|AssignmentExpression\| (i.e., a comma at the beginning or after
+  -- | another comma), the missing array element contributes to the length of
+  -- | the Array and increases the index of subsequent elements. Elided array
+  -- | elements are not defined. If an element is elided at the end of an
+  -- | array, that element does not contribute to the length of the Array.
+  -- |
+  -- | ## Syntax
+  -- |
+  -- | ArrayLiteral\[Yield, Await\] : \`\[\` Elision? \`\]\` \`\[\`
+  -- | ElementList\[?Yield, ?Await\] \`\]\` \`\[\` ElementList\[?Yield,
+  -- | ?Await\] \`,\` Elision? \`\]\` ElementList\[Yield, Await\] : Elision?
+  -- | AssignmentExpression\[+In, ?Yield, ?Await\] Elision?
+  -- | SpreadElement\[?Yield, ?Await\] ElementList\[?Yield, ?Await\] \`,\`
+  -- | Elision? AssignmentExpression\[+In, ?Yield, ?Await\]
+  -- | ElementList\[?Yield, ?Await\] \`,\` Elision? SpreadElement\[?Yield,
+  -- | ?Await\] Elision : \`,\` Elision \`,\` SpreadElement\[Yield, Await\] :
+  -- | \`\...\` AssignmentExpression\[+In, ?Yield, ?Await\]
   -- SPEC: L14966-L15011
   -- | # Runtime Semantics: ArrayAccumulation ( \_array\_: an Array, \_nextIndex\_: an integer, ): either a normal completion containing an integer or an abrupt completion
   -- |
@@ -8213,6 +8316,17 @@ inductive Steps : State → List TraceEvent → State → Prop where
       Steps s2 ts s3 →
       Steps s1 (t :: ts) s3
 
+-- SPEC: L20550-L20560
+-- | # ECMAScript Language: Scripts and Modules
+-- |
+-- | # Scripts
+-- |
+-- | ## Syntax
+-- |
+-- | Script : ScriptBody? ScriptBody : StatementList\[\~Yield, \~Await,
+-- | \~Return\]
+-- |
+-- | # Static Semantics: Early Errors
 /-- Initial Core machine state for a program body.
     Preloads the `console` global with a `log` method (§18.2). -/
 def initialState (p : Program) : State :=
