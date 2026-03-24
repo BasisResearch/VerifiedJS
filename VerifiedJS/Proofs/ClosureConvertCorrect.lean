@@ -2163,7 +2163,91 @@ private theorem closureConvert_step_simulation
         | error msg =>
           -- Error from body: catch handler fires
           -- In Core, isCallFrame check determines behavior.
-          sorry -- needs isCallFrame handling for error catch
+          -- Event is .error msg
+          have hev_eq : ev = .error msg := (Prod.mk.inj (Option.some.inj hstep)).1
+          subst hev_eq
+          -- Apply IH to body step
+          obtain ⟨sc_arg, ⟨hcore_substep⟩, htrace_arg, henvCorr_arg, hheap_arg, scope', st_a, st_a', hconv_arg⟩ :=
+            ih_depth (Core.Expr.depth body) hdepth envVar envMap
+            ⟨body', sf.env, sf.heap, sf.trace⟩
+            ⟨body, sc.env, sc.heap, sc.trace, sc.funcs, sc.callStack⟩
+            (.error msg) sa_flat rfl htrace henvCorr hheap
+            ⟨scope, st, st1, by simp only [hbody'_def, hst1_def]; exact (Prod.eta _).symm⟩
+            ⟨hsubstep⟩
+          by_cases hcf : catchParam = "__call_frame_return__"
+          · -- isCallFrame = true: Core callStack behavior differs from Flat
+            sorry -- unreachable for CC'd source programs
+          · -- isCallFrame = false: Core catches error same as Flat
+            -- Determine the handler based on finally_
+            set handler_core := (match finally_ with | some fin => Core.Expr.seq catchBody fin | none => catchBody)
+            set handler_flat := (match finally' with | some fin => Flat.Expr.seq catchBody' fin | none => catchBody')
+            -- Core step
+            have hsc_rw : sc = ⟨Core.Expr.tryCatch body catchParam catchBody finally_, sc.env, sc.heap, sc.trace, sc.funcs, sc.callStack⟩ := by
+              cases sc; simp_all
+            have hcore_err : Core.step? sc =
+              some (.error msg, Core.pushTrace { sc_arg with expr := handler_core,
+                env := sc_arg.env.extend catchParam (.string msg), trace := sc.trace } (.error msg)) := by
+              rw [hsc_rw]; simp only [Core.step?, Core.exprValue?, hval]
+              rw [show (⟨body, sc.env, sc.heap, sc.trace, sc.funcs, sc.callStack⟩ : Core.State) =
+                { sc with expr := body } from by cases sc; simp_all]
+              rw [hcore_substep]
+              simp only [BEq.beq, decide_eq_true_eq, hcf, ite_false, ↓reduceIte, Bool.and_self, Bool.false_and]
+              rfl
+            set sc' := Core.pushTrace { sc_arg with expr := handler_core,
+              env := sc_arg.env.extend catchParam (.string msg), trace := sc.trace } (.error msg)
+            refine ⟨sc', ⟨hcore_err⟩, ?_⟩
+            constructor
+            · -- Trace
+              have hsf'_eq := (Prod.mk.inj (Option.some.inj hstep)).2
+              rw [← hsf'_eq]; show sf.trace ++ [.error msg] = sc.trace ++ [.error msg]; rw [htrace]
+            constructor
+            · -- EnvCorr: both extend with catchParam → .string msg
+              have hsf'_eq := (Prod.mk.inj (Option.some.inj hstep)).2
+              have hsc'_env : sc'.env = sc_arg.env.extend catchParam (.string msg) := by simp [sc', Core.pushTrace]
+              have hsf'_env : sf'.env = sa_flat.env.extend catchParam (Flat.Value.string msg) := by
+                rw [← hsf'_eq]; rfl
+              rw [hsc'_env, hsf'_env]
+              exact EnvCorr_extend henvCorr_arg catchParam (.string msg)
+            constructor
+            · -- Heap
+              have hsf'_eq := (Prod.mk.inj (Option.some.inj hstep)).2
+              have hsc'_heap : sc'.heap = sc_arg.heap := by simp [sc', Core.pushTrace]
+              rw [hsc'_heap]; convert hheap_arg using 1; rw [← hsf'_eq]; rfl
+            · -- Expression correspondence
+              have hsf'_eq := (Prod.mk.inj (Option.some.inj hstep)).2
+              have hsf'_expr : sf'.expr = handler_flat := by rw [← hsf'_eq]; rfl
+              have hsc'_expr : sc'.expr = handler_core := by simp [sc', Core.pushTrace]
+              rw [hsc'_expr, hsf'_expr]
+              -- Case split on finally_ to determine handler shape
+              cases hfin : finally_ with
+              | none =>
+                -- handler_core = catchBody, handler_flat = catchBody'
+                simp only [hfin, handler_core, handler_flat]
+                have hfin' : finally' = none := by
+                  rw [hfinally'_def, hfin]; simp [Flat.convertOptExpr]
+                simp only [hfin']
+                refine ⟨catchParam :: scope, st1, ?_, ?_⟩
+                · exact (Flat.convertExpr catchBody (catchParam :: scope) envVar envMap st1).2
+                · rw [hcatchBody'_def]; rfl
+              | some fin =>
+                -- handler_core = .seq catchBody fin, handler_flat = .seq catchBody' finally'
+                simp only [hfin, handler_core, handler_flat]
+                have hfin' : ∃ fin', finally' = some fin' := by
+                  rw [hfinally'_def, hfin]; simp [Flat.convertOptExpr]; exact ⟨_, rfl⟩
+                obtain ⟨fin', hfin'⟩ := hfin'
+                simp only [hfin']
+                refine ⟨scope, st1, ?_, ?_⟩
+                · exact (Flat.convertExpr fin scope envVar envMap
+                    (Flat.convertExpr catchBody scope envVar envMap st1).2).2
+                · simp only [Flat.convertExpr]
+                  rw [hcatchBody'_def,
+                    convertExpr_scope_irrelevant catchBody (catchParam :: scope) scope envVar envMap st1]
+                  congr 1
+                  · congr 1
+                    rw [hfinally'_def, hfin]; simp only [Flat.convertOptExpr]
+                    rw [hst2_def, convertExpr_scope_irrelevant catchBody (catchParam :: scope) scope envVar envMap st1]
+                  · rw [hfinally'_def, hfin]; simp only [Flat.convertOptExpr]
+                    rw [hst2_def, convertExpr_scope_irrelevant catchBody (catchParam :: scope) scope envVar envMap st1]
         | silent =>
           -- Silent step in body: both Flat and Core wrap in tryCatch
           have hev_eq : ev = .silent := (Prod.mk.inj (Option.some.inj hstep)).1
