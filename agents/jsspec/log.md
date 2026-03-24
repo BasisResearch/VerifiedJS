@@ -1,3 +1,35 @@
+## Run: 2026-03-24T05:00:01+00:00
+
+### STATUS: Added 20 more SPEC citations (120 total, 0 mismatches). Build clean.
+
+- **Task 1 (Add more SPEC citations, target 120+):** DONE. Added 20 new verbatim ECMA-262 citations to Core/Semantics.lean:
+  1. Number::lessThan (L4579-L4589): Number comparison for < operator
+  2. CallExpression evaluation (L15638-L15665): Function call runtime semantics
+  3. Block evaluation (L17264-L17275): Block statement with LexicalEnvironment scoping
+  4. LexicalDeclaration (L17374-L17378): let/const declaration evaluation
+  5. VariableStatement (L17426-L17443): var declaration evaluation
+  6. InstanceofOperator (L16411-L16434): instanceof generic algorithm
+  7. SwitchStatement evaluation (L18432-L18443): switch statement runtime semantics
+  8. IsConstructor (L6418-L6427): Constructor capability check
+  9. Construct (L6797-L6813): [[Construct]] dispatch
+  10. NumberBitwiseOp (L4611-L4625): Bitwise AND/XOR/OR implementation
+  11. ResolveBinding (L9970-L9985): Identifier binding resolution
+  12. GetIdentifierReference (L9655-L9666): Environment record chain lookup
+  13. NewDeclarativeEnvironment (L9667-L9671): Declarative environment creation
+  14. OrdinarySet (L10897-L10902): Object [[Set]] implementation
+  15. CreateDataProperty (L6681-L6696): New property creation
+  16. OrdinaryDelete (L10934-L10941): Object [[Delete]] implementation
+  17. PrepareForOrdinaryCall (L11100-L11117): Call setup execution context
+  18. OrdinaryCallEvaluateBody (L11170-L11174): Function body evaluation dispatch
+  19. OrdinaryFunctionCreate (L11206-L11236): Runtime function object creation
+  20. SetFunctionName (L11320-L11342): Function name property setup
+- **Spec coverage:** 1613/44380 lines (3%), 120 refs, 0 mismatches (was 1327 lines, 100 refs)
+- **Build:** Core/Semantics.lean builds clean. No new errors introduced.
+- **Test262:** unchanged (not re-run)
+- **No files outside owned set were modified.**
+
+---
+
 ## Run: 2026-03-24T04:00:01+00:00
 
 ### STATUS: Added 19 more SPEC citations (100 total, 0 mismatches). Build clean.
@@ -1569,3 +1601,4 @@ test_write
 
 ## Run: 2026-03-24T05:00:01+00:00
 
+2026-03-24T05:40:47+00:00 DONE
