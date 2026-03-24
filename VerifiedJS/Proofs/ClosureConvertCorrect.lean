@@ -499,6 +499,48 @@ private theorem convertOptExpr_scope_irrelevant (oe : Option Core.Expr)
   decreasing_by all_goals simp_all <;> omega
 end
 
+/-- Returns true if the expression never uses "__call_frame_return__" as a tryCatch catchParam.
+    Source programs from `elaborate` satisfy this predicate since "__call_frame_return__" is only
+    introduced by the Core interpreter for call-frame returns. -/
+mutual
+private def noCallFrameReturn : Core.Expr → Bool
+  | .tryCatch body cp cb fin =>
+    cp != "__call_frame_return__" &&
+    body.noCallFrameReturn && cb.noCallFrameReturn &&
+    match fin with | some f => f.noCallFrameReturn | none => true
+  | .seq a b => a.noCallFrameReturn && b.noCallFrameReturn
+  | .«if» c t e => c.noCallFrameReturn && t.noCallFrameReturn && e.noCallFrameReturn
+  | .while_ c b => c.noCallFrameReturn && b.noCallFrameReturn
+  | .«let» _ i b => i.noCallFrameReturn && b.noCallFrameReturn
+  | .assign _ v => v.noCallFrameReturn
+  | .call c args => c.noCallFrameReturn && listNoCallFrameReturn args
+  | .newObj c args => c.noCallFrameReturn && listNoCallFrameReturn args
+  | .getProp o _ => o.noCallFrameReturn
+  | .setProp o _ v => o.noCallFrameReturn && v.noCallFrameReturn
+  | .getIndex o i => o.noCallFrameReturn && i.noCallFrameReturn
+  | .setIndex o i v => o.noCallFrameReturn && i.noCallFrameReturn && v.noCallFrameReturn
+  | .deleteProp o _ => o.noCallFrameReturn
+  | .typeof a => a.noCallFrameReturn
+  | .unary _ a => a.noCallFrameReturn
+  | .binary _ l r => l.noCallFrameReturn && r.noCallFrameReturn
+  | .objectLit ps => propListNoCallFrameReturn ps
+  | .arrayLit es => listNoCallFrameReturn es
+  | .throw a => a.noCallFrameReturn
+  | .forIn _ o b => o.noCallFrameReturn && b.noCallFrameReturn
+  | .forOf _ i b => i.noCallFrameReturn && b.noCallFrameReturn
+  | .labeled _ b => b.noCallFrameReturn
+  | .«return» (some e) => e.noCallFrameReturn
+  | .yield (some e) _ => e.noCallFrameReturn
+  | .await a => a.noCallFrameReturn
+  | _ => true
+private def listNoCallFrameReturn : List Core.Expr → Bool
+  | [] => true
+  | e :: rest => e.noCallFrameReturn && listNoCallFrameReturn rest
+private def propListNoCallFrameReturn : List (Core.PropName × Core.Expr) → Bool
+  | [] => true
+  | (_, e) :: rest => e.noCallFrameReturn && propListNoCallFrameReturn rest
+end
+
 /-- Simulation relation for closure conversion: Flat and Core states
     have matching traces, environment correspondence, and expression
     correspondence through the conversion. -/
@@ -507,6 +549,7 @@ private def CC_SimRel (_s : Core.Program) (_t : Flat.Program)
   sf.trace = sc.trace ∧
   EnvCorr sc.env sf.env ∧
   sf.heap = sc.heap ∧
+  noCallFrameReturn sc.expr = true ∧
   ∃ (scope : List String) (envVar : String) (envMap : Flat.EnvMapping) (st st' : Flat.CCState),
     (sf.expr, st') = Flat.convertExpr sc.expr scope envVar envMap st
 

@@ -3747,7 +3747,7 @@ def irStep? (s : IRExecState) : Option (TraceEvent × IRExecState) :=
                 name := "__if", isLoop := false
                 onBranch := rest, onExit := rest }
               some (.silent, irPushTrace { base with stack := stk, code := branch, labels := lbl :: base.labels } .silent)
-          | some _ => some (irTrapState base "type mismatch in if (expected i32)")
+          | some _ => some (irTrapState base "if condition is not i32")
           | none => some (irTrapState base "stack underflow in if")
       -- Control flow: br
       | .br label =>
@@ -7474,11 +7474,70 @@ theorem step_sim (irmod : IRModule) (wmod : Module) :
                         exact hstk2.2 (i + 1) (by simp; omega)
                     · simp; exact hrel.hlabels
                     · exact hhalt_of_structural hthen (by simp; exact hrel.hlabels)
-            | v :: stk =>
-              -- Non-i32 on stack: type mismatch trap
-              -- Need to show IR traps and Wasm traps similarly
-              -- This is complex; for now handle the main cases above
-              sorry
+            | .i64 n :: stk =>
+              -- i64 on stack: type mismatch trap
+              have hir : irStep? s1 = some (.trap "if condition is not i32",
+                  { s1 with code := [], trace := s1.trace ++ [.trap "if condition is not i32"] }) := by
+                simp [irStep?, hcode_ir, hstk, irPop1?, irTrapState, irPushTrace]
+              rw [hir] at hstep
+              simp only [Option.some.injEq, Prod.mk.injEq] at hstep
+              obtain ⟨rfl, rfl⟩ := hstep
+              have hlen := hrel.hstack.1; rw [hstk] at hlen
+              match hs2 : s2.stack with
+              | [] => simp [hs2] at hlen
+              | wv :: wstk =>
+                have hval_corr := hrel.hstack.2 0 (by simp [hstk])
+                rw [hstk, hs2] at hval_corr
+                simp at hval_corr
+                obtain ⟨_, _, h1, h2, hvc⟩ := hval_corr
+                simp at h1 h2; subst h1; subst h2
+                cases hvc with
+                | i64 m =>
+                  have hw : step? s2 = some (.trap "if condition is not i32",
+                      { s2 with code := [], trace := s2.trace ++ [.trap "if condition is not i32"] }) := by
+                    simp [step?, hcw, hs2, pop1?, i32Truth, trapState, pushTrace]
+                  exact ⟨_, by simp [traceToWasm]; exact hw,
+                    { hemit := hrel.hemit
+                      hcode := .nil
+                      hstack := by dsimp only []; exact hrel.hstack
+                      hframes_len := hrel.hframes_len
+                      hframes_locals := hrel.hframes_locals
+                      hframes_vals := hrel.hframes_vals
+                      hglobals := hrel.hglobals
+                      hlabels := by dsimp only []; exact hrel.hlabels
+                      hhalt := hhalt_of_structural .nil hrel.hlabels }⟩
+            | .f64 n :: stk =>
+              -- f64 on stack: type mismatch trap
+              have hir : irStep? s1 = some (.trap "if condition is not i32",
+                  { s1 with code := [], trace := s1.trace ++ [.trap "if condition is not i32"] }) := by
+                simp [irStep?, hcode_ir, hstk, irPop1?, irTrapState, irPushTrace]
+              rw [hir] at hstep
+              simp only [Option.some.injEq, Prod.mk.injEq] at hstep
+              obtain ⟨rfl, rfl⟩ := hstep
+              have hlen := hrel.hstack.1; rw [hstk] at hlen
+              match hs2 : s2.stack with
+              | [] => simp [hs2] at hlen
+              | wv :: wstk =>
+                have hval_corr := hrel.hstack.2 0 (by simp [hstk])
+                rw [hstk, hs2] at hval_corr
+                simp at hval_corr
+                obtain ⟨_, _, h1, h2, hvc⟩ := hval_corr
+                simp at h1 h2; subst h1; subst h2
+                cases hvc with
+                | f64 m =>
+                  have hw : step? s2 = some (.trap "if condition is not i32",
+                      { s2 with code := [], trace := s2.trace ++ [.trap "if condition is not i32"] }) := by
+                    simp [step?, hcw, hs2, pop1?, i32Truth, trapState, pushTrace]
+                  exact ⟨_, by simp [traceToWasm]; exact hw,
+                    { hemit := hrel.hemit
+                      hcode := .nil
+                      hstack := by dsimp only []; exact hrel.hstack
+                      hframes_len := hrel.hframes_len
+                      hframes_locals := hrel.hframes_locals
+                      hframes_vals := hrel.hframes_vals
+                      hglobals := hrel.hglobals
+                      hlabels := by dsimp only []; exact hrel.hlabels
+                      hhalt := hhalt_of_structural .nil hrel.hlabels }⟩
           · exact hf.elim
       | .br label =>
           -- unconditional branch
