@@ -1621,6 +1621,41 @@ def step? (s : State) : Option (TraceEvent × State) :=
           let heap' := { objects := s.heap.objects.push heapProps, nextAddr := addr + 1 }
           let s' := pushTrace { s with expr := .lit (.object addr), heap := heap' } .silent
           some (.silent, s')
+  -- SPEC: L5504-L5512
+  -- | # UpdateEmpty ( \_completionRecord\_: a Completion Record, \_value\_: any value except a Completion Record, ): a Completion Record
+  -- |
+  -- | 1\. Assert: If \_completionRecord\_ is either a return completion or a
+  -- | throw completion, then \_completionRecord\_.\[\[Value\]\] is not
+  -- | \~empty\~. 1. If \_completionRecord\_.\[\[Value\]\] is not \~empty\~,
+  -- | return ? \_completionRecord\_. 1. Return Completion Record {
+  -- | \[\[Type\]\]: \_completionRecord\_.\[\[Type\]\], \[\[Value\]\]:
+  -- | \_value\_, \[\[Target\]\]: \_completionRecord\_.\[\[Target\]\] }.
+  -- SPEC: L17633-L17643
+  -- | # LoopContinues ( \_completion\_: a Completion Record, \_labelSet\_: a List of Strings, ): a Boolean
+  -- |
+  -- | 1\. If \_completion\_ is a normal completion, return \*true\*. 1. If
+  -- | \_completion\_ is not a continue completion, return \*false\*. 1. If
+  -- | \_completion\_.\[\[Target\]\] is \~empty\~, return \*true\*. 1. If
+  -- | \_labelSet\_ contains \_completion\_.\[\[Target\]\], return \*true\*. 1.
+  -- | Return \*false\*.
+  -- |
+  -- | Within the \|Statement\| part of an \|IterationStatement\| a
+  -- | \|ContinueStatement\| may be used to begin a new iteration.
+  -- SPEC: L17788-L17802
+  -- | # ForBodyEvaluation ( \_test\_: an \|Expression\| Parse Node or \~empty\~, \_increment\_: an \|Expression\| Parse Node or \~empty\~, \_stmt\_: a \|Statement\| Parse Node, \_perIterationBindings\_: a List of Strings, \_labelSet\_: a List of Strings, ): either a normal completion containing an ECMAScript language value or an abrupt completion
+  -- |
+  -- | 1\. Let \_V\_ be \*undefined\*. 1. Perform ?
+  -- | CreatePerIterationEnvironment(\_perIterationBindings\_). 1. Repeat, 1.
+  -- | If \_test\_ is not \~empty\~, then 1. Let \_testRef\_ be ? Evaluation of
+  -- | \_test\_. 1. Let \_testValue\_ be ? GetValue(\_testRef\_). 1. If
+  -- | ToBoolean(\_testValue\_) is \*false\*, return \_V\_. 1. Let \_result\_
+  -- | be Completion(Evaluation of \_stmt\_). 1. If LoopContinues(\_result\_,
+  -- | \_labelSet\_) is \*false\*, return ? UpdateEmpty(\_result\_, \_V\_). 1.
+  -- | If \_result\_.\[\[Value\]\] is not \~empty\~, set \_V\_ to
+  -- | \_result\_.\[\[Value\]\]. 1. Perform ?
+  -- | CreatePerIterationEnvironment(\_perIterationBindings\_). 1. If
+  -- | \_increment\_ is not \~empty\~, then 1. Let \_incRef\_ be ? Evaluation
+  -- | of \_increment\_. 1. Perform ? GetValue(\_incRef\_).
   -- SPEC: L17674-L17682
   -- | DoWhileStatement : \`do\` Statement \`while\` \`(\` Expression \`)\`
   -- | \`;\` 1. Let \_V\_ be \*undefined\*. 1. Repeat, 1. Let \_stmtResult\_ be
