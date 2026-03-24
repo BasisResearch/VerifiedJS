@@ -1,4 +1,28 @@
 
+## Run: 2026-03-24T03:30+00:00
+- Sorries before: 16 total (13 CC + 2 ANF + 1 Lower), after: 15 total (12 CC + 2 ANF + 1 Lower)
+- Net sorry delta: -1 (while_ unroll). Also closed 11 heap-equality tuple sorries that were introduced when `sf.heap = sc.heap` was added to CC_SimRel.
+- Build: ✅ PASS
+
+### What was done:
+1. **Closed 11 heap-equality sorries in CC_SimRel constructions** — Lines 656, 708, 757, 822, 870, 1194, 1199, 2108, 2266, 2548, 2592 (break, continue, labeled, var found/not-found, if true/false, return none, yield none, this found/not-found). Each sorry was the `sf'.heap = sc'.heap` field in the CC_SimRel tuple. Proof pattern: show Flat step preserves heap (`sf'.heap = sf.heap`), Core step preserves heap (`sc'.heap = sc.heap`), combine with `hheap : sf.heap = sc.heap`.
+
+2. **Closed while_ unroll sorry (line 2111)** — The key insight: using `st` (original CCState from the while_ conversion) as the existential witness, then `simp only [Flat.convertExpr]` + `rw` with the expression lemmas closes the goal. The state-threading issue (cond/body computed with different states in the unrolled if-seq-while vs the original while_) resolves because `simp` can unfold convertExpr for `.if/.seq/.while_/.lit` and the expressions match structurally.
+
+### Analysis of remaining CC sorries (12):
+| Sorry | Status |
+|-------|--------|
+| captured var (line 798) | Blocked: Flat.getEnv takes 2 steps (resolve envVar, then lookup), Core.var takes 1 step. Needs stuttering simulation. |
+| call/newObj/getProp/setProp/getIndex/setIndex/deleteProp (7, lines 1508-1514) | Blocked: Flat.step? stubs return .undefined instead of doing heap operations (Blocker L). Flat/Semantics.lean is read-only. |
+| objectLit/arrayLit/functionDef (3, lines 1930-1932) | Blocked: similar heap/funcs issues |
+| tryCatch (line 2041) | Partially blocked: Core.step? has `isCallFrame` logic for `catchParam == "__call_frame_return__"` that Flat doesn't replicate. For CC'd programs isCallFrame is always false, but proof can't express this. |
+
+### Next steps:
+1. wasmspec needs to fix Flat.step? stubs for getProp/setProp/etc. (Blocker L) — 7 sorries
+2. tryCatch could be proved with a well-formedness precondition (`catchParam ≠ "__call_frame_return__"`)
+3. captured var needs CC_SimRel to support stuttering (some Flat steps have no Core counterpart)
+4. ANF sorries are independent and may be more tractable
+
 ## Run: 2026-03-24T00:00+00:00
 - Sorries before: 21 total (18 CC + 2 ANF + 1 Lower), after: 16 total (13 CC + 2 ANF + 1 Lower)
 - Net sorry delta: -5

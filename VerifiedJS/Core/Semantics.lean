@@ -204,6 +204,64 @@ def Env.assign (env : Env) (name : VarName) (v : Value) : Env :=
 def Env.extend (env : Env) (name : VarName) (v : Value) : Env :=
   { bindings := (name, v) :: env.bindings }
 
+-- SPEC: L5555-L5576
+-- | # GetValue ( \_V\_: a Reference Record or an ECMAScript language value, ): either a normal completion containing an ECMAScript language value or an abrupt completion
+-- |
+-- | 1\. If \_V\_ is not a Reference Record, return \_V\_. 1. If
+-- | IsUnresolvableReference(\_V\_) is \*true\*, throw a \*ReferenceError\*
+-- | exception. 1. If IsPropertyReference(\_V\_) is \*true\*, then 1.
+-- | \[id=\"step-getvalue-toobject\"\] Let \_baseObj\_ be ?
+-- | ToObject(\_V\_.\[\[Base\]\]). 1. If IsPrivateReference(\_V\_) is
+-- | \*true\*, then 1. Return ? PrivateGet(\_baseObj\_,
+-- | \_V\_.\[\[ReferencedName\]\]). 1. If \_V\_.\[\[ReferencedName\]\] is not
+-- | a property key, then 1. Set \_V\_.\[\[ReferencedName\]\] to ?
+-- | ToPropertyKey(\_V\_.\[\[ReferencedName\]\]). 1. Return ?
+-- | \_baseObj\_.\[\[Get\]\](\_V\_.\[\[ReferencedName\]\],
+-- | GetThisValue(\_V\_)). 1. Let \_base\_ be \_V\_.\[\[Base\]\]. 1. Assert:
+-- | \_base\_ is an Environment Record. 1. Return ?
+-- | \_base\_.GetBindingValue(\_V\_.\[\[ReferencedName\]\],
+-- | \_V\_.\[\[Strict\]\]) (see ).
+
+-- SPEC: L5577-L5620
+-- | # PutValue ( \_V\_: a Reference Record or an ECMAScript language value, \_W\_: an ECMAScript language value, ): either a normal completion containing \~unused\~ or an abrupt completion
+-- |
+-- | 1\. If \_V\_ is not a Reference Record, throw a \*ReferenceError\*
+-- | exception. 1. If IsUnresolvableReference(\_V\_) is \*true\*, then 1. If
+-- | \_V\_.\[\[Strict\]\] is \*true\*, throw a \*ReferenceError\*
+-- | exception. 1. Let \_globalObj\_ be GetGlobalObject(). 1. Perform ?
+-- | Set(\_globalObj\_, \_V\_.\[\[ReferencedName\]\], \_W\_, \*false\*). 1.
+-- | Return \~unused\~. 1. If IsPropertyReference(\_V\_) is \*true\*, then 1.
+-- | \[id=\"step-putvalue-toobject\"\] Let \_baseObj\_ be ?
+-- | ToObject(\_V\_.\[\[Base\]\]). 1. If IsPrivateReference(\_V\_) is
+-- | \*true\*, then 1. Return ? PrivateSet(\_baseObj\_,
+-- | \_V\_.\[\[ReferencedName\]\], \_W\_). 1. If \_V\_.\[\[ReferencedName\]\]
+-- | is not a property key, then 1. Set \_V\_.\[\[ReferencedName\]\] to ?
+-- | ToPropertyKey(\_V\_.\[\[ReferencedName\]\]). 1. Let \_succeeded\_ be ?
+-- | \_baseObj\_.\[\[Set\]\](\_V\_.\[\[ReferencedName\]\], \_W\_,
+-- | GetThisValue(\_V\_)). 1. If \_succeeded\_ is \*false\* and
+-- | \_V\_.\[\[Strict\]\] is \*true\*, throw a \*TypeError\* exception. 1.
+-- | Return \~unused\~. 1. Let \_base\_ be \_V\_.\[\[Base\]\]. 1. Assert:
+-- | \_base\_ is an Environment Record. 1. Return ?
+-- | \_base\_.SetMutableBinding(\_V\_.\[\[ReferencedName\]\], \_W\_,
+-- | \_V\_.\[\[Strict\]\]) (see ).
+
+-- SPEC: L18579-L18597
+-- | # Runtime Semantics: CatchClauseEvaluation ( \_thrownValue\_: an ECMAScript language value, ): either a normal completion containing either an ECMAScript language value or \~empty\~, or an abrupt completion
+-- |
+-- | Catch : \`catch\` \`(\` CatchParameter \`)\` Block 1. Let \_oldEnv\_ be
+-- | the running execution context\'s LexicalEnvironment. 1. Let \_catchEnv\_
+-- | be NewDeclarativeEnvironment(\_oldEnv\_). 1. For each element
+-- | \_argName\_ of the BoundNames of \|CatchParameter\|, do 1. Perform !
+-- | \_catchEnv\_.CreateMutableBinding(\_argName\_, \*false\*). 1. Set the
+-- | running execution context\'s LexicalEnvironment to \_catchEnv\_. 1. Let
+-- | \_status\_ be Completion(BindingInitialization of \|CatchParameter\|
+-- | with arguments \_thrownValue\_ and \_catchEnv\_). 1. If \_status\_ is an
+-- | abrupt completion, then 1. Set the running execution context\'s
+-- | LexicalEnvironment to \_oldEnv\_. 1. Return ? \_status\_. 1. Let \_B\_
+-- | be Completion(Evaluation of \|Block\|). 1. Set the running execution
+-- | context\'s LexicalEnvironment to \_oldEnv\_. 1. Return ? \_B\_. Catch :
+-- | \`catch\` Block 1. Return ? Evaluation of \|Block\|.
+
 /-- Check whether an expression is a value expression. -/
 def exprValue? : Expr → Option Value
   | .lit v => some v
@@ -1465,8 +1523,30 @@ def step? (s : State) : Option (TraceEvent × State) :=
   -- | \_name\_). 1. Perform MakeConstructor(\_closure\_). 1. Perform !
   -- | \_funcEnv\_.InitializeBinding(\_name\_, \_closure\_). 1. Return
   -- | \_closure\_.
+  -- SPEC: L8511-L8533
+  -- | # Runtime Semantics: InstantiateFunctionObject ( \_env\_: an Environment Record, \_privateEnv\_: a PrivateEnvironment Record or \*null\*, ): an ECMAScript function object
+  -- |
+  -- | FunctionDeclaration : \`function\` BindingIdentifier \`(\`
+  -- | FormalParameters \`)\` \`{\` FunctionBody \`}\` \`function\` \`(\`
+  -- | FormalParameters \`)\` \`{\` FunctionBody \`}\` 1. Return
+  -- | InstantiateOrdinaryFunctionObject of \|FunctionDeclaration\| with
+  -- | arguments \_env\_ and \_privateEnv\_. GeneratorDeclaration :
+  -- | \`function\` \`\*\` BindingIdentifier \`(\` FormalParameters \`)\` \`{\`
+  -- | GeneratorBody \`}\` \`function\` \`\*\` \`(\` FormalParameters \`)\`
+  -- | \`{\` GeneratorBody \`}\` 1. Return InstantiateGeneratorFunctionObject
+  -- | of \|GeneratorDeclaration\| with arguments \_env\_ and \_privateEnv\_.
+  -- | AsyncGeneratorDeclaration : \`async\` \`function\` \`\*\`
+  -- | BindingIdentifier \`(\` FormalParameters \`)\` \`{\` AsyncGeneratorBody
+  -- | \`}\` \`async\` \`function\` \`\*\` \`(\` FormalParameters \`)\` \`{\`
+  -- | AsyncGeneratorBody \`}\` 1. Return
+  -- | InstantiateAsyncGeneratorFunctionObject of \|AsyncGeneratorDeclaration\|
+  -- | with arguments \_env\_ and \_privateEnv\_. AsyncFunctionDeclaration :
+  -- | \`async\` \`function\` BindingIdentifier \`(\` FormalParameters \`)\`
+  -- | \`{\` AsyncFunctionBody \`}\` \`async\` \`function\` \`(\`
+  -- | FormalParameters \`)\` \`{\` AsyncFunctionBody \`}\` 1. Return
+  -- | InstantiateAsyncFunctionObject of \|AsyncFunctionDeclaration\| with
+  -- | arguments \_env\_ and \_privateEnv\_.
   | .functionDef fname params body _isAsync _isGenerator =>
-      -- §10.2: Create a function closure capturing the current lexical environment.
       let closure : FuncClosure := ⟨fname, params, body, s.env.bindings⟩
       let idx := s.funcs.size
       let funcs' := s.funcs.push closure
@@ -1987,6 +2067,23 @@ def step? (s : State) : Option (TraceEvent × State) :=
   -- | \_argList\_ be ? ArgumentListEvaluation of \_arguments\_. 1. If
   -- | IsConstructor(\_constructor\_) is \*false\*, throw a \*TypeError\*
   -- | exception. 1. Return ? Construct(\_constructor\_, \_argList\_).
+  -- SPEC: L10960-L10984
+  -- | # OrdinaryObjectCreate ( \_proto\_: an Object or \*null\*, optional \_additionalInternalSlotsList\_: a List of names of internal slots, ): an Object
+  -- |
+  -- | description
+  -- | :   It is used to specify the runtime creation of new ordinary objects.
+  -- |     \_additionalInternalSlotsList\_ contains the names of additional
+  -- |     internal slots that must be defined as part of the object, beyond
+  -- |     \[\[Prototype\]\] and \[\[Extensible\]\]. If
+  -- |     \_additionalInternalSlotsList\_ is not provided, a new empty List is
+  -- |     used.
+  -- |
+  -- | 1\. Let \_internalSlotsList\_ be « \[\[Prototype\]\], \[\[Extensible\]\]
+  -- | ». 1. If \_additionalInternalSlotsList\_ is present, set
+  -- | \_internalSlotsList\_ to the list-concatenation of \_internalSlotsList\_
+  -- | and \_additionalInternalSlotsList\_. 1. Let \_O\_ be
+  -- | MakeBasicObject(\_internalSlotsList\_). 1. Set \_O\_.\[\[Prototype\]\]
+  -- | to \_proto\_. 1. Return \_O\_.
   | .newObj _callee _args =>
       let addr := s.heap.nextAddr
       let heap' := { objects := s.heap.objects.push [], nextAddr := addr + 1 }

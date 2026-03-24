@@ -6964,8 +6964,7 @@ theorem step_sim (irmod : IRModule) (wmod : Module) :
               have ⟨irv, wv, hirv, hwv, hval_corr⟩ := hrel.hglobals.2 idx hidx_ir
               -- irv = val (both are globals[idx])
               have : s1.globals[idx]? = some irv := hirv
-              rw [hglob] at this; have hirv_eq : irv = val := by injection this
-              subst hirv_eq
+              rw [hglob] at this; simp only [Option.some.injEq] at this; subst this
               -- wv = store.globals[idx]
               have : s2.store.globals[idx]? = some wv := hwv
               have hwv_eq : wv = s2.store.globals[idx]'hidx_w := by
