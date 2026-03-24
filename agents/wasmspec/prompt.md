@@ -62,45 +62,34 @@ Then construct the matching Step derivation in Lean. If you cannot, your semanti
 3. Keep definitions structurally simple for proofs.
 4. Add @[simp] lemmas for everything the proof agent might need.
 
-## CURRENT PRIORITIES (2026-03-24T09:05)
+## CURRENT PRIORITIES (2026-03-24T10:05)
 
-### Build: PASS ✅. Sorry: 45 total (31 Wasm + 11 CC + 2 ANF + 1 Lower). Wasm DOWN from 33!
+### Build: PASS ✅. Sorry: 46 total (33 Wasm + 10 CC + 2 ANF + 1 Lower).
 
-### ⚠️ YOU ARE TIMING OUT EVERY RUN. DO THE SMALLEST POSSIBLE TASK.
+### ⚠️ WASM SORRY WENT UP (31→33). DO NOT ADD SORRIES. ONLY CLOSE THEM.
 
-You have timed out 6+ consecutive runs. The proof agent is WORKING AROUND your private visibility issue and closing sorries anyway. But you are still blocking 3 CC sorries (setProp, getIndex, setIndex) and the call stub.
+Private visibility for coreToFlatValue/flatToCoreValue/heapObjectAt? is ALREADY FIXED ✅.
 
-### TASK 0: Fix private visibility — THIS IS A 5-MINUTE TASK
-
-Just remove `private` from these 3 functions in Flat/Semantics.lean:
-```lean
--- Find each of these and remove the word "private":
-private def flatToCoreValue  →  def flatToCoreValue
-private def coreToFlatValue  →  def coreToFlatValue
-private def heapObjectAt?    →  def heapObjectAt?
-```
-That's it. No @[simp] lemmas needed. Just delete the word `private`. Build. Log. EXIT.
-
-### TASK 1: Fix `call` stub (line ~370)
+### TASK 0: Fix `call` stub (line ~370 in Flat/Semantics.lean)
 
 `call` still returns `.lit .undefined` when all args are values. Core invokes the function body. This blocks CC sorry at line 1523.
 
 Mirror Core.step? call semantics: look up function in `s.funcs`, bind params to arg values, set body as new expression.
 
-### TASK 2 (if time): Close 1 Wasm sorry
+### TASK 1: Close Wasm sorries — DO NOT add new ones
 
-31 total in Wasm/Semantics.lean:
+33 sorry in Wasm/Semantics.lean (2 are in comments, 31 real):
 - **LowerSimRel.step_sim** (14): lines 5810, 5883, 5928, 5936, 5940, 5943, 5946, 5949, 5952, 5955, 5958, 5961, 5964, 5967
-- **EmitSimRel.step_sim** (12): lines 6564, 6672, 7162, 7165, 7168, 7171, 7174, 7177, 7180, 7315, 7319, 7322, 7325, 7393
+- **EmitSimRel.step_sim** (14): lines 6564, 6672, 7162, 7165, 7168, 7171, 7174, 7177, 7180, 7315, 7319, 7322, 7325, 7393
 - **LowerSimRel.init** (3): lines 7552, 7567, 7591
 
 Pick the SMALLEST sorry. Use `lean_goal` to see state. Close it. Build. EXIT.
 
 ### RULES THIS RUN:
-- TASK 0 IS A 5-MINUTE EDIT. Do it FIRST.
-- Do NOT add new sorries
+- Do NOT add new sorries — sorry count must go DOWN not UP
 - Only run `lake build` ONCE at the end
 - EXIT IMMEDIATELY after build passes — do NOT start another task
+- If you time out, you accomplished NOTHING. Keep scope TINY.
 
 ### ⚠️ BUILD-FIRST RULE
 Always run `bash scripts/lake_build_concise.sh` and check exit code BEFORE logging success.

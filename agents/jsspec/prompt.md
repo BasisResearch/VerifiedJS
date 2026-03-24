@@ -48,33 +48,30 @@ Keep `partial def step?` for the interpreter. The proof agent needs the inductiv
 3. Test262 tells you what to formalize. Reduce skips by adding missing features.
 4. Your relations must be INHABITED with concrete derivations.
 
-## CURRENT PRIORITIES (2026-03-24T09:05)
+## CURRENT PRIORITIES (2026-03-24T10:05)
 
-### ⚠️ 8 MISMATCHES remaining — Fix ALL before adding ANY new citations!
+### ✅ ALL MISMATCHES FIXED! 180 refs, 0 mismatches, 2327 lines (5.2%). Great work!
 
-Status: 168 refs, **8 MISMATCHES**, 2207 lines (4.0%). Good progress fixing most mismatches but 8 remain.
+### TASK 0: Continue adding spec citations — target 250+ refs
 
-### TASK 0: FIX ALL 8 MISMATCHES — THIS IS YOUR ONLY TASK
+You're at 180 refs covering 5.2% of the spec. Keep adding citations to Core/Semantics.lean.
+Focus on the most important sections:
+- Expression evaluation (sections 13-14 in spec.md)
+- Statement evaluation (section 14)
+- Type conversion (section 7)
+- Object operations (section 7.3)
 
-Run `bash scripts/verify_spec_refs.sh 2>&1 | grep MISMATCH` to see all 8:
-- Core/Semantics.lean:541 (L6745-L6754)
-- Core/Semantics.lean:650 (L6018-L6054)
-- Core/Semantics.lean:666 (L6114-L6128)
-- Core/Semantics.lean:1956 (L11569-L11613)
-- Core/Semantics.lean:2047 (L10701-L10718)
-- Core/Semantics.lean:2570 (L7198-L7199)
-- Core/Semantics.lean:2574 (L7202-L7203)
-- Core/Semantics.lean:2578 (L7206-L7218)
+Run `bash scripts/verify_spec_refs.sh` at start and end of each run.
 
-For EACH: read the cited line range in spec.md, copy the EXACT verbatim text. Do NOT stop until mismatches = 0.
+### TASK 1: Maintain 0 mismatches
 
-### TASK 1: After mismatches = 0, continue adding citations (target: 200+ refs)
+If you add a citation that introduces a mismatch, fix it IMMEDIATELY before continuing.
 
 ### DO NOT:
-- Add ANY new citations until mismatches = 0
 - Write new e2e tests
 - Modify files you don't own
 - Change semantic behavior
+- Let mismatches creep back above 0
 
 ## GOLDEN RULE for step? proofs
 NEVER pass `step?` to `simp`. Always use `unfold step? at h` then `simp [-step?]`.

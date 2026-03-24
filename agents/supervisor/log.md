@@ -3743,3 +3743,54 @@ Source ──[elaborate]──> Core ──[closureConvert]──> Flat ──[a
 
 ## Run: 2026-03-24T10:05:01+00:00
 
+
+### Build
+- **Status**: `lake build` **PASS** ✅
+
+### Metrics
+- **Sorry count**: 46 (threshold 100) — 10 CC + 33 Wasm + 2 ANF + 1 Lower
+- **Test262**: 3 pass, 50 fail, 3 skip, 5 xfail / 63 total (UNCHANGED 142+ hrs)
+- **Spec coverage**: 2327/44380 lines (5.2%), 180 refs, 0 mismatches (UP from 168 refs/8 mismatches)
+- **WasmCert refs**: 0 checked, 0 mismatches
+
+### Proof Chain Status
+```
+Source ──[elaborate]──> Core ──[closureConvert]──> Flat ──[anfConvert]──> ANF ──[lower]──> Wasm.IR ──[emit]──> Wasm
+         ✅ proved       10 sorry                    2 sorry              1 sorry          33 sorry
+```
+
+### Sorry Delta: 45→46 (+1)
+- CC: 11→10 (-1) — **setProp CLOSED** by proof agent
+- Wasm: 31→33 (+2) — regression (wasmspec adding sorries during timeout runs)
+- ANF: 2 (unchanged)
+- Lower: 1 (unchanged)
+
+### Agent Status
+- **proof**: Timed out (08:30→09:30 EXIT 124). Closed setProp before timeout. Productive despite timeouts.
+- **wasmspec**: Timed out (08:15→09:15 EXIT 124). Wasm sorry regressed 31→33. Still timing out consistently.
+- **jsspec**: Timed out (09:00→10:00 EXIT 124). Fixed ALL 8 mismatches + added 12 new refs. Now at 180 refs, 0 mismatches. Excellent quality.
+
+### Key Discovery: Private Visibility IS FIXED ✅
+
+`coreToFlatValue`, `flatToCoreValue`, `heapObjectAt?` are all PUBLIC now (Flat/Semantics.lean lines 197, 207, 233). The proof agent can now unfold them directly for getIndex/setIndex proofs. 7 remaining `private` defs (pushTrace, allocFreshObject, envSlotKey, encodeEnvPropsAux, encodeEnvProps, allocEnvObject, typeofValue) are internal and don't block proofs.
+
+### CC Sorry Taxonomy (10 remaining):
+1. **captured var (1)**: line 813
+2. **call BLOCKED (1)**: line 1523 (Flat stub)
+3. **newObj (1)**: line 1524
+4. **getIndex/setIndex (2)**: lines 1858-1859 — SAME pattern as getProp/setProp, now fully unblocked
+5. **objectLit/arrayLit/functionDef (3)**: lines 2397-2399
+6. **isCallFrame (2)**: lines 2533, 2646
+
+### Prompts Updated
+1. ✅ Updated proof prompt (2026-03-24T10:05): Updated CC sorry map (10 total, new line numbers). Noted private visibility FIXED. TASK 0 = getIndex/setIndex (mechanical). TASK 1 = isCallFrame. TASK 2 = captured var. TASK 3 = ANF.
+2. ✅ Updated wasmspec prompt (2026-03-24T10:05): Removed private visibility task (already done). Emphasized NO NEW SORRIES. TASK 0 = fix call stub. TASK 1 = close Wasm sorries.
+3. ✅ Updated jsspec prompt (2026-03-24T10:05): Celebrated 0 mismatches! TASK 0 = continue to 250+ refs. Maintain 0 mismatches.
+4. ✅ Updated PROGRESS.md: metrics table, proof chain (CC 11→10, visibility fixed).
+
+### Next Run Focus
+- Monitor proof agent: did it close getIndex/setIndex? (mechanical with public helpers)
+- Check wasmspec: did sorry count go DOWN? Did it fix call stub?
+- Track jsspec refs: should approach 200+
+2026-03-24T10:05:01+00:00 DONE
+2026-03-24T10:16:51+00:00 DONE
