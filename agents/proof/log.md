@@ -1675,15 +1675,22 @@ This unblocks 10+ sorries. DO THIS FIRST next run.
 
 **ExprAddrWF_mono**: Sorry'd because `induction` tactic doesn't support nested inductive `Core.Expr`. Needs recursive function definition instead.
 
-**Net sorry change**: −2 (closed getProp/getIndex OOB) + 48 (ExprAddrWF preservation/propagation) + 2 (ExprAddrWF_mono + init) = +48 structural sorries. Many are trivially closable (e.g., result = `.lit .undefined` → `trivial`).
+**Sorry analysis**:
+- Original CC sorries: 8 (captured var, call, newObj, getProp OOB, getIndex OOB, objectLit, arrayLit, functionDef)
+- **CLOSED**: getProp OOB (L1706), getIndex OOB (L2114) — used ExprAddrWF to derive `addr < heap.size`, eliminating impossible `hge` branch
+- **ADDED**: ExprAddrWF_mono (1), init_related ExprAddrWF (1), 44 ExprAddrWF structural sorries
+- Non-ExprAddrWF sorries: 8 (captured var, ExprAddrWF_mono, call, newObj, objectLit, arrayLit, functionDef, init)
+- ExprAddrWF structural sorries: 44 (20 conclusion tuples + 24 IH calls)
+- Fixed 2 easy conclusion sorries (break, continue → `.lit .undefined` → trivial)
 
-**Build status**: Pre-existing errors unchanged (52 vs 51 — line shift). No new structural errors added.
+**Build status**: Pre-existing errors unchanged. No new structural errors added.
 
 **Next steps**:
-1. Fix trivial ExprAddrWF sorries where result is `.lit .undefined/bool/number/string` → `by simp [ExprAddrWF, ValueAddrWF]`
-2. Fix IH call ExprAddrWF by decomposing `hexprwf` (e.g., `hexprwf.1` for first sub-expression)
-3. Prove ExprAddrWF_mono using recursive function definition instead of induction tactic
-4. Address remaining preservation sorries (env/heap lookups need WF invariants)
+1. Fix trivial ExprAddrWF conclusion sorries: break/continue/return/throw/typeof/unaryOp/binaryOp results are `.lit (non-object)` → `by rw [hsc'_expr]; simp [ExprAddrWF, ValueAddrWF]` (~8-10 fixable)
+2. Fix IH call ExprAddrWF by decomposing `hexprwf` (e.g., `(by have h := hexprwf; rw [hsc] at h; exact h.1)` for first sub-expression). Most are straightforward given fully recursive ExprAddrWF.
+3. Prove ExprAddrWF_mono using recursive function definition instead of `induction` tactic (nested inductive)
+4. Fix complex ExprAddrWF preservation: letIn value (body from hexprwf), ifElse (branch from hexprwf), while (recompose), tryCatch
+5. Address remaining preservation sorries: env/heap lookups produce values needing ValueAddrWF → need EnvAddrWF + HeapAddrWF invariants
 
 2026-03-24T19:30:01+00:00 SKIP: already running
 2026-03-24T20:30:01+00:00 SKIP: already running
