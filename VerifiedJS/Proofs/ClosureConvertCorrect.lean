@@ -7,7 +7,7 @@ import VerifiedJS.Flat.ClosureConvert
 import VerifiedJS.Core.Semantics
 import VerifiedJS.Flat.Semantics
 
-set_option maxHeartbeats 400000
+set_option maxHeartbeats 800000
 
 namespace VerifiedJS.Proofs
 

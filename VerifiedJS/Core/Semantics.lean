@@ -419,13 +419,84 @@ def abstractEq : Value → Value → Bool
   -- All other cross-type comparisons: false
   | _, _ => false
 
--- SPEC: L6514-L6514
+-- SPEC: L6514-L6572
 -- | # IsLessThan ( \_x\_: an ECMAScript language value, \_y\_: an ECMAScript language value, \_LeftFirst\_: a Boolean, ): either a normal completion containing either a Boolean or \*undefined\*, or a throw completion
+-- |
+-- | description
+-- | :   It provides the semantics for the comparison \_x\_ \< \_y\_,
+-- |     returning \*true\*, \*false\*, or \*undefined\* (which indicates
+-- |     that at least one operand is \*NaN\*). The \_LeftFirst\_ flag is
+-- |     used to control the order in which operations with potentially
+-- |     visible side-effects are performed upon \_x\_ and \_y\_. It is
+-- |     necessary because ECMAScript specifies left to right evaluation of
+-- |     expressions. If \_LeftFirst\_ is \*true\*, the \_x\_ parameter
+-- |     corresponds to an expression that occurs to the left of the \_y\_
+-- |     parameter\'s corresponding expression. If \_LeftFirst\_ is
+-- |     \*false\*, the reverse is the case and operations must be performed
+-- |     upon \_y\_ before \_x\_.
+-- |
+-- | 1\. If \_LeftFirst\_ is \*true\*, then 1. Let \_px\_ be ?
+-- | ToPrimitive(\_x\_, \~number\~). 1. Let \_py\_ be ? ToPrimitive(\_y\_,
+-- | \~number\~). 1. Else, 1. NOTE: The order of evaluation needs to be
+-- | reversed to preserve left to right evaluation. 1. Let \_py\_ be ?
+-- | ToPrimitive(\_y\_, \~number\~). 1. Let \_px\_ be ? ToPrimitive(\_x\_,
+-- | \~number\~). 1. \[id=\"step-arc-string-check\"\] If \_px\_ is a String
+-- | and \_py\_ is a String, then 1. Let \_lx\_ be the length of \_px\_. 1.
+-- | Let \_ly\_ be the length of \_py\_. 1. For each integer \_i\_ such that
+-- | 0 ≤ \_i\_ \< min(\_lx\_, \_ly\_), in ascending order, do 1. Let \_cx\_
+-- | be the numeric value of the code unit at index \_i\_ within \_px\_. 1.
+-- | Let \_cy\_ be the numeric value of the code unit at index \_i\_ within
+-- | \_py\_. 1. If \_cx\_ \< \_cy\_, return \*true\*. 1. If \_cx\_ \> \_cy\_,
+-- | return \*false\*. 1. If \_lx\_ \< \_ly\_, return \*true\*. 1. Return
+-- | \*false\*. 1. If \_px\_ is a BigInt and \_py\_ is a String, then 1. Let
+-- | \_ny\_ be StringToBigInt(\_py\_). 1. If \_ny\_ is \*undefined\*, return
+-- | \*undefined\*. 1. Return BigInt::lessThan(\_px\_, \_ny\_). 1. If \_px\_
+-- | is a String and \_py\_ is a BigInt, then 1. Let \_nx\_ be
+-- | StringToBigInt(\_px\_). 1. If \_nx\_ is \*undefined\*, return
+-- | \*undefined\*. 1. Return BigInt::lessThan(\_nx\_, \_py\_). 1. NOTE:
+-- | Because \_px\_ and \_py\_ are primitive values, evaluation order is not
+-- | important. 1. Let \_nx\_ be ? ToNumeric(\_px\_). 1. Let \_ny\_ be ?
+-- | ToNumeric(\_py\_). 1. If SameType(\_nx\_, \_ny\_) is \*true\*, then 1.
+-- | If \_nx\_ is a Number, return Number::lessThan(\_nx\_, \_ny\_). 1.
+-- | Assert: \_nx\_ is a BigInt. 1. Return BigInt::lessThan(\_nx\_,
+-- | \_ny\_). 1. Assert: \_nx\_ is a BigInt and \_ny\_ is a Number, or \_nx\_
+-- | is a Number and \_ny\_ is a BigInt. 1. If \_nx\_ or \_ny\_ is \*NaN\*,
+-- | return \*undefined\*. 1. If \_nx\_ is \*-∞\*~𝔽~ or \_ny\_ is \*+∞\*~𝔽~,
+-- | return \*true\*. 1. If \_nx\_ is \*+∞\*~𝔽~ or \_ny\_ is \*-∞\*~𝔽~,
+-- | return \*false\*. 1. If ℝ(\_nx\_) \< ℝ(\_ny\_), return \*true\*. 1.
+-- | Return \*false\*.
 /-- ECMA-262 §7.2.13 Abstract Relational Comparison (string-aware). -/
 def abstractLt : Value → Value → Bool
   | .string a, .string b => a < b  -- lexicographic comparison
   | a, b => toNumber a < toNumber b
 
+-- SPEC: L16272-L16276
+-- | # The Addition Operator ( \`+\` )
+-- |
+-- | The addition operator either performs string concatenation or numeric
+-- | addition.
+-- SPEC: L16284-L16288
+-- | # The Subtraction Operator ( \`-\` )
+-- |
+-- | The \`-\` operator performs subtraction, producing the difference of its
+-- | operands.
+-- SPEC: L16238-L16254
+-- | # Multiplicative Operators
+-- |
+-- | ## Syntax
+-- |
+-- | MultiplicativeExpression\[Yield, Await\] :
+-- | ExponentiationExpression\[?Yield, ?Await\]
+-- | MultiplicativeExpression\[?Yield, ?Await\] MultiplicativeOperator
+-- | ExponentiationExpression\[?Yield, ?Await\] MultiplicativeOperator : one
+-- | of \`\*\` \`/\` \`%\`
+-- |
+-- | - The \`\*\` operator performs multiplication, producing the product of
+-- |   its operands.
+-- | - The \`/\` operator performs division, producing the quotient of its
+-- |   operands.
+-- | - The \`%\` operator yields the remainder of its operands from an
+-- |   implied division.
 /-- ECMA-262 §13.15 Runtime Semantics: Evaluation (core binary subset). -/
 def evalBinary : BinOp → Value → Value → Value
   -- ECMA-262 §12.8.3: if either operand is a string, concatenate after ToString.
@@ -450,7 +521,31 @@ def evalBinary : BinOp → Value → Value → Value
   -- | signed zeroes and NaNs.
   | .strictEq, a, b => .bool (a == b)
   | .strictNeq, a, b => .bool (a != b)
-  -- §7.2.13 Abstract Relational Comparison (string-aware).
+  -- SPEC: L16365-L16388
+  -- | RelationalExpression : RelationalExpression \`\<\` ShiftExpression 1.
+  -- | Let \_lRef\_ be ? Evaluation of \|RelationalExpression\|. 1. Let
+  -- | \_lVal\_ be ? GetValue(\_lRef\_). 1. Let \_rRef\_ be ? Evaluation of
+  -- | \|ShiftExpression\|. 1. Let \_rVal\_ be ? GetValue(\_rRef\_). 1. Let
+  -- | \_r\_ be ? IsLessThan(\_lVal\_, \_rVal\_, \*true\*). 1. If \_r\_ is
+  -- | \*undefined\*, return \*false\*. 1. Return \_r\_. RelationalExpression :
+  -- | RelationalExpression \`\>\` ShiftExpression 1. Let \_lRef\_ be ?
+  -- | Evaluation of \|RelationalExpression\|. 1. Let \_lVal\_ be ?
+  -- | GetValue(\_lRef\_). 1. Let \_rRef\_ be ? Evaluation of
+  -- | \|ShiftExpression\|. 1. Let \_rVal\_ be ? GetValue(\_rRef\_). 1. Let
+  -- | \_r\_ be ? IsLessThan(\_rVal\_, \_lVal\_, \*false\*). 1. If \_r\_ is
+  -- | \*undefined\*, return \*false\*. 1. Return \_r\_. RelationalExpression :
+  -- | RelationalExpression \`\<=\` ShiftExpression 1. Let \_lRef\_ be ?
+  -- | Evaluation of \|RelationalExpression\|. 1. Let \_lVal\_ be ?
+  -- | GetValue(\_lRef\_). 1. Let \_rRef\_ be ? Evaluation of
+  -- | \|ShiftExpression\|. 1. Let \_rVal\_ be ? GetValue(\_rRef\_). 1. Let
+  -- | \_r\_ be ? IsLessThan(\_rVal\_, \_lVal\_, \*false\*). 1. If \_r\_ is
+  -- | either \*true\* or \*undefined\*, return \*false\*. 1. Return \*true\*.
+  -- | RelationalExpression : RelationalExpression \`\>=\` ShiftExpression 1.
+  -- | Let \_lRef\_ be ? Evaluation of \|RelationalExpression\|. 1. Let
+  -- | \_lVal\_ be ? GetValue(\_lRef\_). 1. Let \_rRef\_ be ? Evaluation of
+  -- | \|ShiftExpression\|. 1. Let \_rVal\_ be ? GetValue(\_rRef\_). 1. Let
+  -- | \_r\_ be ? IsLessThan(\_lVal\_, \_rVal\_, \*true\*). 1. If \_r\_ is
+  -- | either \*true\* or \*undefined\*, return \*false\*. 1. Return \*true\*.
   | .lt, a, b => .bool (abstractLt a b)
   | .gt, a, b => .bool (abstractLt b a)
   | .le, a, b => .bool (!abstractLt b a)
@@ -497,13 +592,60 @@ def evalBinary : BinOp → Value → Value → Value
   -- | \_privateName\_) is \~empty\~, return \*false\*. 1. Return \*true\*.
   | .«in», .string _, .object _ => .bool true  -- simplified: always true for string key on object
   | .«in», _, _ => .bool false
-  -- ECMA-262 §12.9 modulus and exponentiation.
+  -- SPEC: L16255-L16261
+  -- | # Runtime Semantics: Evaluation
+  -- |
+  -- | MultiplicativeExpression : MultiplicativeExpression
+  -- | MultiplicativeOperator ExponentiationExpression 1. Let \_opText\_ be the
+  -- | source text matched by \|MultiplicativeOperator\|. 1. Return ?
+  -- | EvaluateStringOrNumericBinaryExpression(\|MultiplicativeExpression\|,
+  -- | \_opText\_, \|ExponentiationExpression\|).
   | .mod, a, b =>
       let na := toNumber a; let nb := toNumber b
       if nb == 0.0 then .number (0.0 / 0.0) else .number (na - nb * (na / nb).floor)
+  -- SPEC: L16223-L16237
+  -- | # Exponentiation Operator
+  -- |
+  -- | ## Syntax
+  -- |
+  -- | ExponentiationExpression\[Yield, Await\] : UnaryExpression\[?Yield,
+  -- | ?Await\] UpdateExpression\[?Yield, ?Await\] \`\*\*\`
+  -- | ExponentiationExpression\[?Yield, ?Await\]
+  -- |
+  -- | # Runtime Semantics: Evaluation
+  -- |
+  -- | ExponentiationExpression : UpdateExpression \`\*\*\`
+  -- | ExponentiationExpression 1. Return ?
+  -- | EvaluateStringOrNumericBinaryExpression(\|UpdateExpression\|, \`\*\*\`,
+  -- | \|ExponentiationExpression\|).
   | .exp, a, b => .number (Float.pow (toNumber a) (toNumber b))
-  -- ECMA-262 §12.12 Bitwise operators.
-  -- §7.1.6 ToInt32: truncate float to signed 32-bit integer for bitwise operations.
+  -- SPEC: L16500-L16527
+  -- | # Binary Bitwise Operators
+  -- |
+  -- | ## Syntax
+  -- |
+  -- | BitwiseANDExpression\[In, Yield, Await\] : EqualityExpression\[?In,
+  -- | ?Yield, ?Await\] BitwiseANDExpression\[?In, ?Yield, ?Await\] \`&\`
+  -- | EqualityExpression\[?In, ?Yield, ?Await\] BitwiseXORExpression\[In,
+  -- | Yield, Await\] : BitwiseANDExpression\[?In, ?Yield, ?Await\]
+  -- | BitwiseXORExpression\[?In, ?Yield, ?Await\] \`\^\`
+  -- | BitwiseANDExpression\[?In, ?Yield, ?Await\] BitwiseORExpression\[In,
+  -- | Yield, Await\] : BitwiseXORExpression\[?In, ?Yield, ?Await\]
+  -- | BitwiseORExpression\[?In, ?Yield, ?Await\] \`\|\`
+  -- | BitwiseXORExpression\[?In, ?Yield, ?Await\]
+  -- |
+  -- | # Runtime Semantics: Evaluation
+  -- |
+  -- | BitwiseANDExpression : BitwiseANDExpression \`&\` EqualityExpression 1.
+  -- | Return ?
+  -- | EvaluateStringOrNumericBinaryExpression(\|BitwiseANDExpression\|, \`&\`,
+  -- | \|EqualityExpression\|). BitwiseXORExpression : BitwiseXORExpression
+  -- | \`\^\` BitwiseANDExpression 1. Return ?
+  -- | EvaluateStringOrNumericBinaryExpression(\|BitwiseXORExpression\|,
+  -- | \`\^\`, \|BitwiseANDExpression\|). BitwiseORExpression :
+  -- | BitwiseORExpression \`\|\` BitwiseXORExpression 1. Return ?
+  -- | EvaluateStringOrNumericBinaryExpression(\|BitwiseORExpression\|, \`\|\`,
+  -- | \|BitwiseXORExpression\|).
   | .bitAnd, a, b =>
       let ia := toNumber a |>.toUInt32; let ib := toNumber b |>.toUInt32
       .number ((ia &&& ib).toFloat)
@@ -513,15 +655,45 @@ def evalBinary : BinOp → Value → Value → Value
   | .bitXor, a, b =>
       let ia := toNumber a |>.toUInt32; let ib := toNumber b |>.toUInt32
       .number ((ia ^^^ ib).toFloat)
-  -- ECMA-262 §12.9.3 ShiftExpression: left shift.
+  -- SPEC: L16306-L16340
+  -- | # The Left Shift Operator ( \`\<\<\` )
+  -- |
+  -- | Performs a bitwise left shift operation on the left operand by the
+  -- | amount specified by the right operand.
+  -- |
+  -- | # Runtime Semantics: Evaluation
+  -- |
+  -- | ShiftExpression : ShiftExpression \`\<\<\` AdditiveExpression 1. Return
+  -- | ? EvaluateStringOrNumericBinaryExpression(\|ShiftExpression\|, \`\<\<\`,
+  -- | \|AdditiveExpression\|).
+  -- |
+  -- | # The Signed Right Shift Operator ( \`\>\>\` )
+  -- |
+  -- | Performs a sign-filling bitwise right shift operation on the left
+  -- | operand by the amount specified by the right operand.
+  -- |
+  -- | # Runtime Semantics: Evaluation
+  -- |
+  -- | ShiftExpression : ShiftExpression \`\>\>\` AdditiveExpression 1. Return
+  -- | ? EvaluateStringOrNumericBinaryExpression(\|ShiftExpression\|, \`\>\>\`,
+  -- | \|AdditiveExpression\|).
+  -- |
+  -- | # The Unsigned Right Shift Operator ( \`\>\>\>\` )
+  -- |
+  -- | Performs a zero-filling bitwise right shift operation on the left
+  -- | operand by the amount specified by the right operand.
+  -- |
+  -- | # Runtime Semantics: Evaluation
+  -- |
+  -- | ShiftExpression : ShiftExpression \`\>\>\>\` AdditiveExpression 1.
+  -- | Return ? EvaluateStringOrNumericBinaryExpression(\|ShiftExpression\|,
+  -- | \`\>\>\>\`, \|AdditiveExpression\|).
   | .shl, a, b =>
       let ia := toNumber a |>.toUInt32; let ib := (toNumber b |>.toUInt32) % 32
       .number ((ia <<< ib).toFloat)
-  -- ECMA-262 §12.9.3 ShiftExpression: signed right shift.
   | .shr, a, b =>
       let ia := toNumber a |>.toUInt32; let ib := (toNumber b |>.toUInt32) % 32
       .number ((ia >>> ib).toFloat)
-  -- ECMA-262 §12.9.3 ShiftExpression: unsigned right shift.
   | .ushr, a, b =>
       let ia := toNumber a |>.toUInt32; let ib := (toNumber b |>.toUInt32) % 32
       .number ((ia >>> ib).toFloat)
@@ -536,6 +708,15 @@ def pushTrace (s : State) (t : TraceEvent) : State :=
 /-- One deterministic Core small-step transition with emitted trace event. -/
 def step? (s : State) : Option (TraceEvent × State) :=
   match h : s.expr with
+  -- SPEC: L14930-L14940
+  -- | # Runtime Semantics: Evaluation
+  -- |
+  -- | Literal : NullLiteral 1. Return \*null\*. Literal : BooleanLiteral 1. If
+  -- | \|BooleanLiteral\| is the token \`false\`, return \*false\*. 1. If
+  -- | \|BooleanLiteral\| is the token \`true\`, return \*true\*. Literal :
+  -- | NumericLiteral 1. Return the NumericValue of \|NumericLiteral\| as
+  -- | defined in . Literal : StringLiteral 1. Return the SV of
+  -- | \|StringLiteral\| as defined in .
   | .lit _ => none
   -- SPEC: L14868-L14871
   -- | IdentifierReference : Identifier 1. Return ? ResolveBinding(StringValue
