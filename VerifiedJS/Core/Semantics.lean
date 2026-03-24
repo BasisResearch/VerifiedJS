@@ -8404,6 +8404,7 @@ def step? (s : State) : Option (TraceEvent × State) :=
   -- | Await\] : \`\*\` ClassElementName\[?Yield, ?Await\] \`(\`
   -- | UniqueFormalParameters\[+Yield, \~Await\] \`)\` \`{\` GeneratorBody
   -- | \`}\` GeneratorBody : FunctionBody\[+Yield, \~Await\]
+  -- | YieldExpression\[In, Await\] : \`yield\` \`yield\` \[no LineTerminator
   -- SPEC: L19369-L19372
   -- | YieldExpression : \`yield\` 1. Return ? Yield(\*undefined\*).
   -- | YieldExpression : \`yield\` AssignmentExpression 1. Let \_exprRef\_ be ?
@@ -8439,6 +8440,7 @@ def step? (s : State) : Option (TraceEvent × State) :=
   -- | \`function\` BindingIdentifier\[\~Yield, +Await\]? \`(\`
   -- | FormalParameters\[\~Yield, +Await\] \`)\` \`{\` AsyncFunctionBody \`}\`
   -- | AsyncMethod\[Yield, Await\] : \`async\` \[no LineTerminator here\]
+  -- | ClassElementName\[?Yield, ?Await\] \`(\`
   -- SPEC: L20265-L20268
   -- | AwaitExpression : \`await\` UnaryExpression 1. Let \_exprRef\_ be ?
   -- | Evaluation of \|UnaryExpression\|. 1. Let \_value\_ be ?
