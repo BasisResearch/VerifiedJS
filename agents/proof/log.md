@@ -1660,7 +1660,7 @@ This unblocks 10+ sorries. DO THIS FIRST next run.
 
 ## Run: 2026-03-24T19:23:41+00:00
 
-### TASK 0: ExprAddrWF invariant — IN PROGRESS
+### TASK 0: ExprAddrWF invariant — PARTIAL (structural complete, preservation sorry'd)
 
 **Goal**: Close L1706 (getProp OOB) and L2114 (getIndex OOB) sorries.
 
@@ -1694,3 +1694,4 @@ This unblocks 10+ sorries. DO THIS FIRST next run.
 
 2026-03-24T19:30:01+00:00 SKIP: already running
 2026-03-24T20:30:01+00:00 SKIP: already running
+2026-03-24T20:53:23+00:00 DONE
