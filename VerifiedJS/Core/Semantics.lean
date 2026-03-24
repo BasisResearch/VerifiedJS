@@ -923,6 +923,26 @@ def valueToString : Value → String
 -- | This algorithm differs from the IsStrictlyEqual Algorithm by treating
 -- | all \*NaN\* values as equivalent and by differentiating \*+0\*~𝔽~ from
 -- | \*-0\*~𝔽~.
+-- SPEC: L6486-L6497
+-- | # SameValueZero ( \_x\_: an ECMAScript language value, \_y\_: an ECMAScript language value, ): a Boolean
+-- |
+-- | description
+-- | :   It determines whether or not the two arguments are the same value
+-- |     (ignoring the difference between \*+0\*~𝔽~ and \*-0\*~𝔽~).
+-- |
+-- | 1\. If SameType(\_x\_, \_y\_) is \*false\*, return \*false\*. 1. If
+-- | \_x\_ is a Number, then 1. Return Number::sameValueZero(\_x\_,
+-- | \_y\_). 1. Return SameValueNonNumber(\_x\_, \_y\_).
+-- |
+-- | SameValueZero differs from SameValue only in that it treats \*+0\*~𝔽~
+-- | and \*-0\*~𝔽~ as equivalent.
+-- SPEC: L4604-L4610
+-- | # Number::sameValueZero ( \_x\_: a Number, \_y\_: a Number, ): a Boolean
+-- |
+-- | 1\. If \_x\_ is \*NaN\* and \_y\_ is \*NaN\*, return \*true\*. 1. If
+-- | \_x\_ is \*+0\*~𝔽~ and \_y\_ is \*-0\*~𝔽~, return \*true\*. 1. If \_x\_
+-- | is \*-0\*~𝔽~ and \_y\_ is \*+0\*~𝔽~, return \*true\*. 1. If \_x\_ is
+-- | \_y\_, return \*true\*. 1. Return \*false\*.
 /-- ECMA-262 §7.2.14 Abstract Equality Comparison (simplified core subset).
     Handles null/undefined equivalence and type coercion. -/
 def abstractEq : Value → Value → Bool
@@ -2661,7 +2681,7 @@ def step? (s : State) : Option (TraceEvent × State) :=
   -- SPEC: L18488-L18489
   -- | LabelledStatement : LabelIdentifier \`:\` LabelledItem 1. Return ?
   -- | LabelledEvaluation of this \|LabelledStatement\| with argument « ».
-  -- SPEC: L18511-L18518
+  -- SPEC: L18511-L18519
   -- | LabelledStatement : LabelIdentifier \`:\` LabelledItem 1. Let \_label\_
   -- | be the StringValue of \|LabelIdentifier\|. 1. Let \_newLabelSet\_ be the
   -- | list-concatenation of \_labelSet\_ and « \_label\_ ». 1. Let
