@@ -2763,7 +2763,7 @@ def step? (s : State) : Option (TraceEvent × State) :=
   -- | \_oldValue\_ is a BigInt. 1. Let \_newValue\_ be
   -- | BigInt::add(\_oldValue\_, \*1\*~ℤ~). 1. Perform ? PutValue(\_lhs\_,
   -- | \_newValue\_). 1. Return \_oldValue\_.
-  -- SPEC: L16042-L16053
+  -- SPEC: L16040-L16053
   -- | # Postfix Decrement Operator
   -- |
   -- | # Runtime Semantics: Evaluation
@@ -2777,7 +2777,7 @@ def step? (s : State) : Option (TraceEvent × State) :=
   -- | Assert: \_oldValue\_ is a BigInt. 1. Let \_newValue\_ be
   -- | BigInt::subtract(\_oldValue\_, \*1\*~ℤ~). 1. Perform ? PutValue(\_lhs\_,
   -- | \_newValue\_). 1. Return \_oldValue\_.
-  -- SPEC: L16056-L16066
+  -- SPEC: L16054-L16066
   -- | # Prefix Increment Operator
   -- |
   -- | # Runtime Semantics: Evaluation
@@ -2790,7 +2790,7 @@ def step? (s : State) : Option (TraceEvent × State) :=
   -- | Number::add(\_oldValue\_, \*1\*~𝔽~). 1. Else, 1. Assert: \_oldValue\_ is
   -- | a BigInt. 1. Let \_newValue\_ be BigInt::add(\_oldValue\_, \*1\*~ℤ~). 1.
   -- | Perform ? PutValue(\_expr\_, \_newValue\_). 1. Return \_newValue\_.
-  -- SPEC: L16069-L16080
+  -- SPEC: L16067-L16080
   -- | # Prefix Decrement Operator
   -- |
   -- | # Runtime Semantics: Evaluation
