@@ -16,6 +16,9 @@ structure State where
   env : Env
   heap : Core.Heap
   trace : List Core.TraceEvent
+  funcs : Array FuncDef
+  /-- Call stack: saved caller environments for function call return. -/
+  callStack : List Env
   deriving Repr
 
 /-- Empty Flat lexical environment. -/
@@ -390,11 +393,47 @@ def step? (s : State) : Option (Core.TraceEvent × State) :=
                     { s with expr := .call funcExpr se.expr args, env := se.env, heap := se.heap } t
                   some (t, s')
               | none => none
-          | some _ =>
+          | some envVal =>
               match valuesFromExprList? args with
-              | some _ =>
-                  let s' := pushTrace { s with expr := .lit .undefined } .silent
-                  some (.silent, s')
+              | some argVals =>
+                  -- WASMCERT: theories/opsem.v — function call with all values
+                  -- All arguments evaluated; perform the actual call.
+                  match exprValue? funcExpr with
+                  | some (.closure funcIdx _envPtr) =>
+                      -- §18.2 Built-in: console.log (reserved at function index 0).
+                      if funcIdx == Core.consoleLogIdx then
+                          let msg := match argVals with
+                            | [v] => valueToString v
+                            | vs => String.intercalate " " (vs.map valueToString)
+                          let s' := pushTrace { s with expr := .lit .undefined } (.log msg)
+                          some (.log msg, s')
+                      else
+                      match s.funcs[funcIdx]? with
+                      | some funcDef =>
+                          -- §10.2.1 [[Call]]: bind params to args, bind envParam.
+                          let pairs := funcDef.params.zip argVals
+                          let bodyEnv : Env :=
+                            pairs.foldr (fun pv bs => (pv.1, pv.2) :: bs) []
+                          -- Bind the environment pointer for captured variable access.
+                          let bodyEnv' : Env := (funcDef.envParam, envVal) :: bodyEnv
+                          -- Bind function name for recursion.
+                          let bodyEnv'' : Env := (funcDef.name, .closure funcIdx (match envVal with | .object p => p | _ => 0)) :: bodyEnv'
+                          -- Wrap body in tryCatch to intercept returns.
+                          let wrapped := .tryCatch funcDef.body "__call_frame_return__"
+                            (.var "__call_frame_return__") none
+                          -- Push caller env onto call stack for restoration on return.
+                          let s' := pushTrace { s with
+                            expr := wrapped
+                            env := bodyEnv''
+                            callStack := s.env :: s.callStack } .silent
+                          some (.silent, s')
+                      | none =>
+                          let s' := pushTrace { s with expr := .lit .undefined } .silent
+                          some (.silent, s')
+                  | _ =>
+                      -- Non-closure callee: return undefined.
+                      let s' := pushTrace { s with expr := .lit .undefined } .silent
+                      some (.silent, s')
               | none =>
                   match hf : firstNonValueExpr args with
                   | some (done, target, remaining) =>
@@ -885,7 +924,8 @@ inductive Steps : State → List Core.TraceEvent → State → Prop where
 def initialState (p : Program) : State :=
   let consoleProps : List (Core.PropName × Core.Value) := [("log", .function Core.consoleLogIdx)]
   let heap : Core.Heap := { objects := #[consoleProps], nextAddr := 1 }
-  { expr := p.main, env := Env.empty.extend "console" (.object 0), heap := heap, trace := [] }
+  { expr := p.main, env := Env.empty.extend "console" (.object 0), heap := heap, trace := []
+  , funcs := p.functions, callStack := [] }
 
 /-- Behavioral semantics -/
 def Behaves (p : Program) (b : List Core.TraceEvent) : Prop :=
