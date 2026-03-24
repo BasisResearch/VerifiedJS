@@ -524,6 +524,126 @@ def abstractLt : Value → Value → Bool
 -- |   operands.
 -- | - The \`%\` operator yields the remainder of its operands from an
 -- |   implied division.
+-- SPEC: L4455-L4475
+-- | # Number::multiply ( \_x\_: a Number, \_y\_: a Number, ): a Number
+-- |
+-- | description
+-- | :   It performs multiplication according to the rules of IEEE 754-2019
+-- |     binary double-precision arithmetic, producing the product of \_x\_
+-- |     and \_y\_.
+-- |
+-- | 1\. If \_x\_ is \*NaN\* or \_y\_ is \*NaN\*, return \*NaN\*. 1. If \_x\_
+-- | is either \*+∞\*~𝔽~ or \*-∞\*~𝔽~, then 1. If \_y\_ is either \*+0\*~𝔽~
+-- | or \*-0\*~𝔽~, return \*NaN\*. 1. If \_y\_ \> \*+0\*~𝔽~, return \_x\_. 1.
+-- | Return -\_x\_. 1. If \_y\_ is either \*+∞\*~𝔽~ or \*-∞\*~𝔽~, then 1. If
+-- | \_x\_ is either \*+0\*~𝔽~ or \*-0\*~𝔽~, return \*NaN\*. 1. If \_x\_ \>
+-- | \*+0\*~𝔽~, return \_y\_. 1. Return -\_y\_. 1. If \_x\_ is \*-0\*~𝔽~,
+-- | then 1. If \_y\_ is \*-0\*~𝔽~ or \_y\_ \< \*-0\*~𝔽~, return
+-- | \*+0\*~𝔽~. 1. Return \*-0\*~𝔽~. 1. If \_y\_ is \*-0\*~𝔽~, then 1. If
+-- | \_x\_ \< \*-0\*~𝔽~, return \*+0\*~𝔽~. 1. Return \*-0\*~𝔽~. 1. Return
+-- | 𝔽(ℝ(\_x\_) × ℝ(\_y\_)).
+-- |
+-- | Finite-precision multiplication is commutative, but not always
+-- | associative.
+-- SPEC: L4476-L4496
+-- | # Number::divide ( \_x\_: a Number, \_y\_: a Number, ): a Number
+-- |
+-- | description
+-- | :   It performs division according to the rules of IEEE 754-2019 binary
+-- |     double-precision arithmetic, producing the quotient of \_x\_ and
+-- |     \_y\_ where \_x\_ is the dividend and \_y\_ is the divisor.
+-- |
+-- | 1\. If \_x\_ is \*NaN\* or \_y\_ is \*NaN\*, return \*NaN\*. 1. If \_x\_
+-- | is either \*+∞\*~𝔽~ or \*-∞\*~𝔽~, then 1. If \_y\_ is either \*+∞\*~𝔽~
+-- | or \*-∞\*~𝔽~, return \*NaN\*. 1. If \_y\_ is \*+0\*~𝔽~ or \_y\_ \>
+-- | \*+0\*~𝔽~, return \_x\_. 1. Return -\_x\_. 1. If \_y\_ is \*+∞\*~𝔽~,
+-- | then 1. If \_x\_ is \*+0\*~𝔽~ or \_x\_ \> \*+0\*~𝔽~, return
+-- | \*+0\*~𝔽~. 1. Return \*-0\*~𝔽~. 1. If \_y\_ is \*-∞\*~𝔽~, then 1. If
+-- | \_x\_ is \*+0\*~𝔽~ or \_x\_ \> \*+0\*~𝔽~, return \*-0\*~𝔽~. 1. Return
+-- | \*+0\*~𝔽~. 1. If \_x\_ is either \*+0\*~𝔽~ or \*-0\*~𝔽~, then 1. If
+-- | \_y\_ is either \*+0\*~𝔽~ or \*-0\*~𝔽~, return \*NaN\*. 1. If \_y\_ \>
+-- | \*+0\*~𝔽~, return \_x\_. 1. Return -\_x\_. 1. If \_y\_ is \*+0\*~𝔽~,
+-- | then 1. If \_x\_ \> \*+0\*~𝔽~, return \*+∞\*~𝔽~. 1. Return \*-∞\*~𝔽~. 1.
+-- | If \_y\_ is \*-0\*~𝔽~, then 1. If \_x\_ \> \*+0\*~𝔽~, return
+-- | \*-∞\*~𝔽~. 1. Return \*+∞\*~𝔽~. 1. Return 𝔽(ℝ(\_x\_) / ℝ(\_y\_)).
+-- SPEC: L4542-L4552
+-- | # Number::subtract ( \_x\_: a Number, \_y\_: a Number, ): a Number
+-- |
+-- | description
+-- | :   It performs subtraction, producing the difference of its operands;
+-- |     \_x\_ is the minuend and \_y\_ is the subtrahend.
+-- |
+-- | 1\. Return Number::add(\_x\_, Number::unaryMinus(\_y\_)).
+-- |
+-- | It is always the case that \`x - y\` produces the same result as \`x +
+-- | (-y)\`.
+-- SPEC: L4497-L4525
+-- | # Number::remainder ( \_n\_: a Number, \_d\_: a Number, ): a Number
+-- |
+-- | description
+-- | :   It yields the remainder from an implied division of its operands
+-- |     where \_n\_ is the dividend and \_d\_ is the divisor.
+-- |
+-- | 1\. If \_n\_ is \*NaN\* or \_d\_ is \*NaN\*, return \*NaN\*. 1. If \_n\_
+-- | is either \*+∞\*~𝔽~ or \*-∞\*~𝔽~, return \*NaN\*. 1. If \_d\_ is either
+-- | \*+∞\*~𝔽~ or \*-∞\*~𝔽~, return \_n\_. 1. If \_d\_ is either \*+0\*~𝔽~ or
+-- | \*-0\*~𝔽~, return \*NaN\*. 1. If \_n\_ is either \*+0\*~𝔽~ or \*-0\*~𝔽~,
+-- | return \_n\_. 1. Assert: \_n\_ and \_d\_ are finite and non-zero. 1. Let
+-- | \_quotient\_ be ℝ(\_n\_) / ℝ(\_d\_). 1. Let \_q\_ be
+-- | truncate(\_quotient\_). 1. Let \_r\_ be ℝ(\_n\_) - (ℝ(\_d\_) ×
+-- | \_q\_). 1. If \_r\_ = 0 and \_n\_ \< \*-0\*~𝔽~, return \*-0\*~𝔽~. 1.
+-- | Return 𝔽(\_r\_).
+-- |
+-- | In C and C++, the remainder operator accepts only integral operands; in
+-- | ECMAScript, it also accepts floating-point operands.
+-- |
+-- | The result of a floating-point remainder operation as computed by the
+-- | \`%\` operator is not the same as the "remainder" operation defined by
+-- | IEEE 754-2019. The IEEE 754-2019 "remainder" operation computes the
+-- | remainder from a rounding division, not a truncating division, and so
+-- | its behaviour is not analogous to that of the usual integer remainder
+-- | operator. Instead the ECMAScript language defines \`%\` on
+-- | floating-point operations to behave in a manner analogous to that of the
+-- | Java integer remainder operator; this may be compared with the C library
+-- | function fmod.
+-- SPEC: L4553-L4578
+-- | # Number::leftShift ( \_x\_: a Number, \_y\_: a Number, ): an integral Number
+-- |
+-- | 1\. Let \_lNum\_ be ! ToInt32(\_x\_). 1. Let \_rNum\_ be !
+-- | ToUint32(\_y\_). 1. Let \_shiftCount\_ be ℝ(\_rNum\_) modulo 32. 1.
+-- | Return the result of left shifting \_lNum\_ by \_shiftCount\_ bits. The
+-- | mathematical value of the result is exactly representable as a 32-bit
+-- | two\'s complement bit string.
+-- |
+-- | # Number::signedRightShift ( \_x\_: a Number, \_y\_: a Number, ): an integral Number
+-- |
+-- | 1\. Let \_lNum\_ be ! ToInt32(\_x\_). 1. Let \_rNum\_ be !
+-- | ToUint32(\_y\_). 1. Let \_shiftCount\_ be ℝ(\_rNum\_) modulo 32. 1.
+-- | Return the result of performing a sign-extending right shift of \_lNum\_
+-- | by \_shiftCount\_ bits. The most significant bit is propagated. The
+-- | mathematical value of the result is exactly representable as a 32-bit
+-- | two\'s complement bit string.
+-- |
+-- | # Number::unsignedRightShift ( \_x\_: a Number, \_y\_: a Number, ): an integral Number
+-- |
+-- | 1\. Let \_lNum\_ be ! ToUint32(\_x\_). 1. Let \_rNum\_ be !
+-- | ToUint32(\_y\_). 1. Let \_shiftCount\_ be ℝ(\_rNum\_) modulo 32. 1.
+-- | Return the result of performing a zero-filling right shift of \_lNum\_
+-- | by \_shiftCount\_ bits. Vacated bits are filled with zero. The
+-- | mathematical value of the result is exactly representable as a 32-bit
+-- | unsigned bit string.
+-- SPEC: L4626-L4637
+-- | # Number::bitwiseAND ( \_x\_: a Number, \_y\_: a Number, ): an integral Number
+-- |
+-- | 1\. Return NumberBitwiseOp(\`&\`, \_x\_, \_y\_).
+-- |
+-- | # Number::bitwiseXOR ( \_x\_: a Number, \_y\_: a Number, ): an integral Number
+-- |
+-- | 1\. Return NumberBitwiseOp(\`\^\`, \_x\_, \_y\_).
+-- |
+-- | # Number::bitwiseOR ( \_x\_: a Number, \_y\_: a Number, ): an integral Number
+-- |
+-- | 1\. Return NumberBitwiseOp(\`\|\`, \_x\_, \_y\_).
 /-- ECMA-262 §13.15 Runtime Semantics: Evaluation (core binary subset). -/
 def evalBinary : BinOp → Value → Value → Value
   -- ECMA-262 §12.8.3: if either operand is a string, concatenate after ToString.
