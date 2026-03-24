@@ -3850,3 +3850,54 @@ Source ──[elaborate]──> Core ──[closureConvert]──> Flat ──[a
 
 ## Run: 2026-03-24T12:05:01+00:00
 
+
+### Build
+- **Status**: `lake build` **PASS** ✅
+
+### Metrics
+- **Sorry count**: 42 (threshold 100) — 8 CC + 28 Wasm + 4 Lower + 2 ANF (UNCHANGED)
+- **Test262**: 3 pass, 50 fail, 3 skip, 5 xfail / 63 total (UNCHANGED 149+ hrs)
+- **Spec coverage**: 3353/44380 lines (7.6%), 250 refs, 0 mismatches (UP from 215 refs/46 mismatches!)
+- **WasmCert refs**: 0 checked, 0 mismatches
+
+### Proof Chain Status
+```
+Source ──[elaborate]──> Core ──[closureConvert]──> Flat ──[anfConvert]──> ANF ──[lower]──> Wasm.IR ──[emit]──> Wasm
+         ✅ proved       8 sorry                    2 sorry              1+3 sorry        28 sorry
+```
+
+### Sorry Delta: 42→42 (UNCHANGED)
+- CC: 8 (unchanged) — isCallFrame TASK 0 for 2 cycles, proof agent timing out
+- Wasm: 28 (unchanged)
+- Lower: 4 (3 in Wasm/Semantics + 1 in LowerCorrect)
+- ANF: 2 (unchanged)
+
+### Agent Status
+- **proof**: Timed out (10:30→11:30 EXIT 124). No CC sorries closed. isCallFrame stuck — needs recursive WF predicate (more complex than initially estimated). Redirected with EXACT Lean code for `noCallFrameReturn` Bool predicate + 5-step implementation plan.
+- **wasmspec**: Timed out (10:15→11:15 EXIT 124). Wasm sorry stable. Call stub STILL not fixed. Redirected with updated sorry line numbers.
+- **jsspec**: Completed (11:00→11:47). EXCELLENT: Fixed ALL 46 mismatches AND added 35 new refs (215→250). Now at 7.6% coverage, 0 mismatches. Redirected to 300+ refs.
+
+### Abstraction Discovery
+
+**isCallFrame requires RECURSIVE well-formedness, not shallow**
+
+Previous guidance said "add `h_wf` to CC_SimRel" — but this only covers the top-level expression. The strong induction IH applies to sub-expressions, which also need the well-formedness guarantee. Specifically:
+
+When tryCatch body steps, IH is called with `sc_body.expr = body`. If `body` is itself a tryCatch, the IH needs `body.noCallFrameReturn`. The shallow condition on the outer tryCatch doesn't propagate.
+
+Solution: define `Core.Expr.noCallFrameReturn : Expr → Bool` recursively (covers all constructors), add `sc.expr.noCallFrameReturn = true` to CC_SimRel, prove preservation by structural decomposition (`Bool.and_eq_true` + `simp`).
+
+Wrote COMPLETE Lean code for the definition (3 mutually recursive functions) + exact modification to CC_SimRel + tactics for isCallFrame sorries + preservation proof strategy.
+
+### Prompts Updated
+1. ✅ Updated proof prompt (2026-03-24T12:05): EXACT `noCallFrameReturn` definition with all Core.Expr constructors. 5-step implementation plan. TASK 1 = ANF sorries (independent). TASK 2 = objectLit/arrayLit/functionDef.
+2. ✅ Updated wasmspec prompt (2026-03-24T12:05): Updated sorry line numbers (28 Wasm + 4 Lower). Keep call stub as TASK 0.
+3. ✅ Updated jsspec prompt (2026-03-24T12:05): Celebrated 250 refs/0 mismatches. New target 300+ refs.
+4. ✅ Updated PROGRESS.md: agent health table, critical path.
+
+### Next Run Focus
+- Monitor proof agent: did it define `noCallFrameReturn` and close isCallFrame?
+- Check wasmspec: did it fix call stub? Did Wasm sorry go down?
+- Track jsspec refs: should approach 275+
+2026-03-24T12:05:01+00:00 DONE
+2026-03-24T12:24:46+00:00 DONE

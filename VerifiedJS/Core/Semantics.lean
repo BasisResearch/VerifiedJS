@@ -2603,7 +2603,9 @@ def step? (s : State) : Option (TraceEvent × State) :=
           let msg := "ReferenceError: " ++ name
           let s' := pushTrace { s with expr := .lit .undefined } (.error msg)
           some (.error msg, s')
-  -- SPEC: L17426-L17443
+  -- SPEC: L17424-L17453
+  -- | # Runtime Semantics: Evaluation
+  -- |
   -- | VariableStatement : \`var\` VariableDeclarationList \`;\` 1. Perform ?
   -- | Evaluation of \|VariableDeclarationList\|. 1. Return \~empty\~.
   -- | VariableDeclarationList : VariableDeclarationList \`,\`
@@ -2622,13 +2624,30 @@ def step? (s : State) : Option (TraceEvent × State) :=
   -- |
   -- | If a \|VariableDeclaration\| is nested within a with statement and the
   -- | \|BindingIdentifier\| in the \|VariableDeclaration\| is the same as a
-  -- SPEC: L17374-L17378
+  -- | property name of the binding object of the with statement\'s Object
+  -- | Environment Record, then step will assign \_value\_ to the property
+  -- | instead of assigning to the VariableEnvironment binding of the
+  -- | \|Identifier\|.
+  -- |
+  -- | VariableDeclaration : BindingPattern Initializer 1. Let \_rhs\_ be ?
+  -- | Evaluation of \|Initializer\|. 1. Let \_rVal\_ be ?
+  -- | GetValue(\_rhs\_). 1. Return ? BindingInitialization of
+  -- | \|BindingPattern\| with arguments \_rVal\_ and \*undefined\*.
+  -- SPEC: L17372-L17399
+  -- | # Runtime Semantics: Evaluation
+  -- |
   -- | LexicalDeclaration : LetOrConst BindingList \`;\` 1. Perform ?
   -- | Evaluation of \|BindingList\|. 1. Return \~empty\~. BindingList :
   -- | BindingList \`,\` LexicalBinding 1. Perform ? Evaluation of
   -- | \|BindingList\|. 1. Return ? Evaluation of \|LexicalBinding\|.
   -- | LexicalBinding : BindingIdentifier 1. Let \_lhs\_ be !
-  -- SPEC: L17386-L17393
+  -- | ResolveBinding(StringValue of \|BindingIdentifier\|). 1. Perform !
+  -- | InitializeReferencedBinding(\_lhs\_, \*undefined\*). 1. Return
+  -- | \~empty\~.
+  -- |
+  -- | A static semantics rule ensures that this form of \|LexicalBinding\|
+  -- | never occurs in a \`const\` declaration.
+  -- |
   -- | LexicalBinding : BindingIdentifier Initializer 1. Let \_bindingId\_ be
   -- | the StringValue of \|BindingIdentifier\|. 1. Let \_lhs\_ be !
   -- | ResolveBinding(\_bindingId\_). 1. If
@@ -2637,6 +2656,11 @@ def step? (s : State) : Option (TraceEvent × State) :=
   -- | \_bindingId\_. 1. Else, 1. Let \_rhs\_ be ? Evaluation of
   -- | \|Initializer\|. 1. Let \_value\_ be ? GetValue(\_rhs\_). 1. Perform !
   -- | InitializeReferencedBinding(\_lhs\_, \_value\_). 1. Return \~empty\~.
+  -- | LexicalBinding : BindingPattern Initializer 1. Let \_rhs\_ be ?
+  -- | Evaluation of \|Initializer\|. 1. Let \_value\_ be ?
+  -- | GetValue(\_rhs\_). 1. Let \_env\_ be the running execution context\'s
+  -- | LexicalEnvironment. 1. Return ? BindingInitialization of
+  -- | \|BindingPattern\| with arguments \_value\_ and \_env\_.
   | .let name init body =>
       match exprValue? init with
       | some v =>
@@ -2718,7 +2742,9 @@ def step? (s : State) : Option (TraceEvent × State) :=
   -- | Evaluation of \|Expression\|. 1. Perform ? GetValue(\_lRef\_). 1. Let
   -- | \_rRef\_ be ? Evaluation of \|AssignmentExpression\|. 1. Return ?
   -- | GetValue(\_rRef\_).
-  -- SPEC: L17264-L17275
+  -- SPEC: L17262-L17292
+  -- | # Runtime Semantics: Evaluation
+  -- |
   -- | Block : \`{\` \`}\` 1. Return \~empty\~. Block : \`{\` StatementList
   -- | \`}\` 1. Let \_oldEnv\_ be the running execution context\'s
   -- | LexicalEnvironment. 1. Let \_blockEnv\_ be
@@ -2731,6 +2757,10 @@ def step? (s : State) : Option (TraceEvent × State) :=
   -- |
   -- | No matter how control leaves the \|Block\| the LexicalEnvironment is
   -- | always restored to its former state.
+  -- |
+  -- | StatementList : StatementList StatementListItem 1. Let \_sl\_ be ?
+  -- | Evaluation of \|StatementList\|. 1. Let \_s\_ be Completion(Evaluation
+  -- | of \|StatementListItem\|). 1. Return ? UpdateEmpty(\_s\_, \_sl\_).
   -- SPEC: L17544-L17548
   -- | EmptyStatement : \`;\`
   -- |
@@ -3040,6 +3070,32 @@ def step? (s : State) : Option (TraceEvent × State) :=
   -- |
   -- | 1\. Return ? EvaluateBody of \_F\_.\[\[ECMAScriptCode\]\] with arguments
   -- | \_F\_ and \_argumentsList\_.
+  -- SPEC: L11136-L11169
+  -- | # Runtime Semantics: EvaluateBody ( \_functionObject\_: an ECMAScript function object, \_argumentsList\_: a List of ECMAScript language values, ): a return completion or a throw completion
+  -- |
+  -- | FunctionBody : FunctionStatementList 1. Return ? EvaluateFunctionBody of
+  -- | \|FunctionBody\| with arguments \_functionObject\_ and
+  -- | \_argumentsList\_. ConciseBody : ExpressionBody 1. Return ?
+  -- | EvaluateConciseBody of \|ConciseBody\| with arguments \_functionObject\_
+  -- | and \_argumentsList\_. GeneratorBody : FunctionBody 1. Return ?
+  -- | EvaluateGeneratorBody of \|GeneratorBody\| with arguments
+  -- | \_functionObject\_ and \_argumentsList\_. AsyncGeneratorBody :
+  -- | FunctionBody 1. Return ? EvaluateAsyncGeneratorBody of
+  -- | \|AsyncGeneratorBody\| with arguments \_functionObject\_ and
+  -- | \_argumentsList\_. AsyncFunctionBody : FunctionBody 1. Return ?
+  -- | EvaluateAsyncFunctionBody of \|AsyncFunctionBody\| with arguments
+  -- | \_functionObject\_ and \_argumentsList\_. AsyncConciseBody :
+  -- | ExpressionBody 1. Return ? EvaluateAsyncConciseBody of
+  -- | \|AsyncConciseBody\| with arguments \_functionObject\_ and
+  -- | \_argumentsList\_. Initializer : \`=\` AssignmentExpression 1. Assert:
+  -- | \_argumentsList\_ is empty. 1. Assert:
+  -- | \_functionObject\_.\[\[ClassFieldInitializerName\]\] is not
+  -- | \~empty\~. 1. If IsAnonymousFunctionDefinition(\|AssignmentExpression\|)
+  -- | is \*true\*, then 1. Let \_value\_ be ? NamedEvaluation of
+  -- | \|Initializer\| with argument
+  -- | \_functionObject\_.\[\[ClassFieldInitializerName\]\]. 1. Else, 1. Let
+  -- | \_rhs\_ be ? Evaluation of \|AssignmentExpression\|. 1. Let \_value\_ be
+  -- | ? GetValue(\_rhs\_). 1. Return ReturnCompletion(\_value\_).
   -- SPEC: L15736-L15773
   -- | # Runtime Semantics: ArgumentListEvaluation ( ): either a normal completion containing a List of ECMAScript language values or an abrupt completion
   -- |
@@ -3509,13 +3565,22 @@ def step? (s : State) : Option (TraceEvent × State) :=
       let funcs' := s.funcs.push closure
       let s' := pushTrace { s with expr := .lit (.function idx), funcs := funcs' } .silent
       some (.silent, s')
-  -- SPEC: L15122-L15127
+  -- SPEC: L15120-L15135
+  -- | # Runtime Semantics: Evaluation
+  -- |
   -- | ObjectLiteral : \`{\` \`}\` 1. Return
   -- | OrdinaryObjectCreate(%Object.prototype%). ObjectLiteral : \`{\`
   -- | PropertyDefinitionList \`}\` \`{\` PropertyDefinitionList \`,\` \`}\` 1.
   -- | Let \_obj\_ be OrdinaryObjectCreate(%Object.prototype%). 1. Perform ?
   -- | PropertyDefinitionEvaluation of \|PropertyDefinitionList\| with argument
   -- | \_obj\_. 1. Return \_obj\_. LiteralPropertyName : IdentifierName 1.
+  -- | Return the StringValue of \|IdentifierName\|. LiteralPropertyName :
+  -- | StringLiteral 1. Return the SV of \|StringLiteral\|. LiteralPropertyName
+  -- | : NumericLiteral 1. Let \_nbr\_ be the NumericValue of
+  -- | \|NumericLiteral\|. 1. Return ! ToString(\_nbr\_). ComputedPropertyName
+  -- | : \`\[\` AssignmentExpression \`\]\` 1. Let \_exprValue\_ be ?
+  -- | Evaluation of \|AssignmentExpression\|. 1. Let \_propName\_ be ?
+  -- | GetValue(\_exprValue\_). 1. Return ? ToPropertyKey(\_propName\_).
   -- SPEC: L15136-L15176
   -- | # Runtime Semantics: PropertyDefinitionEvaluation ( \_object\_: an Object, ): either a normal completion containing \~unused\~ or an abrupt completion
   -- |
@@ -4406,6 +4471,80 @@ def step? (s : State) : Option (TraceEvent × State) :=
       let l := match label with | some s => "continue:" ++ s | none => "continue:"
       let s' := pushTrace { s with expr := .lit .undefined } (.error l)
       some (.error l, s')
+  -- SPEC: L10782-L10855
+  -- | # ValidateAndApplyPropertyDescriptor ( \_O\_: an Object or \*undefined\*, \_P\_: a property key, \_extensible\_: a Boolean, \_Desc\_: a Property Descriptor, \_current\_: a Property Descriptor or \*undefined\*, ): a Boolean
+  -- |
+  -- | description
+  -- | :   It returns \*true\* if and only if \_Desc\_ can be applied as the
+  -- |     property of an object with specified \_extensibility\_ and current
+  -- |     property \_current\_ while upholding invariants. When such
+  -- |     application is possible and \_O\_ is not \*undefined\*, it is
+  -- |     performed for the property named \_P\_ (which is created if
+  -- |     necessary).
+  -- |
+  -- | 1\. Assert: \_P\_ is a property key. 1. If \_current\_ is \*undefined\*,
+  -- | then 1. If \_extensible\_ is \*false\*, return \*false\*. 1. If \_O\_ is
+  -- | \*undefined\*, return \*true\*. 1. If IsAccessorDescriptor(\_Desc\_) is
+  -- | \*true\*, then 1. Create an own accessor property named \_P\_ of object
+  -- | \_O\_ whose \[\[Get\]\], \[\[Set\]\], \[\[Enumerable\]\], and
+  -- | \[\[Configurable\]\] attributes are set to the value of the
+  -- | corresponding field in \_Desc\_ if \_Desc\_ has that field, or to the
+  -- | attribute\'s default value otherwise. 1. Else, 1. Create an own data
+  -- | property named \_P\_ of object \_O\_ whose \[\[Value\]\],
+  -- | \[\[Writable\]\], \[\[Enumerable\]\], and \[\[Configurable\]\]
+  -- | attributes are set to the value of the corresponding field in \_Desc\_
+  -- | if \_Desc\_ has that field, or to the attribute\'s default value
+  -- | otherwise. 1. Return \*true\*. 1. Assert: \_current\_ is a fully
+  -- | populated Property Descriptor. 1. If \_Desc\_ does not have any fields,
+  -- | return \*true\*. 1. If \_current\_.\[\[Configurable\]\] is \*false\*,
+  -- | then 1. If \_Desc\_ has a \[\[Configurable\]\] field and
+  -- | \_Desc\_.\[\[Configurable\]\] is \*true\*, return \*false\*. 1. If
+  -- | \_Desc\_ has an \[\[Enumerable\]\] field and \_Desc\_.\[\[Enumerable\]\]
+  -- | is not \_current\_.\[\[Enumerable\]\], return \*false\*. 1. If
+  -- | IsGenericDescriptor(\_Desc\_) is \*false\* and
+  -- | IsAccessorDescriptor(\_Desc\_) is not IsAccessorDescriptor(\_current\_),
+  -- | return \*false\*. 1. If IsAccessorDescriptor(\_current\_) is \*true\*,
+  -- | then 1. If \_Desc\_ has a \[\[Get\]\] field and
+  -- | SameValue(\_Desc\_.\[\[Get\]\], \_current\_.\[\[Get\]\]) is \*false\*,
+  -- | return \*false\*. 1. If \_Desc\_ has a \[\[Set\]\] field and
+  -- | SameValue(\_Desc\_.\[\[Set\]\], \_current\_.\[\[Set\]\]) is \*false\*,
+  -- | return \*false\*. 1. Else if \_current\_.\[\[Writable\]\] is \*false\*,
+  -- | then 1. If \_Desc\_ has a \[\[Writable\]\] field and
+  -- | \_Desc\_.\[\[Writable\]\] is \*true\*, return \*false\*. 1. NOTE:
+  -- | SameValue returns \*true\* for \*NaN\* values which may be
+  -- | distinguishable by other means. Returning here ensures that any existing
+  -- | property of \_O\_ remains unmodified. 1. If \_Desc\_ has a \[\[Value\]\]
+  -- | field, return SameValue(\_Desc\_.\[\[Value\]\],
+  -- | \_current\_.\[\[Value\]\]). 1. If \_O\_ is not \*undefined\*, then 1. If
+  -- | IsDataDescriptor(\_current\_) is \*true\* and
+  -- | IsAccessorDescriptor(\_Desc\_) is \*true\*, then 1. If \_Desc\_ has a
+  -- | \[\[Configurable\]\] field, let \_configurable\_ be
+  -- | \_Desc\_.\[\[Configurable\]\]; else let \_configurable\_ be
+  -- | \_current\_.\[\[Configurable\]\]. 1. If \_Desc\_ has an
+  -- | \[\[Enumerable\]\] field, let \_enumerable\_ be
+  -- | \_Desc\_.\[\[Enumerable\]\]; else let \_enumerable\_ be
+  -- | \_current\_.\[\[Enumerable\]\]. 1. Replace the property named \_P\_ of
+  -- | object \_O\_ with an accessor property whose \[\[Configurable\]\] and
+  -- | \[\[Enumerable\]\] attributes are set to \_configurable\_ and
+  -- | \_enumerable\_, respectively, and whose \[\[Get\]\] and \[\[Set\]\]
+  -- | attributes are set to the value of the corresponding field in \_Desc\_
+  -- | if \_Desc\_ has that field, or to the attribute\'s default value
+  -- | otherwise. 1. Else if IsAccessorDescriptor(\_current\_) is \*true\* and
+  -- | IsDataDescriptor(\_Desc\_) is \*true\*, then 1. If \_Desc\_ has a
+  -- | \[\[Configurable\]\] field, let \_configurable\_ be
+  -- | \_Desc\_.\[\[Configurable\]\]; else let \_configurable\_ be
+  -- | \_current\_.\[\[Configurable\]\]. 1. If \_Desc\_ has an
+  -- | \[\[Enumerable\]\] field, let \_enumerable\_ be
+  -- | \_Desc\_.\[\[Enumerable\]\]; else let \_enumerable\_ be
+  -- | \_current\_.\[\[Enumerable\]\]. 1. Replace the property named \_P\_ of
+  -- | object \_O\_ with a data property whose \[\[Configurable\]\] and
+  -- | \[\[Enumerable\]\] attributes are set to \_configurable\_ and
+  -- | \_enumerable\_, respectively, and whose \[\[Value\]\] and
+  -- | \[\[Writable\]\] attributes are set to the value of the corresponding
+  -- | field in \_Desc\_ if \_Desc\_ has that field, or to the attribute\'s
+  -- | default value otherwise. 1. Else, 1. For each field of \_Desc\_, set the
+  -- | corresponding attribute of the property named \_P\_ of object \_O\_ to
+  -- | the value of the field. 1. Return \*true\*.
   -- SPEC: L10890-L10895
   -- | # \[\[Set\]\] ( \_P\_: a property key, \_V\_: an ECMAScript language value, \_Receiver\_: an ECMAScript language value, ): either a normal completion containing a Boolean or a throw completion
   -- |

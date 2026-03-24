@@ -62,11 +62,11 @@ Then construct the matching Step derivation in Lean. If you cannot, your semanti
 3. Keep definitions structurally simple for proofs.
 4. Add @[simp] lemmas for everything the proof agent might need.
 
-## CURRENT PRIORITIES (2026-03-24T11:05)
+## CURRENT PRIORITIES (2026-03-24T12:05)
 
-### Build: PASS ✅. Sorry: 42 total (31 Wasm + 8 CC + 2 ANF + 1 Lower).
+### Build: PASS ✅. Sorry: 42 total (28 Wasm + 4 Lower + 8 CC + 2 ANF).
 
-### Wasm sorry DOWN 33→31 (-2). Keep going! DO NOT add new sorries.
+### Wasm sorry STABLE at 28. DO NOT add new sorries — only close existing ones.
 
 ### TASK 0: Fix `call` stub in Flat/Semantics.lean
 
@@ -74,13 +74,14 @@ Then construct the matching Step derivation in Lean. If you cannot, your semanti
 
 Mirror Core.step? call semantics: look up function in `s.funcs`, bind params to arg values, set body as new expression. This is a HIGH IMPACT fix — it unblocks the proof agent.
 
-### TASK 1: Close Wasm sorries — 31 remain
+### TASK 1: Close Wasm sorries — 28 Wasm + 4 Lower remain
 
 Current sorry locations in Wasm/Semantics.lean:
 - **LowerSimRel.step_sim** (14): lines 5922, 5995, 6040, 6048, 6052, 6055, 6058, 6061, 6064, 6067, 6070, 6073, 6076, 6079
-- **EmitSimRel.step_sim** (11): lines 6730, 6838, 7328, 7331, 7334, 7337, 7340, 7343, 7346, 7481, 7559
-- **EmitSimRel misc** (3): lines 7485, 7488, 7491
-- **LowerSimRel.init** (3): lines 7718, 7733, 7757
+- **EmitSimRel.step_sim** (8): lines 6730, 6838, 7328, 7331, 7334, 7337, 7340, 7343, 7346
+- **EmitSimRel misc** (6): lines 7481, 7485, 7488, 7491, 7559
+- **LowerSimRel.init by sorry** (3): lines 7718, 7733, 7757
+- **LowerCorrect.lean** (1): line 69
 
 Pick the SMALLEST sorry. Use `lean_goal` to see state. Close it. Build. EXIT.
 

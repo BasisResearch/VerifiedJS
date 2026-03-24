@@ -57,48 +57,97 @@ If ClosureConvertCorrect needs 600 lines of case analysis, WRITE 600 LINES. That
 ## Test262
 Read `logs/test262_summary.md` for failure categories. Fix compiler bugs that cause test262 failures.
 
-## CURRENT PRIORITIES (2026-03-24T11:05)
+## CURRENT PRIORITIES (2026-03-24T12:05)
 
-### Build: PASS ✅. Sorry: 42 (8 CC + 31 Wasm + 2 ANF + 1 Lower).
+### Build: PASS ✅. Sorry: 42 (8 CC + 28 Wasm + 4 Lower + 2 ANF).
 
-### 🎉 getIndex + setIndex CLOSED! CC down from 10 to 8. Great momentum!
-
-You've now closed getProp, deleteProp, setProp, getIndex, setIndex — all the heap ops with the same structural pattern. Excellent work.
-
-### CC Sorry Map (8 total):
-- **1 captured var**: line 813 (Flat.getEnv 2 steps vs Core.var 1 step — stuttering)
-- **1 call BLOCKED**: line 1523 (Flat stub returns `.undefined` — wasmspec fixing)
-- **1 newObj**: line 1524 (Flat allocates fresh object — needs heap correspondence)
+### CC Sorry Map (8 total — UNCHANGED from last run):
+- **1 captured var**: line 813 (stuttering — Flat 2 steps vs Core 1 step)
+- **1 call BLOCKED**: line 1523 (Flat stub — wasmspec fixing)
+- **1 newObj**: line 1524 (heap correspondence)
 - **3 heap/funcs**: lines 2890-2892 (objectLit, arrayLit, functionDef)
 - **2 isCallFrame**: lines 3026, 3139 (unreachable for CC'd source programs)
 
-### TASK 0: Close isCallFrame sorries (lines 3026, 3139) — EASIEST WIN
+### TASK 0: Close isCallFrame sorries (lines 3026, 3139)
 
-Both are `catchParam = "__call_frame_return__"` which never occurs in CC'd source programs. The `by_cases hcf` already splits this — you just need a contradiction.
+Both need `catchParam ≠ "__call_frame_return__"`. This requires a RECURSIVE well-formedness predicate because the IH applies to sub-expressions.
 
-Strategy: Add `h_wf : ∀ cp ∈ catchParams, cp ≠ "__call_frame_return__"` as a hypothesis to `CC_SimRel` (or to `closureConvert_correct`). Then `exact absurd hcf (h_wf ...)` closes both.
+**EXACT STEPS — follow precisely:**
 
-Alternatively, if `closureConvert` never generates this catchParam, prove a lemma:
+**Step 1**: Add to `CC_SimRel` (line 505-511 of ClosureConvertCorrect.lean):
 ```lean
-theorem convertExpr_no_callFrame (e : Core.Expr) :
-    ∀ cp, cp ∈ catchParamsOf (Flat.convertExpr e ...).1 → cp ≠ "__call_frame_return__"
+private def CC_SimRel (_s : Core.Program) (_t : Flat.Program)
+    (sf : Flat.State) (sc : Core.State) : Prop :=
+  sf.trace = sc.trace ∧
+  EnvCorr sc.env sf.env ∧
+  sf.heap = sc.heap ∧
+  sc.expr.noCallFrameReturn = true ∧  -- ADD THIS LINE
+  ∃ (scope : List String) (envVar : String) (envMap : Flat.EnvMapping) (st st' : Flat.CCState),
+    (sf.expr, st') = Flat.convertExpr sc.expr scope envVar envMap st
 ```
-Use `lean_goal` at lines 3026 and 3139 to see the exact proof state.
 
-### TASK 1: Close objectLit/arrayLit/functionDef (lines 2890-2892)
+**Step 2**: Define `noCallFrameReturn` in Core/Syntax.lean (after the existing `mutual` block ending at ~line 130):
+```lean
+mutual
+def Expr.noCallFrameReturn : Expr → Bool
+  | .tryCatch body cp cb fin =>
+    cp != "__call_frame_return__" &&
+    body.noCallFrameReturn && cb.noCallFrameReturn &&
+    match fin with | some f => f.noCallFrameReturn | none => true
+  | .seq a b => a.noCallFrameReturn && b.noCallFrameReturn
+  | .«if» c t e => c.noCallFrameReturn && t.noCallFrameReturn && e.noCallFrameReturn
+  | .while_ c b => c.noCallFrameReturn && b.noCallFrameReturn
+  | .«let» _ i b => i.noCallFrameReturn && b.noCallFrameReturn
+  | .assign _ v => v.noCallFrameReturn
+  | .call c args => c.noCallFrameReturn && Expr.listNoCallFrameReturn args
+  | .newObj c args => c.noCallFrameReturn && Expr.listNoCallFrameReturn args
+  | .getProp o _ => o.noCallFrameReturn
+  | .setProp o _ v => o.noCallFrameReturn && v.noCallFrameReturn
+  | .getIndex o i => o.noCallFrameReturn && i.noCallFrameReturn
+  | .setIndex o i v => o.noCallFrameReturn && i.noCallFrameReturn && v.noCallFrameReturn
+  | .deleteProp o _ => o.noCallFrameReturn
+  | .typeof a => a.noCallFrameReturn
+  | .unary _ a => a.noCallFrameReturn
+  | .binary _ l r => l.noCallFrameReturn && r.noCallFrameReturn
+  | .objectLit ps => Expr.propListNoCallFrameReturn ps
+  | .arrayLit es => Expr.listNoCallFrameReturn es
+  | .throw a => a.noCallFrameReturn
+  | .forIn _ o b => o.noCallFrameReturn && b.noCallFrameReturn
+  | .forOf _ i b => i.noCallFrameReturn && b.noCallFrameReturn
+  | .labeled _ b => b.noCallFrameReturn
+  | .«return» (some e) => e.noCallFrameReturn
+  | .yield (some e) _ => e.noCallFrameReturn
+  | .await a => a.noCallFrameReturn
+  | _ => true
+def Expr.listNoCallFrameReturn : List Expr → Bool
+  | [] => true
+  | e :: rest => e.noCallFrameReturn && Expr.listNoCallFrameReturn rest
+def Expr.propListNoCallFrameReturn : List (PropName × Expr) → Bool
+  | [] => true
+  | (_, e) :: rest => e.noCallFrameReturn && Expr.propListNoCallFrameReturn rest
+end
+```
 
-These need env/heap correspondence. Look at how Core.step? handles `objectLit` — it allocates a new object. Flat.step? does the same via `allocFreshObject`. You need to show the allocated objects correspond.
+**Step 3**: At the isCallFrame sorries (lines 3026, 3139), extract from CC_SimRel:
+```lean
+· -- isCallFrame = true: contradiction with noCallFrameReturn
+  have hncfr := hncfr_from_simrel  -- extract from CC_SimRel
+  simp [Core.Expr.noCallFrameReturn] at hncfr
+  exact absurd hcf hncfr.1
+```
 
-Key: `allocFreshObject` is still `private`. If you can't unfold it, work structurally like you did for getProp — match on the Flat.step? result directly.
+**Step 4**: For each proved case, show `noCallFrameReturn` is preserved:
+- Non-tryCatch results (lit, var, etc.): `simp [Expr.noCallFrameReturn]`
+- tryCatch wrapping same catchParam: extract from parent's `noCallFrameReturn`
+- Sub-expressions: `Bool.and_eq_true` gives sub-expression's noCallFrameReturn
 
-### TASK 2: Close captured var (line 813)
+**Step 5**: For `closureConvert_init_related` (line 513), prove `s.body.noCallFrameReturn = true`. Source programs from `elaborate` never use `"__call_frame_return__"` — this string only appears in Core.step? (line 3130-3131 of Core/Semantics.lean). If hard to prove, add `(h_wf : s.body.noCallFrameReturn = true)` as hypothesis to `closureConvert_correct`.
 
-This is a **stuttering simulation**: Flat takes 2 steps (getEnv + lookup) while Core takes 1.
-You need `Flat.Steps` (multi-step) instead of `Flat.Step` (single-step). Check if the simulation theorem signature allows this.
+### TASK 1: ANF sorries (lines 106, 1181) — INDEPENDENT of CC
 
-### TASK 3: ANF sorries (lines 106, 1181 in ANFConvertCorrect.lean) — INDEPENDENT
+Line 106 is `anfConvert_step_star` (entire theorem sorry'd). Line 1181 is nested seq in `anfConvert_halt_star_aux`. Either is good progress.
 
-Switch to these if CC is blocked. Use `lean_goal` to see what's needed.
+### TASK 2: Close objectLit/arrayLit/functionDef (lines 2890-2892) if time permits
 
 ### TIME MANAGEMENT:
 1. Do NOT run `lake build` at the start. Use `lean_diagnostic_messages` instead.

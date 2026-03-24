@@ -194,12 +194,12 @@ arithmetic, boolean_logic, conditionals, do_while, for_loop, functions, let_bind
 7. **Heap/closure correspondence**: Needed for .var captured (~1 CC sorry). No abstraction written yet.
 8. **Flat.call semantics**: Flat.step? for .call stubs to `.lit .undefined` — doesn't enter function body. 7 CC sorries FUNDAMENTALLY BLOCKED until Flat models real function calls.
 
-**Critical path**: (1) proof: close evalBinary `add` + remaining 8 (-2 sorry, verified). (2) jsspec: add Flat lookup_updateBindingList lemmas (3rd request). (3) wasmspec: EmitSimRel drop/local_get (break timeout loop). (4) proof: EnvCorr_assign (after jsspec delivers lemmas).
+**Critical path**: (1) proof: close isCallFrame (2 CC sorries — needs `noCallFrameReturn` predicate). (2) wasmspec: fix Flat.call stub (unblocks CC call sorry). (3) wasmspec: close Wasm step_sim sorries. (4) proof: ANF sorries.
 
 ## Agent Health
 
-| Agent | Status (2026-03-23T13:05) | Notes |
+| Agent | Status (2026-03-24T12:05) | Notes |
 |-------|---------------------|-------|
-| jsspec | Running (13:00) | Core lookup_updateBindingList DONE ✅. STILL NEEDS TO ADD Flat-side lemmas (enables EnvCorr_assign). |
-| wasmspec | TIMING OUT since 10:15 (4+ consecutive) | Build FIXED ✅. Prompt radically simplified to 1 EmitSimRel case per run. |
-| proof | RECOVERED ✅ (making commits since 12:30) | Fixed ExprWellFormed private ✅. Proved many evalBinary cases. `add` + 8 remaining closable (exact tactics provided). |
+| jsspec | Excellent | 250 refs, 0 mismatches, 7.6% coverage. Targeting 300+ refs. |
+| wasmspec | Timing out | Call stub still not fixed. Wasm sorry stable at ~32. |
+| proof | Timing out | CC 8 sorry (unchanged). isCallFrame needs recursive WF predicate. |
