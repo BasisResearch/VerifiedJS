@@ -1429,6 +1429,133 @@ def Env.extend (env : Env) (name : VarName) (v : Value) : Env :=
 -- | \_prefix\_ is not present, then 1. Perform SetFunctionName(\_func\_,
 -- | \_name\_). 1. Else, 1. Perform SetFunctionName(\_func\_, \_name\_,
 -- | \_prefix\_). 1. Return \_func\_.
+-- SPEC: L4122-L4133
+-- | # The Symbol Type
+-- |
+-- | The [Symbol type]{.dfn variants="is a Symbol,is not a Symbol"} is the
+-- | set of all non-String values that may be used as the key of an Object
+-- | property ().
+-- |
+-- | Each Symbol is unique and immutable.
+-- |
+-- | Each Symbol has an immutable \[\[Description\]\] internal slot whose
+-- | value is either a String or \*undefined\*.
+-- |
+-- | # Well-Known Symbols
+-- SPEC: L5610-L5617
+-- | # InitializeReferencedBinding ( \_V\_: a Reference Record, \_W\_: an ECMAScript language value, ): either a normal completion containing \~unused\~ or an abrupt completion
+-- |
+-- | 1\. Assert: IsUnresolvableReference(\_V\_) is \*false\*. 1. Let \_base\_
+-- | be \_V\_.\[\[Base\]\]. 1. Assert: \_base\_ is an Environment Record. 1.
+-- | Return ? \_base\_.InitializeBinding(\_V\_.\[\[ReferencedName\]\],
+-- | \_W\_).
+-- |
+-- | # MakePrivateReference ( \_baseValue\_: an ECMAScript language value, \_privateIdentifier\_: a String, ): a Reference Record
+-- SPEC: L40961-L40972
+-- | # PromiseResolve ( \_C\_: an Object, \_x\_: an ECMAScript language value, ): either a normal completion containing an ECMAScript language value or a throw completion
+-- |
+-- | description
+-- | :   It returns a new promise resolved with \_x\_.
+-- |
+-- | 1\. If IsPromise(\_x\_) is \*true\*, then 1. Let \_xConstructor\_ be ?
+-- | Get(\_x\_, \*\"constructor\"\*). 1. If SameValue(\_xConstructor\_,
+-- | \_C\_) is \*true\*, return \_x\_. 1. Let \_promiseCapability\_ be ?
+-- | NewPromiseCapability(\_C\_). 1. Perform ?
+-- | Call(\_promiseCapability\_.\[\[Resolve\]\], \*undefined\*, « \_x\_
+-- | »). 1. Return \_promiseCapability\_.\[\[Promise\]\].
+-- SPEC: L7131-L7146
+-- | See Common Iteration Interfaces ().
+-- |
+-- | # Iterator Records
+-- |
+-- | An [Iterator Record]{.dfn variants="Iterator Records"} is a Record value
+-- | used to encapsulate an iterator or async iterator along with the
+-- | \`next\` method.
+-- |
+-- | Iterator Records have the fields listed in .
+-- |
+-- |   Field Name           Value                          Meaning
+-- |   -------------------- ------------------------------ ------------------------------------------------------------------------------------
+-- |   \[\[Iterator\]\]     an Object                      An object that conforms to the iterator interface or the async iterator interface.
+-- |   \[\[NextMethod\]\]   an ECMAScript language value   The \`next\` method of the \[\[Iterator\]\] object.
+-- |   \[\[Done\]\]         a Boolean                      Whether the iterator has completed or been closed.
+-- SPEC: L7309-L7319
+-- | # CreateIteratorResultObject ( \_value\_: an ECMAScript language value, \_done\_: a Boolean, ): an Object that conforms to the IteratorResult interface
+-- |
+-- | description
+-- | :   It creates an object that conforms to the IteratorResult interface.
+-- |
+-- | 1\. Let \_obj\_ be OrdinaryObjectCreate(%Object.prototype%). 1. Perform
+-- | ! CreateDataPropertyOrThrow(\_obj\_, \*\"value\"\*, \_value\_). 1.
+-- | Perform ! CreateDataPropertyOrThrow(\_obj\_, \*\"done\"\*, \_done\_). 1.
+-- | Return \_obj\_.
+-- |
+-- | # CreateListIteratorRecord ( \_list\_: a List of ECMAScript language values, ): an Iterator Record
+-- SPEC: L17633-L17648
+-- | # LoopContinues ( \_completion\_: a Completion Record, \_labelSet\_: a List of Strings, ): a Boolean
+-- |
+-- | 1\. If \_completion\_ is a normal completion, return \*true\*. 1. If
+-- | \_completion\_ is not a continue completion, return \*false\*. 1. If
+-- | \_completion\_.\[\[Target\]\] is \~empty\~, return \*true\*. 1. If
+-- | \_labelSet\_ contains \_completion\_.\[\[Target\]\], return \*true\*. 1.
+-- | Return \*false\*.
+-- |
+-- | Within the \|Statement\| part of an \|IterationStatement\| a
+-- | \|ContinueStatement\| may be used to begin a new iteration.
+-- |
+-- | # Runtime Semantics: LoopEvaluation ( \_labelSet\_: a List of Strings, ): either a normal completion containing an ECMAScript language value or an abrupt completion
+-- |
+-- | IterationStatement : DoWhileStatement 1. Return ? DoWhileLoopEvaluation
+-- | of \|DoWhileStatement\| with argument \_labelSet\_. IterationStatement :
+-- | WhileStatement 1. Return ? WhileLoopEvaluation of \|WhileStatement\|
+-- SPEC: L7154-L7172
+-- | # GetIteratorFromMethod ( \_obj\_: an ECMAScript language value, \_method\_: a function object, ): either a normal completion containing an Iterator Record or a throw completion
+-- |
+-- | 1\. Let \_iterator\_ be ? Call(\_method\_, \_obj\_). 1. If \_iterator\_
+-- | is not an Object, throw a \*TypeError\* exception. 1. Return ?
+-- | GetIteratorDirect(\_iterator\_).
+-- |
+-- | # GetIterator ( \_obj\_: an ECMAScript language value, \_kind\_: \~sync\~ or \~async\~, ): either a normal completion containing an Iterator Record or a throw completion
+-- |
+-- | 1\. If \_kind\_ is \~async\~, then 1. Let \_method\_ be ?
+-- | GetMethod(\_obj\_, %Symbol.asyncIterator%). 1. If \_method\_ is
+-- | \*undefined\*, then 1. Let \_syncMethod\_ be ? GetMethod(\_obj\_,
+-- | %Symbol.iterator%). 1. If \_syncMethod\_ is \*undefined\*, throw a
+-- | \*TypeError\* exception. 1. Let \_syncIteratorRecord\_ be ?
+-- | GetIteratorFromMethod(\_obj\_, \_syncMethod\_). 1. Return
+-- | CreateAsyncFromSyncIterator(\_syncIteratorRecord\_). 1. Else, 1. Let
+-- | \_method\_ be ? GetMethod(\_obj\_, %Symbol.iterator%). 1. If \_method\_
+-- | is \*undefined\*, throw a \*TypeError\* exception. 1. Return ?
+-- | GetIteratorFromMethod(\_obj\_, \_method\_).
+-- SPEC: L7070-L7078
+-- | # InitializeInstanceElements ( \_O\_: an Object, \_constructor\_: an ECMAScript function object or a built-in function object, ): either a normal completion containing \~unused\~ or a throw completion
+-- |
+-- | 1\. Let \_methods\_ be \_constructor\_.\[\[PrivateMethods\]\]. 1. For
+-- | each PrivateElement \_method\_ of \_methods\_, do 1. Perform ?
+-- | PrivateMethodOrAccessorAdd(\_O\_, \_method\_). 1. Let \_fields\_ be
+-- | \_constructor\_.\[\[Fields\]\]. 1. For each element \_fieldRecord\_ of
+-- | \_fields\_, do 1. Perform ? DefineField(\_O\_, \_fieldRecord\_). 1.
+-- | Return \~unused\~.
+-- SPEC: L10985-L11004
+-- | # OrdinaryCreateFromConstructor ( \_constructor\_: a function object, \_intrinsicDefaultProto\_: a String, optional \_internalSlotsList\_: a List of names of internal slots, ): either a normal completion containing an Object or a throw completion
+-- |
+-- | description
+-- | :   It creates an ordinary object whose \[\[Prototype\]\] value is
+-- |     retrieved from a constructor\'s \*\"prototype\"\* property, if it
+-- |     exists. Otherwise the intrinsic named by \_intrinsicDefaultProto\_
+-- |     is used for \[\[Prototype\]\]. \_internalSlotsList\_ contains the
+-- |     names of additional internal slots that must be defined as part of
+-- |     the object. If \_internalSlotsList\_ is not provided, a new empty
+-- |     List is used.
+-- |
+-- | 1\. Assert: \_intrinsicDefaultProto\_ is this specification\'s name of
+-- | an intrinsic object. The corresponding object must be an intrinsic that
+-- | is intended to be used as the \[\[Prototype\]\] value of an object. 1.
+-- | Let \_proto\_ be ? GetPrototypeFromConstructor(\_constructor\_,
+-- | \_intrinsicDefaultProto\_). 1. If \_internalSlotsList\_ is present, let
+-- | \_slotsList\_ be \_internalSlotsList\_. 1. Else, let \_slotsList\_ be a
+-- | new empty List. 1. Return OrdinaryObjectCreate(\_proto\_,
+-- | \_slotsList\_).
 
 /-- Check whether an expression is a value expression. -/
 def exprValue? : Expr → Option Value
