@@ -612,7 +612,7 @@ private def ValueAddrWF (v : Core.Value) (heapSize : Nat) : Prop :=
 
 /-- All object addresses in a Core expression are valid heap addresses.
     Fully recursive to propagate through compound expressions. -/
-private def ExprAddrWF : Core.Expr → Nat → Prop
+def ExprAddrWF : Core.Expr → Nat → Prop
   | .lit v, n => ValueAddrWF v n
   | .var _, _ => True
   | .«let» _ init body, n => ExprAddrWF init n ∧ ExprAddrWF body n
@@ -3370,7 +3370,7 @@ private theorem closureConvert_step_simulation
             have := (Prod.mk.inj (Option.some.inj hstep)).2; have := (Prod.mk.inj (Option.some.inj hcstep)).2
             subst_vars; exact hheap, by
               have h := hncfr; rw [hsc] at h; subst ha_lit; simp [noCallFrameReturn, Bool.and_eq_true] at h
-              rw [hfin] at h; simp [noCallFrameReturn, Bool.and_eq_true]; exact h.2.2, sorry /- ExprAddrWF -/, scope, st, (Flat.convertExpr fin scope envVar envMap st).2,
+              rw [hfin] at h; simp [noCallFrameReturn, Bool.and_eq_true]; exact h.2.2, by have h := hexprwf; rw [hsc] at h; simp [ExprAddrWF, ValueAddrWF] at h ⊢; exact ⟨h.2.2, h.1⟩, scope, st, (Flat.convertExpr fin scope envVar envMap st).2,
             by simp only [Flat.convertExpr]
                rw [hfinally'_def]; simp [Flat.convertOptExpr]; rfl⟩
     | none =>
@@ -3702,7 +3702,7 @@ private theorem closureConvert_step_simulation
       have h1 := (Prod.mk.inj (Option.some.inj h0)).2; subst h1; exact hheap
     exact ⟨hsf'_trace, henv', hheap', by
       have h := hncfr; rw [hsc] at h; simp [noCallFrameReturn, Bool.and_eq_true] at h
-      rw [hsc'_expr]; simp [noCallFrameReturn, Bool.and_eq_true]; exact ⟨h.1, h.2, h.1, h.2⟩, sorry /- ExprAddrWF -/, scope, st, _,
+      rw [hsc'_expr]; simp [noCallFrameReturn, Bool.and_eq_true]; exact ⟨h.1, h.2, h.1, h.2⟩, by have h := hexprwf; rw [hsc] at h; rw [hsc'_expr]; simp [ExprAddrWF, ValueAddrWF] at h ⊢; exact ⟨h.1, h.2, h.1, h.2⟩, scope, st, _,
       by simp only [Flat.convertExpr]; rw [hsc'_expr]; simp only [Flat.convertExpr, Flat.convertValue]; rw [hsf'_expr]⟩
   | «return» arg =>
     rw [hsc] at hconv; simp only [Flat.convertExpr] at hconv
@@ -4805,11 +4805,12 @@ private theorem closureConvert_trace_reflection
     (s : Core.Program) (t : Flat.Program)
     (h : Flat.closureConvert s = .ok t)
     (h_wf : noCallFrameReturn s.body = true)
+    (h_addr_wf : ExprAddrWF s.body 1)
     (hnofor : ∀ sc tr, Core.Steps (Core.initialState s) tr sc →
         (∀ b o f, sc.expr ≠ .forIn b o f) ∧ (∀ b i f, sc.expr ≠ .forOf b i f)) :
     ∀ b, Flat.Behaves t b → Core.Behaves s b := by
   intro b ⟨sf, hsteps, hhalt⟩
-  have hinit := closureConvert_init_related s t h h_wf (by sorry)
+  have hinit := closureConvert_init_related s t h h_wf h_addr_wf
   obtain ⟨sc, hcsteps, hrel⟩ :=
     closureConvert_steps_simulation s t h _ _ _ _ hinit hsteps
   have hnoFor := hnofor sc _ hcsteps
@@ -4822,12 +4823,13 @@ private theorem closureConvert_trace_reflection
 theorem closureConvert_correct (s : Core.Program) (t : Flat.Program)
     (h : Flat.closureConvert s = .ok t)
     (h_wf : noCallFrameReturn s.body = true)
+    (h_addr_wf : ExprAddrWF s.body 1)
     (hnofor : ∀ sc tr, Core.Steps (Core.initialState s) tr sc →
         (∀ b o f, sc.expr ≠ .forIn b o f) ∧ (∀ b i f, sc.expr ≠ .forOf b i f)) :
     ∀ b, Flat.Behaves t b → ∃ b', Core.Behaves s b' ∧ b = b' :=
 by
   intro b hb
   refine ⟨b, ?_, rfl⟩
-  exact closureConvert_trace_reflection s t h h_wf hnofor b hb
+  exact closureConvert_trace_reflection s t h h_wf h_addr_wf hnofor b hb
 
 end VerifiedJS.Proofs
