@@ -271,6 +271,11 @@ set_option linter.deprecated false
 -- | external code might be able to detect a difference between various NaN
 -- | values, but such behaviour is implementation-defined; to ECMAScript
 -- | code, all \*NaN\* values are indistinguishable from each other.
+-- SPEC: L4322-L4326
+-- | The bit pattern that might be observed in an ArrayBuffer (see ) or a
+-- | SharedArrayBuffer (see ) after a Number value has been stored into it is
+-- | not necessarily the same as the internal representation of that Number
+-- | value used by the ECMAScript implementation.
 -- SPEC: L4722-L4729
 -- | # The BigInt Type
 -- |
@@ -3231,8 +3236,6 @@ def evalBinary : BinOp → Value → Value → Value
   -- | \*+0\*~𝔽~. 1. Let \_int\_ be truncate(ℝ(\_number\_)). 1. Let
   -- | \_int32bit\_ be \_int\_ modulo 2^32^. 1. \[id=\"step-touint32-return\"\]
   -- | Return 𝔽(\_int32bit\_).
-  -- SPEC: L16499-L16499
-  -- | # Binary Bitwise Operators
   -- SPEC: L16500-L16525
   -- | # Binary Bitwise Operators
   -- |
@@ -4576,9 +4579,18 @@ def step? (s : State) : Option (TraceEvent × State) :=
   -- | GetValue(\_trueRef\_). 1. Let \_falseRef\_ be ? Evaluation of the second
   -- | \|AssignmentExpression\|. 1. Return ? GetValue(\_falseRef\_).
   -- SPEC: L17575-L17577
+  -- |
   -- | # The \`if\` Statement
   -- |
+  -- SPEC: L17578-L17585
   -- | ## Syntax
+  -- |
+  -- | IfStatement\[Yield, Await, Return\] : \`if\` \`(\` Expression\[+In,
+  -- | ?Yield, ?Await\] \`)\` Statement\[?Yield, ?Await, ?Return\] \`else\`
+  -- | Statement\[?Yield, ?Await, ?Return\] \`if\` \`(\` Expression\[+In,
+  -- | ?Yield, ?Await\] \`)\` Statement\[?Yield, ?Await, ?Return\] \[lookahead
+  -- | != \`else\`\] The lookahead-restriction \[lookahead ≠ \`else\`\]
+  -- | resolves the classic \"dangling else\" problem in the usual way. That
   -- SPEC: L17606-L17621
   -- | # Runtime Semantics: Evaluation
   -- |
@@ -5444,7 +5456,7 @@ def step? (s : State) : Option (TraceEvent × State) :=
   -- | PropertyDescriptor { \[\[Value\]\]: \_name\_, \[\[Writable\]\]:
   -- | \*false\*, \[\[Enumerable\]\]: \*false\*, \[\[Configurable\]\]: \*true\*
   -- | }). 1. Return \~unused\~.
-  -- SPEC: L20210-L20240
+  -- SPEC: L20214-L20240
   -- | # Runtime Semantics: InstantiateAsyncFunctionExpression ( optional \_name\_: a property key or a Private Name, ): an ECMAScript function object
   -- |
   -- | AsyncFunctionExpression : \`async\` \`function\` \`(\` FormalParameters
