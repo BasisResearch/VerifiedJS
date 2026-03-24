@@ -1,8 +1,8 @@
-# Sorry Report (Tue Mar 24 05:09:25 AM UTC 2026)
+# Sorry Report (Tue Mar 24 06:35:24 AM UTC 2026)
 
 - [ ] `VerifiedJS/Proofs/LowerCorrect.lean:69` — `theorem lower_behavioral_correct` — `obtain ⟨ir, hirsteps, hrel⟩ := lower_sim_steps s t h _ _ _ _ (IR.LowerSimRel.init s t h (by sorry)) hsteps`
 - [ ] `VerifiedJS/Proofs/ANFConvertCorrect.lean:106` — `theorem anfConvert_step_star` — `sorry`
-- [ ] `VerifiedJS/Proofs/ANFConvertCorrect.lean:1018` — `lemma seq_steps_lift` — `sorry`
+- [ ] `VerifiedJS/Proofs/ANFConvertCorrect.lean:1181` — `theorem anfConvert_halt_star_aux` — `sorry`
 - [ ] `VerifiedJS/Proofs/ClosureConvertCorrect.lean:798` — `theorem closureConvert_step_simulation` — `sorry`
 - [ ] `VerifiedJS/Proofs/ClosureConvertCorrect.lean:1508` — `theorem closureConvert_step_simulation` — `| call _ _ => sorry -- needs env/heap/funcs correspondence`
 - [ ] `VerifiedJS/Proofs/ClosureConvertCorrect.lean:1509` — `theorem closureConvert_step_simulation` — `| newObj _ _ => sorry -- needs env/heap correspondence`

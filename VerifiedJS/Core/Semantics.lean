@@ -583,6 +583,47 @@ def evalUnary : UnaryOp → Value → Value
 -- | \~string\~). 1. Assert: \_primValue\_ is not an Object. 1. Return ?
 -- | ToString(\_primValue\_).
 /-- ECMA-262 §7.1.12 ToString (core subset). -/
+-- SPEC: L6305-L6321
+-- | # ToString ( \_argument\_: an ECMAScript language value, ): either a normal completion containing a String or a throw completion
+-- |
+-- | description
+-- | :   It converts \_argument\_ to a value of type String.
+-- |
+-- | 1\. If \_argument\_ is a String, return \_argument\_. 1. If
+-- | \_argument\_ is a Symbol, throw a \*TypeError\* exception. 1. If
+-- | \_argument\_ is \*undefined\*, return \*\"undefined\"\*. 1. If
+-- | \_argument\_ is \*null\*, return \*\"null\"\*. 1. If \_argument\_ is
+-- | \*true\*, return \*\"true\"\*. 1. If \_argument\_ is \*false\*,
+-- | return \*\"false\"\*. 1. If \_argument\_ is a Number, return
+-- | Number::toString(\_argument\_, 10). 1. If \_argument\_ is a BigInt,
+-- | return BigInt::toString(\_argument\_, 10). 1. Assert: \_argument\_ is
+-- | an Object. 1. Let \_primValue\_ be ? ToPrimitive(\_argument\_,
+-- | \~string\~). 1. Assert: \_primValue\_ is not an Object. 1. Return ?
+-- | ToString(\_primValue\_).
+-- SPEC: L4638-L4660
+-- | # Number::toString ( \_x\_: a Number, \_radix\_: an integer in the inclusive interval from 2 to 36, ): a String
+-- |
+-- | description
+-- | :   It represents \_x\_ as a String using a positional numeral system
+-- |     with radix \_radix\_. The digits used in the representation of a
+-- |     number using radix \_r\_ are taken from the first \_r\_ code units
+-- |     of \*\"0123456789abcdefghijklmnopqrstuvwxyz\"\* in order. The
+-- |     representation of numbers with magnitude greater than or equal to
+-- |     \*1\*~𝔽~ never includes leading zeroes.
+-- |
+-- | 1\. If \_x\_ is \*NaN\*, return \*\"NaN\"\*. 1. If \_x\_ is either
+-- | \*+0\*~𝔽~ or \*-0\*~𝔽~, return \*\"0\"\*. 1. If \_x\_ \< \*-0\*~𝔽~,
+-- | return the string-concatenation of \*\"-\"\* and
+-- | Number::toString(-\_x\_, \_radix\_). 1. If \_x\_ is \*+∞\*~𝔽~, return
+-- | \*\"Infinity\"\*. 1. \[id=\"step-number-tostring-intermediate-values\"\]
+-- | Let \_n\_, \_k\_, and \_s\_ be integers such that \_k\_ ≥ 1,
+-- | \_radix\_^\_k\_\ -\ 1^ ≤ \_s\_ \< \_radix\_^\_k\_^, 𝔽(\_s\_ ×
+-- | \_radix\_^\_n\_\ -\ \_k\_^) is \_x\_, and \_k\_ is as small as possible.
+-- | Note that \_k\_ is the number of digits in the representation of \_s\_
+-- | using radix \_radix\_, that \_s\_ is not divisible by \_radix\_, and
+-- | that the least significant digit of \_s\_ is not necessarily uniquely
+-- | determined by these criteria.
+/-- ECMA-262 §7.1.12 ToString / §6.1.6.1.20 Number::toString (core subset). -/
 def valueToString : Value → String
   | .string s => s
   | .number n =>
@@ -1383,6 +1424,7 @@ def step? (s : State) : Option (TraceEvent × State) :=
               some (t, s')
           | none => none
   -- SPEC: L16586-L16593
+  -- SPEC: L16584-L16596
   -- | ConditionalExpression : ShortCircuitExpression \`?\`
   -- | AssignmentExpression \`:\` AssignmentExpression 1. Let \_lRef\_ be ?
   -- | Evaluation of \|ShortCircuitExpression\|. 1. Let \_lVal\_ be ToBoolean(?
@@ -1730,6 +1772,21 @@ def step? (s : State) : Option (TraceEvent × State) :=
           -- | \*true\*. 1. Let \_getter\_ be \_desc\_.\[\[Get\]\]. 1. If \_getter\_ is
           -- | \*undefined\*, return \*undefined\*. 1. Return ? Call(\_getter\_,
           -- | \_Receiver\_).
+          -- SPEC: L10748-L10762
+          -- | # OrdinaryGetOwnProperty ( \_O\_: an Object, \_P\_: a property key, ): a Property Descriptor or \*undefined\*
+          -- |
+          -- | 1\. If \_O\_ does not have an own property with key \_P\_, return
+          -- | \*undefined\*. 1. Let \_D\_ be a newly created Property Descriptor with
+          -- | no fields. 1. Let \_X\_ be \_O\_\'s own property whose key is \_P\_. 1.
+          -- | If \_X\_ is a data property, then 1. Set \_D\_.\[\[Value\]\] to the
+          -- | value of \_X\_\'s \[\[Value\]\] attribute. 1. Set \_D\_.\[\[Writable\]\]
+          -- | to the value of \_X\_\'s \[\[Writable\]\] attribute. 1. Else, 1. Assert:
+          -- | \_X\_ is an accessor property. 1. Set \_D\_.\[\[Get\]\] to the value of
+          -- | \_X\_\'s \[\[Get\]\] attribute. 1. Set \_D\_.\[\[Set\]\] to the value of
+          -- | \_X\_\'s \[\[Set\]\] attribute. 1. Set \_D\_.\[\[Enumerable\]\] to the
+          -- | value of \_X\_\'s \[\[Enumerable\]\] attribute. 1. Set
+          -- | \_D\_.\[\[Configurable\]\] to the value of \_X\_\'s \[\[Configurable\]\]
+          -- | attribute. 1. Return \_D\_.
           let v := match s.heap.objects[addr]? with
             | some props =>
                 match props.find? (fun kv => kv.fst == prop) with
