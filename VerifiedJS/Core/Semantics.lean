@@ -1042,6 +1042,265 @@ def Env.extend (env : Env) (name : VarName) (v : Value) : Env :=
 -- | \_primValue\_ is a BigInt, return \_primValue\_. 1. Return ?
 -- | ToNumber(\_primValue\_).
 
+-- SPEC: L5555-L5576
+-- | # GetValue ( \_V\_: a Reference Record or an ECMAScript language value, ): either a normal completion containing an ECMAScript language value or an abrupt completion
+-- |
+-- | 1\. If \_V\_ is not a Reference Record, return \_V\_. 1. If
+-- | IsUnresolvableReference(\_V\_) is \*true\*, throw a \*ReferenceError\*
+-- | exception. 1. If IsPropertyReference(\_V\_) is \*true\*, then 1.
+-- | \[id=\"step-getvalue-toobject\"\] Let \_baseObj\_ be ?
+-- | ToObject(\_V\_.\[\[Base\]\]). 1. If IsPrivateReference(\_V\_) is
+-- | \*true\*, then 1. Return ? PrivateGet(\_baseObj\_,
+-- | \_V\_.\[\[ReferencedName\]\]). 1. If \_V\_.\[\[ReferencedName\]\] is not
+-- | a property key, then 1. Set \_V\_.\[\[ReferencedName\]\] to ?
+-- | ToPropertyKey(\_V\_.\[\[ReferencedName\]\]). 1. Return ?
+-- | \_baseObj\_.\[\[Get\]\](\_V\_.\[\[ReferencedName\]\],
+-- | GetThisValue(\_V\_)). 1. Let \_base\_ be \_V\_.\[\[Base\]\]. 1. Assert:
+-- | \_base\_ is an Environment Record. 1. Return ?
+-- | \_base\_.GetBindingValue(\_V\_.\[\[ReferencedName\]\],
+-- | \_V\_.\[\[Strict\]\]) (see ).
+-- |
+-- | The object that may be created in step is not accessible outside of the
+-- | above abstract operation and the ordinary object \[\[Get\]\] internal
+-- | method. An implementation might choose to avoid the actual creation of
+-- | the object.
+-- SPEC: L5577-L5603
+-- | # PutValue ( \_V\_: a Reference Record or an ECMAScript language value, \_W\_: an ECMAScript language value, ): either a normal completion containing \~unused\~ or an abrupt completion
+-- |
+-- | 1\. If \_V\_ is not a Reference Record, throw a \*ReferenceError\*
+-- | exception. 1. If IsUnresolvableReference(\_V\_) is \*true\*, then 1. If
+-- | \_V\_.\[\[Strict\]\] is \*true\*, throw a \*ReferenceError\*
+-- | exception. 1. Let \_globalObj\_ be GetGlobalObject(). 1. Perform ?
+-- | Set(\_globalObj\_, \_V\_.\[\[ReferencedName\]\], \_W\_, \*false\*). 1.
+-- | Return \~unused\~. 1. If IsPropertyReference(\_V\_) is \*true\*, then 1.
+-- | \[id=\"step-putvalue-toobject\"\] Let \_baseObj\_ be ?
+-- | ToObject(\_V\_.\[\[Base\]\]). 1. If IsPrivateReference(\_V\_) is
+-- | \*true\*, then 1. Return ? PrivateSet(\_baseObj\_,
+-- | \_V\_.\[\[ReferencedName\]\], \_W\_). 1. If \_V\_.\[\[ReferencedName\]\]
+-- | is not a property key, then 1. Set \_V\_.\[\[ReferencedName\]\] to ?
+-- | ToPropertyKey(\_V\_.\[\[ReferencedName\]\]). 1. Let \_succeeded\_ be ?
+-- | \_baseObj\_.\[\[Set\]\](\_V\_.\[\[ReferencedName\]\], \_W\_,
+-- | GetThisValue(\_V\_)). 1. If \_succeeded\_ is \*false\* and
+-- | \_V\_.\[\[Strict\]\] is \*true\*, throw a \*TypeError\* exception. 1.
+-- | Return \~unused\~. 1. Let \_base\_ be \_V\_.\[\[Base\]\]. 1. Assert:
+-- | \_base\_ is an Environment Record. 1. Return ?
+-- | \_base\_.SetMutableBinding(\_V\_.\[\[ReferencedName\]\], \_W\_,
+-- | \_V\_.\[\[Strict\]\]) (see ).
+-- |
+-- | The object that may be created in step is not accessible outside of the
+-- | above abstract operation and the ordinary object \[\[Set\]\] internal
+-- | method. An implementation might choose to avoid the actual creation of
+-- | that object.
+-- SPEC: L5946-L5971
+-- | # ToPrimitive ( \_input\_: an ECMAScript language value, optional \_preferredType\_: \~string\~ or \~number\~, ): either a normal completion containing an ECMAScript language value or a throw completion
+-- |
+-- | description
+-- | :   It converts its \_input\_ argument to a non-Object type. If an
+-- |     object is capable of converting to more than one primitive type, it
+-- |     may use the optional hint \_preferredType\_ to favour that type.
+-- |
+-- | 1\. If \_input\_ is an Object, then 1. Let \_exoticToPrim\_ be ?
+-- | GetMethod(\_input\_, %Symbol.toPrimitive%). 1. If \_exoticToPrim\_ is
+-- | not \*undefined\*, then 1. If \_preferredType\_ is not present, then 1.
+-- | Let \_hint\_ be \*\"default\"\*. 1. Else if \_preferredType\_ is
+-- | \~string\~, then 1. Let \_hint\_ be \*\"string\"\*. 1. Else, 1. Assert:
+-- | \_preferredType\_ is \~number\~. 1. Let \_hint\_ be \*\"number\"\*. 1.
+-- | Let \_result\_ be ? Call(\_exoticToPrim\_, \_input\_, « \_hint\_ »). 1.
+-- | If \_result\_ is not an Object, return \_result\_. 1. Throw a
+-- | \*TypeError\* exception. 1. If \_preferredType\_ is not present, set
+-- | \_preferredType\_ to \~number\~. 1. Return ?
+-- | OrdinaryToPrimitive(\_input\_, \_preferredType\_). 1. Return \_input\_.
+-- |
+-- | When ToPrimitive is called without a hint, then it generally behaves as
+-- | if the hint were \~number\~. However, objects may over-ride this
+-- | behaviour by defining a %Symbol.toPrimitive% method. Of the objects
+-- | defined in this specification only Dates (see ) and Symbol objects (see
+-- | ) over-ride the default ToPrimitive behaviour. Dates treat the absence
+-- | of a hint as if the hint were \~string\~.
+-- SPEC: L5972-L5981
+-- | # OrdinaryToPrimitive ( \_O\_: an Object, \_hint\_: \~string\~ or \~number\~, ): either a normal completion containing an ECMAScript language value or a throw completion
+-- |
+-- | 1\. If \_hint\_ is \~string\~, then 1. Let \_methodNames\_ be «
+-- | \*\"toString\"\*, \*\"valueOf\"\* ». 1. Else, 1. Let \_methodNames\_ be
+-- | « \*\"valueOf\"\*, \*\"toString\"\* ». 1. For each element \_name\_ of
+-- | \_methodNames\_, do 1. Let \_method\_ be ? Get(\_O\_, \_name\_). 1. If
+-- | IsCallable(\_method\_) is \*true\*, then 1. Let \_result\_ be ?
+-- | Call(\_method\_, \_O\_). 1. If \_result\_ is not an Object, return
+-- | \_result\_. 1. Throw a \*TypeError\* exception.
+-- SPEC: L6322-L6342
+-- | # ToObject ( \_argument\_: an ECMAScript language value, ): either a normal completion containing an Object or a throw completion
+-- |
+-- | description
+-- | :   It converts \_argument\_ to a value of type Object.
+-- |
+-- | 1\. If \_argument\_ is either \*undefined\* or \*null\*, throw a
+-- | \*TypeError\* exception. 1. If \_argument\_ is a Boolean, return a new
+-- | Boolean object whose \[\[BooleanData\]\] internal slot is set to
+-- | \_argument\_. See for a description of Boolean objects. 1. If
+-- | \_argument\_ is a Number, return a new Number object whose
+-- | \[\[NumberData\]\] internal slot is set to \_argument\_. See for a
+-- | description of Number objects. 1. If \_argument\_ is a String, return a
+-- | new String object whose \[\[StringData\]\] internal slot is set to
+-- | \_argument\_. See for a description of String objects. 1. If
+-- | \_argument\_ is a Symbol, return a new Symbol object whose
+-- | \[\[SymbolData\]\] internal slot is set to \_argument\_. See for a
+-- | description of Symbol objects. 1. If \_argument\_ is a BigInt, return a
+-- | new BigInt object whose \[\[BigIntData\]\] internal slot is set to
+-- | \_argument\_. See for a description of BigInt objects. 1. Assert:
+-- | \_argument\_ is an Object. 1. Return \_argument\_.
+-- SPEC: L6390-L6398
+-- | # RequireObjectCoercible ( \_argument\_: an ECMAScript language value, ): either a normal completion containing \~unused\~ or a throw completion
+-- |
+-- | description
+-- | :   It throws an error if \_argument\_ is a value that cannot be
+-- |     converted to an Object using ToObject.
+-- |
+-- | 1\. If \_argument\_ is either \*undefined\* or \*null\*, throw a
+-- | \*TypeError\* exception. 1. Return \~unused\~.
+-- SPEC: L6408-L6417
+-- | # IsCallable ( \_argument\_: an ECMAScript language value, ): a Boolean
+-- |
+-- | description
+-- | :   It determines if \_argument\_ is a callable function with a
+-- |     \[\[Call\]\] internal method.
+-- |
+-- | 1\. If \_argument\_ is not an Object, return \*false\*. 1. If
+-- | \_argument\_ has a \[\[Call\]\] internal method, return \*true\*. 1.
+-- | Return \*false\*.
+-- SPEC: L6418-L6427
+-- | # IsConstructor ( \_argument\_: an ECMAScript language value, ): a Boolean
+-- |
+-- | description
+-- | :   It determines if \_argument\_ is a function object with a
+-- |     \[\[Construct\]\] internal method.
+-- |
+-- | 1\. If \_argument\_ is not an Object, return \*false\*. 1. If
+-- | \_argument\_ has a \[\[Construct\]\] internal method, return
+-- | \*true\*. 1. Return \*false\*.
+-- SPEC: L6428-L6435
+-- | # IsExtensible ( \_O\_: an Object, ): either a normal completion containing a Boolean or a throw completion
+-- |
+-- | description
+-- | :   It is used to determine whether additional properties can be added
+-- |     to \_O\_.
+-- |
+-- | 1\. Return ? \_O\_.\[\[IsExtensible\]\]().
+-- SPEC: L6499-L6513
+-- | # SameValueNonNumber ( \_x\_: an ECMAScript language value, but not a Number, \_y\_: an ECMAScript language value, but not a Number, ): a Boolean
+-- |
+-- | 1\. Assert: SameType(\_x\_, \_y\_) is \*true\*. 1. If \_x\_ is either
+-- | \*undefined\* or \*null\*, return \*true\*. 1. If \_x\_ is a BigInt,
+-- | then 1. Return BigInt::equal(\_x\_, \_y\_). 1. If \_x\_ is a String,
+-- | then 1. If \_x\_ and \_y\_ have the same length and the same code units
+-- | in the same positions, return \*true\*. 1. Return \*false\*. 1. If \_x\_
+-- | is a Boolean, then 1. If \_x\_ and \_y\_ are both \*true\* or both
+-- | \*false\*, return \*true\*. 1. Return \*false\*. 1. NOTE: All other
+-- | ECMAScript language values are compared by identity. 1. If \_x\_ is
+-- | \_y\_, return \*true\*. 1. Return \*false\*.
+-- SPEC: L6606-L6617
+-- | # IsStrictlyEqual ( \_x\_: an ECMAScript language value, \_y\_: an ECMAScript language value, ): a Boolean
+-- |
+-- | description
+-- | :   It provides the semantics for the \`===\` operator.
+-- |
+-- | 1\. If SameType(\_x\_, \_y\_) is \*false\*, return \*false\*. 1. If
+-- | \_x\_ is a Number, then 1. Return Number::equal(\_x\_, \_y\_). 1. Return
+-- | SameValueNonNumber(\_x\_, \_y\_).
+-- |
+-- | This algorithm differs from the SameValue Algorithm in its treatment of
+-- | signed zeroes and NaNs.
+-- SPEC: L4590-L4603
+-- | # Number::equal ( \_x\_: a Number, \_y\_: a Number, ): a Boolean
+-- |
+-- | 1\. If \_x\_ is \*NaN\*, return \*false\*. 1. If \_y\_ is \*NaN\*,
+-- | return \*false\*. 1. If \_x\_ is \_y\_, return \*true\*. 1. If \_x\_ is
+-- | \*+0\*~𝔽~ and \_y\_ is \*-0\*~𝔽~, return \*true\*. 1. If \_x\_ is
+-- | \*-0\*~𝔽~ and \_y\_ is \*+0\*~𝔽~, return \*true\*. 1. Return \*false\*.
+-- |
+-- | # Number::sameValue ( \_x\_: a Number, \_y\_: a Number, ): a Boolean
+-- |
+-- | 1\. If \_x\_ is \*NaN\* and \_y\_ is \*NaN\*, return \*true\*. 1. If
+-- | \_x\_ is \*+0\*~𝔽~ and \_y\_ is \*-0\*~𝔽~, return \*false\*. 1. If \_x\_
+-- | is \*-0\*~𝔽~ and \_y\_ is \*+0\*~𝔽~, return \*false\*. 1. If \_x\_ is
+-- | \_y\_, return \*true\*. 1. Return \*false\*.
+-- SPEC: L6652-L6659
+-- | # Get ( \_O\_: an Object, \_P\_: a property key, ): either a normal completion containing an ECMAScript language value or a throw completion
+-- |
+-- | description
+-- | :   It is used to retrieve the value of a specific property of an
+-- |     object.
+-- |
+-- | 1\. Return ? \_O\_.\[\[Get\]\](\_P\_, \_O\_).
+-- SPEC: L6660-L6670
+-- | # GetV ( \_V\_: an ECMAScript language value, \_P\_: a property key, ): either a normal completion containing an ECMAScript language value or a throw completion
+-- |
+-- | description
+-- | :   It is used to retrieve the value of a specific property of an
+-- |     ECMAScript language value. If the value is not an object, the
+-- |     property lookup is performed using a wrapper object appropriate for
+-- |     the type of the value.
+-- |
+-- | 1\. Let \_O\_ be ? ToObject(\_V\_). 1. Return ? \_O\_.\[\[Get\]\](\_P\_,
+-- | \_V\_).
+-- SPEC: L6620-L6651
+-- | # MakeBasicObject ( \_internalSlotsList\_: a List of internal slot names, ): an Object
+-- |
+-- | description
+-- | :   It is the source of all ECMAScript objects that are created
+-- |     algorithmically, including both ordinary objects and exotic objects.
+-- |     It factors out common steps used in creating all objects, and
+-- |     centralizes object creation.
+-- |
+-- | 1\. Set \_internalSlotsList\_ to the list-concatenation of
+-- | \_internalSlotsList\_ and « \[\[PrivateElements\]\] ». 1. Let \_obj\_ be
+-- | a newly created object with an internal slot for each name in
+-- | \_internalSlotsList\_. 1. NOTE: As described in , the initial value of
+-- | each such internal slot is \*undefined\* unless specified otherwise. 1.
+-- | Set \_obj\_.\[\[PrivateElements\]\] to a new empty List. 1. Set
+-- | \_obj\_\'s essential internal methods to the default ordinary object
+-- | definitions specified in . 1. Assert: If the caller will not be
+-- | overriding both \_obj\_\'s \[\[GetPrototypeOf\]\] and
+-- | \[\[SetPrototypeOf\]\] essential internal methods, then
+-- | \_internalSlotsList\_ contains \[\[Prototype\]\]. 1. Assert: If the
+-- | caller will not be overriding all of \_obj\_\'s \[\[SetPrototypeOf\]\],
+-- | \[\[IsExtensible\]\], and \[\[PreventExtensions\]\] essential internal
+-- | methods, then \_internalSlotsList\_ contains \[\[Extensible\]\]. 1. If
+-- | \_internalSlotsList\_ contains \[\[Extensible\]\], set
+-- | \_obj\_.\[\[Extensible\]\] to \*true\*. 1. Return \_obj\_.
+-- |
+-- | Within this specification, exotic objects are created in abstract
+-- | operations such as ArrayCreate and BoundFunctionCreate by first calling
+-- | MakeBasicObject to obtain a basic, foundational object, and then
+-- | overriding some or all of that object\'s internal methods. In order to
+-- | encapsulate exotic object creation, the object\'s essential internal
+-- | methods are never modified outside those operations.
+-- SPEC: L6697-L6714
+-- | # CreateDataPropertyOrThrow ( \_O\_: an Object, \_P\_: a property key, \_V\_: an ECMAScript language value, ): either a normal completion containing \~unused\~ or a throw completion
+-- |
+-- | description
+-- | :   It is used to create a new own property of an object. It throws a
+-- |     \*TypeError\* exception if the requested property update cannot be
+-- |     performed.
+-- |
+-- | 1\. Let \_success\_ be ? CreateDataProperty(\_O\_, \_P\_, \_V\_). 1. If
+-- | \_success\_ is \*false\*, throw a \*TypeError\* exception. 1. Return
+-- | \~unused\~.
+-- |
+-- | This abstract operation creates a property whose attributes are set to
+-- | the same defaults used for properties created by the ECMAScript language
+-- | assignment operator. Normally, the property will not already exist. If
+-- | it does exist and is not configurable or if \_O\_ is not extensible,
+-- | \[\[DefineOwnProperty\]\] will return \*false\* causing this operation
+-- | to throw a \*TypeError\* exception.
+-- SPEC: L6766-L6773
+-- | # HasProperty ( \_O\_: an Object, \_P\_: a property key, ): either a normal completion containing a Boolean or a throw completion
+-- |
+-- | description
+-- | :   It is used to determine whether an object has a property with the
+-- |     specified property key. The property may be either own or inherited.
+-- |
+-- | 1\. Return ? \_O\_.\[\[HasProperty\]\](\_P\_).
+
 /-- Check whether an expression is a value expression. -/
 def exprValue? : Expr → Option Value
   | .lit v => some v
@@ -4448,6 +4707,69 @@ def step? (s : State) : Option (TraceEvent × State) :=
   -- | \_perIterationLets\_, \_labelSet\_)). 1. Set the running execution
   -- | context\'s LexicalEnvironment to \_oldEnv\_. 1. Return ? \_bodyResult\_.
   -- NOTE: for-loop is desugared by the parser to seq(init, while(cond, seq(body, update))).
+  -- SPEC: L17672-L17683
+  -- | # Runtime Semantics: DoWhileLoopEvaluation ( \_labelSet\_: a List of Strings, ): either a normal completion containing an ECMAScript language value or an abrupt completion
+  -- |
+  -- | DoWhileStatement : \`do\` Statement \`while\` \`(\` Expression \`)\`
+  -- | \`;\` 1. Let \_V\_ be \*undefined\*. 1. Repeat, 1. Let \_stmtResult\_ be
+  -- | Completion(Evaluation of \|Statement\|). 1. If
+  -- | LoopContinues(\_stmtResult\_, \_labelSet\_) is \*false\*, return ?
+  -- | UpdateEmpty(\_stmtResult\_, \_V\_). 1. If \_stmtResult\_.\[\[Value\]\]
+  -- | is not \~empty\~, set \_V\_ to \_stmtResult\_.\[\[Value\]\]. 1. Let
+  -- | \_exprRef\_ be ? Evaluation of \|Expression\|. 1. Let \_exprValue\_ be ?
+  -- | GetValue(\_exprRef\_). 1. If ToBoolean(\_exprValue\_) is \*false\*,
+  -- | return \_V\_.
+  -- SPEC: L17788-L17802
+  -- | # ForBodyEvaluation ( \_test\_: an \|Expression\| Parse Node or \~empty\~, \_increment\_: an \|Expression\| Parse Node or \~empty\~, \_stmt\_: a \|Statement\| Parse Node, \_perIterationBindings\_: a List of Strings, \_labelSet\_: a List of Strings, ): either a normal completion containing an ECMAScript language value or an abrupt completion
+  -- |
+  -- | 1\. Let \_V\_ be \*undefined\*. 1. Perform ?
+  -- | CreatePerIterationEnvironment(\_perIterationBindings\_). 1. Repeat, 1.
+  -- | If \_test\_ is not \~empty\~, then 1. Let \_testRef\_ be ? Evaluation of
+  -- | \_test\_. 1. Let \_testValue\_ be ? GetValue(\_testRef\_). 1. If
+  -- | ToBoolean(\_testValue\_) is \*false\*, return \_V\_. 1. Let \_result\_
+  -- | be Completion(Evaluation of \_stmt\_). 1. If LoopContinues(\_result\_,
+  -- | \_labelSet\_) is \*false\*, return ? UpdateEmpty(\_result\_, \_V\_). 1.
+  -- | If \_result\_.\[\[Value\]\] is not \~empty\~, set \_V\_ to
+  -- | \_result\_.\[\[Value\]\]. 1. Perform ?
+  -- | CreatePerIterationEnvironment(\_perIterationBindings\_). 1. If
+  -- | \_increment\_ is not \~empty\~, then 1. Let \_incRef\_ be ? Evaluation
+  -- | of \_increment\_. 1. Perform ? GetValue(\_incRef\_).
+  -- SPEC: L7185-L7197
+  -- | # IteratorNext ( \_iteratorRecord\_: an Iterator Record, optional \_value\_: an ECMAScript language value, ): either a normal completion containing an Object or a throw completion
+  -- |
+  -- | 1\. If \_value\_ is not present, then 1. Let \_result\_ be
+  -- | Completion(Call(\_iteratorRecord\_.\[\[NextMethod\]\],
+  -- | \_iteratorRecord\_.\[\[Iterator\]\])). 1. Else, 1. Let \_result\_ be
+  -- | Completion(Call(\_iteratorRecord\_.\[\[NextMethod\]\],
+  -- | \_iteratorRecord\_.\[\[Iterator\]\], « \_value\_ »)). 1. If \_result\_
+  -- | is a throw completion, then 1. Set \_iteratorRecord\_.\[\[Done\]\] to
+  -- | \*true\*. 1. Return ? \_result\_. 1. Set \_result\_ to ! \_result\_. 1.
+  -- | If \_result\_ is not an Object, then 1. Set
+  -- | \_iteratorRecord\_.\[\[Done\]\] to \*true\*. 1. Throw a \*TypeError\*
+  -- | exception. 1. Return \_result\_.
+  -- SPEC: L7198-L7201
+  -- | # IteratorComplete ( \_iteratorResult\_: an Object, ): either a normal completion containing a Boolean or a throw completion
+  -- |
+  -- | 1\. Return ToBoolean(? Get(\_iteratorResult\_, \*\"done\"\*)).
+  -- SPEC: L7202-L7205
+  -- | # IteratorValue ( \_iteratorResult\_: an Object, ): either a normal completion containing an ECMAScript language value or a throw completion
+  -- |
+  -- | 1\. Return ? Get(\_iteratorResult\_, \*\"value\"\*).
+  -- SPEC: L7206-L7220
+  -- | # IteratorStep ( \_iteratorRecord\_: an Iterator Record, ): either a normal completion containing either an Object or \~done\~, or a throw completion
+  -- |
+  -- | description
+  -- | :   It requests the next value from \_iteratorRecord\_.\[\[Iterator\]\]
+  -- |     by calling \_iteratorRecord\_.\[\[NextMethod\]\] and returns either
+  -- |     \~done\~ indicating that the iterator has reached its end or the
+  -- |     IteratorResult object if a next value is available.
+  -- |
+  -- | 1\. Let \_result\_ be ? IteratorNext(\_iteratorRecord\_). 1. Let
+  -- | \_done\_ be Completion(IteratorComplete(\_result\_)). 1. If \_done\_ is
+  -- | a throw completion, then 1. Set \_iteratorRecord\_.\[\[Done\]\] to
+  -- | \*true\*. 1. Return ? \_done\_. 1. Set \_done\_ to ! \_done\_. 1. If
+  -- | \_done\_ is \*true\*, then 1. Set \_iteratorRecord\_.\[\[Done\]\] to
+  -- | \*true\*. 1. Return \~done\~. 1. Return \_result\_.
   -- SPEC: L17701-L17711
   -- | # Runtime Semantics: WhileLoopEvaluation ( \_labelSet\_: a List of Strings, ): either a normal completion containing an ECMAScript language value or an abrupt completion
   -- |
