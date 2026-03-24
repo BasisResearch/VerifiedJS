@@ -1006,16 +1006,187 @@ private theorem anfConvert_halt_star_aux
           have hobsAll : observableTrace (.silent :: .silent :: evs) = [] := by simp [observableTrace_silent, hobs']
           exact ⟨sf', .silent :: .silent :: evs, steps12, hhalt', hobsAll, hrel'⟩
         | seq c d =>
-          -- .seq(.seq(.seq c d) a2) b: needs seq_left lifting lemma
-          -- Approach: apply IH on {sf with expr = .seq (.seq c d) a2} (depth ≤ N)
-          -- with k' = fun _ => normalizeExpr b k, then lift Flat.Steps
-          -- through the .seq ... b wrapper. Requires:
-          --   lemma seq_steps_lift : Flat.Steps {expr=e, ...} evs {expr=e', ...} →
-          --     exprValue? e = none → exprValue? e' = some v →
-          --     Flat.Steps {expr=.seq e b, ...} evs' {expr=.seq e' b, ...}
-          -- OR: strengthen induction measure to (depth, non_lit_count) so single
-          -- steps that don't reduce depth (e.g., .var → .lit) still make progress.
-          sorry
+          -- .seq(.seq(.seq c d) a2) b: case-split c to flatten the left-seq spine.
+          -- Each base case (lit/var/this) takes 1-2 steps to eliminate the innermost seq,
+          -- reducing depth from ≤ N+1 to ≤ N so the IH applies.
+          rw [ha1] at hnorm; simp only [ANF.normalizeExpr] at hnorm
+          -- hnorm : (normalizeExpr c (fun _ => normalizeExpr d (fun _ => normalizeExpr a2 (fun _ => normalizeExpr b k)))).run n = .ok (.trivial tv, m)
+          cases hc : c with
+          | lit v0 =>
+            -- c = .lit v0: one step .seq(.seq(.seq(.lit v0) d) a2) b → .seq(.seq d a2) b
+            rw [hc] at hnorm; simp only [ANF.normalizeExpr, ANF.trivialOfFlatValue] at hnorm
+            have hbd : (Flat.Expr.seq (Flat.Expr.seq d a2) b).depth ≤ N := by
+              simp [Flat.Expr.depth]
+              rw [hsf] at hdepth; rw [ha, ha1, hc] at hdepth
+              simp [Flat.Expr.depth] at hdepth; omega
+            cases v0 <;> simp at hnorm <;> (
+              obtain ⟨sf2, hstep_eq⟩ : ∃ sf2, Flat.step? sf = some (.silent, sf2) := by
+                rw [show sf = {sf with expr := .seq a b} from by cases sf; simp_all]
+                rw [ha, ha1, hc]; unfold Flat.step? Flat.exprValue?
+                unfold Flat.step? Flat.exprValue?
+                unfold Flat.step? Flat.exprValue?; exact ⟨_, rfl⟩
+              have hsf2_props : sf2.expr = .seq (.seq d a2) b ∧ sf2.env = sf.env ∧ sf2.heap = sf.heap ∧
+                  observableTrace sf2.trace = observableTrace sf.trace := by
+                have h0 := hstep_eq
+                rw [show sf = {sf with expr := .seq a b} from by cases sf; simp_all] at h0
+                rw [ha, ha1, hc] at h0; unfold Flat.step? Flat.exprValue? at h0
+                unfold Flat.step? Flat.exprValue? at h0
+                unfold Flat.step? Flat.exprValue? at h0
+                have heq := (Prod.mk.inj (Option.some.inj h0)).2
+                refine ⟨congrArg Flat.State.expr heq ▸ rfl,
+                        congrArg Flat.State.env heq ▸ rfl,
+                        congrArg Flat.State.heap heq ▸ rfl, ?_⟩
+                subst heq; show observableTrace (sf.trace ++ [.silent]) = observableTrace sf.trace
+                simp [observableTrace, List.filter_append]; decide
+              obtain ⟨he, henv2, hheap2, htrace2⟩ := hsf2_props
+              have hrel2 : ANF_SimRel s t sa sf2 := by
+                refine ⟨hheap.trans hheap2.symm, henv.trans henv2.symm, htrace.trans htrace2.symm, k, n, m, ?_, hfaithful⟩
+                rw [he]; simp only [ANF.normalizeExpr]; rw [hat]; exact hnorm
+              have hbd2 : sf2.expr.depth ≤ N := by rw [he]; exact hbd
+              have hwf2 : ExprWellFormed sf2.expr sf2.env := by
+                rw [he, henv2]; intro x hfx
+                apply hwf x; rw [hsf]
+                cases hfx with
+                | seq_l _ _ hfx' =>
+                  rw [ha]; exact .seq_l _ _ _ (by
+                    cases hfx' with
+                    | seq_l _ _ hfx'' => rw [ha1, hc]; exact .seq_l _ _ _ (.seq_r _ _ _ hfx'')
+                    | seq_r _ _ hfx'' => exact .seq_r _ _ _ hfx'')
+                | seq_r _ _ hfx' => exact .seq_r _ _ _ hfx'
+              obtain ⟨sf', evs, hsteps', hhalt', hobs', hrel'⟩ :=
+                ih sa sf2 hbd2 hrel2 hstuck hwf2
+              exact ⟨sf', .silent :: evs,
+                Flat.Steps.tail ⟨hstep_eq⟩ hsteps',
+                hhalt', by show observableTrace (.silent :: evs) = []; simp [observableTrace_silent, hobs'],
+                hrel'⟩)
+          | var name0 =>
+            -- c = .var name0: two steps (resolve var, then eliminate seq-lit)
+            rw [hc] at hnorm; simp only [ANF.normalizeExpr] at hnorm
+            have hbd : (Flat.Expr.seq (Flat.Expr.seq d a2) b).depth ≤ N := by
+              simp [Flat.Expr.depth]
+              rw [hsf] at hdepth; rw [ha, ha1, hc] at hdepth
+              simp [Flat.Expr.depth] at hdepth; omega
+            -- Well-formedness gives us name0 is bound in env
+            have hname0_bound : sf.env.lookup name0 ≠ none := by
+              apply hwf name0
+              rw [hsf, ha, ha1, hc]; exact .seq_l _ _ _ (.seq_l _ _ _ (.seq_l _ _ _ (.var _)))
+            obtain ⟨val, hval⟩ : ∃ v, sf.env.lookup name0 = some v := by
+              cases hlu : sf.env.lookup name0 with
+              | some v => exact ⟨v, rfl⟩
+              | none => exact absurd hlu hname0_bound
+            -- Step 1: resolve .var name0 → .lit val inside nested seqs
+            have hstep1 : Flat.step? sf = some (.silent,
+                { expr := .seq (.seq (.seq (.lit val) d) a2) b, env := sf.env, heap := sf.heap, trace := sf.trace ++ [.silent] }) := by
+              rw [show sf = {sf with expr := .seq a b} from by cases sf; simp_all]
+              rw [ha, ha1, hc]; unfold Flat.step? Flat.exprValue?
+              unfold Flat.step? Flat.exprValue?
+              unfold Flat.step? Flat.exprValue?
+              unfold Flat.step?
+              rw [hval]; rfl
+            let sf2 : Flat.State := { expr := .seq (.seq (.seq (.lit val) d) a2) b, env := sf.env, heap := sf.heap, trace := sf.trace ++ [.silent] }
+            -- Step 2: .seq(.seq(.seq(.lit val) d) a2) b → .seq(.seq d a2) b
+            obtain ⟨sf3, hstep2_eq⟩ : ∃ sf3, Flat.step? sf2 = some (.silent, sf3) := by
+              simp only [sf2]; unfold Flat.step? Flat.exprValue?
+              unfold Flat.step? Flat.exprValue?
+              unfold Flat.step? Flat.exprValue?; exact ⟨_, rfl⟩
+            have hsf3_props : sf3.expr = .seq (.seq d a2) b ∧ sf3.env = sf.env ∧ sf3.heap = sf.heap ∧
+                observableTrace sf3.trace = observableTrace sf.trace := by
+              have h0 := hstep2_eq; simp only [sf2] at h0
+              unfold Flat.step? Flat.exprValue? at h0
+              unfold Flat.step? Flat.exprValue? at h0
+              unfold Flat.step? Flat.exprValue? at h0
+              have heq := (Prod.mk.inj (Option.some.inj h0)).2
+              refine ⟨congrArg Flat.State.expr heq ▸ rfl,
+                      congrArg Flat.State.env heq ▸ rfl,
+                      congrArg Flat.State.heap heq ▸ rfl, ?_⟩
+              subst heq
+              show observableTrace ((sf.trace ++ [.silent]) ++ [.silent]) = observableTrace sf.trace
+              simp [observableTrace, List.filter_append]; decide
+            obtain ⟨hsf3_expr, hsf3_env, hsf3_heap, hsf3_trace⟩ := hsf3_props
+            have hrel3 : ANF_SimRel s t sa sf3 := by
+              refine ⟨hheap.trans hsf3_heap.symm, henv.trans hsf3_env.symm, htrace.trans hsf3_trace.symm, k, n, m, ?_, hfaithful⟩
+              rw [hsf3_expr]; simp only [ANF.normalizeExpr]; rw [hat]; exact hnorm
+            have hbd3 : sf3.expr.depth ≤ N := by rw [hsf3_expr]; exact hbd
+            have hwf3 : ExprWellFormed sf3.expr sf3.env := by
+              rw [hsf3_expr, hsf3_env]; intro x hfx
+              apply hwf x; rw [hsf]
+              cases hfx with
+              | seq_l _ _ hfx' =>
+                rw [ha]; exact .seq_l _ _ _ (by
+                  cases hfx' with
+                  | seq_l _ _ hfx'' => rw [ha1, hc]; exact .seq_l _ _ _ (.seq_r _ _ _ hfx'')
+                  | seq_r _ _ hfx'' => exact .seq_r _ _ _ hfx'')
+              | seq_r _ _ hfx' => exact .seq_r _ _ _ hfx'
+            obtain ⟨sf', evs, hsteps', hhalt', hobs', hrel'⟩ := ih sa sf3 hbd3 hrel3 hstuck hwf3
+            let steps12 := Flat.Steps.tail (⟨hstep1⟩ : Flat.Step sf .silent sf2) (Flat.Steps.tail (⟨hstep2_eq⟩ : Flat.Step sf2 .silent sf3) hsteps')
+            have hobsAll : observableTrace (.silent :: .silent :: evs) = [] := by simp [observableTrace_silent, hobs']
+            exact ⟨sf', .silent :: .silent :: evs, steps12, hhalt', hobsAll, hrel'⟩
+          | «this» =>
+            -- c = .this: two steps (resolve this, then eliminate seq-lit)
+            rw [hc] at hnorm; simp only [ANF.normalizeExpr] at hnorm
+            have hbd : (Flat.Expr.seq (Flat.Expr.seq d a2) b).depth ≤ N := by
+              simp [Flat.Expr.depth]
+              rw [hsf] at hdepth; rw [ha, ha1, hc] at hdepth
+              simp [Flat.Expr.depth] at hdepth; omega
+            obtain ⟨val, hstep1⟩ : ∃ val, Flat.step? sf = some (.silent,
+                { expr := .seq (.seq (.seq (.lit val) d) a2) b, env := sf.env, heap := sf.heap, trace := sf.trace ++ [.silent] }) := by
+              rw [show sf = {sf with expr := .seq a b} from by cases sf; simp_all]
+              rw [ha, ha1, hc]; unfold Flat.step? Flat.exprValue?
+              unfold Flat.step? Flat.exprValue?
+              unfold Flat.step? Flat.exprValue?
+              unfold Flat.step?
+              cases sf.env.lookup "this" with
+              | some v => exact ⟨v, rfl⟩
+              | none => exact ⟨.undefined, rfl⟩
+            let sf2 : Flat.State := { expr := .seq (.seq (.seq (.lit val) d) a2) b, env := sf.env, heap := sf.heap, trace := sf.trace ++ [.silent] }
+            obtain ⟨sf3, hstep2_eq⟩ : ∃ sf3, Flat.step? sf2 = some (.silent, sf3) := by
+              simp only [sf2]; unfold Flat.step? Flat.exprValue?
+              unfold Flat.step? Flat.exprValue?
+              unfold Flat.step? Flat.exprValue?; exact ⟨_, rfl⟩
+            have hsf3_props : sf3.expr = .seq (.seq d a2) b ∧ sf3.env = sf.env ∧ sf3.heap = sf.heap ∧
+                observableTrace sf3.trace = observableTrace sf.trace := by
+              have h0 := hstep2_eq; simp only [sf2] at h0
+              unfold Flat.step? Flat.exprValue? at h0
+              unfold Flat.step? Flat.exprValue? at h0
+              unfold Flat.step? Flat.exprValue? at h0
+              have heq := (Prod.mk.inj (Option.some.inj h0)).2
+              refine ⟨congrArg Flat.State.expr heq ▸ rfl,
+                      congrArg Flat.State.env heq ▸ rfl,
+                      congrArg Flat.State.heap heq ▸ rfl, ?_⟩
+              subst heq
+              show observableTrace ((sf.trace ++ [.silent]) ++ [.silent]) = observableTrace sf.trace
+              simp [observableTrace, List.filter_append]; decide
+            obtain ⟨hsf3_expr, hsf3_env, hsf3_heap, hsf3_trace⟩ := hsf3_props
+            have hrel3 : ANF_SimRel s t sa sf3 := by
+              refine ⟨hheap.trans hsf3_heap.symm, henv.trans hsf3_env.symm, htrace.trans hsf3_trace.symm, k, n, m, ?_, hfaithful⟩
+              rw [hsf3_expr]; simp only [ANF.normalizeExpr]; rw [hat]; exact hnorm
+            have hbd3 : sf3.expr.depth ≤ N := by rw [hsf3_expr]; exact hbd
+            have hwf3 : ExprWellFormed sf3.expr sf3.env := by
+              rw [hsf3_expr, hsf3_env]; intro x hfx
+              apply hwf x; rw [hsf]
+              cases hfx with
+              | seq_l _ _ hfx' =>
+                rw [ha]; exact .seq_l _ _ _ (by
+                  cases hfx' with
+                  | seq_l _ _ hfx'' => rw [ha1, hc]; exact .seq_l _ _ _ (.seq_r _ _ _ hfx'')
+                  | seq_r _ _ hfx'' => exact .seq_r _ _ _ hfx'')
+              | seq_r _ _ hfx' => exact .seq_r _ _ _ hfx'
+            obtain ⟨sf', evs, hsteps', hhalt', hobs', hrel'⟩ := ih sa sf3 hbd3 hrel3 hstuck hwf3
+            let steps12 := Flat.Steps.tail (⟨hstep1⟩ : Flat.Step sf .silent sf2) (Flat.Steps.tail (⟨hstep2_eq⟩ : Flat.Step sf2 .silent sf3) hsteps')
+            have hobsAll : observableTrace (.silent :: .silent :: evs) = [] := by simp [observableTrace_silent, hobs']
+            exact ⟨sf', .silent :: .silent :: evs, steps12, hhalt', hobsAll, hrel'⟩
+          | seq c1 c2 =>
+            -- Nested seq c = .seq c1 c2: left-spine depth > 3.
+            -- Requires recursive flattening or strengthened induction measure.
+            sorry
+          | _ =>
+            -- Compound c (not lit/var/this/seq): normalizeExpr c never produces .trivial
+            exfalso
+            exact absurd hnorm (normalizeExpr_compound_not_trivial c _
+              (by intro v; rw [hc]; exact Flat.Expr.noConfusion)
+              (by intro nm; rw [hc]; exact Flat.Expr.noConfusion)
+              (by rw [hc]; exact Flat.Expr.noConfusion)
+              (by intro a' b'; rw [hc]; exact Flat.Expr.noConfusion) n m tv)
         | _ =>
           -- Compound a1: normalizeExpr a1 never produces .trivial → contradiction
           exfalso
