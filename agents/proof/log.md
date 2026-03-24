@@ -1451,3 +1451,4 @@ theorem HeapCorr_get (h : HeapCorr ch fh) (addr : Nat) (cprops : Props)
 2. Captured var (line 798) needs stuttering simulation (Flat.Steps instead of Flat.Step)
 3. ANF nested seq (line 1181) needs strengthened induction measure
 4. 7+3 CC sorries blocked by Flat.step? stubs (objectLit/arrayLit/etc use allocFreshObject with empty props vs Core's real properties)
+2026-03-24T07:30:01+00:00 SKIP: already running
