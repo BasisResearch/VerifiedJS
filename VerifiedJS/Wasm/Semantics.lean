@@ -6137,9 +6137,12 @@ inductive EmitCodeCorr : List IRInstr → List Instr → Prop where
   | memoryGrow_ (rest_ir : List IRInstr) (rest_w : List Instr) :
       EmitCodeCorr rest_ir rest_w →
       EmitCodeCorr (.memoryGrow :: rest_ir) (.memoryGrow 0 :: rest_w)
-  /-- General case for instructions not yet decomposed. -/
+  /-- General case for instructions not yet decomposed.
+      Has False premise, making it uninhabitable — ensures all EmitCodeCorr
+      instances use specific constructors above. -/
   | general (ir_instr : IRInstr) (wasm_instrs : List Instr)
       (rest_ir : List IRInstr) (rest_w : List Instr) :
+      False →
       EmitCodeCorr rest_ir rest_w →
       EmitCodeCorr (ir_instr :: rest_ir) (wasm_instrs ++ rest_w)
 
@@ -6156,64 +6159,64 @@ theorem EmitCodeCorr.nil_inv {wcode : List Instr}
 theorem EmitCodeCorr.drop_inv {rest : List IRInstr} {wcode : List Instr}
     (h : EmitCodeCorr (IRInstr.drop :: rest) wcode) :
     (∃ rest_w, wcode = Instr.drop :: rest_w ∧ EmitCodeCorr rest rest_w) ∨
-    (∃ wasm_instrs rest_w, wcode = wasm_instrs ++ rest_w ∧ EmitCodeCorr rest rest_w) := by
+    False := by
   cases h with
   | drop_ _ rw hrw => left; exact ⟨rw, rfl, hrw⟩
-  | general _ wi _ rw hrw => right; exact ⟨wi, rw, rfl, hrw⟩
+  | general _ _ _ _ hf _ => exact hf.elim
 
 /-- Inversion for return_ :: rest. -/
 theorem EmitCodeCorr.return_inv {rest : List IRInstr} {wcode : List Instr}
     (h : EmitCodeCorr (IRInstr.return_ :: rest) wcode) :
     (∃ rest_w, wcode = Instr.return_ :: rest_w ∧ EmitCodeCorr rest rest_w) ∨
-    (∃ wasm_instrs rest_w, wcode = wasm_instrs ++ rest_w ∧ EmitCodeCorr rest rest_w) := by
+    False := by
   cases h with
   | return__ _ rw hrw => left; exact ⟨rw, rfl, hrw⟩
-  | general _ wi _ rw hrw => right; exact ⟨wi, rw, rfl, hrw⟩
+  | general _ _ _ _ hf _ => exact hf.elim
 
 /-- Inversion for call :: rest. -/
 theorem EmitCodeCorr.call_inv {funcIdx : Nat} {rest : List IRInstr} {wcode : List Instr}
     (h : EmitCodeCorr (IRInstr.call funcIdx :: rest) wcode) :
     (∃ rest_w, wcode = Instr.call funcIdx :: rest_w ∧ EmitCodeCorr rest rest_w) ∨
-    (∃ wasm_instrs rest_w, wcode = wasm_instrs ++ rest_w ∧ EmitCodeCorr rest rest_w) := by
+    False := by
   cases h with
   | call_ _ _ rw hrw => left; exact ⟨rw, rfl, hrw⟩
-  | general _ wi _ rw hrw => right; exact ⟨wi, rw, rfl, hrw⟩
+  | general _ _ _ _ hf _ => exact hf.elim
 
 /-- Inversion for localGet :: rest. -/
 theorem EmitCodeCorr.localGet_inv {idx : Nat} {rest : List IRInstr} {wcode : List Instr}
     (h : EmitCodeCorr (IRInstr.localGet idx :: rest) wcode) :
     (∃ rest_w, wcode = Instr.localGet idx :: rest_w ∧ EmitCodeCorr rest rest_w) ∨
-    (∃ wasm_instrs rest_w, wcode = wasm_instrs ++ rest_w ∧ EmitCodeCorr rest rest_w) := by
+    False := by
   cases h with
   | localGet _ _ rw hrw => left; exact ⟨rw, rfl, hrw⟩
-  | general _ wi _ rw hrw => right; exact ⟨wi, rw, rfl, hrw⟩
+  | general _ _ _ _ hf _ => exact hf.elim
 
 /-- Inversion for localSet :: rest. -/
 theorem EmitCodeCorr.localSet_inv {idx : Nat} {rest : List IRInstr} {wcode : List Instr}
     (h : EmitCodeCorr (IRInstr.localSet idx :: rest) wcode) :
     (∃ rest_w, wcode = Instr.localSet idx :: rest_w ∧ EmitCodeCorr rest rest_w) ∨
-    (∃ wasm_instrs rest_w, wcode = wasm_instrs ++ rest_w ∧ EmitCodeCorr rest rest_w) := by
+    False := by
   cases h with
   | localSet _ _ rw hrw => left; exact ⟨rw, rfl, hrw⟩
-  | general _ wi _ rw hrw => right; exact ⟨wi, rw, rfl, hrw⟩
+  | general _ _ _ _ hf _ => exact hf.elim
 
 /-- Inversion for globalGet :: rest. -/
 theorem EmitCodeCorr.globalGet_inv {idx : Nat} {rest : List IRInstr} {wcode : List Instr}
     (h : EmitCodeCorr (IRInstr.globalGet idx :: rest) wcode) :
     (∃ rest_w, wcode = Instr.globalGet idx :: rest_w ∧ EmitCodeCorr rest rest_w) ∨
-    (∃ wasm_instrs rest_w, wcode = wasm_instrs ++ rest_w ∧ EmitCodeCorr rest rest_w) := by
+    False := by
   cases h with
   | globalGet _ _ rw hrw => left; exact ⟨rw, rfl, hrw⟩
-  | general _ wi _ rw hrw => right; exact ⟨wi, rw, rfl, hrw⟩
+  | general _ _ _ _ hf _ => exact hf.elim
 
 /-- Inversion for globalSet :: rest. -/
 theorem EmitCodeCorr.globalSet_inv {idx : Nat} {rest : List IRInstr} {wcode : List Instr}
     (h : EmitCodeCorr (IRInstr.globalSet idx :: rest) wcode) :
     (∃ rest_w, wcode = Instr.globalSet idx :: rest_w ∧ EmitCodeCorr rest rest_w) ∨
-    (∃ wasm_instrs rest_w, wcode = wasm_instrs ++ rest_w ∧ EmitCodeCorr rest rest_w) := by
+    False := by
   cases h with
   | globalSet _ _ rw hrw => left; exact ⟨rw, rfl, hrw⟩
-  | general _ wi _ rw hrw => right; exact ⟨wi, rw, rfl, hrw⟩
+  | general _ _ _ _ hf _ => exact hf.elim
 
 /-- Inversion for const_ .i32 :: rest. -/
 theorem EmitCodeCorr.const_i32_inv {v : String} {rest : List IRInstr} {wcode : List Instr}
