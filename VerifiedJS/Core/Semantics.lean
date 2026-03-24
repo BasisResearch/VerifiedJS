@@ -392,6 +392,36 @@ def Heap.empty : Heap :=
 -- |
 -- | 1\. Let \_env\_ be a new Declarative Environment Record containing no
 -- | bindings. 1. Set \_env\_.\[\[OuterEnv\]\] to \_E\_. 1. Return \_env\_.
+-- SPEC: L9672-L9678
+-- | # NewObjectEnvironment ( \_O\_: an Object, \_W\_: a Boolean, \_E\_: an Environment Record or \*null\*, ): an Object Environment Record
+-- |
+-- | 1\. Let \_env\_ be a new Object Environment Record. 1. Set
+-- | \_env\_.\[\[BindingObject\]\] to \_O\_. 1. Set
+-- | \_env\_.\[\[IsWithEnvironment\]\] to \_W\_. 1. Set
+-- | \_env\_.\[\[OuterEnv\]\] to \_E\_. 1. Return \_env\_.
+-- SPEC: L9690-L9699
+-- | # NewGlobalEnvironment ( \_G\_: an Object, \_thisValue\_: an Object, ): a Global Environment Record
+-- |
+-- | 1\. Let \_objRec\_ be NewObjectEnvironment(\_G\_, \*false\*,
+-- | \*null\*). 1. Let \_dclRec\_ be NewDeclarativeEnvironment(\*null\*). 1.
+-- | Let \_env\_ be a new Global Environment Record. 1. Set
+-- | \_env\_.\[\[ObjectRecord\]\] to \_objRec\_. 1. Set
+-- | \_env\_.\[\[GlobalThisValue\]\] to \_thisValue\_. 1. Set
+-- | \_env\_.\[\[DeclarativeRecord\]\] to \_dclRec\_. 1. Set
+-- | \_env\_.\[\[OuterEnv\]\] to \*null\*. 1. Return \_env\_.
+-- SPEC: L8980-L8992
+-- | # DeleteBinding ( \_N\_: a String, ): a normal completion containing a Boolean
+-- |
+-- | for
+-- | :   a Declarative Environment Record \_envRec\_
+-- |
+-- | description
+-- | :   It can only delete bindings that have been explicitly designated as
+-- |     being subject to deletion.
+-- |
+-- | 1\. Assert: \_envRec\_ has a binding for \_N\_. 1. If the binding for
+-- | \_N\_ in \_envRec\_ cannot be deleted, return \*false\*. 1. Remove the
+-- | binding for \_N\_ from \_envRec\_. 1. Return \*true\*.
 -- SPEC: L8965-L8979
 -- | # GetBindingValue ( \_N\_: a String, \_S\_: a Boolean, ): either a normal completion containing an ECMAScript language value or a throw completion
 -- |
@@ -796,6 +826,117 @@ def Env.extend (env : Env) (name : VarName) (v : Value) : Env :=
 -- | ValidateNonRevokedProxy(\_argument\_). 1. Let \_proxyTarget\_ be
 -- | \_argument\_.\[\[ProxyTarget\]\]. 1. Return ?
 -- | IsArray(\_proxyTarget\_). 1. Return \*false\*.
+
+-- SPEC: L6436-L6443
+-- | # IsRegExp ( \_argument\_: an ECMAScript language value, ): either a normal completion containing a Boolean or a throw completion
+-- |
+-- | 1\. If \_argument\_ is not an Object, return \*false\*. 1. Let
+-- | \_matcher\_ be ? Get(\_argument\_, %Symbol.match%). 1. If \_matcher\_ is
+-- | not \*undefined\*, return ToBoolean(\_matcher\_). 1. If \_argument\_ has
+-- | a \[\[RegExpMatcher\]\] internal slot, return \*true\*. 1. Return
+-- | \*false\*.
+-- SPEC: L6362-L6376
+-- | # CanonicalNumericIndexString ( \_argument\_: a String, ): a Number or \*undefined\*
+-- |
+-- | description
+-- | :   If \_argument\_ is either \*\"-0\"\* or exactly matches
+-- |     ToString(\_n\_) for some Number value \_n\_, it returns the
+-- |     respective Number value. Otherwise, it returns \*undefined\*.
+-- |
+-- | 1\. If \_argument\_ is \*\"-0\"\*, return \*-0\*~𝔽~. 1. Let \_n\_ be !
+-- | ToNumber(\_argument\_). 1. If ! ToString(\_n\_) is \_argument\_, return
+-- | \_n\_. 1. Return \*undefined\*.
+-- |
+-- | A [canonical numeric string]{.dfn variants="canonical numeric strings"}
+-- | is any String for which the CanonicalNumericIndexString abstract
+-- | operation does not return \*undefined\*.
+-- SPEC: L6377-L6387
+-- | # ToIndex ( \_value\_: an ECMAScript language value, ): either a normal completion containing a non-negative integer or a throw completion
+-- |
+-- | description
+-- | :   It converts \_value\_ to an integer and returns that integer if it
+-- |     is non-negative and corresponds with an integer index. Otherwise, it
+-- |     throws an exception.
+-- |
+-- | 1\. Let \_integer\_ be ? ToIntegerOrInfinity(\_value\_). 1. If
+-- | \_integer\_ is not in the inclusive interval from 0 to 2^53^ - 1, throw
+-- | a \*RangeError\* exception. 1. Return \_integer\_.
+-- SPEC: L5626-L5652
+-- | # The Property Descriptor Specification Type
+-- |
+-- | The [Property Descriptor]{.dfn variants="Property Descriptors"} type is
+-- | used to explain the manipulation and reification of Object property
+-- | attributes. A Property Descriptor is a Record with zero or more fields,
+-- | where each field\'s name is an attribute name and its value is a
+-- | corresponding attribute value as specified in . The schema name used
+-- | within this specification to tag literal descriptions of Property
+-- | Descriptor records is "PropertyDescriptor".
+-- |
+-- | Property Descriptor values may be further classified as data Property
+-- | Descriptors and accessor Property Descriptors based upon the existence
+-- | or use of certain fields. A data Property Descriptor is one that
+-- | includes any fields named either \[\[Value\]\] or \[\[Writable\]\]. An
+-- | accessor Property Descriptor is one that includes any fields named
+-- | either \[\[Get\]\] or \[\[Set\]\]. Any Property Descriptor may have
+-- | fields named \[\[Enumerable\]\] and \[\[Configurable\]\]. A Property
+-- | Descriptor value may not be both a data Property Descriptor and an
+-- | accessor Property Descriptor; however, it may be neither (in which case
+-- | it is a generic Property Descriptor). A [fully populated Property
+-- | Descriptor]{.dfn} is one that is either an accessor Property Descriptor
+-- | or a data Property Descriptor and that has all of the corresponding
+-- | fields defined in .
+-- |
+-- | The following abstract operations are used in this specification to
+-- | operate upon Property Descriptor values:
+-- SPEC: L17644-L17653
+-- | # Runtime Semantics: LoopEvaluation ( \_labelSet\_: a List of Strings, ): either a normal completion containing an ECMAScript language value or an abrupt completion
+-- |
+-- | IterationStatement : DoWhileStatement 1. Return ? DoWhileLoopEvaluation
+-- | of \|DoWhileStatement\| with argument \_labelSet\_. IterationStatement :
+-- | WhileStatement 1. Return ? WhileLoopEvaluation of \|WhileStatement\|
+-- | with argument \_labelSet\_. IterationStatement : ForStatement 1. Return
+-- | ? ForLoopEvaluation of \|ForStatement\| with argument \_labelSet\_.
+-- | IterationStatement : ForInOfStatement 1. Return ? ForInOfLoopEvaluation
+-- | of \|ForInOfStatement\| with argument \_labelSet\_.
+-- SPEC: L17225-L17233
+-- | # Runtime Semantics: Evaluation
+-- |
+-- | HoistableDeclaration : GeneratorDeclaration AsyncFunctionDeclaration
+-- | AsyncGeneratorDeclaration 1. Return \~empty\~. HoistableDeclaration :
+-- | FunctionDeclaration 1. Return ? Evaluation of \|FunctionDeclaration\|.
+-- | BreakableStatement : IterationStatement SwitchStatement 1. Let
+-- | \_newLabelSet\_ be a new empty List. 1. Return ? LabelledEvaluation of
+-- | this \|BreakableStatement\| with argument \_newLabelSet\_.
+-- SPEC: L18847-L18856
+-- | # Runtime Semantics: EvaluateFunctionBody ( \_functionObject\_: an ECMAScript function object, \_argumentsList\_: a List of ECMAScript language values, ): a return completion or a throw completion
+-- |
+-- | FunctionBody : FunctionStatementList 1. Perform ?
+-- | FunctionDeclarationInstantiation(\_functionObject\_,
+-- | \_argumentsList\_). 1. Perform ? Evaluation of
+-- | \|FunctionStatementList\|. 1. NOTE: If the previous step resulted in a
+-- | normal completion, then evaluation finished by proceeding past the end
+-- | of the \|FunctionStatementList\|. 1. Return
+-- | ReturnCompletion(\*undefined\*).
+-- SPEC: L18622-L18632
+-- | # Runtime Semantics: Evaluation
+-- |
+-- | Evaluating a \|DebuggerStatement\| may allow an implementation to cause
+-- | a breakpoint when run under a debugger. If a debugger is not present or
+-- | active this statement has no observable effect.
+-- |
+-- | DebuggerStatement : \`debugger\` \`;\` 1. If an implementation-defined
+-- | debugging facility is available and enabled, then 1. Perform an
+-- | implementation-defined debugging action. 1. Return a new
+-- | implementation-defined Completion Record. 1. Return \~empty\~.
+-- SPEC: L7349-L7357
+-- | # Runtime Semantics: Evaluation ( ): a Completion Record
+-- |
+-- | effects
+-- | :   user-code
+-- |
+-- | The definitions for this operation are distributed over the \"ECMAScript
+-- | Language\" sections of this specification. Each definition appears after
+-- | the defining occurrence of the relevant productions.
 
 -- SPEC: L6745-L6752
 -- | # DeletePropertyOrThrow ( \_O\_: an Object, \_P\_: a property key, ): either a normal completion containing \~unused\~ or a throw completion
@@ -3415,6 +3556,65 @@ def step? (s : State) : Option (TraceEvent × State) :=
   -- | \_R\_ be Completion(CaseBlockEvaluation of \|CaseBlock\| with argument
   -- | \_switchValue\_). 1. Set the running execution context\'s
   -- | LexicalEnvironment to \_oldEnv\_. 1. Return \_R\_.
+  -- SPEC: L18372-L18415
+  -- | # Runtime Semantics: CaseBlockEvaluation ( \_input\_: an ECMAScript language value, ): either a normal completion containing an ECMAScript language value or an abrupt completion
+  -- |
+  -- | CaseBlock : \`{\` \`}\` 1. Return \*undefined\*. CaseBlock : \`{\`
+  -- | CaseClauses \`}\` 1. Let \_V\_ be \*undefined\*. 1. Let \_A\_ be the
+  -- | List of \|CaseClause\| items in \|CaseClauses\|, in source text
+  -- | order. 1. Let \_found\_ be \*false\*. 1. For each \|CaseClause\| \_C\_
+  -- | of \_A\_, do 1. If \_found\_ is \*false\*, then 1. Set \_found\_ to ?
+  -- | CaseClauseIsSelected(\_C\_, \_input\_). 1. If \_found\_ is \*true\*,
+  -- | then 1. Let \_R\_ be Completion(Evaluation of \_C\_). 1. If
+  -- | \_R\_.\[\[Value\]\] is not \~empty\~, set \_V\_ to
+  -- | \_R\_.\[\[Value\]\]. 1. If \_R\_ is an abrupt completion, return ?
+  -- | UpdateEmpty(\_R\_, \_V\_). 1. Return \_V\_. CaseBlock : \`{\`
+  -- | CaseClauses? DefaultClause CaseClauses? \`}\` 1. Let \_V\_ be
+  -- | \*undefined\*. 1. If the first \|CaseClauses\| is present, then 1. Let
+  -- | \_A\_ be the List of \|CaseClause\| items in the first \|CaseClauses\|,
+  -- | in source text order. 1. Else, 1. Let \_A\_ be a new empty List. 1. Let
+  -- | \_found\_ be \*false\*. 1. For each \|CaseClause\| \_C\_ of \_A\_, do 1.
+  -- | If \_found\_ is \*false\*, then 1. Set \_found\_ to ?
+  -- | CaseClauseIsSelected(\_C\_, \_input\_). 1. If \_found\_ is \*true\*,
+  -- | then 1. Let \_R\_ be Completion(Evaluation of \_C\_). 1. If
+  -- | \_R\_.\[\[Value\]\] is not \~empty\~, set \_V\_ to
+  -- | \_R\_.\[\[Value\]\]. 1. If \_R\_ is an abrupt completion, return ?
+  -- | UpdateEmpty(\_R\_, \_V\_). 1. Let \_foundInB\_ be \*false\*. 1. If the
+  -- | second \|CaseClauses\| is present, then 1. Let \_B\_ be the List of
+  -- | \|CaseClause\| items in the second \|CaseClauses\|, in source text
+  -- | order. 1. Else, 1. Let \_B\_ be a new empty List. 1. If \_found\_ is
+  -- | \*false\*, then 1. For each \|CaseClause\| \_C\_ of \_B\_, do 1. If
+  -- | \_foundInB\_ is \*false\*, then 1. Set \_foundInB\_ to ?
+  -- | CaseClauseIsSelected(\_C\_, \_input\_). 1. If \_foundInB\_ is \*true\*,
+  -- | then 1. Let \_R\_ be Completion(Evaluation of \|CaseClause\| \_C\_). 1.
+  -- | If \_R\_.\[\[Value\]\] is not \~empty\~, set \_V\_ to
+  -- | \_R\_.\[\[Value\]\]. 1. If \_R\_ is an abrupt completion, return ?
+  -- | UpdateEmpty(\_R\_, \_V\_). 1. If \_foundInB\_ is \*true\*, return
+  -- | \_V\_. 1. Let \_defaultR\_ be Completion(Evaluation of
+  -- | \|DefaultClause\|). 1. If \_defaultR\_.\[\[Value\]\] is not \~empty\~,
+  -- | set \_V\_ to \_defaultR\_.\[\[Value\]\]. 1. If \_defaultR\_ is an abrupt
+  -- | completion, return ? UpdateEmpty(\_defaultR\_, \_V\_). 1. NOTE: The
+  -- | following is another complete iteration of the second
+  -- | \|CaseClauses\|. 1. For each \|CaseClause\| \_C\_ of \_B\_, do 1. Let
+  -- | \_R\_ be Completion(Evaluation of \|CaseClause\| \_C\_). 1. If
+  -- | \_R\_.\[\[Value\]\] is not \~empty\~, set \_V\_ to
+  -- | \_R\_.\[\[Value\]\]. 1. If \_R\_ is an abrupt completion, return ?
+  -- | UpdateEmpty(\_R\_, \_V\_). 1. Return \_V\_.
+  -- SPEC: L18416-L18430
+  -- | # CaseClauseIsSelected ( \_C\_: a \|CaseClause\| Parse Node, \_input\_: an ECMAScript language value, ): either a normal completion containing a Boolean or an abrupt completion
+  -- |
+  -- | description
+  -- | :   It determines whether \_C\_ matches \_input\_.
+  -- |
+  -- | 1\. Assert: \_C\_ is an instance of the production CaseClause : \`case\`
+  -- | Expression \`:\` StatementList?. 1. Let \_exprRef\_ be ? Evaluation of
+  -- | the \|Expression\| of \_C\_. 1. Let \_clauseSelector\_ be ?
+  -- | GetValue(\_exprRef\_). 1. Return IsStrictlyEqual(\_input\_,
+  -- | \_clauseSelector\_).
+  -- |
+  -- | This operation does not execute \_C\_\'s \|StatementList\| (if any). The
+  -- | \|CaseBlock\| algorithm uses its return value to determine which
+  -- | \|StatementList\| to start executing.
   -- NOTE: switch is desugared by the parser to if-else chains.
   -- SPEC: L18488-L18489
   -- | LabelledStatement : LabelIdentifier \`:\` LabelledItem 1. Return ?
