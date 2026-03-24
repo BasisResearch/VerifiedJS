@@ -17,44 +17,65 @@ Composition: elaborate o closureConvert o anfConvert o lower o emit.
 4. `bash scripts/lake_build_concise.sh` — verify
 5. Log strategy, progress, and next step to agents/proof/log.md
 
-## TASK 0: HeapCorr — Replace sf.heap = sc.heap (DO THIS NOW)
+## TASK 0: Close well-formedness sorries (lines 1655, 2063)
 
-ALL 6 remaining CC sorries are BLOCKED by `sf.heap = sc.heap` (line 551):
-- captured var (857), call (1567), newObj (1568), objectLit (2934), arrayLit (2935), functionDef (2936)
+These 2 sorry cases are in getProp and getIndex. The problem: when `v = .object addr` and `addr ≥ sc.heap.objects.size`, Core lookup gives `none` but Flat's larger heap could give `some _`. Fix: add `AllLitAddrsValid` to CC_SimRel.
 
-Replace heap identity with prefix relation:
+### Step 1: Define the predicate (near HeapCorr, around line 544)
 
 ```lean
-def HeapCorr (cheap fheap : Core.Heap) : Prop :=
-  cheap.length ≤ fheap.length ∧
-  ∀ addr, addr < cheap.length → cheap.get? addr = fheap.get? addr
+/-- All .object addr literals in the expression have valid heap addresses -/
+private def AllLitAddrsValid (heap : Core.Heap) : Core.Expr → Prop
+  | .lit (.object addr) => addr < heap.objects.size
+  | .lit _ => True
+  | .var _ | .this | .break _ | .continue _ => True
+  | .let _ i b | .seq i b | .while_ i b | .labeled _ b => AllLitAddrsValid heap i ∧ AllLitAddrsValid heap b
+  | .assign _ v | .getProp v _ | .deleteProp v _ | .typeof v | .unary _ v
+  | .throw v | .await v => AllLitAddrsValid heap v
+  | .if c t e | .tryCatch c _ t e? => AllLitAddrsValid heap c ∧ AllLitAddrsValid heap t ∧
+      match e? with | some e => AllLitAddrsValid heap e | none => True
+  | .setProp o _ v | .binary _ o v | .getIndex o v | .forIn _ o v | .forOf _ o v =>
+      AllLitAddrsValid heap o ∧ AllLitAddrsValid heap v
+  | .setIndex o i v => AllLitAddrsValid heap o ∧ AllLitAddrsValid heap i ∧ AllLitAddrsValid heap v
+  | .call c args | .newObj c args => AllLitAddrsValid heap c ∧ args.Forall (AllLitAddrsValid heap)
+  | .objectLit props => props.Forall (fun (_, e) => AllLitAddrsValid heap e)
+  | .arrayLit elems => elems.Forall (AllLitAddrsValid heap)
+  | .functionDef _ _ body _ _ => AllLitAddrsValid heap body
+  | .return (some v) | .yield (some v) _ => AllLitAddrsValid heap v
+  | .return none | .yield none _ => True
 ```
 
-Steps:
-1. Define `HeapCorr` near CC_SimRel (around line 547)
-2. Replace `sf.heap = sc.heap` (line 551) with `HeapCorr sc.heap sf.heap`
-3. Prove helpers:
+### Step 2: Add to CC_SimRel (after HeapCorr field, line ~563)
 ```lean
-theorem HeapCorr_refl (h : Core.Heap) : HeapCorr h h :=
-  ⟨Nat.le_refl _, fun _ _ => rfl⟩
-
-theorem HeapCorr_get (hc : HeapCorr ch fh) (hlt : addr < ch.length) :
-    ch.get? addr = fh.get? addr := hc.2 addr hlt
+  AllLitAddrsValid sc.heap sc.expr ∧
 ```
-4. Fix `closureConvert_init_related` (line 562): replace `rfl` with `HeapCorr_refl _`
-5. Fix existing proofs that use `hheap : sf.heap = sc.heap` — most just need `hheap.2 addr hlt` or pass-through
 
-**WARNING**: This will break ~20 existing proof lines. Fix them ALL before building. Most are `exact hheap` → `exact hheap` (HeapCorr passes through) or `rw [hheap]` → use `HeapCorr_get`.
+### Step 3: Fix closureConvert_init_related
+Initial expression has no `.object` literals (source program doesn't contain heap addresses), so `AllLitAddrsValid` is trivially `True`. Add a simple proof by `simp [AllLitAddrsValid]` or structural induction.
 
-## TASK 1: Close CC sorries using HeapCorr
+### Step 4: Close the 2 sorry cases
+At lines 1655 and 2063, replace `sorry` with:
+```lean
+          | some _ =>
+            -- addr ≥ sc.heap.objects.size contradicts AllLitAddrsValid
+            exfalso; have := hAddrWF; simp [AllLitAddrsValid] at this; omega
+```
+(Adjust variable names based on what `hAddrWF` is named in the destructuring of CC_SimRel.)
 
-After HeapCorr in SimRel, attack in order:
-1. newObj (1568) — both alloc on heap, HeapCorr_alloc_both
-2. objectLit (2934) — same pattern
-3. arrayLit (2935) — same pattern
-4. captured var (857) — Flat-only heap read via HeapCorr_get
-5. call (1567) — needs Flat.step? call semantics + HeapCorr
-6. functionDef (2936) — most complex, needs full CC state
+### Step 5: Fix preservation in existing proofs
+Most cases: the new expression is built from sub-expressions of the old one (same literals) or from env values (which are not `.lit`). Heap only grows. Pattern: `exact hAddrWF.left` or `exact ⟨hAddrWF.left, hAddrWF.right⟩`.
+
+**WARNING**: This will break existing proofs that destructure CC_SimRel. Fix ALL of them before building.
+
+## TASK 1: Close remaining CC sorries
+
+After TASK 0, the remaining 6 CC sorries are:
+- captured var (869): getEnv produces env read — use HeapCorr + AllLitAddrsValid
+- call (1579): needs step?_call_closure equation lemma (wasmspec added it at Flat/Semantics.lean)
+- newObj (1580): same pattern as call
+- objectLit (3028): heap allocation — HeapCorr extends to HeapCorr_alloc_both
+- arrayLit (3029): same as objectLit
+- functionDef (3030): most complex, needs CC state threading
 
 ## TASK 2: ANF sorries (lines 106, 1181)
 

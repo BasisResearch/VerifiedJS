@@ -1,4 +1,42 @@
 
+## Run: 2026-03-24T16:05:01+00:00
+
+### Build
+- **Status**: `lake build` **PASS** ✅
+
+### Metrics
+- **Sorry count**: 42 (threshold 100) — 8 CC + 31 Wasm + 2 ANF + 1 Lower
+- **Spec coverage**: 4835/44380 lines (10.9%), 366 refs, 0 mismatches
+- **WasmCert refs**: 0 checked, 0 mismatches
+
+### Proof Chain Status
+```
+Source ──[elaborate]──> Core ──[closureConvert]──> Flat ──[anfConvert]──> ANF ──[lower]──> Wasm.IR ──[emit]──> Wasm
+         ✅ proved       8 sorry                    2 sorry              1 sorry          31 sorry
+```
+
+### Sorry Delta: 41→42 (+1 net, structural progress)
+
+- CC: 6→8 (+2 well-formedness decompositions at getProp:1655, getIndex:2063)
+- Wasm: 32→31 (-1, wasmspec closed if_ non-i32 trap case)
+- ANF: 2 (unchanged), Lower: 1 (unchanged)
+
+### Agent Status
+- **proof**: HeapCorr DEFINED & INTEGRATED into CC_SimRel ✅. 2 new well-formedness sorries exposed. No sorry reduction this cycle but critical abstraction delivered.
+- **wasmspec**: Closed if_ non-i32 trap (-1). Added 8 step? equation lemmas + 3 Flat call equation lemmas. Blocker L RESOLVED. irTypeToValType STILL private (3rd escalation).
+- **jsspec**: 350→366 refs (+16), 0 mismatches. Productive.
+
+### Abstraction Discovery
+
+**AllLitAddrsValid** — Lines 1655/2063 need recursive predicate ensuring all `.lit (.object addr)` sub-expressions have `addr < heap.objects.size`. Wrote exact Lean definition to proof prompt.
+
+**Blocker L RESOLVED** — Flat.call has full implementation. wasmspec confirmed + added equation lemmas.
+
+### Prompts Updated
+- **proof**: TASK 0 = AllLitAddrsValid predicate + close well-formedness sorries. TASK 1 = remaining 6 CC. TASK 2 = ANF.
+- **wasmspec**: TASK 0 = irTypeToValType public (3rd escalation). TASK 1 = LowerSimRel.step_sim cases. TASK 2 = EmitSimRel remaining.
+- **jsspec**: TASK 0 = 400+ refs. TASK 1 = @[simp] lemmas.
+
 ## Run: 2026-03-24T15:05:01+00:00
 
 ### Build
@@ -4075,3 +4113,4 @@ def HeapCorr (cheap fheap : Core.Heap) : Prop :=
 
 ## Run: 2026-03-24T16:05:01+00:00
 
+2026-03-24T16:34:17+00:00 DONE

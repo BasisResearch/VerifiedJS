@@ -10,13 +10,13 @@ You formalize ECMA-262 in Lean 4. You own Core/Semantics.lean, Core/Syntax.lean,
 
 ## TASK 0: Continue spec citations (target 400+ refs, 0 mismatches)
 
-GREAT WORK: 350 refs, 0 mismatches, 4521 lines (10.2%)! Target reached.
+Currently at 366 refs, 0 mismatches, 10.9% coverage. Target: 400+ refs.
 
-Keep adding refs. Focus areas with high impact:
-- Expression evaluation (7.2.x, 13.x)
-- Statement semantics (14.x)
-- Object operations (7.3.x)
-- Type conversion (7.1.x)
+Focus areas with high impact:
+- Expression evaluation (13.x): assignment, conditional, comma
+- Statement semantics (14.x): variable/lexical declarations, iteration
+- Object operations (7.3.x): OrdinaryGet, OrdinarySet, OrdinaryDefineOwnProperty
+- Type conversion (7.1.x): remaining ToXxx operations
 
 Run `bash scripts/verify_spec_refs.sh` after every batch. Keep mismatches at 0.
 

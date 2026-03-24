@@ -260,6 +260,15 @@ set_option linter.deprecated false
 -- | external code might be able to detect a difference between various NaN
 -- | values, but such behaviour is implementation-defined; to ECMAScript
 -- | code, all \*NaN\* values are indistinguishable from each other.
+-- SPEC: L4722-L4729
+-- | # The BigInt Type
+-- |
+-- | The [BigInt type]{.dfn variants="is a BigInt,is not a BigInt"}
+-- | represents an integer value. The value may be any size and is not
+-- | limited to a particular bit-width. Generally, where not otherwise noted,
+-- | operations are designed to return exact mathematically-based answers.
+-- | For binary operations, BigInts act as two\'s complement binary strings,
+-- | with negative numbers treated as having bits set infinitely to the left.
 -- SPEC: L5443-L5460
 -- | # The Completion Record Specification Type
 -- |
@@ -1139,6 +1148,30 @@ def Env.extend (env : Env) (name : VarName) (v : Value) : Env :=
 -- | ? ForLoopEvaluation of \|ForStatement\| with argument \_labelSet\_.
 -- | IterationStatement : ForInOfStatement 1. Return ? ForInOfLoopEvaluation
 -- | of \|ForInOfStatement\| with argument \_labelSet\_.
+-- SPEC: L17648-L17670
+-- | WhileStatement 1. Return ? WhileLoopEvaluation of \|WhileStatement\|
+-- | with argument \_labelSet\_. IterationStatement : ForStatement 1. Return
+-- | ? ForLoopEvaluation of \|ForStatement\| with argument \_labelSet\_.
+-- | IterationStatement : ForInOfStatement 1. Return ? ForInOfLoopEvaluation
+-- | of \|ForInOfStatement\| with argument \_labelSet\_.
+-- |
+-- | # The \`do\`-\`while\` Statement
+-- |
+-- | ## Syntax
+-- |
+-- | DoWhileStatement\[Yield, Await, Return\] : \`do\` Statement\[?Yield,
+-- | ?Await, ?Return\] \`while\` \`(\` Expression\[+In, ?Yield, ?Await\]
+-- | \`)\` \`;\`
+-- |
+-- | # Static Semantics: Early Errors
+-- |
+-- | DoWhileStatement : \`do\` Statement \`while\` \`(\` Expression \`)\`
+-- | \`;\`
+-- |
+-- | - It is a Syntax Error if IsLabelledFunction(\|Statement\|) is \*true\*.
+-- |
+-- | It is only necessary to apply this rule if the extension specified in is
+-- | implemented.
 -- SPEC: L17225-L17233
 -- | # Runtime Semantics: Evaluation
 -- |
@@ -1148,6 +1181,20 @@ def Env.extend (env : Env) (name : VarName) (v : Value) : Env :=
 -- | BreakableStatement : IterationStatement SwitchStatement 1. Let
 -- | \_newLabelSet\_ be a new empty List. 1. Return ? LabelledEvaluation of
 -- | this \|BreakableStatement\| with argument \_newLabelSet\_.
+-- SPEC: L18648-L18660
+-- | FunctionRestParameter\[?Yield, ?Await\] FormalParameterList\[Yield,
+-- | Await\] : FormalParameter\[?Yield, ?Await\] FormalParameterList\[?Yield,
+-- | ?Await\] \`,\` FormalParameter\[?Yield, ?Await\]
+-- | FunctionRestParameter\[Yield, Await\] : BindingRestElement\[?Yield,
+-- | ?Await\] FormalParameter\[Yield, Await\] : BindingElement\[?Yield,
+-- | ?Await\]
+-- |
+-- | # Static Semantics: Early Errors
+-- |
+-- | UniqueFormalParameters : FormalParameters
+-- |
+-- | - It is a Syntax Error if the BoundNames of \|FormalParameters\|
+-- |   contains any duplicate elements.
 -- SPEC: L18847-L18856
 -- | # Runtime Semantics: EvaluateFunctionBody ( \_functionObject\_: an ECMAScript function object, \_argumentsList\_: a List of ECMAScript language values, ): a return completion or a throw completion
 -- |
@@ -3012,6 +3059,10 @@ def evalBinary : BinOp → Value → Value → Value
   | .gt, a, b => .bool (abstractLt b a)
   | .le, a, b => .bool (!abstractLt b a)
   | .ge, a, b => .bool (!abstractLt a b)
+  -- SPEC: L16527-L16530
+  -- | # Binary Logical Operators
+  -- |
+  -- | ## Syntax
   -- SPEC: L16550-L16554
   -- | LogicalANDExpression : LogicalANDExpression \`&&\`
   -- | BitwiseORExpression 1. Let \_lRef\_ be ? Evaluation of
@@ -3163,6 +3214,8 @@ def evalBinary : BinOp → Value → Value → Value
   -- | \*+0\*~𝔽~. 1. Let \_int\_ be truncate(ℝ(\_number\_)). 1. Let
   -- | \_int32bit\_ be \_int\_ modulo 2^32^. 1. \[id=\"step-touint32-return\"\]
   -- | Return 𝔽(\_int32bit\_).
+  -- SPEC: L16499-L16499
+  -- | # Binary Bitwise Operators
   -- SPEC: L16500-L16525
   -- | # Binary Bitwise Operators
   -- |
@@ -4111,6 +4164,8 @@ def pushTrace (s : State) (t : TraceEvent) : State :=
 -- | The principal motivation for this is so that operators such as
 -- | \`delete\` and \`typeof\` may be applied to parenthesized expressions.
 
+-- SPEC: L14776-L14777
+-- | # ECMAScript Language: Expressions
 -- SPEC: L14881-L14912
 -- | # Primary Expression
 -- |
@@ -4155,6 +4210,20 @@ def pushTrace (s : State) (t : TraceEvent) : State :=
 -- | See for PrimaryExpression : AsyncFunctionExpression.
 -- |
 -- | See for PrimaryExpression : AsyncGeneratorExpression.
+-- SPEC: L15189-L15194
+-- | # Regular Expression Literals
+-- |
+-- | ## Syntax
+-- |
+-- | See .
+-- SPEC: L15195-L15202
+-- | # Static Semantics: Early Errors
+-- |
+-- | PrimaryExpression : RegularExpressionLiteral
+-- |
+-- | - It is a Syntax Error if
+-- |   IsValidRegularExpressionLiteral(\|RegularExpressionLiteral\|) is
+-- |   \*false\*.
 -- SPEC: L15427-L15460
 -- | # Left-Hand-Side Expressions
 -- |
@@ -4190,6 +4259,15 @@ def pushTrace (s : State) (t : TraceEvent) : State :=
 -- | ArgumentList\[Yield, Await\] : AssignmentExpression\[+In, ?Yield,
 -- | ?Await\] \`\...\` AssignmentExpression\[+In, ?Yield, ?Await\]
 -- | ArgumentList\[?Yield, ?Await\] \`,\` AssignmentExpression\[+In, ?Yield,
+-- SPEC: L15853-L15860
+-- | # EvaluateImportCall ( \_specifierExpression\_: a Parse Node, optional \_optionsExpression\_: a Parse Node, ): either a normal completion containing a Promise or an abrupt completion
+-- |
+-- | 1\. Let \_referrer\_ be GetActiveScriptOrModule(). 1. If \_referrer\_ is
+-- | \*null\*, set \_referrer\_ to the current Realm Record. 1. Let
+-- | \_specifierRef\_ be ? Evaluation of \_specifierExpression\_. 1. Let
+-- | \_specifier\_ be ? GetValue(\_specifierRef\_). 1. If
+-- | \_optionsExpression\_ is present, then 1. Let \_optionsRef\_ be ?
+-- | Evaluation of \_optionsExpression\_. 1. Let \_options\_ be ?
 
 /-- One deterministic Core small-step transition with emitted trace event. -/
 def step? (s : State) : Option (TraceEvent × State) :=
@@ -4409,6 +4487,26 @@ def step? (s : State) : Option (TraceEvent × State) :=
               let s' := pushTrace { sr with expr := .assign name sr.expr, trace := s.trace } t
               some (t, s')
           | none => none
+  -- SPEC: L16594-L16613
+  -- | # Assignment Operators
+  -- |
+  -- | ## Syntax
+  -- |
+  -- | AssignmentExpression\[In, Yield, Await\] : ConditionalExpression\[?In,
+  -- | ?Yield, ?Await\] \[+Yield\] YieldExpression\[?In, ?Await\]
+  -- | ArrowFunction\[?In, ?Yield, ?Await\] AsyncArrowFunction\[?In, ?Yield,
+  -- | ?Await\] LeftHandSideExpression\[?Yield, ?Await\] \`=\`
+  -- | AssignmentExpression\[?In, ?Yield, ?Await\] #assignment
+  -- | LeftHandSideExpression\[?Yield, ?Await\] AssignmentOperator
+  -- | AssignmentExpression\[?In, ?Yield, ?Await\]
+  -- | LeftHandSideExpression\[?Yield, ?Await\] \`&&=\`
+  -- | AssignmentExpression\[?In, ?Yield, ?Await\]
+  -- | LeftHandSideExpression\[?Yield, ?Await\] \`\|\|=\`
+  -- | AssignmentExpression\[?In, ?Yield, ?Await\]
+  -- | LeftHandSideExpression\[?Yield, ?Await\] \`??=\`
+  -- | AssignmentExpression\[?In, ?Yield, ?Await\] // emu-format ignore
+  -- | AssignmentOperator : one of \`\*=\` \`/=\` \`%=\` \`+=\` \`-=\`
+  -- | \`\<\<=\` \`\>\>=\` \`\>\>\>=\` \`&=\` \`\^=\` \`\|=\` \`\*\*=\`
   -- SPEC: L16560-L16583
   -- | CoalesceExpression : CoalesceExpressionHead \`??\`
   -- | BitwiseORExpression 1. Let \_lRef\_ be ? Evaluation of
@@ -4443,6 +4541,10 @@ def step? (s : State) : Option (TraceEvent × State) :=
   -- | be ? Evaluation of the first \|AssignmentExpression\|. 1. Return ?
   -- | GetValue(\_trueRef\_). 1. Let \_falseRef\_ be ? Evaluation of the second
   -- | \|AssignmentExpression\|. 1. Return ? GetValue(\_falseRef\_).
+  -- SPEC: L17575-L17577
+  -- | # The \`if\` Statement
+  -- |
+  -- | ## Syntax
   -- SPEC: L17606-L17621
   -- | # Runtime Semantics: Evaluation
   -- |
@@ -4508,12 +4610,39 @@ def step? (s : State) : Option (TraceEvent × State) :=
   -- |         
   -- | ```
   -- |
+  -- SPEC: L17540-L17545
+  -- | # Empty Statement
+  -- |
+  -- | ## Syntax
+  -- |
+  -- | EmptyStatement : \`;\`
   -- SPEC: L17544-L17548
   -- | EmptyStatement : \`;\`
   -- |
   -- | # Runtime Semantics: Evaluation
   -- |
   -- | EmptyStatement : \`;\` 1. Return \~empty\~.
+  -- SPEC: L17550-L17570
+  -- | # Expression Statement
+  -- |
+  -- | ## Syntax
+  -- |
+  -- | ExpressionStatement\[Yield, Await\] : \[lookahead ∉ { \`{\`,
+  -- | \`function\`, \`async\` \[no LineTerminator here\] \`function\`,
+  -- | \`class\`, \`let\` \`\[\` }\] Expression\[+In, ?Yield, ?Await\] \`;\`
+  -- |
+  -- | An \|ExpressionStatement\| cannot start with a U+007B (LEFT CURLY
+  -- | BRACKET) because that might make it ambiguous with a \|Block\|. An
+  -- | \|ExpressionStatement\| cannot start with the \`function\` or \`class\`
+  -- | keywords because that would make it ambiguous with a
+  -- | \|FunctionDeclaration\|, a \|GeneratorDeclaration\|, or a
+  -- | \|ClassDeclaration\|. An \|ExpressionStatement\| cannot start with
+  -- | \`async function\` because that would make it ambiguous with an
+  -- | \|AsyncFunctionDeclaration\| or a \|AsyncGeneratorDeclaration\|. An
+  -- | \|ExpressionStatement\| cannot start with the two token sequence \`let
+  -- | \[\` because that would make it ambiguous with a \`let\`
+  -- | \|LexicalDeclaration\| whose first \|LexicalBinding\| was an
+  -- | \|ArrayBindingPattern\|.
   -- SPEC: L17573-L17575
   -- | ExpressionStatement : Expression \`;\` 1. Let \_exprRef\_ be ?
   -- | Evaluation of \|Expression\|. 1. Return ? GetValue(\_exprRef\_).
@@ -5974,6 +6103,38 @@ def step? (s : State) : Option (TraceEvent × State) :=
           -- for-of on non-iterable: no iteration.
           let s' := pushTrace { s with expr := .lit .undefined } .silent
           some (.silent, s')
+  -- SPEC: L18341-L18352
+  -- | # The \`switch\` Statement
+  -- |
+  -- | ## Syntax
+  -- |
+  -- | SwitchStatement\[Yield, Await, Return\] : \`switch\` \`(\`
+  -- | Expression\[+In, ?Yield, ?Await\] \`)\` CaseBlock\[?Yield, ?Await,
+  -- | ?Return\] CaseBlock\[Yield, Await, Return\] : \`{\` CaseClauses\[?Yield,
+  -- | ?Await, ?Return\]? \`}\` \`{\` CaseClauses\[?Yield, ?Await, ?Return\]?
+  -- | DefaultClause\[?Yield, ?Await, ?Return\] CaseClauses\[?Yield, ?Await,
+  -- | ?Return\]? \`}\` CaseClauses\[Yield, Await, Return\] :
+  -- | CaseClause\[?Yield, ?Await, ?Return\] CaseClauses\[?Yield, ?Await,
+  -- | ?Return\] CaseClause\[?Yield, ?Await, ?Return\] CaseClause\[Yield,
+  -- SPEC: L18353-L18371
+  -- | Await, Return\] : \`case\` Expression\[+In, ?Yield, ?Await\] \`:\`
+  -- | StatementList\[?Yield, ?Await, ?Return\]? DefaultClause\[Yield, Await,
+  -- | Return\] : \`default\` \`:\` StatementList\[?Yield, ?Await, ?Return\]?
+  -- |
+  -- | # Static Semantics: Early Errors
+  -- |
+  -- | SwitchStatement : \`switch\` \`(\` Expression \`)\` CaseBlock
+  -- |
+  -- | - It is a Syntax Error if the LexicallyDeclaredNames of \|CaseBlock\|
+  -- |   contains any duplicate entries[, unless the host is a web browser or
+  -- |   otherwise supports , and both of the following conditions are
+  -- |   true:]{normative-optional=""}
+  -- |
+  -- |   - IsStrict(this production) is \*false\*.
+  -- |   - The duplicate entries are only bound by FunctionDeclarations.
+  -- |
+  -- | - It is a Syntax Error if any element of the LexicallyDeclaredNames of
+  -- |   \|CaseBlock\| also occurs in the VarDeclaredNames of \|CaseBlock\|.
   -- SPEC: L18432-L18443
   -- | SwitchStatement : \`switch\` \`(\` Expression \`)\` CaseBlock 1. Let
   -- | \_exprRef\_ be ? Evaluation of \|Expression\|. 1. Let \_switchValue\_ be
