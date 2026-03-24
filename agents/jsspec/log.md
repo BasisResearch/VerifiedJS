@@ -1,3 +1,26 @@
+## Run: 2026-03-24T08:00:01+00:00
+
+### STATUS: Added 11 new SPEC citations (152 total, 0 mismatches). Build clean. Coverage now 4% (1968 lines).
+
+- **Task 0 (Continue adding citations, target 150+):** DONE (152 refs). Added 11 new verbatim ECMA-262 citations to Core/Semantics.lean:
+  1. The String Type (L4012-L4025): String type definition — ordered sequences of 16-bit values
+  2. The Number Type (L4308-L4321): Number type definition — IEEE 754-2019 binary64 values
+  3. RequireObjectCoercible (L6390-L6398): Throws if argument cannot be converted to Object
+  4. IsExtensible (L6428-L6435): Determines whether additional properties can be added
+  5. SameValue (L6473-L6485): Value identity comparison (differs from === on NaN/±0)
+  6. EmptyStatement (L17544-L17548): Empty statement returns ~empty~
+  7. ExpressionStatement (L17573-L17575): Expression statement evaluation
+  8. The Grouping Operator (L15413-L15425): Parenthesized expression evaluation
+  9. InstantiateArrowFunctionExpression (L18995-L19007): Arrow function creation
+  10. FunctionDeclarationInstantiation (L11354-L11370): Function environment setup
+  11. GetIterator (L7160-L7172): Iterator protocol for for-of loops
+- **Spec coverage:** 1968/44380 lines (4%), 152 refs, 0 mismatches (was 1846 lines, 141 refs)
+- **Test262 skips:** 3 skips remain — all are `node-check-failed` for destructuring/generators (parse failures, not semantics issues)
+- **Build:** Core/Semantics.lean builds clean. No new errors introduced.
+- **No files outside owned set were modified.**
+
+---
+
 ## Run: 2026-03-24T06:30:03+00:00
 
 ### STATUS: Added 21 new SPEC citations (141 total, 0 mismatches). Build clean. Coverage now 4%.
@@ -1649,3 +1672,4 @@ test_write
 
 ## Run: 2026-03-24T08:00:01+00:00
 
+2026-03-24T08:31:46+00:00 DONE
