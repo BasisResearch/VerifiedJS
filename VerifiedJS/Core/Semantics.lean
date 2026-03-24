@@ -315,7 +315,7 @@ def evalUnary : UnaryOp → Value → Value
   | .neg, v => .number (-toNumber v)
   | .pos, v => .number (toNumber v)
   | .logNot, v => .bool (!toBoolean v)
-  -- SPEC: L16148-L16157
+  -- SPEC: L16150-L16156
   -- | # The \`void\` Operator
   -- |
   -- | # Runtime Semantics: Evaluation
@@ -324,7 +324,7 @@ def evalUnary : UnaryOp → Value → Value
   -- | Evaluation of \|UnaryExpression\|. 1. Perform ? GetValue(\_expr\_). 1.
   -- | Return \*undefined\*.
   | .void, _ => .undefined
-  -- SPEC: L16204-L16213
+  -- SPEC: L16204-L16212
   -- | # Bitwise NOT Operator ( \`\~\` )
   -- |
   -- | # Runtime Semantics: Evaluation
@@ -334,6 +334,12 @@ def evalUnary : UnaryOp → Value → Value
   -- | GetValue(\_expr\_)). 1. If \_oldValue\_ is a Number, return
   -- | Number::bitwiseNOT(\_oldValue\_). 1. Assert: \_oldValue\_ is a
   -- | BigInt. 1. Return BigInt::bitwiseNOT(\_oldValue\_).
+  -- SPEC: L4411-L4416
+  -- | # Number::bitwiseNOT ( \_x\_: a Number, ): an integral Number
+  -- |
+  -- | 1\. Let \_oldValue\_ be ! ToInt32(\_x\_). 1. Return the bitwise
+  -- | complement of \_oldValue\_. The mathematical value of the result is
+  -- | exactly representable as a 32-bit two\'s complement bit string.
   | .bitNot, v => .number (~~~(toNumber v |>.toUInt32)).toFloat
 
 -- SPEC: L6305-L6321
@@ -661,9 +667,30 @@ def abstractLt : Value → Value → Bool
 -- | # Number::bitwiseOR ( \_x\_: a Number, \_y\_: a Number, ): an integral Number
 -- |
 -- | 1\. Return NumberBitwiseOp(\`\|\`, \_x\_, \_y\_).
+-- SPEC: L16787-L16807
+-- | # ApplyStringOrNumericBinaryOperator ( \_lVal\_: an ECMAScript language value, \_opText\_: \`\*\*\`, \`\*\`, \`/\`, \`%\`, \`+\`, \`-\`, \`\<\<\`, \`\>\>\`, \`\>\>\>\`, \`&\`, \`\^\`, or \`\|\`, \_rVal\_: an ECMAScript language value, ): either a normal completion containing either a String, a BigInt, or a Number, or a throw completion
+-- |
+-- | 1\. If \_opText\_ is \`+\`, then 1.
+-- | \[id=\"step-binary-op-toprimitive-lval\"\] Let \_lPrim\_ be ?
+-- | ToPrimitive(\_lVal\_). 1. \[id=\"step-binary-op-toprimitive-rval\"\] Let
+-- | \_rPrim\_ be ? ToPrimitive(\_rVal\_). 1.
+-- | \[id=\"step-binary-op-string-check\"\] If \_lPrim\_ is a String or
+-- | \_rPrim\_ is a String, then 1. Let \_lStr\_ be ? ToString(\_lPrim\_). 1.
+-- | Let \_rStr\_ be ? ToString(\_rPrim\_). 1. Return the
+-- | string-concatenation of \_lStr\_ and \_rStr\_. 1. Set \_lVal\_ to
+-- | \_lPrim\_. 1. Set \_rVal\_ to \_rPrim\_. 1. NOTE: At this point, it must
+-- | be a numeric operation. 1. Let \_lNum\_ be ? ToNumeric(\_lVal\_). 1. Let
+-- | \_rNum\_ be ? ToNumeric(\_rVal\_). 1. If SameType(\_lNum\_, \_rNum\_) is
+-- | \*false\*, throw a \*TypeError\* exception. 1. If \_lNum\_ is a BigInt,
+-- | then 1. If \_opText\_ is \`\*\*\`, return ?
+-- | BigInt::exponentiate(\_lNum\_, \_rNum\_). 1. If \_opText\_ is \`/\`,
+-- | return ? BigInt::divide(\_lNum\_, \_rNum\_). 1. If \_opText\_ is \`%\`,
+-- | return ? BigInt::remainder(\_lNum\_, \_rNum\_). 1. If \_opText\_ is
+-- | \`\>\>\>\`, return ? BigInt::unsignedRightShift(\_lNum\_, \_rNum\_). 1.
+-- | Let \_operation\_ be the abstract operation associated with \_opText\_
+-- | in the following table:
 /-- ECMA-262 §13.15 Runtime Semantics: Evaluation (core binary subset). -/
 def evalBinary : BinOp → Value → Value → Value
-  -- ECMA-262 §12.8.3: if either operand is a string, concatenate after ToString.
   | .add, .string a, .string b => .string (a ++ b)
   | .add, .string a, b => .string (a ++ valueToString b)
   | .add, a, .string b => .string (valueToString a ++ b)
@@ -671,7 +698,7 @@ def evalBinary : BinOp → Value → Value → Value
   | .sub, a, b => .number (toNumber a - toNumber b)
   | .mul, a, b => .number (toNumber a * toNumber b)
   | .div, a, b => .number (toNumber a / toNumber b)
-  -- SPEC: L16451-L16489
+  -- SPEC: L16453-L16474
   -- | EqualityExpression : EqualityExpression \`==\` RelationalExpression 1.
   -- | Let \_lRef\_ be ? Evaluation of \|EqualityExpression\|. 1. Let \_lVal\_
   -- | be ? GetValue(\_lRef\_). 1. Let \_rRef\_ be ? Evaluation of
@@ -712,7 +739,7 @@ def evalBinary : BinOp → Value → Value → Value
   -- | return \*false\*. 1. If \_x\_ is \_y\_, return \*true\*. 1. If \_x\_ is
   -- | \*+0\*~𝔽~ and \_y\_ is \*-0\*~𝔽~, return \*true\*. 1. If \_x\_ is
   -- | \*-0\*~𝔽~ and \_y\_ is \*+0\*~𝔽~, return \*true\*. 1. Return \*false\*.
-  -- SPEC: L6499-L6513
+  -- SPEC: L6499-L6512
   -- | # SameValueNonNumber ( \_x\_: an ECMAScript language value, but not a Number, \_y\_: an ECMAScript language value, but not a Number, ): a Boolean
   -- |
   -- | 1\. Assert: SameType(\_x\_, \_y\_) is \*true\*. 1. If \_x\_ is either
@@ -723,7 +750,10 @@ def evalBinary : BinOp → Value → Value → Value
   -- | is a Boolean, then 1. If \_x\_ and \_y\_ are both \*true\* or both
   -- | \*false\*, return \*true\*. 1. Return \*false\*. 1. NOTE: All other
   -- | ECMAScript language values are compared by identity. 1. If \_x\_ is
-  -- | \_y\_, return \*true\*. 1. Return \*false\*.
+  -- | \_y\_, return \*true\*. 1. Return \*false\*. For expository purposes,
+  -- | some cases are handled separately within this algorithm even if it is
+  -- | unnecessary to do so. The specifics of what \"\_x\_ is \_y\_\" means are
+  -- | detailed in .
   | .strictEq, a, b => .bool (a == b)
   | .strictNeq, a, b => .bool (a != b)
   -- SPEC: L16365-L16388
@@ -823,7 +853,7 @@ def evalBinary : BinOp → Value → Value → Value
   -- | ExponentiationExpression 1. Return ?
   -- | EvaluateStringOrNumericBinaryExpression(\|UpdateExpression\|, \`\*\*\`,
   -- | \|ExponentiationExpression\|).
-  -- SPEC: L4417-L4454
+  -- SPEC: L4417-L4445
   -- | # Number::exponentiate ( \_base\_: a Number, \_exponent\_: a Number, ): a Number
   -- |
   -- | description
@@ -1154,6 +1184,28 @@ def step? (s : State) : Option (TraceEvent × State) :=
   -- | \*false\*, throw a \*TypeError\* exception. 1. If \_tailPosition\_ is
   -- | \*true\*, perform PrepareForTailCall(). 1. Return ? Call(\_func\_,
   -- | \_thisValue\_, \_argList\_).
+  -- SPEC: L11074-L11094
+  -- | # \[\[Call\]\] ( \_thisArgument\_: an ECMAScript language value, \_argumentsList\_: a List of ECMAScript language values, ): either a normal completion containing an ECMAScript language value or a throw completion
+  -- |
+  -- | for
+  -- | :   an ECMAScript function object \_F\_
+  -- |
+  -- | 1\. Let \_callerContext\_ be the running execution context. 1. Let
+  -- | \_calleeContext\_ be PrepareForOrdinaryCall(\_F\_, \*undefined\*). 1.
+  -- | Assert: \_calleeContext\_ is now the running execution context. 1. If
+  -- | \_F\_.\[\[IsClassConstructor\]\] is \*true\*, then 1. Let \_error\_ be a
+  -- | newly created \*TypeError\* object. 1. NOTE: \_error\_ is created in
+  -- | \_calleeContext\_ with \_F\_\'s associated Realm Record. 1. Remove
+  -- | \_calleeContext\_ from the execution context stack and restore
+  -- | \_callerContext\_ as the running execution context. 1. Return
+  -- | ThrowCompletion(\_error\_). 1. Perform OrdinaryCallBindThis(\_F\_,
+  -- | \_calleeContext\_, \_thisArgument\_). 1. Let \_result\_ be
+  -- | Completion(OrdinaryCallEvaluateBody(\_F\_, \_argumentsList\_)). 1.
+  -- | \[id=\"step-call-pop-context-stack\"\] Remove \_calleeContext\_ from the
+  -- | execution context stack and restore \_callerContext\_ as the running
+  -- | execution context. 1. If \_result\_ is a return completion, return
+  -- | \_result\_.\[\[Value\]\]. 1. Assert: \_result\_ is a throw
+  -- | completion. 1. Return ? \_result\_.
   | .call callee args =>
       -- Step 1: Step callee to a value.
       match exprValue? callee with
