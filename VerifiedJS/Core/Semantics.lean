@@ -11228,6 +11228,92 @@ theorem Step_iff (s : State) (t : TraceEvent) (s' : State) :
 -- | - may have host-defined properties in addition to the properties defined
 -- |   in this specification. This may include a property whose value is the
 -- |   global object itself.
+-- SPEC: L23084-L23094
+-- | # Value Properties of the Global Object
+-- |
+-- | # globalThis
+-- |
+-- | The initial value of the \*\"globalThis\"\* property of the global
+-- | object in a Realm Record \_realm\_ is
+-- | \_realm\_.\[\[GlobalEnv\]\].\[\[GlobalThisValue\]\].
+-- |
+-- | This property has the attributes { \[\[Writable\]\]: \*true\*,
+-- | \[\[Enumerable\]\]: \*false\*, \[\[Configurable\]\]: \*true\* }.
+-- SPEC: L23095-L23099
+-- | # Infinity
+-- |
+-- | The value of \`Infinity\` is \*+∞\*~𝔽~ (see ). This property has the
+-- | attributes { \[\[Writable\]\]: \*false\*, \[\[Enumerable\]\]: \*false\*,
+-- | \[\[Configurable\]\]: \*false\* }.
+-- SPEC: L23100-L23104
+-- | # NaN
+-- |
+-- | The value of \`NaN\` is \*NaN\* (see ). This property has the attributes
+-- | { \[\[Writable\]\]: \*false\*, \[\[Enumerable\]\]: \*false\*,
+-- | \[\[Configurable\]\]: \*false\* }.
+-- SPEC: L23105-L23109
+-- | # undefined
+-- |
+-- | The value of \`undefined\` is \*undefined\* (see ). This property has
+-- | the attributes { \[\[Writable\]\]: \*false\*, \[\[Enumerable\]\]:
+-- | \*false\*, \[\[Configurable\]\]: \*false\* }.
+-- SPEC: L23110-L23130
+-- | # Function Properties of the Global Object
+-- |
+-- | # eval ( \_x\_ )
+-- |
+-- | This function is the [%eval%]{.dfn} intrinsic object.
+-- |
+-- | It performs the following steps when called:
+-- |
+-- | 1\. Return ? PerformEval(\_x\_, \*false\*, \*false\*).
+-- |
+-- | # PerformEval ( \_x\_: an ECMAScript language value, \_strictCaller\_: a Boolean, \_direct\_: a Boolean, ): either a normal completion containing an ECMAScript language value or a throw completion
+-- |
+-- | 1\. Assert: If \_direct\_ is \*false\*, then \_strictCaller\_ is also
+-- | \*false\*. 1. If \_x\_ is not a String, return \_x\_. 1. Let
+-- | \_evalRealm\_ be the current Realm Record. 1. NOTE: In the case of a
+-- | direct eval, \_evalRealm\_ is the realm of both the caller of \`eval\`
+-- | and of the \`eval\` function itself. 1. Perform ?
+-- | HostEnsureCanCompileStrings(\_evalRealm\_, « », \_x\_, \*false\*).
+-- SPEC: L4091-L4108
+-- | # StringIndexOf ( \_string\_: a String, \_searchValue\_: a String, \_fromIndex\_: a non-negative integer, ): a non-negative integer or \~not-found\~
+-- |
+-- | 1\. Let \_len\_ be the length of \_string\_. 1. If \_searchValue\_ is
+-- | the empty String and \_fromIndex\_ ≤ \_len\_, return \_fromIndex\_. 1.
+-- | Let \_searchLen\_ be the length of \_searchValue\_. 1. For each integer
+-- | \_i\_ such that \_fromIndex\_ ≤ \_i\_ ≤ \_len\_ - \_searchLen\_, in
+-- | ascending order, do 1. Let \_candidate\_ be the substring of \_string\_
+-- | from \_i\_ to \_i\_ + \_searchLen\_. 1. If \_candidate\_ is
+-- | \_searchValue\_, return \_i\_. 1. Return \~not-found\~.
+-- |
+-- | If \_searchValue\_ is the empty String and \_fromIndex\_ ≤ the length of
+-- | \_string\_, this algorithm returns \_fromIndex\_. The empty String is
+-- | effectively found at every position within a string, including after the
+-- | last code unit.
+-- |
+-- | This algorithm always returns \~not-found\~ if \_fromIndex\_ + the
+-- | length of \_searchValue\_ \> the length of \_string\_.
+-- SPEC: L4109-L4121
+-- | # StringLastIndexOf ( \_string\_: a String, \_searchValue\_: a String, \_fromIndex\_: a non-negative integer, ): a non-negative integer or \~not-found\~
+-- |
+-- | 1\. Let \_len\_ be the length of \_string\_. 1. Let \_searchLen\_ be the
+-- | length of \_searchValue\_. 1. Assert: \_fromIndex\_ + \_searchLen\_ ≤
+-- | \_len\_. 1. For each integer \_i\_ such that 0 ≤ \_i\_ ≤ \_fromIndex\_,
+-- | in descending order, do 1. Let \_candidate\_ be the substring of
+-- | \_string\_ from \_i\_ to \_i\_ + \_searchLen\_. 1. If \_candidate\_ is
+-- | \_searchValue\_, return \_i\_. 1. Return \~not-found\~.
+-- |
+-- | If \_searchValue\_ is the empty String, this algorithm returns
+-- | \_fromIndex\_. The empty String is effectively found at every position
+-- | within a string, including after the last code unit.
+-- SPEC: L5811-L5817
+-- | # CreateByteDataBlock ( \_size\_: a non-negative integer, ): either a normal completion containing a Data Block or a throw completion
+-- |
+-- | 1\. If \_size\_ \> 2^53^ - 1, throw a \*RangeError\* exception. 1. Let
+-- | \_db\_ be a new Data Block value consisting of \_size\_ bytes. If it is
+-- | impossible to create such a Data Block, throw a \*RangeError\*
+-- | exception. 1. Set all of the bytes of \_db\_ to 0. 1. Return \_db\_.
 def Behaves (p : Program) (b : List TraceEvent) : Prop :=
   ∃ sFinal,
     Steps (initialState p) b sFinal ∧
