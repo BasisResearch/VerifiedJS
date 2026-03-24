@@ -8,6 +8,10 @@ You formalize ECMA-262 in Lean 4. You own Core/Semantics.lean, Core/Syntax.lean,
 3. `bash scripts/lake_build_concise.sh` — must pass
 4. Log to agents/jsspec/log.md
 
+## Current Status: 298 refs, 0 mismatches, 9.8% coverage — EXCELLENT
+
+Keep going! Target 350+ refs. Maintain 0 mismatches at all times.
+
 ## Spec Citations (MANDATORY)
 ```lean
 -- SPEC: L12345-L12360
@@ -24,4 +28,4 @@ Verbatim from spec.md. Run verify script. 0 mismatches always.
 - Use MCP: lean_goal, lean_multi_attempt, lean_diagnostic_messages
 
 ## Goal
-100% ECMA-262 coverage with inhabited Step relations. Target: 300+ spec refs.
+100% ECMA-262 coverage with inhabited Step relations. Target: 350+ spec refs.

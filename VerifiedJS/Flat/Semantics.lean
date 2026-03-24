@@ -1562,14 +1562,18 @@ theorem step?_none_implies_lit (s : State) (h : step? s = none) :
     -- List-pattern cases: firstNonValueExpr / firstNonValueProp with IH contradiction.
     | tryCatch body _ _ fin =>
       unfold step? at h; simp only [-step?] at h
-      -- First split: isCallFrame check
+      -- First split on exprValue? body
       split at h
-      · -- exprValue? body = some → if isCallFrame then ...; else match finally_ ...
-        split at h <;> [simp at h; cases fin <;> simp at h]
+      · -- exprValue? body = some → if isCallFrame then some; else match finally_ ...
+        split at h
+        · simp at h  -- isCallFrame = true → returns some
+        · cases fin <;> simp at h  -- isCallFrame = false → both finally branches return some
       · -- exprValue? body = none
         split at h
-        · -- step? body = some (.error ..) → isCallFrame checks
-          split at h <;> [simp at h; split at h <;> simp at h]
+        · -- step? body = some (.error ..) → isCallFrame checks, all return some
+          split at h
+          · simp at h  -- isCallFrame && startsWith → returns some
+          · split at h <;> simp at h  -- isCallFrame else → returns some
         · simp at h  -- step? body = some (t, _) → returns some
         · -- step? body = none
           rename_i _ hstep
@@ -1594,7 +1598,13 @@ theorem step?_none_implies_lit (s : State) (h : step? s = none) :
             subst hv; simp_all [exprValue?]
         · -- exprValue? envExpr = some _
           split at h
-          · simp at h  -- valuesFromExprList? = some → returns some
+          · -- valuesFromExprList? = some → match on closure, all branches return some
+            split at h
+            · -- exprValue? funcExpr = some (.closure ..) → consoleLog / funcs lookup
+              split at h
+              · simp at h  -- consoleLogIdx → returns some
+              · split at h <;> simp at h  -- funcs[idx]? some/none → returns some
+            · simp at h  -- non-closure callee → returns some
           · -- valuesFromExprList? = none
             split at h
             · -- firstNonValueExpr = some (done, target, remaining)

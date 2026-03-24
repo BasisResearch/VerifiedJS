@@ -17,21 +17,52 @@ Composition: elaborate o closureConvert o anfConvert o lower o emit.
 4. `bash scripts/lake_build_concise.sh` — verify
 5. Log strategy, progress, and next step to agents/proof/log.md
 
-## CC_SimRel: Replace heap = with HeapCorr
-`sf.heap = sc.heap` is too strong. Closure conversion allocates env structs on Flat heap.
+## TASK 0: Close remaining noCallFrameReturn IH sorries (MECHANICAL)
 
-Replace with:
+You have ~12 sorry instances of the form `hheap sorry` where sorry fills the
+`noCallFrameReturn sc_sub.expr = true` argument to ih_depth. You already closed
+the first 2 (setIndex lines) using the right tactic. Apply the SAME pattern to all:
+
+```lean
+(by have h := hncfr; rw [hsc] at h; simp [noCallFrameReturn, Bool.and_eq_true] at h; exact h.<projection>)
+```
+
+Where `<projection>` depends on the constructor:
+- Binary `.deleteProp obj prop`: `noCallFrameReturn = noCallFrameReturn obj` → `exact h`
+- Binary `.getProp obj _`: same → `exact h`
+- Ternary `.setIndex obj idx val`: `.1` for obj, `.1.2` for idx, `.2` for val
+- `.seq a b` / `.let _ a b`: `.1` for first, `.2` for second
+- `.if c t e`: `.1` for cond, `.1.2` for then, `.2` for else
+- `.tryCatch body _ cb fin`: `.1` for body
+- etc.
+
+Use `lean_goal` at each sorry to see what expression is `hsc` — that tells you the constructor and which sub-expression projection to use.
+
+## TASK 1: HeapCorr (your discovery — the RIGHT abstraction)
+
+Your 12:30 insight is correct: `sf.heap = sc.heap` blocks captured var, call,
+newObj, objectLit, arrayLit. Replace with:
+
 ```lean
 private def HeapCorr (cheap fheap : Core.Heap) : Prop :=
-  cheap.length <= fheap.length /\
-  forall addr, addr < cheap.length -> cheap.get? addr = fheap.get? addr
+  cheap.length <= fheap.length ∧
+  ∀ addr, addr < cheap.length → cheap.get? addr = fheap.get? addr
 ```
-Prove: HeapCorr_alloc_flat, HeapCorr_alloc_both, HeapCorr_get.
-This unblocks: captured var, call, newObj, objectLit, arrayLit, getProp, setProp.
 
-## isCallFrame: Add noCallFrameReturn to CC_SimRel
-Define `Expr.noCallFrameReturn : Expr -> Bool` recursively in Core/Syntax.lean.
-Add `sc.expr.noCallFrameReturn = true` to CC_SimRel. Close isCallFrame sorries by contradiction.
+**BUT DO TASK 0 FIRST.** Changing CC_SimRel again will create MORE sorry
+obligations in the IH positions. Close the noCallFrameReturn ones first so
+they don't stack with HeapCorr ones.
+
+When you do HeapCorr:
+1. Add `HeapCorr sc.heap sf.heap` to CC_SimRel (replacing `sf.heap = sc.heap`)
+2. Prove `HeapCorr_refl`, `HeapCorr_alloc_flat`, `HeapCorr_get`
+3. Fix init_related (trivial: `⟨Nat.le_refl _, fun _ h => rfl⟩`)
+4. Fix the heap argument in IH calls (most will be `hheap` directly since
+   HeapCorr is preserved by Core-side steps that don't allocate)
+
+## TASK 2: ANF sorries (lines 106, 1181)
+
+Independent from CC. If CC work is blocked, switch to these.
 
 ## Time Management
 - Do NOT run lake build at start. Use lean_diagnostic_messages.

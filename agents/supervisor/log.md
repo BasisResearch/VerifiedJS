@@ -3904,3 +3904,60 @@ Wrote COMPLETE Lean code for the definition (3 mutually recursive functions) + e
 
 ## Run: 2026-03-24T13:05:01+00:00
 
+
+### Build
+- **Status**: `lake build` **PASS** ✅
+
+### Metrics
+- **Sorry count**: ~51 (18 CC + 30 Wasm + 2 ANF + 1 Lower) — UP from 42 but structural
+- **Test262**: 3 pass, 50 fail, 3 skip, 5 xfail / 63 total (UNCHANGED 150+ hrs)
+- **Spec coverage**: 4328/44380 lines (9.8%), 298 refs, 0 mismatches (UP from 250 refs/7.6%!)
+- **WasmCert refs**: 0 checked, 0 mismatches
+
+### Proof Chain Status
+```
+Source ──[elaborate]──> Core ──[closureConvert]──> Flat ──[anfConvert]──> ANF ──[lower]──> Wasm.IR ──[emit]──> Wasm
+         ✅ proved       18 sorry                   2 sorry              1 sorry          30 sorry
+```
+
+### Sorry Delta: 42→~51 (+9, structural regression)
+- CC: 8→18 (+10) — proof agent added `noCallFrameReturn` to CC_SimRel, creating 12 IH obligation sorries. Already closing them (was 19, now 18 during this run).
+- Wasm: 28→30 (+2) — slight regression
+- ANF: 2 (unchanged)
+- Lower: 4→1 (-3) — likely consolidated into Wasm/Semantics
+
+### Agent Status
+- **proof**: Running since 12:30. **KEY INSIGHT: identified HeapCorr as fundamental blocker** — `sf.heap = sc.heap` too strong, needs superset relation. Added noCallFrameReturn to SimRel (correct!), actively closing the 12 mechanical IH sorries. Making real-time progress.
+- **wasmspec**: Completed at 12:45. Call stub STILL NOT FIXED (7th supervisor run asking). 30 Wasm sorries.
+- **jsspec**: Timed out at 13:00. **EXCELLENT**: 298 refs (+48 from 250), 0 mismatches, 9.8% coverage. Great quality.
+
+### Abstraction Discovery
+
+**CC sorry taxonomy (18, but 12 are mechanical):**
+
+6 FUNDAMENTAL sorries:
+1. **captured var (1)**: line 857 — stuttering simulation (Flat 2 steps vs Core 1 step). Needs `Flat.Steps`.
+2. **call BLOCKED (1)**: line 1567 — Flat stub returns .undefined. Waiting on wasmspec 7th run.
+3. **newObj (1)**: line 1568 — heap allocation correspondence.
+4. **objectLit/arrayLit/functionDef (3)**: lines 2934-2936 — heap/env/funcs correspondence.
+
+12 MECHANICAL sorries (noCallFrameReturn IH obligations):
+- Lines 2488, 2608, 2732, 2836, 2891, 3013, 3184, 3274, 3349, 3624, 3788, 3902
+- All same pattern: `(by have h := hncfr; rw [hsc] at h; simp [noCallFrameReturn, Bool.and_eq_true] at h; exact h.<projection>)`
+- Proof agent already closing these (2 done during this run's observation window)
+
+**HeapCorr: The RIGHT next abstraction (proof agent's discovery)**
+`sf.heap = sc.heap` is too strong — closure conversion allocates env structs on Flat heap that don't exist in Core. HeapCorr (Core prefix of Flat heap) is correct. BUT should only be attempted AFTER noCallFrameReturn sorries are closed, to avoid stacking obligations.
+
+### Prompts Updated
+1. ✅ Updated proof prompt (2026-03-24T13:05): TASK 0 = close 12 noCallFrameReturn IH sorries (exact pattern). TASK 1 = HeapCorr (after TASK 0). TASK 2 = ANF.
+2. ✅ Updated wasmspec prompt (2026-03-24T13:05): URGENT call stub (7th time). Updated Wasm sorry line numbers (30 total). NO NEW SORRIES rule.
+3. ✅ Updated jsspec prompt (2026-03-24T13:05): Celebrated 298 refs/0 mismatches/9.8%. Target 350+ refs.
+4. ✅ Updated PROGRESS.md: metrics, proof chain (CC 18 sorry with taxonomy).
+
+### Next Run Focus
+- Monitor proof agent: are noCallFrameReturn IH sorries going to 0?
+- Check wasmspec: did it FINALLY fix call stub?
+- Track jsspec refs: should approach 325+
+2026-03-24T13:05:01+00:00 DONE
+2026-03-24T13:33:46+00:00 DONE
