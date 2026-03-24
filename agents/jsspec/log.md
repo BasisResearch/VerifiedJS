@@ -1,3 +1,85 @@
+## Run: 2026-03-24T11:00:01+00:00
+
+### STATUS: Added 70 new SPEC citations (250 total, 0 mismatches). Build clean. Coverage now 7% (3353 lines).
+
+- **Task 0 (Continue adding citations, target 250+):** DONE (250 refs). Added 70 new verbatim ECMA-262 citations to Core/Semantics.lean:
+  1. The Reference Record Specification Type (L5513-L5533): Reference record structure and fields
+  2. IsPropertyReference (L5534-L5539): Determines if base is a property
+  3. IsUnresolvableReference (L5540-L5544): Determines if base is unresolvable
+  4. IsSuperReference (L5545-L5549): Determines if reference is super
+  5. IsPrivateReference (L5550-L5554): Determines if reference is private
+  6. GetThisValue (L5604-L5609): Gets this value from reference
+  7. The Object Type (L4856-L4909): Object type definition and properties
+  8. Property Attributes (L4910-L4924): Data/accessor property attribute table
+  9. HasBinding (L8873-L8884): Declarative env record binding check
+  10. CreateImmutableBinding (L8902-L8917): Immutable binding creation
+  11. InitializeBinding (L8918-L8932): Binding initialization
+  12. IsAccessorDescriptor (L5653-L5657): Property descriptor accessor check
+  13. IsDataDescriptor (L5658-L5663): Property descriptor data check
+  14. IsGenericDescriptor (L5664-L5669): Property descriptor generic check
+  15. ToNumeric (L5995-L6003): Value to Number/BigInt conversion
+  16. Number::leftShift (L4553-L4560): Bitwise left shift
+  17. Number::signedRightShift (L4561-L4569): Bitwise signed right shift
+  18. Number::unsignedRightShift (L4570-L4578): Bitwise unsigned right shift
+  19. Set (L6671-L6680): Object property set operation
+  20. DefinePropertyOrThrow (L6734-L6744): Property definition with TypeError
+  21. GetMethod (L6754-L6765): Method retrieval from value
+  22. OrdinaryDefineOwnProperty (L10770-L10776): Own property definition
+  23. NewFunctionEnvironment (L9679-L9689): Function env record creation
+  24. OrdinaryCallBindThis (L11118-L11135): This binding during call
+  25. BindThisValue (L9223-L9234): Function env this binding
+  26. GetThisEnvironment (L9986-L10001): Finding this binding env
+  27. EnumerableOwnProperties (L6940-L6952): Enumerating own properties
+  28. MakeConstructor (L11271-L11293): Converting function to constructor
+  29. MakeClassConstructor (L11294-L11298): Class constructor setup
+  30. MakeMethod (L11299-L11306): Method configuration
+  31. DefineMethodProperty (L11307-L11319): Method property definition
+  32. SetFunctionLength (L11343-L11353): Length property on functions
+  33. GetPrototypeFromConstructor (L11005-L11025): Prototype from constructor
+  34. ArrayCreate (L11768-L11782): Array creation
+  35. Postfix Increment (L16028-L16039): Postfix ++ evaluation
+  36. Postfix Decrement (L16040-L16053): Postfix -- evaluation
+  37. Prefix Increment (L16054-L16066): Prefix ++ evaluation
+  38. Prefix Decrement (L16067-L16080): Prefix -- evaluation
+  39. BindingInitialization (L8534-L8571): Binding initialization runtime
+  40. InitializeBoundName (L8572-L8578): Bound name initialization
+  41. BlockDeclarationInstantiation (L17293-L17331): Block scope instantiation
+  42. PropertyDefinitionEvaluation (L15136-L15176): Object property evaluation
+  43. CaseBlockEvaluation (L18372-L18415): Switch case evaluation
+  44. CaseClauseIsSelected (L18416-L18430): Case clause matching
+  45. NewObjectEnvironment (L9672-L9678): Object env creation
+  46. NewGlobalEnvironment (L9690-L9699): Global env creation
+  47. DeleteBinding (L8980-L8992): Declarative env binding deletion
+  48. IsRegExp (L6436-L6443): RegExp detection
+  49. CanonicalNumericIndexString (L6362-L6376): Canonical numeric index
+  50. ToIndex (L6377-L6387): Value to index conversion
+  51. The Property Descriptor (L5626-L5652): Property descriptor type
+  52. LoopEvaluation (L17644-L17653): Loop evaluation dispatch
+  53. Statement Semantics (L17225-L17233): Statement evaluation dispatch
+  54. EvaluateFunctionBody (L18847-L18856): Function body evaluation
+  55. Debugger Statement (L18622-L18632): Debugger statement evaluation
+  56. Runtime Semantics: Evaluation (L7349-L7357): Top-level evaluation
+  57. SetIntegrityLevel (L6814-L6833): Object freeze/seal
+  58. CreateListFromArrayLike (L6878-L6895): Array-like to list
+  59. With Statement Evaluation (L18325-L18340): With statement runtime
+  60. PropertyBindingInitialization (L17484-L17503): Property binding init
+  61. Function Environment Records (L9197-L9222): Function env record type
+  62. RoundMVResult (L6093-L6113): Number rounding algorithm
+  63. ToInt16 (L6172-L6183): Int16 conversion
+  64. ToUint16 (L6184-L6201): Uint16 conversion
+  65. TestIntegrityLevel (L6834-L6850): Object integrity test
+  66. SpeciesConstructor (L6925-L6939): Species constructor lookup
+  67. CopyDataProperties (L6970-L6987): Property copying
+  68. [[Construct]] (L11175-L11205): ECMAScript function construct
+  69. ToBigInt (L6244-L6262): BigInt conversion
+  70. The Environment Record Type (L5740-L5745): Environment record type
+- **Spec coverage:** 3353/44380 lines (7%), 250 refs, 0 mismatches (was 2327 lines, 180 refs)
+- **Build:** Core/Semantics.lean builds clean. Downstream failures in Wasm.Semantics and ClosureConvertCorrect are pre-existing and not in files I own.
+- **No semantic behavior was changed — only comments were added.**
+- **No files outside owned set were modified.**
+
+---
+
 ## Run: 2026-03-24T08:00:01+00:00
 
 ### STATUS: Added 11 new SPEC citations (152 total, 0 mismatches). Build clean. Coverage now 4% (1968 lines).
@@ -1683,3 +1765,4 @@ test_write
 
 ## Run: 2026-03-24T11:00:01+00:00
 
+2026-03-24T11:47:39+00:00 DONE
