@@ -824,8 +824,20 @@ def step? (s : State) : Option (Core.TraceEvent × State) :=
               | none => none
           | none => none
   | .tryCatch body catchParam catchBody finally_ =>
+      let isCallFrame := catchParam == "__call_frame_return__"
       match exprValue? body with
       | some v =>
+          if isCallFrame then
+              -- Function normal completion: restore caller env from callStack.
+              let restoredEnv : Env := match s.callStack with
+                | saved :: _ => saved
+                | [] => s.env
+              let newStack := match s.callStack with
+                | _ :: rest => rest
+                | [] => []
+              let s' := pushTrace { s with expr := .lit v, env := restoredEnv, callStack := newStack } .silent
+              some (.silent, s')
+          else
           match finally_ with
           | some fin =>
               let s' := pushTrace { s with expr := .seq fin (.lit v) } .silent
@@ -836,6 +848,36 @@ def step? (s : State) : Option (Core.TraceEvent × State) :=
       | none =>
           match step? { s with expr := body } with
           | some (.error msg, sb) =>
+              if isCallFrame && msg.startsWith "return:" then
+                  -- Function return: extract value from sb.expr, restore caller env.
+                  let retVal := match exprValue? sb.expr with
+                    | some v => v
+                    | none => .undefined
+                  let restoredEnv : Env := match s.callStack with
+                    | saved :: _ => saved
+                    | [] => sb.env
+                  let newStack := match s.callStack with
+                    | _ :: rest => rest
+                    | [] => []
+                  let s' := pushTrace
+                    { s with expr := .lit retVal, env := restoredEnv
+                           , heap := sb.heap, funcs := sb.funcs
+                           , callStack := newStack } .silent
+                  some (.silent, s')
+              else if isCallFrame then
+                  -- Function threw: propagate error, restore caller env.
+                  let restoredEnv : Env := match s.callStack with
+                    | saved :: _ => saved
+                    | [] => sb.env
+                  let newStack := match s.callStack with
+                    | _ :: rest => rest
+                    | [] => []
+                  let s' := pushTrace
+                    { s with expr := .lit .undefined, env := restoredEnv
+                           , heap := sb.heap, funcs := sb.funcs
+                           , callStack := newStack } (.error msg)
+                  some (.error msg, s')
+              else
               let handler :=
                 match finally_ with
                 | some fin => .seq catchBody fin
@@ -1082,7 +1124,7 @@ theorem step?_seq_var_found_explicit (s : State) (name : VarName) (v : Value) (b
     (henv : s.env.lookup name = some v) :
     step? { s with expr := .seq (.var name) b } =
       some (.silent, { expr := .seq (.lit v) b, env := s.env, heap := s.heap,
-                       trace := s.trace ++ [.silent] }) := by
+                       trace := s.trace ++ [.silent], funcs := s.funcs, callStack := s.callStack }) := by
   simp [step?, exprValue?, henv, pushTrace]
 
 /-- `.seq (.var name) b` when var not found: steps with ReferenceError.
@@ -1092,7 +1134,8 @@ theorem step?_seq_var_not_found_explicit (s : State) (name : VarName) (b : Expr)
     step? { s with expr := .seq (.var name) b } =
       some (.error ("ReferenceError: " ++ name),
             { expr := .seq (.lit .undefined) b, env := s.env, heap := s.heap,
-              trace := s.trace ++ [.error ("ReferenceError: " ++ name)] }) := by
+              trace := s.trace ++ [.error ("ReferenceError: " ++ name)],
+              funcs := s.funcs, callStack := s.callStack }) := by
   simp [step?, exprValue?, henv, pushTrace]
 
 /-- `.seq (.var name) b` always steps to a state with `.seq (.lit val) b` for some val.
@@ -1100,7 +1143,7 @@ theorem step?_seq_var_not_found_explicit (s : State) (name : VarName) (b : Expr)
 theorem step?_seq_var_steps_to_lit (s : State) (name : VarName) (b : Expr) :
     ∃ val ev, step? { s with expr := .seq (.var name) b } =
       some (ev, { expr := .seq (.lit val) b, env := s.env, heap := s.heap,
-                  trace := s.trace ++ [ev] }) := by
+                  trace := s.trace ++ [ev], funcs := s.funcs, callStack := s.callStack }) := by
   cases henv : s.env.lookup name with
   | some v => exact ⟨v, .silent, by simp [step?, exprValue?, henv, pushTrace]⟩
   | none => exact ⟨.undefined, .error ("ReferenceError: " ++ name),
@@ -1111,7 +1154,7 @@ theorem step?_seq_var_steps_to_lit (s : State) (name : VarName) (b : Expr) :
 theorem step?_seq_this_steps_to_lit (s : State) (b : Expr) :
     ∃ val, step? { s with expr := .seq .this b } =
       some (.silent, { expr := .seq (.lit val) b, env := s.env, heap := s.heap,
-                       trace := s.trace ++ [.silent] }) := by
+                       trace := s.trace ++ [.silent], funcs := s.funcs, callStack := s.callStack }) := by
   cases henv : s.env.lookup "this" with
   | some v => exact ⟨v, by simp [step?, exprValue?, henv, pushTrace]⟩
   | none => exact ⟨.undefined, by simp [step?, exprValue?, henv, pushTrace]⟩
@@ -1200,15 +1243,16 @@ theorem firstNonValueProp_none_implies_map_values (props : List (PropName × Exp
 theorem step?_none_implies_lit (s : State) (h : step? s = none) :
     ∃ v, s.expr = .lit v := by
   -- Strong induction on expression depth
-  suffices ∀ (n : Nat) (expr : Expr) (env : Env) (heap : Core.Heap) (trace : List Core.TraceEvent),
-      expr.depth ≤ n → step? ⟨expr, env, heap, trace⟩ = none →
+  suffices ∀ (n : Nat) (expr : Expr) (env : Env) (heap : Core.Heap) (trace : List Core.TraceEvent)
+      (funcs : Array FuncDef) (callStack : List Env),
+      expr.depth ≤ n → step? ⟨expr, env, heap, trace, funcs, callStack⟩ = none →
       ∃ v, expr = .lit v by
-    exact this s.expr.depth s.expr s.env s.heap s.trace (Nat.le_refl _)
+    exact this s.expr.depth s.expr s.env s.heap s.trace s.funcs s.callStack (Nat.le_refl _)
       (by cases s; exact h)
   intro n
   induction n with
   | zero =>
-    intro e env heap trace hd h
+    intro e env heap trace funcs callStack hd h
     cases e with
     | lit v => exact ⟨v, rfl⟩
     | var => unfold step? at h; split at h <;> simp at h
@@ -1248,11 +1292,11 @@ theorem step?_none_implies_lit (s : State) (h : step? s = none) :
     | binary => simp [Expr.depth] at hd
     | await => simp [Expr.depth] at hd
   | succ k ih =>
-    intro e env heap trace hd h
+    intro e env heap trace funcs callStack hd h
     -- Helper: if a sub-expression is stuck, IH gives it's a literal
     have litOfStuck : ∀ (sub : Expr), sub.depth ≤ k →
-        step? ⟨sub, env, heap, trace⟩ = none → ∃ v, sub = .lit v :=
-      fun sub hds hs => ih sub env heap trace hds hs
+        step? ⟨sub, env, heap, trace, funcs, callStack⟩ = none → ∃ v, sub = .lit v :=
+      fun sub hds hs => ih sub env heap trace funcs callStack hds hs
     cases e with
     | lit v => exact ⟨v, rfl⟩
     -- Always-step constructors
@@ -1518,12 +1562,14 @@ theorem step?_none_implies_lit (s : State) (h : step? s = none) :
     -- List-pattern cases: firstNonValueExpr / firstNonValueProp with IH contradiction.
     | tryCatch body _ _ fin =>
       unfold step? at h; simp only [-step?] at h
+      -- First split: isCallFrame check
       split at h
-      · -- exprValue? body = some → returns some (both finally branches)
-        cases fin <;> simp at h
+      · -- exprValue? body = some → if isCallFrame then ...; else match finally_ ...
+        split at h <;> [simp at h; cases fin <;> simp at h]
       · -- exprValue? body = none
         split at h
-        · simp at h  -- step? body = some (.error ..) → returns some
+        · -- step? body = some (.error ..) → isCallFrame checks
+          split at h <;> [simp at h; split at h <;> simp at h]
         · simp at h  -- step? body = some (t, _) → returns some
         · -- step? body = none
           rename_i _ hstep

@@ -1528,3 +1528,4 @@ Flat heap is a superset. Core entries preserved. Flat has extra closure envs.
 Prove: HeapCorr_alloc_flat, HeapCorr_alloc_both, HeapCorr_get.
 
 This unblocks 10+ sorries. DO THIS FIRST next run.
+2026-03-24T13:30:01+00:00 SKIP: already running
