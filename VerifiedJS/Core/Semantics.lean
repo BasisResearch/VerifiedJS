@@ -3069,7 +3069,7 @@ def evalBinary : BinOp → Value → Value → Value
 -- |
 -- | The list iterator object is never directly accessible to ECMAScript
 -- | code.
--- SPEC: L16638-L16660
+-- SPEC: L16638-L16657
 -- | # Runtime Semantics: Evaluation
 -- |
 -- | AssignmentExpression : LeftHandSideExpression \`=\`
@@ -3090,7 +3090,6 @@ def evalBinary : BinOp → Value → Value → Value
 -- | \|LeftHandSideExpression\|. 1. Let \_rRef\_ be ? Evaluation of
 -- | \|AssignmentExpression\|. 1. Let \_rVal\_ be ? GetValue(\_rRef\_). 1.
 -- | Perform ? DestructuringAssignmentEvaluation of \_assignmentPattern\_
--- | with argument \_rVal\_. 1. Return \_rVal\_.
 -- SPEC: L17190-L17199
 -- | # Runtime Semantics: Evaluation
 -- |
@@ -3106,34 +3105,24 @@ def evalBinary : BinOp → Value → Value → Value
 -- |
 -- | description
 -- | :   It converts \_argument\_ to one of 2^8^ integral Number values in
--- |     the inclusive interval from 𝔽(-2^7^) to 𝔽(2^7^ - 1).
+-- |     the inclusive interval from \*-128\*~𝔽~ to \*127\*~𝔽~.
 -- |
 -- | 1\. Let \_number\_ be ? ToNumber(\_argument\_). 1. If \_number\_ is not
 -- | finite or \_number\_ is either \*+0\*~𝔽~ or \*-0\*~𝔽~, return
--- | \*+0\*~𝔽~. 1. Let \_int\_ be truncate(ℝ(\_number\_)). 1. Let
--- | \_int8bit\_ be \_int\_ modulo 2^8^. 1. If \_int8bit\_ ≥ 2^7^, return
--- | 𝔽(\_int8bit\_ - 2^8^). 1. Return 𝔽(\_int8bit\_).
+-- | \*+0\*~𝔽~. 1. Let \_int\_ be truncate(ℝ(\_number\_)). 1. Let \_int8bit\_
+-- | be \_int\_ modulo 2^8^. 1. If \_int8bit\_ ≥ 2^7^, return 𝔽(\_int8bit\_ -
+-- | 2^8^). 1. Return 𝔽(\_int8bit\_).
 -- SPEC: L6214-L6224
 -- | # ToUint8 ( \_argument\_: an ECMAScript language value, ): either a normal completion containing an integral Number or a throw completion
 -- |
 -- | description
 -- | :   It converts \_argument\_ to one of 2^8^ integral Number values in
--- |     the inclusive interval from \*+0\*~𝔽~ to 𝔽(2^8^ - 1).
+-- |     the inclusive interval from \*+0\*~𝔽~ to \*255\*~𝔽~.
 -- |
 -- | 1\. Let \_number\_ be ? ToNumber(\_argument\_). 1. If \_number\_ is not
 -- | finite or \_number\_ is either \*+0\*~𝔽~ or \*-0\*~𝔽~, return
--- | \*+0\*~𝔽~. 1. Let \_int\_ be truncate(ℝ(\_number\_)). 1. Let
--- | \_int8bit\_ be \_int\_ modulo 2^8^. 1. Return 𝔽(\_int8bit\_).
--- SPEC: L6244-L6262
--- | # ToBigInt ( \_argument\_: an ECMAScript language value, ): either a normal completion containing a BigInt or a throw completion
--- |
--- | description
--- | :   It converts \_argument\_ to a BigInt value, or throws if an
--- |     implicit conversion from Number would be required.
--- |
--- | 1\. Let \_prim\_ be ? ToPrimitive(\_argument\_, \~number\~). 1. Return
--- | the value in the BigInt column of the following table corresponding to
--- | the value of \_prim\_ in the Type column.
+-- | \*+0\*~𝔽~. 1. Let \_int\_ be truncate(ℝ(\_number\_)). 1. Let \_int8bit\_
+-- | be \_int\_ modulo 2^8^. 1. Return 𝔽(\_int8bit\_).
 -- SPEC: L6296-L6304
 -- | # ToBigUint64 ( \_argument\_: an ECMAScript language value, ): either a normal completion containing a BigInt or a throw completion
 -- |
