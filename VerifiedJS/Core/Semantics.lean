@@ -9341,13 +9341,12 @@ def step? (s : State) : Option (TraceEvent × State) :=
   -- |
   -- | 1\. If IsCallable(\_C\_) is \*false\*, return \*false\*. 1. If \_C\_ has
   -- | a \[\[BoundTargetFunction\]\] internal slot, then 1. Let \_BC\_ be
-  -- | \_C\_.\[\[BoundTargetFunction\]\]. 1. Return ?
-  -- | InstanceofOperator(\_O\_, \_BC\_). 1. If \_O\_ is not an Object, return
-  -- | \*false\*. 1. Let \_P\_ be ? Get(\_C\_, \*\"prototype\"\*). 1. If \_P\_
-  -- | is not an Object, throw a \*TypeError\* exception. 1. Repeat, 1. Set
-  -- | \_O\_ to ? \_O\_.\[\[GetPrototypeOf\]\](). 1. If \_O\_ is \*null\*,
-  -- | return \*false\*. 1. If SameValue(\_P\_, \_O\_) is \*true\*, return
-  -- | \*true\*.
+  -- | \_C\_.\[\[BoundTargetFunction\]\]. 1. Return ? InstanceofOperator(\_O\_,
+  -- | \_BC\_). 1. If \_O\_ is not an Object, return \*false\*. 1. Let \_P\_ be
+  -- | ? Get(\_C\_, \*\"prototype\"\*). 1. If \_P\_ is not an Object, throw a
+  -- | \*TypeError\* exception. 1. Repeat, 1. Set \_O\_ to ?
+  -- | \_O\_.\[\[GetPrototypeOf\]\](). 1. If \_O\_ is \*null\*, return
+  -- | \*false\*. 1. If SameValue(\_P\_, \_O\_) is \*true\*, return \*true\*.
   -- SPEC: L7309-L7318
   -- | # CreateIteratorResultObject ( \_value\_: an ECMAScript language value, \_done\_: a Boolean, ): an Object that conforms to the IteratorResult interface
   -- |
@@ -9733,28 +9732,30 @@ def step? (s : State) : Option (TraceEvent × State) :=
   -- | # Static Semantics: Early Errors
   -- |
   -- SPEC: L18615-L18630
-  -- | # Runtime Semantics: CatchClauseEvaluation ( \_thrownValue\_: an ECMAScript language value, ): either a normal completion containing an ECMAScript language value or an abrupt completion
   -- |
-  -- | Catch : \`catch\` \`(\` CatchParameter \`)\` Block 1. Let \_oldEnv\_
-  -- | be the running execution context\'s LexicalEnvironment. 1. Let
-  -- | \_catchEnv\_ be NewDeclarativeEnvironment(\_oldEnv\_). 1. For each
-  -- | element \_argName\_ of the BoundNames of \|CatchParameter\|, do 1.
-  -- | Perform ! \_catchEnv\_.CreateMutableBinding(\_argName\_, \*false\*). 1.
-  -- | Set the running execution context\'s LexicalEnvironment to
-  -- | \_catchEnv\_. 1. Let \_status\_ be Completion(BindingInitialization of
-  -- | \|CatchParameter\| with arguments \_thrownValue\_ and \_catchEnv\_). 1.
-  -- | If \_status\_ is an abrupt completion, then 1. Set the running
-  -- | execution context\'s LexicalEnvironment to \_oldEnv\_. 1. Return ?
-  -- | \_status\_.
+  -- | # The \`debugger\` Statement
+  -- |
+  -- | ## Syntax
+  -- |
+  -- | DebuggerStatement : \`debugger\` \`;\`
+  -- |
+  -- | # Runtime Semantics: Evaluation
+  -- |
+  -- | Evaluating a \|DebuggerStatement\| may allow an implementation to cause
+  -- | a breakpoint when run under a debugger. If a debugger is not present or
+  -- | active this statement has no observable effect.
+  -- |
+  -- | DebuggerStatement : \`debugger\` \`;\` 1. If an implementation-defined
+  -- | debugging facility is available and enabled, then 1. Perform an
+  -- | implementation-defined debugging action. 1. Return a new
   -- SPEC: L18631-L18638
-  -- | Catch : \`catch\` Block 1. Return ? Evaluation of \|Block\|.
+  -- | implementation-defined Completion Record. 1. Return \~empty\~.
   -- |
-  -- | No matter how control leaves the \|Block\| the LexicalEnvironment is
-  -- | always restored to its former state.
+  -- | # ECMAScript Language: Functions and Classes
   -- |
-  -- | CaseClause : \`case\` Expression \`:\` 1. Return \~empty\~. CaseClause
-  -- | : \`case\` Expression \`:\` StatementList 1. Return ? Evaluation of
-  -- | \|StatementList\|.
+  -- | Various ECMAScript language elements cause the creation of ECMAScript
+  -- | function objects (). Evaluation of such functions starts with the
+  -- | execution of their \[\[Call\]\] internal method ().
   | .tryCatch body catchParam catchBody finally_ =>
       let isCallFrame := catchParam == "__call_frame_return__"
       match exprValue? body with
@@ -11268,24 +11269,27 @@ theorem Step_iff (s : State) (t : TraceEvent) (s' : State) :
 -- | This property has the attributes { \[\[Writable\]\]: \*true\*,
 -- | \[\[Enumerable\]\]: \*false\*, \[\[Configurable\]\]: \*true\* }.
 -- SPEC: L23095-L23099
+-- |
 -- | # Infinity
 -- |
 -- | The value of \`Infinity\` is \*+∞\*~𝔽~ (see ). This property has the
 -- | attributes { \[\[Writable\]\]: \*false\*, \[\[Enumerable\]\]: \*false\*,
--- | \[\[Configurable\]\]: \*false\* }.
 -- SPEC: L23100-L23104
+-- | \[\[Configurable\]\]: \*false\* }.
+-- |
 -- | # NaN
 -- |
 -- | The value of \`NaN\` is \*NaN\* (see ). This property has the attributes
+-- SPEC: L23105-L23109
 -- | { \[\[Writable\]\]: \*false\*, \[\[Enumerable\]\]: \*false\*,
 -- | \[\[Configurable\]\]: \*false\* }.
--- SPEC: L23105-L23109
--- | # undefined
 -- |
+-- | # undefined
+-- SPEC: L23110-L23130
 -- | The value of \`undefined\` is \*undefined\* (see ). This property has
 -- | the attributes { \[\[Writable\]\]: \*false\*, \[\[Enumerable\]\]:
 -- | \*false\*, \[\[Configurable\]\]: \*false\* }.
--- SPEC: L23110-L23130
+-- |
 -- | # Function Properties of the Global Object
 -- |
 -- | # eval ( \_x\_ )
@@ -11303,7 +11307,6 @@ theorem Step_iff (s : State) (t : TraceEvent) (s' : State) :
 -- | \_evalRealm\_ be the current Realm Record. 1. NOTE: In the case of a
 -- | direct eval, \_evalRealm\_ is the realm of both the caller of \`eval\`
 -- | and of the \`eval\` function itself. 1. Perform ?
--- | HostEnsureCanCompileStrings(\_evalRealm\_, « », \_x\_, \*false\*).
 -- SPEC: L4091-L4108
 -- | # StringIndexOf ( \_string\_: a String, \_searchValue\_: a String, \_fromIndex\_: a non-negative integer, ): a non-negative integer or \~not-found\~
 -- |

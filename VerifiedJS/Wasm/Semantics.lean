@@ -6938,7 +6938,11 @@ theorem init (irmod : IRModule) (wmod : Module)
       · -- IRValue.default t corresponds to defaultValue (wmod.globals[j].type.val)
         -- Use emit_globals_init_valcorr helper
         exact emit_globals_init_valcorr irmod wmod hemit j hj hj_w
-  hmemory := by simp [irInitialState, Wasm.initialState, initialStore]
+  hmemory := by
+    simp only [irInitialState, Wasm.initialState, initialStore]
+    -- Need: (wmod.memories.map initMemory)[0]? = some (initIRMemory irmod)
+    -- Requires emit_preserves_memories lemma (buildModule preserves memories)
+    sorry
   hlabels := by simp [irInitialState, Wasm.initialState]
   hhalt := by
     intro hirHalt
@@ -7126,7 +7130,7 @@ theorem step_sim (irmod : IRModule) (wmod : Module) :
                     have := getElem?_pos irf.locals idx hidx_ir
                     rw [this] at hlocal; exact (Option.some.inj hlocal).symm
                   rw [hval_eq]
-                  exact ⟨_, hw, hrel.hemit, hrest, by dsimp only []; exact stack_corr_cons hrel.hstack.1 hrel.hstack.2 hval_corr, hrel.hframes_len, hrel.hframes_locals, hrel.hframes_vals, hrel.hglobals, hrel.hlabels, hhalt_of_structural hrest hrel.hlabels⟩
+                  exact ⟨_, hw, hrel.hemit, hrest, by dsimp only []; exact stack_corr_cons hrel.hstack.1 hrel.hstack.2 hval_corr, hrel.hframes_len, hrel.hframes_locals, hrel.hframes_vals, hrel.hglobals, hrel.hmemory, hrel.hlabels, hhalt_of_structural hrest hrel.hlabels⟩
           · exact hf.elim
       | .localSet idx =>
           -- local.set: pop value from stack, set local[idx]
@@ -7238,7 +7242,7 @@ theorem step_sim (irmod : IRModule) (wmod : Module) :
                       have hlt_w : idx < wf.locals.size := hloc_sz ▸ hlt
                       -- Wasm step
                       have hw := step?_eq_localSet s2 idx rest_w wv wstk wf wfs hcw hstk_w hfr_w hlt_w
-                      refine ⟨_, hw, hrel.hemit, hrest, ?_, ?_, ?_, ?_, hrel.hglobals, hrel.hlabels, hhalt_of_structural hrest hrel.hlabels⟩
+                      refine ⟨_, hw, hrel.hemit, hrest, ?_, ?_, ?_, ?_, hrel.hglobals, hrel.hmemory, hrel.hlabels, hhalt_of_structural hrest hrel.hlabels⟩
                       · -- Stack correspondence (tail after pop)
                         rw [hstk_w] at hstk_rel
                         exact stack_corr_tail hstk_rel.1 hstk_rel.2
@@ -7761,7 +7765,7 @@ theorem step_sim (irmod : IRModule) (wmod : Module) :
                     rename_i hneq; rw [hneq] at hs2
                     have hw := step?_eq_i32Eqz s2 rest_w n wstk hcw hs2
                     simp only [traceToWasm]
-                    refine ⟨_, hw, hrel.hemit, hrest, ?_, hrel.hframes_len, hrel.hframes_locals, hrel.hframes_vals, hrel.hglobals, hrel.hlabels, hhalt_of_structural hrest hrel.hlabels⟩
+                    refine ⟨_, hw, hrel.hemit, hrest, ?_, hrel.hframes_len, hrel.hframes_locals, hrel.hframes_vals, hrel.hglobals, hrel.hmemory, hrel.hlabels, hhalt_of_structural hrest hrel.hlabels⟩
                     dsimp only []
                     exact stack_corr_cons (by simp [hstk, hs2] at hstk_rel ⊢; omega)
                       (fun i hi => hstk_rel.2 (i + 1) (by simp; omega)) (.i32 _)
@@ -7876,7 +7880,7 @@ theorem step_sim (irmod : IRModule) (wmod : Module) :
                     rename_i hneq; rw [hneq] at hs2
                     have hw := step?_eq_i32WrapI64 s2 rest_w n wstk hcw hs2
                     simp only [traceToWasm]
-                    refine ⟨_, hw, hrel.hemit, hrest, ?_, hrel.hframes_len, hrel.hframes_locals, hrel.hframes_vals, hrel.hglobals, hrel.hlabels, hhalt_of_structural hrest hrel.hlabels⟩
+                    refine ⟨_, hw, hrel.hemit, hrest, ?_, hrel.hframes_len, hrel.hframes_locals, hrel.hframes_vals, hrel.hglobals, hrel.hmemory, hrel.hlabels, hhalt_of_structural hrest hrel.hlabels⟩
                     dsimp only []
                     exact stack_corr_cons (by simp [hstk, hs2] at hstk_rel ⊢; omega)
                       (fun i hi => hstk_rel.2 (i + 1) (by simp; omega)) (.i32 _)
