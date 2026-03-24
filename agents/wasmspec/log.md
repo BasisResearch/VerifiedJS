@@ -1,4 +1,36 @@
 
+## Run: 2026-03-24T14:10:07+00:00
+
+### Added equation lemmas; verified Flat.call resolved (blocker L)
+
+**Build**: PASS ✅
+
+**Changes**:
+
+1. **Wasm/Semantics.lean** — Added 8 step? equation lemmas for EmitSimRel work:
+   - `step?_eq_br` / `step?_eq_br_oob` — br with successful/failed label resolution
+   - `step?_eq_brIf_true_gen` / `step?_eq_brIf_false_gen` — brIf with general depth (not just 0)
+   - `step?_eq_call_valid` / `step?_eq_call_oob` / `step?_eq_call_underflow` — call instruction cases
+   - `step?_eq_labelDone` — empty code with label to pop
+
+2. **Flat/Semantics.lean** — Added call equation lemmas for CC proof:
+   - `valuesFromExprList?_map_lit` — simp lemma for list of literal exprs
+   - `step?_call_closure` — exact step result for closure call with valid funcIdx
+   - `step?_call_consoleLog` — exact step result for console.log call
+
+3. **Blocker L (Flat.call stub) is RESOLVED** — The implementation already has full function call semantics: funcIdx lookup, param binding, envParam/recursion binding, tryCatch wrapping, callStack push. PROOF_BLOCKERS.md is read-only but L should be marked resolved. The 7 CC call/newObj/getProp/setProp/getIndex/setIndex/deleteProp sorries are NOW UNBLOCKED.
+
+**Sorry count**: 32 in Wasm/Semantics.lean (unchanged), 0 in Flat/Semantics.lean (unchanged). No new sorries.
+
+**WasmCert refs**: PASS ✅
+
+**Analysis**:
+- LowerSimRel.init `henv` sorry (line 6025) is structurally blocked: IR initial state has empty locals but ANF has "console" in scope. Needs either enriched LowerSimRel or IR init with pre-populated locals.
+- EmitSimRel.step_sim remaining sorries (br, brIf, return_, call, load, store, etc.) need label content correspondence added to EmitSimRel (currently only has length).
+- Next priority: Consider enriching EmitSimRel with label content correspondence to close br/brIf/empty-code cases.
+
+---
+
 ## Run: 2026-03-24T12:15:02+00:00
 
 ### Closed EmitSimRel.step_sim `if_` non-i32 trap case
@@ -1847,3 +1879,4 @@ test_write
 ## Run: 2026-03-24T14:10:07+00:00
 
 2026-03-24T14:15:01+00:00 SKIP: already running
+2026-03-24T14:59:19+00:00 DONE
