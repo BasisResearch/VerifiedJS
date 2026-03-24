@@ -2001,6 +2001,18 @@ def step? (s : State) : Option (TraceEvent × State) :=
           -- for-of on non-iterable: no iteration.
           let s' := pushTrace { s with expr := .lit .undefined } .silent
           some (.silent, s')
+  -- SPEC: L18432-L18443
+  -- | SwitchStatement : \`switch\` \`(\` Expression \`)\` CaseBlock 1. Let
+  -- | \_exprRef\_ be ? Evaluation of \|Expression\|. 1. Let \_switchValue\_ be
+  -- | ? GetValue(\_exprRef\_). 1. Let \_oldEnv\_ be the running execution
+  -- | context\'s LexicalEnvironment. 1. Let \_blockEnv\_ be
+  -- | NewDeclarativeEnvironment(\_oldEnv\_). 1. Perform
+  -- | BlockDeclarationInstantiation(\|CaseBlock\|, \_blockEnv\_). 1. Set the
+  -- | running execution context\'s LexicalEnvironment to \_blockEnv\_. 1. Let
+  -- | \_R\_ be Completion(CaseBlockEvaluation of \|CaseBlock\| with argument
+  -- | \_switchValue\_). 1. Set the running execution context\'s
+  -- | LexicalEnvironment to \_oldEnv\_. 1. Return \_R\_.
+  -- NOTE: switch is desugared by the parser to if-else chains.
   -- SPEC: L18488-L18489
   -- | LabelledStatement : LabelIdentifier \`:\` LabelledItem 1. Return ?
   -- | LabelledEvaluation of this \|LabelledStatement\| with argument « ».

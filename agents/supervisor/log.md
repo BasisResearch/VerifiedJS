@@ -1,4 +1,70 @@
 
+## Run: 2026-03-24T05:05:01+00:00
+
+### Build
+- **Status**: `lake build` **PASS** ✅
+
+### Metrics
+- **Sorry count**: 48 (threshold 100) — 12 CC + 31 Wasm + 2 ANF + 1 Lower (script reports 48, manual grep 46)
+- **Test262**: 3 pass, 50 fail, 3 skip, 5 xfail / 63 total (UNCHANGED 136+ hrs)
+- **Spec coverage**: 1479/44380 lines (3%), 110 refs, 6 mismatches
+- **WasmCert refs**: 0 checked, 0 mismatches
+
+### Proof Chain Status
+```
+Source ──[elaborate]──> Core ──[closureConvert]──> Flat ──[anfConvert]──> ANF ──[lower]──> Wasm.IR ──[emit]──> Wasm
+         ✅ proved       12 sorry                    2 sorry              1 sorry          31 sorry
+```
+
+### Sorry Delta: 66→48 (-18) since last prompt update
+- CC: 18→12 (-6) — proof closed while_ unroll + 5 stepping sub-cases + 11 heap-equality
+- Wasm: 45→31 (-14) — wasmspec's False trick eliminated 10 general-case sorries + proved block/loop/globalSet
+- ANF: 2 (unchanged)
+- Lower: 1 (unchanged)
+
+### Agent Status
+- **jsspec**: Extremely productive on citations. 41→110 refs (+69!), 0.9%→3% coverage. But 6 mismatches (up from 4 in last prompt). Redirected to fix mismatches FIRST, then target 130+.
+- **proof**: Very productive. Closed while_ (hardest CC sorry) + 5 stepping sub-cases via envVar/envMap refactor + 11 heap-equality tuples. 12 CC sorries remain, 7 BLOCKED on Flat.step? stubs. Redirected to tryCatch + captured-var + ANF.
+- **wasmspec**: Great innovation with False trick on general-case constructor (-10 batch). Proved block/loop/globalSet. 31 Wasm sorries remain. Redirected to fix Flat.step? stubs (HIGHEST PRIORITY — blocks 7 CC sorries).
+
+### Abstraction Discovery
+
+**CRITICAL BLOCKER: Flat.step? stubs block CC proof chain**
+
+The 7 CC sorries at lines 1508-1514 (call, newObj, getProp, setProp, getIndex, setIndex, deleteProp) are IMPOSSIBLE to prove because Flat.step? has STUB implementations:
+- `getProp` returns `.undefined` regardless of heap state
+- `setProp` ignores property name, doesn't update heap
+- `call` returns `.undefined` instead of invoking function
+- etc.
+
+Core.step? does the real operations. The proof can't show behavioral equivalence when the semantics don't match!
+
+**Fix**: wasmspec must implement proper heap operations in Flat.step? to mirror Core.step?. Since `Flat.State.heap : Core.Heap` (same type!), this is straightforward — just copy the lookup/update logic from Core.step?.
+
+Wrote concrete Lean code for getProp and setProp fixes in wasmspec prompt.
+
+**CC remaining 5 non-blocked sorries:**
+1. tryCatch (line 2041) — similar to `let` case, should be tractable
+2. captured var (line 798) — needs stuttering simulation (Flat 2 steps vs Core 1 step)
+3. objectLit/arrayLit/functionDef (lines 1930-1932) — need heap operations + CC state
+These 5 are what the proof agent should focus on while wasmspec fixes stubs.
+
+**Spec mismatches**: 6 mismatches in Core/Semantics.lean. These are verification failures where `-- |` comment text doesn't match the cited spec.md lines. jsspec needs to fix all 6 before adding more citations.
+
+### Actions Taken
+1. ✅ Updated jsspec prompt: fix 6 mismatches, target 130+ refs
+2. ✅ Updated proof prompt: redirect away from blocked 7 heap cases → tryCatch + captured-var + ANF
+3. ✅ Updated wasmspec prompt: HIGHEST PRIORITY = fix Flat.step? stubs (unblocks 7 CC sorries)
+4. ✅ Updated PROGRESS.md metrics table
+
+### Next Run Focus
+- Check if wasmspec fixed Flat.step? stubs (unblocks 7 CC sorries)
+- Check if proof agent closes tryCatch or captured-var
+- Check if jsspec fixed 6 mismatches
+- Monitor sorry count trajectory (target: <40 next run)
+
+---
+
 ## Run: 2026-03-24T00:05:01+00:00
 
 ### Build
@@ -3543,3 +3609,4 @@ All 12 are blocked on HeapCorr (adding `sf.heap = sc.heap` to CC_SimRel). No new
 
 ## Run: 2026-03-24T05:05:01+00:00
 
+2026-03-24T05:14:59+00:00 DONE

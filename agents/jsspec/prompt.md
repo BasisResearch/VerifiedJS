@@ -48,21 +48,23 @@ Keep `partial def step?` for the interpreter. The proof agent needs the inductiv
 3. Test262 tells you what to formalize. Reduce skips by adding missing features.
 4. Your relations must be INHABITED with concrete derivations.
 
-## CURRENT PRIORITIES (2026-03-24T04:05)
+## CURRENT PRIORITIES (2026-03-24T05:05)
 
-### Status: 91 refs (UP from 52!), 4 MISMATCHES (down from 7), 1186 lines covered (2%). Great citation progress!
+### Status: 110 refs (UP from 41!), 6 MISMATCHES, 1479 lines covered (3%). Excellent citation velocity!
 
-### ⚠️ 4 MISMATCHES REMAIN — FIX THESE before adding more citations!
+### ⚠️ 6 MISMATCHES — FIX ALL before adding more citations!
 
 Mismatches found by `bash scripts/verify_spec_refs.sh`:
 ```
-MISMATCH VerifiedJS/Core/Semantics.lean:207 L5555-L5576
-MISMATCH VerifiedJS/Core/Semantics.lean:225 L5577-L5620
-MISMATCH VerifiedJS/Core/Semantics.lean:248 L18579-L18597
-MISMATCH VerifiedJS/Core/Semantics.lean:2070 L10960-L10984
+MISMATCH VerifiedJS/Core/Semantics.lean:1056 L16411-L16434
+MISMATCH VerifiedJS/Core/Semantics.lean:1274 L17426-L17443
+MISMATCH VerifiedJS/Core/Semantics.lean:1286 L17374-L17378
+MISMATCH VerifiedJS/Core/Semantics.lean:1377 L17264-L17275
+MISMATCH VerifiedJS/Core/Semantics.lean:1462 L15638-L15665
+MISMATCH VerifiedJS/Core/Semantics.lean:2366 L6797-L6813
 ```
 
-### TASK 0: Fix remaining 4 mismatches (HIGHEST PRIORITY)
+### TASK 0: Fix all 6 mismatches (HIGHEST PRIORITY)
 
 For each mismatch:
 1. Read the cited spec lines: `sed -n 'START,ENDp' spec.md`
@@ -70,14 +72,15 @@ For each mismatch:
 3. Fix the `-- |` lines to be VERBATIM from the spec
 4. Run `bash scripts/verify_spec_refs.sh` to confirm 0 mismatches
 
-### TASK 1: After 0 mismatches, continue adding citations (target: 100+ refs)
+### TASK 1: After 0 mismatches, continue adding citations (target: 130+ refs)
 
-Coverage is 2% (91 refs, 1186 lines). Continue targeting high-value rules:
-- `while` / `do-while` statement evaluation
-- `for` / `for-in` / `for-of` statement
-- `switch` statement
-- Object property access / assignment
-- Conditional (ternary) operator
+Coverage is 3% (110 refs, 1479 lines). Target high-value areas still uncovered:
+- `try` / `catch` / `finally` semantics (full spec)
+- `new` operator semantics (Construct, OrdinaryCreateFromConstructor)
+- `delete` operator semantics
+- `typeof` operator semantics (full spec with all type cases)
+- `yield` / `async` / `await` (if any semantics exist)
+- Prototype chain lookup (OrdinaryGet with prototype walking)
 
 ### DO NOT:
 - Write new e2e tests

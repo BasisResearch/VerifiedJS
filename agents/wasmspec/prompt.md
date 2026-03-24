@@ -62,37 +62,57 @@ Then construct the matching Step derivation in Lean. If you cannot, your semanti
 3. Keep definitions structurally simple for proofs.
 4. Add @[simp] lemmas for everything the proof agent might need.
 
-## CURRENT PRIORITIES (2026-03-24T04:05)
+## CURRENT PRIORITIES (2026-03-24T05:05)
 
-### Build: PASS ✅. Sorry: 48 total (33 in Wasm/Semantics.lean). Wasm unchanged — you've been timing out.
+### Build: PASS ✅. Sorry: 48 total (31 in Wasm/Semantics.lean). Great work closing 10 general-case sorries!
 
-### ⚠️ TIMEOUT PREVENTION: DO EXACTLY 1 SORRY, then build, log, EXIT.
+### ⚠️ TIMEOUT PREVENTION: DO EXACTLY 1 TASK, then build, log, EXIT.
 
-Your last 3 runs timed out. Stay under 30 min. Pick ONE sorry, close it, build, log, done.
+### 🚨 HIGHEST PRIORITY: Fix Flat.step? stubs (BLOCKS 7 CC proof sorries!)
 
-### Wasm Sorry Breakdown (33 total in Wasm/Semantics.lean):
-- **LowerSimRel.step_sim** (15): lines 5770, 5843, 5888, 5896, 5900, 5903, 5906, 5909, 5912, 5915, 5918, 5921, 5924, 5927
-- **EmitSimRel.step_sim** (15): lines 6524, 6632, 7122, 7125, 7128, 7131, 7134, 7137, 7140, 7176, 7179, 7182, 7185, 7253
-- **LowerSimRel.init** (3): lines 7412, 7427, 7451 (all `by sorry`)
+The proof agent has 7 CC sorries (lines 1508-1514) that are IMPOSSIBLE to close because Flat.step? returns WRONG results for:
+- `getProp` (line ~420): returns `.undefined` instead of looking up property in heap
+- `setProp` (line ~435): ignores property name, doesn't update heap
+- `getIndex` (line ~459): returns `.undefined` instead of looking up index
+- `setIndex` (line ~481): ignores index, doesn't update heap
+- `deleteProp` (line ~513): always returns `.bool true` without deleting
+- `call` (line ~349): returns `.undefined` instead of invoking function
+- `newObj` (line ~384): already partially implemented (allocFreshObject)
 
-### TASK 0: Pick the SINGLE easiest EmitSimRel sorry and close it
+**Flat.State.heap is literally `Core.Heap` (same type!)**. So implementing these properly is straightforward — look at how Core.step? handles the same cases in VerifiedJS/Core/Semantics.lean and mirror the logic:
 
-You timed out 3x in a row. The fix: do LESS per run.
-1. `lean_goal` at ONE sorry line (try 7122-7140 range, these are clustered)
-2. Close it
-3. `lake build`
-4. Log and EXIT
+For `getProp obj prop` when obj is a value:
+```lean
+-- Core does: heap.lookup objAddr |>.lookup prop → returns the value
+-- Flat should do the SAME thing (same heap type!)
+| getProp (Expr.val (.object addr)) prop =>
+    match s.heap.get? addr with
+    | some obj => match obj.get? prop with
+      | some v => some { s with expr := .val v }
+      | none => some { s with expr := .val .undefined }
+    | none => some { s with expr := .val .undefined }
+```
 
-### TASK 1 (only if TASK 0 done in <15 min): LowerSimRel.init (lines 7412, 7427, 7451)
+For `setProp obj prop val` when all are values:
+```lean
+| setProp (Expr.val (.object addr)) prop (Expr.val v) =>
+    let heap' := s.heap.modify addr (fun obj => obj.insert prop v)
+    some { s with expr := .val v, heap := heap' }
+```
 
-These 3 `by sorry` in LowerSimRel.init might be simpler than step_sim cases:
-1. `lean_goal` at 7412
-2. These relate initial ANF state to initial IR state — may just need `simp` + env facts
+**DO THIS TASK FIRST.** It unblocks 7 proof sorries. Only do Wasm sorries if you finish this in < 15 min.
+
+### TASK 1 (only if TASK 0 done): Pick ONE Wasm sorry and close it
+
+Wasm Sorry Breakdown (31 total in Wasm/Semantics.lean):
+- **LowerSimRel.step_sim** (14): lines 5770, 5843, 5888, 5896, 5900, 5903, 5906, 5909, 5912, 5915, 5918, 5921, 5924, 5927
+- **EmitSimRel.step_sim** (14): lines 6524, 6632, 7122, 7125, 7128, 7131, 7134, 7137, 7140, 7176, 7179, 7182, 7185, 7253
+- **LowerSimRel.init** (3): lines 7412, 7427, 7451
 
 ### RULES THIS RUN:
+- Fix Flat.step? stubs FIRST (unblocks proof agent)
 - Do NOT add new sorries
-- Do NOT decompose existing cases into more sub-cases
-- Close at least 1 sorry or document WHY it cannot be closed
+- Close at least 1 sorry or fix Flat.step?
 - Only run `lake build` ONCE at the end
 - If stuck for 15 min, STOP and log what blocked you
 
