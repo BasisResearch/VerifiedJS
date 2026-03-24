@@ -719,6 +719,17 @@ def abstractEq : Value → Value → Bool
 -- | Unicode Standard but not in the same normalization form could test as
 -- | unequal. Also note that lexicographic ordering by *code unit* differs
 -- | from ordering by *code point* for Strings containing surrogate pairs.
+-- SPEC: L4579-L4589
+-- | # Number::lessThan ( \_x\_: a Number, \_y\_: a Number, ): a Boolean or \*undefined\*
+-- |
+-- | 1\. If \_x\_ is \*NaN\*, return \*undefined\*. 1. If \_y\_ is \*NaN\*,
+-- | return \*undefined\*. 1. If \_x\_ is \_y\_, return \*false\*. 1. If
+-- | \_x\_ is \*+0\*~𝔽~ and \_y\_ is \*-0\*~𝔽~, return \*false\*. 1. If \_x\_
+-- | is \*-0\*~𝔽~ and \_y\_ is \*+0\*~𝔽~, return \*false\*. 1. If \_x\_ is
+-- | \*+∞\*~𝔽~, return \*false\*. 1. If \_y\_ is \*+∞\*~𝔽~, return
+-- | \*true\*. 1. If \_y\_ is \*-∞\*~𝔽~, return \*false\*. 1. If \_x\_ is
+-- | \*-∞\*~𝔽~, return \*true\*. 1. Assert: \_x\_ and \_y\_ are finite. 1. If
+-- | ℝ(\_x\_) \< ℝ(\_y\_), return \*true\*. 1. Return \*false\*.
 /-- ECMA-262 §7.2.13 Abstract Relational Comparison (string-aware). -/
 def abstractLt : Value → Value → Bool
   | .string a, .string b => a < b  -- lexicographic comparison
@@ -873,6 +884,21 @@ def abstractLt : Value → Value → Bool
 -- | by \_shiftCount\_ bits. Vacated bits are filled with zero. The
 -- | mathematical value of the result is exactly representable as a 32-bit
 -- | unsigned bit string.
+-- SPEC: L4611-L4625
+-- | # NumberBitwiseOp ( \_op\_: \`&\`, \`\^\`, or \`\|\`, \_x\_: a Number, \_y\_: a Number, ): an integral Number
+-- |
+-- | 1\. Let \_lNum\_ be ! ToInt32(\_x\_). 1. Let \_rNum\_ be !
+-- | ToInt32(\_y\_). 1. Let \_lBits\_ be the 32-bit two\'s complement bit
+-- | string representing ℝ(\_lNum\_). 1. Let \_rBits\_ be the 32-bit two\'s
+-- | complement bit string representing ℝ(\_rNum\_). 1. If \_op\_ is \`&\`,
+-- | then 1. Let \_result\_ be the result of applying the bitwise AND
+-- | operation to \_lBits\_ and \_rBits\_. 1. Else if \_op\_ is \`\^\`,
+-- | then 1. Let \_result\_ be the result of applying the bitwise exclusive
+-- | OR (XOR) operation to \_lBits\_ and \_rBits\_. 1. Else, 1. Assert:
+-- | \_op\_ is \`\|\`. 1. Let \_result\_ be the result of applying the
+-- | bitwise inclusive OR operation to \_lBits\_ and \_rBits\_. 1. Return the
+-- | Number value for the integer represented by the 32-bit two\'s complement
+-- | bit string \_result\_.
 -- SPEC: L4626-L4637
 -- | # Number::bitwiseAND ( \_x\_: a Number, \_y\_: a Number, ): an integral Number
 -- |
@@ -1027,6 +1053,24 @@ def evalBinary : BinOp → Value → Value → Value
   | .instanceof, .object _, .function _ => .bool true
   | .instanceof, _, .function _ => .bool false
   | .instanceof, _, _ => .bool false
+  -- SPEC: L16411-L16434
+  -- | # InstanceofOperator ( \_V\_: an ECMAScript language value, \_target\_: an ECMAScript language value, ): either a normal completion containing a Boolean or a throw completion
+  -- |
+  -- | description
+  -- | :   It implements the generic algorithm for determining if \_V\_ is an
+  -- |     instance of \_target\_ either by consulting \_target\_\'s
+  -- |     %Symbol.hasInstance% method or, if absent, determining whether the
+  -- |     value of \_target\_\'s \*\"prototype\"\* property is present in
+  -- |     \_V\_\'s prototype chain.
+  -- |
+  -- | 1\. If \_target\_ is not an Object, throw a \*TypeError\* exception. 1.
+  -- | Let \_instOfHandler\_ be ? GetMethod(\_target\_,
+  -- | %Symbol.hasInstance%). 1. If \_instOfHandler\_ is not \*undefined\*,
+  -- | then 1. Return ToBoolean(? Call(\_instOfHandler\_, \_target\_, « \_V\_
+  -- | »)). 1. \[id=\"step-instanceof-check-function\"\] If
+  -- | IsCallable(\_target\_) is \*false\*, throw a \*TypeError\* exception. 1.
+  -- | \[id=\"step-instanceof-fallback\"\] Return ?
+  -- | OrdinaryHasInstance(\_target\_, \_V\_).
   -- SPEC: L16395-L16410
   -- | ShiftExpression 1. Let \_lRef\_ be ? Evaluation of
   -- | \|RelationalExpression\|. 1. Let \_lVal\_ be ? GetValue(\_lRef\_). 1.
@@ -1227,6 +1271,23 @@ def step? (s : State) : Option (TraceEvent × State) :=
           let msg := "ReferenceError: " ++ name
           let s' := pushTrace { s with expr := .lit .undefined } (.error msg)
           some (.error msg, s')
+  -- SPEC: L17426-L17443
+  -- | VariableStatement : \`var\` VariableDeclarationList \`;\` 1. Perform ?
+  -- | Evaluation of \|VariableDeclarationList\|. 1. Return \~empty\~.
+  -- | VariableDeclaration : BindingIdentifier Initializer 1.
+  -- | Let \_bindingId\_ be the StringValue of \|BindingIdentifier\|. 1. Let
+  -- | \_lhs\_ be ? ResolveBinding(\_bindingId\_). 1. If
+  -- | IsAnonymousFunctionDefinition(\|Initializer\|) is \*true\*, then 1. Let
+  -- | \_value\_ be ? NamedEvaluation of \|Initializer\| with argument
+  -- | \_bindingId\_. 1. Else, 1. Let \_rhs\_ be ? Evaluation of
+  -- | \|Initializer\|. 1. Let \_value\_ be ? GetValue(\_rhs\_). 1.
+  -- | \[id=\"step-vardecllist-evaluation-putvalue\"\] Perform ?
+  -- | PutValue(\_lhs\_, \_value\_). 1. Return \~empty\~.
+  -- SPEC: L17374-L17378
+  -- | LexicalDeclaration : LetOrConst BindingList \`;\` 1. Perform ?
+  -- | Evaluation of \|BindingList\|. 1. Return \~empty\~. BindingList :
+  -- | BindingList \`,\` LexicalBinding 1. Perform ? Evaluation of
+  -- | \|BindingList\|. 1. Return ? Evaluation of \|LexicalBinding\|.
   -- SPEC: L17386-L17393
   -- | LexicalBinding : BindingIdentifier Initializer 1. Let \_bindingId\_ be
   -- | the StringValue of \|BindingIdentifier\|. 1. Let \_lhs\_ be !
@@ -1313,6 +1374,16 @@ def step? (s : State) : Option (TraceEvent × State) :=
   -- | Evaluation of \|Expression\|. 1. Perform ? GetValue(\_lRef\_). 1. Let
   -- | \_rRef\_ be ? Evaluation of \|AssignmentExpression\|. 1. Return ?
   -- | GetValue(\_rRef\_).
+  -- SPEC: L17264-L17275
+  -- | Block : \`{\` \`}\` 1. Return \~empty\~. Block : \`{\` StatementList
+  -- | \`}\` 1. Let \_oldEnv\_ be the running execution context\'s
+  -- | LexicalEnvironment. 1. Let \_blockEnv\_ be
+  -- | NewDeclarativeEnvironment(\_oldEnv\_). 1. Perform
+  -- | BlockDeclarationInstantiation(\|StatementList\|, \_blockEnv\_). 1. Set
+  -- | the running execution context\'s LexicalEnvironment to \_blockEnv\_. 1.
+  -- | Let \_blockValue\_ be Completion(Evaluation of \|StatementList\|). 1.
+  -- | Set the running execution context\'s LexicalEnvironment to
+  -- | \_oldEnv\_. 1. Return ? \_blockValue\_.
   -- SPEC: L17277-L17279
   -- | StatementList : StatementList StatementListItem 1. Let \_sl\_ be ?
   -- | Evaluation of \|StatementList\|. 1. Let \_s\_ be Completion(Evaluation
@@ -1388,6 +1459,30 @@ def step? (s : State) : Option (TraceEvent × State) :=
           | some rv =>
               let s' := pushTrace { s with expr := .lit (evalBinary op lv rv) } .silent
               some (.silent, s')
+  -- SPEC: L15638-L15665
+  -- | CallExpression : CoverCallExpressionAndAsyncArrowHead 1. Let \_expr\_ be
+  -- | the \|CallMemberExpression\| that is covered by
+  -- | \|CoverCallExpressionAndAsyncArrowHead\|. 1. Let \_memberExpr\_ be the
+  -- | \|MemberExpression\| of \_expr\_. 1. Let \_arguments\_ be the
+  -- | \|Arguments\| of \_expr\_. 1. Let \_ref\_ be ? Evaluation of
+  -- | \_memberExpr\_. 1. Let \_func\_ be ? GetValue(\_ref\_). 1. If \_ref\_ is
+  -- | a Reference Record, IsPropertyReference(\_ref\_) is \*false\*, and
+  -- | \_ref\_.\[\[ReferencedName\]\] is \*\"eval\"\*, then 1. If
+  -- | SameValue(\_func\_, %eval%) is \*true\*, then 1. Let \_argList\_ be ?
+  -- | ArgumentListEvaluation of \_arguments\_. 1. If \_argList\_ has no
+  -- | elements, return \*undefined\*. 1. Let \_evalArg\_ be the first element
+  -- | of \_argList\_. 1. If IsStrict(this \|CallExpression\|) is \*true\*, let
+  -- | \_strictCaller\_ be \*true\*; else let \_strictCaller\_ be \*false\*. 1.
+  -- | \[id=\"step-callexpression-evaluation-direct-eval\"\] Return ?
+  -- | PerformEval(\_evalArg\_, \_strictCaller\_, \*true\*). 1. Let
+  -- | \_thisCall\_ be this \|CallExpression\|. 1. Let \_tailCall\_ be
+  -- | IsInTailPosition(\_thisCall\_). 1. Return ? EvaluateCall(\_func\_,
+  -- | \_ref\_, \_arguments\_, \_tailCall\_).
+  -- | CallExpression : CallExpression Arguments 1. Let \_ref\_ be ? Evaluation
+  -- | of \|CallExpression\|. 1. Let \_func\_ be ? GetValue(\_ref\_). 1. Let
+  -- | \_thisCall\_ be this \|CallExpression\|. 1. Let \_tailCall\_ be
+  -- | IsInTailPosition(\_thisCall\_). 1. Return ? EvaluateCall(\_func\_,
+  -- | \_ref\_, \|Arguments\|, \_tailCall\_).
   -- SPEC: L15668-L15681
   -- | # EvaluateCall ( \_func\_: an ECMAScript language value, \_ref\_: an ECMAScript language value or a Reference Record, \_arguments\_: a Parse Node, \_tailPosition\_: a Boolean, ): either a normal completion containing an ECMAScript language value or an abrupt completion
   -- |
@@ -2237,6 +2332,16 @@ def step? (s : State) : Option (TraceEvent × State) :=
       | some _ =>
           let s' := pushTrace { s with expr := .lit (.bool true) } .silent
           some (.silent, s')
+  -- SPEC: L6418-L6427
+  -- | # IsConstructor ( \_argument\_: an ECMAScript language value, ): a Boolean
+  -- |
+  -- | description
+  -- | :   It determines if \_argument\_ is a function object with a
+  -- |     \[\[Construct\]\] internal method.
+  -- |
+  -- | 1\. If \_argument\_ is not an Object, return \*false\*. 1. If
+  -- | \_argument\_ has a \[\[Construct\]\] internal method, return
+  -- | \*true\*. 1. Return \*false\*.
   -- SPEC: L15627-L15635
   -- | # EvaluateNew ( \_constructExpr\_: a \|NewExpression\| Parse Node or a \|MemberExpression\| Parse Node, \_arguments\_: \~empty\~ or an \|Arguments\| Parse Node, ): either a normal completion containing an ECMAScript language value or an abrupt completion
   -- |
@@ -2246,6 +2351,20 @@ def step? (s : State) : Option (TraceEvent × State) :=
   -- | \_argList\_ be ? ArgumentListEvaluation of \_arguments\_. 1. If
   -- | IsConstructor(\_constructor\_) is \*false\*, throw a \*TypeError\*
   -- | exception. 1. Return ? Construct(\_constructor\_, \_argList\_).
+  -- SPEC: L6797-L6813
+  -- | # Construct ( \_F\_: a constructor, optional \_argumentsList\_: a List of ECMAScript language values, optional \_newTarget\_: a constructor, ): either a normal completion containing an Object or a throw completion
+  -- |
+  -- | description
+  -- | :   It is used to call the \[\[Construct\]\] internal method of a
+  -- |     function object. \_argumentsList\_ and \_newTarget\_ are the values
+  -- |     to be passed as the corresponding arguments of the internal method.
+  -- |     If \_argumentsList\_ is not present, a new empty List is used as its
+  -- |     value. If \_newTarget\_ is not present, \_F\_ is used as its value.
+  -- |
+  -- | 1\. If \_newTarget\_ is not present, set \_newTarget\_ to \_F\_. 1. If
+  -- | \_argumentsList\_ is not present, set \_argumentsList\_ to a new empty
+  -- | List. 1. Return ? \_F\_.\[\[Construct\]\](\_argumentsList\_,
+  -- | \_newTarget\_).
   -- SPEC: L10960-L10984
   -- | # OrdinaryObjectCreate ( \_proto\_: an Object or \*null\*, optional \_additionalInternalSlotsList\_: a List of names of internal slots, ): an Object
   -- |
