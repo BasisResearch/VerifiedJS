@@ -506,39 +506,39 @@ mutual
 def noCallFrameReturn : Core.Expr → Bool
   | .tryCatch body cp cb fin =>
     cp != "__call_frame_return__" &&
-    body.noCallFrameReturn && cb.noCallFrameReturn &&
-    match fin with | some f => f.noCallFrameReturn | none => true
-  | .seq a b => a.noCallFrameReturn && b.noCallFrameReturn
-  | .«if» c t e => c.noCallFrameReturn && t.noCallFrameReturn && e.noCallFrameReturn
-  | .while_ c b => c.noCallFrameReturn && b.noCallFrameReturn
-  | .«let» _ i b => i.noCallFrameReturn && b.noCallFrameReturn
-  | .assign _ v => v.noCallFrameReturn
-  | .call c args => c.noCallFrameReturn && listNoCallFrameReturn args
-  | .newObj c args => c.noCallFrameReturn && listNoCallFrameReturn args
-  | .getProp o _ => o.noCallFrameReturn
-  | .setProp o _ v => o.noCallFrameReturn && v.noCallFrameReturn
-  | .getIndex o i => o.noCallFrameReturn && i.noCallFrameReturn
-  | .setIndex o i v => o.noCallFrameReturn && i.noCallFrameReturn && v.noCallFrameReturn
-  | .deleteProp o _ => o.noCallFrameReturn
-  | .typeof a => a.noCallFrameReturn
-  | .unary _ a => a.noCallFrameReturn
-  | .binary _ l r => l.noCallFrameReturn && r.noCallFrameReturn
+    noCallFrameReturn body && noCallFrameReturn cb &&
+    match fin with | some f => noCallFrameReturn f | none => true
+  | .seq a b => noCallFrameReturn a && noCallFrameReturn b
+  | .«if» c t e => noCallFrameReturn c && noCallFrameReturn t && noCallFrameReturn e
+  | .while_ c b => noCallFrameReturn c && noCallFrameReturn b
+  | .«let» _ i b => noCallFrameReturn i && noCallFrameReturn b
+  | .assign _ v => noCallFrameReturn v
+  | .call c args => noCallFrameReturn c && listNoCallFrameReturn args
+  | .newObj c args => noCallFrameReturn c && listNoCallFrameReturn args
+  | .getProp o _ => noCallFrameReturn o
+  | .setProp o _ v => noCallFrameReturn o && noCallFrameReturn v
+  | .getIndex o i => noCallFrameReturn o && noCallFrameReturn i
+  | .setIndex o i v => noCallFrameReturn o && noCallFrameReturn i && noCallFrameReturn v
+  | .deleteProp o _ => noCallFrameReturn o
+  | .typeof a => noCallFrameReturn a
+  | .unary _ a => noCallFrameReturn a
+  | .binary _ l r => noCallFrameReturn l && noCallFrameReturn r
   | .objectLit ps => propListNoCallFrameReturn ps
   | .arrayLit es => listNoCallFrameReturn es
-  | .throw a => a.noCallFrameReturn
-  | .forIn _ o b => o.noCallFrameReturn && b.noCallFrameReturn
-  | .forOf _ i b => i.noCallFrameReturn && b.noCallFrameReturn
-  | .labeled _ b => b.noCallFrameReturn
-  | .«return» (some e) => e.noCallFrameReturn
-  | .yield (some e) _ => e.noCallFrameReturn
-  | .await a => a.noCallFrameReturn
+  | .throw a => noCallFrameReturn a
+  | .forIn _ o b => noCallFrameReturn o && noCallFrameReturn b
+  | .forOf _ i b => noCallFrameReturn i && noCallFrameReturn b
+  | .labeled _ b => noCallFrameReturn b
+  | .«return» (some e) => noCallFrameReturn e
+  | .yield (some e) _ => noCallFrameReturn e
+  | .await a => noCallFrameReturn a
   | _ => true
 def listNoCallFrameReturn : List Core.Expr → Bool
   | [] => true
-  | e :: rest => e.noCallFrameReturn && listNoCallFrameReturn rest
+  | e :: rest => noCallFrameReturn e && listNoCallFrameReturn rest
 def propListNoCallFrameReturn : List (Core.PropName × Core.Expr) → Bool
   | [] => true
-  | (_, e) :: rest => e.noCallFrameReturn && propListNoCallFrameReturn rest
+  | (_, e) :: rest => noCallFrameReturn e && propListNoCallFrameReturn rest
 end
 
 /-- Simulation relation for closure conversion: Flat and Core states

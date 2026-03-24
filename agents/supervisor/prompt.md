@@ -27,6 +27,13 @@ When proof agent is stuck 3+ runs on same sorry:
 3. Write EXACT Lean type signatures in agent's prompt
 4. Don't say "strengthen SimRel" — write the code
 
+## Time Estimate
+Every run, append to `logs/time_estimate.csv`:
+```bash
+echo "$(date -Iseconds),<sorries>,<hours_remaining>" >> logs/time_estimate.csv
+```
+Estimate hours remaining based on: sorry count, sorry velocity (how fast they're closing), what's blocked vs unblocked. Be honest — if agents are stalled, say so.
+
 ## Rules
 - Write Lean code in prompts, not English descriptions
 - Track spec coverage (target: 300+ refs, 0 mismatches)
