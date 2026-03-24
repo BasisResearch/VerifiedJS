@@ -538,7 +538,7 @@ def Env.extend (env : Env) (name : VarName) (v : Value) : Env :=
 -- | \_argument\_.\[\[ProxyTarget\]\]. 1. Return ?
 -- | IsArray(\_proxyTarget\_). 1. Return \*false\*.
 
--- SPEC: L6745-L6754
+-- SPEC: L6745-L6752
 -- | # DeletePropertyOrThrow ( \_O\_: an Object, \_P\_: a property key, ): either a normal completion containing \~unused\~ or a throw completion
 -- |
 -- | description
@@ -647,11 +647,13 @@ def toNumber : Value → Float
             else 0.0 / 0.0  -- NaN for non-numeric strings
   | _ => 0.0 / 0.0  -- NaN for objects/functions
 
--- SPEC: L6018-L6054
+-- SPEC: L6018-L6033
 -- | # ToNumber Applied to the String Type
 -- |
 -- | The abstract operation StringToNumber specifies how to convert a String
 -- | value to a Number value, using the following grammar.
+-- |
+-- | ## Syntax
 -- |
 -- | StringNumericLiteral ::: StrWhiteSpace? StrWhiteSpace? StrNumericLiteral
 -- | StrWhiteSpace? StrWhiteSpace ::: StrWhiteSpaceChar StrWhiteSpace?
@@ -663,7 +665,7 @@ def toNumber : Value → Float
 -- | ExponentPart\[\~Sep\]? \`.\` DecimalDigits\[\~Sep\]
 -- | ExponentPart\[\~Sep\]? DecimalDigits\[\~Sep\] ExponentPart\[\~Sep\]?
 
--- SPEC: L6114-L6128
+-- SPEC: L6114-L6127
 -- | # ToIntegerOrInfinity ( \_argument\_: an ECMAScript language value, ): either a normal completion containing either an integer, +∞, or -∞, or a throw completion
 -- |
 -- | description
@@ -674,7 +676,10 @@ def toNumber : Value → Float
 -- | 1\. Let \_number\_ be ? ToNumber(\_argument\_). 1. If \_number\_ is one
 -- | of \*NaN\*, \*+0\*~𝔽~, or \*-0\*~𝔽~, return 0. 1. If \_number\_ is
 -- | \*+∞\*~𝔽~, return +∞. 1. If \_number\_ is \*-∞\*~𝔽~, return -∞. 1.
--- | Return truncate(ℝ(\_number\_)).
+-- | Return truncate(ℝ(\_number\_)). 𝔽(ToIntegerOrInfinity(\_x\_)) never
+-- | returns \*-0\*~𝔽~ for any value of \_x\_. The truncation of the
+-- | fractional part is performed after converting \_x\_ to a mathematical
+-- | value.
 
 -- SPEC: L6353-L6361
 -- | # ToLength ( \_argument\_: an ECMAScript language value, ): either a normal completion containing a non-negative integral Number or a throw completion
@@ -1953,7 +1958,7 @@ def step? (s : State) : Option (TraceEvent × State) :=
   -- | SubstitutionEvaluation of \|TemplateSpans\|. 1. Assert: \_restSub\_ is a
   -- | possibly empty List. 1. Return the list-concatenation of « \_firstSub\_
   -- | » and \_restSub\_.
-  -- SPEC: L11569-L11613
+  -- SPEC: L11569-L11579
   -- | # BuiltinCallOrConstruct ( \_F\_: a built-in function object, \_thisArgument\_: an ECMAScript language value or \~uninitialized\~, \_argumentsList\_: a List of ECMAScript language values, \_newTarget\_: a constructor or \*undefined\*, ): either a normal completion containing an ECMAScript language value or a throw completion
   -- |
   -- | 1\. Let \_callerContext\_ be the running execution context. 1. If
@@ -2044,20 +2049,20 @@ def step? (s : State) : Option (TraceEvent × State) :=
   -- | # OrdinaryGetPrototypeOf ( \_O\_: an Object, ): an Object or \*null\*
   -- |
   -- | 1\. Return \_O\_.\[\[Prototype\]\].
-  -- SPEC: L10701-L10718
+  -- SPEC: L10701-L10713
   -- | # OrdinarySetPrototypeOf ( \_O\_: an Object, \_V\_: an Object or \*null\*, ): a Boolean
   -- |
   -- | 1\. Let \_current\_ be \_O\_.\[\[Prototype\]\]. 1. If SameValue(\_V\_,
   -- | \_current\_) is \*true\*, return \*true\*. 1. Let \_extensible\_ be
   -- | \_O\_.\[\[Extensible\]\]. 1. If \_extensible\_ is \*false\*, return
   -- | \*false\*. 1. Let \_p\_ be \_V\_. 1. Let \_done\_ be \*false\*. 1.
-  -- | Repeat, while \_done\_ is \*false\*, 1. If \_p\_ is \*null\*, then 1.
-  -- | Set \_done\_ to \*true\*. 1. Else if SameValue(\_p\_, \_O\_) is \*true\*,
-  -- | then 1. Return \*false\*. 1. Else, 1. If
-  -- | \_p\_.\[\[GetPrototypeOf\]\] is not the ordinary object internal method
-  -- | defined in , set \_done\_ to \*true\*. 1. Else, set \_p\_ to
-  -- | \_p\_.\[\[Prototype\]\]. 1. Set \_O\_.\[\[Prototype\]\] to \_V\_. 1.
-  -- | Return \*true\*.
+  -- | \[id=\"step-ordinarysetprototypeof-loop\"\] Repeat, while \_done\_ is
+  -- | \*false\*, 1. If \_p\_ is \*null\*, then 1. Set \_done\_ to \*true\*. 1.
+  -- | Else if SameValue(\_p\_, \_O\_) is \*true\*, then 1. Return
+  -- | \*false\*. 1. Else, 1. If \_p\_.\[\[GetPrototypeOf\]\] is not the
+  -- | ordinary object internal method defined in , set \_done\_ to
+  -- | \*true\*. 1. Else, set \_p\_ to \_p\_.\[\[Prototype\]\]. 1. Set
+  -- | \_O\_.\[\[Prototype\]\] to \_V\_. 1. Return \*true\*.
   -- SPEC: L10903-L10926
   -- | # OrdinarySetWithOwnDescriptor ( \_O\_: an Object, \_P\_: a property key, \_V\_: an ECMAScript language value, \_Receiver\_: an ECMAScript language value, \_ownDesc\_: a Property Descriptor or \*undefined\*, ): either a normal completion containing a Boolean or a throw completion
   -- |
@@ -2567,15 +2572,15 @@ def step? (s : State) : Option (TraceEvent × State) :=
   -- | If \_result\_ is not an Object, then 1. Set
   -- | \_iteratorRecord\_.\[\[Done\]\] to \*true\*. 1. Throw a \*TypeError\*
   -- | exception. 1. Return \_result\_.
-  -- SPEC: L7198-L7199
+  -- SPEC: L7198-L7200
   -- | # IteratorComplete ( \_iteratorResult\_: an Object, ): either a normal completion containing a Boolean or a throw completion
   -- |
   -- | 1\. Return ToBoolean(? Get(\_iteratorResult\_, \*\"done\"\*)).
-  -- SPEC: L7202-L7203
+  -- SPEC: L7202-L7204
   -- | # IteratorValue ( \_iteratorResult\_: an Object, ): either a normal completion containing an ECMAScript language value or a throw completion
   -- |
   -- | 1\. Return ? Get(\_iteratorResult\_, \*\"value\"\*).
-  -- SPEC: L7206-L7218
+  -- SPEC: L7206-L7219
   -- | # IteratorStep ( \_iteratorRecord\_: an Iterator Record, ): either a normal completion containing either an Object or \~done\~, or a throw completion
   -- |
   -- | description
