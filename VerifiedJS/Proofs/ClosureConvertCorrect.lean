@@ -528,6 +528,21 @@ private theorem closureConvert_init_related
       (Flat.convertExpr s.body [] "__env_main" [] st2).2, ?_⟩
     rw [← h]
 
+private theorem coreToFlatValue_eq_convertValue (v : Core.Value) :
+    Flat.coreToFlatValue v = Flat.convertValue v := by
+  cases v <;> rfl
+
+private theorem heapObjectAt?_eq (h : Core.Heap) (addr : Nat) :
+    Flat.heapObjectAt? h addr = h.objects[addr]? := by
+  simp only [Flat.heapObjectAt?]
+  split
+  · rename_i hlt
+    simp only [Array.getElem?_lt hlt, Array.get!_eq_getElem?]
+    rfl
+  · rename_i hge
+    simp only [Array.getElem?_def]
+    split <;> [exact absurd ‹_› hge; rfl]
+
 private theorem convertExpr_not_value (e : Core.Expr)
     (h : Core.exprValue? e = none)
     (scope : List String) (envVar : String) (envMap : Flat.EnvMapping) (st : Flat.CCState) :
