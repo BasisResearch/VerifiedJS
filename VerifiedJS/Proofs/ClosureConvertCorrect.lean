@@ -2101,14 +2101,15 @@ private theorem closureConvert_step_simulation
       have h0 := hcstep; rw [hsc_rw] at h0
       simp only [Core.step?] at h0
       exact congrArg Core.State.expr (Prod.mk.inj (Option.some.inj h0)).2 ▸ rfl
-    -- Now show CC_SimRel for the resulting states
-    -- convertExpr (.if cond (.seq body (.while_ cond body)) (.lit .undefined)) scope envVar envMap st
-    -- should produce: .if cond' (.seq body' (.while_ cond' body')) (.lit .undefined)
-    -- but this doesn't hold exactly because convertExpr processes the if/seq/while_ recursively
-    -- with different st values at each sub-expression.
-    -- Need to show: ∃ scope' envVar' envMap' st0 st0',
-    --   (sf'.expr, st0') = convertExpr sc'.expr scope' envVar' envMap' st0
-    sorry
+    have hheap' : sf'.heap = sc'.heap := by
+      have h0 := hstep; rw [hsf_rw] at h0
+      simp only [Flat.step?] at h0
+      have h1 := (Prod.mk.inj (Option.some.inj h0)).2; subst h1
+      have h0 := hcstep; rw [hsc_rw] at h0
+      simp only [Core.step?] at h0
+      have h1 := (Prod.mk.inj (Option.some.inj h0)).2; subst h1; exact hheap
+    exact ⟨hsf'_trace, henv', hheap', scope, st, _,
+      by simp only [Flat.convertExpr]; rw [hsc'_expr]; simp only [Flat.convertExpr, Flat.convertValue]; rw [hsf'_expr]⟩
   | «return» arg =>
     rw [hsc] at hconv; simp only [Flat.convertExpr] at hconv
     -- convertExpr (.return arg) = (.return arg', st1) where arg' = convertOptExpr arg
