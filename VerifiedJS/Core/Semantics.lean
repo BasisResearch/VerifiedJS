@@ -2352,6 +2352,143 @@ def step? (s : State) : Option (TraceEvent × State) :=
               let s' := pushTrace { sa with expr := .seq sa.expr b, trace := s.trace } t
               some (t, s')
           | none => none
+  -- SPEC: L16028-L16039
+  -- | # Runtime Semantics: Evaluation
+  -- |
+  -- | UpdateExpression : LeftHandSideExpression \`++\` 1. Let \_lhs\_ be ?
+  -- | Evaluation of \|LeftHandSideExpression\|. 1. If the AssignmentTargetType
+  -- | of \|LeftHandSideExpression\| is \~web-compat\~, throw a
+  -- | \*ReferenceError\* exception. 1. Let \_oldValue\_ be ? ToNumeric(?
+  -- | GetValue(\_lhs\_)). 1. If \_oldValue\_ is a Number, then 1. Let
+  -- | \_newValue\_ be Number::add(\_oldValue\_, \*1\*~𝔽~). 1. Else, 1. Assert:
+  -- | \_oldValue\_ is a BigInt. 1. Let \_newValue\_ be
+  -- | BigInt::add(\_oldValue\_, \*1\*~ℤ~). 1. Perform ? PutValue(\_lhs\_,
+  -- | \_newValue\_). 1. Return \_oldValue\_.
+  -- SPEC: L16042-L16053
+  -- | # Postfix Decrement Operator
+  -- |
+  -- | # Runtime Semantics: Evaluation
+  -- |
+  -- | UpdateExpression : LeftHandSideExpression \`\--\` 1. Let \_lhs\_ be ?
+  -- | Evaluation of \|LeftHandSideExpression\|. 1. If the AssignmentTargetType
+  -- | of \|LeftHandSideExpression\| is \~web-compat\~, throw a
+  -- | \*ReferenceError\* exception. 1. Let \_oldValue\_ be ? ToNumeric(?
+  -- | GetValue(\_lhs\_)). 1. If \_oldValue\_ is a Number, then 1. Let
+  -- | \_newValue\_ be Number::subtract(\_oldValue\_, \*1\*~𝔽~). 1. Else, 1.
+  -- | Assert: \_oldValue\_ is a BigInt. 1. Let \_newValue\_ be
+  -- | BigInt::subtract(\_oldValue\_, \*1\*~ℤ~). 1. Perform ? PutValue(\_lhs\_,
+  -- | \_newValue\_). 1. Return \_oldValue\_.
+  -- SPEC: L16056-L16066
+  -- | # Prefix Increment Operator
+  -- |
+  -- | # Runtime Semantics: Evaluation
+  -- |
+  -- | UpdateExpression : \`++\` UnaryExpression 1. Let \_expr\_ be ?
+  -- | Evaluation of \|UnaryExpression\|. 1. If the AssignmentTargetType of
+  -- | \|UnaryExpression\| is \~web-compat\~, throw a \*ReferenceError\*
+  -- | exception. 1. Let \_oldValue\_ be ? ToNumeric(? GetValue(\_expr\_)). 1.
+  -- | If \_oldValue\_ is a Number, then 1. Let \_newValue\_ be
+  -- | Number::add(\_oldValue\_, \*1\*~𝔽~). 1. Else, 1. Assert: \_oldValue\_ is
+  -- | a BigInt. 1. Let \_newValue\_ be BigInt::add(\_oldValue\_, \*1\*~ℤ~). 1.
+  -- | Perform ? PutValue(\_expr\_, \_newValue\_). 1. Return \_newValue\_.
+  -- SPEC: L16069-L16080
+  -- | # Prefix Decrement Operator
+  -- |
+  -- | # Runtime Semantics: Evaluation
+  -- |
+  -- | UpdateExpression : \`\--\` UnaryExpression 1. Let \_expr\_ be ?
+  -- | Evaluation of \|UnaryExpression\|. 1. If the AssignmentTargetType of
+  -- | \|UnaryExpression\| is \~web-compat\~, throw a \*ReferenceError\*
+  -- | exception. 1. Let \_oldValue\_ be ? ToNumeric(? GetValue(\_expr\_)). 1.
+  -- | If \_oldValue\_ is a Number, then 1. Let \_newValue\_ be
+  -- | Number::subtract(\_oldValue\_, \*1\*~𝔽~). 1. Else, 1. Assert:
+  -- | \_oldValue\_ is a BigInt. 1. Let \_newValue\_ be
+  -- | BigInt::subtract(\_oldValue\_, \*1\*~ℤ~). 1. Perform ?
+  -- | PutValue(\_expr\_, \_newValue\_). 1. Return \_newValue\_.
+  -- SPEC: L8534-L8571
+  -- | # Runtime Semantics: BindingInitialization ( \_value\_: an ECMAScript language value, \_environment\_: an Environment Record or \*undefined\*, ): either a normal completion containing \~unused\~ or an abrupt completion
+  -- |
+  -- | \*undefined\* is passed for \_environment\_ to indicate that a PutValue
+  -- | operation should be used to assign the initialization value. This is the
+  -- | case for \`var\` statements and formal parameter lists of some
+  -- | non-strict functions (See ). In those cases a lexical binding is hoisted
+  -- | and preinitialized prior to evaluation of its initializer.
+  -- |
+  -- | BindingIdentifier : Identifier 1. Let \_name\_ be the StringValue of
+  -- | \|Identifier\|. 1. Return ? InitializeBoundName(\_name\_, \_value\_,
+  -- | \_environment\_). BindingIdentifier : \`yield\` 1. Return ?
+  -- | InitializeBoundName(\*\"yield\"\*, \_value\_, \_environment\_).
+  -- | BindingIdentifier : \`await\` 1. Return ?
+  -- | InitializeBoundName(\*\"await\"\*, \_value\_, \_environment\_).
+  -- | BindingPattern : ObjectBindingPattern 1. Perform ?
+  -- | RequireObjectCoercible(\_value\_). 1. Return ? BindingInitialization of
+  -- | \|ObjectBindingPattern\| with arguments \_value\_ and \_environment\_.
+  -- | BindingPattern : ArrayBindingPattern 1. Let \_iteratorRecord\_ be ?
+  -- | GetIterator(\_value\_, \~sync\~). 1. Let \_result\_ be
+  -- | Completion(IteratorBindingInitialization of \|ArrayBindingPattern\| with
+  -- | arguments \_iteratorRecord\_ and \_environment\_). 1. If
+  -- | \_iteratorRecord\_.\[\[Done\]\] is \*false\*, return ?
+  -- | IteratorClose(\_iteratorRecord\_, \_result\_). 1. Return ? \_result\_.
+  -- | ObjectBindingPattern : \`{\` \`}\` 1. Return \~unused\~.
+  -- | ObjectBindingPattern : \`{\` BindingPropertyList \`}\` \`{\`
+  -- | BindingPropertyList \`,\` \`}\` 1. Perform ?
+  -- | PropertyBindingInitialization of \|BindingPropertyList\| with arguments
+  -- | \_value\_ and \_environment\_. 1. Return \~unused\~.
+  -- | ObjectBindingPattern : \`{\` BindingRestProperty \`}\` 1. Let
+  -- | \_excludedNames\_ be a new empty List. 1. Return ?
+  -- | RestBindingInitialization of \|BindingRestProperty\| with arguments
+  -- | \_value\_, \_environment\_, and \_excludedNames\_. ObjectBindingPattern
+  -- | : \`{\` BindingPropertyList \`,\` BindingRestProperty \`}\` 1. Let
+  -- | \_excludedNames\_ be ? PropertyBindingInitialization of
+  -- | \|BindingPropertyList\| with arguments \_value\_ and \_environment\_. 1.
+  -- | Return ? RestBindingInitialization of \|BindingRestProperty\| with
+  -- | arguments \_value\_, \_environment\_, and \_excludedNames\_.
+  -- SPEC: L8572-L8578
+  -- | # InitializeBoundName ( \_name\_: a String, \_value\_: an ECMAScript language value, \_environment\_: an Environment Record or \*undefined\*, ): either a normal completion containing \~unused\~ or an abrupt completion
+  -- |
+  -- | 1\. If \_environment\_ is not \*undefined\*, then 1. Perform !
+  -- | \_environment\_.InitializeBinding(\_name\_, \_value\_). 1. Return
+  -- | \~unused\~. 1. Let \_lhs\_ be ? ResolveBinding(\_name\_). 1. Return ?
+  -- | PutValue(\_lhs\_, \_value\_).
+  -- SPEC: L17293-L17331
+  -- | # BlockDeclarationInstantiation ( \_code\_: a Parse Node, \_env\_: a Declarative Environment Record, ): \~unused\~
+  -- |
+  -- | description
+  -- | :   \_code\_ is the Parse Node corresponding to the body of the block.
+  -- |     \_env\_ is the Environment Record in which bindings are to be
+  -- |     created.
+  -- |
+  -- | When a \|Block\| or \|CaseBlock\| is evaluated a new Declarative
+  -- | Environment Record is created and bindings for each block scoped
+  -- | variable, constant, function, or class declared in the block are
+  -- | instantiated in the Environment Record.
+  -- |
+  -- | It performs the following steps when called:
+  -- |
+  -- | 1\. Let \_declarations\_ be the LexicallyScopedDeclarations of
+  -- | \_code\_. 1. Let \_privateEnv\_ be the running execution context\'s
+  -- | PrivateEnvironment. 1. For each element \_d\_ of \_declarations\_, do 1.
+  -- | For each element \_dn\_ of the BoundNames of \_d\_, do 1. If
+  -- | IsConstantDeclaration of \_d\_ is \*true\*, then 1. Perform !
+  -- | \_env\_.CreateImmutableBinding(\_dn\_, \*true\*). 1. Else, 1.
+  -- | \[id=\"step-blockdeclarationinstantiation-createmutablebinding\",
+  -- | normative-optional\] If the host is a web browser or otherwise supports
+  -- | , then 1. If ! \_env\_.HasBinding(\_dn\_) is \*false\*, then 1. Perform
+  -- | ! \_env\_.CreateMutableBinding(\_dn\_, \*false\*). 1. Else, 1. Perform !
+  -- | \_env\_.CreateMutableBinding(\_dn\_, \*false\*). 1. If \_d\_ is either a
+  -- | \|FunctionDeclaration\|, a \|GeneratorDeclaration\|, an
+  -- | \|AsyncFunctionDeclaration\|, or an \|AsyncGeneratorDeclaration\|,
+  -- | then 1. Let \_fn\_ be the sole element of the BoundNames of \_d\_. 1.
+  -- | Let \_fo\_ be InstantiateFunctionObject of \_d\_ with arguments \_env\_
+  -- | and \_privateEnv\_. 1.
+  -- | \[id=\"step-blockdeclarationinstantiation-initializebinding\",
+  -- | normative-optional\] If the host is a web browser or otherwise supports
+  -- | , then 1. If the binding for \_fn\_ in \_env\_ is an uninitialized
+  -- | binding, then 1. Perform ! \_env\_.InitializeBinding(\_fn\_, \_fo\_). 1.
+  -- | Else, 1. Assert: \_d\_ is a \|FunctionDeclaration\|. 1. Perform !
+  -- | \_env\_.SetMutableBinding(\_fn\_, \_fo\_, \*false\*). 1. Else, 1.
+  -- | Perform ! \_env\_.InitializeBinding(\_fn\_, \_fo\_). 1. Return
+  -- | \~unused\~.
   -- SPEC: L16186-L16188
   -- | UnaryExpression : \`+\` UnaryExpression 1. Let \_expr\_ be ? Evaluation
   -- | of \|UnaryExpression\|. 1. Return ? ToNumber(? GetValue(\_expr\_)).
@@ -2946,6 +3083,47 @@ def step? (s : State) : Option (TraceEvent × State) :=
   -- | Let \_obj\_ be OrdinaryObjectCreate(%Object.prototype%). 1. Perform ?
   -- | PropertyDefinitionEvaluation of \|PropertyDefinitionList\| with argument
   -- | \_obj\_. 1. Return \_obj\_. LiteralPropertyName : IdentifierName 1.
+  -- SPEC: L15136-L15176
+  -- | # Runtime Semantics: PropertyDefinitionEvaluation ( \_object\_: an Object, ): either a normal completion containing \~unused\~ or an abrupt completion
+  -- |
+  -- | PropertyDefinitionList : PropertyDefinitionList \`,\`
+  -- | PropertyDefinition 1. Perform ? PropertyDefinitionEvaluation of
+  -- | \|PropertyDefinitionList\| with argument \_object\_. 1. Perform ?
+  -- | PropertyDefinitionEvaluation of \|PropertyDefinition\| with argument
+  -- | \_object\_. 1. Return \~unused\~. PropertyDefinition : \`\...\`
+  -- | AssignmentExpression 1. Let \_exprValue\_ be ? Evaluation of
+  -- | \|AssignmentExpression\|. 1. Let \_fromValue\_ be ?
+  -- | GetValue(\_exprValue\_). 1. Let \_excludedNames\_ be a new empty
+  -- | List. 1. Perform ? CopyDataProperties(\_object\_, \_fromValue\_,
+  -- | \_excludedNames\_). 1. Return \~unused\~. PropertyDefinition :
+  -- | IdentifierReference 1. Let \_propName\_ be the StringValue of
+  -- | \|IdentifierReference\|. 1. Let \_exprValue\_ be ? Evaluation of
+  -- | \|IdentifierReference\|. 1. Let \_propValue\_ be ?
+  -- | GetValue(\_exprValue\_). 1. Assert: \_object\_ is an ordinary,
+  -- | extensible object with no non-configurable properties. 1. Perform !
+  -- | CreateDataPropertyOrThrow(\_object\_, \_propName\_, \_propValue\_). 1.
+  -- | Return \~unused\~. PropertyDefinition : PropertyName \`:\`
+  -- | AssignmentExpression 1. Let \_propKey\_ be ? Evaluation of
+  -- | \|PropertyName\|. 1. If this \|PropertyDefinition\| is contained within
+  -- | a \|Script\| that is being evaluated for ParseJSON (see step of
+  -- | ParseJSON), then 1. Let \_isProtoSetter\_ be \*false\*. 1. Else if
+  -- | \_propKey\_ is \*\"\_\_proto\_\_\"\* and IsComputedPropertyKey of
+  -- | \|PropertyName\| is \*false\*, then 1. Let \_isProtoSetter\_ be
+  -- | \*true\*. 1. Else, 1. Let \_isProtoSetter\_ be \*false\*. 1. If
+  -- | IsAnonymousFunctionDefinition(\|AssignmentExpression\|) is \*true\* and
+  -- | \_isProtoSetter\_ is \*false\*, then 1. Let \_propValue\_ be ?
+  -- | NamedEvaluation of \|AssignmentExpression\| with argument
+  -- | \_propKey\_. 1. Else, 1. Let \_exprValueRef\_ be ? Evaluation of
+  -- | \|AssignmentExpression\|. 1. Let \_propValue\_ be ?
+  -- | GetValue(\_exprValueRef\_). 1. If \_isProtoSetter\_ is \*true\*, then 1.
+  -- | If \_propValue\_ is an Object or \_propValue\_ is \*null\*, then 1.
+  -- | Perform ! \_object\_.\[\[SetPrototypeOf\]\](\_propValue\_). 1. Return
+  -- | \~unused\~. 1. Assert: \_object\_ is an ordinary, extensible object with
+  -- | no non-configurable properties. 1. Perform !
+  -- | CreateDataPropertyOrThrow(\_object\_, \_propKey\_, \_propValue\_). 1.
+  -- | Return \~unused\~. PropertyDefinition : MethodDefinition 1. Perform ?
+  -- | MethodDefinitionEvaluation of \|MethodDefinition\| with arguments
+  -- | \_object\_ and \*true\*. 1. Return \~unused\~.
   | .objectLit props =>
       match hf : firstNonValueProp props with
       | some (done, k, target, rest) =>

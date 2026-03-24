@@ -1,4 +1,39 @@
 
+## Run: 2026-03-24T10:30+00:00
+- Sorries before: 13 total (10 CC + 2 ANF + 1 Lower), after: 11 total (8 CC + 2 ANF + 1 Lower)
+- Net sorry delta: -2 (getIndex, setIndex)
+- Build: ✅ PASS
+
+### What was done:
+1. **Closed getIndex sorry (line 1858)** — Full proof with 3 sub-cases:
+   - obj not value: step obj sub-expression, use `step_getIndex_step_obj`, apply IH, `convertExpr_scope_irrelevant` for idx correspondence
+   - obj value + idx value: case split on ov (object/string/null/undefined/bool/number/function). Object case uses `heapObjectAt?_eq`, `valueToString_convertValue`, `coreToFlatValue_eq_convertValue`. String case uses `cases iv <;> simp <;> rfl`.
+   - obj value + idx not value: case split on `convertValue ov` for Flat branch, step idx, apply IH, reconstruct correspondence
+
+2. **Closed setIndex sorry (line 1859)** — Full proof with 4 sub-cases:
+   - obj not value: step obj, apply IH with `convertExpr_scope_irrelevant` for idx and value
+   - obj value + idx not value: step idx, same pattern as setProp value-stepping
+   - obj value + idx value + value value: heap correspondence via `heapObjectAt?_eq`, `flatToCoreValue_convertValue`, `valueToString_convertValue`
+   - obj value + idx value + value not value: step value, apply IH
+
+### Analysis of remaining CC sorries (8):
+| Sorry | Status |
+|-------|--------|
+| captured var (line 813) | Blocked: needs stuttering simulation (Flat.getEnv takes 2 steps) |
+| call (line 1523) | Blocked: Flat returns .undefined instead of invoking function |
+| newObj (line 1524) | Blocked: same as call |
+| objectLit/arrayLit/functionDef (lines 2890-2892) | Blocked: needs env/heap/funcs correspondence |
+| 2 isCallFrame (lines 3026, 3139) | Unreachable for source programs but needs well-formedness predicate |
+
+### Analysis of ANF sorries (2):
+- Line 106: Full `anfConvert_step_star` theorem — entire main step-star simulation. Very large.
+- Line 1181: Nested seq case in halt_star. Needs refactored induction measure (left-spine depth) rather than expression depth.
+
+### Next steps:
+1. isCallFrame sorries could be closed by adding well-formedness predicate to CC_SimRel (catchParam ≠ "__call_frame_return__")
+2. ANF line 1181 needs proof that nested left-spine seqs can be flattened by N induction
+3. call/newObj/objectLit/arrayLit/functionDef need Flat semantics stubs to be implemented
+
 ## Run: 2026-03-24T03:30+00:00
 - Sorries before: 16 total (13 CC + 2 ANF + 1 Lower), after: 15 total (12 CC + 2 ANF + 1 Lower)
 - Net sorry delta: -1 (while_ unroll). Also closed 11 heap-equality tuple sorries that were introduced when `sf.heap = sc.heap` was added to CC_SimRel.
