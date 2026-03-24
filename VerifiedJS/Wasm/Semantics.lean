@@ -7513,7 +7513,47 @@ theorem step_sim (irmod : IRModule) (wmod : Module) :
                     hlabels := hrel.hlabels, hhalt := hhalt_of_structural .nil hrel.hlabels }⟩
               | .i32 rhs :: .i32 lhs :: stk =>
                 -- Both i32: success case. IR and Wasm compute the same result.
-                sorry
+                -- Simplify IR step
+                unfold irStep? at hstep; rw [hcode_ir, hstk] at hstep
+                simp [irPop2?, irPushTrace] at hstep
+                obtain ⟨rfl, rfl⟩ := hstep
+                -- Extract Wasm stack from correspondence
+                have hstk_w := stack_corr_i32_i32_inv rhs lhs stk s2.stack
+                  (hstk ▸ hrel.hstack.1) (hstk ▸ hrel.hstack.2)
+                obtain ⟨wstk', hstack_eq, hlen_tail, htail⟩ := hstk_w
+                -- Apply Wasm step equation lemma
+                have hw := by first
+                  | exact step?_eq_i32Add s2 rest_w lhs rhs wstk' hcw hstack_eq
+                  | exact step?_eq_i32Sub s2 rest_w lhs rhs wstk' hcw hstack_eq
+                  | exact step?_eq_i32Mul s2 rest_w lhs rhs wstk' hcw hstack_eq
+                  | exact step?_eq_i32And s2 rest_w lhs rhs wstk' hcw hstack_eq
+                  | exact step?_eq_i32Or s2 rest_w lhs rhs wstk' hcw hstack_eq
+                  | exact step?_eq_i32Eq s2 rest_w lhs rhs wstk' hcw hstack_eq
+                  | exact step?_eq_i32Ne s2 rest_w lhs rhs wstk' hcw hstack_eq
+                  | exact step?_eq_i32Lts s2 rest_w lhs rhs wstk' hcw hstack_eq
+                  | exact step?_eq_i32Gts s2 rest_w lhs rhs wstk' hcw hstack_eq
+                -- Build result
+                refine ⟨_, by simp [traceToWasm]; exact hw, ?_⟩
+                exact {
+                  hemit := hrel.hemit
+                  hcode := hrest
+                  hstack := by
+                    dsimp only []
+                    apply stack_corr_cons hlen_tail.symm htail
+                    first
+                      | exact .i32 (lhs + rhs)
+                      | exact .i32 (lhs - rhs)
+                      | exact .i32 (lhs * rhs)
+                      | exact .i32 (lhs &&& rhs)
+                      | exact .i32 (lhs ||| rhs)
+                      | (simp only [irBoolToI32, boolToI32]; exact .i32 _)
+                  hframes_len := hrel.hframes_len
+                  hframes_locals := hrel.hframes_locals
+                  hframes_vals := hrel.hframes_vals
+                  hglobals := hrel.hglobals
+                  hlabels := hrel.hlabels
+                  hhalt := hhalt_of_structural hrest hrel.hlabels
+                }
               | v1 :: v2 :: stk =>
                 -- Type mismatch (at least one non-i32): both trap
                 sorry)
