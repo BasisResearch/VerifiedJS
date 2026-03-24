@@ -477,6 +477,50 @@ set_option linter.deprecated false
 -- | Return \_V\_.\[\[Base\]\].
 
 /-- Observable trace events emitted by Core execution. -/
+-- SPEC: L5330-L5339
+-- | # The Enum Specification Type
+-- |
+-- | [Enums]{.dfn variants="enum,enums"} are values which are internal to the
+-- | specification and not directly observable from ECMAScript code. Enums
+-- | are denoted using a \~sans-serif\~ typeface. For instance, a Completion
+-- | Record\'s \[\[Type\]\] field takes on values like \~normal\~,
+-- | \~return\~, or \~throw\~. Enums have no characteristics other than their
+-- | name. The name of an enum serves no purpose other than to distinguish it
+-- | from other enums, and implies nothing about its usage or meaning in
+-- | context.
+-- SPEC: L5399-L5430
+-- | # The Set and Relation Specification Types
+-- |
+-- | The *Set* type is used to explain a collection of unordered elements for
+-- | use in the memory model. It is distinct from the ECMAScript collection
+-- | type of the same name. To disambiguate, instances of the ECMAScript
+-- | collection are consistently referred to as \"Set objects\" within this
+-- | specification. Values of the Set type are simple collections of
+-- | elements, where no element appears more than once. Elements may be added
+-- | to and removed from Sets. Sets may be unioned, intersected, or
+-- | subtracted from each other.
+-- |
+-- | The [Relation]{.dfn variants="Relations"} type is used to explain
+-- | constraints on Sets. Values of the Relation type are Sets of ordered
+-- | pairs of values from its value domain. For example, a Relation on Memory
+-- | events is a set of ordered pairs of Memory events. For a Relation \_R\_
+-- | and two values \_a\_ and \_b\_ in the value domain of \_R\_, \_a\_ \_R\_
+-- | \_b\_ is shorthand for saying the ordered pair (\_a\_, \_b\_) is a
+-- | member of \_R\_. A Relation is the [least Relation]{#least-relation
+-- | .dfn} with respect to some conditions when it is the smallest Relation
+-- | that satisfies those conditions.
+-- |
+-- | A [strict partial order]{.dfn variants="strict partial orders"} is a
+-- | Relation value \_R\_ that satisfies the following.
+-- |
+-- | - For all \_a\_, \_b\_, and \_c\_ in \_R\_\'s domain:
+-- |
+-- |   - It is not the case that \_a\_ \_R\_ \_a\_, and
+-- |   - If \_a\_ \_R\_ \_b\_ and \_b\_ \_R\_ \_c\_, then \_a\_ \_R\_ \_c\_.
+-- |
+-- | The two properties above are called irreflexivity and transitivity,
+-- | respectively.
+-- |
 inductive TraceEvent where
   | log (s : String)
   | error (s : String)
@@ -596,11 +640,340 @@ inductive TraceEvent where
 -- | binding for \_N\_ in \_envRec\_ has been initialized. 1. Return
 -- | \~unused\~.
 /-- ECMA-262 §8.1 Environment Records (simplified lexical bindings for Core). -/
+-- SPEC: L3555-L3570
+-- | # Evaluation Order
+-- |
+-- | When complex expressions appear in algorithm steps, these are to be
+-- | understood as being evaluated in a left-to-right, inside-to-outside
+-- | order. For example, the step
+-- |
+-- | 1\. Return A(B(), C.\[\[D\]\]) + E(F()).
+-- |
+-- | is equivalent to
+-- |
+-- | 1\. Let \_tmp1\_ be B(). 1. Let \_tmp2\_ be C.\[\[D\]\]. 1. Let \_tmp3\_
+-- | be A(\_tmp1\_, \_tmp2\_). 1. Let \_tmp4\_ be F(). 1. Let \_tmp5\_ be
+-- | E(\_tmp4\_). 1. Let \_tmp6\_ be \_tmp3\_ + \_tmp5\_. 1. Return \_tmp6\_.
+-- |
+-- | where the various \_tmpN\_ aliases are ephemeral and visible only in
+-- | these steps.
+-- SPEC: L4168-L4208
+-- | # Numeric Types
+-- |
+-- | ECMAScript has two built-in numeric types: Number and BigInt. The
+-- | following abstract operations are defined over these numeric types. The
+-- | \"Result\" column shows the return type, along with an indication if it
+-- | is possible for some invocations of the operation to return an abrupt
+-- | completion.
+-- |
+-- | +----------------------------+-----------------------+-----------------+-----------------+
+-- | | Operation                  | Example source        | Invoked by the  | Result          |
+-- | |                            |                       | Evaluation      |                 |
+-- | |                            |                       | semantics of    |                 |
+-- | |                            |                       | \...            |                 |
+-- | +============================+=======================+=================+=================+
+-- | | Number::unaryMinus         | \`-x\`                |                 | Number          |
+-- | +----------------------------+                       |                 +-----------------+
+-- | | BigInt::unaryMinus         |                       |                 | BigInt          |
+-- | +----------------------------+-----------------------+-----------------+-----------------+
+-- | | Number::bitwiseNOT         | \`\~x\`               |                 | Number          |
+-- | +----------------------------+                       |                 +-----------------+
+-- | | BigInt::bitwiseNOT         |                       |                 | BigInt          |
+-- | +----------------------------+-----------------------+-----------------+-----------------+
+-- | | Number::exponentiate       | \`x \*\* y\`          | and             | Number          |
+-- | +----------------------------+                       |                 +-----------------+
+-- | | BigInt::exponentiate       |                       |                 | either a normal |
+-- | |                            |                       |                 | completion      |
+-- | |                            |                       |                 | containing a    |
+-- | |                            |                       |                 | BigInt or a     |
+-- | |                            |                       |                 | throw           |
+-- | |                            |                       |                 | completion      |
+-- | +----------------------------+-----------------------+-----------------+-----------------+
+-- | | Number::multiply           | \`x \* y\`            |                 | Number          |
+-- | +----------------------------+                       |                 +-----------------+
+-- | | BigInt::multiply           |                       |                 | BigInt          |
+-- | +----------------------------+-----------------------+-----------------+-----------------+
+-- | | Number::divide             | \`x / y\`             |                 | Number          |
+-- | +----------------------------+                       |                 +-----------------+
+-- | | BigInt::divide             |                       |                 | either a normal |
+-- | |                            |                       |                 | completion      |
+-- | |                            |                       |                 | containing a    |
+-- | |                            |                       |                 | BigInt or a     |
+-- SPEC: L4925-L4940
+-- | # Object Internal Methods and Internal Slots
+-- |
+-- | The actual semantics of objects, in ECMAScript, are specified via
+-- | algorithms called *internal methods*. Each object in an ECMAScript
+-- | engine is associated with a set of internal methods that defines its
+-- | runtime behaviour. These internal methods are not part of the ECMAScript
+-- | language. They are defined by this specification purely for expository
+-- | purposes. However, each object within an implementation of ECMAScript
+-- | must behave as specified by the internal methods associated with it. The
+-- | exact manner in which this is accomplished is determined by the
+-- | implementation.
+-- |
+-- | Internal method names are polymorphic. This means that different object
+-- | values may perform different algorithms when a common internal method
+-- | name is invoked upon them. That actual object upon which an internal
+-- | method is invoked is the "target" of the invocation. If, at runtime, the
+-- SPEC: L5224-L5240
+-- | # Well-Known Intrinsic Objects
+-- |
+-- | Well-known intrinsics are built-in objects that are explicitly
+-- | referenced by the algorithms of this specification and which usually
+-- | have realm-specific identities. Unless otherwise specified each
+-- | intrinsic object actually corresponds to a set of similar objects, one
+-- | per realm.
+-- |
+-- | Within this specification a reference such as %name% means the intrinsic
+-- | object, associated with the current realm, corresponding to the name. A
+-- | reference such as %name.a.b% means, as if the \*\"b\"\* property of the
+-- | value of the \*\"a\"\* property of the intrinsic object %name% was
+-- | accessed prior to any ECMAScript code being evaluated. Determination of
+-- | the current realm and its intrinsics is described in . The well-known
+-- | intrinsics are listed in .
+-- |
+-- |   Intrinsic Name                     Global Name                ECMAScript Language Association
+-- SPEC: L5317-L5328
+-- | # ECMAScript Specification Types
+-- |
+-- | A specification type corresponds to meta-values that are used within
+-- | algorithms to describe the semantics of ECMAScript language constructs
+-- | and ECMAScript language types. The specification types include Reference
+-- | Record, List, Completion Record, Property Descriptor, Environment
+-- | Record, Abstract Closure, and Data Block. Specification type values are
+-- | specification artefacts that do not necessarily correspond to any
+-- | specific entity within an ECMAScript implementation. Specification type
+-- | values may be used to describe intermediate results of ECMAScript
+-- | expression evaluation but such values cannot be stored as properties of
+-- | objects or values of ECMAScript language variables.
+-- SPEC: L5341-L5370
+-- | # The List and Record Specification Types
+-- |
+-- | The [List]{.dfn variants="Lists"} type is used to explain the evaluation
+-- | of argument lists (see ) in \`new\` expressions, in function calls, and
+-- | in other algorithms where a simple ordered list of values is needed.
+-- | Values of the List type are simply ordered sequences of list elements
+-- | containing the individual values. These sequences may be of any length.
+-- | The elements of a list may be randomly accessed using 0-origin indices.
+-- | For notational convenience an array-like syntax can be used to access
+-- | List elements. For example, \_arguments\_\[2\] is shorthand for saying
+-- | the 3^rd^ element of the List \_arguments\_.
+-- |
+-- | When an algorithm iterates over the elements of a List without
+-- | specifying an order, the order used is the order of the elements in the
+-- | List.
+-- |
+-- | For notational convenience within this specification, a literal syntax
+-- | can be used to express a new List value. For example, « 1, 2 » defines a
+-- | List value that has two elements each of which is initialized to a
+-- | specific value. A new empty List can be expressed as « ».
+-- |
+-- | In this specification, the phrase \"the
+-- | [list-concatenation]{#list-concatenation .dfn} of \_A\_, \_B\_, \...\"
+-- | (where each argument is a possibly empty List) denotes a new List value
+-- | whose elements are the concatenation of the elements (in order) of each
+-- | of the arguments (in order).
+-- |
+-- | As applied to a List of Strings, the phrase \"sorted according to
+-- | [lexicographic code unit order]{#lexicographic-code-unit-order .dfn}\"
+-- | means sorting by the numeric value of each code unit up to the length of
+-- SPEC: L5746-L5771
+-- | # The Abstract Closure Specification Type
+-- |
+-- | The [Abstract Closure]{.dfn variants="Abstract Closures"} specification
+-- | type is used to refer to algorithm steps together with a collection of
+-- | values. Abstract Closures are meta-values and are invoked using function
+-- | application style such as \_closure\_(\_arg1\_, \_arg2\_). Like abstract
+-- | operations, invocations perform the algorithm steps described by the
+-- | Abstract Closure.
+-- |
+-- | In algorithm steps that create an Abstract Closure, values are captured
+-- | with the verb \"capture\" followed by a list of aliases. When an
+-- | Abstract Closure is created, it captures the value that is associated
+-- | with each alias at that time. In steps that specify the algorithm to be
+-- | performed when an Abstract Closure is called, each captured value is
+-- | referred to by the alias that was used to capture the value.
+-- |
+-- | If an Abstract Closure returns a Completion Record, that Completion
+-- | Record must be either a normal completion or a throw completion.
+-- |
+-- | Abstract Closures are created inline as part of other algorithms, shown
+-- | in the following example.
+-- |
+-- | 1\. Let \_addend\_ be 41. 1. Let \_closure\_ be a new Abstract Closure
+-- | with parameters (\_x\_) that captures \_addend\_ and performs the
+-- | following steps when called: 1. Return \_x\_ + \_addend\_. 1. Let
+-- | \_val\_ be \_closure\_(1). 1. Assert: \_val\_ is 42.
+-- SPEC: L5903-L5912
+-- | # Private Names
+-- |
+-- | The [Private Name]{.dfn variants="Private Names"} specification type is
+-- | used to describe a globally unique value (one which differs from any
+-- | other Private Name, even if they are otherwise indistinguishable) which
+-- | represents the key of a private class element (field, method, or
+-- | accessor). Each Private Name has an immutable \[\[Description\]\]
+-- | internal slot which is a String. A Private Name may be installed on any
+-- | ECMAScript object with PrivateFieldAdd or PrivateMethodOrAccessorAdd,
+-- | and then read or written using PrivateGet and PrivateSet.
+-- SPEC: L7360-L7400
+-- | # Static Semantics: BoundNames ( ): a List of Strings
+-- |
+-- | \*\"\\\*default\\\*\"\* is used within this specification as a synthetic
+-- | name for a module\'s default export when it does not have another name.
+-- | An entry in the module\'s \[\[Environment\]\] is created with that name
+-- | and holds the corresponding value, and resolving the export named
+-- | \*\"default\"\* by calling for the module will return a ResolvedBinding
+-- | Record whose \[\[BindingName\]\] is \*\"\\\*default\\\*\"\*, which will
+-- | then resolve in the module\'s \[\[Environment\]\] to the above-mentioned
+-- | value. This is done only for ease of specification, so that anonymous
+-- | default exports can be resolved like any other export. This
+-- | \*\"\\\*default\\\*\"\* string is never accessible to ECMAScript code or
+-- | to the module linking algorithm.
+-- |
+-- | BindingIdentifier : Identifier 1. Return a List whose sole element is
+-- | the StringValue of \|Identifier\|. BindingIdentifier : \`yield\` 1.
+-- | Return « \*\"yield\"\* ». BindingIdentifier : \`await\` 1. Return «
+-- | \*\"await\"\* ». LexicalDeclaration : LetOrConst BindingList \`;\` 1.
+-- | Return the BoundNames of \|BindingList\|. BindingList : BindingList
+-- | \`,\` LexicalBinding 1. Let \_names1\_ be the BoundNames of
+-- | \|BindingList\|. 1. Let \_names2\_ be the BoundNames of
+-- | \|LexicalBinding\|. 1. Return the list-concatenation of \_names1\_ and
+-- | \_names2\_. LexicalBinding : BindingIdentifier Initializer? 1. Return
+-- | the BoundNames of \|BindingIdentifier\|. LexicalBinding : BindingPattern
+-- | Initializer 1. Return the BoundNames of \|BindingPattern\|.
+-- | VariableDeclarationList : VariableDeclarationList \`,\`
+-- | VariableDeclaration 1. Let \_names1\_ be the BoundNames of
+-- | \|VariableDeclarationList\|. 1. Let \_names2\_ be the BoundNames of
+-- | \|VariableDeclaration\|. 1. Return the list-concatenation of \_names1\_
+-- | and \_names2\_. VariableDeclaration : BindingIdentifier Initializer? 1.
+-- | Return the BoundNames of \|BindingIdentifier\|. VariableDeclaration :
+-- | BindingPattern Initializer 1. Return the BoundNames of
+-- | \|BindingPattern\|. ObjectBindingPattern : \`{\` \`}\` 1. Return a new
+-- | empty List. ObjectBindingPattern : \`{\` BindingPropertyList \`,\`
+-- | BindingRestProperty \`}\` 1. Let \_names1\_ be the BoundNames of
+-- | \|BindingPropertyList\|. 1. Let \_names2\_ be the BoundNames of
+-- | \|BindingRestProperty\|. 1. Return the list-concatenation of \_names1\_
+-- | and \_names2\_. ArrayBindingPattern : \`\[\` Elision? \`\]\` 1. Return a
+-- | new empty List. ArrayBindingPattern : \`\[\` Elision? BindingRestElement
+-- | \`\]\` 1. Return the BoundNames of \|BindingRestElement\|.
+-- | ArrayBindingPattern : \`\[\` BindingElementList \`,\` Elision? \`\]\` 1.
+-- SPEC: L8775-L8804
+-- | # Environment Records
+-- |
+-- | [Environment Record]{.dfn variants="Environment Records"} is a
+-- | specification type used to define the association of \|Identifier\|s to
+-- | specific variables and functions, based upon the lexical nesting
+-- | structure of ECMAScript code. Usually an Environment Record is
+-- | associated with some specific syntactic structure of ECMAScript code
+-- | such as a \|FunctionDeclaration\|, a \|BlockStatement\|, or a \|Catch\|
+-- | clause of a \|TryStatement\|. Each time such code is evaluated, a new
+-- | Environment Record is created to record the identifier bindings that are
+-- | created by that code.
+-- |
+-- | Every Environment Record has an \[\[OuterEnv\]\] field, which is either
+-- | \*null\* or a reference to an outer Environment Record. This is used to
+-- | model the logical nesting of Environment Record values. The outer
+-- | reference of an (inner) Environment Record is a reference to the
+-- | Environment Record that logically surrounds the inner Environment
+-- | Record. An outer Environment Record may, of course, have its own outer
+-- | Environment Record. An Environment Record may serve as the outer
+-- | environment for multiple inner Environment Records. For example, if a
+-- | \|FunctionDeclaration\| contains two nested \|FunctionDeclaration\|s
+-- | then the Environment Records of each of the nested functions will have
+-- | as their outer Environment Record the Environment Record of the current
+-- | evaluation of the surrounding function.
+-- |
+-- | Environment Records are purely specification mechanisms and need not
+-- | correspond to any specific artefact of an ECMAScript implementation. It
+-- | is impossible for an ECMAScript program to directly access or manipulate
+-- | such values.
+-- |
+-- SPEC: L8805-L8812
+-- | # The Environment Record Type Hierarchy
+-- |
+-- | Environment Records can be thought of as existing in a simple
+-- | object-oriented hierarchy where Environment Record is an abstract class
+-- | with three concrete subclasses: Declarative Environment Record, Object
+-- | Environment Record, and Global Environment Record. Function Environment
+-- | Records and Module Environment Records are subclasses of Declarative
+-- | Environment Record.
 structure Env where
   bindings : List (VarName × Value)
   deriving Repr
 
 /-- ECMA-262 §9.1 Ordinary object storage (heap abstract state). -/
+-- SPEC: L5773-L5809
+-- | # Data Blocks
+-- |
+-- | The [Data Block]{.dfn variants="Data Blocks"} specification type is used
+-- | to describe a distinct and mutable sequence of byte-sized (8 bit)
+-- | numeric values. A [byte value]{.dfn variants="byte values"} is an
+-- | integer in the inclusive interval from 0 to 255. A Data Block value is
+-- | created with a fixed number of bytes that each have the initial value 0.
+-- |
+-- | For notational convenience within this specification, an array-like
+-- | syntax can be used to access the individual bytes of a Data Block value.
+-- | This notation presents a Data Block value as a 0-based integer-indexed
+-- | sequence of bytes. For example, if \_db\_ is a 5 byte Data Block value
+-- | then \_db\_\[2\] can be used to access its 3^rd^ byte.
+-- |
+-- | A data block that resides in memory that can be referenced from multiple
+-- | agents concurrently is designated a [Shared Data Block]{.dfn
+-- | variants="Shared Data Blocks"}. A Shared Data Block has an identity (for
+-- | the purposes of equality testing Shared Data Block values) that is
+-- | *address-free*: it is tied not to the virtual addresses the block is
+-- | mapped to in any process, but to the set of locations in memory that the
+-- | block represents. Two data blocks are equal only if the sets of the
+-- | locations they contain are equal; otherwise, they are not equal and the
+-- | intersection of the sets of locations they contain is empty. Finally,
+-- | Shared Data Blocks can be distinguished from Data Blocks.
+-- |
+-- | The semantics of Shared Data Blocks is defined using Shared Data Block
+-- | events by the memory model. Abstract operations below introduce Shared
+-- | Data Block events and act as the interface between evaluation semantics
+-- | and the event semantics of the memory model. The events form a candidate
+-- | execution, on which the memory model acts as a filter. Please consult
+-- | the memory model for full semantics.
+-- |
+-- | Shared Data Block events are modelled by Records, defined in the memory
+-- | model.
+-- |
+-- | The following abstract operations are used in this specification to
+-- | operate upon Data Block values:
+-- SPEC: L5889-L5901
+-- | # The ClassFieldDefinition Record Specification Type
+-- |
+-- | The ClassFieldDefinition type is a Record used in the specification of
+-- | class fields.
+-- |
+-- | Values of the ClassFieldDefinition type are Record values whose fields
+-- | are defined by . Such values are referred to as [ClassFieldDefinition
+-- | Records]{.dfn variants="ClassFieldDefinition Record"}.
+-- |
+-- |   Field Name            Value                                        Meaning
+-- |   --------------------- -------------------------------------------- ---------------------------------------
+-- |   \[\[Name\]\]          a Private Name, a String, or a Symbol        The name of the field.
+-- |   \[\[Initializer\]\]   an ECMAScript function object or \~empty\~   The initializer of the field, if any.
+-- SPEC: L5914-L5924
+-- | # The ClassStaticBlockDefinition Record Specification Type
+-- |
+-- | A [ClassStaticBlockDefinition Record]{.dfn
+-- | variants="ClassStaticBlockDefinition Records"} is a Record value used to
+-- | encapsulate the executable code for a class static initialization block.
+-- |
+-- | ClassStaticBlockDefinition Records have the fields listed in .
+-- |
+-- |   Field Name             Value                           Meaning
+-- |   ---------------------- ------------------------------- ---------------------------------------------------------------------------
+-- |   \[\[BodyFunction\]\]   an ECMAScript function object   The function object to be called during static initialization of a class.
+-- SPEC: L5926-L5931
+-- | # Abstract Operations
+-- |
+-- | These operations are not a part of the ECMAScript language; they are
+-- | defined here solely to aid the specification of the semantics of the
+-- | ECMAScript language. Other, more specialized abstract operations are
+-- | defined throughout this specification.
 structure Heap where
   objects : Array (List (PropName × Value))
   nextAddr : Nat
@@ -2352,6 +2725,22 @@ def toBoolean : Value → Bool
 -- |   \*+∞\*~𝔽~ and \*-∞\*~𝔽~ are mapped to \*+0\*~𝔽~.)
 -- | - ToUint32 maps \*-0\*~𝔽~ to \*+0\*~𝔽~.
 /-- ECMA-262 §7.1.3 ToNumber (core subset). -/
+-- SPEC: L6270-L6284
+-- | # StringIntegerLiteral Grammar
+-- |
+-- | StringToBigInt uses the following grammar.
+-- |
+-- | ## Syntax
+-- |
+-- | StringIntegerLiteral ::: StrWhiteSpace? StrWhiteSpace? StrIntegerLiteral
+-- | StrWhiteSpace? StrIntegerLiteral ::: SignedInteger\[\~Sep\]
+-- | NonDecimalIntegerLiteral\[\~Sep\]
+-- |
+-- | # Runtime Semantics: MV
+-- |
+-- | - The MV of StringIntegerLiteral ::: StrWhiteSpace? is 0.
+-- | - The MV of StringIntegerLiteral ::: StrWhiteSpace? StrIntegerLiteral
+-- |   StrWhiteSpace? is the MV of \|StrIntegerLiteral\|.
 def toNumber : Value → Float
   | .number n => n
   | .bool true => 1.0
@@ -2646,6 +3035,56 @@ def toNumber : Value → Float
 -- | \_x\_; that is, compute a Number with the same magnitude but opposite
 -- | sign.
 /-- ECMA-262 §13.5 Runtime Semantics: Evaluation (core unary subset). -/
+-- SPEC: L6988-L6992
+-- | # PrivateElementFind ( \_O\_: an Object, \_P\_: a Private Name, ): a PrivateElement or \~empty\~
+-- |
+-- | 1\. If \_O\_.\[\[PrivateElements\]\] contains a PrivateElement \_pe\_
+-- | such that \_pe\_.\[\[Key\]\] is \_P\_, then 1. Return \_pe\_. 1. Return
+-- | \~empty\~.
+-- SPEC: L6994-L7001
+-- | # PrivateFieldAdd ( \_O\_: an Object, \_P\_: a Private Name, \_value\_: an ECMAScript language value, ): either a normal completion containing \~unused\~ or a throw completion
+-- |
+-- | 1\. If the host is a web browser, then 1. Perform ?
+-- | HostEnsureCanAddPrivateElement(\_O\_). 1. Let \_entry\_ be
+-- | PrivateElementFind(\_O\_, \_P\_). 1. If \_entry\_ is not \~empty\~,
+-- | throw a \*TypeError\* exception. 1. Append PrivateElement { \[\[Key\]\]:
+-- | \_P\_, \[\[Kind\]\]: \~field\~, \[\[Value\]\]: \_value\_ } to
+-- | \_O\_.\[\[PrivateElements\]\]. 1. Return \~unused\~.
+-- SPEC: L7003-L7014
+-- | # PrivateMethodOrAccessorAdd ( \_O\_: an Object, \_method\_: a PrivateElement, ): either a normal completion containing \~unused\~ or a throw completion
+-- |
+-- | 1\. Assert: \_method\_.\[\[Kind\]\] is either \~method\~ or
+-- | \~accessor\~. 1. If the host is a web browser, then 1. Perform ?
+-- | HostEnsureCanAddPrivateElement(\_O\_). 1. Let \_entry\_ be
+-- | PrivateElementFind(\_O\_, \_method\_.\[\[Key\]\]). 1. If \_entry\_ is
+-- | not \~empty\~, throw a \*TypeError\* exception. 1. Append \_method\_ to
+-- | \_O\_.\[\[PrivateElements\]\]. 1. Return \~unused\~.
+-- |
+-- | The values for private methods and accessors are shared across
+-- | instances. This operation does not create a new copy of the method or
+-- | accessor.
+-- SPEC: L7036-L7044
+-- | # PrivateGet ( \_O\_: an Object, \_P\_: a Private Name, ): either a normal completion containing an ECMAScript language value or a throw completion
+-- |
+-- | 1\. Let \_entry\_ be PrivateElementFind(\_O\_, \_P\_). 1. If \_entry\_
+-- | is \~empty\~, throw a \*TypeError\* exception. 1. If
+-- | \_entry\_.\[\[Kind\]\] is either \~field\~ or \~method\~, then 1. Return
+-- | \_entry\_.\[\[Value\]\]. 1. Assert: \_entry\_.\[\[Kind\]\] is
+-- | \~accessor\~. 1. If \_entry\_.\[\[Get\]\] is \*undefined\*, throw a
+-- | \*TypeError\* exception. 1. Let \_getter\_ be \_entry\_.\[\[Get\]\]. 1.
+-- | Return ? Call(\_getter\_, \_O\_).
+-- SPEC: L7046-L7056
+-- | # PrivateSet ( \_O\_: an Object, \_P\_: a Private Name, \_value\_: an ECMAScript language value, ): either a normal completion containing \~unused\~ or a throw completion
+-- |
+-- | 1\. Let \_entry\_ be PrivateElementFind(\_O\_, \_P\_). 1. If \_entry\_
+-- | is \~empty\~, throw a \*TypeError\* exception. 1. If
+-- | \_entry\_.\[\[Kind\]\] is \~method\~, throw a \*TypeError\*
+-- | exception. 1. If \_entry\_.\[\[Kind\]\] is \~field\~, then 1. Set
+-- | \_entry\_.\[\[Value\]\] to \_value\_. 1. Else, 1. Assert:
+-- | \_entry\_.\[\[Kind\]\] is \~accessor\~. 1. If \_entry\_.\[\[Set\]\] is
+-- | \*undefined\*, throw a \*TypeError\* exception. 1. Let \_setter\_ be
+-- | \_entry\_.\[\[Set\]\]. 1. Perform ? Call(\_setter\_, \_O\_, « \_value\_
+-- | »). 1. Return \~unused\~.
 def evalUnary : UnaryOp → Value → Value
   -- SPEC: L16190-L16202
   -- | # Unary \`-\` Operator
@@ -3284,6 +3723,19 @@ def abstractEq : Value → Value → Bool
 -- | \*-∞\*~𝔽~, return \*true\*. 1. Assert: \_x\_ and \_y\_ are finite. 1. If
 -- | ℝ(\_x\_) \< ℝ(\_y\_), return \*true\*. 1. Return \*false\*.
 /-- ECMA-262 §7.2.13 Abstract Relational Comparison (string-aware). -/
+-- SPEC: L4109-L4120
+-- | # StringLastIndexOf ( \_string\_: a String, \_searchValue\_: a String, \_fromIndex\_: a non-negative integer, ): a non-negative integer or \~not-found\~
+-- |
+-- | 1\. Let \_len\_ be the length of \_string\_. 1. Let \_searchLen\_ be the
+-- | length of \_searchValue\_. 1. Assert: \_fromIndex\_ + \_searchLen\_ ≤
+-- | \_len\_. 1. For each integer \_i\_ such that 0 ≤ \_i\_ ≤ \_fromIndex\_,
+-- | in descending order, do 1. Let \_candidate\_ be the substring of
+-- | \_string\_ from \_i\_ to \_i\_ + \_searchLen\_. 1. If \_candidate\_ is
+-- | \_searchValue\_, return \_i\_. 1. Return \~not-found\~.
+-- |
+-- | If \_searchValue\_ is the empty String, this algorithm returns
+-- | \_fromIndex\_. The empty String is effectively found at every position
+-- | within a string, including after the last code unit.
 def abstractLt : Value → Value → Bool
   | .string a, .string b => a < b  -- lexicographic comparison
   | a, b => toNumber a < toNumber b
@@ -3576,6 +4028,131 @@ def abstractLt : Value → Value → Bool
 -- | Let \_operation\_ be the abstract operation associated with \_opText\_
 -- | in the following table:
 /-- ECMA-262 §13.15 Runtime Semantics: Evaluation (core binary subset). -/
+-- SPEC: L4731-L4733
+-- | # BigInt::unaryMinus ( \_x\_: a BigInt, ): a BigInt
+-- |
+-- | 1\. If \_x\_ = \*0\*~ℤ~, return \*0\*~ℤ~. 1. Return -\_x\_.
+-- SPEC: L4735-L4740
+-- | # BigInt::bitwiseNOT ( \_x\_: a BigInt, ): a BigInt
+-- |
+-- | description
+-- | :   It returns the one\'s complement of \_x\_.
+-- |
+-- | 1\. Return -\_x\_ - \*1\*~ℤ~.
+-- SPEC: L4742-L4746
+-- | # BigInt::exponentiate ( \_base\_: a BigInt, \_exponent\_: a BigInt, ): either a normal completion containing a BigInt or a throw completion
+-- |
+-- | 1\. If \_exponent\_ \< \*0\*~ℤ~, throw a \*RangeError\* exception. 1. If
+-- | \_base\_ = \*0\*~ℤ~ and \_exponent\_ = \*0\*~ℤ~, return \*1\*~ℤ~. 1.
+-- | Return \_base\_ raised to the power \_exponent\_.
+-- SPEC: L4748-L4751
+-- | # BigInt::multiply ( \_x\_: a BigInt, \_y\_: a BigInt, ): a BigInt
+-- |
+-- | 1\. Return \_x\_ × \_y\_. Even if the result has a much larger bit width
+-- | than the input, the exact mathematical answer is given.
+-- SPEC: L4753-L4757
+-- | # BigInt::divide ( \_x\_: a BigInt, \_y\_: a BigInt, ): either a normal completion containing a BigInt or a throw completion
+-- |
+-- | 1\. If \_y\_ = \*0\*~ℤ~, throw a \*RangeError\* exception. 1. Let
+-- | \_quotient\_ be ℝ(\_x\_) / ℝ(\_y\_). 1. Return
+-- | ℤ(truncate(\_quotient\_)).
+-- SPEC: L4759-L4764
+-- | # BigInt::remainder ( \_n\_: a BigInt, \_d\_: a BigInt, ): either a normal completion containing a BigInt or a throw completion
+-- |
+-- | 1\. If \_d\_ = \*0\*~ℤ~, throw a \*RangeError\* exception. 1. If \_n\_ =
+-- | \*0\*~ℤ~, return \*0\*~ℤ~. 1. Let \_quotient\_ be ℝ(\_n\_) /
+-- | ℝ(\_d\_). 1. Let \_q\_ be ℤ(truncate(\_quotient\_)). 1. Return \_n\_ -
+-- | (\_d\_ × \_q\_). The sign of the result is the sign of the dividend.
+-- SPEC: L4766-L4768
+-- | # BigInt::add ( \_x\_: a BigInt, \_y\_: a BigInt, ): a BigInt
+-- |
+-- | 1\. Return \_x\_ + \_y\_.
+-- SPEC: L4770-L4772
+-- | # BigInt::subtract ( \_x\_: a BigInt, \_y\_: a BigInt, ): a BigInt
+-- |
+-- | 1\. Return \_x\_ - \_y\_.
+-- SPEC: L4774-L4779
+-- | # BigInt::leftShift ( \_x\_: a BigInt, \_y\_: a BigInt, ): a BigInt
+-- |
+-- | 1\. If \_y\_ \< \*0\*~ℤ~, then 1. Return ℤ(floor(ℝ(\_x\_) /
+-- | 2^-ℝ(\_y\_)^)). 1. Return \_x\_ × \*2\*~ℤ~^\_y\_^. Semantics here should
+-- | be equivalent to a bitwise shift, treating the BigInt as an infinite
+-- | length string of binary two\'s complement digits.
+-- SPEC: L4781-L4783
+-- | # BigInt::signedRightShift ( \_x\_: a BigInt, \_y\_: a BigInt, ): a BigInt
+-- |
+-- | 1\. Return BigInt::leftShift(\_x\_, -\_y\_).
+-- SPEC: L4785-L4787
+-- | # BigInt::unsignedRightShift ( \_x\_: a BigInt, \_y\_: a BigInt, ): a throw completion
+-- |
+-- | 1\. Throw a \*TypeError\* exception.
+-- SPEC: L4789-L4791
+-- | # BigInt::lessThan ( \_x\_: a BigInt, \_y\_: a BigInt, ): a Boolean
+-- |
+-- | 1\. If ℝ(\_x\_) \< ℝ(\_y\_), return \*true\*. 1. Return \*false\*.
+-- SPEC: L4793-L4795
+-- | # BigInt::equal ( \_x\_: a BigInt, \_y\_: a BigInt, ): a Boolean
+-- |
+-- | 1\. If ℝ(\_x\_) = ℝ(\_y\_), return \*true\*. 1. Return \*false\*.
+-- SPEC: L4797-L4799
+-- | # BinaryAnd ( \_x\_: 0 or 1, \_y\_: 0 or 1, ): 0 or 1
+-- |
+-- | 1\. If \_x\_ = 1 and \_y\_ = 1, return 1. 1. Return 0.
+-- SPEC: L4801-L4803
+-- | # BinaryOr ( \_x\_: 0 or 1, \_y\_: 0 or 1, ): 0 or 1
+-- |
+-- | 1\. If \_x\_ = 1 or \_y\_ = 1, return 1. 1. Return 0.
+-- SPEC: L4805-L4808
+-- | # BinaryXor ( \_x\_: 0 or 1, \_y\_: 0 or 1, ): 0 or 1
+-- |
+-- | 1\. If \_x\_ = 1 and \_y\_ = 0, return 1. 1. If \_x\_ = 0 and \_y\_ = 1,
+-- | return 1. 1. Return 0.
+-- SPEC: L4810-L4828
+-- | # BigIntBitwiseOp ( \_op\_: \`&\`, \`\^\`, or \`\|\`, \_x\_: a BigInt, \_y\_: a BigInt, ): a BigInt
+-- |
+-- | 1\. Set \_x\_ to ℝ(\_x\_). 1. Set \_y\_ to ℝ(\_y\_). 1. Let \_result\_
+-- | be 0. 1. Let \_shift\_ be 0. 1. Repeat, until (\_x\_ = 0 or \_x\_ = -1)
+-- | and (\_y\_ = 0 or \_y\_ = -1), 1. Let \_xDigit\_ be \_x\_ modulo 2. 1.
+-- | Let \_yDigit\_ be \_y\_ modulo 2. 1. If \_op\_ is \`&\`, then 1. Set
+-- | \_result\_ to \_result\_ + 2^\_shift\_^ × BinaryAnd(\_xDigit\_,
+-- | \_yDigit\_). 1. Else if \_op\_ is \`\|\`, then 1. Set \_result\_ to
+-- | \_result\_ + 2^\_shift\_^ × BinaryOr(\_xDigit\_, \_yDigit\_). 1.
+-- | Else, 1. Assert: \_op\_ is \`\^\`. 1. Set \_result\_ to \_result\_ +
+-- | 2^\_shift\_^ × BinaryXor(\_xDigit\_, \_yDigit\_). 1. Set \_shift\_ to
+-- | \_shift\_ + 1. 1. Set \_x\_ to (\_x\_ - \_xDigit\_) / 2. 1. Set \_y\_ to
+-- | (\_y\_ - \_yDigit\_) / 2. 1. If \_op\_ is \`&\`, then 1. Let \_tmp\_ be
+-- | BinaryAnd(\_x\_ modulo 2, \_y\_ modulo 2). 1. Else if \_op\_ is \`\|\`,
+-- | then 1. Let \_tmp\_ be BinaryOr(\_x\_ modulo 2, \_y\_ modulo 2). 1.
+-- | Else, 1. Assert: \_op\_ is \`\^\`. 1. Let \_tmp\_ be BinaryXor(\_x\_
+-- | modulo 2, \_y\_ modulo 2). 1. If \_tmp\_ ≠ 0, then 1. Set \_result\_ to
+-- | \_result\_ - 2^\_shift\_^. 1. NOTE: This extends the sign. 1. Return the
+-- | BigInt value for \_result\_.
+-- SPEC: L4830-L4832
+-- | # BigInt::bitwiseAND ( \_x\_: a BigInt, \_y\_: a BigInt, ): a BigInt
+-- |
+-- | 1\. Return BigIntBitwiseOp(\`&\`, \_x\_, \_y\_).
+-- SPEC: L4834-L4836
+-- | # BigInt::bitwiseXOR ( \_x\_: a BigInt, \_y\_: a BigInt, ): a BigInt
+-- |
+-- | 1\. Return BigIntBitwiseOp(\`\^\`, \_x\_, \_y\_).
+-- SPEC: L4838-L4840
+-- | # BigInt::bitwiseOR ( \_x\_: a BigInt, \_y\_: a BigInt, ): a BigInt
+-- |
+-- | 1\. Return BigIntBitwiseOp(\`\|\`, \_x\_, \_y\_).
+-- SPEC: L4842-L4854
+-- | # BigInt::toString ( \_x\_: a BigInt, \_radix\_: an integer in the inclusive interval from 2 to 36, ): a String
+-- |
+-- | description
+-- | :   It represents \_x\_ as a String using a positional numeral system
+-- |     with radix \_radix\_. The digits used in the representation of a
+-- |     BigInt using radix \_r\_ are taken from the first \_r\_ code units
+-- |     of \*\"0123456789abcdefghijklmnopqrstuvwxyz\"\* in order. The
+-- |     representation of BigInts other than \*0\*~ℤ~ never includes leading
+-- |     zeroes.
+-- |
+-- | 1\. If \_x\_ \< \*0\*~ℤ~, return the string-concatenation of \*\"-\"\*
+-- | and BigInt::toString(-\_x\_, \_radix\_). 1. Return the String value
+-- | consisting of the representation of \_x\_ using radix \_radix\_.
 def evalBinary : BinOp → Value → Value → Value
   | .add, .string a, .string b => .string (a ++ b)
   | .add, .string a, b => .string (a ++ valueToString b)
@@ -5268,6 +5845,651 @@ def pushTrace (s : State) (t : TraceEvent) : State :=
 -- | Evaluation of \_optionsExpression\_. 1. Let \_options\_ be ?
 
 /-- One deterministic Core small-step transition with emitted trace event. -/
+-- SPEC: L7079-L7087
+-- | # AddValueToKeyedGroup ( \_groups\_: a List of Records with fields \[\[Key\]\] (an ECMAScript language value) and \[\[Elements\]\] (a List of ECMAScript language values), \_key\_: an ECMAScript language value, \_value\_: an ECMAScript language value, ): \~unused\~
+-- |
+-- | 1\. For each Record { \[\[Key\]\], \[\[Elements\]\] } \_g\_ of
+-- | \_groups\_, do 1. If SameValue(\_g\_.\[\[Key\]\], \_key\_) is \*true\*,
+-- | then 1. Assert: Exactly one element of \_groups\_ meets this
+-- | criterion. 1. Append \_value\_ to \_g\_.\[\[Elements\]\]. 1. Return
+-- | \~unused\~. 1. Let \_group\_ be the Record { \[\[Key\]\]: \_key\_,
+-- | \[\[Elements\]\]: « \_value\_ » }. 1. Append \_group\_ to \_groups\_. 1.
+-- | Return \~unused\~.
+-- SPEC: L7089-L7108
+-- | # GroupBy ( \_items\_: an ECMAScript language value, \_callback\_: an ECMAScript language value, \_keyCoercion\_: \~property\~ or \~collection\~, ): either a normal completion containing a List of Records with fields \[\[Key\]\] (an ECMAScript language value) and \[\[Elements\]\] (a List of ECMAScript language values), or a throw completion
+-- |
+-- | 1\. Perform ? RequireObjectCoercible(\_items\_). 1. If
+-- | IsCallable(\_callback\_) is \*false\*, throw a \*TypeError\*
+-- | exception. 1. Let \_groups\_ be a new empty List. 1. Let
+-- | \_iteratorRecord\_ be ? GetIterator(\_items\_, \~sync\~). 1. Let \_k\_
+-- | be 0. 1. Repeat, 1. If \_k\_ ≥ 2^53^ - 1, then 1. Let \_error\_ be
+-- | ThrowCompletion(a newly created \*TypeError\* object). 1. Return ?
+-- | IteratorClose(\_iteratorRecord\_, \_error\_). 1. Let \_next\_ be ?
+-- | IteratorStepValue(\_iteratorRecord\_). 1. If \_next\_ is \~done\~,
+-- | then 1. Return \_groups\_. 1. Let \_value\_ be \_next\_. 1. Let \_key\_
+-- | be Completion(Call(\_callback\_, \*undefined\*, « \_value\_, 𝔽(\_k\_)
+-- | »)). 1. IfAbruptCloseIterator(\_key\_, \_iteratorRecord\_). 1. If
+-- | \_keyCoercion\_ is \~property\~, then 1. Set \_key\_ to
+-- | Completion(ToPropertyKey(\_key\_)). 1. IfAbruptCloseIterator(\_key\_,
+-- | \_iteratorRecord\_). 1. Else, 1. Assert: \_keyCoercion\_ is
+-- | \~collection\~. 1. Set \_key\_ to
+-- | CanonicalizeKeyedCollectionKey(\_key\_). 1. Perform
+-- | AddValueToKeyedGroup(\_groups\_, \_key\_, \_value\_). 1. Set \_k\_ to
+-- | \_k\_ + 1.
+-- SPEC: L7110-L7114
+-- | # GetOptionsObject ( \_options\_: an ECMAScript language value, ): either a normal completion containing an Object or a throw completion
+-- |
+-- | 1\. If \_options\_ is \*undefined\*, then 1. Return
+-- | OrdinaryObjectCreate(\*null\*). 1. If \_options\_ is an Object, then 1.
+-- | Return \_options\_. 1. Throw a \*TypeError\* exception.
+-- SPEC: L7116-L7127
+-- | # SetterThatIgnoresPrototypeProperties ( \_thisValue\_: an ECMAScript language value, \_home\_: an Object, \_p\_: a property key, \_v\_: an ECMAScript language value, ): either a normal completion containing \~unused\~ or a throw completion
+-- |
+-- | 1\. If \_thisValue\_ is not an Object, then 1. Throw a \*TypeError\*
+-- | exception. 1. If SameValue(\_thisValue\_, \_home\_) is \*true\*, then 1.
+-- | NOTE: Throwing here emulates assignment to a non-writable data property
+-- | on the \_home\_ object in strict mode code. 1. Throw a \*TypeError\*
+-- | exception. 1. Let \_desc\_ be ?
+-- | \_thisValue\_.\[\[GetOwnProperty\]\](\_p\_). 1. If \_desc\_ is
+-- | \*undefined\*, then 1. Perform ?
+-- | CreateDataPropertyOrThrow(\_thisValue\_, \_p\_, \_v\_). 1. Else, 1.
+-- | Perform ? Set(\_thisValue\_, \_p\_, \_v\_, \*true\*). 1. Return
+-- | \~unused\~.
+-- SPEC: L7173-L7183
+-- | # GetIteratorFlattenable ( \_obj\_: an ECMAScript language value, \_primitiveHandling\_: \~iterate-string-primitives\~ or \~reject-primitives\~, ): either a normal completion containing an Iterator Record or a throw completion
+-- |
+-- | 1\. If \_obj\_ is not an Object, then 1. If \_primitiveHandling\_ is
+-- | \~reject-primitives\~, throw a \*TypeError\* exception. 1. Assert:
+-- | \_primitiveHandling\_ is \~iterate-string-primitives\~. 1. If \_obj\_ is
+-- | not a String, throw a \*TypeError\* exception. 1. Let \_method\_ be ?
+-- | GetMethod(\_obj\_, %Symbol.iterator%). 1. If \_method\_ is
+-- | \*undefined\*, then 1. Let \_iterator\_ be \_obj\_. 1. Else, 1. Let
+-- | \_iterator\_ be ? Call(\_method\_, \_obj\_). 1. If \_iterator\_ is not
+-- | an Object, throw a \*TypeError\* exception. 1. Return ?
+-- | GetIteratorDirect(\_iterator\_).
+-- SPEC: L7262-L7273
+-- | # IfAbruptCloseIterator ( \_value\_, \_iteratorRecord\_ )
+-- |
+-- | IfAbruptCloseIterator is a shorthand for a sequence of algorithm steps
+-- | that use an Iterator Record. An algorithm step of the form:
+-- |
+-- | 1\. IfAbruptCloseIterator(\_value\_, \_iteratorRecord\_).
+-- |
+-- | means the same thing as:
+-- |
+-- | 1\. Assert: \_value\_ is a Completion Record. 1. If \_value\_ is an
+-- | abrupt completion, return ? IteratorClose(\_iteratorRecord\_,
+-- | \_value\_). 1. Set \_value\_ to ! \_value\_.
+-- SPEC: L7275-L7294
+-- | # AsyncIteratorClose ( \_iteratorRecord\_: an Iterator Record, \_completion\_: a Completion Record, ): a Completion Record
+-- |
+-- | description
+-- | :   It is used to notify an async iterator that it should perform any
+-- |     actions it would normally perform when it has reached its completed
+-- |     state.
+-- |
+-- | 1\. Assert: \_iteratorRecord\_.\[\[Iterator\]\] is an Object. 1. Let
+-- | \_iterator\_ be \_iteratorRecord\_.\[\[Iterator\]\]. 1. Let
+-- | \_innerResult\_ be Completion(GetMethod(\_iterator\_,
+-- | \*\"return\"\*)). 1. If \_innerResult\_ is a normal completion, then 1.
+-- | Let \_return\_ be \_innerResult\_.\[\[Value\]\]. 1. If \_return\_ is
+-- | \*undefined\*, return ? \_completion\_. 1. Set \_innerResult\_ to
+-- | Completion(Call(\_return\_, \_iterator\_)). 1. If \_innerResult\_ is a
+-- | normal completion, set \_innerResult\_ to
+-- | Completion(Await(\_innerResult\_.\[\[Value\]\])). 1. If \_completion\_
+-- | is a throw completion, return ? \_completion\_. 1. If \_innerResult\_ is
+-- | a throw completion, return ? \_innerResult\_. 1. If
+-- | \_innerResult\_.\[\[Value\]\] is not an Object, throw a \*TypeError\*
+-- | exception. 1. Return ? \_completion\_.
+-- SPEC: L7296-L7307
+-- | # IfAbruptCloseAsyncIterator ( \_value\_, \_iteratorRecord\_ )
+-- |
+-- | IfAbruptCloseAsyncIterator is a shorthand for a sequence of algorithm
+-- | steps that use an Iterator Record. An algorithm step of the form:
+-- |
+-- | 1\. IfAbruptCloseAsyncIterator(\_value\_, \_iteratorRecord\_).
+-- |
+-- | means the same thing as:
+-- |
+-- | 1\. Assert: \_value\_ is a Completion Record. 1. If \_value\_ is an
+-- | abrupt completion, return ? AsyncIteratorClose(\_iteratorRecord\_,
+-- | \_value\_). 1. Set \_value\_ to ! \_value\_.
+-- SPEC: L7338-L7342
+-- | # IteratorToList ( \_iteratorRecord\_: an Iterator Record, ): either a normal completion containing a List of ECMAScript language values or a throw completion
+-- |
+-- | 1\. Let \_values\_ be a new empty List. 1. Repeat, 1. Let \_next\_ be ?
+-- | IteratorStepValue(\_iteratorRecord\_). 1. If \_next\_ is \~done\~,
+-- | then 1. Return \_values\_. 1. Append \_next\_ to \_values\_.
+-- SPEC: L7344-L7347
+-- | # Syntax-Directed Operations
+-- |
+-- | In addition to those defined in this section, specialized
+-- | syntax-directed operations are defined throughout this specification.
+-- SPEC: L7492-L7501
+-- | # Static Semantics: DeclarationPart ( ): a Parse Node
+-- |
+-- | HoistableDeclaration : FunctionDeclaration 1. Return
+-- | \|FunctionDeclaration\|. HoistableDeclaration : GeneratorDeclaration 1.
+-- | Return \|GeneratorDeclaration\|. HoistableDeclaration :
+-- | AsyncFunctionDeclaration 1. Return \|AsyncFunctionDeclaration\|.
+-- | HoistableDeclaration : AsyncGeneratorDeclaration 1. Return
+-- | \|AsyncGeneratorDeclaration\|. Declaration : ClassDeclaration 1. Return
+-- | \|ClassDeclaration\|. Declaration : LexicalDeclaration 1. Return
+-- | \|LexicalDeclaration\|.
+-- SPEC: L7503-L7529
+-- | # Static Semantics: IsConstantDeclaration ( ): a Boolean
+-- |
+-- | LexicalDeclaration : LetOrConst BindingList \`;\` 1. Return
+-- | IsConstantDeclaration of \|LetOrConst\|. LetOrConst : \`let\` 1. Return
+-- | \*false\*. LetOrConst : \`const\` 1. Return \*true\*.
+-- | FunctionDeclaration : \`function\` BindingIdentifier \`(\`
+-- | FormalParameters \`)\` \`{\` FunctionBody \`}\` \`function\` \`(\`
+-- | FormalParameters \`)\` \`{\` FunctionBody \`}\` GeneratorDeclaration :
+-- | \`function\` \`\*\` BindingIdentifier \`(\` FormalParameters \`)\` \`{\`
+-- | GeneratorBody \`}\` \`function\` \`\*\` \`(\` FormalParameters \`)\`
+-- | \`{\` GeneratorBody \`}\` AsyncGeneratorDeclaration : \`async\`
+-- | \`function\` \`\*\` BindingIdentifier \`(\` FormalParameters \`)\` \`{\`
+-- | AsyncGeneratorBody \`}\` \`async\` \`function\` \`\*\` \`(\`
+-- | FormalParameters \`)\` \`{\` AsyncGeneratorBody \`}\`
+-- | AsyncFunctionDeclaration : \`async\` \`function\` BindingIdentifier
+-- | \`(\` FormalParameters \`)\` \`{\` AsyncFunctionBody \`}\` \`async\`
+-- | \`function\` \`(\` FormalParameters \`)\` \`{\` AsyncFunctionBody
+-- | \`}\` 1. Return \*false\*. ClassDeclaration : \`class\`
+-- | BindingIdentifier ClassTail \`class\` ClassTail 1. Return \*false\*.
+-- | ExportDeclaration : \`export\` ExportFromClause FromClause \`;\`
+-- | \`export\` NamedExports \`;\` \`export\` \`default\`
+-- | AssignmentExpression \`;\` 1. Return \*false\*.
+-- |
+-- | It is not necessary to treat \`export default\` \|AssignmentExpression\|
+-- | as a constant declaration because there is no syntax that permits
+-- | assignment to the internal bound name used to reference a module\'s
+-- | default object.
+-- SPEC: L7531-L7560
+-- | # Static Semantics: LexicallyDeclaredNames ( ): a List of Strings
+-- |
+-- | Block : \`{\` \`}\` 1. Return a new empty List. StatementList :
+-- | StatementList StatementListItem 1. Let \_names1\_ be the
+-- | LexicallyDeclaredNames of \|StatementList\|. 1. Let \_names2\_ be the
+-- | LexicallyDeclaredNames of \|StatementListItem\|. 1. Return the
+-- | list-concatenation of \_names1\_ and \_names2\_. StatementListItem :
+-- | Statement 1. If \|Statement\| is Statement : LabelledStatement, return
+-- | the LexicallyDeclaredNames of \|LabelledStatement\|. 1. Return a new
+-- | empty List. StatementListItem : Declaration 1. Return the BoundNames of
+-- | \|Declaration\|. CaseBlock : \`{\` \`}\` 1. Return a new empty List.
+-- | CaseBlock : \`{\` CaseClauses? DefaultClause CaseClauses? \`}\` 1. If
+-- | the first \|CaseClauses\| is present, let \_names1\_ be the
+-- | LexicallyDeclaredNames of the first \|CaseClauses\|. 1. Else, let
+-- | \_names1\_ be a new empty List. 1. Let \_names2\_ be the
+-- | LexicallyDeclaredNames of \|DefaultClause\|. 1. If the second
+-- | \|CaseClauses\| is present, let \_names3\_ be the LexicallyDeclaredNames
+-- | of the second \|CaseClauses\|. 1. Else, let \_names3\_ be a new empty
+-- | List. 1. Return the list-concatenation of \_names1\_, \_names2\_, and
+-- | \_names3\_. CaseClauses : CaseClauses CaseClause 1. Let \_names1\_ be
+-- | the LexicallyDeclaredNames of \|CaseClauses\|. 1. Let \_names2\_ be the
+-- | LexicallyDeclaredNames of \|CaseClause\|. 1. Return the
+-- | list-concatenation of \_names1\_ and \_names2\_. CaseClause : \`case\`
+-- | Expression \`:\` StatementList? 1. If the \|StatementList\| is present,
+-- | return the LexicallyDeclaredNames of \|StatementList\|. 1. Return a new
+-- | empty List. DefaultClause : \`default\` \`:\` StatementList? 1. If the
+-- | \|StatementList\| is present, return the LexicallyDeclaredNames of
+-- | \|StatementList\|. 1. Return a new empty List. LabelledStatement :
+-- | LabelIdentifier \`:\` LabelledItem 1. Return the LexicallyDeclaredNames
+-- | of \|LabelledItem\|. LabelledItem : Statement 1. Return a new empty
+-- SPEC: L7654-L7694
+-- | # Static Semantics: VarDeclaredNames ( ): a List of Strings
+-- |
+-- | Statement : EmptyStatement ExpressionStatement ContinueStatement
+-- | BreakStatement ReturnStatement ThrowStatement DebuggerStatement 1.
+-- | Return a new empty List. Block : \`{\` \`}\` 1. Return a new empty List.
+-- | StatementList : StatementList StatementListItem 1. Let \_names1\_ be the
+-- | VarDeclaredNames of \|StatementList\|. 1. Let \_names2\_ be the
+-- | VarDeclaredNames of \|StatementListItem\|. 1. Return the
+-- | list-concatenation of \_names1\_ and \_names2\_. StatementListItem :
+-- | Declaration 1. Return a new empty List. VariableStatement : \`var\`
+-- | VariableDeclarationList \`;\` 1. Return the BoundNames of
+-- | \|VariableDeclarationList\|. IfStatement : \`if\` \`(\` Expression \`)\`
+-- | Statement \`else\` Statement 1. Let \_names1\_ be the VarDeclaredNames
+-- | of the first \|Statement\|. 1. Let \_names2\_ be the VarDeclaredNames of
+-- | the second \|Statement\|. 1. Return the list-concatenation of \_names1\_
+-- | and \_names2\_. IfStatement : \`if\` \`(\` Expression \`)\` Statement 1.
+-- | Return the VarDeclaredNames of \|Statement\|. DoWhileStatement : \`do\`
+-- | Statement \`while\` \`(\` Expression \`)\` \`;\` 1. Return the
+-- | VarDeclaredNames of \|Statement\|. WhileStatement : \`while\` \`(\`
+-- | Expression \`)\` Statement 1. Return the VarDeclaredNames of
+-- | \|Statement\|. ForStatement : \`for\` \`(\` Expression? \`;\`
+-- | Expression? \`;\` Expression? \`)\` Statement 1. Return the
+-- | VarDeclaredNames of \|Statement\|. ForStatement : \`for\` \`(\` \`var\`
+-- | VariableDeclarationList \`;\` Expression? \`;\` Expression? \`)\`
+-- | Statement 1. Let \_names1\_ be the BoundNames of
+-- | \|VariableDeclarationList\|. 1. Let \_names2\_ be the VarDeclaredNames
+-- | of \|Statement\|. 1. Return the list-concatenation of \_names1\_ and
+-- | \_names2\_. ForStatement : \`for\` \`(\` LexicalDeclaration Expression?
+-- | \`;\` Expression? \`)\` Statement 1. Return the VarDeclaredNames of
+-- | \|Statement\|. ForInOfStatement : \`for\` \`(\` LeftHandSideExpression
+-- | \`in\` Expression \`)\` Statement \`for\` \`(\` ForDeclaration \`in\`
+-- | Expression \`)\` Statement \`for\` \`(\` LeftHandSideExpression \`of\`
+-- | AssignmentExpression \`)\` Statement \`for\` \`(\` ForDeclaration \`of\`
+-- | AssignmentExpression \`)\` Statement \`for\` \`await\` \`(\`
+-- | LeftHandSideExpression \`of\` AssignmentExpression \`)\` Statement
+-- | \`for\` \`await\` \`(\` ForDeclaration \`of\` AssignmentExpression \`)\`
+-- | Statement 1. Return the VarDeclaredNames of \|Statement\|.
+-- | ForInOfStatement : \`for\` \`(\` \`var\` ForBinding \`in\` Expression
+-- | \`)\` Statement \`for\` \`(\` \`var\` ForBinding \`of\`
+-- | AssignmentExpression \`)\` Statement \`for\` \`await\` \`(\` \`var\`
+-- | ForBinding \`of\` AssignmentExpression \`)\` Statement 1. Let \_names1\_
+-- SPEC: L7754-L7794
+-- | # Static Semantics: VarScopedDeclarations ( ): a List of Parse Nodes
+-- |
+-- | Statement : EmptyStatement ExpressionStatement ContinueStatement
+-- | BreakStatement ReturnStatement ThrowStatement DebuggerStatement 1.
+-- | Return a new empty List. Block : \`{\` \`}\` 1. Return a new empty List.
+-- | StatementList : StatementList StatementListItem 1. Let \_declarations1\_
+-- | be the VarScopedDeclarations of \|StatementList\|. 1. Let
+-- | \_declarations2\_ be the VarScopedDeclarations of
+-- | \|StatementListItem\|. 1. Return the list-concatenation of
+-- | \_declarations1\_ and \_declarations2\_. StatementListItem :
+-- | Declaration 1. Return a new empty List. VariableDeclarationList :
+-- | VariableDeclaration 1. Return « \|VariableDeclaration\| ».
+-- | VariableDeclarationList : VariableDeclarationList \`,\`
+-- | VariableDeclaration 1. Let \_declarations1\_ be the
+-- | VarScopedDeclarations of \|VariableDeclarationList\|. 1. Return the
+-- | list-concatenation of \_declarations1\_ and « \|VariableDeclaration\| ».
+-- | IfStatement : \`if\` \`(\` Expression \`)\` Statement \`else\`
+-- | Statement 1. Let \_declarations1\_ be the VarScopedDeclarations of the
+-- | first \|Statement\|. 1. Let \_declarations2\_ be the
+-- | VarScopedDeclarations of the second \|Statement\|. 1. Return the
+-- | list-concatenation of \_declarations1\_ and \_declarations2\_.
+-- | IfStatement : \`if\` \`(\` Expression \`)\` Statement 1. Return the
+-- | VarScopedDeclarations of \|Statement\|. DoWhileStatement : \`do\`
+-- | Statement \`while\` \`(\` Expression \`)\` \`;\` 1. Return the
+-- | VarScopedDeclarations of \|Statement\|. WhileStatement : \`while\` \`(\`
+-- | Expression \`)\` Statement 1. Return the VarScopedDeclarations of
+-- | \|Statement\|. ForStatement : \`for\` \`(\` Expression? \`;\`
+-- | Expression? \`;\` Expression? \`)\` Statement 1. Return the
+-- | VarScopedDeclarations of \|Statement\|. ForStatement : \`for\` \`(\`
+-- | \`var\` VariableDeclarationList \`;\` Expression? \`;\` Expression?
+-- | \`)\` Statement 1. Let \_declarations1\_ be the VarScopedDeclarations of
+-- | \|VariableDeclarationList\|. 1. Let \_declarations2\_ be the
+-- | VarScopedDeclarations of \|Statement\|. 1. Return the list-concatenation
+-- | of \_declarations1\_ and \_declarations2\_. ForStatement : \`for\` \`(\`
+-- | LexicalDeclaration Expression? \`;\` Expression? \`)\` Statement 1.
+-- | Return the VarScopedDeclarations of \|Statement\|. ForInOfStatement :
+-- | \`for\` \`(\` LeftHandSideExpression \`in\` Expression \`)\` Statement
+-- | \`for\` \`(\` ForDeclaration \`in\` Expression \`)\` Statement \`for\`
+-- | \`(\` LeftHandSideExpression \`of\` AssignmentExpression \`)\` Statement
+-- | \`for\` \`(\` ForDeclaration \`of\` AssignmentExpression \`)\` Statement
+-- | \`for\` \`await\` \`(\` LeftHandSideExpression \`of\`
+-- SPEC: L7866-L7878
+-- | # Static Semantics: TopLevelLexicallyDeclaredNames ( ): a List of Strings
+-- |
+-- | StatementList : StatementList StatementListItem 1. Let \_names1\_ be the
+-- | TopLevelLexicallyDeclaredNames of \|StatementList\|. 1. Let \_names2\_
+-- | be the TopLevelLexicallyDeclaredNames of \|StatementListItem\|. 1.
+-- | Return the list-concatenation of \_names1\_ and \_names2\_.
+-- | StatementListItem : Statement 1. Return a new empty List.
+-- | StatementListItem : Declaration 1. If \|Declaration\| is Declaration :
+-- | HoistableDeclaration, then 1. Return a new empty List. 1. Return the
+-- | BoundNames of \|Declaration\|.
+-- |
+-- | At the top level of a function, or script, function declarations are
+-- | treated like var declarations rather than like lexical declarations.
+-- SPEC: L7880-L7889
+-- | # Static Semantics: TopLevelLexicallyScopedDeclarations ( ): a List of Parse Nodes
+-- |
+-- | StatementList : StatementList StatementListItem 1. Let \_declarations1\_
+-- | be the TopLevelLexicallyScopedDeclarations of \|StatementList\|. 1. Let
+-- | \_declarations2\_ be the TopLevelLexicallyScopedDeclarations of
+-- | \|StatementListItem\|. 1. Return the list-concatenation of
+-- | \_declarations1\_ and \_declarations2\_. StatementListItem :
+-- | Statement 1. Return a new empty List. StatementListItem : Declaration 1.
+-- | If \|Declaration\| is Declaration : HoistableDeclaration, then 1. Return
+-- | a new empty List. 1. Return « \|Declaration\| ».
+-- SPEC: L7891-L7911
+-- | # Static Semantics: TopLevelVarDeclaredNames ( ): a List of Strings
+-- |
+-- | StatementList : StatementList StatementListItem 1. Let \_names1\_ be the
+-- | TopLevelVarDeclaredNames of \|StatementList\|. 1. Let \_names2\_ be the
+-- | TopLevelVarDeclaredNames of \|StatementListItem\|. 1. Return the
+-- | list-concatenation of \_names1\_ and \_names2\_. StatementListItem :
+-- | Declaration 1. If \|Declaration\| is Declaration : HoistableDeclaration,
+-- | then 1. Return the BoundNames of \|HoistableDeclaration\|. 1. Return a
+-- | new empty List. StatementListItem : Statement 1. If \|Statement\| is
+-- | Statement : LabelledStatement, return the TopLevelVarDeclaredNames of
+-- | \|Statement\|. 1. Return the VarDeclaredNames of \|Statement\|.
+-- |
+-- | At the top level of a function or script, inner function declarations
+-- | are treated like var declarations.
+-- |
+-- | LabelledStatement : LabelIdentifier \`:\` LabelledItem 1. Return the
+-- | TopLevelVarDeclaredNames of \|LabelledItem\|. LabelledItem :
+-- | Statement 1. If \|Statement\| is Statement : LabelledStatement, return
+-- | the TopLevelVarDeclaredNames of \|Statement\|. 1. Return the
+-- | VarDeclaredNames of \|Statement\|. LabelledItem : FunctionDeclaration 1.
+-- | Return the BoundNames of \|FunctionDeclaration\|.
+-- SPEC: L7913-L7932
+-- | # Static Semantics: TopLevelVarScopedDeclarations ( ): a List of Parse Nodes
+-- |
+-- | StatementList : StatementList StatementListItem 1. Let \_declarations1\_
+-- | be the TopLevelVarScopedDeclarations of \|StatementList\|. 1. Let
+-- | \_declarations2\_ be the TopLevelVarScopedDeclarations of
+-- | \|StatementListItem\|. 1. Return the list-concatenation of
+-- | \_declarations1\_ and \_declarations2\_. StatementListItem :
+-- | Statement 1. If \|Statement\| is Statement : LabelledStatement, return
+-- | the TopLevelVarScopedDeclarations of \|Statement\|. 1. Return the
+-- | VarScopedDeclarations of \|Statement\|. StatementListItem :
+-- | Declaration 1. If \|Declaration\| is Declaration : HoistableDeclaration,
+-- | then 1. Let \_declaration\_ be the DeclarationPart of
+-- | \|HoistableDeclaration\|. 1. Return « \_declaration\_ ». 1. Return a new
+-- | empty List. LabelledStatement : LabelIdentifier \`:\` LabelledItem 1.
+-- | Return the TopLevelVarScopedDeclarations of \|LabelledItem\|.
+-- | LabelledItem : Statement 1. If \|Statement\| is Statement :
+-- | LabelledStatement, return the TopLevelVarScopedDeclarations of
+-- | \|Statement\|. 1. Return the VarScopedDeclarations of \|Statement\|.
+-- | LabelledItem : FunctionDeclaration 1. Return « \|FunctionDeclaration\|
+-- | ».
+-- SPEC: L7936-L7976
+-- | # Static Semantics: ContainsDuplicateLabels ( \_labelSet\_: a List of Strings, ): a Boolean
+-- |
+-- | Statement : VariableStatement EmptyStatement ExpressionStatement
+-- | ContinueStatement BreakStatement ReturnStatement ThrowStatement
+-- | DebuggerStatement Block : \`{\` \`}\` StatementListItem : Declaration 1.
+-- | Return \*false\*. StatementList : StatementList StatementListItem 1. Let
+-- | \_hasDuplicates\_ be ContainsDuplicateLabels of \|StatementList\| with
+-- | argument \_labelSet\_. 1. If \_hasDuplicates\_ is \*true\*, return
+-- | \*true\*. 1. Return ContainsDuplicateLabels of \|StatementListItem\|
+-- | with argument \_labelSet\_. IfStatement : \`if\` \`(\` Expression \`)\`
+-- | Statement \`else\` Statement 1. Let \_hasDuplicate\_ be
+-- | ContainsDuplicateLabels of the first \|Statement\| with argument
+-- | \_labelSet\_. 1. If \_hasDuplicate\_ is \*true\*, return \*true\*. 1.
+-- | Return ContainsDuplicateLabels of the second \|Statement\| with argument
+-- | \_labelSet\_. IfStatement : \`if\` \`(\` Expression \`)\` Statement 1.
+-- | Return ContainsDuplicateLabels of \|Statement\| with argument
+-- | \_labelSet\_. DoWhileStatement : \`do\` Statement \`while\` \`(\`
+-- | Expression \`)\` \`;\` 1. Return ContainsDuplicateLabels of
+-- | \|Statement\| with argument \_labelSet\_. WhileStatement : \`while\`
+-- | \`(\` Expression \`)\` Statement 1. Return ContainsDuplicateLabels of
+-- | \|Statement\| with argument \_labelSet\_. ForStatement : \`for\` \`(\`
+-- | Expression? \`;\` Expression? \`;\` Expression? \`)\` Statement \`for\`
+-- | \`(\` \`var\` VariableDeclarationList \`;\` Expression? \`;\`
+-- | Expression? \`)\` Statement \`for\` \`(\` LexicalDeclaration Expression?
+-- | \`;\` Expression? \`)\` Statement 1. Return ContainsDuplicateLabels of
+-- | \|Statement\| with argument \_labelSet\_. ForInOfStatement : \`for\`
+-- | \`(\` LeftHandSideExpression \`in\` Expression \`)\` Statement \`for\`
+-- | \`(\` \`var\` ForBinding \`in\` Expression \`)\` Statement \`for\` \`(\`
+-- | ForDeclaration \`in\` Expression \`)\` Statement \`for\` \`(\`
+-- | LeftHandSideExpression \`of\` AssignmentExpression \`)\` Statement
+-- | \`for\` \`(\` \`var\` ForBinding \`of\` AssignmentExpression \`)\`
+-- | Statement \`for\` \`(\` ForDeclaration \`of\` AssignmentExpression \`)\`
+-- | Statement \`for\` \`await\` \`(\` LeftHandSideExpression \`of\`
+-- | AssignmentExpression \`)\` Statement \`for\` \`await\` \`(\` \`var\`
+-- | ForBinding \`of\` AssignmentExpression \`)\` Statement \`for\` \`await\`
+-- | \`(\` ForDeclaration \`of\` AssignmentExpression \`)\` Statement 1.
+-- | Return ContainsDuplicateLabels of \|Statement\| with argument
+-- | \_labelSet\_.
+-- |
+-- | This section is extended by Annex .
+-- |
+-- SPEC: L8029-L8060
+-- | # Static Semantics: ContainsUndefinedBreakTarget ( \_labelSet\_: a List of Strings, ): a Boolean
+-- |
+-- | Statement : VariableStatement EmptyStatement ExpressionStatement
+-- | ContinueStatement ReturnStatement ThrowStatement DebuggerStatement Block
+-- | : \`{\` \`}\` StatementListItem : Declaration 1. Return \*false\*.
+-- | StatementList : StatementList StatementListItem 1. Let
+-- | \_hasUndefinedLabels\_ be ContainsUndefinedBreakTarget of
+-- | \|StatementList\| with argument \_labelSet\_. 1. If
+-- | \_hasUndefinedLabels\_ is \*true\*, return \*true\*. 1. Return
+-- | ContainsUndefinedBreakTarget of \|StatementListItem\| with argument
+-- | \_labelSet\_. IfStatement : \`if\` \`(\` Expression \`)\` Statement
+-- | \`else\` Statement 1. Let \_hasUndefinedLabels\_ be
+-- | ContainsUndefinedBreakTarget of the first \|Statement\| with argument
+-- | \_labelSet\_. 1. If \_hasUndefinedLabels\_ is \*true\*, return
+-- | \*true\*. 1. Return ContainsUndefinedBreakTarget of the second
+-- | \|Statement\| with argument \_labelSet\_. IfStatement : \`if\` \`(\`
+-- | Expression \`)\` Statement 1. Return ContainsUndefinedBreakTarget of
+-- | \|Statement\| with argument \_labelSet\_. DoWhileStatement : \`do\`
+-- | Statement \`while\` \`(\` Expression \`)\` \`;\` 1. Return
+-- | ContainsUndefinedBreakTarget of \|Statement\| with argument
+-- | \_labelSet\_. WhileStatement : \`while\` \`(\` Expression \`)\`
+-- | Statement 1. Return ContainsUndefinedBreakTarget of \|Statement\| with
+-- | argument \_labelSet\_. ForStatement : \`for\` \`(\` Expression? \`;\`
+-- | Expression? \`;\` Expression? \`)\` Statement \`for\` \`(\` \`var\`
+-- | VariableDeclarationList \`;\` Expression? \`;\` Expression? \`)\`
+-- | Statement \`for\` \`(\` LexicalDeclaration Expression? \`;\` Expression?
+-- | \`)\` Statement 1. Return ContainsUndefinedBreakTarget of \|Statement\|
+-- | with argument \_labelSet\_. ForInOfStatement : \`for\` \`(\`
+-- | LeftHandSideExpression \`in\` Expression \`)\` Statement \`for\` \`(\`
+-- | \`var\` ForBinding \`in\` Expression \`)\` Statement \`for\` \`(\`
+-- | ForDeclaration \`in\` Expression \`)\` Statement \`for\` \`(\`
+-- | LeftHandSideExpression \`of\` AssignmentExpression \`)\` Statement
+-- SPEC: L8128-L8160
+-- | # Static Semantics: ContainsUndefinedContinueTarget ( \_iterationSet\_: a List of Strings, \_labelSet\_: a List of Strings, ): a Boolean
+-- |
+-- | Statement : VariableStatement EmptyStatement ExpressionStatement
+-- | BreakStatement ReturnStatement ThrowStatement DebuggerStatement Block :
+-- | \`{\` \`}\` StatementListItem : Declaration 1. Return \*false\*.
+-- | Statement : BlockStatement 1. Return ContainsUndefinedContinueTarget of
+-- | \|BlockStatement\| with arguments \_iterationSet\_ and « ».
+-- | BreakableStatement : IterationStatement 1. Let \_newIterationSet\_ be
+-- | the list-concatenation of \_iterationSet\_ and \_labelSet\_. 1. Return
+-- | ContainsUndefinedContinueTarget of \|IterationStatement\| with arguments
+-- | \_newIterationSet\_ and « ». StatementList : StatementList
+-- | StatementListItem 1. Let \_hasUndefinedLabels\_ be
+-- | ContainsUndefinedContinueTarget of \|StatementList\| with arguments
+-- | \_iterationSet\_ and « ». 1. If \_hasUndefinedLabels\_ is \*true\*,
+-- | return \*true\*. 1. Return ContainsUndefinedContinueTarget of
+-- | \|StatementListItem\| with arguments \_iterationSet\_ and « ».
+-- | IfStatement : \`if\` \`(\` Expression \`)\` Statement \`else\`
+-- | Statement 1. Let \_hasUndefinedLabels\_ be
+-- | ContainsUndefinedContinueTarget of the first \|Statement\| with
+-- | arguments \_iterationSet\_ and « ». 1. If \_hasUndefinedLabels\_ is
+-- | \*true\*, return \*true\*. 1. Return ContainsUndefinedContinueTarget of
+-- | the second \|Statement\| with arguments \_iterationSet\_ and « ».
+-- | IfStatement : \`if\` \`(\` Expression \`)\` Statement 1. Return
+-- | ContainsUndefinedContinueTarget of \|Statement\| with arguments
+-- | \_iterationSet\_ and « ». DoWhileStatement : \`do\` Statement \`while\`
+-- | \`(\` Expression \`)\` \`;\` 1. Return ContainsUndefinedContinueTarget
+-- | of \|Statement\| with arguments \_iterationSet\_ and « ». WhileStatement
+-- | : \`while\` \`(\` Expression \`)\` Statement 1. Return
+-- | ContainsUndefinedContinueTarget of \|Statement\| with arguments
+-- | \_iterationSet\_ and « ». ForStatement : \`for\` \`(\` Expression? \`;\`
+-- | Expression? \`;\` Expression? \`)\` Statement \`for\` \`(\` \`var\`
+-- | VariableDeclarationList \`;\` Expression? \`;\` Expression? \`)\`
+-- | Statement \`for\` \`(\` LexicalDeclaration Expression? \`;\` Expression?
+-- SPEC: L8242-L8267
+-- | # Static Semantics: HasName ( ): a Boolean
+-- |
+-- | PrimaryExpression : CoverParenthesizedExpressionAndArrowParameterList 1.
+-- | Let \_expr\_ be the \|ParenthesizedExpression\| that is covered by
+-- | \|CoverParenthesizedExpressionAndArrowParameterList\|. 1. If
+-- | IsFunctionDefinition of \_expr\_ is \*false\*, return \*false\*. 1.
+-- | Return HasName of \_expr\_. FunctionExpression : \`function\` \`(\`
+-- | FormalParameters \`)\` \`{\` FunctionBody \`}\` GeneratorExpression :
+-- | \`function\` \`\*\` \`(\` FormalParameters \`)\` \`{\` GeneratorBody
+-- | \`}\` AsyncGeneratorExpression : \`async\` \`function\` \`\*\` \`(\`
+-- | FormalParameters \`)\` \`{\` AsyncGeneratorBody \`}\`
+-- | AsyncFunctionExpression : \`async\` \`function\` \`(\` FormalParameters
+-- | \`)\` \`{\` AsyncFunctionBody \`}\` ArrowFunction : ArrowParameters
+-- | \`=\>\` ConciseBody AsyncArrowFunction : \`async\`
+-- | AsyncArrowBindingIdentifier \`=\>\` AsyncConciseBody
+-- | CoverCallExpressionAndAsyncArrowHead \`=\>\` AsyncConciseBody
+-- | ClassExpression : \`class\` ClassTail 1. Return \*false\*.
+-- | FunctionExpression : \`function\` BindingIdentifier \`(\`
+-- | FormalParameters \`)\` \`{\` FunctionBody \`}\` GeneratorExpression :
+-- | \`function\` \`\*\` BindingIdentifier \`(\` FormalParameters \`)\` \`{\`
+-- | GeneratorBody \`}\` AsyncGeneratorExpression : \`async\` \`function\`
+-- | \`\*\` BindingIdentifier \`(\` FormalParameters \`)\` \`{\`
+-- | AsyncGeneratorBody \`}\` AsyncFunctionExpression : \`async\`
+-- | \`function\` BindingIdentifier \`(\` FormalParameters \`)\` \`{\`
+-- | AsyncFunctionBody \`}\` ClassExpression : \`class\` BindingIdentifier
+-- | ClassTail 1. Return \*true\*.
+-- SPEC: L8269-L8300
+-- | # Static Semantics: IsFunctionDefinition ( ): a Boolean
+-- |
+-- | PrimaryExpression : CoverParenthesizedExpressionAndArrowParameterList 1.
+-- | Let \_expr\_ be the \|ParenthesizedExpression\| that is covered by
+-- | \|CoverParenthesizedExpressionAndArrowParameterList\|. 1. Return
+-- | IsFunctionDefinition of \_expr\_. PrimaryExpression : \`this\`
+-- | IdentifierReference Literal ArrayLiteral ObjectLiteral
+-- | RegularExpressionLiteral TemplateLiteral MemberExpression :
+-- | MemberExpression \`\[\` Expression \`\]\` MemberExpression \`.\`
+-- | IdentifierName MemberExpression TemplateLiteral SuperProperty
+-- | MetaProperty \`new\` MemberExpression Arguments MemberExpression \`.\`
+-- | PrivateIdentifier NewExpression : \`new\` NewExpression
+-- | LeftHandSideExpression : CallExpression OptionalExpression
+-- | UpdateExpression : LeftHandSideExpression \`++\` LeftHandSideExpression
+-- | \`\--\` \`++\` UnaryExpression \`\--\` UnaryExpression UnaryExpression :
+-- | \`delete\` UnaryExpression \`void\` UnaryExpression \`typeof\`
+-- | UnaryExpression \`+\` UnaryExpression \`-\` UnaryExpression \`\~\`
+-- | UnaryExpression \`!\` UnaryExpression AwaitExpression
+-- | ExponentiationExpression : UpdateExpression \`\*\*\`
+-- | ExponentiationExpression MultiplicativeExpression :
+-- | MultiplicativeExpression MultiplicativeOperator ExponentiationExpression
+-- | AdditiveExpression : AdditiveExpression \`+\` MultiplicativeExpression
+-- | AdditiveExpression \`-\` MultiplicativeExpression ShiftExpression :
+-- | ShiftExpression \`\<\<\` AdditiveExpression ShiftExpression \`\>\>\`
+-- | AdditiveExpression ShiftExpression \`\>\>\>\` AdditiveExpression
+-- | RelationalExpression : RelationalExpression \`\<\` ShiftExpression
+-- | RelationalExpression \`\>\` ShiftExpression RelationalExpression \`\<=\`
+-- | ShiftExpression RelationalExpression \`\>=\` ShiftExpression
+-- | RelationalExpression \`instanceof\` ShiftExpression RelationalExpression
+-- | \`in\` ShiftExpression PrivateIdentifier \`in\` ShiftExpression
+-- | EqualityExpression : EqualityExpression \`==\` RelationalExpression
+-- | EqualityExpression \`!=\` RelationalExpression EqualityExpression
+-- SPEC: L8337-L8350
+-- | # Static Semantics: IsIdentifierRef ( ): a Boolean
+-- |
+-- | PrimaryExpression : IdentifierReference 1. Return \*true\*.
+-- | PrimaryExpression : \`this\` Literal ArrayLiteral ObjectLiteral
+-- | FunctionExpression ClassExpression GeneratorExpression
+-- | AsyncFunctionExpression AsyncGeneratorExpression
+-- | RegularExpressionLiteral TemplateLiteral
+-- | CoverParenthesizedExpressionAndArrowParameterList MemberExpression :
+-- | MemberExpression \`\[\` Expression \`\]\` MemberExpression \`.\`
+-- | IdentifierName MemberExpression TemplateLiteral SuperProperty
+-- | MetaProperty \`new\` MemberExpression Arguments MemberExpression \`.\`
+-- | PrivateIdentifier NewExpression : \`new\` NewExpression
+-- | LeftHandSideExpression : CallExpression OptionalExpression 1. Return
+-- | \*false\*.
+-- SPEC: L8385-L8425
+-- | # Contains
+-- |
+-- | # Static Semantics: Contains ( \_symbol\_: a grammar symbol, ): a Boolean
+-- |
+-- | Every grammar production alternative in this specification which is not
+-- | listed below implicitly has the following default definition of
+-- | Contains:
+-- |
+-- | 1\. For each child node \_child\_ of this Parse Node, do 1. If \_child\_
+-- | is an instance of \_symbol\_, return \*true\*. 1. If \_child\_ is an
+-- | instance of a nonterminal, then 1. Let \_contained\_ be the result of
+-- | \_child\_ Contains \_symbol\_. 1. If \_contained\_ is \*true\*, return
+-- | \*true\*. 1. Return \*false\*. FunctionDeclaration : \`function\`
+-- | BindingIdentifier \`(\` FormalParameters \`)\` \`{\` FunctionBody \`}\`
+-- | \`function\` \`(\` FormalParameters \`)\` \`{\` FunctionBody \`}\`
+-- | FunctionExpression : \`function\` BindingIdentifier? \`(\`
+-- | FormalParameters \`)\` \`{\` FunctionBody \`}\` GeneratorDeclaration :
+-- | \`function\` \`\*\` BindingIdentifier \`(\` FormalParameters \`)\` \`{\`
+-- | GeneratorBody \`}\` \`function\` \`\*\` \`(\` FormalParameters \`)\`
+-- | \`{\` GeneratorBody \`}\` GeneratorExpression : \`function\` \`\*\`
+-- | BindingIdentifier? \`(\` FormalParameters \`)\` \`{\` GeneratorBody
+-- | \`}\` AsyncGeneratorDeclaration : \`async\` \`function\` \`\*\`
+-- | BindingIdentifier \`(\` FormalParameters \`)\` \`{\` AsyncGeneratorBody
+-- | \`}\` \`async\` \`function\` \`\*\` \`(\` FormalParameters \`)\` \`{\`
+-- | AsyncGeneratorBody \`}\` AsyncGeneratorExpression : \`async\`
+-- | \`function\` \`\*\` BindingIdentifier? \`(\` FormalParameters \`)\`
+-- | \`{\` AsyncGeneratorBody \`}\` AsyncFunctionDeclaration : \`async\`
+-- | \`function\` BindingIdentifier \`(\` FormalParameters \`)\` \`{\`
+-- | AsyncFunctionBody \`}\` \`async\` \`function\` \`(\` FormalParameters
+-- | \`)\` \`{\` AsyncFunctionBody \`}\` AsyncFunctionExpression : \`async\`
+-- | \`function\` BindingIdentifier? \`(\` FormalParameters \`)\` \`{\`
+-- | AsyncFunctionBody \`}\` 1. Return \*false\*.
+-- |
+-- | Static semantic rules that depend upon substructure generally do not
+-- | look into function definitions.
+-- |
+-- | ClassTail : ClassHeritage? \`{\` ClassBody \`}\` 1. If \_symbol\_ is
+-- | \|ClassBody\|, return \*true\*. 1. If \_symbol\_ is \|ClassHeritage\|,
+-- | then 1. If \|ClassHeritage\| is present, return \*true\*. 1. Return
+-- | \*false\*. 1. If \|ClassHeritage\| is present, then 1. If
+-- | \|ClassHeritage\| Contains \_symbol\_ is \*true\*, return \*true\*. 1.
+-- SPEC: L8476-L8510
+-- | # Static Semantics: ComputedPropertyContains ( \_symbol\_: a grammar symbol, ): a Boolean
+-- |
+-- | ClassElementName : PrivateIdentifier PropertyName :
+-- | LiteralPropertyName 1. Return \*false\*. PropertyName :
+-- | ComputedPropertyName 1. Return the result of \|ComputedPropertyName\|
+-- | Contains \_symbol\_. MethodDefinition : ClassElementName \`(\`
+-- | UniqueFormalParameters \`)\` \`{\` FunctionBody \`}\` \`get\`
+-- | ClassElementName \`(\` \`)\` \`{\` FunctionBody \`}\` \`set\`
+-- | ClassElementName \`(\` PropertySetParameterList \`)\` \`{\` FunctionBody
+-- | \`}\` 1. Return the result of ComputedPropertyContains of
+-- | \|ClassElementName\| with argument \_symbol\_. GeneratorMethod : \`\*\`
+-- | ClassElementName \`(\` UniqueFormalParameters \`)\` \`{\` GeneratorBody
+-- | \`}\` 1. Return the result of ComputedPropertyContains of
+-- | \|ClassElementName\| with argument \_symbol\_. AsyncGeneratorMethod :
+-- | \`async\` \`\*\` ClassElementName \`(\` UniqueFormalParameters \`)\`
+-- | \`{\` AsyncGeneratorBody \`}\` 1. Return the result of
+-- | ComputedPropertyContains of \|ClassElementName\| with argument
+-- | \_symbol\_. ClassElementList : ClassElementList ClassElement 1. Let
+-- | \_inList\_ be ComputedPropertyContains of \|ClassElementList\| with
+-- | argument \_symbol\_. 1. If \_inList\_ is \*true\*, return \*true\*. 1.
+-- | Return the result of ComputedPropertyContains of \|ClassElement\| with
+-- | argument \_symbol\_. ClassElement : ClassStaticBlock 1. Return
+-- | \*false\*. ClassElement : \`;\` 1. Return \*false\*. AsyncMethod :
+-- | \`async\` ClassElementName \`(\` UniqueFormalParameters \`)\` \`{\`
+-- | AsyncFunctionBody \`}\` 1. Return the result of ComputedPropertyContains
+-- | of \|ClassElementName\| with argument \_symbol\_. FieldDefinition :
+-- | ClassElementName Initializer? 1. Return the result of
+-- | ComputedPropertyContains of \|ClassElementName\| with argument
+-- | \_symbol\_.
+-- |
+-- | # Miscellaneous
+-- |
+-- | These operations are used in multiple places throughout the
+-- | specification.
+-- |
+-- SPEC: L8681-L8720
+-- | # Static Semantics: AssignmentTargetType ( ): \~simple\~, \~web-compat\~, or \~invalid\~
+-- |
+-- | IdentifierReference : Identifier 1. If IsStrict(this
+-- | \|IdentifierReference\|) is \*true\* and the StringValue of
+-- | \|Identifier\| is either \*\"eval\"\* or \*\"arguments\"\*, return
+-- | \~invalid\~. 1. Return \~simple\~. IdentifierReference : \`yield\`
+-- | \`await\` CallExpression : CallExpression \`\[\` Expression \`\]\`
+-- | CallExpression \`.\` IdentifierName CallExpression \`.\`
+-- | PrivateIdentifier MemberExpression : MemberExpression \`\[\` Expression
+-- | \`\]\` MemberExpression \`.\` IdentifierName SuperProperty
+-- | MemberExpression \`.\` PrivateIdentifier 1. Return \~simple\~.
+-- | PrimaryExpression : CoverParenthesizedExpressionAndArrowParameterList 1.
+-- | Let \_expr\_ be the \|ParenthesizedExpression\| that is covered by
+-- | \|CoverParenthesizedExpressionAndArrowParameterList\|. 1. Return the
+-- | AssignmentTargetType of \_expr\_. CallExpression :
+-- | CoverCallExpressionAndAsyncArrowHead CallExpression Arguments 1.
+-- | \[id=\"step-assignmenttargettype-web-compat\", normative-optional\] If
+-- | the host is a web browser or otherwise supports and IsStrict(this
+-- | \|CallExpression\|) is \*false\*, then 1. Return \~web-compat\~. 1.
+-- | Return \~invalid\~. PrimaryExpression : \`this\` Literal ArrayLiteral
+-- | ObjectLiteral FunctionExpression ClassExpression GeneratorExpression
+-- | AsyncFunctionExpression AsyncGeneratorExpression
+-- | RegularExpressionLiteral TemplateLiteral CallExpression : SuperCall
+-- | ImportCall CallExpression TemplateLiteral NewExpression : \`new\`
+-- | NewExpression MemberExpression : MemberExpression TemplateLiteral
+-- | \`new\` MemberExpression Arguments NewTarget : \`new\` \`.\` \`target\`
+-- | ImportMeta : \`import\` \`.\` \`meta\` LeftHandSideExpression :
+-- | OptionalExpression UpdateExpression : LeftHandSideExpression \`++\`
+-- | LeftHandSideExpression \`\--\` \`++\` UnaryExpression \`\--\`
+-- | UnaryExpression UnaryExpression : \`delete\` UnaryExpression \`void\`
+-- | UnaryExpression \`typeof\` UnaryExpression \`+\` UnaryExpression \`-\`
+-- | UnaryExpression \`\~\` UnaryExpression \`!\` UnaryExpression
+-- | AwaitExpression ExponentiationExpression : UpdateExpression \`\*\*\`
+-- | ExponentiationExpression MultiplicativeExpression :
+-- | MultiplicativeExpression MultiplicativeOperator ExponentiationExpression
+-- | AdditiveExpression : AdditiveExpression \`+\` MultiplicativeExpression
+-- | AdditiveExpression \`-\` MultiplicativeExpression ShiftExpression :
+-- | ShiftExpression \`\<\<\` AdditiveExpression ShiftExpression \`\>\>\`
+-- | AdditiveExpression ShiftExpression \`\>\>\>\` AdditiveExpression
+-- | RelationalExpression : RelationalExpression \`\<\` ShiftExpression
 def step? (s : State) : Option (TraceEvent × State) :=
   match h : s.expr with
   -- SPEC: L14923-L14928
@@ -7251,6 +8473,36 @@ def step? (s : State) : Option (TraceEvent × State) :=
   -- | be the StringValue of \|BindingIdentifier\|. 1. Return ?
   -- | ResolveBinding(\_bindingId\_).
   -- |
+  -- SPEC: L17712-L17740
+  -- | # The \`for\` Statement
+  -- |
+  -- | ## Syntax
+  -- |
+  -- | ForStatement\[Yield, Await, Return\] : \`for\` \`(\` \[lookahead !=
+  -- | \`let\` \`\[\`\] Expression\[\~In, ?Yield, ?Await\]? \`;\`
+  -- | Expression\[+In, ?Yield, ?Await\]? \`;\` Expression\[+In, ?Yield,
+  -- | ?Await\]? \`)\` Statement\[?Yield, ?Await, ?Return\] \`for\` \`(\`
+  -- | \`var\` VariableDeclarationList\[\~In, ?Yield, ?Await\] \`;\`
+  -- | Expression\[+In, ?Yield, ?Await\]? \`;\` Expression\[+In, ?Yield,
+  -- | ?Await\]? \`)\` Statement\[?Yield, ?Await, ?Return\] \`for\` \`(\`
+  -- | LexicalDeclaration\[\~In, ?Yield, ?Await\] Expression\[+In, ?Yield,
+  -- | ?Await\]? \`;\` Expression\[+In, ?Yield, ?Await\]? \`)\`
+  -- | Statement\[?Yield, ?Await, ?Return\]
+  -- |
+  -- | # Static Semantics: Early Errors
+  -- |
+  -- | ForStatement : \`for\` \`(\` Expression? \`;\` Expression? \`;\`
+  -- | Expression? \`)\` Statement \`for\` \`(\` \`var\`
+  -- | VariableDeclarationList \`;\` Expression? \`;\` Expression? \`)\`
+  -- | Statement \`for\` \`(\` LexicalDeclaration Expression? \`;\` Expression?
+  -- | \`)\` Statement
+  -- |
+  -- | - It is a Syntax Error if IsLabelledFunction(\|Statement\|) is \*true\*.
+  -- |
+  -- | It is only necessary to apply this rule if the extension specified in is
+  -- | implemented.
+  -- |
+  -- | ForStatement : \`for\` \`(\` LexicalDeclaration Expression? \`;\`
   | .forIn binding obj body =>
       match exprValue? obj with
       | none =>
@@ -7585,6 +8837,24 @@ def step? (s : State) : Option (TraceEvent × State) :=
   -- |
   -- | 1\. Return Completion Record { \[\[Type\]\]: \~throw\~, \[\[Value\]\]:
   -- | \_value\_, \[\[Target\]\]: \~empty\~ }.
+  -- SPEC: L18274-L18290
+  -- | # The \`return\` Statement
+  -- |
+  -- | ## Syntax
+  -- |
+  -- | ReturnStatement\[Yield, Await\] : \`return\` \`;\` \`return\` \[no
+  -- | LineTerminator here\] Expression\[+In, ?Yield, ?Await\] \`;\`
+  -- |
+  -- | A \`return\` statement causes a function to cease execution and, in most
+  -- | cases, returns a value to the caller. If \|Expression\| is omitted, the
+  -- | return value is \*undefined\*. Otherwise, the return value is the value
+  -- | of \|Expression\|. A \`return\` statement may not actually return a
+  -- | value to the caller depending on surrounding context. For example, in a
+  -- | \`try\` block, a \`return\` statement\'s Completion Record may be
+  -- | replaced with another Completion Record during evaluation of the
+  -- | \`finally\` block.
+  -- |
+  -- | # Runtime Semantics: Evaluation
   | .throw arg =>
       match exprValue? arg with
       | some v =>
@@ -7656,6 +8926,30 @@ def step? (s : State) : Option (TraceEvent × State) :=
   -- | \_F\_ be Completion(Evaluation of \|Finally\|). 1. If \_F\_ is a normal
   -- | completion, set \_F\_ to \_C\_. 1. Return ? UpdateEmpty(\_F\_,
   -- | \*undefined\*).
+  -- SPEC: L18543-L18565
+  -- | # The \`try\` Statement
+  -- |
+  -- | ## Syntax
+  -- |
+  -- | TryStatement\[Yield, Await, Return\] : \`try\` Block\[?Yield, ?Await,
+  -- | ?Return\] Catch\[?Yield, ?Await, ?Return\] \`try\` Block\[?Yield,
+  -- | ?Await, ?Return\] Finally\[?Yield, ?Await, ?Return\] \`try\`
+  -- | Block\[?Yield, ?Await, ?Return\] Catch\[?Yield, ?Await, ?Return\]
+  -- | Finally\[?Yield, ?Await, ?Return\] Catch\[Yield, Await, Return\] :
+  -- | \`catch\` \`(\` CatchParameter\[?Yield, ?Await\] \`)\` Block\[?Yield,
+  -- | ?Await, ?Return\] \`catch\` Block\[?Yield, ?Await, ?Return\]
+  -- | Finally\[Yield, Await, Return\] : \`finally\` Block\[?Yield, ?Await,
+  -- | ?Return\] CatchParameter\[Yield, Await\] : BindingIdentifier\[?Yield,
+  -- | ?Await\] BindingPattern\[?Yield, ?Await\]
+  -- |
+  -- | The \`try\` statement encloses a block of code in which an exceptional
+  -- | condition can occur, such as a runtime error or a \`throw\` statement.
+  -- | The \`catch\` clause provides the exception-handling code. When a catch
+  -- | clause catches an exception, its \|CatchParameter\| is bound to that
+  -- | exception.
+  -- |
+  -- | # Static Semantics: Early Errors
+  -- |
   | .tryCatch body catchParam catchBody finally_ =>
       let isCallFrame := catchParam == "__call_frame_return__"
       match exprValue? body with
@@ -8499,6 +9793,45 @@ inductive Steps : State → List TraceEvent → State → Prop where
 -- | # Static Semantics: Early Errors
 /-- Initial Core machine state for a program body.
     Preloads the `console` global with a `log` method (§18.2). -/
+-- SPEC: L9273-L9310
+-- | # Global Environment Records
+-- |
+-- | A [Global Environment Record]{.dfn
+-- | variants="Global Environment Records"} is used to represent the outer
+-- | most scope that is shared by all of the ECMAScript \|Script\| elements
+-- | that are processed in a common realm. A Global Environment Record
+-- | provides the bindings for built-in globals (clause ), properties of the
+-- | global object, and for all top-level declarations (, ) that occur within
+-- | a \|Script\|.
+-- |
+-- | A Global Environment Record is logically a single record but it is
+-- | specified as a composite encapsulating an Object Environment Record and
+-- | a Declarative Environment Record. The Object Environment Record has as
+-- | its base object the global object of the associated Realm Record. This
+-- | global object is the value returned by the Global Environment Record\'s
+-- | GetThisBinding concrete method. The Object Environment Record component
+-- | of a Global Environment Record contains the bindings for all built-in
+-- | globals (clause ) and all bindings introduced by a
+-- | \|FunctionDeclaration\|, \|GeneratorDeclaration\|,
+-- | \|AsyncFunctionDeclaration\|, \|AsyncGeneratorDeclaration\|, or
+-- | \|VariableStatement\| contained in global code. The bindings for all
+-- | other ECMAScript declarations in global code are contained in the
+-- | Declarative Environment Record component of the Global Environment
+-- | Record.
+-- |
+-- | Properties may be created directly on a global object. Hence, the Object
+-- | Environment Record component of a Global Environment Record may contain
+-- | both bindings created explicitly by \|FunctionDeclaration\|,
+-- | \|GeneratorDeclaration\|, \|AsyncFunctionDeclaration\|,
+-- | \|AsyncGeneratorDeclaration\|, or \|VariableDeclaration\| declarations
+-- | and bindings created implicitly as properties of the global object. In
+-- | order to identify which bindings were explicitly created using
+-- | declarations, a Global Environment Record maintains a list of the names
+-- | bound using the CreateGlobalVarBinding and CreateGlobalFunctionBinding
+-- | abstract operations.
+-- |
+-- | Global Environment Records have the additional fields listed in .
+-- |
 def initialState (p : Program) : State :=
   -- Reserve heap address 0 for the console object.
   let consoleProps : List (PropName × Value) := [("log", .function consoleLogIdx)]
@@ -8536,6 +9869,48 @@ theorem Step_iff (s : State) (t : TraceEvent) (s' : State) :
   · intro h; exact Step.mk h
 
 /-- Program behavior as finite terminating trace sequence. -/
+-- SPEC: L5047-L5087
+-- | # Invariants of the Essential Internal Methods
+-- |
+-- | The Internal Methods of Objects of an ECMAScript engine must conform to
+-- | the list of invariants specified below. Ordinary ECMAScript Objects as
+-- | well as all standard exotic objects in this specification maintain these
+-- | invariants. ECMAScript Proxy objects maintain these invariants by means
+-- | of runtime checks on the result of traps invoked on the
+-- | \[\[ProxyHandler\]\] object.
+-- |
+-- | Any implementation provided exotic objects must also maintain these
+-- | invariants for those objects. Violation of these invariants may cause
+-- | ECMAScript code to have unpredictable behaviour and create security
+-- | issues. However, violation of these invariants must never compromise the
+-- | memory safety of an implementation.
+-- |
+-- | An implementation must not allow these invariants to be circumvented in
+-- | any manner such as by providing alternative interfaces that implement
+-- | the functionality of the essential internal methods without enforcing
+-- | their invariants.
+-- |
+-- | ## Definitions:
+-- |
+-- | - The *target* of an internal method is the object upon which the
+-- |   internal method is called.
+-- | - A target is *non-extensible* if it has been observed to return
+-- |   \*false\* from its \[\[IsExtensible\]\] internal method, or \*true\*
+-- |   from its \[\[PreventExtensions\]\] internal method.
+-- | - A *non-existent* property is a property that does not exist as an own
+-- |   property on a non-extensible target.
+-- | - All references to *SameValue* are according to the definition of the
+-- |   SameValue algorithm.
+-- |
+-- | ## Return value:
+-- |
+-- | The value returned by any internal method must be a Completion Record
+-- | with either:
+-- |
+-- | - \[\[Type\]\] = \~normal\~, \[\[Target\]\] = \~empty\~, and
+-- |   \[\[Value\]\] = a value of the \"normal return type\" shown below for
+-- |   that internal method, or
+-- | - \[\[Type\]\] = \~throw\~, \[\[Target\]\] = \~empty\~, and
 def Behaves (p : Program) (b : List TraceEvent) : Prop :=
   ∃ sFinal,
     Steps (initialState p) b sFinal ∧
