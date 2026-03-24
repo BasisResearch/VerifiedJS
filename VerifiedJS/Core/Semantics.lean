@@ -3145,7 +3145,7 @@ def valueToString : Value → String
 -- | \_x\_ is \*+0\*~𝔽~ and \_y\_ is \*-0\*~𝔽~, return \*true\*. 1. If \_x\_
 -- | is \*-0\*~𝔽~ and \_y\_ is \*+0\*~𝔽~, return \*true\*. 1. If \_x\_ is
 -- | \_y\_, return \*true\*. 1. Return \*false\*.
--- SPEC: L6458-L6476
+-- SPEC: L6458-L6471
 -- | # SameType ( \_x\_: an ECMAScript language value, \_y\_: an ECMAScript language value, ): a Boolean
 -- |
 -- | description
@@ -3160,7 +3160,7 @@ def valueToString : Value → String
 -- | \*true\*. 1. If \_x\_ is a String and \_y\_ is a String, return
 -- | \*true\*. 1. If \_x\_ is an Object and \_y\_ is an Object, return
 -- | \*true\*. 1. Return \*false\*.
--- SPEC: L6478-L6490
+-- SPEC: L6473-L6485
 -- | # SameValue ( \_x\_: an ECMAScript language value, \_y\_: an ECMAScript language value, ): a Boolean
 -- |
 -- | description
@@ -5234,6 +5234,12 @@ def pushTrace (s : State) (t : TraceEvent) : State :=
 /-- One deterministic Core small-step transition with emitted trace event. -/
 def step? (s : State) : Option (TraceEvent × State) :=
   match h : s.expr with
+  -- SPEC: L14923-L14928
+  -- | # Literals
+  -- |
+  -- | ## Syntax
+  -- |
+  -- | Literal : NullLiteral BooleanLiteral NumericLiteral StringLiteral
   -- SPEC: L14929-L14936
   -- | # Runtime Semantics: Evaluation
   -- |
@@ -8316,6 +8322,19 @@ inductive Steps : State → List TraceEvent → State → Prop where
       Steps s2 ts s3 →
       Steps s1 (t :: ts) s3
 
+-- SPEC: L20599-L20610
+-- | # Script Records
+-- |
+-- | A [Script Record]{#script-record .dfn variants="Script Records"}
+-- | encapsulates information about a script being evaluated. Each script
+-- | record contains the fields listed in .
+-- |
+-- |   Field Name               Value Type                              Meaning
+-- |   ------------------------ --------------------------------------- ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+-- |   \[\[Realm\]\]            a Realm Record                          The realm within which this script was created.
+-- |   \[\[ECMAScriptCode\]\]   a \|Script\| Parse Node                 The result of parsing the source text of this script.
+-- |   \[\[LoadedModules\]\]    a List of LoadedModuleRequest Records   A map from the specifier strings imported by this script to the resolved Module Record. The list does not contain two different Records \_r1\_ and \_r2\_ such that ModuleRequestsEqual(\_r1\_, \_r2\_) is \*true\*.
+-- |   \[\[HostDefined\]\]      anything (default value is \~empty\~)   Field reserved for use by host environments that need to associate additional information with a script.
 -- SPEC: L20550-L20560
 -- | # ECMAScript Language: Scripts and Modules
 -- |
