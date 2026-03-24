@@ -654,7 +654,32 @@ private theorem ValueAddrWF_mono {v : Core.Value} {n m : Nat}
 
 private theorem ExprAddrWF_mono {e : Core.Expr} {n m : Nat}
     (h : ExprAddrWF e n) (hle : n ≤ m) : ExprAddrWF e m := by
-  sorry
+  match e with
+  | .lit v => exact ValueAddrWF_mono h hle
+  | .var _ | .call _ _ | .newObj _ _ | .objectLit _ | .arrayLit _ | .break _ | .continue _ | .return none | .yield none _ | .this => trivial
+  | .«let» _ init body => exact ⟨ExprAddrWF_mono h.1 hle, ExprAddrWF_mono h.2 hle⟩
+  | .assign _ value => exact ExprAddrWF_mono h hle
+  | .«if» cond t el => exact ⟨ExprAddrWF_mono h.1 hle, ExprAddrWF_mono h.2.1 hle, ExprAddrWF_mono h.2.2 hle⟩
+  | .seq a b => exact ⟨ExprAddrWF_mono h.1 hle, ExprAddrWF_mono h.2 hle⟩
+  | .getProp obj _ => exact ExprAddrWF_mono h hle
+  | .setProp o _ v => exact ⟨ExprAddrWF_mono h.1 hle, ExprAddrWF_mono h.2 hle⟩
+  | .getIndex e1 e2 => exact ⟨ExprAddrWF_mono h.1 hle, ExprAddrWF_mono h.2 hle⟩
+  | .setIndex o i v => exact ⟨ExprAddrWF_mono h.1 hle, ExprAddrWF_mono h.2.1 hle, ExprAddrWF_mono h.2.2 hle⟩
+  | .deleteProp obj _ => exact ExprAddrWF_mono h hle
+  | .typeof arg => exact ExprAddrWF_mono h hle
+  | .unary _ arg => exact ExprAddrWF_mono h hle
+  | .binary _ l r => exact ⟨ExprAddrWF_mono h.1 hle, ExprAddrWF_mono h.2 hle⟩
+  | .functionDef _ _ body _ _ => exact ExprAddrWF_mono h hle
+  | .throw arg => exact ExprAddrWF_mono h hle
+  | .tryCatch b _ c none => exact ⟨ExprAddrWF_mono h.1 hle, ExprAddrWF_mono h.2 hle⟩
+  | .tryCatch b _ c (some fe) => exact ⟨ExprAddrWF_mono h.1 hle, ExprAddrWF_mono h.2.1 hle, ExprAddrWF_mono h.2.2 hle⟩
+  | .while_ c b => exact ⟨ExprAddrWF_mono h.1 hle, ExprAddrWF_mono h.2 hle⟩
+  | .forIn _ o b => exact ⟨ExprAddrWF_mono h.1 hle, ExprAddrWF_mono h.2 hle⟩
+  | .forOf _ i b => exact ⟨ExprAddrWF_mono h.1 hle, ExprAddrWF_mono h.2 hle⟩
+  | .return (some arg) => exact ExprAddrWF_mono h hle
+  | .yield (some arg) _ => exact ExprAddrWF_mono h hle
+  | .labeled _ b => exact ExprAddrWF_mono h hle
+  | .await arg => exact ExprAddrWF_mono h hle
 
 /-- Simulation relation for closure conversion: Flat and Core states
     have matching traces, environment correspondence, and expression

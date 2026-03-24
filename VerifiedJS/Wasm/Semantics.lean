@@ -6740,6 +6740,32 @@ theorem stack_corr_tail {iv : IRValue} {wv : WasmValue}
     have := helems (i + 1) (by simp; omega)
     simpa using this
 
+/-- Stack correspondence inversion: if IR stack starts with two i32 values,
+    the Wasm stack starts with the corresponding i32 values. -/
+theorem stack_corr_i32_i32_inv
+    (a b : UInt32) (stk : List IRValue) (wstk : List WasmValue)
+    (hlen : (IRValue.i32 a :: .i32 b :: stk).length = wstk.length)
+    (helems : ∀ i, i < (IRValue.i32 a :: .i32 b :: stk).length →
+      ∃ irv wv, (IRValue.i32 a :: .i32 b :: stk)[i]? = some irv ∧ wstk[i]? = some wv ∧ IRValueToWasmValue irv wv) :
+    ∃ wstk', wstk = .i32 a :: .i32 b :: wstk' ∧
+      wstk'.length = stk.length ∧
+      ∀ i, i < stk.length →
+        ∃ irv wv, stk[i]? = some irv ∧ wstk'[i]? = some wv ∧ IRValueToWasmValue irv wv := by
+  match wstk with
+  | [] => simp at hlen
+  | [_] => simp at hlen
+  | w0 :: w1 :: wstk' =>
+    simp at hlen
+    have h0 := helems 0 (by simp)
+    simp at h0
+    cases h0
+    have h1 := helems 1 (by simp)
+    simp at h1
+    cases h1
+    exact ⟨wstk', rfl, hlen.symm, fun i hi => by
+      have := helems (i + 2) (by simp; omega)
+      simpa using this⟩
+
 /-- Simulation relation for IR → Wasm emit.
     The step correspondence field provides the matching Wasm step for each IR step.
     REF: Standard forward simulation diagram. -/

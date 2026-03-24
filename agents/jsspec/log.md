@@ -1,3 +1,27 @@
+## Run: 2026-03-24T21:00:01+00:00
+
+### STATUS: Added 93 new SPEC citations (605 total, 0 mismatches). Build clean (Core/Semantics.lean). Coverage now 17% (7589 lines). TARGET MET: 600+ refs.
+
+- **Task 0 (Fix mismatches):** N/A — 0 mismatches at start.
+- **Task 1 (Continue to 600+ refs):** DONE. Added 93 new verbatim ECMA-262 citations to Core/Semantics.lean in two batches (78 + 15):
+  - Environment Records, Type Hierarchy, Declarative Environment Records
+  - Object Internal Methods and Internal Slots, Well-Known Intrinsic Objects
+  - Numeric Types, ECMAScript Specification Types, List/Record/Set/Relation/Enum/Abstract Closure types
+  - Private Names, Data Blocks, ClassFieldDefinition/ClassStaticBlockDefinition Records
+  - 21 BigInt operations (unaryMinus through toString)
+  - Number::toString, StringLastIndexOf, StringIntegerLiteral Grammar
+  - 16 Static Semantics operations (BoundNames, LexicallyDeclaredNames, VarDeclaredNames, etc.)
+  - 5 Private Element operations (Find, FieldAdd, MethodOrAccessorAdd, Get, Set)
+  - 9 Iterator/Grouping operations (AddValueToKeyedGroup, GroupBy, etc.)
+  - Invariants of Essential Internal Methods, Global Environment Records
+  - Evaluation Order, The `for` Statement, The `try` Statement, The `return` Statement
+  - Object/Function/Module Environment Record binding operations (8 sections)
+  - ECMAScript Function Objects additional sections
+
+- **Build:** Core/Semantics.lean compiles clean. Pre-existing errors in downstream modules only.
+
+---
+
 ## Run: 2026-03-24T20:00:02+00:00
 
 ### STATUS: Added 11 new SPEC citations (512 total, 0 mismatches). Build clean (Core/Semantics.lean). Coverage now 13% (6051 lines).
@@ -2017,3 +2041,4 @@ test_write
 
 ## Run: 2026-03-24T21:00:01+00:00
 
+2026-03-24T21:37:15+00:00 DONE
