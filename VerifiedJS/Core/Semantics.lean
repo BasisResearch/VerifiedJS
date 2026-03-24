@@ -2913,6 +2913,24 @@ def step? (s : State) : Option (TraceEvent × State) :=
   -- |
   -- | 1\. Let \_envRec\_ be GetThisEnvironment(). 1. Return ?
   -- | \_envRec\_.GetThisBinding().
+  -- SPEC: L10011-L10019
+  -- | # GetNewTarget ( ): an Object or \*undefined\*
+  -- |
+  -- | description
+  -- | :   It determines the NewTarget value using the LexicalEnvironment of
+  -- |     the running execution context.
+  -- |
+  -- | 1\. Let \_envRec\_ be GetThisEnvironment(). 1. Assert: \_envRec\_ has a
+  -- | \[\[NewTarget\]\] field. 1. Return \_envRec\_.\[\[NewTarget\]\].
+  -- SPEC: L10020-L10028
+  -- | # GetGlobalObject ( ): an Object
+  -- |
+  -- | description
+  -- | :   It returns the global object used by the currently running execution
+  -- |     context.
+  -- |
+  -- | 1\. Let \_currentRealm\_ be the current Realm Record. 1. Return
+  -- | \_currentRealm\_.\[\[GlobalObject\]\].
   | .this =>
       match s.env.lookup "this" with
       | some v =>
