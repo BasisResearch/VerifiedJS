@@ -2678,6 +2678,118 @@ theorem step?_eq_if_false (s : ExecState) (bt : BlockType) (then_ else_ rest : L
     cases s; simp_all
   rw [← this]; simp [step?_if_false, pushTrace]
 
+/-- Exact step? result for i32.and with hypothesis-form arguments. -/
+theorem step?_eq_i32And (s : ExecState) (rest : List Instr)
+    (a b : UInt32) (stk : List WasmValue)
+    (hcode : s.code = Instr.i32And :: rest)
+    (hstack : s.stack = .i32 b :: .i32 a :: stk) :
+    step? s = some (.silent,
+      { s with
+        code := rest
+        stack := .i32 (Numerics.i32And a b) :: stk
+        trace := s.trace ++ [.silent] }) := by
+  have : { s with code := Instr.i32And :: rest, stack := .i32 b :: .i32 a :: stk } = s := by
+    cases s; simp_all
+  rw [← this]; simp [step?_i32And, pushTrace]
+
+/-- Exact step? result for i32.or with hypothesis-form arguments. -/
+theorem step?_eq_i32Or (s : ExecState) (rest : List Instr)
+    (a b : UInt32) (stk : List WasmValue)
+    (hcode : s.code = Instr.i32Or :: rest)
+    (hstack : s.stack = .i32 b :: .i32 a :: stk) :
+    step? s = some (.silent,
+      { s with
+        code := rest
+        stack := .i32 (Numerics.i32Or a b) :: stk
+        trace := s.trace ++ [.silent] }) := by
+  have : { s with code := Instr.i32Or :: rest, stack := .i32 b :: .i32 a :: stk } = s := by
+    cases s; simp_all
+  rw [← this]; simp [step?_i32Or, pushTrace]
+
+/-- Exact step? result for i32.eq with hypothesis-form arguments. -/
+theorem step?_eq_i32Eq (s : ExecState) (rest : List Instr)
+    (a b : UInt32) (stk : List WasmValue)
+    (hcode : s.code = Instr.i32Eq :: rest)
+    (hstack : s.stack = .i32 b :: .i32 a :: stk) :
+    step? s = some (.silent,
+      { s with
+        code := rest
+        stack := boolToI32 (Numerics.i32Eq a b) :: stk
+        trace := s.trace ++ [.silent] }) := by
+  have : { s with code := Instr.i32Eq :: rest, stack := .i32 b :: .i32 a :: stk } = s := by
+    cases s; simp_all
+  rw [← this]; simp [step?_i32Eq, pushTrace]
+
+/-- Exact step? result for i32.ne with hypothesis-form arguments. -/
+theorem step?_eq_i32Ne (s : ExecState) (rest : List Instr)
+    (a b : UInt32) (stk : List WasmValue)
+    (hcode : s.code = Instr.i32Ne :: rest)
+    (hstack : s.stack = .i32 b :: .i32 a :: stk) :
+    step? s = some (.silent,
+      { s with
+        code := rest
+        stack := boolToI32 (Numerics.i32Ne a b) :: stk
+        trace := s.trace ++ [.silent] }) := by
+  have : { s with code := Instr.i32Ne :: rest, stack := .i32 b :: .i32 a :: stk } = s := by
+    cases s; simp_all
+  rw [← this]; simp [step?_i32Ne, pushTrace]
+
+/-- Exact step? result for i32.lt_s with hypothesis-form arguments. -/
+theorem step?_eq_i32Lts (s : ExecState) (rest : List Instr)
+    (a b : UInt32) (stk : List WasmValue)
+    (hcode : s.code = Instr.i32Lts :: rest)
+    (hstack : s.stack = .i32 b :: .i32 a :: stk) :
+    step? s = some (.silent,
+      { s with
+        code := rest
+        stack := boolToI32 (Numerics.i32Lts a b) :: stk
+        trace := s.trace ++ [.silent] }) := by
+  have : { s with code := Instr.i32Lts :: rest, stack := .i32 b :: .i32 a :: stk } = s := by
+    cases s; simp_all
+  rw [← this]; simp [step?_i32Lts, pushTrace]
+
+/-- Exact step? result for i32.gt_s with hypothesis-form arguments. -/
+theorem step?_eq_i32Gts (s : ExecState) (rest : List Instr)
+    (a b : UInt32) (stk : List WasmValue)
+    (hcode : s.code = Instr.i32Gts :: rest)
+    (hstack : s.stack = .i32 b :: .i32 a :: stk) :
+    step? s = some (.silent,
+      { s with
+        code := rest
+        stack := boolToI32 (Numerics.i32Gts a b) :: stk
+        trace := s.trace ++ [.silent] }) := by
+  have : { s with code := Instr.i32Gts :: rest, stack := .i32 b :: .i32 a :: stk } = s := by
+    cases s; simp_all
+  rw [← this]; simp [step?_i32Gts, pushTrace]
+
+/-- Exact step? result for i32.eqz with hypothesis-form arguments. -/
+theorem step?_eq_i32Eqz (s : ExecState) (rest : List Instr)
+    (n : UInt32) (stk : List WasmValue)
+    (hcode : s.code = Instr.i32Eqz :: rest)
+    (hstack : s.stack = .i32 n :: stk) :
+    step? s = some (.silent,
+      { s with
+        code := rest
+        stack := boolToI32 (Numerics.i32Eqz n) :: stk
+        trace := s.trace ++ [.silent] }) := by
+  have : { s with code := Instr.i32Eqz :: rest, stack := .i32 n :: stk } = s := by
+    cases s; simp_all
+  rw [← this]; simp [step?_i32Eqz, pushTrace]
+
+/-- Exact step? result for i32.wrap_i64 with hypothesis-form arguments. -/
+theorem step?_eq_i32WrapI64 (s : ExecState) (rest : List Instr)
+    (n : UInt64) (stk : List WasmValue)
+    (hcode : s.code = Instr.i32WrapI64 :: rest)
+    (hstack : s.stack = .i64 n :: stk) :
+    step? s = some (.silent,
+      { s with
+        code := rest
+        stack := .i32 (Numerics.i32WrapI64 n) :: stk
+        trace := s.trace ++ [.silent] }) := by
+  have : { s with code := Instr.i32WrapI64 :: rest, stack := .i64 n :: stk } = s := by
+    cases s; simp_all
+  rw [← this]; simp [step?_i32WrapI64, pushTrace]
+
 /-! ## Behavioral semantics theorems -/
 
 /-- Deterministic execution: Steps from the same state yield the same trace and final state. -/
