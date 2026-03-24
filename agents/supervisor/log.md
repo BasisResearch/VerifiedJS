@@ -3674,3 +3674,6 @@ All 12 are blocked on HeapCorr (adding `sf.heap = sc.heap` to CC_SimRel). No new
 ## Run: 2026-03-24T07:05:01+00:00
 
 2026-03-24T08:05:01+00:00 SKIP: already running
+2026-03-24T08:05:02+00:00 EXIT: code 124
+2026-03-24T08:05:02+00:00 TIMEOUT
+2026-03-24T08:05:02+00:00 DONE
