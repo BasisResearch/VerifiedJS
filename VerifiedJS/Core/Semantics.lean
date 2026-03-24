@@ -2661,6 +2661,15 @@ def step? (s : State) : Option (TraceEvent × State) :=
   -- SPEC: L18488-L18489
   -- | LabelledStatement : LabelIdentifier \`:\` LabelledItem 1. Return ?
   -- | LabelledEvaluation of this \|LabelledStatement\| with argument « ».
+  -- SPEC: L18511-L18518
+  -- | LabelledStatement : LabelIdentifier \`:\` LabelledItem 1. Let \_label\_
+  -- | be the StringValue of \|LabelIdentifier\|. 1. Let \_newLabelSet\_ be the
+  -- | list-concatenation of \_labelSet\_ and « \_label\_ ». 1. Let
+  -- | \_stmtResult\_ be Completion(LabelledEvaluation of \|LabelledItem\| with
+  -- | argument \_newLabelSet\_). 1. If \_stmtResult\_ is a break completion
+  -- | and \_stmtResult\_.\[\[Target\]\] is \_label\_, then 1. Set
+  -- | \_stmtResult\_ to NormalCompletion(\_stmtResult\_.\[\[Value\]\]). 1.
+  -- | Return ? \_stmtResult\_. LabelledItem : FunctionDeclaration 1. Return ?
   | .labeled _ body =>
       let s' := pushTrace { s with expr := body } .silent
       some (.silent, s')

@@ -1656,7 +1656,205 @@ private theorem closureConvert_step_simulation
           simp only [Flat.convertExpr]
           rw [show Flat.convertExpr sc_arg.expr scope' envVar envMap st_a =
             (sa_flat.expr, st_a') from hconv_arg.symm]
-  | setProp _ _ _ => sorry -- needs env/heap correspondence
+  | setProp obj prop value =>
+    rw [hsc] at hconv; simp only [Flat.convertExpr] at hconv
+    set obj' := (Flat.convertExpr obj scope envVar envMap st).1 with hobj'_def
+    set st1 := (Flat.convertExpr obj scope envVar envMap st).2 with hst1_def
+    set value' := (Flat.convertExpr value scope envVar envMap st1).1 with hvalue'_def
+    set st2 := (Flat.convertExpr value scope envVar envMap st1).2 with hst2_def
+    have hsf_expr : sf.expr = .setProp obj' prop value' := by
+      cases sf; simp_all [(Prod.mk.inj hconv).1]
+    cases hval_o : Core.exprValue? obj with
+    | none =>
+      -- Step the obj sub-expression
+      have hobj'_nv : Flat.exprValue? obj' = none := convertExpr_not_value obj hval_o scope envVar envMap st
+      have hsf_rw : sf = ⟨.setProp obj' prop value', sf.env, sf.heap, sf.trace⟩ := by
+        cases sf; simp_all
+      have hdepth : Core.Expr.depth obj < n := by
+        rw [← hd, hsc]; simp [Core.Expr.depth]; omega
+      rw [hsf_rw] at hstep
+      simp only [Flat.step?, Flat.exprValue?, hobj'_nv] at hstep
+      cases hsubstep : Flat.step? ⟨obj', sf.env, sf.heap, sf.trace⟩ with
+      | none => simp [hsubstep] at hstep
+      | some p =>
+        obtain ⟨ev_sub, sa_flat⟩ := p
+        simp only [hsubstep] at hstep
+        have hev_eq : ev = ev_sub := (Prod.mk.inj (Option.some.inj hstep)).1
+        subst hev_eq
+        have hflat_step_sub : Flat.Step ⟨obj', sf.env, sf.heap, sf.trace⟩ ev_sub sa_flat := ⟨hsubstep⟩
+        obtain ⟨sc_arg, ⟨hcore_substep⟩, htrace_arg, henvCorr_arg, hheap_arg, scope', st_a, st_a', hconv_arg⟩ :=
+          ih_depth (Core.Expr.depth obj) hdepth envVar envMap
+          ⟨obj', sf.env, sf.heap, sf.trace⟩
+          ⟨obj, sc.env, sc.heap, sc.trace, sc.funcs, sc.callStack⟩
+          ev_sub sa_flat rfl htrace henvCorr hheap
+          ⟨scope, st, st1, by simp only [hobj'_def, hst1_def]; exact (Prod.eta _).symm⟩
+          hflat_step_sub
+        have hcore_sp : Core.step? sc =
+          some (ev_sub, Core.pushTrace { sc_arg with expr := .setProp sc_arg.expr prop value, trace := sc.trace } ev_sub) := by
+          rw [show sc = ⟨.setProp obj prop value, sc.env, sc.heap, sc.trace, sc.funcs, sc.callStack⟩
+            from by cases sc; simp_all]
+          exact Core.step_setProp_step_obj obj prop value sc.env sc.heap sc.trace sc.funcs sc.callStack hval_o ev_sub sc_arg
+            (by rw [show (⟨obj, sc.env, sc.heap, sc.trace, sc.funcs, sc.callStack⟩ : Core.State) =
+              { sc with expr := obj } from by cases sc; simp_all]; exact hcore_substep)
+        set sc' := Core.pushTrace { sc_arg with expr := .setProp sc_arg.expr prop value, trace := sc.trace } ev_sub
+        refine ⟨sc', ⟨hcore_sp⟩, ?_⟩
+        constructor
+        · have hsf'_eq := (Prod.mk.inj (Option.some.inj hstep)).2
+          rw [← hsf'_eq]; show sf.trace ++ [ev_sub] = sc.trace ++ [ev_sub]; rw [htrace]
+        constructor
+        · have hsf'_eq := (Prod.mk.inj (Option.some.inj hstep)).2
+          have hsc'_env : sc'.env = sc_arg.env := by simp [sc', Core.pushTrace]
+          rw [hsc'_env]; convert henvCorr_arg using 1; rw [← hsf'_eq]; rfl
+        constructor
+        · have hsf_eq_hp := (Prod.mk.inj (Option.some.inj hstep)).2
+          have hsc_heap_hp : sc'.heap = sc_arg.heap := by simp [sc', Core.pushTrace]
+          rw [hsc_heap_hp]; convert hheap_arg using 1; rw [← hsf_eq_hp]; rfl
+        · refine ⟨scope', st_a, ?_, ?_⟩
+          · exact (Flat.convertExpr value scope' envVar envMap st_a').2
+          · have hsf'_eq := (Prod.mk.inj (Option.some.inj hstep)).2
+            have hsf'_expr : sf'.expr = .setProp sa_flat.expr prop value' := by rw [← hsf'_eq]; rfl
+            have hsc'_expr : sc'.expr = .setProp sc_arg.expr prop value := by simp [sc', Core.pushTrace]
+            rw [hsc'_expr, hsf'_expr]; simp only [Flat.convertExpr]
+            rw [show Flat.convertExpr sc_arg.expr scope' envVar envMap st_a =
+              (sa_flat.expr, st_a') from hconv_arg.symm]
+            congr 1
+            · congr 1
+              rw [hvalue'_def, hst1_def]
+              rw [convertExpr_scope_irrelevant value scope scope' envVar envMap
+                (Flat.convertExpr obj scope envVar envMap st).2]; rfl
+            · rw [hvalue'_def, hst1_def]
+              rw [convertExpr_scope_irrelevant value scope scope' envVar envMap
+                (Flat.convertExpr obj scope envVar envMap st).2]; rfl
+    | some ov =>
+      -- obj is a value
+      have ho_lit : obj = .lit ov := by cases obj <;> simp [Core.exprValue?] at hval_o <;> exact congrArg _ hval_o
+      subst ho_lit
+      simp only [Flat.convertExpr] at hobj'_def hst1_def hconv hsf_expr
+      -- obj' = .lit (convertValue ov), st1 = st
+      cases hval_v : Core.exprValue? value with
+      | some vv =>
+        -- Both sub-expressions are values
+        have hv_lit : value = .lit vv := by cases value <;> simp [Core.exprValue?] at hval_v <;> exact congrArg _ hval_v
+        subst hv_lit
+        simp only [Flat.convertExpr] at hvalue'_def hst2_def hconv hsf_expr
+        have hsf_rw : sf = ⟨.setProp (.lit (Flat.convertValue ov)) prop (.lit (Flat.convertValue vv)), sf.env, sf.heap, sf.trace⟩ := by
+          cases sf; simp_all
+        have hsc_rw : sc = ⟨.setProp (.lit ov) prop (.lit vv), sc.env, sc.heap, sc.trace, sc.funcs, sc.callStack⟩ := by
+          cases sc; simp only [] at hsc ⊢; congr
+        have hflat_ev : ev = .silent := by
+          rw [hsf_rw] at hstep; simp only [Flat.step?, Flat.exprValue?] at hstep
+          cases ov <;> simp at hstep <;> exact (Prod.mk.inj (Option.some.inj hstep)).1.symm
+        subst hflat_ev
+        obtain ⟨sc', hcstep⟩ : ∃ sc', Core.step? sc = some (.silent, sc') := by
+          rw [hsc_rw]; simp only [Core.step?, Core.exprValue?]; exact ⟨_, rfl⟩
+        refine ⟨sc', ⟨hcstep⟩, ?_⟩
+        have hsf'_sub := hstep; rw [hsf_rw] at hsf'_sub
+        simp only [Flat.step?, Flat.exprValue?] at hsf'_sub
+        have hsc'_sub := hcstep; rw [hsc_rw] at hsc'_sub
+        simp only [Core.step?, Core.exprValue?] at hsc'_sub
+        have heqf := (Prod.mk.inj (Option.some.inj hsf'_sub)).2
+        have heqc := (Prod.mk.inj (Option.some.inj hsc'_sub)).2
+        subst heqf; subst heqc
+        refine ⟨by show sf.trace ++ _ = sc.trace ++ _; rw [htrace], henvCorr, ?_⟩
+        constructor
+        · -- Heap correspondence: setProp modifies heap identically
+          -- For .object addr: both update heap with flatToCoreValue (convertValue vv) = vv
+          -- For non-object: both leave heap unchanged
+          cases ov with
+          | object addr =>
+            show (match Flat.heapObjectAt? sf.heap addr with
+              | some props => { sf.heap with objects := sf.heap.objects.set! addr
+                  (if props.any (fun kv => kv.fst == prop)
+                    then props.map (fun kv => if kv.fst == prop then (prop, Flat.flatToCoreValue (Flat.convertValue vv)) else kv)
+                    else props ++ [(prop, Flat.flatToCoreValue (Flat.convertValue vv))]) }
+              | none => sf.heap) =
+              (match sc.heap.objects[addr]? with
+              | some props => { sc.heap with objects := sc.heap.objects.set! addr
+                  (if props.any (fun kv => kv.fst == prop)
+                    then props.map (fun kv => if kv.fst == prop then (prop, vv) else kv)
+                    else props ++ [(prop, vv)]) }
+              | none => sc.heap)
+            rw [hheap, heapObjectAt?_eq, flatToCoreValue_convertValue]
+          | _ => exact hheap
+        refine ⟨scope, st, st, ?_⟩
+        cases ov with
+        | object => simp only [Flat.convertExpr, Flat.convertValue, Core.pushTrace]; rfl
+        | string => simp only [Flat.convertExpr, Flat.convertValue, Core.pushTrace]; rfl
+        | null => simp only [Flat.convertExpr, Flat.convertValue, Core.pushTrace]; rfl
+        | undefined => simp only [Flat.convertExpr, Flat.convertValue, Core.pushTrace]; rfl
+        | bool => simp only [Flat.convertExpr, Flat.convertValue, Core.pushTrace]; rfl
+        | number => simp only [Flat.convertExpr, Flat.convertValue, Core.pushTrace]; rfl
+        | function => simp only [Flat.convertExpr, Flat.convertValue, Core.pushTrace]; rfl
+      | none =>
+        -- obj is a value, value is not: step the value sub-expression
+        have hvalue'_nv : Flat.exprValue? value' = none := convertExpr_not_value value hval_v scope envVar envMap st1
+        have hsf_rw : sf = ⟨.setProp (.lit (Flat.convertValue ov)) prop value', sf.env, sf.heap, sf.trace⟩ := by
+          cases sf; simp_all
+        have hdepth : Core.Expr.depth value < n := by
+          rw [← hd, hsc]; simp [Core.Expr.depth]; omega
+        rw [hsf_rw] at hstep; simp only [Flat.step?, Flat.exprValue?] at hstep
+        -- Need to handle the obj-value case in Flat.step? for setProp
+        -- Flat matches on convertValue ov, then on exprValue? value'
+        -- Since value' is not a value: step value'
+        -- Case split on convertValue ov to determine the Flat branch
+        cases ov <;> simp only [Flat.convertValue, hvalue'_nv] at hstep <;> (
+          cases hsubstep : Flat.step? ⟨value', sf.env, sf.heap, sf.trace⟩ with
+          | none => simp [hsubstep] at hstep
+          | some p =>
+            obtain ⟨ev_sub, sa_flat⟩ := p
+            simp only [hsubstep] at hstep
+            have hev_eq : ev = ev_sub := (Prod.mk.inj (Option.some.inj hstep)).1
+            subst hev_eq
+            have hflat_step_sub : Flat.Step ⟨value', sf.env, sf.heap, sf.trace⟩ ev_sub sa_flat := ⟨hsubstep⟩
+            obtain ⟨sc_arg, ⟨hcore_substep⟩, htrace_arg, henvCorr_arg, hheap_arg, scope', st_a, st_a', hconv_arg⟩ :=
+              ih_depth (Core.Expr.depth value) hdepth envVar envMap
+              ⟨value', sf.env, sf.heap, sf.trace⟩
+              ⟨value, sc.env, sc.heap, sc.trace, sc.funcs, sc.callStack⟩
+              ev_sub sa_flat rfl htrace henvCorr hheap
+              ⟨scope, st1, st2, by simp only [hvalue'_def, hst2_def]; exact (Prod.eta _).symm⟩
+              hflat_step_sub
+            have hsc_rw : sc = ⟨.setProp (.lit ov) prop value, sc.env, sc.heap, sc.trace, sc.funcs, sc.callStack⟩ := by
+              cases sc; simp only [] at hsc ⊢; congr
+            obtain ⟨sc', hcstep⟩ : ∃ sc', Core.step? sc = some (ev_sub, sc') := by
+              rw [hsc_rw]; simp only [Core.step?, Core.exprValue?]
+              rw [show (⟨value, sc.env, sc.heap, sc.trace, sc.funcs, sc.callStack⟩ : Core.State) =
+                { sc with expr := value } from by cases sc; simp_all]
+              rw [hcore_substep]; simp; exact ⟨_, rfl⟩
+            refine ⟨sc', ⟨hcstep⟩, ?_⟩
+            constructor
+            · have hsf'_eq := (Prod.mk.inj (Option.some.inj hstep)).2
+              rw [← hsf'_eq]; show sf.trace ++ [ev_sub] = sc.trace ++ [ev_sub]; rw [htrace]
+            constructor
+            · have hsf'_eq := (Prod.mk.inj (Option.some.inj hstep)).2
+              have hsc'_env : sc'.env = sc_arg.env := by
+                have h0 := hcstep; rw [hsc_rw] at h0; simp only [Core.step?, Core.exprValue?] at h0
+                rw [show (⟨value, sc.env, sc.heap, sc.trace, sc.funcs, sc.callStack⟩ : Core.State) =
+                  { sc with expr := value } from by cases sc; simp_all] at h0
+                rw [hcore_substep] at h0; simp at h0
+                exact congrArg Core.State.env (Prod.mk.inj (Option.some.inj h0)).2 ▸ by simp [Core.pushTrace]
+              rw [hsc'_env]; convert henvCorr_arg using 1; rw [← hsf'_eq]; rfl
+            constructor
+            · have hsf_eq_hp := (Prod.mk.inj (Option.some.inj hstep)).2
+              have hsc'_heap : sc'.heap = sc_arg.heap := by
+                have h0 := hcstep; rw [hsc_rw] at h0; simp only [Core.step?, Core.exprValue?] at h0
+                rw [show (⟨value, sc.env, sc.heap, sc.trace, sc.funcs, sc.callStack⟩ : Core.State) =
+                  { sc with expr := value } from by cases sc; simp_all] at h0
+                rw [hcore_substep] at h0; simp at h0
+                exact congrArg Core.State.heap (Prod.mk.inj (Option.some.inj h0)).2 ▸ by simp [Core.pushTrace]
+              rw [hsc'_heap]; convert hheap_arg using 1; rw [← hsf_eq_hp]; rfl
+            · refine ⟨scope', st_a, st_a', ?_⟩
+              have hsf'_eq := (Prod.mk.inj (Option.some.inj hstep)).2
+              have hsf'_expr : sf'.expr = .setProp (.lit (Flat.convertValue ov)) prop sa_flat.expr := by rw [← hsf'_eq]; rfl
+              have hsc'_expr : sc'.expr = .setProp (.lit ov) prop sc_arg.expr := by
+                have h0 := hcstep; rw [hsc_rw] at h0; simp only [Core.step?, Core.exprValue?] at h0
+                rw [show (⟨value, sc.env, sc.heap, sc.trace, sc.funcs, sc.callStack⟩ : Core.State) =
+                  { sc with expr := value } from by cases sc; simp_all] at h0
+                rw [hcore_substep] at h0; simp at h0
+                exact congrArg Core.State.expr (Prod.mk.inj (Option.some.inj h0)).2 ▸ by simp [Core.pushTrace]
+              rw [hsc'_expr, hsf'_expr]
+              simp only [Flat.convertExpr]
+              rw [show Flat.convertExpr sc_arg.expr scope' envVar envMap st_a =
+                (sa_flat.expr, st_a') from hconv_arg.symm])
   | getIndex _ _ => sorry -- needs env/heap correspondence
   | setIndex _ _ _ => sorry -- needs env/heap correspondence
   | deleteProp obj prop =>
