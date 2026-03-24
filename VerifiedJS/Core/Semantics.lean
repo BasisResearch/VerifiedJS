@@ -1196,7 +1196,10 @@ def Env.extend (env : Env) (name : VarName) (v : Value) : Env :=
 -- | is a Boolean, then 1. If \_x\_ and \_y\_ are both \*true\* or both
 -- | \*false\*, return \*true\*. 1. Return \*false\*. 1. NOTE: All other
 -- | ECMAScript language values are compared by identity. 1. If \_x\_ is
--- | \_y\_, return \*true\*. 1. Return \*false\*.
+-- | \_y\_, return \*true\*. 1. Return \*false\*. For expository purposes,
+-- | some cases are handled separately within this algorithm even if it is
+-- | unnecessary to do so. The specifics of what \"\_x\_ is \_y\_\" means are
+-- | detailed in .
 -- SPEC: L6606-L6617
 -- | # IsStrictlyEqual ( \_x\_: an ECMAScript language value, \_y\_: an ECMAScript language value, ): a Boolean
 -- |
@@ -1300,6 +1303,138 @@ def Env.extend (env : Env) (name : VarName) (v : Value) : Env :=
 -- |     specified property key. The property may be either own or inherited.
 -- |
 -- | 1\. Return ? \_O\_.\[\[HasProperty\]\](\_P\_).
+-- SPEC: L6343-L6352
+-- | # ToPropertyKey ( \_argument\_: an ECMAScript language value, ): either a normal completion containing a property key or a throw completion
+-- |
+-- | description
+-- | :   It converts \_argument\_ to a value that can be used as a property
+-- |     key.
+-- |
+-- | 1\. Let \_key\_ be ? ToPrimitive(\_argument\_, \~string\~). 1. If
+-- | \_key\_ is a Symbol, then 1. Return \_key\_. 1. Return !
+-- | ToString(\_key\_).
+-- SPEC: L6783-L6793
+-- | # Call ( \_F\_: an ECMAScript language value, \_V\_: an ECMAScript language value, optional \_argumentsList\_: a List of ECMAScript language values, ): either a normal completion containing an ECMAScript language value or a throw completion
+-- |
+-- | description
+-- | :   It is used to call the \[\[Call\]\] internal method of a function
+-- |     object. \_F\_ is the function object, \_V\_ is an ECMAScript
+-- |     language value that is the \*this\* value of the \[\[Call\]\], and
+-- |     \_argumentsList\_ is the value passed to the corresponding argument
+-- |     of the internal method. If \_argumentsList\_ is not present, a new
+-- |     empty List is used as its value.
+-- |
+-- | 1\. If \_argumentsList\_ is not present, set \_argumentsList\_ to a new
+-- | empty List. 1. If IsCallable(\_F\_) is \*false\*, throw a \*TypeError\*
+-- | exception. 1. Return ? \_F\_.\[\[Call\]\](\_V\_, \_argumentsList\_).
+-- SPEC: L6862-L6877
+-- | # LengthOfArrayLike ( \_obj\_: an Object, ): either a normal completion containing a non-negative integer or a throw completion
+-- |
+-- | description
+-- | :   It returns the value of the \*\"length\"\* property of an array-like
+-- |     object.
+-- |
+-- | 1\. Return ℝ(? ToLength(? Get(\_obj\_, \*\"length\"\*))).
+-- |
+-- | An [array-like object]{.dfn variants="array-like objects"} is any object
+-- | for which this operation returns a normal completion.
+-- |
+-- | Typically, an array-like object would also have some properties with
+-- | integer index names. However, that is not a requirement of this
+-- | definition. Arrays and String objects are examples of array-like
+-- | objects.
+-- SPEC: L10960-L10984
+-- | # OrdinaryObjectCreate ( \_proto\_: an Object or \*null\*, optional \_additionalInternalSlotsList\_: a List of names of internal slots, ): an Object
+-- |
+-- | description
+-- | :   It is used to specify the runtime creation of new ordinary objects.
+-- |     \_additionalInternalSlotsList\_ contains the names of additional
+-- |     internal slots that must be defined as part of the object, beyond
+-- |     \[\[Prototype\]\] and \[\[Extensible\]\]. If
+-- |     \_additionalInternalSlotsList\_ is not provided, a new empty List is
+-- |     used.
+-- |
+-- | 1\. Let \_internalSlotsList\_ be « \[\[Prototype\]\], \[\[Extensible\]\]
+-- | ». 1. If \_additionalInternalSlotsList\_ is present, set
+-- | \_internalSlotsList\_ to the list-concatenation of \_internalSlotsList\_
+-- | and \_additionalInternalSlotsList\_. 1. Let \_O\_ be
+-- | MakeBasicObject(\_internalSlotsList\_). 1. Set \_O\_.\[\[Prototype\]\]
+-- | to \_proto\_. 1. Return \_O\_.
+-- |
+-- | Although OrdinaryObjectCreate does little more than call
+-- | MakeBasicObject, its use communicates the intention to create an
+-- | ordinary object, and not an exotic one. Thus, within this specification,
+-- | it is not called by any algorithm that subsequently modifies the
+-- | internal methods of the object in ways that would make the result
+-- | non-ordinary. Operations that create exotic objects invoke
+-- | MakeBasicObject directly.
+-- SPEC: L6400-L6407
+-- | # IsArray ( \_argument\_: an ECMAScript language value, ): either a normal completion containing a Boolean or a throw completion
+-- |
+-- | 1\. If \_argument\_ is not an Object, return \*false\*. 1. If
+-- | \_argument\_ is an Array exotic object, return \*true\*. 1. If
+-- | \_argument\_ is a Proxy exotic object, then 1. Perform ?
+-- | ValidateNonRevokedProxy(\_argument\_). 1. Let \_proxyTarget\_ be
+-- | \_argument\_.\[\[ProxyTarget\]\]. 1. Return ?
+-- | IsArray(\_proxyTarget\_). 1. Return \*false\*.
+-- SPEC: L41614-L41620
+-- | # Yield ( \_value\_: an ECMAScript language value, ): either a normal completion containing an ECMAScript language value or an abrupt completion
+-- |
+-- | 1\. Let \_generatorKind\_ be GetGeneratorKind(). 1. If \_generatorKind\_
+-- | is \~async\~, return ? AsyncGeneratorYield(? Await(\_value\_)). 1.
+-- | Return ? GeneratorYield(CreateIteratorResultObject(\_value\_,
+-- | \*false\*)).
+-- SPEC: L42095-L42115
+-- | # Await ( \_value\_: an ECMAScript language value, ): either a normal completion containing either an ECMAScript language value or \~empty\~, or a throw completion
+-- |
+-- | 1\. Let \_asyncContext\_ be the running execution context. 1. Let
+-- | \_promise\_ be ? PromiseResolve(%Promise%, \_value\_). 1. Let
+-- | \_fulfilledClosure\_ be a new Abstract Closure with parameters (\_v\_)
+-- | that captures \_asyncContext\_ and performs the following steps when
+-- | called: 1. Let \_prevContext\_ be the running execution context. 1.
+-- | Suspend \_prevContext\_. 1. Push \_asyncContext\_ onto the execution
+-- | context stack; \_asyncContext\_ is now the running execution context. 1.
+-- | Resume the suspended evaluation of \_asyncContext\_ using
+-- | NormalCompletion(\_v\_) as the result of the operation that suspended
+-- | it. 1. Assert: When we reach this step, \_asyncContext\_ has already
+-- | been removed from the execution context stack and \_prevContext\_ is the
+-- | currently running execution context. 1. Return
+-- | NormalCompletion(\*undefined\*). 1. Let \_onFulfilled\_ be
+-- | CreateBuiltinFunction(\_fulfilledClosure\_, 1, \*\"\"\*, « »). 1. Let
+-- | \_rejectedClosure\_ be a new Abstract Closure with parameters
+-- | (\_reason\_) that captures \_asyncContext\_ and performs the following
+-- | steps when called: 1. Let \_prevContext\_ be the running execution
+-- | context. 1. Suspend \_prevContext\_. 1. Push \_asyncContext\_ onto the
+-- | execution context stack; \_asyncContext\_ is now the running execution
+-- | context.
+-- SPEC: L11614-L11640
+-- | # CreateBuiltinFunction ( \_behaviour\_: an Abstract Closure, a set of algorithm steps, or some other definition of a function\'s behaviour provided in this specification, \_length\_: a non-negative integer or +∞, \_name\_: a property key or a Private Name, \_additionalInternalSlotsList\_: a List of names of internal slots, optional \_realm\_: a Realm Record, optional \_prototype\_: an Object or \*null\*, optional \_prefix\_: a String, optional \_async\_: a Boolean, ): a built-in function object
+-- |
+-- | description
+-- | :   \_additionalInternalSlotsList\_ contains the names of additional
+-- |     internal slots that must be defined as part of the object. This
+-- |     operation creates a built-in function object.
+-- |
+-- | 1\. If \_realm\_ is not present, set \_realm\_ to the current Realm
+-- | Record. 1. If \_prototype\_ is not present, set \_prototype\_ to
+-- | \_realm\_.\[\[Intrinsics\]\].\[\[%Function.prototype%\]\]. 1. If
+-- | \_async\_ is not present, set \_async\_ to \*false\*. 1. Let
+-- | \_internalSlotsList\_ be a List containing the names of all the internal
+-- | slots that requires for the built-in function object that is about to be
+-- | created. 1. Append to \_internalSlotsList\_ the elements of
+-- | \_additionalInternalSlotsList\_. 1. Let \_func\_ be a new built-in
+-- | function object that, when called, performs the action described by
+-- | \_behaviour\_ using the provided arguments as the values of the
+-- | corresponding parameters specified by \_behaviour\_. The new function
+-- | object has internal slots whose names are the elements of
+-- | \_internalSlotsList\_, and an \[\[InitialName\]\] internal slot. 1. Set
+-- | \_func\_.\[\[Async\]\] to \_async\_. 1. Set \_func\_.\[\[Prototype\]\]
+-- | to \_prototype\_. 1. Set \_func\_.\[\[Extensible\]\] to \*true\*. 1. Set
+-- | \_func\_.\[\[Realm\]\] to \_realm\_. 1. Set \_func\_.\[\[InitialName\]\]
+-- | to \*null\*. 1. Perform SetFunctionLength(\_func\_, \_length\_). 1. If
+-- | \_prefix\_ is not present, then 1. Perform SetFunctionName(\_func\_,
+-- | \_name\_). 1. Else, 1. Perform SetFunctionName(\_func\_, \_name\_,
+-- | \_prefix\_). 1. Return \_func\_.
 
 /-- Check whether an expression is a value expression. -/
 def exprValue? : Expr → Option Value
