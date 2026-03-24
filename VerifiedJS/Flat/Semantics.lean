@@ -16,9 +16,9 @@ structure State where
   env : Env
   heap : Core.Heap
   trace : List Core.TraceEvent
-  funcs : Array FuncDef
+  funcs : Array FuncDef := #[]
   /-- Call stack: saved caller environments for function call return. -/
-  callStack : List Env
+  callStack : List Env := []
   deriving Repr
 
 /-- Empty Flat lexical environment. -/
