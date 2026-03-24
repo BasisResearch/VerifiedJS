@@ -204,7 +204,7 @@ private theorem evalBinary_convertValue (op : Core.BinOp) (a b : Core.Value) :
     show Flat.Value.bool (!(Flat.convertValue a == Flat.convertValue b)) = Flat.Value.bool (!(a == b))
     rw [convertValue_beq]
   | add =>
-    simp only [Core.evalBinary, Flat.evalBinary]; split <;> (try rfl) <;> simp_all [Flat.convertValue, toNumber_convertValue, valueToString_convertValue]
+    cases a <;> cases b <;> simp [Core.evalBinary, Flat.evalBinary, Flat.convertValue, toNumber_convertValue, valueToString_convertValue]
   | mod =>
     simp only [Core.evalBinary, Flat.evalBinary]
     rw [toNumber_convertValue, toNumber_convertValue]
@@ -237,7 +237,28 @@ private theorem evalBinary_convertValue (op : Core.BinOp) (a b : Core.Value) :
     simp only [Core.evalBinary, Flat.evalBinary]
     rw [toNumber_convertValue, toNumber_convertValue]
     simp [Flat.convertValue]
-  | _ => all_goals (simp only [Core.evalBinary, Flat.evalBinary, Flat.convertValue]; rfl)
+  | eq =>
+    simp only [Core.evalBinary, Flat.evalBinary]
+    congr 1; cases a <;> cases b <;> simp [Flat.convertValue, Flat.abstractEq, Core.abstractEq, Flat.toNumber, Core.toNumber]
+  | neq =>
+    simp only [Core.evalBinary, Flat.evalBinary]
+    congr 1; congr 1; cases a <;> cases b <;> simp [Flat.convertValue, Flat.abstractEq, Core.abstractEq, Flat.toNumber, Core.toNumber]
+  | lt =>
+    simp only [Core.evalBinary, Flat.evalBinary]
+    congr 1; cases a <;> cases b <;> simp [Flat.convertValue, Flat.abstractLt, Core.abstractLt, Flat.toNumber, Core.toNumber]
+  | gt =>
+    simp only [Core.evalBinary, Flat.evalBinary]
+    congr 1; cases a <;> cases b <;> simp [Flat.convertValue, Flat.abstractLt, Core.abstractLt, Flat.toNumber, Core.toNumber]
+  | le =>
+    simp only [Core.evalBinary, Flat.evalBinary]
+    congr 1; congr 1; cases a <;> cases b <;> simp [Flat.convertValue, Flat.abstractLt, Core.abstractLt, Flat.toNumber, Core.toNumber]
+  | ge =>
+    simp only [Core.evalBinary, Flat.evalBinary]
+    congr 1; congr 1; cases a <;> cases b <;> simp [Flat.convertValue, Flat.abstractLt, Core.abstractLt, Flat.toNumber, Core.toNumber]
+  | instanceof =>
+    cases a <;> cases b <;> simp [Core.evalBinary, Flat.evalBinary, Flat.convertValue]
+  | «in» =>
+    cases a <;> cases b <;> simp [Core.evalBinary, Flat.evalBinary, Flat.convertValue]
 
 /-- Extending both envs preserves EnvCorr. -/
 private theorem EnvCorr_extend {cenv : Core.Env} {fenv : Flat.Env}
@@ -625,8 +646,8 @@ private theorem heapObjectAt?_eq (h : Core.Heap) (addr : Nat) :
     Flat.heapObjectAt? h addr = h.objects[addr]? := by
   unfold Flat.heapObjectAt?
   split
-  · rename_i hlt; simp only [Array.getElem?_pos hlt]
-  · rename_i hge; simp only [Array.getElem?_neg (by omega)]
+  · rename_i hlt; simp [hlt]
+  · rename_i hge; simp [hge]
 
 private theorem convertExpr_not_value (e : Core.Expr)
     (h : Core.exprValue? e = none)

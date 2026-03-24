@@ -3930,6 +3930,70 @@ def evalBinary : BinOp → Value → Value → Value
 -- | DefinePropertyOrThrow only returns an abrupt completion when attempting
 -- | to define a class static method whose \_key\_ is \*\"prototype\"\*. 1.
 -- | Return \~unused\~.
+-- SPEC: L11026-L11035
+-- | # RequireInternalSlot ( \_O\_: an ECMAScript language value, \_internalSlot\_: an internal slot name, ): either a normal completion containing \~unused\~ or a throw completion
+-- |
+-- | description
+-- | :   It throws an exception unless \_O\_ is an Object and has the given
+-- |     internal slot.
+-- |
+-- | 1\. If \_O\_ is not an Object, throw a \*TypeError\* exception. 1. If
+-- | \_O\_ does not have an \_internalSlot\_ internal slot, throw a
+-- | \*TypeError\* exception. 1. Return \~unused\~.
+-- SPEC: L6953-L6969
+-- | # GetFunctionRealm ( \_obj\_: a function object, ): either a normal completion containing a Realm Record or a throw completion
+-- |
+-- | 1\. If \_obj\_ has a \[\[Realm\]\] internal slot, then 1. Return
+-- | \_obj\_.\[\[Realm\]\]. 1. If \_obj\_ is a bound function exotic object,
+-- | then 1. Let \_boundTargetFunction\_ be
+-- | \_obj\_.\[\[BoundTargetFunction\]\]. 1. Return ?
+-- | GetFunctionRealm(\_boundTargetFunction\_). 1. If \_obj\_ is a Proxy
+-- | exotic object, then 1. Perform ? ValidateNonRevokedProxy(\_obj\_). 1.
+-- | Let \_proxyTarget\_ be \_obj\_.\[\[ProxyTarget\]\]. 1. Assert:
+-- | \_proxyTarget\_ is a function object. 1. Return ?
+-- | GetFunctionRealm(\_proxyTarget\_). 1.
+-- | \[id=\"step-getfunctionrealm-default-return\"\] Return the current Realm
+-- | Record.
+-- |
+-- | Step will only be reached if \_obj\_ is a non-standard function exotic
+-- | object that does not have a \[\[Realm\]\] internal slot.
+-- SPEC: L6444-L6457
+-- | # Static Semantics: IsStringWellFormedUnicode ( \_string\_: a String, ): a Boolean
+-- |
+-- | description
+-- | :   It interprets \_string\_ as a sequence of UTF-16 encoded code
+-- |     points, as described in , and determines whether it is a [well
+-- |     formed](http://www.unicode.org/glossary/#well_formed_code_unit_sequence)
+-- |     UTF-16 sequence.
+-- |
+-- | 1\. Let \_len\_ be the length of \_string\_. 1. Let \_k\_ be 0. 1.
+-- | Repeat, while \_k\_ \< \_len\_, 1. Let \_cp\_ be CodePointAt(\_string\_,
+-- | \_k\_). 1. If \_cp\_.\[\[IsUnpairedSurrogate\]\] is \*true\*, return
+-- | \*false\*. 1. Set \_k\_ to \_k\_ + \_cp\_.\[\[CodeUnitCount\]\]. 1.
+-- | Return \*true\*.
+-- SPEC: L4091-L4108
+-- | # StringIndexOf ( \_string\_: a String, \_searchValue\_: a String, \_fromIndex\_: a non-negative integer, ): a non-negative integer or \~not-found\~
+-- |
+-- | 1\. Let \_len\_ be the length of \_string\_. 1. If \_searchValue\_ is
+-- | the empty String and \_fromIndex\_ ≤ \_len\_, return \_fromIndex\_. 1.
+-- | Let \_searchLen\_ be the length of \_searchValue\_. 1. For each integer
+-- | \_i\_ such that \_fromIndex\_ ≤ \_i\_ ≤ \_len\_ - \_searchLen\_, in
+-- | ascending order, do 1. Let \_candidate\_ be the substring of \_string\_
+-- | from \_i\_ to \_i\_ + \_searchLen\_. 1. If \_candidate\_ is
+-- | \_searchValue\_, return \_i\_. 1. Return \~not-found\~.
+-- |
+-- | If \_searchValue\_ is the empty String and \_fromIndex\_ ≤ the length of
+-- | \_string\_, this algorithm returns \_fromIndex\_. The empty String is
+-- | effectively found at every position within a string, including after the
+-- | last code unit.
+-- |
+-- | This algorithm always returns \~not-found\~ if \_fromIndex\_ + the
+-- | length of \_searchValue\_ \> the length of \_string\_.
+-- SPEC: L9700-L9704
+-- | # NewModuleEnvironment ( \_E\_: an Environment Record, ): a Module Environment Record
+-- |
+-- | 1\. Let \_env\_ be a new Module Environment Record containing no
+-- | bindings. 1. Set \_env\_.\[\[OuterEnv\]\] to \_E\_. 1. Return \_env\_.
 -- SPEC: L11343-L11353
 -- | # SetFunctionLength ( \_F\_: a function object, \_length\_: a non-negative integer or +∞, ): \~unused\~
 -- |
