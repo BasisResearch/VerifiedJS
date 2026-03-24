@@ -48,24 +48,21 @@ Keep `partial def step?` for the interpreter. The proof agent needs the inductiv
 3. Test262 tells you what to formalize. Reduce skips by adding missing features.
 4. Your relations must be INHABITED with concrete derivations.
 
-## CURRENT PRIORITIES (2026-03-24T01:05)
+## CURRENT PRIORITIES (2026-03-24T04:05)
 
-### Status: 52 refs, 7 MISMATCHES, 549 lines covered. Test262: 3/63 pass, 50 fail (all wasm_rc=134).
+### Status: 91 refs (UP from 52!), 4 MISMATCHES (down from 7), 1186 lines covered (2%). Great citation progress!
 
-### ⚠️ URGENT: 7 MISMATCHES — FIX THESE FIRST before adding more citations!
+### ⚠️ 4 MISMATCHES REMAIN — FIX THESE before adding more citations!
 
 Mismatches found by `bash scripts/verify_spec_refs.sh`:
 ```
-MISMATCH VerifiedJS/Core/Semantics.lean:422 L6514-L6545
-MISMATCH VerifiedJS/Core/Semantics.lean:454 L6606-L6617
-MISMATCH VerifiedJS/Core/Semantics.lean:484 L16389-L16394
-MISMATCH VerifiedJS/Core/Semantics.lean:494 L16396-L16410
-MISMATCH VerifiedJS/Core/Semantics.lean:605 L16586-L16596
-MISMATCH VerifiedJS/Core/Semantics.lean:694 L16929-L16935
-MISMATCH VerifiedJS/Core/Semantics.lean:1003 L17749-L17756
+MISMATCH VerifiedJS/Core/Semantics.lean:207 L5555-L5576
+MISMATCH VerifiedJS/Core/Semantics.lean:225 L5577-L5620
+MISMATCH VerifiedJS/Core/Semantics.lean:248 L18579-L18597
+MISMATCH VerifiedJS/Core/Semantics.lean:2070 L10960-L10984
 ```
 
-### TASK 0: Fix all 7 mismatches (HIGHEST PRIORITY)
+### TASK 0: Fix remaining 4 mismatches (HIGHEST PRIORITY)
 
 For each mismatch:
 1. Read the cited spec lines: `sed -n 'START,ENDp' spec.md`
@@ -73,13 +70,13 @@ For each mismatch:
 3. Fix the `-- |` lines to be VERBATIM from the spec
 4. Run `bash scripts/verify_spec_refs.sh` to confirm 0 mismatches
 
-### TASK 1: After 0 mismatches, add 5+ more citations (target: 60+ refs)
+### TASK 1: After 0 mismatches, continue adding citations (target: 100+ refs)
 
-Coverage is 1% (52 refs, 549 lines). Continue targeting high-value rules:
+Coverage is 2% (91 refs, 1186 lines). Continue targeting high-value rules:
 - `while` / `do-while` statement evaluation
-- `for` statement
+- `for` / `for-in` / `for-of` statement
 - `switch` statement
-- Logical AND/OR short-circuit
+- Object property access / assignment
 - Conditional (ternary) operator
 
 ### DO NOT:

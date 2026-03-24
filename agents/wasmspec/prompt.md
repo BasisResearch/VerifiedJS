@@ -62,33 +62,32 @@ Then construct the matching Step derivation in Lean. If you cannot, your semanti
 3. Keep definitions structurally simple for proofs.
 4. Add @[simp] lemmas for everything the proof agent might need.
 
-## CURRENT PRIORITIES (2026-03-24T01:05)
+## CURRENT PRIORITIES (2026-03-24T04:05)
 
-### Build: PASS ✅. Sorry: 51 total (33 in Wasm/Semantics.lean). EXCELLENT: 45→33 (-12)!
+### Build: PASS ✅. Sorry: 48 total (33 in Wasm/Semantics.lean). Wasm unchanged — you've been timing out.
 
-### ⚠️ TIMEOUT PREVENTION: DO EXACTLY 1 TASK, then build, log, EXIT.
+### ⚠️ TIMEOUT PREVENTION: DO EXACTLY 1 SORRY, then build, log, EXIT.
 
-Stay under 40 min. Your timeouts happen when you try too much.
+Your last 3 runs timed out. Stay under 30 min. Pick ONE sorry, close it, build, log, done.
 
 ### Wasm Sorry Breakdown (33 total in Wasm/Semantics.lean):
-- **LowerSimRel.step_sim** (15): lines 5773, 5780, 5849, 5894, 5902, 5906, 5909, 5912, 5915, 5918, 5921, 5924, 5927, 5930, 5933
-- **EmitSimRel.step_sim** (12): lines 6530, 6638, 6686, 7124, 7127, 7130, 7133, 7136, 7139, 7142, 7178, 7181, 7184, 7187, 7255
-- **LowerSimRel.init** (3): lines 7414, 7429, 7453 (all `by sorry`)
+- **LowerSimRel.step_sim** (15): lines 5770, 5843, 5888, 5896, 5900, 5903, 5906, 5909, 5912, 5915, 5918, 5921, 5924, 5927
+- **EmitSimRel.step_sim** (15): lines 6524, 6632, 7122, 7125, 7128, 7131, 7134, 7137, 7140, 7176, 7179, 7182, 7185, 7253
+- **LowerSimRel.init** (3): lines 7412, 7427, 7451 (all `by sorry`)
 
-### TASK 0: Continue closing EmitSimRel sorries
+### TASK 0: Pick the SINGLE easiest EmitSimRel sorry and close it
 
-You've been making great progress on EmitSimRel. Continue with the remaining 15 EmitSimRel sorries. Pick the simplest available:
-1. `lean_goal` at the sorry line
-2. Understand what IR instruction is being simulated
-3. Show the Wasm step matches
-4. Use `cases`/`simp`/`contradiction` as needed
+You timed out 3x in a row. The fix: do LESS per run.
+1. `lean_goal` at ONE sorry line (try 7122-7140 range, these are clustered)
+2. Close it
+3. `lake build`
+4. Log and EXIT
 
-### TASK 1: LowerSimRel step_sim cases (lines 5894-5933)
+### TASK 1 (only if TASK 0 done in <15 min): LowerSimRel.init (lines 7412, 7427, 7451)
 
-These are 12 individual instruction cases. Pick the simplest one (e.g., `drop`, `local.get`, `local.set`):
-1. `lean_goal` at the sorry line
-2. Understand what ANF step is being simulated
-3. Show the IR step matches
+These 3 `by sorry` in LowerSimRel.init might be simpler than step_sim cases:
+1. `lean_goal` at 7412
+2. These relate initial ANF state to initial IR state — may just need `simp` + env facts
 
 ### RULES THIS RUN:
 - Do NOT add new sorries

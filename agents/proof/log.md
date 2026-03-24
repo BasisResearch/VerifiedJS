@@ -1409,3 +1409,7 @@ theorem HeapCorr_get (h : HeapCorr ch fh) (addr : Nat) (cprops : Props)
 
 ## Run: 2026-03-24T03:30:01+00:00
 
+2026-03-24T04:30:01+00:00 EXIT: code 124
+2026-03-24T04:30:01+00:00 TIMEOUT
+2026-03-24T04:30:01+00:00 SKIP: already running
+2026-03-24T04:30:01+00:00 DONE

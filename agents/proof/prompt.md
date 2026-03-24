@@ -57,16 +57,15 @@ If ClosureConvertCorrect needs 600 lines of case analysis, WRITE 600 LINES. That
 ## Test262
 Read `logs/test262_summary.md` for failure categories. Fix compiler bugs that cause test262 failures.
 
-## CURRENT PRIORITIES (2026-03-24T01:05)
+## CURRENT PRIORITIES (2026-03-24T04:05)
 
-### Build: PASS ✅. Sorry: 51 (13 CC + 33 Wasm + 2 ANF + 1 Lower). CC DOWN 18→13! ALL stepping sub-cases DONE!
+### Build: PASS ✅. Sorry: 48 (12 CC + 33 Wasm + 2 ANF + 1 Lower). while_ CLOSED! CC DOWN 13→12!
 
-### CC Sorry Map (13 total):
-- **1 captured var**: line 768 (needs heap corr for .getEnv)
-- **7 heap/env**: lines 1425-1431 (call, newObj, getProp, setProp, getIndex, setIndex, deleteProp)
-- **3 heap/env/funcs**: lines 1831-1833 (objectLit, arrayLit, functionDef)
-- **1 tryCatch**: line 1934 (needs env correspondence for catch)
-- **1 while_ unroll**: line 2004 (CCState divergence on unrolled expr)
+### CC Sorry Map (12 total):
+- **1 captured var**: line 798 (needs heap corr for .getEnv — lookupEnv returns `some idx`)
+- **7 heap/env**: lines 1508-1514 (call, newObj, getProp, setProp, getIndex, setIndex, deleteProp)
+- **3 heap/env/funcs**: lines 1930-1932 (objectLit, arrayLit, functionDef)
+- **1 tryCatch**: line 2041 (needs env correspondence for catch clause binding)
 
 **TIME MANAGEMENT**:
 1. Do NOT run `lake build` at the start. Use `lean_diagnostic_messages` instead.
@@ -116,11 +115,9 @@ After heap cases work, `call` also needs function correspondence. Core uses `sc.
 ```
 This is harder than heap — do it AFTER the 6 heap-only cases.
 
-### TASK 2: Close while_ unroll (line 2004) — lower priority
+### TASK 2: Close tryCatch (line 2041)
 
-The `convertExpr` on unrolled while_ threads CCState differently. Two approaches:
-1. `convertExpr_state_independent`: prove first component of convertExpr is independent of CCState for functionDef-free expressions
-2. Direct unfolding: unfold convertExpr for .if/.seq/.while_/.lit and show sub-expressions match
+The tryCatch case needs env correspondence through the catch variable binding. When Core binds `catch_var := exception_val` in the catch clause, Flat does the same. With EnvCorr, show the extended environments correspond. This should be similar to the `let` case pattern.
 
 ### ABSOLUTELY DO NOT:
 - Run `lake build` at the start of your run

@@ -1330,8 +1330,45 @@ def step? (s : State) : Option (TraceEvent × State) :=
   -- | execution context. 1. If \_result\_ is a return completion, return
   -- | \_result\_.\[\[Value\]\]. 1. Assert: \_result\_ is a throw
   -- | completion. 1. Return ? \_result\_.
+  -- SPEC: L15736-L15773
+  -- | # Runtime Semantics: ArgumentListEvaluation ( ): either a normal completion containing a List of ECMAScript language values or an abrupt completion
+  -- |
+  -- | Arguments : \`(\` \`)\` 1. Return a new empty List. ArgumentList :
+  -- | AssignmentExpression 1. Let \_ref\_ be ? Evaluation of
+  -- | \|AssignmentExpression\|. 1. Let \_arg\_ be ? GetValue(\_ref\_). 1.
+  -- | Return « \_arg\_ ». ArgumentList : \`\...\` AssignmentExpression 1. Let
+  -- | \_list\_ be a new empty List. 1. Let \_spreadRef\_ be ? Evaluation of
+  -- | \|AssignmentExpression\|. 1. Let \_spreadObj\_ be ?
+  -- | GetValue(\_spreadRef\_). 1. Let \_iteratorRecord\_ be ?
+  -- | GetIterator(\_spreadObj\_, \~sync\~). 1. Repeat, 1. Let \_next\_ be ?
+  -- | IteratorStepValue(\_iteratorRecord\_). 1. If \_next\_ is \~done\~,
+  -- | return \_list\_. 1. Append \_next\_ to \_list\_. ArgumentList :
+  -- | ArgumentList \`,\` AssignmentExpression 1. Let \_precedingArgs\_ be ?
+  -- | ArgumentListEvaluation of \|ArgumentList\|. 1. Let \_ref\_ be ?
+  -- | Evaluation of \|AssignmentExpression\|. 1. Let \_arg\_ be ?
+  -- | GetValue(\_ref\_). 1. Return the list-concatenation of \_precedingArgs\_
+  -- | and « \_arg\_ ». ArgumentList : ArgumentList \`,\` \`\...\`
+  -- | AssignmentExpression 1. Let \_precedingArgs\_ be ?
+  -- | ArgumentListEvaluation of \|ArgumentList\|. 1. Let \_spreadRef\_ be ?
+  -- | Evaluation of \|AssignmentExpression\|. 1. Let \_iteratorRecord\_ be ?
+  -- | GetIterator(? GetValue(\_spreadRef\_), \~sync\~). 1. Repeat, 1. Let
+  -- | \_next\_ be ? IteratorStepValue(\_iteratorRecord\_). 1. If \_next\_ is
+  -- | \~done\~, return \_precedingArgs\_. 1. Append \_next\_ to
+  -- | \_precedingArgs\_. TemplateLiteral : NoSubstitutionTemplate 1. Let
+  -- | \_templateLiteral\_ be this \|TemplateLiteral\|. 1. Let \_siteObj\_ be
+  -- | GetTemplateObject(\_templateLiteral\_). 1. Return « \_siteObj\_ ».
+  -- | TemplateLiteral : SubstitutionTemplate 1. Let \_templateLiteral\_ be
+  -- | this \|TemplateLiteral\|. 1. Let \_siteObj\_ be
+  -- | GetTemplateObject(\_templateLiteral\_). 1. Let \_remaining\_ be ?
+  -- | ArgumentListEvaluation of \|SubstitutionTemplate\|. 1. Return the
+  -- | list-concatenation of « \_siteObj\_ » and \_remaining\_.
+  -- | SubstitutionTemplate : TemplateHead Expression TemplateSpans 1. Let
+  -- | \_firstSubRef\_ be ? Evaluation of \|Expression\|. 1. Let \_firstSub\_
+  -- | be ? GetValue(\_firstSubRef\_). 1. Let \_restSub\_ be ?
+  -- | SubstitutionEvaluation of \|TemplateSpans\|. 1. Assert: \_restSub\_ is a
+  -- | possibly empty List. 1. Return the list-concatenation of « \_firstSub\_
+  -- | » and \_restSub\_.
   | .call callee args =>
-      -- Step 1: Step callee to a value.
       match exprValue? callee with
       | none =>
           match step? { s with expr := callee } with
