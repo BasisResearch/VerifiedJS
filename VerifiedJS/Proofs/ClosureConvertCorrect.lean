@@ -320,7 +320,7 @@ private theorem Flat_lookup_updateBindingList_ne (xs : Flat.Env) (name other : F
       · rfl
     · have hno : (n == other) = false := by
         have : n = name := by simpa using hn
-        subst this; exact hne
+        subst this; simp [beq_comm] at hne ⊢; exact hne
       simp only [Flat.updateBindingList, hn, ↓reduceIte, Flat.Env.lookup, List.find?, hno]
 
 /-- Lookup after Flat.Env.assign for the same name. -/
@@ -338,7 +338,8 @@ private theorem Flat_lookup_assign_ne (env : Flat.Env) (name other : Flat.VarNam
   simp only [Flat.Env.assign]
   split
   · exact Flat_lookup_updateBindingList_ne env name other v hne
-  · simp only [Flat.Env.lookup, List.find?, hne, Bool.false_eq_true, ↓reduceIte]
+  · have hne' : (name == other) = false := by simp [beq_comm] at hne ⊢; exact hne
+    simp only [Flat.Env.lookup, List.find?, hne', Bool.false_eq_true, ↓reduceIte]
 
 private theorem Core_lookup_assign_eq (env : Core.Env) (name : String) (v : Core.Value) :
     (env.assign name v).lookup name = some v := by
