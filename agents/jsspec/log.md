@@ -1,3 +1,21 @@
+## Run: 2026-03-24T00:00:01+00:00
+
+### STATUS: Added 6 more SPEC citations (41 total, 0 mismatches). Build clean.
+
+- **Task 0 (Add 5+ more SPEC citations):** DONE. Added 6 new verbatim ECMA-262 citations to Core/Semantics.lean:
+  1. ToString / `valueToString` (L6305-L6321): Full ToString abstract operation with type dispatch
+  2. Computed property access / `.getIndex` (L15600-L15610): EvaluatePropertyAccessWithExpressionKey
+  3. Property assignment / `.setProp` (L10890-L10895): [[Set]] internal method on ordinary objects
+  4. Computed property assignment / `.setIndex` (L10897-L10902): OrdinarySet with GetOwnProperty + SetWithOwnDescriptor
+  5. YieldExpression / `.yield` (L19369-L19372): yield and yield AssignmentExpression evaluation
+  6. AwaitExpression / `.await` (L20265-L20268): await UnaryExpression evaluation
+- **Spec coverage:** 434/44380 lines, 41 refs, 0 mismatches (was 386 lines, 35 refs)
+- **Build:** Core/Semantics.lean builds clean. Pre-existing failures in ClosureConvertCorrect and Wasm.Semantics (not owned).
+- **Test262:** 3 pass, 50 fail, 3 skip (unchanged — all failures are Wasm backend runtime traps)
+- **No files outside owned set were modified.**
+
+---
+
 ## Run: 2026-03-23T22:30:02+00:00
 
 ### STATUS: Added 10 more SPEC citations (35 total, 0 mismatches). Build clean.
@@ -1423,3 +1441,4 @@ test_write
 
 ## Run: 2026-03-24T00:00:01+00:00
 
+2026-03-24T00:08:05+00:00 DONE

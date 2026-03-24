@@ -541,15 +541,25 @@ private theorem closureConvert_step_simulation
       CC_SimRel s t sf sc → Flat.Step sf ev sf' →
       ∃ sc', Core.Step sc ev sc' ∧ CC_SimRel s t sf' sc' := by
   -- Strong induction on expression depth enables proving stepping sub-cases.
-  suffices ∀ (n : Nat) (sf : Flat.State) (sc : Core.State) (ev : Core.TraceEvent) (sf' : Flat.State),
-      sc.expr.depth = n → CC_SimRel s t sf sc → Flat.Step sf ev sf' →
-      ∃ sc', Core.Step sc ev sc' ∧ CC_SimRel s t sf' sc' by
-    intro sf sc ev sf' hsim hstep
-    exact this sc.expr.depth sf sc ev sf' rfl hsim hstep
+  -- envVar and envMap are universally quantified in the suffices so that ih_depth
+  -- preserves them across recursive calls (needed for compound stepping sub-cases).
+  suffices ∀ (n : Nat) (envVar : String) (envMap : Flat.EnvMapping)
+      (sf : Flat.State) (sc : Core.State) (ev : Core.TraceEvent) (sf' : Flat.State),
+      sc.expr.depth = n → sf.trace = sc.trace → EnvCorr sc.env sf.env →
+      (∃ (scope : List String) (st st' : Flat.CCState),
+        (sf.expr, st') = Flat.convertExpr sc.expr scope envVar envMap st) →
+      Flat.Step sf ev sf' →
+      ∃ sc', Core.Step sc ev sc' ∧ sf'.trace = sc'.trace ∧ EnvCorr sc'.env sf'.env ∧
+        (∃ (scope : List String) (st st' : Flat.CCState),
+          (sf'.expr, st') = Flat.convertExpr sc'.expr scope envVar envMap st) by
+    intro sf sc ev sf' ⟨htrace, henvCorr, scope, st, st', hconv⟩ hstep
+    obtain ⟨sc', hcstep, htrace', henv', scope', st_a, st_a', hconv'⟩ :=
+      this sc.expr.depth envVar envMap sf sc ev sf' rfl htrace henvCorr ⟨scope, st, st', hconv⟩ hstep
+    exact ⟨sc', hcstep, htrace', henv', scope', envVar, envMap, st_a, st_a', hconv'⟩
   intro n
   induction n using Nat.strongRecOn with
   | _ n ih_depth =>
-  intro sf sc ev sf' hd ⟨htrace, henvCorr, scope, envVar, envMap, st, st', hconv⟩ ⟨hstep⟩
+  intro envVar envMap sf sc ev sf' hd htrace henvCorr ⟨scope, st, st', hconv⟩ ⟨hstep⟩
   -- Case analysis on the Core expression sc.expr.
   -- convertExpr maps sc.expr to sf.expr; step? sf = some (ev, sf').
   cases hsc : sc.expr with
@@ -640,7 +650,7 @@ private theorem closureConvert_step_simulation
         simp only [Core.step?] at h0
         cases label <;> (have heq := (Prod.mk.inj (Option.some.inj h0)).2; subst heq; rfl)
       rw [hsc'_env, hsf'_env]; exact henvCorr
-    exact ⟨hsf'_trace_eq_sc'_trace, henv', scope, envVar, envMap, st', st', by rw [hsc'_expr]; simp [Flat.convertExpr, Flat.convertValue, hsf'_expr]⟩
+    exact ⟨hsf'_trace_eq_sc'_trace, henv', scope, st', st', by rw [hsc'_expr]; simp [Flat.convertExpr, Flat.convertValue, hsf'_expr]⟩
   | «continue» label =>
     rw [hsc] at hconv; simp only [Flat.convertExpr] at hconv
     have hsf_expr : sf.expr = .«continue» label := by cases sf; simp_all [(Prod.mk.inj hconv).1]
@@ -692,7 +702,7 @@ private theorem closureConvert_step_simulation
         simp only [Core.step?] at h0
         cases label <;> (have heq := (Prod.mk.inj (Option.some.inj h0)).2; subst heq; rfl)
       rw [hsc'_env, hsf'_env]; exact henvCorr
-    exact ⟨hsf'_trace_eq_sc'_trace, henv', scope, envVar, envMap, st', st', by rw [hsc'_expr]; simp [Flat.convertExpr, Flat.convertValue, hsf'_expr]⟩
+    exact ⟨hsf'_trace_eq_sc'_trace, henv', scope, st', st', by rw [hsc'_expr]; simp [Flat.convertExpr, Flat.convertValue, hsf'_expr]⟩
   | labeled label body =>
     rw [hsc] at hconv; simp only [Flat.convertExpr] at hconv
     -- convertExpr (.labeled label body) = (.labeled label body', st1)
@@ -741,7 +751,7 @@ private theorem closureConvert_step_simulation
         simp only [Core.step?] at h0
         have heq := (Prod.mk.inj (Option.some.inj h0)).2; subst heq; rfl
       rw [hsc'_env, hsf'_env]; exact henvCorr
-    exact ⟨hsf'_trace_eq_sc'_trace, henv', scope, envVar, envMap, st,
+    exact ⟨hsf'_trace_eq_sc'_trace, henv', scope, st,
       (Flat.convertExpr body scope envVar envMap st).2,
       by rw [hsc'_expr]; simp [Flat.convertExpr, hsf'_expr]⟩
   -- Remaining cases require env/heap correspondence in CC_SimRel.
@@ -806,7 +816,7 @@ private theorem closureConvert_step_simulation
           rw [show sc = {sc with expr := .var name} from by cases sc; simp_all] at h0
           simp only [Core.step?, hcenv] at h0
           exact congrArg Core.State.expr (Prod.mk.inj (Option.some.inj h0)).2 ▸ rfl
-        exact ⟨hsf'_trace, henv', scope, envVar, envMap, st,
+        exact ⟨hsf'_trace, henv', scope, st,
           (Flat.convertExpr (.lit cv) scope envVar envMap st).2,
           by rw [hsc'_expr]; simp [Flat.convertExpr, hsf'_expr, hfv_eq]⟩
       | none =>
@@ -854,7 +864,7 @@ private theorem closureConvert_step_simulation
             rw [show sc = {sc with expr := .var name} from by cases sc; simp_all] at h0
             simp only [Core.step?, hcenv] at h0
             exact congrArg Core.State.expr (Prod.mk.inj (Option.some.inj h0)).2 ▸ rfl
-          exact ⟨hsf'_trace, henv', scope, envVar, envMap, st, st,
+          exact ⟨hsf'_trace, henv', scope, st, st,
             by rw [hsc'_expr]; simp [Flat.convertExpr, Flat.convertValue, hsf'_expr]⟩
         | some cv =>
           -- Core has the var but Flat doesn't → contradiction via EnvCorr.2
@@ -911,7 +921,7 @@ private theorem closureConvert_step_simulation
         have h0 := hcstep; rw [hsc_rw] at h0
         simp only [Core.step?, Core.exprValue?] at h0
         exact congrArg Core.State.expr (Prod.mk.inj (Option.some.inj h0)).2 ▸ rfl
-      exact ⟨hsf'_trace, henv', name :: scope, envVar, envMap, st,
+      exact ⟨hsf'_trace, henv', name :: scope, st,
         (Flat.convertExpr body (name :: scope) envVar envMap st).snd,
         by rw [hsc'_expr]; simp [Flat.convertExpr, hsf'_expr]⟩
     | none =>
@@ -965,7 +975,7 @@ private theorem closureConvert_step_simulation
         have h0 := hcstep; rw [hsc_rw] at h0
         simp only [Core.step?, Core.exprValue?] at h0
         exact congrArg Core.State.expr (Prod.mk.inj (Option.some.inj h0)).2 ▸ rfl
-      exact ⟨hsf'_trace, henv', scope, envVar, envMap, st,
+      exact ⟨hsf'_trace, henv', scope, st,
         (Flat.convertExpr (.lit v) scope envVar envMap st).snd,
         by rw [hsc'_expr]; simp [Flat.convertExpr, hsf'_expr]⟩
     | none =>
@@ -989,19 +999,17 @@ private theorem closureConvert_step_simulation
         simp only [hsubstep] at hstep
         have hev_eq : ev = ev_sub := (Prod.mk.inj (Option.some.inj hstep)).1
         subst hev_eq
-        -- CC_SimRel for sub-expressions
-        have hrel_sub : CC_SimRel s t ⟨value', sf.env, sf.heap, sf.trace⟩
-            ⟨value, sc.env, sc.heap, sc.trace, sc.funcs, sc.callStack⟩ := by
-          refine ⟨htrace, henvCorr, scope, envVar, envMap, st, st1, ?_⟩
-          simp only [hvalue'_def, hst1_def]; exact (Prod.eta _).symm
         -- Flat.Step for sub-expression
         have hflat_step_sub : Flat.Step ⟨value', sf.env, sf.heap, sf.trace⟩ ev_sub sa_flat :=
           ⟨hsubstep⟩
-        -- Apply IH
-        obtain ⟨sc_arg, ⟨hcore_substep⟩, hrel_arg⟩ := ih_depth (Core.Expr.depth value) hdepth
+        -- Apply IH (envVar/envMap carried through induction)
+        obtain ⟨sc_arg, ⟨hcore_substep⟩, htrace_arg, henvCorr_arg, scope', st_a, st_a', hconv_arg⟩ :=
+          ih_depth (Core.Expr.depth value) hdepth envVar envMap
           ⟨value', sf.env, sf.heap, sf.trace⟩
           ⟨value, sc.env, sc.heap, sc.trace, sc.funcs, sc.callStack⟩
-          ev_sub sa_flat rfl hrel_sub hflat_step_sub
+          ev_sub sa_flat rfl htrace henvCorr
+          ⟨scope, st, st1, by simp only [hvalue'_def, hst1_def]; exact (Prod.eta _).symm⟩
+          hflat_step_sub
         -- Construct Core step on .assign name value using step_assign_step_rhs
         have hcore_assign : Core.step? sc =
           some (ev_sub, Core.pushTrace { sc_arg with expr := .assign name sc_arg.expr, trace := sc.trace } ev_sub) := by
@@ -1013,7 +1021,7 @@ private theorem closureConvert_step_simulation
         set sc' := Core.pushTrace { sc_arg with expr := .assign name sc_arg.expr, trace := sc.trace } ev_sub
         refine ⟨sc', ⟨hcore_assign⟩, ?_⟩
         -- Build CC_SimRel for result states
-        obtain ⟨htrace_arg, henvCorr_arg, scope', envVar', envMap', st_a, st_a', hconv_arg⟩ := hrel_arg
+        obtain ⟨htrace_arg, henvCorr_arg, scope', st_a, st_a', hconv_arg⟩ := hrel_arg
         constructor
         · -- Trace
           have hsf'_eq := (Prod.mk.inj (Option.some.inj hstep)).2
@@ -1028,13 +1036,13 @@ private theorem closureConvert_step_simulation
           convert henvCorr_arg using 1
           rw [← hsf'_eq]; rfl
         · -- Expression correspondence
-          refine ⟨scope', envVar', envMap', st_a, st_a', ?_⟩
+          refine ⟨scope', st_a, st_a', ?_⟩
           have hsf'_eq := (Prod.mk.inj (Option.some.inj hstep)).2
           have hsf'_expr : sf'.expr = .assign name sa_flat.expr := by rw [← hsf'_eq]; rfl
           have hsc'_expr : sc'.expr = .assign name sc_arg.expr := by simp [sc', Core.pushTrace]
           rw [hsc'_expr, hsf'_expr]
           simp only [Flat.convertExpr]
-          rw [show Flat.convertExpr sc_arg.expr scope' envVar' envMap' st_a =
+          rw [show Flat.convertExpr sc_arg.expr scope' envVar envMap st_a =
             (sa_flat.expr, st_a') from hconv_arg.symm]
   | «if» cond then_ else_ =>
     rw [hsc] at hconv; simp only [Flat.convertExpr] at hconv
@@ -1099,12 +1107,12 @@ private theorem closureConvert_step_simulation
       cases hb : Core.toBoolean v with
       | true =>
         simp only [hbool_eq, hb, ite_true] at hsf'_expr hsc'_expr
-        exact ⟨hsf'_trace, henv', scope, envVar, envMap, st,
+        exact ⟨hsf'_trace, henv', scope, st,
           (Flat.convertExpr then_ scope envVar envMap st).snd,
           by rw [hsc'_expr]; simp [hsf'_expr]⟩
       | false =>
         simp only [hbool_eq, hb, ite_false] at hsf'_expr hsc'_expr
-        exact ⟨hsf'_trace, henv', scope, envVar, envMap,
+        exact ⟨hsf'_trace, henv', scope,
           (Flat.convertExpr then_ scope envVar envMap st).snd,
           (Flat.convertExpr else_ scope envVar envMap
             (Flat.convertExpr then_ scope envVar envMap st).snd).snd,
@@ -1170,7 +1178,7 @@ private theorem closureConvert_step_simulation
         have h0 := hcstep; rw [hsc_rw] at h0
         simp only [Core.step?, Core.exprValue?] at h0
         exact congrArg Core.State.expr (Prod.mk.inj (Option.some.inj h0)).2 ▸ rfl
-      exact ⟨hsf'_trace, henv', scope, envVar, envMap, st,
+      exact ⟨hsf'_trace, henv', scope, st,
         (Flat.convertExpr b scope envVar envMap st).2,
         by rw [hsc'_expr]; simp [Flat.convertExpr, hsf'_expr]⟩
     | none =>
@@ -1234,7 +1242,7 @@ private theorem closureConvert_step_simulation
       -- Now need: CC_SimRel with typeofValue (convertValue v) vs .string (core_typeof_result)
       -- cases v to let kernel reduce typeofValue (convertValue v)
       refine ⟨by show sf.trace ++ _ = sc.trace ++ _; rw [htrace], henvCorr,
-        scope, envVar, envMap, st, st, ?_⟩
+        scope, st, st, ?_⟩
       cases v with
       | null => simp [Flat.convertExpr, Flat.convertValue, Core.pushTrace]; rfl
       | undefined => simp [Flat.convertExpr, Flat.convertValue, Core.pushTrace]; rfl
@@ -1267,7 +1275,7 @@ private theorem closureConvert_step_simulation
         -- CC_SimRel for sub-expressions
         have hrel_sub : CC_SimRel s t ⟨arg', sf.env, sf.heap, sf.trace⟩
             ⟨arg, sc.env, sc.heap, sc.trace, sc.funcs, sc.callStack⟩ := by
-          refine ⟨htrace, henvCorr, scope, envVar, envMap, st, st1, ?_⟩
+          refine ⟨htrace, henvCorr, scope, st, st1, ?_⟩
           simp only [harg'_def, hst1_def]; exact (Prod.eta _).symm
         -- Flat.Step for sub-expression
         have hflat_step_sub : Flat.Step ⟨arg', sf.env, sf.heap, sf.trace⟩ ev_sub sa_flat :=
@@ -1290,7 +1298,7 @@ private theorem closureConvert_step_simulation
         set sc' := Core.pushTrace { sc_arg with expr := .typeof sc_arg.expr, trace := sc.trace } ev_sub
         refine ⟨sc', ⟨hcore_typeof⟩, ?_⟩
         -- Build CC_SimRel for result states
-        obtain ⟨htrace_arg, henvCorr_arg, scope', envVar', envMap', st_a, st_a', hconv_arg⟩ := hrel_arg
+        obtain ⟨htrace_arg, henvCorr_arg, scope', st_a, st_a', hconv_arg⟩ := hrel_arg
         constructor
         · -- Trace: sf'.trace = sc'.trace
           -- sf' = { .typeof sa_flat.expr, sa_flat.env, sa_flat.heap, sf.trace ++ [ev_sub] }
@@ -1311,18 +1319,18 @@ private theorem closureConvert_step_simulation
           -- Need: sf'.env = sa_flat.env
           rw [← hsf'_eq]; rfl
         · -- Expression correspondence
-          refine ⟨scope', envVar', envMap', st_a, st_a', ?_⟩
+          refine ⟨scope', st_a, st_a', ?_⟩
           have hsf'_eq := (Prod.mk.inj (Option.some.inj hstep)).2
           -- sf'.expr = .typeof sa_flat.expr (from Flat step?)
           -- sc'.expr = .typeof sc_arg.expr (from Core pushTrace)
           have hsf'_expr : sf'.expr = .typeof sa_flat.expr := by rw [← hsf'_eq]; rfl
           have hsc'_expr : sc'.expr = .typeof sc_arg.expr := by simp [sc', Core.pushTrace]
           rw [hsc'_expr, hsf'_expr]
-          -- Need: (.typeof sa_flat.expr, st_a') = Flat.convertExpr (.typeof sc_arg.expr) scope' envVar' envMap' st_a
+          -- Need: (.typeof sa_flat.expr, st_a') = Flat.convertExpr (.typeof sc_arg.expr) scope' envVar envMap st_a
           -- convertExpr (.typeof e) = let (e', st1) := convertExpr e scope envVar envMap st; (.typeof e', st1)
           simp only [Flat.convertExpr]
-          -- From hconv_arg: (sa_flat.expr, st_a') = convertExpr sc_arg.expr scope' envVar' envMap' st_a
-          rw [show Flat.convertExpr sc_arg.expr scope' envVar' envMap' st_a =
+          -- From hconv_arg: (sa_flat.expr, st_a') = convertExpr sc_arg.expr scope' envVar envMap st_a
+          rw [show Flat.convertExpr sc_arg.expr scope' envVar envMap st_a =
             (sa_flat.expr, st_a') from hconv_arg.symm]
   | unary op arg =>
     rw [hsc] at hconv; simp only [Flat.convertExpr] at hconv
@@ -1371,7 +1379,7 @@ private theorem closureConvert_step_simulation
       have heqc := (Prod.mk.inj (Option.some.inj hsc'_sub)).2
       subst heqf; subst heqc
       refine ⟨by show sf.trace ++ _ = sc.trace ++ _; rw [htrace], henvCorr,
-        scope, envVar, envMap, st, st, ?_⟩
+        scope, st, st, ?_⟩
       -- Expression correspondence via evalUnary_convertValue
       show (Flat.Expr.lit (Flat.evalUnary op (Flat.convertValue v)), st) =
            Flat.convertExpr (.lit (Core.evalUnary op v)) scope envVar envMap st
@@ -1396,7 +1404,7 @@ private theorem closureConvert_step_simulation
         -- IH on sub-expression
         have hrel_sub : CC_SimRel s t ⟨arg', sf.env, sf.heap, sf.trace⟩
             ⟨arg, sc.env, sc.heap, sc.trace, sc.funcs, sc.callStack⟩ := by
-          refine ⟨htrace, henvCorr, scope, envVar, envMap, st, st1, ?_⟩
+          refine ⟨htrace, henvCorr, scope, st, st1, ?_⟩
           simp only [harg'_def, hst1_def]; exact (Prod.eta _).symm
         obtain ⟨sc_arg, ⟨hcore_substep⟩, hrel_arg⟩ := ih_depth (Core.Expr.depth arg) hdepth
           ⟨arg', sf.env, sf.heap, sf.trace⟩
@@ -1412,7 +1420,7 @@ private theorem closureConvert_step_simulation
               { sc with expr := arg } from by cases sc; simp_all]; exact hcore_substep)
         set sc' := Core.pushTrace { sc_arg with expr := .unary op sc_arg.expr, trace := sc.trace } ev_sub
         refine ⟨sc', ⟨hcore_unary⟩, ?_⟩
-        obtain ⟨htrace_arg, henvCorr_arg, scope', envVar', envMap', st_a, st_a', hconv_arg⟩ := hrel_arg
+        obtain ⟨htrace_arg, henvCorr_arg, scope', st_a, st_a', hconv_arg⟩ := hrel_arg
         constructor
         · have hsf'_eq := (Prod.mk.inj (Option.some.inj hstep)).2
           rw [← hsf'_eq]; show sf.trace ++ [ev_sub] = sc.trace ++ [ev_sub]; rw [htrace]
@@ -1421,13 +1429,13 @@ private theorem closureConvert_step_simulation
           rw [hsc'_env]
           have hsf'_eq := (Prod.mk.inj (Option.some.inj hstep)).2
           convert henvCorr_arg using 1; rw [← hsf'_eq]; rfl
-        · refine ⟨scope', envVar', envMap', st_a, st_a', ?_⟩
+        · refine ⟨scope', st_a, st_a', ?_⟩
           have hsf'_eq := (Prod.mk.inj (Option.some.inj hstep)).2
           have hsf'_expr : sf'.expr = .unary op sa_flat.expr := by rw [← hsf'_eq]; rfl
           have hsc'_expr : sc'.expr = .unary op sc_arg.expr := by simp [sc', Core.pushTrace]
           rw [hsc'_expr, hsf'_expr]
           simp only [Flat.convertExpr]
-          rw [show Flat.convertExpr sc_arg.expr scope' envVar' envMap' st_a =
+          rw [show Flat.convertExpr sc_arg.expr scope' envVar envMap st_a =
             (sa_flat.expr, st_a') from hconv_arg.symm]
   | binary op lhs rhs =>
     rw [hsc] at hconv; simp only [Flat.convertExpr] at hconv
@@ -1466,7 +1474,7 @@ private theorem closureConvert_step_simulation
         subst heqf; subst heqc
         -- Now sf' has expr .lit (Flat.evalBinary ...) and sc' has expr .lit (Core.evalBinary ...)
         refine ⟨by show sf.trace ++ _ = sc.trace ++ _; rw [htrace], henvCorr,
-          scope, envVar, envMap, st, st, ?_⟩
+          scope, st, st, ?_⟩
         -- Expression correspondence via evalBinary_convertValue
         show (Flat.Expr.lit (Flat.evalBinary op (Flat.convertValue lv) (Flat.convertValue rv)), st) =
              Flat.convertExpr (.lit (Core.evalBinary op lv rv)) scope envVar envMap st
@@ -1527,7 +1535,7 @@ private theorem closureConvert_step_simulation
         have h0 := hcstep; rw [hsc_rw] at h0
         simp only [Core.step?, Core.exprValue?] at h0
         exact congrArg Core.State.expr (Prod.mk.inj (Option.some.inj h0)).2 ▸ rfl
-      exact ⟨hsf'_trace, henv', scope, envVar, envMap, st, st,
+      exact ⟨hsf'_trace, henv', scope, st, st,
         by rw [hsc'_expr]; simp [Flat.convertExpr, Flat.convertValue, hsf'_expr]⟩
     | none =>
       -- Stepping sub-case for throw: same pattern as typeof/unary
@@ -1546,7 +1554,7 @@ private theorem closureConvert_step_simulation
         subst hev_eq
         have hrel_sub : CC_SimRel s t ⟨arg', sf.env, sf.heap, sf.trace⟩
             ⟨arg, sc.env, sc.heap, sc.trace, sc.funcs, sc.callStack⟩ := by
-          refine ⟨htrace, henvCorr, scope, envVar, envMap, st, st1, ?_⟩
+          refine ⟨htrace, henvCorr, scope, st, st1, ?_⟩
           simp only [harg'_def, hst1_def]; exact (Prod.eta _).symm
         obtain ⟨sc_arg, ⟨hcore_substep⟩, hrel_arg⟩ := ih_depth (Core.Expr.depth arg) hdepth
           ⟨arg', sf.env, sf.heap, sf.trace⟩
@@ -1561,7 +1569,7 @@ private theorem closureConvert_step_simulation
               { sc with expr := arg } from by cases sc; simp_all]; exact hcore_substep)
         set sc' := Core.pushTrace { sc_arg with expr := .throw sc_arg.expr, trace := sc.trace } ev_sub
         refine ⟨sc', ⟨hcore_throw⟩, ?_⟩
-        obtain ⟨htrace_arg, henvCorr_arg, scope', envVar', envMap', st_a, st_a', hconv_arg⟩ := hrel_arg
+        obtain ⟨htrace_arg, henvCorr_arg, scope', st_a, st_a', hconv_arg⟩ := hrel_arg
         constructor
         · have hsf'_eq := (Prod.mk.inj (Option.some.inj hstep)).2
           rw [← hsf'_eq]; show sf.trace ++ [ev_sub] = sc.trace ++ [ev_sub]; rw [htrace]
@@ -1570,13 +1578,13 @@ private theorem closureConvert_step_simulation
           rw [hsc'_env]
           have hsf'_eq := (Prod.mk.inj (Option.some.inj hstep)).2
           convert henvCorr_arg using 1; rw [← hsf'_eq]; rfl
-        · refine ⟨scope', envVar', envMap', st_a, st_a', ?_⟩
+        · refine ⟨scope', st_a, st_a', ?_⟩
           have hsf'_eq := (Prod.mk.inj (Option.some.inj hstep)).2
           have hsf'_expr : sf'.expr = .throw sa_flat.expr := by rw [← hsf'_eq]; rfl
           have hsc'_expr : sc'.expr = .throw sc_arg.expr := by simp [sc', Core.pushTrace]
           rw [hsc'_expr, hsf'_expr]
           simp only [Flat.convertExpr]
-          rw [show Flat.convertExpr sc_arg.expr scope' envVar' envMap' st_a =
+          rw [show Flat.convertExpr sc_arg.expr scope' envVar envMap st_a =
             (sa_flat.expr, st_a') from hconv_arg.symm]
   | tryCatch _ _ _ _ => sorry -- needs env correspondence
   | while_ cond body =>
@@ -1697,7 +1705,7 @@ private theorem closureConvert_step_simulation
         rw [show sc = {sc with expr := .«return» none} from by cases sc; simp_all] at h0
         simp only [Core.step?] at h0
         exact congrArg Core.State.expr (Prod.mk.inj (Option.some.inj h0)).2 ▸ rfl
-      exact ⟨hsf'_trace, henv', scope, envVar, envMap, st, st,
+      exact ⟨hsf'_trace, henv', scope, st, st,
         by rw [hsc'_expr]; simp [Flat.convertExpr, Flat.convertValue, hsf'_expr]⟩
     | some e =>
       -- .return (some e): split into value and stepping sub-cases
@@ -1750,7 +1758,7 @@ private theorem closureConvert_step_simulation
           have h0 := hcstep; rw [hsc_rw] at h0
           simp only [Core.step?, Core.exprValue?] at h0
           exact congrArg Core.State.expr (Prod.mk.inj (Option.some.inj h0)).2 ▸ rfl
-        exact ⟨hsf'_trace, henv', scope, envVar, envMap, st, st,
+        exact ⟨hsf'_trace, henv', scope, st, st,
           by rw [hsc'_expr]; simp [Flat.convertExpr, hsf'_expr]⟩
       | none =>
         -- Stepping sub-case for return (some e): same single-subexpr pattern
@@ -1769,7 +1777,7 @@ private theorem closureConvert_step_simulation
           subst hev_eq
           have hrel_sub : CC_SimRel s t ⟨e', sf.env, sf.heap, sf.trace⟩
               ⟨e, sc.env, sc.heap, sc.trace, sc.funcs, sc.callStack⟩ := by
-            refine ⟨htrace, henvCorr, scope, envVar, envMap, st, st1, ?_⟩
+            refine ⟨htrace, henvCorr, scope, st, st1, ?_⟩
             simp only [he'_def, hst1_def]; exact (Prod.eta _).symm
           obtain ⟨sc_arg, ⟨hcore_substep⟩, hrel_arg⟩ := ih_depth (Core.Expr.depth e) hdepth
             ⟨e', sf.env, sf.heap, sf.trace⟩
@@ -1784,7 +1792,7 @@ private theorem closureConvert_step_simulation
                 { sc with expr := e } from by cases sc; simp_all]; exact hcore_substep)
           set sc' := Core.pushTrace { sc_arg with expr := .«return» (some sc_arg.expr), trace := sc.trace } ev_sub
           refine ⟨sc', ⟨hcore_ret⟩, ?_⟩
-          obtain ⟨htrace_arg, henvCorr_arg, scope', envVar', envMap', st_a, st_a', hconv_arg⟩ := hrel_arg
+          obtain ⟨htrace_arg, henvCorr_arg, scope', st_a, st_a', hconv_arg⟩ := hrel_arg
           constructor
           · have hsf'_eq := (Prod.mk.inj (Option.some.inj hstep)).2
             rw [← hsf'_eq]; show sf.trace ++ [ev_sub] = sc.trace ++ [ev_sub]; rw [htrace]
@@ -1793,13 +1801,13 @@ private theorem closureConvert_step_simulation
             rw [hsc'_env]
             have hsf'_eq := (Prod.mk.inj (Option.some.inj hstep)).2
             convert henvCorr_arg using 1; rw [← hsf'_eq]; rfl
-          · refine ⟨scope', envVar', envMap', st_a, st_a', ?_⟩
+          · refine ⟨scope', st_a, st_a', ?_⟩
             have hsf'_eq := (Prod.mk.inj (Option.some.inj hstep)).2
             have hsf'_expr : sf'.expr = .«return» (some sa_flat.expr) := by rw [← hsf'_eq]; rfl
             have hsc'_expr : sc'.expr = .«return» (some sc_arg.expr) := by simp [sc', Core.pushTrace]
             rw [hsc'_expr, hsf'_expr]
             simp only [Flat.convertExpr, Flat.convertOptExpr]
-            rw [show Flat.convertExpr sc_arg.expr scope' envVar' envMap' st_a =
+            rw [show Flat.convertExpr sc_arg.expr scope' envVar envMap st_a =
               (sa_flat.expr, st_a') from hconv_arg.symm]
   | yield arg delegate =>
     rw [hsc] at hconv; simp only [Flat.convertExpr] at hconv
@@ -1848,7 +1856,7 @@ private theorem closureConvert_step_simulation
         rw [show sc = {sc with expr := .yield none delegate} from by cases sc; simp_all] at h0
         simp only [Core.step?] at h0
         exact congrArg Core.State.expr (Prod.mk.inj (Option.some.inj h0)).2 ▸ rfl
-      exact ⟨hsf'_trace, henv', scope, envVar, envMap, st, st,
+      exact ⟨hsf'_trace, henv', scope, st, st,
         by rw [hsc'_expr]; simp [Flat.convertExpr, Flat.convertValue, hsf'_expr]⟩
     | some e =>
       -- .yield (some e): split into value and stepping sub-cases
@@ -1898,7 +1906,7 @@ private theorem closureConvert_step_simulation
           have h0 := hcstep; rw [hsc_rw] at h0
           simp only [Core.step?, Core.exprValue?] at h0
           exact congrArg Core.State.expr (Prod.mk.inj (Option.some.inj h0)).2 ▸ rfl
-        exact ⟨hsf'_trace, henv', scope, envVar, envMap, st, st,
+        exact ⟨hsf'_trace, henv', scope, st, st,
           by rw [hsc'_expr]; simp [Flat.convertExpr, hsf'_expr]⟩
       | none =>
         -- Stepping sub-case for yield (some e): single-subexpr pattern
@@ -1917,7 +1925,7 @@ private theorem closureConvert_step_simulation
           subst hev_eq
           have hrel_sub : CC_SimRel s t ⟨e', sf.env, sf.heap, sf.trace⟩
               ⟨e, sc.env, sc.heap, sc.trace, sc.funcs, sc.callStack⟩ := by
-            refine ⟨htrace, henvCorr, scope, envVar, envMap, st, st1, ?_⟩
+            refine ⟨htrace, henvCorr, scope, st, st1, ?_⟩
             simp only [he'_def, hst1_def]; exact (Prod.eta _).symm
           obtain ⟨sc_arg, ⟨hcore_substep⟩, hrel_arg⟩ := ih_depth (Core.Expr.depth e) hdepth
             ⟨e', sf.env, sf.heap, sf.trace⟩
@@ -1932,7 +1940,7 @@ private theorem closureConvert_step_simulation
                 { sc with expr := e } from by cases sc; simp_all]; exact hcore_substep)
           set sc' := Core.pushTrace { sc_arg with expr := .yield (some sc_arg.expr) delegate, trace := sc.trace } ev_sub
           refine ⟨sc', ⟨hcore_yield⟩, ?_⟩
-          obtain ⟨htrace_arg, henvCorr_arg, scope', envVar', envMap', st_a, st_a', hconv_arg⟩ := hrel_arg
+          obtain ⟨htrace_arg, henvCorr_arg, scope', st_a, st_a', hconv_arg⟩ := hrel_arg
           constructor
           · have hsf'_eq := (Prod.mk.inj (Option.some.inj hstep)).2
             rw [← hsf'_eq]; show sf.trace ++ [ev_sub] = sc.trace ++ [ev_sub]; rw [htrace]
@@ -1941,13 +1949,13 @@ private theorem closureConvert_step_simulation
             rw [hsc'_env]
             have hsf'_eq := (Prod.mk.inj (Option.some.inj hstep)).2
             convert henvCorr_arg using 1; rw [← hsf'_eq]; rfl
-          · refine ⟨scope', envVar', envMap', st_a, st_a', ?_⟩
+          · refine ⟨scope', st_a, st_a', ?_⟩
             have hsf'_eq := (Prod.mk.inj (Option.some.inj hstep)).2
             have hsf'_expr : sf'.expr = .yield (some sa_flat.expr) delegate := by rw [← hsf'_eq]; rfl
             have hsc'_expr : sc'.expr = .yield (some sc_arg.expr) delegate := by simp [sc', Core.pushTrace]
             rw [hsc'_expr, hsf'_expr]
             simp only [Flat.convertExpr, Flat.convertOptExpr]
-            rw [show Flat.convertExpr sc_arg.expr scope' envVar' envMap' st_a =
+            rw [show Flat.convertExpr sc_arg.expr scope' envVar envMap st_a =
               (sa_flat.expr, st_a') from hconv_arg.symm]
   | await arg =>
     rw [hsc] at hconv; simp only [Flat.convertExpr] at hconv
@@ -1996,7 +2004,7 @@ private theorem closureConvert_step_simulation
         have h0 := hcstep; rw [hsc_rw] at h0
         simp only [Core.step?, Core.exprValue?] at h0
         exact congrArg Core.State.expr (Prod.mk.inj (Option.some.inj h0)).2 ▸ rfl
-      exact ⟨hsf'_trace, henv', scope, envVar, envMap, st, st,
+      exact ⟨hsf'_trace, henv', scope, st, st,
         by rw [hsc'_expr]; simp [Flat.convertExpr, hsf'_expr]⟩
     | none =>
       -- arg' is the converted sub-expression
@@ -2022,7 +2030,7 @@ private theorem closureConvert_step_simulation
         -- CC_SimRel for sub-expressions
         have hrel_sub : CC_SimRel s t ⟨arg', sf.env, sf.heap, sf.trace⟩
             ⟨arg, sc.env, sc.heap, sc.trace, sc.funcs, sc.callStack⟩ := by
-          refine ⟨htrace, henvCorr, scope, envVar, envMap, st, st1, ?_⟩
+          refine ⟨htrace, henvCorr, scope, st, st1, ?_⟩
           simp only [harg'_def, hst1_def]; exact (Prod.eta _).symm
         -- Flat.Step for sub-expression
         have hflat_step_sub : Flat.Step ⟨arg', sf.env, sf.heap, sf.trace⟩ ev_sub sa_flat :=
@@ -2043,7 +2051,7 @@ private theorem closureConvert_step_simulation
         set sc' := Core.pushTrace { sc_arg with expr := .await sc_arg.expr, trace := sc.trace } ev_sub
         refine ⟨sc', ⟨hcore_await⟩, ?_⟩
         -- Build CC_SimRel for result states
-        obtain ⟨htrace_arg, henvCorr_arg, scope', envVar', envMap', st_a, st_a', hconv_arg⟩ := hrel_arg
+        obtain ⟨htrace_arg, henvCorr_arg, scope', st_a, st_a', hconv_arg⟩ := hrel_arg
         constructor
         · -- Trace
           have hsf'_eq := (Prod.mk.inj (Option.some.inj hstep)).2
@@ -2058,13 +2066,13 @@ private theorem closureConvert_step_simulation
           convert henvCorr_arg using 1
           rw [← hsf'_eq]; rfl
         · -- Expression correspondence
-          refine ⟨scope', envVar', envMap', st_a, st_a', ?_⟩
+          refine ⟨scope', st_a, st_a', ?_⟩
           have hsf'_eq := (Prod.mk.inj (Option.some.inj hstep)).2
           have hsf'_expr : sf'.expr = .await sa_flat.expr := by rw [← hsf'_eq]; rfl
           have hsc'_expr : sc'.expr = .await sc_arg.expr := by simp [sc', Core.pushTrace]
           rw [hsc'_expr, hsf'_expr]
           simp only [Flat.convertExpr]
-          rw [show Flat.convertExpr sc_arg.expr scope' envVar' envMap' st_a =
+          rw [show Flat.convertExpr sc_arg.expr scope' envVar envMap st_a =
             (sa_flat.expr, st_a') from hconv_arg.symm]
   | this =>
     rw [hsc] at hconv; simp only [Flat.convertExpr] at hconv
@@ -2119,7 +2127,7 @@ private theorem closureConvert_step_simulation
         rw [show sc = {sc with expr := .this} from by cases sc; simp_all] at h0
         simp only [Core.step?, hcenv] at h0
         exact congrArg Core.State.expr (Prod.mk.inj (Option.some.inj h0)).2 ▸ rfl
-      exact ⟨hsf'_trace, henv', scope, envVar, envMap, st,
+      exact ⟨hsf'_trace, henv', scope, st,
         (Flat.convertExpr (.lit cv) scope envVar envMap st).2,
         by rw [hsc'_expr]; simp [Flat.convertExpr, hsf'_expr, hfv_eq]⟩
     | none =>
@@ -2163,7 +2171,7 @@ private theorem closureConvert_step_simulation
           rw [show sc = {sc with expr := .this} from by cases sc; simp_all] at h0
           simp only [Core.step?, hcenv] at h0
           exact congrArg Core.State.expr (Prod.mk.inj (Option.some.inj h0)).2 ▸ rfl
-        exact ⟨hsf'_trace, henv', scope, envVar, envMap, st, st,
+        exact ⟨hsf'_trace, henv', scope, st, st,
           by rw [hsc'_expr]; simp [Flat.convertExpr, Flat.convertValue, hsf'_expr]⟩
       | some cv =>
         -- Core has "this" but Flat doesn't → contradiction via EnvCorr.2
@@ -2660,7 +2668,7 @@ private theorem closureConvert_halt_preservation
       (∀ (b : String) (o f : Core.Expr), sc.expr ≠ .forIn b o f) →
       (∀ (b : String) (i f : Core.Expr), sc.expr ≠ .forOf b i f) →
       Core.step? sc = none := by
-  intro sf sc ⟨htrace, _henvCorr, scope, envVar, envMap, st, st', hconv⟩ hhalt hnoForIn hnoForOf
+  intro sf sc ⟨htrace, _henvCorr, scope, st, st', hconv⟩ hhalt hnoForIn hnoForOf
   obtain ⟨v, hlit⟩ := step?_none_implies_lit sf hhalt
   rw [hlit] at hconv
   cases hsc : sc.expr with
