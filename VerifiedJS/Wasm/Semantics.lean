@@ -6938,6 +6938,7 @@ theorem init (irmod : IRModule) (wmod : Module)
       · -- IRValue.default t corresponds to defaultValue (wmod.globals[j].type.val)
         -- Use emit_globals_init_valcorr helper
         exact emit_globals_init_valcorr irmod wmod hemit j hj hj_w
+  hmemory := by simp [irInitialState, Wasm.initialState, initialStore]
   hlabels := by simp [irInitialState, Wasm.initialState]
   hhalt := by
     intro hirHalt
@@ -7065,6 +7066,7 @@ theorem step_sim (irmod : IRModule) (wmod : Module) :
                   hframes_locals := hrel.hframes_locals
                   hframes_vals := hrel.hframes_vals
                   hglobals := hrel.hglobals
+                  hmemory := hrel.hmemory
                   hlabels := by dsimp only []; exact hrel.hlabels
                   hhalt := hhalt_of_structural .nil hrel.hlabels }⟩
             | irf :: irfs =>
@@ -7096,6 +7098,7 @@ theorem step_sim (irmod : IRModule) (wmod : Module) :
                       hframes_locals := hrel.hframes_locals
                       hframes_vals := hrel.hframes_vals
                       hglobals := hrel.hglobals
+                      hmemory := hrel.hmemory
                       hlabels := by dsimp only []; exact hrel.hlabels
                       hhalt := hhalt_of_structural .nil hrel.hlabels }⟩
               | some val =>
@@ -7155,6 +7158,7 @@ theorem step_sim (irmod : IRModule) (wmod : Module) :
                     hframes_locals := hrel.hframes_locals
                     hframes_vals := hrel.hframes_vals
                     hglobals := hrel.hglobals
+                    hmemory := hrel.hmemory
                     hlabels := by dsimp only []; exact hrel.hlabels
                     hhalt := hhalt_of_structural .nil hrel.hlabels }⟩
               | irf :: irfs =>
@@ -7182,6 +7186,7 @@ theorem step_sim (irmod : IRModule) (wmod : Module) :
                       hframes_locals := hrel.hframes_locals
                       hframes_vals := hrel.hframes_vals
                       hglobals := hrel.hglobals
+                      hmemory := hrel.hmemory
                       hlabels := by dsimp only []; exact hrel.hlabels
                       hhalt := hhalt_of_structural .nil hrel.hlabels }⟩
             | iv :: istk =>
@@ -7207,6 +7212,7 @@ theorem step_sim (irmod : IRModule) (wmod : Module) :
                     hframes_locals := hrel.hframes_locals
                     hframes_vals := hrel.hframes_vals
                     hglobals := hrel.hglobals
+                    hmemory := hrel.hmemory
                     hlabels := by dsimp only []; exact hrel.hlabels
                     hhalt := hhalt_of_structural .nil hrel.hlabels }⟩
               | irf :: irfs =>
@@ -7295,6 +7301,7 @@ theorem step_sim (irmod : IRModule) (wmod : Module) :
                           hframes_locals := hrel.hframes_locals
                           hframes_vals := hrel.hframes_vals
                           hglobals := hrel.hglobals
+                          hmemory := hrel.hmemory
                           hlabels := by dsimp only []; exact hrel.hlabels
                           hhalt := hhalt_of_structural .nil hrel.hlabels }⟩
           · exact hf.elim
@@ -7338,6 +7345,7 @@ theorem step_sim (irmod : IRModule) (wmod : Module) :
                       hframes_locals := hrel.hframes_locals
                       hframes_vals := hrel.hframes_vals
                       hglobals := hrel.hglobals
+                      hmemory := hrel.hmemory
                       hlabels := hrel.hlabels
                       hhalt := hhalt_of_structural hrest hrel.hlabels }
             | none =>
@@ -7362,6 +7370,7 @@ theorem step_sim (irmod : IRModule) (wmod : Module) :
                       hframes_locals := hrel.hframes_locals
                       hframes_vals := hrel.hframes_vals
                       hglobals := hrel.hglobals
+                      hmemory := hrel.hmemory
                       hlabels := by dsimp only []; exact hrel.hlabels
                       hhalt := hhalt_of_structural .nil hrel.hlabels }
           · exact hf.elim
@@ -7391,6 +7400,7 @@ theorem step_sim (irmod : IRModule) (wmod : Module) :
                       hframes_locals := hrel.hframes_locals
                       hframes_vals := hrel.hframes_vals
                       hglobals := hrel.hglobals
+                      hmemory := hrel.hmemory
                       hlabels := by dsimp only []; exact hrel.hlabels
                       hhalt := hhalt_of_structural .nil hrel.hlabels }
             | irv :: irstk =>
@@ -7449,6 +7459,7 @@ theorem step_sim (irmod : IRModule) (wmod : Module) :
                                 · simp only [Array.set!, Array.setIfInBounds, hbounds_w]
                                   rw [Array.getElem?_eq_getElem (by simp [Array.size_setIfInBounds]; omega)]
                                   simp [Array.getElem_setIfInBounds, Ne.symm hjidx, hwv'']
+                          hmemory := by dsimp only []; exact hrel.hmemory
                           hlabels := hrel.hlabels
                           hhalt := hhalt_of_structural hrest hrel.hlabels }
               else
@@ -7475,6 +7486,7 @@ theorem step_sim (irmod : IRModule) (wmod : Module) :
                           hframes_locals := hrel.hframes_locals
                           hframes_vals := hrel.hframes_vals
                           hglobals := hrel.hglobals
+                          hmemory := hrel.hmemory
                           hlabels := by dsimp only []; exact hrel.hlabels
                           hhalt := hhalt_of_structural .nil hrel.hlabels }
           · exact hf.elim
@@ -7516,7 +7528,7 @@ theorem step_sim (irmod : IRModule) (wmod : Module) :
                 exact ⟨_, by simp [traceToWasm]; exact hw,
                   { hemit := hrel.hemit, hcode := .nil, hstack := by simp [hs2],
                     hframes_len := hrel.hframes_len, hframes_locals := hrel.hframes_locals,
-                    hframes_vals := hrel.hframes_vals, hglobals := hrel.hglobals,
+                    hframes_vals := hrel.hframes_vals, hglobals := hrel.hglobals, hmemory := hrel.hmemory,
                     hlabels := hrel.hlabels, hhalt := hhalt_of_structural .nil hrel.hlabels }⟩
               | v1 :: [] =>
                 -- Only 1 element: IR traps (irPop2? needs 2)
@@ -7534,7 +7546,7 @@ theorem step_sim (irmod : IRModule) (wmod : Module) :
                 exact ⟨_, by simp [traceToWasm]; exact hw,
                   { hemit := hrel.hemit, hcode := .nil, hstack := by dsimp only []; exact hrel.hstack,
                     hframes_len := hrel.hframes_len, hframes_locals := hrel.hframes_locals,
-                    hframes_vals := hrel.hframes_vals, hglobals := hrel.hglobals,
+                    hframes_vals := hrel.hframes_vals, hglobals := hrel.hglobals, hmemory := hrel.hmemory,
                     hlabels := hrel.hlabels, hhalt := hhalt_of_structural .nil hrel.hlabels }⟩
               | .i32 rhs :: .i32 lhs :: stk =>
                 -- Both i32: success case. IR and Wasm compute the same result.
@@ -7576,6 +7588,7 @@ theorem step_sim (irmod : IRModule) (wmod : Module) :
                   hframes_locals := hrel.hframes_locals
                   hframes_vals := hrel.hframes_vals
                   hglobals := hrel.hglobals
+                  hmemory := hrel.hmemory
                   hlabels := hrel.hlabels
                   hhalt := hhalt_of_structural hrest hrel.hlabels
                 }
@@ -7605,7 +7618,7 @@ theorem step_sim (irmod : IRModule) (wmod : Module) :
                         hframes_len := hrel.hframes_len,
                         hframes_locals := hrel.hframes_locals,
                         hframes_vals := hrel.hframes_vals,
-                        hglobals := hrel.hglobals,
+                        hglobals := hrel.hglobals, hmemory := hrel.hmemory,
                         hlabels := hrel.hlabels,
                         hhalt := hhalt_of_structural .nil hrel.hlabels }))
           | .f64 =>
@@ -7626,7 +7639,7 @@ theorem step_sim (irmod : IRModule) (wmod : Module) :
                 exact ⟨_, by simp [traceToWasm]; exact hw,
                   { hemit := hrel.hemit, hcode := .nil, hstack := by simp [hs2],
                     hframes_len := hrel.hframes_len, hframes_locals := hrel.hframes_locals,
-                    hframes_vals := hrel.hframes_vals, hglobals := hrel.hglobals,
+                    hframes_vals := hrel.hframes_vals, hglobals := hrel.hglobals, hmemory := hrel.hmemory,
                     hlabels := hrel.hlabels, hhalt := hhalt_of_structural .nil hrel.hlabels }⟩
               | v1 :: [] =>
                 -- Only 1 element: both trap
@@ -7644,7 +7657,7 @@ theorem step_sim (irmod : IRModule) (wmod : Module) :
                 exact ⟨_, by simp [traceToWasm]; exact hw,
                   { hemit := hrel.hemit, hcode := .nil, hstack := by dsimp only []; exact hrel.hstack,
                     hframes_len := hrel.hframes_len, hframes_locals := hrel.hframes_locals,
-                    hframes_vals := hrel.hframes_vals, hglobals := hrel.hglobals,
+                    hframes_vals := hrel.hframes_vals, hglobals := hrel.hglobals, hmemory := hrel.hmemory,
                     hlabels := hrel.hlabels, hhalt := hhalt_of_structural .nil hrel.hlabels }⟩
               | .f64 rhs :: .f64 lhs :: stk =>
                 -- Both f64: success case
@@ -7670,6 +7683,7 @@ theorem step_sim (irmod : IRModule) (wmod : Module) :
                   hframes_locals := hrel.hframes_locals
                   hframes_vals := hrel.hframes_vals
                   hglobals := hrel.hglobals
+                  hmemory := hrel.hmemory
                   hlabels := hrel.hlabels
                   hhalt := hhalt_of_structural hrest hrel.hlabels
                 }
@@ -7696,7 +7710,7 @@ theorem step_sim (irmod : IRModule) (wmod : Module) :
                         hframes_len := hrel.hframes_len,
                         hframes_locals := hrel.hframes_locals,
                         hframes_vals := hrel.hframes_vals,
-                        hglobals := hrel.hglobals,
+                        hglobals := hrel.hglobals, hmemory := hrel.hmemory,
                         hlabels := hrel.hlabels,
                         hhalt := hhalt_of_structural .nil hrel.hlabels }))
           | .i64 | .ptr =>
@@ -7727,7 +7741,7 @@ theorem step_sim (irmod : IRModule) (wmod : Module) :
                 exact ⟨_, by simp [traceToWasm]; exact hw,
                   { hemit := hrel.hemit, hcode := .nil, hstack := by simp [hs2],
                     hframes_len := hrel.hframes_len, hframes_locals := hrel.hframes_locals,
-                    hframes_vals := hrel.hframes_vals, hglobals := hrel.hglobals,
+                    hframes_vals := hrel.hframes_vals, hglobals := hrel.hglobals, hmemory := hrel.hmemory,
                     hlabels := hrel.hlabels, hhalt := hhalt_of_structural .nil hrel.hlabels }⟩
               | .i32 v :: stk =>
                 -- Success: both compute eqz
@@ -7774,7 +7788,7 @@ theorem step_sim (irmod : IRModule) (wmod : Module) :
                     exact ⟨_, by simp [traceToWasm]; exact hw,
                       { hemit := hrel.hemit, hcode := .nil, hstack := by dsimp only []; exact hrel.hstack,
                         hframes_len := hrel.hframes_len, hframes_locals := hrel.hframes_locals,
-                        hframes_vals := hrel.hframes_vals, hglobals := hrel.hglobals,
+                        hframes_vals := hrel.hframes_vals, hglobals := hrel.hglobals, hmemory := hrel.hmemory,
                         hlabels := hrel.hlabels, hhalt := hhalt_of_structural .nil hrel.hlabels }⟩
               | .f64 v :: stk =>
                 -- Type mismatch: both trap
@@ -7798,7 +7812,7 @@ theorem step_sim (irmod : IRModule) (wmod : Module) :
                     exact ⟨_, by simp [traceToWasm]; exact hw,
                       { hemit := hrel.hemit, hcode := .nil, hstack := by dsimp only []; exact hrel.hstack,
                         hframes_len := hrel.hframes_len, hframes_locals := hrel.hframes_locals,
-                        hframes_vals := hrel.hframes_vals, hglobals := hrel.hglobals,
+                        hframes_vals := hrel.hframes_vals, hglobals := hrel.hglobals, hmemory := hrel.hmemory,
                         hlabels := hrel.hlabels, hhalt := hhalt_of_structural .nil hrel.hlabels }⟩
             · -- wrap_i64 case
               subst hwrap
@@ -7818,7 +7832,7 @@ theorem step_sim (irmod : IRModule) (wmod : Module) :
                 exact ⟨_, by simp [traceToWasm]; exact hw,
                   { hemit := hrel.hemit, hcode := .nil, hstack := by simp [hs2],
                     hframes_len := hrel.hframes_len, hframes_locals := hrel.hframes_locals,
-                    hframes_vals := hrel.hframes_vals, hglobals := hrel.hglobals,
+                    hframes_vals := hrel.hframes_vals, hglobals := hrel.hglobals, hmemory := hrel.hmemory,
                     hlabels := hrel.hlabels, hhalt := hhalt_of_structural .nil hrel.hlabels }⟩
               | .i32 v :: stk =>
                 -- Type mismatch: IR traps (i32 given to wrap_i64), Wasm also traps
@@ -7843,7 +7857,7 @@ theorem step_sim (irmod : IRModule) (wmod : Module) :
                     exact ⟨_, by simp [traceToWasm]; exact hw,
                       { hemit := hrel.hemit, hcode := .nil, hstack := by dsimp only []; exact hrel.hstack,
                         hframes_len := hrel.hframes_len, hframes_locals := hrel.hframes_locals,
-                        hframes_vals := hrel.hframes_vals, hglobals := hrel.hglobals,
+                        hframes_vals := hrel.hframes_vals, hglobals := hrel.hglobals, hmemory := hrel.hmemory,
                         hlabels := hrel.hlabels, hhalt := hhalt_of_structural .nil hrel.hlabels }⟩
               | .i64 v :: stk =>
                 -- Success: both compute wrap_i64
@@ -7888,7 +7902,7 @@ theorem step_sim (irmod : IRModule) (wmod : Module) :
                     exact ⟨_, by simp [traceToWasm]; exact hw,
                       { hemit := hrel.hemit, hcode := .nil, hstack := by dsimp only []; exact hrel.hstack,
                         hframes_len := hrel.hframes_len, hframes_locals := hrel.hframes_locals,
-                        hframes_vals := hrel.hframes_vals, hglobals := hrel.hglobals,
+                        hframes_vals := hrel.hframes_vals, hglobals := hrel.hglobals, hmemory := hrel.hmemory,
                         hlabels := hrel.hlabels, hhalt := hhalt_of_structural .nil hrel.hlabels }⟩
             · exact hf.elim
           | .i64 | .f64 | .ptr =>
@@ -7965,6 +7979,7 @@ theorem step_sim (irmod : IRModule) (wmod : Module) :
                   hframes_locals := hrel.hframes_locals
                   hframes_vals := hrel.hframes_vals
                   hglobals := hrel.hglobals
+                  hmemory := hrel.hmemory
                   hlabels := by dsimp only []; exact hrel.hlabels
                   hhalt := hhalt_of_structural .nil hrel.hlabels }⟩
             | .i32 cond :: stk =>
@@ -8061,6 +8076,7 @@ theorem step_sim (irmod : IRModule) (wmod : Module) :
                       hframes_locals := hrel.hframes_locals
                       hframes_vals := hrel.hframes_vals
                       hglobals := hrel.hglobals
+                      hmemory := hrel.hmemory
                       hlabels := by dsimp only []; exact hrel.hlabels
                       hhalt := hhalt_of_structural .nil hrel.hlabels }⟩
             | .f64 n :: stk =>
@@ -8093,6 +8109,7 @@ theorem step_sim (irmod : IRModule) (wmod : Module) :
                       hframes_locals := hrel.hframes_locals
                       hframes_vals := hrel.hframes_vals
                       hglobals := hrel.hglobals
+                      hmemory := hrel.hmemory
                       hlabels := by dsimp only []; exact hrel.hlabels
                       hhalt := hhalt_of_structural .nil hrel.hlabels }⟩
           · exact hf.elim
@@ -8136,6 +8153,7 @@ theorem step_sim (irmod : IRModule) (wmod : Module) :
                   hframes_locals := hrel.hframes_locals
                   hframes_vals := hrel.hframes_vals
                   hglobals := hrel.hglobals
+                  hmemory := hrel.hmemory
                   hlabels := hrel.hlabels
                   hhalt := hhalt_of_structural .nil hrel.hlabels }⟩
             | v :: stk =>
@@ -8167,6 +8185,7 @@ theorem step_sim (irmod : IRModule) (wmod : Module) :
                     hframes_locals := hrel.hframes_locals
                     hframes_vals := hrel.hframes_vals
                     hglobals := hrel.hglobals
+                    hmemory := hrel.hmemory
                     hlabels := hrel.hlabels
                     hhalt := hhalt_of_structural hrest hrel.hlabels }⟩
           · exact hf.elim
