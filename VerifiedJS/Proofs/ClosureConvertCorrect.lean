@@ -971,6 +971,8 @@ private theorem closureConvert_step_simulation
         · have hsf'_eq := (Prod.mk.inj (Option.some.inj hstep)).2
           have hsc'_env : sc'.env = sc_arg.env := by simp [sc', Core.pushTrace]
           rw [hsc'_env]; convert henvCorr_arg using 1; rw [← hsf'_eq]; rfl
+        constructor
+        · sorry -- heap preservation
         · have hsf'_eq := (Prod.mk.inj (Option.some.inj hstep)).2
           have hsf'_expr : sf'.expr = .«let» name sa_flat.expr body' := by rw [← hsf'_eq]; rfl
           have hsc'_expr : sc'.expr = .«let» name sc_arg.expr body := by simp [sc', Core.pushTrace]
@@ -1103,6 +1105,8 @@ private theorem closureConvert_step_simulation
           rw [hsc'_env]
           convert henvCorr_arg using 1
           rw [← hsf'_eq]; rfl
+        constructor
+        · sorry -- heap preservation
         · -- Expression correspondence
           refine ⟨scope', st_a, st_a', ?_⟩
           have hsf'_eq := (Prod.mk.inj (Option.some.inj hstep)).2
@@ -1241,6 +1245,8 @@ private theorem closureConvert_step_simulation
           rw [hsc'_env]
           convert henvCorr_arg using 1
           rw [← hsf'_eq]; rfl
+        constructor
+        · sorry -- heap preservation
         · -- Expression correspondence
           have hsf'_eq := (Prod.mk.inj (Option.some.inj hstep)).2
           have hsf'_expr : sf'.expr = .«if» sa_flat.expr then' else' := by rw [← hsf'_eq]; rfl
@@ -1391,6 +1397,8 @@ private theorem closureConvert_step_simulation
           rw [hsc'_env]
           convert henvCorr_arg using 1
           rw [← hsf'_eq]; rfl
+        constructor
+        · sorry -- heap preservation
         · -- Expression correspondence
           -- sf'.expr = .seq sa_flat.expr b' (from Flat step?)
           -- sc'.expr = .seq sc_arg.expr b (from Core pushTrace)
@@ -1553,6 +1561,8 @@ private theorem closureConvert_step_simulation
           convert henvCorr_arg using 1
           -- Need: sf'.env = sa_flat.env
           rw [← hsf'_eq]; rfl
+        constructor
+        · sorry -- heap preservation
         · -- Expression correspondence
           refine ⟨scope', st_a, st_a', ?_⟩
           have hsf'_eq := (Prod.mk.inj (Option.some.inj hstep)).2
@@ -1662,6 +1672,8 @@ private theorem closureConvert_step_simulation
           rw [hsc'_env]
           have hsf'_eq := (Prod.mk.inj (Option.some.inj hstep)).2
           convert henvCorr_arg using 1; rw [← hsf'_eq]; rfl
+        constructor
+        · sorry -- heap preservation
         · refine ⟨scope', st_a, st_a', ?_⟩
           have hsf'_eq := (Prod.mk.inj (Option.some.inj hstep)).2
           have hsf'_expr : sf'.expr = .unary op sa_flat.expr := by rw [← hsf'_eq]; rfl
@@ -1759,6 +1771,8 @@ private theorem closureConvert_step_simulation
           · have hsf'_eq := (Prod.mk.inj (Option.some.inj hstep)).2
             have hsc'_env : sc'.env = sc_arg.env := by simp [sc', Core.pushTrace]
             rw [hsc'_env]; convert henvCorr_arg using 1; rw [← hsf'_eq]; rfl
+          constructor
+          · sorry -- heap preservation
           · have hsf'_eq := (Prod.mk.inj (Option.some.inj hstep)).2
             have hsf'_expr : sf'.expr = .binary op (.lit (Flat.convertValue lv)) sa_flat.expr := by rw [← hsf'_eq]; rfl
             have hsc'_expr : sc'.expr = .binary op (.lit lv) sc_arg.expr := by simp [sc', Core.pushTrace]
@@ -1811,6 +1825,8 @@ private theorem closureConvert_step_simulation
         · have hsf'_eq := (Prod.mk.inj (Option.some.inj hstep)).2
           have hsc'_env : sc'.env = sc_arg.env := by simp [sc', Core.pushTrace]
           rw [hsc'_env]; convert henvCorr_arg using 1; rw [← hsf'_eq]; rfl
+        constructor
+        · sorry -- heap preservation
         · have hsf'_eq := (Prod.mk.inj (Option.some.inj hstep)).2
           have hsf'_expr : sf'.expr = .binary op sa_flat.expr rhs' := by rw [← hsf'_eq]; rfl
           have hsc'_expr : sc'.expr = .binary op sc_arg.expr rhs := by simp [sc', Core.pushTrace]
@@ -1926,6 +1942,8 @@ private theorem closureConvert_step_simulation
           rw [hsc'_env]
           have hsf'_eq := (Prod.mk.inj (Option.some.inj hstep)).2
           convert henvCorr_arg using 1; rw [← hsf'_eq]; rfl
+        constructor
+        · sorry -- heap preservation
         · refine ⟨scope', st_a, st_a', ?_⟩
           have hsf'_eq := (Prod.mk.inj (Option.some.inj hstep)).2
           have hsf'_expr : sf'.expr = .throw sa_flat.expr := by rw [← hsf'_eq]; rfl
@@ -2148,6 +2166,8 @@ private theorem closureConvert_step_simulation
             rw [hsc'_env]
             have hsf'_eq := (Prod.mk.inj (Option.some.inj hstep)).2
             convert henvCorr_arg using 1; rw [← hsf'_eq]; rfl
+          constructor
+          · sorry -- heap preservation
           · refine ⟨scope', st_a, st_a', ?_⟩
             have hsf'_eq := (Prod.mk.inj (Option.some.inj hstep)).2
             have hsf'_expr : sf'.expr = .«return» (some sa_flat.expr) := by rw [← hsf'_eq]; rfl
@@ -2295,6 +2315,8 @@ private theorem closureConvert_step_simulation
             rw [hsc'_env]
             have hsf'_eq := (Prod.mk.inj (Option.some.inj hstep)).2
             convert henvCorr_arg using 1; rw [← hsf'_eq]; rfl
+          constructor
+          · sorry -- heap preservation
           · refine ⟨scope', st_a, st_a', ?_⟩
             have hsf'_eq := (Prod.mk.inj (Option.some.inj hstep)).2
             have hsf'_expr : sf'.expr = .yield (some sa_flat.expr) delegate := by rw [← hsf'_eq]; rfl
@@ -2407,6 +2429,8 @@ private theorem closureConvert_step_simulation
           rw [hsc'_env]
           convert henvCorr_arg using 1
           rw [← hsf'_eq]; rfl
+        constructor
+        · sorry -- heap preservation
         · -- Expression correspondence
           refine ⟨scope', st_a, st_a', ?_⟩
           have hsf'_eq := (Prod.mk.inj (Option.some.inj hstep)).2
@@ -3010,7 +3034,7 @@ private theorem closureConvert_halt_preservation
       (∀ (b : String) (o f : Core.Expr), sc.expr ≠ .forIn b o f) →
       (∀ (b : String) (i f : Core.Expr), sc.expr ≠ .forOf b i f) →
       Core.step? sc = none := by
-  intro sf sc ⟨htrace, _henvCorr, scope, envVar, envMap, st, st', hconv⟩ hhalt hnoForIn hnoForOf
+  intro sf sc ⟨htrace, _henvCorr, _hheap, scope, envVar, envMap, st, st', hconv⟩ hhalt hnoForIn hnoForOf
   obtain ⟨v, hlit⟩ := step?_none_implies_lit sf hhalt
   rw [hlit] at hconv
   cases hsc : sc.expr with
