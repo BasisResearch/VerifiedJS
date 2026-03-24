@@ -6222,29 +6222,29 @@ theorem EmitCodeCorr.globalSet_inv {idx : Nat} {rest : List IRInstr} {wcode : Li
 theorem EmitCodeCorr.const_i32_inv {v : String} {rest : List IRInstr} {wcode : List Instr}
     (h : EmitCodeCorr (IRInstr.const_ .i32 v :: rest) wcode) :
     (∃ n rest_w, wcode = Instr.i32Const n :: rest_w ∧ v.toNat? = some n.toNat ∧ EmitCodeCorr rest rest_w) ∨
-    (∃ wasm_instrs rest_w, wcode = wasm_instrs ++ rest_w ∧ EmitCodeCorr rest rest_w) := by
+    False := by
   cases h with
   | const_i32 _ n _ rw hp hrw => left; exact ⟨n, rw, rfl, hp, hrw⟩
-  | general _ wi _ rw hrw => right; exact ⟨wi, rw, rfl, hrw⟩
+  | general _ _ _ _ hf _ => exact hf.elim
 
 /-- Inversion for const_ .f64 :: rest. -/
 theorem EmitCodeCorr.const_f64_inv {v : String} {rest : List IRInstr} {wcode : List Instr}
     (h : EmitCodeCorr (IRInstr.const_ .f64 v :: rest) wcode) :
     (∃ f rest_w, wcode = Instr.f64Const f :: rest_w ∧
       f = (v.toNat?.map (fun n => Float.ofNat n) |>.getD 0.0) ∧ EmitCodeCorr rest rest_w) ∨
-    (∃ wasm_instrs rest_w, wcode = wasm_instrs ++ rest_w ∧ EmitCodeCorr rest rest_w) := by
+    False := by
   cases h with
   | const_f64 _ f _ rw hf hrw => left; exact ⟨f, rw, rfl, hf, hrw⟩
-  | general _ wi _ rw hrw => right; exact ⟨wi, rw, rfl, hrw⟩
+  | general _ _ _ _ hf _ => exact hf.elim
 
 /-- Inversion for const_ .i64 :: rest. -/
 theorem EmitCodeCorr.const_i64_inv {v : String} {rest : List IRInstr} {wcode : List Instr}
     (h : EmitCodeCorr (IRInstr.const_ .i64 v :: rest) wcode) :
     (∃ n rest_w, wcode = Instr.i64Const n :: rest_w ∧ v.toNat? = some n.toNat ∧ EmitCodeCorr rest rest_w) ∨
-    (∃ wasm_instrs rest_w, wcode = wasm_instrs ++ rest_w ∧ EmitCodeCorr rest rest_w) := by
+    False := by
   cases h with
   | const_i64 _ n _ rw hp hrw => left; exact ⟨n, rw, rfl, hp, hrw⟩
-  | general _ wi _ rw hrw => right; exact ⟨wi, rw, rfl, hrw⟩
+  | general _ _ _ _ hf _ => exact hf.elim
 
 /-- Inversion for block :: rest. -/
 theorem EmitCodeCorr.block_inv {label : String} {body_ir : List IRInstr}
@@ -6252,10 +6252,10 @@ theorem EmitCodeCorr.block_inv {label : String} {body_ir : List IRInstr}
     (h : EmitCodeCorr (IRInstr.block label body_ir :: rest) wcode) :
     (∃ body_w rest_w, wcode = Instr.block .none body_w :: rest_w ∧
       EmitCodeCorr body_ir body_w ∧ EmitCodeCorr rest rest_w) ∨
-    (∃ wasm_instrs rest_w, wcode = wasm_instrs ++ rest_w ∧ EmitCodeCorr rest rest_w) := by
+    False := by
   cases h with
   | block_ _ _ bw _ rw hb hrw => left; exact ⟨bw, rw, rfl, hb, hrw⟩
-  | general _ wi _ rw hrw => right; exact ⟨wi, rw, rfl, hrw⟩
+  | general _ _ _ _ hf _ => exact hf.elim
 
 /-- Inversion for loop :: rest. -/
 theorem EmitCodeCorr.loop_inv {label : String} {body_ir : List IRInstr}
@@ -6263,10 +6263,10 @@ theorem EmitCodeCorr.loop_inv {label : String} {body_ir : List IRInstr}
     (h : EmitCodeCorr (IRInstr.loop label body_ir :: rest) wcode) :
     (∃ body_w rest_w, wcode = Instr.loop .none body_w :: rest_w ∧
       EmitCodeCorr body_ir body_w ∧ EmitCodeCorr rest rest_w) ∨
-    (∃ wasm_instrs rest_w, wcode = wasm_instrs ++ rest_w ∧ EmitCodeCorr rest rest_w) := by
+    False := by
   cases h with
   | loop_ _ _ bw _ rw hb hrw => left; exact ⟨bw, rw, rfl, hb, hrw⟩
-  | general _ wi _ rw hrw => right; exact ⟨wi, rw, rfl, hrw⟩
+  | general _ _ _ _ hf _ => exact hf.elim
 
 /-- Inversion for if_ :: rest. -/
 theorem EmitCodeCorr.if_inv {result : Option IRType} {then_ir else_ir : List IRInstr}
@@ -6274,37 +6274,37 @@ theorem EmitCodeCorr.if_inv {result : Option IRType} {then_ir else_ir : List IRI
     (h : EmitCodeCorr (IRInstr.if_ result then_ir else_ir :: rest) wcode) :
     (∃ bt then_w else_w rest_w, wcode = Instr.if_ bt then_w else_w :: rest_w ∧
       EmitCodeCorr then_ir then_w ∧ EmitCodeCorr else_ir else_w ∧ EmitCodeCorr rest rest_w) ∨
-    (∃ wasm_instrs rest_w, wcode = wasm_instrs ++ rest_w ∧ EmitCodeCorr rest rest_w) := by
+    False := by
   cases h with
   | if__ _ _ _ tw ew _ _ rw ht he hrw => left; exact ⟨_, tw, ew, rw, rfl, ht, he, hrw⟩
-  | general _ wi _ rw hrw => right; exact ⟨wi, rw, rfl, hrw⟩
+  | general _ _ _ _ hf _ => exact hf.elim
 
 /-- Inversion for br :: rest. -/
 theorem EmitCodeCorr.br_inv {label : String} {rest : List IRInstr} {wcode : List Instr}
     (h : EmitCodeCorr (IRInstr.br label :: rest) wcode) :
     (∃ idx rest_w, wcode = Instr.br idx :: rest_w ∧ EmitCodeCorr rest rest_w) ∨
-    (∃ wasm_instrs rest_w, wcode = wasm_instrs ++ rest_w ∧ EmitCodeCorr rest rest_w) := by
+    False := by
   cases h with
   | br_ _ idx _ rw hrw => left; exact ⟨idx, rw, rfl, hrw⟩
-  | general _ wi _ rw hrw => right; exact ⟨wi, rw, rfl, hrw⟩
+  | general _ _ _ _ hf _ => exact hf.elim
 
 /-- Inversion for brIf :: rest. -/
 theorem EmitCodeCorr.brIf_inv {label : String} {rest : List IRInstr} {wcode : List Instr}
     (h : EmitCodeCorr (IRInstr.brIf label :: rest) wcode) :
     (∃ idx rest_w, wcode = Instr.brIf idx :: rest_w ∧ EmitCodeCorr rest rest_w) ∨
-    (∃ wasm_instrs rest_w, wcode = wasm_instrs ++ rest_w ∧ EmitCodeCorr rest rest_w) := by
+    False := by
   cases h with
   | brIf_ _ idx _ rw hrw => left; exact ⟨idx, rw, rfl, hrw⟩
-  | general _ wi _ rw hrw => right; exact ⟨wi, rw, rfl, hrw⟩
+  | general _ _ _ _ hf _ => exact hf.elim
 
 /-- Inversion for memoryGrow :: rest. -/
 theorem EmitCodeCorr.memoryGrow_inv {rest : List IRInstr} {wcode : List Instr}
     (h : EmitCodeCorr (IRInstr.memoryGrow :: rest) wcode) :
     (∃ rest_w, wcode = Instr.memoryGrow 0 :: rest_w ∧ EmitCodeCorr rest rest_w) ∨
-    (∃ wasm_instrs rest_w, wcode = wasm_instrs ++ rest_w ∧ EmitCodeCorr rest rest_w) := by
+    False := by
   cases h with
   | memoryGrow_ _ rw hrw => left; exact ⟨rw, rfl, hrw⟩
-  | general _ wi _ rw hrw => right; exact ⟨wi, rw, rfl, hrw⟩
+  | general _ _ _ _ hf _ => exact hf.elim
 
 /-- Inversion for binOp .i32 op :: rest. -/
 theorem EmitCodeCorr.binOp_i32_inv {op : String} {rest : List IRInstr} {wcode : List Instr}
@@ -6318,7 +6318,7 @@ theorem EmitCodeCorr.binOp_i32_inv {op : String} {rest : List IRInstr} {wcode : 
     (op = "ne" ∧ ∃ rest_w, wcode = Instr.i32Ne :: rest_w ∧ EmitCodeCorr rest rest_w) ∨
     (op = "lt_s" ∧ ∃ rest_w, wcode = Instr.i32Lts :: rest_w ∧ EmitCodeCorr rest rest_w) ∨
     (op = "gt_s" ∧ ∃ rest_w, wcode = Instr.i32Gts :: rest_w ∧ EmitCodeCorr rest rest_w) ∨
-    (∃ wasm_instrs rest_w, wcode = wasm_instrs ++ rest_w ∧ EmitCodeCorr rest rest_w) := by
+    False := by
   cases h with
   | binOp_i32_add _ rw hrw => left; exact ⟨rfl, rw, rfl, hrw⟩
   | binOp_i32_sub _ rw hrw => right; left; exact ⟨rfl, rw, rfl, hrw⟩
@@ -6329,7 +6329,7 @@ theorem EmitCodeCorr.binOp_i32_inv {op : String} {rest : List IRInstr} {wcode : 
   | binOp_i32_ne _ rw hrw => right; right; right; right; right; right; left; exact ⟨rfl, rw, rfl, hrw⟩
   | binOp_i32_lts _ rw hrw => right; right; right; right; right; right; right; left; exact ⟨rfl, rw, rfl, hrw⟩
   | binOp_i32_gts _ rw hrw => right; right; right; right; right; right; right; right; left; exact ⟨rfl, rw, rfl, hrw⟩
-  | general _ wi _ rw hrw => right; right; right; right; right; right; right; right; right; exact ⟨wi, rw, rfl, hrw⟩
+  | general _ _ _ _ hf _ => exact hf.elim
 
 /-- Inversion for binOp .f64 op :: rest. -/
 theorem EmitCodeCorr.binOp_f64_inv {op : String} {rest : List IRInstr} {wcode : List Instr}
@@ -6338,24 +6338,24 @@ theorem EmitCodeCorr.binOp_f64_inv {op : String} {rest : List IRInstr} {wcode : 
     (op = "sub" ∧ ∃ rest_w, wcode = Instr.f64Sub :: rest_w ∧ EmitCodeCorr rest rest_w) ∨
     (op = "mul" ∧ ∃ rest_w, wcode = Instr.f64Mul :: rest_w ∧ EmitCodeCorr rest rest_w) ∨
     (op = "div" ∧ ∃ rest_w, wcode = Instr.f64Div :: rest_w ∧ EmitCodeCorr rest rest_w) ∨
-    (∃ wasm_instrs rest_w, wcode = wasm_instrs ++ rest_w ∧ EmitCodeCorr rest rest_w) := by
+    False := by
   cases h with
   | binOp_f64_add _ rw hrw => left; exact ⟨rfl, rw, rfl, hrw⟩
   | binOp_f64_sub _ rw hrw => right; left; exact ⟨rfl, rw, rfl, hrw⟩
   | binOp_f64_mul _ rw hrw => right; right; left; exact ⟨rfl, rw, rfl, hrw⟩
   | binOp_f64_div _ rw hrw => right; right; right; left; exact ⟨rfl, rw, rfl, hrw⟩
-  | general _ wi _ rw hrw => right; right; right; right; exact ⟨wi, rw, rfl, hrw⟩
+  | general _ _ _ _ hf _ => exact hf.elim
 
 /-- Inversion for unOp .i32 op :: rest. -/
 theorem EmitCodeCorr.unOp_i32_inv {op : String} {rest : List IRInstr} {wcode : List Instr}
     (h : EmitCodeCorr (IRInstr.unOp .i32 op :: rest) wcode) :
     (op = "eqz" ∧ ∃ rest_w, wcode = Instr.i32Eqz :: rest_w ∧ EmitCodeCorr rest rest_w) ∨
     (op = "wrap_i64" ∧ ∃ rest_w, wcode = Instr.i32WrapI64 :: rest_w ∧ EmitCodeCorr rest rest_w) ∨
-    (∃ wasm_instrs rest_w, wcode = wasm_instrs ++ rest_w ∧ EmitCodeCorr rest rest_w) := by
+    False := by
   cases h with
   | unOp_i32_eqz _ rw hrw => left; exact ⟨rfl, rw, rfl, hrw⟩
   | unOp_i32_wrapI64 _ rw hrw => right; left; exact ⟨rfl, rw, rfl, hrw⟩
-  | general _ wi _ rw hrw => right; right; exact ⟨wi, rw, rfl, hrw⟩
+  | general _ _ _ _ hf _ => exact hf.elim
 
 /-- General inversion for any IR instruction. -/
 theorem EmitCodeCorr.cons_inv {instr : IRInstr} {rest : List IRInstr} {wcode : List Instr}
@@ -6399,7 +6399,7 @@ theorem EmitCodeCorr.cons_inv {instr : IRInstr} {rest : List IRInstr} {wcode : L
   | br_ _ _ _ rw hrw => exact ⟨[_], rw, rfl, hrw⟩
   | brIf_ _ _ _ rw hrw => exact ⟨[_], rw, rfl, hrw⟩
   | memoryGrow_ _ rw hrw => exact ⟨[_], rw, rfl, hrw⟩
-  | general _ wi _ rw hrw => exact ⟨wi, rw, rfl, hrw⟩
+  | general _ _ _ _ hf _ => exact hf.elim
 
 /-- Value correspondence for IR → Wasm: each IR value maps to the corresponding Wasm value.
     IR uses i32/i64/f64; Wasm adds f32 but emit only produces the same three types.
@@ -6641,7 +6641,7 @@ theorem step_sim (irmod : IRModule) (wmod : Module) :
       | .const_ .i32 v =>
           -- i32 const: IR pushes i32, Wasm pushes i32_const
           have hc : EmitCodeCorr (IRInstr.const_ .i32 v :: rest) s2.code := hcode_ir ▸ hrel.hcode
-          rcases hc.const_i32_inv with ⟨n, rest_w, hcw, hparse, hrest⟩ | ⟨wasm_instrs, rest_w, hcw, hrest⟩
+          rcases hc.const_i32_inv with ⟨n, rest_w, hcw, hparse, hrest⟩ | hf
           · -- Specific case: Wasm code = i32Const n :: rest_w
             have hir := irStep?_eq_i32Const s1 v n.toNat rest hcode_ir hparse
             simp only [show n.toNat.toUInt32 = n from by simp] at hir
@@ -6652,12 +6652,11 @@ theorem step_sim (irmod : IRModule) (wmod : Module) :
             refine ⟨_, hw, ⟨hrel.hemit, hrest, ?_, hrel.hframes_len, hrel.hframes_locals, hrel.hframes_vals, hrel.hglobals, hrel.hlabels, hhalt_of_structural hrest hrel.hlabels⟩⟩
             dsimp only []
             exact stack_corr_cons hrel.hstack.1 hrel.hstack.2 (.i32 n)
-          · -- General case (EmitCodeCorr.general)
-            sorry
+          · exact hf.elim
       | .const_ .i64 v =>
           -- i64 const: same pattern as i32
           have hc : EmitCodeCorr (IRInstr.const_ .i64 v :: rest) s2.code := hcode_ir ▸ hrel.hcode
-          rcases hc.const_i64_inv with ⟨n, rest_w, hcw, hparse, hrest⟩ | ⟨wasm_instrs, rest_w, hcw, hrest⟩
+          rcases hc.const_i64_inv with ⟨n, rest_w, hcw, hparse, hrest⟩ | hf
           · have hir := irStep?_eq_i64Const s1 v n.toNat rest hcode_ir hparse
             simp only [show n.toNat.toUInt64 = n from by simp] at hir
             rw [hir] at hstep
@@ -6667,11 +6666,11 @@ theorem step_sim (irmod : IRModule) (wmod : Module) :
             refine ⟨_, hw, ⟨hrel.hemit, hrest, ?_, hrel.hframes_len, hrel.hframes_locals, hrel.hframes_vals, hrel.hglobals, hrel.hlabels, hhalt_of_structural hrest hrel.hlabels⟩⟩
             dsimp only []
             exact stack_corr_cons hrel.hstack.1 hrel.hstack.2 (.i64 n)
-          · sorry -- general case
+          · exact hf.elim
       | .const_ .f64 v =>
           -- f64 const: same pattern as i32
           have hc : EmitCodeCorr (IRInstr.const_ .f64 v :: rest) s2.code := hcode_ir ▸ hrel.hcode
-          rcases hc.const_f64_inv with ⟨f, rest_w, hcw, hfeq, hrest⟩ | ⟨wasm_instrs, rest_w, hcw, hrest⟩
+          rcases hc.const_f64_inv with ⟨f, rest_w, hcw, hfeq, hrest⟩ | hf
           · subst hfeq
             have hir := irStep?_eq_f64Const s1 v rest hcode_ir
             rw [hir] at hstep
@@ -6681,14 +6680,14 @@ theorem step_sim (irmod : IRModule) (wmod : Module) :
             refine ⟨_, hw, ⟨hrel.hemit, hrest, ?_, hrel.hframes_len, hrel.hframes_locals, hrel.hframes_vals, hrel.hglobals, hrel.hlabels, hhalt_of_structural hrest hrel.hlabels⟩⟩
             dsimp only []
             exact stack_corr_cons hrel.hstack.1 hrel.hstack.2 (.f64 _)
-          · sorry -- general case
+          · exact hf.elim
       | .const_ .ptr v =>
           -- ptr const (same as i32 in Wasm)
           sorry
       | .localGet idx =>
           -- local.get: both IR and Wasm look up local variable
           have hc : EmitCodeCorr (IRInstr.localGet idx :: rest) s2.code := hcode_ir ▸ hrel.hcode
-          rcases hc.localGet_inv with ⟨rest_w, hcw, hrest⟩ | ⟨wasm_instrs, rest_w, hcw, hrest⟩
+          rcases hc.localGet_inv with ⟨rest_w, hcw, hrest⟩ | hf
           · -- IR has localGet idx, Wasm has localGet idx
             -- Case split on IR frames and local lookup
             match hfr_ir : s1.frames with
@@ -6771,11 +6770,11 @@ theorem step_sim (irmod : IRModule) (wmod : Module) :
                     rw [this] at hlocal; exact (Option.some.inj hlocal).symm
                   rw [hval_eq]
                   exact ⟨_, hw, hrel.hemit, hrest, by dsimp only []; exact stack_corr_cons hrel.hstack.1 hrel.hstack.2 hval_corr, hrel.hframes_len, hrel.hframes_locals, hrel.hframes_vals, hrel.hglobals, hrel.hlabels, hhalt_of_structural hrest hrel.hlabels⟩
-          · sorry -- general case
+          · exact hf.elim
       | .localSet idx =>
           -- local.set: pop value from stack, set local[idx]
           have hc : EmitCodeCorr (IRInstr.localSet idx :: rest) s2.code := hcode_ir ▸ hrel.hcode
-          rcases hc.localSet_inv with ⟨rest_w, hcw, hrest⟩ | ⟨wasm_instrs, rest_w, hcw, hrest⟩
+          rcases hc.localSet_inv with ⟨rest_w, hcw, hrest⟩ | hf
           · -- Specific case: Wasm code = localSet idx :: rest_w
             -- Need a value on stack
             match hstk : s1.stack with
@@ -6944,11 +6943,11 @@ theorem step_sim (irmod : IRModule) (wmod : Module) :
                           hglobals := hrel.hglobals
                           hlabels := by dsimp only []; exact hrel.hlabels
                           hhalt := hhalt_of_structural .nil hrel.hlabels }⟩
-          · sorry -- general case
+          · exact hf.elim
       | .globalGet idx =>
           -- global.get: IR pushes globals[idx], Wasm pushes store.globals[idx]
           have hc : EmitCodeCorr (IRInstr.globalGet idx :: rest) s2.code := hcode_ir ▸ hrel.hcode
-          rcases hc.globalGet_inv with ⟨rest_w, hcw, hrest⟩ | ⟨wasm_instrs, rest_w, hcw, hrest⟩
+          rcases hc.globalGet_inv with ⟨rest_w, hcw, hrest⟩ | hf
           · -- Specific case: Wasm code = globalGet idx :: rest_w
             match hglob : s1.globals[idx]? with
             | some val =>
@@ -7011,11 +7010,11 @@ theorem step_sim (irmod : IRModule) (wmod : Module) :
                       hglobals := hrel.hglobals
                       hlabels := by dsimp only []; exact hrel.hlabels
                       hhalt := hhalt_of_structural .nil hrel.hlabels }
-          · sorry -- general case
+          · exact hf.elim
       | .globalSet idx =>
           -- global.set: pop value from stack, set globals[idx]
           have hc : EmitCodeCorr (IRInstr.globalSet idx :: rest) s2.code := hcode_ir ▸ hrel.hcode
-          rcases hc.globalSet_inv with ⟨rest_w, hcw, hrest⟩ | ⟨wasm_instrs, rest_w, hcw, hrest⟩
+          rcases hc.globalSet_inv with ⟨rest_w, hcw, hrest⟩ | hf
           · -- Specific case: Wasm code = globalSet idx :: rest_w
             match hstk : s1.stack with
             | [] =>
@@ -7119,7 +7118,7 @@ theorem step_sim (irmod : IRModule) (wmod : Module) :
                           hglobals := hrel.hglobals
                           hlabels := by dsimp only []; exact hrel.hlabels
                           hhalt := hhalt_of_structural .nil hrel.hlabels }
-          · sorry -- general case
+          · exact hf.elim
       | .load t offset =>
           -- memory load
           sorry
@@ -7144,7 +7143,7 @@ theorem step_sim (irmod : IRModule) (wmod : Module) :
       | .block label body =>
           -- block: push label frame, enter body. Both IR and Wasm do the same.
           have hc : EmitCodeCorr (IRInstr.block label body :: rest) s2.code := hcode_ir ▸ hrel.hcode
-          rcases hc.block_inv with ⟨body_w, rest_w, hcw, hbody, hrest⟩ | ⟨wasm_instrs, rest_w, hcw, hrest⟩
+          rcases hc.block_inv with ⟨body_w, rest_w, hcw, hbody, hrest⟩ | hf
           · -- Specific case: Wasm code = block .none body_w :: rest_w
             have hir := irStep?_eq_block s1 label body rest hcode_ir
             rw [hir] at hstep
@@ -7156,13 +7155,12 @@ theorem step_sim (irmod : IRModule) (wmod : Module) :
               simp; exact hrel.hlabels
             · -- Halt correspondence
               exact hhalt_of_structural hbody (by simp; exact hrel.hlabels)
-          · -- General case (EmitCodeCorr.general)
-            sorry
+          · exact hf.elim
       | .loop label body =>
           -- loop: push loop label frame, enter body. Both IR and Wasm do the same.
           -- Key difference from block: onBranch points to body (re-enter loop), not rest.
           have hc : EmitCodeCorr (IRInstr.loop label body :: rest) s2.code := hcode_ir ▸ hrel.hcode
-          rcases hc.loop_inv with ⟨body_w, rest_w, hcw, hbody, hrest⟩ | ⟨wasm_instrs, rest_w, hcw, hrest⟩
+          rcases hc.loop_inv with ⟨body_w, rest_w, hcw, hbody, hrest⟩ | hf
           · -- Specific case: Wasm code = loop .none body_w :: rest_w
             have hir := irStep?_eq_loop s1 label body rest hcode_ir
             rw [hir] at hstep
@@ -7174,8 +7172,7 @@ theorem step_sim (irmod : IRModule) (wmod : Module) :
               simp; exact hrel.hlabels
             · -- Halt correspondence
               exact hhalt_of_structural hbody (by simp; exact hrel.hlabels)
-          · -- General case (EmitCodeCorr.general)
-            sorry
+          · exact hf.elim
       | .if_ result then_ else_ =>
           -- if: conditional branch
           sorry
@@ -7192,7 +7189,7 @@ theorem step_sim (irmod : IRModule) (wmod : Module) :
           -- drop: IR and Wasm both pop top of stack (or both trap on empty stack)
           -- Invert EmitCodeCorr to get Wasm code structure
           have hc : EmitCodeCorr (IRInstr.drop :: rest) s2.code := hcode_ir ▸ hrel.hcode
-          rcases hc.drop_inv with ⟨rest_w, hcw, hrest⟩ | ⟨wasm_instrs, rest_w, hcw, hrest⟩
+          rcases hc.drop_inv with ⟨rest_w, hcw, hrest⟩ | hf
           · -- Specific case: Wasm code = .drop :: rest_w
             match hstk : s1.stack with
             | [] =>
@@ -7252,8 +7249,7 @@ theorem step_sim (irmod : IRModule) (wmod : Module) :
                     hglobals := hrel.hglobals
                     hlabels := hrel.hlabels
                     hhalt := hhalt_of_structural hrest hrel.hlabels }⟩
-          · -- General case (EmitCodeCorr.general): unknown Wasm instructions
-            sorry
+          · exact hf.elim
       | .memoryGrow =>
           -- grow memory
           sorry

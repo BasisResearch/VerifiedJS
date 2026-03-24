@@ -1266,10 +1266,10 @@ private theorem closureConvert_step_simulation
             · congr 1
               rw [hb'_def]
               rw [convertExpr_scope_irrelevant b scope scope' envVar envMap st1]
-              sorry -- Need: st1 = st_a' (convertExpr state correspondence after stepping)
+              rfl
             · rw [hb'_def]
               rw [convertExpr_scope_irrelevant b scope scope' envVar envMap st1]
-              sorry -- Need: st1 = st_a' (same state issue for snd)
+              rfl
   | call _ _ => sorry -- needs env/heap/funcs correspondence
   | newObj _ _ => sorry -- needs env/heap correspondence
   | getProp _ _ => sorry -- needs env/heap correspondence
