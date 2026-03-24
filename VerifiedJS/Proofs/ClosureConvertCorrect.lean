@@ -1020,8 +1020,6 @@ private theorem closureConvert_step_simulation
               { sc with expr := value } from by cases sc; simp_all]; exact hcore_substep)
         set sc' := Core.pushTrace { sc_arg with expr := .assign name sc_arg.expr, trace := sc.trace } ev_sub
         refine ⟨sc', ⟨hcore_assign⟩, ?_⟩
-        -- Build CC_SimRel for result states
-        obtain ⟨htrace_arg, henvCorr_arg, scope', st_a, st_a', hconv_arg⟩ := hrel_arg
         constructor
         · -- Trace
           have hsf'_eq := (Prod.mk.inj (Option.some.inj hstep)).2
@@ -1272,21 +1270,17 @@ private theorem closureConvert_step_simulation
         simp only [hsubstep] at hstep
         have hev_eq : ev = ev_sub := (Prod.mk.inj (Option.some.inj hstep)).1
         subst hev_eq
-        -- CC_SimRel for sub-expressions
-        have hrel_sub : CC_SimRel s t ⟨arg', sf.env, sf.heap, sf.trace⟩
-            ⟨arg, sc.env, sc.heap, sc.trace, sc.funcs, sc.callStack⟩ := by
-          refine ⟨htrace, henvCorr, scope, st, st1, ?_⟩
-          simp only [harg'_def, hst1_def]; exact (Prod.eta _).symm
         -- Flat.Step for sub-expression
         have hflat_step_sub : Flat.Step ⟨arg', sf.env, sf.heap, sf.trace⟩ ev_sub sa_flat :=
           ⟨hsubstep⟩
-        -- Apply IH
-        have hsc_sub_expr : (⟨arg, sc.env, sc.heap, sc.trace, sc.funcs, sc.callStack⟩ : Core.State).expr = arg := rfl
-        have hsc_sub_depth : Core.Expr.depth arg = Core.Expr.depth arg := rfl
-        obtain ⟨sc_arg, ⟨hcore_substep⟩, hrel_arg⟩ := ih_depth (Core.Expr.depth arg) hdepth
+        -- Apply IH (envVar/envMap carried through induction)
+        obtain ⟨sc_arg, ⟨hcore_substep⟩, htrace_arg, henvCorr_arg, scope', st_a, st_a', hconv_arg⟩ :=
+          ih_depth (Core.Expr.depth arg) hdepth envVar envMap
           ⟨arg', sf.env, sf.heap, sf.trace⟩
           ⟨arg, sc.env, sc.heap, sc.trace, sc.funcs, sc.callStack⟩
-          ev_sub sa_flat rfl hrel_sub hflat_step_sub
+          ev_sub sa_flat rfl htrace henvCorr
+          ⟨scope, st, st1, by simp only [harg'_def, hst1_def]; exact (Prod.eta _).symm⟩
+          hflat_step_sub
         -- Construct Core step on .typeof arg using step_typeof_step_arg
         have hcore_typeof : Core.step? sc =
           some (ev_sub, Core.pushTrace { sc_arg with expr := .typeof sc_arg.expr, trace := sc.trace } ev_sub) := by
@@ -1297,8 +1291,6 @@ private theorem closureConvert_step_simulation
               { sc with expr := arg } from by cases sc; simp_all]; exact hcore_substep)
         set sc' := Core.pushTrace { sc_arg with expr := .typeof sc_arg.expr, trace := sc.trace } ev_sub
         refine ⟨sc', ⟨hcore_typeof⟩, ?_⟩
-        -- Build CC_SimRel for result states
-        obtain ⟨htrace_arg, henvCorr_arg, scope', st_a, st_a', hconv_arg⟩ := hrel_arg
         constructor
         · -- Trace: sf'.trace = sc'.trace
           -- sf' = { .typeof sa_flat.expr, sa_flat.env, sa_flat.heap, sf.trace ++ [ev_sub] }
@@ -1401,15 +1393,14 @@ private theorem closureConvert_step_simulation
         simp only [hsubstep] at hstep
         have hev_eq : ev = ev_sub := (Prod.mk.inj (Option.some.inj hstep)).1
         subst hev_eq
-        -- IH on sub-expression
-        have hrel_sub : CC_SimRel s t ⟨arg', sf.env, sf.heap, sf.trace⟩
-            ⟨arg, sc.env, sc.heap, sc.trace, sc.funcs, sc.callStack⟩ := by
-          refine ⟨htrace, henvCorr, scope, st, st1, ?_⟩
-          simp only [harg'_def, hst1_def]; exact (Prod.eta _).symm
-        obtain ⟨sc_arg, ⟨hcore_substep⟩, hrel_arg⟩ := ih_depth (Core.Expr.depth arg) hdepth
+        -- Apply IH (envVar/envMap carried through induction)
+        obtain ⟨sc_arg, ⟨hcore_substep⟩, htrace_arg, henvCorr_arg, scope', st_a, st_a', hconv_arg⟩ :=
+          ih_depth (Core.Expr.depth arg) hdepth envVar envMap
           ⟨arg', sf.env, sf.heap, sf.trace⟩
           ⟨arg, sc.env, sc.heap, sc.trace, sc.funcs, sc.callStack⟩
-          ev_sub sa_flat rfl hrel_sub ⟨hsubstep⟩
+          ev_sub sa_flat rfl htrace henvCorr
+          ⟨scope, st, st1, by simp only [harg'_def, hst1_def]; exact (Prod.eta _).symm⟩
+          ⟨hsubstep⟩
         -- Construct Core step on .unary op arg
         have hcore_unary : Core.step? sc =
           some (ev_sub, Core.pushTrace { sc_arg with expr := .unary op sc_arg.expr, trace := sc.trace } ev_sub) := by
@@ -1420,7 +1411,6 @@ private theorem closureConvert_step_simulation
               { sc with expr := arg } from by cases sc; simp_all]; exact hcore_substep)
         set sc' := Core.pushTrace { sc_arg with expr := .unary op sc_arg.expr, trace := sc.trace } ev_sub
         refine ⟨sc', ⟨hcore_unary⟩, ?_⟩
-        obtain ⟨htrace_arg, henvCorr_arg, scope', st_a, st_a', hconv_arg⟩ := hrel_arg
         constructor
         · have hsf'_eq := (Prod.mk.inj (Option.some.inj hstep)).2
           rw [← hsf'_eq]; show sf.trace ++ [ev_sub] = sc.trace ++ [ev_sub]; rw [htrace]
@@ -1552,14 +1542,14 @@ private theorem closureConvert_step_simulation
         simp only [hsubstep] at hstep
         have hev_eq : ev = ev_sub := (Prod.mk.inj (Option.some.inj hstep)).1
         subst hev_eq
-        have hrel_sub : CC_SimRel s t ⟨arg', sf.env, sf.heap, sf.trace⟩
-            ⟨arg, sc.env, sc.heap, sc.trace, sc.funcs, sc.callStack⟩ := by
-          refine ⟨htrace, henvCorr, scope, st, st1, ?_⟩
-          simp only [harg'_def, hst1_def]; exact (Prod.eta _).symm
-        obtain ⟨sc_arg, ⟨hcore_substep⟩, hrel_arg⟩ := ih_depth (Core.Expr.depth arg) hdepth
+        -- Apply IH (envVar/envMap carried through induction)
+        obtain ⟨sc_arg, ⟨hcore_substep⟩, htrace_arg, henvCorr_arg, scope', st_a, st_a', hconv_arg⟩ :=
+          ih_depth (Core.Expr.depth arg) hdepth envVar envMap
           ⟨arg', sf.env, sf.heap, sf.trace⟩
           ⟨arg, sc.env, sc.heap, sc.trace, sc.funcs, sc.callStack⟩
-          ev_sub sa_flat rfl hrel_sub ⟨hsubstep⟩
+          ev_sub sa_flat rfl htrace henvCorr
+          ⟨scope, st, st1, by simp only [harg'_def, hst1_def]; exact (Prod.eta _).symm⟩
+          ⟨hsubstep⟩
         have hcore_throw : Core.step? sc =
           some (ev_sub, Core.pushTrace { sc_arg with expr := .throw sc_arg.expr, trace := sc.trace } ev_sub) := by
           rw [show sc = ⟨.throw arg, sc.env, sc.heap, sc.trace, sc.funcs, sc.callStack⟩
@@ -1569,7 +1559,6 @@ private theorem closureConvert_step_simulation
               { sc with expr := arg } from by cases sc; simp_all]; exact hcore_substep)
         set sc' := Core.pushTrace { sc_arg with expr := .throw sc_arg.expr, trace := sc.trace } ev_sub
         refine ⟨sc', ⟨hcore_throw⟩, ?_⟩
-        obtain ⟨htrace_arg, henvCorr_arg, scope', st_a, st_a', hconv_arg⟩ := hrel_arg
         constructor
         · have hsf'_eq := (Prod.mk.inj (Option.some.inj hstep)).2
           rw [← hsf'_eq]; show sf.trace ++ [ev_sub] = sc.trace ++ [ev_sub]; rw [htrace]
@@ -1775,14 +1764,14 @@ private theorem closureConvert_step_simulation
           simp only [hsubstep] at hstep
           have hev_eq : ev = ev_sub := (Prod.mk.inj (Option.some.inj hstep)).1
           subst hev_eq
-          have hrel_sub : CC_SimRel s t ⟨e', sf.env, sf.heap, sf.trace⟩
-              ⟨e, sc.env, sc.heap, sc.trace, sc.funcs, sc.callStack⟩ := by
-            refine ⟨htrace, henvCorr, scope, st, st1, ?_⟩
-            simp only [he'_def, hst1_def]; exact (Prod.eta _).symm
-          obtain ⟨sc_arg, ⟨hcore_substep⟩, hrel_arg⟩ := ih_depth (Core.Expr.depth e) hdepth
+          -- Apply IH (envVar/envMap carried through induction)
+          obtain ⟨sc_arg, ⟨hcore_substep⟩, htrace_arg, henvCorr_arg, scope', st_a, st_a', hconv_arg⟩ :=
+            ih_depth (Core.Expr.depth e) hdepth envVar envMap
             ⟨e', sf.env, sf.heap, sf.trace⟩
             ⟨e, sc.env, sc.heap, sc.trace, sc.funcs, sc.callStack⟩
-            ev_sub sa_flat rfl hrel_sub ⟨hsubstep⟩
+            ev_sub sa_flat rfl htrace henvCorr
+            ⟨scope, st, st1, by simp only [he'_def, hst1_def]; exact (Prod.eta _).symm⟩
+            ⟨hsubstep⟩
           have hcore_ret : Core.step? sc =
             some (ev_sub, Core.pushTrace { sc_arg with expr := .«return» (some sc_arg.expr), trace := sc.trace } ev_sub) := by
             rw [show sc = ⟨.«return» (some e), sc.env, sc.heap, sc.trace, sc.funcs, sc.callStack⟩
@@ -1792,7 +1781,6 @@ private theorem closureConvert_step_simulation
                 { sc with expr := e } from by cases sc; simp_all]; exact hcore_substep)
           set sc' := Core.pushTrace { sc_arg with expr := .«return» (some sc_arg.expr), trace := sc.trace } ev_sub
           refine ⟨sc', ⟨hcore_ret⟩, ?_⟩
-          obtain ⟨htrace_arg, henvCorr_arg, scope', st_a, st_a', hconv_arg⟩ := hrel_arg
           constructor
           · have hsf'_eq := (Prod.mk.inj (Option.some.inj hstep)).2
             rw [← hsf'_eq]; show sf.trace ++ [ev_sub] = sc.trace ++ [ev_sub]; rw [htrace]
@@ -1923,14 +1911,14 @@ private theorem closureConvert_step_simulation
           simp only [hsubstep] at hstep
           have hev_eq : ev = ev_sub := (Prod.mk.inj (Option.some.inj hstep)).1
           subst hev_eq
-          have hrel_sub : CC_SimRel s t ⟨e', sf.env, sf.heap, sf.trace⟩
-              ⟨e, sc.env, sc.heap, sc.trace, sc.funcs, sc.callStack⟩ := by
-            refine ⟨htrace, henvCorr, scope, st, st1, ?_⟩
-            simp only [he'_def, hst1_def]; exact (Prod.eta _).symm
-          obtain ⟨sc_arg, ⟨hcore_substep⟩, hrel_arg⟩ := ih_depth (Core.Expr.depth e) hdepth
+          -- Apply IH (envVar/envMap carried through induction)
+          obtain ⟨sc_arg, ⟨hcore_substep⟩, htrace_arg, henvCorr_arg, scope', st_a, st_a', hconv_arg⟩ :=
+            ih_depth (Core.Expr.depth e) hdepth envVar envMap
             ⟨e', sf.env, sf.heap, sf.trace⟩
             ⟨e, sc.env, sc.heap, sc.trace, sc.funcs, sc.callStack⟩
-            ev_sub sa_flat rfl hrel_sub ⟨hsubstep⟩
+            ev_sub sa_flat rfl htrace henvCorr
+            ⟨scope, st, st1, by simp only [he'_def, hst1_def]; exact (Prod.eta _).symm⟩
+            ⟨hsubstep⟩
           have hcore_yield : Core.step? sc =
             some (ev_sub, Core.pushTrace { sc_arg with expr := .yield (some sc_arg.expr) delegate, trace := sc.trace } ev_sub) := by
             rw [show sc = ⟨.yield (some e) delegate, sc.env, sc.heap, sc.trace, sc.funcs, sc.callStack⟩
@@ -1940,7 +1928,6 @@ private theorem closureConvert_step_simulation
                 { sc with expr := e } from by cases sc; simp_all]; exact hcore_substep)
           set sc' := Core.pushTrace { sc_arg with expr := .yield (some sc_arg.expr) delegate, trace := sc.trace } ev_sub
           refine ⟨sc', ⟨hcore_yield⟩, ?_⟩
-          obtain ⟨htrace_arg, henvCorr_arg, scope', st_a, st_a', hconv_arg⟩ := hrel_arg
           constructor
           · have hsf'_eq := (Prod.mk.inj (Option.some.inj hstep)).2
             rw [← hsf'_eq]; show sf.trace ++ [ev_sub] = sc.trace ++ [ev_sub]; rw [htrace]
@@ -2027,19 +2014,17 @@ private theorem closureConvert_step_simulation
         simp only [hsubstep] at hstep
         have hev_eq : ev = ev_sub := (Prod.mk.inj (Option.some.inj hstep)).1
         subst hev_eq
-        -- CC_SimRel for sub-expressions
-        have hrel_sub : CC_SimRel s t ⟨arg', sf.env, sf.heap, sf.trace⟩
-            ⟨arg, sc.env, sc.heap, sc.trace, sc.funcs, sc.callStack⟩ := by
-          refine ⟨htrace, henvCorr, scope, st, st1, ?_⟩
-          simp only [harg'_def, hst1_def]; exact (Prod.eta _).symm
         -- Flat.Step for sub-expression
         have hflat_step_sub : Flat.Step ⟨arg', sf.env, sf.heap, sf.trace⟩ ev_sub sa_flat :=
           ⟨hsubstep⟩
-        -- Apply IH
-        obtain ⟨sc_arg, ⟨hcore_substep⟩, hrel_arg⟩ := ih_depth (Core.Expr.depth arg) hdepth
+        -- Apply IH (envVar/envMap carried through induction)
+        obtain ⟨sc_arg, ⟨hcore_substep⟩, htrace_arg, henvCorr_arg, scope', st_a, st_a', hconv_arg⟩ :=
+          ih_depth (Core.Expr.depth arg) hdepth envVar envMap
           ⟨arg', sf.env, sf.heap, sf.trace⟩
           ⟨arg, sc.env, sc.heap, sc.trace, sc.funcs, sc.callStack⟩
-          ev_sub sa_flat rfl hrel_sub hflat_step_sub
+          ev_sub sa_flat rfl htrace henvCorr
+          ⟨scope, st, st1, by simp only [harg'_def, hst1_def]; exact (Prod.eta _).symm⟩
+          hflat_step_sub
         -- Construct Core step on .await arg using step_await_step_arg
         have hcore_await : Core.step? sc =
           some (ev_sub, Core.pushTrace { sc_arg with expr := .await sc_arg.expr, trace := sc.trace } ev_sub) := by
@@ -2050,8 +2035,6 @@ private theorem closureConvert_step_simulation
               { sc with expr := arg } from by cases sc; simp_all]; exact hcore_substep)
         set sc' := Core.pushTrace { sc_arg with expr := .await sc_arg.expr, trace := sc.trace } ev_sub
         refine ⟨sc', ⟨hcore_await⟩, ?_⟩
-        -- Build CC_SimRel for result states
-        obtain ⟨htrace_arg, henvCorr_arg, scope', st_a, st_a', hconv_arg⟩ := hrel_arg
         constructor
         · -- Trace
           have hsf'_eq := (Prod.mk.inj (Option.some.inj hstep)).2

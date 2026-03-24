@@ -1,4 +1,64 @@
 
+## Run: 2026-03-24T00:05:01+00:00
+
+### Build
+- **Status**: `lake build` **PASS** ✅
+
+### Metrics
+- **Sorry count**: 66 (threshold 100) — 18 CC + 45 Wasm + 2 ANF + 1 Lower
+- **Test262**: 3 pass, 50 fail, 3 skip, 5 xfail / 63 total (UNCHANGED 126+ hrs)
+- **Spec coverage**: 434/44380 lines (0.9%), 41 refs, 0 mismatches
+- **WasmCert refs**: 0 checked, 0 mismatches
+
+### Proof Chain Status
+```
+Source ──[elaborate]──> Core ──[closureConvert]──> Flat ──[anfConvert]──> ANF ──[lower]──> Wasm.IR ──[emit]──> Wasm
+         ✅ proved       18 sorry                    2 sorry              1 sorry          45 sorry
+```
+
+### Sorry Delta: 72→66 (-6)
+- CC: 25→18 (-7) — proof agent closed assign, if value, stepping sub-cases
+- Wasm: 44→45 (+1) — wasmspec proved globalSet+loop specific cases but general-case pattern adds 1 each time
+- ANF: 2 (unchanged)
+- Lower: 1 (unchanged)
+
+### Agent Status
+- **jsspec**: Healthy. Added 6 spec citations (35→41 refs, 0 mismatches). Test262 50 failures all Wasm-side. Redirected to more citations (target 50+).
+- **proof**: Last ran 16:30. Strong induction wrapper done. CC -7 sorries. Identified scope compositionality blocker for stepping sub-cases. Plan: convertExpr_scope_irrelevant + well-formedness.
+- **wasmspec**: Healthy. Proved globalSet + loop EmitSimRel cases. Added 5 Flat @[simp] lemmas. Wasm sorry net +1 due to general-case fallback pattern.
+
+### Abstraction Discovery
+
+**CC sorry taxonomy (18 total):**
+1. **Stepping sub-cases (4)**: lines 928, 1123, 1188, 1485/1486 — need IH + scope irrelevance
+2. **Heap/env correspondence (7)**: lines 1189-1195 — need HeapCorr in CC_SimRel
+3. **Heap/env/funcs (3)**: lines 1487-1489 — need HeapCorr + FuncsCorr
+4. **tryCatch (1)**: line 1591 — needs env correspondence
+5. **while_ unroll (1)**: line 1661 — CCState threading mismatch on unrolled expression
+6. **Captured var (1)**: line 768 — needs heap correspondence for .getEnv
+7. **Let init stepping (1)**: line 928 — stepping sub-case
+
+**while_ unroll insight (line 1661)**: Core while_ steps to `if cond (seq body (while_ cond body)) (lit undefined)`. Flat does the same but with converted sub-expressions. The CC_SimRel needs `∃ scope st st', (sf'.expr, st') = convertExpr sc'.expr scope envVar envMap st`. The difficulty: `convertExpr` on the unrolled Core expression threads state through if→cond→seq→body→while_→cond→body→lit, producing DIFFERENT state than the original while_ conversion. Two approaches:
+- Direct unfolding: show convertExpr on unrolled expr produces same sub-expressions
+- State independence: prove convertExpr output is independent of CCState for expressions without functionDef
+
+Wrote both approaches to proof prompt with Lean code.
+
+**Wasm general-case pattern**: Each time wasmspec proves a specific instruction case, a general-case fallback sorry remains. These 6 general cases (lines 6667, 6681, 6771, 6944, 7011, 7119) should be closable by contradiction since the specific constructor is already handled. Redirected wasmspec to prioritize these.
+
+### Actions Taken
+1. ✅ Updated proof prompt: CC sorry taxonomy + while_ unroll strategies + HeapCorr definition
+2. ✅ Updated wasmspec prompt: prioritize general-case sorry elimination (potential -6)
+3. ✅ Updated jsspec prompt: target 50+ refs, new citation targets
+4. ✅ Updated PROGRESS.md metrics table
+
+### Next Run Focus
+- Check if proof agent closes stepping sub-cases (seq at 1188 is simplest target)
+- Check if wasmspec closes general-case sorries (potential -6 batch)
+- Monitor spec citation progress
+
+---
+
 ## Run: 2026-03-23T19:05:01+00:00
 
 ### Build
@@ -3346,3 +3406,4 @@ Source ──[elaborate]──> Core ──[closureConvert]──> Flat ──[a
 
 ## Run: 2026-03-24T00:05:01+00:00
 
+2026-03-24T00:11:57+00:00 DONE

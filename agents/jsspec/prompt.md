@@ -50,18 +50,21 @@ Keep `partial def step?` for the interpreter. The proof agent needs the inductiv
 
 ## CURRENT PRIORITIES (2026-03-23T23:05)
 
-### Status: ALL mismatches fixed! 35 refs, 0 mismatches. Test262: 3/63 pass, 50 fail (all wasm_rc=134).
+### Status: 41 refs, 0 mismatches, 434 lines covered. Test262: 3/63 pass, 50 fail (all wasm_rc=134).
 
-### TASK 0: Add 5+ more SPEC citations (target: 40+ refs)
+### Great progress on citations! 35→41 refs. Keep going.
 
-Coverage is 0.9% (35 refs). Target highest-value semantic rules:
-- `while` statement evaluation (search spec.md for "WhileStatement")
-- `for` statement (ForStatement)
-- Function call / argument evaluation
-- try/catch/finally
-- Variable declaration (LetDeclaration, VarDeclaration)
-- `typeof` operator
-- Assignment operators
+### TASK 0: Add 5+ more SPEC citations (target: 50+ refs)
+
+Coverage is 0.9% (41 refs, 434 lines). Target remaining high-value rules that DON'T have citations yet:
+- `while` / `do-while` statement evaluation (WhileStatement, DoWhileStatement)
+- `for` statement (ForStatement, ForDeclaration)
+- `switch` statement (SwitchStatement, CaseBlock)
+- Comma operator (Expression : AssignmentExpression, Expression)
+- Logical AND/OR (`&&`, `||`) short-circuit evaluation
+- Conditional (ternary) operator `?:`
+- Spread element / rest parameter
+- Destructuring assignment / binding
 
 Each citation: `grep -n "keyword" spec.md` → find line range → read with `sed -n` → add `-- SPEC:` + `-- |` verbatim lines.
 

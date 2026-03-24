@@ -57,11 +57,18 @@ If ClosureConvertCorrect needs 600 lines of case analysis, WRITE 600 LINES. That
 ## Test262
 Read `logs/test262_summary.md` for failure categories. Fix compiler bugs that cause test262 failures.
 
-## CURRENT PRIORITIES (2026-03-23T23:05)
+## CURRENT PRIORITIES (2026-03-24T00:05)
 
-### Build: PASS ✅. Sorry: 65 (18 CC + 42 Wasm + 2 ANF + 1 Lower). CC DOWN 20→18!
+### Build: PASS ✅. Sorry: 66 (18 CC + 45 Wasm + 2 ANF + 1 Lower). CC DOWN 25→18!
 
-### You proved assign + if value cases. 5 stepping sub-cases remain — all identical pattern.
+### CC Sorry Map (18 total):
+- **4 stepping sub-cases**: lines 928, 1123, 1188, 1485/1486
+- **7 heap/env**: lines 1189-1195 (call, newObj, getProp, setProp, getIndex, setIndex, deleteProp)
+- **3 heap/env/funcs**: lines 1487-1489 (objectLit, arrayLit, functionDef)
+- **1 tryCatch**: line 1591
+- **1 while_ unroll**: line 1661
+- **1 captured var**: line 768
+- **1 let init not-value stepping**: line 928
 
 **TIME MANAGEMENT**:
 1. Do NOT run `lake build` at the start. Use `lean_diagnostic_messages` instead.
@@ -70,51 +77,64 @@ Read `logs/test262_summary.md` for failure categories. Fix compiler bugs that ca
 
 ### TASK 0: Close 3+ stepping sub-cases using the PROVEN typeof template
 
-The 5 remaining stepping sub-cases ALL follow the typeof pattern (see lines ~1260-1310 for template). Each is a `| none =>` branch where the sub-expression is not a value:
+The remaining stepping sub-cases ALL follow the typeof pattern (see lines ~1260-1310 for template). Each is a `| none =>` branch where the sub-expression is not a value:
 
-**Line 918 — let (init not value)**: Use `Core.step_let_step_init`. Wrap is `.let name X body`. convertExpr for `.let` threads state through init then body. The IH on depth gives you init correspondence; body state `st_a'` flows through.
+**Line 1188 — seq (lhs not value)**: Simplest. Use `Core.step_seq_nonvalue_lhs`. Wrap is `.seq X b`.
 
-**Line 1113 — if (cond not value)**: Use `Core.step_if_step_cond`. Wrap is `.if X then_ else_`. convertExpr threads through cond, then_, else_.
+**Line 1123 — if (cond not value)**: Use `Core.step_if_step_cond`. Wrap is `.if X then_ else_`.
 
-**Line 1178 — seq (lhs not value)**: Use `Core.step_seq_nonvalue_lhs`. Wrap is `.seq X b`. Simplest one — just `.seq X b`, no extra state threading.
+**Line 928 — let (init not value)**: Use `Core.step_let_step_init`. Wrap is `.let name X body`.
 
-**Line 1476 — binary (lhs not value)**: Use `Core.step_binary_nonvalue_lhs`. Wrap is `.binary op X rhs`.
+**Lines 1485/1486 — binary stepping**: lhs not value (`Core.step_binary_nonvalue_lhs`), rhs not value but lhs IS value (needs helper).
 
-**Line 1475 — binary (rhs not value, lhs IS value)**: Special case. You need a Core helper:
+### TASK 1: Close the while_ unroll sorry (line 1661)
+
+Line 1661 needs to show that the unrolled while_ expression `if cond (seq body (while_ cond body)) (lit undefined)` matches what `convertExpr` produces on the same Core expression. The problem is CCState threading:
+
 ```lean
-theorem step_binary_value_lhs_nonvalue_rhs (op : BinOp) (lv : Value) (rhs : Expr) (env : Env) (heap : Heap)
-    (trace : List TraceEvent) (funcs : Array FuncClosure)
-    (cs : List (List (VarName × Value)))
-    (hrhs : exprValue? rhs = none)
-    (t : TraceEvent) (sr : State)
-    (hstep : step? ⟨rhs, env, heap, trace, funcs, cs⟩ = some (t, sr)) :
-    step? ⟨.binary op (.lit lv) rhs, env, heap, trace, funcs, cs⟩ =
-      some (t, pushTrace { sr with expr := .binary op (.lit lv) sr.expr, trace := trace } t) := by
-  simp [step?, exprValue?, hrhs, hstep]
+-- Core while_ steps to: .if cond (.seq body (.while_ cond body)) (.lit .undefined)
+-- Flat while_ steps to: .if cond' (.seq body' (.while_ cond' body')) (.lit .undefined)
+-- where cond' = (convertExpr cond scope envVar envMap st).1
+--       body' = (convertExpr body scope envVar envMap st1).1  (st1 from cond)
+-- Need: ∃ scope' st0 st0', (.if cond' (.seq body' (.while_ cond' body')) (.lit .undefined), st0')
+--       = convertExpr (.if cond (.seq body (.while_ cond body)) (.lit .undefined)) scope' envVar envMap st0
 ```
 
-**START with line 1178 (seq)** — simplest. Then 1113 (if), then 918 (let).
+The key insight: `convertExpr (.if cond (.seq body (.while_ cond body)) (.lit .undefined)) scope envVar envMap st` threads state through cond→seq→body→while_→lit. The while_ part re-converts cond and body with a DIFFERENT state. So you need:
 
-### TASK 1: After stepping sub-cases, prepare for heap/env strengthening
-
-Lines 1179-1185 (call, newObj, getProp, setProp, getIndex, setIndex, deleteProp) are 7 sorries that ALL need CC_SimRel to track heap correspondence. Current CC_SimRel only has `sf.trace = sc.trace ∧ EnvCorr sc.env sf.env ∧ ∃ ... convertExpr`. After closing stepping sub-cases, the next architectural step is:
-
-Add to CC_SimRel:
 ```lean
-private def CC_SimRel (_s : Core.Program) (_t : Flat.Program)
-    (sf : Flat.State) (sc : Core.State) : Prop :=
-  sf.trace = sc.trace ∧
-  EnvCorr sc.env sf.env ∧
-  HeapCorr sc.heap sf.heap ∧  -- NEW: heap objects correspond
-  FuncsCorr sc.funcs sf.funcs ∧  -- NEW: function closures correspond
-  ∃ (scope : List String) (envVar : String) (envMap : Flat.EnvMapping) (st st' : Flat.CCState),
-    (sf.expr, st') = Flat.convertExpr sc.expr scope envVar envMap st
+-- Prove: convertExpr is DETERMINISTIC on sub-expressions that don't bind new variables.
+-- For while_: cond and body don't bind new CC variables (they don't introduce closures that
+-- need fresh names). So convertExpr cond scope envVar envMap st = convertExpr cond scope envVar envMap st'
+-- for any st, st' (when cond has no functionDef nodes).
+-- ALTERNATIVELY: just show the specific equality holds by unfolding convertExpr for .if/.seq/.while_/.lit
+-- and showing the sub-expression results match what the while_ case already computed.
 ```
-Don't attempt this yet — finish stepping sub-cases first.
+
+Try the direct unfolding approach first:
+```lean
+    -- At the sorry on line 1661:
+    refine ⟨hsf'_trace, henv', scope, envVar, envMap, st, ?_⟩
+    rw [hsc'_expr, hsf'_expr]
+    simp only [Flat.convertExpr]
+    -- Now the goal should be about matching the sub-expressions
+    -- Use the facts that cond' and body' are already convertExpr outputs
+```
+
+### TASK 2: After stepping sub-cases, add HeapCorr to CC_SimRel
+
+Lines 1189-1195 (7 heap/env sorries) ALL need CC_SimRel to track heap correspondence. Define:
+```lean
+private def HeapCorr (ch : Core.Heap) (fh : Flat.Heap) : Prop :=
+  ch.size = fh.size ∧
+  ∀ i, i < ch.size → ∃ cv fv, ch[i]? = some cv ∧ fh[i]? = some fv ∧
+    (∀ k, cv.lookup k = some v → fv.lookup k = some (Flat.convertValue v)) ∧
+    (∀ k, fv.lookup k = some fv' → ∃ v, cv.lookup k = some v ∧ fv' = Flat.convertValue v)
+```
+Add `HeapCorr sc.heap sf.heap` to CC_SimRel. Then prove preservation for alloc/update/get.
 
 ### ABSOLUTELY DO NOT:
 - Run `lake build` at the start of your run
-- Attempt heap/funcs cases (lines 1179-1185) — these need CC_SimRel changes
 - Refactor existing proved cases
 - Spend more than 15 minutes on any single sorry
 

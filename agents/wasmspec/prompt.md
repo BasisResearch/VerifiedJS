@@ -62,32 +62,35 @@ Then construct the matching Step derivation in Lean. If you cannot, your semanti
 3. Keep definitions structurally simple for proofs.
 4. Add @[simp] lemmas for everything the proof agent might need.
 
-## CURRENT PRIORITIES (2026-03-23T23:05)
+## CURRENT PRIORITIES (2026-03-24T00:05)
 
-### Build: PASS ✅. Sorry: 65 total (42 in Wasm/Semantics.lean). Wasm DOWN 46→42! GREAT PROGRESS!
+### Build: PASS ✅. Sorry: 66 total (45 in Wasm/Semantics.lean). You proved globalSet + loop cases!
 
 ### ⚠️ TIMEOUT PREVENTION: DO EXACTLY 1 TASK, then build, log, EXIT.
 
 Stay under 40 min. Your timeouts happen when you try too much.
 
-### Wasm Sorry Breakdown (42 total in Wasm/Semantics.lean):
-- **LowerSimRel.step_sim** (~15): lines 5773, 5780, 5849, 5894, 5902, 5906, 5909, 5912, 5915, 5918, 5921, 5924, 5927, 5930, 5933
-- **EmitSimRel.step_sim** (~21): lines 6636, 6654, 6668, 6682, 6685, 6772, 6945, 7012, 7120, 7123, 7126, 7129, 7132, 7135, 7138, 7141, 7158, 7176, 7179, 7182, 7185, 7188, 7254, 7257
-- **LowerSimRel.init** (3): lines 7416, 7431, 7455 (all `by sorry`)
-- **General case** (6): lines 6668, 6682, 6772, 6945, 7012, 7120
+### Wasm Sorry Breakdown (45 total in Wasm/Semantics.lean):
+- **LowerSimRel.step_sim** (~13): lines 5773, 5780, 5849, 5894, 5902, 5906, 5909, 5912, 5915, 5918, 5921, 5924, 5927, 5930, 5933
+- **EmitSimRel.step_sim** (~26): lines 6527, 6635, 6653, 6667, 6681, 6684, 6771, 6944, 7011, 7119, 7122, 7125, 7128, 7131, 7134, 7137, 7140, 7157, 7175, 7178, 7181, 7184, 7187, 7253, 7256
+- **LowerSimRel.init** (3): lines 7415, 7430, 7454 (all `by sorry`)
+- **General case** (6): lines 6667, 6681, 6771, 6944, 7011, 7119
 
-### TASK 0: Keep closing "general case" EmitSimRel sorries
+### TASK 0: Close "general case" EmitSimRel sorries (HIGHEST PRIORITY)
 
-You closed 4 Wasm sorries since last time — excellent! The 6 remaining general-case sorries at lines 6668, 6682, 6772, 6945, 7012, 7120 should be closable by the same approach you used.
+The 6 general-case sorries at lines 6667, 6681, 6771, 6944, 7011, 7119 are fallbacks for instruction cases where the SPECIFIC constructor is already proved (block, loop, globalSet, etc). These should be closable by contradiction:
 
 1. `lean_goal` at the sorry line
-2. Check if hypothesis contradicts the specific constructor already proved
-3. Use `cases`/`contradiction`/`simp` to close
+2. The hypothesis should say the instruction IS the specific constructor (e.g., `.block`)
+3. But you're in the general-case branch — so the hypothesis should contradict the match
+4. Use `cases`/`contradiction`/`simp` to close
+
+If 1 general case closes, the same pattern should work for all 6, yielding -6 sorries.
 
 ### ALTERNATIVE: LowerSimRel step_sim cases (lines 5894-5933)
 
-These are 12 individual instruction cases. Pick the simplest one:
-1. `lean_goal` at line 5894
+These are 12 individual instruction cases. Pick the simplest one (e.g., `drop`, `local.get`, `local.set`):
+1. `lean_goal` at the sorry line
 2. Understand what ANF step is being simulated
 3. Show the IR step matches
 
