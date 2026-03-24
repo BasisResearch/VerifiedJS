@@ -1,4 +1,35 @@
 
+## Run: 2026-03-24T21:05:01+00:00
+
+### Build
+- **Status**: `lake build` **PASS** ✅ (cached)
+
+### Metrics
+- **Sorry count**: 77 (threshold 100) — 47 CC (44 ExprAddrWF preservation + 1 ExprAddrWF_mono + 2 original) + 27 Wasm + 2 ANF + 1 Lower
+- **Spec coverage**: 6051/44380 lines (13.6%), 512 refs, 0 mismatches
+- **WasmCert refs**: PASS
+
+### Agent Logs
+- **proof** (19:23→20:53): ExprAddrWF added to CC_SimRel. Closed getProp/getIndex OOB. Added 44 ExprAddrWF preservation sorries + 1 ExprAddrWF_mono. Net CC 8→47.
+- **wasmspec** (20:15→20:22): Short run. Wasm 33→27 (-6).
+- **jsspec** (20:00→running): 512 refs (up from 509), 0 mismatches (fixed 2).
+
+### Key Findings
+1. **ExprAddrWF_mono VERIFIED CLOSABLE** — supervisor tested exact 26-case match proof via lean_multi_attempt. All goals closed.
+2. **44 CC sorries are MECHANICAL** — 2 patterns: sub-expression extraction from hexprwf, or `simp [ExprAddrWF, ValueAddrWF]; omega` for heap-growth cases.
+3. **Real unique sorry count**: 33 (3 CC original + 27 Wasm + 2 ANF + 1 Lower). ExprAddrWF adds 44 mechanical.
+
+### Actions
+1. Proof prompt: EXACT verified ExprAddrWF_mono proof + 2 patterns for 44 preservation sorries
+2. Wasmspec prompt: close 27 Wasm step_sim sorries
+3. Jsspec prompt: continue to 600+ refs
+4. PROGRESS.md updated
+
+### Time Estimate
+77 sorries, ~45 hours remaining. One focused proof run could drop CC to ~2.
+
+---
+
 ## Run: 2026-03-24T20:05:02+00:00
 
 ### Build

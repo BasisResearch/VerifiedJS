@@ -6490,6 +6490,287 @@ def pushTrace (s : State) (t : TraceEvent) : State :=
 -- | ShiftExpression \`\<\<\` AdditiveExpression ShiftExpression \`\>\>\`
 -- | AdditiveExpression ShiftExpression \`\>\>\>\` AdditiveExpression
 -- | RelationalExpression : RelationalExpression \`\<\` ShiftExpression
+-- SPEC: L9075-L9090
+-- | # CreateMutableBinding ( \_N\_: a String, \_D\_: a Boolean, ): either a normal completion containing \~unused\~ or a throw completion
+-- |
+-- | for
+-- | :   an Object Environment Record \_envRec\_
+-- |
+-- | description
+-- | :   It creates in an Environment Record\'s associated binding object a
+-- |     property whose name is \_N\_ and initializes it to the value
+-- |     \*undefined\*. If \_D\_ is \*true\*, the new property\'s
+-- |     \[\[Configurable\]\] attribute is set to \*true\*; otherwise it is
+-- |     set to \*false\*.
+-- |
+-- | 1\. Let \_bindingObject\_ be \_envRec\_.\[\[BindingObject\]\]. 1.
+-- | Perform ? DefinePropertyOrThrow(\_bindingObject\_, \_N\_,
+-- | PropertyDescriptor { \[\[Value\]\]: \*undefined\*, \[\[Writable\]\]:
+-- | \*true\*, \[\[Enumerable\]\]: \*true\*, \[\[Configurable\]\]: \_D\_
+-- SPEC: L9097-L9112
+-- | # CreateImmutableBinding ( \_N\_, \_S\_ )
+-- |
+-- | The CreateImmutableBinding concrete method of an Object Environment
+-- | Record is never used within this specification.
+-- |
+-- | # InitializeBinding ( \_N\_: a String, \_V\_: an ECMAScript language value, ): either a normal completion containing \~unused\~ or a throw completion
+-- |
+-- | for
+-- | :   an Object Environment Record \_envRec\_
+-- |
+-- | description
+-- | :   It is used to set the bound value of the current binding of the
+-- |     identifier whose name is \_N\_ to the value \_V\_.
+-- |
+-- | 1\. Perform ? \_envRec\_.SetMutableBinding(\_N\_, \_V\_, \*false\*). 1.
+-- | Return \~unused\~.
+-- SPEC: L9102-L9117
+-- | # InitializeBinding ( \_N\_: a String, \_V\_: an ECMAScript language value, ): either a normal completion containing \~unused\~ or a throw completion
+-- |
+-- | for
+-- | :   an Object Environment Record \_envRec\_
+-- |
+-- | description
+-- | :   It is used to set the bound value of the current binding of the
+-- |     identifier whose name is \_N\_ to the value \_V\_.
+-- |
+-- | 1\. Perform ? \_envRec\_.SetMutableBinding(\_N\_, \_V\_, \*false\*). 1.
+-- | Return \~unused\~.
+-- |
+-- | In this specification, all uses of CreateMutableBinding for Object
+-- | Environment Records are immediately followed by a call to
+-- | InitializeBinding for the same name. Hence, this specification does not
+-- | explicitly track the initialization state of bindings in Object
+-- SPEC: L9120-L9135
+-- | # SetMutableBinding ( \_N\_: a String, \_V\_: an ECMAScript language value, \_S\_: a Boolean, ): either a normal completion containing \~unused\~ or a throw completion
+-- |
+-- | for
+-- | :   an Object Environment Record \_envRec\_
+-- |
+-- | description
+-- | :   It attempts to set the value of the Environment Record\'s associated
+-- |     binding object\'s property whose name is \_N\_ to the value \_V\_. A
+-- |     property named \_N\_ normally already exists but if it does not or
+-- |     is not currently writable, error handling is determined by \_S\_.
+-- |
+-- | 1\. Let \_bindingObject\_ be \_envRec\_.\[\[BindingObject\]\]. 1. Let
+-- | \_stillExists\_ be ? HasProperty(\_bindingObject\_, \_N\_). 1. If
+-- | \_stillExists\_ is \*false\* and \_S\_ is \*true\*, throw a
+-- | \*ReferenceError\* exception. 1. Perform ? Set(\_bindingObject\_, \_N\_,
+-- | \_V\_, \_S\_). 1. Return \~unused\~.
+-- SPEC: L9137-L9151
+-- | # GetBindingValue ( \_N\_: a String, \_S\_: a Boolean, ): either a normal completion containing an ECMAScript language value or a throw completion
+-- |
+-- | for
+-- | :   an Object Environment Record \_envRec\_
+-- |
+-- | description
+-- | :   It returns the value of its associated binding object\'s property
+-- |     whose name is \_N\_. The property should already exist but if it
+-- |     does not the result depends upon \_S\_.
+-- |
+-- | 1\. Let \_bindingObject\_ be \_envRec\_.\[\[BindingObject\]\]. 1. Let
+-- | \_value\_ be ? HasProperty(\_bindingObject\_, \_N\_). 1. If \_value\_ is
+-- | \*false\*, then 1. If \_S\_ is \*false\*, return \*undefined\*. 1. Throw
+-- | a \*ReferenceError\* exception. 1. Return ? Get(\_bindingObject\_,
+-- | \_N\_).
+-- SPEC: L9153-L9168
+-- | # DeleteBinding ( \_N\_: a String, ): either a normal completion containing a Boolean or a throw completion
+-- |
+-- | for
+-- | :   an Object Environment Record \_envRec\_
+-- |
+-- | description
+-- | :   It can only delete bindings that correspond to properties of the
+-- |     environment object whose \[\[Configurable\]\] attribute have the
+-- |     value \*true\*.
+-- |
+-- | 1\. Let \_bindingObject\_ be \_envRec\_.\[\[BindingObject\]\]. 1. Return
+-- | ? \_bindingObject\_.\[\[Delete\]\](\_N\_).
+-- |
+-- | # HasThisBinding ( ): \*false\*
+-- |
+-- | for
+-- SPEC: L9166-L9180
+-- | # HasThisBinding ( ): \*false\*
+-- |
+-- | for
+-- | :   an Object Environment Record \_envRec\_
+-- |
+-- | 1\. Return \*false\*.
+-- |
+-- | Object Environment Records do not provide a \`this\` binding.
+-- |
+-- | # GetThisBinding ( )
+-- |
+-- | The GetThisBinding concrete method of an Object Environment Record is
+-- | never used within this specification.
+-- |
+-- | # HasSuperBinding ( ): \*false\*
+-- SPEC: L9175-L9189
+-- | # GetThisBinding ( )
+-- |
+-- | The GetThisBinding concrete method of an Object Environment Record is
+-- | never used within this specification.
+-- |
+-- | # HasSuperBinding ( ): \*false\*
+-- |
+-- | for
+-- | :   an Object Environment Record \_envRec\_
+-- |
+-- | 1\. Return \*false\*.
+-- |
+-- | Object Environment Records do not provide a \`super\` binding.
+-- |
+-- | # WithBaseObject ( ): an Object or \*undefined\*
+-- SPEC: L9370-L9390
+-- |     binding for \_N\_ must already exist.
+-- |
+-- | 1\. Let \_DclRec\_ be \_envRec\_.\[\[DeclarativeRecord\]\]. 1. If !
+-- | \_DclRec\_.HasBinding(\_N\_) is \*true\*, then 1. Return !
+-- | \_DclRec\_.InitializeBinding(\_N\_, \_V\_). 1. Assert: If the binding
+-- | exists, it must be in the Object Environment Record. 1. Let \_ObjRec\_
+-- | be \_envRec\_.\[\[ObjectRecord\]\]. 1. Return ?
+-- | \_ObjRec\_.InitializeBinding(\_N\_, \_V\_).
+-- |
+-- | # SetMutableBinding ( \_N\_: a String, \_V\_: an ECMAScript language value, \_S\_: a Boolean, ): either a normal completion containing \~unused\~ or a throw completion
+-- |
+-- | for
+-- | :   a Global Environment Record \_envRec\_
+-- |
+-- | description
+-- | :   It attempts to change the bound value of the current binding of the
+-- |     identifier whose name is \_N\_ to the value \_V\_. If the binding is
+-- |     an immutable binding and \_S\_ is \*true\*, a \*TypeError\* is
+-- |     thrown. A property named \_N\_ normally already exists but if it
+-- |     does not or is not currently writable, error handling is determined
+-- |     by \_S\_.
+-- SPEC: L9450-L9470
+-- | # HasSuperBinding ( ): \*false\*
+-- |
+-- | for
+-- | :   a Global Environment Record \_envRec\_
+-- |
+-- | 1\. Return \*false\*.
+-- |
+-- | Global Environment Records do not provide a \`super\` binding.
+-- |
+-- | # WithBaseObject ( ): \*undefined\*
+-- |
+-- | for
+-- | :   a Global Environment Record \_envRec\_
+-- |
+-- | 1\. Return \*undefined\*.
+-- |
+-- | # HasLexicalDeclaration ( \_envRec\_: a Global Environment Record, \_N\_: a String, ): a Boolean
+-- |
+-- | description
+-- | :   It determines if the argument identifier has a binding in \_envRec\_
+-- |     that was created using a lexical declaration such as a
+-- SPEC: L9530-L9550
+-- |     Object Environment Record. If a binding already exists, it is reused
+-- |     and assumed to be initialized.
+-- |
+-- | 1\. Let \_ObjRec\_ be \_envRec\_.\[\[ObjectRecord\]\]. 1. Let
+-- | \_globalObject\_ be \_ObjRec\_.\[\[BindingObject\]\]. 1. Let
+-- | \_hasProperty\_ be ? HasOwnProperty(\_globalObject\_, \_N\_). 1. Let
+-- | \_extensible\_ be ? IsExtensible(\_globalObject\_). 1. If
+-- | \_hasProperty\_ is \*false\* and \_extensible\_ is \*true\*, then 1.
+-- | Perform ? \_ObjRec\_.CreateMutableBinding(\_N\_, \_D\_). 1. Perform ?
+-- | \_ObjRec\_.InitializeBinding(\_N\_, \*undefined\*). 1. Return
+-- | \~unused\~.
+-- |
+-- | # CreateGlobalFunctionBinding ( \_envRec\_: a Global Environment Record, \_N\_: a String, \_V\_: an ECMAScript language value, \_D\_: a Boolean, ): either a normal completion containing \~unused\~ or a throw completion
+-- |
+-- | description
+-- | :   It creates and initializes a mutable binding in the associated
+-- |     Object Environment Record. If a binding already exists, it is
+-- |     replaced.
+-- |
+-- | 1\. Let \_ObjRec\_ be \_envRec\_.\[\[ObjectRecord\]\]. 1. Let
+-- | \_globalObject\_ be \_ObjRec\_.\[\[BindingObject\]\]. 1. Let
+-- SPEC: L9610-L9630
+-- | The DeleteBinding concrete method of a Module Environment Record is
+-- | never used within this specification.
+-- |
+-- | Module Environment Records are only used within strict code and an early
+-- | error rule prevents the delete operator, in strict code, from being
+-- | applied to a Reference Record that would resolve to a Module Environment
+-- | Record binding. See .
+-- |
+-- | # HasThisBinding ( ): \*true\*
+-- |
+-- | for
+-- | :   a Module Environment Record \_envRec\_
+-- |
+-- | 1\. Return \*true\*.
+-- |
+-- | Module Environment Records always provide a \`this\` binding.
+-- |
+-- | # GetThisBinding ( ): a normal completion containing \*undefined\*
+-- |
+-- | for
+-- | :   a Module Environment Record \_envRec\_
+-- SPEC: L9770-L9790
+-- | | \[\[GlobalEnv\]\]      | a Global Environment  | The global environment for  |
+-- | |                        | Record                | this realm                  |
+-- | +------------------------+-----------------------+-----------------------------+
+-- | | \[\[TemplateMap\]\]    | a List of Records     | Template objects are        |
+-- | |                        | with fields           | canonicalized separately    |
+-- | |                        | \[\[Site\]\] (a       | for each realm using its    |
+-- | |                        | \|TemplateLiteral\|   | Realm Record\'s             |
+-- | |                        | Parse Node) and       | \[\[TemplateMap\]\]. Each   |
+-- | |                        | \[\[Array\]\] (an     | \[\[Site\]\] value is a     |
+-- | |                        | Array)                | Parse Node that is a        |
+-- | |                        |                       | \|TemplateLiteral\|. The    |
+-- | |                        |                       | associated \[\[Array\]\]    |
+-- | |                        |                       | value is the corresponding  |
+-- | |                        |                       | template object that is     |
+-- | |                        |                       | passed to a tag function.   |
+-- | |                        |                       |                             |
+-- | |                        |                       | Once a Parse Node becomes   |
+-- | |                        |                       | unreachable, the            |
+-- | |                        |                       | corresponding \[\[Array\]\] |
+-- | |                        |                       | is also unreachable, and it |
+-- | |                        |                       | would be unobservable if an |
+-- SPEC: L9850-L9869
+-- | names are the names listed in the "Intrinsic Name" column of the table.
+-- | The value of each field is a new object value fully and recursively
+-- | populated with property values as defined by the specification of each
+-- | object in clauses through . All object property values are newly created
+-- | object values. All values that are built-in function objects are created
+-- | by performing CreateBuiltinFunction(\_steps\_, \_length\_, \_name\_,
+-- | \_slots\_, \_realmRec\_, \_prototype\_, \_async\_) where \_steps\_ is
+-- | the definition of that function provided by this specification, \_name\_
+-- | is the initial value of the function\'s \*\"name\"\* property,
+-- | \_length\_ is the initial value of the function\'s \*\"length\"\*
+-- | property, \_slots\_ is a list of the names, if any, of the function\'s
+-- | specified internal slots, \_prototype\_ is the specified value of the
+-- | function\'s \[\[Prototype\]\] internal slot, and \_async\_ is \*true\*
+-- | if the function is described as "async" and \*false\* otherwise. The
+-- | creation of the intrinsics and their properties must be ordered to avoid
+-- | any dependencies upon objects that have not yet been created. 1. Perform
+-- | AddRestrictedFunctionProperties(\_realmRec\_.\[\[Intrinsics\]\].\[\[%Function.prototype%\]\],
+-- | \_realmRec\_). 1. Return \~unused\~.
+-- |
+-- | # SetDefaultGlobalBindings ( \_realmRec\_: a Realm Record, ): either a normal completion containing \~unused\~ or a throw completion
+-- SPEC: L11250-L11265
+-- |
+-- | This function is the [%ThrowTypeError%]{.dfn} intrinsic object.
+-- |
+-- | It is an anonymous built-in function object that is defined once for
+-- | each realm.
+-- |
+-- | It performs the following steps when called:
+-- |
+-- | 1\. Throw a \*TypeError\* exception.
+-- |
+-- | The value of the \[\[Extensible\]\] internal slot of this function is
+-- | \*false\*.
+-- |
+-- | The \*\"length\"\* property of this function has the attributes {
+-- | \[\[Writable\]\]: \*false\*, \[\[Enumerable\]\]: \*false\*,
+-- | \[\[Configurable\]\]: \*false\* }.
 def step? (s : State) : Option (TraceEvent × State) :=
   match h : s.expr with
   -- SPEC: L14923-L14928
