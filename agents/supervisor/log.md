@@ -3797,3 +3797,53 @@ Source ──[elaborate]──> Core ──[closureConvert]──> Flat ──[a
 
 ## Run: 2026-03-24T11:05:01+00:00
 
+### Build
+- **Status**: `lake build` **PASS** ✅
+
+### Metrics
+- **Sorry count**: 42 (threshold 100) — 8 CC + 31 Wasm + 2 ANF + 1 Lower
+- **Test262**: 3 pass, 50 fail, 3 skip, 5 xfail / 63 total (UNCHANGED 143+ hrs)
+- **Spec coverage**: 2413/44380 lines (5.4%), 215 refs, 46 mismatches (UP from 180 refs/0 mismatches — REGRESSION)
+- **WasmCert refs**: 0 checked, 0 mismatches
+
+### Proof Chain Status
+```
+Source ──[elaborate]──> Core ──[closureConvert]──> Flat ──[anfConvert]──> ANF ──[lower]──> Wasm.IR ──[emit]──> Wasm
+         ✅ proved       8 sorry                     2 sorry              1 sorry          31 sorry
+```
+
+### Sorry Delta: 46→42 (-4)
+- CC: 10→8 (-2) — **getIndex + setIndex CLOSED** by proof agent (same pattern as getProp/setProp/deleteProp)
+- Wasm: 33→31 (-2) — wasmspec closed 2 more
+- ANF: 2 (unchanged)
+- Lower: 1 (unchanged)
+
+### Agent Status
+- **proof**: Running (10:30 started). Closed getIndex + setIndex since last prompt update. All 5 heap ops now proved! 8 CC sorries remain.
+- **wasmspec**: Running (10:15 started). Wasm 33→31 (-2). Still timing out but making progress. Call stub STILL not fixed.
+- **jsspec**: Running (11:00 started). Added 35 new refs (180→215) but introduced **46 mismatches** (0→46). Quality regression. Redirected to fix all mismatches FIRST.
+
+### Abstraction Discovery
+
+**CC sorry taxonomy (8 remaining):**
+1. **captured var (1)**: line 813 — stuttering simulation (Flat 2 steps vs Core 1 step). Needs `Flat.Steps` not `Flat.Step`.
+2. **call BLOCKED (1)**: line 1523 — Flat stub. Waiting on wasmspec.
+3. **newObj (1)**: line 1524 — heap allocation correspondence.
+4. **objectLit/arrayLit/functionDef (3)**: lines 2890-2892 — need heap/env correspondence for allocation. `allocFreshObject` is private — proof agent may need to work structurally (as with getProp).
+5. **isCallFrame (2)**: lines 3026, 3139 — `catchParam = "__call_frame_return__"` is unreachable for CC'd source. Need well-formedness predicate. EASIEST WIN.
+
+**Key insight**: isCallFrame is the lowest-hanging fruit. The proof agent just needs to add a well-formedness hypothesis to CC_SimRel (or prove that convertExpr never generates `__call_frame_return__` as a catchParam). Then `absurd hcf h_wf` closes both sorries.
+
+### Prompts Updated
+1. ✅ Updated proof prompt (2026-03-24T11:05): Celebrated getIndex/setIndex. New CC sorry map (8 total, corrected line numbers). TASK 0 = isCallFrame (easiest), TASK 1 = objectLit/arrayLit/functionDef, TASK 2 = captured var, TASK 3 = ANF.
+2. ✅ Updated wasmspec prompt (2026-03-24T11:05): Acknowledged Wasm 33→31 progress. Updated sorry line numbers. TASK 0 = call stub (high impact), TASK 1 = close Wasm sorries.
+3. ✅ Updated jsspec prompt (2026-03-24T11:05): EMERGENCY — 46 mismatches. Fix ALL before adding new citations.
+4. ✅ Updated PROGRESS.md: metrics table, proof chain (CC 10→8, Wasm 33→31).
+
+### Next Run Focus
+- Monitor proof agent: did it close isCallFrame sorries?
+- Check wasmspec: did it fix call stub? Did Wasm sorry go down?
+- Track jsspec mismatches: should go from 46→0
+2026-03-24T11:05:01+00:00 DONE
+
+2026-03-24T11:21:27+00:00 DONE

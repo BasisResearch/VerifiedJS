@@ -1249,6 +1249,264 @@ def evalUnary : UnaryOp → Value → Value
   -- | 𝔽(\_int32bit\_ - 2^32^). 1. Return 𝔽(\_int32bit\_).
   | .bitNot, v => .number (~~~(toNumber v |>.toUInt32)).toFloat
 
+-- SPEC: L6814-L6833
+-- | # SetIntegrityLevel ( \_O\_: an Object, \_level\_: \~sealed\~ or \~frozen\~, ): either a normal completion containing a Boolean or a throw completion
+-- |
+-- | description
+-- | :   It is used to fix the set of own properties of an object.
+-- |
+-- | 1\. Let \_status\_ be ? \_O\_.\[\[PreventExtensions\]\](). 1. If
+-- | \_status\_ is \*false\*, return \*false\*. 1. Let \_keys\_ be ?
+-- | \_O\_.\[\[OwnPropertyKeys\]\](). 1. If \_level\_ is \~sealed\~, then 1.
+-- | For each element \_k\_ of \_keys\_, do 1. Perform ?
+-- | DefinePropertyOrThrow(\_O\_, \_k\_, PropertyDescriptor {
+-- | \[\[Configurable\]\]: \*false\* }). 1. Else, 1. Assert: \_level\_ is
+-- | \~frozen\~. 1. For each element \_k\_ of \_keys\_, do 1. Let
+-- | \_currentDesc\_ be ? \_O\_.\[\[GetOwnProperty\]\](\_k\_). 1. If
+-- | \_currentDesc\_ is not \*undefined\*, then 1. If
+-- | IsAccessorDescriptor(\_currentDesc\_) is \*true\*, then 1. Let \_desc\_
+-- | be the PropertyDescriptor { \[\[Configurable\]\]: \*false\* }. 1.
+-- | Else, 1. Let \_desc\_ be the PropertyDescriptor { \[\[Configurable\]\]:
+-- | \*false\*, \[\[Writable\]\]: \*false\* }. 1. Perform ?
+-- | DefinePropertyOrThrow(\_O\_, \_k\_, \_desc\_). 1. Return \*true\*.
+-- SPEC: L6878-L6895
+-- | # CreateListFromArrayLike ( \_obj\_: an ECMAScript language value, optional \_validElementTypes\_: \~all\~ or \~property-key\~, ): either a normal completion containing a List of ECMAScript language values or a throw completion
+-- |
+-- | description
+-- | :   It is used to create a List value whose elements are provided by the
+-- |     indexed properties of \_obj\_. \_validElementTypes\_ indicates the
+-- |     types of values that are allowed as elements.
+-- |
+-- | 1\. If \_validElementTypes\_ is not present, set \_validElementTypes\_
+-- | to \~all\~. 1. If \_obj\_ is not an Object, throw a \*TypeError\*
+-- | exception. 1. Let \_len\_ be ? LengthOfArrayLike(\_obj\_). 1. Let
+-- | \_list\_ be a new empty List. 1. Let \_index\_ be 0. 1. Repeat, while
+-- | \_index\_ \< \_len\_, 1. Let \_indexName\_ be !
+-- | ToString(𝔽(\_index\_)). 1. Let \_next\_ be ? Get(\_obj\_,
+-- | \_indexName\_). 1. If \_validElementTypes\_ is \~property-key\~ and
+-- | \_next\_ is not a property key, throw a \*TypeError\* exception. 1.
+-- | Append \_next\_ to \_list\_. 1. Set \_index\_ to \_index\_ + 1. 1.
+-- | Return \_list\_.
+-- SPEC: L18325-L18340
+-- | # Runtime Semantics: Evaluation
+-- |
+-- | WithStatement : \`with\` \`(\` Expression \`)\` Statement 1. Let \_val\_
+-- | be ? Evaluation of \|Expression\|. 1. Let \_obj\_ be ? ToObject(?
+-- | GetValue(\_val\_)). 1. Let \_oldEnv\_ be the running execution
+-- | context\'s LexicalEnvironment. 1. Let \_newEnv\_ be
+-- | NewObjectEnvironment(\_obj\_, \*true\*, \_oldEnv\_). 1. Set the running
+-- | execution context\'s LexicalEnvironment to \_newEnv\_. 1. Let \_C\_ be
+-- | Completion(Evaluation of \|Statement\|). 1. Set the running execution
+-- | context\'s LexicalEnvironment to \_oldEnv\_. 1. Return ?
+-- | UpdateEmpty(\_C\_, \*undefined\*).
+-- |
+-- | No matter how control leaves the embedded \|Statement\|, whether
+-- | normally or by some form of abrupt completion or exception, the
+-- | LexicalEnvironment is always restored to its former state.
+-- SPEC: L17484-L17503
+-- | # Runtime Semantics: PropertyBindingInitialization ( \_value\_: an ECMAScript language value, \_environment\_: an Environment Record or \*undefined\*, ): either a normal completion containing a List of property keys or an abrupt completion
+-- |
+-- | description
+-- | :   It collects a list of all bound property names.
+-- |
+-- | BindingPropertyList : BindingPropertyList \`,\` BindingProperty 1. Let
+-- | \_boundNames\_ be ? PropertyBindingInitialization of
+-- | \|BindingPropertyList\| with arguments \_value\_ and \_environment\_. 1.
+-- | Let \_nextNames\_ be ? PropertyBindingInitialization of
+-- | \|BindingProperty\| with arguments \_value\_ and \_environment\_. 1.
+-- | Return the list-concatenation of \_boundNames\_ and \_nextNames\_.
+-- | BindingProperty : SingleNameBinding 1. Let \_name\_ be the sole element
+-- | of the BoundNames of \|SingleNameBinding\|. 1. Perform ?
+-- | KeyedBindingInitialization of \|SingleNameBinding\| with arguments
+-- | \_value\_, \_environment\_, and \_name\_. 1. Return « \_name\_ ».
+-- | BindingProperty : PropertyName \`:\` BindingElement 1. Let \_P\_ be ?
+-- | Evaluation of \|PropertyName\|. 1. Perform ? KeyedBindingInitialization
+-- | of \|BindingElement\| with arguments \_value\_, \_environment\_, and
+-- | \_P\_. 1. Return « \_P\_ ».
+-- SPEC: L5740-L5745
+-- | # The Environment Record Specification Type
+-- |
+-- | The Environment Record type is used to explain the behaviour of name
+-- | resolution in nested functions and blocks. This type and the operations
+-- | upon it are defined in .
+-- SPEC: L9197-L9222
+-- | # Function Environment Records
+-- |
+-- | A [Function Environment Record]{.dfn
+-- | variants="Function Environment Records"} is a Declarative Environment
+-- | Record that is used to represent the top-level scope of a function and,
+-- | if the function is not an \|ArrowFunction\|, provides a \`this\`
+-- | binding. If a function is not an \|ArrowFunction\| function and
+-- | references \`super\`, its Function Environment Record also contains the
+-- | state that is used to perform \`super\` method invocations from within
+-- | the function.
+-- |
+-- | Function Environment Records have the additional state fields listed in
+-- | .
+-- |
+-- |   Field Name                  Value                                                Meaning
+-- |   --------------------------- ---------------------------------------------------- ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+-- |   \[\[ThisValue\]\]           an ECMAScript language value                         This is the \*this\* value used for this invocation of the function.
+-- |   \[\[ThisBindingStatus\]\]   \~lexical\~, \~initialized\~, or \~uninitialized\~   If the value is \~lexical\~, this is an \|ArrowFunction\| and does not have a local \*this\* value.
+-- |   \[\[FunctionObject\]\]      an ECMAScript function object                        The function object whose invocation caused this Environment Record to be created.
+-- |   \[\[NewTarget\]\]           a constructor or \*undefined\*                       If this Environment Record was created by the \[\[Construct\]\] internal method, \[\[NewTarget\]\] is the value of the \[\[Construct\]\] \_newTarget\_ parameter. Otherwise, its value is \*undefined\*.
+-- |
+-- | Function Environment Records support all of the Declarative Environment
+-- | Record methods listed in and share the same specifications for all of
+-- | those methods except for HasThisBinding, GetThisBinding, and
+-- | HasSuperBinding.
+-- SPEC: L6172-L6183
+-- | # ToInt16 ( \_argument\_: an ECMAScript language value, ): either a normal completion containing an integral Number or a throw completion
+-- |
+-- | description
+-- | :   It converts \_argument\_ to one of 2^16^ integral Number values in
+-- |     the inclusive interval from 𝔽(-2^15^) to 𝔽(2^15^ - 1).
+-- |
+-- | 1\. Let \_number\_ be ? ToNumber(\_argument\_). 1. If \_number\_ is not
+-- | finite or \_number\_ is either \*+0\*~𝔽~ or \*-0\*~𝔽~, return
+-- | \*+0\*~𝔽~. 1. Let \_int\_ be truncate(ℝ(\_number\_)). 1. Let
+-- | \_int16bit\_ be \_int\_ modulo 2^16^. 1. If \_int16bit\_ ≥ 2^15^, return
+-- | 𝔽(\_int16bit\_ - 2^16^). 1. Return 𝔽(\_int16bit\_).
+-- SPEC: L6184-L6201
+-- | # ToUint16 ( \_argument\_: an ECMAScript language value, ): either a normal completion containing an integral Number or a throw completion
+-- |
+-- | description
+-- | :   It converts \_argument\_ to one of 2^16^ integral Number values in
+-- |     the inclusive interval from \*+0\*~𝔽~ to 𝔽(2^16^ - 1).
+-- |
+-- | 1\. Let \_number\_ be ? ToNumber(\_argument\_). 1. If \_number\_ is not
+-- | finite or \_number\_ is either \*+0\*~𝔽~ or \*-0\*~𝔽~, return
+-- | \*+0\*~𝔽~. 1. Let \_int\_ be truncate(ℝ(\_number\_)). 1.
+-- | \[id=\"step-touint16-mod\"\] Let \_int16bit\_ be \_int\_ modulo
+-- | 2^16^. 1. Return 𝔽(\_int16bit\_).
+-- |
+-- | Given the above definition of ToUint16:
+-- |
+-- | - The substitution of 2^16^ for 2^32^ in step is the only difference
+-- |   between ToUint32 and ToUint16.
+-- | - ToUint16 maps \*-0\*~𝔽~ to \*+0\*~𝔽~.
+-- SPEC: L6834-L6850
+-- | # TestIntegrityLevel ( \_O\_: an Object, \_level\_: \~sealed\~ or \~frozen\~, ): either a normal completion containing a Boolean or a throw completion
+-- |
+-- | description
+-- | :   It is used to determine if the set of own properties of an object
+-- |     are fixed.
+-- |
+-- | 1\. Let \_extensible\_ be ? IsExtensible(\_O\_). 1. If \_extensible\_ is
+-- | \*true\*, return \*false\*. 1. NOTE: If the object is extensible, none
+-- | of its properties are examined. 1. Let \_keys\_ be ?
+-- | \_O\_.\[\[OwnPropertyKeys\]\](). 1. For each element \_k\_ of \_keys\_,
+-- | do 1. Let \_currentDesc\_ be ? \_O\_.\[\[GetOwnProperty\]\](\_k\_). 1.
+-- | If \_currentDesc\_ is not \*undefined\*, then 1. If
+-- | \_currentDesc\_.\[\[Configurable\]\] is \*true\*, return \*false\*. 1.
+-- | If \_level\_ is \~frozen\~ and IsDataDescriptor(\_currentDesc\_) is
+-- | \*true\*, then 1. If \_currentDesc\_.\[\[Writable\]\] is \*true\*,
+-- | return \*false\*. 1. Return \*true\*.
+-- SPEC: L6925-L6939
+-- | # SpeciesConstructor ( \_O\_: an Object, \_defaultConstructor\_: a constructor, ): either a normal completion containing a constructor or a throw completion
+-- |
+-- | description
+-- | :   It is used to retrieve the constructor that should be used to create
+-- |     new objects that are derived from \_O\_. \_defaultConstructor\_ is
+-- |     the constructor to use if a constructor %Symbol.species% property
+-- |     cannot be found starting from \_O\_.
+-- |
+-- | 1\. Let \_C\_ be ? Get(\_O\_, \*\"constructor\"\*). 1. If \_C\_ is
+-- | \*undefined\*, return \_defaultConstructor\_. 1. If \_C\_ is not an
+-- | Object, throw a \*TypeError\* exception. 1. Let \_S\_ be ? Get(\_C\_,
+-- | %Symbol.species%). 1. If \_S\_ is either \*undefined\* or \*null\*,
+-- | return \_defaultConstructor\_. 1. If IsConstructor(\_S\_) is \*true\*,
+-- | return \_S\_. 1. Throw a \*TypeError\* exception.
+-- SPEC: L6970-L6987
+-- | # CopyDataProperties ( \_target\_: an Object, \_source\_: an ECMAScript language value, \_excludedItems\_: a List of property keys, ): either a normal completion containing \~unused\~ or a throw completion
+-- |
+-- | 1\. If \_source\_ is either \*undefined\* or \*null\*, return
+-- | \~unused\~. 1. Let \_from\_ be ! ToObject(\_source\_). 1. Let \_keys\_
+-- | be ? \_from\_.\[\[OwnPropertyKeys\]\](). 1. For each element \_nextKey\_
+-- | of \_keys\_, do 1. Let \_excluded\_ be \*false\*. 1. For each element
+-- | \_e\_ of \_excludedItems\_, do 1. If SameValue(\_e\_, \_nextKey\_) is
+-- | \*true\*, then 1. Set \_excluded\_ to \*true\*. 1. If \_excluded\_ is
+-- | \*false\*, then 1. Let \_desc\_ be ?
+-- | \_from\_.\[\[GetOwnProperty\]\](\_nextKey\_). 1. If \_desc\_ is not
+-- | \*undefined\* and \_desc\_.\[\[Enumerable\]\] is \*true\*, then 1. Let
+-- | \_propValue\_ be ? Get(\_from\_, \_nextKey\_). 1. Perform !
+-- | CreateDataPropertyOrThrow(\_target\_, \_nextKey\_, \_propValue\_). 1.
+-- | Return \~unused\~.
+-- |
+-- | The target passed in here is always a newly created object which is not
+-- | directly accessible in case of an error being thrown.
+-- SPEC: L11175-L11205
+-- | # \[\[Construct\]\] ( \_argumentsList\_: a List of ECMAScript language values, \_newTarget\_: a constructor, ): either a normal completion containing an Object or a throw completion
+-- |
+-- | for
+-- | :   an ECMAScript function object \_F\_
+-- |
+-- | 1\. Let \_callerContext\_ be the running execution context. 1. Let
+-- | \_kind\_ be \_F\_.\[\[ConstructorKind\]\]. 1. If \_kind\_ is \~base\~,
+-- | then 1. Let \_thisArgument\_ be ?
+-- | OrdinaryCreateFromConstructor(\_newTarget\_,
+-- | \*\"%Object.prototype%\"\*). 1. Let \_calleeContext\_ be
+-- | PrepareForOrdinaryCall(\_F\_, \_newTarget\_). 1. Assert:
+-- | \_calleeContext\_ is now the running execution context. 1. If \_kind\_
+-- | is \~base\~, then 1. Perform OrdinaryCallBindThis(\_F\_,
+-- | \_calleeContext\_, \_thisArgument\_). 1. Let \_initializeResult\_ be
+-- | Completion(InitializeInstanceElements(\_thisArgument\_, \_F\_)). 1. If
+-- | \_initializeResult\_ is an abrupt completion, then 1. Remove
+-- | \_calleeContext\_ from the execution context stack and restore
+-- | \_callerContext\_ as the running execution context. 1. Return ?
+-- | \_initializeResult\_. 1. Let \_constructorEnv\_ be the
+-- | LexicalEnvironment of \_calleeContext\_. 1. Let \_result\_ be
+-- | Completion(OrdinaryCallEvaluateBody(\_F\_, \_argumentsList\_)). 1.
+-- | Remove \_calleeContext\_ from the execution context stack and restore
+-- | \_callerContext\_ as the running execution context. 1. If \_result\_ is
+-- | a throw completion, then 1. Return ? \_result\_. 1. Assert: \_result\_
+-- | is a return completion. 1. If \_result\_.\[\[Value\]\] is an Object,
+-- | return \_result\_.\[\[Value\]\]. 1. If \_kind\_ is \~base\~, return
+-- | \_thisArgument\_. 1. If \_result\_.\[\[Value\]\] is not \*undefined\*,
+-- | throw a \*TypeError\* exception. 1. Let \_thisBinding\_ be ?
+-- | \_constructorEnv\_.GetThisBinding(). 1. Assert: \_thisBinding\_ is an
+-- | Object. 1. Return \_thisBinding\_.
+-- SPEC: L6244-L6262
+-- | # ToBigInt ( \_argument\_: an ECMAScript language value, ): either a normal completion containing a BigInt or a throw completion
+-- |
+-- | description
+-- | :   It converts \_argument\_ to a BigInt value, or throws if an implicit
+-- |     conversion from Number would be required.
+-- |
+-- | 1\. Let \_prim\_ be ? ToPrimitive(\_argument\_, \~number\~). 1. Return
+-- | the value that \_prim\_ corresponds to in .
+-- |
+-- |   Argument Type   Result
+-- |   --------------- ------------------------------------------------------------------------------------------------------------------------------
+-- |   Undefined       Throw a \*TypeError\* exception.
+-- |   Null            Throw a \*TypeError\* exception.
+-- |   Boolean         Return \`1n\` if \_prim\_ is \*true\* and \`0n\` if \_prim\_ is \*false\*.
+-- |   BigInt          Return \_prim\_.
+-- |   Number          Throw a \*TypeError\* exception.
+-- |   String          1\. Let \_n\_ be StringToBigInt(\_prim\_). 1. If \_n\_ is \*undefined\*, throw a \*SyntaxError\* exception. 1. Return \_n\_.
+-- |   Symbol          Throw a \*TypeError\* exception.
+-- SPEC: L6093-L6113
+-- | # RoundMVResult ( \_n\_: a mathematical value, ): a Number
+-- |
+-- | description
+-- | :   It converts \_n\_ to a Number in an implementation-defined manner.
+-- |     For the purposes of this abstract operation, a digit is significant
+-- |     if it is not zero or there is a non-zero digit to its left and there
+-- |     is a non-zero digit to its right. For the purposes of this abstract
+-- |     operation, \"the mathematical value denoted by\" a representation of
+-- |     a mathematical value is the inverse of \"the decimal representation
+-- |     of\" a mathematical value.
+-- |
+-- | 1\. If the decimal representation of \_n\_ has 20 or fewer significant
+-- | digits, return 𝔽(\_n\_). 1. Let \_option1\_ be the mathematical value
+-- | denoted by the result of replacing each significant digit in the decimal
+-- | representation of \_n\_ after the 20th with a 0 digit. 1. Let
+-- | \_option2\_ be the mathematical value denoted by the result of replacing
+-- | each significant digit in the decimal representation of \_n\_ after the
+-- | 20th with a 0 digit and then incrementing it at the 20th position (with
+-- | carrying as necessary). 1. Let \_chosen\_ be an implementation-defined
+-- | choice of either \_option1\_ or \_option2\_. 1. Return 𝔽(\_chosen\_).
+
 -- SPEC: L6305-L6321
 -- | # ToString ( \_argument\_: an ECMAScript language value, ): either a normal completion containing a String or a throw completion
 -- |

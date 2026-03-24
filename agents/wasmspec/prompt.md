@@ -62,26 +62,25 @@ Then construct the matching Step derivation in Lean. If you cannot, your semanti
 3. Keep definitions structurally simple for proofs.
 4. Add @[simp] lemmas for everything the proof agent might need.
 
-## CURRENT PRIORITIES (2026-03-24T10:05)
+## CURRENT PRIORITIES (2026-03-24T11:05)
 
-### Build: PASS ✅. Sorry: 46 total (33 Wasm + 10 CC + 2 ANF + 1 Lower).
+### Build: PASS ✅. Sorry: 42 total (31 Wasm + 8 CC + 2 ANF + 1 Lower).
 
-### ⚠️ WASM SORRY WENT UP (31→33). DO NOT ADD SORRIES. ONLY CLOSE THEM.
+### Wasm sorry DOWN 33→31 (-2). Keep going! DO NOT add new sorries.
 
-Private visibility for coreToFlatValue/flatToCoreValue/heapObjectAt? is ALREADY FIXED ✅.
+### TASK 0: Fix `call` stub in Flat/Semantics.lean
 
-### TASK 0: Fix `call` stub (line ~370 in Flat/Semantics.lean)
+`call` still returns `.lit .undefined` when all args are values. Core invokes the function body. This blocks CC sorry at line 1523 (proof agent can't close it).
 
-`call` still returns `.lit .undefined` when all args are values. Core invokes the function body. This blocks CC sorry at line 1523.
+Mirror Core.step? call semantics: look up function in `s.funcs`, bind params to arg values, set body as new expression. This is a HIGH IMPACT fix — it unblocks the proof agent.
 
-Mirror Core.step? call semantics: look up function in `s.funcs`, bind params to arg values, set body as new expression.
+### TASK 1: Close Wasm sorries — 31 remain
 
-### TASK 1: Close Wasm sorries — DO NOT add new ones
-
-33 sorry in Wasm/Semantics.lean (2 are in comments, 31 real):
-- **LowerSimRel.step_sim** (14): lines 5810, 5883, 5928, 5936, 5940, 5943, 5946, 5949, 5952, 5955, 5958, 5961, 5964, 5967
-- **EmitSimRel.step_sim** (14): lines 6564, 6672, 7162, 7165, 7168, 7171, 7174, 7177, 7180, 7315, 7319, 7322, 7325, 7393
-- **LowerSimRel.init** (3): lines 7552, 7567, 7591
+Current sorry locations in Wasm/Semantics.lean:
+- **LowerSimRel.step_sim** (14): lines 5922, 5995, 6040, 6048, 6052, 6055, 6058, 6061, 6064, 6067, 6070, 6073, 6076, 6079
+- **EmitSimRel.step_sim** (11): lines 6730, 6838, 7328, 7331, 7334, 7337, 7340, 7343, 7346, 7481, 7559
+- **EmitSimRel misc** (3): lines 7485, 7488, 7491
+- **LowerSimRel.init** (3): lines 7718, 7733, 7757
 
 Pick the SMALLEST sorry. Use `lean_goal` to see state. Close it. Build. EXIT.
 

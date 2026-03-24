@@ -57,41 +57,44 @@ If ClosureConvertCorrect needs 600 lines of case analysis, WRITE 600 LINES. That
 ## Test262
 Read `logs/test262_summary.md` for failure categories. Fix compiler bugs that cause test262 failures.
 
-## CURRENT PRIORITIES (2026-03-24T10:05)
+## CURRENT PRIORITIES (2026-03-24T11:05)
 
-### Build: PASS ✅. Sorry: 46 (10 CC + 33 Wasm + 2 ANF + 1 Lower).
+### Build: PASS ✅. Sorry: 42 (8 CC + 31 Wasm + 2 ANF + 1 Lower).
 
-### 🎉 setProp CLOSED! CC down to 10.
+### 🎉 getIndex + setIndex CLOSED! CC down from 10 to 8. Great momentum!
 
-You closed setProp using the same structural pattern as getProp/deleteProp. **Private visibility is NOW FIXED** — `coreToFlatValue`, `flatToCoreValue`, `heapObjectAt?` are all PUBLIC. You can now unfold them directly.
+You've now closed getProp, deleteProp, setProp, getIndex, setIndex — all the heap ops with the same structural pattern. Excellent work.
 
-### CC Sorry Map (10 total):
-- **1 captured var**: line 813 (Flat.getEnv 2 steps vs Core.var 1 step)
-- **1 call BLOCKED**: line 1523 (Flat returns `.undefined` instead of invoking function)
-- **1 newObj**: line 1524 (Flat allocates fresh object, same as Core — provable)
-- **2 heap ops**: lines 1858-1859 (getIndex, setIndex) — SAME pattern as your getProp/setProp proof!
-- **3 heap/funcs**: lines 2397-2399 (objectLit, arrayLit, functionDef)
-- **2 isCallFrame**: lines 2533, 2646 (unreachable for CC'd source programs)
+### CC Sorry Map (8 total):
+- **1 captured var**: line 813 (Flat.getEnv 2 steps vs Core.var 1 step — stuttering)
+- **1 call BLOCKED**: line 1523 (Flat stub returns `.undefined` — wasmspec fixing)
+- **1 newObj**: line 1524 (Flat allocates fresh object — needs heap correspondence)
+- **3 heap/funcs**: lines 2890-2892 (objectLit, arrayLit, functionDef)
+- **2 isCallFrame**: lines 3026, 3139 (unreachable for CC'd source programs)
 
-### TASK 0: Close getIndex + setIndex (lines 1858-1859) — EXACT SAME PATTERN as getProp/setProp
+### TASK 0: Close isCallFrame sorries (lines 3026, 3139) — EASIEST WIN
 
-Private visibility is FIXED. You can now use `coreToFlatValue`/`flatToCoreValue`/`heapObjectAt?` directly.
-Copy your getProp/setProp proof structure. These should be mechanical.
+Both are `catchParam = "__call_frame_return__"` which never occurs in CC'd source programs. The `by_cases hcf` already splits this — you just need a contradiction.
 
-### TASK 1: Close isCallFrame sorries (lines 2533, 2646) — EASIEST WIN
+Strategy: Add `h_wf : ∀ cp ∈ catchParams, cp ≠ "__call_frame_return__"` as a hypothesis to `CC_SimRel` (or to `closureConvert_correct`). Then `exact absurd hcf (h_wf ...)` closes both.
 
-These are unreachable: `catchParam = "__call_frame_return__"` never happens for source programs. Add a well-formedness predicate:
+Alternatively, if `closureConvert` never generates this catchParam, prove a lemma:
 ```lean
--- In CC_SimRel or as a hypothesis:
--- h_wf : catchParam ≠ "__call_frame_return__"
--- Then: contradiction closes both sorries
+theorem convertExpr_no_callFrame (e : Core.Expr) :
+    ∀ cp, cp ∈ catchParamsOf (Flat.convertExpr e ...).1 → cp ≠ "__call_frame_return__"
 ```
-Check with `lean_goal` at lines 2533 and 2646 to see exact state.
+Use `lean_goal` at lines 3026 and 3139 to see the exact proof state.
+
+### TASK 1: Close objectLit/arrayLit/functionDef (lines 2890-2892)
+
+These need env/heap correspondence. Look at how Core.step? handles `objectLit` — it allocates a new object. Flat.step? does the same via `allocFreshObject`. You need to show the allocated objects correspond.
+
+Key: `allocFreshObject` is still `private`. If you can't unfold it, work structurally like you did for getProp — match on the Flat.step? result directly.
 
 ### TASK 2: Close captured var (line 813)
 
-Flat takes 2 steps (.getEnv then lookup) while Core takes 1 step (.var lookup).
-Use `lean_goal` at line 813 first.
+This is a **stuttering simulation**: Flat takes 2 steps (getEnv + lookup) while Core takes 1.
+You need `Flat.Steps` (multi-step) instead of `Flat.Step` (single-step). Check if the simulation theorem signature allows this.
 
 ### TASK 3: ANF sorries (lines 106, 1181 in ANFConvertCorrect.lean) — INDEPENDENT
 

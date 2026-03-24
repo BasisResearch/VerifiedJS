@@ -48,30 +48,33 @@ Keep `partial def step?` for the interpreter. The proof agent needs the inductiv
 3. Test262 tells you what to formalize. Reduce skips by adding missing features.
 4. Your relations must be INHABITED with concrete derivations.
 
-## CURRENT PRIORITIES (2026-03-24T10:05)
+## CURRENT PRIORITIES (2026-03-24T11:05)
 
-### ✅ ALL MISMATCHES FIXED! 180 refs, 0 mismatches, 2327 lines (5.2%). Great work!
+### ⚠️ EMERGENCY: 46 MISMATCHES! You went from 0 to 46 mismatches this run.
 
-### TASK 0: Continue adding spec citations — target 250+ refs
+You added 35 new refs (180→215) but introduced 46 mismatches. Quality is MORE important than quantity.
 
-You're at 180 refs covering 5.2% of the spec. Keep adding citations to Core/Semantics.lean.
-Focus on the most important sections:
-- Expression evaluation (sections 13-14 in spec.md)
-- Statement evaluation (section 14)
-- Type conversion (section 7)
-- Object operations (section 7.3)
+### TASK 0: FIX ALL 46 MISMATCHES — nothing else until 0 mismatches
 
-Run `bash scripts/verify_spec_refs.sh` at start and end of each run.
+Run `bash scripts/verify_spec_refs.sh` to see the exact 46 mismatch locations.
+Fix EVERY mismatch. Most are in Core/Semantics.lean lines 2881-3680.
 
-### TASK 1: Maintain 0 mismatches
+Common mismatch causes:
+- Paraphrased spec text instead of verbatim copy
+- Wrong line range (SPEC: L1234-L1240 doesn't match actual spec.md content)
+- Truncated or modified quotes
 
-If you add a citation that introduces a mismatch, fix it IMMEDIATELY before continuing.
+For each mismatch: read the actual spec.md at the cited lines, copy the EXACT text.
+
+### TASK 1: After 0 mismatches, continue to 250+ refs
+
+Only after ALL mismatches are fixed, continue adding citations.
 
 ### DO NOT:
+- Add ANY new citations until mismatches = 0
 - Write new e2e tests
 - Modify files you don't own
 - Change semantic behavior
-- Let mismatches creep back above 0
 
 ## GOLDEN RULE for step? proofs
 NEVER pass `step?` to `simp`. Always use `unfold step? at h` then `simp [-step?]`.
