@@ -2806,6 +2806,202 @@ def evalBinary : BinOp → Value → Value → Value
 -- | that now are defined using ArraySpeciesCreate.
 -- |
 
+-- SPEC: L8327-L8336
+-- | # Static Semantics: IsAnonymousFunctionDefinition ( \_expr\_: an \|AssignmentExpression\| Parse Node, an \|Initializer\| Parse Node, or an \|Expression\| Parse Node, ): a Boolean
+-- |
+-- | description
+-- | :   It determines if its argument is a function definition that does not
+-- |     bind a name.
+-- |
+-- | 1\. If IsFunctionDefinition of \_expr\_ is \*false\*, return
+-- | \*false\*. 1. Let \_hasName\_ be HasName of \_expr\_. 1. If \_hasName\_
+-- | is \*true\*, return \*false\*. 1. Return \*true\*.
+-- SPEC: L8352-L8384
+-- | # Runtime Semantics: NamedEvaluation ( \_name\_: a property key or a Private Name, ): either a normal completion containing a function object or an abrupt completion
+-- |
+-- | PrimaryExpression : CoverParenthesizedExpressionAndArrowParameterList 1.
+-- | Let \_expr\_ be the \|ParenthesizedExpression\| that is covered by
+-- | \|CoverParenthesizedExpressionAndArrowParameterList\|. 1. Return ?
+-- | NamedEvaluation of \_expr\_ with argument \_name\_.
+-- | ParenthesizedExpression : \`(\` Expression \`)\` 1. Assert:
+-- | IsAnonymousFunctionDefinition(\|Expression\|) is \*true\*. 1. Return ?
+-- | NamedEvaluation of \|Expression\| with argument \_name\_.
+-- | FunctionExpression : \`function\` \`(\` FormalParameters \`)\` \`{\`
+-- | FunctionBody \`}\` 1. Return InstantiateOrdinaryFunctionExpression of
+-- | \|FunctionExpression\| with argument \_name\_. GeneratorExpression :
+-- | \`function\` \`\*\` \`(\` FormalParameters \`)\` \`{\` GeneratorBody
+-- | \`}\` 1. Return InstantiateGeneratorFunctionExpression of
+-- | \|GeneratorExpression\| with argument \_name\_. AsyncGeneratorExpression
+-- | : \`async\` \`function\` \`\*\` \`(\` FormalParameters \`)\` \`{\`
+-- | AsyncGeneratorBody \`}\` 1. Return
+-- | InstantiateAsyncGeneratorFunctionExpression of
+-- | \|AsyncGeneratorExpression\| with argument \_name\_.
+-- | AsyncFunctionExpression : \`async\` \`function\` \`(\` FormalParameters
+-- | \`)\` \`{\` AsyncFunctionBody \`}\` 1. Return
+-- | InstantiateAsyncFunctionExpression of \|AsyncFunctionExpression\| with
+-- | argument \_name\_. ArrowFunction : ArrowParameters \`=\>\`
+-- | ConciseBody 1. Return InstantiateArrowFunctionExpression of
+-- | \|ArrowFunction\| with argument \_name\_. AsyncArrowFunction : \`async\`
+-- | AsyncArrowBindingIdentifier \`=\>\` AsyncConciseBody
+-- | CoverCallExpressionAndAsyncArrowHead \`=\>\` AsyncConciseBody 1. Return
+-- | InstantiateAsyncArrowFunctionExpression of \|AsyncArrowFunction\| with
+-- | argument \_name\_. ClassExpression : \`class\` ClassTail 1. Let
+-- | \_sourceText\_ be the source text matched by \|ClassExpression\|. 1.
+-- | Return ? ClassDefinitionEvaluation of \|ClassTail\| with arguments
+-- | \*undefined\*, \_name\_, and \_sourceText\_.
+-- SPEC: L9235-L9242
+-- | # HasThisBinding ( ): a Boolean
+-- |
+-- | for
+-- | :   a Function Environment Record \_envRec\_
+-- |
+-- | 1\. If \_envRec\_.\[\[ThisBindingStatus\]\] is \~lexical\~, return
+-- | \*false\*. 1. Return \*true\*.
+-- SPEC: L9243-L9251
+-- | # GetThisBinding ( ): either a normal completion containing an ECMAScript language value or a throw completion
+-- |
+-- | for
+-- | :   a Function Environment Record \_envRec\_
+-- |
+-- | 1\. Assert: \_envRec\_.\[\[ThisBindingStatus\]\] is not \~lexical\~. 1.
+-- | If \_envRec\_.\[\[ThisBindingStatus\]\] is \~uninitialized\~, throw a
+-- | \*ReferenceError\* exception. 1. Return \_envRec\_.\[\[ThisValue\]\].
+-- SPEC: L9252-L9260
+-- | # HasSuperBinding ( ): a Boolean
+-- |
+-- | for
+-- | :   a Function Environment Record \_envRec\_
+-- |
+-- | 1\. If \_envRec\_.\[\[ThisBindingStatus\]\] is \~lexical\~, return
+-- | \*false\*. 1. If \_envRec\_.\[\[FunctionObject\]\].\[\[HomeObject\]\] is
+-- | \*undefined\*, return \*false\*. 1. Return \*true\*.
+-- SPEC: L9261-L9272
+-- | # GetSuperBase ( \_envRec\_: a Function Environment Record, ): an Object, \*null\*, or \*undefined\*
+-- |
+-- | description
+-- | :   It returns the object that is the base for \`super\` property
+-- |     accesses bound in \_envRec\_. The value \*undefined\* indicates that
+-- |     such accesses will produce runtime errors.
+-- |
+-- | 1\. Let \_home\_ be
+-- | \_envRec\_.\[\[FunctionObject\]\].\[\[HomeObject\]\]. 1. If \_home\_ is
+-- | \*undefined\*, return \*undefined\*. 1. Assert: \_home\_ is an ordinary
+-- | object. 1. Return ! \_home\_.\[\[GetPrototypeOf\]\]().
+-- SPEC: L15779-L15798
+-- | # Runtime Semantics: Evaluation
+-- |
+-- | OptionalExpression : MemberExpression OptionalChain 1. Let
+-- | \_baseReference\_ be ? Evaluation of \|MemberExpression\|. 1. Let
+-- | \_baseValue\_ be ? GetValue(\_baseReference\_). 1. If \_baseValue\_ is
+-- | either \*undefined\* or \*null\*, then 1. Return \*undefined\*. 1.
+-- | Return ? ChainEvaluation of \|OptionalChain\| with arguments
+-- | \_baseValue\_ and \_baseReference\_. OptionalExpression : CallExpression
+-- | OptionalChain 1. Let \_baseReference\_ be ? Evaluation of
+-- | \|CallExpression\|. 1. Let \_baseValue\_ be ?
+-- | GetValue(\_baseReference\_). 1. If \_baseValue\_ is either \*undefined\*
+-- | or \*null\*, then 1. Return \*undefined\*. 1. Return ? ChainEvaluation
+-- | of \|OptionalChain\| with arguments \_baseValue\_ and \_baseReference\_.
+-- | OptionalExpression : OptionalExpression OptionalChain 1. Let
+-- | \_baseReference\_ be ? Evaluation of \|OptionalExpression\|. 1. Let
+-- | \_baseValue\_ be ? GetValue(\_baseReference\_). 1. If \_baseValue\_ is
+-- | either \*undefined\* or \*null\*, then 1. Return \*undefined\*. 1.
+-- | Return ? ChainEvaluation of \|OptionalChain\| with arguments
+-- | \_baseValue\_ and \_baseReference\_.
+-- SPEC: L17803-L17817
+-- | # CreatePerIterationEnvironment ( \_perIterationBindings\_: a List of Strings, ): either a normal completion containing \~unused\~ or a throw completion
+-- |
+-- | 1\. If \_perIterationBindings\_ has any elements, then 1. Let
+-- | \_lastIterationEnv\_ be the running execution context\'s
+-- | LexicalEnvironment. 1. Let \_outer\_ be
+-- | \_lastIterationEnv\_.\[\[OuterEnv\]\]. 1. Assert: \_outer\_ is not
+-- | \*null\*. 1. Let \_thisIterationEnv\_ be
+-- | NewDeclarativeEnvironment(\_outer\_). 1. For each element \_bn\_ of
+-- | \_perIterationBindings\_, do 1. Perform !
+-- | \_thisIterationEnv\_.CreateMutableBinding(\_bn\_, \*false\*). 1. Let
+-- | \_lastValue\_ be ? \_lastIterationEnv\_.GetBindingValue(\_bn\_,
+-- | \*true\*). 1. Perform ! \_thisIterationEnv\_.InitializeBinding(\_bn\_,
+-- | \_lastValue\_). 1. Set the running execution context\'s
+-- | LexicalEnvironment to \_thisIterationEnv\_. 1. Return \~unused\~.
+-- SPEC: L18163-L18177
+-- | # CreateForInIterator ( \_object\_: an Object, ): a For-In Iterator
+-- |
+-- | description
+-- | :   It is used to create a For-In Iterator object which iterates over
+-- |     the own and inherited enumerable string properties of \_object\_ in
+-- |     a specific order.
+-- |
+-- | 1\. Let \_iterator\_ be OrdinaryObjectCreate(%ForInIteratorPrototype%, «
+-- | \[\[Object\]\], \[\[ObjectWasVisited\]\], \[\[VisitedKeys\]\],
+-- | \[\[RemainingKeys\]\] »). 1. Set \_iterator\_.\[\[Object\]\] to
+-- | \_object\_. 1. Set \_iterator\_.\[\[ObjectWasVisited\]\] to
+-- | \*false\*. 1. Set \_iterator\_.\[\[VisitedKeys\]\] to a new empty
+-- | List. 1. Set \_iterator\_.\[\[RemainingKeys\]\] to a new empty List. 1.
+-- | Return \_iterator\_.
+-- SPEC: L18431-L18452
+-- | # Runtime Semantics: Evaluation
+-- |
+-- | SwitchStatement : \`switch\` \`(\` Expression \`)\` CaseBlock 1. Let
+-- | \_exprRef\_ be ? Evaluation of \|Expression\|. 1. Let \_switchValue\_ be
+-- | ? GetValue(\_exprRef\_). 1. Let \_oldEnv\_ be the running execution
+-- | context\'s LexicalEnvironment. 1. Let \_blockEnv\_ be
+-- | NewDeclarativeEnvironment(\_oldEnv\_). 1. Perform
+-- | BlockDeclarationInstantiation(\|CaseBlock\|, \_blockEnv\_). 1. Set the
+-- | running execution context\'s LexicalEnvironment to \_blockEnv\_. 1. Let
+-- | \_R\_ be Completion(CaseBlockEvaluation of \|CaseBlock\| with argument
+-- | \_switchValue\_). 1. Set the running execution context\'s
+-- | LexicalEnvironment to \_oldEnv\_. 1. Return \_R\_.
+-- |
+-- | No matter how control leaves the \|SwitchStatement\| the
+-- | LexicalEnvironment is always restored to its former state.
+-- |
+-- | CaseClause : \`case\` Expression \`:\` 1. Return \~empty\~. CaseClause :
+-- | \`case\` Expression \`:\` StatementList 1. Return ? Evaluation of
+-- | \|StatementList\|. DefaultClause : \`default\` \`:\` 1. Return
+-- | \~empty\~. DefaultClause : \`default\` \`:\` StatementList 1. Return ?
+-- | Evaluation of \|StatementList\|.
+-- SPEC: L20530-L20534
+-- | # PrepareForTailCall ( ): \~unused\~
+-- |
+-- | 1\. Assert: The current execution context will not subsequently be used
+-- | for the evaluation of any ECMAScript code or built-in functions. The
+-- SPEC: L8743-L8772
+-- | # Static Semantics: PropName ( ): a String or \~empty\~
+-- |
+-- | PropertyDefinition : IdentifierReference 1. Return the StringValue of
+-- | \|IdentifierReference\|. PropertyDefinition : \`\...\`
+-- | AssignmentExpression 1. Return \~empty\~. PropertyDefinition :
+-- | PropertyName \`:\` AssignmentExpression 1. Return the PropName of
+-- | \|PropertyName\|. LiteralPropertyName : IdentifierName AttributeKey :
+-- | IdentifierName 1. Return the StringValue of \|IdentifierName\|.
+-- | LiteralPropertyName : StringLiteral AttributeKey : StringLiteral 1.
+-- | Return the SV of \|StringLiteral\|. LiteralPropertyName :
+-- | NumericLiteral 1. Let \_nbr\_ be the NumericValue of
+-- | \|NumericLiteral\|. 1. Return ! ToString(\_nbr\_). ComputedPropertyName
+-- | : \`\[\` AssignmentExpression \`\]\` 1. Return \~empty\~.
+-- | MethodDefinition : ClassElementName \`(\` UniqueFormalParameters \`)\`
+-- | \`{\` FunctionBody \`}\` \`get\` ClassElementName \`(\` \`)\` \`{\`
+-- | FunctionBody \`}\` \`set\` ClassElementName \`(\`
+-- | PropertySetParameterList \`)\` \`{\` FunctionBody \`}\` 1. Return the
+-- | PropName of \|ClassElementName\|. GeneratorMethod : \`\*\`
+-- | ClassElementName \`(\` UniqueFormalParameters \`)\` \`{\` GeneratorBody
+-- | \`}\` 1. Return the PropName of \|ClassElementName\|.
+-- | AsyncGeneratorMethod : \`async\` \`\*\` ClassElementName \`(\`
+-- | UniqueFormalParameters \`)\` \`{\` AsyncGeneratorBody \`}\` 1. Return
+-- | the PropName of \|ClassElementName\|. ClassElement : ClassStaticBlock 1.
+-- | Return \~empty\~. ClassElement : \`;\` 1. Return \~empty\~. AsyncMethod
+-- | : \`async\` ClassElementName \`(\` UniqueFormalParameters \`)\` \`{\`
+-- | AsyncFunctionBody \`}\` 1. Return the PropName of \|ClassElementName\|.
+-- | FieldDefinition : ClassElementName Initializer? 1. Return the PropName
+-- | of \|ClassElementName\|. ClassElementName : PrivateIdentifier 1. Return
+-- | \~empty\~.
+-- SPEC: L16929-L16935
+-- | # EvaluateStringOrNumericBinaryExpression ( \_leftOperand\_: a Parse Node, \_opText\_: a sequence of Unicode code points, \_rightOperand\_: a Parse Node, ): either a normal completion containing an ECMAScript language value or an abrupt completion
+-- |
+-- | 1\. Let \_lRef\_ be ? Evaluation of \_leftOperand\_. 1. Let \_lVal\_ be
+-- | ? GetValue(\_lRef\_). 1. Let \_rRef\_ be ? Evaluation of
+-- | \_rightOperand\_. 1. Let \_rVal\_ be ? GetValue(\_rRef\_). 1. Return ?
+-- | ApplyStringOrNumericBinaryOperator(\_lVal\_, \_opText\_, \_rVal\_).
+
 /-- Built-in function index for console.log (reserved at index 0, §18.2). -/
 def consoleLogIdx : FuncIdx := 0
 

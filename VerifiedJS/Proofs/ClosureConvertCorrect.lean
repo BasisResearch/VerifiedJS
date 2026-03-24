@@ -503,7 +503,7 @@ end
     Source programs from `elaborate` satisfy this predicate since "__call_frame_return__" is only
     introduced by the Core interpreter for call-frame returns. -/
 mutual
-private def noCallFrameReturn : Core.Expr → Bool
+def noCallFrameReturn : Core.Expr → Bool
   | .tryCatch body cp cb fin =>
     cp != "__call_frame_return__" &&
     body.noCallFrameReturn && cb.noCallFrameReturn &&
@@ -533,10 +533,10 @@ private def noCallFrameReturn : Core.Expr → Bool
   | .yield (some e) _ => e.noCallFrameReturn
   | .await a => a.noCallFrameReturn
   | _ => true
-private def listNoCallFrameReturn : List Core.Expr → Bool
+def listNoCallFrameReturn : List Core.Expr → Bool
   | [] => true
   | e :: rest => e.noCallFrameReturn && listNoCallFrameReturn rest
-private def propListNoCallFrameReturn : List (Core.PropName × Core.Expr) → Bool
+def propListNoCallFrameReturn : List (Core.PropName × Core.Expr) → Bool
   | [] => true
   | (_, e) :: rest => e.noCallFrameReturn && propListNoCallFrameReturn rest
 end
@@ -555,10 +555,11 @@ private def CC_SimRel (_s : Core.Program) (_t : Flat.Program)
 
 private theorem closureConvert_init_related
     (s : Core.Program) (t : Flat.Program)
-    (h : Flat.closureConvert s = .ok t) :
+    (h : Flat.closureConvert s = .ok t)
+    (h_wf : noCallFrameReturn s.body = true) :
     CC_SimRel s t (Flat.initialState t) (Core.initialState s) := by
   unfold CC_SimRel Flat.initialState Core.initialState
-  refine ⟨rfl, ?_, rfl, ?_⟩
+  refine ⟨rfl, ?_, rfl, h_wf, ?_⟩
   · -- EnvCorr: both envs have exactly one binding: "console" → .object 0
     have h_empty : EnvCorr Core.Env.empty Flat.Env.empty := by
       constructor <;> intro _ _ h <;> simp [Core.Env.empty, Core.Env.lookup, Flat.Env.empty, Flat.Env.lookup] at h
@@ -3065,8 +3066,12 @@ private theorem closureConvert_step_simulation
         cases sf; simp_all
       -- Case split on isCallFrame
       by_cases hcf : catchParam = "__call_frame_return__"
-      · -- isCallFrame = true: Core uses callStack. Can't match Flat behavior.
-        sorry -- unreachable for source programs but no well-formedness precondition
+      · -- isCallFrame = true: contradiction with noCallFrameReturn
+        exfalso
+        have hncfr_tc : noCallFrameReturn (.tryCatch body catchParam catchBody finally_) = true := by
+          rw [hsc] at hncfr; exact hncfr
+        simp [noCallFrameReturn] at hncfr_tc
+        exact absurd hcf (by rw [bne_iff_ne] at hncfr_tc; exact hncfr_tc.1)
       · -- isCallFrame = false: Core matches Flat behavior
         -- Case split on finally_
         cases hfin : finally_ with
@@ -3178,8 +3183,12 @@ private theorem closureConvert_step_simulation
             ⟨scope, st, st1, by simp only [hbody'_def, hst1_def]; exact (Prod.eta _).symm⟩
             ⟨hsubstep⟩
           by_cases hcf : catchParam = "__call_frame_return__"
-          · -- isCallFrame = true: Core callStack behavior differs from Flat
-            sorry -- unreachable for CC'd source programs
+          · -- isCallFrame = true: contradiction with noCallFrameReturn
+            exfalso
+            have hncfr_tc : noCallFrameReturn (.tryCatch body catchParam catchBody finally_) = true := by
+              rw [hsc] at hncfr; exact hncfr
+            simp [noCallFrameReturn] at hncfr_tc
+            exact absurd hcf (by rw [bne_iff_ne] at hncfr_tc; exact hncfr_tc.1)
           · -- isCallFrame = false: Core catches error same as Flat
             -- Determine the handler based on finally_
             set handler_core := (match finally_ with | some fin => Core.Expr.seq catchBody fin | none => catchBody)
@@ -4537,7 +4546,7 @@ private theorem closureConvert_halt_preservation
       (∀ (b : String) (o f : Core.Expr), sc.expr ≠ .forIn b o f) →
       (∀ (b : String) (i f : Core.Expr), sc.expr ≠ .forOf b i f) →
       Core.step? sc = none := by
-  intro sf sc ⟨htrace, _henvCorr, _hheap, scope, envVar, envMap, st, st', hconv⟩ hhalt hnoForIn hnoForOf
+  intro sf sc ⟨htrace, _henvCorr, _hheap, _hncfr, scope, envVar, envMap, st, st', hconv⟩ hhalt hnoForIn hnoForOf
   obtain ⟨v, hlit⟩ := step?_none_implies_lit sf hhalt
   rw [hlit] at hconv
   cases hsc : sc.expr with
@@ -4572,11 +4581,12 @@ private theorem closureConvert_steps_simulation
 private theorem closureConvert_trace_reflection
     (s : Core.Program) (t : Flat.Program)
     (h : Flat.closureConvert s = .ok t)
+    (h_wf : noCallFrameReturn s.body = true)
     (hnofor : ∀ sc tr, Core.Steps (Core.initialState s) tr sc →
         (∀ b o f, sc.expr ≠ .forIn b o f) ∧ (∀ b i f, sc.expr ≠ .forOf b i f)) :
     ∀ b, Flat.Behaves t b → Core.Behaves s b := by
   intro b ⟨sf, hsteps, hhalt⟩
-  have hinit := closureConvert_init_related s t h
+  have hinit := closureConvert_init_related s t h h_wf
   obtain ⟨sc, hcsteps, hrel⟩ :=
     closureConvert_steps_simulation s t h _ _ _ _ hinit hsteps
   have hnoFor := hnofor sc _ hcsteps
@@ -4584,15 +4594,17 @@ private theorem closureConvert_trace_reflection
     closureConvert_halt_preservation s t h _ _ hrel hhalt hnoFor.1 hnoFor.2⟩
 
 /-- Closure conversion preserves behavior, assuming the source program
-    never reaches a forIn/forOf expression (unimplemented in closure conversion). -/
+    never reaches a forIn/forOf expression (unimplemented in closure conversion)
+    and the source body contains no "__call_frame_return__" catch parameters. -/
 theorem closureConvert_correct (s : Core.Program) (t : Flat.Program)
     (h : Flat.closureConvert s = .ok t)
+    (h_wf : noCallFrameReturn s.body = true)
     (hnofor : ∀ sc tr, Core.Steps (Core.initialState s) tr sc →
         (∀ b o f, sc.expr ≠ .forIn b o f) ∧ (∀ b i f, sc.expr ≠ .forOf b i f)) :
     ∀ b, Flat.Behaves t b → ∃ b', Core.Behaves s b' ∧ b = b' :=
 by
   intro b hb
   refine ⟨b, ?_, rfl⟩
-  exact closureConvert_trace_reflection s t h hnofor b hb
+  exact closureConvert_trace_reflection s t h h_wf hnofor b hb
 
 end VerifiedJS.Proofs
