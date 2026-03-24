@@ -2675,7 +2675,9 @@ def step? (s : State) : Option (TraceEvent × State) :=
               let s' := pushTrace { sr with expr := .assign name sr.expr, trace := s.trace } t
               some (t, s')
           | none => none
-  -- SPEC: L16586-L16592
+  -- SPEC: L16584-L16593
+  -- | # Runtime Semantics: Evaluation
+  -- |
   -- | ConditionalExpression : ShortCircuitExpression \`?\`
   -- | AssignmentExpression \`:\` AssignmentExpression 1. Let \_lRef\_ be ?
   -- | Evaluation of \|ShortCircuitExpression\|. 1. Let \_lVal\_ be ToBoolean(?
@@ -2683,7 +2685,9 @@ def step? (s : State) : Option (TraceEvent × State) :=
   -- | be ? Evaluation of the first \|AssignmentExpression\|. 1. Return ?
   -- | GetValue(\_trueRef\_). 1. Let \_falseRef\_ be ? Evaluation of the second
   -- | \|AssignmentExpression\|. 1. Return ? GetValue(\_falseRef\_).
-  -- SPEC: L17607-L17620
+  -- SPEC: L17606-L17621
+  -- | # Runtime Semantics: Evaluation
+  -- |
   -- | IfStatement : \`if\` \`(\` Expression \`)\` Statement \`else\`
   -- | Statement 1. Let \_exprRef\_ be ? Evaluation of \|Expression\|. 1. Let
   -- | \_exprValue\_ be ToBoolean(? GetValue(\_exprRef\_)). 1. If \_exprValue\_
@@ -3149,7 +3153,9 @@ def step? (s : State) : Option (TraceEvent × State) :=
                       some (t, s')
                   | none => none
               | none => none
-  -- SPEC: L15567-L15577
+  -- SPEC: L15565-L15599
+  -- | # Runtime Semantics: Evaluation
+  -- |
   -- | MemberExpression : MemberExpression \`\[\` Expression \`\]\` 1. Let
   -- | \_baseReference\_ be ? Evaluation of \|MemberExpression\|. 1. Let
   -- | \_baseValue\_ be ? GetValue(\_baseReference\_). 1. Let \_strict\_ be
@@ -3161,6 +3167,27 @@ def step? (s : State) : Option (TraceEvent × State) :=
   -- | IsStrict(this \|MemberExpression\|). 1. Return
   -- | EvaluatePropertyAccessWithIdentifierKey(\_baseValue\_,
   -- | \|IdentifierName\|, \_strict\_). MemberExpression : MemberExpression
+  -- | \`.\` PrivateIdentifier 1. Let \_baseReference\_ be ? Evaluation of
+  -- | \|MemberExpression\|. 1. Let \_baseValue\_ be ?
+  -- | GetValue(\_baseReference\_). 1. Let \_fieldNameString\_ be the
+  -- | StringValue of \|PrivateIdentifier\|. 1. Return
+  -- | MakePrivateReference(\_baseValue\_, \_fieldNameString\_). CallExpression
+  -- | : CallExpression \`\[\` Expression \`\]\` 1. Let \_baseReference\_ be ?
+  -- | Evaluation of \|CallExpression\|. 1. Let \_baseValue\_ be ?
+  -- | GetValue(\_baseReference\_). 1. Let \_strict\_ be IsStrict(this
+  -- | \|CallExpression\|). 1. Return ?
+  -- | EvaluatePropertyAccessWithExpressionKey(\_baseValue\_, \|Expression\|,
+  -- | \_strict\_). CallExpression : CallExpression \`.\` IdentifierName 1. Let
+  -- | \_baseReference\_ be ? Evaluation of \|CallExpression\|. 1. Let
+  -- | \_baseValue\_ be ? GetValue(\_baseReference\_). 1. Let \_strict\_ be
+  -- | IsStrict(this \|CallExpression\|). 1. Return
+  -- | EvaluatePropertyAccessWithIdentifierKey(\_baseValue\_,
+  -- | \|IdentifierName\|, \_strict\_). CallExpression : CallExpression \`.\`
+  -- | PrivateIdentifier 1. Let \_baseReference\_ be ? Evaluation of
+  -- | \|CallExpression\|. 1. Let \_baseValue\_ be ?
+  -- | GetValue(\_baseReference\_). 1. Let \_fieldNameString\_ be the
+  -- | StringValue of \|PrivateIdentifier\|. 1. Return
+  -- | MakePrivateReference(\_baseValue\_, \_fieldNameString\_).
   -- SPEC: L10690-L10693
   -- | # OrdinaryGetPrototypeOf ( \_O\_: an Object, ): an Object or \*null\*
   -- |
@@ -3282,6 +3309,13 @@ def step? (s : State) : Option (TraceEvent × State) :=
   -- | \`c\`. 1. Return the Reference Record { \[\[Base\]\]: \_baseValue\_,
   -- | \[\[ReferencedName\]\]: \_propertyNameValue\_, \[\[Strict\]\]:
   -- | \_strict\_, \[\[ThisValue\]\]: \~empty\~ }.
+  -- SPEC: L15611-L15617
+  -- | # EvaluatePropertyAccessWithIdentifierKey ( \_baseValue\_: an ECMAScript language value, \_identifierName\_: an \|IdentifierName\| Parse Node, \_strict\_: a Boolean, ): a Reference Record
+  -- |
+  -- | 1\. Let \_propertyNameString\_ be the StringValue of
+  -- | \_identifierName\_. 1. Return the Reference Record { \[\[Base\]\]:
+  -- | \_baseValue\_, \[\[ReferencedName\]\]: \_propertyNameString\_,
+  -- | \[\[Strict\]\]: \_strict\_, \[\[ThisValue\]\]: \~empty\~ }.
   | .getIndex obj idx =>
       match exprValue? obj, exprValue? idx with
       | none, _ =>
@@ -3543,7 +3577,50 @@ def step? (s : State) : Option (TraceEvent × State) :=
           let heap' := { objects := s.heap.objects.push heapProps, nextAddr := addr + 1 }
           let s' := pushTrace { s with expr := .lit (.object addr), heap := heap' } .silent
           some (.silent, s')
-  -- SPEC: L15014-L15025
+  -- SPEC: L14966-L15011
+  -- | # Runtime Semantics: ArrayAccumulation ( \_array\_: an Array, \_nextIndex\_: an integer, ): either a normal completion containing an integer or an abrupt completion
+  -- |
+  -- | Elision : \`,\` 1. Let \_len\_ be \_nextIndex\_ + 1. 1. Perform ?
+  -- | Set(\_array\_, \*\"length\"\*, 𝔽(\_len\_), \*true\*). 1. NOTE: The above
+  -- | step throws if \_len\_ exceeds 2^32^ - 1. 1. Return \_len\_. Elision :
+  -- | Elision \`,\` 1. Return ? ArrayAccumulation of \|Elision\| with
+  -- | arguments \_array\_ and (\_nextIndex\_ + 1). ElementList : Elision?
+  -- | AssignmentExpression 1. If \|Elision\| is present, then 1. Set
+  -- | \_nextIndex\_ to ? ArrayAccumulation of \|Elision\| with arguments
+  -- | \_array\_ and \_nextIndex\_. 1. Let \_initResult\_ be ? Evaluation of
+  -- | \|AssignmentExpression\|. 1. Let \_initValue\_ be ?
+  -- | GetValue(\_initResult\_). 1. Perform !
+  -- | CreateDataPropertyOrThrow(\_array\_, ! ToString(𝔽(\_nextIndex\_)),
+  -- | \_initValue\_). 1. Return \_nextIndex\_ + 1. ElementList : Elision?
+  -- | SpreadElement 1. If \|Elision\| is present, then 1. Set \_nextIndex\_ to
+  -- | ? ArrayAccumulation of \|Elision\| with arguments \_array\_ and
+  -- | \_nextIndex\_. 1. Return ? ArrayAccumulation of \|SpreadElement\| with
+  -- | arguments \_array\_ and \_nextIndex\_. ElementList : ElementList \`,\`
+  -- | Elision? AssignmentExpression 1. Set \_nextIndex\_ to ?
+  -- | ArrayAccumulation of \|ElementList\| with arguments \_array\_ and
+  -- | \_nextIndex\_. 1. If \|Elision\| is present, then 1. Set \_nextIndex\_
+  -- | to ? ArrayAccumulation of \|Elision\| with arguments \_array\_ and
+  -- | \_nextIndex\_. 1. Let \_initResult\_ be ? Evaluation of
+  -- | \|AssignmentExpression\|. 1. Let \_initValue\_ be ?
+  -- | GetValue(\_initResult\_). 1. Perform !
+  -- | CreateDataPropertyOrThrow(\_array\_, ! ToString(𝔽(\_nextIndex\_)),
+  -- | \_initValue\_). 1. Return \_nextIndex\_ + 1. ElementList : ElementList
+  -- | \`,\` Elision? SpreadElement 1. Set \_nextIndex\_ to ? ArrayAccumulation
+  -- | of \|ElementList\| with arguments \_array\_ and \_nextIndex\_. 1. If
+  -- | \|Elision\| is present, then 1. Set \_nextIndex\_ to ? ArrayAccumulation
+  -- | of \|Elision\| with arguments \_array\_ and \_nextIndex\_. 1. Return ?
+  -- | ArrayAccumulation of \|SpreadElement\| with arguments \_array\_ and
+  -- | \_nextIndex\_. SpreadElement : \`\...\` AssignmentExpression 1. Let
+  -- | \_spreadRef\_ be ? Evaluation of \|AssignmentExpression\|. 1. Let
+  -- | \_spreadObj\_ be ? GetValue(\_spreadRef\_). 1. Let \_iteratorRecord\_ be
+  -- | ? GetIterator(\_spreadObj\_, \~sync\~). 1. Repeat, 1. Let \_next\_ be ?
+  -- | IteratorStepValue(\_iteratorRecord\_). 1. If \_next\_ is \~done\~,
+  -- | return \_nextIndex\_. 1. Perform ! CreateDataPropertyOrThrow(\_array\_,
+  -- | ! ToString(𝔽(\_nextIndex\_)), \_next\_). 1. Set \_nextIndex\_ to
+  -- | \_nextIndex\_ + 1.
+  -- SPEC: L15012-L15025
+  -- | # Runtime Semantics: Evaluation
+  -- |
   -- | ArrayLiteral : \`\[\` Elision? \`\]\` 1. Let \_array\_ be !
   -- | ArrayCreate(0). 1. If \|Elision\| is present, then 1. Perform ?
   -- | ArrayAccumulation of \|Elision\| with arguments \_array\_ and 0. 1.
@@ -3607,7 +3684,9 @@ def step? (s : State) : Option (TraceEvent × State) :=
   -- | CreatePerIterationEnvironment(\_perIterationBindings\_). 1. If
   -- | \_increment\_ is not \~empty\~, then 1. Let \_incRef\_ be ? Evaluation
   -- | of \_increment\_. 1. Perform ? GetValue(\_incRef\_).
-  -- SPEC: L17674-L17682
+  -- SPEC: L17672-L17683
+  -- | # Runtime Semantics: DoWhileLoopEvaluation ( \_labelSet\_: a List of Strings, ): either a normal completion containing an ECMAScript language value or an abrupt completion
+  -- |
   -- | DoWhileStatement : \`do\` Statement \`while\` \`(\` Expression \`)\`
   -- | \`;\` 1. Let \_V\_ be \*undefined\*. 1. Repeat, 1. Let \_stmtResult\_ be
   -- | Completion(Evaluation of \|Statement\|). 1. If
@@ -3618,7 +3697,9 @@ def step? (s : State) : Option (TraceEvent × State) :=
   -- | GetValue(\_exprRef\_). 1. If ToBoolean(\_exprValue\_) is \*false\*,
   -- | return \_V\_.
   -- NOTE: do-while is desugared by the parser to seq(body, while(cond, body)).
-  -- SPEC: L17749-L17756
+  -- SPEC: L17747-L17787
+  -- | # Runtime Semantics: ForLoopEvaluation ( \_labelSet\_: a List of Strings, ): either a normal completion containing an ECMAScript language value or an abrupt completion
+  -- |
   -- | ForStatement : \`for\` \`(\` Expression? \`;\` Expression? \`;\`
   -- | Expression? \`)\` Statement 1. If the first \|Expression\| is present,
   -- | then 1. Let \_exprRef\_ be ? Evaluation of the first \|Expression\|. 1.
@@ -3627,8 +3708,40 @@ def step? (s : State) : Option (TraceEvent × State) :=
   -- | \~empty\~. 1. If the third \|Expression\| is present, let \_increment\_
   -- | be the third \|Expression\|; else let \_increment\_ be \~empty\~. 1.
   -- | Return ? ForBodyEvaluation(\_test\_, \_increment\_, \|Statement\|, « »,
+  -- | \_labelSet\_). ForStatement : \`for\` \`(\` \`var\`
+  -- | VariableDeclarationList \`;\` Expression? \`;\` Expression? \`)\`
+  -- | Statement 1. Perform ? Evaluation of \|VariableDeclarationList\|. 1. If
+  -- | the first \|Expression\| is present, let \_test\_ be the first
+  -- | \|Expression\|; else let \_test\_ be \~empty\~. 1. If the second
+  -- | \|Expression\| is present, let \_increment\_ be the second
+  -- | \|Expression\|; else let \_increment\_ be \~empty\~. 1. Return ?
+  -- | ForBodyEvaluation(\_test\_, \_increment\_, \|Statement\|, « »,
+  -- | \_labelSet\_). ForStatement : \`for\` \`(\` LexicalDeclaration
+  -- | Expression? \`;\` Expression? \`)\` Statement 1. Let \_oldEnv\_ be the
+  -- | running execution context\'s LexicalEnvironment. 1. Let \_loopEnv\_ be
+  -- | NewDeclarativeEnvironment(\_oldEnv\_). 1. Let \_isConst\_ be
+  -- | IsConstantDeclaration of \|LexicalDeclaration\|. 1. Let \_boundNames\_
+  -- | be the BoundNames of \|LexicalDeclaration\|. 1. For each element \_dn\_
+  -- | of \_boundNames\_, do 1. If \_isConst\_ is \*true\*, then 1. Perform !
+  -- | \_loopEnv\_.CreateImmutableBinding(\_dn\_, \*true\*). 1. Else, 1.
+  -- | Perform ! \_loopEnv\_.CreateMutableBinding(\_dn\_, \*false\*). 1. Set
+  -- | the running execution context\'s LexicalEnvironment to \_loopEnv\_. 1.
+  -- | Let \_forDcl\_ be Completion(Evaluation of \|LexicalDeclaration\|). 1.
+  -- | If \_forDcl\_ is an abrupt completion, then 1. Set the running execution
+  -- | context\'s LexicalEnvironment to \_oldEnv\_. 1. Return ? \_forDcl\_. 1.
+  -- | If \_isConst\_ is \*false\*, let \_perIterationLets\_ be \_boundNames\_;
+  -- | else let \_perIterationLets\_ be a new empty List. 1. If the first
+  -- | \|Expression\| is present, let \_test\_ be the first \|Expression\|;
+  -- | else let \_test\_ be \~empty\~. 1. If the second \|Expression\| is
+  -- | present, let \_increment\_ be the second \|Expression\|; else let
+  -- | \_increment\_ be \~empty\~. 1. Let \_bodyResult\_ be
+  -- | Completion(ForBodyEvaluation(\_test\_, \_increment\_, \|Statement\|,
+  -- | \_perIterationLets\_, \_labelSet\_)). 1. Set the running execution
+  -- | context\'s LexicalEnvironment to \_oldEnv\_. 1. Return ? \_bodyResult\_.
   -- NOTE: for-loop is desugared by the parser to seq(init, while(cond, seq(body, update))).
-  -- SPEC: L17703-L17710
+  -- SPEC: L17701-L17711
+  -- | # Runtime Semantics: WhileLoopEvaluation ( \_labelSet\_: a List of Strings, ): either a normal completion containing an ECMAScript language value or an abrupt completion
+  -- |
   -- | WhileStatement : \`while\` \`(\` Expression \`)\` Statement 1. Let \_V\_
   -- | be \*undefined\*. 1. Repeat, 1. Let \_exprRef\_ be ? Evaluation of
   -- | \|Expression\|. 1. Let \_exprValue\_ be ? GetValue(\_exprRef\_). 1. If
@@ -3641,12 +3754,151 @@ def step? (s : State) : Option (TraceEvent × State) :=
       let lowered := .if cond (.seq body (.while_ cond body)) (.lit .undefined)
       let s' := pushTrace { s with expr := lowered } .silent
       some (.silent, s')
-  -- SPEC: L17933-L17937
+  -- SPEC: L17931-L17984
+  -- | # Runtime Semantics: ForInOfLoopEvaluation ( \_labelSet\_: a List of Strings, ): either a normal completion containing an ECMAScript language value or an abrupt completion
+  -- |
   -- | ForInOfStatement : \`for\` \`(\` LeftHandSideExpression \`in\`
   -- | Expression \`)\` Statement 1. Let \_keyResult\_ be ?
   -- | ForIn/OfHeadEvaluation(« », \|Expression\|, \~enumerate\~). 1. Return ?
   -- | ForIn/OfBodyEvaluation(\|LeftHandSideExpression\|, \|Statement\|,
   -- | \_keyResult\_, \~enumerate\~, \~assignment\~, \_labelSet\_).
+  -- | ForInOfStatement : \`for\` \`(\` \`var\` ForBinding \`in\` Expression
+  -- | \`)\` Statement 1. Let \_keyResult\_ be ? ForIn/OfHeadEvaluation(« »,
+  -- | \|Expression\|, \~enumerate\~). 1. Return ?
+  -- | ForIn/OfBodyEvaluation(\|ForBinding\|, \|Statement\|, \_keyResult\_,
+  -- | \~enumerate\~, \~var-binding\~, \_labelSet\_). ForInOfStatement :
+  -- | \`for\` \`(\` ForDeclaration \`in\` Expression \`)\` Statement 1. Let
+  -- | \_keyResult\_ be ? ForIn/OfHeadEvaluation(BoundNames of
+  -- | \|ForDeclaration\|, \|Expression\|, \~enumerate\~). 1. Return ?
+  -- | ForIn/OfBodyEvaluation(\|ForDeclaration\|, \|Statement\|, \_keyResult\_,
+  -- | \~enumerate\~, \~lexical-binding\~, \_labelSet\_). ForInOfStatement :
+  -- | \`for\` \`(\` LeftHandSideExpression \`of\` AssignmentExpression \`)\`
+  -- | Statement 1. Let \_keyResult\_ be ? ForIn/OfHeadEvaluation(« »,
+  -- | \|AssignmentExpression\|, \~iterate\~). 1. Return ?
+  -- | ForIn/OfBodyEvaluation(\|LeftHandSideExpression\|, \|Statement\|,
+  -- | \_keyResult\_, \~iterate\~, \~assignment\~, \_labelSet\_).
+  -- | ForInOfStatement : \`for\` \`(\` \`var\` ForBinding \`of\`
+  -- | AssignmentExpression \`)\` Statement 1. Let \_keyResult\_ be ?
+  -- | ForIn/OfHeadEvaluation(« », \|AssignmentExpression\|, \~iterate\~). 1.
+  -- | Return ? ForIn/OfBodyEvaluation(\|ForBinding\|, \|Statement\|,
+  -- | \_keyResult\_, \~iterate\~, \~var-binding\~, \_labelSet\_).
+  -- | ForInOfStatement : \`for\` \`(\` ForDeclaration \`of\`
+  -- | AssignmentExpression \`)\` Statement 1. Let \_keyResult\_ be ?
+  -- | ForIn/OfHeadEvaluation(BoundNames of \|ForDeclaration\|,
+  -- | \|AssignmentExpression\|, \~iterate\~). 1. Return ?
+  -- | ForIn/OfBodyEvaluation(\|ForDeclaration\|, \|Statement\|, \_keyResult\_,
+  -- | \~iterate\~, \~lexical-binding\~, \_labelSet\_). ForInOfStatement :
+  -- | \`for\` \`await\` \`(\` LeftHandSideExpression \`of\`
+  -- | AssignmentExpression \`)\` Statement 1. Let \_keyResult\_ be ?
+  -- | ForIn/OfHeadEvaluation(« », \|AssignmentExpression\|,
+  -- | \~async-iterate\~). 1. Return ?
+  -- | ForIn/OfBodyEvaluation(\|LeftHandSideExpression\|, \|Statement\|,
+  -- | \_keyResult\_, \~iterate\~, \~assignment\~, \_labelSet\_, \~async\~).
+  -- | ForInOfStatement : \`for\` \`await\` \`(\` \`var\` ForBinding \`of\`
+  -- | AssignmentExpression \`)\` Statement 1. Let \_keyResult\_ be ?
+  -- | ForIn/OfHeadEvaluation(« », \|AssignmentExpression\|,
+  -- | \~async-iterate\~). 1. Return ? ForIn/OfBodyEvaluation(\|ForBinding\|,
+  -- | \|Statement\|, \_keyResult\_, \~iterate\~, \~var-binding\~,
+  -- | \_labelSet\_, \~async\~). ForInOfStatement : \`for\` \`await\` \`(\`
+  -- | ForDeclaration \`of\` AssignmentExpression \`)\` Statement 1. Let
+  -- | \_keyResult\_ be ? ForIn/OfHeadEvaluation(BoundNames of
+  -- | \|ForDeclaration\|, \|AssignmentExpression\|, \~async-iterate\~). 1.
+  -- | Return ? ForIn/OfBodyEvaluation(\|ForDeclaration\|, \|Statement\|,
+  -- | \_keyResult\_, \~iterate\~, \~lexical-binding\~, \_labelSet\_,
+  -- | \~async\~).
+  -- |
+  -- | This section is extended by Annex .
+  -- SPEC: L17985-L18009
+  -- | # ForIn/OfHeadEvaluation ( \_uninitializedBoundNames\_: a List of Strings, \_expr\_: an \|Expression\| Parse Node or an \|AssignmentExpression\| Parse Node, \_iterationKind\_: \~enumerate\~, \~iterate\~, or \~async-iterate\~, ): either a normal completion containing an Iterator Record or an abrupt completion
+  -- |
+  -- | 1\. Let \_oldEnv\_ be the running execution context\'s
+  -- | LexicalEnvironment. 1. If \_uninitializedBoundNames\_ is not empty,
+  -- | then 1. Assert: \_uninitializedBoundNames\_ has no duplicate entries. 1.
+  -- | Let \_newEnv\_ be NewDeclarativeEnvironment(\_oldEnv\_). 1. For each
+  -- | String \_name\_ of \_uninitializedBoundNames\_, do 1. Perform !
+  -- | \_newEnv\_.CreateMutableBinding(\_name\_, \*false\*). 1. Set the running
+  -- | execution context\'s LexicalEnvironment to \_newEnv\_. 1. Let
+  -- | \_exprRef\_ be Completion(Evaluation of \_expr\_). 1. Set the running
+  -- | execution context\'s LexicalEnvironment to \_oldEnv\_. 1. Let
+  -- | \_exprValue\_ be ? GetValue(? \_exprRef\_). 1. If \_iterationKind\_ is
+  -- | \~enumerate\~, then 1. If \_exprValue\_ is either \*undefined\* or
+  -- | \*null\*, then 1. Return Completion Record { \[\[Type\]\]: \~break\~,
+  -- | \[\[Value\]\]: \~empty\~, \[\[Target\]\]: \~empty\~ }. 1. Let \_obj\_ be
+  -- | ! ToObject(\_exprValue\_). 1. Let \_iterator\_ be
+  -- | EnumerateObjectProperties(\_obj\_). 1. Let \_nextMethod\_ be !
+  -- | GetV(\_iterator\_, \*\"next\"\*). 1. Return the Iterator Record {
+  -- | \[\[Iterator\]\]: \_iterator\_, \[\[NextMethod\]\]: \_nextMethod\_,
+  -- | \[\[Done\]\]: \*false\* }. 1. Assert: \_iterationKind\_ is either
+  -- | \~iterate\~ or \~async-iterate\~. 1. If \_iterationKind\_ is
+  -- | \~async-iterate\~, let \_iteratorKind\_ be \~async\~. 1. Else, let
+  -- | \_iteratorKind\_ be \~sync\~. 1. Return ? GetIterator(\_exprValue\_,
+  -- | \_iteratorKind\_).
+  -- SPEC: L18010-L18067
+  -- | # ForIn/OfBodyEvaluation ( \_lhs\_: a Parse Node, \_stmt\_: a \|Statement\| Parse Node, \_iteratorRecord\_: an Iterator Record, \_iterationKind\_: \~enumerate\~ or \~iterate\~, \_lhsKind\_: \~assignment\~, \~var-binding\~, or \~lexical-binding\~, \_labelSet\_: a List of Strings, optional \_iteratorKind\_: \~sync\~ or \~async\~, ): either a normal completion containing an ECMAScript language value or an abrupt completion
+  -- |
+  -- | 1\. If \_iteratorKind\_ is not present, set \_iteratorKind\_ to
+  -- | \~sync\~. 1. Let \_oldEnv\_ be the running execution context\'s
+  -- | LexicalEnvironment. 1. Let \_V\_ be \*undefined\*. 1. Let
+  -- | \_destructuring\_ be IsDestructuring of \_lhs\_. 1. If \_destructuring\_
+  -- | is \*true\* and \_lhsKind\_ is \~assignment\~, then 1. Assert: \_lhs\_
+  -- | is a \|LeftHandSideExpression\|. 1. Let \_assignmentPattern\_ be the
+  -- | \|AssignmentPattern\| that is covered by \_lhs\_. 1. Repeat, 1. Let
+  -- | \_nextResult\_ be ? Call(\_iteratorRecord\_.\[\[NextMethod\]\],
+  -- | \_iteratorRecord\_.\[\[Iterator\]\]). 1. If \_iteratorKind\_ is
+  -- | \~async\~, set \_nextResult\_ to ? Await(\_nextResult\_). 1. If
+  -- | \_nextResult\_ is not an Object, throw a \*TypeError\* exception. 1. Let
+  -- | \_done\_ be ? IteratorComplete(\_nextResult\_). 1. If \_done\_ is
+  -- | \*true\*, return \_V\_. 1. Let \_nextValue\_ be ?
+  -- | IteratorValue(\_nextResult\_). 1. If \_lhsKind\_ is either
+  -- | \~assignment\~ or \~var-binding\~, then 1. If \_destructuring\_ is
+  -- | \*true\*, then 1. If \_lhsKind\_ is \~assignment\~, then 1. Let
+  -- | \_status\_ be Completion(DestructuringAssignmentEvaluation of
+  -- | \_assignmentPattern\_ with argument \_nextValue\_). 1. Else, 1. Assert:
+  -- | \_lhsKind\_ is \~var-binding\~. 1. Assert: \_lhs\_ is a
+  -- | \|ForBinding\|. 1. Let \_status\_ be Completion(BindingInitialization of
+  -- | \_lhs\_ with arguments \_nextValue\_ and \*undefined\*). 1. Else, 1. Let
+  -- | \_lhsRef\_ be Completion(Evaluation of \_lhs\_). (It may be evaluated
+  -- | repeatedly.) 1. If \_lhsKind\_ is \~assignment\~ and the
+  -- | AssignmentTargetType of \_lhs\_ is \~web-compat\~, throw a
+  -- | \*ReferenceError\* exception. 1. If \_lhsRef\_ is an abrupt completion,
+  -- | then 1. Let \_status\_ be \_lhsRef\_. 1. Else, 1. Let \_status\_ be
+  -- | Completion(PutValue(\_lhsRef\_.\[\[Value\]\], \_nextValue\_)). 1.
+  -- | Else, 1. Assert: \_lhsKind\_ is \~lexical-binding\~. 1. Assert: \_lhs\_
+  -- | is a \|ForDeclaration\|. 1. Let \_iterationEnv\_ be
+  -- | NewDeclarativeEnvironment(\_oldEnv\_). 1. Perform
+  -- | ForDeclarationBindingInstantiation of \_lhs\_ with argument
+  -- | \_iterationEnv\_. 1. Set the running execution context\'s
+  -- | LexicalEnvironment to \_iterationEnv\_. 1. If \_destructuring\_ is
+  -- | \*true\*, then 1. Let \_status\_ be
+  -- | Completion(ForDeclarationBindingInitialization of \_lhs\_ with arguments
+  -- | \_nextValue\_ and \_iterationEnv\_). 1. Else, 1. Assert: \_lhs\_ binds a
+  -- | single name. 1. Let \_lhsName\_ be the sole element of the BoundNames of
+  -- | \_lhs\_. 1. Let \_lhsRef\_ be ! ResolveBinding(\_lhsName\_). 1. Let
+  -- | \_status\_ be Completion(InitializeReferencedBinding(\_lhsRef\_,
+  -- | \_nextValue\_)). 1. If \_status\_ is an abrupt completion, then 1. Set
+  -- | the running execution context\'s LexicalEnvironment to \_oldEnv\_. 1. If
+  -- | \_iterationKind\_ is \~enumerate\~, return ? \_status\_. 1. Assert:
+  -- | \_iterationKind\_ is \~iterate\~. 1. If \_iteratorKind\_ is \~async\~,
+  -- | return ? AsyncIteratorClose(\_iteratorRecord\_, \_status\_). 1. Return ?
+  -- | IteratorClose(\_iteratorRecord\_, \_status\_). 1. Let \_result\_ be
+  -- | Completion(Evaluation of \_stmt\_). 1. Set the running execution
+  -- | context\'s LexicalEnvironment to \_oldEnv\_. 1. If
+  -- | LoopContinues(\_result\_, \_labelSet\_) is \*false\*, then 1. Set
+  -- | \_status\_ to Completion(UpdateEmpty(\_result\_, \_V\_)). 1. If
+  -- | \_iterationKind\_ is \~enumerate\~, return ? \_status\_. 1. Assert:
+  -- | \_iterationKind\_ is \~iterate\~. 1. If \_iteratorKind\_ is \~async\~,
+  -- | return ? AsyncIteratorClose(\_iteratorRecord\_, \_status\_). 1. Return ?
+  -- | IteratorClose(\_iteratorRecord\_, \_status\_). 1. If
+  -- | \_result\_.\[\[Value\]\] is not \~empty\~, set \_V\_ to
+  -- | \_result\_.\[\[Value\]\].
+  -- SPEC: L18068-L18073
+  -- | # Runtime Semantics: Evaluation
+  -- |
+  -- | ForInOfStatement : \`for\` \`(\` LeftHandSideExpression \`in\`
+  -- | Expression \`)\` Statement ForInOfStatement : \`for\` \`(\` \`var\`
+  -- | ForBinding \`in\` Expression \`)\` Statement ForInOfStatement : \`for\`
+  -- | \`(\` ForDeclaration \`in\` Expression \`)\` Statement 1. Return ?
+  -- | ForInOfLoopEvaluation of this \|ForInOfStatement\| with argument « ».
   | .forIn binding obj body =>
       match exprValue? obj with
       | none =>
@@ -3874,10 +4126,33 @@ def step? (s : State) : Option (TraceEvent × State) :=
   -- | \|CaseBlock\| algorithm uses its return value to determine which
   -- | \|StatementList\| to start executing.
   -- NOTE: switch is desugared by the parser to if-else chains.
-  -- SPEC: L18488-L18489
+  -- SPEC: L18486-L18490
+  -- | # Runtime Semantics: Evaluation
+  -- |
   -- | LabelledStatement : LabelIdentifier \`:\` LabelledItem 1. Return ?
   -- | LabelledEvaluation of this \|LabelledStatement\| with argument « ».
-  -- SPEC: L18511-L18519
+  -- SPEC: L18491-L18529
+  -- | # Runtime Semantics: LabelledEvaluation ( \_labelSet\_: a List of Strings, ): either a normal completion containing either an ECMAScript language value or \~empty\~, or an abrupt completion
+  -- |
+  -- | BreakableStatement : IterationStatement 1. Let \_stmtResult\_ be
+  -- | Completion(LoopEvaluation of \|IterationStatement\| with argument
+  -- | \_labelSet\_). 1. If \_stmtResult\_ is a break completion, then 1. If
+  -- | \_stmtResult\_.\[\[Target\]\] is \~empty\~, then 1. If
+  -- | \_stmtResult\_.\[\[Value\]\] is \~empty\~, set \_stmtResult\_ to
+  -- | NormalCompletion(\*undefined\*). 1. Else, set \_stmtResult\_ to
+  -- | NormalCompletion(\_stmtResult\_.\[\[Value\]\]). 1. Return ?
+  -- | \_stmtResult\_. BreakableStatement : SwitchStatement 1. Let
+  -- | \_stmtResult\_ be Completion(Evaluation of \|SwitchStatement\|). 1. If
+  -- | \_stmtResult\_ is a break completion, then 1. If
+  -- | \_stmtResult\_.\[\[Target\]\] is \~empty\~, then 1. If
+  -- | \_stmtResult\_.\[\[Value\]\] is \~empty\~, set \_stmtResult\_ to
+  -- | NormalCompletion(\*undefined\*). 1. Else, set \_stmtResult\_ to
+  -- | NormalCompletion(\_stmtResult\_.\[\[Value\]\]). 1. Return ?
+  -- | \_stmtResult\_.
+  -- |
+  -- | A \|BreakableStatement\| is one that can be exited via an unlabelled
+  -- | \|BreakStatement\|.
+  -- |
   -- | LabelledStatement : LabelIdentifier \`:\` LabelledItem 1. Let \_label\_
   -- | be the StringValue of \|LabelIdentifier\|. 1. Let \_newLabelSet\_ be the
   -- | list-concatenation of \_labelSet\_ and « \_label\_ ». 1. Let
@@ -3886,6 +4161,15 @@ def step? (s : State) : Option (TraceEvent × State) :=
   -- | and \_stmtResult\_.\[\[Target\]\] is \_label\_, then 1. Set
   -- | \_stmtResult\_ to NormalCompletion(\_stmtResult\_.\[\[Value\]\]). 1.
   -- | Return ? \_stmtResult\_. LabelledItem : FunctionDeclaration 1. Return ?
+  -- | Evaluation of \|FunctionDeclaration\|. Statement : BlockStatement
+  -- | VariableStatement EmptyStatement ExpressionStatement IfStatement
+  -- | ContinueStatement BreakStatement ReturnStatement WithStatement
+  -- | ThrowStatement TryStatement DebuggerStatement 1. Return ? Evaluation of
+  -- | \|Statement\|.
+  -- |
+  -- | The only two productions of \|Statement\| which have special semantics
+  -- | for LabelledEvaluation are \|BreakableStatement\| and
+  -- | \|LabelledStatement\|.
   | .labeled _ body =>
       let s' := pushTrace { s with expr := body } .silent
       some (.silent, s')
@@ -4226,7 +4510,9 @@ def step? (s : State) : Option (TraceEvent × State) :=
           | _ =>
               let s' := pushTrace { s with expr := .lit v } .silent
               some (.silent, s')
-  -- SPEC: L16118-L16135
+  -- SPEC: L16116-L16149
+  -- | # Runtime Semantics: Evaluation
+  -- |
   -- | UnaryExpression : \`delete\` UnaryExpression 1. Let \_ref\_ be ?
   -- | Evaluation of \|UnaryExpression\|. 1. If \_ref\_ is not a Reference
   -- | Record, return \*true\*. 1. If IsUnresolvableReference(\_ref\_) is
@@ -4245,6 +4531,19 @@ def step? (s : State) : Option (TraceEvent × State) :=
   -- | \_base\_ be \_ref\_.\[\[Base\]\]. 1. Assert: \_base\_ is an Environment
   -- | Record. 1. Return ?
   -- | \_base\_.DeleteBinding(\_ref\_.\[\[ReferencedName\]\]).
+  -- |
+  -- | When a \`delete\` operator occurs within strict mode code, a
+  -- | \*SyntaxError\* exception is thrown if its \|UnaryExpression\| is a
+  -- | direct reference to a variable, function argument, or function name. In
+  -- | addition, if a \`delete\` operator occurs within strict mode code and
+  -- | the property to be deleted has the attribute { \[\[Configurable\]\]:
+  -- | \*false\* } (or otherwise cannot be deleted), a \*TypeError\* exception
+  -- | is thrown.
+  -- |
+  -- | The object that may be created in step is not accessible outside of the
+  -- | above abstract operation and the ordinary object \[\[Delete\]\] internal
+  -- | method. An implementation might choose to avoid the actual creation of
+  -- | that object.
   -- SPEC: L10934-L10941
   -- | # OrdinaryDelete ( \_O\_: an Object, \_P\_: a property key, ): either a normal completion containing a Boolean or a throw completion
   -- |
