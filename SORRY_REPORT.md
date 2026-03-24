@@ -1,16 +1,60 @@
-# Sorry Report (Tue Mar 24 08:10:08 PM UTC 2026)
+# Sorry Report (Tue Mar 24 09:08:57 PM UTC 2026)
 
 - [ ] `VerifiedJS/Proofs/LowerCorrect.lean:69` — `theorem lower_behavioral_correct` — `obtain ⟨ir, hirsteps, hrel⟩ := lower_sim_steps s t h _ _ _ _ (IR.LowerSimRel.init s t h (by sorry)) hsteps`
 - [ ] `VerifiedJS/Proofs/ANFConvertCorrect.lean:106` — `theorem anfConvert_step_star` — `sorry`
 - [ ] `VerifiedJS/Proofs/ANFConvertCorrect.lean:1181` — `theorem anfConvert_halt_star_aux` — `sorry`
-- [ ] `VerifiedJS/Proofs/ClosureConvertCorrect.lean:1011` — `theorem closureConvert_step_simulation` — `sorry`
-- [ ] `VerifiedJS/Proofs/ClosureConvertCorrect.lean:1721` — `theorem closureConvert_step_simulation` — `| call _ _ => sorry -- needs env/heap/funcs correspondence`
-- [ ] `VerifiedJS/Proofs/ClosureConvertCorrect.lean:1722` — `theorem closureConvert_step_simulation` — `| newObj _ _ => sorry -- needs env/heap correspondence`
-- [ ] `VerifiedJS/Proofs/ClosureConvertCorrect.lean:1797` — `theorem closureConvert_step_simulation` — `| some _ => sorry -- needs well-formedness: Core addrs < Core heap size`
-- [ ] `VerifiedJS/Proofs/ClosureConvertCorrect.lean:2205` — `def hst2_def` — `| some _ => sorry -- needs well-formedness: Core addrs < Core heap size`
-- [ ] `VerifiedJS/Proofs/ClosureConvertCorrect.lean:3170` — `def hst3_def` — `| objectLit _ => sorry -- needs env/heap correspondence`
-- [ ] `VerifiedJS/Proofs/ClosureConvertCorrect.lean:3171` — `def hst3_def` — `| arrayLit _ => sorry -- needs env/heap correspondence`
-- [ ] `VerifiedJS/Proofs/ClosureConvertCorrect.lean:3172` — `def hst3_def` — `| functionDef _ _ _ _ _ => sorry -- needs env/heap/funcs + CC state`
+- [ ] `VerifiedJS/Proofs/ClosureConvertCorrect.lean:657` — `theorem ExprAddrWF_mono` — `sorry`
+- [ ] `VerifiedJS/Proofs/ClosureConvertCorrect.lean:964` — `theorem closureConvert_step_simulation` — `exact ⟨hsf_trace_eq_sc_trace, henv, hheap, by have h := hncfr; rw [hsc] at h; simp [noCallFrameReturn] at h; rw`
+- [ ] `VerifiedJS/Proofs/ClosureConvertCorrect.lean:978` — `theorem closureConvert_step_simulation` — `sorry`
+- [ ] `VerifiedJS/Proofs/ClosureConvertCorrect.lean:1038` — `theorem closureConvert_step_simulation` — `exact ⟨hsf_trace, henv, hheap, by rw [hsc_expr]; simp [noCallFrameReturn], sorry /- ExprAddrWF -/, scope, st,`
+- [ ] `VerifiedJS/Proofs/ClosureConvertCorrect.lean:1095` — `theorem closureConvert_step_simulation` — `exact ⟨hsf_trace, henv, hheap, by rw [hsc_expr]; simp [noCallFrameReturn], sorry /- ExprAddrWF -/, scope, st, st,`
+- [ ] `VerifiedJS/Proofs/ClosureConvertCorrect.lean:1184` — `theorem closureConvert_step_simulation` — `ev_sub sa_flat rfl htrace henvCorr hheap (by have h := hncfr; rw [hsc] at h; simp [noCallFrameReturn, Bool.and_eq_true] at h; exact h.1) (sorry /- ExprAddrWF -/)`
+- [ ] `VerifiedJS/Proofs/ClosureConvertCorrect.lean:1285` — `theorem closureConvert_step_simulation` — `subst_vars; exact hheap, by rw`
+- [ ] `VerifiedJS/Proofs/ClosureConvertCorrect.lean:1317` — `theorem closureConvert_step_simulation` — `ev_sub sa_flat rfl htrace henvCorr hheap (by have h := hncfr; rw [hsc] at h; simp only [noCallFrameReturn] at h; exact h) (sorry /- ExprAddrWF -/)`
+- [ ] `VerifiedJS/Proofs/ClosureConvertCorrect.lean:1426` — `theorem closureConvert_step_simulation` — `exact ⟨hsf_trace, henv, hheap, by have h := hncfr; rw [hsc] at h; simp [noCallFrameReturn, Bool.and_eq_true] at h; rw [hsc_expr]; exact h.2.1, sorry /- ExprAddrWF -/, scope, st,`
+- [ ] `VerifiedJS/Proofs/ClosureConvertCorrect.lean:1431` — `theorem closureConvert_step_simulation` — `exact ⟨hsf_trace, henv, hheap, by have h := hncfr; rw [hsc] at h; simp [noCallFrameReturn, Bool.and_eq_true] at h; rw [hsc_expr]; exact h.2.2, sorry /- ExprAddrWF -/, scope,`
+- [ ] `VerifiedJS/Proofs/ClosureConvertCorrect.lean:1466` — `theorem closureConvert_step_simulation` — `ev_sub sa_flat rfl htrace henvCorr hheap (by have h := hncfr; rw [hsc] at h; simp [noCallFrameReturn, Bool.and_eq_true] at h; exact h.1) (sorry /- ExprAddrWF -/)`
+- [ ] `VerifiedJS/Proofs/ClosureConvertCorrect.lean:1590` — `theorem closureConvert_step_simulation` — `subst_vars; exact hheap, by have h := hncfr; rw [hsc] at h; simp [noCallFrameReturn, Bool.and_eq_true] at h; rw`
+- [ ] `VerifiedJS/Proofs/ClosureConvertCorrect.lean:1624` — `theorem closureConvert_step_simulation` — `ev_sub sa_flat rfl htrace henvCorr hheap (by have h := hncfr; rw [hsc] at h; simp [noCallFrameReturn, Bool.and_eq_true] at h; exact h.1) (sorry /- ExprAddrWF -/)`
+- [ ] `VerifiedJS/Proofs/ClosureConvertCorrect.lean:1688` — `theorem closureConvert_step_simulation` — `| call _ _ => sorry -- needs env/heap/funcs correspondence`
+- [ ] `VerifiedJS/Proofs/ClosureConvertCorrect.lean:1689` — `theorem closureConvert_step_simulation` — `| newObj _ _ => sorry -- needs env/heap correspondence`
+- [ ] `VerifiedJS/Proofs/ClosureConvertCorrect.lean:1743` — `theorem closureConvert_step_simulation` — `refine ⟨sorry /- ExprAddrWF -/, scope, st, st, ?_⟩`
+- [ ] `VerifiedJS/Proofs/ClosureConvertCorrect.lean:1795` — `theorem closureConvert_step_simulation` — `ev_sub sa_flat rfl htrace henvCorr hheap (by have h := hncfr; rw [hsc] at h; simp only [noCallFrameReturn] at h; exact h) (sorry /- ExprAddrWF -/)`
+- [ ] `VerifiedJS/Proofs/ClosureConvertCorrect.lean:1856` — `theorem closureConvert_step_simulation` — `ev_sub sa_flat rfl htrace henvCorr hheap (by have h := hncfr; rw [hsc] at h; simp [noCallFrameReturn, Bool.and_eq_true] at h; exact h.1) (sorry /- ExprAddrWF -/)`
+- [ ] `VerifiedJS/Proofs/ClosureConvertCorrect.lean:2001` — `def hst2_def` — `ev_sub sa_flat rfl htrace henvCorr hheap (by have h := hncfr; rw [hsc] at h; simp [noCallFrameReturn, Bool.and_eq_true] at h; exact h.2) (sorry /- ExprAddrWF -/)`
+- [ ] `VerifiedJS/Proofs/ClosureConvertCorrect.lean:2076` — `def hst2_def` — `ev_sub sa_flat rfl htrace henvCorr hheap (by have h := hncfr; rw [hsc] at h; simp [noCallFrameReturn, Bool.and_eq_true] at h; exact h.1) (sorry /- ExprAddrWF -/)`
+- [ ] `VerifiedJS/Proofs/ClosureConvertCorrect.lean:2148` — `def hst2_def` — `refine ⟨sorry /- ExprAddrWF -/, scope, st, st, ?_⟩`
+- [ ] `VerifiedJS/Proofs/ClosureConvertCorrect.lean:2199` — `def hst2_def` — `ev_sub sa_flat rfl htrace henvCorr hheap (by have h := hncfr; rw [hsc] at h; simp [noCallFrameReturn, Bool.and_eq_true] at h; exact h.2) (sorry /- ExprAddrWF -/)`
+- [ ] `VerifiedJS/Proofs/ClosureConvertCorrect.lean:2276` — `def hst2_def` — `ev_sub sa_flat rfl htrace henvCorr hheap (by have h := hncfr; rw [hsc] at h; simp [noCallFrameReturn, Bool.and_eq_true] at h; exact h.1.1) (sorry /- ExprAddrWF -/)`
+- [ ] `VerifiedJS/Proofs/ClosureConvertCorrect.lean:2365` — `def hst1_def` — `ev_sub sa_flat rfl htrace henvCorr hheap (by have h := hncfr; rw [hsc] at h; simp [noCallFrameReturn, Bool.and_eq_true] at h; exact h.1.2) (sorry /- ExprAddrWF -/)`
+- [ ] `VerifiedJS/Proofs/ClosureConvertCorrect.lean:2519` — `def hst3_def` — `ev_sub sa_flat rfl htrace henvCorr hheap (by have h := hncfr; rw [hsc] at h; simp [noCallFrameReturn, Bool.and_eq_true] at h; exact h.2) (sorry /- ExprAddrWF -/)`
+- [ ] `VerifiedJS/Proofs/ClosureConvertCorrect.lean:2682` — `def hst3_def` — `ev_sub sa_flat rfl htrace henvCorr hheap (by have h := hncfr; rw [hsc] at h; simp [noCallFrameReturn, Bool.and_eq_true] at h; exact h) (sorry /- ExprAddrWF -/)`
+- [ ] `VerifiedJS/Proofs/ClosureConvertCorrect.lean:2802` — `def hst3_def` — `ev_sub sa_flat rfl htrace henvCorr hheap (by have h := hncfr; rw [hsc] at h; simp [noCallFrameReturn, Bool.and_eq_true] at h; exact h) (sorry /- ExprAddrWF -/)`
+- [ ] `VerifiedJS/Proofs/ClosureConvertCorrect.lean:2926` — `def hst3_def` — `ev_sub sa_flat rfl htrace henvCorr hheap (by have h := hncfr; rw [hsc] at h; simp [noCallFrameReturn, Bool.and_eq_true] at h; exact h) (sorry /- ExprAddrWF -/)`
+- [ ] `VerifiedJS/Proofs/ClosureConvertCorrect.lean:3030` — `def hst3_def` — `ev_sub sa_flat rfl htrace henvCorr hheap (by have h := hncfr; rw [hsc] at h; simp [noCallFrameReturn, Bool.and_eq_true] at h; exact h.2) (sorry /- ExprAddrWF -/)`
+- [ ] `VerifiedJS/Proofs/ClosureConvertCorrect.lean:3085` — `def hst3_def` — `ev_sub sa_flat rfl htrace henvCorr hheap (by have h := hncfr; rw [hsc] at h; simp [noCallFrameReturn, Bool.and_eq_true] at h; exact h.1) (sorry /- ExprAddrWF -/)`
+- [ ] `VerifiedJS/Proofs/ClosureConvertCorrect.lean:3128` — `def hst3_def` — `| objectLit _ => sorry -- needs env/heap correspondence`
+- [ ] `VerifiedJS/Proofs/ClosureConvertCorrect.lean:3129` — `def hst3_def` — `| arrayLit _ => sorry -- needs env/heap correspondence`
+- [ ] `VerifiedJS/Proofs/ClosureConvertCorrect.lean:3130` — `def hst3_def` — `| functionDef _ _ _ _ _ => sorry -- needs env/heap/funcs + CC state`
+- [ ] `VerifiedJS/Proofs/ClosureConvertCorrect.lean:3185` — `def hst3_def` — `subst_vars; exact hheap, by rw`
+- [ ] `VerifiedJS/Proofs/ClosureConvertCorrect.lean:3207` — `def hst3_def` — `ev_sub sa_flat rfl htrace henvCorr hheap (by have h := hncfr; rw [hsc] at h; simp [noCallFrameReturn, Bool.and_eq_true] at h; exact h) (sorry /- ExprAddrWF -/)`
+- [ ] `VerifiedJS/Proofs/ClosureConvertCorrect.lean:3309` — `def hst3_def` — `subst_vars; exact hheap, by simp [noCallFrameReturn], sorry /- ExprAddrWF -/, scope, st, st,`
+- [ ] `VerifiedJS/Proofs/ClosureConvertCorrect.lean:3348` — `def hst3_def` — `rw [hfin] at h; simp [noCallFrameReturn, Bool.and_eq_true]; exact h.2.2, sorry /- ExprAddrWF -/, scope, st, (Flat.convertExpr fin scope envVar envMap st).2,`
+- [ ] `VerifiedJS/Proofs/ClosureConvertCorrect.lean:3378` — `def hst3_def` — `(.error msg) sa_flat rfl htrace henvCorr hheap (by have h := hncfr; rw [hsc] at h; simp [noCallFrameReturn, Bool.and_eq_true] at h; exact h.2.1) (sorry /- ExprAddrWF -/)`
+- [ ] `VerifiedJS/Proofs/ClosureConvertCorrect.lean:3468` — `def hst3_def` — `.silent sa_flat rfl htrace henvCorr hheap (by have h := hncfr; rw [hsc] at h; simp [noCallFrameReturn, Bool.and_eq_true] at h; exact h.2.1) (sorry /- ExprAddrWF -/)`
+- [ ] `VerifiedJS/Proofs/ClosureConvertCorrect.lean:3543` — `def hst3_def` — `(.log msg) sa_flat rfl htrace henvCorr hheap (by have h := hncfr; rw [hsc] at h; simp [noCallFrameReturn, Bool.and_eq_true] at h; exact h.2.1) (sorry /- ExprAddrWF -/)`
+- [ ] `VerifiedJS/Proofs/ClosureConvertCorrect.lean:3680` — `def hst3_def` — `rw`
+- [ ] `VerifiedJS/Proofs/ClosureConvertCorrect.lean:3739` — `def hst3_def` — `exact ⟨hsf_trace, henv, hheap, by rw [hsc_expr]; simp [noCallFrameReturn], sorry /- ExprAddrWF -/, scope, st, st,`
+- [ ] `VerifiedJS/Proofs/ClosureConvertCorrect.lean:3796` — `def hst3_def` — `subst_vars; exact hheap, by simp [noCallFrameReturn], sorry /- ExprAddrWF -/, scope, st, st,`
+- [ ] `VerifiedJS/Proofs/ClosureConvertCorrect.lean:3818` — `def hst3_def` — `ev_sub sa_flat rfl htrace henvCorr hheap (by have h := hncfr; rw [hsc] at h; simp [noCallFrameReturn, Bool.and_eq_true] at h; exact h) (sorry /- ExprAddrWF -/)`
+- [ ] `VerifiedJS/Proofs/ClosureConvertCorrect.lean:3906` — `def hst3_def` — `exact ⟨hsf_trace, henv, hheap, by rw [hsc_expr]; simp [noCallFrameReturn], sorry /- ExprAddrWF -/, scope, st, st,`
+- [ ] `VerifiedJS/Proofs/ClosureConvertCorrect.lean:3960` — `def hst3_def` — `subst_vars; exact hheap, by simp [noCallFrameReturn], sorry /- ExprAddrWF -/, scope, st, st,`
+- [ ] `VerifiedJS/Proofs/ClosureConvertCorrect.lean:3982` — `def hst3_def` — `ev_sub sa_flat rfl htrace henvCorr hheap (by have h := hncfr; rw [hsc] at h; simp [noCallFrameReturn, Bool.and_eq_true] at h; exact h) (sorry /- ExprAddrWF -/)`
+- [ ] `VerifiedJS/Proofs/ClosureConvertCorrect.lean:4065` — `def hst3_def` — `subst_vars; exact hheap, by simp [noCallFrameReturn], sorry /- ExprAddrWF -/, scope, st, st,`
+- [ ] `VerifiedJS/Proofs/ClosureConvertCorrect.lean:4096` — `def hst3_def` — `ev_sub sa_flat rfl htrace henvCorr hheap (by have h := hncfr; rw [hsc] at h; simp [noCallFrameReturn, Bool.and_eq_true] at h; exact h) (sorry /- ExprAddrWF -/)`
+- [ ] `VerifiedJS/Proofs/ClosureConvertCorrect.lean:4197` — `def hst3_def` — `exact ⟨hsf_trace, henv, hheap, by rw [hsc_expr]; simp [noCallFrameReturn], sorry /- ExprAddrWF -/, scope, st,`
+- [ ] `VerifiedJS/Proofs/ClosureConvertCorrect.lean:4250` — `def hst3_def` — `exact ⟨hsf_trace, henv, hheap, by rw [hsc_expr]; simp [noCallFrameReturn], sorry /- ExprAddrWF -/, scope, st, st,`
+- [ ] `VerifiedJS/Proofs/ClosureConvertCorrect.lean:4787` — `theorem closureConvert_trace_reflection` — `have hinit := closureConvert_init_related s t h h_wf (by sorry)`
 - [ ] `VerifiedJS/Wasm/Semantics.lean:5799` — `def LowerRel` — `showing the target takes a matching step. These are`
 - [ ] `VerifiedJS/Wasm/Semantics.lean:6021` — `theorem init` — `sorry`
 - [ ] `VerifiedJS/Wasm/Semantics.lean:6030` — `theorem init` — `Each case is decomposed below; each sub-case may still be`
@@ -45,4 +89,4 @@
 - [ ] `VerifiedJS/Wasm/Semantics.lean:8146` — `theorem ir_stutter_sim` — `exact LowerSimRel.init prog irmod hlower (by sorry)`
 - [ ] `VerifiedJS/Wasm/Semantics.lean:8170` — `theorem lower_behavioral_obs_correct` — `(LowerSimRel.init prog irmod hlower (by sorry))`
 
-**Total: 44 sorries**
+**Total: 88 sorries**
