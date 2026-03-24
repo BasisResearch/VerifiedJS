@@ -10787,7 +10787,7 @@ theorem Step_iff (s : State) (t : TraceEvent) (s' : State) :
 -- |
 -- |       a = b
 -- |       /hi/g.exec(c).map(d);
--- |
+-- |     
 -- | ```
 -- |
 -- | where the first non-whitespace, non-comment code point after a
@@ -10799,7 +10799,7 @@ theorem Step_iff (s : State) (t : TraceEvent) (s' : State) :
 -- | ``` javascript
 -- |
 -- |       a = b / hi / g.exec(c).map(d);
--- |
+-- |     
 -- | ```
 -- |
 -- | ## Syntax
@@ -10961,7 +10961,7 @@ theorem Step_iff (s : State) (t : TraceEvent) (s' : State) :
 -- SPEC: L23071-L23083
 -- | # The Global Object
 -- |
--- | The global object:
+-- | The [global object]{.dfn variants="global objects"}:
 -- |
 -- | - is created before control enters any execution context.
 -- | - does not have a \[\[Construct\]\] internal method; it cannot be used
@@ -10969,9 +10969,9 @@ theorem Step_iff (s : State) (t : TraceEvent) (s' : State) :
 -- | - does not have a \[\[Call\]\] internal method; it cannot be invoked as
 -- |   a function.
 -- | - has a \[\[Prototype\]\] internal slot whose value is host-defined.
--- | - may have host-defined properties in addition to the properties
--- |   defined in this specification. This may include a property whose
--- |   value is the global object itself.
+-- | - may have host-defined properties in addition to the properties defined
+-- |   in this specification. This may include a property whose value is the
+-- |   global object itself.
 def Behaves (p : Program) (b : List TraceEvent) : Prop :=
   ∃ sFinal,
     Steps (initialState p) b sFinal ∧
