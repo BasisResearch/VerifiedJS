@@ -253,8 +253,13 @@ def toNumber : Value → Float
   | .bool false => 0.0
   | .null => 0.0
   | .undefined => 0.0 / 0.0  -- ECMA-262 §7.1.3: undefined → NaN
+  -- SPEC: L6055-L6060
+  -- | # StringToNumber ( \_str\_: a String, ): a Number
+  -- |
+  -- | 1\. Let \_literal\_ be ParseText(\_str\_, \|StringNumericLiteral\|). 1.
+  -- | If \_literal\_ is a List of errors, return \*NaN\*. 1. Return the
+  -- | StringNumericValue of \_literal\_.
   | .string s =>
-      -- ECMA-262 §7.1.3.1: StringNumericValue.
       let trimmed := s.trimAscii.toString
       if trimmed.isEmpty then 0.0
       else
@@ -310,6 +315,12 @@ def toNumber : Value → Float
 -- | # Exponentiation Operator
 -- |
 -- | ## Syntax
+-- SPEC: L4405-L4410
+-- | # Number::unaryMinus ( \_x\_: a Number, ): a Number
+-- |
+-- | 1\. If \_x\_ is \*NaN\*, return \*NaN\*. 1. Return the negation of
+-- | \_x\_; that is, compute a Number with the same magnitude but opposite
+-- | sign.
 /-- ECMA-262 §13.5 Runtime Semantics: Evaluation (core unary subset). -/
 def evalUnary : UnaryOp → Value → Value
   | .neg, v => .number (-toNumber v)
@@ -340,6 +351,18 @@ def evalUnary : UnaryOp → Value → Value
   -- | 1\. Let \_oldValue\_ be ! ToInt32(\_x\_). 1. Return the bitwise
   -- | complement of \_oldValue\_. The mathematical value of the result is
   -- | exactly representable as a 32-bit two\'s complement bit string.
+  -- SPEC: L6129-L6140
+  -- | # ToInt32 ( \_argument\_: an ECMAScript language value, ): either a normal completion containing an integral Number or a throw completion
+  -- |
+  -- | description
+  -- | :   It converts \_argument\_ to one of 2^32^ integral Number values in
+  -- |     the inclusive interval from 𝔽(-2^31^) to 𝔽(2^31^ - 1).
+  -- |
+  -- | 1\. Let \_number\_ be ? ToNumber(\_argument\_). 1. If \_number\_ is not
+  -- | finite or \_number\_ is either \*+0\*~𝔽~ or \*-0\*~𝔽~, return
+  -- | \*+0\*~𝔽~. 1. Let \_int\_ be truncate(ℝ(\_number\_)). 1. Let
+  -- | \_int32bit\_ be \_int\_ modulo 2^32^. 1. If \_int32bit\_ ≥ 2^31^, return
+  -- | 𝔽(\_int32bit\_ - 2^32^). 1. Return 𝔽(\_int32bit\_).
   | .bitNot, v => .number (~~~(toNumber v |>.toUInt32)).toFloat
 
 -- SPEC: L6305-L6321
