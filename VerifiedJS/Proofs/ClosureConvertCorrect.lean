@@ -534,14 +534,10 @@ private theorem coreToFlatValue_eq_convertValue (v : Core.Value) :
 
 private theorem heapObjectAt?_eq (h : Core.Heap) (addr : Nat) :
     Flat.heapObjectAt? h addr = h.objects[addr]? := by
-  simp only [Flat.heapObjectAt?]
+  unfold Flat.heapObjectAt?
   split
-  · rename_i hlt
-    simp only [Array.getElem?_lt hlt, Array.get!_eq_getElem?]
-    rfl
-  · rename_i hge
-    simp only [Array.getElem?_def]
-    split <;> [exact absurd ‹_› hge; rfl]
+  · rename_i hlt; simp only [Array.getElem?_pos hlt]
+  · rename_i hge; simp only [Array.getElem?_neg (by omega)]
 
 private theorem convertExpr_not_value (e : Core.Expr)
     (h : Core.exprValue? e = none)

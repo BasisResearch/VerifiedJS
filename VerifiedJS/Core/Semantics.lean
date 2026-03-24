@@ -528,6 +528,26 @@ def Env.extend (env : Env) (name : VarName) (v : Value) : Env :=
 -- |
 -- | 1\. Return ? \_O\_.\[\[IsExtensible\]\]().
 
+-- SPEC: L6399-L6407
+-- | # IsArray ( \_argument\_: an ECMAScript language value, ): either a normal completion containing a Boolean or a throw completion
+-- |
+-- | 1\. If \_argument\_ is not an Object, return \*false\*. 1. If
+-- | \_argument\_ is an Array exotic object, return \*true\*. 1. If
+-- | \_argument\_ is a Proxy exotic object, then 1. Perform ?
+-- | ValidateNonRevokedProxy(\_argument\_). 1. Let \_proxyTarget\_ be
+-- | \_argument\_.\[\[ProxyTarget\]\]. 1. Return ?
+-- | IsArray(\_proxyTarget\_). 1. Return \*false\*.
+
+-- SPEC: L6745-L6754
+-- | # DeletePropertyOrThrow ( \_O\_: an Object, \_P\_: a property key, ): either a normal completion containing \~unused\~ or a throw completion
+-- |
+-- | description
+-- | :   It is used to remove a specific own property of an object. It throws
+-- |     an exception if the property is not configurable.
+-- |
+-- | 1\. Let \_success\_ be ? \_O\_.\[\[Delete\]\](\_P\_). 1. If \_success\_
+-- | is \*false\*, throw a \*TypeError\* exception. 1. Return \~unused\~.
+
 -- SPEC: L6783-L6796
 -- | # Call ( \_F\_: an ECMAScript language value, \_V\_: an ECMAScript language value, optional \_argumentsList\_: a List of ECMAScript language values, ): either a normal completion containing an ECMAScript language value or a throw completion
 -- |
@@ -626,6 +646,45 @@ def toNumber : Value → Float
               | none => 0.0 / 0.0  -- NaN
             else 0.0 / 0.0  -- NaN for non-numeric strings
   | _ => 0.0 / 0.0  -- NaN for objects/functions
+
+-- SPEC: L6018-L6054
+-- | # ToNumber Applied to the String Type
+-- |
+-- | The abstract operation StringToNumber specifies how to convert a String
+-- | value to a Number value, using the following grammar.
+-- |
+-- | StringNumericLiteral ::: StrWhiteSpace? StrWhiteSpace? StrNumericLiteral
+-- | StrWhiteSpace? StrWhiteSpace ::: StrWhiteSpaceChar StrWhiteSpace?
+-- | StrWhiteSpaceChar ::: WhiteSpace LineTerminator StrNumericLiteral :::
+-- | StrDecimalLiteral NonDecimalIntegerLiteral\[\~Sep\] StrDecimalLiteral
+-- | ::: StrUnsignedDecimalLiteral \`+\` StrUnsignedDecimalLiteral \`-\`
+-- | StrUnsignedDecimalLiteral StrUnsignedDecimalLiteral ::: \`Infinity\`
+-- | DecimalDigits\[\~Sep\] \`.\` DecimalDigits\[\~Sep\]?
+-- | ExponentPart\[\~Sep\]? \`.\` DecimalDigits\[\~Sep\]
+-- | ExponentPart\[\~Sep\]? DecimalDigits\[\~Sep\] ExponentPart\[\~Sep\]?
+
+-- SPEC: L6114-L6128
+-- | # ToIntegerOrInfinity ( \_argument\_: an ECMAScript language value, ): either a normal completion containing either an integer, +∞, or -∞, or a throw completion
+-- |
+-- | description
+-- | :   It converts \_argument\_ to an integer representing its Number value
+-- |     with fractional part truncated, or to +∞ or -∞ when that Number
+-- |     value is infinite.
+-- |
+-- | 1\. Let \_number\_ be ? ToNumber(\_argument\_). 1. If \_number\_ is one
+-- | of \*NaN\*, \*+0\*~𝔽~, or \*-0\*~𝔽~, return 0. 1. If \_number\_ is
+-- | \*+∞\*~𝔽~, return +∞. 1. If \_number\_ is \*-∞\*~𝔽~, return -∞. 1.
+-- | Return truncate(ℝ(\_number\_)).
+
+-- SPEC: L6353-L6361
+-- | # ToLength ( \_argument\_: an ECMAScript language value, ): either a normal completion containing a non-negative integral Number or a throw completion
+-- |
+-- | description
+-- | :   It clamps and truncates \_argument\_ to a non-negative integral
+-- |     Number suitable for use as the length of an array-like object.
+-- |
+-- | 1\. Let \_len\_ be ? ToIntegerOrInfinity(\_argument\_). 1. If \_len\_ ≤
+-- | 0, return \*+0\*~𝔽~. 1. Return 𝔽(min(\_len\_, 2^53^ - 1)).
 
 -- SPEC: L16187-L16225
 -- | UnaryExpression : \`+\` UnaryExpression 1. Let \_expr\_ be ? Evaluation
@@ -1894,6 +1953,19 @@ def step? (s : State) : Option (TraceEvent × State) :=
   -- | SubstitutionEvaluation of \|TemplateSpans\|. 1. Assert: \_restSub\_ is a
   -- | possibly empty List. 1. Return the list-concatenation of « \_firstSub\_
   -- | » and \_restSub\_.
+  -- SPEC: L11569-L11613
+  -- | # BuiltinCallOrConstruct ( \_F\_: a built-in function object, \_thisArgument\_: an ECMAScript language value or \~uninitialized\~, \_argumentsList\_: a List of ECMAScript language values, \_newTarget\_: a constructor or \*undefined\*, ): either a normal completion containing an ECMAScript language value or a throw completion
+  -- |
+  -- | 1\. Let \_callerContext\_ be the running execution context. 1. If
+  -- | \_callerContext\_ is not already suspended, suspend
+  -- | \_callerContext\_. 1. Let \_calleeContext\_ be a new execution
+  -- | context. 1. Set the Function of \_calleeContext\_ to \_F\_. 1. Let
+  -- | \_calleeRealm\_ be \_F\_.\[\[Realm\]\]. 1. Set the Realm of
+  -- | \_calleeContext\_ to \_calleeRealm\_. 1. Set the ScriptOrModule of
+  -- | \_calleeContext\_ to \*null\*. 1. Perform any necessary
+  -- | implementation-defined initialization of \_calleeContext\_. 1. Push
+  -- | \_calleeContext\_ onto the execution context stack; \_calleeContext\_ is
+  -- | now the running execution context.
   | .call callee args =>
       match exprValue? callee with
       | none =>
@@ -1968,6 +2040,59 @@ def step? (s : State) : Option (TraceEvent × State) :=
   -- | IsStrict(this \|MemberExpression\|). 1. Return
   -- | EvaluatePropertyAccessWithIdentifierKey(\_baseValue\_,
   -- | \|IdentifierName\|, \_strict\_). MemberExpression : MemberExpression
+  -- SPEC: L10690-L10693
+  -- | # OrdinaryGetPrototypeOf ( \_O\_: an Object, ): an Object or \*null\*
+  -- |
+  -- | 1\. Return \_O\_.\[\[Prototype\]\].
+  -- SPEC: L10701-L10718
+  -- | # OrdinarySetPrototypeOf ( \_O\_: an Object, \_V\_: an Object or \*null\*, ): a Boolean
+  -- |
+  -- | 1\. Let \_current\_ be \_O\_.\[\[Prototype\]\]. 1. If SameValue(\_V\_,
+  -- | \_current\_) is \*true\*, return \*true\*. 1. Let \_extensible\_ be
+  -- | \_O\_.\[\[Extensible\]\]. 1. If \_extensible\_ is \*false\*, return
+  -- | \*false\*. 1. Let \_p\_ be \_V\_. 1. Let \_done\_ be \*false\*. 1.
+  -- | Repeat, while \_done\_ is \*false\*, 1. If \_p\_ is \*null\*, then 1.
+  -- | Set \_done\_ to \*true\*. 1. Else if SameValue(\_p\_, \_O\_) is \*true\*,
+  -- | then 1. Return \*false\*. 1. Else, 1. If
+  -- | \_p\_.\[\[GetPrototypeOf\]\] is not the ordinary object internal method
+  -- | defined in , set \_done\_ to \*true\*. 1. Else, set \_p\_ to
+  -- | \_p\_.\[\[Prototype\]\]. 1. Set \_O\_.\[\[Prototype\]\] to \_V\_. 1.
+  -- | Return \*true\*.
+  -- SPEC: L10903-L10926
+  -- | # OrdinarySetWithOwnDescriptor ( \_O\_: an Object, \_P\_: a property key, \_V\_: an ECMAScript language value, \_Receiver\_: an ECMAScript language value, \_ownDesc\_: a Property Descriptor or \*undefined\*, ): either a normal completion containing a Boolean or a throw completion
+  -- |
+  -- | 1\. If \_ownDesc\_ is \*undefined\*, then 1. Let \_parent\_ be ?
+  -- | \_O\_.\[\[GetPrototypeOf\]\](). 1. If \_parent\_ is not \*null\*, return
+  -- | ? \_parent\_.\[\[Set\]\](\_P\_, \_V\_, \_Receiver\_). 1. Set \_ownDesc\_
+  -- | to the PropertyDescriptor { \[\[Value\]\]: \*undefined\*,
+  -- | \[\[Writable\]\]: \*true\*, \[\[Enumerable\]\]: \*true\*,
+  -- | \[\[Configurable\]\]: \*true\* }. 1. If IsDataDescriptor(\_ownDesc\_) is
+  -- | \*true\*, then 1. If \_ownDesc\_.\[\[Writable\]\] is \*false\*, return
+  -- | \*false\*. 1. If \_Receiver\_ is not an Object, return \*false\*. 1. Let
+  -- | \_existingDescriptor\_ be ?
+  -- | \_Receiver\_.\[\[GetOwnProperty\]\](\_P\_). 1. If \_existingDescriptor\_
+  -- | is \*undefined\*, then 1. Assert: \_Receiver\_ does not currently have a
+  -- | property \_P\_. 1. Return ? CreateDataProperty(\_Receiver\_, \_P\_,
+  -- | \_V\_). 1. If IsAccessorDescriptor(\_existingDescriptor\_) is \*true\*,
+  -- | return \*false\*. 1. If \_existingDescriptor\_.\[\[Writable\]\] is
+  -- | \*false\*, return \*false\*. 1. Let \_valueDesc\_ be the
+  -- | PropertyDescriptor { \[\[Value\]\]: \_V\_ }. 1. Return ?
+  -- | \_Receiver\_.\[\[DefineOwnProperty\]\](\_P\_, \_valueDesc\_). 1. Assert:
+  -- | IsAccessorDescriptor(\_ownDesc\_) is \*true\*. 1. Let \_setter\_ be
+  -- | \_ownDesc\_.\[\[Set\]\]. 1. If \_setter\_ is \*undefined\*, return
+  -- | \*false\*. 1. Perform ? Call(\_setter\_, \_Receiver\_, « \_V\_ »). 1.
+  -- | Return \*true\*.
+  -- SPEC: L10949-L10958
+  -- | # OrdinaryOwnPropertyKeys ( \_O\_: an Object, ): a List of property keys
+  -- |
+  -- | 1\. Let \_keys\_ be a new empty List. 1. For each own property key \_P\_
+  -- | of \_O\_ such that \_P\_ is an array index, in ascending numeric index
+  -- | order, do 1. Append \_P\_ to \_keys\_. 1. For each own property key
+  -- | \_P\_ of \_O\_ such that \_P\_ is a String and \_P\_ is not an array
+  -- | index, in ascending chronological order of property creation, do 1.
+  -- | Append \_P\_ to \_keys\_. 1. For each own property key \_P\_ of \_O\_
+  -- | such that \_P\_ is a Symbol, in ascending chronological order of
+  -- | property creation, do 1. Append \_P\_ to \_keys\_. 1. Return \_keys\_.
   | .getProp obj prop =>
       match exprValue? obj with
       | none =>
@@ -2429,6 +2554,70 @@ def step? (s : State) : Option (TraceEvent × State) :=
   -- | \_method\_ be ? GetMethod(\_obj\_, %Symbol.iterator%). 1. If \_method\_
   -- | is \*undefined\*, throw a \*TypeError\* exception. 1. Return ?
   -- | GetIteratorFromMethod(\_obj\_, \_method\_).
+  -- SPEC: L7185-L7197
+  -- | # IteratorNext ( \_iteratorRecord\_: an Iterator Record, optional \_value\_: an ECMAScript language value, ): either a normal completion containing an Object or a throw completion
+  -- |
+  -- | 1\. If \_value\_ is not present, then 1. Let \_result\_ be
+  -- | Completion(Call(\_iteratorRecord\_.\[\[NextMethod\]\],
+  -- | \_iteratorRecord\_.\[\[Iterator\]\])). 1. Else, 1. Let \_result\_ be
+  -- | Completion(Call(\_iteratorRecord\_.\[\[NextMethod\]\],
+  -- | \_iteratorRecord\_.\[\[Iterator\]\], « \_value\_ »)). 1. If \_result\_
+  -- | is a throw completion, then 1. Set \_iteratorRecord\_.\[\[Done\]\] to
+  -- | \*true\*. 1. Return ? \_result\_. 1. Set \_result\_ to ! \_result\_. 1.
+  -- | If \_result\_ is not an Object, then 1. Set
+  -- | \_iteratorRecord\_.\[\[Done\]\] to \*true\*. 1. Throw a \*TypeError\*
+  -- | exception. 1. Return \_result\_.
+  -- SPEC: L7198-L7199
+  -- | # IteratorComplete ( \_iteratorResult\_: an Object, ): either a normal completion containing a Boolean or a throw completion
+  -- |
+  -- | 1\. Return ToBoolean(? Get(\_iteratorResult\_, \*\"done\"\*)).
+  -- SPEC: L7202-L7203
+  -- | # IteratorValue ( \_iteratorResult\_: an Object, ): either a normal completion containing an ECMAScript language value or a throw completion
+  -- |
+  -- | 1\. Return ? Get(\_iteratorResult\_, \*\"value\"\*).
+  -- SPEC: L7206-L7218
+  -- | # IteratorStep ( \_iteratorRecord\_: an Iterator Record, ): either a normal completion containing either an Object or \~done\~, or a throw completion
+  -- |
+  -- | description
+  -- | :   It requests the next value from \_iteratorRecord\_.\[\[Iterator\]\]
+  -- |     by calling \_iteratorRecord\_.\[\[NextMethod\]\] and returns either
+  -- |     \~done\~ indicating that the iterator has reached its end or the
+  -- |     IteratorResult object if a next value is available.
+  -- |
+  -- | 1\. Let \_result\_ be ? IteratorNext(\_iteratorRecord\_). 1. Let
+  -- | \_done\_ be Completion(IteratorComplete(\_result\_)). 1. If \_done\_ is
+  -- | a throw completion, then 1. Set \_iteratorRecord\_.\[\[Done\]\] to
+  -- | \*true\*. 1. Return ? \_done\_. 1. Set \_done\_ to ! \_done\_. 1. If
+  -- | \_done\_ is \*true\*, then 1. Set \_iteratorRecord\_.\[\[Done\]\] to
+  -- | \*true\*. 1. Return \~done\~. 1. Return \_result\_.
+  -- SPEC: L7235-L7252
+  -- | # IteratorClose ( \_iteratorRecord\_: an Iterator Record, \_completion\_: a Completion Record, ): a Completion Record
+  -- |
+  -- | description
+  -- | :   It is used to notify an iterator that it should perform any actions
+  -- |     it would normally perform when it has reached its completed state.
+  -- |
+  -- | 1\. Assert: \_iteratorRecord\_.\[\[Iterator\]\] is an Object. 1. Let
+  -- | \_iterator\_ be \_iteratorRecord\_.\[\[Iterator\]\]. 1. Let
+  -- | \_innerResult\_ be Completion(GetMethod(\_iterator\_,
+  -- | \*\"return\"\*)). 1. If \_innerResult\_ is a normal completion, then 1.
+  -- | Let \_return\_ be \_innerResult\_.\[\[Value\]\]. 1. If \_return\_ is
+  -- | \*undefined\*, return ? \_completion\_. 1. Set \_innerResult\_ to
+  -- | Completion(Call(\_return\_, \_iterator\_)). 1. If \_completion\_ is a
+  -- | throw completion, return ? \_completion\_. 1. If \_innerResult\_ is a
+  -- | throw completion, return ? \_innerResult\_. 1. If
+  -- | \_innerResult\_.\[\[Value\]\] is not an Object, throw a \*TypeError\*
+  -- | exception. 1. Return ? \_completion\_.
+  -- SPEC: L7309-L7318
+  -- | # CreateIteratorResultObject ( \_value\_: an ECMAScript language value, \_done\_: a Boolean, ): an Object that conforms to the IteratorResult interface
+  -- |
+  -- | description
+  -- | :   It creates an object that conforms to the IteratorResult interface.
+  -- |
+  -- | 1\. Let \_obj\_ be OrdinaryObjectCreate(%Object.prototype%). 1. Perform
+  -- | ! CreateDataPropertyOrThrow(\_obj\_, \*\"value\"\*, \_value\_). 1.
+  -- | Perform ! CreateDataPropertyOrThrow(\_obj\_, \*\"done\"\*, \_done\_). 1.
+  -- | Return \_obj\_.
   | .forOf binding iterable body =>
       match exprValue? iterable with
       | none =>
