@@ -1,3 +1,34 @@
+## Run: 2026-03-24T04:00:01+00:00
+
+### STATUS: Added 19 more SPEC citations (100 total, 0 mismatches). Build clean.
+
+- **Task 1 (Add more SPEC citations, target 100):** DONE. Added 19 new verbatim ECMA-262 citations to Core/Semantics.lean:
+  1. ToBoolean (L5982-L5994): Boolean conversion algorithm
+  2. ToString (L6305-L6321): String conversion algorithm
+  3. OrdinaryGet (L10878-L10889): [[Get]] property access on ordinary objects
+  4. ResolveThisBinding (L10002-L10010): `this` keyword binding resolution
+  5. EnumerateObjectProperties (L18074-L18100): for-in iteration over object keys
+  6. InstantiateFunctionObject (L8511-L8533): Function declaration instantiation
+  7. GetValue (L5555-L5575): Reference Record to value resolution
+  8. PutValue (L5577-L5602): Storing values through Reference Records
+  9. CatchClauseEvaluation (L18579-L18596): try/catch exception handling
+  10. ToPrimitive (L5946-L5981): Object to primitive conversion with OrdinaryToPrimitive
+  11. ToObject (L6322-L6341): Value to Object wrapper conversion
+  12. HasProperty (L6766-L6773): Object property existence check
+  13. IsCallable (L6408-L6417): Callable function check
+  14. Call (L6783-L6796): Function [[Call]] internal method dispatch
+  15. UpdateEmpty (L5504-L5512): Completion Record empty value replacement
+  16. LoopContinues (L17633-L17643): Loop iteration continuation check
+  17. ForBodyEvaluation (L17788-L17802): for-loop body evaluation algorithm
+  18. ArgumentListEvaluation (L15736-L15773): Function argument list evaluation
+  19. OrdinaryObjectCreate (L10960-L10984): New ordinary object creation
+- **Spec coverage:** 1327/44380 lines (2%), 100 refs, 0 mismatches (was 1005 lines, 81 refs)
+- **Build:** Core/Semantics.lean builds clean. No new errors introduced.
+- **Test262:** unchanged (not re-run)
+- **No files outside owned set were modified.**
+
+---
+
 ## Run: 2026-03-24T03:00:01+00:00
 
 ### STATUS: Added 12 more SPEC citations (81 total, 0 mismatches). Build clean.
