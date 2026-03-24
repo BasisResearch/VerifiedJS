@@ -1574,6 +1574,29 @@ def step? (s : State) : Option (TraceEvent × State) :=
   -- | execution context. 1. If \_result\_ is a return completion, return
   -- | \_result\_.\[\[Value\]\]. 1. Assert: \_result\_ is a throw
   -- | completion. 1. Return ? \_result\_.
+  -- SPEC: L11100-L11117
+  -- | # PrepareForOrdinaryCall ( \_F\_: an ECMAScript function object, \_newTarget\_: an Object or \*undefined\*, ): an execution context
+  -- |
+  -- | 1\. Let \_callerContext\_ be the running execution context. 1. Let
+  -- | \_calleeContext\_ be a new ECMAScript code execution context. 1. Set the
+  -- | Function of \_calleeContext\_ to \_F\_. 1. Let \_calleeRealm\_ be
+  -- | \_F\_.\[\[Realm\]\]. 1. Set the Realm of \_calleeContext\_ to
+  -- | \_calleeRealm\_. 1. Set the ScriptOrModule of \_calleeContext\_ to
+  -- | \_F\_.\[\[ScriptOrModule\]\]. 1. Let \_localEnv\_ be
+  -- | NewFunctionEnvironment(\_F\_, \_newTarget\_). 1. Set the
+  -- | LexicalEnvironment of \_calleeContext\_ to \_localEnv\_. 1. Set the
+  -- | VariableEnvironment of \_calleeContext\_ to \_localEnv\_. 1. Set the
+  -- | PrivateEnvironment of \_calleeContext\_ to
+  -- | \_F\_.\[\[PrivateEnvironment\]\]. 1. If \_callerContext\_ is not already
+  -- | suspended, suspend \_callerContext\_. 1. Push \_calleeContext\_ onto the
+  -- | execution context stack; \_calleeContext\_ is now the running execution
+  -- | context. 1. NOTE: Any exception objects produced after this point are
+  -- | associated with \_calleeRealm\_. 1. Return \_calleeContext\_.
+  -- SPEC: L11170-L11174
+  -- | # OrdinaryCallEvaluateBody ( \_F\_: an ECMAScript function object, \_argumentsList\_: a List of ECMAScript language values, ): a return completion or a throw completion
+  -- |
+  -- | 1\. Return ? EvaluateBody of \_F\_.\[\[ECMAScriptCode\]\] with arguments
+  -- | \_F\_ and \_argumentsList\_.
   -- SPEC: L15736-L15773
   -- | # Runtime Semantics: ArgumentListEvaluation ( ): either a normal completion containing a List of ECMAScript language values or an abrupt completion
   -- |
@@ -1817,6 +1840,60 @@ def step? (s : State) : Option (TraceEvent × State) :=
   -- | \_name\_). 1. Perform MakeConstructor(\_closure\_). 1. Perform !
   -- | \_funcEnv\_.InitializeBinding(\_name\_, \_closure\_). 1. Return
   -- | \_closure\_.
+  -- SPEC: L11206-L11236
+  -- | # OrdinaryFunctionCreate ( \_functionPrototype\_: an Object, \_sourceText\_: a sequence of Unicode code points, \_ParameterList\_: a Parse Node, \_Body\_: a Parse Node, \_thisMode\_: \~lexical-this\~ or \~non-lexical-this\~, \_env\_: an Environment Record, \_privateEnv\_: a PrivateEnvironment Record or \*null\*, ): an ECMAScript function object
+  -- |
+  -- | description
+  -- | :   It is used to specify the runtime creation of a new function with a
+  -- |     default \[\[Call\]\] internal method and no \[\[Construct\]\]
+  -- |     internal method (although one may be subsequently added by an
+  -- |     operation such as MakeConstructor). \_sourceText\_ is the source
+  -- |     text of the syntactic definition of the function to be created.
+  -- |
+  -- | 1\. Let \_internalSlotsList\_ be the internal slots listed in . 1. Let
+  -- | \_F\_ be OrdinaryObjectCreate(\_functionPrototype\_,
+  -- | \_internalSlotsList\_). 1. Set \_F\_.\[\[Call\]\] to the definition
+  -- | specified in . 1. Set \_F\_.\[\[SourceText\]\] to \_sourceText\_. 1. Set
+  -- | \_F\_.\[\[FormalParameters\]\] to \_ParameterList\_. 1. Set
+  -- | \_F\_.\[\[ECMAScriptCode\]\] to \_Body\_. 1. Let \_Strict\_ be
+  -- | IsStrict(\_Body\_). 1. Set \_F\_.\[\[Strict\]\] to \_Strict\_. 1. If
+  -- | \_thisMode\_ is \~lexical-this\~, set \_F\_.\[\[ThisMode\]\] to
+  -- | \~lexical\~. 1. Else if \_Strict\_ is \*true\*, set
+  -- | \_F\_.\[\[ThisMode\]\] to \~strict\~. 1. Else, set
+  -- | \_F\_.\[\[ThisMode\]\] to \~global\~. 1. Set
+  -- | \_F\_.\[\[IsClassConstructor\]\] to \*false\*. 1. Set
+  -- | \_F\_.\[\[Environment\]\] to \_env\_. 1. Set
+  -- | \_F\_.\[\[PrivateEnvironment\]\] to \_privateEnv\_. 1. Set
+  -- | \_F\_.\[\[ScriptOrModule\]\] to GetActiveScriptOrModule(). 1. Set
+  -- | \_F\_.\[\[Realm\]\] to the current Realm Record. 1. Set
+  -- | \_F\_.\[\[HomeObject\]\] to \*undefined\*. 1. Set \_F\_.\[\[Fields\]\]
+  -- | to a new empty List. 1. Set \_F\_.\[\[PrivateMethods\]\] to a new empty
+  -- | List. 1. Set \_F\_.\[\[ClassFieldInitializerName\]\] to \~empty\~. 1.
+  -- | Let \_len\_ be the ExpectedArgumentCount of \_ParameterList\_. 1.
+  -- | Perform SetFunctionLength(\_F\_, \_len\_). 1. Return \_F\_.
+  -- SPEC: L11320-L11342
+  -- | # SetFunctionName ( \_F\_: a function object, \_name\_: a property key or Private Name, optional \_prefix\_: a String, ): \~unused\~
+  -- |
+  -- | description
+  -- | :   It adds a \*\"name\"\* property to \_F\_.
+  -- |
+  -- | 1\. Assert: \_F\_ is an extensible object that does not have a
+  -- | \*\"name\"\* own property. 1. If \_name\_ is a Symbol, then 1. Let
+  -- | \_description\_ be \_name\_.\[\[Description\]\]. 1. If \_description\_
+  -- | is \*undefined\*, set \_name\_ to the empty String. 1. Else, set
+  -- | \_name\_ to the string-concatenation of \*\"\[\"\*, \_description\_, and
+  -- | \*\"\]\"\*. 1. Else if \_name\_ is a Private Name, then 1. Set \_name\_
+  -- | to \_name\_.\[\[Description\]\]. 1. If \_F\_ has an \[\[InitialName\]\]
+  -- | internal slot, then 1. Set \_F\_.\[\[InitialName\]\] to \_name\_. 1. If
+  -- | \_prefix\_ is present, then 1. Set \_name\_ to the string-concatenation
+  -- | of \_prefix\_, the code unit 0x0020 (SPACE), and \_name\_. 1. If \_F\_
+  -- | has an \[\[InitialName\]\] internal slot, then 1. NOTE: The choice in
+  -- | the following step is made independently each time this Abstract
+  -- | Operation is invoked. 1. Optionally, set \_F\_.\[\[InitialName\]\] to
+  -- | \_name\_. 1. Perform ! DefinePropertyOrThrow(\_F\_, \*\"name\"\*,
+  -- | PropertyDescriptor { \[\[Value\]\]: \_name\_, \[\[Writable\]\]:
+  -- | \*false\*, \[\[Enumerable\]\]: \*false\*, \[\[Configurable\]\]: \*true\*
+  -- | }). 1. Return \~unused\~.
   -- SPEC: L8511-L8533
   -- | # Runtime Semantics: InstantiateFunctionObject ( \_env\_: an Environment Record, \_privateEnv\_: a PrivateEnvironment Record or \*null\*, ): an ECMAScript function object
   -- |
