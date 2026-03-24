@@ -2245,6 +2245,101 @@ def toBoolean : Value → Bool
 -- | StringToNumber(\_argument\_). 1. Assert: \_argument\_ is an Object. 1.
 -- | Let \_primValue\_ be ? ToPrimitive(\_argument\_, \~number\~). 1. Assert:
 -- | \_primValue\_ is not an Object. 1. Return ? ToNumber(\_primValue\_).
+-- SPEC: L6018-L6054
+-- | # ToNumber Applied to the String Type
+-- |
+-- | The abstract operation StringToNumber specifies how to convert a String
+-- | value to a Number value, using the following grammar.
+-- |
+-- | ## Syntax
+-- |
+-- | StringNumericLiteral ::: StrWhiteSpace? StrWhiteSpace? StrNumericLiteral
+-- | StrWhiteSpace? StrWhiteSpace ::: StrWhiteSpaceChar StrWhiteSpace?
+-- | StrWhiteSpaceChar ::: WhiteSpace LineTerminator StrNumericLiteral :::
+-- | StrDecimalLiteral NonDecimalIntegerLiteral\[\~Sep\] StrDecimalLiteral
+-- | ::: StrUnsignedDecimalLiteral \`+\` StrUnsignedDecimalLiteral \`-\`
+-- | StrUnsignedDecimalLiteral StrUnsignedDecimalLiteral ::: \`Infinity\`
+-- | DecimalDigits\[\~Sep\] \`.\` DecimalDigits\[\~Sep\]?
+-- | ExponentPart\[\~Sep\]? \`.\` DecimalDigits\[\~Sep\]
+-- | ExponentPart\[\~Sep\]? DecimalDigits\[\~Sep\] ExponentPart\[\~Sep\]?
+-- |
+-- | All grammar symbols not explicitly defined above have the definitions
+-- | used in the Lexical Grammar for numeric literals ()
+-- |
+-- | Some differences should be noted between the syntax of a
+-- | \|StringNumericLiteral\| and a \|NumericLiteral\|:
+-- |
+-- | - A \|StringNumericLiteral\| may include leading and/or trailing white
+-- |   space and/or line terminators.
+-- | - A \|StringNumericLiteral\| that is decimal may have any number of
+-- |   leading \`0\` digits.
+-- | - A \|StringNumericLiteral\| that is decimal may include a \`+\` or
+-- |   \`-\` to indicate its sign.
+-- | - A \|StringNumericLiteral\| that is empty or contains only white space
+-- |   is converted to \*+0\*~𝔽~.
+-- | - \`Infinity\` and \`-Infinity\` are recognized as a
+-- |   \|StringNumericLiteral\| but not as a \|NumericLiteral\|.
+-- | - A \|StringNumericLiteral\| cannot include a \|BigIntLiteralSuffix\|.
+-- | - A \|StringNumericLiteral\| cannot include a
+-- |   \|NumericLiteralSeparator\|.
+-- SPEC: L6114-L6128
+-- | # ToIntegerOrInfinity ( \_argument\_: an ECMAScript language value, ): either a normal completion containing either an integer, +∞, or -∞, or a throw completion
+-- |
+-- | description
+-- | :   It converts \_argument\_ to an integer representing its Number value
+-- |     with fractional part truncated, or to +∞ or -∞ when that Number
+-- |     value is infinite.
+-- |
+-- | 1\. Let \_number\_ be ? ToNumber(\_argument\_). 1. If \_number\_ is one
+-- | of \*NaN\*, \*+0\*~𝔽~, or \*-0\*~𝔽~, return 0. 1. If \_number\_ is
+-- | \*+∞\*~𝔽~, return +∞. 1. If \_number\_ is \*-∞\*~𝔽~, return -∞. 1.
+-- | Return truncate(ℝ(\_number\_)). 𝔽(ToIntegerOrInfinity(\_x\_)) never
+-- | returns \*-0\*~𝔽~ for any value of \_x\_. The truncation of the
+-- | fractional part is performed after converting \_x\_ to a mathematical
+-- | value.
+-- SPEC: L6129-L6149
+-- | # ToInt32 ( \_argument\_: an ECMAScript language value, ): either a normal completion containing an integral Number or a throw completion
+-- |
+-- | description
+-- | :   It converts \_argument\_ to one of 2^32^ integral Number values in
+-- |     the inclusive interval from 𝔽(-2^31^) to 𝔽(2^31^ - 1).
+-- |
+-- | 1\. Let \_number\_ be ? ToNumber(\_argument\_). 1. If \_number\_ is not
+-- | finite or \_number\_ is either \*+0\*~𝔽~ or \*-0\*~𝔽~, return
+-- | \*+0\*~𝔽~. 1. Let \_int\_ be truncate(ℝ(\_number\_)). 1. Let
+-- | \_int32bit\_ be \_int\_ modulo 2^32^. 1. If \_int32bit\_ ≥ 2^31^, return
+-- | 𝔽(\_int32bit\_ - 2^32^). 1. Return 𝔽(\_int32bit\_).
+-- |
+-- | Given the above definition of ToInt32:
+-- |
+-- | - The ToInt32 abstract operation is idempotent: if applied to a result
+-- |   that it produced, the second application leaves that value unchanged.
+-- | - ToInt32(ToUint32(\_x\_)) is the same value as ToInt32(\_x\_) for all
+-- |   values of \_x\_. (It is to preserve this latter property that
+-- |   \*+∞\*~𝔽~ and \*-∞\*~𝔽~ are mapped to \*+0\*~𝔽~.)
+-- | - ToInt32 maps \*-0\*~𝔽~ to \*+0\*~𝔽~.
+-- SPEC: L6150-L6171
+-- | # ToUint32 ( \_argument\_: an ECMAScript language value, ): either a normal completion containing an integral Number or a throw completion
+-- |
+-- | description
+-- | :   It converts \_argument\_ to one of 2^32^ integral Number values in
+-- |     the inclusive interval from \*+0\*~𝔽~ to 𝔽(2^32^ - 1).
+-- |
+-- | 1\. Let \_number\_ be ? ToNumber(\_argument\_). 1. If \_number\_ is not
+-- | finite or \_number\_ is either \*+0\*~𝔽~ or \*-0\*~𝔽~, return
+-- | \*+0\*~𝔽~. 1. Let \_int\_ be truncate(ℝ(\_number\_)). 1. Let
+-- | \_int32bit\_ be \_int\_ modulo 2^32^. 1. \[id=\"step-touint32-return\"\]
+-- | Return 𝔽(\_int32bit\_).
+-- |
+-- | Given the above definition of ToUint32:
+-- |
+-- | - Step is the only difference between ToUint32 and ToInt32.
+-- | - The ToUint32 abstract operation is idempotent: if applied to a result
+-- |   that it produced, the second application leaves that value unchanged.
+-- | - ToUint32(ToInt32(\_x\_)) is the same value as ToUint32(\_x\_) for all
+-- |   values of \_x\_. (It is to preserve this latter property that
+-- |   \*+∞\*~𝔽~ and \*-∞\*~𝔽~ are mapped to \*+0\*~𝔽~.)
+-- | - ToUint32 maps \*-0\*~𝔽~ to \*+0\*~𝔽~.
 /-- ECMA-262 §7.1.3 ToNumber (core subset). -/
 def toNumber : Value → Float
   | .number n => n
@@ -3227,6 +3322,94 @@ def abstractLt : Value → Value → Bool
 -- | floating-point operations to behave in a manner analogous to that of the
 -- | Java integer remainder operator; this may be compared with the C library
 -- | function fmod.
+-- SPEC: L16223-L16230
+-- | # Exponentiation Operator
+-- |
+-- | ## Syntax
+-- |
+-- | ExponentiationExpression\[Yield, Await\] : UnaryExpression\[?Yield,
+-- | ?Await\] UpdateExpression\[?Yield, ?Await\] \`\*\*\`
+-- | ExponentiationExpression\[?Yield, ?Await\]
+-- SPEC: L16231-L16237
+-- | # Runtime Semantics: Evaluation
+-- |
+-- | ExponentiationExpression : UpdateExpression \`\*\*\`
+-- | ExponentiationExpression 1. Return ? EvaluateStringOrNumericBinaryExpression(UpdateExpression,
+-- | \`\*\*\`, ExponentiationExpression).
+-- SPEC: L16263-L16271
+-- | # Additive Operators
+-- |
+-- | ## Syntax
+-- |
+-- | AdditiveExpression\[Yield, Await\] : MultiplicativeExpression\[?Yield,
+-- | ?Await\] AdditiveExpression\[?Yield, ?Await\] \`+\`
+-- | MultiplicativeExpression\[?Yield, ?Await\] AdditiveExpression\[?Yield,
+-- | ?Await\] \`-\` MultiplicativeExpression\[?Yield, ?Await\]
+-- SPEC: L16255-L16262
+-- | # Runtime Semantics: Evaluation
+-- |
+-- | MultiplicativeExpression : MultiplicativeExpression
+-- | MultiplicativeOperator ExponentiationExpression 1. Let \_opText\_ be
+-- | the source text matched by \|MultiplicativeOperator\|. 1. Return ?
+-- | EvaluateStringOrNumericBinaryExpression(MultiplicativeExpression,
+-- | \_opText\_, ExponentiationExpression).
+-- SPEC: L16277-L16283
+-- | # Runtime Semantics: Evaluation
+-- |
+-- | AdditiveExpression : AdditiveExpression \`+\`
+-- | MultiplicativeExpression 1. Return ?
+-- | EvaluateStringOrNumericBinaryExpression(AdditiveExpression, \`+\`,
+-- | MultiplicativeExpression).
+-- SPEC: L16289-L16295
+-- | # Runtime Semantics: Evaluation
+-- |
+-- | AdditiveExpression : AdditiveExpression \`-\`
+-- | MultiplicativeExpression 1. Return ?
+-- | EvaluateStringOrNumericBinaryExpression(AdditiveExpression, \`-\`,
+-- | MultiplicativeExpression).
+-- SPEC: L16296-L16305
+-- | # Bitwise Shift Operators
+-- |
+-- | ## Syntax
+-- |
+-- | ShiftExpression\[Yield, Await\] : AdditiveExpression\[?Yield, ?Await\]
+-- | ShiftExpression\[?Yield, ?Await\] \`\<\<\` AdditiveExpression\[?Yield,
+-- | ?Await\] ShiftExpression\[?Yield, ?Await\] \`\>\>\`
+-- | AdditiveExpression\[?Yield, ?Await\] ShiftExpression\[?Yield, ?Await\]
+-- | \`\>\>\>\` AdditiveExpression\[?Yield, ?Await\]
+-- SPEC: L16306-L16310
+-- | # The Left Shift Operator ( \`\<\<\` )
+-- |
+-- | Performs a bitwise left shift operation on the left operand by the
+-- | amount specified by the right operand.
+-- SPEC: L16311-L16316
+-- | # Runtime Semantics: Evaluation
+-- |
+-- | ShiftExpression : ShiftExpression \`\<\<\` AdditiveExpression 1.
+-- | Return ? EvaluateStringOrNumericBinaryExpression(ShiftExpression,
+-- | \`\<\<\`, AdditiveExpression).
+-- SPEC: L16317-L16321
+-- | # The Signed Right Shift Operator ( \`\>\>\` )
+-- |
+-- | Performs a sign-filling bitwise right shift operation on the left
+-- | operand by the amount specified by the right operand.
+-- SPEC: L16322-L16327
+-- | # Runtime Semantics: Evaluation
+-- |
+-- | ShiftExpression : ShiftExpression \`\>\>\` AdditiveExpression 1.
+-- | Return ? EvaluateStringOrNumericBinaryExpression(ShiftExpression,
+-- | \`\>\>\`, AdditiveExpression).
+-- SPEC: L16328-L16332
+-- | # The Unsigned Right Shift Operator ( \`\>\>\>\` )
+-- |
+-- | Performs a zero-filling bitwise right shift operation on the left
+-- | operand by the amount specified by the right operand.
+-- SPEC: L16333-L16338
+-- | # Runtime Semantics: Evaluation
+-- |
+-- | ShiftExpression : ShiftExpression \`\>\>\>\` AdditiveExpression 1.
+-- | Return ? EvaluateStringOrNumericBinaryExpression(ShiftExpression,
+-- | \`\>\>\>\`, AdditiveExpression).
 -- SPEC: L4553-L4578
 -- | # Number::leftShift ( \_x\_: a Number, \_y\_: a Number, ): an integral Number
 -- |
@@ -3311,6 +3494,46 @@ def evalBinary : BinOp → Value → Value → Value
   | .sub, a, b => .number (toNumber a - toNumber b)
   | .mul, a, b => .number (toNumber a * toNumber b)
   | .div, a, b => .number (toNumber a / toNumber b)
+  -- SPEC: L16339-L16362
+  -- | # Relational Operators
+  -- |
+  -- | The result of evaluating a relational operator is always of type
+  -- | Boolean, reflecting whether the relationship named by the operator holds
+  -- | between its two operands.
+  -- |
+  -- | ## Syntax
+  -- |
+  -- | RelationalExpression\[In, Yield, Await\] : ShiftExpression\[?Yield,
+  -- | ?Await\] RelationalExpression\[?In, ?Yield, ?Await\] \`\<\`
+  -- | ShiftExpression\[?Yield, ?Await\] RelationalExpression\[?In, ?Yield,
+  -- | ?Await\] \`\>\` ShiftExpression\[?Yield, ?Await\]
+  -- | RelationalExpression\[?In, ?Yield, ?Await\] \`\<=\`
+  -- | ShiftExpression\[?Yield, ?Await\] RelationalExpression\[?In, ?Yield,
+  -- | ?Await\] \`\>=\` ShiftExpression\[?Yield, ?Await\]
+  -- | RelationalExpression\[?In, ?Yield, ?Await\] \`instanceof\`
+  -- | ShiftExpression\[?Yield, ?Await\] \[+In\] RelationalExpression\[+In,
+  -- | ?Yield, ?Await\] \`in\` ShiftExpression\[?Yield, ?Await\] \[+In\]
+  -- | PrivateIdentifier \`in\` ShiftExpression\[?Yield, ?Await\]
+  -- |
+  -- | The ~\[In\]~ grammar parameter is needed to avoid confusing the \`in\`
+  -- | operator in a relational expression with the \`in\` operator in a
+  -- | \`for\` statement.
+  -- SPEC: L16435-L16450
+  -- | # Equality Operators
+  -- |
+  -- | The result of evaluating an equality operator is always of type Boolean,
+  -- | reflecting whether the relationship named by the operator holds between
+  -- | its two operands.
+  -- |
+  -- | ## Syntax
+  -- |
+  -- | EqualityExpression\[In, Yield, Await\] : RelationalExpression\[?In,
+  -- | ?Yield, ?Await\] EqualityExpression\[?In, ?Yield, ?Await\] \`==\`
+  -- | RelationalExpression\[?In, ?Yield, ?Await\] EqualityExpression\[?In,
+  -- | ?Yield, ?Await\] \`!=\` RelationalExpression\[?In, ?Yield, ?Await\]
+  -- | EqualityExpression\[?In, ?Yield, ?Await\] \`===\`
+  -- | RelationalExpression\[?In, ?Yield, ?Await\] EqualityExpression\[?In,
+  -- | ?Yield, ?Await\] \`!==\` RelationalExpression\[?In, ?Yield, ?Await\]
   -- SPEC: L16453-L16474
   -- | EqualityExpression : EqualityExpression \`==\` RelationalExpression 1.
   -- | Let \_lRef\_ be ? Evaluation of \|EqualityExpression\|. 1. Let \_lVal\_
@@ -3415,6 +3638,19 @@ def evalBinary : BinOp → Value → Value → Value
   -- | \|LogicalORExpression\|. 1. Let \_lVal\_ be ? GetValue(\_lRef\_). 1. If
   -- | ToBoolean(\_lVal\_) is \*true\*, return \_lVal\_. 1. Let \_rRef\_ be ?
   -- | Evaluation of \|LogicalANDExpression\|. 1. Return ? GetValue(\_rRef\_).
+  -- SPEC: L16514-L16526
+  -- | # Runtime Semantics: Evaluation
+  -- |
+  -- | BitwiseANDExpression : BitwiseANDExpression \`&\` EqualityExpression 1.
+  -- | Return ?
+  -- | EvaluateStringOrNumericBinaryExpression(\|BitwiseANDExpression\|, \`&\`,
+  -- | \|EqualityExpression\|). BitwiseXORExpression : BitwiseXORExpression
+  -- | \`\^\` BitwiseANDExpression 1. Return ?
+  -- | EvaluateStringOrNumericBinaryExpression(\|BitwiseXORExpression\|,
+  -- | \`\^\`, \|BitwiseANDExpression\|). BitwiseORExpression :
+  -- | BitwiseORExpression \`\|\` BitwiseXORExpression 1. Return ?
+  -- | EvaluateStringOrNumericBinaryExpression(\|BitwiseORExpression\|, \`\|\`,
+  -- | \|BitwiseXORExpression\|).
   | .logOr, a, b => if toBoolean a then a else b
   -- SPEC: L16389-L16394
   -- | RelationalExpression : RelationalExpression \`instanceof\`
@@ -5165,6 +5401,42 @@ def step? (s : State) : Option (TraceEvent × State) :=
   -- | AssignmentExpression\[?In, ?Yield, ?Await\] // emu-format ignore
   -- | AssignmentOperator : one of \`\*=\` \`/=\` \`%=\` \`+=\` \`-=\`
   -- | \`\<\<=\` \`\>\>=\` \`\>\>\>=\` \`&=\` \`\^=\` \`\|=\` \`\*\*=\`
+  -- SPEC: L16527-L16547
+  -- | # Binary Logical Operators
+  -- |
+  -- | ## Syntax
+  -- |
+  -- | LogicalANDExpression\[In, Yield, Await\] : BitwiseORExpression\[?In,
+  -- | ?Yield, ?Await\] LogicalANDExpression\[?In, ?Yield, ?Await\] \`&&\`
+  -- | BitwiseORExpression\[?In, ?Yield, ?Await\] LogicalORExpression\[In,
+  -- | Yield, Await\] : LogicalANDExpression\[?In, ?Yield, ?Await\]
+  -- | LogicalORExpression\[?In, ?Yield, ?Await\] \`\|\|\`
+  -- | LogicalANDExpression\[?In, ?Yield, ?Await\] CoalesceExpression\[In,
+  -- | Yield, Await\] : CoalesceExpressionHead\[?In, ?Yield, ?Await\] \`??\`
+  -- | BitwiseORExpression\[?In, ?Yield, ?Await\] CoalesceExpressionHead\[In,
+  -- | Yield, Await\] : CoalesceExpression\[?In, ?Yield, ?Await\]
+  -- | BitwiseORExpression\[?In, ?Yield, ?Await\] ShortCircuitExpression\[In,
+  -- | Yield, Await\] : LogicalORExpression\[?In, ?Yield, ?Await\]
+  -- | CoalesceExpression\[?In, ?Yield, ?Await\]
+  -- |
+  -- | The value produced by a \`&&\` or \`\|\|\` operator is not necessarily
+  -- | of type Boolean. The value produced will always be the value of one of
+  -- | the two operand expressions.
+  -- SPEC: L16548-L16566
+  -- | # Runtime Semantics: Evaluation
+  -- |
+  -- | LogicalANDExpression : LogicalANDExpression \`&&\`
+  -- | BitwiseORExpression 1. Let \_lRef\_ be ? Evaluation of
+  -- | \|LogicalANDExpression\|. 1. Let \_lVal\_ be ? GetValue(\_lRef\_). 1.
+  -- | Let \_lBool\_ be ToBoolean(\_lVal\_). 1. If \_lBool\_ is \*false\*,
+  -- | return \_lVal\_. 1. Let \_rRef\_ be ? Evaluation of
+  -- | \|BitwiseORExpression\|. 1. Return ? GetValue(\_rRef\_).
+  -- | LogicalORExpression : LogicalORExpression \`\|\|\`
+  -- | LogicalANDExpression 1. Let \_lRef\_ be ? Evaluation of
+  -- | \|LogicalORExpression\|. 1. Let \_lVal\_ be ? GetValue(\_lRef\_). 1.
+  -- | Let \_lBool\_ be ToBoolean(\_lVal\_). 1. If \_lBool\_ is \*true\*, return
+  -- | \_lVal\_. 1. Let \_rRef\_ be ? Evaluation of
+  -- | \|LogicalANDExpression\|. 1. Return ? GetValue(\_rRef\_).
   -- SPEC: L16560-L16583
   -- | CoalesceExpression : CoalesceExpressionHead \`??\`
   -- | BitwiseORExpression 1. Let \_lRef\_ be ? Evaluation of
@@ -5240,6 +5512,26 @@ def step? (s : State) : Option (TraceEvent × State) :=
               let s' := pushTrace { sc with expr := .if sc.expr then_ else_, trace := s.trace } t
               some (t, s')
           | none => none
+  -- SPEC: L17182-L17189
+  -- | # Comma Operator ( \`,\` )
+  -- |
+  -- | ## Syntax
+  -- |
+  -- | Expression\[In, Yield, Await\] : AssignmentExpression\[?In, ?Yield,
+  -- | ?Await\] Expression\[?In, ?Yield, ?Await\] \`,\`
+  -- | AssignmentExpression\[?In, ?Yield, ?Await\]
+  -- SPEC: L17190-L17201
+  -- | # Runtime Semantics: Evaluation
+  -- |
+  -- | Expression : Expression \`,\` AssignmentExpression 1. Let \_lRef\_ be ?
+  -- | Evaluation of \|Expression\|. 1. Perform ? GetValue(\_lRef\_). 1. Let
+  -- | \_rRef\_ be ? Evaluation of \|AssignmentExpression\|. 1. Return ?
+  -- | GetValue(\_rRef\_).
+  -- |
+  -- | GetValue must be called even though its value is not used because it may
+  -- | have observable side-effects.
+  -- |
+  -- | # ECMAScript Language: Statements and Declarations
   -- SPEC: L17192-L17196
   -- | Expression : Expression \`,\` AssignmentExpression 1. Let \_lRef\_ be ?
   -- | Evaluation of \|Expression\|. 1. Perform ? GetValue(\_lRef\_). 1. Let
@@ -7250,6 +7542,49 @@ def step? (s : State) : Option (TraceEvent × State) :=
       let l := match label with | some s => "break:" ++ s | none => "break:"
       let s' := pushTrace { s with expr := .lit .undefined } (.error l)
       some (.error l, s')
+  -- SPEC: L18224-L18230
+  -- | # The \`continue\` Statement
+  -- |
+  -- | ## Syntax
+  -- |
+  -- | ContinueStatement\[Yield, Await\] : \`continue\` \`;\` \`continue\` \[no
+  -- | LineTerminator here\] LabelIdentifier\[?Yield, ?Await\] \`;\`
+  -- SPEC: L18249-L18255
+  -- | # The \`break\` Statement
+  -- |
+  -- | ## Syntax
+  -- |
+  -- | BreakStatement\[Yield, Await\] : \`break\` \`;\` \`break\` \[no
+  -- | LineTerminator here\] LabelIdentifier\[?Yield, ?Await\] \`;\`
+  -- SPEC: L18231-L18248
+  -- | # Static Semantics: Early Errors
+  -- |
+  -- | ContinueStatement : \`continue\` \`;\` \`continue\` LabelIdentifier
+  -- | \`;\`
+  -- |
+  -- | - It is a Syntax Error if this \|ContinueStatement\| is not nested,
+  -- |   directly or indirectly (but not crossing function or \`static\`
+  -- |   initialization block boundaries), within an \|IterationStatement\|.
+  -- |
+  -- | # Runtime Semantics: Evaluation
+  -- |
+  -- | ContinueStatement : \`continue\` \`;\` 1. Return Completion Record {
+  -- | \[\[Type\]\]: \~continue\~, \[\[Value\]\]: \~empty\~, \[\[Target\]\]:
+  -- | \~empty\~ }. ContinueStatement : \`continue\` LabelIdentifier \`;\` 1.
+  -- | Let \_label\_ be the StringValue of \|LabelIdentifier\|. 1. Return
+  -- | Completion Record { \[\[Type\]\]: \~continue\~, \[\[Value\]\]:
+  -- | \~empty\~, \[\[Target\]\]: \_label\_ }.
+  -- SPEC: L18256-L18266
+  -- | # Static Semantics: Early Errors
+  -- |
+  -- | BreakStatement : \`break\` \`;\`
+  -- |
+  -- | - It is a Syntax Error if this \|BreakStatement\| is not nested,
+  -- |   directly or indirectly (but not crossing function or \`static\`
+  -- |   initialization block boundaries), within an \|IterationStatement\| or
+  -- |   a \|SwitchStatement\|.
+  -- |
+  -- | # Runtime Semantics: Evaluation
   -- SPEC: L18225-L18241
   -- |
   -- | ## Syntax
