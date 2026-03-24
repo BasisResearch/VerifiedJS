@@ -29,21 +29,22 @@ set_option linter.deprecated false
 -- SPEC: L5443-L5460
 -- | # The Completion Record Specification Type
 -- |
--- | The [Completion Record]{.dfn variants="Completion Records"} type is
--- | used to explain the runtime propagation of values and control flow
--- | such as the behaviour of statements (\`break\`, \`continue\`,
--- | \`return\` and \`throw\`) that perform nonlocal transfers of
--- | control.
+-- | The [Completion Record]{.dfn variants="Completion Records"}
+-- | specification type is used to explain the runtime propagation of values
+-- | and control flow such as the behaviour of statements (\`break\`,
+-- | \`continue\`, \`return\` and \`throw\`) that perform nonlocal transfers
+-- | of control.
 -- |
--- |   Field Name       Value                                                                                         Meaning
--- |   ---------------- ------------------------------------------------------------------------------------------------------------- -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
--- |   \[\[Type\]\]     \~normal\~, \~break\~, \~continue\~, \~return\~, or \~throw\~                                The type of completion that occurred.
--- |   \[\[Value\]\]    an ECMAScript language value or \~empty\~                                                     The value that was produced.
--- |   \[\[Target\]\]   a String or \~empty\~                                                                         The target label for directed control transfers.
+-- | Completion Records have the fields defined in .
 -- |
--- | The term "[abrupt completion]{.dfn variants="is an abrupt
--- | completion,is not an abrupt completion"}" refers to any completion
--- | with a \[\[Type\]\] value other than \~normal\~.
+-- |   Field Name       Value                                                           Meaning
+-- |   ---------------- --------------------------------------------------------------- --------------------------------------------------
+-- |   \[\[Type\]\]     \~normal\~, \~break\~, \~continue\~, \~return\~, or \~throw\~   The type of completion that occurred.
+-- |   \[\[Value\]\]    any value except a Completion Record                            The value that was produced.
+-- |   \[\[Target\]\]   a String or \~empty\~                                           The target label for directed control transfers.
+-- |
+-- | The following shorthand terms are sometimes used to refer to Completion
+-- | Records.
 
 /-- Observable trace events emitted by Core execution. -/
 inductive TraceEvent where
@@ -450,6 +451,25 @@ def Env.extend (env : Env) (name : VarName) (v : Value) : Env :=
 -- |
 -- | 1\. Let \_desc\_ be ? \_O\_.\[\[GetOwnProperty\]\](\_P\_). 1. If
 -- | \_desc\_ is \*undefined\*, return \*false\*. 1. Return \*true\*.
+-- SPEC: L6652-L6659
+-- | # Get ( \_O\_: an Object, \_P\_: a property key, ): either a normal completion containing an ECMAScript language value or a throw completion
+-- |
+-- | description
+-- | :   It is used to retrieve the value of a specific property of an
+-- |     object.
+-- |
+-- | 1\. Return ? \_O\_.\[\[Get\]\](\_P\_, \_O\_).
+-- SPEC: L6660-L6670
+-- | # GetV ( \_V\_: an ECMAScript language value, \_P\_: a property key, ): either a normal completion containing an ECMAScript language value or a throw completion
+-- |
+-- | description
+-- | :   It is used to retrieve the value of a specific property of an
+-- |     ECMAScript language value. If the value is not an object, the
+-- |     property lookup is performed using a wrapper object appropriate for
+-- |     the type of the value.
+-- |
+-- | 1\. Let \_O\_ be ? ToObject(\_V\_). 1. Return ? \_O\_.\[\[Get\]\](\_P\_,
+-- | \_V\_).
 
 -- SPEC: L6408-L6417
 -- | # IsCallable ( \_argument\_: an ECMAScript language value, ): a Boolean
