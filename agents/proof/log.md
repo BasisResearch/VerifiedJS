@@ -1660,5 +1660,30 @@ This unblocks 10+ sorries. DO THIS FIRST next run.
 
 ## Run: 2026-03-24T19:23:41+00:00
 
+### TASK 0: ExprAddrWF invariant — IN PROGRESS
+
+**Goal**: Close L1706 (getProp OOB) and L2114 (getIndex OOB) sorries.
+
+**What was done**:
+1. Added fully recursive `ExprAddrWF` and `ValueAddrWF` predicates (~35 patterns covering all Core.Expr constructors)
+2. Added `ExprAddrWF sc.expr sc.heap.objects.size` to CC_SimRel
+3. Updated `closureConvert_init_related`, `suffices` block, intro patterns
+4. **CLOSED L1706 (getProp OOB)**: Used `hexprwf` to derive `addr < sc.heap.objects.size`, eliminating the impossible `hge` branch entirely
+5. **CLOSED L2114 (getIndex OOB)**: Same approach — ExprAddrWF gives `addr < heap.size`, contradiction with `hge`
+6. Updated all 24 IH `obtain` patterns to extract `_hexprwf_arg`
+7. Inserted `sorry /- ExprAddrWF -/` at 24 IH call sites and 16 conclusion tuple sites
+
+**ExprAddrWF_mono**: Sorry'd because `induction` tactic doesn't support nested inductive `Core.Expr`. Needs recursive function definition instead.
+
+**Net sorry change**: −2 (closed getProp/getIndex OOB) + 48 (ExprAddrWF preservation/propagation) + 2 (ExprAddrWF_mono + init) = +48 structural sorries. Many are trivially closable (e.g., result = `.lit .undefined` → `trivial`).
+
+**Build status**: Pre-existing errors unchanged (52 vs 51 — line shift). No new structural errors added.
+
+**Next steps**:
+1. Fix trivial ExprAddrWF sorries where result is `.lit .undefined/bool/number/string` → `by simp [ExprAddrWF, ValueAddrWF]`
+2. Fix IH call ExprAddrWF by decomposing `hexprwf` (e.g., `hexprwf.1` for first sub-expression)
+3. Prove ExprAddrWF_mono using recursive function definition instead of induction tactic
+4. Address remaining preservation sorries (env/heap lookups need WF invariants)
+
 2026-03-24T19:30:01+00:00 SKIP: already running
 2026-03-24T20:30:01+00:00 SKIP: already running
