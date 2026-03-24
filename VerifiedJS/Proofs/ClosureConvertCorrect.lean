@@ -553,6 +553,34 @@ private theorem HeapCorr_refl (h : Core.Heap) : HeapCorr h h :=
 private theorem HeapCorr_get (hc : HeapCorr ch fh) (hlt : addr < ch.objects.size) :
     ch.objects[addr]? = fh.objects[addr]? := hc.2 addr hlt
 
+/-- Both heaps push the same object at the same size: prefix relation is maintained.
+    Requires equal sizes (exact prefix), which holds when no extra Flat env objects exist. -/
+private theorem HeapCorr_alloc_both (hc : HeapCorr ch fh)
+    (hsize : ch.objects.size = fh.objects.size) (p : List (Core.PropName × Core.Value)) :
+    HeapCorr { objects := ch.objects.push p, nextAddr := ch.nextAddr + 1 }
+             { objects := fh.objects.push p, nextAddr := fh.nextAddr + 1 } := by
+  constructor
+  · simp [Array.size_push]
+  · intro addr hlt
+    simp [Array.size_push] at hlt
+    rcases Nat.lt_or_ge addr ch.objects.size with h | h
+    · simp only [Array.getElem?_push, show ¬(addr = ch.objects.size) from by omega,
+                 show ¬(addr = fh.objects.size) from by omega, ite_false]
+      exact hc.2 addr h
+    · have haddr_eq : addr = ch.objects.size := by omega
+      subst haddr_eq
+      simp only [Array.getElem?_push, hsize, ite_true]
+
+/-- Flat allocates an extra object (e.g. environment): prefix relation is maintained. -/
+private theorem HeapCorr_alloc_right (hc : HeapCorr ch fh) (p : List (Core.PropName × Core.Value)) :
+    HeapCorr ch { objects := fh.objects.push p, nextAddr := fh.nextAddr + 1 } := by
+  constructor
+  · simp [Array.size_push]; omega
+  · intro addr hlt
+    have hlt_fh : addr < fh.objects.size := Nat.lt_of_lt_of_le hlt hc.1
+    simp only [Array.getElem?_push, show ¬(addr = fh.objects.size) from by omega]
+    exact hc.2 addr hlt
+
 /-- Simulation relation for closure conversion: Flat and Core states
     have matching traces, environment correspondence, and expression
     correspondence through the conversion. -/
