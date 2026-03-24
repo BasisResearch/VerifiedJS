@@ -675,6 +675,17 @@ def Env.extend (env : Env) (name : VarName) (v : Value) : Env :=
 -- | defined in this specification only Dates (see ) and Symbol objects (see
 -- | ) over-ride the default ToPrimitive behaviour. Dates treat the absence
 -- | of a hint as if the hint were \~string\~.
+-- |
+-- | # OrdinaryToPrimitive ( \_O\_: an Object, \_hint\_: \~string\~ or \~number\~, ): either a normal completion containing an ECMAScript language value or a throw completion
+-- |
+-- | 1\. If \_hint\_ is \~string\~, then 1. Let \_methodNames\_ be «
+-- | \*\"toString\"\*, \*\"valueOf\"\* ». 1. Else, 1. Let \_methodNames\_ be
+-- | « \*\"valueOf\"\*, \*\"toString\"\* ». 1. For each element \_name\_ of
+-- | \_methodNames\_, do 1. Let \_method\_ be ? Get(\_O\_, \_name\_). 1. If
+-- | IsCallable(\_method\_) is \*true\*, then 1. Let \_result\_ be ?
+-- | Call(\_method\_, \_O\_). 1. If \_result\_ is not an Object, return
+-- | \_result\_. 1. Throw a \*TypeError\* exception.
+-- |
 -- SPEC: L5972-L5981
 -- | # OrdinaryToPrimitive ( \_O\_: an Object, \_hint\_: \~string\~ or \~number\~, ): either a normal completion containing an ECMAScript language value or a throw completion
 -- |
@@ -2712,68 +2723,88 @@ def evalBinary : BinOp → Value → Value → Value
 -- | ? IteratorDestructuringAssignmentEvaluation of \|Elision\| with argument
 -- | \_iteratorRecord\_. 1. Return ? IteratorBindingInitialization of
 -- | \|BindingRestElement\| with arguments \_iteratorRecord\_ and
--- | \_environment\_.
+-- | \_environment\_. ArrayBindingPattern : \`\[\` BindingElementList \`,\`
+-- | Elision \`\]\` 1. Perform ? IteratorBindingInitialization of
+-- | \|BindingElementList\| with arguments \_iteratorRecord\_ and
+-- | \_environment\_. 1. Return ? IteratorDestructuringAssignmentEvaluation
+-- | of \|Elision\| with argument \_iteratorRecord\_. ArrayBindingPattern :
+-- | \`\[\` BindingElementList \`,\` Elision? BindingRestElement \`\]\` 1.
 -- SPEC: L8511-L8533
 -- | # Runtime Semantics: InstantiateFunctionObject ( \_env\_: an Environment Record, \_privateEnv\_: a PrivateEnvironment Record or \*null\*, ): an ECMAScript function object
 -- |
 -- | FunctionDeclaration : \`function\` BindingIdentifier \`(\`
--- | FormalParameters \`)\` \`{\` FunctionBody \`}\` 1. Return ?
--- | InstantiateOrdinaryFunctionObject of \|FunctionDeclaration\| with
--- | arguments \_env\_ and \_privateEnv\_. FunctionDeclaration : \`function\`
--- | \`(\` FormalParameters \`)\` \`{\` FunctionBody \`}\` 1. Return ?
+-- | FormalParameters \`)\` \`{\` FunctionBody \`}\` \`function\` \`(\`
+-- | FormalParameters \`)\` \`{\` FunctionBody \`}\` 1. Return
 -- | InstantiateOrdinaryFunctionObject of \|FunctionDeclaration\| with
 -- | arguments \_env\_ and \_privateEnv\_. GeneratorDeclaration :
 -- | \`function\` \`\*\` BindingIdentifier \`(\` FormalParameters \`)\` \`{\`
--- | GeneratorBody \`}\` 1. Return ?
--- | InstantiateOrdinaryFunctionObject of \|GeneratorDeclaration\| with
--- | arguments \_env\_ and \_privateEnv\_. GeneratorDeclaration :
--- | \`function\` \`\*\` \`(\` FormalParameters \`)\` \`{\` GeneratorBody
--- | \`}\` 1. Return ? InstantiateOrdinaryFunctionObject of
--- | \|GeneratorDeclaration\| with arguments \_env\_ and \_privateEnv\_.
+-- | GeneratorBody \`}\` \`function\` \`\*\` \`(\` FormalParameters \`)\`
+-- | \`{\` GeneratorBody \`}\` 1. Return InstantiateGeneratorFunctionObject
+-- | of \|GeneratorDeclaration\| with arguments \_env\_ and \_privateEnv\_.
+-- | AsyncGeneratorDeclaration : \`async\` \`function\` \`\*\`
+-- | BindingIdentifier \`(\` FormalParameters \`)\` \`{\` AsyncGeneratorBody
+-- | \`}\` \`async\` \`function\` \`\*\` \`(\` FormalParameters \`)\` \`{\`
+-- | AsyncGeneratorBody \`}\` 1. Return
+-- | InstantiateAsyncGeneratorFunctionObject of \|AsyncGeneratorDeclaration\|
+-- | with arguments \_env\_ and \_privateEnv\_. AsyncFunctionDeclaration :
+-- | \`async\` \`function\` BindingIdentifier \`(\` FormalParameters \`)\`
+-- | \`{\` AsyncFunctionBody \`}\` \`async\` \`function\` \`(\`
+-- | FormalParameters \`)\` \`{\` AsyncFunctionBody \`}\` 1. Return
+-- | InstantiateAsyncFunctionObject of \|AsyncFunctionDeclaration\| with
+-- | arguments \_env\_ and \_privateEnv\_.
+-- |
 -- SPEC: L11746-L11767
--- | # Array Exotic Objects
--- |
--- | An Array is an exotic object that gives special treatment to a certain
--- | class of property names. See for a definition of this special treatment.
--- |
 -- | # \[\[DefineOwnProperty\]\] ( \_P\_: a property key, \_Desc\_: a Property Descriptor, ): either a normal completion containing a Boolean or a throw completion
 -- |
 -- | for
--- | :   an Array \_A\_
+-- | :   an Array exotic object \_A\_
 -- |
--- | 1\. If \_P\_ is \*\"length\"\*, then 1. Return ? ArraySetLength(\_A\_,
+-- | 1\. If \_P\_ is \*\"length\"\*, return ? ArraySetLength(\_A\_,
 -- | \_Desc\_). 1. If \_P\_ is an array index, then 1. Let \_lengthDesc\_ be
--- | OrdinaryGetOwnProperty(\_A\_, \*\"length\"\*). 1. Assert:
--- | IsDataDescriptor(\_lengthDesc\_) is \*true\*. 1. Assert:
--- | \_lengthDesc\_.\[\[Configurable\]\] is \*false\*. 1. Let \_length\_ be
--- | \_lengthDesc\_.\[\[Value\]\]. 1. Assert: \_length\_ is a non-negative
--- | integral Number. 1. Let \_index\_ be ! ToUint32(\_P\_). 1. If
--- | \_index\_ ≥ \_length\_ and \_lengthDesc\_.\[\[Writable\]\] is \*false\*,
--- | return \*false\*. 1. Let \_succeeded\_ be !
+-- | OrdinaryGetOwnProperty(\_A\_, \*\"length\"\*). 1. Assert: \_lengthDesc\_
+-- | is not \*undefined\*. 1. Assert: IsDataDescriptor(\_lengthDesc\_) is
+-- | \*true\*. 1. Assert: \_lengthDesc\_.\[\[Configurable\]\] is
+-- | \*false\*. 1. Let \_length\_ be \_lengthDesc\_.\[\[Value\]\]. 1. Assert:
+-- | \_length\_ is a non-negative integral Number. 1. Let \_index\_ be !
+-- | ToUint32(\_P\_). 1. If \_index\_ ≥ \_length\_ and
+-- | \_lengthDesc\_.\[\[Writable\]\] is \*false\*, return \*false\*. 1. Let
+-- | \_succeeded\_ be ! OrdinaryDefineOwnProperty(\_A\_, \_P\_, \_Desc\_). 1.
+-- | If \_succeeded\_ is \*false\*, return \*false\*. 1. If \_index\_ ≥
+-- | \_length\_, then 1. Set \_lengthDesc\_.\[\[Value\]\] to \_index\_ +
+-- | \*1\*~𝔽~. 1. Set \_succeeded\_ to ! OrdinaryDefineOwnProperty(\_A\_,
+-- | \*\"length\"\*, \_lengthDesc\_). 1. Assert: \_succeeded\_ is
+-- | \*true\*. 1. Return \*true\*. 1. Return ?
 -- | OrdinaryDefineOwnProperty(\_A\_, \_P\_, \_Desc\_).
+-- |
 -- SPEC: L11783-L11810
 -- | # ArraySpeciesCreate ( \_originalArray\_: an Object, \_length\_: a non-negative integer, ): either a normal completion containing an Object or a throw completion
 -- |
 -- | description
--- | :   It is used to specify the creation of a new Array or similar
--- |     object in a manner that is dependent on the actual species of
--- |     \_originalArray\_. By default, using this abstract operation
--- |     creates a new Array. However, if \_originalArray\_ is a subclass
--- |     of Array, other kinds of objects may be created.
+-- | :   It is used to specify the creation of a new Array or similar object
+-- |     using a constructor function that is derived from \_originalArray\_.
+-- |     It does not enforce that the constructor function returns an Array.
 -- |
 -- | 1\. Let \_isArray\_ be ? IsArray(\_originalArray\_). 1. If \_isArray\_
 -- | is \*false\*, return ? ArrayCreate(\_length\_). 1. Let \_C\_ be ?
 -- | Get(\_originalArray\_, \*\"constructor\"\*). 1. If IsConstructor(\_C\_)
 -- | is \*true\*, then 1. Let \_thisRealm\_ be the current Realm Record. 1.
 -- | Let \_realmC\_ be ? GetFunctionRealm(\_C\_). 1. If \_thisRealm\_ and
--- | \_realmC\_ are not the same Realm Record, then 1. If
--- | SameValue(\_C\_, \_realmC\_.\[\[Intrinsics\]\].%Array%) is \*true\*, set
--- | \_C\_ to \*undefined\*. 1. If \_C\_ is an Object, then 1. Set \_C\_ to
--- | ? Get(\_C\_, %Symbol.species%). 1. If \_C\_ is \*null\*, set \_C\_ to
+-- | \_realmC\_ are not the same Realm Record, then 1. If SameValue(\_C\_,
+-- | \_realmC\_.\[\[Intrinsics\]\].\[\[%Array%\]\]) is \*true\*, set \_C\_ to
+-- | \*undefined\*. 1. If \_C\_ is an Object, then 1. Set \_C\_ to ?
+-- | Get(\_C\_, %Symbol.species%). 1. If \_C\_ is \*null\*, set \_C\_ to
 -- | \*undefined\*. 1. If \_C\_ is \*undefined\*, return ?
 -- | ArrayCreate(\_length\_). 1. If IsConstructor(\_C\_) is \*false\*, throw
 -- | a \*TypeError\* exception. 1. Return ? Construct(\_C\_, « 𝔽(\_length\_)
 -- | »).
+-- |
+-- | If \_originalArray\_ was created using the standard built-in Array
+-- | constructor for a realm that is not the realm of the running execution
+-- | context, then a new Array is created using the realm of the running
+-- | execution context. This maintains compatibility with Web browsers that
+-- | have historically had that behaviour for the \`Array.prototype\` methods
+-- | that now are defined using ArraySpeciesCreate.
+-- |
 
 /-- Built-in function index for console.log (reserved at index 0, §18.2). -/
 def consoleLogIdx : FuncIdx := 0
@@ -3009,6 +3040,19 @@ def step? (s : State) : Option (TraceEvent × State) :=
   -- | StatementList : StatementList StatementListItem 1. Let \_sl\_ be ?
   -- | Evaluation of \|StatementList\|. 1. Let \_s\_ be Completion(Evaluation
   -- | of \|StatementListItem\|). 1. Return ? UpdateEmpty(\_s\_, \_sl\_).
+  -- |
+  -- | The value of a \|StatementList\| is the value of the last
+  -- | value-producing item in the \|StatementList\|. For example, the
+  -- | following calls to the \`eval\` function all return the value 1:
+  -- |
+  -- | ``` javascript
+  -- |
+  -- |           eval("1;;;;;")
+  -- |           eval("1;{}")
+  -- |           eval("1;var a;")
+  -- |         
+  -- | ```
+  -- |
   -- SPEC: L17544-L17548
   -- | EmptyStatement : \`;\`
   -- |
@@ -3344,6 +3388,15 @@ def step? (s : State) : Option (TraceEvent × State) :=
   -- | \_functionObject\_.\[\[ClassFieldInitializerName\]\]. 1. Else, 1. Let
   -- | \_rhs\_ be ? Evaluation of \|AssignmentExpression\|. 1. Let \_value\_ be
   -- | ? GetValue(\_rhs\_). 1. Return ReturnCompletion(\_value\_).
+  -- |
+  -- | Even though field initializers constitute a function boundary, calling
+  -- | FunctionDeclarationInstantiation does not have any observable effect and
+  -- | so is omitted.
+  -- |
+  -- | ClassStaticBlockBody : ClassStaticBlockStatementList 1. Assert:
+  -- | \_argumentsList\_ is empty. 1. Return ? EvaluateClassStaticBlockBody of
+  -- | \|ClassStaticBlockBody\| with argument \_functionObject\_.
+  -- |
   -- SPEC: L15736-L15773
   -- | # Runtime Semantics: ArgumentListEvaluation ( ): either a normal completion containing a List of ECMAScript language values or an abrupt completion
   -- |
@@ -3931,6 +3984,12 @@ def step? (s : State) : Option (TraceEvent × State) :=
   -- | return \_nextIndex\_. 1. Perform ! CreateDataPropertyOrThrow(\_array\_,
   -- | ! ToString(𝔽(\_nextIndex\_)), \_next\_). 1. Set \_nextIndex\_ to
   -- | \_nextIndex\_ + 1.
+  -- |
+  -- | CreateDataPropertyOrThrow is used to ensure that own properties are
+  -- | defined for the array even if the standard built-in Array prototype
+  -- | object has been modified in a manner that would preclude the creation of
+  -- | new own properties using \[\[Set\]\].
+  -- |
   -- SPEC: L15012-L15025
   -- | # Runtime Semantics: Evaluation
   -- |
@@ -4207,11 +4266,10 @@ def step? (s : State) : Option (TraceEvent × State) :=
   -- SPEC: L18068-L18073
   -- | # Runtime Semantics: Evaluation
   -- |
-  -- | ForInOfStatement : \`for\` \`(\` LeftHandSideExpression \`in\`
-  -- | Expression \`)\` Statement ForInOfStatement : \`for\` \`(\` \`var\`
-  -- | ForBinding \`in\` Expression \`)\` Statement ForInOfStatement : \`for\`
-  -- | \`(\` ForDeclaration \`in\` Expression \`)\` Statement 1. Return ?
-  -- | ForInOfLoopEvaluation of this \|ForInOfStatement\| with argument « ».
+  -- | BindingIdentifier : Identifier \`yield\` \`await\` 1. Let \_bindingId\_
+  -- | be the StringValue of \|BindingIdentifier\|. 1. Return ?
+  -- | ResolveBinding(\_bindingId\_).
+  -- |
   | .forIn binding obj body =>
       match exprValue? obj with
       | none =>

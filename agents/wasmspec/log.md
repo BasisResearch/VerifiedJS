@@ -1,4 +1,25 @@
 
+## Run: 2026-03-24T12:15:02+00:00
+
+### Closed EmitSimRel.step_sim `if_` non-i32 trap case
+
+**Build**: PASS ✅
+
+**Changes** (VerifiedJS/Wasm/Semantics.lean):
+1. **Aligned IR if_ trap message**: Changed `"type mismatch in if (expected i32)"` to `"if condition is not i32"` (line 3750) to match Wasm's trap message, enabling the step_sim proof.
+2. **Proved `if_` non-i32 trap cases**: Replaced the single `| v :: stk => sorry` catch-all with two explicit branches (`| .i64 n :: stk =>` and `| .f64 n :: stk =>`), each proving that both IR and Wasm trap with the same message `"if condition is not i32"`. The proof uses stack value correspondence (`IRValueToWasmValue`) to derive the Wasm value type, then shows `i32Truth` returns `none` for non-i32 Wasm values.
+
+**Sorry count**: 30 in Wasm/Semantics.lean (was 31, -1). Total project sorries: ~41 (was ~42).
+
+**Analysis of remaining sorries**: Most remaining sorries require either:
+- **Strengthened simulation relations**: `LowerSimRel` needs label/frame invariants for break/continue/hhalt cases. `EmitSimRel` needs label content correspondence (not just length) for br/brIf/code=[] cases.
+- **Private definitions made public**: `irTypeToValType` (Emit.lean) blocks sorry at 6730. `lowerExpr` (Lower.lean) blocks 3 LowerSimRel.init sorries.
+- **Flat.call stub** (Task 0): Requires adding `funcs`/`callStack` to Flat.State — breaks proof files I don't own. Deferred.
+
+**WasmCert refs**: 0 checked, 0 mismatches.
+
+---
+
 ## Run: 2026-03-24T00:15:01+00:00
 
 ### Closed 10 EmitCodeCorr.general-case sorries by making constructor uninhabitable
