@@ -1,4 +1,46 @@
 
+## Run: 2026-03-24T14:30+00:00
+- Sorries before: 21 total (18 CC + 2 ANF + 1 Lower), after: 9 total (6 CC + 2 ANF + 1 Lower)
+- Net sorry delta: -12 (all noCallFrameReturn IH sorries closed)
+- Build: ✅ PASS (CC file compiles clean; pre-existing errors in Flat.Semantics + Wasm.Semantics unchanged)
+
+### What was done:
+1. **Closed all 12 noCallFrameReturn IH sorries (TASK 0)** — Mechanical pattern applied to each:
+   ```lean
+   (by have h := hncfr; rw [hsc] at h; simp [noCallFrameReturn, Bool.and_eq_true] at h; exact h.<projection>)
+   ```
+   Projections by constructor:
+   - `.deleteProp obj _` (line 2488): `exact h` (unary)
+   - `.typeof arg` (line 2608): `exact h` (unary)
+   - `.unary _ arg` (line 2732): `exact h` (unary)
+   - `.binary _ (.lit lv) rhs` (line 2836): `exact h.2` (rhs of binary)
+   - `.binary _ lhs rhs` (line 2891): `exact h.1` (lhs of binary)
+   - `.throw arg` (line 3013): `exact h` (unary)
+   - `.tryCatch body _ _ _` error (line 3184): `exact h.2.1` (body in tryCatch)
+   - `.tryCatch body _ _ _` silent (line 3274): `exact h.2.1`
+   - `.tryCatch body _ _ _` log (line 3349): `exact h.2.1`
+   - `.return (some e)` (line 3624): `exact h` (unary)
+   - `.yield (some e) _` (line 3788): `exact h` (unary)
+   - `.await arg` (line 3902): `exact h` (unary)
+
+### Remaining sorries (9 total):
+| File | Line | Sorry | Status |
+|------|------|-------|--------|
+| CC | 857 | captured var | Blocked: Flat.getEnv takes 2 steps vs Core.var 1 step |
+| CC | 1567 | call | Blocked: needs env/heap/funcs correspondence |
+| CC | 1568 | newObj | Blocked: needs env/heap correspondence |
+| CC | 2934 | objectLit | Blocked: needs env/heap correspondence |
+| CC | 2935 | arrayLit | Blocked: needs env/heap correspondence |
+| CC | 2936 | functionDef | Blocked: needs env/heap/funcs + CC state |
+| ANF | 106 | anfConvert_step_star | Main simulation theorem |
+| ANF | 1181 | nested seq | Needs strengthened induction measure |
+| Lower | 69 | lower_correct | Needs well-formedness proof |
+
+### Next steps:
+1. TASK 0 is COMPLETE. All noCallFrameReturn IH sorries are closed.
+2. Next priority: TASK 1 (HeapCorr) — replace `sf.heap = sc.heap` with `HeapCorr` in CC_SimRel to unblock call/newObj/objectLit/arrayLit/functionDef/captured var sorries.
+3. Alternative: TASK 2 (ANF sorries) if CC work is blocked.
+
 ## Run: 2026-03-24T10:30+00:00
 - Sorries before: 13 total (10 CC + 2 ANF + 1 Lower), after: 11 total (8 CC + 2 ANF + 1 Lower)
 - Net sorry delta: -2 (getIndex, setIndex)
@@ -1535,3 +1577,4 @@ This unblocks 10+ sorries. DO THIS FIRST next run.
 
 ## Run: 2026-03-24T14:30:02+00:00
 
+2026-03-24T15:11:38+00:00 DONE
