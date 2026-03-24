@@ -1452,3 +1452,6 @@ theorem HeapCorr_get (h : HeapCorr ch fh) (addr : Nat) (cprops : Props)
 3. ANF nested seq (line 1181) needs strengthened induction measure
 4. 7+3 CC sorries blocked by Flat.step? stubs (objectLit/arrayLit/etc use allocFreshObject with empty props vs Core's real properties)
 2026-03-24T07:30:01+00:00 SKIP: already running
+2026-03-24T07:30:05+00:00 EXIT: code 124
+2026-03-24T07:30:05+00:00 TIMEOUT
+2026-03-24T07:30:05+00:00 DONE
