@@ -1556,6 +1556,95 @@ def Env.extend (env : Env) (name : VarName) (v : Value) : Env :=
 -- | \_slotsList\_ be \_internalSlotsList\_. 1. Else, let \_slotsList\_ be a
 -- | new empty List. 1. Return OrdinaryObjectCreate(\_proto\_,
 -- | \_slotsList\_).
+-- SPEC: L17803-L17817
+-- | # CreatePerIterationEnvironment ( \_perIterationBindings\_: a List of Strings, ): either a normal completion containing \~unused\~ or a throw completion
+-- |
+-- | 1\. If \_perIterationBindings\_ has any elements, then 1. Let
+-- | \_lastIterationEnv\_ be the running execution context\'s
+-- | LexicalEnvironment. 1. Let \_outer\_ be
+-- | \_lastIterationEnv\_.\[\[OuterEnv\]\]. 1. Assert: \_outer\_ is not
+-- | \*null\*. 1. Let \_thisIterationEnv\_ be
+-- | NewDeclarativeEnvironment(\_outer\_). 1. For each element \_bn\_ of
+-- | \_perIterationBindings\_, do 1. Perform !
+-- | \_thisIterationEnv\_.CreateMutableBinding(\_bn\_, \*false\*). 1. Let
+-- | \_lastValue\_ be ? \_lastIterationEnv\_.GetBindingValue(\_bn\_,
+-- | \*true\*). 1. Perform ! \_thisIterationEnv\_.InitializeBinding(\_bn\_,
+-- | \_lastValue\_). 1. Set the running execution context\'s
+-- | LexicalEnvironment to \_thisIterationEnv\_. 1. Return \~unused\~.
+-- SPEC: L10863-L10870
+-- | # OrdinaryHasProperty ( \_O\_: an Object, \_P\_: a property key, ): either a normal completion containing a Boolean or a throw completion
+-- |
+-- | 1\. Let \_hasOwn\_ be ? \_O\_.\[\[GetOwnProperty\]\](\_P\_). 1. If
+-- | \_hasOwn\_ is not \*undefined\*, return \*true\*. 1. Let \_parent\_ be ?
+-- | \_O\_.\[\[GetPrototypeOf\]\](). 1. If \_parent\_ is not \*null\*,
+-- | then 1. Return ? \_parent\_.\[\[HasProperty\]\](\_P\_). 1. Return
+-- | \*false\*.
+-- SPEC: L10748-L10762
+-- | # OrdinaryGetOwnProperty ( \_O\_: an Object, \_P\_: a property key, ): a Property Descriptor or \*undefined\*
+-- |
+-- | 1\. If \_O\_ does not have an own property with key \_P\_, return
+-- | \*undefined\*. 1. Let \_D\_ be a newly created Property Descriptor with
+-- | no fields. 1. Let \_X\_ be \_O\_\'s own property whose key is \_P\_. 1.
+-- | If \_X\_ is a data property, then 1. Set \_D\_.\[\[Value\]\] to the
+-- | value of \_X\_\'s \[\[Value\]\] attribute. 1. Set \_D\_.\[\[Writable\]\]
+-- | to the value of \_X\_\'s \[\[Writable\]\] attribute. 1. Else, 1. Assert:
+-- | \_X\_ is an accessor property. 1. Set \_D\_.\[\[Get\]\] to the value of
+-- | \_X\_\'s \[\[Get\]\] attribute. 1. Set \_D\_.\[\[Set\]\] to the value of
+-- | \_X\_\'s \[\[Set\]\] attribute. 1. Set \_D\_.\[\[Enumerable\]\] to the
+-- | value of \_X\_\'s \[\[Enumerable\]\] attribute. 1. Set
+-- | \_D\_.\[\[Configurable\]\] to the value of \_X\_\'s \[\[Configurable\]\]
+-- | attribute. 1. Return \_D\_.
+-- SPEC: L7235-L7260
+-- | # IteratorClose ( \_iteratorRecord\_: an Iterator Record, \_completion\_: a Completion Record, ): a Completion Record
+-- |
+-- | description
+-- | :   It is used to notify an iterator that it should perform any actions
+-- |     it would normally perform when it has reached its completed state.
+-- |
+-- | 1\. Assert: \_iteratorRecord\_.\[\[Iterator\]\] is an Object. 1. Let
+-- | \_iterator\_ be \_iteratorRecord\_.\[\[Iterator\]\]. 1. Let
+-- | \_innerResult\_ be Completion(GetMethod(\_iterator\_,
+-- | \*\"return\"\*)). 1. If \_innerResult\_ is a normal completion, then 1.
+-- | Let \_return\_ be \_innerResult\_.\[\[Value\]\]. 1. If \_return\_ is
+-- | \*undefined\*, return ? \_completion\_. 1. Set \_innerResult\_ to
+-- | Completion(Call(\_return\_, \_iterator\_)). 1. If \_completion\_ is a
+-- | throw completion, return ? \_completion\_. 1. If \_innerResult\_ is a
+-- | throw completion, return ? \_innerResult\_. 1. If
+-- | \_innerResult\_.\[\[Value\]\] is not an Object, throw a \*TypeError\*
+-- | exception. 1. Return ? \_completion\_.
+-- |
+-- | # IteratorCloseAll ( \_iters\_: a List of Iterator Records, \_completion\_: a Completion Record, ): a Completion Record
+-- |
+-- | skip global checks
+-- | :   true
+-- |
+-- | 1\. For each element \_iter\_ of \_iters\_, in reverse List order, do 1.
+-- | Set \_completion\_ to Completion(IteratorClose(\_iter\_,
+-- | \_completion\_)). 1. Return ? \_completion\_.
+-- SPEC: L41587-L41594
+-- | # GetGeneratorKind ( ): \~non-generator\~, \~sync\~, or \~async\~
+-- |
+-- | 1\. Let \_genContext\_ be the running execution context. 1. If
+-- | \_genContext\_ does not have a Generator component, return
+-- | \~non-generator\~. 1. Let \_generator\_ be the Generator component of
+-- | \_genContext\_. 1. If \_generator\_ has an \[\[AsyncGeneratorState\]\]
+-- | internal slot, return \~async\~. 1. Return \~sync\~.
+-- SPEC: L40411-L40425
+-- | # NewPromiseCapability ( \_C\_: an ECMAScript language value, ): either a normal completion containing a PromiseCapability Record or a throw completion
+-- |
+-- | description
+-- | :   It attempts to use \_C\_ as a constructor in the fashion of the
+-- |     built-in Promise constructor to create a promise and extract its
+-- |     \`resolve\` and \`reject\` functions. The promise plus the
+-- |     \`resolve\` and \`reject\` functions are used to initialize a new
+-- |     PromiseCapability Record.
+-- |
+-- | 1\. If IsConstructor(\_C\_) is \*false\*, throw a \*TypeError\*
+-- | exception. 1. NOTE: \_C\_ is assumed to be a constructor function that
+-- | supports the parameter conventions of the Promise constructor (see ). 1.
+-- | Let \_resolvingFunctions\_ be the Record { \[\[Resolve\]\]:
+-- | \*undefined\*, \[\[Reject\]\]: \*undefined\* }. 1. Let
+-- | \_executorClosure\_ be a new Abstract Closure with parameters
 
 /-- Check whether an expression is a value expression. -/
 def exprValue? : Expr → Option Value

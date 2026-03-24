@@ -2790,6 +2790,109 @@ theorem step?_eq_i32WrapI64 (s : ExecState) (rest : List Instr)
     cases s; simp_all
   rw [← this]; simp [step?_i32WrapI64, pushTrace]
 
+/-- Exact step? result for br when resolveBranch? succeeds. -/
+theorem step?_eq_br (s : ExecState) (depth : Nat) (rest : List Instr)
+    (lbl : LabelFrame) (labels' : List LabelFrame)
+    (hcode : s.code = Instr.br depth :: rest)
+    (hresolve : resolveBranch? s.labels depth = some (lbl, labels')) :
+    step? s = some (.silent,
+      { s with
+        labels := labels'
+        code := lbl.onBranch
+        trace := s.trace ++ [.silent] }) := by
+  cases s; simp_all [step?, hresolve, pushTrace]
+
+/-- Exact step? result for br when label not found. -/
+theorem step?_eq_br_oob (s : ExecState) (depth : Nat) (rest : List Instr)
+    (hcode : s.code = Instr.br depth :: rest)
+    (hresolve : resolveBranch? s.labels depth = none) :
+    step? s = some (.trap s!"unknown label index {depth}",
+      { s with
+        code := []
+        trace := s.trace ++ [.trap s!"unknown label index {depth}"] }) := by
+  cases s; simp_all [step?, hresolve, trapState, pushTrace]
+
+/-- Exact step? result for brIf with true condition (nonzero i32) and successful branch. -/
+theorem step?_eq_brIf_true_gen (s : ExecState) (depth : Nat) (rest : List Instr)
+    (n : UInt32) (stk : List WasmValue)
+    (lbl : LabelFrame) (labels' : List LabelFrame)
+    (hcode : s.code = Instr.brIf depth :: rest)
+    (hstack : s.stack = .i32 n :: stk)
+    (hn : n ≠ 0)
+    (hresolve : resolveBranch? s.labels depth = some (lbl, labels')) :
+    step? s = some (.silent,
+      { s with
+        stack := stk
+        labels := labels'
+        code := lbl.onBranch
+        trace := s.trace ++ [.silent] }) := by
+  cases s; simp_all [step?, pop1?, i32Truth, bne_iff_ne, hresolve, pushTrace]
+
+/-- Exact step? result for brIf with false condition (zero i32). -/
+theorem step?_eq_brIf_false_gen (s : ExecState) (depth : Nat) (rest : List Instr)
+    (stk : List WasmValue)
+    (hcode : s.code = Instr.brIf depth :: rest)
+    (hstack : s.stack = .i32 0 :: stk) :
+    step? s = some (.silent,
+      { s with
+        stack := stk
+        code := rest
+        trace := s.trace ++ [.silent] }) := by
+  cases s; simp_all [step?, pop1?, i32Truth, pushTrace]
+
+/-- Exact step? result for call with valid function index and sufficient stack. -/
+theorem step?_eq_call_valid (s : ExecState) (idx : Nat) (rest : List Instr)
+    (args remainingStack : List WasmValue)
+    (hcode : s.code = Instr.call idx :: rest)
+    (hfunc : idx < s.store.funcs.size)
+    (hpop : popN? s.stack
+        (if hT : (s.store.funcs[idx]).typeIdx < s.store.types.size
+         then s.store.types[(s.store.funcs[idx]).typeIdx].params.length
+         else 0) = some (args, remainingStack)) :
+    step? s = some (.silent,
+      { s with
+        stack := remainingStack
+        frames := { locals := args.reverse.toArray ++ ((s.store.funcs[idx]).locals.map defaultValue).toArray
+                    moduleInst := 0 } :: s.frames
+        code := (s.store.funcs[idx]).body ++ rest
+        trace := s.trace ++ [.silent] }) := by
+  cases s; simp_all [step?, hfunc, hpop, pushTrace]
+
+/-- Exact step? result for call with out-of-bounds function index. -/
+theorem step?_eq_call_oob (s : ExecState) (idx : Nat) (rest : List Instr)
+    (hcode : s.code = Instr.call idx :: rest)
+    (hfunc : ¬(idx < s.store.funcs.size)) :
+    step? s = some (.trap s!"unknown function index {idx}",
+      { s with
+        code := []
+        trace := s.trace ++ [.trap s!"unknown function index {idx}"] }) := by
+  cases s; simp_all [step?, hfunc, trapState, pushTrace]
+
+/-- Exact step? result for call with stack underflow. -/
+theorem step?_eq_call_underflow (s : ExecState) (idx : Nat) (rest : List Instr)
+    (hcode : s.code = Instr.call idx :: rest)
+    (hfunc : idx < s.store.funcs.size)
+    (hpop : popN? s.stack
+        (if hT : (s.store.funcs[idx]).typeIdx < s.store.types.size
+         then s.store.types[(s.store.funcs[idx]).typeIdx].params.length
+         else 0) = none) :
+    step? s = some (.trap s!"stack underflow in call {idx}",
+      { s with
+        code := []
+        trace := s.trace ++ [.trap s!"stack underflow in call {idx}"] }) := by
+  cases s; simp_all [step?, hfunc, hpop, trapState, pushTrace]
+
+/-- Exact step? result for empty code with label to pop. -/
+theorem step?_eq_labelDone (s : ExecState) (lbl : LabelFrame) (lbls : List LabelFrame)
+    (hcode : s.code = [])
+    (hlabels : s.labels = lbl :: lbls) :
+    step? s = some (.silent,
+      { s with
+        code := lbl.onExit
+        labels := lbls
+        trace := s.trace ++ [.silent] }) := by
+  cases s; simp_all [step?, pushTrace]
+
 /-! ## Behavioral semantics theorems -/
 
 /-- Deterministic execution: Steps from the same state yield the same trace and final state. -/
