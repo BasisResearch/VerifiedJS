@@ -661,6 +661,47 @@ def Env.extend (env : Env) (name : VarName) (v : Value) : Env :=
 -- | empty List. 1. If IsCallable(\_F\_) is \*false\*, throw a \*TypeError\*
 -- | exception. 1. Return ? \_F\_.\[\[Call\]\](\_V\_, \_argumentsList\_).
 
+-- SPEC: L6851-L6861
+-- | # CreateArrayFromList ( \_elements\_: a List of ECMAScript language values, ): an Array
+-- |
+-- | description
+-- | :   It is used to create an Array whose elements are provided by
+-- |     \_elements\_.
+-- |
+-- | 1\. Let \_array\_ be ! ArrayCreate(0). 1. Let \_n\_ be 0. 1. For each
+-- | element \_e\_ of \_elements\_, do 1. Perform !
+-- | CreateDataPropertyOrThrow(\_array\_, ! ToString(𝔽(\_n\_)), \_e\_). 1.
+-- | Set \_n\_ to \_n\_ + 1. 1. Return \_array\_.
+-- SPEC: L6862-L6876
+-- | # LengthOfArrayLike ( \_obj\_: an Object, ): either a normal completion containing a non-negative integer or a throw completion
+-- |
+-- | description
+-- | :   It returns the value of the \*\"length\"\* property of an array-like
+-- |     object.
+-- |
+-- | 1\. Return ℝ(? ToLength(? Get(\_obj\_, \*\"length\"\*))).
+-- |
+-- | An [array-like object]{.dfn variants="array-like objects"} is any object
+-- | for which this operation returns a normal completion.
+-- |
+-- | Typically, an array-like object would also have some properties with
+-- | integer index names. However, that is not a requirement of this
+-- | definition. Arrays and String objects are examples of array-like
+-- | objects.
+-- SPEC: L6896-L6908
+-- | # Invoke ( \_V\_: an ECMAScript language value, \_P\_: a property key, optional \_argumentsList\_: a List of ECMAScript language values, ): either a normal completion containing an ECMAScript language value or a throw completion
+-- |
+-- | description
+-- | :   It is used to call a method property of an ECMAScript language
+-- |     value. \_V\_ serves as both the lookup point for the property and
+-- |     the \*this\* value of the call. \_argumentsList\_ is the list of
+-- |     arguments values passed to the method. If \_argumentsList\_ is not
+-- |     present, a new empty List is used as its value.
+-- |
+-- | 1\. If \_argumentsList\_ is not present, set \_argumentsList\_ to a new
+-- | empty List. 1. Let \_func\_ be ? GetV(\_V\_, \_P\_). 1. Return ?
+-- | Call(\_func\_, \_V\_, \_argumentsList\_).
+
 /-- Check whether an expression is a value expression. -/
 def exprValue? : Expr → Option Value
   | .lit v => some v
