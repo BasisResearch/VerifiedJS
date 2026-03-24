@@ -1634,17 +1634,25 @@ private theorem closureConvert_step_simulation
       refine ⟨scope, st, st, ?_⟩
       cases v with
       | object addr =>
-        -- Both look up property in heap. Need heapObjectAt? sf.heap addr = sc.heap.objects[addr]?
+        -- Both look up property in heap via HeapCorr
         simp only [Flat.convertExpr, Flat.convertValue, Core.pushTrace]
-        rw [hheap, heapObjectAt?_eq]
-        -- Now both sides use sc.heap.objects[addr]?, so the match aligns
-        -- Need: for each case, Flat result (coreToFlatValue cv) = convertValue (Core result)
-        cases h_lookup : sc.heap.objects[addr]? with
-        | none => rfl
-        | some props =>
-          cases h_find : props.find? (fun kv => kv.fst == prop) with
+        rw [heapObjectAt?_eq]
+        -- Align heap lookups using HeapCorr prefix relation
+        rcases Nat.lt_or_ge addr sc.heap.objects.size with hlt | hge
+        · rw [show sf.heap.objects[addr]? = sc.heap.objects[addr]? from (hheap.2 addr hlt).symm]
+          cases h_lookup : sc.heap.objects[addr]? with
           | none => rfl
-          | some kv => simp only [coreToFlatValue_eq_convertValue]; rfl
+          | some props =>
+            cases h_find : props.find? (fun kv => kv.fst == prop) with
+            | none => rfl
+            | some kv => simp only [coreToFlatValue_eq_convertValue]; rfl
+        · -- addr out of Core heap range: both return .undefined
+          have : sc.heap.objects[addr]? = none := by
+            simp [Array.getElem?_def]; omega
+          rw [this]
+          cases sf.heap.objects[addr]? with
+          | none => rfl
+          | some _ => sorry -- needs well-formedness: Core addrs < Core heap size
       | string str =>
         simp only [Flat.convertExpr, Flat.convertValue, Core.pushTrace]; rfl
       | null =>
@@ -1818,19 +1826,40 @@ private theorem closureConvert_step_simulation
           -- For non-object: both leave heap unchanged
           cases ov with
           | object addr =>
-            show (match Flat.heapObjectAt? sf.heap addr with
-              | some props => { sf.heap with objects := sf.heap.objects.set! addr
-                  (if props.any (fun kv => kv.fst == prop)
-                    then props.map (fun kv => if kv.fst == prop then (prop, Flat.flatToCoreValue (Flat.convertValue vv)) else kv)
-                    else props ++ [(prop, Flat.flatToCoreValue (Flat.convertValue vv))]) }
-              | none => sf.heap) =
-              (match sc.heap.objects[addr]? with
-              | some props => { sc.heap with objects := sc.heap.objects.set! addr
-                  (if props.any (fun kv => kv.fst == prop)
-                    then props.map (fun kv => if kv.fst == prop then (prop, vv) else kv)
-                    else props ++ [(prop, vv)]) }
-              | none => sc.heap)
-            rw [hheap, heapObjectAt?_eq, flatToCoreValue_convertValue]
+            -- HeapCorr preserved through setProp mutation
+            rw [heapObjectAt?_eq]
+            rcases Nat.lt_or_ge addr sc.heap.objects.size with hlt | hge
+            · rw [show sf.heap.objects[addr]? = sc.heap.objects[addr]? from (hheap.2 addr hlt).symm]
+              cases sc.heap.objects[addr]? with
+              | none => exact hheap
+              | some props =>
+                rw [flatToCoreValue_convertValue]
+                constructor
+                · simp [Array.size_set!]; exact hheap.1
+                · intro i hi
+                  simp only [Array.size_set!] at hi
+                  simp only [Array.set!, Array.setIfInBounds]
+                  split <;> split <;> simp_all [Array.getElem?_def]
+                  · omega
+                  · omega
+                  · exact hheap.2 i hi
+            · have : sc.heap.objects[addr]? = none := by simp [Array.getElem?_def]; omega
+              rw [this]
+              cases hsf : sf.heap.objects[addr]? with
+              | none => exact hheap
+              | some props =>
+                -- Flat mutates at addr outside Core range, HeapCorr preserved
+                constructor
+                · simp [Array.size_set!]; exact hheap.1
+                · intro i hi
+                  have hne : i ≠ addr := by omega
+                  simp only [Array.set!, Array.setIfInBounds]
+                  split
+                  · simp [Array.getElem?_def]
+                    split <;> simp_all
+                    · exact hheap.2 i hi
+                    · omega
+                  · exact hheap.2 i hi
           | _ => exact hheap
         refine ⟨scope, st, st, ?_⟩
         cases ov with
@@ -2018,13 +2047,20 @@ private theorem closureConvert_step_simulation
         cases ov with
         | object addr =>
           simp only [Flat.convertExpr, Flat.convertValue, Core.pushTrace]
-          rw [hheap, heapObjectAt?_eq, valueToString_convertValue]
-          cases h_lookup : sc.heap.objects[addr]? with
-          | none => rfl
-          | some props =>
-            cases h_find : props.find? (fun kv => kv.fst == Core.valueToString iv) with
+          rw [heapObjectAt?_eq, valueToString_convertValue]
+          rcases Nat.lt_or_ge addr sc.heap.objects.size with hlt | hge
+          · rw [show sf.heap.objects[addr]? = sc.heap.objects[addr]? from (hheap.2 addr hlt).symm]
+            cases h_lookup : sc.heap.objects[addr]? with
             | none => rfl
-            | some kv => simp only [coreToFlatValue_eq_convertValue]; rfl
+            | some props =>
+              cases h_find : props.find? (fun kv => kv.fst == Core.valueToString iv) with
+              | none => rfl
+              | some kv => simp only [coreToFlatValue_eq_convertValue]; rfl
+          · have : sc.heap.objects[addr]? = none := by simp [Array.getElem?_def]; omega
+            rw [this]
+            cases sf.heap.objects[addr]? with
+            | none => rfl
+            | some _ => sorry -- needs well-formedness: Core addrs < Core heap size
         | string str =>
           simp only [Flat.convertExpr, Flat.convertValue, Core.pushTrace, valueToString_convertValue]
           cases iv <;> simp only [Flat.convertValue, Core.valueToString, Flat.valueToString] <;> rfl
@@ -2317,19 +2353,38 @@ private theorem closureConvert_step_simulation
           · -- Heap correspondence for setIndex
             cases ov with
             | object addr =>
-              show (match Flat.heapObjectAt? sf.heap addr with
-                | some props => { sf.heap with objects := sf.heap.objects.set! addr
-                    (if props.any (fun kv => kv.fst == Flat.valueToString (Flat.convertValue iv))
-                      then props.map (fun kv => if kv.fst == Flat.valueToString (Flat.convertValue iv) then (Flat.valueToString (Flat.convertValue iv), Flat.flatToCoreValue (Flat.convertValue vv)) else kv)
-                      else props ++ [(Flat.valueToString (Flat.convertValue iv), Flat.flatToCoreValue (Flat.convertValue vv))]) }
-                | none => sf.heap) =
-                (match sc.heap.objects[addr]? with
-                | some props => { sc.heap with objects := sc.heap.objects.set! addr
-                    (if props.any (fun kv => kv.fst == Core.valueToString iv)
-                      then props.map (fun kv => if kv.fst == Core.valueToString iv then (Core.valueToString iv, vv) else kv)
-                      else props ++ [(Core.valueToString iv, vv)]) }
-                | none => sc.heap)
-              rw [hheap, heapObjectAt?_eq, flatToCoreValue_convertValue, valueToString_convertValue]
+              -- HeapCorr preserved through setIndex mutation
+              rw [heapObjectAt?_eq, flatToCoreValue_convertValue, valueToString_convertValue]
+              rcases Nat.lt_or_ge addr sc.heap.objects.size with hlt | hge
+              · rw [show sf.heap.objects[addr]? = sc.heap.objects[addr]? from (hheap.2 addr hlt).symm]
+                cases sc.heap.objects[addr]? with
+                | none => exact hheap
+                | some props =>
+                  constructor
+                  · simp [Array.size_set!]; exact hheap.1
+                  · intro i hi
+                    simp only [Array.size_set!] at hi
+                    simp only [Array.set!, Array.setIfInBounds]
+                    split <;> split <;> simp_all [Array.getElem?_def]
+                    · omega
+                    · omega
+                    · exact hheap.2 i hi
+              · have : sc.heap.objects[addr]? = none := by simp [Array.getElem?_def]; omega
+                rw [this]
+                cases hsf : sf.heap.objects[addr]? with
+                | none => exact hheap
+                | some props =>
+                  constructor
+                  · simp [Array.size_set!]; exact hheap.1
+                  · intro i hi
+                    have hne : i ≠ addr := by omega
+                    simp only [Array.set!, Array.setIfInBounds]
+                    split
+                    · simp [Array.getElem?_def]
+                      split <;> simp_all
+                      · exact hheap.2 i hi
+                      · omega
+                    · exact hheap.2 i hi
             | _ => exact hheap
           refine ⟨scope, st, st, ?_⟩
           cases ov with
@@ -2455,15 +2510,42 @@ private theorem closureConvert_step_simulation
       refine ⟨by show sf.trace ++ _ = sc.trace ++ _; rw [htrace], henvCorr, ?_⟩
       -- Heap correspondence: deleteProp modifies heap identically on both sides
       constructor
-      · -- sf'.heap = sc'.heap
-        -- Both compute heap' from the same heap (sf.heap = sc.heap) with same operation
-        show (match Flat.heapObjectAt? sf.heap _ with
-          | some props => { sf.heap with objects := sf.heap.objects.set! _ (props.filter _) }
-          | none => sf.heap) =
-          (match sc.heap.objects[_]? with
-          | some props => { sc.heap with objects := sc.heap.objects.set! _ (props.filter _) }
-          | none => sc.heap)
-        rw [hheap, heapObjectAt?_eq]
+      · -- HeapCorr preserved through deleteProp mutation
+        cases v with
+        | object addr =>
+          simp only [Flat.convertValue]
+          rw [heapObjectAt?_eq]
+          rcases Nat.lt_or_ge addr sc.heap.objects.size with hlt | hge
+          · rw [show sf.heap.objects[addr]? = sc.heap.objects[addr]? from (hheap.2 addr hlt).symm]
+            cases sc.heap.objects[addr]? with
+            | none => exact hheap
+            | some props =>
+              constructor
+              · simp [Array.size_set!]; exact hheap.1
+              · intro i hi
+                simp only [Array.size_set!] at hi
+                simp only [Array.set!, Array.setIfInBounds]
+                split <;> split <;> simp_all [Array.getElem?_def]
+                · omega
+                · omega
+                · exact hheap.2 i hi
+          · have : sc.heap.objects[addr]? = none := by simp [Array.getElem?_def]; omega
+            rw [this]
+            cases hsf : sf.heap.objects[addr]? with
+            | none => exact hheap
+            | some props =>
+              constructor
+              · simp [Array.size_set!]; exact hheap.1
+              · intro i hi
+                have hne : i ≠ addr := by omega
+                simp only [Array.set!, Array.setIfInBounds]
+                split
+                · simp [Array.getElem?_def]
+                  split <;> simp_all
+                  · exact hheap.2 i hi
+                  · omega
+                · exact hheap.2 i hi
+        | _ => exact hheap
       refine ⟨scope, st, st, ?_⟩
       cases v with
       | object addr =>
