@@ -5770,11 +5770,8 @@ theorem init (prog : ANF.Program) (irmod : IRModule)
     sorry
   hvar := by
     intro name idx hexpr hcode_ir
-    -- Initial ANF env is empty, so if expr is a var, lookup fails.
-    -- But we still need this to hold — it's vacuously true if the program
-    -- doesn't start with a bare variable reference (well-formed programs don't).
-    -- For now, blocked on lowerExpr being private.
-    sorry
+    -- irInitialState code is [call _] or [], never [localGet _], so hcode_ir is absurd.
+    exfalso; unfold irInitialState at hcode_ir; split at hcode_ir <;> simp at hcode_ir
 
 /-- Step simulation (1:1): if the ANF takes one step, the IR takes a matching step.
     Now provable with LowerCodeCorr: case analysis on the ANF expression form
