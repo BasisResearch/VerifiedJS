@@ -6583,8 +6583,8 @@ theorem init (irmod : IRModule) (wmod : Module)
       refine ⟨IRValue.default (irmod.globals[j]'hj).1,
              defaultValue (wmod.globals[j]'hj_w).type.val,
              ?_, ?_, ?_⟩
-      · rw [Array.getElem?_map (h := hj)]
-      · rw [Array.getElem?_map (h := hj_w)]
+      · simp [Array.getElem?_eq_getElem hj]
+      · simp [Array.getElem?_eq_getElem hj_w]
       · -- IRValue.default t corresponds to defaultValue (wmod.globals[j].type.val)
         -- Use emit_globals_init_valcorr helper
         exact emit_globals_init_valcorr irmod wmod hemit j hj hj_w

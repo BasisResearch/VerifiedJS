@@ -506,6 +506,7 @@ private def CC_SimRel (_s : Core.Program) (_t : Flat.Program)
     (sf : Flat.State) (sc : Core.State) : Prop :=
   sf.trace = sc.trace ∧
   EnvCorr sc.env sf.env ∧
+  sf.heap = sc.heap ∧
   ∃ (scope : List String) (envVar : String) (envMap : Flat.EnvMapping) (st st' : Flat.CCState),
     (sf.expr, st') = Flat.convertExpr sc.expr scope envVar envMap st
 
@@ -514,7 +515,7 @@ private theorem closureConvert_init_related
     (h : Flat.closureConvert s = .ok t) :
     CC_SimRel s t (Flat.initialState t) (Core.initialState s) := by
   unfold CC_SimRel Flat.initialState Core.initialState
-  refine ⟨rfl, ?_, ?_⟩
+  refine ⟨rfl, ?_, rfl, ?_⟩
   · -- EnvCorr: both envs have exactly one binding: "console" → .object 0
     have h_empty : EnvCorr Core.Env.empty Flat.Env.empty := by
       constructor <;> intro _ _ h <;> simp [Core.Env.empty, Core.Env.lookup, Flat.Env.empty, Flat.Env.lookup] at h
@@ -546,20 +547,22 @@ private theorem closureConvert_step_simulation
   suffices ∀ (n : Nat) (envVar : String) (envMap : Flat.EnvMapping)
       (sf : Flat.State) (sc : Core.State) (ev : Core.TraceEvent) (sf' : Flat.State),
       sc.expr.depth = n → sf.trace = sc.trace → EnvCorr sc.env sf.env →
+      sf.heap = sc.heap →
       (∃ (scope : List String) (st st' : Flat.CCState),
         (sf.expr, st') = Flat.convertExpr sc.expr scope envVar envMap st) →
       Flat.Step sf ev sf' →
       ∃ sc', Core.Step sc ev sc' ∧ sf'.trace = sc'.trace ∧ EnvCorr sc'.env sf'.env ∧
+        sf'.heap = sc'.heap ∧
         (∃ (scope : List String) (st st' : Flat.CCState),
           (sf'.expr, st') = Flat.convertExpr sc'.expr scope envVar envMap st) by
-    intro sf sc ev sf' ⟨htrace, henvCorr, scope, envVar, envMap, st, st', hconv⟩ hstep
-    obtain ⟨sc', hcstep, htrace', henv', scope', st_a, st_a', hconv'⟩ :=
-      this sc.expr.depth envVar envMap sf sc ev sf' rfl htrace henvCorr ⟨scope, st, st', hconv⟩ hstep
-    exact ⟨sc', hcstep, htrace', henv', scope', envVar, envMap, st_a, st_a', hconv'⟩
+    intro sf sc ev sf' ⟨htrace, henvCorr, hheap, scope, envVar, envMap, st, st', hconv⟩ hstep
+    obtain ⟨sc', hcstep, htrace', henv', hheap', scope', st_a, st_a', hconv'⟩ :=
+      this sc.expr.depth envVar envMap sf sc ev sf' rfl htrace henvCorr hheap ⟨scope, st, st', hconv⟩ hstep
+    exact ⟨sc', hcstep, htrace', henv', hheap', scope', envVar, envMap, st_a, st_a', hconv'⟩
   intro n
   induction n using Nat.strongRecOn with
   | _ n ih_depth =>
-  intro envVar envMap sf sc ev sf' hd htrace henvCorr ⟨scope, st, st', hconv⟩ ⟨hstep⟩
+  intro envVar envMap sf sc ev sf' hd htrace henvCorr hheap ⟨scope, st, st', hconv⟩ ⟨hstep⟩
   -- Case analysis on the Core expression sc.expr.
   -- convertExpr maps sc.expr to sf.expr; step? sf = some (ev, sf').
   cases hsc : sc.expr with
