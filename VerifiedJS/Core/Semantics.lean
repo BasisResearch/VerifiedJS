@@ -465,11 +465,38 @@ def abstractEq : Value → Value → Bool
 -- | return \*true\*. 1. If \_nx\_ is \*+∞\*~𝔽~ or \_ny\_ is \*-∞\*~𝔽~,
 -- | return \*false\*. 1. If ℝ(\_nx\_) \< ℝ(\_ny\_), return \*true\*. 1.
 -- | Return \*false\*.
+-- |
+-- | Step differs from step in the algorithm that handles the addition
+-- | operator \`+\` () by using the logical-and operation instead of the
+-- | logical-or operation.
+-- |
+-- | The comparison of Strings uses a simple lexicographic ordering on
+-- | sequences of UTF-16 code unit values. There is no attempt to use the
+-- | more complex, semantically oriented definitions of character or string
+-- | equality and collating order defined in the Unicode specification.
+-- | Therefore String values that are canonically equal according to the
+-- | Unicode Standard but not in the same normalization form could test as
+-- | unequal. Also note that lexicographic ordering by *code unit* differs
+-- | from ordering by *code point* for Strings containing surrogate pairs.
 /-- ECMA-262 §7.2.13 Abstract Relational Comparison (string-aware). -/
 def abstractLt : Value → Value → Bool
   | .string a, .string b => a < b  -- lexicographic comparison
   | a, b => toNumber a < toNumber b
 
+-- SPEC: L4526-L4538
+-- | # Number::add ( \_x\_: a Number, \_y\_: a Number, ): a Number
+-- |
+-- | description
+-- | :   It performs addition according to the rules of IEEE 754-2019 binary
+-- |     double-precision arithmetic, producing the sum of its arguments.
+-- |
+-- | 1\. If \_x\_ is \*NaN\* or \_y\_ is \*NaN\*, return \*NaN\*. 1. If \_x\_
+-- | is \*+∞\*~𝔽~ and \_y\_ is \*-∞\*~𝔽~, return \*NaN\*. 1. If \_x\_ is
+-- | \*-∞\*~𝔽~ and \_y\_ is \*+∞\*~𝔽~, return \*NaN\*. 1. If \_x\_ is either
+-- | \*+∞\*~𝔽~ or \*-∞\*~𝔽~, return \_x\_. 1. If \_y\_ is either \*+∞\*~𝔽~ or
+-- | \*-∞\*~𝔽~, return \_y\_. 1. Assert: \_x\_ and \_y\_ are both finite. 1.
+-- | If \_x\_ is \*-0\*~𝔽~ and \_y\_ is \*-0\*~𝔽~, return \*-0\*~𝔽~. 1.
+-- | Return 𝔽(ℝ(\_x\_) + ℝ(\_y\_)).
 -- SPEC: L16272-L16276
 -- | # The Addition Operator ( \`+\` )
 -- |
@@ -619,7 +646,19 @@ def evalBinary : BinOp → Value → Value → Value
   -- | EvaluateStringOrNumericBinaryExpression(\|UpdateExpression\|, \`\*\*\`,
   -- | \|ExponentiationExpression\|).
   | .exp, a, b => .number (Float.pow (toNumber a) (toNumber b))
-  -- SPEC: L16500-L16527
+  -- SPEC: L6150-L6160
+  -- | # ToUint32 ( \_argument\_: an ECMAScript language value, ): either a normal completion containing an integral Number or a throw completion
+  -- |
+  -- | description
+  -- | :   It converts \_argument\_ to one of 2^32^ integral Number values in
+  -- |     the inclusive interval from \*+0\*~𝔽~ to 𝔽(2^32^ - 1).
+  -- |
+  -- | 1\. Let \_number\_ be ? ToNumber(\_argument\_). 1. If \_number\_ is not
+  -- | finite or \_number\_ is either \*+0\*~𝔽~ or \*-0\*~𝔽~, return
+  -- | \*+0\*~𝔽~. 1. Let \_int\_ be truncate(ℝ(\_number\_)). 1. Let
+  -- | \_int32bit\_ be \_int\_ modulo 2^32^. 1. \[id=\"step-touint32-return\"\]
+  -- | Return 𝔽(\_int32bit\_).
+  -- SPEC: L16500-L16525
   -- | # Binary Bitwise Operators
   -- |
   -- | ## Syntax
@@ -655,7 +694,7 @@ def evalBinary : BinOp → Value → Value → Value
   | .bitXor, a, b =>
       let ia := toNumber a |>.toUInt32; let ib := toNumber b |>.toUInt32
       .number ((ia ^^^ ib).toFloat)
-  -- SPEC: L16306-L16340
+  -- SPEC: L16306-L16337
   -- | # The Left Shift Operator ( \`\<\<\` )
   -- |
   -- | Performs a bitwise left shift operation on the left operand by the
@@ -708,7 +747,7 @@ def pushTrace (s : State) (t : TraceEvent) : State :=
 /-- One deterministic Core small-step transition with emitted trace event. -/
 def step? (s : State) : Option (TraceEvent × State) :=
   match h : s.expr with
-  -- SPEC: L14930-L14940
+  -- SPEC: L14929-L14936
   -- | # Runtime Semantics: Evaluation
   -- |
   -- | Literal : NullLiteral 1. Return \*null\*. Literal : BooleanLiteral 1. If

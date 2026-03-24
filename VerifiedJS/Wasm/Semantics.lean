@@ -1668,10 +1668,7 @@ theorem step?_eq_globalGet_valid (s : ExecState) (idx : Nat) (rest : List Instr)
     (hcode : s.code = Instr.globalGet idx :: rest)
     (h : idx < s.store.globals.size)
     (hv : s.store.globals[idx] = v) :
-    let stk := s.stack
-    step? s = some (.silent,
-      { s with code := rest, stack := v :: stk,
-        trace := s.trace ++ [.silent] }) := by
+    step? s = some (.silent, pushTrace { s with code := rest, stack := v :: s.stack } .silent) := by
   subst hv; cases s; simp_all [step?, pushTrace]
 
 /-- global.get with out-of-bounds index traps. -/
@@ -1690,9 +1687,9 @@ theorem step?_eq_globalSet_valid (s : ExecState) (idx : Nat) (rest : List Instr)
     (hstack : s.stack = v :: stk)
     (h : idx < s.store.globals.size) :
     step? s = some (.silent,
-      { s with code := rest, stack := stk,
-        store := { s.store with globals := s.store.globals.set! idx v },
-        trace := s.trace ++ [.silent] }) := by
+      let globals' := s.store.globals.set! idx v
+      let store' := { s.store with globals := globals' }
+      pushTrace { s with code := rest, stack := stk, store := store' } .silent) := by
   cases s; simp_all [step?, pop1?, pushTrace]
 
 /-- global.set with empty stack traps. -/
