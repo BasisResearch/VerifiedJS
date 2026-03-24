@@ -26,6 +26,34 @@ set_option linter.deprecated false
 -- | The [Boolean type]{.dfn variants="is a Boolean,is not a Boolean"}
 -- | represents a logical entity having two values, called \*true\* and
 -- | \*false\*.
+-- SPEC: L4012-L4025
+-- | # The String Type
+-- |
+-- | The [String type]{.dfn variants="is a String,is not a String"} is the
+-- | set of all ordered sequences of zero or more 16-bit unsigned integer
+-- | values ("elements") up to a maximum length of 2^53^ - 1 elements. The
+-- | String type is generally used to represent textual data in a running
+-- | ECMAScript program, in which case each element in the String is treated
+-- | as a UTF-16 code unit value. Each element is regarded as occupying a
+-- | position within the sequence. These positions are indexed with
+-- | non-negative integers. The first element (if any) is at index 0, the
+-- | next element (if any) at index 1, and so on. The length of a String is
+-- | the number of elements (i.e., 16-bit values) within it. The empty String
+-- | has length zero and therefore contains no elements.
+-- SPEC: L4308-L4321
+-- | # The Number Type
+-- |
+-- | The [Number type]{.dfn variants="is a Number,is not a Number"} has
+-- | exactly 18,437,736,874,454,810,627 (that is, 2^64^ - 2^53^ + 3) values,
+-- | representing the double-precision floating point IEEE 754-2019 binary64
+-- | values as specified in the IEEE Standard for Binary Floating-Point
+-- | Arithmetic, except that the 9,007,199,254,740,990 (that is, 2^53^ - 2)
+-- | distinct NaN values of the IEEE Standard are represented in ECMAScript
+-- | as a single special \*NaN\* value. (Note that the \*NaN\* value is
+-- | produced by the program expression \`NaN\`.) In some implementations,
+-- | external code might be able to detect a difference between various NaN
+-- | values, but such behaviour is implementation-defined; to ECMAScript
+-- | code, all \*NaN\* values are indistinguishable from each other.
 -- SPEC: L5443-L5460
 -- | # The Completion Record Specification Type
 -- |
@@ -368,6 +396,15 @@ def Env.extend (env : Env) (name : VarName) (v : Value) : Env :=
 -- | IsCallable(\_method\_) is \*true\*, then 1. Let \_result\_ be ?
 -- | Call(\_method\_, \_O\_). 1. If \_result\_ is not an Object, return
 -- | \_result\_. 1. Throw a \*TypeError\* exception.
+-- SPEC: L6390-L6398
+-- | # RequireObjectCoercible ( \_argument\_: an ECMAScript language value, ): either a normal completion containing \~unused\~ or a throw completion
+-- |
+-- | description
+-- | :   It throws an error if \_argument\_ is a value that cannot be
+-- |     converted to an Object using ToObject.
+-- |
+-- | 1\. If \_argument\_ is either \*undefined\* or \*null\*, throw a
+-- | \*TypeError\* exception. 1. Return \~unused\~.
 
 -- SPEC: L6322-L6341
 -- | # ToObject ( \_argument\_: an ECMAScript language value, ): either a normal completion containing an Object or a throw completion
@@ -481,6 +518,15 @@ def Env.extend (env : Env) (name : VarName) (v : Value) : Env :=
 -- | 1\. If \_argument\_ is not an Object, return \*false\*. 1. If
 -- | \_argument\_ has a \[\[Call\]\] internal method, return \*true\*. 1.
 -- | Return \*false\*.
+
+-- SPEC: L6428-L6435
+-- | # IsExtensible ( \_O\_: an Object, ): either a normal completion containing a Boolean or a throw completion
+-- |
+-- | description
+-- | :   It is used to determine whether additional properties can be added
+-- |     to \_O\_.
+-- |
+-- | 1\. Return ? \_O\_.\[\[IsExtensible\]\]().
 
 -- SPEC: L6783-L6796
 -- | # Call ( \_F\_: an ECMAScript language value, \_V\_: an ECMAScript language value, optional \_argumentsList\_: a List of ECMAScript language values, ): either a normal completion containing an ECMAScript language value or a throw completion
@@ -609,6 +655,7 @@ def toNumber : Value → Float
 -- | Number::bitwiseNOT(\_oldValue\_). 1. Assert: \_oldValue\_ is a
 -- | BigInt. 1. Return BigInt::bitwiseNOT(\_oldValue\_).
 -- |
+-- SPEC: L16214-L16222
 -- | # Logical NOT Operator ( \`!\` )
 -- |
 -- | # Runtime Semantics: Evaluation
@@ -800,6 +847,19 @@ def valueToString : Value → String
 -- | \*true\*. 1. If \_x\_ is a String and \_y\_ is a String, return
 -- | \*true\*. 1. If \_x\_ is an Object and \_y\_ is an Object, return
 -- | \*true\*. 1. Return \*false\*.
+-- SPEC: L6473-L6485
+-- | # SameValue ( \_x\_: an ECMAScript language value, \_y\_: an ECMAScript language value, ): a Boolean
+-- |
+-- | description
+-- | :   It determines whether or not the two arguments are the same value.
+-- |
+-- | 1\. If SameType(\_x\_, \_y\_) is \*false\*, return \*false\*. 1. If
+-- | \_x\_ is a Number, then 1. Return Number::sameValue(\_x\_, \_y\_). 1.
+-- | Return SameValueNonNumber(\_x\_, \_y\_).
+-- |
+-- | This algorithm differs from the IsStrictlyEqual Algorithm by treating
+-- | all \*NaN\* values as equivalent and by differentiating \*+0\*~𝔽~ from
+-- | \*-0\*~𝔽~.
 /-- ECMA-262 §7.2.14 Abstract Equality Comparison (simplified core subset).
     Handles null/undefined equivalence and type coercion. -/
 def abstractEq : Value → Value → Bool
@@ -1611,6 +1671,13 @@ def step? (s : State) : Option (TraceEvent × State) :=
   -- |
   -- | No matter how control leaves the \|Block\| the LexicalEnvironment is
   -- | always restored to its former state.
+  -- SPEC: L17544-L17548
+  -- | EmptyStatement : \`;\`
+  -- |
+  -- | EmptyStatement : \`;\` 1. Return \~empty\~.
+  -- SPEC: L17573-L17575
+  -- | ExpressionStatement : Expression \`;\` 1. Let \_exprRef\_ be ?
+  -- | Evaluation of \|Expression\|. 1. Return ? GetValue(\_exprRef\_).
   -- SPEC: L17277-L17279
   -- | StatementList : StatementList StatementListItem 1. Let \_sl\_ be ?
   -- | Evaluation of \|StatementList\|. 1. Let \_s\_ be Completion(Evaluation
@@ -2109,6 +2176,35 @@ def step? (s : State) : Option (TraceEvent × State) :=
   -- | FormalParameters \`)\` \`{\` AsyncFunctionBody \`}\` 1. Return
   -- | InstantiateAsyncFunctionObject of \|AsyncFunctionDeclaration\| with
   -- | arguments \_env\_ and \_privateEnv\_.
+  -- SPEC: L18996-L19013
+  -- | # Runtime Semantics: InstantiateArrowFunctionExpression ( optional \_name\_: a property key or a Private Name, ): an ECMAScript function object
+  -- |
+  -- | ArrowFunction : ArrowParameters \`=\>\` ConciseBody 1. If \_name\_ is
+  -- | not present, set \_name\_ to \*\"\"\*. 1. Let \_env\_ be the
+  -- | LexicalEnvironment of the running execution context. 1. Let
+  -- | \_privateEnv\_ be the running execution context\'s
+  -- | PrivateEnvironment. 1. Let \_sourceText\_ be the source text matched by
+  -- | \|ArrowFunction\|. 1. Let \_closure\_
+  -- | be OrdinaryFunctionCreate(%Function.prototype%, \_sourceText\_,
+  -- | \|ArrowParameters\|, \|ConciseBody\|, \~lexical-this\~, \_env\_,
+  -- | \_privateEnv\_). 1. Perform SetFunctionName(\_closure\_, \_name\_). 1.
+  -- | Return \_closure\_.
+  -- SPEC: L11354-L11370
+  -- | # FunctionDeclarationInstantiation ( \_func\_: an ECMAScript function object, \_argumentsList\_: a List of ECMAScript language values, ): either a normal completion containing \~unused\~ or a throw completion
+  -- |
+  -- | description
+  -- | :   \_func\_ is the function object for which the execution context is
+  -- |     being established.
+  -- |
+  -- | When an execution context is established for evaluating an ECMAScript
+  -- | function a new Function Environment Record is created and bindings for
+  -- | each formal parameter are instantiated in that Environment Record. Each
+  -- | declaration in the function body is also instantiated. If the
+  -- | function\'s formal parameters do not include any default value
+  -- | initializers then the body declarations are instantiated in the same
+  -- | Environment Record as the parameters. If default value parameter
+  -- | initializers exist, a second Environment Record is created for the body
+  -- | declarations.
   | .functionDef fname params body _isAsync _isGenerator =>
       let closure : FuncClosure := ⟨fname, params, body, s.env.bindings⟩
       let idx := s.funcs.size
@@ -2302,6 +2398,19 @@ def step? (s : State) : Option (TraceEvent × State) :=
   -- | \|AssignmentExpression\|, \~iterate\~). 1. Return ?
   -- | ForIn/OfBodyEvaluation(\|LeftHandSideExpression\|, \|Statement\|,
   -- | \_keyResult\_, \~iterate\~, \~assignment\~, \_labelSet\_).
+  -- SPEC: L7160-L7172
+  -- | # GetIterator ( \_obj\_: an ECMAScript language value, \_kind\_: \~sync\~ or \~async\~, ): either a normal completion containing an Iterator Record or a throw completion
+  -- |
+  -- | 1\. If \_kind\_ is \~async\~, then 1. Let \_method\_ be ?
+  -- | GetMethod(\_obj\_, %Symbol.asyncIterator%). 1. If \_method\_ is
+  -- | \*undefined\*, then 1. Let \_syncMethod\_ be ? GetMethod(\_obj\_,
+  -- | %Symbol.iterator%). 1. If \_syncMethod\_ is \*undefined\*, throw a
+  -- | \*TypeError\* exception. 1. Let \_syncIteratorRecord\_ be ?
+  -- | GetIteratorFromMethod(\_obj\_, \_syncMethod\_). 1. Return
+  -- | CreateAsyncFromSyncIterator(\_syncIteratorRecord\_). 1. Else, 1. Let
+  -- | \_method\_ be ? GetMethod(\_obj\_, %Symbol.iterator%). 1. If \_method\_
+  -- | is \*undefined\*, throw a \*TypeError\* exception. 1. Return ?
+  -- | GetIteratorFromMethod(\_obj\_, \_method\_).
   | .forOf binding iterable body =>
       match exprValue? iterable with
       | none =>
