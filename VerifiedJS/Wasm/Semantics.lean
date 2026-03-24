@@ -7447,7 +7447,50 @@ theorem step_sim (irmod : IRModule) (wmod : Module) :
               ⟨rfl, rest_w, hcw, hrest⟩ | ⟨rfl, rest_w, hcw, hrest⟩ |
               ⟨rfl, rest_w, hcw, hrest⟩ | ⟨rfl, rest_w, hcw, hrest⟩ |
               ⟨rfl, rest_w, hcw, hrest⟩ | hf
-            all_goals first | exact hf.elim | sorry
+            all_goals first | exact hf.elim | (
+              -- Generic i32 binOp sub-case: all 9 operations follow the same pattern.
+              -- After inversion, we know: op ∈ {add,sub,mul,and,or,eq,ne,lt_s,gt_s}
+              -- and hcw : s2.code = WasmInstr :: rest_w.
+              -- Case split on IR stack to determine trap vs success.
+              match hstk : s1.stack with
+              | [] =>
+                -- Stack underflow: IR traps, Wasm also traps
+                simp [irStep?, hcode_ir, hstk, irPop2?, irTrapState, irPushTrace] at hstep
+                obtain ⟨rfl, rfl⟩ := hstep
+                have hlen := hrel.hstack.1; rw [hstk] at hlen; simp at hlen
+                have hs2 : s2.stack = [] := by cases s2.stack <;> simp_all
+                have hw : step? s2 = some (.trap ("type mismatch in " ++ _),
+                    { s2 with code := [], trace := s2.trace ++ [.trap ("type mismatch in " ++ _)] }) := by
+                  simp [step?, hcw, hs2, pop2?, withI32Bin, withI32Rel, trapState, pushTrace]
+                exact ⟨_, by simp [traceToWasm]; exact hw,
+                  { hemit := hrel.hemit, hcode := .nil, hstack := by simp [hs2],
+                    hframes_len := hrel.hframes_len, hframes_locals := hrel.hframes_locals,
+                    hframes_vals := hrel.hframes_vals, hglobals := hrel.hglobals,
+                    hlabels := hrel.hlabels, hhalt := hhalt_of_structural .nil hrel.hlabels }⟩
+              | v1 :: [] =>
+                -- Only 1 element: IR traps (irPop2? needs 2)
+                simp [irStep?, hcode_ir, hstk, irPop2?, irTrapState, irPushTrace] at hstep
+                obtain ⟨rfl, rfl⟩ := hstep
+                have hlen := hrel.hstack.1; rw [hstk] at hlen; simp at hlen
+                have hs2 : ∃ w1, s2.stack = [w1] := by
+                  cases hs : s2.stack with
+                  | nil => simp [hs] at hlen
+                  | cons w1 ws => cases ws with | nil => exact ⟨w1, rfl⟩ | cons => simp [hs] at hlen
+                obtain ⟨w1, hs2⟩ := hs2
+                have hw : step? s2 = some (.trap ("type mismatch in " ++ _),
+                    { s2 with code := [], trace := s2.trace ++ [.trap ("type mismatch in " ++ _)] }) := by
+                  simp [step?, hcw, hs2, pop2?, withI32Bin, withI32Rel, trapState, pushTrace]
+                exact ⟨_, by simp [traceToWasm]; exact hw,
+                  { hemit := hrel.hemit, hcode := .nil, hstack := by dsimp only []; exact hrel.hstack,
+                    hframes_len := hrel.hframes_len, hframes_locals := hrel.hframes_locals,
+                    hframes_vals := hrel.hframes_vals, hglobals := hrel.hglobals,
+                    hlabels := hrel.hlabels, hhalt := hhalt_of_structural .nil hrel.hlabels }⟩
+              | .i32 rhs :: .i32 lhs :: stk =>
+                -- Both i32: success case. IR and Wasm compute the same result.
+                sorry
+              | v1 :: v2 :: stk =>
+                -- Type mismatch (at least one non-i32): both trap
+                sorry)
           | .f64 =>
             rcases hc.binOp_f64_inv with
               ⟨rfl, rest_w, hcw, hrest⟩ | ⟨rfl, rest_w, hcw, hrest⟩ |
