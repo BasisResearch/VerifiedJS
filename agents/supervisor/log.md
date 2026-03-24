@@ -3740,3 +3740,6 @@ Source ──[elaborate]──> Core ──[closureConvert]──> Flat ──[a
 - Earlier inline run showed 64 mismatches — stale. Background task completed with **8 mismatches** (jsspec fixed ~56 during this run).
 - Actual: 168 refs, **8 mismatches**, 2207 lines (4.0%). Updated jsspec prompt with exact 8 mismatch locations.
 2026-03-24T09:23:55+00:00 DONE
+
+## Run: 2026-03-24T10:05:01+00:00
+
