@@ -1309,7 +1309,8 @@ theorem step?_none_implies_lit (s : State) (h : step? s = none) :
     | getProp obj _ =>
       unfold step? at h; simp only [-step?] at h
       split at h
-      · simp at h  -- some (.object _) → returns some
+      · simp at h  -- some (.object addr) → returns some
+      · simp at h  -- some (.string str) → returns some
       · simp at h  -- some _ → returns some
       · -- exprValue? obj = none
         split at h
@@ -1351,7 +1352,7 @@ theorem step?_none_implies_lit (s : State) (h : step? s = none) :
         · next hval hstep =>
           have ⟨v, hv⟩ := litOfStuck obj (by simp [Expr.depth] at hd; omega) hstep
           subst hv; simp_all [exprValue?]
-      · -- exprValue? obj = some (.object _)
+      · -- exprValue? obj = some (.object addr)
         split at h
         · simp at h  -- exprValue? value = some → returns some
         · -- exprValue? value = none
@@ -1360,7 +1361,15 @@ theorem step?_none_implies_lit (s : State) (h : step? s = none) :
           · next hval hstep =>
             have ⟨v, hv⟩ := litOfStuck value (by simp [Expr.depth] at hd; omega) hstep
             subst hv; simp_all [exprValue?]
-      · simp at h  -- some _ (non-object) → returns some
+      · -- some _ (non-object) → nested match on value
+        split at h
+        · simp at h  -- exprValue? value = some → returns some
+        · -- exprValue? value = none
+          split at h
+          · simp at h
+          · next hval hstep =>
+            have ⟨v, hv⟩ := litOfStuck value (by simp [Expr.depth] at hd; omega) hstep
+            subst hv; simp_all [exprValue?]
     | getIndex obj idx =>
       unfold step? at h; simp only [-step?] at h
       split at h
@@ -1370,7 +1379,7 @@ theorem step?_none_implies_lit (s : State) (h : step? s = none) :
         · next hval hstep =>
           have ⟨v, hv⟩ := litOfStuck obj (by simp [Expr.depth] at hd; omega) hstep
           subst hv; simp_all [exprValue?]
-      · -- exprValue? obj = some (.object _)
+      · -- exprValue? obj = some (.object addr)
         split at h
         · simp at h  -- exprValue? idx = some → returns some
         · -- exprValue? idx = none
@@ -1379,7 +1388,24 @@ theorem step?_none_implies_lit (s : State) (h : step? s = none) :
           · next hval hstep =>
             have ⟨v, hv⟩ := litOfStuck idx (by simp [Expr.depth] at hd; omega) hstep
             subst hv; simp_all [exprValue?]
-      · simp at h  -- some _ (non-object) → returns some
+      · -- exprValue? obj = some (.string str)
+        split at h
+        · simp at h  -- exprValue? idx = some → returns some
+        · -- exprValue? idx = none
+          split at h
+          · simp at h
+          · next hval hstep =>
+            have ⟨v, hv⟩ := litOfStuck idx (by simp [Expr.depth] at hd; omega) hstep
+            subst hv; simp_all [exprValue?]
+      · -- some _ (non-object, non-string)
+        split at h
+        · simp at h  -- exprValue? idx = some → returns some
+        · -- exprValue? idx = none
+          split at h
+          · simp at h
+          · next hval hstep =>
+            have ⟨v, hv⟩ := litOfStuck idx (by simp [Expr.depth] at hd; omega) hstep
+            subst hv; simp_all [exprValue?]
     | setIndex obj idx value =>
       unfold step? at h; simp only [-step?] at h
       split at h
@@ -1389,7 +1415,7 @@ theorem step?_none_implies_lit (s : State) (h : step? s = none) :
         · next hval hstep =>
           have ⟨v, hv⟩ := litOfStuck obj (by simp [Expr.depth] at hd; omega) hstep
           subst hv; simp_all [exprValue?]
-      · -- exprValue? obj = some (.object _)
+      · -- exprValue? obj = some (.object addr)
         split at h
         · -- exprValue? idx = none
           split at h
@@ -1406,7 +1432,23 @@ theorem step?_none_implies_lit (s : State) (h : step? s = none) :
             · next hval hstep =>
               have ⟨v, hv⟩ := litOfStuck value (by simp [Expr.depth] at hd; omega) hstep
               subst hv; simp_all [exprValue?]
-      · simp at h  -- some _ (non-object) → returns some
+      · -- some _ (non-object): nested matches on idx and value
+        split at h
+        · -- exprValue? idx = none
+          split at h
+          · simp at h
+          · next hval hstep =>
+            have ⟨v, hv⟩ := litOfStuck idx (by simp [Expr.depth] at hd; omega) hstep
+            subst hv; simp_all [exprValue?]
+        · -- exprValue? idx = some _
+          split at h
+          · simp at h  -- exprValue? value = some → returns some
+          · -- exprValue? value = none
+            split at h
+            · simp at h
+            · next hval hstep =>
+              have ⟨v, hv⟩ := litOfStuck value (by simp [Expr.depth] at hd; omega) hstep
+              subst hv; simp_all [exprValue?]
     -- List-pattern cases: firstNonValueExpr / firstNonValueProp with IH contradiction.
     | tryCatch body _ _ fin =>
       unfold step? at h; simp only [-step?] at h

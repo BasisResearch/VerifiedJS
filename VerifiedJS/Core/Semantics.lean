@@ -1268,6 +1268,34 @@ def step? (s : State) : Option (TraceEvent × State) :=
   -- | of \|Identifier\|). IdentifierReference : \`yield\` 1. Return ?
   -- | ResolveBinding(\*\"yield\"\*). IdentifierReference : \`await\` 1. Return
   -- | ? ResolveBinding(\*\"await\"\*).
+  -- SPEC: L9970-L9985
+  -- | # ResolveBinding ( \_name\_: a String, optional \_env\_: an Environment Record or \*undefined\*, ): either a normal completion containing a Reference Record or a throw completion
+  -- |
+  -- | description
+  -- | :   It is used to determine the binding of \_name\_. \_env\_ can be used
+  -- |     to explicitly provide the Environment Record that is to be searched
+  -- |     for the binding.
+  -- |
+  -- | 1\. If \_env\_ is not present or \_env\_ is \*undefined\*, then 1. Set
+  -- | \_env\_ to the running execution context\'s LexicalEnvironment. 1.
+  -- | Assert: \_env\_ is an Environment Record. 1. Let \_strict\_ be
+  -- | IsStrict(the syntactic production that is being evaluated). 1. Return ?
+  -- | GetIdentifierReference(\_env\_, \_name\_, \_strict\_).
+  -- |
+  -- | The result of ResolveBinding is always a Reference Record whose
+  -- | \[\[ReferencedName\]\] field is \_name\_.
+  -- SPEC: L9655-L9666
+  -- | # GetIdentifierReference ( \_env\_: an Environment Record or \*null\*, \_name\_: a String, \_strict\_: a Boolean, ): either a normal completion containing a Reference Record or a throw completion
+  -- |
+  -- | 1\. If \_env\_ is \*null\*, then 1. Return the Reference Record {
+  -- | \[\[Base\]\]: \~unresolvable\~, \[\[ReferencedName\]\]: \_name\_,
+  -- | \[\[Strict\]\]: \_strict\_, \[\[ThisValue\]\]: \~empty\~ }. 1. Let
+  -- | \_exists\_ be ? \_env\_.HasBinding(\_name\_). 1. If \_exists\_ is
+  -- | \*true\*, then 1. Return the Reference Record { \[\[Base\]\]: \_env\_,
+  -- | \[\[ReferencedName\]\]: \_name\_, \[\[Strict\]\]: \_strict\_,
+  -- | \[\[ThisValue\]\]: \~empty\~ }. 1. Let \_outer\_ be
+  -- | \_env\_.\[\[OuterEnv\]\]. 1. Return ? GetIdentifierReference(\_outer\_,
+  -- | \_name\_, \_strict\_).
   | .var name =>
       match s.env.lookup name with
       | some v =>
