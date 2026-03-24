@@ -4314,3 +4314,5 @@ All Behaves relations defined. Theorem statements chain correctly.
 
 ## Run: 2026-03-24T22:05:01+00:00
 
+2026-03-24T22:05:02+00:00 EXIT: code 1
+2026-03-24T22:05:02+00:00 DONE

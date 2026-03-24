@@ -7942,7 +7942,43 @@ def step? (s : State) : Option (TraceEvent × State) :=
           let s' := pushTrace { s with expr := .lit v } .silent
           some (.silent, s')
       | some (.string str) =>
-          -- ECMA-262 §21.1.3.3 String.prototype.length (and other string properties).
+          -- SPEC: L11854-L11873
+          -- | # String Exotic Objects
+          -- |
+          -- | A String object is an exotic object that encapsulates a String value and
+          -- | exposes virtual integer-indexed data properties corresponding to the
+          -- | individual code unit elements of the String value. String exotic objects
+          -- | always have a data property named \*\"length\"\* whose value is the
+          -- | length of the encapsulated String value. Both the code unit data
+          -- | properties and the \*\"length\"\* property are non-writable and
+          -- | non-configurable.
+          -- |
+          -- | An object is a [String exotic object]{#string-exotic-object .dfn
+          -- | variants="String exotic objects"} (or simply, a String object) if its
+          -- | \[\[GetOwnProperty\]\], \[\[DefineOwnProperty\]\], and
+          -- | \[\[OwnPropertyKeys\]\] internal methods use the following
+          -- | implementations, and its other essential internal methods use the
+          -- | definitions found in . These methods are installed in StringCreate.
+          -- |
+          -- | String exotic objects have the same internal slots as ordinary objects.
+          -- | They also have a \[\[StringData\]\] internal slot.
+          -- SPEC: L11913-L11929
+          -- | # StringCreate ( \_value\_: a String, \_prototype\_: an Object, ): a String exotic object
+          -- |
+          -- | description
+          -- | :   It is used to specify the creation of new String exotic objects.
+          -- |
+          -- | 1\. Let \_S\_ be MakeBasicObject(« \[\[Prototype\]\],
+          -- | \[\[Extensible\]\], \[\[StringData\]\] »). 1. Set
+          -- | \_S\_.\[\[Prototype\]\] to \_prototype\_. 1. Set
+          -- | \_S\_.\[\[StringData\]\] to \_value\_. 1. Set
+          -- | \_S\_.\[\[GetOwnProperty\]\] as specified in . 1. Set
+          -- | \_S\_.\[\[DefineOwnProperty\]\] as specified in . 1. Set
+          -- | \_S\_.\[\[OwnPropertyKeys\]\] as specified in . 1. Let \_length\_ be the
+          -- | length of \_value\_. 1. Perform ! DefinePropertyOrThrow(\_S\_,
+          -- | \*\"length\"\*, PropertyDescriptor { \[\[Value\]\]: 𝔽(\_length\_),
+          -- | \[\[Writable\]\]: \*false\*, \[\[Enumerable\]\]: \*false\*,
+          -- | \[\[Configurable\]\]: \*false\* }). 1. Return \_S\_.
           let v := if prop == "length" then .number (Float.ofNat str.length)
                    else .undefined
           let s' := pushTrace { s with expr := .lit v } .silent
@@ -8405,6 +8441,47 @@ def step? (s : State) : Option (TraceEvent × State) :=
   -- | \|ElementList\| with arguments \_array\_ and 0. 1. If \|Elision\| is
   -- | present, then 1. Perform ? ArrayAccumulation of \|Elision\| with
   -- | arguments \_array\_ and \_nextIndex\_. 1. Return \_array\_.
+  -- SPEC: L11720-L11745
+  -- | # Array Exotic Objects
+  -- |
+  -- | An Array is an exotic object that gives special treatment to array index
+  -- | property keys (see ). A property whose property name is an array index
+  -- | is also called an *element*. Every Array has a non-configurable
+  -- | \*\"length\"\* property whose value is always a non-negative integral
+  -- | Number whose mathematical value is strictly less than 2^32^. The value
+  -- | of the \*\"length\"\* property is numerically greater than the name of
+  -- | every own property whose name is an array index; whenever an own
+  -- | property of an Array is created or changed, other properties are
+  -- | adjusted as necessary to maintain this invariant. Specifically, whenever
+  -- | an own property is added whose name is an array index, the value of the
+  -- | \*\"length\"\* property is changed, if necessary, to be one more than
+  -- | the numeric value of that array index; and whenever the value of the
+  -- | \*\"length\"\* property is changed, every own property whose name is an
+  -- | array index whose value is not smaller than the new length is deleted.
+  -- | This constraint applies only to own properties of an Array and is
+  -- | unaffected by \*\"length\"\* or array index properties that may be
+  -- | inherited from its prototypes.
+  -- |
+  -- | An object is an [Array exotic object]{#array-exotic-object .dfn
+  -- | variants="Array exotic objects"} (or simply, an Array) if its
+  -- | \[\[DefineOwnProperty\]\] internal method uses the following
+  -- | implementation, and its other essential internal methods use the
+  -- | definitions found in . These methods are installed in ArrayCreate.
+  -- SPEC: L11768-L11782
+  -- | # ArrayCreate ( \_length\_: a non-negative integer, optional \_proto\_: an Object, ): either a normal completion containing an Array exotic object or a throw completion
+  -- |
+  -- | description
+  -- | :   It is used to specify the creation of new Arrays.
+  -- |
+  -- | 1\. If \_length\_ \> 2^32^ - 1, throw a \*RangeError\* exception. 1. If
+  -- | \_proto\_ is not present, set \_proto\_ to %Array.prototype%. 1. Let
+  -- | \_A\_ be MakeBasicObject(« \[\[Prototype\]\], \[\[Extensible\]\] »). 1.
+  -- | Set \_A\_.\[\[Prototype\]\] to \_proto\_. 1. Set
+  -- | \_A\_.\[\[DefineOwnProperty\]\] as specified in . 1. Perform !
+  -- | OrdinaryDefineOwnProperty(\_A\_, \*\"length\"\*, PropertyDescriptor {
+  -- | \[\[Value\]\]: 𝔽(\_length\_), \[\[Writable\]\]: \*true\*,
+  -- | \[\[Enumerable\]\]: \*false\*, \[\[Configurable\]\]: \*false\* }). 1.
+  -- | Return \_A\_.
   | .arrayLit elems =>
       match hf : firstNonValueExpr elems with
       | some (done, target, rest) =>
@@ -10192,6 +10269,419 @@ theorem Step_iff (s : State) (t : TraceEvent) (s' : State) :
 -- |   \[\[Value\]\] = a value of the \"normal return type\" shown below for
 -- |   that internal method, or
 -- | - \[\[Type\]\] = \~throw\~, \[\[Target\]\] = \~empty\~, and
+-- SPEC: L12160-L12184
+-- | # TypedArray Exotic Objects
+-- |
+-- | A TypedArray is an exotic object that performs special handling of
+-- | property keys that are canonical numeric strings, using the subset that
+-- | are in-bounds integer indices to index elements of uniform type and
+-- | enforcing the invariant that the remainder are absent without incurring
+-- | prototype chain traversal.
+-- |
+-- | Because ToString(\_n\_) for any Number \_n\_ is a canonical numeric
+-- | string, an implementation may treat Numbers as property keys for
+-- | TypedArrays without actually performing the string conversion.
+-- |
+-- | TypedArrays have the same internal slots as ordinary objects and
+-- | additionally \[\[ViewedArrayBuffer\]\], \[\[TypedArrayName\]\],
+-- | \[\[ContentType\]\], \[\[ByteLength\]\], \[\[ByteOffset\]\], and
+-- | \[\[ArrayLength\]\] internal slots.
+-- |
+-- | An object is a [TypedArray]{#typedarray .dfn
+-- | oldids="integer-indexed-exotic-object" variants="TypedArrays"} if its
+-- | \[\[PreventExtensions\]\], \[\[GetOwnProperty\]\], \[\[HasProperty\]\],
+-- | \[\[DefineOwnProperty\]\], \[\[Get\]\], \[\[Set\]\], \[\[Delete\]\], and
+-- | \[\[OwnPropertyKeys\]\], internal methods use the definitions in this
+-- | section, and its other essential internal methods use the definitions
+-- | found in . These methods are installed by TypedArrayCreate.
+-- SPEC: L12443-L12475
+-- | # Module Namespace Exotic Objects
+-- |
+-- | A module namespace exotic object is an exotic object that exposes the
+-- | bindings exported from an ECMAScript \|Module\| (See ). There is a
+-- | one-to-one correspondence between the String-keyed own properties of a
+-- | module namespace exotic object and the binding names exported by the
+-- | \|Module\|. The exported bindings include any bindings that are
+-- | indirectly exported using \`export \*\` export items. Each String-valued
+-- | own property key is the StringValue of the corresponding exported
+-- | binding name. These are the only String-keyed properties of a module
+-- | namespace exotic object. Each such property has the attributes {
+-- | \[\[Writable\]\]: \*true\*, \[\[Enumerable\]\]: \*true\*,
+-- | \[\[Configurable\]\]: \*false\* }. Module namespace exotic objects are
+-- | not extensible.
+-- |
+-- | An object is a [module namespace exotic
+-- | object]{#module-namespace-exotic-object .dfn
+-- | variants="module namespace exotic objects"} if its
+-- | \[\[GetPrototypeOf\]\], \[\[SetPrototypeOf\]\], \[\[IsExtensible\]\],
+-- | \[\[PreventExtensions\]\], \[\[GetOwnProperty\]\],
+-- | \[\[DefineOwnProperty\]\], \[\[HasProperty\]\], \[\[Get\]\],
+-- | \[\[Set\]\], \[\[Delete\]\], and \[\[OwnPropertyKeys\]\] internal
+-- | methods use the definitions in this section, and its other essential
+-- | internal methods use the definitions found in . These methods are
+-- | installed by ModuleNamespaceCreate.
+-- |
+-- | Module namespace exotic objects have the internal slots defined in .
+-- |
+-- |   Internal Slot     Type                Description
+-- |   ----------------- ------------------- ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+-- |   \[\[Module\]\]    a Module Record     The Module Record whose exports this namespace exposes.
+-- |   \[\[Exports\]\]   a List of Strings   A List whose elements are the String values of the exported names exposed as own properties of this object. The list is sorted according to lexicographic code unit order.
+-- SPEC: L12644-L12707
+-- | # Proxy Object Internal Methods and Internal Slots
+-- |
+-- | A Proxy object is an exotic object whose essential internal methods are
+-- | partially implemented using ECMAScript code. Every Proxy object has an
+-- | internal slot called \[\[ProxyHandler\]\]. The value of
+-- | \[\[ProxyHandler\]\] is an object, called the proxy\'s *handler object*,
+-- | or \*null\*. Methods (see ) of a handler object may be used to augment
+-- | the implementation for one or more of the Proxy object\'s internal
+-- | methods. Every Proxy object also has an internal slot called
+-- | \[\[ProxyTarget\]\] whose value is either an object or \*null\*. This
+-- | object is called the proxy\'s *target object*.
+-- |
+-- | An object is a [Proxy exotic object]{#proxy-exotic-object .dfn
+-- | variants="Proxy exotic objects"} if its essential internal methods
+-- | (including \[\[Call\]\] and \[\[Construct\]\], if applicable) use the
+-- | definitions in this section. These internal methods are installed in
+-- | ProxyCreate.
+-- |
+-- |   Internal Method             Handler Method
+-- |   --------------------------- ------------------------------
+-- |   \[\[GetPrototypeOf\]\]      \`getPrototypeOf\`
+-- |   \[\[SetPrototypeOf\]\]      \`setPrototypeOf\`
+-- |   \[\[IsExtensible\]\]        \`isExtensible\`
+-- |   \[\[PreventExtensions\]\]   \`preventExtensions\`
+-- |   \[\[GetOwnProperty\]\]      \`getOwnPropertyDescriptor\`
+-- |   \[\[DefineOwnProperty\]\]   \`defineProperty\`
+-- |   \[\[HasProperty\]\]         \`has\`
+-- |   \[\[Get\]\]                 \`get\`
+-- |   \[\[Set\]\]                 \`set\`
+-- |   \[\[Delete\]\]              \`deleteProperty\`
+-- |   \[\[OwnPropertyKeys\]\]     \`ownKeys\`
+-- |   \[\[Call\]\]                \`apply\`
+-- |   \[\[Construct\]\]           \`construct\`
+-- |
+-- | When a handler method is called to provide the implementation of a Proxy
+-- | object internal method, the handler method is passed the proxy\'s target
+-- | object as a parameter. A proxy\'s handler object does not necessarily
+-- | have a method corresponding to every essential internal method. Invoking
+-- | an internal method on the proxy results in the invocation of the
+-- | corresponding internal method on the proxy\'s target object if the
+-- | handler object does not have a method corresponding to the internal
+-- | trap.
+-- |
+-- | The \[\[ProxyHandler\]\] and \[\[ProxyTarget\]\] internal slots of a
+-- | Proxy object are always initialized when the object is created and
+-- | typically may not be modified. Some Proxy objects are created in a
+-- | manner that permits them to be subsequently *revoked*. When a proxy is
+-- | revoked, its \[\[ProxyHandler\]\] and \[\[ProxyTarget\]\] internal slots
+-- | are set to \*null\* causing subsequent invocations of internal methods
+-- | on that Proxy object to throw a \*TypeError\* exception.
+-- |
+-- | Because Proxy objects permit the implementation of internal methods to
+-- | be provided by arbitrary ECMAScript code, it is possible to define a
+-- | Proxy object whose handler methods violates the invariants defined in .
+-- | Some of the internal method invariants defined in are essential
+-- | integrity invariants. These invariants are explicitly enforced by the
+-- | Proxy object internal methods specified in this section. An ECMAScript
+-- | implementation must be robust in the presence of all possible invariant
+-- | violations.
+-- |
+-- | In the following algorithm descriptions, assume \_O\_ is an ECMAScript
+-- | Proxy object, \_P\_ is a property key value, \_V\_ is any ECMAScript
+-- | language value and \_Desc\_ is a Property Descriptor record.
+-- SPEC: L13131-L13146
+-- | # ProxyCreate ( \_target\_: an ECMAScript language value, \_handler\_: an ECMAScript language value, ): either a normal completion containing a Proxy exotic object or a throw completion
+-- |
+-- | description
+-- | :   It is used to specify the creation of new Proxy objects.
+-- |
+-- | 1\. If \_target\_ is not an Object, throw a \*TypeError\* exception. 1.
+-- | If \_handler\_ is not an Object, throw a \*TypeError\* exception. 1. Let
+-- | \_P\_ be MakeBasicObject(« \[\[ProxyHandler\]\], \[\[ProxyTarget\]\]
+-- | »). 1. Set \_P\_\'s essential internal methods, except for \[\[Call\]\]
+-- | and \[\[Construct\]\], to the definitions specified in . 1. If
+-- | IsCallable(\_target\_) is \*true\*, then 1. Set \_P\_.\[\[Call\]\] as
+-- | specified in . 1. If IsConstructor(\_target\_) is \*true\*, then 1. Set
+-- | \_P\_.\[\[Construct\]\] as specified in . 1. Set
+-- | \_P\_.\[\[ProxyTarget\]\] to \_target\_. 1. Set
+-- | \_P\_.\[\[ProxyHandler\]\] to \_handler\_. 1. Return \_P\_.
+-- SPEC: L13147-L13148
+-- | # ECMAScript Language: Source Text
+-- SPEC: L13149-L13193
+-- | # Source Text
+-- |
+-- | ## Syntax
+-- |
+-- | SourceCharacter :: \> any Unicode code point
+-- |
+-- | [ECMAScript source text]{.dfn} is a sequence of Unicode code points. All
+-- | Unicode code point values from U+0000 to U+10FFFF, including surrogate
+-- | code points, may occur in ECMAScript source text where permitted by the
+-- | ECMAScript grammars. The actual encodings used to store and interchange
+-- | ECMAScript source text is not relevant to this specification. Regardless
+-- | of the external source text encoding, a conforming ECMAScript
+-- | implementation processes the source text as if it was an equivalent
+-- | sequence of \|SourceCharacter\| values, each \|SourceCharacter\| being a
+-- | Unicode code point. Conforming ECMAScript implementations are not
+-- | required to perform any normalization of source text, or behave as
+-- | though they were performing normalization of source text.
+-- |
+-- | The components of a combining character sequence are treated as
+-- | individual Unicode code points even though a user might think of the
+-- | whole sequence as a single character.
+-- |
+-- | In string literals, regular expression literals, template literals and
+-- | identifiers, any Unicode code point may also be expressed using Unicode
+-- | escape sequences that explicitly express a code point\'s numeric value.
+-- | Within a comment, such an escape sequence is effectively ignored as part
+-- | of the comment.
+-- |
+-- | ECMAScript differs from the Java programming language in the behaviour
+-- | of Unicode escape sequences. In a Java program, if the Unicode escape
+-- | sequence \`\\\\u000A\`, for example, occurs within a single-line
+-- | comment, it is interpreted as a line terminator (Unicode code point
+-- | U+000A is LINE FEED (LF)) and therefore the next code point is not part
+-- | of the comment. Similarly, if the Unicode escape sequence \`\\\\u000A\`
+-- | occurs within a string literal in a Java program, it is likewise
+-- | interpreted as a line terminator, which is not allowed within a string
+-- | literal---one must write \`\\\\n\` instead of \`\\\\u000A\` to cause a
+-- | LINE FEED (LF) to be part of the value of a string literal. In an
+-- | ECMAScript program, a Unicode escape sequence occurring within a comment
+-- | is never interpreted and therefore cannot contribute to termination of
+-- | the comment. Similarly, a Unicode escape sequence occurring within a
+-- | string literal in an ECMAScript program always contributes to the
+-- | literal and is never interpreted as a line terminator or as a code point
+-- | that might terminate the string literal.
+-- SPEC: L13285-L13356
+-- | # Types of Source Code
+-- |
+-- | There are four types of ECMAScript code:
+-- |
+-- | - [Global code]{.dfn} is source text that is treated as an ECMAScript
+-- |   \|Script\|. The global code of a particular \|Script\| does not
+-- |   include any source text that is parsed as part of a
+-- |   \|FunctionDeclaration\|, \|FunctionExpression\|,
+-- |   \|GeneratorDeclaration\|, \|GeneratorExpression\|,
+-- |   \|AsyncFunctionDeclaration\|, \|AsyncFunctionExpression\|,
+-- |   \|AsyncGeneratorDeclaration\|, \|AsyncGeneratorExpression\|,
+-- |   \|MethodDefinition\|, \|ArrowFunction\|, \|AsyncArrowFunction\|,
+-- |   \|ClassDeclaration\|, or \|ClassExpression\|.
+-- |
+-- | - [Eval code]{.dfn} is the source text supplied to the built-in \`eval\`
+-- |   function. More precisely, if the parameter to the built-in \`eval\`
+-- |   function is a String, it is treated as an ECMAScript \|Script\|. The
+-- |   eval code for a particular invocation of \`eval\` is the global code
+-- |   portion of that \|Script\|.
+-- |
+-- | - [Function code]{.dfn} is source text that is parsed to supply the
+-- |   value of the \[\[ECMAScriptCode\]\] and \[\[FormalParameters\]\]
+-- |   internal slots (see ) of an ECMAScript function object. The function
+-- |   code of a particular ECMAScript function does not include any source
+-- |   text that is parsed as the function code of a nested
+-- |   \|FunctionDeclaration\|, \|FunctionExpression\|,
+-- |   \|GeneratorDeclaration\|, \|GeneratorExpression\|,
+-- |   \|AsyncFunctionDeclaration\|, \|AsyncFunctionExpression\|,
+-- |   \|AsyncGeneratorDeclaration\|, \|AsyncGeneratorExpression\|,
+-- |   \|MethodDefinition\|, \|ArrowFunction\|, \|AsyncArrowFunction\|,
+-- |   \|ClassDeclaration\|, or \|ClassExpression\|.
+-- |
+-- |   In addition, if the source text referred to above is parsed as:
+-- |
+-- |   - the \|FormalParameters\| and \|FunctionBody\| of a
+-- |     \|FunctionDeclaration\| or \|FunctionExpression\|,
+-- |   - the \|FormalParameters\| and \|GeneratorBody\| of a
+-- |     \|GeneratorDeclaration\| or \|GeneratorExpression\|,
+-- |   - the \|FormalParameters\| and \|AsyncFunctionBody\| of an
+-- |     \|AsyncFunctionDeclaration\| or \|AsyncFunctionExpression\|, or
+-- |   - the \|FormalParameters\| and \|AsyncGeneratorBody\| of an
+-- |     \|AsyncGeneratorDeclaration\| or \|AsyncGeneratorExpression\|,
+-- |
+-- |   then the source text matched by the \|BindingIdentifier\| (if any) of
+-- |   that declaration or expression is also included in the function code
+-- |   of the corresponding function.
+-- |
+-- | - [Module code]{.dfn} is source text that is code that is provided as a
+-- |   \|ModuleBody\|. It is the code that is directly evaluated when a
+-- |   module is initialized. The module code of a particular module does not
+-- |   include any source text that is parsed as part of a nested
+-- |   \|FunctionDeclaration\|, \|FunctionExpression\|,
+-- |   \|GeneratorDeclaration\|, \|GeneratorExpression\|,
+-- |   \|AsyncFunctionDeclaration\|, \|AsyncFunctionExpression\|,
+-- |   \|AsyncGeneratorDeclaration\|, \|AsyncGeneratorExpression\|,
+-- |   \|MethodDefinition\|, \|ArrowFunction\|, \|AsyncArrowFunction\|,
+-- |   \|ClassDeclaration\|, or \|ClassExpression\|.
+-- |
+-- | Function code is generally provided as the bodies of Function
+-- | Definitions (), Arrow Function Definitions (), Method Definitions (),
+-- | Generator Function Definitions (), Async Function Definitions (), Async
+-- | Generator Function Definitions (), and Async Arrow Functions ().
+-- | Function code is also derived from the arguments to the Function
+-- | constructor (), the GeneratorFunction constructor (), the AsyncFunction
+-- | constructor (), and the AsyncGeneratorFunction constructor ().
+-- |
+-- | The practical effect of including the \|BindingIdentifier\| in function
+-- | code is that the Early Errors for strict mode code are applied to a
+-- | \|BindingIdentifier\| that is the name of a function whose body contains
+-- | a \"use strict\" directive, even if the surrounding code is not strict
+-- | mode code.
+-- SPEC: L20654-L20665
+-- | # GlobalDeclarationInstantiation ( \_script\_: a \|Script\| Parse Node, \_env\_: a Global Environment Record, ): either a normal completion containing \~unused\~ or a throw completion
+-- |
+-- | description
+-- | :   \_script\_ is the \|Script\| for which the execution context is
+-- |     being established. \_env\_ is the global environment in which
+-- |     bindings are to be created.
+-- |
+-- | When an execution context is established for evaluating scripts,
+-- | declarations are instantiated in the current global environment. Each
+-- | global binding declared in the code is instantiated.
+-- SPEC: L22940-L23070
+-- | # ECMAScript Standard Built-in Objects
+-- |
+-- | There are certain built-in objects available whenever an ECMAScript
+-- | \|Script\| or \|Module\| begins execution. One, the global object, is
+-- | part of the global environment of the executing program. Others are
+-- | accessible as initial properties of the global object or indirectly as
+-- | properties of accessible built-in objects.
+-- |
+-- | Unless specified otherwise, a built-in object that is callable as a
+-- | function is a built-in function object with the characteristics
+-- | described in . Unless specified otherwise, the \[\[Extensible\]\]
+-- | internal slot of a built-in object initially has the value \*true\*.
+-- | Every built-in function object has a \[\[Realm\]\] internal slot whose
+-- | value is the Realm Record of the realm for which the object was
+-- | initially created.
+-- |
+-- | Many built-in objects are functions: they can be invoked with arguments.
+-- | Some of them furthermore are constructors: they are functions intended
+-- | for use with the \`new\` operator. For each built-in function, this
+-- | specification describes the arguments required by that function and the
+-- | properties of that function object. For each built-in constructor, this
+-- | specification furthermore describes properties of the prototype object
+-- | of that constructor and properties of specific object instances returned
+-- | by a \`new\` expression that invokes that constructor.
+-- |
+-- | Unless otherwise specified in the description of a particular function,
+-- | if a built-in function or constructor is given fewer arguments than the
+-- | function is specified to require, the function or constructor shall
+-- | behave exactly as if it had been given sufficient additional arguments,
+-- | each such argument being the \*undefined\* value. Such missing arguments
+-- | are considered to be "not present" and may be identified in that manner
+-- | by specification algorithms. In the description of a particular
+-- | function, the terms "\*this\* value" and "NewTarget" have the meanings
+-- | given in .
+-- |
+-- | Unless otherwise specified in the description of a particular function,
+-- | if a built-in function or constructor described is given more arguments
+-- | than the function is specified to allow, the extra arguments are
+-- | evaluated by the call and then ignored by the function. However, an
+-- | implementation may define implementation specific behaviour relating to
+-- | such arguments as long as the behaviour is not the throwing of a
+-- | \*TypeError\* exception that is predicated simply on the presence of an
+-- | extra argument.
+-- |
+-- | Implementations that add additional capabilities to the set of built-in
+-- | functions are encouraged to do so by adding new functions rather than
+-- | adding new parameters to existing functions.
+-- |
+-- | Unless otherwise specified every built-in function and every built-in
+-- | constructor has the Function prototype object, which is the initial
+-- | value of the expression \`Function.prototype\` (), as the value of its
+-- | \[\[Prototype\]\] internal slot.
+-- |
+-- | Unless otherwise specified every built-in prototype object has the
+-- | Object prototype object, which is the initial value of the expression
+-- | \`Object.prototype\` (), as the value of its \[\[Prototype\]\] internal
+-- | slot, except the Object prototype object itself.
+-- |
+-- | If this specification defines a built-in constructor\'s behaviour via
+-- | algorithm steps, then that is its behaviour for the purposes of both
+-- | \[\[Call\]\] and \[\[Construct\]\]. If such an algorithm needs to
+-- | distinguish the two cases, it checks whether NewTarget is \*undefined\*,
+-- | which indicates a \[\[Call\]\] invocation.
+-- |
+-- | Built-in function objects that are not identified as constructors do not
+-- | implement the \[\[Construct\]\] internal method unless otherwise
+-- | specified in the description of a particular function.
+-- |
+-- | Built-in function objects that are not constructors do not have a
+-- | \*\"prototype\"\* property unless otherwise specified in the description
+-- | of a particular function.
+-- |
+-- | Each built-in function defined in this specification is created by
+-- | calling the CreateBuiltinFunction abstract operation (). The values of
+-- | the \_length\_ and \_name\_ parameters are the initial values of the
+-- | \*\"length\"\* and \*\"name\"\* properties as discussed below. The
+-- | values of the \_prefix\_ parameter are similarly discussed below.
+-- |
+-- | Every built-in function object, including constructors, has a
+-- | \*\"length\"\* property whose value is a non-negative integral Number.
+-- | Unless otherwise specified, this value is the number of required
+-- | parameters shown in the subclause heading for the function description.
+-- | Optional parameters and rest parameters are not included in the
+-- | parameter count.
+-- |
+-- | For example, the function object that is the initial value of the
+-- | \*\"map\"\* property of the Array prototype object is described under
+-- | the subclause heading «Array.prototype.map (callback \[ , thisArg\])»
+-- | which shows the two named arguments callback and thisArg, the latter
+-- | being optional; therefore the value of the \*\"length\"\* property of
+-- | that function object is \*1\*~𝔽~.
+-- |
+-- | Unless otherwise specified, the \*\"length\"\* property of a built-in
+-- | function object has the attributes { \[\[Writable\]\]: \*false\*,
+-- | \[\[Enumerable\]\]: \*false\*, \[\[Configurable\]\]: \*true\* }.
+-- |
+-- | Every built-in function object, including constructors, has a
+-- | \*\"name\"\* property whose value is a String. Unless otherwise
+-- | specified, this value is the name that is given to the function in this
+-- | specification. Functions that are identified as anonymous functions use
+-- | the empty String as the value of the \*\"name\"\* property. For
+-- | functions that are specified as properties of objects, the name value is
+-- | the property name string used to access the function. Functions that are
+-- | specified as get or set accessor functions of built-in properties have
+-- | \*\"get\"\* or \*\"set\"\* (respectively) passed to the \_prefix\_
+-- | parameter when calling CreateBuiltinFunction.
+-- |
+-- | The value of the \*\"name\"\* property is explicitly specified for each
+-- | built-in functions whose property key is a Symbol value. If such an
+-- | explicitly specified value starts with the prefix \*\"get \"\* or
+-- | \*\"set \"\* and the function for which it is specified is a get or set
+-- | accessor function of a built-in property, the value without the prefix
+-- | is passed to the \_name\_ parameter, and the value \*\"get\"\* or
+-- | \*\"set\"\* (respectively) is passed to the \_prefix\_ parameter when
+-- | calling CreateBuiltinFunction.
+-- |
+-- | Unless otherwise specified, the \*\"name\"\* property of a built-in
+-- | function object has the attributes { \[\[Writable\]\]: \*false\*,
+-- | \[\[Enumerable\]\]: \*false\*, \[\[Configurable\]\]: \*true\* }.
+-- |
+-- | Every other data property described in clauses through and in Annex has
+-- | the attributes { \[\[Writable\]\]: \*true\*, \[\[Enumerable\]\]:
+-- | \*false\*, \[\[Configurable\]\]: \*true\* } unless otherwise specified.
+-- |
+-- | Every accessor property described in clauses through and in Annex has
+-- | the attributes { \[\[Enumerable\]\]: \*false\*, \[\[Configurable\]\]:
+-- | \*true\* } unless otherwise specified. If only a get accessor function
+-- | is described, the set accessor function is the default value,
+-- | \*undefined\*. If only a set accessor is described the get accessor is
+-- | the default value, \*undefined\*.
+-- SPEC: L23071-L23084
+-- | # The Global Object
+-- |
+-- | The global object:
+-- |
+-- | - is created before control enters any execution context.
+-- | - does not have a \[\[Construct\]\] internal method; it cannot be used
+-- |   as a constructor with the \`new\` operator.
+-- | - does not have a \[\[Call\]\] internal method; it cannot be invoked as
+-- |   a function.
+-- | - has a \[\[Prototype\]\] internal slot whose value is host-defined.
+-- | - may have host-defined properties in addition to the properties
+-- |   defined in this specification. This may include a property whose
+-- |   value is the global object itself.
 def Behaves (p : Program) (b : List TraceEvent) : Prop :=
   ∃ sFinal,
     Steps (initialState p) b sFinal ∧
