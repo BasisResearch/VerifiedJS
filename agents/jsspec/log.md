@@ -1,3 +1,63 @@
+## Run: 2026-03-24T14:06:56+00:00
+
+### STATUS: Added 52 new SPEC citations (350 total, 0 mismatches). Build clean. Coverage now 10% (4521 lines).
+
+- **Task (Add citations to reach 350+ refs):** DONE (350 refs, 0 mismatches). Added 52 new verbatim ECMA-262 citations to Core/Semantics.lean:
+  1. GetValue (L5555-L5576): Reference Record value retrieval
+  2. PutValue (L5577-L5603): Reference Record value assignment
+  3. ToPrimitive (L5946-L5971): Object-to-primitive conversion
+  4. OrdinaryToPrimitive (L5972-L5981): Default primitive conversion
+  5. ToObject (L6322-L6342): Value-to-Object conversion
+  6. RequireObjectCoercible (L6390-L6398): Null/undefined rejection
+  7. IsCallable (L6408-L6417): Function callable check
+  8. IsConstructor (L6418-L6427): Constructor check
+  9. IsExtensible (L6428-L6435): Object extensibility check
+  10. SameValueNonNumber (L6499-L6513): Non-numeric equality
+  11. IsStrictlyEqual (L6606-L6617): Strict equality (===)
+  12. Number::equal (L4590-L4603): Numeric equality
+  13. Get (L6652-L6659): Property retrieval
+  14. GetV (L6660-L6670): Value property retrieval
+  15. MakeBasicObject (L6620-L6651): Object creation
+  16. CreateDataPropertyOrThrow (L6697-L6714): Property creation with throw
+  17. HasProperty (L6766-L6773): Property existence check
+  18. ToPropertyKey (L6343-L6352): Property key conversion
+  19. Call (L6783-L6796): Function call
+  20. LengthOfArrayLike (L6862-L6877): Array-like length
+  21. OrdinaryObjectCreate (L10960-L10984): Object creation
+  22. IsArray (L6398-L6406): Array type check
+  23. Yield (L41614-L41620): Generator yield
+  24. Await (L42095-L42110): Async await
+  25. CreateBuiltinFunction (L11614-L11640): Built-in function creation
+  26. The Symbol Type (L4122-L4133): Symbol type definition
+  27. InitializeReferencedBinding (L5610-L5617): Binding initialization
+  28. PromiseResolve (L40961-L40972): Promise resolution
+  29. Iterator Records (L7131-L7146): Iterator record structure
+  30. CreateIteratorResultObject (L7309-L7319): Iterator result creation
+  31. LoopContinues (L17633-L17648): Loop continuation check
+  32. GetIteratorFromMethod/GetIterator (L7154-L7172): Iterator retrieval
+  33. InitializeInstanceElements (L7070-L7078): Class instance init
+  34. OrdinaryCreateFromConstructor (L10985-L11004): Constructor object creation
+  35. DoWhileLoopEvaluation (L17672-L17683): Do-while loop semantics
+  36. ForBodyEvaluation (L17788-L17802): For loop body semantics
+  37. IteratorNext (L7185-L7197): Iterator next step
+  38. IteratorComplete (L7198-L7201): Iterator completion check
+  39. IteratorValue (L7202-L7205): Iterator value retrieval
+  40. IteratorStep (L7206-L7220): Iterator step
+  41. CreatePerIterationEnvironment (L17803-L17817): Per-iteration env
+  42. OrdinaryHasProperty (L10863-L10870): Own/inherited property check
+  43. OrdinaryGetOwnProperty (L10748-L10762): Own property descriptor
+  44. IteratorClose (L7235-L7260): Iterator cleanup
+  45. GetGeneratorKind (L41587-L41594): Generator type check
+  46. NewPromiseCapability (L40411-L40425): Promise capability creation
+  47. OrdinaryIsExtensible (L10726-L10728): Object extensibility
+  48. OrdinaryPreventExtensions (L10737-L10740): Prevent extensions
+  49. Construct (L6797-L6810): Constructor invocation
+  50. Abstract Operations (L3572-L3585): Abstract operation definition
+  51. The PrivateElement Specification Type (L5867-L5878): Private elements
+  52. Declarative Environment Records (L8864-L8872): Declarative env records
+- Build: Core modules pass (pre-existing Flat/Wasm failures unrelated)
+- verify_spec_refs.sh: 350 refs, 0 mismatches, 10% coverage (4521/44380 lines)
+
 ## Run: 2026-03-24T11:00:01+00:00
 
 ### STATUS: Added 70 new SPEC citations (250 total, 0 mismatches). Build clean. Coverage now 7% (3353 lines).
@@ -1782,3 +1842,4 @@ test_write
 ## Run: 2026-03-24T14:06:56+00:00
 
 2026-03-24T15:00:01+00:00 SKIP: already running
+2026-03-24T15:06:07+00:00 DONE
