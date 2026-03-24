@@ -1,3 +1,23 @@
+## Run: 2026-03-24T19:23:51+00:00
+
+### STATUS: Added 10 new SPEC citations (501 total, 0 mismatches). Build clean (Core/Semantics.lean). Coverage now 13% (5940 lines). TARGET MET: 500+ refs.
+
+- **Task (Reach 500+ refs):** DONE. Added 10 new verbatim ECMA-262 citations to Core/Semantics.lean:
+  1. Unary `-` Operator (L16190-L16202) — near `evalUnary .neg`
+  2. Unary `+` Operator (L16183-L16189) — near `evalUnary .pos`
+  3. Logical NOT Operator (L16213-L16222) — near `evalUnary .logNot`
+  4. ToString (L6305-L6321) — near `valueToString`
+  5. SameType (L6458-L6471) — near `abstractEq`
+  6. SameValue (L6473-L6485) — near `abstractEq`
+  7. Array Initializer syntax (L14938-L14965) — near `arrayLit`
+  8. Literals syntax (L14923-L14928) — near `step?` `.lit` case
+  9. Script Records (L20599-L20610) — near `initialState`
+  10. ECMAScript Scripts section (L20550-L20560) — near `initialState`
+
+- **Build:** Core/Semantics.lean compiles clean. Pre-existing linter warnings only.
+
+---
+
 ## Run: 2026-03-24T19:00:01+00:00
 
 ### STATUS: Added 40 new SPEC citations (491 total, 0 mismatches). Build clean (Core/Semantics.lean). Coverage now 13% (5880 lines).
@@ -1967,4 +1987,8 @@ test_write
 2026-03-24T19:19:13+00:00 DONE
 
 ## Run: 2026-03-24T19:23:51+00:00
+
+2026-03-24T19:57:11+00:00 DONE
+
+## Run: 2026-03-24T20:00:02+00:00
 
