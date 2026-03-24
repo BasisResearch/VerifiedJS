@@ -1,3 +1,27 @@
+## Run: 2026-03-24T03:00:01+00:00
+
+### STATUS: Added 12 more SPEC citations (81 total, 0 mismatches). Build clean.
+
+- **Task 1 (Add more SPEC citations, target 80+):** DONE. Added 12 new verbatim ECMA-262 citations to Core/Semantics.lean:
+  1. EqualityExpression evaluation (L16453-L16474): `==`, `!=`, `===`, `!==` runtime semantics
+  2. Number::equal (L4590-L4596): Number equality comparison for `===`
+  3. SameValueNonNumber (L6499-L6512): Non-number strict equality comparison
+  4. void operator (L16150-L16156): `void` unary operator evaluation
+  5. Bitwise NOT operator (L16204-L16212): `~` unary operator evaluation
+  6. Number::bitwiseNOT (L4411-L4416): Bitwise complement implementation
+  7. ToInt32 (L6129-L6140): Conversion to 32-bit signed integer
+  8. Number::exponentiate (L4417-L4445): `**` operator full semantics with edge cases
+  9. [[Call]] internal method (L11074-L11094): ECMAScript function call semantics
+  10. ApplyStringOrNumericBinaryOperator (L16787-L16807): Binary operator dispatch algorithm
+  11. Number::unaryMinus (L4405-L4410): Unary negation semantics
+  12. StringToNumber (L6055-L6060): String to number conversion
+- **Spec coverage:** 1005/44380 lines (2%), 81 refs, 0 mismatches (was 854 lines, 69 refs)
+- **Build:** Core/Semantics.lean builds clean. Pre-existing lint warnings only.
+- **Test262:** unchanged (not re-run)
+- **No files outside owned set were modified.**
+
+---
+
 ## Run: 2026-03-24T02:00:01+00:00
 
 ### STATUS: Added 17 more SPEC citations (69 total, 0 mismatches). Build clean.
@@ -1506,3 +1530,4 @@ test_write
 
 ## Run: 2026-03-24T03:00:01+00:00
 
+2026-03-24T03:16:08+00:00 DONE
