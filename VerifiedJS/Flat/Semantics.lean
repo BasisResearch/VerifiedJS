@@ -1040,6 +1040,38 @@ theorem step?_binary_values (s : State) (op : Core.BinOp) (lv rv : Value) :
       some (.silent, pushTrace { s with expr := .lit (evalBinary op lv rv) } .silent) := by
   simp [step?, exprValue?]
 
+/-- Call with closure value, env value, all arg values, valid funcIdx, non-consoleLog.
+    This is the main call step: lookup function, bind params, enter body. -/
+theorem step?_call_closure (s : State)
+    (funcIdx : Nat) (envPtr : Nat) (envVal : Value) (argVals : List Value)
+    (funcDef : FuncDef)
+    (hfuncIdx : funcIdx ≠ Core.consoleLogIdx)
+    (hfunc : s.funcs[funcIdx]? = some funcDef) :
+    step? { s with expr := .call (.lit (.closure funcIdx envPtr)) (.lit envVal)
+                     (argVals.map (fun v => Expr.lit v)) } =
+      let pairs := funcDef.params.zip argVals
+      let bodyEnv := pairs.foldr (fun pv bs => (pv.1, pv.2) :: bs) []
+      let bodyEnv' := (funcDef.envParam, envVal) :: bodyEnv
+      let bodyEnv'' := (funcDef.name, .closure funcIdx (match envVal with | .object p => p | _ => 0)) :: bodyEnv'
+      let wrapped := .tryCatch funcDef.body "__call_frame_return__"
+        (.var "__call_frame_return__") none
+      some (.silent, pushTrace { s with
+        expr := wrapped
+        env := bodyEnv''
+        callStack := s.env :: s.callStack } .silent) := by
+  simp [step?, exprValue?, hfuncIdx, hfunc, valuesFromExprList?_map_lit]
+
+/-- Call with closure value, env value, all arg values, consoleLog. -/
+theorem step?_call_consoleLog (s : State)
+    (envPtr : Nat) (envVal : Value) (argVals : List Value) :
+    step? { s with expr := .call (.lit (.closure Core.consoleLogIdx envPtr)) (.lit envVal)
+                     (argVals.map (fun v => Expr.lit v)) } =
+      let msg := match argVals with
+        | [v] => valueToString v
+        | vs => String.intercalate " " (vs.map valueToString)
+      some (.log msg, pushTrace { s with expr := .lit .undefined } (.log msg)) := by
+  simp [step?, exprValue?, Core.consoleLogIdx, valuesFromExprList?_map_lit]
+
 /-- Step relation is equivalent to step? returning some. -/
 theorem Step_iff (s : State) (t : Core.TraceEvent) (s' : State) :
     Step s t s' ↔ step? s = some (t, s') :=
@@ -1210,6 +1242,13 @@ theorem firstNonValueExpr_none_implies_values (l : List Expr)
       (valuesFromExprList? rest).map (v :: ·) := by
   simp [valuesFromExprList?, exprValue?]
   cases valuesFromExprList? rest <;> simp [Option.map]
+
+/-- valuesFromExprList? on a list of literals returns the values. -/
+@[simp] theorem valuesFromExprList?_map_lit (vs : List Value) :
+    valuesFromExprList? (vs.map (fun v => Expr.lit v)) = some vs := by
+  induction vs with
+  | nil => simp [valuesFromExprList?]
+  | cons v rest ih => simp [valuesFromExprList?, exprValue?, ih]
 
 /-- If firstNonValueProp returns none, then valuesFromExprList? on the mapped values succeeds. -/
 theorem firstNonValueProp_none_implies_map_values (props : List (PropName × Expr))
