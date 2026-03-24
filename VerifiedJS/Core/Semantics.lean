@@ -2009,19 +2009,201 @@ def exprValue? : Expr → Option Value
   | .lit v => some v
   | _ => none
 
--- SPEC: L5982-L5994
--- | # ToBoolean ( \_argument\_: an ECMAScript language value, ): a Boolean
+-- SPEC: L5443-L5485
+-- | # The Completion Record Specification Type
 -- |
--- | description
--- | :   It converts \_argument\_ to a value of type Boolean.
+-- | The [Completion Record]{.dfn variants="Completion Records"}
+-- | specification type is used to explain the runtime propagation of values
+-- | and control flow such as the behaviour of statements (\`break\`,
+-- | \`continue\`, \`return\` and \`throw\`) that perform nonlocal transfers
+-- | of control.
 -- |
--- | 1\. If \_argument\_ is a Boolean, return \_argument\_. 1. If
--- | \_argument\_ is one of \*undefined\*, \*null\*, \*+0\*~𝔽~, \*-0\*~𝔽~,
--- | \*NaN\*, \*0\*~ℤ~, or the empty String, return \*false\*. 1.
--- | \[id=\"step-to-boolean-web-compat-insertion-point\",
--- | normative-optional\] If the host is a web browser or otherwise supports
--- | , then 1. If \_argument\_ is an Object and \_argument\_ has an
--- | \[\[IsHTMLDDA\]\] internal slot, return \*false\*. 1. Return \*true\*.
+-- | Completion Records have the fields defined in .
+-- |
+-- |   Field Name       Value                                                           Meaning
+-- |   ---------------- --------------------------------------------------------------- --------------------------------------------------
+-- |   \[\[Type\]\]     \~normal\~, \~break\~, \~continue\~, \~return\~, or \~throw\~   The type of completion that occurred.
+-- |   \[\[Value\]\]    any value except a Completion Record                            The value that was produced.
+-- |   \[\[Target\]\]   a String or \~empty\~                                           The target label for directed control transfers.
+-- |
+-- | The following shorthand terms are sometimes used to refer to Completion
+-- | Records.
+-- |
+-- | - [normal completion]{.dfn variants="normal completions"} refers to any
+-- |   Completion Record with a \[\[Type\]\] value of \~normal\~.
+-- | - [break completion]{.dfn variants="break completions"} refers to any
+-- |   Completion Record with a \[\[Type\]\] value of \~break\~.
+-- | - [continue completion]{.dfn variants="continue completions"} refers to
+-- |   any Completion Record with a \[\[Type\]\] value of \~continue\~.
+-- | - [return completion]{.dfn variants="return completions"} refers to any
+-- |   Completion Record with a \[\[Type\]\] value of \~return\~.
+-- | - [throw completion]{.dfn variants="throw completions"} refers to any
+-- |   Completion Record with a \[\[Type\]\] value of \~throw\~.
+-- | - [abrupt completion]{.dfn variants="abrupt completions"} refers to any
+-- |   Completion Record with a \[\[Type\]\] value other than \~normal\~.
+-- | - a [normal completion containing]{.dfn
+-- |   variants="normal completions containing"} some type of value refers to
+-- |   a normal completion that has a value of that type in its \[\[Value\]\]
+-- |   field.
+-- |
+-- | Callable objects that are defined in this specification only return a
+-- | normal completion or a throw completion. Returning any other kind of
+-- | Completion Record is considered an editorial error.
+-- |
+-- | Implementation-defined callable objects must return either a normal
+-- | completion or a throw completion.
+-- SPEC: L5486-L5493
+-- | # NormalCompletion ( \_value\_: any value except a Completion Record, ): a normal completion
+-- |
+-- | skip return checks
+-- | :   true
+-- |
+-- | 1\. Return Completion Record { \[\[Type\]\]: \~normal\~, \[\[Value\]\]:
+-- | \_value\_, \[\[Target\]\]: \~empty\~ }.
+-- SPEC: L5494-L5498
+-- | # ThrowCompletion ( \_value\_: an ECMAScript language value, ): a throw completion
+-- |
+-- | 1\. Return Completion Record { \[\[Type\]\]: \~throw\~, \[\[Value\]\]:
+-- | \_value\_, \[\[Target\]\]: \~empty\~ }.
+-- SPEC: L5499-L5503
+-- | # ReturnCompletion ( \_value\_: an ECMAScript language value, ): a return completion
+-- |
+-- | 1\. Return Completion Record { \[\[Type\]\]: \~return\~, \[\[Value\]\]:
+-- | \_value\_, \[\[Target\]\]: \~empty\~ }.
+-- SPEC: L5513-L5533
+-- | # The Reference Record Specification Type
+-- |
+-- | The [Reference Record]{.dfn variants="Reference Records"} type is used
+-- | to explain the behaviour of such operators as \`delete\`, \`typeof\`,
+-- | the assignment operators, the \`super\` keyword and other language
+-- | features. For example, the left-hand operand of an assignment is
+-- | expected to produce a Reference Record.
+-- |
+-- | A Reference Record is a resolved name or (possibly not-yet-resolved)
+-- | property binding; its fields are defined by .
+-- |
+-- |   Field Name               Value                                                                      Meaning
+-- |   ------------------------ -------------------------------------------------------------------------- -----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+-- |   \[\[Base\]\]             an ECMAScript language value, an Environment Record, or \~unresolvable\~   The value or Environment Record which holds the binding. A \[\[Base\]\] of \~unresolvable\~ indicates that the binding could not be resolved.
+-- |   \[\[ReferencedName\]\]   an ECMAScript language value or a Private Name                             The name of the binding. Always a String if \[\[Base\]\] value is an Environment Record. Otherwise, may be an ECMAScript language value other than a String or a Symbol until ToPropertyKey is performed.
+-- |   \[\[Strict\]\]           a Boolean                                                                  \*true\* if the Reference Record originated in strict mode code, \*false\* otherwise.
+-- |   \[\[ThisValue\]\]        an ECMAScript language value or \~empty\~                                  If not \~empty\~, the Reference Record represents a property binding that was expressed using the \`super\` keyword; it is called a [Super Reference Record]{#super-reference-record .dfn oldids="super-reference" variants="Super Reference Records"} and its \[\[Base\]\] value will never be an Environment Record. In that case, the \[\[ThisValue\]\] field holds the \*this\* value at the time the Reference Record was created.
+-- SPEC: L5534-L5539
+-- | # IsPropertyReference ( \_V\_: a Reference Record, ): a Boolean
+-- |
+-- | 1\. If \_V\_.\[\[Base\]\] is \~unresolvable\~, return \*false\*. 1. If
+-- | \_V\_.\[\[Base\]\] is an Environment Record, return \*false\*. 1. Return
+-- | \*true\*.
+-- SPEC: L5540-L5544
+-- | # IsUnresolvableReference ( \_V\_: a Reference Record, ): a Boolean
+-- |
+-- | 1\. If \_V\_.\[\[Base\]\] is \~unresolvable\~, return \*true\*. 1.
+-- | Return \*false\*.
+-- SPEC: L5545-L5549
+-- | # IsSuperReference ( \_V\_: a Reference Record, ): a Boolean
+-- |
+-- | 1\. If \_V\_.\[\[ThisValue\]\] is \~empty\~, return \*false\*. 1. Return
+-- | \*true\*.
+-- SPEC: L5550-L5554
+-- | # IsPrivateReference ( \_V\_: a Reference Record, ): a Boolean
+-- |
+-- | 1\. If \_V\_.\[\[ReferencedName\]\] is a Private Name, return
+-- | \*true\*. 1. Return \*false\*.
+-- SPEC: L5604-L5609
+-- | # GetThisValue ( \_V\_: a Reference Record, ): an ECMAScript language value
+-- |
+-- | 1\. Assert: IsPropertyReference(\_V\_) is \*true\*. 1. If
+-- | IsSuperReference(\_V\_) is \*true\*, return \_V\_.\[\[ThisValue\]\]. 1.
+-- | Return \_V\_.\[\[Base\]\].
+-- SPEC: L5664-L5669
+-- | # IsGenericDescriptor ( \_Desc\_: a Property Descriptor, ): a Boolean
+-- |
+-- | 1\. If IsAccessorDescriptor(\_Desc\_) is \*true\*, return \*false\*. 1.
+-- | If IsDataDescriptor(\_Desc\_) is \*true\*, return \*false\*. 1. Return
+-- | \*true\*.
+-- SPEC: L5670-L5688
+-- | # FromPropertyDescriptor ( \_Desc\_: a Property Descriptor or \*undefined\*, ): an Object or \*undefined\*
+-- |
+-- | 1\. If \_Desc\_ is \*undefined\*, return \*undefined\*. 1. Let \_obj\_
+-- | be OrdinaryObjectCreate(%Object.prototype%). 1. Assert: \_obj\_ is an
+-- | extensible ordinary object with no own properties. 1. If \_Desc\_ has a
+-- | \[\[Value\]\] field, then 1. Perform !
+-- | CreateDataPropertyOrThrow(\_obj\_, \*\"value\"\*,
+-- | \_Desc\_.\[\[Value\]\]). 1. If \_Desc\_ has a \[\[Writable\]\] field,
+-- | then 1. Perform ! CreateDataPropertyOrThrow(\_obj\_, \*\"writable\"\*,
+-- | \_Desc\_.\[\[Writable\]\]). 1. If \_Desc\_ has a \[\[Get\]\] field,
+-- | then 1. Perform ! CreateDataPropertyOrThrow(\_obj\_, \*\"get\"\*,
+-- | \_Desc\_.\[\[Get\]\]). 1. If \_Desc\_ has a \[\[Set\]\] field, then 1.
+-- | Perform ! CreateDataPropertyOrThrow(\_obj\_, \*\"set\"\*,
+-- | \_Desc\_.\[\[Set\]\]). 1. If \_Desc\_ has an \[\[Enumerable\]\] field,
+-- | then 1. Perform ! CreateDataPropertyOrThrow(\_obj\_, \*\"enumerable\"\*,
+-- | \_Desc\_.\[\[Enumerable\]\]). 1. If \_Desc\_ has a \[\[Configurable\]\]
+-- | field, then 1. Perform ! CreateDataPropertyOrThrow(\_obj\_,
+-- | \*\"configurable\"\*, \_Desc\_.\[\[Configurable\]\]). 1. Return \_obj\_.
+-- SPEC: L5689-L5720
+-- | # ToPropertyDescriptor ( \_Obj\_: an ECMAScript language value, ): either a normal completion containing a Property Descriptor or a throw completion
+-- |
+-- | 1\. If \_Obj\_ is not an Object, throw a \*TypeError\* exception. 1. Let
+-- | \_desc\_ be a new Property Descriptor that initially has no fields. 1.
+-- | Let \_hasEnumerable\_ be ? HasProperty(\_Obj\_, \*\"enumerable\"\*). 1.
+-- | If \_hasEnumerable\_ is \*true\*, then 1. Let \_enumerable\_ be
+-- | ToBoolean(? Get(\_Obj\_, \*\"enumerable\"\*)). 1. Set
+-- | \_desc\_.\[\[Enumerable\]\] to \_enumerable\_. 1. Let
+-- | \_hasConfigurable\_ be ? HasProperty(\_Obj\_, \*\"configurable\"\*). 1.
+-- | If \_hasConfigurable\_ is \*true\*, then 1. Let \_configurable\_ be
+-- | ToBoolean(? Get(\_Obj\_, \*\"configurable\"\*)). 1. Set
+-- | \_desc\_.\[\[Configurable\]\] to \_configurable\_. 1. Let \_hasValue\_
+-- | be ? HasProperty(\_Obj\_, \*\"value\"\*). 1. If \_hasValue\_ is
+-- | \*true\*, then 1. Let \_value\_ be ? Get(\_Obj\_, \*\"value\"\*). 1. Set
+-- | \_desc\_.\[\[Value\]\] to \_value\_. 1. Let \_hasWritable\_ be ?
+-- | HasProperty(\_Obj\_, \*\"writable\"\*). 1. If \_hasWritable\_ is
+-- | \*true\*, then 1. Let \_writable\_ be ToBoolean(? Get(\_Obj\_,
+-- | \*\"writable\"\*)). 1. Set \_desc\_.\[\[Writable\]\] to \_writable\_. 1.
+-- | Let \_hasGet\_ be ? HasProperty(\_Obj\_, \*\"get\"\*). 1. If \_hasGet\_
+-- | is \*true\*, then 1. Let \_getter\_ be ? Get(\_Obj\_, \*\"get\"\*). 1.
+-- | If IsCallable(\_getter\_) is \*false\* and \_getter\_ is not
+-- | \*undefined\*, throw a \*TypeError\* exception. 1. Set
+-- | \_desc\_.\[\[Get\]\] to \_getter\_. 1. Let \_hasSet\_ be ?
+-- | HasProperty(\_Obj\_, \*\"set\"\*). 1. If \_hasSet\_ is \*true\*, then 1.
+-- | Let \_setter\_ be ? Get(\_Obj\_, \*\"set\"\*). 1. If
+-- | IsCallable(\_setter\_) is \*false\* and \_setter\_ is not \*undefined\*,
+-- | throw a \*TypeError\* exception. 1. Set \_desc\_.\[\[Set\]\] to
+-- | \_setter\_. 1. If \_desc\_ has a \[\[Get\]\] field or \_desc\_ has a
+-- | \[\[Set\]\] field, then 1. If \_desc\_ has a \[\[Value\]\] field or
+-- | \_desc\_ has a \[\[Writable\]\] field, throw a \*TypeError\*
+-- | exception. 1. Return \_desc\_.
+-- SPEC: L5721-L5739
+-- | # CompletePropertyDescriptor ( \_Desc\_: a Property Descriptor, ): \~unused\~
+-- |
+-- | 1\. Let \_like\_ be the Record { \[\[Value\]\]: \*undefined\*,
+-- | \[\[Writable\]\]: \*false\*, \[\[Get\]\]: \*undefined\*, \[\[Set\]\]:
+-- | \*undefined\*, \[\[Enumerable\]\]: \*false\*, \[\[Configurable\]\]:
+-- | \*false\* }. 1. If IsGenericDescriptor(\_Desc\_) is \*true\* or
+-- | IsDataDescriptor(\_Desc\_) is \*true\*, then 1. If \_Desc\_ does not
+-- | have a \[\[Value\]\] field, set \_Desc\_.\[\[Value\]\] to
+-- | \_like\_.\[\[Value\]\]. 1. If \_Desc\_ does not have a \[\[Writable\]\]
+-- | field, set \_Desc\_.\[\[Writable\]\] to \_like\_.\[\[Writable\]\]. 1.
+-- | Else, 1. If \_Desc\_ does not have a \[\[Get\]\] field, set
+-- | \_Desc\_.\[\[Get\]\] to \_like\_.\[\[Get\]\]. 1. If \_Desc\_ does not
+-- | have a \[\[Set\]\] field, set \_Desc\_.\[\[Set\]\] to
+-- | \_like\_.\[\[Set\]\]. 1. If \_Desc\_ does not have an \[\[Enumerable\]\]
+-- | field, set \_Desc\_.\[\[Enumerable\]\] to
+-- | \_like\_.\[\[Enumerable\]\]. 1. If \_Desc\_ does not have a
+-- | \[\[Configurable\]\] field, set \_Desc\_.\[\[Configurable\]\] to
+-- | \_like\_.\[\[Configurable\]\]. 1. Return \~unused\~.
+-- SPEC: L5933-L5945
+-- | # Type Conversion
+-- |
+-- | The ECMAScript language implicitly performs automatic type conversion as
+-- | needed. To clarify the semantics of certain constructs it is useful to
+-- | define a set of conversion abstract operations. The conversion abstract
+-- | operations are polymorphic; they can accept a value of any ECMAScript
+-- | language type. But no other specification types are used with these
+-- | operations.
+-- |
+-- | The BigInt type has no implicit conversions in the ECMAScript language;
+-- | programmers must call BigInt explicitly to convert values from other
+-- | types.
 -- SPEC: L5982-L5994
 -- | # ToBoolean ( \_argument\_: an ECMAScript language value, ): a Boolean
 -- |
@@ -2138,6 +2320,60 @@ def toNumber : Value → Float
 -- | ExponentPart\[\~Sep\]? \`.\` DecimalDigits\[\~Sep\]
 -- | ExponentPart\[\~Sep\]? DecimalDigits\[\~Sep\] ExponentPart\[\~Sep\]?
 
+-- SPEC: L5995-L6003
+-- | # ToNumeric ( \_value\_: an ECMAScript language value, ): either a normal completion containing either a Number or a BigInt, or a throw completion
+-- |
+-- | description
+-- | :   It returns \_value\_ converted to a Number or a BigInt.
+-- |
+-- | 1\. Let \_primValue\_ be ? ToPrimitive(\_value\_, \~number\~). 1. If
+-- | \_primValue\_ is a BigInt, return \_primValue\_. 1. Return ?
+-- | ToNumber(\_primValue\_).
+-- SPEC: L6225-L6243
+-- | # ToUint8Clamp ( \_argument\_: an ECMAScript language value, ): either a normal completion containing an integral Number or a throw completion
+-- |
+-- | description
+-- | :   It clamps and rounds \_argument\_ to one of 2^8^ integral Number
+-- |     values in the inclusive interval from \*+0\*~𝔽~ to \*255\*~𝔽~.
+-- |
+-- | 1\. Let \_number\_ be ? ToNumber(\_argument\_). 1. If \_number\_ is
+-- | \*NaN\*, return \*+0\*~𝔽~. 1. Let \_mv\_ be the extended mathematical
+-- | value of \_number\_. 1. Let \_clamped\_ be the result of clamping \_mv\_
+-- | between 0 and 255. 1. Let \_f\_ be floor(\_clamped\_). 1. If \_clamped\_
+-- | \< \_f\_ + 0.5, return 𝔽(\_f\_). 1. If \_clamped\_ \> \_f\_ + 0.5,
+-- | return 𝔽(\_f\_ + 1). 1. If \_f\_ is even, return 𝔽(\_f\_). 1. Return
+-- | 𝔽(\_f\_ + 1).
+-- |
+-- | Unlike most other ECMAScript integer conversion operations, ToUint8Clamp
+-- | rounds rather than truncates non-integral values. It also uses "round
+-- | half to even" tie-breaking, which differs from the "round half up"
+-- | tie-breaking of \`Math.round\`.
+-- SPEC: L6362-L6376
+-- | # CanonicalNumericIndexString ( \_argument\_: a String, ): a Number or \*undefined\*
+-- |
+-- | description
+-- | :   If \_argument\_ is either \*\"-0\"\* or exactly matches
+-- |     ToString(\_n\_) for some Number value \_n\_, it returns the
+-- |     respective Number value. Otherwise, it returns \*undefined\*.
+-- |
+-- | 1\. If \_argument\_ is \*\"-0\"\*, return \*-0\*~𝔽~. 1. Let \_n\_ be !
+-- | ToNumber(\_argument\_). 1. If ! ToString(\_n\_) is \_argument\_, return
+-- | \_n\_. 1. Return \*undefined\*.
+-- |
+-- | A [canonical numeric string]{.dfn variants="canonical numeric strings"}
+-- | is any String for which the CanonicalNumericIndexString abstract
+-- | operation does not return \*undefined\*.
+-- SPEC: L6377-L6387
+-- | # ToIndex ( \_value\_: an ECMAScript language value, ): either a normal completion containing a non-negative integer or a throw completion
+-- |
+-- | description
+-- | :   It converts \_value\_ to an integer and returns that integer if it
+-- |     is non-negative and corresponds with an integer index. Otherwise, it
+-- |     throws an exception.
+-- |
+-- | 1\. Let \_integer\_ be ? ToIntegerOrInfinity(\_value\_). 1. If
+-- | \_integer\_ is not in the inclusive interval from 0 to 2^53^ - 1, throw
+-- | a \*RangeError\* exception. 1. Return \_integer\_.
 -- SPEC: L6114-L6127
 -- | # ToIntegerOrInfinity ( \_argument\_: an ECMAScript language value, ): either a normal completion containing either an integer, +∞, or -∞, or a throw completion
 -- |
@@ -2164,6 +2400,78 @@ def toNumber : Value → Float
 -- | 1\. Let \_len\_ be ? ToIntegerOrInfinity(\_argument\_). 1. If \_len\_ ≤
 -- | 0, return \*+0\*~𝔽~. 1. Return 𝔽(min(\_len\_, 2^53^ - 1)).
 
+-- SPEC: L16093-L16149
+-- | # The \`delete\` Operator
+-- |
+-- | # Static Semantics: Early Errors
+-- |
+-- | UnaryExpression : \`delete\` UnaryExpression
+-- |
+-- | - It is a Syntax Error if IsStrict(the \|UnaryExpression\|) is \*true\*
+-- |   and the derived \|UnaryExpression\| is PrimaryExpression :
+-- |   IdentifierReference, MemberExpression : MemberExpression \`.\`
+-- |   PrivateIdentifier, CallExpression : CallExpression \`.\`
+-- |   PrivateIdentifier, OptionalChain : \`?.\` PrivateIdentifier, or
+-- |   OptionalChain : OptionalChain \`.\` PrivateIdentifier.
+-- |
+-- | - It is a Syntax Error if the derived \|UnaryExpression\| is\
+-- |   PrimaryExpression : CoverParenthesizedExpressionAndArrowParameterList\
+-- |   and \|CoverParenthesizedExpressionAndArrowParameterList\| ultimately
+-- |   derives a phrase that, if used in place of \|UnaryExpression\|, would
+-- |   produce a Syntax Error according to these rules. This rule is
+-- |   recursively applied.
+-- |
+-- | The last rule means that expressions such as \`delete (((foo)))\`
+-- | produce early errors because of recursive application of the first rule.
+-- |
+-- | # Runtime Semantics: Evaluation
+-- |
+-- | UnaryExpression : \`delete\` UnaryExpression 1. Let \_ref\_ be ?
+-- | Evaluation of \|UnaryExpression\|. 1. If \_ref\_ is not a Reference
+-- | Record, return \*true\*. 1. If IsUnresolvableReference(\_ref\_) is
+-- | \*true\*, then 1. Assert: \_ref\_.\[\[Strict\]\] is \*false\*. 1. Return
+-- | \*true\*. 1. If IsPropertyReference(\_ref\_) is \*true\*, then 1.
+-- | Assert: IsPrivateReference(\_ref\_) is \*false\*. 1. If
+-- | IsSuperReference(\_ref\_) is \*true\*, throw a \*ReferenceError\*
+-- | exception. 1. \[id=\"step-delete-operator-toobject\"\] Let \_baseObj\_
+-- | be ? ToObject(\_ref\_.\[\[Base\]\]). 1. If
+-- | \_ref\_.\[\[ReferencedName\]\] is not a property key, then 1. Set
+-- | \_ref\_.\[\[ReferencedName\]\] to ?
+-- | ToPropertyKey(\_ref\_.\[\[ReferencedName\]\]). 1. Let \_deleteStatus\_
+-- | be ? \_baseObj\_.\[\[Delete\]\](\_ref\_.\[\[ReferencedName\]\]). 1. If
+-- | \_deleteStatus\_ is \*false\* and \_ref\_.\[\[Strict\]\] is \*true\*,
+-- | throw a \*TypeError\* exception. 1. Return \_deleteStatus\_. 1. Let
+-- | \_base\_ be \_ref\_.\[\[Base\]\]. 1. Assert: \_base\_ is an Environment
+-- | Record. 1. Return ?
+-- | \_base\_.DeleteBinding(\_ref\_.\[\[ReferencedName\]\]).
+-- |
+-- | When a \`delete\` operator occurs within strict mode code, a
+-- | \*SyntaxError\* exception is thrown if its \|UnaryExpression\| is a
+-- | direct reference to a variable, function argument, or function name. In
+-- | addition, if a \`delete\` operator occurs within strict mode code and
+-- | the property to be deleted has the attribute { \[\[Configurable\]\]:
+-- | \*false\* } (or otherwise cannot be deleted), a \*TypeError\* exception
+-- | is thrown.
+-- SPEC: L16165-L16179
+-- | # The \`typeof\` Operator
+-- |
+-- | # Runtime Semantics: Evaluation
+-- |
+-- | UnaryExpression : \`typeof\` UnaryExpression 1. Let \_val\_ be ?
+-- | Evaluation of \|UnaryExpression\|. 1. If \_val\_ is a Reference Record,
+-- | then 1. If IsUnresolvableReference(\_val\_) is \*true\*, return
+-- | \*\"undefined\"\*. 1. Set \_val\_ to ? GetValue(\_val\_). 1. If \_val\_
+-- | is \*undefined\*, return \*\"undefined\"\*. 1. If \_val\_ is \*null\*,
+-- | return \*\"object\"\*. 1. If \_val\_ is a String, return
+-- | \*\"string\"\*. 1. If \_val\_ is a Symbol, return \*\"symbol\"\*. 1. If
+-- | \_val\_ is a Boolean, return \*\"boolean\"\*. 1. If \_val\_ is a Number,
+-- | return \*\"number\"\*. 1. If \_val\_ is a BigInt, return
+-- | \*\"bigint\"\*. 1. Assert: \_val\_ is an Object. 1.
+-- | \[id=\"step-typeof-web-compat-insertion-point\", normative-optional\] If
+-- | the host is a web browser or otherwise supports , then 1. If \_val\_ has
+-- | an \[\[IsHTMLDDA\]\] internal slot, return \*\"undefined\"\*. 1. If
+-- | \_val\_ has a \[\[Call\]\] internal method, return \*\"function\"\*. 1.
+-- | Return \*\"object\"\*.
 -- SPEC: L16081-L16092
 -- | # Unary Operators
 -- |
@@ -3351,6 +3659,37 @@ def evalBinary : BinOp → Value → Value → Value
       let ia := toNumber a |>.toUInt32; let ib := (toNumber b |>.toUInt32) % 32
       .number ((ia >>> ib).toFloat)
 
+-- SPEC: L4597-L4603
+-- | # Number::sameValue ( \_x\_: a Number, \_y\_: a Number, ): a Boolean
+-- |
+-- | 1\. If \_x\_ is \*NaN\* and \_y\_ is \*NaN\*, return \*true\*. 1. If
+-- | \_x\_ is \*+0\*~𝔽~ and \_y\_ is \*-0\*~𝔽~, return \*false\*. 1. If \_x\_
+-- | is \*-0\*~𝔽~ and \_y\_ is \*+0\*~𝔽~, return \*false\*. 1. If \_x\_ is
+-- | \_y\_, return \*true\*. 1. Return \*false\*.
+-- SPEC: L6436-L6443
+-- | # IsRegExp ( \_argument\_: an ECMAScript language value, ): either a normal completion containing a Boolean or a throw completion
+-- |
+-- | 1\. If \_argument\_ is not an Object, return \*false\*. 1. Let
+-- | \_matcher\_ be ? Get(\_argument\_, %Symbol.match%). 1. If \_matcher\_ is
+-- | not \*undefined\*, return ToBoolean(\_matcher\_). 1. If \_argument\_ has
+-- | a \[\[RegExpMatcher\]\] internal slot, return \*true\*. 1. Return
+-- | \*false\*.
+-- SPEC: L6681-L6696
+-- | # CreateDataProperty ( \_O\_: an Object, \_P\_: a property key, \_V\_: an ECMAScript language value, ): either a normal completion containing a Boolean or a throw completion
+-- |
+-- | description
+-- | :   It is used to create a new own property of an object.
+-- |
+-- | 1\. Let \_newDesc\_ be the PropertyDescriptor { \[\[Value\]\]: \_V\_,
+-- | \[\[Writable\]\]: \*true\*, \[\[Enumerable\]\]: \*true\*,
+-- | \[\[Configurable\]\]: \*true\* }. 1. Return ?
+-- | \_O\_.\[\[DefineOwnProperty\]\](\_P\_, \_newDesc\_).
+-- |
+-- | This abstract operation creates a property whose attributes are set to
+-- | the same defaults used for properties created by the ECMAScript language
+-- | assignment operator. Normally, the property will not already exist. If
+-- | it does exist and is not configurable or if \_O\_ is not extensible,
+-- | \[\[DefineOwnProperty\]\] will return \*false\*.
 -- SPEC: L6671-L6680
 -- | # Set ( \_O\_: an Object, \_P\_: a property key, \_V\_: an ECMAScript language value, \_Throw\_: a Boolean, ): either a normal completion containing \~unused\~ or a throw completion
 -- |
@@ -3372,6 +3711,34 @@ def evalBinary : BinOp → Value → Value → Value
 -- | 1\. Let \_success\_ be ? \_O\_.\[\[DefineOwnProperty\]\](\_P\_,
 -- | \_desc\_). 1. If \_success\_ is \*false\*, throw a \*TypeError\*
 -- | exception. 1. Return \~unused\~.
+-- SPEC: L6715-L6733
+-- | # CreateNonEnumerableDataPropertyOrThrow ( \_O\_: an Object, \_P\_: a property key, \_V\_: an ECMAScript language value, ): \~unused\~
+-- |
+-- | description
+-- | :   It is used to create a new non-enumerable own property of an
+-- |     ordinary object.
+-- |
+-- | 1\. Assert: \_O\_ is an ordinary, extensible object with no
+-- | non-configurable properties. 1. Let \_newDesc\_ be the
+-- | PropertyDescriptor { \[\[Value\]\]: \_V\_, \[\[Writable\]\]: \*true\*,
+-- | \[\[Enumerable\]\]: \*false\*, \[\[Configurable\]\]: \*true\* }. 1.
+-- | Perform ! DefinePropertyOrThrow(\_O\_, \_P\_, \_newDesc\_). 1. Return
+-- | \~unused\~.
+-- |
+-- | This abstract operation creates a property whose attributes are set to
+-- | the same defaults used for properties created by the ECMAScript language
+-- | assignment operator except it is not enumerable. Normally, the property
+-- | will not already exist. If it does exist, DefinePropertyOrThrow is
+-- | guaranteed to complete normally.
+-- SPEC: L6745-L6753
+-- | # DeletePropertyOrThrow ( \_O\_: an Object, \_P\_: a property key, ): either a normal completion containing \~unused\~ or a throw completion
+-- |
+-- | description
+-- | :   It is used to remove a specific own property of an object. It throws
+-- |     an exception if the property is not configurable.
+-- |
+-- | 1\. Let \_success\_ be ? \_O\_.\[\[Delete\]\](\_P\_). 1. If \_success\_
+-- | is \*false\*, throw a \*TypeError\* exception. 1. Return \~unused\~.
 -- SPEC: L6754-L6765
 -- | # GetMethod ( \_V\_: an ECMAScript language value, \_P\_: a property key, ): either a normal completion containing either a function object or \*undefined\*, or a throw completion
 -- |
@@ -3384,6 +3751,45 @@ def evalBinary : BinOp → Value → Value → Value
 -- | \*undefined\* or \*null\*, return \*undefined\*. 1. If
 -- | IsCallable(\_func\_) is \*false\*, throw a \*TypeError\* exception. 1.
 -- | Return \_func\_.
+-- SPEC: L6774-L6782
+-- | # HasOwnProperty ( \_O\_: an Object, \_P\_: a property key, ): either a normal completion containing a Boolean or a throw completion
+-- |
+-- | description
+-- | :   It is used to determine whether an object has an own property with
+-- |     the specified property key.
+-- |
+-- | 1\. Let \_desc\_ be ? \_O\_.\[\[GetOwnProperty\]\](\_P\_). 1. If
+-- | \_desc\_ is \*undefined\*, return \*false\*. 1. Return \*true\*.
+-- SPEC: L6797-L6813
+-- | # Construct ( \_F\_: a constructor, optional \_argumentsList\_: a List of ECMAScript language values, optional \_newTarget\_: a constructor, ): either a normal completion containing an Object or a throw completion
+-- |
+-- | description
+-- | :   It is used to call the \[\[Construct\]\] internal method of a
+-- |     function object. \_argumentsList\_ and \_newTarget\_ are the values
+-- |     to be passed as the corresponding arguments of the internal method.
+-- |     If \_argumentsList\_ is not present, a new empty List is used as its
+-- |     value. If \_newTarget\_ is not present, \_F\_ is used as its value.
+-- |
+-- | 1\. If \_newTarget\_ is not present, set \_newTarget\_ to \_F\_. 1. If
+-- | \_argumentsList\_ is not present, set \_argumentsList\_ to a new empty
+-- | List. 1. Return ? \_F\_.\[\[Construct\]\](\_argumentsList\_,
+-- | \_newTarget\_).
+-- |
+-- | If \_newTarget\_ is not present, this operation is equivalent to: \`new
+-- | F(\...argumentsList)\`
+-- SPEC: L6896-L6908
+-- | # Invoke ( \_V\_: an ECMAScript language value, \_P\_: a property key, optional \_argumentsList\_: a List of ECMAScript language values, ): either a normal completion containing an ECMAScript language value or a throw completion
+-- |
+-- | description
+-- | :   It is used to call a method property of an ECMAScript language
+-- |     value. \_V\_ serves as both the lookup point for the property and
+-- |     the \*this\* value of the call. \_argumentsList\_ is the list of
+-- |     arguments values passed to the method. If \_argumentsList\_ is not
+-- |     present, a new empty List is used as its value.
+-- |
+-- | 1\. If \_argumentsList\_ is not present, set \_argumentsList\_ to a new
+-- | empty List. 1. Let \_func\_ be ? GetV(\_V\_, \_P\_). 1. Return ?
+-- | Call(\_func\_, \_V\_, \_argumentsList\_).
 -- SPEC: L10770-L10776
 -- | # OrdinaryDefineOwnProperty ( \_O\_: an Object, \_P\_: a property key, \_Desc\_: a Property Descriptor, ): either a normal completion containing a Boolean or a throw completion
 -- |
@@ -3391,6 +3797,11 @@ def evalBinary : BinOp → Value → Value → Value
 -- | \_extensible\_ be ? IsExtensible(\_O\_). 1. Return
 -- | ValidateAndApplyPropertyDescriptor(\_O\_, \_P\_, \_extensible\_,
 -- | \_Desc\_, \_current\_).
+-- SPEC: L10777-L10781
+-- | # IsCompatiblePropertyDescriptor ( \_Extensible\_: a Boolean, \_Desc\_: a Property Descriptor, \_Current\_: a Property Descriptor or \*undefined\*, ): a Boolean
+-- |
+-- | 1\. Return ValidateAndApplyPropertyDescriptor(\*undefined\*, \*\"\"\*,
+-- | \_Extensible\_, \_Desc\_, \_Current\_).
 -- SPEC: L9679-L9689
 -- | # NewFunctionEnvironment ( \_F\_: an ECMAScript function object, \_newTarget\_: an Object or \*undefined\*, ): a Function Environment Record
 -- |
@@ -3557,6 +3968,79 @@ def evalBinary : BinOp → Value → Value → Value
 -- | \[\[Value\]\]: 𝔽(\_length\_), \[\[Writable\]\]: \*true\*,
 -- | \[\[Enumerable\]\]: \*false\*, \[\[Configurable\]\]: \*false\* }). 1.
 -- | Return \_A\_.
+-- SPEC: L8864-L8872
+-- | # Declarative Environment Records
+-- |
+-- | Each [Declarative Environment Record]{.dfn
+-- | variants="Declarative Environment Records"} is associated with an
+-- | ECMAScript program scope containing variable, constant, let, class,
+-- | module, import, and/or function declarations. A Declarative Environment
+-- | Record binds the set of identifiers defined by the declarations
+-- | contained within its scope.
+-- SPEC: L8873-L8884
+-- | # HasBinding ( \_N\_: a String, ): a normal completion containing a Boolean
+-- |
+-- | for
+-- | :   a Declarative Environment Record \_envRec\_
+-- |
+-- | description
+-- | :   It determines if the argument identifier is one of the identifiers
+-- |     bound by the record.
+-- |
+-- | 1\. If \_envRec\_ has a binding for \_N\_, return \*true\*. 1. Return
+-- | \*false\*.
+-- SPEC: L9027-L9056
+-- | # Object Environment Records
+-- |
+-- | Each [Object Environment Record]{.dfn
+-- | variants="Object Environment Records"} is associated with an object
+-- | called its *binding object*. An Object Environment Record binds the set
+-- | of string identifier names that directly correspond to the property
+-- | names of its binding object. Property keys that are not strings in the
+-- | form of an \|IdentifierName\| are not included in the set of bound
+-- | identifiers. Both own and inherited properties are included in the set
+-- | regardless of the setting of their \[\[Enumerable\]\] attribute. Because
+-- | properties can be dynamically added and deleted from objects, the set of
+-- | identifiers bound by an Object Environment Record may potentially change
+-- | as a side-effect of any operation that adds or deletes properties. Any
+-- | bindings that are created as a result of such a side-effect are
+-- | considered to be a mutable binding even if the Writable attribute of the
+-- | corresponding property is \*false\*. Immutable bindings do not exist for
+-- | Object Environment Records.
+-- |
+-- | Object Environment Records created for \`with\` statements () can
+-- | provide their binding object as an implicit \*this\* value for use in
+-- | function calls. The capability is controlled by a Boolean
+-- | \[\[IsWithEnvironment\]\] field.
+-- |
+-- | Object Environment Records have the additional state fields listed in .
+-- |
+-- |   Field Name                  Value       Meaning
+-- |   --------------------------- ----------- --------------------------------------------------------------------------------
+-- |   \[\[BindingObject\]\]       an Object   The binding object of this Environment Record.
+-- |   \[\[IsWithEnvironment\]\]   a Boolean   Indicates whether this Environment Record is created for a \`with\` statement.
+-- SPEC: L9667-L9671
+-- | # NewDeclarativeEnvironment ( \_E\_: an Environment Record or \*null\*, ): a Declarative Environment Record
+-- |
+-- | 1\. Let \_env\_ be a new Declarative Environment Record containing no
+-- | bindings. 1. Set \_env\_.\[\[OuterEnv\]\] to \_E\_. 1. Return \_env\_.
+-- SPEC: L9672-L9678
+-- | # NewObjectEnvironment ( \_O\_: an Object, \_W\_: a Boolean, \_E\_: an Environment Record or \*null\*, ): an Object Environment Record
+-- |
+-- | 1\. Let \_env\_ be a new Object Environment Record. 1. Set
+-- | \_env\_.\[\[BindingObject\]\] to \_O\_. 1. Set
+-- | \_env\_.\[\[IsWithEnvironment\]\] to \_W\_. 1. Set
+-- | \_env\_.\[\[OuterEnv\]\] to \_E\_. 1. Return \_env\_.
+-- SPEC: L9690-L9699
+-- | # NewGlobalEnvironment ( \_G\_: an Object, \_thisValue\_: an Object, ): a Global Environment Record
+-- |
+-- | 1\. Let \_objRec\_ be NewObjectEnvironment(\_G\_, \*false\*,
+-- | \*null\*). 1. Let \_dclRec\_ be NewDeclarativeEnvironment(\*null\*). 1.
+-- | Let \_env\_ be a new Global Environment Record. 1. Set
+-- | \_env\_.\[\[ObjectRecord\]\] to \_objRec\_. 1. Set
+-- | \_env\_.\[\[GlobalThisValue\]\] to \_thisValue\_. 1. Set
+-- | \_env\_.\[\[DeclarativeRecord\]\] to \_dclRec\_. 1. Set
+-- | \_env\_.\[\[OuterEnv\]\] to \*null\*. 1. Return \_env\_.
 -- SPEC: L9057-L9074
 -- | # HasBinding ( \_N\_: a String, ): either a normal completion containing a Boolean or a throw completion
 -- |
@@ -3629,6 +4113,49 @@ def evalBinary : BinOp → Value → Value → Value
 -- | \_constructor\_.\[\[Fields\]\]. 1. For each element \_fieldRecord\_ of
 -- | \_fields\_, do 1. Perform ? DefineField(\_O\_, \_fieldRecord\_). 1.
 -- | Return \~unused\~.
+-- SPEC: L10719-L10725
+-- | # \[\[IsExtensible\]\] ( ): a normal completion containing a Boolean
+-- |
+-- | for
+-- | :   an ordinary object \_O\_
+-- |
+-- | 1\. Return OrdinaryIsExtensible(\_O\_).
+-- SPEC: L10726-L10729
+-- | # OrdinaryIsExtensible ( \_O\_: an Object, ): a Boolean
+-- |
+-- | 1\. Return \_O\_.\[\[Extensible\]\].
+-- SPEC: L10730-L10736
+-- | # \[\[PreventExtensions\]\] ( ): a normal completion containing \*true\*
+-- |
+-- | for
+-- | :   an ordinary object \_O\_
+-- |
+-- | 1\. Return OrdinaryPreventExtensions(\_O\_).
+-- SPEC: L10737-L10740
+-- | # OrdinaryPreventExtensions ( \_O\_: an Object, ): \*true\*
+-- |
+-- | 1\. Set \_O\_.\[\[Extensible\]\] to \*false\*. 1. Return \*true\*.
+-- SPEC: L10741-L10747
+-- | # \[\[GetOwnProperty\]\] ( \_P\_: a property key, ): a normal completion containing either a Property Descriptor or \*undefined\*
+-- |
+-- | for
+-- | :   an ordinary object \_O\_
+-- |
+-- | 1\. Return OrdinaryGetOwnProperty(\_O\_, \_P\_).
+-- SPEC: L10763-L10769
+-- | # \[\[DefineOwnProperty\]\] ( \_P\_: a property key, \_Desc\_: a Property Descriptor, ): either a normal completion containing a Boolean or a throw completion
+-- |
+-- | for
+-- | :   an ordinary object \_O\_
+-- |
+-- | 1\. Return ? OrdinaryDefineOwnProperty(\_O\_, \_P\_, \_Desc\_).
+-- SPEC: L10856-L10862
+-- | # \[\[HasProperty\]\] ( \_P\_: a property key, ): either a normal completion containing a Boolean or a throw completion
+-- |
+-- | for
+-- | :   an ordinary object \_O\_
+-- |
+-- | 1\. Return ? OrdinaryHasProperty(\_O\_, \_P\_).
 -- SPEC: L10871-L10889
 -- | # \[\[Get\]\] ( \_P\_: a property key, \_Receiver\_: an ECMAScript language value, ): either a normal completion containing an ECMAScript language value or a throw completion
 -- |
@@ -3648,6 +4175,27 @@ def evalBinary : BinOp → Value → Value → Value
 -- | \*true\*. 1. Let \_getter\_ be \_desc\_.\[\[Get\]\]. 1. If \_getter\_ is
 -- | \*undefined\*, return \*undefined\*. 1. Return ? Call(\_getter\_,
 -- | \_Receiver\_).
+-- SPEC: L10890-L10896
+-- | # \[\[Set\]\] ( \_P\_: a property key, \_V\_: an ECMAScript language value, \_Receiver\_: an ECMAScript language value, ): either a normal completion containing a Boolean or a throw completion
+-- |
+-- | for
+-- | :   an ordinary object \_O\_
+-- |
+-- | 1\. Return ? OrdinarySet(\_O\_, \_P\_, \_V\_, \_Receiver\_).
+-- SPEC: L10683-L10689
+-- | # \[\[GetPrototypeOf\]\] ( ): a normal completion containing either an Object or \*null\*
+-- |
+-- | for
+-- | :   an ordinary object \_O\_
+-- |
+-- | 1\. Return OrdinaryGetPrototypeOf(\_O\_).
+-- SPEC: L10694-L10700
+-- | # \[\[SetPrototypeOf\]\] ( \_V\_: an Object or \*null\*, ): a normal completion containing a Boolean
+-- |
+-- | for
+-- | :   an ordinary object \_O\_
+-- |
+-- | 1\. Return OrdinarySetPrototypeOf(\_O\_, \_V\_).
 -- SPEC: L10927-L10941
 -- | # \[\[Delete\]\] ( \_P\_: a property key, ): either a normal completion containing a Boolean or a throw completion
 -- |
