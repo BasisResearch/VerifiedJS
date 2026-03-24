@@ -6503,6 +6503,60 @@ theorem EmitCodeCorr.unOp_i32_inv {op : String} {rest : List IRInstr} {wcode : L
   | unOp_i32_wrapI64 _ rw hrw => right; left; exact ⟨rfl, rw, rfl, hrw⟩
   | general _ _ _ _ hf _ => exact hf.elim
 
+/-- Inversion for load .i32 offset :: rest. -/
+theorem EmitCodeCorr.load_i32_inv {offset : Nat} {rest : List IRInstr} {wcode : List Instr}
+    (h : EmitCodeCorr (IRInstr.load .i32 offset :: rest) wcode) :
+    (∃ rest_w, wcode = Instr.i32Load { offset := offset, align := 2 } :: rest_w ∧ EmitCodeCorr rest rest_w) ∨
+    False := by
+  cases h with
+  | load_i32 _ rw hrw => left; exact ⟨rw, rfl, hrw⟩
+  | general _ _ _ _ hf _ => exact hf.elim
+
+/-- Inversion for load .f64 offset :: rest. -/
+theorem EmitCodeCorr.load_f64_inv {offset : Nat} {rest : List IRInstr} {wcode : List Instr}
+    (h : EmitCodeCorr (IRInstr.load .f64 offset :: rest) wcode) :
+    (∃ rest_w, wcode = Instr.f64Load { offset := offset, align := 3 } :: rest_w ∧ EmitCodeCorr rest rest_w) ∨
+    False := by
+  cases h with
+  | load_f64 _ rw hrw => left; exact ⟨rw, rfl, hrw⟩
+  | general _ _ _ _ hf _ => exact hf.elim
+
+/-- Inversion for store .i32 offset :: rest. -/
+theorem EmitCodeCorr.store_i32_inv {offset : Nat} {rest : List IRInstr} {wcode : List Instr}
+    (h : EmitCodeCorr (IRInstr.store .i32 offset :: rest) wcode) :
+    (∃ rest_w, wcode = Instr.i32Store { offset := offset, align := 2 } :: rest_w ∧ EmitCodeCorr rest rest_w) ∨
+    False := by
+  cases h with
+  | store_i32 _ rw hrw => left; exact ⟨rw, rfl, hrw⟩
+  | general _ _ _ _ hf _ => exact hf.elim
+
+/-- Inversion for store .f64 offset :: rest. -/
+theorem EmitCodeCorr.store_f64_inv {offset : Nat} {rest : List IRInstr} {wcode : List Instr}
+    (h : EmitCodeCorr (IRInstr.store .f64 offset :: rest) wcode) :
+    (∃ rest_w, wcode = Instr.f64Store { offset := offset, align := 3 } :: rest_w ∧ EmitCodeCorr rest rest_w) ∨
+    False := by
+  cases h with
+  | store_f64 _ rw hrw => left; exact ⟨rw, rfl, hrw⟩
+  | general _ _ _ _ hf _ => exact hf.elim
+
+/-- Inversion for store8 offset :: rest. -/
+theorem EmitCodeCorr.store8_inv {offset : Nat} {rest : List IRInstr} {wcode : List Instr}
+    (h : EmitCodeCorr (IRInstr.store8 offset :: rest) wcode) :
+    (∃ rest_w, wcode = Instr.i32Store8 { offset := offset, align := 0 } :: rest_w ∧ EmitCodeCorr rest rest_w) ∨
+    False := by
+  cases h with
+  | store8_ _ rw hrw => left; exact ⟨rw, rfl, hrw⟩
+  | general _ _ _ _ hf _ => exact hf.elim
+
+/-- Inversion for callIndirect typeIdx :: rest. -/
+theorem EmitCodeCorr.callIndirect_inv {typeIdx : Nat} {rest : List IRInstr} {wcode : List Instr}
+    (h : EmitCodeCorr (IRInstr.callIndirect typeIdx :: rest) wcode) :
+    (∃ rest_w, wcode = Instr.callIndirect typeIdx 0 :: rest_w ∧ EmitCodeCorr rest rest_w) ∨
+    False := by
+  cases h with
+  | callIndirect_ _ _ rw hrw => left; exact ⟨rw, rfl, hrw⟩
+  | general _ _ _ _ hf _ => exact hf.elim
+
 /-- General inversion for any IR instruction. -/
 theorem EmitCodeCorr.cons_inv {instr : IRInstr} {rest : List IRInstr} {wcode : List Instr}
     (h : EmitCodeCorr (instr :: rest) wcode) :
