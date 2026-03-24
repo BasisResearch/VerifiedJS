@@ -255,7 +255,7 @@ def Env.extend (env : Env) (name : VarName) (v : Value) : Env :=
 -- | method. An implementation might choose to avoid the actual creation of
 -- | that object.
 
--- SPEC: L18579-L18598
+-- SPEC: L18579-L18596
 -- | # Runtime Semantics: CatchClauseEvaluation ( \_thrownValue\_: an ECMAScript language value, ): either a normal completion containing either an ECMAScript language value or \~empty\~, or an abrupt completion
 -- |
 -- | Catch : \`catch\` \`(\` CatchParameter \`)\` Block 1. Let \_oldEnv\_ be
