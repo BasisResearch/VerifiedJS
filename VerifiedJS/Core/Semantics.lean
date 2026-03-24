@@ -1645,6 +1645,67 @@ def Env.extend (env : Env) (name : VarName) (v : Value) : Env :=
 -- | Let \_resolvingFunctions\_ be the Record { \[\[Resolve\]\]:
 -- | \*undefined\*, \[\[Reject\]\]: \*undefined\* }. 1. Let
 -- | \_executorClosure\_ be a new Abstract Closure with parameters
+-- SPEC: L10726-L10728
+-- | # OrdinaryIsExtensible ( \_O\_: an Object, ): a Boolean
+-- |
+-- | 1\. Return \_O\_.\[\[Extensible\]\].
+-- SPEC: L10738-L10740
+-- | # OrdinaryPreventExtensions ( \_O\_: an Object, ): \*true\*
+-- |
+-- | 1\. Set \_O\_.\[\[Extensible\]\] to \*false\*. 1. Return \*true\*.
+-- SPEC: L6797-L6810
+-- | # Construct ( \_F\_: a constructor, optional \_argumentsList\_: a List of ECMAScript language values, optional \_newTarget\_: a constructor, ): either a normal completion containing an Object or a throw completion
+-- |
+-- | description
+-- | :   It is used to call the \[\[Construct\]\] internal method of a
+-- |     function object. \_argumentsList\_ and \_newTarget\_ are the values
+-- |     to be passed as the corresponding arguments of the internal method.
+-- |     If \_argumentsList\_ is not present, a new empty List is used as its
+-- |     value. If \_newTarget\_ is not present, \_F\_ is used as its value.
+-- |
+-- | 1\. If \_newTarget\_ is not present, set \_newTarget\_ to \_F\_. 1. If
+-- | \_argumentsList\_ is not present, set \_argumentsList\_ to a new empty
+-- | List. 1. Return ? \_F\_.\[\[Construct\]\](\_argumentsList\_,
+-- | \_newTarget\_).
+-- SPEC: L3572-L3585
+-- | # Abstract Operations
+-- |
+-- | In order to facilitate their use in multiple parts of this
+-- | specification, some algorithms, called [abstract operations]{.dfn}, are
+-- | named and written in parameterized functional form so that they may be
+-- | referenced by name from within other algorithms. Abstract operations are
+-- | typically referenced using a functional application style such as
+-- | OperationName(\_arg1\_, \_arg2\_). Some abstract operations are treated
+-- | as polymorphically dispatched methods of class-like specification
+-- | abstractions. Such method-like abstract operations are typically
+-- | referenced using a method application style such as
+-- | \_someValue\_.OperationName(\_arg1\_, \_arg2\_).
+-- |
+-- | # Syntax-Directed Operations
+-- SPEC: L5862-L5878
+-- | # The PrivateElement Specification Type
+-- |
+-- | The PrivateElement type is a Record used in the specification of private
+-- | class fields, methods, and accessors. Although Property Descriptors are
+-- | not used for private elements, private fields behave similarly to
+-- | non-configurable, non-enumerable, writable data properties, private
+-- | methods behave similarly to non-configurable, non-enumerable,
+-- | non-writable data properties, and private accessors behave similarly to
+-- | non-configurable, non-enumerable accessor properties.
+-- |
+-- | Values of the PrivateElement type are Record values whose fields are
+-- | defined by . Such values are referred to as [PrivateElements]{.dfn
+-- SPEC: L5746-L5756
+-- | # Declarative Environment Records
+-- |
+-- | Each Declarative Environment Record is associated with an ECMAScript
+-- | program scope containing variable, constant, let, class, module, import,
+-- | and/or function declarations. A Declarative Environment Record binds the
+-- | set of identifiers defined by the declarations contained within its
+-- | scope.
+-- |
+-- | The behaviour of the concrete specification methods for Declarative
+-- | Environment Records is defined by the following algorithms.
 
 /-- Check whether an expression is a value expression. -/
 def exprValue? : Expr → Option Value
