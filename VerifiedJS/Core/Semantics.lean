@@ -7894,6 +7894,84 @@ def step? (s : State) : Option (TraceEvent × State) :=
   -- | Append \_P\_ to \_keys\_. 1. For each own property key \_P\_ of \_O\_
   -- | such that \_P\_ is a Symbol, in ascending chronological order of
   -- | property creation, do 1. Append \_P\_ to \_keys\_. 1. Return \_keys\_.
+  -- SPEC: L15522-L15564
+  -- | # Property Accessors
+  -- |
+  -- | Properties are accessed by name, using either the dot notation:
+  -- |
+  -- | ::: rhs
+  -- | \|MemberExpression\| \`.\` \|IdentifierName\|\
+  -- | \|CallExpression\| \`.\` \|IdentifierName\|
+  -- | :::
+  -- |
+  -- | or the bracket notation:
+  -- |
+  -- | ::: rhs
+  -- | \|MemberExpression\| \`\[\` \|Expression\| \`\]\`\
+  -- | \|CallExpression\| \`\[\` \|Expression\| \`\]\`
+  -- | :::
+  -- |
+  -- | The dot notation is explained by the following syntactic conversion:
+  -- |
+  -- | ::: rhs
+  -- | \|MemberExpression\| \`.\` \|IdentifierName\|
+  -- | :::
+  -- |
+  -- | is identical in its behaviour to
+  -- |
+  -- | ::: rhs
+  -- | \|MemberExpression\| \`\[\` \<*identifier-name-string*\> \`\]\`
+  -- | :::
+  -- |
+  -- | and similarly
+  -- |
+  -- | ::: rhs
+  -- | \|CallExpression\| \`.\` \|IdentifierName\|
+  -- | :::
+  -- |
+  -- | is identical in its behaviour to
+  -- |
+  -- | ::: rhs
+  -- | \|CallExpression\| \`\[\` \<*identifier-name-string*\> \`\]\`
+  -- | :::
+  -- |
+  -- | where \<*identifier-name-string*\> is the StringValue of
+  -- | \|IdentifierName\|.
+  -- SPEC: L15565-L15599
+  -- | # Runtime Semantics: Evaluation
+  -- |
+  -- | MemberExpression : MemberExpression \`\[\` Expression \`\]\` 1. Let
+  -- | \_baseReference\_ be ? Evaluation of \|MemberExpression\|. 1. Let
+  -- | \_baseValue\_ be ? GetValue(\_baseReference\_). 1. Let \_strict\_ be
+  -- | IsStrict(this \|MemberExpression\|). 1. Return ?
+  -- | EvaluatePropertyAccessWithExpressionKey(\_baseValue\_, \|Expression\|,
+  -- | \_strict\_). MemberExpression : MemberExpression \`.\` IdentifierName 1.
+  -- | Let \_baseReference\_ be ? Evaluation of \|MemberExpression\|. 1. Let
+  -- | \_baseValue\_ be ? GetValue(\_baseReference\_). 1. Let \_strict\_ be
+  -- | IsStrict(this \|MemberExpression\|). 1. Return
+  -- | EvaluatePropertyAccessWithIdentifierKey(\_baseValue\_,
+  -- | \|IdentifierName\|, \_strict\_). MemberExpression : MemberExpression
+  -- | \`.\` PrivateIdentifier 1. Let \_baseReference\_ be ? Evaluation of
+  -- | \|MemberExpression\|. 1. Let \_baseValue\_ be ?
+  -- | GetValue(\_baseReference\_). 1. Let \_fieldNameString\_ be the
+  -- | StringValue of \|PrivateIdentifier\|. 1. Return
+  -- | MakePrivateReference(\_baseValue\_, \_fieldNameString\_). CallExpression
+  -- | : CallExpression \`\[\` Expression \`\]\` 1. Let \_baseReference\_ be ?
+  -- | Evaluation of \|CallExpression\|. 1. Let \_baseValue\_ be ?
+  -- | GetValue(\_baseReference\_). 1. Let \_strict\_ be IsStrict(this
+  -- | \|CallExpression\|). 1. Return ?
+  -- | EvaluatePropertyAccessWithExpressionKey(\_baseValue\_, \|Expression\|,
+  -- | \_strict\_). CallExpression : CallExpression \`.\` IdentifierName 1. Let
+  -- | \_baseReference\_ be ? Evaluation of \|CallExpression\|. 1. Let
+  -- | \_baseValue\_ be ? GetValue(\_baseReference\_). 1. Let \_strict\_ be
+  -- | IsStrict(this \|CallExpression\|). 1. Return
+  -- | EvaluatePropertyAccessWithIdentifierKey(\_baseValue\_,
+  -- | \|IdentifierName\|, \_strict\_). CallExpression : CallExpression \`.\`
+  -- | PrivateIdentifier 1. Let \_baseReference\_ be ? Evaluation of
+  -- | \|CallExpression\|. 1. Let \_baseValue\_ be ?
+  -- | GetValue(\_baseReference\_). 1. Let \_fieldNameString\_ be the
+  -- | StringValue of \|PrivateIdentifier\|. 1. Return
+  -- | MakePrivateReference(\_baseValue\_, \_fieldNameString\_).
   | .getProp obj prop =>
       match exprValue? obj with
       | none =>
@@ -8005,6 +8083,31 @@ def step? (s : State) : Option (TraceEvent × State) :=
   -- | \_identifierName\_. 1. Return the Reference Record { \[\[Base\]\]:
   -- | \_baseValue\_, \[\[ReferencedName\]\]: \_propertyNameString\_,
   -- | \[\[Strict\]\]: \_strict\_, \[\[ThisValue\]\]: \~empty\~ }.
+  -- SPEC: L15774-L15778
+  -- | # Optional Chains
+  -- |
+  -- | An optional chain is a chain of one or more property accesses and
+  -- | function calls, the first of which begins with the token \`?.\`.
+  -- SPEC: L15779-L15798
+  -- | # Runtime Semantics: Evaluation
+  -- |
+  -- | OptionalExpression : MemberExpression OptionalChain 1. Let
+  -- | \_baseReference\_ be ? Evaluation of \|MemberExpression\|. 1. Let
+  -- | \_baseValue\_ be ? GetValue(\_baseReference\_). 1. If \_baseValue\_ is
+  -- | either \*undefined\* or \*null\*, then 1. Return \*undefined\*. 1.
+  -- | Return ? ChainEvaluation of \|OptionalChain\| with arguments
+  -- | \_baseValue\_ and \_baseReference\_. OptionalExpression : CallExpression
+  -- | OptionalChain 1. Let \_baseReference\_ be ? Evaluation of
+  -- | \|CallExpression\|. 1. Let \_baseValue\_ be ?
+  -- | GetValue(\_baseReference\_). 1. If \_baseValue\_ is either \*undefined\*
+  -- | or \*null\*, then 1. Return \*undefined\*. 1. Return ? ChainEvaluation
+  -- | of \|OptionalChain\| with arguments \_baseValue\_ and \_baseReference\_.
+  -- | OptionalExpression : OptionalExpression OptionalChain 1. Let
+  -- | \_baseReference\_ be ? Evaluation of \|OptionalExpression\|. 1. Let
+  -- | \_baseValue\_ be ? GetValue(\_baseReference\_). 1. If \_baseValue\_ is
+  -- | either \*undefined\* or \*null\*, then 1. Return \*undefined\*. 1.
+  -- | Return ? ChainEvaluation of \|OptionalChain\| with arguments
+  -- | \_baseValue\_ and \_baseReference\_.
   | .getIndex obj idx =>
       match exprValue? obj, exprValue? idx with
       | none, _ =>
@@ -9120,6 +9223,66 @@ def step? (s : State) : Option (TraceEvent × State) :=
   -- | \|CaseBlock\| algorithm uses its return value to determine which
   -- | \|StatementList\| to start executing.
   -- NOTE: switch is desugared by the parser to if-else chains.
+  -- SPEC: L17540-L17549
+  -- | # Empty Statement
+  -- |
+  -- | ## Syntax
+  -- |
+  -- | EmptyStatement : \`;\`
+  -- |
+  -- | # Runtime Semantics: Evaluation
+  -- |
+  -- | EmptyStatement : \`;\` 1. Return \~empty\~.
+  -- SPEC: L18224-L18248
+  -- | # The \`continue\` Statement
+  -- |
+  -- | ## Syntax
+  -- |
+  -- | ContinueStatement\[Yield, Await\] : \`continue\` \`;\` \`continue\` \[no
+  -- | LineTerminator here\] LabelIdentifier\[?Yield, ?Await\] \`;\`
+  -- |
+  -- | # Static Semantics: Early Errors
+  -- |
+  -- | ContinueStatement : \`continue\` \`;\` \`continue\` LabelIdentifier
+  -- | \`;\`
+  -- |
+  -- | - It is a Syntax Error if this \|ContinueStatement\| is not nested,
+  -- |   directly or indirectly (but not crossing function or \`static\`
+  -- |   initialization block boundaries), within an \|IterationStatement\|.
+  -- |
+  -- | # Runtime Semantics: Evaluation
+  -- |
+  -- | ContinueStatement : \`continue\` \`;\` 1. Return Completion Record {
+  -- | \[\[Type\]\]: \~continue\~, \[\[Value\]\]: \~empty\~, \[\[Target\]\]:
+  -- | \~empty\~ }. ContinueStatement : \`continue\` LabelIdentifier \`;\` 1.
+  -- | Let \_label\_ be the StringValue of \|LabelIdentifier\|. 1. Return
+  -- | Completion Record { \[\[Type\]\]: \~continue\~, \[\[Value\]\]:
+  -- | \~empty\~, \[\[Target\]\]: \_label\_ }.
+  -- SPEC: L18249-L18273
+  -- | # The \`break\` Statement
+  -- |
+  -- | ## Syntax
+  -- |
+  -- | BreakStatement\[Yield, Await\] : \`break\` \`;\` \`break\` \[no
+  -- | LineTerminator here\] LabelIdentifier\[?Yield, ?Await\] \`;\`
+  -- |
+  -- | # Static Semantics: Early Errors
+  -- |
+  -- | BreakStatement : \`break\` \`;\`
+  -- |
+  -- | - It is a Syntax Error if this \|BreakStatement\| is not nested,
+  -- |   directly or indirectly (but not crossing function or \`static\`
+  -- |   initialization block boundaries), within an \|IterationStatement\| or
+  -- |   a \|SwitchStatement\|.
+  -- |
+  -- | # Runtime Semantics: Evaluation
+  -- |
+  -- | BreakStatement : \`break\` \`;\` 1. Return Completion Record {
+  -- | \[\[Type\]\]: \~break\~, \[\[Value\]\]: \~empty\~, \[\[Target\]\]:
+  -- | \~empty\~ }. BreakStatement : \`break\` LabelIdentifier \`;\` 1. Let
+  -- | \_label\_ be the StringValue of \|LabelIdentifier\|. 1. Return
+  -- | Completion Record { \[\[Type\]\]: \~break\~, \[\[Value\]\]: \~empty\~,
+  -- | \[\[Target\]\]: \_label\_ }.
   -- SPEC: L18453-L18469
   -- | # Labelled Statements
   -- |
@@ -10526,6 +10689,131 @@ theorem Step_iff (s : State) (t : TraceEvent) (s' : State) :
 -- | \|BindingIdentifier\| that is the name of a function whose body contains
 -- | a \"use strict\" directive, even if the surrounding code is not strict
 -- | mode code.
+-- SPEC: L13260-L13284
+-- | # Static Semantics: ParseText ( \_sourceText\_: a String or a sequence of Unicode code points, \_goalSymbol\_: a nonterminal in one of the ECMAScript grammars, ): a Parse Node or a non-empty List of \*SyntaxError\* objects
+-- |
+-- | 1\. If \_sourceText\_ is a String, set \_sourceText\_ to
+-- | StringToCodePoints(\_sourceText\_). 1. Attempt to parse \_sourceText\_
+-- | using \_goalSymbol\_ as the goal symbol, and analyse the parse result
+-- | for any early error conditions. Parsing and early error detection may be
+-- | interleaved in an implementation-defined manner. 1. If the parse
+-- | succeeded and no early errors were found, return the Parse Node (an
+-- | instance of \_goalSymbol\_) at the root of the parse tree resulting from
+-- | the parse. 1. Return a List of one or more \*SyntaxError\* objects
+-- | representing the parsing errors and/or early errors. If more than one
+-- | parsing error or early error is present, the number and ordering of
+-- | error objects in the list is implementation-defined, but at least one
+-- | must be present.
+-- |
+-- | Consider a text that has an early error at a particular point, and also
+-- | a syntax error at a later point. An implementation that does a parse
+-- | pass followed by an early errors pass might report the syntax error and
+-- | not proceed to the early errors pass. An implementation that interleaves
+-- | the two activities might report the early error and not proceed to find
+-- | the syntax error. A third implementation might report both errors. All
+-- | of these behaviours are conformant.
+-- |
+-- | See also clause .
+-- SPEC: L13386-L13417
+-- | # Strict Mode Code
+-- |
+-- | An ECMAScript syntactic unit may be processed using either unrestricted
+-- | or strict mode syntax and semantics (). Code is interpreted as [strict
+-- | mode code]{.dfn} in the following situations:
+-- |
+-- | - Global code is strict mode code if it begins with a Directive Prologue
+-- |   that contains a Use Strict Directive.
+-- | - Module code is always strict mode code.
+-- | - All parts of a \|ClassDeclaration\| or a \|ClassExpression\| are
+-- |   strict mode code.
+-- | - Eval code is strict mode code if it begins with a Directive Prologue
+-- |   that contains a Use Strict Directive or if the call to \`eval\` is a
+-- |   direct eval that is contained in strict mode code.
+-- | - Function code is strict mode code if the associated
+-- |   \|FunctionDeclaration\|, \|FunctionExpression\|,
+-- |   \|GeneratorDeclaration\|, \|GeneratorExpression\|,
+-- |   \|AsyncFunctionDeclaration\|, \|AsyncFunctionExpression\|,
+-- |   \|AsyncGeneratorDeclaration\|, \|AsyncGeneratorExpression\|,
+-- |   \|MethodDefinition\|, \|ArrowFunction\|, or \|AsyncArrowFunction\| is
+-- |   contained in strict mode code or if the code that produces the value
+-- |   of the function\'s \[\[ECMAScriptCode\]\] internal slot begins with a
+-- |   Directive Prologue that contains a Use Strict Directive.
+-- | - Function code that is supplied as the arguments to the built-in
+-- |   Function, Generator, AsyncFunction, and AsyncGenerator constructors is
+-- |   strict mode code if the last argument is a String that when processed
+-- |   is a \|FunctionBody\| that begins with a Directive Prologue that
+-- |   contains a Use Strict Directive.
+-- |
+-- | ECMAScript code that is not strict mode code is called [non-strict
+-- | code]{#non-strict-code .dfn}.
+-- SPEC: L13418-L13422
+-- | # Static Semantics: IsStrict ( \_node\_: a Parse Node, ): a Boolean
+-- |
+-- | 1\. If the source text matched by \_node\_ is strict mode code, return
+-- | \*true\*. 1. Return \*false\*.
+-- SPEC: L13432-L13493
+-- | # ECMAScript Language: Lexical Grammar
+-- |
+-- | The source text of an ECMAScript \|Script\| or \|Module\| is first
+-- | converted into a sequence of input elements, which are tokens, line
+-- | terminators, comments, or white space. The source text is scanned from
+-- | left to right, repeatedly taking the longest possible sequence of code
+-- | points as the next input element.
+-- |
+-- | There are several situations where the identification of lexical input
+-- | elements is sensitive to the syntactic grammar context that is consuming
+-- | the input elements. This requires multiple goal symbols for the lexical
+-- | grammar. The \|InputElementHashbangOrRegExp\| goal is used at the start
+-- | of a \|Script\| or \|Module\|. The \|InputElementRegExpOrTemplateTail\|
+-- | goal is used in syntactic grammar contexts where a
+-- | \|RegularExpressionLiteral\|, a \|TemplateMiddle\|, or a
+-- | \|TemplateTail\| is permitted. The \|InputElementRegExp\| goal symbol is
+-- | used in all syntactic grammar contexts where a
+-- | \|RegularExpressionLiteral\| is permitted but neither a
+-- | \|TemplateMiddle\|, nor a \|TemplateTail\| is permitted. The
+-- | \|InputElementTemplateTail\| goal is used in all syntactic grammar
+-- | contexts where a \|TemplateMiddle\| or a \|TemplateTail\| is permitted
+-- | but a \|RegularExpressionLiteral\| is not permitted. In all other
+-- | contexts, \|InputElementDiv\| is used as the lexical goal symbol.
+-- |
+-- | The use of multiple lexical goals ensures that there are no lexical
+-- | ambiguities that would affect automatic semicolon insertion. For
+-- | example, there are no syntactic grammar contexts where both a leading
+-- | division or division-assignment, and a leading
+-- | \|RegularExpressionLiteral\| are permitted. This is not affected by
+-- | semicolon insertion (see ); in examples such as the following:
+-- |
+-- | ``` javascript
+-- |
+-- |       a = b
+-- |       /hi/g.exec(c).map(d);
+-- |
+-- | ```
+-- |
+-- | where the first non-whitespace, non-comment code point after a
+-- | \|LineTerminator\| is U+002F (SOLIDUS) and the syntactic context allows
+-- | division or division-assignment, no semicolon is inserted at the
+-- | \|LineTerminator\|. That is, the above example is interpreted in the
+-- | same way as:
+-- |
+-- | ``` javascript
+-- |
+-- |       a = b / hi / g.exec(c).map(d);
+-- |
+-- | ```
+-- |
+-- | ## Syntax
+-- |
+-- | InputElementDiv :: WhiteSpace LineTerminator Comment CommonToken
+-- | DivPunctuator RightBracePunctuator InputElementRegExp :: WhiteSpace
+-- | LineTerminator Comment CommonToken RightBracePunctuator
+-- | RegularExpressionLiteral InputElementRegExpOrTemplateTail :: WhiteSpace
+-- | LineTerminator Comment CommonToken RegularExpressionLiteral
+-- | TemplateSubstitutionTail InputElementTemplateTail :: WhiteSpace
+-- | LineTerminator Comment CommonToken DivPunctuator
+-- | TemplateSubstitutionTail InputElementHashbangOrRegExp :: WhiteSpace
+-- | LineTerminator Comment CommonToken HashbangComment
+-- | RegularExpressionLiteral
 -- SPEC: L20654-L20665
 -- | # GlobalDeclarationInstantiation ( \_script\_: a \|Script\| Parse Node, \_env\_: a Global Environment Record, ): either a normal completion containing \~unused\~ or a throw completion
 -- |
@@ -10537,6 +10825,8 @@ theorem Step_iff (s : State) (t : TraceEvent) (s' : State) :
 -- | When an execution context is established for evaluating scripts,
 -- | declarations are instantiated in the current global environment. Each
 -- | global binding declared in the code is instantiated.
+-- |
+-- | It performs the following steps when called:
 -- SPEC: L22940-L23070
 -- | # ECMAScript Standard Built-in Objects
 -- |
@@ -10668,7 +10958,7 @@ theorem Step_iff (s : State) (t : TraceEvent) (s' : State) :
 -- | is described, the set accessor function is the default value,
 -- | \*undefined\*. If only a set accessor is described the get accessor is
 -- | the default value, \*undefined\*.
--- SPEC: L23071-L23084
+-- SPEC: L23071-L23083
 -- | # The Global Object
 -- |
 -- | The global object:
