@@ -6766,6 +6766,29 @@ theorem stack_corr_i32_i32_inv
       have := helems (i + 2) (by simp; omega)
       simpa using this⟩
 
+/-- Stack correspondence inversion for two f64 values. -/
+theorem stack_corr_f64_f64_inv
+    (a b : Float) (stk : List IRValue) (wstk : List WasmValue)
+    (hlen : (IRValue.f64 a :: .f64 b :: stk).length = wstk.length)
+    (helems : ∀ i, i < (IRValue.f64 a :: .f64 b :: stk).length →
+      ∃ irv wv, (IRValue.f64 a :: .f64 b :: stk)[i]? = some irv ∧ wstk[i]? = some wv ∧ IRValueToWasmValue irv wv) :
+    ∃ wstk', wstk = .f64 a :: .f64 b :: wstk' ∧
+      wstk'.length = stk.length ∧
+      ∀ i, i < stk.length →
+        ∃ irv wv, stk[i]? = some irv ∧ wstk'[i]? = some wv ∧ IRValueToWasmValue irv wv := by
+  match wstk with
+  | [] => simp at hlen
+  | [_] => simp at hlen
+  | w0 :: w1 :: wstk' =>
+    simp at hlen
+    have h0 := helems 0 (by simp)
+    simp at h0; cases h0
+    have h1 := helems 1 (by simp)
+    simp at h1; cases h1
+    exact ⟨wstk', rfl, hlen.symm, fun i hi => by
+      have := helems (i + 2) (by simp; omega)
+      simpa using this⟩
+
 /-- Simulation relation for IR → Wasm emit.
     The step correspondence field provides the matching Wasm step for each IR step.
     REF: Standard forward simulation diagram. -/
@@ -7561,7 +7584,70 @@ theorem step_sim (irmod : IRModule) (wmod : Module) :
             rcases hc.binOp_f64_inv with
               ⟨rfl, rest_w, hcw, hrest⟩ | ⟨rfl, rest_w, hcw, hrest⟩ |
               ⟨rfl, rest_w, hcw, hrest⟩ | ⟨rfl, rest_w, hcw, hrest⟩ | hf
-            all_goals first | exact hf.elim | sorry
+            all_goals first | exact hf.elim | (
+              match hstk : s1.stack with
+              | [] =>
+                -- Stack underflow: both trap
+                simp [irStep?, hcode_ir, hstk, irPop2?, irTrapState, irPushTrace] at hstep
+                obtain ⟨rfl, rfl⟩ := hstep
+                have hlen := hrel.hstack.1; rw [hstk] at hlen; simp at hlen
+                have hs2 : s2.stack = [] := by cases s2.stack <;> simp_all
+                have hw : step? s2 = some (.trap ("type mismatch in " ++ _),
+                    { s2 with code := [], trace := s2.trace ++ [.trap ("type mismatch in " ++ _)] }) := by
+                  simp [step?, hcw, hs2, pop2?, withF64Bin, trapState, pushTrace]
+                exact ⟨_, by simp [traceToWasm]; exact hw,
+                  { hemit := hrel.hemit, hcode := .nil, hstack := by simp [hs2],
+                    hframes_len := hrel.hframes_len, hframes_locals := hrel.hframes_locals,
+                    hframes_vals := hrel.hframes_vals, hglobals := hrel.hglobals,
+                    hlabels := hrel.hlabels, hhalt := hhalt_of_structural .nil hrel.hlabels }⟩
+              | v1 :: [] =>
+                -- Only 1 element: both trap
+                simp [irStep?, hcode_ir, hstk, irPop2?, irTrapState, irPushTrace] at hstep
+                obtain ⟨rfl, rfl⟩ := hstep
+                have hlen := hrel.hstack.1; rw [hstk] at hlen; simp at hlen
+                have hs2 : ∃ w1, s2.stack = [w1] := by
+                  cases hs : s2.stack with
+                  | nil => simp [hs] at hlen
+                  | cons w1 ws => cases ws with | nil => exact ⟨w1, rfl⟩ | cons => simp [hs] at hlen
+                obtain ⟨w1, hs2⟩ := hs2
+                have hw : step? s2 = some (.trap ("type mismatch in " ++ _),
+                    { s2 with code := [], trace := s2.trace ++ [.trap ("type mismatch in " ++ _)] }) := by
+                  simp [step?, hcw, hs2, pop2?, withF64Bin, trapState, pushTrace]
+                exact ⟨_, by simp [traceToWasm]; exact hw,
+                  { hemit := hrel.hemit, hcode := .nil, hstack := by dsimp only []; exact hrel.hstack,
+                    hframes_len := hrel.hframes_len, hframes_locals := hrel.hframes_locals,
+                    hframes_vals := hrel.hframes_vals, hglobals := hrel.hglobals,
+                    hlabels := hrel.hlabels, hhalt := hhalt_of_structural .nil hrel.hlabels }⟩
+              | .f64 rhs :: .f64 lhs :: stk =>
+                -- Both f64: success case
+                unfold irStep? at hstep; rw [hcode_ir, hstk] at hstep
+                simp [irPop2?, irPushTrace] at hstep
+                obtain ⟨rfl, rfl⟩ := hstep
+                have hstk_w := stack_corr_f64_f64_inv rhs lhs stk s2.stack
+                  (hstk ▸ hrel.hstack.1) (hstk ▸ hrel.hstack.2)
+                obtain ⟨wstk', hstack_eq, hlen_tail, htail⟩ := hstk_w
+                have hw := by first
+                  | exact step?_eq_f64Add s2 rest_w lhs rhs wstk' hcw hstack_eq
+                  | exact step?_eq_f64Sub s2 rest_w lhs rhs wstk' hcw hstack_eq
+                  | exact step?_eq_f64Mul s2 rest_w lhs rhs wstk' hcw hstack_eq
+                  | exact step?_eq_f64Div s2 rest_w lhs rhs wstk' hcw hstack_eq
+                refine ⟨_, by simp [traceToWasm]; exact hw, ?_⟩
+                exact {
+                  hemit := hrel.hemit
+                  hcode := hrest
+                  hstack := by
+                    dsimp only []
+                    exact stack_corr_cons hlen_tail.symm htail (.f64 _)
+                  hframes_len := hrel.hframes_len
+                  hframes_locals := hrel.hframes_locals
+                  hframes_vals := hrel.hframes_vals
+                  hglobals := hrel.hglobals
+                  hlabels := hrel.hlabels
+                  hhalt := hhalt_of_structural hrest hrel.hlabels
+                }
+              | v1 :: v2 :: stk =>
+                -- Type mismatch (at least one non-f64): both trap
+                sorry)
           | .i64 | .ptr =>
             -- No EmitCodeCorr constructor for i64/ptr binOps
             exfalso; generalize s2.code = wcode at hc
