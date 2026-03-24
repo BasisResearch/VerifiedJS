@@ -1040,6 +1040,13 @@ theorem step?_binary_values (s : State) (op : Core.BinOp) (lv rv : Value) :
       some (.silent, pushTrace { s with expr := .lit (evalBinary op lv rv) } .silent) := by
   simp [step?, exprValue?]
 
+/-- valuesFromExprList? on a list of literals returns the values. -/
+@[simp] theorem valuesFromExprList?_map_lit (vs : List Value) :
+    valuesFromExprList? (vs.map (fun v => Expr.lit v)) = some vs := by
+  induction vs with
+  | nil => simp [valuesFromExprList?]
+  | cons v rest ih => simp [valuesFromExprList?, exprValue?, ih]
+
 /-- Call with closure value, env value, all arg values, valid funcIdx, non-consoleLog.
     This is the main call step: lookup function, bind params, enter body. -/
 theorem step?_call_closure (s : State)
@@ -1242,13 +1249,6 @@ theorem firstNonValueExpr_none_implies_values (l : List Expr)
       (valuesFromExprList? rest).map (v :: ·) := by
   simp [valuesFromExprList?, exprValue?]
   cases valuesFromExprList? rest <;> simp [Option.map]
-
-/-- valuesFromExprList? on a list of literals returns the values. -/
-@[simp] theorem valuesFromExprList?_map_lit (vs : List Value) :
-    valuesFromExprList? (vs.map (fun v => Expr.lit v)) = some vs := by
-  induction vs with
-  | nil => simp [valuesFromExprList?]
-  | cons v rest ih => simp [valuesFromExprList?, exprValue?, ih]
 
 /-- If firstNonValueProp returns none, then valuesFromExprList? on the mapped values succeeds. -/
 theorem firstNonValueProp_none_implies_map_values (props : List (PropName × Expr))

@@ -2826,7 +2826,8 @@ theorem step?_eq_brIf_true_gen (s : ExecState) (depth : Nat) (rest : List Instr)
         labels := labels'
         code := lbl.onBranch
         trace := s.trace ++ [.silent] }) := by
-  cases s; simp_all [step?, pop1?, i32Truth, bne_iff_ne, hresolve, pushTrace]
+  have hne : (n != 0) = true := by simp [bne_iff_ne, hn]
+  cases s; simp_all [step?, pop1?, i32Truth, hne, hresolve, pushTrace]
 
 /-- Exact step? result for brIf with false condition (zero i32). -/
 theorem step?_eq_brIf_false_gen (s : ExecState) (depth : Nat) (rest : List Instr)
@@ -2866,7 +2867,7 @@ theorem step?_eq_call_oob (s : ExecState) (idx : Nat) (rest : List Instr)
       { s with
         code := []
         trace := s.trace ++ [.trap s!"unknown function index {idx}"] }) := by
-  cases s; simp_all [step?, hfunc, trapState, pushTrace]
+  cases s; simp_all [step?, hfunc, trapState, pushTrace]; intro h; omega
 
 /-- Exact step? result for call with stack underflow. -/
 theorem step?_eq_call_underflow (s : ExecState) (idx : Nat) (rest : List Instr)
