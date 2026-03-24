@@ -1,4 +1,66 @@
 
+## Run: 2026-03-24T15:30+00:00
+- Sorries before: 9 total (6 CC + 2 ANF + 1 Lower), after: 11 total (8 CC + 2 ANF + 1 Lower)
+- Net sorry delta: +2 (HeapCorr structural refactor adds 2 well-formedness sorries)
+- Build: ✅ PASS
+
+### What was done:
+1. **TASK 0: HeapCorr refactor (COMPLETE)** — Replaced `sf.heap = sc.heap` (heap identity) with `HeapCorr sc.heap sf.heap` (prefix relation) in CC_SimRel:
+   ```lean
+   private def HeapCorr (cheap fheap : Core.Heap) : Prop :=
+     cheap.objects.size ≤ fheap.objects.size ∧
+     ∀ addr, addr < cheap.objects.size → cheap.objects[addr]? = fheap.objects[addr]?
+   ```
+
+2. **Proved HeapCorr_refl and HeapCorr_get helpers**
+
+3. **Fixed ~60 proof sites** that used `hheap : sf.heap = sc.heap`:
+   - 11 `have hheap' : sf'.heap = sc'.heap` → changed type to `HeapCorr sc'.heap sf'.heap`
+   - 2 `show sf.heap = sc.heap; exact hheap` → `exact hheap`
+   - 24 `convert hheap_arg using 1` patterns → worked as-is with HeapCorr
+   - 3 heap mutation proofs (setProp/setIndex/deleteProp) → restructured with HeapCorr case analysis
+   - 2 expression correspondence proofs (getProp/getIndex) → restructured; added sorry for out-of-bounds addr case
+
+4. **Analyzed remaining CC sorries (all blocked)**:
+   - **newObj/objectLit/arrayLit**: BLOCKED by Flat semantics bug — `allocFreshObject` pushes empty `[]` to heap while Core pushes actual property values. HeapCorr is insufficient; the Flat step function needs to be fixed to preserve properties during allocation.
+   - **captured var (869)**: Needs multi-step stuttering simulation (Flat getEnv takes 2 steps vs Core var takes 1). Requires structural proof changes.
+   - **call (1579)**: Needs env/heap/funcs correspondence.
+   - **functionDef (3030)**: Most complex, needs full CC state.
+
+5. **Analyzed ANF sorries (TASK 2)**:
+   - **line 106**: Main anfConvert_step_star theorem — entire proof needs to be written.
+   - **line 1181**: Nested seq case needs strengthened induction measure (left-spine depth), too structural for this run.
+
+### New sorries (2):
+| File | Line | Sorry | Why |
+|------|------|-------|-----|
+| CC | 1655 | getProp expr OOB | addr in Flat extra range, needs WF invariant |
+| CC | 2063 | getIndex expr OOB | addr in Flat extra range, needs WF invariant |
+
+### Remaining sorries (11 total):
+| File | Line | Sorry | Status |
+|------|------|-------|--------|
+| CC | 869 | captured var | Needs multi-step simulation |
+| CC | 1579 | call | Needs env/heap/funcs |
+| CC | 1580 | newObj | BLOCKED: Flat allocFreshObject pushes [] |
+| CC | 1655 | getProp OOB | Needs addr < heap WF invariant |
+| CC | 2063 | getIndex OOB | Needs addr < heap WF invariant |
+| CC | 3028 | objectLit | BLOCKED: Flat allocFreshObject pushes [] |
+| CC | 3029 | arrayLit | BLOCKED: Flat allocFreshObject pushes [] |
+| CC | 3030 | functionDef | Needs full CC state |
+| ANF | 106 | anfConvert_step_star | Main simulation theorem |
+| ANF | 1181 | nested seq | Needs strengthened induction |
+| Lower | 69 | lower_correct | Needs WF proof |
+
+### Key finding: Flat semantics bug
+`allocFreshObject` in Flat/Semantics.lean:194 always pushes `[]` (empty props) to heap. This is used by objectLit (line 795), arrayLit (line 812), and newObj (line 470). Core's objectLit/arrayLit push actual properties. This makes HeapCorr impossible to maintain through these operations. **Fix needed in Flat/Semantics.lean before CC objectLit/arrayLit/newObj can be proved.**
+
+### Next steps:
+1. Fix `allocFreshObject` in Flat/Semantics.lean to take properties parameter → unblocks objectLit/arrayLit
+2. Add addr-well-formedness invariant to CC_SimRel → closes 2 HeapCorr OOB sorries
+3. Captured var (869) needs env-heap pointer chain proof
+4. ANF line 1181 needs left-spine induction measure
+
 ## Run: 2026-03-24T14:30+00:00
 - Sorries before: 21 total (18 CC + 2 ANF + 1 Lower), after: 9 total (6 CC + 2 ANF + 1 Lower)
 - Net sorry delta: -12 (all noCallFrameReturn IH sorries closed)
@@ -1581,3 +1643,7 @@ This unblocks 10+ sorries. DO THIS FIRST next run.
 
 ## Run: 2026-03-24T15:30:01+00:00
 
+2026-03-24T16:30:01+00:00 SKIP: already running
+2026-03-24T16:30:01+00:00 EXIT: code 124
+2026-03-24T16:30:01+00:00 TIMEOUT
+2026-03-24T16:30:02+00:00 DONE

@@ -11,6 +11,212 @@ namespace VerifiedJS.Core
 
 set_option linter.deprecated false
 
+-- SPEC: L3640-L3645
+-- | # Runtime Semantics
+-- |
+-- | Algorithms which specify semantics that must be called at runtime are
+-- | called [runtime semantics]{.dfn}. Runtime semantics are defined by
+-- | abstract operations or syntax-directed operations.
+-- SPEC: L3646-L3656
+-- | # Completion ( \_completionRecord\_: a Completion Record, ): a Completion Record
+-- |
+-- | description
+-- | :   It is used to emphasize that a Completion Record is being returned.
+-- |
+-- | skip return checks
+-- | :   true
+-- |
+-- | 1\. Assert: \_completionRecord\_ is a Completion Record. 1. Return
+-- | \_completionRecord\_.
+-- SPEC: L3657-L3666
+-- | # Throw an Exception
+-- |
+-- | Algorithms steps that say to throw an exception, such as
+-- |
+-- | 1\. Throw a \*TypeError\* exception.
+-- |
+-- | mean the same things as:
+-- |
+-- | 1\. Return ThrowCompletion(a newly created \*TypeError\* object).
+-- SPEC: L3667-L3707
+-- | # Shorthands for Unwrapping Completion Records
+-- |
+-- | Prefix \`?\` and \`!\` are used as shorthands which unwrap Completion
+-- | Records. \`?\` is used to propagate an abrupt completion to the caller,
+-- | or otherwise to unwrap a normal completion. \`!\` is used to assert that
+-- | a Completion Record is normal and unwrap it. Formally, the step
+-- |
+-- | 1\. Let \_result\_ be ? \_record\_.
+-- |
+-- | is equivalent to
+-- |
+-- | 1\. Assert: \_record\_ is a Completion Record. 1. If \_record\_ is an
+-- | abrupt completion, return \_record\_. 1. Let \_result\_ be
+-- | \_record\_.\[\[Value\]\].
+-- |
+-- | Likewise, the step
+-- |
+-- | 1\. Let \_result\_ be ! \_record\_.
+-- |
+-- | is equivalent to
+-- |
+-- | 1\. Assert: \_record\_ is a normal completion. 1. Let \_result\_ be
+-- | \_record\_.\[\[Value\]\].
+-- |
+-- | When \`?\` or \`!\` is used in any other context, first apply the
+-- | rewrite given in until this rule can be applied, then apply this rule.
+-- | For example, the step
+-- |
+-- | 1\. Perform AO(? Other()).
+-- |
+-- | can be rewritten to
+-- |
+-- | 1\. Let \_tmp1\_ be Other(). 1. Let \_tmp2\_ be ? \_tmp1\_. 1. Perform
+-- | AO(\_tmp2\_).
+-- |
+-- | which in turn expands to
+-- |
+-- | 1\. Let \_tmp1\_ be Other(). 1. Assert: \_tmp1\_ is a Completion
+-- | Record. 1. If \_tmp1\_ is an abrupt completion, return \_tmp1\_. 1. Let
+-- | \_tmp2\_ be \_tmp1\_.\[\[Value\]\]. 1. Perform AO(\_tmp2\_).
+-- SPEC: L3708-L3754
+-- | # Implicit Normal Completion
+-- |
+-- | In algorithms within abstract operations which are declared to return a
+-- | Completion Record, and within all built-in functions, the returned value
+-- | is first passed to NormalCompletion, and the result is used instead.
+-- | This rule does not apply within the Completion algorithm or when the
+-- | value being returned is clearly marked as a Completion Record in that
+-- | step; these cases are:
+-- |
+-- | - when the result of applying Completion, NormalCompletion,
+-- |   ThrowCompletion, or ReturnCompletion is directly returned
+-- | - when the result of constructing a Completion Record is directly
+-- |   returned
+-- |
+-- | It is an editorial error if a Completion Record is returned from such an
+-- | abstract operation through any other means. For example, within these
+-- | abstract operations,
+-- |
+-- | 1\. Return \*true\*.
+-- |
+-- | means the same things as any of
+-- |
+-- | 1\. Return NormalCompletion(\*true\*).
+-- |
+-- | or
+-- |
+-- | 1\. Let \_completion\_ be NormalCompletion(\*true\*). 1. Return
+-- | Completion(\_completion\_).
+-- |
+-- | or
+-- |
+-- | 1\. Return Completion Record { \[\[Type\]\]: \~normal\~, \[\[Value\]\]:
+-- | \*true\*, \[\[Target\]\]: \~empty\~ }.
+-- |
+-- | Note that, through the ReturnIfAbrupt expansion, the following example
+-- | is allowed, as within the expanded steps, the result of applying
+-- | Completion is returned directly in the abrupt case and the implicit
+-- | NormalCompletion application occurs after unwrapping in the normal case.
+-- |
+-- | 1\. Return ? \_completion\_.
+-- |
+-- | The following example would be an editorial error because a Completion
+-- | Record is being returned without being annotated in that step.
+-- |
+-- | 1\. Let \_completion\_ be NormalCompletion(\*true\*). 1. Return
+-- | \_completion\_.
+-- SPEC: L3755-L3781
+-- | # Static Semantics
+-- |
+-- | Context-free grammars are not sufficiently powerful to express all the
+-- | rules that define whether a stream of input elements form a valid
+-- | ECMAScript \|Script\| or \|Module\| that may be evaluated. In some
+-- | situations additional rules are needed that may be expressed using
+-- | either ECMAScript algorithm conventions or prose requirements. Such
+-- | rules are always associated with a production of a grammar and are
+-- | called the [static semantics]{.dfn} of the production.
+-- |
+-- | Static Semantic Rules have names and typically are defined using an
+-- | algorithm. Named Static Semantic Rules are associated with grammar
+-- | productions and a production that has multiple alternative definitions
+-- | will typically have for each alternative a distinct algorithm for each
+-- | applicable named static semantic rule.
+-- |
+-- | A special kind of static semantic rule is an [Early Error
+-- | Rule]{#early-error-rule .dfn}. Early error rules define early error
+-- | conditions (see clause ) that are associated with specific grammar
+-- | productions. Evaluation of most early error rules are not explicitly
+-- | invoked within the algorithms of this specification. A conforming
+-- | implementation must, prior to the first evaluation of a \|Script\| or
+-- | \|Module\|, validate all of the early error rules of the productions
+-- | used to parse that \|Script\| or \|Module\|. If any of the early error
+-- | rules are violated the \|Script\| or \|Module\| is invalid and cannot be
+-- | evaluated.
+-- SPEC: L3782-L3800
+-- | # Mathematical Operations
+-- |
+-- | This specification makes reference to these kinds of numeric values:
+-- |
+-- | - [Mathematical values]{#mathematical-value .dfn
+-- |   variants="mathematical value,mathematical values"}: Arbitrary real
+-- |   numbers, used as the default numeric type.
+-- | - [Extended mathematical values]{#extended-mathematical-value .dfn
+-- |   variants="extended mathematical value,extended mathematical values"}:
+-- |   Mathematical values together with +∞ and -∞.
+-- | - *Numbers*: IEEE 754-2019 binary64 (double-precision floating point)
+-- |   values.
+-- | - *BigInts*: ECMAScript language values representing arbitrary integers
+-- |   in a one-to-one correspondence.
+-- |
+-- | In the language of this specification, numerical values are
+-- | distinguished among different numeric kinds using subscript suffixes.
+-- | The subscript ~𝔽~ refers to Numbers, and the subscript ~ℤ~ refers to
+-- | BigInts. Numeric values without a subscript suffix refer to mathematical
+-- SPEC: L3916-L3922
+-- | # Value Notation
+-- |
+-- | In this specification, ECMAScript language values are displayed in
+-- | \*bold\*. Examples include \*null\*, \*true\*, or \*\"hello\"\*. These
+-- | are distinguished from ECMAScript source text such as
+-- | \`Function.prototype.apply\` or \`let n = 42;\`.
+-- SPEC: L3923-L3940
+-- | # Identity
+-- |
+-- | In this specification, both specification values and ECMAScript language
+-- | values are compared for equality. When comparing for equality, values
+-- | fall into one of two categories. [Values without identity]{.dfn
+-- | variants="values without identity,value without identity"} are equal to
+-- | other values without identity if all of their innate characteristics are
+-- | the same --- characteristics such as the magnitude of an integer or the
+-- | length of a sequence. Values without identity may be manifest without
+-- | prior reference by fully describing their characteristics. In contrast,
+-- | each [value with identity]{.dfn variants="values with identity"} is
+-- | unique and therefore only equal to itself. Values with identity are like
+-- | values without identity but with an additional unguessable,
+-- | unchangeable, universally-unique characteristic called *identity*.
+-- | References to existing values with identity cannot be manifest simply by
+-- | describing them, as the identity itself is indescribable; instead,
+-- | references to these values must be explicitly passed from one place to
+-- | another. Some values with identity are mutable and therefore can have
+-- SPEC: L3980-L3986
+-- | # ECMAScript Data Types and Values
+-- |
+-- | Algorithms within this specification manipulate values each of which has
+-- | an associated type. The possible value types are exactly those defined
+-- | in this clause. Types are further classified into ECMAScript language
+-- | types and specification types.
+-- SPEC: L3987-L3996
+-- | # ECMAScript Language Types
+-- |
+-- | An [ECMAScript language type]{.dfn variants="ECMAScript language types"}
+-- | corresponds to values that are directly manipulated by an ECMAScript
+-- | programmer using the ECMAScript language. The ECMAScript language types
+-- | are Undefined, Null, Boolean, String, Symbol, Number, BigInt, and
+-- | Object. An [ECMAScript language value]{.dfn
+-- | variants="ECMAScript language values"} is a value that is characterized
+-- | by an ECMAScript language type.
+
 -- SPEC: L3997-L4001
 -- | # The Undefined Type
 -- |
@@ -73,6 +279,30 @@ set_option linter.deprecated false
 -- |
 -- | The following shorthand terms are sometimes used to refer to Completion
 -- | Records.
+-- SPEC: L5461-L5485
+-- | - [normal completion]{.dfn variants="normal completions"} refers to any
+-- |   Completion Record with a \[\[Type\]\] value of \~normal\~.
+-- | - [break completion]{.dfn variants="break completions"} refers to any
+-- |   Completion Record with a \[\[Type\]\] value of \~break\~.
+-- | - [continue completion]{.dfn variants="continue completions"} refers to
+-- |   any Completion Record with a \[\[Type\]\] value of \~continue\~.
+-- | - [return completion]{.dfn variants="return completions"} refers to any
+-- |   Completion Record with a \[\[Type\]\] value of \~return\~.
+-- | - [throw completion]{.dfn variants="throw completions"} refers to any
+-- |   Completion Record with a \[\[Type\]\] value of \~throw\~.
+-- | - [abrupt completion]{.dfn variants="abrupt completions"} refers to any
+-- |   Completion Record with a \[\[Type\]\] value other than \~normal\~.
+-- | - a [normal completion containing]{.dfn
+-- |   variants="normal completions containing"} some type of value refers to
+-- |   a normal completion that has a value of that type in its \[\[Value\]\]
+-- |   field.
+-- |
+-- | Callable objects that are defined in this specification only return a
+-- | normal completion or a throw completion. Returning any other kind of
+-- | Completion Record is considered an editorial error.
+-- |
+-- | Implementation-defined callable objects must return either a normal
+-- | completion or a throw completion.
 
 -- SPEC: L9880-L9920
 -- | # Execution Contexts
