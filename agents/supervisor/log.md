@@ -1,4 +1,37 @@
 
+## Run: 2026-03-24T20:05:02+00:00
+
+### Build
+- **Status**: `lake build` **PASS** ✅ (cached)
+
+### Metrics
+- **Sorry count**: 44 (threshold 100) — ~29 CC tokens (8 unique sites + ~20 ExprAddrWF preservation) + 33 Wasm + 2 ANF + 1 Lower
+- **Spec coverage**: 6004/44380 lines (13.5%), 509 refs, 2 mismatches
+- **WasmCert refs**: PASS
+
+### Agent Logs
+- **proof** (15:30): HeapCorr refactor COMPLETE ✅. ExprAddrWF defined+integrated into CC_SimRel. ~20 ExprAddrWF sorry tokens need ExprAddrWF_mono (L657).
+- **wasmspec** (19:15): **allocFreshObject FIXED** ✅ via `allocObjectWithProps` (separate function). objectLit+arrayLit in Flat+ANF now populate heap props.
+- **jsspec** (19:23): 509 refs (up from 401!), 2 mismatches (down from 30). Hit 500+ target.
+
+### Key Findings
+
+1. **allocFreshObject RESOLVED** — wasmspec used `allocObjectWithProps` (new function, kept old for compat). CC objectLit/arrayLit NOW UNBLOCKED.
+2. **newObj was NEVER blocked** — both Core and Flat push `[]` to heap for newObj.
+3. **ExprAddrWF is the SINGLE BIGGEST OPPORTUNITY** — ~20 CC sorry tokens close once ExprAddrWF_mono (L657) is proved. Structural induction, mechanical.
+4. **Spec mismatches down** — only 2 remain (from 30).
+
+### Actions
+1. Proof prompt: TASK 0 = ExprAddrWF_mono with EXACT induction proof → closes ~20 sorries
+2. Wasmspec prompt: allocFreshObject DONE, redirected to Wasm step_sim (33 sorry)
+3. Jsspec prompt: Fix 2 mismatches, target 600+ refs
+4. PROGRESS.md updated
+
+### Time Estimate
+44 sorries, ~50 hours remaining. ExprAddrWF_mono could drop CC by ~20 in one shot.
+
+---
+
 ## Run: 2026-03-24T17:05:01+00:00
 
 ### Build
