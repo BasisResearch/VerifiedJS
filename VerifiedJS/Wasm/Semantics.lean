@@ -3593,12 +3593,15 @@ def irStep? (s : IRExecState) : Option (TraceEvent × IRExecState) :=
             onBranch := [IRInstr.loop label body] ++ rest
             onExit := rest }
           some (.silent, irPushTrace { base with code := body, labels := lbl :: base.labels } .silent)
-      -- Control flow: if
+      -- Control flow: if (pushes label like Wasm §4.4.8)
       | .if_ _result then_ else_ =>
           match irPop1? base.stack with
           | some (.i32 cond, stk) =>
               let branch := if cond != 0 then then_ else else_
-              some (.silent, irPushTrace { base with stack := stk, code := branch ++ rest } .silent)
+              let lbl : IRLabel := {
+                name := "__if", isLoop := false
+                onBranch := rest, onExit := rest }
+              some (.silent, irPushTrace { base with stack := stk, code := branch, labels := lbl :: base.labels } .silent)
           | some _ => some (irTrapState base "type mismatch in if (expected i32)")
           | none => some (irTrapState base "stack underflow in if")
       -- Control flow: br
@@ -4503,7 +4506,8 @@ theorem irStep?_eq_loop (s : IRExecState) (label : String) (body rest : List IRI
         trace := s.trace ++ [.silent] }) := by
   simp [irStep?, hcode, irPushTrace]
 
-/-- Exact state after if_ with true condition (cond ≠ 0): enters then branch. -/
+/-- Exact state after if_ with true condition (cond ≠ 0): enters then branch, pushes label.
+    REF: Wasm §4.4.8 — if pops condition, enters then block with label for rest. -/
 theorem irStep?_eq_if_true (s : IRExecState) (result : Option IRType)
     (then_ else_ rest : List IRInstr) (cond : UInt32) (stk : List IRValue)
     (hcode : s.code = IRInstr.if_ result then_ else_ :: rest)
@@ -4511,21 +4515,24 @@ theorem irStep?_eq_if_true (s : IRExecState) (result : Option IRType)
     (hcond : cond ≠ 0) :
     irStep? s = some (.silent,
       { s with
-        code := then_ ++ rest
+        code := then_
         stack := stk
+        labels := ⟨"__if", false, rest, rest⟩ :: s.labels
         trace := s.trace ++ [.silent] }) := by
   simp only [irStep?, hcode, hstack, irPop1?, irPushTrace]
   simp [hcond]
 
-/-- Exact state after if_ with false condition (cond = 0): enters else branch. -/
+/-- Exact state after if_ with false condition (cond = 0): enters else branch, pushes label.
+    REF: Wasm §4.4.8 — if pops condition, enters else block with label for rest. -/
 theorem irStep?_eq_if_false (s : IRExecState) (result : Option IRType)
     (then_ else_ rest : List IRInstr) (stk : List IRValue)
     (hcode : s.code = IRInstr.if_ result then_ else_ :: rest)
     (hstack : s.stack = .i32 0 :: stk) :
     irStep? s = some (.silent,
       { s with
-        code := else_ ++ rest
+        code := else_
         stack := stk
+        labels := ⟨"__if", false, rest, rest⟩ :: s.labels
         trace := s.trace ++ [.silent] }) := by
   simp [irStep?, hcode, hstack, irPop1?, irPushTrace]
 

@@ -616,7 +616,7 @@ def evalUnary : UnaryOp → Value → Value
 -- | Object. 1. Let \_primValue\_ be ? ToPrimitive(\_argument\_,
 -- | \~string\~). 1. Assert: \_primValue\_ is not an Object. 1. Return ?
 -- | ToString(\_primValue\_).
--- SPEC: L4638-L4660
+-- SPEC: L4638-L4659
 -- | # Number::toString ( \_x\_: a Number, \_radix\_: an integer in the inclusive interval from 2 to 36, ): a String
 -- |
 -- | description
@@ -1470,8 +1470,7 @@ def step? (s : State) : Option (TraceEvent × State) :=
               let s' := pushTrace { sr with expr := .assign name sr.expr, trace := s.trace } t
               some (t, s')
           | none => none
-  -- SPEC: L16586-L16593
-  -- SPEC: L16584-L16596
+  -- SPEC: L16586-L16592
   -- | ConditionalExpression : ShortCircuitExpression \`?\`
   -- | AssignmentExpression \`:\` AssignmentExpression 1. Let \_lRef\_ be ?
   -- | Evaluation of \|ShortCircuitExpression\|. 1. Let \_lVal\_ be ToBoolean(?
@@ -2701,7 +2700,7 @@ def step? (s : State) : Option (TraceEvent × State) :=
   -- | internal methods of the object in ways that would make the result
   -- | non-ordinary. Operations that create exotic objects invoke
   -- | MakeBasicObject directly.
-  -- SPEC: L6620-L6651
+  -- SPEC: L6620-L6643
   -- | # MakeBasicObject ( \_internalSlotsList\_: a List of internal slot names, ): an Object
   -- |
   -- | description
