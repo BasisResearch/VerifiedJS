@@ -16,6 +16,7 @@ structure State where
   env : Env
   heap : Core.Heap
   trace : List Core.TraceEvent
+  funcs : Array FuncDef := #[]
   deriving Repr
 
 /-- Empty Flat lexical environment. -/
@@ -364,11 +365,34 @@ def step? (s : State) : Option (Core.TraceEvent × State) :=
                     { s with expr := .call funcExpr se.expr args, env := se.env, heap := se.heap } t
                   some (t, s')
               | none => none
-          | some _ =>
+          | some envVal =>
               match valuesFromExprList? args with
-              | some _ =>
-                  let s' := pushTrace { s with expr := .lit .undefined } .silent
-                  some (.silent, s')
+              | some argVals =>
+                  -- All subexpressions are values — perform the call.
+                  match exprValue? funcExpr with
+                  | some (.closure funcIdx _envPtr) =>
+                      match s.funcs[funcIdx]? with
+                      | some closure =>
+                          -- §10.2.1 [[Call]]: bind params to args + env param to env pointer.
+                          let pairs := closure.params.zip argVals
+                          let bodyEnv := pairs.foldr (fun pv bs => (pv.1, pv.2) :: bs) []
+                          -- Bind environment parameter to the closure environment pointer.
+                          let bodyEnv' := (closure.envParam, envVal) :: bodyEnv
+                          -- Bind function name for self-recursion.
+                          let bodyEnv'' := (closure.name, match exprValue? funcExpr with
+                            | some fv => fv | none => .undefined) :: bodyEnv'
+                          -- Wrap body in tryCatch for return interception (mirrors Core).
+                          let wrapped := Expr.tryCatch closure.body "__call_frame_return__"
+                            (.var "__call_frame_return__") none
+                          let s' := pushTrace { s with expr := wrapped, env := bodyEnv'' } .silent
+                          some (.silent, s')
+                      | none =>
+                          let s' := pushTrace { s with expr := .lit .undefined } .silent
+                          some (.silent, s')
+                  | _ =>
+                      -- Non-closure callee: return undefined.
+                      let s' := pushTrace { s with expr := .lit .undefined } .silent
+                      some (.silent, s')
               | none =>
                   match hf : firstNonValueExpr args with
                   | some (done, target, remaining) =>
@@ -859,7 +883,7 @@ inductive Steps : State → List Core.TraceEvent → State → Prop where
 def initialState (p : Program) : State :=
   let consoleProps : List (Core.PropName × Core.Value) := [("log", .function Core.consoleLogIdx)]
   let heap : Core.Heap := { objects := #[consoleProps], nextAddr := 1 }
-  { expr := p.main, env := Env.empty.extend "console" (.object 0), heap := heap, trace := [] }
+  { expr := p.main, env := Env.empty.extend "console" (.object 0), heap := heap, trace := [], funcs := p.functions }
 
 /-- Behavioral semantics -/
 def Behaves (p : Program) (b : List Core.TraceEvent) : Prop :=
@@ -1134,10 +1158,11 @@ theorem firstNonValueProp_none_implies_map_values (props : List (PropName × Exp
 theorem step?_none_implies_lit (s : State) (h : step? s = none) :
     ∃ v, s.expr = .lit v := by
   -- Strong induction on expression depth
-  suffices ∀ (n : Nat) (expr : Expr) (env : Env) (heap : Core.Heap) (trace : List Core.TraceEvent),
-      expr.depth ≤ n → step? ⟨expr, env, heap, trace⟩ = none →
+  suffices ∀ (n : Nat) (expr : Expr) (env : Env) (heap : Core.Heap) (trace : List Core.TraceEvent)
+      (funcs : Array FuncDef),
+      expr.depth ≤ n → step? { expr, env, heap, trace, funcs } = none →
       ∃ v, expr = .lit v by
-    exact this s.expr.depth s.expr s.env s.heap s.trace (Nat.le_refl _)
+    exact this s.expr.depth s.expr s.env s.heap s.trace s.funcs (Nat.le_refl _)
       (by cases s; exact h)
   intro n
   induction n with
@@ -1182,11 +1207,11 @@ theorem step?_none_implies_lit (s : State) (h : step? s = none) :
     | binary => simp [Expr.depth] at hd
     | await => simp [Expr.depth] at hd
   | succ k ih =>
-    intro e env heap trace hd h
+    intro e env heap trace funcs hd h
     -- Helper: if a sub-expression is stuck, IH gives it's a literal
     have litOfStuck : ∀ (sub : Expr), sub.depth ≤ k →
-        step? ⟨sub, env, heap, trace⟩ = none → ∃ v, sub = .lit v :=
-      fun sub hds hs => ih sub env heap trace hds hs
+        step? { expr := sub, env, heap, trace, funcs } = none → ∃ v, sub = .lit v :=
+      fun sub hds hs => ih sub env heap trace funcs hds hs
     cases e with
     | lit v => exact ⟨v, rfl⟩
     -- Always-step constructors

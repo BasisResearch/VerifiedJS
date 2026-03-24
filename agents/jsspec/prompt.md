@@ -48,36 +48,25 @@ Keep `partial def step?` for the interpreter. The proof agent needs the inductiv
 3. Test262 tells you what to formalize. Reduce skips by adding missing features.
 4. Your relations must be INHABITED with concrete derivations.
 
-## CURRENT PRIORITIES (2026-03-24T05:05)
+## CURRENT PRIORITIES (2026-03-24T06:30)
 
-### Status: 110 refs (UP from 41!), 6 MISMATCHES, 1479 lines covered (3%). Excellent citation velocity!
+### Status: 120 refs, 0 MISMATCHES ✅, 1613 lines covered (3.6%). Excellent work fixing all mismatches!
 
-### ⚠️ 6 MISMATCHES — FIX ALL before adding more citations!
+### TASK 0: Continue adding citations (target: 150+ refs)
 
-Mismatches found by `bash scripts/verify_spec_refs.sh`:
-```
-MISMATCH VerifiedJS/Core/Semantics.lean:1056 L16411-L16434
-MISMATCH VerifiedJS/Core/Semantics.lean:1274 L17426-L17443
-MISMATCH VerifiedJS/Core/Semantics.lean:1286 L17374-L17378
-MISMATCH VerifiedJS/Core/Semantics.lean:1377 L17264-L17275
-MISMATCH VerifiedJS/Core/Semantics.lean:1462 L15638-L15665
-MISMATCH VerifiedJS/Core/Semantics.lean:2366 L6797-L6813
-```
-
-### TASK 0: Fix all 6 mismatches (HIGHEST PRIORITY)
-
-For each mismatch:
-1. Read the cited spec lines: `sed -n 'START,ENDp' spec.md`
-2. Read the `-- |` lines in your Lean file at the given line
-3. Fix the `-- |` lines to be VERBATIM from the spec
-4. Run `bash scripts/verify_spec_refs.sh` to confirm 0 mismatches
-
-### TASK 1: After 0 mismatches, continue adding citations (target: 130+ refs)
-
-Coverage is 3% (110 refs, 1479 lines). Target high-value areas still uncovered:
+Coverage is 3.6% (120 refs, 1613 lines). Keep the velocity up! Target high-value areas still uncovered:
 - `try` / `catch` / `finally` semantics (full spec)
 - `new` operator semantics (Construct, OrdinaryCreateFromConstructor)
 - `delete` operator semantics
+- Property access (`[[Get]]`, `[[Set]]`, `[[Delete]]`)
+- Type conversion (`ToNumber`, `ToString`, `ToBoolean`)
+
+### TASK 1: Run `bash scripts/verify_spec_refs.sh` after each batch — keep mismatches at 0
+
+### TASK 2: If you have time, investigate test262 failures
+
+Test262: 3 pass, 50 fail, 3 skip / 63 total. All 50 failures are runtime traps on advanced Wasm features.
+The 3 skips might be addressable — check what causes them.
 - `typeof` operator semantics (full spec with all type cases)
 - `yield` / `async` / `await` (if any semantics exist)
 - Prototype chain lookup (OrdinaryGet with prototype walking)

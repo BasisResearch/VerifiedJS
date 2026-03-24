@@ -57,31 +57,30 @@ If ClosureConvertCorrect needs 600 lines of case analysis, WRITE 600 LINES. That
 ## Test262
 Read `logs/test262_summary.md` for failure categories. Fix compiler bugs that cause test262 failures.
 
-## CURRENT PRIORITIES (2026-03-24T05:05)
+## CURRENT PRIORITIES (2026-03-24T06:30)
 
-### Build: PASS ✅. Sorry: 48 (12 CC + 31 Wasm + 2 ANF + 1 Lower). Great CC progress (-6 since last prompt)!
+### Build: PASS ✅. Sorry: 48 (12 CC + 31 Wasm + 2 ANF + 1 Lower).
+
+### 🎉 5 CC sorries NOW UNBLOCKED — Flat.step? stubs FIXED!
+
+wasmspec has implemented real heap operations for getProp/setProp/getIndex/setIndex/deleteProp. These 5 CC sorries (lines 1510-1514) are NOW PROVABLE once wasmspec makes helper functions public (asked this run).
+
+**⚠️ CAVEAT**: `coreToFlatValue`/`flatToCoreValue`/`heapObjectAt?` are still `private` in Flat/Semantics.lean. If you can't unfold them, SKIP to tryCatch/captured-var and come back next run. wasmspec has been asked to fix visibility.
+
+**Still blocked**: `call` (line 1508) — Flat still returns `.undefined` instead of invoking function.
 
 ### CC Sorry Map (12 total):
-- **1 captured var**: line 798 (needs stuttering sim — Flat.getEnv takes 2 steps vs Core.var 1 step)
-- **7 heap/env**: lines 1508-1514 (call, newObj, getProp, setProp, getIndex, setIndex, deleteProp)
-- **3 heap/env/funcs**: lines 1930-1932 (objectLit, arrayLit, functionDef)
-- **1 tryCatch**: line 2041 (needs env correspondence for catch clause binding)
+- **1 captured var**: line 798 (Flat.getEnv 2 steps vs Core.var 1 step)
+- **5 heap ops NEWLY UNBLOCKED**: lines 1510-1514 (getProp, setProp, getIndex, setIndex, deleteProp)
+  - Proof pattern: `sf.heap = sc.heap` (from CC_SimRel) → same heap lookup → Flat result = `coreToFlatValue (Core result)` = `convertValue (Core result)` → matches convertExpr
+- **1 call STILL BLOCKED**: line 1508
+- **1 newObj**: line 1509 (Flat allocates fresh object, same as Core — provable)
+- **3 heap/funcs**: lines 1930-1932 (objectLit, arrayLit, functionDef)
+- **1 tryCatch**: line 2041 (env correspondence for catch binding)
 
-### ⚠️ IMPORTANT: 7 CC sorries (1508-1514) are BLOCKED by Flat.step? stubs
+### TASK 0: Close tryCatch (line 2041) — HIGHEST PRIORITY (no blockers)
 
-The Flat semantics (owned by wasmspec) has STUB implementations for:
-- `getProp` → returns `.undefined` instead of doing heap lookup
-- `setProp` → ignores property, returns value
-- `getIndex/setIndex` → same stubs
-- `call` → returns `.undefined` instead of invoking function
-- `deleteProp` → always returns `.bool true`
-
-Until wasmspec fixes these to match Core.step? behavior, these 7 cases CANNOT be proved.
-**DO NOT waste time on lines 1508-1514 this run.**
-
-### TASK 0: Close tryCatch (line 2041) — HIGHEST PRIORITY
-
-This is the MOST TRACTABLE remaining sorry. Pattern is like `let`:
+Pattern is like `let`:
 1. Core binds `catchParam := exceptionVal` in catch env
 2. Flat does the same binding
 3. With `EnvCorr`, the extended environments correspond
@@ -89,18 +88,29 @@ This is the MOST TRACTABLE remaining sorry. Pattern is like `let`:
 
 Use `lean_goal` at line 2041 to see exact state, then work it.
 
-### TASK 1: Close captured var (line 798) — STUTTERING SIMULATION
+### TASK 1: Close captured var (line 798)
 
-The captured var case needs a multi-step simulation: Flat takes 2 steps (.getEnv then lookup) while Core takes 1 step (.var lookup). Options:
-1. Change CC_SimRel to allow `Flat.Steps` (multi-step) instead of single `Flat.Step`
-2. OR: show the .getEnv intermediate is already handled and the sorry is about the SECOND step
+Flat takes 2 steps (.getEnv then lookup) while Core takes 1 step (.var lookup). Options:
+1. Show the .getEnv intermediate is handled and the sorry is about the SECOND step
+2. Or change simulation to allow Flat.Steps (multi-step)
 
-Use `lean_goal` at line 798 to understand the exact proof obligation before choosing.
+Use `lean_goal` at line 798 first.
 
-### TASK 2: ANF sorries (lines 106, 1018 in ANFConvertCorrect.lean) — INDEPENDENT
+### TASK 2: Try getProp (line 1510) — test if visibility is fixed
 
-These 2 sorries are independent of CC work. If CC is blocked, switch to these.
-Use `lean_goal` to see what's needed.
+After tasks 0-1, try `lean_goal` at line 1510. If you can see/unfold `Flat.step?` getProp case:
+- `sf.heap = sc.heap` from CC_SimRel gives heap identity
+- Core returns `v` from `s.heap.objects[addr]?`
+- Flat returns `coreToFlatValue v` from `heapObjectAt? s.heap addr`
+- `heapObjectAt?` ≡ `s.heap.objects[addr]?` (same lookup)
+- Need: `coreToFlatValue v = convertValue v` (they're the same function!)
+- Build CC_SimRel for result using `sf.heap = sc.heap` (unchanged) + EnvCorr (unchanged)
+
+If `coreToFlatValue` won't unfold (still private), SKIP and log it.
+
+### TASK 3: ANF sorries (lines 106, 1181 in ANFConvertCorrect.lean) — INDEPENDENT
+
+Switch to these if CC is blocked. Use `lean_goal` to see what's needed.
 
 ### TIME MANAGEMENT:
 1. Do NOT run `lake build` at the start. Use `lean_diagnostic_messages` instead.
@@ -151,14 +161,12 @@ You have Lean LSP tools via MCP. USE THEM on every proof attempt:
 WORKFLOW: lean_goal to see state → lean_multi_attempt to test tactics → edit the one that works.
 DO NOT guess tactics. TEST FIRST with lean_multi_attempt.
 
-## URGENT: closureConvert_step_simulation — HEAP IS IDENTITY
+## HEAP IS IDENTITY — CC_SimRel already has `sf.heap = sc.heap` ✅
 
-`Flat.State.heap : Core.Heap` — SAME TYPE as `Core.State.heap`. No convertValue needed for heap entries.
-The heap correspondence is just `sf.heap = sc.heap`. This is MUCH simpler than what was planned.
+This is confirmed in the CC_SimRel definition (line 509). For heap operations (getProp/setProp/etc.):
+- Core: `s.heap.objects[addr]?` → returns `Core.Value`
+- Flat: `heapObjectAt? s.heap addr` → same lookup, then `coreToFlatValue` wraps result
+- `coreToFlatValue` is identical to `Flat.convertValue` (both in ClosureConvert.lean)
+- So: Flat result = `convertValue (Core result)` which is exactly what `convertExpr (.lit v)` produces
 
-1. Add `sf.heap = sc.heap` to CC_SimRel
-2. Fix all existing CC_SimRel constructions (add heap equality proof)
-3. Close 7+ heap cases — they all follow from heap identity + EnvCorr
-4. Close the remaining 13 CC sorries
-
-This is straightforward. DO THE WORK.
+Once `coreToFlatValue` visibility is fixed by wasmspec, these proofs are MECHANICAL.

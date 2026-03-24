@@ -1,4 +1,55 @@
 
+## Run: 2026-03-24T06:30:06+00:00
+
+### Build
+- **Status**: `lake build` **PASS** ✅
+
+### Metrics
+- **Sorry count**: 48 (threshold 100) — 12 CC + 31 Wasm + 2 ANF + 1 Lower (UNCHANGED)
+- **Test262**: 3 pass, 50 fail, 3 skip, 5 xfail / 63 total (UNCHANGED 137+ hrs)
+- **Spec coverage**: 1613/44380 lines (3.6%), 120 refs, 0 mismatches (UP from 110 refs, 6→0 mismatches!)
+- **WasmCert refs**: 0 checked, 0 mismatches
+
+### Proof Chain Status
+```
+Source ──[elaborate]──> Core ──[closureConvert]──> Flat ──[anfConvert]──> ANF ──[lower]──> Wasm.IR ──[emit]──> Wasm
+         ✅ proved       12 sorry                    2 sorry              1 sorry          31 sorry
+```
+
+### Sorry Delta: 48→48 (UNCHANGED since last prompt)
+
+### Agent Status
+- **jsspec**: Healthy. Fixed ALL 6 mismatches! Now 120 refs (+10), 0 mismatches, 1613 lines (3.6%). Redirected to continue citations (target 150+).
+- **proof**: Crashing/timing out. 05:30 run exited code 1 at 06:04, 06:30 run killed (code 143). No sorry progress this cycle. Redirected to tryCatch + captured-var + newly unblocked heap cases.
+- **wasmspec**: Crashing. 06:15 exited code 1 immediately. Redirected to fix `private` visibility (critical blocker for proof).
+
+### Abstraction Discovery
+
+**KEY DISCOVERY: 5 CC sorries NOW UNBLOCKED — Flat.step? stubs FIXED!**
+
+Flat.step? for getProp/setProp/getIndex/setIndex/deleteProp now has REAL heap implementations. These 5 CC sorries (lines 1510-1514) were listed as "blocked on stubs" since the 05:05 prompt, but examining the actual Flat/Semantics.lean code shows:
+- `getProp`: Real heap lookup via `heapObjectAt?` + `coreToFlatValue` (line 420-433)
+- `setProp`: Real heap update via `flatToCoreValue` (line 449-490)
+- `getIndex`: Real index lookup (line 491+)
+- `setIndex`: Real index update (line 553+)
+- `deleteProp`: Real property deletion (line 614-633)
+
+**NEW BLOCKER: `private` visibility**
+
+Three helper functions are `private def` in Flat/Semantics.lean:
+1. `coreToFlatValue` (line 207) — **DUPLICATE** of public `Flat.convertValue` in ClosureConvert.lean!
+2. `flatToCoreValue` (line 197) — no public equivalent
+3. `heapObjectAt?` (line 233) — equivalent to `h.objects[addr]?`
+
+The proof in ClosureConvertCorrect.lean can't unfold these. Fix: wasmspec replaces `coreToFlatValue` with the existing `convertValue`, makes the other two public.
+
+**Still blocked**: `call` (line 1508) — Flat returns `.undefined` instead of invoking function body.
+
+### Prompts Updated
+- **wasmspec**: TASK 0 = fix private visibility (coreToFlatValue → convertValue, make flatToCoreValue/heapObjectAt? public). TASK 1 = fix call stub. TASK 2 = close 1 Wasm sorry.
+- **proof**: Corrected CC sorry map: 5 heap ops UNBLOCKED (pending visibility fix). TASK 0 = tryCatch, TASK 1 = captured-var, TASK 2 = try getProp if visibility fixed.
+- **jsspec**: Congratulated on 0 mismatches. TASK 0 = continue citations to 150+.
+
 ## Run: 2026-03-24T05:05:01+00:00
 
 ### Build
@@ -3618,3 +3669,4 @@ All 12 are blocked on HeapCorr (adding `sf.heap = sc.heap` to CC_SimRel). No new
 
 ## Run: 2026-03-24T06:30:06+00:00
 
+2026-03-24T06:48:02+00:00 DONE
