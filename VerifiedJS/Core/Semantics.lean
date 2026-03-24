@@ -1313,7 +1313,7 @@ def Env.extend (env : Env) (name : VarName) (v : Value) : Env :=
 -- | 1\. Let \_key\_ be ? ToPrimitive(\_argument\_, \~string\~). 1. If
 -- | \_key\_ is a Symbol, then 1. Return \_key\_. 1. Return !
 -- | ToString(\_key\_).
--- SPEC: L6783-L6793
+-- SPEC: L6783-L6796
 -- | # Call ( \_F\_: an ECMAScript language value, \_V\_: an ECMAScript language value, optional \_argumentsList\_: a List of ECMAScript language values, ): either a normal completion containing an ECMAScript language value or a throw completion
 -- |
 -- | description
@@ -1368,7 +1368,7 @@ def Env.extend (env : Env) (name : VarName) (v : Value) : Env :=
 -- | internal methods of the object in ways that would make the result
 -- | non-ordinary. Operations that create exotic objects invoke
 -- | MakeBasicObject directly.
--- SPEC: L6400-L6407
+-- SPEC: L6398-L6406
 -- | # IsArray ( \_argument\_: an ECMAScript language value, ): either a normal completion containing a Boolean or a throw completion
 -- |
 -- | 1\. If \_argument\_ is not an Object, return \*false\*. 1. If
@@ -1384,7 +1384,7 @@ def Env.extend (env : Env) (name : VarName) (v : Value) : Env :=
 -- | is \~async\~, return ? AsyncGeneratorYield(? Await(\_value\_)). 1.
 -- | Return ? GeneratorYield(CreateIteratorResultObject(\_value\_,
 -- | \*false\*)).
--- SPEC: L42095-L42115
+-- SPEC: L42095-L42110
 -- | # Await ( \_value\_: an ECMAScript language value, ): either a normal completion containing either an ECMAScript language value or \~empty\~, or a throw completion
 -- |
 -- | 1\. Let \_asyncContext\_ be the running execution context. 1. Let
@@ -1401,12 +1401,6 @@ def Env.extend (env : Env) (name : VarName) (v : Value) : Env :=
 -- | currently running execution context. 1. Return
 -- | NormalCompletion(\*undefined\*). 1. Let \_onFulfilled\_ be
 -- | CreateBuiltinFunction(\_fulfilledClosure\_, 1, \*\"\"\*, « »). 1. Let
--- | \_rejectedClosure\_ be a new Abstract Closure with parameters
--- | (\_reason\_) that captures \_asyncContext\_ and performs the following
--- | steps when called: 1. Let \_prevContext\_ be the running execution
--- | context. 1. Suspend \_prevContext\_. 1. Push \_asyncContext\_ onto the
--- | execution context stack; \_asyncContext\_ is now the running execution
--- | context.
 -- SPEC: L11614-L11640
 -- | # CreateBuiltinFunction ( \_behaviour\_: an Abstract Closure, a set of algorithm steps, or some other definition of a function\'s behaviour provided in this specification, \_length\_: a non-negative integer or +∞, \_name\_: a property key or a Private Name, \_additionalInternalSlotsList\_: a List of names of internal slots, optional \_realm\_: a Realm Record, optional \_prototype\_: an Object or \*null\*, optional \_prefix\_: a String, optional \_async\_: a Boolean, ): a built-in function object
 -- |
