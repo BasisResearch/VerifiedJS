@@ -675,7 +675,7 @@ def Env.extend (env : Env) (name : VarName) (v : Value) : Env :=
 -- | defined in this specification only Dates (see ) and Symbol objects (see
 -- | ) over-ride the default ToPrimitive behaviour. Dates treat the absence
 -- | of a hint as if the hint were \~string\~.
--- |
+-- SPEC: L5972-L5981
 -- | # OrdinaryToPrimitive ( \_O\_: an Object, \_hint\_: \~string\~ or \~number\~, ): either a normal completion containing an ECMAScript language value or a throw completion
 -- |
 -- | 1\. If \_hint\_ is \~string\~, then 1. Let \_methodNames\_ be «
@@ -2526,6 +2526,254 @@ def evalBinary : BinOp → Value → Value → Value
 -- | \[\[Value\]\]: 𝔽(\_length\_), \[\[Writable\]\]: \*true\*,
 -- | \[\[Enumerable\]\]: \*false\*, \[\[Configurable\]\]: \*false\* }). 1.
 -- | Return \_A\_.
+-- SPEC: L9057-L9074
+-- | # HasBinding ( \_N\_: a String, ): either a normal completion containing a Boolean or a throw completion
+-- |
+-- | for
+-- | :   an Object Environment Record \_envRec\_
+-- |
+-- | description
+-- | :   It determines if its associated binding object has a property whose
+-- |     name is \_N\_.
+-- |
+-- | 1\. Let \_bindingObject\_ be \_envRec\_.\[\[BindingObject\]\]. 1. Let
+-- | \_foundBinding\_ be ? HasProperty(\_bindingObject\_, \_N\_). 1. If
+-- | \_foundBinding\_ is \*false\*, return \*false\*. 1. If
+-- | \_envRec\_.\[\[IsWithEnvironment\]\] is \*false\*, return \*true\*. 1.
+-- | Let \_unscopables\_ be ? Get(\_bindingObject\_,
+-- | %Symbol.unscopables%). 1. If \_unscopables\_ is an Object, then 1. Let
+-- | \_blocked\_ be ToBoolean(? Get(\_unscopables\_, \_N\_)). 1. If
+-- | \_blocked\_ is \*true\*, return \*false\*. 1. Return \*true\*.
+-- SPEC: L9317-L9330
+-- | # HasBinding ( \_N\_: a String, ): either a normal completion containing a Boolean or a throw completion
+-- |
+-- | for
+-- | :   a Global Environment Record \_envRec\_
+-- |
+-- | description
+-- | :   It determines if the argument identifier is one of the identifiers
+-- |     bound by the record.
+-- |
+-- | 1\. Let \_DclRec\_ be \_envRec\_.\[\[DeclarativeRecord\]\]. 1. If !
+-- | \_DclRec\_.HasBinding(\_N\_) is \*true\*, return \*true\*. 1. Let
+-- | \_ObjRec\_ be \_envRec\_.\[\[ObjectRecord\]\]. 1. Return ?
+-- | \_ObjRec\_.HasBinding(\_N\_).
+-- SPEC: L9466-L9475
+-- | # HasLexicalDeclaration ( \_envRec\_: a Global Environment Record, \_N\_: a String, ): a Boolean
+-- |
+-- | description
+-- | :   It determines if the argument identifier has a binding in \_envRec\_
+-- |     that was created using a lexical declaration such as a
+-- |     \|LexicalDeclaration\| or a \|ClassDeclaration\|.
+-- |
+-- | 1\. Let \_DclRec\_ be \_envRec\_.\[\[DeclarativeRecord\]\]. 1. Return !
+-- | \_DclRec\_.HasBinding(\_N\_).
+-- SPEC: L7147-L7153
+-- | # GetIteratorDirect ( \_obj\_: an Object, ): either a normal completion containing an Iterator Record or a throw completion
+-- |
+-- | 1\. Let \_nextMethod\_ be ? Get(\_obj\_, \*\"next\"\*). 1. Let
+-- | \_iteratorRecord\_ be the Iterator Record { \[\[Iterator\]\]: \_obj\_,
+-- | \[\[NextMethod\]\]: \_nextMethod\_, \[\[Done\]\]: \*false\* }. 1. Return
+-- | \_iteratorRecord\_.
+-- SPEC: L7221-L7234
+-- | # IteratorStepValue ( \_iteratorRecord\_: an Iterator Record, ): either a normal completion containing either an ECMAScript language value or \~done\~, or a throw completion
+-- |
+-- | description
+-- | :   It requests the next value from \_iteratorRecord\_.\[\[Iterator\]\]
+-- |     by calling \_iteratorRecord\_.\[\[NextMethod\]\] and returns either
+-- |     \~done\~ indicating that the iterator has reached its end or the
+-- |     value from the IteratorResult object if a next value is available.
+-- |
+-- | 1\. Let \_result\_ be ? IteratorStep(\_iteratorRecord\_). 1. If
+-- | \_result\_ is \~done\~, then 1. Return \~done\~. 1. Let \_value\_ be
+-- | Completion(IteratorValue(\_result\_)). 1. If \_value\_ is a throw
+-- | completion, then 1. Set \_iteratorRecord\_.\[\[Done\]\] to \*true\*. 1.
+-- | Return ? \_value\_.
+-- SPEC: L7070-L7078
+-- | # InitializeInstanceElements ( \_O\_: an Object, \_constructor\_: an ECMAScript function object or a built-in function object, ): either a normal completion containing \~unused\~ or a throw completion
+-- |
+-- | 1\. Let \_methods\_ be \_constructor\_.\[\[PrivateMethods\]\]. 1. For
+-- | each PrivateElement \_method\_ of \_methods\_, do 1. Perform ?
+-- | PrivateMethodOrAccessorAdd(\_O\_, \_method\_). 1. Let \_fields\_ be
+-- | \_constructor\_.\[\[Fields\]\]. 1. For each element \_fieldRecord\_ of
+-- | \_fields\_, do 1. Perform ? DefineField(\_O\_, \_fieldRecord\_). 1.
+-- | Return \~unused\~.
+-- SPEC: L10871-L10889
+-- | # \[\[Get\]\] ( \_P\_: a property key, \_Receiver\_: an ECMAScript language value, ): either a normal completion containing an ECMAScript language value or a throw completion
+-- |
+-- | for
+-- | :   an ordinary object \_O\_
+-- |
+-- | 1\. Return ? OrdinaryGet(\_O\_, \_P\_, \_Receiver\_).
+-- |
+-- | # OrdinaryGet ( \_O\_: an Object, \_P\_: a property key, \_Receiver\_: an ECMAScript language value, ): either a normal completion containing an ECMAScript language value or a throw completion
+-- |
+-- | 1\. Let \_desc\_ be ? \_O\_.\[\[GetOwnProperty\]\](\_P\_). 1. If
+-- | \_desc\_ is \*undefined\*, then 1. Let \_parent\_ be ?
+-- | \_O\_.\[\[GetPrototypeOf\]\](). 1. If \_parent\_ is \*null\*, return
+-- | \*undefined\*. 1. Return ? \_parent\_.\[\[Get\]\](\_P\_,
+-- | \_Receiver\_). 1. If IsDataDescriptor(\_desc\_) is \*true\*, return
+-- | \_desc\_.\[\[Value\]\]. 1. Assert: IsAccessorDescriptor(\_desc\_) is
+-- | \*true\*. 1. Let \_getter\_ be \_desc\_.\[\[Get\]\]. 1. If \_getter\_ is
+-- | \*undefined\*, return \*undefined\*. 1. Return ? Call(\_getter\_,
+-- | \_Receiver\_).
+-- SPEC: L10927-L10941
+-- | # \[\[Delete\]\] ( \_P\_: a property key, ): either a normal completion containing a Boolean or a throw completion
+-- |
+-- | for
+-- | :   an ordinary object \_O\_
+-- |
+-- | 1\. Return ? OrdinaryDelete(\_O\_, \_P\_).
+-- |
+-- | # OrdinaryDelete ( \_O\_: an Object, \_P\_: a property key, ): either a normal completion containing a Boolean or a throw completion
+-- |
+-- | 1\. Let \_desc\_ be ? \_O\_.\[\[GetOwnProperty\]\](\_P\_). 1. If
+-- | \_desc\_ is \*undefined\*, return \*true\*. 1. If
+-- | \_desc\_.\[\[Configurable\]\] is \*true\*, then 1. Remove the own
+-- | property with name \_P\_ from \_O\_. 1. Return \*true\*. 1. Return
+-- | \*false\*.
+-- SPEC: L10942-L10959
+-- | # \[\[OwnPropertyKeys\]\] ( ): a normal completion containing a List of property keys
+-- |
+-- | for
+-- | :   an ordinary object \_O\_
+-- |
+-- | 1\. Return OrdinaryOwnPropertyKeys(\_O\_).
+-- |
+-- | # OrdinaryOwnPropertyKeys ( \_O\_: an Object, ): a List of property keys
+-- |
+-- | 1\. Let \_keys\_ be a new empty List. 1. For each own property key \_P\_
+-- | of \_O\_ such that \_P\_ is an array index, in ascending numeric index
+-- | order, do 1. Append \_P\_ to \_keys\_. 1. For each own property key
+-- | \_P\_ of \_O\_ such that \_P\_ is a String and \_P\_ is not an array
+-- | index, in ascending chronological order of property creation, do 1.
+-- | Append \_P\_ to \_keys\_. 1. For each own property key \_P\_ of \_O\_
+-- | such that \_P\_ is a Symbol, in ascending chronological order of
+-- | property creation, do 1. Append \_P\_ to \_keys\_. 1. Return \_keys\_.
+-- SPEC: L17515-L17539
+-- | # Runtime Semantics: KeyedBindingInitialization ( \_value\_: an ECMAScript language value, \_environment\_: an Environment Record or \*undefined\*, \_propertyName\_: a property key, ): either a normal completion containing \~unused\~ or an abrupt completion
+-- |
+-- | When \*undefined\* is passed for \_environment\_ it indicates that a
+-- | PutValue operation should be used to assign the initialization value.
+-- | This is the case for formal parameter lists of non-strict functions. In
+-- | that case the formal parameter bindings are preinitialized in order to
+-- | deal with the possibility of multiple parameters with the same name.
+-- |
+-- | BindingElement : BindingPattern Initializer? 1. Let \_v\_ be ?
+-- | GetV(\_value\_, \_propertyName\_). 1. If \|Initializer\| is present and
+-- | \_v\_ is \*undefined\*, then 1. Let \_defaultValue\_ be ? Evaluation of
+-- | \|Initializer\|. 1. Set \_v\_ to ? GetValue(\_defaultValue\_). 1. Return
+-- | ? BindingInitialization of \|BindingPattern\| with arguments \_v\_ and
+-- | \_environment\_. SingleNameBinding : BindingIdentifier Initializer? 1.
+-- | Let \_bindingId\_ be the StringValue of \|BindingIdentifier\|. 1. Let
+-- | \_lhs\_ be ? ResolveBinding(\_bindingId\_, \_environment\_). 1. Let
+-- | \_v\_ be ? GetV(\_value\_, \_propertyName\_). 1. If \|Initializer\| is
+-- | present and \_v\_ is \*undefined\*, then 1. If
+-- | IsAnonymousFunctionDefinition(\|Initializer\|) is \*true\*, then 1. Set
+-- | \_v\_ to ? NamedEvaluation of \|Initializer\| with argument
+-- | \_bindingId\_. 1. Else, 1. Let \_defaultValue\_ be ? Evaluation of
+-- | \|Initializer\|. 1. Set \_v\_ to ? GetValue(\_defaultValue\_). 1. If
+-- | \_environment\_ is \*undefined\*, return ? PutValue(\_lhs\_, \_v\_). 1.
+-- | Return ? InitializeReferencedBinding(\_lhs\_, \_v\_).
+-- SPEC: L17911-L17921
+-- | # Runtime Semantics: ForDeclarationBindingInitialization ( \_value\_: an ECMAScript language value, \_environment\_: an Environment Record or \*undefined\*, ): either a normal completion containing \~unused\~ or an abrupt completion
+-- |
+-- | \*undefined\* is passed for \_environment\_ to indicate that a PutValue
+-- | operation should be used to assign the initialization value. This is the
+-- | case for \`var\` statements and the formal parameter lists of some
+-- | non-strict functions (see ). In those cases a lexical binding is hoisted
+-- | and preinitialized prior to evaluation of its initializer.
+-- |
+-- | ForDeclaration : LetOrConst ForBinding 1. Return ? BindingInitialization
+-- | of \|ForBinding\| with arguments \_value\_ and \_environment\_.
+-- SPEC: L17922-L17930
+-- | # Runtime Semantics: ForDeclarationBindingInstantiation ( \_environment\_: a Declarative Environment Record, ): \~unused\~
+-- |
+-- | ForDeclaration : LetOrConst ForBinding 1. For each element \_name\_ of
+-- | the BoundNames of \|ForBinding\|, do 1. If IsConstantDeclaration of
+-- | \|LetOrConst\| is \*true\*, then 1. Perform !
+-- | \_environment\_.CreateImmutableBinding(\_name\_, \*true\*). 1. Else, 1.
+-- | Perform ! \_environment\_.CreateMutableBinding(\_name\_, \*false\*). 1.
+-- | Return \~unused\~.
+-- SPEC: L8579-L8600
+-- | # Runtime Semantics: IteratorBindingInitialization ( \_iteratorRecord\_: an Iterator Record, \_environment\_: an Environment Record or \*undefined\*, ): either a normal completion containing \~unused\~ or an abrupt completion
+-- |
+-- | When \*undefined\* is passed for \_environment\_ it indicates that a
+-- | PutValue operation should be used to assign the initialization value.
+-- | This is the case for formal parameter lists of non-strict functions. In
+-- | that case the formal parameter bindings are preinitialized in order to
+-- | deal with the possibility of multiple parameters with the same name.
+-- |
+-- | ArrayBindingPattern : \`\[\` \`\]\` 1. Return \~unused\~.
+-- | ArrayBindingPattern : \`\[\` Elision \`\]\` 1. Return ?
+-- | IteratorDestructuringAssignmentEvaluation of \|Elision\| with argument
+-- | \_iteratorRecord\_. ArrayBindingPattern : \`\[\` Elision?
+-- | BindingRestElement \`\]\` 1. If \|Elision\| is present, then 1. Perform
+-- | ? IteratorDestructuringAssignmentEvaluation of \|Elision\| with argument
+-- | \_iteratorRecord\_. 1. Return ? IteratorBindingInitialization of
+-- | \|BindingRestElement\| with arguments \_iteratorRecord\_ and
+-- | \_environment\_.
+-- SPEC: L8511-L8533
+-- | # Runtime Semantics: InstantiateFunctionObject ( \_env\_: an Environment Record, \_privateEnv\_: a PrivateEnvironment Record or \*null\*, ): an ECMAScript function object
+-- |
+-- | FunctionDeclaration : \`function\` BindingIdentifier \`(\`
+-- | FormalParameters \`)\` \`{\` FunctionBody \`}\` 1. Return ?
+-- | InstantiateOrdinaryFunctionObject of \|FunctionDeclaration\| with
+-- | arguments \_env\_ and \_privateEnv\_. FunctionDeclaration : \`function\`
+-- | \`(\` FormalParameters \`)\` \`{\` FunctionBody \`}\` 1. Return ?
+-- | InstantiateOrdinaryFunctionObject of \|FunctionDeclaration\| with
+-- | arguments \_env\_ and \_privateEnv\_. GeneratorDeclaration :
+-- | \`function\` \`\*\` BindingIdentifier \`(\` FormalParameters \`)\` \`{\`
+-- | GeneratorBody \`}\` 1. Return ?
+-- | InstantiateOrdinaryFunctionObject of \|GeneratorDeclaration\| with
+-- | arguments \_env\_ and \_privateEnv\_. GeneratorDeclaration :
+-- | \`function\` \`\*\` \`(\` FormalParameters \`)\` \`{\` GeneratorBody
+-- | \`}\` 1. Return ? InstantiateOrdinaryFunctionObject of
+-- | \|GeneratorDeclaration\| with arguments \_env\_ and \_privateEnv\_.
+-- SPEC: L11746-L11767
+-- | # Array Exotic Objects
+-- |
+-- | An Array is an exotic object that gives special treatment to a certain
+-- | class of property names. See for a definition of this special treatment.
+-- |
+-- | # \[\[DefineOwnProperty\]\] ( \_P\_: a property key, \_Desc\_: a Property Descriptor, ): either a normal completion containing a Boolean or a throw completion
+-- |
+-- | for
+-- | :   an Array \_A\_
+-- |
+-- | 1\. If \_P\_ is \*\"length\"\*, then 1. Return ? ArraySetLength(\_A\_,
+-- | \_Desc\_). 1. If \_P\_ is an array index, then 1. Let \_lengthDesc\_ be
+-- | OrdinaryGetOwnProperty(\_A\_, \*\"length\"\*). 1. Assert:
+-- | IsDataDescriptor(\_lengthDesc\_) is \*true\*. 1. Assert:
+-- | \_lengthDesc\_.\[\[Configurable\]\] is \*false\*. 1. Let \_length\_ be
+-- | \_lengthDesc\_.\[\[Value\]\]. 1. Assert: \_length\_ is a non-negative
+-- | integral Number. 1. Let \_index\_ be ! ToUint32(\_P\_). 1. If
+-- | \_index\_ ≥ \_length\_ and \_lengthDesc\_.\[\[Writable\]\] is \*false\*,
+-- | return \*false\*. 1. Let \_succeeded\_ be !
+-- | OrdinaryDefineOwnProperty(\_A\_, \_P\_, \_Desc\_).
+-- SPEC: L11783-L11810
+-- | # ArraySpeciesCreate ( \_originalArray\_: an Object, \_length\_: a non-negative integer, ): either a normal completion containing an Object or a throw completion
+-- |
+-- | description
+-- | :   It is used to specify the creation of a new Array or similar
+-- |     object in a manner that is dependent on the actual species of
+-- |     \_originalArray\_. By default, using this abstract operation
+-- |     creates a new Array. However, if \_originalArray\_ is a subclass
+-- |     of Array, other kinds of objects may be created.
+-- |
+-- | 1\. Let \_isArray\_ be ? IsArray(\_originalArray\_). 1. If \_isArray\_
+-- | is \*false\*, return ? ArrayCreate(\_length\_). 1. Let \_C\_ be ?
+-- | Get(\_originalArray\_, \*\"constructor\"\*). 1. If IsConstructor(\_C\_)
+-- | is \*true\*, then 1. Let \_thisRealm\_ be the current Realm Record. 1.
+-- | Let \_realmC\_ be ? GetFunctionRealm(\_C\_). 1. If \_thisRealm\_ and
+-- | \_realmC\_ are not the same Realm Record, then 1. If
+-- | SameValue(\_C\_, \_realmC\_.\[\[Intrinsics\]\].%Array%) is \*true\*, set
+-- | \_C\_ to \*undefined\*. 1. If \_C\_ is an Object, then 1. Set \_C\_ to
+-- | ? Get(\_C\_, %Symbol.species%). 1. If \_C\_ is \*null\*, set \_C\_ to
+-- | \*undefined\*. 1. If \_C\_ is \*undefined\*, return ?
+-- | ArrayCreate(\_length\_). 1. If IsConstructor(\_C\_) is \*false\*, throw
+-- | a \*TypeError\* exception. 1. Return ? Construct(\_C\_, « 𝔽(\_length\_)
+-- | »).
 
 /-- Built-in function index for console.log (reserved at index 0, §18.2). -/
 def consoleLogIdx : FuncIdx := 0
@@ -4238,7 +4486,9 @@ def step? (s : State) : Option (TraceEvent × State) :=
   | .labeled _ body =>
       let s' := pushTrace { s with expr := body } .silent
       some (.silent, s')
-  -- SPEC: L18539-L18541
+  -- SPEC: L18537-L18542
+  -- | # Runtime Semantics: Evaluation
+  -- |
   -- | ThrowStatement : \`throw\` Expression \`;\` 1. Let \_exprRef\_ be ?
   -- | Evaluation of \|Expression\|. 1. Let \_exprValue\_ be ?
   -- | GetValue(\_exprRef\_). 1. Return ThrowCompletion(\_exprValue\_).
