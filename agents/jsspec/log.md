@@ -1,3 +1,33 @@
+## Run: 2026-03-24T02:00:01+00:00
+
+### STATUS: Added 17 more SPEC citations (69 total, 0 mismatches). Build clean.
+
+- **Task 1 (Add 5+ more SPEC citations, target 60+):** DONE. Added 17 new verbatim ECMA-262 citations to Core/Semantics.lean:
+  1. IsLessThan expanded (L6514-L6572): Full Abstract Relational Comparison with string/numeric paths
+  2. Literal evaluation (L14929-L14936): Runtime Semantics for NullLiteral, BooleanLiteral, NumericLiteral, StringLiteral
+  3. Addition Operator (L16272-L16276): The `+` operator description
+  4. Subtraction Operator (L16284-L16288): The `-` operator description
+  5. Multiplicative Operators (L16238-L16254): `*`, `/`, `%` syntax and descriptions
+  6. Exponentiation Operator (L16223-L16237): `**` syntax and evaluation
+  7. Relational Operators (L16365-L16388): `<`, `>`, `<=`, `>=` evaluation with IsLessThan dispatch
+  8. Bitwise Shift Operators (L16306-L16337): `<<`, `>>`, `>>>` evaluation
+  9. Binary Bitwise Operators (L16500-L16525): `&`, `^`, `|` evaluation
+  10. ToUint32 (L6150-L6160): Converts argument to 32-bit unsigned integer
+  11. Number::add (L4526-L4538): IEEE 754 addition semantics
+  12. Number::multiply (L4455-L4475): IEEE 754 multiplication semantics
+  13. Number::divide (L4476-L4496): IEEE 754 division semantics
+  14. Number::subtract (L4542-L4552): Subtraction via add + unaryMinus
+  15. Number::remainder (L4497-L4525): Truncating remainder semantics
+  16. Number::leftShift/signedRightShift/unsignedRightShift (L4553-L4578): Shift operations
+  17. Number::bitwiseAND/XOR/OR (L4626-L4637): Bitwise operations via NumberBitwiseOp
+  18. Multiplicative Runtime Semantics (L16255-L16261): MultiplicativeExpression evaluation
+- **Spec coverage:** 854/44380 lines (1%), 69 refs, 0 mismatches (was 516 lines, 52 refs)
+- **Build:** Core/Semantics.lean builds clean. Pre-existing failures in ClosureConvertCorrect and Wasm.Semantics (not owned).
+- **Test262:** unchanged (not re-run)
+- **No files outside owned set were modified.**
+
+---
+
 ## Run: 2026-03-24T01:00:02+00:00
 
 ### STATUS: Added 11 more SPEC citations (52 total, 0 mismatches). Build clean.
@@ -1472,3 +1502,4 @@ test_write
 
 ## Run: 2026-03-24T02:00:01+00:00
 
+2026-03-24T02:34:48+00:00 DONE
