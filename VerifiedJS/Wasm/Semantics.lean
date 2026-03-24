@@ -6682,8 +6682,12 @@ theorem step_sim (irmod : IRModule) (wmod : Module) :
             exact stack_corr_cons hrel.hstack.1 hrel.hstack.2 (.f64 _)
           · exact hf.elim
       | .const_ .ptr v =>
-          -- ptr const (same as i32 in Wasm)
-          sorry
+          -- ptr const: no EmitCodeCorr constructor for .ptr, so vacuously true
+          have hc : EmitCodeCorr (IRInstr.const_ .ptr v :: rest) s2.code := hcode_ir ▸ hrel.hcode
+          exfalso
+          generalize s2.code = wcode at hc
+          cases hc with
+          | general _ _ _ _ hf _ => exact hf
       | .localGet idx =>
           -- local.get: both IR and Wasm look up local variable
           have hc : EmitCodeCorr (IRInstr.localGet idx :: rest) s2.code := hcode_ir ▸ hrel.hcode
