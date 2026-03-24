@@ -48,6 +48,11 @@ def Env.empty : Env :=
 def Heap.empty : Heap :=
   { objects := #[], nextAddr := 0 }
 
+-- SPEC: L9667-L9671
+-- | # NewDeclarativeEnvironment ( \_E\_: an Environment Record or \*null\*, ): a Declarative Environment Record
+-- |
+-- | 1\. Let \_env\_ be a new Declarative Environment Record containing no
+-- | bindings. 1. Set \_env\_.\[\[OuterEnv\]\] to \_E\_. 1. Return \_env\_.
 -- SPEC: L8965-L8979
 -- | # GetBindingValue ( \_N\_: a String, \_S\_: a Boolean, ): either a normal completion containing an ECMAScript language value or a throw completion
 -- |
@@ -2281,6 +2286,28 @@ def step? (s : State) : Option (TraceEvent × State) :=
   -- | :   an ordinary object \_O\_
   -- |
   -- | 1\. Return ? OrdinarySet(\_O\_, \_P\_, \_V\_, \_Receiver\_).
+  -- SPEC: L6681-L6696
+  -- | # CreateDataProperty ( \_O\_: an Object, \_P\_: a property key, \_V\_: an ECMAScript language value, ): either a normal completion containing a Boolean or a throw completion
+  -- |
+  -- | description
+  -- | :   It is used to create a new own property of an object.
+  -- |
+  -- | 1\. Let \_newDesc\_ be the PropertyDescriptor { \[\[Value\]\]: \_V\_,
+  -- | \[\[Writable\]\]: \*true\*, \[\[Enumerable\]\]: \*true\*,
+  -- | \[\[Configurable\]\]: \*true\* }. 1. Return ?
+  -- | \_O\_.\[\[DefineOwnProperty\]\](\_P\_, \_newDesc\_).
+  -- |
+  -- | This abstract operation creates a property whose attributes are set to
+  -- | the same defaults used for properties created by the ECMAScript language
+  -- | assignment operator. Normally, the property will not already exist. If
+  -- | it does exist and is not configurable or if \_O\_ is not extensible,
+  -- | \[\[DefineOwnProperty\]\] will return \*false\*.
+  -- SPEC: L10897-L10902
+  -- | # OrdinarySet ( \_O\_: an Object, \_P\_: a property key, \_V\_: an ECMAScript language value, \_Receiver\_: an ECMAScript language value, ): either a normal completion containing a Boolean or a throw completion
+  -- |
+  -- | 1\. Let \_ownDesc\_ be ? \_O\_.\[\[GetOwnProperty\]\](\_P\_). 1. Return
+  -- | ? OrdinarySetWithOwnDescriptor(\_O\_, \_P\_, \_V\_, \_Receiver\_,
+  -- | \_ownDesc\_).
   | .setProp obj prop value =>
       match exprValue? obj with
       | none =>
@@ -2375,6 +2402,14 @@ def step? (s : State) : Option (TraceEvent × State) :=
   -- | \_base\_ be \_ref\_.\[\[Base\]\]. 1. Assert: \_base\_ is an Environment
   -- | Record. 1. Return ?
   -- | \_base\_.DeleteBinding(\_ref\_.\[\[ReferencedName\]\]).
+  -- SPEC: L10934-L10941
+  -- | # OrdinaryDelete ( \_O\_: an Object, \_P\_: a property key, ): either a normal completion containing a Boolean or a throw completion
+  -- |
+  -- | 1\. Let \_desc\_ be ? \_O\_.\[\[GetOwnProperty\]\](\_P\_). 1. If
+  -- | \_desc\_ is \*undefined\*, return \*true\*. 1. If
+  -- | \_desc\_.\[\[Configurable\]\] is \*true\*, then 1. Remove the own
+  -- | property with name \_P\_ from \_O\_. 1. Return \*true\*. 1. Return
+  -- | \*false\*.
   | .deleteProp obj prop =>
       match exprValue? obj with
       | none =>
