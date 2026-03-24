@@ -237,30 +237,31 @@ def heapObjectAt? (h : Core.Heap) (addr : Nat) : Option (List (Core.PropName × 
   else
     none
 
--- @[simp] lemmas for proof agent: coreToFlatValue is the same as convertValue
-@[simp] theorem coreToFlatValue_null : coreToFlatValue .null = .null := rfl
-@[simp] theorem coreToFlatValue_undefined : coreToFlatValue .undefined = .undefined := rfl
-@[simp] theorem coreToFlatValue_bool (b : Bool) : coreToFlatValue (.bool b) = .bool b := rfl
-@[simp] theorem coreToFlatValue_number (n : Float) : coreToFlatValue (.number n) = .number n := rfl
-@[simp] theorem coreToFlatValue_string (s : String) : coreToFlatValue (.string s) = .string s := rfl
-@[simp] theorem coreToFlatValue_object (addr : Nat) : coreToFlatValue (.object addr) = .object addr := rfl
-@[simp] theorem coreToFlatValue_function (idx : Nat) : coreToFlatValue (.function idx) = .closure idx 0 := rfl
+-- Equation lemmas for coreToFlatValue (no @[simp] to avoid breaking existing proofs)
+theorem coreToFlatValue_null : coreToFlatValue .null = .null := rfl
+theorem coreToFlatValue_undefined : coreToFlatValue .undefined = .undefined := rfl
+theorem coreToFlatValue_bool (b : Bool) : coreToFlatValue (.bool b) = .bool b := rfl
+theorem coreToFlatValue_number (n : Float) : coreToFlatValue (.number n) = .number n := rfl
+theorem coreToFlatValue_string (s : String) : coreToFlatValue (.string s) = .string s := rfl
+theorem coreToFlatValue_object (addr : Nat) : coreToFlatValue (.object addr) = .object addr := rfl
+theorem coreToFlatValue_function (idx : Nat) : coreToFlatValue (.function idx) = .closure idx 0 := rfl
 
-@[simp] theorem flatToCoreValue_null : flatToCoreValue .null = .null := rfl
-@[simp] theorem flatToCoreValue_undefined : flatToCoreValue .undefined = .undefined := rfl
-@[simp] theorem flatToCoreValue_bool (b : Bool) : flatToCoreValue (.bool b) = .bool b := rfl
-@[simp] theorem flatToCoreValue_number (n : Float) : flatToCoreValue (.number n) = .number n := rfl
-@[simp] theorem flatToCoreValue_string (s : String) : flatToCoreValue (.string s) = .string s := rfl
-@[simp] theorem flatToCoreValue_object (addr : Nat) : flatToCoreValue (.object addr) = .object addr := rfl
-@[simp] theorem flatToCoreValue_closure (idx envPtr : Nat) : flatToCoreValue (.closure idx envPtr) = .function idx := rfl
+-- Equation lemmas for flatToCoreValue
+theorem flatToCoreValue_null : flatToCoreValue .null = .null := rfl
+theorem flatToCoreValue_undefined : flatToCoreValue .undefined = .undefined := rfl
+theorem flatToCoreValue_bool (b : Bool) : flatToCoreValue (.bool b) = .bool b := rfl
+theorem flatToCoreValue_number (n : Float) : flatToCoreValue (.number n) = .number n := rfl
+theorem flatToCoreValue_string (s : String) : flatToCoreValue (.string s) = .string s := rfl
+theorem flatToCoreValue_object (addr : Nat) : flatToCoreValue (.object addr) = .object addr := rfl
+theorem flatToCoreValue_closure (idx envPtr : Nat) : flatToCoreValue (.closure idx envPtr) = .function idx := rfl
 
 /-- flatToCoreValue is a left inverse of coreToFlatValue on non-function values -/
-@[simp] theorem flatToCoreValue_coreToFlatValue_null : flatToCoreValue (coreToFlatValue .null) = .null := rfl
-@[simp] theorem flatToCoreValue_coreToFlatValue_undefined : flatToCoreValue (coreToFlatValue .undefined) = .undefined := rfl
-@[simp] theorem flatToCoreValue_coreToFlatValue_bool (b : Bool) : flatToCoreValue (coreToFlatValue (.bool b)) = .bool b := rfl
-@[simp] theorem flatToCoreValue_coreToFlatValue_number (n : Float) : flatToCoreValue (coreToFlatValue (.number n)) = .number n := rfl
-@[simp] theorem flatToCoreValue_coreToFlatValue_string (s : String) : flatToCoreValue (coreToFlatValue (.string s)) = .string s := rfl
-@[simp] theorem flatToCoreValue_coreToFlatValue_object (addr : Nat) : flatToCoreValue (coreToFlatValue (.object addr)) = .object addr := rfl
+theorem flatToCoreValue_coreToFlatValue_null : flatToCoreValue (coreToFlatValue .null) = .null := rfl
+theorem flatToCoreValue_coreToFlatValue_undefined : flatToCoreValue (coreToFlatValue .undefined) = .undefined := rfl
+theorem flatToCoreValue_coreToFlatValue_bool (b : Bool) : flatToCoreValue (coreToFlatValue (.bool b)) = .bool b := rfl
+theorem flatToCoreValue_coreToFlatValue_number (n : Float) : flatToCoreValue (coreToFlatValue (.number n)) = .number n := rfl
+theorem flatToCoreValue_coreToFlatValue_string (s : String) : flatToCoreValue (coreToFlatValue (.string s)) = .string s := rfl
+theorem flatToCoreValue_coreToFlatValue_object (addr : Nat) : flatToCoreValue (coreToFlatValue (.object addr)) = .object addr := rfl
 
 private def typeofValue : Value → Value
   | .undefined => .string "undefined"
