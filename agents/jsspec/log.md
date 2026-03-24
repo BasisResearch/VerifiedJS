@@ -1,3 +1,33 @@
+## Run: 2026-03-24T22:00:09+00:00
+
+### STATUS: Added 25 new SPEC citations (630 total, 0 mismatches). Build clean (Core/Semantics.lean). Coverage now 18% (8227 lines).
+
+- **Task 0 (Continue beyond 600+ refs):** DONE. Added 25 new verbatim ECMA-262 citations to Core/Semantics.lean:
+  - Array Exotic Objects (L11720-L11745) and ArrayCreate (L11768-L11782) — near `.arrayLit`
+  - String Exotic Objects (L11854-L11873) and StringCreate (L11913-L11929) — near string property access
+  - TypedArray Exotic Objects (L12160-L12184)
+  - Module Namespace Exotic Objects (L12443-L12475)
+  - Proxy Object Internal Methods and Internal Slots (L12644-L12707)
+  - ProxyCreate (L13131-L13146)
+  - Source Text (L13149-L13193)
+  - ParseText (L13260-L13284)
+  - Types of Source Code (L13285-L13356) — global/eval/function/module code
+  - Strict Mode Code (L13386-L13417)
+  - IsStrict (L13418-L13422)
+  - ECMAScript Language: Lexical Grammar (L13432-L13493)
+  - Property Accessors (L15522-L15564) and Runtime Semantics: Evaluation (L15565-L15599) — near `.getProp`
+  - Optional Chains (L15774-L15778) and Evaluation (L15779-L15798) — near `.getIndex`
+  - Empty Statement (L17540-L17549)
+  - The `continue` Statement (L18224-L18248)
+  - The `break` Statement (L18249-L18273)
+  - GlobalDeclarationInstantiation (L20654-L20665)
+  - ECMAScript Standard Built-in Objects (L22940-L23070)
+  - The Global Object (L23071-L23083)
+
+- **Build:** Core/Semantics.lean compiles clean. Pre-existing linter warnings only.
+
+---
+
 ## Run: 2026-03-24T21:00:01+00:00
 
 ### STATUS: Added 93 new SPEC citations (605 total, 0 mismatches). Build clean (Core/Semantics.lean). Coverage now 17% (7589 lines). TARGET MET: 600+ refs.
@@ -2050,3 +2080,4 @@ test_write
 
 ## Run: 2026-03-24T22:00:09+00:00
 
+2026-03-24T22:21:30+00:00 DONE
