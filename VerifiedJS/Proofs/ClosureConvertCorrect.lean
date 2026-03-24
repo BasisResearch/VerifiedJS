@@ -611,12 +611,83 @@ private def ValueAddrWF (v : Core.Value) (heapSize : Nat) : Prop :=
   | _ => True
 
 /-- All object addresses in a Core expression are valid heap addresses.
-    Only needs cases that appear in sorry sites (getProp, getIndex, lit). -/
+    Fully recursive to propagate through compound expressions. -/
 private def ExprAddrWF : Core.Expr → Nat → Prop
   | .lit v, n => ValueAddrWF v n
+  | .var _, _ => True
+  | .«let» _ init body, n => ExprAddrWF init n ∧ ExprAddrWF body n
+  | .assign _ value, n => ExprAddrWF value n
+  | .«if» cond t e, n => ExprAddrWF cond n ∧ ExprAddrWF t n ∧ ExprAddrWF e n
+  | .seq a b, n => ExprAddrWF a n ∧ ExprAddrWF b n
+  | .call _ _, _ => True
+  | .newObj _ _, _ => True
   | .getProp e _, n => ExprAddrWF e n
-  | .getIndex e _, n => ExprAddrWF e n
-  | _, _ => True
+  | .setProp o _ v, n => ExprAddrWF o n ∧ ExprAddrWF v n
+  | .getIndex e1 e2, n => ExprAddrWF e1 n ∧ ExprAddrWF e2 n
+  | .setIndex o i v, n => ExprAddrWF o n ∧ ExprAddrWF i n ∧ ExprAddrWF v n
+  | .deleteProp e _, n => ExprAddrWF e n
+  | .typeof e, n => ExprAddrWF e n
+  | .unary _ e, n => ExprAddrWF e n
+  | .binary _ l r, n => ExprAddrWF l n ∧ ExprAddrWF r n
+  | .objectLit _, _ => True
+  | .arrayLit _, _ => True
+  | .functionDef _ _ body _ _, n => ExprAddrWF body n
+  | .throw e, n => ExprAddrWF e n
+  | .tryCatch b _ c none, n => ExprAddrWF b n ∧ ExprAddrWF c n
+  | .tryCatch b _ c (some fe), n => ExprAddrWF b n ∧ ExprAddrWF c n ∧ ExprAddrWF fe n
+  | .while_ c b, n => ExprAddrWF c n ∧ ExprAddrWF b n
+  | .forIn _ o b, n => ExprAddrWF o n ∧ ExprAddrWF b n
+  | .forOf _ i b, n => ExprAddrWF i n ∧ ExprAddrWF b n
+  | .«break» _, _ => True
+  | .«continue» _, _ => True
+  | .«return» none, _ => True
+  | .«return» (some e), n => ExprAddrWF e n
+  | .labeled _ b, n => ExprAddrWF b n
+  | .yield none _, _ => True
+  | .yield (some e) _, n => ExprAddrWF e n
+  | .await e, n => ExprAddrWF e n
+  | .this, _ => True
+
+private theorem ValueAddrWF_mono {v : Core.Value} {n m : Nat}
+    (h : ValueAddrWF v n) (hle : n ≤ m) : ValueAddrWF v m := by
+  cases v <;> simp [ValueAddrWF] at * <;> omega
+
+private theorem ExprAddrWF_mono {e : Core.Expr} {n m : Nat}
+    (h : ExprAddrWF e n) (hle : n ≤ m) : ExprAddrWF e m := by
+  induction e generalizing n m with
+  | lit v => exact ValueAddrWF_mono h hle
+  | «let» _ init body ih1 ih2 => exact ⟨ih1 h.1 hle, ih2 h.2 hle⟩
+  | assign _ v ih => exact ih h hle
+  | «if» c t e ih1 ih2 ih3 => exact ⟨ih1 h.1 hle, ih2 h.2.1 hle, ih3 h.2.2 hle⟩
+  | seq a b ih1 ih2 => exact ⟨ih1 h.1 hle, ih2 h.2 hle⟩
+  | getProp e _ ih => exact ih h hle
+  | setProp o _ v ih1 ih2 => exact ⟨ih1 h.1 hle, ih2 h.2 hle⟩
+  | getIndex e1 e2 ih1 ih2 => exact ⟨ih1 h.1 hle, ih2 h.2 hle⟩
+  | setIndex o i v ih1 ih2 ih3 => exact ⟨ih1 h.1 hle, ih2 h.2.1 hle, ih3 h.2.2 hle⟩
+  | deleteProp e _ ih => exact ih h hle
+  | typeof e ih => exact ih h hle
+  | unary _ e ih => exact ih h hle
+  | binary _ l r ih1 ih2 => exact ⟨ih1 h.1 hle, ih2 h.2 hle⟩
+  | functionDef _ _ body _ _ ih => exact ih h hle
+  | throw e ih => exact ih h hle
+  | tryCatch b _ c f ih1 ih2 ih3 =>
+    cases f with
+    | none => exact ⟨ih1 h.1 hle, ih2 h.2 hle⟩
+    | some fe => exact ⟨ih1 h.1 hle, ih2 h.2.1 hle, ih3 h.2.2 hle⟩
+  | while_ c b ih1 ih2 => exact ⟨ih1 h.1 hle, ih2 h.2 hle⟩
+  | forIn _ o b ih1 ih2 => exact ⟨ih1 h.1 hle, ih2 h.2 hle⟩
+  | forOf _ i b ih1 ih2 => exact ⟨ih1 h.1 hle, ih2 h.2 hle⟩
+  | «return» arg ih =>
+    cases arg with
+    | none => trivial
+    | some e => exact ih h hle
+  | labeled _ b ih => exact ih h hle
+  | yield arg _ ih =>
+    cases arg with
+    | none => trivial
+    | some e => exact ih h hle
+  | await e ih => exact ih h hle
+  | _ => trivial
 
 /-- Simulation relation for closure conversion: Flat and Core states
     have matching traces, environment correspondence, and expression

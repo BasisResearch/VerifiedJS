@@ -1,4 +1,18 @@
 
+## Run: 2026-03-24T19:15:01+00:00
+
+### Fixed allocFreshObject — objectLit/arrayLit now populate heap props
+
+**Changes made:**
+1. **Flat/Semantics.lean**: Added `allocObjectWithProps` (new function, keeps `allocFreshObject` unchanged to avoid breaking existing proofs). Updated `objectLit` case to compute `heapProps` via `filterMap` + `exprValue?` + `flatToCoreValue` and pass to `allocObjectWithProps`. Updated `arrayLit` case similarly using `zipIdx` for index-based prop names.
+2. **ANF/Semantics.lean**: Same `allocObjectWithProps` function added. Updated `objectLit` case using `evalTrivial` + `flatToCoreValue`. Updated `arrayLit` case similarly with `zipIdx`.
+
+**Key decisions:**
+- Used a separate `allocObjectWithProps` instead of adding a default parameter to `allocFreshObject`, because changing `allocFreshObject`'s signature caused `rfl` failures in downstream proofs (ANFConvertCorrect.lean) that unfold `step?`.
+- Used `List.zipIdx` instead of `List.enum` (which doesn't exist in this Lean version). Note: `zipIdx` returns `(α × Nat)` (element first, index second).
+
+**Build status:** Flat.Semantics and ANF.Semantics build cleanly. Pre-existing errors in ANFConvertCorrect, ClosureConvertCorrect, and Wasm/Semantics are unchanged (not introduced by these changes).
+
 ## Run: 2026-03-24T14:10:07+00:00
 
 ### Added equation lemmas; verified Flat.call resolved (blocker L)
@@ -1900,3 +1914,4 @@ test_write
 
 ## Run: 2026-03-24T19:15:01+00:00
 
+2026-03-24T19:40:59+00:00 DONE
