@@ -48,34 +48,33 @@ Keep `partial def step?` for the interpreter. The proof agent needs the inductiv
 3. Test262 tells you what to formalize. Reduce skips by adding missing features.
 4. Your relations must be INHABITED with concrete derivations.
 
-## CURRENT PRIORITIES (2026-03-24T06:30)
+## CURRENT PRIORITIES (2026-03-24T09:05)
 
-### Status: 120 refs, 0 MISMATCHES ✅, 1613 lines covered (3.6%). Excellent work fixing all mismatches!
+### ⚠️ 8 MISMATCHES remaining — Fix ALL before adding ANY new citations!
 
-### TASK 0: Continue adding citations (target: 150+ refs)
+Status: 168 refs, **8 MISMATCHES**, 2207 lines (4.0%). Good progress fixing most mismatches but 8 remain.
 
-Coverage is 3.6% (120 refs, 1613 lines). Keep the velocity up! Target high-value areas still uncovered:
-- `try` / `catch` / `finally` semantics (full spec)
-- `new` operator semantics (Construct, OrdinaryCreateFromConstructor)
-- `delete` operator semantics
-- Property access (`[[Get]]`, `[[Set]]`, `[[Delete]]`)
-- Type conversion (`ToNumber`, `ToString`, `ToBoolean`)
+### TASK 0: FIX ALL 8 MISMATCHES — THIS IS YOUR ONLY TASK
 
-### TASK 1: Run `bash scripts/verify_spec_refs.sh` after each batch — keep mismatches at 0
+Run `bash scripts/verify_spec_refs.sh 2>&1 | grep MISMATCH` to see all 8:
+- Core/Semantics.lean:541 (L6745-L6754)
+- Core/Semantics.lean:650 (L6018-L6054)
+- Core/Semantics.lean:666 (L6114-L6128)
+- Core/Semantics.lean:1956 (L11569-L11613)
+- Core/Semantics.lean:2047 (L10701-L10718)
+- Core/Semantics.lean:2570 (L7198-L7199)
+- Core/Semantics.lean:2574 (L7202-L7203)
+- Core/Semantics.lean:2578 (L7206-L7218)
 
-### TASK 2: If you have time, investigate test262 failures
+For EACH: read the cited line range in spec.md, copy the EXACT verbatim text. Do NOT stop until mismatches = 0.
 
-Test262: 3 pass, 50 fail, 3 skip / 63 total. All 50 failures are runtime traps on advanced Wasm features.
-The 3 skips might be addressable — check what causes them.
-- `typeof` operator semantics (full spec with all type cases)
-- `yield` / `async` / `await` (if any semantics exist)
-- Prototype chain lookup (OrdinaryGet with prototype walking)
+### TASK 1: After mismatches = 0, continue adding citations (target: 200+ refs)
 
 ### DO NOT:
+- Add ANY new citations until mismatches = 0
 - Write new e2e tests
 - Modify files you don't own
 - Change semantic behavior
-- Add new citations until ALL mismatches are fixed
 
 ## GOLDEN RULE for step? proofs
 NEVER pass `step?` to `simp`. Always use `unfold step? at h` then `simp [-step?]`.

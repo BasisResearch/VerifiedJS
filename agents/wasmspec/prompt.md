@@ -62,65 +62,45 @@ Then construct the matching Step derivation in Lean. If you cannot, your semanti
 3. Keep definitions structurally simple for proofs.
 4. Add @[simp] lemmas for everything the proof agent might need.
 
-## CURRENT PRIORITIES (2026-03-24T06:30)
+## CURRENT PRIORITIES (2026-03-24T09:05)
 
-### Build: PASS ✅. Sorry: 48 total (31 Wasm + 12 CC + 2 ANF + 1 Lower).
+### Build: PASS ✅. Sorry: 45 total (31 Wasm + 11 CC + 2 ANF + 1 Lower). Wasm DOWN from 33!
 
-### ⚠️ TIMEOUT PREVENTION: DO EXACTLY 1 TASK, then build, log, EXIT.
+### ⚠️ YOU ARE TIMING OUT EVERY RUN. DO THE SMALLEST POSSIBLE TASK.
 
-### 🚨 HIGHEST PRIORITY: Fix private visibility in Flat/Semantics.lean (BLOCKS 5 CC proof sorries!)
+You have timed out 6+ consecutive runs. The proof agent is WORKING AROUND your private visibility issue and closing sorries anyway. But you are still blocking 3 CC sorries (setProp, getIndex, setIndex) and the call stub.
 
-**GOOD NEWS**: You already fixed getProp/setProp/getIndex/setIndex/deleteProp implementations — they now do real heap operations! But the proof agent CANNOT USE THEM because 3 helper functions are `private`:
+### TASK 0: Fix private visibility — THIS IS A 5-MINUTE TASK
 
-1. `private def coreToFlatValue` (line ~207) — DUPLICATE of the public `Flat.convertValue` in ClosureConvert.lean!
-2. `private def flatToCoreValue` (line ~197) — no public equivalent
-3. `private def heapObjectAt?` (line ~233) — equivalent to `h.objects[addr]?`
-
-**FIX** (choose ONE approach):
-
-**Option A (preferred — minimal diff):** Replace usages and delete private defs:
+Just remove `private` from these 3 functions in Flat/Semantics.lean:
 ```lean
--- In Flat/Semantics.lean, replace all uses of:
---   coreToFlatValue cv   →   convertValue cv     (public in ClosureConvert.lean)
---   flatToCoreValue v    →   make it `def` not `private def`
---   heapObjectAt? h addr →   h.objects[addr]?     (standard Array access)
+-- Find each of these and remove the word "private":
+private def flatToCoreValue  →  def flatToCoreValue
+private def coreToFlatValue  →  def coreToFlatValue
+private def heapObjectAt?    →  def heapObjectAt?
 ```
+That's it. No @[simp] lemmas needed. Just delete the word `private`. Build. Log. EXIT.
 
-**Option B:** Just remove `private` from all three:
-```lean
-def flatToCoreValue : Value → Core.Value  -- was: private def
-def coreToFlatValue : Core.Value → Value  -- was: private def
-def heapObjectAt? (h : Core.Heap) (addr : Nat) ...  -- was: private def
-```
+### TASK 1: Fix `call` stub (line ~370)
 
-Then add @[simp] lemmas:
-```lean
-@[simp] theorem coreToFlatValue_eq_convertValue (v : Core.Value) :
-    coreToFlatValue v = convertValue v := by cases v <;> rfl
-
-@[simp] theorem heapObjectAt?_eq (h : Core.Heap) (addr : Nat) :
-    heapObjectAt? h addr = h.objects[addr]? := by
-  simp [heapObjectAt?]; split <;> simp_all [Array.get?]
-```
-
-### TASK 1 (if TASK 0 done quickly): Fix `call` stub
-
-`call` still returns `.lit .undefined` when all args are values (line 370). Core invokes the function body. This blocks CC sorry at line 1508.
+`call` still returns `.lit .undefined` when all args are values. Core invokes the function body. This blocks CC sorry at line 1523.
 
 Mirror Core.step? call semantics: look up function in `s.funcs`, bind params to arg values, set body as new expression.
 
 ### TASK 2 (if time): Close 1 Wasm sorry
 
 31 total in Wasm/Semantics.lean:
-- **LowerSimRel.step_sim** (14): lines 5770, 5843, 5888, 5896, 5900, 5903, 5906, 5909, 5912, 5915, 5918, 5921, 5924, 5927
-- **EmitSimRel.step_sim** (14): lines 6524, 6632, 7122, 7125, 7128, 7131, 7134, 7137, 7140, 7176, 7179, 7182, 7185, 7253
-- **LowerSimRel.init** (3): lines 7412, 7427, 7451
+- **LowerSimRel.step_sim** (14): lines 5810, 5883, 5928, 5936, 5940, 5943, 5946, 5949, 5952, 5955, 5958, 5961, 5964, 5967
+- **EmitSimRel.step_sim** (12): lines 6564, 6672, 7162, 7165, 7168, 7171, 7174, 7177, 7180, 7315, 7319, 7322, 7325, 7393
+- **LowerSimRel.init** (3): lines 7552, 7567, 7591
+
+Pick the SMALLEST sorry. Use `lean_goal` to see state. Close it. Build. EXIT.
 
 ### RULES THIS RUN:
-- Fix visibility FIRST (unblocks 5 proof sorries)
+- TASK 0 IS A 5-MINUTE EDIT. Do it FIRST.
 - Do NOT add new sorries
 - Only run `lake build` ONCE at the end
-- If stuck for 15 min, STOP and log what blocked you
+- EXIT IMMEDIATELY after build passes — do NOT start another task
 
 ### ⚠️ BUILD-FIRST RULE
 Always run `bash scripts/lake_build_concise.sh` and check exit code BEFORE logging success.

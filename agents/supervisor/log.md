@@ -3680,3 +3680,63 @@ All 12 are blocked on HeapCorr (adding `sf.heap = sc.heap` to CC_SimRel). No new
 
 ## Run: 2026-03-24T09:05:01+00:00
 
+
+### Build
+- **Status**: `lake build` **PASS** ✅
+
+### Metrics
+- **Sorry count**: 45 (threshold 100) — 11 CC + 31 Wasm + 2 ANF + 1 Lower (DOWN from 48!)
+- **Test262**: 3 pass, 50 fail, 3 skip, 5 xfail / 63 total (UNCHANGED 140+ hrs)
+- **Spec coverage**: 1701/44380 lines (3.8%), 168 refs, 64 mismatches (UP from 120 refs/0 mismatches — REGRESSION)
+- **WasmCert refs**: 0 checked, 0 mismatches
+
+### Proof Chain Status
+```
+Source ──[elaborate]──> Core ──[closureConvert]──> Flat ──[anfConvert]──> ANF ──[lower]──> Wasm.IR ──[emit]──> Wasm
+         ✅ proved       11 sorry                    2 sorry              1 sorry          31 sorry
+```
+
+### Sorry Delta: 48→45 (-3)
+- CC: 12→11 (-1) — **getProp + deleteProp CLOSED** (despite private visibility). tryCatch mostly proved (2 isCallFrame sorries added, net -1).
+- Wasm: 33→31 (-2) — wasmspec made progress during timeouts (file modified 07:07)
+- ANF: 2 (unchanged)
+- Lower: 1 (unchanged)
+
+### Agent Status
+- **proof**: VERY PRODUCTIVE. Currently running (08:30). Already closed getProp + deleteProp (CC 13→11). Proved tryCatch body/normal/error cases in 06:30 run. Working around private visibility issue independently.
+- **wasmspec**: Still in timeout loop (6+ consecutive). Made progress (Wasm 33→31) but can't finish runs. Private visibility STILL unfixed (7 private defs remain). Simplified prompt to absolute minimum.
+- **jsspec**: Productive on ref count (120→168, +48) but DISASTROUS on quality (0→64 mismatches). Redirected to FIX ALL mismatches before any new work.
+
+### Abstraction Discovery
+
+**CC sorry taxonomy (11 remaining):**
+1. **captured var (1)**: line 813 — Flat.getEnv 2 steps vs Core.var 1 step
+2. **call BLOCKED (1)**: line 1523 — Flat stub returns .undefined
+3. **newObj (1)**: line 1524 — allocates fresh object
+4. **setProp/getIndex/setIndex (3)**: lines 1659-1661 — SAME pattern as getProp proof (provable now!)
+5. **objectLit/arrayLit/functionDef (3)**: lines 2199-2201 — heap/funcs correspondence
+6. **isCallFrame (2)**: lines 2335, 2448 — unreachable for source programs, needs well-formedness predicate
+
+**Key insight**: The proof agent proved getProp/deleteProp by working structurally with Flat.step? cases without needing to unfold private helpers directly. The same approach should work for setProp/getIndex/setIndex. The isCallFrame sorries are quick wins with a well-formedness hypothesis.
+
+**Wasm sorry taxonomy (31 remaining):**
+- LowerSimRel.step_sim (14): lines 5810-5967
+- EmitSimRel.step_sim (14): lines 6564-7393
+- LowerSimRel.init (3): lines 7552-7591
+
+### Prompts Updated
+1. ✅ Updated proof prompt (2026-03-24T09:05): Celebrated getProp/deleteProp progress. New CC sorry map (11 total). TASK 0 = isCallFrame (easiest win), TASK 1 = setProp/getIndex/setIndex (same pattern as getProp), TASK 2 = captured var, TASK 3 = ANF.
+2. ✅ Updated wasmspec prompt (2026-03-24T09:05): Simplified TASK 0 to "just delete the word private" (5-min edit). Emphasized EXIT IMMEDIATELY after build. Updated Wasm sorry line numbers.
+3. ✅ Updated jsspec prompt (2026-03-24T09:05): EMERGENCY — 64 mismatches. Only task is fix ALL mismatches. No new citations allowed.
+4. ✅ Updated PROGRESS.md: metrics table, proof chain (CC 12→11, Wasm 33→31).
+
+### Next Run Focus
+- Monitor proof agent: did it close isCallFrame + setProp/getIndex/setIndex?
+- Check wasmspec: did it FINALLY fix private visibility?
+- Track jsspec mismatches: should go from 64→0
+2026-03-24T09:05:01+00:00 DONE
+
+### CORRECTION (09:20): Spec coverage updated
+- Earlier inline run showed 64 mismatches — stale. Background task completed with **8 mismatches** (jsspec fixed ~56 during this run).
+- Actual: 168 refs, **8 mismatches**, 2207 lines (4.0%). Updated jsspec prompt with exact 8 mismatch locations.
+2026-03-24T09:23:55+00:00 DONE

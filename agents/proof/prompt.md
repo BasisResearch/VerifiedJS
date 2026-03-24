@@ -57,56 +57,43 @@ If ClosureConvertCorrect needs 600 lines of case analysis, WRITE 600 LINES. That
 ## Test262
 Read `logs/test262_summary.md` for failure categories. Fix compiler bugs that cause test262 failures.
 
-## CURRENT PRIORITIES (2026-03-24T06:30)
+## CURRENT PRIORITIES (2026-03-24T09:05)
 
-### Build: PASS ✅. Sorry: 48 (12 CC + 31 Wasm + 2 ANF + 1 Lower).
+### Build: PASS ✅. Sorry: 45 (11 CC + 31 Wasm + 2 ANF + 1 Lower). DOWN from 48!
 
-### 🎉 5 CC sorries NOW UNBLOCKED — Flat.step? stubs FIXED!
+### 🎉 GREAT PROGRESS: getProp + deleteProp CLOSED! tryCatch mostly proved!
 
-wasmspec has implemented real heap operations for getProp/setProp/getIndex/setIndex/deleteProp. These 5 CC sorries (lines 1510-1514) are NOW PROVABLE once wasmspec makes helper functions public (asked this run).
+You proved getProp and deleteProp despite private visibility — excellent work navigating around it structurally. tryCatch is mostly proved, leaving only 2 isCallFrame sorries (unreachable for source programs).
 
-**⚠️ CAVEAT**: `coreToFlatValue`/`flatToCoreValue`/`heapObjectAt?` are still `private` in Flat/Semantics.lean. If you can't unfold them, SKIP to tryCatch/captured-var and come back next run. wasmspec has been asked to fix visibility.
+### CC Sorry Map (11 total):
+- **1 captured var**: line 813 (Flat.getEnv 2 steps vs Core.var 1 step)
+- **1 call BLOCKED**: line 1523 (Flat returns `.undefined` instead of invoking function)
+- **1 newObj**: line 1524 (Flat allocates fresh object, same as Core — provable)
+- **3 heap ops**: lines 1659-1661 (setProp, getIndex, setIndex) — use same pattern as your getProp proof!
+- **3 heap/funcs**: lines 2199-2201 (objectLit, arrayLit, functionDef)
+- **2 isCallFrame**: lines 2335, 2448 (unreachable for CC'd source programs — needs well-formedness)
 
-**Still blocked**: `call` (line 1508) — Flat still returns `.undefined` instead of invoking function.
+### TASK 0: Close isCallFrame sorries (lines 2335, 2448) — EASIEST WIN
 
-### CC Sorry Map (12 total):
-- **1 captured var**: line 798 (Flat.getEnv 2 steps vs Core.var 1 step)
-- **5 heap ops NEWLY UNBLOCKED**: lines 1510-1514 (getProp, setProp, getIndex, setIndex, deleteProp)
-  - Proof pattern: `sf.heap = sc.heap` (from CC_SimRel) → same heap lookup → Flat result = `coreToFlatValue (Core result)` = `convertValue (Core result)` → matches convertExpr
-- **1 call STILL BLOCKED**: line 1508
-- **1 newObj**: line 1509 (Flat allocates fresh object, same as Core — provable)
-- **3 heap/funcs**: lines 1930-1932 (objectLit, arrayLit, functionDef)
-- **1 tryCatch**: line 2041 (env correspondence for catch binding)
+These are unreachable: `catchParam = "__call_frame_return__"` never happens for source programs. Add a well-formedness predicate:
+```lean
+-- In CC_SimRel or as a hypothesis:
+-- h_wf : catchParam ≠ "__call_frame_return__"
+-- Then: contradiction closes both sorries
+```
+Check with `lean_goal` at lines 2335 and 2448 to see exact state.
 
-### TASK 0: Close tryCatch (line 2041) — HIGHEST PRIORITY (no blockers)
+### TASK 1: Close setProp/getIndex/setIndex (lines 1659-1661) — SAME PATTERN AS getProp!
 
-Pattern is like `let`:
-1. Core binds `catchParam := exceptionVal` in catch env
-2. Flat does the same binding
-3. With `EnvCorr`, the extended environments correspond
-4. `convertExpr` on the catch body with updated scope/env produces matching Flat expression
+You already proved getProp at line 1525. These 3 follow the EXACT same pattern:
+- `sf.heap = sc.heap` → same heap → same lookup
+- `convertValue` maps Core result to Flat result
+Copy your getProp proof structure for each.
 
-Use `lean_goal` at line 2041 to see exact state, then work it.
+### TASK 2: Close captured var (line 813)
 
-### TASK 1: Close captured var (line 798)
-
-Flat takes 2 steps (.getEnv then lookup) while Core takes 1 step (.var lookup). Options:
-1. Show the .getEnv intermediate is handled and the sorry is about the SECOND step
-2. Or change simulation to allow Flat.Steps (multi-step)
-
-Use `lean_goal` at line 798 first.
-
-### TASK 2: Try getProp (line 1510) — test if visibility is fixed
-
-After tasks 0-1, try `lean_goal` at line 1510. If you can see/unfold `Flat.step?` getProp case:
-- `sf.heap = sc.heap` from CC_SimRel gives heap identity
-- Core returns `v` from `s.heap.objects[addr]?`
-- Flat returns `coreToFlatValue v` from `heapObjectAt? s.heap addr`
-- `heapObjectAt?` ≡ `s.heap.objects[addr]?` (same lookup)
-- Need: `coreToFlatValue v = convertValue v` (they're the same function!)
-- Build CC_SimRel for result using `sf.heap = sc.heap` (unchanged) + EnvCorr (unchanged)
-
-If `coreToFlatValue` won't unfold (still private), SKIP and log it.
+Flat takes 2 steps (.getEnv then lookup) while Core takes 1 step (.var lookup).
+Use `lean_goal` at line 813 first.
 
 ### TASK 3: ANF sorries (lines 106, 1181 in ANFConvertCorrect.lean) — INDEPENDENT
 

@@ -1958,7 +1958,7 @@ def step? (s : State) : Option (TraceEvent × State) :=
   -- | SubstitutionEvaluation of \|TemplateSpans\|. 1. Assert: \_restSub\_ is a
   -- | possibly empty List. 1. Return the list-concatenation of « \_firstSub\_
   -- | » and \_restSub\_.
-  -- SPEC: L11569-L11579
+  -- SPEC: L11569-L11580
   -- | # BuiltinCallOrConstruct ( \_F\_: a built-in function object, \_thisArgument\_: an ECMAScript language value or \~uninitialized\~, \_argumentsList\_: a List of ECMAScript language values, \_newTarget\_: a constructor or \*undefined\*, ): either a normal completion containing an ECMAScript language value or a throw completion
   -- |
   -- | 1\. Let \_callerContext\_ be the running execution context. 1. If
@@ -1970,7 +1970,7 @@ def step? (s : State) : Option (TraceEvent × State) :=
   -- | \_calleeContext\_ to \*null\*. 1. Perform any necessary
   -- | implementation-defined initialization of \_calleeContext\_. 1. Push
   -- | \_calleeContext\_ onto the execution context stack; \_calleeContext\_ is
-  -- | now the running execution context.
+  -- | now the running execution context. 1. If \_F\_.\[\[Async\]\] is
   | .call callee args =>
       match exprValue? callee with
       | none =>
