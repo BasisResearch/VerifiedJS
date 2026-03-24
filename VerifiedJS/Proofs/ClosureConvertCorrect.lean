@@ -2038,7 +2038,282 @@ private theorem closureConvert_step_simulation
           simp only [Flat.convertExpr]
           rw [show Flat.convertExpr sc_arg.expr scope' envVar envMap st_a =
             (sa_flat.expr, st_a') from hconv_arg.symm]
-  | tryCatch _ _ _ _ => sorry -- needs env correspondence
+  | tryCatch body catchParam catchBody finally_ =>
+    rw [hsc] at hconv; simp only [Flat.convertExpr] at hconv
+    -- Set up sub-expression names
+    set body' := (Flat.convertExpr body scope envVar envMap st).1 with hbody'_def
+    set st1 := (Flat.convertExpr body scope envVar envMap st).2 with hst1_def
+    set catchBody' := (Flat.convertExpr catchBody (catchParam :: scope) envVar envMap st1).1 with hcatchBody'_def
+    set st2 := (Flat.convertExpr catchBody (catchParam :: scope) envVar envMap st1).2 with hst2_def
+    set finally' := (Flat.convertOptExpr finally_ scope envVar envMap st2).1 with hfinally'_def
+    set _st3 := (Flat.convertOptExpr finally_ scope envVar envMap st2).2 with _hst3_def
+    have hsf_expr : sf.expr = .tryCatch body' catchParam catchBody' finally' := by
+      cases sf; simp_all [(Prod.mk.inj hconv).1]
+    -- Case split on whether body is already a value
+    cases hval : Core.exprValue? body with
+    | some v =>
+      -- Body is a value: tryCatch normal completion.
+      -- Requires catchParam ≠ "__call_frame_return__" for Core semantics match.
+      -- body = .lit v, body' = .lit (convertValue v)
+      have ha_lit : body = .lit v := by cases body <;> simp [Core.exprValue?] at hval <;> exact congrArg _ hval
+      subst ha_lit
+      simp only [Flat.convertExpr] at hsf_expr hconv hbody'_def
+      have hsf_rw : sf = ⟨.tryCatch (.lit (Flat.convertValue v)) catchParam catchBody' finally', sf.env, sf.heap, sf.trace⟩ := by
+        cases sf; simp_all
+      -- Case split on isCallFrame
+      by_cases hcf : catchParam = "__call_frame_return__"
+      · -- isCallFrame = true: Core uses callStack. Can't match Flat behavior.
+        sorry -- unreachable for source programs but no well-formedness precondition
+      · -- isCallFrame = false: Core matches Flat behavior
+        -- Case split on finally_
+        cases hfin : finally_ with
+        | none =>
+          -- Both step to .lit v / .lit (convertValue v) with .silent
+          have hflat_ev : ev = .silent := by
+            rw [hsf_rw] at hstep; simp only [Flat.step?, Flat.exprValue?] at hstep
+            exact (Prod.mk.inj (Option.some.inj hstep)).1.symm
+          subst hflat_ev
+          obtain ⟨sc', hcstep⟩ : ∃ sc', Core.step? sc = some (.silent, sc') := by
+            rw [show sc = ⟨.tryCatch (.lit v) catchParam catchBody none, sc.env, sc.heap, sc.trace, sc.funcs, sc.callStack⟩
+              from by cases sc; simp_all]
+            exact ⟨_, Core.step_tryCatch_normal_noFinally v catchParam catchBody sc.env sc.heap sc.trace sc.funcs sc.callStack hcf⟩
+          refine ⟨sc', ⟨hcstep⟩, ?_⟩
+          have hsf'_trace : sf'.trace = sc'.trace := by
+            have hf := hstep; have hc := hcstep
+            rw [hsf_rw] at hf
+            rw [show sc = ⟨.tryCatch (.lit v) catchParam catchBody none, sc.env, sc.heap, sc.trace, sc.funcs, sc.callStack⟩
+              from by cases sc; simp_all] at hc
+            simp only [Flat.step?, Flat.exprValue?] at hf
+            simp only [Core.step?, Core.exprValue?, hcf] at hc
+            have heqf := (Prod.mk.inj (Option.some.inj hf)).2; subst heqf
+            have heqc := (Prod.mk.inj (Option.some.inj hc)).2; subst heqc
+            show sf.trace ++ _ = sc.trace ++ _; rw [htrace]
+          have henv' : EnvCorr sc'.env sf'.env := by
+            have hsf'_env : sf'.env = sf.env := by
+              rw [hsf_rw] at hstep; simp only [Flat.step?, Flat.exprValue?] at hstep
+              exact congrArg Flat.State.env (Prod.mk.inj (Option.some.inj hstep)).2 ▸ rfl
+            have hsc'_env : sc'.env = sc.env := by
+              rw [show sc = ⟨.tryCatch (.lit v) catchParam catchBody none, sc.env, sc.heap, sc.trace, sc.funcs, sc.callStack⟩
+                from by cases sc; simp_all] at hcstep
+              simp only [Core.step?, Core.exprValue?, hcf] at hcstep
+              exact congrArg Core.State.env (Prod.mk.inj (Option.some.inj hcstep)).2 ▸ rfl
+            rw [hsc'_env, hsf'_env]; exact henvCorr
+          exact ⟨hsf'_trace, henv', by
+            rw [hsf_rw] at hstep; simp only [Flat.step?, Flat.exprValue?] at hstep
+            rw [show sc = ⟨.tryCatch (.lit v) catchParam catchBody none, sc.env, sc.heap, sc.trace, sc.funcs, sc.callStack⟩
+              from by cases sc; simp_all] at hcstep
+            simp only [Core.step?, Core.exprValue?, hcf] at hcstep
+            have := (Prod.mk.inj (Option.some.inj hstep)).2; have := (Prod.mk.inj (Option.some.inj hcstep)).2
+            subst_vars; exact hheap, scope, st, st,
+            by simp [Flat.convertExpr, Flat.convertValue]; rfl⟩
+        | some fin =>
+          -- Both step to .seq fin (.lit v) / .seq fin' (.lit (convertValue v)) with .silent
+          have hflat_ev : ev = .silent := by
+            rw [hsf_rw] at hstep
+            simp only [Flat.step?, Flat.exprValue?] at hstep
+            rw [show finally' = (Flat.convertOptExpr (some fin) scope envVar envMap st2).1 from hfinally'_def] at hstep
+            simp only [Flat.convertOptExpr] at hstep
+            exact (Prod.mk.inj (Option.some.inj hstep)).1.symm
+          subst hflat_ev
+          -- Core step
+          have hsc_rw : sc = ⟨.tryCatch (.lit v) catchParam catchBody (some fin), sc.env, sc.heap, sc.trace, sc.funcs, sc.callStack⟩ := by
+            cases sc; simp_all
+          obtain ⟨sc', hcstep⟩ : ∃ sc', Core.step? sc = some (.silent, sc') := by
+            rw [hsc_rw]; simp only [Core.step?, Core.exprValue?, hcf]; exact ⟨_, rfl⟩
+          refine ⟨sc', ⟨hcstep⟩, ?_⟩
+          have hsf'_trace : sf'.trace = sc'.trace := by
+            have hf := hstep; have hc := hcstep
+            rw [hsf_rw] at hf; rw [hsc_rw] at hc
+            simp only [Flat.step?, Flat.exprValue?] at hf
+            simp only [Core.step?, Core.exprValue?, hcf] at hc
+            have heqf := (Prod.mk.inj (Option.some.inj hf)).2; subst heqf
+            have heqc := (Prod.mk.inj (Option.some.inj hc)).2; subst heqc
+            show sf.trace ++ _ = sc.trace ++ _; rw [htrace]
+          have henv' : EnvCorr sc'.env sf'.env := by
+            have hsf'_env : sf'.env = sf.env := by
+              rw [hsf_rw] at hstep; simp only [Flat.step?, Flat.exprValue?] at hstep
+              exact congrArg Flat.State.env (Prod.mk.inj (Option.some.inj hstep)).2 ▸ rfl
+            have hsc'_env : sc'.env = sc.env := by
+              rw [hsc_rw] at hcstep; simp only [Core.step?, Core.exprValue?, hcf] at hcstep
+              exact congrArg Core.State.env (Prod.mk.inj (Option.some.inj hcstep)).2 ▸ rfl
+            rw [hsc'_env, hsf'_env]; exact henvCorr
+          exact ⟨hsf'_trace, henv', by
+            rw [hsf_rw] at hstep; simp only [Flat.step?, Flat.exprValue?] at hstep
+            rw [hsc_rw] at hcstep; simp only [Core.step?, Core.exprValue?, hcf] at hcstep
+            have := (Prod.mk.inj (Option.some.inj hstep)).2; have := (Prod.mk.inj (Option.some.inj hcstep)).2
+            subst_vars; exact hheap, scope, st, (Flat.convertExpr fin scope envVar envMap st).2,
+            by simp only [Flat.convertExpr]
+               rw [hfinally'_def]; simp [Flat.convertOptExpr]; rfl⟩
+    | none =>
+      -- Body is not a value: sub-step
+      have hbody'_nv : Flat.exprValue? body' = none := convertExpr_not_value body hval scope envVar envMap st
+      have hsf_rw : sf = ⟨.tryCatch body' catchParam catchBody' finally', sf.env, sf.heap, sf.trace⟩ := by
+        cases sf; simp_all
+      have hdepth : Core.Expr.depth body < n := by rw [← hd, hsc]; simp [Core.Expr.depth]; omega
+      -- Extract the Flat sub-step
+      rw [hsf_rw] at hstep
+      simp only [Flat.step?, Flat.exprValue?, hbody'_nv] at hstep
+      cases hsubstep : Flat.step? ⟨body', sf.env, sf.heap, sf.trace⟩ with
+      | none => simp [hsubstep] at hstep
+      | some p =>
+        obtain ⟨ev_sub, sa_flat⟩ := p
+        simp only [hsubstep] at hstep
+        -- Case split on whether this is an error event (catch) or normal event (wrap)
+        cases ev_sub with
+        | error msg =>
+          -- Error from body: catch handler fires
+          -- In Core, isCallFrame check determines behavior.
+          sorry -- needs isCallFrame handling for error catch
+        | silent =>
+          -- Silent step in body: both Flat and Core wrap in tryCatch
+          have hev_eq : ev = .silent := (Prod.mk.inj (Option.some.inj hstep)).1
+          subst hev_eq
+          -- Apply IH
+          obtain ⟨sc_arg, ⟨hcore_substep⟩, htrace_arg, henvCorr_arg, hheap_arg, scope', st_a, st_a', hconv_arg⟩ :=
+            ih_depth (Core.Expr.depth body) hdepth envVar envMap
+            ⟨body', sf.env, sf.heap, sf.trace⟩
+            ⟨body, sc.env, sc.heap, sc.trace, sc.funcs, sc.callStack⟩
+            .silent sa_flat rfl htrace henvCorr hheap
+            ⟨scope, st, st1, by simp only [hbody'_def, hst1_def]; exact (Prod.eta _).symm⟩
+            ⟨hsubstep⟩
+          -- Core steps with tryCatch wrapping
+          have hcore_tc : Core.step? sc =
+            some (.silent, Core.pushTrace { sc_arg with expr := .tryCatch sc_arg.expr catchParam catchBody finally_, trace := sc.trace } .silent) := by
+            rw [show sc = ⟨.tryCatch body catchParam catchBody finally_, sc.env, sc.heap, sc.trace, sc.funcs, sc.callStack⟩
+              from by cases sc; simp_all]
+            exact Core.step_tryCatch_step_body_silent body catchParam catchBody finally_ sc.env sc.heap sc.trace sc.funcs sc.callStack hval sc_arg
+              (by rw [show (⟨body, sc.env, sc.heap, sc.trace, sc.funcs, sc.callStack⟩ : Core.State) =
+                { sc with expr := body } from by cases sc; simp_all]; exact hcore_substep)
+          set sc' := Core.pushTrace { sc_arg with expr := .tryCatch sc_arg.expr catchParam catchBody finally_, trace := sc.trace } .silent
+          refine ⟨sc', ⟨hcore_tc⟩, ?_⟩
+          constructor
+          · -- Trace
+            have hsf'_eq := (Prod.mk.inj (Option.some.inj hstep)).2
+            rw [← hsf'_eq]; show sf.trace ++ [.silent] = sc.trace ++ [.silent]; rw [htrace]
+          constructor
+          · -- EnvCorr
+            have hsf'_eq := (Prod.mk.inj (Option.some.inj hstep)).2
+            have hsc'_env : sc'.env = sc_arg.env := by simp [sc', Core.pushTrace]
+            rw [hsc'_env]; convert henvCorr_arg using 1; rw [← hsf'_eq]; rfl
+          constructor
+          · -- Heap
+            have hsf_eq_hp := (Prod.mk.inj (Option.some.inj hstep)).2
+            have hsc_heap_hp : sc'.heap = sc_arg.heap := by simp [sc', Core.pushTrace]
+            rw [hsc_heap_hp]; convert hheap_arg using 1; rw [← hsf_eq_hp]; rfl
+          · -- Expression correspondence
+            have hsf'_eq := (Prod.mk.inj (Option.some.inj hstep)).2
+            have hsf'_expr : sf'.expr = .tryCatch sa_flat.expr catchParam catchBody' finally' := by rw [← hsf'_eq]; rfl
+            have hsc'_expr : sc'.expr = .tryCatch sc_arg.expr catchParam catchBody finally_ := by simp [sc', Core.pushTrace]
+            rw [hsc'_expr, hsf'_expr]
+            refine ⟨scope', st_a, ?_, ?_⟩
+            · exact (Flat.convertOptExpr finally_ scope' envVar envMap
+                (Flat.convertExpr catchBody (catchParam :: scope') envVar envMap
+                  (Flat.convertExpr sc_arg.expr scope' envVar envMap st_a).2).2).2
+            · simp only [Flat.convertExpr]
+              rw [show Flat.convertExpr sc_arg.expr scope' envVar envMap st_a =
+                (sa_flat.expr, st_a') from hconv_arg.symm]
+              congr 1
+              · congr 1
+                · congr 1
+                  · rw [hcatchBody'_def, hst1_def]
+                    rw [convertExpr_scope_irrelevant catchBody (catchParam :: scope) (catchParam :: scope') envVar envMap
+                      (Flat.convertExpr body scope envVar envMap st).2]
+                    rfl
+                  · rw [hfinally'_def, hst2_def, hst1_def]
+                    rw [convertOptExpr_scope_irrelevant finally_ scope scope' envVar envMap
+                      (Flat.convertExpr catchBody (catchParam :: scope) envVar envMap
+                        (Flat.convertExpr body scope envVar envMap st).2).2]
+                    congr 1
+                    rw [convertExpr_scope_irrelevant catchBody (catchParam :: scope) (catchParam :: scope') envVar envMap
+                      (Flat.convertExpr body scope envVar envMap st).2]
+                    rfl
+                · rw [hfinally'_def, hst2_def, hst1_def]
+                  rw [convertOptExpr_scope_irrelevant finally_ scope scope' envVar envMap _]
+                  congr 1
+                  rw [convertExpr_scope_irrelevant catchBody (catchParam :: scope) (catchParam :: scope') envVar envMap
+                    (Flat.convertExpr body scope envVar envMap st).2]
+                  rfl
+              · rw [hfinally'_def, hst2_def, hst1_def]
+                rw [convertOptExpr_scope_irrelevant finally_ scope scope' envVar envMap _]
+                congr 1
+                rw [convertExpr_scope_irrelevant catchBody (catchParam :: scope) (catchParam :: scope') envVar envMap
+                  (Flat.convertExpr body scope envVar envMap st).2]
+                rfl
+        | log msg =>
+          -- Log step in body: both Flat and Core wrap in tryCatch
+          have hev_eq : ev = .log msg := (Prod.mk.inj (Option.some.inj hstep)).1
+          subst hev_eq
+          -- Apply IH
+          obtain ⟨sc_arg, ⟨hcore_substep⟩, htrace_arg, henvCorr_arg, hheap_arg, scope', st_a, st_a', hconv_arg⟩ :=
+            ih_depth (Core.Expr.depth body) hdepth envVar envMap
+            ⟨body', sf.env, sf.heap, sf.trace⟩
+            ⟨body, sc.env, sc.heap, sc.trace, sc.funcs, sc.callStack⟩
+            (.log msg) sa_flat rfl htrace henvCorr hheap
+            ⟨scope, st, st1, by simp only [hbody'_def, hst1_def]; exact (Prod.eta _).symm⟩
+            ⟨hsubstep⟩
+          -- Core steps with tryCatch wrapping
+          have hcore_tc : Core.step? sc =
+            some (.log msg, Core.pushTrace { sc_arg with expr := .tryCatch sc_arg.expr catchParam catchBody finally_, trace := sc.trace } (.log msg)) := by
+            rw [show sc = ⟨.tryCatch body catchParam catchBody finally_, sc.env, sc.heap, sc.trace, sc.funcs, sc.callStack⟩
+              from by cases sc; simp_all]
+            exact Core.step_tryCatch_step_body_log body catchParam catchBody finally_ sc.env sc.heap sc.trace sc.funcs sc.callStack hval msg sc_arg
+              (by rw [show (⟨body, sc.env, sc.heap, sc.trace, sc.funcs, sc.callStack⟩ : Core.State) =
+                { sc with expr := body } from by cases sc; simp_all]; exact hcore_substep)
+          set sc' := Core.pushTrace { sc_arg with expr := .tryCatch sc_arg.expr catchParam catchBody finally_, trace := sc.trace } (.log msg)
+          refine ⟨sc', ⟨hcore_tc⟩, ?_⟩
+          constructor
+          · -- Trace
+            have hsf'_eq := (Prod.mk.inj (Option.some.inj hstep)).2
+            rw [← hsf'_eq]; show sf.trace ++ [.log msg] = sc.trace ++ [.log msg]; rw [htrace]
+          constructor
+          · -- EnvCorr
+            have hsf'_eq := (Prod.mk.inj (Option.some.inj hstep)).2
+            have hsc'_env : sc'.env = sc_arg.env := by simp [sc', Core.pushTrace]
+            rw [hsc'_env]; convert henvCorr_arg using 1; rw [← hsf'_eq]; rfl
+          constructor
+          · -- Heap
+            have hsf_eq_hp := (Prod.mk.inj (Option.some.inj hstep)).2
+            have hsc_heap_hp : sc'.heap = sc_arg.heap := by simp [sc', Core.pushTrace]
+            rw [hsc_heap_hp]; convert hheap_arg using 1; rw [← hsf_eq_hp]; rfl
+          · -- Expression correspondence (same as silent case)
+            have hsf'_eq := (Prod.mk.inj (Option.some.inj hstep)).2
+            have hsf'_expr : sf'.expr = .tryCatch sa_flat.expr catchParam catchBody' finally' := by rw [← hsf'_eq]; rfl
+            have hsc'_expr : sc'.expr = .tryCatch sc_arg.expr catchParam catchBody finally_ := by simp [sc', Core.pushTrace]
+            rw [hsc'_expr, hsf'_expr]
+            refine ⟨scope', st_a, ?_, ?_⟩
+            · exact (Flat.convertOptExpr finally_ scope' envVar envMap
+                (Flat.convertExpr catchBody (catchParam :: scope') envVar envMap
+                  (Flat.convertExpr sc_arg.expr scope' envVar envMap st_a).2).2).2
+            · simp only [Flat.convertExpr]
+              rw [show Flat.convertExpr sc_arg.expr scope' envVar envMap st_a =
+                (sa_flat.expr, st_a') from hconv_arg.symm]
+              congr 1
+              · congr 1
+                · congr 1
+                  · rw [hcatchBody'_def, hst1_def]
+                    rw [convertExpr_scope_irrelevant catchBody (catchParam :: scope) (catchParam :: scope') envVar envMap
+                      (Flat.convertExpr body scope envVar envMap st).2]
+                    rfl
+                  · rw [hfinally'_def, hst2_def, hst1_def]
+                    rw [convertOptExpr_scope_irrelevant finally_ scope scope' envVar envMap
+                      (Flat.convertExpr catchBody (catchParam :: scope) envVar envMap
+                        (Flat.convertExpr body scope envVar envMap st).2).2]
+                    congr 1
+                    rw [convertExpr_scope_irrelevant catchBody (catchParam :: scope) (catchParam :: scope') envVar envMap
+                      (Flat.convertExpr body scope envVar envMap st).2]
+                    rfl
+                · rw [hfinally'_def, hst2_def, hst1_def]
+                  rw [convertOptExpr_scope_irrelevant finally_ scope scope' envVar envMap _]
+                  congr 1
+                  rw [convertExpr_scope_irrelevant catchBody (catchParam :: scope) (catchParam :: scope') envVar envMap
+                    (Flat.convertExpr body scope envVar envMap st).2]
+                  rfl
+              · rw [hfinally'_def, hst2_def, hst1_def]
+                rw [convertOptExpr_scope_irrelevant finally_ scope scope' envVar envMap _]
+                congr 1
+                rw [convertExpr_scope_irrelevant catchBody (catchParam :: scope) (catchParam :: scope') envVar envMap
+                  (Flat.convertExpr body scope envVar envMap st).2]
+                rfl
   | while_ cond body =>
     rw [hsc] at hconv; simp only [Flat.convertExpr] at hconv
     -- convertExpr (.while_ cond body) = (.while_ cond' body', st2)

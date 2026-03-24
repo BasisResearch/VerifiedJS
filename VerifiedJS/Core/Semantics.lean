@@ -48,6 +48,23 @@ def Env.empty : Env :=
 def Heap.empty : Heap :=
   { objects := #[], nextAddr := 0 }
 
+-- SPEC: L5486-L5493
+-- | # NormalCompletion ( \_value\_: any value except a Completion Record, ): a normal completion
+-- |
+-- | skip return checks
+-- | :   true
+-- |
+-- | 1\. Return Completion Record { \[\[Type\]\]: \~normal\~, \[\[Value\]\]:
+-- | \_value\_, \[\[Target\]\]: \~empty\~ }.
+-- SPEC: L5504-L5512
+-- | # UpdateEmpty ( \_completionRecord\_: a Completion Record, \_value\_: any value except a Completion Record, ): a Completion Record
+-- |
+-- | 1\. Assert: If \_completionRecord\_ is either a return completion or a
+-- | throw completion, then \_completionRecord\_.\[\[Value\]\] is not
+-- | \~empty\~. 1. If \_completionRecord\_.\[\[Value\]\] is not \~empty\~,
+-- | return ? \_completionRecord\_. 1. Return Completion Record {
+-- | \[\[Type\]\]: \_completionRecord\_.\[\[Type\]\], \[\[Value\]\]:
+-- | \_value\_, \[\[Target\]\]: \_completionRecord\_.\[\[Target\]\] }.
 -- SPEC: L9667-L9671
 -- | # NewDeclarativeEnvironment ( \_E\_: an Environment Record or \*null\*, ): a Declarative Environment Record
 -- |
@@ -347,6 +364,23 @@ def Env.extend (env : Env) (name : VarName) (v : Value) : Env :=
 -- |     specified property key. The property may be either own or inherited.
 -- |
 -- | 1\. Return ? \_O\_.\[\[HasProperty\]\](\_P\_).
+-- SPEC: L10863-L10870
+-- | # OrdinaryHasProperty ( \_O\_: an Object, \_P\_: a property key, ): either a normal completion containing a Boolean or a throw completion
+-- |
+-- | 1\. Let \_hasOwn\_ be ? \_O\_.\[\[GetOwnProperty\]\](\_P\_). 1. If
+-- | \_hasOwn\_ is not \*undefined\*, return \*true\*. 1. Let \_parent\_ be ?
+-- | \_O\_.\[\[GetPrototypeOf\]\](). 1. If \_parent\_ is not \*null\*,
+-- | then 1. Return ? \_parent\_.\[\[HasProperty\]\](\_P\_). 1. Return
+-- | \*false\*.
+-- SPEC: L6774-L6782
+-- | # HasOwnProperty ( \_O\_: an Object, \_P\_: a property key, ): either a normal completion containing a Boolean or a throw completion
+-- |
+-- | description
+-- | :   It is used to determine whether an object has an own property with
+-- |     the specified property key.
+-- |
+-- | 1\. Let \_desc\_ be ? \_O\_.\[\[GetOwnProperty\]\](\_P\_). 1. If
+-- | \_desc\_ is \*undefined\*, return \*false\*. 1. Return \*true\*.
 
 -- SPEC: L6408-L6417
 -- | # IsCallable ( \_argument\_: an ECMAScript language value, ): a Boolean
@@ -582,24 +616,6 @@ def evalUnary : UnaryOp → Value → Value
 -- | Object. 1. Let \_primValue\_ be ? ToPrimitive(\_argument\_,
 -- | \~string\~). 1. Assert: \_primValue\_ is not an Object. 1. Return ?
 -- | ToString(\_primValue\_).
-/-- ECMA-262 §7.1.12 ToString (core subset). -/
--- SPEC: L6305-L6321
--- | # ToString ( \_argument\_: an ECMAScript language value, ): either a normal completion containing a String or a throw completion
--- |
--- | description
--- | :   It converts \_argument\_ to a value of type String.
--- |
--- | 1\. If \_argument\_ is a String, return \_argument\_. 1. If
--- | \_argument\_ is a Symbol, throw a \*TypeError\* exception. 1. If
--- | \_argument\_ is \*undefined\*, return \*\"undefined\"\*. 1. If
--- | \_argument\_ is \*null\*, return \*\"null\"\*. 1. If \_argument\_ is
--- | \*true\*, return \*\"true\"\*. 1. If \_argument\_ is \*false\*,
--- | return \*\"false\"\*. 1. If \_argument\_ is a Number, return
--- | Number::toString(\_argument\_, 10). 1. If \_argument\_ is a BigInt,
--- | return BigInt::toString(\_argument\_, 10). 1. Assert: \_argument\_ is
--- | an Object. 1. Let \_primValue\_ be ? ToPrimitive(\_argument\_,
--- | \~string\~). 1. Assert: \_primValue\_ is not an Object. 1. Return ?
--- | ToString(\_primValue\_).
 -- SPEC: L4638-L4660
 -- | # Number::toString ( \_x\_: a Number, \_radix\_: an integer in the inclusive interval from 2 to 36, ): a String
 -- |
@@ -680,6 +696,21 @@ def valueToString : Value → String
 -- | Number, or if \_x\_ is a Number and \_y\_ is a BigInt, then 1. If \_x\_
 -- | is not finite or \_y\_ is not finite, return \*false\*. 1. If ℝ(\_x\_) =
 -- | ℝ(\_y\_), return \*true\*. 1. Return \*false\*. 1. Return \*false\*.
+-- SPEC: L6458-L6472
+-- | # SameType ( \_x\_: an ECMAScript language value, \_y\_: an ECMAScript language value, ): a Boolean
+-- |
+-- | description
+-- | :   It determines whether or not the two arguments are the same type.
+-- |
+-- | 1\. If \_x\_ is \*undefined\* and \_y\_ is \*undefined\*, return
+-- | \*true\*. 1. If \_x\_ is \*null\* and \_y\_ is \*null\*, return
+-- | \*true\*. 1. If \_x\_ is a Boolean and \_y\_ is a Boolean, return
+-- | \*true\*. 1. If \_x\_ is a Number and \_y\_ is a Number, return
+-- | \*true\*. 1. If \_x\_ is a BigInt and \_y\_ is a BigInt, return
+-- | \*true\*. 1. If \_x\_ is a Symbol and \_y\_ is a Symbol, return
+-- | \*true\*. 1. If \_x\_ is a String and \_y\_ is a String, return
+-- | \*true\*. 1. If \_x\_ is an Object and \_y\_ is an Object, return
+-- | \*true\*. 1. Return \*false\*.
 /-- ECMA-262 §7.2.14 Abstract Equality Comparison (simplified core subset).
     Handles null/undefined equivalence and type coercion. -/
 def abstractEq : Value → Value → Bool
@@ -1123,6 +1154,22 @@ def evalBinary : BinOp → Value → Value → Value
   -- | \`instanceof\` operator semantics. If an object does not define or
   -- | inherit %Symbol.hasInstance% it uses the default \`instanceof\`
   -- | semantics.
+  -- SPEC: L6909-L6924
+  -- | # OrdinaryHasInstance ( \_C\_: an ECMAScript language value, \_O\_: an ECMAScript language value, ): either a normal completion containing a Boolean or a throw completion
+  -- |
+  -- | description
+  -- | :   It implements the default algorithm for determining if \_O\_
+  -- |     inherits from the instance object inheritance path provided by
+  -- |     \_C\_.
+  -- |
+  -- | 1\. If IsCallable(\_C\_) is \*false\*, return \*false\*. 1. If \_C\_ has
+  -- | a \[\[BoundTargetFunction\]\] internal slot, then 1. Let \_BC\_ be
+  -- | \_C\_.\[\[BoundTargetFunction\]\]. 1. Return ? InstanceofOperator(\_O\_,
+  -- | \_BC\_). 1. If \_O\_ is not an Object, return \*false\*. 1. Let \_P\_ be
+  -- | ? Get(\_C\_, \*\"prototype\"\*). 1. If \_P\_ is not an Object, throw a
+  -- | \*TypeError\* exception. 1. Repeat, 1. Set \_O\_ to ?
+  -- | \_O\_.\[\[GetPrototypeOf\]\](). 1. If \_O\_ is \*null\*, return
+  -- | \*false\*. 1. If SameValue(\_P\_, \_O\_) is \*true\*, return \*true\*.
   -- SPEC: L16395-L16410
   -- | ShiftExpression 1. Let \_lRef\_ be ? Evaluation of
   -- | \|RelationalExpression\|. 1. Let \_lVal\_ be ? GetValue(\_lRef\_). 1.
@@ -2212,6 +2259,11 @@ def step? (s : State) : Option (TraceEvent × State) :=
   -- | ThrowStatement : \`throw\` Expression \`;\` 1. Let \_exprRef\_ be ?
   -- | Evaluation of \|Expression\|. 1. Let \_exprValue\_ be ?
   -- | GetValue(\_exprRef\_). 1. Return ThrowCompletion(\_exprValue\_).
+  -- SPEC: L5494-L5498
+  -- | # ThrowCompletion ( \_value\_: an ECMAScript language value, ): a throw completion
+  -- |
+  -- | 1\. Return Completion Record { \[\[Type\]\]: \~throw\~, \[\[Value\]\]:
+  -- | \_value\_, \[\[Target\]\]: \~empty\~ }.
   | .throw arg =>
       match exprValue? arg with
       | some v =>
@@ -2375,6 +2427,11 @@ def step? (s : State) : Option (TraceEvent × State) :=
   -- | \_exprValue\_ be ? GetValue(\_exprRef\_). 1. If GetGeneratorKind() is
   -- | \~async\~, set \_exprValue\_ to ? Await(\_exprValue\_). 1. Return
   -- | ReturnCompletion(\_exprValue\_).
+  -- SPEC: L5499-L5503
+  -- | # ReturnCompletion ( \_value\_: an ECMAScript language value, ): a return completion
+  -- |
+  -- | 1\. Return Completion Record { \[\[Type\]\]: \~return\~, \[\[Value\]\]:
+  -- | \_value\_, \[\[Target\]\]: \~empty\~ }.
   | .«return» arg =>
       match arg with
       | some e =>
@@ -2599,6 +2656,26 @@ def step? (s : State) : Option (TraceEvent × State) :=
   -- |
   -- | If \_newTarget\_ is not present, this operation is equivalent to: \`new
   -- | F(\...argumentsList)\`
+  -- SPEC: L10985-L11004
+  -- | # OrdinaryCreateFromConstructor ( \_constructor\_: a function object, \_intrinsicDefaultProto\_: a String, optional \_internalSlotsList\_: a List of names of internal slots, ): either a normal completion containing an Object or a throw completion
+  -- |
+  -- | description
+  -- | :   It creates an ordinary object whose \[\[Prototype\]\] value is
+  -- |     retrieved from a constructor\'s \*\"prototype\"\* property, if it
+  -- |     exists. Otherwise the intrinsic named by \_intrinsicDefaultProto\_
+  -- |     is used for \[\[Prototype\]\]. \_internalSlotsList\_ contains the
+  -- |     names of additional internal slots that must be defined as part of
+  -- |     the object. If \_internalSlotsList\_ is not provided, a new empty
+  -- |     List is used.
+  -- |
+  -- | 1\. Assert: \_intrinsicDefaultProto\_ is this specification\'s name of
+  -- | an intrinsic object. The corresponding object must be an intrinsic that
+  -- | is intended to be used as the \[\[Prototype\]\] value of an object. 1.
+  -- | Let \_proto\_ be ? GetPrototypeFromConstructor(\_constructor\_,
+  -- | \_intrinsicDefaultProto\_). 1. If \_internalSlotsList\_ is present, let
+  -- | \_slotsList\_ be \_internalSlotsList\_. 1. Else, let \_slotsList\_ be a
+  -- | new empty List. 1. Return OrdinaryObjectCreate(\_proto\_,
+  -- | \_slotsList\_).
   -- SPEC: L10960-L10984
   -- | # OrdinaryObjectCreate ( \_proto\_: an Object or \*null\*, optional \_additionalInternalSlotsList\_: a List of names of internal slots, ): an Object
   -- |
@@ -2624,6 +2701,31 @@ def step? (s : State) : Option (TraceEvent × State) :=
   -- | internal methods of the object in ways that would make the result
   -- | non-ordinary. Operations that create exotic objects invoke
   -- | MakeBasicObject directly.
+  -- SPEC: L6620-L6651
+  -- | # MakeBasicObject ( \_internalSlotsList\_: a List of internal slot names, ): an Object
+  -- |
+  -- | description
+  -- | :   It is the source of all ECMAScript objects that are created
+  -- |     algorithmically, including both ordinary objects and exotic objects.
+  -- |     It factors out common steps used in creating all objects, and
+  -- |     centralizes object creation.
+  -- |
+  -- | 1\. Set \_internalSlotsList\_ to the list-concatenation of
+  -- | \_internalSlotsList\_ and « \[\[PrivateElements\]\] ». 1. Let \_obj\_ be
+  -- | a newly created object with an internal slot for each name in
+  -- | \_internalSlotsList\_. 1. NOTE: As described in , the initial value of
+  -- | each such internal slot is \*undefined\* unless specified otherwise. 1.
+  -- | Set \_obj\_.\[\[PrivateElements\]\] to a new empty List. 1. Set
+  -- | \_obj\_\'s essential internal methods to the default ordinary object
+  -- | definitions specified in . 1. Assert: If the caller will not be
+  -- | overriding both \_obj\_\'s \[\[GetPrototypeOf\]\] and
+  -- | \[\[SetPrototypeOf\]\] essential internal methods, then
+  -- | \_internalSlotsList\_ contains \[\[Prototype\]\]. 1. Assert: If the
+  -- | caller will not be overriding all of \_obj\_\'s \[\[SetPrototypeOf\]\],
+  -- | \[\[IsExtensible\]\], and \[\[PreventExtensions\]\] essential internal
+  -- | methods, then \_internalSlotsList\_ contains \[\[Extensible\]\]. 1. If
+  -- | \_internalSlotsList\_ contains \[\[Extensible\]\], set
+  -- | \_obj\_.\[\[Extensible\]\] to \*true\*. 1. Return \_obj\_.
   | .newObj _callee _args =>
       let addr := s.heap.nextAddr
       let heap' := { objects := s.heap.objects.push [], nextAddr := addr + 1 }
