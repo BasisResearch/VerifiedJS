@@ -4058,6 +4058,7 @@ def step? (s : State) : Option (TraceEvent × State) :=
   -- | ## Syntax
   -- |
   -- | LexicalDeclaration\[In, Yield, Await\] : LetOrConst BindingList\[?In,
+  -- | ?Yield, ?Await\] \`;\` LetOrConst : \`let\` \`const\` BindingList\[In,
   -- SPEC: L17400-L17423
   -- | # Variable Statement
   -- |
