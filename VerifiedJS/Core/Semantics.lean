@@ -2964,6 +2964,7 @@ def evalBinary : BinOp → Value → Value → Value
 -- |
 -- | 1\. Assert: The current execution context will not subsequently be used
 -- | for the evaluation of any ECMAScript code or built-in functions. The
+-- | invocation of Call subsequent to the invocation of this abstract
 -- SPEC: L8743-L8772
 -- | # Static Semantics: PropName ( ): a String or \~empty\~
 -- |
@@ -2995,12 +2996,163 @@ def evalBinary : BinOp → Value → Value → Value
 -- | of \|ClassElementName\|. ClassElementName : PrivateIdentifier 1. Return
 -- | \~empty\~.
 -- SPEC: L16929-L16935
--- | # EvaluateStringOrNumericBinaryExpression ( \_leftOperand\_: a Parse Node, \_opText\_: a sequence of Unicode code points, \_rightOperand\_: a Parse Node, ): either a normal completion containing an ECMAScript language value or an abrupt completion
+-- | # EvaluateStringOrNumericBinaryExpression ( \_leftOperand\_: a Parse Node, \_opText\_: a sequence of Unicode code points, \_rightOperand\_: a Parse Node, ): either a normal completion containing either a String, a BigInt, or a Number, or an abrupt completion
 -- |
 -- | 1\. Let \_lRef\_ be ? Evaluation of \_leftOperand\_. 1. Let \_lVal\_ be
 -- | ? GetValue(\_lRef\_). 1. Let \_rRef\_ be ? Evaluation of
 -- | \_rightOperand\_. 1. Let \_rVal\_ be ? GetValue(\_rRef\_). 1. Return ?
 -- | ApplyStringOrNumericBinaryOperator(\_lVal\_, \_opText\_, \_rVal\_).
+-- SPEC: L7058-L7069
+-- | # DefineField ( \_receiver\_: an Object, \_fieldRecord\_: a ClassFieldDefinition Record, ): either a normal completion containing \~unused\~ or a throw completion
+-- |
+-- | 1\. Let \_fieldName\_ be \_fieldRecord\_.\[\[Name\]\]. 1. Let
+-- | \_initializer\_ be \_fieldRecord\_.\[\[Initializer\]\]. 1. If
+-- | \_initializer\_ is not \~empty\~, then 1. Let \_initValue\_ be ?
+-- | Call(\_initializer\_, \_receiver\_). 1. Else, 1. Let \_initValue\_ be
+-- | \*undefined\*. 1. If \_fieldName\_ is a Private Name, then 1. Perform ?
+-- | PrivateFieldAdd(\_receiver\_, \_fieldName\_, \_initValue\_). 1. Else, 1.
+-- | Assert: \_fieldName\_ is a property key. 1. Perform ?
+-- | CreateDataPropertyOrThrow(\_receiver\_, \_fieldName\_,
+-- | \_initValue\_). 1. Return \~unused\~.
+-- SPEC: L6263-L6269
+-- | # StringToBigInt ( \_str\_: a String, ): a BigInt or \*undefined\*
+-- |
+-- | 1\. Let \_literal\_ be ParseText(\_str\_, \|StringIntegerLiteral\|). 1.
+-- | If \_literal\_ is a List of errors, return \*undefined\*. 1. Let \_mv\_
+-- | be the MV of \_literal\_. 1. Assert: \_mv\_ is an integer. 1. Return
+-- | ℤ(\_mv\_).
+-- SPEC: L8993-L9003
+-- | # HasThisBinding ( ): \*false\*
+-- |
+-- | for
+-- | :   a Declarative Environment Record \_envRec\_
+-- |
+-- | 1\. Return \*false\*.
+-- |
+-- | A regular Declarative Environment Record (i.e., one that is neither a
+-- | Function Environment Record nor a Module Environment Record) does not
+-- | provide a \`this\` binding.
+-- SPEC: L9009-L9019
+-- | # HasSuperBinding ( ): \*false\*
+-- |
+-- | for
+-- | :   a Declarative Environment Record \_envRec\_
+-- |
+-- | 1\. Return \*false\*.
+-- |
+-- | A regular Declarative Environment Record (i.e., one that is neither a
+-- | Function Environment Record nor a Module Environment Record) does not
+-- | provide a \`super\` binding.
+-- SPEC: L9020-L9026
+-- | # WithBaseObject ( ): \*undefined\*
+-- |
+-- | for
+-- | :   a Declarative Environment Record \_envRec\_
+-- |
+-- | 1\. Return \*undefined\*.
+-- SPEC: L7319-L7337
+-- | # CreateListIteratorRecord ( \_list\_: a List of ECMAScript language values, ): an Iterator Record
+-- |
+-- | description
+-- | :   It creates an Iterator Record whose \[\[NextMethod\]\] returns the
+-- |     successive elements of \_list\_.
+-- |
+-- | 1\. Let \_closure\_ be a new Abstract Closure with no parameters that
+-- | captures \_list\_ and performs the following steps when called: 1. For
+-- | each element \_E\_ of \_list\_, do 1. Perform ?
+-- | GeneratorYield(CreateIteratorResultObject(\_E\_, \*false\*)). 1. Return
+-- | NormalCompletion(\*undefined\*). 1. Let \_iterator\_ be
+-- | CreateIteratorFromClosure(\_closure\_, \~empty\~,
+-- | %Iterator.prototype%). 1. Return the Iterator Record { \[\[Iterator\]\]:
+-- | \_iterator\_, \[\[NextMethod\]\]: %GeneratorPrototype.next%,
+-- | \[\[Done\]\]: \*false\* }.
+-- |
+-- | The list iterator object is never directly accessible to ECMAScript
+-- | code.
+-- SPEC: L16638-L16660
+-- | # Runtime Semantics: Evaluation
+-- |
+-- | AssignmentExpression : LeftHandSideExpression \`=\`
+-- | AssignmentExpression 1. If \|LeftHandSideExpression\| is neither an
+-- | \|ObjectLiteral\| nor an \|ArrayLiteral\|, then 1. Let \_lRef\_ be ?
+-- | Evaluation of \|LeftHandSideExpression\|. 1. If the AssignmentTargetType
+-- | of \|LeftHandSideExpression\| is \~web-compat\~, throw a
+-- | \*ReferenceError\* exception. 1. If
+-- | IsAnonymousFunctionDefinition(\|AssignmentExpression\|) is \*true\* and
+-- | IsIdentifierRef of \|LeftHandSideExpression\| is \*true\*, then 1. Let
+-- | \_lhs\_ be the StringValue of \|LeftHandSideExpression\|. 1. Let
+-- | \_rVal\_ be ? NamedEvaluation of \|AssignmentExpression\| with argument
+-- | \_lhs\_. 1. Else, 1. Let \_rRef\_ be ? Evaluation of
+-- | \|AssignmentExpression\|. 1. Let \_rVal\_ be ? GetValue(\_rRef\_). 1.
+-- | \[id=\"step-assignmentexpression-evaluation-simple-putvalue\"\] Perform
+-- | ? PutValue(\_lRef\_, \_rVal\_). 1. Return \_rVal\_. 1. Let
+-- | \_assignmentPattern\_ be the \|AssignmentPattern\| that is covered by
+-- | \|LeftHandSideExpression\|. 1. Let \_rRef\_ be ? Evaluation of
+-- | \|AssignmentExpression\|. 1. Let \_rVal\_ be ? GetValue(\_rRef\_). 1.
+-- | Perform ? DestructuringAssignmentEvaluation of \_assignmentPattern\_
+-- | with argument \_rVal\_. 1. Return \_rVal\_.
+-- SPEC: L17190-L17199
+-- | # Runtime Semantics: Evaluation
+-- |
+-- | Expression : Expression \`,\` AssignmentExpression 1. Let \_lRef\_ be ?
+-- | Evaluation of \|Expression\|. 1. Perform ? GetValue(\_lRef\_). 1. Let
+-- | \_rRef\_ be ? Evaluation of \|AssignmentExpression\|. 1. Return ?
+-- | GetValue(\_rRef\_).
+-- |
+-- | GetValue must be called even though its value is not used because it may
+-- | have observable side-effects.
+-- SPEC: L6202-L6213
+-- | # ToInt8 ( \_argument\_: an ECMAScript language value, ): either a normal completion containing an integral Number or a throw completion
+-- |
+-- | description
+-- | :   It converts \_argument\_ to one of 2^8^ integral Number values in
+-- |     the inclusive interval from 𝔽(-2^7^) to 𝔽(2^7^ - 1).
+-- |
+-- | 1\. Let \_number\_ be ? ToNumber(\_argument\_). 1. If \_number\_ is not
+-- | finite or \_number\_ is either \*+0\*~𝔽~ or \*-0\*~𝔽~, return
+-- | \*+0\*~𝔽~. 1. Let \_int\_ be truncate(ℝ(\_number\_)). 1. Let
+-- | \_int8bit\_ be \_int\_ modulo 2^8^. 1. If \_int8bit\_ ≥ 2^7^, return
+-- | 𝔽(\_int8bit\_ - 2^8^). 1. Return 𝔽(\_int8bit\_).
+-- SPEC: L6214-L6224
+-- | # ToUint8 ( \_argument\_: an ECMAScript language value, ): either a normal completion containing an integral Number or a throw completion
+-- |
+-- | description
+-- | :   It converts \_argument\_ to one of 2^8^ integral Number values in
+-- |     the inclusive interval from \*+0\*~𝔽~ to 𝔽(2^8^ - 1).
+-- |
+-- | 1\. Let \_number\_ be ? ToNumber(\_argument\_). 1. If \_number\_ is not
+-- | finite or \_number\_ is either \*+0\*~𝔽~ or \*-0\*~𝔽~, return
+-- | \*+0\*~𝔽~. 1. Let \_int\_ be truncate(ℝ(\_number\_)). 1. Let
+-- | \_int8bit\_ be \_int\_ modulo 2^8^. 1. Return 𝔽(\_int8bit\_).
+-- SPEC: L6244-L6262
+-- | # ToBigInt ( \_argument\_: an ECMAScript language value, ): either a normal completion containing a BigInt or a throw completion
+-- |
+-- | description
+-- | :   It converts \_argument\_ to a BigInt value, or throws if an
+-- |     implicit conversion from Number would be required.
+-- |
+-- | 1\. Let \_prim\_ be ? ToPrimitive(\_argument\_, \~number\~). 1. Return
+-- | the value in the BigInt column of the following table corresponding to
+-- | the value of \_prim\_ in the Type column.
+-- SPEC: L6296-L6304
+-- | # ToBigUint64 ( \_argument\_: an ECMAScript language value, ): either a normal completion containing a BigInt or a throw completion
+-- |
+-- | description
+-- | :   It converts \_argument\_ to one of 2^64^ BigInt values in the
+-- |     inclusive interval from \*0\*~ℤ~ to ℤ(2^64^ - 1).
+-- |
+-- | 1\. Let \_n\_ be ? ToBigInt(\_argument\_). 1. Let \_int64bit\_ be
+-- | ℝ(\_n\_) modulo 2^64^. 1. Return ℤ(\_int64bit\_).
+-- SPEC: L6286-L6295
+-- | # ToBigInt64 ( \_argument\_: an ECMAScript language value, ): either a normal completion containing a BigInt or a throw completion
+-- |
+-- | description
+-- | :   It converts \_argument\_ to one of 2^64^ BigInt values in the
+-- |     inclusive interval from ℤ(-2^63^) to ℤ(2^63^ - 1).
+-- |
+-- | 1\. Let \_n\_ be ? ToBigInt(\_argument\_). 1. Let \_int64bit\_ be
+-- | ℝ(\_n\_) modulo 2^64^. 1. If \_int64bit\_ ≥ 2^63^, return
+-- | ℤ(\_int64bit\_ - 2^64^). 1. Return ℤ(\_int64bit\_).
 
 /-- Built-in function index for console.log (reserved at index 0, §18.2). -/
 def consoleLogIdx : FuncIdx := 0
