@@ -3620,8 +3620,7 @@ def irStep? (s : IRExecState) : Option (TraceEvent × IRExecState) :=
                 | "ge_u" => irBoolToI32 (Numerics.i32Geu lhs rhs)
                 | _ => IRValue.i32 0
               some (.silent, irPushTrace { base with stack := result :: stk } .silent)
-          | some _ => some (irTrapState base s!"type mismatch in i32.{op}")
-          | none => some (irTrapState base s!"stack underflow in i32.{op}")
+          | _ => some (irTrapState base s!"type mismatch in i32.{op}")
       -- Binary operations (i64)
       | .binOp .i64 op =>
           match irPop2? base.stack with
@@ -3670,8 +3669,7 @@ def irStep? (s : IRExecState) : Option (TraceEvent × IRExecState) :=
                 | "ge_u" => irBoolToI32 (Numerics.i64Geu lhs rhs)
                 | _ => IRValue.i64 0
               some (.silent, irPushTrace { base with stack := result :: stk } .silent)
-          | some _ => some (irTrapState base s!"type mismatch in i64.{op}")
-          | none => some (irTrapState base s!"stack underflow in i64.{op}")
+          | _ => some (irTrapState base s!"type mismatch in i64.{op}")
       -- Binary operations (f64)
       | .binOp .f64 op =>
           match irPop2? base.stack with
@@ -3692,8 +3690,7 @@ def irStep? (s : IRExecState) : Option (TraceEvent × IRExecState) :=
                 | "ge"  => irBoolToI32 (Numerics.f64Ge lhs rhs)
                 | _ => IRValue.f64 0.0
               some (.silent, irPushTrace { base with stack := result :: stk } .silent)
-          | some _ => some (irTrapState base s!"type mismatch in f64.{op}")
-          | none => some (irTrapState base s!"stack underflow in f64.{op}")
+          | _ => some (irTrapState base s!"type mismatch in f64.{op}")
       -- Binary operations (ptr = i32)
       | .binOp .ptr op =>
           match irPop2? base.stack with
@@ -3703,8 +3700,7 @@ def irStep? (s : IRExecState) : Option (TraceEvent × IRExecState) :=
                 | "sub" => IRValue.i32 (Numerics.i32Sub lhs rhs)
                 | _ => IRValue.i32 0
               some (.silent, irPushTrace { base with stack := result :: stk } .silent)
-          | some _ => some (irTrapState base s!"type mismatch in ptr.{op}")
-          | none => some (irTrapState base s!"stack underflow in ptr.{op}")
+          | _ => some (irTrapState base s!"type mismatch in ptr.{op}")
 
       -- Unary operations (i32)
       -- REF: Wasm §4.4.3.1 (i32 unary), §4.4.5.1 (i32.wrap_i64)
