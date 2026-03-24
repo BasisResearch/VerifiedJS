@@ -3097,8 +3097,9 @@ def toNumber : Value → Float
 -- | UnaryExpression\[?Yield, ?Await\] \`\~\` UnaryExpression\[?Yield,
 -- | ?Await\] \`!\` UnaryExpression\[?Yield, ?Await\] \[+Await\]
 -- | AwaitExpression\[?Yield\]
+-- |
+-- | # The \`delete\` Operator
 -- SPEC: L16117-L16149
--- | # Runtime Semantics: Evaluation
 -- |
 -- | UnaryExpression : \`delete\` UnaryExpression 1. Let \_ref\_ be ?
 -- | Evaluation of \|UnaryExpression\|. 1. If \_ref\_ is not a Reference
@@ -3118,6 +3119,19 @@ def toNumber : Value → Float
 -- | \_base\_ be \_ref\_.\[\[Base\]\]. 1. Assert: \_base\_ is an Environment
 -- | Record. 1. Return ?
 -- | \_base\_.DeleteBinding(\_ref\_.\[\[ReferencedName\]\]).
+-- |
+-- | When a \`delete\` operator occurs within strict mode code, a
+-- | \*SyntaxError\* exception is thrown if its \|UnaryExpression\| is a
+-- | direct reference to a variable, function argument, or function name. In
+-- | addition, if a \`delete\` operator occurs within strict mode code and
+-- | the property to be deleted has the attribute { \[\[Configurable\]\]:
+-- | \*false\* } (or otherwise cannot be deleted), a \*TypeError\* exception
+-- | is thrown.
+-- |
+-- | The object that may be created in step is not accessible outside of the
+-- | above abstract operation and the ordinary object \[\[Delete\]\] internal
+-- | method. An implementation might choose to avoid the actual creation of
+-- | that object.
 def evalUnary : UnaryOp → Value → Value
   -- SPEC: L16190-L16202
   -- | # Unary \`-\` Operator
@@ -4212,6 +4226,7 @@ def abstractLt : Value → Value → Bool
 -- | EvaluateStringOrNumericBinaryExpression(\|MultiplicativeExpression\|,
 -- | \_opText\_, \|ExponentiationExpression\|).
 -- SPEC: L16786-L16810
+-- |
 -- | # ApplyStringOrNumericBinaryOperator ( \_lVal\_: an ECMAScript language value, \_opText\_: \`\*\*\`, \`\*\`, \`/\`, \`%\`, \`+\`, \`-\`, \`\<\<\`, \`\>\>\`, \`\>\>\>\`, \`&\`, \`\^\`, or \`\|\`, \_rVal\_: an ECMAScript language value, ): either a normal completion containing either a String, a BigInt, or a Number, or a throw completion
 -- |
 -- | 1\. If \_opText\_ is \`+\`, then 1.
@@ -4230,7 +4245,12 @@ def abstractLt : Value → Value → Bool
 -- | BigInt::exponentiate(\_lNum\_, \_rNum\_). 1. If \_opText\_ is \`/\`,
 -- | return ? BigInt::divide(\_lNum\_, \_rNum\_). 1. If \_opText\_ is \`%\`,
 -- | return ? BigInt::remainder(\_lNum\_, \_rNum\_). 1. If \_opText\_ is
--- | \`\>\>\>\`, return ? BigInt::unsignedRightShift(\_lNum\_, \_rNum\_).
+-- | \`\>\>\>\`, return ? BigInt::unsignedRightShift(\_lNum\_, \_rNum\_). 1.
+-- | Let \_operation\_ be the abstract operation associated with \_opText\_
+-- | in the following table:
+-- |
+-- | <figure>
+-- | <table class="lightweight-table">
 -- SPEC: L4638-L4660
 -- | # Number::toString ( \_x\_: a Number, \_radix\_: an integer in the inclusive interval from 2 to 36, ): a String
 -- |
@@ -4250,6 +4270,11 @@ def abstractLt : Value → Value → Bool
 -- | Let \_n\_, \_k\_, and \_s\_ be integers such that \_k\_ ≥ 1,
 -- | \_radix\_^\_k\_\ -\ 1^ ≤ \_s\_ \< \_radix\_^\_k\_^, 𝔽(\_s\_ ×
 -- | \_radix\_^\_n\_\ -\ \_k\_^) is \_x\_, and \_k\_ is as small as possible.
+-- | Note that \_k\_ is the number of digits in the representation of \_s\_
+-- | using radix \_radix\_, that \_s\_ is not divisible by \_radix\_, and
+-- | that the least significant digit of \_s\_ is not necessarily uniquely
+-- | determined by these criteria. 1. If \_radix\_ ≠ 10 or \_n\_ is in the
+-- | inclusive interval from -5 to 21, then 1. If \_n\_ ≥ \_k\_, then 1.
 def evalBinary : BinOp → Value → Value → Value
   | .add, .string a, .string b => .string (a ++ b)
   | .add, .string a, b => .string (a ++ valueToString b)
@@ -4555,6 +4580,8 @@ def evalBinary : BinOp → Value → Value → Value
   -- | \*-∞\*~𝔽~, return \_y\_. 1. Assert: \_x\_ and \_y\_ are both finite. 1.
   -- | If \_x\_ is \*-0\*~𝔽~ and \_y\_ is \*-0\*~𝔽~, return \*-0\*~𝔽~. 1.
   -- | Return 𝔽(ℝ(\_x\_) + ℝ(\_y\_)).
+  -- |
+  -- | Finite-precision addition is commutative, but not always associative.
   -- SPEC: L4553-L4560
   -- | # Number::leftShift ( \_x\_: a Number, \_y\_: a Number, ): an integral Number
   -- |
@@ -4605,15 +4632,16 @@ def evalBinary : BinOp → Value → Value → Value
   -- |
   -- | 1\. Let \_lNum\_ be ! ToInt32(\_x\_). 1. Let \_rNum\_ be !
   -- | ToInt32(\_y\_). 1. Let \_lBits\_ be the 32-bit two\'s complement bit
-  -- | string representing ℝ(\_lNum\_). 1. Let \_rBits\_ be the 32-bit
-  -- | two\'s complement bit string representing ℝ(\_rNum\_). 1. If \_op\_ is
-  -- | \`&\`, then 1. Let \_result\_ be the result of applying the bitwise AND
-  -- | operation to \_lBits\_ and \_rBits\_. 1. Else if \_op\_ is \`\^\`, then 1.
-  -- | Let \_result\_ be the result of applying the bitwise exclusive OR (XOR)
-  -- | operation to \_lBits\_ and \_rBits\_. 1. Else, 1. Assert: \_op\_ is
-  -- | \`\|\`. 1. Let \_result\_ be the result of applying the bitwise
-  -- | inclusive OR operation to \_lBits\_ and \_rBits\_. 1. Return the Number
-  -- | value for the integer represented by \_result\_.
+  -- | string representing ℝ(\_lNum\_). 1. Let \_rBits\_ be the 32-bit two\'s
+  -- | complement bit string representing ℝ(\_rNum\_). 1. If \_op\_ is \`&\`,
+  -- | then 1. Let \_result\_ be the result of applying the bitwise AND
+  -- | operation to \_lBits\_ and \_rBits\_. 1. Else if \_op\_ is \`\^\`,
+  -- | then 1. Let \_result\_ be the result of applying the bitwise exclusive
+  -- | OR (XOR) operation to \_lBits\_ and \_rBits\_. 1. Else, 1. Assert:
+  -- | \_op\_ is \`\|\`. 1. Let \_result\_ be the result of applying the
+  -- | bitwise inclusive OR operation to \_lBits\_ and \_rBits\_. 1. Return the
+  -- | Number value for the integer represented by the 32-bit two\'s complement
+  -- | bit string \_result\_.
   -- SPEC: L6150-L6160
   -- | # ToUint32 ( \_argument\_: an ECMAScript language value, ): either a normal completion containing an integral Number or a throw completion
   -- |
