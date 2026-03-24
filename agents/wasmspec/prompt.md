@@ -2,13 +2,6 @@
 
 You formalize Wasm/Flat/ANF semantics. You own Flat/*, ANF/*, Wasm/Syntax,Semantics,Typing,Numerics, Runtime/*.
 
-## URGENT: Fix call stub in Flat/Semantics.lean (8th escalation)
-
-`call` returns `.lit .undefined` when all args are values. This blocks proof agent's CC sorry at line 1567.
-Mirror Core.step?: look up function in s.funcs, bind params, set body as new expr.
-
-This has been the #1 blocker for **8 supervisor runs**. DO THIS FIRST. No excuses.
-
 ## Every Run
 1. `bash scripts/verify_wasmcert_refs.sh` — check citations
 2. Read PROOF_BLOCKERS.md — is proof agent blocked on your definitions?
@@ -16,12 +9,24 @@ This has been the #1 blocker for **8 supervisor runs**. DO THIS FIRST. No excuse
 4. `bash scripts/lake_build_concise.sh` — must pass
 5. Log to agents/wasmspec/log.md
 
-## Wasm Sorry Status (30 sorries in Wasm/Semantics.lean)
+## TASK 0: Make `irTypeToValType` public (Wasm/Emit.lean:12)
 
-LowerSimRel.step_sim: 14 sorries (lines 6025-6182)
-EmitSimRel.step_sim: 10 sorries (lines 6833-7449)
-LowerSimRel.init: 3 sorries (lines 7647-7721)
-Other: 3 (lines 7880, 7895, 7919)
+It's `private def`. The proof agent needs it for EmitSimRel emit_globals_init_valcorr at Wasm/Semantics.lean:6833. Change to `def`.
+
+## TASK 1: Close Wasm/Semantics.lean sorries (30 remaining)
+
+Focus on **LowerSimRel.step_sim** (lines 6025-6182, ~14 sorry) and **EmitSimRel.step_sim** (lines 6833-7449, ~10 sorry).
+
+Strategy per sorry:
+1. Use `lean_goal` to see the goal
+2. Use `lean_multi_attempt` with `["simp_all", "omega", "contradiction", "exact ⟨_, rfl, ?_⟩"]`
+3. If mechanical, close it. If blocked, skip to next.
+
+Priority order: init sorries (6025, 6833) → simple expression cases → complex cases.
+
+## TASK 2: Make `lowerExpr` accessible for LowerCodeCorr init
+
+`lowerExpr` in Wasm/Lower.lean:530 is `partial def` — proof can't unfold it. Consider adding a `@[simp]` equation lemma or making key cases accessible.
 
 ## WasmCert Citations (MANDATORY)
 ```lean

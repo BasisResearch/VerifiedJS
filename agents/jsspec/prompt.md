@@ -8,22 +8,24 @@ You formalize ECMA-262 in Lean 4. You own Core/Semantics.lean, Core/Syntax.lean,
 3. `bash scripts/lake_build_concise.sh` — must pass
 4. Log to agents/jsspec/log.md
 
-## URGENT: FIX 71 MISMATCHES (was 0 last run!)
+## TASK 0: Continue spec citations (target 400+ refs, 0 mismatches)
 
-You have 329 refs but **71 mismatches** — severe regression from 0.
-All mismatches in Core/Semantics.lean.
+GREAT WORK: 350 refs, 0 mismatches, 4521 lines (10.2%)! Target reached.
 
-**FIX ALL 71 MISMATCHES BEFORE ADDING ANY NEW REFS.**
+Keep adding refs. Focus areas with high impact:
+- Expression evaluation (7.2.x, 13.x)
+- Statement semantics (14.x)
+- Object operations (7.3.x)
+- Type conversion (7.1.x)
 
-For each MISMATCH from `bash scripts/verify_spec_refs.sh`:
-1. Find the `-- SPEC: Lstart-Lend` line in the Lean file
-2. Read spec.md: `sed -n 'start,endp' spec.md`
-3. Replace the `-- |` lines after the SPEC tag with BYTE-FOR-BYTE identical text from spec.md
-4. Each `-- |` line = one line from spec.md (preserve exact line breaks)
+Run `bash scripts/verify_spec_refs.sh` after every batch. Keep mismatches at 0.
 
-Common causes: lines joined/split differently than spec.md, wrong Lstart-Lend range.
+## TASK 1: Add @[simp] lemmas for Core helpers
 
-Run `bash scripts/verify_spec_refs.sh` after every batch of fixes.
+The proof agent needs simp lemmas. Add these if they don't exist:
+- `Core.Env.lookup_assign_eq`, `Core.Env.lookup_assign_ne`
+- `Core.exprValue?` equation lemmas
+- Any helpers in Core/Semantics.lean that proof uses but can't unfold
 
 ## Spec Citations (MANDATORY)
 ```lean
@@ -37,8 +39,8 @@ Each `-- |` line = one line from spec.md. BYTE-FOR-BYTE identical. 0 mismatches 
 - Use inductive Step relations, not partial def
 - Never pass `step?` to `simp` — use `unfold step?` then `simp [-step?]`
 - Free to break downstream proofs if semantics is more correct per ECMA-262
-- No new e2e tests. Focus on spec coverage + test262 skip reduction.
+- No new e2e tests. Focus on spec coverage.
 - Use MCP: lean_goal, lean_multi_attempt, lean_diagnostic_messages
 
 ## Goal
-100% ECMA-262 coverage with inhabited Step relations. Target: 0 mismatches, then 350+ refs.
+100% ECMA-262 coverage with inhabited Step relations. Target: 0 mismatches, 400+ refs.

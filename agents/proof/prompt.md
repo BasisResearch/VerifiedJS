@@ -19,10 +19,8 @@ Composition: elaborate o closureConvert o anfConvert o lower o emit.
 
 ## TASK 0: HeapCorr — Replace sf.heap = sc.heap (DO THIS NOW)
 
-GREAT WORK closing all 12 noCallFrameReturn IH sorries! CC is now at 6 sorry.
-
-All 6 remaining CC sorries are BLOCKED by `sf.heap = sc.heap`:
-- captured var (line 857), call (1567), newObj (1568), objectLit (2934), arrayLit (2935), functionDef (2936)
+ALL 6 remaining CC sorries are BLOCKED by `sf.heap = sc.heap` (line 551):
+- captured var (857), call (1567), newObj (1568), objectLit (2934), arrayLit (2935), functionDef (2936)
 
 Replace heap identity with prefix relation:
 
@@ -33,21 +31,30 @@ def HeapCorr (cheap fheap : Core.Heap) : Prop :=
 ```
 
 Steps:
-1. Define `HeapCorr` near CC_SimRel
-2. Replace `sf.heap = sc.heap` with `HeapCorr sc.heap sf.heap` in CC_SimRel
-3. Prove helpers: `HeapCorr_refl`, `HeapCorr_alloc_flat` (flat-only alloc preserves), `HeapCorr_alloc_both` (both alloc), `HeapCorr_get`
-4. Fix `init_related`: `⟨Nat.le_refl _, fun _ h => rfl⟩`
-5. Fix IH calls (most just pass `hheap` through)
+1. Define `HeapCorr` near CC_SimRel (around line 547)
+2. Replace `sf.heap = sc.heap` (line 551) with `HeapCorr sc.heap sf.heap`
+3. Prove helpers:
+```lean
+theorem HeapCorr_refl (h : Core.Heap) : HeapCorr h h :=
+  ⟨Nat.le_refl _, fun _ _ => rfl⟩
+
+theorem HeapCorr_get (hc : HeapCorr ch fh) (hlt : addr < ch.length) :
+    ch.get? addr = fh.get? addr := hc.2 addr hlt
+```
+4. Fix `closureConvert_init_related` (line 562): replace `rfl` with `HeapCorr_refl _`
+5. Fix existing proofs that use `hheap : sf.heap = sc.heap` — most just need `hheap.2 addr hlt` or pass-through
+
+**WARNING**: This will break ~20 existing proof lines. Fix them ALL before building. Most are `exact hheap` → `exact hheap` (HeapCorr passes through) or `rw [hheap]` → use `HeapCorr_get`.
 
 ## TASK 1: Close CC sorries using HeapCorr
 
 After HeapCorr in SimRel, attack in order:
-1. newObj (1568) — HeapCorr_alloc_both
-2. objectLit (2934) — HeapCorr_alloc_both
-3. arrayLit (2935) — HeapCorr_alloc_both
-4. captured var (857) — stuttering sim + HeapCorr_alloc_flat
-5. call (1567) — needs env/funcs correspondence + HeapCorr
-6. functionDef (2936) — needs env/heap/funcs + CC state
+1. newObj (1568) — both alloc on heap, HeapCorr_alloc_both
+2. objectLit (2934) — same pattern
+3. arrayLit (2935) — same pattern
+4. captured var (857) — Flat-only heap read via HeapCorr_get
+5. call (1567) — needs Flat.step? call semantics + HeapCorr
+6. functionDef (2936) — most complex, needs full CC state
 
 ## TASK 2: ANF sorries (lines 106, 1181)
 

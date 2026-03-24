@@ -142,6 +142,7 @@ arithmetic, boolean_logic, conditionals, do_while, for_loop, functions, let_bind
 | 2026-03-24T12:05 | **42** | **~203 (est.)** | Build PASS ✅. Sorry STEADY at 42 (8 CC + 28 Wasm + 4 Lower + 2 ANF). jsspec: **250 refs**, **0 mismatches**, 3353 lines (7.6%). Proof wrote noCallFrameReturn defn + added to CC_SimRel. wasmspec completed 12:45 run (no timeouts). Test262: 3/63 (UNCHANGED 149+ hrs). |
 | 2026-03-24T13:05 | **~51** | **~203 (est.)** | Build PASS ✅. **Sorry UP 42→~51 (+9)**: CC 8→18 (noCallFrameReturn added to CC_SimRel created 12 IH obligations + proof agent ACTIVELY closing them — was 19, now 18 in real-time). Wasm 30, ANF 2, Lower 1. **proof agent making progress: closing noCallFrameReturn sorries mechanically**. jsspec: **298 refs**, **0 mismatches**, 4328 lines (9.8%)! wasmspec: call stub STILL unfixed (7th run). Test262: 3/63 (UNCHANGED 150+ hrs). |
 | 2026-03-24T14:10 | **39** | **~203 (est.)** | Build PASS ✅. **Sorry DOWN ~51→39 (-12!)**: CC 18→6 (**ALL 12 noCallFrameReturn IH sorries CLOSED!**), Wasm 30, ANF 2, Lower 1. **MILESTONE: proof agent cleared entire mechanical backlog**. Remaining 6 CC sorries ALL heap-related (captured-var:857, call:1567, newObj:1568, objectLit:2934, arrayLit:2935, functionDef:2936) — blocked on HeapCorr. jsspec: **329 refs** (+31) but **71 MISMATCHES** (severe regression from 0!). Spec coverage: 9.9% (4406 lines). wasmspec: call stub STILL unfixed (8th run). Test262: 3/63 (UNCHANGED 152+ hrs). |
+| 2026-03-24T15:05 | **41** | **~203 (est.)** | Build PASS ✅. **Sorry 39→41** (sorry_report counts 41; CC 6, ANF 2, Lower 1, Wasm 32). **SPEC COVERAGE TARGET MET**: 350 refs, 0 mismatches, 4521 lines (10.2%)! jsspec healthy. Proof agent keeps timing out but HeapCorr plan clear. **Flat call stub IS real implementation** (not a stub — checked). wasmspec real blockers: `irTypeToValType` private, `lowerExpr` partial. All 6 CC sorries blocked on HeapCorr abstraction (sf.heap = sc.heap → HeapCorr). Test262: 3/63 (UNCHANGED 154+ hrs). |
 
 - Test262 pass rate: 3/63 (fast mode), deterministic full sample reached 274/500 passes (2026-03-08)
 - Flagship parse rate: 96.30% (1976/2052)
@@ -159,14 +160,14 @@ arithmetic, boolean_logic, conditionals, do_while, for_loop, functions, let_bind
 | Pass | Theorem | Statement OK? | Proved? | Blocker |
 |------|---------|--------------|---------|---------|
 | Elaborate | elaborate_correct | YES | **PROVED** | — |
-| ClosureConvert | closureConvert_correct | YES — trace preservation with NoForInForOf | 18 sorry | EnvCorr ✅. Bridge lemmas ✅. **ALL heap ops PROVED** ✅. **noCallFrameReturn added to CC_SimRel** — created 12 IH obligation sorries (mechanical, being closed). 6 fundamental: 1 captured-var (857), 1 call BLOCKED (1567, Flat stub), 1 newObj (1568), 3 heap/funcs (2934-2936). **Next: close 12 noCallFrameReturn IH sorries → HeapCorr** |
+| ClosureConvert | closureConvert_correct | YES — trace preservation with NoForInForOf | 6 sorry | EnvCorr ✅. Bridge lemmas ✅. ALL heap ops ✅. ALL stepping sub-cases ✅. ALL noCallFrameReturn IH ✅. **6 remaining ALL blocked on HeapCorr** (sf.heap=sc.heap too strong): captured-var(857), call(1567), newObj(1568), objectLit(2934), arrayLit(2935), functionDef(2936). **Next: define HeapCorr, replace heap identity** |
 | ANFConvert | anfConvert_correct | YES — observable trace preservation | 2 sorry | step_star + nested seq |
 | Optimize | optimize_correct | YES — `∀ b, ANF.Behaves (optimize p) b ↔ ANF.Behaves p b` | **PROVED** | Identity pass — trivially correct |
 | Lower | lower_behavioral_correct | YES — `∀ trace, ANF.Behaves → IR.IRBehaves` | 1 sorry | Build FIXED. **BLOCKED on wasmspec** step_sim (:4956). SimRel needs code correspondence. |
 | Emit | emit_behavioral_correct | YES — `∀ trace, IR.IRBehaves → Wasm.Behaves` | 1 sorry | **BLOCKED on wasmspec** EmitSimRel.step_sim (:5058) |
 | EndToEnd | flat_to_wasm_correct | YES — partial composition (Flat→Wasm) | 1 sorry | EndToEnd.lean:55. Composition of above; last to prove |
 
-**Chain status**: All 6 Behaves relations DEFINED. All theorem STATEMENTS correct. **2 passes FULLY PROVED** (Elaborate, Optimize). **Sorry count: ~51** (18 CC + 30 Wasm + 2 ANF + 1 Lower). Wasm/Semantics has 30 sorry in step_sim/init. Both halt_sim PROVED. **Flat/ SORRY-FREE**. Core/ SORRY-FREE. ANF/Semantics SORRY-FREE. **ALL stepping sub-cases PROVED**. **ALL evalBinary PROVED**. **ALL heap ops PROVED**. **noCallFrameReturn added** — 12 IH sorries being closed mechanically. Spec coverage: 298 refs, 0 mismatches, 4328 lines (9.8%).
+**Chain status**: All 6 Behaves relations DEFINED. All theorem STATEMENTS correct. **2 passes FULLY PROVED** (Elaborate, Optimize). **Sorry count: 41** (6 CC + 32 Wasm + 2 ANF + 1 Lower). Wasm/Semantics has 32 sorry in step_sim/init. Both halt_sim PROVED. **Flat/ SORRY-FREE**. Core/ SORRY-FREE. ANF/Semantics SORRY-FREE. **ALL stepping sub-cases PROVED**. **ALL evalBinary PROVED**. **ALL heap ops PROVED**. **ALL noCallFrameReturn IH PROVED**. CC blocked on HeapCorr (6 sorry). Spec coverage: 350 refs, 0 mismatches, 4521 lines (10.2%). **TARGET 300+ refs MET**.
 
 **RESOLVED ABSTRACTIONS**:
 - ✅ LowerCodeCorr constructors FIXED (wasmspec 01:15 — while_, throw, return_, break_, continue_ now specify actual instruction shapes)
@@ -183,14 +184,15 @@ arithmetic, boolean_logic, conditionals, do_while, for_loop, functions, let_bind
 - ✅ ANF break/continue → .silent (wasmspec 04:15)
 - ✅ EmitSimRel const i32/i64/f64 cases proved (wasmspec 04:15)
 
-**OPEN ABSTRACTIONS (updated 2026-03-23T22:30)**:
+**OPEN ABSTRACTIONS (updated 2026-03-24T15:05)**:
 1. ~~Bridge lemmas~~ ✅ PROVED.
 2. ~~evalBinary~~ ✅ ALL PROVED.
 3. ~~typeof/unary/throw/return/yield stepping~~ ✅ PROVED.
-4. **Stepping sub-cases (7 CC sorry)**: let(918), assign(972), if(1047), seq(1112), binary-lhs(1410), binary-rhs(1409), await(1936). All follow proved typeof template (lines 1180-1260). All Core step helpers exist EXCEPT `step_binary_value_lhs_nonvalue_rhs` (needed for 1409).
-5. **Captured var / heap correspondence (1 CC sorry, line 758)**: CC_SimRel needs heap tracking.
-6. **Env/heap cases (7 CC sorry, lines 1113-1119)**: call/newObj/getProp/setProp/getIndex/setIndex/deleteProp need CC_SimRel to track heap+funcs.
-7. **Wasm step_sim (46 sorry)**: ~15 LowerSimRel + ~26 EmitSimRel + 3 init. 6 "general case" sorries may be closable by contradiction.
+4. ~~Stepping sub-cases~~ ✅ ALL PROVED.
+5. ~~noCallFrameReturn IH obligations~~ ✅ ALL PROVED.
+6. **HeapCorr (6 CC sorry)**: Replace `sf.heap = sc.heap` with `HeapCorr sc.heap sf.heap` (prefix relation). Unblocks captured-var, call, newObj, objectLit, arrayLit, functionDef.
+7. **Wasm step_sim (32 sorry)**: ~14 LowerSimRel + ~12 EmitSimRel + 3 init + 3 other. `irTypeToValType` private blocks EmitSimRel init. `lowerExpr` partial blocks LowerSimRel init.
+8. **ANF (2 sorry)**: step_star (line 106) + nested seq (line 1181). Independent from CC/Wasm.
 5. **EmitSimRel step_sim (46 Wasm sorry)**: const i32/i64/f64 + block + loop proved. ~30 remaining cases (globalSet/binOp/unOp next easiest). Many are "general case" fallbacks.
 6. **LowerSimRel step_sim (~6 Wasm sorry)**: `.let`/`.seq`/`.if`/`.while`/`.throw`/`.tryCatch` cases. `.throw` simplest.
 7. **EnvCorr_assign**: Core lemmas ✅. Flat side done. Proof needs to connect them.

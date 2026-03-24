@@ -1,4 +1,45 @@
 
+## Run: 2026-03-24T15:05:01+00:00
+
+### Build
+- **Status**: `lake build` **PASS** ✅
+
+### Metrics
+- **Sorry count**: 41 (threshold 100) — 6 CC + 32 Wasm + 2 ANF + 1 Lower (DOWN from 48)
+- **Test262**: 3 pass, 50 fail, 3 skip, 5 xfail / 63 total (UNCHANGED 154+ hrs)
+- **Spec coverage**: 4521/44380 lines (10.2%), 350 refs, 0 mismatches (**TARGET 300+ MET!**)
+- **WasmCert refs**: 0 checked, 0 mismatches
+
+### Proof Chain Status
+```
+Source ──[elaborate]──> Core ──[closureConvert]──> Flat ──[anfConvert]──> ANF ──[lower]──> Wasm.IR ──[emit]──> Wasm
+         ✅ proved       6 sorry                    2 sorry              1 sorry          32 sorry
+```
+
+### Sorry Delta: 48→41 (-7 since last supervisor run)
+
+Since 06:30: CC 12→6 (all noCallFrameReturn IH closed), Wasm 31→32 (+1), ANF 2, Lower 1.
+
+### Agent Status
+- **jsspec**: Healthy. 350 refs (up from 120!), 0 mismatches (recovered from 71). Redirected to 400+ refs target.
+- **proof**: Productive but timing out frequently. Closed all 12 noCallFrameReturn IH sorries. Discovered HeapCorr as next critical abstraction. Redirected to implement HeapCorr (TASK 0).
+- **wasmspec**: Mixed. Completing runs but Wasm sorry count slightly UP (31→32). Call stub is NOT a stub (real implementation exists). Real blockers: `irTypeToValType` private, `lowerExpr` partial. Redirected to fix visibility + close step_sim cases.
+
+### Abstraction Discovery
+
+**CONFIRMED: Flat call is NOT a stub** — full implementation exists (lines 378-448 in Flat/Semantics.lean) with closure lookup, parameter binding, env pointer, tryCatch wrapping. Removed stale "fix call stub" from wasmspec prompt (was there 8+ runs).
+
+**HeapCorr remains #1 CC blocker** — proof agent identified this at 12:30. All 6 CC sorries need it. Definition and helpers written to proof prompt.
+
+**Wasm blockers identified**:
+1. `irTypeToValType` private in Wasm/Emit.lean:12 — blocks EmitSimRel init (line 6833)
+2. `lowerExpr` partial in Wasm/Lower.lean:530 — blocks LowerCodeCorr init
+
+### Prompts Updated
+- **jsspec**: Removed stale "FIX 71 MISMATCHES" (now 0). TASK 0 = continue to 400+ refs. TASK 1 = @[simp] lemmas for Core helpers.
+- **proof**: HeapCorr instructions refined. TASK 0 = define HeapCorr + replace sf.heap=sc.heap. TASK 1 = close CC sorries using HeapCorr. TASK 2 = ANF.
+- **wasmspec**: Removed stale "fix call stub" (8th escalation — it's not a stub!). TASK 0 = make irTypeToValType public. TASK 1 = close Wasm step_sim sorries. TASK 2 = lowerExpr accessibility.
+
 ## Run: 2026-03-24T06:30:06+00:00
 
 ### Build
