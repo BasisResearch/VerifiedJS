@@ -254,10 +254,6 @@ def heapObjectAt? (h : Core.Heap) (addr : Nat) : Option (List (Core.PropName × 
 @[simp] theorem flatToCoreValue_object (addr : Nat) : flatToCoreValue (.object addr) = .object addr := rfl
 @[simp] theorem flatToCoreValue_closure (idx envPtr : Nat) : flatToCoreValue (.closure idx envPtr) = .function idx := rfl
 
-/-- coreToFlatValue is definitionally equal to convertValue from ClosureConvert -/
-@[simp] theorem coreToFlatValue_eq_convertValue (v : Core.Value) :
-    coreToFlatValue v = convertValue v := by cases v <;> rfl
-
 /-- flatToCoreValue is a left inverse of coreToFlatValue on non-function values -/
 @[simp] theorem flatToCoreValue_coreToFlatValue_null : flatToCoreValue (coreToFlatValue .null) = .null := rfl
 @[simp] theorem flatToCoreValue_coreToFlatValue_undefined : flatToCoreValue (coreToFlatValue .undefined) = .undefined := rfl

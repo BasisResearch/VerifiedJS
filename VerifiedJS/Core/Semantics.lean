@@ -1491,6 +1491,20 @@ def consoleLogIdx : FuncIdx := 0
 def pushTrace (s : State) (t : TraceEvent) : State :=
   { s with trace := s.trace ++ [t] }
 
+-- SPEC: L15413-L15425
+-- | # Runtime Semantics: Evaluation
+-- |
+-- | PrimaryExpression : CoverParenthesizedExpressionAndArrowParameterList 1.
+-- | Let \_expr\_ be the \|ParenthesizedExpression\| that is covered by
+-- | \|CoverParenthesizedExpressionAndArrowParameterList\|. 1. Return ?
+-- | Evaluation of \_expr\_. ParenthesizedExpression : \`(\` Expression
+-- | \`)\` 1. Return ? Evaluation of \|Expression\|. This may be of type
+-- | Reference.
+-- |
+-- | This algorithm does not apply GetValue to Evaluation of \|Expression\|.
+-- | The principal motivation for this is so that operators such as
+-- | \`delete\` and \`typeof\` may be applied to parenthesized expressions.
+
 /-- One deterministic Core small-step transition with emitted trace event. -/
 def step? (s : State) : Option (TraceEvent × State) :=
   match h : s.expr with
