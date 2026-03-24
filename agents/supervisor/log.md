@@ -3410,3 +3410,67 @@ Source ──[elaborate]──> Core ──[closureConvert]──> Flat ──[a
 
 ## Run: 2026-03-24T01:05:01+00:00
 
+### Build
+- **Status**: `lake build` **PASS** ✅
+
+### Metrics
+- **Sorry count**: 51 (threshold 100) — 13 CC + 33 Wasm + 2 ANF + 1 Lower
+- **Delta**: DOWN from 66 (-15! Biggest single-run drop)
+- **Test262**: 3 pass, 50 fail, 3 skip, 5 xfail / 63 total (UNCHANGED 128+ hrs)
+- **Spec coverage**: 549/44380 lines (1%), 52 refs, 7 mismatches (UP from 41 refs/0 mismatches)
+- **WasmCert refs**: 0 checked, 0 mismatches
+
+### Proof Chain Status
+```
+Source ──[elaborate]──> Core ──[closureConvert]──> Flat ──[anfConvert]──> ANF ──[lower]──> Wasm.IR ──[emit]──> Wasm
+         ✅ proved       13 sorry                    2 sorry              1 sorry          33 sorry
+```
+
+### Sorry Delta: 66→51 (-15)
+- CC: 18→13 (-5) — ALL stepping sub-cases DONE (envVar/envMap refactor was the key)
+- Wasm: 45→33 (-12) — wasmspec massive EmitSimRel progress
+- ANF: 2 (unchanged)
+- Lower: 1 (unchanged)
+
+### Agent Status
+- **proof**: HIGHLY PRODUCTIVE. Closed all 5 remaining CC stepping sub-cases in one run (00:00). Major refactor: universally quantified envVar/envMap in IH. Last run timed out at 00:54 but committed substantial work. Now at HeapCorr wall.
+- **wasmspec**: EXCELLENT. Closed 12 Wasm sorries (45→33). Completed run at 00:48. Currently running (01:00).
+- **jsspec**: Active. Added 11 more refs (41→52) but introduced 7 mismatches (was 0!). Currently running (01:00).
+
+### Abstraction Discovery
+
+**CC Sorry Taxonomy (13 remaining):**
+1. **Captured var (1)**: line 768 — needs heap correspondence for `.getEnv`
+2. **Heap/env (7)**: lines 1425-1431 (call, newObj, getProp, setProp, getIndex, setIndex, deleteProp)
+3. **Heap/env/funcs (3)**: lines 1831-1833 (objectLit, arrayLit, functionDef)
+4. **TryCatch (1)**: line 1934 — needs env correspondence for catch clause
+5. **While unroll (1)**: line 2004 — CCState divergence on unrolled expression
+
+**KEY INSIGHT: Flat.State.heap IS Core.Heap (same type!)**
+The previous plan assumed heap correspondence needed value conversion (`HeapCorr` with `convertValue`). WRONG. `Flat.State.heap : Core.Heap` — it's literally the same type. So heap correspondence is just `sf.heap = sc.heap`. This makes 8 of the 13 remaining CC sorries dramatically simpler:
+- getProp/setProp/getIndex/setIndex/deleteProp: same heap, same operations → heap equality preserved
+- newObj/objectLit/arrayLit: both allocate on same heap type → heap equality after alloc
+- captured var (768): getEnv on same heap → direct
+
+Updated proof prompt with this insight. TASK 0: add `sf.heap = sc.heap` to CC_SimRel, then close getProp first.
+
+**Wasm Sorry Taxonomy (33 remaining):**
+- LowerSimRel.step_sim: 15 (lines 5773-5933)
+- EmitSimRel.step_sim: 12 (lines 6530-7255)
+- LowerSimRel.init: 3 (lines 7414-7453)
+
+wasmspec has been consistently closing 4-12 per run when not timing out. At this rate, ~3 more productive runs could halve the Wasm sorries.
+
+### Actions Taken
+1. ✅ Updated proof prompt (2026-03-24T01:05): New sorry map (13 total), removed completed TASK 0 (stepping), new TASK 0 = HeapCorr with identity insight, TASK 1 = FuncsCorr for call, TASK 2 = while_ unroll.
+2. ✅ Updated wasmspec prompt (2026-03-24T01:05): Updated sorry count (33, down from 45), new line numbers, encouragement to continue EmitSimRel progress.
+3. ✅ Updated jsspec prompt (2026-03-24T01:05): URGENT — 7 mismatches must be fixed before adding more citations. Listed all 7 mismatch locations.
+4. ✅ Updated PROGRESS.md: metrics table, proof chain (CC 18→13, Wasm 45→33), chain sorry count 26→19.
+
+### Next Run Focus
+- Monitor proof agent: did it add `sf.heap = sc.heap` to CC_SimRel and close getProp?
+- Check wasmspec: continuing EmitSimRel/LowerSimRel progress?
+- Track jsspec mismatches (should go from 7→0)
+2026-03-24T01:05:01+00:00 DONE
+
+2026-03-24T01:15:28+00:00 DONE

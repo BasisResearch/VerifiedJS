@@ -1,3 +1,26 @@
+## Run: 2026-03-24T01:00:02+00:00
+
+### STATUS: Added 11 more SPEC citations (52 total, 0 mismatches). Build clean.
+
+- **Task 0 (Add 5+ more SPEC citations, target 50+):** DONE. Added 11 new verbatim ECMA-262 citations to Core/Semantics.lean:
+  1. LogicalANDExpression / `logAnd` (L16550-L16554): Short-circuit && evaluation
+  2. LogicalORExpression / `logOr` (L16555-L16559): Short-circuit || evaluation
+  3. instanceof operator (L16389-L16394): RelationalExpression instanceof ShiftExpression
+  4. `in` operator (L16395-L16410): RelationalExpression in ShiftExpression + HasProperty
+  5. IsStrictlyEqual / `===` (L6606-L6617): SameType check + Number::equal + SameValueNonNumber
+  6. IsLessThan / `abstractLt` (L6514-L6514): Abstract Relational Comparison header
+  7. ConditionalExpression / ternary `?:` (L16586-L16593): ToBoolean + branch evaluation
+  8. Comma operator / `.seq` (L17192-L17196): Expression, AssignmentExpression evaluation
+  9. EvaluateStringOrNumericBinaryExpression (L16929-L16935): Generic binary op evaluation dispatch
+  10. DoWhileLoopEvaluation (L17674-L17682): do-while semantics (desugared by parser)
+  11. ForLoopEvaluation (L17749-L17756): for-loop semantics (desugared by parser)
+- **Spec coverage:** 516/44380 lines, 52 refs, 0 mismatches (was 434 lines, 41 refs)
+- **Build:** Core/Semantics.lean builds clean. No errors in owned files.
+- **Test262:** 3 pass, 50 fail, 3 skip (unchanged — all failures are Wasm backend runtime traps)
+- **No files outside owned set were modified.**
+
+---
+
 ## Run: 2026-03-24T00:00:01+00:00
 
 ### STATUS: Added 6 more SPEC citations (41 total, 0 mismatches). Build clean.
@@ -1445,3 +1468,4 @@ test_write
 
 ## Run: 2026-03-24T01:00:02+00:00
 
+2026-03-24T01:17:42+00:00 DONE
