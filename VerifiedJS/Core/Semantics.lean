@@ -275,6 +275,100 @@ def Env.extend (env : Env) (name : VarName) (v : Value) : Env :=
 -- | No matter how control leaves the \|Block\| the LexicalEnvironment is
 -- | always restored to its former state.
 
+-- SPEC: L5946-L5981
+-- | # ToPrimitive ( \_input\_: an ECMAScript language value, optional \_preferredType\_: \~string\~ or \~number\~, ): either a normal completion containing an ECMAScript language value or a throw completion
+-- |
+-- | description
+-- | :   It converts its \_input\_ argument to a non-Object type. If an
+-- |     object is capable of converting to more than one primitive type, it
+-- |     may use the optional hint \_preferredType\_ to favour that type.
+-- |
+-- | 1\. If \_input\_ is an Object, then 1. Let \_exoticToPrim\_ be ?
+-- | GetMethod(\_input\_, %Symbol.toPrimitive%). 1. If \_exoticToPrim\_ is
+-- | not \*undefined\*, then 1. If \_preferredType\_ is not present, then 1.
+-- | Let \_hint\_ be \*\"default\"\*. 1. Else if \_preferredType\_ is
+-- | \~string\~, then 1. Let \_hint\_ be \*\"string\"\*. 1. Else, 1. Assert:
+-- | \_preferredType\_ is \~number\~. 1. Let \_hint\_ be \*\"number\"\*. 1.
+-- | Let \_result\_ be ? Call(\_exoticToPrim\_, \_input\_, « \_hint\_ »). 1.
+-- | If \_result\_ is not an Object, return \_result\_. 1. Throw a
+-- | \*TypeError\* exception. 1. If \_preferredType\_ is not present, set
+-- | \_preferredType\_ to \~number\~. 1. Return ?
+-- | OrdinaryToPrimitive(\_input\_, \_preferredType\_). 1. Return \_input\_.
+-- |
+-- | When ToPrimitive is called without a hint, then it generally behaves as
+-- | if the hint were \~number\~. However, objects may over-ride this
+-- | behaviour by defining a %Symbol.toPrimitive% method. Of the objects
+-- | defined in this specification only Dates (see ) and Symbol objects (see
+-- | ) over-ride the default ToPrimitive behaviour. Dates treat the absence
+-- | of a hint as if the hint were \~string\~.
+-- |
+-- | # OrdinaryToPrimitive ( \_O\_: an Object, \_hint\_: \~string\~ or \~number\~, ): either a normal completion containing an ECMAScript language value or a throw completion
+-- |
+-- | 1\. If \_hint\_ is \~string\~, then 1. Let \_methodNames\_ be «
+-- | \*\"toString\"\*, \*\"valueOf\"\* ». 1. Else, 1. Let \_methodNames\_ be
+-- | « \*\"valueOf\"\*, \*\"toString\"\* ». 1. For each element \_name\_ of
+-- | \_methodNames\_, do 1. Let \_method\_ be ? Get(\_O\_, \_name\_). 1. If
+-- | IsCallable(\_method\_) is \*true\*, then 1. Let \_result\_ be ?
+-- | Call(\_method\_, \_O\_). 1. If \_result\_ is not an Object, return
+-- | \_result\_. 1. Throw a \*TypeError\* exception.
+
+-- SPEC: L6322-L6341
+-- | # ToObject ( \_argument\_: an ECMAScript language value, ): either a normal completion containing an Object or a throw completion
+-- |
+-- | description
+-- | :   It converts \_argument\_ to a value of type Object.
+-- |
+-- | 1\. If \_argument\_ is either \*undefined\* or \*null\*, throw a
+-- | \*TypeError\* exception. 1. If \_argument\_ is a Boolean, return a new
+-- | Boolean object whose \[\[BooleanData\]\] internal slot is set to
+-- | \_argument\_. See for a description of Boolean objects. 1. If
+-- | \_argument\_ is a Number, return a new Number object whose
+-- | \[\[NumberData\]\] internal slot is set to \_argument\_. See for a
+-- | description of Number objects. 1. If \_argument\_ is a String, return a
+-- | new String object whose \[\[StringData\]\] internal slot is set to
+-- | \_argument\_. See for a description of String objects. 1. If
+-- | \_argument\_ is a Symbol, return a new Symbol object whose
+-- | \[\[SymbolData\]\] internal slot is set to \_argument\_. See for a
+-- | description of Symbol objects. 1. If \_argument\_ is a BigInt, return a
+-- | new BigInt object whose \[\[BigIntData\]\] internal slot is set to
+-- | \_argument\_. See for a description of BigInt objects. 1. Assert:
+-- | \_argument\_ is an Object. 1. Return \_argument\_.
+
+-- SPEC: L6766-L6773
+-- | # HasProperty ( \_O\_: an Object, \_P\_: a property key, ): either a normal completion containing a Boolean or a throw completion
+-- |
+-- | description
+-- | :   It is used to determine whether an object has a property with the
+-- |     specified property key. The property may be either own or inherited.
+-- |
+-- | 1\. Return ? \_O\_.\[\[HasProperty\]\](\_P\_).
+
+-- SPEC: L6408-L6417
+-- | # IsCallable ( \_argument\_: an ECMAScript language value, ): a Boolean
+-- |
+-- | description
+-- | :   It determines if \_argument\_ is a callable function with a
+-- |     \[\[Call\]\] internal method.
+-- |
+-- | 1\. If \_argument\_ is not an Object, return \*false\*. 1. If
+-- | \_argument\_ has a \[\[Call\]\] internal method, return \*true\*. 1.
+-- | Return \*false\*.
+
+-- SPEC: L6783-L6796
+-- | # Call ( \_F\_: an ECMAScript language value, \_V\_: an ECMAScript language value, optional \_argumentsList\_: a List of ECMAScript language values, ): either a normal completion containing an ECMAScript language value or a throw completion
+-- |
+-- | description
+-- | :   It is used to call the \[\[Call\]\] internal method of a function
+-- |     object. \_F\_ is the function object, \_V\_ is an ECMAScript
+-- |     language value that is the \*this\* value of the \[\[Call\]\], and
+-- |     \_argumentsList\_ is the value passed to the corresponding argument
+-- |     of the internal method. If \_argumentsList\_ is not present, a new
+-- |     empty List is used as its value.
+-- |
+-- | 1\. If \_argumentsList\_ is not present, set \_argumentsList\_ to a new
+-- | empty List. 1. If IsCallable(\_F\_) is \*false\*, throw a \*TypeError\*
+-- | exception. 1. Return ? \_F\_.\[\[Call\]\](\_V\_, \_argumentsList\_).
+
 /-- Check whether an expression is a value expression. -/
 def exprValue? : Expr → Option Value
   | .lit v => some v

@@ -3484,3 +3484,59 @@ wasmspec has been consistently closing 4-12 per run when not timing out. At this
 
 ## Run: 2026-03-24T04:05:01+00:00
 
+
+### Build
+- **Status**: `lake build` **PASS** ✅
+
+### Metrics
+- **Sorry count**: 48 (threshold 100) — 12 CC + 33 Wasm + 2 ANF + 1 Lower
+- **Test262**: 3 pass, 50 fail, 3 skip, 5 xfail / 63 total (UNCHANGED 132+ hrs)
+- **Spec coverage**: 1186/44380 lines (2%), 91 refs, 4 mismatches
+- **WasmCert refs**: 0 checked, 0 mismatches
+
+### Proof Chain Status
+```
+Source ──[elaborate]──> Core ──[closureConvert]──> Flat ──[anfConvert]──> ANF ──[lower]──> Wasm.IR ──[emit]──> Wasm
+         ✅ proved       12 sorry                    2 sorry              1 sorry          33 sorry
+```
+
+### Sorry Delta: 51→48 (-3)
+- CC: 13→12 (-1) — **while_ unroll CLOSED!** The "fundamentally hard" case is done.
+- Wasm: 33 (unchanged — wasmspec timed out 3x in a row)
+- ANF: 2 (unchanged)
+- Lower: 1 (unchanged)
+
+### Agent Status
+- **proof**: Closed while_ unroll sorry (the hardest CC case). Both runs since 01:05 timed out (01:30→02:30, 03:30→running). Still hasn't started HeapCorr work. Productive despite timeouts — while_ was closed somewhere in the timeout window.
+- **wasmspec**: 3 consecutive timeouts (01:15→02:15, 03:15→04:15). No Wasm sorry progress. Rewrote prompt to emphasize "DO EXACTLY 1 SORRY" to prevent timeouts.
+- **jsspec**: VERY PRODUCTIVE. 52→91 refs (+39!), 7→4 mismatches. Coverage 1%→2%. Running consistently without crashes.
+
+### Abstraction Discovery
+
+**CC sorry taxonomy (12 remaining):**
+All 12 are blocked on HeapCorr (adding `sf.heap = sc.heap` to CC_SimRel). No new abstractions needed — the plan from last run is correct. The proof agent just hasn't had time to start it.
+
+1. **Captured var (1)**: line 798 — `lookupEnv` returns `some idx`, needs `.getEnv` on same heap
+2. **Heap/env (7)**: lines 1508-1514 — call, newObj, getProp, setProp, getIndex, setIndex, deleteProp
+3. **Heap/env/funcs (3)**: lines 1930-1932 — objectLit, arrayLit, functionDef
+4. **TryCatch (1)**: line 2041 — env correspondence through catch binding
+
+**Wasm sorry taxonomy (33 remaining):**
+- LowerSimRel.step_sim (15): ANF→IR simulation for each expression form. These are fundamentally 1:N stepping (ANF does 1 step, IR does N). The `seq` case (5896) explicitly notes need for stuttering simulation or measure-based framework.
+- EmitSimRel.step_sim (15): IR→Wasm simulation. These were going down steadily before timeouts.
+- LowerSimRel.init (3): Initial state correspondence. Potentially simpler — redirected wasmspec to try these.
+
+**Key concern**: wasmspec timeout loop. 3 consecutive timeouts = 0 progress in 3 hours. The "DO 1 SORRY" directive should help. If it doesn't break the pattern next run, may need to restructure the LowerSimRel cases to be smaller/more tractable.
+
+### Actions Taken
+1. ✅ Updated proof prompt (2026-03-24T04:05): Removed completed TASK 2 (while_). Updated sorry map (12 total, new line numbers). Added TASK 2 = tryCatch. HeapCorr plan unchanged as TASK 0.
+2. ✅ Updated wasmspec prompt (2026-03-24T04:05): Emphasized timeout prevention ("DO EXACTLY 1 SORRY"). Updated sorry line numbers. Added LowerSimRel.init as TASK 1 (potentially simpler than step_sim).
+3. ✅ Updated jsspec prompt (2026-03-24T04:05): Updated to 91 refs, 4 mismatches. Listed current 4 mismatch locations. Target 100+ refs after mismatches fixed.
+4. ✅ Updated PROGRESS.md: metrics table, proof chain (CC 13→12, while_ proved).
+
+### Next Run Focus
+- Monitor proof agent: did it start HeapCorr? (add `sf.heap = sc.heap` to CC_SimRel)
+- Check wasmspec: did "DO 1 SORRY" break the timeout loop?
+- Track jsspec mismatches (should go from 4→0)
+2026-03-24T04:05:01+00:00 DONE
+2026-03-24T04:30:27+00:00 DONE
