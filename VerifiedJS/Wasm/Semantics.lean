@@ -2645,6 +2645,39 @@ theorem step?_eq_loop (s : ExecState) (bt : BlockType) (body : List Instr) (rest
     cases s; simp_all
   rw [← this]; simp [step?_loop, pushTrace]
 
+/-- Exact step? result for if with true condition (nonzero i32).
+    REF: Wasm §4.4.8 -/
+theorem step?_eq_if_true (s : ExecState) (bt : BlockType) (then_ else_ rest : List Instr)
+    (n : UInt32) (stk : List WasmValue)
+    (hcode : s.code = Instr.if_ bt then_ else_ :: rest)
+    (hstack : s.stack = .i32 n :: stk)
+    (hn : n ≠ 0) :
+    step? s = some (.silent,
+      { s with
+        code := then_
+        stack := stk
+        labels := { onBranch := rest, onExit := rest, isLoop := false } :: s.labels
+        trace := s.trace ++ [.silent] }) := by
+  have : { s with code := Instr.if_ bt then_ else_ :: rest, stack := .i32 n :: stk } = s := by
+    cases s; simp_all
+  rw [← this]; simp [step?_if_true (hn := hn), pushTrace]
+
+/-- Exact step? result for if with false condition (zero).
+    REF: Wasm §4.4.8 -/
+theorem step?_eq_if_false (s : ExecState) (bt : BlockType) (then_ else_ rest : List Instr)
+    (stk : List WasmValue)
+    (hcode : s.code = Instr.if_ bt then_ else_ :: rest)
+    (hstack : s.stack = .i32 0 :: stk) :
+    step? s = some (.silent,
+      { s with
+        code := else_
+        stack := stk
+        labels := { onBranch := rest, onExit := rest, isLoop := false } :: s.labels
+        trace := s.trace ++ [.silent] }) := by
+  have : { s with code := Instr.if_ bt then_ else_ :: rest, stack := .i32 0 :: stk } = s := by
+    cases s; simp_all
+  rw [← this]; simp [step?_if_false, pushTrace]
+
 /-! ## Behavioral semantics theorems -/
 
 /-- Deterministic execution: Steps from the same state yield the same trace and final state. -/
@@ -7179,8 +7212,108 @@ theorem step_sim (irmod : IRModule) (wmod : Module) :
               exact hhalt_of_structural hbody (by simp; exact hrel.hlabels)
           · exact hf.elim
       | .if_ result then_ else_ =>
-          -- if: conditional branch
-          sorry
+          -- if: conditional branch. Both IR and Wasm pop i32, push label, enter branch.
+          have hc : EmitCodeCorr (IRInstr.if_ result then_ else_ :: rest) s2.code := hcode_ir ▸ hrel.hcode
+          rcases hc.if_inv with ⟨bt, then_w, else_w, rest_w, hcw, hthen, helse, hrest⟩ | hf
+          · -- Specific case: Wasm code = if_ bt then_w else_w :: rest_w
+            -- Case split on IR stack for condition value
+            match hstk : s1.stack with
+            | [] =>
+              -- Empty stack: IR traps "stack underflow in if"
+              have hir : irStep? s1 = some (.trap "stack underflow in if",
+                  { s1 with code := rest, code := [], trace := s1.trace ++ [.trap "stack underflow in if"] }) := by
+                simp [irStep?, hcode_ir, hstk, irPop1?, irTrapState, irPushTrace]
+              rw [hir] at hstep
+              simp only [Option.some.injEq, Prod.mk.injEq] at hstep
+              obtain ⟨rfl, rfl⟩ := hstep
+              -- Wasm stack also empty
+              have hlen := hrel.hstack.1; rw [hstk] at hlen; simp at hlen
+              have hs2 : s2.stack = [] := by
+                cases hs : s2.stack with | nil => rfl | cons => simp [hs] at hlen
+              -- Wasm if with empty stack also traps
+              have hw : step? s2 = some (.trap "stack underflow in if",
+                  { s2 with code := [], trace := s2.trace ++ [.trap "stack underflow in if"] }) := by
+                simp [step?, hcw, hs2, pop1?, trapState, pushTrace]
+              exact ⟨_, by simp [traceToWasm]; exact hw,
+                { hemit := hrel.hemit
+                  hcode := .nil
+                  hstack := by dsimp only []; exact hrel.hstack
+                  hframes_len := hrel.hframes_len
+                  hframes_locals := hrel.hframes_locals
+                  hframes_vals := hrel.hframes_vals
+                  hglobals := hrel.hglobals
+                  hlabels := by dsimp only []; exact hrel.hlabels
+                  hhalt := hhalt_of_structural .nil hrel.hlabels }⟩
+            | .i32 cond :: stk =>
+              -- i32 condition: decide true/false
+              match hcond : decide (cond = 0) with
+              | isTrue h0 =>
+                subst h0
+                -- False branch: enter else
+                have hir := irStep?_eq_if_false s1 result then_ else_ rest stk hcode_ir hstk
+                rw [hir] at hstep
+                simp only [Option.some.injEq, Prod.mk.injEq] at hstep
+                obtain ⟨rfl, rfl⟩ := hstep
+                -- Wasm stack correspondence: s2.stack starts with .i32 0
+                have hlen := hrel.hstack.1; rw [hstk] at hlen
+                match hs2 : s2.stack with
+                | [] => simp [hs2] at hlen
+                | wv :: wstk =>
+                  have hval_corr := hrel.hstack.2 0 (by simp [hstk])
+                  rw [hstk, hs2] at hval_corr
+                  simp at hval_corr
+                  obtain ⟨_, _, h1, h2, hvc⟩ := hval_corr
+                  simp at h1 h2; subst h1; subst h2
+                  cases hvc with
+                  | i32 n => rename_i hneq; rw [hneq] at hs2
+                  have hw := step?_eq_if_false s2 bt then_w else_w rest_w wstk hcw hs2
+                  refine ⟨_, hw, hrel.hemit, helse, ?_, hrel.hframes_len, hrel.hframes_locals, hrel.hframes_vals, hrel.hglobals, ?_, ?_⟩
+                  · -- Stack correspondence: tails match
+                    constructor
+                    · simp [hstk, hs2] at hlen ⊢; omega
+                    · intro i hi
+                      have hstk2 := hrel.hstack
+                      rw [hstk, hs2] at hstk2
+                      exact hstk2.2 (i + 1) (by simp; omega)
+                  · simp; exact hrel.hlabels
+                  · exact hhalt_of_structural helse (by simp; exact hrel.hlabels)
+              | isFalse hne =>
+                -- True branch: enter then
+                have hir := irStep?_eq_if_true s1 result then_ else_ rest cond stk hcode_ir hstk hne
+                rw [hir] at hstep
+                simp only [Option.some.injEq, Prod.mk.injEq] at hstep
+                obtain ⟨rfl, rfl⟩ := hstep
+                -- Wasm stack correspondence
+                have hlen := hrel.hstack.1; rw [hstk] at hlen
+                match hs2 : s2.stack with
+                | [] => simp [hs2] at hlen
+                | wv :: wstk =>
+                  have hval_corr := hrel.hstack.2 0 (by simp [hstk])
+                  rw [hstk, hs2] at hval_corr
+                  simp at hval_corr
+                  obtain ⟨_, _, h1, h2, hvc⟩ := hval_corr
+                  simp at h1 h2; subst h1; subst h2
+                  cases hvc with
+                  | i32 n =>
+                    rename_i hneq; rw [hneq] at hs2
+                    have hne_w : n ≠ 0 := by rw [← hneq]; exact hne
+                    have hw := step?_eq_if_true s2 bt then_w else_w rest_w n wstk hcw hs2 hne_w
+                    refine ⟨_, hw, hrel.hemit, hthen, ?_, hrel.hframes_len, hrel.hframes_locals, hrel.hframes_vals, hrel.hglobals, ?_, ?_⟩
+                    · -- Stack correspondence: tails match
+                      constructor
+                      · simp [hstk, hs2] at hlen ⊢; omega
+                      · intro i hi
+                        have hstk2 := hrel.hstack
+                        rw [hstk, hs2] at hstk2
+                        exact hstk2.2 (i + 1) (by simp; omega)
+                    · simp; exact hrel.hlabels
+                    · exact hhalt_of_structural hthen (by simp; exact hrel.hlabels)
+            | v :: stk =>
+              -- Non-i32 on stack: type mismatch trap
+              -- Need to show IR traps and Wasm traps similarly
+              -- This is complex; for now handle the main cases above
+              sorry
+          · exact hf.elim
       | .br label =>
           -- unconditional branch
           sorry

@@ -1425,4 +1425,29 @@ theorem HeapCorr_get (h : HeapCorr ch fh) (addr : Nat) (cprops : Props)
 2026-03-24T06:30:04+00:00 DONE
 
 ## Run: 2026-03-24T06:30:05+00:00
+- Sorries before: 48 total (12 CC + 2 ANF + 1 Lower + 33 Wasm), after: 49 total (13 CC + 2 ANF + 1 Lower + 33 Wasm)
+- Net sorry delta: +1 (1 tryCatch sorry → 2 targeted isCallFrame sorries; substantial proof added)
+- Build: ✅ PASS
 
+### What was done:
+1. **Proved tryCatch stepping sub-case (body not value, non-error event)** — Both `.silent` and `.log msg` events handled. Pattern: apply IH to body step, use `Core.step_tryCatch_step_body_silent`/`step_tryCatch_step_body_log` for Core step (no isCallFrame check needed), prove CC_SimRel for wrapped `.tryCatch` result using `convertExpr_scope_irrelevant` and `convertOptExpr_scope_irrelevant` for catchBody/finally_ correspondence. ~80 lines per event case.
+
+2. **Proved tryCatch normal completion (body is value, !isCallFrame)** — Both `finally_ = none` and `finally_ = some fin` sub-cases. For `none`: used `Core.step_tryCatch_normal_noFinally` with `hcf : catchParam ≠ "__call_frame_return__"`. For `some fin`: direct `simp [Core.step?, Core.exprValue?, hcf]`. Expr correspondence via scope_irrelevant. ~60 lines total.
+
+3. **Proved tryCatch error catch (!isCallFrame)** — When body step produces `.error msg`, Flat catches and extends env with `catchParam → .string msg`. Core does same when !isCallFrame. Used `EnvCorr_extend henvCorr_arg catchParam (.string msg)` (convertValue preserves strings). Handler expr correspondence via scope_irrelevant on catchBody and convertOptExpr on finally_. ~80 lines.
+
+### Remaining tryCatch sorries (2):
+- Line 2066: `catchParam = "__call_frame_return__"` in normal completion. Core restores callStack, Flat doesn't. Unreachable for CC'd source programs.
+- Line 2179: `catchParam = "__call_frame_return__"` in error catch. Same issue.
+
+### Analysis of ANF line 1181 (nested seq):
+- Case: `c = .seq c1 c2` in 4-deep left-spine of seqs
+- Current IH is on `depth ≤ N` but one step may not reduce depth
+- Requires either: (a) inner induction on left-spine size, or (b) lexicographic `(depth, size)` measure
+- Too much structural change for this run
+
+### Next steps:
+1. Add well-formedness predicate `catchParam ≠ "__call_frame_return__"` to CC_SimRel → close 2 isCallFrame sorries
+2. Captured var (line 798) needs stuttering simulation (Flat.Steps instead of Flat.Step)
+3. ANF nested seq (line 1181) needs strengthened induction measure
+4. 7+3 CC sorries blocked by Flat.step? stubs (objectLit/arrayLit/etc use allocFreshObject with empty props vs Core's real properties)

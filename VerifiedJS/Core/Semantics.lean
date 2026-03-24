@@ -11,6 +11,40 @@ namespace VerifiedJS.Core
 
 set_option linter.deprecated false
 
+-- SPEC: L3997-L4001
+-- | # The Undefined Type
+-- |
+-- | The Undefined type has exactly one value, called \*undefined\*. Any
+-- | variable that has not been assigned a value has the value \*undefined\*.
+-- SPEC: L4002-L4005
+-- | # The Null Type
+-- |
+-- | The Null type has exactly one value, called \*null\*.
+-- SPEC: L4006-L4011
+-- | # The Boolean Type
+-- |
+-- | The [Boolean type]{.dfn variants="is a Boolean,is not a Boolean"}
+-- | represents a logical entity having two values, called \*true\* and
+-- | \*false\*.
+-- SPEC: L5443-L5460
+-- | # The Completion Record Specification Type
+-- |
+-- | The [Completion Record]{.dfn variants="Completion Records"} type is
+-- | used to explain the runtime propagation of values and control flow
+-- | such as the behaviour of statements (\`break\`, \`continue\`,
+-- | \`return\` and \`throw\`) that perform nonlocal transfers of
+-- | control.
+-- |
+-- |   Field Name       Value                                                                                         Meaning
+-- |   ---------------- ------------------------------------------------------------------------------------------------------------- -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+-- |   \[\[Type\]\]     \~normal\~, \~break\~, \~continue\~, \~return\~, or \~throw\~                                The type of completion that occurred.
+-- |   \[\[Value\]\]    an ECMAScript language value or \~empty\~                                                     The value that was produced.
+-- |   \[\[Target\]\]   a String or \~empty\~                                                                         The target label for directed control transfers.
+-- |
+-- | The term "[abrupt completion]{.dfn variants="is an abrupt
+-- | completion,is not an abrupt completion"}" refers to any completion
+-- | with a \[\[Type\]\] value other than \~normal\~.
+
 /-- Observable trace events emitted by Core execution. -/
 inductive TraceEvent where
   | log (s : String)
@@ -355,6 +389,41 @@ def Env.extend (env : Env) (name : VarName) (v : Value) : Env :=
 -- | new BigInt object whose \[\[BigIntData\]\] internal slot is set to
 -- | \_argument\_. See for a description of BigInt objects. 1. Assert:
 -- | \_argument\_ is an Object. 1. Return \_argument\_.
+-- SPEC: L6343-L6352
+-- | # ToPropertyKey ( \_argument\_: an ECMAScript language value, ): either a normal completion containing a property key or a throw completion
+-- |
+-- | description
+-- | :   It converts \_argument\_ to a value that can be used as a property
+-- |     key.
+-- |
+-- | 1\. Let \_key\_ be ? ToPrimitive(\_argument\_, \~string\~). 1. If
+-- | \_key\_ is a Symbol, then 1. Return \_key\_. 1. Return !
+-- | ToString(\_key\_).
+-- SPEC: L6697-L6714
+-- | # CreateDataPropertyOrThrow ( \_O\_: an Object, \_P\_: a property key, \_V\_: an ECMAScript language value, ): either a normal completion containing \~unused\~ or a throw completion
+-- |
+-- | description
+-- | :   It is used to create a new own property of an object. It throws a
+-- |     \*TypeError\* exception if the requested property update cannot be
+-- |     performed.
+-- |
+-- | 1\. Let \_success\_ be ? CreateDataProperty(\_O\_, \_P\_, \_V\_). 1. If
+-- | \_success\_ is \*false\*, throw a \*TypeError\* exception. 1. Return
+-- | \~unused\~.
+-- |
+-- | This abstract operation creates a property whose attributes are set to
+-- | the same defaults used for properties created by the ECMAScript language
+-- | assignment operator. Normally, the property will not already exist. If
+-- | it does exist and is not configurable or if \_O\_ is not extensible,
+-- | \[\[DefineOwnProperty\]\] will return \*false\* causing this operation
+-- | to throw a \*TypeError\* exception.
+-- SPEC: L5610-L5616
+-- | # InitializeReferencedBinding ( \_V\_: a Reference Record, \_W\_: an ECMAScript language value, ): either a normal completion containing \~unused\~ or an abrupt completion
+-- |
+-- | 1\. Assert: IsUnresolvableReference(\_V\_) is \*false\*. 1. Let \_base\_
+-- | be \_V\_.\[\[Base\]\]. 1. Assert: \_base\_ is an Environment Record. 1.
+-- | Return ? \_base\_.InitializeBinding(\_V\_.\[\[ReferencedName\]\],
+-- | \_W\_).
 
 -- SPEC: L6766-L6773
 -- | # HasProperty ( \_O\_: an Object, \_P\_: a property key, ): either a normal completion containing a Boolean or a throw completion
@@ -638,7 +707,7 @@ def evalUnary : UnaryOp → Value → Value
 -- | Note that \_k\_ is the number of digits in the representation of \_s\_
 -- | using radix \_radix\_, that \_s\_ is not divisible by \_radix\_, and
 -- | that the least significant digit of \_s\_ is not necessarily uniquely
--- | determined by these criteria.
+-- | determined by these criteria. 1. If \_radix\_ ≠ 10 or \_n\_ is in the
 /-- ECMA-262 §7.1.12 ToString / §6.1.6.1.20 Number::toString (core subset). -/
 def valueToString : Value → String
   | .string s => s
