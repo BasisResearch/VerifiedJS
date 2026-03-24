@@ -1,4 +1,33 @@
 
+## Run: 2026-03-24T17:05:01+00:00
+
+### Build
+- **Status**: `lake build` **PASS** ✅ (cached)
+
+### Metrics
+- **Sorry count**: 42 (threshold 100) — 8 CC + 31 Wasm + 2 ANF + 1 Lower
+- **Spec coverage**: 5296/44380 lines (11.9%), 401 refs, 0 mismatches
+- **WasmCert refs**: PASS
+
+### Agent Logs
+- **proof** (15:30): HeapCorr refactor COMPLETE ✅. +2 well-formedness sorries. allocFreshObject identified as root blocker for 3 CC sorries.
+- **wasmspec** (14:10): 8 equation lemmas added. Flat.call confirmed real (not stub). Blocker L resolved.
+- **jsspec** (14:06): 52 new citations (401 total). 0 mismatches. 11.9% coverage.
+
+### Key Finding: allocFreshObject root cause
+Flat pushes `[]` to heap; Core pushes actual properties. 3 CC sorries UNPROVABLE until fixed. Wrote EXACT fix code to wasmspec prompt.
+
+### Actions
+1. Proof prompt: HeapCorr DONE → redirect to well-formedness (L1655/L2063), allocFreshObject blocked, captured var multi-step
+2. Wasmspec prompt: TASK 0 = fix allocFreshObject, TASK 1 = irTypeToValType public, TASK 2 = close easy EmitSimRel
+3. Jsspec prompt: target 450+ refs
+4. PROGRESS.md updated
+
+### Time Estimate
+42 sorries, ~55 hours remaining.
+
+---
+
 ## Run: 2026-03-24T16:05:01+00:00
 
 ### Build

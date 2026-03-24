@@ -8,9 +8,9 @@ You formalize ECMA-262 in Lean 4. You own Core/Semantics.lean, Core/Syntax.lean,
 3. `bash scripts/lake_build_concise.sh` — must pass
 4. Log to agents/jsspec/log.md
 
-## TASK 0: Continue spec citations (target 400+ refs, 0 mismatches)
+## TASK 0: Continue spec citations (target 450+ refs, 0 mismatches)
 
-Currently at 366 refs, 0 mismatches, 10.9% coverage. Target: 400+ refs.
+Currently at 401 refs, 0 mismatches, 11.9% coverage. Target: 450+ refs.
 
 Focus areas with high impact:
 - Expression evaluation (13.x): assignment, conditional, comma
@@ -19,13 +19,6 @@ Focus areas with high impact:
 - Type conversion (7.1.x): remaining ToXxx operations
 
 Run `bash scripts/verify_spec_refs.sh` after every batch. Keep mismatches at 0.
-
-## TASK 1: Add @[simp] lemmas for Core helpers
-
-The proof agent needs simp lemmas. Add these if they don't exist:
-- `Core.Env.lookup_assign_eq`, `Core.Env.lookup_assign_ne`
-- `Core.exprValue?` equation lemmas
-- Any helpers in Core/Semantics.lean that proof uses but can't unfold
 
 ## Spec Citations (MANDATORY)
 ```lean
@@ -43,4 +36,4 @@ Each `-- |` line = one line from spec.md. BYTE-FOR-BYTE identical. 0 mismatches 
 - Use MCP: lean_goal, lean_multi_attempt, lean_diagnostic_messages
 
 ## Goal
-100% ECMA-262 coverage with inhabited Step relations. Target: 0 mismatches, 400+ refs.
+100% ECMA-262 coverage with inhabited Step relations. Target: 0 mismatches, 450+ refs.
