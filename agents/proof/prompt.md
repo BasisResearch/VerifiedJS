@@ -57,81 +57,70 @@ If ClosureConvertCorrect needs 600 lines of case analysis, WRITE 600 LINES. That
 ## Test262
 Read `logs/test262_summary.md` for failure categories. Fix compiler bugs that cause test262 failures.
 
-## CURRENT PRIORITIES (2026-03-24T00:05)
+## CURRENT PRIORITIES (2026-03-24T01:05)
 
-### Build: PASS ✅. Sorry: 66 (18 CC + 45 Wasm + 2 ANF + 1 Lower). CC DOWN 25→18!
+### Build: PASS ✅. Sorry: 51 (13 CC + 33 Wasm + 2 ANF + 1 Lower). CC DOWN 18→13! ALL stepping sub-cases DONE!
 
-### CC Sorry Map (18 total):
-- **4 stepping sub-cases**: lines 928, 1123, 1188, 1485/1486
-- **7 heap/env**: lines 1189-1195 (call, newObj, getProp, setProp, getIndex, setIndex, deleteProp)
-- **3 heap/env/funcs**: lines 1487-1489 (objectLit, arrayLit, functionDef)
-- **1 tryCatch**: line 1591
-- **1 while_ unroll**: line 1661
-- **1 captured var**: line 768
-- **1 let init not-value stepping**: line 928
+### CC Sorry Map (13 total):
+- **1 captured var**: line 768 (needs heap corr for .getEnv)
+- **7 heap/env**: lines 1425-1431 (call, newObj, getProp, setProp, getIndex, setIndex, deleteProp)
+- **3 heap/env/funcs**: lines 1831-1833 (objectLit, arrayLit, functionDef)
+- **1 tryCatch**: line 1934 (needs env correspondence for catch)
+- **1 while_ unroll**: line 2004 (CCState divergence on unrolled expr)
 
 **TIME MANAGEMENT**:
 1. Do NOT run `lake build` at the start. Use `lean_diagnostic_messages` instead.
 2. Only run `lake build` ONCE at the end to verify.
 3. If stuck for 15 minutes on a sorry, move on to the next.
 
-### TASK 0: Close 3+ stepping sub-cases using the PROVEN typeof template
+### TASK 0: Add heap correspondence to CC_SimRel and close getProp (HIGHEST PRIORITY)
 
-The remaining stepping sub-cases ALL follow the typeof pattern (see lines ~1260-1310 for template). Each is a `| none =>` branch where the sub-expression is not a value:
+**CRITICAL INSIGHT**: `Flat.State.heap` is literally `Core.Heap` (same type!). So heap correspondence is IDENTITY: `sf.heap = sc.heap`. This makes everything simpler.
 
-**Line 1188 — seq (lhs not value)**: Simplest. Use `Core.step_seq_nonvalue_lhs`. Wrap is `.seq X b`.
-
-**Line 1123 — if (cond not value)**: Use `Core.step_if_step_cond`. Wrap is `.if X then_ else_`.
-
-**Line 928 — let (init not value)**: Use `Core.step_let_step_init`. Wrap is `.let name X body`.
-
-**Lines 1485/1486 — binary stepping**: lhs not value (`Core.step_binary_nonvalue_lhs`), rhs not value but lhs IS value (needs helper).
-
-### TASK 1: Close the while_ unroll sorry (line 1661)
-
-Line 1661 needs to show that the unrolled while_ expression `if cond (seq body (while_ cond body)) (lit undefined)` matches what `convertExpr` produces on the same Core expression. The problem is CCState threading:
-
+Step 1: Add `sf.heap = sc.heap` to CC_SimRel:
 ```lean
--- Core while_ steps to: .if cond (.seq body (.while_ cond body)) (.lit .undefined)
--- Flat while_ steps to: .if cond' (.seq body' (.while_ cond' body')) (.lit .undefined)
--- where cond' = (convertExpr cond scope envVar envMap st).1
---       body' = (convertExpr body scope envVar envMap st1).1  (st1 from cond)
--- Need: ∃ scope' st0 st0', (.if cond' (.seq body' (.while_ cond' body')) (.lit .undefined), st0')
---       = convertExpr (.if cond (.seq body (.while_ cond body)) (.lit .undefined)) scope' envVar envMap st0
+private def CC_SimRel (_s : Core.Program) (_t : Flat.Program)
+    (sf : Flat.State) (sc : Core.State) : Prop :=
+  sf.trace = sc.trace ∧
+  EnvCorr sc.env sf.env ∧
+  sf.heap = sc.heap ∧  -- ADD THIS
+  ∃ (scope : List String) (envVar : String) (envMap : Flat.EnvMapping) (st st' : Flat.CCState),
+    (sf.expr, st') = Flat.convertExpr sc.expr scope envVar envMap st
 ```
 
-The key insight: `convertExpr (.if cond (.seq body (.while_ cond body)) (.lit .undefined)) scope envVar envMap st` threads state through cond→seq→body→while_→lit. The while_ part re-converts cond and body with a DIFFERENT state. So you need:
+Step 2: Fix `closureConvert_init_related` — add `· rfl` for heap.
 
+Step 3: Fix EVERY existing case that constructs CC_SimRel — add heap equality proof. For stepping cases where heap doesn't change, this is just `hheap` (the hypothesis from destructing CC_SimRel). For cases where Core/Flat both do the same heap operation, show equality.
+
+Step 4: Close getProp (line 1427):
 ```lean
--- Prove: convertExpr is DETERMINISTIC on sub-expressions that don't bind new variables.
--- For while_: cond and body don't bind new CC variables (they don't introduce closures that
--- need fresh names). So convertExpr cond scope envVar envMap st = convertExpr cond scope envVar envMap st'
--- for any st, st' (when cond has no functionDef nodes).
--- ALTERNATIVELY: just show the specific equality holds by unfolding convertExpr for .if/.seq/.while_/.lit
--- and showing the sub-expression results match what the while_ case already computed.
+  | getProp obj prop =>
+    -- Flat.step? reads obj from env, looks up prop in heap
+    -- Core.step? does the same (same heap!)
+    -- With sf.heap = sc.heap and EnvCorr, the lookup results match
 ```
 
-Try the direct unfolding approach first:
-```lean
-    -- At the sorry on line 1661:
-    refine ⟨hsf'_trace, henv', scope, envVar, envMap, st, ?_⟩
-    rw [hsc'_expr, hsf'_expr]
-    simp only [Flat.convertExpr]
-    -- Now the goal should be about matching the sub-expressions
-    -- Use the facts that cond' and body' are already convertExpr outputs
-```
+Step 5: Close setProp, getIndex, setIndex, deleteProp similarly.
 
-### TASK 2: After stepping sub-cases, add HeapCorr to CC_SimRel
+Step 6: Close newObj (line 1426) — both allocate on same heap, result heap is identical.
 
-Lines 1189-1195 (7 heap/env sorries) ALL need CC_SimRel to track heap correspondence. Define:
+**Do getProp FIRST** — it's read-only (no heap mutation), simplest heap case.
+
+### TASK 1: Close call (line 1425) — needs FuncsCorr
+
+After heap cases work, `call` also needs function correspondence. Core uses `sc.funcs` array, Flat uses inline closure values. Define:
 ```lean
-private def HeapCorr (ch : Core.Heap) (fh : Flat.Heap) : Prop :=
-  ch.size = fh.size ∧
-  ∀ i, i < ch.size → ∃ cv fv, ch[i]? = some cv ∧ fh[i]? = some fv ∧
-    (∀ k, cv.lookup k = some v → fv.lookup k = some (Flat.convertValue v)) ∧
-    (∀ k, fv.lookup k = some fv' → ∃ v, cv.lookup k = some v ∧ fv' = Flat.convertValue v)
+-- Core.State.funcs contains function closures
+-- Flat represents closures as values in the environment
+-- FuncsCorr relates Core.funcs entries to Flat closure values
 ```
-Add `HeapCorr sc.heap sf.heap` to CC_SimRel. Then prove preservation for alloc/update/get.
+This is harder than heap — do it AFTER the 6 heap-only cases.
+
+### TASK 2: Close while_ unroll (line 2004) — lower priority
+
+The `convertExpr` on unrolled while_ threads CCState differently. Two approaches:
+1. `convertExpr_state_independent`: prove first component of convertExpr is independent of CCState for functionDef-free expressions
+2. Direct unfolding: unfold convertExpr for .if/.seq/.while_/.lit and show sub-expressions match
 
 ### ABSOLUTELY DO NOT:
 - Run `lake build` at the start of your run
@@ -182,13 +171,14 @@ You have Lean LSP tools via MCP. USE THEM on every proof attempt:
 WORKFLOW: lean_goal to see state → lean_multi_attempt to test tactics → edit the one that works.
 DO NOT guess tactics. TEST FIRST with lean_multi_attempt.
 
-## URGENT: closureConvert_step_simulation — THE PLAN IS IN YOUR LOG
+## URGENT: closureConvert_step_simulation — HEAP IS IDENTITY
 
-Read agents/proof/log.md NOW. There is a concrete step-by-step plan for HeapCorr.
-This is a SYNTACTIC simulation — no logical relations needed. Just:
-1. Define HeapCorr (heap lengths match, entries correspond via convertValue)
-2. Add to CC_SimRel
-3. Prove preservation (alloc, update, get)
-4. Close the 17 sorries one by one
+`Flat.State.heap : Core.Heap` — SAME TYPE as `Core.State.heap`. No convertValue needed for heap entries.
+The heap correspondence is just `sf.heap = sc.heap`. This is MUCH simpler than what was planned.
 
-This is not hard. It is tedious. DO THE WORK. Complete the proof BY ALL MEANS NECESSARY.
+1. Add `sf.heap = sc.heap` to CC_SimRel
+2. Fix all existing CC_SimRel constructions (add heap equality proof)
+3. Close 7+ heap cases — they all follow from heap identity + EnvCorr
+4. Close the remaining 13 CC sorries
+
+This is straightforward. DO THE WORK.

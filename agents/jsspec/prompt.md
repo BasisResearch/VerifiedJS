@@ -48,32 +48,45 @@ Keep `partial def step?` for the interpreter. The proof agent needs the inductiv
 3. Test262 tells you what to formalize. Reduce skips by adding missing features.
 4. Your relations must be INHABITED with concrete derivations.
 
-## CURRENT PRIORITIES (2026-03-23T23:05)
+## CURRENT PRIORITIES (2026-03-24T01:05)
 
-### Status: 41 refs, 0 mismatches, 434 lines covered. Test262: 3/63 pass, 50 fail (all wasm_rc=134).
+### Status: 52 refs, 7 MISMATCHES, 549 lines covered. Test262: 3/63 pass, 50 fail (all wasm_rc=134).
 
-### Great progress on citations! 35→41 refs. Keep going.
+### ⚠️ URGENT: 7 MISMATCHES — FIX THESE FIRST before adding more citations!
 
-### TASK 0: Add 5+ more SPEC citations (target: 50+ refs)
+Mismatches found by `bash scripts/verify_spec_refs.sh`:
+```
+MISMATCH VerifiedJS/Core/Semantics.lean:422 L6514-L6545
+MISMATCH VerifiedJS/Core/Semantics.lean:454 L6606-L6617
+MISMATCH VerifiedJS/Core/Semantics.lean:484 L16389-L16394
+MISMATCH VerifiedJS/Core/Semantics.lean:494 L16396-L16410
+MISMATCH VerifiedJS/Core/Semantics.lean:605 L16586-L16596
+MISMATCH VerifiedJS/Core/Semantics.lean:694 L16929-L16935
+MISMATCH VerifiedJS/Core/Semantics.lean:1003 L17749-L17756
+```
 
-Coverage is 0.9% (41 refs, 434 lines). Target remaining high-value rules that DON'T have citations yet:
-- `while` / `do-while` statement evaluation (WhileStatement, DoWhileStatement)
-- `for` statement (ForStatement, ForDeclaration)
-- `switch` statement (SwitchStatement, CaseBlock)
-- Comma operator (Expression : AssignmentExpression, Expression)
-- Logical AND/OR (`&&`, `||`) short-circuit evaluation
-- Conditional (ternary) operator `?:`
-- Spread element / rest parameter
-- Destructuring assignment / binding
+### TASK 0: Fix all 7 mismatches (HIGHEST PRIORITY)
 
-Each citation: `grep -n "keyword" spec.md` → find line range → read with `sed -n` → add `-- SPEC:` + `-- |` verbatim lines.
+For each mismatch:
+1. Read the cited spec lines: `sed -n 'START,ENDp' spec.md`
+2. Read the `-- |` lines in your Lean file at the given line
+3. Fix the `-- |` lines to be VERBATIM from the spec
+4. Run `bash scripts/verify_spec_refs.sh` to confirm 0 mismatches
 
-Run `bash scripts/verify_spec_refs.sh` after EVERY batch to ensure 0 mismatches.
+### TASK 1: After 0 mismatches, add 5+ more citations (target: 60+ refs)
+
+Coverage is 1% (52 refs, 549 lines). Continue targeting high-value rules:
+- `while` / `do-while` statement evaluation
+- `for` statement
+- `switch` statement
+- Logical AND/OR short-circuit
+- Conditional (ternary) operator
 
 ### DO NOT:
 - Write new e2e tests
 - Modify files you don't own
 - Change semantic behavior
+- Add new citations until ALL mismatches are fixed
 
 ## GOLDEN RULE for step? proofs
 NEVER pass `step?` to `simp`. Always use `unfold step? at h` then `simp [-step?]`.

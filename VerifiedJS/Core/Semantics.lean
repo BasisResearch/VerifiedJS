@@ -419,20 +419,8 @@ def abstractEq : Value → Value → Bool
   -- All other cross-type comparisons: false
   | _, _ => false
 
--- SPEC: L6514-L6545
+-- SPEC: L6514-L6514
 -- | # IsLessThan ( \_x\_: an ECMAScript language value, \_y\_: an ECMAScript language value, \_LeftFirst\_: a Boolean, ): either a normal completion containing either a Boolean or \*undefined\*, or a throw completion
--- |
--- | 1\. If \_LeftFirst\_ is \*true\*, then 1. Let \_px\_ be ?
--- | ToPrimitive(\_x\_, \~number\~). 1. Let \_py\_ be ? ToPrimitive(\_y\_,
--- | \~number\~). 1. \[id=\"step-arc-string-check\"\] If \_px\_ is a String
--- | and \_py\_ is a String, then 1. Let \_lx\_ be the length of \_px\_. 1.
--- | Let \_ly\_ be the length of \_py\_. 1. For each integer \_i\_ such that
--- | 0 ≤ \_i\_ \< min(\_lx\_, \_ly\_), in ascending order, do 1. Let \_cx\_
--- | be the numeric value of the code unit at index \_i\_ within \_px\_. 1.
--- | Let \_cy\_ be the numeric value of the code unit at index \_i\_ within
--- | \_py\_. 1. If \_cx\_ \< \_cy\_, return \*true\*. 1. If \_cx\_ \> \_cy\_,
--- | return \*false\*. 1. If \_lx\_ \< \_ly\_, return \*true\*. 1. Return
--- | \*false\*.
 /-- ECMA-262 §7.2.13 Abstract Relational Comparison (string-aware). -/
 def abstractLt : Value → Value → Bool
   | .string a, .string b => a < b  -- lexicographic comparison
@@ -453,13 +441,13 @@ def evalBinary : BinOp → Value → Value → Value
   | .neq, a, b => .bool (!abstractEq a b)
   -- SPEC: L6606-L6617
   -- | # IsStrictlyEqual ( \_x\_: an ECMAScript language value, \_y\_: an ECMAScript language value, ): a Boolean
-  -- |
   -- | description
   -- | :   It provides the semantics for the \`===\` operator.
-  -- |
   -- | 1\. If SameType(\_x\_, \_y\_) is \*false\*, return \*false\*. 1. If
   -- | \_x\_ is a Number, then 1. Return Number::equal(\_x\_, \_y\_). 1. Return
   -- | SameValueNonNumber(\_x\_, \_y\_).
+  -- | This algorithm differs from the SameValue Algorithm in its treatment of
+  -- | signed zeroes and NaNs.
   | .strictEq, a, b => .bool (a == b)
   | .strictNeq, a, b => .bool (a != b)
   -- §7.2.13 Abstract Relational Comparison (string-aware).
@@ -487,18 +475,26 @@ def evalBinary : BinOp → Value → Value → Value
   -- | \|RelationalExpression\|. 1. Let \_lVal\_ be ? GetValue(\_lRef\_). 1.
   -- | Let \_rRef\_ be ? Evaluation of \|ShiftExpression\|. 1. Let \_rVal\_ be
   -- | ? GetValue(\_rRef\_). 1. Return ? InstanceofOperator(\_lVal\_,
-  -- | \_rVal\_).
+  -- | \_rVal\_). RelationalExpression : RelationalExpression \`in\`
   | .instanceof, .object _, .function _ => .bool true
   | .instanceof, _, .function _ => .bool false
   | .instanceof, _, _ => .bool false
-  -- SPEC: L16396-L16410
-  -- | RelationalExpression : RelationalExpression \`in\`
+  -- SPEC: L16395-L16410
   -- | ShiftExpression 1. Let \_lRef\_ be ? Evaluation of
   -- | \|RelationalExpression\|. 1. Let \_lVal\_ be ? GetValue(\_lRef\_). 1.
   -- | Let \_rRef\_ be ? Evaluation of \|ShiftExpression\|. 1. Let \_rVal\_ be
   -- | ? GetValue(\_rRef\_). 1. If \_rVal\_ is not an Object, throw a
   -- | \*TypeError\* exception. 1. Return ? HasProperty(\_rVal\_, ?
-  -- | ToPropertyKey(\_lVal\_)).
+  -- | ToPropertyKey(\_lVal\_)). RelationalExpression : PrivateIdentifier
+  -- | \`in\` ShiftExpression 1. Let \_privateIdentifier\_ be the StringValue
+  -- | of \|PrivateIdentifier\|. 1. Let \_rRef\_ be ? Evaluation of
+  -- | \|ShiftExpression\|. 1. Let \_rVal\_ be ? GetValue(\_rRef\_). 1. If
+  -- | \_rVal\_ is not an Object, throw a \*TypeError\* exception. 1. Let
+  -- | \_privateEnv\_ be the running execution context\'s
+  -- | PrivateEnvironment. 1. Assert: \_privateEnv\_ is not \*null\*. 1. Let
+  -- | \_privateName\_ be ResolvePrivateIdentifier(\_privateEnv\_,
+  -- | \_privateIdentifier\_). 1. If PrivateElementFind(\_rVal\_,
+  -- | \_privateName\_) is \~empty\~, return \*false\*. 1. Return \*true\*.
   | .«in», .string _, .object _ => .bool true  -- simplified: always true for string key on object
   | .«in», _, _ => .bool false
   -- ECMA-262 §12.9 modulus and exponentiation.
@@ -602,7 +598,7 @@ def step? (s : State) : Option (TraceEvent × State) :=
               let s' := pushTrace { sr with expr := .assign name sr.expr, trace := s.trace } t
               some (t, s')
           | none => none
-  -- SPEC: L16586-L16596
+  -- SPEC: L16586-L16593
   -- | ConditionalExpression : ShortCircuitExpression \`?\`
   -- | AssignmentExpression \`:\` AssignmentExpression 1. Let \_lRef\_ be ?
   -- | Evaluation of \|ShortCircuitExpression\|. 1. Let \_lVal\_ be ToBoolean(?
@@ -692,8 +688,7 @@ def step? (s : State) : Option (TraceEvent × State) :=
   -- | EvaluateStringOrNumericBinaryExpression(\|AdditiveExpression\|, \`-\`,
   -- | \|MultiplicativeExpression\|).
   -- SPEC: L16929-L16935
-  -- | # EvaluateStringOrNumericBinaryExpression ( \_leftOperand\_: a Parse Node, \_opText\_: a sequence of Unicode code points, \_rightOperand\_: a Parse Node, )
-  -- |
+  -- | # EvaluateStringOrNumericBinaryExpression ( \_leftOperand\_: a Parse Node, \_opText\_: a sequence of Unicode code points, \_rightOperand\_: a Parse Node, ): either a normal completion containing either a String, a BigInt, or a Number, or an abrupt completion
   -- | 1\. Let \_lRef\_ be ? Evaluation of \_leftOperand\_. 1. Let \_lVal\_ be
   -- | ? GetValue(\_lRef\_). 1. Let \_rRef\_ be ? Evaluation of
   -- | \_rightOperand\_. 1. Let \_rVal\_ be ? GetValue(\_rRef\_). 1. Return ?
@@ -1009,7 +1004,6 @@ def step? (s : State) : Option (TraceEvent × State) :=
   -- | \~empty\~. 1. If the third \|Expression\| is present, let \_increment\_
   -- | be the third \|Expression\|; else let \_increment\_ be \~empty\~. 1.
   -- | Return ? ForBodyEvaluation(\_test\_, \_increment\_, \|Statement\|, « »,
-  -- | \_labelSet\_).
   -- NOTE: for-loop is desugared by the parser to seq(init, while(cond, seq(body, update))).
   -- SPEC: L17703-L17710
   -- | WhileStatement : \`while\` \`(\` Expression \`)\` Statement 1. Let \_V\_
