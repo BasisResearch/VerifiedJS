@@ -246,6 +246,17 @@ set_option linter.deprecated false
 -- | next element (if any) at index 1, and so on. The length of a String is
 -- | the number of elements (i.e., 16-bit values) within it. The empty String
 -- | has length zero and therefore contains no elements.
+-- SPEC: L4026-L4035
+-- | ECMAScript operations that do not interpret String contents apply no
+-- | further semantics. Operations that do interpret String values treat each
+-- | element as a single UTF-16 code unit. However, ECMAScript does not
+-- | restrict the value of or relationships between these code units, so
+-- | operations that further interpret String contents as sequences of
+-- | Unicode code points encoded in UTF-16 must account for ill-formed
+-- | subsequences. Such operations apply special treatment to every code unit
+-- | with a numeric value in the inclusive interval from 0xD800 to 0xDBFF
+-- | (defined by the Unicode Standard as a [leading
+-- | surrogate]{#leading-surrogate .dfn variants="leading surrogates"}, or
 -- SPEC: L4308-L4321
 -- | # The Number Type
 -- |
@@ -1205,6 +1216,12 @@ def Env.extend (env : Env) (name : VarName) (v : Value) : Env :=
 -- | normal completion, then evaluation finished by proceeding past the end
 -- | of the \|FunctionStatementList\|. 1. Return
 -- | ReturnCompletion(\*undefined\*).
+-- SPEC: L18616-L18621
+-- | # The \`debugger\` Statement
+-- |
+-- | ## Syntax
+-- |
+-- | DebuggerStatement : \`debugger\` \`;\`
 -- SPEC: L18622-L18632
 -- | # Runtime Semantics: Evaluation
 -- |
@@ -4166,6 +4183,15 @@ def pushTrace (s : State) (t : TraceEvent) : State :=
 
 -- SPEC: L14776-L14777
 -- | # ECMAScript Language: Expressions
+-- SPEC: L14778-L14785
+-- | # Identifiers
+-- |
+-- | ## Syntax
+-- |
+-- | IdentifierReference\[Yield, Await\] : Identifier \[\~Yield\] \`yield\`
+-- | \[\~Await\] \`await\` BindingIdentifier\[Yield, Await\] : Identifier
+-- | \`yield\` \`await\` LabelIdentifier\[Yield, Await\] : Identifier
+-- | \[\~Yield\] \`yield\` \[\~Await\] \`await\` Identifier : IdentifierName
 -- SPEC: L14881-L14912
 -- | # Primary Expression
 -- |
@@ -4421,6 +4447,14 @@ def step? (s : State) : Option (TraceEvent × State) :=
   -- | Evaluation of \|Initializer\|. 1. Let \_rVal\_ be ?
   -- | GetValue(\_rhs\_). 1. Return ? BindingInitialization of
   -- | \|BindingPattern\| with arguments \_rVal\_ and \*undefined\*.
+  -- SPEC: L17454-L17460
+  -- | # Destructuring Binding Patterns
+  -- |
+  -- | ## Syntax
+  -- |
+  -- | BindingPattern\[Yield, Await\] : ObjectBindingPattern\[?Yield, ?Await\]
+  -- | ArrayBindingPattern\[?Yield, ?Await\] ObjectBindingPattern\[Yield,
+  -- | Await\] : \`{\` \`}\` \`{\` BindingRestProperty\[?Yield, ?Await\] \`}\`
   -- SPEC: L17372-L17399
   -- | # Runtime Semantics: Evaluation
   -- |
@@ -4578,6 +4612,17 @@ def step? (s : State) : Option (TraceEvent × State) :=
   -- | Evaluation of \|Expression\|. 1. Perform ? GetValue(\_lRef\_). 1. Let
   -- | \_rRef\_ be ? Evaluation of \|AssignmentExpression\|. 1. Return ?
   -- | GetValue(\_rRef\_).
+  -- SPEC: L17234-L17243
+  -- | # Block
+  -- |
+  -- | ## Syntax
+  -- |
+  -- | BlockStatement\[Yield, Await, Return\] : Block\[?Yield, ?Await,
+  -- | ?Return\] Block\[Yield, Await, Return\] : \`{\` StatementList\[?Yield,
+  -- | ?Await, ?Return\]? \`}\` StatementList\[Yield, Await, Return\] :
+  -- | StatementListItem\[?Yield, ?Await, ?Return\] StatementList\[?Yield,
+  -- | ?Await, ?Return\] StatementListItem\[?Yield, ?Await, ?Return\]
+  -- | StatementListItem\[Yield, Await, Return\] : Statement\[?Yield, ?Await,
   -- SPEC: L17262-L17292
   -- | # Runtime Semantics: Evaluation
   -- |
@@ -5399,6 +5444,34 @@ def step? (s : State) : Option (TraceEvent × State) :=
   -- | PropertyDescriptor { \[\[Value\]\]: \_name\_, \[\[Writable\]\]:
   -- | \*false\*, \[\[Enumerable\]\]: \*false\*, \[\[Configurable\]\]: \*true\*
   -- | }). 1. Return \~unused\~.
+  -- SPEC: L20210-L20240
+  -- | # Runtime Semantics: InstantiateAsyncFunctionExpression ( optional \_name\_: a property key or a Private Name, ): an ECMAScript function object
+  -- |
+  -- | AsyncFunctionExpression : \`async\` \`function\` \`(\` FormalParameters
+  -- | \`)\` \`{\` AsyncFunctionBody \`}\` 1. If \_name\_ is not present, set
+  -- | \_name\_ to \*\"\"\*. 1. Let \_env\_ be the LexicalEnvironment of the
+  -- | running execution context. 1. Let \_privateEnv\_ be the running
+  -- | execution context\'s PrivateEnvironment. 1. Let \_sourceText\_ be the
+  -- | source text matched by \|AsyncFunctionExpression\|. 1. Let \_closure\_
+  -- | be OrdinaryFunctionCreate(%AsyncFunction.prototype%, \_sourceText\_,
+  -- | \|FormalParameters\|, \|AsyncFunctionBody\|, \~non-lexical-this\~,
+  -- | \_env\_, \_privateEnv\_). 1. Perform SetFunctionName(\_closure\_,
+  -- | \_name\_). 1. Return \_closure\_. AsyncFunctionExpression : \`async\`
+  -- | \`function\` BindingIdentifier \`(\` FormalParameters \`)\` \`{\`
+  -- | AsyncFunctionBody \`}\` 1. Assert: \_name\_ is not present. 1. Set
+  -- | \_name\_ to the StringValue of \|BindingIdentifier\|. 1. Let
+  -- | \_outerEnv\_ be the LexicalEnvironment of the running execution
+  -- | context. 1. Let \_funcEnv\_ be
+  -- | NewDeclarativeEnvironment(\_outerEnv\_). 1. Perform !
+  -- | \_funcEnv\_.CreateImmutableBinding(\_name\_, \*false\*). 1. Let
+  -- | \_privateEnv\_ be the running execution context\'s
+  -- | PrivateEnvironment. 1. Let \_sourceText\_ be the source text matched by
+  -- | \|AsyncFunctionExpression\|. 1. Let \_closure\_ be
+  -- | OrdinaryFunctionCreate(%AsyncFunction.prototype%, \_sourceText\_,
+  -- | \|FormalParameters\|, \|AsyncFunctionBody\|, \~non-lexical-this\~,
+  -- | \_funcEnv\_, \_privateEnv\_). 1. Perform SetFunctionName(\_closure\_,
+  -- | \_name\_). 1. Perform ! \_funcEnv\_.InitializeBinding(\_name\_,
+  -- | \_closure\_). 1. Return \_closure\_.
   -- SPEC: L8511-L8533
   -- | # Runtime Semantics: InstantiateFunctionObject ( \_env\_: an Environment Record, \_privateEnv\_: a PrivateEnvironment Record or \*null\*, ): an ECMAScript function object
   -- |
@@ -5460,6 +5533,14 @@ def step? (s : State) : Option (TraceEvent × State) :=
       let funcs' := s.funcs.push closure
       let s' := pushTrace { s with expr := .lit (.function idx), funcs := funcs' } .silent
       some (.silent, s')
+  -- SPEC: L15026-L15033
+  -- | # Object Initializer
+  -- |
+  -- | An object initializer is an expression describing the initialization of
+  -- | an Object, written in a form resembling a literal. It is a list of zero
+  -- | or more pairs of property keys and associated values, enclosed in curly
+  -- | brackets. The values need not be literals; they are evaluated each time
+  -- | the object initializer is evaluated.
   -- SPEC: L15120-L15135
   -- | # Runtime Semantics: Evaluation
   -- |
