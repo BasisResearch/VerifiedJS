@@ -655,7 +655,6 @@ def toNumber : Value → Float
 -- | Number::bitwiseNOT(\_oldValue\_). 1. Assert: \_oldValue\_ is a
 -- | BigInt. 1. Return BigInt::bitwiseNOT(\_oldValue\_).
 -- |
--- SPEC: L16214-L16222
 -- | # Logical NOT Operator ( \`!\` )
 -- |
 -- | # Runtime Semantics: Evaluation
@@ -1674,6 +1673,8 @@ def step? (s : State) : Option (TraceEvent × State) :=
   -- SPEC: L17544-L17548
   -- | EmptyStatement : \`;\`
   -- |
+  -- | # Runtime Semantics: Evaluation
+  -- |
   -- | EmptyStatement : \`;\` 1. Return \~empty\~.
   -- SPEC: L17573-L17575
   -- | ExpressionStatement : Expression \`;\` 1. Let \_exprRef\_ be ?
@@ -2176,7 +2177,7 @@ def step? (s : State) : Option (TraceEvent × State) :=
   -- | FormalParameters \`)\` \`{\` AsyncFunctionBody \`}\` 1. Return
   -- | InstantiateAsyncFunctionObject of \|AsyncFunctionDeclaration\| with
   -- | arguments \_env\_ and \_privateEnv\_.
-  -- SPEC: L18996-L19013
+  -- SPEC: L18995-L19007
   -- | # Runtime Semantics: InstantiateArrowFunctionExpression ( optional \_name\_: a property key or a Private Name, ): an ECMAScript function object
   -- |
   -- | ArrowFunction : ArrowParameters \`=\>\` ConciseBody 1. If \_name\_ is
@@ -2184,7 +2185,8 @@ def step? (s : State) : Option (TraceEvent × State) :=
   -- | LexicalEnvironment of the running execution context. 1. Let
   -- | \_privateEnv\_ be the running execution context\'s
   -- | PrivateEnvironment. 1. Let \_sourceText\_ be the source text matched by
-  -- | \|ArrowFunction\|. 1. Let \_closure\_
+  -- | \|ArrowFunction\|. 1.
+  -- | \[id=\"step-arrowfunction-evaluation-functioncreate\"\] Let \_closure\_
   -- | be OrdinaryFunctionCreate(%Function.prototype%, \_sourceText\_,
   -- | \|ArrowParameters\|, \|ConciseBody\|, \~lexical-this\~, \_env\_,
   -- | \_privateEnv\_). 1. Perform SetFunctionName(\_closure\_, \_name\_). 1.
@@ -2204,7 +2206,9 @@ def step? (s : State) : Option (TraceEvent × State) :=
   -- | initializers then the body declarations are instantiated in the same
   -- | Environment Record as the parameters. If default value parameter
   -- | initializers exist, a second Environment Record is created for the body
-  -- | declarations.
+  -- | declarations. Formal parameters and functions are initialized as part of
+  -- | FunctionDeclarationInstantiation. All other bindings are initialized
+  -- | during evaluation of the function body.
   | .functionDef fname params body _isAsync _isGenerator =>
       let closure : FuncClosure := ⟨fname, params, body, s.env.bindings⟩
       let idx := s.funcs.size

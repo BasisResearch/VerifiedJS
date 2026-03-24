@@ -194,7 +194,7 @@ private def allocFreshObject (h : Core.Heap) : Nat × Core.Heap :=
     { objects := h.objects.push [], nextAddr := addr + 1 }
   (addr, h')
 
-private def flatToCoreValue : Value → Core.Value
+def flatToCoreValue : Value → Core.Value
   | .null => .null
   | .undefined => .undefined
   | .bool b => .bool b
@@ -204,7 +204,7 @@ private def flatToCoreValue : Value → Core.Value
   -- Core heap payloads cannot encode Flat env pointers; keep callable identity only.
   | .closure funcIdx _ => .function funcIdx
 
-private def coreToFlatValue : Core.Value → Value
+def coreToFlatValue : Core.Value → Value
   | .null => .null
   | .undefined => .undefined
   | .bool b => .bool b
@@ -230,12 +230,41 @@ private def allocEnvObject (h : Core.Heap) (values : List Value) : Nat × Core.H
     { objects := h.objects.push (encodeEnvProps values), nextAddr := addr + 1 }
   (addr, h')
 
-private def heapObjectAt? (h : Core.Heap) (addr : Nat) : Option (List (Core.PropName × Core.Value)) :=
+def heapObjectAt? (h : Core.Heap) (addr : Nat) : Option (List (Core.PropName × Core.Value)) :=
   if hAddr : addr < h.objects.size then
     let _ := hAddr
     some (h.objects[addr]!)
   else
     none
+
+-- @[simp] lemmas for proof agent: coreToFlatValue is the same as convertValue
+@[simp] theorem coreToFlatValue_null : coreToFlatValue .null = .null := rfl
+@[simp] theorem coreToFlatValue_undefined : coreToFlatValue .undefined = .undefined := rfl
+@[simp] theorem coreToFlatValue_bool (b : Bool) : coreToFlatValue (.bool b) = .bool b := rfl
+@[simp] theorem coreToFlatValue_number (n : Float) : coreToFlatValue (.number n) = .number n := rfl
+@[simp] theorem coreToFlatValue_string (s : String) : coreToFlatValue (.string s) = .string s := rfl
+@[simp] theorem coreToFlatValue_object (addr : Nat) : coreToFlatValue (.object addr) = .object addr := rfl
+@[simp] theorem coreToFlatValue_function (idx : Nat) : coreToFlatValue (.function idx) = .closure idx 0 := rfl
+
+@[simp] theorem flatToCoreValue_null : flatToCoreValue .null = .null := rfl
+@[simp] theorem flatToCoreValue_undefined : flatToCoreValue .undefined = .undefined := rfl
+@[simp] theorem flatToCoreValue_bool (b : Bool) : flatToCoreValue (.bool b) = .bool b := rfl
+@[simp] theorem flatToCoreValue_number (n : Float) : flatToCoreValue (.number n) = .number n := rfl
+@[simp] theorem flatToCoreValue_string (s : String) : flatToCoreValue (.string s) = .string s := rfl
+@[simp] theorem flatToCoreValue_object (addr : Nat) : flatToCoreValue (.object addr) = .object addr := rfl
+@[simp] theorem flatToCoreValue_closure (idx envPtr : Nat) : flatToCoreValue (.closure idx envPtr) = .function idx := rfl
+
+/-- coreToFlatValue is definitionally equal to convertValue from ClosureConvert -/
+@[simp] theorem coreToFlatValue_eq_convertValue (v : Core.Value) :
+    coreToFlatValue v = convertValue v := by cases v <;> rfl
+
+/-- flatToCoreValue is a left inverse of coreToFlatValue on non-function values -/
+@[simp] theorem flatToCoreValue_coreToFlatValue_null : flatToCoreValue (coreToFlatValue .null) = .null := rfl
+@[simp] theorem flatToCoreValue_coreToFlatValue_undefined : flatToCoreValue (coreToFlatValue .undefined) = .undefined := rfl
+@[simp] theorem flatToCoreValue_coreToFlatValue_bool (b : Bool) : flatToCoreValue (coreToFlatValue (.bool b)) = .bool b := rfl
+@[simp] theorem flatToCoreValue_coreToFlatValue_number (n : Float) : flatToCoreValue (coreToFlatValue (.number n)) = .number n := rfl
+@[simp] theorem flatToCoreValue_coreToFlatValue_string (s : String) : flatToCoreValue (coreToFlatValue (.string s)) = .string s := rfl
+@[simp] theorem flatToCoreValue_coreToFlatValue_object (addr : Nat) : flatToCoreValue (coreToFlatValue (.object addr)) = .object addr := rfl
 
 private def typeofValue : Value → Value
   | .undefined => .string "undefined"
