@@ -3334,8 +3334,9 @@ def abstractLt : Value → Value → Bool
 -- | # Runtime Semantics: Evaluation
 -- |
 -- | ExponentiationExpression : UpdateExpression \`\*\*\`
--- | ExponentiationExpression 1. Return ? EvaluateStringOrNumericBinaryExpression(UpdateExpression,
--- | \`\*\*\`, ExponentiationExpression).
+-- | ExponentiationExpression 1. Return ?
+-- | EvaluateStringOrNumericBinaryExpression(\|UpdateExpression\|, \`\*\*\`,
+-- | \|ExponentiationExpression\|).
 -- SPEC: L16263-L16271
 -- | # Additive Operators
 -- |
@@ -3349,24 +3350,24 @@ def abstractLt : Value → Value → Bool
 -- | # Runtime Semantics: Evaluation
 -- |
 -- | MultiplicativeExpression : MultiplicativeExpression
--- | MultiplicativeOperator ExponentiationExpression 1. Let \_opText\_ be
--- | the source text matched by \|MultiplicativeOperator\|. 1. Return ?
--- | EvaluateStringOrNumericBinaryExpression(MultiplicativeExpression,
--- | \_opText\_, ExponentiationExpression).
+-- | MultiplicativeOperator ExponentiationExpression 1. Let \_opText\_ be the
+-- | source text matched by \|MultiplicativeOperator\|. 1. Return ?
+-- | EvaluateStringOrNumericBinaryExpression(\|MultiplicativeExpression\|,
+-- | \_opText\_, \|ExponentiationExpression\|).
 -- SPEC: L16277-L16283
 -- | # Runtime Semantics: Evaluation
 -- |
 -- | AdditiveExpression : AdditiveExpression \`+\`
 -- | MultiplicativeExpression 1. Return ?
--- | EvaluateStringOrNumericBinaryExpression(AdditiveExpression, \`+\`,
--- | MultiplicativeExpression).
+-- | EvaluateStringOrNumericBinaryExpression(\|AdditiveExpression\|, \`+\`,
+-- | \|MultiplicativeExpression\|).
 -- SPEC: L16289-L16295
 -- | # Runtime Semantics: Evaluation
 -- |
 -- | AdditiveExpression : AdditiveExpression \`-\`
 -- | MultiplicativeExpression 1. Return ?
--- | EvaluateStringOrNumericBinaryExpression(AdditiveExpression, \`-\`,
--- | MultiplicativeExpression).
+-- | EvaluateStringOrNumericBinaryExpression(\|AdditiveExpression\|, \`-\`,
+-- | \|MultiplicativeExpression\|).
 -- SPEC: L16296-L16305
 -- | # Bitwise Shift Operators
 -- |
@@ -3385,9 +3386,9 @@ def abstractLt : Value → Value → Bool
 -- SPEC: L16311-L16316
 -- | # Runtime Semantics: Evaluation
 -- |
--- | ShiftExpression : ShiftExpression \`\<\<\` AdditiveExpression 1.
--- | Return ? EvaluateStringOrNumericBinaryExpression(ShiftExpression,
--- | \`\<\<\`, AdditiveExpression).
+-- | ShiftExpression : ShiftExpression \`\<\<\` AdditiveExpression 1. Return
+-- | ? EvaluateStringOrNumericBinaryExpression(\|ShiftExpression\|, \`\<\<\`,
+-- | \|AdditiveExpression\|).
 -- SPEC: L16317-L16321
 -- | # The Signed Right Shift Operator ( \`\>\>\` )
 -- |
@@ -3396,9 +3397,9 @@ def abstractLt : Value → Value → Bool
 -- SPEC: L16322-L16327
 -- | # Runtime Semantics: Evaluation
 -- |
--- | ShiftExpression : ShiftExpression \`\>\>\` AdditiveExpression 1.
--- | Return ? EvaluateStringOrNumericBinaryExpression(ShiftExpression,
--- | \`\>\>\`, AdditiveExpression).
+-- | ShiftExpression : ShiftExpression \`\>\>\` AdditiveExpression 1. Return
+-- | ? EvaluateStringOrNumericBinaryExpression(\|ShiftExpression\|, \`\>\>\`,
+-- | \|AdditiveExpression\|).
 -- SPEC: L16328-L16332
 -- | # The Unsigned Right Shift Operator ( \`\>\>\>\` )
 -- |
@@ -3408,8 +3409,8 @@ def abstractLt : Value → Value → Bool
 -- | # Runtime Semantics: Evaluation
 -- |
 -- | ShiftExpression : ShiftExpression \`\>\>\>\` AdditiveExpression 1.
--- | Return ? EvaluateStringOrNumericBinaryExpression(ShiftExpression,
--- | \`\>\>\>\`, AdditiveExpression).
+-- | Return ? EvaluateStringOrNumericBinaryExpression(\|ShiftExpression\|,
+-- | \`\>\>\>\`, \|AdditiveExpression\|).
 -- SPEC: L4553-L4578
 -- | # Number::leftShift ( \_x\_: a Number, \_y\_: a Number, ): an integral Number
 -- |
@@ -5201,6 +5202,47 @@ def step? (s : State) : Option (TraceEvent × State) :=
   -- | \[\[ThisValue\]\]: \~empty\~ }. 1. Let \_outer\_ be
   -- | \_env\_.\[\[OuterEnv\]\]. 1. Return ? GetIdentifierReference(\_outer\_,
   -- | \_name\_, \_strict\_).
+  -- SPEC: L14866-L14880
+  -- | # Runtime Semantics: Evaluation
+  -- |
+  -- | IdentifierReference : Identifier 1. Return ? ResolveBinding(StringValue
+  -- | of \|Identifier\|). IdentifierReference : \`yield\` 1. Return ?
+  -- | ResolveBinding(\*\"yield\"\*). IdentifierReference : \`await\` 1. Return
+  -- | ? ResolveBinding(\*\"await\"\*).
+  -- |
+  -- | The result of evaluating an \|IdentifierReference\| is always a value of
+  -- | type Reference.
+  -- |
+  -- | In non-strict code, the keyword \`yield\` may be used as an identifier.
+  -- | Evaluating the \|IdentifierReference\| resolves the binding of \`yield\`
+  -- | as if it was an \|Identifier\|. Early Error restriction ensures that
+  -- | such an evaluation only can occur for non-strict code.
+  -- SPEC: L14929-L14937
+  -- | # Runtime Semantics: Evaluation
+  -- |
+  -- | Literal : NullLiteral 1. Return \*null\*. Literal : BooleanLiteral 1. If
+  -- | \|BooleanLiteral\| is the token \`false\`, return \*false\*. 1. If
+  -- | \|BooleanLiteral\| is the token \`true\`, return \*true\*. Literal :
+  -- | NumericLiteral 1. Return the NumericValue of \|NumericLiteral\| as
+  -- | defined in . Literal : StringLiteral 1. Return the SV of
+  -- | \|StringLiteral\| as defined in .
+  -- SPEC: L14915-L14918
+  -- | # Runtime Semantics: Evaluation
+  -- |
+  -- | PrimaryExpression : \`this\` 1. Return ? ResolveThisBinding().
+  -- SPEC: L15414-L15426
+  -- | # Runtime Semantics: Evaluation
+  -- |
+  -- | PrimaryExpression : CoverParenthesizedExpressionAndArrowParameterList 1.
+  -- | Let \_expr\_ be the \|ParenthesizedExpression\| that is covered by
+  -- | \|CoverParenthesizedExpressionAndArrowParameterList\|. 1. Return ?
+  -- | Evaluation of \_expr\_. ParenthesizedExpression : \`(\` Expression
+  -- | \`)\` 1. Return ? Evaluation of \|Expression\|. This may be of type
+  -- | Reference.
+  -- |
+  -- | This algorithm does not apply GetValue to Evaluation of \|Expression\|.
+  -- | The principal motivation for this is so that operators such as
+  -- | \`delete\` and \`typeof\` may be applied to parenthesized expressions.
   | .var name =>
       match s.env.lookup name with
       | some v =>
@@ -6012,6 +6054,43 @@ def step? (s : State) : Option (TraceEvent × State) :=
   -- | implementation-defined initialization of \_calleeContext\_. 1. Push
   -- | \_calleeContext\_ onto the execution context stack; \_calleeContext\_ is
   -- | now the running execution context. 1. If \_F\_.\[\[Async\]\] is
+  -- SPEC: L15620-L15626
+  -- | # Runtime Semantics: Evaluation
+  -- |
+  -- | NewExpression : \`new\` NewExpression 1. Return ?
+  -- | EvaluateNew(\|NewExpression\|, \~empty\~). MemberExpression : \`new\`
+  -- | MemberExpression Arguments 1. Return ? EvaluateNew(\|MemberExpression\|,
+  -- | \|Arguments\|).
+  -- SPEC: L15638-L15667
+  -- | # Runtime Semantics: Evaluation
+  -- |
+  -- | CallExpression : CoverCallExpressionAndAsyncArrowHead 1. Let \_expr\_ be
+  -- | the \|CallMemberExpression\| that is covered by
+  -- | \|CoverCallExpressionAndAsyncArrowHead\|. 1. Let \_memberExpr\_ be the
+  -- | \|MemberExpression\| of \_expr\_. 1. Let \_arguments\_ be the
+  -- | \|Arguments\| of \_expr\_. 1. Let \_ref\_ be ? Evaluation of
+  -- | \_memberExpr\_. 1. Let \_func\_ be ? GetValue(\_ref\_). 1. If \_ref\_ is
+  -- | a Reference Record, IsPropertyReference(\_ref\_) is \*false\*, and
+  -- | \_ref\_.\[\[ReferencedName\]\] is \*\"eval\"\*, then 1. If
+  -- | SameValue(\_func\_, %eval%) is \*true\*, then 1. Let \_argList\_ be ?
+  -- | ArgumentListEvaluation of \_arguments\_. 1. If \_argList\_ has no
+  -- | elements, return \*undefined\*. 1. Let \_evalArg\_ be the first element
+  -- | of \_argList\_. 1. If IsStrict(this \|CallExpression\|) is \*true\*, let
+  -- | \_strictCaller\_ be \*true\*; else let \_strictCaller\_ be \*false\*. 1.
+  -- | \[id=\"step-callexpression-evaluation-direct-eval\"\] Return ?
+  -- | PerformEval(\_evalArg\_, \_strictCaller\_, \*true\*). 1. Let
+  -- | \_thisCall\_ be this \|CallExpression\|. 1. Let \_tailCall\_ be
+  -- | IsInTailPosition(\_thisCall\_). 1. Return ? EvaluateCall(\_func\_,
+  -- | \_ref\_, \_arguments\_, \_tailCall\_).
+  -- |
+  -- | A \|CallExpression\| evaluation that executes step is a [direct
+  -- | eval]{.dfn variants="direct evals"}.
+  -- |
+  -- | CallExpression : CallExpression Arguments 1. Let \_ref\_ be ? Evaluation
+  -- | of \|CallExpression\|. 1. Let \_func\_ be ? GetValue(\_ref\_). 1. Let
+  -- | \_thisCall\_ be this \|CallExpression\|. 1. Let \_tailCall\_ be
+  -- | IsInTailPosition(\_thisCall\_). 1. Return ? EvaluateCall(\_func\_,
+  -- | \_ref\_, \|Arguments\|, \_tailCall\_).
   | .call callee args =>
       match exprValue? callee with
       | none =>
@@ -7791,6 +7870,120 @@ def step? (s : State) : Option (TraceEvent × State) :=
           | _ =>
               let s' := pushTrace { s with expr := .lit v } .silent
               some (.silent, s')
+  -- SPEC: L15223-L15230
+  -- | # Runtime Semantics: Evaluation
+  -- |
+  -- | PrimaryExpression : RegularExpressionLiteral 1. Let \_pattern\_ be
+  -- | CodePointsToString(BodyText of \|RegularExpressionLiteral\|). 1. Let
+  -- | \_flags\_ be CodePointsToString(FlagText of
+  -- | \|RegularExpressionLiteral\|). 1. Return ! RegExpCreate(\_pattern\_,
+  -- | \_flags\_).
+  -- SPEC: L15367-L15404
+  -- | # Runtime Semantics: Evaluation
+  -- |
+  -- | TemplateLiteral : NoSubstitutionTemplate 1. Return the TV of
+  -- | \|NoSubstitutionTemplate\| as defined in . SubstitutionTemplate :
+  -- | TemplateHead Expression TemplateSpans 1. Let \_head\_ be the TV of
+  -- | \|TemplateHead\| as defined in . 1. Let \_subRef\_ be ? Evaluation of
+  -- | \|Expression\|. 1. Let \_sub\_ be ? GetValue(\_subRef\_). 1. Let
+  -- | \_middle\_ be ? ToString(\_sub\_). 1. Let \_tail\_ be ? Evaluation of
+  -- | \|TemplateSpans\|. 1. Return the string-concatenation of \_head\_,
+  -- | \_middle\_, and \_tail\_.
+  -- |
+  -- | The string conversion semantics applied to the \|Expression\| value are
+  -- | like \`String.prototype.concat\` rather than the \`+\` operator.
+  -- |
+  -- | TemplateSpans : TemplateTail 1. Return the TV of \|TemplateTail\| as
+  -- | defined in . TemplateSpans : TemplateMiddleList TemplateTail 1. Let
+  -- | \_head\_ be ? Evaluation of \|TemplateMiddleList\|. 1. Let \_tail\_ be
+  -- | the TV of \|TemplateTail\| as defined in . 1. Return the
+  -- | string-concatenation of \_head\_ and \_tail\_. TemplateMiddleList :
+  -- | TemplateMiddle Expression 1. Let \_head\_ be the TV of
+  -- | \|TemplateMiddle\| as defined in . 1. Let \_subRef\_ be ? Evaluation of
+  -- | \|Expression\|. 1. Let \_sub\_ be ? GetValue(\_subRef\_). 1. Let
+  -- | \_middle\_ be ? ToString(\_sub\_). 1. Return the string-concatenation of
+  -- | \_head\_ and \_middle\_.
+  -- |
+  -- | The string conversion semantics applied to the \|Expression\| value are
+  -- | like \`String.prototype.concat\` rather than the \`+\` operator.
+  -- |
+  -- | TemplateMiddleList : TemplateMiddleList TemplateMiddle Expression 1. Let
+  -- | \_rest\_ be ? Evaluation of \|TemplateMiddleList\|. 1. Let \_middle\_ be
+  -- | the TV of \|TemplateMiddle\| as defined in . 1. Let \_subRef\_ be ?
+  -- | Evaluation of \|Expression\|. 1. Let \_sub\_ be ?
+  -- | GetValue(\_subRef\_). 1. Let \_last\_ be ? ToString(\_sub\_). 1. Return
+  -- | the string-concatenation of \_rest\_, \_middle\_, and \_last\_.
+  -- |
+  -- | The string conversion semantics applied to the \|Expression\| value are
+  -- | like \`String.prototype.concat\` rather than the \`+\` operator.
+  -- SPEC: L15684-L15713
+  -- | # Runtime Semantics: Evaluation
+  -- |
+  -- | SuperProperty : \`super\` \`\[\` Expression \`\]\` 1. Let \_env\_ be
+  -- | GetThisEnvironment(). 1. Let \_actualThis\_ be ?
+  -- | \_env\_.GetThisBinding(). 1. Let \_propertyNameReference\_ be ?
+  -- | Evaluation of \|Expression\|. 1. Let \_propertyNameValue\_ be ?
+  -- | GetValue(\_propertyNameReference\_). 1. Let \_strict\_ be IsStrict(this
+  -- | \|SuperProperty\|). 1. NOTE: In most cases, ToPropertyKey will be
+  -- | performed on \_propertyNameValue\_ immediately after this step. However,
+  -- | in the case of \`super\[b\] = c\`, it will not be performed until after
+  -- | evaluation of \`c\`. 1. Return
+  -- | MakeSuperPropertyReference(\_actualThis\_, \_propertyNameValue\_,
+  -- | \_strict\_). SuperProperty : \`super\` \`.\` IdentifierName 1. Let
+  -- | \_env\_ be GetThisEnvironment(). 1. Let \_actualThis\_ be ?
+  -- | \_env\_.GetThisBinding(). 1. Let \_propertyKey\_ be the StringValue of
+  -- | \|IdentifierName\|. 1. Let \_strict\_ be IsStrict(this
+  -- | \|SuperProperty\|). 1. Return MakeSuperPropertyReference(\_actualThis\_,
+  -- | \_propertyKey\_, \_strict\_). SuperCall : \`super\` Arguments 1. Let
+  -- | \_newTarget\_ be GetNewTarget(). 1. Assert: \_newTarget\_ is a
+  -- | constructor. 1. Let \_func\_ be GetSuperConstructor(). 1. Let
+  -- | \_argList\_ be ? ArgumentListEvaluation of \|Arguments\|. 1. If
+  -- | IsConstructor(\_func\_) is \*false\*, throw a \*TypeError\*
+  -- | exception. 1. Let \_result\_ be ? Construct(\_func\_, \_argList\_,
+  -- | \_newTarget\_). 1. Let \_thisER\_ be GetThisEnvironment(). 1. Assert:
+  -- | \_thisER\_ is a Function Environment Record. 1. Perform ?
+  -- | BindThisValue(\_thisER\_, \_result\_). 1. Let \_F\_ be
+  -- | \_thisER\_.\[\[FunctionObject\]\]. 1. Assert: \_F\_ is an ECMAScript
+  -- | function object. 1. Perform ? InitializeInstanceElements(\_result\_,
+  -- | \_F\_). 1. Return \_result\_.
+  -- SPEC: L15845-L15852
+  -- | # Runtime Semantics: Evaluation
+  -- |
+  -- | ImportCall : \`import\` \`(\` AssignmentExpression \`,\`? \`)\` 1.
+  -- | Return ? EvaluateImportCall(\|AssignmentExpression\|). ImportCall :
+  -- | \`import\` \`(\` AssignmentExpression \`,\` AssignmentExpression \`,\`?
+  -- | \`)\` 1. Return ? EvaluateImportCall(the first \|AssignmentExpression\|,
+  -- | the second \|AssignmentExpression\|).
+  -- SPEC: L15947-L15960
+  -- | # Runtime Semantics: Evaluation
+  -- |
+  -- | MemberExpression : MemberExpression TemplateLiteral 1. Let \_tagRef\_ be
+  -- | ? Evaluation of \|MemberExpression\|. 1. Let \_tagFunc\_ be ?
+  -- | GetValue(\_tagRef\_). 1. Let \_thisCall\_ be this
+  -- | \|MemberExpression\|. 1. Let \_tailCall\_ be
+  -- | IsInTailPosition(\_thisCall\_). 1. Return ? EvaluateCall(\_tagFunc\_,
+  -- | \_tagRef\_, \|TemplateLiteral\|, \_tailCall\_). CallExpression :
+  -- | CallExpression TemplateLiteral 1. Let \_tagRef\_ be ? Evaluation of
+  -- | \|CallExpression\|. 1. Let \_tagFunc\_ be ? GetValue(\_tagRef\_). 1. Let
+  -- | \_thisCall\_ be this \|CallExpression\|. 1. Let \_tailCall\_ be
+  -- | IsInTailPosition(\_thisCall\_). 1. Return ? EvaluateCall(\_tagFunc\_,
+  -- | \_tagRef\_, \|TemplateLiteral\|, \_tailCall\_).
+  -- SPEC: L15963-L15978
+  -- | # Runtime Semantics: Evaluation
+  -- |
+  -- | NewTarget : \`new\` \`.\` \`target\` 1. Return GetNewTarget().
+  -- | ImportMeta : \`import\` \`.\` \`meta\` 1. Let \_module\_ be
+  -- | GetActiveScriptOrModule(). 1. Assert: \_module\_ is a Source Text Module
+  -- | Record. 1. Let \_importMeta\_ be \_module\_.\[\[ImportMeta\]\]. 1. If
+  -- | \_importMeta\_ is \~empty\~, then 1. Set \_importMeta\_ to
+  -- | OrdinaryObjectCreate(\*null\*). 1. Let \_importMetaValues\_ be
+  -- | HostGetImportMetaProperties(\_module\_). 1. For each Record {
+  -- | \[\[Key\]\], \[\[Value\]\] } \_p\_ of \_importMetaValues\_, do 1.
+  -- | Perform ! CreateDataPropertyOrThrow(\_importMeta\_, \_p\_.\[\[Key\]\],
+  -- | \_p\_.\[\[Value\]\]). 1. Perform HostFinalizeImportMeta(\_importMeta\_,
+  -- | \_module\_). 1. Set \_module\_.\[\[ImportMeta\]\] to \_importMeta\_. 1.
+  -- | Return \_importMeta\_. 1. Assert: \_importMeta\_ is an Object. 1. Return
+  -- | \_importMeta\_.
   -- SPEC: L16116-L16149
   -- | # Runtime Semantics: Evaluation
   -- |
