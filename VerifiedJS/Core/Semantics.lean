@@ -319,6 +319,23 @@ def evalUnary : UnaryOp → Value → Value
   -- ECMA-262 §12.5.8 Bitwise NOT: ~ToInt32(x).
   | .bitNot, v => .number (~~~(toNumber v |>.toUInt32)).toFloat
 
+-- SPEC: L6305-L6321
+-- | # ToString ( \_argument\_: an ECMAScript language value, ): either a normal completion containing a String or a throw completion
+-- |
+-- | description
+-- | :   It converts \_argument\_ to a value of type String.
+-- |
+-- | 1\. If \_argument\_ is a String, return \_argument\_. 1. If \_argument\_
+-- | is a Symbol, throw a \*TypeError\* exception. 1. If \_argument\_ is
+-- | \*undefined\*, return \*\"undefined\"\*. 1. If \_argument\_ is \*null\*,
+-- | return \*\"null\"\*. 1. If \_argument\_ is \*true\*, return
+-- | \*\"true\"\*. 1. If \_argument\_ is \*false\*, return \*\"false\"\*. 1.
+-- | If \_argument\_ is a Number, return Number::toString(\_argument\_,
+-- | 10). 1. If \_argument\_ is a BigInt, return
+-- | BigInt::toString(\_argument\_, 10). 1. Assert: \_argument\_ is an
+-- | Object. 1. Let \_primValue\_ be ? ToPrimitive(\_argument\_,
+-- | \~string\~). 1. Assert: \_primValue\_ is not an Object. 1. Return ?
+-- | ToString(\_primValue\_).
 /-- ECMA-262 §7.1.12 ToString (core subset). -/
 def valueToString : Value → String
   | .string s => s
@@ -753,7 +770,17 @@ def step? (s : State) : Option (TraceEvent × State) :=
           -- Property access on primitive: return undefined.
           let s' := pushTrace { s with expr := .lit .undefined } .silent
           some (.silent, s')
-  -- ECMA-262 §12.3.2 Computed Property Accessors (bracket notation).
+  -- SPEC: L15600-L15610
+  -- | # EvaluatePropertyAccessWithExpressionKey ( \_baseValue\_: an ECMAScript language value, \_expression\_: an \|Expression\| Parse Node, \_strict\_: a Boolean, ): either a normal completion containing a Reference Record or an abrupt completion
+  -- |
+  -- | 1\. Let \_propertyNameReference\_ be ? Evaluation of \_expression\_. 1.
+  -- | Let \_propertyNameValue\_ be ? GetValue(\_propertyNameReference\_). 1.
+  -- | NOTE: In most cases, ToPropertyKey will be performed on
+  -- | \_propertyNameValue\_ immediately after this step. However, in the case
+  -- | of \`a\[b\] = c\`, it will not be performed until after evaluation of
+  -- | \`c\`. 1. Return the Reference Record { \[\[Base\]\]: \_baseValue\_,
+  -- | \[\[ReferencedName\]\]: \_propertyNameValue\_, \[\[Strict\]\]:
+  -- | \_strict\_, \[\[ThisValue\]\]: \~empty\~ }.
   | .getIndex obj idx =>
       match exprValue? obj, exprValue? idx with
       | none, _ =>
@@ -1168,7 +1195,13 @@ def step? (s : State) : Option (TraceEvent × State) :=
       let l := match label with | some s => "continue:" ++ s | none => "continue:"
       let s' := pushTrace { s with expr := .lit .undefined } (.error l)
       some (.error l, s')
-  -- ECMA-262 §9.1.9 [[Set]]: property assignment on heap objects.
+  -- SPEC: L10890-L10895
+  -- | # \[\[Set\]\] ( \_P\_: a property key, \_V\_: an ECMAScript language value, \_Receiver\_: an ECMAScript language value, ): either a normal completion containing a Boolean or a throw completion
+  -- |
+  -- | for
+  -- | :   an ordinary object \_O\_
+  -- |
+  -- | 1\. Return ? OrdinarySet(\_O\_, \_P\_, \_V\_, \_Receiver\_).
   | .setProp obj prop value =>
       match exprValue? obj with
       | none =>
@@ -1202,7 +1235,12 @@ def step? (s : State) : Option (TraceEvent × State) :=
                   -- Property set on non-object: silently return value.
                   let s' := pushTrace { s with expr := .lit v } .silent
                   some (.silent, s')
-  -- ECMA-262 §9.1.9 [[Set]] computed property: bracket notation assignment.
+  -- SPEC: L10897-L10902
+  -- | # OrdinarySet ( \_O\_: an Object, \_P\_: a property key, \_V\_: an ECMAScript language value, \_Receiver\_: an ECMAScript language value, ): either a normal completion containing a Boolean or a throw completion
+  -- |
+  -- | 1\. Let \_ownDesc\_ be ? \_O\_.\[\[GetOwnProperty\]\](\_P\_). 1. Return
+  -- | ? OrdinarySetWithOwnDescriptor(\_O\_, \_P\_, \_V\_, \_Receiver\_,
+  -- | \_ownDesc\_).
   | .setIndex obj idx value =>
       match exprValue? obj, exprValue? idx, exprValue? value with
       | none, _, _ =>
@@ -1291,7 +1329,11 @@ def step? (s : State) : Option (TraceEvent × State) :=
       let heap' := { objects := s.heap.objects.push [], nextAddr := addr + 1 }
       let s' := pushTrace { s with expr := .lit (.object addr), heap := heap' } .silent
       some (.silent, s')
-  -- ECMA-262 §14.4.14 yield: simplified — evaluate argument and return it.
+  -- SPEC: L19369-L19372
+  -- | YieldExpression : \`yield\` 1. Return ? Yield(\*undefined\*).
+  -- | YieldExpression : \`yield\` AssignmentExpression 1. Let \_exprRef\_ be ?
+  -- | Evaluation of \|AssignmentExpression\|. 1. Let \_value\_ be ?
+  -- | GetValue(\_exprRef\_). 1. Return ? Yield(\_value\_). YieldExpression :
   | .yield arg _delegate =>
       match arg with
       | some e =>
@@ -1308,7 +1350,10 @@ def step? (s : State) : Option (TraceEvent × State) :=
       | none =>
           let s' := pushTrace { s with expr := .lit .undefined } .silent
           some (.silent, s')
-  -- ECMA-262 §14.7.14 await: simplified — evaluate argument and return it.
+  -- SPEC: L20265-L20268
+  -- | AwaitExpression : \`await\` UnaryExpression 1. Let \_exprRef\_ be ?
+  -- | Evaluation of \|UnaryExpression\|. 1. Let \_value\_ be ?
+  -- | GetValue(\_exprRef\_). 1. Return ? Await(\_value\_).
   | .await arg =>
       match exprValue? arg with
       | some v =>
