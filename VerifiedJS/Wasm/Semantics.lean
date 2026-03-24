@@ -6509,7 +6509,7 @@ theorem EmitCodeCorr.load_i32_inv {offset : Nat} {rest : List IRInstr} {wcode : 
     (∃ rest_w, wcode = Instr.i32Load { offset := offset, align := 2 } :: rest_w ∧ EmitCodeCorr rest rest_w) ∨
     False := by
   cases h with
-  | load_i32 _ rw hrw => left; exact ⟨rw, rfl, hrw⟩
+  | load_i32 _ _ rw hrw => left; exact ⟨rw, rfl, hrw⟩
   | general _ _ _ _ hf _ => exact hf.elim
 
 /-- Inversion for load .f64 offset :: rest. -/
@@ -6518,7 +6518,7 @@ theorem EmitCodeCorr.load_f64_inv {offset : Nat} {rest : List IRInstr} {wcode : 
     (∃ rest_w, wcode = Instr.f64Load { offset := offset, align := 3 } :: rest_w ∧ EmitCodeCorr rest rest_w) ∨
     False := by
   cases h with
-  | load_f64 _ rw hrw => left; exact ⟨rw, rfl, hrw⟩
+  | load_f64 _ _ rw hrw => left; exact ⟨rw, rfl, hrw⟩
   | general _ _ _ _ hf _ => exact hf.elim
 
 /-- Inversion for store .i32 offset :: rest. -/
@@ -6527,7 +6527,7 @@ theorem EmitCodeCorr.store_i32_inv {offset : Nat} {rest : List IRInstr} {wcode :
     (∃ rest_w, wcode = Instr.i32Store { offset := offset, align := 2 } :: rest_w ∧ EmitCodeCorr rest rest_w) ∨
     False := by
   cases h with
-  | store_i32 _ rw hrw => left; exact ⟨rw, rfl, hrw⟩
+  | store_i32 _ _ rw hrw => left; exact ⟨rw, rfl, hrw⟩
   | general _ _ _ _ hf _ => exact hf.elim
 
 /-- Inversion for store .f64 offset :: rest. -/
@@ -6536,7 +6536,7 @@ theorem EmitCodeCorr.store_f64_inv {offset : Nat} {rest : List IRInstr} {wcode :
     (∃ rest_w, wcode = Instr.f64Store { offset := offset, align := 3 } :: rest_w ∧ EmitCodeCorr rest rest_w) ∨
     False := by
   cases h with
-  | store_f64 _ rw hrw => left; exact ⟨rw, rfl, hrw⟩
+  | store_f64 _ _ rw hrw => left; exact ⟨rw, rfl, hrw⟩
   | general _ _ _ _ hf _ => exact hf.elim
 
 /-- Inversion for store8 offset :: rest. -/
@@ -6545,7 +6545,7 @@ theorem EmitCodeCorr.store8_inv {offset : Nat} {rest : List IRInstr} {wcode : Li
     (∃ rest_w, wcode = Instr.i32Store8 { offset := offset, align := 0 } :: rest_w ∧ EmitCodeCorr rest rest_w) ∨
     False := by
   cases h with
-  | store8_ _ rw hrw => left; exact ⟨rw, rfl, hrw⟩
+  | store8_ _ _ rw hrw => left; exact ⟨rw, rfl, hrw⟩
   | general _ _ _ _ hf _ => exact hf.elim
 
 /-- Inversion for callIndirect typeIdx :: rest. -/
