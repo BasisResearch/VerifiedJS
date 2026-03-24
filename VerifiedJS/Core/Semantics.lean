@@ -2969,6 +2969,16 @@ def evalBinary : BinOp → Value → Value → Value
   | .bitXor, a, b =>
       let ia := toNumber a |>.toUInt32; let ib := toNumber b |>.toUInt32
       .number ((ia ^^^ ib).toFloat)
+  -- SPEC: L16295-L16305
+  -- | # Bitwise Shift Operators
+  -- |
+  -- | ## Syntax
+  -- |
+  -- | ShiftExpression\[Yield, Await\] : AdditiveExpression\[?Yield, ?Await\]
+  -- | ShiftExpression\[?Yield, ?Await\] \`\<\<\` AdditiveExpression\[?Yield,
+  -- | ?Await\] ShiftExpression\[?Yield, ?Await\] \`\>\>\`
+  -- | AdditiveExpression\[?Yield, ?Await\] ShiftExpression\[?Yield, ?Await\]
+  -- | \`\>\>\>\` AdditiveExpression\[?Yield, ?Await\]
   -- SPEC: L16306-L16337
   -- | # The Left Shift Operator ( \`\<\<\` )
   -- |
@@ -3871,6 +3881,86 @@ def pushTrace (s : State) (t : TraceEvent) : State :=
 -- | The principal motivation for this is so that operators such as
 -- | \`delete\` and \`typeof\` may be applied to parenthesized expressions.
 
+-- SPEC: L14881-L14912
+-- | # Primary Expression
+-- |
+-- | ## Syntax
+-- |
+-- | PrimaryExpression\[Yield, Await\] : \`this\`
+-- | IdentifierReference\[?Yield, ?Await\] Literal ArrayLiteral\[?Yield,
+-- | ?Await\] ObjectLiteral\[?Yield, ?Await\] FunctionExpression
+-- | ClassExpression\[?Yield, ?Await\] GeneratorExpression
+-- | AsyncFunctionExpression AsyncGeneratorExpression
+-- | RegularExpressionLiteral TemplateLiteral\[?Yield, ?Await, \~Tagged\]
+-- | CoverParenthesizedExpressionAndArrowParameterList\[?Yield, ?Await\]
+-- | #parencover CoverParenthesizedExpressionAndArrowParameterList\[Yield,
+-- | Await\] : \`(\` Expression\[+In, ?Yield, ?Await\] \`)\` \`(\`
+-- | Expression\[+In, ?Yield, ?Await\] \`,\` \`)\` \`(\` \`)\` \`(\` \`\...\`
+-- | BindingIdentifier\[?Yield, ?Await\] \`)\` \`(\` \`\...\`
+-- | BindingPattern\[?Yield, ?Await\] \`)\` \`(\` Expression\[+In, ?Yield,
+-- | ?Await\] \`,\` \`\...\` BindingIdentifier\[?Yield, ?Await\] \`)\` \`(\`
+-- | Expression\[+In, ?Yield, ?Await\] \`,\` \`\...\` BindingPattern\[?Yield,
+-- | ?Await\] \`)\`
+-- |
+-- | ## Supplemental Syntax
+-- |
+-- | When processing an instance of the production\
+-- | PrimaryExpression\[Yield, Await\] :
+-- | CoverParenthesizedExpressionAndArrowParameterList\[?Yield, ?Await\]\
+-- | the interpretation of
+-- | \|CoverParenthesizedExpressionAndArrowParameterList\| is refined using
+-- | the following grammar:
+-- |
+-- | ParenthesizedExpression\[Yield, Await\] : \`(\` Expression\[+In, ?Yield,
+-- | ?Await\] \`)\`
+-- SPEC: L15177-L15188
+-- | # Function Defining Expressions
+-- |
+-- | See for PrimaryExpression : FunctionExpression.
+-- |
+-- | See for PrimaryExpression : GeneratorExpression.
+-- |
+-- | See for PrimaryExpression : ClassExpression.
+-- |
+-- | See for PrimaryExpression : AsyncFunctionExpression.
+-- |
+-- | See for PrimaryExpression : AsyncGeneratorExpression.
+-- SPEC: L15427-L15460
+-- | # Left-Hand-Side Expressions
+-- |
+-- | ## Syntax
+-- |
+-- | MemberExpression\[Yield, Await\] : PrimaryExpression\[?Yield, ?Await\]
+-- | MemberExpression\[?Yield, ?Await\] \`\[\` Expression\[+In, ?Yield,
+-- | ?Await\] \`\]\` MemberExpression\[?Yield, ?Await\] \`.\` IdentifierName
+-- | MemberExpression\[?Yield, ?Await\] TemplateLiteral\[?Yield, ?Await,
+-- | +Tagged\] SuperProperty\[?Yield, ?Await\] MetaProperty \`new\`
+-- | MemberExpression\[?Yield, ?Await\] Arguments\[?Yield, ?Await\]
+-- | MemberExpression\[?Yield, ?Await\] \`.\` PrivateIdentifier
+-- | SuperProperty\[Yield, Await\] : \`super\` \`\[\` Expression\[+In,
+-- | ?Yield, ?Await\] \`\]\` \`super\` \`.\` IdentifierName MetaProperty :
+-- | NewTarget ImportMeta NewTarget : \`new\` \`.\` \`target\` ImportMeta :
+-- | \`import\` \`.\` \`meta\` NewExpression\[Yield, Await\] :
+-- | MemberExpression\[?Yield, ?Await\] \`new\` NewExpression\[?Yield,
+-- | ?Await\] CallExpression\[Yield, Await\] :
+-- | CoverCallExpressionAndAsyncArrowHead\[?Yield, ?Await\] #callcover
+-- | SuperCall\[?Yield, ?Await\] ImportCall\[?Yield, ?Await\]
+-- | CallExpression\[?Yield, ?Await\] Arguments\[?Yield, ?Await\]
+-- | CallExpression\[?Yield, ?Await\] \`\[\` Expression\[+In, ?Yield,
+-- | ?Await\] \`\]\` CallExpression\[?Yield, ?Await\] \`.\` IdentifierName
+-- | CallExpression\[?Yield, ?Await\] TemplateLiteral\[?Yield, ?Await,
+-- | +Tagged\] CallExpression\[?Yield, ?Await\] \`.\` PrivateIdentifier
+-- | SuperCall\[Yield, Await\] : \`super\` Arguments\[?Yield, ?Await\]
+-- | ImportCall\[Yield, Await\] : \`import\` \`(\` AssignmentExpression\[+In,
+-- | ?Yield, ?Await\] \`,\`? \`)\` \`import\` \`(\`
+-- | AssignmentExpression\[+In, ?Yield, ?Await\] \`,\`
+-- | AssignmentExpression\[+In, ?Yield, ?Await\] \`,\`? \`)\`
+-- | Arguments\[Yield, Await\] : \`(\` \`)\` \`(\` ArgumentList\[?Yield,
+-- | ?Await\] \`)\` \`(\` ArgumentList\[?Yield, ?Await\] \`,\` \`)\`
+-- | ArgumentList\[Yield, Await\] : AssignmentExpression\[+In, ?Yield,
+-- | ?Await\] \`\...\` AssignmentExpression\[+In, ?Yield, ?Await\]
+-- | ArgumentList\[?Yield, ?Await\] \`,\` AssignmentExpression\[+In, ?Yield,
+
 /-- One deterministic Core small-step transition with emitted trace event. -/
 def step? (s : State) : Option (TraceEvent × State) :=
   match h : s.expr with
@@ -3926,6 +4016,72 @@ def step? (s : State) : Option (TraceEvent × State) :=
           let msg := "ReferenceError: " ++ name
           let s' := pushTrace { s with expr := .lit .undefined } (.error msg)
           some (.error msg, s')
+  -- SPEC: L17200-L17222
+  -- | # ECMAScript Language: Statements and Declarations
+  -- |
+  -- | ## Syntax
+  -- |
+  -- | Statement\[Yield, Await, Return\] : BlockStatement\[?Yield, ?Await,
+  -- | ?Return\] VariableStatement\[?Yield, ?Await\] EmptyStatement
+  -- | ExpressionStatement\[?Yield, ?Await\] IfStatement\[?Yield, ?Await,
+  -- | ?Return\] BreakableStatement\[?Yield, ?Await, ?Return\]
+  -- | ContinueStatement\[?Yield, ?Await\] BreakStatement\[?Yield, ?Await\]
+  -- | \[+Return\] ReturnStatement\[?Yield, ?Await\] WithStatement\[?Yield,
+  -- | ?Await, ?Return\] LabelledStatement\[?Yield, ?Await, ?Return\]
+  -- | ThrowStatement\[?Yield, ?Await\] TryStatement\[?Yield, ?Await, ?Return\]
+  -- | DebuggerStatement Declaration\[Yield, Await\] :
+  -- | HoistableDeclaration\[?Yield, ?Await, \~Default\]
+  -- | ClassDeclaration\[?Yield, ?Await, \~Default\] LexicalDeclaration\[+In,
+  -- | ?Yield, ?Await\] HoistableDeclaration\[Yield, Await, Default\] :
+  -- | FunctionDeclaration\[?Yield, ?Await, ?Default\]
+  -- | GeneratorDeclaration\[?Yield, ?Await, ?Default\]
+  -- | AsyncFunctionDeclaration\[?Yield, ?Await, ?Default\]
+  -- | AsyncGeneratorDeclaration\[?Yield, ?Await, ?Default\]
+  -- | BreakableStatement\[Yield, Await, Return\] : IterationStatement\[?Yield,
+  -- | ?Await, ?Return\] SwitchStatement\[?Yield, ?Await, ?Return\]
+  -- SPEC: L17332-L17350
+  -- | # Declarations and the Variable Statement
+  -- |
+  -- | # Let and Const Declarations
+  -- |
+  -- | \`let\` and \`const\` declarations define variables that are scoped to
+  -- | the running execution context\'s LexicalEnvironment. The variables are
+  -- | created when their containing Environment Record is instantiated but may
+  -- | not be accessed in any way until the variable\'s \|LexicalBinding\| is
+  -- | evaluated. A variable defined by a \|LexicalBinding\| with an
+  -- | \|Initializer\| is assigned the value of its \|Initializer\|\'s
+  -- | \|AssignmentExpression\| when the \|LexicalBinding\| is evaluated, not
+  -- | when the variable is created. If a \|LexicalBinding\| in a \`let\`
+  -- | declaration does not have an \|Initializer\| the variable is assigned
+  -- | the value \*undefined\* when the \|LexicalBinding\| is evaluated.
+  -- |
+  -- | ## Syntax
+  -- |
+  -- | LexicalDeclaration\[In, Yield, Await\] : LetOrConst BindingList\[?In,
+  -- SPEC: L17400-L17423
+  -- | # Variable Statement
+  -- |
+  -- | A \`var\` statement declares variables that are scoped to the running
+  -- | execution context\'s VariableEnvironment. Var variables are created when
+  -- | their containing Environment Record is instantiated and are initialized
+  -- | to \*undefined\* when created. Within the scope of any
+  -- | VariableEnvironment a common \|BindingIdentifier\| may appear in more
+  -- | than one \|VariableDeclaration\| but those declarations collectively
+  -- | define only one variable. A variable defined by a
+  -- | \|VariableDeclaration\| with an \|Initializer\| is assigned the value of
+  -- | its \|Initializer\|\'s \|AssignmentExpression\| when the
+  -- | \|VariableDeclaration\| is executed, not when the variable is created.
+  -- |
+  -- | ## Syntax
+  -- |
+  -- | VariableStatement\[Yield, Await\] : \`var\`
+  -- | VariableDeclarationList\[+In, ?Yield, ?Await\] \`;\`
+  -- | VariableDeclarationList\[In, Yield, Await\] : VariableDeclaration\[?In,
+  -- | ?Yield, ?Await\] VariableDeclarationList\[?In, ?Yield, ?Await\] \`,\`
+  -- | VariableDeclaration\[?In, ?Yield, ?Await\] VariableDeclaration\[In,
+  -- | Yield, Await\] : BindingIdentifier\[?Yield, ?Await\] Initializer\[?In,
+  -- | ?Yield, ?Await\]? BindingPattern\[?Yield, ?Await\] Initializer\[?In,
+  -- | ?Yield, ?Await\]
   -- SPEC: L17424-L17453
   -- | # Runtime Semantics: Evaluation
   -- |
@@ -4022,6 +4178,30 @@ def step? (s : State) : Option (TraceEvent × State) :=
               let s' := pushTrace { sr with expr := .assign name sr.expr, trace := s.trace } t
               some (t, s')
           | none => none
+  -- SPEC: L16560-L16583
+  -- | CoalesceExpression : CoalesceExpressionHead \`??\`
+  -- | BitwiseORExpression 1. Let \_lRef\_ be ? Evaluation of
+  -- | \|CoalesceExpressionHead\|. 1. Let \_lVal\_ be ? GetValue(\_lRef\_). 1.
+  -- | If \_lVal\_ is neither \*undefined\* nor \*null\*, return \_lVal\_. 1.
+  -- | Let \_rRef\_ be ? Evaluation of \|BitwiseORExpression\|. 1. Return ?
+  -- | GetValue(\_rRef\_).
+  -- |
+  -- | # Conditional Operator ( \`? :\` )
+  -- |
+  -- | ## Syntax
+  -- |
+  -- | ConditionalExpression\[In, Yield, Await\] : ShortCircuitExpression\[?In,
+  -- | ?Yield, ?Await\] ShortCircuitExpression\[?In, ?Yield, ?Await\] \`?\`
+  -- | AssignmentExpression\[+In, ?Yield, ?Await\] \`:\`
+  -- | AssignmentExpression\[?In, ?Yield, ?Await\]
+  -- |
+  -- | The grammar for a \|ConditionalExpression\| in ECMAScript is slightly
+  -- | different from that in C and Java, which each allow the second
+  -- | subexpression to be an \|Expression\| but restrict the third expression
+  -- | to be a \|ConditionalExpression\|. The motivation for this difference in
+  -- | ECMAScript is to allow an assignment expression to be governed by either
+  -- | arm of a conditional and to eliminate the confusing and fairly useless
+  -- | case of a comma expression as the centre expression.
   -- SPEC: L16584-L16593
   -- | # Runtime Semantics: Evaluation
   -- |
@@ -4121,6 +4301,16 @@ def step? (s : State) : Option (TraceEvent × State) :=
               let s' := pushTrace { sa with expr := .seq sa.expr b, trace := s.trace } t
               some (t, s')
           | none => none
+  -- SPEC: L16003-L16012
+  -- | # Update Expressions
+  -- |
+  -- | ## Syntax
+  -- |
+  -- | UpdateExpression\[Yield, Await\] : LeftHandSideExpression\[?Yield,
+  -- | ?Await\] LeftHandSideExpression\[?Yield, ?Await\] \[no LineTerminator
+  -- | here\] \`++\` LeftHandSideExpression\[?Yield, ?Await\] \[no
+  -- | LineTerminator here\] \`\--\` \`++\` UnaryExpression\[?Yield, ?Await\]
+  -- | \`\--\` UnaryExpression\[?Yield, ?Await\]
   -- SPEC: L16028-L16039
   -- | # Runtime Semantics: Evaluation
   -- |
@@ -5074,6 +5264,15 @@ def step? (s : State) : Option (TraceEvent × State) :=
   -- | return ? \_completionRecord\_. 1. Return Completion Record {
   -- | \[\[Type\]\]: \_completionRecord\_.\[\[Type\]\], \[\[Value\]\]:
   -- | \_value\_, \[\[Target\]\]: \_completionRecord\_.\[\[Target\]\] }.
+  -- SPEC: L17622-L17630
+  -- | # Iteration Statements
+  -- |
+  -- | ## Syntax
+  -- |
+  -- | IterationStatement\[Yield, Await, Return\] : DoWhileStatement\[?Yield,
+  -- | ?Await, ?Return\] WhileStatement\[?Yield, ?Await, ?Return\]
+  -- | ForStatement\[?Yield, ?Await, ?Return\] ForInOfStatement\[?Yield,
+  -- | ?Await, ?Return\]
   -- SPEC: L17633-L17643
   -- | # LoopContinues ( \_completion\_: a Completion Record, \_labelSet\_: a List of Strings, ): a Boolean
   -- |
@@ -5218,6 +5417,17 @@ def step? (s : State) : Option (TraceEvent × State) :=
   -- | \*true\*. 1. Return ? \_done\_. 1. Set \_done\_ to ! \_done\_. 1. If
   -- | \_done\_ is \*true\*, then 1. Set \_iteratorRecord\_.\[\[Done\]\] to
   -- | \*true\*. 1. Return \~done\~. 1. Return \_result\_.
+  -- SPEC: L17690-L17700
+  -- | ?Return\]
+  -- |
+  -- | # Static Semantics: Early Errors
+  -- |
+  -- | WhileStatement : \`while\` \`(\` Expression \`)\` Statement
+  -- |
+  -- | - It is a Syntax Error if IsLabelledFunction(\|Statement\|) is \*true\*.
+  -- |
+  -- | It is only necessary to apply this rule if the extension specified in is
+  -- | implemented.
   -- SPEC: L17701-L17711
   -- | # Runtime Semantics: WhileLoopEvaluation ( \_labelSet\_: a List of Strings, ): either a normal completion containing an ECMAScript language value or an abrupt completion
   -- |
@@ -5604,6 +5814,23 @@ def step? (s : State) : Option (TraceEvent × State) :=
   -- | \|CaseBlock\| algorithm uses its return value to determine which
   -- | \|StatementList\| to start executing.
   -- NOTE: switch is desugared by the parser to if-else chains.
+  -- SPEC: L18453-L18469
+  -- | # Labelled Statements
+  -- |
+  -- | ## Syntax
+  -- |
+  -- | LabelledStatement\[Yield, Await, Return\] : LabelIdentifier\[?Yield,
+  -- | ?Await\] \`:\` LabelledItem\[?Yield, ?Await, ?Return\]
+  -- | LabelledItem\[Yield, Await, Return\] : Statement\[?Yield, ?Await,
+  -- | ?Return\] FunctionDeclaration\[?Yield, ?Await, \~Default\]
+  -- |
+  -- | A \|Statement\| may be prefixed by a label. Labelled statements are only
+  -- | used in conjunction with labelled \`break\` and \`continue\` statements.
+  -- | ECMAScript has no \`goto\` statement. A \|Statement\| can be part of a
+  -- | \|LabelledStatement\|, which itself can be part of a
+  -- | \|LabelledStatement\|, and so on. The labels introduced this way are
+  -- | collectively referred to as the "current label set" when describing the
+  -- | semantics of individual statements.
   -- SPEC: L18486-L18490
   -- | # Runtime Semantics: Evaluation
   -- |
@@ -5675,6 +5902,48 @@ def step? (s : State) : Option (TraceEvent × State) :=
               let s' := pushTrace { sa with expr := .throw sa.expr, trace := s.trace } t
               some (t, s')
           | none => none
+  -- SPEC: L18298-L18340
+  -- | # The \`with\` Statement
+  -- |
+  -- | Use of the Legacy \`with\` statement is discouraged in new ECMAScript
+  -- | code. Consider alternatives that are permitted in both strict mode code
+  -- | and non-strict code, such as destructuring assignment.
+  -- |
+  -- | ## Syntax
+  -- |
+  -- | WithStatement\[Yield, Await, Return\] : \`with\` \`(\` Expression\[+In,
+  -- | ?Yield, ?Await\] \`)\` Statement\[?Yield, ?Await, ?Return\]
+  -- |
+  -- | The \`with\` statement adds an Object Environment Record for a computed
+  -- | object to the lexical environment of the running execution context. It
+  -- | then executes a statement using this augmented lexical environment.
+  -- | Finally, it restores the original lexical environment.
+  -- |
+  -- | # Static Semantics: Early Errors
+  -- |
+  -- | WithStatement : \`with\` \`(\` Expression \`)\` Statement
+  -- |
+  -- | - It is a Syntax Error if IsStrict(this production) is \*true\*.
+  -- | - It is a Syntax Error if IsLabelledFunction(\|Statement\|) is \*true\*.
+  -- |
+  -- | It is only necessary to apply the second rule if the extension specified
+  -- | in is implemented.
+  -- |
+  -- | # Runtime Semantics: Evaluation
+  -- |
+  -- | WithStatement : \`with\` \`(\` Expression \`)\` Statement 1. Let \_val\_
+  -- | be ? Evaluation of \|Expression\|. 1. Let \_obj\_ be ? ToObject(?
+  -- | GetValue(\_val\_)). 1. Let \_oldEnv\_ be the running execution
+  -- | context\'s LexicalEnvironment. 1. Let \_newEnv\_ be
+  -- | NewObjectEnvironment(\_obj\_, \*true\*, \_oldEnv\_). 1. Set the running
+  -- | execution context\'s LexicalEnvironment to \_newEnv\_. 1. Let \_C\_ be
+  -- | Completion(Evaluation of \|Statement\|). 1. Set the running execution
+  -- | context\'s LexicalEnvironment to \_oldEnv\_. 1. Return ?
+  -- | UpdateEmpty(\_C\_, \*undefined\*).
+  -- |
+  -- | No matter how control leaves the embedded \|Statement\|, whether
+  -- | normally or by some form of abrupt completion or exception, the
+  -- | LexicalEnvironment is always restored to its former state.
   -- SPEC: L18600-L18614
   -- | TryStatement : \`try\` Block Catch 1. Let \_B\_ be Completion(Evaluation
   -- | of \|Block\|). 1. If \_B\_ is a throw completion, let \_C\_ be
@@ -5875,6 +6144,23 @@ def step? (s : State) : Option (TraceEvent × State) :=
       let l := match label with | some s => "break:" ++ s | none => "break:"
       let s' := pushTrace { s with expr := .lit .undefined } (.error l)
       some (.error l, s')
+  -- SPEC: L18225-L18241
+  -- |
+  -- | ## Syntax
+  -- |
+  -- | ContinueStatement\[Yield, Await\] : \`continue\` \`;\` \`continue\` \[no
+  -- | LineTerminator here\] LabelIdentifier\[?Yield, ?Await\] \`;\`
+  -- |
+  -- | # Static Semantics: Early Errors
+  -- |
+  -- | ContinueStatement : \`continue\` \`;\` \`continue\` LabelIdentifier
+  -- | \`;\`
+  -- |
+  -- | - It is a Syntax Error if this \|ContinueStatement\| is not nested,
+  -- |   directly or indirectly (but not crossing function or \`static\`
+  -- |   initialization block boundaries), within an \|IterationStatement\|.
+  -- |
+  -- | # Runtime Semantics: Evaluation
   -- SPEC: L18242-L18247
   -- | ContinueStatement : \`continue\` \`;\` 1. Return Completion Record {
   -- | \[\[Type\]\]: \~continue\~, \[\[Value\]\]: \~empty\~, \[\[Target\]\]:
