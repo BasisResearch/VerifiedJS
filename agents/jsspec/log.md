@@ -1,3 +1,60 @@
+## Run: 2026-03-24T18:00:01+00:00
+
+### STATUS: Added 50 new SPEC citations (451 total, 0 mismatches). Build clean. Coverage now 12% (5595 lines).
+
+- **Task (Add citations to reach 450+ refs):** DONE (451 refs, 0 mismatches). Added 50 new verbatim ECMA-262 citations to Core/Semantics.lean:
+  1. The Completion Record Specification Type (L5443-L5485)
+  2. NormalCompletion (L5486-L5493)
+  3. ThrowCompletion (L5494-L5498)
+  4. ReturnCompletion (L5499-L5503)
+  5. The Reference Record Specification Type (L5513-L5533)
+  6. IsPropertyReference (L5534-L5539)
+  7. IsUnresolvableReference (L5540-L5544)
+  8. IsSuperReference (L5545-L5549)
+  9. IsPrivateReference (L5550-L5554)
+  10. GetThisValue (L5604-L5609)
+  11. IsGenericDescriptor (L5664-L5669)
+  12. FromPropertyDescriptor (L5670-L5688)
+  13. ToPropertyDescriptor (L5689-L5720)
+  14. CompletePropertyDescriptor (L5721-L5739)
+  15. Type Conversion intro (L5933-L5945)
+  16. ToNumeric (L5995-L6003)
+  17. ToUint8Clamp (L6225-L6243)
+  18. CanonicalNumericIndexString (L6362-L6376)
+  19. ToIndex (L6377-L6387)
+  20. Number::sameValue (L4597-L4603)
+  21. IsRegExp (L6436-L6443)
+  22. CreateDataProperty (L6681-L6696)
+  23. CreateNonEnumerableDataPropertyOrThrow (L6715-L6733)
+  24. DeletePropertyOrThrow (L6745-L6753)
+  25. HasOwnProperty (L6774-L6782)
+  26. Construct (L6797-L6813)
+  27. Invoke (L6896-L6908)
+  28. [[IsExtensible]] (L10719-L10725)
+  29. OrdinaryIsExtensible (L10726-L10729)
+  30. [[PreventExtensions]] (L10730-L10736)
+  31. OrdinaryPreventExtensions (L10737-L10740)
+  32. [[GetOwnProperty]] (L10741-L10747)
+  33. [[DefineOwnProperty]] (L10763-L10769)
+  34. [[HasProperty]] (L10856-L10862)
+  35. [[Set]] (L10890-L10896)
+  36. [[GetPrototypeOf]] (L10683-L10689)
+  37. [[SetPrototypeOf]] (L10694-L10700)
+  38. IsCompatiblePropertyDescriptor (L10777-L10781)
+  39. Declarative Environment Records (L8864-L8872)
+  40. HasBinding for Declarative (L8873-L8884)
+  41. Object Environment Records (L9027-L9056)
+  42. NewDeclarativeEnvironment (L9667-L9671)
+  43. NewObjectEnvironment (L9672-L9678)
+  44. NewGlobalEnvironment (L9690-L9699)
+  45. The delete Operator (L16093-L16149)
+  46. The typeof Operator (L16161-L16179)
+  47. RequireInternalSlot (L11026-L11035)
+  48. GetFunctionRealm (L6953-L6969)
+  49. IsStringWellFormedUnicode (L6444-L6457)
+  50. StringIndexOf (L4091-L4108)
+  51. NewModuleEnvironment (L9700-L9704)
+
 ## Run: 2026-03-24T14:06:56+00:00
 
 ### STATUS: Added 52 new SPEC citations (350 total, 0 mismatches). Build clean. Coverage now 10% (4521 lines).
@@ -1853,3 +1910,4 @@ test_write
 
 ## Run: 2026-03-24T18:00:01+00:00
 
+2026-03-24T18:37:10+00:00 DONE
