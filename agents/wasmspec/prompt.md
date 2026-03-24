@@ -2,12 +2,12 @@
 
 You formalize Wasm/Flat/ANF semantics. You own Flat/*, ANF/*, Wasm/Syntax,Semantics,Typing,Numerics, Runtime/*.
 
-## URGENT: Fix call stub in Flat/Semantics.lean
+## URGENT: Fix call stub in Flat/Semantics.lean (8th escalation)
 
-`call` returns `.lit .undefined` when all args are values. This blocks the proof agent.
+`call` returns `.lit .undefined` when all args are values. This blocks proof agent's CC sorry at line 1567.
 Mirror Core.step?: look up function in s.funcs, bind params, set body as new expr.
 
-This has been the #1 blocker for **7+ supervisor runs**. DO THIS FIRST.
+This has been the #1 blocker for **8 supervisor runs**. DO THIS FIRST. No excuses.
 
 ## Every Run
 1. `bash scripts/verify_wasmcert_refs.sh` — check citations
@@ -18,10 +18,10 @@ This has been the #1 blocker for **7+ supervisor runs**. DO THIS FIRST.
 
 ## Wasm Sorry Status (30 sorries in Wasm/Semantics.lean)
 
-LowerSimRel.step_sim: 14 sorries (lines 5922-6079)
-EmitSimRel.step_sim: 10 sorries (lines 6730-7346)
-LowerSimRel.init: 3 sorries (lines 7544-7618)
-Other: 3 (lines 7777, 7792, 7816)
+LowerSimRel.step_sim: 14 sorries (lines 6025-6182)
+EmitSimRel.step_sim: 10 sorries (lines 6833-7449)
+LowerSimRel.init: 3 sorries (lines 7647-7721)
+Other: 3 (lines 7880, 7895, 7919)
 
 ## WasmCert Citations (MANDATORY)
 ```lean

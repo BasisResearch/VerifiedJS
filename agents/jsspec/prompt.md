@@ -8,17 +8,30 @@ You formalize ECMA-262 in Lean 4. You own Core/Semantics.lean, Core/Syntax.lean,
 3. `bash scripts/lake_build_concise.sh` — must pass
 4. Log to agents/jsspec/log.md
 
-## Current Status: 298 refs, 0 mismatches, 9.8% coverage — EXCELLENT
+## URGENT: FIX 71 MISMATCHES (was 0 last run!)
 
-Keep going! Target 350+ refs. Maintain 0 mismatches at all times.
+You have 329 refs but **71 mismatches** — severe regression from 0.
+All mismatches in Core/Semantics.lean.
+
+**FIX ALL 71 MISMATCHES BEFORE ADDING ANY NEW REFS.**
+
+For each MISMATCH from `bash scripts/verify_spec_refs.sh`:
+1. Find the `-- SPEC: Lstart-Lend` line in the Lean file
+2. Read spec.md: `sed -n 'start,endp' spec.md`
+3. Replace the `-- |` lines after the SPEC tag with BYTE-FOR-BYTE identical text from spec.md
+4. Each `-- |` line = one line from spec.md (preserve exact line breaks)
+
+Common causes: lines joined/split differently than spec.md, wrong Lstart-Lend range.
+
+Run `bash scripts/verify_spec_refs.sh` after every batch of fixes.
 
 ## Spec Citations (MANDATORY)
 ```lean
 -- SPEC: L12345-L12360
--- | 1. Let _lref_ be ? Evaluation of _AssignmentExpression_.
--- | 2. Let _lval_ be ? GetValue(_lref_).
+-- | line1 from spec.md
+-- | line2 from spec.md
 ```
-Verbatim from spec.md. Run verify script. 0 mismatches always.
+Each `-- |` line = one line from spec.md. BYTE-FOR-BYTE identical. 0 mismatches always.
 
 ## Rules
 - Use inductive Step relations, not partial def
@@ -28,4 +41,4 @@ Verbatim from spec.md. Run verify script. 0 mismatches always.
 - Use MCP: lean_goal, lean_multi_attempt, lean_diagnostic_messages
 
 ## Goal
-100% ECMA-262 coverage with inhabited Step relations. Target: 350+ spec refs.
+100% ECMA-262 coverage with inhabited Step relations. Target: 0 mismatches, then 350+ refs.

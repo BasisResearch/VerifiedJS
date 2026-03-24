@@ -3969,3 +3969,61 @@ Source ──[elaborate]──> Core ──[closureConvert]──> Flat ──[a
 
 ## Run: 2026-03-24T14:10:02+00:00
 
+
+### Build
+- **Status**: `lake build` **PASS** ✅
+
+### Metrics
+- **Sorry count**: 39 actual (6 CC + 30 Wasm + 2 ANF + 1 Lower) — DOWN from ~51 (-12!)
+- **Test262**: 3 pass, 50 fail, 3 skip, 5 xfail / 63 total (UNCHANGED 152+ hrs)
+- **Spec coverage**: 4406/44380 lines (9.9%), 329 refs, 71 mismatches (UP from 298 refs/0 mismatches — refs up but mismatch REGRESSION!)
+- **WasmCert refs**: 0 checked, 0 mismatches
+
+### Proof Chain Status
+```
+Source ──[elaborate]──> Core ──[closureConvert]──> Flat ──[anfConvert]──> ANF ──[lower]──> Wasm.IR ──[emit]──> Wasm
+         ✅ proved       6 sorry                    2 sorry              1 sorry          30 sorry
+```
+
+### Sorry Delta: ~51→39 (-12, ALL noCallFrameReturn IH sorries CLOSED!)
+
+**MILESTONE**: Proof agent closed ALL 12 mechanical noCallFrameReturn IH obligation sorries. CC went from 18→6. Remaining 6 CC sorries are ALL heap-related, blocked on HeapCorr abstraction.
+
+CC sorry taxonomy (6, all fundamental):
+1. **captured var** (line 857): stuttering simulation, needs HeapCorr_alloc_flat
+2. **call** (line 1567): BLOCKED on Flat call stub (wasmspec 8th escalation)
+3. **newObj** (line 1568): heap allocation, needs HeapCorr_alloc_both
+4. **objectLit** (line 2934): heap allocation, needs HeapCorr_alloc_both
+5. **arrayLit** (line 2935): heap allocation, needs HeapCorr_alloc_both
+6. **functionDef** (line 2936): env/heap/funcs + CC state
+
+### Agent Status
+- **proof**: Productive! Closed 12 mechanical sorries. CC down to 6. Timing out but making real progress during each run. Redirected to HeapCorr (replace sf.heap = sc.heap with prefix relation).
+- **wasmspec**: Exiting code 1. Call stub STILL unfixed (8th escalation). 30 Wasm sorries.
+- **jsspec**: Running since 14:06. 329 refs (+31!) but 71 mismatches (was 0!). Severe citation quality regression. Redirected to FIX ALL mismatches before adding new refs.
+
+### Abstraction Discovery
+
+**HeapCorr is THE next critical abstraction (confirmed)**
+
+All 6 remaining CC sorries require `HeapCorr` instead of `sf.heap = sc.heap`. Proof agent already discovered this in the 12:30 run but was busy closing noCallFrameReturn sorries. Now that those are done, HeapCorr is unblocked.
+
+Definition written to proof prompt:
+```lean
+def HeapCorr (cheap fheap : Core.Heap) : Prop :=
+  cheap.length ≤ fheap.length ∧
+  ∀ addr, addr < cheap.length → cheap.get? addr = fheap.get? addr
+```
+
+### Prompts Updated
+1. ✅ Updated proof prompt (2026-03-24T14:10): TASK 0 = HeapCorr (replace heap identity with prefix relation). TASK 1 = Close CC sorries using HeapCorr. TASK 2 = ANF.
+2. ✅ Updated wasmspec prompt (2026-03-24T14:10): 8th escalation of call stub. Updated sorry line numbers.
+3. ✅ Updated jsspec prompt (2026-03-24T14:10): URGENT fix 71 mismatches before adding new refs.
+4. ✅ Updated PROGRESS.md: new metrics row.
+
+### Next Run Focus
+- Monitor proof agent: did it define HeapCorr and start closing heap sorries?
+- Check jsspec: are mismatches going down?
+- Check wasmspec: did it FINALLY fix call stub?
+2026-03-24T14:10:02+00:00 DONE
+2026-03-24T14:48:55+00:00 DONE

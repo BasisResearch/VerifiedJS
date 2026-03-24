@@ -1649,7 +1649,7 @@ def Env.extend (env : Env) (name : VarName) (v : Value) : Env :=
 -- | # OrdinaryIsExtensible ( \_O\_: an Object, ): a Boolean
 -- |
 -- | 1\. Return \_O\_.\[\[Extensible\]\].
--- SPEC: L10738-L10740
+-- SPEC: L10737-L10740
 -- | # OrdinaryPreventExtensions ( \_O\_: an Object, ): \*true\*
 -- |
 -- | 1\. Set \_O\_.\[\[Extensible\]\] to \*false\*. 1. Return \*true\*.
@@ -1682,7 +1682,7 @@ def Env.extend (env : Env) (name : VarName) (v : Value) : Env :=
 -- | \_someValue\_.OperationName(\_arg1\_, \_arg2\_).
 -- |
 -- | # Syntax-Directed Operations
--- SPEC: L5862-L5878
+-- SPEC: L5867-L5878
 -- | # The PrivateElement Specification Type
 -- |
 -- | The PrivateElement type is a Record used in the specification of private
@@ -1695,17 +1695,15 @@ def Env.extend (env : Env) (name : VarName) (v : Value) : Env :=
 -- |
 -- | Values of the PrivateElement type are Record values whose fields are
 -- | defined by . Such values are referred to as [PrivateElements]{.dfn
--- SPEC: L5746-L5756
+-- SPEC: L8864-L8872
 -- | # Declarative Environment Records
 -- |
--- | Each Declarative Environment Record is associated with an ECMAScript
--- | program scope containing variable, constant, let, class, module, import,
--- | and/or function declarations. A Declarative Environment Record binds the
--- | set of identifiers defined by the declarations contained within its
--- | scope.
--- |
--- | The behaviour of the concrete specification methods for Declarative
--- | Environment Records is defined by the following algorithms.
+-- | Each [Declarative Environment Record]{.dfn
+-- | variants="Declarative Environment Records"} is associated with an
+-- | ECMAScript program scope containing variable, constant, let, class,
+-- | module, import, and/or function declarations. A Declarative Environment
+-- | Record binds the set of identifiers defined by the declarations
+-- | contained within its scope.
 
 /-- Check whether an expression is a value expression. -/
 def exprValue? : Expr → Option Value

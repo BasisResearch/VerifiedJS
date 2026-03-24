@@ -17,48 +17,37 @@ Composition: elaborate o closureConvert o anfConvert o lower o emit.
 4. `bash scripts/lake_build_concise.sh` — verify
 5. Log strategy, progress, and next step to agents/proof/log.md
 
-## TASK 0: Close remaining noCallFrameReturn IH sorries (MECHANICAL)
+## TASK 0: HeapCorr — Replace sf.heap = sc.heap (DO THIS NOW)
 
-You have ~12 sorry instances of the form `hheap sorry` where sorry fills the
-`noCallFrameReturn sc_sub.expr = true` argument to ih_depth. You already closed
-the first 2 (setIndex lines) using the right tactic. Apply the SAME pattern to all:
+GREAT WORK closing all 12 noCallFrameReturn IH sorries! CC is now at 6 sorry.
 
-```lean
-(by have h := hncfr; rw [hsc] at h; simp [noCallFrameReturn, Bool.and_eq_true] at h; exact h.<projection>)
-```
+All 6 remaining CC sorries are BLOCKED by `sf.heap = sc.heap`:
+- captured var (line 857), call (1567), newObj (1568), objectLit (2934), arrayLit (2935), functionDef (2936)
 
-Where `<projection>` depends on the constructor:
-- Binary `.deleteProp obj prop`: `noCallFrameReturn = noCallFrameReturn obj` → `exact h`
-- Binary `.getProp obj _`: same → `exact h`
-- Ternary `.setIndex obj idx val`: `.1` for obj, `.1.2` for idx, `.2` for val
-- `.seq a b` / `.let _ a b`: `.1` for first, `.2` for second
-- `.if c t e`: `.1` for cond, `.1.2` for then, `.2` for else
-- `.tryCatch body _ cb fin`: `.1` for body
-- etc.
-
-Use `lean_goal` at each sorry to see what expression is `hsc` — that tells you the constructor and which sub-expression projection to use.
-
-## TASK 1: HeapCorr (your discovery — the RIGHT abstraction)
-
-Your 12:30 insight is correct: `sf.heap = sc.heap` blocks captured var, call,
-newObj, objectLit, arrayLit. Replace with:
+Replace heap identity with prefix relation:
 
 ```lean
-private def HeapCorr (cheap fheap : Core.Heap) : Prop :=
-  cheap.length <= fheap.length ∧
+def HeapCorr (cheap fheap : Core.Heap) : Prop :=
+  cheap.length ≤ fheap.length ∧
   ∀ addr, addr < cheap.length → cheap.get? addr = fheap.get? addr
 ```
 
-**BUT DO TASK 0 FIRST.** Changing CC_SimRel again will create MORE sorry
-obligations in the IH positions. Close the noCallFrameReturn ones first so
-they don't stack with HeapCorr ones.
+Steps:
+1. Define `HeapCorr` near CC_SimRel
+2. Replace `sf.heap = sc.heap` with `HeapCorr sc.heap sf.heap` in CC_SimRel
+3. Prove helpers: `HeapCorr_refl`, `HeapCorr_alloc_flat` (flat-only alloc preserves), `HeapCorr_alloc_both` (both alloc), `HeapCorr_get`
+4. Fix `init_related`: `⟨Nat.le_refl _, fun _ h => rfl⟩`
+5. Fix IH calls (most just pass `hheap` through)
 
-When you do HeapCorr:
-1. Add `HeapCorr sc.heap sf.heap` to CC_SimRel (replacing `sf.heap = sc.heap`)
-2. Prove `HeapCorr_refl`, `HeapCorr_alloc_flat`, `HeapCorr_get`
-3. Fix init_related (trivial: `⟨Nat.le_refl _, fun _ h => rfl⟩`)
-4. Fix the heap argument in IH calls (most will be `hheap` directly since
-   HeapCorr is preserved by Core-side steps that don't allocate)
+## TASK 1: Close CC sorries using HeapCorr
+
+After HeapCorr in SimRel, attack in order:
+1. newObj (1568) — HeapCorr_alloc_both
+2. objectLit (2934) — HeapCorr_alloc_both
+3. arrayLit (2935) — HeapCorr_alloc_both
+4. captured var (857) — stuttering sim + HeapCorr_alloc_flat
+5. call (1567) — needs env/funcs correspondence + HeapCorr
+6. functionDef (2936) — needs env/heap/funcs + CC state
 
 ## TASK 2: ANF sorries (lines 106, 1181)
 
