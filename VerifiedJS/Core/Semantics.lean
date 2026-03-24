@@ -1789,6 +1789,38 @@ def toNumber : Value → Float
             else 0.0 / 0.0  -- NaN for non-numeric strings
   | _ => 0.0 / 0.0  -- NaN for objects/functions
 
+-- SPEC: L6061-L6092
+-- | # Runtime Semantics: StringNumericValue ( ): a Number
+-- |
+-- | The conversion of a \|StringNumericLiteral\| to a Number value is
+-- | similar overall to the determination of the NumericValue of a
+-- | \|NumericLiteral\| (see ), but some of the details are different.
+-- |
+-- | StringNumericLiteral ::: StrWhiteSpace? 1. Return \*+0\*~𝔽~.
+-- | StringNumericLiteral ::: StrWhiteSpace? StrNumericLiteral
+-- | StrWhiteSpace? 1. Return the StringNumericValue of
+-- | \|StrNumericLiteral\|. StrNumericLiteral ::: NonDecimalIntegerLiteral 1.
+-- | Return 𝔽(MV of \|NonDecimalIntegerLiteral\|). StrDecimalLiteral :::
+-- | \`-\` StrUnsignedDecimalLiteral 1. Let \_a\_ be the StringNumericValue
+-- | of \|StrUnsignedDecimalLiteral\|. 1. If \_a\_ is \*+0\*~𝔽~, return
+-- | \*-0\*~𝔽~. 1. Return -\_a\_. StrUnsignedDecimalLiteral :::
+-- | \`Infinity\` 1. Return \*+∞\*~𝔽~. StrUnsignedDecimalLiteral :::
+-- | DecimalDigits \`.\` DecimalDigits? ExponentPart? 1. Let \_a\_ be the MV
+-- | of the first \|DecimalDigits\|. 1. If the second \|DecimalDigits\| is
+-- | present, then 1. Let \_b\_ be the MV of the second \|DecimalDigits\|. 1.
+-- | Let \_n\_ be the number of code points in the second
+-- | \|DecimalDigits\|. 1. Else, 1. Let \_b\_ be 0. 1. Let \_n\_ be 0. 1. If
+-- | \|ExponentPart\| is present, let \_e\_ be the MV of \|ExponentPart\|;
+-- | else let \_e\_ be 0. 1. Return RoundMVResult((\_a\_ + (\_b\_ ×
+-- | 10^-\_n\_^)) × 10^\_e\_^). StrUnsignedDecimalLiteral ::: \`.\`
+-- | DecimalDigits ExponentPart? 1. Let \_b\_ be the MV of
+-- | \|DecimalDigits\|. 1. If \|ExponentPart\| is present, let \_e\_ be the
+-- | MV of \|ExponentPart\|; else let \_e\_ be 0. 1. Let \_n\_ be the number
+-- | of code points in \|DecimalDigits\|. 1. Return RoundMVResult(\_b\_ ×
+-- | 10^\_e\_\ -\ \_n\_^). StrUnsignedDecimalLiteral ::: DecimalDigits
+-- | ExponentPart? 1. Let \_a\_ be the MV of \|DecimalDigits\|. 1. If
+-- | \|ExponentPart\| is present, let \_e\_ be the MV of \|ExponentPart\|;
+-- | else let \_e\_ be 0. 1. Return RoundMVResult(\_a\_ × 10^\_e\_^).
 -- SPEC: L6018-L6033
 -- | # ToNumber Applied to the String Type
 -- |
@@ -1833,6 +1865,18 @@ def toNumber : Value → Float
 -- | 1\. Let \_len\_ be ? ToIntegerOrInfinity(\_argument\_). 1. If \_len\_ ≤
 -- | 0, return \*+0\*~𝔽~. 1. Return 𝔽(min(\_len\_, 2^53^ - 1)).
 
+-- SPEC: L16081-L16092
+-- | # Unary Operators
+-- |
+-- | ## Syntax
+-- |
+-- | UnaryExpression\[Yield, Await\] : UpdateExpression\[?Yield, ?Await\]
+-- | \`delete\` UnaryExpression\[?Yield, ?Await\] \`void\`
+-- | UnaryExpression\[?Yield, ?Await\] \`typeof\` UnaryExpression\[?Yield,
+-- | ?Await\] \`+\` UnaryExpression\[?Yield, ?Await\] \`-\`
+-- | UnaryExpression\[?Yield, ?Await\] \`\~\` UnaryExpression\[?Yield,
+-- | ?Await\] \`!\` UnaryExpression\[?Yield, ?Await\] \[+Await\]
+-- | AwaitExpression\[?Yield\]
 -- SPEC: L16187-L16225
 -- | UnaryExpression : \`+\` UnaryExpression 1. Let \_expr\_ be ? Evaluation
 -- | of \|UnaryExpression\|. 1. Return ? ToNumber(? GetValue(\_expr\_)).
