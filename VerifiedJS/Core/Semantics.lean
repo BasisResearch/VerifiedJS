@@ -5469,16 +5469,20 @@ def step? (s : State) : Option (TraceEvent × State) :=
   -- |
   -- | LogicalANDExpression : LogicalANDExpression \`&&\`
   -- | BitwiseORExpression 1. Let \_lRef\_ be ? Evaluation of
-  -- | \|LogicalANDExpression\|. 1. Let \_lVal\_ be ? GetValue(\_lRef\_). 1.
-  -- | Let \_lBool\_ be ToBoolean(\_lVal\_). 1. If \_lBool\_ is \*false\*,
-  -- | return \_lVal\_. 1. Let \_rRef\_ be ? Evaluation of
-  -- | \|BitwiseORExpression\|. 1. Return ? GetValue(\_rRef\_).
+  -- | \|LogicalANDExpression\|. 1. Let \_lVal\_ be ? GetValue(\_lRef\_). 1. If
+  -- | ToBoolean(\_lVal\_) is \*false\*, return \_lVal\_. 1. Let \_rRef\_ be ?
+  -- | Evaluation of \|BitwiseORExpression\|. 1. Return ? GetValue(\_rRef\_).
   -- | LogicalORExpression : LogicalORExpression \`\|\|\`
   -- | LogicalANDExpression 1. Let \_lRef\_ be ? Evaluation of
-  -- | \|LogicalORExpression\|. 1. Let \_lVal\_ be ? GetValue(\_lRef\_). 1.
-  -- | Let \_lBool\_ be ToBoolean(\_lVal\_). 1. If \_lBool\_ is \*true\*, return
-  -- | \_lVal\_. 1. Let \_rRef\_ be ? Evaluation of
-  -- | \|LogicalANDExpression\|. 1. Return ? GetValue(\_rRef\_).
+  -- | \|LogicalORExpression\|. 1. Let \_lVal\_ be ? GetValue(\_lRef\_). 1. If
+  -- | ToBoolean(\_lVal\_) is \*true\*, return \_lVal\_. 1. Let \_rRef\_ be ?
+  -- | Evaluation of \|LogicalANDExpression\|. 1. Return ? GetValue(\_rRef\_).
+  -- | CoalesceExpression : CoalesceExpressionHead \`??\`
+  -- | BitwiseORExpression 1. Let \_lRef\_ be ? Evaluation of
+  -- | \|CoalesceExpressionHead\|. 1. Let \_lVal\_ be ? GetValue(\_lRef\_). 1.
+  -- | If \_lVal\_ is neither \*undefined\* nor \*null\*, return \_lVal\_. 1.
+  -- | Let \_rRef\_ be ? Evaluation of \|BitwiseORExpression\|. 1. Return ?
+  -- | GetValue(\_rRef\_).
   -- SPEC: L16560-L16583
   -- | CoalesceExpression : CoalesceExpressionHead \`??\`
   -- | BitwiseORExpression 1. Let \_lRef\_ be ? Evaluation of

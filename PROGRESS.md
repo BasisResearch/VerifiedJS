@@ -146,6 +146,7 @@ arithmetic, boolean_logic, conditionals, do_while, for_loop, functions, let_bind
 | 2026-03-24T16:05 | **42** | **~203 (est.)** | Build PASS ✅. Sorry 41→42 (+1 net but structural progress): CC 6→8 (+2 well-formedness decompositions from getProp/getIndex), Wasm 32→31 (-1, wasmspec closed if_ non-i32 trap), ANF 2, Lower 1. **🎉 HeapCorr DEFINED & INTEGRATED into CC_SimRel** — proof agent completed TASK 0 from last prompt (HeapCorr_refl, HeapCorr_get, CC_SimRel updated). **2 NEW well-formedness sorries** (lines 1655, 2063): addr ≥ Core heap size but addr < Flat heap size — need AllLitAddrsValid invariant. Blocker L (Flat.call) RESOLVED per wasmspec 14:10 log. irTypeToValType STILL private (wasmspec TASK 0 unfulfilled 3rd run). Spec coverage: **366 refs** (+16), 0 mismatches, 10.9%. Test262: 3/63 (UNCHANGED 155+ hrs). |
 | 2026-03-24T17:05 | **42** | **~203 (est.)** | Build PASS ✅. Sorry STEADY at 42 (8 CC + 31 Wasm + 2 ANF + 1 Lower). **KEY DISCOVERY: allocFreshObject root cause** — Flat pushes `[]` to heap, Core pushes actual properties. 3 CC sorries (objectLit/arrayLit/newObj) FUNDAMENTALLY UNPROVABLE until wasmspec fixes allocFreshObject. Wrote EXACT fix code to wasmspec prompt. Also wrote irTypeToValType visibility fix. Proof agent redirected to L1655/L2063 well-formedness (provable NOW) + L869 captured var (multi-step). jsspec: **401 refs**, 0 mismatches, 11.9% coverage. Test262: 3/63 (UNCHANGED 157+ hrs). |
 | 2026-03-24T18:05 | **43** | **~203 (est.)** | Build PASS ✅. Sorry 42→43 (+1, Wasm 31→32). CC 8, ANF 2, Lower 1, Wasm 32. **allocFreshObject STILL UNFIXED (10th escalation)** — discovered BUG in previous wasmspec prompt code: used `(k, v)` but `v` is `Flat.Value`, heap needs `Core.Value` → must use `flatToCoreValue v`. Fixed prompt with type-correct code. Rewrote wasmspec prompt as SINGLE TASK (no distractions). HeapCorr fully integrated, all agents running (started 17:30-18:00). jsspec: 401 refs, 0 mismatches, 11.9% coverage (steady). Test262: 3/63 (UNCHANGED 159+ hrs). |
+| 2026-03-24T19:05 | **44** | **~203 (est.)** | Build PASS ✅. Sorry 43→44 (+1, Wasm 32→33). CC 8, ANF 2, Lower 1, Wasm 33. **allocFreshObject UNFIXED (12th escalation)** — wasmspec keeps timing out. Simplified prompt to 4 bare edits only (no investigation). **jsspec refs UP 401→474 (+73!) but 30 MISMATCHES** (severe regression from 0). Redirected jsspec to fix mismatches first. Proof agent timed out (17:34-18:34). Proof prompt updated with concrete ExprAddrWF code for well-formedness sorries. Spec coverage: 474 refs, 30 mismatches, 12.9%. Test262: 3/63 (UNCHANGED 161+ hrs). |
 
 - Test262 pass rate: 3/63 (fast mode), deterministic full sample reached 274/500 passes (2026-03-08)
 - Flagship parse rate: 96.30% (1976/2052)
@@ -163,14 +164,14 @@ arithmetic, boolean_logic, conditionals, do_while, for_loop, functions, let_bind
 | Pass | Theorem | Statement OK? | Proved? | Blocker |
 |------|---------|--------------|---------|---------|
 | Elaborate | elaborate_correct | YES | **PROVED** | — |
-| ClosureConvert | closureConvert_correct | YES — trace preservation with NoForInForOf | 8 sorry | EnvCorr ✅. Bridge lemmas ✅. ALL heap ops ✅. ALL stepping ✅. ALL noCallFrameReturn IH ✅. HeapCorr DEFINED ✅. **8 remaining**: 2 well-formedness (L1655,L2063 — addr bounds, PROVABLE NOW), 3 allocFreshObject (L1580,L3028,L3029 — BLOCKED on wasmspec fix), 1 captured-var (L869 — multi-step), 1 call (L1579 — func correspondence), 1 functionDef (L3030 — complex). |
+| ClosureConvert | closureConvert_correct | YES — trace preservation with NoForInForOf | 8 sorry | EnvCorr ✅. Bridge lemmas ✅. ALL heap ops ✅. ALL stepping ✅. ALL noCallFrameReturn IH ✅. HeapCorr DEFINED ✅. **8 remaining**: 2 well-formedness (L1706,L2114 — addr bounds, ExprAddrWF strategy written), 3 allocFreshObject (L1631,L3079,L3080 — BLOCKED on wasmspec fix), 1 captured-var (L920 — multi-step), 1 call (L1630 — func correspondence), 1 functionDef (L3081 — complex). |
 | ANFConvert | anfConvert_correct | YES — observable trace preservation | 2 sorry | step_star + nested seq |
 | Optimize | optimize_correct | YES — `∀ b, ANF.Behaves (optimize p) b ↔ ANF.Behaves p b` | **PROVED** | Identity pass — trivially correct |
 | Lower | lower_behavioral_correct | YES — `∀ trace, ANF.Behaves → IR.IRBehaves` | 1 sorry | Build FIXED. **BLOCKED on wasmspec** step_sim (:4956). SimRel needs code correspondence. |
 | Emit | emit_behavioral_correct | YES — `∀ trace, IR.IRBehaves → Wasm.Behaves` | 1 sorry | **BLOCKED on wasmspec** EmitSimRel.step_sim (:5058) |
 | EndToEnd | flat_to_wasm_correct | YES — partial composition (Flat→Wasm) | 1 sorry | EndToEnd.lean:55. Composition of above; last to prove |
 
-**Chain status**: All 6 Behaves relations DEFINED. All theorem STATEMENTS correct. **2 passes FULLY PROVED** (Elaborate, Optimize). **Sorry count: 43** (8 CC + 32 Wasm + 2 ANF + 1 Lower). Wasm/Semantics has 32 sorry in step_sim/init. Both halt_sim PROVED. **Flat/ SORRY-FREE**. Core/ SORRY-FREE. ANF/Semantics SORRY-FREE. **ALL stepping sub-cases PROVED**. **ALL evalBinary PROVED**. **ALL heap ops PROVED**. **ALL noCallFrameReturn IH PROVED**. **HeapCorr DEFINED & INTEGRATED**. CC blocked on allocFreshObject (3 sorry) + well-formedness (2 sorry) + structural (3 sorry). Spec coverage: 401 refs, 0 mismatches, 5296 lines (11.9%). **TARGET 300+ refs MET**.
+**Chain status**: All 6 Behaves relations DEFINED. All theorem STATEMENTS correct. **2 passes FULLY PROVED** (Elaborate, Optimize). **Sorry count: 44** (8 CC + 33 Wasm + 2 ANF + 1 Lower). Wasm/Semantics has 33 sorry in step_sim/init. Both halt_sim PROVED. **Flat/ SORRY-FREE**. Core/ SORRY-FREE. ANF/Semantics SORRY-FREE. **ALL stepping sub-cases PROVED**. **ALL evalBinary PROVED**. **ALL heap ops PROVED**. **ALL noCallFrameReturn IH PROVED**. **HeapCorr DEFINED & INTEGRATED**. CC blocked on allocFreshObject (3 sorry) + well-formedness (2 sorry) + structural (3 sorry). Spec coverage: 474 refs, 30 mismatches, 5720 lines (12.9%). **TARGET 300+ refs MET**.
 
 **RESOLVED ABSTRACTIONS**:
 - ✅ LowerCodeCorr constructors FIXED (wasmspec 01:15 — while_, throw, return_, break_, continue_ now specify actual instruction shapes)
@@ -206,8 +207,8 @@ arithmetic, boolean_logic, conditionals, do_while, for_loop, functions, let_bind
 
 ## Agent Health
 
-| Agent | Status (2026-03-24T17:05) | Notes |
+| Agent | Status (2026-03-24T19:05) | Notes |
 |-------|---------------------|-------|
-| jsspec | Excellent | 401 refs, 0 mismatches, 11.9% coverage. Targeting 450+. |
-| wasmspec | Mixed | Completed recent runs. 31 Wasm sorries. allocFreshObject fix assigned. irTypeToValType still private. |
-| proof | Productive | HeapCorr DONE. 8 CC sorries remain. 2 provable now (well-formedness), 3 blocked on wasmspec. |
+| jsspec | Degraded | 474 refs (+73!) but **30 mismatches** (regression from 0). Redirected to fix mismatches. |
+| wasmspec | STUCK | allocFreshObject unfixed 12 runs. Keeps timing out. Simplified prompt to bare edits only. |
+| proof | Stalled | Timing out every run since 15:30. CC at 8 sorry (unchanged). ExprAddrWF strategy written to prompt. |

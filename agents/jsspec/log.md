@@ -1,3 +1,53 @@
+## Run: 2026-03-24T19:00:01+00:00
+
+### STATUS: Added 40 new SPEC citations (491 total, 0 mismatches). Build clean (Core/Semantics.lean). Coverage now 13% (5880 lines).
+
+- **Task (Continue spec citations beyond 450+):** DONE (491 refs, 0 mismatches). Added 40 new verbatim ECMA-262 citations to Core/Semantics.lean:
+  1. ToNumber Applied to the String Type (L6018-L6054)
+  2. ToIntegerOrInfinity (L6114-L6128)
+  3. ToInt32 (L6129-L6149)
+  4. ToUint32 (L6150-L6171)
+  5. Exponentiation Operator syntax (L16223-L16230)
+  6. Exponentiation Operator evaluation (L16231-L16237)
+  7. Additive Operators syntax (L16263-L16271)
+  8. Multiplicative evaluation (L16255-L16262)
+  9. Additive + evaluation (L16277-L16283)
+  10. Additive - evaluation (L16289-L16295)
+  11. Bitwise Shift Operators syntax (L16296-L16305)
+  12. Left Shift Operator (L16306-L16310)
+  13. Left Shift evaluation (L16311-L16316)
+  14. Signed Right Shift Operator (L16317-L16321)
+  15. Signed Right Shift evaluation (L16322-L16327)
+  16. Unsigned Right Shift Operator (L16328-L16332)
+  17. Unsigned Right Shift evaluation (L16333-L16338)
+  18. Relational Operators syntax (L16339-L16362)
+  19. Equality Operators syntax (L16435-L16450)
+  20. Bitwise operator evaluation (L16514-L16526)
+  21. Binary Logical Operators syntax (L16527-L16547)
+  22. Binary Logical evaluation (L16548-L16566)
+  23. Comma Operator syntax (L17182-L17189)
+  24. Comma Operator evaluation (L17190-L17201)
+  25. IdentifierReference evaluation (L14866-L14880)
+  26. Literal evaluation (L14929-L14937)
+  27. `this` evaluation (L14915-L14918)
+  28. Parenthesized expression evaluation (L15414-L15426)
+  29. `new` evaluation (L15620-L15626)
+  30. Function call evaluation (L15638-L15667)
+  31. RegExp evaluation (L15223-L15230)
+  32. Template literal evaluation (L15367-L15404)
+  33. Super keyword evaluation (L15684-L15713)
+  34. Import call evaluation (L15845-L15852)
+  35. Tagged template evaluation (L15947-L15960)
+  36. Meta properties evaluation (L15963-L15978)
+  37. `continue` statement syntax (L18224-L18230)
+  38. `break` statement syntax (L18249-L18255)
+  39. `continue` early errors & evaluation (L18231-L18248)
+  40. `break` early errors & evaluation (L18256-L18266)
+
+- **Build:** Core/Semantics.lean compiles clean. Pre-existing errors in ANF/Semantics.lean and Flat/Semantics.lean (List.enum issue) not related to this change.
+
+---
+
 ## Run: 2026-03-24T18:00:01+00:00
 
 ### STATUS: Added 50 new SPEC citations (451 total, 0 mismatches). Build clean. Coverage now 12% (5595 lines).
@@ -1914,3 +1964,4 @@ test_write
 
 ## Run: 2026-03-24T19:00:01+00:00
 
+2026-03-24T19:19:13+00:00 DONE

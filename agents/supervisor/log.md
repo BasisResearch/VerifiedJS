@@ -4194,3 +4194,48 @@ All Behaves relations defined. Theorem statements chain correctly. HeapCorr inte
 
 ## Run: 2026-03-24T19:05:01+00:00
 
+
+### Build
+- **Status**: `lake build` **PASS** ✅ (cached)
+
+### Metrics
+- **Sorry count**: 44 (threshold 100) — 8 CC + 33 Wasm + 2 ANF + 1 Lower
+- **Spec coverage**: 5720/44380 lines (12.9%), 474 refs, 30 mismatches
+- **WasmCert refs**: PASS
+
+### Agent Logs
+- **proof** (17:34→18:34): TIMEOUT. No completion. Timed out again. No progress since 15:30 HeapCorr refactor.
+- **wasmspec** (17:33→18:33): TIMEOUT. No completion. allocFreshObject STILL unfixed (12th consecutive failure).
+- **jsspec** (18:00→18:37): Completed. 474 refs (up from 401, +73!). BUT 30 mismatches (regression from 0). Started new run at 19:00.
+
+### Sorry Delta: 43→44 (+1)
+- CC: 8 (unchanged)
+- Wasm: 32→33 (+1 regression)
+- ANF: 2 (unchanged)
+- Lower: 1 (unchanged)
+
+### Proof chain check
+```
+Source ──[elaborate]──> Core ──[closureConvert]──> Flat ──[anfConvert]──> ANF ──[lower]──> Wasm.IR ──[emit]──> Wasm
+         ✅ proved       8 sorry                    2 sorry              1 sorry          33 sorry
+```
+All Behaves relations defined. Theorem statements chain correctly.
+
+### Key Findings
+1. **wasmspec stuck 12 runs**: File permissions prevent supervisor from making the allocFreshObject edit directly (files owned by wasmspec user, rw-r-----). Agent keeps timing out. Simplified prompt to BARE MINIMUM: 4 exact edits, no investigation, no lean tools. If this doesn't work next run, will need to escalate (chmod or manual intervention).
+
+2. **jsspec mismatch regression**: 0→30 mismatches while adding 73 new refs. Common pattern: jsspec adds refs aggressively without verifying. Redirected to fix all mismatches before adding new refs.
+
+3. **proof stalled on well-formedness**: ExprAddrWF is the right abstraction. Wrote full concrete code (ValueAddrWF + ExprAddrWF definitions, CC_SimRel modification, proof strategy at sorry sites). Proof agent needs to: (a) add ExprAddrWF to CC_SimRel, (b) prove it holds initially, (c) prove preservation, (d) use it to close L1706/L2114.
+
+### Actions
+1. ✅ Wasmspec prompt: ULTRA-SIMPLIFIED — 4 bare edits only, explicit instruction to NOT investigate
+2. ✅ Proof prompt: Concrete ExprAddrWF code with full strategy. Updated sorry line numbers (L1706, L2114, L920, L1630, L1631, L3079, L3080, L3081).
+3. ✅ Jsspec prompt: URGENT fix 30 mismatches before any new refs. Target 500+.
+4. ✅ PROGRESS.md updated with new metrics row + updated agent health + updated sorry line numbers.
+
+### Time Estimate
+44 sorries, ~55 hours remaining. All three agents struggling (2 timing out, 1 mismatch regression). allocFreshObject is 12-run blocker — if unfixed by next run, need to find alternative approach.
+
+2026-03-24T19:17:54+00:00 DONE
+2026-03-24T19:18:00+00:00 DONE

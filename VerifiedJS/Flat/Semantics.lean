@@ -191,10 +191,10 @@ def evalBinary : Core.BinOp → Value → Value → Value
 private def pushTrace (s : State) (t : Core.TraceEvent) : State :=
   { s with trace := s.trace ++ [t] }
 
-private def allocFreshObject (h : Core.Heap) : Nat × Core.Heap :=
+private def allocFreshObject (h : Core.Heap) (props : List (Core.PropName × Core.Value) := []) : Nat × Core.Heap :=
   let addr := h.nextAddr
   let h' : Core.Heap :=
-    { objects := h.objects.push [], nextAddr := addr + 1 }
+    { objects := h.objects.push props, nextAddr := addr + 1 }
   (addr, h')
 
 def flatToCoreValue : Value → Core.Value
@@ -792,7 +792,9 @@ def step? (s : State) : Option (Core.TraceEvent × State) :=
       let vals := props.map Prod.snd
       match valuesFromExprList? vals with
       | some _ =>
-          let (addr, heap') := allocFreshObject s.heap
+          let heapProps := props.filterMap fun (k, e) =>
+            match exprValue? e with | some v => some (k, flatToCoreValue v) | none => none
+          let (addr, heap') := allocFreshObject s.heap heapProps
           let s' := pushTrace { s with expr := .lit (.object addr), heap := heap' } .silent
           some (.silent, s')
       | none =>
@@ -809,7 +811,9 @@ def step? (s : State) : Option (Core.TraceEvent × State) :=
   | .arrayLit elems =>
       match valuesFromExprList? elems with
       | some _ =>
-          let (addr, heap') := allocFreshObject s.heap
+          let heapProps : List (Core.PropName × Core.Value) := elems.zipIdx.filterMap fun (e, i) =>
+            match exprValue? e with | some v => some (toString i, flatToCoreValue v) | none => none
+          let (addr, heap') := allocFreshObject s.heap heapProps
           let s' := pushTrace { s with expr := .lit (.object addr), heap := heap' } .silent
           some (.silent, s')
       | none =>
