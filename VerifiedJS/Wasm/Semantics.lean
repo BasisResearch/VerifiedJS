@@ -6957,8 +6957,8 @@ theorem step_sim (irmod : IRModule) (wmod : Module) :
               simp only [Option.some.injEq, Prod.mk.injEq] at hstep
               obtain ⟨rfl, rfl⟩ := hstep
               -- Derive idx < globals.size from globals[idx]? = some
-              have hidx_ir : idx < s1.globals.size := by
-                by_contra h; simp [Array.getElem?_none (by omega)] at hglob
+              have hidx_ir : idx < s1.globals.size :=
+                (Array.getElem?_eq_some_iff.mp hglob).1
               -- Get Wasm bounds from globals correspondence
               have hglen := hrel.hglobals.1
               have hidx_w : idx < s2.store.globals.size := by omega
