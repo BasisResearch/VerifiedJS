@@ -74,6 +74,104 @@ set_option linter.deprecated false
 -- | The following shorthand terms are sometimes used to refer to Completion
 -- | Records.
 
+-- SPEC: L9880-L9920
+-- | # Execution Contexts
+-- |
+-- | An [execution context]{.dfn variants="execution contexts"} is a
+-- | specification device that is used to track the runtime evaluation of
+-- | code by an ECMAScript implementation. At any point in time, there is at
+-- | most one execution context per agent that is actually executing code.
+-- | This is known as the agent\'s [running execution
+-- | context]{#running-execution-context .dfn
+-- | variants="running execution contexts"}. All references to the running
+-- | execution context in this specification denote the running execution
+-- | context of the surrounding agent.
+-- |
+-- | The [execution context stack]{#execution-context-stack .dfn
+-- | variants="execution context stacks"} is used to track execution
+-- | contexts. The running execution context is always the top element of
+-- | this stack. A new execution context is created whenever control is
+-- | transferred from the executable code associated with the currently
+-- | running execution context to executable code that is not associated with
+-- | that execution context. The newly created execution context is pushed
+-- | onto the stack and becomes the running execution context.
+-- |
+-- | An execution context contains whatever implementation specific state is
+-- | necessary to track the execution progress of its associated code. Each
+-- | execution context has at least the state components listed in .
+-- |
+-- |   Component               Purpose
+-- |   ----------------------- ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+-- |   code evaluation state   Any state needed to perform, suspend, and resume evaluation of the code associated with this execution context.
+-- |   Function                If this execution context is evaluating the code of a function object, then the value of this component is that function object. If the context is evaluating the code of a \|Script\| or \|Module\|, the value is \*null\*.
+-- |   Realm                   The Realm Record from which associated code accesses ECMAScript resources.
+-- |   ScriptOrModule          The Module Record or Script Record from which associated code originates. If there is no originating script or module, as is the case for the original execution context created in InitializeHostDefinedRealm, the value is \*null\*.
+-- |
+-- | Evaluation of code by the running execution context may be suspended at
+-- | various points defined within this specification. Once the running
+-- | execution context has been suspended a different execution context may
+-- | become the running execution context and commence evaluating its code.
+-- | At some later time a suspended execution context may again become the
+-- | running execution context and continue evaluating its code at the point
+-- | where it had previously been suspended. Transition of the running
+-- | execution context status among execution contexts usually occurs in
+-- | stack-like last-in/first-out manner. However, some ECMAScript features
+-- SPEC: L20612-L20627
+-- | # ParseScript ( \_sourceText\_: ECMAScript source text, \_realm\_: a Realm Record, \_hostDefined\_: anything, ): a Script Record or a non-empty List of \*SyntaxError\* objects
+-- |
+-- | description
+-- | :   It creates a Script Record based upon the result of parsing
+-- |     \_sourceText\_ as a \|Script\|.
+-- |
+-- | 1\. Let \_script\_ be ParseText(\_sourceText\_, \|Script\|). 1. If
+-- | \_script\_ is a List of errors, return \_script\_. 1. Return Script
+-- | Record { \[\[Realm\]\]: \_realm\_, \[\[ECMAScriptCode\]\]: \_script\_,
+-- | \[\[LoadedModules\]\]: « », \[\[HostDefined\]\]: \_hostDefined\_ }.
+-- |
+-- | An implementation may parse script source text and analyse it for Early
+-- | Error conditions prior to evaluation of ParseScript for that script
+-- | source text. However, the reporting of any errors must be deferred until
+-- | the point where this specification actually performs ParseScript upon
+-- | that source text.
+-- SPEC: L20629-L20653
+-- | # ScriptEvaluation ( \_scriptRecord\_: a Script Record, ): either a normal completion containing an ECMAScript language value or an abrupt completion
+-- |
+-- | 1\. Let \_globalEnv\_ be
+-- | \_scriptRecord\_.\[\[Realm\]\].\[\[GlobalEnv\]\]. 1. Let
+-- | \_scriptContext\_ be a new ECMAScript code execution context. 1. Set the
+-- | Function of \_scriptContext\_ to \*null\*. 1. Set the Realm of
+-- | \_scriptContext\_ to \_scriptRecord\_.\[\[Realm\]\]. 1. Set the
+-- | ScriptOrModule of \_scriptContext\_ to \_scriptRecord\_. 1. Set the
+-- | VariableEnvironment of \_scriptContext\_ to \_globalEnv\_. 1. Set the
+-- | LexicalEnvironment of \_scriptContext\_ to \_globalEnv\_. 1. Set the
+-- | PrivateEnvironment of \_scriptContext\_ to \*null\*. 1. Suspend the
+-- | running execution context. 1. Push \_scriptContext\_ onto the execution
+-- | context stack; \_scriptContext\_ is now the running execution
+-- | context. 1. Let \_script\_ be
+-- | \_scriptRecord\_.\[\[ECMAScriptCode\]\]. 1. Let \_result\_ be
+-- | Completion(GlobalDeclarationInstantiation(\_script\_,
+-- | \_globalEnv\_)). 1. If \_result\_ is a normal completion, then 1. Set
+-- | \_result\_ to Completion(Evaluation of \_script\_). 1. If \_result\_ is
+-- | a normal completion and \_result\_.\[\[Value\]\] is \~empty\~, then 1.
+-- | Set \_result\_ to NormalCompletion(\*undefined\*). 1. Suspend
+-- | \_scriptContext\_ and remove it from the execution context stack. 1.
+-- | Assert: The execution context stack is not empty. 1. Resume the context
+-- | that is now on the top of the execution context stack as the running
+-- | execution context. 1. Return ? \_result\_.
+-- SPEC: L20654-L20665
+-- | # GlobalDeclarationInstantiation ( \_script\_: a \|Script\| Parse Node, \_env\_: a Global Environment Record, ): either a normal completion containing \~unused\~ or a throw completion
+-- |
+-- | description
+-- | :   \_script\_ is the \|Script\| for which the execution context is
+-- |     being established. \_env\_ is the global environment in which
+-- |     bindings are to be created.
+-- |
+-- | When an execution context is established for evaluating scripts,
+-- | declarations are instantiated in the current global environment. Each
+-- | global binding declared in the code is instantiated.
+-- |
+-- | It performs the following steps when called:
+
 /-- Observable trace events emitted by Core execution. -/
 inductive TraceEvent where
   | log (s : String)
