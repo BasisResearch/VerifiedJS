@@ -8,7 +8,7 @@ LOG_FILE="$PROJECT/agents/$AGENT_NAME/log.md"
 RUN_LOG="/var/log/verifiedjs/${AGENT_NAME}_$(date +%Y%m%d_%H%M%S).log"
 LOCK_FILE="/var/lock/verifiedjs-${AGENT_NAME}.lock"
 MAX_TURNS=200
-TIMEOUT_SECS=3600
+TIMEOUT_SECS=86400
 
 if [[ ! "$AGENT_NAME" =~ ^(jsspec|wasmspec|proof|supervisor)$ ]]; then
   echo "ERROR: Unknown agent" >&2; exit 1

@@ -165,7 +165,12 @@ private def encodeEnvPropsAux (idx : Nat) (values : List Flat.Value) : List (Pro
 private def encodeEnvProps (values : List Flat.Value) : List (PropName × Core.Value) :=
   encodeEnvPropsAux 0 values
 
-private def allocFreshObject (h : Core.Heap) (props : List (Core.PropName × Core.Value) := []) : Nat × Core.Heap :=
+private def allocFreshObject (h : Core.Heap) : Nat × Core.Heap :=
+  let addr := h.nextAddr
+  let h' : Core.Heap := { objects := h.objects.push [], nextAddr := addr + 1 }
+  (addr, h')
+
+private def allocObjectWithProps (h : Core.Heap) (props : List (Core.PropName × Core.Value)) : Nat × Core.Heap :=
   let addr := h.nextAddr
   let h' : Core.Heap := { objects := h.objects.push props, nextAddr := addr + 1 }
   (addr, h')
@@ -288,7 +293,7 @@ def evalComplex (s : State) (rhs : ComplexExpr) : ComplexResult :=
       | .ok _ =>
           let heapProps := props.filterMap fun (k, t) =>
             match evalTrivial s.env t with | .ok v => some (k, flatToCoreValue v) | .error _ => none
-          let (addr, heap') := allocFreshObject s.heap heapProps
+          let (addr, heap') := allocObjectWithProps s.heap heapProps
           { event := .silent, env := s.env, heap := heap', value := .object addr }
       | .error msg => mkError msg s
   | .arrayLit elems =>
@@ -296,7 +301,7 @@ def evalComplex (s : State) (rhs : ComplexExpr) : ComplexResult :=
       | .ok _ =>
           let heapProps : List (Core.PropName × Core.Value) := elems.zipIdx.filterMap fun (t, i) =>
             match evalTrivial s.env t with | .ok v => some (toString i, flatToCoreValue v) | .error _ => none
-          let (addr, heap') := allocFreshObject s.heap heapProps
+          let (addr, heap') := allocObjectWithProps s.heap heapProps
           { event := .silent, env := s.env, heap := heap', value := .object addr }
       | .error msg => mkError msg s
   | .unary op arg =>
