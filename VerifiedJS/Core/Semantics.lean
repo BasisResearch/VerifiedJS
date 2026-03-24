@@ -1071,6 +1071,12 @@ def evalBinary : BinOp → Value → Value → Value
   -- | IsCallable(\_target\_) is \*false\*, throw a \*TypeError\* exception. 1.
   -- | \[id=\"step-instanceof-fallback\"\] Return ?
   -- | OrdinaryHasInstance(\_target\_, \_V\_).
+  -- |
+  -- | Steps and provide compatibility with previous editions of ECMAScript
+  -- | that did not use a %Symbol.hasInstance% method to define the
+  -- | \`instanceof\` operator semantics. If an object does not define or
+  -- | inherit %Symbol.hasInstance% it uses the default \`instanceof\`
+  -- | semantics.
   -- SPEC: L16395-L16410
   -- | ShiftExpression 1. Let \_lRef\_ be ? Evaluation of
   -- | \|RelationalExpression\|. 1. Let \_lVal\_ be ? GetValue(\_lRef\_). 1.
@@ -1274,7 +1280,11 @@ def step? (s : State) : Option (TraceEvent × State) :=
   -- SPEC: L17426-L17443
   -- | VariableStatement : \`var\` VariableDeclarationList \`;\` 1. Perform ?
   -- | Evaluation of \|VariableDeclarationList\|. 1. Return \~empty\~.
-  -- | VariableDeclaration : BindingIdentifier Initializer 1.
+  -- | VariableDeclarationList : VariableDeclarationList \`,\`
+  -- | VariableDeclaration 1. Perform ? Evaluation of
+  -- | \|VariableDeclarationList\|. 1. Return ? Evaluation of
+  -- | \|VariableDeclaration\|. VariableDeclaration : BindingIdentifier 1.
+  -- | Return \~empty\~. VariableDeclaration : BindingIdentifier Initializer 1.
   -- | Let \_bindingId\_ be the StringValue of \|BindingIdentifier\|. 1. Let
   -- | \_lhs\_ be ? ResolveBinding(\_bindingId\_). 1. If
   -- | IsAnonymousFunctionDefinition(\|Initializer\|) is \*true\*, then 1. Let
@@ -1283,11 +1293,15 @@ def step? (s : State) : Option (TraceEvent × State) :=
   -- | \|Initializer\|. 1. Let \_value\_ be ? GetValue(\_rhs\_). 1.
   -- | \[id=\"step-vardecllist-evaluation-putvalue\"\] Perform ?
   -- | PutValue(\_lhs\_, \_value\_). 1. Return \~empty\~.
+  -- |
+  -- | If a \|VariableDeclaration\| is nested within a with statement and the
+  -- | \|BindingIdentifier\| in the \|VariableDeclaration\| is the same as a
   -- SPEC: L17374-L17378
   -- | LexicalDeclaration : LetOrConst BindingList \`;\` 1. Perform ?
   -- | Evaluation of \|BindingList\|. 1. Return \~empty\~. BindingList :
   -- | BindingList \`,\` LexicalBinding 1. Perform ? Evaluation of
   -- | \|BindingList\|. 1. Return ? Evaluation of \|LexicalBinding\|.
+  -- | LexicalBinding : BindingIdentifier 1. Let \_lhs\_ be !
   -- SPEC: L17386-L17393
   -- | LexicalBinding : BindingIdentifier Initializer 1. Let \_bindingId\_ be
   -- | the StringValue of \|BindingIdentifier\|. 1. Let \_lhs\_ be !
@@ -1384,6 +1398,9 @@ def step? (s : State) : Option (TraceEvent × State) :=
   -- | Let \_blockValue\_ be Completion(Evaluation of \|StatementList\|). 1.
   -- | Set the running execution context\'s LexicalEnvironment to
   -- | \_oldEnv\_. 1. Return ? \_blockValue\_.
+  -- |
+  -- | No matter how control leaves the \|Block\| the LexicalEnvironment is
+  -- | always restored to its former state.
   -- SPEC: L17277-L17279
   -- | StatementList : StatementList StatementListItem 1. Let \_sl\_ be ?
   -- | Evaluation of \|StatementList\|. 1. Let \_s\_ be Completion(Evaluation
@@ -1460,6 +1477,8 @@ def step? (s : State) : Option (TraceEvent × State) :=
               let s' := pushTrace { s with expr := .lit (evalBinary op lv rv) } .silent
               some (.silent, s')
   -- SPEC: L15638-L15665
+  -- | # Runtime Semantics: Evaluation
+  -- |
   -- | CallExpression : CoverCallExpressionAndAsyncArrowHead 1. Let \_expr\_ be
   -- | the \|CallMemberExpression\| that is covered by
   -- | \|CoverCallExpressionAndAsyncArrowHead\|. 1. Let \_memberExpr\_ be the
@@ -1478,11 +1497,14 @@ def step? (s : State) : Option (TraceEvent × State) :=
   -- | \_thisCall\_ be this \|CallExpression\|. 1. Let \_tailCall\_ be
   -- | IsInTailPosition(\_thisCall\_). 1. Return ? EvaluateCall(\_func\_,
   -- | \_ref\_, \_arguments\_, \_tailCall\_).
+  -- |
+  -- | A \|CallExpression\| evaluation that executes step is a [direct
+  -- | eval]{.dfn variants="direct evals"}.
+  -- |
   -- | CallExpression : CallExpression Arguments 1. Let \_ref\_ be ? Evaluation
   -- | of \|CallExpression\|. 1. Let \_func\_ be ? GetValue(\_ref\_). 1. Let
   -- | \_thisCall\_ be this \|CallExpression\|. 1. Let \_tailCall\_ be
   -- | IsInTailPosition(\_thisCall\_). 1. Return ? EvaluateCall(\_func\_,
-  -- | \_ref\_, \|Arguments\|, \_tailCall\_).
   -- SPEC: L15668-L15681
   -- | # EvaluateCall ( \_func\_: an ECMAScript language value, \_ref\_: an ECMAScript language value or a Reference Record, \_arguments\_: a Parse Node, \_tailPosition\_: a Boolean, ): either a normal completion containing an ECMAScript language value or an abrupt completion
   -- |
@@ -2377,6 +2399,9 @@ def step? (s : State) : Option (TraceEvent × State) :=
   -- | \_argumentsList\_ is not present, set \_argumentsList\_ to a new empty
   -- | List. 1. Return ? \_F\_.\[\[Construct\]\](\_argumentsList\_,
   -- | \_newTarget\_).
+  -- |
+  -- | If \_newTarget\_ is not present, this operation is equivalent to: \`new
+  -- | F(\...argumentsList)\`
   -- SPEC: L10960-L10984
   -- | # OrdinaryObjectCreate ( \_proto\_: an Object or \*null\*, optional \_additionalInternalSlotsList\_: a List of names of internal slots, ): an Object
   -- |

@@ -419,13 +419,27 @@ def step? (s : State) : Option (Core.TraceEvent × State) :=
                   | none => none
   | .getProp obj prop =>
       match exprValue? obj with
-      | some (.object _) =>
-          let _ := prop
-          let s' := pushTrace { s with expr := .lit .undefined } .silent
+      | some (.object addr) =>
+          -- ECMA-262 §9.1.8 [[Get]]: look up property on heap object.
+          let v := match heapObjectAt? s.heap addr with
+            | some props =>
+                match props.find? (fun kv => kv.fst == prop) with
+                | some (_, cv) => coreToFlatValue cv
+                | none =>
+                    if prop == "length" then .number (Float.ofNat props.length)
+                    else .undefined
+            | none => .undefined
+          let s' := pushTrace { s with expr := .lit v } .silent
+          some (.silent, s')
+      | some (.string str) =>
+          -- ECMA-262 §21.1.3.3 String.prototype.length.
+          let v := if prop == "length" then .number (Float.ofNat str.length)
+                   else .undefined
+          let s' := pushTrace { s with expr := .lit v } .silent
           some (.silent, s')
       | some _ =>
-          let s' := pushTrace { s with expr := .lit .undefined } (.error "TypeError: getProp on non-object")
-          some (.error "TypeError: getProp on non-object", s')
+          let s' := pushTrace { s with expr := .lit .undefined } .silent
+          some (.silent, s')
       | none =>
           match step? { s with expr := obj } with
           | some (t, so) =>
@@ -440,11 +454,19 @@ def step? (s : State) : Option (Core.TraceEvent × State) :=
               let s' := pushTrace { s with expr := .setProp so.expr prop value, env := so.env, heap := so.heap } t
               some (t, s')
           | none => none
-      | some (.object _) =>
+      | some (.object addr) =>
           match exprValue? value with
           | some v =>
-              let _ := prop
-              let s' := pushTrace { s with expr := .lit v } .silent
+              -- ECMA-262 §9.1.9 [[Set]]: update or add property on heap object.
+              let cv := flatToCoreValue v
+              let heap' := match heapObjectAt? s.heap addr with
+                | some props =>
+                    let updated := if props.any (fun kv => kv.fst == prop)
+                      then props.map (fun kv => if kv.fst == prop then (prop, cv) else kv)
+                      else props ++ [(prop, cv)]
+                    { s.heap with objects := s.heap.objects.set! addr updated }
+                | none => s.heap
+              let s' := pushTrace { s with expr := .lit v, heap := heap' } .silent
               some (.silent, s')
           | none =>
               match step? { s with expr := value } with
@@ -454,8 +476,18 @@ def step? (s : State) : Option (Core.TraceEvent × State) :=
                   some (t, s')
               | none => none
       | some _ =>
-          let s' := pushTrace { s with expr := .lit .undefined } (.error "TypeError: setProp on non-object")
-          some (.error "TypeError: setProp on non-object", s')
+          -- Property set on non-object: silently return value.
+          match exprValue? value with
+          | some v =>
+              let s' := pushTrace { s with expr := .lit v } .silent
+              some (.silent, s')
+          | none =>
+              match step? { s with expr := value } with
+              | some (t, sv) =>
+                  let s' := pushTrace
+                    { s with expr := .setProp obj prop sv.expr, env := sv.env, heap := sv.heap } t
+                  some (t, s')
+              | none => none
   | .getIndex obj idx =>
       match exprValue? obj with
       | none =>
@@ -464,7 +496,50 @@ def step? (s : State) : Option (Core.TraceEvent × State) :=
               let s' := pushTrace { s with expr := .getIndex so.expr idx, env := so.env, heap := so.heap } t
               some (t, s')
           | none => none
-      | some (.object _) =>
+      | some (.object addr) =>
+          match exprValue? idx with
+          | some idxVal =>
+              -- ECMA-262 §9.1.8 [[Get]] with computed key.
+              let propName := valueToString idxVal
+              let v := match heapObjectAt? s.heap addr with
+                | some props =>
+                    match props.find? (fun kv => kv.fst == propName) with
+                    | some (_, cv) => coreToFlatValue cv
+                    | none =>
+                        if propName == "length" then .number (Float.ofNat props.length)
+                        else .undefined
+                | none => .undefined
+              let s' := pushTrace { s with expr := .lit v } .silent
+              some (.silent, s')
+          | none =>
+              match step? { s with expr := idx } with
+              | some (t, si) =>
+                  let s' := pushTrace { s with expr := .getIndex obj si.expr, env := si.env, heap := si.heap } t
+                  some (t, s')
+              | none => none
+      | some (.string str) =>
+          match exprValue? idx with
+          | some idxVal =>
+              let propName := valueToString idxVal
+              let v := match idxVal with
+                | .number n =>
+                    let idx := n.toUInt64.toNat
+                    if n >= 0.0 && n.toUInt64.toFloat == n && idx < str.length
+                    then .string (String.Pos.Raw.get str ⟨idx⟩ |>.toString)
+                    else if propName == "length" then .number (Float.ofNat str.length)
+                    else .undefined
+                | _ =>
+                    if propName == "length" then .number (Float.ofNat str.length)
+                    else .undefined
+              let s' := pushTrace { s with expr := .lit v } .silent
+              some (.silent, s')
+          | none =>
+              match step? { s with expr := idx } with
+              | some (t, si) =>
+                  let s' := pushTrace { s with expr := .getIndex obj si.expr, env := si.env, heap := si.heap } t
+                  some (t, s')
+              | none => none
+      | some _ =>
           match exprValue? idx with
           | some _ =>
               let s' := pushTrace { s with expr := .lit .undefined } .silent
@@ -475,9 +550,6 @@ def step? (s : State) : Option (Core.TraceEvent × State) :=
                   let s' := pushTrace { s with expr := .getIndex obj si.expr, env := si.env, heap := si.heap } t
                   some (t, s')
               | none => none
-      | some _ =>
-          let s' := pushTrace { s with expr := .lit .undefined } (.error "TypeError: getIndex on non-object")
-          some (.error "TypeError: getIndex on non-object", s')
   | .setIndex obj idx value =>
       match exprValue? obj with
       | none =>
@@ -486,7 +558,39 @@ def step? (s : State) : Option (Core.TraceEvent × State) :=
               let s' := pushTrace { s with expr := .setIndex so.expr idx value, env := so.env, heap := so.heap } t
               some (t, s')
           | none => none
-      | some (.object _) =>
+      | some (.object addr) =>
+          match exprValue? idx with
+          | none =>
+              match step? { s with expr := idx } with
+              | some (t, si) =>
+                  let s' := pushTrace
+                    { s with expr := .setIndex obj si.expr value, env := si.env, heap := si.heap } t
+                  some (t, s')
+              | none => none
+          | some idxVal =>
+              match exprValue? value with
+              | some v =>
+                  -- ECMA-262 §9.1.9 [[Set]] with computed key.
+                  let propName := valueToString idxVal
+                  let cv := flatToCoreValue v
+                  let heap' := match heapObjectAt? s.heap addr with
+                    | some props =>
+                        let updated := if props.any (fun kv => kv.fst == propName)
+                          then props.map (fun kv => if kv.fst == propName then (propName, cv) else kv)
+                          else props ++ [(propName, cv)]
+                        { s.heap with objects := s.heap.objects.set! addr updated }
+                    | none => s.heap
+                  let s' := pushTrace { s with expr := .lit v, heap := heap' } .silent
+                  some (.silent, s')
+              | none =>
+                  match step? { s with expr := value } with
+                  | some (t, sv) =>
+                      let s' := pushTrace
+                        { s with expr := .setIndex obj idx sv.expr, env := sv.env, heap := sv.heap } t
+                      some (t, s')
+                  | none => none
+      | some _ =>
+          -- setIndex on non-object: silently return value.
           match exprValue? idx with
           | none =>
               match step? { s with expr := idx } with
@@ -507,14 +611,16 @@ def step? (s : State) : Option (Core.TraceEvent × State) :=
                         { s with expr := .setIndex obj idx sv.expr, env := sv.env, heap := sv.heap } t
                       some (t, s')
                   | none => none
-      | some _ =>
-          let s' := pushTrace { s with expr := .lit .undefined } (.error "TypeError: setIndex on non-object")
-          some (.error "TypeError: setIndex on non-object", s')
   | .deleteProp obj prop =>
       match exprValue? obj with
-      | some (.object _) =>
-          let _ := prop
-          let s' := pushTrace { s with expr := .lit (.bool true) } .silent
+      | some (.object addr) =>
+          -- ECMA-262 §12.4.3 delete: remove property from heap object.
+          let heap' := match heapObjectAt? s.heap addr with
+            | some props =>
+                let filtered := props.filter (fun kv => kv.fst != prop)
+                { s.heap with objects := s.heap.objects.set! addr filtered }
+            | none => s.heap
+          let s' := pushTrace { s with expr := .lit (.bool true), heap := heap' } .silent
           some (.silent, s')
       | some _ =>
           let s' := pushTrace { s with expr := .lit (.bool true) } .silent
