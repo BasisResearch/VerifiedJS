@@ -419,6 +419,20 @@ def abstractEq : Value → Value → Bool
   -- All other cross-type comparisons: false
   | _, _ => false
 
+-- SPEC: L6514-L6545
+-- | # IsLessThan ( \_x\_: an ECMAScript language value, \_y\_: an ECMAScript language value, \_LeftFirst\_: a Boolean, ): either a normal completion containing either a Boolean or \*undefined\*, or a throw completion
+-- |
+-- | 1\. If \_LeftFirst\_ is \*true\*, then 1. Let \_px\_ be ?
+-- | ToPrimitive(\_x\_, \~number\~). 1. Let \_py\_ be ? ToPrimitive(\_y\_,
+-- | \~number\~). 1. \[id=\"step-arc-string-check\"\] If \_px\_ is a String
+-- | and \_py\_ is a String, then 1. Let \_lx\_ be the length of \_px\_. 1.
+-- | Let \_ly\_ be the length of \_py\_. 1. For each integer \_i\_ such that
+-- | 0 ≤ \_i\_ \< min(\_lx\_, \_ly\_), in ascending order, do 1. Let \_cx\_
+-- | be the numeric value of the code unit at index \_i\_ within \_px\_. 1.
+-- | Let \_cy\_ be the numeric value of the code unit at index \_i\_ within
+-- | \_py\_. 1. If \_cx\_ \< \_cy\_, return \*true\*. 1. If \_cx\_ \> \_cy\_,
+-- | return \*false\*. 1. If \_lx\_ \< \_ly\_, return \*true\*. 1. Return
+-- | \*false\*.
 /-- ECMA-262 §7.2.13 Abstract Relational Comparison (string-aware). -/
 def abstractLt : Value → Value → Bool
   | .string a, .string b => a < b  -- lexicographic comparison
@@ -437,7 +451,15 @@ def evalBinary : BinOp → Value → Value → Value
   -- §7.2.14 Abstract Equality (with type coercion).
   | .eq, a, b => .bool (abstractEq a b)
   | .neq, a, b => .bool (!abstractEq a b)
-  -- §7.2.15 Strict Equality (no type coercion).
+  -- SPEC: L6606-L6617
+  -- | # IsStrictlyEqual ( \_x\_: an ECMAScript language value, \_y\_: an ECMAScript language value, ): a Boolean
+  -- |
+  -- | description
+  -- | :   It provides the semantics for the \`===\` operator.
+  -- |
+  -- | 1\. If SameType(\_x\_, \_y\_) is \*false\*, return \*false\*. 1. If
+  -- | \_x\_ is a Number, then 1. Return Number::equal(\_x\_, \_y\_). 1. Return
+  -- | SameValueNonNumber(\_x\_, \_y\_).
   | .strictEq, a, b => .bool (a == b)
   | .strictNeq, a, b => .bool (a != b)
   -- §7.2.13 Abstract Relational Comparison (string-aware).
@@ -445,13 +467,38 @@ def evalBinary : BinOp → Value → Value → Value
   | .gt, a, b => .bool (abstractLt b a)
   | .le, a, b => .bool (!abstractLt b a)
   | .ge, a, b => .bool (!abstractLt a b)
+  -- SPEC: L16550-L16554
+  -- | LogicalANDExpression : LogicalANDExpression \`&&\`
+  -- | BitwiseORExpression 1. Let \_lRef\_ be ? Evaluation of
+  -- | \|LogicalANDExpression\|. 1. Let \_lVal\_ be ? GetValue(\_lRef\_). 1. If
+  -- | ToBoolean(\_lVal\_) is \*false\*, return \_lVal\_. 1. Let \_rRef\_ be ?
+  -- | Evaluation of \|BitwiseORExpression\|. 1. Return ? GetValue(\_rRef\_).
   | .logAnd, a, b => if toBoolean a then b else a
+  -- SPEC: L16555-L16559
+  -- | LogicalORExpression : LogicalORExpression \`\|\|\`
+  -- | LogicalANDExpression 1. Let \_lRef\_ be ? Evaluation of
+  -- | \|LogicalORExpression\|. 1. Let \_lVal\_ be ? GetValue(\_lRef\_). 1. If
+  -- | ToBoolean(\_lVal\_) is \*true\*, return \_lVal\_. 1. Let \_rRef\_ be ?
+  -- | Evaluation of \|LogicalANDExpression\|. 1. Return ? GetValue(\_rRef\_).
   | .logOr, a, b => if toBoolean a then a else b
-  -- ECMA-262 §12.10.4 instanceof: simplified — checks if rhs is a function.
+  -- SPEC: L16389-L16394
+  -- | RelationalExpression : RelationalExpression \`instanceof\`
+  -- | ShiftExpression 1. Let \_lRef\_ be ? Evaluation of
+  -- | \|RelationalExpression\|. 1. Let \_lVal\_ be ? GetValue(\_lRef\_). 1.
+  -- | Let \_rRef\_ be ? Evaluation of \|ShiftExpression\|. 1. Let \_rVal\_ be
+  -- | ? GetValue(\_rRef\_). 1. Return ? InstanceofOperator(\_lVal\_,
+  -- | \_rVal\_).
   | .instanceof, .object _, .function _ => .bool true
   | .instanceof, _, .function _ => .bool false
   | .instanceof, _, _ => .bool false
-  -- ECMA-262 §12.10.2 in operator: simplified — checks property existence.
+  -- SPEC: L16396-L16410
+  -- | RelationalExpression : RelationalExpression \`in\`
+  -- | ShiftExpression 1. Let \_lRef\_ be ? Evaluation of
+  -- | \|RelationalExpression\|. 1. Let \_lVal\_ be ? GetValue(\_lRef\_). 1.
+  -- | Let \_rRef\_ be ? Evaluation of \|ShiftExpression\|. 1. Let \_rVal\_ be
+  -- | ? GetValue(\_rRef\_). 1. If \_rVal\_ is not an Object, throw a
+  -- | \*TypeError\* exception. 1. Return ? HasProperty(\_rVal\_, ?
+  -- | ToPropertyKey(\_lVal\_)).
   | .«in», .string _, .object _ => .bool true  -- simplified: always true for string key on object
   | .«in», _, _ => .bool false
   -- ECMA-262 §12.9 modulus and exponentiation.
@@ -555,6 +602,14 @@ def step? (s : State) : Option (TraceEvent × State) :=
               let s' := pushTrace { sr with expr := .assign name sr.expr, trace := s.trace } t
               some (t, s')
           | none => none
+  -- SPEC: L16586-L16596
+  -- | ConditionalExpression : ShortCircuitExpression \`?\`
+  -- | AssignmentExpression \`:\` AssignmentExpression 1. Let \_lRef\_ be ?
+  -- | Evaluation of \|ShortCircuitExpression\|. 1. Let \_lVal\_ be ToBoolean(?
+  -- | GetValue(\_lRef\_)). 1. If \_lVal\_ is \*true\*, then 1. Let \_trueRef\_
+  -- | be ? Evaluation of the first \|AssignmentExpression\|. 1. Return ?
+  -- | GetValue(\_trueRef\_). 1. Let \_falseRef\_ be ? Evaluation of the second
+  -- | \|AssignmentExpression\|. 1. Return ? GetValue(\_falseRef\_).
   -- SPEC: L17607-L17620
   -- | IfStatement : \`if\` \`(\` Expression \`)\` Statement \`else\`
   -- | Statement 1. Let \_exprRef\_ be ? Evaluation of \|Expression\|. 1. Let
@@ -581,6 +636,11 @@ def step? (s : State) : Option (TraceEvent × State) :=
               let s' := pushTrace { sc with expr := .if sc.expr then_ else_, trace := s.trace } t
               some (t, s')
           | none => none
+  -- SPEC: L17192-L17196
+  -- | Expression : Expression \`,\` AssignmentExpression 1. Let \_lRef\_ be ?
+  -- | Evaluation of \|Expression\|. 1. Perform ? GetValue(\_lRef\_). 1. Let
+  -- | \_rRef\_ be ? Evaluation of \|AssignmentExpression\|. 1. Return ?
+  -- | GetValue(\_rRef\_).
   -- SPEC: L17277-L17279
   -- | StatementList : StatementList StatementListItem 1. Let \_sl\_ be ?
   -- | Evaluation of \|StatementList\|. 1. Let \_s\_ be Completion(Evaluation
@@ -631,6 +691,13 @@ def step? (s : State) : Option (TraceEvent × State) :=
   -- | MultiplicativeExpression 1. Return ?
   -- | EvaluateStringOrNumericBinaryExpression(\|AdditiveExpression\|, \`-\`,
   -- | \|MultiplicativeExpression\|).
+  -- SPEC: L16929-L16935
+  -- | # EvaluateStringOrNumericBinaryExpression ( \_leftOperand\_: a Parse Node, \_opText\_: a sequence of Unicode code points, \_rightOperand\_: a Parse Node, )
+  -- |
+  -- | 1\. Let \_lRef\_ be ? Evaluation of \_leftOperand\_. 1. Let \_lVal\_ be
+  -- | ? GetValue(\_lRef\_). 1. Let \_rRef\_ be ? Evaluation of
+  -- | \_rightOperand\_. 1. Let \_rVal\_ be ? GetValue(\_rRef\_). 1. Return ?
+  -- | ApplyStringOrNumericBinaryOperator(\_lVal\_, \_opText\_, \_rVal\_).
   | .binary op lhs rhs =>
       match exprValue? lhs with
       | none =>
@@ -922,6 +989,28 @@ def step? (s : State) : Option (TraceEvent × State) :=
           let heap' := { objects := s.heap.objects.push heapProps, nextAddr := addr + 1 }
           let s' := pushTrace { s with expr := .lit (.object addr), heap := heap' } .silent
           some (.silent, s')
+  -- SPEC: L17674-L17682
+  -- | DoWhileStatement : \`do\` Statement \`while\` \`(\` Expression \`)\`
+  -- | \`;\` 1. Let \_V\_ be \*undefined\*. 1. Repeat, 1. Let \_stmtResult\_ be
+  -- | Completion(Evaluation of \|Statement\|). 1. If
+  -- | LoopContinues(\_stmtResult\_, \_labelSet\_) is \*false\*, return ?
+  -- | UpdateEmpty(\_stmtResult\_, \_V\_). 1. If \_stmtResult\_.\[\[Value\]\]
+  -- | is not \~empty\~, set \_V\_ to \_stmtResult\_.\[\[Value\]\]. 1. Let
+  -- | \_exprRef\_ be ? Evaluation of \|Expression\|. 1. Let \_exprValue\_ be ?
+  -- | GetValue(\_exprRef\_). 1. If ToBoolean(\_exprValue\_) is \*false\*,
+  -- | return \_V\_.
+  -- NOTE: do-while is desugared by the parser to seq(body, while(cond, body)).
+  -- SPEC: L17749-L17756
+  -- | ForStatement : \`for\` \`(\` Expression? \`;\` Expression? \`;\`
+  -- | Expression? \`)\` Statement 1. If the first \|Expression\| is present,
+  -- | then 1. Let \_exprRef\_ be ? Evaluation of the first \|Expression\|. 1.
+  -- | Perform ? GetValue(\_exprRef\_). 1. If the second \|Expression\| is
+  -- | present, let \_test\_ be the second \|Expression\|; else let \_test\_ be
+  -- | \~empty\~. 1. If the third \|Expression\| is present, let \_increment\_
+  -- | be the third \|Expression\|; else let \_increment\_ be \~empty\~. 1.
+  -- | Return ? ForBodyEvaluation(\_test\_, \_increment\_, \|Statement\|, « »,
+  -- | \_labelSet\_).
+  -- NOTE: for-loop is desugared by the parser to seq(init, while(cond, seq(body, update))).
   -- SPEC: L17703-L17710
   -- | WhileStatement : \`while\` \`(\` Expression \`)\` Statement 1. Let \_V\_
   -- | be \*undefined\*. 1. Repeat, 1. Let \_exprRef\_ be ? Evaluation of
