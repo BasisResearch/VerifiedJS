@@ -3149,7 +3149,9 @@ private theorem closureConvert_step_simulation
             rw [hsf_rw] at hstep; simp only [Flat.step?, Flat.exprValue?] at hstep
             rw [hsc_rw] at hcstep; simp only [Core.step?, Core.exprValue?, hcf] at hcstep
             have := (Prod.mk.inj (Option.some.inj hstep)).2; have := (Prod.mk.inj (Option.some.inj hcstep)).2
-            subst_vars; exact hheap, sorry, scope, st, (Flat.convertExpr fin scope envVar envMap st).2,
+            subst_vars; exact hheap, by
+              have h := hncfr; rw [hsc] at h; subst ha_lit; simp [noCallFrameReturn, Bool.and_eq_true] at h
+              rw [hfin] at h; simp [noCallFrameReturn, Bool.and_eq_true]; exact h.2.2, scope, st, (Flat.convertExpr fin scope envVar envMap st).2,
             by simp only [Flat.convertExpr]
                rw [hfinally'_def]; simp [Flat.convertOptExpr]; rfl⟩
     | none =>
@@ -3479,7 +3481,9 @@ private theorem closureConvert_step_simulation
       have h0 := hcstep; rw [hsc_rw] at h0
       simp only [Core.step?] at h0
       have h1 := (Prod.mk.inj (Option.some.inj h0)).2; subst h1; exact hheap
-    exact ⟨hsf'_trace, henv', hheap', sorry, scope, st, _,
+    exact ⟨hsf'_trace, henv', hheap', by
+      have h := hncfr; rw [hsc] at h; simp [noCallFrameReturn, Bool.and_eq_true] at h
+      rw [hsc'_expr]; simp [noCallFrameReturn, Bool.and_eq_true]; exact ⟨h.1, h.2, h.1, h.2⟩, scope, st, _,
       by simp only [Flat.convertExpr]; rw [hsc'_expr]; simp only [Flat.convertExpr, Flat.convertValue]; rw [hsf'_expr]⟩
   | «return» arg =>
     rw [hsc] at hconv; simp only [Flat.convertExpr] at hconv
@@ -3538,7 +3542,7 @@ private theorem closureConvert_step_simulation
         rw [show sc = {sc with expr := .«return» none} from by cases sc; simp_all] at h0
         simp only [Core.step?] at h0
         have h1 := (Prod.mk.inj (Option.some.inj h0)).2; subst h1; exact hheap
-      exact ⟨hsf'_trace, henv', hheap', sorry, scope, st, st,
+      exact ⟨hsf'_trace, henv', hheap', by rw [hsc'_expr]; simp [noCallFrameReturn], scope, st, st,
         by rw [hsc'_expr]; simp [Flat.convertExpr, Flat.convertValue, hsf'_expr]⟩
     | some e =>
       -- .return (some e): split into value and stepping sub-cases
@@ -3595,7 +3599,7 @@ private theorem closureConvert_step_simulation
         have h0 := hstep; rw [hsf_rw] at h0; simp only [Flat.step?, Flat.exprValue?] at h0
         have h1 := hcstep; rw [hsc_rw] at h1; simp only [Core.step?, Core.exprValue?] at h1
         have := (Prod.mk.inj (Option.some.inj h0)).2; have := (Prod.mk.inj (Option.some.inj h1)).2
-        subst_vars; exact hheap, sorry, scope, st, st,
+        subst_vars; exact hheap, by simp [noCallFrameReturn], scope, st, st,
           by rw [hsc'_expr]; simp [Flat.convertExpr, hsf'_expr]⟩
       | none =>
         -- Stepping sub-case for return (some e): same single-subexpr pattern
@@ -3705,7 +3709,7 @@ private theorem closureConvert_step_simulation
         rw [show sc = {sc with expr := .yield none delegate} from by cases sc; simp_all] at h0
         simp only [Core.step?] at h0
         have h1 := (Prod.mk.inj (Option.some.inj h0)).2; subst h1; exact hheap
-      exact ⟨hsf'_trace, henv', hheap', sorry, scope, st, st,
+      exact ⟨hsf'_trace, henv', hheap', by rw [hsc'_expr]; simp [noCallFrameReturn], scope, st, st,
         by rw [hsc'_expr]; simp [Flat.convertExpr, Flat.convertValue, hsf'_expr]⟩
     | some e =>
       -- .yield (some e): split into value and stepping sub-cases
@@ -3759,7 +3763,7 @@ private theorem closureConvert_step_simulation
         have h0 := hstep; rw [hsf_rw] at h0; simp only [Flat.step?, Flat.exprValue?] at h0
         have h1 := hcstep; rw [hsc_rw] at h1; simp only [Core.step?, Core.exprValue?] at h1
         have := (Prod.mk.inj (Option.some.inj h0)).2; have := (Prod.mk.inj (Option.some.inj h1)).2
-        subst_vars; exact hheap, sorry, scope, st, st,
+        subst_vars; exact hheap, by simp [noCallFrameReturn], scope, st, st,
           by rw [hsc'_expr]; simp [Flat.convertExpr, hsf'_expr]⟩
       | none =>
         -- Stepping sub-case for yield (some e): single-subexpr pattern
@@ -3864,7 +3868,7 @@ private theorem closureConvert_step_simulation
         have h0 := hstep; rw [hsf_rw] at h0; simp only [Flat.step?, Flat.exprValue?] at h0
         have h1 := hcstep; rw [hsc_rw] at h1; simp only [Core.step?, Core.exprValue?] at h1
         have := (Prod.mk.inj (Option.some.inj h0)).2; have := (Prod.mk.inj (Option.some.inj h1)).2
-        subst_vars; exact hheap, sorry, scope, st, st,
+        subst_vars; exact hheap, by simp [noCallFrameReturn], scope, st, st,
         by rw [hsc'_expr]; simp [Flat.convertExpr, hsf'_expr]⟩
     | none =>
       -- arg' is the converted sub-expression
@@ -3996,7 +4000,7 @@ private theorem closureConvert_step_simulation
         rw [show sc = {sc with expr := .this} from by cases sc; simp_all] at h0
         simp only [Core.step?, hcenv] at h0
         have h1 := (Prod.mk.inj (Option.some.inj h0)).2; subst h1; exact hheap
-      exact ⟨hsf'_trace, henv', hheap', sorry, scope, st,
+      exact ⟨hsf'_trace, henv', hheap', by rw [hsc'_expr]; simp [noCallFrameReturn], scope, st,
         (Flat.convertExpr (.lit cv) scope envVar envMap st).2,
         by rw [hsc'_expr]; simp [Flat.convertExpr, hsf'_expr, hfv_eq]⟩
     | none =>
@@ -4049,7 +4053,7 @@ private theorem closureConvert_step_simulation
           rw [show sc = {sc with expr := .this} from by cases sc; simp_all] at h0
           simp only [Core.step?, hcenv] at h0
           have h1 := (Prod.mk.inj (Option.some.inj h0)).2; subst h1; exact hheap
-        exact ⟨hsf'_trace, henv', hheap', sorry, scope, st, st,
+        exact ⟨hsf'_trace, henv', hheap', by rw [hsc'_expr]; simp [noCallFrameReturn], scope, st, st,
           by rw [hsc'_expr]; simp [Flat.convertExpr, Flat.convertValue, hsf'_expr]⟩
       | some cv =>
         -- Core has "this" but Flat doesn't → contradiction via EnvCorr.2

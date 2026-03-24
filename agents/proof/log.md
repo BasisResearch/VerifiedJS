@@ -1507,3 +1507,24 @@ theorem HeapCorr_get (h : HeapCorr ch fh) (addr : Nat) (cprops : Props)
 
 ## Run: 2026-03-24T12:30:01+00:00
 
+## URGENT: Replace sf.heap = sc.heap with HeapCorr
+
+CC_SimRel uses `sf.heap = sc.heap` (heap IDENTITY). This blocks captured variables,
+call, newObj, objectLit, arrayLit — ALL the remaining sorries.
+
+Closure conversion allocates closure env structs on the Flat heap that Core doesn't have.
+Heap identity is too strong.
+
+Replace with:
+
+```lean
+private def HeapCorr (cheap : Core.Heap) (fheap : Flat.Heap) : Prop :=
+  cheap.length <= fheap.length /\
+  forall addr, addr < cheap.length -> cheap.get? addr = fheap.get? addr
+```
+
+Flat heap is a superset. Core entries preserved. Flat has extra closure envs.
+
+Prove: HeapCorr_alloc_flat, HeapCorr_alloc_both, HeapCorr_get.
+
+This unblocks 10+ sorries. DO THIS FIRST next run.
