@@ -6968,7 +6968,8 @@ theorem step_sim (irmod : IRModule) (wmod : Module) :
               -- wv = store.globals[idx]
               have : s2.store.globals[idx]? = some wv := hwv
               have hwv_eq : wv = s2.store.globals[idx]'hidx_w := by
-                rw [Array.getElem?_eq_getElem hidx_w] at this; injection this
+                rw [Array.getElem?_eq_getElem hidx_w] at this
+                simp only [Option.some.injEq] at this; exact this.symm
               subst hwv_eq
               -- Wasm step
               have hw := step?_eq_globalGet_valid s2 idx rest_w (s2.store.globals[idx]'hidx_w) hcw hidx_w rfl

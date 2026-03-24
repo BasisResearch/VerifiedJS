@@ -204,7 +204,7 @@ def Env.assign (env : Env) (name : VarName) (v : Value) : Env :=
 def Env.extend (env : Env) (name : VarName) (v : Value) : Env :=
   { bindings := (name, v) :: env.bindings }
 
--- SPEC: L5555-L5576
+-- SPEC: L5555-L5575
 -- | # GetValue ( \_V\_: a Reference Record or an ECMAScript language value, ): either a normal completion containing an ECMAScript language value or an abrupt completion
 -- |
 -- | 1\. If \_V\_ is not a Reference Record, return \_V\_. 1. If
@@ -221,8 +221,13 @@ def Env.extend (env : Env) (name : VarName) (v : Value) : Env :=
 -- | \_base\_ is an Environment Record. 1. Return ?
 -- | \_base\_.GetBindingValue(\_V\_.\[\[ReferencedName\]\],
 -- | \_V\_.\[\[Strict\]\]) (see ).
+-- |
+-- | The object that may be created in step is not accessible outside of the
+-- | above abstract operation and the ordinary object \[\[Get\]\] internal
+-- | method. An implementation might choose to avoid the actual creation of
+-- | the object.
 
--- SPEC: L5577-L5620
+-- SPEC: L5577-L5602
 -- | # PutValue ( \_V\_: a Reference Record or an ECMAScript language value, \_W\_: an ECMAScript language value, ): either a normal completion containing \~unused\~ or an abrupt completion
 -- |
 -- | 1\. If \_V\_ is not a Reference Record, throw a \*ReferenceError\*
@@ -244,8 +249,13 @@ def Env.extend (env : Env) (name : VarName) (v : Value) : Env :=
 -- | \_base\_ is an Environment Record. 1. Return ?
 -- | \_base\_.SetMutableBinding(\_V\_.\[\[ReferencedName\]\], \_W\_,
 -- | \_V\_.\[\[Strict\]\]) (see ).
+-- |
+-- | The object that may be created in step is not accessible outside of the
+-- | above abstract operation and the ordinary object \[\[Set\]\] internal
+-- | method. An implementation might choose to avoid the actual creation of
+-- | that object.
 
--- SPEC: L18579-L18597
+-- SPEC: L18579-L18598
 -- | # Runtime Semantics: CatchClauseEvaluation ( \_thrownValue\_: an ECMAScript language value, ): either a normal completion containing either an ECMAScript language value or \~empty\~, or an abrupt completion
 -- |
 -- | Catch : \`catch\` \`(\` CatchParameter \`)\` Block 1. Let \_oldEnv\_ be
@@ -261,6 +271,9 @@ def Env.extend (env : Env) (name : VarName) (v : Value) : Env :=
 -- | be Completion(Evaluation of \|Block\|). 1. Set the running execution
 -- | context\'s LexicalEnvironment to \_oldEnv\_. 1. Return ? \_B\_. Catch :
 -- | \`catch\` Block 1. Return ? Evaluation of \|Block\|.
+-- |
+-- | No matter how control leaves the \|Block\| the LexicalEnvironment is
+-- | always restored to its former state.
 
 /-- Check whether an expression is a value expression. -/
 def exprValue? : Expr → Option Value
@@ -2084,6 +2097,14 @@ def step? (s : State) : Option (TraceEvent × State) :=
   -- | and \_additionalInternalSlotsList\_. 1. Let \_O\_ be
   -- | MakeBasicObject(\_internalSlotsList\_). 1. Set \_O\_.\[\[Prototype\]\]
   -- | to \_proto\_. 1. Return \_O\_.
+  -- |
+  -- | Although OrdinaryObjectCreate does little more than call
+  -- | MakeBasicObject, its use communicates the intention to create an
+  -- | ordinary object, and not an exotic one. Thus, within this specification,
+  -- | it is not called by any algorithm that subsequently modifies the
+  -- | internal methods of the object in ways that would make the result
+  -- | non-ordinary. Operations that create exotic objects invoke
+  -- | MakeBasicObject directly.
   | .newObj _callee _args =>
       let addr := s.heap.nextAddr
       let heap' := { objects := s.heap.objects.push [], nextAddr := addr + 1 }
