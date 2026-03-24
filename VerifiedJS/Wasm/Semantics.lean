@@ -7438,7 +7438,143 @@ theorem step_sim (irmod : IRModule) (wmod : Module) :
           sorry
       | .binOp t op =>
           -- binary operation: IR and Wasm use same semantics
-          sorry
+          have hc : EmitCodeCorr (IRInstr.binOp t op :: rest) s2.code := hcode_ir ▸ hrel.hcode
+          match t with
+          | .i32 =>
+            rcases hc.binOp_i32_inv with
+              ⟨rfl, rest_w, hcw, hrest⟩ | ⟨rfl, rest_w, hcw, hrest⟩ |
+              ⟨rfl, rest_w, hcw, hrest⟩ | ⟨rfl, rest_w, hcw, hrest⟩ |
+              ⟨rfl, rest_w, hcw, hrest⟩ | ⟨rfl, rest_w, hcw, hrest⟩ |
+              ⟨rfl, rest_w, hcw, hrest⟩ | ⟨rfl, rest_w, hcw, hrest⟩ |
+              ⟨rfl, rest_w, hcw, hrest⟩ | hf
+            -- All 9 i32 binOp sub-cases follow the same pattern.
+            -- For each: stack has 2 i32s → compute same result; else trap with same message.
+            all_goals first | exact hf.elim | skip
+            -- i32.add
+            · match hstk : s1.stack with
+              | [] =>
+                have hir : irStep? s1 = some (.trap "type mismatch in i32.add",
+                    { s1 with code := [], trace := s1.trace ++ [.trap "type mismatch in i32.add"] }) := by
+                  simp [irStep?, hcode_ir, hstk, irPop2?, irTrapState, irPushTrace]
+                rw [hir] at hstep; simp only [Option.some.injEq, Prod.mk.injEq] at hstep
+                obtain ⟨rfl, rfl⟩ := hstep
+                have hlen := hrel.hstack.1; rw [hstk] at hlen; simp at hlen
+                have hs2 : s2.stack = [] := by cases s2.stack with | nil => rfl | cons => simp_all
+                have hw : step? s2 = some (.trap "type mismatch in i32.add",
+                    { s2 with code := [], trace := s2.trace ++ [.trap "type mismatch in i32.add"] }) := by
+                  simp [step?, hcw, hs2, pop2?, trapState, pushTrace, withI32Bin]
+                exact ⟨_, by simp [traceToWasm]; exact hw,
+                  { hemit := hrel.hemit, hcode := .nil, hstack := by simp [hs2],
+                    hframes_len := hrel.hframes_len, hframes_locals := hrel.hframes_locals,
+                    hframes_vals := hrel.hframes_vals, hglobals := hrel.hglobals,
+                    hlabels := hrel.hlabels, hhalt := hhalt_of_structural .nil hrel.hlabels }⟩
+              | v1 :: [] =>
+                have hir : irStep? s1 = some (.trap "type mismatch in i32.add",
+                    { s1 with code := [], trace := s1.trace ++ [.trap "type mismatch in i32.add"] }) := by
+                  simp [irStep?, hcode_ir, hstk, irPop2?, irTrapState, irPushTrace]
+                rw [hir] at hstep; simp only [Option.some.injEq, Prod.mk.injEq] at hstep
+                obtain ⟨rfl, rfl⟩ := hstep
+                have hlen := hrel.hstack.1; rw [hstk] at hlen; simp at hlen
+                have hs2 : ∃ w1, s2.stack = [w1] := by
+                  cases hs : s2.stack with
+                  | nil => simp [hs] at hlen
+                  | cons w1 ws => cases ws with | nil => exact ⟨w1, rfl⟩ | cons => simp [hs] at hlen
+                obtain ⟨w1, hs2⟩ := hs2
+                have hw : step? s2 = some (.trap "type mismatch in i32.add",
+                    { s2 with code := [], trace := s2.trace ++ [.trap "type mismatch in i32.add"] }) := by
+                  simp [step?, hcw, hs2, pop2?, trapState, pushTrace, withI32Bin]
+                exact ⟨_, by simp [traceToWasm]; exact hw,
+                  { hemit := hrel.hemit, hcode := .nil, hstack := by dsimp only []; exact hrel.hstack,
+                    hframes_len := hrel.hframes_len, hframes_locals := hrel.hframes_locals,
+                    hframes_vals := hrel.hframes_vals, hglobals := hrel.hglobals,
+                    hlabels := hrel.hlabels, hhalt := hhalt_of_structural .nil hrel.hlabels }⟩
+              | .i32 rhs :: .i32 lhs :: stk =>
+                have hir := irStep?_eq_i32Add s1 rest lhs rhs stk hcode_ir hstk
+                rw [hir] at hstep; simp only [Option.some.injEq, Prod.mk.injEq] at hstep
+                obtain ⟨rfl, rfl⟩ := hstep
+                have hstk_rel := hrel.hstack; rw [hstk] at hstk_rel
+                match hs2 : s2.stack with
+                | [] => simp [hs2] at hstk_rel
+                | _ :: [] => simp at hstk_rel; omega
+                | wv1 :: wv2 :: wstk =>
+                  have hval1 := hstk_rel.2 0 (by simp [hstk])
+                  rw [hstk, hs2] at hval1; simp at hval1
+                  obtain ⟨_, _, h1, h2, hvc1⟩ := hval1; simp at h1 h2; subst h1; subst h2
+                  have hval2 := hstk_rel.2 1 (by simp [hstk])
+                  rw [hstk, hs2] at hval2; simp at hval2
+                  obtain ⟨_, _, h3, h4, hvc2⟩ := hval2; simp at h3 h4; subst h3; subst h4
+                  cases hvc1 with
+                  | i32 n1 =>
+                    cases hvc2 with
+                    | i32 n2 =>
+                      rename_i heq1 heq2; rw [heq1, heq2] at hs2
+                      have hw := step?_eq_i32Add s2 rest_w n2 n1 wstk hcw hs2
+                      exact ⟨_, hw, hrel.hemit, hrest,
+                        by dsimp only []; exact stack_corr_cons
+                          (by simp [hstk, hs2] at hstk_rel ⊢; omega)
+                          (fun i hi => hstk_rel.2 (i + 2) (by simp; omega)) (.i32 _),
+                        hrel.hframes_len, hrel.hframes_locals, hrel.hframes_vals, hrel.hglobals,
+                        hrel.hlabels, hhalt_of_structural hrest hrel.hlabels⟩
+              | .i32 _ :: .i64 _ :: _ | .i32 _ :: .f64 _ :: _ | .i64 _ :: _ :: _ | .f64 _ :: _ :: _ =>
+                -- Type mismatch: IR traps, derive Wasm also traps with same message
+                have hir : irStep? s1 = some (.trap "type mismatch in i32.add",
+                    { s1 with code := [], trace := s1.trace ++ [.trap "type mismatch in i32.add"] }) := by
+                  simp [irStep?, hcode_ir, hstk, irPop2?, irTrapState, irPushTrace]
+                rw [hir] at hstep; simp only [Option.some.injEq, Prod.mk.injEq] at hstep
+                obtain ⟨rfl, rfl⟩ := hstep
+                have hstk_rel := hrel.hstack; rw [hstk] at hstk_rel
+                match hs2 : s2.stack with
+                | [] => simp [hs2] at hstk_rel
+                | _ :: [] => simp at hstk_rel; omega
+                | wv1 :: wv2 :: wstk =>
+                  have hval1 := hstk_rel.2 0 (by simp [hstk])
+                  rw [hstk, hs2] at hval1; simp at hval1
+                  obtain ⟨_, _, h1, h2, hvc1⟩ := hval1; simp at h1 h2; subst h1; subst h2
+                  have hval2 := hstk_rel.2 1 (by simp [hstk])
+                  rw [hstk, hs2] at hval2; simp at hval2
+                  obtain ⟨_, _, h3, h4, hvc2⟩ := hval2; simp at h3 h4; subst h3; subst h4
+                  -- The Wasm values are NOT both i32, so withI32Bin traps
+                  have hw : step? s2 = some (.trap "type mismatch in i32.add",
+                      { s2 with code := [], trace := s2.trace ++ [.trap "type mismatch in i32.add"] }) := by
+                    cases hvc1 <;> cases hvc2 <;> simp_all [step?, hcw, hs2, pop2?, withI32Bin, trapState, pushTrace]
+                  exact ⟨_, by simp [traceToWasm]; exact hw,
+                    { hemit := hrel.hemit, hcode := .nil, hstack := by dsimp only []; exact hrel.hstack,
+                      hframes_len := hrel.hframes_len, hframes_locals := hrel.hframes_locals,
+                      hframes_vals := hrel.hframes_vals, hglobals := hrel.hglobals,
+                      hlabels := hrel.hlabels, hhalt := hhalt_of_structural .nil hrel.hlabels }⟩
+            -- i32.sub (same pattern as add)
+            · sorry
+            -- i32.mul
+            · sorry
+            -- i32.and
+            · sorry
+            -- i32.or
+            · sorry
+            -- i32.eq
+            · sorry
+            -- i32.ne
+            · sorry
+            -- i32.lt_s
+            · sorry
+            -- i32.gt_s
+            · sorry
+          | .f64 =>
+            rcases hc.binOp_f64_inv with
+              ⟨rfl, rest_w, hcw, hrest⟩ | ⟨rfl, rest_w, hcw, hrest⟩ |
+              ⟨rfl, rest_w, hcw, hrest⟩ | ⟨rfl, rest_w, hcw, hrest⟩ | hf
+            all_goals first | exact hf.elim | skip
+            -- f64.add
+            · sorry
+            -- f64.sub
+            · sorry
+            -- f64.mul
+            · sorry
+            -- f64.div
+            · sorry
+          | .i64 | .ptr =>
+            -- No EmitCodeCorr constructor for i64/ptr binOps
+            exfalso; generalize s2.code = wcode at hc
+            cases hc with | general _ _ _ _ hf _ => exact hf.elim
       | .unOp t op =>
           -- unary operation: IR and Wasm compute the same result
           have hc : EmitCodeCorr (IRInstr.unOp t op :: rest) s2.code := hcode_ir ▸ hrel.hcode

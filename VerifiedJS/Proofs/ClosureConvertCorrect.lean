@@ -555,7 +555,7 @@ private theorem HeapCorr_get (hc : HeapCorr ch fh) (hlt : addr < ch.objects.size
 
 /-- Both heaps push the same object at the same size: prefix relation is maintained.
     Requires equal sizes (exact prefix), which holds when no extra Flat env objects exist. -/
-private theorem HeapCorr_alloc_both (hc : HeapCorr ch fh)
+private theorem HeapCorr_alloc_both {ch fh : Core.Heap} (hc : HeapCorr ch fh)
     (hsize : ch.objects.size = fh.objects.size) (p : List (Core.PropName × Core.Value)) :
     HeapCorr { objects := ch.objects.push p, nextAddr := ch.nextAddr + 1 }
              { objects := fh.objects.push p, nextAddr := fh.nextAddr + 1 } := by
@@ -572,7 +572,8 @@ private theorem HeapCorr_alloc_both (hc : HeapCorr ch fh)
       simp only [Array.getElem?_push, hsize, ite_true]
 
 /-- Flat allocates an extra object (e.g. environment): prefix relation is maintained. -/
-private theorem HeapCorr_alloc_right (hc : HeapCorr ch fh) (p : List (Core.PropName × Core.Value)) :
+private theorem HeapCorr_alloc_right {ch fh : Core.Heap} (hc : HeapCorr ch fh)
+    (p : List (Core.PropName × Core.Value)) :
     HeapCorr ch { objects := fh.objects.push p, nextAddr := fh.nextAddr + 1 } := by
   constructor
   · simp [Array.size_push]; omega
