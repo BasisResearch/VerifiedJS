@@ -163,7 +163,7 @@ private def withI32Bin
   | some (.i32 rhs, .i32 lhs, rest) =>
       let v := WasmValue.i32 (op lhs rhs)
       some (.silent, pushTrace { s with stack := v :: rest } .silent)
-  | _ => some (trapState s s!"type mismatch in {name}")
+  | _ => some (trapState s ("type mismatch in " ++ name))
 
 private def withI64Bin
     (s : ExecState)
@@ -173,7 +173,7 @@ private def withI64Bin
   | some (.i64 rhs, .i64 lhs, rest) =>
       let v := WasmValue.i64 (op lhs rhs)
       some (.silent, pushTrace { s with stack := v :: rest } .silent)
-  | _ => some (trapState s s!"type mismatch in {name}")
+  | _ => some (trapState s ("type mismatch in " ++ name))
 
 private def withF64Bin
     (s : ExecState)
@@ -183,7 +183,7 @@ private def withF64Bin
   | some (.f64 rhs, .f64 lhs, rest) =>
       let v := WasmValue.f64 (op lhs rhs)
       some (.silent, pushTrace { s with stack := v :: rest } .silent)
-  | _ => some (trapState s s!"type mismatch in {name}")
+  | _ => some (trapState s ("type mismatch in " ++ name))
 
 private def boolToI32 (b : Bool) : WasmValue :=
   .i32 (if b then 1 else 0)
@@ -195,7 +195,7 @@ private def withI32Rel
   match pop2? s.stack with
   | some (.i32 rhs, .i32 lhs, rest) =>
       some (.silent, pushTrace { s with stack := boolToI32 (op lhs rhs) :: rest } .silent)
-  | _ => some (trapState s s!"type mismatch in {name}")
+  | _ => some (trapState s ("type mismatch in " ++ name))
 
 private def withI64Rel
     (s : ExecState)
@@ -3620,7 +3620,7 @@ def irStep? (s : IRExecState) : Option (TraceEvent × IRExecState) :=
                 | "ge_u" => irBoolToI32 (Numerics.i32Geu lhs rhs)
                 | _ => IRValue.i32 0
               some (.silent, irPushTrace { base with stack := result :: stk } .silent)
-          | _ => some (irTrapState base s!"type mismatch in i32.{op}")
+          | _ => some (irTrapState base ("type mismatch in i32." ++ op))
       -- Binary operations (i64)
       | .binOp .i64 op =>
           match irPop2? base.stack with
@@ -3669,7 +3669,7 @@ def irStep? (s : IRExecState) : Option (TraceEvent × IRExecState) :=
                 | "ge_u" => irBoolToI32 (Numerics.i64Geu lhs rhs)
                 | _ => IRValue.i64 0
               some (.silent, irPushTrace { base with stack := result :: stk } .silent)
-          | _ => some (irTrapState base s!"type mismatch in i64.{op}")
+          | _ => some (irTrapState base ("type mismatch in i64." ++ op))
       -- Binary operations (f64)
       | .binOp .f64 op =>
           match irPop2? base.stack with
@@ -3690,7 +3690,7 @@ def irStep? (s : IRExecState) : Option (TraceEvent × IRExecState) :=
                 | "ge"  => irBoolToI32 (Numerics.f64Ge lhs rhs)
                 | _ => IRValue.f64 0.0
               some (.silent, irPushTrace { base with stack := result :: stk } .silent)
-          | _ => some (irTrapState base s!"type mismatch in f64.{op}")
+          | _ => some (irTrapState base ("type mismatch in f64." ++ op))
       -- Binary operations (ptr = i32)
       | .binOp .ptr op =>
           match irPop2? base.stack with
@@ -3700,7 +3700,7 @@ def irStep? (s : IRExecState) : Option (TraceEvent × IRExecState) :=
                 | "sub" => IRValue.i32 (Numerics.i32Sub lhs rhs)
                 | _ => IRValue.i32 0
               some (.silent, irPushTrace { base with stack := result :: stk } .silent)
-          | _ => some (irTrapState base s!"type mismatch in ptr.{op}")
+          | _ => some (irTrapState base ("type mismatch in ptr." ++ op))
 
       -- Unary operations (i32)
       -- REF: Wasm §4.4.3.1 (i32 unary), §4.4.5.1 (i32.wrap_i64)

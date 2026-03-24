@@ -2088,6 +2088,10 @@ def exprValue? : Expr → Option Value
 -- |   \[\[ReferencedName\]\]   an ECMAScript language value or a Private Name                             The name of the binding. Always a String if \[\[Base\]\] value is an Environment Record. Otherwise, may be an ECMAScript language value other than a String or a Symbol until ToPropertyKey is performed.
 -- |   \[\[Strict\]\]           a Boolean                                                                  \*true\* if the Reference Record originated in strict mode code, \*false\* otherwise.
 -- |   \[\[ThisValue\]\]        an ECMAScript language value or \~empty\~                                  If not \~empty\~, the Reference Record represents a property binding that was expressed using the \`super\` keyword; it is called a [Super Reference Record]{#super-reference-record .dfn oldids="super-reference" variants="Super Reference Records"} and its \[\[Base\]\] value will never be an Environment Record. In that case, the \[\[ThisValue\]\] field holds the \*this\* value at the time the Reference Record was created.
+-- |
+-- | The following abstract operations are used in this specification to
+-- | operate upon Reference Records:
+-- |
 -- SPEC: L5534-L5539
 -- | # IsPropertyReference ( \_V\_: a Reference Record, ): a Boolean
 -- |
@@ -2452,7 +2456,12 @@ def toNumber : Value → Float
 -- | the property to be deleted has the attribute { \[\[Configurable\]\]:
 -- | \*false\* } (or otherwise cannot be deleted), a \*TypeError\* exception
 -- | is thrown.
--- SPEC: L16165-L16179
+-- |
+-- | The object that may be created in step is not accessible outside of the
+-- | above abstract operation and the ordinary object \[\[Delete\]\] internal
+-- | method. An implementation might choose to avoid the actual creation of
+-- | that object.
+-- SPEC: L16161-L16179
 -- | # The \`typeof\` Operator
 -- |
 -- | # Runtime Semantics: Evaluation

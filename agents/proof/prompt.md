@@ -1,44 +1,60 @@
-# proof — Close 42 Sorries (8 CC + 2 ANF + 1 Lower + 31 Wasm)
+# proof — Close 43 Sorries (8 CC + 2 ANF + 1 Lower + 32 Wasm)
 
-You own Proofs/*.lean and compiler passes. HeapCorr is DONE ✅. Focus on closing the remaining CC sorries.
+You own Proofs/*.lean and compiler passes. HeapCorr is DONE.
 
-## TASK 0 (DO FIRST): Close L1655 and L2063 — well-formedness
+## TASK 0 (DO FIRST): Close L1684 and L2092 — well-formedness
 
-These are `| some addr => sorry` branches in getProp/getIndex where `addr` came from Flat heap but might be outside Core heap range. HeapCorr gives `cheap.objects.size ≤ fheap.objects.size` but you need to show the addr actually came from Core (so `addr < cheap.objects.size`).
+Both are `| some _ => sorry` after `cases sf.heap.objects[addr]?` where `addr ≥ sc.heap.objects.size`.
 
-Strategy: The addr comes from `convertValue v` which converts Core values to Flat values. For `.object addr`, convertValue preserves the addr. So if the Core expression produced `.object addr`, then `addr` was allocated by Core → `addr < sc.heap.objects.size`. Add a `AllAddrsValid` invariant to CC_SimRel or prove it inline from EnvCorr + HeapCorr.
+**Root cause**: We need `addr < sc.heap.objects.size` to eliminate this branch. Then the `¬(addr < sc.heap.objects.size)` case is vacuously unreachable.
 
-Try this approach at L1655:
+**Strategy**: Add `AddrWF` to CC_SimRel — all `.object addr` values reachable from Core state have `addr < sc.heap.objects.size`.
+
 ```lean
--- The addr comes from a Core value via convertValue, so it's in Core heap range
--- Show: if sc produces .object addr, then addr < sc.heap.objects.size
--- Use HeapCorr_get once you have the bound
+/-- All object addresses in a value are valid heap addresses. -/
+private def ValueAddrWF (v : Core.Value) (heapSize : Nat) : Prop :=
+  match v with
+  | .object addr => addr < heapSize
+  | _ => True
+
+/-- All object addresses in an expression are valid. -/
+private def ExprAddrWF (e : Core.Expr) (heapSize : Nat) : Prop :=
+  match e with
+  | .lit v => ValueAddrWF v heapSize
+  -- add cases as needed for compound exprs
+  | _ => True
 ```
 
-## TASK 1: Close L3028 objectLit, L3029 arrayLit, L1580 newObj
+Add `ExprAddrWF sc.expr sc.heap.objects.size` to CC_SimRel. Then at L1684/L2092:
+- You have `ExprAddrWF (.getProp (.lit (.object addr)) _) sc.heap.objects.size`
+- This gives `addr < sc.heap.objects.size`
+- Contradicts `¬(addr < sc.heap.objects.size)`
+- The `| some _` branch is eliminated
 
-**BLOCKER**: Flat `allocFreshObject` pushes `[]` to heap. Core pushes actual properties. HeapCorr (`cheap.objects[addr]? = fheap.objects[addr]?`) is FALSE at the new address because `[]` ≠ `heapProps`.
+You also need to prove `ExprAddrWF` is preserved by each Core step. Core allocation grows heap and assigns `nextAddr`, so newly allocated addresses are valid. Core env lookups return values that were stored when heap was smaller, but heap only grows, so they stay valid.
 
-**You CANNOT prove these until wasmspec fixes `allocFreshObject`**. Skip for now.
+**Alternative (simpler, try first)**: Instead of threading through SimRel, try `omega` or `Nat.lt_of_lt_of_le` inline at the sorry site. The `.object addr` came from `sc.heap.objects[addr]?` returning `some props` earlier in the proof, which means `addr < sc.heap.objects.size`. Look up the proof context for that hypothesis.
 
-If wasmspec fixes it (pushes properties), then HeapCorr_alloc_both closes all 3.
-
-## TASK 2: L869 captured var (stuttering)
+## TASK 1: L898 captured var (stuttering)
 
 Core: `.var name` → 1 step → value
-Flat: `.getEnv (.var envVar) idx` → 2 steps → value (first step evals `.var envVar` to env object, second step does getEnv)
+Flat: `.getEnv (.var envVar) idx` → 2 steps → value
 
-Need multi-step simulation. Use `Flat.Steps` (transitive closure) to show Flat reaches the same value in 2 steps.
+Need multi-step: show Flat reaches same value in 2 steps via `Flat.Steps`.
 
-## TASK 3: L1579 call — needs function body correspondence
+## TASK 2: L3057 objectLit, L3058 arrayLit, L1609 newObj
 
-Core enters function body. Flat also enters function body (call IS implemented — not a stub). Need to show CC_SimRel is preserved when stepping into the function.
+BLOCKED on wasmspec fixing allocFreshObject. Skip.
 
-## TASK 4: L3030 functionDef — most complex, do last
+## TASK 3: L1608 call — function body correspondence
 
-## TASK 5: ANF (L106, L1181) — independent of CC, work on if CC is blocked
+Core enters function body. Flat enters function body. Need CC_SimRel preservation through call.
 
-## TASK 6: Lower (L69) — LowerSimRel.init, blocked by `lowerExpr` being partial
+## TASK 4: L3059 functionDef — most complex, do last
+
+## TASK 5: ANF (L106, L1181) — independent of CC
+
+## TASK 6: Lower (L69) — LowerSimRel.init
 
 ## Rules
 - `bash scripts/lake_build_concise.sh` to build (only ONCE at end)

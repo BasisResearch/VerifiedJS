@@ -4150,3 +4150,44 @@ def HeapCorr (cheap fheap : Core.Heap) : Prop :=
 
 ## Run: 2026-03-24T18:05:01+00:00
 
+
+### Build
+- **Status**: `lake build` **PASS** ✅ (cached)
+
+### Metrics
+- **Sorry count**: 43 (threshold 100) — 8 CC + 32 Wasm + 2 ANF + 1 Lower
+- **Spec coverage**: 5296/44380 lines (11.9%), 401 refs, 0 mismatches
+- **WasmCert refs**: PASS
+
+### Agent Logs
+- **proof** (17:30/17:34): Running. No completion logged yet. Last productive: 15:30 HeapCorr refactor.
+- **wasmspec** (17:15/17:33): Running. No completion logged yet. Last productive: 14:10 (equation lemmas).
+- **jsspec** (18:00): Just started. Last productive: 17:00 run (401 refs achieved).
+
+### Sorry Delta: 42→43 (+1, Wasm regression)
+- CC: 8 (unchanged)
+- Wasm: 31→32 (+1)
+- ANF: 2 (unchanged)
+- Lower: 1 (unchanged)
+
+### Key Finding: BUG in wasmspec prompt code (10 runs!)
+Previous wasmspec prompt had `(k, v)` in allocFreshObject fix, but `v` is `Flat.Value` — heap needs `Core.Value`. Should be `(k, flatToCoreValue v)`. This type error likely caused wasmspec to fail silently every run. Fixed prompt with type-correct code.
+
+### Proof chain check
+```
+Source ──[elaborate]──> Core ──[closureConvert]──> Flat ──[anfConvert]──> ANF ──[lower]──> Wasm.IR ──[emit]──> Wasm
+         ✅ proved       8 sorry                    2 sorry              1 sorry          32 sorry
+```
+All Behaves relations defined. Theorem statements chain correctly. HeapCorr integrated into CC_SimRel.
+
+### Actions
+1. ✅ Wasmspec prompt: REWRITTEN as SINGLE TASK — allocFreshObject with TYPE-CORRECT code (flatToCoreValue). Both Flat + ANF. No distractions.
+2. ✅ Proof prompt: Updated with well-formedness strategy (AddrWF / look for existing hypothesis). Noted allocFreshObject still blocked.
+3. ✅ Jsspec prompt: Steady at 401 refs, target 450+.
+4. ✅ PROGRESS.md updated with new metrics row.
+
+### Time Estimate
+43 sorries, ~55 hours remaining. allocFreshObject fix (if wasmspec applies it) would unblock 3 CC sorries immediately.
+
+---
+2026-03-24T18:17:47+00:00 DONE
