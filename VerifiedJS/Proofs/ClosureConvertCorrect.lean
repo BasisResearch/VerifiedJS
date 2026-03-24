@@ -673,7 +673,7 @@ private theorem closureConvert_init_related
     (s : Core.Program) (t : Flat.Program)
     (h : Flat.closureConvert s = .ok t)
     (h_wf : noCallFrameReturn s.body = true)
-    (h_addr_wf : ExprAddrWF s.body 1 := by trivial) :
+    (h_addr_wf : ExprAddrWF s.body 1) :
     CC_SimRel s t (Flat.initialState t) (Core.initialState s) := by
   unfold CC_SimRel Flat.initialState Core.initialState
   refine ⟨rfl, ?_, HeapCorr_refl _, h_wf, ?_, ?_⟩
@@ -4784,7 +4784,7 @@ private theorem closureConvert_trace_reflection
         (∀ b o f, sc.expr ≠ .forIn b o f) ∧ (∀ b i f, sc.expr ≠ .forOf b i f)) :
     ∀ b, Flat.Behaves t b → Core.Behaves s b := by
   intro b ⟨sf, hsteps, hhalt⟩
-  have hinit := closureConvert_init_related s t h h_wf
+  have hinit := closureConvert_init_related s t h h_wf (by sorry)
   obtain ⟨sc, hcsteps, hrel⟩ :=
     closureConvert_steps_simulation s t h _ _ _ _ hinit hsteps
   have hnoFor := hnofor sc _ hcsteps

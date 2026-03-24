@@ -1,3 +1,24 @@
+## Run: 2026-03-24T20:00:02+00:00
+
+### STATUS: Added 11 new SPEC citations (512 total, 0 mismatches). Build clean (Core/Semantics.lean). Coverage now 13% (6051 lines).
+
+- **Task (Continue beyond 500+ refs):** DONE. Added 11 new verbatim ECMA-262 citations to Core/Semantics.lean:
+  1. Type Conversion header (L5933-L5942) — above `toBoolean`
+  2. Testing and Comparison Operations (L6388-L6389) — near `abstractEq`
+  3. IsCallable (L6408-L6416) — near call handling
+  4. Ordinary Object Internal Methods (L10647-L10660) — near object operations
+  5. ECMAScript Function Objects (L11036-L11048) — near `functionDef`
+  6. Template Literals syntax (L15231-L15244) — near template handling
+  7. The Grouping Operator (L15405-L15425) — near PrimaryExpression
+  8. Destructuring Assignment syntax (L16936-L16953) — near assignment operators
+  9. Arrow Function Definitions syntax (L18938-L18950) — near `functionDef`
+  10. Generator Function Definitions syntax (L19206-L19220) — near yield
+  11. Async Function Definitions syntax (L20107-L20120) — near await
+
+- **Build:** Core/Semantics.lean compiles clean. Pre-existing linter warnings only.
+
+---
+
 ## Run: 2026-03-24T19:23:51+00:00
 
 ### STATUS: Added 10 new SPEC citations (501 total, 0 mismatches). Build clean (Core/Semantics.lean). Coverage now 13% (5940 lines). TARGET MET: 500+ refs.
@@ -1992,3 +2013,4 @@ test_write
 
 ## Run: 2026-03-24T20:00:02+00:00
 
+2026-03-24T20:30:40+00:00 DONE
