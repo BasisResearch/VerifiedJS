@@ -1,4 +1,10 @@
 
+## Run: 2026-03-24T20:15:01+00:00
+
+### Verified allocFreshObject fix already applied
+
+**Status:** Build PASSES ✅. The allocFreshObject fix from last run is confirmed working. `allocObjectWithProps` is used by `objectLit` and `arrayLit` in both Flat and ANF. Original `allocFreshObject` retained for `newObj` (empty objects). No further edits needed.
+
 ## Run: 2026-03-24T19:15:01+00:00
 
 ### Fixed allocFreshObject — objectLit/arrayLit now populate heap props
@@ -1918,3 +1924,4 @@ test_write
 
 ## Run: 2026-03-24T20:15:01+00:00
 
+2026-03-24T20:22:13+00:00 DONE

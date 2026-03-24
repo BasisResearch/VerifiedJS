@@ -1,76 +1,83 @@
-# proof — Close 44 Sorries (8 CC + 2 ANF + 1 Lower + 33 Wasm)
+# proof — Close CC sorries (ExprAddrWF is #1 priority)
 
-You own Proofs/*.lean and compiler passes. HeapCorr is DONE.
+You own Proofs/*.lean and compiler passes. HeapCorr is DONE. ExprAddrWF is DEFINED and in CC_SimRel.
 
-## TASK 0 (DO FIRST): Close L1706 and L2114 — well-formedness
-
-Both sorry sites are in the `| some _ =>` branch after `cases sf.heap.objects[addr]?` where `addr ≥ sc.heap.objects.size`.
-
-**The branch is unreachable.** Here's why: `addr` comes from Core expression `.getProp (.lit (.object addr)) prop` (or `.getIndex`). Core allocated this `addr`, so `addr < sc.heap.objects.size` must hold. But the current proof splits on `Nat.lt_or_ge addr sc.heap.objects.size` and can't dismiss the `≥` branch.
-
-**Fix: Add `ExprAddrWF` to CC_SimRel.**
+## TASK 0 (DO FIRST): Close ExprAddrWF_mono (L657) — unlocks ~20 sorries
 
 ```lean
-/-- All object addresses in a Core value are valid heap addresses. -/
-private def ValueAddrWF (v : Core.Value) (heapSize : Nat) : Prop :=
-  match v with
-  | .object addr => addr < heapSize
-  | _ => True
-
-/-- All object addresses in a Core expression are valid heap addresses.
-    Only needs cases that appear in sorry sites (getProp, getIndex, lit). -/
-private def ExprAddrWF : Core.Expr → Nat → Prop
-  | .lit v, n => ValueAddrWF v n
-  | .getProp e _, n => ExprAddrWF e n
-  | .getIndex e _, n => ExprAddrWF e n
-  | _, _ => True
+private theorem ExprAddrWF_mono {e : Core.Expr} {n m : Nat}
+    (h : ExprAddrWF e n) (hle : n ≤ m) : ExprAddrWF e m := by
+  sorry  -- THIS IS LINE 657
 ```
 
-Add `ExprAddrWF sc.expr sc.heap.objects.size` to CC_SimRel:
+**Fix**: Structural induction on `e`. Each case is either `True` (trivially holds) or recurses. Pattern:
 
 ```lean
-private def CC_SimRel (_s : Core.Program) (_t : Flat.Program)
-    (sf : Flat.State) (sc : Core.State) : Prop :=
-  sf.trace = sc.trace ∧
-  EnvCorr sc.env sf.env ∧
-  HeapCorr sc.heap sf.heap ∧
-  noCallFrameReturn sc.expr = true ∧
-  ExprAddrWF sc.expr sc.heap.objects.size ∧  -- ADD THIS
-  ∃ (scope : List String) (envVar : String) (envMap : Flat.EnvMapping) (st st' : Flat.CCState),
-    (sf.expr, st') = Flat.convertExpr sc.expr scope envVar envMap st
+  induction e with
+  | lit v => exact ValueAddrWF_mono h hle
+  | var _ => trivial
+  | «let» _ init body ih1 ih2 => exact ⟨ih1 h.1 hle, ih2 h.2 hle⟩
+  | assign _ value ih => exact ih h hle
+  | «if» cond t e ih1 ih2 ih3 => exact ⟨ih1 h.1 hle, ih2 h.2.1 hle, ih3 h.2.2 hle⟩
+  | seq a b ih1 ih2 => exact ⟨ih1 h.1 hle, ih2 h.2 hle⟩
+  | call _ _ | newObj _ _ | objectLit _ | arrayLit _ | «break» _ | «continue» _ | «return» none | yield none _ | this => trivial
+  | getProp e _ ih => exact ih h hle
+  | setProp o _ v ih1 ih2 => exact ⟨ih1 h.1 hle, ih2 h.2 hle⟩
+  | getIndex e1 e2 ih1 ih2 => exact ⟨ih1 h.1 hle, ih2 h.2 hle⟩
+  | setIndex o i v ih1 ih2 ih3 => exact ⟨ih1 h.1 hle, ih2 h.2.1 hle, ih3 h.2.2 hle⟩
+  | deleteProp e _ ih => exact ih h hle
+  | typeof e ih => exact ih h hle
+  | unary _ e ih => exact ih h hle
+  | binary _ l r ih1 ih2 => exact ⟨ih1 h.1 hle, ih2 h.2 hle⟩
+  | functionDef _ _ body _ _ ih => exact ih h hle
+  | throw e ih => exact ih h hle
+  | tryCatch b _ c fe ih1 ih2 ih3 => cases fe <;> simp [ExprAddrWF] at * <;> exact ⟨ih1 h.1 hle, ih2 h.2.1 hle, ih3 h.2.2 hle⟩  -- adjust for none case
+  | while_ c b ih1 ih2 => exact ⟨ih1 h.1 hle, ih2 h.2 hle⟩
+  | forIn _ o b ih1 ih2 => exact ⟨ih1 h.1 hle, ih2 h.2 hle⟩
+  | forOf _ i b ih1 ih2 => exact ⟨ih1 h.1 hle, ih2 h.2 hle⟩
+  | «return» (some e) ih => exact ih h hle
+  | yield (some e) _ ih => exact ih h hle
+  | labeled _ b ih => exact ih h hle
+  | await e ih => exact ih h hle
 ```
 
-Then at L1706/L2114: `ExprAddrWF (.getProp (.lit (.object addr)) prop) sc.heap.objects.size` gives `addr < sc.heap.objects.size`, which contradicts `hge : addr ≥ sc.heap.objects.size`. Replace `sorry` with `exact absurd (haddr) (Nat.not_lt.mpr hge)` (adjust names to match your proof context).
+Adjust constructor names to match your `Core.Expr` definition. Use `lean_goal` at L657 if unsure of exact names.
 
-**closureConvert_init_related**: Initial expression has no `.object` values (it's the program body with only variable references and literals), so `ExprAddrWF` holds trivially — likely `trivial` or `simp [ExprAddrWF]`.
+## TASK 1: Close ~20 `sorry /- ExprAddrWF -/` sites
 
-**Preservation**: Each Core step case must preserve ExprAddrWF:
-- objectLit/arrayLit: `addr = heap.nextAddr`, new heap has `objects.size = old + 1`, so `addr < new_size`. Use `omega`.
-- Other steps that don't allocate: heap unchanged, expr may change but stays in bounds.
-- Env lookups: values came from earlier heap state, heap only grows → still valid. Needs `ValueAddrWF` in EnvCorr (you may need `∀ v ∈ env, ValueAddrWF v heap.size`).
+All instances of `sorry /- ExprAddrWF -/` need `ExprAddrWF sc'.expr sc'.heap.objects.size`. Pattern for each case:
 
-**SIMPLER ALTERNATIVE (try first)**: Look at the proof context at L1706. The `addr` may already be constrained by a hypothesis from an earlier case split. Search for `h` or `hc` hypotheses containing `addr`. If you can find `sc.heap.objects[addr]? = some _` earlier in the proof tree (from the Core step), that directly gives `addr < sc.heap.objects.size` via `Array.getElem?_some`.
+**When heap unchanged** (most cases — break, continue, return, labeled, typeof, unary, etc.):
+- `sc'.expr` is a sub-expression of `sc.expr` → extract from `ExprAddrWF sc.expr n`
+- Heap unchanged → same `n`
+- Proof: `simp [ExprAddrWF] at haddr ⊢; exact haddr.1` (or `.2`, depending on which sub-expr)
 
-## TASK 1: L920 captured var (stuttering)
+**When heap grows** (objectLit, arrayLit, newObj, setProp, etc.):
+- `sc'.expr = .lit (.object addr)` where `addr = old heap size`
+- New heap size = old + 1, so `addr < new_size` by `omega`
+- Proof: `simp [ExprAddrWF, ValueAddrWF]; omega`
 
-Core: `.var name` → 1 step → value
-Flat: `.getEnv (.var envVar) idx` → 2 steps → value
+**When stepping a sub-expression** (let init, if cond, binary lhs, etc.):
+- Use `ExprAddrWF_mono` with `hle : old_heap ≤ new_heap` (since heap only grows)
 
-Need multi-step: show Flat reaches same value in 2 steps via `Flat.Steps`.
+Try `simp [ExprAddrWF, ValueAddrWF] at *` first. Many will close with `omega` or `trivial` after simp.
 
-## TASK 2: L3079 objectLit, L3080 arrayLit, L1631 newObj
+## TASK 2: Close L1764 and L2172 (well-formedness)
 
-BLOCKED on wasmspec fixing allocFreshObject. Skip.
+After ExprAddrWF_mono is proved, these close because:
+- `ExprAddrWF (.getProp (.lit (.object addr)) prop) sc.heap.objects.size` gives `addr < sc.heap.objects.size`
+- This contradicts `hge : addr ≥ sc.heap.objects.size`
+- Proof: `exact absurd haddr (Nat.not_lt.mpr hge)` (adjust names)
 
-## TASK 3: L1630 call — function body correspondence
+## TASK 3: objectLit (L3137) and arrayLit (L3138) — NOW UNBLOCKED
 
-Core enters function body. Flat enters function body. Need CC_SimRel preservation through call.
+wasmspec added `allocObjectWithProps` that populates heap props. Both Core and Flat now push actual properties.
 
-## TASK 4: L3081 functionDef — most complex, do last
+## TASK 4: newObj (L1689) — NOT blocked
 
-## TASK 5: ANF (L106, L1181) — independent of CC
+Both Core and Flat push `[]` for newObj. HeapCorr is preserved (same empty list pushed to both heaps). Should be provable now.
 
-## TASK 6: Lower (L69) — LowerSimRel.init
+## TASK 5: ANF (L106, L1181), call (L1688), functionDef (L3139) — later
 
 ## Rules
 - `bash scripts/lake_build_concise.sh` to build (only ONCE at end)

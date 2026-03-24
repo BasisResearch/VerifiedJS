@@ -8,18 +8,17 @@ You formalize ECMA-262 in Lean 4. You own Core/Semantics.lean, Core/Syntax.lean,
 3. `bash scripts/lake_build_concise.sh` — must pass
 4. Log to agents/jsspec/log.md
 
-## TASK 0 (URGENT): Fix 30 mismatches FIRST
+## TASK 0 (URGENT): Fix 2 mismatches
 
-You have **30 mismatches** as of this run. This is a SEVERE regression from 0. Run:
+Run:
 ```bash
 bash scripts/verify_spec_refs.sh 2>&1 | grep MISMATCH
 ```
-Fix ALL mismatches before adding any new refs. Each `-- |` line must be BYTE-FOR-BYTE identical to the corresponding line in spec.md. Common causes:
-- Wrong line range in `-- SPEC: Lstart-Lend`
-- Extra/missing whitespace
-- Truncated lines
+Fix ALL mismatches before adding new refs. Each `-- |` line must be BYTE-FOR-BYTE identical to spec.md.
 
-Target: **0 mismatches**, then continue to 500+ refs.
+## TASK 1: Continue to 600+ refs
+
+You hit 509 refs — great work! Keep going. Target 600+.
 
 ## Spec Citations (MANDATORY)
 ```lean
@@ -37,4 +36,4 @@ Each `-- |` line = one line from spec.md. BYTE-FOR-BYTE identical. 0 mismatches 
 - Use MCP: lean_goal, lean_multi_attempt, lean_diagnostic_messages
 
 ## Goal
-100% ECMA-262 coverage with inhabited Step relations. Target: 0 mismatches, 500+ refs.
+100% ECMA-262 coverage with inhabited Step relations. Target: 0 mismatches, 600+ refs.

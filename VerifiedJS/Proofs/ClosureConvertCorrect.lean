@@ -2145,25 +2145,22 @@ private theorem closureConvert_step_simulation
         refine ⟨by show sf.trace ++ _ = sc.trace ++ _; rw [htrace], henvCorr, ?_⟩
         constructor
         · exact hheap
-        refine ⟨scope, st, st, ?_⟩
+        refine ⟨sorry /- ExprAddrWF -/, scope, st, st, ?_⟩
         -- Case split on ov to match both step functions
         cases ov with
         | object addr =>
           simp only [Flat.convertExpr, Flat.convertValue, Core.pushTrace]
           rw [heapObjectAt?_eq, valueToString_convertValue]
-          rcases Nat.lt_or_ge addr sc.heap.objects.size with hlt | hge
-          · rw [show sf.heap.objects[addr]? = sc.heap.objects[addr]? from (hheap.2 addr hlt).symm]
-            cases h_lookup : sc.heap.objects[addr]? with
+          -- ExprAddrWF gives addr < sc.heap.objects.size
+          have hlt : addr < sc.heap.objects.size := by
+            have h := hexprwf; rw [hsc] at h; simp [ExprAddrWF, ValueAddrWF] at h; exact h.1
+          rw [show sf.heap.objects[addr]? = sc.heap.objects[addr]? from (hheap.2 addr hlt).symm]
+          cases h_lookup : sc.heap.objects[addr]? with
+          | none => rfl
+          | some props =>
+            cases h_find : props.find? (fun kv => kv.fst == Core.valueToString iv) with
             | none => rfl
-            | some props =>
-              cases h_find : props.find? (fun kv => kv.fst == Core.valueToString iv) with
-              | none => rfl
-              | some kv => simp only [coreToFlatValue_eq_convertValue]; rfl
-          · have : sc.heap.objects[addr]? = none := by simp [Array.getElem?_def]; omega
-            rw [this]
-            cases sf.heap.objects[addr]? with
-            | none => rfl
-            | some _ => sorry -- needs well-formedness: Core addrs < Core heap size
+            | some kv => simp only [coreToFlatValue_eq_convertValue]; rfl
         | string str =>
           simp only [Flat.convertExpr, Flat.convertValue, Core.pushTrace, valueToString_convertValue]
           cases iv <;> simp only [Flat.convertValue, Core.valueToString, Flat.valueToString] <;> rfl
