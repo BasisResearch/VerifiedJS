@@ -541,6 +541,18 @@ def propListNoCallFrameReturn : List (Core.PropName × Core.Expr) → Bool
   | (_, e) :: rest => noCallFrameReturn e && propListNoCallFrameReturn rest
 end
 
+/-- Heap prefix relation: Core heap is a prefix of Flat heap.
+    Flat may contain additional closure-environment objects. -/
+private def HeapCorr (cheap fheap : Core.Heap) : Prop :=
+  cheap.objects.size ≤ fheap.objects.size ∧
+  ∀ addr, addr < cheap.objects.size → cheap.objects[addr]? = fheap.objects[addr]?
+
+private theorem HeapCorr_refl (h : Core.Heap) : HeapCorr h h :=
+  ⟨Nat.le_refl _, fun _ _ => rfl⟩
+
+private theorem HeapCorr_get (hc : HeapCorr ch fh) (hlt : addr < ch.objects.size) :
+    ch.objects[addr]? = fh.objects[addr]? := hc.2 addr hlt
+
 /-- Simulation relation for closure conversion: Flat and Core states
     have matching traces, environment correspondence, and expression
     correspondence through the conversion. -/
@@ -548,7 +560,7 @@ private def CC_SimRel (_s : Core.Program) (_t : Flat.Program)
     (sf : Flat.State) (sc : Core.State) : Prop :=
   sf.trace = sc.trace ∧
   EnvCorr sc.env sf.env ∧
-  sf.heap = sc.heap ∧
+  HeapCorr sc.heap sf.heap ∧
   noCallFrameReturn sc.expr = true ∧
   ∃ (scope : List String) (envVar : String) (envMap : Flat.EnvMapping) (st st' : Flat.CCState),
     (sf.expr, st') = Flat.convertExpr sc.expr scope envVar envMap st
@@ -559,7 +571,7 @@ private theorem closureConvert_init_related
     (h_wf : noCallFrameReturn s.body = true) :
     CC_SimRel s t (Flat.initialState t) (Core.initialState s) := by
   unfold CC_SimRel Flat.initialState Core.initialState
-  refine ⟨rfl, ?_, rfl, h_wf, ?_⟩
+  refine ⟨rfl, ?_, HeapCorr_refl _, h_wf, ?_⟩
   · -- EnvCorr: both envs have exactly one binding: "console" → .object 0
     have h_empty : EnvCorr Core.Env.empty Flat.Env.empty := by
       constructor <;> intro _ _ h <;> simp [Core.Env.empty, Core.Env.lookup, Flat.Env.empty, Flat.Env.lookup] at h
@@ -606,12 +618,12 @@ private theorem closureConvert_step_simulation
   suffices ∀ (n : Nat) (envVar : String) (envMap : Flat.EnvMapping)
       (sf : Flat.State) (sc : Core.State) (ev : Core.TraceEvent) (sf' : Flat.State),
       sc.expr.depth = n → sf.trace = sc.trace → EnvCorr sc.env sf.env →
-      sf.heap = sc.heap → noCallFrameReturn sc.expr = true →
+      HeapCorr sc.heap sf.heap → noCallFrameReturn sc.expr = true →
       (∃ (scope : List String) (st st' : Flat.CCState),
         (sf.expr, st') = Flat.convertExpr sc.expr scope envVar envMap st) →
       Flat.Step sf ev sf' →
       ∃ sc', Core.Step sc ev sc' ∧ sf'.trace = sc'.trace ∧ EnvCorr sc'.env sf'.env ∧
-        sf'.heap = sc'.heap ∧ noCallFrameReturn sc'.expr = true ∧
+        HeapCorr sc'.heap sf'.heap ∧ noCallFrameReturn sc'.expr = true ∧
         (∃ (scope : List String) (st st' : Flat.CCState),
           (sf'.expr, st') = Flat.convertExpr sc'.expr scope envVar envMap st) by
     intro sf sc ev sf' ⟨htrace, henvCorr, hheap, hncfr, scope, envVar, envMap, st, st', hconv⟩ hstep
@@ -712,7 +724,7 @@ private theorem closureConvert_step_simulation
         simp only [Core.step?] at h0
         cases label <;> (have heq := (Prod.mk.inj (Option.some.inj h0)).2; subst heq; rfl)
       rw [hsc'_env, hsf'_env]; exact henvCorr
-    have hheap' : sf'.heap = sc'.heap := by
+    have hheap' : HeapCorr sc'.heap sf'.heap := by
       have h0 := hstep
       rw [show sf = {sf with expr := .«break» label} from by cases sf; simp_all] at h0
       simp only [Flat.step?] at h0
@@ -773,7 +785,7 @@ private theorem closureConvert_step_simulation
         simp only [Core.step?] at h0
         cases label <;> (have heq := (Prod.mk.inj (Option.some.inj h0)).2; subst heq; rfl)
       rw [hsc'_env, hsf'_env]; exact henvCorr
-    have hheap' : sf'.heap = sc'.heap := by
+    have hheap' : HeapCorr sc'.heap sf'.heap := by
       have h0 := hstep
       rw [show sf = {sf with expr := .«continue» label} from by cases sf; simp_all] at h0
       simp only [Flat.step?] at h0
@@ -831,7 +843,7 @@ private theorem closureConvert_step_simulation
         simp only [Core.step?] at h0
         have heq := (Prod.mk.inj (Option.some.inj h0)).2; subst heq; rfl
       rw [hsc'_env, hsf'_env]; exact henvCorr
-    have hheap' : sf'.heap = sc'.heap := by
+    have hheap' : HeapCorr sc'.heap sf'.heap := by
       have h0 := hstep
       rw [show sf = {sf with expr := .labeled label (Flat.convertExpr body scope envVar envMap st).1} from by cases sf; simp_all] at h0
       simp only [Flat.step?] at h0
@@ -905,7 +917,7 @@ private theorem closureConvert_step_simulation
           rw [show sc = {sc with expr := .var name} from by cases sc; simp_all] at h0
           simp only [Core.step?, hcenv] at h0
           exact congrArg Core.State.expr (Prod.mk.inj (Option.some.inj h0)).2 ▸ rfl
-        have hheap' : sf'.heap = sc'.heap := by
+        have hheap' : HeapCorr sc'.heap sf'.heap := by
           have h0 := hstep
           rw [show sf = {sf with expr := .var name} from by cases sf; simp_all] at h0
           simp only [Flat.step?, hfenv] at h0
@@ -962,7 +974,7 @@ private theorem closureConvert_step_simulation
             rw [show sc = {sc with expr := .var name} from by cases sc; simp_all] at h0
             simp only [Core.step?, hcenv] at h0
             exact congrArg Core.State.expr (Prod.mk.inj (Option.some.inj h0)).2 ▸ rfl
-          have hheap' : sf'.heap = sc'.heap := by
+          have hheap' : HeapCorr sc'.heap sf'.heap := by
             have h0 := hstep
             rw [show sf = {sf with expr := .var name} from by cases sf; simp_all] at h0
             simp only [Flat.step?, hfenv] at h0
@@ -1292,7 +1304,7 @@ private theorem closureConvert_step_simulation
         have h0 := hcstep; rw [hsc_rw] at h0
         simp only [Core.step?, Core.exprValue?] at h0
         exact congrArg Core.State.expr (Prod.mk.inj (Option.some.inj h0)).2 ▸ rfl
-      have hheap' : sf'.heap = sc'.heap := by
+      have hheap' : HeapCorr sc'.heap sf'.heap := by
         have h0 := hstep; rw [hsf_rw] at h0
         simp only [Flat.step?, Flat.exprValue?] at h0
         have h1 := (Prod.mk.inj (Option.some.inj h0)).2; subst h1
@@ -1616,7 +1628,7 @@ private theorem closureConvert_step_simulation
       refine ⟨by show sf.trace ++ _ = sc.trace ++ _; rw [htrace], henvCorr, ?_⟩
       -- heap correspondence
       constructor
-      · show sf.heap = sc.heap; exact hheap
+      · exact hheap
       -- Now need: convertExpr of Core result = Flat result
       -- Case split on v to match both step functions
       refine ⟨scope, st, st, ?_⟩
@@ -2000,7 +2012,7 @@ private theorem closureConvert_step_simulation
         subst heqf; subst heqc
         refine ⟨by show sf.trace ++ _ = sc.trace ++ _; rw [htrace], henvCorr, ?_⟩
         constructor
-        · show sf.heap = sc.heap; exact hheap
+        · exact hheap
         refine ⟨scope, st, st, ?_⟩
         -- Case split on ov to match both step functions
         cases ov with
@@ -3474,7 +3486,7 @@ private theorem closureConvert_step_simulation
       have h0 := hcstep; rw [hsc_rw] at h0
       simp only [Core.step?] at h0
       exact congrArg Core.State.expr (Prod.mk.inj (Option.some.inj h0)).2 ▸ rfl
-    have hheap' : sf'.heap = sc'.heap := by
+    have hheap' : HeapCorr sc'.heap sf'.heap := by
       have h0 := hstep; rw [hsf_rw] at h0
       simp only [Flat.step?] at h0
       have h1 := (Prod.mk.inj (Option.some.inj h0)).2; subst h1
@@ -3533,7 +3545,7 @@ private theorem closureConvert_step_simulation
         rw [show sc = {sc with expr := .«return» none} from by cases sc; simp_all] at h0
         simp only [Core.step?] at h0
         exact congrArg Core.State.expr (Prod.mk.inj (Option.some.inj h0)).2 ▸ rfl
-      have hheap' : sf'.heap = sc'.heap := by
+      have hheap' : HeapCorr sc'.heap sf'.heap := by
         have h0 := hstep
         rw [show sf = {sf with expr := .«return» none} from by cases sf; simp_all] at h0
         simp only [Flat.step?] at h0
@@ -3700,7 +3712,7 @@ private theorem closureConvert_step_simulation
         rw [show sc = {sc with expr := .yield none delegate} from by cases sc; simp_all] at h0
         simp only [Core.step?] at h0
         exact congrArg Core.State.expr (Prod.mk.inj (Option.some.inj h0)).2 ▸ rfl
-      have hheap' : sf'.heap = sc'.heap := by
+      have hheap' : HeapCorr sc'.heap sf'.heap := by
         have h0 := hstep
         rw [show sf = {sf with expr := .yield none delegate} from by cases sf; simp_all] at h0
         simp only [Flat.step?] at h0
@@ -3991,7 +4003,7 @@ private theorem closureConvert_step_simulation
         rw [show sc = {sc with expr := .this} from by cases sc; simp_all] at h0
         simp only [Core.step?, hcenv] at h0
         exact congrArg Core.State.expr (Prod.mk.inj (Option.some.inj h0)).2 ▸ rfl
-      have hheap' : sf'.heap = sc'.heap := by
+      have hheap' : HeapCorr sc'.heap sf'.heap := by
         have h0 := hstep
         rw [show sf = {sf with expr := .this} from by cases sf; simp_all] at h0
         simp only [Flat.step?, hfenv] at h0
@@ -4044,7 +4056,7 @@ private theorem closureConvert_step_simulation
           rw [show sc = {sc with expr := .this} from by cases sc; simp_all] at h0
           simp only [Core.step?, hcenv] at h0
           exact congrArg Core.State.expr (Prod.mk.inj (Option.some.inj h0)).2 ▸ rfl
-        have hheap' : sf'.heap = sc'.heap := by
+        have hheap' : HeapCorr sc'.heap sf'.heap := by
           have h0 := hstep
           rw [show sf = {sf with expr := .this} from by cases sf; simp_all] at h0
           simp only [Flat.step?, hfenv] at h0

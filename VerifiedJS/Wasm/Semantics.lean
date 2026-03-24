@@ -7361,11 +7361,10 @@ theorem step_sim (irmod : IRModule) (wmod : Module) :
                 | [] => simp [hstk_w] at hstk_rel
                 | wv :: wstk =>
                   -- Get value correspondence for top of stack
-                  have ⟨irv', wv', hirv', hwv', hval_corr⟩ := hstk_rel.2 0 (by simp)
-                  simp at hirv' hwv'
-                  have : irv' = irv := by injection hirv'
-                  have : wv' = wv := by injection hwv'
-                  subst_vars
+                  have helem := hstk_rel.2 0 (by simp [hstk])
+                  rw [hstk, hstk_w] at helem
+                  simp only [List.getElem?_cons_zero] at helem
+                  obtain ⟨_, _, rfl, rfl, hval_corr⟩ := helem
                   -- Wasm bounds from globals correspondence
                   have hglen := hrel.hglobals.1
                   have hbounds_w : idx < s2.store.globals.size := by omega
@@ -7382,22 +7381,28 @@ theorem step_sim (irmod : IRModule) (wmod : Module) :
                           hglobals := by
                             dsimp only []
                             constructor
-                            · simp [Array.size_set!]; exact hglen
+                            · simp [Array.set!, Array.size_setIfInBounds]; exact hglen
                             · intro j hj
-                              simp [Array.size_set!] at hj
+                              simp [Array.set!, Array.size_setIfInBounds] at hj
                               by_cases hjidx : j = idx
                               · subst hjidx
                                 refine ⟨irv, wv, ?_, ?_, hval_corr⟩
-                                · simp [Array.getElem?_set!, hbounds, hj]
-                                · simp [Array.getElem?_set!, hbounds_w, hj]
+                                · simp [Array.set!, Array.setIfInBounds, hbounds]
+                                  rw [Array.getElem?_eq_getElem (by omega)]
+                                  simp [Array.getElem_setIfInBounds]
+                                · simp [Array.set!, Array.setIfInBounds, hbounds_w]
+                                  rw [Array.getElem?_eq_getElem (by omega)]
+                                  simp [Array.getElem_setIfInBounds]
                               · have hj_ir : j < s1.globals.size := hj
                                 have hj_w : j < s2.store.globals.size := by omega
                                 obtain ⟨irv'', wv'', hirv'', hwv'', hcorr''⟩ := hrel.hglobals.2 j hj_ir
                                 refine ⟨irv'', wv'', ?_, ?_, hcorr''⟩
-                                · rw [Array.getElem?_set! (h := hbounds)]
-                                  simp [hjidx, hirv'']
-                                · rw [Array.getElem?_set! (h := hbounds_w)]
-                                  simp [hjidx, hwv'']
+                                · simp only [Array.set!, Array.setIfInBounds, hbounds]
+                                  rw [Array.getElem?_eq_getElem (by simp [Array.size_setIfInBounds]; omega)]
+                                  simp [Array.getElem_setIfInBounds, Ne.symm hjidx, hirv'']
+                                · simp only [Array.set!, Array.setIfInBounds, hbounds_w]
+                                  rw [Array.getElem?_eq_getElem (by simp [Array.size_setIfInBounds]; omega)]
+                                  simp [Array.getElem_setIfInBounds, Ne.symm hjidx, hwv'']
                           hlabels := hrel.hlabels
                           hhalt := hhalt_of_structural hrest hrel.hlabels }
               else
