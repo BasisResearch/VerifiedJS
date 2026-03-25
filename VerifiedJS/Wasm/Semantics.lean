@@ -6823,6 +6823,12 @@ structure EmitSimRel (irmod : IRModule) (wmod : Module)
   hlabels : ir.labels.length = w.labels.length
   /- Halt correspondence. -/
   hhalt : irStep? ir = none → Wasm.step? w = none
+  /- Label content correspondence: for each label position, the onExit code corresponds. -/
+  hlabel_content : ∀ (i : Nat), i < ir.labels.length →
+    ∃ irLbl wLbl, ir.labels[i]? = some irLbl ∧ w.labels[i]? = some wLbl ∧
+      EmitCodeCorr irLbl.onExit wLbl.onExit
+  /- Frame count: exactly one frame (top-level). -/
+  hframes_one : ir.frames.length = 1
 
 namespace EmitSimRel
 
