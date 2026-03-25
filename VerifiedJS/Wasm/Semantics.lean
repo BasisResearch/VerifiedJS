@@ -7078,22 +7078,14 @@ theorem step_sim (irmod : IRModule) (wmod : Module) :
               have := hrel.hlabels; rw [hlabels_ir, hlabels_w] at this
               simp at this; exact this
             exact ⟨_, hw,
-              { hemit := hrel.hemit
-                hcode := hlc
-                hstack := hrel.hstack
-                hframes_len := hrel.hframes_len
-                hframes_locals := hrel.hframes_locals
-                hframes_vals := hrel.hframes_vals
-                hglobals := hrel.hglobals
-                hmemory := hrel.hmemory
-                hlabels := hlabels_post
-                hhalt := hhalt_of_structural hlc hlabels_post
-                    hlabel_content := by
+              ⟨hrel.hemit, hlc, hrel.hstack, hrel.hframes_len, hrel.hframes_locals,
+                hrel.hframes_vals, hrel.hglobals, hrel.hmemory, hlabels_post,
+                hhalt_of_structural hlc hlabels_post, by
                   intro i hi
                   have := hrel.hlabel_content (i + 1) (by rw [hlabels_ir]; simp; omega)
                   rw [hlabels_ir, hlabels_w] at this
-                  simpa using this
-                hframes_one := hrel.hframes_one }⟩
+                  simpa using this,
+                hrel.hframes_one⟩⟩
       | [] =>
           -- Labels empty: IR has code=[] and labels=[].
           -- With hframes_one, frames.length = 1, so IR is halted.
