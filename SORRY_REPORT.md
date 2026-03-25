@@ -1,4 +1,4 @@
-# Sorry Report (Wed Mar 25 12:10:21 PM UTC 2026)
+# Sorry Report (Wed Mar 25 01:11:35 PM UTC 2026)
 
 - [ ] `VerifiedJS/Proofs/LowerCorrect.lean:69` — `theorem lower_behavioral_correct` — `obtain ⟨ir, hirsteps, hrel⟩ := lower_sim_steps s t h _ _ _ _ (IR.LowerSimRel.init s t h (by sorry)) hsteps`
 - [ ] `VerifiedJS/Proofs/ANFConvertCorrect.lean:106` — `theorem anfConvert_step_star` — `sorry`
@@ -6,6 +6,7 @@
 - [ ] `VerifiedJS/Proofs/ClosureConvertCorrect.lean:829` — `theorem false` — `| forIn => sorry /- forIn converts to .lit .undefined (stub); theorem false -/`
 - [ ] `VerifiedJS/Proofs/ClosureConvertCorrect.lean:830` — `theorem false` — `| forOf => sorry /- forOf converts to .lit .undefined (stub); theorem false -/`
 - [ ] `VerifiedJS/Proofs/ClosureConvertCorrect.lean:1113` — `theorem closureConvert_step_simulation` — `sorry`
+- [ ] `VerifiedJS/Proofs/ClosureConvertCorrect.lean:1316` — `theorem closureConvert_step_simulation` — `by sorry /- convertExpr unfold blocked for let-value case -/⟩`
 - [ ] `VerifiedJS/Proofs/ClosureConvertCorrect.lean:1882` — `theorem closureConvert_step_simulation` — `| call _ _ => sorry -- needs env/heap/funcs correspondence`
 - [ ] `VerifiedJS/Proofs/ClosureConvertCorrect.lean:1883` — `theorem closureConvert_step_simulation` — `| newObj _ _ => sorry -- needs env/heap correspondence`
 - [ ] `VerifiedJS/Proofs/ClosureConvertCorrect.lean:3532` — `def hst3_def` — `| objectLit _ => sorry -- needs env/heap correspondence`
@@ -26,16 +27,16 @@
 - [ ] `VerifiedJS/Wasm/Semantics.lean:6280` — `theorem step_sim` — `sorry`
 - [ ] `VerifiedJS/Wasm/Semantics.lean:6283` — `theorem step_sim` — `sorry`
 - [ ] `VerifiedJS/Wasm/Semantics.lean:6286` — `theorem step_sim` — `sorry`
-- [ ] `VerifiedJS/Wasm/Semantics.lean:7936` — `theorem step_sim` — `| .i64 => sorry -- i64 load: needs EmitCodeCorr.load_i64 constructor`
-- [ ] `VerifiedJS/Wasm/Semantics.lean:7939` — `theorem step_sim` — `sorry`
-- [ ] `VerifiedJS/Wasm/Semantics.lean:7942` — `theorem step_sim` — `sorry`
-- [ ] `VerifiedJS/Wasm/Semantics.lean:8383` — `theorem step_sim` — `sorry`
-- [ ] `VerifiedJS/Wasm/Semantics.lean:8386` — `theorem step_sim` — `sorry`
-- [ ] `VerifiedJS/Wasm/Semantics.lean:8623` — `theorem step_sim` — `sorry`
-- [ ] `VerifiedJS/Wasm/Semantics.lean:8626` — `theorem step_sim` — `sorry`
-- [ ] `VerifiedJS/Wasm/Semantics.lean:8733` — `theorem step_sim` — `sorry`
-- [ ] `VerifiedJS/Wasm/Semantics.lean:8892` — `theorem ir_forward_sim` — `exact LowerSimRel.init prog irmod hlower (by sorry)`
-- [ ] `VerifiedJS/Wasm/Semantics.lean:8907` — `theorem ir_stutter_sim` — `exact LowerSimRel.init prog irmod hlower (by sorry)`
-- [ ] `VerifiedJS/Wasm/Semantics.lean:8931` — `theorem lower_behavioral_obs_correct` — `(LowerSimRel.init prog irmod hlower (by sorry))`
+- [ ] `VerifiedJS/Wasm/Semantics.lean:7928` — `theorem step_sim` — `| .i64 => sorry -- i64 load: needs EmitCodeCorr.load_i64 constructor`
+- [ ] `VerifiedJS/Wasm/Semantics.lean:7935` — `theorem step_sim` — `sorry`
+- [ ] `VerifiedJS/Wasm/Semantics.lean:7938` — `theorem step_sim` — `sorry`
+- [ ] `VerifiedJS/Wasm/Semantics.lean:8379` — `theorem step_sim` — `sorry`
+- [ ] `VerifiedJS/Wasm/Semantics.lean:8382` — `theorem step_sim` — `sorry`
+- [ ] `VerifiedJS/Wasm/Semantics.lean:8619` — `theorem step_sim` — `sorry`
+- [ ] `VerifiedJS/Wasm/Semantics.lean:8622` — `theorem step_sim` — `sorry`
+- [ ] `VerifiedJS/Wasm/Semantics.lean:8729` — `theorem step_sim` — `sorry`
+- [ ] `VerifiedJS/Wasm/Semantics.lean:8888` — `theorem ir_forward_sim` — `exact LowerSimRel.init prog irmod hlower (by sorry)`
+- [ ] `VerifiedJS/Wasm/Semantics.lean:8903` — `theorem ir_stutter_sim` — `exact LowerSimRel.init prog irmod hlower (by sorry)`
+- [ ] `VerifiedJS/Wasm/Semantics.lean:8927` — `theorem lower_behavioral_obs_correct` — `(LowerSimRel.init prog irmod hlower (by sorry))`
 
-**Total: 37 sorries**
+**Total: 38 sorries**
