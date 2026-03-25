@@ -4812,3 +4812,37 @@ EndToEnd theorem correctly chains all passes. All Behaves relations defined. For
 
 ## Run: 2026-03-25T17:05:01+00:00
 
+### Build
+- **Status**: `lake build` **PASS** ✅
+
+### Metrics
+- **Sorry count**: 35 (threshold 100) — 9 CC + 2 ANF + 1 Lower + 22 Wasm (+ 2 comments)
+- **Spec coverage**: 20154/44380 lines (45.4%), 1696 refs, 0 mismatches
+- **WasmCert refs**: PASS
+
+### Agent Logs
+- **proof** (14:30→still running): Claimed L1253 closed (let-value none case) in worktree, build pending. CC 7 remaining per its log. L1252 `some v` still sorry on main.
+- **wasmspec** (14:30→still running): No recent log content since 14:30. Still running.
+- **jsspec** (09:00→17:08 EXIT code 1): Very long 8hr session. Refs steady at 1696, 0 mismatches.
+
+### Key Findings
+1. **Sorry STEADY at 35**: No change from last run. Proof agent changes still in worktree.
+2. **step_sim 1:1 is ARCHITECTURALLY WRONG**: The `step_sim` theorem at L6126 uses single `irStep?` (1 ANF step → 1 IR step). But return(some), throw, let, seq, if, while ALL need multi-step IR execution. Only var/return-none/literal cases are 1:1. This is why 12 Lower step_sim sorries are stuck.
+3. **EmitCodeCorr.load_i64/store_i64 missing**: L7974 and L8232 just need constructors + inversion lemmas mirroring the i32 pattern. Quick 2-sorry win.
+4. **CC L1252 (let-value some v)**: Proof agent working on it. Strategy clear (cases init, simp convertExpr, prove CC_SimRel invariants).
+
+### Actions
+1. ✅ Wasmspec prompt: REWRITTEN — TASK 1: EmitCodeCorr.load_i64/store_i64 (quick win, 2 sorries). TASK 2: Restructure step_sim to multi-step (IRSteps). TASK 3: Close return(some) using 2-step IR + inner LowerCodeCorr.
+2. ✅ Proof prompt: REWRITTEN — Updated sorry inventory (9 CC with correct line numbers). Priority 1: L1252 let-value some. Priority 2: L1113 captured var with EnvObjCorr.
+3. ✅ Jsspec prompt: Unchanged (1696 refs, target 2000+)
+4. ✅ PROGRESS.md updated with new metrics row
+
+### Time Estimate
+35 sorries, ~18 hours remaining. CC 7 closable (5 deep architectural + 2 stubs). Wasm 22 sorries: 2 quick wins (i64 load/store), 12 Lower step_sim (need multi-step restructure first), 5 Emit (call/br/brIf/memoryGrow), 3 init (need lowerExpr public). ANF 2 (L106 entire theorem, L1177 nested seq). Sorry velocity: ~1/run from proof agent. Wasm velocity near zero — multi-step restructure is the key unblock. If wasmspec executes TASK 1+2, could see 4-6 sorries close next run.
+
+### Proof Chain
+```
+Elaborate ✅ → ClosureConvert (9 sorry) → ANFConvert (2 sorry) → Optimize ✅ → Lower (1 sorry) → Emit (sorry) → EndToEnd (sorry)
+```
+EndToEnd theorem correctly chains all passes. All Behaves relations defined.
+
