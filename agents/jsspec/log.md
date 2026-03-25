@@ -1,3 +1,15 @@
+## Run: 2026-03-25T03:00:02+00:00
+
+### STATUS: Added 66 new SPEC citations (904 total, 0 mismatches). Build clean. Coverage now 24% (10795 lines). TARGET 900+ REACHED.
+
+- **Task 0 (Fix mismatches):** No mismatches found — 0 mismatches confirmed at start.
+- **Task 1 (Continue to 900+ refs):** DONE. Added 66 new verbatim ECMA-262 citations in two batches:
+  - Batch 1 (24 refs): IteratorNext (L7185-L7197), IteratorComplete (L7198-L7201), IteratorValue (L7202-L7205), IteratorStep (L7206-L7220), IteratorStepValue (L7221-L7234), CreateIteratorResultObject (L7309-L7318), ResolveThisBinding (L10002-L10010), GetNewTarget (L10011-L10019), GetGlobalObject (L10020-L10028), AgentSignifier (L10288-L10292), AgentCanSuspend (L10293-L10302), ClearKeptObjects (L10591-L10600), AddToKeptObjects (L10601-L10608), CleanupFinalizationRegistry (L10609-L10620), CanBeHeldWeakly (L10621-L10644), OrdinaryGetPrototypeOf (L10690-L10693), OrdinarySetPrototypeOf (L10701-L10718), OrdinaryIsExtensible (L10726-L10729), OrdinaryPreventExtensions (L10737-L10740), OrdinaryGetOwnProperty (L10748-L10762), OrdinarySet (L10897-L10902), OrdinarySetWithOwnDescriptor (L10903-L10926), OrdinaryDelete (L10934-L10941), OrdinaryOwnPropertyKeys (L10949-L10959)
+  - Batch 2 (42 refs): Number::bitwiseNOT (L4411-L4416), StringToNumber (L6055-L6060), ToIntegerOrInfinity (L6114-L6128), ToInt32 (L6129-L6149), ToUint32 (L6150-L6171), ToInt16 (L6172-L6183), ToUint16 (L6184-L6201), ToInt8 (L6202-L6213), ToUint8 (L6214-L6224), ToUint8Clamp (L6225-L6243), ToBigInt (L6244-L6262), StringToBigInt (L6263-L6269), ToBigInt64 (L6286-L6295), ToBigUint64 (L6296-L6304), OrdinaryHasInstance (L6909-L6924), EnumerableOwnProperties (L6940-L6952), GetOptionsObject (L7110-L7115), Iterator Records (L7133-L7146), GetIteratorDirect (L7147-L7153), GetIteratorFromMethod (L7154-L7159), GetIterator (L7160-L7172), GetIteratorFlattenable (L7173-L7184), IteratorClose (L7235-L7252), IteratorCloseAll (L7253-L7261), AsyncIteratorClose (L7275-L7295), CreateListIteratorRecord (L7319-L7337), IteratorToList (L7338-L7343), NewDeclarativeEnvironment (L9667-L9671), NewObjectEnvironment (L9672-L9678), NewFunctionEnvironment (L9679-L9689), NewGlobalEnvironment (L9690-L9699), NewModuleEnvironment (L9700-L9704), NewPrivateEnvironment (L9729-L9734), ResolvePrivateIdentifier (L9735-L9743), OrdinaryCreateFromConstructor (L10985-L11004), GetPrototypeFromConstructor (L11005-L11025), RequireInternalSlot (L11026-L11035), AddRestrictedFunctionProperties (L11237-L11248), MakeClassConstructor (L11294-L11298), MakeMethod (L11299-L11306), SetFunctionLength (L11343-L11353), RequireObjectCoercible (L6390-L6398)
+- **Build:** Core/Semantics.lean compiles clean. Pre-existing linter warnings only.
+
+---
+
 ## Run: 2026-03-25T02:00:01+00:00
 
 ### STATUS: Added 83 new SPEC citations (838 total, 0 mismatches). Build clean. Coverage now 24% (10690 lines). TARGET 800+ REACHED.
@@ -2232,3 +2244,4 @@ test_write
 
 ## Run: 2026-03-25T03:00:02+00:00
 
+2026-03-25T03:28:59+00:00 DONE

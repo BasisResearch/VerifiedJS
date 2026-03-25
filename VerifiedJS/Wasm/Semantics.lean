@@ -7217,8 +7217,8 @@ theorem step_sim (irmod : IRModule) (wmod : Module) :
                       hmemory := hrel.hmemory
                       hlabels := by dsimp only []; exact hrel.hlabels
                       hhalt := (hhalt_of_structural .nil (by dsimp only []; exact hrel.hlabels))
-                  hlabel_content := hrel.hlabel_content
-                  hframes_one := hrel.hframes_one }⟩
+                      hlabel_content := hrel.hlabel_content
+                      hframes_one := hrel.hframes_one }⟩
               | some val =>
                 have hir := irStep?_eq_localGet s1 idx rest irf irfs val hcode_ir hfr_ir hlocal
                 rw [hir] at hstep
@@ -7279,8 +7279,8 @@ theorem step_sim (irmod : IRModule) (wmod : Module) :
                     hmemory := hrel.hmemory
                     hlabels := by dsimp only []; exact hrel.hlabels
                     hhalt := (hhalt_of_structural .nil (by dsimp only []; exact hrel.hlabels))
-                  hlabel_content := hrel.hlabel_content
-                  hframes_one := hrel.hframes_one }⟩
+                    hlabel_content := hrel.hlabel_content
+                    hframes_one := hrel.hframes_one }⟩
               | irf :: irfs =>
                 -- Has frame but empty stack: IR traps "stack underflow in local.set"
                 have hir := irStep?_eq_localSet_emptyStack s1 idx rest irf irfs hcode_ir hstk hfr_ir0
@@ -7309,8 +7309,8 @@ theorem step_sim (irmod : IRModule) (wmod : Module) :
                       hmemory := hrel.hmemory
                       hlabels := by dsimp only []; exact hrel.hlabels
                       hhalt := (hhalt_of_structural .nil (by dsimp only []; exact hrel.hlabels))
-                  hlabel_content := hrel.hlabel_content
-                  hframes_one := hrel.hframes_one }⟩
+                    hlabel_content := hrel.hlabel_content
+                    hframes_one := hrel.hframes_one }⟩
             | iv :: istk =>
               -- Need a frame
               match hfr_ir : s1.frames with
@@ -7337,8 +7337,8 @@ theorem step_sim (irmod : IRModule) (wmod : Module) :
                     hmemory := hrel.hmemory
                     hlabels := by dsimp only []; exact hrel.hlabels
                     hhalt := (hhalt_of_structural .nil (by dsimp only []; exact hrel.hlabels))
-                  hlabel_content := hrel.hlabel_content
-                  hframes_one := hrel.hframes_one }⟩
+                    hlabel_content := hrel.hlabel_content
+                    hframes_one := hrel.hframes_one }⟩
               | irf :: irfs =>
                 -- Need idx in bounds
                 if hlt : idx < irf.locals.size then
@@ -7428,8 +7428,8 @@ theorem step_sim (irmod : IRModule) (wmod : Module) :
                           hmemory := hrel.hmemory
                           hlabels := by dsimp only []; exact hrel.hlabels
                           hhalt := (hhalt_of_structural .nil (by dsimp only []; exact hrel.hlabels))
-                  hlabel_content := hrel.hlabel_content
-                  hframes_one := hrel.hframes_one }⟩
+                    hlabel_content := hrel.hlabel_content
+                    hframes_one := hrel.hframes_one }⟩
           · exact hf.elim
       | .globalGet idx =>
           -- global.get: IR pushes globals[idx], Wasm pushes store.globals[idx]
@@ -8275,8 +8275,8 @@ theorem step_sim (irmod : IRModule) (wmod : Module) :
                       hmemory := hrel.hmemory
                       hlabels := by dsimp only []; exact hrel.hlabels
                       hhalt := (hhalt_of_structural .nil (by dsimp only []; exact hrel.hlabels))
-                  hlabel_content := hrel.hlabel_content
-                  hframes_one := hrel.hframes_one }⟩
+                    hlabel_content := hrel.hlabel_content
+                    hframes_one := hrel.hframes_one }⟩
             | .f64 n :: stk =>
               -- f64 on stack: type mismatch trap
               have hir : irStep? s1 = some (.trap "if condition is not i32",
@@ -8310,8 +8310,8 @@ theorem step_sim (irmod : IRModule) (wmod : Module) :
                       hmemory := hrel.hmemory
                       hlabels := by dsimp only []; exact hrel.hlabels
                       hhalt := (hhalt_of_structural .nil (by dsimp only []; exact hrel.hlabels))
-                  hlabel_content := hrel.hlabel_content
-                  hframes_one := hrel.hframes_one }⟩
+                    hlabel_content := hrel.hlabel_content
+                    hframes_one := hrel.hframes_one }⟩
           · exact hf.elim
       | .br label =>
           -- unconditional branch
