@@ -1310,7 +1310,6 @@ private theorem anfConvert_halt_star_aux
                 unfold Flat.step? Flat.exprValue?
                 unfold Flat.step? Flat.exprValue?
                 unfold Flat.step? Flat.exprValue?
-                unfold Flat.step? Flat.exprValue?
                 unfold Flat.step?
                 cases sf.env.lookup "this" with
                 | some v => exact ⟨v, rfl⟩
@@ -1367,7 +1366,6 @@ private theorem anfConvert_halt_star_aux
             | _ =>
               -- Compound c1: normalizeExpr c1 can't produce trivial
               exfalso
-              rw [hc1] at hnorm
               exact absurd hnorm (normalizeExpr_compound_not_trivial c1 _
                 (by intro v; rw [hc1]; exact Flat.Expr.noConfusion)
                 (by intro nm; rw [hc1]; exact Flat.Expr.noConfusion)

@@ -1,3 +1,36 @@
+## Run: 2026-03-25T17:30:02+00:00
+
+### STATUS: Added 310 new SPEC citations (2006 total, 0 mismatches). Build clean. Coverage now 55% (24654/44380 lines). TARGET 2000+ refs and 50%+ coverage REACHED.
+
+- **Task 0 (Push to 2000+ refs):** DONE. Added 310 new verbatim ECMA-262 citations to Core/Semantics.lean:
+  - **RegExp.prototype (20 refs):** RegExp.prototype, get RegExp[%Symbol.species%], Properties of RegExp Prototype Object, constructor, exec, dotAll, flags, RegExpHasFlag, global, hasIndices, ignoreCase, [%Symbol.match%], [%Symbol.matchAll%], multiline, [%Symbol.replace%], [%Symbol.search%], source/EscapeRegExpPattern, [%Symbol.split%], sticky, test, toString, unicode, unicodeSets
+  - **Error Types (12 refs):** Error.prototype properties, constructor, message, name, Properties of Error Instances, Native Error Types, NativeError Object Structure, NativeError Constructors, NativeError function, Properties of NativeError Constructors/Prototypes, NativeError.prototype.constructor/message/name, Properties of NativeError Instances
+  - **AggregateError (9 refs):** AggregateError constructor, Properties of AggregateError Constructor/Prototype, constructor/message/name properties, Properties of AggregateError Instances
+  - **BigInt (16 refs):** BigInt Constructor, BigInt(value), NumberToBigInt, Properties of BigInt Constructor, asIntN, asUintN, prototype, constructor, toLocaleString, toString, valueOf, ThisBigIntValue, %Symbol.toStringTag%, Properties of BigInt Instances
+  - **Date.prototype setters (16 refs):** setHours, setMilliseconds, setMinutes, setMonth, setSeconds, setTime, setUTCDate, setUTCFullYear, setUTCHours, setUTCMilliseconds, setUTCMinutes, setUTCMonth, setUTCSeconds, toLocaleDateString, toLocaleString, toLocaleTimeString
+  - **Date.prototype conversions (8 refs):** toDateString, toISOString, toJSON, toString, toTimeString, toUTCString, valueOf, Date[%Symbol.toPrimitive%]
+  - **Date Operations (10 refs):** Day/TimeWithinDay/DaysInYear/DayFromYear, YearFromTime, DateFromTime, WeekDay, LocalTime/UTC/MakeTime/MakeDay/MakeDate/TimeClip
+  - **Math constants (9 refs):** Math.E, LN10, LN2, LOG10E, LOG2E, PI, SQRT1_2, SQRT2, %Symbol.toStringTag%
+  - **String Iterator (7 refs):** String.prototype[%Symbol.iterator%], String Iterator Objects, %StringIteratorPrototype% Object, next, %Symbol.toStringTag%, Properties
+  - **RegExp String Iterator (6 refs):** RegExp String Iterator Objects, CreateRegExpStringIterator, %RegExpStringIteratorPrototype% Object, next, %Symbol.toStringTag%, Properties
+  - **Array Iterator (6 refs):** Array Iterator Objects, CreateArrayIterator, %ArrayIteratorPrototype% Object, next, %Symbol.toStringTag%, Properties
+  - **Iterator Protocol/Helpers (40+ refs):** Iterator constructor, from, prototype, constructor, drop, every, filter, find, flatMap, forEach, map, reduce, some, take, toArray, %Symbol.iterator%, %Symbol.toStringTag%, WrapForValidIteratorPrototype, IteratorHelperPrototype, etc.
+  - **SharedArrayBuffer (5 refs):** AllocateSharedArrayBuffer, IsSharedArrayBuffer, IsGrowableSharedArrayBuffer, HostGrowSharedArrayBuffer
+  - **Atomics (7 refs):** Atomics.or, Atomics.store, Atomics.sub, Atomics.wait, Atomics.waitAsync, Atomics.xor, Atomics%Symbol.toStringTag%
+  - **For-In Iterator (4 refs):** For-In Iterator Objects, %ForInIteratorPrototype% Object, next, Properties
+  - **Boolean (10 refs):** Boolean constructor, Boolean(value), Properties of Boolean Constructor/Prototype, constructor, toString, valueOf, thisBooleanValue, Properties of Boolean Instances
+  - **Number.prototype (10 refs):** toExponential, toFixed, toLocaleString, toPrecision, toString, valueOf, thisNumberValue
+  - **Symbol (4 refs):** Symbol.prototype, %Symbol.toPrimitive%, %Symbol.toStringTag%, thisSymbolValue
+  - **WeakRef/FinalizationRegistry (18 refs):** WeakRef constructor, prototype methods, FinalizationRegistry constructor, prototype methods, cleanupSome
+  - **Set Iterator (4 refs):** Set.prototype[%Symbol.iterator%], %SetIteratorPrototype%, next, %Symbol.toStringTag%
+  - **RegExp internals (20+ refs):** RegExpBuiltinExec, GetStringIndex, RegExp patterns, character classes, quantifiers, disjunction, assertions
+  - **Array methods (4 refs):** Array.from, Array.of, Array.prototype.at
+  - **Expressions/Statements (33 refs):** Spread element, tagged templates, arguments evaluation, destructuring assignment, for-in/of statements, switch, try-catch, with, labelled statements, throw, break, continue
+  - **Other (37+ refs):** String.prototype methods (localeCompare, replaceAll, iterator), Promise methods, various abstract operations
+- **Build:** Core/Semantics.lean compiles clean. Pre-existing failures in Wasm/Semantics.lean and Proofs/ClosureConvertCorrect.lean unchanged. 0 mismatches confirmed.
+
+---
+
 ## Run: 2026-03-25T09:00:01+00:00
 
 ### STATUS: Added 82 new SPEC citations (1696 total, 0 mismatches). Build clean. Coverage now 45% (20154 lines).
@@ -2366,3 +2399,4 @@ test_write
 ## Run: 2026-03-25T17:30:02+00:00
 
 2026-03-25T18:00:01+00:00 SKIP: already running
+2026-03-25T18:13:32+00:00 DONE

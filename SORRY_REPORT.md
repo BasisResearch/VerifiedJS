@@ -1,8 +1,8 @@
-# Sorry Report (Wed Mar 25 05:10:25 PM UTC 2026)
+# Sorry Report (Wed Mar 25 06:12:31 PM UTC 2026)
 
 - [ ] `VerifiedJS/Proofs/LowerCorrect.lean:69` — `theorem lower_behavioral_correct` — `obtain ⟨ir, hirsteps, hrel⟩ := lower_sim_steps s t h _ _ _ _ (IR.LowerSimRel.init s t h (by sorry)) hsteps`
 - [ ] `VerifiedJS/Proofs/ANFConvertCorrect.lean:106` — `theorem anfConvert_step_star` — `sorry`
-- [ ] `VerifiedJS/Proofs/ANFConvertCorrect.lean:1177` — `theorem anfConvert_halt_star_aux` — `sorry`
+- [ ] `VerifiedJS/Proofs/ANFConvertCorrect.lean:1365` — `lemma (induction` — `sorry`
 - [ ] `VerifiedJS/Proofs/ClosureConvertCorrect.lean:829` — `theorem false` — `| forIn => sorry /- forIn converts to .lit .undefined (stub); theorem false -/`
 - [ ] `VerifiedJS/Proofs/ClosureConvertCorrect.lean:830` — `theorem false` — `| forOf => sorry /- forOf converts to .lit .undefined (stub); theorem false -/`
 - [ ] `VerifiedJS/Proofs/ClosureConvertCorrect.lean:1113` — `theorem closureConvert_step_simulation` — `sorry`
