@@ -1,61 +1,57 @@
-# wasmspec — Close Wasm sorries
+# wasmspec — Close EmitSimRel call + callIndirect
 
 You own Flat/*, ANF/*, Wasm/Syntax,Semantics,Typing,Numerics, Runtime/*.
 
 ## Current Wasm sorry count: 20 (in Semantics.lean)
 
-### TASK 1 (DO FIRST): Close init sorries (L9813, L9828, L9852)
+### TASK 1 (DO FIRST): Close EmitSimRel `.call funcIdx` (L9148)
 
-All 3 are the same: `LowerSimRel.init prog irmod hlower (by sorry)`.
+The sorry is in `EmitSimRel.step_sim`, case `| .call funcIdx =>`.
 
-The `by sorry` must prove: `LowerCodeCorr prog.main (irInitialState irmod).code`.
+**What you have:**
+- `EmitCodeCorr.call_inv`: gives `wcode = Instr.call funcIdx :: rest_w ∧ EmitCodeCorr rest rest_w`
+- `irStep?_eq_call` (L4986): exact IR call stepping equation
+- `step?_eq_call_valid` (L2879): exact Wasm call stepping equation
+- `step?_eq_call_oob` (L2897): Wasm call with OOB function index
+- `step?_eq_call_underflow` (L2907): Wasm call with stack underflow
 
-`lowerExprWithExn` is NOW PUBLIC (no longer blocked!). The proof:
-1. Unfold `Wasm.lower` from `hlower` to get the generated IR code
-2. Show `irInitialState irmod` has `.code = [call startIdx]` or `[]`
-3. Show the lowered ANF expression satisfies `LowerCodeCorr`
-
-Strategy:
+**Pattern** (same as block/end/load/store cases):
 ```lean
--- At each `by sorry`:
--- hlower : Wasm.lower prog = .ok irmod
--- Need: LowerCodeCorr prog.main (irInitialState irmod).code
---
--- Wasm.lower calls lowerExprWithExn on prog.main.
--- irInitialState sets code from the lowered result.
--- So (irInitialState irmod).code IS the lowered code.
--- LowerCodeCorr should hold by construction (lower produces LowerCodeCorr-conforming code).
---
--- Use lean_goal at each sorry to see the exact goal, then:
--- unfold Wasm.lower at hlower (or simp [Wasm.lower] at hlower)
--- extract the code from hlower
--- construct LowerCodeCorr by matching the ANF expression to the IR code
+| .call funcIdx =>
+    have hc : EmitCodeCorr (IRInstr.call funcIdx :: rest) s2.code := hcode_ir ▸ hrel.hcode
+    rcases hc.call_inv with ⟨rest_w, hcw, hrest⟩ | hf
+    · -- Specific case: Wasm code = call funcIdx :: rest_w
+      -- Case 1: funcIdx valid in both IR and Wasm
+      -- Both do call: push frame, enter function body
+      -- Use hrel.hfuncs (function correspondence) to connect
+      -- Case 2: funcIdx OOB → both trap
+      -- Case 3: stack underflow → both trap (stack_corr preserves length)
+      sorry
+    · exact hf.elim
 ```
 
-Use `lean_goal` at L9813 column 38 to see the exact proof state.
+**Key:** Both IR and Wasm call the same funcIdx. The EmitCodeCorr `call_` constructor preserves funcIdx. You need:
+1. `hrel.hfuncs` or similar to show IR and Wasm have the same function at funcIdx
+2. `hrel.hstack` to show stack correspondence (args match)
+3. After the call, the new frame's code corresponds (function body was emitted)
 
-### TASK 2: Close L9628 (memoryGrow no-memory case)
+Use `lean_goal` at L9148 to see the exact proof state. Use `lean_multi_attempt` to test tactics.
 
-This sorry is in the branch where `hmemory` gives `w.store.memories[0]? = none ∧ ir.memory.size = 0`. But then we're in the `| .i32 pages :: stk =>` case, meaning the IR has memory (just size 0). Show:
-- IR memoryGrow with 0-size memory and pages on stack → either grows (allocating pages*65536 bytes) or fails
-- Wasm has no memory (`memories[0]? = none`) → step? for memoryGrow returns trap or -1
-- Both produce matching events
+### TASK 2: Close EmitSimRel `.callIndirect typeIdx` (L9151)
 
-Use `lean_goal` at L9628 to see the proof state, then match IR and Wasm behaviors.
+Same pattern as call but with `callIndirect_inv`. The `callIndirect_` constructor maps `IRInstr.callIndirect typeIdx` to `Instr.callIndirect typeIdx 0`.
 
-### TASK 3: Close br/brIf if possible (L9394, L9397)
+### TASK 3 (if time): Init sorries (L9813, L9828, L9852)
 
-The `br_inv` gives `wcode = Instr.br idx :: rest_w`. Need to connect:
-- IR: `irFindLabel? s1.labels label = some (pos, lbl)` → branch to `lbl.onBranch`
-- Wasm: `br idx` → branch to label at index `idx` in Wasm label stack
+All need `LowerCodeCorr prog.main (irInitialState irmod).code`.
 
-Missing link: how does IR label name `label` relate to Wasm label index `idx`? The `br_` EmitCodeCorr constructor has both `label` and `idx` but doesn't constrain their relationship. You may need to add an invariant to EmitSimRel connecting IR label names to Wasm label indices.
+Since `lower` sets `startFunc := none` (proved by `lower_startFunc_none`), `(irInitialState irmod).code = []`.
 
-If this is too hard, skip and focus on TASK 1+2.
+So the goal is `LowerCodeCorr prog.main []`. Check if there's a `LowerCodeCorr` constructor for empty code. If not, this needs a new constructor or architectural change. Skip if blocked.
 
 ### LowerSimRel sorries (12: L6261-L6338)
 
-ALL blocked by 1:N stepping. Don't work on these unless you restructure step_sim to multi-step.
+ALL blocked by 1:N stepping. Don't work on these.
 
 ## Rules
 - `bash scripts/lake_build_concise.sh` to build
@@ -63,4 +59,4 @@ ALL blocked by 1:N stepping. Don't work on these unless you restructure step_sim
 - Do NOT break the build
 - CLOSE sorries, don't decompose them into more sorries
 - Use `lean_goal` + `lean_multi_attempt` BEFORE editing
-- Do TASK 1 FIRST — init sorries are the quickest wins
+- Do TASK 1 FIRST — call is the most impactful win

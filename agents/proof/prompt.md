@@ -1,8 +1,8 @@
-# proof — HeapInj Phase 1: Definitions + Lemmas
+# proof — Close ANF L1499 (trivial chain in seq4 context)
 
 ## Build ONLY your module
 ```
-bash scripts/lake_build_concise.sh VerifiedJS.Proofs.ClosureConvertCorrect
+bash scripts/lake_build_concise.sh VerifiedJS.Proofs.ANFConvertCorrect
 ```
 
 ## Use MCP BEFORE editing
@@ -10,142 +10,139 @@ bash scripts/lake_build_concise.sh VerifiedJS.Proofs.ClosureConvertCorrect
 - lean_multi_attempt to test tactics
 - lean_diagnostic_messages for errors
 
-## TASK: Add HeapInj infrastructure (DO NOT change CC_SimRel yet)
+## TASK: Close the sorry at ANFConvertCorrect.lean L1499
 
-ALL 6 real CC sorries are blocked because Flat's `makeEnv` allocates env objects on the shared heap. After any `functionDef` with captures, Flat heap has extra objects, so:
-1. `HeapCorr_alloc_both` requires `ch.objects.size = fh.objects.size` — FAILS
-2. `convertValue (.object addr) = .object addr` — but Flat allocates at a different addr
-3. `convertValue (.function idx) = .closure idx 0` — but actual env ptr ≠ 0
+### Context
+The sorry is inside `anfConvert_halt_star_aux`, in the `| seq c1a c1b =>` branch. The expression is:
+```
+sf.expr = .seq (.seq (.seq (.seq (.seq c1a c1b) c2) d) a2) b
+```
+where `c1 = .seq c1a c1b` is a **trivial chain** (`isTrivialChain c1 = true`).
 
-Add these definitions AFTER `HeapCorr_alloc_right` (around line 617), BEFORE `ValueAddrWF`:
+The sibling branches (lit, var, this) are already proved by manually constructing 0-2 Flat steps. This case needs to do the same but recursively.
+
+### Target
+Show that sf can step (silently) to some `sf_target` where:
+- `sf_target.expr = .seq (.seq (.seq c2 d) a2) b`
+- `sf_target.env = sf.env`, `sf_target.heap = sf.heap`
+- Then apply `ih` on `sf_target` (depth decreases)
+
+### Strategy: add helper lemma BEFORE the main theorem
+
+Add this helper around line 773 (after `step?_seq_ctx`):
 
 ```lean
-/-- Value correspondence modulo heap address injection.
-    Maps Core.Value to Flat.Value allowing different heap addresses. -/
-private def convertValueInj (f : Nat → Nat) : Core.Value → Flat.Value
-  | .object addr => .object (f addr)
-  | .function idx => .closure idx 0  -- env ptr filled separately
-  | .null => .null
-  | .undefined => .undefined
-  | .bool b => .bool b
-  | .number n => .number n
-  | .string s => .string s
+/-- exprValue? of any seq is none (seq is never a value). -/
+private theorem exprValue?_seq (a b : Flat.Expr) : Flat.exprValue? (.seq a b) = none := by
+  simp [Flat.exprValue?]
 
-/-- Value correspondence: Flat value equals Core value mapped through injection,
-    with relaxed closure env ptr (any envPtr accepted for .function/.closure). -/
-private def ValueCorr (f : Nat → Nat) : Core.Value → Flat.Value → Prop
-  | .object a, .object b => b = f a
-  | .function idx, .closure fIdx _ => idx = fIdx
-  | .null, .null => True
-  | .undefined, .undefined => True
-  | .bool a, .bool b => a = b
-  | .number a, .number b => a = b
-  | .string a, .string b => a = b
-  | _, _ => False
+/-- exprValue? of var/this is none (they are not values). -/
+private theorem exprValue?_var (n : String) : Flat.exprValue? (.var n) = none := by
+  simp [Flat.exprValue?]
 
-/-- ValueCorr implies same "shape" — non-object/function values are literally equal. -/
-private theorem ValueCorr_of_convertValue (cv : Core.Value) :
-    ValueCorr id cv (Flat.convertValue cv) := by
-  cases cv <;> simp [ValueCorr, Flat.convertValue, id]
+private theorem exprValue?_this : Flat.exprValue? .this = none := by
+  simp [Flat.exprValue?]
 
-/-- Memory injection: maps Core heap addresses to Flat heap addresses.
-    Core objects at addr a appear at addr f(a) in Flat heap with matching properties. -/
-private structure HeapInj (ch fh : Core.Heap) where
-  f : Nat → Nat
-  inj : ∀ a b, a < ch.objects.size → b < ch.objects.size → f a = f b → a = b
-  valid : ∀ a, a < ch.objects.size → f a < fh.objects.size
-  preserves : ∀ a, a < ch.objects.size → ch.objects[a]? = fh.objects[f a]?
-
-/-- Identity injection for equal-prefix heaps (subsumes HeapCorr). -/
-private theorem HeapInj_of_HeapCorr {ch fh : Core.Heap} (hc : HeapCorr ch fh) :
-    HeapInj ch fh where
-  f := id
-  inj := fun _ _ _ _ h => h
-  valid := fun a ha => Nat.lt_of_lt_of_le ha hc.1
-  preserves := fun a ha => hc.2 a ha
-
-/-- Injection identity: both heaps are the same. -/
-private theorem HeapInj_refl (h : Core.Heap) : HeapInj h h where
-  f := id
-  inj := fun _ _ _ _ h => h
-  valid := fun _ h => h
-  preserves := fun _ _ => rfl
-
-/-- Both heaps push same-shaped object: injection extends with f(new_core) = new_flat. -/
-private theorem HeapInj_alloc_both {ch fh : Core.Heap}
-    (hinj : HeapInj ch fh) (cp fp : List (Core.PropName × Core.Value))
-    (hprops : cp.map Prod.fst = fp.map Prod.fst)  -- same keys
-    -- NOTE: values in fp should correspond to values in cp via hinj.f
-    -- We can add this constraint if needed
-    :
-    ∃ (hinj' : HeapInj
-      { objects := ch.objects.push cp, nextAddr := ch.nextAddr + 1 }
-      { objects := fh.objects.push fp, nextAddr := fh.nextAddr + 1 }),
-    (∀ a, a < ch.objects.size → hinj'.f a = hinj.f a) ∧
-    hinj'.f ch.objects.size = fh.objects.size := by
-  sorry
-
-/-- Only Flat heap grows (env object from makeEnv): injection unchanged. -/
-private theorem HeapInj_alloc_right {ch fh : Core.Heap}
-    (hinj : HeapInj ch fh) (fp : List (Core.PropName × Core.Value)) :
-    ∃ (hinj' : HeapInj ch { objects := fh.objects.push fp, nextAddr := fh.nextAddr + 1 }),
-    ∀ a, a < ch.objects.size → hinj'.f a = hinj.f a := by
-  sorry
-
-/-- Env correspondence modulo injection. -/
-private def EnvCorrInj (f : Nat → Nat) (cenv : Core.Env) (fenv : Flat.Env) : Prop :=
-  (∀ name fv, fenv.lookup name = some fv →
-    ∃ cv, cenv.lookup name = some cv ∧ ValueCorr f cv fv) ∧
-  (∀ name cv, cenv.lookup name = some cv →
-    ∃ fv, fenv.lookup name = some fv ∧ ValueCorr f cv fv)
-
-/-- EnvCorrInj with id reduces to (almost) EnvCorr. -/
-private theorem EnvCorrInj_of_EnvCorr {cenv : Core.Env} {fenv : Flat.Env}
-    (h : EnvCorr cenv fenv) : EnvCorrInj id cenv fenv := by
-  constructor
-  · intro name fv hf
-    obtain ⟨cv, hc, hrfl⟩ := h.1 name fv hf
-    exact ⟨cv, hc, by subst hrfl; exact ValueCorr_of_convertValue cv⟩
-  · intro name cv hc
-    obtain ⟨fv, hf, hrfl⟩ := h.2 name cv hc
-    exact ⟨fv, hf, by subst hrfl; exact ValueCorr_of_convertValue cv⟩
+/-- A trivial chain evaluates to a literal via silent Flat steps.
+    env, heap, funcs, callStack unchanged. -/
+private theorem trivialChain_eval (n : Nat) (e : Flat.Expr) (s : Flat.State)
+    (htc : isTrivialChain e = true)
+    (hsf : s.expr = e)
+    (hcost : trivialChainCost e ≤ n) :
+    ∃ (v : Core.Value) (evs : List Core.TraceEvent) (s' : Flat.State),
+      Flat.Steps s evs s' ∧ s'.expr = .lit v ∧
+      s'.env = s.env ∧ s'.heap = s.heap ∧
+      s'.funcs = s.funcs ∧ s'.callStack = s.callStack ∧
+      observableTrace evs = [] := by
+  induction n generalizing e s with
+  | zero =>
+    -- cost ≤ 0 means e = .lit v (only lit has cost 0 among trivials)
+    cases e with
+    | lit v => exact ⟨v, [], s, .refl, hsf, rfl, rfl, rfl, rfl, rfl⟩
+    | var _ | «this» | seq _ _ => simp [trivialChainCost] at hcost
+    | _ => simp [isTrivialChain] at htc
+  | succ n ih =>
+    cases e with
+    | lit v => exact ⟨v, [], s, .refl, hsf, rfl, rfl, rfl, rfl, rfl⟩
+    | var name =>
+      -- step? resolves var to a value
+      have hstep : ∃ val, Flat.step? s = some (.silent, { s with
+          expr := .lit val, trace := s.trace ++ [.silent] }) := by
+        rw [show s = { s with expr := .var name } from by cases s; simp_all]
+        unfold Flat.step? Flat.exprValue?; unfold Flat.step?
+        cases s.env.lookup name with
+        | some v => exact ⟨v, rfl⟩
+        | none => exact ⟨.undefined, rfl⟩
+      obtain ⟨val, hstep⟩ := hstep
+      exact ⟨val, [.silent], _, .tail ⟨hstep⟩ .refl, rfl, rfl, rfl, rfl, rfl,
+        by simp [observableTrace]⟩
+    | «this» =>
+      -- Same pattern as var but with "this"
+      have hstep : ∃ val, Flat.step? s = some (.silent, { s with
+          expr := .lit val, trace := s.trace ++ [.silent] }) := by
+        rw [show s = { s with expr := .this } from by cases s; simp_all]
+        unfold Flat.step? Flat.exprValue?; unfold Flat.step?
+        cases s.env.lookup "this" with
+        | some v => exact ⟨v, rfl⟩
+        | none => exact ⟨.undefined, rfl⟩
+      obtain ⟨val, hstep⟩ := hstep
+      exact ⟨val, [.silent], _, .tail ⟨hstep⟩ .refl, rfl, rfl, rfl, rfl, rfl,
+        by simp [observableTrace]⟩
+    | seq ea eb =>
+      simp [isTrivialChain] at htc
+      -- First: evaluate ea to a literal
+      have hcost_a : trivialChainCost ea ≤ n := by
+        simp [trivialChainCost] at hcost; omega
+      obtain ⟨va, evs_a, s_a, hsteps_a, hlit_a, henv_a, hheap_a, hfuncs_a, hcs_a, hobs_a⟩ :=
+        ih ea { s with expr := ea } htc.1 rfl hcost_a
+      -- Now s_a.expr = .lit va. One step consumes .seq (.lit va) eb → eb
+      -- ... (use step?_seq_ctx to lift ea steps through one .seq layer)
+      -- Then evaluate eb
+      -- This is the recursive structure — use ih on eb
+      sorry
+    | _ => simp [isTrivialChain] at htc
 ```
 
-This is Phase 1. It adds definitions WITHOUT changing CC_SimRel or breaking any existing proofs. The 2 sorry lemmas (HeapInj_alloc_both, HeapInj_alloc_right) are construction proofs — build the new injection explicitly.
+The `| seq ea eb =>` case in `trivialChain_eval` needs:
+1. Use `step?_seq_ctx` to lift the `ea` evaluation through the `.seq ea eb` wrapping
+2. After ea → .lit va, one step consumes `.seq (.lit va) eb` → `eb`
+3. Use `ih` on `eb`
 
-### Proof sketch for HeapInj_alloc_right
+Then, add a SECOND helper to lift `trivialChain_eval` through 4 layers of seq context:
+
 ```lean
-  refine ⟨⟨hinj.f, ?_, ?_, ?_⟩, fun a ha => rfl⟩
-  · exact hinj.inj
-  · intro a ha
-    have := hinj.valid a ha
-    simp [Array.size_push]; omega
-  · intro a ha
-    have hlt : hinj.f a < fh.objects.size := hinj.valid a ha
-    simp [Array.getElem?_push, show ¬(hinj.f a = fh.objects.size) from by omega]
-    exact hinj.preserves a ha
+/-- Lift trivialChain_eval through nested seq context:
+    if tc evaluates to .lit v, then .seq(.seq(.seq(.seq tc c2) d) a2) b
+    steps to .seq(.seq(.seq(.seq (.lit v) c2) d) a2) b -/
+private theorem trivialChain_eval_seq4 (s : Flat.State)
+    (tc c2 d a2 b : Flat.Expr)
+    (htc : isTrivialChain tc = true)
+    (hsf : s.expr = .seq (.seq (.seq (.seq tc c2) d) a2) b) :
+    ∃ (v : Core.Value) (evs : List Core.TraceEvent) (s' : Flat.State),
+      Flat.Steps s evs s' ∧
+      s'.expr = .seq (.seq (.seq (.seq (.lit v) c2) d) a2) b ∧
+      s'.env = s.env ∧ s'.heap = s.heap ∧
+      s'.funcs = s.funcs ∧ s'.callStack = s.callStack ∧
+      observableTrace evs = [] := by
+  sorry  -- Use trivialChain_eval on the inner tc, then step?_seq_ctx 4 times to lift
 ```
 
-### Proof sketch for HeapInj_alloc_both
+### Applying the helpers at L1499
+Once you have `trivialChain_eval_seq4`, the sorry at L1499 becomes:
 ```lean
-  -- Define f' : extend f to map ch.objects.size → fh.objects.size
-  let f' : Nat → Nat := fun a =>
-    if a = ch.objects.size then fh.objects.size
-    else if h : a < ch.objects.size then hinj.f a
-    else 0  -- unreachable for valid addresses
-  refine ⟨⟨f', ?_, ?_, ?_⟩, ?_, ?_⟩
-  · -- injectivity: use hinj.inj for old addrs, new addr maps uniquely
-    sorry
-  · -- validity: old addrs via hinj.valid + push grows, new addr = fh.objects.size < size+1
-    sorry
-  · -- preserves: old addrs via hinj.preserves + push doesn't affect, new addr via push
-    sorry
-  · -- old addrs preserved
-    intro a ha; simp [f', show ¬(a = ch.objects.size) from by omega, ha]
-  · -- new addr
-    simp [f']
+-- Get tc steps: c1 = .seq c1a c1b evaluates to .lit v
+obtain ⟨v, evs_tc, sf_tc, hsteps_tc, hlit_tc, henv_tc, hheap_tc, _, _, hobs_tc⟩ :=
+  trivialChain_eval_seq4 sf (Flat.Expr.seq c1a c1b) c2 d a2 b
+    (by simp [isTrivialChain]; exact ⟨htc_a, htc_b⟩)  -- htc.1, htc.2
+    (by rw [hsf, ha, ha1, hc, hc1])
+-- One more step: .seq(.seq(.seq(.seq (.lit v) c2) d) a2) b → .seq(.seq(.seq c2 d) a2) b
+-- (same pattern as the lit case at L1392)
+-- Then apply ih
 ```
 
-After this compiles, log your progress. Phase 2 (changing CC_SimRel) will come in a later prompt.
+### Priority
+1. First try to close L1499 with `trivialChain_eval_seq4` (even if the helper itself has sorry initially)
+2. If that works structurally, close the helper sorries
+3. Do NOT touch CC or other files
 
 ## Log progress to agents/proof/log.md
