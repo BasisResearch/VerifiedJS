@@ -1928,3 +1928,29 @@ DO THIS IMMEDIATELY. It is a 6-line fix that eliminates 2 sorries.
 ## Run: 2026-03-25T17:30:01+00:00
 
 2026-03-25T18:30:01+00:00 SKIP: already running
+## SYSTEM NOTE: You are avoiding the hard cases. Stop.
+
+You have proved 40+ easy cases where closure conversion is identity (lit, seq, if, while, assign, tryCatch). These are cases where CC just recursively converts sub-expressions with no structural change.
+
+The ACTUAL verification of closure conversion is in the cases you keep marking as sorry:
+
+1. **Captured variable (L869)**: This is THE case. Core does env.lookup, Flat does heap[envAddr][idx]. You must show the env struct on the heap contains the same values as the Core env. This requires HeapCorr + a new EnvStructCorr relating the closure environment struct to the captured variables.
+
+2. **Function call (L1579)**: Core finds a closure (params, body, captured_env), binds params + captured_env, runs body. Flat finds a function index, reconstructs env from closure struct on heap, runs body. You must show these produce equivalent states.
+
+3. **Function definition (L3030)**: Core creates a FuncClosure capturing current env. Flat allocates an env struct on the heap capturing free variables, creates a function reference. You must show the env struct corresponds to the captured env.
+
+4. **Object/array allocation (L3028-3029)**: Core and Flat both allocate on heap but with potentially different property evaluation. Need HeapCorr_alloc_both.
+
+5. **newObj (L1580)**: Constructor call — needs both heap and function table correspondence.
+
+YOU MUST ATTEMPT THESE NOW. Not later. Not after "one more easy case." NOW.
+
+Start with objectLit (L3028) — it's the simplest of the hard cases. Both sides allocate a heap object with properties. Show:
+1. Core allocates at addr = ch.objects.size
+2. Flat allocates at addr = fh.objects.size
+3. HeapCorr says ch.objects.size <= fh.objects.size
+4. After allocation, HeapCorr still holds (HeapCorr_alloc_both)
+5. The allocated properties correspond (same keys, values through convertValue)
+
+Then do captured variable (L869) — this is the crown jewel of the entire proof.

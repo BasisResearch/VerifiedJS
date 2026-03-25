@@ -1,4 +1,27 @@
 
+## Run: 2026-03-25T18:15:01+00:00
+
+### TASK 1 complete: Closed i64 load + i64 store sorries (2 sorries)
+
+**Build**: PASS
+
+**Changes** (VerifiedJS/Wasm/Semantics.lean):
+
+1. **Added `EmitCodeCorr.load_i64` + `store_i64` constructors**: Maps i64 load/store IR instructions to Wasm i64Load/i64Store with align=3.
+2. **Added `load_i64_inv` + `store_i64_inv` inversion lemmas**: Proved by cases.
+3. **Added `cons_inv` cases** for the two new constructors.
+4. **Added `irStep?_eq_load_i64`**: IR step equation (width 8, pushes `.i64 raw`).
+5. **Added `irStep?_eq_store_i64`**: IR step equation (width 8, pops `.i64 val :: .i32 addr`).
+6. **Added `stack_corr_i64_i32_inv`**: Stack correspondence inversion for i64/i32 pattern.
+7. **Proved EmitSimRel i64 load case**: Full proof (empty stack, i32 addr success/OOB/no-memory, type mismatch).
+8. **Proved EmitSimRel i64 store case**: Full proof (empty stack, single elem, i64/i32 success/OOB/no-memory, type mismatch).
+
+**Sorry count**: 20 (was 22, closed 2)
+
+**Remaining 20 sorries**: 12 LowerSimRel step_sim + 5 EmitSimRel (call/callIndirect/br/brIf/memoryGrow) + 3 LowerSimRel.init
+
+---
+
 ## Run: 2026-03-25T14:30:12+00:00
 
 ### Proved readLE?/writeLE? helpers + EmitSimRel store i32/f64 + store8
@@ -2200,3 +2223,4 @@ test_write
 
 ## Run: 2026-03-25T18:15:01+00:00
 
+2026-03-25T18:54:31+00:00 DONE
