@@ -5274,6 +5274,20 @@ theorem irStep?_eq_load_f64 (s : IRExecState) (rest : List IRInstr)
         trace := s.trace ++ [.silent] }) := by
   simp [irStep?, hcode, hstack, irPop1?, irPushTrace, hread]
 
+/-- Exact state after i64 load: uses readLE? with width 8.
+    REF: Wasm §4.4.7.1 (memory.load) -/
+theorem irStep?_eq_load_i64 (s : IRExecState) (rest : List IRInstr)
+    (offset : Nat) (addr : UInt32) (stk : List IRValue) (raw : UInt64)
+    (hcode : s.code = IRInstr.load .i64 offset :: rest)
+    (hstack : s.stack = .i32 addr :: stk)
+    (hread : readLE? s.memory (addr.toNat + offset) 8 = some raw) :
+    irStep? s = some (.silent,
+      { s with
+        code := rest
+        stack := .i64 raw :: stk
+        trace := s.trace ++ [.silent] }) := by
+  simp [irStep?, hcode, hstack, irPop1?, irPushTrace, hread]
+
 /-- Exact state after i32 store: uses writeLE? with width 4.
     REF: Wasm §4.4.7.2 (memory.store) -/
 theorem irStep?_eq_store_i32 (s : IRExecState) (rest : List IRInstr)
@@ -5296,6 +5310,21 @@ theorem irStep?_eq_store_f64 (s : IRExecState) (rest : List IRInstr)
     (hcode : s.code = IRInstr.store .f64 offset :: rest)
     (hstack : s.stack = .f64 val :: .i32 addr :: stk)
     (hwrite : writeLE? s.memory (addr.toNat + offset) 8 (floatToU64Bits val) = some mem') :
+    irStep? s = some (.silent,
+      { s with
+        code := rest
+        stack := stk
+        memory := mem'
+        trace := s.trace ++ [.silent] }) := by
+  simp [irStep?, hcode, hstack, irPop2?, irPushTrace, hwrite]
+
+/-- Exact state after i64 store: uses writeLE? with width 8.
+    REF: Wasm §4.4.7.2 (memory.store) -/
+theorem irStep?_eq_store_i64 (s : IRExecState) (rest : List IRInstr)
+    (offset : Nat) (val : UInt64) (addr : UInt32) (stk : List IRValue) (mem' : ByteArray)
+    (hcode : s.code = IRInstr.store .i64 offset :: rest)
+    (hstack : s.stack = .i64 val :: .i32 addr :: stk)
+    (hwrite : writeLE? s.memory (addr.toNat + offset) 8 val = some mem') :
     irStep? s = some (.silent,
       { s with
         code := rest
@@ -6480,6 +6509,16 @@ inductive EmitCodeCorr : List IRInstr → List Instr → Prop where
       EmitCodeCorr rest_ir rest_w →
       EmitCodeCorr (.store .f64 offset :: rest_ir)
         (.f64Store { offset := offset, align := 3 } :: rest_w)
+  /-- i64.load maps to i64.load. REF: Emit.lean line 92. -/
+  | load_i64 (offset : Nat) (rest_ir : List IRInstr) (rest_w : List Instr) :
+      EmitCodeCorr rest_ir rest_w →
+      EmitCodeCorr (.load .i64 offset :: rest_ir)
+        (.i64Load { offset := offset, align := 3 } :: rest_w)
+  /-- i64.store maps to i64.store. REF: Emit.lean line 96. -/
+  | store_i64 (offset : Nat) (rest_ir : List IRInstr) (rest_w : List Instr) :
+      EmitCodeCorr rest_ir rest_w →
+      EmitCodeCorr (.store .i64 offset :: rest_ir)
+        (.i64Store { offset := offset, align := 3 } :: rest_w)
   /-- i32.store8 maps to i32.store8. REF: Emit.lean line 99. -/
   | store8_ (offset : Nat) (rest_ir : List IRInstr) (rest_w : List Instr) :
       EmitCodeCorr rest_ir rest_w →
@@ -6769,6 +6808,24 @@ theorem EmitCodeCorr.store_f64_inv {offset : Nat} {rest : List IRInstr} {wcode :
   | store_f64 _ _ rw hrw => left; exact ⟨rw, rfl, hrw⟩
   | general _ _ _ _ hf _ => exact hf.elim
 
+/-- Inversion for load .i64 offset :: rest. -/
+theorem EmitCodeCorr.load_i64_inv {offset : Nat} {rest : List IRInstr} {wcode : List Instr}
+    (h : EmitCodeCorr (IRInstr.load .i64 offset :: rest) wcode) :
+    (∃ rest_w, wcode = Instr.i64Load { offset := offset, align := 3 } :: rest_w ∧ EmitCodeCorr rest rest_w) ∨
+    False := by
+  cases h with
+  | load_i64 _ _ rw hrw => left; exact ⟨rw, rfl, hrw⟩
+  | general _ _ _ _ hf _ => exact hf.elim
+
+/-- Inversion for store .i64 offset :: rest. -/
+theorem EmitCodeCorr.store_i64_inv {offset : Nat} {rest : List IRInstr} {wcode : List Instr}
+    (h : EmitCodeCorr (IRInstr.store .i64 offset :: rest) wcode) :
+    (∃ rest_w, wcode = Instr.i64Store { offset := offset, align := 3 } :: rest_w ∧ EmitCodeCorr rest rest_w) ∨
+    False := by
+  cases h with
+  | store_i64 _ _ rw hrw => left; exact ⟨rw, rfl, hrw⟩
+  | general _ _ _ _ hf _ => exact hf.elim
+
 /-- Inversion for store8 offset :: rest. -/
 theorem EmitCodeCorr.store8_inv {offset : Nat} {rest : List IRInstr} {wcode : List Instr}
     (h : EmitCodeCorr (IRInstr.store8 offset :: rest) wcode) :
@@ -6822,6 +6879,8 @@ theorem EmitCodeCorr.cons_inv {instr : IRInstr} {rest : List IRInstr} {wcode : L
   | store_i32 _ _ rw hrw => exact ⟨[_], rw, rfl, hrw⟩
   | load_f64 _ _ rw hrw => exact ⟨[_], rw, rfl, hrw⟩
   | store_f64 _ _ rw hrw => exact ⟨[_], rw, rfl, hrw⟩
+  | load_i64 _ _ rw hrw => exact ⟨[_], rw, rfl, hrw⟩
+  | store_i64 _ _ rw hrw => exact ⟨[_], rw, rfl, hrw⟩
   | store8_ _ _ rw hrw => exact ⟨[_], rw, rfl, hrw⟩
   | block_ _ _ _ _ rw _ hrw => exact ⟨[_], rw, rfl, hrw⟩
   | loop_ _ _ _ _ rw _ hrw => exact ⟨[_], rw, rfl, hrw⟩
