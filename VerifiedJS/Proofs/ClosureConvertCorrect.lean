@@ -1821,6 +1821,8 @@ private theorem closureConvert_step_simulation
       -- heap correspondence
       constructor
       · exact hheap
+      constructor
+      · exact henvwf
       -- Now need: convertExpr of Core result = Flat result
       -- Case split on v to match both step functions
       refine ⟨sorry /- ExprAddrWF -/, scope, st, st, ?_⟩
@@ -2244,6 +2246,8 @@ private theorem closureConvert_step_simulation
         refine ⟨by show sf.trace ++ _ = sc.trace ++ _; rw [htrace], henvCorr, ?_⟩
         constructor
         · exact hheap
+        constructor
+        · exact henvwf
         refine ⟨sorry /- ExprAddrWF -/, scope, st, st, ?_⟩
         -- Case split on ov to match both step functions
         cases ov with
