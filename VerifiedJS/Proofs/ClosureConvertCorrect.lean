@@ -652,35 +652,42 @@ private theorem ValueAddrWF_mono {v : Core.Value} {n m : Nat}
     (h : ValueAddrWF v n) (hle : n ≤ m) : ValueAddrWF v m := by
   cases v <;> simp [ValueAddrWF] at * <;> omega
 
-private theorem ExprAddrWF_mono {e : Core.Expr} {n m : Nat}
-    (h : ExprAddrWF e n) (hle : n ≤ m) : ExprAddrWF e m := by
-  match e with
-  | .lit v => exact ValueAddrWF_mono h hle
-  | .var _ | .call _ _ | .newObj _ _ | .objectLit _ | .arrayLit _ | .break _ | .continue _ | .return none | .yield none _ | .this => trivial
-  | .«let» _ init body => exact ⟨ExprAddrWF_mono h.1 hle, ExprAddrWF_mono h.2 hle⟩
-  | .assign _ value => exact ExprAddrWF_mono h hle
-  | .«if» cond t el => exact ⟨ExprAddrWF_mono h.1 hle, ExprAddrWF_mono h.2.1 hle, ExprAddrWF_mono h.2.2 hle⟩
-  | .seq a b => exact ⟨ExprAddrWF_mono h.1 hle, ExprAddrWF_mono h.2 hle⟩
-  | .getProp obj _ => exact ExprAddrWF_mono h hle
-  | .setProp o _ v => exact ⟨ExprAddrWF_mono h.1 hle, ExprAddrWF_mono h.2 hle⟩
-  | .getIndex e1 e2 => exact ⟨ExprAddrWF_mono h.1 hle, ExprAddrWF_mono h.2 hle⟩
-  | .setIndex o i v => exact ⟨ExprAddrWF_mono h.1 hle, ExprAddrWF_mono h.2.1 hle, ExprAddrWF_mono h.2.2 hle⟩
-  | .deleteProp obj _ => exact ExprAddrWF_mono h hle
-  | .typeof arg => exact ExprAddrWF_mono h hle
-  | .unary _ arg => exact ExprAddrWF_mono h hle
-  | .binary _ l r => exact ⟨ExprAddrWF_mono h.1 hle, ExprAddrWF_mono h.2 hle⟩
-  | .functionDef _ _ body _ _ => exact ExprAddrWF_mono h hle
-  | .throw arg => exact ExprAddrWF_mono h hle
-  | .tryCatch b _ c none => exact ⟨ExprAddrWF_mono h.1 hle, ExprAddrWF_mono h.2 hle⟩
-  | .tryCatch b _ c (some fe) => exact ⟨ExprAddrWF_mono h.1 hle, ExprAddrWF_mono h.2.1 hle, ExprAddrWF_mono h.2.2 hle⟩
-  | .while_ c b => exact ⟨ExprAddrWF_mono h.1 hle, ExprAddrWF_mono h.2 hle⟩
-  | .forIn _ o b => exact ⟨ExprAddrWF_mono h.1 hle, ExprAddrWF_mono h.2 hle⟩
-  | .forOf _ i b => exact ⟨ExprAddrWF_mono h.1 hle, ExprAddrWF_mono h.2 hle⟩
-  | .return (some arg) => exact ExprAddrWF_mono h hle
-  | .yield (some arg) _ => exact ExprAddrWF_mono h hle
-  | .labeled _ b => exact ExprAddrWF_mono h hle
-  | .await arg => exact ExprAddrWF_mono h hle
-termination_by sizeOf e
+private theorem ExprAddrWF_mono : {e : Core.Expr} → {n m : Nat} →
+    ExprAddrWF e n → (n ≤ m) → ExprAddrWF e m
+  | .lit v, _, _, h, hle => ValueAddrWF_mono h hle
+  | .var _, _, _, _, _ => trivial
+  | .call _ _, _, _, _, _ => trivial
+  | .newObj _ _, _, _, _, _ => trivial
+  | .objectLit _, _, _, _, _ => trivial
+  | .arrayLit _, _, _, _, _ => trivial
+  | .break _, _, _, _, _ => trivial
+  | .continue _, _, _, _, _ => trivial
+  | .return none, _, _, _, _ => trivial
+  | .yield none _, _, _, _, _ => trivial
+  | .this, _, _, _, _ => trivial
+  | .«let» _ init body, _, _, h, hle => ⟨ExprAddrWF_mono h.1 hle, ExprAddrWF_mono h.2 hle⟩
+  | .assign _ value, _, _, h, hle => ExprAddrWF_mono h hle
+  | .«if» cond t el, _, _, h, hle => ⟨ExprAddrWF_mono h.1 hle, ExprAddrWF_mono h.2.1 hle, ExprAddrWF_mono h.2.2 hle⟩
+  | .seq a b, _, _, h, hle => ⟨ExprAddrWF_mono h.1 hle, ExprAddrWF_mono h.2 hle⟩
+  | .getProp obj _, _, _, h, hle => ExprAddrWF_mono h hle
+  | .setProp o _ v, _, _, h, hle => ⟨ExprAddrWF_mono h.1 hle, ExprAddrWF_mono h.2 hle⟩
+  | .getIndex e1 e2, _, _, h, hle => ⟨ExprAddrWF_mono h.1 hle, ExprAddrWF_mono h.2 hle⟩
+  | .setIndex o i v, _, _, h, hle => ⟨ExprAddrWF_mono h.1 hle, ExprAddrWF_mono h.2.1 hle, ExprAddrWF_mono h.2.2 hle⟩
+  | .deleteProp obj _, _, _, h, hle => ExprAddrWF_mono h hle
+  | .typeof arg, _, _, h, hle => ExprAddrWF_mono h hle
+  | .unary _ arg, _, _, h, hle => ExprAddrWF_mono h hle
+  | .binary _ l r, _, _, h, hle => ⟨ExprAddrWF_mono h.1 hle, ExprAddrWF_mono h.2 hle⟩
+  | .functionDef _ _ body _ _, _, _, h, hle => ExprAddrWF_mono h hle
+  | .throw arg, _, _, h, hle => ExprAddrWF_mono h hle
+  | .tryCatch b _ c none, _, _, h, hle => ⟨ExprAddrWF_mono h.1 hle, ExprAddrWF_mono h.2 hle⟩
+  | .tryCatch b _ c (some fe), _, _, h, hle => ⟨ExprAddrWF_mono h.1 hle, ExprAddrWF_mono h.2.1 hle, ExprAddrWF_mono h.2.2 hle⟩
+  | .while_ c b, _, _, h, hle => ⟨ExprAddrWF_mono h.1 hle, ExprAddrWF_mono h.2 hle⟩
+  | .forIn _ o b, _, _, h, hle => ⟨ExprAddrWF_mono h.1 hle, ExprAddrWF_mono h.2 hle⟩
+  | .forOf _ i b, _, _, h, hle => ⟨ExprAddrWF_mono h.1 hle, ExprAddrWF_mono h.2 hle⟩
+  | .return (some arg), _, _, h, hle => ExprAddrWF_mono h hle
+  | .yield (some arg) _, _, _, h, hle => ExprAddrWF_mono h hle
+  | .labeled _ b, _, _, h, hle => ExprAddrWF_mono h hle
+  | .await arg, _, _, h, hle => ExprAddrWF_mono h hle
 
 private def EnvAddrWF (env : Core.Env) (heapSize : Nat) : Prop :=
   ∀ name v, env.lookup name = some v → ValueAddrWF v heapSize

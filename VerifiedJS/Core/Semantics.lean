@@ -20505,6 +20505,510 @@ theorem elaborate_correct (p : Source.Program) (cp : Core.Program)
 -- | RequireInternalSlot(\_dateObject\_, \[\[DateValue\]\]). 1. Return
 -- | \_dateObject\_.\[\[DateValue\]\].
 
+-- SPEC: L28084-L28093
+-- | # Date.prototype.toDateString ( )
+-- |
+-- | This method performs the following steps when called:
+-- |
+-- | 1\. Let \_dateObject\_ be the \*this\* value. 1. Perform ?
+-- | RequireInternalSlot(\_dateObject\_, \[\[DateValue\]\]). 1. Let \_tv\_ be
+-- | \_dateObject\_.\[\[DateValue\]\]. 1. If \_tv\_ is \*NaN\*, return
+-- | \*\"Invalid Date\"\*. 1. Let \_t\_ be LocalTime(\_tv\_). 1. Return
+-- | DateString(\_t\_).
+
+-- SPEC: L28094-L28107
+-- | # Date.prototype.toISOString ( )
+-- |
+-- | This method performs the following steps when called:
+-- |
+-- | 1\. Let \_dateObject\_ be the \*this\* value. 1. Perform ?
+-- | RequireInternalSlot(\_dateObject\_, \[\[DateValue\]\]). 1. Let \_tv\_ be
+-- | \_dateObject\_.\[\[DateValue\]\]. 1. If \_tv\_ is \*NaN\*, throw a
+-- | \*RangeError\* exception. 1. Assert: \_tv\_ is an integral Number. 1. If
+-- | \_tv\_ corresponds with a year that cannot be represented in the Date
+-- | Time String Format, throw a \*RangeError\* exception. 1. Return a String
+-- | representation of \_tv\_ in the Date Time String Format on the UTC time
+-- | scale, including all format elements and the UTC offset representation
+-- | \*\"Z\"\*.
+
+-- SPEC: L28108-L28126
+-- | # Date.prototype.toJSON ( \_key\_ )
+-- |
+-- | This method provides a String representation of a Date for use by
+-- | \`JSON.stringify\` ().
+-- |
+-- | It performs the following steps when called:
+-- |
+-- | 1\. Let \_O\_ be ? ToObject(\*this\* value). 1. Let \_tv\_ be ?
+-- | ToPrimitive(\_O\_, \~number\~). 1. If \_tv\_ is a Number and \_tv\_ is
+-- | not finite, return \*null\*. 1. Return ? Invoke(\_O\_,
+-- | \*\"toISOString\"\*).
+-- |
+-- | The argument is ignored.
+-- |
+-- | This method is intentionally generic; it does not require that its
+-- | \*this\* value be a Date. Therefore, it can be transferred to other
+-- | kinds of objects for use as a method. However, it does require that any
+-- | such object have a \`toISOString\` method.
+
+-- SPEC: L28177-L28192
+-- | # Date.prototype.toString ( )
+-- |
+-- | This method performs the following steps when called:
+-- |
+-- | 1\. Let \_dateObject\_ be the \*this\* value. 1. Perform ?
+-- | RequireInternalSlot(\_dateObject\_, \[\[DateValue\]\]). 1. Let \_tv\_ be
+-- | \_dateObject\_.\[\[DateValue\]\]. 1. Return ToDateString(\_tv\_).
+-- |
+-- | For any Date \`d\` such that \`d.\[\[DateValue\]\]\` is evenly divisible
+-- | by 1000, the result of \`Date.parse(d.toString())\` = \`d.valueOf()\`.
+-- | See .
+-- |
+-- | This method is not generic; it throws a \*TypeError\* exception if its
+-- | \*this\* value is not a Date. Therefore, it cannot be transferred to
+-- | other kinds of objects for use as a method.
+
+-- SPEC: L28271-L28280
+-- | # Date.prototype.toTimeString ( )
+-- |
+-- | This method performs the following steps when called:
+-- |
+-- | 1\. Let \_dateObject\_ be the \*this\* value. 1. Perform ?
+-- | RequireInternalSlot(\_dateObject\_, \[\[DateValue\]\]). 1. Let \_tv\_ be
+-- | \_dateObject\_.\[\[DateValue\]\]. 1. If \_tv\_ is \*NaN\*, return
+-- | \*\"Invalid Date\"\*. 1. Let \_t\_ be LocalTime(\_tv\_). 1. Return the
+-- | string-concatenation of TimeString(\_t\_) and TimeZoneString(\_tv\_).
+
+-- SPEC: L28281-L28305
+-- | # Date.prototype.toUTCString ( )
+-- |
+-- | This method returns a String value representing the instant in time
+-- | corresponding to the \*this\* value. The format of the String is based
+-- | upon \"HTTP-date\" from RFC 7231, generalized to support the full range
+-- | of times supported by ECMAScript Dates.
+-- |
+-- | It performs the following steps when called:
+-- |
+-- | 1\. Let \_dateObject\_ be the \*this\* value. 1. Perform ?
+-- | RequireInternalSlot(\_dateObject\_, \[\[DateValue\]\]). 1. Let \_tv\_ be
+-- | \_dateObject\_.\[\[DateValue\]\]. 1. If \_tv\_ is \*NaN\*, return
+-- | \*\"Invalid Date\"\*. 1. Let \_weekday\_ be the Name of the entry in
+-- | with the Number WeekDay(\_tv\_). 1. Let \_month\_ be the Name of the
+-- | entry in with the Number MonthFromTime(\_tv\_). 1. Let \_day\_ be
+-- | ToZeroPaddedDecimalString(ℝ(DateFromTime(\_tv\_)), 2). 1. Let \_yv\_ be
+-- | YearFromTime(\_tv\_). 1. If \_yv\_ is \*+0\*~𝔽~ or \_yv\_ \> \*+0\*~𝔽~,
+-- | let \_yearSign\_ be the empty String; else let \_yearSign\_ be
+-- | \*\"-\"\*. 1. Let \_paddedYear\_ be
+-- | ToZeroPaddedDecimalString(abs(ℝ(\_yv\_)), 4). 1. Return the
+-- | string-concatenation of \_weekday\_, \*\",\"\*, the code unit 0x0020
+-- | (SPACE), \_day\_, the code unit 0x0020 (SPACE), \_month\_, the code unit
+-- | 0x0020 (SPACE), \_yearSign\_, \_paddedYear\_, the code unit 0x0020
+-- | (SPACE), and TimeString(\_tv\_).
+
+-- SPEC: L28314-L28337
+-- | # Date.prototype \[ %Symbol.toPrimitive% \] ( \_hint\_ )
+-- |
+-- | This method is called by ECMAScript language operators to convert a Date
+-- | to a primitive value. The allowed values for \_hint\_ are
+-- | \*\"default\"\*, \*\"number\"\*, and \*\"string\"\*. Dates are unique
+-- | among built-in ECMAScript object in that they treat \*\"default\"\* as
+-- | being equivalent to \*\"string\"\*, All other built-in ECMAScript
+-- | objects treat \*\"default\"\* as being equivalent to \*\"number\"\*.
+-- |
+-- | It performs the following steps when called:
+-- |
+-- | 1\. Let \_O\_ be the \*this\* value. 1. If \_O\_ is not an Object, throw
+-- | a \*TypeError\* exception. 1. If \_hint\_ is either \*\"string\"\* or
+-- | \*\"default\"\*, then 1. Let \_tryFirst\_ be \~string\~. 1. Else if
+-- | \_hint\_ is \*\"number\"\*, then 1. Let \_tryFirst\_ be \~number\~. 1.
+-- | Else, 1. Throw a \*TypeError\* exception. 1. Return ?
+-- | OrdinaryToPrimitive(\_O\_, \_tryFirst\_).
+-- |
+-- | This property has the attributes { \[\[Writable\]\]: \*false\*,
+-- | \[\[Enumerable\]\]: \*false\*, \[\[Configurable\]\]: \*true\* }.
+-- |
+-- | The value of the \*\"name\"\* property of this method is
+-- | \*\"\[Symbol.toPrimitive\]\"\*.
+
+-- SPEC: L28338-L28344
+-- | # Properties of Date Instances
+-- |
+-- | Date instances are ordinary objects that inherit properties from the
+-- | Date prototype object. Date instances also have a \[\[DateValue\]\]
+-- | internal slot. The \[\[DateValue\]\] internal slot is the time value
+-- | represented by this Date.
+
+-- SPEC: L12644-L12707
+-- | # Proxy Object Internal Methods and Internal Slots
+-- |
+-- | A Proxy object is an exotic object whose essential internal methods are
+-- | partially implemented using ECMAScript code. Every Proxy object has an
+-- | internal slot called \[\[ProxyHandler\]\]. The value of
+-- | \[\[ProxyHandler\]\] is an object, called the proxy\'s *handler object*,
+-- | or \*null\*. Methods (see ) of a handler object may be used to augment
+-- | the implementation for one or more of the Proxy object\'s internal
+-- | methods. Every Proxy object also has an internal slot called
+-- | \[\[ProxyTarget\]\] whose value is either an object or \*null\*. This
+-- | object is called the proxy\'s *target object*.
+-- |
+-- | An object is a [Proxy exotic object]{#proxy-exotic-object .dfn
+-- | variants="Proxy exotic objects"} if its essential internal methods
+-- | (including \[\[Call\]\] and \[\[Construct\]\], if applicable) use the
+-- | definitions in this section. These internal methods are installed in
+-- | ProxyCreate.
+-- |
+-- |   Internal Method             Handler Method
+-- |   --------------------------- ------------------------------
+-- |   \[\[GetPrototypeOf\]\]      \`getPrototypeOf\`
+-- |   \[\[SetPrototypeOf\]\]      \`setPrototypeOf\`
+-- |   \[\[IsExtensible\]\]        \`isExtensible\`
+-- |   \[\[PreventExtensions\]\]   \`preventExtensions\`
+-- |   \[\[GetOwnProperty\]\]      \`getOwnPropertyDescriptor\`
+-- |   \[\[DefineOwnProperty\]\]   \`defineProperty\`
+-- |   \[\[HasProperty\]\]         \`has\`
+-- |   \[\[Get\]\]                 \`get\`
+-- |   \[\[Set\]\]                 \`set\`
+-- |   \[\[Delete\]\]              \`deleteProperty\`
+-- |   \[\[OwnPropertyKeys\]\]     \`ownKeys\`
+-- |   \[\[Call\]\]                \`apply\`
+-- |   \[\[Construct\]\]           \`construct\`
+-- |
+-- | When a handler method is called to provide the implementation of a Proxy
+-- | object internal method, the handler method is passed the proxy\'s target
+-- | object as a parameter. A proxy\'s handler object does not necessarily
+-- | have a method corresponding to every essential internal method. Invoking
+-- | an internal method on the proxy results in the invocation of the
+-- | corresponding internal method on the proxy\'s target object if the
+-- | handler object does not have a method corresponding to the internal
+-- | trap.
+-- |
+-- | The \[\[ProxyHandler\]\] and \[\[ProxyTarget\]\] internal slots of a
+-- | Proxy object are always initialized when the object is created and
+-- | typically may not be modified. Some Proxy objects are created in a
+-- | manner that permits them to be subsequently *revoked*. When a proxy is
+-- | revoked, its \[\[ProxyHandler\]\] and \[\[ProxyTarget\]\] internal slots
+-- | are set to \*null\* causing subsequent invocations of internal methods
+-- | on that Proxy object to throw a \*TypeError\* exception.
+-- |
+-- | Because Proxy objects permit the implementation of internal methods to
+-- | be provided by arbitrary ECMAScript code, it is possible to define a
+-- | Proxy object whose handler methods violates the invariants defined in .
+-- | Some of the internal method invariants defined in are essential
+-- | integrity invariants. These invariants are explicitly enforced by the
+-- | Proxy object internal methods specified in this section. An ECMAScript
+-- | implementation must be robust in the presence of all possible invariant
+-- | violations.
+-- |
+-- | In the following algorithm descriptions, assume \_O\_ is an ECMAScript
+-- | Proxy object, \_P\_ is a property key value, \_V\_ is any ECMAScript
+-- | language value and \_Desc\_ is a Property Descriptor record.
+
+-- SPEC: L33742-L33804
+-- | # TypedArray Objects
+-- |
+-- | A \_TypedArray\_ presents an array-like view of an underlying binary
+-- | data buffer (). A [TypedArray element type]{.dfn
+-- | variants="TypedArray element types"} is the underlying binary scalar
+-- | data type that all elements of a \_TypedArray\_ instance have. There is
+-- | a distinct \_TypedArray\_ constructor, listed in , for each of the
+-- | supported element types. Each constructor in has a corresponding
+-- | distinct prototype object.
+-- |
+-- |   ---------------------------------------------------------------------------------------------
+-- |   Constructor Name and          Element Type       Element Size   Conversion     Description
+-- |   Intrinsic                                                       Operation
+-- |   ----------------------------- ------------------ -------------- -------------- --------------
+-- |   Int8Array\                    \~int8\~           1              ToInt8         8-bit two\'s
+-- |   [%Int8Array%]{.dfn}                                                            complement
+-- |                                                                                  signed integer
+-- |
+-- |   Uint8Array\                   \~uint8\~          1              ToUint8        8-bit unsigned
+-- |   [%Uint8Array%]{.dfn}                                                           integer
+-- |
+-- |   Uint8ClampedArray\            \~uint8clamped\~   1              ToUint8Clamp   8-bit unsigned
+-- |   [%Uint8ClampedArray%]{.dfn}                                                    integer
+-- |                                                                                  (clamped
+-- |                                                                                  conversion)
+-- |
+-- |   Int16Array\                   \~int16\~          2              ToInt16        16-bit two\'s
+-- |   [%Int16Array%]{.dfn}                                                           complement
+-- |                                                                                  signed integer
+-- |
+-- |   Uint16Array\                  \~uint16\~         2              ToUint16       16-bit
+-- |   [%Uint16Array%]{.dfn}                                                          unsigned
+-- |                                                                                  integer
+-- |
+-- |   Int32Array\                   \~int32\~          4              ToInt32        32-bit two\'s
+-- |   [%Int32Array%]{.dfn}                                                           complement
+-- |                                                                                  signed integer
+-- |
+-- |   Uint32Array\                  \~uint32\~         4              ToUint32       32-bit
+-- |   [%Uint32Array%]{.dfn}                                                          unsigned
+-- |                                                                                  integer
+-- |
+-- |   BigInt64Array\                \~bigint64\~       8              ToBigInt64     64-bit two\'s
+-- |   [%BigInt64Array%]{.dfn}                                                        complement
+-- |                                                                                  signed integer
+-- |
+-- |   BigUint64Array\               \~biguint64\~      8              ToBigUint64    64-bit
+-- |   [%BigUint64Array%]{.dfn}                                                       unsigned
+-- |                                                                                  integer
+-- |
+-- |   Float16Array\                 \~float16\~        2                             16-bit IEEE
+-- |   [%Float16Array%]{.dfn}                                                         floating point
+-- |
+-- |   Float32Array\                 \~float32\~        4                             32-bit IEEE
+-- |   [%Float32Array%]{.dfn}                                                         floating point
+-- |
+-- |   Float64Array\                 \~float64\~        8                             64-bit IEEE
+-- |   [%Float64Array%]{.dfn}                                                         floating point
+-- |   ---------------------------------------------------------------------------------------------
+-- |
+-- | In the definitions below, references to \_TypedArray\_ should be
+-- | replaced with the appropriate constructor name from the above table.
+
+-- SPEC: L36655-L36658
+-- | # Structured Data
+-- |
+-- | # ArrayBuffer Objects
+
+-- SPEC: L36684-L36694
+-- | # Fixed-length and Resizable ArrayBuffer Objects
+-- |
+-- | A [fixed-length ArrayBuffer]{.dfn} is an ArrayBuffer whose byte length
+-- | cannot change after creation.
+-- |
+-- | A [resizable ArrayBuffer]{.dfn} is an ArrayBuffer whose byte length may
+-- | change after creation via calls to .
+-- |
+-- | The kind of ArrayBuffer object that is created depends on the arguments
+-- | passed to .
+
+-- SPEC: L36697-L36722
+-- | # AllocateArrayBuffer ( \_constructor\_: a constructor, \_byteLength\_: a non-negative integer, optional \_maxByteLength\_: a non-negative integer or \~empty\~, ): either a normal completion containing an ArrayBuffer or a throw completion
+-- |
+-- | description
+-- | :   It is used to create an ArrayBuffer.
+-- |
+-- | 1\. Let \_slots\_ be « \[\[ArrayBufferData\]\],
+-- | \[\[ArrayBufferByteLength\]\], \[\[ArrayBufferDetachKey\]\] ». 1. If
+-- | \_maxByteLength\_ is present and \_maxByteLength\_ is not \~empty\~, let
+-- | \_allocatingResizableBuffer\_ be \*true\*; else let
+-- | \_allocatingResizableBuffer\_ be \*false\*. 1. If
+-- | \_allocatingResizableBuffer\_ is \*true\*, then 1. If \_byteLength\_ \>
+-- | \_maxByteLength\_, throw a \*RangeError\* exception. 1. Append
+-- | \[\[ArrayBufferMaxByteLength\]\] to \_slots\_. 1. Let \_obj\_ be ?
+-- | OrdinaryCreateFromConstructor(\_constructor\_,
+-- | \*\"%ArrayBuffer.prototype%\"\*, \_slots\_). 1. Let \_block\_ be ?
+-- | CreateByteDataBlock(\_byteLength\_). 1. Set
+-- | \_obj\_.\[\[ArrayBufferData\]\] to \_block\_. 1. Set
+-- | \_obj\_.\[\[ArrayBufferByteLength\]\] to \_byteLength\_. 1. If
+-- | \_allocatingResizableBuffer\_ is \*true\*, then 1. If it is not possible
+-- | to create a Data Block \_block\_ consisting of \_maxByteLength\_ bytes,
+-- | throw a \*RangeError\* exception. 1. NOTE: Resizable ArrayBuffers are
+-- | designed to be implementable with in-place growth. Implementations may
+-- | throw if, for example, virtual memory cannot be reserved up front. 1.
+-- | Set \_obj\_.\[\[ArrayBufferMaxByteLength\]\] to \_maxByteLength\_. 1.
+-- | Return \_obj\_.
+
+-- SPEC: L36723-L36735
+-- | # ArrayBufferByteLength ( \_arrayBuffer\_: an ArrayBuffer or SharedArrayBuffer, \_order\_: \~seq-cst\~ or \~unordered\~, ): a non-negative integer
+-- |
+-- | 1\. If IsGrowableSharedArrayBuffer(\_arrayBuffer\_) is \*true\*, then 1.
+-- | Let \_bufferByteLengthBlock\_ be
+-- | \_arrayBuffer\_.\[\[ArrayBufferByteLengthData\]\]. 1. Let \_rawLength\_
+-- | be GetRawBytesFromSharedBlock(\_bufferByteLengthBlock\_, 0,
+-- | \~biguint64\~, \*true\*, \_order\_). 1. Let \_AR\_ be the Agent Record
+-- | of the surrounding agent. 1. Let \_isLittleEndian\_ be
+-- | \_AR\_.\[\[LittleEndian\]\]. 1. Return
+-- | ℝ(RawBytesToNumeric(\~biguint64\~, \_rawLength\_,
+-- | \_isLittleEndian\_)). 1. Assert: IsDetachedBuffer(\_arrayBuffer\_) is
+-- | \*false\*. 1. Return \_arrayBuffer\_.\[\[ArrayBufferByteLength\]\].
+
+-- SPEC: L36763-L36767
+-- | # IsDetachedBuffer ( \_arrayBuffer\_: an ArrayBuffer or a SharedArrayBuffer, ): a Boolean
+-- |
+-- | 1\. If \_arrayBuffer\_.\[\[ArrayBufferData\]\] is \*null\*, return
+-- | \*true\*. 1. Return \*false\*.
+
+-- SPEC: L35780-L35781
+-- | # Abstract Operations For Set Objects
+
+-- SPEC: L35782-L35811
+-- | # Set Records
+-- |
+-- | A [Set Record]{.dfn variants="Set Records"} is a Record value used to
+-- | encapsulate the interface of a Set or similar object.
+-- |
+-- | Set Records have the fields listed in .
+-- |
+-- |   Field Name          Value                          Meaning
+-- |   ------------------- ------------------------------ ------------------------------------
+-- |   \[\[SetObject\]\]   an Object                      the Set or similar object.
+-- |   \[\[Size\]\]        a non-negative integer or +∞   The reported size of the object.
+-- |   \[\[Has\]\]         a function object              The \`has\` method of the object.
+-- |   \[\[Keys\]\]        a function object              The \`keys\` method of the object.
+-- |
+-- | # GetSetRecord ( \_obj\_: an ECMAScript language value, ): either a normal completion containing a Set Record or a throw completion
+-- |
+-- | 1\. If \_obj\_ is not an Object, throw a \*TypeError\* exception. 1. Let
+-- | \_rawSize\_ be ? Get(\_obj\_, \*\"size\"\*). 1. Let \_numSize\_ be ?
+-- | ToNumber(\_rawSize\_). 1. NOTE: If \_rawSize\_ is \*undefined\*, then
+-- | \_numSize\_ will be \*NaN\*. 1. If \_numSize\_ is \*NaN\*, throw a
+-- | \*TypeError\* exception. 1. Let \_intSize\_ be !
+-- | ToIntegerOrInfinity(\_numSize\_). 1. If \_intSize\_ \< 0, throw a
+-- | \*RangeError\* exception. 1. Let \_has\_ be ? Get(\_obj\_,
+-- | \*\"has\"\*). 1. If IsCallable(\_has\_) is \*false\*, throw a
+-- | \*TypeError\* exception. 1. Let \_keys\_ be ? Get(\_obj\_,
+-- | \*\"keys\"\*). 1. If IsCallable(\_keys\_) is \*false\*, throw a
+-- | \*TypeError\* exception. 1. Return a new Set Record { \[\[SetObject\]\]:
+-- | \_obj\_, \[\[Size\]\]: \_intSize\_, \[\[Has\]\]: \_has\_, \[\[Keys\]\]:
+-- | \_keys\_ }.
+
+-- SPEC: L35812-L35816
+-- | # SetDataHas ( \_setData\_: a List of either ECMAScript language values or \~empty\~, \_value\_: an ECMAScript language value, ): a Boolean
+-- |
+-- | 1\. If SetDataIndex(\_setData\_, \_value\_) is \~not-found\~, return
+-- | \*false\*. 1. Return \*true\*.
+
+-- SPEC: L35817-L35825
+-- | # SetDataIndex ( \_setData\_: a List of either ECMAScript language values or \~empty\~, \_value\_: an ECMAScript language value, ): a non-negative integer or \~not-found\~
+-- |
+-- | 1\. Set \_value\_ to CanonicalizeKeyedCollectionKey(\_value\_). 1. Let
+-- | \_size\_ be the number of elements in \_setData\_. 1. Let \_index\_ be
+-- | 0. 1. Repeat, while \_index\_ \< \_size\_, 1. Let \_e\_ be
+-- | \_setData\_\[\_index\_\]. 1. If \_e\_ is not \~empty\~ and \_e\_ is
+-- | \_value\_, then 1. Return \_index\_. 1. Set \_index\_ to
+-- | \_index\_ + 1. 1. Return \~not-found\~.
+
+-- SPEC: L35826-L35831
+-- | # SetDataSize ( \_setData\_: a List of either ECMAScript language values or \~empty\~, ): a non-negative integer
+-- |
+-- | 1\. Let \_count\_ be 0. 1. For each element \_e\_ of \_setData\_, do 1.
+-- | If \_e\_ is not \~empty\~, set \_count\_ to \_count\_ + 1. 1. Return
+-- | \_count\_.
+
+-- SPEC: L35864-L35870
+-- | # Properties of the Set Constructor
+-- |
+-- | The Set constructor:
+-- |
+-- | - has a \[\[Prototype\]\] internal slot whose value is
+-- |   %Function.prototype%.
+
+-- SPEC: L36238-L36262
+-- | # CreateSetIterator ( \_set\_: an ECMAScript language value, \_kind\_: \~key+value\~ or \~value\~, ): either a normal completion containing a Generator or a throw completion
+-- |
+-- | description
+-- | :   It is used to create iterator objects for Set methods that return
+-- |     such iterators.
+-- |
+-- | 1\. Perform ? RequireInternalSlot(\_set\_, \[\[SetData\]\]). 1. Let
+-- | \_closure\_ be a new Abstract Closure with no parameters that captures
+-- | \_set\_ and \_kind\_ and performs the following steps when called: 1.
+-- | Let \_index\_ be 0. 1. Let \_entries\_ be \_set\_.\[\[SetData\]\]. 1.
+-- | Let \_numEntries\_ be the number of elements in \_entries\_. 1. Repeat,
+-- | while \_index\_ \< \_numEntries\_, 1. Let \_e\_ be
+-- | \_entries\_\[\_index\_\]. 1. Set \_index\_ to \_index\_ + 1. 1. If \_e\_
+-- | is not \~empty\~, then 1. If \_kind\_ is \~key+value\~, then 1. Let
+-- | \_result\_ be CreateArrayFromList(« \_e\_, \_e\_ »). 1. Perform ?
+-- | GeneratorYield(CreateIteratorResultObject(\_result\_, \*false\*)). 1.
+-- | Else, 1. Assert: \_kind\_ is \~value\~. 1. Perform ?
+-- | GeneratorYield(CreateIteratorResultObject(\_e\_, \*false\*)). 1. NOTE:
+-- | The number of elements in \_entries\_ may have increased while execution
+-- | of this abstract operation was paused by GeneratorYield. 1. Set
+-- | \_numEntries\_ to the number of elements in \_entries\_. 1. Return
+-- | NormalCompletion(\~unused\~). 1. Return
+-- | CreateIteratorFromClosure(\_closure\_, \*\"%SetIteratorPrototype%\"\*,
+-- | %SetIteratorPrototype%).
+
+-- SPEC: L35717-L35742
+-- | # CreateMapIterator ( \_map\_: an ECMAScript language value, \_kind\_: \~key+value\~, \~key\~, or \~value\~, ): either a normal completion containing a Generator or a throw completion
+-- |
+-- | description
+-- | :   It is used to create iterator objects for Map methods that return
+-- |     such iterators.
+-- |
+-- | 1\. Perform ? RequireInternalSlot(\_map\_, \[\[MapData\]\]). 1. Let
+-- | \_closure\_ be a new Abstract Closure with no parameters that captures
+-- | \_map\_ and \_kind\_ and performs the following steps when called: 1.
+-- | Let \_entries\_ be \_map\_.\[\[MapData\]\]. 1. Let \_index\_ be 0. 1.
+-- | Let \_numEntries\_ be the number of elements in \_entries\_. 1. Repeat,
+-- | while \_index\_ \< \_numEntries\_, 1. Let \_e\_ be
+-- | \_entries\_\[\_index\_\]. 1. Set \_index\_ to \_index\_ + 1. 1. If
+-- | \_e\_.\[\[Key\]\] is not \~empty\~, then 1. If \_kind\_ is \~key\~,
+-- | then 1. Let \_result\_ be \_e\_.\[\[Key\]\]. 1. Else if \_kind\_ is
+-- | \~value\~, then 1. Let \_result\_ be \_e\_.\[\[Value\]\]. 1. Else, 1.
+-- | Assert: \_kind\_ is \~key+value\~. 1. Let \_result\_ be
+-- | CreateArrayFromList(« \_e\_.\[\[Key\]\], \_e\_.\[\[Value\]\] »). 1.
+-- | Perform ? GeneratorYield(CreateIteratorResultObject(\_result\_,
+-- | \*false\*)). 1. NOTE: The number of elements in \_entries\_ may have
+-- | increased while execution of this abstract operation was paused by
+-- | GeneratorYield. 1. Set \_numEntries\_ to the number of elements in
+-- | \_entries\_. 1. Return NormalCompletion(\~unused\~). 1. Return
+-- | CreateIteratorFromClosure(\_closure\_, \*\"%MapIteratorPrototype%\"\*,
+-- | %MapIteratorPrototype%).
+
+-- SPEC: L36429-L36442
+-- | # WeakMap.prototype.getOrInsert ( \_key\_, \_value\_ )
+-- |
+-- | This method performs the following steps when called:
+-- |
+-- | 1\. Let \_M\_ be the \*this\* value. 1. Perform ?
+-- | RequireInternalSlot(\_M\_, \[\[WeakMapData\]\]). 1. If
+-- | CanBeHeldWeakly(\_key\_) is \*false\*, throw a \*TypeError\*
+-- | exception. 1. For each Record { \[\[Key\]\], \[\[Value\]\] } \_p\_ of
+-- | \_M\_.\[\[WeakMapData\]\], do 1. If \_p\_.\[\[Key\]\] is not \~empty\~
+-- | and SameValue(\_p\_.\[\[Key\]\], \_key\_) is \*true\*, return
+-- | \_p\_.\[\[Value\]\]. 1. Let \_p\_ be the Record { \[\[Key\]\]: \_key\_,
+-- | \[\[Value\]\]: \_value\_ }. 1. Append \_p\_ to
+-- | \_M\_.\[\[WeakMapData\]\]. 1. Return \_value\_.
+
+-- SPEC: L36443-L36463
+-- | # WeakMap.prototype.getOrInsertComputed ( \_key\_, \_callback\_ )
+-- |
+-- | This method performs the following steps when called:
+-- |
+-- | 1\. Let \_M\_ be the \*this\* value. 1. Perform ?
+-- | RequireInternalSlot(\_M\_, \[\[WeakMapData\]\]). 1. If
+-- | CanBeHeldWeakly(\_key\_) is \*false\*, throw a \*TypeError\*
+-- | exception. 1. If IsCallable(\_callback\_) is \*false\*, throw a
+-- | \*TypeError\* exception. 1. For each Record { \[\[Key\]\], \[\[Value\]\]
+-- | } \_p\_ of \_M\_.\[\[WeakMapData\]\], do 1. If \_p\_.\[\[Key\]\] is not
+-- | \~empty\~ and SameValue(\_p\_.\[\[Key\]\], \_key\_) is \*true\*, return
+-- | \_p\_.\[\[Value\]\]. 1. Let \_value\_ be ? Call(\_callback\_,
+-- | \*undefined\*, « \_key\_ »). 1. NOTE: The WeakMap may have been modified
+-- | during execution of \_callback\_. 1. For each Record { \[\[Key\]\],
+-- | \[\[Value\]\] } \_p\_ of \_M\_.\[\[WeakMapData\]\], do 1. If
+-- | \_p\_.\[\[Key\]\] is not \~empty\~ and SameValue(\_p\_.\[\[Key\]\],
+-- | \_key\_) is \*true\*, then 1. Set \_p\_.\[\[Value\]\] to \_value\_. 1.
+-- | Return \_value\_. 1. Let \_p\_ be the Record { \[\[Key\]\]: \_key\_,
+-- | \[\[Value\]\]: \_value\_ }. 1. Append \_p\_ to
+-- | \_M\_.\[\[WeakMapData\]\]. 1. Return \_value\_.
+
+-- SPEC: L23440-L23461
+-- | # URI Handling Functions
+-- |
+-- | Uniform Resource Identifiers, or URIs, are Strings that identify
+-- | resources (e.g. web pages or files) and transport protocols by which to
+-- | access them (e.g. HTTP or FTP) on the Internet. The ECMAScript language
+-- | itself does not provide any support for using URIs except for functions
+-- | that encode and decode URIs as described in this section. \`encodeURI\`
+-- | and \`decodeURI\` are intended to work with complete URIs; they assume
+-- | that any reserved characters are intended to have special meaning (e.g.,
+-- | as delimiters) and so are not encoded. \`encodeURIComponent\` and
+-- | \`decodeURIComponent\` are intended to work with the individual
+-- | components of a URI; they assume that any reserved characters represent
+-- | text and must be encoded to avoid special meaning when the component is
+-- | part of a complete URI.
+-- |
+-- | The set of reserved characters is based upon RFC 2396 and does not
+-- | reflect changes introduced by the more recent RFC 3986.
+-- |
+-- | Many implementations of ECMAScript provide additional functions and
+-- | methods that manipulate web pages; these functions are beyond the scope
+-- | of this standard.
+
 -- SPEC: L42095-L42132
 -- | # Await ( \_value\_: an ECMAScript language value, ): either a normal completion containing either an ECMAScript language value or \~empty\~, or a throw completion
 -- |
