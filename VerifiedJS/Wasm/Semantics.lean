@@ -7926,6 +7926,10 @@ theorem step_sim (irmod : IRModule) (wmod : Module) :
                         hframes_one := hrel.hframes_one }⟩)
             · exact hf.elim
           | .i64 => sorry -- i64 load: needs EmitCodeCorr.load_i64 constructor
+          | .ptr =>
+            -- No EmitCodeCorr constructor for ptr load
+            exfalso; generalize s2.code = wcode at hc_full
+            cases hc_full with | general _ _ _ _ hf _ => exact hf.elim
       | .store t offset =>
           -- memory store
           sorry
