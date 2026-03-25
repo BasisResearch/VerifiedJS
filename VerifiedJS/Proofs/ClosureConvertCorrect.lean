@@ -697,10 +697,12 @@ private theorem EnvAddrWF_extend {env : Core.Env} {n : Nat}
     (h : EnvAddrWF env n) (name : String) (v : Core.Value)
     (hv : ValueAddrWF v n) : EnvAddrWF (env.extend name v) n := by
   intro n' v' hlookup
-  simp [Core.Env.extend, Core.Env.lookup] at hlookup
-  cases hlookup with
-  | inl heq => exact heq.2 ▸ hv
-  | inr hother => exact h n' v' hother
+  by_cases heq : n' = name
+  · subst heq
+    rw [Core.Env.lookup_extend_same] at hlookup
+    exact Option.some.inj hlookup ▸ hv
+  · rw [Core.Env.lookup_extend_other env name n' v (Ne.symm heq)] at hlookup
+    exact h n' v' hlookup
 
 private theorem EnvAddrWF_assign {env : Core.Env} {n : Nat}
     (h : EnvAddrWF env n) (name : String) (v : Core.Value)
@@ -708,10 +710,11 @@ private theorem EnvAddrWF_assign {env : Core.Env} {n : Nat}
   intro n' v' hlookup
   by_cases heq : n' = name
   · subst heq
-    cases hex : env.bindings.any (fun kv => kv.fst == name) with
-    | true => rw [Core.Env.lookup_assign_eq env name v hex] at hlookup; exact Option.some.inj hlookup ▸ hv
-    | false => rw [Core.Env.lookup_assign_new env name v hex] at hlookup; exact Option.some.inj hlookup ▸ hv
-  · have hne : (n' == name) = false := by simp [beq_iff_eq, heq]
+    cases hex : env.bindings.any (fun kv => kv.fst == n') with
+    | true => rw [Core.Env.lookup_assign_eq env n' v hex] at hlookup; exact Option.some.inj hlookup ▸ hv
+    | false => rw [Core.Env.lookup_assign_new env n' v hex] at hlookup; exact Option.some.inj hlookup ▸ hv
+  · have hne : (n' == name) = false := by
+      exact Bool.eq_false_iff.mpr (fun h => heq (beq_iff_eq.mp h))
     rw [Core.Env.lookup_assign_ne env name n' v hne] at hlookup
     exact h n' v' hlookup
 
