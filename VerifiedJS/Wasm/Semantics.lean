@@ -3831,10 +3831,12 @@ def irStep? (s : IRExecState) : Option (TraceEvent × IRExecState) :=
             onBranch := rest, onExit := rest }
           some (.silent, irPushTrace { base with code := body, labels := lbl :: base.labels } .silent)
       -- Control flow: loop
+      -- REF: Wasm §4.4.8.2 — loop pushes label with onBranch = body (re-enter loop body).
+      -- Loop labels are kept on br (see br case below), matching Wasm behavior.
       | .loop label body =>
           let lbl : IRLabel := {
             name := label, isLoop := true
-            onBranch := [IRInstr.loop label body] ++ rest
+            onBranch := body
             onExit := rest }
           some (.silent, irPushTrace { base with code := body, labels := lbl :: base.labels } .silent)
       -- Control flow: if (pushes label like Wasm §4.4.8)
@@ -3849,10 +3851,13 @@ def irStep? (s : IRExecState) : Option (TraceEvent × IRExecState) :=
           | some _ => some (irTrapState base "if condition is not i32")
           | none => some (irTrapState base "stack underflow in if")
       -- Control flow: br
+      -- REF: Wasm §4.4.8.6 — br to a loop label keeps the label (re-entry point).
       | .br label =>
           match irFindLabel? s.labels label with
           | some (idx, lbl) =>
-              let labels' := s.labels.drop (idx + 1)
+              let labels' :=
+                if lbl.isLoop then lbl :: s.labels.drop (idx + 1)
+                else s.labels.drop (idx + 1)
               some (.silent, irPushTrace { base with code := lbl.onBranch, labels := labels' } .silent)
           | none => some (irTrapState base s!"br: unknown label '{label}'")
       -- Control flow: br_if
@@ -3862,7 +3867,9 @@ def irStep? (s : IRExecState) : Option (TraceEvent × IRExecState) :=
               if cond != 0 then
                 match irFindLabel? s.labels label with
                 | some (idx, lbl) =>
-                    let labels' := s.labels.drop (idx + 1)
+                    let labels' :=
+                      if lbl.isLoop then lbl :: s.labels.drop (idx + 1)
+                      else s.labels.drop (idx + 1)
                     some (.silent, irPushTrace { base with stack := stk, code := lbl.onBranch, labels := labels' } .silent)
                 | none => some (irTrapState base s!"br_if: unknown label '{label}'")
               else
@@ -4739,13 +4746,14 @@ theorem irStep?_eq_block (s : IRExecState) (label : String) (body rest : List IR
         trace := s.trace ++ [.silent] }) := by
   simp [irStep?, hcode, irPushTrace]
 
-/-- Exact state after loop: pushes loop label (onBranch=loop+rest, onExit=rest), enters body. -/
+/-- Exact state after loop: pushes loop label (onBranch=body, onExit=rest), enters body.
+    REF: Wasm §4.4.8.2 — loop's br target is the body, not the whole loop instruction. -/
 theorem irStep?_eq_loop (s : IRExecState) (label : String) (body rest : List IRInstr)
     (hcode : s.code = IRInstr.loop label body :: rest) :
     irStep? s = some (.silent,
       { s with
         code := body
-        labels := { name := label, onBranch := [IRInstr.loop label body] ++ rest,
+        labels := { name := label, onBranch := body,
                      onExit := rest, isLoop := true } :: s.labels
         trace := s.trace ++ [.silent] }) := by
   simp [irStep?, hcode, irPushTrace]
@@ -4868,8 +4876,9 @@ theorem irStep?_eq_return_toplevel (s : IRExecState) (rest : List IRInstr)
         trace := s.trace ++ [.silent] }) := by
   simp [irStep?, hcode, hframes, irPushTrace]
 
-/-- Exact state after br: jumps to label's onBranch code, pops labels above.
-    REF: Wasm §4.4.8.1 (br label) -/
+/-- Exact state after br: jumps to label's onBranch code.
+    Loop labels are kept (re-entry), non-loop labels are popped.
+    REF: Wasm §4.4.8.6 (br label) -/
 theorem irStep?_eq_br (s : IRExecState) (label : String) (rest : List IRInstr)
     (idx : Nat) (lbl : IRLabel)
     (hcode : s.code = IRInstr.br label :: rest)
@@ -4877,11 +4886,13 @@ theorem irStep?_eq_br (s : IRExecState) (label : String) (rest : List IRInstr)
     irStep? s = some (.silent,
       { s with
         code := lbl.onBranch
-        labels := s.labels.drop (idx + 1)
+        labels := if lbl.isLoop then lbl :: s.labels.drop (idx + 1)
+                  else s.labels.drop (idx + 1)
         trace := s.trace ++ [.silent] }) := by
   simp [irStep?, hcode, hfind, irPushTrace]
 
-/-- Exact state after br_if with true condition (cond ≠ 0): branches to label. -/
+/-- Exact state after br_if with true condition (cond ≠ 0): branches to label.
+    Loop labels are kept, non-loop labels are popped. -/
 theorem irStep?_eq_brIf_true (s : IRExecState) (label : String) (rest : List IRInstr)
     (cond : UInt32) (stk : List IRValue) (idx : Nat) (lbl : IRLabel)
     (hcode : s.code = IRInstr.brIf label :: rest)
@@ -4892,7 +4903,8 @@ theorem irStep?_eq_brIf_true (s : IRExecState) (label : String) (rest : List IRI
       { s with
         code := lbl.onBranch
         stack := stk
-        labels := s.labels.drop (idx + 1)
+        labels := if lbl.isLoop then lbl :: s.labels.drop (idx + 1)
+                  else s.labels.drop (idx + 1)
         trace := s.trace ++ [.silent] }) := by
   simp only [irStep?, hcode, hstack, irPop1?, irPushTrace]
   have : (cond != 0) = true := by simp [bne_iff_ne, hcond]
