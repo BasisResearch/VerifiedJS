@@ -1,3 +1,32 @@
+## Run: 2026-03-25T06:30:03+00:00
+
+### STATUS: Added 387+ new SPEC citations (1527 total, 0 mismatches). Build clean. Coverage now 39% (17738 lines). TARGET 1300+ and 33%+ REACHED.
+
+- **Task 0 (Push to 1300+ refs):** DONE. Added ~387 new verbatim ECMA-262 citations to Core/Semantics.lean across these areas:
+  - **Map Objects (18 refs):** Map Objects intro, The Map Constructor, Map(iterable), Map.prototype.clear/delete/entries/get/getOrInsert/has/keys/set/values, get Map.prototype.size, CreateMapIterator, %MapIteratorPrototype%.next
+  - **Set Objects (12 refs):** Set Objects intro, GetSetRecord, SetDataHas/SetDataIndex/SetDataSize, The Set Constructor, Set(iterable), Set.prototype.add/clear/delete/has/values
+  - **WeakMap (6 refs):** WeakMap Objects intro, WeakMap(iterable), WeakMap.prototype.delete/get/has/set
+  - **WeakSet (6 refs):** WeakSet Objects intro, WeakSet(iterable), WeakSet.prototype.add/delete/has, CanonicalizeKeyedCollectionKey
+  - **JSON (5 refs):** The JSON Object, JSON.parse, ParseJSON, JSON.stringify, JSON Serialization Record
+  - **Reflect (14 refs):** The Reflect Object + all 13 methods (apply, construct, defineProperty, deleteProperty, get, getOwnPropertyDescriptor, getPrototypeOf, has, isExtensible, ownKeys, preventExtensions, set, setPrototypeOf)
+  - **ArrayBuffer (10 refs):** AllocateArrayBuffer, ArrayBufferByteLength, IsDetachedBuffer, DetachArrayBuffer, CloneArrayBuffer, GetArrayBufferMaxByteLengthOption, IsFixedLengthArrayBuffer, IsUnsignedElementType, IsUnclampedIntegerElementType, IsBigIntElementType
+  - **Date helpers (18 refs):** Day, TimeWithinDay, DaysInYear, DayFromYear, TimeFromYear, YearFromTime, DayWithinYear, InLeapYear, WeekDay, HourFromTime, MinFromTime, SecFromTime, msFromTime, MakeTime, MakeDay, MakeDate, TimeClip
+  - **Date methods (24 refs):** Date.now, Date.UTC, Date.prototype getters (getDate through getUTCSeconds), Date.prototype setters (setDate, setFullYear, setMilliseconds, setTime)
+  - **Object methods (24+ refs):** Object.assign/create/defineProperty/entries/freeze/fromEntries/getOwnPropertyDescriptor/getPrototypeOf/groupBy/hasOwn/is/isExtensible/isFrozen/isSealed/keys/preventExtensions/seal/setPrototypeOf/values, Object.prototype methods
+  - **Function (3 refs):** The Function Constructor, Function(...), Function.prototype.toString
+  - **TypedArray (80 refs):** TypedArray exotic objects, all abstract operations, %TypedArray% intrinsic, all %TypedArray%.prototype methods (at, buffer, byteLength, byteOffset, copyWithin, entries, every, fill, filter, find, findIndex, findLast, findLastIndex, forEach, includes, indexOf, join, keys, lastIndexOf, length, map, reduce, reduceRight, reverse, set, slice, some, sort, subarray, toReversed, toSorted, values, with, etc.)
+  - **DataView (33 refs):** The DataView Constructor, DataView(buffer, ...), all get/set methods (getInt8 through setUint32)
+  - **SharedArrayBuffer (16 refs):** SharedArrayBuffer Objects, constructor, prototype methods (byteLength, grow, growable, maxByteLength, slice)
+  - **ArrayBuffer Constructor (18 refs):** The ArrayBuffer Constructor, ArrayBuffer(length, options), ArrayBuffer.isView, prototype methods (byteLength, detached, maxByteLength, resizable, resize, slice, transfer, transferToFixedLength)
+  - **WeakRef & FinalizationRegistry (23 refs):** WeakRef constructor/prototype/deref, FinalizationRegistry constructor/prototype/register/unregister
+  - **Atomics (6 refs):** The Atomics Object, Atomics.add/and/isLockFree/load/store
+  - **Number/Math/String (52+ refs):** Number properties, 35+ Math methods, String static methods
+  - **Proxy (5 refs):** The Proxy Constructor, Proxy(), Proxy.revocable
+  - **Generator/AsyncGenerator/Iterator Helper (23+ refs):** Generator/AsyncGenerator Objects and prototypes, Iterator Helper objects
+- **Build:** Core/Semantics.lean compiles clean. 0 mismatches confirmed.
+
+---
+
 ## Run: 2026-03-25T04:00:01+00:00
 
 ### STATUS: Added 100 new SPEC citations (1004 total, 0 mismatches). Build clean. Coverage now 28% (12471 lines). TARGET 1000+ REACHED.
@@ -2271,4 +2300,8 @@ test_write
 2026-03-25T06:04:12+00:00 DONE
 
 ## Run: 2026-03-25T06:30:03+00:00
+
+2026-03-25T06:57:00+00:00 DONE
+
+## Run: 2026-03-25T07:00:01+00:00
 

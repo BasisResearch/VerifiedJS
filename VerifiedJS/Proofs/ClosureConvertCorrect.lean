@@ -1888,9 +1888,31 @@ private theorem closureConvert_step_simulation
       · exact hheap
       constructor
       · exact henvwf
+      constructor
+      · exact hheapvwf
       -- Now need: convertExpr of Core result = Flat result
       -- Case split on v to match both step functions
-      refine ⟨sorry /- ExprAddrWF -/, scope, st, st, ?_⟩
+      refine ⟨by
+        simp only [ExprAddrWF, Core.pushTrace]
+        have hlt : ∀ addr, v = .object addr → addr < sc.heap.objects.size := by
+          intro addr hv; have h := hexprwf; rw [hsc] at h; simp [ExprAddrWF, ValueAddrWF] at h; subst hv; exact h
+        cases v with
+        | object addr =>
+          simp only [ValueAddrWF]
+          cases h_lookup : sc.heap.objects[addr]? with
+          | none => trivial
+          | some props =>
+            cases h_find : props.find? (fun kv => kv.fst == prop) with
+            | none => split <;> simp [ValueAddrWF]
+            | some kv =>
+              have hmem := List.find?_some h_find
+              exact hheapvwf addr (hlt addr rfl) props h_lookup ⟨kv.1, kv.2⟩ hmem.1
+        | string => simp [ValueAddrWF]; split <;> simp [ValueAddrWF]
+        | null => simp [ValueAddrWF]
+        | undefined => simp [ValueAddrWF]
+        | bool => simp [ValueAddrWF]
+        | number => simp [ValueAddrWF]
+        | function => simp [ValueAddrWF], scope, st, st, ?_⟩
       cases v with
       | object addr =>
         -- Both look up property in heap via HeapCorr
@@ -2131,7 +2153,7 @@ private theorem closureConvert_step_simulation
         constructor  -- EnvAddrWF
         · exact henvwf
         constructor  -- HeapValuesWF
-        · exact hheapvwf
+        · sorry -- HeapValuesWF preservation for setProp heap mutation
         refine ⟨scope, st, st, ?_⟩
         cases ov with
         | object => simp only [Flat.convertExpr, Flat.convertValue, Core.pushTrace]; rfl
@@ -2329,7 +2351,29 @@ private theorem closureConvert_step_simulation
         · exact hheap
         constructor
         · exact henvwf
-        refine ⟨sorry /- ExprAddrWF -/, scope, st, st, ?_⟩
+        constructor
+        · exact hheapvwf
+        refine ⟨by
+          simp only [ExprAddrWF, Core.pushTrace]
+          have hlt : ∀ addr, ov = .object addr → addr < sc.heap.objects.size := by
+            intro addr hv; have h := hexprwf; rw [hsc] at h; simp [ExprAddrWF, ValueAddrWF] at h; subst hv; exact h.1
+          cases ov with
+          | object addr =>
+            simp only [ValueAddrWF]
+            cases h_lookup : sc.heap.objects[addr]? with
+            | none => trivial
+            | some props =>
+              cases h_find : props.find? (fun kv => kv.fst == Core.valueToString iv) with
+              | none => trivial
+              | some kv =>
+                have hmem := List.find?_some h_find
+                exact hheapvwf addr (hlt addr rfl) props h_lookup ⟨kv.1, kv.2⟩ hmem.1
+          | string => simp [ValueAddrWF]; split <;> simp [ValueAddrWF]
+          | null => simp [ValueAddrWF]
+          | undefined => simp [ValueAddrWF]
+          | bool => simp [ValueAddrWF]
+          | number => simp [ValueAddrWF]
+          | function => simp [ValueAddrWF], scope, st, st, ?_⟩
         -- Case split on ov to match both step functions
         cases ov with
         | object addr =>
@@ -2694,7 +2738,7 @@ private theorem closureConvert_step_simulation
           constructor  -- EnvAddrWF
           · exact henvwf
           constructor  -- HeapValuesWF
-          · exact hheapvwf
+          · sorry -- HeapValuesWF preservation for deleteProp heap mutation
           refine ⟨scope, st, st, ?_⟩
           cases ov with
           | object => simp only [Flat.convertExpr, Flat.convertValue, Core.pushTrace]; rfl
