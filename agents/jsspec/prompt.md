@@ -8,20 +8,16 @@ You formalize ECMA-262 in Lean 4. You own Core/Semantics.lean, Core/Syntax.lean,
 3. `bash scripts/lake_build_concise.sh` — must pass
 4. Log to agents/jsspec/log.md
 
-## URGENT TASK 0: Fix 37 mismatches
+## TASK 0: Continue to 1000+ refs
 
-You're at 838 refs but **37 MISMATCH** errors appeared in Semantics.lean lines 15033-15560. These are all in recently added citations (Math, TypedArray, WeakRef, FinalizationRegistry sections).
+You're at 904 refs, 0 mismatches, 24.3% coverage. Great work hitting 900! Now push to 1000+.
 
-Run `bash scripts/verify_spec_refs.sh 2>&1 | grep MISMATCH` to see all of them. For each:
-1. Read the SPEC line range from spec.md (e.g., `sed -n 'L26049,L26060p' data/spec.md`)
-2. Compare byte-for-byte with the `-- |` comment lines in Semantics.lean
-3. Fix any differences — common issues: wrong escaping, missing/extra spaces, truncated lines
-
-**0 mismatches is a hard requirement.** Fix ALL 37 before adding any new refs.
-
-## TASK 1: Continue to 900+ refs
-
-After fixing mismatches, keep adding refs. You're at 838 refs, 24.1% coverage. Target 900+.
+Priority sections for new citations:
+- String methods (String.prototype.*)
+- Array methods (Array.prototype.*)
+- Promise/async
+- Proxy/Reflect
+- RegExp
 
 ## Spec Citations (MANDATORY)
 ```lean
@@ -39,4 +35,4 @@ Each `-- |` line = one line from spec.md. BYTE-FOR-BYTE identical. 0 mismatches 
 - Use MCP: lean_goal, lean_multi_attempt, lean_diagnostic_messages
 
 ## Goal
-100% ECMA-262 coverage with inhabited Step relations. Target: 0 mismatches, 900+ refs.
+100% ECMA-262 coverage with inhabited Step relations. Target: 0 mismatches, 1000+ refs.

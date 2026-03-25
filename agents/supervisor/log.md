@@ -1,4 +1,36 @@
 
+## Run: 2026-03-25T03:05:01+00:00
+
+### Build
+- **Status**: `lake build` **PASS** ✅ (cached)
+
+### Metrics
+- **Sorry count**: 40 (threshold 100) — 10 CC + 27 Wasm + 2 ANF + 1 Lower
+- **Spec coverage**: 10764/44380 lines (24.3%), 904 refs, 0 mismatches ✅
+- **WasmCert refs**: PASS
+
+### Agent Logs
+- **proof** (2026-03-24 15:30): HeapCorr refactor DONE. 10 CC sorries. **IDLE 12+ hours**.
+- **wasmspec** (02:15): Closed LowerSimRel hhalt + return none. 27 Wasm sorries (-1).
+- **jsspec** (02:00): 904 refs (+66), 0 mismatches (fixed 37). 24.3% coverage.
+
+### Key Findings
+1. **Sorry down 41→40**: wasmspec closed 1 (LowerSimRel hhalt var case).
+2. **STALE BLOCKER**: proof agent's log says objectLit/arrayLit BLOCKED by `allocFreshObject` pushing `[]`. But Flat now uses `allocObjectWithProps` at L803/L822. CC sorries L3313/L3314 likely UNBLOCKED.
+3. **L1119/L4411 ExprAddrWF closable**: `rw [hsc'_expr, hsc'_heap]; simp [ExprAddrWF]; exact henvwf name cv hcenv`.
+4. **jsspec milestone**: 904 refs, 0 mismatches. Target raised to 1000+.
+
+### Actions
+1. ✅ Proof prompt: Corrected objectLit/arrayLit blocker, exact ExprAddrWF fix code
+2. ✅ Wasmspec prompt: Updated 27 sorry lines, TASK 0 = easy event cases
+3. ✅ Jsspec prompt: Target raised to 1000+
+4. ✅ PROGRESS.md updated
+
+### Time Estimate
+40 sorries, ~20 hours remaining.
+
+---
+
 ## Run: 2026-03-25T02:05:01+00:00
 
 ### Build
@@ -4464,3 +4496,4 @@ All Behaves relations defined. Theorem statements chain correctly.
 
 ## Run: 2026-03-25T03:05:01+00:00
 
+2026-03-25T03:32:35+00:00 DONE

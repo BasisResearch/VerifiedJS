@@ -5,58 +5,55 @@ You own Proofs/*.lean and compiler passes. EnvAddrWF is defined and integrated i
 ## Current CC sorry count: 10
 
 ```
-L1055  captured var           sorry (multi-step: Core 1 step, Flat 2 steps via getEnv)
-L1115  in-scope var found     sorry /- ExprAddrWF -/
-L1803  call                   sorry (env/heap/funcs correspondence)
-L1804  newObj                 sorry (env/heap correspondence)
-L1860  getProp value          sorry /- ExprAddrWF -/
-L2285  getIndex value         sorry /- ExprAddrWF -/
-L3309  objectLit              sorry (env/heap correspondence)
-L3310  arrayLit               sorry (env/heap correspondence)
-L3311  functionDef            sorry (env/heap/funcs + CC state)
-L4407  this found             sorry /- ExprAddrWF -/
+L1057  captured var           sorry (multi-step: Core 1 step, Flat 2 steps via getEnv)
+L1119  in-scope var found     sorry /- ExprAddrWF -/
+L1807  call                   sorry (env/heap/funcs correspondence)
+L1808  newObj                 sorry (env/heap correspondence)
+L1864  getProp value          sorry /- ExprAddrWF -/
+L2289  getIndex value         sorry /- ExprAddrWF -/
+L3313  objectLit              sorry — MAY BE UNBLOCKED (see below)
+L3314  arrayLit               sorry — MAY BE UNBLOCKED (see below)
+L3315  functionDef            sorry (env/heap/funcs + CC state)
+L4411  this found             sorry /- ExprAddrWF -/
 ```
 
-## TASK 0 (DO FIRST): Close L1115 and L4407 ExprAddrWF sorries
+## TASK 0 (DO FIRST): Close L1119 and L4411 ExprAddrWF sorries
 
-These are env-lookup result cases. The converted result is `.lit (convertValue cv)` where `cv` from env lookup. You have `henvwf : EnvAddrWF sc.env sc.heap.objects.size` in scope. Heap doesn't change for var/this steps (var step just changes expr).
+These are env-lookup result cases. You have in scope:
+- `hsc'_expr : sc'.expr = .lit cv`
+- `hsc'_heap : sc'.heap = sc.heap`
+- `henvwf : EnvAddrWF sc.env sc.heap.objects.size`
+- `hcenv : sc.env.lookup name = some cv` (L1119) or `hcenv : sc.env.lookup "this" = some cv` (L4411)
 
-**Key facts**:
-- `convertExpr (.lit cv) scope envVar envMap st = (.lit (convertValue cv), st)` (ClosureConvert.lean:165)
-- `ExprAddrWF (.lit (convertValue cv)) n` reduces to `ValueAddrWF (convertValue cv) n`
-- `convertValue` preserves `.object addr` → `.object addr` (ClosureConvert.lean:108)
-- So `ValueAddrWF (convertValue cv) n ↔ ValueAddrWF cv n` (for all value constructors)
-- `henvwf name cv hcenv` gives `ValueAddrWF cv sc.heap.objects.size`
-- After var step, `sc'.heap = sc.heap` (proved at L1114 via `subst h1; exact hheap`)
+The goal is `ExprAddrWF sc'.expr sc'.heap.objects.size`.
 
-**L1115** — replace `sorry /- ExprAddrWF -/` with:
+**L1119** — replace `sorry /- ExprAddrWF -/` with:
 ```lean
-by rw [hsc'_expr]; simp [Flat.convertExpr, ExprAddrWF, Flat.convertValue, ValueAddrWF]
-   cases cv <;> simp [ValueAddrWF, Flat.convertValue]
-   exact henvwf name (.object ‹_›) hcenv
+by rw [hsc'_expr, hsc'_heap]; simp [ExprAddrWF]; exact henvwf name cv hcenv
 ```
-If `simp` doesn't close non-object cases, try `<;> trivial` or check the exact goal with `lean_goal`.
 
-**L4407** — same pattern but with `"this"`:
+**L4411** — replace `sorry /- ExprAddrWF -/` with:
 ```lean
-by rw [hsc'_expr]; simp [Flat.convertExpr, ExprAddrWF, Flat.convertValue, ValueAddrWF]
-   cases cv <;> simp [ValueAddrWF, Flat.convertValue]
-   exact henvwf "this" (.object ‹_›) hcenv
+by rw [hsc'_expr, hsc'_heap]; simp [ExprAddrWF]; exact henvwf "this" cv hcenv
 ```
 
-## TASK 1: Close L1860 and L2285 ExprAddrWF sorries (getProp/getIndex)
+If `simp [ExprAddrWF]` doesn't reduce to `ValueAddrWF cv sc.heap.objects.size`, try `simp [ExprAddrWF, ValueAddrWF]; cases cv <;> simp [ValueAddrWF] <;> try exact henvwf name cv hcenv`.
 
-These need the result value from a heap property lookup to satisfy ValueAddrWF. The value `v` comes from `heap.objects[addr]?.bind (find prop)`. You need HeapValuesWF.
+Use `lean_goal` at L1119/L4411 to verify before editing.
 
-**Option A**: Add `HeapValuesWF sc.heap` (defined at L687) to CC_SimRel. Then close with:
-```lean
-by cases v <;> simp [ExprAddrWF, ValueAddrWF, Flat.convertExpr, Flat.convertValue] <;> try trivial
-   exact heapwf addr haddr_lt props hprops_eq (prop, v) hmem
-```
+## TASK 1: Close L1864 and L2289 ExprAddrWF sorries (getProp/getIndex)
 
-**Option B**: Prove a focused lemma that if ExprAddrWF holds for the getProp expression and the heap is well-formed, then ExprAddrWF holds for the result. Use `lean_goal` at L1860/L2285 to decide.
+These need heap lookup value to satisfy ValueAddrWF. Add `HeapValuesWF sc.heap` (L687) to CC_SimRel if not already there.
 
-## TASK 2: ANF sorries (2 remain)
+## TASK 2: Close L3313 and L3314 (objectLit/arrayLit)
+
+**IMPORTANT**: Your previous analysis said these are BLOCKED by `allocFreshObject` pushing `[]`. This is STALE — `allocFreshObject` was fixed. Check the code:
+- **objectLit** (Flat/Semantics.lean:803) now uses `allocObjectWithProps s.heap heapProps` which pushes actual properties
+- **arrayLit** (Flat/Semantics.lean:822) also uses `allocObjectWithProps` with indexed props
+
+Both Flat and Core now allocate objects with properties. HeapCorr should be maintainable through these operations. Re-analyze with `lean_goal` at L3313/L3314 to check.
+
+## TASK 3: ANF sorries (2 remain)
 
 - **ANFConvertCorrect.lean:106**: main `anfConvert_step_star` theorem
 - **ANFConvertCorrect.lean:1181**: nested seq induction case
