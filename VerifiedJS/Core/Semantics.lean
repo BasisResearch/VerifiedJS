@@ -8306,6 +8306,50 @@ def step? (s : State) : Option (TraceEvent × State) :=
   -- | either \*undefined\* or \*null\*, then 1. Return \*undefined\*. 1.
   -- | Return ? ChainEvaluation of \|OptionalChain\| with arguments
   -- | \_baseValue\_ and \_baseReference\_.
+  -- SPEC: L15799-L15841
+  -- | # Runtime Semantics: ChainEvaluation ( \_baseValue\_: an ECMAScript language value, \_baseReference\_: an ECMAScript language value or a Reference Record, ): either a normal completion containing either an ECMAScript language value or a Reference Record, or an abrupt completion
+  -- |
+  -- | OptionalChain : \`?.\` Arguments 1. Let \_thisChain\_ be this
+  -- | \|OptionalChain\|. 1. Let \_tailCall\_ be
+  -- | IsInTailPosition(\_thisChain\_). 1. Return ? EvaluateCall(\_baseValue\_,
+  -- | \_baseReference\_, \|Arguments\|, \_tailCall\_). OptionalChain : \`?.\`
+  -- | \`\[\` Expression \`\]\` 1. Let \_strict\_ be IsStrict(this
+  -- | \|OptionalChain\|). 1. Return ?
+  -- | EvaluatePropertyAccessWithExpressionKey(\_baseValue\_, \|Expression\|,
+  -- | \_strict\_). OptionalChain : \`?.\` IdentifierName 1. Let \_strict\_ be
+  -- | IsStrict(this \|OptionalChain\|). 1. Return
+  -- | EvaluatePropertyAccessWithIdentifierKey(\_baseValue\_,
+  -- | \|IdentifierName\|, \_strict\_). OptionalChain : \`?.\`
+  -- | PrivateIdentifier 1. Let \_fieldNameString\_ be the StringValue of
+  -- | \|PrivateIdentifier\|. 1. Return MakePrivateReference(\_baseValue\_,
+  -- | \_fieldNameString\_). OptionalChain : OptionalChain Arguments 1. Let
+  -- | \_optionalChain\_ be \|OptionalChain\|. 1. Let \_newReference\_ be ?
+  -- | ChainEvaluation of \_optionalChain\_ with arguments \_baseValue\_ and
+  -- | \_baseReference\_. 1. Let \_newValue\_ be ?
+  -- | GetValue(\_newReference\_). 1. Let \_thisChain\_ be this
+  -- | \|OptionalChain\|. 1. Let \_tailCall\_ be
+  -- | IsInTailPosition(\_thisChain\_). 1. Return ? EvaluateCall(\_newValue\_,
+  -- | \_newReference\_, \|Arguments\|, \_tailCall\_). OptionalChain :
+  -- | OptionalChain \`\[\` Expression \`\]\` 1. Let \_optionalChain\_ be
+  -- | \|OptionalChain\|. 1. Let \_newReference\_ be ? ChainEvaluation of
+  -- | \_optionalChain\_ with arguments \_baseValue\_ and \_baseReference\_. 1.
+  -- | Let \_newValue\_ be ? GetValue(\_newReference\_). 1. Let \_strict\_ be
+  -- | IsStrict(this \|OptionalChain\|). 1. Return ?
+  -- | EvaluatePropertyAccessWithExpressionKey(\_newValue\_, \|Expression\|,
+  -- | \_strict\_). OptionalChain : OptionalChain \`.\` IdentifierName 1. Let
+  -- | \_optionalChain\_ be \|OptionalChain\|. 1. Let \_newReference\_ be ?
+  -- | ChainEvaluation of \_optionalChain\_ with arguments \_baseValue\_ and
+  -- | \_baseReference\_. 1. Let \_newValue\_ be ?
+  -- | GetValue(\_newReference\_). 1. Let \_strict\_ be IsStrict(this
+  -- | \|OptionalChain\|). 1. Return
+  -- | EvaluatePropertyAccessWithIdentifierKey(\_newValue\_,
+  -- | \|IdentifierName\|, \_strict\_). OptionalChain : OptionalChain \`.\`
+  -- | PrivateIdentifier 1. Let \_optionalChain\_ be \|OptionalChain\|. 1. Let
+  -- | \_newReference\_ be ? ChainEvaluation of \_optionalChain\_ with
+  -- | arguments \_baseValue\_ and \_baseReference\_. 1. Let \_newValue\_ be ?
+  -- | GetValue(\_newReference\_). 1. Let \_fieldNameString\_ be the
+  -- | StringValue of \|PrivateIdentifier\|. 1. Return
+  -- | MakePrivateReference(\_newValue\_, \_fieldNameString\_).
   | .getIndex obj idx =>
       match exprValue? obj, exprValue? idx with
       | none, _ =>
