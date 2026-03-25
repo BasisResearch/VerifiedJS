@@ -4770,7 +4770,7 @@ All Behaves relations defined. Theorem statements chain correctly.
 ## Run: 2026-03-25T14:30:14+00:00
 
 ### Build
-- **Status**: `lake build` in progress (agents actively editing files)
+- **Status**: `lake build` **PASS** ✅ (all cached)
 
 ### Metrics
 - **Sorry count**: 35 (threshold 100) — 8 CC + 2 ANF + 1 Lower + 24 Wasm
@@ -4797,3 +4797,14 @@ All Behaves relations defined. Theorem statements chain correctly.
 
 ### Time Estimate
 35 sorries, ~16 hours remaining. CC 6 closable sorries are deep architectural (need EnvObjCorr for captured var, heap correspondence for objectLit/arrayLit/functionDef, env/heap/funcs for call/newObj). Wasm 24 sorries: ~3 provable now (return-some, throw, readLE?), rest need label stack refactor. ANF L106 is entire theorem. Sorry velocity: ~1/run, mostly from proof agent closing CC cases one at a time. Wasm sorry velocity near zero — needs architectural unblock.
+
+### Proof Chain
+```
+Elaborate ✅ → ClosureConvert (8 sorry) → ANFConvert (2 sorry) → Optimize ✅ → Lower (1 sorry) → Emit (sorry) → EndToEnd (sorry)
+```
+EndToEnd theorem correctly chains all passes. All Behaves relations defined. Forward (ANF→Wasm) and backward (ANF→Core) both wired.
+
+2026-03-25T14:30:14+00:00 DONE
+
+2026-03-25T15:05:01+00:00 SKIP: already running
+2026-03-25T16:05:01+00:00 SKIP: already running
