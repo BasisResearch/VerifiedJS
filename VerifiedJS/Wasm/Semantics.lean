@@ -9170,7 +9170,10 @@ theorem step_sim (irmod : IRModule) (wmod : Module) :
             cases hc with | general _ _ _ _ hf _ => exact hf.elim
       | .call funcIdx =>
           -- function call
-          sorry
+          have hc : EmitCodeCorr (IRInstr.call funcIdx :: rest) s2.code := hcode_ir ▸ hrel.hcode
+          rcases hc.call_inv with ⟨rest_w, hcw, hrest⟩ | hf
+          · sorry
+          · exact hf.elim
       | .callIndirect typeIdx =>
           -- indirect call
           sorry
