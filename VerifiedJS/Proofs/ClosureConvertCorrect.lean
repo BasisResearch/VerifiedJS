@@ -1260,7 +1260,8 @@ private theorem closureConvert_step_simulation
       have hcs : (Flat.convertExpr (.lit v) scope envVar envMap st).snd = st := by
         simp [Flat.convertExpr]
       rw [hcf, hcs] at hsf_expr
-      set body' := (Flat.convertExpr body (name :: scope) envVar envMap st).fst with hbody'_def
+      -- abbreviation for the converted body expression
+      let body' := (Flat.convertExpr body (name :: scope) envVar envMap st).fst
       -- Flat step on let-value: event is .silent
       have hev_eq : ev = .silent := by
         have h0 := hstep
@@ -1328,7 +1329,7 @@ private theorem closureConvert_step_simulation
         by rw [hsc'_expr]; have h := hncfr; rw [hsc] at h; simp [noCallFrameReturn] at h; exact h,
         by rw [hsc'_expr, hsc'_heap]; have h := hexprwf; rw [hsc] at h; simp [ExprAddrWF] at h; exact h.2,
         name :: scope, st, (Flat.convertExpr body (name :: scope) envVar envMap st).snd,
-        by rw [hsc'_expr, hsf'_expr, hbody'_def]; exact Prod.eta _⟩
+        by rw [hsc'_expr, hsf'_expr]; exact Prod.eta _⟩
     | none =>
       -- Stepping sub-case: init is not a value
       set init' := (Flat.convertExpr init scope envVar envMap st).1 with hinit'_def
