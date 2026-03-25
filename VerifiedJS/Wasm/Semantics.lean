@@ -9535,8 +9535,9 @@ theorem step_sim (irmod : IRModule) (wmod : Module) :
                   (hstk ▸ hrel.hstack.1) (hstk ▸ hrel.hstack.2)
                 obtain ⟨wstk', hstack_eq, hlen_tail, htail⟩ := hstk_w
                 have h0mem : 0 < s2.store.memories.size := List.getElem?_eq_some_length hmem_eq
-                -- Wasm maxOk resolves to (newPages ≤ 65536):
-                -- If memLimits[0] has max = none (via hmemLimits), or memLimits empty, both give .ble 65536
+                -- Wasm maxOk resolves to (newPages ≤ 65536) in all cases:
+                -- memLimits[0] with max = none (from hmemLimits) → .ble 65536
+                -- memLimits empty → .ble 65536 (else branch)
                 have hMaxOk_eq : (if hLim : 0 < s2.store.memLimits.size then
                     match s2.store.memLimits[0].max with
                     | some maxPages => (s1.memory.size / 65536 + pages.toNat).ble maxPages
@@ -9579,7 +9580,7 @@ theorem step_sim (irmod : IRModule) (wmod : Module) :
                     simp [Array.set!, Array.setIfInBounds, h0mem]
                   · -- hmemLimits: memLimits unchanged by memory grow
                     dsimp only []; exact hrel.hmemLimits
-                  · -- hmemory_aligned: grown.size = memory.size + pages*65536, both div by 65536
+                  · -- hmemory_aligned: grown.size = memory.size + pages*65536
                     dsimp only []
                     have hgsz : (ByteArray.mk (s1.memory.toList.toArray ++ Array.replicate (pages.toNat * 65536) 0)).size =
                         s1.memory.size + pages.toNat * 65536 := by
@@ -9623,8 +9624,7 @@ theorem step_sim (irmod : IRModule) (wmod : Module) :
                       hlabel_content := hrel.hlabel_content
                       hframes_one := hrel.hframes_one }⟩
               · -- No memory (unreachable in practice: lower always declares memory,
-                -- so memories[0]? = some ... always holds. This case requires
-                -- a module-level invariant connecting hemit to memory existence.)
+                -- so memories[0]? ≠ none. Requires module-level invariant to prove.)
                 sorry
             | .f64 _ :: _ | .i64 _ :: _ =>
               -- Non-i32 on stack: both trap with type mismatch

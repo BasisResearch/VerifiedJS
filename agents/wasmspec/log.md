@@ -1,4 +1,36 @@
 
+## Run: 2026-03-25T19:15:01+00:00
+
+### TASK 2 (memoryGrow): Proof structure complete, 1 unreachable sorry remains
+
+**Build**: No new errors (pre-existing 39 errors unchanged)
+
+**Changes** (VerifiedJS/Wasm/Semantics.lean):
+
+1. **Added `hmemLimits` field to EmitSimRel**: `∀ lim, w.store.memLimits[0]? = some lim → lim.max = none`. Propagated to all 62 construction sites (mechanical: memLimits never changes).
+
+2. **Added `hmemory_aligned` field to EmitSimRel**: `65536 ∣ ir.memory.size`. Propagated to all 62 construction sites (mechanical: alignment preserved by all ops).
+
+3. **Proved `hMaxOk_eq` lemma**: The Wasm `maxOk` check resolves to `newPages.ble 65536` regardless of whether memLimits is populated, using `hmemLimits` when memLimits exists and the else-branch default otherwise.
+
+4. **Proved EmitSimRel memoryGrow case — all subcases except unreachable no-memory**:
+   - Empty stack: Both IR and Wasm trap "stack underflow" → proved
+   - Non-i32 on stack (f64/i64): Both trap "memory.grow delta is not i32" → proved
+   - i32 on stack, memory exists, grow succeeds: Both grow, push oldPages → proved (including hmemory for `set!`, hmemory_aligned for grown size, stack correspondence)
+   - i32 on stack, memory exists, grow fails: Both push 0xFFFFFFFF → proved (including `hNewPages_gt` arithmetic)
+   - i32 on stack, NO memory: sorry — unreachable case (lower always declares memory, but `hemit` alone doesn't imply `memories[0]? ≠ none`; needs module-level invariant)
+
+5. **Key arithmetic**: Forward direction `mem.size + pages * 65536 ≤ 65536² → mem.size/65536 + pages ≤ 65536` by Nat division. Backward direction (contrapositive) also proved via div/mod properties.
+
+**Sorry count**: 20 (unchanged — replaced 1 whole-case sorry with 1 unreachable-subcase sorry)
+
+**Blocker for full closure**: Need `hmemory_exists : 0 < w.store.memories.size` or equivalent invariant to eliminate the Right case of `hmemory`. This requires either:
+- Adding a field to EmitSimRel (another propagation pass), or
+- Strengthening `hmemory` to always be Left (requires `lower` info in `init`), or
+- Adding module-level invariant connecting `hemit` to memory existence
+
+---
+
 ## Run: 2026-03-25T18:15:01+00:00
 
 ### TASK 1 complete: Closed i64 load + i64 store sorries (2 sorries)
