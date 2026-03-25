@@ -239,22 +239,34 @@ private theorem evalBinary_convertValue (op : Core.BinOp) (a b : Core.Value) :
     simp [Flat.convertValue]
   | eq =>
     simp only [Core.evalBinary, Flat.evalBinary]
-    congr 1; cases a <;> cases b <;> simp [Flat.convertValue, Flat.abstractEq, Core.abstractEq, Flat.toNumber, Core.toNumber] <;> first | rfl | (cases ‹Bool› <;> first | rfl | (cases ‹Bool› <;> rfl))
+    congr 1; cases a <;> cases b <;> simp only [Flat.convertValue, Flat.abstractEq, Core.abstractEq] <;>
+      try rw [toNumber_convertValue] <;> try rw [toNumber_convertValue] <;>
+      try rw [valueToString_convertValue] <;> try rw [valueToString_convertValue] <;> rfl
   | neq =>
     simp only [Core.evalBinary, Flat.evalBinary]
-    congr 1; congr 1; cases a <;> cases b <;> simp [Flat.convertValue, Flat.abstractEq, Core.abstractEq, Flat.toNumber, Core.toNumber] <;> first | rfl | (cases ‹Bool› <;> first | rfl | (cases ‹Bool› <;> rfl))
+    congr 1; congr 1; cases a <;> cases b <;> simp only [Flat.convertValue, Flat.abstractEq, Core.abstractEq] <;>
+      try rw [toNumber_convertValue] <;> try rw [toNumber_convertValue] <;>
+      try rw [valueToString_convertValue] <;> try rw [valueToString_convertValue] <;> rfl
   | lt =>
     simp only [Core.evalBinary, Flat.evalBinary]
-    congr 1; cases a <;> cases b <;> simp [Flat.convertValue, Flat.abstractLt, Core.abstractLt, Flat.toNumber, Core.toNumber] <;> first | rfl | (cases ‹Bool› <;> first | rfl | (cases ‹Bool› <;> rfl))
+    congr 1; cases a <;> cases b <;> simp only [Flat.convertValue, Flat.abstractLt, Core.abstractLt] <;>
+      try rw [toNumber_convertValue] <;> try rw [toNumber_convertValue] <;>
+      try rw [valueToString_convertValue] <;> try rw [valueToString_convertValue] <;> rfl
   | gt =>
     simp only [Core.evalBinary, Flat.evalBinary]
-    congr 1; cases a <;> cases b <;> simp [Flat.convertValue, Flat.abstractLt, Core.abstractLt, Flat.toNumber, Core.toNumber] <;> first | rfl | (cases ‹Bool› <;> first | rfl | (cases ‹Bool› <;> rfl))
+    congr 1; cases a <;> cases b <;> simp only [Flat.convertValue, Flat.abstractLt, Core.abstractLt] <;>
+      try rw [toNumber_convertValue] <;> try rw [toNumber_convertValue] <;>
+      try rw [valueToString_convertValue] <;> try rw [valueToString_convertValue] <;> rfl
   | le =>
     simp only [Core.evalBinary, Flat.evalBinary]
-    congr 1; congr 1; cases a <;> cases b <;> simp [Flat.convertValue, Flat.abstractLt, Core.abstractLt, Flat.toNumber, Core.toNumber] <;> first | rfl | (cases ‹Bool› <;> first | rfl | (cases ‹Bool› <;> rfl))
+    congr 1; congr 1; cases a <;> cases b <;> simp only [Flat.convertValue, Flat.abstractLt, Core.abstractLt] <;>
+      try rw [toNumber_convertValue] <;> try rw [toNumber_convertValue] <;>
+      try rw [valueToString_convertValue] <;> try rw [valueToString_convertValue] <;> rfl
   | ge =>
     simp only [Core.evalBinary, Flat.evalBinary]
-    congr 1; congr 1; cases a <;> cases b <;> simp [Flat.convertValue, Flat.abstractLt, Core.abstractLt, Flat.toNumber, Core.toNumber] <;> first | rfl | (cases ‹Bool› <;> first | rfl | (cases ‹Bool› <;> rfl))
+    congr 1; congr 1; cases a <;> cases b <;> simp only [Flat.convertValue, Flat.abstractLt, Core.abstractLt] <;>
+      try rw [toNumber_convertValue] <;> try rw [toNumber_convertValue] <;>
+      try rw [valueToString_convertValue] <;> try rw [valueToString_convertValue] <;> rfl
   | instanceof =>
     cases a <;> cases b <;> simp [Core.evalBinary, Flat.evalBinary, Flat.convertValue]
   | «in» =>
@@ -482,7 +494,7 @@ private theorem convertExpr_scope_irrelevant (e : Core.Expr)
     simp only [Flat.convertExpr]
     rw [convertExpr_scope_irrelevant arg scope1 scope2]
   termination_by sizeOf e
-  decreasing_by all_goals (try cases ‹Option Core.Expr›) <;> simp_all <;> omega
+  decreasing_by all_goals simp_wf; omega
 
 private theorem convertExprList_scope_irrelevant (es : List Core.Expr)
     (scope1 scope2 : List String) (envVar : String) (envMap : Flat.EnvMapping) (st : Flat.CCState) :
@@ -657,8 +669,8 @@ private theorem ExprAddrWF_mono {e : Core.Expr} {n m : Nat}
   induction e generalizing n m with
   | lit => exact ValueAddrWF_mono h hle
   | var | call | newObj | objectLit | arrayLit | «break» | «continue» | this => trivial
-  | return oe => cases oe with | none => trivial | some => exact ExprAddrWF_mono h hle
-  | yield oe _ => cases oe with | none => trivial | some => exact ExprAddrWF_mono h hle
+  | «return» oe => cases oe with | none => trivial | some => exact ExprAddrWF_mono h hle
+  | «yield» oe _ => cases oe with | none => trivial | some => exact ExprAddrWF_mono h hle
   | «let» _ _ _ ih1 ih2 => exact ⟨ih1 h.1 hle, ih2 h.2 hle⟩
   | assign _ _ ih => exact ih h hle
   | «if» _ _ _ ih1 ih2 ih3 => exact ⟨ih1 h.1 hle, ih2 h.2.1 hle, ih3 h.2.2 hle⟩
