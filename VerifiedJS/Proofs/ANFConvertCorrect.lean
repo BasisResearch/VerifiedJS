@@ -666,10 +666,8 @@ private theorem normalizeExpr_ignored_bypass_trivial (e : Flat.Expr)
       (normalizeExpr_ignored_bypass_trivial a _ n m tv h)
   | _ =>
     exfalso; exact absurd h (normalizeExpr_compound_not_trivial _ (fun _ => K)
-      (by intro v hc; exact Flat.Expr.noConfusion hc)
-      (by intro nm hc; exact Flat.Expr.noConfusion hc)
-      (by exact Flat.Expr.noConfusion)
-      (by intro a' b' hc; exact Flat.Expr.noConfusion hc) n m tv)
+      (fun _ h => nomatch h) (fun _ h => nomatch h) (fun h => nomatch h)
+      (fun _ _ h => nomatch h) n m tv)
 termination_by e.depth
 decreasing_by all_goals simp [Flat.Expr.depth]; omega
 
@@ -703,7 +701,7 @@ private theorem normalizeExpr_trivialChain_passthrough (e : Flat.Expr)
     simp only [ANF.normalizeExpr]
     rw [normalizeExpr_trivialChain_passthrough a htc.1 (ANF.normalizeExpr b (fun _ => K)) n]
     exact normalizeExpr_trivialChain_passthrough b htc.2 K n
-  | _ => simp [isTrivialChain] at htc
+  | _ => exact absurd htc (by unfold isTrivialChain; exact Bool.noConfusion)
 termination_by e.depth
 decreasing_by all_goals simp [Flat.Expr.depth]; omega
 
@@ -726,10 +724,8 @@ private theorem normalizeExpr_trivial_implies_chain (e : Flat.Expr)
       exact normalizeExpr_trivial_implies_chain b K n m tv h
   | _ =>
     exfalso; exact absurd h (normalizeExpr_compound_not_trivial _ (fun _ => K)
-      (by intro v hc; exact Flat.Expr.noConfusion hc)
-      (by intro nm hc; exact Flat.Expr.noConfusion hc)
-      (by exact Flat.Expr.noConfusion)
-      (by intro a' b' hc; exact Flat.Expr.noConfusion hc) n m tv)
+      (fun _ h => nomatch h) (fun _ h => nomatch h) (fun h => nomatch h)
+      (fun _ _ h => nomatch h) n m tv)
 termination_by e.depth
 decreasing_by all_goals simp [Flat.Expr.depth]; omega
 
