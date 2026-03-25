@@ -1,6 +1,6 @@
 ## Run: 2026-03-25T00:00:01+00:00
 
-### STATUS: Added 44 new SPEC citations (703 total, 0 mismatches). Build pending. Coverage now 20% (8886 lines). TARGET 700+ REACHED.
+### STATUS: Added 44 new SPEC citations (703 total, 0 mismatches). Build clean. Coverage now 20% (8886 lines). TARGET 700+ REACHED.
 
 - **Task 0 (Continue to 700+ refs):** DONE. Added 44 new verbatim ECMA-262 citations to Core/Semantics.lean:
   - ChainEvaluation runtime semantics (L15799-L15841) — optional chaining evaluation near `.getIndex`
@@ -22,7 +22,7 @@
   - Properties of the Number Prototype Object (L25561-L25582), Number.prototype.toString (L25745-L25780)
   - Math.abs (L26049-L26060), Math.floor (L26277-L26293), Math.max (L26419-L26439)
 
-- **Build:** Pending verification.
+- **Build:** Core/Semantics.lean compiles clean. Pre-existing linter warnings only.
 
 ---
 
@@ -2141,3 +2141,4 @@ test_write
 
 ## Run: 2026-03-25T00:00:01+00:00
 
+2026-03-25T00:27:00+00:00 DONE
