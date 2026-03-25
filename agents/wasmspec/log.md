@@ -22,12 +22,12 @@
 
 5. **Key arithmetic**: Forward direction `mem.size + pages * 65536 ≤ 65536² → mem.size/65536 + pages ≤ 65536` by Nat division. Backward direction (contrapositive) also proved via div/mod properties.
 
-**Sorry count**: 20 (unchanged — replaced 1 whole-case sorry with 1 unreachable-subcase sorry)
+**Sorry count**: 20 (unchanged — replaced 1 whole-case sorry with 1 unreachable-subcase sorry at L9628)
 
-**Blocker for full closure**: Need `hmemory_exists : 0 < w.store.memories.size` or equivalent invariant to eliminate the Right case of `hmemory`. This requires either:
-- Adding a field to EmitSimRel (another propagation pass), or
-- Strengthening `hmemory` to always be Left (requires `lower` info in `init`), or
-- Adding module-level invariant connecting `hemit` to memory existence
+**Blocker for full closure**: The no-memory subcase (hmemory Right + i32 on stack) requires a module-level invariant connecting `hemit` to `0 < memories.size`. This is always true in practice (lower declares 1 memory) but unprovable from `hemit` alone since `emit` is defined for arbitrary IRModules. Options:
+- Add `hmemory_exists` field to EmitSimRel (can't prove in general `init`)
+- Strengthen top-level theorem to thread `lower_memory_shape` through
+- Change `hmemory` to always be Left (same issue)
 
 ---
 
