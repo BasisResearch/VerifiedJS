@@ -204,7 +204,7 @@ private theorem evalBinary_convertValue (op : Core.BinOp) (a b : Core.Value) :
     show Flat.Value.bool (!(Flat.convertValue a == Flat.convertValue b)) = Flat.Value.bool (!(a == b))
     rw [convertValue_beq]
   | add =>
-    cases a <;> cases b <;> simp [Core.evalBinary, Flat.evalBinary, Flat.convertValue, toNumber_convertValue, valueToString_convertValue, Core.toNumber, Core.valueToString, Flat.toNumber, Flat.valueToString]
+    cases a <;> cases b <;> simp [Core.evalBinary, Flat.evalBinary, Flat.convertValue, toNumber_convertValue, valueToString_convertValue] <;> (try cases ‹Bool›) <;> (try cases ‹Bool›) <;> rfl
   | mod =>
     simp only [Core.evalBinary, Flat.evalBinary]
     rw [toNumber_convertValue, toNumber_convertValue]
@@ -239,22 +239,22 @@ private theorem evalBinary_convertValue (op : Core.BinOp) (a b : Core.Value) :
     simp [Flat.convertValue]
   | eq =>
     simp only [Core.evalBinary, Flat.evalBinary]
-    congr 1; cases a <;> cases b <;> simp [Flat.convertValue, Flat.abstractEq, Core.abstractEq, Flat.toNumber, Core.toNumber, Flat.valueToString, Core.valueToString]
+    congr 1; cases a <;> cases b <;> simp [Flat.convertValue, Flat.abstractEq, Core.abstractEq, Flat.toNumber, Core.toNumber] <;> (try cases ‹Bool›) <;> (try cases ‹Bool›) <;> rfl
   | neq =>
     simp only [Core.evalBinary, Flat.evalBinary]
-    congr 1; congr 1; cases a <;> cases b <;> simp [Flat.convertValue, Flat.abstractEq, Core.abstractEq, Flat.toNumber, Core.toNumber, Flat.valueToString, Core.valueToString]
+    congr 1; congr 1; cases a <;> cases b <;> simp [Flat.convertValue, Flat.abstractEq, Core.abstractEq, Flat.toNumber, Core.toNumber] <;> (try cases ‹Bool›) <;> (try cases ‹Bool›) <;> rfl
   | lt =>
     simp only [Core.evalBinary, Flat.evalBinary]
-    congr 1; cases a <;> cases b <;> simp [Flat.convertValue, Flat.abstractLt, Core.abstractLt, Flat.toNumber, Core.toNumber, Flat.valueToString, Core.valueToString]
+    congr 1; cases a <;> cases b <;> simp [Flat.convertValue, Flat.abstractLt, Core.abstractLt, Flat.toNumber, Core.toNumber] <;> (try cases ‹Bool›) <;> (try cases ‹Bool›) <;> rfl
   | gt =>
     simp only [Core.evalBinary, Flat.evalBinary]
-    congr 1; cases a <;> cases b <;> simp [Flat.convertValue, Flat.abstractLt, Core.abstractLt, Flat.toNumber, Core.toNumber, Flat.valueToString, Core.valueToString]
+    congr 1; cases a <;> cases b <;> simp [Flat.convertValue, Flat.abstractLt, Core.abstractLt, Flat.toNumber, Core.toNumber] <;> (try cases ‹Bool›) <;> (try cases ‹Bool›) <;> rfl
   | le =>
     simp only [Core.evalBinary, Flat.evalBinary]
-    congr 1; congr 1; cases a <;> cases b <;> simp [Flat.convertValue, Flat.abstractLt, Core.abstractLt, Flat.toNumber, Core.toNumber, Flat.valueToString, Core.valueToString]
+    congr 1; congr 1; cases a <;> cases b <;> simp [Flat.convertValue, Flat.abstractLt, Core.abstractLt, Flat.toNumber, Core.toNumber] <;> (try cases ‹Bool›) <;> (try cases ‹Bool›) <;> rfl
   | ge =>
     simp only [Core.evalBinary, Flat.evalBinary]
-    congr 1; congr 1; cases a <;> cases b <;> simp [Flat.convertValue, Flat.abstractLt, Core.abstractLt, Flat.toNumber, Core.toNumber, Flat.valueToString, Core.valueToString]
+    congr 1; congr 1; cases a <;> cases b <;> simp [Flat.convertValue, Flat.abstractLt, Core.abstractLt, Flat.toNumber, Core.toNumber] <;> (try cases ‹Bool›) <;> (try cases ‹Bool›) <;> rfl
   | instanceof =>
     cases a <;> cases b <;> simp [Core.evalBinary, Flat.evalBinary, Flat.convertValue]
   | «in» =>
@@ -688,6 +688,7 @@ private theorem ExprAddrWF_mono : {e : Core.Expr} → {n m : Nat} →
   | .yield (some arg) _, _, _, h, hle => ExprAddrWF_mono h hle
   | .labeled _ b, _, _, h, hle => ExprAddrWF_mono h hle
   | .await arg, _, _, h, hle => ExprAddrWF_mono h hle
+  termination_by structural e
 
 private def EnvAddrWF (env : Core.Env) (heapSize : Nat) : Prop :=
   ∀ name v, env.lookup name = some v → ValueAddrWF v heapSize
