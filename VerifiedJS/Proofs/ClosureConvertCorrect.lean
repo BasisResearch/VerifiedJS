@@ -710,13 +710,20 @@ private def HeapValuesWF (heap : Core.Heap) : Prop :=
     ∀ props, heap.objects[addr]? = some props →
       ∀ kv, kv ∈ props → ValueAddrWF kv.2 heap.objects.size
 
+private theorem size_set! {α : Type} (a : Array α) (i : Nat) (v : α) :
+    (a.set! i v).size = a.size := by
+  simp only [Array.set!, Array.setIfInBounds]
+  split
+  · exact Array.size_set ..
+  · rfl
+
 private theorem HeapValuesWF_set_at {heap : Core.Heap} {addr : Nat}
     {newProps : List (Core.PropName × Core.Value)}
     (h : HeapValuesWF heap)
     (hnew : ∀ kv, kv ∈ newProps → ValueAddrWF kv.2 heap.objects.size) :
     HeapValuesWF { heap with objects := heap.objects.set! addr newProps } := by
   intro addr' haddr' props' hprops' kv hkv
-  simp only [Array.size_set!] at haddr' ⊢
+  simp only [size_set!] at haddr' ⊢
   simp only [Array.set!, Array.setIfInBounds] at hprops'
   split at hprops'
   · next h_bound =>
@@ -819,8 +826,9 @@ private theorem convertExpr_not_value (e : Core.Expr)
     (scope : List String) (envVar : String) (envMap : Flat.EnvMapping) (st : Flat.CCState) :
     Flat.exprValue? (Flat.convertExpr e scope envVar envMap st).fst = none := by
   cases e <;> simp [Core.exprValue?] at h <;>
-    (first | simp [Flat.convertExpr, Flat.exprValue?] | rfl) <;>
-    (first | rfl | (try split) <;> simp [Flat.exprValue?])
+    (try { simp [Flat.convertExpr, Flat.exprValue?]; done }) <;>
+    (try { simp [Flat.convertExpr]; split <;> simp [Flat.exprValue?]; done }) <;>
+    (try { unfold Flat.convertExpr; simp [Flat.exprValue?]; done })
 
 private theorem closureConvert_step_simulation
     (s : Core.Program) (t : Flat.Program)
@@ -2160,9 +2168,9 @@ private theorem closureConvert_step_simulation
               | some props =>
                 rw [flatToCoreValue_convertValue]
                 constructor
-                · simp [Array.size_set!]; exact hheap.1
+                · simp [size_set!]; exact hheap.1
                 · intro i hi
-                  simp only [Array.size_set!] at hi
+                  simp only [size_set!] at hi
                   simp only [Array.set!, Array.setIfInBounds]
                   split <;> split <;> simp_all [Array.getElem?_def]
                   · omega
@@ -2175,7 +2183,7 @@ private theorem closureConvert_step_simulation
               | some props =>
                 -- Flat mutates at addr outside Core range, HeapCorr preserved
                 constructor
-                · simp [Array.size_set!]; exact hheap.1
+                · simp [size_set!]; exact hheap.1
                 · intro i hi
                   have hne : i ≠ addr := by omega
                   simp only [Array.set!, Array.setIfInBounds]
@@ -2767,9 +2775,9 @@ private theorem closureConvert_step_simulation
                 | none => exact hheap
                 | some props =>
                   constructor
-                  · simp [Array.size_set!]; exact hheap.1
+                  · simp [size_set!]; exact hheap.1
                   · intro i hi
-                    simp only [Array.size_set!] at hi
+                    simp only [size_set!] at hi
                     simp only [Array.set!, Array.setIfInBounds]
                     split <;> split <;> simp_all [Array.getElem?_def]
                     · omega
@@ -2781,7 +2789,7 @@ private theorem closureConvert_step_simulation
                 | none => exact hheap
                 | some props =>
                   constructor
-                  · simp [Array.size_set!]; exact hheap.1
+                  · simp [size_set!]; exact hheap.1
                   · intro i hi
                     have hne : i ≠ addr := by omega
                     simp only [Array.set!, Array.setIfInBounds]
@@ -2959,9 +2967,9 @@ private theorem closureConvert_step_simulation
             | none => exact hheap
             | some props =>
               constructor
-              · simp [Array.size_set!]; exact hheap.1
+              · simp [size_set!]; exact hheap.1
               · intro i hi
-                simp only [Array.size_set!] at hi
+                simp only [size_set!] at hi
                 simp only [Array.set!, Array.setIfInBounds]
                 split <;> split <;> simp_all [Array.getElem?_def]
                 · omega
@@ -2973,7 +2981,7 @@ private theorem closureConvert_step_simulation
             | none => exact hheap
             | some props =>
               constructor
-              · simp [Array.size_set!]; exact hheap.1
+              · simp [size_set!]; exact hheap.1
               · intro i hi
                 have hne : i ≠ addr := by omega
                 simp only [Array.set!, Array.setIfInBounds]
