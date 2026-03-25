@@ -1328,7 +1328,7 @@ private theorem closureConvert_step_simulation
         by rw [hsc'_expr]; have h := hncfr; rw [hsc] at h; simp [noCallFrameReturn] at h; exact h,
         by rw [hsc'_expr, hsc'_heap]; have h := hexprwf; rw [hsc] at h; simp [ExprAddrWF] at h; exact h.2,
         name :: scope, st, (Flat.convertExpr body (name :: scope) envVar envMap st).snd,
-        by rw [hsc'_expr, hsf'_expr]; exact Prod.eta _⟩
+        by rw [hsc'_expr, hsf'_expr]⟩
     | none =>
       -- Stepping sub-case: init is not a value
       set init' := (Flat.convertExpr init scope envVar envMap st).1 with hinit'_def
