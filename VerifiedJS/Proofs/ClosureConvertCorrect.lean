@@ -923,7 +923,7 @@ private theorem closureConvert_step_simulation
       (∃ (scope : List String) (st st' : Flat.CCState),
         (sf.expr, st') = Flat.convertExpr sc.expr scope envVar envMap st) →
       Flat.Step sf ev sf' →
-      ∃ (injMap' : Nat → Nat) sc', Core.Step sc ev sc' ∧ sf'.trace = sc'.trace ∧
+      ∃ (injMap' : Nat → Nat) (sc' : Core.State), Core.Step sc ev sc' ∧ sf'.trace = sc'.trace ∧
         HeapInj injMap' sc'.heap sf'.heap ∧ EnvCorrInj injMap' sc'.env sf'.env ∧
         EnvAddrWF sc'.env sc'.heap.objects.size ∧
         HeapValuesWF sc'.heap ∧
