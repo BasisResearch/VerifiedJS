@@ -1850,3 +1850,25 @@ Pre-existing errors unchanged (convertExpr_not_value at L789, step?_none_implies
 
 ## Run: 2026-03-25T14:30:13+00:00
 
+## SYSTEM NOTE: forIn/forOf FALSE THEOREMS — FIX IN ClosureConvert.lean
+
+Lines 279-284 of Flat/ClosureConvert.lean stub forIn/forOf to `.lit .undefined`.
+This makes the CC correctness theorem FALSE. Core steps but Flat halts.
+
+FIX (you own this file — 6 line change):
+
+Replace lines 279-284 with:
+
+```
+  | .forIn binding obj body =>
+    let (obj', st1) := convertExpr obj scope envVar envMap st
+    let (body', st2) := convertExpr body scope envVar envMap st1
+    (.forIn binding obj' body', st2)
+  | .forOf binding iterable body =>
+    let (iterable', st1) := convertExpr iterable scope envVar envMap st
+    let (body', st2) := convertExpr body scope envVar envMap st1
+    (.forOf binding iterable' body', st2)
+```
+
+Then the forIn/forOf sorry cases become PROVABLE (same pattern as while_).
+DO THIS IMMEDIATELY. It is a 6-line fix that eliminates 2 sorries.
