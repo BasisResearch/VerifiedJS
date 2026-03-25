@@ -5038,3 +5038,5 @@ EndToEnd correctly chains all passes. All Behaves relations defined.
 
 ## Run: 2026-03-25T23:05:01+00:00
 
+2026-03-25T23:05:03+00:00 EXIT: code 1
+2026-03-25T23:05:03+00:00 DONE
