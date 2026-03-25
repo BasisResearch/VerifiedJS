@@ -5991,6 +5991,10 @@ structure LowerSimRel (prog : ANF.Program) (irmod : IRModule)
   hvar : ∀ name idx, s.expr = .trivial (.var name) → ir.code = [IRInstr.localGet idx] →
     (∃ v, s.env.lookup name = some v) ∧
     ∃ val, (Option.bind ir.frames.head? (fun f => f.locals[idx]?)) = some val
+  /- Label stack is empty (top-level execution within a single function). -/
+  hlabels_empty : ir.labels = []
+  /- Exactly one frame (top-level). -/
+  hframes_one : ir.frames.length = 1
 
 namespace LowerSimRel
 
@@ -6023,6 +6027,8 @@ theorem init (prog : ANF.Program) (irmod : IRModule)
     intro name idx hexpr hcode_ir
     -- irInitialState code is [call _] or [], never [localGet _], so hcode_ir is absurd.
     exfalso; unfold irInitialState at hcode_ir; split at hcode_ir <;> simp at hcode_ir
+  hlabels_empty := by simp [irInitialState]
+  hframes_one := by simp [irInitialState]
 
 /-- Step simulation (1:1): if the ANF takes one step, the IR takes a matching step.
     Now provable with LowerCodeCorr: case analysis on the ANF expression form
