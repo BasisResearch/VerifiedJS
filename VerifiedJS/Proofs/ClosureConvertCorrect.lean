@@ -582,7 +582,7 @@ private theorem HeapCorr_alloc_both {ch fh : Core.Heap} (hc : HeapCorr ch fh)
     HeapCorr { objects := ch.objects.push p, nextAddr := ch.nextAddr + 1 }
              { objects := fh.objects.push p, nextAddr := fh.nextAddr + 1 } := by
   constructor
-  · simp only [Array.size_push]; rw [hsize]
+  · simp only [Array.size_push]; omega
   · intro addr hlt
     simp [Array.size_push] at hlt
     rcases Nat.lt_or_ge addr ch.objects.size with h | h
@@ -680,6 +680,7 @@ private theorem ExprAddrWF_mono {e : Core.Expr} {n m : Nat}
   | .yield (some arg) _ => exact ExprAddrWF_mono h hle
   | .labeled _ b => exact ExprAddrWF_mono h hle
   | .await arg => exact ExprAddrWF_mono h hle
+termination_by e
 
 private def EnvAddrWF (env : Core.Env) (heapSize : Nat) : Prop :=
   ∀ name v, env.lookup name = some v → ValueAddrWF v heapSize
