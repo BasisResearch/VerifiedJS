@@ -7249,15 +7249,20 @@ theorem init (irmod : IRModule) (wmod : Module)
     · simp at hemit'
     · simp only [Except.ok.injEq] at hemit'
       subst hemit'
-      simp [buildModule, Array.getElem?_map] at hlim
+      simp only [buildModule] at hlim
       cases h0 : irmod.memories[0]? with
-      | none => simp [h0] at hlim
-      | some memType => simp [h0] at hlim; rw [← hlim]
+      | none =>
+        simp [Array.getElem?_map, h0] at hlim
+      | some memType =>
+        simp [Array.getElem?_map, h0] at hlim
+        rw [← hlim]
   hmemory_aligned := by
     simp only [irInitialState, initIRMemory]
     cases h0 : irmod.memories[0]? with
-    | none => simp [ByteArray.mkEmpty, ByteArray.size]; exact dvd_zero _
-    | some memType => simp [initMemory, ByteArray.size]; exact dvd_mul_left _ _
+    | none => simp [ByteArray.empty, ByteArray.size]; exact dvd_zero _
+    | some memType =>
+      simp only [ByteArray.size, ByteArray.mk.sizeOf_spec, Array.size_replicate]
+      exact Dvd.intro memType.lim.min rfl
   hlabels := by simp [irInitialState, Wasm.initialState]
   hhalt := by
     intro hirHalt

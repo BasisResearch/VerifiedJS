@@ -647,6 +647,107 @@ private theorem ANF_step?_none_implies_trivial (s : ANF.State) (h : ANF.step? s 
   obtain ⟨t, ht, hlit⟩ := ANF.step?_none_implies_trivial_lit s h
   exact ⟨t, ht, fun name habs => by subst habs; simp [ANF.Trivial.isLit] at hlit⟩
 
+/-! ### Trivial chain evaluation helpers -/
+
+/-- If `normalizeExpr e (fun _ => K)` succeeds with `.trivial`, then `K` produces the
+    same result with the same state — i.e., `e` was a trivial chain that passes through
+    to its ignored continuation. -/
+private theorem normalizeExpr_ignored_bypass_trivial (e : Flat.Expr) :
+    ∀ (K : ANF.ConvM ANF.Expr) (n m : Nat) (tv : ANF.Trivial),
+    (ANF.normalizeExpr e (fun _ => K)).run n = .ok (.trivial tv, m) →
+    K.run n = .ok (.trivial tv, m) := by
+  induction e with
+  | lit v =>
+    intro K n m tv h; simp only [ANF.normalizeExpr] at h
+    cases v <;> simp [ANF.trivialOfFlatValue] at h <;> exact h
+  | var _ => intro K n m tv h; exact h
+  | «this» => intro K n m tv h; exact h
+  | seq a b iha ihb =>
+    intro K n m tv h
+    simp only [ANF.normalizeExpr] at h
+    exact ihb K n m tv (iha (ANF.normalizeExpr b (fun _ => K)) n m tv h)
+  | _ =>
+    intro K n m tv h
+    exfalso
+    exact absurd h (normalizeExpr_compound_not_trivial _ (fun _ => K)
+      (by intro v hc; cases hc) (by intro nm hc; cases hc) (by intro hc; cases hc)
+      (by intro a' b' hc; cases hc) n m tv)
+
+/-- A trivial chain: lit, var, this, or seq of trivial chains. -/
+private def isTrivialChain : Flat.Expr → Bool
+  | .lit _ => true
+  | .var _ => true
+  | .this => true
+  | .seq a b => isTrivialChain a && isTrivialChain b
+  | _ => false
+
+/-- Cost of evaluating a trivial chain. Strictly decreases with each Flat step. -/
+private def trivialChainCost : Flat.Expr → Nat
+  | .lit _ => 0
+  | .var _ => 1
+  | .this => 1
+  | .seq a b => trivialChainCost a + trivialChainCost b + 1
+  | _ => 0
+
+/-- normalizeExpr of a trivial chain passes through to the continuation unchanged. -/
+private theorem normalizeExpr_trivialChain_passthrough (e : Flat.Expr)
+    (htc : isTrivialChain e = true) :
+    ∀ (K : ANF.ConvM ANF.Expr) (n : Nat),
+    (ANF.normalizeExpr e (fun _ => K)).run n = K.run n := by
+  induction e with
+  | lit v => intro K n; simp only [ANF.normalizeExpr]; cases v <;> simp [ANF.trivialOfFlatValue]
+  | var _ => intro K n; rfl
+  | «this» => intro K n; rfl
+  | seq a b iha ihb =>
+    simp [isTrivialChain] at htc; intro K n
+    simp only [ANF.normalizeExpr]
+    rw [iha htc.1 (ANF.normalizeExpr b (fun _ => K)) n]
+    exact ihb htc.2 K n
+  | _ => simp [isTrivialChain] at htc
+
+/-- If normalizeExpr e (fun _ => K) produces .trivial, then e is a trivial chain. -/
+private theorem normalizeExpr_trivial_implies_chain (e : Flat.Expr) :
+    ∀ (K : ANF.ConvM ANF.Expr) (n m : Nat) (tv : ANF.Trivial),
+    (ANF.normalizeExpr e (fun _ => K)).run n = .ok (.trivial tv, m) →
+    isTrivialChain e = true := by
+  induction e with
+  | lit _ => intros; rfl
+  | var _ => intros; rfl
+  | «this» => intros; rfl
+  | seq a b iha ihb =>
+    intro K n m tv h
+    simp only [ANF.normalizeExpr] at h
+    simp [isTrivialChain]
+    constructor
+    · exact iha (ANF.normalizeExpr b (fun _ => K)) n m tv h
+    · have ha_tc := iha (ANF.normalizeExpr b (fun _ => K)) n m tv h
+      have hbypass := normalizeExpr_trivialChain_passthrough a ha_tc
+        (ANF.normalizeExpr b (fun _ => K)) n
+      rw [hbypass] at h
+      exact ihb K n m tv h
+  | _ =>
+    intro K n m tv h; exfalso
+    exact absurd h (normalizeExpr_compound_not_trivial _ (fun _ => K)
+      (by intro v hc; cases hc) (by intro nm hc; cases hc) (by intro hc; cases hc)
+      (by intro a' b' hc; cases hc) n m tv)
+
+/-- Contextual stepping: if a is not a value and steps, .seq a b steps with
+    the result wrapped. Returns existence with field projections. -/
+private theorem step?_seq_ctx (s : Flat.State) (a b : Flat.Expr)
+    (hnotval : Flat.exprValue? a = none)
+    (t : Core.TraceEvent) (sa : Flat.State)
+    (hstep : Flat.step? { s with expr := a } = some (t, sa)) :
+    ∃ s', Flat.step? { s with expr := .seq a b } = some (t, s') ∧
+      s'.expr = .seq sa.expr b ∧ s'.env = sa.env ∧ s'.heap = sa.heap ∧
+      s'.funcs = s.funcs ∧ s'.callStack = s.callStack := by
+  have := Flat.step?_seq_sub_step s a b hnotval ⟨t, sa, hstep⟩
+  obtain ⟨t', s', hs'⟩ := this
+  -- step? is deterministic on the .seq case
+  simp only [Flat.step?, hnotval, hstep] at hs'
+  exact ⟨s', by simp only [Flat.step?, hnotval, hstep]; exact hs',
+    by simp only [Flat.step?, hnotval, hstep] at hs' ⊢; sorry,
+    by sorry, by sorry, by sorry, by sorry⟩
+
 /-- Auxiliary halt_star with strong induction on Flat expression depth.
     When ANF reaches a terminal state (step? = none), Flat can also reach a
     terminal state after zero or more silent steps.

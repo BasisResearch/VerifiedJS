@@ -1,8 +1,10 @@
-# Sorry Report (Wed Mar 25 07:11:22 PM UTC 2026)
+# Sorry Report (Wed Mar 25 08:14:48 PM UTC 2026)
 
 - [ ] `VerifiedJS/Proofs/LowerCorrect.lean:69` — `theorem lower_behavioral_correct` — `obtain ⟨ir, hirsteps, hrel⟩ := lower_sim_steps s t h _ _ _ _ (IR.LowerSimRel.init s t h (by sorry)) hsteps`
 - [ ] `VerifiedJS/Proofs/ANFConvertCorrect.lean:106` — `theorem anfConvert_step_star` — `sorry`
-- [ ] `VerifiedJS/Proofs/ANFConvertCorrect.lean:1365` — `lemma (induction` — `sorry`
+- [ ] `VerifiedJS/Proofs/ANFConvertCorrect.lean:748` — `theorem step?_seq_ctx` — `by simp only [Flat.step?, hnotval, hstep] at`
+- [ ] `VerifiedJS/Proofs/ANFConvertCorrect.lean:749` — `theorem step?_seq_ctx` — `by sorry, by sorry, by sorry, by sorry⟩`
+- [ ] `VerifiedJS/Proofs/ANFConvertCorrect.lean:1466` — `lemma (induction` — `sorry`
 - [ ] `VerifiedJS/Proofs/ClosureConvertCorrect.lean:829` — `theorem false` — `| forIn => sorry /- forIn converts to .lit .undefined (stub); theorem false -/`
 - [ ] `VerifiedJS/Proofs/ClosureConvertCorrect.lean:830` — `theorem false` — `| forOf => sorry /- forOf converts to .lit .undefined (stub); theorem false -/`
 - [ ] `VerifiedJS/Proofs/ClosureConvertCorrect.lean:1113` — `theorem closureConvert_step_simulation` — `sorry`
@@ -25,13 +27,13 @@
 - [ ] `VerifiedJS/Wasm/Semantics.lean:6332` — `theorem step_sim` — `sorry`
 - [ ] `VerifiedJS/Wasm/Semantics.lean:6335` — `theorem step_sim` — `sorry`
 - [ ] `VerifiedJS/Wasm/Semantics.lean:6338` — `theorem step_sim` — `sorry`
-- [ ] `VerifiedJS/Wasm/Semantics.lean:9098` — `theorem step_sim` — `sorry`
-- [ ] `VerifiedJS/Wasm/Semantics.lean:9101` — `theorem step_sim` — `sorry`
-- [ ] `VerifiedJS/Wasm/Semantics.lean:9338` — `theorem step_sim` — `sorry`
-- [ ] `VerifiedJS/Wasm/Semantics.lean:9341` — `theorem step_sim` — `sorry`
-- [ ] `VerifiedJS/Wasm/Semantics.lean:9448` — `theorem step_sim` — `sorry`
-- [ ] `VerifiedJS/Wasm/Semantics.lean:9607` — `theorem ir_forward_sim` — `exact LowerSimRel.init prog irmod hlower (by sorry)`
-- [ ] `VerifiedJS/Wasm/Semantics.lean:9622` — `theorem ir_stutter_sim` — `exact LowerSimRel.init prog irmod hlower (by sorry)`
-- [ ] `VerifiedJS/Wasm/Semantics.lean:9646` — `theorem lower_behavioral_obs_correct` — `(LowerSimRel.init prog irmod hlower (by sorry))`
+- [ ] `VerifiedJS/Wasm/Semantics.lean:9148` — `theorem step_sim` — `sorry`
+- [ ] `VerifiedJS/Wasm/Semantics.lean:9151` — `theorem step_sim` — `sorry`
+- [ ] `VerifiedJS/Wasm/Semantics.lean:9394` — `theorem step_sim` — `sorry`
+- [ ] `VerifiedJS/Wasm/Semantics.lean:9397` — `theorem step_sim` — `sorry`
+- [ ] `VerifiedJS/Wasm/Semantics.lean:9510` — `theorem step_sim` — `sorry`
+- [ ] `VerifiedJS/Wasm/Semantics.lean:9669` — `theorem ir_forward_sim` — `exact LowerSimRel.init prog irmod hlower (by sorry)`
+- [ ] `VerifiedJS/Wasm/Semantics.lean:9684` — `theorem ir_stutter_sim` — `exact LowerSimRel.init prog irmod hlower (by sorry)`
+- [ ] `VerifiedJS/Wasm/Semantics.lean:9708` — `theorem lower_behavioral_obs_correct` — `(LowerSimRel.init prog irmod hlower (by sorry))`
 
-**Total: 33 sorries**
+**Total: 35 sorries**
