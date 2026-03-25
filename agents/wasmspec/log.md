@@ -1,4 +1,26 @@
 
+## Run: 2026-03-25T04:15:01+00:00
+
+### Closed emit_globals_init_valcorr + aligned IR br/loop to Wasm semantics
+
+**Build**: PASS ✅
+
+**Changes** (VerifiedJS/Wasm/Semantics.lean):
+
+1. **Closed `emit_globals_init_valcorr` sorry (was L6931)**: Proved by using `irValueDefault_corr` after connecting `buildModule` globals to IR types. `simp only [buildModule]` unfolds globals, `List.toArray_map`/`Array.getElem_map` reduce indexing, `cases` on IR type + `rfl` close each case. Works despite `irTypeToValType` being private — `buildModule` unfolding inlines it.
+
+2. **Aligned IR loop onBranch to Wasm**: Changed loop's `onBranch` from `[.loop label body] ++ rest` to `body`, matching Wasm §4.4.8.2. Both sides now re-enter loop body directly on br.
+
+3. **Aligned IR br/brIf to keep loop labels**: Changed to `if lbl.isLoop then lbl :: drop else drop`, matching Wasm's `resolveBranch?` (§4.4.8.6). Post-br label stacks now match.
+
+4. **Updated irStep?_eq_br, irStep?_eq_brIf_true, irStep?_eq_loop** to reflect new semantics.
+
+5. **Enhanced `hlabel_content` in EmitSimRel**: Now includes `EmitCodeCorr irLbl.onBranch wLbl.onBranch ∧ irLbl.isLoop = wLbl.isLoop`. All 30 construction sites compile unchanged.
+
+**Sorry count**: 26 grep-matches (was 27, -1: closed emit_globals_init_valcorr).
+
+**br/brIf blocker**: IR semantics now aligned, onBranch correspondence available. Remaining gap: label name→depth-index bridge (`EmitCodeCorr (.br label) (.br idx)` → `irFindLabel? = some (idx, _)`). Needs invariant connecting emit-time label resolution to runtime irFindLabel?.
+
 ## Run: 2026-03-25T02:15:01+00:00
 
 ### Closed LowerSimRel hhalt sorry + aligned IR trap message

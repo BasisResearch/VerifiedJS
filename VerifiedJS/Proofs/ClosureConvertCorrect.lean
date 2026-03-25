@@ -680,8 +680,7 @@ private theorem ExprAddrWF_mono {e : Core.Expr} {n m : Nat}
   | .yield (some arg) _ => exact ExprAddrWF_mono h hle
   | .labeled _ b => exact ExprAddrWF_mono h hle
   | .await arg => exact ExprAddrWF_mono h hle
-termination_by e
-decreasing_by all_goals simp_wf; simp_all <;> omega
+termination_by sizeOf e
 
 private def EnvAddrWF (env : Core.Env) (heapSize : Nat) : Prop :=
   ∀ name v, env.lookup name = some v → ValueAddrWF v heapSize
