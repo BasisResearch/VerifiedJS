@@ -1776,3 +1776,59 @@ This unblocks 10+ sorries. DO THIS FIRST next run.
 
 2026-03-25T07:30:01+00:00 SKIP: already running
 2026-03-25T08:30:01+00:00 SKIP: already running
+
+## Run: 2026-03-25T06:30:05+00:00
+
+### TASK 0: Close ExprAddrWF sorries for var-found (L1130) and this-found (L4422) — COMPLETE
+
+**Closed 2 ExprAddrWF sorries** by applying `henvwf name cv hcenv` (EnvAddrWF lookup).
+- L1130 (`.var name`, in-scope found): `by rw [hsc'_expr, hsc'_heap]; exact henvwf name cv hcenv`
+- L4422 (`.this`, found): Restructured heap proof (added separate `hsc'_heap`, `hsf'_heap`), then `by rw [hsc'_expr, hsc'_heap]; exact henvwf "this" cv hcenv`
+- Also fixed L4422's EnvAddrWF element from bare `henvwf` to `by rw [hsc'_env, hsc'_heap]; exact henvwf`
+
+### TASK 1: Add HeapValuesWF invariant + close getProp/getIndex ExprAddrWF sorries — COMPLETE
+
+**Major refactoring**: Added `HeapValuesWF sc.heap` to CC_SimRel and the suffices statement.
+
+1. **CC_SimRel** (L743): Added `HeapValuesWF sc.heap ∧` after `EnvAddrWF`
+2. **Suffices** (L805-817): Added `HeapValuesWF sc.heap →` hypothesis and `HeapValuesWF sc'.heap ∧` conclusion
+3. **Init theorem** (L763-764): Proved HeapValuesWF for initial heap (console object with log function prop)
+4. **Wrapper** (L822-825): Added `hheapvwf`/`hheapvwf'` threading
+5. **~70 proof sites updated**:
+   - 24 ih_depth/ev_sub calls: Added `hheapvwf` argument
+   - 24 obtain patterns: Added `_hheapvwf_arg`
+   - 28 sequential constructor blocks: Added `constructor -- HeapValuesWF` with proof
+   - ~15 inline tuples: Inserted `hheapvwf` or `by rw [hsc'_heap]; exact hheapvwf`
+6. **Closed 2 ExprAddrWF sorries** (getProp L1893, getIndex L2354):
+   - Proof: case split on value type; for `.object addr`, use HeapValuesWF to get ValueAddrWF for heap-looked-up property values via `List.find?_some`
+   - Non-object cases: trivial (result is `.undefined`, `.number`, etc.)
+
+**3 HeapValuesWF sorry added** (heap-mutating cases):
+| Line | Case | Status |
+|------|------|--------|
+| 2156 | setProp all-values | sorry — needs proof that set! preserves HeapValuesWF |
+| 2741 | setIndex all-values | sorry — same |
+| 2912 | deleteProp all-values | sorry — needs proof that filter preserves HeapValuesWF |
+
+### Sorry count:
+- **Before**: 10 CC + 2 ANF + 1 Lower = 13 total
+- **After**: 9 CC + 2 ANF + 1 Lower = 12 total
+- **Net delta**: −1 sorry
+- **Closed**: 4 ExprAddrWF sorries (var-found, this-found, getProp, getIndex)
+- **Added**: 3 HeapValuesWF sorries (setProp, setIndex, deleteProp)
+
+### CC sorry breakdown (9 remaining):
+| Line | Case | Blocker |
+|------|------|---------|
+| 1074 | captured var | Needs multi-step simulation |
+| 1836 | call | Needs env/heap/funcs correspondence |
+| 1837 | newObj | Needs env/heap correspondence |
+| 2156 | setProp HeapValuesWF | Needs proof set! preserves WF |
+| 2741 | setIndex HeapValuesWF | Needs proof set! preserves WF |
+| 2912 | deleteProp HeapValuesWF | Needs proof filter preserves WF |
+| 3433 | objectLit | Needs env/heap correspondence |
+| 3434 | arrayLit | Needs env/heap correspondence |
+| 3435 | functionDef | Needs env/heap/funcs + CC state |
+
+### Build status:
+Pre-existing errors unchanged (convertExpr_not_value at L789, step?_none_implies_lit_aux). No new structural errors from my changes.
