@@ -1,4 +1,31 @@
 
+## Run: 2026-03-25T19:30+00:00
+- Sorries before: 11 total (8 CC + 2 ANF + 1 Lower), after: 11 total (8 CC + 2 ANF + 1 Lower)
+- Net sorry delta: 0 (infrastructure for closing ANF L1365 established, sorry narrowed to Flat.Steps only)
+- Build: ✅ PASS (ANF file compiles, no new errors; pre-existing CC + Wasm errors unchanged)
+
+### What was done:
+1. **Added normalizeExpr trivial chain infrastructure** — 5 new lemmas in ANFConvertCorrect.lean:
+   - `normalizeExpr_ignored_bypass_trivial`: If `normalizeExpr e (fun _ => K)` produces `.trivial`, then `K` produces the same result. Proved by strong induction on `e.depth` with `cases e` (workaround for nested inductive).
+   - `isTrivialChain : Flat.Expr → Bool`: lit/var/this/seq-of-trivials
+   - `trivialChainCost : Flat.Expr → Nat`: evaluation cost measure (lit=0, var/this=1, seq=sum+1)
+   - `normalizeExpr_trivialChain_passthrough`: trivial chain normalizeExpr with ignored continuation equals the continuation (strong induction on depth)
+   - `normalizeExpr_trivial_implies_chain`: if normalizeExpr e (fun _ => K) produces .trivial, then `isTrivialChain e = true`
+   - `step?_seq_ctx`: contextual stepping — if left side of .seq can step, the .seq steps with wrapping
+
+2. **Narrowed ANF L1365 sorry** — Used `normalizeExpr_ignored_bypass_trivial` to bypass c1 in hnorm, establishing `hnorm_c2` about `normalizeExpr c2 K_parent`. Computed depth bound for target expression. The remaining sorry is ONLY for constructing Flat.Steps from the deeply nested expression to the target.
+
+### Remaining work for ANF L1365:
+- Need `flatten_trivial_in_seq4` lemma: by well-founded induction on `trivialChainCost c1`, show that `.seq(.seq(.seq(.seq c1 c2) d) a2) b` silently Flat-steps to `.seq(.seq(.seq c2 d) a2) b` when c1 is a trivial chain.
+- The infrastructure (normalizeExpr bypass, step?_seq_ctx, trivialChainCost) is ready.
+- Base cases (c1=.lit, .var, .this) follow the same manual unfold pattern as existing sibling proofs.
+- Recursive case (.seq e1 e2): one step + IH on lower cost.
+
+### Technical note: Flat.Expr is nested inductive
+- `induction` tactic doesn't work directly — used `intro d; induction d` on depth bound with `cases e` inside
+- `match e with | _ =>` in tactic mode doesn't provide constructor info in catch-all — used `cases e with | _ =>` which does
+- `Flat.Expr.noConfusion` doesn't directly give `False` — used `simp at hc` for impossible equations
+
 ## Run: 2026-03-25T17:30+00:00
 - Sorries before: 11 total (8 CC + 2 ANF + 1 Lower), after: 11 total (8 CC + 2 ANF + 1 Lower)
 - Net sorry delta: 0 (old sorry split into sub-cases; 3 of 4 closed, 1 new sorry replaces old)
@@ -1986,3 +2013,67 @@ Then do captured variable (L869) — this is the crown jewel of the entire proof
 ## Run: 2026-03-25T19:30:01+00:00
 
 2026-03-25T20:30:01+00:00 SKIP: already running
+## SYSTEM NOTE: HEAP INJECTION — CompCert-style. Do this NOW.
+
+HeapCorr is WRONG. Flat allocates env objects on the same heap as regular objects, so addresses diverge. You need a CompCert-style memory injection.
+
+Replace HeapCorr with:
+
+```lean
+structure HeapInj where
+  map : Nat -> Nat
+  map_inj : forall a b, map a = map b -> a = b
+  map_valid : forall a, a < ch.objects.size -> map a < fh.objects.size
+  map_preserves : forall a, a < ch.objects.size ->
+    ch.objects[a]? = (fh.objects[map a]?).map (fun props =>
+      props.map (fun (k, v) => (k, convertValueInj map v)))
+
+def convertValueInj (map : Nat -> Nat) : Value -> Value
+  | .object addr => .object (map addr)
+  | v => v  -- numbers, strings, bools unchanged
+```
+
+Update CC_SimRel to thread the injection:
+```lean
+private def CC_SimRel (s : Core.Program) (t : Flat.Program)
+    (sf : Flat.State) (sc : Core.State) : Prop :=
+  sf.trace = sc.trace /\
+  exists (inj : HeapInj sc.heap sf.heap),
+    EnvCorrInj inj sc.env sf.env /\
+    ... expression correspondence using inj ...
+```
+
+EnvCorr must also use the injection:
+```lean
+def EnvCorrInj (inj : HeapInj ch fh) (cenv fenv : Env) : Prop :=
+  forall name v, cenv.lookup name = some v ->
+    exists v', fenv.lookup name = some v' /\ v' = convertValueInj inj.map v
+```
+
+Key lemma: injection extends monotonically on allocation:
+```lean
+theorem HeapInj_alloc_both (inj : HeapInj ch fh) (cp fp : Props)
+    (hconv : fp = cp.map (fun (k,v) => (k, convertValueInj inj.map v))) :
+    exists inj', HeapInj (ch.push cp) (fh.push fp) /\
+      (forall a, a < ch.objects.size -> inj'.map a = inj.map a) /\
+      inj'.map ch.objects.size = fh.objects.size
+
+theorem HeapInj_alloc_right (inj : HeapInj ch fh) (fp : Props) :
+    exists inj', HeapInj ch (fh.push fp) /\
+      (forall a, a < ch.objects.size -> inj'.map a = inj.map a)
+```
+
+alloc_right is for makeEnv (only Flat allocates). alloc_both is for objectLit/newObj (both allocate).
+
+DO NOT run `lake build` or `bash scripts/lake_build_concise.sh` for the full project. Build ONLY your module:
+```
+bash scripts/lake_build_concise.sh VerifiedJS.Proofs.ClosureConvertCorrect
+```
+
+USE MCP TOOLS:
+- lean_goal to see proof state BEFORE editing
+- lean_multi_attempt to test tactics BEFORE editing
+- lean_diagnostic_messages to check errors WITHOUT building
+
+DO NOT BUILD THE WHOLE PROJECT. Build only ClosureConvertCorrect.
+2026-03-25T21:13:28+00:00 DONE

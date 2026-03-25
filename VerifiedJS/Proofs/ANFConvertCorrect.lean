@@ -1487,8 +1487,8 @@ private theorem anfConvert_halt_star_aux
               -- c1 = .seq c1a c1b: use normalizeExpr_ignored_bypass_trivial to bypass c1
               rw [hc1] at hnorm; simp only [ANF.normalizeExpr] at hnorm
               -- Bypass both sub-expressions of c1
-              have hnorm_c1b := normalizeExpr_ignored_bypass_trivial c1a.depth c1a (le_refl _) _ n m tv hnorm
-              have hnorm_c2 := normalizeExpr_ignored_bypass_trivial c1b.depth c1b (le_refl _) _ n m tv hnorm_c1b
+              have hnorm_c1b := normalizeExpr_ignored_bypass_trivial c1a.depth c1a (Nat.le_refl _) _ n m tv hnorm
+              have hnorm_c2 := normalizeExpr_ignored_bypass_trivial c1b.depth c1b (Nat.le_refl _) _ n m tv hnorm_c1b
               -- Depth bound for target expression
               have hbd : (Flat.Expr.seq (Flat.Expr.seq (Flat.Expr.seq c2 d) a2) b).depth ≤ N := by
                 simp [Flat.Expr.depth]

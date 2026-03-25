@@ -38620,19 +38620,19 @@ theorem elaborate_correct (p : Source.Program) (cp : Core.Program)
 -- | AsyncModuleExecutionRejected(\_m\_, \_error\_). 1. Return \~unused\~.
 -- |
 
--- SPEC: L21456-L21871
+-- SPEC: L21456-L21480
 -- | # Example Cyclic Module Record Graphs
--- |
+-- | 
 -- | This non-normative section gives a series of examples of the linking and
 -- | evaluation of a few common module graphs, with a specific focus on how
 -- | errors can occur.
--- |
+-- | 
 -- | First consider the following simple module graph:
--- |
+-- | 
 -- | ![A module graph in which module A depends on module B, and module B
 -- | depends on module C](img/module-graph-simple.svg){width="60"
 -- | height="198"}
--- |
+-- | 
 -- | Let\'s first assume that there are no error conditions. When a host
 -- | first calls \_A\_.LoadRequestedModules(), this will complete
 -- | successfully by assumption, and recursively load the dependencies of
@@ -38646,15 +38646,17 @@ theorem elaborate_correct (p : Source.Program) (cp : Core.Program)
 -- | \_A\_.Evaluate(), which will complete successfully, returning a Promise
 -- | resolving to \*undefined\* (again by assumption), recursively having
 -- | evaluated first \_C\_ and then \_B\_. Each module\'s \[\[Status\]\] at
+
+-- SPEC: L21481-L21505
 -- | this point will be \~evaluated\~.
--- |
+-- | 
 -- | Consider then cases involving linking errors, after a successful call to
 -- | \_A\_.LoadRequestedModules(). If InnerModuleLinking of \_C\_ succeeds
 -- | but, thereafter, fails for \_B\_, for example because it imports
 -- | something that \_C\_ does not provide, then the original \_A\_.Link()
 -- | will fail, and both \_A\_ and \_B\_\'s \[\[Status\]\] remain
 -- | \~unlinked\~. \_C\_\'s \[\[Status\]\] has become \~linked\~, though.
--- |
+-- | 
 -- | Finally, consider a case involving evaluation errors after a successful
 -- | call to Link(). If InnerModuleEvaluation of \_C\_ succeeds but,
 -- | thereafter, fails for \_B\_, for example because \_B\_ contains code
@@ -38669,13 +38671,15 @@ theorem elaborate_correct (p : Source.Program) (cp : Core.Program)
 -- | exception. (Hosts are not required to reuse Cyclic Module Records;
 -- | similarly, hosts are not required to expose the exception objects thrown
 -- | by these methods. However, the specification enables such uses.)
--- |
+-- | 
 -- | Now consider a different type of error condition:
--- |
+
+-- SPEC: L21506-L21530
+-- | 
 -- | ![A module graph in which module A depends on a missing (unresolvable)
 -- | module, represented by ???](img/module-graph-missing.svg){width="60"
 -- | height="121"}
--- |
+-- | 
 -- | In this scenario, module \_A\_ declares a dependency on some other
 -- | module, but no Module Record exists for that module, i.e.
 -- | HostLoadImportedModule calls FinishLoadingImportedModule with an
@@ -38686,27 +38690,29 @@ theorem elaborate_correct (p : Source.Program) (cp : Core.Program)
 -- | via the completion they pass to FinishLoadingImportedModule. In any
 -- | case, this exception causes a loading failure, which results in \_A\_\'s
 -- | \[\[Status\]\] remaining \~new\~.
--- |
+-- | 
 -- | The difference here between loading, linking and evaluation errors is
 -- | due to the following characteristic:
--- |
+-- | 
 -- | - Evaluation must be only performed once, as it can cause side effects;
 -- |   it is thus important to remember whether evaluation has already been
 -- |   performed, even if unsuccessfully. (In the error case, it makes sense
 -- |   to also remember the exception because otherwise subsequent Evaluate()
 -- |   calls would have to synthesize a new one.)
 -- | - Linking, on the other hand, is side-effect-free, and thus even if it
+
+-- SPEC: L21531-L21555
 -- |   fails, it can be retried at a later time with no issues.
 -- | - Loading closely interacts with the host, and it may be desirable for
 -- |   some of them to allow users to retry failed loads (for example, if the
 -- |   failure is caused by temporarily bad network conditions).
--- |
+-- | 
 -- | Now, consider a module graph with a cycle:
--- |
+-- | 
 -- | ![A module graph in which module A depends on module B and C, but module
 -- | B also depends on module A](img/module-graph-cycle.svg){width="181"
 -- | height="121"}
--- |
+-- | 
 -- | Here we assume that the entry point is module \_A\_, so that the host
 -- | proceeds by calling \_A\_.LoadRequestedModules(), which performs
 -- | InnerModuleLoading on \_A\_. This in turn calls InnerModuleLoading on
@@ -38716,11 +38722,13 @@ theorem elaborate_correct (p : Source.Program) (cp : Core.Program)
 -- | LoadRequestedModules process. When all the modules in the graph have
 -- | been successfully loaded, their \[\[Status\]\] transitions from \~new\~
 -- | to \~unlinked\~ at the same time.
--- |
+-- | 
 -- | Then the host proceeds by calling \_A\_.Link(), which performs
 -- | InnerModuleLinking on \_A\_. This in turn calls InnerModuleLinking on
 -- | \_B\_. Because of the cycle, this again triggers InnerModuleLinking on
 -- | \_A\_, but at this point it is a no-op since \_A\_.\[\[Status\]\] is
+
+-- SPEC: L21556-L21580
 -- | already \~linking\~. \_B\_.\[\[Status\]\] itself remains \~linking\~
 -- | when control gets back to \_A\_ and InnerModuleLinking is triggered on
 -- | \_C\_. After this returns with \_C\_.\[\[Status\]\] being \~linked\~,
@@ -38729,10 +38737,10 @@ theorem elaborate_correct (p : Source.Program) (cp : Core.Program)
 -- | possible to transition the status of modules in the same SCC at the same
 -- | time because during this phase the module graph is traversed with a
 -- | depth-first search.
--- |
+-- | 
 -- | An analogous story occurs for the evaluation phase of a cyclic module
 -- | graph, in the success case.
--- |
+-- | 
 -- | Now consider a case where \_A\_ has a linking error; for example, it
 -- | tries to import a binding from \_C\_ that does not exist. In that case,
 -- | the above steps still occur, including the early return from the second
@@ -38743,9 +38751,11 @@ theorem elaborate_correct (p : Source.Program) (cp : Core.Program)
 -- | resets all modules that are currently on its \_stack\_ (these are always
 -- | exactly the modules that are still \~linking\~). Hence both \_A\_ and
 -- | \_B\_ become \~unlinked\~. Note that \_C\_ is left as \~linked\~.
--- |
+-- | 
 -- | Alternatively, consider a case where \_A\_ has an evaluation error; for
 -- | example, its source code throws an exception. In that case, the
+
+-- SPEC: L21581-L21605
 -- | evaluation-time analogue of the above steps still occurs, including the
 -- | early return from the second call to InnerModuleEvaluation on \_A\_.
 -- | However, once we unwind back to the original InnerModuleEvaluation on
@@ -38759,18 +38769,20 @@ theorem elaborate_correct (p : Source.Program) (cp : Core.Program)
 -- | exception is recorded in both \_A\_ and \_B\_\'s \[\[EvaluationError\]\]
 -- | fields, while \_C\_ is left as \~evaluated\~ with no
 -- | \[\[EvaluationError\]\].
--- |
+-- | 
 -- | Lastly, consider a module graph with a cycle, where all modules complete
 -- | asynchronously:
--- |
+-- | 
 -- | ![A module graph in which module A depends on module B and C, module B
 -- | depends on module D, module C depends on module D and E, and module D
 -- | depends on module A](img/module-graph-cycle-async.svg){width="241"
 -- | height="211"}
--- |
+-- | 
 -- | Loading and linking happen as before, and all modules end up with
 -- | \[\[Status\]\] set to \~linked\~.
--- |
+-- | 
+
+-- SPEC: L21606-L21630
 -- | Calling \_A\_.Evaluate() calls InnerModuleEvaluation on \_A\_, \_B\_,
 -- | and \_D\_, which all transition to \~evaluating\~. Then
 -- | InnerModuleEvaluation is called on \_A\_ again, which is a no-op because
@@ -38794,8 +38806,10 @@ theorem elaborate_correct (p : Source.Program) (cp : Core.Program)
 -- | remove the entire strongly connected component from the stack,
 -- | transitioning all of the modules to \~evaluating-async\~ at once. At
 -- | this point, the fields of the modules are as given in .
--- |
+-- | 
 -- | +----------------------------------+----------------------+----------------------+----------------------+----------------------+----------------------+
+
+-- SPEC: L21631-L21655
 -- | | [Field]{.column}                 | \_A\_                | \_B\_                | \_C\_                | \_D\_                | \_E\_                |
 -- | |                                  |                      |                      |                      |                      |                      |
 -- | | ::: slash                        |                      |                      |                      |                      |                      |
@@ -38813,14 +38827,16 @@ theorem elaborate_correct (p : Source.Program) (cp : Core.Program)
 -- | +----------------------------------+----------------------+----------------------+----------------------+----------------------+----------------------+
 -- | | \[\[PendingAsyncDependencies\]\] | 2 (\_B\_ and \_C\_)  | 1 (\_D\_)            | 2 (\_D\_ and \_E\_)  | 0                    | 0                    |
 -- | +----------------------------------+----------------------+----------------------+----------------------+----------------------+----------------------+
--- |
+-- | 
 -- | Let us assume that \_E\_ finishes executing first. When that happens,
 -- | AsyncModuleExecutionFulfilled is called, \_E\_.\[\[Status\]\] is set to
 -- | \~evaluated\~ and \_C\_.\[\[PendingAsyncDependencies\]\] is decremented
 -- | to become 1. The fields of the updated modules are as given in .
--- |
+-- | 
 -- | +----------------------------------+-----------------------+-----------------------+
 -- | | [Field]{.column}                 | \_C\_                 | \_E\_                 |
+
+-- SPEC: L21656-L21680
 -- | |                                  |                       |                       |
 -- | | ::: slash                        |                       |                       |
 -- | | :::                              |                       |                       |
@@ -38837,7 +38853,7 @@ theorem elaborate_correct (p : Source.Program) (cp : Core.Program)
 -- | +----------------------------------+-----------------------+-----------------------+
 -- | | \[\[PendingAsyncDependencies\]\] | 1 (\_D\_)             | 0                     |
 -- | +----------------------------------+-----------------------+-----------------------+
--- |
+-- | 
 -- | \_D\_ is next to finish (as it was the only module that was still
 -- | executing). When that happens, AsyncModuleExecutionFulfilled is called
 -- | again and \_D\_.\[\[Status\]\] is set to \~evaluated\~. Its ancestors
@@ -38846,10 +38862,12 @@ theorem elaborate_correct (p : Source.Program) (cp : Core.Program)
 -- | will be handled first: \_B\_.\[\[PendingAsyncDependencies\]\] is
 -- | decremented to become 0, ExecuteAsyncModule is called on \_B\_, and it
 -- | starts executing. \_C\_.\[\[PendingAsyncDependencies\]\] is also
+
+-- SPEC: L21681-L21705
 -- | decremented to become 0, and \_C\_ starts executing (potentially in
 -- | parallel to \_B\_ if \_B\_ contains an \`await\`). The fields of the
 -- | updated modules are as given in .
--- |
+-- | 
 -- | +----------------------------------+----------------------+----------------------+-----------------+
 -- | | [Field]{.column}                 | \_B\_                | \_C\_                | \_D\_           |
 -- | |                                  |                      |                      |                 |
@@ -38869,13 +38887,15 @@ theorem elaborate_correct (p : Source.Program) (cp : Core.Program)
 -- | +----------------------------------+----------------------+----------------------+-----------------+
 -- | | \[\[PendingAsyncDependencies\]\] | 0                    | 0                    | 0               |
 -- | +----------------------------------+----------------------+----------------------+-----------------+
--- |
+-- | 
 -- | Let us assume that \_C\_ finishes executing next. When that happens,
+
+-- SPEC: L21706-L21730
 -- | AsyncModuleExecutionFulfilled is called again, \_C\_.\[\[Status\]\] is
 -- | set to \~evaluated\~ and \_A\_.\[\[PendingAsyncDependencies\]\] is
 -- | decremented to become 1. The fields of the updated modules are as given
 -- | in .
--- |
+-- | 
 -- | +----------------------------------+-----------------------+-----------------------+
 -- | | [Field]{.column}                 | \_A\_                 | \_C\_                 |
 -- | |                                  |                       |                       |
@@ -38894,13 +38914,15 @@ theorem elaborate_correct (p : Source.Program) (cp : Core.Program)
 -- | +----------------------------------+-----------------------+-----------------------+
 -- | | \[\[PendingAsyncDependencies\]\] | 1 (\_B\_)             | 0                     |
 -- | +----------------------------------+-----------------------+-----------------------+
--- |
+-- | 
 -- | Then, \_B\_ finishes executing. When that happens,
+
+-- SPEC: L21731-L21755
 -- | AsyncModuleExecutionFulfilled is called again and \_B\_.\[\[Status\]\]
 -- | is set to \~evaluated\~. \_A\_.\[\[PendingAsyncDependencies\]\] is
 -- | decremented to become 0, so ExecuteAsyncModule is called and it starts
 -- | executing. The fields of the updated modules are as given in .
--- |
+-- | 
 -- | +----------------------------------+-----------------------+-----------------------+
 -- | | [Field]{.column}                 | \_A\_                 | \_B\_                 |
 -- | |                                  |                       |                       |
@@ -38919,14 +38941,16 @@ theorem elaborate_correct (p : Source.Program) (cp : Core.Program)
 -- | +----------------------------------+-----------------------+-----------------------+
 -- | | \[\[PendingAsyncDependencies\]\] | 0                     | 0                     |
 -- | +----------------------------------+-----------------------+-----------------------+
--- |
+-- | 
 -- | Finally, \_A\_ finishes executing. When that happens,
+
+-- SPEC: L21756-L21780
 -- | AsyncModuleExecutionFulfilled is called again and \_A\_.\[\[Status\]\]
 -- | is set to \~evaluated\~. At this point, the Promise in
 -- | \_A\_.\[\[TopLevelCapability\]\] (which was returned from
 -- | \_A\_.Evaluate()) is resolved, and this concludes the handling of this
 -- | module graph. The fields of the updated module are as given in .
--- |
+-- | 
 -- | +-----------------------------------+-----------------------------------+
 -- | | [Field]{.column}                  | \_A\_                             |
 -- | |                                   |                                   |
@@ -38945,7 +38969,9 @@ theorem elaborate_correct (p : Source.Program) (cp : Core.Program)
 -- | +-----------------------------------+-----------------------------------+
 -- | | \[\[PendingAsyncDependencies\]\]  | 0                                 |
 -- | +-----------------------------------+-----------------------------------+
--- |
+-- | 
+
+-- SPEC: L21781-L21805
 -- | Alternatively, consider a failure case where \_C\_ fails execution and
 -- | returns an error before \_B\_ has finished executing. When that happens,
 -- | AsyncModuleExecutionRejected is called, which sets \_C\_.\[\[Status\]\]
@@ -38953,7 +38979,7 @@ theorem elaborate_correct (p : Source.Program) (cp : Core.Program)
 -- | propagates this error to all of the AsyncParentModules by performing
 -- | AsyncModuleExecutionRejected on each of them. The fields of the updated
 -- | modules are as given in .
--- |
+-- | 
 -- | +----------------------------------+-----------------------+-----------------------+
 -- | | [Field]{.column}                 | \_A\_                 | \_C\_                 |
 -- | |                                  |                       |                       |
@@ -38971,18 +38997,20 @@ theorem elaborate_correct (p : Source.Program) (cp : Core.Program)
 -- | | \[\[AsyncParentModules\]\]       | « »                   | « \_A\_ »             |
 -- | +----------------------------------+-----------------------+-----------------------+
 -- | | \[\[PendingAsyncDependencies\]\] | 1 (\_B\_)             | 0                     |
+
+-- SPEC: L21806-L21830
 -- | +----------------------------------+-----------------------+-----------------------+
 -- | | \[\[EvaluationError\]\]          | \~empty\~             | \_C\_\'s evaluation   |
 -- | |                                  |                       | error                 |
 -- | +----------------------------------+-----------------------+-----------------------+
--- |
+-- | 
 -- | \_A\_ will be rejected with the same error as \_C\_ since \_C\_ will
 -- | call AsyncModuleExecutionRejected on \_A\_ with \_C\_\'s error.
 -- | \_A\_.\[\[Status\]\] is set to \~evaluated\~. At this point the Promise
 -- | in \_A\_.\[\[TopLevelCapability\]\] (which was returned from
 -- | \_A\_.Evaluate()) is rejected. The fields of the updated module are as
 -- | given in .
--- |
+-- | 
 -- | +-----------------------------------+-----------------------------------+
 -- | | [Field]{.column}                  | \_A\_                             |
 -- | |                                   |                                   |
@@ -38996,6 +39024,8 @@ theorem elaborate_correct (p : Source.Program) (cp : Core.Program)
 -- | | \[\[Status\]\]                    | \~evaluated\~                     |
 -- | +-----------------------------------+-----------------------------------+
 -- | | \[\[AsyncEvaluationOrder\]\]      | \~done\~                          |
+
+-- SPEC: L21831-L21855
 -- | +-----------------------------------+-----------------------------------+
 -- | | \[\[AsyncParentModules\]\]        | « »                               |
 -- | +-----------------------------------+-----------------------------------+
@@ -39003,7 +39033,7 @@ theorem elaborate_correct (p : Source.Program) (cp : Core.Program)
 -- | +-----------------------------------+-----------------------------------+
 -- | | \[\[EvaluationError\]\]           | \_C\_\'s Evaluation Error         |
 -- | +-----------------------------------+-----------------------------------+
--- |
+-- | 
 -- | Then, \_B\_ finishes executing without an error. When that happens,
 -- | AsyncModuleExecutionFulfilled is called again and \_B\_.\[\[Status\]\]
 -- | is set to \~evaluated\~. GatherAvailableAncestors is called on \_B\_.
@@ -39014,13 +39044,15 @@ theorem elaborate_correct (p : Source.Program) (cp : Core.Program)
 -- | \_B\_.\[\[CycleRoot\]\].\[\[EvaluationError\]\] from the evaluation
 -- | error from \_C\_ that was set on the cycle root \_A\_. The fields of the
 -- | updated modules are as given in .
--- |
+-- | 
 -- | +----------------------------------+-----------------------+-----------------------+
 -- | | [Field]{.column}                 | \_A\_                 | \_B\_                 |
 -- | |                                  |                       |                       |
 -- | | ::: slash                        |                       |                       |
 -- | | :::                              |                       |                       |
 -- | |                                  |                       |                       |
+
+-- SPEC: L21856-L21871
 -- | | [Module]{.row}                   |                       |                       |
 -- | +==================================+=======================+=======================+
 -- | | \[\[DFSAncestorIndex\]\]         | 0                     | 0                     |
@@ -39036,7 +39068,8 @@ theorem elaborate_correct (p : Source.Program) (cp : Core.Program)
 -- | | \[\[EvaluationError\]\]          | \_C\_\'s Evaluation   | \~empty\~             |
 -- | |                                  | Error                 |                       |
 -- | +----------------------------------+-----------------------+-----------------------+
--- |
+-- | 
+
 
 -- SPEC: L21872-L21968
 -- | # Source Text Module Records
@@ -54273,5 +54306,3540 @@ theorem elaborate_correct (p : Source.Program) (cp : Core.Program)
 -- | The possible sources of this value are Await or, if the async function
 -- | doesn\'t await anything, step above. 1. Return \~unused\~.
 
+
+
+-- ============================================================
+-- SPEC COVERAGE: Table of Contents and remaining gaps
+-- ============================================================
+
+
+-- ============================================================
+-- SPEC COVERAGE: Table of Contents (L1-L2357)
+-- ============================================================
+
+-- SPEC: L1-L25
+-- | <!-- TOC START -->
+-- | # Table of Contents
+-- | 
+-- | __2351 sections, 44379 lines__
+-- | 
+-- | - L2358–L2362 (5L): Scope
+-- | - L2363–L2407 (45L): Conformance
+-- | - L2408–L2420 (13L): Example Normative Optional Clause Heading
+-- | - L2421–L2424 (4L): Example Legacy Clause Heading
+-- | - L2425–L2428 (4L): Example Legacy Normative Optional Clause Heading
+-- | - L2429–L2453 (25L): Normative References
+-- | - L2454–L2496 (43L): Overview
+-- | - L2497–L2519 (23L): Web Scripting
+-- | - L2520–L2583 (64L): Hosts and Implementations
+-- | - L2584–L2638 (55L): ECMAScript Overview
+-- | - L2639–L2710 (72L): Objects
+-- | - L2711–L2745 (35L): The Strict Variant of ECMAScript
+-- | - L2746–L2750 (5L): Terms and Definitions
+-- | - L2751–L2756 (6L): implementation-approximated
+-- | - L2757–L2761 (5L): implementation-defined
+-- | - L2762–L2767 (6L): host-defined
+-- | - L2768–L2771 (4L): type
+-- | - L2772–L2779 (8L): primitive value
+-- | - L2780–L2786 (7L): object
+-- | - L2787–L2793 (7L): constructor
+
+-- SPEC: L26-L50
+-- | - L2794–L2807 (14L): prototype
+-- | - L2808–L2812 (5L): ordinary object
+-- | - L2813–L2819 (7L): exotic object
+-- | - L2820–L2823 (4L): standard object
+-- | - L2824–L2831 (8L): built-in object
+-- | - L2832–L2835 (4L): undefined value
+-- | - L2836–L2839 (4L): Undefined type
+-- | - L2840–L2844 (5L): null value
+-- | - L2845–L2848 (4L): Null type
+-- | - L2849–L2854 (6L): Boolean value
+-- | - L2855–L2858 (4L): Boolean type
+-- | - L2859–L2868 (10L): Boolean object
+-- | - L2869–L2878 (10L): String value
+-- | - L2879–L2882 (4L): String type
+-- | - L2883–L2893 (11L): String object
+-- | - L2894–L2901 (8L): Number value
+-- | - L2902–L2906 (5L): Number type
+-- | - L2907–L2917 (11L): Number object
+-- | - L2918–L2921 (4L): Infinity
+-- | - L2922–L2925 (4L): NaN
+-- | - L2926–L2929 (4L): BigInt value
+-- | - L2930–L2933 (4L): BigInt type
+-- | - L2934–L2938 (5L): BigInt object
+-- | - L2939–L2942 (4L): Symbol value
+-- | - L2943–L2946 (4L): Symbol type
+
+-- SPEC: L51-L75
+-- | - L2947–L2951 (5L): Symbol object
+-- | - L2952–L2959 (8L): function
+-- | - L2960–L2967 (8L): built-in function
+-- | - L2968–L2975 (8L): built-in constructor
+-- | - L2976–L2984 (9L): property
+-- | - L2985–L2991 (7L): method
+-- | - L2992–L2999 (8L): built-in method
+-- | - L3000–L3003 (4L): attribute
+-- | - L3004–L3007 (4L): own property
+-- | - L3008–L3012 (5L): inherited property
+-- | - L3013–L3033 (21L): Organization of This Specification
+-- | - L3034–L3035 (2L): Notational Conventions
+-- | - L3036–L3037 (2L): Syntactic and Lexical Grammars
+-- | - L3038–L3057 (20L): Context-Free Grammars
+-- | - L3058–L3093 (36L): The Lexical and RegExp Grammars
+-- | - L3094–L3104 (11L): The Numeric String Grammar
+-- | - L3105–L3194 (90L): The Syntactic Grammar
+-- | - L3195–L3196 (2L): Grammar Notation
+-- | - L3197–L3234 (38L): Terminal Symbols
+-- | - L3235–L3263 (29L): Nonterminal Symbols and Productions
+-- | - L3264–L3298 (35L): Optional Symbols
+-- | - L3299–L3392 (94L): Grammatical Parameters
+-- | - L3393–L3406 (14L): one of
+-- | - L3407–L3412 (6L): empty\
+-- | - L3413–L3457 (45L): Lookahead Restrictions
+
+-- SPEC: L76-L100
+-- | - L3458–L3475 (18L): no \|LineTerminator\| here\
+-- | - L3476–L3488 (13L): but not
+-- | - L3489–L3496 (8L): Descriptive Phrases
+-- | - L3497–L3554 (58L): Algorithm Conventions
+-- | - L3555–L3571 (17L): Evaluation Order
+-- | - L3572–L3584 (13L): Abstract Operations
+-- | - L3585–L3639 (55L): Syntax-Directed Operations
+-- | - L3640–L3645 (6L): Runtime Semantics
+-- | - L3646–L3656 (11L): Completion ( completionRecord\: a Completion Record, ): a Completion Record
+-- | - L3657–L3666 (10L): Throw an Exception
+-- | - L3667–L3707 (41L): Shorthands for Unwrapping Completion Records
+-- | - L3708–L3754 (47L): Implicit Normal Completion
+-- | - L3755–L3781 (27L): Static Semantics
+-- | - L3782–L3915 (134L): Mathematical Operations
+-- | - L3916–L3922 (7L): Value Notation
+-- | - L3923–L3979 (57L): Identity
+-- | - L3980–L3986 (7L): ECMAScript Data Types and Values
+-- | - L3987–L3996 (10L): ECMAScript Language Types
+-- | - L3997–L4001 (5L): The Undefined Type
+-- | - L4002–L4005 (4L): The Null Type
+-- | - L4006–L4011 (6L): The Boolean Type
+-- | - L4012–L4090 (79L): The String Type
+-- | - L4091–L4108 (18L): StringIndexOf ( string\: a String, searchValue\: a String, fromIndex\: a non-negative i...
+-- | - L4109–L4121 (13L): StringLastIndexOf ( string\: a String, searchValue\: a String, fromIndex\: a non-negati...
+-- | - L4122–L4132 (11L): The Symbol Type
+
+-- SPEC: L101-L125
+-- | - L4133–L4167 (35L): Well-Known Symbols
+-- | - L4168–L4307 (140L): Numeric Types
+-- | - L4308–L4404 (97L): The Number Type
+-- | - L4405–L4410 (6L): Number::unaryMinus ( x\: a Number, ): a Number
+-- | - L4411–L4416 (6L): Number::bitwiseNOT ( x\: a Number, ): an integral Number
+-- | - L4417–L4454 (38L): Number::exponentiate ( base\: a Number, exponent\: a Number, ): a Number
+-- | - L4455–L4475 (21L): Number::multiply ( x\: a Number, y\: a Number, ): a Number
+-- | - L4476–L4496 (21L): Number::divide ( x\: a Number, y\: a Number, ): a Number
+-- | - L4497–L4525 (29L): Number::remainder ( n\: a Number, d\: a Number, ): a Number
+-- | - L4526–L4541 (16L): Number::add ( x\: a Number, y\: a Number, ): a Number
+-- | - L4542–L4552 (11L): Number::subtract ( x\: a Number, y\: a Number, ): a Number
+-- | - L4553–L4560 (8L): Number::leftShift ( x\: a Number, y\: a Number, ): an integral Number
+-- | - L4561–L4569 (9L): Number::signedRightShift ( x\: a Number, y\: a Number, ): an integral Number
+-- | - L4570–L4578 (9L): Number::unsignedRightShift ( x\: a Number, y\: a Number, ): an integral Number
+-- | - L4579–L4589 (11L): Number::lessThan ( x\: a Number, y\: a Number, ): a Boolean or \undefined\
+-- | - L4590–L4596 (7L): Number::equal ( x\: a Number, y\: a Number, ): a Boolean
+-- | - L4597–L4603 (7L): Number::sameValue ( x\: a Number, y\: a Number, ): a Boolean
+-- | - L4604–L4610 (7L): Number::sameValueZero ( x\: a Number, y\: a Number, ): a Boolean
+-- | - L4611–L4625 (15L): NumberBitwiseOp ( op\: \&\, \\^\, or \\|\, x\: a Number, y\: a Number, ): an integral N...
+-- | - L4626–L4629 (4L): Number::bitwiseAND ( x\: a Number, y\: a Number, ): an integral Number
+-- | - L4630–L4633 (4L): Number::bitwiseXOR ( x\: a Number, y\: a Number, ): an integral Number
+-- | - L4634–L4637 (4L): Number::bitwiseOR ( x\: a Number, y\: a Number, ): an integral Number
+-- | - L4638–L4721 (84L): Number::toString ( x\: a Number, radix\: an integer in the inclusive interval from 2 to...
+-- | - L4722–L4730 (9L): The BigInt Type
+-- | - L4731–L4734 (4L): BigInt::unaryMinus ( x\: a BigInt, ): a BigInt
+
+-- SPEC: L126-L150
+-- | - L4735–L4741 (7L): BigInt::bitwiseNOT ( x\: a BigInt, ): a BigInt
+-- | - L4742–L4747 (6L): BigInt::exponentiate ( base\: a BigInt, exponent\: a BigInt, ): either a normal complet...
+-- | - L4748–L4752 (5L): BigInt::multiply ( x\: a BigInt, y\: a BigInt, ): a BigInt
+-- | - L4753–L4758 (6L): BigInt::divide ( x\: a BigInt, y\: a BigInt, ): either a normal completion containing a...
+-- | - L4759–L4765 (7L): BigInt::remainder ( n\: a BigInt, d\: a BigInt, ): either a normal completion containin...
+-- | - L4766–L4769 (4L): BigInt::add ( x\: a BigInt, y\: a BigInt, ): a BigInt
+-- | - L4770–L4773 (4L): BigInt::subtract ( x\: a BigInt, y\: a BigInt, ): a BigInt
+-- | - L4774–L4780 (7L): BigInt::leftShift ( x\: a BigInt, y\: a BigInt, ): a BigInt
+-- | - L4781–L4784 (4L): BigInt::signedRightShift ( x\: a BigInt, y\: a BigInt, ): a BigInt
+-- | - L4785–L4788 (4L): BigInt::unsignedRightShift ( x\: a BigInt, y\: a BigInt, ): a throw completion
+-- | - L4789–L4792 (4L): BigInt::lessThan ( x\: a BigInt, y\: a BigInt, ): a Boolean
+-- | - L4793–L4796 (4L): BigInt::equal ( x\: a BigInt, y\: a BigInt, ): a Boolean
+-- | - L4797–L4800 (4L): BinaryAnd ( x\: 0 or 1, y\: 0 or 1, ): 0 or 1
+-- | - L4801–L4804 (4L): BinaryOr ( x\: 0 or 1, y\: 0 or 1, ): 0 or 1
+-- | - L4805–L4809 (5L): BinaryXor ( x\: 0 or 1, y\: 0 or 1, ): 0 or 1
+-- | - L4810–L4829 (20L): BigIntBitwiseOp ( op\: \&\, \\^\, or \\|\, x\: a BigInt, y\: a BigInt, ): a BigInt
+-- | - L4830–L4833 (4L): BigInt::bitwiseAND ( x\: a BigInt, y\: a BigInt, ): a BigInt
+-- | - L4834–L4837 (4L): BigInt::bitwiseXOR ( x\: a BigInt, y\: a BigInt, ): a BigInt
+-- | - L4838–L4841 (4L): BigInt::bitwiseOR ( x\: a BigInt, y\: a BigInt, ): a BigInt
+-- | - L4842–L4855 (14L): BigInt::toString ( x\: a BigInt, radix\: an integer in the inclusive interval from 2 to...
+-- | - L4856–L4909 (54L): The Object Type
+-- | - L4910–L4924 (15L): Property Attributes
+-- | - L4925–L5046 (122L): Object Internal Methods and Internal Slots
+-- | - L5047–L5223 (177L): Invariants of the Essential Internal Methods
+-- |   - L5067–L5078 (12L): Definitions:
+
+-- SPEC: L151-L175
+-- |   - L5079–L5092 (14L): Return value:
+-- |   - L5093–L5108 (16L): \[GetPrototypeOf\\] ( )
+-- |   - L5109–L5115 (7L): \[SetPrototypeOf\\] ( V\ )
+-- |   - L5116–L5121 (6L): \[IsExtensible\\] ( )
+-- |   - L5122–L5128 (7L): \[PreventExtensions\\] ( )
+-- |   - L5129–L5153 (25L): \[GetOwnProperty\\] ( P\ )
+-- |   - L5154–L5169 (16L): \[DefineOwnProperty\\] ( P\, Desc\ )
+-- |   - L5170–L5176 (7L): \[HasProperty\\] ( P\ )
+-- |   - L5177–L5186 (10L): \[Get\\] ( P\, Receiver\ )
+-- |   - L5187–L5197 (11L): \[Set\\] ( P\, V\, Receiver\ )
+-- |   - L5198–L5203 (6L): \[Delete\\] ( P\ )
+-- |   - L5204–L5214 (11L): \[OwnPropertyKeys\\] ( )
+-- |   - L5215–L5218 (4L): \[Call\\] ( )
+-- |   - L5219–L5223 (5L): \[Construct\\] ( )
+-- | - L5224–L5316 (93L): Well-Known Intrinsic Objects
+-- | - L5317–L5329 (13L): ECMAScript Specification Types
+-- | - L5330–L5340 (11L): The Enum Specification Type
+-- | - L5341–L5398 (58L): The List and Record Specification Types
+-- | - L5399–L5442 (44L): The Set and Relation Specification Types
+-- | - L5443–L5485 (43L): The Completion Record Specification Type
+-- | - L5486–L5493 (8L): NormalCompletion ( value\: any value except a Completion Record, ): a normal completion
+-- | - L5494–L5498 (5L): ThrowCompletion ( value\: an ECMAScript language value, ): a throw completion
+-- | - L5499–L5503 (5L): ReturnCompletion ( value\: an ECMAScript language value, ): a return completion
+-- | - L5504–L5512 (9L): UpdateEmpty ( completionRecord\: a Completion Record, value\: any value except a Comple...
+-- | - L5513–L5533 (21L): The Reference Record Specification Type
+
+-- SPEC: L176-L200
+-- | - L5534–L5539 (6L): IsPropertyReference ( V\: a Reference Record, ): a Boolean
+-- | - L5540–L5544 (5L): IsUnresolvableReference ( V\: a Reference Record, ): a Boolean
+-- | - L5545–L5549 (5L): IsSuperReference ( V\: a Reference Record, ): a Boolean
+-- | - L5550–L5554 (5L): IsPrivateReference ( V\: a Reference Record, ): a Boolean
+-- | - L5555–L5576 (22L): GetValue ( V\: a Reference Record or an ECMAScript language value, ): either a normal c...
+-- | - L5577–L5603 (27L): PutValue ( V\: a Reference Record or an ECMAScript language value, W\: an ECMAScript la...
+-- | - L5604–L5609 (6L): GetThisValue ( V\: a Reference Record, ): an ECMAScript language value
+-- | - L5610–L5616 (7L): InitializeReferencedBinding ( V\: a Reference Record, W\: an ECMAScript language value,...
+-- | - L5617–L5625 (9L): MakePrivateReference ( baseValue\: an ECMAScript language value, privateIdentifier\: a ...
+-- | - L5626–L5652 (27L): The Property Descriptor Specification Type
+-- | - L5653–L5657 (5L): IsAccessorDescriptor ( Desc\: a Property Descriptor, ): a Boolean
+-- | - L5658–L5663 (6L): IsDataDescriptor ( Desc\: a Property Descriptor, ): a Boolean
+-- | - L5664–L5669 (6L): IsGenericDescriptor ( Desc\: a Property Descriptor, ): a Boolean
+-- | - L5670–L5688 (19L): FromPropertyDescriptor ( Desc\: a Property Descriptor or \undefined\, ): an Object or \...
+-- | - L5689–L5720 (32L): ToPropertyDescriptor ( Obj\: an ECMAScript language value, ): either a normal completio...
+-- | - L5721–L5739 (19L): CompletePropertyDescriptor ( Desc\: a Property Descriptor, ): \~unused\~
+-- | - L5740–L5745 (6L): The Environment Record Specification Type
+-- | - L5746–L5772 (27L): The Abstract Closure Specification Type
+-- | - L5773–L5810 (38L): Data Blocks
+-- | - L5811–L5817 (7L): CreateByteDataBlock ( size\: a non-negative integer, ): either a normal completion cont...
+-- | - L5818–L5832 (15L): CreateSharedByteDataBlock ( size\: a non-negative integer, ): either a normal completio...
+-- | - L5833–L5866 (34L): CopyDataBlockBytes ( toBlock\: a Data Block or a Shared Data Block, toIndex\: a non-neg...
+-- | - L5867–L5888 (22L): The PrivateElement Specification Type
+-- | - L5889–L5902 (14L): The ClassFieldDefinition Record Specification Type
+-- | - L5903–L5913 (11L): Private Names
+
+-- SPEC: L201-L225
+-- | - L5914–L5925 (12L): The ClassStaticBlockDefinition Record Specification Type
+-- | - L5926–L5932 (7L): Abstract Operations
+-- | - L5933–L5945 (13L): Type Conversion
+-- | - L5946–L5971 (26L): ToPrimitive ( input\: an ECMAScript language value, optional preferredType\: \~string\~...
+-- | - L5972–L5981 (10L): OrdinaryToPrimitive ( O\: an Object, hint\: \~string\~ or \~number\~, ): either a norma...
+-- | - L5982–L5994 (13L): ToBoolean ( argument\: an ECMAScript language value, ): a Boolean
+-- | - L5995–L6003 (9L): ToNumeric ( value\: an ECMAScript language value, ): either a normal completion contain...
+-- | - L6004–L6017 (14L): ToNumber ( argument\: an ECMAScript language value, ): either a normal completion conta...
+-- | - L6018–L6054 (37L): ToNumber Applied to the String Type
+-- |   - L6023–L6054 (32L): Syntax
+-- | - L6055–L6060 (6L): StringToNumber ( str\: a String, ): a Number
+-- | - L6061–L6092 (32L): Runtime Semantics: StringNumericValue ( ): a Number
+-- | - L6093–L6113 (21L): RoundMVResult ( n\: a mathematical value, ): a Number
+-- | - L6114–L6128 (15L): ToIntegerOrInfinity ( argument\: an ECMAScript language value, ): either a normal compl...
+-- | - L6129–L6149 (21L): ToInt32 ( argument\: an ECMAScript language value, ): either a normal completion contai...
+-- | - L6150–L6171 (22L): ToUint32 ( argument\: an ECMAScript language value, ): either a normal completion conta...
+-- | - L6172–L6183 (12L): ToInt16 ( argument\: an ECMAScript language value, ): either a normal completion contai...
+-- | - L6184–L6201 (18L): ToUint16 ( argument\: an ECMAScript language value, ): either a normal completion conta...
+-- | - L6202–L6213 (12L): ToInt8 ( argument\: an ECMAScript language value, ): either a normal completion contain...
+-- | - L6214–L6224 (11L): ToUint8 ( argument\: an ECMAScript language value, ): either a normal completion contai...
+-- | - L6225–L6243 (19L): ToUint8Clamp ( argument\: an ECMAScript language value, ): either a normal completion c...
+-- | - L6244–L6262 (19L): ToBigInt ( argument\: an ECMAScript language value, ): either a normal completion conta...
+-- | - L6263–L6269 (7L): StringToBigInt ( str\: a String, ): a BigInt or \undefined\
+-- | - L6270–L6279 (10L): StringIntegerLiteral Grammar
+-- |   - L6274–L6279 (6L): Syntax
+
+-- SPEC: L226-L250
+-- | - L6280–L6285 (6L): Runtime Semantics: MV
+-- | - L6286–L6295 (10L): ToBigInt64 ( argument\: an ECMAScript language value, ): either a normal completion con...
+-- | - L6296–L6304 (9L): ToBigUint64 ( argument\: an ECMAScript language value, ): either a normal completion co...
+-- | - L6305–L6321 (17L): ToString ( argument\: an ECMAScript language value, ): either a normal completion conta...
+-- | - L6322–L6342 (21L): ToObject ( argument\: an ECMAScript language value, ): either a normal completion conta...
+-- | - L6343–L6352 (10L): ToPropertyKey ( argument\: an ECMAScript language value, ): either a normal completion ...
+-- | - L6353–L6361 (9L): ToLength ( argument\: an ECMAScript language value, ): either a normal completion conta...
+-- | - L6362–L6376 (15L): CanonicalNumericIndexString ( argument\: a String, ): a Number or \undefined\
+-- | - L6377–L6387 (11L): ToIndex ( value\: an ECMAScript language value, ): either a normal completion containin...
+-- | - L6388–L6389 (2L): Testing and Comparison Operations
+-- | - L6390–L6398 (9L): RequireObjectCoercible ( argument\: an ECMAScript language value, ): either a normal co...
+-- | - L6399–L6407 (9L): IsArray ( argument\: an ECMAScript language value, ): either a normal completion contai...
+-- | - L6408–L6417 (10L): IsCallable ( argument\: an ECMAScript language value, ): a Boolean
+-- | - L6418–L6427 (10L): IsConstructor ( argument\: an ECMAScript language value, ): a Boolean
+-- | - L6428–L6435 (8L): IsExtensible ( O\: an Object, ): either a normal completion containing a Boolean or a t...
+-- | - L6436–L6443 (8L): IsRegExp ( argument\: an ECMAScript language value, ): either a normal completion conta...
+-- | - L6444–L6457 (14L): Static Semantics: IsStringWellFormedUnicode ( string\: a String, ): a Boolean
+-- | - L6458–L6472 (15L): SameType ( x\: an ECMAScript language value, y\: an ECMAScript language value, ): a Boo...
+-- | - L6473–L6485 (13L): SameValue ( x\: an ECMAScript language value, y\: an ECMAScript language value, ): a Bo...
+-- | - L6486–L6498 (13L): SameValueZero ( x\: an ECMAScript language value, y\: an ECMAScript language value, ): ...
+-- | - L6499–L6513 (15L): SameValueNonNumber ( x\: an ECMAScript language value, but not a Number, y\: an ECMAScr...
+-- | - L6514–L6572 (59L): IsLessThan ( x\: an ECMAScript language value, y\: an ECMAScript language value, LeftFi...
+-- | - L6573–L6605 (33L): IsLooselyEqual ( x\: an ECMAScript language value, y\: an ECMAScript language value, ):...
+-- | - L6606–L6617 (12L): IsStrictlyEqual ( x\: an ECMAScript language value, y\: an ECMAScript language value, )...
+-- | - L6618–L6619 (2L): Operations on Objects
+
+-- SPEC: L251-L275
+-- | - L6620–L6651 (32L): MakeBasicObject ( internalSlotsList\: a List of internal slot names, ): an Object
+-- | - L6652–L6659 (8L): Get ( O\: an Object, P\: a property key, ): either a normal completion containing an EC...
+-- | - L6660–L6670 (11L): GetV ( V\: an ECMAScript language value, P\: a property key, ): either a normal complet...
+-- | - L6671–L6680 (10L): Set ( O\: an Object, P\: a property key, V\: an ECMAScript language value, Throw\: a Bo...
+-- | - L6681–L6696 (16L): CreateDataProperty ( O\: an Object, P\: a property key, V\: an ECMAScript language valu...
+-- | - L6697–L6714 (18L): CreateDataPropertyOrThrow ( O\: an Object, P\: a property key, V\: an ECMAScript langua...
+-- | - L6715–L6733 (19L): CreateNonEnumerableDataPropertyOrThrow ( O\: an Object, P\: a property key, V\: an ECMA...
+-- | - L6734–L6744 (11L): DefinePropertyOrThrow ( O\: an Object, P\: a property key, desc\: a Property Descriptor...
+-- | - L6745–L6753 (9L): DeletePropertyOrThrow ( O\: an Object, P\: a property key, ): either a normal completio...
+-- | - L6754–L6765 (12L): GetMethod ( V\: an ECMAScript language value, P\: a property key, ): either a normal co...
+-- | - L6766–L6773 (8L): HasProperty ( O\: an Object, P\: a property key, ): either a normal completion containi...
+-- | - L6774–L6782 (9L): HasOwnProperty ( O\: an Object, P\: a property key, ): either a normal completion conta...
+-- | - L6783–L6796 (14L): Call ( F\: an ECMAScript language value, V\: an ECMAScript language value, optional arg...
+-- | - L6797–L6813 (17L): Construct ( F\: a constructor, optional argumentsList\: a List of ECMAScript language v...
+-- | - L6814–L6833 (20L): SetIntegrityLevel ( O\: an Object, level\: \~sealed\~ or \~frozen\~, ): either a normal...
+-- | - L6834–L6850 (17L): TestIntegrityLevel ( O\: an Object, level\: \~sealed\~ or \~frozen\~, ): either a norma...
+-- | - L6851–L6861 (11L): CreateArrayFromList ( elements\: a List of ECMAScript language values, ): an Array
+-- | - L6862–L6877 (16L): LengthOfArrayLike ( obj\: an Object, ): either a normal completion containing a non-neg...
+-- | - L6878–L6895 (18L): CreateListFromArrayLike ( obj\: an ECMAScript language value, optional validElementType...
+-- | - L6896–L6908 (13L): Invoke ( V\: an ECMAScript language value, P\: a property key, optional argumentsList\:...
+-- | - L6909–L6924 (16L): OrdinaryHasInstance ( C\: an ECMAScript language value, O\: an ECMAScript language valu...
+-- | - L6925–L6939 (15L): SpeciesConstructor ( O\: an Object, defaultConstructor\: a constructor, ): either a nor...
+-- | - L6940–L6952 (13L): EnumerableOwnProperties ( O\: an Object, kind\: \~key\~, \~value\~, or \~key+value\~, )...
+-- | - L6953–L6969 (17L): GetFunctionRealm ( obj\: a function object, ): either a normal completion containing a ...
+-- | - L6970–L6987 (18L): CopyDataProperties ( target\: an Object, source\: an ECMAScript language value, exclude...
+
+-- SPEC: L276-L300
+-- | - L6988–L6993 (6L): PrivateElementFind ( O\: an Object, P\: a Private Name, ): a PrivateElement or \~empty\~
+-- | - L6994–L7002 (9L): PrivateFieldAdd ( O\: an Object, P\: a Private Name, value\: an ECMAScript language val...
+-- | - L7003–L7015 (13L): PrivateMethodOrAccessorAdd ( O\: an Object, method\: a PrivateElement, ): either a norm...
+-- | - L7016–L7035 (20L): HostEnsureCanAddPrivateElement ( O\: an Object, ): either a normal completion containin...
+-- | - L7036–L7045 (10L): PrivateGet ( O\: an Object, P\: a Private Name, ): either a normal completion containin...
+-- | - L7046–L7057 (12L): PrivateSet ( O\: an Object, P\: a Private Name, value\: an ECMAScript language value, )...
+-- | - L7058–L7069 (12L): DefineField ( receiver\: an Object, fieldRecord\: a ClassFieldDefinition Record, ): eit...
+-- | - L7070–L7078 (9L): InitializeInstanceElements ( O\: an Object, constructor\: an ECMAScript function object...
+-- | - L7079–L7088 (10L): AddValueToKeyedGroup ( groups\: a List of Records with fields \[Key\\] (an ECMAScript l...
+-- | - L7089–L7109 (21L): GroupBy ( items\: an ECMAScript language value, callback\: an ECMAScript language value...
+-- | - L7110–L7115 (6L): GetOptionsObject ( options\: an ECMAScript language value, ): either a normal completio...
+-- | - L7116–L7128 (13L): SetterThatIgnoresPrototypeProperties ( thisValue\: an ECMAScript language value, home\:...
+-- | - L7129–L7132 (4L): Operations on Iterator Objects
+-- | - L7133–L7146 (14L): Iterator Records
+-- | - L7147–L7153 (7L): GetIteratorDirect ( obj\: an Object, ): either a normal completion containing an Iterat...
+-- | - L7154–L7159 (6L): GetIteratorFromMethod ( obj\: an ECMAScript language value, method\: a function object,...
+-- | - L7160–L7172 (13L): GetIterator ( obj\: an ECMAScript language value, kind\: \~sync\~ or \~async\~, ): eith...
+-- | - L7173–L7184 (12L): GetIteratorFlattenable ( obj\: an ECMAScript language value, primitiveHandling\: \~iter...
+-- | - L7185–L7197 (13L): IteratorNext ( iteratorRecord\: an Iterator Record, optional value\: an ECMAScript lang...
+-- | - L7198–L7201 (4L): IteratorComplete ( iteratorResult\: an Object, ): either a normal completion containing...
+-- | - L7202–L7205 (4L): IteratorValue ( iteratorResult\: an Object, ): either a normal completion containing an...
+-- | - L7206–L7220 (15L): IteratorStep ( iteratorRecord\: an Iterator Record, ): either a normal completion conta...
+-- | - L7221–L7234 (14L): IteratorStepValue ( iteratorRecord\: an Iterator Record, ): either a normal completion ...
+-- | - L7235–L7252 (18L): IteratorClose ( iteratorRecord\: an Iterator Record, completion\: a Completion Record, ...
+-- | - L7253–L7261 (9L): IteratorCloseAll ( iters\: a List of Iterator Records, completion\: a Completion Record...
+
+-- SPEC: L301-L325
+-- | - L7262–L7274 (13L): IfAbruptCloseIterator ( value\, iteratorRecord\ )
+-- | - L7275–L7295 (21L): AsyncIteratorClose ( iteratorRecord\: an Iterator Record, completion\: a Completion Rec...
+-- | - L7296–L7308 (13L): IfAbruptCloseAsyncIterator ( value\, iteratorRecord\ )
+-- | - L7309–L7318 (10L): CreateIteratorResultObject ( value\: an ECMAScript language value, done\: a Boolean, ):...
+-- | - L7319–L7337 (19L): CreateListIteratorRecord ( list\: a List of ECMAScript language values, ): an Iterator ...
+-- | - L7338–L7343 (6L): IteratorToList ( iteratorRecord\: an Iterator Record, ): either a normal completion con...
+-- | - L7344–L7348 (5L): Syntax-Directed Operations
+-- | - L7349–L7357 (9L): Runtime Semantics: Evaluation ( ): a Completion Record
+-- | - L7358–L7359 (2L): Scope Analysis
+-- | - L7360–L7491 (132L): Static Semantics: BoundNames ( ): a List of Strings
+-- | - L7492–L7502 (11L): Static Semantics: DeclarationPart ( ): a Parse Node
+-- | - L7503–L7530 (28L): Static Semantics: IsConstantDeclaration ( ): a Boolean
+-- | - L7531–L7591 (61L): Static Semantics: LexicallyDeclaredNames ( ): a List of Strings
+-- | - L7592–L7653 (62L): Static Semantics: LexicallyScopedDeclarations ( ): a List of Parse Nodes
+-- | - L7654–L7753 (100L): Static Semantics: VarDeclaredNames ( ): a List of Strings
+-- | - L7754–L7865 (112L): Static Semantics: VarScopedDeclarations ( ): a List of Parse Nodes
+-- | - L7866–L7879 (14L): Static Semantics: TopLevelLexicallyDeclaredNames ( ): a List of Strings
+-- | - L7880–L7890 (11L): Static Semantics: TopLevelLexicallyScopedDeclarations ( ): a List of Parse Nodes
+-- | - L7891–L7912 (22L): Static Semantics: TopLevelVarDeclaredNames ( ): a List of Strings
+-- | - L7913–L7933 (21L): Static Semantics: TopLevelVarScopedDeclarations ( ): a List of Parse Nodes
+-- | - L7934–L7935 (2L): Labels
+-- | - L7936–L8028 (93L): Static Semantics: ContainsDuplicateLabels ( labelSet\: a List of Strings, ): a Boolean
+-- | - L8029–L8127 (99L): Static Semantics: ContainsUndefinedBreakTarget ( labelSet\: a List of Strings, ): a Boo...
+-- | - L8128–L8239 (112L): Static Semantics: ContainsUndefinedContinueTarget ( iterationSet\: a List of Strings, l...
+-- | - L8240–L8241 (2L): Function Name Inference
+
+-- SPEC: L326-L350
+-- | - L8242–L8268 (27L): Static Semantics: HasName ( ): a Boolean
+-- | - L8269–L8326 (58L): Static Semantics: IsFunctionDefinition ( ): a Boolean
+-- | - L8327–L8336 (10L): Static Semantics: IsAnonymousFunctionDefinition ( expr\: an \|AssignmentExpression\| Pa...
+-- | - L8337–L8351 (15L): Static Semantics: IsIdentifierRef ( ): a Boolean
+-- | - L8352–L8384 (33L): Runtime Semantics: NamedEvaluation ( name\: a property key or a Private Name, ): either...
+-- | - L8385–L8386 (2L): Contains
+-- | - L8387–L8475 (89L): Static Semantics: Contains ( symbol\: a grammar symbol, ): a Boolean
+-- | - L8476–L8505 (30L): Static Semantics: ComputedPropertyContains ( symbol\: a grammar symbol, ): a Boolean
+-- | - L8506–L8510 (5L): Miscellaneous
+-- | - L8511–L8533 (23L): Runtime Semantics: InstantiateFunctionObject ( env\: an Environment Record, privateEnv\...
+-- | - L8534–L8571 (38L): Runtime Semantics: BindingInitialization ( value\: an ECMAScript language value, enviro...
+-- | - L8572–L8578 (7L): InitializeBoundName ( name\: a String, value\: an ECMAScript language value, environmen...
+-- | - L8579–L8680 (102L): Runtime Semantics: IteratorBindingInitialization ( iteratorRecord\: an Iterator Record,...
+-- | - L8681–L8742 (62L): Static Semantics: AssignmentTargetType ( ): \~simple\~, \~web-compat\~, or \~invalid\~
+-- | - L8743–L8772 (30L): Static Semantics: PropName ( ): a String or \~empty\~
+-- | - L8773–L8774 (2L): Executable Code and Execution Contexts
+-- | - L8775–L8804 (30L): Environment Records
+-- | - L8805–L8863 (59L): The Environment Record Type Hierarchy
+-- | - L8864–L8872 (9L): Declarative Environment Records
+-- | - L8873–L8884 (12L): HasBinding ( N\: a String, ): a normal completion containing a Boolean
+-- | - L8885–L8901 (17L): CreateMutableBinding ( N\: a String, D\: a Boolean, ): a normal completion containing \...
+-- | - L8902–L8917 (16L): CreateImmutableBinding ( N\: a String, S\: a Boolean, ): a normal completion containing...
+-- | - L8918–L8932 (15L): InitializeBinding ( N\: a String, V\: an ECMAScript language value, ): a normal complet...
+-- | - L8933–L8964 (32L): SetMutableBinding ( N\: a String, V\: an ECMAScript language value, S\: a Boolean, ): e...
+-- | - L8965–L8979 (15L): GetBindingValue ( N\: a String, S\: a Boolean, ): either a normal completion containing...
+
+-- SPEC: L351-L375
+-- | - L8980–L8992 (13L): DeleteBinding ( N\: a String, ): a normal completion containing a Boolean
+-- | - L8993–L9003 (11L): HasThisBinding ( ): \false\
+-- | - L9004–L9008 (5L): GetThisBinding ( )
+-- | - L9009–L9019 (11L): HasSuperBinding ( ): \false\
+-- | - L9020–L9026 (7L): WithBaseObject ( ): \undefined\
+-- | - L9027–L9056 (30L): Object Environment Records
+-- | - L9057–L9074 (18L): HasBinding ( N\: a String, ): either a normal completion containing a Boolean or a thro...
+-- | - L9075–L9096 (22L): CreateMutableBinding ( N\: a String, D\: a Boolean, ): either a normal completion conta...
+-- | - L9097–L9101 (5L): CreateImmutableBinding ( N\, S\ )
+-- | - L9102–L9119 (18L): InitializeBinding ( N\: a String, V\: an ECMAScript language value, ): either a normal ...
+-- | - L9120–L9136 (17L): SetMutableBinding ( N\: a String, V\: an ECMAScript language value, S\: a Boolean, ): e...
+-- | - L9137–L9152 (16L): GetBindingValue ( N\: a String, S\: a Boolean, ): either a normal completion containing...
+-- | - L9153–L9165 (13L): DeleteBinding ( N\: a String, ): either a normal completion containing a Boolean or a t...
+-- | - L9166–L9174 (9L): HasThisBinding ( ): \false\
+-- | - L9175–L9179 (5L): GetThisBinding ( )
+-- | - L9180–L9188 (9L): HasSuperBinding ( ): \false\
+-- | - L9189–L9196 (8L): WithBaseObject ( ): an Object or \undefined\
+-- | - L9197–L9222 (26L): Function Environment Records
+-- | - L9223–L9234 (12L): BindThisValue ( envRec\: a Function Environment Record, V\: an ECMAScript language valu...
+-- | - L9235–L9242 (8L): HasThisBinding ( ): a Boolean
+-- | - L9243–L9251 (9L): GetThisBinding ( ): either a normal completion containing an ECMAScript language value ...
+-- | - L9252–L9260 (9L): HasSuperBinding ( ): a Boolean
+-- | - L9261–L9272 (12L): GetSuperBase ( envRec\: a Function Environment Record, ): an Object, \null\, or \undefi...
+-- | - L9273–L9316 (44L): Global Environment Records
+-- | - L9317–L9330 (14L): HasBinding ( N\: a String, ): either a normal completion containing a Boolean or a thro...
+
+-- SPEC: L376-L400
+-- | - L9331–L9346 (16L): CreateMutableBinding ( N\: a String, D\: a Boolean, ): either a normal completion conta...
+-- | - L9347–L9361 (15L): CreateImmutableBinding ( N\: a String, S\: a Boolean, ): either a normal completion con...
+-- | - L9362–L9378 (17L): InitializeBinding ( N\: a String, V\: an ECMAScript language value, ): either a normal ...
+-- | - L9379–L9397 (19L): SetMutableBinding ( N\: a String, V\: an ECMAScript language value, S\: a Boolean, ): e...
+-- | - L9398–L9415 (18L): GetBindingValue ( N\: a String, S\: a Boolean, ): either a normal completion containing...
+-- | - L9416–L9433 (18L): DeleteBinding ( N\: a String, ): either a normal completion containing a Boolean or a t...
+-- | - L9434–L9442 (9L): HasThisBinding ( ): \true\
+-- | - L9443–L9449 (7L): GetThisBinding ( ): a normal completion containing an Object
+-- | - L9450–L9458 (9L): HasSuperBinding ( ): \false\
+-- | - L9459–L9465 (7L): WithBaseObject ( ): \undefined\
+-- | - L9466–L9475 (10L): HasLexicalDeclaration ( envRec\: a Global Environment Record, N\: a String, ): a Boolean
+-- | - L9476–L9495 (20L): HasRestrictedGlobalProperty ( envRec\: a Global Environment Record, N\: a String, ): ei...
+-- | - L9496–L9509 (14L): CanDeclareGlobalVar ( envRec\: a Global Environment Record, N\: a String, ): either a n...
+-- | - L9510–L9525 (16L): CanDeclareGlobalFunction ( envRec\: a Global Environment Record, N\: a String, ): eithe...
+-- | - L9526–L9541 (16L): CreateGlobalVarBinding ( envRec\: a Global Environment Record, N\: a String, D\: a Bool...
+-- | - L9542–L9567 (26L): CreateGlobalFunctionBinding ( envRec\: a Global Environment Record, N\: a String, V\: a...
+-- | - L9568–L9582 (15L): Module Environment Records
+-- | - L9583–L9607 (25L): GetBindingValue ( N\: a String, S\: a Boolean, ): either a normal completion containing...
+-- | - L9608–L9617 (10L): DeleteBinding ( N\ )
+-- | - L9618–L9626 (9L): HasThisBinding ( ): \true\
+-- | - L9627–L9633 (7L): GetThisBinding ( ): a normal completion containing \undefined\
+-- | - L9634–L9649 (16L): CreateImportBinding ( envRec\: a Module Environment Record, N\: a String, M\: a Module ...
+-- | - L9650–L9654 (5L): Environment Record Operations
+-- | - L9655–L9666 (12L): GetIdentifierReference ( env\: an Environment Record or \null\, name\: a String, strict...
+-- | - L9667–L9671 (5L): NewDeclarativeEnvironment ( E\: an Environment Record or \null\, ): a Declarative Envir...
+
+-- SPEC: L401-L425
+-- | - L9672–L9678 (7L): NewObjectEnvironment ( O\: an Object, W\: a Boolean, E\: an Environment Record or \null...
+-- | - L9679–L9689 (11L): NewFunctionEnvironment ( F\: an ECMAScript function object, newTarget\: an Object or \u...
+-- | - L9690–L9699 (10L): NewGlobalEnvironment ( G\: an Object, thisValue\: an Object, ): a Global Environment Re...
+-- | - L9700–L9704 (5L): NewModuleEnvironment ( E\: an Environment Record, ): a Module Environment Record
+-- | - L9705–L9723 (19L): PrivateEnvironment Records
+-- | - L9724–L9728 (5L): PrivateEnvironment Record Operations
+-- | - L9729–L9734 (6L): NewPrivateEnvironment ( outerPrivateEnv\: a PrivateEnvironment Record or \null\, ): a P...
+-- | - L9735–L9743 (9L): ResolvePrivateIdentifier ( privateEnv\: a PrivateEnvironment Record, identifier\: a Str...
+-- | - L9744–L9820 (77L): Realms
+-- | - L9821–L9844 (24L): InitializeHostDefinedRealm ( ): either a normal completion containing \~unused\~ or a t...
+-- | - L9845–L9868 (24L): CreateIntrinsics ( realmRec\: a Realm Record, ): \~unused\~
+-- | - L9869–L9879 (11L): SetDefaultGlobalBindings ( realmRec\: a Realm Record, ): either a normal completion con...
+-- | - L9880–L9958 (79L): Execution Contexts
+-- | - L9959–L9969 (11L): GetActiveScriptOrModule ( ): a Script Record, a Module Record, or \null\
+-- | - L9970–L9985 (16L): ResolveBinding ( name\: a String, optional env\: an Environment Record or \undefined\, ...
+-- | - L9986–L10001 (16L): GetThisEnvironment ( ): an Environment Record
+-- | - L10002–L10010 (9L): ResolveThisBinding ( ): either a normal completion containing an ECMAScript language va...
+-- | - L10011–L10019 (9L): GetNewTarget ( ): an Object or \undefined\
+-- | - L10020–L10028 (9L): GetGlobalObject ( ): an Object
+-- | - L10029–L10098 (70L): Jobs and Host Operations to Enqueue Jobs
+-- | - L10099–L10118 (20L): JobCallback Records
+-- | - L10119–L10141 (23L): HostMakeJobCallback ( callback\: a function object, ): a JobCallback Record
+-- | - L10142–L10162 (21L): HostCallJobCallback ( jobCallback\: a JobCallback Record, V\: an ECMAScript language va...
+-- | - L10163–L10174 (12L): HostEnqueueGenericJob ( job\: a Job Abstract Closure, realm\: a Realm Record, ): \~unus...
+-- | - L10175–L10211 (37L): HostEnqueuePromiseJob ( job\: a Job Abstract Closure, realm\: a Realm Record or \null\,...
+
+-- SPEC: L426-L450
+-- | - L10212–L10221 (10L): HostEnqueueTimeoutJob ( timeoutJob\: a Job Abstract Closure, realm\: a Realm Record, mi...
+-- | - L10222–L10287 (66L): Agents
+-- | - L10288–L10292 (5L): AgentSignifier ( ): an agent signifier
+-- | - L10293–L10302 (10L): AgentCanSuspend ( ): a Boolean
+-- | - L10303–L10314 (12L): IncrementModuleAsyncEvaluationCount ( ): an integer
+-- | - L10315–L10410 (96L): Agent Clusters
+-- | - L10411–L10432 (22L): Forward Progress
+-- | - L10433–L10434 (2L): Processing Model of WeakRef and FinalizationRegistry Targets
+-- | - L10435–L10471 (37L): Objectives
+-- | - L10472–L10522 (51L): Liveness
+-- | - L10523–L10573 (51L): Execution
+-- | - L10574–L10575 (2L): Host Hooks
+-- | - L10576–L10590 (15L): HostEnqueueFinalizationRegistryCleanupJob ( finalizationRegistry\: a FinalizationRegist...
+-- | - L10591–L10600 (10L): ClearKeptObjects ( ): \~unused\~
+-- | - L10601–L10608 (8L): AddToKeptObjects ( value\: an Object or a Symbol, ): \~unused\~
+-- | - L10609–L10620 (12L): CleanupFinalizationRegistry ( finalizationRegistry\: a FinalizationRegistry, ): either ...
+-- | - L10621–L10644 (24L): CanBeHeldWeakly ( v\: an ECMAScript language value, ): a Boolean
+-- | - L10645–L10646 (2L): Ordinary and Exotic Objects Behaviours
+-- | - L10647–L10682 (36L): Ordinary Object Internal Methods and Internal Slots
+-- | - L10683–L10689 (7L): \[GetPrototypeOf\\] ( ): a normal completion containing either an Object or \null\
+-- | - L10690–L10693 (4L): OrdinaryGetPrototypeOf ( O\: an Object, ): an Object or \null\
+-- | - L10694–L10700 (7L): \[SetPrototypeOf\\] ( V\: an Object or \null\, ): a normal completion containing a Boolean
+-- | - L10701–L10718 (18L): OrdinarySetPrototypeOf ( O\: an Object, V\: an Object or \null\, ): a Boolean
+-- | - L10719–L10725 (7L): \[IsExtensible\\] ( ): a normal completion containing a Boolean
+-- | - L10726–L10729 (4L): OrdinaryIsExtensible ( O\: an Object, ): a Boolean
+
+-- SPEC: L451-L475
+-- | - L10730–L10736 (7L): \[PreventExtensions\\] ( ): a normal completion containing \true\
+-- | - L10737–L10740 (4L): OrdinaryPreventExtensions ( O\: an Object, ): \true\
+-- | - L10741–L10747 (7L): \[GetOwnProperty\\] ( P\: a property key, ): a normal completion containing either a Pr...
+-- | - L10748–L10762 (15L): OrdinaryGetOwnProperty ( O\: an Object, P\: a property key, ): a Property Descriptor or...
+-- | - L10763–L10769 (7L): \[DefineOwnProperty\\] ( P\: a property key, Desc\: a Property Descriptor, ): either a ...
+-- | - L10770–L10776 (7L): OrdinaryDefineOwnProperty ( O\: an Object, P\: a property key, Desc\: a Property Descri...
+-- | - L10777–L10781 (5L): IsCompatiblePropertyDescriptor ( Extensible\: a Boolean, Desc\: a Property Descriptor, ...
+-- | - L10782–L10855 (74L): ValidateAndApplyPropertyDescriptor ( O\: an Object or \undefined\, P\: a property key, ...
+-- | - L10856–L10862 (7L): \[HasProperty\\] ( P\: a property key, ): either a normal completion containing a Boole...
+-- | - L10863–L10870 (8L): OrdinaryHasProperty ( O\: an Object, P\: a property key, ): either a normal completion ...
+-- | - L10871–L10877 (7L): \[Get\\] ( P\: a property key, Receiver\: an ECMAScript language value, ): either a nor...
+-- | - L10878–L10889 (12L): OrdinaryGet ( O\: an Object, P\: a property key, Receiver\: an ECMAScript language valu...
+-- | - L10890–L10896 (7L): \[Set\\] ( P\: a property key, V\: an ECMAScript language value, Receiver\: an ECMAScri...
+-- | - L10897–L10902 (6L): OrdinarySet ( O\: an Object, P\: a property key, V\: an ECMAScript language value, Rece...
+-- | - L10903–L10926 (24L): OrdinarySetWithOwnDescriptor ( O\: an Object, P\: a property key, V\: an ECMAScript lan...
+-- | - L10927–L10933 (7L): \[Delete\\] ( P\: a property key, ): either a normal completion containing a Boolean or...
+-- | - L10934–L10941 (8L): OrdinaryDelete ( O\: an Object, P\: a property key, ): either a normal completion conta...
+-- | - L10942–L10948 (7L): \[OwnPropertyKeys\\] ( ): a normal completion containing a List of property keys
+-- | - L10949–L10959 (11L): OrdinaryOwnPropertyKeys ( O\: an Object, ): a List of property keys
+-- | - L10960–L10984 (25L): OrdinaryObjectCreate ( proto\: an Object or \null\, optional additionalInternalSlotsLis...
+-- | - L10985–L11004 (20L): OrdinaryCreateFromConstructor ( constructor\: a function object, intrinsicDefaultProto\...
+-- | - L11005–L11025 (21L): GetPrototypeFromConstructor ( constructor\: a function object, intrinsicDefaultProto\: ...
+-- | - L11026–L11035 (10L): RequireInternalSlot ( O\: an ECMAScript language value, internalSlot\: an internal slot...
+-- | - L11036–L11073 (38L): ECMAScript Function Objects
+-- | - L11074–L11099 (26L): \[Call\\] ( thisArgument\: an ECMAScript language value, argumentsList\: a List of ECMA...
+
+-- SPEC: L476-L500
+-- | - L11100–L11117 (18L): PrepareForOrdinaryCall ( F\: an ECMAScript function object, newTarget\: an Object or \u...
+-- | - L11118–L11135 (18L): OrdinaryCallBindThis ( F\: an ECMAScript function object, calleeContext\: an execution ...
+-- | - L11136–L11169 (34L): Runtime Semantics: EvaluateBody ( functionObject\: an ECMAScript function object, argum...
+-- | - L11170–L11174 (5L): OrdinaryCallEvaluateBody ( F\: an ECMAScript function object, argumentsList\: a List of...
+-- | - L11175–L11205 (31L): \[Construct\\] ( argumentsList\: a List of ECMAScript language values, newTarget\: a co...
+-- | - L11206–L11236 (31L): OrdinaryFunctionCreate ( functionPrototype\: an Object, sourceText\: a sequence of Unic...
+-- | - L11237–L11248 (12L): AddRestrictedFunctionProperties ( F\: a function object, realm\: a Realm Record, ): \~u...
+-- | - L11249–L11270 (22L): %ThrowTypeError% ( )
+-- | - L11271–L11293 (23L): MakeConstructor ( F\: an ECMAScript function object or a built-in function object, opti...
+-- | - L11294–L11298 (5L): MakeClassConstructor ( F\: an ECMAScript function object, ): \~unused\~
+-- | - L11299–L11306 (8L): MakeMethod ( F\: an ECMAScript function object, homeObject\: an Object, ): \~unused\~
+-- | - L11307–L11319 (13L): DefineMethodProperty ( homeObject\: an Object, key\: a property key or Private Name, cl...
+-- | - L11320–L11342 (23L): SetFunctionName ( F\: a function object, name\: a property key or Private Name, optiona...
+-- | - L11343–L11353 (11L): SetFunctionLength ( F\: a function object, length\: a non-negative integer or +∞, ): \~...
+-- | - L11354–L11520 (167L): FunctionDeclarationInstantiation ( func\: an ECMAScript function object, argumentsList\...
+-- | - L11521–L11551 (31L): Built-in Function Objects
+-- | - L11552–L11559 (8L): \[Call\\] ( thisArgument\: an ECMAScript language value, argumentsList\: a List of ECMA...
+-- | - L11560–L11568 (9L): \[Construct\\] ( argumentsList\: a List of ECMAScript language values, newTarget\: a co...
+-- | - L11569–L11613 (45L): BuiltinCallOrConstruct ( F\: a built-in function object, thisArgument\: an ECMAScript l...
+-- | - L11614–L11644 (31L): CreateBuiltinFunction ( behaviour\: an Abstract Closure, a set of algorithm steps, or s...
+-- | - L11645–L11652 (8L): Built-in Exotic Object Internal Methods and Slots
+-- | - L11653–L11679 (27L): Bound Function Exotic Objects
+-- | - L11680–L11690 (11L): \[Call\\] ( thisArgument\: an ECMAScript language value, argumentsList\: a List of ECMA...
+-- | - L11691–L11702 (12L): \[Construct\\] ( argumentsList\: a List of ECMAScript language values, newTarget\: a co...
+-- | - L11703–L11719 (17L): BoundFunctionCreate ( targetFunction\: a function object, boundThis\: an ECMAScript lan...
+
+-- SPEC: L501-L525
+-- | - L11720–L11745 (26L): Array Exotic Objects
+-- | - L11746–L11767 (22L): \[DefineOwnProperty\\] ( P\: a property key, Desc\: a Property Descriptor, ): either a ...
+-- | - L11768–L11782 (15L): ArrayCreate ( length\: a non-negative integer, optional proto\: an Object, ): either a ...
+-- | - L11783–L11810 (28L): ArraySpeciesCreate ( originalArray\: an Object, length\: a non-negative integer, ): eit...
+-- | - L11811–L11853 (43L): ArraySetLength ( A\: an Array, Desc\: a Property Descriptor, ): either a normal complet...
+-- | - L11854–L11873 (20L): String Exotic Objects
+-- | - L11874–L11882 (9L): \[GetOwnProperty\\] ( P\: a property key, ): a normal completion containing either a Pr...
+-- | - L11883–L11894 (12L): \[DefineOwnProperty\\] ( P\: a property key, Desc\: a Property Descriptor, ): a normal ...
+-- | - L11895–L11912 (18L): \[OwnPropertyKeys\\] ( ): a normal completion containing a List of property keys
+-- | - L11913–L11929 (17L): StringCreate ( value\: a String, prototype\: an Object, ): a String exotic object
+-- | - L11930–L11942 (13L): StringGetOwnProperty ( S\: an Object that has a \[StringData\\] internal slot, P\: a pr...
+-- | - L11943–L12000 (58L): Arguments Exotic Objects
+-- | - L12001–L12011 (11L): \[GetOwnProperty\\] ( P\: a property key, ): a normal completion containing either a Pr...
+-- | - L12012–L12034 (23L): \[DefineOwnProperty\\] ( P\: a property key, Desc\: a Property Descriptor, ): a normal ...
+-- | - L12035–L12045 (11L): \[Get\\] ( P\: a property key, Receiver\: an ECMAScript language value, ): either a nor...
+-- | - L12046–L12059 (14L): \[Set\\] ( P\: a property key, V\: an ECMAScript language value, Receiver\: an ECMAScri...
+-- | - L12060–L12070 (11L): \[Delete\\] ( P\: a property key, ): either a normal completion containing a Boolean or...
+-- | - L12071–L12091 (21L): CreateUnmappedArgumentsObject ( argumentsList\: a List of ECMAScript language values, )...
+-- | - L12092–L12131 (40L): CreateMappedArgumentsObject ( func\: an Object, formals\: a Parse Node, argumentsList\:...
+-- | - L12132–L12145 (14L): MakeArgGetter ( name\: a String, env\: an Environment Record, ): a function object
+-- | - L12146–L12159 (14L): MakeArgSetter ( name\: a String, env\: an Environment Record, ): a function object
+-- | - L12160–L12184 (25L): TypedArray Exotic Objects
+-- | - L12185–L12196 (12L): \[PreventExtensions\\] ( ): a normal completion containing a Boolean
+-- | - L12197–L12210 (14L): \[GetOwnProperty\\] ( P\: a property key, ): a normal completion containing either a Pr...
+-- | - L12211–L12220 (10L): \[HasProperty\\] ( P\: a property key, ): either a normal completion containing a Boole...
+
+-- SPEC: L526-L550
+-- | - L12221–L12239 (19L): \[DefineOwnProperty\\] ( P\: a property key, Desc\: a Property Descriptor, ): either a ...
+-- | - L12240–L12249 (10L): \[Get\\] ( P\: a property key, Receiver\: an ECMAScript language value, ): either a nor...
+-- | - L12250–L12262 (13L): \[Set\\] ( P\: a property key, V\: an ECMAScript language value, Receiver\: an ECMAScri...
+-- | - L12263–L12273 (11L): \[Delete\\] ( P\: a property key, ): a normal completion containing a Boolean
+-- | - L12274–L12290 (17L): \[OwnPropertyKeys\\] ( ): a normal completion containing a List of property keys
+-- | - L12291–L12306 (16L): TypedArray With Buffer Witness Records
+-- | - L12307–L12315 (9L): MakeTypedArrayWithBufferWitnessRecord ( obj\: a TypedArray, order\: \~seq-cst\~ or \~un...
+-- | - L12316–L12334 (19L): TypedArrayCreate ( prototype\: an Object, ): a TypedArray
+-- | - L12335–L12345 (11L): TypedArrayByteLength ( taRecord\: a TypedArray With Buffer Witness Record, ): a non-neg...
+-- | - L12346–L12357 (12L): TypedArrayLength ( taRecord\: a TypedArray With Buffer Witness Record, ): a non-negativ...
+-- | - L12358–L12380 (23L): IsTypedArrayOutOfBounds ( taRecord\: a TypedArray With Buffer Witness Record, ): a Boolean
+-- | - L12381–L12388 (8L): IsTypedArrayFixedLength ( O\: a TypedArray, ): a Boolean
+-- | - L12389–L12401 (13L): IsValidIntegerIndex ( O\: a TypedArray, index\: a Number, ): a Boolean
+-- | - L12402–L12411 (10L): TypedArrayGetElement ( O\: a TypedArray, index\: a Number, ): a Number, a BigInt, or \u...
+-- | - L12412–L12428 (17L): TypedArraySetElement ( O\: a TypedArray, index\: a Number, value\: an ECMAScript langua...
+-- | - L12429–L12442 (14L): IsArrayBufferViewOutOfBounds ( O\: a TypedArray or a DataView, ): a Boolean
+-- | - L12443–L12475 (33L): Module Namespace Exotic Objects
+-- | - L12476–L12482 (7L): \[GetPrototypeOf\\] ( ): a normal completion containing \null\
+-- | - L12483–L12489 (7L): \[SetPrototypeOf\\] ( V\: an Object or \null\, ): a normal completion containing a Boolean
+-- | - L12490–L12496 (7L): \[IsExtensible\\] ( ): a normal completion containing \false\
+-- | - L12497–L12503 (7L): \[PreventExtensions\\] ( ): a normal completion containing \true\
+-- | - L12504–L12515 (12L): \[GetOwnProperty\\] ( P\: a property key, ): either a normal completion containing eith...
+-- | - L12516–L12533 (18L): \[DefineOwnProperty\\] ( P\: a property key, Desc\: a Property Descriptor, ): either a ...
+-- | - L12534–L12542 (9L): \[HasProperty\\] ( P\: a property key, ): a normal completion containing a Boolean
+-- | - L12543–L12567 (25L): \[Get\\] ( P\: a property key, Receiver\: an ECMAScript language value, ): either a nor...
+
+-- SPEC: L551-L575
+-- | - L12568–L12574 (7L): \[Set\\] ( P\: a property key, V\: an ECMAScript language value, Receiver\: an ECMAScri...
+-- | - L12575–L12583 (9L): \[Delete\\] ( P\: a property key, ): a normal completion containing a Boolean
+-- | - L12584–L12592 (9L): \[OwnPropertyKeys\\] ( ): a normal completion containing a List of property keys
+-- | - L12593–L12609 (17L): ModuleNamespaceCreate ( module\: a Module Record, exports\: a List of Strings, ): a mod...
+-- | - L12610–L12630 (21L): Immutable Prototype Exotic Objects
+-- | - L12631–L12637 (7L): \[SetPrototypeOf\\] ( V\: an Object or \null\, ): either a normal completion containing...
+-- | - L12638–L12643 (6L): SetImmutablePrototype ( O\: an Object, V\: an Object or \null\, ): either a normal comp...
+-- | - L12644–L12707 (64L): Proxy Object Internal Methods and Internal Slots
+-- | - L12708–L12736 (29L): \[GetPrototypeOf\\] ( ): either a normal completion containing either an Object or \nul...
+-- | - L12737–L12762 (26L): \[SetPrototypeOf\\] ( V\: an Object or \null\, ): either a normal completion containing...
+-- | - L12763–L12786 (24L): \[IsExtensible\\] ( ): either a normal completion containing a Boolean or a throw compl...
+-- | - L12787–L12810 (24L): \[PreventExtensions\\] ( ): either a normal completion containing a Boolean or a throw ...
+-- | - L12811–L12863 (53L): \[GetOwnProperty\\] ( P\: a property key, ): either a normal completion containing eith...
+-- | - L12864–L12910 (47L): \[DefineOwnProperty\\] ( P\: a property key, Desc\: a Property Descriptor, ): either a ...
+-- | - L12911–L12937 (27L): \[HasProperty\\] ( P\: a property key, ): either a normal completion containing a Boole...
+-- | - L12938–L12969 (32L): \[Get\\] ( P\: a property key, Receiver\: an ECMAScript language value, ): either a nor...
+-- | - L12970–L13003 (34L): \[Set\\] ( P\: a property key, V\: an ECMAScript language value, Receiver\: an ECMAScri...
+-- | - L13004–L13031 (28L): \[Delete\\] ( P\: a property key, ): either a normal completion containing a Boolean or...
+-- | - L13032–L13079 (48L): \[OwnPropertyKeys\\] ( ): either a normal completion containing a List of property keys...
+-- | - L13080–L13097 (18L): \[Call\\] ( thisArgument\: an ECMAScript language value, argumentsList\: a List of ECMA...
+-- | - L13098–L13121 (24L): \[Construct\\] ( argumentsList\: a List of ECMAScript language values, newTarget\: a co...
+-- | - L13122–L13130 (9L): ValidateNonRevokedProxy ( proxy\: a Proxy exotic object, ): either a normal completion ...
+-- | - L13131–L13146 (16L): ProxyCreate ( target\: an ECMAScript language value, handler\: an ECMAScript language v...
+-- | - L13147–L13148 (2L): ECMAScript Language: Source Text
+-- | - L13149–L13193 (45L): Source Text
+
+-- SPEC: L576-L600
+-- |   - L13151–L13193 (43L): Syntax
+-- | - L13194–L13202 (9L): Static Semantics: UTF16EncodeCodePoint ( cp\: a Unicode code point, ): a String
+-- | - L13203–L13211 (9L): Static Semantics: CodePointsToString ( text\: a sequence of Unicode code points, ): a S...
+-- | - L13212–L13221 (10L): Static Semantics: UTF16SurrogatePairToCodePoint ( lead\: a code unit, trail\: a code un...
+-- | - L13222–L13245 (24L): Static Semantics: CodePointAt ( string\: a String, position\: a non-negative integer, )...
+-- | - L13246–L13259 (14L): Static Semantics: StringToCodePoints ( string\: a String, ): a List of code points
+-- | - L13260–L13284 (25L): Static Semantics: ParseText ( sourceText\: a String or a sequence of Unicode code point...
+-- | - L13285–L13356 (72L): Types of Source Code
+-- | - L13357–L13385 (29L): Directive Prologues and the Use Strict Directive
+-- | - L13386–L13417 (32L): Strict Mode Code
+-- | - L13418–L13422 (5L): Static Semantics: IsStrict ( node\: a Parse Node, ): a Boolean
+-- | - L13423–L13431 (9L): Non-ECMAScript Functions
+-- | - L13432–L13494 (63L): ECMAScript Language: Lexical Grammar
+-- |   - L13482–L13494 (13L): Syntax
+-- | - L13495–L13516 (22L): Unicode Format-Control Characters
+-- | - L13517–L13550 (34L): White Space
+-- |   - L13547–L13550 (4L): Syntax
+-- | - L13551–L13591 (41L): Line Terminators
+-- |   - L13587–L13591 (5L): Syntax
+-- | - L13592–L13629 (38L): Comments
+-- |   - L13613–L13629 (17L): Syntax
+-- | - L13630–L13639 (10L): Hashbang Comments
+-- |   - L13636–L13639 (4L): Syntax
+-- | - L13640–L13651 (12L): Tokens
+-- |   - L13642–L13651 (10L): Syntax
+
+-- SPEC: L601-L625
+-- | - L13652–L13696 (45L): Names and Keywords
+-- |   - L13671–L13696 (26L): Syntax
+-- | - L13697–L13717 (21L): Identifier Names
+-- | - L13718–L13731 (14L): Static Semantics: Early Errors
+-- | - L13732–L13740 (9L): Static Semantics: IdentifierCodePoints ( ): a List of code points
+-- | - L13741–L13750 (10L): Static Semantics: IdentifierCodePoint ( ): a code point
+-- | - L13751–L13829 (79L): Keywords and Reserved Words
+-- |   - L13800–L13829 (30L): Syntax
+-- | - L13830–L13844 (15L): Punctuators
+-- |   - L13832–L13844 (13L): Syntax
+-- | - L13845–L13846 (2L): Literals
+-- | - L13847–L13852 (6L): Null Literals
+-- |   - L13849–L13852 (4L): Syntax
+-- | - L13853–L13858 (6L): Boolean Literals
+-- |   - L13855–L13858 (4L): Syntax
+-- | - L13859–L13912 (54L): Numeric Literals
+-- |   - L13861–L13912 (52L): Syntax
+-- | - L13913–L13921 (9L): Static Semantics: Early Errors
+-- | - L13922–L14024 (103L): Static Semantics: MV
+-- | - L14025–L14043 (19L): Static Semantics: NumericValue ( ): a Number or a BigInt
+-- | - L14044–L14092 (49L): String Literals
+-- |   - L14058–L14092 (35L): Syntax
+-- | - L14093–L14112 (20L): Static Semantics: Early Errors
+-- | - L14113–L14187 (75L): Static Semantics: SV ( ): a String
+-- | - L14188–L14213 (26L): Static Semantics: MV
+
+-- SPEC: L626-L650
+-- | - L14214–L14261 (48L): Regular Expression Literals
+-- |   - L14236–L14261 (26L): Syntax
+-- | - L14262–L14267 (6L): Static Semantics: BodyText ( ): source text
+-- | - L14268–L14273 (6L): Static Semantics: FlagText ( ): source text
+-- | - L14274–L14302 (29L): Template Literal Lexical Components
+-- |   - L14276–L14302 (27L): Syntax
+-- | - L14303–L14334 (32L): Static Semantics: TV ( ): a String or \undefined\
+-- | - L14335–L14449 (115L): Static Semantics: TRV ( ): a String
+-- | - L14450–L14458 (9L): Automatic Semicolon Insertion
+-- | - L14459–L14585 (127L): Rules of Automatic Semicolon Insertion
+-- | - L14586–L14711 (126L): Examples of Automatic Semicolon Insertion
+-- | - L14712–L14731 (20L): Interesting Cases of Automatic Semicolon Insertion
+-- | - L14732–L14753 (22L): Interesting Cases of Automatic Semicolon Insertion in Statement Lists
+-- | - L14754–L14766 (13L): Cases of Automatic Semicolon Insertion and "no \|LineTerminator\| here\"
+-- | - L14767–L14775 (9L): List of Grammar Productions with Optional Operands and "no \|LineTerminator\| here\"
+-- | - L14776–L14777 (2L): ECMAScript Language: Expressions
+-- | - L14778–L14798 (21L): Identifiers
+-- |   - L14780–L14798 (19L): Syntax
+-- | - L14799–L14850 (52L): Static Semantics: Early Errors
+-- | - L14851–L14865 (15L): Static Semantics: StringValue ( ): a String
+-- | - L14866–L14880 (15L): Runtime Semantics: Evaluation
+-- | - L14881–L14912 (32L): Primary Expression
+-- |   - L14883–L14900 (18L): Syntax
+-- |   - L14901–L14912 (12L): Supplemental Syntax
+-- | - L14913–L14914 (2L): The \this\ Keyword
+
+-- SPEC: L651-L675
+-- | - L14915–L14918 (4L): Runtime Semantics: Evaluation
+-- | - L14919–L14922 (4L): Identifier Reference
+-- | - L14923–L14928 (6L): Literals
+-- |   - L14925–L14928 (4L): Syntax
+-- | - L14929–L14937 (9L): Runtime Semantics: Evaluation
+-- | - L14938–L14965 (28L): Array Initializer
+-- |   - L14954–L14965 (12L): Syntax
+-- | - L14966–L15011 (46L): Runtime Semantics: ArrayAccumulation ( array\: an Array, nextIndex\: an integer, ): eit...
+-- | - L15012–L15025 (14L): Runtime Semantics: Evaluation
+-- | - L15026–L15061 (36L): Object Initializer
+-- |   - L15034–L15061 (28L): Syntax
+-- | - L15062–L15102 (41L): Static Semantics: Early Errors
+-- | - L15103–L15107 (5L): Static Semantics: IsComputedPropertyKey ( ): a Boolean
+-- | - L15108–L15119 (12L): Static Semantics: PropertyNameList ( ): a List of Strings
+-- | - L15120–L15135 (16L): Runtime Semantics: Evaluation
+-- | - L15136–L15176 (41L): Runtime Semantics: PropertyDefinitionEvaluation ( object\: an Object, ): either a norma...
+-- | - L15177–L15188 (12L): Function Defining Expressions
+-- | - L15189–L15194 (6L): Regular Expression Literals
+-- |   - L15191–L15194 (4L): Syntax
+-- | - L15195–L15202 (8L): Static Semantics: Early Errors
+-- | - L15203–L15222 (20L): Static Semantics: IsValidRegularExpressionLiteral ( literal\: a \|RegularExpressionLite...
+-- | - L15223–L15230 (8L): Runtime Semantics: Evaluation
+-- | - L15231–L15244 (14L): Template Literals
+-- |   - L15233–L15244 (12L): Syntax
+-- | - L15245–L15277 (33L): Static Semantics: Early Errors
+
+-- SPEC: L676-L700
+-- | - L15278–L15298 (21L): Static Semantics: TemplateStrings ( raw\: a Boolean, ): a List of either Strings or \un...
+-- | - L15299–L15308 (10L): Static Semantics: TemplateString ( templateToken\: a \|NoSubstitutionTemplate\| Parse N...
+-- | - L15309–L15353 (45L): GetTemplateObject ( templateLiteral\: a Parse Node, ): an Array
+-- | - L15354–L15366 (13L): Runtime Semantics: SubstitutionEvaluation ( ): either a normal completion containing a ...
+-- | - L15367–L15404 (38L): Runtime Semantics: Evaluation
+-- | - L15405–L15406 (2L): The Grouping Operator
+-- | - L15407–L15413 (7L): Static Semantics: Early Errors
+-- | - L15414–L15426 (13L): Runtime Semantics: Evaluation
+-- | - L15427–L15486 (60L): Left-Hand-Side Expressions
+-- |   - L15429–L15476 (48L): Syntax
+-- |   - L15477–L15486 (10L): Supplemental Syntax
+-- | - L15487–L15488 (2L): Static Semantics
+-- | - L15489–L15521 (33L): Static Semantics: Early Errors
+-- | - L15522–L15564 (43L): Property Accessors
+-- | - L15565–L15599 (35L): Runtime Semantics: Evaluation
+-- | - L15600–L15610 (11L): EvaluatePropertyAccessWithExpressionKey ( baseValue\: an ECMAScript language value, exp...
+-- | - L15611–L15617 (7L): EvaluatePropertyAccessWithIdentifierKey ( baseValue\: an ECMAScript language value, ide...
+-- | - L15618–L15619 (2L): The \new\ Operator
+-- | - L15620–L15626 (7L): Runtime Semantics: Evaluation
+-- | - L15627–L15635 (9L): EvaluateNew ( constructExpr\: a \|NewExpression\| Parse Node or a \|MemberExpression\| ...
+-- | - L15636–L15637 (2L): Function Calls
+-- | - L15638–L15667 (30L): Runtime Semantics: Evaluation
+-- | - L15668–L15681 (14L): EvaluateCall ( func\: an ECMAScript language value, ref\: an ECMAScript language value ...
+-- | - L15682–L15683 (2L): The \super\ Keyword
+-- | - L15684–L15713 (30L): Runtime Semantics: Evaluation
+
+-- SPEC: L701-L725
+-- | - L15714–L15722 (9L): GetSuperConstructor ( ): an ECMAScript language value
+-- | - L15723–L15731 (9L): MakeSuperPropertyReference ( actualThis\: an ECMAScript language value, propertyKey\: a...
+-- | - L15732–L15735 (4L): Argument Lists
+-- | - L15736–L15773 (38L): Runtime Semantics: ArgumentListEvaluation ( ): either a normal completion containing a ...
+-- | - L15774–L15778 (5L): Optional Chains
+-- | - L15779–L15798 (20L): Runtime Semantics: Evaluation
+-- | - L15799–L15842 (44L): Runtime Semantics: ChainEvaluation ( baseValue\: an ECMAScript language value, baseRefe...
+-- | - L15843–L15844 (2L): Import Calls
+-- | - L15845–L15852 (8L): Runtime Semantics: Evaluation
+-- | - L15853–L15901 (49L): EvaluateImportCall ( specifierExpression\: a Parse Node, optional optionsExpression\: a...
+-- | - L15902–L15939 (38L): ContinueDynamicImport ( promiseCapability\: a PromiseCapability Record, moduleCompletio...
+-- | - L15940–L15946 (7L): Tagged Templates
+-- | - L15947–L15960 (14L): Runtime Semantics: Evaluation
+-- | - L15961–L15962 (2L): Meta Properties
+-- | - L15963–L15978 (16L): Runtime Semantics: Evaluation
+-- | - L15979–L15987 (9L): HostGetImportMetaProperties ( moduleRecord\: a Module Record, ): a List of Records with...
+-- | - L15988–L16002 (15L): HostFinalizeImportMeta ( importMeta\: an Object, moduleRecord\: a Module Record, ): \~u...
+-- | - L16003–L16012 (10L): Update Expressions
+-- |   - L16005–L16012 (8L): Syntax
+-- | - L16013–L16025 (13L): Static Semantics: Early Errors
+-- | - L16026–L16027 (2L): Postfix Increment Operator
+-- | - L16028–L16039 (12L): Runtime Semantics: Evaluation
+-- | - L16040–L16041 (2L): Postfix Decrement Operator
+-- | - L16042–L16053 (12L): Runtime Semantics: Evaluation
+-- | - L16054–L16055 (2L): Prefix Increment Operator
+
+-- SPEC: L726-L750
+-- | - L16056–L16066 (11L): Runtime Semantics: Evaluation
+-- | - L16067–L16068 (2L): Prefix Decrement Operator
+-- | - L16069–L16080 (12L): Runtime Semantics: Evaluation
+-- | - L16081–L16092 (12L): Unary Operators
+-- |   - L16083–L16092 (10L): Syntax
+-- | - L16093–L16094 (2L): The \delete\ Operator
+-- | - L16095–L16115 (21L): Static Semantics: Early Errors
+-- | - L16116–L16149 (34L): Runtime Semantics: Evaluation
+-- | - L16150–L16151 (2L): The \void\ Operator
+-- | - L16152–L16160 (9L): Runtime Semantics: Evaluation
+-- | - L16161–L16162 (2L): The \typeof\ Operator
+-- | - L16163–L16180 (18L): Runtime Semantics: Evaluation
+-- | - L16181–L16184 (4L): Unary \+\ Operator
+-- | - L16185–L16189 (5L): Runtime Semantics: Evaluation
+-- | - L16190–L16195 (6L): Unary \-\ Operator
+-- | - L16196–L16203 (8L): Runtime Semantics: Evaluation
+-- | - L16204–L16205 (2L): Bitwise NOT Operator ( \\~\ )
+-- | - L16206–L16213 (8L): Runtime Semantics: Evaluation
+-- | - L16214–L16215 (2L): Logical NOT Operator ( \!\ )
+-- | - L16216–L16222 (7L): Runtime Semantics: Evaluation
+-- | - L16223–L16230 (8L): Exponentiation Operator
+-- |   - L16225–L16230 (6L): Syntax
+-- | - L16231–L16237 (7L): Runtime Semantics: Evaluation
+-- | - L16238–L16254 (17L): Multiplicative Operators
+-- |   - L16240–L16254 (15L): Syntax
+
+-- SPEC: L751-L775
+-- | - L16255–L16262 (8L): Runtime Semantics: Evaluation
+-- | - L16263–L16271 (9L): Additive Operators
+-- |   - L16265–L16271 (7L): Syntax
+-- | - L16272–L16276 (5L): The Addition Operator ( \+\ )
+-- | - L16277–L16283 (7L): Runtime Semantics: Evaluation
+-- | - L16284–L16288 (5L): The Subtraction Operator ( \-\ )
+-- | - L16289–L16295 (7L): Runtime Semantics: Evaluation
+-- | - L16296–L16305 (10L): Bitwise Shift Operators
+-- |   - L16298–L16305 (8L): Syntax
+-- | - L16306–L16310 (5L): The Left Shift Operator ( \\<\<\ )
+-- | - L16311–L16316 (6L): Runtime Semantics: Evaluation
+-- | - L16317–L16321 (5L): The Signed Right Shift Operator ( \\>\>\ )
+-- | - L16322–L16327 (6L): Runtime Semantics: Evaluation
+-- | - L16328–L16332 (5L): The Unsigned Right Shift Operator ( \\>\>\>\ )
+-- | - L16333–L16338 (6L): Runtime Semantics: Evaluation
+-- | - L16339–L16362 (24L): Relational Operators
+-- |   - L16345–L16362 (18L): Syntax
+-- | - L16363–L16410 (48L): Runtime Semantics: Evaluation
+-- | - L16411–L16434 (24L): InstanceofOperator ( V\: an ECMAScript language value, target\: an ECMAScript language ...
+-- | - L16435–L16450 (16L): Equality Operators
+-- |   - L16441–L16450 (10L): Syntax
+-- | - L16451–L16499 (49L): Runtime Semantics: Evaluation
+-- | - L16500–L16513 (14L): Binary Bitwise Operators
+-- |   - L16502–L16513 (12L): Syntax
+-- | - L16514–L16526 (13L): Runtime Semantics: Evaluation
+
+-- SPEC: L776-L800
+-- | - L16527–L16547 (21L): Binary Logical Operators
+-- |   - L16529–L16547 (19L): Syntax
+-- | - L16548–L16566 (19L): Runtime Semantics: Evaluation
+-- | - L16567–L16583 (17L): Conditional Operator ( \? :\ )
+-- |   - L16569–L16583 (15L): Syntax
+-- | - L16584–L16593 (10L): Runtime Semantics: Evaluation
+-- | - L16594–L16613 (20L): Assignment Operators
+-- |   - L16596–L16613 (18L): Syntax
+-- | - L16614–L16637 (24L): Static Semantics: Early Errors
+-- | - L16638–L16786 (149L): Runtime Semantics: Evaluation
+-- | - L16787–L16928 (142L): ApplyStringOrNumericBinaryOperator ( lVal\: an ECMAScript language value, opText\: \\\\...
+-- | - L16929–L16935 (7L): EvaluateStringOrNumericBinaryExpression ( leftOperand\: a Parse Node, opText\: a sequen...
+-- | - L16936–L16976 (41L): Destructuring Assignment
+-- |   - L16938–L16976 (39L): Supplemental Syntax
+-- | - L16977–L16997 (21L): Static Semantics: Early Errors
+-- | - L16998–L17060 (63L): Runtime Semantics: DestructuringAssignmentEvaluation ( value\: an ECMAScript language v...
+-- | - L17061–L17086 (26L): Runtime Semantics: PropertyDestructuringAssignmentEvaluation ( value\: an ECMAScript la...
+-- | - L17087–L17094 (8L): Runtime Semantics: RestDestructuringAssignmentEvaluation ( value\: an ECMAScript langua...
+-- | - L17095–L17160 (66L): Runtime Semantics: IteratorDestructuringAssignmentEvaluation ( iteratorRecord\: an Iter...
+-- | - L17161–L17181 (21L): Runtime Semantics: KeyedDestructuringAssignmentEvaluation ( value\: an ECMAScript langu...
+-- | - L17182–L17189 (8L): Comma Operator ( \,\ )
+-- |   - L17184–L17189 (6L): Syntax
+-- | - L17190–L17199 (10L): Runtime Semantics: Evaluation
+-- | - L17200–L17222 (23L): ECMAScript Language: Statements and Declarations
+-- |   - L17202–L17222 (21L): Syntax
+
+-- SPEC: L801-L825
+-- | - L17223–L17224 (2L): Statement Semantics
+-- | - L17225–L17233 (9L): Runtime Semantics: Evaluation
+-- | - L17234–L17245 (12L): Block
+-- |   - L17236–L17245 (10L): Syntax
+-- | - L17246–L17261 (16L): Static Semantics: Early Errors
+-- | - L17262–L17292 (31L): Runtime Semantics: Evaluation
+-- | - L17293–L17331 (39L): BlockDeclarationInstantiation ( code\: a Parse Node, env\: a Declarative Environment Re...
+-- | - L17332–L17333 (2L): Declarations and the Variable Statement
+-- | - L17334–L17356 (23L): Let and Const Declarations
+-- |   - L17347–L17356 (10L): Syntax
+-- | - L17357–L17371 (15L): Static Semantics: Early Errors
+-- | - L17372–L17399 (28L): Runtime Semantics: Evaluation
+-- | - L17400–L17423 (24L): Variable Statement
+-- |   - L17413–L17423 (11L): Syntax
+-- | - L17424–L17453 (30L): Runtime Semantics: Evaluation
+-- | - L17454–L17483 (30L): Destructuring Binding Patterns
+-- |   - L17456–L17483 (28L): Syntax
+-- | - L17484–L17503 (20L): Runtime Semantics: PropertyBindingInitialization ( value\: an ECMAScript language value...
+-- | - L17504–L17514 (11L): Runtime Semantics: RestBindingInitialization ( value\: an ECMAScript language value, en...
+-- | - L17515–L17539 (25L): Runtime Semantics: KeyedBindingInitialization ( value\: an ECMAScript language value, e...
+-- | - L17540–L17545 (6L): Empty Statement
+-- |   - L17542–L17545 (4L): Syntax
+-- | - L17546–L17549 (4L): Runtime Semantics: Evaluation
+-- | - L17550–L17570 (21L): Expression Statement
+-- |   - L17552–L17570 (19L): Syntax
+
+-- SPEC: L826-L850
+-- | - L17571–L17575 (5L): Runtime Semantics: Evaluation
+-- | - L17576–L17589 (14L): The \if\ Statement
+-- |   - L17578–L17589 (12L): Syntax
+-- | - L17590–L17605 (16L): Static Semantics: Early Errors
+-- | - L17606–L17621 (16L): Runtime Semantics: Evaluation
+-- | - L17622–L17630 (9L): Iteration Statements
+-- |   - L17624–L17630 (7L): Syntax
+-- | - L17631–L17632 (2L): Semantics
+-- | - L17633–L17643 (11L): LoopContinues ( completion\: a Completion Record, labelSet\: a List of Strings, ): a Bo...
+-- | - L17644–L17653 (10L): Runtime Semantics: LoopEvaluation ( labelSet\: a List of Strings, ): either a normal co...
+-- | - L17654–L17661 (8L): The \do\-\while\ Statement
+-- |   - L17656–L17661 (6L): Syntax
+-- | - L17662–L17671 (10L): Static Semantics: Early Errors
+-- | - L17672–L17683 (12L): Runtime Semantics: DoWhileLoopEvaluation ( labelSet\: a List of Strings, ): either a no...
+-- | - L17684–L17691 (8L): The \while\ Statement
+-- |   - L17686–L17691 (6L): Syntax
+-- | - L17692–L17700 (9L): Static Semantics: Early Errors
+-- | - L17701–L17711 (11L): Runtime Semantics: WhileLoopEvaluation ( labelSet\: a List of Strings, ): either a norm...
+-- | - L17712–L17726 (15L): The \for\ Statement
+-- |   - L17714–L17726 (13L): Syntax
+-- | - L17727–L17746 (20L): Static Semantics: Early Errors
+-- | - L17747–L17787 (41L): Runtime Semantics: ForLoopEvaluation ( labelSet\: a List of Strings, ): either a normal...
+-- | - L17788–L17802 (15L): ForBodyEvaluation ( test\: an \|Expression\| Parse Node or \~empty\~, increment\: an \|...
+-- | - L17803–L17817 (15L): CreatePerIterationEnvironment ( perIterationBindings\: a List of Strings, ): either a n...
+-- | - L17818–L17850 (33L): The \for\-\in\, \for\-\of\, and \for\-\await\-\of\ Statements
+
+-- SPEC: L851-L875
+-- |   - L17820–L17850 (31L): Syntax
+-- | - L17851–L17894 (44L): Static Semantics: Early Errors
+-- | - L17895–L17910 (16L): Static Semantics: IsDestructuring ( ): a Boolean
+-- | - L17911–L17921 (11L): Runtime Semantics: ForDeclarationBindingInitialization ( value\: an ECMAScript language...
+-- | - L17922–L17930 (9L): Runtime Semantics: ForDeclarationBindingInstantiation ( environment\: a Declarative Env...
+-- | - L17931–L17984 (54L): Runtime Semantics: ForInOfLoopEvaluation ( labelSet\: a List of Strings, ): either a no...
+-- | - L17985–L18009 (25L): ForIn/OfHeadEvaluation ( uninitializedBoundNames\: a List of Strings, expr\: an \|Expre...
+-- | - L18010–L18067 (58L): ForIn/OfBodyEvaluation ( lhs\: a Parse Node, stmt\: a \|Statement\| Parse Node, iterato...
+-- | - L18068–L18073 (6L): Runtime Semantics: Evaluation
+-- | - L18074–L18154 (81L): EnumerateObjectProperties ( O\: an Object, ): an iterator object
+-- | - L18155–L18162 (8L): For-In Iterator Objects
+-- | - L18163–L18177 (15L): CreateForInIterator ( object\: an Object, ): a For-In Iterator
+-- | - L18178–L18188 (11L): The %ForInIteratorPrototype% Object
+-- | - L18189–L18210 (22L): %ForInIteratorPrototype%.next ( )
+-- | - L18211–L18223 (13L): Properties of For-In Iterator Instances
+-- | - L18224–L18230 (7L): The \continue\ Statement
+-- |   - L18226–L18230 (5L): Syntax
+-- | - L18231–L18239 (9L): Static Semantics: Early Errors
+-- | - L18240–L18248 (9L): Runtime Semantics: Evaluation
+-- | - L18249–L18255 (7L): The \break\ Statement
+-- |   - L18251–L18255 (5L): Syntax
+-- | - L18256–L18264 (9L): Static Semantics: Early Errors
+-- | - L18265–L18273 (9L): Runtime Semantics: Evaluation
+-- | - L18274–L18289 (16L): The \return\ Statement
+-- |   - L18276–L18289 (14L): Syntax
+
+-- SPEC: L876-L900
+-- | - L18290–L18298 (9L): Runtime Semantics: Evaluation
+-- | - L18299–L18314 (16L): The \with\ Statement
+-- |   - L18305–L18314 (10L): Syntax
+-- | - L18315–L18324 (10L): Static Semantics: Early Errors
+-- | - L18325–L18340 (16L): Runtime Semantics: Evaluation
+-- | - L18341–L18356 (16L): The \switch\ Statement
+-- |   - L18343–L18356 (14L): Syntax
+-- | - L18357–L18371 (15L): Static Semantics: Early Errors
+-- | - L18372–L18415 (44L): Runtime Semantics: CaseBlockEvaluation ( input\: an ECMAScript language value, ): eithe...
+-- | - L18416–L18430 (15L): CaseClauseIsSelected ( C\: a \|CaseClause\| Parse Node, input\: an ECMAScript language ...
+-- | - L18431–L18452 (22L): Runtime Semantics: Evaluation
+-- | - L18453–L18469 (17L): Labelled Statements
+-- |   - L18455–L18469 (15L): Syntax
+-- | - L18470–L18477 (8L): Static Semantics: Early Errors
+-- | - L18478–L18485 (8L): Static Semantics: IsLabelledFunction ( stmt\: a \|Statement\| Parse Node, ): a Boolean
+-- | - L18486–L18490 (5L): Runtime Semantics: Evaluation
+-- | - L18491–L18529 (39L): Runtime Semantics: LabelledEvaluation ( labelSet\: a List of Strings, ): either a norma...
+-- | - L18530–L18536 (7L): The \throw\ Statement
+-- |   - L18532–L18536 (5L): Syntax
+-- | - L18537–L18542 (6L): Runtime Semantics: Evaluation
+-- | - L18543–L18563 (21L): The \try\ Statement
+-- |   - L18545–L18563 (19L): Syntax
+-- | - L18564–L18578 (15L): Static Semantics: Early Errors
+-- | - L18579–L18597 (19L): Runtime Semantics: CatchClauseEvaluation ( thrownValue\: an ECMAScript language value, ...
+-- | - L18598–L18615 (18L): Runtime Semantics: Evaluation
+
+-- SPEC: L901-L925
+-- | - L18616–L18621 (6L): The \debugger\ Statement
+-- |   - L18618–L18621 (4L): Syntax
+-- | - L18622–L18632 (11L): Runtime Semantics: Evaluation
+-- | - L18633–L18638 (6L): ECMAScript Language: Functions and Classes
+-- | - L18639–L18654 (16L): Parameter Lists
+-- |   - L18641–L18654 (14L): Syntax
+-- | - L18655–L18671 (17L): Static Semantics: Early Errors
+-- | - L18672–L18716 (45L): Static Semantics: ContainsExpression ( ): a Boolean
+-- | - L18717–L18741 (25L): Static Semantics: IsSimpleParameterList ( ): a Boolean
+-- | - L18742–L18751 (10L): Static Semantics: HasInitializer ( ): a Boolean
+-- | - L18752–L18779 (28L): Static Semantics: ExpectedArgumentCount ( ): a non-negative integer
+-- | - L18780–L18794 (15L): Function Definitions
+-- |   - L18782–L18794 (13L): Syntax
+-- | - L18795–L18840 (46L): Static Semantics: Early Errors
+-- | - L18841–L18846 (6L): Static Semantics: FunctionBodyContainsUseStrict ( ): a Boolean
+-- | - L18847–L18856 (10L): Runtime Semantics: EvaluateFunctionBody ( functionObject\: an ECMAScript function objec...
+-- | - L18857–L18878 (22L): Runtime Semantics: InstantiateOrdinaryFunctionObject ( env\: an Environment Record, pri...
+-- | - L18879–L18914 (36L): Runtime Semantics: InstantiateOrdinaryFunctionExpression ( optional name\: a property k...
+-- | - L18915–L18937 (23L): Runtime Semantics: Evaluation
+-- | - L18938–L18962 (25L): Arrow Function Definitions
+-- |   - L18940–L18950 (11L): Syntax
+-- |   - L18951–L18962 (12L): Supplemental Syntax
+-- | - L18963–L18982 (20L): Static Semantics: Early Errors
+-- | - L18983–L18988 (6L): Static Semantics: ConciseBodyContainsUseStrict ( ): a Boolean
+-- | - L18989–L18994 (6L): Runtime Semantics: EvaluateConciseBody ( functionObject\: an ECMAScript function object...
+
+-- SPEC: L926-L950
+-- | - L18995–L19020 (26L): Runtime Semantics: InstantiateArrowFunctionExpression ( optional name\: a property key ...
+-- | - L19021–L19028 (8L): Runtime Semantics: Evaluation
+-- | - L19029–L19042 (14L): Method Definitions
+-- |   - L19031–L19042 (12L): Syntax
+-- | - L19043–L19066 (24L): Static Semantics: Early Errors
+-- | - L19067–L19090 (24L): Static Semantics: HasDirectSuper ( ): a Boolean
+-- | - L19091–L19099 (9L): Static Semantics: SpecialMethod ( ): a Boolean
+-- | - L19100–L19115 (16L): Runtime Semantics: DefineMethod ( object\: an Object, optional functionPrototype\: an O...
+-- | - L19116–L19205 (90L): Runtime Semantics: MethodDefinitionEvaluation ( object\: an Object, enumerable\: a Bool...
+-- | - L19206–L19233 (28L): Generator Function Definitions
+-- |   - L19208–L19233 (26L): Syntax
+-- | - L19234–L19278 (45L): Static Semantics: Early Errors
+-- | - L19279–L19291 (13L): Runtime Semantics: EvaluateGeneratorBody ( functionObject\: an ECMAScript function obje...
+-- | - L19292–L19320 (29L): Runtime Semantics: InstantiateGeneratorFunctionObject ( env\: an Environment Record, pr...
+-- | - L19321–L19363 (43L): Runtime Semantics: InstantiateGeneratorFunctionExpression ( optional name\: a property ...
+-- | - L19364–L19433 (70L): Runtime Semantics: Evaluation
+-- | - L19434–L19458 (25L): Async Generator Function Definitions
+-- |   - L19436–L19458 (23L): Syntax
+-- | - L19459–L19508 (50L): Static Semantics: Early Errors
+-- | - L19509–L19521 (13L): Runtime Semantics: EvaluateAsyncGeneratorBody ( functionObject\: an ECMAScript function...
+-- | - L19522–L19553 (32L): Runtime Semantics: InstantiateAsyncGeneratorFunctionObject ( env\: an Environment Recor...
+-- | - L19554–L19599 (46L): Runtime Semantics: InstantiateAsyncGeneratorFunctionExpression ( optional name\: a prop...
+-- | - L19600–L19606 (7L): Runtime Semantics: Evaluation
+-- | - L19607–L19633 (27L): Class Definitions
+-- |   - L19609–L19633 (25L): Syntax
+
+-- SPEC: L951-L975
+-- | - L19634–L19714 (81L): Static Semantics: Early Errors
+-- | - L19715–L19724 (10L): Static Semantics: ClassElementKind ( ): \~constructor-method\~, \~non-constructor-metho...
+-- | - L19725–L19738 (14L): Static Semantics: ConstructorMethod ( ): a \|ClassElement\| Parse Node or \~empty\~
+-- | - L19739–L19747 (9L): Static Semantics: IsStatic ( ): a Boolean
+-- | - L19748–L19757 (10L): Static Semantics: NonConstructorElements ( ): a List of \|ClassElement\| Parse Nodes
+-- | - L19758–L19769 (12L): Static Semantics: PrototypePropertyNameList ( ): a List of property keys
+-- | - L19770–L19800 (31L): Static Semantics: AllPrivateIdentifiersValid ( names\: a List of Strings, ): a Boolean
+-- | - L19801–L19822 (22L): Static Semantics: PrivateBoundIdentifiers ( ): a List of Strings
+-- | - L19823–L19864 (42L): Static Semantics: ContainsArguments ( ): a Boolean
+-- | - L19865–L19883 (19L): Runtime Semantics: ClassFieldDefinitionEvaluation ( homeObject\: an Object, ): either a...
+-- | - L19884–L19899 (16L): Runtime Semantics: ClassStaticBlockDefinitionEvaluation ( homeObject\: an Object, ): a ...
+-- | - L19900–L19908 (9L): Runtime Semantics: EvaluateClassStaticBlockBody ( functionObject\: an ECMAScript functi...
+-- | - L19909–L19919 (11L): Runtime Semantics: ClassElementEvaluation ( object\: an Object, ): either a normal comp...
+-- | - L19920–L20060 (141L): Runtime Semantics: ClassDefinitionEvaluation ( classBinding\: a String or \undefined\, ...
+-- | - L20061–L20078 (18L): Runtime Semantics: BindingClassDeclarationEvaluation ( ): either a normal completion co...
+-- | - L20079–L20106 (28L): Runtime Semantics: Evaluation
+-- | - L20107–L20150 (44L): Async Function Definitions
+-- |   - L20109–L20150 (42L): Syntax
+-- | - L20151–L20194 (44L): Static Semantics: Early Errors
+-- | - L20195–L20213 (19L): Runtime Semantics: InstantiateAsyncFunctionObject ( env\: an Environment Record, privat...
+-- | - L20214–L20248 (35L): Runtime Semantics: InstantiateAsyncFunctionExpression ( optional name\: a property key ...
+-- | - L20249–L20259 (11L): Runtime Semantics: EvaluateAsyncFunctionBody ( functionObject\: an ECMAScript function ...
+-- | - L20260–L20268 (9L): Runtime Semantics: Evaluation
+-- | - L20269–L20294 (26L): Async Arrow Function Definitions
+-- |   - L20271–L20283 (13L): Syntax
+
+-- SPEC: L976-L1000
+-- |   - L20284–L20294 (11L): Supplemental Syntax
+-- | - L20295–L20319 (25L): Static Semantics: Early Errors
+-- | - L20320–L20325 (6L): Static Semantics: AsyncConciseBodyContainsUseStrict ( ): a Boolean
+-- | - L20326–L20336 (11L): Runtime Semantics: EvaluateAsyncConciseBody ( functionObject\: an ECMAScript function o...
+-- | - L20337–L20362 (26L): Runtime Semantics: InstantiateAsyncArrowFunctionExpression ( optional name\: a property...
+-- | - L20363–L20369 (7L): Runtime Semantics: Evaluation
+-- | - L20370–L20371 (2L): Tail Position Calls
+-- | - L20372–L20389 (18L): Static Semantics: IsInTailPosition ( call\: a \|CallExpression\| Parse Node, a \|Member...
+-- | - L20390–L20529 (140L): Static Semantics: HasCallInTailPosition ( call\: a \|CallExpression\| Parse Node, a \|M...
+-- | - L20530–L20549 (20L): PrepareForTailCall ( ): \~unused\~
+-- | - L20550–L20551 (2L): ECMAScript Language: Scripts and Modules
+-- | - L20552–L20558 (7L): Scripts
+-- |   - L20554–L20558 (5L): Syntax
+-- | - L20559–L20588 (30L): Static Semantics: Early Errors
+-- | - L20589–L20594 (6L): Static Semantics: ScriptIsStrict ( ): a Boolean
+-- | - L20595–L20598 (4L): Runtime Semantics: Evaluation
+-- | - L20599–L20611 (13L): Script Records
+-- | - L20612–L20628 (17L): ParseScript ( sourceText\: ECMAScript source text, realm\: a Realm Record, hostDefined\...
+-- | - L20629–L20653 (25L): ScriptEvaluation ( scriptRecord\: a Script Record, ): either a normal completion contai...
+-- | - L20654–L20764 (111L): GlobalDeclarationInstantiation ( script\: a \|Script\| Parse Node, env\: a Global Envir...
+-- | - L20765–L20773 (9L): Modules
+-- |   - L20767–L20773 (7L): Syntax
+-- | - L20774–L20775 (2L): Module Semantics
+-- | - L20776–L20813 (38L): Static Semantics: Early Errors
+-- | - L20814–L20823 (10L): Static Semantics: ImportedLocalNames ( importEntries\: a List of ImportEntry Records, )...
+
+-- SPEC: L1001-L1025
+-- | - L20824–L20854 (31L): ModuleRequest Records
+-- | - L20855–L20872 (18L): ModuleRequestsEqual ( left\: a ModuleRequest Record or a LoadedModuleRequest Record, ri...
+-- | - L20873–L20913 (41L): Static Semantics: ModuleRequests ( ): a List of ModuleRequest Records
+-- | - L20914–L21019 (106L): Abstract Module Records
+-- | - L21020–L21036 (17L): EvaluateModuleSync ( module\: a Module Record, ): either a normal completion containing...
+-- | - L21037–L21084 (48L): Cyclic Module Records
+-- | - L21085–L21089 (5L): Implementation of Module Record Abstract Methods
+-- | - L21090–L21113 (24L): LoadRequestedModules ( optional hostDefined\: anything, ): a Promise
+-- | - L21114–L21152 (39L): InnerModuleLoading ( state\: a GraphLoadingState Record, module\: a Module Record, ): \...
+-- | - L21153–L21165 (13L): ContinueModuleLoading ( state\: a GraphLoadingState Record, moduleCompletion\: either a...
+-- | - L21166–L21188 (23L): Link ( ): either a normal completion containing \~unused\~ or a throw completion
+-- | - L21189–L21232 (44L): InnerModuleLinking ( module\: a Module Record, stack\: a List of Cyclic Module Records,...
+-- | - L21233–L21282 (50L): Evaluate ( ): a Promise
+-- | - L21283–L21357 (75L): InnerModuleEvaluation ( module\: a Module Record, stack\: a List of Cyclic Module Recor...
+-- | - L21358–L21377 (20L): ExecuteAsyncModule ( module\: a Cyclic Module Record, ): \~unused\~
+-- | - L21378–L21396 (19L): GatherAvailableAncestors ( module\: a Cyclic Module Record, execList\: a List of Cyclic...
+-- | - L21397–L21432 (36L): AsyncModuleExecutionFulfilled ( module\: a Cyclic Module Record, ): \~unused\~
+-- | - L21433–L21455 (23L): AsyncModuleExecutionRejected ( module\: a Cyclic Module Record, error\: an ECMAScript l...
+-- | - L21456–L21871 (416L): Example Cyclic Module Record Graphs
+-- | - L21872–L21968 (97L): Source Text Module Records
+-- | - L21969–L22030 (62L): ParseModule ( sourceText\: ECMAScript source text, realm\: a Realm Record, hostDefined\...
+-- | - L22031–L22036 (6L): Implementation of Module Record Abstract Methods
+-- | - L22037–L22067 (31L): GetExportedNames ( optional exportStarSet\: a List of Source Text Module Records, ): a ...
+-- | - L22068–L22138 (71L): ResolveExport ( exportName\: a String, optional resolveSet\: a List of Records with fie...
+-- | - L22139–L22144 (6L): Implementation of Cyclic Module Record Abstract Methods
+
+-- SPEC: L1026-L1050
+-- | - L22145–L22210 (66L): InitializeEnvironment ( ): either a normal completion containing \~unused\~ or a throw ...
+-- | - L22211–L22236 (26L): ExecuteModule ( optional capability\: a PromiseCapability Record, ): either a normal co...
+-- | - L22237–L22255 (19L): Synthetic Module Records
+-- | - L22256–L22272 (17L): CreateDefaultExportSyntheticModule ( defaultExport\: an ECMAScript language value, ): a...
+-- | - L22273–L22281 (9L): ParseJSONModule ( source\: a String, ): either a normal completion containing a Synthet...
+-- | - L22282–L22293 (12L): SetSyntheticModuleExport ( module\: a Synthetic Module Record, exportName\: a String, e...
+-- | - L22294–L22298 (5L): Implementation of Module Record Abstract Methods
+-- | - L22299–L22307 (9L): LoadRequestedModules ( optional hostDefined\: anything, ): a Promise
+-- | - L22308–L22315 (8L): GetExportedNames ( optional exportStarSet\: a List of Source Text Module Records, ): a ...
+-- | - L22316–L22325 (10L): ResolveExport ( exportName\: a String, optional resolveSet\: a List of Records with fie...
+-- | - L22326–L22338 (13L): Link ( ): a normal completion containing \~unused\~
+-- | - L22339–L22361 (23L): Evaluate ( ): a Promise
+-- | - L22362–L22375 (14L): GetImportedModule ( referrer\: a Cyclic Module Record, request\: a ModuleRequest Record...
+-- | - L22376–L22441 (66L): HostLoadImportedModule ( referrer\: a Script Record, a Cyclic Module Record, or a Realm...
+-- | - L22442–L22460 (19L): FinishLoadingImportedModule ( referrer\: a Script Record, a Cyclic Module Record, or a ...
+-- | - L22461–L22471 (11L): AllImportAttributesSupported ( attributes\: a List of ImportAttribute Records, ): a Boo...
+-- | - L22472–L22495 (24L): HostGetSupportedImportAttributes ( ): a List of Strings
+-- | - L22496–L22519 (24L): GetModuleNamespace ( module\: an instance of a concrete subclass of Module Record, ): a...
+-- | - L22520–L22535 (16L): Runtime Semantics: Evaluation
+-- | - L22536–L22554 (19L): Imports
+-- |   - L22538–L22554 (17L): Syntax
+-- | - L22555–L22567 (13L): Static Semantics: Early Errors
+-- | - L22568–L22581 (14L): Static Semantics: ImportEntries ( ): a List of ImportEntry Records
+-- | - L22582–L22619 (38L): Static Semantics: ImportEntriesForModule ( module\: a ModuleRequest Record, ): a List o...
+-- | - L22620–L22639 (20L): Static Semantics: WithClauseToAttributes ( ): a List of ImportAttribute Records
+
+-- SPEC: L1051-L1075
+-- | - L22640–L22656 (17L): Exports
+-- |   - L22642–L22656 (15L): Syntax
+-- | - L22657–L22671 (15L): Static Semantics: Early Errors
+-- | - L22672–L22699 (28L): Static Semantics: ExportedBindings ( ): a List of Strings
+-- | - L22700–L22730 (31L): Static Semantics: ExportedNames ( ): a List of Strings
+-- | - L22731–L22776 (46L): Static Semantics: ExportEntries ( ): a List of ExportEntry Records
+-- | - L22777–L22810 (34L): Static Semantics: ExportEntriesForModule ( module\: a ModuleRequest Record or \null\, )...
+-- | - L22811–L22823 (13L): Static Semantics: ReferencedBindings ( ): a List of Parse Nodes
+-- | - L22824–L22848 (25L): Runtime Semantics: Evaluation
+-- | - L22849–L22890 (42L): Error Handling and Language Extensions
+-- | - L22891–L22939 (49L): Forbidden Extensions
+-- | - L22940–L23070 (131L): ECMAScript Standard Built-in Objects
+-- | - L23071–L23084 (14L): The Global Object
+-- | - L23085–L23086 (2L): Value Properties of the Global Object
+-- | - L23087–L23095 (9L): globalThis
+-- | - L23096–L23101 (6L): Infinity
+-- | - L23102–L23107 (6L): NaN
+-- | - L23108–L23113 (6L): undefined
+-- | - L23114–L23115 (2L): Function Properties of the Global Object
+-- | - L23116–L23123 (8L): eval ( x\ )
+-- | - L23124–L23199 (76L): PerformEval ( x\: an ECMAScript language value, strictCaller\: a Boolean, direct\: a Bo...
+-- | - L23200–L23215 (16L): HostEnsureCanCompileStrings ( calleeRealm\: a Realm Record, parameterStrings\: a List o...
+-- | - L23216–L23346 (131L): EvalDeclarationInstantiation ( body\: a \|ScriptBody\| Parse Node, varEnv\: an Environm...
+-- | - L23347–L23355 (9L): isFinite ( number\ )
+-- | - L23356–L23368 (13L): isNaN ( number\ )
+
+-- SPEC: L1076-L1100
+-- | - L23369–L23392 (24L): parseFloat ( string\ )
+-- | - L23393–L23439 (47L): parseInt ( string\, radix\ )
+-- | - L23440–L23461 (22L): URI Handling Functions
+-- | - L23462–L23477 (16L): decodeURI ( encodedURI\ )
+-- | - L23478–L23492 (15L): decodeURIComponent ( encodedURIComponent\ )
+-- | - L23493–L23506 (14L): encodeURI ( uri\ )
+-- | - L23507–L23520 (14L): encodeURIComponent ( uriComponent\ )
+-- | - L23521–L23550 (30L): Encode ( string\: a String, extraUnescaped\: a String, ): either a normal completion co...
+-- | - L23551–L23591 (41L): Decode ( string\: a String, preserveEscapeSet\: a String, ): either a normal completion...
+-- | - L23592–L23605 (14L): ParseHexOctet ( string\: a String, position\: a non-negative integer, ): either a non-n...
+-- | - L23606–L23607 (2L): Constructor Properties of the Global Object
+-- | - L23608–L23611 (4L): AggregateError ( . . . )
+-- | - L23612–L23615 (4L): Array ( . . . )
+-- | - L23616–L23619 (4L): ArrayBuffer ( . . . )
+-- | - L23620–L23623 (4L): BigInt ( . . . )
+-- | - L23624–L23627 (4L): BigInt64Array ( . . . )
+-- | - L23628–L23631 (4L): BigUint64Array ( . . . )
+-- | - L23632–L23635 (4L): Boolean ( . . . )
+-- | - L23636–L23639 (4L): DataView ( . . . )
+-- | - L23640–L23643 (4L): Date ( . . . )
+-- | - L23644–L23647 (4L): Error ( . . . )
+-- | - L23648–L23651 (4L): EvalError ( . . . )
+-- | - L23652–L23655 (4L): FinalizationRegistry ( . . . )
+-- | - L23656–L23659 (4L): Float16Array ( . . . )
+-- | - L23660–L23663 (4L): Float32Array ( . . . )
+
+-- SPEC: L1101-L1125
+-- | - L23664–L23667 (4L): Float64Array ( . . . )
+-- | - L23668–L23671 (4L): Function ( . . . )
+-- | - L23672–L23675 (4L): Int8Array ( . . . )
+-- | - L23676–L23679 (4L): Int16Array ( . . . )
+-- | - L23680–L23683 (4L): Int32Array ( . . . )
+-- | - L23684–L23687 (4L): Iterator ( . . . )
+-- | - L23688–L23691 (4L): Map ( . . . )
+-- | - L23692–L23695 (4L): Number ( . . . )
+-- | - L23696–L23699 (4L): Object ( . . . )
+-- | - L23700–L23703 (4L): Promise ( . . . )
+-- | - L23704–L23707 (4L): Proxy ( . . . )
+-- | - L23708–L23711 (4L): RangeError ( . . . )
+-- | - L23712–L23715 (4L): ReferenceError ( . . . )
+-- | - L23716–L23719 (4L): RegExp ( . . . )
+-- | - L23720–L23723 (4L): Set ( . . . )
+-- | - L23724–L23727 (4L): SharedArrayBuffer ( . . . )
+-- | - L23728–L23731 (4L): String ( . . . )
+-- | - L23732–L23735 (4L): Symbol ( . . . )
+-- | - L23736–L23739 (4L): SyntaxError ( . . . )
+-- | - L23740–L23743 (4L): TypeError ( . . . )
+-- | - L23744–L23747 (4L): Uint8Array ( . . . )
+-- | - L23748–L23751 (4L): Uint8ClampedArray ( . . . )
+-- | - L23752–L23755 (4L): Uint16Array ( . . . )
+-- | - L23756–L23759 (4L): Uint32Array ( . . . )
+-- | - L23760–L23763 (4L): URIError ( . . . )
+
+-- SPEC: L1126-L1150
+-- | - L23764–L23767 (4L): WeakMap ( . . . )
+-- | - L23768–L23771 (4L): WeakRef ( . . . )
+-- | - L23772–L23775 (4L): WeakSet ( . . . )
+-- | - L23776–L23777 (2L): Other Properties of the Global Object
+-- | - L23778–L23781 (4L): Atomics
+-- | - L23782–L23785 (4L): JSON
+-- | - L23786–L23789 (4L): Math
+-- | - L23790–L23793 (4L): Reflect
+-- | - L23794–L23795 (2L): Fundamental Objects
+-- | - L23796–L23797 (2L): Object Objects
+-- | - L23798–L23810 (13L): The Object Constructor
+-- | - L23811–L23820 (10L): Object ( value\ )
+-- | - L23821–L23828 (8L): Properties of the Object Constructor
+-- | - L23829–L23848 (20L): Object.assign ( target\, \...sources\ )
+-- | - L23849–L23860 (12L): Object.create ( O\, Properties\ )
+-- | - L23861–L23870 (10L): Object.defineProperties ( O\, Properties\ )
+-- | - L23871–L23884 (14L): ObjectDefineProperties ( O\: an Object, Properties\: an ECMAScript language value, ): e...
+-- | - L23885–L23896 (12L): Object.defineProperty ( O\, P\, Attributes\ )
+-- | - L23897–L23904 (8L): Object.entries ( O\ )
+-- | - L23905–L23912 (8L): Object.freeze ( O\ )
+-- | - L23913–L23928 (16L): Object.fromEntries ( iterable\ )
+-- | - L23929–L23937 (9L): Object.getOwnPropertyDescriptor ( O\, P\ )
+-- | - L23938–L23950 (13L): Object.getOwnPropertyDescriptors ( O\ )
+-- | - L23951–L23956 (6L): Object.getOwnPropertyNames ( O\ )
+-- | - L23957–L23962 (6L): Object.getOwnPropertySymbols ( O\ )
+
+-- SPEC: L1151-L1175
+-- | - L23963–L23971 (9L): GetOwnPropertyKeys ( O\: an ECMAScript language value, type\: \~string\~ or \~symbol\~,...
+-- | - L23972–L23978 (7L): Object.getPrototypeOf ( O\ )
+-- | - L23979–L24003 (25L): Object.groupBy ( items\, callback\ )
+-- | - L24004–L24010 (7L): Object.hasOwn ( O\, P\ )
+-- | - L24011–L24016 (6L): Object.is ( value1\, value2\ )
+-- | - L24017–L24023 (7L): Object.isExtensible ( O\ )
+-- | - L24024–L24030 (7L): Object.isFrozen ( O\ )
+-- | - L24031–L24037 (7L): Object.isSealed ( O\ )
+-- | - L24038–L24045 (8L): Object.keys ( O\ )
+-- | - L24046–L24053 (8L): Object.preventExtensions ( O\ )
+-- | - L24054–L24061 (8L): Object.prototype
+-- | - L24062–L24069 (8L): Object.seal ( O\ )
+-- | - L24070–L24079 (10L): Object.setPrototypeOf ( O\, proto\ )
+-- | - L24080–L24087 (8L): Object.values ( O\ )
+-- | - L24088–L24098 (11L): Properties of the Object Prototype Object
+-- | - L24099–L24102 (4L): Object.prototype.constructor
+-- | - L24103–L24116 (14L): Object.prototype.hasOwnProperty ( V\ )
+-- | - L24117–L24130 (14L): Object.prototype.isPrototypeOf ( V\ )
+-- | - L24131–L24147 (17L): Object.prototype.propertyIsEnumerable ( V\ )
+-- | - L24148–L24167 (20L): Object.prototype.toLocaleString (  reserved1\ \[ , reserved2\ \ \] )
+-- | - L24168–L24202 (35L): Object.prototype.toString ( )
+-- | - L24203–L24208 (6L): Object.prototype.valueOf ( )
+-- | - L24209–L24215 (7L): Object.prototype.\proto\
+-- | - L24216–L24223 (8L): get Object.prototype.\proto\
+-- | - L24224–L24235 (12L): set Object.prototype.\proto\
+
+-- SPEC: L1176-L1200
+-- | - L24236–L24237 (2L): Legacy Object.prototype Accessor Methods
+-- | - L24238–L24249 (12L): Object.prototype.\defineGetter\ ( P\, getter\ )
+-- | - L24250–L24261 (12L): Object.prototype.\defineSetter\ ( P\, setter\ )
+-- | - L24262–L24273 (12L): Object.prototype.\lookupGetter\ ( P\ )
+-- | - L24274–L24285 (12L): Object.prototype.\lookupSetter\ ( P\ )
+-- | - L24286–L24290 (5L): Properties of Object Instances
+-- | - L24291–L24292 (2L): Function Objects
+-- | - L24293–L24313 (21L): The Function Constructor
+-- | - L24314–L24337 (24L): Function ( \...parameterArgs\, bodyArg\ )
+-- | - L24338–L24422 (85L): CreateDynamicFunction ( constructor\: a constructor, newTarget\: a constructor or \unde...
+-- | - L24423–L24432 (10L): Properties of the Function Constructor
+-- | - L24433–L24439 (7L): Function.prototype
+-- | - L24440–L24458 (19L): Properties of the Function Prototype Object
+-- | - L24459–L24482 (24L): Function.prototype.apply ( thisArg\, argArray\ )
+-- | - L24483–L24510 (28L): Function.prototype.bind ( thisArg\, \...args\ )
+-- | - L24511–L24531 (21L): Function.prototype.call ( thisArg\, \...args\ )
+-- | - L24532–L24535 (4L): Function.prototype.constructor
+-- | - L24536–L24559 (24L): Function.prototype.toString ( )
+-- | - L24560–L24599 (40L): Function.prototype  %Symbol.hasInstance% \ ( V\ )
+-- | - L24600–L24608 (9L): Function Instances
+-- | - L24609–L24619 (11L): length
+-- | - L24620–L24632 (13L): name
+-- | - L24633–L24650 (18L): prototype
+-- | - L24651–L24666 (16L): HostHasSourceTextAvailable ( func\: a function object, ): a Boolean
+-- | - L24667–L24668 (2L): Boolean Objects
+
+-- SPEC: L1201-L1225
+-- | - L24669–L24685 (17L): The Boolean Constructor
+-- | - L24686–L24694 (9L): Boolean ( value\ )
+-- | - L24695–L24702 (8L): Properties of the Boolean Constructor
+-- | - L24703–L24710 (8L): Boolean.prototype
+-- | - L24711–L24721 (11L): Properties of the Boolean Prototype Object
+-- | - L24722–L24725 (4L): Boolean.prototype.constructor
+-- | - L24726–L24732 (7L): Boolean.prototype.toString ( )
+-- | - L24733–L24738 (6L): Boolean.prototype.valueOf ( )
+-- | - L24739–L24745 (7L): ThisBooleanValue ( value\: an ECMAScript language value, ): either a normal completion ...
+-- | - L24746–L24752 (7L): Properties of Boolean Instances
+-- | - L24753–L24754 (2L): Symbol Objects
+-- | - L24755–L24767 (13L): The Symbol Constructor
+-- | - L24768–L24777 (10L): Symbol (  description\ \ )
+-- | - L24778–L24785 (8L): Properties of the Symbol Constructor
+-- | - L24786–L24793 (8L): Symbol.asyncIterator
+-- | - L24794–L24817 (24L): Symbol.for ( key\ )
+-- | - L24818–L24825 (8L): Symbol.hasInstance
+-- | - L24826–L24833 (8L): Symbol.isConcatSpreadable
+-- | - L24834–L24841 (8L): Symbol.iterator
+-- | - L24842–L24848 (7L): Symbol.keyFor ( sym\ )
+-- | - L24849–L24856 (8L): Symbol.match
+-- | - L24857–L24864 (8L): Symbol.matchAll
+-- | - L24865–L24872 (8L): Symbol.prototype
+-- | - L24873–L24880 (8L): Symbol.replace
+-- | - L24881–L24888 (8L): Symbol.search
+
+-- SPEC: L1226-L1250
+-- | - L24889–L24896 (8L): Symbol.species
+-- | - L24897–L24904 (8L): Symbol.split
+-- | - L24905–L24912 (8L): Symbol.toPrimitive
+-- | - L24913–L24920 (8L): Symbol.toStringTag
+-- | - L24921–L24928 (8L): Symbol.unscopables
+-- | - L24929–L24939 (11L): Properties of the Symbol Prototype Object
+-- | - L24940–L24943 (4L): Symbol.prototype.constructor
+-- | - L24944–L24952 (9L): get Symbol.prototype.description
+-- | - L24953–L24959 (7L): Symbol.prototype.toString ( )
+-- | - L24960–L24966 (7L): SymbolDescriptiveString ( sym\: a Symbol, ): a String
+-- | - L24967–L24972 (6L): Symbol.prototype.valueOf ( )
+-- | - L24973–L24979 (7L): ThisSymbolValue ( value\: an ECMAScript language value, ): either a normal completion c...
+-- | - L24980–L24996 (17L): Symbol.prototype  %Symbol.toPrimitive% \ ( hint\ )
+-- | - L24997–L25004 (8L): Symbol.prototype  %Symbol.toStringTag% \
+-- | - L25005–L25011 (7L): Properties of Symbol Instances
+-- | - L25012–L25013 (2L): Abstract Operations for Symbols
+-- | - L25014–L25024 (11L): KeyForSymbol ( sym\: a Symbol, ): a String or \undefined\
+-- | - L25025–L25034 (10L): Error Objects
+-- | - L25035–L25051 (17L): The Error Constructor
+-- | - L25052–L25064 (13L): Error ( message\  , options\ \ )
+-- | - L25065–L25072 (8L): Properties of the Error Constructor
+-- | - L25073–L25080 (8L): Error.isError ( arg\ )
+-- | - L25081–L25087 (7L): Error.prototype
+-- | - L25088–L25098 (11L): Properties of the Error Prototype Object
+-- | - L25099–L25102 (4L): Error.prototype.constructor
+
+-- SPEC: L1251-L1275
+-- | - L25103–L25106 (4L): Error.prototype.message
+-- | - L25107–L25110 (4L): Error.prototype.name
+-- | - L25111–L25125 (15L): Error.prototype.toString ( )
+-- | - L25126–L25134 (9L): Properties of Error Instances
+-- | - L25135–L25140 (6L): Native Error Types Used in This Standard
+-- | - L25141–L25148 (8L): EvalError
+-- | - L25149–L25154 (6L): RangeError
+-- | - L25155–L25160 (6L): ReferenceError
+-- | - L25161–L25166 (6L): SyntaxError
+-- | - L25167–L25174 (8L): TypeError
+-- | - L25175–L25181 (7L): URIError
+-- | - L25182–L25190 (9L): NativeError\ Object Structure
+-- | - L25191–L25206 (16L): The NativeError\ Constructors
+-- | - L25207–L25227 (21L): NativeError\ ( message\  , options\ \ )
+-- | - L25228–L25236 (9L): Properties of the NativeError\ Constructors
+-- | - L25237–L25245 (9L): NativeError\.prototype
+-- | - L25246–L25255 (10L): Properties of the NativeError\ Prototype Objects
+-- | - L25256–L25260 (5L): NativeError\.prototype.constructor
+-- | - L25261–L25265 (5L): NativeError\.prototype.message
+-- | - L25266–L25271 (6L): NativeError\.prototype.name
+-- | - L25272–L25280 (9L): Properties of NativeError\ Instances
+-- | - L25281–L25282 (2L): AggregateError Objects
+-- | - L25283–L25299 (17L): The AggregateError Constructor
+-- | - L25300–L25317 (18L): AggregateError ( errors\, message\  , options\ \ )
+-- | - L25318–L25324 (7L): Properties of the AggregateError Constructor
+
+-- SPEC: L1276-L1300
+-- | - L25325–L25332 (8L): AggregateError.prototype
+-- | - L25333–L25343 (11L): Properties of the AggregateError Prototype Object
+-- | - L25344–L25348 (5L): AggregateError.prototype.constructor
+-- | - L25349–L25353 (5L): AggregateError.prototype.message
+-- | - L25354–L25358 (5L): AggregateError.prototype.name
+-- | - L25359–L25367 (9L): Properties of AggregateError Instances
+-- | - L25368–L25369 (2L): Abstract Operations for Error Objects
+-- | - L25370–L25380 (11L): InstallErrorCause ( O\: an Object, options\: an ECMAScript language value, ): either a ...
+-- | - L25381–L25382 (2L): Numbers and Dates
+-- | - L25383–L25384 (2L): Number Objects
+-- | - L25385–L25401 (17L): The Number Constructor
+-- | - L25402–L25413 (12L): Number ( value\ )
+-- | - L25414–L25421 (8L): Properties of the Number Constructor
+-- | - L25422–L25431 (10L): Number.EPSILON
+-- | - L25432–L25438 (7L): Number.isFinite ( number\ )
+-- | - L25439–L25445 (7L): Number.isInteger ( number\ )
+-- | - L25446–L25456 (11L): Number.isNaN ( number\ )
+-- | - L25457–L25467 (11L): Number.isSafeInteger ( number\ )
+-- | - L25468–L25484 (17L): Number.MAX_SAFE_INTEGER
+-- | - L25485–L25492 (8L): Number.MAX_VALUE
+-- | - L25493–L25509 (17L): Number.MIN_SAFE_INTEGER
+-- | - L25510–L25523 (14L): Number.MIN_VALUE
+-- | - L25524–L25530 (7L): Number.NaN
+-- | - L25531–L25537 (7L): Number.NEGATIVE_INFINITY
+-- | - L25538–L25541 (4L): Number.parseFloat ( string\ )
+
+-- SPEC: L1301-L1325
+-- | - L25542–L25545 (4L): Number.parseInt ( string\, radix\ )
+-- | - L25546–L25552 (7L): Number.POSITIVE_INFINITY
+-- | - L25553–L25560 (8L): Number.prototype
+-- | - L25561–L25582 (22L): Properties of the Number Prototype Object
+-- | - L25583–L25586 (4L): Number.prototype.constructor
+-- | - L25587–L25643 (57L): Number.prototype.toExponential ( fractionDigits\ )
+-- | - L25644–L25682 (39L): Number.prototype.toFixed ( fractionDigits\ )
+-- | - L25683–L25699 (17L): Number.prototype.toLocaleString (  reserved1\ \[ , reserved2\ \ \] )
+-- | - L25700–L25744 (45L): Number.prototype.toPrecision ( precision\ )
+-- | - L25745–L25764 (20L): Number.prototype.toString (  radix\ \ )
+-- | - L25765–L25768 (4L): Number.prototype.valueOf ( )
+-- | - L25769–L25775 (7L): ThisNumberValue ( value\: an ECMAScript language value, ): either a normal completion c...
+-- | - L25776–L25782 (7L): Properties of Number Instances
+-- | - L25783–L25784 (2L): BigInt Objects
+-- | - L25785–L25798 (14L): The BigInt Constructor
+-- | - L25799–L25807 (9L): BigInt ( value\ )
+-- | - L25808–L25812 (5L): NumberToBigInt ( number\: a Number, ): either a normal completion containing a BigInt o...
+-- | - L25813–L25820 (8L): Properties of the BigInt Constructor
+-- | - L25821–L25829 (9L): BigInt.asIntN ( bits\, bigint\ )
+-- | - L25830–L25836 (7L): BigInt.asUintN ( bits\, bigint\ )
+-- | - L25837–L25844 (8L): BigInt.prototype
+-- | - L25845–L25860 (16L): Properties of the BigInt Prototype Object
+-- | - L25861–L25864 (4L): BigInt.prototype.constructor
+-- | - L25865–L25881 (17L): BigInt.prototype.toLocaleString (  reserved1\ \[ , reserved2\ \ \] )
+-- | - L25882–L25899 (18L): BigInt.prototype.toString (  radix\ \ )
+
+-- SPEC: L1326-L1350
+-- | - L25900–L25903 (4L): BigInt.prototype.valueOf ( )
+-- | - L25904–L25910 (7L): ThisBigIntValue ( value\: an ECMAScript language value, ): either a normal completion c...
+-- | - L25911–L25918 (8L): BigInt.prototype  %Symbol.toStringTag% \
+-- | - L25919–L25925 (7L): Properties of BigInt Instances
+-- | - L25926–L25944 (19L): The Math Object
+-- | - L25945–L25946 (2L): Value Properties of the Math Object
+-- | - L25947–L25954 (8L): Math.E
+-- | - L25955–L25962 (8L): Math.LN10
+-- | - L25963–L25970 (8L): Math.LN2
+-- | - L25971–L25981 (11L): Math.LOG10E
+-- | - L25982–L25992 (11L): Math.LOG2E
+-- | - L25993–L26000 (8L): Math.PI
+-- | - L26001–L26011 (11L): Math.SQRT1_2
+-- | - L26012–L26019 (8L): Math.SQRT2
+-- | - L26020–L26027 (8L): Math  %Symbol.toStringTag% \
+-- | - L26028–L26048 (21L): Function Properties of the Math Object
+-- | - L26049–L26060 (12L): Math.abs ( x\ )
+-- | - L26061–L26073 (13L): Math.acos ( x\ )
+-- | - L26074–L26085 (12L): Math.acosh ( x\ )
+-- | - L26086–L26097 (12L): Math.asin ( x\ )
+-- | - L26098–L26108 (11L): Math.asinh ( x\ )
+-- | - L26109–L26123 (15L): Math.atan ( x\ )
+-- | - L26124–L26136 (13L): Math.atanh ( x\ )
+-- | - L26137–L26181 (45L): Math.atan2 ( y\, x\ )
+-- | - L26182–L26192 (11L): Math.cbrt ( x\ )
+
+-- SPEC: L1351-L1375
+-- | - L26193–L26209 (17L): Math.ceil ( x\ )
+-- | - L26210–L26221 (12L): Math.clz32 ( x\ )
+-- | - L26222–L26233 (12L): Math.cos ( x\ )
+-- | - L26234–L26248 (15L): Math.cosh ( x\ )
+-- | - L26249–L26261 (13L): Math.exp ( x\ )
+-- | - L26262–L26276 (15L): Math.expm1 ( x\ )
+-- | - L26277–L26293 (17L): Math.floor ( x\ )
+-- | - L26294–L26305 (12L): Math.fround ( x\ )
+-- | - L26306–L26334 (29L): Math.f16round ( x\ )
+-- | - L26335–L26359 (25L): Math.hypot ( \...args\ )
+-- | - L26360–L26368 (9L): Math.imul ( x\, y\ )
+-- | - L26369–L26380 (12L): Math.log ( x\ )
+-- | - L26381–L26394 (14L): Math.log1p ( x\ )
+-- | - L26395–L26406 (12L): Math.log10 ( x\ )
+-- | - L26407–L26418 (12L): Math.log2 ( x\ )
+-- | - L26419–L26439 (21L): Math.max ( \...args\ )
+-- | - L26440–L26460 (21L): Math.min ( \...args\ )
+-- | - L26461–L26468 (8L): Math.pow ( base\, exponent\ )
+-- | - L26469–L26478 (10L): Math.random ( )
+-- | - L26479–L26502 (24L): Math.round ( x\ )
+-- | - L26503–L26513 (11L): Math.sign ( x\ )
+-- | - L26514–L26525 (12L): Math.sin ( x\ )
+-- | - L26526–L26539 (14L): Math.sinh ( x\ )
+-- | - L26540–L26549 (10L): Math.sqrt ( x\ )
+-- | - L26550–L26593 (44L): Math.sumPrecise ( items\ )
+
+-- SPEC: L1376-L1400
+-- | - L26594–L26605 (12L): Math.tan ( x\ )
+-- | - L26606–L26620 (15L): Math.tanh ( x\ )
+-- | - L26621–L26634 (14L): Math.trunc ( x\ )
+-- | - L26635–L26636 (2L): Date Objects
+-- | - L26637–L26642 (6L): Overview of Date Objects and Definitions of Abstract Operations
+-- | - L26643–L26692 (50L): Time Values and Time Range
+-- | - L26693–L26702 (10L): Time-related Constants
+-- | - L26703–L26709 (7L): Day ( t\: a finite time value, ): an integral Number
+-- | - L26710–L26717 (8L): TimeWithinDay ( t\: a finite time value, ): an integral Number in the interval from \+0...
+-- | - L26718–L26727 (10L): DaysInYear ( y\: an integral Number, ): \365\~𝔽~ or \366\~𝔽~
+-- | - L26728–L26744 (17L): DayFromYear ( y\: an integral Number, ): an integral Number
+-- | - L26745–L26751 (7L): TimeFromYear ( y\: an integral Number, ): a time value
+-- | - L26752–L26759 (8L): YearFromTime ( t\: a finite time value, ): an integral Number
+-- | - L26760–L26763 (4L): DayWithinYear ( t\: a finite time value, ): an integral Number in the inclusive interva...
+-- | - L26764–L26772 (9L): InLeapYear ( t\: a finite time value, ): \+0\~𝔽~ or \1\~𝔽~
+-- | - L26773–L26799 (27L): MonthFromTime ( t\: a finite time value, ): an integral Number in the inclusive interva...
+-- | - L26800–L26822 (23L): DateFromTime ( t\: a finite time value, ): an integral Number in the inclusive interval...
+-- | - L26823–L26834 (12L): WeekDay ( t\: a finite time value, ): an integral Number in the inclusive interval from...
+-- | - L26835–L26841 (7L): HourFromTime ( t\: a finite time value, ): an integral Number in the inclusive interval...
+-- | - L26842–L26848 (7L): MinFromTime ( t\: a finite time value, ): an integral Number in the inclusive interval ...
+-- | - L26849–L26855 (7L): SecFromTime ( t\: a finite time value, ): an integral Number in the inclusive interval ...
+-- | - L26856–L26862 (7L): msFromTime ( t\: a finite time value, ): an integral Number in the inclusive interval f...
+-- | - L26863–L26875 (13L): GetUTCEpochNanoseconds ( year\: an integer, month\: an integer in the inclusive interva...
+-- | - L26876–L26918 (43L): Time Zone Identifiers
+-- | - L26919–L26961 (43L): GetNamedTimeZoneEpochNanoseconds ( timeZoneIdentifier\: a String, year\: an integer, mo...
+
+-- SPEC: L1401-L1425
+-- | - L26962–L26975 (14L): GetNamedTimeZoneOffsetNanoseconds ( timeZoneIdentifier\: a String, epochNanoseconds\: a...
+-- | - L26976–L26992 (17L): Time Zone Identifier Record
+-- | - L26993–L27027 (35L): AvailableNamedTimeZoneIdentifiers ( ): a List of Time Zone Identifier Records
+-- | - L27028–L27053 (26L): SystemTimeZoneIdentifier ( ): a String
+-- | - L27054–L27087 (34L): LocalTime ( t\: a finite time value, ): an integral Number
+-- | - L27088–L27162 (75L): UTC ( t\: a Number, ): a time value
+-- | - L27163–L27178 (16L): MakeTime ( hour\: a Number, min\: a Number, sec\: a Number, ms\: a Number, ): a Number
+-- | - L27179–L27195 (17L): MakeDay ( year\: a Number, month\: a Number, date\: a Number, ): a Number
+-- | - L27196–L27204 (9L): MakeDate ( day\: a Number, time\: a Number, ): a Number
+-- | - L27205–L27218 (14L): MakeFullYear ( year\: a Number, ): an integral Number or \NaN\
+-- | - L27219–L27227 (9L): TimeClip ( time\: a Number, ): a Number
+-- | - L27228–L27337 (110L): Date Time String Format
+-- | - L27338–L27390 (53L): Expanded Years
+-- | - L27391–L27422 (32L): Time Zone Offset String Format
+-- |   - L27396–L27422 (27L): Syntax
+-- | - L27423–L27432 (10L): IsTimeZoneOffsetString ( offsetString\: a String, ): a Boolean
+-- | - L27433–L27472 (40L): ParseTimeZoneOffsetString ( offsetString\: a String, ): an integer
+-- | - L27473–L27490 (18L): The Date Constructor
+-- | - L27491–L27524 (34L): Date ( \...values\ )
+-- | - L27525–L27533 (9L): Properties of the Date Constructor
+-- | - L27534–L27538 (5L): Date.now ( )
+-- | - L27539–L27591 (53L): Date.parse ( string\ )
+-- | - L27592–L27598 (7L): Date.prototype
+-- | - L27599–L27621 (23L): Date.UTC ( year\  , month\ \[ , date\ \[ , hours\ \[ , minutes\ \[ , seconds\ \[ , ms\ ...
+-- | - L27622–L27637 (16L): Properties of the Date Prototype Object
+
+-- SPEC: L1426-L1450
+-- | - L27638–L27641 (4L): Date.prototype.constructor
+-- | - L27642–L27650 (9L): Date.prototype.getDate ( )
+-- | - L27651–L27659 (9L): Date.prototype.getDay ( )
+-- | - L27660–L27668 (9L): Date.prototype.getFullYear ( )
+-- | - L27669–L27677 (9L): Date.prototype.getHours ( )
+-- | - L27678–L27686 (9L): Date.prototype.getMilliseconds ( )
+-- | - L27687–L27695 (9L): Date.prototype.getMinutes ( )
+-- | - L27696–L27704 (9L): Date.prototype.getMonth ( )
+-- | - L27705–L27713 (9L): Date.prototype.getSeconds ( )
+-- | - L27714–L27721 (8L): Date.prototype.getTime ( )
+-- | - L27722–L27730 (9L): Date.prototype.getTimezoneOffset ( )
+-- | - L27731–L27739 (9L): Date.prototype.getUTCDate ( )
+-- | - L27740–L27748 (9L): Date.prototype.getUTCDay ( )
+-- | - L27749–L27757 (9L): Date.prototype.getUTCFullYear ( )
+-- | - L27758–L27766 (9L): Date.prototype.getUTCHours ( )
+-- | - L27767–L27775 (9L): Date.prototype.getUTCMilliseconds ( )
+-- | - L27776–L27784 (9L): Date.prototype.getUTCMinutes ( )
+-- | - L27785–L27793 (9L): Date.prototype.getUTCMonth ( )
+-- | - L27794–L27802 (9L): Date.prototype.getUTCSeconds ( )
+-- | - L27803–L27815 (13L): Date.prototype.setDate ( date\ )
+-- | - L27816–L27837 (22L): Date.prototype.setFullYear ( year\  , month\ \[ , date\ \ \] )
+-- | - L27838–L27864 (27L): Date.prototype.setHours ( hour\  , min\ \[ , sec\ \[ , ms\ \ \] \] )
+-- | - L27865–L27877 (13L): Date.prototype.setMilliseconds ( ms\ )
+-- | - L27878–L27900 (23L): Date.prototype.setMinutes ( min\  , sec\ \[ , ms\ \ \] )
+-- | - L27901–L27920 (20L): Date.prototype.setMonth ( month\  , date\ \ )
+
+-- SPEC: L1451-L1475
+-- | - L27921–L27940 (20L): Date.prototype.setSeconds ( sec\  , ms\ \ )
+-- | - L27941–L27949 (9L): Date.prototype.setTime ( time\ )
+-- | - L27950–L27962 (13L): Date.prototype.setUTCDate ( date\ )
+-- | - L27963–L27983 (21L): Date.prototype.setUTCFullYear ( year\  , month\ \[ , date\ \ \] )
+-- | - L27984–L28009 (26L): Date.prototype.setUTCHours ( hour\  , min\ \[ , sec\ \[ , ms\ \ \] \] )
+-- | - L28010–L28022 (13L): Date.prototype.setUTCMilliseconds ( ms\ )
+-- | - L28023–L28045 (23L): Date.prototype.setUTCMinutes ( min\  , sec\ \[ , ms\ \ \] )
+-- | - L28046–L28064 (19L): Date.prototype.setUTCMonth ( month\  , date\ \ )
+-- | - L28065–L28083 (19L): Date.prototype.setUTCSeconds ( sec\  , ms\ \ )
+-- | - L28084–L28093 (10L): Date.prototype.toDateString ( )
+-- | - L28094–L28107 (14L): Date.prototype.toISOString ( )
+-- | - L28108–L28126 (19L): Date.prototype.toJSON ( key\ )
+-- | - L28127–L28143 (17L): Date.prototype.toLocaleDateString (  reserved1\ \[ , reserved2\ \ \] )
+-- | - L28144–L28159 (16L): Date.prototype.toLocaleString (  reserved1\ \[ , reserved2\ \ \] )
+-- | - L28160–L28176 (17L): Date.prototype.toLocaleTimeString (  reserved1\ \[ , reserved2\ \ \] )
+-- | - L28177–L28192 (16L): Date.prototype.toString ( )
+-- | - L28193–L28201 (9L): TimeString ( tv\: a Number, but not \NaN\, ): a String
+-- | - L28202–L28240 (39L): DateString ( tv\: a Number, but not \NaN\, ): a String
+-- | - L28241–L28263 (23L): TimeZoneString ( tv\: an integral Number, ): a String
+-- | - L28264–L28270 (7L): ToDateString ( tv\: an integral Number or \NaN\, ): a String
+-- | - L28271–L28280 (10L): Date.prototype.toTimeString ( )
+-- | - L28281–L28305 (25L): Date.prototype.toUTCString ( )
+-- | - L28306–L28313 (8L): Date.prototype.valueOf ( )
+-- | - L28314–L28337 (24L): Date.prototype  %Symbol.toPrimitive% \ ( hint\ )
+-- | - L28338–L28344 (7L): Properties of Date Instances
+
+-- SPEC: L1476-L1500
+-- | - L28345–L28346 (2L): Text Processing
+-- | - L28347–L28348 (2L): String Objects
+-- | - L28349–L28365 (17L): The String Constructor
+-- | - L28366–L28376 (11L): String ( value\ )
+-- | - L28377–L28384 (8L): Properties of the String Constructor
+-- | - L28385–L28398 (14L): String.fromCharCode ( \...codeUnits\ )
+-- | - L28399–L28416 (18L): String.fromCodePoint ( \...codePoints\ )
+-- | - L28417–L28424 (8L): String.prototype
+-- | - L28425–L28452 (28L): String.raw ( template\, \...substitutions\ )
+-- | - L28453–L28473 (21L): Properties of the String Prototype Object
+-- | - L28474–L28483 (10L): String.prototype.at ( index\ )
+-- | - L28484–L28506 (23L): String.prototype.charAt ( pos\ )
+-- | - L28507–L28526 (20L): String.prototype.charCodeAt ( pos\ )
+-- | - L28527–L28549 (23L): String.prototype.codePointAt ( pos\ )
+-- | - L28550–L28570 (21L): String.prototype.concat ( \...args\ )
+-- | - L28571–L28574 (4L): String.prototype.constructor
+-- | - L28575–L28605 (31L): String.prototype.endsWith ( searchString\  , endPosition\ \ )
+-- | - L28606–L28635 (30L): String.prototype.includes ( searchString\  , position\ \ )
+-- | - L28636–L28659 (24L): String.prototype.indexOf ( searchString\  , position\ \ )
+-- | - L28660–L28667 (8L): String.prototype.isWellFormed ( )
+-- | - L28668–L28695 (28L): String.prototype.lastIndexOf ( searchString\  , position\ \ )
+-- | - L28696–L28784 (89L): String.prototype.localeCompare ( that\  , reserved1\ \[ , reserved2\ \ \] )
+-- | - L28785–L28800 (16L): String.prototype.match ( regexp\ )
+-- | - L28801–L28828 (28L): String.prototype.matchAll ( regexp\ )
+-- | - L28829–L28847 (19L): String.prototype.normalize (  form\ \ )
+
+-- SPEC: L1501-L1525
+-- | - L28848–L28856 (9L): String.prototype.padEnd ( maxLength\  , fillString\ \ )
+-- | - L28857–L28865 (9L): String.prototype.padStart ( maxLength\  , fillString\ \ )
+-- | - L28866–L28875 (10L): StringPaddingBuiltinsImpl ( O\: an ECMAScript language value, maxLength\: an ECMAScript...
+-- | - L28876–L28892 (17L): StringPad ( S\: a String, maxLength\: a non-negative integer, fillString\: a String, pl...
+-- | - L28893–L28898 (6L): ToZeroPaddedDecimalString ( n\: a non-negative integer, minLength\: a non-negative inte...
+-- | - L28899–L28916 (18L): String.prototype.repeat ( count\ )
+-- | - L28917–L28947 (31L): String.prototype.replace ( searchValue\, replaceValue\ )
+-- | - L28948–L29013 (66L): GetSubstitution ( matched\: a String, str\: a String, position\: a non-negative integer...
+-- | - L29014–L29052 (39L): String.prototype.replaceAll ( searchValue\, replaceValue\ )
+-- | - L29053–L29068 (16L): String.prototype.search ( regexp\ )
+-- | - L29069–L29098 (30L): String.prototype.slice ( start\, end\ )
+-- | - L29099–L29158 (60L): String.prototype.split ( separator\, limit\ )
+-- | - L29159–L29189 (31L): String.prototype.startsWith ( searchString\  , position\ \ )
+-- | - L29190–L29220 (31L): String.prototype.substring ( start\, end\ )
+-- | - L29221–L29244 (24L): String.prototype.toLocaleLowerCase (  reserved1\ \[ , reserved2\ \ \] )
+-- | - L29245–L29268 (24L): String.prototype.toLocaleUpperCase (  reserved1\ \[ , reserved2\ \ \] )
+-- | - L29269–L29301 (33L): String.prototype.toLowerCase ( )
+-- | - L29302–L29310 (9L): String.prototype.toString ( )
+-- | - L29311–L29323 (13L): String.prototype.toUpperCase ( )
+-- | - L29324–L29342 (19L): String.prototype.toWellFormed ( )
+-- | - L29343–L29356 (14L): String.prototype.trim ( )
+-- | - L29357–L29376 (20L): TrimString ( string\: an ECMAScript language value, where\: \~start\~, \~end\~, or \~st...
+-- | - L29377–L29390 (14L): String.prototype.trimEnd ( )
+-- | - L29391–L29404 (14L): String.prototype.trimStart ( )
+-- | - L29405–L29410 (6L): String.prototype.valueOf ( )
+
+-- SPEC: L1526-L1550
+-- | - L29411–L29417 (7L): ThisStringValue ( value\: an ECMAScript language value, ): either a normal completion c...
+-- | - L29418–L29442 (25L): String.prototype  %Symbol.iterator% \ ( )
+-- | - L29443–L29453 (11L): Properties of String Instances
+-- | - L29454–L29462 (9L): length
+-- | - L29463–L29471 (9L): String Iterator Objects
+-- | - L29472–L29481 (10L): The %StringIteratorPrototype% Object
+-- | - L29482–L29486 (5L): %StringIteratorPrototype%.next ( )
+-- | - L29487–L29494 (8L): %StringIteratorPrototype%  %Symbol.toStringTag% \
+-- | - L29495–L29501 (7L): RegExp (Regular Expression) Objects
+-- | - L29502–L29654 (153L): Patterns
+-- |   - L29508–L29654 (147L): Syntax
+-- | - L29655–L29797 (143L): Static Semantics: Early Errors
+-- | - L29798–L29812 (15L): Static Semantics: CountLeftCapturingParensWithin ( node\: a Parse Node, ): a non-negati...
+-- | - L29813–L29826 (14L): Static Semantics: CountLeftCapturingParensBefore ( node\: a Parse Node, ): a non-negati...
+-- | - L29827–L29836 (10L): Static Semantics: MightBothParticipate ( x\: a Parse Node, y\: a Parse Node, ): a Boolean
+-- | - L29837–L29848 (12L): Static Semantics: CapturingGroupNumber ( ): a positive integer
+-- | - L29849–L29857 (9L): Static Semantics: IsCharacterClass ( ): a Boolean
+-- | - L29858–L29907 (50L): Static Semantics: CharacterValue ( ): a non-negative integer
+-- | - L29908–L29944 (37L): Static Semantics: MayContainStrings ( ): a Boolean
+-- | - L29945–L29952 (8L): Static Semantics: GroupSpecifiersThatMatch ( thisGroupName\: a \|GroupName\| Parse Node...
+-- | - L29953–L29959 (7L): Static Semantics: CapturingGroupName ( ): a String
+-- | - L29960–L29969 (10L): Static Semantics: RegExpIdentifierCodePoints ( ): a List of code points
+-- | - L29970–L29986 (17L): Static Semantics: RegExpIdentifierCodePoint ( ): a code point
+-- | - L29987–L30034 (48L): Pattern Semantics
+-- | - L30035–L30098 (64L): Notation
+
+-- SPEC: L1551-L1575
+-- | - L30099–L30115 (17L): RegExp Records
+-- | - L30116–L30143 (28L): Runtime Semantics: CompilePattern ( rer\: a RegExp Record, ): an Abstract Closure that ...
+-- | - L30144–L30224 (81L): Runtime Semantics: CompileSubpattern ( rer\: a RegExp Record, direction\: \~forward\~ o...
+-- | - L30225–L30359 (135L): RepeatMatcher ( m\: a Matcher, min\: a non-negative integer, max\: a non-negative integ...
+-- | - L30360–L30366 (7L): EmptyMatcher ( ): a Matcher
+-- | - L30367–L30374 (8L): MatchTwoAlternatives ( m1\: a Matcher, m2\: a Matcher, ): a Matcher
+-- | - L30375–L30392 (18L): MatchSequence ( m1\: a Matcher, m2\: a Matcher, direction\: \~forward\~ or \~backward\~...
+-- | - L30393–L30548 (156L): Runtime Semantics: CompileAssertion ( rer\: a RegExp Record, ): a Matcher
+-- | - L30549–L30555 (7L): IsWordChar ( rer\: a RegExp Record, Input\: a List of characters, e\: an integer, ): a ...
+-- | - L30556–L30565 (10L): Runtime Semantics: CompileQuantifier ( ): a Record with fields \[Min\\] (a non-negative...
+-- | - L30566–L30581 (16L): Runtime Semantics: CompileQuantifierPrefix ( ): a Record with fields \[Min\\] (a non-ne...
+-- | - L30582–L30709 (128L): Runtime Semantics: CompileAtom ( rer\: a RegExp Record, direction\: \~forward\~ or \~ba...
+-- | - L30710–L30733 (24L): CharacterSetMatcher ( rer\: a RegExp Record, A\: a CharSet, invert\: a Boolean, directi...
+-- | - L30734–L30757 (24L): BackreferenceMatcher ( rer\: a RegExp Record, ns\: a List of positive integers, directi...
+-- | - L30758–L30798 (41L): Canonicalize ( rer\: a RegExp Record, ch\: a character, ): a character
+-- | - L30799–L30818 (20L): UpdateModifiers ( rer\: a RegExp Record, add\: a String, remove\: a String, ): a RegExp...
+-- | - L30819–L30830 (12L): Runtime Semantics: CompileCharacterClass ( rer\: a RegExp Record, ): a Record with fiel...
+-- | - L30831–L31007 (177L): Runtime Semantics: CompileToCharSet ( rer\: a RegExp Record, ): a CharSet
+-- | - L31008–L31017 (10L): CharacterRange ( A\: a CharSet, B\: a CharSet, ): a CharSet
+-- | - L31018–L31023 (6L): HasEitherUnicodeFlag ( rer\: a RegExp Record, ): a Boolean
+-- | - L31024–L31039 (16L): WordCharacters ( rer\: a RegExp Record, ): a CharSet
+-- | - L31040–L31054 (15L): AllCharacters ( rer\: a RegExp Record, ): a CharSet
+-- | - L31055–L31075 (21L): MaybeSimpleCaseFolding ( rer\: a RegExp Record, A\: a CharSet, ): a CharSet
+-- | - L31076–L31081 (6L): CharacterComplement ( rer\: a RegExp Record, S\: a CharSet, ): a CharSet
+-- | - L31082–L31108 (27L): UnicodeMatchProperty ( rer\: a RegExp Record, p\: ECMAScript source text, ): a Unicode ...
+
+-- SPEC: L1576-L1600
+-- | - L31109–L31134 (26L): UnicodeMatchPropertyValue ( p\: ECMAScript source text, v\: ECMAScript source text, ): ...
+-- | - L31135–L31147 (13L): Runtime Semantics: CompileClassSetString ( rer\: a RegExp Record, ): a sequence of char...
+-- | - L31148–L31149 (2L): Abstract Operations for RegExp Creation
+-- | - L31150–L31154 (5L): RegExpCreate ( P\: an ECMAScript language value, F\: a String or \undefined\, ): either...
+-- | - L31155–L31163 (9L): RegExpAlloc ( newTarget\: a constructor, ): either a normal completion containing an Ob...
+-- | - L31164–L31196 (33L): RegExpInitialize ( obj\: an Object, pattern\: an ECMAScript language value, flags\: an ...
+-- | - L31197–L31210 (14L): Static Semantics: ParsePattern ( patternText\: a sequence of Unicode code points, u\: a...
+-- | - L31211–L31228 (18L): The RegExp Constructor
+-- | - L31229–L31256 (28L): RegExp ( pattern\, flags\ )
+-- | - L31257–L31264 (8L): Properties of the RegExp Constructor
+-- | - L31265–L31294 (30L): RegExp.escape ( S\ )
+-- | - L31295–L31324 (30L): EncodeForRegExpEscape ( cp\: a code point, ): a String
+-- | - L31325–L31332 (8L): RegExp.prototype
+-- | - L31333–L31348 (16L): get RegExp  %Symbol.species% \
+-- | - L31349–L31364 (16L): Properties of the RegExp Prototype Object
+-- | - L31365–L31368 (4L): RegExp.prototype.constructor
+-- | - L31369–L31380 (12L): RegExp.prototype.exec ( string\ )
+-- | - L31381–L31389 (9L): get RegExp.prototype.dotAll
+-- | - L31390–L31420 (31L): get RegExp.prototype.flags
+-- | - L31421–L31429 (9L): RegExpHasFlag ( R\: an ECMAScript language value, codeUnit\: a code unit, ): either a n...
+-- | - L31430–L31438 (9L): get RegExp.prototype.global
+-- | - L31439–L31447 (9L): get RegExp.prototype.hasIndices
+-- | - L31448–L31456 (9L): get RegExp.prototype.ignoreCase
+-- | - L31457–L31489 (33L): RegExp.prototype  %Symbol.match% \ ( string\ )
+-- | - L31490–L31509 (20L): RegExp.prototype  %Symbol.matchAll% \ ( string\ )
+
+-- SPEC: L1601-L1625
+-- | - L31510–L31518 (9L): get RegExp.prototype.multiline
+-- | - L31519–L31588 (70L): RegExp.prototype  %Symbol.replace% \ ( string\, replaceValue\ )
+-- | - L31589–L31611 (23L): RegExp.prototype  %Symbol.search% \ ( string\ )
+-- | - L31612–L31626 (15L): get RegExp.prototype.source
+-- | - L31627–L31658 (32L): EscapeRegExpPattern ( P\: a String, F\: a String, ): a String
+-- | - L31659–L31750 (92L): RegExp.prototype  %Symbol.split% \ ( string\, limit\ )
+-- | - L31751–L31759 (9L): get RegExp.prototype.sticky
+-- | - L31760–L31768 (9L): RegExp.prototype.test ( S\ )
+-- | - L31769–L31780 (12L): RegExp.prototype.toString ( )
+-- | - L31781–L31789 (9L): get RegExp.prototype.unicode
+-- | - L31790–L31798 (9L): get RegExp.prototype.unicodeSets
+-- | - L31799–L31800 (2L): Abstract Operations for RegExp Matching
+-- | - L31801–L31815 (15L): RegExpExec ( R\: an Object, S\: a String, ): either a normal completion containing eith...
+-- | - L31816–L31896 (81L): RegExpBuiltinExec ( R\: an initialized RegExp instance, S\: a String, ): either a norma...
+-- | - L31897–L31904 (8L): AdvanceStringIndex ( S\: a String, index\: a non-negative integer, unicode\: a Boolean,...
+-- | - L31905–L31921 (17L): GetStringIndex ( S\: a String, codePointIndex\: a non-negative integer, ): a non-negati...
+-- | - L31922–L31934 (13L): Match Records
+-- | - L31935–L31940 (6L): GetMatchString ( S\: a String, match\: a Match Record, ): a String
+-- | - L31941–L31946 (6L): GetMatchIndexPair ( S\: a String, match\: a Match Record, ): an Array
+-- | - L31947–L31971 (25L): MakeMatchIndicesIndexPairArray ( S\: a String, indices\: a List of either Match Records...
+-- | - L31972–L31987 (16L): Properties of RegExp Instances
+-- | - L31988–L31995 (8L): lastIndex
+-- | - L31996–L32005 (10L): RegExp String Iterator Objects
+-- | - L32006–L32017 (12L): CreateRegExpStringIterator ( R\: an Object, S\: a String, global\: a Boolean, fullUnico...
+-- | - L32018–L32028 (11L): The %RegExpStringIteratorPrototype% Object
+
+-- SPEC: L1626-L1650
+-- | - L32029–L32051 (23L): %RegExpStringIteratorPrototype%.next ( )
+-- | - L32052–L32059 (8L): %RegExpStringIteratorPrototype%  %Symbol.toStringTag% \
+-- | - L32060–L32074 (15L): Properties of RegExp String Iterator Instances
+-- | - L32075–L32076 (2L): Indexed Collections
+-- | - L32077–L32081 (5L): Array Objects
+-- | - L32082–L32103 (22L): The Array Constructor
+-- | - L32104–L32128 (25L): Array ( \...values\ )
+-- | - L32129–L32137 (9L): Properties of the Array Constructor
+-- | - L32138–L32182 (45L): Array.from ( items\  , mapper\ \[ , thisArg\ \ \] )
+-- | - L32183–L32242 (60L): Array.fromAsync ( items\  , mapper\ \[ , thisArg\ \ \] )
+-- | - L32243–L32248 (6L): Array.isArray ( arg\ )
+-- | - L32249–L32267 (19L): Array.of ( \...items\ )
+-- | - L32268–L32274 (7L): Array.prototype
+-- | - L32275–L32290 (16L): get Array  %Symbol.species% \
+-- | - L32291–L32307 (17L): Properties of the Array Prototype Object
+-- | - L32308–L32316 (9L): Array.prototype.at ( index\ )
+-- | - L32317–L32351 (35L): Array.prototype.concat ( \...items\ )
+-- | - L32352–L32358 (7L): IsConcatSpreadable ( O\: an ECMAScript language value, ): either a normal completion co...
+-- | - L32359–L32362 (4L): Array.prototype.constructor
+-- | - L32363–L32406 (44L): Array.prototype.copyWithin ( target\, start\  , end\ \ )
+-- | - L32407–L32413 (7L): Array.prototype.entries ( )
+-- | - L32414–L32460 (47L): Array.prototype.every ( callback\  , thisArg\ \ )
+-- | - L32461–L32492 (32L): Array.prototype.fill ( value\  , start\ \[ , end\ \ \] )
+-- | - L32493–L32538 (46L): Array.prototype.filter ( callback\  , thisArg\ \ )
+-- | - L32539–L32559 (21L): Array.prototype.find ( predicate\  , thisArg\ \ )
+
+-- SPEC: L1651-L1675
+-- | - L32560–L32580 (21L): Array.prototype.findIndex ( predicate\  , thisArg\ \ )
+-- | - L32581–L32601 (21L): Array.prototype.findLast ( predicate\  , thisArg\ \ )
+-- | - L32602–L32622 (21L): Array.prototype.findLastIndex ( predicate\  , thisArg\ \ )
+-- | - L32623–L32671 (49L): FindViaPredicate ( O\: an Object, len\: a non-negative integer, direction\: \~ascending...
+-- | - L32672–L32683 (12L): Array.prototype.flat (  depth\ \ )
+-- | - L32684–L32707 (24L): FlattenIntoArray ( target\: an Object, source\: an Object, sourceLen\: a non-negative i...
+-- | - L32708–L32718 (11L): Array.prototype.flatMap ( mapperFunction\  , thisArg\ \ )
+-- | - L32719–L32759 (41L): Array.prototype.forEach ( callback\  , thisArg\ \ )
+-- | - L32760–L32795 (36L): Array.prototype.includes ( searchElement\  , fromIndex\ \ )
+-- | - L32796–L32828 (33L): Array.prototype.indexOf ( searchElement\  , fromIndex\ \ )
+-- | - L32829–L32852 (24L): Array.prototype.join ( separator\ )
+-- | - L32853–L32859 (7L): Array.prototype.keys ( )
+-- | - L32860–L32891 (32L): Array.prototype.lastIndexOf ( searchElement\  , fromIndex\ \ )
+-- | - L32892–L32934 (43L): Array.prototype.map ( callback\  , thisArg\ \ )
+-- | - L32935–L32953 (19L): Array.prototype.pop ( )
+-- | - L32954–L32974 (21L): Array.prototype.push ( \...items\ )
+-- | - L32975–L33028 (54L): Array.prototype.reduce ( callback\  , initialValue\ \ )
+-- | - L33029–L33083 (55L): Array.prototype.reduceRight ( callback\  , initialValue\ \ )
+-- | - L33084–L33116 (33L): Array.prototype.reverse ( )
+-- | - L33117–L33141 (25L): Array.prototype.shift ( )
+-- | - L33142–L33179 (38L): Array.prototype.slice ( start\, end\ )
+-- | - L33180–L33225 (46L): Array.prototype.some ( callback\  , thisArg\ \ )
+-- | - L33226–L33268 (43L): Array.prototype.sort ( comparator\ )
+-- | - L33269–L33340 (72L): SortIndexedProperties ( obj\: an Object, len\: a non-negative integer, SortCompare\: an...
+-- | - L33341–L33355 (15L): CompareArrayElements ( x\: an ECMAScript language value, y\: an ECMAScript language val...
+
+-- SPEC: L1676-L1700
+-- | - L33356–L33417 (62L): Array.prototype.splice ( start\, deleteCount\, \...items\ )
+-- | - L33418–L33456 (39L): Array.prototype.toLocaleString (  reserved1\ \[ , reserved2\ \ \] )
+-- | - L33457–L33468 (12L): Array.prototype.toReversed ( )
+-- | - L33469–L33485 (17L): Array.prototype.toSorted ( comparator\ )
+-- | - L33486–L33516 (31L): Array.prototype.toSpliced ( start\, skipCount\, \...items\ )
+-- | - L33517–L33529 (13L): Array.prototype.toString ( )
+-- | - L33530–L33560 (31L): Array.prototype.unshift ( \...items\ )
+-- | - L33561–L33567 (7L): Array.prototype.values ( )
+-- | - L33568–L33584 (17L): Array.prototype.with ( index\, value\ )
+-- | - L33585–L33589 (5L): Array.prototype  %Symbol.iterator% \ ( )
+-- | - L33590–L33634 (45L): Array.prototype  %Symbol.unscopables% \
+-- | - L33635–L33643 (9L): Properties of Array Instances
+-- | - L33644–L33662 (19L): length
+-- | - L33663–L33671 (9L): Array Iterator Objects
+-- | - L33672–L33685 (14L): CreateArrayIterator ( array\: an Object, kind\: \~key+value\~, \~key\~, or \~value\~, )...
+-- | - L33686–L33695 (10L): The %ArrayIteratorPrototype% Object
+-- | - L33696–L33721 (26L): %ArrayIteratorPrototype%.next ( )
+-- | - L33722–L33729 (8L): %ArrayIteratorPrototype%  %Symbol.toStringTag% \
+-- | - L33730–L33741 (12L): Properties of Array Iterator Instances
+-- | - L33742–L33804 (63L): TypedArray Objects
+-- | - L33805–L33821 (17L): The %TypedArray% Intrinsic Object
+-- | - L33822–L33829 (8L): %TypedArray% ( )
+-- | - L33830–L33838 (9L): Properties of the %TypedArray% Intrinsic Object
+-- | - L33839–L33872 (34L): %TypedArray%.from ( source\  , mapper\ \[ , thisArg\ \ \] )
+-- | - L33873–L33885 (13L): %TypedArray%.of ( \...items\ )
+
+-- SPEC: L1701-L1725
+-- | - L33886–L33893 (8L): %TypedArray%.prototype
+-- | - L33894–L33909 (16L): get %TypedArray%  %Symbol.species% \
+-- | - L33910–L33920 (11L): Properties of the %TypedArray% Prototype Object
+-- | - L33921–L33930 (10L): %TypedArray%.prototype.at ( index\ )
+-- | - L33931–L33941 (11L): get %TypedArray%.prototype.buffer
+-- | - L33942–L33955 (14L): get %TypedArray%.prototype.byteLength
+-- | - L33956–L33968 (13L): get %TypedArray%.prototype.byteOffset
+-- | - L33969–L33973 (5L): %TypedArray%.prototype.constructor
+-- | - L33974–L34026 (53L): %TypedArray%.prototype.copyWithin ( target\, start\  , end\ \ )
+-- | - L34027–L34034 (8L): %TypedArray%.prototype.entries ( )
+-- | - L34035–L34054 (20L): %TypedArray%.prototype.every ( callback\  , thisArg\ \ )
+-- | - L34055–L34083 (29L): %TypedArray%.prototype.fill ( value\  , start\ \[ , end\ \ \] )
+-- | - L34084–L34108 (25L): %TypedArray%.prototype.filter ( callback\  , thisArg\ \ )
+-- | - L34109–L34124 (16L): %TypedArray%.prototype.find ( predicate\  , thisArg\ \ )
+-- | - L34125–L34140 (16L): %TypedArray%.prototype.findIndex ( predicate\  , thisArg\ \ )
+-- | - L34141–L34156 (16L): %TypedArray%.prototype.findLast ( predicate\  , thisArg\ \ )
+-- | - L34157–L34172 (16L): %TypedArray%.prototype.findLastIndex ( predicate\  , thisArg\ \ )
+-- | - L34173–L34191 (19L): %TypedArray%.prototype.forEach ( callback\  , thisArg\ \ )
+-- | - L34192–L34213 (22L): %TypedArray%.prototype.includes ( searchElement\  , fromIndex\ \ )
+-- | - L34214–L34237 (24L): %TypedArray%.prototype.indexOf ( searchElement\  , fromIndex\ \ )
+-- | - L34238–L34259 (22L): %TypedArray%.prototype.join ( separator\ )
+-- | - L34260–L34267 (8L): %TypedArray%.prototype.keys ( )
+-- | - L34268–L34290 (23L): %TypedArray%.prototype.lastIndexOf ( searchElement\  , fromIndex\ \ )
+-- | - L34291–L34307 (17L): get %TypedArray%.prototype.length
+-- | - L34308–L34328 (21L): %TypedArray%.prototype.map ( callback\  , thisArg\ \ )
+
+-- SPEC: L1726-L1750
+-- | - L34329–L34353 (25L): %TypedArray%.prototype.reduce ( callback\  , initialValue\ \ )
+-- | - L34354–L34378 (25L): %TypedArray%.prototype.reduceRight ( callback\  , initialValue\ \ )
+-- | - L34379–L34400 (22L): %TypedArray%.prototype.reverse ( )
+-- | - L34401–L34424 (24L): %TypedArray%.prototype.set ( source\  , offset\ \ )
+-- | - L34425–L34445 (21L): SetTypedArrayFromArrayLike ( target\: a TypedArray, targetOffset\: a non-negative integ...
+-- | - L34446–L34500 (55L): SetTypedArrayFromTypedArray ( target\: a TypedArray, targetOffset\: a non-negative inte...
+-- | - L34501–L34553 (53L): %TypedArray%.prototype.slice ( start\, end\ )
+-- | - L34554–L34573 (20L): %TypedArray%.prototype.some ( callback\  , thisArg\ \ )
+-- | - L34574–L34606 (33L): %TypedArray%.prototype.sort ( comparator\ )
+-- | - L34607–L34647 (41L): %TypedArray%.prototype.subarray ( start\, end\ )
+-- | - L34648–L34668 (21L): %TypedArray%.prototype.toLocaleString (  reserved1\ \[ , reserved2\ \ \] )
+-- | - L34669–L34681 (13L): %TypedArray%.prototype.toReversed ( )
+-- | - L34682–L34701 (20L): %TypedArray%.prototype.toSorted ( comparator\ )
+-- | - L34702–L34706 (5L): %TypedArray%.prototype.toString ( )
+-- | - L34707–L34714 (8L): %TypedArray%.prototype.values ( )
+-- | - L34715–L34735 (21L): %TypedArray%.prototype.with ( index\, value\ )
+-- | - L34736–L34740 (5L): %TypedArray%.prototype  %Symbol.iterator% \ ( )
+-- | - L34741–L34758 (18L): get %TypedArray%.prototype  %Symbol.toStringTag% \
+-- | - L34759–L34760 (2L): Abstract Operations for TypedArray Objects
+-- | - L34761–L34777 (17L): TypedArrayCreateFromConstructor ( constructor\: a constructor, argumentList\: a List of...
+-- | - L34778–L34794 (17L): TypedArrayCreateSameType ( exemplar\: a TypedArray, length\: a non-negative integer, ):...
+-- | - L34795–L34812 (18L): TypedArraySpeciesCreate ( exemplar\: a TypedArray, argumentList\: a List of ECMAScript ...
+-- | - L34813–L34820 (8L): ValidateTypedArray ( O\: an ECMAScript language value, order\: \~seq-cst\~ or \~unorder...
+-- | - L34821–L34825 (5L): TypedArrayElementSize ( O\: a TypedArray, ): a non-negative integer
+-- | - L34826–L34830 (5L): TypedArrayElementType ( O\: a TypedArray, ): a TypedArray element type
+
+-- SPEC: L1751-L1775
+-- | - L34831–L34844 (14L): CompareTypedArrayElements ( x\: a Number or a BigInt, y\: a Number or a BigInt, compara...
+-- | - L34845–L34863 (19L): The TypedArray\ Constructors
+-- | - L34864–L34900 (37L): TypedArray\ ( \...args\ )
+-- | - L34901–L34921 (21L): AllocateTypedArray ( constructorName\: a String which is the name of a TypedArray const...
+-- | - L34922–L34952 (31L): InitializeTypedArrayFromTypedArray ( O\: a TypedArray, srcArray\: a TypedArray, ): eith...
+-- | - L34953–L34977 (25L): InitializeTypedArrayFromArrayBuffer ( O\: a TypedArray, buffer\: an ArrayBuffer or a Sh...
+-- | - L34978–L34987 (10L): InitializeTypedArrayFromList ( O\: a TypedArray, values\: a List of ECMAScript language...
+-- | - L34988–L34996 (9L): InitializeTypedArrayFromArrayLike ( O\: a TypedArray, arrayLike\: an Object, but not a ...
+-- | - L34997–L35010 (14L): AllocateTypedArrayBuffer ( O\: a TypedArray, length\: a non-negative integer, ): either...
+-- | - L35011–L35020 (10L): Properties of the TypedArray\ Constructors
+-- | - L35021–L35028 (8L): TypedArray\.BYTES_PER_ELEMENT
+-- | - L35029–L35036 (8L): TypedArray\.prototype
+-- | - L35037–L35046 (10L): Properties of the TypedArray\ Prototype Objects
+-- | - L35047–L35054 (8L): TypedArray\.prototype.BYTES_PER_ELEMENT
+-- | - L35055–L35059 (5L): TypedArray\.prototype.constructor
+-- | - L35060–L35067 (8L): Properties of TypedArray\ Instances
+-- | - L35068–L35073 (6L): Uint8Array Objects
+-- | - L35074–L35075 (2L): Additional Properties of the Uint8Array Constructor
+-- | - L35076–L35100 (25L): Uint8Array.fromBase64 ( string\  , options\ \ )
+-- | - L35101–L35115 (15L): Uint8Array.fromHex ( string\ )
+-- | - L35116–L35117 (2L): Additional Properties of the Uint8Array Prototype Object
+-- | - L35118–L35149 (32L): Uint8Array.prototype.setFromBase64 ( string\  , options\ \ )
+-- | - L35150–L35171 (22L): Uint8Array.prototype.setFromHex ( string\ )
+-- | - L35172–L35193 (22L): Uint8Array.prototype.toBase64 (  options\ \ )
+-- | - L35194–L35203 (10L): Uint8Array.prototype.toHex ( )
+
+-- SPEC: L1776-L1800
+-- | - L35204–L35205 (2L): Abstract Operations for Uint8Array Objects
+-- | - L35206–L35211 (6L): ValidateUint8Array ( ta\: an ECMAScript language value, ): either a normal completion c...
+-- | - L35212–L35225 (14L): GetUint8ArrayBytes ( ta\: a Uint8Array, ): either a normal completion containing a List...
+-- | - L35226–L35235 (10L): SetUint8ArrayBytes ( into\: a Uint8Array, bytes\: a List of byte values, ): \~unused\~
+-- | - L35236–L35243 (8L): SkipAsciiWhitespace ( string\: a String, index\: a non-negative integer, ): a non-negat...
+-- | - L35244–L35256 (13L): DecodeFinalBase64Chunk ( chunk\: a String of length 2 or 3, throwOnExtraBits\: a Boolea...
+-- | - L35257–L35271 (15L): DecodeFullLengthBase64Chunk ( chunk\: a String of length 4, ): a List of byte values of...
+-- | - L35272–L35350 (79L): FromBase64 ( string\: a String, alphabet\: \\"base64\"\ or \\"base64url\"\, lastChunkHa...
+-- | - L35351–L35370 (20L): FromHex ( string\: a String, optional maxLength\: a non-negative integer, ): a Record w...
+-- | - L35371–L35372 (2L): Keyed Collections
+-- | - L35373–L35387 (15L): Map Objects
+-- | - L35388–L35402 (15L): The Map Constructor
+-- | - L35403–L35421 (19L): Map (  iterable\ \ )
+-- | - L35422–L35444 (23L): AddEntriesFromIterable ( target\: an Object, iterable\: an ECMAScript language value, b...
+-- | - L35445–L35452 (8L): Properties of the Map Constructor
+-- | - L35453–L35476 (24L): Map.groupBy ( items\, callback\ )
+-- | - L35477–L35483 (7L): Map.prototype
+-- | - L35484–L35499 (16L): get Map  %Symbol.species% \
+-- | - L35500–L35509 (10L): Properties of the Map Prototype Object
+-- | - L35510–L35523 (14L): Map.prototype.clear ( )
+-- | - L35524–L35527 (4L): Map.prototype.constructor
+-- | - L35528–L35544 (17L): Map.prototype.delete ( key\ )
+-- | - L35545–L35551 (7L): Map.prototype.entries ( )
+-- | - L35552–L35591 (40L): Map.prototype.forEach ( callback\  , thisArg\ \ )
+-- | - L35592–L35603 (12L): Map.prototype.get ( key\ )
+
+-- SPEC: L1801-L1825
+-- | - L35604–L35616 (13L): Map.prototype.getOrInsert ( key\, value\ )
+-- | - L35617–L35637 (21L): Map.prototype.getOrInsertComputed ( key\, callback\ )
+-- | - L35638–L35648 (11L): Map.prototype.has ( key\ )
+-- | - L35649–L35655 (7L): Map.prototype.keys ( )
+-- | - L35656–L35669 (14L): Map.prototype.set ( key\, value\ )
+-- | - L35670–L35681 (12L): get Map.prototype.size
+-- | - L35682–L35688 (7L): Map.prototype.values ( )
+-- | - L35689–L35693 (5L): Map.prototype  %Symbol.iterator% \ ( )
+-- | - L35694–L35701 (8L): Map.prototype  %Symbol.toStringTag% \
+-- | - L35702–L35707 (6L): Properties of Map Instances
+-- | - L35708–L35716 (9L): Map Iterator Objects
+-- | - L35717–L35742 (26L): CreateMapIterator ( map\: an ECMAScript language value, kind\: \~key+value\~, \~key\~, ...
+-- | - L35743–L35752 (10L): The %MapIteratorPrototype% Object
+-- | - L35753–L35757 (5L): %MapIteratorPrototype%.next ( )
+-- | - L35758–L35765 (8L): %MapIteratorPrototype%  %Symbol.toStringTag% \
+-- | - L35766–L35779 (14L): Set Objects
+-- | - L35780–L35781 (2L): Abstract Operations For Set Objects
+-- | - L35782–L35795 (14L): Set Records
+-- | - L35796–L35811 (16L): GetSetRecord ( obj\: an ECMAScript language value, ): either a normal completion contai...
+-- | - L35812–L35816 (5L): SetDataHas ( setData\: a List of either ECMAScript language values or \~empty\~, value\...
+-- | - L35817–L35825 (9L): SetDataIndex ( setData\: a List of either ECMAScript language values or \~empty\~, valu...
+-- | - L35826–L35831 (6L): SetDataSize ( setData\: a List of either ECMAScript language values or \~empty\~, ): a ...
+-- | - L35832–L35846 (15L): The Set Constructor
+-- | - L35847–L35863 (17L): Set (  iterable\ \ )
+-- | - L35864–L35871 (8L): Properties of the Set Constructor
+
+-- SPEC: L1826-L1850
+-- | - L35872–L35878 (7L): Set.prototype
+-- | - L35879–L35894 (16L): get Set  %Symbol.species% \
+-- | - L35895–L35904 (10L): Properties of the Set Prototype Object
+-- | - L35905–L35915 (11L): Set.prototype.add ( value\ )
+-- | - L35916–L35929 (14L): Set.prototype.clear ( )
+-- | - L35930–L35933 (4L): Set.prototype.constructor
+-- | - L35934–L35949 (16L): Set.prototype.delete ( value\ )
+-- | - L35950–L35976 (27L): Set.prototype.difference ( other\ )
+-- | - L35977–L35986 (10L): Set.prototype.entries ( )
+-- | - L35987–L36033 (47L): Set.prototype.forEach ( callback\  , thisArg\ \ )
+-- | - L36034–L36044 (11L): Set.prototype.has ( value\ )
+-- | - L36045–L36081 (37L): Set.prototype.intersection ( other\ )
+-- | - L36082–L36107 (26L): Set.prototype.isDisjointFrom ( other\ )
+-- | - L36108–L36126 (19L): Set.prototype.isSubsetOf ( other\ )
+-- | - L36127–L36142 (16L): Set.prototype.isSupersetOf ( other\ )
+-- | - L36143–L36150 (8L): Set.prototype.keys ( )
+-- | - L36151–L36160 (10L): get Set.prototype.size
+-- | - L36161–L36184 (24L): Set.prototype.symmetricDifference ( other\ )
+-- | - L36185–L36202 (18L): Set.prototype.union ( other\ )
+-- | - L36203–L36209 (7L): Set.prototype.values ( )
+-- | - L36210–L36214 (5L): Set.prototype  %Symbol.iterator% \ ( )
+-- | - L36215–L36222 (8L): Set.prototype  %Symbol.toStringTag% \
+-- | - L36223–L36228 (6L): Properties of Set Instances
+-- | - L36229–L36237 (9L): Set Iterator Objects
+-- | - L36238–L36262 (25L): CreateSetIterator ( set\: an ECMAScript language value, kind\: \~key+value\~ or \~value...
+
+-- SPEC: L1851-L1875
+-- | - L36263–L36272 (10L): The %SetIteratorPrototype% Object
+-- | - L36273–L36277 (5L): %SetIteratorPrototype%.next ( )
+-- | - L36278–L36285 (8L): %SetIteratorPrototype%  %Symbol.toStringTag% \
+-- | - L36286–L36333 (48L): WeakMap Objects
+-- | - L36334–L36350 (17L): The WeakMap Constructor
+-- | - L36351–L36369 (19L): WeakMap (  iterable\ \ )
+-- | - L36370–L36377 (8L): Properties of the WeakMap Constructor
+-- | - L36378–L36385 (8L): WeakMap.prototype
+-- | - L36386–L36395 (10L): Properties of the WeakMap Prototype Object
+-- | - L36396–L36399 (4L): WeakMap.prototype.constructor
+-- | - L36400–L36416 (17L): WeakMap.prototype.delete ( key\ )
+-- | - L36417–L36428 (12L): WeakMap.prototype.get ( key\ )
+-- | - L36429–L36442 (14L): WeakMap.prototype.getOrInsert ( key\, value\ )
+-- | - L36443–L36463 (21L): WeakMap.prototype.getOrInsertComputed ( key\, callback\ )
+-- | - L36464–L36475 (12L): WeakMap.prototype.has ( key\ )
+-- | - L36476–L36489 (14L): WeakMap.prototype.set ( key\, value\ )
+-- | - L36490–L36497 (8L): WeakMap.prototype  %Symbol.toStringTag% \
+-- | - L36498–L36503 (6L): Properties of WeakMap Instances
+-- | - L36504–L36530 (27L): WeakSet Objects
+-- | - L36531–L36547 (17L): The WeakSet Constructor
+-- | - L36548–L36564 (17L): WeakSet (  iterable\ \ )
+-- | - L36565–L36572 (8L): Properties of the WeakSet Constructor
+-- | - L36573–L36580 (8L): WeakSet.prototype
+-- | - L36581–L36590 (10L): Properties of the WeakSet Prototype Object
+-- | - L36591–L36602 (12L): WeakSet.prototype.add ( value\ )
+
+-- SPEC: L1876-L1900
+-- | - L36603–L36606 (4L): WeakSet.prototype.constructor
+-- | - L36607–L36623 (17L): WeakSet.prototype.delete ( value\ )
+-- | - L36624–L36634 (11L): WeakSet.prototype.has ( value\ )
+-- | - L36635–L36642 (8L): WeakSet.prototype  %Symbol.toStringTag% \
+-- | - L36643–L36648 (6L): Properties of WeakSet Instances
+-- | - L36649–L36650 (2L): Abstract Operations for Keyed Collections
+-- | - L36651–L36654 (4L): CanonicalizeKeyedCollectionKey ( key\: an ECMAScript language value, ): an ECMAScript l...
+-- | - L36655–L36656 (2L): Structured Data
+-- | - L36657–L36658 (2L): ArrayBuffer Objects
+-- | - L36659–L36683 (25L): Notation
+-- | - L36684–L36694 (11L): Fixed-length and Resizable ArrayBuffer Objects
+-- | - L36695–L36696 (2L): Abstract Operations For ArrayBuffer Objects
+-- | - L36697–L36722 (26L): AllocateArrayBuffer ( constructor\: a constructor, byteLength\: a non-negative integer,...
+-- | - L36723–L36735 (13L): ArrayBufferByteLength ( arrayBuffer\: an ArrayBuffer or SharedArrayBuffer, order\: \~se...
+-- | - L36736–L36762 (27L): ArrayBufferCopyAndDetach ( arrayBuffer\: an ECMAScript language value, newLength\: an E...
+-- | - L36763–L36767 (5L): IsDetachedBuffer ( arrayBuffer\: an ArrayBuffer or a SharedArrayBuffer, ): a Boolean
+-- | - L36768–L36783 (16L): DetachArrayBuffer ( arrayBuffer\: an ArrayBuffer, optional key\: anything, ): either a ...
+-- | - L36784–L36798 (15L): CloneArrayBuffer ( srcBuffer\: an ArrayBuffer or a SharedArrayBuffer, srcByteOffset\: a...
+-- | - L36799–L36805 (7L): GetArrayBufferMaxByteLengthOption ( options\: an ECMAScript language value, ): either a...
+-- | - L36806–L36823 (18L): HostResizeArrayBuffer ( buffer\: an ArrayBuffer, newByteLength\: a non-negative integer...
+-- | - L36824–L36828 (5L): IsFixedLengthArrayBuffer ( arrayBuffer\: an ArrayBuffer or a SharedArrayBuffer, ): a Bo...
+-- | - L36829–L36837 (9L): IsUnsignedElementType ( type\: a TypedArray element type, ): a Boolean
+-- | - L36838–L36846 (9L): IsUnclampedIntegerElementType ( type\: a TypedArray element type, ): a Boolean
+-- | - L36847–L36855 (9L): IsBigIntElementType ( type\: a TypedArray element type, ): a Boolean
+-- | - L36856–L36862 (7L): IsNoTearConfiguration ( type\: a TypedArray element type, order\: \~seq-cst\~, \~unorde...
+
+-- SPEC: L1901-L1925
+-- | - L36863–L36889 (27L): RawBytesToNumeric ( type\: a TypedArray element type, rawBytes\: a List of byte values,...
+-- | - L36890–L36912 (23L): GetRawBytesFromSharedBlock ( block\: a Shared Data Block, byteIndex\: a non-negative in...
+-- | - L36913–L36931 (19L): GetValueFromBuffer ( arrayBuffer\: an ArrayBuffer or SharedArrayBuffer, byteIndex\: a n...
+-- | - L36932–L36965 (34L): NumericToRawBytes ( type\: a TypedArray element type, value\: a Number or a BigInt, isL...
+-- | - L36966–L36991 (26L): SetValueInBuffer ( arrayBuffer\: an ArrayBuffer or SharedArrayBuffer, byteIndex\: a non...
+-- | - L36992–L37028 (37L): GetModifySetValueInBuffer ( arrayBuffer\: an ArrayBuffer or a SharedArrayBuffer, byteIn...
+-- | - L37029–L37046 (18L): The ArrayBuffer Constructor
+-- | - L37047–L37057 (11L): ArrayBuffer ( length\  , options\ \ )
+-- | - L37058–L37065 (8L): Properties of the ArrayBuffer Constructor
+-- | - L37066–L37073 (8L): ArrayBuffer.isView ( arg\ )
+-- | - L37074–L37081 (8L): ArrayBuffer.prototype
+-- | - L37082–L37096 (15L): get ArrayBuffer  %Symbol.species% \
+-- | - L37097–L37107 (11L): Properties of the ArrayBuffer Prototype Object
+-- | - L37108–L37120 (13L): get ArrayBuffer.prototype.byteLength
+-- | - L37121–L37125 (5L): ArrayBuffer.prototype.constructor
+-- | - L37126–L37136 (11L): get ArrayBuffer.prototype.detached
+-- | - L37137–L37151 (15L): get ArrayBuffer.prototype.maxByteLength
+-- | - L37152–L37163 (12L): get ArrayBuffer.prototype.resizable
+-- | - L37164–L37186 (23L): ArrayBuffer.prototype.resize ( newLength\ )
+-- | - L37187–L37223 (37L): ArrayBuffer.prototype.slice ( start\, end\ )
+-- | - L37224–L37231 (8L): ArrayBuffer.prototype.transfer (  newLength\ \ )
+-- | - L37232–L37238 (7L): ArrayBuffer.prototype.transferToFixedLength (  newLength\ \ )
+-- | - L37239–L37246 (8L): ArrayBuffer.prototype  %Symbol.toStringTag% \
+-- | - L37247–L37265 (19L): Properties of ArrayBuffer Instances
+-- | - L37266–L37310 (45L): Resizable ArrayBuffer Guidelines
+
+-- SPEC: L1926-L1950
+-- | - L37311–L37312 (2L): SharedArrayBuffer Objects
+-- | - L37313–L37323 (11L): Fixed-length and Growable SharedArrayBuffer Objects
+-- | - L37324–L37325 (2L): Abstract Operations for SharedArrayBuffer Objects
+-- | - L37326–L37355 (30L): AllocateSharedArrayBuffer ( constructor\: a constructor, byteLength\: a non-negative in...
+-- | - L37356–L37363 (8L): IsSharedArrayBuffer ( obj\: an ArrayBuffer or a SharedArrayBuffer, ): a Boolean
+-- | - L37364–L37372 (9L): IsGrowableSharedArrayBuffer ( obj\: an ArrayBuffer or a SharedArrayBuffer, ): a Boolean
+-- | - L37373–L37414 (42L): HostGrowSharedArrayBuffer ( buffer\: a SharedArrayBuffer, newByteLength\: a non-negativ...
+-- | - L37415–L37439 (25L): The SharedArrayBuffer Constructor
+-- | - L37440–L37450 (11L): SharedArrayBuffer ( length\  , options\ \ )
+-- | - L37451–L37458 (8L): Properties of the SharedArrayBuffer Constructor
+-- | - L37459–L37466 (8L): SharedArrayBuffer.prototype
+-- | - L37467–L37477 (11L): get SharedArrayBuffer  %Symbol.species% \
+-- | - L37478–L37488 (11L): Properties of the SharedArrayBuffer Prototype Object
+-- | - L37489–L37500 (12L): get SharedArrayBuffer.prototype.byteLength
+-- | - L37501–L37505 (5L): SharedArrayBuffer.prototype.constructor
+-- | - L37506–L37559 (54L): SharedArrayBuffer.prototype.grow ( newLength\ )
+-- | - L37560–L37571 (12L): get SharedArrayBuffer.prototype.growable
+-- | - L37572–L37585 (14L): get SharedArrayBuffer.prototype.maxByteLength
+-- | - L37586–L37616 (31L): SharedArrayBuffer.prototype.slice ( start\, end\ )
+-- | - L37617–L37624 (8L): SharedArrayBuffer.prototype  %Symbol.toStringTag% \
+-- | - L37625–L37637 (13L): Properties of SharedArrayBuffer Instances
+-- | - L37638–L37705 (68L): Growable SharedArrayBuffer Guidelines
+-- | - L37706–L37707 (2L): DataView Objects
+-- | - L37708–L37709 (2L): Abstract Operations For DataView Objects
+-- | - L37710–L37725 (16L): DataView With Buffer Witness Records
+
+-- SPEC: L1951-L1975
+-- | - L37726–L37734 (9L): MakeDataViewWithBufferWitnessRecord ( obj\: a DataView, order\: \~seq-cst\~ or \~unorde...
+-- | - L37735–L37746 (12L): GetViewByteLength ( viewRecord\: a DataView With Buffer Witness Record, ): a non-negati...
+-- | - L37747–L37763 (17L): IsViewOutOfBounds ( viewRecord\: a DataView With Buffer Witness Record, ): a Boolean
+-- | - L37764–L37786 (23L): GetViewValue ( view\: an ECMAScript language value, requestIndex\: an ECMAScript langua...
+-- | - L37787–L37813 (27L): SetViewValue ( view\: an ECMAScript language value, requestIndex\: an ECMAScript langua...
+-- | - L37814–L37830 (17L): The DataView Constructor
+-- | - L37831–L37860 (30L): DataView ( buffer\  , byteOffset\ \[ , byteLength\ \ \] )
+-- | - L37861–L37868 (8L): Properties of the DataView Constructor
+-- | - L37869–L37876 (8L): DataView.prototype
+-- | - L37877–L37887 (11L): Properties of the DataView Prototype Object
+-- | - L37888–L37898 (11L): get DataView.prototype.buffer
+-- | - L37899–L37912 (14L): get DataView.prototype.byteLength
+-- | - L37913–L37926 (14L): get DataView.prototype.byteOffset
+-- | - L37927–L37930 (4L): DataView.prototype.constructor
+-- | - L37931–L37937 (7L): DataView.prototype.getBigInt64 ( byteOffset\  , littleEndian\ \ )
+-- | - L37938–L37944 (7L): DataView.prototype.getBigUint64 ( byteOffset\  , littleEndian\ \ )
+-- | - L37945–L37952 (8L): DataView.prototype.getFloat16 ( byteOffset\  , littleEndian\ \ )
+-- | - L37953–L37960 (8L): DataView.prototype.getFloat32 ( byteOffset\  , littleEndian\ \ )
+-- | - L37961–L37968 (8L): DataView.prototype.getFloat64 ( byteOffset\  , littleEndian\ \ )
+-- | - L37969–L37975 (7L): DataView.prototype.getInt8 ( byteOffset\ )
+-- | - L37976–L37983 (8L): DataView.prototype.getInt16 ( byteOffset\  , littleEndian\ \ )
+-- | - L37984–L37991 (8L): DataView.prototype.getInt32 ( byteOffset\  , littleEndian\ \ )
+-- | - L37992–L37998 (7L): DataView.prototype.getUint8 ( byteOffset\ )
+-- | - L37999–L38006 (8L): DataView.prototype.getUint16 ( byteOffset\  , littleEndian\ \ )
+-- | - L38007–L38014 (8L): DataView.prototype.getUint32 ( byteOffset\  , littleEndian\ \ )
+
+-- SPEC: L1976-L2000
+-- | - L38015–L38022 (8L): DataView.prototype.setBigInt64 ( byteOffset\, value\  , littleEndian\ \ )
+-- | - L38023–L38030 (8L): DataView.prototype.setBigUint64 ( byteOffset\, value\  , littleEndian\ \ )
+-- | - L38031–L38039 (9L): DataView.prototype.setFloat16 ( byteOffset\, value\  , littleEndian\ \ )
+-- | - L38040–L38048 (9L): DataView.prototype.setFloat32 ( byteOffset\, value\  , littleEndian\ \ )
+-- | - L38049–L38057 (9L): DataView.prototype.setFloat64 ( byteOffset\, value\  , littleEndian\ \ )
+-- | - L38058–L38064 (7L): DataView.prototype.setInt8 ( byteOffset\, value\ )
+-- | - L38065–L38073 (9L): DataView.prototype.setInt16 ( byteOffset\, value\  , littleEndian\ \ )
+-- | - L38074–L38082 (9L): DataView.prototype.setInt32 ( byteOffset\, value\  , littleEndian\ \ )
+-- | - L38083–L38089 (7L): DataView.prototype.setUint8 ( byteOffset\, value\ )
+-- | - L38090–L38098 (9L): DataView.prototype.setUint16 ( byteOffset\, value\  , littleEndian\ \ )
+-- | - L38099–L38107 (9L): DataView.prototype.setUint32 ( byteOffset\, value\  , littleEndian\ \ )
+-- | - L38108–L38115 (8L): DataView.prototype  %Symbol.toStringTag% \
+-- | - L38116–L38127 (12L): Properties of DataView Instances
+-- | - L38128–L38154 (27L): The Atomics Object
+-- | - L38155–L38169 (15L): Waiter Record
+-- | - L38170–L38203 (34L): WaiterList Records
+-- | - L38204–L38205 (2L): Abstract Operations for Atomics
+-- | - L38206–L38218 (13L): ValidateIntegerTypedArray ( typedArray\: an ECMAScript language value, waitable\: a Boo...
+-- | - L38219–L38229 (11L): ValidateAtomicAccess ( taRecord\: a TypedArray With Buffer Witness Record, requestIndex...
+-- | - L38230–L38235 (6L): ValidateAtomicAccessOnIntegerTypedArray ( typedArray\: an ECMAScript language value, re...
+-- | - L38236–L38255 (20L): RevalidateAtomicAccess ( typedArray\: a TypedArray, byteIndexInBuffer\: an integer, ): ...
+-- | - L38256–L38261 (6L): GetWaiterList ( block\: a Shared Data Block, i\: a non-negative integer that is evenly ...
+-- | - L38262–L38285 (24L): EnterCriticalSection ( WL\: a WaiterList Record, ): \~unused\~
+-- | - L38286–L38297 (12L): LeaveCriticalSection ( WL\: a WaiterList Record, ): \~unused\~
+-- | - L38298–L38307 (10L): AddWaiter ( WL\: a WaiterList Record, waiterRecord\: a Waiter Record, ): \~unused\~
+
+-- SPEC: L2001-L2025
+-- | - L38308–L38314 (7L): RemoveWaiter ( WL\: a WaiterList Record, waiterRecord\: a Waiter Record, ): \~unused\~
+-- | - L38315–L38323 (9L): RemoveWaiters ( WL\: a WaiterList Record, c\: a non-negative integer or +∞, ): a List o...
+-- | - L38324–L38340 (17L): SuspendThisAgent ( WL\: a WaiterList Record, waiterRecord\: a Waiter Record, ): \~unused\~
+-- | - L38341–L38358 (18L): NotifyWaiter ( WL\: a WaiterList Record, waiterRecord\: a Waiter Record, ): \~unused\~
+-- | - L38359–L38371 (13L): EnqueueResolveInAgentJob ( agentSignifier\: an agent signifier, promiseCapability\: a P...
+-- | - L38372–L38431 (60L): DoWait ( mode\: \~sync\~ or \~async\~, typedArray\: an ECMAScript language value, index...
+-- | - L38432–L38450 (19L): EnqueueAtomicsWaitAsyncTimeoutJob ( WL\: a WaiterList Record, waiterRecord\: a Waiter R...
+-- | - L38451–L38482 (32L): AtomicCompareExchangeInSharedBlock ( block\: a Shared Data Block, byteIndexInBuffer\: a...
+-- | - L38483–L38501 (19L): AtomicReadModifyWrite ( typedArray\: an ECMAScript language value, index\: an ECMAScrip...
+-- | - L38502–L38519 (18L): ByteListBitwiseOp ( op\: \&\, \\^\, or \\|\, xBytes\: a List of byte values, yBytes\: a...
+-- | - L38520–L38527 (8L): ByteListEqual ( xBytes\: a List of byte values, yBytes\: a List of byte values, ): a Bo...
+-- | - L38528–L38546 (19L): Atomics.add ( typedArray\, index\, value\ )
+-- | - L38547–L38556 (10L): Atomics.and ( typedArray\, index\, value\ )
+-- | - L38557–L38590 (34L): Atomics.compareExchange ( typedArray\, index\, expectedValue\, replacementValue\ )
+-- | - L38591–L38600 (10L): Atomics.exchange ( typedArray\, index\, value\ )
+-- | - L38601–L38629 (29L): Atomics.isLockFree ( size\ )
+-- | - L38630–L38642 (13L): Atomics.load ( typedArray\, index\ )
+-- | - L38643–L38652 (10L): Atomics.or ( typedArray\, index\, value\ )
+-- | - L38653–L38667 (15L): Atomics.store ( typedArray\, index\, value\ )
+-- | - L38668–L38688 (21L): Atomics.sub ( typedArray\, index\, value\ )
+-- | - L38689–L38699 (11L): Atomics.wait ( typedArray\, index\, value\, timeout\ )
+-- | - L38700–L38709 (10L): Atomics.waitAsync ( typedArray\, index\, value\, timeout\ )
+-- | - L38710–L38729 (20L): Atomics.notify ( typedArray\, index\, count\ )
+-- | - L38730–L38739 (10L): Atomics.xor ( typedArray\, index\, value\ )
+-- | - L38740–L38747 (8L): Atomics  %Symbol.toStringTag% \
+
+-- SPEC: L2026-L2050
+-- | - L38748–L38771 (24L): The JSON Object
+-- | - L38772–L38799 (28L): JSON.parse ( text\  , reviver\ \ )
+-- | - L38800–L38837 (38L): ParseJSON ( text\: a String, ): either a normal completion containing an ECMAScript lan...
+-- | - L38838–L38861 (24L): InternalizeJSONProperty ( holder\: an Object, name\: a String, reviver\: a function obj...
+-- | - L38862–L38963 (102L): JSON.stringify ( value\  , replacer\ \[ , space\ \ \] )
+-- | - L38964–L38979 (16L): JSON Serialization Record
+-- | - L38980–L39007 (28L): SerializeJSONProperty ( state\: a JSON Serialization Record, key\: a String, holder\: a...
+-- | - L39008–L39040 (33L): QuoteJSONString ( value\: a String, ): a String
+-- | - L39041–L39051 (11L): UnicodeEscape ( C\: a code unit, ): a String
+-- | - L39052–L39091 (40L): SerializeJSONObject ( state\: a JSON Serialization Record, value\: an Object, ): either...
+-- | - L39092–L39133 (42L): SerializeJSONArray ( state\: a JSON Serialization Record, value\: an ECMAScript languag...
+-- | - L39134–L39141 (8L): JSON  %Symbol.toStringTag% \
+-- | - L39142–L39143 (2L): Managing Memory
+-- | - L39144–L39150 (7L): WeakRef Objects
+-- | - L39151–L39167 (17L): The WeakRef Constructor
+-- | - L39168–L39179 (12L): WeakRef ( target\ )
+-- | - L39180–L39187 (8L): Properties of the WeakRef Constructor
+-- | - L39188–L39195 (8L): WeakRef.prototype
+-- | - L39196–L39205 (10L): Properties of the WeakRef Prototype Object
+-- | - L39206–L39209 (4L): WeakRef.prototype.constructor
+-- | - L39210–L39238 (29L): WeakRef.prototype.deref ( )
+-- | - L39239–L39246 (8L): WeakRef.prototype  %Symbol.toStringTag% \
+-- | - L39247–L39248 (2L): WeakRef Abstract Operations
+-- | - L39249–L39259 (11L): WeakRefDeref ( weakRef\: a WeakRef, ): an ECMAScript language value
+-- | - L39260–L39265 (6L): Properties of WeakRef Instances
+
+-- SPEC: L2051-L2075
+-- | - L39266–L39271 (6L): FinalizationRegistry Objects
+-- | - L39272–L39290 (19L): The FinalizationRegistry Constructor
+-- | - L39291–L39307 (17L): FinalizationRegistry ( cleanupCallback\ )
+-- | - L39308–L39315 (8L): Properties of the FinalizationRegistry Constructor
+-- | - L39316–L39323 (8L): FinalizationRegistry.prototype
+-- | - L39324–L39334 (11L): Properties of the FinalizationRegistry Prototype Object
+-- | - L39335–L39339 (5L): FinalizationRegistry.prototype.constructor
+-- | - L39340–L39363 (24L): FinalizationRegistry.prototype.register ( target\, heldValue\  , unregisterToken\ \ )
+-- | - L39364–L39379 (16L): FinalizationRegistry.prototype.unregister ( unregisterToken\ )
+-- | - L39380–L39387 (8L): FinalizationRegistry.prototype  %Symbol.toStringTag% \
+-- | - L39388–L39394 (7L): Properties of FinalizationRegistry Instances
+-- | - L39395–L39396 (2L): Control Abstraction Objects
+-- | - L39397–L39398 (2L): Iteration
+-- | - L39399–L39407 (9L): Common Iteration Interfaces
+-- | - L39408–L39417 (10L): The Iterable Interface
+-- | - L39418–L39445 (28L): The Iterator Interface
+-- | - L39446–L39455 (10L): The Async Iterable Interface
+-- | - L39456–L39618 (163L): The Async Iterator Interface
+-- | - L39619–L39629 (11L): The IteratorResult Interface
+-- | - L39630–L39637 (8L): Iterator Helper Objects
+-- | - L39638–L39647 (10L): The %IteratorHelperPrototype% Object
+-- | - L39648–L39652 (5L): %IteratorHelperPrototype%.next ( )
+-- | - L39653–L39667 (15L): %IteratorHelperPrototype%.return ( )
+-- | - L39668–L39675 (8L): %IteratorHelperPrototype%  %Symbol.toStringTag% \
+-- | - L39676–L39677 (2L): Iterator Objects
+
+-- SPEC: L2076-L2100
+-- | - L39678–L39687 (10L): The Iterator Constructor
+-- | - L39688–L39695 (8L): Iterator ( )
+-- | - L39696–L39703 (8L): Properties of the Iterator Constructor
+-- | - L39704–L39729 (26L): Iterator.concat ( \...items\ )
+-- | - L39730–L39740 (11L): Iterator.from ( O\ )
+-- | - L39741–L39748 (8L): The %WrapForValidIteratorPrototype% Object
+-- | - L39749–L39756 (8L): %WrapForValidIteratorPrototype%.next ( )
+-- | - L39757–L39766 (10L): %WrapForValidIteratorPrototype%.return ( )
+-- | - L39767–L39774 (8L): Iterator.prototype
+-- | - L39775–L39796 (22L): Properties of the Iterator Prototype Object
+-- | - L39797–L39803 (7L): Iterator.prototype.constructor
+-- | - L39804–L39810 (7L): get Iterator.prototype.constructor
+-- | - L39811–L39822 (12L): set Iterator.prototype.constructor
+-- | - L39823–L39853 (31L): Iterator.prototype.drop ( limit\ )
+-- | - L39854–L39872 (19L): Iterator.prototype.every ( predicate\ )
+-- | - L39873–L39899 (27L): Iterator.prototype.filter ( predicate\ )
+-- | - L39900–L39918 (19L): Iterator.prototype.find ( predicate\ )
+-- | - L39919–L39954 (36L): Iterator.prototype.flatMap ( mapper\ )
+-- | - L39955–L39971 (17L): Iterator.prototype.forEach ( procedure\ )
+-- | - L39972–L39997 (26L): Iterator.prototype.map ( mapper\ )
+-- | - L39998–L40019 (22L): Iterator.prototype.reduce ( reducer\  , initialValue\ \ )
+-- | - L40020–L40038 (19L): Iterator.prototype.some ( predicate\ )
+-- | - L40039–L40069 (31L): Iterator.prototype.take ( limit\ )
+-- | - L40070–L40080 (11L): Iterator.prototype.toArray ( )
+-- | - L40081–L40089 (9L): Iterator.prototype  %Symbol.iterator% \ ( )
+
+-- SPEC: L2101-L2125
+-- | - L40090–L40096 (7L): Iterator.prototype  %Symbol.toStringTag% \
+-- | - L40097–L40103 (7L): get Iterator.prototype  %Symbol.toStringTag% \
+-- | - L40104–L40115 (12L): set Iterator.prototype  %Symbol.toStringTag% \
+-- | - L40116–L40130 (15L): The %AsyncIteratorPrototype% Object
+-- | - L40131–L40139 (9L): %AsyncIteratorPrototype%  %Symbol.asyncIterator% \ ( )
+-- | - L40140–L40149 (10L): Async-from-Sync Iterator Objects
+-- | - L40150–L40165 (16L): CreateAsyncFromSyncIterator ( syncIteratorRecord\: an Iterator Record, ): an Iterator R...
+-- | - L40166–L40177 (12L): The %AsyncFromSyncIteratorPrototype% Object
+-- | - L40178–L40190 (13L): %AsyncFromSyncIteratorPrototype%.next (  value\ \ )
+-- | - L40191–L40215 (25L): %AsyncFromSyncIteratorPrototype%.return (  value\ \ )
+-- | - L40216–L40250 (35L): %AsyncFromSyncIteratorPrototype%.throw (  value\ \ )
+-- | - L40251–L40261 (11L): Properties of Async-from-Sync Iterator Instances
+-- | - L40262–L40295 (34L): AsyncFromSyncIteratorContinuation ( result\: an Object, promiseCapability\: a PromiseCa...
+-- | - L40296–L40318 (23L): Promise Objects
+-- | - L40319–L40320 (2L): Promise Abstract Operations
+-- | - L40321–L40336 (16L): PromiseCapability Records
+-- | - L40337–L40350 (14L): IfAbruptRejectPromise ( value\, capability\ )
+-- | - L40351–L40366 (16L): PromiseReaction Records
+-- | - L40367–L40400 (34L): CreateResolvingFunctions ( promise\: a Promise, ): a Record with fields \[Resolve\\] (a...
+-- | - L40401–L40410 (10L): FulfillPromise ( promise\: a Promise, value\: an ECMAScript language value, ): \~unused\~
+-- | - L40411–L40448 (38L): NewPromiseCapability ( C\: an ECMAScript language value, ): either a normal completion ...
+-- | - L40449–L40457 (9L): IsPromise ( x\: an ECMAScript language value, ): a Boolean
+-- | - L40458–L40470 (13L): RejectPromise ( promise\: a Promise, reason\: an ECMAScript language value, ): \~unused\~
+-- | - L40471–L40484 (14L): TriggerPromiseReactions ( reactions\: a List of PromiseReaction Records, argument\: an ...
+-- | - L40485–L40510 (26L): HostPromiseRejectionTracker ( promise\: a Promise, operation\: \\"reject\"\ or \\"handl...
+
+-- SPEC: L2126-L2150
+-- | - L40511–L40512 (2L): Promise Jobs
+-- | - L40513–L40550 (38L): NewPromiseReactionJob ( reaction\: a PromiseReaction Record, argument\: an ECMAScript l...
+-- | - L40551–L40576 (26L): NewPromiseResolveThenableJob ( promiseToResolve\: a Promise, thenable\: an Object, then...
+-- | - L40577–L40593 (17L): The Promise Constructor
+-- | - L40594–L40645 (52L): Promise ( executor\ )
+-- | - L40646–L40653 (8L): Properties of the Promise Constructor
+-- | - L40654–L40678 (25L): Promise.all ( iterable\ )
+-- | - L40679–L40684 (6L): GetPromiseResolve ( promiseConstructor\: a constructor, ): either a normal completion c...
+-- | - L40685–L40724 (40L): PerformPromiseAll ( iteratorRecord\: an Iterator Record, constructor\: a constructor, r...
+-- | - L40725–L40749 (25L): Promise.allSettled ( iterable\ )
+-- | - L40750–L40815 (66L): PerformPromiseAllSettled ( iteratorRecord\: an Iterator Record, constructor\: a constru...
+-- | - L40816–L40841 (26L): Promise.any ( iterable\ )
+-- | - L40842–L40889 (48L): PerformPromiseAny ( iteratorRecord\: an Iterator Record, constructor\: a constructor, r...
+-- | - L40890–L40897 (8L): Promise.prototype
+-- | - L40898–L40926 (29L): Promise.race ( iterable\ )
+-- | - L40927–L40936 (10L): PerformPromiseRace ( iteratorRecord\: an Iterator Record, constructor\: a constructor, ...
+-- | - L40937–L40948 (12L): Promise.reject ( r\ )
+-- | - L40949–L40960 (12L): Promise.resolve ( x\ )
+-- | - L40961–L40972 (12L): PromiseResolve ( C\: an Object, x\: an ECMAScript language value, ): either a normal co...
+-- | - L40973–L40990 (18L): Promise.try ( callback\, \...args\ )
+-- | - L40991–L41006 (16L): Promise.withResolvers ( )
+-- | - L41007–L41022 (16L): get Promise  %Symbol.species% \
+-- | - L41023–L41033 (11L): Properties of the Promise Prototype Object
+-- | - L41034–L41040 (7L): Promise.prototype.catch ( onRejected\ )
+-- | - L41041–L41044 (4L): Promise.prototype.constructor
+
+-- SPEC: L2151-L2175
+-- | - L41045–L41077 (33L): Promise.prototype.finally ( onFinally\ )
+-- | - L41078–L41088 (11L): Promise.prototype.then ( onFulfilled\, onRejected\ )
+-- | - L41089–L41131 (43L): PerformPromiseThen ( promise\: a Promise, onFulfilled\: an ECMAScript language value, o...
+-- | - L41132–L41139 (8L): Promise.prototype  %Symbol.toStringTag% \
+-- | - L41140–L41153 (14L): Properties of Promise Instances
+-- | - L41154–L41163 (10L): GeneratorFunction Objects
+-- | - L41164–L41183 (20L): The GeneratorFunction Constructor
+-- | - L41184–L41197 (14L): GeneratorFunction ( \...parameterArgs\, bodyArg\ )
+-- | - L41198–L41208 (11L): Properties of the GeneratorFunction Constructor
+-- | - L41209–L41216 (8L): GeneratorFunction.prototype
+-- | - L41217–L41227 (11L): Properties of the GeneratorFunction Prototype Object
+-- | - L41228–L41235 (8L): GeneratorFunction.prototype.constructor
+-- | - L41236–L41243 (8L): GeneratorFunction.prototype.prototype
+-- | - L41244–L41251 (8L): GeneratorFunction.prototype  %Symbol.toStringTag% \
+-- | - L41252–L41260 (9L): GeneratorFunction Instances
+-- | - L41261–L41265 (5L): length
+-- | - L41266–L41270 (5L): name
+-- | - L41271–L41287 (17L): prototype
+-- | - L41288–L41294 (7L): AsyncGeneratorFunction Objects
+-- | - L41295–L41315 (21L): The AsyncGeneratorFunction Constructor
+-- | - L41316–L41330 (15L): AsyncGeneratorFunction ( \...parameterArgs\, bodyArg\ )
+-- | - L41331–L41342 (12L): Properties of the AsyncGeneratorFunction Constructor
+-- | - L41343–L41350 (8L): AsyncGeneratorFunction.prototype
+-- | - L41351–L41361 (11L): Properties of the AsyncGeneratorFunction Prototype Object
+-- | - L41362–L41369 (8L): AsyncGeneratorFunction.prototype.constructor
+
+-- SPEC: L2176-L2200
+-- | - L41370–L41377 (8L): AsyncGeneratorFunction.prototype.prototype
+-- | - L41378–L41385 (8L): AsyncGeneratorFunction.prototype  %Symbol.toStringTag% \
+-- | - L41386–L41394 (9L): AsyncGeneratorFunction Instances
+-- | - L41395–L41407 (13L): length
+-- | - L41408–L41412 (5L): name
+-- | - L41413–L41429 (17L): prototype
+-- | - L41430–L41439 (10L): Generator Objects
+-- | - L41440–L41452 (13L): The %GeneratorPrototype% Object
+-- | - L41453–L41460 (8L): %GeneratorPrototype%.constructor
+-- | - L41461–L41464 (4L): %GeneratorPrototype%.next ( value\ )
+-- | - L41465–L41472 (8L): %GeneratorPrototype%.return ( value\ )
+-- | - L41473–L41480 (8L): %GeneratorPrototype%.throw ( exception\ )
+-- | - L41481–L41488 (8L): %GeneratorPrototype%  %Symbol.toStringTag% \
+-- | - L41489–L41499 (11L): Properties of Generator Instances
+-- | - L41500–L41501 (2L): Generator Abstract Operations
+-- | - L41502–L41533 (32L): GeneratorStart ( generator\: a Generator, generatorBody\: a \|FunctionBody\| Parse Node...
+-- | - L41534–L41543 (10L): GeneratorValidate ( generator\: an ECMAScript language value, generatorBrand\: a String...
+-- | - L41544–L41561 (18L): GeneratorResume ( generator\: an ECMAScript language value, value\: an ECMAScript langu...
+-- | - L41562–L41586 (25L): GeneratorResumeAbrupt ( generator\: an ECMAScript language value, abruptCompletion\: a ...
+-- | - L41587–L41594 (8L): GetGeneratorKind ( ): \~non-generator\~, \~sync\~, or \~async\~
+-- | - L41595–L41613 (19L): GeneratorYield ( iteratorResult\: an Object that conforms to the IteratorResult interfa...
+-- | - L41614–L41620 (7L): Yield ( value\: an ECMAScript language value, ): either a normal completion containing ...
+-- | - L41621–L41643 (23L): CreateIteratorFromClosure ( closure\: an Abstract Closure with no parameters, generator...
+-- | - L41644–L41654 (11L): AsyncGenerator Objects
+-- | - L41655–L41667 (13L): The %AsyncGeneratorPrototype% Object
+
+-- SPEC: L2201-L2225
+-- | - L41668–L41675 (8L): %AsyncGeneratorPrototype%.constructor
+-- | - L41676–L41695 (20L): %AsyncGeneratorPrototype%.next ( value\ )
+-- | - L41696–L41714 (19L): %AsyncGeneratorPrototype%.return ( value\ )
+-- | - L41715–L41734 (20L): %AsyncGeneratorPrototype%.throw ( exception\ )
+-- | - L41735–L41742 (8L): %AsyncGeneratorPrototype%  %Symbol.toStringTag% \
+-- | - L41743–L41754 (12L): Properties of AsyncGenerator Instances
+-- | - L41755–L41756 (2L): AsyncGenerator Abstract Operations
+-- | - L41757–L41770 (14L): AsyncGeneratorRequest Records
+-- | - L41771–L41801 (31L): AsyncGeneratorStart ( generator\: an AsyncGenerator, generatorBody\: a \|FunctionBody\|...
+-- | - L41802–L41811 (10L): AsyncGeneratorValidate ( generator\: an ECMAScript language value, generatorBrand\: a S...
+-- | - L41812–L41818 (7L): AsyncGeneratorEnqueue ( generator\: an AsyncGenerator, completion\: a Completion Record...
+-- | - L41819–L41837 (19L): AsyncGeneratorCompleteStep ( generator\: an AsyncGenerator, completion\: a Completion R...
+-- | - L41838–L41853 (16L): AsyncGeneratorResume ( generator\: an AsyncGenerator, completion\: a Completion Record,...
+-- | - L41854–L41862 (9L): AsyncGeneratorUnwrapYieldResumption ( resumptionValue\: a Completion Record, ): either ...
+-- | - L41863–L41890 (28L): AsyncGeneratorYield ( value\: an ECMAScript language value, ): either a normal completi...
+-- | - L41891–L41924 (34L): AsyncGeneratorAwaitReturn ( generator\: an AsyncGenerator, ): \~unused\~
+-- | - L41925–L41943 (19L): AsyncGeneratorDrainQueue ( generator\: an AsyncGenerator, ): \~unused\~
+-- | - L41944–L41950 (7L): AsyncFunction Objects
+-- | - L41951–L41969 (19L): The AsyncFunction Constructor
+-- | - L41970–L41981 (12L): AsyncFunction ( \...parameterArgs\, bodyArg\ )
+-- | - L41982–L41992 (11L): Properties of the AsyncFunction Constructor
+-- | - L41993–L42000 (8L): AsyncFunction.prototype
+-- | - L42001–L42011 (11L): Properties of the AsyncFunction Prototype Object
+-- | - L42012–L42019 (8L): AsyncFunction.prototype.constructor
+-- | - L42020–L42027 (8L): AsyncFunction.prototype  %Symbol.toStringTag% \
+
+-- SPEC: L2226-L2250
+-- | - L42028–L42038 (11L): AsyncFunction Instances
+-- | - L42039–L42043 (5L): length
+-- | - L42044–L42048 (5L): name
+-- | - L42049–L42050 (2L): Async Functions Abstract Operations
+-- | - L42051–L42059 (9L): AsyncFunctionStart ( promiseCapability\: a PromiseCapability Record, asyncFunctionBody\...
+-- | - L42060–L42094 (35L): AsyncBlockStart ( promiseCapability\: a PromiseCapability Record, asyncBody\: a Parse N...
+-- | - L42095–L42132 (38L): Await ( value\: an ECMAScript language value, ): either a normal completion containing ...
+-- | - L42133–L42134 (2L): Reflection
+-- | - L42135–L42150 (16L): The Reflect Object
+-- | - L42151–L42160 (10L): Reflect.apply ( target\, thisArgument\, argumentsList\ )
+-- | - L42161–L42171 (11L): Reflect.construct ( target\, argumentsList\  , newTarget\ \ )
+-- | - L42172–L42180 (9L): Reflect.defineProperty ( target\, propertyKey\, attributes\ )
+-- | - L42181–L42188 (8L): Reflect.deleteProperty ( target\, propertyKey\ )
+-- | - L42189–L42197 (9L): Reflect.get ( target\, propertyKey\  , receiver\ \ )
+-- | - L42198–L42206 (9L): Reflect.getOwnPropertyDescriptor ( target\, propertyKey\ )
+-- | - L42207–L42213 (7L): Reflect.getPrototypeOf ( target\ )
+-- | - L42214–L42221 (8L): Reflect.has ( target\, propertyKey\ )
+-- | - L42222–L42228 (7L): Reflect.isExtensible ( target\ )
+-- | - L42229–L42236 (8L): Reflect.ownKeys ( target\ )
+-- | - L42237–L42243 (7L): Reflect.preventExtensions ( target\ )
+-- | - L42244–L42252 (9L): Reflect.set ( target\, propertyKey\, V\  , receiver\ \ )
+-- | - L42253–L42261 (9L): Reflect.setPrototypeOf ( target\, proto\ )
+-- | - L42262–L42269 (8L): Reflect  %Symbol.toStringTag% \
+-- | - L42270–L42271 (2L): Proxy Objects
+-- | - L42272–L42283 (12L): The Proxy Constructor
+
+-- SPEC: L2251-L2275
+-- | - L42284–L42290 (7L): Proxy ( target\, handler\ )
+-- | - L42291–L42301 (11L): Properties of the Proxy Constructor
+-- | - L42302–L42324 (23L): Proxy.revocable ( target\, handler\ )
+-- | - L42325–L42335 (11L): Module Namespace Objects
+-- | - L42336–L42343 (8L): %Symbol.toStringTag%
+-- | - L42344–L42376 (33L): Memory Model
+-- | - L42377–L42456 (80L): Memory Model Fundamentals
+-- | - L42457–L42467 (11L): Agent Events Records
+-- | - L42468–L42477 (10L): Chosen Value Records
+-- | - L42478–L42491 (14L): Candidate Executions
+-- | - L42492–L42493 (2L): Abstract Operations for the Memory Model
+-- | - L42494–L42500 (7L): EventSet ( execution\: a candidate execution, ): a Set of Memory events
+-- | - L42501–L42506 (6L): SharedDataBlockEventSet ( execution\: a candidate execution, ): a Set of Shared Data Bl...
+-- | - L42507–L42511 (5L): HostEventSet ( execution\: a candidate execution, ): a Set of Memory events
+-- | - L42512–L42534 (23L): ComposeWriteEventBytes ( execution\: a candidate execution, byteIndex\: a non-negative ...
+-- | - L42535–L42541 (7L): ValueOfReadEvent ( execution\: a candidate execution, R\: a ReadSharedMemory or ReadMod...
+-- | - L42542–L42546 (5L): Relations of Candidate Executions
+-- | - L42547–L42561 (15L): is-agent-order-before
+-- | - L42562–L42581 (20L): reads-bytes-from
+-- | - L42582–L42590 (9L): reads-from
+-- | - L42591–L42609 (19L): host-synchronizes-with
+-- | - L42610–L42644 (35L): synchronizes-with
+-- | - L42645–L42665 (21L): happens-before
+-- | - L42666–L42667 (2L): Properties of Valid Executions
+-- | - L42668–L42686 (19L): Valid Chosen Reads
+
+-- SPEC: L2276-L2300
+-- | - L42687–L42703 (17L): Coherent Reads
+-- | - L42704–L42732 (29L): Tear Free Reads
+-- | - L42733–L42780 (48L): Sequentially Consistent Atomics
+-- | - L42781–L42795 (15L): Valid Executions
+-- | - L42796–L42810 (15L): Races
+-- | - L42811–L42821 (11L): Data Races
+-- | - L42822–L42832 (11L): Data Race Freedom
+-- | - L42833–L43007 (175L): Shared Memory Guidelines
+-- | - L43008–L43009 (2L): Grammar Summary
+-- | - L43010–L43011 (2L): Lexical Grammar
+-- | - L43012–L43035 (24L): Expressions
+-- | - L43036–L43037 (2L): Statements
+-- | - L43038–L43054 (17L): Functions and Classes
+-- | - L43055–L43056 (2L): Scripts and Modules
+-- | - L43057–L43062 (6L): Number Conversions
+-- | - L43063–L43064 (2L): Time Zone Offset String Format
+-- | - L43065–L43073 (9L): Regular Expressions
+-- | - L43074–L43107 (34L): Additional ECMAScript Features for Web Browsers
+-- | - L43108–L43109 (2L): Additional Syntax
+-- | - L43110–L43145 (36L): HTML-like Comments
+-- |   - L43116–L43145 (30L): Syntax
+-- | - L43146–L43225 (80L): Regular Expressions Patterns
+-- |   - L43161–L43225 (65L): Syntax
+-- | - L43226–L43257 (32L): Static Semantics: Early Errors
+-- | - L43258–L43265 (8L): Static Semantics: CountLeftCapturingParensWithin and CountLeftCapturingParensBefore
+
+-- SPEC: L2301-L2325
+-- | - L43266–L43271 (6L): Static Semantics: IsCharacterClass
+-- | - L43272–L43283 (12L): Static Semantics: CharacterValue
+-- | - L43284–L43297 (14L): Runtime Semantics: CompileSubpattern
+-- | - L43298–L43304 (7L): Runtime Semantics: CompileAssertion
+-- | - L43305–L43319 (15L): Runtime Semantics: CompileAtom
+-- | - L43320–L43351 (32L): Runtime Semantics: CompileToCharSet
+-- | - L43352–L43359 (8L): CharacterRangeOrUnion ( rer\: a RegExp Record, A\: a CharSet, B\: a CharSet, ): a CharSet
+-- | - L43360–L43380 (21L): Static Semantics: ParsePattern ( patternText\, u\, v\ )
+-- | - L43381–L43385 (5L): Additional Built-in Properties
+-- | - L43386–L43394 (9L): Additional Properties of the Global Object
+-- | - L43395–L43431 (37L): escape ( string\ )
+-- | - L43432–L43460 (29L): unescape ( string\ )
+-- | - L43461–L43462 (2L): Additional Properties of the String.prototype Object
+-- | - L43463–L43490 (28L): String.prototype.substr ( start\, length\ )
+-- | - L43491–L43497 (7L): String.prototype.anchor ( name\ )
+-- | - L43498–L43514 (17L): CreateHTML ( string\: an ECMAScript language value, tag\: a String, attribute\: a Strin...
+-- | - L43515–L43521 (7L): String.prototype.big ( )
+-- | - L43522–L43528 (7L): String.prototype.blink ( )
+-- | - L43529–L43535 (7L): String.prototype.bold ( )
+-- | - L43536–L43542 (7L): String.prototype.fixed ( )
+-- | - L43543–L43549 (7L): String.prototype.fontcolor ( colour\ )
+-- | - L43550–L43556 (7L): String.prototype.fontsize ( size\ )
+-- | - L43557–L43563 (7L): String.prototype.italics ( )
+-- | - L43564–L43570 (7L): String.prototype.link ( url\ )
+-- | - L43571–L43577 (7L): String.prototype.small ( )
+
+-- SPEC: L2326-L2350
+-- | - L43578–L43584 (7L): String.prototype.strike ( )
+-- | - L43585–L43591 (7L): String.prototype.sub ( )
+-- | - L43592–L43598 (7L): String.prototype.sup ( )
+-- | - L43599–L43608 (10L): String.prototype.trimLeft ( )
+-- | - L43609–L43618 (10L): String.prototype.trimRight ( )
+-- | - L43619–L43620 (2L): Additional Properties of the Date.prototype Object
+-- | - L43621–L43632 (12L): Date.prototype.getYear ( )
+-- | - L43633–L43650 (18L): Date.prototype.setYear ( year\ )
+-- | - L43651–L43658 (8L): Date.prototype.toGMTString ( )
+-- | - L43659–L43660 (2L): Additional Properties of the RegExp.prototype Object
+-- | - L43661–L43678 (18L): RegExp.prototype.compile ( pattern\, flags\ )
+-- | - L43679–L43680 (2L): Other Additional Features
+-- | - L43681–L43697 (17L): Labelled Function Declarations
+-- | - L43698–L43787 (90L): Block-Level Function Declarations Web Legacy Compatibility Semantics
+-- | - L43788–L43809 (22L): FunctionDeclarations in IfStatement Statement Clauses
+-- | - L43810–L43827 (18L): VariableStatements in Catch Blocks
+-- | - L43828–L43899 (72L): Initializers in ForIn Statement Heads
+-- | - L43900–L43920 (21L): The \[IsHTMLDDA\\] Internal Slot
+-- | - L43921–L43925 (5L): Non-default behaviour in HostMakeJobCallback
+-- | - L43926–L43930 (5L): Non-default behaviour in HostEnsureCanAddPrivateElement
+-- | - L43931–L43945 (15L): Runtime Errors for Function Call Assignment Targets
+-- | - L43946–L44020 (75L): The Strict Mode of ECMAScript
+-- | - L44021–L44024 (4L): Host Layering Points
+-- | - L44025–L44058 (34L): Host Hooks
+-- | - L44059–L44072 (14L): Host-defined Fields
+
+-- SPEC: L2351-L2357
+-- | - L44073–L44076 (4L): Host-defined Objects
+-- | - L44077–L44081 (5L): Running Jobs
+-- | - L44082–L44086 (5L): Internal Methods of Exotic Objects
+-- | - L44087–L44091 (5L): Built-in Objects and Methods
+-- | - L44092–L44145 (54L): Corrections and Clarifications in ECMAScript 2015 with Possible Compatibility Impact
+-- | - L44146–L44380 (235L): Additions and Changes That Introduce Incompatibilities with Prior Editions
+-- | <!-- TOC END -->
+
+-- SPEC: L3571-L3571
+-- | 
+
+-- SPEC: L4446-L4454
+-- | 
+-- | The result of \_base\_ \`\*\*\` \_exponent\_ when \_base\_ is \*1\*~𝔽~
+-- | or \*-1\*~𝔽~ and \_exponent\_ is \*+∞\*~𝔽~ or \*-∞\*~𝔽~, or when
+-- | \_base\_ is \*1\*~𝔽~ and \_exponent\_ is \*NaN\*, differs from IEEE
+-- | 754-2019. The first edition of ECMAScript specified a result of \*NaN\*
+-- | for this operation, whereas later revisions of IEEE 754 specified
+-- | \*1\*~𝔽~. The historical ECMAScript behaviour is preserved for
+-- | compatibility reasons.
+-- | 
+
+-- SPEC: L4730-L4730
+-- | 
+
+-- SPEC: L4734-L4734
+-- | 
+
+-- SPEC: L4741-L4741
+-- | 
+
+-- SPEC: L4747-L4747
+-- | 
+
+-- SPEC: L4752-L4752
+-- | 
+
+-- SPEC: L4758-L4758
+-- | 
+
+-- SPEC: L4765-L4765
+-- | 
+
+-- SPEC: L4769-L4769
+-- | 
+
+-- SPEC: L4773-L4773
+-- | 
+
+-- SPEC: L4780-L4780
+-- | 
+
+-- SPEC: L4784-L4784
+-- | 
+
+-- SPEC: L4788-L4788
+-- | 
+
+-- SPEC: L4792-L4792
+-- | 
+
+-- SPEC: L4796-L4796
+-- | 
+
+-- SPEC: L4800-L4800
+-- | 
+
+-- SPEC: L4804-L4804
+-- | 
+
+-- SPEC: L4809-L4809
+-- | 
+
+-- SPEC: L4829-L4829
+-- | 
+
+-- SPEC: L4833-L4833
+-- | 
+
+-- SPEC: L4837-L4837
+-- | 
+
+-- SPEC: L4841-L4841
+-- | 
+
+-- SPEC: L4855-L4855
+-- | 
+
+-- SPEC: L5329-L5329
+-- | 
+
+-- SPEC: L5340-L5340
+-- | 
+
+-- SPEC: L5618-L5625
+-- | 
+-- | 1\. Let \_privateEnv\_ be the running execution context\'s
+-- | PrivateEnvironment. 1. Assert: \_privateEnv\_ is not \*null\*. 1. Let
+-- | \_privateName\_ be ResolvePrivateIdentifier(\_privateEnv\_,
+-- | \_privateIdentifier\_). 1. Return the Reference Record { \[\[Base\]\]:
+-- | \_baseValue\_, \[\[ReferencedName\]\]: \_privateName\_, \[\[Strict\]\]:
+-- | \*true\*, \[\[ThisValue\]\]: \~empty\~ }.
+-- | 
+
+-- SPEC: L5772-L5772
+-- | 
+
+-- SPEC: L5810-L5810
+-- | 
+
+-- SPEC: L5902-L5902
+-- | 
+
+-- SPEC: L5913-L5913
+-- | 
+
+-- SPEC: L5925-L5925
+-- | 
+
+-- SPEC: L5932-L5932
+-- | 
+
+-- SPEC: L6285-L6285
+-- | 
+
+-- SPEC: L6618-L6619
+-- | # Operations on Objects
+-- | 
+
+-- SPEC: L7088-L7088
+-- | 
+
+-- SPEC: L7109-L7109
+-- | 
+
+-- SPEC: L7128-L7128
+-- | 
+
+-- SPEC: L7274-L7274
+-- | 
+
+-- SPEC: L7308-L7308
+-- | 
+
+-- SPEC: L7348-L7348
+-- | 
+
+-- SPEC: L7358-L7359
+-- | # Scope Analysis
+-- | 
+
+-- SPEC: L7879-L7879
+-- | 
+
+-- SPEC: L7890-L7890
+-- | 
+
+-- SPEC: L7912-L7912
+-- | 
+
+-- SPEC: L7933-L7935
+-- | 
+-- | # Labels
+-- | 
+
+-- SPEC: L8268-L8268
+-- | 
+
+-- SPEC: L8351-L8351
+-- | 
+
+-- SPEC: L8773-L8774
+-- | # Executable Code and Execution Contexts
+-- | 
+
+-- SPEC: L9091-L9096
+-- | }). 1. Return \~unused\~.
+-- | 
+-- | Normally \_envRec\_ will not have a binding for \_N\_ but if it does,
+-- | the semantics of DefinePropertyOrThrow may result in an existing binding
+-- | being replaced or shadowed or cause an abrupt completion to be returned.
+-- | 
+
+-- SPEC: L9118-L9119
+-- | Environment Records.
+-- | 
+
+-- SPEC: L9136-L9136
+-- | 
+
+-- SPEC: L9152-L9152
+-- | 
+
+-- SPEC: L9190-L9196
+-- | 
+-- | for
+-- | :   an Object Environment Record \_envRec\_
+-- | 
+-- | 1\. If \_envRec\_.\[\[IsWithEnvironment\]\] is \*true\*, return
+-- | \_envRec\_.\[\[BindingObject\]\]. 1. Return \*undefined\*.
+-- | 
+
+-- SPEC: L9311-L9316
+-- |   Field Name                  Value                              Meaning
+-- |   --------------------------- ---------------------------------- ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+-- |   \[\[ObjectRecord\]\]        an Object Environment Record       Binding object is the global object. It contains global built-in bindings as well as \|FunctionDeclaration\|, \|GeneratorDeclaration\|, \|AsyncFunctionDeclaration\|, \|AsyncGeneratorDeclaration\|, and \|VariableDeclaration\| bindings in global code for the associated realm.
+-- |   \[\[GlobalThisValue\]\]     an Object                          The value returned by \`this\` in global scope. Hosts may provide any ECMAScript Object value.
+-- |   \[\[DeclarativeRecord\]\]   a Declarative Environment Record   Contains bindings for all declarations in global code for the associated realm code except for \|FunctionDeclaration\|, \|GeneratorDeclaration\|, \|AsyncFunctionDeclaration\|, \|AsyncGeneratorDeclaration\|, and \|VariableDeclaration\| bindings.
+-- | 
+
+-- SPEC: L9391-L9397
+-- | 
+-- | 1\. Let \_DclRec\_ be \_envRec\_.\[\[DeclarativeRecord\]\]. 1. If !
+-- | \_DclRec\_.HasBinding(\_N\_) is \*true\*, then 1. Return ?
+-- | \_DclRec\_.SetMutableBinding(\_N\_, \_V\_, \_S\_). 1. Let \_ObjRec\_ be
+-- | \_envRec\_.\[\[ObjectRecord\]\]. 1. Return ?
+-- | \_ObjRec\_.SetMutableBinding(\_N\_, \_V\_, \_S\_).
+-- | 
+
+-- SPEC: L9608-L9609
+-- | # DeleteBinding ( \_N\_ )
+-- | 
+
+-- SPEC: L9631-L9633
+-- | 
+-- | 1\. Return \*undefined\*.
+-- | 
+
+-- SPEC: L10117-L10117
+-- |   \[\[HostDefined\]\]   anything (default value is \~empty\~)   Field reserved for use by hosts.
+
+-- SPEC: L10137-L10141
+-- | that is responsible for its being eventually scheduled and run. For
+-- | example, \`promise.then(thenAction)\` calls MakeJobCallback on
+-- | \`thenAction\` at the time of invoking \`Promise.prototype.then\`, not
+-- | at the time of scheduling the reaction Job.
+-- | 
+
+-- SPEC: L10167-L10167
+-- |     by \_realm\_.\[\[AgentSignifier\]\] to be performed at some future
+
+-- SPEC: L10180-L10180
+-- |     related to the handling of Promises, or otherwise, to be scheduled
+
+-- SPEC: L10208-L10211
+-- | HTML specification (<https://html.spec.whatwg.org/>), for example, uses
+-- | \_realm\_ to check for the ability to run script and for the
+-- | [entry](https://html.spec.whatwg.org/#entry) concept.
+-- | 
+
+-- SPEC: L10230-L10231
+-- | 
+-- | An agent\'s executing thread executes algorithmic steps on the agent\'s
+
+-- SPEC: L10287-L10287
+-- | 
+
+-- SPEC: L10311-L10313
+-- | between pending modules. An implementation may unobservably reset
+-- | \[\[ModuleAsyncEvaluationCount\]\] to 0 whenever there are no pending
+-- | modules.
+
+-- SPEC: L10590-L10590
+-- | 
+
+-- SPEC: L10645-L10646
+-- | # Ordinary and Exotic Objects Behaviours
+-- | 
+
+-- SPEC: L11095-L11099
+-- | 
+-- | When \_calleeContext\_ is removed from the execution context stack in
+-- | step it must not be destroyed if it is suspended and retained for later
+-- | resumption by an accessible Generator.
+-- | 
+
+-- SPEC: L11249-L11249
+-- | # %ThrowTypeError% ( )
+
+-- SPEC: L11266-L11270
+-- | 
+-- | The \*\"name\"\* property of this function has the attributes {
+-- | \[\[Writable\]\]: \*false\*, \[\[Enumerable\]\]: \*false\*,
+-- | \[\[Configurable\]\]: \*false\* }.
+-- | 
+
+-- SPEC: L11641-L11644
+-- | 
+-- | Each built-in function defined in this specification is created by
+-- | calling the CreateBuiltinFunction abstract operation.
+-- | 
+
+-- SPEC: L12730-L12736
+-- | 
+-- | - The result of \[\[GetPrototypeOf\]\] must be either an Object or
+-- |   \*null\*.
+-- | - If the target object is not extensible, \[\[GetPrototypeOf\]\] applied
+-- |   to the Proxy object must return the same value as
+-- |   \[\[GetPrototypeOf\]\] applied to the Proxy object\'s target object.
+-- | 
+
+-- SPEC: L12767-L12775
+-- | 
+-- | 1\. Perform ? ValidateNonRevokedProxy(\_O\_). 1. Let \_target\_ be
+-- | \_O\_.\[\[ProxyTarget\]\]. 1. Let \_handler\_ be
+-- | \_O\_.\[\[ProxyHandler\]\]. 1. Assert: \_handler\_ is an Object. 1. Let
+-- | \_trap\_ be ? GetMethod(\_handler\_, \*\"isExtensible\"\*). 1. If
+-- | \_trap\_ is \*undefined\*, then 1. Return ? IsExtensible(\_target\_). 1.
+-- | Let \_booleanTrapResult\_ be ToBoolean(? Call(\_trap\_, \_handler\_, «
+-- | \_target\_ »)). 1. Let \_targetResult\_ be ?
+-- | IsExtensible(\_target\_). 1. If \_booleanTrapResult\_ is not
+
+-- SPEC: L12801-L12807
+-- | a \*TypeError\* exception. 1. Return \_booleanTrapResult\_.
+-- | 
+-- | \[\[PreventExtensions\]\] for Proxy objects enforces the following
+-- | invariants:
+-- | 
+-- | - The result of \[\[PreventExtensions\]\] is a Boolean value.
+-- | - \[\[PreventExtensions\]\] applied to the Proxy object only returns
+
+-- SPEC: L12836-L12842
+-- | \_targetDesc\_). 1. If \_valid\_ is \*false\*, throw a \*TypeError\*
+-- | exception. 1. If \_resultDesc\_.\[\[Configurable\]\] is \*false\*,
+-- | then 1. If \_targetDesc\_ is \*undefined\* or
+-- | \_targetDesc\_.\[\[Configurable\]\] is \*true\*, then 1. Throw a
+-- | \*TypeError\* exception. 1. If \_resultDesc\_ has a \[\[Writable\]\]
+-- | field and \_resultDesc\_.\[\[Writable\]\] is \*false\*, then 1. Assert:
+-- | \_targetDesc\_ has a \[\[Writable\]\] field. 1. If
+
+-- SPEC: L13003-L13010
+-- | 
+-- | # \[\[Delete\]\] ( \_P\_: a property key, ): either a normal completion containing a Boolean or a throw completion
+-- | 
+-- | for
+-- | :   a Proxy exotic object \_O\_
+-- | 
+-- | 1\. Perform ? ValidateNonRevokedProxy(\_O\_). 1. Let \_target\_ be
+-- | \_O\_.\[\[ProxyTarget\]\]. 1. Let \_handler\_ be
+
+-- SPEC: L13042-L13049
+-- | Let \_trapResultArray\_ be ? Call(\_trap\_, \_handler\_, « \_target\_
+-- | »). 1. Let \_trapResult\_ be ?
+-- | CreateListFromArrayLike(\_trapResultArray\_, \~property-key\~). 1. If
+-- | \_trapResult\_ contains any duplicate entries, throw a \*TypeError\*
+-- | exception. 1. Let \_extensibleTarget\_ be ? IsExtensible(\_target\_). 1.
+-- | Let \_targetKeys\_ be ? \_target\_.\[\[OwnPropertyKeys\]\](). 1. Assert:
+-- | \_targetKeys\_ is a List of property keys. 1. Assert: \_targetKeys\_
+-- | contains no duplicate entries. 1. Let \_targetConfigurableKeys\_ be a
+
+-- SPEC: L13083-L13086
+-- | :   a Proxy exotic object \_O\_
+-- | 
+-- | 1\. Perform ? ValidateNonRevokedProxy(\_O\_). 1. Let \_target\_ be
+-- | \_O\_.\[\[ProxyTarget\]\]. 1. Let \_handler\_ be
+
+-- SPEC: L13121-L13121
+-- | 
+
+-- SPEC: L13423-L13431
+-- | # Non-ECMAScript Functions
+-- | 
+-- | An ECMAScript implementation may support the evaluation of function
+-- | exotic objects whose evaluative behaviour is expressed in some
+-- | host-defined form of executable code other than ECMAScript source text.
+-- | Whether a function object is defined within ECMAScript code or is a
+-- | built-in function is not observable from the perspective of ECMAScript
+-- | code that calls or is called by such a function object.
+-- | 
+
+-- SPEC: L13494-L13494
+-- | 
+
+-- SPEC: L15618-L15619
+-- | # The \`new\` Operator
+-- | 
+
+-- SPEC: L15636-L15637
+-- | # Function Calls
+-- | 
+
+-- SPEC: L15682-L15683
+-- | # The \`super\` Keyword
+-- | 
+
+-- SPEC: L15842-L15844
+-- | 
+-- | # Import Calls
+-- | 
+
+-- SPEC: L15961-L15962
+-- | # Meta Properties
+-- | 
+
+-- SPEC: L16157-L16160
+-- | 
+-- | GetValue must be called even though its value is not used because it may
+-- | have observable side-effects.
+-- | 
+
+-- SPEC: L16180-L16182
+-- | 
+-- | # Unary \`+\` Operator
+-- | 
+
+-- SPEC: L16363-L16364
+-- | # Runtime Semantics: Evaluation
+-- | 
+
+-- SPEC: L16451-L16452
+-- | # Runtime Semantics: Evaluation
+-- | 
+
+-- SPEC: L17223-L17224
+-- | # Statement Semantics
+-- | 
+
+-- SPEC: L17571-L17572
+-- | # Runtime Semantics: Evaluation
+-- | 
+
+-- SPEC: L17631-L17632
+-- | # Semantics
+-- | 
+
+-- SPEC: L17671-L17671
+-- | 
+
+-- SPEC: L17684-L17689
+-- | # The \`while\` Statement
+-- | 
+-- | ## Syntax
+-- | 
+-- | WhileStatement\[Yield, Await, Return\] : \`while\` \`(\`
+-- | Expression\[+In, ?Yield, ?Await\] \`)\` Statement\[?Yield, ?Await,
+
+-- SPEC: L17741-L17746
+-- | Expression? \`)\` Statement
+-- | 
+-- | - It is a Syntax Error if any element of the BoundNames of
+-- |   \|LexicalDeclaration\| also occurs in the VarDeclaredNames of
+-- |   \|Statement\|.
+-- | 
+
+-- SPEC: L18291-L18291
+-- | 
+
+-- SPEC: L18530-L18536
+-- | # The \`throw\` Statement
+-- | 
+-- | ## Syntax
+-- | 
+-- | ThrowStatement\[Yield, Await\] : \`throw\` \[no LineTerminator here\]
+-- | Expression\[+In, ?Yield, ?Await\] \`;\`
+-- | 
+
+-- SPEC: L18597-L18599
+-- | 
+-- | # Runtime Semantics: Evaluation
+-- | 
+
+-- SPEC: L23810-L23810
+-- | 
+
+-- SPEC: L23820-L23820
+-- | 
+
+-- SPEC: L23828-L23828
+-- | 
+
+-- SPEC: L24098-L24102
+-- | 
+-- | # Object.prototype.constructor
+-- | 
+-- | The initial value of \`Object.prototype.constructor\` is %Object%.
+-- | 
+
+-- SPEC: L24236-L24237
+-- | # Legacy Object.prototype Accessor Methods
+-- | 
+
+-- SPEC: L24291-L24292
+-- | # Function Objects
+-- | 
+
+-- SPEC: L24458-L24458
+-- | 
+
+-- SPEC: L24532-L24535
+-- | # Function.prototype.constructor
+-- | 
+-- | The initial value of \`Function.prototype.constructor\` is %Function%.
+-- | 
+
+-- SPEC: L25012-L25013
+-- | # Abstract Operations for Symbols
+-- | 
+
+-- SPEC: L25103-L25103
+-- | # Error.prototype.message
+
+-- SPEC: L25107-L25107
+-- | # Error.prototype.name
+
+-- SPEC: L25126-L25126
+-- | # Properties of Error Instances
+
+-- SPEC: L25134-L25134
+-- | 
+
+-- SPEC: L25182-L25182
+-- | # \_NativeError\_ Object Structure
+
+-- SPEC: L25216-L25216
+-- | If \_message\_ is not \*undefined\*, then 1. Let \_msg\_ be ?
+
+-- SPEC: L25277-L25280
+-- | specified use of \[\[ErrorData\]\] is by \`Object.prototype.toString\`
+-- | () and \`Error.isError\` () to identify Error, AggregateError, or
+-- | \_NativeError\_ instances.
+-- | 
+
+-- SPEC: L25368-L25369
+-- | # Abstract Operations for Error Objects
+-- | 
+
+-- SPEC: L25381-L25384
+-- | # Numbers and Dates
+-- | 
+-- | # Number Objects
+-- | 
+
+-- SPEC: L25414-L25421
+-- | # Properties of the Number Constructor
+-- | 
+-- | The Number constructor:
+-- | 
+-- | - has a \[\[Prototype\]\] internal slot whose value is
+-- |   %Function.prototype%.
+-- | - has the following properties:
+-- | 
+
+-- SPEC: L25431-L25431
+-- | 
+
+-- SPEC: L25467-L25467
+-- | 
+
+-- SPEC: L25483-L25484
+-- | \[\[Enumerable\]\]: \*false\*, \[\[Configurable\]\]: \*false\* }.
+-- | 
+
+-- SPEC: L25492-L25492
+-- | 
+
+-- SPEC: L25508-L25509
+-- | \[\[Enumerable\]\]: \*false\*, \[\[Configurable\]\]: \*false\* }.
+-- | 
+
+-- SPEC: L25523-L25523
+-- | 
+
+-- SPEC: L25530-L25530
+-- | 
+
+-- SPEC: L25537-L25537
+-- | 
+
+-- SPEC: L25541-L25541
+-- | 
+
+-- SPEC: L25545-L25545
+-- | 
+
+-- SPEC: L25552-L25552
+-- | 
+
+-- SPEC: L25560-L25560
+-- | 
+
+-- SPEC: L25582-L25582
+-- | 
+
+-- SPEC: L25586-L25586
+-- | 
+
+-- SPEC: L25698-L25699
+-- | support must not use those parameter positions for anything else.
+-- | 
+
+-- SPEC: L25776-L25784
+-- | # Properties of Number Instances
+-- | 
+-- | Number instances are ordinary objects that inherit properties from the
+-- | Number prototype object. Number instances also have a \[\[NumberData\]\]
+-- | internal slot. The \[\[NumberData\]\] internal slot is the Number value
+-- | represented by this Number object.
+-- | 
+-- | # BigInt Objects
+-- | 
+
+-- SPEC: L25951-L25951
+-- | 
+
+-- SPEC: L25958-L25958
+-- | 2.302585092994046.
+
+-- SPEC: L25965-L25965
+-- | The Number value for the natural logarithm of 2, which is approximately
+
+-- SPEC: L25975-L25975
+-- | 
+
+-- SPEC: L25985-L25985
+-- | natural logarithms; this value is approximately 1.4426950408889634.
+
+-- SPEC: L25992-L25992
+-- | 
+
+-- SPEC: L26002-L26002
+-- | 
+
+-- SPEC: L26010-L26010
+-- | value of \`Math.SQRT2\`.
+
+-- SPEC: L26073-L26073
+-- | 
+
+-- SPEC: L26085-L26085
+-- | 
+
+-- SPEC: L26097-L26097
+-- | 
+
+-- SPEC: L26108-L26108
+-- | 
+
+-- SPEC: L26123-L26123
+-- | 
+
+-- SPEC: L26136-L26136
+-- | 
+
+-- SPEC: L26192-L26192
+-- | 
+
+-- SPEC: L26221-L26221
+-- | 
+
+-- SPEC: L26233-L26233
+-- | 
+
+-- SPEC: L26248-L26248
+-- | 
+
+-- SPEC: L26261-L26261
+-- | 
+
+-- SPEC: L26276-L26276
+-- | 
+
+-- SPEC: L26305-L26305
+-- | 
+
+-- SPEC: L26368-L26368
+-- | 
+
+-- SPEC: L26380-L26380
+-- | 
+
+-- SPEC: L26394-L26394
+-- | 
+
+-- SPEC: L26406-L26406
+-- | 
+
+-- SPEC: L26418-L26418
+-- | 
+
+-- SPEC: L26468-L26468
+-- | 
+
+-- SPEC: L26478-L26478
+-- | 
+
+-- SPEC: L26513-L26513
+-- | 
+
+-- SPEC: L26525-L26525
+-- | 
+
+-- SPEC: L26539-L26539
+-- | 
+
+-- SPEC: L26605-L26605
+-- | 
+
+-- SPEC: L26620-L26620
+-- | 
+
+-- SPEC: L27879-L27879
+-- | 
+
+-- SPEC: L27910-L27910
+-- | to LocalTime(\_t\_). 1. If \_date\_ is not present, let \_dt\_ be
+
+-- SPEC: L28345-L28346
+-- | # Text Processing
+-- | 
+
+-- SPEC: L28384-L28384
+-- | 
+
+-- SPEC: L28398-L28398
+-- | 
+
+-- SPEC: L29414-L29417
+-- | Object and \_value\_ has a \[\[StringData\]\] internal slot, then 1. Let
+-- | \_s\_ be \_value\_.\[\[StringData\]\]. 1. Assert: \_s\_ is a String. 1.
+-- | Return \_s\_. 1. Throw a \*TypeError\* exception.
+-- | 
+
+-- SPEC: L31148-L31149
+-- | # Abstract Operations for RegExp Creation
+-- | 
+
+-- SPEC: L31347-L31347
+-- | property.
+
+-- SPEC: L31366-L31366
+-- | 
+
+-- SPEC: L31379-L31379
+-- | ToString(\_string\_). 1. Return ? RegExpBuiltinExec(\_R\_, \_S\_).
+
+-- SPEC: L31389-L31389
+-- | 
+
+-- SPEC: L31423-L31423
+-- | 1\. If \_R\_ is not an Object, throw a \*TypeError\* exception. 1. If
+
+-- SPEC: L31437-L31437
+-- | 0x0067 (LATIN SMALL LETTER G). 1. Return ? RegExpHasFlag(\_R\_, \_cu\_).
+
+-- SPEC: L31446-L31446
+-- | 0x0064 (LATIN SMALL LETTER D). 1. Return ? RegExpHasFlag(\_R\_, \_cu\_).
+
+-- SPEC: L31455-L31455
+-- | 0x0069 (LATIN SMALL LETTER I). 1. Return ? RegExpHasFlag(\_R\_, \_cu\_).
+
+-- SPEC: L31499-L31499
+-- | ToLength(? Get(\_R\_, \*\"lastIndex\"\*)). 1. Perform ? Set(\_matcher\_,
+
+-- SPEC: L31520-L31520
+-- | 
+
+-- SPEC: L31529-L31529
+-- | \*\"flags\"\*)). 1. If \_flags\_ contains \*\"g\"\*, let \_global\_ be
+
+-- SPEC: L31613-L31613
+-- | 
+
+-- SPEC: L31635-L31635
+-- | interpreted as UTF-16 encoded Unicode code points (), in which certain
+
+-- SPEC: L31673-L31673
+-- | unit elements; the length of the result array equals the length of the
+
+-- SPEC: L31760-L31760
+-- | # RegExp.prototype.test ( \_S\_ )
+
+-- SPEC: L31769-L31769
+-- | # RegExp.prototype.toString ( )
+
+-- SPEC: L31781-L31781
+-- | # get RegExp.prototype.unicode
+
+-- SPEC: L31795-L31795
+-- | 
+
+-- SPEC: L32075-L32076
+-- | # Indexed Collections
+-- | 
+
+-- SPEC: L32359-L32362
+-- | # Array.prototype.constructor
+-- | 
+-- | The initial value of \`Array.prototype.constructor\` is %Array%.
+-- | 
+
+-- SPEC: L33456-L33456
+-- | 
+
+-- SPEC: L34909-L34909
+-- | 
+
+-- SPEC: L34936-L34936
+-- | \_srcByteOffset\_, \_byteLength\_). 1. Else, 1. Let \_data\_ be ?
+
+-- SPEC: L36143-L36150
+-- | # Set.prototype.keys ( )
+-- | 
+-- | The initial value of the \*\"keys\"\* property is
+-- | %Set.prototype.values%, defined in .
+-- | 
+-- | For iteration purposes, a Set appears similar to a Map where each entry
+-- | has the same value for its key and value.
+-- | 
+
+-- SPEC: L36567-L36572
+-- | The WeakSet constructor:
+-- | 
+-- | - has a \[\[Prototype\]\] internal slot whose value is
+-- |   %Function.prototype%.
+-- | - has the following properties:
+-- | 
+
+-- SPEC: L36695-L36696
+-- | # Abstract Operations For ArrayBuffer Objects
+-- | 
+
+-- SPEC: L37324-L37325
+-- | # Abstract Operations for SharedArrayBuffer Objects
+-- | 
+
+-- SPEC: L38237-L38238
+-- | 
+-- | description
+
+-- SPEC: L38261-L38261
+-- | 
+
+-- SPEC: L38270-L38270
+-- | LeaveCriticalSection. 1. Let \_AR\_ be the Agent Record of the
+
+-- SPEC: L38296-L38303
+-- | critical section for \_WL\_. 1. Return \~unused\~.
+-- | 
+-- | # AddWaiter ( \_WL\_: a WaiterList Record, \_waiterRecord\_: a Waiter Record, ): \~unused\~
+-- | 
+-- | 1\. Assert: The surrounding agent is in the critical section for
+-- | \_WL\_. 1. Assert: There is no Waiter Record in \_WL\_.\[\[Waiters\]\]
+-- | whose \[\[PromiseCapability\]\] field is
+-- | \_waiterRecord\_.\[\[PromiseCapability\]\] and whose
+
+-- SPEC: L38319-L38319
+-- | \_WL\_.\[\[Waiters\]\]. 1. Let \_n\_ be min(\_c\_, \_len\_). 1. Let
+
+-- SPEC: L38331-L38331
+-- | AgentCanSuspend() is \*true\*. 1. Perform LeaveCriticalSection(\_WL\_)
+
+-- SPEC: L38340-L38340
+-- | 
+
+-- SPEC: L38353-L38353
+-- | \_waiterRecord\_.\[\[PromiseCapability\]\],
+
+-- SPEC: L38375-L38375
+-- | \*true\*). 1. Let \_buffer\_ be
+
+-- SPEC: L38401-L38403
+-- | \*\"value\"\*, \*\"not-equal\"\*). 1. Return \_resultObject\_. 1. If
+-- | \_t\_ = 0 and \_mode\_ is \~async\~, then 1. NOTE: There is no special
+-- | handling of synchronous immediate timeouts. Asynchronous immediate
+
+-- SPEC: L38527-L38527
+-- | 
+
+-- SPEC: L38581-L38581
+-- | \_replacementBytes\_). 1. Else, 1. Let \_rawBytesRead\_ be a List of
+
+-- SPEC: L38592-L38600
+-- | 
+-- | This function performs the following steps when called:
+-- | 
+-- | 1\. Let \_second\_ be a new read-modify-write modification function with
+-- | parameters (\_oldBytes\_, \_newBytes\_) that captures nothing and
+-- | performs the following steps atomically when called: 1. Return
+-- | \_newBytes\_. 1. Return ? AtomicReadModifyWrite(\_typedArray\_,
+-- | \_index\_, \_value\_, \_second\_).
+-- | 
+
+-- SPEC: L39142-L39143
+-- | # Managing Memory
+-- | 
+
+-- SPEC: L39395-L39398
+-- | # Control Abstraction Objects
+-- | 
+-- | # Iteration
+-- | 
+
+-- SPEC: L39676-L39677
+-- | # Iterator Objects
+-- | 
+
+-- SPEC: L40319-L40320
+-- | # Promise Abstract Operations
+-- | 
+
+-- SPEC: L40511-L40512
+-- | # Promise Jobs
+-- | 
+
+-- SPEC: L41216-L41216
+-- | 
+
+-- SPEC: L41232-L41235
+-- | 
+-- | This property has the attributes { \[\[Writable\]\]: \*false\*,
+-- | \[\[Enumerable\]\]: \*false\*, \[\[Configurable\]\]: \*true\* }.
+-- | 
+
+-- SPEC: L41262-L41267
+-- | 
+-- | The specification for the \*\"length\"\* property of Function instances
+-- | given in also applies to GeneratorFunction instances.
+-- | 
+-- | # name
+-- | 
+
+-- SPEC: L41274-L41278
+-- | is also created and is the initial value of the generator function\'s
+-- | \*\"prototype\"\* property. The value of the prototype property is used
+-- | to initialize the \[\[Prototype\]\] internal slot of a newly created
+-- | Generator when the generator function object is invoked using
+-- | \[\[Call\]\].
+
+-- SPEC: L41287-L41287
+-- | 
+
+-- SPEC: L41347-L41347
+-- | 
+
+-- SPEC: L41429-L41429
+-- | 
+
+-- SPEC: L41772-L41772
+-- | 
+
+-- SPEC: L41818-L41818
+-- | 
+
+-- SPEC: L41829-L41829
+-- | normal completion. 1. If \_realm\_ is present, then 1. Let \_oldRealm\_
+
+-- SPEC: L41837-L41837
+-- | 
+
+-- SPEC: L41864-L41865
+-- | 
+-- | 1\. Let \_genContext\_ be the running execution context. 1. Assert:
+
+-- SPEC: L41881-L41881
+-- | Remove \_genContext\_ from the execution context stack and restore the
+
+-- SPEC: L41890-L41891
+-- | 
+-- | # AsyncGeneratorAwaitReturn ( \_generator\_: an AsyncGenerator, ): \~unused\~
+
+-- SPEC: L41924-L41924
+-- | 
+
+-- SPEC: L41961-L41961
+-- | - may be used as the value of an \`extends\` clause of a class
+
+-- SPEC: L42007-L42013
+-- | - is not a function object and does not have an \[\[ECMAScriptCode\]\]
+-- |   internal slot or any other of the internal slots listed in .
+-- | - has a \[\[Prototype\]\] internal slot whose value is
+-- |   %Function.prototype%.
+-- | 
+-- | # AsyncFunction.prototype.constructor
+-- | 
+
+-- SPEC: L42059-L42064
+-- | 
+-- | # AsyncBlockStart ( \_promiseCapability\_: a PromiseCapability Record, \_asyncBody\_: a Parse Node or an Abstract Closure with no parameters, \_asyncContext\_: an execution context, ): \~unused\~
+-- | 
+-- | 1\. Let \_runningContext\_ be the running execution context. 1. Let
+-- | \_closure\_ be a new Abstract Closure with no parameters that captures
+-- | \_promiseCapability\_ and \_asyncBody\_ and performs the following steps
+
+-- SPEC: L44380-L44380
+-- | 
 
 end VerifiedJS.Source

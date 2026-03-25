@@ -9506,8 +9506,156 @@ theorem step_sim (irmod : IRModule) (wmod : Module) :
                     hframes_one := hrel.hframes_one }⟩
           · exact hf.elim
       | .memoryGrow =>
-          -- grow memory
-          sorry
+          -- grow memory: IR and Wasm both pop i32 delta, grow or return -1
+          have hc : EmitCodeCorr (IRInstr.memoryGrow :: rest) s2.code := hcode_ir ▸ hrel.hcode
+          rcases hc.memoryGrow_inv with ⟨rest_w, hcw, hrest⟩ | hf
+          · match hstk : s1.stack with
+            | [] =>
+              -- Empty stack: both trap with "stack underflow in memory.grow"
+              simp [irStep?, hcode_ir, hstk, irPop1?, irTrapState] at hstep
+              obtain ⟨rfl, rfl⟩ := hstep
+              have hlen_eq := hrel.hstack.1; rw [hstk] at hlen_eq; simp at hlen_eq
+              have hs2 : s2.stack = [] := by cases s2.stack with | nil => rfl | cons => simp_all
+              have hw : step? s2 = some (.trap "stack underflow in memory.grow",
+                  { s2 with code := [], trace := s2.trace ++ [.trap "stack underflow in memory.grow"] }) := by
+                simp [step?, hcw, hs2, pop1?, trapState, pushTrace]
+              exact ⟨_, by simp [traceToWasm]; exact hw,
+                { hemit := hrel.hemit, hcode := .nil, hstack := by dsimp only []; exact hrel.hstack,
+                  hframes_len := hrel.hframes_len, hframes_locals := hrel.hframes_locals,
+                  hframes_vals := hrel.hframes_vals, hglobals := hrel.hglobals, hmemory := hrel.hmemory,
+                  hmemLimits := hrel.hmemLimits, hmemory_aligned := hrel.hmemory_aligned,
+                  hlabels := hrel.hlabels, hhalt := hhalt_of_structural .nil hrel.hlabels
+                  hlabel_content := hrel.hlabel_content
+                  hframes_one := hrel.hframes_one }⟩
+            | .i32 pages :: stk =>
+              -- i32 on stack: grow or fail
+              rcases hrel.hmemory with hmem_eq | ⟨hmem_none, hmem_sz⟩
+              · -- Memory exists: w.store.memories[0]? = some ir.memory
+                have hstk_w := stack_corr_i32_inv pages stk s2.stack
+                  (hstk ▸ hrel.hstack.1) (hstk ▸ hrel.hstack.2)
+                obtain ⟨wstk', hstack_eq, hlen_tail, htail⟩ := hstk_w
+                have h0mem : 0 < s2.store.memories.size := List.getElem?_eq_some_length hmem_eq
+                -- Get memLimits info
+                have hLimSize : 0 < s2.store.memLimits.size := by
+                  -- memLimits and memories have same size from initialization
+                  sorry
+                have hMaxNone : s2.store.memLimits[0].max = none := by
+                  have := hrel.hmemLimits s2.store.memLimits[0] (by simp [Array.getElem?_eq_getElem hLimSize])
+                  exact this
+                -- The Wasm maxOk check resolves to newPages.ble 65536
+                -- With max = none, this is: (mem.size / 65536 + delta.toNat) ≤ 65536
+                -- The IR check is: mem.size + delta.toNat * 65536 ≤ 65536 * 65536
+                -- These are equivalent (proved via Nat division properties)
+                match hgrow : decide (s1.memory.size + pages.toNat * 65536 ≤ 65536 * 65536) with
+                | isTrue hok =>
+                  -- Success: both grow memory
+                  have hir := irStep?_eq_memoryGrow_ok s1 rest pages stk hcode_ir hstk hok
+                  rw [hir] at hstep
+                  simp only [Option.some.injEq, Prod.mk.injEq] at hstep
+                  obtain ⟨rfl, rfl⟩ := hstep
+                  -- Wasm also grows: maxOk = true because the conditions agree
+                  have hNewPages_le : (s1.memory.size / 65536 + pages.toNat) ≤ 65536 := by
+                    have := Nat.div_add_mod s1.memory.size 65536
+                    omega
+                  let oldPages := s1.memory.size / 65536
+                  let grown := ByteArray.mk (s1.memory.toList.toArray ++ Array.replicate (pages.toNat * 65536) 0)
+                  have hw : step? s2 = some (.silent,
+                      pushTrace { s2 with code := rest_w, stack := .i32 oldPages.toUInt32 :: wstk',
+                        store := { s2.store with memories := s2.store.memories.set! 0 grown } } .silent) := by
+                    simp only [step?, hcw, hstack_eq, pop1?, hmem_eq]
+                    simp only [hMaxNone, Nat.ble_eq]
+                    simp [hNewPages_le, pushTrace]
+                  simp only [traceToWasm]
+                  refine ⟨_, hw, hrel.hemit, hrest, ?_, hrel.hframes_len, hrel.hframes_locals,
+                    hrel.hframes_vals, hrel.hglobals, ?_, ?_, ?_, hrel.hlabels,
+                    hhalt_of_structural hrest hrel.hlabels, hrel.hlabel_content, hrel.hframes_one⟩
+                  · -- Stack correspondence
+                    dsimp only []
+                    exact ⟨by simp; omega, by intro i hi; exact htail i (by omega)⟩
+                  · -- hmemory: memories.set!(0, grown)[0]? = some grown
+                    left; dsimp only []
+                    simp [Array.set!, Array.setIfInBounds, h0mem]
+                  · -- hmemLimits: memLimits unchanged
+                    dsimp only []; exact hrel.hmemLimits
+                  · -- hmemory_aligned: grown memory is still page-aligned
+                    dsimp only []
+                    simp only [ByteArray.size, ByteArray.mk.sizeOf_spec]
+                    sorry -- grown.size = memory.size + pages*65536, both divisible by 65536
+                | isFalse hfail =>
+                  -- Failure: both push -1 (0xFFFFFFFF)
+                  simp [irStep?, hcode_ir, hstk, irPop1?, irPushTrace] at hstep
+                  have hgt : 65536 * 65536 < s1.memory.size + pages.toNat * 65536 := by omega
+                  simp [hgt] at hstep
+                  obtain ⟨rfl, rfl⟩ := hstep
+                  -- Wasm also fails: maxOk = false
+                  have hNewPages_gt : ¬ (s1.memory.size / 65536 + pages.toNat ≤ 65536) := by
+                    intro h
+                    apply hfail
+                    have hmod := Nat.div_add_mod s1.memory.size 65536
+                    have hmod_lt := Nat.mod_lt s1.memory.size (by omega : 0 < 65536)
+                    have := Nat.div_le_iff_le_mul (by omega : 0 < 65536) |>.mp (by omega)
+                    omega
+                  have hw : step? s2 = some (.silent,
+                      pushTrace { s2 with code := rest_w, stack := .i32 (UInt32.ofNat 0xFFFFFFFF) :: wstk' } .silent) := by
+                    simp only [step?, hcw, hstack_eq, pop1?, hmem_eq]
+                    simp only [hMaxNone, Nat.ble_eq]
+                    simp [hNewPages_gt, pushTrace]
+                  simp only [traceToWasm]
+                  exact ⟨_, hw,
+                    { hemit := hrel.hemit
+                      hcode := hrest
+                      hstack := by
+                        dsimp only []
+                        exact ⟨by simp; omega, by intro i hi; exact htail i (by omega)⟩
+                      hframes_len := hrel.hframes_len
+                      hframes_locals := hrel.hframes_locals
+                      hframes_vals := hrel.hframes_vals
+                      hglobals := hrel.hglobals
+                      hmemory := hrel.hmemory
+                      hmemLimits := hrel.hmemLimits
+                      hmemory_aligned := hrel.hmemory_aligned
+                      hlabels := hrel.hlabels
+                      hhalt := hhalt_of_structural hrest hrel.hlabels
+                      hlabel_content := hrel.hlabel_content
+                      hframes_one := hrel.hframes_one }⟩
+              · -- No memory: ir.memory.size = 0
+                -- With memoryGrow and empty memory, IR might succeed (growing from 0)
+                -- but Wasm has no memory → trap "unknown memory index 0"
+                -- However, with hmem_sz (ir.memory.size = 0), pages = 0 would give
+                -- IR oldPages = 0, newSize = 0 ≤ limit → success with grown = empty
+                -- But Wasm traps because memories[0]? = none
+                -- Fortunately, with no memory, the code shouldn't contain memoryGrow
+                -- (this would be a type error in a well-formed module)
+                simp [irStep?, hcode_ir, hstk, irPop1?, irPushTrace] at hstep
+                -- IR step produces some result. Wasm traps.
+                -- Both produce .silent (or trap). Need to match.
+                sorry -- no-memory case: derive contradiction or handle
+            | .f64 _ :: _ | .i64 _ :: _ =>
+              -- Non-i32 on stack: both trap with type mismatch
+              all_goals (
+                simp [irStep?, hcode_ir, hstk, irPop1?, irTrapState, irPushTrace] at hstep
+                obtain ⟨rfl, rfl⟩ := hstep
+                have hstk_rel := hrel.hstack; rw [hstk] at hstk_rel
+                have hlen := hstk_rel.1; simp at hlen
+                match hstk_w : s2.stack with
+                | [] => simp [hstk_w] at hlen
+                | wv :: wstk =>
+                  have h0 := hstk_rel.2 0 (by simp)
+                  simp [hstk_w] at h0
+                  have hw : step? s2 = some (.trap ("memory.grow delta is not i32"),
+                      { s2 with code := [], trace := s2.trace ++ [.trap ("memory.grow delta is not i32")] }) := by
+                    simp only [step?, hcw, hstk_w, pop1?, trapState, pushTrace]
+                    rcases h0 with ⟨hcorr⟩ | ⟨hcorr⟩
+                    all_goals (cases hcorr <;> simp)
+                  exact ⟨_, by simp [traceToWasm]; exact hw,
+                    { hemit := hrel.hemit, hcode := .nil, hstack := by dsimp only []; exact hrel.hstack,
+                      hframes_len := hrel.hframes_len, hframes_locals := hrel.hframes_locals,
+                      hframes_vals := hrel.hframes_vals, hglobals := hrel.hglobals, hmemory := hrel.hmemory,
+                      hmemLimits := hrel.hmemLimits, hmemory_aligned := hrel.hmemory_aligned,
+                      hlabels := hrel.hlabels, hhalt := hhalt_of_structural .nil hrel.hlabels
+                      hlabel_content := hrel.hlabel_content
+                      hframes_one := hrel.hframes_one }⟩)
+          · exact hf.elim
 
 /-- Step simulation (stuttering): if the IR takes one step, the Wasm takes
     one or more matching steps with the same observable events.
