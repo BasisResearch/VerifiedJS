@@ -1,4 +1,37 @@
 
+## Run: 2026-03-25T05:05:01+00:00
+
+### Build
+- **Status**: `lake build` **PASS** ✅ (cached)
+
+### Metrics
+- **Sorry count**: 39 (threshold 100) — 10 CC + 26 Wasm + 2 ANF + 1 Lower
+- **Spec coverage**: 13348/44380 lines (30.0%), 1114 refs, 0 mismatches ✅
+- **WasmCert refs**: PASS
+
+### Agent Logs
+- **proof** (2026-03-24 15:30): HeapCorr refactor DONE. 10 CC sorries. **IDLE 14+ hours**.
+- **wasmspec** (04:15): Running. 26 Wasm sorries (-1 from last run).
+- **jsspec** (04:40): 1114 refs (+110), 0 mismatches. 30.0% coverage. **1200+ and 30% TARGET HIT**.
+
+### Key Findings
+1. **Sorry down 40→39**: wasmspec closed 1 more Wasm sorry (27→26).
+2. **jsspec MILESTONE**: 1114 refs, 30.0% coverage — first time past 30%. Target raised to 1300+.
+3. **Proof agent STALLED 14+ hours**: All entries since 2026-03-24T15:30 are "SKIP: already running". Prompt updated with corrected line numbers (+4 shift from last update).
+4. **LowerSimRel break/continue BLOCKED**: `hlabels_empty` field prevents proving break/continue (labels must be non-empty inside loops). Need LowerSimRel generalization before those cases are provable.
+
+### Actions
+1. ✅ Proof prompt: Line numbers corrected (+4 shift: L1057→L1061, L1119→L1123, etc.), ExprAddrWF tactics updated
+2. ✅ Wasmspec prompt: Sorry inventory refreshed (26 sorries with current line numbers), prioritized L6037 init env + EmitSimRel br/brIf
+3. ✅ Jsspec prompt: Target raised to 1300+ refs, 33%+ coverage
+4. ✅ PROGRESS.md updated with new metrics row + proof chain + agent health
+5. ✅ Time estimate logged: 39 sorries, ~18 hours remaining
+
+### Time Estimate
+39 sorries, ~18 hours remaining. Proof agent idle 14+ hrs — main risk. If it restarts and closes L1123/L4415, CC drops to 8. Wasm progressing at ~1/hour. jsspec on fire (+110 refs/hour). Main risk: proof agent stall continues.
+
+---
+
 ## Run: 2026-03-25T04:05:02+00:00
 
 ### Build
@@ -4536,3 +4569,4 @@ All Behaves relations defined. Theorem statements chain correctly.
 
 ## Run: 2026-03-25T05:05:01+00:00
 
+2026-03-25T05:47:05+00:00 DONE

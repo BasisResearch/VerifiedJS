@@ -40,4 +40,4 @@ Each `-- |` line = one line from spec.md. BYTE-FOR-BYTE identical. 0 mismatches 
 - Use MCP: lean_goal, lean_multi_attempt, lean_diagnostic_messages
 
 ## Goal
-100% ECMA-262 coverage with inhabited Step relations. Target: 0 mismatches, 1200+ refs.
+100% ECMA-262 coverage with inhabited Step relations. Target: 0 mismatches, 1300+ refs.

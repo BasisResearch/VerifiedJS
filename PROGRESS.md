@@ -155,6 +155,7 @@ arithmetic, boolean_logic, conditionals, do_while, for_loop, functions, let_bind
 | 2026-03-25T02:05 | **41** | **~203 (est.)** | Build PASS ✅. **Sorry DOWN 43→41 (-2)**: CC 10 (unchanged), Wasm 28 (was ~25+3 counted separately), ANF 2, Lower 1. wasmspec closed 2 EmitSimRel sorries (empty-code label-pop + return_). jsspec: **838 refs** (+83!), but **37 MISMATCH** (was 0 — regression in Math/TypedArray/WeakRef citations). **24.1% coverage** (22.3%→24.1%). Proof agent: HeapCorr refactor DONE, 10 CC sorries remain (4 ExprAddrWF, 1 captured var, 5 heap/env/funcs). Updated all 3 prompts: proof with exact ExprAddrWF tactics, jsspec URGENT mismatch fix, wasmspec with br/brIf as easiest next targets. Test262: 3/63 (UNCHANGED 173+ hrs). |
 | 2026-03-25T03:05 | **40** | **~203 (est.)** | Build PASS ✅. **Sorry DOWN 41→40 (-1)**: CC 10, Wasm 27 (-1, wasmspec closed LowerSimRel hhalt + return none), ANF 2, Lower 1. **🎉 MILESTONE: 904 refs, 0 mismatches** (jsspec fixed 37 mismatches + added 66 new refs, past 900 target). **24.3% coverage** (10764 lines). **STALE BLOCKER FOUND**: proof agent's analysis says objectLit/arrayLit BLOCKED by allocFreshObject — but allocFreshObject was fixed weeks ago (now uses allocObjectWithProps). These 2 CC sorries may be UNBLOCKED. Proof agent idle 12+ hrs since 2026-03-24T15:30. Updated proof prompt with corrected blocker analysis + exact ExprAddrWF fix code. Test262: 3/63 (UNCHANGED 175+ hrs). |
 | 2026-03-25T04:05 | **40** | **~203 (est.)** | Build PASS ✅. Sorry STEADY at 40 (10 CC + 27 Wasm + 2 ANF + 1 Lower). **🎉 MILESTONE: 1004 refs, 0 mismatches, 28.1% coverage** (12471/44380 lines) — jsspec added 100 refs in 1 hour, hit 1000+ target! **Proof agent IDLE 13+ hours** since 2026-03-24T15:30. Updated proof prompt with detailed L1119/L4411 fix including missing `hsc'_heap` hypothesis at L4411. Noted L1864/L2289 need HeapValuesWF invariant (not yet in CC_SimRel). jsspec target raised to 1200+. Test262: 3/63 (UNCHANGED 177+ hrs). |
+| 2026-03-25T05:05 | **39** | **~203 (est.)** | Build PASS ✅. **Sorry DOWN 40→39 (-1)**: CC 10, Wasm 26 (-1), ANF 2, Lower 1. **🎉 MILESTONE: 1114 refs, 0 mismatches, 30.0% coverage** (13348/44380 lines) — jsspec added +110 refs in 1 hour, past 30% coverage for first time! **Proof agent IDLE 14+ hours** since 2026-03-24T15:30. Updated all prompts: proof line numbers corrected (+4 shift), wasmspec sorry inventory refreshed (26 sorries), jsspec target raised to 1300+. Test262: 3/63 (UNCHANGED 179+ hrs). |
 
 - Test262 pass rate: 3/63 (fast mode), deterministic full sample reached 274/500 passes (2026-03-08)
 - Flagship parse rate: 96.30% (1976/2052)
@@ -172,14 +173,14 @@ arithmetic, boolean_logic, conditionals, do_while, for_loop, functions, let_bind
 | Pass | Theorem | Statement OK? | Proved? | Blocker |
 |------|---------|--------------|---------|---------|
 | Elaborate | elaborate_correct | YES | **PROVED** | — |
-| ClosureConvert | closureConvert_correct | YES — trace preservation with NoForInForOf | 10 sorry | ExprAddrWF_mono ✅. ALL 44 ExprAddrWF preservation ✅. EnvAddrWF INTEGRATED ✅. HeapCorr INTEGRATED ✅. **Remaining 10**: L1057 (captured var), L1119/L4411 (ExprAddrWF env-lookup — exact fix provided), L1807/L1808 (call/newObj), L1864/L2289 (ExprAddrWF heap-lookup — need HeapValuesWF), L3313/L3314 (objectLit/arrayLit — may be unblocked), L3315 (functionDef). |
+| ClosureConvert | closureConvert_correct | YES — trace preservation with NoForInForOf | 10 sorry | ExprAddrWF_mono ✅. ALL 44 ExprAddrWF preservation ✅. EnvAddrWF INTEGRATED ✅. HeapCorr INTEGRATED ✅. **Remaining 10**: L1061 (captured var), L1123/L4415 (ExprAddrWF env-lookup — exact fix provided), L1811/L1812 (call/newObj), L1868/L2293 (ExprAddrWF heap-lookup — need HeapValuesWF), L3317/L3318 (objectLit/arrayLit — may be unblocked), L3319 (functionDef). |
 | ANFConvert | anfConvert_correct | YES — observable trace preservation | 2 sorry | step_star + nested seq |
 | Optimize | optimize_correct | YES — `∀ b, ANF.Behaves (optimize p) b ↔ ANF.Behaves p b` | **PROVED** | Identity pass — trivially correct |
 | Lower | lower_behavioral_correct | YES — `∀ trace, ANF.Behaves → IR.IRBehaves` | 1 sorry | Build FIXED. **BLOCKED on wasmspec** step_sim (:4956). SimRel needs code correspondence. |
 | Emit | emit_behavioral_correct | YES — `∀ trace, IR.IRBehaves → Wasm.Behaves` | 1 sorry | **BLOCKED on wasmspec** EmitSimRel.step_sim (:5058) |
 | EndToEnd | flat_to_wasm_correct | YES — partial composition (Flat→Wasm) | 1 sorry | EndToEnd.lean:55. Composition of above; last to prove |
 
-**Chain status**: All 6 Behaves relations DEFINED. All theorem STATEMENTS correct. **2 passes FULLY PROVED** (Elaborate, Optimize). **Sorry count: 40** (10 CC + 27 Wasm + 2 ANF + 1 Lower). Both halt_sim PROVED. **Flat/ SORRY-FREE**. Core/ SORRY-FREE. ANF/Semantics SORRY-FREE. **ALL stepping sub-cases PROVED**. **ALL evalBinary PROVED**. **ALL heap ops PROVED**. **ALL noCallFrameReturn IH PROVED**. **ALL ExprAddrWF preservation PROVED** ✅. HeapCorr DEFINED ✅. ExprAddrWF DEFINED+INTEGRATED ✅. ExprAddrWF_mono PROVED ✅. EnvAddrWF DEFINED+INTEGRATED ✅. CC remaining: 4 ExprAddrWF (2 env lookup, 2 heap lookup) + 1 captured-var multi-step + 2 objectLit/arrayLit (may be unblocked) + 3 other. Spec coverage: **1004 refs**, 0 mismatches, 12471 lines (28.1%). **TARGET 1000+ refs MET**.
+**Chain status**: All 6 Behaves relations DEFINED. All theorem STATEMENTS correct. **2 passes FULLY PROVED** (Elaborate, Optimize). **Sorry count: 39** (10 CC + 26 Wasm + 2 ANF + 1 Lower). Both halt_sim PROVED. **Flat/ SORRY-FREE**. Core/ SORRY-FREE. ANF/Semantics SORRY-FREE. **ALL stepping sub-cases PROVED**. **ALL evalBinary PROVED**. **ALL heap ops PROVED**. **ALL noCallFrameReturn IH PROVED**. **ALL ExprAddrWF preservation PROVED** ✅. HeapCorr DEFINED ✅. ExprAddrWF DEFINED+INTEGRATED ✅. ExprAddrWF_mono PROVED ✅. EnvAddrWF DEFINED+INTEGRATED ✅. CC remaining: 4 ExprAddrWF (2 env lookup, 2 heap lookup) + 1 captured-var multi-step + 2 objectLit/arrayLit (may be unblocked) + 3 other. Spec coverage: **1114 refs**, 0 mismatches, 13348 lines (30.0%). **TARGET 1000+ refs MET**.
 
 **RESOLVED ABSTRACTIONS**:
 - ✅ LowerCodeCorr constructors FIXED (wasmspec 01:15 — while_, throw, return_, break_, continue_ now specify actual instruction shapes)
@@ -211,12 +212,12 @@ arithmetic, boolean_logic, conditionals, do_while, for_loop, functions, let_bind
 7. **Heap/closure correspondence**: Needed for .var captured (~1 CC sorry). No abstraction written yet.
 8. **Flat.call semantics**: Flat.step? for .call stubs to `.lit .undefined` — doesn't enter function body. 7 CC sorries FUNDAMENTALLY BLOCKED until Flat models real function calls.
 
-**Critical path**: (1) proof: close L1119/L4411 ExprAddrWF (env lookup — exact code provided). (2) proof: add HeapValuesWF to CC_SimRel for L1864/L2289. (3) wasmspec: LowerSimRel easy event cases + EmitSimRel. (4) proof: ANF sorries. (5) jsspec: push to 1200+ refs.
+**Critical path**: (1) proof: close L1123/L4415 ExprAddrWF (env lookup — exact code provided). (2) proof: add HeapValuesWF to CC_SimRel for L1868/L2293. (3) wasmspec: LowerSimRel init env (L6037) + EmitSimRel br/brIf. (4) proof: ANF sorries. (5) jsspec: push to 1300+ refs.
 
 ## Agent Health
 
-| Agent | Status (2026-03-25T04:05) | Notes |
+| Agent | Status (2026-03-25T05:05) | Notes |
 |-------|---------------------|-------|
-| jsspec | Healthy | **1004 refs**, 0 mismatches, 28.1% coverage. Target raised to 1200+. |
-| wasmspec | Healthy | 27 Wasm sorries. Closed LowerSimRel hhalt + return none. Next: easy event cases (throw/yield/await/break/continue). |
-| proof | **IDLE 13+ hrs** | 10 CC + 2 ANF sorries. Exact code provided for L1119/L4411. Needs restart. |
+| jsspec | Healthy | **1114 refs**, 0 mismatches, 30.0% coverage. Target raised to 1300+. |
+| wasmspec | Healthy | 26 Wasm sorries (-1). Next: init env (L6037) + EmitSimRel br/brIf. |
+| proof | **IDLE 14+ hrs** | 10 CC + 2 ANF sorries. Exact code provided for L1123/L4415. Needs restart. |
