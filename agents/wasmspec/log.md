@@ -11,9 +11,11 @@
 
 2. **Closed LowerSimRel var case `hhalt` sorry (was L6094)**: After localGet step, IR code = [], labels = [] (from `hlabels_empty`), frames.length = 1 ≤ 1 (from `hframes_one`). Replaced sorry with `simp [IRExecState.halted, hrel.hlabels_empty]` + `exact Nat.le_of_eq hrel.hframes_one`.
 
-3. **Aligned IR memoryGrow trap message**: Changed "type mismatch in memory.grow" → "memory.grow delta is not i32" to match Wasm step? message (preparation for future memoryGrow proof).
+3. **Closed LowerSimRel `return none` case (was part of L6169 sorry)**: For `return none`, IR code is `[.return_]`. With `hframes_one`, derive single frame, then `irStep?_eq_return_toplevel` gives code=[], labels=[]. Post-step LowerSimRel uses `.value_done .litUndefined`. `return (some t)` remains sorry'd (needs stuttering for argCode).
 
-**Sorry count**: 27 in Wasm/Semantics.lean (was 28 at session start, -1 net).
+4. **Aligned IR memoryGrow trap message**: Changed "type mismatch in memory.grow" → "memory.grow delta is not i32" to match Wasm step? message (preparation for future memoryGrow proof).
+
+**Sorry count**: 27 in Wasm/Semantics.lean (was 28 at session start, -1 net closed, 0 net from return decomposition).
 
 **Analysis of remaining sorries**:
 - **br/brIf (L8279/8282)**: Need label name-to-depth-index bridge. EmitCodeCorr.br_ stores idx but doesn't prove it matches irFindLabel? result. Requires parameterizing EmitCodeCorr with label context. Also loop-label br has label-count mismatch (IR drops loop label, Wasm keeps it).
@@ -2024,3 +2026,4 @@ test_write
 
 ## Run: 2026-03-25T02:15:01+00:00
 
+2026-03-25T03:15:01+00:00 SKIP: already running

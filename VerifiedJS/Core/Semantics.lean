@@ -15588,4 +15588,278 @@ theorem elaborate_correct (p : Source.Program) (cp : Core.Program)
 -- | \*TypeError\* exception. 1. Return ?
 -- | \_target\_.\[\[SetPrototypeOf\]\](\_proto\_).
 
+-- SPEC: L7185-L7197
+-- | # IteratorNext ( \_iteratorRecord\_: an Iterator Record, optional \_value\_: an ECMAScript language value, ): either a normal completion containing an Object or a throw completion
+-- |
+-- | 1\. If \_value\_ is not present, then 1. Let \_result\_ be
+-- | Completion(Call(\_iteratorRecord\_.\[\[NextMethod\]\],
+-- | \_iteratorRecord\_.\[\[Iterator\]\])). 1. Else, 1. Let \_result\_ be
+-- | Completion(Call(\_iteratorRecord\_.\[\[NextMethod\]\],
+-- | \_iteratorRecord\_.\[\[Iterator\]\], « \_value\_ »)). 1. If \_result\_
+-- | is a throw completion, then 1. Set \_iteratorRecord\_.\[\[Done\]\] to
+-- | \*true\*. 1. Return ? \_result\_. 1. Set \_result\_ to ! \_result\_. 1.
+-- | If \_result\_ is not an Object, then 1. Set
+-- | \_iteratorRecord\_.\[\[Done\]\] to \*true\*. 1. Throw a \*TypeError\*
+-- | exception. 1. Return \_result\_.
+
+-- SPEC: L7198-L7201
+-- | # IteratorComplete ( \_iteratorResult\_: an Object, ): either a normal completion containing a Boolean or a throw completion
+-- |
+-- | 1\. Return ToBoolean(? Get(\_iteratorResult\_, \*\"done\"\*)).
+
+-- SPEC: L7202-L7205
+-- | # IteratorValue ( \_iteratorResult\_: an Object, ): either a normal completion containing an ECMAScript language value or a throw completion
+-- |
+-- | 1\. Return ? Get(\_iteratorResult\_, \*\"value\"\*).
+
+-- SPEC: L7206-L7220
+-- | # IteratorStep ( \_iteratorRecord\_: an Iterator Record, ): either a normal completion containing either an Object or \~done\~, or a throw completion
+-- |
+-- | description
+-- | :   It requests the next value from \_iteratorRecord\_.\[\[Iterator\]\]
+-- |     by calling \_iteratorRecord\_.\[\[NextMethod\]\] and returns either
+-- |     \~done\~ indicating that the iterator has reached its end or the
+-- |     IteratorResult object if a next value is available.
+-- |
+-- | 1\. Let \_result\_ be ? IteratorNext(\_iteratorRecord\_). 1. Let
+-- | \_done\_ be Completion(IteratorComplete(\_result\_)). 1. If \_done\_ is
+-- | a throw completion, then 1. Set \_iteratorRecord\_.\[\[Done\]\] to
+-- | \*true\*. 1. Return ? \_done\_. 1. Set \_done\_ to ! \_done\_. 1. If
+-- | \_done\_ is \*true\*, then 1. Set \_iteratorRecord\_.\[\[Done\]\] to
+-- | \*true\*. 1. Return \~done\~. 1. Return \_result\_.
+
+-- SPEC: L7221-L7234
+-- | # IteratorStepValue ( \_iteratorRecord\_: an Iterator Record, ): either a normal completion containing either an ECMAScript language value or \~done\~, or a throw completion
+-- |
+-- | description
+-- | :   It requests the next value from \_iteratorRecord\_.\[\[Iterator\]\]
+-- |     by calling \_iteratorRecord\_.\[\[NextMethod\]\] and returns either
+-- |     \~done\~ indicating that the iterator has reached its end or the
+-- |     value from the IteratorResult object if a next value is available.
+-- |
+-- | 1\. Let \_result\_ be ? IteratorStep(\_iteratorRecord\_). 1. If
+-- | \_result\_ is \~done\~, then 1. Return \~done\~. 1. Let \_value\_ be
+-- | Completion(IteratorValue(\_result\_)). 1. If \_value\_ is a throw
+-- | completion, then 1. Set \_iteratorRecord\_.\[\[Done\]\] to \*true\*. 1.
+-- | Return ? \_value\_.
+
+-- SPEC: L7309-L7318
+-- | # CreateIteratorResultObject ( \_value\_: an ECMAScript language value, \_done\_: a Boolean, ): an Object that conforms to the IteratorResult interface
+-- |
+-- | description
+-- | :   It creates an object that conforms to the IteratorResult interface.
+-- |
+-- | 1\. Let \_obj\_ be OrdinaryObjectCreate(%Object.prototype%). 1. Perform
+-- | ! CreateDataPropertyOrThrow(\_obj\_, \*\"value\"\*, \_value\_). 1.
+-- | Perform ! CreateDataPropertyOrThrow(\_obj\_, \*\"done\"\*, \_done\_). 1.
+-- | Return \_obj\_.
+
+-- SPEC: L10002-L10010
+-- | # ResolveThisBinding ( ): either a normal completion containing an ECMAScript language value or a throw completion
+-- |
+-- | description
+-- | :   It determines the binding of the keyword \`this\` using the
+-- |     LexicalEnvironment of the running execution context.
+-- |
+-- | 1\. Let \_envRec\_ be GetThisEnvironment(). 1. Return ?
+-- | \_envRec\_.GetThisBinding().
+
+-- SPEC: L10011-L10019
+-- | # GetNewTarget ( ): an Object or \*undefined\*
+-- |
+-- | description
+-- | :   It determines the NewTarget value using the LexicalEnvironment of
+-- |     the running execution context.
+-- |
+-- | 1\. Let \_envRec\_ be GetThisEnvironment(). 1. Assert: \_envRec\_ has a
+-- | \[\[NewTarget\]\] field. 1. Return \_envRec\_.\[\[NewTarget\]\].
+
+-- SPEC: L10020-L10028
+-- | # GetGlobalObject ( ): an Object
+-- |
+-- | description
+-- | :   It returns the global object used by the currently running execution
+-- |     context.
+-- |
+-- | 1\. Let \_currentRealm\_ be the current Realm Record. 1. Return
+-- | \_currentRealm\_.\[\[GlobalObject\]\].
+
+-- SPEC: L10288-L10292
+-- | # AgentSignifier ( ): an agent signifier
+-- |
+-- | 1\. Let \_AR\_ be the Agent Record of the surrounding agent. 1. Return
+-- | \_AR\_.\[\[Signifier\]\].
+
+-- SPEC: L10293-L10302
+-- | # AgentCanSuspend ( ): a Boolean
+-- |
+-- | 1\. Let \_AR\_ be the Agent Record of the surrounding agent. 1. Return
+-- | \_AR\_.\[\[CanBlock\]\].
+-- |
+-- | In some environments it may not be reasonable for a given agent to
+-- | suspend. For example, in a web browser environment, it may be reasonable
+-- | to disallow suspending a document\'s main event handling thread, while
+-- | still allowing workers\' event handling threads to suspend.
+
+-- SPEC: L10591-L10600
+-- | # ClearKeptObjects ( ): \~unused\~
+-- |
+-- | description
+-- | :   ECMAScript implementations are expected to call ClearKeptObjects
+-- |     when a synchronous sequence of ECMAScript executions completes.
+-- |
+-- | 1\. Let \_agentRecord\_ be the surrounding agent\'s Agent Record. 1. Set
+-- | \_agentRecord\_.\[\[KeptAlive\]\] to a new empty List. 1. Return
+-- | \~unused\~.
+
+-- SPEC: L10601-L10608
+-- | # AddToKeptObjects ( \_value\_: an Object or a Symbol, ): \~unused\~
+-- |
+-- | 1\. Let \_agentRecord\_ be the surrounding agent\'s Agent Record. 1.
+-- | Append \_value\_ to \_agentRecord\_.\[\[KeptAlive\]\]. 1. Return
+-- | \~unused\~. When the abstract operation AddToKeptObjects is called with
+-- | a target object or symbol, it adds the target to a list that will point
+-- | strongly at the target until ClearKeptObjects is called.
+
+-- SPEC: L10609-L10620
+-- | # CleanupFinalizationRegistry ( \_finalizationRegistry\_: a FinalizationRegistry, ): either a normal completion containing \~unused\~ or a throw completion
+-- |
+-- | 1\. Assert: \_finalizationRegistry\_ has \[\[Cells\]\] and
+-- | \[\[CleanupCallback\]\] internal slots. 1. Let \_callback\_ be
+-- | \_finalizationRegistry\_.\[\[CleanupCallback\]\]. 1. While
+-- | \_finalizationRegistry\_.\[\[Cells\]\] contains a Record \_cell\_ such
+-- | that \_cell\_.\[\[WeakRefTarget\]\] is \~empty\~, an implementation may
+-- | perform the following steps: 1. Choose any such \_cell\_. 1. Remove
+-- | \_cell\_ from \_finalizationRegistry\_.\[\[Cells\]\]. 1. Perform ?
+-- | HostCallJobCallback(\_callback\_, \*undefined\*, «
+-- | \_cell\_.\[\[HeldValue\]\] »). 1. Return \~unused\~.
+
+-- SPEC: L10621-L10644
+-- | # CanBeHeldWeakly ( \_v\_: an ECMAScript language value, ): a Boolean
+-- |
+-- | description
+-- | :   It returns \*true\* if and only if \_v\_ is suitable for use as a
+-- |     weak reference. Only values that are suitable for use as a weak
+-- |     reference may be a key of a WeakMap, an element of a WeakSet, the
+-- |     target of a WeakRef, or one of the targets of a
+-- |     FinalizationRegistry.
+-- |
+-- | 1\. If \_v\_ is an Object, return \*true\*. 1. If \_v\_ is a Symbol and
+-- | KeyForSymbol(\_v\_) is \*undefined\*, return \*true\*. 1. Return
+-- | \*false\*.
+-- |
+-- | A language value without language identity can be manifested without
+-- | prior reference and is unsuitable for use as a weak reference. A Symbol
+-- | value produced by Symbol.for, unlike other Symbol values, does not have
+-- | language identity and is unsuitable for use as a weak reference.
+-- | Well-known symbols are likely to never be collected, but are nonetheless
+-- | treated as suitable for use as a weak reference because they are limited
+-- | in number and therefore manageable by a variety of implementation
+-- | approaches. However, any value associated to a well-known symbol in a
+-- | live WeakMap is unlikely to be collected and could "leak" memory
+-- | resources in implementations.
+
+-- SPEC: L10690-L10693
+-- | # OrdinaryGetPrototypeOf ( \_O\_: an Object, ): an Object or \*null\*
+-- |
+-- | 1\. Return \_O\_.\[\[Prototype\]\].
+
+-- SPEC: L10701-L10718
+-- | # OrdinarySetPrototypeOf ( \_O\_: an Object, \_V\_: an Object or \*null\*, ): a Boolean
+-- |
+-- | 1\. Let \_current\_ be \_O\_.\[\[Prototype\]\]. 1. If SameValue(\_V\_,
+-- | \_current\_) is \*true\*, return \*true\*. 1. Let \_extensible\_ be
+-- | \_O\_.\[\[Extensible\]\]. 1. If \_extensible\_ is \*false\*, return
+-- | \*false\*. 1. Let \_p\_ be \_V\_. 1. Let \_done\_ be \*false\*. 1.
+-- | \[id=\"step-ordinarysetprototypeof-loop\"\] Repeat, while \_done\_ is
+-- | \*false\*, 1. If \_p\_ is \*null\*, then 1. Set \_done\_ to \*true\*. 1.
+-- | Else if SameValue(\_p\_, \_O\_) is \*true\*, then 1. Return
+-- | \*false\*. 1. Else, 1. If \_p\_.\[\[GetPrototypeOf\]\] is not the
+-- | ordinary object internal method defined in , set \_done\_ to
+-- | \*true\*. 1. Else, set \_p\_ to \_p\_.\[\[Prototype\]\]. 1. Set
+-- | \_O\_.\[\[Prototype\]\] to \_V\_. 1. Return \*true\*.
+-- |
+-- | The loop in step guarantees that there will be no cycles in any
+-- | prototype chain that only includes objects that use the ordinary object
+-- | definitions for \[\[GetPrototypeOf\]\] and \[\[SetPrototypeOf\]\].
+
+-- SPEC: L10726-L10729
+-- | # OrdinaryIsExtensible ( \_O\_: an Object, ): a Boolean
+-- |
+-- | 1\. Return \_O\_.\[\[Extensible\]\].
+
+-- SPEC: L10737-L10740
+-- | # OrdinaryPreventExtensions ( \_O\_: an Object, ): \*true\*
+-- |
+-- | 1\. Set \_O\_.\[\[Extensible\]\] to \*false\*. 1. Return \*true\*.
+
+-- SPEC: L10748-L10762
+-- | # OrdinaryGetOwnProperty ( \_O\_: an Object, \_P\_: a property key, ): a Property Descriptor or \*undefined\*
+-- |
+-- | 1\. If \_O\_ does not have an own property with key \_P\_, return
+-- | \*undefined\*. 1. Let \_D\_ be a newly created Property Descriptor with
+-- | no fields. 1. Let \_X\_ be \_O\_\'s own property whose key is \_P\_. 1.
+-- | If \_X\_ is a data property, then 1. Set \_D\_.\[\[Value\]\] to the
+-- | value of \_X\_\'s \[\[Value\]\] attribute. 1. Set \_D\_.\[\[Writable\]\]
+-- | to the value of \_X\_\'s \[\[Writable\]\] attribute. 1. Else, 1. Assert:
+-- | \_X\_ is an accessor property. 1. Set \_D\_.\[\[Get\]\] to the value of
+-- | \_X\_\'s \[\[Get\]\] attribute. 1. Set \_D\_.\[\[Set\]\] to the value of
+-- | \_X\_\'s \[\[Set\]\] attribute. 1. Set \_D\_.\[\[Enumerable\]\] to the
+-- | value of \_X\_\'s \[\[Enumerable\]\] attribute. 1. Set
+-- | \_D\_.\[\[Configurable\]\] to the value of \_X\_\'s \[\[Configurable\]\]
+-- | attribute. 1. Return \_D\_.
+
+-- SPEC: L10897-L10902
+-- | # OrdinarySet ( \_O\_: an Object, \_P\_: a property key, \_V\_: an ECMAScript language value, \_Receiver\_: an ECMAScript language value, ): either a normal completion containing a Boolean or a throw completion
+-- |
+-- | 1\. Let \_ownDesc\_ be ? \_O\_.\[\[GetOwnProperty\]\](\_P\_). 1. Return
+-- | ? OrdinarySetWithOwnDescriptor(\_O\_, \_P\_, \_V\_, \_Receiver\_,
+-- | \_ownDesc\_).
+
+-- SPEC: L10903-L10926
+-- | # OrdinarySetWithOwnDescriptor ( \_O\_: an Object, \_P\_: a property key, \_V\_: an ECMAScript language value, \_Receiver\_: an ECMAScript language value, \_ownDesc\_: a Property Descriptor or \*undefined\*, ): either a normal completion containing a Boolean or a throw completion
+-- |
+-- | 1\. If \_ownDesc\_ is \*undefined\*, then 1. Let \_parent\_ be ?
+-- | \_O\_.\[\[GetPrototypeOf\]\](). 1. If \_parent\_ is not \*null\*, return
+-- | ? \_parent\_.\[\[Set\]\](\_P\_, \_V\_, \_Receiver\_). 1. Set \_ownDesc\_
+-- | to the PropertyDescriptor { \[\[Value\]\]: \*undefined\*,
+-- | \[\[Writable\]\]: \*true\*, \[\[Enumerable\]\]: \*true\*,
+-- | \[\[Configurable\]\]: \*true\* }. 1. If IsDataDescriptor(\_ownDesc\_) is
+-- | \*true\*, then 1. If \_ownDesc\_.\[\[Writable\]\] is \*false\*, return
+-- | \*false\*. 1. If \_Receiver\_ is not an Object, return \*false\*. 1. Let
+-- | \_existingDescriptor\_ be ?
+-- | \_Receiver\_.\[\[GetOwnProperty\]\](\_P\_). 1. If \_existingDescriptor\_
+-- | is \*undefined\*, then 1. Assert: \_Receiver\_ does not currently have a
+-- | property \_P\_. 1. Return ? CreateDataProperty(\_Receiver\_, \_P\_,
+-- | \_V\_). 1. If IsAccessorDescriptor(\_existingDescriptor\_) is \*true\*,
+-- | return \*false\*. 1. If \_existingDescriptor\_.\[\[Writable\]\] is
+-- | \*false\*, return \*false\*. 1. Let \_valueDesc\_ be the
+-- | PropertyDescriptor { \[\[Value\]\]: \_V\_ }. 1. Return ?
+-- | \_Receiver\_.\[\[DefineOwnProperty\]\](\_P\_, \_valueDesc\_). 1. Assert:
+-- | IsAccessorDescriptor(\_ownDesc\_) is \*true\*. 1. Let \_setter\_ be
+-- | \_ownDesc\_.\[\[Set\]\]. 1. If \_setter\_ is \*undefined\*, return
+-- | \*false\*. 1. Perform ? Call(\_setter\_, \_Receiver\_, « \_V\_ »). 1.
+-- | Return \*true\*.
+
+-- SPEC: L10934-L10941
+-- | # OrdinaryDelete ( \_O\_: an Object, \_P\_: a property key, ): either a normal completion containing a Boolean or a throw completion
+-- |
+-- | 1\. Let \_desc\_ be ? \_O\_.\[\[GetOwnProperty\]\](\_P\_). 1. If
+-- | \_desc\_ is \*undefined\*, return \*true\*. 1. If
+-- | \_desc\_.\[\[Configurable\]\] is \*true\*, then 1. Remove the own
+-- | property with name \_P\_ from \_O\_. 1. Return \*true\*. 1. Return
+-- | \*false\*.
+
+-- SPEC: L10949-L10959
+-- | # OrdinaryOwnPropertyKeys ( \_O\_: an Object, ): a List of property keys
+-- |
+-- | 1\. Let \_keys\_ be a new empty List. 1. For each own property key \_P\_
+-- | of \_O\_ such that \_P\_ is an array index, in ascending numeric index
+-- | order, do 1. Append \_P\_ to \_keys\_. 1. For each own property key
+-- | \_P\_ of \_O\_ such that \_P\_ is a String and \_P\_ is not an array
+-- | index, in ascending chronological order of property creation, do 1.
+-- | Append \_P\_ to \_keys\_. 1. For each own property key \_P\_ of \_O\_
+-- | such that \_P\_ is a Symbol, in ascending chronological order of
+-- | property creation, do 1. Append \_P\_ to \_keys\_. 1. Return \_keys\_.
+
 end VerifiedJS.Source
