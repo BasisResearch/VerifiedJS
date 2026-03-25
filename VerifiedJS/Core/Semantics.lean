@@ -16442,4 +16442,2520 @@ theorem elaborate_correct (p : Source.Program) (cp : Core.Program)
 -- | 1\. If \_argument\_ is either \*undefined\* or \*null\*, throw a
 -- | \*TypeError\* exception. 1. Return \~unused\~.
 
+
+-- SPEC: L28474-L28483
+-- | # String.prototype.at ( \_index\_ )
+-- | 
+-- | 1\. Let \_O\_ be the \*this\* value. 1. Perform ?
+-- | RequireObjectCoercible(\_O\_). 1. Let \_S\_ be ? ToString(\_O\_). 1. Let
+-- | \_len\_ be the length of \_S\_. 1. Let \_relativeIndex\_ be ?
+-- | ToIntegerOrInfinity(\_index\_). 1. If \_relativeIndex\_ ≥ 0, then 1. Let
+-- | \_k\_ be \_relativeIndex\_. 1. Else, 1. Let \_k\_ be \_len\_ +
+-- | \_relativeIndex\_. 1. If \_k\_ \< 0 or \_k\_ ≥ \_len\_, return
+-- | \*undefined\*. 1. Return the substring of \_S\_ from \_k\_ to \_k\_ + 1.
+-- | 
+
+-- SPEC: L28484-L28506
+-- | # String.prototype.charAt ( \_pos\_ )
+-- | 
+-- | This method returns a single element String containing the code unit at
+-- | index \_pos\_ within the String value resulting from converting this
+-- | object to a String. If there is no element at that index, the result is
+-- | the empty String. The result is a String value, not a String object.
+-- | 
+-- | If \`pos\` is an integral Number, then the result of \`x.charAt(pos)\`
+-- | is equivalent to the result of \`x.substring(pos, pos + 1)\`.
+-- | 
+-- | This method performs the following steps when called:
+-- | 
+-- | 1\. Let \_O\_ be the \*this\* value. 1. Perform ?
+-- | RequireObjectCoercible(\_O\_). 1. Let \_S\_ be ? ToString(\_O\_). 1. Let
+-- | \_position\_ be ? ToIntegerOrInfinity(\_pos\_). 1. Let \_size\_ be the
+-- | length of \_S\_. 1. If \_position\_ \< 0 or \_position\_ ≥ \_size\_,
+-- | return the empty String. 1. Return the substring of \_S\_ from
+-- | \_position\_ to \_position\_ + 1.
+-- | 
+-- | This method is intentionally generic; it does not require that its
+-- | \*this\* value be a String object. Therefore, it can be transferred to
+-- | other kinds of objects for use as a method.
+-- | 
+
+-- SPEC: L28507-L28526
+-- | # String.prototype.charCodeAt ( \_pos\_ )
+-- | 
+-- | This method returns a Number (a non-negative integral Number less than
+-- | 2^16^) that is the numeric value of the code unit at index \_pos\_
+-- | within the String resulting from converting this object to a String. If
+-- | there is no element at that index, the result is \*NaN\*.
+-- | 
+-- | This method performs the following steps when called:
+-- | 
+-- | 1\. Let \_O\_ be the \*this\* value. 1. Perform ?
+-- | RequireObjectCoercible(\_O\_). 1. Let \_S\_ be ? ToString(\_O\_). 1. Let
+-- | \_position\_ be ? ToIntegerOrInfinity(\_pos\_). 1. Let \_size\_ be the
+-- | length of \_S\_. 1. If \_position\_ \< 0 or \_position\_ ≥ \_size\_,
+-- | return \*NaN\*. 1. Return the Number value for the numeric value of the
+-- | code unit at index \_position\_ within the String \_S\_.
+-- | 
+-- | This method is intentionally generic; it does not require that its
+-- | \*this\* value be a String object. Therefore it can be transferred to
+-- | other kinds of objects for use as a method.
+-- | 
+
+-- SPEC: L28527-L28549
+-- | # String.prototype.codePointAt ( \_pos\_ )
+-- | 
+-- | This method returns a non-negative integral Number less than or equal to
+-- | \*0x10FFFF\*~𝔽~ that is the numeric value of the UTF-16 encoded code
+-- | point () starting at the string element at index \_pos\_ within the
+-- | String resulting from converting this object to a String. If there is no
+-- | element at that index, the result is \*undefined\*. If a valid UTF-16
+-- | surrogate pair does not begin at \_pos\_, the result is the code unit at
+-- | \_pos\_.
+-- | 
+-- | This method performs the following steps when called:
+-- | 
+-- | 1\. Let \_O\_ be the \*this\* value. 1. Perform ?
+-- | RequireObjectCoercible(\_O\_). 1. Let \_S\_ be ? ToString(\_O\_). 1. Let
+-- | \_position\_ be ? ToIntegerOrInfinity(\_pos\_). 1. Let \_size\_ be the
+-- | length of \_S\_. 1. If \_position\_ \< 0 or \_position\_ ≥ \_size\_,
+-- | return \*undefined\*. 1. Let \_cp\_ be CodePointAt(\_S\_,
+-- | \_position\_). 1. Return 𝔽(\_cp\_.\[\[CodePoint\]\]).
+-- | 
+-- | This method is intentionally generic; it does not require that its
+-- | \*this\* value be a String object. Therefore it can be transferred to
+-- | other kinds of objects for use as a method.
+-- | 
+
+-- SPEC: L28550-L28570
+-- | # String.prototype.concat ( \...\_args\_ )
+-- | 
+-- | When this method is called it returns the String value consisting of the
+-- | code units of the \*this\* value (converted to a String) followed by the
+-- | code units of each of the arguments converted to a String. The result is
+-- | a String value, not a String object.
+-- | 
+-- | This method performs the following steps when called:
+-- | 
+-- | 1\. Let \_O\_ be the \*this\* value. 1. Perform ?
+-- | RequireObjectCoercible(\_O\_). 1. Let \_S\_ be ? ToString(\_O\_). 1. Let
+-- | \_R\_ be \_S\_. 1. For each element \_next\_ of \_args\_, do 1. Let
+-- | \_nextString\_ be ? ToString(\_next\_). 1. Set \_R\_ to the
+-- | string-concatenation of \_R\_ and \_nextString\_. 1. Return \_R\_.
+-- | 
+-- | The \*\"length\"\* property of this method is \*1\*~𝔽~.
+-- | 
+-- | This method is intentionally generic; it does not require that its
+-- | \*this\* value be a String object. Therefore it can be transferred to
+-- | other kinds of objects for use as a method.
+-- | 
+
+-- SPEC: L28575-L28605
+-- | # String.prototype.endsWith ( \_searchString\_ \[ , \_endPosition\_ \] )
+-- | 
+-- | This method performs the following steps when called:
+-- | 
+-- | 1\. Let \_O\_ be the \*this\* value. 1. Perform ?
+-- | RequireObjectCoercible(\_O\_). 1. Let \_S\_ be ? ToString(\_O\_). 1. Let
+-- | \_isRegExp\_ be ? IsRegExp(\_searchString\_). 1. If \_isRegExp\_ is
+-- | \*true\*, throw a \*TypeError\* exception. 1. Let \_searchStr\_ be ?
+-- | ToString(\_searchString\_). 1. Let \_len\_ be the length of \_S\_. 1. If
+-- | \_endPosition\_ is \*undefined\*, let \_pos\_ be \_len\_; else let
+-- | \_pos\_ be ? ToIntegerOrInfinity(\_endPosition\_). 1. Let \_end\_ be the
+-- | result of clamping \_pos\_ between 0 and \_len\_. 1. Let
+-- | \_searchLength\_ be the length of \_searchStr\_. 1. If \_searchLength\_
+-- | = 0, return \*true\*. 1. Let \_start\_ be \_end\_ - \_searchLength\_. 1.
+-- | If \_start\_ \< 0, return \*false\*. 1. Let \_substring\_ be the
+-- | substring of \_S\_ from \_start\_ to \_end\_. 1. If \_substring\_ is
+-- | \_searchStr\_, return \*true\*. 1. Return \*false\*.
+-- | 
+-- | This method returns \*true\* if the sequence of code units of
+-- | \_searchString\_ converted to a String is the same as the corresponding
+-- | code units of this object (converted to a String) starting at
+-- | \_endPosition\_ - length(this). Otherwise it returns \*false\*.
+-- | 
+-- | Throwing an exception if the first argument is a RegExp is specified in
+-- | order to allow future editions to define extensions that allow such
+-- | argument values.
+-- | 
+-- | This method is intentionally generic; it does not require that its
+-- | \*this\* value be a String object. Therefore, it can be transferred to
+-- | other kinds of objects for use as a method.
+-- | 
+
+-- SPEC: L28606-L28635
+-- | # String.prototype.includes ( \_searchString\_ \[ , \_position\_ \] )
+-- | 
+-- | This method performs the following steps when called:
+-- | 
+-- | 1\. Let \_O\_ be the \*this\* value. 1. Perform ?
+-- | RequireObjectCoercible(\_O\_). 1. Let \_S\_ be ? ToString(\_O\_). 1. Let
+-- | \_isRegExp\_ be ? IsRegExp(\_searchString\_). 1. If \_isRegExp\_ is
+-- | \*true\*, throw a \*TypeError\* exception. 1. Let \_searchStr\_ be ?
+-- | ToString(\_searchString\_). 1. Let \_pos\_ be ?
+-- | ToIntegerOrInfinity(\_position\_). 1. Assert: If \_position\_ is
+-- | \*undefined\*, then \_pos\_ is 0. 1. Let \_len\_ be the length of
+-- | \_S\_. 1. Let \_start\_ be the result of clamping \_pos\_ between 0 and
+-- | \_len\_. 1. Let \_index\_ be StringIndexOf(\_S\_, \_searchStr\_,
+-- | \_start\_). 1. If \_index\_ is \~not-found\~, return \*false\*. 1.
+-- | Return \*true\*.
+-- | 
+-- | If \_searchString\_ appears as a substring of the result of converting
+-- | this object to a String, at one or more indices that are greater than or
+-- | equal to \_position\_, this function returns \*true\*; otherwise, it
+-- | returns \*false\*. If \_position\_ is \*undefined\*, 0 is assumed, so as
+-- | to search all of the String.
+-- | 
+-- | Throwing an exception if the first argument is a RegExp is specified in
+-- | order to allow future editions to define extensions that allow such
+-- | argument values.
+-- | 
+-- | This method is intentionally generic; it does not require that its
+-- | \*this\* value be a String object. Therefore, it can be transferred to
+-- | other kinds of objects for use as a method.
+-- | 
+
+-- SPEC: L28636-L28659
+-- | # String.prototype.indexOf ( \_searchString\_ \[ , \_position\_ \] )
+-- | 
+-- | If \_searchString\_ appears as a substring of the result of converting
+-- | this object to a String, at one or more indices that are greater than or
+-- | equal to \_position\_, then the smallest such index is returned;
+-- | otherwise, \*-1\*~𝔽~ is returned. If \_position\_ is \*undefined\*,
+-- | \*+0\*~𝔽~ is assumed, so as to search all of the String.
+-- | 
+-- | This method performs the following steps when called:
+-- | 
+-- | 1\. Let \_O\_ be the \*this\* value. 1. Perform ?
+-- | RequireObjectCoercible(\_O\_). 1. Let \_S\_ be ? ToString(\_O\_). 1. Let
+-- | \_searchStr\_ be ? ToString(\_searchString\_). 1. Let \_pos\_ be ?
+-- | ToIntegerOrInfinity(\_position\_). 1. Assert: If \_position\_ is
+-- | \*undefined\*, then \_pos\_ is 0. 1. Let \_len\_ be the length of
+-- | \_S\_. 1. Let \_start\_ be the result of clamping \_pos\_ between 0 and
+-- | \_len\_. 1. Let \_result\_ be StringIndexOf(\_S\_, \_searchStr\_,
+-- | \_start\_). 1. If \_result\_ is \~not-found\~, return \*-1\*~𝔽~. 1.
+-- | Return 𝔽(\_result\_).
+-- | 
+-- | This method is intentionally generic; it does not require that its
+-- | \*this\* value be a String object. Therefore, it can be transferred to
+-- | other kinds of objects for use as a method.
+-- | 
+
+-- SPEC: L28660-L28667
+-- | # String.prototype.isWellFormed ( )
+-- | 
+-- | This method performs the following steps when called:
+-- | 
+-- | 1\. Let \_O\_ be the \*this\* value. 1. Perform ?
+-- | RequireObjectCoercible(\_O\_). 1. Let \_S\_ be ? ToString(\_O\_). 1.
+-- | Return IsStringWellFormedUnicode(\_S\_).
+-- | 
+
+-- SPEC: L28668-L28695
+-- | # String.prototype.lastIndexOf ( \_searchString\_ \[ , \_position\_ \] )
+-- | 
+-- | If \_searchString\_ appears as a substring of the result of converting
+-- | this object to a String at one or more indices that are smaller than or
+-- | equal to \_position\_, then the greatest such index is returned;
+-- | otherwise, \*-1\*~𝔽~ is returned. If \_position\_ is \*undefined\*, the
+-- | length of the String value is assumed, so as to search all of the
+-- | String.
+-- | 
+-- | This method performs the following steps when called:
+-- | 
+-- | 1\. Let \_O\_ be the \*this\* value. 1. Perform ?
+-- | RequireObjectCoercible(\_O\_). 1. Let \_S\_ be ? ToString(\_O\_). 1. Let
+-- | \_searchStr\_ be ? ToString(\_searchString\_). 1. Let \_numPos\_ be ?
+-- | ToNumber(\_position\_). 1. Assert: If \_position\_ is \*undefined\*,
+-- | then \_numPos\_ is \*NaN\*. 1. If \_numPos\_ is \*NaN\*, let \_pos\_ be
+-- | +∞; else let \_pos\_ be ! ToIntegerOrInfinity(\_numPos\_). 1. Let
+-- | \_len\_ be the length of \_S\_. 1. Let \_searchLen\_ be the length of
+-- | \_searchStr\_. 1. If \_len\_ \< \_searchLen\_, return \*-1\*~𝔽~. 1. Let
+-- | \_start\_ be the result of clamping \_pos\_ between 0 and \_len\_ -
+-- | \_searchLen\_. 1. Let \_result\_ be StringLastIndexOf(\_S\_,
+-- | \_searchStr\_, \_start\_). 1. If \_result\_ is \~not-found\~, return
+-- | \*-1\*~𝔽~. 1. Return 𝔽(\_result\_).
+-- | 
+-- | This method is intentionally generic; it does not require that its
+-- | \*this\* value be a String object. Therefore, it can be transferred to
+-- | other kinds of objects for use as a method.
+-- | 
+
+-- SPEC: L28785-L28800
+-- | # String.prototype.match ( \_regexp\_ )
+-- | 
+-- | This method performs the following steps when called:
+-- | 
+-- | 1\. Let \_O\_ be the \*this\* value. 1. Perform ?
+-- | RequireObjectCoercible(\_O\_). 1. If \_regexp\_ is an Object, then 1.
+-- | Let \_matcher\_ be ? GetMethod(\_regexp\_, %Symbol.match%). 1. If
+-- | \_matcher\_ is not \*undefined\*, then 1. Return ? Call(\_matcher\_,
+-- | \_regexp\_, « \_O\_ »). 1. Let \_S\_ be ? ToString(\_O\_). 1. Let \_rx\_
+-- | be ? RegExpCreate(\_regexp\_, \*undefined\*). 1. Return ? Invoke(\_rx\_,
+-- | %Symbol.match%, « \_S\_ »).
+-- | 
+-- | This method is intentionally generic; it does not require that its
+-- | \*this\* value be a String object. Therefore, it can be transferred to
+-- | other kinds of objects for use as a method.
+-- | 
+
+-- SPEC: L28801-L28828
+-- | # String.prototype.matchAll ( \_regexp\_ )
+-- | 
+-- | This method performs a regular expression match of the String
+-- | representing the \*this\* value against \_regexp\_ and returns an
+-- | iterator that yields match results. Each match result is an Array
+-- | containing the matched portion of the String as the first element,
+-- | followed by the portions matched by any capturing groups. If the regular
+-- | expression never matches, the returned iterator does not yield any match
+-- | results.
+-- | 
+-- | It performs the following steps when called:
+-- | 
+-- | 1\. Let \_O\_ be the \*this\* value. 1. Perform ?
+-- | RequireObjectCoercible(\_O\_). 1. If \_regexp\_ is an Object, then 1.
+-- | Let \_isRegExp\_ be ? IsRegExp(\_regexp\_). 1. If \_isRegExp\_ is
+-- | \*true\*, then 1. Let \_flags\_ be ? Get(\_regexp\_, \*\"flags\"\*). 1.
+-- | Perform ? RequireObjectCoercible(\_flags\_). 1. If ? ToString(\_flags\_)
+-- | does not contain \*\"g\"\*, throw a \*TypeError\* exception. 1. Let
+-- | \_matcher\_ be ? GetMethod(\_regexp\_, %Symbol.matchAll%). 1. If
+-- | \_matcher\_ is not \*undefined\*, then 1. Return ? Call(\_matcher\_,
+-- | \_regexp\_, « \_O\_ »). 1. Let \_S\_ be ? ToString(\_O\_). 1. Let \_rx\_
+-- | be ? RegExpCreate(\_regexp\_, \*\"g\"\*). 1. Return ? Invoke(\_rx\_,
+-- | %Symbol.matchAll%, « \_S\_ »). This method is intentionally generic, it
+-- | does not require that its \*this\* value be a String object. Therefore,
+-- | it can be transferred to other kinds of objects for use as a method.
+-- | Similarly to \`String.prototype.split\`, \`String.prototype.matchAll\`
+-- | is designed to typically act without mutating its inputs.
+-- | 
+
+-- SPEC: L28829-L28847
+-- | # String.prototype.normalize ( \[ \_form\_ \] )
+-- | 
+-- | This method performs the following steps when called:
+-- | 
+-- | 1\. Let \_O\_ be the \*this\* value. 1. Perform ?
+-- | RequireObjectCoercible(\_O\_). 1. Let \_S\_ be ? ToString(\_O\_). 1. If
+-- | \_form\_ is \*undefined\*, let \_f\_ be \*\"NFC\"\*. 1. Else, let \_f\_
+-- | be ? ToString(\_form\_). 1. If \_f\_ is not one of \*\"NFC\"\*,
+-- | \*\"NFD\"\*, \*\"NFKC\"\*, or \*\"NFKD\"\*, throw a \*RangeError\*
+-- | exception. 1. Let \_ns\_ be the String value that is the result of
+-- | normalizing \_S\_ into the normalization form named by \_f\_ as
+-- | specified in [the latest Unicode Standard, Normalization
+-- | Forms](https://www.unicode.org/versions/latest/ch03.pdf). 1. Return
+-- | \_ns\_.
+-- | 
+-- | This method is intentionally generic; it does not require that its
+-- | \*this\* value be a String object. Therefore it can be transferred to
+-- | other kinds of objects for use as a method.
+-- | 
+
+-- SPEC: L28848-L28856
+-- | # String.prototype.padEnd ( \_maxLength\_ \[ , \_fillString\_ \] )
+-- | 
+-- | This method performs the following steps when called:
+-- | 
+-- | 1\. Let \_O\_ be the \*this\* value. 1. Perform ?
+-- | RequireObjectCoercible(\_O\_). 1. Return ?
+-- | StringPaddingBuiltinsImpl(\_O\_, \_maxLength\_, \_fillString\_,
+-- | \~end\~).
+-- | 
+
+-- SPEC: L28857-L28865
+-- | # String.prototype.padStart ( \_maxLength\_ \[ , \_fillString\_ \] )
+-- | 
+-- | This method performs the following steps when called:
+-- | 
+-- | 1\. Let \_O\_ be the \*this\* value. 1. Perform ?
+-- | RequireObjectCoercible(\_O\_). 1. Return ?
+-- | StringPaddingBuiltinsImpl(\_O\_, \_maxLength\_, \_fillString\_,
+-- | \~start\~).
+-- | 
+
+-- SPEC: L28899-L28916
+-- | # String.prototype.repeat ( \_count\_ )
+-- | 
+-- | This method performs the following steps when called:
+-- | 
+-- | 1\. Let \_O\_ be the \*this\* value. 1. Perform ?
+-- | RequireObjectCoercible(\_O\_). 1. Let \_S\_ be ? ToString(\_O\_). 1. Let
+-- | \_n\_ be ? ToIntegerOrInfinity(\_count\_). 1. If \_n\_ \< 0 or \_n\_ =
+-- | +∞, throw a \*RangeError\* exception. 1. If \_n\_ = 0, return the empty
+-- | String. 1. Return the String value that is made from \_n\_ copies of
+-- | \_S\_ appended together.
+-- | 
+-- | This method creates the String value consisting of the code units of the
+-- | \*this\* value (converted to String) repeated \_count\_ times.
+-- | 
+-- | This method is intentionally generic; it does not require that its
+-- | \*this\* value be a String object. Therefore, it can be transferred to
+-- | other kinds of objects for use as a method.
+-- | 
+
+-- SPEC: L29069-L29098
+-- | # String.prototype.slice ( \_start\_, \_end\_ )
+-- | 
+-- | This method returns a substring of the result of converting this object
+-- | to a String, starting from index \_start\_ and running to, but not
+-- | including, index \_end\_ (or through the end of the String if \_end\_ is
+-- | \*undefined\*). If \_start\_ is negative, it is treated as
+-- | \_sourceLength\_ + \_start\_ where \_sourceLength\_ is the length of the
+-- | String. If \_end\_ is negative, it is treated as \_sourceLength\_ +
+-- | \_end\_ where \_sourceLength\_ is the length of the String. The result
+-- | is a String value, not a String object.
+-- | 
+-- | It performs the following steps when called:
+-- | 
+-- | 1\. Let \_O\_ be the \*this\* value. 1. Perform ?
+-- | RequireObjectCoercible(\_O\_). 1. Let \_S\_ be ? ToString(\_O\_). 1. Let
+-- | \_len\_ be the length of \_S\_. 1. Let \_intStart\_ be ?
+-- | ToIntegerOrInfinity(\_start\_). 1. If \_intStart\_ = -∞, let \_from\_ be
+-- | 0. 1. Else if \_intStart\_ \< 0, let \_from\_ be max(\_len\_ +
+-- | \_intStart\_, 0). 1. Else, let \_from\_ be min(\_intStart\_,
+-- | \_len\_). 1. If \_end\_ is \*undefined\*, let \_intEnd\_ be \_len\_;
+-- | else let \_intEnd\_ be ? ToIntegerOrInfinity(\_end\_). 1. If \_intEnd\_
+-- | = -∞, let \_to\_ be 0. 1. Else if \_intEnd\_ \< 0, let \_to\_ be
+-- | max(\_len\_ + \_intEnd\_, 0). 1. Else, let \_to\_ be min(\_intEnd\_,
+-- | \_len\_). 1. If \_from\_ ≥ \_to\_, return the empty String. 1. Return
+-- | the substring of \_S\_ from \_from\_ to \_to\_.
+-- | 
+-- | This method is intentionally generic; it does not require that its
+-- | \*this\* value be a String object. Therefore it can be transferred to
+-- | other kinds of objects for use as a method.
+-- | 
+
+-- SPEC: L29099-L29158
+-- | # String.prototype.split ( \_separator\_, \_limit\_ )
+-- | 
+-- | This method returns an Array into which substrings of the result of
+-- | converting this object to a String have been stored. The substrings are
+-- | determined by searching from left to right for occurrences of
+-- | \_separator\_; these occurrences are not part of any String in the
+-- | returned array, but serve to divide up the String value. The value of
+-- | \_separator\_ may be a String of any length or it may be an object, such
+-- | as a RegExp, that has a %Symbol.split% method.
+-- | 
+-- | It performs the following steps when called:
+-- | 
+-- | 1\. Let \_O\_ be the \*this\* value. 1. Perform ?
+-- | RequireObjectCoercible(\_O\_). 1. If \_separator\_ is an Object, then 1.
+-- | Let \_splitter\_ be ? GetMethod(\_separator\_, %Symbol.split%). 1. If
+-- | \_splitter\_ is not \*undefined\*, then 1. Return ? Call(\_splitter\_,
+-- | \_separator\_, « \_O\_, \_limit\_ »). 1. Let \_S\_ be ?
+-- | ToString(\_O\_). 1. If \_limit\_ is \*undefined\*, let \_lim\_ be
+-- | 2^32^ - 1; else let \_lim\_ be ℝ(? ToUint32(\_limit\_)). 1. Let \_R\_ be
+-- | ? ToString(\_separator\_). 1. If \_lim\_ = 0, then 1. Return
+-- | CreateArrayFromList(« »). 1. If \_separator\_ is \*undefined\*, then 1.
+-- | Return CreateArrayFromList(« \_S\_ »). 1. Let \_separatorLength\_ be the
+-- | length of \_R\_. 1. If \_separatorLength\_ = 0, then 1. Let \_strLen\_
+-- | be the length of \_S\_. 1. Let \_outLen\_ be the result of clamping
+-- | \_lim\_ between 0 and \_strLen\_. 1. Let \_head\_ be the substring of
+-- | \_S\_ from 0 to \_outLen\_. 1. Let \_codeUnits\_ be a List consisting of
+-- | the sequence of code units that are the elements of \_head\_. 1. Return
+-- | CreateArrayFromList(\_codeUnits\_). 1. If \_S\_ is the empty String,
+-- | return CreateArrayFromList(« \_S\_ »). 1. Let \_substrings\_ be a new
+-- | empty List. 1. Let \_i\_ be 0. 1. Let \_j\_ be StringIndexOf(\_S\_,
+-- | \_R\_, 0). 1. Repeat, while \_j\_ is not \~not-found\~, 1. Let \_T\_ be
+-- | the substring of \_S\_ from \_i\_ to \_j\_. 1. Append \_T\_ to
+-- | \_substrings\_. 1. If the number of elements in \_substrings\_ is
+-- | \_lim\_, return CreateArrayFromList(\_substrings\_). 1. Set \_i\_ to
+-- | \_j\_ + \_separatorLength\_. 1. Set \_j\_ to StringIndexOf(\_S\_, \_R\_,
+-- | \_i\_). 1. Let \_T\_ be the substring of \_S\_ from \_i\_. 1. Append
+-- | \_T\_ to \_substrings\_. 1. Return CreateArrayFromList(\_substrings\_).
+-- | 
+-- | The value of \_separator\_ may be an empty String. In this case,
+-- | \_separator\_ does not match the empty substring at the beginning or end
+-- | of the input String, nor does it match the empty substring at the end of
+-- | the previous separator match. If \_separator\_ is the empty String, the
+-- | String is split up into individual code unit elements; the length of the
+-- | result array equals the length of the String, and each substring
+-- | contains one code unit.
+-- | 
+-- | If the \*this\* value is (or converts to) the empty String, the result
+-- | depends on whether \_separator\_ can match the empty String. If it can,
+-- | the result array contains no elements. Otherwise, the result array
+-- | contains one element, which is the empty String.
+-- | 
+-- | If \_separator\_ is \*undefined\*, then the result array contains just
+-- | one String, which is the \*this\* value (converted to a String). If
+-- | \_limit\_ is not \*undefined\*, then the output array is truncated so
+-- | that it contains no more than \_limit\_ elements.
+-- | 
+-- | This method is intentionally generic; it does not require that its
+-- | \*this\* value be a String object. Therefore, it can be transferred to
+-- | other kinds of objects for use as a method.
+-- | 
+
+-- SPEC: L29159-L29189
+-- | # String.prototype.startsWith ( \_searchString\_ \[ , \_position\_ \] )
+-- | 
+-- | This method performs the following steps when called:
+-- | 
+-- | 1\. Let \_O\_ be the \*this\* value. 1. Perform ?
+-- | RequireObjectCoercible(\_O\_). 1. Let \_S\_ be ? ToString(\_O\_). 1. Let
+-- | \_isRegExp\_ be ? IsRegExp(\_searchString\_). 1. If \_isRegExp\_ is
+-- | \*true\*, throw a \*TypeError\* exception. 1. Let \_searchStr\_ be ?
+-- | ToString(\_searchString\_). 1. Let \_len\_ be the length of \_S\_. 1. If
+-- | \_position\_ is \*undefined\*, let \_pos\_ be 0; else let \_pos\_ be ?
+-- | ToIntegerOrInfinity(\_position\_). 1. Let \_start\_ be the result of
+-- | clamping \_pos\_ between 0 and \_len\_. 1. Let \_searchLength\_ be the
+-- | length of \_searchStr\_. 1. If \_searchLength\_ = 0, return \*true\*. 1.
+-- | Let \_end\_ be \_start\_ + \_searchLength\_. 1. If \_end\_ \> \_len\_,
+-- | return \*false\*. 1. Let \_substring\_ be the substring of \_S\_ from
+-- | \_start\_ to \_end\_. 1. If \_substring\_ is \_searchStr\_, return
+-- | \*true\*. 1. Return \*false\*.
+-- | 
+-- | This method returns \*true\* if the sequence of code units of
+-- | \_searchString\_ converted to a String is the same as the corresponding
+-- | code units of this object (converted to a String) starting at index
+-- | \_position\_. Otherwise it returns \*false\*.
+-- | 
+-- | Throwing an exception if the first argument is a RegExp is specified in
+-- | order to allow future editions to define extensions that allow such
+-- | argument values.
+-- | 
+-- | This method is intentionally generic; it does not require that its
+-- | \*this\* value be a String object. Therefore, it can be transferred to
+-- | other kinds of objects for use as a method.
+-- | 
+
+-- SPEC: L29190-L29220
+-- | # String.prototype.substring ( \_start\_, \_end\_ )
+-- | 
+-- | This method returns a substring of the result of converting this object
+-- | to a String, starting from index \_start\_ and running to, but not
+-- | including, index \_end\_ of the String (or through the end of the String
+-- | if \_end\_ is \*undefined\*). The result is a String value, not a String
+-- | object.
+-- | 
+-- | If either argument is \*NaN\* or negative, it is replaced with zero; if
+-- | either argument is strictly greater than the length of the String, it is
+-- | replaced with the length of the String.
+-- | 
+-- | If \_start\_ is strictly greater than \_end\_, they are swapped.
+-- | 
+-- | It performs the following steps when called:
+-- | 
+-- | 1\. Let \_O\_ be the \*this\* value. 1. Perform ?
+-- | RequireObjectCoercible(\_O\_). 1. Let \_S\_ be ? ToString(\_O\_). 1. Let
+-- | \_len\_ be the length of \_S\_. 1. Let \_intStart\_ be ?
+-- | ToIntegerOrInfinity(\_start\_). 1. If \_end\_ is \*undefined\*, let
+-- | \_intEnd\_ be \_len\_; else let \_intEnd\_ be ?
+-- | ToIntegerOrInfinity(\_end\_). 1. Let \_finalStart\_ be the result of
+-- | clamping \_intStart\_ between 0 and \_len\_. 1. Let \_finalEnd\_ be the
+-- | result of clamping \_intEnd\_ between 0 and \_len\_. 1. Let \_from\_ be
+-- | min(\_finalStart\_, \_finalEnd\_). 1. Let \_to\_ be max(\_finalStart\_,
+-- | \_finalEnd\_). 1. Return the substring of \_S\_ from \_from\_ to \_to\_.
+-- | 
+-- | This method is intentionally generic; it does not require that its
+-- | \*this\* value be a String object. Therefore, it can be transferred to
+-- | other kinds of objects for use as a method.
+-- | 
+
+-- SPEC: L29269-L29301
+-- | # String.prototype.toLowerCase ( )
+-- | 
+-- | This method interprets a String value as a sequence of UTF-16 encoded
+-- | code points, as described in .
+-- | 
+-- | It performs the following steps when called:
+-- | 
+-- | 1\. Let \_O\_ be the \*this\* value. 1. Perform ?
+-- | RequireObjectCoercible(\_O\_). 1. Let \_S\_ be ? ToString(\_O\_). 1. Let
+-- | \_sText\_ be StringToCodePoints(\_S\_). 1. Let \_lowerText\_ be
+-- | toLowercase(\_sText\_), according to the Unicode Default Case Conversion
+-- | algorithm. 1. Let \_L\_ be CodePointsToString(\_lowerText\_). 1. Return
+-- | \_L\_.
+-- | 
+-- | The result must be derived according to the locale-insensitive case
+-- | mappings in the Unicode Character Database (this explicitly includes not
+-- | only the file
+-- | [`UnicodeData.txt`](https://unicode.org/Public/UCD/latest/ucd/UnicodeData.txt),
+-- | but also all locale-insensitive mappings in the file
+-- | [`SpecialCasing.txt`](https://unicode.org/Public/UCD/latest/ucd/SpecialCasing.txt)
+-- | that accompanies it).
+-- | 
+-- | The case mapping of some code points may produce multiple code points.
+-- | In this case the result String may not be the same length as the source
+-- | String. Because both \`toUpperCase\` and \`toLowerCase\` have
+-- | context-sensitive behaviour, the methods are not symmetrical. In other
+-- | words, \`s.toUpperCase().toLowerCase()\` is not necessarily equal to
+-- | \`s.toLowerCase()\`.
+-- | 
+-- | This method is intentionally generic; it does not require that its
+-- | \*this\* value be a String object. Therefore, it can be transferred to
+-- | other kinds of objects for use as a method.
+-- | 
+
+-- SPEC: L29302-L29310
+-- | # String.prototype.toString ( )
+-- | 
+-- | This method performs the following steps when called:
+-- | 
+-- | 1\. Return ? ThisStringValue(\*this\* value).
+-- | 
+-- | For a String object, this method happens to return the same thing as the
+-- | \`valueOf\` method.
+-- | 
+
+-- SPEC: L29311-L29323
+-- | # String.prototype.toUpperCase ( )
+-- | 
+-- | This method interprets a String value as a sequence of UTF-16 encoded
+-- | code points, as described in .
+-- | 
+-- | It behaves in exactly the same way as \`String.prototype.toLowerCase\`,
+-- | except that the String is mapped using the toUppercase algorithm of the
+-- | Unicode Default Case Conversion.
+-- | 
+-- | This method is intentionally generic; it does not require that its
+-- | \*this\* value be a String object. Therefore, it can be transferred to
+-- | other kinds of objects for use as a method.
+-- | 
+
+-- SPEC: L29324-L29342
+-- | # String.prototype.toWellFormed ( )
+-- | 
+-- | This method returns a String representation of this object with all
+-- | leading surrogates and trailing surrogates that are not part of a
+-- | surrogate pair replaced with U+FFFD (REPLACEMENT CHARACTER).
+-- | 
+-- | It performs the following steps when called:
+-- | 
+-- | 1\. Let \_O\_ be the \*this\* value. 1. Perform ?
+-- | RequireObjectCoercible(\_O\_). 1. Let \_S\_ be ? ToString(\_O\_). 1. Let
+-- | \_strLen\_ be the length of \_S\_. 1. Let \_k\_ be 0. 1. Let \_result\_
+-- | be the empty String. 1. Repeat, while \_k\_ \< \_strLen\_, 1. Let \_cp\_
+-- | be CodePointAt(\_S\_, \_k\_). 1. If \_cp\_.\[\[IsUnpairedSurrogate\]\]
+-- | is \*true\*, then 1. Set \_result\_ to the string-concatenation of
+-- | \_result\_ and 0xFFFD (REPLACEMENT CHARACTER). 1. Else, 1. Set
+-- | \_result\_ to the string-concatenation of \_result\_ and
+-- | UTF16EncodeCodePoint(\_cp\_.\[\[CodePoint\]\]). 1. Set \_k\_ to \_k\_ +
+-- | \_cp\_.\[\[CodeUnitCount\]\]. 1. Return \_result\_.
+-- | 
+
+-- SPEC: L29343-L29356
+-- | # String.prototype.trim ( )
+-- | 
+-- | This method interprets a String value as a sequence of UTF-16 encoded
+-- | code points, as described in .
+-- | 
+-- | It performs the following steps when called:
+-- | 
+-- | 1\. Let \_S\_ be the \*this\* value. 1. Return ? TrimString(\_S\_,
+-- | \~start+end\~).
+-- | 
+-- | This method is intentionally generic; it does not require that its
+-- | \*this\* value be a String object. Therefore, it can be transferred to
+-- | other kinds of objects for use as a method.
+-- | 
+
+-- SPEC: L29377-L29390
+-- | # String.prototype.trimEnd ( )
+-- | 
+-- | This method interprets a String value as a sequence of UTF-16 encoded
+-- | code points, as described in .
+-- | 
+-- | It performs the following steps when called:
+-- | 
+-- | 1\. Let \_S\_ be the \*this\* value. 1. Return ? TrimString(\_S\_,
+-- | \~end\~).
+-- | 
+-- | This method is intentionally generic; it does not require that its
+-- | \*this\* value be a String object. Therefore, it can be transferred to
+-- | other kinds of objects for use as a method.
+-- | 
+
+-- SPEC: L29391-L29404
+-- | # String.prototype.trimStart ( )
+-- | 
+-- | This method interprets a String value as a sequence of UTF-16 encoded
+-- | code points, as described in .
+-- | 
+-- | It performs the following steps when called:
+-- | 
+-- | 1\. Let \_S\_ be the \*this\* value. 1. Return ? TrimString(\_S\_,
+-- | \~start\~).
+-- | 
+-- | This method is intentionally generic; it does not require that its
+-- | \*this\* value be a String object. Therefore, it can be transferred to
+-- | other kinds of objects for use as a method.
+-- | 
+
+-- SPEC: L29405-L29410
+-- | # String.prototype.valueOf ( )
+-- | 
+-- | This method performs the following steps when called:
+-- | 
+-- | 1\. Return ? ThisStringValue(\*this\* value).
+-- | 
+
+-- SPEC: L29357-L29376
+-- | # TrimString ( \_string\_: an ECMAScript language value, \_where\_: \~start\~, \~end\~, or \~start+end\~, ): either a normal completion containing a String or a throw completion
+-- | 
+-- | description
+-- | :   It interprets \_string\_ as a sequence of UTF-16 encoded code
+-- |     points, as described in .
+-- | 
+-- | 1\. Perform ? RequireObjectCoercible(\_string\_). 1. Let \_S\_ be ?
+-- | ToString(\_string\_). 1. If \_where\_ is \~start\~, then 1. Let \_T\_ be
+-- | the String value that is a copy of \_S\_ with leading white space
+-- | removed. 1. Else if \_where\_ is \~end\~, then 1. Let \_T\_ be the
+-- | String value that is a copy of \_S\_ with trailing white space
+-- | removed. 1. Else, 1. Assert: \_where\_ is \~start+end\~. 1. Let \_T\_ be
+-- | the String value that is a copy of \_S\_ with both leading and trailing
+-- | white space removed. 1. Return \_T\_.
+-- | 
+-- | The definition of white space is the union of \|WhiteSpace\| and
+-- | \|LineTerminator\|. When determining whether a Unicode code point is in
+-- | Unicode general category "Space_Separator" ("Zs"), code unit sequences
+-- | are interpreted as UTF-16 encoded code point sequences as specified in .
+-- | 
+
+-- SPEC: L28866-L28884
+-- | # StringPaddingBuiltinsImpl ( \_O\_: an ECMAScript language value, \_maxLength\_: an ECMAScript language value, \_fillString\_: an ECMAScript language value, \_placement\_: \~start\~ or \~end\~, ): either a normal completion containing a String or a throw completion
+-- | 
+-- | 1\. Let \_S\_ be ? ToString(\_O\_). 1. Let \_intMaxLength\_ be ℝ(?
+-- | ToLength(\_maxLength\_)). 1. Let \_stringLength\_ be the length of
+-- | \_S\_. 1. If \_intMaxLength\_ ≤ \_stringLength\_, return \_S\_. 1. If
+-- | \_fillString\_ is \*undefined\*, set \_fillString\_ to the String value
+-- | consisting solely of the code unit 0x0020 (SPACE). 1. Else, set
+-- | \_fillString\_ to ? ToString(\_fillString\_). 1. Return StringPad(\_S\_,
+-- | \_intMaxLength\_, \_fillString\_, \_placement\_).
+-- | 
+-- | # StringPad ( \_S\_: a String, \_maxLength\_: a non-negative integer, \_fillString\_: a String, \_placement\_: \~start\~ or \~end\~, ): a String
+-- | 
+-- | 1\. Let \_stringLength\_ be the length of \_S\_. 1. If \_maxLength\_ ≤
+-- | \_stringLength\_, return \_S\_. 1. If \_fillString\_ is the empty
+-- | String, return \_S\_. 1. Let \_fillLen\_ be \_maxLength\_ -
+-- | \_stringLength\_. 1. Let \_truncatedStringFiller\_ be the String value
+-- | consisting of repeated concatenations of \_fillString\_ truncated to
+-- | length \_fillLen\_. 1. If \_placement\_ is \~start\~, return the
+-- | string-concatenation of \_truncatedStringFiller\_ and \_S\_. 1. Return
+
+-- SPEC: L28885-L28898
+-- | the string-concatenation of \_S\_ and \_truncatedStringFiller\_.
+-- | 
+-- | The argument \_maxLength\_ will be clamped such that it can be no
+-- | smaller than the length of \_S\_.
+-- | 
+-- | The argument \_fillString\_ defaults to \*\" \"\* (the String value
+-- | consisting of the code unit 0x0020 SPACE).
+-- | 
+-- | # ToZeroPaddedDecimalString ( \_n\_: a non-negative integer, \_minLength\_: a non-negative integer, ): a String
+-- | 
+-- | 1\. Let \_S\_ be the String representation of \_n\_, formatted as a
+-- | decimal number. 1. Return StringPad(\_S\_, \_minLength\_, \*\"0\"\*,
+-- | \~start\~).
+-- | 
+
+-- SPEC: L40296-L40318
+-- | # Promise Objects
+-- | 
+-- | A Promise is an object that is used as a placeholder for the eventual
+-- | results of a deferred (and possibly asynchronous) computation.
+-- | 
+-- | Any Promise is in one of three mutually exclusive states: *fulfilled*,
+-- | *rejected*, and *pending*:
+-- | 
+-- | - A promise \`p\` is fulfilled if \`p.then(f, r)\` will immediately
+-- |   enqueue a Job to call the function \`f\`.
+-- | - A promise \`p\` is rejected if \`p.then(f, r)\` will immediately
+-- |   enqueue a Job to call the function \`r\`.
+-- | - A promise is pending if it is neither fulfilled nor rejected.
+-- | 
+-- | A promise is said to be *settled* if it is not pending, i.e. if it is
+-- | either fulfilled or rejected.
+-- | 
+-- | A promise is *resolved* if it is settled or if it has been "locked in"
+-- | to match the state of another promise. Attempting to resolve or reject a
+-- | resolved promise has no effect. A promise is *unresolved* if it is not
+-- | resolved. An unresolved promise is always in the pending state. A
+-- | resolved promise may be pending, fulfilled or rejected.
+-- | 
+
+-- SPEC: L40321-L40336
+-- | # PromiseCapability Records
+-- | 
+-- | A [PromiseCapability Record]{.dfn variants="PromiseCapability Records"}
+-- | is a Record value used to encapsulate a Promise or promise-like object
+-- | along with the functions that are capable of resolving or rejecting that
+-- | promise. PromiseCapability Records are produced by the
+-- | NewPromiseCapability abstract operation.
+-- | 
+-- | PromiseCapability Records have the fields listed in .
+-- | 
+-- |   Field Name        Value               Meaning
+-- |   ----------------- ------------------- ---------------------------------------------------------
+-- |   \[\[Promise\]\]   an Object           An object that is usable as a promise.
+-- |   \[\[Resolve\]\]   a function object   The function that is used to resolve the given promise.
+-- |   \[\[Reject\]\]    a function object   The function that is used to reject the given promise.
+-- | 
+
+-- SPEC: L40337-L40350
+-- | # IfAbruptRejectPromise ( \_value\_, \_capability\_ )
+-- | 
+-- | IfAbruptRejectPromise is a shorthand for a sequence of algorithm steps
+-- | that use a PromiseCapability Record. An algorithm step of the form:
+-- | 
+-- | 1\. IfAbruptRejectPromise(\_value\_, \_capability\_).
+-- | 
+-- | means the same thing as:
+-- | 
+-- | 1\. Assert: \_value\_ is a Completion Record. 1. If \_value\_ is an
+-- | abrupt completion, then 1. Perform ? Call(\_capability\_.\[\[Reject\]\],
+-- | \*undefined\*, « \_value\_.\[\[Value\]\] »). 1. Return
+-- | \_capability\_.\[\[Promise\]\]. 1. Set \_value\_ to ! \_value\_.
+-- | 
+
+-- SPEC: L40351-L40366
+-- | # PromiseReaction Records
+-- | 
+-- | A [PromiseReaction Record]{.dfn variants="PromiseReaction Records"} is a
+-- | Record value used to store information about how a promise should react
+-- | when it becomes resolved or rejected with a given value. PromiseReaction
+-- | Records are created by the PerformPromiseThen abstract operation, and
+-- | are used by the Abstract Closure returned by NewPromiseReactionJob.
+-- | 
+-- | PromiseReaction Records have the fields listed in .
+-- | 
+-- |   Field Name           Value                                         Meaning
+-- |   -------------------- --------------------------------------------- ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+-- |   \[\[Capability\]\]   a PromiseCapability Record or \*undefined\*   The capabilities of the promise for which this record provides a reaction handler.
+-- |   \[\[Type\]\]         \~fulfill\~ or \~reject\~                     The \[\[Type\]\] is used when \[\[Handler\]\] is \~empty\~ to allow for behaviour specific to the settlement type.
+-- |   \[\[Handler\]\]      a JobCallback Record or \~empty\~             The function that should be applied to the incoming value, and whose return value will govern what happens to the derived promise. If \[\[Handler\]\] is \~empty\~, a function that depends on the value of \[\[Type\]\] will be used instead.
+-- | 
+
+-- SPEC: L40367-L40400
+-- | # CreateResolvingFunctions ( \_promise\_: a Promise, ): a Record with fields \[\[Resolve\]\] (a function object) and \[\[Reject\]\] (a function object)
+-- | 
+-- | 1\. Let \_alreadyResolved\_ be the Record { \[\[Value\]\]: \*false\*
+-- | }. 1. Let \_resolveSteps\_ be a new Abstract Closure with parameters
+-- | (\_resolution\_) that captures \_promise\_ and \_alreadyResolved\_ and
+-- | performs the following steps when called: 1. If
+-- | \_alreadyResolved\_.\[\[Value\]\] is \*true\*, return \*undefined\*. 1.
+-- | Set \_alreadyResolved\_.\[\[Value\]\] to \*true\*. 1. If
+-- | SameValue(\_resolution\_, \_promise\_) is \*true\*, then 1. Let
+-- | \_selfResolutionError\_ be a newly created \*TypeError\* object. 1.
+-- | Perform RejectPromise(\_promise\_, \_selfResolutionError\_). 1. Return
+-- | \*undefined\*. 1. If \_resolution\_ is not an Object, then 1. Perform
+-- | FulfillPromise(\_promise\_, \_resolution\_). 1. Return \*undefined\*. 1.
+-- | Let \_then\_ be Completion(Get(\_resolution\_, \*\"then\"\*)). 1. If
+-- | \_then\_ is an abrupt completion, then 1. Perform
+-- | RejectPromise(\_promise\_, \_then\_.\[\[Value\]\]). 1. Return
+-- | \*undefined\*. 1. Let \_thenAction\_ be \_then\_.\[\[Value\]\]. 1. If
+-- | IsCallable(\_thenAction\_) is \*false\*, then 1. Perform
+-- | FulfillPromise(\_promise\_, \_resolution\_). 1. Return \*undefined\*. 1.
+-- | Let \_thenJobCallback\_ be HostMakeJobCallback(\_thenAction\_). 1. Let
+-- | \_job\_ be NewPromiseResolveThenableJob(\_promise\_, \_resolution\_,
+-- | \_thenJobCallback\_). 1. Perform
+-- | HostEnqueuePromiseJob(\_job\_.\[\[Job\]\], \_job\_.\[\[Realm\]\]). 1.
+-- | Return \*undefined\*. 1. Let \_resolve\_ be
+-- | CreateBuiltinFunction(\_resolveSteps\_, 1, \*\"\"\*, « »). 1. Let
+-- | \_rejectSteps\_ be a new Abstract Closure with parameters (\_reason\_)
+-- | that captures \_promise\_ and \_alreadyResolved\_ and performs the
+-- | following steps when called: 1. If \_alreadyResolved\_.\[\[Value\]\] is
+-- | \*true\*, return \*undefined\*. 1. Set \_alreadyResolved\_.\[\[Value\]\]
+-- | to \*true\*. 1. Perform RejectPromise(\_promise\_, \_reason\_). 1.
+-- | Return \*undefined\*. 1. Let \_reject\_ be
+-- | CreateBuiltinFunction(\_rejectSteps\_, 1, \*\"\"\*, « »). 1. Return the
+-- | Record { \[\[Resolve\]\]: \_resolve\_, \[\[Reject\]\]: \_reject\_ }.
+-- | 
+
+-- SPEC: L40401-L40410
+-- | # FulfillPromise ( \_promise\_: a Promise, \_value\_: an ECMAScript language value, ): \~unused\~
+-- | 
+-- | 1\. Assert: \_promise\_.\[\[PromiseState\]\] is \~pending\~. 1. Let
+-- | \_reactions\_ be \_promise\_.\[\[PromiseFulfillReactions\]\]. 1. Set
+-- | \_promise\_.\[\[PromiseResult\]\] to \_value\_. 1. Set
+-- | \_promise\_.\[\[PromiseFulfillReactions\]\] to \*undefined\*. 1. Set
+-- | \_promise\_.\[\[PromiseRejectReactions\]\] to \*undefined\*. 1. Set
+-- | \_promise\_.\[\[PromiseState\]\] to \~fulfilled\~. 1. Perform
+-- | TriggerPromiseReactions(\_reactions\_, \_value\_). 1. Return \~unused\~.
+-- | 
+
+-- SPEC: L40411-L40448
+-- | # NewPromiseCapability ( \_C\_: an ECMAScript language value, ): either a normal completion containing a PromiseCapability Record or a throw completion
+-- | 
+-- | description
+-- | :   It attempts to use \_C\_ as a constructor in the fashion of the
+-- |     built-in Promise constructor to create a promise and extract its
+-- |     \`resolve\` and \`reject\` functions. The promise plus the
+-- |     \`resolve\` and \`reject\` functions are used to initialize a new
+-- |     PromiseCapability Record.
+-- | 
+-- | 1\. If IsConstructor(\_C\_) is \*false\*, throw a \*TypeError\*
+-- | exception. 1. NOTE: \_C\_ is assumed to be a constructor function that
+-- | supports the parameter conventions of the Promise constructor (see ). 1.
+-- | Let \_resolvingFunctions\_ be the Record { \[\[Resolve\]\]:
+-- | \*undefined\*, \[\[Reject\]\]: \*undefined\* }. 1. Let
+-- | \_executorClosure\_ be a new Abstract Closure with parameters
+-- | (\_resolve\_, \_reject\_) that captures \_resolvingFunctions\_ and
+-- | performs the following steps when called: 1. If
+-- | \_resolvingFunctions\_.\[\[Resolve\]\] is not \*undefined\*, throw a
+-- | \*TypeError\* exception. 1. If \_resolvingFunctions\_.\[\[Reject\]\] is
+-- | not \*undefined\*, throw a \*TypeError\* exception. 1. Set
+-- | \_resolvingFunctions\_.\[\[Resolve\]\] to \_resolve\_. 1. Set
+-- | \_resolvingFunctions\_.\[\[Reject\]\] to \_reject\_. 1. Return
+-- | NormalCompletion(\*undefined\*). 1. Let \_executor\_ be
+-- | CreateBuiltinFunction(\_executorClosure\_, 2, \*\"\"\*, « »). 1. Let
+-- | \_promise\_ be ? Construct(\_C\_, « \_executor\_ »). 1. If
+-- | IsCallable(\_resolvingFunctions\_.\[\[Resolve\]\]) is \*false\*, throw a
+-- | \*TypeError\* exception. 1. If
+-- | IsCallable(\_resolvingFunctions\_.\[\[Reject\]\]) is \*false\*, throw a
+-- | \*TypeError\* exception. 1. Return the PromiseCapability Record {
+-- | \[\[Promise\]\]: \_promise\_, \[\[Resolve\]\]:
+-- | \_resolvingFunctions\_.\[\[Resolve\]\], \[\[Reject\]\]:
+-- | \_resolvingFunctions\_.\[\[Reject\]\] }.
+-- | 
+-- | This abstract operation supports Promise subclassing, as it is generic
+-- | on any constructor that calls a passed executor function argument in the
+-- | same way as the Promise constructor. It is used to generalize static
+-- | methods of the Promise constructor to any subclass.
+-- | 
+
+-- SPEC: L40449-L40457
+-- | # IsPromise ( \_x\_: an ECMAScript language value, ): a Boolean
+-- | 
+-- | description
+-- | :   It checks for the promise brand on an object.
+-- | 
+-- | 1\. If \_x\_ is not an Object, return \*false\*. 1. If \_x\_ does not
+-- | have a \[\[PromiseState\]\] internal slot, return \*false\*. 1. Return
+-- | \*true\*.
+-- | 
+
+-- SPEC: L40458-L40470
+-- | # RejectPromise ( \_promise\_: a Promise, \_reason\_: an ECMAScript language value, ): \~unused\~
+-- | 
+-- | 1\. Assert: \_promise\_.\[\[PromiseState\]\] is \~pending\~. 1. Let
+-- | \_reactions\_ be \_promise\_.\[\[PromiseRejectReactions\]\]. 1. Set
+-- | \_promise\_.\[\[PromiseResult\]\] to \_reason\_. 1. Set
+-- | \_promise\_.\[\[PromiseFulfillReactions\]\] to \*undefined\*. 1. Set
+-- | \_promise\_.\[\[PromiseRejectReactions\]\] to \*undefined\*. 1. Set
+-- | \_promise\_.\[\[PromiseState\]\] to \~rejected\~. 1. If
+-- | \_promise\_.\[\[PromiseIsHandled\]\] is \*false\*, perform
+-- | HostPromiseRejectionTracker(\_promise\_, \*\"reject\"\*). 1. Perform
+-- | TriggerPromiseReactions(\_reactions\_, \_reason\_). 1. Return
+-- | \~unused\~.
+-- | 
+
+-- SPEC: L40471-L40484
+-- | # TriggerPromiseReactions ( \_reactions\_: a List of PromiseReaction Records, \_argument\_: an ECMAScript language value, ): \~unused\~
+-- | 
+-- | description
+-- | :   It enqueues a new Job for each record in \_reactions\_. Each such
+-- |     Job processes the \[\[Type\]\] and \[\[Handler\]\] of the
+-- |     PromiseReaction Record, and if the \[\[Handler\]\] is not \~empty\~,
+-- |     calls it passing the given argument. If the \[\[Handler\]\] is
+-- |     \~empty\~, the behaviour is determined by the \[\[Type\]\].
+-- | 
+-- | 1\. For each element \_reaction\_ of \_reactions\_, do 1. Let \_job\_ be
+-- | NewPromiseReactionJob(\_reaction\_, \_argument\_). 1. Perform
+-- | HostEnqueuePromiseJob(\_job\_.\[\[Job\]\], \_job\_.\[\[Realm\]\]). 1.
+-- | Return \~unused\~.
+-- | 
+
+-- SPEC: L40485-L40510
+-- | # HostPromiseRejectionTracker ( \_promise\_: a Promise, \_operation\_: \*\"reject\"\* or \*\"handle\"\*, ): \~unused\~
+-- | 
+-- | description
+-- | :   It allows host environments to track promise rejections.
+-- | 
+-- | The default implementation of HostPromiseRejectionTracker is to return
+-- | \~unused\~.
+-- | 
+-- | HostPromiseRejectionTracker is called in two scenarios:
+-- | 
+-- | - When a promise is rejected without any handlers, it is called with its
+-- |   \_operation\_ argument set to \*\"reject\"\*.
+-- | - When a handler is added to a rejected promise for the first time, it
+-- |   is called with its \_operation\_ argument set to \*\"handle\"\*.
+-- | 
+-- | A typical implementation of HostPromiseRejectionTracker might try to
+-- | notify developers of unhandled rejections, while also being careful to
+-- | notify them if such previous notifications are later invalidated by new
+-- | handlers being attached.
+-- | 
+-- | If \_operation\_ is \*\"handle\"\*, an implementation should not hold a
+-- | reference to \_promise\_ in a way that would interfere with garbage
+-- | collection. An implementation may hold a reference to \_promise\_ if
+-- | \_operation\_ is \*\"reject\"\*, since it is expected that rejections
+-- | will be rare and not on hot code paths.
+-- | 
+
+-- SPEC: L40513-L40550
+-- | # NewPromiseReactionJob ( \_reaction\_: a PromiseReaction Record, \_argument\_: an ECMAScript language value, ): a Record with fields \[\[Job\]\] (a Job Abstract Closure) and \[\[Realm\]\] (a Realm Record or \*null\*)
+-- | 
+-- | description
+-- | :   It returns a new Job Abstract Closure that applies the appropriate
+-- |     handler to the incoming value, and uses the handler\'s return value
+-- |     to resolve or reject the derived promise associated with that
+-- |     handler.
+-- | 
+-- | 1\. Let \_job\_ be a new Job Abstract Closure with no parameters that
+-- | captures \_reaction\_ and \_argument\_ and performs the following steps
+-- | when called: 1. Let \_promiseCapability\_ be
+-- | \_reaction\_.\[\[Capability\]\]. 1. Let \_type\_ be
+-- | \_reaction\_.\[\[Type\]\]. 1. Let \_handler\_ be
+-- | \_reaction\_.\[\[Handler\]\]. 1. If \_handler\_ is \~empty\~, then 1. If
+-- | \_type\_ is \~fulfill\~, then 1. Let \_handlerResult\_ be
+-- | NormalCompletion(\_argument\_). 1. Else, 1. Assert: \_type\_ is
+-- | \~reject\~. 1. Let \_handlerResult\_ be
+-- | ThrowCompletion(\_argument\_). 1. Else, 1. Let \_handlerResult\_ be
+-- | Completion(HostCallJobCallback(\_handler\_, \*undefined\*, «
+-- | \_argument\_ »)). 1. If \_promiseCapability\_ is \*undefined\*, then 1.
+-- | Assert: \_handlerResult\_ is not an abrupt completion. 1. Return
+-- | \~empty\~. 1. Assert: \_promiseCapability\_ is a PromiseCapability
+-- | Record. 1. If \_handlerResult\_ is an abrupt completion, then 1. Return
+-- | ? Call(\_promiseCapability\_.\[\[Reject\]\], \*undefined\*, «
+-- | \_handlerResult\_.\[\[Value\]\] »). 1. Return ?
+-- | Call(\_promiseCapability\_.\[\[Resolve\]\], \*undefined\*, «
+-- | \_handlerResult\_.\[\[Value\]\] »). 1. Let \_handlerRealm\_ be
+-- | \*null\*. 1. If \_reaction\_.\[\[Handler\]\] is not \~empty\~, then 1.
+-- | Let \_getHandlerRealmResult\_ be
+-- | Completion(GetFunctionRealm(\_reaction\_.\[\[Handler\]\].\[\[Callback\]\])). 1.
+-- | If \_getHandlerRealmResult\_ is a normal completion, set
+-- | \_handlerRealm\_ to \_getHandlerRealmResult\_.\[\[Value\]\]. 1. Else,
+-- | set \_handlerRealm\_ to the current Realm Record. 1. NOTE:
+-- | \_handlerRealm\_ is never \*null\* unless the handler is \*undefined\*.
+-- | When the handler is a revoked Proxy and no ECMAScript code runs,
+-- | \_handlerRealm\_ is used to create error objects. 1. Return the Record {
+-- | \[\[Job\]\]: \_job\_, \[\[Realm\]\]: \_handlerRealm\_ }.
+-- | 
+
+-- SPEC: L40551-L40576
+-- | # NewPromiseResolveThenableJob ( \_promiseToResolve\_: a Promise, \_thenable\_: an Object, \_then\_: a JobCallback Record, ): a Record with fields \[\[Job\]\] (a Job Abstract Closure) and \[\[Realm\]\] (a Realm Record)
+-- | 
+-- | 1\. Let \_job\_ be a new Job Abstract Closure with no parameters that
+-- | captures \_promiseToResolve\_, \_thenable\_, and \_then\_ and performs
+-- | the following steps when called: 1. Let \_resolvingFunctions\_ be
+-- | CreateResolvingFunctions(\_promiseToResolve\_). 1. Let
+-- | \_thenCallResult\_ be Completion(HostCallJobCallback(\_then\_,
+-- | \_thenable\_, « \_resolvingFunctions\_.\[\[Resolve\]\],
+-- | \_resolvingFunctions\_.\[\[Reject\]\] »)). 1. If \_thenCallResult\_ is
+-- | an abrupt completion, then 1. Return ?
+-- | Call(\_resolvingFunctions\_.\[\[Reject\]\], \*undefined\*, «
+-- | \_thenCallResult\_.\[\[Value\]\] »). 1. Return ! \_thenCallResult\_. 1.
+-- | Let \_getThenRealmResult\_ be
+-- | Completion(GetFunctionRealm(\_then\_.\[\[Callback\]\])). 1. If
+-- | \_getThenRealmResult\_ is a normal completion, let \_thenRealm\_ be
+-- | \_getThenRealmResult\_.\[\[Value\]\]. 1. Else, let \_thenRealm\_ be the
+-- | current Realm Record. 1. NOTE: \_thenRealm\_ is never \*null\*. When
+-- | \_then\_.\[\[Callback\]\] is a revoked Proxy and no code runs,
+-- | \_thenRealm\_ is used to create error objects. 1. Return the Record {
+-- | \[\[Job\]\]: \_job\_, \[\[Realm\]\]: \_thenRealm\_ }.
+-- | 
+-- | This Job uses the supplied thenable and its \`then\` method to resolve
+-- | the given promise. This process must take place as a Job to ensure that
+-- | the evaluation of the \`then\` method occurs after evaluation of any
+-- | surrounding code has completed.
+-- | 
+
+-- SPEC: L40577-L40593
+-- | # The Promise Constructor
+-- | 
+-- | The Promise constructor:
+-- | 
+-- | - is [%Promise%]{.dfn}.
+-- | - is the initial value of the \*\"Promise\"\* property of the global
+-- |   object.
+-- | - creates and initializes a new Promise when called as a constructor.
+-- | - is not intended to be called as a function and will throw an exception
+-- |   when called in that manner.
+-- | - may be used as the value in an \`extends\` clause of a class
+-- |   definition. Subclass constructors that intend to inherit the specified
+-- |   Promise behaviour must include a \`super\` call to the Promise
+-- |   constructor to create and initialize the subclass instance with the
+-- |   internal state necessary to support the \`Promise\` and
+-- |   \`Promise.prototype\` built-in methods.
+-- | 
+
+-- SPEC: L40594-L40645
+-- | # Promise ( \_executor\_ )
+-- | 
+-- | This function performs the following steps when called:
+-- | 
+-- | 1\. If NewTarget is \*undefined\*, throw a \*TypeError\* exception. 1.
+-- | If IsCallable(\_executor\_) is \*false\*, throw a \*TypeError\*
+-- | exception. 1. Let \_promise\_ be ?
+-- | OrdinaryCreateFromConstructor(NewTarget, \*\"%Promise.prototype%\"\*, «
+-- | \[\[PromiseState\]\], \[\[PromiseResult\]\],
+-- | \[\[PromiseFulfillReactions\]\], \[\[PromiseRejectReactions\]\],
+-- | \[\[PromiseIsHandled\]\] »). 1. Set \_promise\_.\[\[PromiseState\]\] to
+-- | \~pending\~. 1. Set \_promise\_.\[\[PromiseResult\]\] to \~empty\~. 1.
+-- | Set \_promise\_.\[\[PromiseFulfillReactions\]\] to a new empty List. 1.
+-- | Set \_promise\_.\[\[PromiseRejectReactions\]\] to a new empty List. 1.
+-- | Set \_promise\_.\[\[PromiseIsHandled\]\] to \*false\*. 1. Let
+-- | \_resolvingFunctions\_ be CreateResolvingFunctions(\_promise\_). 1. Let
+-- | \_completion\_ be Completion(Call(\_executor\_, \*undefined\*, «
+-- | \_resolvingFunctions\_.\[\[Resolve\]\],
+-- | \_resolvingFunctions\_.\[\[Reject\]\] »)). 1. If \_completion\_ is an
+-- | abrupt completion, then 1. Perform ?
+-- | Call(\_resolvingFunctions\_.\[\[Reject\]\], \*undefined\*, «
+-- | \_completion\_.\[\[Value\]\] »). 1. Return \_promise\_.
+-- | 
+-- | The \_executor\_ argument must be a function object. It is called for
+-- | initiating and reporting completion of the possibly deferred action
+-- | represented by this Promise. The executor is called with two arguments:
+-- | \_resolve\_ and \_reject\_. These are functions that may be used by the
+-- | \_executor\_ function to report eventual completion or failure of the
+-- | deferred computation. Returning from the executor function does not mean
+-- | that the deferred action has been completed but only that the request to
+-- | eventually perform the deferred action has been accepted.
+-- | 
+-- | The \_resolve\_ function that is passed to an \_executor\_ function
+-- | accepts a single argument. The \_executor\_ code may eventually call the
+-- | \_resolve\_ function to indicate that it wishes to resolve the
+-- | associated Promise. The argument passed to the \_resolve\_ function
+-- | represents the eventual value of the deferred action and can be either
+-- | the actual fulfillment value or another promise which will provide the
+-- | value if it is fulfilled.
+-- | 
+-- | The \_reject\_ function that is passed to an \_executor\_ function
+-- | accepts a single argument. The \_executor\_ code may eventually call the
+-- | \_reject\_ function to indicate that the associated Promise is rejected
+-- | and will never be fulfilled. The argument passed to the \_reject\_
+-- | function is used as the rejection value of the promise. Typically it
+-- | will be an Error object.
+-- | 
+-- | The resolve and reject functions passed to an \_executor\_ function by
+-- | the Promise constructor have the capability to actually resolve and
+-- | reject the associated promise. Subclasses may have different constructor
+-- | behaviour that passes in customized values for resolve and reject.
+-- | 
+
+-- SPEC: L40646-L40653
+-- | # Properties of the Promise Constructor
+-- | 
+-- | The Promise constructor:
+-- | 
+-- | - has a \[\[Prototype\]\] internal slot whose value is
+-- |   %Function.prototype%.
+-- | - has the following properties:
+-- | 
+
+-- SPEC: L40654-L40678
+-- | # Promise.all ( \_iterable\_ )
+-- | 
+-- | This function returns a new promise which is fulfilled with an array of
+-- | fulfillment values for the passed promises, or rejects with the reason
+-- | of the first passed promise that rejects. It resolves all elements of
+-- | the passed iterable to promises as it runs this algorithm.
+-- | 
+-- | 1\. Let \_C\_ be the \*this\* value. 1. Let \_promiseCapability\_ be ?
+-- | NewPromiseCapability(\_C\_). 1. Let \_promiseResolve\_ be
+-- | Completion(GetPromiseResolve(\_C\_)). 1.
+-- | IfAbruptRejectPromise(\_promiseResolve\_, \_promiseCapability\_). 1. Let
+-- | \_iteratorRecord\_ be Completion(GetIterator(\_iterable\_,
+-- | \~sync\~)). 1. IfAbruptRejectPromise(\_iteratorRecord\_,
+-- | \_promiseCapability\_). 1. Let \_result\_ be
+-- | Completion(PerformPromiseAll(\_iteratorRecord\_, \_C\_,
+-- | \_promiseCapability\_, \_promiseResolve\_)). 1. If \_result\_ is an
+-- | abrupt completion, then 1. If \_iteratorRecord\_.\[\[Done\]\] is
+-- | \*false\*, set \_result\_ to
+-- | Completion(IteratorClose(\_iteratorRecord\_, \_result\_)). 1.
+-- | IfAbruptRejectPromise(\_result\_, \_promiseCapability\_). 1. Return !
+-- | \_result\_.
+-- | 
+-- | This function requires its \*this\* value to be a constructor function
+-- | that supports the parameter conventions of the Promise constructor.
+-- | 
+
+-- SPEC: L40679-L40684
+-- | # GetPromiseResolve ( \_promiseConstructor\_: a constructor, ): either a normal completion containing a function object or a throw completion
+-- | 
+-- | 1\. Let \_promiseResolve\_ be ? Get(\_promiseConstructor\_,
+-- | \*\"resolve\"\*). 1. If IsCallable(\_promiseResolve\_) is \*false\*,
+-- | throw a \*TypeError\* exception. 1. Return \_promiseResolve\_.
+-- | 
+
+-- SPEC: L40898-L40926
+-- | # Promise.race ( \_iterable\_ )
+-- | 
+-- | This function returns a new promise which is settled in the same way as
+-- | the first passed promise to settle. It resolves all elements of the
+-- | passed \_iterable\_ to promises as it runs this algorithm.
+-- | 
+-- | 1\. Let \_C\_ be the \*this\* value. 1. Let \_promiseCapability\_ be ?
+-- | NewPromiseCapability(\_C\_). 1. Let \_promiseResolve\_ be
+-- | Completion(GetPromiseResolve(\_C\_)). 1.
+-- | IfAbruptRejectPromise(\_promiseResolve\_, \_promiseCapability\_). 1. Let
+-- | \_iteratorRecord\_ be Completion(GetIterator(\_iterable\_,
+-- | \~sync\~)). 1. IfAbruptRejectPromise(\_iteratorRecord\_,
+-- | \_promiseCapability\_). 1. Let \_result\_ be
+-- | Completion(PerformPromiseRace(\_iteratorRecord\_, \_C\_,
+-- | \_promiseCapability\_, \_promiseResolve\_)). 1. If \_result\_ is an
+-- | abrupt completion, then 1. If \_iteratorRecord\_.\[\[Done\]\] is
+-- | \*false\*, set \_result\_ to
+-- | Completion(IteratorClose(\_iteratorRecord\_, \_result\_)). 1.
+-- | IfAbruptRejectPromise(\_result\_, \_promiseCapability\_). 1. Return !
+-- | \_result\_.
+-- | 
+-- | If the \_iterable\_ argument yields no values or if none of the promises
+-- | yielded by \_iterable\_ ever settle, then the pending promise returned
+-- | by this method will never be settled.
+-- | 
+-- | This function expects its \*this\* value to be a constructor function
+-- | that supports the parameter conventions of the Promise constructor. It
+-- | also expects that its \*this\* value provides a \`resolve\` method.
+-- | 
+
+-- SPEC: L40937-L40948
+-- | # Promise.reject ( \_r\_ )
+-- | 
+-- | This function returns a new promise rejected with the passed argument.
+-- | 
+-- | 1\. Let \_C\_ be the \*this\* value. 1. Let \_promiseCapability\_ be ?
+-- | NewPromiseCapability(\_C\_). 1. Perform ?
+-- | Call(\_promiseCapability\_.\[\[Reject\]\], \*undefined\*, « \_r\_ »). 1.
+-- | Return \_promiseCapability\_.\[\[Promise\]\].
+-- | 
+-- | This function expects its \*this\* value to be a constructor function
+-- | that supports the parameter conventions of the Promise constructor.
+-- | 
+
+-- SPEC: L40949-L40960
+-- | # Promise.resolve ( \_x\_ )
+-- | 
+-- | This function returns either a new promise resolved with the passed
+-- | argument, or the argument itself if the argument is a promise produced
+-- | by this constructor.
+-- | 
+-- | 1\. Let \_C\_ be the \*this\* value. 1. If \_C\_ is not an Object, throw
+-- | a \*TypeError\* exception. 1. Return ? PromiseResolve(\_C\_, \_x\_).
+-- | 
+-- | This function expects its \*this\* value to be a constructor function
+-- | that supports the parameter conventions of the Promise constructor.
+-- | 
+
+-- SPEC: L40961-L40972
+-- | # PromiseResolve ( \_C\_: an Object, \_x\_: an ECMAScript language value, ): either a normal completion containing an ECMAScript language value or a throw completion
+-- | 
+-- | description
+-- | :   It returns a new promise resolved with \_x\_.
+-- | 
+-- | 1\. If IsPromise(\_x\_) is \*true\*, then 1. Let \_xConstructor\_ be ?
+-- | Get(\_x\_, \*\"constructor\"\*). 1. If SameValue(\_xConstructor\_,
+-- | \_C\_) is \*true\*, return \_x\_. 1. Let \_promiseCapability\_ be ?
+-- | NewPromiseCapability(\_C\_). 1. Perform ?
+-- | Call(\_promiseCapability\_.\[\[Resolve\]\], \*undefined\*, « \_x\_
+-- | »). 1. Return \_promiseCapability\_.\[\[Promise\]\].
+-- | 
+
+-- SPEC: L32317-L32351
+-- | # Array.prototype.concat ( \...\_items\_ )
+-- | 
+-- | This method returns an array containing the array elements of the object
+-- | followed by the array elements of each argument.
+-- | 
+-- | It performs the following steps when called:
+-- | 
+-- | 1\. Let \_O\_ be ? ToObject(\*this\* value). 1. Let \_A\_ be ?
+-- | ArraySpeciesCreate(\_O\_, 0). 1. Let \_n\_ be 0. 1. Prepend \_O\_ to
+-- | \_items\_. 1. For each element \_E\_ of \_items\_, do 1. Let
+-- | \_spreadable\_ be ? IsConcatSpreadable(\_E\_). 1. If \_spreadable\_ is
+-- | \*true\*, then 1. Let \_len\_ be ? LengthOfArrayLike(\_E\_). 1. If
+-- | \_n\_ + \_len\_ \> 2^53^ - 1, throw a \*TypeError\* exception. 1. Let
+-- | \_k\_ be 0. 1. Repeat, while \_k\_ \< \_len\_, 1. Let \_Pk\_ be !
+-- | ToString(𝔽(\_k\_)). 1. Let \_exists\_ be ? HasProperty(\_E\_,
+-- | \_Pk\_). 1. If \_exists\_ is \*true\*, then 1. Let \_subElement\_ be ?
+-- | Get(\_E\_, \_Pk\_). 1. Perform ? CreateDataPropertyOrThrow(\_A\_, !
+-- | ToString(𝔽(\_n\_)), \_subElement\_). 1. Set \_n\_ to \_n\_ + 1. 1. Set
+-- | \_k\_ to \_k\_ + 1. 1. Else, 1. NOTE: \_E\_ is added as a single item
+-- | rather than spread. 1. If \_n\_ ≥ 2^53^ - 1, throw a \*TypeError\*
+-- | exception. 1. Perform ? CreateDataPropertyOrThrow(\_A\_, !
+-- | ToString(𝔽(\_n\_)), \_E\_). 1. Set \_n\_ to \_n\_ + 1. 1.
+-- | \[id=\"step-array-proto-concat-set-length\"\] Perform ? Set(\_A\_,
+-- | \*\"length\"\*, 𝔽(\_n\_), \*true\*). 1. Return \_A\_.
+-- | 
+-- | The \*\"length\"\* property of this method is \*1\*~𝔽~.
+-- | 
+-- | The explicit setting of the \*\"length\"\* property in step is intended
+-- | to ensure the length is correct when the final non-empty element of
+-- | \_items\_ has trailing holes or when \_A\_ is not a built-in Array.
+-- | 
+-- | This method is intentionally generic; it does not require that its
+-- | \*this\* value be an Array. Therefore it can be transferred to other
+-- | kinds of objects for use as a method.
+-- | 
+
+-- SPEC: L32352-L32358
+-- | # IsConcatSpreadable ( \_O\_: an ECMAScript language value, ): either a normal completion containing a Boolean or a throw completion
+-- | 
+-- | 1\. If \_O\_ is not an Object, return \*false\*. 1. Let \_spreadable\_
+-- | be ? Get(\_O\_, %Symbol.isConcatSpreadable%). 1. If \_spreadable\_ is
+-- | not \*undefined\*, return ToBoolean(\_spreadable\_). 1. Return ?
+-- | IsArray(\_O\_).
+-- | 
+
+-- SPEC: L32363-L32406
+-- | # Array.prototype.copyWithin ( \_target\_, \_start\_ \[ , \_end\_ \] )
+-- | 
+-- | The \_end\_ argument is optional. If it is not provided, the length of
+-- | the \*this\* value is used.
+-- | 
+-- | If \_target\_ is negative, it is treated as \_length\_ + \_target\_
+-- | where \_length\_ is the length of the array. If \_start\_ is negative,
+-- | it is treated as \_length\_ + \_start\_. If \_end\_ is negative, it is
+-- | treated as \_length\_ + \_end\_.
+-- | 
+-- | This method performs the following steps when called:
+-- | 
+-- | 1\. Let \_O\_ be ? ToObject(\*this\* value). 1. Let \_len\_ be ?
+-- | LengthOfArrayLike(\_O\_). 1. Let \_relativeTarget\_ be ?
+-- | ToIntegerOrInfinity(\_target\_). 1. If \_relativeTarget\_ = -∞, let
+-- | \_to\_ be 0. 1. Else if \_relativeTarget\_ \< 0, let \_to\_ be
+-- | max(\_len\_ + \_relativeTarget\_, 0). 1. Else, let \_to\_ be
+-- | min(\_relativeTarget\_, \_len\_). 1. Let \_relativeStart\_ be ?
+-- | ToIntegerOrInfinity(\_start\_). 1. If \_relativeStart\_ = -∞, let
+-- | \_from\_ be 0. 1. Else if \_relativeStart\_ \< 0, let \_from\_ be
+-- | max(\_len\_ + \_relativeStart\_, 0). 1. Else, let \_from\_ be
+-- | min(\_relativeStart\_, \_len\_). 1. If \_end\_ is \*undefined\*, let
+-- | \_relativeEnd\_ be \_len\_; else let \_relativeEnd\_ be ?
+-- | ToIntegerOrInfinity(\_end\_). 1. If \_relativeEnd\_ = -∞, let \_final\_
+-- | be 0. 1. Else if \_relativeEnd\_ \< 0, let \_final\_ be max(\_len\_ +
+-- | \_relativeEnd\_, 0). 1. Else, let \_final\_ be min(\_relativeEnd\_,
+-- | \_len\_). 1. Let \_count\_ be min(\_final\_ - \_from\_, \_len\_ -
+-- | \_to\_). 1. If \_from\_ \< \_to\_ and \_to\_ \< \_from\_ + \_count\_,
+-- | then 1. Let \_direction\_ be -1. 1. Set \_from\_ to \_from\_ +
+-- | \_count\_ - 1. 1. Set \_to\_ to \_to\_ + \_count\_ - 1. 1. Else, 1. Let
+-- | \_direction\_ be 1. 1. Repeat, while \_count\_ \> 0, 1. Let \_fromKey\_
+-- | be ! ToString(𝔽(\_from\_)). 1. Let \_toKey\_ be !
+-- | ToString(𝔽(\_to\_)). 1. Let \_fromPresent\_ be ? HasProperty(\_O\_,
+-- | \_fromKey\_). 1. If \_fromPresent\_ is \*true\*, then 1. Let
+-- | \_fromValue\_ be ? Get(\_O\_, \_fromKey\_). 1. Perform ? Set(\_O\_,
+-- | \_toKey\_, \_fromValue\_, \*true\*). 1. Else, 1. Assert: \_fromPresent\_
+-- | is \*false\*. 1. Perform ? DeletePropertyOrThrow(\_O\_, \_toKey\_). 1.
+-- | Set \_from\_ to \_from\_ + \_direction\_. 1. Set \_to\_ to \_to\_ +
+-- | \_direction\_. 1. Set \_count\_ to \_count\_ - 1. 1. Return \_O\_.
+-- | 
+-- | This method is intentionally generic; it does not require that its
+-- | \*this\* value be an Array. Therefore it can be transferred to other
+-- | kinds of objects for use as a method.
+-- | 
+
+-- SPEC: L32407-L32413
+-- | # Array.prototype.entries ( )
+-- | 
+-- | This method performs the following steps when called:
+-- | 
+-- | 1\. Let \_O\_ be ? ToObject(\*this\* value). 1. Return
+-- | CreateArrayIterator(\_O\_, \~key+value\~).
+-- | 
+
+-- SPEC: L32414-L32460
+-- | # Array.prototype.every ( \_callback\_ \[ , \_thisArg\_ \] )
+-- | 
+-- | \_callback\_ should be a function that accepts three arguments and
+-- | returns a value that is coercible to a Boolean value. \`every\` calls
+-- | \_callback\_ once for each element present in the array, in ascending
+-- | order, until it finds one where \_callback\_ returns \*false\*. If such
+-- | an element is found, \`every\` immediately returns \*false\*. Otherwise,
+-- | \`every\` returns \*true\*. \_callback\_ is called only for elements of
+-- | the array which actually exist; it is not called for missing elements of
+-- | the array.
+-- | 
+-- | If a \_thisArg\_ parameter is provided, it will be used as the \*this\*
+-- | value for each invocation of \_callback\_. If it is not provided,
+-- | \*undefined\* is used instead.
+-- | 
+-- | \_callback\_ is called with three arguments: the value of the element,
+-- | the index of the element, and the object being traversed.
+-- | 
+-- | \`every\` does not directly mutate the object on which it is called but
+-- | the object may be mutated by the calls to \_callback\_.
+-- | 
+-- | The range of elements processed by \`every\` is set before the first
+-- | call to \_callback\_. Elements which are appended to the array after the
+-- | call to \`every\` begins will not be visited by \_callback\_. If
+-- | existing elements of the array are changed, their value as passed to
+-- | \_callback\_ will be the value at the time \`every\` visits them;
+-- | elements that are deleted after the call to \`every\` begins and before
+-- | being visited are not visited. \`every\` acts like the \"for all\"
+-- | quantifier in mathematics. In particular, for an empty array, it returns
+-- | \*true\*.
+-- | 
+-- | This method performs the following steps when called:
+-- | 
+-- | 1\. Let \_O\_ be ? ToObject(\*this\* value). 1. Let \_len\_ be ?
+-- | LengthOfArrayLike(\_O\_). 1. If IsCallable(\_callback\_) is \*false\*,
+-- | throw a \*TypeError\* exception. 1. Let \_k\_ be 0. 1. Repeat, while
+-- | \_k\_ \< \_len\_, 1. Let \_Pk\_ be ! ToString(𝔽(\_k\_)). 1. Let
+-- | \_kPresent\_ be ? HasProperty(\_O\_, \_Pk\_). 1. If \_kPresent\_ is
+-- | \*true\*, then 1. Let \_kValue\_ be ? Get(\_O\_, \_Pk\_). 1. Let
+-- | \_testResult\_ be ToBoolean(? Call(\_callback\_, \_thisArg\_, «
+-- | \_kValue\_, 𝔽(\_k\_), \_O\_ »)). 1. If \_testResult\_ is \*false\*,
+-- | return \*false\*. 1. Set \_k\_ to \_k\_ + 1. 1. Return \*true\*.
+-- | 
+-- | This method is intentionally generic; it does not require that its
+-- | \*this\* value be an Array. Therefore it can be transferred to other
+-- | kinds of objects for use as a method.
+-- | 
+
+-- SPEC: L32461-L32492
+-- | # Array.prototype.fill ( \_value\_ \[ , \_start\_ \[ , \_end\_ \] \] )
+-- | 
+-- | The \_start\_ argument is optional. If it is not provided, \*+0\*~𝔽~ is
+-- | used.
+-- | 
+-- | The \_end\_ argument is optional. If it is not provided, the length of
+-- | the \*this\* value is used.
+-- | 
+-- | If \_start\_ is negative, it is treated as \_length\_ + \_start\_ where
+-- | \_length\_ is the length of the array. If \_end\_ is negative, it is
+-- | treated as \_length\_ + \_end\_.
+-- | 
+-- | This method performs the following steps when called:
+-- | 
+-- | 1\. Let \_O\_ be ? ToObject(\*this\* value). 1. Let \_len\_ be ?
+-- | LengthOfArrayLike(\_O\_). 1. Let \_relativeStart\_ be ?
+-- | ToIntegerOrInfinity(\_start\_). 1. If \_relativeStart\_ = -∞, let \_k\_
+-- | be 0. 1. Else if \_relativeStart\_ \< 0, let \_k\_ be max(\_len\_ +
+-- | \_relativeStart\_, 0). 1. Else, let \_k\_ be min(\_relativeStart\_,
+-- | \_len\_). 1. If \_end\_ is \*undefined\*, let \_relativeEnd\_ be
+-- | \_len\_; else let \_relativeEnd\_ be ? ToIntegerOrInfinity(\_end\_). 1.
+-- | If \_relativeEnd\_ = -∞, let \_final\_ be 0. 1. Else if \_relativeEnd\_
+-- | \< 0, let \_final\_ be max(\_len\_ + \_relativeEnd\_, 0). 1. Else, let
+-- | \_final\_ be min(\_relativeEnd\_, \_len\_). 1. Repeat, while \_k\_ \<
+-- | \_final\_, 1. Let \_Pk\_ be ! ToString(𝔽(\_k\_)). 1. Perform ?
+-- | Set(\_O\_, \_Pk\_, \_value\_, \*true\*). 1. Set \_k\_ to \_k\_ + 1. 1.
+-- | Return \_O\_.
+-- | 
+-- | This method is intentionally generic; it does not require that its
+-- | \*this\* value be an Array. Therefore it can be transferred to other
+-- | kinds of objects for use as a method.
+-- | 
+
+-- SPEC: L32493-L32538
+-- | # Array.prototype.filter ( \_callback\_ \[ , \_thisArg\_ \] )
+-- | 
+-- | \_callback\_ should be a function that accepts three arguments and
+-- | returns a value that is coercible to a Boolean value. \`filter\` calls
+-- | \_callback\_ once for each element in the array, in ascending order, and
+-- | constructs a new array of all the values for which \_callback\_ returns
+-- | \*true\*. \_callback\_ is called only for elements of the array which
+-- | actually exist; it is not called for missing elements of the array.
+-- | 
+-- | If a \_thisArg\_ parameter is provided, it will be used as the \*this\*
+-- | value for each invocation of \_callback\_. If it is not provided,
+-- | \*undefined\* is used instead.
+-- | 
+-- | \_callback\_ is called with three arguments: the value of the element,
+-- | the index of the element, and the object being traversed.
+-- | 
+-- | \`filter\` does not directly mutate the object on which it is called but
+-- | the object may be mutated by the calls to \_callback\_.
+-- | 
+-- | The range of elements processed by \`filter\` is set before the first
+-- | call to \_callback\_. Elements which are appended to the array after the
+-- | call to \`filter\` begins will not be visited by \_callback\_. If
+-- | existing elements of the array are changed their value as passed to
+-- | \_callback\_ will be the value at the time \`filter\` visits them;
+-- | elements that are deleted after the call to \`filter\` begins and before
+-- | being visited are not visited.
+-- | 
+-- | This method performs the following steps when called:
+-- | 
+-- | 1\. Let \_O\_ be ? ToObject(\*this\* value). 1. Let \_len\_ be ?
+-- | LengthOfArrayLike(\_O\_). 1. If IsCallable(\_callback\_) is \*false\*,
+-- | throw a \*TypeError\* exception. 1. Let \_A\_ be ?
+-- | ArraySpeciesCreate(\_O\_, 0). 1. Let \_k\_ be 0. 1. Let \_to\_ be 0. 1.
+-- | Repeat, while \_k\_ \< \_len\_, 1. Let \_Pk\_ be !
+-- | ToString(𝔽(\_k\_)). 1. Let \_kPresent\_ be ? HasProperty(\_O\_,
+-- | \_Pk\_). 1. If \_kPresent\_ is \*true\*, then 1. Let \_kValue\_ be ?
+-- | Get(\_O\_, \_Pk\_). 1. Let \_selected\_ be ToBoolean(?
+-- | Call(\_callback\_, \_thisArg\_, « \_kValue\_, 𝔽(\_k\_), \_O\_ »)). 1. If
+-- | \_selected\_ is \*true\*, then 1. Perform ?
+-- | CreateDataPropertyOrThrow(\_A\_, ! ToString(𝔽(\_to\_)), \_kValue\_). 1.
+-- | Set \_to\_ to \_to\_ + 1. 1. Set \_k\_ to \_k\_ + 1. 1. Return \_A\_.
+-- | 
+-- | This method is intentionally generic; it does not require that its
+-- | \*this\* value be an Array. Therefore it can be transferred to other
+-- | kinds of objects for use as a method.
+-- | 
+
+-- SPEC: L32539-L32559
+-- | # Array.prototype.find ( \_predicate\_ \[ , \_thisArg\_ \] )
+-- | 
+-- | This method calls \_predicate\_ once for each element of the array, in
+-- | ascending index order, until it finds one where \_predicate\_ returns a
+-- | value that coerces to \*true\*. If such an element is found, \`find\`
+-- | immediately returns that element value. Otherwise, \`find\` returns
+-- | \*undefined\*.
+-- | 
+-- | See FindViaPredicate for additional information.
+-- | 
+-- | This method performs the following steps when called:
+-- | 
+-- | 1\. Let \_O\_ be ? ToObject(\*this\* value). 1. Let \_len\_ be ?
+-- | LengthOfArrayLike(\_O\_). 1. Let \_findRec\_ be ?
+-- | FindViaPredicate(\_O\_, \_len\_, \~ascending\~, \_predicate\_,
+-- | \_thisArg\_). 1. Return \_findRec\_.\[\[Value\]\].
+-- | 
+-- | This method is intentionally generic; it does not require that its
+-- | \*this\* value be an Array. Therefore it can be transferred to other
+-- | kinds of objects for use as a method.
+-- | 
+
+-- SPEC: L32560-L32580
+-- | # Array.prototype.findIndex ( \_predicate\_ \[ , \_thisArg\_ \] )
+-- | 
+-- | This method calls \_predicate\_ once for each element of the array, in
+-- | ascending index order, until it finds one where \_predicate\_ returns a
+-- | value that coerces to \*true\*. If such an element is found,
+-- | \`findIndex\` immediately returns the index of that element value.
+-- | Otherwise, \`findIndex\` returns -1.
+-- | 
+-- | See FindViaPredicate for additional information.
+-- | 
+-- | This method performs the following steps when called:
+-- | 
+-- | 1\. Let \_O\_ be ? ToObject(\*this\* value). 1. Let \_len\_ be ?
+-- | LengthOfArrayLike(\_O\_). 1. Let \_findRec\_ be ?
+-- | FindViaPredicate(\_O\_, \_len\_, \~ascending\~, \_predicate\_,
+-- | \_thisArg\_). 1. Return \_findRec\_.\[\[Index\]\].
+-- | 
+-- | This method is intentionally generic; it does not require that its
+-- | \*this\* value be an Array. Therefore it can be transferred to other
+-- | kinds of objects for use as a method.
+-- | 
+
+-- SPEC: L32581-L32601
+-- | # Array.prototype.findLast ( \_predicate\_ \[ , \_thisArg\_ \] )
+-- | 
+-- | This method calls \_predicate\_ once for each element of the array, in
+-- | descending index order, until it finds one where \_predicate\_ returns a
+-- | value that coerces to \*true\*. If such an element is found,
+-- | \`findLast\` immediately returns that element value. Otherwise,
+-- | \`findLast\` returns \*undefined\*.
+-- | 
+-- | See FindViaPredicate for additional information.
+-- | 
+-- | This method performs the following steps when called:
+-- | 
+-- | 1\. Let \_O\_ be ? ToObject(\*this\* value). 1. Let \_len\_ be ?
+-- | LengthOfArrayLike(\_O\_). 1. Let \_findRec\_ be ?
+-- | FindViaPredicate(\_O\_, \_len\_, \~descending\~, \_predicate\_,
+-- | \_thisArg\_). 1. Return \_findRec\_.\[\[Value\]\].
+-- | 
+-- | This method is intentionally generic; it does not require that its
+-- | \*this\* value be an Array object. Therefore it can be transferred to
+-- | other kinds of objects for use as a method.
+-- | 
+
+-- SPEC: L32602-L32622
+-- | # Array.prototype.findLastIndex ( \_predicate\_ \[ , \_thisArg\_ \] )
+-- | 
+-- | This method calls \_predicate\_ once for each element of the array, in
+-- | descending index order, until it finds one where \_predicate\_ returns a
+-- | value that coerces to \*true\*. If such an element is found,
+-- | \`findLastIndex\` immediately returns the index of that element value.
+-- | Otherwise, \`findLastIndex\` returns -1.
+-- | 
+-- | See FindViaPredicate for additional information.
+-- | 
+-- | This method performs the following steps when called:
+-- | 
+-- | 1\. Let \_O\_ be ? ToObject(\*this\* value). 1. Let \_len\_ be ?
+-- | LengthOfArrayLike(\_O\_). 1. Let \_findRec\_ be ?
+-- | FindViaPredicate(\_O\_, \_len\_, \~descending\~, \_predicate\_,
+-- | \_thisArg\_). 1. Return \_findRec\_.\[\[Index\]\].
+-- | 
+-- | This method is intentionally generic; it does not require that its
+-- | \*this\* value be an Array object. Therefore it can be transferred to
+-- | other kinds of objects for use as a method.
+-- | 
+
+-- SPEC: L32719-L32759
+-- | # Array.prototype.forEach ( \_callback\_ \[ , \_thisArg\_ \] )
+-- | 
+-- | \_callback\_ should be a function that accepts three arguments.
+-- | \`forEach\` calls \_callback\_ once for each element present in the
+-- | array, in ascending order. \_callback\_ is called only for elements of
+-- | the array which actually exist; it is not called for missing elements of
+-- | the array.
+-- | 
+-- | If a \_thisArg\_ parameter is provided, it will be used as the \*this\*
+-- | value for each invocation of \_callback\_. If it is not provided,
+-- | \*undefined\* is used instead.
+-- | 
+-- | \_callback\_ is called with three arguments: the value of the element,
+-- | the index of the element, and the object being traversed.
+-- | 
+-- | \`forEach\` does not directly mutate the object on which it is called
+-- | but the object may be mutated by the calls to \_callback\_.
+-- | 
+-- | The range of elements processed by \`forEach\` is set before the first
+-- | call to \_callback\_. Elements which are appended to the array after the
+-- | call to \`forEach\` begins will not be visited by \_callback\_. If
+-- | existing elements of the array are changed, their value as passed to
+-- | \_callback\_ will be the value at the time \`forEach\` visits them;
+-- | elements that are deleted after the call to \`forEach\` begins and
+-- | before being visited are not visited.
+-- | 
+-- | This method performs the following steps when called:
+-- | 
+-- | 1\. Let \_O\_ be ? ToObject(\*this\* value). 1. Let \_len\_ be ?
+-- | LengthOfArrayLike(\_O\_). 1. If IsCallable(\_callback\_) is \*false\*,
+-- | throw a \*TypeError\* exception. 1. Let \_k\_ be 0. 1. Repeat, while
+-- | \_k\_ \< \_len\_, 1. Let \_Pk\_ be ! ToString(𝔽(\_k\_)). 1. Let
+-- | \_kPresent\_ be ? HasProperty(\_O\_, \_Pk\_). 1. If \_kPresent\_ is
+-- | \*true\*, then 1. Let \_kValue\_ be ? Get(\_O\_, \_Pk\_). 1. Perform ?
+-- | Call(\_callback\_, \_thisArg\_, « \_kValue\_, 𝔽(\_k\_), \_O\_ »). 1. Set
+-- | \_k\_ to \_k\_ + 1. 1. Return \*undefined\*.
+-- | 
+-- | This method is intentionally generic; it does not require that its
+-- | \*this\* value be an Array. Therefore it can be transferred to other
+-- | kinds of objects for use as a method.
+-- | 
+
+-- SPEC: L32760-L32795
+-- | # Array.prototype.includes ( \_searchElement\_ \[ , \_fromIndex\_ \] )
+-- | 
+-- | This method compares \_searchElement\_ to the elements of the array, in
+-- | ascending order, using the SameValueZero algorithm, and if found at any
+-- | position, returns \*true\*; otherwise, it returns \*false\*.
+-- | 
+-- | The optional second argument \_fromIndex\_ defaults to \*+0\*~𝔽~ (i.e.
+-- | the whole array is searched). If it is greater than or equal to the
+-- | length of the array, \*false\* is returned, i.e. the array will not be
+-- | searched. If it is less than \*-0\*~𝔽~, it is used as the offset from
+-- | the end of the array to compute \_fromIndex\_. If the computed index is
+-- | less than or equal to \*+0\*~𝔽~, the whole array will be searched.
+-- | 
+-- | This method performs the following steps when called:
+-- | 
+-- | 1\. Let \_O\_ be ? ToObject(\*this\* value). 1. Let \_len\_ be ?
+-- | LengthOfArrayLike(\_O\_). 1. If \_len\_ = 0, return \*false\*. 1. Let
+-- | \_n\_ be ? ToIntegerOrInfinity(\_fromIndex\_). 1. Assert: If
+-- | \_fromIndex\_ is \*undefined\*, then \_n\_ is 0. 1. If \_n\_ = +∞,
+-- | return \*false\*. 1. If \_n\_ = -∞, set \_n\_ to 0. 1. If \_n\_ ≥ 0,
+-- | then 1. Let \_k\_ be \_n\_. 1. Else, 1. Let \_k\_ be \_len\_ + \_n\_. 1.
+-- | If \_k\_ \< 0, set \_k\_ to 0. 1. Repeat, while \_k\_ \< \_len\_, 1. Let
+-- | \_elementK\_ be ? Get(\_O\_, ! ToString(𝔽(\_k\_))). 1. If
+-- | SameValueZero(\_searchElement\_, \_elementK\_) is \*true\*, return
+-- | \*true\*. 1. Set \_k\_ to \_k\_ + 1. 1. Return \*false\*.
+-- | 
+-- | This method is intentionally generic; it does not require that its
+-- | \*this\* value be an Array. Therefore it can be transferred to other
+-- | kinds of objects for use as a method.
+-- | 
+-- | This method intentionally differs from the similar \`indexOf\` method in
+-- | two ways. First, it uses the SameValueZero algorithm, instead of
+-- | IsStrictlyEqual, allowing it to detect \*NaN\* array elements. Second,
+-- | it does not skip missing array elements, instead treating them as
+-- | \*undefined\*.
+-- | 
+
+-- SPEC: L32796-L32828
+-- | # Array.prototype.indexOf ( \_searchElement\_ \[ , \_fromIndex\_ \] )
+-- | 
+-- | This method compares \_searchElement\_ to the elements of the array, in
+-- | ascending order, using the IsStrictlyEqual algorithm, and if found at
+-- | one or more indices, returns the smallest such index; otherwise, it
+-- | returns \*-1\*~𝔽~.
+-- | 
+-- | The optional second argument \_fromIndex\_ defaults to \*+0\*~𝔽~ (i.e.
+-- | the whole array is searched). If it is greater than or equal to the
+-- | length of the array, \*-1\*~𝔽~ is returned, i.e. the array will not be
+-- | searched. If it is less than \*-0\*~𝔽~, it is used as the offset from
+-- | the end of the array to compute \_fromIndex\_. If the computed index is
+-- | less than or equal to \*+0\*~𝔽~, the whole array will be searched.
+-- | 
+-- | This method performs the following steps when called:
+-- | 
+-- | 1\. Let \_O\_ be ? ToObject(\*this\* value). 1. Let \_len\_ be ?
+-- | LengthOfArrayLike(\_O\_). 1. If \_len\_ = 0, return \*-1\*~𝔽~. 1. Let
+-- | \_n\_ be ? ToIntegerOrInfinity(\_fromIndex\_). 1. Assert: If
+-- | \_fromIndex\_ is \*undefined\*, then \_n\_ is 0. 1. If \_n\_ = +∞,
+-- | return \*-1\*~𝔽~. 1. If \_n\_ = -∞, set \_n\_ to 0. 1. If \_n\_ ≥ 0,
+-- | then 1. Let \_k\_ be \_n\_. 1. Else, 1. Let \_k\_ be \_len\_ + \_n\_. 1.
+-- | If \_k\_ \< 0, set \_k\_ to 0. 1. Repeat, while \_k\_ \< \_len\_, 1. Let
+-- | \_Pk\_ be ! ToString(𝔽(\_k\_)). 1. Let \_kPresent\_ be ?
+-- | HasProperty(\_O\_, \_Pk\_). 1. If \_kPresent\_ is \*true\*, then 1. Let
+-- | \_elementK\_ be ? Get(\_O\_, \_Pk\_). 1. If
+-- | IsStrictlyEqual(\_searchElement\_, \_elementK\_) is \*true\*, return
+-- | 𝔽(\_k\_). 1. Set \_k\_ to \_k\_ + 1. 1. Return \*-1\*~𝔽~.
+-- | 
+-- | This method is intentionally generic; it does not require that its
+-- | \*this\* value be an Array. Therefore it can be transferred to other
+-- | kinds of objects for use as a method.
+-- | 
+
+-- SPEC: L32829-L32852
+-- | # Array.prototype.join ( \_separator\_ )
+-- | 
+-- | This method converts the elements of the array to Strings, and then
+-- | concatenates these Strings, separated by occurrences of the
+-- | \_separator\_. If no separator is provided, a single comma is used as
+-- | the separator.
+-- | 
+-- | It performs the following steps when called:
+-- | 
+-- | 1\. Let \_O\_ be ? ToObject(\*this\* value). 1. Let \_len\_ be ?
+-- | LengthOfArrayLike(\_O\_). 1. If \_separator\_ is \*undefined\*, let
+-- | \_sep\_ be \*\",\"\*. 1. Else, let \_sep\_ be ?
+-- | ToString(\_separator\_). 1. Let \_R\_ be the empty String. 1. Let \_k\_
+-- | be 0. 1. Repeat, while \_k\_ \< \_len\_, 1. If \_k\_ \> 0, set \_R\_ to
+-- | the string-concatenation of \_R\_ and \_sep\_. 1. Let \_element\_ be ?
+-- | Get(\_O\_, ! ToString(𝔽(\_k\_))). 1. If \_element\_ is neither
+-- | \*undefined\* nor \*null\*, then 1. Let \_S\_ be ?
+-- | ToString(\_element\_). 1. Set \_R\_ to the string-concatenation of \_R\_
+-- | and \_S\_. 1. Set \_k\_ to \_k\_ + 1. 1. Return \_R\_.
+-- | 
+-- | This method is intentionally generic; it does not require that its
+-- | \*this\* value be an Array. Therefore, it can be transferred to other
+-- | kinds of objects for use as a method.
+-- | 
+
+-- SPEC: L32853-L32859
+-- | # Array.prototype.keys ( )
+-- | 
+-- | This method performs the following steps when called:
+-- | 
+-- | 1\. Let \_O\_ be ? ToObject(\*this\* value). 1. Return
+-- | CreateArrayIterator(\_O\_, \~key\~).
+-- | 
+
+-- SPEC: L32860-L32891
+-- | # Array.prototype.lastIndexOf ( \_searchElement\_ \[ , \_fromIndex\_ \] )
+-- | 
+-- | This method compares \_searchElement\_ to the elements of the array in
+-- | descending order using the IsStrictlyEqual algorithm, and if found at
+-- | one or more indices, returns the largest such index; otherwise, it
+-- | returns \*-1\*~𝔽~.
+-- | 
+-- | The optional second argument \_fromIndex\_ defaults to the array\'s
+-- | length minus one (i.e. the whole array is searched). If it is greater
+-- | than or equal to the length of the array, the whole array will be
+-- | searched. If it is less than \*-0\*~𝔽~, it is used as the offset from
+-- | the end of the array to compute \_fromIndex\_. If the computed index is
+-- | less than or equal to \*+0\*~𝔽~, \*-1\*~𝔽~ is returned.
+-- | 
+-- | This method performs the following steps when called:
+-- | 
+-- | 1\. Let \_O\_ be ? ToObject(\*this\* value). 1. Let \_len\_ be ?
+-- | LengthOfArrayLike(\_O\_). 1. If \_len\_ = 0, return \*-1\*~𝔽~. 1. If
+-- | \_fromIndex\_ is present, let \_n\_ be ?
+-- | ToIntegerOrInfinity(\_fromIndex\_); else let \_n\_ be \_len\_ - 1. 1. If
+-- | \_n\_ = -∞, return \*-1\*~𝔽~. 1. If \_n\_ ≥ 0, then 1. Let \_k\_ be
+-- | min(\_n\_, \_len\_ - 1). 1. Else, 1. Let \_k\_ be \_len\_ + \_n\_. 1.
+-- | Repeat, while \_k\_ ≥ 0, 1. Let \_Pk\_ be ! ToString(𝔽(\_k\_)). 1. Let
+-- | \_kPresent\_ be ? HasProperty(\_O\_, \_Pk\_). 1. If \_kPresent\_ is
+-- | \*true\*, then 1. Let \_elementK\_ be ? Get(\_O\_, \_Pk\_). 1. If
+-- | IsStrictlyEqual(\_searchElement\_, \_elementK\_) is \*true\*, return
+-- | 𝔽(\_k\_). 1. Set \_k\_ to \_k\_ - 1. 1. Return \*-1\*~𝔽~.
+-- | 
+-- | This method is intentionally generic; it does not require that its
+-- | \*this\* value be an Array. Therefore it can be transferred to other
+-- | kinds of objects for use as a method.
+-- | 
+
+-- SPEC: L32892-L32934
+-- | # Array.prototype.map ( \_callback\_ \[ , \_thisArg\_ \] )
+-- | 
+-- | \_callback\_ should be a function that accepts three arguments. \`map\`
+-- | calls \_callback\_ once for each element in the array, in ascending
+-- | order, and constructs a new Array from the results. \_callback\_ is
+-- | called only for elements of the array which actually exist; it is not
+-- | called for missing elements of the array.
+-- | 
+-- | If a \_thisArg\_ parameter is provided, it will be used as the \*this\*
+-- | value for each invocation of \_callback\_. If it is not provided,
+-- | \*undefined\* is used instead.
+-- | 
+-- | \_callback\_ is called with three arguments: the value of the element,
+-- | the index of the element, and the object being traversed.
+-- | 
+-- | \`map\` does not directly mutate the object on which it is called but
+-- | the object may be mutated by the calls to \_callback\_.
+-- | 
+-- | The range of elements processed by \`map\` is set before the first call
+-- | to \_callback\_. Elements which are appended to the array after the call
+-- | to \`map\` begins will not be visited by \_callback\_. If existing
+-- | elements of the array are changed, their value as passed to \_callback\_
+-- | will be the value at the time \`map\` visits them; elements that are
+-- | deleted after the call to \`map\` begins and before being visited are
+-- | not visited.
+-- | 
+-- | This method performs the following steps when called:
+-- | 
+-- | 1\. Let \_O\_ be ? ToObject(\*this\* value). 1. Let \_len\_ be ?
+-- | LengthOfArrayLike(\_O\_). 1. If IsCallable(\_callback\_) is \*false\*,
+-- | throw a \*TypeError\* exception. 1. Let \_A\_ be ?
+-- | ArraySpeciesCreate(\_O\_, \_len\_). 1. Let \_k\_ be 0. 1. Repeat, while
+-- | \_k\_ \< \_len\_, 1. Let \_Pk\_ be ! ToString(𝔽(\_k\_)). 1. Let
+-- | \_kPresent\_ be ? HasProperty(\_O\_, \_Pk\_). 1. If \_kPresent\_ is
+-- | \*true\*, then 1. Let \_kValue\_ be ? Get(\_O\_, \_Pk\_). 1. Let
+-- | \_mappedValue\_ be ? Call(\_callback\_, \_thisArg\_, « \_kValue\_,
+-- | 𝔽(\_k\_), \_O\_ »). 1. Perform ? CreateDataPropertyOrThrow(\_A\_,
+-- | \_Pk\_, \_mappedValue\_). 1. Set \_k\_ to \_k\_ + 1. 1. Return \_A\_.
+-- | 
+-- | This method is intentionally generic; it does not require that its
+-- | \*this\* value be an Array. Therefore it can be transferred to other
+-- | kinds of objects for use as a method.
+-- | 
+
+-- SPEC: L32935-L32953
+-- | # Array.prototype.pop ( )
+-- | 
+-- | This method removes the last element of the array and returns it.
+-- | 
+-- | This method performs the following steps when called:
+-- | 
+-- | 1\. Let \_O\_ be ? ToObject(\*this\* value). 1. Let \_len\_ be ?
+-- | LengthOfArrayLike(\_O\_). 1. If \_len\_ = 0, then 1. Perform ?
+-- | Set(\_O\_, \*\"length\"\*, \*+0\*~𝔽~, \*true\*). 1. Return
+-- | \*undefined\*. 1. Assert: \_len\_ \> 0. 1. Let \_newLen\_ be 𝔽(\_len\_ -
+-- | 1). 1. Let \_index\_ be ! ToString(\_newLen\_). 1. Let \_element\_ be ?
+-- | Get(\_O\_, \_index\_). 1. Perform ? DeletePropertyOrThrow(\_O\_,
+-- | \_index\_). 1. Perform ? Set(\_O\_, \*\"length\"\*, \_newLen\_,
+-- | \*true\*). 1. Return \_element\_.
+-- | 
+-- | This method is intentionally generic; it does not require that its
+-- | \*this\* value be an Array. Therefore it can be transferred to other
+-- | kinds of objects for use as a method.
+-- | 
+
+-- SPEC: L32954-L32974
+-- | # Array.prototype.push ( \...\_items\_ )
+-- | 
+-- | This method appends the arguments to the end of the array, in the order
+-- | in which they appear. It returns the new length of the array.
+-- | 
+-- | This method performs the following steps when called:
+-- | 
+-- | 1\. Let \_O\_ be ? ToObject(\*this\* value). 1. Let \_len\_ be ?
+-- | LengthOfArrayLike(\_O\_). 1. Let \_argCount\_ be the number of elements
+-- | in \_items\_. 1. If \_len\_ + \_argCount\_ \> 2^53^ - 1, throw a
+-- | \*TypeError\* exception. 1. For each element \_E\_ of \_items\_, do 1.
+-- | Perform ? Set(\_O\_, ! ToString(𝔽(\_len\_)), \_E\_, \*true\*). 1. Set
+-- | \_len\_ to \_len\_ + 1. 1. Perform ? Set(\_O\_, \*\"length\"\*,
+-- | 𝔽(\_len\_), \*true\*). 1. Return 𝔽(\_len\_).
+-- | 
+-- | The \*\"length\"\* property of this method is \*1\*~𝔽~.
+-- | 
+-- | This method is intentionally generic; it does not require that its
+-- | \*this\* value be an Array. Therefore it can be transferred to other
+-- | kinds of objects for use as a method.
+-- | 
+
+-- SPEC: L33084-L33116
+-- | # Array.prototype.reverse ( )
+-- | 
+-- | This method rearranges the elements of the array so as to reverse their
+-- | order. It returns the reversed array.
+-- | 
+-- | This method performs the following steps when called:
+-- | 
+-- | 1\. Let \_O\_ be ? ToObject(\*this\* value). 1. Let \_len\_ be ?
+-- | LengthOfArrayLike(\_O\_). 1. Let \_middle\_ be floor(\_len\_ / 2). 1.
+-- | Let \_lower\_ be 0. 1. Repeat, while \_lower\_ ≠ \_middle\_, 1. Let
+-- | \_upper\_ be \_len\_ - \_lower\_ - 1. 1. Let \_upperP\_ be !
+-- | ToString(𝔽(\_upper\_)). 1. Let \_lowerP\_ be !
+-- | ToString(𝔽(\_lower\_)). 1. Let \_lowerExists\_ be ? HasProperty(\_O\_,
+-- | \_lowerP\_). 1. If \_lowerExists\_ is \*true\*, then 1. Let
+-- | \_lowerValue\_ be ? Get(\_O\_, \_lowerP\_). 1. Let \_upperExists\_ be ?
+-- | HasProperty(\_O\_, \_upperP\_). 1. If \_upperExists\_ is \*true\*,
+-- | then 1. Let \_upperValue\_ be ? Get(\_O\_, \_upperP\_). 1. If
+-- | \_lowerExists\_ is \*true\* and \_upperExists\_ is \*true\*, then 1.
+-- | Perform ? Set(\_O\_, \_lowerP\_, \_upperValue\_, \*true\*). 1. Perform ?
+-- | Set(\_O\_, \_upperP\_, \_lowerValue\_, \*true\*). 1. Else if
+-- | \_lowerExists\_ is \*false\* and \_upperExists\_ is \*true\*, then 1.
+-- | Perform ? Set(\_O\_, \_lowerP\_, \_upperValue\_, \*true\*). 1. Perform ?
+-- | DeletePropertyOrThrow(\_O\_, \_upperP\_). 1. Else if \_lowerExists\_ is
+-- | \*true\* and \_upperExists\_ is \*false\*, then 1. Perform ?
+-- | DeletePropertyOrThrow(\_O\_, \_lowerP\_). 1. Perform ? Set(\_O\_,
+-- | \_upperP\_, \_lowerValue\_, \*true\*). 1. Else, 1. Assert:
+-- | \_lowerExists\_ and \_upperExists\_ are both \*false\*. 1. NOTE: No
+-- | action is required. 1. Set \_lower\_ to \_lower\_ + 1. 1. Return \_O\_.
+-- | 
+-- | This method is intentionally generic; it does not require that its
+-- | \*this\* value be an Array. Therefore, it can be transferred to other
+-- | kinds of objects for use as a method.
+-- | 
+
+-- SPEC: L33117-L33141
+-- | # Array.prototype.shift ( )
+-- | 
+-- | This method removes the first element of the array and returns it.
+-- | 
+-- | It performs the following steps when called:
+-- | 
+-- | 1\. Let \_O\_ be ? ToObject(\*this\* value). 1. Let \_len\_ be ?
+-- | LengthOfArrayLike(\_O\_). 1. If \_len\_ = 0, then 1. Perform ?
+-- | Set(\_O\_, \*\"length\"\*, \*+0\*~𝔽~, \*true\*). 1. Return
+-- | \*undefined\*. 1. Let \_first\_ be ? Get(\_O\_, \*\"0\"\*). 1. Let \_k\_
+-- | be 1. 1. Repeat, while \_k\_ \< \_len\_, 1. Let \_from\_ be !
+-- | ToString(𝔽(\_k\_)). 1. Let \_to\_ be ! ToString(𝔽(\_k\_ - 1)). 1. Let
+-- | \_fromPresent\_ be ? HasProperty(\_O\_, \_from\_). 1. If \_fromPresent\_
+-- | is \*true\*, then 1. Let \_fromValue\_ be ? Get(\_O\_, \_from\_). 1.
+-- | Perform ? Set(\_O\_, \_to\_, \_fromValue\_, \*true\*). 1. Else, 1.
+-- | Assert: \_fromPresent\_ is \*false\*. 1. Perform ?
+-- | DeletePropertyOrThrow(\_O\_, \_to\_). 1. Set \_k\_ to \_k\_ + 1. 1.
+-- | Perform ? DeletePropertyOrThrow(\_O\_, ! ToString(𝔽(\_len\_ - 1))). 1.
+-- | Perform ? Set(\_O\_, \*\"length\"\*, 𝔽(\_len\_ - 1), \*true\*). 1.
+-- | Return \_first\_.
+-- | 
+-- | This method is intentionally generic; it does not require that its
+-- | \*this\* value be an Array. Therefore it can be transferred to other
+-- | kinds of objects for use as a method.
+-- | 
+
+-- SPEC: L33142-L33179
+-- | # Array.prototype.slice ( \_start\_, \_end\_ )
+-- | 
+-- | This method returns an array containing the elements of the array from
+-- | element \_start\_ up to, but not including, element \_end\_ (or through
+-- | the end of the array if \_end\_ is \*undefined\*). If \_start\_ is
+-- | negative, it is treated as \_length\_ + \_start\_ where \_length\_ is
+-- | the length of the array. If \_end\_ is negative, it is treated as
+-- | \_length\_ + \_end\_ where \_length\_ is the length of the array.
+-- | 
+-- | It performs the following steps when called:
+-- | 
+-- | 1\. Let \_O\_ be ? ToObject(\*this\* value). 1. Let \_len\_ be ?
+-- | LengthOfArrayLike(\_O\_). 1. Let \_relativeStart\_ be ?
+-- | ToIntegerOrInfinity(\_start\_). 1. If \_relativeStart\_ = -∞, let \_k\_
+-- | be 0. 1. Else if \_relativeStart\_ \< 0, let \_k\_ be max(\_len\_ +
+-- | \_relativeStart\_, 0). 1. Else, let \_k\_ be min(\_relativeStart\_,
+-- | \_len\_). 1. If \_end\_ is \*undefined\*, let \_relativeEnd\_ be
+-- | \_len\_; else let \_relativeEnd\_ be ? ToIntegerOrInfinity(\_end\_). 1.
+-- | If \_relativeEnd\_ = -∞, let \_final\_ be 0. 1. Else if \_relativeEnd\_
+-- | \< 0, let \_final\_ be max(\_len\_ + \_relativeEnd\_, 0). 1. Else, let
+-- | \_final\_ be min(\_relativeEnd\_, \_len\_). 1. Let \_count\_ be
+-- | max(\_final\_ - \_k\_, 0). 1. Let \_A\_ be ? ArraySpeciesCreate(\_O\_,
+-- | \_count\_). 1. Let \_n\_ be 0. 1. Repeat, while \_k\_ \< \_final\_, 1.
+-- | Let \_Pk\_ be ! ToString(𝔽(\_k\_)). 1. Let \_kPresent\_ be ?
+-- | HasProperty(\_O\_, \_Pk\_). 1. If \_kPresent\_ is \*true\*, then 1. Let
+-- | \_kValue\_ be ? Get(\_O\_, \_Pk\_). 1. Perform ?
+-- | CreateDataPropertyOrThrow(\_A\_, ! ToString(𝔽(\_n\_)), \_kValue\_). 1.
+-- | Set \_k\_ to \_k\_ + 1. 1. Set \_n\_ to \_n\_ + 1. 1.
+-- | \[id=\"step-array-proto-slice-set-length\"\] Perform ? Set(\_A\_,
+-- | \*\"length\"\*, 𝔽(\_n\_), \*true\*). 1. Return \_A\_.
+-- | 
+-- | The explicit setting of the \*\"length\"\* property in step is intended
+-- | to ensure the length is correct even when \_A\_ is not a built-in Array.
+-- | 
+-- | This method is intentionally generic; it does not require that its
+-- | \*this\* value be an Array. Therefore it can be transferred to other
+-- | kinds of objects for use as a method.
+-- | 
+
+-- SPEC: L33180-L33225
+-- | # Array.prototype.some ( \_callback\_ \[ , \_thisArg\_ \] )
+-- | 
+-- | \_callback\_ should be a function that accepts three arguments and
+-- | returns a value that is coercible to a Boolean value. \`some\` calls
+-- | \_callback\_ once for each element present in the array, in ascending
+-- | order, until it finds one where \_callback\_ returns \*true\*. If such
+-- | an element is found, \`some\` immediately returns \*true\*. Otherwise,
+-- | \`some\` returns \*false\*. \_callback\_ is called only for elements of
+-- | the array which actually exist; it is not called for missing elements of
+-- | the array.
+-- | 
+-- | If a \_thisArg\_ parameter is provided, it will be used as the \*this\*
+-- | value for each invocation of \_callback\_. If it is not provided,
+-- | \*undefined\* is used instead.
+-- | 
+-- | \_callback\_ is called with three arguments: the value of the element,
+-- | the index of the element, and the object being traversed.
+-- | 
+-- | \`some\` does not directly mutate the object on which it is called but
+-- | the object may be mutated by the calls to \_callback\_.
+-- | 
+-- | The range of elements processed by \`some\` is set before the first call
+-- | to \_callback\_. Elements that are appended to the array after the call
+-- | to \`some\` begins will not be visited by \_callback\_. If existing
+-- | elements of the array are changed, their value as passed to \_callback\_
+-- | will be the value at the time that \`some\` visits them; elements that
+-- | are deleted after the call to \`some\` begins and before being visited
+-- | are not visited. \`some\` acts like the \"exists\" quantifier in
+-- | mathematics. In particular, for an empty array, it returns \*false\*.
+-- | 
+-- | This method performs the following steps when called:
+-- | 
+-- | 1\. Let \_O\_ be ? ToObject(\*this\* value). 1. Let \_len\_ be ?
+-- | LengthOfArrayLike(\_O\_). 1. If IsCallable(\_callback\_) is \*false\*,
+-- | throw a \*TypeError\* exception. 1. Let \_k\_ be 0. 1. Repeat, while
+-- | \_k\_ \< \_len\_, 1. Let \_Pk\_ be ! ToString(𝔽(\_k\_)). 1. Let
+-- | \_kPresent\_ be ? HasProperty(\_O\_, \_Pk\_). 1. If \_kPresent\_ is
+-- | \*true\*, then 1. Let \_kValue\_ be ? Get(\_O\_, \_Pk\_). 1. Let
+-- | \_testResult\_ be ToBoolean(? Call(\_callback\_, \_thisArg\_, «
+-- | \_kValue\_, 𝔽(\_k\_), \_O\_ »)). 1. If \_testResult\_ is \*true\*,
+-- | return \*true\*. 1. Set \_k\_ to \_k\_ + 1. 1. Return \*false\*.
+-- | 
+-- | This method is intentionally generic; it does not require that its
+-- | \*this\* value be an Array. Therefore it can be transferred to other
+-- | kinds of objects for use as a method.
+-- | 
+
+-- SPEC: L33457-L33468
+-- | # Array.prototype.toReversed ( )
+-- | 
+-- | This method performs the following steps when called:
+-- | 
+-- | 1\. Let \_O\_ be ? ToObject(\*this\* value). 1. Let \_len\_ be ?
+-- | LengthOfArrayLike(\_O\_). 1. Let \_A\_ be ? ArrayCreate(\_len\_). 1. Let
+-- | \_k\_ be 0. 1. Repeat, while \_k\_ \< \_len\_, 1. Let \_from\_ be !
+-- | ToString(𝔽(\_len\_ - \_k\_ - 1)). 1. Let \_Pk\_ be !
+-- | ToString(𝔽(\_k\_)). 1. Let \_fromValue\_ be ? Get(\_O\_, \_from\_). 1.
+-- | Perform ! CreateDataPropertyOrThrow(\_A\_, \_Pk\_, \_fromValue\_). 1.
+-- | Set \_k\_ to \_k\_ + 1. 1. Return \_A\_.
+-- | 
+
+-- SPEC: L33517-L33529
+-- | # Array.prototype.toString ( )
+-- | 
+-- | This method performs the following steps when called:
+-- | 
+-- | 1\. Let \_array\_ be ? ToObject(\*this\* value). 1. Let \_func\_ be ?
+-- | Get(\_array\_, \*\"join\"\*). 1. If IsCallable(\_func\_) is \*false\*,
+-- | set \_func\_ to the intrinsic function %Object.prototype.toString%. 1.
+-- | Return ? Call(\_func\_, \_array\_).
+-- | 
+-- | This method is intentionally generic; it does not require that its
+-- | \*this\* value be an Array. Therefore it can be transferred to other
+-- | kinds of objects for use as a method.
+-- | 
+
+-- SPEC: L33530-L33560
+-- | # Array.prototype.unshift ( \...\_items\_ )
+-- | 
+-- | This method prepends the arguments to the start of the array, such that
+-- | their order within the array is the same as the order in which they
+-- | appear in the argument list.
+-- | 
+-- | It performs the following steps when called:
+-- | 
+-- | 1\. Let \_O\_ be ? ToObject(\*this\* value). 1. Let \_len\_ be ?
+-- | LengthOfArrayLike(\_O\_). 1. Let \_argCount\_ be the number of elements
+-- | in \_items\_. 1. If \_argCount\_ \> 0, then 1. If \_len\_ + \_argCount\_
+-- | \> 2^53^ - 1, throw a \*TypeError\* exception. 1. Let \_k\_ be
+-- | \_len\_. 1. Repeat, while \_k\_ \> 0, 1. Let \_from\_ be !
+-- | ToString(𝔽(\_k\_ - 1)). 1. Let \_to\_ be ! ToString(𝔽(\_k\_ +
+-- | \_argCount\_ - 1)). 1. Let \_fromPresent\_ be ? HasProperty(\_O\_,
+-- | \_from\_). 1. If \_fromPresent\_ is \*true\*, then 1. Let \_fromValue\_
+-- | be ? Get(\_O\_, \_from\_). 1. Perform ? Set(\_O\_, \_to\_,
+-- | \_fromValue\_, \*true\*). 1. Else, 1. Assert: \_fromPresent\_ is
+-- | \*false\*. 1. Perform ? DeletePropertyOrThrow(\_O\_, \_to\_). 1. Set
+-- | \_k\_ to \_k\_ - 1. 1. Let \_j\_ be \*+0\*~𝔽~. 1. For each element \_E\_
+-- | of \_items\_, do 1. Perform ? Set(\_O\_, ! ToString(\_j\_), \_E\_,
+-- | \*true\*). 1. Set \_j\_ to \_j\_ + \*1\*~𝔽~. 1. Perform ? Set(\_O\_,
+-- | \*\"length\"\*, 𝔽(\_len\_ + \_argCount\_), \*true\*). 1. Return
+-- | 𝔽(\_len\_ + \_argCount\_).
+-- | 
+-- | The \*\"length\"\* property of this method is \*1\*~𝔽~.
+-- | 
+-- | This method is intentionally generic; it does not require that its
+-- | \*this\* value be an Array. Therefore it can be transferred to other
+-- | kinds of objects for use as a method.
+-- | 
+
+-- SPEC: L33561-L33567
+-- | # Array.prototype.values ( )
+-- | 
+-- | This method performs the following steps when called:
+-- | 
+-- | 1\. Let \_O\_ be ? ToObject(\*this\* value). 1. Return
+-- | CreateArrayIterator(\_O\_, \~value\~).
+-- | 
+
+-- SPEC: L13122-L13130
+-- | # ValidateNonRevokedProxy ( \_proxy\_: a Proxy exotic object, ): either a normal completion containing \~unused\~ or a throw completion
+-- | 
+-- | description
+-- | :   It throws a \*TypeError\* exception if \_proxy\_ has been revoked.
+-- | 
+-- | 1\. If \_proxy\_.\[\[ProxyTarget\]\] is \*null\*, throw a \*TypeError\*
+-- | exception. 1. Assert: \_proxy\_.\[\[ProxyHandler\]\] is not \*null\*. 1.
+-- | Return \~unused\~.
+-- | 
+
+-- SPEC: L13131-L13146
+-- | # ProxyCreate ( \_target\_: an ECMAScript language value, \_handler\_: an ECMAScript language value, ): either a normal completion containing a Proxy exotic object or a throw completion
+-- | 
+-- | description
+-- | :   It is used to specify the creation of new Proxy objects.
+-- | 
+-- | 1\. If \_target\_ is not an Object, throw a \*TypeError\* exception. 1.
+-- | If \_handler\_ is not an Object, throw a \*TypeError\* exception. 1. Let
+-- | \_P\_ be MakeBasicObject(« \[\[ProxyHandler\]\], \[\[ProxyTarget\]\]
+-- | »). 1. Set \_P\_\'s essential internal methods, except for \[\[Call\]\]
+-- | and \[\[Construct\]\], to the definitions specified in . 1. If
+-- | IsCallable(\_target\_) is \*true\*, then 1. Set \_P\_.\[\[Call\]\] as
+-- | specified in . 1. If IsConstructor(\_target\_) is \*true\*, then 1. Set
+-- | \_P\_.\[\[Construct\]\] as specified in . 1. Set
+-- | \_P\_.\[\[ProxyTarget\]\] to \_target\_. 1. Set
+-- | \_P\_.\[\[ProxyHandler\]\] to \_handler\_. 1. Return \_P\_.
+-- | 
+
+-- SPEC: L31150-L31154
+-- | # RegExpCreate ( \_P\_: an ECMAScript language value, \_F\_: a String or \*undefined\*, ): either a normal completion containing an Object or a throw completion
+-- | 
+-- | 1\. Let \_obj\_ be ! RegExpAlloc(%RegExp%). 1. Return ?
+-- | RegExpInitialize(\_obj\_, \_P\_, \_F\_).
+-- | 
+
+-- SPEC: L31155-L31163
+-- | # RegExpAlloc ( \_newTarget\_: a constructor, ): either a normal completion containing an Object or a throw completion
+-- | 
+-- | 1\. Let \_obj\_ be ? OrdinaryCreateFromConstructor(\_newTarget\_,
+-- | \*\"%RegExp.prototype%\"\*, « \[\[OriginalSource\]\],
+-- | \[\[OriginalFlags\]\], \[\[RegExpRecord\]\], \[\[RegExpMatcher\]\]
+-- | »). 1. Perform ! DefinePropertyOrThrow(\_obj\_, \*\"lastIndex\"\*,
+-- | PropertyDescriptor { \[\[Writable\]\]: \*true\*, \[\[Enumerable\]\]:
+-- | \*false\*, \[\[Configurable\]\]: \*false\* }). 1. Return \_obj\_.
+-- | 
+
+-- SPEC: L31164-L31196
+-- | # RegExpInitialize ( \_obj\_: an Object, \_pattern\_: an ECMAScript language value, \_flags\_: an ECMAScript language value, ): either a normal completion containing an Object or a throw completion
+-- | 
+-- | 1\. If \_pattern\_ is \*undefined\*, let \_P\_ be the empty String. 1.
+-- | Else, let \_P\_ be ? ToString(\_pattern\_). 1. If \_flags\_ is
+-- | \*undefined\*, let \_F\_ be the empty String. 1. Else, let \_F\_ be ?
+-- | ToString(\_flags\_). 1. If \_F\_ contains any code unit other than
+-- | \*\"d\"\*, \*\"g\"\*, \*\"i\"\*, \*\"m\"\*, \*\"s\"\*, \*\"u\"\*,
+-- | \*\"v\"\*, or \*\"y\"\*, or if \_F\_ contains any code unit more than
+-- | once, throw a \*SyntaxError\* exception. 1. If \_F\_ contains \*\"i\"\*,
+-- | let \_i\_ be \*true\*; else let \_i\_ be \*false\*. 1. If \_F\_ contains
+-- | \*\"m\"\*, let \_m\_ be \*true\*; else let \_m\_ be \*false\*. 1. If
+-- | \_F\_ contains \*\"s\"\*, let \_s\_ be \*true\*; else let \_s\_ be
+-- | \*false\*. 1. If \_F\_ contains \*\"u\"\*, let \_u\_ be \*true\*; else
+-- | let \_u\_ be \*false\*. 1. If \_F\_ contains \*\"v\"\*, let \_v\_ be
+-- | \*true\*; else let \_v\_ be \*false\*. 1. If \_u\_ is \*true\* or \_v\_
+-- | is \*true\*, then 1. Let \_patternText\_ be
+-- | StringToCodePoints(\_P\_). 1. Else, 1. Let \_patternText\_ be the result
+-- | of interpreting each of \_P\_\'s 16-bit elements as a Unicode BMP code
+-- | point. UTF-16 decoding is not applied to the elements. 1. Let
+-- | \_parseResult\_ be ParsePattern(\_patternText\_, \_u\_, \_v\_). 1. If
+-- | \_parseResult\_ is a non-empty List of \*SyntaxError\* objects, throw a
+-- | \*SyntaxError\* exception. 1. Assert: \_parseResult\_ is a \|Pattern\|
+-- | Parse Node. 1. Set \_obj\_.\[\[OriginalSource\]\] to \_P\_. 1. Set
+-- | \_obj\_.\[\[OriginalFlags\]\] to \_F\_. 1. Let \_capturingGroupsCount\_
+-- | be CountLeftCapturingParensWithin(\_parseResult\_). 1. Let \_rer\_ be
+-- | the RegExp Record { \[\[IgnoreCase\]\]: \_i\_, \[\[Multiline\]\]: \_m\_,
+-- | \[\[DotAll\]\]: \_s\_, \[\[Unicode\]\]: \_u\_, \[\[UnicodeSets\]\]:
+-- | \_v\_, \[\[CapturingGroupsCount\]\]: \_capturingGroupsCount\_ }. 1. Set
+-- | \_obj\_.\[\[RegExpRecord\]\] to \_rer\_. 1. Set
+-- | \_obj\_.\[\[RegExpMatcher\]\] to CompilePattern of \_parseResult\_ with
+-- | argument \_rer\_. 1. Perform ? Set(\_obj\_, \*\"lastIndex\"\*,
+-- | \*+0\*~𝔽~, \*true\*). 1. Return \_obj\_.
+-- | 
+
+-- SPEC: L6436-L6443
+-- | # IsRegExp ( \_argument\_: an ECMAScript language value, ): either a normal completion containing a Boolean or a throw completion
+-- | 
+-- | 1\. If \_argument\_ is not an Object, return \*false\*. 1. Let
+-- | \_matcher\_ be ? Get(\_argument\_, %Symbol.match%). 1. If \_matcher\_ is
+-- | not \*undefined\*, return ToBoolean(\_matcher\_). 1. If \_argument\_ has
+-- | a \[\[RegExpMatcher\]\] internal slot, return \*true\*. 1. Return
+-- | \*false\*.
+-- | 
+
+-- SPEC: L32975-L33028
+-- | # Array.prototype.reduce ( \_callback\_ \[ , \_initialValue\_ \] )
+-- | 
+-- | \_callback\_ should be a function that takes four arguments. \`reduce\`
+-- | calls the callback, as a function, once for each element after the first
+-- | element present in the array, in ascending order.
+-- | 
+-- | \_callback\_ is called with four arguments: the \_previousValue\_ (value
+-- | from the previous call to \_callback\_), the \_currentValue\_ (value of
+-- | the current element), the \_currentIndex\_, and the object being
+-- | traversed. The first time that callback is called, the \_previousValue\_
+-- | and \_currentValue\_ can be one of two values. If an \_initialValue\_
+-- | was supplied in the call to \`reduce\`, then \_previousValue\_ will be
+-- | \_initialValue\_ and \_currentValue\_ will be the first value in the
+-- | array. If no \_initialValue\_ was supplied, then \_previousValue\_ will
+-- | be the first value in the array and \_currentValue\_ will be the second.
+-- | It is a \*TypeError\* if the array contains no elements and
+-- | \_initialValue\_ is not provided.
+-- | 
+-- | \`reduce\` does not directly mutate the object on which it is called but
+-- | the object may be mutated by the calls to \_callback\_.
+-- | 
+-- | The range of elements processed by \`reduce\` is set before the first
+-- | call to \_callback\_. Elements that are appended to the array after the
+-- | call to \`reduce\` begins will not be visited by \_callback\_. If
+-- | existing elements of the array are changed, their value as passed to
+-- | \_callback\_ will be the value at the time \`reduce\` visits them;
+-- | elements that are deleted after the call to \`reduce\` begins and before
+-- | being visited are not visited.
+-- | 
+-- | This method performs the following steps when called:
+-- | 
+-- | 1\. Let \_O\_ be ? ToObject(\*this\* value). 1. Let \_len\_ be ?
+-- | LengthOfArrayLike(\_O\_). 1. If IsCallable(\_callback\_) is \*false\*,
+-- | throw a \*TypeError\* exception. 1. If \_len\_ = 0 and \_initialValue\_
+-- | is not present, throw a \*TypeError\* exception. 1. Let \_k\_ be 0. 1.
+-- | Let \_accumulator\_ be \*undefined\*. 1. If \_initialValue\_ is present,
+-- | then 1. Set \_accumulator\_ to \_initialValue\_. 1. Else, 1. Let
+-- | \_kPresent\_ be \*false\*. 1. Repeat, while \_kPresent\_ is \*false\*
+-- | and \_k\_ \< \_len\_, 1. Let \_Pk\_ be ! ToString(𝔽(\_k\_)). 1. Set
+-- | \_kPresent\_ to ? HasProperty(\_O\_, \_Pk\_). 1. If \_kPresent\_ is
+-- | \*true\*, then 1. Set \_accumulator\_ to ? Get(\_O\_, \_Pk\_). 1. Set
+-- | \_k\_ to \_k\_ + 1. 1. If \_kPresent\_ is \*false\*, throw a
+-- | \*TypeError\* exception. 1. Repeat, while \_k\_ \< \_len\_, 1. Let
+-- | \_Pk\_ be ! ToString(𝔽(\_k\_)). 1. Let \_kPresent\_ be ?
+-- | HasProperty(\_O\_, \_Pk\_). 1. If \_kPresent\_ is \*true\*, then 1. Let
+-- | \_kValue\_ be ? Get(\_O\_, \_Pk\_). 1. Set \_accumulator\_ to ?
+-- | Call(\_callback\_, \*undefined\*, « \_accumulator\_, \_kValue\_,
+-- | 𝔽(\_k\_), \_O\_ »). 1. Set \_k\_ to \_k\_ + 1. 1. Return
+-- | \_accumulator\_.
+-- | 
+-- | This method is intentionally generic; it does not require that its
+-- | \*this\* value be an Array. Therefore it can be transferred to other
+-- | kinds of objects for use as a method.
+-- | 
+
+-- SPEC: L33029-L33083
+-- | # Array.prototype.reduceRight ( \_callback\_ \[ , \_initialValue\_ \] )
+-- | 
+-- | \_callback\_ should be a function that takes four arguments.
+-- | \`reduceRight\` calls the callback, as a function, once for each element
+-- | after the first element present in the array, in descending order.
+-- | 
+-- | \_callback\_ is called with four arguments: the \_previousValue\_ (value
+-- | from the previous call to \_callback\_), the \_currentValue\_ (value of
+-- | the current element), the \_currentIndex\_, and the object being
+-- | traversed. The first time the function is called, the \_previousValue\_
+-- | and \_currentValue\_ can be one of two values. If an \_initialValue\_
+-- | was supplied in the call to \`reduceRight\`, then \_previousValue\_ will
+-- | be \_initialValue\_ and \_currentValue\_ will be the last value in the
+-- | array. If no \_initialValue\_ was supplied, then \_previousValue\_ will
+-- | be the last value in the array and \_currentValue\_ will be the
+-- | second-to-last value. It is a \*TypeError\* if the array contains no
+-- | elements and \_initialValue\_ is not provided.
+-- | 
+-- | \`reduceRight\` does not directly mutate the object on which it is
+-- | called but the object may be mutated by the calls to \_callback\_.
+-- | 
+-- | The range of elements processed by \`reduceRight\` is set before the
+-- | first call to \_callback\_. Elements that are appended to the array
+-- | after the call to \`reduceRight\` begins will not be visited by
+-- | \_callback\_. If existing elements of the array are changed by
+-- | \_callback\_, their value as passed to \_callback\_ will be the value at
+-- | the time \`reduceRight\` visits them; elements that are deleted after
+-- | the call to \`reduceRight\` begins and before being visited are not
+-- | visited.
+-- | 
+-- | This method performs the following steps when called:
+-- | 
+-- | 1\. Let \_O\_ be ? ToObject(\*this\* value). 1. Let \_len\_ be ?
+-- | LengthOfArrayLike(\_O\_). 1. If IsCallable(\_callback\_) is \*false\*,
+-- | throw a \*TypeError\* exception. 1. If \_len\_ = 0 and \_initialValue\_
+-- | is not present, throw a \*TypeError\* exception. 1. Let \_k\_ be
+-- | \_len\_ - 1. 1. Let \_accumulator\_ be \*undefined\*. 1. If
+-- | \_initialValue\_ is present, then 1. Set \_accumulator\_ to
+-- | \_initialValue\_. 1. Else, 1. Let \_kPresent\_ be \*false\*. 1. Repeat,
+-- | while \_kPresent\_ is \*false\* and \_k\_ ≥ 0, 1. Let \_Pk\_ be !
+-- | ToString(𝔽(\_k\_)). 1. Set \_kPresent\_ to ? HasProperty(\_O\_,
+-- | \_Pk\_). 1. If \_kPresent\_ is \*true\*, then 1. Set \_accumulator\_ to
+-- | ? Get(\_O\_, \_Pk\_). 1. Set \_k\_ to \_k\_ - 1. 1. If \_kPresent\_ is
+-- | \*false\*, throw a \*TypeError\* exception. 1. Repeat, while \_k\_ ≥
+-- | 0, 1. Let \_Pk\_ be ! ToString(𝔽(\_k\_)). 1. Let \_kPresent\_ be ?
+-- | HasProperty(\_O\_, \_Pk\_). 1. If \_kPresent\_ is \*true\*, then 1. Let
+-- | \_kValue\_ be ? Get(\_O\_, \_Pk\_). 1. Set \_accumulator\_ to ?
+-- | Call(\_callback\_, \*undefined\*, « \_accumulator\_, \_kValue\_,
+-- | 𝔽(\_k\_), \_O\_ »). 1. Set \_k\_ to \_k\_ - 1. 1. Return
+-- | \_accumulator\_.
+-- | 
+-- | This method is intentionally generic; it does not require that its
+-- | \*this\* value be an Array. Therefore it can be transferred to other
+-- | kinds of objects for use as a method.
+-- | 
+
+-- SPEC: L33226-L33268
+-- | # Array.prototype.sort ( \_comparator\_ )
+-- | 
+-- | This method sorts the elements of this array. If \_comparator\_ is not
+-- | \*undefined\*, it should be a function that accepts two arguments \_x\_
+-- | and \_y\_ and returns a negative Number if \_x\_ \< \_y\_, a positive
+-- | Number if \_x\_ \> \_y\_, or a zero otherwise.
+-- | 
+-- | It performs the following steps when called:
+-- | 
+-- | 1\. \[id=\"step-array-sort-comparefn\"\] If \_comparator\_ is not
+-- | \*undefined\* and IsCallable(\_comparator\_) is \*false\*, throw a
+-- | \*TypeError\* exception. 1. Let \_obj\_ be ? ToObject(\*this\*
+-- | value). 1. \[id=\"step-array-sort-len\"\] Let \_len\_ be ?
+-- | LengthOfArrayLike(\_obj\_). 1. Let \_SortCompare\_ be a new Abstract
+-- | Closure with parameters (\_x\_, \_y\_) that captures \_comparator\_ and
+-- | performs the following steps when called: 1. Return ?
+-- | CompareArrayElements(\_x\_, \_y\_, \_comparator\_). 1.
+-- | \[id=\"step-array-sortindexedproperties\"\] Let \_sortedList\_ be ?
+-- | SortIndexedProperties(\_obj\_, \_len\_, \_SortCompare\_,
+-- | \~skip-holes\~). 1. Let \_itemCount\_ be the number of elements in
+-- | \_sortedList\_. 1. Let \_j\_ be 0. 1. Repeat, while \_j\_ \<
+-- | \_itemCount\_, 1. Perform ? Set(\_obj\_, ! ToString(𝔽(\_j\_)),
+-- | \_sortedList\_\[\_j\_\], \*true\*). 1. Set \_j\_ to \_j\_ + 1. 1. NOTE:
+-- | The call to SortIndexedProperties in step uses \~skip-holes\~. The
+-- | remaining indices are deleted to preserve the number of holes that were
+-- | detected and excluded from the sort. 1. Repeat, while \_j\_ \<
+-- | \_len\_, 1. Perform ? DeletePropertyOrThrow(\_obj\_, !
+-- | ToString(𝔽(\_j\_))). 1. Set \_j\_ to \_j\_ + 1. 1. Return \_obj\_.
+-- | 
+-- | Because non-existent property values always compare greater than
+-- | \*undefined\* property values, and \*undefined\* always compares greater
+-- | than any other value (see CompareArrayElements), \*undefined\* property
+-- | values always sort to the end of the result, followed by non-existent
+-- | property values.
+-- | 
+-- | Method calls performed by the ToString abstract operations in steps and
+-- | have the potential to cause \_SortCompare\_ to not behave as a
+-- | consistent comparator.
+-- | 
+-- | This method is intentionally generic; it does not require that its
+-- | \*this\* value be an Array. Therefore, it can be transferred to other
+-- | kinds of objects for use as a method.
+-- | 
+
+-- SPEC: L33469-L33485
+-- | # Array.prototype.toSorted ( \_comparator\_ )
+-- | 
+-- | This method performs the following steps when called:
+-- | 
+-- | 1\. If \_comparator\_ is not \*undefined\* and
+-- | IsCallable(\_comparator\_) is \*false\*, throw a \*TypeError\*
+-- | exception. 1. Let \_O\_ be ? ToObject(\*this\* value). 1. Let \_len\_ be
+-- | ? LengthOfArrayLike(\_O\_). 1. Let \_A\_ be ? ArrayCreate(\_len\_). 1.
+-- | Let \_SortCompare\_ be a new Abstract Closure with parameters (\_x\_,
+-- | \_y\_) that captures \_comparator\_ and performs the following steps
+-- | when called: 1. Return ? CompareArrayElements(\_x\_, \_y\_,
+-- | \_comparator\_). 1. Let \_sortedList\_ be ? SortIndexedProperties(\_O\_,
+-- | \_len\_, \_SortCompare\_, \~read-through-holes\~). 1. Let \_j\_ be 0. 1.
+-- | Repeat, while \_j\_ \< \_len\_, 1. Perform !
+-- | CreateDataPropertyOrThrow(\_A\_, ! ToString(𝔽(\_j\_)),
+-- | \_sortedList\_\[\_j\_\]). 1. Set \_j\_ to \_j\_ + 1. 1. Return \_A\_.
+-- | 
+
+-- SPEC: L33486-L33516
+-- | # Array.prototype.toSpliced ( \_start\_, \_skipCount\_, \...\_items\_ )
+-- | 
+-- | This method performs the following steps when called:
+-- | 
+-- | 1\. Let \_O\_ be ? ToObject(\*this\* value). 1. Let \_len\_ be ?
+-- | LengthOfArrayLike(\_O\_). 1. Let \_relativeStart\_ be ?
+-- | ToIntegerOrInfinity(\_start\_). 1. If \_relativeStart\_ = -∞, let
+-- | \_actualStart\_ be 0. 1. Else if \_relativeStart\_ \< 0, let
+-- | \_actualStart\_ be max(\_len\_ + \_relativeStart\_, 0). 1. Else, let
+-- | \_actualStart\_ be min(\_relativeStart\_, \_len\_). 1. Let
+-- | \_insertCount\_ be the number of elements in \_items\_. 1. If \_start\_
+-- | is not present, then 1. Let \_actualSkipCount\_ be 0. 1. Else if
+-- | \_skipCount\_ is not present, then 1. Let \_actualSkipCount\_ be
+-- | \_len\_ - \_actualStart\_. 1. Else, 1. Let \_sc\_ be ?
+-- | ToIntegerOrInfinity(\_skipCount\_). 1. Let \_actualSkipCount\_ be the
+-- | result of clamping \_sc\_ between 0 and \_len\_ - \_actualStart\_. 1.
+-- | Let \_newLen\_ be \_len\_ + \_insertCount\_ - \_actualSkipCount\_. 1. If
+-- | \_newLen\_ \> 2^53^ - 1, throw a \*TypeError\* exception. 1. Let \_A\_
+-- | be ? ArrayCreate(\_newLen\_). 1. Let \_i\_ be 0. 1. Let \_r\_ be
+-- | \_actualStart\_ + \_actualSkipCount\_. 1. Repeat, while \_i\_ \<
+-- | \_actualStart\_, 1. Let \_Pi\_ be ! ToString(𝔽(\_i\_)). 1. Let
+-- | \_iValue\_ be ? Get(\_O\_, \_Pi\_). 1. Perform !
+-- | CreateDataPropertyOrThrow(\_A\_, \_Pi\_, \_iValue\_). 1. Set \_i\_ to
+-- | \_i\_ + 1. 1. For each element \_E\_ of \_items\_, do 1. Let \_Pi\_ be !
+-- | ToString(𝔽(\_i\_)). 1. Perform ! CreateDataPropertyOrThrow(\_A\_,
+-- | \_Pi\_, \_E\_). 1. Set \_i\_ to \_i\_ + 1. 1. Repeat, while \_i\_ \<
+-- | \_newLen\_, 1. Let \_Pi\_ be ! ToString(𝔽(\_i\_)). 1. Let \_from\_ be !
+-- | ToString(𝔽(\_r\_)). 1. Let \_fromValue\_ be ? Get(\_O\_, \_from\_). 1.
+-- | Perform ! CreateDataPropertyOrThrow(\_A\_, \_Pi\_, \_fromValue\_). 1.
+-- | Set \_i\_ to \_i\_ + 1. 1. Set \_r\_ to \_r\_ + 1. 1. Return \_A\_.
+-- | 
+
+-- SPEC: L33568-L33584
+-- | # Array.prototype.with ( \_index\_, \_value\_ )
+-- | 
+-- | This method performs the following steps when called:
+-- | 
+-- | 1\. Let \_O\_ be ? ToObject(\*this\* value). 1. Let \_len\_ be ?
+-- | LengthOfArrayLike(\_O\_). 1. Let \_relativeIndex\_ be ?
+-- | ToIntegerOrInfinity(\_index\_). 1. If \_relativeIndex\_ ≥ 0, let
+-- | \_actualIndex\_ be \_relativeIndex\_. 1. Else, let \_actualIndex\_ be
+-- | \_len\_ + \_relativeIndex\_. 1. If \_actualIndex\_ ≥ \_len\_ or
+-- | \_actualIndex\_ \< 0, throw a \*RangeError\* exception. 1. Let \_A\_ be
+-- | ? ArrayCreate(\_len\_). 1. Let \_k\_ be 0. 1. Repeat, while \_k\_ \<
+-- | \_len\_, 1. Let \_Pk\_ be ! ToString(𝔽(\_k\_)). 1. If \_k\_ =
+-- | \_actualIndex\_, let \_fromValue\_ be \_value\_. 1. Else, let
+-- | \_fromValue\_ be ? Get(\_O\_, \_Pk\_). 1. Perform !
+-- | CreateDataPropertyOrThrow(\_A\_, \_Pk\_, \_fromValue\_). 1. Set \_k\_ to
+-- | \_k\_ + 1. 1. Return \_A\_.
+-- | 
+
+-- SPEC: L40725-L40749
+-- | # Promise.allSettled ( \_iterable\_ )
+-- | 
+-- | This function returns a promise that is fulfilled with an array of
+-- | promise state snapshots, but only after all the original promises have
+-- | settled, i.e. become either fulfilled or rejected. It resolves all
+-- | elements of the passed iterable to promises as it runs this algorithm.
+-- | 
+-- | 1\. Let \_C\_ be the \*this\* value. 1. Let \_promiseCapability\_ be ?
+-- | NewPromiseCapability(\_C\_). 1. Let \_promiseResolve\_ be
+-- | Completion(GetPromiseResolve(\_C\_)). 1.
+-- | IfAbruptRejectPromise(\_promiseResolve\_, \_promiseCapability\_). 1. Let
+-- | \_iteratorRecord\_ be Completion(GetIterator(\_iterable\_,
+-- | \~sync\~)). 1. IfAbruptRejectPromise(\_iteratorRecord\_,
+-- | \_promiseCapability\_). 1. Let \_result\_ be
+-- | Completion(PerformPromiseAllSettled(\_iteratorRecord\_, \_C\_,
+-- | \_promiseCapability\_, \_promiseResolve\_)). 1. If \_result\_ is an
+-- | abrupt completion, then 1. If \_iteratorRecord\_.\[\[Done\]\] is
+-- | \*false\*, set \_result\_ to
+-- | Completion(IteratorClose(\_iteratorRecord\_, \_result\_)). 1.
+-- | IfAbruptRejectPromise(\_result\_, \_promiseCapability\_). 1. Return !
+-- | \_result\_.
+-- | 
+-- | This function requires its \*this\* value to be a constructor function
+-- | that supports the parameter conventions of the Promise constructor.
+-- | 
+
+-- SPEC: L40816-L40841
+-- | # Promise.any ( \_iterable\_ )
+-- | 
+-- | This function returns a promise that is fulfilled by the first given
+-- | promise to be fulfilled, or rejected with an \`AggregateError\` holding
+-- | the rejection reasons if all of the given promises are rejected. It
+-- | resolves all elements of the passed iterable to promises as it runs this
+-- | algorithm.
+-- | 
+-- | 1\. Let \_C\_ be the \*this\* value. 1. Let \_promiseCapability\_ be ?
+-- | NewPromiseCapability(\_C\_). 1. Let \_promiseResolve\_ be
+-- | Completion(GetPromiseResolve(\_C\_)). 1.
+-- | IfAbruptRejectPromise(\_promiseResolve\_, \_promiseCapability\_). 1. Let
+-- | \_iteratorRecord\_ be Completion(GetIterator(\_iterable\_,
+-- | \~sync\~)). 1. IfAbruptRejectPromise(\_iteratorRecord\_,
+-- | \_promiseCapability\_). 1. Let \_result\_ be
+-- | Completion(PerformPromiseAny(\_iteratorRecord\_, \_C\_,
+-- | \_promiseCapability\_, \_promiseResolve\_)). 1. If \_result\_ is an
+-- | abrupt completion, then 1. If \_iteratorRecord\_.\[\[Done\]\] is
+-- | \*false\*, set \_result\_ to
+-- | Completion(IteratorClose(\_iteratorRecord\_, \_result\_)). 1.
+-- | IfAbruptRejectPromise(\_result\_, \_promiseCapability\_). 1. Return !
+-- | \_result\_.
+-- | 
+-- | This function requires its \*this\* value to be a constructor function
+-- | that supports the parameter conventions of the \`Promise\` constructor.
+-- | 
+
+-- SPEC: L28917-L28947
+-- | # String.prototype.replace ( \_searchValue\_, \_replaceValue\_ )
+-- | 
+-- | This method performs the following steps when called:
+-- | 
+-- | 1\. Let \_O\_ be the \*this\* value. 1. Perform ?
+-- | RequireObjectCoercible(\_O\_). 1. If \_searchValue\_ is an Object,
+-- | then 1. Let \_replacer\_ be ? GetMethod(\_searchValue\_,
+-- | %Symbol.replace%). 1. If \_replacer\_ is not \*undefined\*, then 1.
+-- | Return ? Call(\_replacer\_, \_searchValue\_, « \_O\_, \_replaceValue\_
+-- | »). 1. Let \_string\_ be ? ToString(\_O\_). 1. Let \_searchString\_ be ?
+-- | ToString(\_searchValue\_). 1. Let \_functionalReplace\_ be
+-- | IsCallable(\_replaceValue\_). 1. If \_functionalReplace\_ is \*false\*,
+-- | then 1. Set \_replaceValue\_ to ? ToString(\_replaceValue\_). 1. Let
+-- | \_searchLength\_ be the length of \_searchString\_. 1. Let \_position\_
+-- | be StringIndexOf(\_string\_, \_searchString\_, 0). 1. If \_position\_ is
+-- | \~not-found\~, return \_string\_. 1. Let \_preceding\_ be the substring
+-- | of \_string\_ from 0 to \_position\_. 1. Let \_following\_ be the
+-- | substring of \_string\_ from \_position\_ + \_searchLength\_. 1. If
+-- | \_functionalReplace\_ is \*true\*, then 1. Let \_replacement\_ be ?
+-- | ToString(? Call(\_replaceValue\_, \*undefined\*, « \_searchString\_,
+-- | 𝔽(\_position\_), \_string\_ »)). 1. Else, 1. Assert: \_replaceValue\_ is
+-- | a String. 1. Let \_captures\_ be a new empty List. 1. Let
+-- | \_replacement\_ be ! GetSubstitution(\_searchString\_, \_string\_,
+-- | \_position\_, \_captures\_, \*undefined\*, \_replaceValue\_). 1. Return
+-- | the string-concatenation of \_preceding\_, \_replacement\_, and
+-- | \_following\_.
+-- | 
+-- | This method is intentionally generic; it does not require that its
+-- | \*this\* value be a String object. Therefore, it can be transferred to
+-- | other kinds of objects for use as a method.
+-- | 
+
+-- SPEC: L29053-L29068
+-- | # String.prototype.search ( \_regexp\_ )
+-- | 
+-- | This method performs the following steps when called:
+-- | 
+-- | 1\. Let \_O\_ be the \*this\* value. 1. Perform ?
+-- | RequireObjectCoercible(\_O\_). 1. If \_regexp\_ is an Object, then 1.
+-- | Let \_searcher\_ be ? GetMethod(\_regexp\_, %Symbol.search%). 1. If
+-- | \_searcher\_ is not \*undefined\*, then 1. Return ? Call(\_searcher\_,
+-- | \_regexp\_, « \_O\_ »). 1. Let \_string\_ be ? ToString(\_O\_). 1. Let
+-- | \_rx\_ be ? RegExpCreate(\_regexp\_, \*undefined\*). 1. Return ?
+-- | Invoke(\_rx\_, %Symbol.search%, « \_string\_ »).
+-- | 
+-- | This method is intentionally generic; it does not require that its
+-- | \*this\* value be a String object. Therefore, it can be transferred to
+-- | other kinds of objects for use as a method.
+-- | 
+
+-- SPEC: L31211-L31228
+-- | # The RegExp Constructor
+-- | 
+-- | The RegExp constructor:
+-- | 
+-- | - is [%RegExp%]{.dfn}.
+-- | - is the initial value of the \*\"RegExp\"\* property of the global
+-- |   object.
+-- | - creates and initializes a new RegExp object when called as a
+-- |   constructor.
+-- | - when called as a function rather than as a constructor, returns either
+-- |   a new RegExp object, or the argument itself if the only argument is a
+-- |   RegExp object.
+-- | - may be used as the value of an \`extends\` clause of a class
+-- |   definition. Subclass constructors that intend to inherit the specified
+-- |   RegExp behaviour must include a \`super\` call to the RegExp
+-- |   constructor to create and initialize subclass instances with the
+-- |   necessary internal slots.
+-- | 
+
+-- SPEC: L31229-L31256
+-- | # RegExp ( \_pattern\_, \_flags\_ )
+-- | 
+-- | This function performs the following steps when called:
+-- | 
+-- | 1\. Let \_patternIsRegExp\_ be ? IsRegExp(\_pattern\_). 1. If NewTarget
+-- | is \*undefined\*, then 1. Let \_newTarget\_ be the active function
+-- | object. 1. If \_patternIsRegExp\_ is \*true\* and \_flags\_ is
+-- | \*undefined\*, then 1. Let \_patternConstructor\_ be ? Get(\_pattern\_,
+-- | \*\"constructor\"\*). 1. If SameValue(\_newTarget\_,
+-- | \_patternConstructor\_) is \*true\*, return \_pattern\_. 1. Else, 1. Let
+-- | \_newTarget\_ be NewTarget. 1. If \_pattern\_ is an Object and
+-- | \_pattern\_ has a \[\[RegExpMatcher\]\] internal slot, then 1. Let \_P\_
+-- | be \_pattern\_.\[\[OriginalSource\]\]. 1. If \_flags\_ is \*undefined\*,
+-- | let \_F\_ be \_pattern\_.\[\[OriginalFlags\]\]. 1. Else, let \_F\_ be
+-- | \_flags\_. 1. Else if \_patternIsRegExp\_ is \*true\*, then 1. Let \_P\_
+-- | be ? Get(\_pattern\_, \*\"source\"\*). 1. If \_flags\_ is \*undefined\*,
+-- | then 1. Let \_F\_ be ? Get(\_pattern\_, \*\"flags\"\*). 1. Else, 1. Let
+-- | \_F\_ be \_flags\_. 1. Else, 1. Let \_P\_ be \_pattern\_. 1. Let \_F\_
+-- | be \_flags\_. 1. Let \_O\_ be ? RegExpAlloc(\_newTarget\_). 1. Return ?
+-- | RegExpInitialize(\_O\_, \_P\_, \_F\_).
+-- | 
+-- | If pattern is supplied using a \|StringLiteral\|, the usual escape
+-- | sequence substitutions are performed before the String is processed by
+-- | this function. If pattern must contain an escape sequence to be
+-- | recognized by this function, any U+005C (REVERSE SOLIDUS) code points
+-- | must be escaped within the \|StringLiteral\| to prevent them being
+-- | removed when the contents of the \|StringLiteral\| are formed.
+-- | 
+
+-- SPEC: L30099-L30115
+-- | # RegExp Records
+-- | 
+-- | A [RegExp Record]{.dfn variants="RegExp Records"} is a Record value used
+-- | to store information about a RegExp that is needed during compilation
+-- | and possibly during matching.
+-- | 
+-- | It has the following fields:
+-- | 
+-- |   Field Name                     Value                    Meaning
+-- |   ------------------------------ ------------------------ -------------------------------------------------------------------
+-- |   \[\[IgnoreCase\]\]             a Boolean                indicates whether \*\"i\"\* appears in the RegExp\'s flags
+-- |   \[\[Multiline\]\]              a Boolean                indicates whether \*\"m\"\* appears in the RegExp\'s flags
+-- |   \[\[DotAll\]\]                 a Boolean                indicates whether \*\"s\"\* appears in the RegExp\'s flags
+-- |   \[\[Unicode\]\]                a Boolean                indicates whether \*\"u\"\* appears in the RegExp\'s flags
+-- |   \[\[UnicodeSets\]\]            a Boolean                indicates whether \*\"v\"\* appears in the RegExp\'s flags
+-- |   \[\[CapturingGroupsCount\]\]   a non-negative integer   the number of left-capturing parentheses in the RegExp\'s pattern
+-- | 
+
 end VerifiedJS.Source
