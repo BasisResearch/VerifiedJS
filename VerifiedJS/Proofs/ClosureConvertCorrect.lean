@@ -805,7 +805,7 @@ private theorem closureConvert_step_simulation
     intro sf sc ev sf' ⟨htrace, henvCorr, hheap, hncfr, hexprwf, henvwf, scope, envVar, envMap, st, st', hconv⟩ hstep
     obtain ⟨sc', hcstep, htrace', henv', hheap', henvwf', hncfr', hexprwf', scope', st_a, st_a', hconv'⟩ :=
       this sc.expr.depth envVar envMap sf sc ev sf' rfl htrace henvCorr hheap henvwf hncfr hexprwf ⟨scope, st, st', hconv⟩ hstep
-    exact ⟨sc', hcstep, htrace', henv', hheap', henvwf', hncfr', hexprwf', scope', envVar, envMap, st_a, st_a', hconv'⟩
+    exact ⟨sc', hcstep, htrace', henv', hheap', hncfr', hexprwf', henvwf', scope', envVar, envMap, st_a, st_a', hconv'⟩
   intro n
   induction n using Nat.strongRecOn with
   | _ n ih_depth =>
@@ -1271,6 +1271,10 @@ private theorem closureConvert_step_simulation
         · have hsf_eq_hp := (Prod.mk.inj (Option.some.inj hstep)).2
           have hsc_heap_hp : sc'.heap = sc_arg.heap := by simp [sc', Core.pushTrace]
           rw [hsc_heap_hp]; convert hheap_arg using 1; rw [← hsf_eq_hp]; rfl
+        constructor  -- EnvAddrWF
+        · have h1 : sc'.env = sc_arg.env := by simp [sc', Core.pushTrace]
+          have h2 : sc'.heap = sc_arg.heap := by simp [sc', Core.pushTrace]
+          rw [h1, h2]; exact _henvwf_arg
         · have hsf'_eq := (Prod.mk.inj (Option.some.inj hstep)).2
           have hsf'_expr : sf'.expr = .«let» name sa_flat.expr body' := by rw [← hsf'_eq]; rfl
           have hsc'_expr : sc'.expr = .«let» name sc_arg.expr body := by simp [sc', Core.pushTrace]
@@ -1349,7 +1353,7 @@ private theorem closureConvert_step_simulation
         have h0 := hstep; rw [hsf_rw] at h0; simp only [Flat.step?, Flat.exprValue?] at h0
         have h1 := hcstep; rw [hsc_rw] at h1; simp only [Core.step?, Core.exprValue?] at h1
         have := (Prod.mk.inj (Option.some.inj h0)).2; have := (Prod.mk.inj (Option.some.inj h1)).2
-        subst_vars; exact hheap, by rw [hsc'_expr]; simp [noCallFrameReturn], by have h := hexprwf; rw [hsc] at h; simp [ExprAddrWF] at h; exact h, scope, st,
+        subst_vars; exact hheap, henvwf, by rw [hsc'_expr]; simp [noCallFrameReturn], by have h := hexprwf; rw [hsc] at h; simp [ExprAddrWF] at h; exact h, scope, st,
         (Flat.convertExpr (.lit v) scope envVar envMap st).snd,
         by rw [hsc'_expr]; simp [Flat.convertExpr, hsf'_expr]⟩
     | none =>
@@ -1411,6 +1415,10 @@ private theorem closureConvert_step_simulation
         · have hsf_eq_hp := (Prod.mk.inj (Option.some.inj hstep)).2
           have hsc_heap_hp : sc'.heap = sc_arg.heap := by simp [sc', Core.pushTrace]
           rw [hsc_heap_hp]; convert hheap_arg using 1; rw [← hsf_eq_hp]; rfl
+        constructor  -- EnvAddrWF
+        · have h1 : sc'.env = sc_arg.env := by simp [sc', Core.pushTrace]
+          have h2 : sc'.heap = sc_arg.heap := by simp [sc', Core.pushTrace]
+          rw [h1, h2]; exact _henvwf_arg
         · -- Expression correspondence
           refine ⟨scope', st_a, st_a', ?_⟩
           have hsf'_eq := (Prod.mk.inj (Option.some.inj hstep)).2
@@ -1560,6 +1568,10 @@ private theorem closureConvert_step_simulation
         · have hsf_eq_hp := (Prod.mk.inj (Option.some.inj hstep)).2
           have hsc_heap_hp : sc'.heap = sc_arg.heap := by simp [sc', Core.pushTrace]
           rw [hsc_heap_hp]; convert hheap_arg using 1; rw [← hsf_eq_hp]; rfl
+        constructor  -- EnvAddrWF
+        · have h1 : sc'.env = sc_arg.env := by simp [sc', Core.pushTrace]
+          have h2 : sc'.heap = sc_arg.heap := by simp [sc', Core.pushTrace]
+          rw [h1, h2]; exact _henvwf_arg
         · -- Expression correspondence
           have hsf'_eq := (Prod.mk.inj (Option.some.inj hstep)).2
           have hsf'_expr : sf'.expr = .«if» sa_flat.expr then' else' := by rw [← hsf'_eq]; rfl
@@ -1654,7 +1666,7 @@ private theorem closureConvert_step_simulation
         have h0 := hstep; rw [hsf_rw] at h0; simp only [Flat.step?, Flat.exprValue?] at h0
         have h1 := hcstep; rw [hsc_rw] at h1; simp only [Core.step?, Core.exprValue?] at h1
         have := (Prod.mk.inj (Option.some.inj h0)).2; have := (Prod.mk.inj (Option.some.inj h1)).2
-        subst_vars; exact hheap, by have h := hncfr; rw [hsc] at h; simp [noCallFrameReturn, Bool.and_eq_true] at h; rw [hsc'_expr]; exact h.2, by have h := hexprwf; rw [hsc] at h; simp [ExprAddrWF] at h; exact h.2, scope, st,
+        subst_vars; exact hheap, henvwf, by have h := hncfr; rw [hsc] at h; simp [noCallFrameReturn, Bool.and_eq_true] at h; rw [hsc'_expr]; exact h.2, by have h := hexprwf; rw [hsc] at h; simp [ExprAddrWF] at h; exact h.2, scope, st,
         (Flat.convertExpr b scope envVar envMap st).2,
         by rw [hsc'_expr]; simp [Flat.convertExpr, hsf'_expr]⟩
     | none =>
@@ -1718,6 +1730,10 @@ private theorem closureConvert_step_simulation
         · have hsf_eq_hp := (Prod.mk.inj (Option.some.inj hstep)).2
           have hsc_heap_hp : sc'.heap = sc_arg.heap := by simp [sc', Core.pushTrace]
           rw [hsc_heap_hp]; convert hheap_arg using 1; rw [← hsf_eq_hp]; rfl
+        constructor  -- EnvAddrWF
+        · have h1 : sc'.env = sc_arg.env := by simp [sc', Core.pushTrace]
+          have h2 : sc'.heap = sc_arg.heap := by simp [sc', Core.pushTrace]
+          rw [h1, h2]; exact _henvwf_arg
         · -- Expression correspondence
           -- sf'.expr = .seq sa_flat.expr b' (from Flat step?)
           -- sc'.expr = .seq sc_arg.expr b (from Core pushTrace)
@@ -1882,6 +1898,10 @@ private theorem closureConvert_step_simulation
         · have hsf_eq_hp := (Prod.mk.inj (Option.some.inj hstep)).2
           have hsc_heap_hp : sc'.heap = sc_arg.heap := by simp [sc', Core.pushTrace]
           rw [hsc_heap_hp]; convert hheap_arg using 1; rw [← hsf_eq_hp]; rfl
+        constructor  -- EnvAddrWF
+        · have h1 : sc'.env = sc_arg.env := by simp [sc', Core.pushTrace]
+          have h2 : sc'.heap = sc_arg.heap := by simp [sc', Core.pushTrace]
+          rw [h1, h2]; exact _henvwf_arg
         · refine ⟨scope', st_a, st_a', ?_⟩
           have hsf'_eq := (Prod.mk.inj (Option.some.inj hstep)).2
           have hsf'_expr : sf'.expr = .getProp sa_flat.expr prop := by rw [← hsf'_eq]; rfl
@@ -1943,6 +1963,10 @@ private theorem closureConvert_step_simulation
         · have hsf_eq_hp := (Prod.mk.inj (Option.some.inj hstep)).2
           have hsc_heap_hp : sc'.heap = sc_arg.heap := by simp [sc', Core.pushTrace]
           rw [hsc_heap_hp]; convert hheap_arg using 1; rw [← hsf_eq_hp]; rfl
+        constructor  -- EnvAddrWF
+        · have h1 : sc'.env = sc_arg.env := by simp [sc', Core.pushTrace]
+          have h2 : sc'.heap = sc_arg.heap := by simp [sc', Core.pushTrace]
+          rw [h1, h2]; exact _henvwf_arg
         · refine ⟨scope', st_a, ?_, ?_⟩
           · exact (Flat.convertExpr value scope' envVar envMap st_a').2
           · have hsf'_eq := (Prod.mk.inj (Option.some.inj hstep)).2
@@ -2097,6 +2121,10 @@ private theorem closureConvert_step_simulation
                 rw [hcore_substep] at h0; simp at h0
                 exact congrArg Core.State.heap (Prod.mk.inj (Option.some.inj h0)).2 ▸ by simp [Core.pushTrace]
               rw [hsc'_heap]; convert hheap_arg using 1; rw [← hsf_eq_hp]; rfl
+            constructor  -- EnvAddrWF
+            · have h1 : sc'.env = sc_arg.env := by simp [sc', Core.pushTrace]
+              have h2 : sc'.heap = sc_arg.heap := by simp [sc', Core.pushTrace]
+              rw [h1, h2]; exact _henvwf_arg
             · refine ⟨scope', st_a, st_a', ?_⟩
               have hsf'_eq := (Prod.mk.inj (Option.some.inj hstep)).2
               have hsf'_expr : sf'.expr = .setProp (.lit (Flat.convertValue ov)) prop sa_flat.expr := by rw [← hsf'_eq]; rfl
@@ -2163,6 +2191,10 @@ private theorem closureConvert_step_simulation
         · have hsf_eq_hp := (Prod.mk.inj (Option.some.inj hstep)).2
           have hsc_heap_hp : sc'.heap = sc_arg.heap := by simp [sc', Core.pushTrace]
           rw [hsc_heap_hp]; convert hheap_arg using 1; rw [← hsf_eq_hp]; rfl
+        constructor  -- EnvAddrWF
+        · have h1 : sc'.env = sc_arg.env := by simp [sc', Core.pushTrace]
+          have h2 : sc'.heap = sc_arg.heap := by simp [sc', Core.pushTrace]
+          rw [h1, h2]; exact _henvwf_arg
         · refine ⟨scope', st_a, ?_, ?_⟩
           · exact (Flat.convertExpr idx scope' envVar envMap st_a').2
           · have hsf'_eq := (Prod.mk.inj (Option.some.inj hstep)).2
@@ -2295,6 +2327,10 @@ private theorem closureConvert_step_simulation
                 rw [hcore_substep] at h0; simp at h0
                 exact congrArg Core.State.heap (Prod.mk.inj (Option.some.inj h0)).2 ▸ by simp [Core.pushTrace]
               rw [hsc'_heap]; convert hheap_arg using 1; rw [← hsf_eq_hp]; rfl
+            constructor  -- EnvAddrWF
+            · have h1 : sc'.env = sc_arg.env := by simp [sc', Core.pushTrace]
+              have h2 : sc'.heap = sc_arg.heap := by simp [sc', Core.pushTrace]
+              rw [h1, h2]; exact _henvwf_arg
             · refine ⟨scope', st_a, st_a', ?_⟩
               have hsf'_eq := (Prod.mk.inj (Option.some.inj hstep)).2
               have hsf'_expr : sf'.expr = .getIndex (.lit (Flat.convertValue ov)) sa_flat.expr := by rw [← hsf'_eq]; rfl
@@ -2372,6 +2408,10 @@ private theorem closureConvert_step_simulation
             rw [hcore_substep] at h0; simp at h0
             exact congrArg Core.State.heap (Prod.mk.inj (Option.some.inj h0)).2 ▸ by simp [Core.pushTrace]
           rw [hsc'_heap]; convert hheap_arg using 1; rw [← hsf_eq_hp]; rfl
+        constructor  -- EnvAddrWF
+        · have h1 : sc'.env = sc_arg.env := by simp [sc', Core.pushTrace]
+          have h2 : sc'.heap = sc_arg.heap := by simp [sc', Core.pushTrace]
+          rw [h1, h2]; exact _henvwf_arg
         · refine ⟨scope', st_a, ?_, ?_⟩
           · exact (Flat.convertExpr idx scope' envVar envMap st_a').2 |>
               (fun st_idx => (Flat.convertExpr value scope' envVar envMap
@@ -2461,6 +2501,10 @@ private theorem closureConvert_step_simulation
                 rw [hcore_substep] at h0; simp at h0
                 exact congrArg Core.State.heap (Prod.mk.inj (Option.some.inj h0)).2 ▸ by simp [Core.pushTrace]
               rw [hsc'_heap]; convert hheap_arg using 1; rw [← hsf_eq_hp]; rfl
+            constructor  -- EnvAddrWF
+            · have h1 : sc'.env = sc_arg.env := by simp [sc', Core.pushTrace]
+              have h2 : sc'.heap = sc_arg.heap := by simp [sc', Core.pushTrace]
+              rw [h1, h2]; exact _henvwf_arg
             · refine ⟨scope', st_a, ?_, ?_⟩
               · exact (Flat.convertExpr value scope' envVar envMap st_a').2
               · have hsf'_eq := (Prod.mk.inj (Option.some.inj hstep)).2
@@ -2615,6 +2659,10 @@ private theorem closureConvert_step_simulation
                   rw [hcore_substep] at h0; simp at h0
                   exact congrArg Core.State.heap (Prod.mk.inj (Option.some.inj h0)).2 ▸ by simp [Core.pushTrace]
                 rw [hsc'_heap]; convert hheap_arg using 1; rw [← hsf_eq_hp]; rfl
+              constructor  -- EnvAddrWF
+              · have h1 : sc'.env = sc_arg.env := by simp [sc', Core.pushTrace]
+                have h2 : sc'.heap = sc_arg.heap := by simp [sc', Core.pushTrace]
+                rw [h1, h2]; exact _henvwf_arg
               · refine ⟨scope', st_a, st_a', ?_⟩
                 have hsf'_eq := (Prod.mk.inj (Option.some.inj hstep)).2
                 have hsf'_expr : sf'.expr = .setIndex (.lit (Flat.convertValue ov)) (.lit (Flat.convertValue iv)) sa_flat.expr := by rw [← hsf'_eq]; rfl
@@ -2769,6 +2817,10 @@ private theorem closureConvert_step_simulation
         · have hsf_eq_hp := (Prod.mk.inj (Option.some.inj hstep)).2
           have hsc_heap_hp : sc'.heap = sc_arg.heap := by simp [sc', Core.pushTrace]
           rw [hsc_heap_hp]; convert hheap_arg using 1; rw [← hsf_eq_hp]; rfl
+        constructor  -- EnvAddrWF
+        · have h1 : sc'.env = sc_arg.env := by simp [sc', Core.pushTrace]
+          have h2 : sc'.heap = sc_arg.heap := by simp [sc', Core.pushTrace]
+          rw [h1, h2]; exact _henvwf_arg
         · refine ⟨scope', st_a, st_a', ?_⟩
           have hsf'_eq := (Prod.mk.inj (Option.some.inj hstep)).2
           have hsf'_expr : sf'.expr = .deleteProp sa_flat.expr prop := by rw [← hsf'_eq]; rfl
@@ -2902,6 +2954,10 @@ private theorem closureConvert_step_simulation
         · have hsf_eq_hp := (Prod.mk.inj (Option.some.inj hstep)).2
           have hsc_heap_hp : sc'.heap = sc_arg.heap := by simp [sc', Core.pushTrace]
           rw [hsc_heap_hp]; convert hheap_arg using 1; rw [← hsf_eq_hp]; rfl
+        constructor  -- EnvAddrWF
+        · have h1 : sc'.env = sc_arg.env := by simp [sc', Core.pushTrace]
+          have h2 : sc'.heap = sc_arg.heap := by simp [sc', Core.pushTrace]
+          rw [h1, h2]; exact _henvwf_arg
         · -- Expression correspondence
           refine ⟨scope', st_a, st_a', ?_⟩
           have hsf'_eq := (Prod.mk.inj (Option.some.inj hstep)).2
@@ -3015,6 +3071,10 @@ private theorem closureConvert_step_simulation
         · have hsf_eq_hp := (Prod.mk.inj (Option.some.inj hstep)).2
           have hsc_heap_hp : sc'.heap = sc_arg.heap := by simp [sc', Core.pushTrace]
           rw [hsc_heap_hp]; convert hheap_arg using 1; rw [← hsf_eq_hp]; rfl
+        constructor  -- EnvAddrWF
+        · have h1 : sc'.env = sc_arg.env := by simp [sc', Core.pushTrace]
+          have h2 : sc'.heap = sc_arg.heap := by simp [sc', Core.pushTrace]
+          rw [h1, h2]; exact _henvwf_arg
         · refine ⟨scope', st_a, st_a', ?_⟩
           have hsf'_eq := (Prod.mk.inj (Option.some.inj hstep)).2
           have hsf'_expr : sf'.expr = .unary op sa_flat.expr := by rw [← hsf'_eq]; rfl
@@ -3116,6 +3176,10 @@ private theorem closureConvert_step_simulation
           · have hsf_eq_hp := (Prod.mk.inj (Option.some.inj hstep)).2
           have hsc_heap_hp : sc'.heap = sc_arg.heap := by simp [sc', Core.pushTrace]
           rw [hsc_heap_hp]; convert hheap_arg using 1; rw [← hsf_eq_hp]; rfl
+          constructor  -- EnvAddrWF
+          · have h1 : sc'.env = sc_arg.env := by simp [sc', Core.pushTrace]
+            have h2 : sc'.heap = sc_arg.heap := by simp [sc', Core.pushTrace]
+            rw [h1, h2]; exact _henvwf_arg
           · have hsf'_eq := (Prod.mk.inj (Option.some.inj hstep)).2
             have hsf'_expr : sf'.expr = .binary op (.lit (Flat.convertValue lv)) sa_flat.expr := by rw [← hsf'_eq]; rfl
             have hsc'_expr : sc'.expr = .binary op (.lit lv) sc_arg.expr := by simp [sc', Core.pushTrace]
@@ -3172,6 +3236,10 @@ private theorem closureConvert_step_simulation
         · have hsf_eq_hp := (Prod.mk.inj (Option.some.inj hstep)).2
           have hsc_heap_hp : sc'.heap = sc_arg.heap := by simp [sc', Core.pushTrace]
           rw [hsc_heap_hp]; convert hheap_arg using 1; rw [← hsf_eq_hp]; rfl
+        constructor  -- EnvAddrWF
+        · have h1 : sc'.env = sc_arg.env := by simp [sc', Core.pushTrace]
+          have h2 : sc'.heap = sc_arg.heap := by simp [sc', Core.pushTrace]
+          rw [h1, h2]; exact _henvwf_arg
         · have hsf'_eq := (Prod.mk.inj (Option.some.inj hstep)).2
           have hsf'_expr : sf'.expr = .binary op sa_flat.expr rhs' := by rw [← hsf'_eq]; rfl
           have hsc'_expr : sc'.expr = .binary op sc_arg.expr rhs := by simp [sc', Core.pushTrace]
@@ -3249,7 +3317,7 @@ private theorem closureConvert_step_simulation
         have h0 := hstep; rw [hsf_rw] at h0; simp only [Flat.step?, Flat.exprValue?] at h0
         have h1 := hcstep; rw [hsc_rw] at h1; simp only [Core.step?, Core.exprValue?] at h1
         have := (Prod.mk.inj (Option.some.inj h0)).2; have := (Prod.mk.inj (Option.some.inj h1)).2
-        subst_vars; exact hheap, by rw [hsc'_expr]; simp [noCallFrameReturn], by simp [ExprAddrWF, ValueAddrWF], scope, st, st,
+        subst_vars; exact hheap, henvwf, by rw [hsc'_expr]; simp [noCallFrameReturn], by simp [ExprAddrWF, ValueAddrWF], scope, st, st,
         by rw [hsc'_expr]; simp [Flat.convertExpr, Flat.convertValue, hsf'_expr]⟩
     | none =>
       -- Stepping sub-case for throw: same pattern as typeof/unary
@@ -3295,6 +3363,10 @@ private theorem closureConvert_step_simulation
         · have hsf_eq_hp := (Prod.mk.inj (Option.some.inj hstep)).2
           have hsc_heap_hp : sc'.heap = sc_arg.heap := by simp [sc', Core.pushTrace]
           rw [hsc_heap_hp]; convert hheap_arg using 1; rw [← hsf_eq_hp]; rfl
+        constructor  -- EnvAddrWF
+        · have h1 : sc'.env = sc_arg.env := by simp [sc', Core.pushTrace]
+          have h2 : sc'.heap = sc_arg.heap := by simp [sc', Core.pushTrace]
+          rw [h1, h2]; exact _henvwf_arg
         · refine ⟨scope', st_a, st_a', ?_⟩
           have hsf'_eq := (Prod.mk.inj (Option.some.inj hstep)).2
           have hsf'_expr : sf'.expr = .throw sa_flat.expr := by rw [← hsf'_eq]; rfl
@@ -3373,7 +3445,7 @@ private theorem closureConvert_step_simulation
               from by cases sc; simp_all] at hcstep
             simp only [Core.step?, Core.exprValue?, hcf] at hcstep
             have := (Prod.mk.inj (Option.some.inj hstep)).2; have := (Prod.mk.inj (Option.some.inj hcstep)).2
-            subst_vars; exact hheap, by simp [noCallFrameReturn], by have h := hexprwf; rw [hsc] at h; simp [ExprAddrWF] at h; exact h.1, scope, st, st,
+            subst_vars; exact hheap, henvwf, by simp [noCallFrameReturn], by have h := hexprwf; rw [hsc] at h; simp [ExprAddrWF] at h; exact h.1, scope, st, st,
             by simp [Flat.convertExpr, Flat.convertValue]; rfl⟩
         | some fin =>
           -- Both step to .seq fin (.lit v) / .seq fin' (.lit (convertValue v)) with .silent
@@ -3410,7 +3482,7 @@ private theorem closureConvert_step_simulation
             rw [hsf_rw] at hstep; simp only [Flat.step?, Flat.exprValue?] at hstep
             rw [hsc_rw] at hcstep; simp only [Core.step?, Core.exprValue?, hcf] at hcstep
             have := (Prod.mk.inj (Option.some.inj hstep)).2; have := (Prod.mk.inj (Option.some.inj hcstep)).2
-            subst_vars; exact hheap, by
+            subst_vars; exact hheap, henvwf, by
               have h := hncfr; rw [hsc] at h; subst ha_lit; simp [noCallFrameReturn, Bool.and_eq_true] at h
               rw [hfin] at h; simp [noCallFrameReturn, Bool.and_eq_true]; exact h.2.2, by have h := hexprwf; rw [hsc] at h; simp [ExprAddrWF, ValueAddrWF] at h ⊢; exact ⟨h.2.2, h.1⟩, scope, st, (Flat.convertExpr fin scope envVar envMap st).2,
             by simp only [Flat.convertExpr]
@@ -3559,6 +3631,10 @@ private theorem closureConvert_step_simulation
             have hsf_eq_hp := (Prod.mk.inj (Option.some.inj hstep)).2
             have hsc_heap_hp : sc'.heap = sc_arg.heap := by simp [sc', Core.pushTrace]
             rw [hsc_heap_hp]; convert hheap_arg using 1; rw [← hsf_eq_hp]; rfl
+          constructor  -- EnvAddrWF
+          · have h1 : sc'.env = sc_arg.env := by simp [sc', Core.pushTrace]
+            have h2 : sc'.heap = sc_arg.heap := by simp [sc', Core.pushTrace]
+            rw [h1, h2]; exact _henvwf_arg
           · -- Expression correspondence
             have hsf'_eq := (Prod.mk.inj (Option.some.inj hstep)).2
             have hsf'_expr : sf'.expr = .tryCatch sa_flat.expr catchParam catchBody' finally' := by rw [← hsf'_eq]; rfl
@@ -3634,6 +3710,10 @@ private theorem closureConvert_step_simulation
             have hsf_eq_hp := (Prod.mk.inj (Option.some.inj hstep)).2
             have hsc_heap_hp : sc'.heap = sc_arg.heap := by simp [sc', Core.pushTrace]
             rw [hsc_heap_hp]; convert hheap_arg using 1; rw [← hsf_eq_hp]; rfl
+          constructor  -- EnvAddrWF
+          · have h1 : sc'.env = sc_arg.env := by simp [sc', Core.pushTrace]
+            have h2 : sc'.heap = sc_arg.heap := by simp [sc', Core.pushTrace]
+            rw [h1, h2]; exact _henvwf_arg
           · -- Expression correspondence (same as silent case)
             have hsf'_eq := (Prod.mk.inj (Option.some.inj hstep)).2
             have hsf'_expr : sf'.expr = .tryCatch sa_flat.expr catchParam catchBody' finally' := by rw [← hsf'_eq]; rfl
@@ -3742,7 +3822,7 @@ private theorem closureConvert_step_simulation
       have h0 := hcstep; rw [hsc_rw] at h0
       simp only [Core.step?] at h0
       have h1 := (Prod.mk.inj (Option.some.inj h0)).2; subst h1; exact hheap
-    exact ⟨hsf'_trace, henv', hheap', by
+    exact ⟨hsf'_trace, henv', hheap', henvwf, by
       have h := hncfr; rw [hsc] at h; simp [noCallFrameReturn, Bool.and_eq_true] at h
       rw [hsc'_expr]; simp [noCallFrameReturn, Bool.and_eq_true]; exact ⟨h.1, h.2, h.1, h.2⟩, by have h := hexprwf; rw [hsc] at h; rw [hsc'_expr]; simp [ExprAddrWF, ValueAddrWF] at h ⊢; exact ⟨h.1, h.2, h.1, h.2⟩, scope, st, _,
       by simp only [Flat.convertExpr]; rw [hsc'_expr]; simp only [Flat.convertExpr, Flat.convertValue]; rw [hsf'_expr]⟩
@@ -3803,7 +3883,7 @@ private theorem closureConvert_step_simulation
         rw [show sc = {sc with expr := .«return» none} from by cases sc; simp_all] at h0
         simp only [Core.step?] at h0
         have h1 := (Prod.mk.inj (Option.some.inj h0)).2; subst h1; exact hheap
-      exact ⟨hsf'_trace, henv', hheap', by rw [hsc'_expr]; simp [noCallFrameReturn], by simp [ExprAddrWF, ValueAddrWF], scope, st, st,
+      exact ⟨hsf'_trace, henv', hheap', henvwf, by rw [hsc'_expr]; simp [noCallFrameReturn], by simp [ExprAddrWF, ValueAddrWF], scope, st, st,
         by rw [hsc'_expr]; simp [Flat.convertExpr, Flat.convertValue, hsf'_expr]⟩
     | some e =>
       -- .return (some e): split into value and stepping sub-cases
@@ -3860,7 +3940,7 @@ private theorem closureConvert_step_simulation
         have h0 := hstep; rw [hsf_rw] at h0; simp only [Flat.step?, Flat.exprValue?] at h0
         have h1 := hcstep; rw [hsc_rw] at h1; simp only [Core.step?, Core.exprValue?] at h1
         have := (Prod.mk.inj (Option.some.inj h0)).2; have := (Prod.mk.inj (Option.some.inj h1)).2
-        subst_vars; exact hheap, by simp [noCallFrameReturn], by have h := hexprwf; rw [hsc] at h; simp [ExprAddrWF] at h; exact h, scope, st, st,
+        subst_vars; exact hheap, henvwf, by simp [noCallFrameReturn], by have h := hexprwf; rw [hsc] at h; simp [ExprAddrWF] at h; exact h, scope, st, st,
           by rw [hsc'_expr]; simp [Flat.convertExpr, hsf'_expr]⟩
       | none =>
         -- Stepping sub-case for return (some e): same single-subexpr pattern
@@ -3906,6 +3986,10 @@ private theorem closureConvert_step_simulation
           · have hsf_eq_hp := (Prod.mk.inj (Option.some.inj hstep)).2
           have hsc_heap_hp : sc'.heap = sc_arg.heap := by simp [sc', Core.pushTrace]
           rw [hsc_heap_hp]; convert hheap_arg using 1; rw [← hsf_eq_hp]; rfl
+          constructor  -- EnvAddrWF
+          · have h1 : sc'.env = sc_arg.env := by simp [sc', Core.pushTrace]
+            have h2 : sc'.heap = sc_arg.heap := by simp [sc', Core.pushTrace]
+            rw [h1, h2]; exact _henvwf_arg
           · refine ⟨scope', st_a, st_a', ?_⟩
             have hsf'_eq := (Prod.mk.inj (Option.some.inj hstep)).2
             have hsf'_expr : sf'.expr = .«return» (some sa_flat.expr) := by rw [← hsf'_eq]; rfl
@@ -3970,7 +4054,7 @@ private theorem closureConvert_step_simulation
         rw [show sc = {sc with expr := .yield none delegate} from by cases sc; simp_all] at h0
         simp only [Core.step?] at h0
         have h1 := (Prod.mk.inj (Option.some.inj h0)).2; subst h1; exact hheap
-      exact ⟨hsf'_trace, henv', hheap', by rw [hsc'_expr]; simp [noCallFrameReturn], by simp [ExprAddrWF, ValueAddrWF], scope, st, st,
+      exact ⟨hsf'_trace, henv', hheap', henvwf, by rw [hsc'_expr]; simp [noCallFrameReturn], by simp [ExprAddrWF, ValueAddrWF], scope, st, st,
         by rw [hsc'_expr]; simp [Flat.convertExpr, Flat.convertValue, hsf'_expr]⟩
     | some e =>
       -- .yield (some e): split into value and stepping sub-cases
@@ -4024,7 +4108,7 @@ private theorem closureConvert_step_simulation
         have h0 := hstep; rw [hsf_rw] at h0; simp only [Flat.step?, Flat.exprValue?] at h0
         have h1 := hcstep; rw [hsc_rw] at h1; simp only [Core.step?, Core.exprValue?] at h1
         have := (Prod.mk.inj (Option.some.inj h0)).2; have := (Prod.mk.inj (Option.some.inj h1)).2
-        subst_vars; exact hheap, by simp [noCallFrameReturn], by have h := hexprwf; rw [hsc] at h; simp [ExprAddrWF] at h; exact h, scope, st, st,
+        subst_vars; exact hheap, henvwf, by simp [noCallFrameReturn], by have h := hexprwf; rw [hsc] at h; simp [ExprAddrWF] at h; exact h, scope, st, st,
           by rw [hsc'_expr]; simp [Flat.convertExpr, hsf'_expr]⟩
       | none =>
         -- Stepping sub-case for yield (some e): single-subexpr pattern
@@ -4070,6 +4154,10 @@ private theorem closureConvert_step_simulation
           · have hsf_eq_hp := (Prod.mk.inj (Option.some.inj hstep)).2
           have hsc_heap_hp : sc'.heap = sc_arg.heap := by simp [sc', Core.pushTrace]
           rw [hsc_heap_hp]; convert hheap_arg using 1; rw [← hsf_eq_hp]; rfl
+          constructor  -- EnvAddrWF
+          · have h1 : sc'.env = sc_arg.env := by simp [sc', Core.pushTrace]
+            have h2 : sc'.heap = sc_arg.heap := by simp [sc', Core.pushTrace]
+            rw [h1, h2]; exact _henvwf_arg
           · refine ⟨scope', st_a, st_a', ?_⟩
             have hsf'_eq := (Prod.mk.inj (Option.some.inj hstep)).2
             have hsf'_expr : sf'.expr = .yield (some sa_flat.expr) delegate := by rw [← hsf'_eq]; rfl
@@ -4129,7 +4217,7 @@ private theorem closureConvert_step_simulation
         have h0 := hstep; rw [hsf_rw] at h0; simp only [Flat.step?, Flat.exprValue?] at h0
         have h1 := hcstep; rw [hsc_rw] at h1; simp only [Core.step?, Core.exprValue?] at h1
         have := (Prod.mk.inj (Option.some.inj h0)).2; have := (Prod.mk.inj (Option.some.inj h1)).2
-        subst_vars; exact hheap, by simp [noCallFrameReturn], by have h := hexprwf; rw [hsc] at h; simp [ExprAddrWF] at h; exact h, scope, st, st,
+        subst_vars; exact hheap, henvwf, by simp [noCallFrameReturn], by have h := hexprwf; rw [hsc] at h; simp [ExprAddrWF] at h; exact h, scope, st, st,
         by rw [hsc'_expr]; simp [Flat.convertExpr, hsf'_expr]⟩
     | none =>
       -- arg' is the converted sub-expression
@@ -4190,6 +4278,10 @@ private theorem closureConvert_step_simulation
         · have hsf_eq_hp := (Prod.mk.inj (Option.some.inj hstep)).2
           have hsc_heap_hp : sc'.heap = sc_arg.heap := by simp [sc', Core.pushTrace]
           rw [hsc_heap_hp]; convert hheap_arg using 1; rw [← hsf_eq_hp]; rfl
+        constructor  -- EnvAddrWF
+        · have h1 : sc'.env = sc_arg.env := by simp [sc', Core.pushTrace]
+          have h2 : sc'.heap = sc_arg.heap := by simp [sc', Core.pushTrace]
+          rw [h1, h2]; exact _henvwf_arg
         · -- Expression correspondence
           refine ⟨scope', st_a, st_a', ?_⟩
           have hsf'_eq := (Prod.mk.inj (Option.some.inj hstep)).2
@@ -4261,7 +4353,7 @@ private theorem closureConvert_step_simulation
         rw [show sc = {sc with expr := .this} from by cases sc; simp_all] at h0
         simp only [Core.step?, hcenv] at h0
         have h1 := (Prod.mk.inj (Option.some.inj h0)).2; subst h1; exact hheap
-      exact ⟨hsf'_trace, henv', hheap', by rw [hsc'_expr]; simp [noCallFrameReturn], sorry /- ExprAddrWF -/, scope, st,
+      exact ⟨hsf'_trace, henv', hheap', henvwf, by rw [hsc'_expr]; simp [noCallFrameReturn], sorry /- ExprAddrWF -/, scope, st,
         (Flat.convertExpr (.lit cv) scope envVar envMap st).2,
         by rw [hsc'_expr]; simp [Flat.convertExpr, hsf'_expr, hfv_eq]⟩
     | none =>
@@ -4314,7 +4406,7 @@ private theorem closureConvert_step_simulation
           rw [show sc = {sc with expr := .this} from by cases sc; simp_all] at h0
           simp only [Core.step?, hcenv] at h0
           have h1 := (Prod.mk.inj (Option.some.inj h0)).2; subst h1; exact hheap
-        exact ⟨hsf'_trace, henv', hheap', by rw [hsc'_expr]; simp [noCallFrameReturn], by simp [ExprAddrWF, ValueAddrWF], scope, st, st,
+        exact ⟨hsf'_trace, henv', hheap', henvwf, by rw [hsc'_expr]; simp [noCallFrameReturn], by simp [ExprAddrWF, ValueAddrWF], scope, st, st,
           by rw [hsc'_expr]; simp [Flat.convertExpr, Flat.convertValue, hsf'_expr]⟩
       | some cv =>
         -- Core has "this" but Flat doesn't → contradiction via EnvCorr.2
