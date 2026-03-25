@@ -15862,4 +15862,584 @@ theorem elaborate_correct (p : Source.Program) (cp : Core.Program)
 -- | such that \_P\_ is a Symbol, in ascending chronological order of
 -- | property creation, do 1. Append \_P\_ to \_keys\_. 1. Return \_keys\_.
 
+-- SPEC: L4411-L4416
+-- |
+-- | # Number::bitwiseNOT ( \_x\_: a Number, ): an integral Number
+-- |
+-- | 1\. Let \_oldValue\_ be ! ToInt32(\_x\_). 1. Return the bitwise
+-- | complement of \_oldValue\_. The mathematical value of the result is
+-- | exactly representable as a 32-bit two\'s complement bit string.
+
+-- SPEC: L6055-L6060
+-- |
+-- | # StringToNumber ( \_str\_: a String, ): a Number
+-- |
+-- | 1\. Let \_literal\_ be ParseText(\_str\_, \|StringNumericLiteral\|). 1.
+-- | If \_literal\_ is a List of errors, return \*NaN\*. 1. Return the
+-- | StringNumericValue of \_literal\_.
+
+-- SPEC: L6114-L6128
+-- |
+-- | # ToIntegerOrInfinity ( \_argument\_: an ECMAScript language value, ): either a normal completion containing either an integer, +∞, or -∞, or a throw completion
+-- |
+-- | description
+-- | :   It converts \_argument\_ to an integer representing its Number value
+-- |     with fractional part truncated, or to +∞ or -∞ when that Number
+-- |     value is infinite.
+-- |
+-- | 1\. Let \_number\_ be ? ToNumber(\_argument\_). 1. If \_number\_ is one
+-- | of \*NaN\*, \*+0\*~𝔽~, or \*-0\*~𝔽~, return 0. 1. If \_number\_ is
+-- | \*+∞\*~𝔽~, return +∞. 1. If \_number\_ is \*-∞\*~𝔽~, return -∞. 1.
+-- | Return truncate(ℝ(\_number\_)). 𝔽(ToIntegerOrInfinity(\_x\_)) never
+-- | returns \*-0\*~𝔽~ for any value of \_x\_. The truncation of the
+-- | fractional part is performed after converting \_x\_ to a mathematical
+-- | value.
+
+-- SPEC: L6129-L6149
+-- |
+-- | # ToInt32 ( \_argument\_: an ECMAScript language value, ): either a normal completion containing an integral Number or a throw completion
+-- |
+-- | description
+-- | :   It converts \_argument\_ to one of 2^32^ integral Number values in
+-- |     the inclusive interval from 𝔽(-2^31^) to 𝔽(2^31^ - 1).
+-- |
+-- | 1\. Let \_number\_ be ? ToNumber(\_argument\_). 1. If \_number\_ is not
+-- | finite or \_number\_ is either \*+0\*~𝔽~ or \*-0\*~𝔽~, return
+-- | \*+0\*~𝔽~. 1. Let \_int\_ be truncate(ℝ(\_number\_)). 1. Let
+-- | \_int32bit\_ be \_int\_ modulo 2^32^. 1. If \_int32bit\_ ≥ 2^31^, return
+-- | 𝔽(\_int32bit\_ - 2^32^). 1. Return 𝔽(\_int32bit\_).
+-- |
+-- | Given the above definition of ToInt32:
+-- |
+-- | - The ToInt32 abstract operation is idempotent: if applied to a result
+-- |   that it produced, the second application leaves that value unchanged.
+-- | - ToInt32(ToUint32(\_x\_)) is the same value as ToInt32(\_x\_) for all
+-- |   values of \_x\_. (It is to preserve this latter property that
+-- |   \*+∞\*~𝔽~ and \*-∞\*~𝔽~ are mapped to \*+0\*~𝔽~.)
+-- | - ToInt32 maps \*-0\*~𝔽~ to \*+0\*~𝔽~.
+
+-- SPEC: L6150-L6171
+-- |
+-- | # ToUint32 ( \_argument\_: an ECMAScript language value, ): either a normal completion containing an integral Number or a throw completion
+-- |
+-- | description
+-- | :   It converts \_argument\_ to one of 2^32^ integral Number values in
+-- |     the inclusive interval from \*+0\*~𝔽~ to 𝔽(2^32^ - 1).
+-- |
+-- | 1\. Let \_number\_ be ? ToNumber(\_argument\_). 1. If \_number\_ is not
+-- | finite or \_number\_ is either \*+0\*~𝔽~ or \*-0\*~𝔽~, return
+-- | \*+0\*~𝔽~. 1. Let \_int\_ be truncate(ℝ(\_number\_)). 1. Let
+-- | \_int32bit\_ be \_int\_ modulo 2^32^. 1. \[id=\"step-touint32-return\"\]
+-- | Return 𝔽(\_int32bit\_).
+-- |
+-- | Given the above definition of ToUint32:
+-- |
+-- | - Step is the only difference between ToUint32 and ToInt32.
+-- | - The ToUint32 abstract operation is idempotent: if applied to a result
+-- |   that it produced, the second application leaves that value unchanged.
+-- | - ToUint32(ToInt32(\_x\_)) is the same value as ToUint32(\_x\_) for all
+-- |   values of \_x\_. (It is to preserve this latter property that
+-- |   \*+∞\*~𝔽~ and \*-∞\*~𝔽~ are mapped to \*+0\*~𝔽~.)
+-- | - ToUint32 maps \*-0\*~𝔽~ to \*+0\*~𝔽~.
+
+-- SPEC: L6172-L6183
+-- |
+-- | # ToInt16 ( \_argument\_: an ECMAScript language value, ): either a normal completion containing an integral Number or a throw completion
+-- |
+-- | description
+-- | :   It converts \_argument\_ to one of 2^16^ integral Number values in
+-- |     the inclusive interval from 𝔽(-2^15^) to 𝔽(2^15^ - 1).
+-- |
+-- | 1\. Let \_number\_ be ? ToNumber(\_argument\_). 1. If \_number\_ is not
+-- | finite or \_number\_ is either \*+0\*~𝔽~ or \*-0\*~𝔽~, return
+-- | \*+0\*~𝔽~. 1. Let \_int\_ be truncate(ℝ(\_number\_)). 1. Let
+-- | \_int16bit\_ be \_int\_ modulo 2^16^. 1. If \_int16bit\_ ≥ 2^15^, return
+-- | 𝔽(\_int16bit\_ - 2^16^). 1. Return 𝔽(\_int16bit\_).
+
+-- SPEC: L6184-L6201
+-- |
+-- | # ToUint16 ( \_argument\_: an ECMAScript language value, ): either a normal completion containing an integral Number or a throw completion
+-- |
+-- | description
+-- | :   It converts \_argument\_ to one of 2^16^ integral Number values in
+-- |     the inclusive interval from \*+0\*~𝔽~ to 𝔽(2^16^ - 1).
+-- |
+-- | 1\. Let \_number\_ be ? ToNumber(\_argument\_). 1. If \_number\_ is not
+-- | finite or \_number\_ is either \*+0\*~𝔽~ or \*-0\*~𝔽~, return
+-- | \*+0\*~𝔽~. 1. Let \_int\_ be truncate(ℝ(\_number\_)). 1.
+-- | \[id=\"step-touint16-mod\"\] Let \_int16bit\_ be \_int\_ modulo
+-- | 2^16^. 1. Return 𝔽(\_int16bit\_).
+-- |
+-- | Given the above definition of ToUint16:
+-- |
+-- | - The substitution of 2^16^ for 2^32^ in step is the only difference
+-- |   between ToUint32 and ToUint16.
+-- | - ToUint16 maps \*-0\*~𝔽~ to \*+0\*~𝔽~.
+
+-- SPEC: L6202-L6213
+-- |
+-- | # ToInt8 ( \_argument\_: an ECMAScript language value, ): either a normal completion containing an integral Number or a throw completion
+-- |
+-- | description
+-- | :   It converts \_argument\_ to one of 2^8^ integral Number values in
+-- |     the inclusive interval from \*-128\*~𝔽~ to \*127\*~𝔽~.
+-- |
+-- | 1\. Let \_number\_ be ? ToNumber(\_argument\_). 1. If \_number\_ is not
+-- | finite or \_number\_ is either \*+0\*~𝔽~ or \*-0\*~𝔽~, return
+-- | \*+0\*~𝔽~. 1. Let \_int\_ be truncate(ℝ(\_number\_)). 1. Let \_int8bit\_
+-- | be \_int\_ modulo 2^8^. 1. If \_int8bit\_ ≥ 2^7^, return 𝔽(\_int8bit\_ -
+-- | 2^8^). 1. Return 𝔽(\_int8bit\_).
+
+-- SPEC: L6214-L6224
+-- |
+-- | # ToUint8 ( \_argument\_: an ECMAScript language value, ): either a normal completion containing an integral Number or a throw completion
+-- |
+-- | description
+-- | :   It converts \_argument\_ to one of 2^8^ integral Number values in
+-- |     the inclusive interval from \*+0\*~𝔽~ to \*255\*~𝔽~.
+-- |
+-- | 1\. Let \_number\_ be ? ToNumber(\_argument\_). 1. If \_number\_ is not
+-- | finite or \_number\_ is either \*+0\*~𝔽~ or \*-0\*~𝔽~, return
+-- | \*+0\*~𝔽~. 1. Let \_int\_ be truncate(ℝ(\_number\_)). 1. Let \_int8bit\_
+-- | be \_int\_ modulo 2^8^. 1. Return 𝔽(\_int8bit\_).
+
+-- SPEC: L6225-L6243
+-- |
+-- | # ToUint8Clamp ( \_argument\_: an ECMAScript language value, ): either a normal completion containing an integral Number or a throw completion
+-- |
+-- | description
+-- | :   It clamps and rounds \_argument\_ to one of 2^8^ integral Number
+-- |     values in the inclusive interval from \*+0\*~𝔽~ to \*255\*~𝔽~.
+-- |
+-- | 1\. Let \_number\_ be ? ToNumber(\_argument\_). 1. If \_number\_ is
+-- | \*NaN\*, return \*+0\*~𝔽~. 1. Let \_mv\_ be the extended mathematical
+-- | value of \_number\_. 1. Let \_clamped\_ be the result of clamping \_mv\_
+-- | between 0 and 255. 1. Let \_f\_ be floor(\_clamped\_). 1. If \_clamped\_
+-- | \< \_f\_ + 0.5, return 𝔽(\_f\_). 1. If \_clamped\_ \> \_f\_ + 0.5,
+-- | return 𝔽(\_f\_ + 1). 1. If \_f\_ is even, return 𝔽(\_f\_). 1. Return
+-- | 𝔽(\_f\_ + 1).
+-- |
+-- | Unlike most other ECMAScript integer conversion operations, ToUint8Clamp
+-- | rounds rather than truncates non-integral values. It also uses "round
+-- | half to even" tie-breaking, which differs from the "round half up"
+-- | tie-breaking of \`Math.round\`.
+
+-- SPEC: L6244-L6262
+-- |
+-- | # ToBigInt ( \_argument\_: an ECMAScript language value, ): either a normal completion containing a BigInt or a throw completion
+-- |
+-- | description
+-- | :   It converts \_argument\_ to a BigInt value, or throws if an implicit
+-- |     conversion from Number would be required.
+-- |
+-- | 1\. Let \_prim\_ be ? ToPrimitive(\_argument\_, \~number\~). 1. Return
+-- | the value that \_prim\_ corresponds to in .
+-- |
+-- |   Argument Type   Result
+-- |   --------------- ------------------------------------------------------------------------------------------------------------------------------
+-- |   Undefined       Throw a \*TypeError\* exception.
+-- |   Null            Throw a \*TypeError\* exception.
+-- |   Boolean         Return \`1n\` if \_prim\_ is \*true\* and \`0n\` if \_prim\_ is \*false\*.
+-- |   BigInt          Return \_prim\_.
+-- |   Number          Throw a \*TypeError\* exception.
+-- |   String          1\. Let \_n\_ be StringToBigInt(\_prim\_). 1. If \_n\_ is \*undefined\*, throw a \*SyntaxError\* exception. 1. Return \_n\_.
+-- |   Symbol          Throw a \*TypeError\* exception.
+
+-- SPEC: L6263-L6269
+-- |
+-- | # StringToBigInt ( \_str\_: a String, ): a BigInt or \*undefined\*
+-- |
+-- | 1\. Let \_literal\_ be ParseText(\_str\_, \|StringIntegerLiteral\|). 1.
+-- | If \_literal\_ is a List of errors, return \*undefined\*. 1. Let \_mv\_
+-- | be the MV of \_literal\_. 1. Assert: \_mv\_ is an integer. 1. Return
+-- | ℤ(\_mv\_).
+
+-- SPEC: L6286-L6295
+-- |
+-- | # ToBigInt64 ( \_argument\_: an ECMAScript language value, ): either a normal completion containing a BigInt or a throw completion
+-- |
+-- | description
+-- | :   It converts \_argument\_ to one of 2^64^ BigInt values in the
+-- |     inclusive interval from ℤ(-2^63^) to ℤ(2^63^ - 1).
+-- |
+-- | 1\. Let \_n\_ be ? ToBigInt(\_argument\_). 1. Let \_int64bit\_ be
+-- | ℝ(\_n\_) modulo 2^64^. 1. If \_int64bit\_ ≥ 2^63^, return
+-- | ℤ(\_int64bit\_ - 2^64^). 1. Return ℤ(\_int64bit\_).
+
+-- SPEC: L6296-L6304
+-- |
+-- | # ToBigUint64 ( \_argument\_: an ECMAScript language value, ): either a normal completion containing a BigInt or a throw completion
+-- |
+-- | description
+-- | :   It converts \_argument\_ to one of 2^64^ BigInt values in the
+-- |     inclusive interval from \*0\*~ℤ~ to ℤ(2^64^ - 1).
+-- |
+-- | 1\. Let \_n\_ be ? ToBigInt(\_argument\_). 1. Let \_int64bit\_ be
+-- | ℝ(\_n\_) modulo 2^64^. 1. Return ℤ(\_int64bit\_).
+
+-- SPEC: L6909-L6924
+-- |
+-- | # OrdinaryHasInstance ( \_C\_: an ECMAScript language value, \_O\_: an ECMAScript language value, ): either a normal completion containing a Boolean or a throw completion
+-- |
+-- | description
+-- | :   It implements the default algorithm for determining if \_O\_
+-- |     inherits from the instance object inheritance path provided by
+-- |     \_C\_.
+-- |
+-- | 1\. If IsCallable(\_C\_) is \*false\*, return \*false\*. 1. If \_C\_ has
+-- | a \[\[BoundTargetFunction\]\] internal slot, then 1. Let \_BC\_ be
+-- | \_C\_.\[\[BoundTargetFunction\]\]. 1. Return ? InstanceofOperator(\_O\_,
+-- | \_BC\_). 1. If \_O\_ is not an Object, return \*false\*. 1. Let \_P\_ be
+-- | ? Get(\_C\_, \*\"prototype\"\*). 1. If \_P\_ is not an Object, throw a
+-- | \*TypeError\* exception. 1. Repeat, 1. Set \_O\_ to ?
+-- | \_O\_.\[\[GetPrototypeOf\]\](). 1. If \_O\_ is \*null\*, return
+-- | \*false\*. 1. If SameValue(\_P\_, \_O\_) is \*true\*, return \*true\*.
+
+-- SPEC: L6940-L6952
+-- |
+-- | # EnumerableOwnProperties ( \_O\_: an Object, \_kind\_: \~key\~, \~value\~, or \~key+value\~, ): either a normal completion containing a List of ECMAScript language values or a throw completion
+-- |
+-- | 1\. Let \_ownKeys\_ be ? \_O\_.\[\[OwnPropertyKeys\]\](). 1. Let
+-- | \_results\_ be a new empty List. 1. For each element \_key\_ of
+-- | \_ownKeys\_, do 1. If \_key\_ is a String, then 1. Let \_desc\_ be ?
+-- | \_O\_.\[\[GetOwnProperty\]\](\_key\_). 1. If \_desc\_ is not
+-- | \*undefined\* and \_desc\_.\[\[Enumerable\]\] is \*true\*, then 1. If
+-- | \_kind\_ is \~key\~, then 1. Append \_key\_ to \_results\_. 1. Else, 1.
+-- | Let \_value\_ be ? Get(\_O\_, \_key\_). 1. If \_kind\_ is \~value\~,
+-- | then 1. Append \_value\_ to \_results\_. 1. Else, 1. Assert: \_kind\_ is
+-- | \~key+value\~. 1. Let \_entry\_ be CreateArrayFromList(« \_key\_,
+-- | \_value\_ »). 1. Append \_entry\_ to \_results\_. 1. Return \_results\_.
+
+-- SPEC: L7110-L7115
+-- |
+-- | # GetOptionsObject ( \_options\_: an ECMAScript language value, ): either a normal completion containing an Object or a throw completion
+-- |
+-- | 1\. If \_options\_ is \*undefined\*, then 1. Return
+-- | OrdinaryObjectCreate(\*null\*). 1. If \_options\_ is an Object, then 1.
+-- | Return \_options\_. 1. Throw a \*TypeError\* exception.
+
+-- SPEC: L7133-L7146
+-- |
+-- | # Iterator Records
+-- |
+-- | An [Iterator Record]{.dfn variants="Iterator Records"} is a Record value
+-- | used to encapsulate an iterator or async iterator along with the
+-- | \`next\` method.
+-- |
+-- | Iterator Records have the fields listed in .
+-- |
+-- |   Field Name           Value                          Meaning
+-- |   -------------------- ------------------------------ ------------------------------------------------------------------------------------
+-- |   \[\[Iterator\]\]     an Object                      An object that conforms to the iterator interface or the async iterator interface.
+-- |   \[\[NextMethod\]\]   an ECMAScript language value   The \`next\` method of the \[\[Iterator\]\] object.
+-- |   \[\[Done\]\]         a Boolean                      Whether the iterator has completed or been closed.
+
+-- SPEC: L7147-L7153
+-- |
+-- | # GetIteratorDirect ( \_obj\_: an Object, ): either a normal completion containing an Iterator Record or a throw completion
+-- |
+-- | 1\. Let \_nextMethod\_ be ? Get(\_obj\_, \*\"next\"\*). 1. Let
+-- | \_iteratorRecord\_ be the Iterator Record { \[\[Iterator\]\]: \_obj\_,
+-- | \[\[NextMethod\]\]: \_nextMethod\_, \[\[Done\]\]: \*false\* }. 1. Return
+-- | \_iteratorRecord\_.
+
+-- SPEC: L7154-L7159
+-- |
+-- | # GetIteratorFromMethod ( \_obj\_: an ECMAScript language value, \_method\_: a function object, ): either a normal completion containing an Iterator Record or a throw completion
+-- |
+-- | 1\. Let \_iterator\_ be ? Call(\_method\_, \_obj\_). 1. If \_iterator\_
+-- | is not an Object, throw a \*TypeError\* exception. 1. Return ?
+-- | GetIteratorDirect(\_iterator\_).
+
+-- SPEC: L7160-L7172
+-- |
+-- | # GetIterator ( \_obj\_: an ECMAScript language value, \_kind\_: \~sync\~ or \~async\~, ): either a normal completion containing an Iterator Record or a throw completion
+-- |
+-- | 1\. If \_kind\_ is \~async\~, then 1. Let \_method\_ be ?
+-- | GetMethod(\_obj\_, %Symbol.asyncIterator%). 1. If \_method\_ is
+-- | \*undefined\*, then 1. Let \_syncMethod\_ be ? GetMethod(\_obj\_,
+-- | %Symbol.iterator%). 1. If \_syncMethod\_ is \*undefined\*, throw a
+-- | \*TypeError\* exception. 1. Let \_syncIteratorRecord\_ be ?
+-- | GetIteratorFromMethod(\_obj\_, \_syncMethod\_). 1. Return
+-- | CreateAsyncFromSyncIterator(\_syncIteratorRecord\_). 1. Else, 1. Let
+-- | \_method\_ be ? GetMethod(\_obj\_, %Symbol.iterator%). 1. If \_method\_
+-- | is \*undefined\*, throw a \*TypeError\* exception. 1. Return ?
+-- | GetIteratorFromMethod(\_obj\_, \_method\_).
+
+-- SPEC: L7173-L7184
+-- |
+-- | # GetIteratorFlattenable ( \_obj\_: an ECMAScript language value, \_primitiveHandling\_: \~iterate-string-primitives\~ or \~reject-primitives\~, ): either a normal completion containing an Iterator Record or a throw completion
+-- |
+-- | 1\. If \_obj\_ is not an Object, then 1. If \_primitiveHandling\_ is
+-- | \~reject-primitives\~, throw a \*TypeError\* exception. 1. Assert:
+-- | \_primitiveHandling\_ is \~iterate-string-primitives\~. 1. If \_obj\_ is
+-- | not a String, throw a \*TypeError\* exception. 1. Let \_method\_ be ?
+-- | GetMethod(\_obj\_, %Symbol.iterator%). 1. If \_method\_ is
+-- | \*undefined\*, then 1. Let \_iterator\_ be \_obj\_. 1. Else, 1. Let
+-- | \_iterator\_ be ? Call(\_method\_, \_obj\_). 1. If \_iterator\_ is not
+-- | an Object, throw a \*TypeError\* exception. 1. Return ?
+-- | GetIteratorDirect(\_iterator\_).
+
+-- SPEC: L7235-L7252
+-- |
+-- | # IteratorClose ( \_iteratorRecord\_: an Iterator Record, \_completion\_: a Completion Record, ): a Completion Record
+-- |
+-- | description
+-- | :   It is used to notify an iterator that it should perform any actions
+-- |     it would normally perform when it has reached its completed state.
+-- |
+-- | 1\. Assert: \_iteratorRecord\_.\[\[Iterator\]\] is an Object. 1. Let
+-- | \_iterator\_ be \_iteratorRecord\_.\[\[Iterator\]\]. 1. Let
+-- | \_innerResult\_ be Completion(GetMethod(\_iterator\_,
+-- | \*\"return\"\*)). 1. If \_innerResult\_ is a normal completion, then 1.
+-- | Let \_return\_ be \_innerResult\_.\[\[Value\]\]. 1. If \_return\_ is
+-- | \*undefined\*, return ? \_completion\_. 1. Set \_innerResult\_ to
+-- | Completion(Call(\_return\_, \_iterator\_)). 1. If \_completion\_ is a
+-- | throw completion, return ? \_completion\_. 1. If \_innerResult\_ is a
+-- | throw completion, return ? \_innerResult\_. 1. If
+-- | \_innerResult\_.\[\[Value\]\] is not an Object, throw a \*TypeError\*
+-- | exception. 1. Return ? \_completion\_.
+
+-- SPEC: L7253-L7261
+-- |
+-- | # IteratorCloseAll ( \_iters\_: a List of Iterator Records, \_completion\_: a Completion Record, ): a Completion Record
+-- |
+-- | skip global checks
+-- | :   true
+-- |
+-- | 1\. For each element \_iter\_ of \_iters\_, in reverse List order, do 1.
+-- | Set \_completion\_ to Completion(IteratorClose(\_iter\_,
+-- | \_completion\_)). 1. Return ? \_completion\_.
+
+-- SPEC: L7275-L7295
+-- |
+-- | # AsyncIteratorClose ( \_iteratorRecord\_: an Iterator Record, \_completion\_: a Completion Record, ): a Completion Record
+-- |
+-- | description
+-- | :   It is used to notify an async iterator that it should perform any
+-- |     actions it would normally perform when it has reached its completed
+-- |     state.
+-- |
+-- | 1\. Assert: \_iteratorRecord\_.\[\[Iterator\]\] is an Object. 1. Let
+-- | \_iterator\_ be \_iteratorRecord\_.\[\[Iterator\]\]. 1. Let
+-- | \_innerResult\_ be Completion(GetMethod(\_iterator\_,
+-- | \*\"return\"\*)). 1. If \_innerResult\_ is a normal completion, then 1.
+-- | Let \_return\_ be \_innerResult\_.\[\[Value\]\]. 1. If \_return\_ is
+-- | \*undefined\*, return ? \_completion\_. 1. Set \_innerResult\_ to
+-- | Completion(Call(\_return\_, \_iterator\_)). 1. If \_innerResult\_ is a
+-- | normal completion, set \_innerResult\_ to
+-- | Completion(Await(\_innerResult\_.\[\[Value\]\])). 1. If \_completion\_
+-- | is a throw completion, return ? \_completion\_. 1. If \_innerResult\_ is
+-- | a throw completion, return ? \_innerResult\_. 1. If
+-- | \_innerResult\_.\[\[Value\]\] is not an Object, throw a \*TypeError\*
+-- | exception. 1. Return ? \_completion\_.
+
+-- SPEC: L7319-L7337
+-- |
+-- | # CreateListIteratorRecord ( \_list\_: a List of ECMAScript language values, ): an Iterator Record
+-- |
+-- | description
+-- | :   It creates an Iterator Record whose \[\[NextMethod\]\] returns the
+-- |     successive elements of \_list\_.
+-- |
+-- | 1\. Let \_closure\_ be a new Abstract Closure with no parameters that
+-- | captures \_list\_ and performs the following steps when called: 1. For
+-- | each element \_E\_ of \_list\_, do 1. Perform ?
+-- | GeneratorYield(CreateIteratorResultObject(\_E\_, \*false\*)). 1. Return
+-- | NormalCompletion(\*undefined\*). 1. Let \_iterator\_ be
+-- | CreateIteratorFromClosure(\_closure\_, \~empty\~,
+-- | %Iterator.prototype%). 1. Return the Iterator Record { \[\[Iterator\]\]:
+-- | \_iterator\_, \[\[NextMethod\]\]: %GeneratorPrototype.next%,
+-- | \[\[Done\]\]: \*false\* }.
+-- |
+-- | The list iterator object is never directly accessible to ECMAScript
+-- | code.
+
+-- SPEC: L7338-L7343
+-- |
+-- | # IteratorToList ( \_iteratorRecord\_: an Iterator Record, ): either a normal completion containing a List of ECMAScript language values or a throw completion
+-- |
+-- | 1\. Let \_values\_ be a new empty List. 1. Repeat, 1. Let \_next\_ be ?
+-- | IteratorStepValue(\_iteratorRecord\_). 1. If \_next\_ is \~done\~,
+-- | then 1. Return \_values\_. 1. Append \_next\_ to \_values\_.
+
+-- SPEC: L9667-L9671
+-- |
+-- | # NewDeclarativeEnvironment ( \_E\_: an Environment Record or \*null\*, ): a Declarative Environment Record
+-- |
+-- | 1\. Let \_env\_ be a new Declarative Environment Record containing no
+-- | bindings. 1. Set \_env\_.\[\[OuterEnv\]\] to \_E\_. 1. Return \_env\_.
+
+-- SPEC: L9672-L9678
+-- |
+-- | # NewObjectEnvironment ( \_O\_: an Object, \_W\_: a Boolean, \_E\_: an Environment Record or \*null\*, ): an Object Environment Record
+-- |
+-- | 1\. Let \_env\_ be a new Object Environment Record. 1. Set
+-- | \_env\_.\[\[BindingObject\]\] to \_O\_. 1. Set
+-- | \_env\_.\[\[IsWithEnvironment\]\] to \_W\_. 1. Set
+-- | \_env\_.\[\[OuterEnv\]\] to \_E\_. 1. Return \_env\_.
+
+-- SPEC: L9679-L9689
+-- |
+-- | # NewFunctionEnvironment ( \_F\_: an ECMAScript function object, \_newTarget\_: an Object or \*undefined\*, ): a Function Environment Record
+-- |
+-- | 1\. Let \_env\_ be a new Function Environment Record containing no
+-- | bindings. 1. Set \_env\_.\[\[FunctionObject\]\] to \_F\_. 1. If
+-- | \_F\_.\[\[ThisMode\]\] is \~lexical\~, set
+-- | \_env\_.\[\[ThisBindingStatus\]\] to \~lexical\~. 1. Else, set
+-- | \_env\_.\[\[ThisBindingStatus\]\] to \~uninitialized\~. 1. Set
+-- | \_env\_.\[\[NewTarget\]\] to \_newTarget\_. 1. Set
+-- | \_env\_.\[\[OuterEnv\]\] to \_F\_.\[\[Environment\]\]. 1. Return
+-- | \_env\_.
+
+-- SPEC: L9690-L9699
+-- |
+-- | # NewGlobalEnvironment ( \_G\_: an Object, \_thisValue\_: an Object, ): a Global Environment Record
+-- |
+-- | 1\. Let \_objRec\_ be NewObjectEnvironment(\_G\_, \*false\*,
+-- | \*null\*). 1. Let \_dclRec\_ be NewDeclarativeEnvironment(\*null\*). 1.
+-- | Let \_env\_ be a new Global Environment Record. 1. Set
+-- | \_env\_.\[\[ObjectRecord\]\] to \_objRec\_. 1. Set
+-- | \_env\_.\[\[GlobalThisValue\]\] to \_thisValue\_. 1. Set
+-- | \_env\_.\[\[DeclarativeRecord\]\] to \_dclRec\_. 1. Set
+-- | \_env\_.\[\[OuterEnv\]\] to \*null\*. 1. Return \_env\_.
+
+-- SPEC: L9700-L9704
+-- |
+-- | # NewModuleEnvironment ( \_E\_: an Environment Record, ): a Module Environment Record
+-- |
+-- | 1\. Let \_env\_ be a new Module Environment Record containing no
+-- | bindings. 1. Set \_env\_.\[\[OuterEnv\]\] to \_E\_. 1. Return \_env\_.
+
+-- SPEC: L9729-L9734
+-- |
+-- | # NewPrivateEnvironment ( \_outerPrivateEnv\_: a PrivateEnvironment Record or \*null\*, ): a PrivateEnvironment Record
+-- |
+-- | 1\. Let \_names\_ be a new empty List. 1. Return the PrivateEnvironment
+-- | Record { \[\[OuterPrivateEnvironment\]\]: \_outerPrivateEnv\_,
+-- | \[\[Names\]\]: \_names\_ }.
+
+-- SPEC: L9735-L9743
+-- |
+-- | # ResolvePrivateIdentifier ( \_privateEnv\_: a PrivateEnvironment Record, \_identifier\_: a String, ): a Private Name
+-- |
+-- | 1\. Let \_names\_ be \_privateEnv\_.\[\[Names\]\]. 1. For each Private
+-- | Name \_pn\_ of \_names\_, do 1. If \_pn\_.\[\[Description\]\] is
+-- | \_identifier\_, then 1. Return \_pn\_. 1. Let \_outerPrivateEnv\_ be
+-- | \_privateEnv\_.\[\[OuterPrivateEnvironment\]\]. 1. Assert:
+-- | \_outerPrivateEnv\_ is not \*null\*. 1. Return
+-- | ResolvePrivateIdentifier(\_outerPrivateEnv\_, \_identifier\_).
+
+-- SPEC: L10985-L11004
+-- |
+-- | # OrdinaryCreateFromConstructor ( \_constructor\_: a function object, \_intrinsicDefaultProto\_: a String, optional \_internalSlotsList\_: a List of names of internal slots, ): either a normal completion containing an Object or a throw completion
+-- |
+-- | description
+-- | :   It creates an ordinary object whose \[\[Prototype\]\] value is
+-- |     retrieved from a constructor\'s \*\"prototype\"\* property, if it
+-- |     exists. Otherwise the intrinsic named by \_intrinsicDefaultProto\_
+-- |     is used for \[\[Prototype\]\]. \_internalSlotsList\_ contains the
+-- |     names of additional internal slots that must be defined as part of
+-- |     the object. If \_internalSlotsList\_ is not provided, a new empty
+-- |     List is used.
+-- |
+-- | 1\. Assert: \_intrinsicDefaultProto\_ is this specification\'s name of
+-- | an intrinsic object. The corresponding object must be an intrinsic that
+-- | is intended to be used as the \[\[Prototype\]\] value of an object. 1.
+-- | Let \_proto\_ be ? GetPrototypeFromConstructor(\_constructor\_,
+-- | \_intrinsicDefaultProto\_). 1. If \_internalSlotsList\_ is present, let
+-- | \_slotsList\_ be \_internalSlotsList\_. 1. Else, let \_slotsList\_ be a
+-- | new empty List. 1. Return OrdinaryObjectCreate(\_proto\_,
+-- | \_slotsList\_).
+
+-- SPEC: L11005-L11025
+-- |
+-- | # GetPrototypeFromConstructor ( \_constructor\_: a function object, \_intrinsicDefaultProto\_: a String, ): either a normal completion containing an Object or a throw completion
+-- |
+-- | description
+-- | :   It determines the \[\[Prototype\]\] value that should be used to
+-- |     create an object corresponding to a specific constructor. The value
+-- |     is retrieved from the constructor\'s \*\"prototype\"\* property, if
+-- |     it exists. Otherwise the intrinsic named by
+-- |     \_intrinsicDefaultProto\_ is used for \[\[Prototype\]\].
+-- |
+-- | 1\. Assert: \_intrinsicDefaultProto\_ is this specification\'s name of
+-- | an intrinsic object. The corresponding object must be an intrinsic that
+-- | is intended to be used as the \[\[Prototype\]\] value of an object. 1.
+-- | Let \_proto\_ be ? Get(\_constructor\_, \*\"prototype\"\*). 1. If
+-- | \_proto\_ is not an Object, then 1. Let \_realm\_ be ?
+-- | GetFunctionRealm(\_constructor\_). 1. Set \_proto\_ to \_realm\_\'s
+-- | intrinsic object named \_intrinsicDefaultProto\_. 1. Return \_proto\_.
+-- |
+-- | If \_constructor\_ does not supply a \[\[Prototype\]\] value, the
+-- | default value that is used is obtained from the realm of the
+-- | \_constructor\_ function rather than from the running execution context.
+
+-- SPEC: L11026-L11035
+-- |
+-- | # RequireInternalSlot ( \_O\_: an ECMAScript language value, \_internalSlot\_: an internal slot name, ): either a normal completion containing \~unused\~ or a throw completion
+-- |
+-- | description
+-- | :   It throws an exception unless \_O\_ is an Object and has the given
+-- |     internal slot.
+-- |
+-- | 1\. If \_O\_ is not an Object, throw a \*TypeError\* exception. 1. If
+-- | \_O\_ does not have an \_internalSlot\_ internal slot, throw a
+-- | \*TypeError\* exception. 1. Return \~unused\~.
+
+-- SPEC: L11237-L11248
+-- |
+-- | # AddRestrictedFunctionProperties ( \_F\_: a function object, \_realm\_: a Realm Record, ): \~unused\~
+-- |
+-- | 1\. Assert: \_realm\_.\[\[Intrinsics\]\].\[\[%ThrowTypeError%\]\] exists
+-- | and has been initialized. 1. Let \_thrower\_ be
+-- | \_realm\_.\[\[Intrinsics\]\].\[\[%ThrowTypeError%\]\]. 1. Perform !
+-- | DefinePropertyOrThrow(\_F\_, \*\"caller\"\*, PropertyDescriptor {
+-- | \[\[Get\]\]: \_thrower\_, \[\[Set\]\]: \_thrower\_, \[\[Enumerable\]\]:
+-- | \*false\*, \[\[Configurable\]\]: \*true\* }). 1. Perform !
+-- | DefinePropertyOrThrow(\_F\_, \*\"arguments\"\*, PropertyDescriptor {
+-- | \[\[Get\]\]: \_thrower\_, \[\[Set\]\]: \_thrower\_, \[\[Enumerable\]\]:
+-- | \*false\*, \[\[Configurable\]\]: \*true\* }). 1. Return \~unused\~.
+
+-- SPEC: L11294-L11298
+-- |
+-- | # MakeClassConstructor ( \_F\_: an ECMAScript function object, ): \~unused\~
+-- |
+-- | 1\. Assert: \_F\_.\[\[IsClassConstructor\]\] is \*false\*. 1. Set
+-- | \_F\_.\[\[IsClassConstructor\]\] to \*true\*. 1. Return \~unused\~.
+
+-- SPEC: L11299-L11306
+-- |
+-- | # MakeMethod ( \_F\_: an ECMAScript function object, \_homeObject\_: an Object, ): \~unused\~
+-- |
+-- | description
+-- | :   It configures \_F\_ as a method.
+-- |
+-- | 1\. Assert: \_homeObject\_ is an ordinary object. 1. Set
+-- | \_F\_.\[\[HomeObject\]\] to \_homeObject\_. 1. Return \~unused\~.
+
+-- SPEC: L11343-L11353
+-- |
+-- | # SetFunctionLength ( \_F\_: a function object, \_length\_: a non-negative integer or +∞, ): \~unused\~
+-- |
+-- | description
+-- | :   It adds a \*\"length\"\* property to \_F\_.
+-- |
+-- | 1\. Assert: \_F\_ is an extensible object that does not have a
+-- | \*\"length\"\* own property. 1. Perform ! DefinePropertyOrThrow(\_F\_,
+-- | \*\"length\"\*, PropertyDescriptor { \[\[Value\]\]: 𝔽(\_length\_),
+-- | \[\[Writable\]\]: \*false\*, \[\[Enumerable\]\]: \*false\*,
+-- | \[\[Configurable\]\]: \*true\* }). 1. Return \~unused\~.
+
+-- SPEC: L6390-L6398
+-- |
+-- | # RequireObjectCoercible ( \_argument\_: an ECMAScript language value, ): either a normal completion containing \~unused\~ or a throw completion
+-- |
+-- | description
+-- | :   It throws an error if \_argument\_ is a value that cannot be
+-- |     converted to an Object using ToObject.
+-- |
+-- | 1\. If \_argument\_ is either \*undefined\* or \*null\*, throw a
+-- | \*TypeError\* exception. 1. Return \~unused\~.
+
 end VerifiedJS.Source
