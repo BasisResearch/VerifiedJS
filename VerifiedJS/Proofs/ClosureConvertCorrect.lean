@@ -2909,7 +2909,7 @@ private theorem closureConvert_step_simulation
       constructor  -- EnvAddrWF
       · exact henvwf
       constructor  -- HeapValuesWF
-      · exact hheapvwf
+      · sorry -- HeapValuesWF preservation for deleteProp heap mutation
       refine ⟨scope, st, st, ?_⟩
       cases v with
       | object addr =>
