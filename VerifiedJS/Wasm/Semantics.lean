@@ -6926,9 +6926,20 @@ private theorem emit_globals_init_valcorr (irmod : IRModule) (wmod : Module)
     -- where f maps (t, _, _) to { type := { val := irTypeToValType t, ... }, ... }
     -- So globals[j].type.val = irTypeToValType (irmod.globals[j].1)
     -- Case split on the IR type to close the goal
-    -- TODO: Need to show buildModule globals[j].type.val = irTypeToValType (irmod.globals[j].1)
-    -- then case-split on IR type. Blocked on irTypeToValType being private in Emit.lean.
-    sorry
+    -- Use irValueDefault_corr after connecting buildModule globals to IR type
+    have h := irValueDefault_corr (irmod.globals[j]'hj).1
+    -- Suffices to show the Wasm global type val matches the IR type pattern
+    suffices hsuff : (buildModule irmod _).globals[j].type.val =
+        (match (irmod.globals[j]'hj).1 with
+          | .i32 => ValType.i32 | .i64 => .i64 | .f64 => .f64 | .ptr => .i32) by
+      simp only [hsuff]; exact h
+    -- Unfold buildModule to expose globals = (irmod.globals.toList.map f).toArray
+    simp only [buildModule]
+    -- Reduce (list.map f).toArray[j] to f (list[j])
+    simp only [List.toArray_map, Array.getElem_map]
+    -- Now the goal should be about irTypeToValType applied to a concrete case
+    -- Case split on IR type to close
+    cases (irmod.globals[j]'hj).1 <;> rfl
 
 /-- Initial states are related: the IR initial state corresponds to the Wasm initial state.
     Proof: `emit irmod = .ok wmod` ensures module correspondence.
