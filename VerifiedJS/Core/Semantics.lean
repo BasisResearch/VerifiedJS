@@ -20703,7 +20703,7 @@ theorem elaborate_correct (p : Source.Program) (cp : Core.Program)
 -- | Proxy object, \_P\_ is a property key value, \_V\_ is any ECMAScript
 -- | language value and \_Desc\_ is a Property Descriptor record.
 
--- SPEC: L33742-L33804
+-- SPEC: L33742-L33751
 -- | # TypedArray Objects
 -- |
 -- | A \_TypedArray\_ presents an array-like view of an underlying binary
@@ -20713,59 +20713,6 @@ theorem elaborate_correct (p : Source.Program) (cp : Core.Program)
 -- | a distinct \_TypedArray\_ constructor, listed in , for each of the
 -- | supported element types. Each constructor in has a corresponding
 -- | distinct prototype object.
--- |
--- |   ---------------------------------------------------------------------------------------------
--- |   Constructor Name and          Element Type       Element Size   Conversion     Description
--- |   Intrinsic                                                       Operation
--- |   ----------------------------- ------------------ -------------- -------------- --------------
--- |   Int8Array\                    \~int8\~           1              ToInt8         8-bit two\'s
--- |   [%Int8Array%]{.dfn}                                                            complement
--- |                                                                                  signed integer
--- |
--- |   Uint8Array\                   \~uint8\~          1              ToUint8        8-bit unsigned
--- |   [%Uint8Array%]{.dfn}                                                           integer
--- |
--- |   Uint8ClampedArray\            \~uint8clamped\~   1              ToUint8Clamp   8-bit unsigned
--- |   [%Uint8ClampedArray%]{.dfn}                                                    integer
--- |                                                                                  (clamped
--- |                                                                                  conversion)
--- |
--- |   Int16Array\                   \~int16\~          2              ToInt16        16-bit two\'s
--- |   [%Int16Array%]{.dfn}                                                           complement
--- |                                                                                  signed integer
--- |
--- |   Uint16Array\                  \~uint16\~         2              ToUint16       16-bit
--- |   [%Uint16Array%]{.dfn}                                                          unsigned
--- |                                                                                  integer
--- |
--- |   Int32Array\                   \~int32\~          4              ToInt32        32-bit two\'s
--- |   [%Int32Array%]{.dfn}                                                           complement
--- |                                                                                  signed integer
--- |
--- |   Uint32Array\                  \~uint32\~         4              ToUint32       32-bit
--- |   [%Uint32Array%]{.dfn}                                                          unsigned
--- |                                                                                  integer
--- |
--- |   BigInt64Array\                \~bigint64\~       8              ToBigInt64     64-bit two\'s
--- |   [%BigInt64Array%]{.dfn}                                                        complement
--- |                                                                                  signed integer
--- |
--- |   BigUint64Array\               \~biguint64\~      8              ToBigUint64    64-bit
--- |   [%BigUint64Array%]{.dfn}                                                       unsigned
--- |                                                                                  integer
--- |
--- |   Float16Array\                 \~float16\~        2                             16-bit IEEE
--- |   [%Float16Array%]{.dfn}                                                         floating point
--- |
--- |   Float32Array\                 \~float32\~        4                             32-bit IEEE
--- |   [%Float32Array%]{.dfn}                                                         floating point
--- |
--- |   Float64Array\                 \~float64\~        8                             64-bit IEEE
--- |   [%Float64Array%]{.dfn}                                                         floating point
--- |   ---------------------------------------------------------------------------------------------
--- |
--- | In the definitions below, references to \_TypedArray\_ should be
--- | replaced with the appropriate constructor name from the above table.
 
 -- SPEC: L36655-L36658
 -- | # Structured Data
@@ -20888,13 +20835,14 @@ theorem elaborate_correct (p : Source.Program) (cp : Core.Program)
 -- | If \_e\_ is not \~empty\~, set \_count\_ to \_count\_ + 1. 1. Return
 -- | \_count\_.
 
--- SPEC: L35864-L35870
+-- SPEC: L35864-L35871
 -- | # Properties of the Set Constructor
 -- |
 -- | The Set constructor:
 -- |
 -- | - has a \[\[Prototype\]\] internal slot whose value is
 -- |   %Function.prototype%.
+-- | - has the following properties:
 
 -- SPEC: L36238-L36262
 -- | # CreateSetIterator ( \_set\_: an ECMAScript language value, \_kind\_: \~key+value\~ or \~value\~, ): either a normal completion containing a Generator or a throw completion
