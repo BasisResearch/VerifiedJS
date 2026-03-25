@@ -4463,7 +4463,7 @@ private theorem step?_none_implies_lit_aux :
   intro n
   induction n with
   | zero =>
-    intro ⟨fexpr, fenv, fheap, ftrace⟩ hd h
+    intro ⟨fexpr, fenv, fheap, ftrace, ffuncs, fcallStack⟩ hd h
     cases fexpr with
     | lit v => exact ⟨v, rfl⟩
     | var _ => exfalso; unfold Flat.step? at h; split at h <;> simp at h
@@ -4481,7 +4481,7 @@ private theorem step?_none_implies_lit_aux :
     | tryCatch _ _ _ f => exfalso; cases f <;> simp [Flat.Expr.depth] at hd
     | _ => exfalso; simp [Flat.Expr.depth] at hd
   | succ k ih =>
-    intro ⟨fexpr, fenv, fheap, ftrace⟩ hd h
+    intro ⟨fexpr, fenv, fheap, ftrace, ffuncs, fcallStack⟩ hd h
     cases fexpr with
     | lit v => exact ⟨v, rfl⟩
     | var _ => exfalso; unfold Flat.step? at h; split at h <;> simp at h
