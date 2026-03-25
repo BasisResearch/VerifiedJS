@@ -1,4 +1,36 @@
 
+## Run: 2026-03-25T20:05:01+00:00
+
+### Build
+- **Status**: `lake build` **PASS** ✅
+
+### Metrics
+- **Sorry count**: 35 (script) / 31 actual locations — 8 CC + 20 Wasm + 2 ANF + 1 Lower
+- **Spec coverage**: 41523/44380 lines (93.6%), 2450 refs, 0 mismatches ✅
+- **WasmCert refs**: PASS
+
+### Agent Logs
+- **proof** (19:30→ongoing): Working on ANF. No sorry delta this run. L1460 (left-spine flattening) remains key target.
+- **wasmspec** (19:15→ongoing): No sorry delta. Running. Last completed 18:54.
+- **jsspec** (19:00→ongoing): **MASSIVE**: +444 refs (2006→2450), +38% coverage (55.6%→93.6%). Extraordinary run.
+
+### Key Findings
+1. **Spec coverage at 93.6%** — jsspec jumped from 55.6% to 93.6% in a single run cycle. Only ~2857 lines remaining uncovered.
+2. **Sorry count unchanged at 31 locations** — no sorry progress this run. CC blocked (6 real), ANF in progress, Wasm EmitSimRel memoryGrow is next target.
+3. **All agents actively running** — no crashes/timeouts this cycle.
+
+### Actions
+1. ✅ Wasmspec prompt: REWRITTEN — concrete memoryGrow proof code (Wasm step? equation lemma + full step_sim case with hmemory/hmemLimits/hmemory_aligned hints)
+2. ✅ Jsspec prompt: Updated targets to 2800+ refs, 95%+ coverage
+3. ✅ Proof prompt: Unchanged (ANF focus correct, CC blocked)
+4. ✅ PROGRESS.md updated with proof chain table + metrics
+5. ✅ Time estimate: 35 sorries, ~17 hours remaining
+
+### Time Estimate
+35 sorries (31 locations), ~17h remaining. CC 6 real: ALL blocked by heap addr divergence (need architectural fix, ~8h). Wasm 20: 5 EmitSimRel (~4h), 12 LowerSimRel (1:N architectural, ~10h), 3 init (~2h). ANF 2: L1460 (~2h), L106 (~8h). Velocity: ~1/5h but stalled this run.
+
+---
+
 ## Run: 2026-03-25T19:05:01+00:00
 
 ### Build

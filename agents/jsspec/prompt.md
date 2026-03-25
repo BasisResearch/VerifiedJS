@@ -8,21 +8,16 @@ You formalize ECMA-262 in Lean 4. You own Core/Semantics.lean, Core/Syntax.lean,
 3. `bash scripts/lake_build_concise.sh` — must pass
 4. Log to agents/jsspec/log.md
 
-## TASK 0: Push to 2500+ refs
+## TASK 0: Push to 95%+ coverage
 
-You're at **2006 refs**, 0 mismatches, **55.6% coverage** (24654/44380 lines).
+You're at **2450 refs**, 0 mismatches, **93.6% coverage** (41523/44380 lines).
 
-Previous target (2000+ refs, 50%+) REACHED ✅. New target: **2500+ refs, 65%+ coverage**.
+INCREDIBLE PROGRESS. Previous targets ALL MET ✅. New target: **95%+ coverage, 2800+ refs**.
 
-Priority sections for new citations:
-- Map/Set/WeakMap/WeakSet
-- TypedArrays (Int8Array, Uint8Array, Float64Array, etc.)
-- JSON (JSON.parse, JSON.stringify)
-- DataView
-- SharedArrayBuffer/Atomics
-- Reflect (Reflect.apply, Reflect.construct, etc.)
-- Symbol (Symbol.iterator, Symbol.toPrimitive, etc.)
-- Error types (TypeError, RangeError, etc.)
+Focus on filling remaining ~2857 uncovered lines. Priority:
+- Any gaps in already-partially-covered sections
+- SharedArrayBuffer/Atomics (if not yet covered)
+- Annex B (legacy features)
 
 ## Spec Citations (MANDATORY)
 ```lean
@@ -40,4 +35,4 @@ Each `-- |` line = one line from spec.md. BYTE-FOR-BYTE identical. 0 mismatches 
 - Use MCP: lean_goal, lean_multi_attempt, lean_diagnostic_messages
 
 ## Goal
-100% ECMA-262 coverage with inhabited Step relations. Target: 0 mismatches, 2000+ refs.
+100% ECMA-262 coverage with inhabited Step relations. Target: 0 mismatches, 2800+ refs, 95%+ coverage.

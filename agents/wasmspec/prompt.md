@@ -4,91 +4,98 @@ You own Flat/*, ANF/*, Wasm/Syntax,Semantics,Typing,Numerics, Runtime/*.
 
 ## Current Wasm sorry count: 20 (in Semantics.lean)
 
-### TASK 1: Close EmitSimRel call/callIndirect (L9098, L9101)
+### TASK 1 (DO FIRST): Close EmitSimRel memoryGrow (L9510)
 
-All constructors + inversion lemmas exist. Follow the `return_` pattern (L9342-9374):
+No frame changes, no labels — just stack + memory. Follow the exact pattern from `drop` (L9440-9506).
+
+You need a Wasm `step?` equation lemma first. Write it near L5374:
 
 ```lean
-      | .call funcIdx =>
-          have hc : EmitCodeCorr (IRInstr.call funcIdx :: rest) s2.code := hcode_ir ▸ hrel.hcode
-          rcases hc.call_inv with ⟨rest_w, hcw, hrest⟩ | hf
-          · -- Wasm code = .call funcIdx :: rest_w
-            -- Case split on s1.funcs[funcIdx]? and s1.stack length
-            -- Use irStep?_eq_call for IR step
-            -- Use step?_eq_call (or derive from step? definition) for Wasm step
-            -- Both push a new frame with the function's locals
-            -- Stack correspondence: args consumed from stack, pushed to locals
-            -- hframes_one: THIS MAY BREAK — call pushes a frame, so frames.length > 1
-            -- If hframes_one = (s1.frames.length = 1), after call it becomes 2
-            -- WORKAROUND: prove the function body executes and returns before
-            --   the outer proof needs hframes_one again, OR generalize hframes_one
-            sorry
-          · exact hf.elim
+/-- Wasm step? for memory.grow with i32 on stack (success). -/
+theorem step?_eq_memoryGrow_ok (s : ExecState) (rest : List Instr)
+    (delta : UInt32) (stk : List WasmValue)
+    (hcode : s.code = Instr.memoryGrow 0 :: rest)
+    (hstack : s.stack = .i32 delta :: stk)
+    (hMem : 0 < s.store.memories.size)
+    (hMaxOk : -- max check passes
+      (if hLim : 0 < s.store.memLimits.size then
+        match s.store.memLimits[0].max with
+        | some maxPages => (s.store.memories[0]'hMem).size / 65536 + delta.toNat ≤ maxPages
+        | none => (s.store.memories[0]'hMem).size / 65536 + delta.toNat ≤ 65536
+      else (s.store.memories[0]'hMem).size / 65536 + delta.toNat ≤ 65536) = true) :
+    let mem := (s.store.memories[0]'hMem)
+    let oldPages := mem.size / 65536
+    let grown := ByteArray.mk (mem.toList.toArray ++ Array.replicate (delta.toNat * 65536) 0)
+    step? s = some (.silent, pushTrace { s with
+      store := { s.store with memories := s.store.memories.set! 0 grown }
+      code := rest
+      stack := .i32 (UInt32.ofNat oldPages) :: stk } .silent) := by
+  simp [step?, hcode, hstack, pop1?, hMem, pushTrace]
+  sorry -- fill in the maxOk logic; may need split on memLimits
 ```
 
-**BLOCKER**: `hframes_one` asserts exactly 1 frame. A `call` pushes a second frame. You may need to:
-1. Generalize `hframes_one` to `hframes_len` (frames.length = s1.frames.length) and handle nested frames
-2. OR prove that call + body + return is a multi-step that restores frames to 1
+Then write the step_sim case at L9510:
 
-If `call` is blocked by `hframes_one`, skip to TASK 2.
-
-### TASK 2: Close EmitSimRel memoryGrow (L9448)
-
-Simpler — no frame changes. Pattern:
 ```lean
       | .memoryGrow =>
           have hc : EmitCodeCorr (IRInstr.memoryGrow :: rest) s2.code := hcode_ir ▸ hrel.hcode
           rcases hc.memoryGrow_inv with ⟨rest_w, hcw, hrest⟩ | hf
-          · -- IR: pop i32 size from stack, grow memory, push old size (or -1)
-            -- Wasm: .memoryGrow 0 does the same
-            -- Use irStep?_eq_memoryGrow (if it exists, or derive from irStep? def)
-            -- Match stack/memory state
+          · -- Case split on IR stack
             match hstk : s1.stack with
             | [] =>
-              -- empty stack: both trap
-              sorry -- derive from irStep? and step? definitions
+              -- Empty stack: IR traps
+              have hir := irStep?_eq_trap_empty s1 rest hcode_ir hstk  -- or derive from irStep? def
+              sorry -- both trap, match trace
+            | .i32 pages :: stk =>
+              -- i32 on stack: memory grow
+              -- Case split on size check
+              if hsize : s1.memory.size + pages.toNat * 65536 ≤ 65536 * 65536 then
+                -- Success case
+                have hir := irStep?_eq_memoryGrow_ok s1 rest pages stk hcode_ir hstk hsize
+                rw [hir] at hstep
+                simp only [Option.some.injEq, Prod.mk.injEq] at hstep
+                obtain ⟨rfl, rfl⟩ := hstep
+                -- Wasm side: use hmemory to get memories[0] = ir.memory
+                -- Use hmemLimits to show max = none → newPages ≤ 65536 always true
+                -- Build new EmitSimRel with updated memory + stack
+                sorry -- fill in Wasm step + SimRel construction
+              else
+                -- Failure case: push 0xFFFFFFFF
+                sorry -- both push -1, memory unchanged
             | v :: stk =>
-              sorry -- case split on v type, then memory grow success/failure
+              -- Non-i32 on stack: IR traps with type mismatch
+              sorry -- both trap, match trace
           · exact hf.elim
 ```
 
-Use `lean_goal` at L9448 to see the exact goal state, then `lean_multi_attempt` to test tactics.
+Key hints:
+- `hmemory` gives you `w.store.memories[0]? = some ir.memory` — use `Option.some.injEq` to get equality
+- `hmemLimits` gives you `lim.max = none` — so the maxOk condition reduces to `newPages ≤ 65536`
+- `hmemory_aligned` gives you `65536 ∣ ir.memory.size` — needed for oldPages computation
+- Stack correspondence: old stack corresponded, push `IRValue.i32 oldPages` / `WasmValue.i32 oldPages` — use `IRValueToWasmValue.i32`
 
-### TASK 3: Close EmitSimRel br/brIf (L9338, L9341)
+### TASK 2: Close EmitSimRel br/brIf (L9394, L9397)
 
-Both need label index correspondence (`hlabels` maps IR label names to Wasm label indices). Pattern:
+Both need label index correspondence. Pattern:
 ```lean
       | .br label =>
           have hc : EmitCodeCorr (IRInstr.br label :: rest) s2.code := hcode_ir ▸ hrel.hcode
           rcases hc.br_inv with ⟨idx, rest_w, hcw, hrest⟩ | hf
-          · -- hlabels maps label → idx
-            -- IR: br label pops to label frame
-            -- Wasm: br idx pops to idx-th label frame
-            -- Need hlabel_content to show corresponding frames
-            sorry
+          · sorry -- use hlabel_content to relate IR label → Wasm label idx
           · exact hf.elim
 ```
 
-### LowerSimRel step_sim sorries (12 total, L6261-L6338)
-```
-L6261  let        sorry — multi-step (rhsCode + localSet + bodyCode)
-L6269  seq        sorry — multi-step (aCode + drop + bCode)
-L6273  if         sorry — multi-step (condCode + if_)
-L6276  while      sorry — needs labels (block/loop)
-L6279  throw      sorry — multi-step
-L6282  tryCatch   sorry — opaque
-L6323  return(some) sorry — 2 IR steps (argCode + return_)
-L6326  yield      sorry — opaque
-L6329  await      sorry — opaque
-L6332  labeled    sorry — needs labels
-L6335  break      sorry — needs labels
-L6338  continue   sorry — needs labels
-```
+### TASK 3: Close EmitSimRel call/callIndirect (L9148, L9151)
 
-**ARCHITECTURAL BLOCKER**: `step_sim` is 1:1 (one ANF step → one IR step). Most cases need 1:N. The `step_sim_stutter` at L9454 already has the right signature. Focus on closing EmitSimRel cases first (TASK 1-3), then restructure LowerSimRel.
+**BLOCKER**: `hframes_one` asserts exactly 1 frame. A `call` pushes a second frame. Skip if blocked.
 
-### Init sorries (3: L9607, L9622, L9646)
-All need `LowerSimRel.init` with `LowerCodeCorr` for the initial program. `lowerExpr` is `partial`, so equation lemmas may not be available for `simp`. Try `unfold lowerExpr` or `delta lowerExpr`.
+### LowerSimRel sorries (12 total, L6261-L6338)
+
+**ARCHITECTURAL BLOCKER**: `step_sim` is 1:1 but most cases need 1:N. Focus on EmitSimRel first.
+
+### Init sorries (3: L9669, L9684, L9708)
+
+All need `LowerSimRel.init` with `LowerCodeCorr` for the initial program.
 
 ## Rules
 - `bash scripts/lake_build_concise.sh` to build
@@ -96,4 +103,4 @@ All need `LowerSimRel.init` with `LowerCodeCorr` for the initial program. `lower
 - Do NOT break the build
 - CLOSE sorries, don't decompose them into more sorries
 - Use `lean_goal` + `lean_multi_attempt` BEFORE editing
-- Do TASK 2 (memoryGrow) FIRST — it's the quickest win (no frame issues)
+- Do TASK 1 (memoryGrow) FIRST — it's the quickest win (no frame issues)
