@@ -1,4 +1,31 @@
 
+## Run: 2026-03-25T17:30+00:00
+- Sorries before: 11 total (8 CC + 2 ANF + 1 Lower), after: 11 total (8 CC + 2 ANF + 1 Lower)
+- Net sorry delta: 0 (old sorry split into sub-cases; 3 of 4 closed, 1 new sorry replaces old)
+- Build: ✅ ANF file compiles clean (pre-existing errors in CC + Wasm unchanged)
+
+### What was done:
+1. **Partially closed ANF L1177 (nested seq case)** — The sorry at L1177 was for `c = .seq c1 c2` inside `anfConvert_halt_star_aux`, a depth-4 left-spine of seq expressions. Replaced with case analysis on `c1`:
+   - `c1 = .lit v1`: 1 step → `.seq(.seq(.seq c2 d) a2) b`, depth ≤ N, outer IH closes ✓
+   - `c1 = .var name1`: 2 steps (evaluate var, consume lit), same target ✓
+   - `c1 = .this`: 2 steps (evaluate this, consume lit), same target ✓
+   - `c1 = .seq _ _`: sorry → now at L1365 (depth-5, needs general left-spine lemma)
+   - `c1 = _` (compound): contradiction via `normalizeExpr_compound_not_trivial` ✓
+
+2. **Analysis of all remaining sorries**:
+   - **CC (8 total, 2 stubs)**: ALL blocked by structural issues. L1113 captured var needs multi-step stuttering (Flat `.getEnv` takes 2 steps vs Core 1). L1897-L3549 blocked by heap-address mismatch (HeapCorr allows different-size heaps, so allocations go to different addresses).
+   - **ANF L106**: Entire `anfConvert_step_star` theorem. Major proof.
+   - **ANF L1365** (was L1177): Narrowed to `c1 = .seq _ _` only. Needs general left-spine flattening lemma.
+   - **Lower L69**: Owned by wasmspec, skip.
+
+### Key insight: left-spine flattening lemma needed
+Define `trivEvalCost(e) = (lit: 0, var/this: 1, .seq a b: 1 + cost(a) + cost(b))`.
+This strictly decreases with every Flat step on a trivial chain. A lemma proving "`.seq e rest` silently steps to `rest` when e is a trivial chain" (by induction on trivEvalCost) would close L1365 and simplify the entire L714-L1400 proof.
+
+### Next steps:
+1. Prove general left-spine flattening lemma → closes ANF L1365, simplifies all manual nesting
+2. For CC: change simulation to allow stuttering, or fix Flat to avoid extra heap allocations
+
 ## Run: 2026-03-24T15:30+00:00
 - Sorries before: 9 total (6 CC + 2 ANF + 1 Lower), after: 11 total (8 CC + 2 ANF + 1 Lower)
 - Net sorry delta: +2 (HeapCorr structural refactor adds 2 well-formedness sorries)
@@ -1954,3 +1981,4 @@ Start with objectLit (L3028) — it's the simplest of the hard cases. Both sides
 5. The allocated properties correspond (same keys, values through convertValue)
 
 Then do captured variable (L869) — this is the crown jewel of the entire proof.
+2026-03-25T19:06:18+00:00 DONE
