@@ -39880,4 +39880,4345 @@ theorem elaborate_correct (p : Source.Program) (cp : Core.Program)
 -- |
 
 
+-- SPEC: L18633-L18638
+-- | # ECMAScript Language: Functions and Classes
+-- |
+-- | Various ECMAScript language elements cause the creation of ECMAScript
+-- | function objects (). Evaluation of such functions starts with the
+-- | execution of their \[\[Call\]\] internal method ().
+-- |
+
+-- SPEC: L18639-L18654
+-- | # Parameter Lists
+-- |
+-- | ## Syntax
+-- |
+-- | UniqueFormalParameters\[Yield, Await\] : FormalParameters\[?Yield,
+-- | ?Await\] FormalParameters\[Yield, Await\] : \[empty\]
+-- | FunctionRestParameter\[?Yield, ?Await\] FormalParameterList\[?Yield,
+-- | ?Await\] FormalParameterList\[?Yield, ?Await\] \`,\`
+-- | FormalParameterList\[?Yield, ?Await\] \`,\`
+-- | FunctionRestParameter\[?Yield, ?Await\] FormalParameterList\[Yield,
+-- | Await\] : FormalParameter\[?Yield, ?Await\] FormalParameterList\[?Yield,
+-- | ?Await\] \`,\` FormalParameter\[?Yield, ?Await\]
+-- | FunctionRestParameter\[Yield, Await\] : BindingRestElement\[?Yield,
+-- | ?Await\] FormalParameter\[Yield, Await\] : BindingElement\[?Yield,
+-- | ?Await\]
+-- |
+
+-- SPEC: L18655-L18671
+-- | # Static Semantics: Early Errors
+-- |
+-- | UniqueFormalParameters : FormalParameters
+-- |
+-- | - It is a Syntax Error if the BoundNames of \|FormalParameters\|
+-- |   contains any duplicate elements.
+-- |
+-- | FormalParameters : FormalParameterList
+-- |
+-- | - It is a Syntax Error if IsSimpleParameterList of
+-- |   \|FormalParameterList\| is \*false\* and the BoundNames of
+-- |   \|FormalParameterList\| contains any duplicate elements.
+-- |
+-- | Multiple occurrences of the same \|BindingIdentifier\| in a
+-- | \|FormalParameterList\| is only allowed for functions which have simple
+-- | parameter lists and which are not defined in strict mode code.
+-- |
+
+-- SPEC: L18672-L18716
+-- | # Static Semantics: ContainsExpression ( ): a Boolean
+-- |
+-- | ObjectBindingPattern : \`{\` \`}\` \`{\` BindingRestProperty \`}\` 1.
+-- | Return \*false\*. ObjectBindingPattern : \`{\` BindingPropertyList \`,\`
+-- | BindingRestProperty \`}\` 1. Return ContainsExpression of
+-- | \|BindingPropertyList\|. ArrayBindingPattern : \`\[\` Elision? \`\]\` 1.
+-- | Return \*false\*. ArrayBindingPattern : \`\[\` Elision?
+-- | BindingRestElement \`\]\` 1. Return ContainsExpression of
+-- | \|BindingRestElement\|. ArrayBindingPattern : \`\[\` BindingElementList
+-- | \`,\` Elision? \`\]\` 1. Return ContainsExpression of
+-- | \|BindingElementList\|. ArrayBindingPattern : \`\[\` BindingElementList
+-- | \`,\` Elision? BindingRestElement \`\]\` 1. Let \_has\_ be
+-- | ContainsExpression of \|BindingElementList\|. 1. If \_has\_ is \*true\*,
+-- | return \*true\*. 1. Return ContainsExpression of \|BindingRestElement\|.
+-- | BindingPropertyList : BindingPropertyList \`,\` BindingProperty 1. Let
+-- | \_has\_ be ContainsExpression of \|BindingPropertyList\|. 1. If \_has\_
+-- | is \*true\*, return \*true\*. 1. Return ContainsExpression of
+-- | \|BindingProperty\|. BindingElementList : BindingElementList \`,\`
+-- | BindingElisionElement 1. Let \_has\_ be ContainsExpression of
+-- | \|BindingElementList\|. 1. If \_has\_ is \*true\*, return \*true\*. 1.
+-- | Return ContainsExpression of \|BindingElisionElement\|.
+-- | BindingElisionElement : Elision? BindingElement 1. Return
+-- | ContainsExpression of \|BindingElement\|. BindingProperty : PropertyName
+-- | \`:\` BindingElement 1. Let \_has\_ be IsComputedPropertyKey of
+-- | \|PropertyName\|. 1. If \_has\_ is \*true\*, return \*true\*. 1. Return
+-- | ContainsExpression of \|BindingElement\|. BindingElement :
+-- | BindingPattern Initializer 1. Return \*true\*. SingleNameBinding :
+-- | BindingIdentifier 1. Return \*false\*. SingleNameBinding :
+-- | BindingIdentifier Initializer 1. Return \*true\*. BindingRestElement :
+-- | \`\...\` BindingIdentifier 1. Return \*false\*. BindingRestElement :
+-- | \`\...\` BindingPattern 1. Return ContainsExpression of
+-- | \|BindingPattern\|. FormalParameters : \[empty\] 1. Return \*false\*.
+-- | FormalParameters : FormalParameterList \`,\` FunctionRestParameter 1. If
+-- | ContainsExpression of \|FormalParameterList\| is \*true\*, return
+-- | \*true\*. 1. Return ContainsExpression of \|FunctionRestParameter\|.
+-- | FormalParameterList : FormalParameterList \`,\` FormalParameter 1. If
+-- | ContainsExpression of \|FormalParameterList\| is \*true\*, return
+-- | \*true\*. 1. Return ContainsExpression of \|FormalParameter\|.
+-- | ArrowParameters : BindingIdentifier 1. Return \*false\*. ArrowParameters
+-- | : CoverParenthesizedExpressionAndArrowParameterList 1. Let \_formals\_
+-- | be the \|ArrowFormalParameters\| that is covered by
+-- | \|CoverParenthesizedExpressionAndArrowParameterList\|. 1. Return
+-- | ContainsExpression of \_formals\_. AsyncArrowBindingIdentifier :
+-- | BindingIdentifier 1. Return \*false\*.
+-- |
+
+-- SPEC: L18717-L18741
+-- | # Static Semantics: IsSimpleParameterList ( ): a Boolean
+-- |
+-- | BindingElement : BindingPattern 1. Return \*false\*. BindingElement :
+-- | BindingPattern Initializer 1. Return \*false\*. SingleNameBinding :
+-- | BindingIdentifier 1. Return \*true\*. SingleNameBinding :
+-- | BindingIdentifier Initializer 1. Return \*false\*. FormalParameters :
+-- | \[empty\] 1. Return \*true\*. FormalParameters :
+-- | FunctionRestParameter 1. Return \*false\*. FormalParameters :
+-- | FormalParameterList \`,\` FunctionRestParameter 1. Return \*false\*.
+-- | FormalParameterList : FormalParameterList \`,\` FormalParameter 1. If
+-- | IsSimpleParameterList of \|FormalParameterList\| is \*false\*, return
+-- | \*false\*. 1. Return IsSimpleParameterList of \|FormalParameter\|.
+-- | FormalParameter : BindingElement 1. Return IsSimpleParameterList of
+-- | \|BindingElement\|. ArrowParameters : BindingIdentifier 1. Return
+-- | \*true\*. ArrowParameters :
+-- | CoverParenthesizedExpressionAndArrowParameterList 1. Let \_formals\_ be
+-- | the \|ArrowFormalParameters\| that is covered by
+-- | \|CoverParenthesizedExpressionAndArrowParameterList\|. 1. Return
+-- | IsSimpleParameterList of \_formals\_. AsyncArrowBindingIdentifier :
+-- | BindingIdentifier 1. Return \*true\*.
+-- | CoverCallExpressionAndAsyncArrowHead : MemberExpression Arguments 1. Let
+-- | \_head\_ be the \|AsyncArrowHead\| that is covered by
+-- | \|CoverCallExpressionAndAsyncArrowHead\|. 1. Return
+-- | IsSimpleParameterList of \_head\_.
+-- |
+
+-- SPEC: L18742-L18751
+-- | # Static Semantics: HasInitializer ( ): a Boolean
+-- |
+-- | BindingElement : BindingPattern 1. Return \*false\*. BindingElement :
+-- | BindingPattern Initializer 1. Return \*true\*. SingleNameBinding :
+-- | BindingIdentifier 1. Return \*false\*. SingleNameBinding :
+-- | BindingIdentifier Initializer 1. Return \*true\*. FormalParameterList :
+-- | FormalParameterList \`,\` FormalParameter 1. If HasInitializer of
+-- | \|FormalParameterList\| is \*true\*, return \*true\*. 1. Return
+-- | HasInitializer of \|FormalParameter\|.
+-- |
+
+-- SPEC: L18752-L18779
+-- | # Static Semantics: ExpectedArgumentCount ( ): a non-negative integer
+-- |
+-- | FormalParameters : \[empty\] FunctionRestParameter 1. Return 0.
+-- | FormalParameters : FormalParameterList \`,\` FunctionRestParameter 1.
+-- | Return the ExpectedArgumentCount of \|FormalParameterList\|.
+-- |
+-- | The ExpectedArgumentCount of a \|FormalParameterList\| is the number of
+-- | \|FormalParameters\| to the left of either the rest parameter or the
+-- | first \|FormalParameter\| with an Initializer. A \|FormalParameter\|
+-- | without an initializer is allowed after the first parameter with an
+-- | initializer but such parameters are considered to be optional with
+-- | \*undefined\* as their default value.
+-- |
+-- | FormalParameterList : FormalParameter 1. If HasInitializer of
+-- | \|FormalParameter\| is \*true\*, return 0. 1. Return 1.
+-- | FormalParameterList : FormalParameterList \`,\` FormalParameter 1. Let
+-- | \_count\_ be the ExpectedArgumentCount of \|FormalParameterList\|. 1. If
+-- | HasInitializer of \|FormalParameterList\| is \*true\* or HasInitializer
+-- | of \|FormalParameter\| is \*true\*, return \_count\_. 1. Return
+-- | \_count\_ + 1. ArrowParameters : BindingIdentifier 1. Return 1.
+-- | ArrowParameters : CoverParenthesizedExpressionAndArrowParameterList 1.
+-- | Let \_formals\_ be the \|ArrowFormalParameters\| that is covered by
+-- | \|CoverParenthesizedExpressionAndArrowParameterList\|. 1. Return the
+-- | ExpectedArgumentCount of \_formals\_. PropertySetParameterList :
+-- | FormalParameter 1. If HasInitializer of \|FormalParameter\| is \*true\*,
+-- | return 0. 1. Return 1. AsyncArrowBindingIdentifier :
+-- | BindingIdentifier 1. Return 1.
+-- |
+
+-- SPEC: L18780-L18794
+-- | # Function Definitions
+-- |
+-- | ## Syntax
+-- |
+-- | FunctionDeclaration\[Yield, Await, Default\] : \`function\`
+-- | BindingIdentifier\[?Yield, ?Await\] \`(\` FormalParameters\[\~Yield,
+-- | \~Await\] \`)\` \`{\` FunctionBody\[\~Yield, \~Await\] \`}\`
+-- | \[+Default\] \`function\` \`(\` FormalParameters\[\~Yield, \~Await\]
+-- | \`)\` \`{\` FunctionBody\[\~Yield, \~Await\] \`}\` FunctionExpression :
+-- | \`function\` BindingIdentifier\[\~Yield, \~Await\]? \`(\`
+-- | FormalParameters\[\~Yield, \~Await\] \`)\` \`{\` FunctionBody\[\~Yield,
+-- | \~Await\] \`}\` FunctionBody\[Yield, Await\] :
+-- | FunctionStatementList\[?Yield, ?Await\] FunctionStatementList\[Yield,
+-- | Await\] : StatementList\[?Yield, ?Await, +Return\]?
+-- |
+
+-- SPEC: L18795-L18840
+-- | # Static Semantics: Early Errors
+-- |
+-- | FunctionDeclaration : \`function\` BindingIdentifier \`(\`
+-- | FormalParameters \`)\` \`{\` FunctionBody \`}\` \`function\` \`(\`
+-- | FormalParameters \`)\` \`{\` FunctionBody \`}\` FunctionExpression :
+-- | \`function\` BindingIdentifier? \`(\` FormalParameters \`)\` \`{\`
+-- | FunctionBody \`}\`
+-- |
+-- | - If IsStrict(\|FormalParameters\|) is \*true\*, the Early Error rules
+-- |   for UniqueFormalParameters : FormalParameters are applied.
+-- | - If \|BindingIdentifier\| is present and
+-- |   IsStrict(\|BindingIdentifier\|) is \*true\*, it is a Syntax Error if
+-- |   the StringValue of \|BindingIdentifier\| is either \*\"eval\"\* or
+-- |   \*\"arguments\"\*.
+-- | - It is a Syntax Error if FunctionBodyContainsUseStrict of
+-- |   \|FunctionBody\| is \*true\* and IsSimpleParameterList of
+-- |   \|FormalParameters\| is \*false\*.
+-- | - It is a Syntax Error if any element of the BoundNames of
+-- |   \|FormalParameters\| also occurs in the LexicallyDeclaredNames of
+-- |   \|FunctionBody\|.
+-- | - It is a Syntax Error if \|FormalParameters\| Contains
+-- |   \|SuperProperty\| is \*true\*.
+-- | - It is a Syntax Error if \|FunctionBody\| Contains \|SuperProperty\| is
+-- |   \*true\*.
+-- | - It is a Syntax Error if \|FormalParameters\| Contains \|SuperCall\| is
+-- |   \*true\*.
+-- | - It is a Syntax Error if \|FunctionBody\| Contains \|SuperCall\| is
+-- |   \*true\*.
+-- |
+-- | The LexicallyDeclaredNames of a \|FunctionBody\| does not include
+-- | identifiers bound using var or function declarations.
+-- |
+-- | FunctionBody : FunctionStatementList
+-- |
+-- | - It is a Syntax Error if the LexicallyDeclaredNames of
+-- |   \|FunctionStatementList\| contains any duplicate entries.
+-- | - It is a Syntax Error if any element of the LexicallyDeclaredNames of
+-- |   \|FunctionStatementList\| also occurs in the VarDeclaredNames of
+-- |   \|FunctionStatementList\|.
+-- | - It is a Syntax Error if ContainsDuplicateLabels of
+-- |   \|FunctionStatementList\| with argument « » is \*true\*.
+-- | - It is a Syntax Error if ContainsUndefinedBreakTarget of
+-- |   \|FunctionStatementList\| with argument « » is \*true\*.
+-- | - It is a Syntax Error if ContainsUndefinedContinueTarget of
+-- |   \|FunctionStatementList\| with arguments « » and « » is \*true\*.
+-- |
+
+-- SPEC: L18841-L18846
+-- | # Static Semantics: FunctionBodyContainsUseStrict ( ): a Boolean
+-- |
+-- | FunctionBody : FunctionStatementList 1. If the Directive Prologue of
+-- | \|FunctionBody\| contains a Use Strict Directive, return \*true\*. 1.
+-- | Return \*false\*.
+-- |
+
+-- SPEC: L18857-L18878
+-- | # Runtime Semantics: InstantiateOrdinaryFunctionObject ( \_env\_: an Environment Record, \_privateEnv\_: a PrivateEnvironment Record or \*null\*, ): an ECMAScript function object
+-- |
+-- | FunctionDeclaration : \`function\` BindingIdentifier \`(\`
+-- | FormalParameters \`)\` \`{\` FunctionBody \`}\` 1. Let \_name\_ be the
+-- | StringValue of \|BindingIdentifier\|. 1. Let \_sourceText\_ be the
+-- | source text matched by \|FunctionDeclaration\|. 1. Let \_F\_ be
+-- | OrdinaryFunctionCreate(%Function.prototype%, \_sourceText\_,
+-- | \|FormalParameters\|, \|FunctionBody\|, \~non-lexical-this\~, \_env\_,
+-- | \_privateEnv\_). 1. Perform SetFunctionName(\_F\_, \_name\_). 1. Perform
+-- | MakeConstructor(\_F\_). 1. Return \_F\_. FunctionDeclaration :
+-- | \`function\` \`(\` FormalParameters \`)\` \`{\` FunctionBody \`}\` 1.
+-- | Let \_sourceText\_ be the source text matched by
+-- | \|FunctionDeclaration\|. 1. Let \_F\_ be
+-- | OrdinaryFunctionCreate(%Function.prototype%, \_sourceText\_,
+-- | \|FormalParameters\|, \|FunctionBody\|, \~non-lexical-this\~, \_env\_,
+-- | \_privateEnv\_). 1. Perform SetFunctionName(\_F\_, \*\"default\"\*). 1.
+-- | Perform MakeConstructor(\_F\_). 1. Return \_F\_.
+-- |
+-- | An anonymous \|FunctionDeclaration\| can only occur as part of an
+-- | \`export default\` declaration, and its function code is therefore
+-- | always strict mode code.
+-- |
+
+-- SPEC: L18879-L18914
+-- | # Runtime Semantics: InstantiateOrdinaryFunctionExpression ( optional \_name\_: a property key or a Private Name, ): an ECMAScript function object
+-- |
+-- | FunctionExpression : \`function\` \`(\` FormalParameters \`)\` \`{\`
+-- | FunctionBody \`}\` 1. If \_name\_ is not present, set \_name\_ to
+-- | \*\"\"\*. 1. Let \_env\_ be the LexicalEnvironment of the running
+-- | execution context. 1. Let \_privateEnv\_ be the running execution
+-- | context\'s PrivateEnvironment. 1. Let \_sourceText\_ be the source text
+-- | matched by \|FunctionExpression\|. 1. Let \_closure\_ be
+-- | OrdinaryFunctionCreate(%Function.prototype%, \_sourceText\_,
+-- | \|FormalParameters\|, \|FunctionBody\|, \~non-lexical-this\~, \_env\_,
+-- | \_privateEnv\_). 1. Perform SetFunctionName(\_closure\_, \_name\_). 1.
+-- | Perform MakeConstructor(\_closure\_). 1. Return \_closure\_.
+-- | FunctionExpression : \`function\` BindingIdentifier \`(\`
+-- | FormalParameters \`)\` \`{\` FunctionBody \`}\` 1. Assert: \_name\_ is
+-- | not present. 1. Set \_name\_ to the StringValue of
+-- | \|BindingIdentifier\|. 1. Let \_outerEnv\_ be the running execution
+-- | context\'s LexicalEnvironment. 1. Let \_funcEnv\_ be
+-- | NewDeclarativeEnvironment(\_outerEnv\_). 1. Perform !
+-- | \_funcEnv\_.CreateImmutableBinding(\_name\_, \*false\*). 1. Let
+-- | \_privateEnv\_ be the running execution context\'s
+-- | PrivateEnvironment. 1. Let \_sourceText\_ be the source text matched by
+-- | \|FunctionExpression\|. 1. Let \_closure\_ be
+-- | OrdinaryFunctionCreate(%Function.prototype%, \_sourceText\_,
+-- | \|FormalParameters\|, \|FunctionBody\|, \~non-lexical-this\~,
+-- | \_funcEnv\_, \_privateEnv\_). 1. Perform SetFunctionName(\_closure\_,
+-- | \_name\_). 1. Perform MakeConstructor(\_closure\_). 1. Perform !
+-- | \_funcEnv\_.InitializeBinding(\_name\_, \_closure\_). 1. Return
+-- | \_closure\_.
+-- |
+-- | The \|BindingIdentifier\| in a \|FunctionExpression\| can be referenced
+-- | from inside the \|FunctionExpression\|\'s \|FunctionBody\| to allow the
+-- | function to call itself recursively. However, unlike in a
+-- | \|FunctionDeclaration\|, the \|BindingIdentifier\| in a
+-- | \|FunctionExpression\| cannot be referenced from and does not affect the
+-- | scope enclosing the \|FunctionExpression\|.
+-- |
+
+-- SPEC: L18915-L18937
+-- | # Runtime Semantics: Evaluation
+-- |
+-- | FunctionDeclaration : \`function\` BindingIdentifier \`(\`
+-- | FormalParameters \`)\` \`{\` FunctionBody \`}\` 1. Return \~empty\~.
+-- |
+-- | An alternative semantics is provided by at step of
+-- | FunctionDeclarationInstantiation, step of
+-- | GlobalDeclarationInstantiation, and step of
+-- | EvalDeclarationInstantiation.
+-- |
+-- | FunctionDeclaration : \`function\` \`(\` FormalParameters \`)\` \`{\`
+-- | FunctionBody \`}\` 1. Return \~empty\~. FunctionExpression :
+-- | \`function\` BindingIdentifier? \`(\` FormalParameters \`)\` \`{\`
+-- | FunctionBody \`}\` 1. Return InstantiateOrdinaryFunctionExpression of
+-- | \|FunctionExpression\|.
+-- |
+-- | A \*\"prototype\"\* property is automatically created for every function
+-- | defined using a \|FunctionDeclaration\| or \|FunctionExpression\|, to
+-- | allow for the possibility that the function will be used as a
+-- | constructor.
+-- |
+-- | FunctionStatementList : \[empty\] 1. Return \*undefined\*.
+-- |
+
+-- SPEC: L18938-L18962
+-- | # Arrow Function Definitions
+-- |
+-- | ## Syntax
+-- |
+-- | ArrowFunction\[In, Yield, Await\] : ArrowParameters\[?Yield, ?Await\]
+-- | \[no LineTerminator here\] \`=\>\` ConciseBody\[?In\]
+-- | ArrowParameters\[Yield, Await\] : BindingIdentifier\[?Yield, ?Await\]
+-- | CoverParenthesizedExpressionAndArrowParameterList\[?Yield, ?Await\]
+-- | #parencover ConciseBody\[In\] : \[lookahead != \`{\`\]
+-- | ExpressionBody\[?In, \~Await\] \`{\` FunctionBody\[\~Yield, \~Await\]
+-- | \`}\` ExpressionBody\[In, Await\] : AssignmentExpression\[?In, \~Yield,
+-- | ?Await\]
+-- |
+-- | ## Supplemental Syntax
+-- |
+-- | When processing an instance of the production\
+-- | ArrowParameters\[Yield, Await\] :
+-- | CoverParenthesizedExpressionAndArrowParameterList\[?Yield, ?Await\]\
+-- | the interpretation of
+-- | \|CoverParenthesizedExpressionAndArrowParameterList\| is refined using
+-- | the following grammar:
+-- |
+-- | ArrowFormalParameters\[Yield, Await\] : \`(\`
+-- | UniqueFormalParameters\[?Yield, ?Await\] \`)\`
+-- |
+
+-- SPEC: L18963-L18982
+-- | # Static Semantics: Early Errors
+-- |
+-- | ArrowFunction : ArrowParameters \`=\>\` ConciseBody
+-- |
+-- | - It is a Syntax Error if \|ArrowParameters\| Contains
+-- |   \|YieldExpression\| is \*true\*.
+-- | - It is a Syntax Error if \|ArrowParameters\| Contains
+-- |   \|AwaitExpression\| is \*true\*.
+-- | - It is a Syntax Error if ConciseBodyContainsUseStrict of
+-- |   \|ConciseBody\| is \*true\* and IsSimpleParameterList of
+-- |   \|ArrowParameters\| is \*false\*.
+-- | - It is a Syntax Error if any element of the BoundNames of
+-- |   \|ArrowParameters\| also occurs in the LexicallyDeclaredNames of
+-- |   \|ConciseBody\|.
+-- |
+-- | ArrowParameters : CoverParenthesizedExpressionAndArrowParameterList
+-- |
+-- | - \|CoverParenthesizedExpressionAndArrowParameterList\| must cover an
+-- |   \|ArrowFormalParameters\|.
+-- |
+
+-- SPEC: L18983-L18988
+-- | # Static Semantics: ConciseBodyContainsUseStrict ( ): a Boolean
+-- |
+-- | ConciseBody : ExpressionBody 1. Return \*false\*. ConciseBody : \`{\`
+-- | FunctionBody \`}\` 1. Return FunctionBodyContainsUseStrict of
+-- | \|FunctionBody\|.
+-- |
+
+-- SPEC: L18989-L18994
+-- | # Runtime Semantics: EvaluateConciseBody ( \_functionObject\_: an ECMAScript function object, \_argumentsList\_: a List of ECMAScript language values, ): a return completion or a throw completion
+-- |
+-- | ConciseBody : ExpressionBody 1. Perform ?
+-- | FunctionDeclarationInstantiation(\_functionObject\_,
+-- | \_argumentsList\_). 1. Return ? Evaluation of \|ExpressionBody\|.
+-- |
+
+-- SPEC: L18995-L19020
+-- | # Runtime Semantics: InstantiateArrowFunctionExpression ( optional \_name\_: a property key or a Private Name, ): an ECMAScript function object
+-- |
+-- | ArrowFunction : ArrowParameters \`=\>\` ConciseBody 1. If \_name\_ is
+-- | not present, set \_name\_ to \*\"\"\*. 1. Let \_env\_ be the
+-- | LexicalEnvironment of the running execution context. 1. Let
+-- | \_privateEnv\_ be the running execution context\'s
+-- | PrivateEnvironment. 1. Let \_sourceText\_ be the source text matched by
+-- | \|ArrowFunction\|. 1.
+-- | \[id=\"step-arrowfunction-evaluation-functioncreate\"\] Let \_closure\_
+-- | be OrdinaryFunctionCreate(%Function.prototype%, \_sourceText\_,
+-- | \|ArrowParameters\|, \|ConciseBody\|, \~lexical-this\~, \_env\_,
+-- | \_privateEnv\_). 1. Perform SetFunctionName(\_closure\_, \_name\_). 1.
+-- | Return \_closure\_.
+-- |
+-- | An \|ArrowFunction\| does not define local bindings for \`arguments\`,
+-- | \`super\`, \`this\`, or \`new.target\`. Any reference to \`arguments\`,
+-- | \`super\`, \`this\`, or \`new.target\` within an \|ArrowFunction\| must
+-- | resolve to a binding in a lexically enclosing environment. Typically
+-- | this will be the Function Environment of an immediately enclosing
+-- | function. Even though an \|ArrowFunction\| may contain references to
+-- | \`super\`, the function object created in step is not made into a method
+-- | by performing MakeMethod. An \|ArrowFunction\| that references \`super\`
+-- | is always contained within a non-\|ArrowFunction\| and the necessary
+-- | state to implement \`super\` is accessible via the \_env\_ that is
+-- | captured by the function object of the \|ArrowFunction\|.
+-- |
+
+-- SPEC: L19021-L19028
+-- | # Runtime Semantics: Evaluation
+-- |
+-- | ArrowFunction : ArrowParameters \`=\>\` ConciseBody 1. Return
+-- | InstantiateArrowFunctionExpression of \|ArrowFunction\|. ExpressionBody
+-- | : AssignmentExpression 1. Let \_exprRef\_ be ? Evaluation of
+-- | \|AssignmentExpression\|. 1. Let \_exprValue\_ be ?
+-- | GetValue(\_exprRef\_). 1. Return ReturnCompletion(\_exprValue\_).
+-- |
+
+-- SPEC: L19029-L19042
+-- | # Method Definitions
+-- |
+-- | ## Syntax
+-- |
+-- | MethodDefinition\[Yield, Await\] : ClassElementName\[?Yield, ?Await\]
+-- | \`(\` UniqueFormalParameters\[\~Yield, \~Await\] \`)\` \`{\`
+-- | FunctionBody\[\~Yield, \~Await\] \`}\` GeneratorMethod\[?Yield, ?Await\]
+-- | AsyncMethod\[?Yield, ?Await\] AsyncGeneratorMethod\[?Yield, ?Await\]
+-- | \`get\` ClassElementName\[?Yield, ?Await\] \`(\` \`)\` \`{\`
+-- | FunctionBody\[\~Yield, \~Await\] \`}\` \`set\` ClassElementName\[?Yield,
+-- | ?Await\] \`(\` PropertySetParameterList \`)\` \`{\`
+-- | FunctionBody\[\~Yield, \~Await\] \`}\` PropertySetParameterList :
+-- | FormalParameter\[\~Yield, \~Await\]
+-- |
+
+-- SPEC: L19043-L19066
+-- | # Static Semantics: Early Errors
+-- |
+-- | MethodDefinition : ClassElementName \`(\` UniqueFormalParameters \`)\`
+-- | \`{\` FunctionBody \`}\`
+-- |
+-- | - It is a Syntax Error if FunctionBodyContainsUseStrict of
+-- |   \|FunctionBody\| is \*true\* and IsSimpleParameterList of
+-- |   \|UniqueFormalParameters\| is \*false\*.
+-- | - It is a Syntax Error if any element of the BoundNames of
+-- |   \|UniqueFormalParameters\| also occurs in the LexicallyDeclaredNames
+-- |   of \|FunctionBody\|.
+-- |
+-- | MethodDefinition : \`set\` ClassElementName \`(\`
+-- | PropertySetParameterList \`)\` \`{\` FunctionBody \`}\`
+-- |
+-- | - It is a Syntax Error if the BoundNames of \|PropertySetParameterList\|
+-- |   contains any duplicate elements.
+-- | - It is a Syntax Error if FunctionBodyContainsUseStrict of
+-- |   \|FunctionBody\| is \*true\* and IsSimpleParameterList of
+-- |   \|PropertySetParameterList\| is \*false\*.
+-- | - It is a Syntax Error if any element of the BoundNames of
+-- |   \|PropertySetParameterList\| also occurs in the LexicallyDeclaredNames
+-- |   of \|FunctionBody\|.
+-- |
+
+-- SPEC: L19067-L19090
+-- | # Static Semantics: HasDirectSuper ( ): a Boolean
+-- |
+-- | MethodDefinition : ClassElementName \`(\` UniqueFormalParameters \`)\`
+-- | \`{\` FunctionBody \`}\` 1. If \|UniqueFormalParameters\| Contains
+-- | \|SuperCall\| is \*true\*, return \*true\*. 1. Return \|FunctionBody\|
+-- | Contains \|SuperCall\|. MethodDefinition : \`get\` ClassElementName
+-- | \`(\` \`)\` \`{\` FunctionBody \`}\` 1. Return \|FunctionBody\| Contains
+-- | \|SuperCall\|. MethodDefinition : \`set\` ClassElementName \`(\`
+-- | PropertySetParameterList \`)\` \`{\` FunctionBody \`}\` 1. If
+-- | \|PropertySetParameterList\| Contains \|SuperCall\| is \*true\*, return
+-- | \*true\*. 1. Return \|FunctionBody\| Contains \|SuperCall\|.
+-- | GeneratorMethod : \`\*\` ClassElementName \`(\` UniqueFormalParameters
+-- | \`)\` \`{\` GeneratorBody \`}\` 1. If \|UniqueFormalParameters\|
+-- | Contains \|SuperCall\| is \*true\*, return \*true\*. 1. Return
+-- | \|GeneratorBody\| Contains \|SuperCall\|. AsyncGeneratorMethod :
+-- | \`async\` \`\*\` ClassElementName \`(\` UniqueFormalParameters \`)\`
+-- | \`{\` AsyncGeneratorBody \`}\` 1. If \|UniqueFormalParameters\| Contains
+-- | \|SuperCall\| is \*true\*, return \*true\*. 1. Return
+-- | \|AsyncGeneratorBody\| Contains \|SuperCall\|. AsyncMethod : \`async\`
+-- | ClassElementName \`(\` UniqueFormalParameters \`)\` \`{\`
+-- | AsyncFunctionBody \`}\` 1. If \|UniqueFormalParameters\| Contains
+-- | \|SuperCall\| is \*true\*, return \*true\*. 1. Return
+-- | \|AsyncFunctionBody\| Contains \|SuperCall\|.
+-- |
+
+-- SPEC: L19091-L19099
+-- | # Static Semantics: SpecialMethod ( ): a Boolean
+-- |
+-- | MethodDefinition : ClassElementName \`(\` UniqueFormalParameters \`)\`
+-- | \`{\` FunctionBody \`}\` 1. Return \*false\*. MethodDefinition :
+-- | GeneratorMethod AsyncMethod AsyncGeneratorMethod \`get\`
+-- | ClassElementName \`(\` \`)\` \`{\` FunctionBody \`}\` \`set\`
+-- | ClassElementName \`(\` PropertySetParameterList \`)\` \`{\` FunctionBody
+-- | \`}\` 1. Return \*true\*.
+-- |
+
+-- SPEC: L19100-L19115
+-- | # Runtime Semantics: DefineMethod ( \_object\_: an Object, optional \_functionPrototype\_: an Object, ): either a normal completion containing a Record with fields \[\[Key\]\] (a property key) and \[\[Closure\]\] (an ECMAScript function object) or an abrupt completion
+-- |
+-- | MethodDefinition : ClassElementName \`(\` UniqueFormalParameters \`)\`
+-- | \`{\` FunctionBody \`}\` 1. Let \_propKey\_ be ? Evaluation of
+-- | \|ClassElementName\|. 1. Let \_env\_ be the running execution context\'s
+-- | LexicalEnvironment. 1. Let \_privateEnv\_ be the running execution
+-- | context\'s PrivateEnvironment. 1. If \_functionPrototype\_ is present,
+-- | then 1. Let \_prototype\_ be \_functionPrototype\_. 1. Else, 1. Let
+-- | \_prototype\_ be %Function.prototype%. 1. Let \_sourceText\_ be the
+-- | source text matched by \|MethodDefinition\|. 1. Let \_closure\_ be
+-- | OrdinaryFunctionCreate(\_prototype\_, \_sourceText\_,
+-- | \|UniqueFormalParameters\|, \|FunctionBody\|, \~non-lexical-this\~,
+-- | \_env\_, \_privateEnv\_). 1. Perform MakeMethod(\_closure\_,
+-- | \_object\_). 1. Return the Record { \[\[Key\]\]: \_propKey\_,
+-- | \[\[Closure\]\]: \_closure\_ }.
+-- |
+
+-- SPEC: L19116-L19205
+-- | # Runtime Semantics: MethodDefinitionEvaluation ( \_object\_: an Object, \_enumerable\_: a Boolean, ): either a normal completion containing either a PrivateElement or \~unused\~, or an abrupt completion
+-- |
+-- | MethodDefinition : ClassElementName \`(\` UniqueFormalParameters \`)\`
+-- | \`{\` FunctionBody \`}\` 1. Let \_methodDef\_ be ? DefineMethod of
+-- | \|MethodDefinition\| with argument \_object\_. 1. Perform
+-- | SetFunctionName(\_methodDef\_.\[\[Closure\]\],
+-- | \_methodDef\_.\[\[Key\]\]). 1. Return ? DefineMethodProperty(\_object\_,
+-- | \_methodDef\_.\[\[Key\]\], \_methodDef\_.\[\[Closure\]\],
+-- | \_enumerable\_). MethodDefinition : \`get\` ClassElementName \`(\` \`)\`
+-- | \`{\` FunctionBody \`}\` 1. Let \_propKey\_ be ? Evaluation of
+-- | \|ClassElementName\|. 1. Let \_env\_ be the running execution context\'s
+-- | LexicalEnvironment. 1. Let \_privateEnv\_ be the running execution
+-- | context\'s PrivateEnvironment. 1. Let \_sourceText\_ be the source text
+-- | matched by \|MethodDefinition\|. 1. Let \_formalParameterList\_ be an
+-- | instance of the production FormalParameters : \[empty\]. 1. Let
+-- | \_closure\_ be OrdinaryFunctionCreate(%Function.prototype%,
+-- | \_sourceText\_, \_formalParameterList\_, \|FunctionBody\|,
+-- | \~non-lexical-this\~, \_env\_, \_privateEnv\_). 1. Perform
+-- | MakeMethod(\_closure\_, \_object\_). 1. Perform
+-- | SetFunctionName(\_closure\_, \_propKey\_, \*\"get\"\*). 1. If
+-- | \_propKey\_ is a Private Name, then 1. Return PrivateElement {
+-- | \[\[Key\]\]: \_propKey\_, \[\[Kind\]\]: \~accessor\~, \[\[Get\]\]:
+-- | \_closure\_, \[\[Set\]\]: \*undefined\* }. 1. Let \_desc\_ be the
+-- | PropertyDescriptor { \[\[Get\]\]: \_closure\_, \[\[Enumerable\]\]:
+-- | \_enumerable\_, \[\[Configurable\]\]: \*true\* }. 1. Perform ?
+-- | DefinePropertyOrThrow(\_object\_, \_propKey\_, \_desc\_). 1. Return
+-- | \~unused\~. MethodDefinition : \`set\` ClassElementName \`(\`
+-- | PropertySetParameterList \`)\` \`{\` FunctionBody \`}\` 1. Let
+-- | \_propKey\_ be ? Evaluation of \|ClassElementName\|. 1. Let \_env\_ be
+-- | the running execution context\'s LexicalEnvironment. 1. Let
+-- | \_privateEnv\_ be the running execution context\'s
+-- | PrivateEnvironment. 1. Let \_sourceText\_ be the source text matched by
+-- | \|MethodDefinition\|. 1. Let \_closure\_ be
+-- | OrdinaryFunctionCreate(%Function.prototype%, \_sourceText\_,
+-- | \|PropertySetParameterList\|, \|FunctionBody\|, \~non-lexical-this\~,
+-- | \_env\_, \_privateEnv\_). 1. Perform MakeMethod(\_closure\_,
+-- | \_object\_). 1. Perform SetFunctionName(\_closure\_, \_propKey\_,
+-- | \*\"set\"\*). 1. If \_propKey\_ is a Private Name, then 1. Return
+-- | PrivateElement { \[\[Key\]\]: \_propKey\_, \[\[Kind\]\]: \~accessor\~,
+-- | \[\[Get\]\]: \*undefined\*, \[\[Set\]\]: \_closure\_ }. 1. Let \_desc\_
+-- | be the PropertyDescriptor { \[\[Set\]\]: \_closure\_,
+-- | \[\[Enumerable\]\]: \_enumerable\_, \[\[Configurable\]\]: \*true\* }. 1.
+-- | Perform ? DefinePropertyOrThrow(\_object\_, \_propKey\_, \_desc\_). 1.
+-- | Return \~unused\~. GeneratorMethod : \`\*\` ClassElementName \`(\`
+-- | UniqueFormalParameters \`)\` \`{\` GeneratorBody \`}\` 1. Let
+-- | \_propKey\_ be ? Evaluation of \|ClassElementName\|. 1. Let \_env\_ be
+-- | the running execution context\'s LexicalEnvironment. 1. Let
+-- | \_privateEnv\_ be the running execution context\'s
+-- | PrivateEnvironment. 1. Let \_sourceText\_ be the source text matched by
+-- | \|GeneratorMethod\|. 1. Let \_closure\_ be
+-- | OrdinaryFunctionCreate(%GeneratorFunction.prototype%, \_sourceText\_,
+-- | \|UniqueFormalParameters\|, \|GeneratorBody\|, \~non-lexical-this\~,
+-- | \_env\_, \_privateEnv\_). 1. Perform MakeMethod(\_closure\_,
+-- | \_object\_). 1. Perform SetFunctionName(\_closure\_, \_propKey\_). 1.
+-- | Let \_prototype\_ be OrdinaryObjectCreate(%GeneratorPrototype%). 1.
+-- | Perform ! DefinePropertyOrThrow(\_closure\_, \*\"prototype\"\*,
+-- | PropertyDescriptor { \[\[Value\]\]: \_prototype\_, \[\[Writable\]\]:
+-- | \*true\*, \[\[Enumerable\]\]: \*false\*, \[\[Configurable\]\]: \*false\*
+-- | }). 1. Return ? DefineMethodProperty(\_object\_, \_propKey\_,
+-- | \_closure\_, \_enumerable\_). AsyncGeneratorMethod : \`async\` \`\*\`
+-- | ClassElementName \`(\` UniqueFormalParameters \`)\` \`{\`
+-- | AsyncGeneratorBody \`}\` 1. Let \_propKey\_ be ? Evaluation of
+-- | \|ClassElementName\|. 1. Let \_env\_ be the running execution context\'s
+-- | LexicalEnvironment. 1. Let \_privateEnv\_ be the running execution
+-- | context\'s PrivateEnvironment. 1. Let \_sourceText\_ be the source text
+-- | matched by \|AsyncGeneratorMethod\|. 1. Let \_closure\_ be
+-- | OrdinaryFunctionCreate(%AsyncGeneratorFunction.prototype%,
+-- | \_sourceText\_, \|UniqueFormalParameters\|, \|AsyncGeneratorBody\|,
+-- | \~non-lexical-this\~, \_env\_, \_privateEnv\_). 1. Perform
+-- | MakeMethod(\_closure\_, \_object\_). 1. Perform
+-- | SetFunctionName(\_closure\_, \_propKey\_). 1. Let \_prototype\_ be
+-- | OrdinaryObjectCreate(%AsyncGeneratorPrototype%). 1. Perform !
+-- | DefinePropertyOrThrow(\_closure\_, \*\"prototype\"\*, PropertyDescriptor
+-- | { \[\[Value\]\]: \_prototype\_, \[\[Writable\]\]: \*true\*,
+-- | \[\[Enumerable\]\]: \*false\*, \[\[Configurable\]\]: \*false\* }). 1.
+-- | Return ? DefineMethodProperty(\_object\_, \_propKey\_, \_closure\_,
+-- | \_enumerable\_). AsyncMethod : \`async\` ClassElementName \`(\`
+-- | UniqueFormalParameters \`)\` \`{\` AsyncFunctionBody \`}\` 1. Let
+-- | \_propKey\_ be ? Evaluation of \|ClassElementName\|. 1. Let \_env\_ be
+-- | the LexicalEnvironment of the running execution context. 1. Let
+-- | \_privateEnv\_ be the running execution context\'s
+-- | PrivateEnvironment. 1. Let \_sourceText\_ be the source text matched by
+-- | \|AsyncMethod\|. 1. Let \_closure\_ be
+-- | OrdinaryFunctionCreate(%AsyncFunction.prototype%, \_sourceText\_,
+-- | \|UniqueFormalParameters\|, \|AsyncFunctionBody\|, \~non-lexical-this\~,
+-- | \_env\_, \_privateEnv\_). 1. Perform MakeMethod(\_closure\_,
+-- | \_object\_). 1. Perform SetFunctionName(\_closure\_, \_propKey\_). 1.
+-- | Return ? DefineMethodProperty(\_object\_, \_propKey\_, \_closure\_,
+-- | \_enumerable\_).
+-- |
+
+-- SPEC: L19206-L19233
+-- | # Generator Function Definitions
+-- |
+-- | ## Syntax
+-- |
+-- | GeneratorDeclaration\[Yield, Await, Default\] : \`function\` \`\*\`
+-- | BindingIdentifier\[?Yield, ?Await\] \`(\` FormalParameters\[+Yield,
+-- | \~Await\] \`)\` \`{\` GeneratorBody \`}\` \[+Default\] \`function\`
+-- | \`\*\` \`(\` FormalParameters\[+Yield, \~Await\] \`)\` \`{\`
+-- | GeneratorBody \`}\` GeneratorExpression : \`function\` \`\*\`
+-- | BindingIdentifier\[+Yield, \~Await\]? \`(\` FormalParameters\[+Yield,
+-- | \~Await\] \`)\` \`{\` GeneratorBody \`}\` GeneratorMethod\[Yield,
+-- | Await\] : \`\*\` ClassElementName\[?Yield, ?Await\] \`(\`
+-- | UniqueFormalParameters\[+Yield, \~Await\] \`)\` \`{\` GeneratorBody
+-- | \`}\` GeneratorBody : FunctionBody\[+Yield, \~Await\]
+-- | YieldExpression\[In, Await\] : \`yield\` \`yield\` \[no LineTerminator
+-- | here\] AssignmentExpression\[?In, +Yield, ?Await\] \`yield\` \[no
+-- | LineTerminator here\] \`\*\` AssignmentExpression\[?In, +Yield, ?Await\]
+-- |
+-- | The syntactic context immediately following \`yield\` requires use of
+-- | the \|InputElementRegExpOrTemplateTail\| lexical goal.
+-- |
+-- | \|YieldExpression\| cannot be used within the \|FormalParameters\| of a
+-- | generator function because any expressions that are part of
+-- | \|FormalParameters\| are evaluated before the resulting Generator is in
+-- | a resumable state.
+-- |
+-- | Abstract operations relating to Generators are defined in .
+-- |
+
+-- SPEC: L19234-L19278
+-- | # Static Semantics: Early Errors
+-- |
+-- | GeneratorMethod : \`\*\` ClassElementName \`(\` UniqueFormalParameters
+-- | \`)\` \`{\` GeneratorBody \`}\`
+-- |
+-- | - It is a Syntax Error if HasDirectSuper of \|GeneratorMethod\| is
+-- |   \*true\*.
+-- | - It is a Syntax Error if \|UniqueFormalParameters\| Contains
+-- |   \|YieldExpression\| is \*true\*.
+-- | - It is a Syntax Error if FunctionBodyContainsUseStrict of
+-- |   \|GeneratorBody\| is \*true\* and IsSimpleParameterList of
+-- |   \|UniqueFormalParameters\| is \*false\*.
+-- | - It is a Syntax Error if any element of the BoundNames of
+-- |   \|UniqueFormalParameters\| also occurs in the LexicallyDeclaredNames
+-- |   of \|GeneratorBody\|.
+-- |
+-- | GeneratorDeclaration : \`function\` \`\*\` BindingIdentifier \`(\`
+-- | FormalParameters \`)\` \`{\` GeneratorBody \`}\` \`function\` \`\*\`
+-- | \`(\` FormalParameters \`)\` \`{\` GeneratorBody \`}\`
+-- | GeneratorExpression : \`function\` \`\*\` BindingIdentifier? \`(\`
+-- | FormalParameters \`)\` \`{\` GeneratorBody \`}\`
+-- |
+-- | - If IsStrict(\|FormalParameters\|) is \*true\*, the Early Error rules
+-- |   for UniqueFormalParameters : FormalParameters are applied.
+-- | - If \|BindingIdentifier\| is present and
+-- |   IsStrict(\|BindingIdentifier\|) is \*true\*, it is a Syntax Error if
+-- |   the StringValue of \|BindingIdentifier\| is either \*\"eval\"\* or
+-- |   \*\"arguments\"\*.
+-- | - It is a Syntax Error if FunctionBodyContainsUseStrict of
+-- |   \|GeneratorBody\| is \*true\* and IsSimpleParameterList of
+-- |   \|FormalParameters\| is \*false\*.
+-- | - It is a Syntax Error if any element of the BoundNames of
+-- |   \|FormalParameters\| also occurs in the LexicallyDeclaredNames of
+-- |   \|GeneratorBody\|.
+-- | - It is a Syntax Error if \|FormalParameters\| Contains
+-- |   \|YieldExpression\| is \*true\*.
+-- | - It is a Syntax Error if \|FormalParameters\| Contains
+-- |   \|SuperProperty\| is \*true\*.
+-- | - It is a Syntax Error if \|GeneratorBody\| Contains \|SuperProperty\|
+-- |   is \*true\*.
+-- | - It is a Syntax Error if \|FormalParameters\| Contains \|SuperCall\| is
+-- |   \*true\*.
+-- | - It is a Syntax Error if \|GeneratorBody\| Contains \|SuperCall\| is
+-- |   \*true\*.
+-- |
+
+-- SPEC: L19279-L19291
+-- | # Runtime Semantics: EvaluateGeneratorBody ( \_functionObject\_: an ECMAScript function object, \_argumentsList\_: a List of ECMAScript language values, ): a throw completion or a return completion
+-- |
+-- | GeneratorBody : FunctionBody 1. Perform ?
+-- | FunctionDeclarationInstantiation(\_functionObject\_,
+-- | \_argumentsList\_). 1. Let \_G\_ be ?
+-- | OrdinaryCreateFromConstructor(\_functionObject\_,
+-- | \*\"%GeneratorPrototype%\"\*, « \[\[GeneratorState\]\],
+-- | \[\[GeneratorContext\]\], \[\[GeneratorBrand\]\] »). 1. Set
+-- | \_G\_.\[\[GeneratorBrand\]\] to \~empty\~. 1. Set
+-- | \_G\_.\[\[GeneratorState\]\] to \~suspended-start\~. 1. Perform
+-- | GeneratorStart(\_G\_, \|FunctionBody\|). 1. Return
+-- | ReturnCompletion(\_G\_).
+-- |
+
+-- SPEC: L19292-L19320
+-- | # Runtime Semantics: InstantiateGeneratorFunctionObject ( \_env\_: an Environment Record, \_privateEnv\_: a PrivateEnvironment Record or \*null\*, ): an ECMAScript function object
+-- |
+-- | GeneratorDeclaration : \`function\` \`\*\` BindingIdentifier \`(\`
+-- | FormalParameters \`)\` \`{\` GeneratorBody \`}\` 1. Let \_name\_ be the
+-- | StringValue of \|BindingIdentifier\|. 1. Let \_sourceText\_ be the
+-- | source text matched by \|GeneratorDeclaration\|. 1. Let \_F\_ be
+-- | OrdinaryFunctionCreate(%GeneratorFunction.prototype%, \_sourceText\_,
+-- | \|FormalParameters\|, \|GeneratorBody\|, \~non-lexical-this\~, \_env\_,
+-- | \_privateEnv\_). 1. Perform SetFunctionName(\_F\_, \_name\_). 1. Let
+-- | \_prototype\_ be OrdinaryObjectCreate(%GeneratorPrototype%). 1. Perform
+-- | ! DefinePropertyOrThrow(\_F\_, \*\"prototype\"\*, PropertyDescriptor {
+-- | \[\[Value\]\]: \_prototype\_, \[\[Writable\]\]: \*true\*,
+-- | \[\[Enumerable\]\]: \*false\*, \[\[Configurable\]\]: \*false\* }). 1.
+-- | Return \_F\_. GeneratorDeclaration : \`function\` \`\*\` \`(\`
+-- | FormalParameters \`)\` \`{\` GeneratorBody \`}\` 1. Let \_sourceText\_
+-- | be the source text matched by \|GeneratorDeclaration\|. 1. Let \_F\_ be
+-- | OrdinaryFunctionCreate(%GeneratorFunction.prototype%, \_sourceText\_,
+-- | \|FormalParameters\|, \|GeneratorBody\|, \~non-lexical-this\~, \_env\_,
+-- | \_privateEnv\_). 1. Perform SetFunctionName(\_F\_, \*\"default\"\*). 1.
+-- | Let \_prototype\_ be OrdinaryObjectCreate(%GeneratorPrototype%). 1.
+-- | Perform ! DefinePropertyOrThrow(\_F\_, \*\"prototype\"\*,
+-- | PropertyDescriptor { \[\[Value\]\]: \_prototype\_, \[\[Writable\]\]:
+-- | \*true\*, \[\[Enumerable\]\]: \*false\*, \[\[Configurable\]\]: \*false\*
+-- | }). 1. Return \_F\_.
+-- |
+-- | An anonymous \|GeneratorDeclaration\| can only occur as part of an
+-- | \`export default\` declaration, and its function code is therefore
+-- | always strict mode code.
+-- |
+
+-- SPEC: L19321-L19363
+-- | # Runtime Semantics: InstantiateGeneratorFunctionExpression ( optional \_name\_: a property key or a Private Name, ): an ECMAScript function object
+-- |
+-- | GeneratorExpression : \`function\` \`\*\` \`(\` FormalParameters \`)\`
+-- | \`{\` GeneratorBody \`}\` 1. If \_name\_ is not present, set \_name\_ to
+-- | \*\"\"\*. 1. Let \_env\_ be the LexicalEnvironment of the running
+-- | execution context. 1. Let \_privateEnv\_ be the running execution
+-- | context\'s PrivateEnvironment. 1. Let \_sourceText\_ be the source text
+-- | matched by \|GeneratorExpression\|. 1. Let \_closure\_ be
+-- | OrdinaryFunctionCreate(%GeneratorFunction.prototype%, \_sourceText\_,
+-- | \|FormalParameters\|, \|GeneratorBody\|, \~non-lexical-this\~, \_env\_,
+-- | \_privateEnv\_). 1. Perform SetFunctionName(\_closure\_, \_name\_). 1.
+-- | Let \_prototype\_ be OrdinaryObjectCreate(%GeneratorPrototype%). 1.
+-- | Perform ! DefinePropertyOrThrow(\_closure\_, \*\"prototype\"\*,
+-- | PropertyDescriptor { \[\[Value\]\]: \_prototype\_, \[\[Writable\]\]:
+-- | \*true\*, \[\[Enumerable\]\]: \*false\*, \[\[Configurable\]\]: \*false\*
+-- | }). 1. Return \_closure\_. GeneratorExpression : \`function\` \`\*\`
+-- | BindingIdentifier \`(\` FormalParameters \`)\` \`{\` GeneratorBody
+-- | \`}\` 1. Assert: \_name\_ is not present. 1. Set \_name\_ to the
+-- | StringValue of \|BindingIdentifier\|. 1. Let \_outerEnv\_ be the running
+-- | execution context\'s LexicalEnvironment. 1. Let \_funcEnv\_ be
+-- | NewDeclarativeEnvironment(\_outerEnv\_). 1. Perform !
+-- | \_funcEnv\_.CreateImmutableBinding(\_name\_, \*false\*). 1. Let
+-- | \_privateEnv\_ be the running execution context\'s
+-- | PrivateEnvironment. 1. Let \_sourceText\_ be the source text matched by
+-- | \|GeneratorExpression\|. 1. Let \_closure\_ be
+-- | OrdinaryFunctionCreate(%GeneratorFunction.prototype%, \_sourceText\_,
+-- | \|FormalParameters\|, \|GeneratorBody\|, \~non-lexical-this\~,
+-- | \_funcEnv\_, \_privateEnv\_). 1. Perform SetFunctionName(\_closure\_,
+-- | \_name\_). 1. Let \_prototype\_ be
+-- | OrdinaryObjectCreate(%GeneratorPrototype%). 1. Perform !
+-- | DefinePropertyOrThrow(\_closure\_, \*\"prototype\"\*, PropertyDescriptor
+-- | { \[\[Value\]\]: \_prototype\_, \[\[Writable\]\]: \*true\*,
+-- | \[\[Enumerable\]\]: \*false\*, \[\[Configurable\]\]: \*false\* }). 1.
+-- | Perform ! \_funcEnv\_.InitializeBinding(\_name\_, \_closure\_). 1.
+-- | Return \_closure\_.
+-- |
+-- | The \|BindingIdentifier\| in a \|GeneratorExpression\| can be referenced
+-- | from inside the \|GeneratorExpression\|\'s \|FunctionBody\| to allow the
+-- | generator code to call itself recursively. However, unlike in a
+-- | \|GeneratorDeclaration\|, the \|BindingIdentifier\| in a
+-- | \|GeneratorExpression\| cannot be referenced from and does not affect
+-- | the scope enclosing the \|GeneratorExpression\|.
+-- |
+
+-- SPEC: L19364-L19433
+-- | # Runtime Semantics: Evaluation
+-- |
+-- | GeneratorExpression : \`function\` \`\*\` BindingIdentifier? \`(\`
+-- | FormalParameters \`)\` \`{\` GeneratorBody \`}\` 1. Return
+-- | InstantiateGeneratorFunctionExpression of \|GeneratorExpression\|.
+-- | YieldExpression : \`yield\` 1. Return ? Yield(\*undefined\*).
+-- | YieldExpression : \`yield\` AssignmentExpression 1. Let \_exprRef\_ be ?
+-- | Evaluation of \|AssignmentExpression\|. 1. Let \_value\_ be ?
+-- | GetValue(\_exprRef\_). 1. Return ? Yield(\_value\_). YieldExpression :
+-- | \`yield\` \`\*\` AssignmentExpression 1. Let \_generatorKind\_ be
+-- | GetGeneratorKind(). 1. Assert: \_generatorKind\_ is either \~sync\~ or
+-- | \~async\~. 1. Let \_exprRef\_ be ? Evaluation of
+-- | \|AssignmentExpression\|. 1. Let \_value\_ be ?
+-- | GetValue(\_exprRef\_). 1. Let \_iteratorRecord\_ be ?
+-- | GetIterator(\_value\_, \_generatorKind\_). 1. Let \_iterator\_ be
+-- | \_iteratorRecord\_.\[\[Iterator\]\]. 1. Let \_received\_ be
+-- | NormalCompletion(\*undefined\*). 1. Repeat, 1. If \_received\_ is a
+-- | normal completion, then 1. Let \_innerResult\_ be ?
+-- | Call(\_iteratorRecord\_.\[\[NextMethod\]\],
+-- | \_iteratorRecord\_.\[\[Iterator\]\], « \_received\_.\[\[Value\]\] »). 1.
+-- | If \_generatorKind\_ is \~async\~, set \_innerResult\_ to ?
+-- | Await(\_innerResult\_). 1. If \_innerResult\_ is not an Object, throw a
+-- | \*TypeError\* exception. 1. Let \_done\_ be ?
+-- | IteratorComplete(\_innerResult\_). 1. If \_done\_ is \*true\*, then 1.
+-- | Return ? IteratorValue(\_innerResult\_). 1. If \_generatorKind\_ is
+-- | \~async\~, set \_received\_ to Completion(AsyncGeneratorYield(?
+-- | IteratorValue(\_innerResult\_))). 1. Else, set \_received\_ to
+-- | Completion(GeneratorYield(\_innerResult\_)). 1. Else if \_received\_ is
+-- | a throw completion, then 1. Let \_throw\_ be ? GetMethod(\_iterator\_,
+-- | \*\"throw\"\*). 1. If \_throw\_ is not \*undefined\*, then 1. Let
+-- | \_innerResult\_ be ? Call(\_throw\_, \_iterator\_, «
+-- | \_received\_.\[\[Value\]\] »). 1. If \_generatorKind\_ is \~async\~, set
+-- | \_innerResult\_ to ? Await(\_innerResult\_). 1. NOTE: Exceptions from
+-- | the inner iterator \`throw\` method are propagated. Normal completions
+-- | from an inner \`throw\` method are processed similarly to an inner
+-- | \`next\`. 1. If \_innerResult\_ is not an Object, throw a \*TypeError\*
+-- | exception. 1. Let \_done\_ be ? IteratorComplete(\_innerResult\_). 1. If
+-- | \_done\_ is \*true\*, then 1. Return ?
+-- | IteratorValue(\_innerResult\_). 1. If \_generatorKind\_ is \~async\~,
+-- | set \_received\_ to Completion(AsyncGeneratorYield(?
+-- | IteratorValue(\_innerResult\_))). 1. Else, set \_received\_ to
+-- | Completion(GeneratorYield(\_innerResult\_)). 1. Else, 1. NOTE: If
+-- | \_iterator\_ does not have a \`throw\` method, this throw is going to
+-- | terminate the \`yield\*\` loop. But first we need to give \_iterator\_ a
+-- | chance to clean up. 1. Let \_closeCompletion\_ be
+-- | NormalCompletion(\~empty\~). 1. If \_generatorKind\_ is \~async\~,
+-- | perform ? AsyncIteratorClose(\_iteratorRecord\_,
+-- | \_closeCompletion\_). 1. Else, perform ?
+-- | IteratorClose(\_iteratorRecord\_, \_closeCompletion\_). 1. NOTE: The
+-- | next step throws a \*TypeError\* to indicate that there was a
+-- | \`yield\*\` protocol violation: \_iterator\_ does not have a \`throw\`
+-- | method. 1. Throw a \*TypeError\* exception. 1. Else, 1. Assert:
+-- | \_received\_ is a return completion. 1. Let \_return\_ be ?
+-- | GetMethod(\_iterator\_, \*\"return\"\*). 1. If \_return\_ is
+-- | \*undefined\*, then 1. Let \_receivedValue\_ be
+-- | \_received\_.\[\[Value\]\]. 1. If \_generatorKind\_ is \~async\~,
+-- | then 1. Set \_receivedValue\_ to ? Await(\_receivedValue\_). 1. Return
+-- | ReturnCompletion(\_receivedValue\_). 1. Let \_innerReturnResult\_ be ?
+-- | Call(\_return\_, \_iterator\_, « \_received\_.\[\[Value\]\] »). 1. If
+-- | \_generatorKind\_ is \~async\~, set \_innerReturnResult\_ to ?
+-- | Await(\_innerReturnResult\_). 1. If \_innerReturnResult\_ is not an
+-- | Object, throw a \*TypeError\* exception. 1. Let \_done\_ be ?
+-- | IteratorComplete(\_innerReturnResult\_). 1. If \_done\_ is \*true\*,
+-- | then 1. Let \_returnedValue\_ be ?
+-- | IteratorValue(\_innerReturnResult\_). 1. Return
+-- | ReturnCompletion(\_returnedValue\_). 1. If \_generatorKind\_ is
+-- | \~async\~, set \_received\_ to Completion(AsyncGeneratorYield(?
+-- | IteratorValue(\_innerReturnResult\_))). 1. Else, set \_received\_ to
+-- | Completion(GeneratorYield(\_innerReturnResult\_)).
+-- |
+
+-- SPEC: L19434-L19458
+-- | # Async Generator Function Definitions
+-- |
+-- | ## Syntax
+-- |
+-- | AsyncGeneratorDeclaration\[Yield, Await, Default\] : \`async\` \[no
+-- | LineTerminator here\] \`function\` \`\*\` BindingIdentifier\[?Yield,
+-- | ?Await\] \`(\` FormalParameters\[+Yield, +Await\] \`)\` \`{\`
+-- | AsyncGeneratorBody \`}\` \[+Default\] \`async\` \[no LineTerminator
+-- | here\] \`function\` \`\*\` \`(\` FormalParameters\[+Yield, +Await\]
+-- | \`)\` \`{\` AsyncGeneratorBody \`}\` AsyncGeneratorExpression :
+-- | \`async\` \[no LineTerminator here\] \`function\` \`\*\`
+-- | BindingIdentifier\[+Yield, +Await\]? \`(\` FormalParameters\[+Yield,
+-- | +Await\] \`)\` \`{\` AsyncGeneratorBody \`}\`
+-- | AsyncGeneratorMethod\[Yield, Await\] : \`async\` \[no LineTerminator
+-- | here\] \`\*\` ClassElementName\[?Yield, ?Await\] \`(\`
+-- | UniqueFormalParameters\[+Yield, +Await\] \`)\` \`{\` AsyncGeneratorBody
+-- | \`}\` AsyncGeneratorBody : FunctionBody\[+Yield, +Await\]
+-- |
+-- | \|YieldExpression\| and \|AwaitExpression\| cannot be used within the
+-- | \|FormalParameters\| of an async generator function because any
+-- | expressions that are part of \|FormalParameters\| are evaluated before
+-- | the resulting AsyncGenerator is in a resumable state.
+-- |
+-- | Abstract operations relating to AsyncGenerators are defined in .
+-- |
+
+-- SPEC: L19459-L19508
+-- | # Static Semantics: Early Errors
+-- |
+-- | AsyncGeneratorMethod : \`async\` \`\*\` ClassElementName \`(\`
+-- | UniqueFormalParameters \`)\` \`{\` AsyncGeneratorBody \`}\`
+-- |
+-- | - It is a Syntax Error if HasDirectSuper of \|AsyncGeneratorMethod\| is
+-- |   \*true\*.
+-- | - It is a Syntax Error if \|UniqueFormalParameters\| Contains
+-- |   \|YieldExpression\| is \*true\*.
+-- | - It is a Syntax Error if \|UniqueFormalParameters\| Contains
+-- |   \|AwaitExpression\| is \*true\*.
+-- | - It is a Syntax Error if FunctionBodyContainsUseStrict of
+-- |   \|AsyncGeneratorBody\| is \*true\* and IsSimpleParameterList of
+-- |   \|UniqueFormalParameters\| is \*false\*.
+-- | - It is a Syntax Error if any element of the BoundNames of
+-- |   \|UniqueFormalParameters\| also occurs in the LexicallyDeclaredNames
+-- |   of \|AsyncGeneratorBody\|.
+-- |
+-- | AsyncGeneratorDeclaration : \`async\` \`function\` \`\*\`
+-- | BindingIdentifier \`(\` FormalParameters \`)\` \`{\` AsyncGeneratorBody
+-- | \`}\` \`async\` \`function\` \`\*\` \`(\` FormalParameters \`)\` \`{\`
+-- | AsyncGeneratorBody \`}\` AsyncGeneratorExpression : \`async\`
+-- | \`function\` \`\*\` BindingIdentifier? \`(\` FormalParameters \`)\`
+-- | \`{\` AsyncGeneratorBody \`}\`
+-- |
+-- | - If IsStrict(\|FormalParameters\|) is \*true\*, the Early Error rules
+-- |   for UniqueFormalParameters : FormalParameters are applied.
+-- | - If \|BindingIdentifier\| is present and
+-- |   IsStrict(\|BindingIdentifier\|) is \*true\*, it is a Syntax Error if
+-- |   the StringValue of \|BindingIdentifier\| is either \*\"eval\"\* or
+-- |   \*\"arguments\"\*.
+-- | - It is a Syntax Error if FunctionBodyContainsUseStrict of
+-- |   \|AsyncGeneratorBody\| is \*true\* and IsSimpleParameterList of
+-- |   \|FormalParameters\| is \*false\*.
+-- | - It is a Syntax Error if any element of the BoundNames of
+-- |   \|FormalParameters\| also occurs in the LexicallyDeclaredNames of
+-- |   \|AsyncGeneratorBody\|.
+-- | - It is a Syntax Error if \|FormalParameters\| Contains
+-- |   \|YieldExpression\| is \*true\*.
+-- | - It is a Syntax Error if \|FormalParameters\| Contains
+-- |   \|AwaitExpression\| is \*true\*.
+-- | - It is a Syntax Error if \|FormalParameters\| Contains
+-- |   \|SuperProperty\| is \*true\*.
+-- | - It is a Syntax Error if \|AsyncGeneratorBody\| Contains
+-- |   \|SuperProperty\| is \*true\*.
+-- | - It is a Syntax Error if \|FormalParameters\| Contains \|SuperCall\| is
+-- |   \*true\*.
+-- | - It is a Syntax Error if \|AsyncGeneratorBody\| Contains \|SuperCall\|
+-- |   is \*true\*.
+-- |
+
+-- SPEC: L19509-L19521
+-- | # Runtime Semantics: EvaluateAsyncGeneratorBody ( \_functionObject\_: an ECMAScript function object, \_argumentsList\_: a List of ECMAScript language values, ): a throw completion or a return completion
+-- |
+-- | AsyncGeneratorBody : FunctionBody 1. Perform ?
+-- | FunctionDeclarationInstantiation(\_functionObject\_,
+-- | \_argumentsList\_). 1. Let \_generator\_ be ?
+-- | OrdinaryCreateFromConstructor(\_functionObject\_,
+-- | \*\"%AsyncGeneratorPrototype%\"\*, « \[\[AsyncGeneratorState\]\],
+-- | \[\[AsyncGeneratorContext\]\], \[\[AsyncGeneratorQueue\]\],
+-- | \[\[GeneratorBrand\]\] »). 1. Set \_generator\_.\[\[GeneratorBrand\]\]
+-- | to \~empty\~. 1. Set \_generator\_.\[\[AsyncGeneratorState\]\] to
+-- | \~suspended-start\~. 1. Perform AsyncGeneratorStart(\_generator\_,
+-- | \|FunctionBody\|). 1. Return ReturnCompletion(\_generator\_).
+-- |
+
+-- SPEC: L19522-L19553
+-- | # Runtime Semantics: InstantiateAsyncGeneratorFunctionObject ( \_env\_: an Environment Record, \_privateEnv\_: a PrivateEnvironment Record or \*null\*, ): an ECMAScript function object
+-- |
+-- | AsyncGeneratorDeclaration : \`async\` \`function\` \`\*\`
+-- | BindingIdentifier \`(\` FormalParameters \`)\` \`{\` AsyncGeneratorBody
+-- | \`}\` 1. Let \_name\_ be the StringValue of \|BindingIdentifier\|. 1.
+-- | Let \_sourceText\_ be the source text matched by
+-- | \|AsyncGeneratorDeclaration\|. 1. Let \_F\_ be
+-- | OrdinaryFunctionCreate(%AsyncGeneratorFunction.prototype%,
+-- | \_sourceText\_, \|FormalParameters\|, \|AsyncGeneratorBody\|,
+-- | \~non-lexical-this\~, \_env\_, \_privateEnv\_). 1. Perform
+-- | SetFunctionName(\_F\_, \_name\_). 1. Let \_prototype\_ be
+-- | OrdinaryObjectCreate(%AsyncGeneratorPrototype%). 1. Perform !
+-- | DefinePropertyOrThrow(\_F\_, \*\"prototype\"\*, PropertyDescriptor {
+-- | \[\[Value\]\]: \_prototype\_, \[\[Writable\]\]: \*true\*,
+-- | \[\[Enumerable\]\]: \*false\*, \[\[Configurable\]\]: \*false\* }). 1.
+-- | Return \_F\_. AsyncGeneratorDeclaration : \`async\` \`function\` \`\*\`
+-- | \`(\` FormalParameters \`)\` \`{\` AsyncGeneratorBody \`}\` 1. Let
+-- | \_sourceText\_ be the source text matched by
+-- | \|AsyncGeneratorDeclaration\|. 1. Let \_F\_ be
+-- | OrdinaryFunctionCreate(%AsyncGeneratorFunction.prototype%,
+-- | \_sourceText\_, \|FormalParameters\|, \|AsyncGeneratorBody\|,
+-- | \~non-lexical-this\~, \_env\_, \_privateEnv\_). 1. Perform
+-- | SetFunctionName(\_F\_, \*\"default\"\*). 1. Let \_prototype\_ be
+-- | OrdinaryObjectCreate(%AsyncGeneratorPrototype%). 1. Perform !
+-- | DefinePropertyOrThrow(\_F\_, \*\"prototype\"\*, PropertyDescriptor {
+-- | \[\[Value\]\]: \_prototype\_, \[\[Writable\]\]: \*true\*,
+-- | \[\[Enumerable\]\]: \*false\*, \[\[Configurable\]\]: \*false\* }). 1.
+-- | Return \_F\_.
+-- |
+-- | An anonymous \|AsyncGeneratorDeclaration\| can only occur as part of an
+-- | \`export default\` declaration.
+-- |
+
+-- SPEC: L19554-L19599
+-- | # Runtime Semantics: InstantiateAsyncGeneratorFunctionExpression ( optional \_name\_: a property key or a Private Name, ): an ECMAScript function object
+-- |
+-- | AsyncGeneratorExpression : \`async\` \`function\` \`\*\` \`(\`
+-- | FormalParameters \`)\` \`{\` AsyncGeneratorBody \`}\` 1. If \_name\_ is
+-- | not present, set \_name\_ to \*\"\"\*. 1. Let \_env\_ be the
+-- | LexicalEnvironment of the running execution context. 1. Let
+-- | \_privateEnv\_ be the running execution context\'s
+-- | PrivateEnvironment. 1. Let \_sourceText\_ be the source text matched by
+-- | \|AsyncGeneratorExpression\|. 1. Let \_closure\_ be
+-- | OrdinaryFunctionCreate(%AsyncGeneratorFunction.prototype%,
+-- | \_sourceText\_, \|FormalParameters\|, \|AsyncGeneratorBody\|,
+-- | \~non-lexical-this\~, \_env\_, \_privateEnv\_). 1. Perform
+-- | SetFunctionName(\_closure\_, \_name\_). 1. Let \_prototype\_ be
+-- | OrdinaryObjectCreate(%AsyncGeneratorPrototype%). 1. Perform !
+-- | DefinePropertyOrThrow(\_closure\_, \*\"prototype\"\*, PropertyDescriptor
+-- | { \[\[Value\]\]: \_prototype\_, \[\[Writable\]\]: \*true\*,
+-- | \[\[Enumerable\]\]: \*false\*, \[\[Configurable\]\]: \*false\* }). 1.
+-- | Return \_closure\_. AsyncGeneratorExpression : \`async\` \`function\`
+-- | \`\*\` BindingIdentifier \`(\` FormalParameters \`)\` \`{\`
+-- | AsyncGeneratorBody \`}\` 1. Assert: \_name\_ is not present. 1. Set
+-- | \_name\_ to the StringValue of \|BindingIdentifier\|. 1. Let
+-- | \_outerEnv\_ be the running execution context\'s LexicalEnvironment. 1.
+-- | Let \_funcEnv\_ be NewDeclarativeEnvironment(\_outerEnv\_). 1. Perform !
+-- | \_funcEnv\_.CreateImmutableBinding(\_name\_, \*false\*). 1. Let
+-- | \_privateEnv\_ be the running execution context\'s
+-- | PrivateEnvironment. 1. Let \_sourceText\_ be the source text matched by
+-- | \|AsyncGeneratorExpression\|. 1. Let \_closure\_ be
+-- | OrdinaryFunctionCreate(%AsyncGeneratorFunction.prototype%,
+-- | \_sourceText\_, \|FormalParameters\|, \|AsyncGeneratorBody\|,
+-- | \~non-lexical-this\~, \_funcEnv\_, \_privateEnv\_). 1. Perform
+-- | SetFunctionName(\_closure\_, \_name\_). 1. Let \_prototype\_ be
+-- | OrdinaryObjectCreate(%AsyncGeneratorPrototype%). 1. Perform !
+-- | DefinePropertyOrThrow(\_closure\_, \*\"prototype\"\*, PropertyDescriptor
+-- | { \[\[Value\]\]: \_prototype\_, \[\[Writable\]\]: \*true\*,
+-- | \[\[Enumerable\]\]: \*false\*, \[\[Configurable\]\]: \*false\* }). 1.
+-- | Perform ! \_funcEnv\_.InitializeBinding(\_name\_, \_closure\_). 1.
+-- | Return \_closure\_.
+-- |
+-- | The \|BindingIdentifier\| in an \|AsyncGeneratorExpression\| can be
+-- | referenced from inside the \|AsyncGeneratorExpression\|\'s
+-- | \|AsyncGeneratorBody\| to allow the generator code to call itself
+-- | recursively. However, unlike in an \|AsyncGeneratorDeclaration\|, the
+-- | \|BindingIdentifier\| in an \|AsyncGeneratorExpression\| cannot be
+-- | referenced from and does not affect the scope enclosing the
+-- | \|AsyncGeneratorExpression\|.
+-- |
+
+-- SPEC: L19600-L19606
+-- | # Runtime Semantics: Evaluation
+-- |
+-- | AsyncGeneratorExpression : \`async\` \`function\` \`\*\`
+-- | BindingIdentifier? \`(\` FormalParameters \`)\` \`{\` AsyncGeneratorBody
+-- | \`}\` 1. Return InstantiateAsyncGeneratorFunctionExpression of
+-- | \|AsyncGeneratorExpression\|.
+-- |
+
+-- SPEC: L19607-L19633
+-- | # Class Definitions
+-- |
+-- | ## Syntax
+-- |
+-- | ClassDeclaration\[Yield, Await, Default\] : \`class\`
+-- | BindingIdentifier\[?Yield, ?Await\] ClassTail\[?Yield, ?Await\]
+-- | \[+Default\] \`class\` ClassTail\[?Yield, ?Await\]
+-- | ClassExpression\[Yield, Await\] : \`class\` BindingIdentifier\[?Yield,
+-- | ?Await\]? ClassTail\[?Yield, ?Await\] ClassTail\[Yield, Await\] :
+-- | ClassHeritage\[?Yield, ?Await\]? \`{\` ClassBody\[?Yield, ?Await\]?
+-- | \`}\` ClassHeritage\[Yield, Await\] : \`extends\`
+-- | LeftHandSideExpression\[?Yield, ?Await\] ClassBody\[Yield, Await\] :
+-- | ClassElementList\[?Yield, ?Await\] ClassElementList\[Yield, Await\] :
+-- | ClassElement\[?Yield, ?Await\] ClassElementList\[?Yield, ?Await\]
+-- | ClassElement\[?Yield, ?Await\] ClassElement\[Yield, Await\] :
+-- | MethodDefinition\[?Yield, ?Await\] \`static\` MethodDefinition\[?Yield,
+-- | ?Await\] FieldDefinition\[?Yield, ?Await\] \`;\` \`static\`
+-- | FieldDefinition\[?Yield, ?Await\] \`;\` ClassStaticBlock \`;\`
+-- | FieldDefinition\[Yield, Await\] : ClassElementName\[?Yield, ?Await\]
+-- | Initializer\[+In, ?Yield, ?Await\]? ClassElementName\[Yield, Await\] :
+-- | PropertyName\[?Yield, ?Await\] PrivateIdentifier ClassStaticBlock :
+-- | \`static\` \`{\` ClassStaticBlockBody \`}\` ClassStaticBlockBody :
+-- | ClassStaticBlockStatementList ClassStaticBlockStatementList :
+-- | StatementList\[\~Yield, +Await, \~Return\]?
+-- |
+-- | A class definition is always strict mode code.
+-- |
+
+-- SPEC: L19634-L19714
+-- | # Static Semantics: Early Errors
+-- |
+-- | ClassTail : ClassHeritage? \`{\` ClassBody \`}\`
+-- |
+-- | - It is a Syntax Error if \|ClassHeritage\| is not present and the
+-- |   following algorithm returns \*true\*:
+-- |
+-- |   1\. Let \_constructor\_ be the ConstructorMethod of \|ClassBody\|. 1.
+-- |   If \_constructor\_ is \~empty\~, return \*false\*. 1. Return
+-- |   HasDirectSuper of \_constructor\_.
+-- |
+-- | ClassBody : ClassElementList
+-- |
+-- | - It is a Syntax Error if the PrototypePropertyNameList of
+-- |   \|ClassElementList\| contains more than one occurrence of
+-- |   \*\"constructor\"\*.
+-- | - It is a Syntax Error if the PrivateBoundIdentifiers of
+-- |   \|ClassElementList\| contains any duplicate entries, unless the name
+-- |   is used once for a getter and once for a setter and in no other
+-- |   entries, and the getter and setter are either both static or both
+-- |   non-static.
+-- |
+-- | ClassElement : MethodDefinition
+-- |
+-- | - It is a Syntax Error if the PropName of \|MethodDefinition\| is not
+-- |   \*\"constructor\"\* and HasDirectSuper of \|MethodDefinition\| is
+-- |   \*true\*.
+-- | - It is a Syntax Error if the PropName of \|MethodDefinition\| is
+-- |   \*\"constructor\"\* and SpecialMethod of \|MethodDefinition\| is
+-- |   \*true\*.
+-- |
+-- | ClassElement : \`static\` MethodDefinition
+-- |
+-- | - It is a Syntax Error if HasDirectSuper of \|MethodDefinition\| is
+-- |   \*true\*.
+-- | - It is a Syntax Error if the PropName of \|MethodDefinition\| is
+-- |   \*\"prototype\"\*.
+-- |
+-- | ClassElement : FieldDefinition \`;\`
+-- |
+-- | - It is a Syntax Error if the PropName of \|FieldDefinition\| is
+-- |   \*\"constructor\"\*.
+-- |
+-- | ClassElement : \`static\` FieldDefinition \`;\`
+-- |
+-- | - It is a Syntax Error if the PropName of \|FieldDefinition\| is either
+-- |   \*\"prototype\"\* or \*\"constructor\"\*.
+-- |
+-- | FieldDefinition : ClassElementName Initializer?
+-- |
+-- | - It is a Syntax Error if \|Initializer\| is present and
+-- |   ContainsArguments of \|Initializer\| is \*true\*.
+-- | - It is a Syntax Error if \|Initializer\| is present and \|Initializer\|
+-- |   Contains \|SuperCall\| is \*true\*.
+-- |
+-- | ClassElementName : PrivateIdentifier
+-- |
+-- | - It is a Syntax Error if the StringValue of \|PrivateIdentifier\| is
+-- |   \*\"#constructor\"\*.
+-- |
+-- | ClassStaticBlockBody : ClassStaticBlockStatementList
+-- |
+-- | - It is a Syntax Error if the LexicallyDeclaredNames of
+-- |   \|ClassStaticBlockStatementList\| contains any duplicate entries.
+-- | - It is a Syntax Error if any element of the LexicallyDeclaredNames of
+-- |   \|ClassStaticBlockStatementList\| also occurs in the VarDeclaredNames
+-- |   of \|ClassStaticBlockStatementList\|.
+-- | - It is a Syntax Error if ContainsDuplicateLabels of
+-- |   \|ClassStaticBlockStatementList\| with argument « » is \*true\*.
+-- | - It is a Syntax Error if ContainsUndefinedBreakTarget of
+-- |   \|ClassStaticBlockStatementList\| with argument « » is \*true\*.
+-- | - It is a Syntax Error if ContainsUndefinedContinueTarget of
+-- |   \|ClassStaticBlockStatementList\| with arguments « » and « » is
+-- |   \*true\*.
+-- | - It is a Syntax Error if ContainsArguments of
+-- |   \|ClassStaticBlockStatementList\| is \*true\*.
+-- | - It is a Syntax Error if \|ClassStaticBlockStatementList\| Contains
+-- |   \|SuperCall\| is \*true\*.
+-- | - It is a Syntax Error if \|ClassStaticBlockStatementList\| Contains
+-- |   \`await\` is \*true\*.
+-- |
+
+-- SPEC: L19715-L19724
+-- | # Static Semantics: ClassElementKind ( ): \~constructor-method\~, \~non-constructor-method\~, or \~empty\~
+-- |
+-- | ClassElement : MethodDefinition 1. If the PropName of
+-- | \|MethodDefinition\| is \*\"constructor\"\*, return
+-- | \~constructor-method\~. 1. Return \~non-constructor-method\~.
+-- | ClassElement : \`static\` MethodDefinition FieldDefinition \`;\`
+-- | \`static\` FieldDefinition \`;\` 1. Return \~non-constructor-method\~.
+-- | ClassElement : ClassStaticBlock 1. Return \~non-constructor-method\~.
+-- | ClassElement : \`;\` 1. Return \~empty\~.
+-- |
+
+-- SPEC: L19725-L19738
+-- | # Static Semantics: ConstructorMethod ( ): a \|ClassElement\| Parse Node or \~empty\~
+-- |
+-- | ClassElementList : ClassElement 1. If the ClassElementKind of
+-- | \|ClassElement\| is \~constructor-method\~, return \|ClassElement\|. 1.
+-- | Return \~empty\~. ClassElementList : ClassElementList ClassElement 1.
+-- | Let \_head\_ be the ConstructorMethod of \|ClassElementList\|. 1. If
+-- | \_head\_ is not \~empty\~, return \_head\_. 1. If the ClassElementKind
+-- | of \|ClassElement\| is \~constructor-method\~, return
+-- | \|ClassElement\|. 1. Return \~empty\~.
+-- |
+-- | Early Error rules ensure that there is only one method definition named
+-- | \*\"constructor\"\* and that it is not an accessor property or generator
+-- | definition.
+-- |
+
+-- SPEC: L19739-L19755
+-- | # Static Semantics: IsStatic ( ): a Boolean
+-- |
+-- | ClassElement : MethodDefinition 1. Return \*false\*. ClassElement :
+-- | \`static\` MethodDefinition 1. Return \*true\*. ClassElement :
+-- | FieldDefinition \`;\` 1. Return \*false\*. ClassElement : \`static\`
+-- | FieldDefinition \`;\` 1. Return \*true\*. ClassElement :
+-- | ClassStaticBlock 1. Return \*true\*. ClassElement : \`;\` 1. Return
+-- | \*false\*.
+-- |
+-- | # Static Semantics: NonConstructorElements ( ): a List of \|ClassElement\| Parse Nodes
+-- |
+-- | ClassElementList : ClassElement 1. If the ClassElementKind of
+-- | \|ClassElement\| is \~non-constructor-method\~, then 1. Return «
+-- | \|ClassElement\| ». 1. Return a new empty List. ClassElementList :
+-- | ClassElementList ClassElement 1. Let \_list\_ be the
+-- | NonConstructorElements of \|ClassElementList\|. 1. If the
+-- | ClassElementKind of \|ClassElement\| is \~non-constructor-method\~,
+
+-- SPEC: L19756-L19783
+-- | then 1. Append \|ClassElement\| to \_list\_. 1. Return \_list\_.
+-- |
+-- | # Static Semantics: PrototypePropertyNameList ( ): a List of property keys
+-- |
+-- | ClassElementList : ClassElement 1. Let \_propName\_ be the PropName of
+-- | \|ClassElement\|. 1. If \_propName\_ is \~empty\~, return a new empty
+-- | List. 1. If IsStatic of \|ClassElement\| is \*true\*, return a new empty
+-- | List. 1. Return « \_propName\_ ». ClassElementList : ClassElementList
+-- | ClassElement 1. Let \_list\_ be the PrototypePropertyNameList of
+-- | \|ClassElementList\|. 1. Let \_propName\_ be the PropName of
+-- | \|ClassElement\|. 1. If \_propName\_ is \~empty\~, return \_list\_. 1.
+-- | If IsStatic of \|ClassElement\| is \*true\*, return \_list\_. 1. Return
+-- | the list-concatenation of \_list\_ and « \_propName\_ ».
+-- |
+-- | # Static Semantics: AllPrivateIdentifiersValid ( \_names\_: a List of Strings, ): a Boolean
+-- |
+-- | Every grammar production alternative in this specification which is not
+-- | listed below implicitly has the following default definition of
+-- | AllPrivateIdentifiersValid:
+-- |
+-- | 1\. For each child node \_child\_ of this Parse Node, do 1. If \_child\_
+-- | is an instance of a nonterminal, then 1. If AllPrivateIdentifiersValid
+-- | of \_child\_ with argument \_names\_ is \*false\*, return \*false\*. 1.
+-- | Return \*true\*. MemberExpression : MemberExpression \`.\`
+-- | PrivateIdentifier 1. If \_names\_ contains the StringValue of
+-- | \|PrivateIdentifier\|, then 1. Return AllPrivateIdentifiersValid of
+-- | \|MemberExpression\| with argument \_names\_. 1. Return \*false\*.
+-- | CallExpression : CallExpression \`.\` PrivateIdentifier 1. If \_names\_
+
+-- SPEC: L19784-L19813
+-- | contains the StringValue of \|PrivateIdentifier\|, then 1. Return
+-- | AllPrivateIdentifiersValid of \|CallExpression\| with argument
+-- | \_names\_. 1. Return \*false\*. OptionalChain : \`?.\`
+-- | PrivateIdentifier 1. If \_names\_ contains the StringValue of
+-- | \|PrivateIdentifier\|, return \*true\*. 1. Return \*false\*.
+-- | OptionalChain : OptionalChain \`.\` PrivateIdentifier 1. If \_names\_
+-- | contains the StringValue of \|PrivateIdentifier\|, then 1. Return
+-- | AllPrivateIdentifiersValid of \|OptionalChain\| with argument
+-- | \_names\_. 1. Return \*false\*. ClassBody : ClassElementList 1. Let
+-- | \_newNames\_ be the list-concatenation of \_names\_ and the
+-- | PrivateBoundIdentifiers of \|ClassBody\|. 1. Return
+-- | AllPrivateIdentifiersValid of \|ClassElementList\| with argument
+-- | \_newNames\_. RelationalExpression : PrivateIdentifier \`in\`
+-- | ShiftExpression 1. If \_names\_ contains the StringValue of
+-- | \|PrivateIdentifier\|, then 1. Return AllPrivateIdentifiersValid of
+-- | \|ShiftExpression\| with argument \_names\_. 1. Return \*false\*.
+-- |
+-- | # Static Semantics: PrivateBoundIdentifiers ( ): a List of Strings
+-- |
+-- | FieldDefinition : ClassElementName Initializer? 1. Return the
+-- | PrivateBoundIdentifiers of \|ClassElementName\|. ClassElementName :
+-- | PrivateIdentifier 1. Return a List whose sole element is the StringValue
+-- | of \|PrivateIdentifier\|. ClassElementName : PropertyName ClassElement :
+-- | ClassStaticBlock \`;\` 1. Return a new empty List. ClassElementList :
+-- | ClassElementList ClassElement 1. Let \_names1\_ be the
+-- | PrivateBoundIdentifiers of \|ClassElementList\|. 1. Let \_names2\_ be
+-- | the PrivateBoundIdentifiers of \|ClassElement\|. 1. Return the
+-- | list-concatenation of \_names1\_ and \_names2\_. MethodDefinition :
+-- | ClassElementName \`(\` UniqueFormalParameters \`)\` \`{\` FunctionBody
+-- | \`}\` \`get\` ClassElementName \`(\` \`)\` \`{\` FunctionBody \`}\`
+
+-- SPEC: L19814-L19919
+-- | \`set\` ClassElementName \`(\` PropertySetParameterList \`)\` \`{\`
+-- | FunctionBody \`}\` GeneratorMethod : \`\*\` ClassElementName \`(\`
+-- | UniqueFormalParameters \`)\` \`{\` GeneratorBody \`}\` AsyncMethod :
+-- | \`async\` ClassElementName \`(\` UniqueFormalParameters \`)\` \`{\`
+-- | AsyncFunctionBody \`}\` AsyncGeneratorMethod : \`async\` \`\*\`
+-- | ClassElementName \`(\` UniqueFormalParameters \`)\` \`{\`
+-- | AsyncGeneratorBody \`}\` 1. Return the PrivateBoundIdentifiers of
+-- | \|ClassElementName\|.
+-- |
+-- | # Static Semantics: ContainsArguments ( ): a Boolean
+-- |
+-- | Every grammar production alternative in this specification which is not
+-- | listed below implicitly has the following default definition of
+-- | ContainsArguments:
+-- |
+-- | 1\. For each child node \_child\_ of this Parse Node, do 1. If \_child\_
+-- | is an instance of a nonterminal, then 1. If ContainsArguments of
+-- | \_child\_ is \*true\*, return \*true\*. 1. Return \*false\*.
+-- | IdentifierReference : Identifier 1. If the StringValue of \|Identifier\|
+-- | is \*\"arguments\"\*, return \*true\*. 1. Return \*false\*.
+-- | FunctionDeclaration : \`function\` BindingIdentifier \`(\`
+-- | FormalParameters \`)\` \`{\` FunctionBody \`}\` \`function\` \`(\`
+-- | FormalParameters \`)\` \`{\` FunctionBody \`}\` FunctionExpression :
+-- | \`function\` BindingIdentifier? \`(\` FormalParameters \`)\` \`{\`
+-- | FunctionBody \`}\` GeneratorDeclaration : \`function\` \`\*\`
+-- | BindingIdentifier \`(\` FormalParameters \`)\` \`{\` GeneratorBody \`}\`
+-- | \`function\` \`\*\` \`(\` FormalParameters \`)\` \`{\` GeneratorBody
+-- | \`}\` GeneratorExpression : \`function\` \`\*\` BindingIdentifier? \`(\`
+-- | FormalParameters \`)\` \`{\` GeneratorBody \`}\`
+-- | AsyncGeneratorDeclaration : \`async\` \`function\` \`\*\`
+-- | BindingIdentifier \`(\` FormalParameters \`)\` \`{\` AsyncGeneratorBody
+-- | \`}\` \`async\` \`function\` \`\*\` \`(\` FormalParameters \`)\` \`{\`
+-- | AsyncGeneratorBody \`}\` AsyncGeneratorExpression : \`async\`
+-- | \`function\` \`\*\` BindingIdentifier? \`(\` FormalParameters \`)\`
+-- | \`{\` AsyncGeneratorBody \`}\` AsyncFunctionDeclaration : \`async\`
+-- | \`function\` BindingIdentifier \`(\` FormalParameters \`)\` \`{\`
+-- | AsyncFunctionBody \`}\` \`async\` \`function\` \`(\` FormalParameters
+-- | \`)\` \`{\` AsyncFunctionBody \`}\` AsyncFunctionExpression : \`async\`
+-- | \`function\` BindingIdentifier? \`(\` FormalParameters \`)\` \`{\`
+-- | AsyncFunctionBody \`}\` 1. Return \*false\*. MethodDefinition :
+-- | ClassElementName \`(\` UniqueFormalParameters \`)\` \`{\` FunctionBody
+-- | \`}\` \`get\` ClassElementName \`(\` \`)\` \`{\` FunctionBody \`}\`
+-- | \`set\` ClassElementName \`(\` PropertySetParameterList \`)\` \`{\`
+-- | FunctionBody \`}\` GeneratorMethod : \`\*\` ClassElementName \`(\`
+-- | UniqueFormalParameters \`)\` \`{\` GeneratorBody \`}\`
+-- | AsyncGeneratorMethod : \`async\` \`\*\` ClassElementName \`(\`
+-- | UniqueFormalParameters \`)\` \`{\` AsyncGeneratorBody \`}\` AsyncMethod
+-- | : \`async\` ClassElementName \`(\` UniqueFormalParameters \`)\` \`{\`
+-- | AsyncFunctionBody \`}\` 1. Return ContainsArguments of
+-- | \|ClassElementName\|.
+-- |
+-- | # Runtime Semantics: ClassFieldDefinitionEvaluation ( \_homeObject\_: an Object, ): either a normal completion containing a ClassFieldDefinition Record or an abrupt completion
+-- |
+-- | FieldDefinition : ClassElementName Initializer? 1. Let \_name\_ be ?
+-- | Evaluation of \|ClassElementName\|. 1. If \|Initializer\| is present,
+-- | then 1. Let \_formalParameterList\_ be an instance of the production
+-- | FormalParameters : \[empty\]. 1. Let \_env\_ be the LexicalEnvironment
+-- | of the running execution context. 1. Let \_privateEnv\_ be the running
+-- | execution context\'s PrivateEnvironment. 1. Let \_sourceText\_ be the
+-- | empty sequence of Unicode code points. 1. Let \_initializer\_ be
+-- | OrdinaryFunctionCreate(%Function.prototype%, \_sourceText\_,
+-- | \_formalParameterList\_, \|Initializer\|, \~non-lexical-this\~, \_env\_,
+-- | \_privateEnv\_). 1. Perform MakeMethod(\_initializer\_,
+-- | \_homeObject\_). 1. Set
+-- | \_initializer\_.\[\[ClassFieldInitializerName\]\] to \_name\_. 1.
+-- | Else, 1. Let \_initializer\_ be \~empty\~. 1. Return the
+-- | ClassFieldDefinition Record { \[\[Name\]\]: \_name\_,
+-- | \[\[Initializer\]\]: \_initializer\_ }. The function created for
+-- | \_initializer\_ is never directly accessible to ECMAScript code.
+-- |
+-- | # Runtime Semantics: ClassStaticBlockDefinitionEvaluation ( \_homeObject\_: an Object, ): a ClassStaticBlockDefinition Record
+-- |
+-- | ClassStaticBlock : \`static\` \`{\` ClassStaticBlockBody \`}\` 1. Let
+-- | \_lex\_ be the running execution context\'s LexicalEnvironment. 1. Let
+-- | \_privateEnv\_ be the running execution context\'s
+-- | PrivateEnvironment. 1. Let \_sourceText\_ be the empty sequence of
+-- | Unicode code points. 1. Let \_formalParameters\_ be an instance of the
+-- | production FormalParameters : \[empty\]. 1.
+-- | \[id=\"step-synthetic-class-static-block-fn\"\] Let \_bodyFunction\_ be
+-- | OrdinaryFunctionCreate(%Function.prototype%, \_sourceText\_,
+-- | \_formalParameters\_, \|ClassStaticBlockBody\|, \~non-lexical-this\~,
+-- | \_lex\_, \_privateEnv\_). 1. Perform MakeMethod(\_bodyFunction\_,
+-- | \_homeObject\_). 1. Return the ClassStaticBlockDefinition Record {
+-- | \[\[BodyFunction\]\]: \_bodyFunction\_ }. The function \_bodyFunction\_
+-- | is never directly accessible to ECMAScript code.
+-- |
+-- | # Runtime Semantics: EvaluateClassStaticBlockBody ( \_functionObject\_: an ECMAScript function object, ): a return completion or a throw completion
+-- |
+-- | ClassStaticBlockBody : ClassStaticBlockStatementList 1. Assert:
+-- | \_functionObject\_ is a synthetic function created by
+-- | ClassStaticBlockDefinitionEvaluation step . 1. Perform !
+-- | FunctionDeclarationInstantiation(\_functionObject\_, « »). 1. Perform ?
+-- | Evaluation of \|ClassStaticBlockStatementList\|. 1. Return
+-- | ReturnCompletion(\*undefined\*).
+-- |
+-- | # Runtime Semantics: ClassElementEvaluation ( \_object\_: an Object, ): either a normal completion containing either a ClassFieldDefinition Record, a ClassStaticBlockDefinition Record, a PrivateElement, or \~unused\~, or an abrupt completion
+-- |
+-- | ClassElement : FieldDefinition \`;\` \`static\` FieldDefinition \`;\` 1.
+-- | Return ? ClassFieldDefinitionEvaluation of \|FieldDefinition\| with
+-- | argument \_object\_. ClassElement : MethodDefinition \`static\`
+-- | MethodDefinition 1. Return ? MethodDefinitionEvaluation of
+-- | \|MethodDefinition\| with arguments \_object\_ and \*false\*.
+-- | ClassElement : ClassStaticBlock 1. Return the
+-- | ClassStaticBlockDefinitionEvaluation of \|ClassStaticBlock\| with
+-- | argument \_object\_. ClassElement : \`;\` 1. Return \~unused\~.
+-- |
+
+-- SPEC: L19920-L20060
+-- | # Runtime Semantics: ClassDefinitionEvaluation ( \_classBinding\_: a String or \*undefined\*, \_className\_: a property key or a Private Name, \_sourceText\_: ECMAScript source text, ): either a normal completion containing a function object or an abrupt completion
+-- |
+-- | For ease of specification, private methods and accessors are included
+-- | alongside private fields in the \[\[PrivateElements\]\] slot of class
+-- | instances. However, any given object has either all or none of the
+-- | private methods and accessors defined by a given class. This feature has
+-- | been designed so that implementations may choose to implement private
+-- | methods and accessors using a strategy which does not require tracking
+-- | each method or accessor individually.
+-- |
+-- | For example, an implementation could directly associate instance private
+-- | methods with their corresponding Private Name and track, for each
+-- | object, which class constructors have run with that object as their
+-- | \`this\` value. Looking up an instance private method on an object then
+-- | consists of checking that the class constructor which defines the method
+-- | has been used to initialize the object, then returning the method
+-- | associated with the Private Name.
+-- |
+-- | This differs from private fields: because field initializers can throw
+-- | during class instantiation, an individual object may have some proper
+-- | subset of the private fields of a given class, and so private fields
+-- | must in general be tracked individually.
+-- |
+-- | ClassTail : ClassHeritage? \`{\` ClassBody? \`}\` 1. Let \_env\_ be the
+-- | LexicalEnvironment of the running execution context. 1. Let \_classEnv\_
+-- | be NewDeclarativeEnvironment(\_env\_). 1. If \_classBinding\_ is not
+-- | \*undefined\*, then 1. Perform !
+-- | \_classEnv\_.CreateImmutableBinding(\_classBinding\_, \*true\*). 1. Let
+-- | \_outerPrivateEnvironment\_ be the running execution context\'s
+-- | PrivateEnvironment. 1. Let \_classPrivateEnvironment\_ be
+-- | NewPrivateEnvironment(\_outerPrivateEnvironment\_). 1. If \|ClassBody\|
+-- | is present, then 1. For each String \_dn\_ of the
+-- | PrivateBoundIdentifiers of \|ClassBody\|, do 1. If
+-- | \_classPrivateEnvironment\_.\[\[Names\]\] contains a Private Name \_pn\_
+-- | such that \_pn\_.\[\[Description\]\] is \_dn\_, then 1. Assert: This is
+-- | only possible for getter/setter pairs. 1. Else, 1. Let \_name\_ be a new
+-- | Private Name whose \[\[Description\]\] is \_dn\_. 1. Append \_name\_ to
+-- | \_classPrivateEnvironment\_.\[\[Names\]\]. 1. If \|ClassHeritage\| is
+-- | not present, then 1. Let \_protoParent\_ be %Object.prototype%. 1. Let
+-- | \_constructorParent\_ be %Function.prototype%. 1. Else, 1. Set the
+-- | running execution context\'s LexicalEnvironment to \_classEnv\_. 1.
+-- | NOTE: The running execution context\'s PrivateEnvironment is
+-- | \_outerPrivateEnvironment\_ when evaluating \|ClassHeritage\|. 1. Let
+-- | \_superclassRef\_ be Completion(Evaluation of \|ClassHeritage\|). 1. Set
+-- | the running execution context\'s LexicalEnvironment to \_env\_. 1. Let
+-- | \_superclass\_ be ? GetValue(? \_superclassRef\_). 1. If \_superclass\_
+-- | is \*null\*, then 1. Let \_protoParent\_ be \*null\*. 1. Let
+-- | \_constructorParent\_ be %Function.prototype%. 1. Else if
+-- | IsConstructor(\_superclass\_) is \*false\*, then 1. Throw a
+-- | \*TypeError\* exception. 1. Else, 1. Let \_protoParent\_ be ?
+-- | Get(\_superclass\_, \*\"prototype\"\*). 1. If \_protoParent\_ is not an
+-- | Object and \_protoParent\_ is not \*null\*, throw a \*TypeError\*
+-- | exception. 1. Let \_constructorParent\_ be \_superclass\_. 1. Let
+-- | \_proto\_ be OrdinaryObjectCreate(\_protoParent\_). 1. If \|ClassBody\|
+-- | is not present, let \_constructor\_ be \~empty\~. 1. Else, let
+-- | \_constructor\_ be the ConstructorMethod of \|ClassBody\|. 1. Set the
+-- | running execution context\'s LexicalEnvironment to \_classEnv\_. 1. Set
+-- | the running execution context\'s PrivateEnvironment to
+-- | \_classPrivateEnvironment\_. 1. If \_constructor\_ is \~empty\~, then 1.
+-- | Let \_defaultConstructor\_ be a new Abstract Closure with no parameters
+-- | that captures nothing and performs the following steps when called: 1.
+-- | Let \_args\_ be the List of arguments that was passed to this function
+-- | by \[\[Call\]\] or \[\[Construct\]\]. 1. If NewTarget is \*undefined\*,
+-- | throw a \*TypeError\* exception. 1. Let \_F\_ be the active function
+-- | object. 1. If \_F\_.\[\[ConstructorKind\]\] is \~derived\~, then 1.
+-- | NOTE: This branch behaves similarly to \`constructor(\...args) {
+-- | super(\...args); }\`. The most notable distinction is that while the
+-- | aforementioned ECMAScript source text observably calls the
+-- | %Symbol.iterator% method on \`%Array.prototype%\`, this function does
+-- | not. 1. Let \_func\_ be ! \_F\_.\[\[GetPrototypeOf\]\](). 1. If
+-- | IsConstructor(\_func\_) is \*false\*, throw a \*TypeError\*
+-- | exception. 1. Let \_result\_ be ? Construct(\_func\_, \_args\_,
+-- | NewTarget). 1. Else, 1. NOTE: This branch behaves similarly to
+-- | \`constructor() {}\`. 1. Let \_result\_ be ?
+-- | OrdinaryCreateFromConstructor(NewTarget, \*\"%Object.prototype%\"\*). 1.
+-- | Perform ? InitializeInstanceElements(\_result\_, \_F\_). 1. Return
+-- | NormalCompletion(\_result\_). 1. Let \_F\_ be
+-- | CreateBuiltinFunction(\_defaultConstructor\_, 0, \_className\_, «
+-- | \[\[ConstructorKind\]\], \[\[SourceText\]\], \[\[PrivateMethods\]\],
+-- | \[\[Fields\]\] », the current Realm Record, \_constructorParent\_). 1.
+-- | Else, 1. Let \_constructorInfo\_ be ! DefineMethod of \_constructor\_
+-- | with arguments \_proto\_ and \_constructorParent\_. 1. Let \_F\_ be
+-- | \_constructorInfo\_.\[\[Closure\]\]. 1. Perform
+-- | MakeClassConstructor(\_F\_). 1. Perform SetFunctionName(\_F\_,
+-- | \_className\_). 1. Set \_F\_.\[\[SourceText\]\] to \_sourceText\_. 1.
+-- | Perform MakeConstructor(\_F\_, \*false\*, \_proto\_). 1. If
+-- | \|ClassHeritage\| is present, set \_F\_.\[\[ConstructorKind\]\] to
+-- | \~derived\~. 1. Perform ! DefineMethodProperty(\_proto\_,
+-- | \*\"constructor\"\*, \_F\_, \*false\*). 1. If \|ClassBody\| is not
+-- | present, let \_elements\_ be a new empty List. 1. Else, let \_elements\_
+-- | be the NonConstructorElements of \|ClassBody\|. 1. Let
+-- | \_instancePrivateMethods\_ be a new empty List. 1. Let
+-- | \_staticPrivateMethods\_ be a new empty List. 1. Let \_instanceFields\_
+-- | be a new empty List. 1. Let \_staticElements\_ be a new empty List. 1.
+-- | For each \|ClassElement\| \_e\_ of \_elements\_, do 1. If IsStatic of
+-- | \_e\_ is \*false\*, then 1. Let \_element\_ be
+-- | Completion(ClassElementEvaluation of \_e\_ with argument \_proto\_). 1.
+-- | Else, 1. Let \_element\_ be Completion(ClassElementEvaluation of \_e\_
+-- | with argument \_F\_). 1. If \_element\_ is an abrupt completion, then 1.
+-- | Set the running execution context\'s LexicalEnvironment to \_env\_. 1.
+-- | Set the running execution context\'s PrivateEnvironment to
+-- | \_outerPrivateEnvironment\_. 1. Return ? \_element\_. 1. Set \_element\_
+-- | to ! \_element\_. 1. If \_element\_ is a PrivateElement, then 1. Assert:
+-- | \_element\_.\[\[Kind\]\] is either \~method\~ or \~accessor\~. 1. If
+-- | IsStatic of \_e\_ is \*false\*, let \_container\_ be
+-- | \_instancePrivateMethods\_. 1. Else, let \_container\_ be
+-- | \_staticPrivateMethods\_. 1. If \_container\_ contains a PrivateElement
+-- | \_pe\_ such that \_pe\_.\[\[Key\]\] is \_element\_.\[\[Key\]\], then 1.
+-- | Assert: \_element\_.\[\[Kind\]\] and \_pe\_.\[\[Kind\]\] are both
+-- | \~accessor\~. 1. If \_element\_.\[\[Get\]\] is \*undefined\*, then 1.
+-- | Let \_combined\_ be PrivateElement { \[\[Key\]\]:
+-- | \_element\_.\[\[Key\]\], \[\[Kind\]\]: \~accessor\~, \[\[Get\]\]:
+-- | \_pe\_.\[\[Get\]\], \[\[Set\]\]: \_element\_.\[\[Set\]\] }. 1. Else, 1.
+-- | Let \_combined\_ be PrivateElement { \[\[Key\]\]:
+-- | \_element\_.\[\[Key\]\], \[\[Kind\]\]: \~accessor\~, \[\[Get\]\]:
+-- | \_element\_.\[\[Get\]\], \[\[Set\]\]: \_pe\_.\[\[Set\]\] }. 1. Replace
+-- | \_pe\_ in \_container\_ with \_combined\_. 1. Else, 1. Append
+-- | \_element\_ to \_container\_. 1. Else if \_element\_ is a
+-- | ClassFieldDefinition Record, then 1. If IsStatic of \_e\_ is \*false\*,
+-- | append \_element\_ to \_instanceFields\_. 1. Else, append \_element\_ to
+-- | \_staticElements\_. 1. Else if \_element\_ is a
+-- | ClassStaticBlockDefinition Record, then 1. Append \_element\_ to
+-- | \_staticElements\_. 1. Set the running execution context\'s
+-- | LexicalEnvironment to \_env\_. 1. If \_classBinding\_ is not
+-- | \*undefined\*, then 1. Perform !
+-- | \_classEnv\_.InitializeBinding(\_classBinding\_, \_F\_). 1. Set
+-- | \_F\_.\[\[PrivateMethods\]\] to \_instancePrivateMethods\_. 1. Set
+-- | \_F\_.\[\[Fields\]\] to \_instanceFields\_. 1. For each PrivateElement
+-- | \_method\_ of \_staticPrivateMethods\_, do 1. Perform !
+-- | PrivateMethodOrAccessorAdd(\_F\_, \_method\_). 1. For each element
+-- | \_elementRecord\_ of \_staticElements\_, do 1. If \_elementRecord\_ is a
+-- | ClassFieldDefinition Record, then 1. Let \_result\_ be
+-- | Completion(DefineField(\_F\_, \_elementRecord\_)). 1. Else, 1. Assert:
+-- | \_elementRecord\_ is a ClassStaticBlockDefinition Record. 1. Let
+-- | \_result\_ be Completion(Call(\_elementRecord\_.\[\[BodyFunction\]\],
+-- | \_F\_)). 1. If \_result\_ is an abrupt completion, then 1. Set the
+-- | running execution context\'s PrivateEnvironment to
+-- | \_outerPrivateEnvironment\_. 1. Return ? \_result\_. 1. Set the running
+-- | execution context\'s PrivateEnvironment to
+-- | \_outerPrivateEnvironment\_. 1. Return \_F\_.
+-- |
+
+-- SPEC: L20061-L20078
+-- | # Runtime Semantics: BindingClassDeclarationEvaluation ( ): either a normal completion containing a function object or an abrupt completion
+-- |
+-- | ClassDeclaration : \`class\` BindingIdentifier ClassTail 1. Let
+-- | \_className\_ be the StringValue of \|BindingIdentifier\|. 1. Let
+-- | \_sourceText\_ be the source text matched by \|ClassDeclaration\|. 1.
+-- | Let \_value\_ be ? ClassDefinitionEvaluation of \|ClassTail\| with
+-- | arguments \_className\_, \_className\_, and \_sourceText\_. 1. Let
+-- | \_env\_ be the running execution context\'s LexicalEnvironment. 1.
+-- | Perform ? InitializeBoundName(\_className\_, \_value\_, \_env\_). 1.
+-- | Return \_value\_. ClassDeclaration : \`class\` ClassTail 1. Let
+-- | \_sourceText\_ be the source text matched by \|ClassDeclaration\|. 1.
+-- | Return ? ClassDefinitionEvaluation of \|ClassTail\| with arguments
+-- | \*undefined\*, \*\"default\"\*, and \_sourceText\_.
+-- |
+-- | ClassDeclaration : \`class\` ClassTail only occurs as part of an
+-- | \|ExportDeclaration\| and establishing its binding is handled as part of
+-- | the evaluation action for that production. See .
+-- |
+
+-- SPEC: L20079-L20106
+-- | # Runtime Semantics: Evaluation
+-- |
+-- | ClassDeclaration : \`class\` BindingIdentifier ClassTail 1. Perform ?
+-- | BindingClassDeclarationEvaluation of this \|ClassDeclaration\|. 1.
+-- | Return \~empty\~.
+-- |
+-- | ClassDeclaration : \`class\` ClassTail only occurs as part of an
+-- | \|ExportDeclaration\| and is never directly evaluated.
+-- |
+-- | ClassExpression : \`class\` ClassTail 1. Let \_sourceText\_ be the
+-- | source text matched by \|ClassExpression\|. 1. Return ?
+-- | ClassDefinitionEvaluation of \|ClassTail\| with arguments \*undefined\*,
+-- | \*\"\"\*, and \_sourceText\_. ClassExpression : \`class\`
+-- | BindingIdentifier ClassTail 1. Let \_className\_ be the StringValue of
+-- | \|BindingIdentifier\|. 1. Let \_sourceText\_ be the source text matched
+-- | by \|ClassExpression\|. 1. Return ? ClassDefinitionEvaluation of
+-- | \|ClassTail\| with arguments \_className\_, \_className\_, and
+-- | \_sourceText\_. ClassElementName : PrivateIdentifier 1. Let
+-- | \_privateIdentifier\_ be the StringValue of \|PrivateIdentifier\|. 1.
+-- | Let \_privateEnvRec\_ be the running execution context\'s
+-- | PrivateEnvironment. 1. Let \_names\_ be
+-- | \_privateEnvRec\_.\[\[Names\]\]. 1. Assert: Exactly one element of
+-- | \_names\_ is a Private Name whose \[\[Description\]\] is
+-- | \_privateIdentifier\_. 1. Let \_privateName\_ be the Private Name in
+-- | \_names\_ whose \[\[Description\]\] is \_privateIdentifier\_. 1. Return
+-- | \_privateName\_. ClassStaticBlockStatementList : \[empty\] 1. Return
+-- | \*undefined\*.
+-- |
+
+-- SPEC: L20107-L20150
+-- | # Async Function Definitions
+-- |
+-- | ## Syntax
+-- |
+-- | AsyncFunctionDeclaration\[Yield, Await, Default\] : \`async\` \[no
+-- | LineTerminator here\] \`function\` BindingIdentifier\[?Yield, ?Await\]
+-- | \`(\` FormalParameters\[\~Yield, +Await\] \`)\` \`{\` AsyncFunctionBody
+-- | \`}\` \[+Default\] \`async\` \[no LineTerminator here\] \`function\`
+-- | \`(\` FormalParameters\[\~Yield, +Await\] \`)\` \`{\` AsyncFunctionBody
+-- | \`}\` AsyncFunctionExpression : \`async\` \[no LineTerminator here\]
+-- | \`function\` BindingIdentifier\[\~Yield, +Await\]? \`(\`
+-- | FormalParameters\[\~Yield, +Await\] \`)\` \`{\` AsyncFunctionBody \`}\`
+-- | AsyncMethod\[Yield, Await\] : \`async\` \[no LineTerminator here\]
+-- | ClassElementName\[?Yield, ?Await\] \`(\`
+-- | UniqueFormalParameters\[\~Yield, +Await\] \`)\` \`{\` AsyncFunctionBody
+-- | \`}\` AsyncFunctionBody : FunctionBody\[\~Yield, +Await\]
+-- | AwaitExpression\[Yield\] : \`await\` UnaryExpression\[?Yield, +Await\]
+-- |
+-- | \`await\` is parsed as a keyword of an \|AwaitExpression\| when the
+-- | ~\[Await\]~ parameter is present. The ~\[Await\]~ parameter is present
+-- | in the top level of the following contexts, although the parameter may
+-- | be absent in some contexts depending on the nonterminals, such as
+-- | \|FunctionBody\|:
+-- |
+-- | - In an \|AsyncFunctionBody\|.
+-- | - In the \|FormalParameters\| of an \|AsyncFunctionDeclaration\|,
+-- |   \|AsyncFunctionExpression\|, \|AsyncGeneratorDeclaration\|, or
+-- |   \|AsyncGeneratorExpression\|. \|AwaitExpression\| in this position is
+-- |   a Syntax error via static semantics.
+-- | - In a \|Module\|.
+-- |
+-- | When \|Script\| is the syntactic goal symbol, \`await\` may be parsed as
+-- | an identifier when the ~\[Await\]~ parameter is absent. This includes
+-- | the following contexts:
+-- |
+-- | - Anywhere outside of an \|AsyncFunctionBody\| or \|FormalParameters\|
+-- |   of an \|AsyncFunctionDeclaration\|, \|AsyncFunctionExpression\|,
+-- |   \|AsyncGeneratorDeclaration\|, or \|AsyncGeneratorExpression\|.
+-- | - In the \|BindingIdentifier\| of a \|FunctionExpression\|,
+-- |   \|GeneratorExpression\|, or \|AsyncGeneratorExpression\|.
+-- |
+-- | Unlike \|YieldExpression\|, it is a Syntax Error to omit the operand of
+-- | an \|AwaitExpression\|. You must await something.
+-- |
+
+-- SPEC: L20151-L20194
+-- | # Static Semantics: Early Errors
+-- |
+-- | AsyncMethod : \`async\` ClassElementName \`(\` UniqueFormalParameters
+-- | \`)\` \`{\` AsyncFunctionBody \`}\`
+-- |
+-- | - It is a Syntax Error if FunctionBodyContainsUseStrict of
+-- |   \|AsyncFunctionBody\| is \*true\* and IsSimpleParameterList of
+-- |   \|UniqueFormalParameters\| is \*false\*.
+-- | - It is a Syntax Error if HasDirectSuper of \|AsyncMethod\| is \*true\*.
+-- | - It is a Syntax Error if \|UniqueFormalParameters\| Contains
+-- |   \|AwaitExpression\| is \*true\*.
+-- | - It is a Syntax Error if any element of the BoundNames of
+-- |   \|UniqueFormalParameters\| also occurs in the LexicallyDeclaredNames
+-- |   of \|AsyncFunctionBody\|.
+-- |
+-- | AsyncFunctionDeclaration : \`async\` \`function\` BindingIdentifier
+-- | \`(\` FormalParameters \`)\` \`{\` AsyncFunctionBody \`}\` \`async\`
+-- | \`function\` \`(\` FormalParameters \`)\` \`{\` AsyncFunctionBody \`}\`
+-- | AsyncFunctionExpression : \`async\` \`function\` BindingIdentifier?
+-- | \`(\` FormalParameters \`)\` \`{\` AsyncFunctionBody \`}\`
+-- |
+-- | - It is a Syntax Error if FunctionBodyContainsUseStrict of
+-- |   \|AsyncFunctionBody\| is \*true\* and IsSimpleParameterList of
+-- |   \|FormalParameters\| is \*false\*.
+-- | - It is a Syntax Error if \|FormalParameters\| Contains
+-- |   \|AwaitExpression\| is \*true\*.
+-- | - If IsStrict(\|FormalParameters\|) is \*true\*, the Early Error rules
+-- |   for UniqueFormalParameters : FormalParameters are applied.
+-- | - If \|BindingIdentifier\| is present and
+-- |   IsStrict(\|BindingIdentifier\|) is \*true\*, it is a Syntax Error if
+-- |   the StringValue of \|BindingIdentifier\| is either \*\"eval\"\* or
+-- |   \*\"arguments\"\*.
+-- | - It is a Syntax Error if any element of the BoundNames of
+-- |   \|FormalParameters\| also occurs in the LexicallyDeclaredNames of
+-- |   \|AsyncFunctionBody\|.
+-- | - It is a Syntax Error if \|FormalParameters\| Contains
+-- |   \|SuperProperty\| is \*true\*.
+-- | - It is a Syntax Error if \|AsyncFunctionBody\| Contains
+-- |   \|SuperProperty\| is \*true\*.
+-- | - It is a Syntax Error if \|FormalParameters\| Contains \|SuperCall\| is
+-- |   \*true\*.
+-- | - It is a Syntax Error if \|AsyncFunctionBody\| Contains \|SuperCall\|
+-- |   is \*true\*.
+-- |
+
+-- SPEC: L20195-L20213
+-- | # Runtime Semantics: InstantiateAsyncFunctionObject ( \_env\_: an Environment Record, \_privateEnv\_: a PrivateEnvironment Record or \*null\*, ): an ECMAScript function object
+-- |
+-- | AsyncFunctionDeclaration : \`async\` \`function\` BindingIdentifier
+-- | \`(\` FormalParameters \`)\` \`{\` AsyncFunctionBody \`}\` 1. Let
+-- | \_name\_ be the StringValue of \|BindingIdentifier\|. 1. Let
+-- | \_sourceText\_ be the source text matched by
+-- | \|AsyncFunctionDeclaration\|. 1. Let \_F\_ be
+-- | OrdinaryFunctionCreate(%AsyncFunction.prototype%, \_sourceText\_,
+-- | \|FormalParameters\|, \|AsyncFunctionBody\|, \~non-lexical-this\~,
+-- | \_env\_, \_privateEnv\_). 1. Perform SetFunctionName(\_F\_,
+-- | \_name\_). 1. Return \_F\_. AsyncFunctionDeclaration : \`async\`
+-- | \`function\` \`(\` FormalParameters \`)\` \`{\` AsyncFunctionBody
+-- | \`}\` 1. Let \_sourceText\_ be the source text matched by
+-- | \|AsyncFunctionDeclaration\|. 1. Let \_F\_ be
+-- | OrdinaryFunctionCreate(%AsyncFunction.prototype%, \_sourceText\_,
+-- | \|FormalParameters\|, \|AsyncFunctionBody\|, \~non-lexical-this\~,
+-- | \_env\_, \_privateEnv\_). 1. Perform SetFunctionName(\_F\_,
+-- | \*\"default\"\*). 1. Return \_F\_.
+-- |
+
+-- SPEC: L20214-L20248
+-- | # Runtime Semantics: InstantiateAsyncFunctionExpression ( optional \_name\_: a property key or a Private Name, ): an ECMAScript function object
+-- |
+-- | AsyncFunctionExpression : \`async\` \`function\` \`(\` FormalParameters
+-- | \`)\` \`{\` AsyncFunctionBody \`}\` 1. If \_name\_ is not present, set
+-- | \_name\_ to \*\"\"\*. 1. Let \_env\_ be the LexicalEnvironment of the
+-- | running execution context. 1. Let \_privateEnv\_ be the running
+-- | execution context\'s PrivateEnvironment. 1. Let \_sourceText\_ be the
+-- | source text matched by \|AsyncFunctionExpression\|. 1. Let \_closure\_
+-- | be OrdinaryFunctionCreate(%AsyncFunction.prototype%, \_sourceText\_,
+-- | \|FormalParameters\|, \|AsyncFunctionBody\|, \~non-lexical-this\~,
+-- | \_env\_, \_privateEnv\_). 1. Perform SetFunctionName(\_closure\_,
+-- | \_name\_). 1. Return \_closure\_. AsyncFunctionExpression : \`async\`
+-- | \`function\` BindingIdentifier \`(\` FormalParameters \`)\` \`{\`
+-- | AsyncFunctionBody \`}\` 1. Assert: \_name\_ is not present. 1. Set
+-- | \_name\_ to the StringValue of \|BindingIdentifier\|. 1. Let
+-- | \_outerEnv\_ be the LexicalEnvironment of the running execution
+-- | context. 1. Let \_funcEnv\_ be
+-- | NewDeclarativeEnvironment(\_outerEnv\_). 1. Perform !
+-- | \_funcEnv\_.CreateImmutableBinding(\_name\_, \*false\*). 1. Let
+-- | \_privateEnv\_ be the running execution context\'s
+-- | PrivateEnvironment. 1. Let \_sourceText\_ be the source text matched by
+-- | \|AsyncFunctionExpression\|. 1. Let \_closure\_ be
+-- | OrdinaryFunctionCreate(%AsyncFunction.prototype%, \_sourceText\_,
+-- | \|FormalParameters\|, \|AsyncFunctionBody\|, \~non-lexical-this\~,
+-- | \_funcEnv\_, \_privateEnv\_). 1. Perform SetFunctionName(\_closure\_,
+-- | \_name\_). 1. Perform ! \_funcEnv\_.InitializeBinding(\_name\_,
+-- | \_closure\_). 1. Return \_closure\_.
+-- |
+-- | The \|BindingIdentifier\| in an \|AsyncFunctionExpression\| can be
+-- | referenced from inside the \|AsyncFunctionExpression\|\'s
+-- | \|AsyncFunctionBody\| to allow the function to call itself recursively.
+-- | However, unlike in a \|FunctionDeclaration\|, the \|BindingIdentifier\|
+-- | in a \|AsyncFunctionExpression\| cannot be referenced from and does not
+-- | affect the scope enclosing the \|AsyncFunctionExpression\|.
+-- |
+
+-- SPEC: L20249-L20259
+-- | # Runtime Semantics: EvaluateAsyncFunctionBody ( \_functionObject\_: an ECMAScript function object, \_argumentsList\_: a List of ECMAScript language values, ): a return completion
+-- |
+-- | AsyncFunctionBody : FunctionBody 1. Let \_promiseCapability\_ be !
+-- | NewPromiseCapability(%Promise%). 1. Let \_completion\_ be
+-- | Completion(FunctionDeclarationInstantiation(\_functionObject\_,
+-- | \_argumentsList\_)). 1. If \_completion\_ is an abrupt completion,
+-- | then 1. Perform ! Call(\_promiseCapability\_.\[\[Reject\]\],
+-- | \*undefined\*, « \_completion\_.\[\[Value\]\] »). 1. Else, 1. Perform
+-- | AsyncFunctionStart(\_promiseCapability\_, \|FunctionBody\|). 1. Return
+-- | ReturnCompletion(\_promiseCapability\_.\[\[Promise\]\]).
+-- |
+
+-- SPEC: L20260-L20268
+-- | # Runtime Semantics: Evaluation
+-- |
+-- | AsyncFunctionExpression : \`async\` \`function\` BindingIdentifier?
+-- | \`(\` FormalParameters \`)\` \`{\` AsyncFunctionBody \`}\` 1. Return
+-- | InstantiateAsyncFunctionExpression of \|AsyncFunctionExpression\|.
+-- | AwaitExpression : \`await\` UnaryExpression 1. Let \_exprRef\_ be ?
+-- | Evaluation of \|UnaryExpression\|. 1. Let \_value\_ be ?
+-- | GetValue(\_exprRef\_). 1. Return ? Await(\_value\_).
+-- |
+
+-- SPEC: L16936-L16976
+-- | # Destructuring Assignment
+-- |
+-- | ## Supplemental Syntax
+-- |
+-- | In certain circumstances when processing an instance of the production\
+-- | AssignmentExpression : LeftHandSideExpression \`=\`
+-- | AssignmentExpression\
+-- | the interpretation of \|LeftHandSideExpression\| is refined using the
+-- | following grammar:
+-- |
+-- | AssignmentPattern\[Yield, Await\] : ObjectAssignmentPattern\[?Yield,
+-- | ?Await\] ArrayAssignmentPattern\[?Yield, ?Await\]
+-- | ObjectAssignmentPattern\[Yield, Await\] : \`{\` \`}\` \`{\`
+-- | AssignmentRestProperty\[?Yield, ?Await\] \`}\` \`{\`
+-- | AssignmentPropertyList\[?Yield, ?Await\] \`}\` \`{\`
+-- | AssignmentPropertyList\[?Yield, ?Await\] \`,\`
+-- | AssignmentRestProperty\[?Yield, ?Await\]? \`}\`
+-- | ArrayAssignmentPattern\[Yield, Await\] : \`\[\` Elision?
+-- | AssignmentRestElement\[?Yield, ?Await\]? \`\]\` \`\[\`
+-- | AssignmentElementList\[?Yield, ?Await\] \`\]\` \`\[\`
+-- | AssignmentElementList\[?Yield, ?Await\] \`,\` Elision?
+-- | AssignmentRestElement\[?Yield, ?Await\]? \`\]\`
+-- | AssignmentRestProperty\[Yield, Await\] : \`\...\`
+-- | DestructuringAssignmentTarget\[?Yield, ?Await\]
+-- | AssignmentPropertyList\[Yield, Await\] : AssignmentProperty\[?Yield,
+-- | ?Await\] AssignmentPropertyList\[?Yield, ?Await\] \`,\`
+-- | AssignmentProperty\[?Yield, ?Await\] AssignmentElementList\[Yield,
+-- | Await\] : AssignmentElisionElement\[?Yield, ?Await\]
+-- | AssignmentElementList\[?Yield, ?Await\] \`,\`
+-- | AssignmentElisionElement\[?Yield, ?Await\]
+-- | AssignmentElisionElement\[Yield, Await\] : Elision?
+-- | AssignmentElement\[?Yield, ?Await\] AssignmentProperty\[Yield, Await\] :
+-- | IdentifierReference\[?Yield, ?Await\] Initializer\[+In, ?Yield,
+-- | ?Await\]? PropertyName\[?Yield, ?Await\] \`:\`
+-- | AssignmentElement\[?Yield, ?Await\] AssignmentElement\[Yield, Await\] :
+-- | DestructuringAssignmentTarget\[?Yield, ?Await\] Initializer\[+In,
+-- | ?Yield, ?Await\]? AssignmentRestElement\[Yield, Await\] : \`\...\`
+-- | DestructuringAssignmentTarget\[?Yield, ?Await\]
+-- | DestructuringAssignmentTarget\[Yield, Await\] :
+-- | LeftHandSideExpression\[?Yield, ?Await\]
+-- |
+
+-- SPEC: L16977-L16997
+-- | # Static Semantics: Early Errors
+-- |
+-- | AssignmentProperty : IdentifierReference Initializer?
+-- |
+-- | - It is a Syntax Error if the AssignmentTargetType of
+-- |   \|IdentifierReference\| is not \~simple\~.
+-- |
+-- | AssignmentRestProperty : \`\...\` DestructuringAssignmentTarget
+-- |
+-- | - It is a Syntax Error if \|DestructuringAssignmentTarget\| is either an
+-- |   \|ArrayLiteral\| or an \|ObjectLiteral\|.
+-- |
+-- | DestructuringAssignmentTarget : LeftHandSideExpression
+-- |
+-- | - If \|LeftHandSideExpression\| is either an \|ObjectLiteral\| or an
+-- |   \|ArrayLiteral\|, \|LeftHandSideExpression\| must cover an
+-- |   \|AssignmentPattern\|.
+-- | - If \|LeftHandSideExpression\| is neither an \|ObjectLiteral\| nor an
+-- |   \|ArrayLiteral\|, it is a Syntax Error if the AssignmentTargetType of
+-- |   \|LeftHandSideExpression\| is not \~simple\~.
+-- |
+
+-- SPEC: L16998-L17060
+-- | # Runtime Semantics: DestructuringAssignmentEvaluation ( \_value\_: an ECMAScript language value, ): either a normal completion containing \~unused\~ or an abrupt completion
+-- |
+-- | ObjectAssignmentPattern : \`{\` \`}\` 1. Perform ?
+-- | RequireObjectCoercible(\_value\_). 1. Return \~unused\~.
+-- | ObjectAssignmentPattern : \`{\` AssignmentPropertyList \`}\` \`{\`
+-- | AssignmentPropertyList \`,\` \`}\` 1. Perform ?
+-- | RequireObjectCoercible(\_value\_). 1. Perform ?
+-- | PropertyDestructuringAssignmentEvaluation of \|AssignmentPropertyList\|
+-- | with argument \_value\_. 1. Return \~unused\~. ObjectAssignmentPattern :
+-- | \`{\` AssignmentRestProperty \`}\` 1. Perform ?
+-- | RequireObjectCoercible(\_value\_). 1. Let \_excludedNames\_ be a new
+-- | empty List. 1. Return ? RestDestructuringAssignmentEvaluation of
+-- | \|AssignmentRestProperty\| with arguments \_value\_ and
+-- | \_excludedNames\_. ObjectAssignmentPattern : \`{\`
+-- | AssignmentPropertyList \`,\` AssignmentRestProperty \`}\` 1. Perform ?
+-- | RequireObjectCoercible(\_value\_). 1. Let \_excludedNames\_ be ?
+-- | PropertyDestructuringAssignmentEvaluation of \|AssignmentPropertyList\|
+-- | with argument \_value\_. 1. Return ?
+-- | RestDestructuringAssignmentEvaluation of \|AssignmentRestProperty\| with
+-- | arguments \_value\_ and \_excludedNames\_. ArrayAssignmentPattern :
+-- | \`\[\` \`\]\` 1. Let \_iteratorRecord\_ be ? GetIterator(\_value\_,
+-- | \~sync\~). 1. Return ? IteratorClose(\_iteratorRecord\_,
+-- | NormalCompletion(\~unused\~)). ArrayAssignmentPattern : \`\[\` Elision
+-- | \`\]\` 1. Let \_iteratorRecord\_ be ? GetIterator(\_value\_,
+-- | \~sync\~). 1. Let \_result\_ be
+-- | Completion(IteratorDestructuringAssignmentEvaluation of \|Elision\| with
+-- | argument \_iteratorRecord\_). 1. If \_iteratorRecord\_.\[\[Done\]\] is
+-- | \*false\*, return ? IteratorClose(\_iteratorRecord\_, \_result\_). 1.
+-- | Return \_result\_. ArrayAssignmentPattern : \`\[\` Elision?
+-- | AssignmentRestElement \`\]\` 1. Let \_iteratorRecord\_ be ?
+-- | GetIterator(\_value\_, \~sync\~). 1. If \|Elision\| is present, then 1.
+-- | Let \_status\_ be Completion(IteratorDestructuringAssignmentEvaluation
+-- | of \|Elision\| with argument \_iteratorRecord\_). 1. If \_status\_ is an
+-- | abrupt completion, then 1. Assert: \_iteratorRecord\_.\[\[Done\]\] is
+-- | \*true\*. 1. Return ? \_status\_. 1. Let \_result\_ be
+-- | Completion(IteratorDestructuringAssignmentEvaluation of
+-- | \|AssignmentRestElement\| with argument \_iteratorRecord\_). 1. If
+-- | \_iteratorRecord\_.\[\[Done\]\] is \*false\*, return ?
+-- | IteratorClose(\_iteratorRecord\_, \_result\_). 1. Return \_result\_.
+-- | ArrayAssignmentPattern : \`\[\` AssignmentElementList \`\]\` 1. Let
+-- | \_iteratorRecord\_ be ? GetIterator(\_value\_, \~sync\~). 1. Let
+-- | \_result\_ be Completion(IteratorDestructuringAssignmentEvaluation of
+-- | \|AssignmentElementList\| with argument \_iteratorRecord\_). 1. If
+-- | \_iteratorRecord\_.\[\[Done\]\] is \*false\*, return ?
+-- | IteratorClose(\_iteratorRecord\_, \_result\_). 1. Return \_result\_.
+-- | ArrayAssignmentPattern : \`\[\` AssignmentElementList \`,\` Elision?
+-- | AssignmentRestElement? \`\]\` 1. Let \_iteratorRecord\_ be ?
+-- | GetIterator(\_value\_, \~sync\~). 1. Let \_status\_ be
+-- | Completion(IteratorDestructuringAssignmentEvaluation of
+-- | \|AssignmentElementList\| with argument \_iteratorRecord\_). 1. If
+-- | \_status\_ is an abrupt completion, then 1. If
+-- | \_iteratorRecord\_.\[\[Done\]\] is \*false\*, return ?
+-- | IteratorClose(\_iteratorRecord\_, \_status\_). 1. Return ?
+-- | \_status\_. 1. If \|Elision\| is present, then 1. Set \_status\_ to
+-- | Completion(IteratorDestructuringAssignmentEvaluation of \|Elision\| with
+-- | argument \_iteratorRecord\_). 1. If \_status\_ is an abrupt completion,
+-- | then 1. Assert: \_iteratorRecord\_.\[\[Done\]\] is \*true\*. 1. Return ?
+-- | \_status\_. 1. If \|AssignmentRestElement\| is present, then 1. Set
+-- | \_status\_ to Completion(IteratorDestructuringAssignmentEvaluation of
+-- | \|AssignmentRestElement\| with argument \_iteratorRecord\_). 1. If
+-- | \_iteratorRecord\_.\[\[Done\]\] is \*false\*, return ?
+-- | IteratorClose(\_iteratorRecord\_, \_status\_). 1. Return ? \_status\_.
+-- |
+
+-- SPEC: L17061-L17086
+-- | # Runtime Semantics: PropertyDestructuringAssignmentEvaluation ( \_value\_: an ECMAScript language value, ): either a normal completion containing a List of property keys or an abrupt completion
+-- |
+-- | description
+-- | :   It collects a list of all destructured property keys.
+-- |
+-- | AssignmentPropertyList : AssignmentPropertyList \`,\`
+-- | AssignmentProperty 1. Let \_propertyNames\_ be ?
+-- | PropertyDestructuringAssignmentEvaluation of \|AssignmentPropertyList\|
+-- | with argument \_value\_. 1. Let \_nextNames\_ be ?
+-- | PropertyDestructuringAssignmentEvaluation of \|AssignmentProperty\| with
+-- | argument \_value\_. 1. Return the list-concatenation of
+-- | \_propertyNames\_ and \_nextNames\_. AssignmentProperty :
+-- | IdentifierReference Initializer? 1. Let \_P\_ be the StringValue of
+-- | \|IdentifierReference\|. 1. Let \_lRef\_ be ? ResolveBinding(\_P\_). 1.
+-- | Let \_v\_ be ? GetV(\_value\_, \_P\_). 1. If \|Initializer\| is present
+-- | and \_v\_ is \*undefined\*, then 1. If
+-- | IsAnonymousFunctionDefinition(\|Initializer\|) is \*true\*, then 1. Set
+-- | \_v\_ to ? NamedEvaluation of \|Initializer\| with argument \_P\_. 1.
+-- | Else, 1. Let \_defaultValue\_ be ? Evaluation of \|Initializer\|. 1. Set
+-- | \_v\_ to ? GetValue(\_defaultValue\_). 1. Perform ? PutValue(\_lRef\_,
+-- | \_v\_). 1. Return « \_P\_ ». AssignmentProperty : PropertyName \`:\`
+-- | AssignmentElement 1. Let \_name\_ be ? Evaluation of
+-- | \|PropertyName\|. 1. Perform ? KeyedDestructuringAssignmentEvaluation of
+-- | \|AssignmentElement\| with arguments \_value\_ and \_name\_. 1. Return «
+-- | \_name\_ ».
+-- |
+
+-- SPEC: L17087-L17094
+-- | # Runtime Semantics: RestDestructuringAssignmentEvaluation ( \_value\_: an ECMAScript language value, \_excludedNames\_: a List of property keys, ): either a normal completion containing \~unused\~ or an abrupt completion
+-- |
+-- | AssignmentRestProperty : \`\...\` DestructuringAssignmentTarget 1. Let
+-- | \_lRef\_ be ? Evaluation of \|DestructuringAssignmentTarget\|. 1. Let
+-- | \_restObj\_ be OrdinaryObjectCreate(%Object.prototype%). 1. Perform ?
+-- | CopyDataProperties(\_restObj\_, \_value\_, \_excludedNames\_). 1. Return
+-- | ? PutValue(\_lRef\_, \_restObj\_).
+-- |
+
+-- SPEC: L17095-L17160
+-- | # Runtime Semantics: IteratorDestructuringAssignmentEvaluation ( \_iteratorRecord\_: an Iterator Record, ): either a normal completion containing \~unused\~ or an abrupt completion
+-- |
+-- | AssignmentElementList : AssignmentElisionElement 1. Return ?
+-- | IteratorDestructuringAssignmentEvaluation of
+-- | \|AssignmentElisionElement\| with argument \_iteratorRecord\_.
+-- | AssignmentElementList : AssignmentElementList \`,\`
+-- | AssignmentElisionElement 1. Perform ?
+-- | IteratorDestructuringAssignmentEvaluation of \|AssignmentElementList\|
+-- | with argument \_iteratorRecord\_. 1. Return ?
+-- | IteratorDestructuringAssignmentEvaluation of
+-- | \|AssignmentElisionElement\| with argument \_iteratorRecord\_.
+-- | AssignmentElisionElement : AssignmentElement 1. Return ?
+-- | IteratorDestructuringAssignmentEvaluation of \|AssignmentElement\| with
+-- | argument \_iteratorRecord\_. AssignmentElisionElement : Elision
+-- | AssignmentElement 1. Perform ? IteratorDestructuringAssignmentEvaluation
+-- | of \|Elision\| with argument \_iteratorRecord\_. 1. Return ?
+-- | IteratorDestructuringAssignmentEvaluation of \|AssignmentElement\| with
+-- | argument \_iteratorRecord\_. Elision : \`,\` 1. If
+-- | \_iteratorRecord\_.\[\[Done\]\] is \*false\*, then 1. Perform ?
+-- | IteratorStep(\_iteratorRecord\_). 1. Return \~unused\~. Elision :
+-- | Elision \`,\` 1. Perform ? IteratorDestructuringAssignmentEvaluation of
+-- | \|Elision\| with argument \_iteratorRecord\_. 1. If
+-- | \_iteratorRecord\_.\[\[Done\]\] is \*false\*, then 1. Perform ?
+-- | IteratorStep(\_iteratorRecord\_). 1. Return \~unused\~.
+-- | AssignmentElement : DestructuringAssignmentTarget Initializer? 1. If
+-- | \|DestructuringAssignmentTarget\| is neither an \|ObjectLiteral\| nor an
+-- | \|ArrayLiteral\|, then 1. Let \_lRef\_ be ? Evaluation of
+-- | \|DestructuringAssignmentTarget\|. 1. Let \_value\_ be \*undefined\*. 1.
+-- | If \_iteratorRecord\_.\[\[Done\]\] is \*false\*, then 1. Let \_next\_ be
+-- | ? IteratorStepValue(\_iteratorRecord\_). 1. If \_next\_ is not \~done\~,
+-- | then 1. Set \_value\_ to \_next\_. 1. If \|Initializer\| is present and
+-- | \_value\_ is \*undefined\*, then 1. If
+-- | IsAnonymousFunctionDefinition(\|Initializer\|) is \*true\* and
+-- | IsIdentifierRef of \|DestructuringAssignmentTarget\| is \*true\*,
+-- | then 1. Let \_target\_ be the StringValue of
+-- | \|DestructuringAssignmentTarget\|. 1. Let \_v\_ be ? NamedEvaluation of
+-- | \|Initializer\| with argument \_target\_. 1. Else, 1. Let
+-- | \_defaultValue\_ be ? Evaluation of \|Initializer\|. 1. Let \_v\_ be ?
+-- | GetValue(\_defaultValue\_). 1. Else, 1. Let \_v\_ be \_value\_. 1. If
+-- | \|DestructuringAssignmentTarget\| is either an \|ObjectLiteral\| or an
+-- | \|ArrayLiteral\|, then 1. Let \_nestedAssignmentPattern\_ be the
+-- | \|AssignmentPattern\| that is covered by
+-- | \|DestructuringAssignmentTarget\|. 1. Return ?
+-- | DestructuringAssignmentEvaluation of \_nestedAssignmentPattern\_ with
+-- | argument \_v\_. 1. Return ? PutValue(\_lRef\_, \_v\_).
+-- |
+-- | Left to right evaluation order is maintained by evaluating a
+-- | \|DestructuringAssignmentTarget\| that is not a destructuring pattern
+-- | prior to accessing the iterator or evaluating the \|Initializer\|.
+-- |
+-- | AssignmentRestElement : \`\...\` DestructuringAssignmentTarget 1. If
+-- | \|DestructuringAssignmentTarget\| is neither an \|ObjectLiteral\| nor an
+-- | \|ArrayLiteral\|, then 1. Let \_lRef\_ be ? Evaluation of
+-- | \|DestructuringAssignmentTarget\|. 1. Let \_A\_ be ! ArrayCreate(0). 1.
+-- | Let \_n\_ be 0. 1. Repeat, while \_iteratorRecord\_.\[\[Done\]\] is
+-- | \*false\*, 1. Let \_next\_ be ?
+-- | IteratorStepValue(\_iteratorRecord\_). 1. If \_next\_ is not \~done\~,
+-- | then 1. Perform ! CreateDataPropertyOrThrow(\_A\_, ! ToString(𝔽(\_n\_)),
+-- | \_next\_). 1. Set \_n\_ to \_n\_ + 1. 1. If
+-- | \|DestructuringAssignmentTarget\| is neither an \|ObjectLiteral\| nor an
+-- | \|ArrayLiteral\|, then 1. Return ? PutValue(\_lRef\_, \_A\_). 1. Let
+-- | \_nestedAssignmentPattern\_ be the \|AssignmentPattern\| that is covered
+-- | by \|DestructuringAssignmentTarget\|. 1. Return ?
+-- | DestructuringAssignmentEvaluation of \_nestedAssignmentPattern\_ with
+-- | argument \_A\_.
+-- |
+
+-- SPEC: L17161-L17181
+-- | # Runtime Semantics: KeyedDestructuringAssignmentEvaluation ( \_value\_: an ECMAScript language value, \_propertyName\_: a property key, ): either a normal completion containing \~unused\~ or an abrupt completion
+-- |
+-- | AssignmentElement : DestructuringAssignmentTarget Initializer? 1. If
+-- | \|DestructuringAssignmentTarget\| is neither an \|ObjectLiteral\| nor an
+-- | \|ArrayLiteral\|, then 1. Let \_lRef\_ be ? Evaluation of
+-- | \|DestructuringAssignmentTarget\|. 1. Let \_v\_ be ? GetV(\_value\_,
+-- | \_propertyName\_). 1. If \|Initializer\| is present and \_v\_ is
+-- | \*undefined\*, then 1. If IsAnonymousFunctionDefinition(\|Initializer\|)
+-- | is \*true\* and IsIdentifierRef of \|DestructuringAssignmentTarget\| is
+-- | \*true\*, then 1. Let \_target\_ be the StringValue of
+-- | \|DestructuringAssignmentTarget\|. 1. Let \_rhsValue\_ be ?
+-- | NamedEvaluation of \|Initializer\| with argument \_target\_. 1. Else, 1.
+-- | Let \_defaultValue\_ be ? Evaluation of \|Initializer\|. 1. Let
+-- | \_rhsValue\_ be ? GetValue(\_defaultValue\_). 1. Else, 1. Let
+-- | \_rhsValue\_ be \_v\_. 1. If \|DestructuringAssignmentTarget\| is either
+-- | an \|ObjectLiteral\| or an \|ArrayLiteral\|, then 1. Let
+-- | \_assignmentPattern\_ be the \|AssignmentPattern\| that is covered by
+-- | \|DestructuringAssignmentTarget\|. 1. Return ?
+-- | DestructuringAssignmentEvaluation of \_assignmentPattern\_ with argument
+-- | \_rhsValue\_. 1. Return ? PutValue(\_lRef\_, \_rhsValue\_).
+-- |
+
+-- SPEC: L29502-L29654
+-- | # Patterns
+-- |
+-- | The RegExp constructor applies the following grammar to the input
+-- | pattern String. An error occurs if the grammar cannot interpret the
+-- | String as an expansion of \|Pattern\|.
+-- |
+-- | ## Syntax
+-- |
+-- | Pattern\[UnicodeMode, UnicodeSetsMode, NamedCaptureGroups\] ::
+-- | Disjunction\[?UnicodeMode, ?UnicodeSetsMode, ?NamedCaptureGroups\]
+-- | Disjunction\[UnicodeMode, UnicodeSetsMode, NamedCaptureGroups\] ::
+-- | Alternative\[?UnicodeMode, ?UnicodeSetsMode, ?NamedCaptureGroups\]
+-- | Alternative\[?UnicodeMode, ?UnicodeSetsMode, ?NamedCaptureGroups\]
+-- | \`\|\` Disjunction\[?UnicodeMode, ?UnicodeSetsMode,
+-- | ?NamedCaptureGroups\] Alternative\[UnicodeMode, UnicodeSetsMode,
+-- | NamedCaptureGroups\] :: \[empty\] Alternative\[?UnicodeMode,
+-- | ?UnicodeSetsMode, ?NamedCaptureGroups\] Term\[?UnicodeMode,
+-- | ?UnicodeSetsMode, ?NamedCaptureGroups\] Term\[UnicodeMode,
+-- | UnicodeSetsMode, NamedCaptureGroups\] :: Assertion\[?UnicodeMode,
+-- | ?UnicodeSetsMode, ?NamedCaptureGroups\] Atom\[?UnicodeMode,
+-- | ?UnicodeSetsMode, ?NamedCaptureGroups\] Atom\[?UnicodeMode,
+-- | ?UnicodeSetsMode, ?NamedCaptureGroups\] Quantifier
+-- | Assertion\[UnicodeMode, UnicodeSetsMode, NamedCaptureGroups\] :: \`\^\`
+-- | \`\$\` \`\\b\` \`\\B\` \`(?=\` Disjunction\[?UnicodeMode,
+-- | ?UnicodeSetsMode, ?NamedCaptureGroups\] \`)\` \`(?!\`
+-- | Disjunction\[?UnicodeMode, ?UnicodeSetsMode, ?NamedCaptureGroups\] \`)\`
+-- | \`(?\<=\` Disjunction\[?UnicodeMode, ?UnicodeSetsMode,
+-- | ?NamedCaptureGroups\] \`)\` \`(?\<!\` Disjunction\[?UnicodeMode,
+-- | ?UnicodeSetsMode, ?NamedCaptureGroups\] \`)\` Quantifier ::
+-- | QuantifierPrefix QuantifierPrefix \`?\` QuantifierPrefix :: \`\*\` \`+\`
+-- | \`?\` \`{\` DecimalDigits\[\~Sep\] \`}\` \`{\` DecimalDigits\[\~Sep\]
+-- | \`,}\` \`{\` DecimalDigits\[\~Sep\] \`,\` DecimalDigits\[\~Sep\] \`}\`
+-- | Atom\[UnicodeMode, UnicodeSetsMode, NamedCaptureGroups\] ::
+-- | PatternCharacter \`.\` \`\\\` AtomEscape\[?UnicodeMode,
+-- | ?NamedCaptureGroups\] CharacterClass\[?UnicodeMode, ?UnicodeSetsMode\]
+-- | \`(\` GroupSpecifier\[?UnicodeMode\]? Disjunction\[?UnicodeMode,
+-- | ?UnicodeSetsMode, ?NamedCaptureGroups\] \`)\` \`(?\`
+-- | RegularExpressionModifiers \`:\` Disjunction\[?UnicodeMode,
+-- | ?UnicodeSetsMode, ?NamedCaptureGroups\] \`)\` \`(?\`
+-- | RegularExpressionModifiers \`-\` RegularExpressionModifiers \`:\`
+-- | Disjunction\[?UnicodeMode, ?UnicodeSetsMode, ?NamedCaptureGroups\] \`)\`
+-- | RegularExpressionModifiers :: \[empty\] RegularExpressionModifiers
+-- | RegularExpressionModifier RegularExpressionModifier :: one of \`i\`
+-- | \`m\` \`s\` SyntaxCharacter :: one of \`\^\` \`\$\` \`\\\` \`.\` \`\*\`
+-- | \`+\` \`?\` \`(\` \`)\` \`\[\` \`\]\` \`{\` \`}\` \`\|\`
+-- | PatternCharacter :: SourceCharacter but not SyntaxCharacter
+-- | AtomEscape\[UnicodeMode, NamedCaptureGroups\] :: DecimalEscape
+-- | CharacterClassEscape\[?UnicodeMode\] CharacterEscape\[?UnicodeMode\]
+-- | \[+NamedCaptureGroups\] \`k\` GroupName\[?UnicodeMode\]
+-- | CharacterEscape\[UnicodeMode\] :: ControlEscape \`c\` AsciiLetter \`0\`
+-- | \[lookahead ∉ DecimalDigit\] HexEscapeSequence
+-- | RegExpUnicodeEscapeSequence\[?UnicodeMode\]
+-- | IdentityEscape\[?UnicodeMode\] ControlEscape :: one of \`f\` \`n\` \`r\`
+-- | \`t\` \`v\` GroupSpecifier\[UnicodeMode\] :: \`?\`
+-- | GroupName\[?UnicodeMode\] GroupName\[UnicodeMode\] :: \`\<\`
+-- | RegExpIdentifierName\[?UnicodeMode\] \`\>\`
+-- | RegExpIdentifierName\[UnicodeMode\] ::
+-- | RegExpIdentifierStart\[?UnicodeMode\]
+-- | RegExpIdentifierName\[?UnicodeMode\]
+-- | RegExpIdentifierPart\[?UnicodeMode\]
+-- | RegExpIdentifierStart\[UnicodeMode\] :: IdentifierStartChar \`\\\`
+-- | RegExpUnicodeEscapeSequence\[+UnicodeMode\] \[\~UnicodeMode\]
+-- | UnicodeLeadSurrogate UnicodeTrailSurrogate
+-- | RegExpIdentifierPart\[UnicodeMode\] :: IdentifierPartChar \`\\\`
+-- | RegExpUnicodeEscapeSequence\[+UnicodeMode\] \[\~UnicodeMode\]
+-- | UnicodeLeadSurrogate UnicodeTrailSurrogate
+-- | RegExpUnicodeEscapeSequence\[UnicodeMode\] :: \[+UnicodeMode\] \`u\`
+-- | HexLeadSurrogate \`\\u\` HexTrailSurrogate \[+UnicodeMode\] \`u\`
+-- | HexLeadSurrogate \[+UnicodeMode\] \`u\` HexTrailSurrogate
+-- | \[+UnicodeMode\] \`u\` HexNonSurrogate \[\~UnicodeMode\] \`u\`
+-- | Hex4Digits \[+UnicodeMode\] \`u{\` CodePoint \`}\` UnicodeLeadSurrogate
+-- | :: \> any Unicode code point in the inclusive interval from U+D800 to
+-- | U+DBFF UnicodeTrailSurrogate :: \> any Unicode code point in the
+-- | inclusive interval from U+DC00 to U+DFFF
+-- |
+-- | Each \`\\\\u\` \|HexTrailSurrogate\| for which the choice of associated
+-- | \`u\` \|HexLeadSurrogate\| is ambiguous shall be associated with the
+-- | nearest possible \`u\` \|HexLeadSurrogate\| that would otherwise have no
+-- | corresponding \`\\\\u\` \|HexTrailSurrogate\|.
+-- |
+-- | HexLeadSurrogate :: Hex4Digits \[\> but only if the MV of \|Hex4Digits\|
+-- | is in the inclusive interval from 0xD800 to 0xDBFF\] HexTrailSurrogate
+-- | :: Hex4Digits \[\> but only if the MV of \|Hex4Digits\| is in the
+-- | inclusive interval from 0xDC00 to 0xDFFF\] HexNonSurrogate :: Hex4Digits
+-- | \[\> but only if the MV of \|Hex4Digits\| is not in the inclusive
+-- | interval from 0xD800 to 0xDFFF\] IdentityEscape\[UnicodeMode\] ::
+-- | \[+UnicodeMode\] SyntaxCharacter \[+UnicodeMode\] \`/\`
+-- | \[\~UnicodeMode\] SourceCharacter but not UnicodeIDContinue
+-- | DecimalEscape :: NonZeroDigit DecimalDigits\[\~Sep\]? \[lookahead ∉
+-- | DecimalDigit\] CharacterClassEscape\[UnicodeMode\] :: \`d\` \`D\` \`s\`
+-- | \`S\` \`w\` \`W\` \[+UnicodeMode\] \`p{\` UnicodePropertyValueExpression
+-- | \`}\` \[+UnicodeMode\] \`P{\` UnicodePropertyValueExpression \`}\`
+-- | UnicodePropertyValueExpression :: UnicodePropertyName \`=\`
+-- | UnicodePropertyValue LoneUnicodePropertyNameOrValue UnicodePropertyName
+-- | :: UnicodePropertyNameCharacters UnicodePropertyNameCharacters ::
+-- | UnicodePropertyNameCharacter UnicodePropertyNameCharacters?
+-- | UnicodePropertyValue :: UnicodePropertyValueCharacters
+-- | LoneUnicodePropertyNameOrValue :: UnicodePropertyValueCharacters
+-- | UnicodePropertyValueCharacters :: UnicodePropertyValueCharacter
+-- | UnicodePropertyValueCharacters? UnicodePropertyValueCharacter ::
+-- | UnicodePropertyNameCharacter DecimalDigit UnicodePropertyNameCharacter
+-- | :: AsciiLetter \`\_\` CharacterClass\[UnicodeMode, UnicodeSetsMode\] ::
+-- | \`\[\` \[lookahead != \`\^\`\] ClassContents\[?UnicodeMode,
+-- | ?UnicodeSetsMode\] \`\]\` \`\[\^\` ClassContents\[?UnicodeMode,
+-- | ?UnicodeSetsMode\] \`\]\` ClassContents\[UnicodeMode, UnicodeSetsMode\]
+-- | :: \[empty\] \[\~UnicodeSetsMode\] NonemptyClassRanges\[?UnicodeMode\]
+-- | \[+UnicodeSetsMode\] ClassSetExpression
+-- | NonemptyClassRanges\[UnicodeMode\] :: ClassAtom\[?UnicodeMode\]
+-- | ClassAtom\[?UnicodeMode\] NonemptyClassRangesNoDash\[?UnicodeMode\]
+-- | ClassAtom\[?UnicodeMode\] \`-\` ClassAtom\[?UnicodeMode\]
+-- | ClassContents\[?UnicodeMode, \~UnicodeSetsMode\]
+-- | NonemptyClassRangesNoDash\[UnicodeMode\] :: ClassAtom\[?UnicodeMode\]
+-- | ClassAtomNoDash\[?UnicodeMode\]
+-- | NonemptyClassRangesNoDash\[?UnicodeMode\]
+-- | ClassAtomNoDash\[?UnicodeMode\] \`-\` ClassAtom\[?UnicodeMode\]
+-- | ClassContents\[?UnicodeMode, \~UnicodeSetsMode\]
+-- | ClassAtom\[UnicodeMode\] :: \`-\` ClassAtomNoDash\[?UnicodeMode\]
+-- | ClassAtomNoDash\[UnicodeMode\] :: SourceCharacter but not one of \`\\\`
+-- | or \`\]\` or \`-\` \`\\\` ClassEscape\[?UnicodeMode\]
+-- | ClassEscape\[UnicodeMode\] :: \`b\` \[+UnicodeMode\] \`-\`
+-- | CharacterClassEscape\[?UnicodeMode\] CharacterEscape\[?UnicodeMode\]
+-- | ClassSetExpression :: ClassUnion ClassIntersection ClassSubtraction
+-- | ClassUnion :: ClassSetRange ClassUnion? ClassSetOperand ClassUnion?
+-- | ClassIntersection :: ClassSetOperand \`&&\` \[lookahead != \`&\`\]
+-- | ClassSetOperand ClassIntersection \`&&\` \[lookahead != \`&\`\]
+-- | ClassSetOperand ClassSubtraction :: ClassSetOperand \`\--\`
+-- | ClassSetOperand ClassSubtraction \`\--\` ClassSetOperand ClassSetRange
+-- | :: ClassSetCharacter \`-\` ClassSetCharacter ClassSetOperand ::
+-- | NestedClass ClassStringDisjunction ClassSetCharacter NestedClass ::
+-- | \`\[\` \[lookahead != \`\^\`\] ClassContents\[+UnicodeMode,
+-- | +UnicodeSetsMode\] \`\]\` \`\[\^\` ClassContents\[+UnicodeMode,
+-- | +UnicodeSetsMode\] \`\]\` \`\\\` CharacterClassEscape\[+UnicodeMode\]
+-- |
+-- | The first two lines here are equivalent to CharacterClass.
+-- |
+-- | ClassStringDisjunction :: \`\\q{\` ClassStringDisjunctionContents \`}\`
+-- | ClassStringDisjunctionContents :: ClassString ClassString \`\|\`
+-- | ClassStringDisjunctionContents ClassString :: \[empty\]
+-- | NonEmptyClassString NonEmptyClassString :: ClassSetCharacter
+-- | NonEmptyClassString? ClassSetCharacter :: \[lookahead ∉
+-- | ClassSetReservedDoublePunctuator\] SourceCharacter but not
+-- | ClassSetSyntaxCharacter \`\\\` CharacterEscape\[+UnicodeMode\] \`\\\`
+-- | ClassSetReservedPunctuator \`\\b\` ClassSetReservedDoublePunctuator ::
+-- | one of \`&&\` \`!!\` \`##\` \`\$\$\` \`%%\` \`\*\*\` \`++\` \`,,\`
+-- | \`..\` \`::\` \`;;\` \`\<\<\` \`==\` \`\>\>\` \`??\` \`@@\` \`\^\^\`
+-- | \`\`\`\` \`\~\~\` ClassSetSyntaxCharacter :: one of \`(\` \`)\` \`\[\`
+-- | \`\]\` \`{\` \`}\` \`/\` \`-\` \`\\\` \`\|\` ClassSetReservedPunctuator
+-- | :: one of \`&\` \`-\` \`!\` \`#\` \`%\` \`,\` \`:\` \`;\` \`\<\` \`=\`
+-- | \`\>\` \`@\` \`\`\` \`\~\`
+-- |
+-- | A number of productions in this section are given alternative
+-- | definitions in section .
+-- |
+
+-- SPEC: L29655-L29797
+-- | # Static Semantics: Early Errors
+-- |
+-- | This section is amended in .
+-- |
+-- | Pattern :: Disjunction
+-- |
+-- | - It is a Syntax Error if CountLeftCapturingParensWithin(\|Pattern\|) ≥
+-- |   2^32^ - 1.
+-- | - It is a Syntax Error if \|Pattern\| contains two distinct
+-- |   \|GroupSpecifier\|s \_x\_ and \_y\_ such that the CapturingGroupName
+-- |   of \_x\_ is the CapturingGroupName of \_y\_ and such that
+-- |   MightBothParticipate(\_x\_, \_y\_) is \*true\*.
+-- |
+-- | QuantifierPrefix :: \`{\` DecimalDigits \`,\` DecimalDigits \`}\`
+-- |
+-- | - It is a Syntax Error if the MV of the first \|DecimalDigits\| is
+-- |   strictly greater than the MV of the second \|DecimalDigits\|.
+-- |
+-- | Atom :: \`(?\` RegularExpressionModifiers \`:\` Disjunction \`)\`
+-- |
+-- | - It is a Syntax Error if the source text matched by
+-- |   \|RegularExpressionModifiers\| contains the same code point more than
+-- |   once.
+-- |
+-- | Atom :: \`(?\` RegularExpressionModifiers \`-\`
+-- | RegularExpressionModifiers \`:\` Disjunction \`)\`
+-- |
+-- | - It is a Syntax Error if the source text matched by the first
+-- |   \|RegularExpressionModifiers\| and the source text matched by the
+-- |   second \|RegularExpressionModifiers\| are both empty.
+-- | - It is a Syntax Error if the source text matched by the first
+-- |   \|RegularExpressionModifiers\| contains the same code point more than
+-- |   once.
+-- | - It is a Syntax Error if the source text matched by the second
+-- |   \|RegularExpressionModifiers\| contains the same code point more than
+-- |   once.
+-- | - It is a Syntax Error if any code point in the source text matched by
+-- |   the first \|RegularExpressionModifiers\| is also contained in the
+-- |   source text matched by the second \|RegularExpressionModifiers\|.
+-- |
+-- | AtomEscape :: \`k\` GroupName
+-- |
+-- | - It is a Syntax Error if GroupSpecifiersThatMatch(\|GroupName\|) is
+-- |   empty.
+-- |
+-- | AtomEscape :: DecimalEscape
+-- |
+-- | - It is a Syntax Error if the CapturingGroupNumber of \|DecimalEscape\|
+-- |   is strictly greater than CountLeftCapturingParensWithin(the
+-- |   \|Pattern\| containing \|AtomEscape\|).
+-- |
+-- | NonemptyClassRanges :: ClassAtom \`-\` ClassAtom ClassContents
+-- |
+-- | - It is a Syntax Error if IsCharacterClass of the first \|ClassAtom\| is
+-- |   \*true\* or IsCharacterClass of the second \|ClassAtom\| is \*true\*.
+-- | - It is a Syntax Error if IsCharacterClass of the first \|ClassAtom\| is
+-- |   \*false\*, IsCharacterClass of the second \|ClassAtom\| is \*false\*,
+-- |   and the CharacterValue of the first \|ClassAtom\| is strictly greater
+-- |   than the CharacterValue of the second \|ClassAtom\|.
+-- |
+-- | NonemptyClassRangesNoDash :: ClassAtomNoDash \`-\` ClassAtom
+-- | ClassContents
+-- |
+-- | - It is a Syntax Error if IsCharacterClass of \|ClassAtomNoDash\| is
+-- |   \*true\* or IsCharacterClass of \|ClassAtom\| is \*true\*.
+-- | - It is a Syntax Error if IsCharacterClass of \|ClassAtomNoDash\| is
+-- |   \*false\*, IsCharacterClass of \|ClassAtom\| is \*false\*, and the
+-- |   CharacterValue of \|ClassAtomNoDash\| is strictly greater than the
+-- |   CharacterValue of \|ClassAtom\|.
+-- |
+-- | RegExpIdentifierStart :: \`\\\` RegExpUnicodeEscapeSequence
+-- |
+-- | - It is a Syntax Error if the CharacterValue of
+-- |   \|RegExpUnicodeEscapeSequence\| is not the numeric value of some code
+-- |   point matched by the \|IdentifierStartChar\| lexical grammar
+-- |   production.
+-- |
+-- | RegExpIdentifierStart :: UnicodeLeadSurrogate UnicodeTrailSurrogate
+-- |
+-- | - It is a Syntax Error if the RegExpIdentifierCodePoint of
+-- |   \|RegExpIdentifierStart\| is not matched by the \|UnicodeIDStart\|
+-- |   lexical grammar production.
+-- |
+-- | RegExpIdentifierPart :: \`\\\` RegExpUnicodeEscapeSequence
+-- |
+-- | - It is a Syntax Error if the CharacterValue of
+-- |   \|RegExpUnicodeEscapeSequence\| is not the numeric value of some code
+-- |   point matched by the \|IdentifierPartChar\| lexical grammar
+-- |   production.
+-- |
+-- | RegExpIdentifierPart :: UnicodeLeadSurrogate UnicodeTrailSurrogate
+-- |
+-- | - It is a Syntax Error if the RegExpIdentifierCodePoint of
+-- |   \|RegExpIdentifierPart\| is not matched by the \|UnicodeIDContinue\|
+-- |   lexical grammar production.
+-- |
+-- | UnicodePropertyValueExpression :: UnicodePropertyName \`=\`
+-- | UnicodePropertyValue
+-- |
+-- | - It is a Syntax Error if the source text matched by
+-- |   \|UnicodePropertyName\| is not a Unicode property name or property
+-- |   alias listed in the "Property name and aliases" column of .
+-- | - It is a Syntax Error if the source text matched by
+-- |   \|UnicodePropertyValue\| is not a property value or property value
+-- |   alias for the Unicode property or property alias given by the source
+-- |   text matched by \|UnicodePropertyName\| listed in
+-- |   [`PropertyValueAliases.txt`](https://unicode.org/Public/UCD/latest/ucd/PropertyValueAliases.txt).
+-- |
+-- | UnicodePropertyValueExpression :: LoneUnicodePropertyNameOrValue
+-- |
+-- | - It is a Syntax Error if the source text matched by
+-- |   \|LoneUnicodePropertyNameOrValue\| is not a Unicode property value or
+-- |   property value alias for the General_Category (gc) property listed in
+-- |   [`PropertyValueAliases.txt`](https://unicode.org/Public/UCD/latest/ucd/PropertyValueAliases.txt),
+-- |   nor a binary property or binary property alias listed in the "Property
+-- |   name and aliases" column of , nor a binary property of strings listed
+-- |   in the "Property name" column of .
+-- | - It is a Syntax Error if the enclosing \|Pattern\| does not have a
+-- |   ~\[UnicodeSetsMode\]~ parameter and the source text matched by
+-- |   \|LoneUnicodePropertyNameOrValue\| is a binary property of strings
+-- |   listed in the "Property name" column of .
+-- |
+-- | CharacterClassEscape :: \`P{\` UnicodePropertyValueExpression \`}\`
+-- |
+-- | - It is a Syntax Error if MayContainStrings of the
+-- |   \|UnicodePropertyValueExpression\| is \*true\*.
+-- |
+-- | CharacterClass :: \`\[\^\` ClassContents \`\]\`
+-- |
+-- | - It is a Syntax Error if MayContainStrings of the \|ClassContents\| is
+-- |   \*true\*.
+-- |
+-- | NestedClass :: \`\[\^\` ClassContents \`\]\`
+-- |
+-- | - It is a Syntax Error if MayContainStrings of the \|ClassContents\| is
+-- |   \*true\*.
+-- |
+-- | ClassSetRange :: ClassSetCharacter \`-\` ClassSetCharacter
+-- |
+-- | - It is a Syntax Error if the CharacterValue of the first
+-- |   \|ClassSetCharacter\| is strictly greater than the CharacterValue of
+-- |   the second \|ClassSetCharacter\|.
+-- |
+
+-- SPEC: L29858-L29907
+-- | # Static Semantics: CharacterValue ( ): a non-negative integer
+-- |
+-- | This section is amended in .
+-- |
+-- | ClassAtom :: \`-\` 1. Return the numeric value of U+002D (HYPHEN-MINUS).
+-- | ClassAtomNoDash :: SourceCharacter but not one of \`\\\` or \`\]\` or
+-- | \`-\` 1. Let \_ch\_ be the code point matched by \|SourceCharacter\|. 1.
+-- | Return the numeric value of \_ch\_. ClassEscape :: \`b\` 1. Return the
+-- | numeric value of U+0008 (BACKSPACE). ClassEscape :: \`-\` 1. Return the
+-- | numeric value of U+002D (HYPHEN-MINUS). CharacterEscape ::
+-- | ControlEscape 1. Return the numeric value according to .
+-- |
+-- |   ControlEscape   Numeric Value   Code Point   Unicode Name           Symbol
+-- |   --------------- --------------- ------------ ---------------------- --------
+-- |   \`t\`           9               \`U+0009\`   CHARACTER TABULATION   \<HT\>
+-- |   \`n\`           10              \`U+000A\`   LINE FEED (LF)         \<LF\>
+-- |   \`v\`           11              \`U+000B\`   LINE TABULATION        \<VT\>
+-- |   \`f\`           12              \`U+000C\`   FORM FEED (FF)         \<FF\>
+-- |   \`r\`           13              \`U+000D\`   CARRIAGE RETURN (CR)   \<CR\>
+-- |
+-- | CharacterEscape :: \`c\` AsciiLetter 1. Let \_ch\_ be the code point
+-- | matched by \|AsciiLetter\|. 1. Let \_i\_ be the numeric value of
+-- | \_ch\_. 1. Return the remainder of dividing \_i\_ by 32. CharacterEscape
+-- | :: \`0\` \[lookahead ∉ DecimalDigit\] 1. Return the numeric value of
+-- | U+0000 (NULL).
+-- |
+-- | \`\\\\0\` represents the \<NUL\> character and cannot be followed by a
+-- | decimal digit.
+-- |
+-- | CharacterEscape :: HexEscapeSequence 1. Return the MV of
+-- | \|HexEscapeSequence\|. RegExpUnicodeEscapeSequence :: \`u\`
+-- | HexLeadSurrogate \`\\u\` HexTrailSurrogate 1. Let \_lead\_ be the
+-- | CharacterValue of \|HexLeadSurrogate\|. 1. Let \_trail\_ be the
+-- | CharacterValue of \|HexTrailSurrogate\|. 1. Let \_cp\_ be
+-- | UTF16SurrogatePairToCodePoint(\_lead\_, \_trail\_). 1. Return the
+-- | numeric value of \_cp\_. RegExpUnicodeEscapeSequence :: \`u\`
+-- | Hex4Digits 1. Return the MV of \|Hex4Digits\|.
+-- | RegExpUnicodeEscapeSequence :: \`u{\` CodePoint \`}\` 1. Return the MV
+-- | of \|CodePoint\|. HexLeadSurrogate :: Hex4Digits HexTrailSurrogate ::
+-- | Hex4Digits HexNonSurrogate :: Hex4Digits 1. Return the MV of
+-- | \|Hex4Digits\|. CharacterEscape :: IdentityEscape 1. Let \_ch\_ be the
+-- | code point matched by \|IdentityEscape\|. 1. Return the numeric value of
+-- | \_ch\_. ClassSetCharacter :: SourceCharacter but not
+-- | ClassSetSyntaxCharacter 1. Let \_ch\_ be the code point matched by
+-- | \|SourceCharacter\|. 1. Return the numeric value of \_ch\_.
+-- | ClassSetCharacter :: \`\\\` ClassSetReservedPunctuator 1. Let \_ch\_ be
+-- | the code point matched by \|ClassSetReservedPunctuator\|. 1. Return the
+-- | numeric value of \_ch\_. ClassSetCharacter :: \`\\b\` 1. Return the
+-- | numeric value of U+0008 (BACKSPACE).
+-- |
+
+-- SPEC: L29987-L30034
+-- | # Pattern Semantics
+-- |
+-- | A regular expression pattern is converted into an Abstract Closure using
+-- | the process described below. An implementation is encouraged to use more
+-- | efficient algorithms than the ones listed below, as long as the results
+-- | are the same. The Abstract Closure is used as the value of a RegExp
+-- | object\'s \[\[RegExpMatcher\]\] internal slot.
+-- |
+-- | A \|Pattern\| is a BMP pattern if its associated flags contain neither a
+-- | \`u\` nor a \`v\`. Otherwise, it is a Unicode pattern. A BMP pattern
+-- | matches against a String interpreted as consisting of a sequence of
+-- | 16-bit values that are Unicode code points in the range of the Basic
+-- | Multilingual Plane. A Unicode pattern matches against a String
+-- | interpreted as consisting of Unicode code points encoded using UTF-16.
+-- | In the context of describing the behaviour of a BMP pattern "character"
+-- | means a single 16-bit Unicode BMP code point. In the context of
+-- | describing the behaviour of a Unicode pattern "character" means a UTF-16
+-- | encoded code point (). In either context, "character value" means the
+-- | numeric value of the corresponding non-encoded code point.
+-- |
+-- | The syntax and semantics of \|Pattern\| is defined as if the source text
+-- | for the \|Pattern\| was a List of \|SourceCharacter\| values where each
+-- | \|SourceCharacter\| corresponds to a Unicode code point. If a BMP
+-- | pattern contains a non-BMP \|SourceCharacter\| the entire pattern is
+-- | encoded using UTF-16 and the individual code units of that encoding are
+-- | used as the elements of the List.
+-- |
+-- | For example, consider a pattern expressed in source text as the single
+-- | non-BMP character U+1D11E (MUSICAL SYMBOL G CLEF). Interpreted as a
+-- | Unicode pattern, it would be a single element (character) List
+-- | consisting of the single code point U+1D11E. However, interpreted as a
+-- | BMP pattern, it is first UTF-16 encoded to produce a two element List
+-- | consisting of the code units 0xD834 and 0xDD1E.
+-- |
+-- | Patterns are passed to the RegExp constructor as ECMAScript String
+-- | values in which non-BMP characters are UTF-16 encoded. For example, the
+-- | single character MUSICAL SYMBOL G CLEF pattern, expressed as a String
+-- | value, is a String of length 2 whose elements were the code units 0xD834
+-- | and 0xDD1E. So no further translation of the string would be necessary
+-- | to process it as a BMP pattern consisting of two pattern characters.
+-- | However, to process it as a Unicode pattern
+-- | UTF16SurrogatePairToCodePoint must be used in producing a List whose
+-- | sole element is a single pattern character, the code point U+1D11E.
+-- |
+-- | An implementation may not actually perform such translations to or from
+-- | UTF-16, but the semantics of this specification requires that the result
+-- | of pattern matching be as if such translations were performed.
+-- |
+
+-- SPEC: L23607-L23607
+-- |
+
+-- SPEC: L23608-L23611
+-- | # AggregateError ( . . . )
+-- |
+-- | See .
+-- |
+
+-- SPEC: L23612-L23615
+-- | # Array ( . . . )
+-- |
+-- | See .
+-- |
+
+-- SPEC: L23616-L23619
+-- | # ArrayBuffer ( . . . )
+-- |
+-- | See .
+-- |
+
+-- SPEC: L23620-L23623
+-- | # BigInt ( . . . )
+-- |
+-- | See .
+-- |
+
+-- SPEC: L23624-L23627
+-- | # BigInt64Array ( . . . )
+-- |
+-- | See .
+-- |
+
+-- SPEC: L23628-L23631
+-- | # BigUint64Array ( . . . )
+-- |
+-- | See .
+-- |
+
+-- SPEC: L23632-L23635
+-- | # Boolean ( . . . )
+-- |
+-- | See .
+-- |
+
+-- SPEC: L23636-L23639
+-- | # DataView ( . . . )
+-- |
+-- | See .
+-- |
+
+-- SPEC: L23640-L23643
+-- | # Date ( . . . )
+-- |
+-- | See .
+-- |
+
+-- SPEC: L23644-L23647
+-- | # Error ( . . . )
+-- |
+-- | See .
+-- |
+
+-- SPEC: L23648-L23651
+-- | # EvalError ( . . . )
+-- |
+-- | See .
+-- |
+
+-- SPEC: L23652-L23655
+-- | # FinalizationRegistry ( . . . )
+-- |
+-- | See .
+-- |
+
+-- SPEC: L23656-L23659
+-- | # Float16Array ( . . . )
+-- |
+-- | See .
+-- |
+
+-- SPEC: L23660-L23663
+-- | # Float32Array ( . . . )
+-- |
+-- | See .
+-- |
+
+-- SPEC: L23664-L23667
+-- | # Float64Array ( . . . )
+-- |
+-- | See .
+-- |
+
+-- SPEC: L23668-L23671
+-- | # Function ( . . . )
+-- |
+-- | See .
+-- |
+
+-- SPEC: L23672-L23675
+-- | # Int8Array ( . . . )
+-- |
+-- | See .
+-- |
+
+-- SPEC: L23676-L23679
+-- | # Int16Array ( . . . )
+-- |
+-- | See .
+-- |
+
+-- SPEC: L23680-L23683
+-- | # Int32Array ( . . . )
+-- |
+-- | See .
+-- |
+
+-- SPEC: L23684-L23687
+-- | # Iterator ( . . . )
+-- |
+-- | See .
+-- |
+
+-- SPEC: L23688-L23691
+-- | # Map ( . . . )
+-- |
+-- | See .
+-- |
+
+-- SPEC: L23692-L23695
+-- | # Number ( . . . )
+-- |
+-- | See .
+-- |
+
+-- SPEC: L23696-L23699
+-- | # Object ( . . . )
+-- |
+-- | See .
+-- |
+
+-- SPEC: L23700-L23703
+-- | # Promise ( . . . )
+-- |
+-- | See .
+-- |
+
+-- SPEC: L23704-L23707
+-- | # Proxy ( . . . )
+-- |
+-- | See .
+-- |
+
+-- SPEC: L23708-L23711
+-- | # RangeError ( . . . )
+-- |
+-- | See .
+-- |
+
+-- SPEC: L23712-L23715
+-- | # ReferenceError ( . . . )
+-- |
+-- | See .
+-- |
+
+-- SPEC: L23716-L23719
+-- | # RegExp ( . . . )
+-- |
+-- | See .
+-- |
+
+-- SPEC: L23720-L23723
+-- | # Set ( . . . )
+-- |
+-- | See .
+-- |
+
+-- SPEC: L23724-L23727
+-- | # SharedArrayBuffer ( . . . )
+-- |
+-- | See .
+-- |
+
+-- SPEC: L23728-L23731
+-- | # String ( . . . )
+-- |
+-- | See .
+-- |
+
+-- SPEC: L23732-L23735
+-- | # Symbol ( . . . )
+-- |
+-- | See .
+-- |
+
+-- SPEC: L23736-L23739
+-- | # SyntaxError ( . . . )
+-- |
+-- | See .
+-- |
+
+-- SPEC: L23740-L23743
+-- | # TypeError ( . . . )
+-- |
+-- | See .
+-- |
+
+-- SPEC: L23744-L23747
+-- | # Uint8Array ( . . . )
+-- |
+-- | See .
+-- |
+
+-- SPEC: L23748-L23751
+-- | # Uint8ClampedArray ( . . . )
+-- |
+-- | See .
+-- |
+
+-- SPEC: L23752-L23755
+-- | # Uint16Array ( . . . )
+-- |
+-- | See .
+-- |
+
+-- SPEC: L23756-L23759
+-- | # Uint32Array ( . . . )
+-- |
+-- | See .
+-- |
+
+-- SPEC: L23760-L23763
+-- | # URIError ( . . . )
+-- |
+-- | See .
+-- |
+
+-- SPEC: L23764-L23767
+-- | # WeakMap ( . . . )
+-- |
+-- | See .
+-- |
+
+-- SPEC: L23768-L23771
+-- | # WeakRef ( . . . )
+-- |
+-- | See .
+-- |
+
+-- SPEC: L23772-L23775
+-- | # WeakSet ( . . . )
+-- |
+-- | See .
+-- |
+
+
+-- SPEC: L14776-L14839
+-- | # ECMAScript Language: Expressions
+-- |
+-- | # Identifiers
+-- |
+-- | ## Syntax
+-- |
+-- | IdentifierReference\[Yield, Await\] : Identifier \[\~Yield\] \`yield\`
+-- | \[\~Await\] \`await\` BindingIdentifier\[Yield, Await\] : Identifier
+-- | \`yield\` \`await\` LabelIdentifier\[Yield, Await\] : Identifier
+-- | \[\~Yield\] \`yield\` \[\~Await\] \`await\` Identifier : IdentifierName
+-- | but not ReservedWord
+-- |
+-- | \`yield\` and \`await\` are permitted as \|BindingIdentifier\| in the
+-- | grammar, and prohibited with static semantics below, to prohibit
+-- | automatic semicolon insertion in cases such as
+-- |
+-- | ``` javascript
+-- |
+-- |         let
+-- |         await 0;
+-- |       
+-- | ```
+-- |
+-- | # Static Semantics: Early Errors
+-- |
+-- | BindingIdentifier : Identifier
+-- |
+-- | - It is a Syntax Error if IsStrict(this production) is \*true\* and the
+-- |   StringValue of \|Identifier\| is either \*\"arguments\"\* or
+-- |   \*\"eval\"\*.
+-- |
+-- | IdentifierReference : \`yield\` BindingIdentifier : \`yield\`
+-- | LabelIdentifier : \`yield\`
+-- |
+-- | - It is a Syntax Error if IsStrict(this production) is \*true\*.
+-- |
+-- | IdentifierReference : \`await\` BindingIdentifier : \`await\`
+-- | LabelIdentifier : \`await\`
+-- |
+-- | - It is a Syntax Error if the goal symbol of the syntactic grammar is
+-- |   \|Module\|.
+-- |
+-- | BindingIdentifier\[Yield, Await\] : \`yield\`
+-- |
+-- | - It is a Syntax Error if this production has a ~\[Yield\]~ parameter.
+-- |
+-- | BindingIdentifier\[Yield, Await\] : \`await\`
+-- |
+-- | - It is a Syntax Error if this production has an ~\[Await\]~ parameter.
+-- |
+-- | IdentifierReference\[Yield, Await\] : Identifier
+-- | BindingIdentifier\[Yield, Await\] : Identifier LabelIdentifier\[Yield,
+-- | Await\] : Identifier
+-- |
+-- | - It is a Syntax Error if this production has a ~\[Yield\]~ parameter
+-- |   and the StringValue of \|Identifier\| is \*\"yield\"\*.
+-- | - It is a Syntax Error if this production has an ~\[Await\]~ parameter
+-- |   and the StringValue of \|Identifier\| is \*\"await\"\*.
+-- |
+-- | Identifier : IdentifierName but not ReservedWord
+-- |
+-- | - It is a Syntax Error if IsStrict(this phrase) is \*true\* and the
+-- |   StringValue of \|IdentifierName\| is one of \*\"implements\"\*,
+-- |   \*\"interface\"\*, \*\"let\"\*, \*\"package\"\*, \*\"private\"\*,
+
+-- SPEC: L14840-L14858
+-- |   \*\"protected\"\*, \*\"public\"\*, \*\"static\"\*, or \*\"yield\"\*.
+-- | - It is a Syntax Error if the goal symbol of the syntactic grammar is
+-- |   \|Module\| and the StringValue of \|IdentifierName\| is \*\"await\"\*.
+-- | - It is a Syntax Error if the StringValue of \|IdentifierName\| is the
+-- |   StringValue of any \|ReservedWord\| except for \`yield\` or \`await\`.
+-- |
+-- | The StringValue of \|IdentifierName\| normalizes any Unicode escape
+-- | sequences in \|IdentifierName\| hence such escapes cannot be used to
+-- | write an \|Identifier\| whose code point sequence is the same as a
+-- | \|ReservedWord\|.
+-- |
+-- | # Static Semantics: StringValue ( ): a String
+-- |
+-- | IdentifierName :: IdentifierStart IdentifierName IdentifierPart 1. Let
+-- | \_idTextUnescaped\_ be the IdentifierCodePoints of
+-- | \|IdentifierName\|. 1. Return CodePointsToString(\_idTextUnescaped\_).
+-- | IdentifierReference : \`yield\` BindingIdentifier : \`yield\`
+-- | LabelIdentifier : \`yield\` 1. Return \*\"yield\"\*. IdentifierReference
+-- | : \`await\` BindingIdentifier : \`await\` LabelIdentifier : \`await\` 1.
+
+-- SPEC: L14859-L14889
+-- | Return \*\"await\"\*. Identifier : IdentifierName but not
+-- | ReservedWord 1. Return the StringValue of \|IdentifierName\|.
+-- | PrivateIdentifier :: \`#\` IdentifierName 1. Return the
+-- | string-concatenation of 0x0023 (NUMBER SIGN) and the StringValue of
+-- | \|IdentifierName\|. ModuleExportName : StringLiteral 1. Return the SV of
+-- | \|StringLiteral\|.
+-- |
+-- | # Runtime Semantics: Evaluation
+-- |
+-- | IdentifierReference : Identifier 1. Return ? ResolveBinding(StringValue
+-- | of \|Identifier\|). IdentifierReference : \`yield\` 1. Return ?
+-- | ResolveBinding(\*\"yield\"\*). IdentifierReference : \`await\` 1. Return
+-- | ? ResolveBinding(\*\"await\"\*).
+-- |
+-- | The result of evaluating an \|IdentifierReference\| is always a value of
+-- | type Reference.
+-- |
+-- | In non-strict code, the keyword \`yield\` may be used as an identifier.
+-- | Evaluating the \|IdentifierReference\| resolves the binding of \`yield\`
+-- | as if it was an \|Identifier\|. Early Error restriction ensures that
+-- | such an evaluation only can occur for non-strict code.
+-- |
+-- | # Primary Expression
+-- |
+-- | ## Syntax
+-- |
+-- | PrimaryExpression\[Yield, Await\] : \`this\`
+-- | IdentifierReference\[?Yield, ?Await\] Literal ArrayLiteral\[?Yield,
+-- | ?Await\] ObjectLiteral\[?Yield, ?Await\] FunctionExpression
+-- | ClassExpression\[?Yield, ?Await\] GeneratorExpression
+-- | AsyncFunctionExpression AsyncGeneratorExpression
+
+-- SPEC: L14890-L14894
+-- | RegularExpressionLiteral TemplateLiteral\[?Yield, ?Await, \~Tagged\]
+-- | CoverParenthesizedExpressionAndArrowParameterList\[?Yield, ?Await\]
+-- | #parencover CoverParenthesizedExpressionAndArrowParameterList\[Yield,
+-- | Await\] : \`(\` Expression\[+In, ?Yield, ?Await\] \`)\` \`(\`
+-- | Expression\[+In, ?Yield, ?Await\] \`,\` \`)\` \`(\` \`)\` \`(\` \`\...\`
+
+-- SPEC: L14895-L14922
+-- | BindingIdentifier\[?Yield, ?Await\] \`)\` \`(\` \`\...\`
+-- | BindingPattern\[?Yield, ?Await\] \`)\` \`(\` Expression\[+In, ?Yield,
+-- | ?Await\] \`,\` \`\...\` BindingIdentifier\[?Yield, ?Await\] \`)\` \`(\`
+-- | Expression\[+In, ?Yield, ?Await\] \`,\` \`\...\` BindingPattern\[?Yield,
+-- | ?Await\] \`)\`
+-- |
+-- | ## Supplemental Syntax
+-- |
+-- | When processing an instance of the production\
+-- | PrimaryExpression\[Yield, Await\] :
+-- | CoverParenthesizedExpressionAndArrowParameterList\[?Yield, ?Await\]\
+-- | the interpretation of
+-- | \|CoverParenthesizedExpressionAndArrowParameterList\| is refined using
+-- | the following grammar:
+-- |
+-- | ParenthesizedExpression\[Yield, Await\] : \`(\` Expression\[+In, ?Yield,
+-- | ?Await\] \`)\`
+-- |
+-- | # The \`this\` Keyword
+-- |
+-- | # Runtime Semantics: Evaluation
+-- |
+-- | PrimaryExpression : \`this\` 1. Return ? ResolveThisBinding().
+-- |
+-- | # Identifier Reference
+-- |
+-- | See for \|IdentifierReference\|.
+-- |
+
+-- SPEC: L14923-L14965
+-- | # Literals
+-- |
+-- | ## Syntax
+-- |
+-- | Literal : NullLiteral BooleanLiteral NumericLiteral StringLiteral
+-- |
+-- | # Runtime Semantics: Evaluation
+-- |
+-- | Literal : NullLiteral 1. Return \*null\*. Literal : BooleanLiteral 1. If
+-- | \|BooleanLiteral\| is the token \`false\`, return \*false\*. 1. If
+-- | \|BooleanLiteral\| is the token \`true\`, return \*true\*. Literal :
+-- | NumericLiteral 1. Return the NumericValue of \|NumericLiteral\| as
+-- | defined in . Literal : StringLiteral 1. Return the SV of
+-- | \|StringLiteral\| as defined in .
+-- |
+-- | # Array Initializer
+-- |
+-- | An \|ArrayLiteral\| is an expression describing the initialization of an
+-- | Array, using a list, of zero or more expressions each of which
+-- | represents an array element, enclosed in square brackets. The elements
+-- | need not be literals; they are evaluated each time the array initializer
+-- | is evaluated.
+-- |
+-- | Array elements may be elided at the beginning, middle or end of the
+-- | element list. Whenever a comma in the element list is not preceded by an
+-- | \|AssignmentExpression\| (i.e., a comma at the beginning or after
+-- | another comma), the missing array element contributes to the length of
+-- | the Array and increases the index of subsequent elements. Elided array
+-- | elements are not defined. If an element is elided at the end of an
+-- | array, that element does not contribute to the length of the Array.
+-- |
+-- | ## Syntax
+-- |
+-- | ArrayLiteral\[Yield, Await\] : \`\[\` Elision? \`\]\` \`\[\`
+-- | ElementList\[?Yield, ?Await\] \`\]\` \`\[\` ElementList\[?Yield,
+-- | ?Await\] \`,\` Elision? \`\]\` ElementList\[Yield, Await\] : Elision?
+-- | AssignmentExpression\[+In, ?Yield, ?Await\] Elision?
+-- | SpreadElement\[?Yield, ?Await\] ElementList\[?Yield, ?Await\] \`,\`
+-- | Elision? AssignmentExpression\[+In, ?Yield, ?Await\]
+-- | ElementList\[?Yield, ?Await\] \`,\` Elision? SpreadElement\[?Yield,
+-- | ?Await\] Elision : \`,\` Elision \`,\` SpreadElement\[Yield, Await\] :
+-- | \`\...\` AssignmentExpression\[+In, ?Yield, ?Await\]
+-- |
+
+-- SPEC: L14966-L14998
+-- | # Runtime Semantics: ArrayAccumulation ( \_array\_: an Array, \_nextIndex\_: an integer, ): either a normal completion containing an integer or an abrupt completion
+-- |
+-- | Elision : \`,\` 1. Let \_len\_ be \_nextIndex\_ + 1. 1. Perform ?
+-- | Set(\_array\_, \*\"length\"\*, 𝔽(\_len\_), \*true\*). 1. NOTE: The above
+-- | step throws if \_len\_ exceeds 2^32^ - 1. 1. Return \_len\_. Elision :
+-- | Elision \`,\` 1. Return ? ArrayAccumulation of \|Elision\| with
+-- | arguments \_array\_ and (\_nextIndex\_ + 1). ElementList : Elision?
+-- | AssignmentExpression 1. If \|Elision\| is present, then 1. Set
+-- | \_nextIndex\_ to ? ArrayAccumulation of \|Elision\| with arguments
+-- | \_array\_ and \_nextIndex\_. 1. Let \_initResult\_ be ? Evaluation of
+-- | \|AssignmentExpression\|. 1. Let \_initValue\_ be ?
+-- | GetValue(\_initResult\_). 1. Perform !
+-- | CreateDataPropertyOrThrow(\_array\_, ! ToString(𝔽(\_nextIndex\_)),
+-- | \_initValue\_). 1. Return \_nextIndex\_ + 1. ElementList : Elision?
+-- | SpreadElement 1. If \|Elision\| is present, then 1. Set \_nextIndex\_ to
+-- | ? ArrayAccumulation of \|Elision\| with arguments \_array\_ and
+-- | \_nextIndex\_. 1. Return ? ArrayAccumulation of \|SpreadElement\| with
+-- | arguments \_array\_ and \_nextIndex\_. ElementList : ElementList \`,\`
+-- | Elision? AssignmentExpression 1. Set \_nextIndex\_ to ?
+-- | ArrayAccumulation of \|ElementList\| with arguments \_array\_ and
+-- | \_nextIndex\_. 1. If \|Elision\| is present, then 1. Set \_nextIndex\_
+-- | to ? ArrayAccumulation of \|Elision\| with arguments \_array\_ and
+-- | \_nextIndex\_. 1. Let \_initResult\_ be ? Evaluation of
+-- | \|AssignmentExpression\|. 1. Let \_initValue\_ be ?
+-- | GetValue(\_initResult\_). 1. Perform !
+-- | CreateDataPropertyOrThrow(\_array\_, ! ToString(𝔽(\_nextIndex\_)),
+-- | \_initValue\_). 1. Return \_nextIndex\_ + 1. ElementList : ElementList
+-- | \`,\` Elision? SpreadElement 1. Set \_nextIndex\_ to ? ArrayAccumulation
+-- | of \|ElementList\| with arguments \_array\_ and \_nextIndex\_. 1. If
+-- | \|Elision\| is present, then 1. Set \_nextIndex\_ to ? ArrayAccumulation
+-- | of \|Elision\| with arguments \_array\_ and \_nextIndex\_. 1. Return ?
+-- | ArrayAccumulation of \|SpreadElement\| with arguments \_array\_ and
+-- | \_nextIndex\_. SpreadElement : \`\...\` AssignmentExpression 1. Let
+
+-- SPEC: L14999-L15025
+-- | \_spreadRef\_ be ? Evaluation of \|AssignmentExpression\|. 1. Let
+-- | \_spreadObj\_ be ? GetValue(\_spreadRef\_). 1. Let \_iteratorRecord\_ be
+-- | ? GetIterator(\_spreadObj\_, \~sync\~). 1. Repeat, 1. Let \_next\_ be ?
+-- | IteratorStepValue(\_iteratorRecord\_). 1. If \_next\_ is \~done\~,
+-- | return \_nextIndex\_. 1. Perform ! CreateDataPropertyOrThrow(\_array\_,
+-- | ! ToString(𝔽(\_nextIndex\_)), \_next\_). 1. Set \_nextIndex\_ to
+-- | \_nextIndex\_ + 1.
+-- |
+-- | CreateDataPropertyOrThrow is used to ensure that own properties are
+-- | defined for the array even if the standard built-in Array prototype
+-- | object has been modified in a manner that would preclude the creation of
+-- | new own properties using \[\[Set\]\].
+-- |
+-- | # Runtime Semantics: Evaluation
+-- |
+-- | ArrayLiteral : \`\[\` Elision? \`\]\` 1. Let \_array\_ be !
+-- | ArrayCreate(0). 1. If \|Elision\| is present, then 1. Perform ?
+-- | ArrayAccumulation of \|Elision\| with arguments \_array\_ and 0. 1.
+-- | Return \_array\_. ArrayLiteral : \`\[\` ElementList \`\]\` 1. Let
+-- | \_array\_ be ! ArrayCreate(0). 1. Perform ? ArrayAccumulation of
+-- | \|ElementList\| with arguments \_array\_ and 0. 1. Return \_array\_.
+-- | ArrayLiteral : \`\[\` ElementList \`,\` Elision? \`\]\` 1. Let \_array\_
+-- | be ! ArrayCreate(0). 1. Let \_nextIndex\_ be ? ArrayAccumulation of
+-- | \|ElementList\| with arguments \_array\_ and 0. 1. If \|Elision\| is
+-- | present, then 1. Perform ? ArrayAccumulation of \|Elision\| with
+-- | arguments \_array\_ and \_nextIndex\_. 1. Return \_array\_.
+-- |
+
+-- SPEC: L15026-L15049
+-- | # Object Initializer
+-- |
+-- | An object initializer is an expression describing the initialization of
+-- | an Object, written in a form resembling a literal. It is a list of zero
+-- | or more pairs of property keys and associated values, enclosed in curly
+-- | brackets. The values need not be literals; they are evaluated each time
+-- | the object initializer is evaluated.
+-- |
+-- | ## Syntax
+-- |
+-- | ObjectLiteral\[Yield, Await\] : \`{\` \`}\` \`{\`
+-- | PropertyDefinitionList\[?Yield, ?Await\] \`}\` \`{\`
+-- | PropertyDefinitionList\[?Yield, ?Await\] \`,\` \`}\`
+-- | PropertyDefinitionList\[Yield, Await\] : PropertyDefinition\[?Yield,
+-- | ?Await\] PropertyDefinitionList\[?Yield, ?Await\] \`,\`
+-- | PropertyDefinition\[?Yield, ?Await\] PropertyDefinition\[Yield, Await\]
+-- | : IdentifierReference\[?Yield, ?Await\] CoverInitializedName\[?Yield,
+-- | ?Await\] PropertyName\[?Yield, ?Await\] \`:\` AssignmentExpression\[+In,
+-- | ?Yield, ?Await\] MethodDefinition\[?Yield, ?Await\] \`\...\`
+-- | AssignmentExpression\[+In, ?Yield, ?Await\] PropertyName\[Yield, Await\]
+-- | : LiteralPropertyName ComputedPropertyName\[?Yield, ?Await\]
+-- | LiteralPropertyName : IdentifierName StringLiteral NumericLiteral
+-- | ComputedPropertyName\[Yield, Await\] : \`\[\` AssignmentExpression\[+In,
+-- | ?Yield, ?Await\] \`\]\` CoverInitializedName\[Yield, Await\] :
+
+-- SPEC: L2358-L2362
+-- | # Scope
+-- |
+-- | This Standard defines the ECMAScript 2026 general-purpose programming
+-- | language.
+-- |
+
+-- SPEC: L2363-L2407
+-- | # Conformance
+-- |
+-- | A conforming implementation of ECMAScript must provide and support all
+-- | the types, values, objects, properties, functions, and program syntax
+-- | and semantics described in this specification.
+-- |
+-- | A conforming implementation of ECMAScript must interpret source text
+-- | input in conformance with the latest version of the Unicode Standard and
+-- | ISO/IEC 10646.
+-- |
+-- | A conforming implementation of ECMAScript that provides an application
+-- | programming interface (API) that supports programs that need to adapt to
+-- | the linguistic and cultural conventions used by different human
+-- | languages and countries must implement the interface defined by the most
+-- | recent edition of ECMA-402 that is compatible with this specification.
+-- |
+-- | A conforming implementation of ECMAScript may provide additional types,
+-- | values, objects, properties, and functions beyond those described in
+-- | this specification. In particular, a conforming implementation of
+-- | ECMAScript may provide properties not described in this specification,
+-- | and values for those properties, for objects that are described in this
+-- | specification.
+-- |
+-- | A conforming implementation of ECMAScript may support program and
+-- | regular expression syntax not described in this specification. In
+-- | particular, a conforming implementation of ECMAScript may support
+-- | program syntax that makes use of any "future reserved words" noted in
+-- | subclause of this specification.
+-- |
+-- | A conforming implementation of ECMAScript must not implement any
+-- | extension that is listed as a Forbidden Extension in subclause .
+-- |
+-- | A conforming implementation of ECMAScript must not redefine any
+-- | facilities that are not implementation-defined,
+-- | implementation-approximated, or host-defined.
+-- |
+-- | A conforming implementation of ECMAScript may choose to implement or not
+-- | implement [Normative Optional]{.dfn} subclauses, unless otherwise
+-- | indicated. Web browsers are generally required to implement all
+-- | normative optional subclauses. (See Annex .) If any Normative Optional
+-- | behaviour is implemented, all of the behaviour in the containing
+-- | Normative Optional clause must be implemented. A Normative Optional
+-- | clause is denoted in this specification with the words \"Normative
+-- | Optional\" in a coloured box, as shown below.
+-- |
+
+-- SPEC: L2408-L2420
+-- | # Example Normative Optional Clause Heading
+-- |
+-- | Example clause contents.
+-- |
+-- | A conforming implementation of ECMAScript must implement [Legacy]{.dfn}
+-- | subclauses, unless they are also marked as Normative Optional. All of
+-- | the language features and behaviours specified within Legacy subclauses
+-- | have one or more undesirable characteristics. However, their continued
+-- | usage in existing applications prevents their removal from this
+-- | specification. These features are not considered part of the core
+-- | ECMAScript language. Programmers should not use or assume the existence
+-- | of these features and behaviours when writing new ECMAScript code.
+-- |
+
+-- SPEC: L2421-L2424
+-- | # Example Legacy Clause Heading
+-- |
+-- | Example clause contents.
+-- |
+
+-- SPEC: L2425-L2428
+-- | # Example Legacy Normative Optional Clause Heading
+-- |
+-- | Example clause contents.
+-- |
+
+-- SPEC: L3013-L3033
+-- | # Organization of This Specification
+-- |
+-- | The remainder of this specification is organized as follows:
+-- |
+-- | Clause defines the notational conventions used throughout the
+-- | specification.
+-- |
+-- | Clauses through define the execution environment within which ECMAScript
+-- | programs operate.
+-- |
+-- | Clauses through define the actual ECMAScript programming language
+-- | including its syntactic encoding and the execution semantics of all
+-- | language features.
+-- |
+-- | Clauses through define the ECMAScript standard library. They include the
+-- | definitions of all of the standard objects that are available for use by
+-- | ECMAScript programs as they execute.
+-- |
+-- | Clause describes the memory consistency model of accesses on
+-- | SharedArrayBuffer-backed memory and methods of the Atomics object.
+-- |
+
+-- SPEC: L3034-L3035
+-- | # Notational Conventions
+-- |
+
+-- SPEC: L3036-L3037
+-- | # Syntactic and Lexical Grammars
+-- |
+
+-- SPEC: L3038-L3057
+-- | # Context-Free Grammars
+-- |
+-- | A *context-free grammar* consists of a number of *productions*. Each
+-- | production has an abstract symbol called a *nonterminal* as its
+-- | *left-hand side*, and a sequence of zero or more nonterminal and
+-- | *terminal* symbols as its *right-hand side*. For each grammar, the
+-- | terminal symbols are drawn from a specified alphabet.
+-- |
+-- | A [chain production]{.dfn variants="chain productions"} is a production
+-- | that has exactly one nonterminal symbol on its right-hand side along
+-- | with zero or more terminal symbols.
+-- |
+-- | Starting from a sentence consisting of a single distinguished
+-- | nonterminal, called the [goal symbol]{.dfn variants="goal symbols"}, a
+-- | given context-free grammar specifies a *language*, namely, the (perhaps
+-- | infinite) set of possible sequences of terminal symbols that can result
+-- | from repeatedly replacing any nonterminal in the sequence with a
+-- | right-hand side of a production for which the nonterminal is the
+-- | left-hand side.
+-- |
+
+-- SPEC: L3058-L3093
+-- | # The Lexical and RegExp Grammars
+-- |
+-- | A *lexical grammar* for ECMAScript is given in clause . This grammar has
+-- | as its terminal symbols Unicode code points that conform to the rules
+-- | for \|SourceCharacter\| defined in . It defines a set of productions,
+-- | starting from the goal symbol \|InputElementDiv\|,
+-- | \|InputElementTemplateTail\|, \|InputElementRegExp\|,
+-- | \|InputElementRegExpOrTemplateTail\|, or
+-- | \|InputElementHashbangOrRegExp\|, that describe how sequences of such
+-- | code points are translated into a sequence of input elements.
+-- |
+-- | Input elements other than white space and comments form the terminal
+-- | symbols for the syntactic grammar for ECMAScript and are called
+-- | ECMAScript *tokens*. These tokens are the reserved words, identifiers,
+-- | literals, and punctuators of the ECMAScript language. Moreover, line
+-- | terminators, although not considered to be tokens, also become part of
+-- | the stream of input elements and guide the process of automatic
+-- | semicolon insertion (). Simple white space and single-line comments are
+-- | discarded and do not appear in the stream of input elements for the
+-- | syntactic grammar. A \|MultiLineComment\| (that is, a comment of the
+-- | form \`/\*\`...\`\*/\` regardless of whether it spans more than one
+-- | line) is likewise simply discarded if it contains no line terminator;
+-- | but if a \|MultiLineComment\| contains one or more line terminators,
+-- | then it is replaced by a single line terminator, which becomes part of
+-- | the stream of input elements for the syntactic grammar.
+-- |
+-- | A *RegExp grammar* for ECMAScript is given in . This grammar also has as
+-- | its terminal symbols the code points as defined by \|SourceCharacter\|.
+-- | It defines a set of productions, starting from the goal symbol
+-- | \|Pattern\|, that describe how sequences of code points are translated
+-- | into regular expression patterns.
+-- |
+-- | Productions of the lexical and RegExp grammars are distinguished by
+-- | having two colons "**::**" as separating punctuation. The lexical and
+-- | RegExp grammars share some productions.
+-- |
+
+-- SPEC: L3094-L3111
+-- | # The Numeric String Grammar
+-- |
+-- | A *numeric string grammar* appears in . It has as its terminal symbols
+-- | \|SourceCharacter\|, and is used for translating Strings into numeric
+-- | values starting from the goal symbol \|StringNumericLiteral\| (which is
+-- | similar to but distinct from the lexical grammar for numeric literals).
+-- |
+-- | Productions of the numeric string grammar are distinguished by having
+-- | three colons "**:::**" as punctuation, and are never used for parsing
+-- | source text.
+-- |
+-- | # The Syntactic Grammar
+-- |
+-- | The *syntactic grammar* for ECMAScript is given in clauses through .
+-- | This grammar has ECMAScript tokens defined by the lexical grammar as its
+-- | terminal symbols (). It defines a set of productions, starting from two
+-- | alternative goal symbols \|Script\| and \|Module\|, that describe how
+-- | sequences of tokens form syntactically correct independent components of
+
+-- SPEC: L3112-L3145
+-- | ECMAScript programs.
+-- |
+-- | When a stream of code points is to be parsed as an ECMAScript \|Script\|
+-- | or \|Module\|, it is first converted to a stream of input elements by
+-- | repeated application of the lexical grammar; this stream of input
+-- | elements is then parsed by a single application of the syntactic
+-- | grammar. The input stream is syntactically in error if the tokens in the
+-- | stream of input elements cannot be parsed as a single instance of the
+-- | goal nonterminal (\|Script\| or \|Module\|), with no tokens left over.
+-- |
+-- | When a parse is successful, it constructs a *parse tree*, a rooted tree
+-- | structure in which each node is a [Parse Node]{.dfn
+-- | variants="Parse Nodes"}. Each Parse Node is an *instance* of a symbol in
+-- | the grammar; it represents a span of the source text that can be derived
+-- | from that symbol. The root node of the parse tree, representing the
+-- | whole of the source text, is an instance of the parse\'s goal symbol.
+-- | When a Parse Node is an instance of a nonterminal, it is also an
+-- | instance of some production that has that nonterminal as its left-hand
+-- | side. Moreover, it has zero or more *children*, one for each symbol on
+-- | the production\'s right-hand side: each child is a Parse Node that is an
+-- | instance of the corresponding symbol.
+-- |
+-- | New Parse Nodes are instantiated for each invocation of the parser and
+-- | never reused between parses even of identical source text. Parse Nodes
+-- | are considered [the same Parse Node]{.dfn} if and only if they represent
+-- | the same span of source text, are instances of the same grammar symbol,
+-- | and resulted from the same parser invocation.
+-- |
+-- | Parsing the same String multiple times will lead to different Parse
+-- | Nodes. For example, consider:
+-- |
+-- | ``` javascript
+-- |
+-- |           let str = "1 + 1;";
+
+-- SPEC: L3146-L3188
+-- |           eval(str);
+-- |           eval(str);
+-- |         
+-- | ```
+-- |
+-- | Each call to \`eval\` converts the value of \`str\` into ECMAScript
+-- | source text and performs an independent parse that creates its own
+-- | separate tree of Parse Nodes. The trees are distinct even though each
+-- | parse operates upon a source text that was derived from the same String
+-- | value.
+-- |
+-- | Parse Nodes are specification artefacts, and implementations are not
+-- | required to use an analogous data structure.
+-- |
+-- | Productions of the syntactic grammar are distinguished by having just
+-- | one colon "**:**" as punctuation.
+-- |
+-- | The syntactic grammar as presented in clauses through is not a complete
+-- | account of which token sequences are accepted as a correct ECMAScript
+-- | \|Script\| or \|Module\|. Certain additional token sequences are also
+-- | accepted, namely, those that would be described by the grammar if only
+-- | semicolons were added to the sequence in certain places (such as before
+-- | line terminator characters). Furthermore, certain token sequences that
+-- | are described by the grammar are not considered acceptable if a line
+-- | terminator character appears in certain "awkward" places.
+-- |
+-- | In certain cases, in order to avoid ambiguities, the syntactic grammar
+-- | uses generalized productions that permit token sequences that do not
+-- | form a valid ECMAScript \|Script\| or \|Module\|. For example, this
+-- | technique is used for object literals and object destructuring patterns.
+-- | In such cases a more restrictive *supplemental grammar* is provided that
+-- | further restricts the acceptable token sequences. Typically, an early
+-- | error rule will then state that, in certain contexts, \"\_P\_ [must
+-- | cover]{#must-cover .dfn} an \_N\_\", where \_P\_ is a Parse Node (an
+-- | instance of the generalized production) and \_N\_ is a nonterminal from
+-- | the supplemental grammar. This means:
+-- |
+-- | 1.  The sequence of tokens originally matched by \_P\_ is parsed again
+-- |     using \_N\_ as the goal symbol. If \_N\_ takes grammatical
+-- |     parameters, then they are set to the same values used when \_P\_ was
+-- |     originally parsed.
+-- | 2.  If the sequence of tokens can be parsed as a single instance of
+-- |     \_N\_, with no tokens left over, then:
+
+-- SPEC: L3189-L3240
+-- |     1.  We refer to that instance of \_N\_ (a Parse Node, unique for a
+-- |         given \_P\_) as \"the \_N\_ that is [covered]{.dfn} by \_P\_\".
+-- |     2.  All Early Error rules for \_N\_ and its derived productions also
+-- |         apply to the \_N\_ that is covered by \_P\_.
+-- | 3.  Otherwise (if the parse fails), it is an early Syntax Error.
+-- |
+-- | # Grammar Notation
+-- |
+-- | # Terminal Symbols
+-- |
+-- | In the ECMAScript grammars, some terminal symbols are shown in
+-- | \`fixed-width\` font. These are to appear in a source text exactly as
+-- | written. All terminal symbol code points specified in this way are to be
+-- | understood as the appropriate Unicode code points from the Basic Latin
+-- | block, as opposed to any similar-looking code points from other Unicode
+-- | ranges. A code point in a terminal symbol cannot be expressed by a
+-- | \`\\\\\` \|UnicodeEscapeSequence\|.
+-- |
+-- | In grammars whose terminal symbols are individual Unicode code points
+-- | (i.e., the lexical, RegExp, and numeric string grammars), a contiguous
+-- | run of multiple fixed-width code points appearing in a production is a
+-- | simple shorthand for the same sequence of code points, written as
+-- | standalone terminal symbols.
+-- |
+-- | For example, the production:
+-- |
+-- | HexIntegerLiteral :: \`0x\` HexDigits
+-- |
+-- | is a shorthand for:
+-- |
+-- | HexIntegerLiteral :: \`0\` \`x\` HexDigits
+-- |
+-- | In contrast, in the syntactic grammar, a contiguous run of fixed-width
+-- | code points is a single terminal symbol.
+-- |
+-- | Terminal symbols come in two other forms:
+-- |
+-- | - In the lexical and RegExp grammars, Unicode code points without a
+-- |   conventional printed representation are instead shown in the form
+-- |   \"\<ABBREV\>\" where \"ABBREV\" is a mnemonic for the code point or
+-- |   set of code points. These forms are defined in , , and .
+-- | - In the syntactic grammar, certain terminal symbols (e.g.
+-- |   \|IdentifierName\| and \|RegularExpressionLiteral\|) are shown in
+-- |   italics, as they refer to the nonterminals of the same name in the
+-- |   lexical grammar.
+-- |
+-- | # Nonterminal Symbols and Productions
+-- |
+-- | Nonterminal symbols are shown in *italic* type. The definition of a
+-- | nonterminal (also called a "production") is introduced by the name of
+-- | the nonterminal being defined followed by one or more colons. (The
+-- | number of colons indicates to which grammar the production belongs.) One
+
+-- SPEC: L3497-L3554
+-- | # Algorithm Conventions
+-- |
+-- | The specification often uses a numbered list to specify steps in an
+-- | algorithm. These algorithms are used to precisely specify the required
+-- | semantics of ECMAScript language constructs. The algorithms are not
+-- | intended to imply the use of any specific implementation technique. In
+-- | practice, there may be more efficient algorithms available to implement
+-- | a given feature.
+-- |
+-- | Algorithms may be explicitly parameterized with an ordered,
+-- | comma-separated sequence of alias names which may be used within the
+-- | algorithm steps to reference the argument passed in that position.
+-- | Optional parameters are denoted with surrounding brackets (\[ , \_name\_
+-- | \]) and are no different from required parameters within algorithm
+-- | steps. A rest parameter may appear at the end of a parameter list,
+-- | denoted with leading ellipsis (, \...\_name\_). The rest parameter
+-- | captures all of the arguments provided following the required and
+-- | optional parameters into a List. If there are no such additional
+-- | arguments, that List is empty.
+-- |
+-- | Algorithm steps may be subdivided into sequential substeps. Substeps are
+-- | indented and may themselves be further divided into indented substeps.
+-- | Outline numbering conventions are used to identify substeps with the
+-- | first level of substeps labelled with lowercase alphabetic characters
+-- | and the second level of substeps labelled with lowercase roman numerals.
+-- | If more than three levels are required these rules repeat with the
+-- | fourth level using numeric labels. For example:
+-- |
+-- | 1\. Top-level step 1. Substep. 1. Substep. 1. Subsubstep. 1.
+-- | Subsubsubstep 1. Subsubsubsubstep 1. Subsubsubsubsubstep
+-- |
+-- | A step or substep may be written as an "if" predicate that conditions
+-- | its substeps. In this case, the substeps are only applied if the
+-- | predicate is true. If a step or substep begins with the word "else", it
+-- | is a predicate that is the negation of the preceding "if" predicate step
+-- | at the same level.
+-- |
+-- | A step may specify the iterative application of its substeps.
+-- |
+-- | A step that begins with "[Assert]{#assert .dfn}:" asserts an invariant
+-- | condition of its algorithm. Such assertions are used to make explicit
+-- | algorithmic invariants that would otherwise be implicit. Such assertions
+-- | add no additional semantic requirements and hence need not be checked by
+-- | an implementation. They are used simply to clarify algorithms.
+-- |
+-- | Algorithm steps may declare named aliases for any value using the form
+-- | "Let \_x\_ be \_someValue\_". These aliases are reference-like in that
+-- | both \_x\_ and \_someValue\_ refer to the same underlying data and
+-- | modifications to either are visible to both. Algorithm steps that want
+-- | to avoid this reference-like behaviour should explicitly make a copy of
+-- | the right-hand side: "Let \_x\_ be a copy of \_someValue\_" creates a
+-- | shallow copy of \_someValue\_.
+-- |
+-- | Once declared, an alias may be referenced in any subsequent steps and
+-- | must not be referenced from steps prior to the alias\'s declaration.
+-- | Aliases may be modified using the form "Set \_x\_ to
+-- | \_someOtherValue\_".
+-- |
+
+-- SPEC: L30035-L30098
+-- | # Notation
+-- |
+-- | The descriptions below use the following internal data structures:
+-- |
+-- | - A [CharSetElement]{.dfn} is one of the two following entities:
+-- |   - If \_rer\_.\[\[UnicodeSets\]\] is \*false\*, then a CharSetElement
+-- |     is a character in the sense of the Pattern Semantics above.
+-- |   - If \_rer\_.\[\[UnicodeSets\]\] is \*true\*, then a CharSetElement is
+-- |     a sequence whose elements are characters in the sense of the Pattern
+-- |     Semantics above. This includes the empty sequence, sequences of one
+-- |     character, and sequences of more than one character. For
+-- |     convenience, when working with CharSetElements of this kind, an
+-- |     individual character is treated interchangeably with a sequence of
+-- |     one character.
+-- | - A [CharSet]{#pattern-charset .dfn variants="CharSets"} is a
+-- |   mathematical set of CharSetElements.
+-- | - A [CaptureRange]{#pattern-capturerange .dfn variants="CaptureRanges"}
+-- |   is a Record { \[\[StartIndex\]\], \[\[EndIndex\]\] } that represents
+-- |   the range of characters included in a capture, where
+-- |   \[\[StartIndex\]\] is an integer representing the start index
+-- |   (inclusive) of the range within \_Input\_, and \[\[EndIndex\]\] is an
+-- |   integer representing the end index (exclusive) of the range within
+-- |   \_Input\_. For any CaptureRange, these indices must satisfy the
+-- |   invariant that \[\[StartIndex\]\] ≤ \[\[EndIndex\]\].
+-- | - A [MatchState]{#pattern-matchstate .dfn variants="MatchStates"
+-- |   oldids="pattern-matchresult"} is a Record { \[\[Input\]\],
+-- |   \[\[EndIndex\]\], \[\[Captures\]\] } where \[\[Input\]\] is a List of
+-- |   characters representing the String being matched, \[\[EndIndex\]\] is
+-- |   an integer, and \[\[Captures\]\] is a List of values, one for each
+-- |   left-capturing parenthesis in the pattern. MatchStates are used to
+-- |   represent partial match states in the regular expression matching
+-- |   algorithms. The \[\[EndIndex\]\] is one plus the index of the last
+-- |   input character matched so far by the pattern, while \[\[Captures\]\]
+-- |   holds the results of capturing parentheses. The \_n\_^th^ element of
+-- |   \[\[Captures\]\] is either a CaptureRange representing the range of
+-- |   characters captured by the \_n\_^th^ set of capturing parentheses, or
+-- |   \*undefined\* if the \_n\_^th^ set of capturing parentheses hasn\'t
+-- |   been reached yet. Due to backtracking, many MatchStates may be in use
+-- |   at any time during the matching process.
+-- | - A [MatcherContinuation]{#pattern-matchercontinuation .dfn
+-- |   variants="MatcherContinuations"} is an Abstract Closure that takes one
+-- |   MatchState argument and returns either a MatchState or \~failure\~.
+-- |   The MatcherContinuation attempts to match the remaining portion
+-- |   (specified by the closure\'s captured values) of the pattern against
+-- |   \_Input\_, starting at the intermediate state given by its MatchState
+-- |   argument. If the match succeeds, the MatcherContinuation returns the
+-- |   final MatchState that it reached; if the match fails, the
+-- |   MatcherContinuation returns \~failure\~.
+-- | - A [Matcher]{#pattern-matcher .dfn variants="Matchers"} is an Abstract
+-- |   Closure that takes two arguments---a MatchState and a
+-- |   MatcherContinuation---and returns either a MatchState or \~failure\~.
+-- |   A Matcher attempts to match a middle subpattern (specified by the
+-- |   closure\'s captured values) of the pattern against the MatchState\'s
+-- |   \[\[Input\]\], starting at the intermediate state given by its
+-- |   MatchState argument. The MatcherContinuation argument should be a
+-- |   closure that matches the rest of the pattern. After matching the
+-- |   subpattern of a pattern to obtain a new MatchState, the Matcher then
+-- |   calls MatcherContinuation on that new MatchState to test if the rest
+-- |   of the pattern can match as well. If it can, the Matcher returns the
+-- |   MatchState returned by MatcherContinuation; if not, the Matcher may
+-- |   try different choices at its choice points, repeatedly calling
+-- |   MatcherContinuation until it either succeeds or all possibilities have
+-- |   been exhausted.
+-- |
+
+-- SPEC: L30144-L30162
+-- | # Runtime Semantics: CompileSubpattern ( \_rer\_: a RegExp Record, \_direction\_: \~forward\~ or \~backward\~, ): a Matcher
+-- |
+-- | This section is amended in .
+-- |
+-- | Disjunction :: Alternative \`\|\` Disjunction 1. Let \_m1\_ be
+-- | CompileSubpattern of \|Alternative\| with arguments \_rer\_ and
+-- | \_direction\_. 1. Let \_m2\_ be CompileSubpattern of \|Disjunction\|
+-- | with arguments \_rer\_ and \_direction\_. 1. Return
+-- | MatchTwoAlternatives(\_m1\_, \_m2\_).
+-- |
+-- | The \`\|\` regular expression operator separates two alternatives. The
+-- | pattern first tries to match the left \|Alternative\| (followed by the
+-- | sequel of the regular expression); if it fails, it tries to match the
+-- | right \|Disjunction\| (followed by the sequel of the regular
+-- | expression). If the left \|Alternative\|, the right \|Disjunction\|, and
+-- | the sequel all have choice points, all choices in the sequel are tried
+-- | before moving on to the next choice in the left \|Alternative\|. If
+-- | choices in the left \|Alternative\| are exhausted, the right
+-- | \|Disjunction\| is tried instead of the left \|Alternative\|. Any
+
+-- SPEC: L30163-L30207
+-- | capturing parentheses inside a portion of the pattern skipped by \`\|\`
+-- | produce \*undefined\* values instead of Strings. Thus, for example,
+-- |
+-- | ``` javascript
+-- | /a|ab/.exec("abc")
+-- | ```
+-- |
+-- | returns the result \*\"a\"\* and not \*\"ab\"\*. Moreover,
+-- |
+-- | ``` javascript
+-- | /((a)|(ab))((c)|(bc))/.exec("abc")
+-- | ```
+-- |
+-- | returns the array
+-- |
+-- | ``` javascript
+-- | ["abc", "a", "a", undefined, "bc", undefined, "bc"]
+-- | ```
+-- |
+-- | and not
+-- |
+-- | ``` javascript
+-- | ["abc", "ab", undefined, "ab", "c", "c", undefined]
+-- | ```
+-- |
+-- | The order in which the two alternatives are tried is independent of the
+-- | value of \_direction\_.
+-- |
+-- | Alternative :: \[empty\] 1. Return EmptyMatcher(). Alternative ::
+-- | Alternative Term 1. Let \_m1\_ be CompileSubpattern of \|Alternative\|
+-- | with arguments \_rer\_ and \_direction\_. 1. Let \_m2\_ be
+-- | CompileSubpattern of \|Term\| with arguments \_rer\_ and
+-- | \_direction\_. 1. Return MatchSequence(\_m1\_, \_m2\_, \_direction\_).
+-- |
+-- | Consecutive \|Term\|s try to simultaneously match consecutive portions
+-- | of \_Input\_. When \_direction\_ is \~forward\~, if the left
+-- | \|Alternative\|, the right \|Term\|, and the sequel of the regular
+-- | expression all have choice points, all choices in the sequel are tried
+-- | before moving on to the next choice in the right \|Term\|, and all
+-- | choices in the right \|Term\| are tried before moving on to the next
+-- | choice in the left \|Alternative\|. When \_direction\_ is \~backward\~,
+-- | the evaluation order of \|Alternative\| and \|Term\| are reversed.
+-- |
+-- | Term :: Assertion 1. Return CompileAssertion of \|Assertion\| with
+-- | argument \_rer\_.
+
+-- SPEC: L30208-L30250
+-- |
+-- | The resulting Matcher is independent of \_direction\_.
+-- |
+-- | Term :: Atom 1. Return CompileAtom of \|Atom\| with arguments \_rer\_
+-- | and \_direction\_. Term :: Atom Quantifier 1. Let \_m\_ be CompileAtom
+-- | of \|Atom\| with arguments \_rer\_ and \_direction\_. 1. Let \_q\_ be
+-- | CompileQuantifier of \|Quantifier\|. 1. Assert: \_q\_.\[\[Min\]\] ≤
+-- | \_q\_.\[\[Max\]\]. 1. Let \_parenIndex\_ be
+-- | CountLeftCapturingParensBefore(\|Term\|). 1. Let \_parenCount\_ be
+-- | CountLeftCapturingParensWithin(\|Atom\|). 1. Return a new Matcher with
+-- | parameters (\_x\_, \_c\_) that captures \_m\_, \_q\_, \_parenIndex\_,
+-- | and \_parenCount\_ and performs the following steps when called: 1.
+-- | Assert: \_x\_ is a MatchState. 1. Assert: \_c\_ is a
+-- | MatcherContinuation. 1. Return RepeatMatcher(\_m\_, \_q\_.\[\[Min\]\],
+-- | \_q\_.\[\[Max\]\], \_q\_.\[\[Greedy\]\], \_x\_, \_c\_, \_parenIndex\_,
+-- | \_parenCount\_).
+-- |
+-- | # RepeatMatcher ( \_m\_: a Matcher, \_min\_: a non-negative integer, \_max\_: a non-negative integer or +∞, \_greedy\_: a Boolean, \_x\_: a MatchState, \_c\_: a MatcherContinuation, \_parenIndex\_: a non-negative integer, \_parenCount\_: a non-negative integer, ): either a MatchState or \~failure\~
+-- |
+-- | 1\. If \_max\_ = 0, return \_c\_(\_x\_). 1. Let \_d\_ be a new
+-- | MatcherContinuation with parameters (\_y\_) that captures \_m\_,
+-- | \_min\_, \_max\_, \_greedy\_, \_x\_, \_c\_, \_parenIndex\_, and
+-- | \_parenCount\_ and performs the following steps when called: 1. Assert:
+-- | \_y\_ is a MatchState. 1. \[id=\"step-repeatmatcher-done\"\] If \_min\_
+-- | = 0 and \_y\_.\[\[EndIndex\]\] = \_x\_.\[\[EndIndex\]\], return
+-- | \~failure\~. 1. If \_min\_ = 0, let \_min2\_ be 0; else let \_min2\_ be
+-- | \_min\_ - 1. 1. If \_max\_ = +∞, let \_max2\_ be +∞; else let \_max2\_
+-- | be \_max\_ - 1. 1. Return RepeatMatcher(\_m\_, \_min2\_, \_max2\_,
+-- | \_greedy\_, \_y\_, \_c\_, \_parenIndex\_, \_parenCount\_). 1. Let
+-- | \_cap\_ be a copy of \_x\_.\[\[Captures\]\]. 1.
+-- | \[id=\"step-repeatmatcher-clear-captures\"\] For each integer \_k\_ in
+-- | the inclusive interval from \_parenIndex\_ + 1 to \_parenIndex\_ +
+-- | \_parenCount\_, set \_cap\_\[\_k\_\] to \*undefined\*. 1. Let \_Input\_
+-- | be \_x\_.\[\[Input\]\]. 1. Let \_e\_ be \_x\_.\[\[EndIndex\]\]. 1. Let
+-- | \_xr\_ be the MatchState { \[\[Input\]\]: \_Input\_, \[\[EndIndex\]\]:
+-- | \_e\_, \[\[Captures\]\]: \_cap\_ }. 1. If \_min\_ ≠ 0, return
+-- | \_m\_(\_xr\_, \_d\_). 1. If \_greedy\_ is \*false\*, then 1. Let \_z\_
+-- | be \_c\_(\_x\_). 1. If \_z\_ is not \~failure\~, return \_z\_. 1. Return
+-- | \_m\_(\_xr\_, \_d\_). 1. Let \_z\_ be \_m\_(\_xr\_, \_d\_). 1. If \_z\_
+-- | is not \~failure\~, return \_z\_. 1. Return \_c\_(\_x\_).
+-- |
+-- | An \|Atom\| followed by a \|Quantifier\| is repeated the number of times
+-- | specified by the \|Quantifier\|. A \|Quantifier\| can be non-greedy, in
+
+-- SPEC: L30251-L30308
+-- | which case the \|Atom\| pattern is repeated as few times as possible
+-- | while still matching the sequel, or it can be greedy, in which case the
+-- | \|Atom\| pattern is repeated as many times as possible while still
+-- | matching the sequel. The \|Atom\| pattern is repeated rather than the
+-- | input character sequence that it matches, so different repetitions of
+-- | the \|Atom\| can match different input substrings.
+-- |
+-- | If the \|Atom\| and the sequel of the regular expression all have choice
+-- | points, the \|Atom\| is first matched as many (or as few, if non-greedy)
+-- | times as possible. All choices in the sequel are tried before moving on
+-- | to the next choice in the last repetition of \|Atom\|. All choices in
+-- | the last (n^th^) repetition of \|Atom\| are tried before moving on to
+-- | the next choice in the next-to-last (n - 1)^st^ repetition of \|Atom\|;
+-- | at which point it may turn out that more or fewer repetitions of
+-- | \|Atom\| are now possible; these are exhausted (again, starting with
+-- | either as few or as many as possible) before moving on to the next
+-- | choice in the (n - 1)^st^ repetition of \|Atom\| and so on.
+-- |
+-- | Compare
+-- |
+-- | ``` javascript
+-- | /a[a-z]{2,4}/.exec("abcdefghi")
+-- | ```
+-- |
+-- | which returns \*\"abcde\"\* with
+-- |
+-- | ``` javascript
+-- | /a[a-z]{2,4}?/.exec("abcdefghi")
+-- | ```
+-- |
+-- | which returns \*\"abc\"\*.
+-- |
+-- | Consider also
+-- |
+-- | ``` javascript
+-- | /(aa|aabaac|ba|b|c)*/.exec("aabaac")
+-- | ```
+-- |
+-- | which, by the choice point ordering above, returns the array
+-- |
+-- | ``` javascript
+-- | ["aaba", "ba"]
+-- | ```
+-- |
+-- | and not any of:
+-- |
+-- | ``` javascript
+-- |
+-- |               ["aabaac", "aabaac"]
+-- |               ["aabaac", "c"]
+-- |             
+-- | ```
+-- |
+-- | The above ordering of choice points can be used to write a regular
+-- | expression that calculates the greatest common divisor of two numbers
+-- | (represented in unary notation). The following example calculates the
+-- | gcd of 10 and 15:
+-- |
+
+-- SPEC: L30309-L30359
+-- | ``` javascript
+-- | "aaaaaaaaaa,aaaaaaaaaaaaaaa".replace(/^(a+)\1*,\1+$/, "$1")
+-- | ```
+-- |
+-- | which returns the gcd in unary notation \*\"aaaaa\"\*.
+-- |
+-- | Step of the RepeatMatcher clears \|Atom\|\'s captures each time \|Atom\|
+-- | is repeated. We can see its behaviour in the regular expression
+-- |
+-- | ``` javascript
+-- | /(z)((a+)?(b+)?(c))*/.exec("zaacbbbcac")
+-- | ```
+-- |
+-- | which returns the array
+-- |
+-- | ``` javascript
+-- | ["zaacbbbcac", "z", "ac", "a", undefined, "c"]
+-- | ```
+-- |
+-- | and not
+-- |
+-- | ``` javascript
+-- | ["zaacbbbcac", "z", "ac", "a", "bbb", "c"]
+-- | ```
+-- |
+-- | because each iteration of the outermost \`\*\` clears all captured
+-- | Strings contained in the quantified \|Atom\|, which in this case
+-- | includes capture Strings numbered 2, 3, 4, and 5.
+-- |
+-- | Step of the RepeatMatcher states that once the minimum number of
+-- | repetitions has been satisfied, any more expansions of \|Atom\| that
+-- | match the empty character sequence are not considered for further
+-- | repetitions. This prevents the regular expression engine from falling
+-- | into an infinite loop on patterns such as:
+-- |
+-- | ``` javascript
+-- | /(a*)*/.exec("b")
+-- | ```
+-- |
+-- | or the slightly more complicated:
+-- |
+-- | ``` javascript
+-- | /(a*)b\1+/.exec("baaaac")
+-- | ```
+-- |
+-- | which returns the array
+-- |
+-- | ``` javascript
+-- | ["b", ""]
+-- | ```
+-- |
+
+-- SPEC: L30360-L30392
+-- | # EmptyMatcher ( ): a Matcher
+-- |
+-- | 1\. Return a new Matcher with parameters (\_x\_, \_c\_) that captures
+-- | nothing and performs the following steps when called: 1. Assert: \_x\_
+-- | is a MatchState. 1. Assert: \_c\_ is a MatcherContinuation. 1. Return
+-- | \_c\_(\_x\_).
+-- |
+-- | # MatchTwoAlternatives ( \_m1\_: a Matcher, \_m2\_: a Matcher, ): a Matcher
+-- |
+-- | 1\. Return a new Matcher with parameters (\_x\_, \_c\_) that captures
+-- | \_m1\_ and \_m2\_ and performs the following steps when called: 1.
+-- | Assert: \_x\_ is a MatchState. 1. Assert: \_c\_ is a
+-- | MatcherContinuation. 1. Let \_r\_ be \_m1\_(\_x\_, \_c\_). 1. If \_r\_
+-- | is not \~failure\~, return \_r\_. 1. Return \_m2\_(\_x\_, \_c\_).
+-- |
+-- | # MatchSequence ( \_m1\_: a Matcher, \_m2\_: a Matcher, \_direction\_: \~forward\~ or \~backward\~, ): a Matcher
+-- |
+-- | 1\. If \_direction\_ is \~forward\~, then 1. Return a new Matcher with
+-- | parameters (\_x\_, \_c\_) that captures \_m1\_ and \_m2\_ and performs
+-- | the following steps when called: 1. Assert: \_x\_ is a MatchState. 1.
+-- | Assert: \_c\_ is a MatcherContinuation. 1. Let \_d\_ be a new
+-- | MatcherContinuation with parameters (\_y\_) that captures \_c\_ and
+-- | \_m2\_ and performs the following steps when called: 1. Assert: \_y\_ is
+-- | a MatchState. 1. Return \_m2\_(\_y\_, \_c\_). 1. Return \_m1\_(\_x\_,
+-- | \_d\_). 1. Assert: \_direction\_ is \~backward\~. 1. Return a new
+-- | Matcher with parameters (\_x\_, \_c\_) that captures \_m1\_ and \_m2\_
+-- | and performs the following steps when called: 1. Assert: \_x\_ is a
+-- | MatchState. 1. Assert: \_c\_ is a MatcherContinuation. 1. Let \_d\_ be a
+-- | new MatcherContinuation with parameters (\_y\_) that captures \_c\_ and
+-- | \_m1\_ and performs the following steps when called: 1. Assert: \_y\_ is
+-- | a MatchState. 1. Return \_m1\_(\_y\_, \_c\_). 1. Return \_m2\_(\_x\_,
+-- | \_d\_).
+-- |
+
+-- SPEC: L30393-L30548
+-- | # Runtime Semantics: CompileAssertion ( \_rer\_: a RegExp Record, ): a Matcher
+-- |
+-- | This section is amended in .
+-- |
+-- | Assertion :: \`\^\` 1. Return a new Matcher with parameters (\_x\_,
+-- | \_c\_) that captures \_rer\_ and performs the following steps when
+-- | called: 1. Assert: \_x\_ is a MatchState. 1. Assert: \_c\_ is a
+-- | MatcherContinuation. 1. Let \_Input\_ be \_x\_.\[\[Input\]\]. 1. Let
+-- | \_e\_ be \_x\_.\[\[EndIndex\]\]. 1. If \_e\_ = 0, or if
+-- | \_rer\_.\[\[Multiline\]\] is \*true\* and the character
+-- | \_Input\_\[\_e\_ - 1\] is matched by \|LineTerminator\|, then 1. Return
+-- | \_c\_(\_x\_). 1. Return \~failure\~.
+-- |
+-- | Even when the \`y\` flag is used with a pattern, \`\^\` always matches
+-- | only at the beginning of \_Input\_, or (if \_rer\_.\[\[Multiline\]\] is
+-- | \*true\*) at the beginning of a line.
+-- |
+-- | Assertion :: \`\$\` 1. Return a new Matcher with parameters (\_x\_,
+-- | \_c\_) that captures \_rer\_ and performs the following steps when
+-- | called: 1. Assert: \_x\_ is a MatchState. 1. Assert: \_c\_ is a
+-- | MatcherContinuation. 1. Let \_Input\_ be \_x\_.\[\[Input\]\]. 1. Let
+-- | \_e\_ be \_x\_.\[\[EndIndex\]\]. 1. Let \_InputLength\_ be the number of
+-- | elements in \_Input\_. 1. If \_e\_ = \_InputLength\_, or if
+-- | \_rer\_.\[\[Multiline\]\] is \*true\* and the character
+-- | \_Input\_\[\_e\_\] is matched by \|LineTerminator\|, then 1. Return
+-- | \_c\_(\_x\_). 1. Return \~failure\~. Assertion :: \`\\b\` 1. Return a
+-- | new Matcher with parameters (\_x\_, \_c\_) that captures \_rer\_ and
+-- | performs the following steps when called: 1. Assert: \_x\_ is a
+-- | MatchState. 1. Assert: \_c\_ is a MatcherContinuation. 1. Let \_Input\_
+-- | be \_x\_.\[\[Input\]\]. 1. Let \_e\_ be \_x\_.\[\[EndIndex\]\]. 1. Let
+-- | \_a\_ be IsWordChar(\_rer\_, \_Input\_, \_e\_ - 1). 1. Let \_b\_ be
+-- | IsWordChar(\_rer\_, \_Input\_, \_e\_). 1. If \_a\_ is \*true\* and \_b\_
+-- | is \*false\*, or if \_a\_ is \*false\* and \_b\_ is \*true\*, return
+-- | \_c\_(\_x\_). 1. Return \~failure\~. Assertion :: \`\\B\` 1. Return a
+-- | new Matcher with parameters (\_x\_, \_c\_) that captures \_rer\_ and
+-- | performs the following steps when called: 1. Assert: \_x\_ is a
+-- | MatchState. 1. Assert: \_c\_ is a MatcherContinuation. 1. Let \_Input\_
+-- | be \_x\_.\[\[Input\]\]. 1. Let \_e\_ be \_x\_.\[\[EndIndex\]\]. 1. Let
+-- | \_a\_ be IsWordChar(\_rer\_, \_Input\_, \_e\_ - 1). 1. Let \_b\_ be
+-- | IsWordChar(\_rer\_, \_Input\_, \_e\_). 1. If \_a\_ is \*true\* and \_b\_
+-- | is \*true\*, or if \_a\_ is \*false\* and \_b\_ is \*false\*, return
+-- | \_c\_(\_x\_). 1. Return \~failure\~. Assertion :: \`(?=\` Disjunction
+-- | \`)\` 1. Let \_m\_ be CompileSubpattern of \|Disjunction\| with
+-- | arguments \_rer\_ and \~forward\~. 1. Return a new Matcher with
+-- | parameters (\_x\_, \_c\_) that captures \_m\_ and performs the following
+-- | steps when called: 1. Assert: \_x\_ is a MatchState. 1. Assert: \_c\_ is
+-- | a MatcherContinuation. 1. Let \_d\_ be a new MatcherContinuation with
+-- | parameters (\_y\_) that captures nothing and performs the following
+-- | steps when called: 1. Assert: \_y\_ is a MatchState. 1. Return \_y\_. 1.
+-- | Let \_r\_ be \_m\_(\_x\_, \_d\_). 1. If \_r\_ is \~failure\~, return
+-- | \~failure\~. 1. Assert: \_r\_ is a MatchState. 1. Let \_cap\_ be
+-- | \_r\_.\[\[Captures\]\]. 1. Let \_Input\_ be \_x\_.\[\[Input\]\]. 1. Let
+-- | \_xe\_ be \_x\_.\[\[EndIndex\]\]. 1. Let \_z\_ be the MatchState {
+-- | \[\[Input\]\]: \_Input\_, \[\[EndIndex\]\]: \_xe\_, \[\[Captures\]\]:
+-- | \_cap\_ }. 1. Return \_c\_(\_z\_).
+-- |
+-- | The form \`(?=\` \|Disjunction\| \`)\` specifies a zero-width positive
+-- | lookahead. In order for it to succeed, the pattern inside
+-- | \|Disjunction\| must match at the current position, but the current
+-- | position is not advanced before matching the sequel. If \|Disjunction\|
+-- | can match at the current position in several ways, only the first one is
+-- | tried. Unlike other regular expression operators, there is no
+-- | backtracking into a \`(?=\` form (this unusual behaviour is inherited
+-- | from Perl). This only matters when the \|Disjunction\| contains
+-- | capturing parentheses and the sequel of the pattern contains
+-- | backreferences to those captures.
+-- |
+-- | For example,
+-- |
+-- | ``` javascript
+-- | /(?=(a+))/.exec("baaabac")
+-- | ```
+-- |
+-- | matches the empty String immediately after the first \`b\` and therefore
+-- | returns the array:
+-- |
+-- | ``` javascript
+-- | ["", "aaa"]
+-- | ```
+-- |
+-- | To illustrate the lack of backtracking into the lookahead, consider:
+-- |
+-- | ``` javascript
+-- | /(?=(a+))a*b\1/.exec("baaabac")
+-- | ```
+-- |
+-- | This expression returns
+-- |
+-- | ``` javascript
+-- | ["aba", "a"]
+-- | ```
+-- |
+-- | and not:
+-- |
+-- | ``` javascript
+-- | ["aaaba", "a"]
+-- | ```
+-- |
+-- | Assertion :: \`(?!\` Disjunction \`)\` 1. Let \_m\_ be CompileSubpattern
+-- | of \|Disjunction\| with arguments \_rer\_ and \~forward\~. 1. Return a
+-- | new Matcher with parameters (\_x\_, \_c\_) that captures \_m\_ and
+-- | performs the following steps when called: 1. Assert: \_x\_ is a
+-- | MatchState. 1. Assert: \_c\_ is a MatcherContinuation. 1. Let \_d\_ be a
+-- | new MatcherContinuation with parameters (\_y\_) that captures nothing
+-- | and performs the following steps when called: 1. Assert: \_y\_ is a
+-- | MatchState. 1. Return \_y\_. 1. Let \_r\_ be \_m\_(\_x\_, \_d\_). 1. If
+-- | \_r\_ is not \~failure\~, return \~failure\~. 1. Return \_c\_(\_x\_).
+-- |
+-- | The form \`(?!\` \|Disjunction\| \`)\` specifies a zero-width negative
+-- | lookahead. In order for it to succeed, the pattern inside
+-- | \|Disjunction\| must fail to match at the current position. The current
+-- | position is not advanced before matching the sequel. \|Disjunction\| can
+-- | contain capturing parentheses, but backreferences to them only make
+-- | sense from within \|Disjunction\| itself. Backreferences to these
+-- | capturing parentheses from elsewhere in the pattern always return
+-- | \*undefined\* because the negative lookahead must fail for the pattern
+-- | to succeed. For example,
+-- |
+-- | ``` javascript
+-- | /(.*?)a(?!(a+)b\2c)\2(.*)/.exec("baaabaac")
+-- | ```
+-- |
+-- | looks for an \`a\` not immediately followed by some positive number n of
+-- | \`a\`\'s, a \`b\`, another n \`a\`\'s (specified by the first \`\\\\2\`)
+-- | and a \`c\`. The second \`\\\\2\` is outside the negative lookahead, so
+-- | it matches against \*undefined\* and therefore always succeeds. The
+-- | whole expression returns the array:
+-- |
+-- | ``` javascript
+-- | ["baaabaac", "ba", undefined, "abaac"]
+-- | ```
+-- |
+-- | Assertion :: \`(?\<=\` Disjunction \`)\` 1. Let \_m\_ be
+-- | CompileSubpattern of \|Disjunction\| with arguments \_rer\_ and
+-- | \~backward\~. 1. Return a new Matcher with parameters (\_x\_, \_c\_)
+-- | that captures \_m\_ and performs the following steps when called: 1.
+-- | Assert: \_x\_ is a MatchState. 1. Assert: \_c\_ is a
+-- | MatcherContinuation. 1. Let \_d\_ be a new MatcherContinuation with
+-- | parameters (\_y\_) that captures nothing and performs the following
+-- | steps when called: 1. Assert: \_y\_ is a MatchState. 1. Return \_y\_. 1.
+-- | Let \_r\_ be \_m\_(\_x\_, \_d\_). 1. If \_r\_ is \~failure\~, return
+-- | \~failure\~. 1. Assert: \_r\_ is a MatchState. 1. Let \_cap\_ be
+-- | \_r\_.\[\[Captures\]\]. 1. Let \_Input\_ be \_x\_.\[\[Input\]\]. 1. Let
+-- | \_xe\_ be \_x\_.\[\[EndIndex\]\]. 1. Let \_z\_ be the MatchState {
+-- | \[\[Input\]\]: \_Input\_, \[\[EndIndex\]\]: \_xe\_, \[\[Captures\]\]:
+-- | \_cap\_ }. 1. Return \_c\_(\_z\_). Assertion :: \`(?\<!\` Disjunction
+-- | \`)\` 1. Let \_m\_ be CompileSubpattern of \|Disjunction\| with
+-- | arguments \_rer\_ and \~backward\~. 1. Return a new Matcher with
+-- | parameters (\_x\_, \_c\_) that captures \_m\_ and performs the following
+-- | steps when called: 1. Assert: \_x\_ is a MatchState. 1. Assert: \_c\_ is
+-- | a MatcherContinuation. 1. Let \_d\_ be a new MatcherContinuation with
+-- | parameters (\_y\_) that captures nothing and performs the following
+-- | steps when called: 1. Assert: \_y\_ is a MatchState. 1. Return \_y\_. 1.
+-- | Let \_r\_ be \_m\_(\_x\_, \_d\_). 1. If \_r\_ is not \~failure\~, return
+-- | \~failure\~. 1. Return \_c\_(\_x\_).
+-- |
+
+-- SPEC: L42337-L42400
+-- |
+-- | The initial value of the %Symbol.toStringTag% property is the String
+-- | value \*\"Module\"\*.
+-- |
+-- | This property has the attributes { \[\[Writable\]\]: \*false\*,
+-- | \[\[Enumerable\]\]: \*false\*, \[\[Configurable\]\]: \*false\* }.
+-- |
+-- | # Memory Model
+-- |
+-- | The memory consistency model, or [memory model]{.dfn}, specifies the
+-- | possible orderings of Shared Data Block events, arising via accessing
+-- | TypedArray instances backed by a SharedArrayBuffer and via methods on
+-- | the Atomics object. When the program has no data races (defined below),
+-- | the ordering of events appears as sequentially consistent, i.e., as an
+-- | interleaving of actions from each agent. When the program has data
+-- | races, shared memory operations may appear sequentially inconsistent.
+-- | For example, programs may exhibit causality-violating behaviour and
+-- | other astonishments. These astonishments arise from compiler transforms
+-- | and the design of CPUs (e.g., out-of-order execution and speculation).
+-- | The memory model defines both the precise conditions under which a
+-- | program exhibits sequentially consistent behaviour as well as the
+-- | possible values read from data races. To wit, there is no undefined
+-- | behaviour.
+-- |
+-- | The memory model is defined as relational constraints on Memory events
+-- | introduced by abstract operations on SharedArrayBuffer or by methods on
+-- | the Atomics object during an evaluation.
+-- |
+-- | This section provides an axiomatic model on Memory events introduced by
+-- | the abstract operations on SharedArrayBuffers. It bears stressing that
+-- | the model is not expressible algorithmically, unlike the rest of this
+-- | specification. The nondeterministic introduction of events by abstract
+-- | operations is the interface between the operational semantics of
+-- | ECMAScript evaluation and the axiomatic semantics of the memory model.
+-- | The semantics of these events is defined by considering graphs of all
+-- | events in an evaluation. These are neither Static Semantics nor Runtime
+-- | Semantics. There is no demonstrated algorithmic implementation, but
+-- | instead a set of constraints that determine if a particular event graph
+-- | is allowed or disallowed.
+-- |
+-- | # Memory Model Fundamentals
+-- |
+-- | Shared memory accesses (reads and writes) are divided into two groups,
+-- | atomic accesses and data accesses, defined below. Atomic accesses are
+-- | sequentially consistent, i.e., there is a strict total ordering of
+-- | events agreed upon by all agents in an agent cluster. Non-atomic
+-- | accesses do not have a strict total ordering agreed upon by all agents,
+-- | i.e., unordered.
+-- |
+-- | No orderings weaker than sequentially consistent and stronger than
+-- | unordered, such as release-acquire, are supported.
+-- |
+-- | A [Shared Data Block event]{.dfn variants="Shared Data Block events"} is
+-- | either a [ReadSharedMemory]{.dfn}, [WriteSharedMemory]{.dfn}, or
+-- | [ReadModifyWriteSharedMemory]{.dfn} Record. A [read event]{.dfn
+-- | variants="read events"} is either a ReadSharedMemory or a
+-- | ReadModifyWriteSharedMemory. A [write event]{.dfn
+-- | variants="write events"} is either a WriteSharedMemory or a
+-- | ReadModifyWriteSharedMemory.
+-- |
+-- |   Field Name            Value                          Meaning
+-- |   --------------------- ------------------------------ ---------------------------------------------------------------------------------------------------------
+-- |   \[\[Order\]\]         \~seq-cst\~ or \~unordered\~   The weakest ordering guaranteed by the memory model for the event.
+-- |   \[\[NoTear\]\]        a Boolean                      Whether this event is allowed to read from multiple write events with equal memory range as this event.
+
+-- SPEC: L42401-L42450
+-- |   \[\[Block\]\]         a Shared Data Block            The block the event operates on.
+-- |   \[\[ByteIndex\]\]     a non-negative integer         The byte address of the read in \[\[Block\]\].
+-- |   \[\[ElementSize\]\]   a non-negative integer         The size of the read.
+-- |
+-- |   Field Name            Value                                     Meaning
+-- |   --------------------- ----------------------------------------- -----------------------------------------------------------------------------------------------------------
+-- |   \[\[Order\]\]         \~seq-cst\~, \~unordered\~, or \~init\~   The weakest ordering guaranteed by the memory model for the event.
+-- |   \[\[NoTear\]\]        a Boolean                                 Whether this event is allowed to be read from multiple read events with equal memory range as this event.
+-- |   \[\[Block\]\]         a Shared Data Block                       The block the event operates on.
+-- |   \[\[ByteIndex\]\]     a non-negative integer                    The byte address of the write in \[\[Block\]\].
+-- |   \[\[ElementSize\]\]   a non-negative integer                    The size of the write.
+-- |   \[\[Payload\]\]       a List of byte values                     The List of byte values to be read by other events.
+-- |
+-- |   Field Name            Value                                       Meaning
+-- |   --------------------- ------------------------------------------- ----------------------------------------------------------------------------------------------------------------------
+-- |   \[\[Order\]\]         \~seq-cst\~                                 Read-modify-write events are always sequentially consistent.
+-- |   \[\[NoTear\]\]        \*true\*                                    Read-modify-write events cannot tear.
+-- |   \[\[Block\]\]         a Shared Data Block                         The block the event operates on.
+-- |   \[\[ByteIndex\]\]     a non-negative integer                      The byte address of the read-modify-write in \[\[Block\]\].
+-- |   \[\[ElementSize\]\]   a non-negative integer                      The size of the read-modify-write.
+-- |   \[\[Payload\]\]       a List of byte values                       The List of byte values to be passed to \[\[ModifyOp\]\].
+-- |   \[\[ModifyOp\]\]      a read-modify-write modification function   An abstract closure that returns a modified List of byte values from a read List of byte values and \[\[Payload\]\].
+-- |
+-- | Shared Data Block events are introduced to candidate execution Agent
+-- | Events Records by abstract operations or by methods on the Atomics
+-- | object. Some operations also introduce [Synchronize events]{.dfn
+-- | variants="Synchronize,Synchronize event"}, which have no fields and
+-- | exist purely to directly constrain the permitted orderings of other
+-- | events. And finally, there are host-specific events. A [Memory
+-- | event]{.dfn variants="Memory events"} is either a Shared Data Block
+-- | event, Synchronize event, or such a host-specific event.
+-- |
+-- | Let the [memory range]{.dfn variants="memory ranges"} of a Shared Data
+-- | Block event \_e\_ be the Set of all integers in the interval from
+-- | \_e\_.\[\[ByteIndex\]\] (inclusive) to \_e\_.\[\[ByteIndex\]\] +
+-- | \_e\_.\[\[ElementSize\]\] (exclusive). Two events\' memory ranges are
+-- | equal when the events have the same \[\[Block\]\], \[\[ByteIndex\]\],
+-- | and \[\[ElementSize\]\]. Two events\' memory ranges are overlapping when
+-- | the events have the same \[\[Block\]\], the ranges are not equal, and
+-- | their intersection is non-empty. Two events\' memory ranges are disjoint
+-- | when the events do not have the same \[\[Block\]\] or their ranges are
+-- | neither equal nor overlapping.
+-- |
+-- | Examples of host-specific synchronizing events that should be accounted
+-- | for are: sending a SharedArrayBuffer from one agent to another (e.g., by
+-- | \`postMessage\` in a browser), starting and stopping agents, and
+-- | communicating within the agent cluster via channels other than shared
+-- | memory. For a particular execution \_execution\_, those events are
+-- | provided by the host via the host-synchronizes-with strict partial
+-- | order. Additionally, hosts can add host-specific synchronizing events to
+
+-- SPEC: L42451-L42500
+-- | \_execution\_.\[\[EventList\]\] so as to participate in the
+-- | is-agent-order-before Relation.
+-- |
+-- | Events are ordered within candidate executions by the relations defined
+-- | below.
+-- |
+-- | # Agent Events Records
+-- |
+-- | An [Agent Events Record]{.dfn variants="Agent Events Records"} is a
+-- | Record with the following fields.
+-- |
+-- |   Field Name                      Value                                   Meaning
+-- |   ------------------------------- --------------------------------------- --------------------------------------------------------------------
+-- |   \[\[AgentSignifier\]\]          an agent signifier                      The agent whose evaluation resulted in this ordering.
+-- |   \[\[EventList\]\]               a List of Memory events                 Events are appended to the list during evaluation.
+-- |   \[\[AgentSynchronizesWith\]\]   a List of pairs of Synchronize events   Synchronize relationships introduced by the operational semantics.
+-- |
+-- | # Chosen Value Records
+-- |
+-- | A [Chosen Value Record]{.dfn variants="Chosen Value Records"} is a
+-- | Record with the following fields.
+-- |
+-- |   Field Name            Value                       Meaning
+-- |   --------------------- --------------------------- ------------------------------------------------------------------------------------------------------
+-- |   \[\[Event\]\]         a Shared Data Block event   The ReadSharedMemory or ReadModifyWriteSharedMemory event that was introduced for this chosen value.
+-- |   \[\[ChosenValue\]\]   a List of byte values       The bytes that were nondeterministically chosen during evaluation.
+-- |
+-- | # Candidate Executions
+-- |
+-- | A [candidate execution]{.dfn variants="candidate executions"} of the
+-- | evaluation of an agent cluster is a Record with the following fields.
+-- |
+-- |   Field Name              Value                            Meaning
+-- |   ----------------------- -------------------------------- ----------------------------------------------------------------------------------------------------------------------
+-- |   \[\[EventsRecords\]\]   a List of Agent Events Records   Maps an agent to Lists of Memory events appended during the evaluation.
+-- |   \[\[ChosenValues\]\]    a List of Chosen Value Records   Maps ReadSharedMemory or ReadModifyWriteSharedMemory events to the List of byte values chosen during the evaluation.
+-- |
+-- | An [empty candidate execution]{.dfn
+-- | variants="empty candidate executions"} is a candidate execution Record
+-- | whose fields are empty Lists.
+-- |
+-- | # Abstract Operations for the Memory Model
+-- |
+-- | # EventSet ( \_execution\_: a candidate execution, ): a Set of Memory events
+-- |
+-- | 1\. Let \_events\_ be an empty Set. 1. For each Agent Events Record
+-- | \_aer\_ of \_execution\_.\[\[EventsRecords\]\], do 1. For each Memory
+-- | event \_E\_ of \_aer\_.\[\[EventList\]\], do 1. Add \_E\_ to
+-- | \_events\_. 1. Return \_events\_.
+-- |
+
+-- SPEC: L42501-L42550
+-- | # SharedDataBlockEventSet ( \_execution\_: a candidate execution, ): a Set of Shared Data Block events
+-- |
+-- | 1\. Let \_events\_ be an empty Set. 1. For each Memory event \_E\_ of
+-- | EventSet(\_execution\_), do 1. If \_E\_ is a Shared Data Block event,
+-- | add \_E\_ to \_events\_. 1. Return \_events\_.
+-- |
+-- | # HostEventSet ( \_execution\_: a candidate execution, ): a Set of Memory events
+-- |
+-- | 1\. Return a new Set containing all elements of EventSet(\_execution\_)
+-- | that are not in SharedDataBlockEventSet(\_execution\_).
+-- |
+-- | # ComposeWriteEventBytes ( \_execution\_: a candidate execution, \_byteIndex\_: a non-negative integer, \_Ws\_: a List of either WriteSharedMemory or ReadModifyWriteSharedMemory events, ): a List of byte values
+-- |
+-- | 1\. Let \_byteLocation\_ be \_byteIndex\_. 1. Let \_bytesRead\_ be a new
+-- | empty List. 1. For each element \_W\_ of \_Ws\_, do 1. Assert: \_W\_ has
+-- | \_byteLocation\_ in its memory range. 1. Let \_payloadIndex\_ be
+-- | \_byteLocation\_ - \_W\_.\[\[ByteIndex\]\]. 1. If \_W\_ is a
+-- | WriteSharedMemory event, then 1. Let \_byte\_ be
+-- | \_W\_.\[\[Payload\]\]\[\_payloadIndex\_\]. 1. Else, 1. Assert: \_W\_ is
+-- | a ReadModifyWriteSharedMemory event. 1. Let \_bytes\_ be
+-- | ValueOfReadEvent(\_execution\_, \_W\_). 1. Let \_bytesModified\_ be
+-- | \_W\_.\[\[ModifyOp\]\](\_bytes\_, \_W\_.\[\[Payload\]\]). 1. Let
+-- | \_byte\_ be \_bytesModified\_\[\_payloadIndex\_\]. 1. Append \_byte\_ to
+-- | \_bytesRead\_. 1. Set \_byteLocation\_ to \_byteLocation\_ + 1. 1.
+-- | Return \_bytesRead\_.
+-- |
+-- | The read-modify-write modification \[\[ModifyOp\]\] is given by the
+-- | function properties on the Atomics object that introduce
+-- | ReadModifyWriteSharedMemory events.
+-- |
+-- | This abstract operation composes a List of write events into a List of
+-- | byte values. It is used in the event semantics of ReadSharedMemory and
+-- | ReadModifyWriteSharedMemory events.
+-- |
+-- | # ValueOfReadEvent ( \_execution\_: a candidate execution, \_R\_: a ReadSharedMemory or ReadModifyWriteSharedMemory event, ): a List of byte values
+-- |
+-- | 1\. Let \_Ws\_ be reads-bytes-from(\_R\_) in \_execution\_. 1. Assert:
+-- | \_Ws\_ is a List of WriteSharedMemory or ReadModifyWriteSharedMemory
+-- | events with length equal to \_R\_.\[\[ElementSize\]\]. 1. Return
+-- | ComposeWriteEventBytes(\_execution\_, \_R\_.\[\[ByteIndex\]\], \_Ws\_).
+-- |
+-- | # Relations of Candidate Executions
+-- |
+-- | The following relations and mathematical functions are parameterized
+-- | over a particular candidate execution and order its Memory events.
+-- |
+-- | # is-agent-order-before
+-- |
+-- | For a candidate execution \_execution\_, its
+-- | [is-agent-order-before]{.dfn} Relation is the least Relation on Memory
+
+-- SPEC: L42551-L42600
+-- | events that satisfies the following.
+-- |
+-- | - For events \_E\_ and \_D\_, \_E\_ is-agent-order-before \_D\_ in
+-- |   \_execution\_ if there is some Agent Events Record \_aer\_ in
+-- |   \_execution\_.\[\[EventsRecords\]\] such that
+-- |   \_aer\_.\[\[EventList\]\] contains both \_E\_ and \_D\_ and \_E\_ is
+-- |   before \_D\_ in List order of \_aer\_.\[\[EventList\]\].
+-- |
+-- | Each agent introduces events in a per-agent strict total order during
+-- | the evaluation. This is the union of those strict total orders.
+-- |
+-- | # reads-bytes-from
+-- |
+-- | For a candidate execution \_execution\_, its *reads-bytes-from* function
+-- | is a mathematical function mapping Memory events in
+-- | SharedDataBlockEventSet(\_execution\_) to Lists of events in
+-- | SharedDataBlockEventSet(\_execution\_) that satisfies the following
+-- | conditions.
+-- |
+-- | - For each ReadSharedMemory or ReadModifyWriteSharedMemory event \_R\_
+-- |   in SharedDataBlockEventSet(\_execution\_), reads-bytes-from(\_R\_) in
+-- |   \_execution\_ is a List of length \_R\_.\[\[ElementSize\]\] whose
+-- |   elements are WriteSharedMemory or ReadModifyWriteSharedMemory events
+-- |   \_Ws\_ such that all of the following are true.
+-- |
+-- |   - Each event \_W\_ with index \_i\_ in \_Ws\_ has
+-- |     \_R\_.\[\[ByteIndex\]\] + \_i\_ in its memory range.
+-- |   - \_R\_ is not in \_Ws\_.
+-- |
+-- | A candidate execution always admits a reads-bytes-from function.
+-- |
+-- | # reads-from
+-- |
+-- | For a candidate execution \_execution\_, its [reads-from]{.dfn} Relation
+-- | is the least Relation on Memory events that satisfies the following.
+-- |
+-- | - For events \_R\_ and \_W\_, \_R\_ reads-from \_W\_ in \_execution\_ if
+-- |   SharedDataBlockEventSet(\_execution\_) contains both \_R\_ and \_W\_,
+-- |   and reads-bytes-from(\_R\_) in \_execution\_ contains \_W\_.
+-- |
+-- | # host-synchronizes-with
+-- |
+-- | For a candidate execution \_execution\_, its
+-- | [host-synchronizes-with]{.dfn} Relation is a host-provided strict
+-- | partial order on host-specific Memory events that satisfies at least the
+-- | following.
+-- |
+-- | - If \_E\_ host-synchronizes-with \_D\_ in \_execution\_,
+-- |   HostEventSet(\_execution\_) contains \_E\_ and \_D\_.
+-- | - There is no cycle in the union of host-synchronizes-with and
+
+-- SPEC: L42601-L42650
+-- |   is-agent-order-before in \_execution\_.
+-- |
+-- | For two host-specific events \_E\_ and \_D\_ in a candidate execution
+-- | \_execution\_, \_E\_ host-synchronizes-with \_D\_ in \_execution\_
+-- | implies \_E\_ happens-before \_D\_ in \_execution\_.
+-- |
+-- | This Relation allows the host to provide additional synchronization
+-- | mechanisms, such as \`postMessage\` between HTML workers.
+-- |
+-- | # synchronizes-with
+-- |
+-- | For a candidate execution \_execution\_, its [synchronizes-with]{.dfn}
+-- | Relation is the least Relation on Memory events that satisfies the
+-- | following.
+-- |
+-- | - For events \_R\_ and \_W\_, \_W\_ synchronizes-with \_R\_ in
+-- |   \_execution\_ if \_R\_ reads-from \_W\_ in \_execution\_,
+-- |   \_R\_.\[\[Order\]\] is \~seq-cst\~, \_W\_.\[\[Order\]\] is
+-- |   \~seq-cst\~, and \_R\_ and \_W\_ have equal memory ranges.
+-- | - For each element \_eventsRecord\_ of
+-- |   \_execution\_.\[\[EventsRecords\]\], the following is true.
+-- |   - For events \_S\_ and \_Sw\_, \_S\_ synchronizes-with \_Sw\_ in
+-- |     \_execution\_ if \_eventsRecord\_.\[\[AgentSynchronizesWith\]\]
+-- |     contains (\_S\_, \_Sw\_).
+-- | - For events \_E\_ and \_D\_, \_E\_ synchronizes-with \_D\_ in
+-- |   \_execution\_ if \_execution\_.\[\[HostSynchronizesWith\]\] contains
+-- |   (\_E\_, \_D\_).
+-- |
+-- | Owing to convention in memory model literature, in a candidate execution
+-- | \_execution\_, write events synchronizes-with read events, instead of
+-- | read events synchronizes-with write events.
+-- |
+-- | In a candidate execution \_execution\_, \~init\~ events do not
+-- | participate in this Relation and are instead constrained directly by
+-- | happens-before.
+-- |
+-- | In a candidate execution \_execution\_, not all \~seq-cst\~ events
+-- | related by reads-from are related by synchronizes-with. Only events that
+-- | also have equal memory ranges are related by synchronizes-with.
+-- |
+-- | For Shared Data Block events \_R\_ and \_W\_ in a candidate execution
+-- | \_execution\_ such that \_W\_ synchronizes-with \_R\_, \_R\_ may
+-- | reads-from other writes than \_W\_.
+-- |
+-- | # happens-before
+-- |
+-- | For a candidate execution \_execution\_, its [happens-before]{.dfn}
+-- | Relation is the least Relation on Memory events that satisfies the
+-- | following.
+-- |
+
+-- SPEC: L23776-L23797
+-- | # Other Properties of the Global Object
+-- |
+-- | # Atomics
+-- |
+-- | See .
+-- |
+-- | # JSON
+-- |
+-- | See .
+-- |
+-- | # Math
+-- |
+-- | See .
+-- |
+-- | # Reflect
+-- |
+-- | See .
+-- |
+-- | # Fundamental Objects
+-- |
+-- | # Object Objects
+-- |
+
+-- SPEC: L12476-L12530
+-- | # \[\[GetPrototypeOf\]\] ( ): a normal completion containing \*null\*
+-- |
+-- | for
+-- | :   a module namespace exotic object
+-- |
+-- | 1\. Return \*null\*.
+-- |
+-- | # \[\[SetPrototypeOf\]\] ( \_V\_: an Object or \*null\*, ): a normal completion containing a Boolean
+-- |
+-- | for
+-- | :   a module namespace exotic object \_O\_
+-- |
+-- | 1\. Return ! SetImmutablePrototype(\_O\_, \_V\_).
+-- |
+-- | # \[\[IsExtensible\]\] ( ): a normal completion containing \*false\*
+-- |
+-- | for
+-- | :   a module namespace exotic object
+-- |
+-- | 1\. Return \*false\*.
+-- |
+-- | # \[\[PreventExtensions\]\] ( ): a normal completion containing \*true\*
+-- |
+-- | for
+-- | :   a module namespace exotic object
+-- |
+-- | 1\. Return \*true\*.
+-- |
+-- | # \[\[GetOwnProperty\]\] ( \_P\_: a property key, ): either a normal completion containing either a Property Descriptor or \*undefined\*, or a throw completion
+-- |
+-- | for
+-- | :   a module namespace exotic object \_O\_
+-- |
+-- | 1\. If \_P\_ is a Symbol, return OrdinaryGetOwnProperty(\_O\_,
+-- | \_P\_). 1. Let \_exports\_ be \_O\_.\[\[Exports\]\]. 1. If \_exports\_
+-- | does not contain \_P\_, return \*undefined\*. 1. Let \_value\_ be ?
+-- | \_O\_.\[\[Get\]\](\_P\_, \_O\_). 1. Return PropertyDescriptor {
+-- | \[\[Value\]\]: \_value\_, \[\[Writable\]\]: \*true\*,
+-- | \[\[Enumerable\]\]: \*true\*, \[\[Configurable\]\]: \*false\* }.
+-- |
+-- | # \[\[DefineOwnProperty\]\] ( \_P\_: a property key, \_Desc\_: a Property Descriptor, ): either a normal completion containing a Boolean or a throw completion
+-- |
+-- | for
+-- | :   a module namespace exotic object \_O\_
+-- |
+-- | 1\. If \_P\_ is a Symbol, return ! OrdinaryDefineOwnProperty(\_O\_,
+-- | \_P\_, \_Desc\_). 1. Let \_current\_ be ?
+-- | \_O\_.\[\[GetOwnProperty\]\](\_P\_). 1. If \_current\_ is \*undefined\*,
+-- | return \*false\*. 1. If \_Desc\_ has a \[\[Configurable\]\] field and
+-- | \_Desc\_.\[\[Configurable\]\] is \*true\*, return \*false\*. 1. If
+-- | \_Desc\_ has an \[\[Enumerable\]\] field and \_Desc\_.\[\[Enumerable\]\]
+-- | is \*false\*, return \*false\*. 1. If IsAccessorDescriptor(\_Desc\_) is
+-- | \*true\*, return \*false\*. 1. If \_Desc\_ has a \[\[Writable\]\] field
+-- | and \_Desc\_.\[\[Writable\]\] is \*false\*, return \*false\*. 1. If
+-- | \_Desc\_ has a \[\[Value\]\] field, return
+
+-- SPEC: L12531-L12580
+-- | SameValue(\_Desc\_.\[\[Value\]\], \_current\_.\[\[Value\]\]). 1. Return
+-- | \*true\*.
+-- |
+-- | # \[\[HasProperty\]\] ( \_P\_: a property key, ): a normal completion containing a Boolean
+-- |
+-- | for
+-- | :   a module namespace exotic object \_O\_
+-- |
+-- | 1\. If \_P\_ is a Symbol, return ! OrdinaryHasProperty(\_O\_, \_P\_). 1.
+-- | Let \_exports\_ be \_O\_.\[\[Exports\]\]. 1. If \_exports\_ contains
+-- | \_P\_, return \*true\*. 1. Return \*false\*.
+-- |
+-- | # \[\[Get\]\] ( \_P\_: a property key, \_Receiver\_: an ECMAScript language value, ): either a normal completion containing an ECMAScript language value or a throw completion
+-- |
+-- | for
+-- | :   a module namespace exotic object \_O\_
+-- |
+-- | 1\. If \_P\_ is a Symbol, then 1. Return ! OrdinaryGet(\_O\_, \_P\_,
+-- | \_Receiver\_). 1. Let \_exports\_ be \_O\_.\[\[Exports\]\]. 1. If
+-- | \_exports\_ does not contain \_P\_, return \*undefined\*. 1. Let \_m\_
+-- | be \_O\_.\[\[Module\]\]. 1. Let \_binding\_ be
+-- | \_m\_.ResolveExport(\_P\_). 1. Assert: \_binding\_ is a ResolvedBinding
+-- | Record. 1. Let \_targetModule\_ be \_binding\_.\[\[Module\]\]. 1.
+-- | Assert: \_targetModule\_ is not \*undefined\*. 1. If
+-- | \_binding\_.\[\[BindingName\]\] is \~namespace\~, then 1. Return
+-- | GetModuleNamespace(\_targetModule\_). 1. Let \_targetEnv\_ be
+-- | \_targetModule\_.\[\[Environment\]\]. 1. If \_targetEnv\_ is \~empty\~,
+-- | throw a \*ReferenceError\* exception. 1. Return ?
+-- | \_targetEnv\_.GetBindingValue(\_binding\_.\[\[BindingName\]\],
+-- | \*true\*).
+-- |
+-- | ResolveExport is side-effect free. Each time this operation is called
+-- | with a specific \_exportName\_, \_resolveSet\_ pair as arguments it must
+-- | return the same result. An implementation might choose to pre-compute or
+-- | cache the ResolveExport results for the \[\[Exports\]\] of each module
+-- | namespace exotic object.
+-- |
+-- | # \[\[Set\]\] ( \_P\_: a property key, \_V\_: an ECMAScript language value, \_Receiver\_: an ECMAScript language value, ): a normal completion containing \*false\*
+-- |
+-- | for
+-- | :   a module namespace exotic object
+-- |
+-- | 1\. Return \*false\*.
+-- |
+-- | # \[\[Delete\]\] ( \_P\_: a property key, ): a normal completion containing a Boolean
+-- |
+-- | for
+-- | :   a module namespace exotic object \_O\_
+-- |
+-- | 1\. If \_P\_ is a Symbol, then 1. Return ! OrdinaryDelete(\_O\_,
+
+-- SPEC: L12581-L12643
+-- | \_P\_). 1. Let \_exports\_ be \_O\_.\[\[Exports\]\]. 1. If \_exports\_
+-- | contains \_P\_, return \*false\*. 1. Return \*true\*.
+-- |
+-- | # \[\[OwnPropertyKeys\]\] ( ): a normal completion containing a List of property keys
+-- |
+-- | for
+-- | :   a module namespace exotic object \_O\_
+-- |
+-- | 1\. Let \_exports\_ be \_O\_.\[\[Exports\]\]. 1. Let \_symbolKeys\_ be
+-- | OrdinaryOwnPropertyKeys(\_O\_). 1. Return the list-concatenation of
+-- | \_exports\_ and \_symbolKeys\_.
+-- |
+-- | # ModuleNamespaceCreate ( \_module\_: a Module Record, \_exports\_: a List of Strings, ): a module namespace exotic object
+-- |
+-- | description
+-- | :   It is used to specify the creation of new module namespace exotic
+-- |     objects.
+-- |
+-- | 1\. Assert: \_module\_.\[\[Namespace\]\] is \~empty\~. 1. Let
+-- | \_internalSlotsList\_ be the internal slots listed in . 1. Let \_M\_ be
+-- | MakeBasicObject(\_internalSlotsList\_). 1. Set \_M\_\'s essential
+-- | internal methods to the definitions specified in . 1. Set
+-- | \_M\_.\[\[Module\]\] to \_module\_. 1. Let \_sortedExports\_ be a List
+-- | whose elements are the elements of \_exports\_, sorted according to
+-- | lexicographic code unit order. 1. Set \_M\_.\[\[Exports\]\] to
+-- | \_sortedExports\_. 1. Create own properties of \_M\_ corresponding to
+-- | the definitions in . 1. Set \_module\_.\[\[Namespace\]\] to \_M\_. 1.
+-- | Return \_M\_.
+-- |
+-- | # Immutable Prototype Exotic Objects
+-- |
+-- | An immutable prototype exotic object is an exotic object that has a
+-- | \[\[Prototype\]\] internal slot that will not change once it is
+-- | initialized.
+-- |
+-- | An object is an [immutable prototype exotic
+-- | object]{#immutable-prototype-exotic-object .dfn
+-- | variants="immutable prototype exotic objects"} if its
+-- | \[\[SetPrototypeOf\]\] internal method uses the following
+-- | implementation. (Its other essential internal methods may use any
+-- | implementation, depending on the specific immutable prototype exotic
+-- | object in question.)
+-- |
+-- | Unlike other exotic objects, there is not a dedicated creation abstract
+-- | operation provided for immutable prototype exotic objects. This is
+-- | because they are only used by %Object.prototype% and by host
+-- | environments, and in host environments, the relevant objects are
+-- | potentially exotic in other ways and thus need their own dedicated
+-- | creation operation.
+-- |
+-- | # \[\[SetPrototypeOf\]\] ( \_V\_: an Object or \*null\*, ): either a normal completion containing a Boolean or a throw completion
+-- |
+-- | for
+-- | :   an immutable prototype exotic object \_O\_
+-- |
+-- | 1\. Return ? SetImmutablePrototype(\_O\_, \_V\_).
+-- |
+-- | # SetImmutablePrototype ( \_O\_: an Object, \_V\_: an Object or \*null\*, ): either a normal completion containing a Boolean or a throw completion
+-- |
+-- | 1\. Let \_current\_ be ? \_O\_.\[\[GetPrototypeOf\]\](). 1. If
+-- | SameValue(\_V\_, \_current\_) is \*true\*, return \*true\*. 1. Return
+-- | \*false\*.
+-- |
+
+
 end VerifiedJS.Source
