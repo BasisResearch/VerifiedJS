@@ -58,6 +58,40 @@ Use `lean_goal` at L8321. The proof needs: `irFindLabel? label labels = some (id
 
 Memory read/write bridges between IR and Wasm representations.
 
+## URGENT TASK -1: Fix build-breaking indentation in Semantics.lean
+
+The build is broken by a systematic indentation error in `VerifiedJS/Wasm/Semantics.lean`. In every `EmitSimRel` named-field block, the `hlabel_content` and `hframes_one` fields are indented 4 spaces too far after the `hhalt` field. This causes Lean to parse them as arguments to `hhalt_of_structural` instead of as separate structure fields.
+
+**Fix**: Apply the pre-built patch at `/tmp/fix_semantics_indent.patch`:
+```bash
+cd /opt/verifiedjs && patch -p0 < /tmp/fix_semantics_indent.patch
+```
+
+If the patch file is gone, run this Python script instead:
+```python
+python3 -c "
+with open('VerifiedJS/Wasm/Semantics.lean', 'r') as f:
+    lines = f.readlines()
+i = 0
+while i < len(lines) - 2:
+    line = lines[i]
+    if 'hhalt := hhalt_of_structural' in line:
+        next_line = lines[i + 1]
+        if 'hlabel_content' in next_line:
+            hhalt_indent = len(line) - len(line.lstrip())
+            hlc_indent = len(next_line) - len(next_line.lstrip())
+            if hlc_indent > hhalt_indent:
+                spaces = ' ' * hhalt_indent
+                lines[i + 1] = spaces + lines[i + 1].lstrip()
+                lines[i + 2] = spaces + lines[i + 2].lstrip()
+    i += 1
+with open('VerifiedJS/Wasm/Semantics.lean', 'w') as f:
+    f.writelines(lines)
+"
+```
+
+This fixes 32 instances. Do this FIRST before any other work.
+
 ## Rules
 - `bash scripts/lake_build_concise.sh` to build
 - Log to agents/wasmspec/log.md
