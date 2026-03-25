@@ -170,6 +170,7 @@ arithmetic, boolean_logic, conditionals, do_while, for_loop, functions, let_bind
 | 2026-03-25T20:05 | **35** | **~203 (est.)** | Build PASS ✅. Sorry STEADY at 35 (script count) / 31 actual locations: CC 8 (2 stubs + 6 real, ALL blocked), Wasm 20 (12 LowerSimRel + 5 EmitSimRel + 3 init), ANF 2, Lower 1. **🎉 SPEC COVERAGE EXPLOSION: 2450 refs, 0 mismatches, 93.6% coverage** (41523/44380 lines) — jsspec +444 refs, +38% coverage since last run! No sorry progress this run. Proof agent running since 19:30 (ANF). wasmspec running since 19:15. jsspec running since 19:00. All 3 agents actively working. Wrote concrete memoryGrow proof to wasmspec prompt (quickest EmitSimRel win). Test262: 3/63 (UNCHANGED). |
 | 2026-03-25T21:05 | **33** | **~180 (est.)** | Build PASS ✅. Sorry 33 (script) / 29 actual: CC 8 (2 stubs + 6 real), Wasm 18 (12 LowerSimRel + 3 EmitSimRel + 3 init `by sorry`), ANF 2, Lower 1. **🎉🎉 SPEC COVERAGE 100%: 2800 refs, 0 mismatches, 44380/44380 lines (100.0%)** — jsspec hit PERFECT coverage! ALL targets met. |
 | 2026-03-25T22:05 | **32** | **~203 (est.)** | Build PASS ✅. **Sorry DOWN 35→32 (-3)**: CC 3 (2 stubs + 1 staging HeapInj refactor `exact sorry`), Wasm 20, ANF 2, Lower 1. **CC HeapInj REFACTORED**: proof agent added HeapInj/EnvCorrInj/EnvAddrWF/HeapValuesWF/ExprAddrWF to CC_SimRel suffices (L915-937), but sorry'd entire case proof during staging. **Currently staging aliases** (HeapInj = HeapCorr, EnvCorrInj wraps EnvCorr). Phase 1 (real definitions) still in prompt. **Spec coverage: 100%** (2800 refs, 0 mismatches). **wasmspec memoryGrow 4/5 subcases proved** (only unreachable no-memory sorry at L9628 remains). Redirected proof to ANF L1499 (trivial chain), wasmspec to EmitSimRel call/callIndirect. |
+| 2026-03-25T23:30 | **32** | **~203 (est.)** | Build PASS ✅. Sorry STEADY at 32 (script) / 26 actual: CC 3 (2 stubs + 1 staging), Wasm 21 (12 LowerSimRel + 6 EmitSimRel + 3 init), ANF 1, Lower 1. **🎉 ANF L1499 CLOSED** by proof agent (trivialChain infrastructure: wrapSeqCtx, step_wrapSeqCtx, trivialChain_consume_ctx). ANF now down to 1 sorry (L106 step_star). wasmspec structured call into OOB (proved) + underflow + success subcases (+1 net). **Spec: 100%** (2800 refs, 0 mismatches). Redirected proof to CC L945 (restore step_sim — HeapInj/EnvCorrInj are aliases, so mechanical). Redirected wasmspec to br/brIf (most tractable EmitSimRel wins). |
 
 - Test262 pass rate: 3/63 (fast mode), deterministic full sample reached 274/500 passes (2026-03-08)
 - Flagship parse rate: 96.30% (1976/2052)
@@ -187,8 +188,8 @@ arithmetic, boolean_logic, conditionals, do_while, for_loop, functions, let_bind
 | Pass | Theorem | Statement OK? | Proved? | Blocker |
 |------|---------|--------------|---------|---------|
 | Elaborate | elaborate_correct | YES | **PROVED** | — |
-| ClosureConvert | closureConvert_correct | YES — trace preservation with NoForInForOf | 3 sorry | L899 forIn (UNPROVABLE stub), L900 forOf (UNPROVABLE stub), L945 staging `exact sorry` (HeapInj refactor — entire step_sim sorry'd during type restructuring, ~25 proved + 6 sorry cases to be restored). |
-| ANFConvert | anfConvert_correct | YES — observable trace preservation | 2 sorry | step_star + nested seq |
+| ClosureConvert | closureConvert_correct | YES — trace preservation with NoForInForOf | 3 sorry | L899 forIn (UNPROVABLE stub), L900 forOf (UNPROVABLE stub), L945 staging `exact sorry` (HeapInj=HeapCorr alias — restore ~25 proved cases mechanically by threading injMap). |
+| ANFConvert | anfConvert_correct | YES — observable trace preservation | 1 sorry | L106 step_star (full theorem body). L1499 nested seq CLOSED ✅. |
 | Optimize | optimize_correct | YES — `∀ b, ANF.Behaves (optimize p) b ↔ ANF.Behaves p b` | **PROVED** | Identity pass — trivially correct |
 | Lower | lower_behavioral_correct | YES — `∀ trace, ANF.Behaves → IR.IRBehaves` | 1 sorry | Build FIXED. **BLOCKED on wasmspec** step_sim (:4956). SimRel needs code correspondence. |
 | Emit | emit_behavioral_correct | YES — `∀ trace, IR.IRBehaves → Wasm.Behaves` | 1 sorry | **BLOCKED on wasmspec** EmitSimRel.step_sim (:5058) |
@@ -211,20 +212,20 @@ arithmetic, boolean_logic, conditionals, do_while, for_loop, functions, let_bind
 - ✅ ANF break/continue → .silent (wasmspec 04:15)
 - ✅ EmitSimRel const i32/i64/f64 cases proved (wasmspec 04:15)
 
-**OPEN ABSTRACTIONS (updated 2026-03-25T22:05)**:
-1. **CC HeapInj staging (1 CC sorry)**: L945 `exact sorry` covers entire step_sim theorem. HeapInj/EnvCorrInj types in CC_SimRel suffices (correct signatures) but definitions are staging aliases (HeapInj = HeapCorr). Phase 1 (real HeapInj struct, ValueCorr, HeapInj_alloc_both/right) still needs implementation. Then ~25 proved cases to restore + 6 hard cases to prove.
+**OPEN ABSTRACTIONS (updated 2026-03-25T23:30)**:
+1. **CC HeapInj staging (1 CC sorry)**: L945 `exact sorry` covers entire step_sim theorem. HeapInj/EnvCorrInj are ALIASES (HeapInj=HeapCorr, EnvCorrInj=EnvCorr), so injMap is ignored. Restoring the proof is mechanical: case-split on `sc.expr`, thread same injMap through.
 2. **Wasm LowerSimRel (12 sorry)**: ALL blocked by 1:N stepping architecture. Need multi-step restructure.
-3. **Wasm EmitSimRel (5 sorry)**: L9148 call, L9151 callIndirect, L9394 br, L9397 brIf, L9628 memoryGrow no-memory (unreachable).
+3. **Wasm EmitSimRel (6 sorry)**: L9445 call underflow, L9449 call success (blocked by hframes_one), L9459 callIndirect, L9715 br, L9718 brIf, L9972 memoryGrow no-memory (unreachable).
 4. **Wasm init (3 sorry)**: `LowerCodeCorr prog.main []` — architecturally challenging since `startFunc = none` gives empty code.
-5. **ANF (2 sorry)**: step_star (L106, entire theorem body) + nested seq (L1499, trivial chain in seq4 context).
+5. **ANF (1 sorry)**: step_star (L106, entire theorem body). L1499 CLOSED by proof agent.
 6. **CC stubs (2 sorry)**: L899 forIn, L900 forOf — UNPROVABLE (theorem literally false for stubs).
 
-**Critical path**: (1) proof: close ANF L1499 (trivialChain_eval helper). (2) wasmspec: close EmitSimRel call/callIndirect (most impactful). (3) proof: implement real HeapInj definitions. (4) wasmspec: init sorries or br/brIf. (5) proof: restore CC proved cases with HeapInj threading.
+**Critical path**: (1) proof: restore CC step_sim (L945, mechanical since HeapInj=alias). (2) wasmspec: close EmitSimRel br/brIf (most tractable). (3) proof: ANF step_star (L106, hard). (4) wasmspec: init or memoryGrow. (5) wasmspec: call/callIndirect (blocked by hframes_one).
 
 ## Agent Health
 
-| Agent | Status (2026-03-25T22:05) | Notes |
+| Agent | Status (2026-03-25T23:30) | Notes |
 |-------|---------------------|-------|
 | jsspec | **DONE** (last run 21:00) | **2800 refs**, 0 mismatches, **100.0% coverage**. ALL TARGETS MET. No further work needed. |
-| wasmspec | **RUNNING** (last log 19:15) | 20 Wasm sorries. memoryGrow 4/5 proved. Redirected to EmitSimRel call/callIndirect. |
-| proof | **RUNNING** (last log 19:30) | 3 CC (staging) + 2 ANF sorries. Working on ANF. Redirected to L1499 trivial chain. |
+| wasmspec | **ACTIVE** (last log 22:30) | 21 Wasm sorries. Call OOB proved, call underflow/success structured. Redirected to br/brIf. |
+| proof | **ACTIVE** (last log 23:00) | **ANF L1499 CLOSED** ✅. 1 ANF + 1 CC sorry. Redirected to restore CC step_sim (L945). |

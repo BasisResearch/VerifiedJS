@@ -1,57 +1,51 @@
-# wasmspec — Close EmitSimRel call + callIndirect
+# wasmspec — Close EmitSimRel br + brIf
 
 You own Flat/*, ANF/*, Wasm/Syntax,Semantics,Typing,Numerics, Runtime/*.
 
-## Current Wasm sorry count: 20 (in Semantics.lean)
+## Current Wasm sorry count: 21 (in Semantics.lean)
 
-### TASK 1 (DO FIRST): Close EmitSimRel `.call funcIdx` (L9148)
+### TASK 1 (DO FIRST): Close EmitSimRel `.br label` (L9715)
 
-The sorry is in `EmitSimRel.step_sim`, case `| .call funcIdx =>`.
+The sorry is in `EmitSimRel.step_sim`, case `| .br label =>`.
 
-**What you have:**
-- `EmitCodeCorr.call_inv`: gives `wcode = Instr.call funcIdx :: rest_w ∧ EmitCodeCorr rest rest_w`
-- `irStep?_eq_call` (L4986): exact IR call stepping equation
-- `step?_eq_call_valid` (L2879): exact Wasm call stepping equation
-- `step?_eq_call_oob` (L2897): Wasm call with OOB function index
-- `step?_eq_call_underflow` (L2907): Wasm call with stack underflow
+**What you need to know:**
+- IR `.br label` finds a label by name in `s1.labels` using `irFindLabel?`
+- Wasm `.br idx` pops labels by numeric index
+- EmitCodeCorr has a `br_` constructor: `IRInstr.br label` ↔ `Instr.br idx`
+- The `hrel.hlabels` field gives `s1.labels.length = s2.labels.length`
+- The `hrel.hlabel_content` gives correspondence at each label index
 
-**Pattern** (same as block/end/load/store cases):
+**Pattern:**
 ```lean
-| .call funcIdx =>
-    have hc : EmitCodeCorr (IRInstr.call funcIdx :: rest) s2.code := hcode_ir ▸ hrel.hcode
-    rcases hc.call_inv with ⟨rest_w, hcw, hrest⟩ | hf
-    · -- Specific case: Wasm code = call funcIdx :: rest_w
-      -- Case 1: funcIdx valid in both IR and Wasm
-      -- Both do call: push frame, enter function body
-      -- Use hrel.hfuncs (function correspondence) to connect
-      -- Case 2: funcIdx OOB → both trap
-      -- Case 3: stack underflow → both trap (stack_corr preserves length)
+| .br label =>
+    have hc : EmitCodeCorr (IRInstr.br label :: rest) s2.code := hcode_ir ▸ hrel.hcode
+    rcases hc.br_inv with ⟨idx, rest_w, hcw, hrest⟩ | hf
+    · -- Wasm code = Instr.br idx :: rest_w
+      -- IR: irFindLabel? finds label at some index → jump
+      -- Wasm: br idx pops idx labels
+      -- Need: irFindLabel? label s1.labels = some (idx, onExit)
+      --   AND hlabel_content shows onExit corresponds to Wasm label's onExit
+      -- Use lean_goal at L9715 to see exact state
       sorry
     · exact hf.elim
 ```
 
-**Key:** Both IR and Wasm call the same funcIdx. The EmitCodeCorr `call_` constructor preserves funcIdx. You need:
-1. `hrel.hfuncs` or similar to show IR and Wasm have the same function at funcIdx
-2. `hrel.hstack` to show stack correspondence (args match)
-3. After the call, the new frame's code corresponds (function body was emitted)
+**Key question:** How does `br_` connect `label` (a String) to `idx` (a Nat)? Use `lean_hover_info` on `br_` in EmitCodeCorr to see its constructor signature, then use `lean_goal` at L9715.
 
-Use `lean_goal` at L9148 to see the exact proof state. Use `lean_multi_attempt` to test tactics.
+### TASK 2: Close EmitSimRel `.brIf label` (L9718)
 
-### TASK 2: Close EmitSimRel `.callIndirect typeIdx` (L9151)
+Same pattern as br but conditional. IR pops a value, checks truthiness, then either branches or falls through. Wasm does `br_if idx` which pops i32.
 
-Same pattern as call but with `callIndirect_inv`. The `callIndirect_` constructor maps `IRInstr.callIndirect typeIdx` to `Instr.callIndirect typeIdx 0`.
+### TASK 3: Close memoryGrow no-memory sorry (L9972)
 
-### TASK 3 (if time): Init sorries (L9813, L9828, L9852)
+This is the unreachable case where memory doesn't exist. Options:
+1. Add `hmemory_exists : 0 < s2.store.memories.size` field to EmitSimRel (if you can prove it at init from `hemit`)
+2. Or show it's implied by existing invariants
 
-All need `LowerCodeCorr prog.main (irInitialState irmod).code`.
-
-Since `lower` sets `startFunc := none` (proved by `lower_startFunc_none`), `(irInitialState irmod).code = []`.
-
-So the goal is `LowerCodeCorr prog.main []`. Check if there's a `LowerCodeCorr` constructor for empty code. If not, this needs a new constructor or architectural change. Skip if blocked.
-
-### LowerSimRel sorries (12: L6261-L6338)
-
-ALL blocked by 1:N stepping. Don't work on these.
+### DON'T work on:
+- LowerSimRel (12 sorries) — blocked by 1:N stepping
+- call/callIndirect — blocked by multi-frame (`hframes_one`)
+- init sorries — architecturally blocked
 
 ## Rules
 - `bash scripts/lake_build_concise.sh` to build
@@ -59,4 +53,4 @@ ALL blocked by 1:N stepping. Don't work on these.
 - Do NOT break the build
 - CLOSE sorries, don't decompose them into more sorries
 - Use `lean_goal` + `lean_multi_attempt` BEFORE editing
-- Do TASK 1 FIRST — call is the most impactful win
+- Do TASK 1 FIRST — br is the most tractable win

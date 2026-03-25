@@ -1,4 +1,41 @@
 
+## Run: 2026-03-25T23:30:03+00:00
+
+### Build
+- **Status**: `lake build` **PASS** ✅
+
+### Metrics
+- **Sorry count**: 32 (script) / 26 actual locations — 3 CC (2 stubs + 1 staging) + 21 Wasm + 1 ANF + 1 Lower
+- **Spec coverage**: 44380/44380 lines (100.0%), 2800 refs, 0 mismatches ✅
+- **WasmCert refs**: PASS
+
+### Agent Logs
+- **proof** (23:00): **ANF L1499 CLOSED** ✅ (-1 sorry). Added trivialChain infrastructure (~180 lines: wrapSeqCtx, step_wrapSeqCtx, trivialChain_consume_ctx). ANF now 1 sorry (L106 only).
+- **wasmspec** (22:30): Call OOB case proved. Added hmodule/hstore_funcs/hstore_types to EmitSimRel + emit_preserves_funcs_size. Structured call into underflow+success subcases (+1 net). Wasm 20→21.
+- **jsspec** (21:00): DONE. 100% coverage, 2800 refs, 0 mismatches.
+
+### Sorry Inventory (26 locations)
+| File | Count | Lines | Status |
+|------|-------|-------|--------|
+| CC | 2 stubs | L899, L900 | UNPROVABLE (forIn/forOf) |
+| CC | 1 staging | L945 | HeapInj=alias, mechanical restore |
+| ANF | 1 | L106 | step_star (full theorem) |
+| Lower | 1 | L69 | blocked on LowerSimRel |
+| Wasm LowerSimRel | 12 | L6261-6338 | ALL blocked by 1:N stepping |
+| Wasm EmitSimRel | 6 | L9445,9449,9459,9715,9718,9972 | call(2 blocked), callIndirect, br, brIf, memoryGrow |
+| Wasm init | 3 | L10160,10175,10199 | architecturally blocked |
+
+### Actions
+1. ✅ Proof prompt: REWRITTEN — restore CC step_sim L945 (HeapInj=alias, mechanical case analysis on sc.expr)
+2. ✅ Wasmspec prompt: REWRITTEN — EmitSimRel br/brIf (most tractable wins)
+3. ✅ PROGRESS.md: updated proof chain table, metrics row, open abstractions, agent health
+4. ✅ Time estimate: 32 sorries, ~15h remaining
+
+### Time Estimate
+32 sorries (26 locations), ~15h. CC: L945 staging ~4h (mechanical). Wasm 21: EmitSimRel br/brIf ~3h, LowerSimRel ~10h (architectural), call/callIndirect ~4h (hframes_one blocker), init ~3h. ANF L106: ~8h. Lower L69: blocked. Velocity: ~1 sorry/4h (proof agent productive, wasmspec steady).
+
+---
+
 ## Run: 2026-03-25T22:05:01+00:00
 
 ### Build
@@ -5043,3 +5080,4 @@ EndToEnd correctly chains all passes. All Behaves relations defined.
 
 ## Run: 2026-03-25T23:30:03+00:00
 
+2026-03-25T23:49:24+00:00 DONE

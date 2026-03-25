@@ -1,8 +1,8 @@
-# proof — Close ANF L1499 (trivial chain in seq4 context)
+# proof — Restore CC step_sim proof (L945)
 
 ## Build ONLY your module
 ```
-bash scripts/lake_build_concise.sh VerifiedJS.Proofs.ANFConvertCorrect
+bash scripts/lake_build_concise.sh VerifiedJS.Proofs.ClosureConvertCorrect
 ```
 
 ## Use MCP BEFORE editing
@@ -10,139 +10,78 @@ bash scripts/lake_build_concise.sh VerifiedJS.Proofs.ANFConvertCorrect
 - lean_multi_attempt to test tactics
 - lean_diagnostic_messages for errors
 
-## TASK: Close the sorry at ANFConvertCorrect.lean L1499
+## TASK: Restore the CC step_sim proof at ClosureConvertCorrect.lean L945
 
 ### Context
-The sorry is inside `anfConvert_halt_star_aux`, in the `| seq c1a c1b =>` branch. The expression is:
+The sorry at L945 (`exact sorry`) covers the ENTIRE `closureConvert_step_simulation` inner induction. The `suffices` block (L915-937) already has the correct signature with injMap threading. The intro at L941 destructs `hstep` into `⟨hstep⟩`.
+
+**KEY INSIGHT**: `HeapInj` and `EnvCorrInj` are currently ALIASES:
+```lean
+-- L650:
+private def HeapInj (_injMap : Nat → Nat) (ch fh : Core.Heap) : Prop := HeapCorr ch fh
+-- L655:
+private def EnvCorrInj (_injMap : Nat → Nat) (cenv : Core.Env) (fenv : Flat.Env) : Prop := EnvCorr cenv fenv
 ```
-sf.expr = .seq (.seq (.seq (.seq (.seq c1a c1b) c2) d) a2) b
-```
-where `c1 = .seq c1a c1b` is a **trivial chain** (`isTrivialChain c1 = true`).
 
-The sibling branches (lit, var, this) are already proved by manually constructing 0-2 Flat steps. This case needs to do the same but recursively.
+This means `injMap` is IGNORED. You can always use the SAME injMap in the output. The proof is structurally identical to a proof that uses `HeapCorr` and `EnvCorr` directly.
 
-### Target
-Show that sf can step (silently) to some `sf_target` where:
-- `sf_target.expr = .seq (.seq (.seq c2 d) a2) b`
-- `sf_target.env = sf.env`, `sf_target.heap = sf.heap`
-- Then apply `ih` on `sf_target` (depth decreases)
-
-### Strategy: add helper lemma BEFORE the main theorem
-
-Add this helper around line 773 (after `step?_seq_ctx`):
+### Strategy
+Replace `exact sorry` at L945 with case analysis on `Flat.step?`:
 
 ```lean
-/-- exprValue? of any seq is none (seq is never a value). -/
-private theorem exprValue?_seq (a b : Flat.Expr) : Flat.exprValue? (.seq a b) = none := by
-  simp [Flat.exprValue?]
+  -- The step destructs to: Flat.step? sf = some (ev, sf')
+  -- Case-split on sf.expr (which determines what Flat.step? does)
+  -- For each case, find the corresponding Core.step? result
+  -- Use hconv to relate sf.expr to convertExpr sc.expr
+  -- Use hinj/henvCorr to transfer values
 
-/-- exprValue? of var/this is none (they are not values). -/
-private theorem exprValue?_var (n : String) : Flat.exprValue? (.var n) = none := by
-  simp [Flat.exprValue?]
-
-private theorem exprValue?_this : Flat.exprValue? .this = none := by
-  simp [Flat.exprValue?]
-
-/-- A trivial chain evaluates to a literal via silent Flat steps.
-    env, heap, funcs, callStack unchanged. -/
-private theorem trivialChain_eval (n : Nat) (e : Flat.Expr) (s : Flat.State)
-    (htc : isTrivialChain e = true)
-    (hsf : s.expr = e)
-    (hcost : trivialChainCost e ≤ n) :
-    ∃ (v : Core.Value) (evs : List Core.TraceEvent) (s' : Flat.State),
-      Flat.Steps s evs s' ∧ s'.expr = .lit v ∧
-      s'.env = s.env ∧ s'.heap = s.heap ∧
-      s'.funcs = s.funcs ∧ s'.callStack = s.callStack ∧
-      observableTrace evs = [] := by
-  induction n generalizing e s with
-  | zero =>
-    -- cost ≤ 0 means e = .lit v (only lit has cost 0 among trivials)
-    cases e with
-    | lit v => exact ⟨v, [], s, .refl, hsf, rfl, rfl, rfl, rfl, rfl⟩
-    | var _ | «this» | seq _ _ => simp [trivialChainCost] at hcost
-    | _ => simp [isTrivialChain] at htc
-  | succ n ih =>
-    cases e with
-    | lit v => exact ⟨v, [], s, .refl, hsf, rfl, rfl, rfl, rfl, rfl⟩
-    | var name =>
-      -- step? resolves var to a value
-      have hstep : ∃ val, Flat.step? s = some (.silent, { s with
-          expr := .lit val, trace := s.trace ++ [.silent] }) := by
-        rw [show s = { s with expr := .var name } from by cases s; simp_all]
-        unfold Flat.step? Flat.exprValue?; unfold Flat.step?
-        cases s.env.lookup name with
-        | some v => exact ⟨v, rfl⟩
-        | none => exact ⟨.undefined, rfl⟩
-      obtain ⟨val, hstep⟩ := hstep
-      exact ⟨val, [.silent], _, .tail ⟨hstep⟩ .refl, rfl, rfl, rfl, rfl, rfl,
-        by simp [observableTrace]⟩
-    | «this» =>
-      -- Same pattern as var but with "this"
-      have hstep : ∃ val, Flat.step? s = some (.silent, { s with
-          expr := .lit val, trace := s.trace ++ [.silent] }) := by
-        rw [show s = { s with expr := .this } from by cases s; simp_all]
-        unfold Flat.step? Flat.exprValue?; unfold Flat.step?
-        cases s.env.lookup "this" with
-        | some v => exact ⟨v, rfl⟩
-        | none => exact ⟨.undefined, rfl⟩
-      obtain ⟨val, hstep⟩ := hstep
-      exact ⟨val, [.silent], _, .tail ⟨hstep⟩ .refl, rfl, rfl, rfl, rfl, rfl,
-        by simp [observableTrace]⟩
-    | seq ea eb =>
-      simp [isTrivialChain] at htc
-      -- First: evaluate ea to a literal
-      have hcost_a : trivialChainCost ea ≤ n := by
-        simp [trivialChainCost] at hcost; omega
-      obtain ⟨va, evs_a, s_a, hsteps_a, hlit_a, henv_a, hheap_a, hfuncs_a, hcs_a, hobs_a⟩ :=
-        ih ea { s with expr := ea } htc.1 rfl hcost_a
-      -- Now s_a.expr = .lit va. One step consumes .seq (.lit va) eb → eb
-      -- ... (use step?_seq_ctx to lift ea steps through one .seq layer)
-      -- Then evaluate eb
-      -- This is the recursive structure — use ih on eb
-      sorry
-    | _ => simp [isTrivialChain] at htc
+  -- Start with the easiest cases first:
+  simp [Flat.step?, Flat.exprValue?] at hstep
+  -- Then split on sc.expr (since sf.expr = convertExpr sc.expr ...)
+  obtain ⟨scope, st, st', hconv⟩ := ⟨scope, st, st', hconv⟩
+  cases sc.expr with
+  | lit v =>
+    -- convertExpr (.lit v) = (.lit (convertValue v), st)
+    -- Flat.step? of .lit is none → contradiction with hstep
+    simp [Flat.convertExpr] at hconv
+    obtain ⟨hfexpr, _⟩ := hconv
+    rw [hfexpr] at hstep
+    simp [Flat.step?, Flat.exprValue?] at hstep
+  | var name =>
+    -- convertExpr (.var name) produces .getEnv or .var depending on scope
+    sorry
+  | «this» => sorry
+  | «let» name init body => sorry
+  | assign name rhs => sorry
+  | «if» cond then_ else_ => sorry
+  | seq a b => sorry
+  | unary op arg => sorry
+  | binary op lhs rhs => sorry
+  | call f args => sorry
+  | «return» val => sorry
+  | throw val => sorry
+  | tryCatch body name handler => sorry
+  | typeof arg => sorry
+  | _ => sorry  -- remaining cases
 ```
 
-The `| seq ea eb =>` case in `trivialChain_eval` needs:
-1. Use `step?_seq_ctx` to lift the `ea` evaluation through the `.seq ea eb` wrapping
-2. After ea → .lit va, one step consumes `.seq (.lit va) eb` → `eb`
-3. Use `ih` on `eb`
-
-Then, add a SECOND helper to lift `trivialChain_eval` through 4 layers of seq context:
-
-```lean
-/-- Lift trivialChain_eval through nested seq context:
-    if tc evaluates to .lit v, then .seq(.seq(.seq(.seq tc c2) d) a2) b
-    steps to .seq(.seq(.seq(.seq (.lit v) c2) d) a2) b -/
-private theorem trivialChain_eval_seq4 (s : Flat.State)
-    (tc c2 d a2 b : Flat.Expr)
-    (htc : isTrivialChain tc = true)
-    (hsf : s.expr = .seq (.seq (.seq (.seq tc c2) d) a2) b) :
-    ∃ (v : Core.Value) (evs : List Core.TraceEvent) (s' : Flat.State),
-      Flat.Steps s evs s' ∧
-      s'.expr = .seq (.seq (.seq (.seq (.lit v) c2) d) a2) b ∧
-      s'.env = s.env ∧ s'.heap = s.heap ∧
-      s'.funcs = s.funcs ∧ s'.callStack = s.callStack ∧
-      observableTrace evs = [] := by
-  sorry  -- Use trivialChain_eval on the inner tc, then step?_seq_ctx 4 times to lift
-```
-
-### Applying the helpers at L1499
-Once you have `trivialChain_eval_seq4`, the sorry at L1499 becomes:
-```lean
--- Get tc steps: c1 = .seq c1a c1b evaluates to .lit v
-obtain ⟨v, evs_tc, sf_tc, hsteps_tc, hlit_tc, henv_tc, hheap_tc, _, _, hobs_tc⟩ :=
-  trivialChain_eval_seq4 sf (Flat.Expr.seq c1a c1b) c2 d a2 b
-    (by simp [isTrivialChain]; exact ⟨htc_a, htc_b⟩)  -- htc.1, htc.2
-    (by rw [hsf, ha, ha1, hc, hc1])
--- One more step: .seq(.seq(.seq(.seq (.lit v) c2) d) a2) b → .seq(.seq(.seq c2 d) a2) b
--- (same pattern as the lit case at L1392)
--- Then apply ih
-```
+### Approach for each case
+1. Use `hconv` to determine `sf.expr` from `convertExpr sc.expr`
+2. Unfold `Flat.step?` to see what the Flat side does
+3. Construct matching `Core.step?` result
+4. Build output with `⟨injMap, sc', hcstep, htrace', hinj, henvCorr, ...⟩`
+5. For `injMap'`, just use the same `injMap` (since HeapInj ignores it)
 
 ### Priority
-1. First try to close L1499 with `trivialChain_eval_seq4` (even if the helper itself has sorry initially)
-2. If that works structurally, close the helper sorries
-3. Do NOT touch CC or other files
+1. Replace `exact sorry` with the `cases sc.expr` skeleton above
+2. Close the `.lit` case (contradiction — should be easy)
+3. Close 2-3 simple value cases (.var in scope, .this, .seq with value)
+4. Leave complex cases (call, tryCatch) as sorry
+5. Do NOT touch ANF or Wasm files
+
+### What NOT to do
+- Do NOT try to implement "real" HeapInj — just use the alias
+- Do NOT restructure CC_SimRel
+- Do NOT change any file outside ClosureConvertCorrect.lean
 
 ## Log progress to agents/proof/log.md
