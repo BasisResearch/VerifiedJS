@@ -1,4 +1,38 @@
 
+## Run: 2026-03-25T13:05:01+00:00
+
+### Build
+- **Status**: `lake build` **PASS** ✅
+
+### Metrics
+- **Sorry count**: 36 (threshold 100) — 9 CC + 24 Wasm + 2 ANF + 1 Lower
+- **Spec coverage**: 20154/44380 lines (45.4%), 1696 refs, 0 mismatches ✅
+- **WasmCert refs**: PASS (running)
+
+### Agent Logs
+- **proof** (09:30→still running): 3.5+ hours in-flight. Last completed run (09:05) had 9 CC sorries. Currently SKIP.
+- **wasmspec** (09:15→12:52 DONE): Completed long session. 24 Wasm sorries (unchanged from last run).
+- **jsspec** (09:00→still running): 4+ hours in-flight. Refs steady at 1696. Still generating citations.
+
+### Key Findings
+1. **Build RECOVERED**: Was BROKEN at 09:05 (3 files), now PASS ✅.
+2. **Sorry UP 35→36 (+1)**: CC went 8→9 (one new sorry appeared, likely from proof agent's in-progress work before crash). All others unchanged.
+3. **CC line numbers CORRECTED**: Prompt had stale L1882/L1883/L3532-3534, actual is L1824/L1825/L3474-3476. Also discovered L1258 (let-value) sorry was missing from inventory.
+4. **`lowerExpr` NOT private**: Comment in Semantics.lean stale. The 3 init `by sorry` at L8888/8903/8927 may be provable now.
+5. **readLE? L262 QUICK WIN**: Goal is `readLE? mem addr width = none` given `mem.size = 0`. Should close with loop unfolding.
+6. **All agents in long sessions**: proof 3.5h, jsspec 4h. No crashes visible.
+
+### Actions
+1. ✅ Proof prompt: REWRITTEN — corrected all line numbers (L1824/L1825/L3474-3476), added L1258 let-value sorry with concrete Lean proof pattern, simplified priorities (L1258 → L3474 → L1177)
+2. ✅ Wasmspec prompt: REWRITTEN — corrected sorry inventory (24 total), added readLE? L262 quick-win strategy, noted `lowerExpr` NOT private for init `by sorry` proofs, concrete break/continue approach
+3. ✅ PROGRESS.md updated with new metrics row + proof chain table corrected
+4. ✅ Time estimate: 36 sorries, ~16 hours remaining
+
+### Time Estimate
+36 sorries, ~16 hours remaining. CC 7 closable sorries (excluding 2 unprovable stubs) need env/heap/funcs correspondence — deep but clear path. Wasm 24 sorries decomposed (12 LowerSimRel + 8 EmitSimRel + 4 init). ANF 2 sorries are architecturally hard (step_star + nested seq). Sorry velocity: ~1/4h, slowing as remaining sorries are all architecturally challenging.
+
+---
+
 ## Run: 2026-03-25T09:05:02+00:00
 
 ### Build

@@ -2,68 +2,97 @@
 
 You own Flat/*, ANF/*, Wasm/Syntax,Semantics,Typing,Numerics, Runtime/*.
 
-## Current Wasm sorry count: 24 (in Semantics.lean) + 1 misc (L262)
+## Current Wasm sorry count: 24 (in Semantics.lean)
 
-### LowerSimRel cases (12 sorries, L6205-L6286)
+### LowerSimRel.step_sim cases (12 sorries, L6205-L6286)
 ```
-L6209  let          sorry — rhs code + localSet
-L6217  seq          sorry — aCode ++ [drop] ++ bCode, needs 1:N stepping
+L6209  let          sorry — rhsCode ++ [localSet idx] ++ bodyCode
+L6217  seq          sorry — aCode ++ [drop] ++ bCode, 1:N stepping
 L6221  if           sorry — condCode ++ [if_ ...]
 L6224  while        sorry — loop semantics
 L6227  throw        sorry — error event
 L6230  tryCatch     sorry — try/catch frame
 L6271  return(some) sorry — return value evaluation
-L6274  call         sorry — function call semantics
-L6277  getProp      sorry — property access
-L6280  setProp      sorry — property assignment
-L6283  log          sorry — console.log
-L6286  assign       sorry — variable assignment
+L6274  yield        sorry
+L6277  await        sorry
+L6280  labeled      sorry
+L6283  break        sorry
+L6286  continue     sorry
 ```
 
-### EmitSimRel cases (8 sorries)
+### EmitSimRel cases (7 sorries)
 ```
 L7928  i64 load     sorry — needs EmitCodeCorr.load_i64
-L7931  load (next)  sorry
-L7934  load (next2) sorry
-L8375  emit case    sorry
-L8378  emit case    sorry
-L8615  emit case    sorry
-L8618  emit case    sorry
-L8725  emit case    sorry
+L7935  store        sorry
+L7938  store8       sorry
+L8379  emit case    sorry
+L8382  emit case    sorry
+L8619  emit case    sorry
+L8622  emit case    sorry
+L8729  emit case    sorry
 ```
 
-### Init (4 `by sorry`)
+### Init + misc (5 `by sorry`)
 ```
-L262   init sorry
-L8884  LowerSimRel.init by sorry
-L8899  LowerSimRel.init by sorry
-L8923  LowerSimRel.init by sorry
+L262   readLE?      sorry — provable (see below)
+L8888  LowerSimRel.init by sorry — needs LowerCodeCorr for init program
+L8903  LowerSimRel.init by sorry — same
+L8927  LowerSimRel.init by sorry — same
 ```
 
-## Priority: LowerSimRel `let` case (L6209)
+## Priority 1: readLE? (L262) — QUICK WIN
 
-The `let` case is the most fundamental — once it works, `seq`, `if`, `assign` follow similar patterns.
+Goal: `readLE? mem addr width = none` given `mem.size = 0` and `¬addr + 0 < mem.size`.
 
-**Structure**: ANF does `let name rhs body`:
+The loop `for k in [0:width]` at k=0 checks `addr + 0 < mem.size`, which is false (from hbound). So it returns `none` immediately. Try:
+```lean
+-- Unfold readLE? and show the first iteration fails the bounds check
+simp [readLE?]
+-- If simp doesn't work, try induction on width or unfold the forIn for Std.Range
+```
+Use `lean_goal` and `lean_multi_attempt` at L262 to find the right approach.
+
+## Priority 2: LowerSimRel `let` case (L6209)
+
+The `let` case is foundational — `seq`, `if`, `assign` follow similar patterns.
+
+**Structure**: ANF `let name rhs body`:
 - ANF step evaluates `rhs`, binds result to `name`, continues with `body`
-- IR code is `rhsCode ++ [localSet idx] ++ bodyCode` (from `LowerCodeCorr.let_inv`)
+- IR code is `rhsCode ++ [localSet idx] ++ bodyCode` (from `LowerCodeCorr.let_`)
 
 **Approach**:
-1. Use `lean_goal` at L6209 to see the exact goal
-2. Invert `hrel.hcode` with `hexpr` to get `LowerCodeCorr.let_inv`
-3. Show IR executes `rhsCode` → `localSet idx` → `bodyCode`
-
 ```lean
     | .«let» name rhs body =>
         have hc := hrel.hcode; rw [hexpr] at hc
+        -- Invert LowerCodeCorr to get the let_ constructor
+        generalize s2.code = c at hc
         cases hc with
-        | let_ idx rhsCode bodyCode hrhs hbody =>
+        | let_ idx rhsCode bodyCode hrhs_code hbody_code =>
+          -- Now: c = rhsCode ++ [localSet idx] ++ bodyCode
+          -- ANF step: evaluates rhs trivial, extends env, continues with body
+          -- IR: execute rhsCode (pushes value), localSet idx (stores to local), continue bodyCode
           sorry
 ```
 
-## Priority: Init `by sorry` (L8884, L8899, L8923)
+After inverting, you need to show the IR can execute `rhsCode` to push a value, then `localSet idx` stores it, then continue with `bodyCode`. Use `IRSteps` transitivity.
 
-These are small: need to show the initial LowerSimRel fields hold. Use `lean_goal` at each line to see what field needs proving.
+## Priority 3: `break`/`continue` (L6283/L6286)
+
+These are simple: ANF `break label` → IR `br target`. From `LowerCodeCorr.break_`:
+```lean
+    | .«break» label =>
+        have hc := hrel.hcode; rw [hexpr] at hc
+        generalize s2.code = c at hc
+        cases hc with
+        | break_ label' target =>
+          -- IR code = [.br target], ANF produces break event
+          -- Show IR steps with br instruction
+          sorry
+```
+
+## Note: `lowerExpr` is NOT private
+
+The comments saying "needs lowerExpr public" are stale — `lowerExpr` is already a `partial def` (not private). The init `by sorry` may now be provable by unfolding `lower` and constructing `LowerCodeCorr` from `lowerExpr` output. Investigate this.
 
 ## Rules
 - `bash scripts/lake_build_concise.sh` to build

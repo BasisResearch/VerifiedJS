@@ -1249,13 +1249,7 @@ private theorem closureConvert_step_simulation
         (Flat.convertExpr body (name :: scope) envVar envMap (Flat.convertExpr init scope envVar envMap st).snd).fst := by
       cases sf; simp_all [(Prod.mk.inj hconv).1]
     cases hval : Core.exprValue? init with
-    | some v =>
-      have ha_lit : init = .lit v := by cases init <;> simp [Core.exprValue?] at hval <;> exact congrArg _ hval
-      subst ha_lit
-      simp only [Flat.convertExpr] at hsf_expr hconv
-      -- sf.expr = .let name (.lit (convertValue v)) (convertExpr body (name::scope) ... st).1
-      -- Both step to body/body' with env extended, event .silent
-      sorry /- let-value case: convertExpr unfold blocked -/
+    | some v => sorry /- let-value case: simp [Flat.convertExpr] unfold blocked -/
     | none =>
       -- Stepping sub-case: init is not a value
       set init' := (Flat.convertExpr init scope envVar envMap st).1 with hinit'_def
