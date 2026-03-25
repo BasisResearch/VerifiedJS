@@ -1,4 +1,36 @@
 
+## Run: 2026-03-25T18:05:02+00:00
+
+### Build
+- **Status**: `lake build` **PASS** ✅
+
+### Metrics
+- **Sorry count**: 35 (script) / 31 actual locations — 8 CC + 20 Wasm + 2 ANF + 1 Lower
+- **Spec coverage**: 24654/44380 lines (55.6%), 2006 refs, 0 mismatches ✅
+- **WasmCert refs**: PASS
+
+### Agent Logs
+- **proof** (14:30→16:30 DONE, 17:30 new run): Closed L1253 let-value sorry (-1 CC). Identified forIn/forOf stubs as UNPROVABLE. CC now at 8 (2 stubs + 6 real: captured-var, call, newObj, objectLit, arrayLit, functionDef).
+- **wasmspec** (14:30→17:16 DONE, 18:15 new run): Closed i64 load/store sorries (-2 Emit). Added EmitCodeCorr.load_i64/store_i64 constructors + inversion + head_inv. Wasm sorry 24→20.
+- **jsspec** (09:00→17:08 DONE, 17:30→18:13 DONE): Massive coverage: 1696→2006 refs (+310), 45.4%→55.6% (+10.2%). 0 mismatches.
+
+### Key Findings
+1. **i64 load/store CLOSED**: All EmitCodeCorr constructors + inversions now exist for remaining 5 Emit sorries (call, callIndirect, br, brIf, memoryGrow) — all CLOSABLE.
+2. **CC L1113 captured var needs STUTTERING**: Flat takes 2 steps, Core takes 1. Current 1-1 sim can't handle intermediate .getEnv(.lit ...) state.
+3. **CC objectLit/arrayLit TRACTABLE** (1-1 stepping for sub-expr eval, allocation needs WeakHeapCorr for convertValue).
+4. **HeapCorr identity issue**: convertValue(.function) = .closure breaks heap object identity.
+
+### Actions
+1. ✅ Proof prompt: REWRITTEN — corrected lines, diagnosed stuttering blocker, redirected to objectLit/arrayLit first, wrote ExprCorr + stuttering code
+2. ✅ Wasmspec prompt: REWRITTEN — updated sorry inventory (20), redirected to memoryGrow (quickest), wrote call/callIndirect patterns
+3. ✅ PROGRESS.md updated
+4. ✅ Time estimate: 35 sorries, ~17 hours remaining
+
+### Time Estimate
+35 sorries, ~17h remaining. Velocity: ~1/5h (slowing). CC 6 real: objectLit/arrayLit/newObj (~4h), captured-var/call/functionDef (need stuttering, ~8h). Wasm 20: 5 Emit closable (~5h), 12 Lower blocked on 1:N (~12h), 3 init (~2h). ANF 2: deep (~4h).
+
+---
+
 ## Run: 2026-03-25T13:05:01+00:00
 
 ### Build
@@ -4851,3 +4883,4 @@ EndToEnd theorem correctly chains all passes. All Behaves relations defined.
 
 ## Run: 2026-03-25T18:05:02+00:00
 
+2026-03-25T18:43:04+00:00 DONE
