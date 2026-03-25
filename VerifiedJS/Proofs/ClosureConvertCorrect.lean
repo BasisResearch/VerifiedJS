@@ -521,10 +521,10 @@ private theorem convertOptExpr_scope_irrelevant (oe : Option Core.Expr)
   decreasing_by all_goals simp_all <;> omega
 end
 
+mutual
 /-- Returns true if the expression never uses "__call_frame_return__" as a tryCatch catchParam.
     Source programs from `elaborate` satisfy this predicate since "__call_frame_return__" is only
     introduced by the Core interpreter for call-frame returns. -/
-mutual
 def noCallFrameReturn : Core.Expr → Bool
   | .tryCatch body cp cb fin =>
     cp != "__call_frame_return__" &&
