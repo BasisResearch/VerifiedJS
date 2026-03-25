@@ -4609,3 +4609,4 @@ All Behaves relations defined. Theorem statements chain correctly.
 37 sorries, ~17 hours remaining. CC could drop to 3 if HeapValuesWF goes smoothly (closes 2 ExprAddrWF + objectLit/arrayLit unblocked = 5 closable). Wasm progress steady but 23 sorries is a lot of ground to cover. Proof agent crashing is concerning — may need prompt simplification next run.
 
 2026-03-25T06:46:00+00:00 DONE
+2026-03-25T06:50:17+00:00 DONE
