@@ -1127,7 +1127,7 @@ private theorem closureConvert_step_simulation
           simp only [Flat.step?, hfenv] at h0
           have h1 := (Prod.mk.inj (Option.some.inj h0)).2; subst h1; rfl
         have hheap' : HeapCorr sc'.heap sf'.heap := by rw [hsc'_heap, hsf'_heap]; exact hheap
-        exact ⟨hsf'_trace, henv', hheap', by rw [hsc'_env, hsc'_heap]; exact henvwf, by rw [hsc'_expr]; simp [noCallFrameReturn], sorry /- ExprAddrWF -/, scope, st,
+        exact ⟨hsf'_trace, henv', hheap', by rw [hsc'_env, hsc'_heap]; exact henvwf, by rw [hsc'_expr]; simp [noCallFrameReturn], by rw [hsc'_expr, hsc'_heap]; exact henvwf name cv hcenv, scope, st,
           (Flat.convertExpr (.lit cv) scope envVar envMap st).2,
           by rw [hsc'_expr]; simp [Flat.convertExpr, hsf'_expr, hfv_eq]⟩
       | none =>
@@ -4410,16 +4410,18 @@ private theorem closureConvert_step_simulation
         rw [show sc = {sc with expr := .this} from by cases sc; simp_all] at h0
         simp only [Core.step?, hcenv] at h0
         exact congrArg Core.State.expr (Prod.mk.inj (Option.some.inj h0)).2 ▸ rfl
-      have hheap' : HeapCorr sc'.heap sf'.heap := by
-        have h0 := hstep
-        rw [show sf = {sf with expr := .this} from by cases sf; simp_all] at h0
-        simp only [Flat.step?, hfenv] at h0
-        have h1 := (Prod.mk.inj (Option.some.inj h0)).2; subst h1
+      have hsc'_heap : sc'.heap = sc.heap := by
         have h0 := hcstep
         rw [show sc = {sc with expr := .this} from by cases sc; simp_all] at h0
         simp only [Core.step?, hcenv] at h0
-        have h1 := (Prod.mk.inj (Option.some.inj h0)).2; subst h1; exact hheap
-      exact ⟨hsf'_trace, henv', hheap', henvwf, by rw [hsc'_expr]; simp [noCallFrameReturn], sorry /- ExprAddrWF -/, scope, st,
+        have heq := (Prod.mk.inj (Option.some.inj h0)).2; subst heq; rfl
+      have hsf'_heap : sf'.heap = sf.heap := by
+        have h0 := hstep
+        rw [show sf = {sf with expr := .this} from by cases sf; simp_all] at h0
+        simp only [Flat.step?, hfenv] at h0
+        have h1 := (Prod.mk.inj (Option.some.inj h0)).2; subst h1; rfl
+      have hheap' : HeapCorr sc'.heap sf'.heap := by rw [hsc'_heap, hsf'_heap]; exact hheap
+      exact ⟨hsf'_trace, henv', hheap', by rw [hsc'_env, hsc'_heap]; exact henvwf, by rw [hsc'_expr]; simp [noCallFrameReturn], by rw [hsc'_expr, hsc'_heap]; exact henvwf "this" cv hcenv, scope, st,
         (Flat.convertExpr (.lit cv) scope envVar envMap st).2,
         by rw [hsc'_expr]; simp [Flat.convertExpr, hsf'_expr, hfv_eq]⟩
     | none =>
