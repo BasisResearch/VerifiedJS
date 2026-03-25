@@ -6973,6 +6973,9 @@ theorem init (irmod : IRModule) (wmod : Module)
       · simp at hc
       · rename_i hsf; simp [Wasm.initialState, hstart, hsf]
     · simp [Wasm.initialState]
+  hlabel_content := by
+    intro i hi; simp [irInitialState] at hi
+  hframes_one := by simp [irInitialState]
 
 /-- Derive halt correspondence from code + label correspondence.
     Used to reconstruct `hhalt` in step_sim proofs. -/
@@ -7007,7 +7010,58 @@ theorem step_sim (irmod : IRModule) (wmod : Module) :
   | [] =>
       -- No instructions: irStep? checks labels/frames, not instruction dispatch
       -- This is the label-pop or frame-return case
-      sorry
+      match hlabels_ir : s1.labels with
+      | irLbl :: irRest =>
+          -- Label-pop: both sides pop label and continue with onExit
+          have hir := irStep?_eq_labelDone s1 irLbl irRest hcode_ir hlabels_ir
+          rw [hir] at hstep
+          simp only [Option.some.injEq, Prod.mk.injEq] at hstep
+          obtain ⟨rfl, rfl⟩ := hstep
+          -- Wasm also has non-empty labels (by hlabels)
+          have hlen := hrel.hlabels; rw [hlabels_ir] at hlen; simp at hlen
+          match hlabels_w : s2.labels with
+          | [] => simp [hlabels_w] at hlen
+          | wLbl :: wRest =>
+            -- Get Wasm code from nil_inv on hcode
+            have hcw : s2.code = [] := EmitCodeCorr.nil_inv (hcode_ir ▸ hrel.hcode)
+            have hw := step?_eq_labelDone s2 wLbl wRest hcw hlabels_w
+            -- Get onExit correspondence from hlabel_content
+            have hlc := hrel.hlabel_content 0 (by rw [hlabels_ir]; simp)
+            rw [hlabels_ir, hlabels_w] at hlc
+            simp at hlc
+            obtain ⟨irLbl', wLbl', hirL, hwL, hexit⟩ := hlc
+            simp at hirL hwL; subst hirL; subst hwL
+            -- Post-step labels correspondence
+            have hlabels_post : irRest.length = wRest.length := by
+              have := hrel.hlabels; rw [hlabels_ir, hlabels_w] at this
+              simp at this; exact this
+            exact ⟨_, hw,
+              { hemit := hrel.hemit
+                hcode := hexit
+                hstack := hrel.hstack
+                hframes_len := hrel.hframes_len
+                hframes_locals := hrel.hframes_locals
+                hframes_vals := hrel.hframes_vals
+                hglobals := hrel.hglobals
+                hmemory := hrel.hmemory
+                hlabels := hlabels_post
+                hhalt := hhalt_of_structural hexit hlabels_post
+                hlabel_content := by
+                  intro i hi
+                  have := hrel.hlabel_content (i + 1) (by rw [hlabels_ir]; simp; omega)
+                  rw [hlabels_ir, hlabels_w] at this
+                  simpa using this
+                hframes_one := hrel.hframes_one }⟩
+      | [] =>
+          -- Labels empty: IR has code=[] and labels=[].
+          -- With hframes_one, frames.length = 1, so IR is halted.
+          exfalso
+          have : s1.halted := by
+            refine ⟨hcode_ir, hlabels_ir, ?_⟩
+            exact Nat.le_of_eq hrel.hframes_one
+          rw [irStep?_none_iff_halted] at this
+          rw [this] at hstep
+          exact Option.noConfusion hstep
   | instr :: rest =>
       match instr with
       | .const_ .i32 v =>
@@ -8132,7 +8186,7 @@ theorem step_sim (irmod : IRModule) (wmod : Module) :
                     rename_i hneq; rw [hneq] at hs2
                     have hne_w : n ≠ 0 := by rw [← hneq]; exact hne
                     have hw := step?_eq_if_true s2 bt then_w else_w rest_w n wstk hcw hs2 hne_w
-                    refine ⟨_, hw, hrel.hemit, hthen, ?_, hrel.hframes_len, hrel.hframes_locals, hrel.hframes_vals, hrel.hglobals, ?_, ?_⟩
+                    refine ⟨_, hw, hrel.hemit, hthen, ?_, hrel.hframes_len, hrel.hframes_locals, hrel.hframes_vals, hrel.hglobals, ?_, ?_, ?_, ?_⟩
                     · -- Stack correspondence: tails match
                       constructor
                       · simp [hstk, hs2] at hlen ⊢; omega
@@ -8142,6 +8196,13 @@ theorem step_sim (irmod : IRModule) (wmod : Module) :
                         exact hstk2.2 (i + 1) (by simp; omega)
                     · simp; exact hrel.hlabels
                     · exact hhalt_of_structural hthen (by simp; exact hrel.hlabels)
+                    · -- Label content: if_ pushes label with onExit = rest
+                      intro i hi
+                      simp only [List.length_cons] at hi
+                      match i with
+                      | 0 => exact ⟨_, _, rfl, rfl, hrest⟩
+                      | i + 1 => exact hrel.hlabel_content i (by omega)
+                    · exact hrel.hframes_one
             | .i64 n :: stk =>
               -- i64 on stack: type mismatch trap
               have hir : irStep? s1 = some (.trap "if condition is not i32",
@@ -8220,8 +8281,38 @@ theorem step_sim (irmod : IRModule) (wmod : Module) :
           -- conditional branch
           sorry
       | .return_ =>
-          -- return from function
-          sorry
+          -- return from function: with hframes_one, frames = [frame], so top-level return
+          have hc : EmitCodeCorr (IRInstr.return_ :: rest) s2.code := hcode_ir ▸ hrel.hcode
+          rcases hc.return_inv with ⟨rest_w, hcw, hrest⟩ | hf
+          · -- Wasm code = return_ :: rest_w
+            -- Derive single frame from hframes_one
+            have hfr : ∃ f, s1.frames = [f] := by
+              match hf : s1.frames with
+              | [] => simp [hf] at hrel.hframes_one
+              | [f] => exact ⟨f, rfl⟩
+              | _ :: _ :: _ => simp [hf] at hrel.hframes_one
+            obtain ⟨frame, hfr⟩ := hfr
+            -- IR: top-level return clears code and labels
+            have hir := irStep?_eq_return_toplevel s1 rest frame hcode_ir hfr
+            rw [hir] at hstep
+            simp only [Option.some.injEq, Prod.mk.injEq] at hstep
+            obtain ⟨rfl, rfl⟩ := hstep
+            -- Wasm: return_ also clears code and labels
+            have hw := step?_eq_return s2 rest_w hcw
+            exact ⟨_, hw,
+              { hemit := hrel.hemit
+                hcode := .nil
+                hstack := hrel.hstack
+                hframes_len := hrel.hframes_len
+                hframes_locals := hrel.hframes_locals
+                hframes_vals := hrel.hframes_vals
+                hglobals := hrel.hglobals
+                hmemory := hrel.hmemory
+                hlabels := by simp
+                hhalt := by intro _; apply step?_halted; exact ⟨rfl, rfl⟩
+                hlabel_content := by intro i hi; simp at hi
+                hframes_one := hrel.hframes_one }⟩
+          · exact hf.elim
       | .drop =>
           -- drop: IR and Wasm both pop top of stack (or both trap on empty stack)
           -- Invert EmitCodeCorr to get Wasm code structure
