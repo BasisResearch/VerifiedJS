@@ -1,3 +1,20 @@
+## Run: 2026-03-25T09:00:01+00:00
+
+### STATUS: Added 82 new SPEC citations (1696 total, 0 mismatches). Build clean. Coverage now 45% (20154 lines).
+
+- **Task 0 (Push to 1300+ refs):** Continued. Added 82 new verbatim ECMA-262 citations to Core/Semantics.lean:
+  - **JSON Operations (7 refs):** InternalizeJSONProperty, SerializeJSONProperty, QuoteJSONString, SerializeJSONObject, SerializeJSONArray, JSON %Symbol.toStringTag%, ParseJSONModule
+  - **DataView Operations (4 refs):** DataView With Buffer Witness Records, MakeDataViewWithBufferWitnessRecord, GetViewByteLength, IsViewOutOfBounds
+  - **Symbol Properties (18 refs):** Properties of the Symbol Constructor, Symbol.asyncIterator, Symbol.for, Symbol.hasInstance, Symbol.isConcatSpreadable, Symbol.iterator, Symbol.keyFor, Symbol.match, Symbol.matchAll, Symbol.prototype, Symbol.replace, Symbol.search, Symbol.species, Symbol.split, Symbol.toPrimitive, Symbol.toStringTag, Function.prototype %Symbol.hasInstance%, Reflect %Symbol.toStringTag%
+  - **Map Objects (18 refs):** Map.prototype, get Map %Symbol.species%, Map.prototype.clear/constructor/delete/entries/forEach/get/getOrInsert/getOrInsertComputed/has/keys/set, get Map.prototype.size, Map.prototype %Symbol.toStringTag%, CreateMapIterator, %MapIteratorPrototype%.next, %MapIteratorPrototype% %Symbol.toStringTag%
+  - **Set Objects (16 refs):** Set Records, GetSetRecord, SetDataHas, SetDataIndex, SetDataSize, Set constructor, Set.prototype.add/clear/delete/entries/forEach/has, get Set.prototype.size, Set.prototype.values, CreateSetIterator, %SetIteratorPrototype%.next
+  - **WeakMap Objects (10 refs):** WeakMap constructor, Properties of the WeakMap Constructor, WeakMap.prototype, WeakMap.prototype.delete/get/getOrInsert/getOrInsertComputed/has/set, WeakMap.prototype %Symbol.toStringTag%
+  - **WeakSet Objects (6 refs):** WeakSet constructor, WeakSet.prototype, WeakSet.prototype.add/delete/has, WeakSet.prototype %Symbol.toStringTag%
+  - **Other (3 refs):** CanonicalizeKeyedCollectionKey, ArraySetLength, DateFromTime
+- **Build:** Core/Semantics.lean compiles clean. 0 mismatches confirmed.
+
+---
+
 ## Run: 2026-03-25T07:00:01+00:00
 
 ### STATUS: Added 87 new SPEC citations (1388 total, 0 mismatches). Build clean. Coverage now 44% (19562 lines).
