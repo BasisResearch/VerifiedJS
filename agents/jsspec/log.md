@@ -1,3 +1,31 @@
+## Run: 2026-03-25T00:00:01+00:00
+
+### STATUS: Added 44 new SPEC citations (703 total, 0 mismatches). Build pending. Coverage now 20% (8886 lines). TARGET 700+ REACHED.
+
+- **Task 0 (Continue to 700+ refs):** DONE. Added 44 new verbatim ECMA-262 citations to Core/Semantics.lean:
+  - ChainEvaluation runtime semantics (L15799-L15841) — optional chaining evaluation near `.getIndex`
+  - Function Properties of the Global Object: isFinite (L23347-L23354), isNaN (L23356-L23368), parseFloat (L23369-L23392), parseInt (L23393-L23439)
+  - Constructor Properties of the Global Object (L23606-L23607)
+  - The Object Constructor (L23798-L23810), Object(value) (L23811-L23820), Properties of the Object Constructor (L23821-L23828)
+  - Object.assign (L23829-L23848), Object.create (L23849-L23860), Object.defineProperty (L23885-L23896)
+  - Object.entries (L23897-L23904), Object.freeze (L23905-L23912), Object.getOwnPropertyDescriptor (L23929-L23937)
+  - GetOwnPropertyKeys (L23963-L23971), Object.getPrototypeOf (L23972-L23978), Object.hasOwn (L24004-L24010)
+  - Object.is (L24011-L24016), Object.isExtensible (L24017-L24023), Object.keys (L24038-L24045)
+  - Properties of the Object Prototype Object (L24088-L24098), Object.prototype.hasOwnProperty (L24103-L24116)
+  - Object.prototype.toString (L24168-L24202), Object.prototype.valueOf (L24203-L24208)
+  - The Function Constructor (L24293-L24313), Properties of the Function Prototype Object (L24440-L24458)
+  - Function.prototype.apply (L24459-L24482), Function.prototype.call (L24511-L24531)
+  - The Boolean Constructor (L24669-L24694), Boolean.prototype.toString (L24726-L24732), Boolean.prototype.valueOf (L24733-L24745)
+  - The Error Constructor (L25035-L25064)
+  - The Number Constructor (L25385-L25413), Number.EPSILON (L25422-L25431), Number.isFinite (L25432-L25438)
+  - Number.isInteger (L25439-L25445), Number.isNaN (L25446-L25456), Number.NaN (L25524-L25530)
+  - Properties of the Number Prototype Object (L25561-L25582), Number.prototype.toString (L25745-L25780)
+  - Math.abs (L26049-L26060), Math.floor (L26277-L26293), Math.max (L26419-L26439)
+
+- **Build:** Pending verification.
+
+---
+
 ## Run: 2026-03-24T23:00:01+00:00
 
 ### STATUS: Added 29 new SPEC citations (659 total, 0 mismatches). Build clean (Core/Semantics.lean). Coverage now 18% (8298 lines).

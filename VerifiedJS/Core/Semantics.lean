@@ -12992,4 +12992,593 @@ theorem elaborate_correct (p : Source.Program) (cp : Core.Program)
     ∀ b, Core.Behaves cp b → Behaves p b :=
   fun _ hB => Behaves_of_elaborate hElab hB
 
+-- SPEC: L23347-L23354
+-- | # isFinite ( \_number\_ )
+-- | 
+-- | This function is the [%isFinite%]{.dfn} intrinsic object.
+-- | 
+-- | It performs the following steps when called:
+-- | 
+-- | 1\. Let \_num\_ be ? ToNumber(\_number\_). 1. If \_num\_ is finite,
+-- | return \*true\*. 1. Return \*false\*.
+-- SPEC: L23356-L23367
+-- | # isNaN ( \_number\_ )
+-- | 
+-- | This function is the [%isNaN%]{.dfn} intrinsic object.
+-- | 
+-- | It performs the following steps when called:
+-- | 
+-- | 1\. Let \_num\_ be ? ToNumber(\_number\_). 1. If \_num\_ is \*NaN\*,
+-- | return \*true\*. 1. Return \*false\*.
+-- | 
+-- | A reliable way for ECMAScript code to test if a value \`X\` is \*NaN\*
+-- | is an expression of the form \`X !== X\`. The result will be \*true\* if
+-- | and only if \`X\` is \*NaN\*.
+-- SPEC: L23369-L23391
+-- | # parseFloat ( \_string\_ )
+-- | 
+-- | This function produces a Number value dictated by interpretation of the
+-- | contents of the \_string\_ argument as a decimal literal.
+-- | 
+-- | It is the [%parseFloat%]{.dfn} intrinsic object.
+-- | 
+-- | It performs the following steps when called:
+-- | 
+-- | 1\. Let \_inputString\_ be ? ToString(\_string\_). 1. Let
+-- | \_trimmedString\_ be ! TrimString(\_inputString\_, \~start\~). 1. Let
+-- | \_trimmed\_ be StringToCodePoints(\_trimmedString\_). 1. Let
+-- | \_trimmedPrefix\_ be the longest prefix of \_trimmed\_ that satisfies
+-- | the syntax of a \|StrDecimalLiteral\|, which might be \_trimmed\_
+-- | itself. If there is no such prefix, return \*NaN\*. 1. Let
+-- | \_parsedNumber\_ be ParseText(\_trimmedPrefix\_,
+-- | \|StrDecimalLiteral\|). 1. Assert: \_parsedNumber\_ is a Parse Node. 1.
+-- | Return the StringNumericValue of \_parsedNumber\_.
+-- | 
+-- | This function may interpret only a leading portion of \_string\_ as a
+-- | Number value; it ignores any code units that cannot be interpreted as
+-- | part of the notation of a decimal literal, and no indication is given
+-- | that any such code units were ignored.
+-- SPEC: L23393-L23438
+-- | # parseInt ( \_string\_, \_radix\_ )
+-- | 
+-- | This function produces an integral Number dictated by interpretation of
+-- | the contents of \_string\_ according to the specified \_radix\_. Leading
+-- | white space in \_string\_ is ignored. If \_radix\_ coerces to 0 (such as
+-- | when it is \*undefined\*), it is assumed to be 10 except when the number
+-- | representation begins with \*\"0x\"\* or \*\"0X\"\*, in which case it is
+-- | assumed to be 16. If \_radix\_ is 16, the number representation may
+-- | optionally begin with \*\"0x\"\* or \*\"0X\"\*.
+-- | 
+-- | It is the [%parseInt%]{.dfn} intrinsic object.
+-- | 
+-- | It performs the following steps when called:
+-- | 
+-- | 1\. Let \_inputString\_ be ? ToString(\_string\_). 1. Let \_S\_ be !
+-- | TrimString(\_inputString\_, \~start\~). 1. Let \_sign\_ be 1. 1. If
+-- | \_S\_ is not empty and the first code unit of \_S\_ is the code unit
+-- | 0x002D (HYPHEN-MINUS), set \_sign\_ to -1. 1. If \_S\_ is not empty and
+-- | the first code unit of \_S\_ is either the code unit 0x002B (PLUS SIGN)
+-- | or the code unit 0x002D (HYPHEN-MINUS), set \_S\_ to the substring of
+-- | \_S\_ from index 1. 1. Let \_R\_ be ℝ(? ToInt32(\_radix\_)). 1. Let
+-- | \_stripPrefix\_ be \*true\*. 1. If \_R\_ ≠ 0, then 1. If \_R\_ \< 2 or
+-- | \_R\_ \> 36, return \*NaN\*. 1. If \_R\_ ≠ 16, set \_stripPrefix\_ to
+-- | \*false\*. 1. Else, 1. Set \_R\_ to 10. 1. If \_stripPrefix\_ is
+-- | \*true\*, then 1. If the length of \_S\_ ≥ 2 and the first two code
+-- | units of \_S\_ are either \*\"0x\"\* or \*\"0X\"\*, then 1. Set \_S\_ to
+-- | the substring of \_S\_ from index 2. 1. Set \_R\_ to 16. 1. If \_S\_
+-- | contains a code unit that is not a radix-\_R\_ digit, let \_end\_ be the
+-- | index within \_S\_ of the first such code unit; else let \_end\_ be the
+-- | length of \_S\_. 1. Let \_Z\_ be the substring of \_S\_ from 0 to
+-- | \_end\_. 1. If \_Z\_ is empty, return \*NaN\*. 1. Let \_mathInt\_ be the
+-- | integer value that is represented by \_Z\_ in radix-\_R\_ notation,
+-- | using the letters **A** through **Z** and **a** through **z** for digits
+-- | with values 10 through 35. (However, if \_R\_ = 10 and \_Z\_ contains
+-- | more than 20 significant digits, every significant digit after the 20th
+-- | may be replaced by a 0 digit, at the option of the implementation; and
+-- | if \_R\_ is not one of 2, 4, 8, 10, 16, or 32, then \_mathInt\_ may be
+-- | an implementation-approximated integer representing the integer value
+-- | denoted by \_Z\_ in radix-\_R\_ notation.) 1. If \_mathInt\_ = 0,
+-- | then 1. If \_sign\_ = -1, return \*-0\*~𝔽~. 1. Return \*+0\*~𝔽~. 1.
+-- | Return 𝔽(\_sign\_ × \_mathInt\_).
+-- | 
+-- | This function may interpret only a leading portion of \_string\_ as an
+-- | integer value; it ignores any code units that cannot be interpreted as
+-- | part of the notation of an integer, and no indication is given that any
+-- | such code units were ignored.
+-- SPEC: L23606-L23606
+-- | # Constructor Properties of the Global Object
+-- SPEC: L23798-L23809
+-- | # The Object Constructor
+-- | 
+-- | The Object constructor:
+-- | 
+-- | - is [%Object%]{.dfn}.
+-- | - is the initial value of the \*\"Object\"\* property of the global
+-- |   object.
+-- | - creates a new ordinary object when called as a constructor.
+-- | - performs a type conversion when called as a function rather than as a
+-- |   constructor.
+-- | - may be used as the value of an \`extends\` clause of a class
+-- |   definition.
+-- SPEC: L23811-L23819
+-- | # Object ( \_value\_ )
+-- | 
+-- | This function performs the following steps when called:
+-- | 
+-- | 1\. If NewTarget is neither \*undefined\* nor the active function
+-- | object, then 1. Return ? OrdinaryCreateFromConstructor(NewTarget,
+-- | \*\"%Object.prototype%\"\*). 1. If \_value\_ is either \*undefined\* or
+-- | \*null\*, return OrdinaryObjectCreate(%Object.prototype%). 1. Return !
+-- | ToObject(\_value\_).
+-- SPEC: L23821-L23827
+-- | # Properties of the Object Constructor
+-- | 
+-- | The Object constructor:
+-- | 
+-- | - has a \[\[Prototype\]\] internal slot whose value is
+-- |   %Function.prototype%.
+-- | - has the following additional properties:
+-- SPEC: L23829-L23847
+-- | # Object.assign ( \_target\_, \...\_sources\_ )
+-- | 
+-- | This function copies the values of all of the enumerable own properties
+-- | from one or more source objects to a \_target\_ object.
+-- | 
+-- | It performs the following steps when called:
+-- | 
+-- | 1\. Let \_to\_ be ? ToObject(\_target\_). 1. If only one argument was
+-- | passed, return \_to\_. 1. For each element \_nextSource\_ of
+-- | \_sources\_, do 1. If \_nextSource\_ is neither \*undefined\* nor
+-- | \*null\*, then 1. Let \_from\_ be ! ToObject(\_nextSource\_). 1. Let
+-- | \_keys\_ be ? \_from\_.\[\[OwnPropertyKeys\]\](). 1. For each element
+-- | \_nextKey\_ of \_keys\_, do 1. Let \_desc\_ be ?
+-- | \_from\_.\[\[GetOwnProperty\]\](\_nextKey\_). 1. If \_desc\_ is not
+-- | \*undefined\* and \_desc\_.\[\[Enumerable\]\] is \*true\*, then 1. Let
+-- | \_propValue\_ be ? Get(\_from\_, \_nextKey\_). 1. Perform ? Set(\_to\_,
+-- | \_nextKey\_, \_propValue\_, \*true\*). 1. Return \_to\_.
+-- | 
+-- | The \*\"length\"\* property of this function is \*2\*~𝔽~.
+-- SPEC: L23849-L23859
+-- | # Object.create ( \_O\_, \_Properties\_ )
+-- | 
+-- | This function creates a new object with a specified prototype.
+-- | 
+-- | It performs the following steps when called:
+-- | 
+-- | 1\. If \_O\_ is not an Object and \_O\_ is not \*null\*, throw a
+-- | \*TypeError\* exception. 1. Let \_obj\_ be
+-- | OrdinaryObjectCreate(\_O\_). 1. If \_Properties\_ is not \*undefined\*,
+-- | then 1. Return ? ObjectDefineProperties(\_obj\_, \_Properties\_). 1.
+-- | Return \_obj\_.
+-- SPEC: L23885-L23895
+-- | # Object.defineProperty ( \_O\_, \_P\_, \_Attributes\_ )
+-- | 
+-- | This function adds an own property and/or updates the attributes of an
+-- | existing own property of an object.
+-- | 
+-- | It performs the following steps when called:
+-- | 
+-- | 1\. If \_O\_ is not an Object, throw a \*TypeError\* exception. 1. Let
+-- | \_key\_ be ? ToPropertyKey(\_P\_). 1. Let \_desc\_ be ?
+-- | ToPropertyDescriptor(\_Attributes\_). 1. Perform ?
+-- | DefinePropertyOrThrow(\_O\_, \_key\_, \_desc\_). 1. Return \_O\_.
+-- SPEC: L23897-L23903
+-- | # Object.entries ( \_O\_ )
+-- | 
+-- | This function performs the following steps when called:
+-- | 
+-- | 1\. Let \_obj\_ be ? ToObject(\_O\_). 1. Let \_entryList\_ be ?
+-- | EnumerableOwnProperties(\_obj\_, \~key+value\~). 1. Return
+-- | CreateArrayFromList(\_entryList\_).
+-- SPEC: L23905-L23911
+-- | # Object.freeze ( \_O\_ )
+-- | 
+-- | This function performs the following steps when called:
+-- | 
+-- | 1\. If \_O\_ is not an Object, return \_O\_. 1. Let \_status\_ be ?
+-- | SetIntegrityLevel(\_O\_, \~frozen\~). 1. If \_status\_ is \*false\*,
+-- | throw a \*TypeError\* exception. 1. Return \_O\_.
+-- SPEC: L23929-L23936
+-- | # Object.getOwnPropertyDescriptor ( \_O\_, \_P\_ )
+-- | 
+-- | This function performs the following steps when called:
+-- | 
+-- | 1\. Let \_obj\_ be ? ToObject(\_O\_). 1. Let \_key\_ be ?
+-- | ToPropertyKey(\_P\_). 1. Let \_desc\_ be ?
+-- | \_obj\_.\[\[GetOwnProperty\]\](\_key\_). 1. Return
+-- | FromPropertyDescriptor(\_desc\_).
+-- SPEC: L23963-L23970
+-- | # GetOwnPropertyKeys ( \_O\_: an ECMAScript language value, \_type\_: \~string\~ or \~symbol\~, ): either a normal completion containing a List of property keys or a throw completion
+-- | 
+-- | 1\. Let \_obj\_ be ? ToObject(\_O\_). 1. Let \_keys\_ be ?
+-- | \_obj\_.\[\[OwnPropertyKeys\]\](). 1. Let \_nameList\_ be a new empty
+-- | List. 1. For each element \_nextKey\_ of \_keys\_, do 1. If \_nextKey\_
+-- | is a Symbol and \_type\_ is \~symbol\~, or if \_nextKey\_ is a String
+-- | and \_type\_ is \~string\~, then 1. Append \_nextKey\_ to
+-- | \_nameList\_. 1. Return \_nameList\_.
+-- SPEC: L23972-L23977
+-- | # Object.getPrototypeOf ( \_O\_ )
+-- | 
+-- | This function performs the following steps when called:
+-- | 
+-- | 1\. Let \_obj\_ be ? ToObject(\_O\_). 1. Return ?
+-- | \_obj\_.\[\[GetPrototypeOf\]\]().
+-- SPEC: L24004-L24009
+-- | # Object.hasOwn ( \_O\_, \_P\_ )
+-- | 
+-- | This function performs the following steps when called:
+-- | 
+-- | 1\. Let \_obj\_ be ? ToObject(\_O\_). 1. Let \_key\_ be ?
+-- | ToPropertyKey(\_P\_). 1. Return ? HasOwnProperty(\_obj\_, \_key\_).
+-- SPEC: L24011-L24015
+-- | # Object.is ( \_value1\_, \_value2\_ )
+-- | 
+-- | This function performs the following steps when called:
+-- | 
+-- | 1\. Return SameValue(\_value1\_, \_value2\_).
+-- SPEC: L24017-L24022
+-- | # Object.isExtensible ( \_O\_ )
+-- | 
+-- | This function performs the following steps when called:
+-- | 
+-- | 1\. If \_O\_ is not an Object, return \*false\*. 1. Return ?
+-- | IsExtensible(\_O\_).
+-- SPEC: L24038-L24044
+-- | # Object.keys ( \_O\_ )
+-- | 
+-- | This function performs the following steps when called:
+-- | 
+-- | 1\. Let \_obj\_ be ? ToObject(\_O\_). 1. Let \_keyList\_ be ?
+-- | EnumerableOwnProperties(\_obj\_, \~key\~). 1. Return
+-- | CreateArrayFromList(\_keyList\_).
+-- SPEC: L24088-L24097
+-- | # Properties of the Object Prototype Object
+-- | 
+-- | The [Object prototype object]{.dfn}:
+-- | 
+-- | - is [%Object.prototype%]{.dfn}.
+-- | - has an \[\[Extensible\]\] internal slot whose value is \*true\*.
+-- | - has the internal methods defined for ordinary objects, except for the
+-- |   \[\[SetPrototypeOf\]\] method, which is as defined in . (Thus, it is
+-- |   an immutable prototype exotic object.)
+-- | - has a \[\[Prototype\]\] internal slot whose value is \*null\*.
+-- SPEC: L24103-L24115
+-- | # Object.prototype.hasOwnProperty ( \_V\_ )
+-- | 
+-- | This method performs the following steps when called:
+-- | 
+-- | 1\. \[id=\"step-hasownproperty-topropertykey\"\] Let \_P\_ be ?
+-- | ToPropertyKey(\_V\_). 1. \[id=\"step-hasownproperty-toobject\"\] Let
+-- | \_O\_ be ? ToObject(\*this\* value). 1. Return ? HasOwnProperty(\_O\_,
+-- | \_P\_).
+-- | 
+-- | The ordering of steps and is chosen to ensure that any exception that
+-- | would have been thrown by step in previous editions of this
+-- | specification will continue to be thrown even if the \*this\* value is
+-- | \*undefined\* or \*null\*.
+-- SPEC: L24168-L24201
+-- | # Object.prototype.toString ( )
+-- | 
+-- | This method performs the following steps when called:
+-- | 
+-- | 1\. If the \*this\* value is \*undefined\*, return \*\"\[object
+-- | Undefined\]\"\*. 1. If the \*this\* value is \*null\*, return
+-- | \*\"\[object Null\]\"\*. 1. Let \_O\_ be ! ToObject(\*this\* value). 1.
+-- | Let \_isArray\_ be ? IsArray(\_O\_). 1. If \_isArray\_ is \*true\*, let
+-- | \_builtinTag\_ be \*\"Array\"\*. 1. Else if \_O\_ has a
+-- | \[\[ParameterMap\]\] internal slot, let \_builtinTag\_ be
+-- | \*\"Arguments\"\*. 1. Else if \_O\_ has a \[\[Call\]\] internal method,
+-- | let \_builtinTag\_ be \*\"Function\"\*. 1. Else if \_O\_ has an
+-- | \[\[ErrorData\]\] internal slot, let \_builtinTag\_ be \*\"Error\"\*. 1.
+-- | Else if \_O\_ has a \[\[BooleanData\]\] internal slot, let
+-- | \_builtinTag\_ be \*\"Boolean\"\*. 1. Else if \_O\_ has a
+-- | \[\[NumberData\]\] internal slot, let \_builtinTag\_ be
+-- | \*\"Number\"\*. 1. Else if \_O\_ has a \[\[StringData\]\] internal slot,
+-- | let \_builtinTag\_ be \*\"String\"\*. 1. Else if \_O\_ has a
+-- | \[\[DateValue\]\] internal slot, let \_builtinTag\_ be \*\"Date\"\*. 1.
+-- | Else if \_O\_ has a \[\[RegExpMatcher\]\] internal slot, let
+-- | \_builtinTag\_ be \*\"RegExp\"\*. 1. Else, let \_builtinTag\_ be
+-- | \*\"Object\"\*. 1. Let \_tag\_ be ? Get(\_O\_, %Symbol.toStringTag%). 1.
+-- | If \_tag\_ is not a String, set \_tag\_ to \_builtinTag\_. 1. Return the
+-- | string-concatenation of \*\"\[object \"\*, \_tag\_, and \*\"\]\"\*.
+-- | 
+-- | Historically, this method was occasionally used to access the String
+-- | value of the \[\[Class\]\] internal slot that was used in previous
+-- | editions of this specification as a nominal type tag for various
+-- | built-in objects. The above definition of \`toString\` preserves
+-- | compatibility for legacy code that uses \`toString\` as a test for those
+-- | specific kinds of built-in objects. It does not provide a reliable type
+-- | testing mechanism for other kinds of built-in or program defined
+-- | objects. In addition, programs can use %Symbol.toStringTag% in ways that
+-- | will invalidate the reliability of such legacy type tests.
+-- SPEC: L24203-L24207
+-- | # Object.prototype.valueOf ( )
+-- | 
+-- | This method performs the following steps when called:
+-- | 
+-- | 1\. Return ? ToObject(\*this\* value).
+-- SPEC: L24293-L24312
+-- | # The Function Constructor
+-- | 
+-- | The Function constructor:
+-- | 
+-- | - is [%Function%]{.dfn}.
+-- | - is the initial value of the \*\"Function\"\* property of the global
+-- |   object.
+-- | - creates and initializes a new function object when called as a
+-- |   function rather than as a constructor. Thus the function call
+-- |   \`Function(...)\` is equivalent to the object creation expression
+-- |   \`new Function(...)\` with the same arguments.
+-- | - may be used as the value of an \`extends\` clause of a class
+-- |   definition. Subclass constructors that intend to inherit the specified
+-- |   Function behaviour must include a \`super\` call to the Function
+-- |   constructor to create and initialize a subclass instance with the
+-- |   internal slots necessary for built-in function behaviour. All
+-- |   ECMAScript syntactic forms for defining function objects create
+-- |   instances of Function. There is no syntactic means to create instances
+-- |   of Function subclasses except for the built-in GeneratorFunction,
+-- |   AsyncFunction, and AsyncGeneratorFunction subclasses.
+-- SPEC: L24440-L24457
+-- | # Properties of the Function Prototype Object
+-- | 
+-- | The [Function prototype object]{.dfn}:
+-- | 
+-- | - is [%Function.prototype%]{.dfn}.
+-- | - is itself a built-in function object.
+-- | - accepts any arguments and returns \*undefined\* when invoked.
+-- | - does not have a \[\[Construct\]\] internal method; it cannot be used
+-- |   as a constructor with the \`new\` operator.
+-- | - has a \[\[Prototype\]\] internal slot whose value is
+-- |   %Object.prototype%.
+-- | - does not have a \*\"prototype\"\* property.
+-- | - has a \*\"length\"\* property whose value is \*+0\*~𝔽~.
+-- | - has a \*\"name\"\* property whose value is the empty String.
+-- | 
+-- | The Function prototype object is specified to be a function object to
+-- | ensure compatibility with ECMAScript code that was created prior to the
+-- | ECMAScript 2015 specification.
+-- SPEC: L24459-L24481
+-- | # Function.prototype.apply ( \_thisArg\_, \_argArray\_ )
+-- | 
+-- | This method performs the following steps when called:
+-- | 
+-- | 1\. Let \_func\_ be the \*this\* value. 1. If IsCallable(\_func\_) is
+-- | \*false\*, throw a \*TypeError\* exception. 1. If \_argArray\_ is either
+-- | \*undefined\* or \*null\*, then 1. Perform PrepareForTailCall(). 1.
+-- | Return ? Call(\_func\_, \_thisArg\_). 1. Let \_argList\_ be ?
+-- | CreateListFromArrayLike(\_argArray\_). 1. Perform
+-- | PrepareForTailCall(). 1. \[id=\"step-function-proto-apply-call\"\]
+-- | Return ? Call(\_func\_, \_thisArg\_, \_argList\_).
+-- | 
+-- | The \_thisArg\_ value is passed without modification as the \*this\*
+-- | value. This is a change from Edition 3, where an \*undefined\* or
+-- | \*null\* \_thisArg\_ is replaced with the global object and ToObject is
+-- | applied to all other values and that result is passed as the \*this\*
+-- | value. Even though the \_thisArg\_ is passed without modification,
+-- | non-strict functions still perform these transformations upon entry to
+-- | the function.
+-- | 
+-- | If \_func\_ is either an arrow function or a bound function exotic
+-- | object, then the \_thisArg\_ will be ignored by the function
+-- | \[\[Call\]\] in step .
+-- SPEC: L24511-L24530
+-- | # Function.prototype.call ( \_thisArg\_, \...\_args\_ )
+-- | 
+-- | This method performs the following steps when called:
+-- | 
+-- | 1\. Let \_func\_ be the \*this\* value. 1. If IsCallable(\_func\_) is
+-- | \*false\*, throw a \*TypeError\* exception. 1. Perform
+-- | PrepareForTailCall(). 1. \[id=\"step-function-proto-call-call\"\] Return
+-- | ? Call(\_func\_, \_thisArg\_, \_args\_).
+-- | 
+-- | The \_thisArg\_ value is passed without modification as the \*this\*
+-- | value. This is a change from Edition 3, where an \*undefined\* or
+-- | \*null\* \_thisArg\_ is replaced with the global object and ToObject is
+-- | applied to all other values and that result is passed as the \*this\*
+-- | value. Even though the \_thisArg\_ is passed without modification,
+-- | non-strict functions still perform these transformations upon entry to
+-- | the function.
+-- | 
+-- | If \_func\_ is either an arrow function or a bound function exotic
+-- | object, then the \_thisArg\_ will be ignored by the function
+-- | \[\[Call\]\] in step .
+-- SPEC: L24669-L24684
+-- | # The Boolean Constructor
+-- | 
+-- | The Boolean constructor:
+-- | 
+-- | - is [%Boolean%]{.dfn}.
+-- | - is the initial value of the \*\"Boolean\"\* property of the global
+-- |   object.
+-- | - creates and initializes a new Boolean object when called as a
+-- |   constructor.
+-- | - performs a type conversion when called as a function rather than as a
+-- |   constructor.
+-- | - may be used as the value of an \`extends\` clause of a class
+-- |   definition. Subclass constructors that intend to inherit the specified
+-- |   Boolean behaviour must include a \`super\` call to the Boolean
+-- |   constructor to create and initialize the subclass instance with a
+-- |   \[\[BooleanData\]\] internal slot.
+-- SPEC: L24726-L24731
+-- | # Boolean.prototype.toString ( )
+-- | 
+-- | This method performs the following steps when called:
+-- | 
+-- | 1\. Let \_b\_ be ? ThisBooleanValue(\*this\* value). 1. If \_b\_ is
+-- | \*true\*, return \*\"true\"\*. 1. Return \*\"false\"\*.
+-- SPEC: L24733-L24737
+-- | # Boolean.prototype.valueOf ( )
+-- | 
+-- | This method performs the following steps when called:
+-- | 
+-- | 1\. Return ? ThisBooleanValue(\*this\* value).
+-- SPEC: L25035-L25050
+-- | # The Error Constructor
+-- | 
+-- | The Error constructor:
+-- | 
+-- | - is [%Error%]{.dfn}.
+-- | - is the initial value of the \*\"Error\"\* property of the global
+-- |   object.
+-- | - creates and initializes a new Error object when called as a function
+-- |   rather than as a constructor. Thus the function call \`Error(...)\` is
+-- |   equivalent to the object creation expression \`new Error(...)\` with
+-- |   the same arguments.
+-- | - may be used as the value of an \`extends\` clause of a class
+-- |   definition. Subclass constructors that intend to inherit the specified
+-- |   Error behaviour must include a \`super\` call to the Error constructor
+-- |   to create and initialize subclass instances with an \[\[ErrorData\]\]
+-- |   internal slot.
+-- SPEC: L25385-L25400
+-- | # The Number Constructor
+-- | 
+-- | The Number constructor:
+-- | 
+-- | - is [%Number%]{.dfn}.
+-- | - is the initial value of the \*\"Number\"\* property of the global
+-- |   object.
+-- | - creates and initializes a new Number object when called as a
+-- |   constructor.
+-- | - performs a type conversion when called as a function rather than as a
+-- |   constructor.
+-- | - may be used as the value of an \`extends\` clause of a class
+-- |   definition. Subclass constructors that intend to inherit the specified
+-- |   Number behaviour must include a \`super\` call to the Number
+-- |   constructor to create and initialize the subclass instance with a
+-- |   \[\[NumberData\]\] internal slot.
+-- SPEC: L25422-L25430
+-- | # Number.EPSILON
+-- | 
+-- | The value of \`Number.EPSILON\` is the Number value for the magnitude of
+-- | the difference between 1 and the smallest value greater than 1 that is
+-- | representable as a Number value, which is approximately
+-- | 2.2204460492503130808472633361816 × 10^-16^.
+-- | 
+-- | This property has the attributes { \[\[Writable\]\]: \*false\*,
+-- | \[\[Enumerable\]\]: \*false\*, \[\[Configurable\]\]: \*false\* }.
+-- SPEC: L25432-L25437
+-- | # Number.isFinite ( \_number\_ )
+-- | 
+-- | This function performs the following steps when called:
+-- | 
+-- | 1\. If \_number\_ is not a Number, return \*false\*. 1. If \_number\_ is
+-- | not finite, return \*false\*. 1. Return \*true\*.
+-- SPEC: L25439-L25444
+-- | # Number.isInteger ( \_number\_ )
+-- | 
+-- | This function performs the following steps when called:
+-- | 
+-- | 1\. If \_number\_ is an integral Number, return \*true\*. 1. Return
+-- | \*false\*.
+-- SPEC: L25446-L25455
+-- | # Number.isNaN ( \_number\_ )
+-- | 
+-- | This function performs the following steps when called:
+-- | 
+-- | 1\. If \_number\_ is not a Number, return \*false\*. 1. If \_number\_ is
+-- | \*NaN\*, return \*true\*. 1. Return \*false\*.
+-- | 
+-- | This function differs from the global isNaN function () in that it does
+-- | not convert its argument to a Number before determining whether it is
+-- | \*NaN\*.
+-- SPEC: L25524-L25529
+-- | # Number.NaN
+-- | 
+-- | The value of \`Number.NaN\` is \*NaN\*.
+-- | 
+-- | This property has the attributes { \[\[Writable\]\]: \*false\*,
+-- | \[\[Enumerable\]\]: \*false\*, \[\[Configurable\]\]: \*false\* }.
+-- SPEC: L25561-L25581
+-- | # Properties of the Number Prototype Object
+-- | 
+-- | The [Number prototype object]{.dfn}:
+-- | 
+-- | - is [%Number.prototype%]{.dfn}.
+-- | - is an ordinary object.
+-- | - is itself a Number object; it has a \[\[NumberData\]\] internal slot
+-- |   with the value \*+0\*~𝔽~.
+-- | - has a \[\[Prototype\]\] internal slot whose value is
+-- |   %Object.prototype%.
+-- | 
+-- | Unless explicitly stated otherwise, the methods of the Number prototype
+-- | object defined below are not generic and the \*this\* value passed to
+-- | them must be either a Number value or an object that has a
+-- | \[\[NumberData\]\] internal slot that has been initialized to a Number
+-- | value.
+-- | 
+-- | The phrase "this Number value" within the specification of a method
+-- | refers to the result returned by calling the abstract operation
+-- | ThisNumberValue with the \*this\* value of the method invocation passed
+-- | as the argument.
+-- SPEC: L25745-L25763
+-- | # Number.prototype.toString ( \[ \_radix\_ \] )
+-- | 
+-- | The optional \_radix\_ should be an integral Number value in the
+-- | inclusive interval from \*2\*~𝔽~ to \*36\*~𝔽~. If \_radix\_ is
+-- | \*undefined\* then \*10\*~𝔽~ is used as the value of \_radix\_.
+-- | 
+-- | This method performs the following steps when called:
+-- | 
+-- | 1\. Let \_x\_ be ? ThisNumberValue(\*this\* value). 1. If \_radix\_ is
+-- | \*undefined\*, let \_radixMV\_ be 10. 1. Else, let \_radixMV\_ be ?
+-- | ToIntegerOrInfinity(\_radix\_). 1. If \_radixMV\_ is not in the
+-- | inclusive interval from 2 to 36, throw a \*RangeError\* exception. 1.
+-- | Return Number::toString(\_x\_, \_radixMV\_).
+-- | 
+-- | This method is not generic; it throws a \*TypeError\* exception if its
+-- | \*this\* value is not a Number or a Number object. Therefore, it cannot
+-- | be transferred to other kinds of objects for use as a method.
+-- | 
+-- | The \*\"length\"\* property of this method is \*1\*~𝔽~.
+-- SPEC: L26049-L26059
+-- | # Math.abs ( \_x\_ )
+-- | 
+-- | This function returns the absolute value of \_x\_; the result has the
+-- | same magnitude as \_x\_ but has positive sign.
+-- | 
+-- | It performs the following steps when called:
+-- | 
+-- | 1\. Let \_n\_ be ? ToNumber(\_x\_). 1. If \_n\_ is \*NaN\*, return
+-- | \*NaN\*. 1. If \_n\_ is \*-0\*~𝔽~, return \*+0\*~𝔽~. 1. If \_n\_ is
+-- | \*-∞\*~𝔽~, return \*+∞\*~𝔽~. 1. If \_n\_ \< \*-0\*~𝔽~, return -\_n\_. 1.
+-- | Return \_n\_.
+-- SPEC: L26277-L26292
+-- | # Math.floor ( \_x\_ )
+-- | 
+-- | This function returns the greatest (closest to +∞) integral Number value
+-- | that is not greater than \_x\_. If \_x\_ is already an integral Number,
+-- | the result is \_x\_.
+-- | 
+-- | It performs the following steps when called:
+-- | 
+-- | 1\. Let \_n\_ be ? ToNumber(\_x\_). 1. If \_n\_ is not finite or \_n\_
+-- | is either \*+0\*~𝔽~ or \*-0\*~𝔽~, return \_n\_. 1. If \_n\_ \< \*1\*~𝔽~
+-- | and \_n\_ \> \*+0\*~𝔽~, return \*+0\*~𝔽~. 1. If \_n\_ is an integral
+-- | Number, return \_n\_. 1. Return the greatest (closest to +∞) integral
+-- | Number value that is not greater than \_n\_.
+-- | 
+-- | The value of \`Math.floor(x)\` is the same as the value of
+-- | \`-Math.ceil(-x)\`.
+-- SPEC: L26419-L26438
+-- | # Math.max ( \...\_args\_ )
+-- | 
+-- | Given zero or more arguments, this function calls ToNumber on each of
+-- | the arguments and returns the largest of the resulting values.
+-- | 
+-- | It performs the following steps when called:
+-- | 
+-- | 1\. Let \_coerced\_ be a new empty List. 1. For each element \_arg\_ of
+-- | \_args\_, do 1. Let \_n\_ be ? ToNumber(\_arg\_). 1. Append \_n\_ to
+-- | \_coerced\_. 1. Let \_highest\_ be \*-∞\*~𝔽~. 1. For each element
+-- | \_number\_ of \_coerced\_, do 1. If \_number\_ is \*NaN\*, return
+-- | \*NaN\*. 1. If \_number\_ is \*+0\*~𝔽~ and \_highest\_ is \*-0\*~𝔽~, set
+-- | \_highest\_ to \*+0\*~𝔽~. 1. If \_number\_ \> \_highest\_, set
+-- | \_highest\_ to \_number\_. 1. Return \_highest\_.
+-- | 
+-- | The comparison of values to determine the largest value is done using
+-- | the IsLessThan algorithm except that \*+0\*~𝔽~ is considered to be
+-- | larger than \*-0\*~𝔽~.
+-- | 
+-- | The \*\"length\"\* property of this function is \*2\*~𝔽~.
+
 end VerifiedJS.Source

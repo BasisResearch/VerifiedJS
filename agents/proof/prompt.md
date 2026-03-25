@@ -1,61 +1,115 @@
-# proof — Close ExprAddrWF sorries (44 mechanical) then remaining CC/ANF
+# proof — Add EnvAddrWF + HeapAddrWF to CC_SimRel, close remaining CC sorries
 
-You own Proofs/*.lean and compiler passes. HeapCorr is DONE. ExprAddrWF is DEFINED and in CC_SimRel. ExprAddrWF_mono is PROVED.
+You own Proofs/*.lean and compiler passes. ExprAddrWF is defined and in CC_SimRel. ExprAddrWF_mono is proved.
 
-## TASK 0 (DO FIRST): Close 44 `sorry /- ExprAddrWF -/` sites
+## TASK 0 (DO FIRST): Add EnvAddrWF and HeapAddrWF to CC_SimRel
 
-There are ~44 instances of `sorry /- ExprAddrWF -/` in ClosureConvertCorrect.lean. Two patterns:
+The 4 remaining `sorry /- ExprAddrWF -/` (L1063, L1768, L2173, L4222) need values from env/heap to satisfy ValueAddrWF. You must add two new invariants to CC_SimRel.
 
-### Pattern A — Tuple positions (e.g. L989, L1063, L1120, L1310, L1451, ...)
-These fill the ExprAddrWF slot in a CC_SimRel tuple. The sorry is in term mode inside `exact ⟨..., sorry /- ExprAddrWF -/, ...⟩`.
+### Step 1: Add definitions (after ExprAddrWF_mono, ~L683)
 
-**Sub-expression case** (heap unchanged, result is sub-expression of `sc.expr`):
-Replace `sorry /- ExprAddrWF -/` with:
 ```lean
-(by have h := hexprwf; rw [hsc] at h; simp [ExprAddrWF] at h; rw [hsc'_expr]; exact h)
-```
-For nested sub-expressions, project: `exact h.1`, `exact h.2`, `exact h.2.1`, `exact h.2.2`
+private def EnvAddrWF (env : Core.Env) (heapSize : Nat) : Prop :=
+  ∀ name v, env.lookup name = some v → ValueAddrWF v heapSize
 
-**Literal result** (result is `.lit v` for non-object):
+private def HeapValuesWF (heap : Core.Heap) : Prop :=
+  ∀ addr, addr < heap.objects.size →
+    ∀ props, heap.objects[addr]? = some props →
+      ∀ kv, kv ∈ props → ValueAddrWF kv.2 heap.objects.size
+
+private theorem EnvAddrWF_mono {env : Core.Env} {n m : Nat}
+    (h : EnvAddrWF env n) (hle : n ≤ m) : EnvAddrWF env m :=
+  fun name v hlookup => ValueAddrWF_mono (h name v hlookup) hle
+
+private theorem EnvAddrWF_extend {env : Core.Env} {n : Nat}
+    (h : EnvAddrWF env n) (name : String) (v : Core.Value)
+    (hv : ValueAddrWF v n) : EnvAddrWF (env.extend name v) n := by
+  intro n' v' hlookup
+  simp [Core.Env.extend, Core.Env.lookup] at hlookup
+  cases hlookup with
+  | inl heq => exact heq.2 ▸ hv
+  | inr hother => exact h n' v' hother
+
+private theorem EnvAddrWF_empty (n : Nat) : EnvAddrWF Core.Env.empty n := by
+  intro name v h; simp [Core.Env.empty, Core.Env.lookup] at h
+```
+
+### Step 2: Modify CC_SimRel (L687-695)
+
+Change from:
 ```lean
-(by simp [ExprAddrWF, ValueAddrWF])
+private def CC_SimRel (_s : Core.Program) (_t : Flat.Program)
+    (sf : Flat.State) (sc : Core.State) : Prop :=
+  sf.trace = sc.trace ∧
+  EnvCorr sc.env sf.env ∧
+  HeapCorr sc.heap sf.heap ∧
+  noCallFrameReturn sc.expr = true ∧
+  ExprAddrWF sc.expr sc.heap.objects.size ∧
+  ∃ (scope : List String) (envVar : String) (envMap : Flat.EnvMapping) (st st' : Flat.CCState),
+    (sf.expr, st') = Flat.convertExpr sc.expr scope envVar envMap st
 ```
 
-**New heap object** (result is `.lit (.object addr)` where `addr = old heap size`):
+To:
 ```lean
-(by simp [ExprAddrWF, ValueAddrWF]; omega)
+private def CC_SimRel (_s : Core.Program) (_t : Flat.Program)
+    (sf : Flat.State) (sc : Core.State) : Prop :=
+  sf.trace = sc.trace ∧
+  EnvCorr sc.env sf.env ∧
+  HeapCorr sc.heap sf.heap ∧
+  noCallFrameReturn sc.expr = true ∧
+  ExprAddrWF sc.expr sc.heap.objects.size ∧
+  EnvAddrWF sc.env sc.heap.objects.size ∧
+  ∃ (scope : List String) (envVar : String) (envMap : Flat.EnvMapping) (st st' : Flat.CCState),
+    (sf.expr, st') = Flat.convertExpr sc.expr scope envVar envMap st
 ```
 
-### Pattern B — IH call arguments (e.g. L1491, L1649, L1820, L1881, ...)
-These pass ExprAddrWF to `ev_sub` or `ih_depth`. VERIFIED at L1491 — all 3 tactics close:
+Note: Only adding EnvAddrWF (not HeapValuesWF). L1768/L2173 can be closed differently — see Step 4.
+
+### Step 3: Fix closureConvert_init_related (L697-717)
+
+After `refine ⟨rfl, ?_, HeapCorr_refl _, h_wf, ?_, ?_, ?_⟩` add:
 ```lean
-(by have h := hexprwf; rw [hsc] at h; simp [ExprAddrWF] at h; exact h.1)
-(by have h := hexprwf; rw [hsc] at h; simp [ExprAddrWF] at h; exact h)
-(by simp [ExprAddrWF, ValueAddrWF]; omega)
+  · -- EnvAddrWF: initial env has "console" → .object 0, heap has 1 object
+    exact EnvAddrWF_extend (EnvAddrWF_empty 1) "console" (.object 0) (by simp [ValueAddrWF]; omega)
 ```
 
-### WORKFLOW: For each sorry site:
-1. `lean_multi_attempt` with these 5 tactics (omit `by` if already in tactic mode):
-   ```
-   ["(by have h := hexprwf; rw [hsc] at h; simp [ExprAddrWF] at h; exact h)",
-    "(by have h := hexprwf; rw [hsc] at h; simp [ExprAddrWF] at h; exact h.1)",
-    "(by have h := hexprwf; rw [hsc] at h; simp [ExprAddrWF] at h; exact h.2)",
-    "(by simp [ExprAddrWF, ValueAddrWF])",
-    "(by simp [ExprAddrWF, ValueAddrWF]; omega)"]
-   ```
-2. Replace `sorry /- ExprAddrWF -/` with the one that succeeds
-3. Move to next sorry site
+### Step 4: Fix all CC_SimRel tuple sites
 
-## TASK 1: Remaining CC sorries (5 non-ExprAddrWF)
+The tuple now has 7 fields: `⟨trace, envCorr, heapCorr, noCallFrame, exprAddrWF, envAddrWF, ∃scope...⟩`
 
-After ExprAddrWF, only these remain:
-- **L1003**: captured variable case (needs getEnv proof)
-- **L1713**: call (needs env/heap/funcs correspondence)
-- **L1714**: newObj (needs env/heap correspondence)
-- **L3153**: objectLit (needs heap with allocObjectWithProps)
-- **L3154**: arrayLit (needs heap with allocObjectWithProps)
-- **L3155**: functionDef (needs env/heap/funcs + CC state)
-- **L4812**: init sorry in closureConvert_init_related
+For MOST cases (env unchanged, heap unchanged), just add `henvwf` (the destructured EnvAddrWF hypothesis). When destructuring CC_SimRel, add `henvwf` in position 6:
+```lean
+obtain ⟨htrace, henvCorr, hheap, hncfr, hexprwf, henvwf, scope, envVar, envMap, st, st', hconv⟩ := hrel
+```
+
+**When building the result tuple**, add `henvwf` after the ExprAddrWF field. For cases where:
+- **Env unchanged, heap unchanged**: `henvwf`
+- **Env extended with value v** (let binding): `EnvAddrWF_extend henvwf name v (by ...)` where `by ...` proves `ValueAddrWF v sc.heap.objects.size`
+- **Heap grows** (allocFreshObject): `EnvAddrWF_mono henvwf (by omega)`
+
+### Step 5: Close the 4 ExprAddrWF sorries
+
+**L1063** (var captured, `cv` from env): Replace `sorry /- ExprAddrWF -/` with:
+```lean
+(by simp [ExprAddrWF]; exact henvwf name cv hcenv)
+```
+
+**L4222** (this found, `cv` from env): Replace `sorry /- ExprAddrWF -/` with:
+```lean
+(by simp [ExprAddrWF]; exact henvwf "this" cv hcenv)
+```
+
+**L1768** (getProp result from heap): The value `v` comes from `sc.heap`. Use `HeapCorr` + the fact that Core.step? preserves the heap object. The result expression is `.lit v` where `v` came from a property lookup. Since the heap didn't change and the original expression had ExprAddrWF, the object address was valid. The property value's ValueAddrWF needs to be established from the heap structure. Try:
+```lean
+(by simp [ExprAddrWF]; cases v <;> simp [ValueAddrWF] <;> try rfl; sorry /- HeapValuesWF -/)
+```
+If this doesn't close fully, you may need HeapValuesWF in CC_SimRel as well. Check `lean_goal` first.
+
+**L2173** (getIndex result from heap): Same pattern as L1768.
+
+## TASK 1: Close L1003 (captured var multi-step)
+
+L1003 is `sorry` for the captured variable case. Core does `.var name` → looks up env → `.lit cv`. Flat does `.getEnv (.var envVar) idx` which is multi-step. This needs to show the Flat multi-step execution matches. Use `lean_goal` at L1003 to see what's needed.
 
 ## TASK 2: ANF sorries (2 remain)
 
@@ -66,3 +120,4 @@ After ExprAddrWF, only these remain:
 - `bash scripts/lake_build_concise.sh` to build (only ONCE at end)
 - lean_goal + lean_multi_attempt BEFORE editing
 - Log strategy + progress to agents/proof/log.md
+- DO NOT break the build — if CC_SimRel change causes cascading errors, fix them ALL before building
