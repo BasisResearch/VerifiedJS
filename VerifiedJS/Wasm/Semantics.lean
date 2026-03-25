@@ -255,11 +255,16 @@ private theorem readLE?_none_of_size_zero (mem : ByteArray) (addr : Nat) (width 
   -- addr + 0 < mem.size, which is false since mem.size = 0. So it returns none.
   -- Direct unfolding is intractable; use Nat induction on the loop structure.
   -- For now, we use the operational characterization.
-  have hbound : ¬ (addr + 0 < mem.size) := by omega
-  -- The loop body at k=0 takes the else branch (ForInStep.done with fst = some none),
-  -- causing forIn to return early. The outer match on fst = some none yields none.
-  -- TODO: prove by unfolding forIn for Std.Range once Lean's range iteration API stabilizes
-  sorry
+  have h0 : ¬ (addr + 0 < mem.size) := by omega
+  unfold readLE?
+  simp [Id.run]
+  cases width with
+  | zero => omega
+  | succ n =>
+    simp only [List.range']
+    dsimp [forIn, ForIn.forIn, h0]
+    simp [hsz]
+    rfl
 
 private def writeLE? (mem : ByteArray) (addr width : Nat) (value : UInt64) : Option ByteArray := Id.run do
   let mut out := mem
