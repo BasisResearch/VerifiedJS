@@ -7808,8 +7808,7 @@ theorem step_sim (irmod : IRModule) (wmod : Module) :
                           hlabel_content := hrel.hlabel_content
                           hframes_one := hrel.hframes_one }⟩
             · exact hf.elim
-          | .f64 => sorry
-          | .i64 => sorry
+          | .f64 | .i64 => sorry -- f64/i64 load: IR reads 8 bytes, Wasm reads 8 bytes — same bridge
       | .store t offset =>
           -- memory store
           sorry
