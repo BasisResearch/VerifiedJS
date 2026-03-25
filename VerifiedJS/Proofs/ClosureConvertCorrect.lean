@@ -761,8 +761,7 @@ private theorem closureConvert_init_related
   · -- EnvAddrWF: initial env has "console" → .object 0, heap has 1 object
     exact EnvAddrWF_extend (EnvAddrWF_empty 1) "console" (.object 0) (by simp [ValueAddrWF])
   · -- HeapValuesWF: initial heap has 1 object with empty props
-    intro addr haddr props hprops kv hkv
-    simp at hprops; subst hprops; exact absurd hkv (List.not_mem_nil _)
+    intro _ _ _ _ _ hkv; simp_all
   · unfold Flat.closureConvert at h
     simp only [Except.ok.injEq] at h
     let st2 := (Flat.convertFuncDefs s.functions.toList Flat.CCState.empty).fst.foldl
