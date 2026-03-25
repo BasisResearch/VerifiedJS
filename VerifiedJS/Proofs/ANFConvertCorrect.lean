@@ -667,11 +667,11 @@ private theorem normalizeExpr_ignored_bypass_trivial :
     | «this» => simp only [ANF.normalizeExpr] at h; exact h
     | seq _ _ => exfalso; simp [Flat.Expr.depth] at hd
     | _ => exfalso; exact absurd h (normalizeExpr_compound_not_trivial _ (fun _ => K)
-        (by intro v hc; contradiction) (by intro nm hc; contradiction)
-        (by intro hc; contradiction) (by intro a' b' hc; contradiction) n m tv)
+        (by intro v hc; simp at hc) (by intro nm hc; simp at hc)
+        (by intro hc; simp at hc) (by intro a' b' hc; simp at hc) n m tv)
   | succ d ih =>
     intro e hd K n m tv h
-    cases he : e with
+    cases e with
     | lit v => simp only [ANF.normalizeExpr] at h; cases v <;> simp [ANF.trivialOfFlatValue] at h <;> exact h
     | var _ => simp only [ANF.normalizeExpr] at h; exact h
     | «this» => simp only [ANF.normalizeExpr] at h; exact h
@@ -680,8 +680,8 @@ private theorem normalizeExpr_ignored_bypass_trivial :
       exact ih b (by simp [Flat.Expr.depth] at hd; omega) K n m tv
         (ih a (by simp [Flat.Expr.depth] at hd; omega) _ n m tv h)
     | _ => exfalso; exact absurd h (normalizeExpr_compound_not_trivial _ (fun _ => K)
-        (by intro v hc; contradiction) (by intro nm hc; contradiction)
-        (by intro hc; contradiction) (by intro a' b' hc; contradiction) n m tv)
+        (by intro v hc; simp at hc) (by intro nm hc; simp at hc)
+        (by intro hc; simp at hc) (by intro a' b' hc; simp at hc) n m tv)
 
 /-- A trivial chain: lit, var, this, or seq of trivial chains. -/
 private def isTrivialChain : Flat.Expr → Bool
@@ -740,7 +740,9 @@ private theorem normalizeExpr_trivial_implies_chain :
     | var _ => rfl
     | «this» => rfl
     | seq _ _ => exfalso; simp [Flat.Expr.depth] at hd
-    | _ => exfalso; simp [Flat.Expr.depth] at hd
+    | _ => exfalso; exact absurd h (normalizeExpr_compound_not_trivial _ (fun _ => K)
+        (by intro v hc; simp at hc) (by intro nm hc; simp at hc)
+        (by intro hc; simp at hc) (by intro a' b' hc; simp at hc) n m tv)
   | succ d ih =>
     intro e hd K n m tv h
     cases e with
@@ -757,8 +759,8 @@ private theorem normalizeExpr_trivial_implies_chain :
         exact ih b (by simp [Flat.Expr.depth] at hd; omega) K n m tv h
     | _ =>
       exfalso; exact absurd h (normalizeExpr_compound_not_trivial _ (fun _ => K)
-        (by intro v hc; contradiction) (by intro nm hc; contradiction)
-        (by intro hc; contradiction) (by intro a' b' hc; contradiction) n m tv)
+        (by intro v hc; simp at hc) (by intro nm hc; simp at hc)
+        (by intro hc; simp at hc) (by intro a' b' hc; simp at hc) n m tv)
 
 /-- Contextual stepping: if a is not a value and steps, .seq a b steps with
     the result wrapped. Returns existence with field projections. -/
