@@ -239,22 +239,22 @@ private theorem evalBinary_convertValue (op : Core.BinOp) (a b : Core.Value) :
     simp [Flat.convertValue]
   | eq =>
     simp only [Core.evalBinary, Flat.evalBinary]
-    congr 1; cases a <;> cases b <;> simp [Flat.convertValue, Flat.abstractEq, Core.abstractEq, Flat.toNumber, Core.toNumber] <;> (try cases ‹Bool›) <;> (try cases ‹Bool›) <;> rfl
+    congr 1; cases a <;> cases b <;> simp [Flat.convertValue, Flat.abstractEq, Core.abstractEq, Flat.toNumber, Core.toNumber] <;> first | rfl | (cases ‹Bool› <;> first | rfl | (cases ‹Bool› <;> rfl))
   | neq =>
     simp only [Core.evalBinary, Flat.evalBinary]
-    congr 1; congr 1; cases a <;> cases b <;> simp [Flat.convertValue, Flat.abstractEq, Core.abstractEq, Flat.toNumber, Core.toNumber] <;> (try cases ‹Bool›) <;> (try cases ‹Bool›) <;> rfl
+    congr 1; congr 1; cases a <;> cases b <;> simp [Flat.convertValue, Flat.abstractEq, Core.abstractEq, Flat.toNumber, Core.toNumber] <;> first | rfl | (cases ‹Bool› <;> first | rfl | (cases ‹Bool› <;> rfl))
   | lt =>
     simp only [Core.evalBinary, Flat.evalBinary]
-    congr 1; cases a <;> cases b <;> simp [Flat.convertValue, Flat.abstractLt, Core.abstractLt, Flat.toNumber, Core.toNumber] <;> (try cases ‹Bool›) <;> (try cases ‹Bool›) <;> rfl
+    congr 1; cases a <;> cases b <;> simp [Flat.convertValue, Flat.abstractLt, Core.abstractLt, Flat.toNumber, Core.toNumber] <;> first | rfl | (cases ‹Bool› <;> first | rfl | (cases ‹Bool› <;> rfl))
   | gt =>
     simp only [Core.evalBinary, Flat.evalBinary]
-    congr 1; cases a <;> cases b <;> simp [Flat.convertValue, Flat.abstractLt, Core.abstractLt, Flat.toNumber, Core.toNumber] <;> (try cases ‹Bool›) <;> (try cases ‹Bool›) <;> rfl
+    congr 1; cases a <;> cases b <;> simp [Flat.convertValue, Flat.abstractLt, Core.abstractLt, Flat.toNumber, Core.toNumber] <;> first | rfl | (cases ‹Bool› <;> first | rfl | (cases ‹Bool› <;> rfl))
   | le =>
     simp only [Core.evalBinary, Flat.evalBinary]
-    congr 1; congr 1; cases a <;> cases b <;> simp [Flat.convertValue, Flat.abstractLt, Core.abstractLt, Flat.toNumber, Core.toNumber] <;> (try cases ‹Bool›) <;> (try cases ‹Bool›) <;> rfl
+    congr 1; congr 1; cases a <;> cases b <;> simp [Flat.convertValue, Flat.abstractLt, Core.abstractLt, Flat.toNumber, Core.toNumber] <;> first | rfl | (cases ‹Bool› <;> first | rfl | (cases ‹Bool› <;> rfl))
   | ge =>
     simp only [Core.evalBinary, Flat.evalBinary]
-    congr 1; congr 1; cases a <;> cases b <;> simp [Flat.convertValue, Flat.abstractLt, Core.abstractLt, Flat.toNumber, Core.toNumber] <;> (try cases ‹Bool›) <;> (try cases ‹Bool›) <;> rfl
+    congr 1; congr 1; cases a <;> cases b <;> simp [Flat.convertValue, Flat.abstractLt, Core.abstractLt, Flat.toNumber, Core.toNumber] <;> first | rfl | (cases ‹Bool› <;> first | rfl | (cases ‹Bool› <;> rfl))
   | instanceof =>
     cases a <;> cases b <;> simp [Core.evalBinary, Flat.evalBinary, Flat.convertValue]
   | «in» =>
@@ -456,7 +456,7 @@ private theorem convertExpr_scope_irrelevant (e : Core.Expr)
     rw [convertExprList_scope_irrelevant elems scope1 scope2]
   | functionDef fname params body isAsync isGenerator =>
     -- scope is NOT used: innerScope := params
-    rfl
+    unfold Flat.convertExpr; rfl
   | throw arg =>
     simp only [Flat.convertExpr]
     rw [convertExpr_scope_irrelevant arg scope1 scope2]
@@ -506,7 +506,8 @@ private theorem convertPropList_scope_irrelevant (ps : List (Core.PropName × Co
     simp only [Flat.convertPropList]
     rw [convertExpr_scope_irrelevant pe scope1 scope2]
     rw [convertPropList_scope_irrelevant rest scope1 scope2]
-  termination_by structural ps
+  termination_by sizeOf ps
+  decreasing_by all_goals simp_wf; omega
 
 private theorem convertOptExpr_scope_irrelevant (oe : Option Core.Expr)
     (scope1 scope2 : List String) (envVar : String) (envMap : Flat.EnvMapping) (st : Flat.CCState) :
@@ -651,43 +652,36 @@ private theorem ValueAddrWF_mono {v : Core.Value} {n m : Nat}
     (h : ValueAddrWF v n) (hle : n ≤ m) : ValueAddrWF v m := by
   cases v <;> simp [ValueAddrWF] at * <;> omega
 
-private theorem ExprAddrWF_mono : {e : Core.Expr} → {n m : Nat} →
-    ExprAddrWF e n → (n ≤ m) → ExprAddrWF e m
-  | .lit v, _, _, h, hle => ValueAddrWF_mono h hle
-  | .var _, _, _, _, _ => trivial
-  | .call _ _, _, _, _, _ => trivial
-  | .newObj _ _, _, _, _, _ => trivial
-  | .objectLit _, _, _, _, _ => trivial
-  | .arrayLit _, _, _, _, _ => trivial
-  | .break _, _, _, _, _ => trivial
-  | .continue _, _, _, _, _ => trivial
-  | .return none, _, _, _, _ => trivial
-  | .yield none _, _, _, _, _ => trivial
-  | .this, _, _, _, _ => trivial
-  | .«let» _ init body, _, _, h, hle => ⟨ExprAddrWF_mono h.1 hle, ExprAddrWF_mono h.2 hle⟩
-  | .assign _ value, _, _, h, hle => ExprAddrWF_mono h hle
-  | .«if» cond t el, _, _, h, hle => ⟨ExprAddrWF_mono h.1 hle, ExprAddrWF_mono h.2.1 hle, ExprAddrWF_mono h.2.2 hle⟩
-  | .seq a b, _, _, h, hle => ⟨ExprAddrWF_mono h.1 hle, ExprAddrWF_mono h.2 hle⟩
-  | .getProp obj _, _, _, h, hle => ExprAddrWF_mono h hle
-  | .setProp o _ v, _, _, h, hle => ⟨ExprAddrWF_mono h.1 hle, ExprAddrWF_mono h.2 hle⟩
-  | .getIndex e1 e2, _, _, h, hle => ⟨ExprAddrWF_mono h.1 hle, ExprAddrWF_mono h.2 hle⟩
-  | .setIndex o i v, _, _, h, hle => ⟨ExprAddrWF_mono h.1 hle, ExprAddrWF_mono h.2.1 hle, ExprAddrWF_mono h.2.2 hle⟩
-  | .deleteProp obj _, _, _, h, hle => ExprAddrWF_mono h hle
-  | .typeof arg, _, _, h, hle => ExprAddrWF_mono h hle
-  | .unary _ arg, _, _, h, hle => ExprAddrWF_mono h hle
-  | .binary _ l r, _, _, h, hle => ⟨ExprAddrWF_mono h.1 hle, ExprAddrWF_mono h.2 hle⟩
-  | .functionDef _ _ body _ _, _, _, h, hle => ExprAddrWF_mono h hle
-  | .throw arg, _, _, h, hle => ExprAddrWF_mono h hle
-  | .tryCatch b _ c none, _, _, h, hle => ⟨ExprAddrWF_mono h.1 hle, ExprAddrWF_mono h.2 hle⟩
-  | .tryCatch b _ c (some fe), _, _, h, hle => ⟨ExprAddrWF_mono h.1 hle, ExprAddrWF_mono h.2.1 hle, ExprAddrWF_mono h.2.2 hle⟩
-  | .while_ c b, _, _, h, hle => ⟨ExprAddrWF_mono h.1 hle, ExprAddrWF_mono h.2 hle⟩
-  | .forIn _ o b, _, _, h, hle => ⟨ExprAddrWF_mono h.1 hle, ExprAddrWF_mono h.2 hle⟩
-  | .forOf _ i b, _, _, h, hle => ⟨ExprAddrWF_mono h.1 hle, ExprAddrWF_mono h.2 hle⟩
-  | .return (some arg), _, _, h, hle => ExprAddrWF_mono h hle
-  | .yield (some arg) _, _, _, h, hle => ExprAddrWF_mono h hle
-  | .labeled _ b, _, _, h, hle => ExprAddrWF_mono h hle
-  | .await arg, _, _, h, hle => ExprAddrWF_mono h hle
-  termination_by structural e
+private theorem ExprAddrWF_mono {e : Core.Expr} {n m : Nat}
+    (h : ExprAddrWF e n) (hle : n ≤ m) : ExprAddrWF e m := by
+  induction e generalizing n m with
+  | lit => exact ValueAddrWF_mono h hle
+  | var | call | newObj | objectLit | arrayLit | «break» | «continue» | this => trivial
+  | return oe => cases oe with | none => trivial | some => exact ExprAddrWF_mono h hle
+  | yield oe _ => cases oe with | none => trivial | some => exact ExprAddrWF_mono h hle
+  | «let» _ _ _ ih1 ih2 => exact ⟨ih1 h.1 hle, ih2 h.2 hle⟩
+  | assign _ _ ih => exact ih h hle
+  | «if» _ _ _ ih1 ih2 ih3 => exact ⟨ih1 h.1 hle, ih2 h.2.1 hle, ih3 h.2.2 hle⟩
+  | seq _ _ ih1 ih2 => exact ⟨ih1 h.1 hle, ih2 h.2 hle⟩
+  | getProp _ _ ih => exact ih h hle
+  | setProp _ _ _ ih1 ih2 => exact ⟨ih1 h.1 hle, ih2 h.2 hle⟩
+  | getIndex _ _ ih1 ih2 => exact ⟨ih1 h.1 hle, ih2 h.2 hle⟩
+  | setIndex _ _ _ ih1 ih2 ih3 => exact ⟨ih1 h.1 hle, ih2 h.2.1 hle, ih3 h.2.2 hle⟩
+  | deleteProp _ _ ih => exact ih h hle
+  | typeof _ ih => exact ih h hle
+  | unary _ _ ih => exact ih h hle
+  | binary _ _ _ ih1 ih2 => exact ⟨ih1 h.1 hle, ih2 h.2 hle⟩
+  | functionDef _ _ _ _ _ ih => exact ih h hle
+  | throw _ ih => exact ih h hle
+  | tryCatch b _ c f ih1 _ ih2 ih3 =>
+    cases f with
+    | none => exact ⟨ih1 h.1 hle, ih2 h.2 hle⟩
+    | some => exact ⟨ih1 h.1 hle, ih2 h.2.1 hle, ih3 (by exact h.2.2) hle⟩
+  | while_ _ _ ih1 ih2 => exact ⟨ih1 h.1 hle, ih2 h.2 hle⟩
+  | forIn _ _ _ ih1 ih2 => exact ⟨ih1 h.1 hle, ih2 h.2 hle⟩
+  | forOf _ _ _ ih1 ih2 => exact ⟨ih1 h.1 hle, ih2 h.2 hle⟩
+  | labeled _ _ ih => exact ih h hle
+  | await _ ih => exact ih h hle
 
 private def EnvAddrWF (env : Core.Env) (heapSize : Nat) : Prop :=
   ∀ name v, env.lookup name = some v → ValueAddrWF v heapSize
