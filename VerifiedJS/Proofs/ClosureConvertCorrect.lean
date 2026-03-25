@@ -888,17 +888,22 @@ private theorem closureConvert_step_simulation
         have heqc := (Prod.mk.inj (Option.some.inj hc)).2
         subst heqf; subst heqc
         show sf.trace ++ _ = sc.trace ++ _; rw [htrace]
+    have hsc'_env : sc'.env = sc.env := by
+      have h0 := hcstep
+      rw [show sc = {sc with expr := .«break» label} from by cases sc; simp_all] at h0
+      simp only [Core.step?] at h0
+      cases label <;> (have heq := (Prod.mk.inj (Option.some.inj h0)).2; subst heq; rfl)
+    have hsc'_heap : sc'.heap = sc.heap := by
+      have h0 := hcstep
+      rw [show sc = {sc with expr := .«break» label} from by cases sc; simp_all] at h0
+      simp only [Core.step?] at h0
+      cases label <;> (have h1 := (Prod.mk.inj (Option.some.inj h0)).2; subst h1; rfl)
     have henv' : EnvCorr sc'.env sf'.env := by
       have hsf'_env : sf'.env = sf.env := by
         have h0 := hstep
         rw [show sf = {sf with expr := .«break» label} from by cases sf; simp_all] at h0
         simp only [Flat.step?] at h0
         have heq := (Prod.mk.inj (Option.some.inj h0)).2; subst heq; rfl
-      have hsc'_env : sc'.env = sc.env := by
-        have h0 := hcstep
-        rw [show sc = {sc with expr := .«break» label} from by cases sc; simp_all] at h0
-        simp only [Core.step?] at h0
-        cases label <;> (have heq := (Prod.mk.inj (Option.some.inj h0)).2; subst heq; rfl)
       rw [hsc'_env, hsf'_env]; exact henvCorr
     have hheap' : HeapCorr sc'.heap sf'.heap := by
       have h0 := hstep
@@ -909,11 +914,6 @@ private theorem closureConvert_step_simulation
       rw [show sc = {sc with expr := .«break» label} from by cases sc; simp_all] at h0
       simp only [Core.step?] at h0
       cases label <;> (have h1 := (Prod.mk.inj (Option.some.inj h0)).2; subst h1; exact hheap)
-    have hsc'_heap : sc'.heap = sc.heap := by
-      have h0 := hcstep
-      rw [show sc = {sc with expr := .«break» label} from by cases sc; simp_all] at h0
-      simp only [Core.step?] at h0
-      cases label <;> (have h1 := (Prod.mk.inj (Option.some.inj h0)).2; subst h1; rfl)
     exact ⟨hsf'_trace_eq_sc'_trace, henv', hheap', by rw [hsc'_env, hsc'_heap]; exact henvwf, by rw [hsc'_expr]; simp [noCallFrameReturn], by rw [hsc'_expr]; simp [ExprAddrWF, ValueAddrWF], scope, st', st', by rw [hsc'_expr]; simp [Flat.convertExpr, Flat.convertValue, hsf'_expr]⟩
   | «continue» label =>
     rw [hsc] at hconv; simp only [Flat.convertExpr] at hconv
@@ -954,17 +954,22 @@ private theorem closureConvert_step_simulation
         have heqc := (Prod.mk.inj (Option.some.inj hc)).2
         subst heqf; subst heqc
         show sf.trace ++ _ = sc.trace ++ _; rw [htrace]
+    have hsc'_env : sc'.env = sc.env := by
+      have h0 := hcstep
+      rw [show sc = {sc with expr := .«continue» label} from by cases sc; simp_all] at h0
+      simp only [Core.step?] at h0
+      cases label <;> (have heq := (Prod.mk.inj (Option.some.inj h0)).2; subst heq; rfl)
+    have hsc'_heap : sc'.heap = sc.heap := by
+      have h0 := hcstep
+      rw [show sc = {sc with expr := .«continue» label} from by cases sc; simp_all] at h0
+      simp only [Core.step?] at h0
+      cases label <;> (have h1 := (Prod.mk.inj (Option.some.inj h0)).2; subst h1; rfl)
     have henv' : EnvCorr sc'.env sf'.env := by
       have hsf'_env : sf'.env = sf.env := by
         have h0 := hstep
         rw [show sf = {sf with expr := .«continue» label} from by cases sf; simp_all] at h0
         simp only [Flat.step?] at h0
         have heq := (Prod.mk.inj (Option.some.inj h0)).2; subst heq; rfl
-      have hsc'_env : sc'.env = sc.env := by
-        have h0 := hcstep
-        rw [show sc = {sc with expr := .«continue» label} from by cases sc; simp_all] at h0
-        simp only [Core.step?] at h0
-        cases label <;> (have heq := (Prod.mk.inj (Option.some.inj h0)).2; subst heq; rfl)
       rw [hsc'_env, hsf'_env]; exact henvCorr
     have hheap' : HeapCorr sc'.heap sf'.heap := by
       have h0 := hstep
@@ -975,11 +980,6 @@ private theorem closureConvert_step_simulation
       rw [show sc = {sc with expr := .«continue» label} from by cases sc; simp_all] at h0
       simp only [Core.step?] at h0
       cases label <;> (have h1 := (Prod.mk.inj (Option.some.inj h0)).2; subst h1; exact hheap)
-    have hsc'_heap : sc'.heap = sc.heap := by
-      have h0 := hcstep
-      rw [show sc = {sc with expr := .«continue» label} from by cases sc; simp_all] at h0
-      simp only [Core.step?] at h0
-      cases label <;> (have h1 := (Prod.mk.inj (Option.some.inj h0)).2; subst h1; rfl)
     exact ⟨hsf'_trace_eq_sc'_trace, henv', hheap', by rw [hsc'_env, hsc'_heap]; exact henvwf, by rw [hsc'_expr]; simp [noCallFrameReturn], by rw [hsc'_expr]; simp [ExprAddrWF, ValueAddrWF], scope, st', st', by rw [hsc'_expr]; simp [Flat.convertExpr, Flat.convertValue, hsf'_expr]⟩
   | labeled label body =>
     rw [hsc] at hconv; simp only [Flat.convertExpr] at hconv
