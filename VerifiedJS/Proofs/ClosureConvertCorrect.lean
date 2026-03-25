@@ -240,33 +240,33 @@ private theorem evalBinary_convertValue (op : Core.BinOp) (a b : Core.Value) :
   | eq =>
     simp only [Core.evalBinary, Flat.evalBinary]
     congr 1; cases a <;> cases b <;> simp only [Flat.convertValue, Flat.abstractEq, Core.abstractEq] <;>
-      try rw [toNumber_convertValue] <;> try rw [toNumber_convertValue] <;>
-      try rw [valueToString_convertValue] <;> try rw [valueToString_convertValue] <;> rfl
+      first | rfl | (simp only [Flat.toNumber, Core.toNumber, Flat.valueToString, Core.valueToString] <;>
+        first | rfl | (cases ‹Bool› <;> first | rfl | (cases ‹Bool› <;> rfl)))
   | neq =>
     simp only [Core.evalBinary, Flat.evalBinary]
     congr 1; congr 1; cases a <;> cases b <;> simp only [Flat.convertValue, Flat.abstractEq, Core.abstractEq] <;>
-      try rw [toNumber_convertValue] <;> try rw [toNumber_convertValue] <;>
-      try rw [valueToString_convertValue] <;> try rw [valueToString_convertValue] <;> rfl
+      first | rfl | (simp only [Flat.toNumber, Core.toNumber, Flat.valueToString, Core.valueToString] <;>
+        first | rfl | (cases ‹Bool› <;> first | rfl | (cases ‹Bool› <;> rfl)))
   | lt =>
     simp only [Core.evalBinary, Flat.evalBinary]
     congr 1; cases a <;> cases b <;> simp only [Flat.convertValue, Flat.abstractLt, Core.abstractLt] <;>
-      try rw [toNumber_convertValue] <;> try rw [toNumber_convertValue] <;>
-      try rw [valueToString_convertValue] <;> try rw [valueToString_convertValue] <;> rfl
+      first | rfl | (simp only [Flat.toNumber, Core.toNumber, Flat.valueToString, Core.valueToString] <;>
+        first | rfl | (cases ‹Bool› <;> first | rfl | (cases ‹Bool› <;> rfl)))
   | gt =>
     simp only [Core.evalBinary, Flat.evalBinary]
     congr 1; cases a <;> cases b <;> simp only [Flat.convertValue, Flat.abstractLt, Core.abstractLt] <;>
-      try rw [toNumber_convertValue] <;> try rw [toNumber_convertValue] <;>
-      try rw [valueToString_convertValue] <;> try rw [valueToString_convertValue] <;> rfl
+      first | rfl | (simp only [Flat.toNumber, Core.toNumber, Flat.valueToString, Core.valueToString] <;>
+        first | rfl | (cases ‹Bool› <;> first | rfl | (cases ‹Bool› <;> rfl)))
   | le =>
     simp only [Core.evalBinary, Flat.evalBinary]
     congr 1; congr 1; cases a <;> cases b <;> simp only [Flat.convertValue, Flat.abstractLt, Core.abstractLt] <;>
-      try rw [toNumber_convertValue] <;> try rw [toNumber_convertValue] <;>
-      try rw [valueToString_convertValue] <;> try rw [valueToString_convertValue] <;> rfl
+      first | rfl | (simp only [Flat.toNumber, Core.toNumber, Flat.valueToString, Core.valueToString] <;>
+        first | rfl | (cases ‹Bool› <;> first | rfl | (cases ‹Bool› <;> rfl)))
   | ge =>
     simp only [Core.evalBinary, Flat.evalBinary]
     congr 1; congr 1; cases a <;> cases b <;> simp only [Flat.convertValue, Flat.abstractLt, Core.abstractLt] <;>
-      try rw [toNumber_convertValue] <;> try rw [toNumber_convertValue] <;>
-      try rw [valueToString_convertValue] <;> try rw [valueToString_convertValue] <;> rfl
+      first | rfl | (simp only [Flat.toNumber, Core.toNumber, Flat.valueToString, Core.valueToString] <;>
+        first | rfl | (cases ‹Bool› <;> first | rfl | (cases ‹Bool› <;> rfl)))
   | instanceof =>
     cases a <;> cases b <;> simp [Core.evalBinary, Flat.evalBinary, Flat.convertValue]
   | «in» =>
@@ -494,7 +494,7 @@ private theorem convertExpr_scope_irrelevant (e : Core.Expr)
     simp only [Flat.convertExpr]
     rw [convertExpr_scope_irrelevant arg scope1 scope2]
   termination_by sizeOf e
-  decreasing_by all_goals simp_wf; omega
+  decreasing_by all_goals (try simp_wf) <;> omega
 
 private theorem convertExprList_scope_irrelevant (es : List Core.Expr)
     (scope1 scope2 : List String) (envVar : String) (envMap : Flat.EnvMapping) (st : Flat.CCState) :
@@ -506,7 +506,7 @@ private theorem convertExprList_scope_irrelevant (es : List Core.Expr)
     rw [convertExpr_scope_irrelevant e scope1 scope2]
     rw [convertExprList_scope_irrelevant rest scope1 scope2]
   termination_by sizeOf es
-  decreasing_by all_goals simp_all <;> omega
+  decreasing_by all_goals (try simp_wf) <;> omega
 
 private theorem convertPropList_scope_irrelevant (ps : List (Core.PropName × Core.Expr))
     (scope1 scope2 : List String) (envVar : String) (envMap : Flat.EnvMapping) (st : Flat.CCState) :
@@ -519,7 +519,7 @@ private theorem convertPropList_scope_irrelevant (ps : List (Core.PropName × Co
     rw [convertExpr_scope_irrelevant pe scope1 scope2]
     rw [convertPropList_scope_irrelevant rest scope1 scope2]
   termination_by sizeOf ps
-  decreasing_by all_goals simp_wf; omega
+  decreasing_by all_goals (try simp_wf) <;> omega
 
 private theorem convertOptExpr_scope_irrelevant (oe : Option Core.Expr)
     (scope1 scope2 : List String) (envVar : String) (envMap : Flat.EnvMapping) (st : Flat.CCState) :
@@ -664,36 +664,44 @@ private theorem ValueAddrWF_mono {v : Core.Value} {n m : Nat}
     (h : ValueAddrWF v n) (hle : n ≤ m) : ValueAddrWF v m := by
   cases v <;> simp [ValueAddrWF] at * <;> omega
 
-private theorem ExprAddrWF_mono {e : Core.Expr} {n m : Nat}
-    (h : ExprAddrWF e n) (hle : n ≤ m) : ExprAddrWF e m := by
-  induction e generalizing n m with
-  | lit => exact ValueAddrWF_mono h hle
-  | var | call | newObj | objectLit | arrayLit | «break» | «continue» | this => trivial
-  | «return» oe => cases oe with | none => trivial | some => exact ExprAddrWF_mono h hle
-  | «yield» oe _ => cases oe with | none => trivial | some => exact ExprAddrWF_mono h hle
-  | «let» _ _ _ ih1 ih2 => exact ⟨ih1 h.1 hle, ih2 h.2 hle⟩
-  | assign _ _ ih => exact ih h hle
-  | «if» _ _ _ ih1 ih2 ih3 => exact ⟨ih1 h.1 hle, ih2 h.2.1 hle, ih3 h.2.2 hle⟩
-  | seq _ _ ih1 ih2 => exact ⟨ih1 h.1 hle, ih2 h.2 hle⟩
-  | getProp _ _ ih => exact ih h hle
-  | setProp _ _ _ ih1 ih2 => exact ⟨ih1 h.1 hle, ih2 h.2 hle⟩
-  | getIndex _ _ ih1 ih2 => exact ⟨ih1 h.1 hle, ih2 h.2 hle⟩
-  | setIndex _ _ _ ih1 ih2 ih3 => exact ⟨ih1 h.1 hle, ih2 h.2.1 hle, ih3 h.2.2 hle⟩
-  | deleteProp _ _ ih => exact ih h hle
-  | typeof _ ih => exact ih h hle
-  | unary _ _ ih => exact ih h hle
-  | binary _ _ _ ih1 ih2 => exact ⟨ih1 h.1 hle, ih2 h.2 hle⟩
-  | functionDef _ _ _ _ _ ih => exact ih h hle
-  | throw _ ih => exact ih h hle
-  | tryCatch b _ c f ih1 _ ih2 ih3 =>
-    cases f with
-    | none => exact ⟨ih1 h.1 hle, ih2 h.2 hle⟩
-    | some => exact ⟨ih1 h.1 hle, ih2 h.2.1 hle, ih3 (by exact h.2.2) hle⟩
-  | while_ _ _ ih1 ih2 => exact ⟨ih1 h.1 hle, ih2 h.2 hle⟩
-  | forIn _ _ _ ih1 ih2 => exact ⟨ih1 h.1 hle, ih2 h.2 hle⟩
-  | forOf _ _ _ ih1 ih2 => exact ⟨ih1 h.1 hle, ih2 h.2 hle⟩
-  | labeled _ _ ih => exact ih h hle
-  | await _ ih => exact ih h hle
+private theorem ExprAddrWF_mono : (e : Core.Expr) → {n m : Nat} →
+    ExprAddrWF e n → (n ≤ m) → ExprAddrWF e m
+  | .lit v, h, hle => ValueAddrWF_mono h hle
+  | .var _, _, _ => trivial
+  | .call _ _, _, _ => trivial
+  | .newObj _ _, _, _ => trivial
+  | .objectLit _, _, _ => trivial
+  | .arrayLit _, _, _ => trivial
+  | .break _, _, _ => trivial
+  | .continue _, _, _ => trivial
+  | .return none, _, _ => trivial
+  | .yield none _, _, _ => trivial
+  | .this, _, _ => trivial
+  | .«let» _ init body, h, hle => ⟨ExprAddrWF_mono init h.1 hle, ExprAddrWF_mono body h.2 hle⟩
+  | .assign _ value, h, hle => ExprAddrWF_mono value h hle
+  | .«if» cond t el, h, hle => ⟨ExprAddrWF_mono cond h.1 hle, ExprAddrWF_mono t h.2.1 hle, ExprAddrWF_mono el h.2.2 hle⟩
+  | .seq a b, h, hle => ⟨ExprAddrWF_mono a h.1 hle, ExprAddrWF_mono b h.2 hle⟩
+  | .getProp obj _, h, hle => ExprAddrWF_mono obj h hle
+  | .setProp o _ v, h, hle => ⟨ExprAddrWF_mono o h.1 hle, ExprAddrWF_mono v h.2 hle⟩
+  | .getIndex e1 e2, h, hle => ⟨ExprAddrWF_mono e1 h.1 hle, ExprAddrWF_mono e2 h.2 hle⟩
+  | .setIndex o i v, h, hle => ⟨ExprAddrWF_mono o h.1 hle, ExprAddrWF_mono i h.2.1 hle, ExprAddrWF_mono v h.2.2 hle⟩
+  | .deleteProp obj _, h, hle => ExprAddrWF_mono obj h hle
+  | .typeof arg, h, hle => ExprAddrWF_mono arg h hle
+  | .unary _ arg, h, hle => ExprAddrWF_mono arg h hle
+  | .binary _ l r, h, hle => ⟨ExprAddrWF_mono l h.1 hle, ExprAddrWF_mono r h.2 hle⟩
+  | .functionDef _ _ body _ _, h, hle => ExprAddrWF_mono body h hle
+  | .throw arg, h, hle => ExprAddrWF_mono arg h hle
+  | .tryCatch b _ c none, h, hle => ⟨ExprAddrWF_mono b h.1 hle, ExprAddrWF_mono c h.2 hle⟩
+  | .tryCatch b _ c (some fe), h, hle => ⟨ExprAddrWF_mono b h.1 hle, ExprAddrWF_mono c h.2.1 hle, ExprAddrWF_mono fe h.2.2 hle⟩
+  | .while_ c b, h, hle => ⟨ExprAddrWF_mono c h.1 hle, ExprAddrWF_mono b h.2 hle⟩
+  | .forIn _ o b, h, hle => ⟨ExprAddrWF_mono o h.1 hle, ExprAddrWF_mono b h.2 hle⟩
+  | .forOf _ i b, h, hle => ⟨ExprAddrWF_mono i h.1 hle, ExprAddrWF_mono b h.2 hle⟩
+  | .return (some arg), h, hle => ExprAddrWF_mono arg h hle
+  | .yield (some arg) _, h, hle => ExprAddrWF_mono arg h hle
+  | .labeled _ b, h, hle => ExprAddrWF_mono b h hle
+  | .await arg, h, hle => ExprAddrWF_mono arg h hle
+  termination_by sizeOf e
+  decreasing_by all_goals simp_wf; omega
 
 private def EnvAddrWF (env : Core.Env) (heapSize : Nat) : Prop :=
   ∀ name v, env.lookup name = some v → ValueAddrWF v heapSize

@@ -246,6 +246,16 @@ private def readLE? (mem : ByteArray) (addr width : Nat) : Option UInt64 := Id.r
       return none
   return some (UInt64.ofNat acc)
 
+/-- readLE? on a zero-size memory always returns none (first byte access fails). -/
+private theorem readLE?_none_of_size_zero (mem : ByteArray) (addr : Nat) (width : Nat) (hw : 0 < width)
+    (hsz : mem.size = 0) : readLE? mem addr width = none := by
+  unfold readLE?
+  simp only [Id.run]
+  -- The for loop's first iteration (k=0) has idx = addr + 0 = addr.
+  -- Since mem.size = 0, addr < 0 is false, so the else branch returns none.
+  -- We need to show the forIn loop returns (some none, ...) on its first step.
+  sorry
+
 private def writeLE? (mem : ByteArray) (addr width : Nat) (value : UInt64) : Option ByteArray := Id.run do
   let mut out := mem
   for k in [0:width] do
