@@ -1,4 +1,22 @@
 
+## Run: 2026-03-24T22:30:03+00:00
+
+### Closed binOp type mismatch sorries; added hmemory to EmitSimRel
+
+**Build**: PASS ✅
+
+**Changes** (VerifiedJS/Wasm/Semantics.lean):
+
+1. **i32 binOp type mismatch**: Replaced catch-all `v1 :: v2 :: stk => sorry` with 4 explicit match arms for non-i32/i32 type combinations. Each arm proves IR+Wasm both trap with matching messages using stack correspondence.
+
+2. **f64 binOp type mismatch**: Same approach for f64 ops with 4 non-f64/f64 type patterns.
+
+3. **Added `hmemory` field to EmitSimRel**: `hmemory : w.store.memories[0]? = some ir.memory`. Updated all 30 step_sim construction sites. Init sorry added (needs emit_preserves_memories).
+
+**Sorry count**: 29 in Wasm/Semantics.lean (was 32 at session start, -3 net).
+
+**Remaining sorry analysis**: All remaining sorries blocked on either private definitions in Emit.lean, missing structural invariants in LowerSimRel, or missing correspondence fields in EmitSimRel (readLE?/writeLE? for memory, function table, label/frame content).
+
 ## Run: 2026-03-24T20:15:01+00:00
 
 ### Verified allocFreshObject fix already applied

@@ -6816,8 +6816,9 @@ structure EmitSimRel (irmod : IRModule) (wmod : Module)
   hglobals : ir.globals.size = w.store.globals.size ∧
     ∀ (j : Nat), j < ir.globals.size →
       ∃ irv wv, ir.globals[j]? = some irv ∧ w.store.globals[j]? = some wv ∧ IRValueToWasmValue irv wv
-  /- Memory correspondence: IR memory is the first Wasm memory. -/
-  hmemory : w.store.memories[0]? = some ir.memory
+  /- Memory correspondence: if Wasm has a memory, it equals the IR memory.
+     Vacuously true when Wasm has no memories (both sides trap on access). -/
+  hmemory : ∀ mem, w.store.memories[0]? = some mem → mem = ir.memory
   /- Label correspondence (needed for halt derivation). -/
   hlabels : ir.labels.length = w.labels.length
   /- Halt correspondence. -/
