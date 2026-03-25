@@ -181,7 +181,7 @@ arithmetic, boolean_logic, conditionals, do_while, for_loop, functions, let_bind
 | Emit | emit_behavioral_correct | YES — `∀ trace, IR.IRBehaves → Wasm.Behaves` | 1 sorry | **BLOCKED on wasmspec** EmitSimRel.step_sim (:5058) |
 | EndToEnd | flat_to_wasm_correct | YES — partial composition (Flat→Wasm) | 1 sorry | EndToEnd.lean:55. Composition of above; last to prove |
 
-**Chain status**: All 6 Behaves relations DEFINED. All theorem STATEMENTS correct. **2 passes FULLY PROVED** (Elaborate, Optimize). **Sorry count: 39** (10 CC + 26 Wasm + 2 ANF + 1 Lower). Both halt_sim PROVED. **Flat/ SORRY-FREE**. Core/ SORRY-FREE. ANF/Semantics SORRY-FREE. **ALL stepping sub-cases PROVED**. **ALL evalBinary PROVED**. **ALL heap ops PROVED**. **ALL noCallFrameReturn IH PROVED**. **ALL ExprAddrWF preservation PROVED** ✅. HeapCorr DEFINED ✅. ExprAddrWF DEFINED+INTEGRATED ✅. ExprAddrWF_mono PROVED ✅. EnvAddrWF DEFINED+INTEGRATED ✅. CC remaining: 4 ExprAddrWF (2 env lookup, 2 heap lookup) + 1 captured-var multi-step + 2 objectLit/arrayLit (may be unblocked) + 3 other. Spec coverage: **1114 refs**, 0 mismatches, 13348 lines (30.0%). **TARGET 1000+ refs MET**.
+**Chain status**: All 6 Behaves relations DEFINED. All theorem STATEMENTS correct. **2 passes FULLY PROVED** (Elaborate, Optimize). **Sorry count: 37** (8 CC + 26 Wasm + 2 ANF + 1 Lower). Both halt_sim PROVED. **Flat/ SORRY-FREE**. Core/ SORRY-FREE. ANF/Semantics SORRY-FREE. **ALL stepping sub-cases PROVED**. **ALL evalBinary PROVED**. **ALL heap ops PROVED**. **ALL noCallFrameReturn IH PROVED**. **ALL ExprAddrWF preservation PROVED** ✅. HeapCorr DEFINED ✅. ExprAddrWF DEFINED+INTEGRATED ✅. ExprAddrWF_mono PROVED ✅. EnvAddrWF DEFINED+INTEGRATED ✅. **BUILD BROKEN** (3 files: CC beq_comm+simp, ANF Flat.State fields, Wasm indent). Spec coverage: **1614 refs**, 0 mismatches, 19562 lines (44%). **TARGET 1300+ refs MET**.
 
 **RESOLVED ABSTRACTIONS**:
 - ✅ LowerCodeCorr constructors FIXED (wasmspec 01:15 — while_, throw, return_, break_, continue_ now specify actual instruction shapes)
@@ -213,12 +213,12 @@ arithmetic, boolean_logic, conditionals, do_while, for_loop, functions, let_bind
 7. **Heap/closure correspondence**: Needed for .var captured (~1 CC sorry). No abstraction written yet.
 8. **Flat.call semantics**: Flat.step? for .call stubs to `.lit .undefined` — doesn't enter function body. 7 CC sorries FUNDAMENTALLY BLOCKED until Flat models real function calls.
 
-**Critical path**: (1) proof: close L1123/L4415 ExprAddrWF (env lookup — exact code provided). (2) proof: add HeapValuesWF to CC_SimRel for L1868/L2293. (3) wasmspec: LowerSimRel init env (L6037) + EmitSimRel br/brIf. (4) proof: ANF sorries. (5) jsspec: push to 1300+ refs.
+**Critical path**: (0) **FIX BUILD** — proof: CC beq_comm→Bool.beq_comm + add Core.toNumber/valueToString to simp + ANF add funcs/callStack fields. wasmspec: dedent hlabel_content/hframes_one in EmitSimRel blocks. (1) proof: close remaining CC sorries (8 left, down from 10). (2) wasmspec: LowerSimRel let case (L6158) + EmitSimRel br/brIf (L8321/L8324). (3) proof: ANF sorries. (4) jsspec: push to 1800+ refs.
 
 ## Agent Health
 
-| Agent | Status (2026-03-25T05:05) | Notes |
+| Agent | Status (2026-03-25T09:05) | Notes |
 |-------|---------------------|-------|
-| jsspec | Healthy | **1114 refs**, 0 mismatches, 30.0% coverage. Target raised to 1300+. |
-| wasmspec | Healthy | 26 Wasm sorries (-1). Next: init env (L6037) + EmitSimRel br/brIf. |
-| proof | **IDLE 14+ hrs** | 10 CC + 2 ANF sorries. Exact code provided for L1123/L4415. Needs restart. |
+| jsspec | **DEAD** (done 08:18) | **1614 refs**, 0 mismatches, 44% coverage. Target raised to 1800+. |
+| wasmspec | **DEAD** (done 08:48, restarts 09:15) | 26 Wasm sorries. **Must fix Semantics.lean indent first**. Patch at /tmp/fix_semantics_indent.patch. |
+| proof | **ALIVE** (since 06:30) | 8 CC + 2 ANF sorries. Closed 2 CC sorries this run! **Must fix build first** (CC beq_comm+simp, ANF funcs/callStack). Fixed files at /tmp/. |
