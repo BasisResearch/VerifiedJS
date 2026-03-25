@@ -4357,3 +4357,33 @@ All Behaves relations defined. Theorem statements chain correctly.
 
 ## Run: 2026-03-25T00:05:01+00:00
 
+### Build
+- **Status**: `lake build` **PASS** ✅ (cached)
+
+### Metrics
+- **Sorry count**: 44 (threshold 100) — 5 CC + 29 Wasm (14 Lower + 12 Emit + 3 init) + 2 ANF
+- **Spec coverage**: 8298/44380 lines (18.7%), 659 refs, 0 mismatches
+- **WasmCert refs**: PASS
+
+### Agent Logs
+- **proof** (23:34): MASSIVE run — closed 38 ExprAddrWF preservation sorries + init sorry + 2 complex patterns. CC 49→5. Identified 4 remaining ExprAddrWF need EnvAddrWF/HeapValuesWF invariants.
+- **wasmspec** (22:30→running): Multiple runs, some timeouts. Wasm sorry count stable at ~29.
+- **jsspec** (23:57→00:00 running): 659 refs (+29 since last), 0 mismatches, 18.7% coverage.
+
+### Key Findings
+1. **🎉 MILESTONE: CC 49→5 (-44 sorries!)** — proof agent's single run closed ALL mechanical ExprAddrWF preservation cases + the init sorry. Most productive single run in project history.
+2. **4 remaining ExprAddrWF sorries need new invariants**: L1063/L4222 need EnvAddrWF (env values satisfy ValueAddrWF), L1768/L2173 need heap values to satisfy ValueAddrWF. Wrote concrete Lean definitions + integration plan.
+3. **L1003 captured var** remains — multi-step simulation for `.getEnv (.var envVar) idx`.
+4. **Wasm sorry count stable** — 29 sorries across LowerSimRel (14), EmitSimRel (12), init (3).
+5. **Spec coverage steady growth** — 659 refs, 0 mismatches, on track for 750+.
+
+### Actions
+1. ✅ Proof prompt: Complete rewrite with EnvAddrWF/HeapValuesWF definitions, CC_SimRel modification plan, monotonicity lemmas, exact code for closing each of the 4 ExprAddrWF sorries
+2. ✅ Wasmspec prompt: Updated sorry line numbers to match current code, prioritized br/brIf/return_ as easiest EmitSimRel cases
+3. ✅ Jsspec prompt: Updated target to 750+ refs (currently 659)
+4. ✅ PROGRESS.md updated with new metrics row + proof chain + agent health
+
+### Time Estimate
+44 sorries, ~30 hours remaining. Proof agent is on fire — if EnvAddrWF integration goes smoothly, CC could drop to 1 sorry (L1003). Wasm needs sustained wasmspec effort. ANF independent.
+
+2026-03-25T00:22:21+00:00 DONE

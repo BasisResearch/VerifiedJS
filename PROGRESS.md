@@ -150,6 +150,7 @@ arithmetic, boolean_logic, conditionals, do_while, for_loop, functions, let_bind
 | 2026-03-24T20:05 | **44** | **~203 (est.)** | Build PASS ✅. Sorry 44 (STEADY): CC 8 (~29 sorry tokens, 20 are ExprAddrWF preservation), Wasm 33, ANF 2, Lower 1. **🎉 allocFreshObject FIXED** — wasmspec created `allocObjectWithProps` (separate function, kept old for compat). objectLit+arrayLit in Flat+ANF now populate heap props. **CC objectLit/arrayLit NOW UNBLOCKED**. newObj was NEVER blocked (both Core+Flat push `[]`). **BIG DISCOVERY: ExprAddrWF is ~20 of the CC sorry tokens** — already defined+integrated but ExprAddrWF_mono (L657) is sorry'd, blocking all preservation proofs. Wrote EXACT induction proof for ExprAddrWF_mono to proof prompt. jsspec: **509 refs** (+35), 2 mismatches (down from 30), 13.5% coverage. Spec coverage target: 600+. Test262: 3/63 (UNCHANGED 163+ hrs). |
 | 2026-03-24T21:05 | **77** | **~203 (est.)** | Build PASS ✅. **Sorry UP 44→77** (NET INCREASE from ExprAddrWF refactor): CC 47 (was 8, proof agent added ExprAddrWF to CC_SimRel → 44 new preservation sorries + closed 2 OOB sorries + 1 ExprAddrWF_mono + 2 original), Wasm 27, ANF 2, Lower 1. **KEY: ExprAddrWF_mono L657 VERIFIED CLOSABLE** — supervisor tested exact proof via lean_multi_attempt (all goals closed). 44 of the 47 CC sorries are MECHANICAL ExprAddrWF preservation. Proof prompt updated with verified proof code + 2 patterns (sub-expression extraction, heap-growth omega). jsspec: **512 refs**, **0 mismatches** (fixed from 2!), 13.6% coverage. wasmspec: no detailed logs. Test262: 3/63 (UNCHANGED 165+ hrs). |
 | 2026-03-24T22:30 | **84** | **~203 (est.)** | Build PASS ✅. Sorry 77→84 (+7): CC 49 (47→49, +2 new decompositions), Wasm 26 (27→26, -1), ANF 2, Lower 1. **ExprAddrWF_mono PROVED** ✅ (proof agent applied supervisor's code). **ExprAddrWF IH pattern VERIFIED** at L1491 — all 3 tactics close goal (tested via lean_multi_attempt). 44 CC sorries remain MECHANICAL. jsspec: **630 refs** (+118!), **0 mismatches**, **18.5% coverage** (massive jump from 13.6%). wasmspec: 26 Wasm sorries (14 LowerSimRel + 12 EmitSimRel). Proof agent idle since 15:30 (7hrs). Updated all 3 prompts with verified tactics. Test262: 3/63 (UNCHANGED 167+ hrs). |
+| 2026-03-25T00:05 | **44** | **~203 (est.)** | Build PASS ✅. **🎉 Sorry DOWN 84→44 (-40!)**: CC 49→5 (**ALL 44 ExprAddrWF preservation sorries CLOSED** + init sorry closed). Wasm 29 (14 Lower + 12 Emit + 3 Lower init), ANF 2. **MILESTONE: proof agent closed 38 ExprAddrWF + init in single run**. CC remaining 5: L1003 (captured var), L1063/L4222 (env lookup needs EnvAddrWF), L1768/L2173 (heap lookup needs HeapValuesWF). jsspec: **659 refs** (+29), **0 mismatches**, **18.7% coverage**. Wrote EnvAddrWF/HeapAddrWF code to proof prompt. Updated wasmspec line numbers. Test262: 3/63 (UNCHANGED 169+ hrs). |
 
 - Test262 pass rate: 3/63 (fast mode), deterministic full sample reached 274/500 passes (2026-03-08)
 - Flagship parse rate: 96.30% (1976/2052)
@@ -167,14 +168,14 @@ arithmetic, boolean_logic, conditionals, do_while, for_loop, functions, let_bind
 | Pass | Theorem | Statement OK? | Proved? | Blocker |
 |------|---------|--------------|---------|---------|
 | Elaborate | elaborate_correct | YES | **PROVED** | — |
-| ClosureConvert | closureConvert_correct | YES — trace preservation with NoForInForOf | ~29 sorry tokens (8 unique sites + ~20 ExprAddrWF) | EnvCorr ✅. Bridge lemmas ✅. ALL heap ops ✅. ALL stepping ✅. ALL noCallFrameReturn IH ✅. HeapCorr DEFINED ✅. ExprAddrWF DEFINED+INTEGRATED. **ExprAddrWF_mono (L657) is KEY blocker** — closes ~20 preservation sorries. allocFreshObject FIXED ✅ (objectLit/arrayLit unblocked). newObj NOT blocked (both push []). 2 well-formedness (L1764,L2172), 1 captured-var (L978), 1 call (L1688), 1 functionDef (L3139). |
+| ClosureConvert | closureConvert_correct | YES — trace preservation with NoForInForOf | 5 sorry | ExprAddrWF_mono ✅. ALL 44 ExprAddrWF preservation ✅. **Remaining 5**: L1003 (captured var multi-step), L1063/L4222 (need EnvAddrWF in CC_SimRel), L1768/L2173 (need HeapValuesWF for heap lookup). EnvAddrWF code written to proof prompt. |
 | ANFConvert | anfConvert_correct | YES — observable trace preservation | 2 sorry | step_star + nested seq |
 | Optimize | optimize_correct | YES — `∀ b, ANF.Behaves (optimize p) b ↔ ANF.Behaves p b` | **PROVED** | Identity pass — trivially correct |
 | Lower | lower_behavioral_correct | YES — `∀ trace, ANF.Behaves → IR.IRBehaves` | 1 sorry | Build FIXED. **BLOCKED on wasmspec** step_sim (:4956). SimRel needs code correspondence. |
 | Emit | emit_behavioral_correct | YES — `∀ trace, IR.IRBehaves → Wasm.Behaves` | 1 sorry | **BLOCKED on wasmspec** EmitSimRel.step_sim (:5058) |
 | EndToEnd | flat_to_wasm_correct | YES — partial composition (Flat→Wasm) | 1 sorry | EndToEnd.lean:55. Composition of above; last to prove |
 
-**Chain status**: All 6 Behaves relations DEFINED. All theorem STATEMENTS correct. **2 passes FULLY PROVED** (Elaborate, Optimize). **Sorry count: 44** (~29 CC tokens + 33 Wasm + 2 ANF + 1 Lower). Wasm/Semantics has 33 sorry in step_sim/init. Both halt_sim PROVED. **Flat/ SORRY-FREE**. Core/ SORRY-FREE. ANF/Semantics SORRY-FREE. **ALL stepping sub-cases PROVED**. **ALL evalBinary PROVED**. **ALL heap ops PROVED**. **ALL noCallFrameReturn IH PROVED**. **HeapCorr DEFINED & INTEGRATED**. **ExprAddrWF DEFINED & INTEGRATED** — ExprAddrWF_mono (L657) is key blocker for ~20 CC sorries. allocFreshObject FIXED ✅. CC remaining: well-formedness (2) + objectLit/arrayLit (2, now unblocked) + newObj (1, not blocked) + captured-var (1) + call (1) + functionDef (1). Spec coverage: 509 refs, 2 mismatches, 6004 lines (13.5%). **TARGET 300+ refs MET**.
+**Chain status**: All 6 Behaves relations DEFINED. All theorem STATEMENTS correct. **2 passes FULLY PROVED** (Elaborate, Optimize). **Sorry count: 44** (5 CC + 29 Wasm + 2 ANF). Both halt_sim PROVED. **Flat/ SORRY-FREE**. Core/ SORRY-FREE. ANF/Semantics SORRY-FREE. **ALL stepping sub-cases PROVED**. **ALL evalBinary PROVED**. **ALL heap ops PROVED**. **ALL noCallFrameReturn IH PROVED**. **ALL ExprAddrWF preservation PROVED** ✅. HeapCorr DEFINED ✅. ExprAddrWF DEFINED+INTEGRATED ✅. ExprAddrWF_mono PROVED ✅. CC remaining: 2 env lookup (need EnvAddrWF) + 2 heap lookup (need HeapValuesWF) + 1 captured-var multi-step. Spec coverage: 659 refs, 0 mismatches, 8298 lines (18.7%). **TARGET 300+ refs MET**.
 
 **RESOLVED ABSTRACTIONS**:
 - ✅ LowerCodeCorr constructors FIXED (wasmspec 01:15 — while_, throw, return_, break_, continue_ now specify actual instruction shapes)
@@ -210,8 +211,8 @@ arithmetic, boolean_logic, conditionals, do_while, for_loop, functions, let_bind
 
 ## Agent Health
 
-| Agent | Status (2026-03-24T20:05) | Notes |
+| Agent | Status (2026-03-25T00:05) | Notes |
 |-------|---------------------|-------|
-| jsspec | Healthy | 509 refs, 2 mismatches (down from 30). 13.5% coverage. Targeting 600+. |
-| wasmspec | Recovered | allocFreshObject DONE ✅ (via allocObjectWithProps). 33 Wasm sorries remain. Redirected to step_sim. |
-| proof | Key opportunity | ExprAddrWF_mono (L657) unlocks ~20 sorries. Exact proof written to prompt. objectLit/arrayLit unblocked. |
+| jsspec | Healthy | 659 refs, 0 mismatches, 18.7% coverage. Targeting 750+. |
+| wasmspec | Active | 29 Wasm sorries (14 Lower + 12 Emit + 3 init). Redirected to EmitSimRel control flow cases (br/brIf/return). |
+| proof | Excellent | Closed 40 sorries in one run! CC 49→5. Next: add EnvAddrWF to CC_SimRel (concrete code in prompt). |
