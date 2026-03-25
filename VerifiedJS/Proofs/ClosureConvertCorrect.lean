@@ -3595,6 +3595,11 @@ private theorem closureConvert_step_simulation
               have hsf'_eq := (Prod.mk.inj (Option.some.inj hstep)).2
               have hsc'_heap : sc'.heap = sc_arg.heap := by simp [sc', Core.pushTrace]
               rw [hsc'_heap]; convert hheap_arg using 1; rw [← hsf'_eq]; rfl
+            constructor  -- EnvAddrWF
+            · have h1 : sc'.env = sc_arg.env.extend catchParam (.string msg) := by simp [sc', Core.pushTrace]
+              have h2 : sc'.heap = sc_arg.heap := by simp [sc', Core.pushTrace]
+              rw [h1, h2]
+              exact EnvAddrWF_extend _henvwf_arg catchParam (.string msg) (by simp [ValueAddrWF])
             · -- Expression correspondence
               have hsf'_eq := (Prod.mk.inj (Option.some.inj hstep)).2
               have hsf'_expr : sf'.expr = handler_flat := by rw [← hsf'_eq]; rfl

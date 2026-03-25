@@ -14214,7 +14214,6 @@ theorem elaborate_correct (p : Source.Program) (cp : Core.Program)
 -- | \[\[Key\]\], \[\[Value\]\] } \_p\_ of \_M\_.\[\[MapData\]\], do 1. If
 -- | \_p\_.\[\[Key\]\] is not \~empty\~ and SameValue(\_p\_.\[\[Key\]\],
 -- | \_key\_) is \*true\*, return \_p\_.\[\[Value\]\]. 1. Return
--- | \*undefined\*.
 -- SPEC: L35638-L35648
 -- | # Map.prototype.has ( \_key\_ )
 -- |
@@ -14252,6 +14251,8 @@ theorem elaborate_correct (p : Source.Program) (cp : Core.Program)
 -- | For each Record { \[\[Key\]\], \[\[Value\]\] } \_p\_ of
 -- | \_M\_.\[\[MapData\]\], do 1. If \_p\_.\[\[Key\]\] is not \~empty\~, set
 -- | \_count\_ to \_count\_ + 1. 1. Return 𝔽(\_count\_).
+-- |
+-- | # Map.prototype.values ( )
 -- SPEC: L35766-L35785
 -- | # Set Objects
 -- |
@@ -14379,14 +14380,14 @@ theorem elaborate_correct (p : Source.Program) (cp : Core.Program)
 -- | stringified, or an array of Strings and Numbers that acts as an
 -- | inclusion list for selecting the object properties that will be
 -- | stringified. The optional \_space\_ parameter is a String or Number that
--- | allows the result to be formatted with whitespace and indentation to
--- | make it easier to read.
+-- | allows the result to have white space injected into it to improve human
+-- | readability.
 -- |
--- | Non-object property values are stringified as follows: Strings are
--- | output with each instance of the code points 0x0008 (BACKSPACE), 0x000C
--- | (FORM FEED), 0x000A (LINE FEED), 0x000D (CARRIAGE RETURN), 0x0009
--- | (CHARACTER TABULATION), 0x0022 (QUOTATION MARK), and 0x005C (REVERSE
--- | SOLIDUS) replaced with the corresponding escape sequence. Code points
+-- | It performs the following steps when called:
+-- |
+-- | 1\. Let \_stack\_ be a new empty List. 1. Let \_indent\_ be the empty
+-- | String. 1. Let \_PropertyList\_ be \*undefined\*. 1. Let
+-- | \_ReplacerFunction\_ be \*undefined\*. 1. If \_replacer\_ is an Object,
 -- SPEC: L40577-L40596
 -- | # The Promise Constructor
 -- |
@@ -14499,6 +14500,7 @@ theorem elaborate_correct (p : Source.Program) (cp : Core.Program)
 -- | Completion(PerformPromiseAllSettled(\_iteratorRecord\_, \_C\_,
 -- | \_promiseCapability\_, \_promiseResolve\_)). 1. If \_result\_ is an
 -- | abrupt completion, then 1. If \_iteratorRecord\_.\[\[Done\]\] is
+-- | \*false\*, set \_result\_ to
 -- SPEC: L40898-L40936
 -- | # Promise.race ( \_iterable\_ )
 -- |
@@ -14589,5 +14591,7 @@ theorem elaborate_correct (p : Source.Program) (cp : Core.Program)
 -- | be ? NewPromiseCapability(\_C\_). 1. Return
 -- | PerformPromiseThen(\_promise\_, \_onFulfilled\_, \_onRejected\_,
 -- | \_resultCapability\_).
+-- |
+-- | # PerformPromiseThen ( \_promise\_: a Promise, \_onFulfilled\_: an ECMAScript language value, \_onRejected\_: an ECMAScript language value, optional \_resultCapability\_: a PromiseCapability Record, ): an ECMAScript language value
 
 end VerifiedJS.Source

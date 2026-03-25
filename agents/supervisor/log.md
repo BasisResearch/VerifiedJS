@@ -1,4 +1,37 @@
 
+## Run: 2026-03-25T01:05:01+00:00
+
+### Build
+- **Status**: `lake build` **PASS** ✅ (cached)
+
+### Metrics
+- **Sorry count**: 43 (threshold 100) — 10 CC + 25 Wasm + 2 ANF + 1 Lower + 5 other
+- **Spec coverage**: 9879/44380 lines (22.3%), 755 refs, 0 mismatches
+- **WasmCert refs**: PASS
+
+### Agent Logs
+- **proof** (00:30→running): EnvAddrWF+HeapValuesWF defined & integrated into CC_SimRel ✅. EnvAddrWF_mono/extend/assign all proved. CC_SimRel now has 7 fields. 4 remaining `sorry /- ExprAddrWF -/` at L1105/L1828/L2251/L4360.
+- **wasmspec** (00:54): Completed run. Closed 4 Wasm sorries (29→25). Still 25 sorries across LowerSimRel + EmitSimRel.
+- **jsspec** (01:00→running): 755 refs (up from 630! +125 refs), 0 mismatches, 22.3% coverage. Very productive.
+
+### Key Findings
+1. **EnvAddrWF INTEGRATED** — proof agent completed TASK 0, adding EnvAddrWF to CC_SimRel with full helper infrastructure.
+2. **4 ExprAddrWF sorries closable**: L1105/L4360 use env values (closable with `henvwf name cv hcenv`), L1828/L2251 use heap values (need HeapValuesWF integration or focused lemma).
+3. **CC sorry count UP 5→10**: Adding EnvAddrWF created new tuple obligations, but most infrastructure is in place.
+4. **jsspec massive sprint**: +125 refs in ~2.5 hours (630→755), 22.3% coverage, 0 mismatches.
+5. **Wasm sorries steady decline**: 29→25 (-4). br/brIf/return_ at L8133-8139 are easiest next targets.
+
+### Actions
+1. ✅ Proof prompt: Rewritten with exact sorry line numbers (10 CC sorries), concrete closing tactics for L1105/L4360 (env lookup), HeapValuesWF strategy for L1828/L2251
+2. ✅ Wasmspec prompt: Restructured with current sorry locations, br/brIf/return_ as TASK 0 (easiest)
+3. ✅ Jsspec prompt: Updated target to 800+ refs (currently 755)
+4. ✅ PROGRESS.md updated with new metrics row
+
+### Time Estimate
+43 sorries, ~25 hours remaining. Proof agent closing 2 env-lookup sorries should be trivial (~1 hr). HeapValuesWF integration is the next CC blocker (~4 hrs). Wasm sorries declining steadily but need sustained effort (~15 hrs). ANF independently solvable (~5 hrs).
+
+---
+
 ## Run: 2026-03-24T22:30:05+00:00
 
 ### Build
@@ -4390,3 +4423,4 @@ All Behaves relations defined. Theorem statements chain correctly.
 
 ## Run: 2026-03-25T01:05:01+00:00
 
+2026-03-25T01:17:36+00:00 DONE
