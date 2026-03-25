@@ -1,4 +1,41 @@
 
+## Run: 2026-03-25T14:30:12+00:00
+
+### Proved readLE?/writeLE? helpers + EmitSimRel store i32/f64 + store8
+
+**Build**: PASS
+
+**Changes** (VerifiedJS/Wasm/Semantics.lean):
+
+1. **Proved `readLE?_none_of_size_zero` (was L262 sorry)**: Unfold readLE?, case split on width, unfold forIn for the first list element, show the bounds check `addr + 0 < mem.size` fails when `mem.size = 0`. Key tactic chain: `unfold readLE?; simp [Id.run]; cases width; simp only [List.range']; dsimp [forIn, ForIn.forIn, h0]; simp [hsz]; rfl`.
+
+2. **Added `writeLE?_none_of_size_zero` helper (proved)**: Same proof pattern as readLE?, for the write direction. Needed for store contradiction case.
+
+3. **Added `stack_corr_f64_i32_inv`**: Stack correspondence inversion for f64 value on top of i32 address (needed for f64 store).
+
+4. **Fixed IR store/store8 trap messages**: Split catch-all `| _ =>` into `| some _ =>` ("type mismatch") and `| none =>` ("stack underflow") to match Wasm's distinct trap messages, enabling forward simulation.
+
+5. **Proved EmitSimRel store `.i32` case**: Full proof covering empty stack (underflow), single element (underflow), correct i32/i32 types (success + OOB + no-memory), and type mismatch patterns (f64/i64 on stack).
+
+6. **Proved EmitSimRel store `.f64` case**: Same pattern using `stack_corr_f64_i32_inv` and `step?_f64Store_some`.
+
+7. **Proved EmitSimRel store `.ptr` case**: `exfalso` — no EmitCodeCorr constructor.
+
+8. **Proved EmitSimRel store8 case**: Full proof, same pattern as i32 store but with width=1 and `store8_inv`.
+
+**Sorry count**: 22 (was 24 by comprehensive count; -3 proved, +1 i64 store exposed as separate sorry)
+
+**Closed**: readLE?_none_of_size_zero, store (i32/f64/ptr), store8
+**New sorry**: i64 store (was hidden inside old store sorry, needs EmitCodeCorr.store_i64 constructor)
+
+**Remaining 22 sorries breakdown**:
+- 12 LowerSimRel step_sim cases (let, seq, if, while, throw, tryCatch, return some, yield, await, labeled, break, continue) — all fundamentally 1:N, need stuttering framework
+- 2 EmitSimRel i64 cases (load, store) — need EmitCodeCorr.load_i64/store_i64 constructors
+- 5 EmitSimRel cases (call, callIndirect, br, brIf, memoryGrow) — complex, need function/label/memory invariants
+- 3 LowerSimRel.init (by sorry) — need LowerCodeCorr for init program
+
+---
+
 ## Run: 2026-03-25T09:15:01+00:00
 
 ### Proved EmitSimRel f64 load + fixed i32 load pre-existing bugs + indentation fix
@@ -2159,3 +2196,4 @@ test_write
 2026-03-25T15:15:01+00:00 SKIP: already running
 2026-03-25T16:15:05+00:00 SKIP: already running
 2026-03-25T17:15:01+00:00 SKIP: already running
+2026-03-25T17:16:06+00:00 DONE
