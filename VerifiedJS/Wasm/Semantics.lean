@@ -6879,10 +6879,18 @@ structure EmitSimRel (irmod : IRModule) (wmod : Module)
   hlabels : ir.labels.length = w.labels.length
   /- Halt correspondence. -/
   hhalt : irStep? ir = none → Wasm.step? w = none
-  /- Label content correspondence: for each label position, the onExit code corresponds. -/
+  /- Label content correspondence: for each label position, onExit and onBranch correspond,
+     and isLoop flags match. -/
   hlabel_content : ∀ (i : Nat), i < ir.labels.length →
     ∃ irLbl wLbl, ir.labels[i]? = some irLbl ∧ w.labels[i]? = some wLbl ∧
-      EmitCodeCorr irLbl.onExit wLbl.onExit
+      EmitCodeCorr irLbl.onExit wLbl.onExit ∧
+      EmitCodeCorr irLbl.onBranch wLbl.onBranch ∧
+      irLbl.isLoop = wLbl.isLoop
+  /- Label name-to-depth bridge: for any br/brIf instruction in the current EmitCodeCorr
+     that maps label name to Wasm depth idx, irFindLabel? resolves to the same idx. -/
+  hlabel_br_resolve : ∀ (label : String) (idx : Nat) (rest_ir : List IRInstr) (rest_w : List Instr),
+    EmitCodeCorr (IRInstr.br label :: rest_ir) (Instr.br idx :: rest_w) →
+    ∃ irLbl, irFindLabel? ir.labels label = some (idx, irLbl)
   /- Frame count: exactly one frame (top-level). -/
   hframes_one : ir.frames.length = 1
 
