@@ -167,15 +167,17 @@ private theorem convertValue_beq (a b : Core.Value) :
     change (idx₁ == idx₂ && (0 : Nat) == 0) = (idx₁ == idx₂)
     simp
 
+set_option maxHeartbeats 4000000 in
 private theorem abstractEq_convertValue (a b : Core.Value) :
     Flat.abstractEq (Flat.convertValue a) (Flat.convertValue b) = Core.abstractEq a b := by
   cases a <;> cases b <;> simp only [Flat.convertValue, Flat.abstractEq, Core.abstractEq] <;>
-    (try rfl) <;> (try cases ‹Bool›) <;> (try cases ‹Bool›) <;> rfl
+    first | rfl | (cases ‹Bool› <;> first | rfl | (cases ‹Bool› <;> rfl))
 
+set_option maxHeartbeats 4000000 in
 private theorem abstractLt_convertValue (a b : Core.Value) :
     Flat.abstractLt (Flat.convertValue a) (Flat.convertValue b) = Core.abstractLt a b := by
   cases a <;> cases b <;> simp only [Flat.convertValue, Flat.abstractLt, Core.abstractLt] <;>
-    (try rfl) <;> (try cases ‹Bool›) <;> (try cases ‹Bool›) <;> rfl
+    first | rfl | (cases ‹Bool› <;> first | rfl | (cases ‹Bool› <;> rfl))
 
 /-- evalBinary commutes with convertValue for operators where Flat matches Core. -/
 private theorem evalBinary_convertValue (op : Core.BinOp) (a b : Core.Value) :
