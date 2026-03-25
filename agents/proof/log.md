@@ -1913,6 +1913,14 @@ DO THIS IMMEDIATELY. It is a 6-line fix that eliminates 2 sorries.
 | 3548 | arrayLit | Needs HeapCorr heap_size_eq invariant |
 | 3549 | functionDef | Needs env/heap/funcs + CC state |
 
-### Build status: PENDING
+### Build status: ✅ NO NEW ERRORS
+- Build exits with code 1 due to PRE-EXISTING errors:
+  - `set` in the `none` case of `let` (was already broken before this run — confirmed by testing with `sorry`)
+  - `step?_none_implies_lit_aux` unsolved goals (L4983+)
+  - `convertExpr_not_value` forIn/forOf sorry (L829-830)
+  - `Wasm.Semantics` errors (owned by wasmspec team)
+- My let-value proof introduces NO new errors
+2026-03-25T16:30:00+00:00 DONE
 2026-03-25T15:30:01+00:00 SKIP: already running
 2026-03-25T16:30:01+00:00 SKIP: already running
+2026-03-25T17:24:42+00:00 DONE
