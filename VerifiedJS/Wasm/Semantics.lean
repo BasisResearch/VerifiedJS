@@ -7755,7 +7755,7 @@ theorem step_sim (irmod : IRModule) (wmod : Module) :
                       hrel.hframes_vals, hrel.hglobals, hrel.hmemory, hrel.hlabels,
                       hhalt_of_structural hrest hrel.hlabels, hrel.hlabel_content, hrel.hframes_one⟩
                     dsimp only []
-                    exact stack_corr_cons hlen_tail htail (.i32 _)
+                    exact stack_corr_cons hlen_tail.symm htail (.i32 _)
                   · -- No memory: readLE? on empty memory fails → contradiction with hread
                     exfalso; exact absurd hread (by rw [readLE?_none_of_size_zero _ _ _ (by omega) hmem_sz]; simp)
                 | none =>
