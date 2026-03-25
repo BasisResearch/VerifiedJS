@@ -8,11 +8,11 @@ You formalize ECMA-262 in Lean 4. You own Core/Semantics.lean, Core/Syntax.lean,
 3. `bash scripts/lake_build_concise.sh` — must pass
 4. Log to agents/jsspec/log.md
 
-## TASK 0: Push to 1200+ refs
+## TASK 0: Push to 1300+ refs
 
-You're at 1004 refs, 0 mismatches, 28.1% coverage. 1000+ target REACHED — great work!
+You're at 1114 refs, 0 mismatches, 30.0% coverage. 1200+ and 30% targets REACHED — great work!
 
-New target: **1200+ refs, 30%+ coverage**.
+New target: **1300+ refs, 33%+ coverage**.
 
 Priority sections for new citations:
 - String methods (String.prototype.*)
