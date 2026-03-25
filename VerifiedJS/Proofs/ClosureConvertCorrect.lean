@@ -204,7 +204,7 @@ private theorem evalBinary_convertValue (op : Core.BinOp) (a b : Core.Value) :
     show Flat.Value.bool (!(Flat.convertValue a == Flat.convertValue b)) = Flat.Value.bool (!(a == b))
     rw [convertValue_beq]
   | add =>
-    cases a <;> cases b <;> simp [Core.evalBinary, Flat.evalBinary, Flat.convertValue, toNumber_convertValue, valueToString_convertValue]
+    cases a <;> cases b <;> simp [Core.evalBinary, Flat.evalBinary, Flat.convertValue, toNumber_convertValue, valueToString_convertValue, Core.toNumber, Core.valueToString, Flat.toNumber, Flat.valueToString]
   | mod =>
     simp only [Core.evalBinary, Flat.evalBinary]
     rw [toNumber_convertValue, toNumber_convertValue]
@@ -239,22 +239,22 @@ private theorem evalBinary_convertValue (op : Core.BinOp) (a b : Core.Value) :
     simp [Flat.convertValue]
   | eq =>
     simp only [Core.evalBinary, Flat.evalBinary]
-    congr 1; cases a <;> cases b <;> simp [Flat.convertValue, Flat.abstractEq, Core.abstractEq, Flat.toNumber, Core.toNumber]
+    congr 1; cases a <;> cases b <;> simp [Flat.convertValue, Flat.abstractEq, Core.abstractEq, Flat.toNumber, Core.toNumber, Flat.valueToString, Core.valueToString]
   | neq =>
     simp only [Core.evalBinary, Flat.evalBinary]
-    congr 1; congr 1; cases a <;> cases b <;> simp [Flat.convertValue, Flat.abstractEq, Core.abstractEq, Flat.toNumber, Core.toNumber]
+    congr 1; congr 1; cases a <;> cases b <;> simp [Flat.convertValue, Flat.abstractEq, Core.abstractEq, Flat.toNumber, Core.toNumber, Flat.valueToString, Core.valueToString]
   | lt =>
     simp only [Core.evalBinary, Flat.evalBinary]
-    congr 1; cases a <;> cases b <;> simp [Flat.convertValue, Flat.abstractLt, Core.abstractLt, Flat.toNumber, Core.toNumber]
+    congr 1; cases a <;> cases b <;> simp [Flat.convertValue, Flat.abstractLt, Core.abstractLt, Flat.toNumber, Core.toNumber, Flat.valueToString, Core.valueToString]
   | gt =>
     simp only [Core.evalBinary, Flat.evalBinary]
-    congr 1; cases a <;> cases b <;> simp [Flat.convertValue, Flat.abstractLt, Core.abstractLt, Flat.toNumber, Core.toNumber]
+    congr 1; cases a <;> cases b <;> simp [Flat.convertValue, Flat.abstractLt, Core.abstractLt, Flat.toNumber, Core.toNumber, Flat.valueToString, Core.valueToString]
   | le =>
     simp only [Core.evalBinary, Flat.evalBinary]
-    congr 1; congr 1; cases a <;> cases b <;> simp [Flat.convertValue, Flat.abstractLt, Core.abstractLt, Flat.toNumber, Core.toNumber]
+    congr 1; congr 1; cases a <;> cases b <;> simp [Flat.convertValue, Flat.abstractLt, Core.abstractLt, Flat.toNumber, Core.toNumber, Flat.valueToString, Core.valueToString]
   | ge =>
     simp only [Core.evalBinary, Flat.evalBinary]
-    congr 1; congr 1; cases a <;> cases b <;> simp [Flat.convertValue, Flat.abstractLt, Core.abstractLt, Flat.toNumber, Core.toNumber]
+    congr 1; congr 1; cases a <;> cases b <;> simp [Flat.convertValue, Flat.abstractLt, Core.abstractLt, Flat.toNumber, Core.toNumber, Flat.valueToString, Core.valueToString]
   | instanceof =>
     cases a <;> cases b <;> simp [Core.evalBinary, Flat.evalBinary, Flat.convertValue]
   | «in» =>
@@ -320,7 +320,7 @@ private theorem Flat_lookup_updateBindingList_ne (xs : Flat.Env) (name other : F
       · rfl
     · have hno : (n == other) = false := by
         have : n = name := by simpa using hn
-        subst this; simp [beq_comm] at hne ⊢; exact hne
+        subst this; simp [Bool.beq_comm] at hne ⊢; exact hne
       simp only [Flat.updateBindingList, hn, ↓reduceIte, Flat.Env.lookup, List.find?, hno]
 
 /-- Lookup after Flat.Env.assign for the same name. -/
@@ -338,7 +338,7 @@ private theorem Flat_lookup_assign_ne (env : Flat.Env) (name other : Flat.VarNam
   simp only [Flat.Env.assign]
   split
   · exact Flat_lookup_updateBindingList_ne env name other v hne
-  · have hne' : (name == other) = false := by simp [beq_comm] at hne ⊢; exact hne
+  · have hne' : (name == other) = false := by simp [Bool.beq_comm] at hne ⊢; exact hne
     simp only [Flat.Env.lookup, List.find?, hne', Bool.false_eq_true, ↓reduceIte]
 
 private theorem Core_lookup_assign_eq (env : Core.Env) (name : String) (v : Core.Value) :

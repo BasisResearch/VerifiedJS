@@ -722,12 +722,12 @@ private theorem anfConvert_halt_star_aux
         cases hvar : sf.env.lookup name with
         | some v =>
           -- Var in scope: 2 silent steps to reach b
-          obtain ⟨val, hstep1⟩ : ∃ val, Flat.step? sf = some (.silent, { expr := .seq (.lit val) b, env := sf.env, heap := sf.heap, trace := sf.trace ++ [.silent] }) := by
+          obtain ⟨val, hstep1⟩ : ∃ val, Flat.step? sf = some (.silent, { expr := .seq (.lit val) b, env := sf.env, heap := sf.heap, trace := sf.trace ++ [.silent], funcs := sf.funcs, callStack := sf.callStack }) := by
             rw [show sf = {sf with expr := .seq a b} from by cases sf; simp_all]
             rw [ha]; unfold Flat.step? Flat.exprValue?
             unfold Flat.step?
             rw [hvar]; exact ⟨v, rfl⟩
-          let sf2 : Flat.State := { expr := .seq (.lit val) b, env := sf.env, heap := sf.heap, trace := sf.trace ++ [.silent] }
+          let sf2 : Flat.State := { expr := .seq (.lit val) b, env := sf.env, heap := sf.heap, trace := sf.trace ++ [.silent], funcs := sf.funcs, callStack := sf.callStack }
           obtain ⟨sf3, hstep2⟩ : ∃ sf3, Flat.step? sf2 = some (.silent, sf3) := by
             simp only [sf2]; simp only [Flat.step?, Flat.exprValue?]; exact ⟨_, rfl⟩
           have hsf3_expr : sf3.expr = b := by
@@ -767,14 +767,10 @@ private theorem anfConvert_halt_star_aux
         rw [ha] at hnorm; simp only [ANF.normalizeExpr] at hnorm
         have hbd : b.depth ≤ N := by rw [hsf] at hdepth; simp [Flat.Expr.depth] at hdepth; omega
         -- Both cases (.this in env or not) produce .silent and .seq (.lit val) b
-        obtain ⟨val, hstep1⟩ : ∃ val, Flat.step? sf = some (.silent, { expr := .seq (.lit val) b, env := sf.env, heap := sf.heap, trace := sf.trace ++ [.silent] }) := by
+        obtain ⟨val, hstep1⟩ : ∃ val, Flat.step? sf = some (.silent, { expr := .seq (.lit val) b, env := sf.env, heap := sf.heap, trace := sf.trace ++ [.silent], funcs := sf.funcs, callStack := sf.callStack }) := by
           rw [show sf = {sf with expr := .seq a b} from by cases sf; simp_all]
-          rw [ha]; unfold Flat.step? Flat.exprValue?
-          unfold Flat.step?
-          cases sf.env.lookup "this" with
-          | some v => exact ⟨v, rfl⟩
-          | none => exact ⟨.undefined, rfl⟩
-        let sf2 : Flat.State := { expr := .seq (.lit val) b, env := sf.env, heap := sf.heap, trace := sf.trace ++ [.silent] }
+          rw [ha]; exact Flat.step?_seq_this_steps_to_lit sf b
+        let sf2 : Flat.State := { expr := .seq (.lit val) b, env := sf.env, heap := sf.heap, trace := sf.trace ++ [.silent], funcs := sf.funcs, callStack := sf.callStack }
         -- Step 2: .seq (.lit val) b → b
         obtain ⟨sf3, hstep2⟩ : ∃ sf3, Flat.step? sf2 = some (.silent, sf3) := by
           simp only [sf2]; simp only [Flat.step?, Flat.exprValue?]; exact ⟨_, rfl⟩
@@ -908,13 +904,13 @@ private theorem anfConvert_halt_star_aux
             | none => exact absurd hlu hname1_bound
           -- Step 1: .seq (.seq (.var name1) a2) b → .seq (.seq (.lit val) a2) b
           have hstep1 : Flat.step? sf = some (.silent,
-              { expr := .seq (.seq (.lit val) a2) b, env := sf.env, heap := sf.heap, trace := sf.trace ++ [.silent] }) := by
+              { expr := .seq (.seq (.lit val) a2) b, env := sf.env, heap := sf.heap, trace := sf.trace ++ [.silent], funcs := sf.funcs, callStack := sf.callStack }) := by
             rw [show sf = {sf with expr := .seq a b} from by cases sf; simp_all]
             rw [ha, ha1]; unfold Flat.step? Flat.exprValue?
             unfold Flat.step? Flat.exprValue?
             unfold Flat.step?
             rw [hval]; rfl
-          let sf2 : Flat.State := { expr := .seq (.seq (.lit val) a2) b, env := sf.env, heap := sf.heap, trace := sf.trace ++ [.silent] }
+          let sf2 : Flat.State := { expr := .seq (.seq (.lit val) a2) b, env := sf.env, heap := sf.heap, trace := sf.trace ++ [.silent], funcs := sf.funcs, callStack := sf.callStack }
           -- Step 2: .seq (.seq (.lit val) a2) b → .seq a2 b
           obtain ⟨sf3, hstep2_eq⟩ : ∃ sf3, Flat.step? sf2 = some (.silent, sf3) := by
             simp only [sf2]; unfold Flat.step? Flat.exprValue?
@@ -959,7 +955,7 @@ private theorem anfConvert_halt_star_aux
             simp [Flat.Expr.depth] at hdepth; omega
           -- Step 1: .seq (.seq .this a2) b → .seq (.seq (.lit v) a2) b
           obtain ⟨val, hstep1⟩ : ∃ val, Flat.step? sf = some (.silent,
-              { expr := .seq (.seq (.lit val) a2) b, env := sf.env, heap := sf.heap, trace := sf.trace ++ [.silent] }) := by
+              { expr := .seq (.seq (.lit val) a2) b, env := sf.env, heap := sf.heap, trace := sf.trace ++ [.silent], funcs := sf.funcs, callStack := sf.callStack }) := by
             rw [show sf = {sf with expr := .seq a b} from by cases sf; simp_all]
             rw [ha, ha1]; unfold Flat.step? Flat.exprValue?
             unfold Flat.step? Flat.exprValue?
@@ -967,7 +963,7 @@ private theorem anfConvert_halt_star_aux
             cases sf.env.lookup "this" with
             | some v => exact ⟨v, rfl⟩
             | none => exact ⟨.undefined, rfl⟩
-          let sf2 : Flat.State := { expr := .seq (.seq (.lit val) a2) b, env := sf.env, heap := sf.heap, trace := sf.trace ++ [.silent] }
+          let sf2 : Flat.State := { expr := .seq (.seq (.lit val) a2) b, env := sf.env, heap := sf.heap, trace := sf.trace ++ [.silent], funcs := sf.funcs, callStack := sf.callStack }
           -- Step 2: .seq (.seq (.lit val) a2) b → .seq a2 b
           obtain ⟨sf3, hstep2_eq⟩ : ∃ sf3, Flat.step? sf2 = some (.silent, sf3) := by
             simp only [sf2]; unfold Flat.step? Flat.exprValue?
@@ -1076,14 +1072,14 @@ private theorem anfConvert_halt_star_aux
               | none => exact absurd hlu hname0_bound
             -- Step 1: resolve .var name0 → .lit val inside nested seqs
             have hstep1 : Flat.step? sf = some (.silent,
-                { expr := .seq (.seq (.seq (.lit val) d) a2) b, env := sf.env, heap := sf.heap, trace := sf.trace ++ [.silent] }) := by
+                { expr := .seq (.seq (.seq (.lit val) d) a2) b, env := sf.env, heap := sf.heap, trace := sf.trace ++ [.silent], funcs := sf.funcs, callStack := sf.callStack }) := by
               rw [show sf = {sf with expr := .seq a b} from by cases sf; simp_all]
               rw [ha, ha1, hc]; unfold Flat.step? Flat.exprValue?
               unfold Flat.step? Flat.exprValue?
               unfold Flat.step? Flat.exprValue?
               unfold Flat.step?
               rw [hval]; rfl
-            let sf2 : Flat.State := { expr := .seq (.seq (.seq (.lit val) d) a2) b, env := sf.env, heap := sf.heap, trace := sf.trace ++ [.silent] }
+            let sf2 : Flat.State := { expr := .seq (.seq (.seq (.lit val) d) a2) b, env := sf.env, heap := sf.heap, trace := sf.trace ++ [.silent], funcs := sf.funcs, callStack := sf.callStack }
             -- Step 2: .seq(.seq(.seq(.lit val) d) a2) b → .seq(.seq d a2) b
             obtain ⟨sf3, hstep2_eq⟩ : ∃ sf3, Flat.step? sf2 = some (.silent, sf3) := by
               simp only [sf2]; unfold Flat.step? Flat.exprValue?
@@ -1129,7 +1125,7 @@ private theorem anfConvert_halt_star_aux
               rw [hsf] at hdepth; rw [ha, ha1, hc] at hdepth
               simp [Flat.Expr.depth] at hdepth; omega
             obtain ⟨val, hstep1⟩ : ∃ val, Flat.step? sf = some (.silent,
-                { expr := .seq (.seq (.seq (.lit val) d) a2) b, env := sf.env, heap := sf.heap, trace := sf.trace ++ [.silent] }) := by
+                { expr := .seq (.seq (.seq (.lit val) d) a2) b, env := sf.env, heap := sf.heap, trace := sf.trace ++ [.silent], funcs := sf.funcs, callStack := sf.callStack }) := by
               rw [show sf = {sf with expr := .seq a b} from by cases sf; simp_all]
               rw [ha, ha1, hc]; unfold Flat.step? Flat.exprValue?
               unfold Flat.step? Flat.exprValue?
@@ -1138,7 +1134,7 @@ private theorem anfConvert_halt_star_aux
               cases sf.env.lookup "this" with
               | some v => exact ⟨v, rfl⟩
               | none => exact ⟨.undefined, rfl⟩
-            let sf2 : Flat.State := { expr := .seq (.seq (.seq (.lit val) d) a2) b, env := sf.env, heap := sf.heap, trace := sf.trace ++ [.silent] }
+            let sf2 : Flat.State := { expr := .seq (.seq (.seq (.lit val) d) a2) b, env := sf.env, heap := sf.heap, trace := sf.trace ++ [.silent], funcs := sf.funcs, callStack := sf.callStack }
             obtain ⟨sf3, hstep2_eq⟩ : ∃ sf3, Flat.step? sf2 = some (.silent, sf3) := by
               simp only [sf2]; unfold Flat.step? Flat.exprValue?
               unfold Flat.step? Flat.exprValue?

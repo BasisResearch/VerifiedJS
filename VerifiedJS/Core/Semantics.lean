@@ -29303,6 +29303,7 @@ theorem elaborate_correct (p : Source.Program) (cp : Core.Program)
 -- | contain \_binding\_.\[\[Description\]\], append
 -- | \_binding\_.\[\[Description\]\] to \_privateIdentifiers\_. 1. Set
 
+
 /-! ## JSON Operations -/
 
 -- SPEC: L38838-L38861
@@ -29329,6 +29330,7 @@ theorem elaborate_correct (p : Source.Program) (cp : Core.Program)
 -- | Perform ? \_val\_.\[\[Delete\]\](\_P\_). 1. Else, 1. Perform ?
 -- | CreateDataProperty(\_val\_, \_P\_, \_newElement\_). 1. Return ?
 -- | Call(\_reviver\_, \_holder\_, « \_name\_, \_val\_ »).
+-- |
 
 -- SPEC: L38980-L39007
 -- | # SerializeJSONProperty ( \_state\_: a JSON Serialization Record, \_key\_: a String, \_holder\_: an Object, ): either a normal completion containing either a String or \*undefined\*, or a throw completion
@@ -29358,6 +29360,7 @@ theorem elaborate_correct (p : Source.Program) (cp : Core.Program)
 -- | \_isArray\_ is \*true\*, return ? SerializeJSONArray(\_state\_,
 -- | \_value\_). 1. Return ? SerializeJSONObject(\_state\_, \_value\_). 1.
 -- | Return \*undefined\*.
+-- |
 
 -- SPEC: L39008-L39040
 -- | # QuoteJSONString ( \_value\_: a String, ): a String
@@ -29392,6 +29395,7 @@ theorem elaborate_correct (p : Source.Program) (cp : Core.Program)
 -- |   U+000D       CARRIAGE RETURN (CR)     \`\\\\r\`
 -- |   U+0022       QUOTATION MARK           \`\\\\\"\`
 -- |   U+005C       REVERSE SOLIDUS          \`\\\\\\\\\`
+-- |
 
 -- SPEC: L39052-L39091
 -- | # SerializeJSONObject ( \_state\_: a JSON Serialization Record, \_value\_: an Object, ): either a normal completion containing a String or a throw completion
@@ -29433,6 +29437,7 @@ theorem elaborate_correct (p : Source.Program) (cp : Core.Program)
 -- | the code unit 0x000A (LINE FEED), \_stepBack\_, and \*\"}\"\*. 1. Remove
 -- | the last element of \_state\_.\[\[Stack\]\]. 1. Set
 -- | \_state\_.\[\[Indent\]\] to \_stepBack\_. 1. Return \_final\_.
+-- |
 
 -- SPEC: L39092-L39133
 -- | # SerializeJSONArray ( \_state\_: a JSON Serialization Record, \_value\_: an ECMAScript language value, ): either a normal completion containing a String or a throw completion
@@ -29470,6 +29475,13 @@ theorem elaborate_correct (p : Source.Program) (cp : Core.Program)
 -- | FEED), \_stepBack\_, and \*\"\]\"\*. 1. Remove the last element of
 -- | \_state\_.\[\[Stack\]\]. 1. Set \_state\_.\[\[Indent\]\] to
 -- | \_stepBack\_. 1. Return \_final\_.
+-- |
+-- | The representation of arrays includes only the elements in the interval
+-- | from \*+0\*~𝔽~ (inclusive) to \`array.length\` (exclusive). Properties
+-- | whose keys are not array indices are excluded from the stringification.
+-- | An array is stringified as an opening LEFT SQUARE BRACKET, elements
+-- | separated by COMMA, and a closing RIGHT SQUARE BRACKET.
+-- |
 
 -- SPEC: L39134-L39141
 -- | # JSON \[ %Symbol.toStringTag% \]
@@ -29479,23 +29491,27 @@ theorem elaborate_correct (p : Source.Program) (cp : Core.Program)
 -- |
 -- | This property has the attributes { \[\[Writable\]\]: \*false\*,
 -- | \[\[Enumerable\]\]: \*false\*, \[\[Configurable\]\]: \*true\* }.
+-- |
 
 -- SPEC: L22273-L22281
 -- | # ParseJSONModule ( \_source\_: a String, ): either a normal completion containing a Synthetic Module Record, or a throw completion
 -- |
 -- | description
 -- |
--- | :
+-- | :   
 -- |
 -- | 1\. Let \_json\_ be ? ParseJSON(\_source\_). 1. Return
 -- | CreateDefaultExportSyntheticModule(\_json\_).
+-- |
+
 
 /-! ## DataView Operations -/
 
 -- SPEC: L37710-L37725
 -- | # DataView With Buffer Witness Records
 -- |
--- | A DataView With Buffer Witness Record is a Record value used
+-- | A [DataView With Buffer Witness Record]{.dfn
+-- | variants="DataView With Buffer Witness Records"} is a Record value used
 -- | to encapsulate a DataView along with a cached byte length of the viewed
 -- | buffer. It is used to help ensure there is a single ReadSharedMemory
 -- | event of the byte length data block when the viewed buffer is a growable
@@ -29507,6 +29523,7 @@ theorem elaborate_correct (p : Source.Program) (cp : Core.Program)
 -- |   -------------------------------- ---------------------------------------- -----------------------------------------------------------------------------------------
 -- |   \[\[Object\]\]                   a DataView                               The DataView object whose buffer\'s byte length is loaded.
 -- |   \[\[CachedBufferByteLength\]\]   a non-negative integer or \~detached\~   The byte length of the object\'s \[\[ViewedArrayBuffer\]\] when the Record was created.
+-- |
 
 -- SPEC: L37726-L37734
 -- | # MakeDataViewWithBufferWitnessRecord ( \_obj\_: a DataView, \_order\_: \~seq-cst\~ or \~unordered\~, ): a DataView With Buffer Witness Record
@@ -29517,6 +29534,7 @@ theorem elaborate_correct (p : Source.Program) (cp : Core.Program)
 -- | ArrayBufferByteLength(\_buffer\_, \_order\_). 1. Return the DataView
 -- | With Buffer Witness Record { \[\[Object\]\]: \_obj\_,
 -- | \[\[CachedBufferByteLength\]\]: \_byteLength\_ }.
+-- |
 
 -- SPEC: L37735-L37746
 -- | # GetViewByteLength ( \_viewRecord\_: a DataView With Buffer Witness Record, ): a non-negative integer
@@ -29530,6 +29548,7 @@ theorem elaborate_correct (p : Source.Program) (cp : Core.Program)
 -- | \_byteLength\_ be \_viewRecord\_.\[\[CachedBufferByteLength\]\]. 1.
 -- | Assert: \_byteLength\_ is not \~detached\~. 1. Return \_byteLength\_ -
 -- | \_byteOffset\_.
+-- |
 
 -- SPEC: L37747-L37763
 -- | # IsViewOutOfBounds ( \_viewRecord\_: a DataView With Buffer Witness Record, ): a Boolean
@@ -29548,8 +29567,10 @@ theorem elaborate_correct (p : Source.Program) (cp : Core.Program)
 -- | considered out-of-bounds. 1. If \_byteOffsetStart\_ \>
 -- | \_bufferByteLength\_ or \_byteOffsetEnd\_ \> \_bufferByteLength\_,
 -- | return \*true\*. 1. Return \*false\*.
+-- |
 
-/-! ## Symbol Properties -/
+
+/-! ## Symbol Operations -/
 
 -- SPEC: L24778-L24785
 -- | # Properties of the Symbol Constructor
@@ -29559,6 +29580,7 @@ theorem elaborate_correct (p : Source.Program) (cp : Core.Program)
 -- | - has a \[\[Prototype\]\] internal slot whose value is
 -- |   %Function.prototype%.
 -- | - has the following properties:
+-- |
 
 -- SPEC: L24786-L24793
 -- | # Symbol.asyncIterator
@@ -29568,6 +29590,7 @@ theorem elaborate_correct (p : Source.Program) (cp : Core.Program)
 -- |
 -- | This property has the attributes { \[\[Writable\]\]: \*false\*,
 -- | \[\[Enumerable\]\]: \*false\*, \[\[Configurable\]\]: \*false\* }.
+-- |
 
 -- SPEC: L24794-L24817
 -- | # Symbol.for ( \_key\_ )
@@ -29583,7 +29606,7 @@ theorem elaborate_correct (p : Source.Program) (cp : Core.Program)
 -- | Record { \[\[Key\]\]: \_stringKey\_, \[\[Symbol\]\]: \_newSymbol\_ } to
 -- | the GlobalSymbolRegistry List. 1. Return \_newSymbol\_.
 -- |
--- | The GlobalSymbolRegistry List is an append-only List that is
+-- | The [GlobalSymbolRegistry List]{.dfn} is an append-only List that is
 -- | globally available. It is shared by all realms. Prior to the evaluation
 -- | of any ECMAScript code, it is initialized as a new empty List. Elements
 -- | of the GlobalSymbolRegistry List are Records with the structure defined
@@ -29593,6 +29616,7 @@ theorem elaborate_correct (p : Source.Program) (cp : Core.Program)
 -- |   ---------------- ---------- --------------------------------------------------
 -- |   \[\[Key\]\]      a String   A string key used to globally identify a Symbol.
 -- |   \[\[Symbol\]\]   a Symbol   A symbol that can be retrieved from any realm.
+-- |
 
 -- SPEC: L24818-L24825
 -- | # Symbol.hasInstance
@@ -29602,6 +29626,7 @@ theorem elaborate_correct (p : Source.Program) (cp : Core.Program)
 -- |
 -- | This property has the attributes { \[\[Writable\]\]: \*false\*,
 -- | \[\[Enumerable\]\]: \*false\*, \[\[Configurable\]\]: \*false\* }.
+-- |
 
 -- SPEC: L24826-L24833
 -- | # Symbol.isConcatSpreadable
@@ -29611,6 +29636,7 @@ theorem elaborate_correct (p : Source.Program) (cp : Core.Program)
 -- |
 -- | This property has the attributes { \[\[Writable\]\]: \*false\*,
 -- | \[\[Enumerable\]\]: \*false\*, \[\[Configurable\]\]: \*false\* }.
+-- |
 
 -- SPEC: L24834-L24841
 -- | # Symbol.iterator
@@ -29620,16 +29646,18 @@ theorem elaborate_correct (p : Source.Program) (cp : Core.Program)
 -- |
 -- | This property has the attributes { \[\[Writable\]\]: \*false\*,
 -- | \[\[Enumerable\]\]: \*false\*, \[\[Configurable\]\]: \*false\* }.
+-- |
 
--- SPEC: L24842-L24849
+-- SPEC: L24842-L24848
 -- | # Symbol.keyFor ( \_sym\_ )
 -- |
 -- | This function performs the following steps when called:
 -- |
 -- | 1\. If \_sym\_ is not a Symbol, throw a \*TypeError\* exception. 1.
 -- | Return KeyForSymbol(\_sym\_).
+-- |
 
--- SPEC: L24850-L24857
+-- SPEC: L24849-L24856
 -- | # Symbol.match
 -- |
 -- | The initial value of \`Symbol.match\` is the well-known symbol
@@ -29637,8 +29665,9 @@ theorem elaborate_correct (p : Source.Program) (cp : Core.Program)
 -- |
 -- | This property has the attributes { \[\[Writable\]\]: \*false\*,
 -- | \[\[Enumerable\]\]: \*false\*, \[\[Configurable\]\]: \*false\* }.
+-- |
 
--- SPEC: L24858-L24865
+-- SPEC: L24857-L24864
 -- | # Symbol.matchAll
 -- |
 -- | The initial value of \`Symbol.matchAll\` is the well-known symbol
@@ -29646,8 +29675,9 @@ theorem elaborate_correct (p : Source.Program) (cp : Core.Program)
 -- |
 -- | This property has the attributes { \[\[Writable\]\]: \*false\*,
 -- | \[\[Enumerable\]\]: \*false\*, \[\[Configurable\]\]: \*false\* }.
+-- |
 
--- SPEC: L24866-L24873
+-- SPEC: L24865-L24872
 -- | # Symbol.prototype
 -- |
 -- | The initial value of \`Symbol.prototype\` is the Symbol prototype
@@ -29655,8 +29685,9 @@ theorem elaborate_correct (p : Source.Program) (cp : Core.Program)
 -- |
 -- | This property has the attributes { \[\[Writable\]\]: \*false\*,
 -- | \[\[Enumerable\]\]: \*false\*, \[\[Configurable\]\]: \*false\* }.
+-- |
 
--- SPEC: L24874-L24881
+-- SPEC: L24873-L24880
 -- | # Symbol.replace
 -- |
 -- | The initial value of \`Symbol.replace\` is the well-known symbol
@@ -29664,8 +29695,9 @@ theorem elaborate_correct (p : Source.Program) (cp : Core.Program)
 -- |
 -- | This property has the attributes { \[\[Writable\]\]: \*false\*,
 -- | \[\[Enumerable\]\]: \*false\*, \[\[Configurable\]\]: \*false\* }.
+-- |
 
--- SPEC: L24882-L24889
+-- SPEC: L24881-L24888
 -- | # Symbol.search
 -- |
 -- | The initial value of \`Symbol.search\` is the well-known symbol
@@ -29673,8 +29705,9 @@ theorem elaborate_correct (p : Source.Program) (cp : Core.Program)
 -- |
 -- | This property has the attributes { \[\[Writable\]\]: \*false\*,
 -- | \[\[Enumerable\]\]: \*false\*, \[\[Configurable\]\]: \*false\* }.
+-- |
 
--- SPEC: L24890-L24897
+-- SPEC: L24889-L24896
 -- | # Symbol.species
 -- |
 -- | The initial value of \`Symbol.species\` is the well-known symbol
@@ -29682,8 +29715,9 @@ theorem elaborate_correct (p : Source.Program) (cp : Core.Program)
 -- |
 -- | This property has the attributes { \[\[Writable\]\]: \*false\*,
 -- | \[\[Enumerable\]\]: \*false\*, \[\[Configurable\]\]: \*false\* }.
+-- |
 
--- SPEC: L24898-L24905
+-- SPEC: L24897-L24904
 -- | # Symbol.split
 -- |
 -- | The initial value of \`Symbol.split\` is the well-known symbol
@@ -29691,8 +29725,9 @@ theorem elaborate_correct (p : Source.Program) (cp : Core.Program)
 -- |
 -- | This property has the attributes { \[\[Writable\]\]: \*false\*,
 -- | \[\[Enumerable\]\]: \*false\*, \[\[Configurable\]\]: \*false\* }.
+-- |
 
--- SPEC: L24906-L24913
+-- SPEC: L24905-L24912
 -- | # Symbol.toPrimitive
 -- |
 -- | The initial value of \`Symbol.toPrimitive\` is the well-known symbol
@@ -29700,8 +29735,9 @@ theorem elaborate_correct (p : Source.Program) (cp : Core.Program)
 -- |
 -- | This property has the attributes { \[\[Writable\]\]: \*false\*,
 -- | \[\[Enumerable\]\]: \*false\*, \[\[Configurable\]\]: \*false\* }.
+-- |
 
--- SPEC: L24914-L24921
+-- SPEC: L24913-L24920
 -- | # Symbol.toStringTag
 -- |
 -- | The initial value of \`Symbol.toStringTag\` is the well-known symbol
@@ -29709,6 +29745,7 @@ theorem elaborate_correct (p : Source.Program) (cp : Core.Program)
 -- |
 -- | This property has the attributes { \[\[Writable\]\]: \*false\*,
 -- | \[\[Enumerable\]\]: \*false\*, \[\[Configurable\]\]: \*false\* }.
+-- |
 
 -- SPEC: L24560-L24599
 -- | # Function.prototype \[ %Symbol.hasInstance% \] ( \_V\_ )
@@ -29729,7 +29766,7 @@ theorem elaborate_correct (p : Source.Program) (cp : Core.Program)
 -- | ``` javascript
 -- |
 -- |             v instanceof F
--- |
+-- |           
 -- | ```
 -- |
 -- | evaluates as
@@ -29737,7 +29774,7 @@ theorem elaborate_correct (p : Source.Program) (cp : Core.Program)
 -- | ``` javascript
 -- |
 -- |             F[%Symbol.hasInstance%](v)
--- |
+-- |           
 -- | ```
 -- |
 -- | A constructor function can control which objects are recognized as its
@@ -29750,6 +29787,10 @@ theorem elaborate_correct (p : Source.Program) (cp : Core.Program)
 -- |
 -- | The value of the \*\"name\"\* property of this method is
 -- | \*\"\[Symbol.hasInstance\]\"\*.
+-- |
+
+
+/-! ## Reflect Operations -/
 
 -- SPEC: L42262-L42269
 -- | # Reflect \[ %Symbol.toStringTag% \]
@@ -29759,8 +29800,10 @@ theorem elaborate_correct (p : Source.Program) (cp : Core.Program)
 -- |
 -- | This property has the attributes { \[\[Writable\]\]: \*false\*,
 -- | \[\[Enumerable\]\]: \*false\*, \[\[Configurable\]\]: \*true\* }.
+-- |
 
-/-! ## Map Objects -/
+
+/-! ## Map Operations -/
 
 -- SPEC: L35477-L35483
 -- | # Map.prototype
@@ -29769,6 +29812,7 @@ theorem elaborate_correct (p : Source.Program) (cp : Core.Program)
 -- |
 -- | This property has the attributes { \[\[Writable\]\]: \*false\*,
 -- | \[\[Enumerable\]\]: \*false\*, \[\[Configurable\]\]: \*false\* }.
+-- |
 
 -- SPEC: L35484-L35499
 -- | # get Map \[ %Symbol.species% \]
@@ -29786,8 +29830,9 @@ theorem elaborate_correct (p : Source.Program) (cp : Core.Program)
 -- | %Symbol.species% to determine the constructor to use to create the
 -- | derived objects. Subclass constructor may over-ride %Symbol.species% to
 -- | change the default constructor assignment.
+-- |
 
--- SPEC: L35507-L35527
+-- SPEC: L35510-L35523
 -- | # Map.prototype.clear ( )
 -- |
 -- | This method performs the following steps when called:
@@ -29801,13 +29846,15 @@ theorem elaborate_correct (p : Source.Program) (cp : Core.Program)
 -- | The existing \[\[MapData\]\] List is preserved because there may be
 -- | existing Map Iterator objects that are suspended midway through
 -- | iterating over that List.
+-- |
 
--- SPEC: L35531-L35532
+-- SPEC: L35524-L35527
 -- | # Map.prototype.constructor
 -- |
 -- | The initial value of \`Map.prototype.constructor\` is %Map%.
+-- |
 
--- SPEC: L35533-L35550
+-- SPEC: L35528-L35544
 -- | # Map.prototype.delete ( \_key\_ )
 -- |
 -- | This method performs the following steps when called:
@@ -29824,16 +29871,18 @@ theorem elaborate_correct (p : Source.Program) (cp : Core.Program)
 -- | The value \~empty\~ is used as a specification device to indicate that
 -- | an entry has been deleted. Actual implementations may take other actions
 -- | such as physically removing the entry from internal data structures.
+-- |
 
--- SPEC: L35551-L35556
+-- SPEC: L35545-L35551
 -- | # Map.prototype.entries ( )
 -- |
 -- | This method performs the following steps when called:
 -- |
 -- | 1\. Let \_M\_ be the \*this\* value. 1. Return ?
 -- | CreateMapIterator(\_M\_, \~key+value\~).
+-- |
 
--- SPEC: L35557-L35594
+-- SPEC: L35552-L35591
 -- | # Map.prototype.forEach ( \_callback\_ \[ , \_thisArg\_ \] )
 -- |
 -- | This method performs the following steps when called:
@@ -29851,8 +29900,31 @@ theorem elaborate_correct (p : Source.Program) (cp : Core.Program)
 -- | \_entries\_ may have increased during execution of \_callback\_. 1. Set
 -- | \_numEntries\_ to the number of elements in \_entries\_. 1. Return
 -- | \*undefined\*.
+-- |
+-- | \_callback\_ should be a function that accepts three arguments.
+-- | \`forEach\` calls \_callback\_ once for each key/value pair present in
+-- | the Map, in key insertion order. \_callback\_ is called only for keys of
+-- | the Map which actually exist; it is not called for keys that have been
+-- | deleted from the Map.
+-- |
+-- | If a \_thisArg\_ parameter is provided, it will be used as the \*this\*
+-- | value for each invocation of \_callback\_. If it is not provided,
+-- | \*undefined\* is used instead.
+-- |
+-- | \_callback\_ is called with three arguments: the value of the item, the
+-- | key of the item, and the Map being traversed.
+-- |
+-- | \`forEach\` does not directly mutate the object on which it is called
+-- | but the object may be mutated by the calls to \_callback\_. Each entry
+-- | of a map\'s \[\[MapData\]\] is only visited once. New keys added after
+-- | the call to \`forEach\` begins are visited. A key will be revisited if
+-- | it is deleted after it has been visited and then re-added before the
+-- | \`forEach\` call completes. Keys that are deleted after the call to
+-- | \`forEach\` begins and before being visited are not visited unless the
+-- | key is added again before the \`forEach\` call completes.
+-- |
 
--- SPEC: L35595-L35606
+-- SPEC: L35592-L35603
 -- | # Map.prototype.get ( \_key\_ )
 -- |
 -- | This method performs the following steps when called:
@@ -29864,8 +29936,9 @@ theorem elaborate_correct (p : Source.Program) (cp : Core.Program)
 -- | \_p\_.\[\[Key\]\] is not \~empty\~ and SameValue(\_p\_.\[\[Key\]\],
 -- | \_key\_) is \*true\*, return \_p\_.\[\[Value\]\]. 1. Return
 -- | \*undefined\*.
+-- |
 
--- SPEC: L35607-L35620
+-- SPEC: L35604-L35616
 -- | # Map.prototype.getOrInsert ( \_key\_, \_value\_ )
 -- |
 -- | This method performs the following steps when called:
@@ -29878,8 +29951,9 @@ theorem elaborate_correct (p : Source.Program) (cp : Core.Program)
 -- | \_key\_) is \*true\*, return \_p\_.\[\[Value\]\]. 1. Let \_p\_ be the
 -- | Record { \[\[Key\]\]: \_key\_, \[\[Value\]\]: \_value\_ }. 1. Append
 -- | \_p\_ to \_M\_.\[\[MapData\]\]. 1. Return \_value\_.
+-- |
 
--- SPEC: L35621-L35646
+-- SPEC: L35617-L35637
 -- | # Map.prototype.getOrInsertComputed ( \_key\_, \_callback\_ )
 -- |
 -- | This method performs the following steps when called:
@@ -29900,8 +29974,9 @@ theorem elaborate_correct (p : Source.Program) (cp : Core.Program)
 -- | Return \_value\_. 1. Let \_p\_ be the Record { \[\[Key\]\]: \_key\_,
 -- | \[\[Value\]\]: \_value\_ }. 1. Append \_p\_ to \_M\_.\[\[MapData\]\]. 1.
 -- | Return \_value\_.
+-- |
 
--- SPEC: L35647-L35658
+-- SPEC: L35638-L35648
 -- | # Map.prototype.has ( \_key\_ )
 -- |
 -- | This method performs the following steps when called:
@@ -29912,16 +29987,18 @@ theorem elaborate_correct (p : Source.Program) (cp : Core.Program)
 -- | \[\[Key\]\], \[\[Value\]\] } \_p\_ of \_M\_.\[\[MapData\]\], do 1. If
 -- | \_p\_.\[\[Key\]\] is not \~empty\~ and SameValue(\_p\_.\[\[Key\]\],
 -- | \_key\_) is \*true\*, return \*true\*. 1. Return \*false\*.
+-- |
 
--- SPEC: L35659-L35664
+-- SPEC: L35649-L35655
 -- | # Map.prototype.keys ( )
 -- |
 -- | This method performs the following steps when called:
 -- |
 -- | 1\. Let \_M\_ be the \*this\* value. 1. Return ?
 -- | CreateMapIterator(\_M\_, \~key\~).
+-- |
 
--- SPEC: L35665-L35680
+-- SPEC: L35656-L35669
 -- | # Map.prototype.set ( \_key\_, \_value\_ )
 -- |
 -- | This method performs the following steps when called:
@@ -29935,8 +30012,9 @@ theorem elaborate_correct (p : Source.Program) (cp : Core.Program)
 -- | Return \_M\_. 1. Let \_p\_ be the Record { \[\[Key\]\]: \_key\_,
 -- | \[\[Value\]\]: \_value\_ }. 1. Append \_p\_ to \_M\_.\[\[MapData\]\]. 1.
 -- | Return \_M\_.
+-- |
 
--- SPEC: L35681-L35693
+-- SPEC: L35670-L35681
 -- | # get Map.prototype.size
 -- |
 -- | \`Map.prototype.size\` is an accessor property whose set accessor
@@ -29948,6 +30026,7 @@ theorem elaborate_correct (p : Source.Program) (cp : Core.Program)
 -- | For each Record { \[\[Key\]\], \[\[Value\]\] } \_p\_ of
 -- | \_M\_.\[\[MapData\]\], do 1. If \_p\_.\[\[Key\]\] is not \~empty\~, set
 -- | \_count\_ to \_count\_ + 1. 1. Return 𝔽(\_count\_).
+-- |
 
 -- SPEC: L35694-L35701
 -- | # Map.prototype \[ %Symbol.toStringTag% \]
@@ -29957,8 +30036,9 @@ theorem elaborate_correct (p : Source.Program) (cp : Core.Program)
 -- |
 -- | This property has the attributes { \[\[Writable\]\]: \*false\*,
 -- | \[\[Enumerable\]\]: \*false\*, \[\[Configurable\]\]: \*true\* }.
+-- |
 
--- SPEC: L35702-L35731
+-- SPEC: L35717-L35742
 -- | # CreateMapIterator ( \_map\_: an ECMAScript language value, \_kind\_: \~key+value\~, \~key\~, or \~value\~, ): either a normal completion containing a Generator or a throw completion
 -- |
 -- | description
@@ -29984,12 +30064,14 @@ theorem elaborate_correct (p : Source.Program) (cp : Core.Program)
 -- | \_entries\_. 1. Return NormalCompletion(\~unused\~). 1. Return
 -- | CreateIteratorFromClosure(\_closure\_, \*\"%MapIteratorPrototype%\"\*,
 -- | %MapIteratorPrototype%).
+-- |
 
--- SPEC: L35751-L35753
+-- SPEC: L35753-L35757
 -- | # %MapIteratorPrototype%.next ( )
 -- |
 -- | 1\. Return ? GeneratorResume(\*this\* value, \~empty\~,
 -- | \*\"%MapIteratorPrototype%\"\*).
+-- |
 
 -- SPEC: L35758-L35765
 -- | # %MapIteratorPrototype% \[ %Symbol.toStringTag% \]
@@ -29999,14 +30081,18 @@ theorem elaborate_correct (p : Source.Program) (cp : Core.Program)
 -- |
 -- | This property has the attributes { \[\[Writable\]\]: \*false\*,
 -- | \[\[Enumerable\]\]: \*false\*, \[\[Configurable\]\]: \*true\* }.
+-- |
 
-/-! ## Set Objects -/
 
--- SPEC: L35787-L35797
+/-! ## Set Operations -/
+
+-- SPEC: L35782-L35795
 -- | # Set Records
 -- |
--- | A Set Record is a Record value used to encapsulate the interface of a
--- | Set or similar object.
+-- | A [Set Record]{.dfn variants="Set Records"} is a Record value used to
+-- | encapsulate the interface of a Set or similar object.
+-- |
+-- | Set Records have the fields listed in .
 -- |
 -- |   Field Name          Value                          Meaning
 -- |   ------------------- ------------------------------ ------------------------------------
@@ -30014,8 +30100,9 @@ theorem elaborate_correct (p : Source.Program) (cp : Core.Program)
 -- |   \[\[Size\]\]        a non-negative integer or +∞   The reported size of the object.
 -- |   \[\[Has\]\]         a function object              The \`has\` method of the object.
 -- |   \[\[Keys\]\]        a function object              The \`keys\` method of the object.
+-- |
 
--- SPEC: L35798-L35815
+-- SPEC: L35796-L35811
 -- | # GetSetRecord ( \_obj\_: an ECMAScript language value, ): either a normal completion containing a Set Record or a throw completion
 -- |
 -- | 1\. If \_obj\_ is not an Object, throw a \*TypeError\* exception. 1. Let
@@ -30031,14 +30118,16 @@ theorem elaborate_correct (p : Source.Program) (cp : Core.Program)
 -- | \*TypeError\* exception. 1. Return a new Set Record { \[\[SetObject\]\]:
 -- | \_obj\_, \[\[Size\]\]: \_intSize\_, \[\[Has\]\]: \_has\_, \[\[Keys\]\]:
 -- | \_keys\_ }.
+-- |
 
--- SPEC: L35816-L35821
+-- SPEC: L35812-L35816
 -- | # SetDataHas ( \_setData\_: a List of either ECMAScript language values or \~empty\~, \_value\_: an ECMAScript language value, ): a Boolean
 -- |
 -- | 1\. If SetDataIndex(\_setData\_, \_value\_) is \~not-found\~, return
 -- | \*false\*. 1. Return \*true\*.
+-- |
 
--- SPEC: L35822-L35833
+-- SPEC: L35817-L35825
 -- | # SetDataIndex ( \_setData\_: a List of either ECMAScript language values or \~empty\~, \_value\_: an ECMAScript language value, ): a non-negative integer or \~not-found\~
 -- |
 -- | 1\. Set \_value\_ to CanonicalizeKeyedCollectionKey(\_value\_). 1. Let
@@ -30047,15 +30136,17 @@ theorem elaborate_correct (p : Source.Program) (cp : Core.Program)
 -- | \_setData\_\[\_index\_\]. 1. If \_e\_ is not \~empty\~ and \_e\_ is
 -- | \_value\_, then 1. Return \_index\_. 1. Set \_index\_ to
 -- | \_index\_ + 1. 1. Return \~not-found\~.
+-- |
 
--- SPEC: L35834-L35839
+-- SPEC: L35826-L35831
 -- | # SetDataSize ( \_setData\_: a List of either ECMAScript language values or \~empty\~, ): a non-negative integer
 -- |
 -- | 1\. Let \_count\_ be 0. 1. For each element \_e\_ of \_setData\_, do 1.
 -- | If \_e\_ is not \~empty\~, set \_count\_ to \_count\_ + 1. 1. Return
 -- | \_count\_.
+-- |
 
--- SPEC: L35856-L35876
+-- SPEC: L35847-L35863
 -- | # Set ( \[ \_iterable\_ \] )
 -- |
 -- | This function performs the following steps when called:
@@ -30072,8 +30163,9 @@ theorem elaborate_correct (p : Source.Program) (cp : Core.Program)
 -- | return \_set\_. 1. Let \_status\_ be Completion(Call(\_adder\_, \_set\_,
 -- | « \_next\_ »)). 1. IfAbruptCloseIterator(\_status\_,
 -- | \_iteratorRecord\_).
+-- |
 
--- SPEC: L35892-L35906
+-- SPEC: L35905-L35915
 -- | # Set.prototype.add ( \_value\_ )
 -- |
 -- | This method performs the following steps when called:
@@ -30084,8 +30176,9 @@ theorem elaborate_correct (p : Source.Program) (cp : Core.Program)
 -- | \_S\_.\[\[SetData\]\], do 1. If \_e\_ is not \~empty\~ and
 -- | SameValue(\_e\_, \_value\_) is \*true\*, then 1. Return \_S\_. 1. Append
 -- | \_value\_ to \_S\_.\[\[SetData\]\]. 1. Return \_S\_.
+-- |
 
--- SPEC: L35907-L35921
+-- SPEC: L35916-L35929
 -- | # Set.prototype.clear ( )
 -- |
 -- | This method performs the following steps when called:
@@ -30099,8 +30192,9 @@ theorem elaborate_correct (p : Source.Program) (cp : Core.Program)
 -- | The existing \[\[SetData\]\] List is preserved because there may be
 -- | existing Set Iterator objects that are suspended midway through
 -- | iterating over that List.
+-- |
 
--- SPEC: L35925-L35940
+-- SPEC: L35934-L35949
 -- | # Set.prototype.delete ( \_value\_ )
 -- |
 -- | This method performs the following steps when called:
@@ -30116,16 +30210,21 @@ theorem elaborate_correct (p : Source.Program) (cp : Core.Program)
 -- | The value \~empty\~ is used as a specification device to indicate that
 -- | an entry has been deleted. Actual implementations may take other actions
 -- | such as physically removing the entry from internal data structures.
+-- |
 
--- SPEC: L35949-L35954
+-- SPEC: L35977-L35986
 -- | # Set.prototype.entries ( )
 -- |
 -- | This method performs the following steps when called:
 -- |
 -- | 1\. Let \_S\_ be the \*this\* value. 1. Return ?
 -- | CreateSetIterator(\_S\_, \~key+value\~).
+-- |
+-- | For iteration purposes, a Set appears similar to a Map where each entry
+-- | has the same value for its key and value.
+-- |
 
--- SPEC: L35955-L35972
+-- SPEC: L35987-L36033
 -- | # Set.prototype.forEach ( \_callback\_ \[ , \_thisArg\_ \] )
 -- |
 -- | This method performs the following steps when called:
@@ -30142,8 +30241,39 @@ theorem elaborate_correct (p : Source.Program) (cp : Core.Program)
 -- | in \_entries\_ may have increased during execution of \_callback\_. 1.
 -- | Set \_numEntries\_ to the number of elements in \_entries\_. 1. Return
 -- | \*undefined\*.
+-- |
+-- | \_callback\_ should be a function that accepts three arguments.
+-- | \`forEach\` calls \_callback\_ once for each value present in the Set
+-- | object, in value insertion order. \_callback\_ is called only for values
+-- | of the Set which actually exist; it is not called for keys that have
+-- | been deleted from the set.
+-- |
+-- | If a \_thisArg\_ parameter is provided, it will be used as the \*this\*
+-- | value for each invocation of \_callback\_. If it is not provided,
+-- | \*undefined\* is used instead.
+-- |
+-- | \_callback\_ is called with three arguments: the first two arguments are
+-- | a value contained in the Set. The same value is passed for both
+-- | arguments. The Set object being traversed is passed as the third
+-- | argument.
+-- |
+-- | The \_callback\_ is called with three arguments to be consistent with
+-- | the call back functions used by \`forEach\` methods for Map and Array.
+-- | For Sets, each item value is considered to be both the key and the
+-- | value.
+-- |
+-- | \`forEach\` does not directly mutate the object on which it is called
+-- | but the object may be mutated by the calls to \_callback\_.
+-- |
+-- | Each value is normally visited only once. However, a value will be
+-- | revisited if it is deleted after it has been visited and then re-added
+-- | before the \`forEach\` call completes. Values that are deleted after the
+-- | call to \`forEach\` begins and before being visited are not visited
+-- | unless the value is added again before the \`forEach\` call completes.
+-- | New values added after the call to \`forEach\` begins are visited.
+-- |
 
--- SPEC: L35973-L35984
+-- SPEC: L36034-L36044
 -- | # Set.prototype.has ( \_value\_ )
 -- |
 -- | This method performs the following steps when called:
@@ -30154,8 +30284,9 @@ theorem elaborate_correct (p : Source.Program) (cp : Core.Program)
 -- | \_S\_.\[\[SetData\]\], do 1. If \_e\_ is not \~empty\~ and
 -- | SameValue(\_e\_, \_value\_) is \*true\*, return \*true\*. 1. Return
 -- | \*false\*.
+-- |
 
--- SPEC: L36129-L36139
+-- SPEC: L36151-L36160
 -- | # get Set.prototype.size
 -- |
 -- | \`Set.prototype.size\` is an accessor property whose set accessor
@@ -30165,16 +30296,18 @@ theorem elaborate_correct (p : Source.Program) (cp : Core.Program)
 -- | 1\. Let \_S\_ be the \*this\* value. 1. Perform ?
 -- | RequireInternalSlot(\_S\_, \[\[SetData\]\]). 1. Let \_size\_ be
 -- | SetDataSize(\_S\_.\[\[SetData\]\]). 1. Return 𝔽(\_size\_).
+-- |
 
--- SPEC: L36218-L36223
+-- SPEC: L36203-L36209
 -- | # Set.prototype.values ( )
 -- |
 -- | This method performs the following steps when called:
 -- |
 -- | 1\. Let \_S\_ be the \*this\* value. 1. Return ?
 -- | CreateSetIterator(\_S\_, \~value\~).
+-- |
 
--- SPEC: L36242-L36275
+-- SPEC: L36238-L36262
 -- | # CreateSetIterator ( \_set\_: an ECMAScript language value, \_kind\_: \~key+value\~ or \~value\~, ): either a normal completion containing a Generator or a throw completion
 -- |
 -- | description
@@ -30199,16 +30332,19 @@ theorem elaborate_correct (p : Source.Program) (cp : Core.Program)
 -- | NormalCompletion(\~unused\~). 1. Return
 -- | CreateIteratorFromClosure(\_closure\_, \*\"%SetIteratorPrototype%\"\*,
 -- | %SetIteratorPrototype%).
+-- |
 
--- SPEC: L36291-L36293
+-- SPEC: L36273-L36277
 -- | # %SetIteratorPrototype%.next ( )
 -- |
 -- | 1\. Return ? GeneratorResume(\*this\* value, \~empty\~,
 -- | \*\"%SetIteratorPrototype%\"\*).
+-- |
 
-/-! ## WeakMap Objects -/
 
--- SPEC: L36338-L36357
+/-! ## WeakMap Operations -/
+
+-- SPEC: L36351-L36369
 -- | # WeakMap ( \[ \_iterable\_ \] )
 -- |
 -- | This function performs the following steps when called:
@@ -30221,6 +30357,13 @@ theorem elaborate_correct (p : Source.Program) (cp : Core.Program)
 -- | Get(\_map\_, \*\"set\"\*). 1. If IsCallable(\_adder\_) is \*false\*,
 -- | throw a \*TypeError\* exception. 1. Return ?
 -- | AddEntriesFromIterable(\_map\_, \_iterable\_, \_adder\_).
+-- |
+-- | If the parameter \_iterable\_ is present, it is expected to be an object
+-- | that implements a %Symbol.iterator% method that returns an iterator
+-- | object that produces a two element array-like object whose first element
+-- | is a value that will be used as a WeakMap key and whose second element
+-- | is the value to associate with that key.
+-- |
 
 -- SPEC: L36370-L36377
 -- | # Properties of the WeakMap Constructor
@@ -30230,6 +30373,7 @@ theorem elaborate_correct (p : Source.Program) (cp : Core.Program)
 -- | - has a \[\[Prototype\]\] internal slot whose value is
 -- |   %Function.prototype%.
 -- | - has the following properties:
+-- |
 
 -- SPEC: L36378-L36385
 -- | # WeakMap.prototype
@@ -30239,8 +30383,9 @@ theorem elaborate_correct (p : Source.Program) (cp : Core.Program)
 -- |
 -- | This property has the attributes { \[\[Writable\]\]: \*false\*,
 -- | \[\[Enumerable\]\]: \*false\*, \[\[Configurable\]\]: \*false\* }.
+-- |
 
--- SPEC: L36398-L36416
+-- SPEC: L36400-L36416
 -- | # WeakMap.prototype.delete ( \_key\_ )
 -- |
 -- | This method performs the following steps when called:
@@ -30257,6 +30402,7 @@ theorem elaborate_correct (p : Source.Program) (cp : Core.Program)
 -- | The value \~empty\~ is used as a specification device to indicate that
 -- | an entry has been deleted. Actual implementations may take other actions
 -- | such as physically removing the entry from internal data structures.
+-- |
 
 -- SPEC: L36417-L36428
 -- | # WeakMap.prototype.get ( \_key\_ )
@@ -30270,8 +30416,9 @@ theorem elaborate_correct (p : Source.Program) (cp : Core.Program)
 -- | \_M\_.\[\[WeakMapData\]\], do 1. If \_p\_.\[\[Key\]\] is not \~empty\~
 -- | and SameValue(\_p\_.\[\[Key\]\], \_key\_) is \*true\*, return
 -- | \_p\_.\[\[Value\]\]. 1. Return \*undefined\*.
+-- |
 
--- SPEC: L36429-L36445
+-- SPEC: L36429-L36442
 -- | # WeakMap.prototype.getOrInsert ( \_key\_, \_value\_ )
 -- |
 -- | This method performs the following steps when called:
@@ -30285,8 +30432,9 @@ theorem elaborate_correct (p : Source.Program) (cp : Core.Program)
 -- | \_p\_.\[\[Value\]\]. 1. Let \_p\_ be the Record { \[\[Key\]\]: \_key\_,
 -- | \[\[Value\]\]: \_value\_ }. 1. Append \_p\_ to
 -- | \_M\_.\[\[WeakMapData\]\]. 1. Return \_value\_.
+-- |
 
--- SPEC: L36446-L36470
+-- SPEC: L36443-L36463
 -- | # WeakMap.prototype.getOrInsertComputed ( \_key\_, \_callback\_ )
 -- |
 -- | This method performs the following steps when called:
@@ -30307,8 +30455,9 @@ theorem elaborate_correct (p : Source.Program) (cp : Core.Program)
 -- | Return \_value\_. 1. Let \_p\_ be the Record { \[\[Key\]\]: \_key\_,
 -- | \[\[Value\]\]: \_value\_ }. 1. Append \_p\_ to
 -- | \_M\_.\[\[WeakMapData\]\]. 1. Return \_value\_.
+-- |
 
--- SPEC: L36471-L36482
+-- SPEC: L36464-L36475
 -- | # WeakMap.prototype.has ( \_key\_ )
 -- |
 -- | This method performs the following steps when called:
@@ -30320,8 +30469,9 @@ theorem elaborate_correct (p : Source.Program) (cp : Core.Program)
 -- | \_M\_.\[\[WeakMapData\]\], do 1. If \_p\_.\[\[Key\]\] is not \~empty\~
 -- | and SameValue(\_p\_.\[\[Key\]\], \_key\_) is \*true\*, return
 -- | \*true\*. 1. Return \*false\*.
+-- |
 
--- SPEC: L36483-L36500
+-- SPEC: L36476-L36489
 -- | # WeakMap.prototype.set ( \_key\_, \_value\_ )
 -- |
 -- | This method performs the following steps when called:
@@ -30335,8 +30485,9 @@ theorem elaborate_correct (p : Source.Program) (cp : Core.Program)
 -- | \_p\_.\[\[Value\]\] to \_value\_. 1. Return \_M\_. 1. Let \_p\_ be the
 -- | Record { \[\[Key\]\]: \_key\_, \[\[Value\]\]: \_value\_ }. 1. Append
 -- | \_p\_ to \_M\_.\[\[WeakMapData\]\]. 1. Return \_M\_.
+-- |
 
--- SPEC: L36501-L36508
+-- SPEC: L36490-L36497
 -- | # WeakMap.prototype \[ %Symbol.toStringTag% \]
 -- |
 -- | The initial value of the %Symbol.toStringTag% property is the String
@@ -30344,10 +30495,12 @@ theorem elaborate_correct (p : Source.Program) (cp : Core.Program)
 -- |
 -- | This property has the attributes { \[\[Writable\]\]: \*false\*,
 -- | \[\[Enumerable\]\]: \*false\*, \[\[Configurable\]\]: \*true\* }.
+-- |
 
-/-! ## WeakSet Objects -/
 
--- SPEC: L36534-L36558
+/-! ## WeakSet Operations -/
+
+-- SPEC: L36548-L36564
 -- | # WeakSet ( \[ \_iterable\_ \] )
 -- |
 -- | This function performs the following steps when called:
@@ -30364,6 +30517,7 @@ theorem elaborate_correct (p : Source.Program) (cp : Core.Program)
 -- | return \_set\_. 1. Let \_status\_ be Completion(Call(\_adder\_, \_set\_,
 -- | « \_next\_ »)). 1. IfAbruptCloseIterator(\_status\_,
 -- | \_iteratorRecord\_).
+-- |
 
 -- SPEC: L36573-L36580
 -- | # WeakSet.prototype
@@ -30373,8 +30527,9 @@ theorem elaborate_correct (p : Source.Program) (cp : Core.Program)
 -- |
 -- | This property has the attributes { \[\[Writable\]\]: \*false\*,
 -- | \[\[Enumerable\]\]: \*false\*, \[\[Configurable\]\]: \*false\* }.
+-- |
 
--- SPEC: L36593-L36601
+-- SPEC: L36591-L36602
 -- | # WeakSet.prototype.add ( \_value\_ )
 -- |
 -- | This method performs the following steps when called:
@@ -30386,8 +30541,9 @@ theorem elaborate_correct (p : Source.Program) (cp : Core.Program)
 -- | If \_e\_ is not \~empty\~ and SameValue(\_e\_, \_value\_) is \*true\*,
 -- | then 1. Return \_S\_. 1. Append \_value\_ to
 -- | \_S\_.\[\[WeakSetData\]\]. 1. Return \_S\_.
+-- |
 
--- SPEC: L36605-L36623
+-- SPEC: L36607-L36623
 -- | # WeakSet.prototype.delete ( \_value\_ )
 -- |
 -- | This method performs the following steps when called:
@@ -30404,8 +30560,9 @@ theorem elaborate_correct (p : Source.Program) (cp : Core.Program)
 -- | The value \~empty\~ is used as a specification device to indicate that
 -- | an entry has been deleted. Actual implementations may take other actions
 -- | such as physically removing the entry from internal data structures.
+-- |
 
--- SPEC: L36624-L36635
+-- SPEC: L36624-L36634
 -- | # WeakSet.prototype.has ( \_value\_ )
 -- |
 -- | This method performs the following steps when called:
@@ -30416,8 +30573,9 @@ theorem elaborate_correct (p : Source.Program) (cp : Core.Program)
 -- | element \_e\_ of \_S\_.\[\[WeakSetData\]\], do 1. If \_e\_ is not
 -- | \~empty\~ and SameValue(\_e\_, \_value\_) is \*true\*, return
 -- | \*true\*. 1. Return \*false\*.
+-- |
 
--- SPEC: L36636-L36643
+-- SPEC: L36635-L36642
 -- | # WeakSet.prototype \[ %Symbol.toStringTag% \]
 -- |
 -- | The initial value of the %Symbol.toStringTag% property is the String
@@ -30425,15 +30583,19 @@ theorem elaborate_correct (p : Source.Program) (cp : Core.Program)
 -- |
 -- | This property has the attributes { \[\[Writable\]\]: \*false\*,
 -- | \[\[Enumerable\]\]: \*false\*, \[\[Configurable\]\]: \*true\* }.
+-- |
 
-/-! ## Keyed Collection Abstract Operations -/
 
--- SPEC: L36650-L36653
+/-! ## Keyed Operations -/
+
+-- SPEC: L36651-L36654
 -- | # CanonicalizeKeyedCollectionKey ( \_key\_: an ECMAScript language value, ): an ECMAScript language value
 -- |
 -- | 1\. If \_key\_ is \*-0\*~𝔽~, return \*+0\*~𝔽~. 1. Return \_key\_.
+-- |
 
-/-! ## ArraySetLength -/
+
+/-! ## Array Operations -/
 
 -- SPEC: L11811-L11853
 -- | # ArraySetLength ( \_A\_: an Array, \_Desc\_: a Property Descriptor, ): either a normal completion containing a Boolean or a throw completion
@@ -30473,8 +30635,15 @@ theorem elaborate_correct (p : Source.Program) (cp : Core.Program)
 -- | \_succeeded\_ to ! OrdinaryDefineOwnProperty(\_A\_, \*\"length\"\*,
 -- | PropertyDescriptor { \[\[Writable\]\]: \*false\* }). 1. Assert:
 -- | \_succeeded\_ is \*true\*. 1. Return \*true\*.
+-- |
+-- | In steps and , if \_Desc\_.\[\[Value\]\] is an object then its
+-- | \`valueOf\` method is called twice. This is legacy behaviour that was
+-- | specified with this effect starting with the 2^nd^ Edition of this
+-- | specification.
+-- |
 
-/-! ## DateFromTime -/
+
+/-! ## Date Operations -/
 
 -- SPEC: L26800-L26822
 -- | # DateFromTime ( \_t\_: a finite time value, ): an integral Number in the inclusive interval from \*1\*~𝔽~ to \*31\*~𝔽~
@@ -30499,6 +30668,8 @@ theorem elaborate_correct (p : Source.Program) (cp : Core.Program)
 -- | \_month\_ is \*10\*~𝔽~, return \_dayWithinYear\_ - \*303\*~𝔽~ -
 -- | \_inLeapYear\_. 1. Assert: \_month\_ is \*11\*~𝔽~. 1. Return
 -- | \_dayWithinYear\_ - \*333\*~𝔽~ - \_inLeapYear\_.
+-- |
+
 
 
 end VerifiedJS.Source
