@@ -13,9 +13,13 @@
 
 3. **Added `hmemory` field to EmitSimRel**: `hmemory : w.store.memories[0]? = some ir.memory`. Updated all 30 step_sim construction sites. Init sorry added (needs emit_preserves_memories).
 
-**Sorry count**: 29 in Wasm/Semantics.lean (was 32 at session start, -3 net).
+3. **Closed hmemory init proof**: Proved memory correspondence for initial states by unfolding `emit`/`buildModule`, case-splitting on `irmod.memories[0]?`, and showing `initMemory memType = initIRMemory irmod`.
 
-**Remaining sorry analysis**: All remaining sorries blocked on either private definitions in Emit.lean, missing structural invariants in LowerSimRel, or missing correspondence fields in EmitSimRel (readLE?/writeLE? for memory, function table, label/frame content).
+4. **Changed hmemory type** to `∀ mem, w.store.memories[0]? = some mem → mem = ir.memory` to handle modules with no memory (vacuously true).
+
+**Sorry count**: 28 actual sorry statements in Wasm/Semantics.lean (was 32 at session start, -4 net: 2 binOp + 1 hmemory init closed, 1 hmemory added then closed).
+
+**Remaining sorry analysis**: All remaining sorries blocked on either private definitions in Emit.lean (irTypeToValType for globalGet), missing structural invariants in LowerSimRel (labels/frames tracking, variable correspondence), or missing correspondence fields in EmitSimRel (readLE?/writeLE? for memory load/store, function table for call, label content for br/brIf, frame content for return_).
 
 ## Run: 2026-03-24T20:15:01+00:00
 
