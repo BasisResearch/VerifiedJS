@@ -15030,6 +15030,9 @@ theorem elaborate_correct (p : Source.Program) (cp : Core.Program)
 -- |   as a constructor with the \`new\` operator.
 -- | - does not have a \[\[Call\]\] internal method; it cannot be invoked as
 -- |   a function.
+-- |
+-- | In this specification, the phrase "the Number value for \_x\_" has a
+-- | technical meaning defined in .
 -- SPEC: L26049-L26060
 -- | # Math.abs ( \_x\_ )
 -- |
@@ -15045,35 +15048,42 @@ theorem elaborate_correct (p : Source.Program) (cp : Core.Program)
 -- SPEC: L26193-L26209
 -- | # Math.ceil ( \_x\_ )
 -- |
--- | This function returns the smallest (closest to -∞) integral Number
--- | value that is not less than \_x\_. If \_x\_ is already an integral Number
--- | value, the result is \_x\_.
+-- | This function returns the smallest (closest to -∞) integral Number value
+-- | that is not less than \_x\_. If \_x\_ is already an integral Number, the
+-- | result is \_x\_.
 -- |
 -- | It performs the following steps when called:
 -- |
--- | 1\. Let \_n\_ be ? ToNumber(\_x\_). 1. If \_n\_ is not finite or \_n\_ is
--- | either \*+0\*~𝔽~ or \*-0\*~𝔽~, return \_n\_. 1. If \_n\_ \< \*+0\*~𝔽~
+-- | 1\. Let \_n\_ be ? ToNumber(\_x\_). 1. If \_n\_ is not finite or \_n\_
+-- | is either \*+0\*~𝔽~ or \*-0\*~𝔽~, return \_n\_. 1. If \_n\_ \< \*-0\*~𝔽~
 -- | and \_n\_ \> \*-1\*~𝔽~, return \*-0\*~𝔽~. 1. If \_n\_ is an integral
--- | Number, return \_n\_. 1. Return 𝔽(ℝ(\_n\_) + (1 - (ℝ(\_n\_) modulo
--- | 1))).
+-- | Number, return \_n\_. 1. Return the smallest (closest to -∞) integral
+-- | Number value that is not less than \_n\_.
+-- |
+-- | The value of \`Math.ceil(x)\` is the same as the value of
+-- | \`-Math.floor(-x)\`.
 -- SPEC: L26277-L26293
 -- | # Math.floor ( \_x\_ )
 -- |
--- | This function returns the greatest (closest to +∞) integral Number
--- | value that is not greater than \_x\_. If \_x\_ is already an integral
--- | Number value, the result is \_x\_.
+-- | This function returns the greatest (closest to +∞) integral Number value
+-- | that is not greater than \_x\_. If \_x\_ is already an integral Number,
+-- | the result is \_x\_.
 -- |
 -- | It performs the following steps when called:
 -- |
--- | 1\. Let \_n\_ be ? ToNumber(\_x\_). 1. If \_n\_ is not finite or \_n\_ is
--- | either \*+0\*~𝔽~ or \*-0\*~𝔽~, return \_n\_. 1. If \_n\_ \> \*+0\*~𝔽~
--- | and \_n\_ \< \*1\*~𝔽~, return \*+0\*~𝔽~. 1. If \_n\_ is an integral
--- | Number, return \_n\_. 1. Return 𝔽(ℝ(\_n\_) - (ℝ(\_n\_) modulo 1)).
+-- | 1\. Let \_n\_ be ? ToNumber(\_x\_). 1. If \_n\_ is not finite or \_n\_
+-- | is either \*+0\*~𝔽~ or \*-0\*~𝔽~, return \_n\_. 1. If \_n\_ \< \*1\*~𝔽~
+-- | and \_n\_ \> \*+0\*~𝔽~, return \*+0\*~𝔽~. 1. If \_n\_ is an integral
+-- | Number, return \_n\_. 1. Return the greatest (closest to +∞) integral
+-- | Number value that is not greater than \_n\_.
+-- |
+-- | The value of \`Math.floor(x)\` is the same as the value of
+-- | \`-Math.ceil(-x)\`.
 -- SPEC: L26419-L26439
 -- | # Math.max ( \...\_args\_ )
 -- |
--- | Given zero or more arguments, calls ToNumber on each of the arguments
--- | and returns the largest of the resulting values.
+-- | Given zero or more arguments, this function calls ToNumber on each of
+-- | the arguments and returns the largest of the resulting values.
 -- |
 -- | It performs the following steps when called:
 -- |
@@ -15081,14 +15091,20 @@ theorem elaborate_correct (p : Source.Program) (cp : Core.Program)
 -- | \_args\_, do 1. Let \_n\_ be ? ToNumber(\_arg\_). 1. Append \_n\_ to
 -- | \_coerced\_. 1. Let \_highest\_ be \*-∞\*~𝔽~. 1. For each element
 -- | \_number\_ of \_coerced\_, do 1. If \_number\_ is \*NaN\*, return
--- | \*NaN\*. 1. If \_number\_ is \*+0\*~𝔽~ and \_highest\_ is \*-0\*~𝔽~,
--- | set \_highest\_ to \*+0\*~𝔽~. 1. If \_number\_ \> \_highest\_, set
+-- | \*NaN\*. 1. If \_number\_ is \*+0\*~𝔽~ and \_highest\_ is \*-0\*~𝔽~, set
+-- | \_highest\_ to \*+0\*~𝔽~. 1. If \_number\_ \> \_highest\_, set
 -- | \_highest\_ to \_number\_. 1. Return \_highest\_.
+-- |
+-- | The comparison of values to determine the largest value is done using
+-- | the IsLessThan algorithm except that \*+0\*~𝔽~ is considered to be
+-- | larger than \*-0\*~𝔽~.
+-- |
+-- | The \*\"length\"\* property of this function is \*2\*~𝔽~.
 -- SPEC: L26440-L26460
 -- | # Math.min ( \...\_args\_ )
 -- |
--- | Given zero or more arguments, calls ToNumber on each of the arguments
--- | and returns the smallest of the resulting values.
+-- | Given zero or more arguments, this function calls ToNumber on each of
+-- | the arguments and returns the smallest of the resulting values.
 -- |
 -- | It performs the following steps when called:
 -- |
@@ -15099,6 +15115,12 @@ theorem elaborate_correct (p : Source.Program) (cp : Core.Program)
 -- | \*NaN\*. 1. If \_number\_ is \*-0\*~𝔽~ and \_lowest\_ is \*+0\*~𝔽~, set
 -- | \_lowest\_ to \*-0\*~𝔽~. 1. If \_number\_ \< \_lowest\_, set \_lowest\_
 -- | to \_number\_. 1. Return \_lowest\_.
+-- |
+-- | The comparison of values to determine the largest value is done using
+-- | the IsLessThan algorithm except that \*+0\*~𝔽~ is considered to be
+-- | larger than \*-0\*~𝔽~.
+-- |
+-- | The \*\"length\"\* property of this function is \*2\*~𝔽~.
 -- SPEC: L26479-L26502
 -- | # Math.round ( \_x\_ )
 -- |
@@ -15109,22 +15131,20 @@ theorem elaborate_correct (p : Source.Program) (cp : Core.Program)
 -- |
 -- | It performs the following steps when called:
 -- |
--- | 1\. Let \_n\_ be ? ToNumber(\_x\_). 1. If \_n\_ is not finite or \_n\_ is
--- | an integral Number, return \_n\_. 1. If \_n\_ \< \*0.5\*~𝔽~ and \_n\_ \>
--- | \*+0\*~𝔽~, return \*+0\*~𝔽~. 1. If \_n\_ \< \*-0\*~𝔽~ and \_n\_ ≥
--- | \*-0.5\*~𝔽~, return \*-0\*~𝔽~. 1. Return 𝔽(floor(ℝ(\_n\_) + 0.5)).
+-- | 1\. Let \_n\_ be ? ToNumber(\_x\_). 1. If \_n\_ is not finite or \_n\_
+-- | is an integral Number, return \_n\_. 1. If \_n\_ \< \*0.5\*~𝔽~ and \_n\_
+-- | \> \*+0\*~𝔽~, return \*+0\*~𝔽~. 1. If \_n\_ \< \*-0\*~𝔽~ and \_n\_ ≥
+-- | \*-0.5\*~𝔽~, return \*-0\*~𝔽~. 1. Return the integral Number closest to
+-- | \_n\_, preferring the Number closer to +∞ in the case of a tie.
 -- |
--- | Math.round(\*0.5\*~𝔽~) returns \*1\*~𝔽~, but Math.round(\*-0.5\*~𝔽~)
--- | returns \*-0\*~𝔽~ since \*-0\*~𝔽~ is closer to \*-∞\* than \*+0\*~𝔽~
--- | is.
+-- | \`Math.round(3.5)\` returns 4, but \`Math.round(-3.5)\` returns -3.
 -- |
--- | The value of Math.round(\_x\_) is not always the same as the value of
--- | Math.floor(\_x\_ + \*0.5\*~𝔽~). When \_x\_ is \*-0\*~𝔽~ or \_x\_ is
--- | less than \*+0\*~𝔽~ but greater than or equal to \*-0.5\*~𝔽~,
--- | Math.round(\_x\_) returns \*-0\*~𝔽~, but Math.floor(\_x\_ + \*0.5\*~𝔽~)
--- | returns \*+0\*~𝔽~. Math.round(\_x\_) may also differ from the value of
--- | Math.floor(\_x\_ + \*0.5\*~𝔽~) because of internal rounding when
--- | computing \_x\_ + \*0.5\*~𝔽~.
+-- | The value of \`Math.round(x)\` is not always the same as the value of
+-- | \`Math.floor(x + 0.5)\`. When \`x\` is \*-0\*~𝔽~ or \`x\` is less than
+-- | \*-0\*~𝔽~ but greater than or equal to \*-0.5\*~𝔽~, \`Math.round(x)\`
+-- | returns \*-0\*~𝔽~, but \`Math.floor(x + 0.5)\` returns \*+0\*~𝔽~.
+-- | \`Math.round(x)\` may also differ from the value of \`Math.floor(x +
+-- | 0.5)\`because of internal rounding when computing \`x + 0.5\`.
 -- SPEC: L26540-L26549
 -- | # Math.sqrt ( \_x\_ )
 -- |
@@ -15134,8 +15154,7 @@ theorem elaborate_correct (p : Source.Program) (cp : Core.Program)
 -- |
 -- | 1\. Let \_n\_ be ? ToNumber(\_x\_). 1. If \_n\_ is one of \*NaN\*,
 -- | \*+0\*~𝔽~, \*-0\*~𝔽~, or \*+∞\*~𝔽~, return \_n\_. 1. If \_n\_ \<
--- | \*-0\*~𝔽~, return \*NaN\*. 1. Return an implementation-approximated
--- | Number value representing the square root of ℝ(\_n\_).
+-- | \*-0\*~𝔽~, return \*NaN\*. 1. Return 𝔽(the square root of ℝ(\_n\_)).
 -- SPEC: L26621-L26634
 -- | # Math.trunc ( \_x\_ )
 -- |
@@ -15145,10 +15164,11 @@ theorem elaborate_correct (p : Source.Program) (cp : Core.Program)
 -- |
 -- | It performs the following steps when called:
 -- |
--- | 1\. Let \_n\_ be ? ToNumber(\_x\_). 1. If \_n\_ is not finite or \_n\_ is
--- | either \*+0\*~𝔽~ or \*-0\*~𝔽~, return \_n\_. 1. If \_n\_ \< \*1\*~𝔽~
--- | and \_n\_ \> \*+0\*~𝔽~, return \*+0\*~𝔽~. 1. If \_n\_ \> \*-1\*~𝔽~ and
--- | \_n\_ \< \*-0\*~𝔽~, return \*-0\*~𝔽~. 1. Return 𝔽(truncate(ℝ(\_n\_))).
+-- | 1\. Let \_n\_ be ? ToNumber(\_x\_). 1. If \_n\_ is not finite or \_n\_
+-- | is either \*+0\*~𝔽~ or \*-0\*~𝔽~, return \_n\_. 1. If \_n\_ \< \*1\*~𝔽~
+-- | and \_n\_ \> \*+0\*~𝔽~, return \*+0\*~𝔽~. 1. If \_n\_ \< \*-0\*~𝔽~ and
+-- | \_n\_ \> \*-1\*~𝔽~, return \*-0\*~𝔽~. 1. Return the integral Number
+-- | nearest \_n\_ in the direction of \*+0\*~𝔽~.
 
 -- ============================================================
 -- Array Objects
@@ -15301,11 +15321,12 @@ theorem elaborate_correct (p : Source.Program) (cp : Core.Program)
 -- SPEC: L36504-L36530
 -- | # WeakSet Objects
 -- |
--- | WeakSets are collections of objects and/or symbols. A WeakSet may be
--- | queried to see if it contains a specific value, but no mechanism is
--- | provided for enumerating the values it holds. In certain conditions,
--- | values which are not live are removed as WeakSet elements, as described
--- | in .
+-- | WeakSets are collections of objects and/or symbols. A distinct object or
+-- | symbol may only occur once as an element of a WeakSet's collection. A
+-- | WeakSet may be queried to see if it contains a specific value, but no
+-- | mechanism is provided for enumerating the values it holds. In certain
+-- | conditions, values which are not live are removed as WeakSet elements,
+-- | as described in .
 -- |
 -- | An implementation may impose an arbitrarily determined latency between
 -- | the time a value contained in a WeakSet becomes inaccessible and the
@@ -15334,8 +15355,8 @@ theorem elaborate_correct (p : Source.Program) (cp : Core.Program)
 -- | CanBeHeldWeakly(\_value\_) is \*false\*, throw a \*TypeError\*
 -- | exception. 1. For each element \_e\_ of \_S\_.\[\[WeakSetData\]\], do 1.
 -- | If \_e\_ is not \~empty\~ and SameValue(\_e\_, \_value\_) is \*true\*,
--- | return \_S\_. 1. Append \_value\_ to \_S\_.\[\[WeakSetData\]\]. 1.
--- | Return \_S\_.
+-- | then 1. Return \_S\_. 1. Append \_value\_ to
+-- | \_S\_.\[\[WeakSetData\]\]. 1. Return \_S\_.
 -- SPEC: L36607-L36623
 -- | # WeakSet.prototype.delete ( \_value\_ )
 -- |
@@ -15373,7 +15394,7 @@ theorem elaborate_correct (p : Source.Program) (cp : Core.Program)
 -- |
 -- | A WeakRef is an object that is used to refer to a target object or
 -- | symbol without preserving it from garbage collection. WeakRefs can be
--- | dereferenced to return the target object or symbol, if the target hasn't
+-- | dereferenced to allow access to the target value, if the target hasn't
 -- | been reclaimed by garbage collection.
 -- SPEC: L39151-L39167
 -- | # The WeakRef Constructor
