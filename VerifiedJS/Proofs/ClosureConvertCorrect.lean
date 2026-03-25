@@ -1313,7 +1313,7 @@ private theorem closureConvert_step_simulation
         have h := hncfr; rw [hsc] at h; simp [noCallFrameReturn] at h; rw [hsc'_expr]; exact h, by
         have h := hexprwf; rw [hsc] at h; simp [ExprAddrWF] at h; rw [hsc'_expr, hsc'_heap]; exact h.2, name :: scope, st,
         (Flat.convertExpr body (name :: scope) envVar envMap st).snd,
-        by rw [hsc'_expr]; sorry /- simp [Flat.convertExpr] unfold blocked -/⟩
+        by sorry /- convertExpr unfold blocked for let-value case -/⟩
     | none =>
       -- Stepping sub-case: init is not a value
       set init' := (Flat.convertExpr init scope envVar envMap st).1 with hinit'_def
