@@ -2175,7 +2175,28 @@ private theorem closureConvert_step_simulation
         constructor  -- EnvAddrWF
         · exact henvwf
         constructor  -- HeapValuesWF
-        · sorry -- HeapValuesWF preservation for setProp heap mutation
+        · -- HeapValuesWF preservation for setProp heap mutation
+          have hvv_wf : ValueAddrWF vv sc.heap.objects.size := by
+            have := hexprwf; rw [hsc] at this; simp [ExprAddrWF] at this; exact this.2
+          cases ov with
+          | object addr =>
+            have haddr_lt : addr < sc.heap.objects.size := by
+              have := hexprwf; rw [hsc] at this; simp [ExprAddrWF, ValueAddrWF] at this; exact this.1
+            cases hobj : sc.heap.objects[addr]? with
+            | none => exact hheapvwf
+            | some props =>
+              apply HeapValuesWF_set_at hheapvwf
+              intro kv hkv; split at hkv
+              · simp only [List.mem_map] at hkv
+                obtain ⟨kv0, hkv0_mem, hkv0_eq⟩ := hkv
+                split at hkv0_eq <;> subst hkv0_eq
+                · exact hvv_wf
+                · exact hheapvwf addr haddr_lt props hobj kv0 hkv0_mem
+              · simp only [List.mem_append, List.mem_singleton] at hkv
+                rcases hkv with h | h
+                · exact hheapvwf addr haddr_lt props hobj kv h
+                · cases h; exact hvv_wf
+          | _ => exact hheapvwf
         refine ⟨scope, st, st, ?_⟩
         cases ov with
         | object => simp only [Flat.convertExpr, Flat.convertValue, Core.pushTrace]; rfl
@@ -2760,7 +2781,28 @@ private theorem closureConvert_step_simulation
           constructor  -- EnvAddrWF
           · exact henvwf
           constructor  -- HeapValuesWF
-          · sorry -- HeapValuesWF preservation for deleteProp heap mutation
+          · -- HeapValuesWF preservation for setIndex heap mutation
+            have hvv_wf : ValueAddrWF vv sc.heap.objects.size := by
+              have := hexprwf; rw [hsc] at this; simp [ExprAddrWF] at this; exact this.2.2
+            cases ov with
+            | object addr =>
+              have haddr_lt : addr < sc.heap.objects.size := by
+                have := hexprwf; rw [hsc] at this; simp [ExprAddrWF, ValueAddrWF] at this; exact this.1
+              cases hobj : sc.heap.objects[addr]? with
+              | none => exact hheapvwf
+              | some props =>
+                apply HeapValuesWF_set_at hheapvwf
+                intro kv hkv; split at hkv
+                · simp only [List.mem_map] at hkv
+                  obtain ⟨kv0, hkv0_mem, hkv0_eq⟩ := hkv
+                  split at hkv0_eq <;> subst hkv0_eq
+                  · exact hvv_wf
+                  · exact hheapvwf addr haddr_lt props hobj kv0 hkv0_mem
+                · simp only [List.mem_append, List.mem_singleton] at hkv
+                  rcases hkv with h | h
+                  · exact hheapvwf addr haddr_lt props hobj kv h
+                  · cases h; exact hvv_wf
+            | _ => exact hheapvwf
           refine ⟨scope, st, st, ?_⟩
           cases ov with
           | object => simp only [Flat.convertExpr, Flat.convertValue, Core.pushTrace]; rfl
@@ -2931,7 +2973,18 @@ private theorem closureConvert_step_simulation
       constructor  -- EnvAddrWF
       · exact henvwf
       constructor  -- HeapValuesWF
-      · sorry -- HeapValuesWF preservation for deleteProp heap mutation
+      · -- HeapValuesWF preservation for deleteProp heap mutation
+        cases v with
+        | object addr =>
+          have haddr_lt : addr < sc.heap.objects.size := by
+            have := hexprwf; rw [hsc] at this; simp [ExprAddrWF, ValueAddrWF] at this; exact this
+          cases hobj : sc.heap.objects[addr]? with
+          | none => exact hheapvwf
+          | some props =>
+            apply HeapValuesWF_set_at hheapvwf
+            intro kv hkv
+            exact hheapvwf addr haddr_lt props hobj kv (List.mem_filter.mp hkv).1
+        | _ => exact hheapvwf
       refine ⟨scope, st, st, ?_⟩
       cases v with
       | object addr =>
