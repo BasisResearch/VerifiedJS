@@ -6909,9 +6909,9 @@ structure EmitSimRel (irmod : IRModule) (wmod : Module)
   hglobals : ir.globals.size = w.store.globals.size ∧
     ∀ (j : Nat), j < ir.globals.size →
       ∃ irv wv, ir.globals[j]? = some irv ∧ w.store.globals[j]? = some wv ∧ IRValueToWasmValue irv wv
-  /- Memory correspondence: if Wasm has a memory, it equals the IR memory.
-     Vacuously true when Wasm has no memories (both sides trap on access). -/
-  hmemory : ∀ mem, w.store.memories[0]? = some mem → mem = ir.memory
+  /- Memory correspondence: Wasm and IR memories are equal or both absent/empty. -/
+  hmemory : (w.store.memories[0]? = some ir.memory) ∨
+            (w.store.memories[0]? = none ∧ ir.memory.size = 0)
   /- Label correspondence (needed for halt derivation). -/
   hlabels : ir.labels.length = w.labels.length
   /- Halt correspondence. -/
@@ -7054,7 +7054,6 @@ theorem init (irmod : IRModule) (wmod : Module)
         exact emit_globals_init_valcorr irmod wmod hemit j hj hj_w
   hmemory := by
     simp only [irInitialState, Wasm.initialState, initialStore]
-    intro mem hmem
     have hemit' := hemit
     unfold emit at hemit'
     simp only [Bind.bind, Except.bind] at hemit'
@@ -7062,11 +7061,14 @@ theorem init (irmod : IRModule) (wmod : Module)
     · simp at hemit'
     · simp only [Except.ok.injEq] at hemit'
       subst hemit'
-      simp only [buildModule] at hmem
       simp only [initIRMemory]
       cases h0 : irmod.memories[0]? with
-      | none => exfalso; simp [h0] at hmem
-      | some memType => simp [Array.getElem?_map, h0] at hmem; rw [← hmem]; simp [initMemory]
+      | none =>
+        right; constructor
+        · simp [buildModule, Array.getElem?_map, h0]
+        · simp [ByteArray.mkEmpty, ByteArray.size]
+      | some memType =>
+        left; simp [buildModule, Array.getElem?_map, h0, initMemory]
   hlabels := by simp [irInitialState, Wasm.initialState]
   hhalt := by
     intro hirHalt
