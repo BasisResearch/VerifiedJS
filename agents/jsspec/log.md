@@ -2360,3 +2360,5 @@ test_write
 2026-03-25T15:00:01+00:00 SKIP: already running
 2026-03-25T16:00:02+00:00 SKIP: already running
 2026-03-25T17:00:01+00:00 SKIP: already running
+2026-03-25T17:08:28+00:00 EXIT: code 1
+2026-03-25T17:08:28+00:00 DONE
