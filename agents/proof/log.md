@@ -1,4 +1,30 @@
 
+## Run: 2026-03-25T23:00+00:00
+- Sorries before: 11 total (8 CC + 2 ANF + 1 Lower), after: 10 total (8 CC + 1 ANF + 1 Lower)
+- Net sorry delta: **-1** (closed ANF L1499 — trivial chain in seq4 context)
+- Build: ✅ PASS (ANF file compiles clean, only 1 sorry remains at L106)
+
+### What was done:
+1. **Closed ANF L1499 sorry** — the `| seq c1a c1b =>` branch in `anfConvert_halt_star_aux`. This was the last sorry in the halt_star proof (the other sorry at L106 is the separate `anfConvert_step_star` theorem).
+
+2. **Added general trivial-chain consumption infrastructure** (~180 lines):
+   - `wrapSeqCtx`: builds left-associated `.seq` spine from inner expression + context list
+   - `step_wrapSeqCtx`: lifts a single Flat step through N layers of left-seq context (by induction on context list, using `step?_seq_ctx` at each layer)
+   - `step?_seq_lit`, `step?_var_bound`, `step?_this_resolve`: small helpers that prove step? results for trivial chain base cases (lit, var, this) including all state fields (expr, env, heap, funcs, callStack, trace)
+   - `trivialChain_consume_ctx`: the main lemma — given a trivial chain `tc` in context `ctx`, silently steps from `wrapSeqCtx tc ctx` to `wrapSeqCtx (ctx.head _) ctx.tail`. By induction on `trivialChainCost tc`:
+     - `.lit v`: one lifted step (seq-lit consumption)
+     - `.var name`: resolve var (one lifted step) then IH on `.lit val`
+     - `.this`: resolve this (one lifted step) then IH on `.lit val`
+     - `.seq ea eb`: IH on `ea` with extended context `(eb :: ctx)`, then IH on `eb` with original `ctx`
+
+3. **Extended `step?_seq_ctx`** to also prove `funcs`, `callStack`, and `trace` preservation (needed by `step_wrapSeqCtx`)
+
+### Key design insight: `wrapSeqCtx`
+The critical observation is `wrapSeqCtx (.seq ea eb) ctx = wrapSeqCtx ea (eb :: ctx)` (by definition). This makes the `.seq` case of `trivialChain_consume_ctx` fall through naturally — no separate step-lifting lemma needed for the recursive case. The context list absorbs one level of nesting at each recursive call.
+
+### Remaining ANF sorries:
+- **L106**: `anfConvert_step_star` — the full step simulation theorem. This is a major independent proof obligation, not related to the halt_star work.
+
 ## Run: 2026-03-25T19:30+00:00
 - Sorries before: 11 total (8 CC + 2 ANF + 1 Lower), after: 11 total (8 CC + 2 ANF + 1 Lower)
 - Net sorry delta: 0 (infrastructure for closing ANF L1365 established, sorry narrowed to Flat.Steps only)
@@ -2087,3 +2113,4 @@ DO NOT BUILD THE WHOLE PROJECT. Build only ClosureConvertCorrect.
 ## Run: 2026-03-25T23:00:02+00:00
 
 2026-03-25T23:30:01+00:00 SKIP: already running
+2026-03-25T23:36:33+00:00 DONE

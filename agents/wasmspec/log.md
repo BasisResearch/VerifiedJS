@@ -1,4 +1,47 @@
 
+## Run: 2026-03-25T22:30:09+00:00
+
+### TASK 1: EmitSimRel .call funcIdx — OOB case closed, infrastructure added
+
+**Build**: PASS
+
+**Changes** (VerifiedJS/Wasm/Semantics.lean):
+
+1. **Added 3 new fields to EmitSimRel**:
+   - `hmodule : ir.module = irmod` — IR module invariant (never changes during execution)
+   - `hstore_funcs : w.store.funcs = wmod.funcs` — Wasm store.funcs invariant (never modified)
+   - `hstore_types : w.store.types = wmod.types` — Wasm store.types invariant (never modified)
+   Propagated to all ~65 construction sites (mechanical: nothing modifies module/funcs/types).
+
+2. **Added `emit_preserves_funcs_size` lemma** (+ helpers `emitOneFunc_funcs_size`, `foldlM_emitOneFunc_size`):
+   Proves `wmod.funcs.size = irmod.functions.size` by induction on the fold in `emit`.
+
+3. **Proved call OOB case**: When `s1.module.functions[funcIdx]? = none`, derive `¬(funcIdx < s2.store.funcs.size)` via `hmodule + hstore_funcs + emit_preserves_funcs_size`. Use `step?_eq_call_oob` to show Wasm also traps. Full EmitSimRel for post-trap state constructed.
+
+4. **Fixed pre-existing anonymous constructor sites**: Several sites using `⟨...⟩` syntax were missing `hmemory_nonempty` (position 11). Added missing field + 3 new fields to all 6 anonymous constructor sites.
+
+5. **Structured call underflow and success**: Decomposed remaining sorry into 2 targeted sorries:
+   - **Underflow** (funcIdx valid, stack too short): Needs param count correspondence through `emit` (IR `fn.params.length` vs Wasm `types[func.typeIdx].params.length`). Requires proving emit preserves param counts per function.
+   - **Success** (funcIdx valid, args sufficient): Blocked by `hframes_one : ir.frames.length = 1`. After call, frames=2, so `EmitSimRel` can't hold for post-state. Also blocked by code correspondence: Wasm sets `code := func.body ++ rest` while IR sets `code := fn.body` (saves rest in frame).
+
+### TASK 2: EmitSimRel .callIndirect typeIdx — structured
+
+Expanded from bare sorry to `callIndirect_inv` decomposition + `hf.elim`. Same architectural blockers as call, plus needs table correspondence (not tracked in EmitSimRel).
+
+### TASK 3: Init sorries — assessed, blocked
+
+All 3 init sorries need `LowerCodeCorr prog.main []`. Since `lower` sets `startFunc := none` and wraps main into a function body (`buildFuncBindings`), the initial code is `[]` but `prog.main` is a non-trivial expression. No `LowerCodeCorr` constructor maps arbitrary expressions to `[]`. Needs either a new constructor (semantically questionable) or architectural change to `lower` (set `startFunc := some idx`).
+
+**Sorry count**: 21 (was 20; OOB case closed but decomposition adds 1 net sorry for the structured subcases)
+
+**Key infrastructure for future work**:
+- `hmodule`, `hstore_funcs`, `hstore_types` fields in EmitSimRel enable reasoning about function/type correspondence
+- `emit_preserves_funcs_size` connects IR function count to Wasm function count
+- To close underflow: need `emit_preserves_func_params` (param count correspondence per function)
+- To close success: need (a) remove `hframes_one` + handle frame-return in step_sim, (b) extend `EmitCodeCorr` or add code continuation tracking for `func.body ++ rest`, (c) add function body correspondence through `emit`
+
+---
+
 ## Run: 2026-03-25T19:15:01+00:00
 
 ### TASK 2 (memoryGrow): Proof structure complete, 1 unreachable sorry remains
@@ -2273,3 +2316,4 @@ test_write
 ## Run: 2026-03-25T22:30:09+00:00
 
 2026-03-25T23:15:01+00:00 SKIP: already running
+2026-03-25T23:35:28+00:00 DONE
