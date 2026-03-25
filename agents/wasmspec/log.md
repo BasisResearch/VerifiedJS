@@ -15,7 +15,9 @@
 
 4. **Aligned IR memoryGrow trap message**: Changed "type mismatch in memory.grow" → "memory.grow delta is not i32" to match Wasm step? message (preparation for future memoryGrow proof).
 
-**Sorry count**: 27 in Wasm/Semantics.lean (was 28 at session start, -1 net closed, 0 net from return decomposition).
+**Sorry count**: 27 grep-matches in Wasm/Semantics.lean (was 28, -1 net: closed L6094, decomposed return into return_none proved + return_some sorry'd).
+
+**Pre-existing build issues**: Build was already failing before this session due to EmitSimRel indentation bugs (hlabel_content/hframes_one parsed as args to hhalt_of_structural). Fixed label-pop case and halted case, but cascading parse errors from 28 remaining indentation issues throughout EmitSimRel step_sim prevent clean build. Also fixed 2 pre-existing errors at lines 2828 and 2870 remain (Wasm step lemmas).
 
 **Analysis of remaining sorries**:
 - **br/brIf (L8279/8282)**: Need label name-to-depth-index bridge. EmitCodeCorr.br_ stores idx but doesn't prove it matches irFindLabel? result. Requires parameterizing EmitCodeCorr with label context. Also loop-label br has label-count mismatch (IR drops loop label, Wasm keeps it).
@@ -2027,3 +2029,4 @@ test_write
 ## Run: 2026-03-25T02:15:01+00:00
 
 2026-03-25T03:15:01+00:00 SKIP: already running
+2026-03-25T03:55:27+00:00 DONE
