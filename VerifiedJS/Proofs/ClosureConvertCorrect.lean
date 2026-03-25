@@ -740,6 +740,7 @@ private def CC_SimRel (_s : Core.Program) (_t : Flat.Program)
   noCallFrameReturn sc.expr = true ∧
   ExprAddrWF sc.expr sc.heap.objects.size ∧
   EnvAddrWF sc.env sc.heap.objects.size ∧
+  HeapValuesWF sc.heap ∧
   ∃ (scope : List String) (envVar : String) (envMap : Flat.EnvMapping) (st st' : Flat.CCState),
     (sf.expr, st') = Flat.convertExpr sc.expr scope envVar envMap st
 
@@ -750,7 +751,7 @@ private theorem closureConvert_init_related
     (h_addr_wf : ExprAddrWF s.body 1) :
     CC_SimRel s t (Flat.initialState t) (Core.initialState s) := by
   unfold CC_SimRel Flat.initialState Core.initialState
-  refine ⟨rfl, ?_, HeapCorr_refl _, h_wf, ?_, ?_, ?_⟩
+  refine ⟨rfl, ?_, HeapCorr_refl _, h_wf, ?_, ?_, ?_, ?_⟩
   · -- EnvCorr: both envs have exactly one binding: "console" → .object 0
     have h_empty : EnvCorr Core.Env.empty Flat.Env.empty := by
       constructor <;> intro _ _ h <;> simp [Core.Env.empty, Core.Env.lookup, Flat.Env.empty, Flat.Env.lookup] at h
@@ -759,6 +760,9 @@ private theorem closureConvert_init_related
     exact h_addr_wf
   · -- EnvAddrWF: initial env has "console" → .object 0, heap has 1 object
     exact EnvAddrWF_extend (EnvAddrWF_empty 1) "console" (.object 0) (by simp [ValueAddrWF]; omega)
+  · -- HeapValuesWF: initial heap has 1 object with empty props
+    intro addr haddr props hprops kv hkv
+    simp at hprops; subst hprops; exact absurd hkv (List.not_mem_nil _)
   · unfold Flat.closureConvert at h
     simp only [Except.ok.injEq] at h
     let st2 := (Flat.convertFuncDefs s.functions.toList Flat.CCState.empty).fst.foldl
@@ -802,6 +806,7 @@ private theorem closureConvert_step_simulation
       (sf : Flat.State) (sc : Core.State) (ev : Core.TraceEvent) (sf' : Flat.State),
       sc.expr.depth = n → sf.trace = sc.trace → EnvCorr sc.env sf.env →
       HeapCorr sc.heap sf.heap → EnvAddrWF sc.env sc.heap.objects.size →
+      HeapValuesWF sc.heap →
       noCallFrameReturn sc.expr = true →
       ExprAddrWF sc.expr sc.heap.objects.size →
       (∃ (scope : List String) (st st' : Flat.CCState),
@@ -809,18 +814,19 @@ private theorem closureConvert_step_simulation
       Flat.Step sf ev sf' →
       ∃ sc', Core.Step sc ev sc' ∧ sf'.trace = sc'.trace ∧ EnvCorr sc'.env sf'.env ∧
         HeapCorr sc'.heap sf'.heap ∧ EnvAddrWF sc'.env sc'.heap.objects.size ∧
+        HeapValuesWF sc'.heap ∧
         noCallFrameReturn sc'.expr = true ∧
         ExprAddrWF sc'.expr sc'.heap.objects.size ∧
         (∃ (scope : List String) (st st' : Flat.CCState),
           (sf'.expr, st') = Flat.convertExpr sc'.expr scope envVar envMap st) by
-    intro sf sc ev sf' ⟨htrace, henvCorr, hheap, hncfr, hexprwf, henvwf, scope, envVar, envMap, st, st', hconv⟩ hstep
-    obtain ⟨sc', hcstep, htrace', henv', hheap', henvwf', hncfr', hexprwf', scope', st_a, st_a', hconv'⟩ :=
-      this sc.expr.depth envVar envMap sf sc ev sf' rfl htrace henvCorr hheap henvwf hncfr hexprwf ⟨scope, st, st', hconv⟩ hstep
-    exact ⟨sc', hcstep, htrace', henv', hheap', hncfr', hexprwf', henvwf', scope', envVar, envMap, st_a, st_a', hconv'⟩
+    intro sf sc ev sf' ⟨htrace, henvCorr, hheap, hncfr, hexprwf, henvwf, hheapvwf, scope, envVar, envMap, st, st', hconv⟩ hstep
+    obtain ⟨sc', hcstep, htrace', henv', hheap', henvwf', hheapvwf', hncfr', hexprwf', scope', st_a, st_a', hconv'⟩ :=
+      this sc.expr.depth envVar envMap sf sc ev sf' rfl htrace henvCorr hheap henvwf hheapvwf hncfr hexprwf ⟨scope, st, st', hconv⟩ hstep
+    exact ⟨sc', hcstep, htrace', henv', hheap', hncfr', hexprwf', henvwf', hheapvwf', scope', envVar, envMap, st_a, st_a', hconv'⟩
   intro n
   induction n using Nat.strongRecOn with
   | _ n ih_depth =>
-  intro envVar envMap sf sc ev sf' hd htrace henvCorr hheap henvwf hncfr hexprwf ⟨scope, st, st', hconv⟩ ⟨hstep⟩
+  intro envVar envMap sf sc ev sf' hd htrace henvCorr hheap henvwf hheapvwf hncfr hexprwf ⟨scope, st, st', hconv⟩ ⟨hstep⟩
   -- Case analysis on the Core expression sc.expr.
   -- convertExpr maps sc.expr to sf.expr; step? sf = some (ev, sf').
   cases hsc : sc.expr with

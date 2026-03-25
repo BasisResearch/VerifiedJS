@@ -20996,4 +20996,1367 @@ theorem elaborate_correct (p : Source.Program) (cp : Core.Program)
 -- | reaches here, then \_asyncContext\_ is the running execution context
 -- | again. 1. Return \_completion\_.
 
+-- SPEC: L35373-L35387
+-- | # Map Objects
+-- |
+-- | Maps are collections of key/value pairs where both the keys and values
+-- | may be arbitrary ECMAScript language values. A distinct key value may
+-- | only occur in one key/value pair within the Map\'s collection. Distinct
+-- | key values are discriminated using the semantics of the SameValueZero
+-- | comparison algorithm.
+-- |
+-- | Maps must be implemented using either hash tables or other mechanisms
+-- | that, on average, provide access times that are sublinear on the number
+-- | of elements in the collection. The data structure used in this
+-- | specification is only intended to describe the required observable
+-- | semantics of Maps. It is not intended to be a viable implementation
+-- | model.
+-- |
+
+-- SPEC: L35388-L35402
+-- | # The Map Constructor
+-- |
+-- | The Map constructor:
+-- |
+-- | - is [%Map%]{.dfn}.
+-- | - is the initial value of the \*\"Map\"\* property of the global object.
+-- | - creates and initializes a new Map when called as a constructor.
+-- | - is not intended to be called as a function and will throw an exception
+-- |   when called in that manner.
+-- | - may be used as the value in an \`extends\` clause of a class
+-- |   definition. Subclass constructors that intend to inherit the specified
+-- |   Map behaviour must include a \`super\` call to the Map constructor to
+-- |   create and initialize the subclass instance with the internal state
+-- |   necessary to support the \`Map.prototype\` built-in methods.
+-- |
+
+-- SPEC: L35403-L35421
+-- | # Map ( \[ \_iterable\_ \] )
+-- |
+-- | This function performs the following steps when called:
+-- |
+-- | 1\. If NewTarget is \*undefined\*, throw a \*TypeError\* exception. 1.
+-- | Let \_map\_ be ? OrdinaryCreateFromConstructor(NewTarget,
+-- | \*\"%Map.prototype%\"\*, « \[\[MapData\]\] »). 1. Set
+-- | \_map\_.\[\[MapData\]\] to a new empty List. 1. If \_iterable\_ is
+-- | either \*undefined\* or \*null\*, return \_map\_. 1. Let \_adder\_ be ?
+-- | Get(\_map\_, \*\"set\"\*). 1. If IsCallable(\_adder\_) is \*false\*,
+-- | throw a \*TypeError\* exception. 1. Return ?
+-- | AddEntriesFromIterable(\_map\_, \_iterable\_, \_adder\_).
+-- |
+-- | If the parameter \_iterable\_ is present, it is expected to be an object
+-- | that implements a %Symbol.iterator% method that returns an iterator
+-- | object that produces a two element array-like object whose first element
+-- | is a value that will be used as a Map key and whose second element is
+-- | the value to associate with that key.
+-- |
+
+-- SPEC: L35510-L35523
+-- | # Map.prototype.clear ( )
+-- |
+-- | This method performs the following steps when called:
+-- |
+-- | 1\. Let \_M\_ be the \*this\* value. 1. Perform ?
+-- | RequireInternalSlot(\_M\_, \[\[MapData\]\]). 1. For each Record {
+-- | \[\[Key\]\], \[\[Value\]\] } \_p\_ of \_M\_.\[\[MapData\]\], do 1. Set
+-- | \_p\_.\[\[Key\]\] to \~empty\~. 1. Set \_p\_.\[\[Value\]\] to
+-- | \~empty\~. 1. Return \*undefined\*.
+-- |
+-- | The existing \[\[MapData\]\] List is preserved because there may be
+-- | existing Map Iterator objects that are suspended midway through
+-- | iterating over that List.
+-- |
+
+-- SPEC: L35528-L35544
+-- | # Map.prototype.delete ( \_key\_ )
+-- |
+-- | This method performs the following steps when called:
+-- |
+-- | 1\. Let \_M\_ be the \*this\* value. 1. Perform ?
+-- | RequireInternalSlot(\_M\_, \[\[MapData\]\]). 1. Set \_key\_ to
+-- | CanonicalizeKeyedCollectionKey(\_key\_). 1. For each Record {
+-- | \[\[Key\]\], \[\[Value\]\] } \_p\_ of \_M\_.\[\[MapData\]\], do 1. If
+-- | \_p\_.\[\[Key\]\] is not \~empty\~ and SameValue(\_p\_.\[\[Key\]\],
+-- | \_key\_) is \*true\*, then 1. Set \_p\_.\[\[Key\]\] to \~empty\~. 1. Set
+-- | \_p\_.\[\[Value\]\] to \~empty\~. 1. Return \*true\*. 1. Return
+-- | \*false\*.
+-- |
+-- | The value \~empty\~ is used as a specification device to indicate that
+-- | an entry has been deleted. Actual implementations may take other actions
+-- | such as physically removing the entry from internal data structures.
+-- |
+
+-- SPEC: L35545-L35551
+-- | # Map.prototype.entries ( )
+-- |
+-- | This method performs the following steps when called:
+-- |
+-- | 1\. Let \_M\_ be the \*this\* value. 1. Return ?
+-- | CreateMapIterator(\_M\_, \~key+value\~).
+-- |
+
+-- SPEC: L35592-L35603
+-- | # Map.prototype.get ( \_key\_ )
+-- |
+-- | This method performs the following steps when called:
+-- |
+-- | 1\. Let \_M\_ be the \*this\* value. 1. Perform ?
+-- | RequireInternalSlot(\_M\_, \[\[MapData\]\]). 1. Set \_key\_ to
+-- | CanonicalizeKeyedCollectionKey(\_key\_). 1. For each Record {
+-- | \[\[Key\]\], \[\[Value\]\] } \_p\_ of \_M\_.\[\[MapData\]\], do 1. If
+-- | \_p\_.\[\[Key\]\] is not \~empty\~ and SameValue(\_p\_.\[\[Key\]\],
+-- | \_key\_) is \*true\*, return \_p\_.\[\[Value\]\]. 1. Return
+-- | \*undefined\*.
+-- |
+
+-- SPEC: L35604-L35616
+-- | # Map.prototype.getOrInsert ( \_key\_, \_value\_ )
+-- |
+-- | This method performs the following steps when called:
+-- |
+-- | 1\. Let \_M\_ be the \*this\* value. 1. Perform ?
+-- | RequireInternalSlot(\_M\_, \[\[MapData\]\]). 1. Set \_key\_ to
+-- | CanonicalizeKeyedCollectionKey(\_key\_). 1. For each Record {
+-- | \[\[Key\]\], \[\[Value\]\] } \_p\_ of \_M\_.\[\[MapData\]\], do 1. If
+-- | \_p\_.\[\[Key\]\] is not \~empty\~ and SameValue(\_p\_.\[\[Key\]\],
+-- | \_key\_) is \*true\*, return \_p\_.\[\[Value\]\]. 1. Let \_p\_ be the
+-- | Record { \[\[Key\]\]: \_key\_, \[\[Value\]\]: \_value\_ }. 1. Append
+-- | \_p\_ to \_M\_.\[\[MapData\]\]. 1. Return \_value\_.
+-- |
+
+-- SPEC: L35638-L35648
+-- | # Map.prototype.has ( \_key\_ )
+-- |
+-- | This method performs the following steps when called:
+-- |
+-- | 1\. Let \_M\_ be the \*this\* value. 1. Perform ?
+-- | RequireInternalSlot(\_M\_, \[\[MapData\]\]). 1. Set \_key\_ to
+-- | CanonicalizeKeyedCollectionKey(\_key\_). 1. For each Record {
+-- | \[\[Key\]\], \[\[Value\]\] } \_p\_ of \_M\_.\[\[MapData\]\], do 1. If
+-- | \_p\_.\[\[Key\]\] is not \~empty\~ and SameValue(\_p\_.\[\[Key\]\],
+-- | \_key\_) is \*true\*, return \*true\*. 1. Return \*false\*.
+-- |
+
+-- SPEC: L35649-L35655
+-- | # Map.prototype.keys ( )
+-- |
+-- | This method performs the following steps when called:
+-- |
+-- | 1\. Let \_M\_ be the \*this\* value. 1. Return ?
+-- | CreateMapIterator(\_M\_, \~key\~).
+-- |
+
+-- SPEC: L35656-L35669
+-- | # Map.prototype.set ( \_key\_, \_value\_ )
+-- |
+-- | This method performs the following steps when called:
+-- |
+-- | 1\. Let \_M\_ be the \*this\* value. 1. Perform ?
+-- | RequireInternalSlot(\_M\_, \[\[MapData\]\]). 1. Set \_key\_ to
+-- | CanonicalizeKeyedCollectionKey(\_key\_). 1. For each Record {
+-- | \[\[Key\]\], \[\[Value\]\] } \_p\_ of \_M\_.\[\[MapData\]\], do 1. If
+-- | \_p\_.\[\[Key\]\] is not \~empty\~ and SameValue(\_p\_.\[\[Key\]\],
+-- | \_key\_) is \*true\*, then 1. Set \_p\_.\[\[Value\]\] to \_value\_. 1.
+-- | Return \_M\_. 1. Let \_p\_ be the Record { \[\[Key\]\]: \_key\_,
+-- | \[\[Value\]\]: \_value\_ }. 1. Append \_p\_ to \_M\_.\[\[MapData\]\]. 1.
+-- | Return \_M\_.
+-- |
+
+-- SPEC: L35670-L35681
+-- | # get Map.prototype.size
+-- |
+-- | \`Map.prototype.size\` is an accessor property whose set accessor
+-- | function is \*undefined\*. Its get accessor function performs the
+-- | following steps when called:
+-- |
+-- | 1\. Let \_M\_ be the \*this\* value. 1. Perform ?
+-- | RequireInternalSlot(\_M\_, \[\[MapData\]\]). 1. Let \_count\_ be 0. 1.
+-- | For each Record { \[\[Key\]\], \[\[Value\]\] } \_p\_ of
+-- | \_M\_.\[\[MapData\]\], do 1. If \_p\_.\[\[Key\]\] is not \~empty\~, set
+-- | \_count\_ to \_count\_ + 1. 1. Return 𝔽(\_count\_).
+-- |
+
+-- SPEC: L35682-L35685
+-- | # Map.prototype.values ( )
+-- |
+-- | This method performs the following steps when called:
+-- |
+
+-- SPEC: L35753-L35757
+-- | # %MapIteratorPrototype%.next ( )
+-- |
+-- | 1\. Return ? GeneratorResume(\*this\* value, \~empty\~,
+-- | \*\"%MapIteratorPrototype%\"\*).
+-- |
+
+-- SPEC: L35766-L35779
+-- | # Set Objects
+-- |
+-- | [Set objects]{.dfn variants="Set object"} are collections of ECMAScript
+-- | language values. A Set may contain each distinct value at most once.
+-- | Distinct values are discriminated using the semantics of the
+-- | SameValueZero comparison algorithm.
+-- |
+-- | Set objects must be implemented using either hash tables or other
+-- | mechanisms that, on average, provide access times that are sublinear on
+-- | the number of elements in the collection. The data structure used in
+-- | this specification is only intended to describe the required observable
+-- | semantics of Set objects. It is not intended to be a viable
+-- | implementation model.
+-- |
+
+-- SPEC: L35796-L35811
+-- | # GetSetRecord ( \_obj\_: an ECMAScript language value, ): either a normal completion containing a Set Record or a throw completion
+-- |
+-- | 1\. If \_obj\_ is not an Object, throw a \*TypeError\* exception. 1. Let
+-- | \_rawSize\_ be ? Get(\_obj\_, \*\"size\"\*). 1. Let \_numSize\_ be ?
+-- | ToNumber(\_rawSize\_). 1. NOTE: If \_rawSize\_ is \*undefined\*, then
+-- | \_numSize\_ will be \*NaN\*. 1. If \_numSize\_ is \*NaN\*, throw a
+-- | \*TypeError\* exception. 1. Let \_intSize\_ be !
+-- | ToIntegerOrInfinity(\_numSize\_). 1. If \_intSize\_ \< 0, throw a
+-- | \*RangeError\* exception. 1. Let \_has\_ be ? Get(\_obj\_,
+-- | \*\"has\"\*). 1. If IsCallable(\_has\_) is \*false\*, throw a
+-- | \*TypeError\* exception. 1. Let \_keys\_ be ? Get(\_obj\_,
+-- | \*\"keys\"\*). 1. If IsCallable(\_keys\_) is \*false\*, throw a
+-- | \*TypeError\* exception. 1. Return a new Set Record { \[\[SetObject\]\]:
+-- | \_obj\_, \[\[Size\]\]: \_intSize\_, \[\[Has\]\]: \_has\_, \[\[Keys\]\]:
+-- | \_keys\_ }.
+-- |
+
+-- SPEC: L35812-L35816
+-- | # SetDataHas ( \_setData\_: a List of either ECMAScript language values or \~empty\~, \_value\_: an ECMAScript language value, ): a Boolean
+-- |
+-- | 1\. If SetDataIndex(\_setData\_, \_value\_) is \~not-found\~, return
+-- | \*false\*. 1. Return \*true\*.
+-- |
+
+-- SPEC: L35817-L35825
+-- | # SetDataIndex ( \_setData\_: a List of either ECMAScript language values or \~empty\~, \_value\_: an ECMAScript language value, ): a non-negative integer or \~not-found\~
+-- |
+-- | 1\. Set \_value\_ to CanonicalizeKeyedCollectionKey(\_value\_). 1. Let
+-- | \_size\_ be the number of elements in \_setData\_. 1. Let \_index\_ be
+-- | 0. 1. Repeat, while \_index\_ \< \_size\_, 1. Let \_e\_ be
+-- | \_setData\_\[\_index\_\]. 1. If \_e\_ is not \~empty\~ and \_e\_ is
+-- | \_value\_, then 1. Return \_index\_. 1. Set \_index\_ to
+-- | \_index\_ + 1. 1. Return \~not-found\~.
+-- |
+
+-- SPEC: L35826-L35831
+-- | # SetDataSize ( \_setData\_: a List of either ECMAScript language values or \~empty\~, ): a non-negative integer
+-- |
+-- | 1\. Let \_count\_ be 0. 1. For each element \_e\_ of \_setData\_, do 1.
+-- | If \_e\_ is not \~empty\~, set \_count\_ to \_count\_ + 1. 1. Return
+-- | \_count\_.
+-- |
+
+-- SPEC: L35832-L35846
+-- | # The Set Constructor
+-- |
+-- | The Set constructor:
+-- |
+-- | - is [%Set%]{.dfn}.
+-- | - is the initial value of the \*\"Set\"\* property of the global object.
+-- | - creates and initializes a new Set object when called as a constructor.
+-- | - is not intended to be called as a function and will throw an exception
+-- |   when called in that manner.
+-- | - may be used as the value in an \`extends\` clause of a class
+-- |   definition. Subclass constructors that intend to inherit the specified
+-- |   Set behaviour must include a \`super\` call to the Set constructor to
+-- |   create and initialize the subclass instance with the internal state
+-- |   necessary to support the \`Set.prototype\` built-in methods.
+-- |
+
+-- SPEC: L35847-L35866
+-- | # Set ( \[ \_iterable\_ \] )
+-- |
+-- | This function performs the following steps when called:
+-- |
+-- | 1\. If NewTarget is \*undefined\*, throw a \*TypeError\* exception. 1.
+-- | Let \_set\_ be ? OrdinaryCreateFromConstructor(NewTarget,
+-- | \*\"%Set.prototype%\"\*, « \[\[SetData\]\] »). 1. Set
+-- | \_set\_.\[\[SetData\]\] to a new empty List. 1. If \_iterable\_ is
+-- | either \*undefined\* or \*null\*, return \_set\_. 1. Let \_adder\_ be ?
+-- | Get(\_set\_, \*\"add\"\*). 1. If IsCallable(\_adder\_) is \*false\*,
+-- | throw a \*TypeError\* exception. 1. Let \_iteratorRecord\_ be ?
+-- | GetIterator(\_iterable\_, \~sync\~). 1. Repeat, 1. Let \_next\_ be ?
+-- | IteratorStepValue(\_iteratorRecord\_). 1. If \_next\_ is \~done\~,
+-- | return \_set\_. 1. Let \_status\_ be Completion(Call(\_adder\_, \_set\_,
+-- | « \_next\_ »)). 1. IfAbruptCloseIterator(\_status\_,
+-- | \_iteratorRecord\_).
+-- |
+-- | # Properties of the Set Constructor
+-- |
+-- | The Set constructor:
+
+-- SPEC: L35905-L35915
+-- | # Set.prototype.add ( \_value\_ )
+-- |
+-- | This method performs the following steps when called:
+-- |
+-- | 1\. Let \_S\_ be the \*this\* value. 1. Perform ?
+-- | RequireInternalSlot(\_S\_, \[\[SetData\]\]). 1. Set \_value\_ to
+-- | CanonicalizeKeyedCollectionKey(\_value\_). 1. For each element \_e\_ of
+-- | \_S\_.\[\[SetData\]\], do 1. If \_e\_ is not \~empty\~ and
+-- | SameValue(\_e\_, \_value\_) is \*true\*, then 1. Return \_S\_. 1. Append
+-- | \_value\_ to \_S\_.\[\[SetData\]\]. 1. Return \_S\_.
+-- |
+
+-- SPEC: L35916-L35929
+-- | # Set.prototype.clear ( )
+-- |
+-- | This method performs the following steps when called:
+-- |
+-- | 1\. Let \_S\_ be the \*this\* value. 1. Perform ?
+-- | RequireInternalSlot(\_S\_, \[\[SetData\]\]). 1. For each element \_e\_
+-- | of \_S\_.\[\[SetData\]\], do 1. Replace the element of
+-- | \_S\_.\[\[SetData\]\] whose value is \_e\_ with an element whose value
+-- | is \~empty\~. 1. Return \*undefined\*.
+-- |
+-- | The existing \[\[SetData\]\] List is preserved because there may be
+-- | existing Set Iterator objects that are suspended midway through
+-- | iterating over that List.
+-- |
+
+-- SPEC: L35934-L35949
+-- | # Set.prototype.delete ( \_value\_ )
+-- |
+-- | This method performs the following steps when called:
+-- |
+-- | 1\. Let \_S\_ be the \*this\* value. 1. Perform ?
+-- | RequireInternalSlot(\_S\_, \[\[SetData\]\]). 1. Set \_value\_ to
+-- | CanonicalizeKeyedCollectionKey(\_value\_). 1. For each element \_e\_ of
+-- | \_S\_.\[\[SetData\]\], do 1. If \_e\_ is not \~empty\~ and
+-- | SameValue(\_e\_, \_value\_) is \*true\*, then 1. Replace the element of
+-- | \_S\_.\[\[SetData\]\] whose value is \_e\_ with an element whose value
+-- | is \~empty\~. 1. Return \*true\*. 1. Return \*false\*.
+-- |
+-- | The value \~empty\~ is used as a specification device to indicate that
+-- | an entry has been deleted. Actual implementations may take other actions
+-- | such as physically removing the entry from internal data structures.
+-- |
+
+-- SPEC: L36034-L36044
+-- | # Set.prototype.has ( \_value\_ )
+-- |
+-- | This method performs the following steps when called:
+-- |
+-- | 1\. Let \_S\_ be the \*this\* value. 1. Perform ?
+-- | RequireInternalSlot(\_S\_, \[\[SetData\]\]). 1. Set \_value\_ to
+-- | CanonicalizeKeyedCollectionKey(\_value\_). 1. For each element \_e\_ of
+-- | \_S\_.\[\[SetData\]\], do 1. If \_e\_ is not \~empty\~ and
+-- | SameValue(\_e\_, \_value\_) is \*true\*, return \*true\*. 1. Return
+-- | \*false\*.
+-- |
+
+-- SPEC: L36203-L36207
+-- | # Set.prototype.values ( )
+-- |
+-- | This method performs the following steps when called:
+-- |
+-- | 1\. Let \_S\_ be the \*this\* value. 1. Return ?
+
+-- SPEC: L36286-L36335
+-- | # WeakMap Objects
+-- |
+-- | WeakMaps are collections of key/value pairs where the keys are objects
+-- | and/or symbols and values may be arbitrary ECMAScript language values. A
+-- | WeakMap may be queried to see if it contains a key/value pair with a
+-- | specific key, but no mechanism is provided for enumerating the values it
+-- | holds as keys. In certain conditions, values which are not live are
+-- | removed as WeakMap keys, as described in .
+-- |
+-- | An implementation may impose an arbitrarily determined latency between
+-- | the time a key/value pair of a WeakMap becomes inaccessible and the time
+-- | when the key/value pair is removed from the WeakMap. If this latency was
+-- | observable to ECMAScript program, it would be a source of indeterminacy
+-- | that could impact program execution. For that reason, an ECMAScript
+-- | implementation must not provide any means to observe a key of a WeakMap
+-- | that does not require the observer to present the observed key.
+-- |
+-- | WeakMaps must be implemented using either hash tables or other
+-- | mechanisms that, on average, provide access times that are sublinear on
+-- | the number of key/value pairs in the collection. The data structure used
+-- | in this specification is only intended to describe the required
+-- | observable semantics of WeakMaps. It is not intended to be a viable
+-- | implementation model.
+-- |
+-- | WeakMap and WeakSet are intended to provide mechanisms for dynamically
+-- | associating state with an object or symbol in a manner that does not
+-- | "leak" memory resources if, in the absence of the WeakMap or WeakSet
+-- | instance, the object or symbol otherwise became inaccessible and subject
+-- | to resource reclamation by the implementation\'s garbage collection
+-- | mechanisms. This characteristic can be achieved by using an inverted
+-- | per-object/symbol mapping of WeakMap or WeakSet instances to keys.
+-- | Alternatively, each WeakMap or WeakSet instance may internally store its
+-- | key and value data, but this approach requires coordination between the
+-- | WeakMap or WeakSet implementation and the garbage collector. The
+-- | following references describe mechanism that may be useful to
+-- | implementations of WeakMap and WeakSet:
+-- |
+-- | Barry Hayes. 1997. Ephemerons: a new finalization mechanism. In
+-- | *Proceedings of the 12th ACM SIGPLAN conference on Object-oriented
+-- | programming, systems, languages, and applications (OOPSLA \'97)*, A.
+-- | Michael Berman (Ed.). ACM, New York, NY, USA, 176-183,
+-- | <http://doi.acm.org/10.1145/263698.263733>.
+-- |
+-- | Alexandra Barros, Roberto Ierusalimschy, Eliminating Cycles in Weak
+-- | Tables. Journal of Universal Computer Science - J.UCS, vol. 14, no. 21,
+-- | pp. 3481-3497, 2008,
+-- | <http://www.jucs.org/jucs_14_21/eliminating_cycles_in_weak>
+-- |
+-- | # The WeakMap Constructor
+-- |
+
+-- SPEC: L36351-L36369
+-- | # WeakMap ( \[ \_iterable\_ \] )
+-- |
+-- | This function performs the following steps when called:
+-- |
+-- | 1\. If NewTarget is \*undefined\*, throw a \*TypeError\* exception. 1.
+-- | Let \_map\_ be ? OrdinaryCreateFromConstructor(NewTarget,
+-- | \*\"%WeakMap.prototype%\"\*, « \[\[WeakMapData\]\] »). 1. Set
+-- | \_map\_.\[\[WeakMapData\]\] to a new empty List. 1. If \_iterable\_ is
+-- | either \*undefined\* or \*null\*, return \_map\_. 1. Let \_adder\_ be ?
+-- | Get(\_map\_, \*\"set\"\*). 1. If IsCallable(\_adder\_) is \*false\*,
+-- | throw a \*TypeError\* exception. 1. Return ?
+-- | AddEntriesFromIterable(\_map\_, \_iterable\_, \_adder\_).
+-- |
+-- | If the parameter \_iterable\_ is present, it is expected to be an object
+-- | that implements a %Symbol.iterator% method that returns an iterator
+-- | object that produces a two element array-like object whose first element
+-- | is a value that will be used as a WeakMap key and whose second element
+-- | is the value to associate with that key.
+-- |
+
+-- SPEC: L36400-L36416
+-- | # WeakMap.prototype.delete ( \_key\_ )
+-- |
+-- | This method performs the following steps when called:
+-- |
+-- | 1\. Let \_M\_ be the \*this\* value. 1. Perform ?
+-- | RequireInternalSlot(\_M\_, \[\[WeakMapData\]\]). 1. If
+-- | CanBeHeldWeakly(\_key\_) is \*false\*, return \*false\*. 1. For each
+-- | Record { \[\[Key\]\], \[\[Value\]\] } \_p\_ of
+-- | \_M\_.\[\[WeakMapData\]\], do 1. If \_p\_.\[\[Key\]\] is not \~empty\~
+-- | and SameValue(\_p\_.\[\[Key\]\], \_key\_) is \*true\*, then 1. Set
+-- | \_p\_.\[\[Key\]\] to \~empty\~. 1. Set \_p\_.\[\[Value\]\] to
+-- | \~empty\~. 1. Return \*true\*. 1. Return \*false\*.
+-- |
+-- | The value \~empty\~ is used as a specification device to indicate that
+-- | an entry has been deleted. Actual implementations may take other actions
+-- | such as physically removing the entry from internal data structures.
+-- |
+
+-- SPEC: L36417-L36428
+-- | # WeakMap.prototype.get ( \_key\_ )
+-- |
+-- | This method performs the following steps when called:
+-- |
+-- | 1\. Let \_M\_ be the \*this\* value. 1. Perform ?
+-- | RequireInternalSlot(\_M\_, \[\[WeakMapData\]\]). 1. If
+-- | CanBeHeldWeakly(\_key\_) is \*false\*, return \*undefined\*. 1. For each
+-- | Record { \[\[Key\]\], \[\[Value\]\] } \_p\_ of
+-- | \_M\_.\[\[WeakMapData\]\], do 1. If \_p\_.\[\[Key\]\] is not \~empty\~
+-- | and SameValue(\_p\_.\[\[Key\]\], \_key\_) is \*true\*, return
+-- | \_p\_.\[\[Value\]\]. 1. Return \*undefined\*.
+-- |
+
+-- SPEC: L36464-L36475
+-- | # WeakMap.prototype.has ( \_key\_ )
+-- |
+-- | This method performs the following steps when called:
+-- |
+-- | 1\. Let \_M\_ be the \*this\* value. 1. Perform ?
+-- | RequireInternalSlot(\_M\_, \[\[WeakMapData\]\]). 1. If
+-- | CanBeHeldWeakly(\_key\_) is \*false\*, return \*false\*. 1. For each
+-- | Record { \[\[Key\]\], \[\[Value\]\] } \_p\_ of
+-- | \_M\_.\[\[WeakMapData\]\], do 1. If \_p\_.\[\[Key\]\] is not \~empty\~
+-- | and SameValue(\_p\_.\[\[Key\]\], \_key\_) is \*true\*, return
+-- | \*true\*. 1. Return \*false\*.
+-- |
+
+-- SPEC: L36476-L36491
+-- | # WeakMap.prototype.set ( \_key\_, \_value\_ )
+-- |
+-- | This method performs the following steps when called:
+-- |
+-- | 1\. Let \_M\_ be the \*this\* value. 1. Perform ?
+-- | RequireInternalSlot(\_M\_, \[\[WeakMapData\]\]). 1. If
+-- | CanBeHeldWeakly(\_key\_) is \*false\*, throw a \*TypeError\*
+-- | exception. 1. For each Record { \[\[Key\]\], \[\[Value\]\] } \_p\_ of
+-- | \_M\_.\[\[WeakMapData\]\], do 1. If \_p\_.\[\[Key\]\] is not \~empty\~
+-- | and SameValue(\_p\_.\[\[Key\]\], \_key\_) is \*true\*, then 1. Set
+-- | \_p\_.\[\[Value\]\] to \_value\_. 1. Return \_M\_. 1. Let \_p\_ be the
+-- | Record { \[\[Key\]\]: \_key\_, \[\[Value\]\]: \_value\_ }. 1. Append
+-- | \_p\_ to \_M\_.\[\[WeakMapData\]\]. 1. Return \_M\_.
+-- |
+-- | # WeakMap.prototype \[ %Symbol.toStringTag% \]
+-- |
+
+-- SPEC: L36504-L36527
+-- | # WeakSet Objects
+-- |
+-- | WeakSets are collections of objects and/or symbols. A distinct object or
+-- | symbol may only occur once as an element of a WeakSet\'s collection. A
+-- | WeakSet may be queried to see if it contains a specific value, but no
+-- | mechanism is provided for enumerating the values it holds. In certain
+-- | conditions, values which are not live are removed as WeakSet elements,
+-- | as described in .
+-- |
+-- | An implementation may impose an arbitrarily determined latency between
+-- | the time a value contained in a WeakSet becomes inaccessible and the
+-- | time when the value is removed from the WeakSet. If this latency was
+-- | observable to ECMAScript program, it would be a source of indeterminacy
+-- | that could impact program execution. For that reason, an ECMAScript
+-- | implementation must not provide any means to determine if a WeakSet
+-- | contains a particular value that does not require the observer to
+-- | present the observed value.
+-- |
+-- | WeakSets must be implemented using either hash tables or other
+-- | mechanisms that, on average, provide access times that are sublinear on
+-- | the number of elements in the collection. The data structure used in
+-- | this specification is only intended to describe the required observable
+-- | semantics of WeakSets. It is not intended to be a viable implementation
+-- | model.
+
+-- SPEC: L36548-L36566
+-- | # WeakSet ( \[ \_iterable\_ \] )
+-- |
+-- | This function performs the following steps when called:
+-- |
+-- | 1\. If NewTarget is \*undefined\*, throw a \*TypeError\* exception. 1.
+-- | Let \_set\_ be ? OrdinaryCreateFromConstructor(NewTarget,
+-- | \*\"%WeakSet.prototype%\"\*, « \[\[WeakSetData\]\] »). 1. Set
+-- | \_set\_.\[\[WeakSetData\]\] to a new empty List. 1. If \_iterable\_ is
+-- | either \*undefined\* or \*null\*, return \_set\_. 1. Let \_adder\_ be ?
+-- | Get(\_set\_, \*\"add\"\*). 1. If IsCallable(\_adder\_) is \*false\*,
+-- | throw a \*TypeError\* exception. 1. Let \_iteratorRecord\_ be ?
+-- | GetIterator(\_iterable\_, \~sync\~). 1. Repeat, 1. Let \_next\_ be ?
+-- | IteratorStepValue(\_iteratorRecord\_). 1. If \_next\_ is \~done\~,
+-- | return \_set\_. 1. Let \_status\_ be Completion(Call(\_adder\_, \_set\_,
+-- | « \_next\_ »)). 1. IfAbruptCloseIterator(\_status\_,
+-- | \_iteratorRecord\_).
+-- |
+-- | # Properties of the WeakSet Constructor
+-- |
+
+-- SPEC: L36591-L36602
+-- | # WeakSet.prototype.add ( \_value\_ )
+-- |
+-- | This method performs the following steps when called:
+-- |
+-- | 1\. Let \_S\_ be the \*this\* value. 1. Perform ?
+-- | RequireInternalSlot(\_S\_, \[\[WeakSetData\]\]). 1. If
+-- | CanBeHeldWeakly(\_value\_) is \*false\*, throw a \*TypeError\*
+-- | exception. 1. For each element \_e\_ of \_S\_.\[\[WeakSetData\]\], do 1.
+-- | If \_e\_ is not \~empty\~ and SameValue(\_e\_, \_value\_) is \*true\*,
+-- | then 1. Return \_S\_. 1. Append \_value\_ to
+-- | \_S\_.\[\[WeakSetData\]\]. 1. Return \_S\_.
+-- |
+
+-- SPEC: L36607-L36623
+-- | # WeakSet.prototype.delete ( \_value\_ )
+-- |
+-- | This method performs the following steps when called:
+-- |
+-- | 1\. Let \_S\_ be the \*this\* value. 1. Perform ?
+-- | RequireInternalSlot(\_S\_, \[\[WeakSetData\]\]). 1. If
+-- | CanBeHeldWeakly(\_value\_) is \*false\*, return \*false\*. 1. For each
+-- | element \_e\_ of \_S\_.\[\[WeakSetData\]\], do 1. If \_e\_ is not
+-- | \~empty\~ and SameValue(\_e\_, \_value\_) is \*true\*, then 1. Replace
+-- | the element of \_S\_.\[\[WeakSetData\]\] whose value is \_e\_ with an
+-- | element whose value is \~empty\~. 1. Return \*true\*. 1. Return
+-- | \*false\*.
+-- |
+-- | The value \~empty\~ is used as a specification device to indicate that
+-- | an entry has been deleted. Actual implementations may take other actions
+-- | such as physically removing the entry from internal data structures.
+-- |
+
+-- SPEC: L36624-L36635
+-- | # WeakSet.prototype.has ( \_value\_ )
+-- |
+-- | This method performs the following steps when called:
+-- |
+-- | 1\. Let \_S\_ be the \*this\* value. 1. Perform ?
+-- | RequireInternalSlot(\_S\_, \[\[WeakSetData\]\]). 1. If
+-- | CanBeHeldWeakly(\_value\_) is \*false\*, return \*false\*. 1. For each
+-- | element \_e\_ of \_S\_.\[\[WeakSetData\]\], do 1. If \_e\_ is not
+-- | \~empty\~ and SameValue(\_e\_, \_value\_) is \*true\*, return
+-- | \*true\*. 1. Return \*false\*.
+-- |
+-- | # WeakSet.prototype \[ %Symbol.toStringTag% \]
+
+-- SPEC: L36651-L36654
+-- | # CanonicalizeKeyedCollectionKey ( \_key\_: an ECMAScript language value, ): an ECMAScript language value
+-- |
+-- | 1\. If \_key\_ is \*-0\*~𝔽~, return \*+0\*~𝔽~. 1. Return \_key\_.
+-- |
+
+-- SPEC: L38748-L38771
+-- | # The JSON Object
+-- |
+-- | The JSON object:
+-- |
+-- | - is [%JSON%]{.dfn}.
+-- | - is the initial value of the \*\"JSON\"\* property of the global
+-- |   object.
+-- | - is an ordinary object.
+-- | - contains two functions, \`parse\` and \`stringify\`, that are used to
+-- |   parse and construct JSON texts.
+-- | - has a \[\[Prototype\]\] internal slot whose value is
+-- |   %Object.prototype%.
+-- | - does not have a \[\[Construct\]\] internal method; it cannot be used
+-- |   as a constructor with the \`new\` operator.
+-- | - does not have a \[\[Call\]\] internal method; it cannot be invoked as
+-- |   a function.
+-- |
+-- | The JSON Data Interchange Format is defined in ECMA-404. The JSON
+-- | interchange format used in this specification is exactly that described
+-- | by ECMA-404. Conforming implementations of \`JSON.parse\` and
+-- | \`JSON.stringify\` must support the exact interchange format described
+-- | in the ECMA-404 specification without any deletions or extensions to the
+-- | format.
+-- |
+
+-- SPEC: L38772-L38799
+-- | # JSON.parse ( \_text\_ \[ , \_reviver\_ \] )
+-- |
+-- | This function parses a JSON text (a JSON-formatted String) and produces
+-- | an ECMAScript language value. The JSON format represents literals,
+-- | arrays, and objects with a syntax similar to the syntax for ECMAScript
+-- | literals, Array Initializers, and Object Initializers. After parsing,
+-- | JSON objects are realized as ECMAScript objects. JSON arrays are
+-- | realized as ECMAScript Array instances. JSON strings, numbers, booleans,
+-- | and null are realized as ECMAScript Strings, Numbers, Booleans, and
+-- | \*null\*.
+-- |
+-- | The optional \_reviver\_ parameter is a function that takes two
+-- | parameters, \_key\_ and \_value\_. It can filter and transform the
+-- | results. It is called with each of the \_key\_/\_value\_ pairs produced
+-- | by the parse, and its return value is used instead of the original
+-- | value. If it returns what it received, the structure is not modified. If
+-- | it returns \*undefined\* then the property is deleted from the result.
+-- |
+-- | 1\. Let \_jsonString\_ be ? ToString(\_text\_). 1. Let \_unfiltered\_ be
+-- | ? ParseJSON(\_jsonString\_). 1. If IsCallable(\_reviver\_) is \*false\*,
+-- | return \_unfiltered\_. 1. Let \_root\_ be
+-- | OrdinaryObjectCreate(%Object.prototype%). 1. Let \_rootName\_ be the
+-- | empty String. 1. Perform ! CreateDataPropertyOrThrow(\_root\_,
+-- | \_rootName\_, \_unfiltered\_). 1. Return ?
+-- | InternalizeJSONProperty(\_root\_, \_rootName\_, \_reviver\_).
+-- |
+-- | The \*\"length\"\* property of this function is \*2\*~𝔽~.
+-- |
+
+-- SPEC: L38800-L38837
+-- | # ParseJSON ( \_text\_: a String, ): either a normal completion containing an ECMAScript language value or a throw completion
+-- |
+-- | 1\. \[id=\"step-json-parse-validate\"\] If StringToCodePoints(\_text\_)
+-- | is not a valid JSON text as specified in ECMA-404, throw a
+-- | \*SyntaxError\* exception. 1. Let \_scriptString\_ be the
+-- | string-concatenation of \*\"(\"\*, \_text\_, and \*\");\"\*. 1.
+-- | \[id=\"step-json-parse-parse\"\] Let \_script\_ be
+-- | ParseText(\_scriptString\_, \|Script\|). 1. NOTE: The early error rules
+-- | defined in have special handling for the above invocation of
+-- | ParseText. 1. Assert: \_script\_ is a Parse Node. 1.
+-- | \[id=\"step-json-parse-eval\"\] Let \_result\_ be ! Evaluation of
+-- | \_script\_. 1. NOTE: The PropertyDefinitionEvaluation semantics defined
+-- | in have special handling for the above evaluation. 1.
+-- | \[id=\"step-json-parse-assert-type\"\] Assert: \_result\_ is either a
+-- | String, a Number, a Boolean, an Object that is defined by either an
+-- | \|ArrayLiteral\| or an \|ObjectLiteral\|, or \*null\*. 1. Return
+-- | \_result\_.
+-- |
+-- | It is not permitted for a conforming implementation of \`JSON.parse\` to
+-- | extend the JSON grammars. If an implementation wishes to support a
+-- | modified or extended JSON interchange format it must do so by defining a
+-- | different parse function.
+-- |
+-- | Valid JSON text is a subset of the ECMAScript \|PrimaryExpression\|
+-- | syntax. Step verifies that \_jsonString\_ conforms to that subset, and
+-- | step asserts that evaluation returns a value of an appropriate type.
+-- |
+-- | However, because behaves differently during ParseJSON, the same source
+-- | text can produce different results when evaluated as a
+-- | \|PrimaryExpression\| rather than as JSON. Furthermore, the Early Error
+-- | for duplicate \*\"\_\_proto\_\_\"\* properties in object literals, which
+-- | likewise does not apply during ParseJSON, means that not all texts
+-- | accepted by ParseJSON are valid as a \|PrimaryExpression\|, despite
+-- | matching the grammar.
+-- |
+-- | In the case where there are duplicate name Strings within an object,
+-- | lexically preceding values for the same key shall be overwritten.
+-- |
+
+-- SPEC: L38862-L38963
+-- | # JSON.stringify ( \_value\_ \[ , \_replacer\_ \[ , \_space\_ \] \] )
+-- |
+-- | This function returns a String in UTF-16 encoded JSON format
+-- | representing an ECMAScript language value, or \*undefined\*. It can take
+-- | three parameters. The \_value\_ parameter is an ECMAScript language
+-- | value, which is usually an object or array, although it can also be a
+-- | String, Boolean, Number or \*null\*. The optional \_replacer\_ parameter
+-- | is either a function that alters the way objects and arrays are
+-- | stringified, or an array of Strings and Numbers that acts as an
+-- | inclusion list for selecting the object properties that will be
+-- | stringified. The optional \_space\_ parameter is a String or Number that
+-- | allows the result to have white space injected into it to improve human
+-- | readability.
+-- |
+-- | It performs the following steps when called:
+-- |
+-- | 1\. Let \_stack\_ be a new empty List. 1. Let \_indent\_ be the empty
+-- | String. 1. Let \_PropertyList\_ be \*undefined\*. 1. Let
+-- | \_ReplacerFunction\_ be \*undefined\*. 1. If \_replacer\_ is an Object,
+-- | then 1. If IsCallable(\_replacer\_) is \*true\*, then 1. Set
+-- | \_ReplacerFunction\_ to \_replacer\_. 1. Else, 1. Let \_isArray\_ be ?
+-- | IsArray(\_replacer\_). 1. If \_isArray\_ is \*true\*, then 1. Set
+-- | \_PropertyList\_ to a new empty List. 1. Let \_len\_ be ?
+-- | LengthOfArrayLike(\_replacer\_). 1. Let \_k\_ be 0. 1. Repeat, while
+-- | \_k\_ \< \_len\_, 1. Let \_prop\_ be ! ToString(𝔽(\_k\_)). 1. Let \_v\_
+-- | be ? Get(\_replacer\_, \_prop\_). 1. Let \_item\_ be \*undefined\*. 1.
+-- | If \_v\_ is a String, then 1. Set \_item\_ to \_v\_. 1. Else if \_v\_ is
+-- | a Number, then 1. Set \_item\_ to ! ToString(\_v\_). 1. Else if \_v\_ is
+-- | an Object, then 1. If \_v\_ has a \[\[StringData\]\] or
+-- | \[\[NumberData\]\] internal slot, set \_item\_ to ? ToString(\_v\_). 1.
+-- | If \_item\_ is not \*undefined\* and \_PropertyList\_ does not contain
+-- | \_item\_, then 1. Append \_item\_ to \_PropertyList\_. 1. Set \_k\_ to
+-- | \_k\_ + 1. 1. If \_space\_ is an Object, then 1. If \_space\_ has a
+-- | \[\[NumberData\]\] internal slot, then 1. Set \_space\_ to ?
+-- | ToNumber(\_space\_). 1. Else if \_space\_ has a \[\[StringData\]\]
+-- | internal slot, then 1. Set \_space\_ to ? ToString(\_space\_). 1. If
+-- | \_space\_ is a Number, then 1. Let \_spaceMV\_ be !
+-- | ToIntegerOrInfinity(\_space\_). 1. Set \_spaceMV\_ to min(10,
+-- | \_spaceMV\_). 1. If \_spaceMV\_ \< 1, let \_gap\_ be the empty String;
+-- | else let \_gap\_ be the String value containing \_spaceMV\_ occurrences
+-- | of the code unit 0x0020 (SPACE). 1. Else if \_space\_ is a String,
+-- | then 1. If the length of \_space\_ ≤ 10, let \_gap\_ be \_space\_; else
+-- | let \_gap\_ be the substring of \_space\_ from 0 to 10. 1. Else, 1. Let
+-- | \_gap\_ be the empty String. 1. Let \_wrapper\_ be
+-- | OrdinaryObjectCreate(%Object.prototype%). 1. Perform !
+-- | CreateDataPropertyOrThrow(\_wrapper\_, the empty String, \_value\_). 1.
+-- | Let \_state\_ be the JSON Serialization Record {
+-- | \[\[ReplacerFunction\]\]: \_ReplacerFunction\_, \[\[Stack\]\]:
+-- | \_stack\_, \[\[Indent\]\]: \_indent\_, \[\[Gap\]\]: \_gap\_,
+-- | \[\[PropertyList\]\]: \_PropertyList\_ }. 1. Return ?
+-- | SerializeJSONProperty(\_state\_, the empty String, \_wrapper\_).
+-- |
+-- | The \*\"length\"\* property of this function is \*3\*~𝔽~.
+-- |
+-- | JSON structures are allowed to be nested to any depth, but they must be
+-- | acyclic. If \_value\_ is or contains a cyclic structure, then this
+-- | function must throw a \*TypeError\* exception. This is an example of a
+-- | value that cannot be stringified:
+-- |
+-- | ``` javascript
+-- |
+-- |           a = [];
+-- |           a[0] = a;
+-- |           my_text = JSON.stringify(a); // This must throw a TypeError.
+-- |         
+-- | ```
+-- |
+-- | Symbolic primitive values are rendered as follows:
+-- |
+-- | - The \*null\* value is rendered in JSON text as the String value
+-- |   \*\"null\"\*.
+-- | - The \*undefined\* value is not rendered.
+-- | - The \*true\* value is rendered in JSON text as the String value
+-- |   \*\"true\"\*.
+-- | - The \*false\* value is rendered in JSON text as the String value
+-- |   \*\"false\"\*.
+-- |
+-- | String values are wrapped in QUOTATION MARK (\`\"\`) code units. The
+-- | code units \`\"\` and \`\\\\\` are escaped with \`\\\\\` prefixes.
+-- | Control characters code units are replaced with escape sequences
+-- | \`\\\\u\`HHHH, or with the shorter forms, \`\\\\b\` (BACKSPACE),
+-- | \`\\\\f\` (FORM FEED), \`\\\\n\` (LINE FEED), \`\\\\r\` (CARRIAGE
+-- | RETURN), \`\\\\t\` (CHARACTER TABULATION).
+-- |
+-- | Finite numbers are stringified as if by calling ToString(\_number\_).
+-- | \*NaN\* and \*Infinity\* regardless of sign are represented as the
+-- | String value \*\"null\"\*.
+-- |
+-- | Values that do not have a JSON representation (such as \*undefined\* and
+-- | functions) do not produce a String. Instead they produce the
+-- | \*undefined\* value. In arrays these values are represented as the
+-- | String value \*\"null\"\*. In objects an unrepresentable value causes
+-- | the property to be excluded from stringification.
+-- |
+-- | An object is rendered as U+007B (LEFT CURLY BRACKET) followed by zero or
+-- | more properties, separated with a U+002C (COMMA), closed with a U+007D
+-- | (RIGHT CURLY BRACKET). A property is a quoted String representing the
+-- | property name, a U+003A (COLON), and then the stringified property
+-- | value. An array is rendered as an opening U+005B (LEFT SQUARE BRACKET)
+-- | followed by zero or more values, separated with a U+002C (COMMA), closed
+-- | with a U+005D (RIGHT SQUARE BRACKET).
+-- |
+
+-- SPEC: L38964-L38979
+-- | # JSON Serialization Record
+-- |
+-- | A [JSON Serialization Record]{.dfn
+-- | variants="JSON Serialization Records"} is a Record value used to enable
+-- | serialization to the JSON format.
+-- |
+-- | JSON Serialization Records have the fields listed in .
+-- |
+-- |   Field Name                 Value                                       Meaning
+-- |   -------------------------- ------------------------------------------- -------------------------------------------------------------------------------------------------------------------------
+-- |   \[\[ReplacerFunction\]\]   a function object or \*undefined\*          A function that can supply replacement values for object properties (from JSON.stringify\'s \_replacer\_ parameter).
+-- |   \[\[PropertyList\]\]       either a List of Strings or \*undefined\*   The names of properties to include when serializing a non-array object (from JSON.stringify\'s \_replacer\_ parameter).
+-- |   \[\[Gap\]\]                a String                                    The unit of indentation (from JSON.stringify\'s \_space\_ parameter).
+-- |   \[\[Stack\]\]              a List of Objects                           The set of nested objects that are in the process of being serialized. Used to detect cyclic structures.
+-- |   \[\[Indent\]\]             a String                                    The current indentation.
+-- |
+
+-- SPEC: L42135-L42150
+-- | # The Reflect Object
+-- |
+-- | The Reflect object:
+-- |
+-- | - is [%Reflect%]{.dfn}.
+-- | - is the initial value of the \*\"Reflect\"\* property of the global
+-- |   object.
+-- | - is an ordinary object.
+-- | - has a \[\[Prototype\]\] internal slot whose value is
+-- |   %Object.prototype%.
+-- | - is not a function object.
+-- | - does not have a \[\[Construct\]\] internal method; it cannot be used
+-- |   as a constructor with the \`new\` operator.
+-- | - does not have a \[\[Call\]\] internal method; it cannot be invoked as
+-- |   a function.
+-- |
+
+-- SPEC: L42151-L42160
+-- | # Reflect.apply ( \_target\_, \_thisArgument\_, \_argumentsList\_ )
+-- |
+-- | This function performs the following steps when called:
+-- |
+-- | 1\. If IsCallable(\_target\_) is \*false\*, throw a \*TypeError\*
+-- | exception. 1. Let \_args\_ be ?
+-- | CreateListFromArrayLike(\_argumentsList\_). 1. Perform
+-- | PrepareForTailCall(). 1. Return ? Call(\_target\_, \_thisArgument\_,
+-- | \_args\_).
+-- |
+
+-- SPEC: L42161-L42171
+-- | # Reflect.construct ( \_target\_, \_argumentsList\_ \[ , \_newTarget\_ \] )
+-- |
+-- | This function performs the following steps when called:
+-- |
+-- | 1\. If IsConstructor(\_target\_) is \*false\*, throw a \*TypeError\*
+-- | exception. 1. If \_newTarget\_ is not present, set \_newTarget\_ to
+-- | \_target\_. 1. Else if IsConstructor(\_newTarget\_) is \*false\*, throw
+-- | a \*TypeError\* exception. 1. Let \_args\_ be ?
+-- | CreateListFromArrayLike(\_argumentsList\_). 1. Return ?
+-- | Construct(\_target\_, \_args\_, \_newTarget\_).
+-- |
+
+-- SPEC: L42172-L42180
+-- | # Reflect.defineProperty ( \_target\_, \_propertyKey\_, \_attributes\_ )
+-- |
+-- | This function performs the following steps when called:
+-- |
+-- | 1\. If \_target\_ is not an Object, throw a \*TypeError\* exception. 1.
+-- | Let \_key\_ be ? ToPropertyKey(\_propertyKey\_). 1. Let \_desc\_ be ?
+-- | ToPropertyDescriptor(\_attributes\_). 1. Return ?
+-- | \_target\_.\[\[DefineOwnProperty\]\](\_key\_, \_desc\_).
+-- |
+
+-- SPEC: L42181-L42188
+-- | # Reflect.deleteProperty ( \_target\_, \_propertyKey\_ )
+-- |
+-- | This function performs the following steps when called:
+-- |
+-- | 1\. If \_target\_ is not an Object, throw a \*TypeError\* exception. 1.
+-- | Let \_key\_ be ? ToPropertyKey(\_propertyKey\_). 1. Return ?
+-- | \_target\_.\[\[Delete\]\](\_key\_).
+-- |
+
+-- SPEC: L42189-L42197
+-- | # Reflect.get ( \_target\_, \_propertyKey\_ \[ , \_receiver\_ \] )
+-- |
+-- | This function performs the following steps when called:
+-- |
+-- | 1\. If \_target\_ is not an Object, throw a \*TypeError\* exception. 1.
+-- | Let \_key\_ be ? ToPropertyKey(\_propertyKey\_). 1. If \_receiver\_ is
+-- | not present, then 1. Set \_receiver\_ to \_target\_. 1. Return ?
+-- | \_target\_.\[\[Get\]\](\_key\_, \_receiver\_).
+-- |
+
+-- SPEC: L42198-L42206
+-- | # Reflect.getOwnPropertyDescriptor ( \_target\_, \_propertyKey\_ )
+-- |
+-- | This function performs the following steps when called:
+-- |
+-- | 1\. If \_target\_ is not an Object, throw a \*TypeError\* exception. 1.
+-- | Let \_key\_ be ? ToPropertyKey(\_propertyKey\_). 1. Let \_desc\_ be ?
+-- | \_target\_.\[\[GetOwnProperty\]\](\_key\_). 1. Return
+-- | FromPropertyDescriptor(\_desc\_).
+-- |
+
+-- SPEC: L42207-L42213
+-- | # Reflect.getPrototypeOf ( \_target\_ )
+-- |
+-- | This function performs the following steps when called:
+-- |
+-- | 1\. If \_target\_ is not an Object, throw a \*TypeError\* exception. 1.
+-- | Return ? \_target\_.\[\[GetPrototypeOf\]\]().
+-- |
+
+-- SPEC: L42214-L42221
+-- | # Reflect.has ( \_target\_, \_propertyKey\_ )
+-- |
+-- | This function performs the following steps when called:
+-- |
+-- | 1\. If \_target\_ is not an Object, throw a \*TypeError\* exception. 1.
+-- | Let \_key\_ be ? ToPropertyKey(\_propertyKey\_). 1. Return ?
+-- | \_target\_.\[\[HasProperty\]\](\_key\_).
+-- |
+
+-- SPEC: L42222-L42228
+-- | # Reflect.isExtensible ( \_target\_ )
+-- |
+-- | This function performs the following steps when called:
+-- |
+-- | 1\. If \_target\_ is not an Object, throw a \*TypeError\* exception. 1.
+-- | Return ? \_target\_.\[\[IsExtensible\]\]().
+-- |
+
+-- SPEC: L42229-L42236
+-- | # Reflect.ownKeys ( \_target\_ )
+-- |
+-- | This function performs the following steps when called:
+-- |
+-- | 1\. If \_target\_ is not an Object, throw a \*TypeError\* exception. 1.
+-- | Let \_keys\_ be ? \_target\_.\[\[OwnPropertyKeys\]\](). 1. Return
+-- | CreateArrayFromList(\_keys\_).
+-- |
+
+-- SPEC: L42237-L42243
+-- | # Reflect.preventExtensions ( \_target\_ )
+-- |
+-- | This function performs the following steps when called:
+-- |
+-- | 1\. If \_target\_ is not an Object, throw a \*TypeError\* exception. 1.
+-- | Return ? \_target\_.\[\[PreventExtensions\]\]().
+-- |
+
+-- SPEC: L42244-L42252
+-- | # Reflect.set ( \_target\_, \_propertyKey\_, \_V\_ \[ , \_receiver\_ \] )
+-- |
+-- | This function performs the following steps when called:
+-- |
+-- | 1\. If \_target\_ is not an Object, throw a \*TypeError\* exception. 1.
+-- | Let \_key\_ be ? ToPropertyKey(\_propertyKey\_). 1. If \_receiver\_ is
+-- | not present, then 1. Set \_receiver\_ to \_target\_. 1. Return ?
+-- | \_target\_.\[\[Set\]\](\_key\_, \_V\_, \_receiver\_).
+-- |
+
+-- SPEC: L42253-L42261
+-- | # Reflect.setPrototypeOf ( \_target\_, \_proto\_ )
+-- |
+-- | This function performs the following steps when called:
+-- |
+-- | 1\. If \_target\_ is not an Object, throw a \*TypeError\* exception. 1.
+-- | If \_proto\_ is not an Object and \_proto\_ is not \*null\*, throw a
+-- | \*TypeError\* exception. 1. Return ?
+-- | \_target\_.\[\[SetPrototypeOf\]\](\_proto\_).
+-- |
+
+-- SPEC: L36697-L36722
+-- | # AllocateArrayBuffer ( \_constructor\_: a constructor, \_byteLength\_: a non-negative integer, optional \_maxByteLength\_: a non-negative integer or \~empty\~, ): either a normal completion containing an ArrayBuffer or a throw completion
+-- |
+-- | description
+-- | :   It is used to create an ArrayBuffer.
+-- |
+-- | 1\. Let \_slots\_ be « \[\[ArrayBufferData\]\],
+-- | \[\[ArrayBufferByteLength\]\], \[\[ArrayBufferDetachKey\]\] ». 1. If
+-- | \_maxByteLength\_ is present and \_maxByteLength\_ is not \~empty\~, let
+-- | \_allocatingResizableBuffer\_ be \*true\*; else let
+-- | \_allocatingResizableBuffer\_ be \*false\*. 1. If
+-- | \_allocatingResizableBuffer\_ is \*true\*, then 1. If \_byteLength\_ \>
+-- | \_maxByteLength\_, throw a \*RangeError\* exception. 1. Append
+-- | \[\[ArrayBufferMaxByteLength\]\] to \_slots\_. 1. Let \_obj\_ be ?
+-- | OrdinaryCreateFromConstructor(\_constructor\_,
+-- | \*\"%ArrayBuffer.prototype%\"\*, \_slots\_). 1. Let \_block\_ be ?
+-- | CreateByteDataBlock(\_byteLength\_). 1. Set
+-- | \_obj\_.\[\[ArrayBufferData\]\] to \_block\_. 1. Set
+-- | \_obj\_.\[\[ArrayBufferByteLength\]\] to \_byteLength\_. 1. If
+-- | \_allocatingResizableBuffer\_ is \*true\*, then 1. If it is not possible
+-- | to create a Data Block \_block\_ consisting of \_maxByteLength\_ bytes,
+-- | throw a \*RangeError\* exception. 1. NOTE: Resizable ArrayBuffers are
+-- | designed to be implementable with in-place growth. Implementations may
+-- | throw if, for example, virtual memory cannot be reserved up front. 1.
+-- | Set \_obj\_.\[\[ArrayBufferMaxByteLength\]\] to \_maxByteLength\_. 1.
+-- | Return \_obj\_.
+-- |
+
+-- SPEC: L36723-L36735
+-- | # ArrayBufferByteLength ( \_arrayBuffer\_: an ArrayBuffer or SharedArrayBuffer, \_order\_: \~seq-cst\~ or \~unordered\~, ): a non-negative integer
+-- |
+-- | 1\. If IsGrowableSharedArrayBuffer(\_arrayBuffer\_) is \*true\*, then 1.
+-- | Let \_bufferByteLengthBlock\_ be
+-- | \_arrayBuffer\_.\[\[ArrayBufferByteLengthData\]\]. 1. Let \_rawLength\_
+-- | be GetRawBytesFromSharedBlock(\_bufferByteLengthBlock\_, 0,
+-- | \~biguint64\~, \*true\*, \_order\_). 1. Let \_AR\_ be the Agent Record
+-- | of the surrounding agent. 1. Let \_isLittleEndian\_ be
+-- | \_AR\_.\[\[LittleEndian\]\]. 1. Return
+-- | ℝ(RawBytesToNumeric(\~biguint64\~, \_rawLength\_,
+-- | \_isLittleEndian\_)). 1. Assert: IsDetachedBuffer(\_arrayBuffer\_) is
+-- | \*false\*. 1. Return \_arrayBuffer\_.\[\[ArrayBufferByteLength\]\].
+-- |
+
+-- SPEC: L36763-L36767
+-- | # IsDetachedBuffer ( \_arrayBuffer\_: an ArrayBuffer or a SharedArrayBuffer, ): a Boolean
+-- |
+-- | 1\. If \_arrayBuffer\_.\[\[ArrayBufferData\]\] is \*null\*, return
+-- | \*true\*. 1. Return \*false\*.
+-- |
+
+-- SPEC: L36768-L36783
+-- | # DetachArrayBuffer ( \_arrayBuffer\_: an ArrayBuffer, optional \_key\_: anything, ): either a normal completion containing \~unused\~ or a throw completion
+-- |
+-- | skip global checks
+-- | :   true
+-- |
+-- | 1\. Assert: IsSharedArrayBuffer(\_arrayBuffer\_) is \*false\*. 1. If
+-- | \_key\_ is not present, set \_key\_ to \*undefined\*. 1. If
+-- | \_arrayBuffer\_.\[\[ArrayBufferDetachKey\]\] is not \_key\_, throw a
+-- | \*TypeError\* exception. 1. Set \_arrayBuffer\_.\[\[ArrayBufferData\]\]
+-- | to \*null\*. 1. Set \_arrayBuffer\_.\[\[ArrayBufferByteLength\]\] to
+-- | 0. 1. Return \~unused\~.
+-- |
+-- | Detaching an ArrayBuffer instance disassociates the Data Block used as
+-- | its backing store from the instance and sets the byte length of the
+-- | buffer to 0.
+-- |
+
+-- SPEC: L36784-L36798
+-- | # CloneArrayBuffer ( \_srcBuffer\_: an ArrayBuffer or a SharedArrayBuffer, \_srcByteOffset\_: a non-negative integer, \_srcLength\_: a non-negative integer, ): either a normal completion containing an ArrayBuffer or a throw completion
+-- |
+-- | description
+-- | :   It creates a new ArrayBuffer whose data is a copy of
+-- |     \_srcBuffer\_\'s data over the range starting at \_srcByteOffset\_
+-- |     and continuing for \_srcLength\_ bytes.
+-- |
+-- | 1\. Assert: IsDetachedBuffer(\_srcBuffer\_) is \*false\*. 1. Let
+-- | \_targetBuffer\_ be ? AllocateArrayBuffer(%ArrayBuffer%,
+-- | \_srcLength\_). 1. Let \_srcBlock\_ be
+-- | \_srcBuffer\_.\[\[ArrayBufferData\]\]. 1. Let \_targetBlock\_ be
+-- | \_targetBuffer\_.\[\[ArrayBufferData\]\]. 1. Perform
+-- | CopyDataBlockBytes(\_targetBlock\_, 0, \_srcBlock\_, \_srcByteOffset\_,
+-- | \_srcLength\_). 1. Return \_targetBuffer\_.
+-- |
+
+-- SPEC: L36799-L36805
+-- | # GetArrayBufferMaxByteLengthOption ( \_options\_: an ECMAScript language value, ): either a normal completion containing either a non-negative integer or \~empty\~, or a throw completion
+-- |
+-- | 1\. If \_options\_ is not an Object, return \~empty\~. 1. Let
+-- | \_maxByteLength\_ be ? Get(\_options\_, \*\"maxByteLength\"\*). 1. If
+-- | \_maxByteLength\_ is \*undefined\*, return \~empty\~. 1. Return ?
+-- | ToIndex(\_maxByteLength\_).
+-- |
+
+-- SPEC: L36824-L36828
+-- | # IsFixedLengthArrayBuffer ( \_arrayBuffer\_: an ArrayBuffer or a SharedArrayBuffer, ): a Boolean
+-- |
+-- | 1\. If \_arrayBuffer\_ has an \[\[ArrayBufferMaxByteLength\]\] internal
+-- | slot, return \*false\*. 1. Return \*true\*.
+-- |
+
+-- SPEC: L36829-L36837
+-- | # IsUnsignedElementType ( \_type\_: a TypedArray element type, ): a Boolean
+-- |
+-- | description
+-- | :   It verifies if the argument \_type\_ is an unsigned TypedArray
+-- |     element type.
+-- |
+-- | 1\. If \_type\_ is one of \~uint8\~, \~uint8clamped\~, \~uint16\~,
+-- | \~uint32\~, or \~biguint64\~, return \*true\*. 1. Return \*false\*.
+-- |
+
+-- SPEC: L36838-L36846
+-- | # IsUnclampedIntegerElementType ( \_type\_: a TypedArray element type, ): a Boolean
+-- |
+-- | description
+-- | :   It verifies if the argument \_type\_ is an Integer TypedArray
+-- |     element type not including \~uint8clamped\~.
+-- |
+-- | 1\. If \_type\_ is one of \~int8\~, \~uint8\~, \~int16\~, \~uint16\~,
+-- | \~int32\~, or \~uint32\~, return \*true\*. 1. Return \*false\*.
+-- |
+
+-- SPEC: L36847-L36855
+-- | # IsBigIntElementType ( \_type\_: a TypedArray element type, ): a Boolean
+-- |
+-- | description
+-- | :   It verifies if the argument \_type\_ is a BigInt TypedArray element
+-- |     type.
+-- |
+-- | 1\. If \_type\_ is either \~biguint64\~ or \~bigint64\~, return
+-- | \*true\*. 1. Return \*false\*.
+-- |
+
+-- SPEC: L26635-L26640
+-- | # Date Objects
+-- |
+-- | # Overview of Date Objects and Definitions of Abstract Operations
+-- |
+-- | The following abstract operations operate on time values (defined in ).
+-- | Note that, in every case, if any argument to one of these functions is
+
+-- SPEC: L26703-L26709
+-- | # Day ( \_t\_: a finite time value, ): an integral Number
+-- |
+-- | description
+-- | :   It returns the day number of the day in which \_t\_ falls.
+-- |
+-- | 1\. Return 𝔽(floor(ℝ(\_t\_ / msPerDay))).
+
+-- SPEC: L26710-L26717
+-- | # TimeWithinDay ( \_t\_: a finite time value, ): an integral Number in the interval from \*+0\*~𝔽~ (inclusive) to msPerDay (exclusive)
+-- |
+-- | description
+-- | :   It returns the number of milliseconds since the start of the day in
+-- |     which \_t\_ falls.
+-- |
+-- | 1\. Return 𝔽(ℝ(\_t\_) modulo ℝ(msPerDay)).
+
+-- SPEC: L26718-L26727
+-- | # DaysInYear ( \_y\_: an integral Number, ): \*365\*~𝔽~ or \*366\*~𝔽~
+-- |
+-- | description
+-- | :   It returns the number of days in year \_y\_. Leap years have 366
+-- |     days; all other years have 365.
+-- |
+-- | 1\. Let \_ry\_ be ℝ(\_y\_). 1. If (\_ry\_ modulo 400) = 0, return
+-- | \*366\*~𝔽~. 1. If (\_ry\_ modulo 100) = 0, return \*365\*~𝔽~. 1. If
+-- | (\_ry\_ modulo 4) = 0, return \*366\*~𝔽~. 1. Return \*365\*~𝔽~.
+
+-- SPEC: L26728-L26744
+-- | # DayFromYear ( \_y\_: an integral Number, ): an integral Number
+-- |
+-- | description
+-- | :   It returns the day number of the first day of year \_y\_.
+-- |
+-- | 1\. Let \_ry\_ be ℝ(\_y\_). 1.
+-- | \[declared=\"numYears1,numYears4,numYears100,numYears400\"\] NOTE: In
+-- | the following steps, \_numYears1\_, \_numYears4\_, \_numYears100\_, and
+-- | \_numYears400\_ represent the number of years divisible by 1, 4, 100,
+-- | and 400, respectively, that occur between the epoch and the start of
+-- | year \_y\_. The number is negative if \_y\_ is before the epoch. 1. Let
+-- | \_numYears1\_ be (\_ry\_ - 1970). 1. Let \_numYears4\_ be
+-- | floor((\_ry\_ - 1969) / 4). 1. Let \_numYears100\_ be floor((\_ry\_ -
+-- | 1901) / 100). 1. Let \_numYears400\_ be floor((\_ry\_ - 1601) / 400). 1.
+-- | Return 𝔽(365 × \_numYears1\_ + \_numYears4\_ - \_numYears100\_ +
+-- | \_numYears400\_).
+
+-- SPEC: L26745-L26751
+-- | # TimeFromYear ( \_y\_: an integral Number, ): a time value
+-- |
+-- | description
+-- | :   It returns the time value of the start of year \_y\_.
+-- |
+-- | 1\. Return msPerDay × DayFromYear(\_y\_).
+
+-- SPEC: L26752-L26759
+-- | # YearFromTime ( \_t\_: a finite time value, ): an integral Number
+-- |
+-- | description
+-- | :   It returns the year in which \_t\_ falls.
+-- |
+-- | 1\. \[declared=\"y\"\] Return the largest integral Number \_y\_ (closest
+-- | to +∞) such that TimeFromYear(\_y\_) ≤ \_t\_.
+
+-- SPEC: L26760-L26763
+-- | # DayWithinYear ( \_t\_: a finite time value, ): an integral Number in the inclusive interval from \*+0\*~𝔽~ to \*365\*~𝔽~
+-- |
+-- | 1\. Return Day(\_t\_) - DayFromYear(YearFromTime(\_t\_)).
+
+-- SPEC: L26764-L26772
+-- | # InLeapYear ( \_t\_: a finite time value, ): \*+0\*~𝔽~ or \*1\*~𝔽~
+-- |
+-- | description
+-- | :   It returns \*1\*~𝔽~ if \_t\_ is within a leap year and \*+0\*~𝔽~
+-- |     otherwise.
+-- |
+-- | 1\. If DaysInYear(YearFromTime(\_t\_)) is \*366\*~𝔽~, return
+-- | \*1\*~𝔽~. 1. Return \*+0\*~𝔽~.
+
+-- SPEC: L26823-L26834
+-- | # WeekDay ( \_t\_: a finite time value, ): an integral Number in the inclusive interval from \*+0\*~𝔽~ to \*6\*~𝔽~
+-- |
+-- | description
+-- | :   It returns a Number identifying the day of the week in which \_t\_
+-- |     falls. A weekday value of \*+0\*~𝔽~ specifies Sunday; \*1\*~𝔽~
+-- |     specifies Monday; \*2\*~𝔽~ specifies Tuesday; \*3\*~𝔽~ specifies
+-- |     Wednesday; \*4\*~𝔽~ specifies Thursday; \*5\*~𝔽~ specifies Friday;
+-- |     and \*6\*~𝔽~ specifies Saturday. Note that WeekDay(\*+0\*~𝔽~) =
+-- |     \*4\*~𝔽~, corresponding to Thursday, 1 January 1970.
+-- |
+-- | 1\. Return 𝔽(ℝ(Day(\_t\_) + \*4\*~𝔽~) modulo 7).
+
+-- SPEC: L26835-L26841
+-- | # HourFromTime ( \_t\_: a finite time value, ): an integral Number in the inclusive interval from \*+0\*~𝔽~ to \*23\*~𝔽~
+-- |
+-- | description
+-- | :   It returns the hour of the day in which \_t\_ falls.
+-- |
+-- | 1\. Return 𝔽(floor(ℝ(\_t\_ / msPerHour)) modulo HoursPerDay).
+
+-- SPEC: L26842-L26848
+-- | # MinFromTime ( \_t\_: a finite time value, ): an integral Number in the inclusive interval from \*+0\*~𝔽~ to \*59\*~𝔽~
+-- |
+-- | description
+-- | :   It returns the minute of the hour in which \_t\_ falls.
+-- |
+-- | 1\. Return 𝔽(floor(ℝ(\_t\_ / msPerMinute)) modulo MinutesPerHour).
+
+-- SPEC: L26849-L26855
+-- | # SecFromTime ( \_t\_: a finite time value, ): an integral Number in the inclusive interval from \*+0\*~𝔽~ to \*59\*~𝔽~
+-- |
+-- | description
+-- | :   It returns the second of the minute in which \_t\_ falls.
+-- |
+-- | 1\. Return 𝔽(floor(ℝ(\_t\_ / msPerSecond)) modulo SecondsPerMinute).
+
+-- SPEC: L26856-L26862
+-- | # msFromTime ( \_t\_: a finite time value, ): an integral Number in the inclusive interval from \*+0\*~𝔽~ to \*999\*~𝔽~
+-- |
+-- | description
+-- | :   It returns the millisecond of the second in which \_t\_ falls.
+-- |
+-- | 1\. Return 𝔽(ℝ(\_t\_) modulo ℝ(msPerSecond)).
+
+-- SPEC: L27163-L27178
+-- | # MakeTime ( \_hour\_: a Number, \_min\_: a Number, \_sec\_: a Number, \_ms\_: a Number, ): a Number
+-- |
+-- | description
+-- | :   It calculates a number of milliseconds.
+-- |
+-- | 1\. If \_hour\_ is not finite, \_min\_ is not finite, \_sec\_ is not
+-- | finite, or \_ms\_ is not finite, return \*NaN\*. 1. Let \_h\_ be 𝔽(!
+-- | ToIntegerOrInfinity(\_hour\_)). 1. Let \_m\_ be 𝔽(!
+-- | ToIntegerOrInfinity(\_min\_)). 1. Let \_s\_ be 𝔽(!
+-- | ToIntegerOrInfinity(\_sec\_)). 1. Let \_milli\_ be 𝔽(!
+-- | ToIntegerOrInfinity(\_ms\_)). 1. Return ((\_h\_ × msPerHour + \_m\_ ×
+-- | msPerMinute) + \_s\_ × msPerSecond) + \_milli\_.
+-- |
+-- | The arithmetic in MakeTime is floating-point arithmetic, which is not
+-- | associative, so the operations must be performed in the correct order.
+
+-- SPEC: L27179-L27195
+-- | # MakeDay ( \_year\_: a Number, \_month\_: a Number, \_date\_: a Number, ): a Number
+-- |
+-- | description
+-- | :   It calculates a number of days.
+-- |
+-- | 1\. If \_year\_ is not finite, \_month\_ is not finite, or \_date\_ is
+-- | not finite, return \*NaN\*. 1. Let \_y\_ be 𝔽(!
+-- | ToIntegerOrInfinity(\_year\_)). 1. Let \_m\_ be 𝔽(!
+-- | ToIntegerOrInfinity(\_month\_)). 1. Let \_dt\_ be 𝔽(!
+-- | ToIntegerOrInfinity(\_date\_)). 1. Let \_ym\_ be \_y\_ +
+-- | 𝔽(floor(ℝ(\_m\_) / 12)). 1. If \_ym\_ is not finite, return \*NaN\*. 1.
+-- | Let \_mn\_ be 𝔽(ℝ(\_m\_) modulo 12). 1. Find a finite time value \_t\_
+-- | such that YearFromTime(\_t\_) is \_ym\_, MonthFromTime(\_t\_) is \_mn\_,
+-- | and DateFromTime(\_t\_) is \*1\*~𝔽~; but if this is not possible
+-- | (because some argument is out of range), return \*NaN\*. 1. Return
+-- | Day(\_t\_) + \_dt\_ - \*1\*~𝔽~.
+
+-- SPEC: L27196-L27218
+-- | # MakeDate ( \_day\_: a Number, \_time\_: a Number, ): a Number
+-- |
+-- | description
+-- | :   It calculates a number of milliseconds.
+-- |
+-- | 1\. If \_day\_ is not finite or \_time\_ is not finite, return
+-- | \*NaN\*. 1. Let \_tv\_ be \_day\_ × msPerDay + \_time\_. 1. If \_tv\_ is
+-- | not finite, return \*NaN\*. 1. Return \_tv\_.
+-- |
+-- | # MakeFullYear ( \_year\_: a Number, ): an integral Number or \*NaN\*
+-- |
+-- | description
+-- | :   It returns the full year associated with the integer part of
+-- |     \_year\_, interpreting any value in the inclusive interval from 0 to
+-- |     99 as a count of years since the start of 1900. For alignment with
+-- |     the proleptic Gregorian calendar, \"full year\" is defined as the
+-- |     signed count of complete years since the start of year 0 (1 B.C.).
+-- |
+-- | 1\. If \_year\_ is \*NaN\*, return \*NaN\*. 1. Let \_truncated\_ be !
+-- | ToIntegerOrInfinity(\_year\_). 1. If \_truncated\_ is in the inclusive
+-- | interval from 0 to 99, return \*1900\*~𝔽~ + 𝔽(\_truncated\_). 1. Return
+-- | 𝔽(\_truncated\_).
+
+-- SPEC: L27219-L27227
+-- | # TimeClip ( \_time\_: a Number, ): a Number
+-- |
+-- | description
+-- | :   It calculates a number of milliseconds.
+-- |
+-- | 1\. If \_time\_ is not finite, return \*NaN\*. 1. If abs(ℝ(\_time\_)) \>
+-- | 8.64 × 10^15^, return \*NaN\*. 1. Return 𝔽(!
+-- | ToIntegerOrInfinity(\_time\_)).
+
+-- SPEC: L42285-L42298
+-- |
+-- | This function performs the following steps when called:
+-- |
+-- | 1\. If NewTarget is \*undefined\*, throw a \*TypeError\* exception. 1.
+-- | Return ? ProxyCreate(\_target\_, \_handler\_).
+-- |
+-- | # Properties of the Proxy Constructor
+-- |
+-- | The Proxy constructor:
+-- |
+-- | - has a \[\[Prototype\]\] internal slot whose value is
+-- |   %Function.prototype%.
+-- | - does not have a \*\"prototype\"\* property because Proxy objects do
+-- |   not have a \[\[Prototype\]\] internal slot that requires
+
+-- SPEC: L42299-L42303
+-- |   initialization.
+-- | - has the following properties:
+-- |
+-- | # Proxy.revocable ( \_target\_, \_handler\_ )
+
+-- SPEC: L42304-L42313
+-- | This function creates a revocable Proxy object.
+-- |
+-- | It performs the following steps when called:
+-- |
+-- | 1\. Let \_proxy\_ be ? ProxyCreate(\_target\_, \_handler\_). 1. Let
+-- | \_revokerClosure\_ be a new Abstract Closure with no parameters that
+-- | captures nothing and performs the following steps when called: 1. Let
+-- | \_F\_ be the active function object. 1. Let \_p\_ be
+-- | \_F\_.\[\[RevocableProxy\]\]. 1. If \_p\_ is \*null\*, return
+-- | NormalCompletion(\*undefined\*). 1. Set \_F\_.\[\[RevocableProxy\]\] to
+
+-- SPEC: L42314-L42336
+-- | \*null\*. 1. Assert: \_p\_ is a Proxy exotic object. 1. Set
+-- | \_p\_.\[\[ProxyTarget\]\] to \*null\*. 1. Set \_p\_.\[\[ProxyHandler\]\]
+-- | to \*null\*. 1. Return NormalCompletion(\*undefined\*). 1. Let
+-- | \_revoker\_ be CreateBuiltinFunction(\_revokerClosure\_, 0, \*\"\"\*, «
+-- | \[\[RevocableProxy\]\] »). 1. Set \_revoker\_.\[\[RevocableProxy\]\] to
+-- | \_proxy\_. 1. Let \_result\_ be
+-- | OrdinaryObjectCreate(%Object.prototype%). 1. Perform !
+-- | CreateDataPropertyOrThrow(\_result\_, \*\"proxy\"\*, \_proxy\_). 1.
+-- | Perform ! CreateDataPropertyOrThrow(\_result\_, \*\"revoke\"\*,
+-- | \_revoker\_). 1. Return \_result\_.
+-- |
+-- | # Module Namespace Objects
+-- |
+-- | A Module Namespace Object is a module namespace exotic object that
+-- | provides runtime property-based access to a module\'s exported bindings.
+-- | There is no constructor function for Module Namespace Objects. Instead,
+-- | such an object is created for each module that is imported by an
+-- | \|ImportDeclaration\| that contains a \|NameSpaceImport\|.
+-- |
+-- | In addition to the properties specified in each Module Namespace Object
+-- | has the following own property:
+-- |
+-- | # %Symbol.toStringTag%
+
 end VerifiedJS.Source
