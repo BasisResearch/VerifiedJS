@@ -29303,5 +29303,1202 @@ theorem elaborate_correct (p : Source.Program) (cp : Core.Program)
 -- | contain \_binding\_.\[\[Description\]\], append
 -- | \_binding\_.\[\[Description\]\] to \_privateIdentifiers\_. 1. Set
 
+/-! ## JSON Operations -/
+
+-- SPEC: L38838-L38861
+-- | # InternalizeJSONProperty ( \_holder\_: an Object, \_name\_: a String, \_reviver\_: a function object, ): either a normal completion containing an ECMAScript language value or a throw completion
+-- |
+-- | This algorithm intentionally does not throw an exception if either
+-- | \[\[Delete\]\] or CreateDataProperty return \*false\*.
+-- |
+-- | It performs the following steps when called:
+-- |
+-- | 1\. Let \_val\_ be ? Get(\_holder\_, \_name\_). 1. If \_val\_ is an
+-- | Object, then 1. Let \_isArray\_ be ? IsArray(\_val\_). 1. If \_isArray\_
+-- | is \*true\*, then 1. Let \_len\_ be ? LengthOfArrayLike(\_val\_). 1. Let
+-- | \_I\_ be 0. 1. Repeat, while \_I\_ \< \_len\_, 1. Let \_prop\_ be !
+-- | ToString(𝔽(\_I\_)). 1. Let \_newElement\_ be ?
+-- | InternalizeJSONProperty(\_val\_, \_prop\_, \_reviver\_). 1. If
+-- | \_newElement\_ is \*undefined\*, then 1. Perform ?
+-- | \_val\_.\[\[Delete\]\](\_prop\_). 1. Else, 1. Perform ?
+-- | CreateDataProperty(\_val\_, \_prop\_, \_newElement\_). 1. Set \_I\_ to
+-- | \_I\_ + 1. 1. Else, 1. Let \_keys\_ be ?
+-- | EnumerableOwnProperties(\_val\_, \~key\~). 1. For each String \_P\_ of
+-- | \_keys\_, do 1. Let \_newElement\_ be ? InternalizeJSONProperty(\_val\_,
+-- | \_P\_, \_reviver\_). 1. If \_newElement\_ is \*undefined\*, then 1.
+-- | Perform ? \_val\_.\[\[Delete\]\](\_P\_). 1. Else, 1. Perform ?
+-- | CreateDataProperty(\_val\_, \_P\_, \_newElement\_). 1. Return ?
+-- | Call(\_reviver\_, \_holder\_, « \_name\_, \_val\_ »).
+
+-- SPEC: L38980-L39007
+-- | # SerializeJSONProperty ( \_state\_: a JSON Serialization Record, \_key\_: a String, \_holder\_: an Object, ): either a normal completion containing either a String or \*undefined\*, or a throw completion
+-- |
+-- | 1\. Let \_value\_ be ? Get(\_holder\_, \_key\_). 1. If \_value\_ is an
+-- | Object or \_value\_ is a BigInt, then 1. Let \_toJSON\_ be ?
+-- | GetV(\_value\_, \*\"toJSON\"\*). 1. If IsCallable(\_toJSON\_) is
+-- | \*true\*, then 1. Set \_value\_ to ? Call(\_toJSON\_, \_value\_, «
+-- | \_key\_ »). 1. If \_state\_.\[\[ReplacerFunction\]\] is not
+-- | \*undefined\*, then 1. Set \_value\_ to ?
+-- | Call(\_state\_.\[\[ReplacerFunction\]\], \_holder\_, « \_key\_,
+-- | \_value\_ »). 1. If \_value\_ is an Object, then 1. If \_value\_ has a
+-- | \[\[NumberData\]\] internal slot, then 1. Set \_value\_ to ?
+-- | ToNumber(\_value\_). 1. Else if \_value\_ has a \[\[StringData\]\]
+-- | internal slot, then 1. Set \_value\_ to ? ToString(\_value\_). 1. Else
+-- | if \_value\_ has a \[\[BooleanData\]\] internal slot, then 1. Set
+-- | \_value\_ to \_value\_.\[\[BooleanData\]\]. 1. Else if \_value\_ has a
+-- | \[\[BigIntData\]\] internal slot, then 1. Set \_value\_ to
+-- | \_value\_.\[\[BigIntData\]\]. 1. If \_value\_ is \*null\*, return
+-- | \*\"null\"\*. 1. If \_value\_ is \*true\*, return \*\"true\"\*. 1. If
+-- | \_value\_ is \*false\*, return \*\"false\"\*. 1. If \_value\_ is a
+-- | String, return QuoteJSONString(\_value\_). 1. If \_value\_ is a Number,
+-- | then 1. If \_value\_ is finite, return ! ToString(\_value\_). 1. Return
+-- | \*\"null\"\*. 1. If \_value\_ is a BigInt, throw a \*TypeError\*
+-- | exception. 1. If \_value\_ is an Object and IsCallable(\_value\_) is
+-- | \*false\*, then 1. Let \_isArray\_ be ? IsArray(\_value\_). 1. If
+-- | \_isArray\_ is \*true\*, return ? SerializeJSONArray(\_state\_,
+-- | \_value\_). 1. Return ? SerializeJSONObject(\_state\_, \_value\_). 1.
+-- | Return \*undefined\*.
+
+-- SPEC: L39008-L39040
+-- | # QuoteJSONString ( \_value\_: a String, ): a String
+-- |
+-- | description
+-- | :   It wraps \_value\_ in 0x0022 (QUOTATION MARK) code units and escapes
+-- |     certain other code units within it. This operation interprets
+-- |     \_value\_ as a sequence of UTF-16 encoded code points, as described
+-- |     in .
+-- |
+-- | 1\. Let \_product\_ be the String value consisting solely of the code
+-- | unit 0x0022 (QUOTATION MARK). 1. For each code point \_C\_ of
+-- | StringToCodePoints(\_value\_), do 1. If \_C\_ is listed in the "Code
+-- | Point" column of , then 1. Set \_product\_ to the string-concatenation
+-- | of \_product\_ and the escape sequence for \_C\_ as specified in the
+-- | "Escape Sequence" column of the corresponding row. 1. Else if \_C\_ has
+-- | a numeric value less than 0x0020 (SPACE) or \_C\_ has the same numeric
+-- | value as a leading surrogate or trailing surrogate, then 1. Let \_unit\_
+-- | be the code unit whose numeric value is the numeric value of \_C\_. 1.
+-- | Set \_product\_ to the string-concatenation of \_product\_ and
+-- | UnicodeEscape(\_unit\_). 1. Else, 1. Set \_product\_ to the
+-- | string-concatenation of \_product\_ and UTF16EncodeCodePoint(\_C\_). 1.
+-- | Set \_product\_ to the string-concatenation of \_product\_ and the code
+-- | unit 0x0022 (QUOTATION MARK). 1. Return \_product\_.
+-- |
+-- |   Code Point   Unicode Character Name   Escape Sequence
+-- |   ------------ ------------------------ -----------------
+-- |   U+0008       BACKSPACE                \`\\\\b\`
+-- |   U+0009       CHARACTER TABULATION     \`\\\\t\`
+-- |   U+000A       LINE FEED (LF)           \`\\\\n\`
+-- |   U+000C       FORM FEED (FF)           \`\\\\f\`
+-- |   U+000D       CARRIAGE RETURN (CR)     \`\\\\r\`
+-- |   U+0022       QUOTATION MARK           \`\\\\\"\`
+-- |   U+005C       REVERSE SOLIDUS          \`\\\\\\\\\`
+
+-- SPEC: L39052-L39091
+-- | # SerializeJSONObject ( \_state\_: a JSON Serialization Record, \_value\_: an Object, ): either a normal completion containing a String or a throw completion
+-- |
+-- | description
+-- | :   It serializes an object.
+-- |
+-- | 1\. If \_state\_.\[\[Stack\]\] contains \_value\_, throw a \*TypeError\*
+-- | exception because the structure is cyclical. 1. Append \_value\_ to
+-- | \_state\_.\[\[Stack\]\]. 1. Let \_stepBack\_ be
+-- | \_state\_.\[\[Indent\]\]. 1. Set \_state\_.\[\[Indent\]\] to the
+-- | string-concatenation of \_state\_.\[\[Indent\]\] and
+-- | \_state\_.\[\[Gap\]\]. 1. If \_state\_.\[\[PropertyList\]\] is not
+-- | \*undefined\*, then 1. Let \_K\_ be \_state\_.\[\[PropertyList\]\]. 1.
+-- | Else, 1. Let \_K\_ be ? EnumerableOwnProperties(\_value\_, \~key\~). 1.
+-- | Let \_partial\_ be a new empty List. 1. For each element \_P\_ of \_K\_,
+-- | do 1. Let \_strP\_ be ? SerializeJSONProperty(\_state\_, \_P\_,
+-- | \_value\_). 1. If \_strP\_ is not \*undefined\*, then 1. Let \_member\_
+-- | be QuoteJSONString(\_P\_). 1. Set \_member\_ to the string-concatenation
+-- | of \_member\_ and \*\":\"\*. 1. If \_state\_.\[\[Gap\]\] is not the
+-- | empty String, then 1. Set \_member\_ to the string-concatenation of
+-- | \_member\_ and the code unit 0x0020 (SPACE). 1. Set \_member\_ to the
+-- | string-concatenation of \_member\_ and \_strP\_. 1. Append \_member\_ to
+-- | \_partial\_. 1. If \_partial\_ is empty, then 1. Let \_final\_ be
+-- | \*\"{}\"\*. 1. Else, 1. If \_state\_.\[\[Gap\]\] is the empty String,
+-- | then 1. Let \_properties\_ be the String value formed by concatenating
+-- | all the element Strings of \_partial\_ with each adjacent pair of
+-- | Strings separated with the code unit 0x002C (COMMA). A comma is not
+-- | inserted either before the first String or after the last String. 1. Let
+-- | \_final\_ be the string-concatenation of \*\"{\"\*, \_properties\_, and
+-- | \*\"}\"\*. 1. Else, 1. Let \_separator\_ be the string-concatenation of
+-- | the code unit 0x002C (COMMA), the code unit 0x000A (LINE FEED), and
+-- | \_state\_.\[\[Indent\]\]. 1. Let \_properties\_ be the String value
+-- | formed by concatenating all the element Strings of \_partial\_ with each
+-- | adjacent pair of Strings separated with \_separator\_. The \_separator\_
+-- | String is not inserted either before the first String or after the last
+-- | String. 1. Let \_final\_ be the string-concatenation of \*\"{\"\*, the
+-- | code unit 0x000A (LINE FEED), \_state\_.\[\[Indent\]\], \_properties\_,
+-- | the code unit 0x000A (LINE FEED), \_stepBack\_, and \*\"}\"\*. 1. Remove
+-- | the last element of \_state\_.\[\[Stack\]\]. 1. Set
+-- | \_state\_.\[\[Indent\]\] to \_stepBack\_. 1. Return \_final\_.
+
+-- SPEC: L39092-L39133
+-- | # SerializeJSONArray ( \_state\_: a JSON Serialization Record, \_value\_: an ECMAScript language value, ): either a normal completion containing a String or a throw completion
+-- |
+-- | description
+-- | :   It serializes an array.
+-- |
+-- | 1\. If \_state\_.\[\[Stack\]\] contains \_value\_, throw a \*TypeError\*
+-- | exception because the structure is cyclical. 1. Append \_value\_ to
+-- | \_state\_.\[\[Stack\]\]. 1. Let \_stepBack\_ be
+-- | \_state\_.\[\[Indent\]\]. 1. Set \_state\_.\[\[Indent\]\] to the
+-- | string-concatenation of \_state\_.\[\[Indent\]\] and
+-- | \_state\_.\[\[Gap\]\]. 1. Let \_partial\_ be a new empty List. 1. Let
+-- | \_len\_ be ? LengthOfArrayLike(\_value\_). 1. Let \_index\_ be 0. 1.
+-- | Repeat, while \_index\_ \< \_len\_, 1. Let \_strP\_ be ?
+-- | SerializeJSONProperty(\_state\_, ! ToString(𝔽(\_index\_)),
+-- | \_value\_). 1. If \_strP\_ is \*undefined\*, then 1. Append \*\"null\"\*
+-- | to \_partial\_. 1. Else, 1. Append \_strP\_ to \_partial\_. 1. Set
+-- | \_index\_ to \_index\_ + 1. 1. If \_partial\_ is empty, then 1. Let
+-- | \_final\_ be \*\"\[\]\"\*. 1. Else, 1. If \_state\_.\[\[Gap\]\] is the
+-- | empty String, then 1. Let \_properties\_ be the String value formed by
+-- | concatenating all the element Strings of \_partial\_ with each adjacent
+-- | pair of Strings separated with the code unit 0x002C (COMMA). A comma is
+-- | not inserted either before the first String or after the last String. 1.
+-- | Let \_final\_ be the string-concatenation of \*\"\[\"\*, \_properties\_,
+-- | and \*\"\]\"\*. 1. Else, 1. Let \_separator\_ be the
+-- | string-concatenation of the code unit 0x002C (COMMA), the code unit
+-- | 0x000A (LINE FEED), and \_state\_.\[\[Indent\]\]. 1. Let \_properties\_
+-- | be the String value formed by concatenating all the element Strings of
+-- | \_partial\_ with each adjacent pair of Strings separated with
+-- | \_separator\_. The \_separator\_ String is not inserted either before
+-- | the first String or after the last String. 1. Let \_final\_ be the
+-- | string-concatenation of \*\"\[\"\*, the code unit 0x000A (LINE FEED),
+-- | \_state\_.\[\[Indent\]\], \_properties\_, the code unit 0x000A (LINE
+-- | FEED), \_stepBack\_, and \*\"\]\"\*. 1. Remove the last element of
+-- | \_state\_.\[\[Stack\]\]. 1. Set \_state\_.\[\[Indent\]\] to
+-- | \_stepBack\_. 1. Return \_final\_.
+
+-- SPEC: L39134-L39141
+-- | # JSON \[ %Symbol.toStringTag% \]
+-- |
+-- | The initial value of the %Symbol.toStringTag% property is the String
+-- | value \*\"JSON\"\*.
+-- |
+-- | This property has the attributes { \[\[Writable\]\]: \*false\*,
+-- | \[\[Enumerable\]\]: \*false\*, \[\[Configurable\]\]: \*true\* }.
+
+-- SPEC: L22273-L22281
+-- | # ParseJSONModule ( \_source\_: a String, ): either a normal completion containing a Synthetic Module Record, or a throw completion
+-- |
+-- | description
+-- |
+-- | :
+-- |
+-- | 1\. Let \_json\_ be ? ParseJSON(\_source\_). 1. Return
+-- | CreateDefaultExportSyntheticModule(\_json\_).
+
+/-! ## DataView Operations -/
+
+-- SPEC: L37710-L37725
+-- | # DataView With Buffer Witness Records
+-- |
+-- | A DataView With Buffer Witness Record is a Record value used
+-- | to encapsulate a DataView along with a cached byte length of the viewed
+-- | buffer. It is used to help ensure there is a single ReadSharedMemory
+-- | event of the byte length data block when the viewed buffer is a growable
+-- | SharedArrayBuffer.
+-- |
+-- | DataView With Buffer Witness Records have the fields listed in .
+-- |
+-- |   Field Name                       Value                                    Meaning
+-- |   -------------------------------- ---------------------------------------- -----------------------------------------------------------------------------------------
+-- |   \[\[Object\]\]                   a DataView                               The DataView object whose buffer\'s byte length is loaded.
+-- |   \[\[CachedBufferByteLength\]\]   a non-negative integer or \~detached\~   The byte length of the object\'s \[\[ViewedArrayBuffer\]\] when the Record was created.
+
+-- SPEC: L37726-L37734
+-- | # MakeDataViewWithBufferWitnessRecord ( \_obj\_: a DataView, \_order\_: \~seq-cst\~ or \~unordered\~, ): a DataView With Buffer Witness Record
+-- |
+-- | 1\. Let \_buffer\_ be \_obj\_.\[\[ViewedArrayBuffer\]\]. 1. If
+-- | IsDetachedBuffer(\_buffer\_) is \*true\*, then 1. Let \_byteLength\_ be
+-- | \~detached\~. 1. Else, 1. Let \_byteLength\_ be
+-- | ArrayBufferByteLength(\_buffer\_, \_order\_). 1. Return the DataView
+-- | With Buffer Witness Record { \[\[Object\]\]: \_obj\_,
+-- | \[\[CachedBufferByteLength\]\]: \_byteLength\_ }.
+
+-- SPEC: L37735-L37746
+-- | # GetViewByteLength ( \_viewRecord\_: a DataView With Buffer Witness Record, ): a non-negative integer
+-- |
+-- | 1\. Assert: IsViewOutOfBounds(\_viewRecord\_) is \*false\*. 1. Let
+-- | \_view\_ be \_viewRecord\_.\[\[Object\]\]. 1. If
+-- | \_view\_.\[\[ByteLength\]\] is not \~auto\~, return
+-- | \_view\_.\[\[ByteLength\]\]. 1. Assert:
+-- | IsFixedLengthArrayBuffer(\_view\_.\[\[ViewedArrayBuffer\]\]) is
+-- | \*false\*. 1. Let \_byteOffset\_ be \_view\_.\[\[ByteOffset\]\]. 1. Let
+-- | \_byteLength\_ be \_viewRecord\_.\[\[CachedBufferByteLength\]\]. 1.
+-- | Assert: \_byteLength\_ is not \~detached\~. 1. Return \_byteLength\_ -
+-- | \_byteOffset\_.
+
+-- SPEC: L37747-L37763
+-- | # IsViewOutOfBounds ( \_viewRecord\_: a DataView With Buffer Witness Record, ): a Boolean
+-- |
+-- | 1\. Let \_view\_ be \_viewRecord\_.\[\[Object\]\]. 1. Let
+-- | \_bufferByteLength\_ be
+-- | \_viewRecord\_.\[\[CachedBufferByteLength\]\]. 1. If
+-- | IsDetachedBuffer(\_view\_.\[\[ViewedArrayBuffer\]\]) is \*true\*,
+-- | then 1. Assert: \_bufferByteLength\_ is \~detached\~. 1. Return
+-- | \*true\*. 1. Assert: \_bufferByteLength\_ is a non-negative integer. 1.
+-- | Let \_byteOffsetStart\_ be \_view\_.\[\[ByteOffset\]\]. 1. If
+-- | \_view\_.\[\[ByteLength\]\] is \~auto\~, then 1. Let \_byteOffsetEnd\_
+-- | be \_bufferByteLength\_. 1. Else, 1. Let \_byteOffsetEnd\_ be
+-- | \_byteOffsetStart\_ + \_view\_.\[\[ByteLength\]\]. 1. NOTE: A 0-length
+-- | DataView whose \[\[ByteOffset\]\] is \_bufferByteLength\_ is not
+-- | considered out-of-bounds. 1. If \_byteOffsetStart\_ \>
+-- | \_bufferByteLength\_ or \_byteOffsetEnd\_ \> \_bufferByteLength\_,
+-- | return \*true\*. 1. Return \*false\*.
+
+/-! ## Symbol Properties -/
+
+-- SPEC: L24778-L24785
+-- | # Properties of the Symbol Constructor
+-- |
+-- | The Symbol constructor:
+-- |
+-- | - has a \[\[Prototype\]\] internal slot whose value is
+-- |   %Function.prototype%.
+-- | - has the following properties:
+
+-- SPEC: L24786-L24793
+-- | # Symbol.asyncIterator
+-- |
+-- | The initial value of \`Symbol.asyncIterator\` is the well-known symbol
+-- | %Symbol.asyncIterator% ().
+-- |
+-- | This property has the attributes { \[\[Writable\]\]: \*false\*,
+-- | \[\[Enumerable\]\]: \*false\*, \[\[Configurable\]\]: \*false\* }.
+
+-- SPEC: L24794-L24817
+-- | # Symbol.for ( \_key\_ )
+-- |
+-- | This function performs the following steps when called:
+-- |
+-- | 1\. Let \_stringKey\_ be ? ToString(\_key\_). 1. For each element \_e\_
+-- | of the GlobalSymbolRegistry List, do 1. If \_e\_.\[\[Key\]\] is
+-- | \_stringKey\_, return \_e\_.\[\[Symbol\]\]. 1. Assert: The
+-- | GlobalSymbolRegistry List does not currently contain an entry for
+-- | \_stringKey\_. 1. Let \_newSymbol\_ be a new Symbol whose
+-- | \[\[Description\]\] is \_stringKey\_. 1. Append the GlobalSymbolRegistry
+-- | Record { \[\[Key\]\]: \_stringKey\_, \[\[Symbol\]\]: \_newSymbol\_ } to
+-- | the GlobalSymbolRegistry List. 1. Return \_newSymbol\_.
+-- |
+-- | The GlobalSymbolRegistry List is an append-only List that is
+-- | globally available. It is shared by all realms. Prior to the evaluation
+-- | of any ECMAScript code, it is initialized as a new empty List. Elements
+-- | of the GlobalSymbolRegistry List are Records with the structure defined
+-- | in .
+-- |
+-- |   Field Name       Value      Usage
+-- |   ---------------- ---------- --------------------------------------------------
+-- |   \[\[Key\]\]      a String   A string key used to globally identify a Symbol.
+-- |   \[\[Symbol\]\]   a Symbol   A symbol that can be retrieved from any realm.
+
+-- SPEC: L24818-L24825
+-- | # Symbol.hasInstance
+-- |
+-- | The initial value of \`Symbol.hasInstance\` is the well-known symbol
+-- | %Symbol.hasInstance% ().
+-- |
+-- | This property has the attributes { \[\[Writable\]\]: \*false\*,
+-- | \[\[Enumerable\]\]: \*false\*, \[\[Configurable\]\]: \*false\* }.
+
+-- SPEC: L24826-L24833
+-- | # Symbol.isConcatSpreadable
+-- |
+-- | The initial value of \`Symbol.isConcatSpreadable\` is the well-known
+-- | symbol %Symbol.isConcatSpreadable% ().
+-- |
+-- | This property has the attributes { \[\[Writable\]\]: \*false\*,
+-- | \[\[Enumerable\]\]: \*false\*, \[\[Configurable\]\]: \*false\* }.
+
+-- SPEC: L24834-L24841
+-- | # Symbol.iterator
+-- |
+-- | The initial value of \`Symbol.iterator\` is the well-known symbol
+-- | %Symbol.iterator% ().
+-- |
+-- | This property has the attributes { \[\[Writable\]\]: \*false\*,
+-- | \[\[Enumerable\]\]: \*false\*, \[\[Configurable\]\]: \*false\* }.
+
+-- SPEC: L24842-L24849
+-- | # Symbol.keyFor ( \_sym\_ )
+-- |
+-- | This function performs the following steps when called:
+-- |
+-- | 1\. If \_sym\_ is not a Symbol, throw a \*TypeError\* exception. 1.
+-- | Return KeyForSymbol(\_sym\_).
+
+-- SPEC: L24850-L24857
+-- | # Symbol.match
+-- |
+-- | The initial value of \`Symbol.match\` is the well-known symbol
+-- | %Symbol.match% ().
+-- |
+-- | This property has the attributes { \[\[Writable\]\]: \*false\*,
+-- | \[\[Enumerable\]\]: \*false\*, \[\[Configurable\]\]: \*false\* }.
+
+-- SPEC: L24858-L24865
+-- | # Symbol.matchAll
+-- |
+-- | The initial value of \`Symbol.matchAll\` is the well-known symbol
+-- | %Symbol.matchAll% ().
+-- |
+-- | This property has the attributes { \[\[Writable\]\]: \*false\*,
+-- | \[\[Enumerable\]\]: \*false\*, \[\[Configurable\]\]: \*false\* }.
+
+-- SPEC: L24866-L24873
+-- | # Symbol.prototype
+-- |
+-- | The initial value of \`Symbol.prototype\` is the Symbol prototype
+-- | object.
+-- |
+-- | This property has the attributes { \[\[Writable\]\]: \*false\*,
+-- | \[\[Enumerable\]\]: \*false\*, \[\[Configurable\]\]: \*false\* }.
+
+-- SPEC: L24874-L24881
+-- | # Symbol.replace
+-- |
+-- | The initial value of \`Symbol.replace\` is the well-known symbol
+-- | %Symbol.replace% ().
+-- |
+-- | This property has the attributes { \[\[Writable\]\]: \*false\*,
+-- | \[\[Enumerable\]\]: \*false\*, \[\[Configurable\]\]: \*false\* }.
+
+-- SPEC: L24882-L24889
+-- | # Symbol.search
+-- |
+-- | The initial value of \`Symbol.search\` is the well-known symbol
+-- | %Symbol.search% ().
+-- |
+-- | This property has the attributes { \[\[Writable\]\]: \*false\*,
+-- | \[\[Enumerable\]\]: \*false\*, \[\[Configurable\]\]: \*false\* }.
+
+-- SPEC: L24890-L24897
+-- | # Symbol.species
+-- |
+-- | The initial value of \`Symbol.species\` is the well-known symbol
+-- | %Symbol.species% ().
+-- |
+-- | This property has the attributes { \[\[Writable\]\]: \*false\*,
+-- | \[\[Enumerable\]\]: \*false\*, \[\[Configurable\]\]: \*false\* }.
+
+-- SPEC: L24898-L24905
+-- | # Symbol.split
+-- |
+-- | The initial value of \`Symbol.split\` is the well-known symbol
+-- | %Symbol.split% ().
+-- |
+-- | This property has the attributes { \[\[Writable\]\]: \*false\*,
+-- | \[\[Enumerable\]\]: \*false\*, \[\[Configurable\]\]: \*false\* }.
+
+-- SPEC: L24906-L24913
+-- | # Symbol.toPrimitive
+-- |
+-- | The initial value of \`Symbol.toPrimitive\` is the well-known symbol
+-- | %Symbol.toPrimitive% ().
+-- |
+-- | This property has the attributes { \[\[Writable\]\]: \*false\*,
+-- | \[\[Enumerable\]\]: \*false\*, \[\[Configurable\]\]: \*false\* }.
+
+-- SPEC: L24914-L24921
+-- | # Symbol.toStringTag
+-- |
+-- | The initial value of \`Symbol.toStringTag\` is the well-known symbol
+-- | %Symbol.toStringTag% ().
+-- |
+-- | This property has the attributes { \[\[Writable\]\]: \*false\*,
+-- | \[\[Enumerable\]\]: \*false\*, \[\[Configurable\]\]: \*false\* }.
+
+-- SPEC: L24560-L24599
+-- | # Function.prototype \[ %Symbol.hasInstance% \] ( \_V\_ )
+-- |
+-- | This method performs the following steps when called:
+-- |
+-- | 1\. Let \_F\_ be the \*this\* value. 1. Return ?
+-- | OrdinaryHasInstance(\_F\_, \_V\_).
+-- |
+-- | This property has the attributes { \[\[Writable\]\]: \*false\*,
+-- | \[\[Enumerable\]\]: \*false\*, \[\[Configurable\]\]: \*false\* }.
+-- |
+-- | This is the default implementation of \`%Symbol.hasInstance%\` that most
+-- | functions inherit. \`%Symbol.hasInstance%\` is called by the
+-- | \`instanceof\` operator to determine whether a value is an instance of a
+-- | specific constructor. An expression such as
+-- |
+-- | ``` javascript
+-- |
+-- |             v instanceof F
+-- |
+-- | ```
+-- |
+-- | evaluates as
+-- |
+-- | ``` javascript
+-- |
+-- |             F[%Symbol.hasInstance%](v)
+-- |
+-- | ```
+-- |
+-- | A constructor function can control which objects are recognized as its
+-- | instances by \`instanceof\` by exposing a different
+-- | \`%Symbol.hasInstance%\` method on the function.
+-- |
+-- | This property is non-writable and non-configurable to prevent tampering
+-- | that could be used to globally expose the target function of a bound
+-- | function.
+-- |
+-- | The value of the \*\"name\"\* property of this method is
+-- | \*\"\[Symbol.hasInstance\]\"\*.
+
+-- SPEC: L42262-L42269
+-- | # Reflect \[ %Symbol.toStringTag% \]
+-- |
+-- | The initial value of the %Symbol.toStringTag% property is the String
+-- | value \*\"Reflect\"\*.
+-- |
+-- | This property has the attributes { \[\[Writable\]\]: \*false\*,
+-- | \[\[Enumerable\]\]: \*false\*, \[\[Configurable\]\]: \*true\* }.
+
+/-! ## Map Objects -/
+
+-- SPEC: L35477-L35483
+-- | # Map.prototype
+-- |
+-- | The initial value of \`Map.prototype\` is the Map prototype object.
+-- |
+-- | This property has the attributes { \[\[Writable\]\]: \*false\*,
+-- | \[\[Enumerable\]\]: \*false\*, \[\[Configurable\]\]: \*false\* }.
+
+-- SPEC: L35484-L35499
+-- | # get Map \[ %Symbol.species% \]
+-- |
+-- | \`Map\[%Symbol.species%\]\` is an accessor property whose set accessor
+-- | function is \*undefined\*. Its get accessor function performs the
+-- | following steps when called:
+-- |
+-- | 1\. Return the \*this\* value.
+-- |
+-- | The value of the \*\"name\"\* property of this function is \*\"get
+-- | \[Symbol.species\]\"\*.
+-- |
+-- | Methods that create derived collection objects should call
+-- | %Symbol.species% to determine the constructor to use to create the
+-- | derived objects. Subclass constructor may over-ride %Symbol.species% to
+-- | change the default constructor assignment.
+
+-- SPEC: L35507-L35527
+-- | # Map.prototype.clear ( )
+-- |
+-- | This method performs the following steps when called:
+-- |
+-- | 1\. Let \_M\_ be the \*this\* value. 1. Perform ?
+-- | RequireInternalSlot(\_M\_, \[\[MapData\]\]). 1. For each Record {
+-- | \[\[Key\]\], \[\[Value\]\] } \_p\_ of \_M\_.\[\[MapData\]\], do 1. Set
+-- | \_p\_.\[\[Key\]\] to \~empty\~. 1. Set \_p\_.\[\[Value\]\] to
+-- | \~empty\~. 1. Return \*undefined\*.
+-- |
+-- | The existing \[\[MapData\]\] List is preserved because there may be
+-- | existing Map Iterator objects that are suspended midway through
+-- | iterating over that List.
+
+-- SPEC: L35531-L35532
+-- | # Map.prototype.constructor
+-- |
+-- | The initial value of \`Map.prototype.constructor\` is %Map%.
+
+-- SPEC: L35533-L35550
+-- | # Map.prototype.delete ( \_key\_ )
+-- |
+-- | This method performs the following steps when called:
+-- |
+-- | 1\. Let \_M\_ be the \*this\* value. 1. Perform ?
+-- | RequireInternalSlot(\_M\_, \[\[MapData\]\]). 1. Set \_key\_ to
+-- | CanonicalizeKeyedCollectionKey(\_key\_). 1. For each Record {
+-- | \[\[Key\]\], \[\[Value\]\] } \_p\_ of \_M\_.\[\[MapData\]\], do 1. If
+-- | \_p\_.\[\[Key\]\] is not \~empty\~ and SameValue(\_p\_.\[\[Key\]\],
+-- | \_key\_) is \*true\*, then 1. Set \_p\_.\[\[Key\]\] to \~empty\~. 1. Set
+-- | \_p\_.\[\[Value\]\] to \~empty\~. 1. Return \*true\*. 1. Return
+-- | \*false\*.
+-- |
+-- | The value \~empty\~ is used as a specification device to indicate that
+-- | an entry has been deleted. Actual implementations may take other actions
+-- | such as physically removing the entry from internal data structures.
+
+-- SPEC: L35551-L35556
+-- | # Map.prototype.entries ( )
+-- |
+-- | This method performs the following steps when called:
+-- |
+-- | 1\. Let \_M\_ be the \*this\* value. 1. Return ?
+-- | CreateMapIterator(\_M\_, \~key+value\~).
+
+-- SPEC: L35557-L35594
+-- | # Map.prototype.forEach ( \_callback\_ \[ , \_thisArg\_ \] )
+-- |
+-- | This method performs the following steps when called:
+-- |
+-- | 1\. Let \_M\_ be the \*this\* value. 1. Perform ?
+-- | RequireInternalSlot(\_M\_, \[\[MapData\]\]). 1. If
+-- | IsCallable(\_callback\_) is \*false\*, throw a \*TypeError\*
+-- | exception. 1. Let \_entries\_ be \_M\_.\[\[MapData\]\]. 1. Let
+-- | \_numEntries\_ be the number of elements in \_entries\_. 1. Let
+-- | \_index\_ be 0. 1. Repeat, while \_index\_ \< \_numEntries\_, 1. Let
+-- | \_e\_ be \_entries\_\[\_index\_\]. 1. Set \_index\_ to \_index\_ + 1. 1.
+-- | If \_e\_.\[\[Key\]\] is not \~empty\~, then 1. Perform ?
+-- | Call(\_callback\_, \_thisArg\_, « \_e\_.\[\[Value\]\],
+-- | \_e\_.\[\[Key\]\], \_M\_ »). 1. NOTE: The number of elements in
+-- | \_entries\_ may have increased during execution of \_callback\_. 1. Set
+-- | \_numEntries\_ to the number of elements in \_entries\_. 1. Return
+-- | \*undefined\*.
+
+-- SPEC: L35595-L35606
+-- | # Map.prototype.get ( \_key\_ )
+-- |
+-- | This method performs the following steps when called:
+-- |
+-- | 1\. Let \_M\_ be the \*this\* value. 1. Perform ?
+-- | RequireInternalSlot(\_M\_, \[\[MapData\]\]). 1. Set \_key\_ to
+-- | CanonicalizeKeyedCollectionKey(\_key\_). 1. For each Record {
+-- | \[\[Key\]\], \[\[Value\]\] } \_p\_ of \_M\_.\[\[MapData\]\], do 1. If
+-- | \_p\_.\[\[Key\]\] is not \~empty\~ and SameValue(\_p\_.\[\[Key\]\],
+-- | \_key\_) is \*true\*, return \_p\_.\[\[Value\]\]. 1. Return
+-- | \*undefined\*.
+
+-- SPEC: L35607-L35620
+-- | # Map.prototype.getOrInsert ( \_key\_, \_value\_ )
+-- |
+-- | This method performs the following steps when called:
+-- |
+-- | 1\. Let \_M\_ be the \*this\* value. 1. Perform ?
+-- | RequireInternalSlot(\_M\_, \[\[MapData\]\]). 1. Set \_key\_ to
+-- | CanonicalizeKeyedCollectionKey(\_key\_). 1. For each Record {
+-- | \[\[Key\]\], \[\[Value\]\] } \_p\_ of \_M\_.\[\[MapData\]\], do 1. If
+-- | \_p\_.\[\[Key\]\] is not \~empty\~ and SameValue(\_p\_.\[\[Key\]\],
+-- | \_key\_) is \*true\*, return \_p\_.\[\[Value\]\]. 1. Let \_p\_ be the
+-- | Record { \[\[Key\]\]: \_key\_, \[\[Value\]\]: \_value\_ }. 1. Append
+-- | \_p\_ to \_M\_.\[\[MapData\]\]. 1. Return \_value\_.
+
+-- SPEC: L35621-L35646
+-- | # Map.prototype.getOrInsertComputed ( \_key\_, \_callback\_ )
+-- |
+-- | This method performs the following steps when called:
+-- |
+-- | 1\. Let \_M\_ be the \*this\* value. 1. Perform ?
+-- | RequireInternalSlot(\_M\_, \[\[MapData\]\]). 1. If
+-- | IsCallable(\_callback\_) is \*false\*, throw a \*TypeError\*
+-- | exception. 1. Set \_key\_ to CanonicalizeKeyedCollectionKey(\_key\_). 1.
+-- | For each Record { \[\[Key\]\], \[\[Value\]\] } \_p\_ of
+-- | \_M\_.\[\[MapData\]\], do 1. If \_p\_.\[\[Key\]\] is not \~empty\~ and
+-- | SameValue(\_p\_.\[\[Key\]\], \_key\_) is \*true\*, return
+-- | \_p\_.\[\[Value\]\]. 1. Let \_value\_ be ? Call(\_callback\_,
+-- | \*undefined\*, « \_key\_ »). 1. NOTE: The Map may have been modified
+-- | during execution of \_callback\_. 1. For each Record { \[\[Key\]\],
+-- | \[\[Value\]\] } \_p\_ of \_M\_.\[\[MapData\]\], do 1. If
+-- | \_p\_.\[\[Key\]\] is not \~empty\~ and SameValue(\_p\_.\[\[Key\]\],
+-- | \_key\_) is \*true\*, then 1. Set \_p\_.\[\[Value\]\] to \_value\_. 1.
+-- | Return \_value\_. 1. Let \_p\_ be the Record { \[\[Key\]\]: \_key\_,
+-- | \[\[Value\]\]: \_value\_ }. 1. Append \_p\_ to \_M\_.\[\[MapData\]\]. 1.
+-- | Return \_value\_.
+
+-- SPEC: L35647-L35658
+-- | # Map.prototype.has ( \_key\_ )
+-- |
+-- | This method performs the following steps when called:
+-- |
+-- | 1\. Let \_M\_ be the \*this\* value. 1. Perform ?
+-- | RequireInternalSlot(\_M\_, \[\[MapData\]\]). 1. Set \_key\_ to
+-- | CanonicalizeKeyedCollectionKey(\_key\_). 1. For each Record {
+-- | \[\[Key\]\], \[\[Value\]\] } \_p\_ of \_M\_.\[\[MapData\]\], do 1. If
+-- | \_p\_.\[\[Key\]\] is not \~empty\~ and SameValue(\_p\_.\[\[Key\]\],
+-- | \_key\_) is \*true\*, return \*true\*. 1. Return \*false\*.
+
+-- SPEC: L35659-L35664
+-- | # Map.prototype.keys ( )
+-- |
+-- | This method performs the following steps when called:
+-- |
+-- | 1\. Let \_M\_ be the \*this\* value. 1. Return ?
+-- | CreateMapIterator(\_M\_, \~key\~).
+
+-- SPEC: L35665-L35680
+-- | # Map.prototype.set ( \_key\_, \_value\_ )
+-- |
+-- | This method performs the following steps when called:
+-- |
+-- | 1\. Let \_M\_ be the \*this\* value. 1. Perform ?
+-- | RequireInternalSlot(\_M\_, \[\[MapData\]\]). 1. Set \_key\_ to
+-- | CanonicalizeKeyedCollectionKey(\_key\_). 1. For each Record {
+-- | \[\[Key\]\], \[\[Value\]\] } \_p\_ of \_M\_.\[\[MapData\]\], do 1. If
+-- | \_p\_.\[\[Key\]\] is not \~empty\~ and SameValue(\_p\_.\[\[Key\]\],
+-- | \_key\_) is \*true\*, then 1. Set \_p\_.\[\[Value\]\] to \_value\_. 1.
+-- | Return \_M\_. 1. Let \_p\_ be the Record { \[\[Key\]\]: \_key\_,
+-- | \[\[Value\]\]: \_value\_ }. 1. Append \_p\_ to \_M\_.\[\[MapData\]\]. 1.
+-- | Return \_M\_.
+
+-- SPEC: L35681-L35693
+-- | # get Map.prototype.size
+-- |
+-- | \`Map.prototype.size\` is an accessor property whose set accessor
+-- | function is \*undefined\*. Its get accessor function performs the
+-- | following steps when called:
+-- |
+-- | 1\. Let \_M\_ be the \*this\* value. 1. Perform ?
+-- | RequireInternalSlot(\_M\_, \[\[MapData\]\]). 1. Let \_count\_ be 0. 1.
+-- | For each Record { \[\[Key\]\], \[\[Value\]\] } \_p\_ of
+-- | \_M\_.\[\[MapData\]\], do 1. If \_p\_.\[\[Key\]\] is not \~empty\~, set
+-- | \_count\_ to \_count\_ + 1. 1. Return 𝔽(\_count\_).
+
+-- SPEC: L35694-L35701
+-- | # Map.prototype \[ %Symbol.toStringTag% \]
+-- |
+-- | The initial value of the %Symbol.toStringTag% property is the String
+-- | value \*\"Map\"\*.
+-- |
+-- | This property has the attributes { \[\[Writable\]\]: \*false\*,
+-- | \[\[Enumerable\]\]: \*false\*, \[\[Configurable\]\]: \*true\* }.
+
+-- SPEC: L35702-L35731
+-- | # CreateMapIterator ( \_map\_: an ECMAScript language value, \_kind\_: \~key+value\~, \~key\~, or \~value\~, ): either a normal completion containing a Generator or a throw completion
+-- |
+-- | description
+-- | :   It is used to create iterator objects for Map methods that return
+-- |     such iterators.
+-- |
+-- | 1\. Perform ? RequireInternalSlot(\_map\_, \[\[MapData\]\]). 1. Let
+-- | \_closure\_ be a new Abstract Closure with no parameters that captures
+-- | \_map\_ and \_kind\_ and performs the following steps when called: 1.
+-- | Let \_entries\_ be \_map\_.\[\[MapData\]\]. 1. Let \_index\_ be 0. 1.
+-- | Let \_numEntries\_ be the number of elements in \_entries\_. 1. Repeat,
+-- | while \_index\_ \< \_numEntries\_, 1. Let \_e\_ be
+-- | \_entries\_\[\_index\_\]. 1. Set \_index\_ to \_index\_ + 1. 1. If
+-- | \_e\_.\[\[Key\]\] is not \~empty\~, then 1. If \_kind\_ is \~key\~,
+-- | then 1. Let \_result\_ be \_e\_.\[\[Key\]\]. 1. Else if \_kind\_ is
+-- | \~value\~, then 1. Let \_result\_ be \_e\_.\[\[Value\]\]. 1. Else, 1.
+-- | Assert: \_kind\_ is \~key+value\~. 1. Let \_result\_ be
+-- | CreateArrayFromList(« \_e\_.\[\[Key\]\], \_e\_.\[\[Value\]\] »). 1.
+-- | Perform ? GeneratorYield(CreateIteratorResultObject(\_result\_,
+-- | \*false\*)). 1. NOTE: The number of elements in \_entries\_ may have
+-- | increased while execution of this abstract operation was paused by
+-- | GeneratorYield. 1. Set \_numEntries\_ to the number of elements in
+-- | \_entries\_. 1. Return NormalCompletion(\~unused\~). 1. Return
+-- | CreateIteratorFromClosure(\_closure\_, \*\"%MapIteratorPrototype%\"\*,
+-- | %MapIteratorPrototype%).
+
+-- SPEC: L35751-L35753
+-- | # %MapIteratorPrototype%.next ( )
+-- |
+-- | 1\. Return ? GeneratorResume(\*this\* value, \~empty\~,
+-- | \*\"%MapIteratorPrototype%\"\*).
+
+-- SPEC: L35758-L35765
+-- | # %MapIteratorPrototype% \[ %Symbol.toStringTag% \]
+-- |
+-- | The initial value of the %Symbol.toStringTag% property is the String
+-- | value \*\"Map Iterator\"\*.
+-- |
+-- | This property has the attributes { \[\[Writable\]\]: \*false\*,
+-- | \[\[Enumerable\]\]: \*false\*, \[\[Configurable\]\]: \*true\* }.
+
+/-! ## Set Objects -/
+
+-- SPEC: L35787-L35797
+-- | # Set Records
+-- |
+-- | A Set Record is a Record value used to encapsulate the interface of a
+-- | Set or similar object.
+-- |
+-- |   Field Name          Value                          Meaning
+-- |   ------------------- ------------------------------ ------------------------------------
+-- |   \[\[SetObject\]\]   an Object                      the Set or similar object.
+-- |   \[\[Size\]\]        a non-negative integer or +∞   The reported size of the object.
+-- |   \[\[Has\]\]         a function object              The \`has\` method of the object.
+-- |   \[\[Keys\]\]        a function object              The \`keys\` method of the object.
+
+-- SPEC: L35798-L35815
+-- | # GetSetRecord ( \_obj\_: an ECMAScript language value, ): either a normal completion containing a Set Record or a throw completion
+-- |
+-- | 1\. If \_obj\_ is not an Object, throw a \*TypeError\* exception. 1. Let
+-- | \_rawSize\_ be ? Get(\_obj\_, \*\"size\"\*). 1. Let \_numSize\_ be ?
+-- | ToNumber(\_rawSize\_). 1. NOTE: If \_rawSize\_ is \*undefined\*, then
+-- | \_numSize\_ will be \*NaN\*. 1. If \_numSize\_ is \*NaN\*, throw a
+-- | \*TypeError\* exception. 1. Let \_intSize\_ be !
+-- | ToIntegerOrInfinity(\_numSize\_). 1. If \_intSize\_ \< 0, throw a
+-- | \*RangeError\* exception. 1. Let \_has\_ be ? Get(\_obj\_,
+-- | \*\"has\"\*). 1. If IsCallable(\_has\_) is \*false\*, throw a
+-- | \*TypeError\* exception. 1. Let \_keys\_ be ? Get(\_obj\_,
+-- | \*\"keys\"\*). 1. If IsCallable(\_keys\_) is \*false\*, throw a
+-- | \*TypeError\* exception. 1. Return a new Set Record { \[\[SetObject\]\]:
+-- | \_obj\_, \[\[Size\]\]: \_intSize\_, \[\[Has\]\]: \_has\_, \[\[Keys\]\]:
+-- | \_keys\_ }.
+
+-- SPEC: L35816-L35821
+-- | # SetDataHas ( \_setData\_: a List of either ECMAScript language values or \~empty\~, \_value\_: an ECMAScript language value, ): a Boolean
+-- |
+-- | 1\. If SetDataIndex(\_setData\_, \_value\_) is \~not-found\~, return
+-- | \*false\*. 1. Return \*true\*.
+
+-- SPEC: L35822-L35833
+-- | # SetDataIndex ( \_setData\_: a List of either ECMAScript language values or \~empty\~, \_value\_: an ECMAScript language value, ): a non-negative integer or \~not-found\~
+-- |
+-- | 1\. Set \_value\_ to CanonicalizeKeyedCollectionKey(\_value\_). 1. Let
+-- | \_size\_ be the number of elements in \_setData\_. 1. Let \_index\_ be
+-- | 0. 1. Repeat, while \_index\_ \< \_size\_, 1. Let \_e\_ be
+-- | \_setData\_\[\_index\_\]. 1. If \_e\_ is not \~empty\~ and \_e\_ is
+-- | \_value\_, then 1. Return \_index\_. 1. Set \_index\_ to
+-- | \_index\_ + 1. 1. Return \~not-found\~.
+
+-- SPEC: L35834-L35839
+-- | # SetDataSize ( \_setData\_: a List of either ECMAScript language values or \~empty\~, ): a non-negative integer
+-- |
+-- | 1\. Let \_count\_ be 0. 1. For each element \_e\_ of \_setData\_, do 1.
+-- | If \_e\_ is not \~empty\~, set \_count\_ to \_count\_ + 1. 1. Return
+-- | \_count\_.
+
+-- SPEC: L35856-L35876
+-- | # Set ( \[ \_iterable\_ \] )
+-- |
+-- | This function performs the following steps when called:
+-- |
+-- | 1\. If NewTarget is \*undefined\*, throw a \*TypeError\* exception. 1.
+-- | Let \_set\_ be ? OrdinaryCreateFromConstructor(NewTarget,
+-- | \*\"%Set.prototype%\"\*, « \[\[SetData\]\] »). 1. Set
+-- | \_set\_.\[\[SetData\]\] to a new empty List. 1. If \_iterable\_ is
+-- | either \*undefined\* or \*null\*, return \_set\_. 1. Let \_adder\_ be ?
+-- | Get(\_set\_, \*\"add\"\*). 1. If IsCallable(\_adder\_) is \*false\*,
+-- | throw a \*TypeError\* exception. 1. Let \_iteratorRecord\_ be ?
+-- | GetIterator(\_iterable\_, \~sync\~). 1. Repeat, 1. Let \_next\_ be ?
+-- | IteratorStepValue(\_iteratorRecord\_). 1. If \_next\_ is \~done\~,
+-- | return \_set\_. 1. Let \_status\_ be Completion(Call(\_adder\_, \_set\_,
+-- | « \_next\_ »)). 1. IfAbruptCloseIterator(\_status\_,
+-- | \_iteratorRecord\_).
+
+-- SPEC: L35892-L35906
+-- | # Set.prototype.add ( \_value\_ )
+-- |
+-- | This method performs the following steps when called:
+-- |
+-- | 1\. Let \_S\_ be the \*this\* value. 1. Perform ?
+-- | RequireInternalSlot(\_S\_, \[\[SetData\]\]). 1. Set \_value\_ to
+-- | CanonicalizeKeyedCollectionKey(\_value\_). 1. For each element \_e\_ of
+-- | \_S\_.\[\[SetData\]\], do 1. If \_e\_ is not \~empty\~ and
+-- | SameValue(\_e\_, \_value\_) is \*true\*, then 1. Return \_S\_. 1. Append
+-- | \_value\_ to \_S\_.\[\[SetData\]\]. 1. Return \_S\_.
+
+-- SPEC: L35907-L35921
+-- | # Set.prototype.clear ( )
+-- |
+-- | This method performs the following steps when called:
+-- |
+-- | 1\. Let \_S\_ be the \*this\* value. 1. Perform ?
+-- | RequireInternalSlot(\_S\_, \[\[SetData\]\]). 1. For each element \_e\_
+-- | of \_S\_.\[\[SetData\]\], do 1. Replace the element of
+-- | \_S\_.\[\[SetData\]\] whose value is \_e\_ with an element whose value
+-- | is \~empty\~. 1. Return \*undefined\*.
+-- |
+-- | The existing \[\[SetData\]\] List is preserved because there may be
+-- | existing Set Iterator objects that are suspended midway through
+-- | iterating over that List.
+
+-- SPEC: L35925-L35940
+-- | # Set.prototype.delete ( \_value\_ )
+-- |
+-- | This method performs the following steps when called:
+-- |
+-- | 1\. Let \_S\_ be the \*this\* value. 1. Perform ?
+-- | RequireInternalSlot(\_S\_, \[\[SetData\]\]). 1. Set \_value\_ to
+-- | CanonicalizeKeyedCollectionKey(\_value\_). 1. For each element \_e\_ of
+-- | \_S\_.\[\[SetData\]\], do 1. If \_e\_ is not \~empty\~ and
+-- | SameValue(\_e\_, \_value\_) is \*true\*, then 1. Replace the element of
+-- | \_S\_.\[\[SetData\]\] whose value is \_e\_ with an element whose value
+-- | is \~empty\~. 1. Return \*true\*. 1. Return \*false\*.
+-- |
+-- | The value \~empty\~ is used as a specification device to indicate that
+-- | an entry has been deleted. Actual implementations may take other actions
+-- | such as physically removing the entry from internal data structures.
+
+-- SPEC: L35949-L35954
+-- | # Set.prototype.entries ( )
+-- |
+-- | This method performs the following steps when called:
+-- |
+-- | 1\. Let \_S\_ be the \*this\* value. 1. Return ?
+-- | CreateSetIterator(\_S\_, \~key+value\~).
+
+-- SPEC: L35955-L35972
+-- | # Set.prototype.forEach ( \_callback\_ \[ , \_thisArg\_ \] )
+-- |
+-- | This method performs the following steps when called:
+-- |
+-- | 1\. Let \_S\_ be the \*this\* value. 1. Perform ?
+-- | RequireInternalSlot(\_S\_, \[\[SetData\]\]). 1. If
+-- | IsCallable(\_callback\_) is \*false\*, throw a \*TypeError\*
+-- | exception. 1. Let \_entries\_ be \_S\_.\[\[SetData\]\]. 1. Let
+-- | \_numEntries\_ be the number of elements in \_entries\_. 1. Let
+-- | \_index\_ be 0. 1. Repeat, while \_index\_ \< \_numEntries\_, 1. Let
+-- | \_e\_ be \_entries\_\[\_index\_\]. 1. Set \_index\_ to \_index\_ + 1. 1.
+-- | If \_e\_ is not \~empty\~, then 1. Perform ? Call(\_callback\_,
+-- | \_thisArg\_, « \_e\_, \_e\_, \_S\_ »). 1. NOTE: The number of elements
+-- | in \_entries\_ may have increased during execution of \_callback\_. 1.
+-- | Set \_numEntries\_ to the number of elements in \_entries\_. 1. Return
+-- | \*undefined\*.
+
+-- SPEC: L35973-L35984
+-- | # Set.prototype.has ( \_value\_ )
+-- |
+-- | This method performs the following steps when called:
+-- |
+-- | 1\. Let \_S\_ be the \*this\* value. 1. Perform ?
+-- | RequireInternalSlot(\_S\_, \[\[SetData\]\]). 1. Set \_value\_ to
+-- | CanonicalizeKeyedCollectionKey(\_value\_). 1. For each element \_e\_ of
+-- | \_S\_.\[\[SetData\]\], do 1. If \_e\_ is not \~empty\~ and
+-- | SameValue(\_e\_, \_value\_) is \*true\*, return \*true\*. 1. Return
+-- | \*false\*.
+
+-- SPEC: L36129-L36139
+-- | # get Set.prototype.size
+-- |
+-- | \`Set.prototype.size\` is an accessor property whose set accessor
+-- | function is \*undefined\*. Its get accessor function performs the
+-- | following steps when called:
+-- |
+-- | 1\. Let \_S\_ be the \*this\* value. 1. Perform ?
+-- | RequireInternalSlot(\_S\_, \[\[SetData\]\]). 1. Let \_size\_ be
+-- | SetDataSize(\_S\_.\[\[SetData\]\]). 1. Return 𝔽(\_size\_).
+
+-- SPEC: L36218-L36223
+-- | # Set.prototype.values ( )
+-- |
+-- | This method performs the following steps when called:
+-- |
+-- | 1\. Let \_S\_ be the \*this\* value. 1. Return ?
+-- | CreateSetIterator(\_S\_, \~value\~).
+
+-- SPEC: L36242-L36275
+-- | # CreateSetIterator ( \_set\_: an ECMAScript language value, \_kind\_: \~key+value\~ or \~value\~, ): either a normal completion containing a Generator or a throw completion
+-- |
+-- | description
+-- | :   It is used to create iterator objects for Set methods that return
+-- |     such iterators.
+-- |
+-- | 1\. Perform ? RequireInternalSlot(\_set\_, \[\[SetData\]\]). 1. Let
+-- | \_closure\_ be a new Abstract Closure with no parameters that captures
+-- | \_set\_ and \_kind\_ and performs the following steps when called: 1.
+-- | Let \_index\_ be 0. 1. Let \_entries\_ be \_set\_.\[\[SetData\]\]. 1.
+-- | Let \_numEntries\_ be the number of elements in \_entries\_. 1. Repeat,
+-- | while \_index\_ \< \_numEntries\_, 1. Let \_e\_ be
+-- | \_entries\_\[\_index\_\]. 1. Set \_index\_ to \_index\_ + 1. 1. If \_e\_
+-- | is not \~empty\~, then 1. If \_kind\_ is \~key+value\~, then 1. Let
+-- | \_result\_ be CreateArrayFromList(« \_e\_, \_e\_ »). 1. Perform ?
+-- | GeneratorYield(CreateIteratorResultObject(\_result\_, \*false\*)). 1.
+-- | Else, 1. Assert: \_kind\_ is \~value\~. 1. Perform ?
+-- | GeneratorYield(CreateIteratorResultObject(\_e\_, \*false\*)). 1. NOTE:
+-- | The number of elements in \_entries\_ may have increased while execution
+-- | of this abstract operation was paused by GeneratorYield. 1. Set
+-- | \_numEntries\_ to the number of elements in \_entries\_. 1. Return
+-- | NormalCompletion(\~unused\~). 1. Return
+-- | CreateIteratorFromClosure(\_closure\_, \*\"%SetIteratorPrototype%\"\*,
+-- | %SetIteratorPrototype%).
+
+-- SPEC: L36291-L36293
+-- | # %SetIteratorPrototype%.next ( )
+-- |
+-- | 1\. Return ? GeneratorResume(\*this\* value, \~empty\~,
+-- | \*\"%SetIteratorPrototype%\"\*).
+
+/-! ## WeakMap Objects -/
+
+-- SPEC: L36338-L36357
+-- | # WeakMap ( \[ \_iterable\_ \] )
+-- |
+-- | This function performs the following steps when called:
+-- |
+-- | 1\. If NewTarget is \*undefined\*, throw a \*TypeError\* exception. 1.
+-- | Let \_map\_ be ? OrdinaryCreateFromConstructor(NewTarget,
+-- | \*\"%WeakMap.prototype%\"\*, « \[\[WeakMapData\]\] »). 1. Set
+-- | \_map\_.\[\[WeakMapData\]\] to a new empty List. 1. If \_iterable\_ is
+-- | either \*undefined\* or \*null\*, return \_map\_. 1. Let \_adder\_ be ?
+-- | Get(\_map\_, \*\"set\"\*). 1. If IsCallable(\_adder\_) is \*false\*,
+-- | throw a \*TypeError\* exception. 1. Return ?
+-- | AddEntriesFromIterable(\_map\_, \_iterable\_, \_adder\_).
+
+-- SPEC: L36370-L36377
+-- | # Properties of the WeakMap Constructor
+-- |
+-- | The WeakMap constructor:
+-- |
+-- | - has a \[\[Prototype\]\] internal slot whose value is
+-- |   %Function.prototype%.
+-- | - has the following properties:
+
+-- SPEC: L36378-L36385
+-- | # WeakMap.prototype
+-- |
+-- | The initial value of \`WeakMap.prototype\` is the WeakMap prototype
+-- | object.
+-- |
+-- | This property has the attributes { \[\[Writable\]\]: \*false\*,
+-- | \[\[Enumerable\]\]: \*false\*, \[\[Configurable\]\]: \*false\* }.
+
+-- SPEC: L36398-L36416
+-- | # WeakMap.prototype.delete ( \_key\_ )
+-- |
+-- | This method performs the following steps when called:
+-- |
+-- | 1\. Let \_M\_ be the \*this\* value. 1. Perform ?
+-- | RequireInternalSlot(\_M\_, \[\[WeakMapData\]\]). 1. If
+-- | CanBeHeldWeakly(\_key\_) is \*false\*, return \*false\*. 1. For each
+-- | Record { \[\[Key\]\], \[\[Value\]\] } \_p\_ of
+-- | \_M\_.\[\[WeakMapData\]\], do 1. If \_p\_.\[\[Key\]\] is not \~empty\~
+-- | and SameValue(\_p\_.\[\[Key\]\], \_key\_) is \*true\*, then 1. Set
+-- | \_p\_.\[\[Key\]\] to \~empty\~. 1. Set \_p\_.\[\[Value\]\] to
+-- | \~empty\~. 1. Return \*true\*. 1. Return \*false\*.
+-- |
+-- | The value \~empty\~ is used as a specification device to indicate that
+-- | an entry has been deleted. Actual implementations may take other actions
+-- | such as physically removing the entry from internal data structures.
+
+-- SPEC: L36417-L36428
+-- | # WeakMap.prototype.get ( \_key\_ )
+-- |
+-- | This method performs the following steps when called:
+-- |
+-- | 1\. Let \_M\_ be the \*this\* value. 1. Perform ?
+-- | RequireInternalSlot(\_M\_, \[\[WeakMapData\]\]). 1. If
+-- | CanBeHeldWeakly(\_key\_) is \*false\*, return \*undefined\*. 1. For each
+-- | Record { \[\[Key\]\], \[\[Value\]\] } \_p\_ of
+-- | \_M\_.\[\[WeakMapData\]\], do 1. If \_p\_.\[\[Key\]\] is not \~empty\~
+-- | and SameValue(\_p\_.\[\[Key\]\], \_key\_) is \*true\*, return
+-- | \_p\_.\[\[Value\]\]. 1. Return \*undefined\*.
+
+-- SPEC: L36429-L36445
+-- | # WeakMap.prototype.getOrInsert ( \_key\_, \_value\_ )
+-- |
+-- | This method performs the following steps when called:
+-- |
+-- | 1\. Let \_M\_ be the \*this\* value. 1. Perform ?
+-- | RequireInternalSlot(\_M\_, \[\[WeakMapData\]\]). 1. If
+-- | CanBeHeldWeakly(\_key\_) is \*false\*, throw a \*TypeError\*
+-- | exception. 1. For each Record { \[\[Key\]\], \[\[Value\]\] } \_p\_ of
+-- | \_M\_.\[\[WeakMapData\]\], do 1. If \_p\_.\[\[Key\]\] is not \~empty\~
+-- | and SameValue(\_p\_.\[\[Key\]\], \_key\_) is \*true\*, return
+-- | \_p\_.\[\[Value\]\]. 1. Let \_p\_ be the Record { \[\[Key\]\]: \_key\_,
+-- | \[\[Value\]\]: \_value\_ }. 1. Append \_p\_ to
+-- | \_M\_.\[\[WeakMapData\]\]. 1. Return \_value\_.
+
+-- SPEC: L36446-L36470
+-- | # WeakMap.prototype.getOrInsertComputed ( \_key\_, \_callback\_ )
+-- |
+-- | This method performs the following steps when called:
+-- |
+-- | 1\. Let \_M\_ be the \*this\* value. 1. Perform ?
+-- | RequireInternalSlot(\_M\_, \[\[WeakMapData\]\]). 1. If
+-- | CanBeHeldWeakly(\_key\_) is \*false\*, throw a \*TypeError\*
+-- | exception. 1. If IsCallable(\_callback\_) is \*false\*, throw a
+-- | \*TypeError\* exception. 1. For each Record { \[\[Key\]\], \[\[Value\]\]
+-- | } \_p\_ of \_M\_.\[\[WeakMapData\]\], do 1. If \_p\_.\[\[Key\]\] is not
+-- | \~empty\~ and SameValue(\_p\_.\[\[Key\]\], \_key\_) is \*true\*, return
+-- | \_p\_.\[\[Value\]\]. 1. Let \_value\_ be ? Call(\_callback\_,
+-- | \*undefined\*, « \_key\_ »). 1. NOTE: The WeakMap may have been modified
+-- | during execution of \_callback\_. 1. For each Record { \[\[Key\]\],
+-- | \[\[Value\]\] } \_p\_ of \_M\_.\[\[WeakMapData\]\], do 1. If
+-- | \_p\_.\[\[Key\]\] is not \~empty\~ and SameValue(\_p\_.\[\[Key\]\],
+-- | \_key\_) is \*true\*, then 1. Set \_p\_.\[\[Value\]\] to \_value\_. 1.
+-- | Return \_value\_. 1. Let \_p\_ be the Record { \[\[Key\]\]: \_key\_,
+-- | \[\[Value\]\]: \_value\_ }. 1. Append \_p\_ to
+-- | \_M\_.\[\[WeakMapData\]\]. 1. Return \_value\_.
+
+-- SPEC: L36471-L36482
+-- | # WeakMap.prototype.has ( \_key\_ )
+-- |
+-- | This method performs the following steps when called:
+-- |
+-- | 1\. Let \_M\_ be the \*this\* value. 1. Perform ?
+-- | RequireInternalSlot(\_M\_, \[\[WeakMapData\]\]). 1. If
+-- | CanBeHeldWeakly(\_key\_) is \*false\*, return \*false\*. 1. For each
+-- | Record { \[\[Key\]\], \[\[Value\]\] } \_p\_ of
+-- | \_M\_.\[\[WeakMapData\]\], do 1. If \_p\_.\[\[Key\]\] is not \~empty\~
+-- | and SameValue(\_p\_.\[\[Key\]\], \_key\_) is \*true\*, return
+-- | \*true\*. 1. Return \*false\*.
+
+-- SPEC: L36483-L36500
+-- | # WeakMap.prototype.set ( \_key\_, \_value\_ )
+-- |
+-- | This method performs the following steps when called:
+-- |
+-- | 1\. Let \_M\_ be the \*this\* value. 1. Perform ?
+-- | RequireInternalSlot(\_M\_, \[\[WeakMapData\]\]). 1. If
+-- | CanBeHeldWeakly(\_key\_) is \*false\*, throw a \*TypeError\*
+-- | exception. 1. For each Record { \[\[Key\]\], \[\[Value\]\] } \_p\_ of
+-- | \_M\_.\[\[WeakMapData\]\], do 1. If \_p\_.\[\[Key\]\] is not \~empty\~
+-- | and SameValue(\_p\_.\[\[Key\]\], \_key\_) is \*true\*, then 1. Set
+-- | \_p\_.\[\[Value\]\] to \_value\_. 1. Return \_M\_. 1. Let \_p\_ be the
+-- | Record { \[\[Key\]\]: \_key\_, \[\[Value\]\]: \_value\_ }. 1. Append
+-- | \_p\_ to \_M\_.\[\[WeakMapData\]\]. 1. Return \_M\_.
+
+-- SPEC: L36501-L36508
+-- | # WeakMap.prototype \[ %Symbol.toStringTag% \]
+-- |
+-- | The initial value of the %Symbol.toStringTag% property is the String
+-- | value \*\"WeakMap\"\*.
+-- |
+-- | This property has the attributes { \[\[Writable\]\]: \*false\*,
+-- | \[\[Enumerable\]\]: \*false\*, \[\[Configurable\]\]: \*true\* }.
+
+/-! ## WeakSet Objects -/
+
+-- SPEC: L36534-L36558
+-- | # WeakSet ( \[ \_iterable\_ \] )
+-- |
+-- | This function performs the following steps when called:
+-- |
+-- | 1\. If NewTarget is \*undefined\*, throw a \*TypeError\* exception. 1.
+-- | Let \_set\_ be ? OrdinaryCreateFromConstructor(NewTarget,
+-- | \*\"%WeakSet.prototype%\"\*, « \[\[WeakSetData\]\] »). 1. Set
+-- | \_set\_.\[\[WeakSetData\]\] to a new empty List. 1. If \_iterable\_ is
+-- | either \*undefined\* or \*null\*, return \_set\_. 1. Let \_adder\_ be ?
+-- | Get(\_set\_, \*\"add\"\*). 1. If IsCallable(\_adder\_) is \*false\*,
+-- | throw a \*TypeError\* exception. 1. Let \_iteratorRecord\_ be ?
+-- | GetIterator(\_iterable\_, \~sync\~). 1. Repeat, 1. Let \_next\_ be ?
+-- | IteratorStepValue(\_iteratorRecord\_). 1. If \_next\_ is \~done\~,
+-- | return \_set\_. 1. Let \_status\_ be Completion(Call(\_adder\_, \_set\_,
+-- | « \_next\_ »)). 1. IfAbruptCloseIterator(\_status\_,
+-- | \_iteratorRecord\_).
+
+-- SPEC: L36573-L36580
+-- | # WeakSet.prototype
+-- |
+-- | The initial value of \`WeakSet.prototype\` is the WeakSet prototype
+-- | object.
+-- |
+-- | This property has the attributes { \[\[Writable\]\]: \*false\*,
+-- | \[\[Enumerable\]\]: \*false\*, \[\[Configurable\]\]: \*false\* }.
+
+-- SPEC: L36593-L36601
+-- | # WeakSet.prototype.add ( \_value\_ )
+-- |
+-- | This method performs the following steps when called:
+-- |
+-- | 1\. Let \_S\_ be the \*this\* value. 1. Perform ?
+-- | RequireInternalSlot(\_S\_, \[\[WeakSetData\]\]). 1. If
+-- | CanBeHeldWeakly(\_value\_) is \*false\*, throw a \*TypeError\*
+-- | exception. 1. For each element \_e\_ of \_S\_.\[\[WeakSetData\]\], do 1.
+-- | If \_e\_ is not \~empty\~ and SameValue(\_e\_, \_value\_) is \*true\*,
+-- | then 1. Return \_S\_. 1. Append \_value\_ to
+-- | \_S\_.\[\[WeakSetData\]\]. 1. Return \_S\_.
+
+-- SPEC: L36605-L36623
+-- | # WeakSet.prototype.delete ( \_value\_ )
+-- |
+-- | This method performs the following steps when called:
+-- |
+-- | 1\. Let \_S\_ be the \*this\* value. 1. Perform ?
+-- | RequireInternalSlot(\_S\_, \[\[WeakSetData\]\]). 1. If
+-- | CanBeHeldWeakly(\_value\_) is \*false\*, return \*false\*. 1. For each
+-- | element \_e\_ of \_S\_.\[\[WeakSetData\]\], do 1. If \_e\_ is not
+-- | \~empty\~ and SameValue(\_e\_, \_value\_) is \*true\*, then 1. Replace
+-- | the element of \_S\_.\[\[WeakSetData\]\] whose value is \_e\_ with an
+-- | element whose value is \~empty\~. 1. Return \*true\*. 1. Return
+-- | \*false\*.
+-- |
+-- | The value \~empty\~ is used as a specification device to indicate that
+-- | an entry has been deleted. Actual implementations may take other actions
+-- | such as physically removing the entry from internal data structures.
+
+-- SPEC: L36624-L36635
+-- | # WeakSet.prototype.has ( \_value\_ )
+-- |
+-- | This method performs the following steps when called:
+-- |
+-- | 1\. Let \_S\_ be the \*this\* value. 1. Perform ?
+-- | RequireInternalSlot(\_S\_, \[\[WeakSetData\]\]). 1. If
+-- | CanBeHeldWeakly(\_value\_) is \*false\*, return \*false\*. 1. For each
+-- | element \_e\_ of \_S\_.\[\[WeakSetData\]\], do 1. If \_e\_ is not
+-- | \~empty\~ and SameValue(\_e\_, \_value\_) is \*true\*, return
+-- | \*true\*. 1. Return \*false\*.
+
+-- SPEC: L36636-L36643
+-- | # WeakSet.prototype \[ %Symbol.toStringTag% \]
+-- |
+-- | The initial value of the %Symbol.toStringTag% property is the String
+-- | value \*\"WeakSet\"\*.
+-- |
+-- | This property has the attributes { \[\[Writable\]\]: \*false\*,
+-- | \[\[Enumerable\]\]: \*false\*, \[\[Configurable\]\]: \*true\* }.
+
+/-! ## Keyed Collection Abstract Operations -/
+
+-- SPEC: L36650-L36653
+-- | # CanonicalizeKeyedCollectionKey ( \_key\_: an ECMAScript language value, ): an ECMAScript language value
+-- |
+-- | 1\. If \_key\_ is \*-0\*~𝔽~, return \*+0\*~𝔽~. 1. Return \_key\_.
+
+/-! ## ArraySetLength -/
+
+-- SPEC: L11811-L11853
+-- | # ArraySetLength ( \_A\_: an Array, \_Desc\_: a Property Descriptor, ): either a normal completion containing a Boolean or a throw completion
+-- |
+-- | 1\. If \_Desc\_ does not have a \[\[Value\]\] field, then 1. Return !
+-- | OrdinaryDefineOwnProperty(\_A\_, \*\"length\"\*, \_Desc\_). 1. Let
+-- | \_newLenDesc\_ be a copy of \_Desc\_. 1.
+-- | \[id=\"step-arraysetlength-newlen\"\] Let \_newLen\_ be ?
+-- | ToUint32(\_Desc\_.\[\[Value\]\]). 1.
+-- | \[id=\"step-arraysetlength-numberlen\"\] Let \_numberLen\_ be ?
+-- | ToNumber(\_Desc\_.\[\[Value\]\]). 1. If SameValueZero(\_newLen\_,
+-- | \_numberLen\_) is \*false\*, throw a \*RangeError\* exception. 1. Set
+-- | \_newLenDesc\_.\[\[Value\]\] to \_newLen\_. 1. Let \_oldLenDesc\_ be
+-- | OrdinaryGetOwnProperty(\_A\_, \*\"length\"\*). 1. Assert: \_oldLenDesc\_
+-- | is not \*undefined\*. 1. Assert: IsDataDescriptor(\_oldLenDesc\_) is
+-- | \*true\*. 1. Assert: \_oldLenDesc\_.\[\[Configurable\]\] is
+-- | \*false\*. 1. Let \_oldLen\_ be \_oldLenDesc\_.\[\[Value\]\]. 1. If
+-- | \_newLen\_ ≥ \_oldLen\_, then 1. Return !
+-- | OrdinaryDefineOwnProperty(\_A\_, \*\"length\"\*, \_newLenDesc\_). 1. If
+-- | \_oldLenDesc\_.\[\[Writable\]\] is \*false\*, return \*false\*. 1. If
+-- | \_newLenDesc\_ does not have a \[\[Writable\]\] field or
+-- | \_newLenDesc\_.\[\[Writable\]\] is \*true\*, then 1. Let \_newWritable\_
+-- | be \*true\*. 1. Else, 1. NOTE: Setting the \[\[Writable\]\] attribute to
+-- | \*false\* is deferred in case any elements cannot be deleted. 1. Let
+-- | \_newWritable\_ be \*false\*. 1. Set \_newLenDesc\_.\[\[Writable\]\] to
+-- | \*true\*. 1. Let \_succeeded\_ be ! OrdinaryDefineOwnProperty(\_A\_,
+-- | \*\"length\"\*, \_newLenDesc\_). 1. If \_succeeded\_ is \*false\*,
+-- | return \*false\*. 1. For each own property key \_P\_ of \_A\_ such that
+-- | \_P\_ is an array index and ! ToUint32(\_P\_) ≥ \_newLen\_, in
+-- | descending numeric index order, do 1. Let \_deleteSucceeded\_ be !
+-- | \_A\_.\[\[Delete\]\](\_P\_). 1. If \_deleteSucceeded\_ is \*false\*,
+-- | then 1. Set \_newLenDesc\_.\[\[Value\]\] to ! ToUint32(\_P\_) +
+-- | \*1\*~𝔽~. 1. If \_newWritable\_ is \*false\*, set
+-- | \_newLenDesc\_.\[\[Writable\]\] to \*false\*. 1. Perform !
+-- | OrdinaryDefineOwnProperty(\_A\_, \*\"length\"\*, \_newLenDesc\_). 1.
+-- | Return \*false\*. 1. If \_newWritable\_ is \*false\*, then 1. Set
+-- | \_succeeded\_ to ! OrdinaryDefineOwnProperty(\_A\_, \*\"length\"\*,
+-- | PropertyDescriptor { \[\[Writable\]\]: \*false\* }). 1. Assert:
+-- | \_succeeded\_ is \*true\*. 1. Return \*true\*.
+
+/-! ## DateFromTime -/
+
+-- SPEC: L26800-L26822
+-- | # DateFromTime ( \_t\_: a finite time value, ): an integral Number in the inclusive interval from \*1\*~𝔽~ to \*31\*~𝔽~
+-- |
+-- | description
+-- | :   It returns the day of the month in which \_t\_ falls.
+-- |
+-- | 1\. Let \_inLeapYear\_ be InLeapYear(\_t\_). 1. Let \_dayWithinYear\_ be
+-- | DayWithinYear(\_t\_). 1. Let \_month\_ be MonthFromTime(\_t\_). 1. If
+-- | \_month\_ is \*+0\*~𝔽~, return \_dayWithinYear\_ + \*1\*~𝔽~. 1. If
+-- | \_month\_ is \*1\*~𝔽~, return \_dayWithinYear\_ - \*30\*~𝔽~. 1. If
+-- | \_month\_ is \*2\*~𝔽~, return \_dayWithinYear\_ - \*58\*~𝔽~ -
+-- | \_inLeapYear\_. 1. If \_month\_ is \*3\*~𝔽~, return \_dayWithinYear\_ -
+-- | \*89\*~𝔽~ - \_inLeapYear\_. 1. If \_month\_ is \*4\*~𝔽~, return
+-- | \_dayWithinYear\_ - \*119\*~𝔽~ - \_inLeapYear\_. 1. If \_month\_ is
+-- | \*5\*~𝔽~, return \_dayWithinYear\_ - \*150\*~𝔽~ - \_inLeapYear\_. 1. If
+-- | \_month\_ is \*6\*~𝔽~, return \_dayWithinYear\_ - \*180\*~𝔽~ -
+-- | \_inLeapYear\_. 1. If \_month\_ is \*7\*~𝔽~, return \_dayWithinYear\_ -
+-- | \*211\*~𝔽~ - \_inLeapYear\_. 1. If \_month\_ is \*8\*~𝔽~, return
+-- | \_dayWithinYear\_ - \*242\*~𝔽~ - \_inLeapYear\_. 1. If \_month\_ is
+-- | \*9\*~𝔽~, return \_dayWithinYear\_ - \*272\*~𝔽~ - \_inLeapYear\_. 1. If
+-- | \_month\_ is \*10\*~𝔽~, return \_dayWithinYear\_ - \*303\*~𝔽~ -
+-- | \_inLeapYear\_. 1. Assert: \_month\_ is \*11\*~𝔽~. 1. Return
+-- | \_dayWithinYear\_ - \*333\*~𝔽~ - \_inLeapYear\_.
+
 
 end VerifiedJS.Source
