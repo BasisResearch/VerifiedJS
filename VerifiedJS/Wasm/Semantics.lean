@@ -6166,7 +6166,44 @@ theorem step_sim (prog : ANF.Program) (irmod : IRModule) :
         sorry
     | .«return» arg =>
         -- Return: ANF evaluates return value
-        sorry
+        have hc := hrel.hcode; rw [hexpr] at hc
+        match arg with
+        | none =>
+          -- return with no value: IR code = [return_]
+          match hc with
+          | .return_none =>
+            -- ANF step: silent, expr → trivial .litUndefined
+            have hs1eq : { s1 with expr := ANF.Expr.return none } = s1 := by cases s1; simp_all
+            have hanf := ANF.step?_return_none s1
+            rw [hs1eq] at hanf; rw [hanf] at heq
+            simp only [Option.some.injEq, Prod.mk.injEq] at heq
+            obtain ⟨rfl, rfl⟩ := heq
+            -- IR step: return_ with single frame → code = [], labels = []
+            have hfr : ∃ f, s2.frames = [f] := by
+              match hf : s2.frames with
+              | [] => exact absurd hf hrel.hframes
+              | [f] => exact ⟨f, rfl⟩
+              | _ :: _ :: _ => simp [hf] at hrel.hframes_one
+            obtain ⟨frame, hfr⟩ := hfr
+            have hir := irStep?_eq_return_toplevel s2 [] frame rfl hfr
+            simp only [traceFromCore]
+            exact ⟨_, hir, {
+              hlower := hrel.hlower
+              hmod := hrel.hmod
+              hcode := .value_done .litUndefined (by intro name; exact ANF.Trivial.noConfusion)
+              hhalt := by
+                intro _; simp [IRExecState.halted]
+              hframes := by simp [hfr]
+              henv := by
+                intro n w hlk; simp [ANF.pushTrace] at hlk
+                exact hrel.henv n w hlk
+              hvar := by
+                intro n' idx' hexpr' hcode_ir
+                simp [ANF.pushTrace] at hexpr'
+              hlabels_empty := rfl
+              hframes_one := by simp [hfr]
+            }⟩
+        | some t => sorry
     | .yield arg delegate =>
         -- Yield: ANF produces value
         sorry

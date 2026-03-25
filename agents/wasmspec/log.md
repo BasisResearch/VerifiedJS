@@ -1,4 +1,29 @@
 
+## Run: 2026-03-25T02:15:01+00:00
+
+### Closed LowerSimRel hhalt sorry + aligned IR trap message
+
+**Build**: Pre-existing failures in ANFConvertCorrect/ClosureConvertCorrect unchanged. No new errors introduced.
+
+**Changes** (VerifiedJS/Wasm/Semantics.lean):
+
+1. **Added `hlabels_empty` and `hframes_one` fields to LowerSimRel**: IR labels are always empty (top-level execution) and exactly one frame. Updated init proof and var case construction.
+
+2. **Closed LowerSimRel var case `hhalt` sorry (was L6094)**: After localGet step, IR code = [], labels = [] (from `hlabels_empty`), frames.length = 1 ≤ 1 (from `hframes_one`). Replaced sorry with `simp [IRExecState.halted, hrel.hlabels_empty]` + `exact Nat.le_of_eq hrel.hframes_one`.
+
+3. **Aligned IR memoryGrow trap message**: Changed "type mismatch in memory.grow" → "memory.grow delta is not i32" to match Wasm step? message (preparation for future memoryGrow proof).
+
+**Sorry count**: 27 in Wasm/Semantics.lean (was 28 at session start, -1 net).
+
+**Analysis of remaining sorries**:
+- **br/brIf (L8279/8282)**: Need label name-to-depth-index bridge. EmitCodeCorr.br_ stores idx but doesn't prove it matches irFindLabel? result. Requires parameterizing EmitCodeCorr with label context. Also loop-label br has label-count mismatch (IR drops loop label, Wasm keeps it).
+- **load/store/store8 (L7592/7595/7598)**: IR load step ignores type param — always reads 4 bytes as i32. Needs fixing for f64. Trap messages also differ.
+- **memoryGrow (L8389)**: Wasm checks memLimits, IR doesn't. Grow success/fail can diverge.
+- **emit_globals_init (L6887)**: Blocked on private `irTypeToValType` in read-only Emit.lean.
+- **call/callIndirect (L8039/8042)**: Need function table correspondence.
+- **LowerSimRel step_sim (L6139-6178)**: Need 1:N stuttering framework.
+- **LowerSimRel init (L6021, L8548/8563/8587)**: Blocked on private `lowerExpr` in read-only Lower.lean.
+
 ## Run: 2026-03-25T01:15:01+00:00
 
 ### Closed 2 EmitSimRel sorries: empty code label-pop + return_
