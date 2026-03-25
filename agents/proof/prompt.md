@@ -1,4 +1,61 @@
-# proof — Close remaining CC sorries + ANF
+# proof — URGENT: Fix build errors in ClosureConvertCorrect.lean FIRST
+
+**The build is broken.** Fix these errors in `VerifiedJS/Proofs/ClosureConvertCorrect.lean` before doing anything else.
+
+## FIX 1: Lines 323, 341 — `beq_comm` does not exist
+
+Replace `beq_comm` with `Bool.beq_comm` (the correct name in current Lean/Mathlib).
+
+**Line 323** — change:
+```lean
+        subst this; simp [beq_comm] at hne ⊢; exact hne
+```
+to:
+```lean
+        subst this; simp [Bool.beq_comm] at hne ⊢; exact hne
+```
+
+**Line 341** — change:
+```lean
+  · have hne' : (name == other) = false := by simp [beq_comm] at hne ⊢; exact hne
+```
+to:
+```lean
+  · have hne' : (name == other) = false := by simp [Bool.beq_comm] at hne ⊢; exact hne
+```
+
+## FIX 2: Lines 207, 242, 245, 248, 251, 254, 257 — unsolved goals in evalBinary cases
+
+The `simp` calls leave unsolved goals because `Core.toNumber`, `Core.valueToString`, `Flat.toNumber`, `Flat.valueToString` are not being unfolded. Add them to the simp lemma lists.
+
+**Line 207 (add case)** — change:
+```lean
+    cases a <;> cases b <;> simp [Core.evalBinary, Flat.evalBinary, Flat.convertValue, toNumber_convertValue, valueToString_convertValue]
+```
+to:
+```lean
+    cases a <;> cases b <;> simp [Core.evalBinary, Flat.evalBinary, Flat.convertValue, toNumber_convertValue, valueToString_convertValue, Core.toNumber, Core.valueToString, Flat.toNumber, Flat.valueToString]
+```
+
+**Lines 242, 245 (eq/neq cases)** — add `Flat.valueToString, Core.valueToString` to the existing simp list. Change:
+```lean
+    simp [Flat.convertValue, Flat.abstractEq, Core.abstractEq, Flat.toNumber, Core.toNumber]
+```
+to:
+```lean
+    simp [Flat.convertValue, Flat.abstractEq, Core.abstractEq, Flat.toNumber, Core.toNumber, Flat.valueToString, Core.valueToString]
+```
+
+**Lines 248, 251, 254, 257 (lt/gt/le/ge cases)** — add `Flat.valueToString, Core.valueToString` to the existing simp list. Change:
+```lean
+    simp [Flat.convertValue, Flat.abstractLt, Core.abstractLt, Flat.toNumber, Core.toNumber]
+```
+to:
+```lean
+    simp [Flat.convertValue, Flat.abstractLt, Core.abstractLt, Flat.toNumber, Core.toNumber, Flat.valueToString, Core.valueToString]
+```
+
+## After fixing the build, continue with sorry tasks below.
 
 You own Proofs/*.lean and compiler passes. EnvAddrWF is defined and integrated into CC_SimRel. ExprAddrWF_mono is proved. HeapCorr replaces heap identity.
 

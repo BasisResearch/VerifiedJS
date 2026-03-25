@@ -7742,11 +7742,9 @@ theorem step_sim (irmod : IRModule) (wmod : Module) :
                       hhalt_of_structural hrest hrel.hlabels, hrel.hlabel_content, hrel.hframes_one⟩
                     dsimp only []
                     exact stack_corr_cons hlen_tail htail (.i32 _)
-                  · -- No memory: readLE? on empty memory should fail → contradiction
+                  · -- No memory: readLE? on empty memory fails → contradiction with hread
                     have : s1.memory.size = 0 := hmem_sz
-                    -- readLE? on size-0 memory can't return some
                     simp [readLE?] at hread
-                    sorry -- readLE? on empty memory never returns some
                 | none =>
                   -- OOB: both trap
                   simp [irStep?, hcode_ir, hstk, irPop1?, irPushTrace, hread, irTrapState] at hstep
@@ -7780,10 +7778,35 @@ theorem step_sim (irmod : IRModule) (wmod : Module) :
                             hlabel_content := hrel.hlabel_content
                             hframes_one := hrel.hframes_one }⟩
               | _ =>
-                -- Wrong type on stack: both trap
+                -- Wrong type on stack: both trap (catch-all for f64, i64 heads)
                 simp [irStep?, hcode_ir, hstk, irPop1?, irTrapState, irPushTrace] at hstep
                 obtain ⟨rfl, rfl⟩ := hstep
-                sorry -- type mismatch trap: need stack correspondence for non-i32 head
+                -- Derive Wasm stack from IR stack via correspondence
+                have hstk_rel := hrel.hstack; rw [hstk] at hstk_rel
+                match hstk_w : s2.stack with
+                | [] => simp [hstk_w] at hstk_rel
+                | wv :: wstk =>
+                  -- wv is not .i32 (from stack correspondence + IR head not i32)
+                  have hw : step? s2 = some (.trap ("type mismatch in " ++ _),
+                      { s2 with code := [], trace := s2.trace ++ [.trap ("type mismatch in " ++ _)] }) := by
+                    simp [step?, hcw, hstk_w, pop1?, trapState, pushTrace]
+                    -- Need: wv is not .i32. From hstk_rel, wv corresponds to IR head (not i32).
+                    have h0 := hstk_rel.2 0 (by simp)
+                    simp [hstk_w] at h0
+                    obtain ⟨irv, wv', hirv, hwv', hcorr⟩ := h0
+                    simp at hirv hwv'
+                    subst hirv; subst hwv'
+                    cases hcorr with
+                    | i32 n => simp at hstk
+                    | i64 => simp
+                    | f64 => simp
+                  exact ⟨_, by simp [traceToWasm]; exact hw,
+                    { hemit := hrel.hemit, hcode := .nil, hstack := by dsimp only []; exact hrel.hstack,
+                      hframes_len := hrel.hframes_len, hframes_locals := hrel.hframes_locals,
+                      hframes_vals := hrel.hframes_vals, hglobals := hrel.hglobals, hmemory := hrel.hmemory,
+                      hlabels := hrel.hlabels, hhalt := hhalt_of_structural .nil hrel.hlabels
+                          hlabel_content := hrel.hlabel_content
+                          hframes_one := hrel.hframes_one }⟩
             · exact hf.elim
           | .f64 => sorry
           | .i64 => sorry
