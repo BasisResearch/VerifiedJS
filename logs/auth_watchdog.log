@@ -417,3 +417,4 @@ Done
 [12.8s] Got 1513 bytes, clean: '─────────────────────────────\r\r\n❯\xa0\r\r\n────────────────────────────────────────────────────────────────────────────────\r\r\n?forshortcuts\r\r\n\x1b[?2026l\x1b[?2004h\x1b[?1004h\x1b[?2026h\r◐medium·/effort\r\r\n\x1b[?2026l\x1b[>0q'
 [SENT] /exit
 Done
+2026-03-25T14:30:01+00:00 Token expires in -29m, refreshing...
