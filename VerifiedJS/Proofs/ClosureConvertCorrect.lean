@@ -1260,12 +1260,11 @@ private theorem closureConvert_step_simulation
       have hcs : (Flat.convertExpr (.lit v) scope envVar envMap st).snd = st := by
         simp [Flat.convertExpr]
       rw [hcf, hcs] at hsf_expr
-      -- abbreviation for the converted body expression
-      let body' := (Flat.convertExpr body (name :: scope) envVar envMap st).fst
+      -- hsf_expr : sf.expr = .let name (.lit (convertValue v)) (convertExpr body (name::scope) envVar envMap st).fst
       -- Flat step on let-value: event is .silent
       have hev_eq : ev = .silent := by
         have h0 := hstep
-        rw [show sf = {sf with expr := .«let» name (.lit (Flat.convertValue v)) body'} from by cases sf; simp_all] at h0
+        rw [show sf = {sf with expr := .«let» name (.lit (Flat.convertValue v)) (Flat.convertExpr body (name :: scope) envVar envMap st).fst} from by cases sf; simp_all] at h0
         simp only [Flat.step?, Flat.exprValue?] at h0
         exact (Prod.mk.inj (Option.some.inj h0)).1.symm
       subst hev_eq
@@ -1291,20 +1290,20 @@ private theorem closureConvert_step_simulation
         simp only [Core.step?, Core.exprValue?] at h0
         have heq := (Prod.mk.inj (Option.some.inj h0)).2; subst heq; rfl
       -- State field equalities for sf'
-      have hsf'_expr : sf'.expr = body' := by
+      have hsf'_expr : sf'.expr = (Flat.convertExpr body (name :: scope) envVar envMap st).fst := by
         have h0 := hstep
-        rw [show sf = {sf with expr := .«let» name (.lit (Flat.convertValue v)) body'} from by cases sf; simp_all] at h0
+        rw [show sf = {sf with expr := .«let» name (.lit (Flat.convertValue v)) (Flat.convertExpr body (name :: scope) envVar envMap st).fst} from by cases sf; simp_all] at h0
         simp only [Flat.step?, Flat.exprValue?] at h0
         exact congrArg Flat.State.expr (Prod.mk.inj (Option.some.inj h0)).2 ▸ rfl
       have hsf'_heap : sf'.heap = sf.heap := by
         have h0 := hstep
-        rw [show sf = {sf with expr := .«let» name (.lit (Flat.convertValue v)) body'} from by cases sf; simp_all] at h0
+        rw [show sf = {sf with expr := .«let» name (.lit (Flat.convertValue v)) (Flat.convertExpr body (name :: scope) envVar envMap st).fst} from by cases sf; simp_all] at h0
         simp only [Flat.step?, Flat.exprValue?] at h0
         have heq := (Prod.mk.inj (Option.some.inj h0)).2; subst heq; rfl
       -- Trace correspondence
       have hsf'_trace : sf'.trace = sc'.trace := by
         have hf := hstep; have hc := hcstep
-        rw [show sf = {sf with expr := .«let» name (.lit (Flat.convertValue v)) body'} from by cases sf; simp_all] at hf
+        rw [show sf = {sf with expr := .«let» name (.lit (Flat.convertValue v)) (Flat.convertExpr body (name :: scope) envVar envMap st).fst} from by cases sf; simp_all] at hf
         rw [show sc = {sc with expr := .«let» name (.lit v) body} from by cases sc; simp_all] at hc
         simp only [Flat.step?, Flat.exprValue?] at hf
         simp only [Core.step?, Core.exprValue?] at hc
@@ -1316,7 +1315,7 @@ private theorem closureConvert_step_simulation
       have henv' : EnvCorr sc'.env sf'.env := by
         have hsf'_env : sf'.env = sf.env.extend name (Flat.convertValue v) := by
           have h0 := hstep
-          rw [show sf = {sf with expr := .«let» name (.lit (Flat.convertValue v)) body'} from by cases sf; simp_all] at h0
+          rw [show sf = {sf with expr := .«let» name (.lit (Flat.convertValue v)) (Flat.convertExpr body (name :: scope) envVar envMap st).fst} from by cases sf; simp_all] at h0
           simp only [Flat.step?, Flat.exprValue?] at h0
           have heq := (Prod.mk.inj (Option.some.inj h0)).2; subst heq; rfl
         rw [hsc'_env, hsf'_env]; exact EnvCorr_extend henvCorr name v
