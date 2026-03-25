@@ -13580,5 +13580,1014 @@ theorem elaborate_correct (p : Source.Program) (cp : Core.Program)
 -- | larger than \*-0\*~𝔽~.
 -- | 
 -- | The \*\"length\"\* property of this function is \*2\*~𝔽~.
+-- SPEC: L28347-L28366
+-- | # String Objects
+-- |
+-- | # The String Constructor
+-- |
+-- | The String constructor:
+-- |
+-- | - is [%String%]{.dfn}.
+-- | - is the initial value of the \*\"String\"\* property of the global
+-- |   object.
+-- | - creates and initializes a new String object when called as a
+-- |   constructor.
+-- | - performs a type conversion when called as a function rather than as a
+-- |   constructor.
+-- | - may be used as the value of an \`extends\` clause of a class
+-- |   definition. Subclass constructors that intend to inherit the specified
+-- |   String behaviour must include a \`super\` call to the String
+-- |   constructor to create and initialize the subclass instance with a
+-- |   \[\[StringData\]\] internal slot.
+-- |
+-- | # String ( \_value\_ )
+-- SPEC: L28367-L28383
+-- | This function performs the following steps when called:
+-- |
+-- | 1\. If \_value\_ is not present, then 1. Let \_s\_ be the empty
+-- | String. 1. Else, 1. If NewTarget is \*undefined\* and \_value\_ is a
+-- | Symbol, return SymbolDescriptiveString(\_value\_). 1. Let \_s\_ be ?
+-- | ToString(\_value\_). 1. If NewTarget is \*undefined\*, return \_s\_. 1.
+-- | Return StringCreate(\_s\_, ? GetPrototypeFromConstructor(NewTarget,
+-- | \*\"%String.prototype%\"\*)).
+-- |
+-- | # Properties of the String Constructor
+-- |
+-- | The String constructor:
+-- |
+-- | - has a \[\[Prototype\]\] internal slot whose value is
+-- |   %Function.prototype%.
+-- | - has the following properties:
+-- SPEC: L28385-L28397
+-- | # String.fromCharCode ( \...\_codeUnits\_ )
+-- |
+-- | This function may be called with any number of arguments which form the
+-- | rest parameter \_codeUnits\_.
+-- |
+-- | It performs the following steps when called:
+-- |
+-- | 1\. Let \_result\_ be the empty String. 1. For each element \_next\_ of
+-- | \_codeUnits\_, do 1. Let \_nextCU\_ be the code unit whose numeric value
+-- | is ℝ(? ToUint16(\_next\_)). 1. Set \_result\_ to the
+-- | string-concatenation of \_result\_ and \_nextCU\_. 1. Return \_result\_.
+-- |
+-- | The \*\"length\"\* property of this function is \*1\*~𝔽~.
+-- SPEC: L28399-L28416
+-- | # String.fromCodePoint ( \...\_codePoints\_ )
+-- |
+-- | This function may be called with any number of arguments which form the
+-- | rest parameter \_codePoints\_.
+-- |
+-- | It performs the following steps when called:
+-- |
+-- | 1\. Let \_result\_ be the empty String. 1. For each element \_next\_ of
+-- | \_codePoints\_, do 1. Let \_nextCP\_ be ? ToNumber(\_next\_). 1. If
+-- | \_nextCP\_ is not an integral Number, throw a \*RangeError\*
+-- | exception. 1. If ℝ(\_nextCP\_) \< 0 or ℝ(\_nextCP\_) \> 0x10FFFF, throw
+-- | a \*RangeError\* exception. 1. Set \_result\_ to the
+-- | string-concatenation of \_result\_ and
+-- | UTF16EncodeCodePoint(ℝ(\_nextCP\_)). 1. Assert: If \_codePoints\_ is
+-- | empty, then \_result\_ is the empty String. 1. Return \_result\_.
+-- |
+-- | The \*\"length\"\* property of this function is \*1\*~𝔽~.
+-- SPEC: L28474-L28483
+-- | # String.prototype.at ( \_index\_ )
+-- |
+-- | 1\. Let \_O\_ be the \*this\* value. 1. Perform ?
+-- | RequireObjectCoercible(\_O\_). 1. Let \_S\_ be ? ToString(\_O\_). 1. Let
+-- | \_len\_ be the length of \_S\_. 1. Let \_relativeIndex\_ be ?
+-- | ToIntegerOrInfinity(\_index\_). 1. If \_relativeIndex\_ ≥ 0, then 1. Let
+-- | \_k\_ be \_relativeIndex\_. 1. Else, 1. Let \_k\_ be \_len\_ +
+-- | \_relativeIndex\_. 1. If \_k\_ \< 0 or \_k\_ ≥ \_len\_, return
+-- | \*undefined\*. 1. Return the substring of \_S\_ from \_k\_ to \_k\_ + 1.
+-- SPEC: L28484-L28506
+-- | # String.prototype.charAt ( \_pos\_ )
+-- |
+-- | This method returns a single element String containing the code unit at
+-- | index \_pos\_ within the String value resulting from converting this
+-- | object to a String. If there is no element at that index, the result is
+-- | the empty String. The result is a String value, not a String object.
+-- |
+-- | If \`pos\` is an integral Number, then the result of \`x.charAt(pos)\`
+-- | is equivalent to the result of \`x.substring(pos, pos + 1)\`.
+-- |
+-- | This method performs the following steps when called:
+-- |
+-- | 1\. Let \_O\_ be the \*this\* value. 1. Perform ?
+-- | RequireObjectCoercible(\_O\_). 1. Let \_S\_ be ? ToString(\_O\_). 1. Let
+-- | \_position\_ be ? ToIntegerOrInfinity(\_pos\_). 1. Let \_size\_ be the
+-- | length of \_S\_. 1. If \_position\_ \< 0 or \_position\_ ≥ \_size\_,
+-- | return the empty String. 1. Return the substring of \_S\_ from
+-- | \_position\_ to \_position\_ + 1.
+-- |
+-- | This method is intentionally generic; it does not require that its
+-- | \*this\* value be a String object. Therefore, it can be transferred to
+-- | other kinds of objects for use as a method.
+-- SPEC: L28507-L28526
+-- | # String.prototype.charCodeAt ( \_pos\_ )
+-- |
+-- | This method returns a Number (a non-negative integral Number less than
+-- | 2^16^) that is the numeric value of the code unit at index \_pos\_
+-- | within the String resulting from converting this object to a String. If
+-- | there is no element at that index, the result is \*NaN\*.
+-- |
+-- | This method performs the following steps when called:
+-- |
+-- | 1\. Let \_O\_ be the \*this\* value. 1. Perform ?
+-- | RequireObjectCoercible(\_O\_). 1. Let \_S\_ be ? ToString(\_O\_). 1. Let
+-- | \_position\_ be ? ToIntegerOrInfinity(\_pos\_). 1. Let \_size\_ be the
+-- | length of \_S\_. 1. If \_position\_ \< 0 or \_position\_ ≥ \_size\_,
+-- | return \*NaN\*. 1. Return the Number value for the numeric value of the
+-- | code unit at index \_position\_ within the String \_S\_.
+-- |
+-- | This method is intentionally generic; it does not require that its
+-- | \*this\* value be a String object. Therefore it can be transferred to
+-- | other kinds of objects for use as a method.
+-- SPEC: L28527-L28549
+-- | # String.prototype.codePointAt ( \_pos\_ )
+-- |
+-- | This method returns a non-negative integral Number less than or equal to
+-- | \*0x10FFFF\*~𝔽~ that is the numeric value of the UTF-16 encoded code
+-- | point () starting at the string element at index \_pos\_ within the
+-- | String resulting from converting this object to a String. If there is no
+-- | element at that index, the result is \*undefined\*. If a valid UTF-16
+-- | surrogate pair does not begin at \_pos\_, the result is the code unit at
+-- | \_pos\_.
+-- |
+-- | This method performs the following steps when called:
+-- |
+-- | 1\. Let \_O\_ be the \*this\* value. 1. Perform ?
+-- | RequireObjectCoercible(\_O\_). 1. Let \_S\_ be ? ToString(\_O\_). 1. Let
+-- | \_position\_ be ? ToIntegerOrInfinity(\_pos\_). 1. Let \_size\_ be the
+-- | length of \_S\_. 1. If \_position\_ \< 0 or \_position\_ ≥ \_size\_,
+-- | return \*undefined\*. 1. Let \_cp\_ be CodePointAt(\_S\_,
+-- | \_position\_). 1. Return 𝔽(\_cp\_.\[\[CodePoint\]\]).
+-- |
+-- | This method is intentionally generic; it does not require that its
+-- | \*this\* value be a String object. Therefore it can be transferred to
+-- | other kinds of objects for use as a method.
+-- SPEC: L28550-L28574
+-- | # String.prototype.concat ( \...\_args\_ )
+-- |
+-- | When this method is called it returns the String value consisting of the
+-- | code units of the \*this\* value (converted to a String) followed by the
+-- | code units of each of the arguments converted to a String. The result is
+-- | a String value, not a String object.
+-- |
+-- | This method performs the following steps when called:
+-- |
+-- | 1\. Let \_O\_ be the \*this\* value. 1. Perform ?
+-- | RequireObjectCoercible(\_O\_). 1. Let \_S\_ be ? ToString(\_O\_). 1. Let
+-- | \_R\_ be \_S\_. 1. For each element \_next\_ of \_args\_, do 1. Let
+-- | \_nextString\_ be ? ToString(\_next\_). 1. Set \_R\_ to the
+-- | string-concatenation of \_R\_ and \_nextString\_. 1. Return \_R\_.
+-- |
+-- | The \*\"length\"\* property of this method is \*1\*~𝔽~.
+-- |
+-- | This method is intentionally generic; it does not require that its
+-- | \*this\* value be a String object. Therefore it can be transferred to
+-- | other kinds of objects for use as a method.
+-- |
+-- | # String.prototype.constructor
+-- |
+-- | The initial value of \`String.prototype.constructor\` is %String%.
+-- SPEC: L28575-L28605
+-- | # String.prototype.endsWith ( \_searchString\_ \[ , \_endPosition\_ \] )
+-- |
+-- | This method performs the following steps when called:
+-- |
+-- | 1\. Let \_O\_ be the \*this\* value. 1. Perform ?
+-- | RequireObjectCoercible(\_O\_). 1. Let \_S\_ be ? ToString(\_O\_). 1. Let
+-- | \_isRegExp\_ be ? IsRegExp(\_searchString\_). 1. If \_isRegExp\_ is
+-- | \*true\*, throw a \*TypeError\* exception. 1. Let \_searchStr\_ be ?
+-- | ToString(\_searchString\_). 1. Let \_len\_ be the length of \_S\_. 1. If
+-- | \_endPosition\_ is \*undefined\*, let \_pos\_ be \_len\_; else let
+-- | \_pos\_ be ? ToIntegerOrInfinity(\_endPosition\_). 1. Let \_end\_ be the
+-- | result of clamping \_pos\_ between 0 and \_len\_. 1. Let
+-- | \_searchLength\_ be the length of \_searchStr\_. 1. If \_searchLength\_
+-- | = 0, return \*true\*. 1. Let \_start\_ be \_end\_ - \_searchLength\_. 1.
+-- | If \_start\_ \< 0, return \*false\*. 1. Let \_substring\_ be the
+-- | substring of \_S\_ from \_start\_ to \_end\_. 1. If \_substring\_ is
+-- | \_searchStr\_, return \*true\*. 1. Return \*false\*.
+-- |
+-- | This method returns \*true\* if the sequence of code units of
+-- | \_searchString\_ converted to a String is the same as the corresponding
+-- | code units of this object (converted to a String) starting at
+-- | \_endPosition\_ - length(this). Otherwise it returns \*false\*.
+-- |
+-- | Throwing an exception if the first argument is a RegExp is specified in
+-- | order to allow future editions to define extensions that allow such
+-- | argument values.
+-- |
+-- | This method is intentionally generic; it does not require that its
+-- | \*this\* value be a String object. Therefore, it can be transferred to
+-- | other kinds of objects for use as a method.
+-- SPEC: L28606-L28635
+-- | # String.prototype.includes ( \_searchString\_ \[ , \_position\_ \] )
+-- |
+-- | This method performs the following steps when called:
+-- |
+-- | 1\. Let \_O\_ be the \*this\* value. 1. Perform ?
+-- | RequireObjectCoercible(\_O\_). 1. Let \_S\_ be ? ToString(\_O\_). 1. Let
+-- | \_isRegExp\_ be ? IsRegExp(\_searchString\_). 1. If \_isRegExp\_ is
+-- | \*true\*, throw a \*TypeError\* exception. 1. Let \_searchStr\_ be ?
+-- | ToString(\_searchString\_). 1. Let \_pos\_ be ?
+-- | ToIntegerOrInfinity(\_position\_). 1. Assert: If \_position\_ is
+-- | \*undefined\*, then \_pos\_ is 0. 1. Let \_len\_ be the length of
+-- | \_S\_. 1. Let \_start\_ be the result of clamping \_pos\_ between 0 and
+-- | \_len\_. 1. Let \_index\_ be StringIndexOf(\_S\_, \_searchStr\_,
+-- | \_start\_). 1. If \_index\_ is \~not-found\~, return \*false\*. 1.
+-- | Return \*true\*.
+-- |
+-- | If \_searchString\_ appears as a substring of the result of converting
+-- | this object to a String, at one or more indices that are greater than or
+-- | equal to \_position\_, this function returns \*true\*; otherwise, it
+-- | returns \*false\*. If \_position\_ is \*undefined\*, 0 is assumed, so as
+-- | to search all of the String.
+-- |
+-- | Throwing an exception if the first argument is a RegExp is specified in
+-- | order to allow future editions to define extensions that allow such
+-- | argument values.
+-- |
+-- | This method is intentionally generic; it does not require that its
+-- | \*this\* value be a String object. Therefore, it can be transferred to
+-- | other kinds of objects for use as a method.
+-- SPEC: L28636-L28659
+-- | # String.prototype.indexOf ( \_searchString\_ \[ , \_position\_ \] )
+-- |
+-- | If \_searchString\_ appears as a substring of the result of converting
+-- | this object to a String, at one or more indices that are greater than or
+-- | equal to \_position\_, then the smallest such index is returned;
+-- | otherwise, \*-1\*~𝔽~ is returned. If \_position\_ is \*undefined\*,
+-- | \*+0\*~𝔽~ is assumed, so as to search all of the String.
+-- |
+-- | This method performs the following steps when called:
+-- |
+-- | 1\. Let \_O\_ be the \*this\* value. 1. Perform ?
+-- | RequireObjectCoercible(\_O\_). 1. Let \_S\_ be ? ToString(\_O\_). 1. Let
+-- | \_searchStr\_ be ? ToString(\_searchString\_). 1. Let \_pos\_ be ?
+-- | ToIntegerOrInfinity(\_position\_). 1. Assert: If \_position\_ is
+-- | \*undefined\*, then \_pos\_ is 0. 1. Let \_len\_ be the length of
+-- | \_S\_. 1. Let \_start\_ be the result of clamping \_pos\_ between 0 and
+-- | \_len\_. 1. Let \_result\_ be StringIndexOf(\_S\_, \_searchStr\_,
+-- | \_start\_). 1. If \_result\_ is \~not-found\~, return \*-1\*~𝔽~. 1.
+-- | Return 𝔽(\_result\_).
+-- |
+-- | This method is intentionally generic; it does not require that its
+-- | \*this\* value be a String object. Therefore, it can be transferred to
+-- | other kinds of objects for use as a method.
+-- SPEC: L28660-L28667
+-- | # String.prototype.isWellFormed ( )
+-- |
+-- | This method performs the following steps when called:
+-- |
+-- | 1\. Let \_O\_ be the \*this\* value. 1. Perform ?
+-- | RequireObjectCoercible(\_O\_). 1. Let \_S\_ be ? ToString(\_O\_). 1.
+-- | Return IsStringWellFormedUnicode(\_S\_).
+-- SPEC: L28848-L28856
+-- | # String.prototype.padEnd ( \_maxLength\_ \[ , \_fillString\_ \] )
+-- |
+-- | This method performs the following steps when called:
+-- |
+-- | 1\. Let \_O\_ be the \*this\* value. 1. Perform ?
+-- | RequireObjectCoercible(\_O\_). 1. Return ?
+-- | StringPaddingBuiltinsImpl(\_O\_, \_maxLength\_, \_fillString\_,
+-- | \~end\~).
+-- SPEC: L28857-L28866
+-- | # String.prototype.padStart ( \_maxLength\_ \[ , \_fillString\_ \] )
+-- |
+-- | This method performs the following steps when called:
+-- |
+-- | 1\. Let \_O\_ be the \*this\* value. 1. Perform ?
+-- | RequireObjectCoercible(\_O\_). 1. Return ?
+-- | StringPaddingBuiltinsImpl(\_O\_, \_maxLength\_, \_fillString\_,
+-- | \~start\~).
+-- |
+-- | # StringPaddingBuiltinsImpl ( \_O\_: an ECMAScript language value, \_maxLength\_: an ECMAScript language value, \_fillString\_: an ECMAScript language value, \_placement\_: \~start\~ or \~end\~, ): either a normal completion containing a String or a throw completion
+-- SPEC: L28899-L28916
+-- | # String.prototype.repeat ( \_count\_ )
+-- |
+-- | This method performs the following steps when called:
+-- |
+-- | 1\. Let \_O\_ be the \*this\* value. 1. Perform ?
+-- | RequireObjectCoercible(\_O\_). 1. Let \_S\_ be ? ToString(\_O\_). 1. Let
+-- | \_n\_ be ? ToIntegerOrInfinity(\_count\_). 1. If \_n\_ \< 0 or \_n\_ =
+-- | +∞, throw a \*RangeError\* exception. 1. If \_n\_ = 0, return the empty
+-- | String. 1. Return the String value that is made from \_n\_ copies of
+-- | \_S\_ appended together.
+-- |
+-- | This method creates the String value consisting of the code units of the
+-- | \*this\* value (converted to String) repeated \_count\_ times.
+-- |
+-- | This method is intentionally generic; it does not require that its
+-- | \*this\* value be a String object. Therefore, it can be transferred to
+-- | other kinds of objects for use as a method.
+-- SPEC: L29069-L29098
+-- | # String.prototype.slice ( \_start\_, \_end\_ )
+-- |
+-- | This method returns a substring of the result of converting this object
+-- | to a String, starting from index \_start\_ and running to, but not
+-- | including, index \_end\_ (or through the end of the String if \_end\_ is
+-- | \*undefined\*). If \_start\_ is negative, it is treated as
+-- | \_sourceLength\_ + \_start\_ where \_sourceLength\_ is the length of the
+-- | String. If \_end\_ is negative, it is treated as \_sourceLength\_ +
+-- | \_end\_ where \_sourceLength\_ is the length of the String. The result
+-- | is a String value, not a String object.
+-- |
+-- | It performs the following steps when called:
+-- |
+-- | 1\. Let \_O\_ be the \*this\* value. 1. Perform ?
+-- | RequireObjectCoercible(\_O\_). 1. Let \_S\_ be ? ToString(\_O\_). 1. Let
+-- | \_len\_ be the length of \_S\_. 1. Let \_intStart\_ be ?
+-- | ToIntegerOrInfinity(\_start\_). 1. If \_intStart\_ = -∞, let \_from\_ be
+-- | 0. 1. Else if \_intStart\_ \< 0, let \_from\_ be max(\_len\_ +
+-- | \_intStart\_, 0). 1. Else, let \_from\_ be min(\_intStart\_,
+-- | \_len\_). 1. If \_end\_ is \*undefined\*, let \_intEnd\_ be \_len\_;
+-- | else let \_intEnd\_ be ? ToIntegerOrInfinity(\_end\_). 1. If \_intEnd\_
+-- | = -∞, let \_to\_ be 0. 1. Else if \_intEnd\_ \< 0, let \_to\_ be
+-- | max(\_len\_ + \_intEnd\_, 0). 1. Else, let \_to\_ be min(\_intEnd\_,
+-- | \_len\_). 1. If \_from\_ ≥ \_to\_, return the empty String. 1. Return
+-- | the substring of \_S\_ from \_from\_ to \_to\_.
+-- |
+-- | This method is intentionally generic; it does not require that its
+-- | \*this\* value be a String object. Therefore it can be transferred to
+-- | other kinds of objects for use as a method.
+-- SPEC: L29159-L29189
+-- | # String.prototype.startsWith ( \_searchString\_ \[ , \_position\_ \] )
+-- |
+-- | This method performs the following steps when called:
+-- |
+-- | 1\. Let \_O\_ be the \*this\* value. 1. Perform ?
+-- | RequireObjectCoercible(\_O\_). 1. Let \_S\_ be ? ToString(\_O\_). 1. Let
+-- | \_isRegExp\_ be ? IsRegExp(\_searchString\_). 1. If \_isRegExp\_ is
+-- | \*true\*, throw a \*TypeError\* exception. 1. Let \_searchStr\_ be ?
+-- | ToString(\_searchString\_). 1. Let \_len\_ be the length of \_S\_. 1. If
+-- | \_position\_ is \*undefined\*, let \_pos\_ be 0; else let \_pos\_ be ?
+-- | ToIntegerOrInfinity(\_position\_). 1. Let \_start\_ be the result of
+-- | clamping \_pos\_ between 0 and \_len\_. 1. Let \_searchLength\_ be the
+-- | length of \_searchStr\_. 1. If \_searchLength\_ = 0, return \*true\*. 1.
+-- | Let \_end\_ be \_start\_ + \_searchLength\_. 1. If \_end\_ \> \_len\_,
+-- | return \*false\*. 1. Let \_substring\_ be the substring of \_S\_ from
+-- | \_start\_ to \_end\_. 1. If \_substring\_ is \_searchStr\_, return
+-- | \*true\*. 1. Return \*false\*.
+-- |
+-- | This method returns \*true\* if the sequence of code units of
+-- | \_searchString\_ converted to a String is the same as the corresponding
+-- | code units of this object (converted to a String) starting at index
+-- | \_position\_. Otherwise it returns \*false\*.
+-- |
+-- | Throwing an exception if the first argument is a RegExp is specified in
+-- | order to allow future editions to define extensions that allow such
+-- | argument values.
+-- |
+-- | This method is intentionally generic; it does not require that its
+-- | \*this\* value be a String object. Therefore, it can be transferred to
+-- | other kinds of objects for use as a method.
+-- SPEC: L29190-L29222
+-- | # String.prototype.substring ( \_start\_, \_end\_ )
+-- |
+-- | This method returns a substring of the result of converting this object
+-- | to a String, starting from index \_start\_ and running to, but not
+-- | including, index \_end\_ of the String (or through the end of the String
+-- | if \_end\_ is \*undefined\*). The result is a String value, not a String
+-- | object.
+-- |
+-- | If either argument is \*NaN\* or negative, it is replaced with zero; if
+-- | either argument is strictly greater than the length of the String, it is
+-- | replaced with the length of the String.
+-- |
+-- | If \_start\_ is strictly greater than \_end\_, they are swapped.
+-- |
+-- | It performs the following steps when called:
+-- |
+-- | 1\. Let \_O\_ be the \*this\* value. 1. Perform ?
+-- | RequireObjectCoercible(\_O\_). 1. Let \_S\_ be ? ToString(\_O\_). 1. Let
+-- | \_len\_ be the length of \_S\_. 1. Let \_intStart\_ be ?
+-- | ToIntegerOrInfinity(\_start\_). 1. If \_end\_ is \*undefined\*, let
+-- | \_intEnd\_ be \_len\_; else let \_intEnd\_ be ?
+-- | ToIntegerOrInfinity(\_end\_). 1. Let \_finalStart\_ be the result of
+-- | clamping \_intStart\_ between 0 and \_len\_. 1. Let \_finalEnd\_ be the
+-- | result of clamping \_intEnd\_ between 0 and \_len\_. 1. Let \_from\_ be
+-- | min(\_finalStart\_, \_finalEnd\_). 1. Let \_to\_ be max(\_finalStart\_,
+-- | \_finalEnd\_). 1. Return the substring of \_S\_ from \_from\_ to \_to\_.
+-- |
+-- | This method is intentionally generic; it does not require that its
+-- | \*this\* value be a String object. Therefore, it can be transferred to
+-- | other kinds of objects for use as a method.
+-- |
+-- | # String.prototype.toLocaleLowerCase ( \[ \_reserved1\_ \[ , \_reserved2\_ \] \] )
+-- |
+-- SPEC: L29269-L29283
+-- | # String.prototype.toLowerCase ( )
+-- |
+-- | This method interprets a String value as a sequence of UTF-16 encoded
+-- | code points, as described in .
+-- |
+-- | It performs the following steps when called:
+-- |
+-- | 1\. Let \_O\_ be the \*this\* value. 1. Perform ?
+-- | RequireObjectCoercible(\_O\_). 1. Let \_S\_ be ? ToString(\_O\_). 1. Let
+-- | \_sText\_ be StringToCodePoints(\_S\_). 1. Let \_lowerText\_ be
+-- | toLowercase(\_sText\_), according to the Unicode Default Case Conversion
+-- | algorithm. 1. Let \_L\_ be CodePointsToString(\_lowerText\_). 1. Return
+-- | \_L\_.
+-- |
+-- | The result must be derived according to the locale-insensitive case
+-- SPEC: L29302-L29310
+-- | # String.prototype.toString ( )
+-- |
+-- | This method performs the following steps when called:
+-- |
+-- | 1\. Return ? ThisStringValue(\*this\* value).
+-- |
+-- | For a String object, this method happens to return the same thing as the
+-- | \`valueOf\` method.
+-- SPEC: L29311-L29323
+-- | # String.prototype.toUpperCase ( )
+-- |
+-- | This method interprets a String value as a sequence of UTF-16 encoded
+-- | code points, as described in .
+-- |
+-- | It behaves in exactly the same way as \`String.prototype.toLowerCase\`,
+-- | except that the String is mapped using the toUppercase algorithm of the
+-- | Unicode Default Case Conversion.
+-- |
+-- | This method is intentionally generic; it does not require that its
+-- | \*this\* value be a String object. Therefore, it can be transferred to
+-- | other kinds of objects for use as a method.
+-- SPEC: L29343-L29376
+-- | # String.prototype.trim ( )
+-- |
+-- | This method interprets a String value as a sequence of UTF-16 encoded
+-- | code points, as described in .
+-- |
+-- | It performs the following steps when called:
+-- |
+-- | 1\. Let \_S\_ be the \*this\* value. 1. Return ? TrimString(\_S\_,
+-- | \~start+end\~).
+-- |
+-- | This method is intentionally generic; it does not require that its
+-- | \*this\* value be a String object. Therefore, it can be transferred to
+-- | other kinds of objects for use as a method.
+-- |
+-- | # TrimString ( \_string\_: an ECMAScript language value, \_where\_: \~start\~, \~end\~, or \~start+end\~, ): either a normal completion containing a String or a throw completion
+-- |
+-- | description
+-- | :   It interprets \_string\_ as a sequence of UTF-16 encoded code
+-- |     points, as described in .
+-- |
+-- | 1\. Perform ? RequireObjectCoercible(\_string\_). 1. Let \_S\_ be ?
+-- | ToString(\_string\_). 1. If \_where\_ is \~start\~, then 1. Let \_T\_ be
+-- | the String value that is a copy of \_S\_ with leading white space
+-- | removed. 1. Else if \_where\_ is \~end\~, then 1. Let \_T\_ be the
+-- | String value that is a copy of \_S\_ with trailing white space
+-- | removed. 1. Else, 1. Assert: \_where\_ is \~start+end\~. 1. Let \_T\_ be
+-- | the String value that is a copy of \_S\_ with both leading and trailing
+-- | white space removed. 1. Return \_T\_.
+-- |
+-- | The definition of white space is the union of \|WhiteSpace\| and
+-- | \|LineTerminator\|. When determining whether a Unicode code point is in
+-- | Unicode general category "Space_Separator" ("Zs"), code unit sequences
+-- | are interpreted as UTF-16 encoded code point sequences as specified in .
+-- SPEC: L29377-L29390
+-- | # String.prototype.trimEnd ( )
+-- |
+-- | This method interprets a String value as a sequence of UTF-16 encoded
+-- | code points, as described in .
+-- |
+-- | It performs the following steps when called:
+-- |
+-- | 1\. Let \_S\_ be the \*this\* value. 1. Return ? TrimString(\_S\_,
+-- | \~end\~).
+-- |
+-- | This method is intentionally generic; it does not require that its
+-- | \*this\* value be a String object. Therefore, it can be transferred to
+-- | other kinds of objects for use as a method.
+-- SPEC: L29391-L29404
+-- | # String.prototype.trimStart ( )
+-- |
+-- | This method interprets a String value as a sequence of UTF-16 encoded
+-- | code points, as described in .
+-- |
+-- | It performs the following steps when called:
+-- |
+-- | 1\. Let \_S\_ be the \*this\* value. 1. Return ? TrimString(\_S\_,
+-- | \~start\~).
+-- |
+-- | This method is intentionally generic; it does not require that its
+-- | \*this\* value be a String object. Therefore, it can be transferred to
+-- | other kinds of objects for use as a method.
+-- SPEC: L29405-L29413
+-- | # String.prototype.valueOf ( )
+-- |
+-- | This method performs the following steps when called:
+-- |
+-- | 1\. Return ? ThisStringValue(\*this\* value).
+-- |
+-- | # ThisStringValue ( \_value\_: an ECMAScript language value, ): either a normal completion containing a String or a throw completion
+-- |
+-- | 1\. If \_value\_ is a String, return \_value\_. 1. If \_value\_ is an
+-- SPEC: L27491-L27533
+-- | # Date ( \...\_values\_ )
+-- |
+-- | This function performs the following steps when called:
+-- |
+-- | 1\. If NewTarget is \*undefined\*, then 1. Let \_now\_ be the time value
+-- | (UTC) identifying the current time. 1. Return ToDateString(\_now\_). 1.
+-- | Let \_numberOfArgs\_ be the number of elements in \_values\_. 1. If
+-- | \_numberOfArgs\_ = 0, then 1. Let \_dv\_ be the time value (UTC)
+-- | identifying the current time. 1. Else if \_numberOfArgs\_ = 1, then 1.
+-- | Let \_value\_ be \_values\_\[0\]. 1. If \_value\_ is an Object and
+-- | \_value\_ has a \[\[DateValue\]\] internal slot, then 1. Let \_tv\_ be
+-- | \_value\_.\[\[DateValue\]\]. 1. Else, 1. Let \_v\_ be ?
+-- | ToPrimitive(\_value\_). 1. If \_v\_ is a String, then 1. Assert: The
+-- | next step never returns an abrupt completion because \_v\_ is a
+-- | String. 1. Let \_tv\_ be the result of parsing \_v\_ as a date, in
+-- | exactly the same manner as for the \`parse\` method (). 1. Else, 1. Let
+-- | \_tv\_ be ? ToNumber(\_v\_). 1. Let \_dv\_ be TimeClip(\_tv\_). 1.
+-- | Else, 1. Assert: \_numberOfArgs\_ ≥ 2. 1. Let \_y\_ be ?
+-- | ToNumber(\_values\_\[0\]). 1. Let \_m\_ be ?
+-- | ToNumber(\_values\_\[1\]). 1. If \_numberOfArgs\_ \> 2, let \_dt\_ be ?
+-- | ToNumber(\_values\_\[2\]); else let \_dt\_ be \*1\*~𝔽~. 1. If
+-- | \_numberOfArgs\_ \> 3, let \_h\_ be ? ToNumber(\_values\_\[3\]); else
+-- | let \_h\_ be \*+0\*~𝔽~. 1. If \_numberOfArgs\_ \> 4, let \_min\_ be ?
+-- | ToNumber(\_values\_\[4\]); else let \_min\_ be \*+0\*~𝔽~. 1. If
+-- | \_numberOfArgs\_ \> 5, let \_s\_ be ? ToNumber(\_values\_\[5\]); else
+-- | let \_s\_ be \*+0\*~𝔽~. 1. If \_numberOfArgs\_ \> 6, let \_milli\_ be ?
+-- | ToNumber(\_values\_\[6\]); else let \_milli\_ be \*+0\*~𝔽~. 1. Let
+-- | \_yr\_ be MakeFullYear(\_y\_). 1. Let \_finalDate\_ be
+-- | MakeDate(MakeDay(\_yr\_, \_m\_, \_dt\_), MakeTime(\_h\_, \_min\_, \_s\_,
+-- | \_milli\_)). 1. Let \_dv\_ be TimeClip(UTC(\_finalDate\_)). 1. Let \_O\_
+-- | be ? OrdinaryCreateFromConstructor(NewTarget, \*\"%Date.prototype%\"\*,
+-- | « \[\[DateValue\]\] »). 1. Set \_O\_.\[\[DateValue\]\] to \_dv\_. 1.
+-- | Return \_O\_.
+-- |
+-- | # Properties of the Date Constructor
+-- |
+-- | The Date constructor:
+-- |
+-- | - has a \[\[Prototype\]\] internal slot whose value is
+-- |   %Function.prototype%.
+-- | - has a \*\"length\"\* property whose value is \*7\*~𝔽~.
+-- | - has the following properties:
+-- SPEC: L27534-L27538
+-- | # Date.now ( )
+-- |
+-- | This function returns the time value designating the UTC date and time
+-- | of the occurrence of the call to it.
+-- SPEC: L35373-L35387
+-- | # Map Objects
+-- |
+-- | Maps are collections of key/value pairs where both the keys and values
+-- | may be arbitrary ECMAScript language values. A distinct key value may
+-- | only occur in one key/value pair within the Map\'s collection. Distinct
+-- | key values are discriminated using the semantics of the SameValueZero
+-- | comparison algorithm.
+-- |
+-- | Maps must be implemented using either hash tables or other mechanisms
+-- | that, on average, provide access times that are sublinear on the number
+-- | of elements in the collection. The data structure used in this
+-- | specification is only intended to describe the required observable
+-- | semantics of Maps. It is not intended to be a viable implementation
+-- | model.
+-- SPEC: L35388-L35399
+-- | # The Map Constructor
+-- |
+-- | The Map constructor:
+-- |
+-- | - is [%Map%]{.dfn}.
+-- | - is the initial value of the \*\"Map\"\* property of the global object.
+-- | - creates and initializes a new Map when called as a constructor.
+-- | - is not intended to be called as a function and will throw an exception
+-- |   when called in that manner.
+-- | - may be used as the value in an \`extends\` clause of a class
+-- |   definition. Subclass constructors that intend to inherit the specified
+-- |   Map behaviour must include a \`super\` call to the Map constructor to
+-- SPEC: L35510-L35527
+-- | # Map.prototype.clear ( )
+-- |
+-- | This method performs the following steps when called:
+-- |
+-- | 1\. Let \_M\_ be the \*this\* value. 1. Perform ?
+-- | RequireInternalSlot(\_M\_, \[\[MapData\]\]). 1. For each Record {
+-- | \[\[Key\]\], \[\[Value\]\] } \_p\_ of \_M\_.\[\[MapData\]\], do 1. Set
+-- | \_p\_.\[\[Key\]\] to \~empty\~. 1. Set \_p\_.\[\[Value\]\] to
+-- | \~empty\~. 1. Return \*undefined\*.
+-- |
+-- | The existing \[\[MapData\]\] List is preserved because there may be
+-- | existing Map Iterator objects that are suspended midway through
+-- | iterating over that List.
+-- |
+-- | # Map.prototype.constructor
+-- |
+-- | The initial value of \`Map.prototype.constructor\` is %Map%.
+-- SPEC: L35528-L35548
+-- | # Map.prototype.delete ( \_key\_ )
+-- |
+-- | This method performs the following steps when called:
+-- |
+-- | 1\. Let \_M\_ be the \*this\* value. 1. Perform ?
+-- | RequireInternalSlot(\_M\_, \[\[MapData\]\]). 1. Set \_key\_ to
+-- | CanonicalizeKeyedCollectionKey(\_key\_). 1. For each Record {
+-- | \[\[Key\]\], \[\[Value\]\] } \_p\_ of \_M\_.\[\[MapData\]\], do 1. If
+-- | \_p\_.\[\[Key\]\] is not \~empty\~ and SameValue(\_p\_.\[\[Key\]\],
+-- | \_key\_) is \*true\*, then 1. Set \_p\_.\[\[Key\]\] to \~empty\~. 1. Set
+-- | \_p\_.\[\[Value\]\] to \~empty\~. 1. Return \*true\*. 1. Return
+-- | \*false\*.
+-- |
+-- | The value \~empty\~ is used as a specification device to indicate that
+-- | an entry has been deleted. Actual implementations may take other actions
+-- | such as physically removing the entry from internal data structures.
+-- |
+-- | # Map.prototype.entries ( )
+-- |
+-- | This method performs the following steps when called:
+-- |
+-- SPEC: L35592-L35601
+-- | # Map.prototype.get ( \_key\_ )
+-- |
+-- | This method performs the following steps when called:
+-- |
+-- | 1\. Let \_M\_ be the \*this\* value. 1. Perform ?
+-- | RequireInternalSlot(\_M\_, \[\[MapData\]\]). 1. Set \_key\_ to
+-- | CanonicalizeKeyedCollectionKey(\_key\_). 1. For each Record {
+-- | \[\[Key\]\], \[\[Value\]\] } \_p\_ of \_M\_.\[\[MapData\]\], do 1. If
+-- | \_p\_.\[\[Key\]\] is not \~empty\~ and SameValue(\_p\_.\[\[Key\]\],
+-- | \_key\_) is \*true\*, return \_p\_.\[\[Value\]\]. 1. Return
+-- | \*undefined\*.
+-- SPEC: L35638-L35648
+-- | # Map.prototype.has ( \_key\_ )
+-- |
+-- | This method performs the following steps when called:
+-- |
+-- | 1\. Let \_M\_ be the \*this\* value. 1. Perform ?
+-- | RequireInternalSlot(\_M\_, \[\[MapData\]\]). 1. Set \_key\_ to
+-- | CanonicalizeKeyedCollectionKey(\_key\_). 1. For each Record {
+-- | \[\[Key\]\], \[\[Value\]\] } \_p\_ of \_M\_.\[\[MapData\]\], do 1. If
+-- | \_p\_.\[\[Key\]\] is not \~empty\~ and SameValue(\_p\_.\[\[Key\]\],
+-- | \_key\_) is \*true\*, return \*true\*. 1. Return \*false\*.
+-- SPEC: L35656-L35669
+-- | # Map.prototype.set ( \_key\_, \_value\_ )
+-- |
+-- | This method performs the following steps when called:
+-- |
+-- | 1\. Let \_M\_ be the \*this\* value. 1. Perform ?
+-- | RequireInternalSlot(\_M\_, \[\[MapData\]\]). 1. Set \_key\_ to
+-- | CanonicalizeKeyedCollectionKey(\_key\_). 1. For each Record {
+-- | \[\[Key\]\], \[\[Value\]\] } \_p\_ of \_M\_.\[\[MapData\]\], do 1. If
+-- | \_p\_.\[\[Key\]\] is not \~empty\~ and SameValue(\_p\_.\[\[Key\]\],
+-- | \_key\_) is \*true\*, then 1. Set \_p\_.\[\[Value\]\] to \_value\_. 1.
+-- | Return \_M\_. 1. Let \_p\_ be the Record { \[\[Key\]\]: \_key\_,
+-- | \[\[Value\]\]: \_value\_ }. 1. Append \_p\_ to \_M\_.\[\[MapData\]\]. 1.
+-- | Return \_M\_.
+-- SPEC: L35670-L35682
+-- | # get Map.prototype.size
+-- |
+-- | \`Map.prototype.size\` is an accessor property whose set accessor
+-- | function is \*undefined\*. Its get accessor function performs the
+-- | following steps when called:
+-- |
+-- | 1\. Let \_M\_ be the \*this\* value. 1. Perform ?
+-- | RequireInternalSlot(\_M\_, \[\[MapData\]\]). 1. Let \_count\_ be 0. 1.
+-- | For each Record { \[\[Key\]\], \[\[Value\]\] } \_p\_ of
+-- | \_M\_.\[\[MapData\]\], do 1. If \_p\_.\[\[Key\]\] is not \~empty\~, set
+-- | \_count\_ to \_count\_ + 1. 1. Return 𝔽(\_count\_).
+-- SPEC: L35766-L35785
+-- | # Set Objects
+-- |
+-- | [Set objects]{.dfn variants="Set object"} are collections of ECMAScript
+-- | language values. A Set may contain each distinct value at most once.
+-- | Distinct values are discriminated using the semantics of the
+-- | SameValueZero comparison algorithm.
+-- |
+-- | Set objects must be implemented using either hash tables or other
+-- | mechanisms that, on average, provide access times that are sublinear on
+-- | the number of elements in the collection. The data structure used in
+-- | this specification is only intended to describe the required observable
+-- | semantics of Set objects. It is not intended to be a viable
+-- | implementation model.
+-- |
+-- | # Abstract Operations For Set Objects
+-- |
+-- | # Set Records
+-- |
+-- | A [Set Record]{.dfn variants="Set Records"} is a Record value used to
+-- | encapsulate the interface of a Set or similar object.
+-- SPEC: L35905-L35915
+-- | # Set.prototype.add ( \_value\_ )
+-- |
+-- | This method performs the following steps when called:
+-- |
+-- | 1\. Let \_S\_ be the \*this\* value. 1. Perform ?
+-- | RequireInternalSlot(\_S\_, \[\[SetData\]\]). 1. Set \_value\_ to
+-- | CanonicalizeKeyedCollectionKey(\_value\_). 1. For each element \_e\_ of
+-- | \_S\_.\[\[SetData\]\], do 1. If \_e\_ is not \~empty\~ and
+-- | SameValue(\_e\_, \_value\_) is \*true\*, then 1. Return \_S\_. 1. Append
+-- | \_value\_ to \_S\_.\[\[SetData\]\]. 1. Return \_S\_.
+-- SPEC: L35916-L35935
+-- | # Set.prototype.clear ( )
+-- |
+-- | This method performs the following steps when called:
+-- |
+-- | 1\. Let \_S\_ be the \*this\* value. 1. Perform ?
+-- | RequireInternalSlot(\_S\_, \[\[SetData\]\]). 1. For each element \_e\_
+-- | of \_S\_.\[\[SetData\]\], do 1. Replace the element of
+-- | \_S\_.\[\[SetData\]\] whose value is \_e\_ with an element whose value
+-- | is \~empty\~. 1. Return \*undefined\*.
+-- |
+-- | The existing \[\[SetData\]\] List is preserved because there may be
+-- | existing Set Iterator objects that are suspended midway through
+-- | iterating over that List.
+-- |
+-- | # Set.prototype.constructor
+-- |
+-- | The initial value of \`Set.prototype.constructor\` is %Set%.
+-- |
+-- | # Set.prototype.delete ( \_value\_ )
+-- SPEC: L36034-L36044
+-- | # Set.prototype.has ( \_value\_ )
+-- |
+-- | This method performs the following steps when called:
+-- |
+-- | 1\. Let \_S\_ be the \*this\* value. 1. Perform ?
+-- | RequireInternalSlot(\_S\_, \[\[SetData\]\]). 1. Set \_value\_ to
+-- | CanonicalizeKeyedCollectionKey(\_value\_). 1. For each element \_e\_ of
+-- | \_S\_.\[\[SetData\]\], do 1. If \_e\_ is not \~empty\~ and
+-- | SameValue(\_e\_, \_value\_) is \*true\*, return \*true\*. 1. Return
+-- | \*false\*.
+-- SPEC: L38748-L38771
+-- | # The JSON Object
+-- |
+-- | The JSON object:
+-- |
+-- | - is [%JSON%]{.dfn}.
+-- | - is the initial value of the \*\"JSON\"\* property of the global
+-- |   object.
+-- | - is an ordinary object.
+-- | - contains two functions, \`parse\` and \`stringify\`, that are used to
+-- |   parse and construct JSON texts.
+-- | - has a \[\[Prototype\]\] internal slot whose value is
+-- |   %Object.prototype%.
+-- | - does not have a \[\[Construct\]\] internal method; it cannot be used
+-- |   as a constructor with the \`new\` operator.
+-- | - does not have a \[\[Call\]\] internal method; it cannot be invoked as
+-- |   a function.
+-- |
+-- | The JSON Data Interchange Format is defined in ECMA-404. The JSON
+-- | interchange format used in this specification is exactly that described
+-- | by ECMA-404. Conforming implementations of \`JSON.parse\` and
+-- | \`JSON.stringify\` must support the exact interchange format described
+-- | in the ECMA-404 specification without any deletions or extensions to the
+-- | format.
+-- SPEC: L38772-L38799
+-- | # JSON.parse ( \_text\_ \[ , \_reviver\_ \] )
+-- |
+-- | This function parses a JSON text (a JSON-formatted String) and produces
+-- | an ECMAScript language value. The JSON format represents literals,
+-- | arrays, and objects with a syntax similar to the syntax for ECMAScript
+-- | literals, Array Initializers, and Object Initializers. After parsing,
+-- | JSON objects are realized as ECMAScript objects. JSON arrays are
+-- | realized as ECMAScript Array instances. JSON strings, numbers, booleans,
+-- | and null are realized as ECMAScript Strings, Numbers, Booleans, and
+-- | \*null\*.
+-- |
+-- | The optional \_reviver\_ parameter is a function that takes two
+-- | parameters, \_key\_ and \_value\_. It can filter and transform the
+-- | results. It is called with each of the \_key\_/\_value\_ pairs produced
+-- | by the parse, and its return value is used instead of the original
+-- | value. If it returns what it received, the structure is not modified. If
+-- | it returns \*undefined\* then the property is deleted from the result.
+-- |
+-- | 1\. Let \_jsonString\_ be ? ToString(\_text\_). 1. Let \_unfiltered\_ be
+-- | ? ParseJSON(\_jsonString\_). 1. If IsCallable(\_reviver\_) is \*false\*,
+-- | return \_unfiltered\_. 1. Let \_root\_ be
+-- | OrdinaryObjectCreate(%Object.prototype%). 1. Let \_rootName\_ be the
+-- | empty String. 1. Perform ! CreateDataPropertyOrThrow(\_root\_,
+-- | \_rootName\_, \_unfiltered\_). 1. Return ?
+-- | InternalizeJSONProperty(\_root\_, \_rootName\_, \_reviver\_).
+-- |
+-- | The \*\"length\"\* property of this function is \*2\*~𝔽~.
+-- SPEC: L38862-L38880
+-- | # JSON.stringify ( \_value\_ \[ , \_replacer\_ \[ , \_space\_ \] \] )
+-- |
+-- | This function returns a String in UTF-16 encoded JSON format
+-- | representing an ECMAScript language value, or \*undefined\*. It can take
+-- | three parameters. The \_value\_ parameter is an ECMAScript language
+-- | value, which is usually an object or array, although it can also be a
+-- | String, Boolean, Number or \*null\*. The optional \_replacer\_ parameter
+-- | is either a function that alters the way objects and arrays are
+-- | stringified, or an array of Strings and Numbers that acts as an
+-- | inclusion list for selecting the object properties that will be
+-- | stringified. The optional \_space\_ parameter is a String or Number that
+-- | allows the result to be formatted with whitespace and indentation to
+-- | make it easier to read.
+-- |
+-- | Non-object property values are stringified as follows: Strings are
+-- | output with each instance of the code points 0x0008 (BACKSPACE), 0x000C
+-- | (FORM FEED), 0x000A (LINE FEED), 0x000D (CARRIAGE RETURN), 0x0009
+-- | (CHARACTER TABULATION), 0x0022 (QUOTATION MARK), and 0x005C (REVERSE
+-- | SOLIDUS) replaced with the corresponding escape sequence. Code points
+-- SPEC: L40577-L40596
+-- | # The Promise Constructor
+-- |
+-- | The Promise constructor:
+-- |
+-- | - is [%Promise%]{.dfn}.
+-- | - is the initial value of the \*\"Promise\"\* property of the global
+-- |   object.
+-- | - creates and initializes a new Promise when called as a constructor.
+-- | - is not intended to be called as a function and will throw an exception
+-- |   when called in that manner.
+-- | - may be used as the value in an \`extends\` clause of a class
+-- |   definition. Subclass constructors that intend to inherit the specified
+-- |   Promise behaviour must include a \`super\` call to the Promise
+-- |   constructor to create and initialize the subclass instance with the
+-- |   internal state necessary to support the \`Promise\` and
+-- |   \`Promise.prototype\` built-in methods.
+-- |
+-- | # Promise ( \_executor\_ )
+-- |
+-- | This function performs the following steps when called:
+-- SPEC: L40597-L40653
+-- | 1\. If NewTarget is \*undefined\*, throw a \*TypeError\* exception. 1.
+-- | If IsCallable(\_executor\_) is \*false\*, throw a \*TypeError\*
+-- | exception. 1. Let \_promise\_ be ?
+-- | OrdinaryCreateFromConstructor(NewTarget, \*\"%Promise.prototype%\"\*, «
+-- | \[\[PromiseState\]\], \[\[PromiseResult\]\],
+-- | \[\[PromiseFulfillReactions\]\], \[\[PromiseRejectReactions\]\],
+-- | \[\[PromiseIsHandled\]\] »). 1. Set \_promise\_.\[\[PromiseState\]\] to
+-- | \~pending\~. 1. Set \_promise\_.\[\[PromiseResult\]\] to \~empty\~. 1.
+-- | Set \_promise\_.\[\[PromiseFulfillReactions\]\] to a new empty List. 1.
+-- | Set \_promise\_.\[\[PromiseRejectReactions\]\] to a new empty List. 1.
+-- | Set \_promise\_.\[\[PromiseIsHandled\]\] to \*false\*. 1. Let
+-- | \_resolvingFunctions\_ be CreateResolvingFunctions(\_promise\_). 1. Let
+-- | \_completion\_ be Completion(Call(\_executor\_, \*undefined\*, «
+-- | \_resolvingFunctions\_.\[\[Resolve\]\],
+-- | \_resolvingFunctions\_.\[\[Reject\]\] »)). 1. If \_completion\_ is an
+-- | abrupt completion, then 1. Perform ?
+-- | Call(\_resolvingFunctions\_.\[\[Reject\]\], \*undefined\*, «
+-- | \_completion\_.\[\[Value\]\] »). 1. Return \_promise\_.
+-- |
+-- | The \_executor\_ argument must be a function object. It is called for
+-- | initiating and reporting completion of the possibly deferred action
+-- | represented by this Promise. The executor is called with two arguments:
+-- | \_resolve\_ and \_reject\_. These are functions that may be used by the
+-- | \_executor\_ function to report eventual completion or failure of the
+-- | deferred computation. Returning from the executor function does not mean
+-- | that the deferred action has been completed but only that the request to
+-- | eventually perform the deferred action has been accepted.
+-- |
+-- | The \_resolve\_ function that is passed to an \_executor\_ function
+-- | accepts a single argument. The \_executor\_ code may eventually call the
+-- | \_resolve\_ function to indicate that it wishes to resolve the
+-- | associated Promise. The argument passed to the \_resolve\_ function
+-- | represents the eventual value of the deferred action and can be either
+-- | the actual fulfillment value or another promise which will provide the
+-- | value if it is fulfilled.
+-- |
+-- | The \_reject\_ function that is passed to an \_executor\_ function
+-- | accepts a single argument. The \_executor\_ code may eventually call the
+-- | \_reject\_ function to indicate that the associated Promise is rejected
+-- | and will never be fulfilled. The argument passed to the \_reject\_
+-- | function is used as the rejection value of the promise. Typically it
+-- | will be an Error object.
+-- |
+-- | The resolve and reject functions passed to an \_executor\_ function by
+-- | the Promise constructor have the capability to actually resolve and
+-- | reject the associated promise. Subclasses may have different constructor
+-- | behaviour that passes in customized values for resolve and reject.
+-- |
+-- | # Properties of the Promise Constructor
+-- |
+-- | The Promise constructor:
+-- |
+-- | - has a \[\[Prototype\]\] internal slot whose value is
+-- |   %Function.prototype%.
+-- | - has the following properties:
+-- SPEC: L40654-L40669
+-- | # Promise.all ( \_iterable\_ )
+-- |
+-- | This function returns a new promise which is fulfilled with an array of
+-- | fulfillment values for the passed promises, or rejects with the reason
+-- | of the first passed promise that rejects. It resolves all elements of
+-- | the passed iterable to promises as it runs this algorithm.
+-- |
+-- | 1\. Let \_C\_ be the \*this\* value. 1. Let \_promiseCapability\_ be ?
+-- | NewPromiseCapability(\_C\_). 1. Let \_promiseResolve\_ be
+-- | Completion(GetPromiseResolve(\_C\_)). 1.
+-- | IfAbruptRejectPromise(\_promiseResolve\_, \_promiseCapability\_). 1. Let
+-- | \_iteratorRecord\_ be Completion(GetIterator(\_iterable\_,
+-- | \~sync\~)). 1. IfAbruptRejectPromise(\_iteratorRecord\_,
+-- | \_promiseCapability\_). 1. Let \_result\_ be
+-- | Completion(PerformPromiseAll(\_iteratorRecord\_, \_C\_,
+-- | \_promiseCapability\_, \_promiseResolve\_)). 1. If \_result\_ is an
+-- SPEC: L40725-L40742
+-- | # Promise.allSettled ( \_iterable\_ )
+-- |
+-- | This function returns a promise that is fulfilled with an array of
+-- | promise state snapshots, but only after all the original promises have
+-- | settled, i.e. become either fulfilled or rejected. It resolves all
+-- | elements of the passed iterable to promises as it runs this algorithm.
+-- |
+-- | 1\. Let \_C\_ be the \*this\* value. 1. Let \_promiseCapability\_ be ?
+-- | NewPromiseCapability(\_C\_). 1. Let \_promiseResolve\_ be
+-- | Completion(GetPromiseResolve(\_C\_)). 1.
+-- | IfAbruptRejectPromise(\_promiseResolve\_, \_promiseCapability\_). 1. Let
+-- | \_iteratorRecord\_ be Completion(GetIterator(\_iterable\_,
+-- | \~sync\~)). 1. IfAbruptRejectPromise(\_iteratorRecord\_,
+-- | \_promiseCapability\_). 1. Let \_result\_ be
+-- | Completion(PerformPromiseAllSettled(\_iteratorRecord\_, \_C\_,
+-- | \_promiseCapability\_, \_promiseResolve\_)). 1. If \_result\_ is an
+-- | abrupt completion, then 1. If \_iteratorRecord\_.\[\[Done\]\] is
+-- SPEC: L40898-L40936
+-- | # Promise.race ( \_iterable\_ )
+-- |
+-- | This function returns a new promise which is settled in the same way as
+-- | the first passed promise to settle. It resolves all elements of the
+-- | passed \_iterable\_ to promises as it runs this algorithm.
+-- |
+-- | 1\. Let \_C\_ be the \*this\* value. 1. Let \_promiseCapability\_ be ?
+-- | NewPromiseCapability(\_C\_). 1. Let \_promiseResolve\_ be
+-- | Completion(GetPromiseResolve(\_C\_)). 1.
+-- | IfAbruptRejectPromise(\_promiseResolve\_, \_promiseCapability\_). 1. Let
+-- | \_iteratorRecord\_ be Completion(GetIterator(\_iterable\_,
+-- | \~sync\~)). 1. IfAbruptRejectPromise(\_iteratorRecord\_,
+-- | \_promiseCapability\_). 1. Let \_result\_ be
+-- | Completion(PerformPromiseRace(\_iteratorRecord\_, \_C\_,
+-- | \_promiseCapability\_, \_promiseResolve\_)). 1. If \_result\_ is an
+-- | abrupt completion, then 1. If \_iteratorRecord\_.\[\[Done\]\] is
+-- | \*false\*, set \_result\_ to
+-- | Completion(IteratorClose(\_iteratorRecord\_, \_result\_)). 1.
+-- | IfAbruptRejectPromise(\_result\_, \_promiseCapability\_). 1. Return !
+-- | \_result\_.
+-- |
+-- | If the \_iterable\_ argument yields no values or if none of the promises
+-- | yielded by \_iterable\_ ever settle, then the pending promise returned
+-- | by this method will never be settled.
+-- |
+-- | This function expects its \*this\* value to be a constructor function
+-- | that supports the parameter conventions of the Promise constructor. It
+-- | also expects that its \*this\* value provides a \`resolve\` method.
+-- |
+-- | # PerformPromiseRace ( \_iteratorRecord\_: an Iterator Record, \_constructor\_: a constructor, \_resultCapability\_: a PromiseCapability Record, \_promiseResolve\_: a function object, ): either a normal completion containing an ECMAScript language value or a throw completion
+-- |
+-- | 1\. Repeat, 1. Let \_next\_ be ?
+-- | IteratorStepValue(\_iteratorRecord\_). 1. If \_next\_ is \~done\~,
+-- | then 1. Return \_resultCapability\_.\[\[Promise\]\]. 1. Let
+-- | \_nextPromise\_ be ? Call(\_promiseResolve\_, \_constructor\_, «
+-- | \_next\_ »). 1. Perform ? Invoke(\_nextPromise\_, \*\"then\"\*, «
+-- | \_resultCapability\_.\[\[Resolve\]\],
+-- | \_resultCapability\_.\[\[Reject\]\] »).
+-- SPEC: L40937-L40948
+-- | # Promise.reject ( \_r\_ )
+-- |
+-- | This function returns a new promise rejected with the passed argument.
+-- |
+-- | 1\. Let \_C\_ be the \*this\* value. 1. Let \_promiseCapability\_ be ?
+-- | NewPromiseCapability(\_C\_). 1. Perform ?
+-- | Call(\_promiseCapability\_.\[\[Reject\]\], \*undefined\*, « \_r\_ »). 1.
+-- | Return \_promiseCapability\_.\[\[Promise\]\].
+-- |
+-- | This function expects its \*this\* value to be a constructor function
+-- | that supports the parameter conventions of the Promise constructor.
+-- SPEC: L40949-L40964
+-- | # Promise.resolve ( \_x\_ )
+-- |
+-- | This function returns either a new promise resolved with the passed
+-- | argument, or the argument itself if the argument is a promise produced
+-- | by this constructor.
+-- |
+-- | 1\. Let \_C\_ be the \*this\* value. 1. If \_C\_ is not an Object, throw
+-- | a \*TypeError\* exception. 1. Return ? PromiseResolve(\_C\_, \_x\_).
+-- |
+-- | This function expects its \*this\* value to be a constructor function
+-- | that supports the parameter conventions of the Promise constructor.
+-- |
+-- | # PromiseResolve ( \_C\_: an Object, \_x\_: an ECMAScript language value, ): either a normal completion containing an ECMAScript language value or a throw completion
+-- |
+-- | description
+-- | :   It returns a new promise resolved with \_x\_.
+-- SPEC: L41034-L41044
+-- | # Promise.prototype.catch ( \_onRejected\_ )
+-- |
+-- | This method performs the following steps when called:
+-- |
+-- | 1\. Let \_promise\_ be the \*this\* value. 1. Return ?
+-- | Invoke(\_promise\_, \*\"then\"\*, « \*undefined\*, \_onRejected\_ »).
+-- |
+-- | # Promise.prototype.constructor
+-- |
+-- | The initial value of \`Promise.prototype.constructor\` is %Promise%.
+-- SPEC: L41078-L41089
+-- | # Promise.prototype.then ( \_onFulfilled\_, \_onRejected\_ )
+-- |
+-- | This method performs the following steps when called:
+-- |
+-- | 1\. Let \_promise\_ be the \*this\* value. 1. If IsPromise(\_promise\_)
+-- | is \*false\*, throw a \*TypeError\* exception. 1. Let \_C\_ be ?
+-- | SpeciesConstructor(\_promise\_, %Promise%). 1. Let \_resultCapability\_
+-- | be ? NewPromiseCapability(\_C\_). 1. Return
+-- | PerformPromiseThen(\_promise\_, \_onFulfilled\_, \_onRejected\_,
+-- | \_resultCapability\_).
 
 end VerifiedJS.Source
