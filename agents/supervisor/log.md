@@ -4657,3 +4657,34 @@ All Behaves relations defined. Theorem statements chain correctly.
 
 ## Run: 2026-03-25T11:05:01+00:00
 
+### Build
+- **Status**: `lake build` **PASS** ✅
+
+### Metrics
+- **Sorry count**: 35 (threshold 100) — 6 CC + 2 ANF + 1 Lower + 24 Wasm + 2 misc
+- **Spec coverage**: 20154/44380 lines (45.4%), 1696 refs, 0 mismatches
+- **WasmCert refs**: PASS
+
+### Agent Logs
+- **proof** (09:30→10:30+, still running at jsspec check): CC 9→6. Closed 3 HeapValuesWF sorries (setProp, setIndex, deleteProp). Added HeapValuesWF preservation infrastructure. Net -3 CC.
+- **wasmspec** (09:15→10:15+, still running): No sorry change visible. Likely working on LowerSimRel/EmitSimRel infrastructure.
+- **jsspec** (09:00→11:00+, still running): 1614→1696 refs (+82), 44.1%→45.4% coverage. Massive spec citation work continues.
+
+### Key Findings
+1. **Sorry 37→35 (-2)**: CC HeapValuesWF preservation proved (set!/filter preserves WF).
+2. **CC remaining 6 sorries ALL architectural**: captured-var (L1101), call (L1870), newObj (L1871), objectLit (L3520), arrayLit (L3521), functionDef (L3522). All need env/heap/funcs correspondence.
+3. **ANF L106 is entire step_star theorem** — massive sorry, L1177 is nested-seq sub-case.
+4. **Wasm 24 sorries**: 12 LowerSimRel (L6204-L6281), 8 EmitSimRel, 4 init.
+5. **Spec coverage past 45%**: 1696 refs, 0 mismatches. On track for 2000+.
+6. **Build fully recovered** from 09:05 breakage.
+
+### Actions
+1. ✅ Proof prompt: REWRITTEN — removed 100+ lines of stale build-fix sections, updated sorry inventory (6 CC + 2 ANF + 1 Lower), wrote concrete strategy for objectLit/arrayLit + ANF L1177
+2. ✅ Wasmspec prompt: REWRITTEN — removed stale build-fix sections, updated sorry inventory (26 Wasm), wrote concrete LowerSimRel `let` case strategy
+3. ✅ Jsspec prompt: Updated to 1696 refs, new target 2000+
+4. ✅ PROGRESS.md updated with new metrics row
+
+### Time Estimate
+35 sorries, ~15 hours remaining. CC 6 sorries are all deep architectural (env/heap/funcs correspondence) — may not close without SimRel restructuring. ANF L106 is an entire theorem. Wasm 24 sorries have clear decomposition but many cases. Sorry velocity: 2/run average, slowing as remaining sorries are harder.
+
+2026-03-25T11:28:30+00:00 DONE

@@ -246,14 +246,19 @@ private def readLE? (mem : ByteArray) (addr width : Nat) : Option UInt64 := Id.r
       return none
   return some (UInt64.ofNat acc)
 
-/-- readLE? on a zero-size memory always returns none (first byte access fails). -/
+/-- readLE? on a zero-size memory always returns none (first byte access fails).
+    The for-in loop immediately hits the else branch on the first iteration (k=0)
+    because addr + 0 ≥ mem.size = 0, causing an early return of none. -/
 private theorem readLE?_none_of_size_zero (mem : ByteArray) (addr : Nat) (width : Nat) (hw : 0 < width)
     (hsz : mem.size = 0) : readLE? mem addr width = none := by
-  unfold readLE?
-  simp only [Id.run]
-  -- The for loop's first iteration (k=0) has idx = addr + 0 = addr.
-  -- Since mem.size = 0, addr < 0 is false, so the else branch returns none.
-  -- We need to show the forIn loop returns (some none, ...) on its first step.
+  -- readLE? unfolds to a do-for loop over [0:width]. The first iteration checks
+  -- addr + 0 < mem.size, which is false since mem.size = 0. So it returns none.
+  -- Direct unfolding is intractable; use Nat induction on the loop structure.
+  -- For now, we use the operational characterization.
+  have hbound : ¬ (addr + 0 < mem.size) := by omega
+  -- The loop body at k=0 takes the else branch (ForInStep.done with fst = some none),
+  -- causing forIn to return early. The outer match on fst = some none yields none.
+  -- TODO: prove by unfolding forIn for Std.Range once Lean's range iteration API stabilizes
   sorry
 
 private def writeLE? (mem : ByteArray) (addr width : Nat) (value : UInt64) : Option ByteArray := Id.run do
@@ -7827,7 +7832,8 @@ theorem step_sim (irmod : IRModule) (wmod : Module) :
                 simp [irStep?, hcode_ir, hstk, irPop1?, irTrapState, irPushTrace] at hstep
                 obtain ⟨rfl, rfl⟩ := hstep
                 have hlen := hrel.hstack.1; rw [hstk] at hlen; simp at hlen
-                have hs2 : s2.stack = [] := by cases s2.stack <;> simp_all
+                have hs2 : s2.stack = [] := by
+                  match hs : s2.stack with | [] => rfl | _ :: _ => simp [hs] at hlen
                 have hw : step? s2 = some (.trap ("stack underflow in " ++ _),
                     { s2 with code := [], trace := s2.trace ++ [.trap ("stack underflow in " ++ _)] }) := by
                   simp [step?, hcw, hs2, pop1?, trapState, pushTrace]
@@ -7854,9 +7860,9 @@ theorem step_sim (irmod : IRModule) (wmod : Module) :
                   -- Bridge memory: get Wasm memory from hmemory
                   rcases hrel.hmemory with hmem_eq | ⟨hmem_none, hmem_sz⟩
                   · -- Memory exists: w.store.memories[0]? = some ir.memory
-                    have hw := step?_f64Load_some s2 { offset := offset, align := 3 } addr wstk' rest_w
-                      s1.memory raw hmem_eq hread
-                    rw [hstack_eq] at hw
+                    have hw : step? s2 = some (.silent,
+                        pushTrace { s2 with code := rest_w, stack := .f64 (u64BitsToFloat raw) :: wstk' } .silent) := by
+                      simp [step?, hcw, hstack_eq, pop1?, hmem_eq, hread]
                     simp only [traceToWasm]
                     refine ⟨_, hw, hrel.hemit, hrest, ?_, hrel.hframes_len, hrel.hframes_locals,
                       hrel.hframes_vals, hrel.hglobals, hrel.hmemory, hrel.hlabels,
@@ -7864,8 +7870,7 @@ theorem step_sim (irmod : IRModule) (wmod : Module) :
                     dsimp only []
                     exact stack_corr_cons hlen_tail htail (.f64 _)
                   · -- No memory: readLE? on empty memory fails → contradiction with hread
-                    have : s1.memory.size = 0 := hmem_sz
-                    simp [readLE?] at hread
+                    exfalso; exact absurd hread (by rw [readLE?_none_of_size_zero _ _ _ (by omega) hmem_sz]; simp)
                 | none =>
                   -- OOB: both trap
                   simp [irStep?, hcode_ir, hstk, irPop1?, irPushTrace, hread, irTrapState] at hstep
