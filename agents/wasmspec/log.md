@@ -1,4 +1,33 @@
 
+## Run: 2026-03-25T01:15:01+00:00
+
+### Closed 2 EmitSimRel sorries: empty code label-pop + return_
+
+**Build**: PASS ✅
+
+**Changes** (VerifiedJS/Wasm/Semantics.lean):
+
+1. **Added `hlabel_content` field to EmitSimRel**: Per-position label content correspondence — for each label stack index, the IR and Wasm labels have corresponding `onExit` code via `EmitCodeCorr`. Updated all 31 construction sites (init + 30 step_sim cases). Block/loop/if_ cases prove the new pushed label's onExit = rest corresponds via `hrest`.
+
+2. **Added `hframes_one` field to EmitSimRel**: Constrains IR frames to exactly 1 (top-level). This is true at init and maintained by all proved cases (frames only change at call/return_, both previously sorry'd). Updated all 31 construction sites.
+
+3. **Closed empty code label-pop case (was L7004)**: When `s1.code = []`, case-split on labels:
+   - Labels non-empty: both sides pop label and continue with `onExit`. Uses `hlabel_content` to get `EmitCodeCorr irLbl.onExit wLbl.onExit`. Constructs post-step EmitSimRel with shifted label content.
+   - Labels empty: derive `s1.halted` from `hframes_one` (code=[], labels=[], frames ≤ 1), then contradiction with `hstep : irStep? s1 = some (...)`.
+
+4. **Closed return_ case (was L8285)**: With `hframes_one`, derive `s1.frames = [frame]`. Apply `irStep?_eq_return_toplevel` (IR: code=[], labels=[]) and `step?_eq_return` (Wasm: code=[], labels=[]). Both produce `.silent`. Post-step EmitSimRel has nil code, empty labels, rest preserved.
+
+**Sorry count**: 28 in Wasm/Semantics.lean (was 30 at session start, -2 net).
+
+**Remaining EmitSimRel sorries (10)**:
+- L6887: `emit_globals_init_valcorr` — blocked on `irTypeToValType` being private in Emit.lean (read-only)
+- L7592/7595/7598: load/store/store8 — need to bridge IR's byte-by-byte memory access to Wasm's `readLE?`/`writeLE?`
+- L8039/8042: call/callIndirect — need function table correspondence
+- L8279/8282: br/brIf — need label name→index resolution bridge (irFindLabel? ↔ resolveBranch?)
+- L8389: memoryGrow — need memory grow correspondence
+
+**Remaining LowerSimRel sorries (17)**: Unchanged. All blocked on missing label/frame invariants in LowerSimRel.
+
 ## Run: 2026-03-24T22:30:03+00:00
 
 ### Closed binOp type mismatch sorries; added hmemory to EmitSimRel
@@ -1966,3 +1995,4 @@ test_write
 
 ## Run: 2026-03-25T01:15:01+00:00
 
+2026-03-25T02:07:17+00:00 DONE

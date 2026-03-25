@@ -14594,4 +14594,977 @@ theorem elaborate_correct (p : Source.Program) (cp : Core.Program)
 -- |
 -- | # PerformPromiseThen ( \_promise\_: a Promise, \_onFulfilled\_: an ECMAScript language value, \_onRejected\_: an ECMAScript language value, optional \_resultCapability\_: a PromiseCapability Record, ): an ECMAScript language value
 
+-- ============================================================
+-- Boolean Objects
+-- ============================================================
+-- SPEC: L24667-L24668
+-- | # Boolean Objects
+-- SPEC: L24669-L24685
+-- | # The Boolean Constructor
+-- |
+-- | The Boolean constructor:
+-- |
+-- | - is [%Boolean%]{.dfn}.
+-- | - is the initial value of the \*\"Boolean\"\* property of the global
+-- |   object.
+-- | - creates and initializes a new Boolean object when called as a
+-- |   constructor.
+-- | - performs a type conversion when called as a function rather than as a
+-- |   constructor.
+-- | - may be used as the value of an \`extends\` clause of a class
+-- |   definition. Subclass constructors that intend to inherit the specified
+-- |   Boolean behaviour must include a \`super\` call to the Boolean
+-- |   constructor to create and initialize the subclass instance with a
+-- |   \[\[BooleanData\]\] internal slot.
+-- SPEC: L24686-L24694
+-- | # Boolean ( \_value\_ )
+-- |
+-- | This function performs the following steps when called:
+-- |
+-- | 1\. Let \_b\_ be ToBoolean(\_value\_). 1. If NewTarget is \*undefined\*,
+-- | return \_b\_. 1. Let \_O\_ be ? OrdinaryCreateFromConstructor(NewTarget,
+-- | \*\"%Boolean.prototype%\"\*, « \[\[BooleanData\]\] »). 1. Set
+-- | \_O\_.\[\[BooleanData\]\] to \_b\_. 1. Return \_O\_.
+-- SPEC: L24711-L24721
+-- | # Properties of the Boolean Prototype Object
+-- |
+-- | The [Boolean prototype object]{.dfn}:
+-- |
+-- | - is [%Boolean.prototype%]{.dfn}.
+-- | - is an ordinary object.
+-- | - is itself a Boolean object; it has a \[\[BooleanData\]\] internal slot
+-- |   with the value \*false\*.
+-- | - has a \[\[Prototype\]\] internal slot whose value is
+-- |   %Object.prototype%.
+-- SPEC: L24726-L24732
+-- | # Boolean.prototype.toString ( )
+-- |
+-- | This method performs the following steps when called:
+-- |
+-- | 1\. Let \_b\_ be ? ThisBooleanValue(\*this\* value). 1. If \_b\_ is
+-- | \*true\*, return \*\"true\"\*. 1. Return \*\"false\"\*.
+-- SPEC: L24733-L24738
+-- | # Boolean.prototype.valueOf ( )
+-- |
+-- | This method performs the following steps when called:
+-- |
+-- | 1\. Return ? ThisBooleanValue(\*this\* value).
+-- SPEC: L24739-L24745
+-- | # ThisBooleanValue ( \_value\_: an ECMAScript language value, ): either a normal completion containing a Boolean or a throw completion
+-- |
+-- | 1\. If \_value\_ is a Boolean, return \_value\_. 1. If \_value\_ is an
+-- | Object and \_value\_ has a \[\[BooleanData\]\] internal slot, then 1.
+-- | Let \_b\_ be \_value\_.\[\[BooleanData\]\]. 1. Assert: \_b\_ is a
+-- | Boolean. 1. Return \_b\_. 1. Throw a \*TypeError\* exception.
+
+-- ============================================================
+-- Symbol Objects
+-- ============================================================
+-- SPEC: L24753-L24754
+-- | # Symbol Objects
+-- SPEC: L24755-L24767
+-- | # The Symbol Constructor
+-- |
+-- | The Symbol constructor:
+-- |
+-- | - is [%Symbol%]{.dfn}.
+-- | - is the initial value of the \*\"Symbol\"\* property of the global
+-- |   object.
+-- | - returns a new Symbol value when called as a function.
+-- | - is not intended to be used with the \`new\` operator.
+-- | - is not intended to be subclassed.
+-- | - may be used as the value of an \`extends\` clause of a class
+-- |   definition but a \`super\` call to it will cause an exception.
+-- SPEC: L24768-L24777
+-- | # Symbol ( \[ \_description\_ \] )
+-- |
+-- | This function performs the following steps when called:
+-- |
+-- | 1\. If NewTarget is not \*undefined\*, throw a \*TypeError\*
+-- | exception. 1. If \_description\_ is \*undefined\*, let \_descString\_ be
+-- | \*undefined\*. 1. Else, let \_descString\_ be ?
+-- | ToString(\_description\_). 1. Return a new Symbol whose
+-- | \[\[Description\]\] is \_descString\_.
+-- SPEC: L24794-L24817
+-- | # Symbol.for ( \_key\_ )
+-- |
+-- | This function performs the following steps when called:
+-- |
+-- | 1\. Let \_stringKey\_ be ? ToString(\_key\_). 1. For each element \_e\_
+-- | of the GlobalSymbolRegistry List, do 1. If \_e\_.\[\[Key\]\] is
+-- | \_stringKey\_, return \_e\_.\[\[Symbol\]\]. 1. Assert: The
+-- | GlobalSymbolRegistry List does not currently contain an entry for
+-- | \_stringKey\_. 1. Let \_newSymbol\_ be a new Symbol whose
+-- | \[\[Description\]\] is \_stringKey\_. 1. Append the GlobalSymbolRegistry
+-- | Record { \[\[Key\]\]: \_stringKey\_, \[\[Symbol\]\]: \_newSymbol\_ } to
+-- | the GlobalSymbolRegistry List. 1. Return \_newSymbol\_.
+-- |
+-- | The [GlobalSymbolRegistry List]{.dfn} is an append-only List that is
+-- | globally available. It is shared by all realms. Prior to the evaluation
+-- | of any ECMAScript code, it is initialized as a new empty List. Elements
+-- | of the GlobalSymbolRegistry List are Records with the structure defined
+-- | in .
+-- |
+-- |   Field Name       Value      Usage
+-- |   ---------------- ---------- --------------------------------------------------
+-- |   \[\[Key\]\]      a String   A string key used to globally identify a Symbol.
+-- |   \[\[Symbol\]\]   a Symbol   A symbol that can be retrieved from any realm.
+-- SPEC: L24842-L24848
+-- | # Symbol.keyFor ( \_sym\_ )
+-- |
+-- | This function performs the following steps when called:
+-- |
+-- | 1\. If \_sym\_ is not a Symbol, throw a \*TypeError\* exception. 1.
+-- | Return KeyForSymbol(\_sym\_).
+-- SPEC: L24929-L24939
+-- | # Properties of the Symbol Prototype Object
+-- |
+-- | The [Symbol prototype object]{.dfn}:
+-- |
+-- | - is [%Symbol.prototype%]{.dfn}.
+-- | - is an ordinary object.
+-- | - is not a Symbol instance and does not have a \[\[SymbolData\]\]
+-- |   internal slot.
+-- | - has a \[\[Prototype\]\] internal slot whose value is
+-- |   %Object.prototype%.
+-- SPEC: L24944-L24952
+-- | # get Symbol.prototype.description
+-- |
+-- | \`Symbol.prototype.description\` is an accessor property whose set
+-- | accessor function is \*undefined\*. Its get accessor function performs
+-- | the following steps when called:
+-- |
+-- | 1\. Let \_s\_ be the \*this\* value. 1. Let \_sym\_ be ?
+-- | ThisSymbolValue(\_s\_). 1. Return \_sym\_.\[\[Description\]\].
+-- SPEC: L24953-L24959
+-- | # Symbol.prototype.toString ( )
+-- |
+-- | This method performs the following steps when called:
+-- |
+-- | 1\. Let \_sym\_ be ? ThisSymbolValue(\*this\* value). 1. Return
+-- | SymbolDescriptiveString(\_sym\_).
+-- SPEC: L24960-L24966
+-- | # SymbolDescriptiveString ( \_sym\_: a Symbol, ): a String
+-- |
+-- | 1\. Let \_desc\_ be \_sym\_.\[\[Description\]\]. 1. If \_desc\_ is
+-- | \*undefined\*, set \_desc\_ to the empty String. 1. Assert: \_desc\_ is
+-- | a String. 1. Return the string-concatenation of \*\"Symbol(\"\*,
+-- | \_desc\_, and \*\")\"\*.
+-- SPEC: L24967-L24972
+-- | # Symbol.prototype.valueOf ( )
+-- |
+-- | This method performs the following steps when called:
+-- |
+-- | 1\. Return ? ThisSymbolValue(\*this\* value).
+-- SPEC: L24973-L24979
+-- | # ThisSymbolValue ( \_value\_: an ECMAScript language value, ): either a normal completion containing a Symbol or a throw completion
+-- |
+-- | 1\. If \_value\_ is a Symbol, return \_value\_. 1. If \_value\_ is an
+-- | Object and \_value\_ has a \[\[SymbolData\]\] internal slot, then 1. Let
+-- | \_s\_ be \_value\_.\[\[SymbolData\]\]. 1. Assert: \_s\_ is a Symbol. 1.
+-- | Return \_s\_. 1. Throw a \*TypeError\* exception.
+-- SPEC: L25014-L25024
+-- | # KeyForSymbol ( \_sym\_: a Symbol, ): a String or \*undefined\*
+-- |
+-- | description
+-- | :   If \_sym\_ is in the GlobalSymbolRegistry List, the String used to
+-- |     register \_sym\_ will be returned.
+-- |
+-- | 1\. For each element \_e\_ of the GlobalSymbolRegistry List, do 1. If
+-- | SameValue(\_e\_.\[\[Symbol\]\], \_sym\_) is \*true\*, return
+-- | \_e\_.\[\[Key\]\]. 1. Assert: The GlobalSymbolRegistry List does not
+-- | currently contain an entry for \_sym\_. 1. Return \*undefined\*.
+
+-- ============================================================
+-- Error Objects
+-- ============================================================
+-- SPEC: L25025-L25034
+-- | # Error Objects
+-- |
+-- | Instances of Error objects are thrown as exceptions when runtime errors
+-- | occur. The Error objects may also serve as base objects for user-defined
+-- | exception classes.
+-- |
+-- | When an ECMAScript implementation detects a runtime error, it throws a
+-- | new instance of one of the \_NativeError\_ objects defined in or a new
+-- | instance of the AggregateError object defined in .
+-- SPEC: L25035-L25051
+-- | # The Error Constructor
+-- |
+-- | The Error constructor:
+-- |
+-- | - is [%Error%]{.dfn}.
+-- | - is the initial value of the \*\"Error\"\* property of the global
+-- |   object.
+-- | - creates and initializes a new Error object when called as a function
+-- |   rather than as a constructor. Thus the function call \`Error(...)\` is
+-- |   equivalent to the object creation expression \`new Error(...)\` with
+-- |   the same arguments.
+-- | - may be used as the value of an \`extends\` clause of a class
+-- |   definition. Subclass constructors that intend to inherit the specified
+-- |   Error behaviour must include a \`super\` call to the Error constructor
+-- |   to create and initialize subclass instances with an \[\[ErrorData\]\]
+-- |   internal slot.
+-- SPEC: L25052-L25064
+-- | # Error ( \_message\_ \[ , \_options\_ \] )
+-- |
+-- | This function performs the following steps when called:
+-- |
+-- | 1\. If NewTarget is \*undefined\*, let \_newTarget\_ be the active
+-- | function object; else let \_newTarget\_ be NewTarget. 1. Let \_O\_ be ?
+-- | OrdinaryCreateFromConstructor(\_newTarget\_, \*\"%Error.prototype%\"\*,
+-- | « \[\[ErrorData\]\] »). 1. If \_message\_ is not \*undefined\*, then 1.
+-- | Let \_msg\_ be ? ToString(\_message\_). 1. Perform
+-- | CreateNonEnumerableDataPropertyOrThrow(\_O\_, \*\"message\"\*,
+-- | \_msg\_). 1. Perform ? InstallErrorCause(\_O\_, \_options\_). 1. Return
+-- | \_O\_.
+-- SPEC: L25073-L25080
+-- | # Error.isError ( \_arg\_ )
+-- |
+-- | This function performs the following steps when called:
+-- |
+-- | 1\. If \_arg\_ is not an Object, return \*false\*. 1. If \_arg\_ does
+-- | not have an \[\[ErrorData\]\] internal slot, return \*false\*. 1. Return
+-- | \*true\*.
+-- SPEC: L25088-L25098
+-- | # Properties of the Error Prototype Object
+-- |
+-- | The [Error prototype object]{.dfn}:
+-- |
+-- | - is [%Error.prototype%]{.dfn}.
+-- | - is an ordinary object.
+-- | - is not an Error instance and does not have an \[\[ErrorData\]\]
+-- |   internal slot.
+-- | - has a \[\[Prototype\]\] internal slot whose value is
+-- |   %Object.prototype%.
+-- SPEC: L25111-L25125
+-- | # Error.prototype.toString ( )
+-- |
+-- | This method performs the following steps when called:
+-- |
+-- | 1\. Let \_O\_ be the \*this\* value. 1. If \_O\_ is not an Object, throw
+-- | a \*TypeError\* exception. 1. Let \_name\_ be ? Get(\_O\_,
+-- | \*\"name\"\*). 1. If \_name\_ is \*undefined\*, set \_name\_ to
+-- | \*\"Error\"\*; else set \_name\_ to ? ToString(\_name\_). 1. Let \_msg\_
+-- | be ? Get(\_O\_, \*\"message\"\*). 1. If \_msg\_ is \*undefined\*, set
+-- | \_msg\_ to the empty String; else set \_msg\_ to ? ToString(\_msg\_). 1.
+-- | If \_name\_ is the empty String, return \_msg\_. 1. If \_msg\_ is the
+-- | empty String, return \_name\_. 1. Return the string-concatenation of
+-- | \_name\_, the code unit 0x003A (COLON), the code unit 0x0020 (SPACE),
+-- | and \_msg\_.
+-- SPEC: L25141-L25148
+-- | # EvalError
+-- |
+-- | The EvalError constructor is [%EvalError%]{.dfn}.
+-- |
+-- | This exception is not currently used within this specification. This
+-- | object remains for compatibility with previous editions of this
+-- | specification.
+-- SPEC: L25149-L25154
+-- | # RangeError
+-- |
+-- | The RangeError constructor is [%RangeError%]{.dfn}.
+-- |
+-- | Indicates a value that is not in the set or range of allowable values.
+-- SPEC: L25155-L25160
+-- | # ReferenceError
+-- |
+-- | The ReferenceError constructor is [%ReferenceError%]{.dfn}.
+-- |
+-- | Indicate that an invalid reference has been detected.
+-- SPEC: L25161-L25166
+-- | # SyntaxError
+-- |
+-- | The SyntaxError constructor is [%SyntaxError%]{.dfn}.
+-- |
+-- | Indicates that a parsing error has occurred.
+-- SPEC: L25167-L25174
+-- | # TypeError
+-- |
+-- | The TypeError constructor is [%TypeError%]{.dfn}.
+-- |
+-- | TypeError is used to indicate an unsuccessful operation when none of the
+-- | other \_NativeError\_ objects are an appropriate indication of the
+-- | failure cause.
+-- SPEC: L25175-L25181
+-- | # URIError
+-- |
+-- | The URIError constructor is [%URIError%]{.dfn}.
+-- |
+-- | Indicates that one of the global URI handling functions was used in a
+-- | way that is incompatible with its definition.
+-- SPEC: L25283-L25299
+-- | # The AggregateError Constructor
+-- |
+-- | The AggregateError constructor:
+-- |
+-- | - is [%AggregateError%]{.dfn}.
+-- | - is the initial value of the \*\"AggregateError\"\* property of the
+-- |   global object.
+-- | - creates and initializes a new AggregateError object when called as a
+-- |   function rather than as a constructor. Thus the function call
+-- |   \`AggregateError(...)\` is equivalent to the object creation
+-- |   expression \`new AggregateError(...)\` with the same arguments.
+-- | - may be used as the value of an \`extends\` clause of a class
+-- |   definition. Subclass constructors that intend to inherit the specified
+-- |   AggregateError behaviour must include a \`super\` call to the
+-- |   AggregateError constructor to create and initialize subclass instances
+-- |   with an \[\[ErrorData\]\] internal slot.
+-- SPEC: L25370-L25380
+-- | # InstallErrorCause ( \_O\_: an Object, \_options\_: an ECMAScript language value, ): either a normal completion containing \~unused\~ or a throw completion
+-- |
+-- | description
+-- | :   It is used to create a \*\"cause\"\* property on \_O\_ when a
+-- |     \*\"cause\"\* property is present on \_options\_.
+-- |
+-- | 1\. If \_options\_ is an Object and ? HasProperty(\_options\_,
+-- | \*\"cause\"\*) is \*true\*, then 1. Let \_cause\_ be ? Get(\_options\_,
+-- | \*\"cause\"\*). 1. Perform CreateNonEnumerableDataPropertyOrThrow(\_O\_,
+-- | \*\"cause\"\*, \_cause\_). 1. Return \~unused\~.
+
+-- ============================================================
+-- Number Objects
+-- ============================================================
+-- SPEC: L25385-L25401
+-- | # The Number Constructor
+-- |
+-- | The Number constructor:
+-- |
+-- | - is [%Number%]{.dfn}.
+-- | - is the initial value of the \*\"Number\"\* property of the global
+-- |   object.
+-- | - creates and initializes a new Number object when called as a
+-- |   constructor.
+-- | - performs a type conversion when called as a function rather than as a
+-- |   constructor.
+-- | - may be used as the value of an \`extends\` clause of a class
+-- |   definition. Subclass constructors that intend to inherit the specified
+-- |   Number behaviour must include a \`super\` call to the Number
+-- |   constructor to create and initialize the subclass instance with a
+-- |   \[\[NumberData\]\] internal slot.
+-- SPEC: L25402-L25413
+-- | # Number ( \_value\_ )
+-- |
+-- | This function performs the following steps when called:
+-- |
+-- | 1\. If \_value\_ is present, then 1. Let \_prim\_ be ?
+-- | ToNumeric(\_value\_). 1. If \_prim\_ is a BigInt, let \_n\_ be
+-- | 𝔽(ℝ(\_prim\_)). 1. Else, let \_n\_ be \_prim\_. 1. Else, 1. Let \_n\_ be
+-- | \*+0\*~𝔽~. 1. If NewTarget is \*undefined\*, return \_n\_. 1. Let \_O\_
+-- | be ? OrdinaryCreateFromConstructor(NewTarget,
+-- | \*\"%Number.prototype%\"\*, « \[\[NumberData\]\] »). 1. Set
+-- | \_O\_.\[\[NumberData\]\] to \_n\_. 1. Return \_O\_.
+-- SPEC: L25432-L25438
+-- | # Number.isFinite ( \_number\_ )
+-- |
+-- | This function performs the following steps when called:
+-- |
+-- | 1\. If \_number\_ is not a Number, return \*false\*. 1. If \_number\_ is
+-- | not finite, return \*false\*. 1. Return \*true\*.
+-- SPEC: L25439-L25445
+-- | # Number.isInteger ( \_number\_ )
+-- |
+-- | This function performs the following steps when called:
+-- |
+-- | 1\. If \_number\_ is an integral Number, return \*true\*. 1. Return
+-- | \*false\*.
+-- SPEC: L25446-L25456
+-- | # Number.isNaN ( \_number\_ )
+-- |
+-- | This function performs the following steps when called:
+-- |
+-- | 1\. If \_number\_ is not a Number, return \*false\*. 1. If \_number\_ is
+-- | \*NaN\*, return \*true\*. 1. Return \*false\*.
+-- |
+-- | This function differs from the global isNaN function () in that it does
+-- | not convert its argument to a Number before determining whether it is
+-- | \*NaN\*.
+-- SPEC: L25745-L25764
+-- | # Number.prototype.toString ( \[ \_radix\_ \] )
+-- |
+-- | The optional \_radix\_ should be an integral Number value in the
+-- | inclusive interval from \*2\*~𝔽~ to \*36\*~𝔽~. If \_radix\_ is
+-- | \*undefined\* then \*10\*~𝔽~ is used as the value of \_radix\_.
+-- |
+-- | This method performs the following steps when called:
+-- |
+-- | 1\. Let \_x\_ be ? ThisNumberValue(\*this\* value). 1. If \_radix\_ is
+-- | \*undefined\*, let \_radixMV\_ be 10. 1. Else, let \_radixMV\_ be ?
+-- | ToIntegerOrInfinity(\_radix\_). 1. If \_radixMV\_ is not in the
+-- | inclusive interval from 2 to 36, throw a \*RangeError\* exception. 1.
+-- | Return Number::toString(\_x\_, \_radixMV\_).
+-- |
+-- | This method is not generic; it throws a \*TypeError\* exception if its
+-- | \*this\* value is not a Number or a Number object. Therefore, it cannot
+-- | be transferred to other kinds of objects for use as a method.
+-- |
+-- | The \*\"length\"\* property of this method is \*1\*~𝔽~.
+-- SPEC: L25765-L25768
+-- | # Number.prototype.valueOf ( )
+-- |
+-- | 1\. Return ? ThisNumberValue(\*this\* value).
+-- SPEC: L25769-L25775
+-- | # ThisNumberValue ( \_value\_: an ECMAScript language value, ): either a normal completion containing a Number or a throw completion
+-- |
+-- | 1\. If \_value\_ is a Number, return \_value\_. 1. If \_value\_ is an
+-- | Object and \_value\_ has a \[\[NumberData\]\] internal slot, then 1. Let
+-- | \_n\_ be \_value\_.\[\[NumberData\]\]. 1. Assert: \_n\_ is a Number. 1.
+-- | Return \_n\_. 1. Throw a \*TypeError\* exception.
+
+-- ============================================================
+-- The Math Object
+-- ============================================================
+-- SPEC: L25926-L25944
+-- | # The Math Object
+-- |
+-- | The Math object:
+-- |
+-- | - is [%Math%]{.dfn}.
+-- | - is the initial value of the \*\"Math\"\* property of the global
+-- |   object.
+-- | - is an ordinary object.
+-- | - has a \[\[Prototype\]\] internal slot whose value is
+-- |   %Object.prototype%.
+-- | - is not a function object.
+-- | - does not have a \[\[Construct\]\] internal method; it cannot be used
+-- |   as a constructor with the \`new\` operator.
+-- | - does not have a \[\[Call\]\] internal method; it cannot be invoked as
+-- |   a function.
+-- SPEC: L26049-L26060
+-- | # Math.abs ( \_x\_ )
+-- |
+-- | This function returns the absolute value of \_x\_; the result has the
+-- | same magnitude as \_x\_ but has positive sign.
+-- |
+-- | It performs the following steps when called:
+-- |
+-- | 1\. Let \_n\_ be ? ToNumber(\_x\_). 1. If \_n\_ is \*NaN\*, return
+-- | \*NaN\*. 1. If \_n\_ is \*-0\*~𝔽~, return \*+0\*~𝔽~. 1. If \_n\_ is
+-- | \*-∞\*~𝔽~, return \*+∞\*~𝔽~. 1. If \_n\_ \< \*-0\*~𝔽~, return -\_n\_. 1.
+-- | Return \_n\_.
+-- SPEC: L26193-L26209
+-- | # Math.ceil ( \_x\_ )
+-- |
+-- | This function returns the smallest (closest to -∞) integral Number
+-- | value that is not less than \_x\_. If \_x\_ is already an integral Number
+-- | value, the result is \_x\_.
+-- |
+-- | It performs the following steps when called:
+-- |
+-- | 1\. Let \_n\_ be ? ToNumber(\_x\_). 1. If \_n\_ is not finite or \_n\_ is
+-- | either \*+0\*~𝔽~ or \*-0\*~𝔽~, return \_n\_. 1. If \_n\_ \< \*+0\*~𝔽~
+-- | and \_n\_ \> \*-1\*~𝔽~, return \*-0\*~𝔽~. 1. If \_n\_ is an integral
+-- | Number, return \_n\_. 1. Return 𝔽(ℝ(\_n\_) + (1 - (ℝ(\_n\_) modulo
+-- | 1))).
+-- SPEC: L26277-L26293
+-- | # Math.floor ( \_x\_ )
+-- |
+-- | This function returns the greatest (closest to +∞) integral Number
+-- | value that is not greater than \_x\_. If \_x\_ is already an integral
+-- | Number value, the result is \_x\_.
+-- |
+-- | It performs the following steps when called:
+-- |
+-- | 1\. Let \_n\_ be ? ToNumber(\_x\_). 1. If \_n\_ is not finite or \_n\_ is
+-- | either \*+0\*~𝔽~ or \*-0\*~𝔽~, return \_n\_. 1. If \_n\_ \> \*+0\*~𝔽~
+-- | and \_n\_ \< \*1\*~𝔽~, return \*+0\*~𝔽~. 1. If \_n\_ is an integral
+-- | Number, return \_n\_. 1. Return 𝔽(ℝ(\_n\_) - (ℝ(\_n\_) modulo 1)).
+-- SPEC: L26419-L26439
+-- | # Math.max ( \...\_args\_ )
+-- |
+-- | Given zero or more arguments, calls ToNumber on each of the arguments
+-- | and returns the largest of the resulting values.
+-- |
+-- | It performs the following steps when called:
+-- |
+-- | 1\. Let \_coerced\_ be a new empty List. 1. For each element \_arg\_ of
+-- | \_args\_, do 1. Let \_n\_ be ? ToNumber(\_arg\_). 1. Append \_n\_ to
+-- | \_coerced\_. 1. Let \_highest\_ be \*-∞\*~𝔽~. 1. For each element
+-- | \_number\_ of \_coerced\_, do 1. If \_number\_ is \*NaN\*, return
+-- | \*NaN\*. 1. If \_number\_ is \*+0\*~𝔽~ and \_highest\_ is \*-0\*~𝔽~,
+-- | set \_highest\_ to \*+0\*~𝔽~. 1. If \_number\_ \> \_highest\_, set
+-- | \_highest\_ to \_number\_. 1. Return \_highest\_.
+-- SPEC: L26440-L26460
+-- | # Math.min ( \...\_args\_ )
+-- |
+-- | Given zero or more arguments, calls ToNumber on each of the arguments
+-- | and returns the smallest of the resulting values.
+-- |
+-- | It performs the following steps when called:
+-- |
+-- | 1\. Let \_coerced\_ be a new empty List. 1. For each element \_arg\_ of
+-- | \_args\_, do 1. Let \_n\_ be ? ToNumber(\_arg\_). 1. Append \_n\_ to
+-- | \_coerced\_. 1. Let \_lowest\_ be \*+∞\*~𝔽~. 1. For each element
+-- | \_number\_ of \_coerced\_, do 1. If \_number\_ is \*NaN\*, return
+-- | \*NaN\*. 1. If \_number\_ is \*-0\*~𝔽~ and \_lowest\_ is \*+0\*~𝔽~, set
+-- | \_lowest\_ to \*-0\*~𝔽~. 1. If \_number\_ \< \_lowest\_, set \_lowest\_
+-- | to \_number\_. 1. Return \_lowest\_.
+-- SPEC: L26479-L26502
+-- | # Math.round ( \_x\_ )
+-- |
+-- | This function returns the Number value that is closest to \_x\_ and is
+-- | integral. If two integral Numbers are equally close to \_x\_, then the
+-- | result is the Number value that is closer to +∞. If \_x\_ is already
+-- | integral, the result is \_x\_.
+-- |
+-- | It performs the following steps when called:
+-- |
+-- | 1\. Let \_n\_ be ? ToNumber(\_x\_). 1. If \_n\_ is not finite or \_n\_ is
+-- | an integral Number, return \_n\_. 1. If \_n\_ \< \*0.5\*~𝔽~ and \_n\_ \>
+-- | \*+0\*~𝔽~, return \*+0\*~𝔽~. 1. If \_n\_ \< \*-0\*~𝔽~ and \_n\_ ≥
+-- | \*-0.5\*~𝔽~, return \*-0\*~𝔽~. 1. Return 𝔽(floor(ℝ(\_n\_) + 0.5)).
+-- |
+-- | Math.round(\*0.5\*~𝔽~) returns \*1\*~𝔽~, but Math.round(\*-0.5\*~𝔽~)
+-- | returns \*-0\*~𝔽~ since \*-0\*~𝔽~ is closer to \*-∞\* than \*+0\*~𝔽~
+-- | is.
+-- |
+-- | The value of Math.round(\_x\_) is not always the same as the value of
+-- | Math.floor(\_x\_ + \*0.5\*~𝔽~). When \_x\_ is \*-0\*~𝔽~ or \_x\_ is
+-- | less than \*+0\*~𝔽~ but greater than or equal to \*-0.5\*~𝔽~,
+-- | Math.round(\_x\_) returns \*-0\*~𝔽~, but Math.floor(\_x\_ + \*0.5\*~𝔽~)
+-- | returns \*+0\*~𝔽~. Math.round(\_x\_) may also differ from the value of
+-- | Math.floor(\_x\_ + \*0.5\*~𝔽~) because of internal rounding when
+-- | computing \_x\_ + \*0.5\*~𝔽~.
+-- SPEC: L26540-L26549
+-- | # Math.sqrt ( \_x\_ )
+-- |
+-- | This function returns the square root of \_x\_.
+-- |
+-- | It performs the following steps when called:
+-- |
+-- | 1\. Let \_n\_ be ? ToNumber(\_x\_). 1. If \_n\_ is one of \*NaN\*,
+-- | \*+0\*~𝔽~, \*-0\*~𝔽~, or \*+∞\*~𝔽~, return \_n\_. 1. If \_n\_ \<
+-- | \*-0\*~𝔽~, return \*NaN\*. 1. Return an implementation-approximated
+-- | Number value representing the square root of ℝ(\_n\_).
+-- SPEC: L26621-L26634
+-- | # Math.trunc ( \_x\_ )
+-- |
+-- | This function returns the integral part of the number \_x\_, removing
+-- | any fractional digits. If \_x\_ is already integral, the result is
+-- | \_x\_.
+-- |
+-- | It performs the following steps when called:
+-- |
+-- | 1\. Let \_n\_ be ? ToNumber(\_x\_). 1. If \_n\_ is not finite or \_n\_ is
+-- | either \*+0\*~𝔽~ or \*-0\*~𝔽~, return \_n\_. 1. If \_n\_ \< \*1\*~𝔽~
+-- | and \_n\_ \> \*+0\*~𝔽~, return \*+0\*~𝔽~. 1. If \_n\_ \> \*-1\*~𝔽~ and
+-- | \_n\_ \< \*-0\*~𝔽~, return \*-0\*~𝔽~. 1. Return 𝔽(truncate(ℝ(\_n\_))).
+
+-- ============================================================
+-- Array Objects
+-- ============================================================
+-- SPEC: L32077-L32081
+-- | # Array Objects
+-- |
+-- | Arrays are exotic objects that give special treatment to a certain class
+-- | of property names. See for a definition of this special treatment.
+-- SPEC: L32082-L32103
+-- | # The Array Constructor
+-- |
+-- | The Array constructor:
+-- |
+-- | - is [%Array%]{.dfn}.
+-- | - is the initial value of the \*\"Array\"\* property of the global
+-- |   object.
+-- | - creates and initializes a new Array when called as a constructor.
+-- | - also creates and initializes a new Array when called as a function
+-- |   rather than as a constructor. Thus the function call \`Array(...)\` is
+-- |   equivalent to the object creation expression \`new Array(...)\` with
+-- |   the same arguments.
+-- | - is a function whose behaviour differs based upon the number and types
+-- |   of its arguments.
+-- | - may be used as the value of an \`extends\` clause of a class
+-- |   definition. Subclass constructors that intend to inherit the exotic
+-- |   Array behaviour must include a \`super\` call to the Array constructor
+-- |   to initialize subclass instances that are Array exotic objects.
+-- |   However, most of the \`Array.prototype\` methods are generic methods
+-- |   that are not dependent upon their \*this\* value being an Array exotic
+-- |   object.
+-- SPEC: L32243-L32248
+-- | # Array.isArray ( \_arg\_ )
+-- |
+-- | This function performs the following steps when called:
+-- |
+-- | 1\. Return ? IsArray(\_arg\_).
+-- SPEC: L32291-L32307
+-- | # Properties of the Array Prototype Object
+-- |
+-- | The [Array prototype object]{.dfn}:
+-- |
+-- | - is [%Array.prototype%]{.dfn}.
+-- | - is an Array exotic object and has the internal methods specified for
+-- |   such objects.
+-- | - has a \*\"length\"\* property whose initial value is \*+0\*~𝔽~ and
+-- |   whose attributes are { \[\[Writable\]\]: \*true\*, \[\[Enumerable\]\]:
+-- |   \*false\*, \[\[Configurable\]\]: \*false\* }.
+-- | - has a \[\[Prototype\]\] internal slot whose value is
+-- |   %Object.prototype%.
+-- |
+-- | The Array prototype object is specified to be an Array exotic object to
+-- | ensure compatibility with ECMAScript code that was created prior to the
+-- | ECMAScript 2015 specification.
+-- SPEC: L32308-L32316
+-- | # Array.prototype.at ( \_index\_ )
+-- |
+-- | 1\. Let \_O\_ be ? ToObject(\*this\* value). 1. Let \_len\_ be ?
+-- | LengthOfArrayLike(\_O\_). 1. Let \_relativeIndex\_ be ?
+-- | ToIntegerOrInfinity(\_index\_). 1. If \_relativeIndex\_ ≥ 0, then 1. Let
+-- | \_k\_ be \_relativeIndex\_. 1. Else, 1. Let \_k\_ be \_len\_ +
+-- | \_relativeIndex\_. 1. If \_k\_ \< 0 or \_k\_ ≥ \_len\_, return
+-- | \*undefined\*. 1. Return ? Get(\_O\_, ! ToString(𝔽(\_k\_))).
+
+-- ============================================================
+-- WeakMap Objects
+-- ============================================================
+-- SPEC: L36334-L36350
+-- | # The WeakMap Constructor
+-- |
+-- | The WeakMap constructor:
+-- |
+-- | - is [%WeakMap%]{.dfn}.
+-- | - is the initial value of the \*\"WeakMap\"\* property of the global
+-- |   object.
+-- | - creates and initializes a new WeakMap when called as a constructor.
+-- | - is not intended to be called as a function and will throw an exception
+-- |   when called in that manner.
+-- | - may be used as the value in an \`extends\` clause of a class
+-- |   definition. Subclass constructors that intend to inherit the specified
+-- |   WeakMap behaviour must include a \`super\` call to the WeakMap
+-- |   constructor to create and initialize the subclass instance with the
+-- |   internal state necessary to support the \`WeakMap.prototype\` built-in
+-- |   methods.
+-- SPEC: L36386-L36395
+-- | # Properties of the WeakMap Prototype Object
+-- |
+-- | The [WeakMap prototype object]{.dfn}:
+-- |
+-- | - is [%WeakMap.prototype%]{.dfn}.
+-- | - has a \[\[Prototype\]\] internal slot whose value is
+-- |   %Object.prototype%.
+-- | - is an ordinary object.
+-- | - does not have a \[\[WeakMapData\]\] internal slot.
+-- SPEC: L36400-L36416
+-- | # WeakMap.prototype.delete ( \_key\_ )
+-- |
+-- | This method performs the following steps when called:
+-- |
+-- | 1\. Let \_M\_ be the \*this\* value. 1. Perform ?
+-- | RequireInternalSlot(\_M\_, \[\[WeakMapData\]\]). 1. If
+-- | CanBeHeldWeakly(\_key\_) is \*false\*, return \*false\*. 1. For each
+-- | Record { \[\[Key\]\], \[\[Value\]\] } \_p\_ of
+-- | \_M\_.\[\[WeakMapData\]\], do 1. If \_p\_.\[\[Key\]\] is not \~empty\~
+-- | and SameValue(\_p\_.\[\[Key\]\], \_key\_) is \*true\*, then 1. Set
+-- | \_p\_.\[\[Key\]\] to \~empty\~. 1. Set \_p\_.\[\[Value\]\] to
+-- | \~empty\~. 1. Return \*true\*. 1. Return \*false\*.
+-- |
+-- | The value \~empty\~ is used as a specification device to indicate that
+-- | an entry has been deleted. Actual implementations may take other actions
+-- | such as physically removing the entry from internal data structures.
+-- SPEC: L36417-L36428
+-- | # WeakMap.prototype.get ( \_key\_ )
+-- |
+-- | This method performs the following steps when called:
+-- |
+-- | 1\. Let \_M\_ be the \*this\* value. 1. Perform ?
+-- | RequireInternalSlot(\_M\_, \[\[WeakMapData\]\]). 1. If
+-- | CanBeHeldWeakly(\_key\_) is \*false\*, return \*undefined\*. 1. For each
+-- | Record { \[\[Key\]\], \[\[Value\]\] } \_p\_ of
+-- | \_M\_.\[\[WeakMapData\]\], do 1. If \_p\_.\[\[Key\]\] is not \~empty\~
+-- | and SameValue(\_p\_.\[\[Key\]\], \_key\_) is \*true\*, return
+-- | \_p\_.\[\[Value\]\]. 1. Return \*undefined\*.
+-- SPEC: L36464-L36475
+-- | # WeakMap.prototype.has ( \_key\_ )
+-- |
+-- | This method performs the following steps when called:
+-- |
+-- | 1\. Let \_M\_ be the \*this\* value. 1. Perform ?
+-- | RequireInternalSlot(\_M\_, \[\[WeakMapData\]\]). 1. If
+-- | CanBeHeldWeakly(\_key\_) is \*false\*, return \*false\*. 1. For each
+-- | Record { \[\[Key\]\], \[\[Value\]\] } \_p\_ of
+-- | \_M\_.\[\[WeakMapData\]\], do 1. If \_p\_.\[\[Key\]\] is not \~empty\~
+-- | and SameValue(\_p\_.\[\[Key\]\], \_key\_) is \*true\*, return
+-- | \*true\*. 1. Return \*false\*.
+-- SPEC: L36476-L36489
+-- | # WeakMap.prototype.set ( \_key\_, \_value\_ )
+-- |
+-- | This method performs the following steps when called:
+-- |
+-- | 1\. Let \_M\_ be the \*this\* value. 1. Perform ?
+-- | RequireInternalSlot(\_M\_, \[\[WeakMapData\]\]). 1. If
+-- | CanBeHeldWeakly(\_key\_) is \*false\*, throw a \*TypeError\*
+-- | exception. 1. For each Record { \[\[Key\]\], \[\[Value\]\] } \_p\_ of
+-- | \_M\_.\[\[WeakMapData\]\], do 1. If \_p\_.\[\[Key\]\] is not \~empty\~
+-- | and SameValue(\_p\_.\[\[Key\]\], \_key\_) is \*true\*, then 1. Set
+-- | \_p\_.\[\[Value\]\] to \_value\_. 1. Return \_M\_. 1. Let \_p\_ be the
+-- | Record { \[\[Key\]\]: \_key\_, \[\[Value\]\]: \_value\_ }. 1. Append
+-- | \_p\_ to \_M\_.\[\[WeakMapData\]\]. 1. Return \_M\_.
+-- SPEC: L36504-L36530
+-- | # WeakSet Objects
+-- |
+-- | WeakSets are collections of objects and/or symbols. A WeakSet may be
+-- | queried to see if it contains a specific value, but no mechanism is
+-- | provided for enumerating the values it holds. In certain conditions,
+-- | values which are not live are removed as WeakSet elements, as described
+-- | in .
+-- |
+-- | An implementation may impose an arbitrarily determined latency between
+-- | the time a value contained in a WeakSet becomes inaccessible and the
+-- | time when the value is removed from the WeakSet. If this latency was
+-- | observable to ECMAScript program, it would be a source of indeterminacy
+-- | that could impact program execution. For that reason, an ECMAScript
+-- | implementation must not provide any means to determine if a WeakSet
+-- | contains a particular value that does not require the observer to
+-- | present the observed value.
+-- |
+-- | WeakSets must be implemented using either hash tables or other
+-- | mechanisms that, on average, provide access times that are sublinear on
+-- | the number of elements in the collection. The data structure used in
+-- | this specification is only intended to describe the required observable
+-- | semantics of WeakSets. It is not intended to be a viable implementation
+-- | model.
+-- |
+-- | See the NOTE in .
+-- SPEC: L36591-L36602
+-- | # WeakSet.prototype.add ( \_value\_ )
+-- |
+-- | This method performs the following steps when called:
+-- |
+-- | 1\. Let \_S\_ be the \*this\* value. 1. Perform ?
+-- | RequireInternalSlot(\_S\_, \[\[WeakSetData\]\]). 1. If
+-- | CanBeHeldWeakly(\_value\_) is \*false\*, throw a \*TypeError\*
+-- | exception. 1. For each element \_e\_ of \_S\_.\[\[WeakSetData\]\], do 1.
+-- | If \_e\_ is not \~empty\~ and SameValue(\_e\_, \_value\_) is \*true\*,
+-- | return \_S\_. 1. Append \_value\_ to \_S\_.\[\[WeakSetData\]\]. 1.
+-- | Return \_S\_.
+-- SPEC: L36607-L36623
+-- | # WeakSet.prototype.delete ( \_value\_ )
+-- |
+-- | This method performs the following steps when called:
+-- |
+-- | 1\. Let \_S\_ be the \*this\* value. 1. Perform ?
+-- | RequireInternalSlot(\_S\_, \[\[WeakSetData\]\]). 1. If
+-- | CanBeHeldWeakly(\_value\_) is \*false\*, return \*false\*. 1. For each
+-- | element \_e\_ of \_S\_.\[\[WeakSetData\]\], do 1. If \_e\_ is not
+-- | \~empty\~ and SameValue(\_e\_, \_value\_) is \*true\*, then 1. Replace
+-- | the element of \_S\_.\[\[WeakSetData\]\] whose value is \_e\_ with an
+-- | element whose value is \~empty\~. 1. Return \*true\*. 1. Return
+-- | \*false\*.
+-- |
+-- | The value \~empty\~ is used as a specification device to indicate that
+-- | an entry has been deleted. Actual implementations may take other actions
+-- | such as physically removing the entry from internal data structures.
+-- SPEC: L36624-L36634
+-- | # WeakSet.prototype.has ( \_value\_ )
+-- |
+-- | This method performs the following steps when called:
+-- |
+-- | 1\. Let \_S\_ be the \*this\* value. 1. Perform ?
+-- | RequireInternalSlot(\_S\_, \[\[WeakSetData\]\]). 1. If
+-- | CanBeHeldWeakly(\_value\_) is \*false\*, return \*false\*. 1. For each
+-- | element \_e\_ of \_S\_.\[\[WeakSetData\]\], do 1. If \_e\_ is not
+-- | \~empty\~ and SameValue(\_e\_, \_value\_) is \*true\*, return
+-- | \*true\*. 1. Return \*false\*.
+
+-- ============================================================
+-- WeakRef Objects
+-- ============================================================
+-- SPEC: L39144-L39150
+-- | # WeakRef Objects
+-- |
+-- | A WeakRef is an object that is used to refer to a target object or
+-- | symbol without preserving it from garbage collection. WeakRefs can be
+-- | dereferenced to return the target object or symbol, if the target hasn't
+-- | been reclaimed by garbage collection.
+-- SPEC: L39151-L39167
+-- | # The WeakRef Constructor
+-- |
+-- | The WeakRef constructor:
+-- |
+-- | - is [%WeakRef%]{.dfn}.
+-- | - is the initial value of the \*\"WeakRef\"\* property of the global
+-- |   object.
+-- | - creates and initializes a new WeakRef when called as a constructor.
+-- | - is not intended to be called as a function and will throw an exception
+-- |   when called in that manner.
+-- | - may be used as the value of an \`extends\` clause of a class
+-- |   definition. Subclass constructors that intend to inherit the specified
+-- |   WeakRef behaviour must include a \`super\` call to the WeakRef
+-- |   constructor to create and initialize the subclass instance with the
+-- |   internal state necessary to support the \`WeakRef.prototype\` built-in
+-- |   methods.
+-- SPEC: L39168-L39179
+-- | # WeakRef ( \_target\_ )
+-- |
+-- | This function performs the following steps when called:
+-- |
+-- | 1\. If NewTarget is \*undefined\*, throw a \*TypeError\* exception. 1.
+-- | If CanBeHeldWeakly(\_target\_) is \*false\*, throw a \*TypeError\*
+-- | exception. 1. Let \_weakRef\_ be ?
+-- | OrdinaryCreateFromConstructor(NewTarget,
+-- | \*\"%WeakRef.prototype%\"\*, « \[\[WeakRefTarget\]\] »). 1. Perform
+-- | AddToKeptObjects(\_target\_). 1. Set
+-- | \_weakRef\_.\[\[WeakRefTarget\]\] to \_target\_. 1. Return \_weakRef\_.
+-- SPEC: L39210-L39238
+-- | # WeakRef.prototype.deref ( )
+-- |
+-- | This method performs the following steps when called:
+-- |
+-- | 1\. Let \_weakRef\_ be the \*this\* value. 1. Perform ?
+-- | RequireInternalSlot(\_weakRef\_, \[\[WeakRefTarget\]\]). 1. Return
+-- | WeakRefDeref(\_weakRef\_).
+-- |
+-- | If the WeakRef returns a \_target\_ value that is not \*undefined\*, then
+-- | this \_target\_ value should not be garbage collected until the current
+-- | execution of ECMAScript code has completed. The
+-- | AddToKeptObjects operation is used to maintain a list of objects that
+-- | should not be garbage collected until WeakRef.prototype.deref can no
+-- | longer return the value.
+-- |
+-- | The following steps are performed when WeakRef.prototype.deref is
+-- | called:
+-- |
+-- | 1\. Let \_weakRef\_ be the \*this\* value. 1. Perform ?
+-- | RequireInternalSlot(\_weakRef\_, \[\[WeakRefTarget\]\]). 1. Return
+-- | WeakRefDeref(\_weakRef\_).
+-- |
+-- | Informative note: If WeakRef.prototype.deref would return the
+-- | \_target\_:
+-- |
+-- | 1\. Set \_target\_ to AddToKeptObjects(\_target\_). 1. Return
+-- | \_target\_.
+-- SPEC: L39249-L39259
+-- | # WeakRefDeref ( \_weakRef\_: a WeakRef, ): an ECMAScript language value
+-- |
+-- | 1\. Let \_target\_ be \_weakRef\_.\[\[WeakRefTarget\]\]. 1. If
+-- | \_target\_ is not \~empty\~, then 1. Perform
+-- | AddToKeptObjects(\_target\_). 1. Return \_target\_. 1. Return
+-- | \*undefined\*.
+-- |
+-- | The above steps contain a check for \~empty\~ because
+-- | \_weakRef\_.\[\[WeakRefTarget\]\] can be cleared to \~empty\~ by
+-- | ClearKeptObjects, or it can be cleared to \~empty\~ informally during
+-- | garbage collection.
+
+-- ============================================================
+-- The Reflect Object
+-- ============================================================
+-- SPEC: L42135-L42150
+-- | # The Reflect Object
+-- |
+-- | The Reflect object:
+-- |
+-- | - is [%Reflect%]{.dfn}.
+-- | - is the initial value of the \*\"Reflect\"\* property of the global
+-- |   object.
+-- | - is an ordinary object.
+-- | - has a \[\[Prototype\]\] internal slot whose value is
+-- |   %Object.prototype%.
+-- | - is not a function object.
+-- | - does not have a \[\[Construct\]\] internal method; it cannot be used
+-- |   as a constructor with the \`new\` operator.
+-- | - does not have a \[\[Call\]\] internal method; it cannot be invoked as
+-- |   a function.
+-- SPEC: L42151-L42160
+-- | # Reflect.apply ( \_target\_, \_thisArgument\_, \_argumentsList\_ )
+-- |
+-- | This function performs the following steps when called:
+-- |
+-- | 1\. If IsCallable(\_target\_) is \*false\*, throw a \*TypeError\*
+-- | exception. 1. Let \_args\_ be ?
+-- | CreateListFromArrayLike(\_argumentsList\_). 1. Perform
+-- | PrepareForTailCall(). 1. Return ? Call(\_target\_, \_thisArgument\_,
+-- | \_args\_).
+-- SPEC: L42161-L42171
+-- | # Reflect.construct ( \_target\_, \_argumentsList\_ \[ , \_newTarget\_ \] )
+-- |
+-- | This function performs the following steps when called:
+-- |
+-- | 1\. If IsConstructor(\_target\_) is \*false\*, throw a \*TypeError\*
+-- | exception. 1. If \_newTarget\_ is not present, set \_newTarget\_ to
+-- | \_target\_. 1. Else if IsConstructor(\_newTarget\_) is \*false\*, throw
+-- | a \*TypeError\* exception. 1. Let \_args\_ be ?
+-- | CreateListFromArrayLike(\_argumentsList\_). 1. Return ?
+-- | Construct(\_target\_, \_args\_, \_newTarget\_).
+-- SPEC: L42172-L42180
+-- | # Reflect.defineProperty ( \_target\_, \_propertyKey\_, \_attributes\_ )
+-- |
+-- | This function performs the following steps when called:
+-- |
+-- | 1\. If \_target\_ is not an Object, throw a \*TypeError\* exception. 1.
+-- | Let \_key\_ be ? ToPropertyKey(\_propertyKey\_). 1. Let \_desc\_ be ?
+-- | ToPropertyDescriptor(\_attributes\_). 1. Return ?
+-- | \_target\_.\[\[DefineOwnProperty\]\](\_key\_, \_desc\_).
+-- SPEC: L42181-L42188
+-- | # Reflect.deleteProperty ( \_target\_, \_propertyKey\_ )
+-- |
+-- | This function performs the following steps when called:
+-- |
+-- | 1\. If \_target\_ is not an Object, throw a \*TypeError\* exception. 1.
+-- | Let \_key\_ be ? ToPropertyKey(\_propertyKey\_). 1. Return ?
+-- | \_target\_.\[\[Delete\]\](\_key\_).
+-- SPEC: L42189-L42197
+-- | # Reflect.get ( \_target\_, \_propertyKey\_ \[ , \_receiver\_ \] )
+-- |
+-- | This function performs the following steps when called:
+-- |
+-- | 1\. If \_target\_ is not an Object, throw a \*TypeError\* exception. 1.
+-- | Let \_key\_ be ? ToPropertyKey(\_propertyKey\_). 1. If \_receiver\_ is
+-- | not present, then 1. Set \_receiver\_ to \_target\_. 1. Return ?
+-- | \_target\_.\[\[Get\]\](\_key\_, \_receiver\_).
+-- SPEC: L42207-L42213
+-- | # Reflect.getPrototypeOf ( \_target\_ )
+-- |
+-- | This function performs the following steps when called:
+-- |
+-- | 1\. If \_target\_ is not an Object, throw a \*TypeError\* exception. 1.
+-- | Return ? \_target\_.\[\[GetPrototypeOf\]\]().
+-- SPEC: L42214-L42221
+-- | # Reflect.has ( \_target\_, \_propertyKey\_ )
+-- |
+-- | This function performs the following steps when called:
+-- |
+-- | 1\. If \_target\_ is not an Object, throw a \*TypeError\* exception. 1.
+-- | Let \_key\_ be ? ToPropertyKey(\_propertyKey\_). 1. Return ?
+-- | \_target\_.\[\[HasProperty\]\](\_key\_).
+-- SPEC: L42222-L42228
+-- | # Reflect.isExtensible ( \_target\_ )
+-- |
+-- | This function performs the following steps when called:
+-- |
+-- | 1\. If \_target\_ is not an Object, throw a \*TypeError\* exception. 1.
+-- | Return ? \_target\_.\[\[IsExtensible\]\]().
+-- SPEC: L42229-L42236
+-- | # Reflect.ownKeys ( \_target\_ )
+-- |
+-- | This function performs the following steps when called:
+-- |
+-- | 1\. If \_target\_ is not an Object, throw a \*TypeError\* exception. 1.
+-- | Let \_keys\_ be ? \_target\_.\[\[OwnPropertyKeys\]\](). 1. Return
+-- | CreateArrayFromList(\_keys\_).
+-- SPEC: L42237-L42243
+-- | # Reflect.preventExtensions ( \_target\_ )
+-- |
+-- | This function performs the following steps when called:
+-- |
+-- | 1\. If \_target\_ is not an Object, throw a \*TypeError\* exception. 1.
+-- | Return ? \_target\_.\[\[PreventExtensions\]\]().
+-- SPEC: L42244-L42252
+-- | # Reflect.set ( \_target\_, \_propertyKey\_, \_V\_ \[ , \_receiver\_ \] )
+-- |
+-- | This function performs the following steps when called:
+-- |
+-- | 1\. If \_target\_ is not an Object, throw a \*TypeError\* exception. 1.
+-- | Let \_key\_ be ? ToPropertyKey(\_propertyKey\_). 1. If \_receiver\_ is
+-- | not present, then 1. Set \_receiver\_ to \_target\_. 1. Return ?
+-- | \_target\_.\[\[Set\]\](\_key\_, \_V\_, \_receiver\_).
+-- SPEC: L42253-L42261
+-- | # Reflect.setPrototypeOf ( \_target\_, \_proto\_ )
+-- |
+-- | This function performs the following steps when called:
+-- |
+-- | 1\. If \_target\_ is not an Object, throw a \*TypeError\* exception. 1.
+-- | If \_proto\_ is not an Object and \_proto\_ is not \*null\*, throw a
+-- | \*TypeError\* exception. 1. Return ?
+-- | \_target\_.\[\[SetPrototypeOf\]\](\_proto\_).
+
 end VerifiedJS.Source
