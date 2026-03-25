@@ -456,7 +456,7 @@ private theorem convertExpr_scope_irrelevant (e : Core.Expr)
     rw [convertExprList_scope_irrelevant elems scope1 scope2]
   | functionDef fname params body isAsync isGenerator =>
     -- scope is NOT used: innerScope := params
-    simp only [Flat.convertExpr]
+    rfl
   | throw arg =>
     simp only [Flat.convertExpr]
     rw [convertExpr_scope_irrelevant arg scope1 scope2]
@@ -506,8 +506,7 @@ private theorem convertPropList_scope_irrelevant (ps : List (Core.PropName × Co
     simp only [Flat.convertPropList]
     rw [convertExpr_scope_irrelevant pe scope1 scope2]
     rw [convertPropList_scope_irrelevant rest scope1 scope2]
-  termination_by sizeOf ps
-  decreasing_by all_goals simp_all <;> omega
+  termination_by structural ps
 
 private theorem convertOptExpr_scope_irrelevant (oe : Option Core.Expr)
     (scope1 scope2 : List String) (envVar : String) (envMap : Flat.EnvMapping) (st : Flat.CCState) :
@@ -806,8 +805,9 @@ private theorem convertExpr_not_value (e : Core.Expr)
     (h : Core.exprValue? e = none)
     (scope : List String) (envVar : String) (envMap : Flat.EnvMapping) (st : Flat.CCState) :
     Flat.exprValue? (Flat.convertExpr e scope envVar envMap st).fst = none := by
-  cases e <;> simp [Core.exprValue?] at h <;> simp [Flat.convertExpr, Flat.exprValue?]
-  all_goals (first | rfl | (try split) <;> simp [Flat.exprValue?])
+  cases e <;> simp [Core.exprValue?] at h <;>
+    (first | simp [Flat.convertExpr, Flat.exprValue?] | rfl) <;>
+    (first | rfl | (try split) <;> simp [Flat.exprValue?])
 
 private theorem closureConvert_step_simulation
     (s : Core.Program) (t : Flat.Program)
