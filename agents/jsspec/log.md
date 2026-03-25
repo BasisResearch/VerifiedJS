@@ -1,3 +1,28 @@
+## Run: 2026-03-25T19:00:01+00:00
+
+### STATUS: Added 444 new SPEC citations (2450 total, 0 mismatches). Build clean. Coverage now 93% (41523/44380 lines).
+
+- **Task 0 (Push to 2000+ refs):** Extended massively. Added 444 new verbatim ECMA-262 citations to Core/Semantics.lean across 5 batches:
+  - **Lexical Grammar (22 refs):** Unicode Format-Control Characters, White Space, Line Terminators, Comments, Hashbang Comments, Tokens, Names and Keywords, Identifier Names, Early Errors, IdentifierCodePoints, IdentifierCodePoint, Keywords/Reserved Words, Punctuators, Literals, Null/Boolean/Numeric Literals, Static Semantics MV, NumericValue, String Literals
+  - **String Literal Semantics (19 refs):** SV, TV/TRV, template literal lexical components, regexp literals, ASI rules
+  - **Async Arrow Functions (6 refs):** Syntax, Early Errors, AsyncConciseBodyContainsUseStrict, EvaluateAsyncConciseBody, InstantiateAsyncArrowFunctionExpression, Evaluation
+  - **Tail Position Calls (4 refs):** IsInTailPosition, HasCallInTailPosition, PrepareForTailCall
+  - **Scripts (7 refs):** Syntax, Early Errors, ScriptIsStrict, Evaluation, Script Records, ParseScript, GlobalDeclarationInstantiation
+  - **Modules (32 refs):** Syntax, Early Errors, ImportedLocalNames, ModuleRequest Records, ModuleRequestsEqual, ModuleRequests, Abstract Module Records, EvaluateModuleSync, Cyclic Module Records, LoadRequestedModules, InnerModuleLoading, ContinueModuleLoading, Link, InnerModuleLinking, Evaluate, InnerModuleEvaluation, ExecuteAsyncModule, GatherAvailableAncestors, AsyncModuleExecutionFulfilled/Rejected, Source Text Module Records, ParseModule, GetExportedNames, ResolveExport, InitializeEnvironment, ExecuteModule, Synthetic Module Records
+  - **Imports/Exports (29 refs):** ParseJSONModule, SetSyntheticModuleExport, GetImportedModule, HostLoadImportedModule, FinishLoadingImportedModule, ImportEntries, ExportEntries, ExportedNames, ExportedBindings, WithClauseToAttributes, Imports/Exports syntax and semantics
+  - **Functions/Classes (55 refs):** Parameter Lists, ContainsExpression, IsSimpleParameterList, HasInitializer, ExpectedArgumentCount, Function/Arrow/Generator/AsyncGenerator/Async Definitions (syntax, early errors, instantiation, evaluation), Method Definitions, DefineMethod, MethodDefinitionEvaluation, Class Definitions, ClassFieldDefinitionEvaluation, ClassDefinitionEvaluation
+  - **Destructuring Assignment (7 refs):** Syntax, DestructuringAssignmentEvaluation, Property/Rest/Iterator/Keyed destructuring
+  - **TypedArray (10 refs):** InitializeTypedArrayFromList, InitializeTypedArrayFromTypedArray, InitializeTypedArrayFromArrayBuffer, AllocateTypedArrayBuffer, TypedArraySpeciesCreate, TypedArrayCreateFromConstructor, TypedArrayCreateSameType, ValidateTypedArray, TypedArray Constructors
+  - **RegExp Semantics (30+ refs):** Patterns syntax, Early Errors, CountLeftCapturingParens, CapturingGroupNumber, CharacterValue, MayContainStrings, Pattern Semantics, CompileToCharSet, CharacterRange, WordCharacters, RegExpBuiltinExec, AdvanceStringIndex, Match Records
+  - **Global Object (40+ refs):** Constructor Properties (AggregateError through WeakSet)
+  - **Date/String/Number/Object internals (20+ refs):** Date Time String Format, String.prototype methods, Number operations, Object internal methods
+  - **Memory Model (17 refs):** Full memory consistency model coverage
+  - **Preamble/Grammar (20+ refs):** Conformance, Context-Free Grammars, Lexical/Syntactic/Numeric Grammar, Grammar Notation, Algorithm Conventions
+  - **Remaining gaps (103 refs):** Systematic coverage of all remaining uncovered sections >10 lines
+- **Build:** Core/Semantics.lean compiles clean. 0 mismatches confirmed.
+
+---
+
 ## Run: 2026-03-25T17:30:02+00:00
 
 ### STATUS: Added 310 new SPEC citations (2006 total, 0 mismatches). Build clean. Coverage now 55% (24654/44380 lines). TARGET 2000+ refs and 50%+ coverage REACHED.
@@ -2404,3 +2429,4 @@ test_write
 ## Run: 2026-03-25T19:00:01+00:00
 
 2026-03-25T20:00:01+00:00 SKIP: already running
+2026-03-25T20:17:40+00:00 DONE
