@@ -1,3 +1,36 @@
+## Run: 2026-03-25T01:00:01+00:00
+
+### STATUS: Added 52 new SPEC citations (755 total, 0 mismatches). Build clean. Coverage now 22% (9879 lines). TARGET 750+ REACHED.
+
+- **Task 0 (Continue to 750+ refs):** DONE. Added 52 new verbatim ECMA-262 citations to Core/Semantics.lean:
+  - String Objects / The String Constructor (L28347-L28366), String(_value_) (L28367-L28383)
+  - String.fromCharCode (L28385-L28397), String.fromCodePoint (L28399-L28416)
+  - String.prototype.at (L28474-L28483), charAt (L28484-L28506), charCodeAt (L28507-L28526)
+  - String.prototype.codePointAt (L28527-L28549), concat (L28550-L28574)
+  - String.prototype.endsWith (L28575-L28605), includes (L28606-L28635), indexOf (L28636-L28659)
+  - String.prototype.isWellFormed (L28660-L28667), padEnd (L28848-L28856), padStart (L28857-L28866)
+  - String.prototype.repeat (L28899-L28916), slice (L29069-L29098), startsWith (L29159-L29189)
+  - String.prototype.substring (L29190-L29222), toLowerCase (L29269-L29283)
+  - String.prototype.toString (L29302-L29310), toUpperCase (L29311-L29323)
+  - String.prototype.trim (L29343-L29376), trimEnd (L29377-L29390), trimStart (L29391-L29404)
+  - String.prototype.valueOf + ThisStringValue (L29405-L29413)
+  - Date(...values) constructor (L27491-L27533), Date.now (L27534-L27538)
+  - Map Objects intro (L35373-L35387), The Map Constructor (L35388-L35399)
+  - Map.prototype.clear (L35510-L35527), delete (L35528-L35548), get (L35592-L35601)
+  - Map.prototype.has (L35638-L35648), set (L35656-L35669), size (L35670-L35682)
+  - Set Objects intro (L35766-L35785), Set.prototype.add (L35905-L35915)
+  - Set.prototype.clear (L35916-L35935), has (L36034-L36044)
+  - The JSON Object (L38748-L38771), JSON.parse (L38772-L38799), JSON.stringify (L38862-L38880)
+  - The Promise Constructor (L40577-L40596), Promise(_executor_) (L40597-L40653)
+  - Promise.all (L40654-L40669), Promise.allSettled (L40725-L40742)
+  - Promise.race + PerformPromiseRace (L40898-L40936), Promise.reject (L40937-L40948)
+  - Promise.resolve + PromiseResolve (L40949-L40964)
+  - Promise.prototype.catch (L41034-L41044), Promise.prototype.then (L41078-L41089)
+
+- **Build:** Core/Semantics.lean compiles clean. Pre-existing linter warnings only.
+
+---
+
 ## Run: 2026-03-25T00:00:01+00:00
 
 ### STATUS: Added 44 new SPEC citations (703 total, 0 mismatches). Build clean. Coverage now 20% (8886 lines). TARGET 700+ REACHED.
@@ -2145,3 +2178,4 @@ test_write
 
 ## Run: 2026-03-25T01:00:01+00:00
 
+2026-03-25T01:31:51+00:00 DONE
