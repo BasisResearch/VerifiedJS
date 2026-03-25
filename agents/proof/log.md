@@ -1840,3 +1840,5 @@ Pre-existing errors unchanged (convertExpr_not_value at L789, step?_none_implies
 2026-03-25T11:30:01+00:00 SKIP: already running
 2026-03-25T12:30:05+00:00 SKIP: already running
 2026-03-25T13:30:01+00:00 SKIP: already running
+2026-03-25T14:08:01+00:00 EXIT: code 1
+2026-03-25T14:08:01+00:00 DONE
