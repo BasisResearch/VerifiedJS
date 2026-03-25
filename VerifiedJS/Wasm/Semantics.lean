@@ -6941,9 +6941,19 @@ theorem init (irmod : IRModule) (wmod : Module)
         exact emit_globals_init_valcorr irmod wmod hemit j hj hj_w
   hmemory := by
     simp only [irInitialState, Wasm.initialState, initialStore]
-    -- Need: (wmod.memories.map initMemory)[0]? = some (initIRMemory irmod)
-    -- Requires emit_preserves_memories lemma (buildModule preserves memories)
-    sorry
+    intro mem hmem
+    have hemit' := hemit
+    unfold emit at hemit'
+    simp only [Bind.bind, Except.bind] at hemit'
+    split at hemit'
+    · simp at hemit'
+    · simp only [Except.ok.injEq] at hemit'
+      subst hemit'
+      simp only [buildModule] at hmem
+      simp only [initIRMemory]
+      cases h0 : irmod.memories[0]? with
+      | none => exfalso; simp [h0] at hmem
+      | some memType => simp [Array.getElem?_map, h0] at hmem; rw [← hmem]; simp [initMemory]
   hlabels := by simp [irInitialState, Wasm.initialState]
   hhalt := by
     intro hirHalt
