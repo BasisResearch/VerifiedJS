@@ -277,6 +277,20 @@ private def writeLE? (mem : ByteArray) (addr width : Nat) (value : UInt64) : Opt
       return none
   return some out
 
+/-- writeLE? on a zero-size memory always returns none (first byte access fails). -/
+private theorem writeLE?_none_of_size_zero (mem : ByteArray) (addr : Nat) (width : Nat) (hw : 0 < width)
+    (value : UInt64) (hsz : mem.size = 0) : writeLE? mem addr width value = none := by
+  have h0 : ¬ (addr + 0 < mem.size) := by omega
+  unfold writeLE?
+  simp [Id.run]
+  cases width with
+  | zero => omega
+  | succ n =>
+    simp only [List.range']
+    dsimp [forIn, ForIn.forIn, h0]
+    simp [hsz]
+    rfl
+
 private def i32ToSigned (n : UInt32) : Int :=
   (Int32.ofNat n.toNat).toInt
 

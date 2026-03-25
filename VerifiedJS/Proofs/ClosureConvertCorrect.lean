@@ -1253,12 +1253,11 @@ private theorem closureConvert_step_simulation
       -- init = .lit v since exprValue? only returns some for literals
       have hinit_lit : init = .lit v := by
         cases init <;> simp [Core.exprValue?] at hval <;> subst_vars <;> rfl
-      subst hinit_lit
       -- Simplify convertExpr (.lit v) = (.lit (convertValue v), st)
-      have hcf : (Flat.convertExpr (.lit v) scope envVar envMap st).fst = .lit (Flat.convertValue v) := by
-        simp [Flat.convertExpr]
-      have hcs : (Flat.convertExpr (.lit v) scope envVar envMap st).snd = st := by
-        simp [Flat.convertExpr]
+      have hcf : (Flat.convertExpr init scope envVar envMap st).fst = .lit (Flat.convertValue v) := by
+        rw [hinit_lit]; simp [Flat.convertExpr]
+      have hcs : (Flat.convertExpr init scope envVar envMap st).snd = st := by
+        rw [hinit_lit]; simp [Flat.convertExpr]
       rw [hcf, hcs] at hsf_expr
       -- hsf_expr : sf.expr = .let name (.lit (convertValue v)) (convertExpr body (name::scope) envVar envMap st).fst
       -- Flat step on let-value: event is .silent
