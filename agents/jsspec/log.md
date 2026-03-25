@@ -1,3 +1,28 @@
+## Run: 2026-03-25T07:00:01+00:00
+
+### STATUS: Added 87 new SPEC citations (1388 total, 0 mismatches). Build clean. Coverage now 44% (19562 lines).
+
+- **Task 0 (Push to 1300+ refs):** Continued. Added 87 new verbatim ECMA-262 citations to Core/Semantics.lean:
+  - **Proxy Internal Methods (13 refs):** [[GetPrototypeOf]], [[SetPrototypeOf]], [[IsExtensible]], [[PreventExtensions]], [[GetOwnProperty]], [[DefineOwnProperty]], [[HasProperty]], [[Get]], [[Set]], [[Delete]], [[OwnPropertyKeys]], [[Call]], [[Construct]] for Proxy exotic objects
+  - **Jobs and Host Operations (7 refs):** Jobs intro, JobCallback Records, HostMakeJobCallback, HostCallJobCallback, HostEnqueueGenericJob, HostEnqueuePromiseJob, HostEnqueueTimeoutJob
+  - **Agents (4 refs):** Agents intro, IncrementModuleAsyncEvaluationCount, Agent Clusters, Forward Progress
+  - **WeakRef/FinalizationRegistry (3 refs):** Processing Model objectives, semantics, HostEnqueueFinalizationRegistryCleanupJob
+  - **String/Arguments Exotic (3 refs):** StringGetOwnProperty, Arguments [[GetOwnProperty]], Arguments [[Get]]
+  - **PerformPromiseThen (1 ref):** Full algorithm
+  - **GeneratorFunction Objects (7 refs):** Intro, constructor, GeneratorFunction(), prototype properties, toStringTag
+  - **AsyncGeneratorFunction Objects (7 refs):** Intro, constructor, AsyncGeneratorFunction(), prototype properties, toStringTag
+  - **AsyncGenerator Abstract Ops (10 refs):** AsyncGeneratorRequest Records, AsyncGeneratorStart, AsyncGeneratorValidate, AsyncGeneratorEnqueue, AsyncGeneratorCompleteStep, AsyncGeneratorResume, AsyncGeneratorUnwrapYieldResumption, AsyncGeneratorYield, AsyncGeneratorAwaitReturn, AsyncGeneratorDrainQueue
+  - **AsyncFunction Objects (6 refs):** Intro, constructor, AsyncFunction(), prototype properties, toStringTag
+  - **Async Functions Abstract Ops (2 refs):** AsyncFunctionStart, AsyncBlockStart
+  - **Atomics Abstract Ops (15 refs):** ValidateAtomicAccessOnIntegerTypedArray, RevalidateAtomicAccess, GetWaiterList, EnterCriticalSection, LeaveCriticalSection, AddWaiter, RemoveWaiter, RemoveWaiters, SuspendThisAgent, NotifyWaiter, EnqueueResolveInAgentJob, AtomicCompareExchangeInSharedBlock, AtomicReadModifyWrite, ByteListBitwiseOp, ByteListEqual
+  - **TypedArray Constructors (3 refs):** _TypedArray_(...args), AllocateTypedArray, InitializeTypedArrayFromTypedArray
+  - **Array Sort Ops (4 refs):** SortIndexedProperties, CompareArrayElements, Array.prototype.splice, Array.prototype.toLocaleString
+  - **Promise (1 ref):** Promise.prototype [%Symbol.toStringTag%]
+  - **Eval (1 ref):** HostEnsureCanCompileStrings
+- **Build:** Core/Semantics.lean compiles clean. 0 mismatches confirmed.
+
+---
+
 ## Run: 2026-03-25T06:30:03+00:00
 
 ### STATUS: Added 387+ new SPEC citations (1527 total, 0 mismatches). Build clean. Coverage now 39% (17738 lines). TARGET 1300+ and 33%+ REACHED.
@@ -2306,3 +2331,4 @@ test_write
 ## Run: 2026-03-25T07:00:01+00:00
 
 2026-03-25T08:00:01+00:00 SKIP: already running
+2026-03-25T08:18:11+00:00 DONE
