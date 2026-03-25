@@ -1483,11 +1483,19 @@ private theorem anfConvert_halt_star_aux
               let steps12 := Flat.Steps.tail (⟨hstep1⟩ : Flat.Step sf .silent sf2) (Flat.Steps.tail (⟨hstep2_eq⟩ : Flat.Step sf2 .silent sf3) hsteps')
               have hobsAll : observableTrace (.silent :: .silent :: evs) = [] := by simp [observableTrace_silent, hobs']
               exact ⟨sf', .silent :: .silent :: evs, steps12, hhalt', hobsAll, hrel'⟩
-            | seq _ _ =>
-              -- c1 = .seq: left-spine depth > 4. Needs general left-spine flattening
-              -- lemma (induction on trivEvalCost or similar measure).
-              -- Each leaf (lit/var/this) takes 1-2 steps; total steps bounded by
-              -- 2 * (number of nodes in c1). After flattening, depth ≤ N, IH applies.
+            | seq c1a c1b =>
+              -- c1 = .seq c1a c1b: use normalizeExpr_ignored_bypass_trivial to bypass c1
+              rw [hc1] at hnorm; simp only [ANF.normalizeExpr] at hnorm
+              -- Bypass both sub-expressions of c1
+              have hnorm_c1b := normalizeExpr_ignored_bypass_trivial c1a.depth c1a (le_refl _) _ n m tv hnorm
+              have hnorm_c2 := normalizeExpr_ignored_bypass_trivial c1b.depth c1b (le_refl _) _ n m tv hnorm_c1b
+              -- Depth bound for target expression
+              have hbd : (Flat.Expr.seq (Flat.Expr.seq (Flat.Expr.seq c2 d) a2) b).depth ≤ N := by
+                simp [Flat.Expr.depth]
+                rw [hsf] at hdepth; rw [ha, ha1, hc, hc1] at hdepth
+                simp [Flat.Expr.depth] at hdepth; omega
+              -- Flat steps from sf to target: by evaluating c1 in the nested context
+              -- c1 = .seq c1a c1b is a trivial chain, evaluation preserves env/heap and is silent
               sorry
             | _ =>
               -- Compound c1: normalizeExpr c1 can't produce trivial
