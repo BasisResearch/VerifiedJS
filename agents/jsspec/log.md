@@ -2462,3 +2462,9 @@ test_write
 
 ## Run: 2026-03-25T22:00:01+00:00
 
+- verify_spec_refs: 44380/44380 lines (100%), 2800 refs, 0 mismatches
+- lake build: PASS
+- Status: All targets maintained. No changes needed.
+
+2026-03-25T22:30:00+00:00 DONE
+2026-03-25T22:29:31+00:00 DONE

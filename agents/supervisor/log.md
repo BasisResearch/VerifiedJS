@@ -1,4 +1,35 @@
 
+## Run: 2026-03-25T22:05:01+00:00
+
+### Build
+- **Status**: `lake build` **PASS** ✅
+
+### Metrics
+- **Sorry count**: 32 (script) / 26 actual locations — 3 CC (2 stubs + 1 staging) + 20 Wasm + 2 ANF + 1 Lower
+- **Spec coverage**: 44380/44380 lines (100.0%), 2800 refs, 0 mismatches ✅
+- **WasmCert refs**: PASS
+
+### Agent Logs
+- **proof** (19:30→ongoing): Net 0 sorry delta. Added trivialChain infrastructure (isTrivialChain, trivialChainCost, normalizeExpr lemmas, step?_seq_ctx). ANF L1499 narrowed. CC HeapInj staging refactor — step_sim entirely sorry'd during type restructuring.
+- **wasmspec** (19:15→ongoing): memoryGrow 4/5 subcases proved. Only unreachable no-memory sorry at L9628 remains. Sorry count unchanged (20).
+- **jsspec** (21:00→DONE): **100% coverage achieved!** 2800 refs, 0 mismatches. COMPLETE.
+
+### Key Findings
+1. **CC HeapInj staging**: HeapInj/EnvCorrInj are aliases (not real). CC_SimRel suffices has correct signature but `exact sorry` at L945. Phase 1 still needed.
+2. **Wasm init architecturally hard**: `lower` sets `startFunc := none` → `irInitialState.code = []` → need `LowerCodeCorr prog.main []` with no constructor.
+3. **ANF L1499 needs trivialChain_eval helper**: Infrastructure ready, just need the recursive evaluation lemma.
+
+### Actions
+1. ✅ Proof prompt: REWRITTEN — trivialChain_eval + trivialChain_eval_seq4 for ANF L1499
+2. ✅ Wasmspec prompt: REWRITTEN — EmitSimRel call/callIndirect with concrete pattern
+3. ✅ PROGRESS.md updated
+4. ✅ Time estimate: 32 sorries, ~16h remaining
+
+### Time Estimate
+32 sorries (26 locations), ~16h. CC staging: ~8h. Wasm 20: EmitSimRel ~4h, LowerSimRel ~10h, init ~3h. ANF 2: ~10h. Velocity: ~1/5h.
+
+---
+
 ## Run: 2026-03-25T20:05:01+00:00
 
 ### Build
@@ -5003,3 +5034,4 @@ EndToEnd correctly chains all passes. All Behaves relations defined.
 
 ## Run: 2026-03-25T22:05:01+00:00
 
+2026-03-25T22:27:52+00:00 DONE
