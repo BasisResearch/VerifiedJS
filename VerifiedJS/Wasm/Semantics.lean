@@ -3957,7 +3957,7 @@ def irStep? (s : IRExecState) : Option (TraceEvent × IRExecState) :=
                 some (.silent, irPushTrace { base with stack := .i32 oldPages.toUInt32 :: stk, memory := grown } .silent)
               else
                 some (.silent, irPushTrace { base with stack := .i32 (0xFFFFFFFF : UInt32) :: stk } .silent)
-          | some _ => some (irTrapState base "type mismatch in memory.grow")
+          | some _ => some (irTrapState base "memory.grow delta is not i32")
           | none => some (irTrapState base "stack underflow in memory.grow")
 
 /-! ### IR Inductive Relations -/

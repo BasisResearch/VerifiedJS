@@ -1,3 +1,49 @@
+## Run: 2026-03-25T02:00:01+00:00
+
+### STATUS: Added 83 new SPEC citations (838 total, 0 mismatches). Build clean. Coverage now 24% (10690 lines). TARGET 800+ REACHED.
+
+- **Task 0 (Continue to 800+ refs):** DONE. Added 83 new verbatim ECMA-262 citations to Core/Semantics.lean:
+  - Boolean Objects (L24667-L24668), The Boolean Constructor (L24669-L24685), Boolean(_value_) (L24686-L24694)
+  - Properties of the Boolean Prototype Object (L24711-L24721), Boolean.prototype.toString (L24726-L24732)
+  - Boolean.prototype.valueOf (L24733-L24738), ThisBooleanValue (L24739-L24745)
+  - Symbol Objects (L24753-L24754), The Symbol Constructor (L24755-L24767), Symbol(_description_) (L24768-L24777)
+  - Symbol.for (L24794-L24817), Symbol.keyFor (L24842-L24848)
+  - Properties of the Symbol Prototype Object (L24929-L24939), get Symbol.prototype.description (L24944-L24952)
+  - Symbol.prototype.toString (L24953-L24959), SymbolDescriptiveString (L24960-L24966)
+  - Symbol.prototype.valueOf (L24967-L24972), ThisSymbolValue (L24973-L24979), KeyForSymbol (L25014-L25024)
+  - Error Objects intro (L25025-L25034), The Error Constructor (L25035-L25051), Error(_message_) (L25052-L25064)
+  - Error.isError (L25073-L25080), Properties of the Error Prototype Object (L25088-L25098)
+  - Error.prototype.toString (L25111-L25125)
+  - EvalError (L25141-L25148), RangeError (L25149-L25154), ReferenceError (L25155-L25160)
+  - SyntaxError (L25161-L25166), TypeError (L25167-L25174), URIError (L25175-L25181)
+  - The AggregateError Constructor (L25283-L25299), InstallErrorCause (L25370-L25380)
+  - The Number Constructor (L25385-L25401), Number(_value_) (L25402-L25413)
+  - Number.isFinite (L25432-L25438), Number.isInteger (L25439-L25445), Number.isNaN (L25446-L25456)
+  - Number.prototype.toString (L25745-L25764), Number.prototype.valueOf (L25765-L25768)
+  - ThisNumberValue (L25769-L25775)
+  - The Math Object (L25926-L25944), Math.abs (L26049-L26060), Math.ceil (L26193-L26209)
+  - Math.floor (L26277-L26293), Math.max (L26419-L26439), Math.min (L26440-L26460)
+  - Math.round (L26479-L26502), Math.sqrt (L26540-L26549), Math.trunc (L26621-L26634)
+  - Array Objects (L32077-L32081), The Array Constructor (L32082-L32103), Array.isArray (L32243-L32248)
+  - Properties of the Array Prototype Object (L32291-L32307), Array.prototype.at (L32308-L32316)
+  - The WeakMap Constructor (L36334-L36350), Properties of the WeakMap Prototype Object (L36386-L36395)
+  - WeakMap.prototype.delete (L36400-L36416), WeakMap.prototype.get (L36417-L36428)
+  - WeakMap.prototype.has (L36464-L36475), WeakMap.prototype.set (L36476-L36489)
+  - WeakSet Objects (L36504-L36530), WeakSet.prototype.add (L36591-L36602)
+  - WeakSet.prototype.delete (L36607-L36623), WeakSet.prototype.has (L36624-L36634)
+  - WeakRef Objects (L39144-L39150), The WeakRef Constructor (L39151-L39167), WeakRef(_target_) (L39168-L39179)
+  - WeakRef.prototype.deref (L39210-L39238), WeakRefDeref (L39249-L39259)
+  - The Reflect Object (L42135-L42150), Reflect.apply (L42151-L42160), Reflect.construct (L42161-L42171)
+  - Reflect.defineProperty (L42172-L42180), Reflect.deleteProperty (L42181-L42188)
+  - Reflect.get (L42189-L42197), Reflect.getPrototypeOf (L42207-L42213)
+  - Reflect.has (L42214-L42221), Reflect.isExtensible (L42222-L42228)
+  - Reflect.ownKeys (L42229-L42236), Reflect.preventExtensions (L42237-L42243)
+  - Reflect.set (L42244-L42252), Reflect.setPrototypeOf (L42253-L42261)
+
+- **Build:** Core/Semantics.lean compiles clean. Pre-existing linter warnings only.
+
+---
+
 ## Run: 2026-03-25T01:00:01+00:00
 
 ### STATUS: Added 52 new SPEC citations (755 total, 0 mismatches). Build clean. Coverage now 22% (9879 lines). TARGET 750+ REACHED.
@@ -2182,3 +2228,4 @@ test_write
 
 ## Run: 2026-03-25T02:00:01+00:00
 
+2026-03-25T02:44:14+00:00 DONE
