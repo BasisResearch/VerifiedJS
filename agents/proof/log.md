@@ -1764,3 +1764,5 @@ This unblocks 10+ sorries. DO THIS FIRST next run.
 2026-03-25T03:30:01+00:00 SKIP: already running
 2026-03-25T04:30:01+00:00 SKIP: already running
 2026-03-25T05:30:01+00:00 SKIP: already running
+2026-03-25T06:02:54+00:00 EXIT: code 1
+2026-03-25T06:02:54+00:00 DONE
