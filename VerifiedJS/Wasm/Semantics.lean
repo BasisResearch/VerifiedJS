@@ -6833,6 +6833,28 @@ theorem stack_corr_tail {iv : IRValue} {wv : WasmValue}
     have := helems (i + 1) (by simp; omega)
     simpa using this
 
+/-- Stack correspondence inversion: if IR stack starts with one i32,
+    the Wasm stack starts with the same i32. -/
+theorem stack_corr_i32_inv
+    (a : UInt32) (stk : List IRValue) (wstk : List WasmValue)
+    (hlen : (IRValue.i32 a :: stk).length = wstk.length)
+    (helems : ∀ i, i < (IRValue.i32 a :: stk).length →
+      ∃ irv wv, (IRValue.i32 a :: stk)[i]? = some irv ∧ wstk[i]? = some wv ∧ IRValueToWasmValue irv wv) :
+    ∃ wstk', wstk = .i32 a :: wstk' ∧
+      wstk'.length = stk.length ∧
+      ∀ i, i < stk.length →
+        ∃ irv wv, stk[i]? = some irv ∧ wstk'[i]? = some wv ∧ IRValueToWasmValue irv wv := by
+  match wstk with
+  | [] => simp at hlen
+  | w0 :: wstk' =>
+    simp at hlen
+    have h0 := helems 0 (by simp)
+    simp at h0
+    cases h0
+    exact ⟨wstk', rfl, hlen.symm, fun i hi => by
+      have := helems (i + 1) (by simp; omega)
+      simpa using this⟩
+
 /-- Stack correspondence inversion: if IR stack starts with two i32 values,
     the Wasm stack starts with the corresponding i32 values. -/
 theorem stack_corr_i32_i32_inv
@@ -7668,8 +7690,103 @@ theorem step_sim (irmod : IRModule) (wmod : Module) :
                               hframes_one := hrel.hframes_one }
           · exact hf.elim
       | .load t offset =>
-          -- memory load
-          sorry
+          -- memory load: IR uses readLE?, Wasm uses readLE? on store.memories[0]
+          have hc_full : EmitCodeCorr (IRInstr.load t offset :: rest) s2.code := hcode_ir ▸ hrel.hcode
+          match t with
+          | .i32 =>
+            rcases hc_full.load_i32_inv with ⟨rest_w, hcw, hrest⟩ | hf
+            · -- Wasm code = i32Load {offset, align:2} :: rest_w
+              -- Case split on IR stack
+              match hstk : s1.stack with
+              | [] =>
+                -- Empty stack: both trap
+                simp [irStep?, hcode_ir, hstk, irPop1?, irTrapState, irPushTrace] at hstep
+                obtain ⟨rfl, rfl⟩ := hstep
+                have hlen := hrel.hstack.1; rw [hstk] at hlen; simp at hlen
+                have hs2 : s2.stack = [] := by cases s2.stack <;> simp_all
+                have hw : step? s2 = some (.trap ("stack underflow in " ++ _),
+                    { s2 with code := [], trace := s2.trace ++ [.trap ("stack underflow in " ++ _)] }) := by
+                  simp [step?, hcw, hs2, pop1?, trapState, pushTrace]
+                exact ⟨_, by simp [traceToWasm]; exact hw,
+                  { hemit := hrel.hemit, hcode := .nil, hstack := by simp [hs2],
+                    hframes_len := hrel.hframes_len, hframes_locals := hrel.hframes_locals,
+                    hframes_vals := hrel.hframes_vals, hglobals := hrel.hglobals, hmemory := hrel.hmemory,
+                    hlabels := hrel.hlabels, hhalt := hhalt_of_structural .nil hrel.hlabels
+                        hlabel_content := hrel.hlabel_content
+                        hframes_one := hrel.hframes_one }⟩
+              | .i32 addr :: stk =>
+                -- i32 address on stack: read memory
+                -- Case split on readLE? result
+                match hread : readLE? s1.memory (addr.toNat + offset) 4 with
+                | some raw =>
+                  -- Successful read
+                  have hir := irStep?_eq_load_i32 s1 rest offset addr stk raw hcode_ir hstk hread
+                  rw [hir] at hstep
+                  simp only [Option.some.injEq, Prod.mk.injEq] at hstep
+                  obtain ⟨rfl, rfl⟩ := hstep
+                  -- Get Wasm stack from correspondence
+                  have hstk_w := stack_corr_i32_inv addr stk s2.stack
+                    (hstk ▸ hrel.hstack.1) (hstk ▸ hrel.hstack.2)
+                  obtain ⟨wstk', hstack_eq, hlen_tail, htail⟩ := hstk_w
+                  -- Bridge memory: get Wasm memory from hmemory
+                  rcases hrel.hmemory with hmem_eq | ⟨hmem_none, hmem_sz⟩
+                  · -- Memory exists: w.store.memories[0]? = some ir.memory
+                    have hread_w : s2.store.memories[0]? >>= (fun mem => readLE? mem (addr.toNat + offset) 4) = some raw := by
+                      rw [hmem_eq]; simp [hread]
+                    have hw := step?_i32Load_some s2 { offset := offset, align := 2 } addr wstk' rest_w
+                      s1.memory raw hmem_eq hread
+                    rw [hstack_eq] at hw
+                    simp only [traceToWasm]
+                    refine ⟨_, hw, hrel.hemit, hrest, ?_, hrel.hframes_len, hrel.hframes_locals,
+                      hrel.hframes_vals, hrel.hglobals, hrel.hmemory, hrel.hlabels,
+                      hhalt_of_structural hrest hrel.hlabels, hrel.hlabel_content, hrel.hframes_one⟩
+                    dsimp only []
+                    exact stack_corr_cons hlen_tail htail (.i32 _)
+                  · -- No memory: readLE? on empty memory should fail → contradiction
+                    have : s1.memory.size = 0 := hmem_sz
+                    -- readLE? on size-0 memory can't return some
+                    simp [readLE?] at hread
+                    sorry -- readLE? on empty memory never returns some
+                | none =>
+                  -- OOB: both trap
+                  simp [irStep?, hcode_ir, hstk, irPop1?, irPushTrace, hread, irTrapState] at hstep
+                  obtain ⟨rfl, rfl⟩ := hstep
+                  have hstk_w := stack_corr_i32_inv addr stk s2.stack
+                    (hstk ▸ hrel.hstack.1) (hstk ▸ hrel.hstack.2)
+                  obtain ⟨wstk', hstack_eq, _, _⟩ := hstk_w
+                  rcases hrel.hmemory with hmem_eq | ⟨hmem_none, _⟩
+                  · -- Memory exists but OOB
+                    have hread_w : s2.store.memories[0]? >>= (fun mem => readLE? mem (addr.toNat + offset) 4) = none := by
+                      rw [hmem_eq]; simp [hread]
+                    have hw : step? s2 = some (.trap ("memory access fault in " ++ _),
+                        { s2 with code := [], trace := s2.trace ++ [.trap ("memory access fault in " ++ _)] }) := by
+                      simp [step?, hcw, hstack_eq, pop1?, hread_w, trapState, pushTrace]
+                    exact ⟨_, by simp [traceToWasm]; exact hw,
+                      { hemit := hrel.hemit, hcode := .nil, hstack := by dsimp only []; exact hrel.hstack,
+                        hframes_len := hrel.hframes_len, hframes_locals := hrel.hframes_locals,
+                        hframes_vals := hrel.hframes_vals, hglobals := hrel.hglobals, hmemory := hrel.hmemory,
+                        hlabels := hrel.hlabels, hhalt := hhalt_of_structural .nil hrel.hlabels
+                            hlabel_content := hrel.hlabel_content
+                            hframes_one := hrel.hframes_one }⟩
+                  · -- No memory: trap
+                    have hw : step? s2 = some (.trap ("memory access fault in " ++ _),
+                        { s2 with code := [], trace := s2.trace ++ [.trap ("memory access fault in " ++ _)] }) := by
+                      simp [step?, hcw, hstack_eq, pop1?, hmem_none, trapState, pushTrace, Option.bind]
+                    exact ⟨_, by simp [traceToWasm]; exact hw,
+                      { hemit := hrel.hemit, hcode := .nil, hstack := by dsimp only []; exact hrel.hstack,
+                        hframes_len := hrel.hframes_len, hframes_locals := hrel.hframes_locals,
+                        hframes_vals := hrel.hframes_vals, hglobals := hrel.hglobals, hmemory := hrel.hmemory,
+                        hlabels := hrel.hlabels, hhalt := hhalt_of_structural .nil hrel.hlabels
+                            hlabel_content := hrel.hlabel_content
+                            hframes_one := hrel.hframes_one }⟩
+              | _ =>
+                -- Wrong type on stack: both trap
+                simp [irStep?, hcode_ir, hstk, irPop1?, irTrapState, irPushTrace] at hstep
+                obtain ⟨rfl, rfl⟩ := hstep
+                sorry -- type mismatch trap: need stack correspondence for non-i32 head
+            · exact hf.elim
+          | .f64 => sorry
+          | .i64 => sorry
       | .store t offset =>
           -- memory store
           sorry

@@ -760,8 +760,8 @@ private theorem closureConvert_init_related
     exact h_addr_wf
   · -- EnvAddrWF: initial env has "console" → .object 0, heap has 1 object
     exact EnvAddrWF_extend (EnvAddrWF_empty 1) "console" (.object 0) (by simp [ValueAddrWF])
-  · -- HeapValuesWF: initial heap has 1 object with empty props
-    intro _ _ _ _ _ hkv; simp_all
+  · -- HeapValuesWF: initial heap has console object with log function
+    intro _ _ _ _ _ _; simp_all [ValueAddrWF]
   · unfold Flat.closureConvert at h
     simp only [Except.ok.injEq] at h
     let st2 := (Flat.convertFuncDefs s.functions.toList Flat.CCState.empty).fst.foldl
@@ -1196,7 +1196,7 @@ private theorem closureConvert_step_simulation
             simp only [Flat.step?, hfenv] at h0
             have h1 := (Prod.mk.inj (Option.some.inj h0)).2; subst h1; rfl
           have hheap' : HeapCorr sc'.heap sf'.heap := by rw [hsc'_heap, hsf'_heap]; exact hheap
-          exact ⟨hsf'_trace, henv', hheap', by rw [hsc'_env, hsc'_heap]; exact henvwf, by rw [hsc'_heap]; exact hheapvwf, by rw [hsc'_expr]; simp [noCallFrameReturn], by simp [ExprAddrWF, ValueAddrWF], scope, st, st,
+          exact ⟨hsf'_trace, henv', hheap', by rw [hsc'_env, hsc'_heap]; exact henvwf, by rw [hsc'_heap]; exact hheapvwf, by rw [hsc'_expr]; simp [noCallFrameReturn], by rw [hsc'_expr]; simp [ExprAddrWF, ValueAddrWF], scope, st, st,
             by rw [hsc'_expr]; simp [Flat.convertExpr, Flat.convertValue, hsf'_expr]⟩
         | some cv =>
           -- Core has the var but Flat doesn't → contradiction via EnvCorr.2
