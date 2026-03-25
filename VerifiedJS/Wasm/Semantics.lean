@@ -9450,7 +9450,14 @@ theorem step_sim (irmod : IRModule) (wmod : Module) :
           · exact hf.elim
       | .callIndirect typeIdx =>
           -- indirect call
-          sorry
+          have hc : EmitCodeCorr (IRInstr.callIndirect typeIdx :: rest) s2.code := hcode_ir ▸ hrel.hcode
+          rcases hc.callIndirect_inv with ⟨rest_w, hcw, hrest⟩ | hf
+          · -- Wasm code = Instr.callIndirect typeIdx 0 :: rest_w
+            -- callIndirect needs: pop i32, table lookup, type check, etc.
+            -- Same architectural blockers as call (hframes_one, param count correspondence)
+            -- Additionally needs table correspondence (not tracked in EmitSimRel)
+            sorry
+          · exact hf.elim
       | .block label body =>
           -- block: push label frame, enter body. Both IR and Wasm do the same.
           have hc : EmitCodeCorr (IRInstr.block label body :: rest) s2.code := hcode_ir ▸ hrel.hcode
