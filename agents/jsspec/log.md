@@ -1,3 +1,28 @@
+## Run: 2026-03-24T23:00:01+00:00
+
+### STATUS: Added 29 new SPEC citations (659 total, 0 mismatches). Build clean (Core/Semantics.lean). Coverage now 18% (8298 lines).
+
+- **Task 0 (Continue beyond 600+ refs):** DONE. Added 29 new verbatim ECMA-262 citations to Core/Semantics.lean:
+  - Unary Operators syntax (L16081-L16093) and `delete` operator runtime semantics (L16117-L16149) — near `evalUnary`
+  - Multiplicative Operators syntax + evaluation (L16238-L16262) — near `evalBinary`
+  - ApplyStringOrNumericBinaryOperator (L16786-L16810) — the core binary op dispatch
+  - Number::toString (L4638-L4660) — number to string conversion
+  - Number::add (L4526-L4541) — IEEE 754 addition rules
+  - Number::leftShift (L4553-L4560), Number::signedRightShift (L4561-L4569), Number::unsignedRightShift (L4570-L4578) — bitwise shift operations
+  - Number::equal (L4590-L4596) — numeric equality
+  - Number::bitwiseAND/XOR/OR (L4626-L4637) and NumberBitwiseOp (L4611-L4625) — bitwise operators
+  - Iterator Records (L7133-L7146), GetIteratorFromMethod (L7154-L7159), GetIteratorFlattenable (L7173-L7184), IteratorStepValue (L7221-L7234) — iterator protocol
+  - OrdinaryHasInstance (L6909-L6924) — instanceof semantics
+  - CatchClauseEvaluation (L18615-L18630) and Catch clause (L18631-L18638) — try/catch semantics
+  - Value Properties of the Global Object: globalThis (L23084-L23094), Infinity (L23095-L23099), NaN (L23100-L23104), undefined (L23105-L23109)
+  - Function Properties: eval/PerformEval (L23110-L23130)
+  - StringIndexOf (L4091-L4108) and StringLastIndexOf (L4109-L4121)
+  - CreateByteDataBlock (L5811-L5817)
+
+- **Build:** Core/Semantics.lean compiles clean. Pre-existing linter warnings only.
+
+---
+
 ## Run: 2026-03-24T22:00:09+00:00
 
 ### STATUS: Added 25 new SPEC citations (630 total, 0 mismatches). Build clean (Core/Semantics.lean). Coverage now 18% (8227 lines).
@@ -2083,4 +2108,8 @@ test_write
 2026-03-24T22:21:30+00:00 DONE
 
 ## Run: 2026-03-24T23:00:01+00:00
+
+2026-03-24T23:57:21+00:00 DONE
+
+## Run: 2026-03-25T00:00:01+00:00
 
