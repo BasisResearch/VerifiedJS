@@ -167,12 +167,17 @@ private theorem convertValue_beq (a b : Core.Value) :
     change (idx₁ == idx₂ && (0 : Nat) == 0) = (idx₁ == idx₂)
     simp
 
-/-- evalBinary commutes with convertValue for operators where Flat matches Core.
-    NOTE: This is NOT true for all operators — Flat.evalBinary is simplified
-    (e.g., .add with mixed string/non-string, .eq uses == not abstractEq,
-    .lt uses numeric not abstractLt, bitwise/mod/exp/instanceof/in return .undefined).
-    BLOCKED: waiting for wasmspec to align Flat.evalBinary with Core. -/
-set_option maxHeartbeats 1600000 in
+private theorem abstractEq_convertValue (a b : Core.Value) :
+    Flat.abstractEq (Flat.convertValue a) (Flat.convertValue b) = Core.abstractEq a b := by
+  cases a <;> cases b <;> simp only [Flat.convertValue, Flat.abstractEq, Core.abstractEq] <;>
+    (try rfl) <;> (try cases ‹Bool›) <;> (try cases ‹Bool›) <;> rfl
+
+private theorem abstractLt_convertValue (a b : Core.Value) :
+    Flat.abstractLt (Flat.convertValue a) (Flat.convertValue b) = Core.abstractLt a b := by
+  cases a <;> cases b <;> simp only [Flat.convertValue, Flat.abstractLt, Core.abstractLt] <;>
+    (try rfl) <;> (try cases ‹Bool›) <;> (try cases ‹Bool›) <;> rfl
+
+/-- evalBinary commutes with convertValue for operators where Flat matches Core. -/
 private theorem evalBinary_convertValue (op : Core.BinOp) (a b : Core.Value) :
     Flat.evalBinary op (Flat.convertValue a) (Flat.convertValue b) =
     Flat.convertValue (Core.evalBinary op a b) := by
@@ -239,35 +244,26 @@ private theorem evalBinary_convertValue (op : Core.BinOp) (a b : Core.Value) :
     rw [toNumber_convertValue, toNumber_convertValue]
     simp [Flat.convertValue]
   | eq =>
-    simp only [Core.evalBinary, Flat.evalBinary]
-    congr 1; cases a <;> cases b <;> simp only [Flat.convertValue, Flat.abstractEq, Core.abstractEq] <;>
-      first | rfl | (simp only [Flat.toNumber, Core.toNumber, Flat.valueToString, Core.valueToString] <;>
-        first | rfl | (cases ‹Bool› <;> first | rfl | (cases ‹Bool› <;> rfl)))
+    simp only [Core.evalBinary, Flat.evalBinary, Flat.convertValue]
+    congr 1; exact abstractEq_convertValue a b
   | neq =>
-    simp only [Core.evalBinary, Flat.evalBinary]
-    congr 1; congr 1; cases a <;> cases b <;> simp only [Flat.convertValue, Flat.abstractEq, Core.abstractEq] <;>
-      first | rfl | (simp only [Flat.toNumber, Core.toNumber, Flat.valueToString, Core.valueToString] <;>
-        first | rfl | (cases ‹Bool› <;> first | rfl | (cases ‹Bool› <;> rfl)))
+    simp only [Core.evalBinary, Flat.evalBinary, Flat.convertValue, bne]
+    show Flat.Value.bool (!(Flat.abstractEq (Flat.convertValue a) (Flat.convertValue b))) = Flat.Value.bool (!(Core.abstractEq a b))
+    congr 1; congr 1; exact abstractEq_convertValue a b
   | lt =>
-    simp only [Core.evalBinary, Flat.evalBinary]
-    congr 1; cases a <;> cases b <;> simp only [Flat.convertValue, Flat.abstractLt, Core.abstractLt] <;>
-      first | rfl | (simp only [Flat.toNumber, Core.toNumber, Flat.valueToString, Core.valueToString] <;>
-        first | rfl | (cases ‹Bool› <;> first | rfl | (cases ‹Bool› <;> rfl)))
+    simp only [Core.evalBinary, Flat.evalBinary, Flat.convertValue]
+    congr 1; exact abstractLt_convertValue a b
   | gt =>
-    simp only [Core.evalBinary, Flat.evalBinary]
-    congr 1; cases a <;> cases b <;> simp only [Flat.convertValue, Flat.abstractLt, Core.abstractLt] <;>
-      first | rfl | (simp only [Flat.toNumber, Core.toNumber, Flat.valueToString, Core.valueToString] <;>
-        first | rfl | (cases ‹Bool› <;> first | rfl | (cases ‹Bool› <;> rfl)))
+    simp only [Core.evalBinary, Flat.evalBinary, Flat.convertValue]
+    congr 1; exact abstractLt_convertValue b a
   | le =>
-    simp only [Core.evalBinary, Flat.evalBinary]
-    congr 1; congr 1; cases a <;> cases b <;> simp only [Flat.convertValue, Flat.abstractLt, Core.abstractLt] <;>
-      first | rfl | (simp only [Flat.toNumber, Core.toNumber, Flat.valueToString, Core.valueToString] <;>
-        first | rfl | (cases ‹Bool› <;> first | rfl | (cases ‹Bool› <;> rfl)))
+    simp only [Core.evalBinary, Flat.evalBinary, Flat.convertValue, bne]
+    show Flat.Value.bool (!(Flat.abstractLt (Flat.convertValue b) (Flat.convertValue a))) = Flat.Value.bool (!(Core.abstractLt b a))
+    congr 1; congr 1; exact abstractLt_convertValue b a
   | ge =>
-    simp only [Core.evalBinary, Flat.evalBinary]
-    congr 1; congr 1; cases a <;> cases b <;> simp only [Flat.convertValue, Flat.abstractLt, Core.abstractLt] <;>
-      first | rfl | (simp only [Flat.toNumber, Core.toNumber, Flat.valueToString, Core.valueToString] <;>
-        first | rfl | (cases ‹Bool› <;> first | rfl | (cases ‹Bool› <;> rfl)))
+    simp only [Core.evalBinary, Flat.evalBinary, Flat.convertValue, bne]
+    show Flat.Value.bool (!(Flat.abstractLt (Flat.convertValue a) (Flat.convertValue b))) = Flat.Value.bool (!(Core.abstractLt a b))
+    congr 1; congr 1; exact abstractLt_convertValue a b
   | instanceof =>
     cases a <;> cases b <;> simp [Core.evalBinary, Flat.evalBinary, Flat.convertValue]
   | «in» =>
