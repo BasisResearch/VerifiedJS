@@ -15322,7 +15322,7 @@ theorem elaborate_correct (p : Source.Program) (cp : Core.Program)
 -- | # WeakSet Objects
 -- |
 -- | WeakSets are collections of objects and/or symbols. A distinct object or
--- | symbol may only occur once as an element of a WeakSet's collection. A
+-- | symbol may only occur once as an element of a WeakSet\'s collection. A
 -- | WeakSet may be queried to see if it contains a specific value, but no
 -- | mechanism is provided for enumerating the values it holds. In certain
 -- | conditions, values which are not live are removed as WeakSet elements,
@@ -15394,7 +15394,7 @@ theorem elaborate_correct (p : Source.Program) (cp : Core.Program)
 -- |
 -- | A WeakRef is an object that is used to refer to a target object or
 -- | symbol without preserving it from garbage collection. WeakRefs can be
--- | dereferenced to allow access to the target value, if the target hasn't
+-- | dereferenced to allow access to the target value, if the target hasn\'t
 -- | been reclaimed by garbage collection.
 -- SPEC: L39151-L39167
 -- | # The WeakRef Constructor
