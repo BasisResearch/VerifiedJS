@@ -651,25 +651,37 @@ private theorem ANF_step?_none_implies_trivial (s : ANF.State) (h : ANF.step? s 
 
 /-- If `normalizeExpr e (fun _ => K)` succeeds with `.trivial`, then `K` produces the
     same result with the same state — i.e., `e` was a trivial chain that passes through
-    to its ignored continuation. -/
-private theorem normalizeExpr_ignored_bypass_trivial (e : Flat.Expr)
-    (K : ANF.ConvM ANF.Expr) (n m : Nat) (tv : ANF.Trivial)
-    (h : (ANF.normalizeExpr e (fun _ => K)).run n = .ok (.trivial tv, m)) :
+    to its ignored continuation.
+    Uses strong induction on expression depth since Flat.Expr is a nested inductive. -/
+private theorem normalizeExpr_ignored_bypass_trivial :
+    ∀ (d : Nat) (e : Flat.Expr), e.depth ≤ d →
+    ∀ (K : ANF.ConvM ANF.Expr) (n m : Nat) (tv : ANF.Trivial),
+    (ANF.normalizeExpr e (fun _ => K)).run n = .ok (.trivial tv, m) →
     K.run n = .ok (.trivial tv, m) := by
-  match e with
-  | .lit v => simp only [ANF.normalizeExpr] at h; cases v <;> simp [ANF.trivialOfFlatValue] at h <;> exact h
-  | .var _ => simp only [ANF.normalizeExpr] at h; exact h
-  | .«this» => simp only [ANF.normalizeExpr] at h; exact h
-  | .seq a b =>
-    simp only [ANF.normalizeExpr] at h
-    exact normalizeExpr_ignored_bypass_trivial b K n m tv
-      (normalizeExpr_ignored_bypass_trivial a _ n m tv h)
-  | _ =>
-    exfalso; exact absurd h (normalizeExpr_compound_not_trivial _ (fun _ => K)
-      (fun _ h => nomatch h) (fun _ h => nomatch h) (fun h => nomatch h)
-      (fun _ _ h => nomatch h) n m tv)
-termination_by e.depth
-decreasing_by all_goals simp [Flat.Expr.depth]; omega
+  intro d; induction d with
+  | zero =>
+    intro e hd K n m tv h
+    cases e with
+    | lit v => simp only [ANF.normalizeExpr] at h; cases v <;> simp [ANF.trivialOfFlatValue] at h <;> exact h
+    | var _ => simp only [ANF.normalizeExpr] at h; exact h
+    | «this» => simp only [ANF.normalizeExpr] at h; exact h
+    | seq _ _ => exfalso; simp [Flat.Expr.depth] at hd
+    | _ => exfalso; exact absurd h (normalizeExpr_compound_not_trivial _ (fun _ => K)
+        (by intro v hc; contradiction) (by intro nm hc; contradiction)
+        (by intro hc; contradiction) (by intro a' b' hc; contradiction) n m tv)
+  | succ d ih =>
+    intro e hd K n m tv h
+    cases he : e with
+    | lit v => simp only [ANF.normalizeExpr] at h; cases v <;> simp [ANF.trivialOfFlatValue] at h <;> exact h
+    | var _ => simp only [ANF.normalizeExpr] at h; exact h
+    | «this» => simp only [ANF.normalizeExpr] at h; exact h
+    | seq a b =>
+      simp only [ANF.normalizeExpr] at h
+      exact ih b (by simp [Flat.Expr.depth] at hd; omega) K n m tv
+        (ih a (by simp [Flat.Expr.depth] at hd; omega) _ n m tv h)
+    | _ => exfalso; exact absurd h (normalizeExpr_compound_not_trivial _ (fun _ => K)
+        (by intro v hc; contradiction) (by intro nm hc; contradiction)
+        (by intro hc; contradiction) (by intro a' b' hc; contradiction) n m tv)
 
 /-- A trivial chain: lit, var, this, or seq of trivial chains. -/
 private def isTrivialChain : Flat.Expr → Bool
@@ -688,46 +700,65 @@ private def trivialChainCost : Flat.Expr → Nat
   | _ => 0
 
 /-- normalizeExpr of a trivial chain passes through to the continuation unchanged. -/
-private theorem normalizeExpr_trivialChain_passthrough (e : Flat.Expr)
-    (htc : isTrivialChain e = true)
-    (K : ANF.ConvM ANF.Expr) (n : Nat) :
+private theorem normalizeExpr_trivialChain_passthrough :
+    ∀ (d : Nat) (e : Flat.Expr), e.depth ≤ d → isTrivialChain e = true →
+    ∀ (K : ANF.ConvM ANF.Expr) (n : Nat),
     (ANF.normalizeExpr e (fun _ => K)).run n = K.run n := by
-  match e with
-  | .lit v => simp only [ANF.normalizeExpr]; cases v <;> simp [ANF.trivialOfFlatValue]
-  | .var _ => simp only [ANF.normalizeExpr]
-  | .«this» => simp only [ANF.normalizeExpr]
-  | .seq a b =>
-    simp [isTrivialChain] at htc
-    simp only [ANF.normalizeExpr]
-    rw [normalizeExpr_trivialChain_passthrough a htc.1 (ANF.normalizeExpr b (fun _ => K)) n]
-    exact normalizeExpr_trivialChain_passthrough b htc.2 K n
-  | _ => exact absurd htc (by unfold isTrivialChain; exact Bool.noConfusion)
-termination_by e.depth
-decreasing_by all_goals simp [Flat.Expr.depth]; omega
+  intro d; induction d with
+  | zero =>
+    intro e hd htc K n
+    cases e with
+    | lit v => simp only [ANF.normalizeExpr]; cases v <;> simp [ANF.trivialOfFlatValue]
+    | var _ => simp only [ANF.normalizeExpr]
+    | «this» => simp only [ANF.normalizeExpr]
+    | seq _ _ => exfalso; simp [Flat.Expr.depth] at hd
+    | _ => simp [isTrivialChain] at htc
+  | succ d ih =>
+    intro e hd htc K n
+    cases e with
+    | lit v => simp only [ANF.normalizeExpr]; cases v <;> simp [ANF.trivialOfFlatValue]
+    | var _ => simp only [ANF.normalizeExpr]
+    | «this» => simp only [ANF.normalizeExpr]
+    | seq a b =>
+      simp [isTrivialChain] at htc
+      simp only [ANF.normalizeExpr]
+      rw [ih a (by simp [Flat.Expr.depth] at hd; omega) htc.1 (ANF.normalizeExpr b (fun _ => K)) n]
+      exact ih b (by simp [Flat.Expr.depth] at hd; omega) htc.2 K n
+    | _ => simp [isTrivialChain] at htc
 
 /-- If normalizeExpr e (fun _ => K) produces .trivial, then e is a trivial chain. -/
-private theorem normalizeExpr_trivial_implies_chain (e : Flat.Expr)
-    (K : ANF.ConvM ANF.Expr) (n m : Nat) (tv : ANF.Trivial)
-    (h : (ANF.normalizeExpr e (fun _ => K)).run n = .ok (.trivial tv, m)) :
+private theorem normalizeExpr_trivial_implies_chain :
+    ∀ (d : Nat) (e : Flat.Expr), e.depth ≤ d →
+    ∀ (K : ANF.ConvM ANF.Expr) (n m : Nat) (tv : ANF.Trivial),
+    (ANF.normalizeExpr e (fun _ => K)).run n = .ok (.trivial tv, m) →
     isTrivialChain e = true := by
-  match e with
-  | .lit _ => rfl
-  | .var _ => rfl
-  | .«this» => rfl
-  | .seq a b =>
-    simp only [ANF.normalizeExpr] at h
-    simp [isTrivialChain]
-    have ha_tc := normalizeExpr_trivial_implies_chain a _ n m tv h
-    constructor
-    · exact ha_tc
-    · rw [normalizeExpr_trivialChain_passthrough a ha_tc _ n] at h
-      exact normalizeExpr_trivial_implies_chain b K n m tv h
-  | _ =>
-    exfalso; exact absurd h (normalizeExpr_compound_not_trivial _ (fun _ => K)
-      (fun _ h => nomatch h) (fun _ h => nomatch h) (fun h => nomatch h)
-      (fun _ _ h => nomatch h) n m tv)
-termination_by e.depth
-decreasing_by all_goals simp [Flat.Expr.depth]; omega
+  intro d; induction d with
+  | zero =>
+    intro e hd K n m tv h
+    cases e with
+    | lit _ => rfl
+    | var _ => rfl
+    | «this» => rfl
+    | seq _ _ => exfalso; simp [Flat.Expr.depth] at hd
+    | _ => exfalso; simp [Flat.Expr.depth] at hd
+  | succ d ih =>
+    intro e hd K n m tv h
+    cases e with
+    | lit _ => rfl
+    | var _ => rfl
+    | «this» => rfl
+    | seq a b =>
+      simp only [ANF.normalizeExpr] at h
+      simp [isTrivialChain]
+      have ha_tc := ih a (by simp [Flat.Expr.depth] at hd; omega) _ n m tv h
+      constructor
+      · exact ha_tc
+      · rw [normalizeExpr_trivialChain_passthrough a.depth a (Nat.le_refl _) ha_tc _ n] at h
+        exact ih b (by simp [Flat.Expr.depth] at hd; omega) K n m tv h
+    | _ =>
+      exfalso; exact absurd h (normalizeExpr_compound_not_trivial _ (fun _ => K)
+        (by intro v hc; contradiction) (by intro nm hc; contradiction)
+        (by intro hc; contradiction) (by intro a' b' hc; contradiction) n m tv)
 
 /-- Contextual stepping: if a is not a value and steps, .seq a b steps with
     the result wrapped. Returns existence with field projections. -/
