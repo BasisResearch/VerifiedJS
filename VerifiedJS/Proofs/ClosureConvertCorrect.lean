@@ -697,6 +697,22 @@ private def HeapValuesWF (heap : Core.Heap) : Prop :=
     ∀ props, heap.objects[addr]? = some props →
       ∀ kv, kv ∈ props → ValueAddrWF kv.2 heap.objects.size
 
+private theorem HeapValuesWF_set_at {heap : Core.Heap} {addr : Nat}
+    {newProps : List (Core.PropName × Core.Value)}
+    (h : HeapValuesWF heap)
+    (hnew : ∀ kv, kv ∈ newProps → ValueAddrWF kv.2 heap.objects.size) :
+    HeapValuesWF { heap with objects := heap.objects.set! addr newProps } := by
+  intro addr' haddr' props' hprops' kv hkv
+  simp only [Array.size_set!] at haddr' ⊢
+  simp only [Array.set!, Array.setIfInBounds] at hprops'
+  split at hprops'
+  · next h_bound =>
+    rw [Array.getElem?_set h_bound] at hprops'
+    split at hprops'
+    · simp only [Option.some.injEq] at hprops'; rw [← hprops'] at hkv; exact hnew kv hkv
+    · exact h addr' haddr' props' hprops' kv hkv
+  · exact h addr' haddr' props' hprops' kv hkv
+
 private theorem EnvAddrWF_mono {env : Core.Env} {n m : Nat}
     (h : EnvAddrWF env n) (hle : n ≤ m) : EnvAddrWF env m :=
   fun name v hlookup => ValueAddrWF_mono (h name v hlookup) hle
