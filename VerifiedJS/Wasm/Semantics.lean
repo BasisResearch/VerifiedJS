@@ -3784,7 +3784,9 @@ def irStep? (s : IRExecState) : Option (TraceEvent × IRExecState) :=
 
       -- Memory: load (little-endian, width from type: i32=4, f64=8)
       -- Uses readLE? to match Wasm semantics exactly.
+      -- Trap messages match Wasm step? for forward simulation.
       | .load t offset =>
+          let loadName := match t with | .i32 => "i32.load" | .f64 => "f64.load" | .i64 => "i64.load"
           match irPop1? base.stack with
           | some (.i32 addr, stk) =>
               let byteAddr := addr.toNat + offset
@@ -3796,11 +3798,12 @@ def irStep? (s : IRExecState) : Option (TraceEvent × IRExecState) :=
                   | .f64 => IRValue.f64 (u64BitsToFloat raw)
                   | .i64 => IRValue.i64 raw
                 some (.silent, irPushTrace { base with stack := val :: stk } .silent)
-              | none => some (irTrapState base s!"memory access out of bounds: {byteAddr}")
-          | some _ => some (irTrapState base "type mismatch in load")
-          | none => some (irTrapState base "stack underflow in load")
+              | none => some (irTrapState base ("memory access fault in " ++ loadName))
+          | some _ => some (irTrapState base ("type mismatch in " ++ loadName))
+          | none => some (irTrapState base ("stack underflow in " ++ loadName))
       -- Memory: store (little-endian, width from type: i32=4, f64=8)
       -- Uses writeLE? to match Wasm semantics exactly.
+      -- Trap messages match Wasm step? for forward simulation.
       | .store t offset =>
           match t with
           | .i32 =>
@@ -3810,9 +3813,8 @@ def irStep? (s : IRExecState) : Option (TraceEvent × IRExecState) :=
                 match writeLE? base.memory byteAddr 4 val.toUInt64 with
                 | some mem =>
                   some (.silent, irPushTrace { base with stack := stk, memory := mem } .silent)
-                | none => some (irTrapState base s!"memory store out of bounds: {byteAddr}")
-            | some _ => some (irTrapState base "type mismatch in store")
-            | none => some (irTrapState base "stack underflow in store")
+                | none => some (irTrapState base "memory access fault in i32.store")
+            | _ => some (irTrapState base "type mismatch in i32.store")
           | .f64 =>
             match irPop2? base.stack with
             | some (.f64 val, .i32 addr, stk) =>
@@ -3820,9 +3822,8 @@ def irStep? (s : IRExecState) : Option (TraceEvent × IRExecState) :=
                 match writeLE? base.memory byteAddr 8 (floatToU64Bits val) with
                 | some mem =>
                   some (.silent, irPushTrace { base with stack := stk, memory := mem } .silent)
-                | none => some (irTrapState base s!"memory store out of bounds: {byteAddr}")
-            | some _ => some (irTrapState base "type mismatch in f64.store")
-            | none => some (irTrapState base "stack underflow in f64.store")
+                | none => some (irTrapState base "memory access fault in f64.store")
+            | _ => some (irTrapState base "type mismatch in f64.store")
           | .i64 =>
             match irPop2? base.stack with
             | some (.i64 val, .i32 addr, stk) =>
@@ -3830,10 +3831,10 @@ def irStep? (s : IRExecState) : Option (TraceEvent × IRExecState) :=
                 match writeLE? base.memory byteAddr 8 val with
                 | some mem =>
                   some (.silent, irPushTrace { base with stack := stk, memory := mem } .silent)
-                | none => some (irTrapState base s!"memory store out of bounds: {byteAddr}")
-            | some _ => some (irTrapState base "type mismatch in i64.store")
-            | none => some (irTrapState base "stack underflow in i64.store")
+                | none => some (irTrapState base "memory access fault in i64.store")
+            | _ => some (irTrapState base "type mismatch in i64.store")
       -- Memory: store8 (1-byte write via writeLE?)
+      -- Trap messages match Wasm i32.store (they share the same match case in Wasm step?).
       | .store8 offset =>
           match irPop2? base.stack with
           | some (.i32 val, .i32 addr, stk) =>
@@ -3841,9 +3842,8 @@ def irStep? (s : IRExecState) : Option (TraceEvent × IRExecState) :=
               match writeLE? base.memory byteAddr 1 val.toUInt64 with
               | some mem =>
                 some (.silent, irPushTrace { base with stack := stk, memory := mem } .silent)
-              | none => some (irTrapState base s!"memory store8 out of bounds: {byteAddr}")
-          | some _ => some (irTrapState base "type mismatch in store8")
-          | none => some (irTrapState base "stack underflow in store8")
+              | none => some (irTrapState base "memory access fault in i32.store")
+          | _ => some (irTrapState base "type mismatch in i32.store")
 
       -- Control flow: block
       | .block label body =>

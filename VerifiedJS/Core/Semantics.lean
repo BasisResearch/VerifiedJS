@@ -26994,9 +26994,10 @@ theorem elaborate_correct (p : Source.Program) (cp : Core.Program)
 -- | \_v\_, \*true\*, \~seq-cst\~). 1. Return \_v\_.
 -- |
 
+
 /-! ## Proxy Internal Methods -/
 
--- SPEC: L12708-L12730
+-- SPEC: L12708-L12729
 -- | # \[\[GetPrototypeOf\]\] ( ): either a normal completion containing either an Object or \*null\*, or a throw completion
 -- |
 -- | for
@@ -27017,8 +27018,10 @@ theorem elaborate_correct (p : Source.Program) (cp : Core.Program)
 -- | \_targetProto\_) is \*false\*, throw a \*TypeError\* exception. 1.
 -- | Return \_handlerProto\_.
 -- |
+-- | \[\[GetPrototypeOf\]\] for Proxy objects enforces the following
+-- | invariants:
 
--- SPEC: L12737-L12767
+-- SPEC: L12737-L12766
 -- | # \[\[SetPrototypeOf\]\] ( \_V\_: an Object or \*null\*, ): either a normal completion containing a Boolean or a throw completion
 -- |
 -- | for
@@ -27038,26 +27041,30 @@ theorem elaborate_correct (p : Source.Program) (cp : Core.Program)
 -- | SameValue(\_V\_, \_targetProto\_) is \*false\*, throw a \*TypeError\*
 -- | exception. 1. Return \*true\*.
 -- |
-
--- SPEC: L12776-L12800
+-- | \[\[SetPrototypeOf\]\] for Proxy objects enforces the following
+-- | invariants:
+-- |
+-- | - The result of \[\[SetPrototypeOf\]\] is a Boolean value.
+-- | - If the target object is not extensible, the argument value must be the
+-- |   same as the result of \[\[GetPrototypeOf\]\] applied to target object.
+-- |
 -- | # \[\[IsExtensible\]\] ( ): either a normal completion containing a Boolean or a throw completion
 -- |
 -- | for
 -- | :   a Proxy exotic object \_O\_
--- |
--- | 1\. Perform ? ValidateNonRevokedProxy(\_O\_). 1. Let \_target\_ be
--- | \_O\_.\[\[ProxyTarget\]\]. 1. Let \_handler\_ be
--- | \_O\_.\[\[ProxyHandler\]\]. 1. Assert: \_handler\_ is an Object. 1. Let
--- | \_trap\_ be ? GetMethod(\_handler\_, \*\"isExtensible\"\*). 1. If
--- | \_trap\_ is \*undefined\*, then 1. Return ? IsExtensible(\_target\_). 1.
--- | Let \_booleanTrapResult\_ be ToBoolean(? Call(\_trap\_, \_handler\_, «
--- | \_target\_ »)). 1. Let \_targetResult\_ be ?
--- | IsExtensible(\_target\_). 1. If \_booleanTrapResult\_ is not
+
+-- SPEC: L12776-L12800
 -- | \_targetResult\_, throw a \*TypeError\* exception. 1. Return
 -- | \_booleanTrapResult\_.
 -- |
-
--- SPEC: L12808-L12835
+-- | \[\[IsExtensible\]\] for Proxy objects enforces the following
+-- | invariants:
+-- |
+-- | - The result of \[\[IsExtensible\]\] is a Boolean value.
+-- | - \[\[IsExtensible\]\] applied to the Proxy object must return the same
+-- |   value as \[\[IsExtensible\]\] applied to the Proxy object\'s target
+-- |   object with the same argument.
+-- |
 -- | # \[\[PreventExtensions\]\] ( ): either a normal completion containing a Boolean or a throw completion
 -- |
 -- | for
@@ -27072,10 +27079,11 @@ theorem elaborate_correct (p : Source.Program) (cp : Core.Program)
 -- | ToBoolean(? Call(\_trap\_, \_handler\_, « \_target\_ »)). 1. If
 -- | \_booleanTrapResult\_ is \*true\*, then 1. Let \_extensibleTarget\_ be ?
 -- | IsExtensible(\_target\_). 1. If \_extensibleTarget\_ is \*true\*, throw
--- | a \*TypeError\* exception. 1. Return \_booleanTrapResult\_.
--- |
 
--- SPEC: L12843-L12900
+-- SPEC: L12808-L12835
+-- |   \*true\* if \[\[IsExtensible\]\] applied to the Proxy object\'s target
+-- |   object is \*false\*.
+-- |
 -- | # \[\[GetOwnProperty\]\] ( \_P\_: a property key, ): either a normal completion containing either a Property Descriptor or \*undefined\*, or a throw completion
 -- |
 -- | for
@@ -27101,18 +27109,29 @@ theorem elaborate_correct (p : Source.Program) (cp : Core.Program)
 -- | ToPropertyDescriptor(\_trapResultObj\_). 1. Perform
 -- | CompletePropertyDescriptor(\_resultDesc\_). 1. Let \_valid\_ be
 -- | IsCompatiblePropertyDescriptor(\_extensibleTarget\_, \_resultDesc\_,
--- | \_targetDesc\_). 1. If \_valid\_ is \*false\*, throw a \*TypeError\*
--- | exception. 1. If \_resultDesc\_.\[\[Configurable\]\] is \*false\*,
--- | then 1. If \_targetDesc\_ is \*undefined\* or
--- | \_targetDesc\_.\[\[Configurable\]\] is \*true\*, then 1. Throw a
--- | \*TypeError\* exception. 1. If \_resultDesc\_ has a \[\[Writable\]\]
--- | field and \_resultDesc\_.\[\[Writable\]\] is \*false\*, then 1. Assert:
--- | \_targetDesc\_ has a \[\[Writable\]\] field. 1. If
+
+-- SPEC: L12843-L12900
 -- | \_targetDesc\_.\[\[Writable\]\] is \*true\*, throw a \*TypeError\*
 -- | exception. 1. Return \_resultDesc\_.
 -- |
-
--- SPEC: L12911-L12963
+-- | \[\[GetOwnProperty\]\] for Proxy objects enforces the following
+-- | invariants:
+-- |
+-- | - The result of \[\[GetOwnProperty\]\] must be either an Object or
+-- |   \*undefined\*.
+-- | - A property cannot be reported as non-existent, if it exists as a
+-- |   non-configurable own property of the target object.
+-- | - A property cannot be reported as non-existent, if it exists as an own
+-- |   property of a non-extensible target object.
+-- | - A property cannot be reported as existent, if it does not exist as an
+-- |   own property of the target object and the target object is not
+-- |   extensible.
+-- | - A property cannot be reported as non-configurable, unless it exists as
+-- |   a non-configurable own property of the target object.
+-- | - A property cannot be reported as both non-configurable and
+-- |   non-writable, unless it exists as a non-configurable, non-writable own
+-- |   property of the target object.
+-- |
 -- | # \[\[DefineOwnProperty\]\] ( \_P\_: a property key, \_Desc\_: a Property Descriptor, ): either a normal completion containing a Boolean or a throw completion
 -- |
 -- | for
@@ -27146,8 +27165,12 @@ theorem elaborate_correct (p : Source.Program) (cp : Core.Program)
 -- | \[\[Writable\]\] field and \_Desc\_.\[\[Writable\]\] is \*false\*, throw
 -- | a \*TypeError\* exception. 1. Return \*true\*.
 -- |
+-- | \[\[DefineOwnProperty\]\] for Proxy objects enforces the following
+-- | invariants:
+-- |
+-- | - The result of \[\[DefineOwnProperty\]\] is a Boolean value.
 
--- SPEC: L12977-L13002
+-- SPEC: L12911-L12963
 -- | # \[\[HasProperty\]\] ( \_P\_: a property key, ): either a normal completion containing a Boolean or a throw completion
 -- |
 -- | for
@@ -27167,8 +27190,14 @@ theorem elaborate_correct (p : Source.Program) (cp : Core.Program)
 -- | be ? IsExtensible(\_target\_). 1. If \_extensibleTarget\_ is \*false\*,
 -- | throw a \*TypeError\* exception. 1. Return \_booleanTrapResult\_.
 -- |
-
--- SPEC: L13011-L13041
+-- | \[\[HasProperty\]\] for Proxy objects enforces the following invariants:
+-- |
+-- | - The result of \[\[HasProperty\]\] is a Boolean value.
+-- | - A property cannot be reported as non-existent, if it exists as a
+-- |   non-configurable own property of the target object.
+-- | - A property cannot be reported as non-existent, if it exists as an own
+-- |   property of the target object and the target object is not extensible.
+-- |
 -- | # \[\[Get\]\] ( \_P\_: a property key, \_Receiver\_: an ECMAScript language value, ): either a normal completion containing an ECMAScript language value or a throw completion
 -- |
 -- | for
@@ -27192,15 +27221,11 @@ theorem elaborate_correct (p : Source.Program) (cp : Core.Program)
 -- | is not \*undefined\*, throw a \*TypeError\* exception. 1. Return
 -- | \_trapResult\_.
 -- |
+-- | \[\[Get\]\] for Proxy objects enforces the following invariants:
+-- |
+-- | - The value reported for a property must be the same as the value of the
 
--- SPEC: L13050-L13082
--- | # \[\[Set\]\] ( \_P\_: a property key, \_V\_: an ECMAScript language value, \_Receiver\_: an ECMAScript language value, ): either a normal completion containing a Boolean or a throw completion
--- |
--- | for
--- | :   a Proxy exotic object \_O\_
--- |
--- | 1\. Perform ? ValidateNonRevokedProxy(\_O\_). 1. Let \_target\_ be
--- | \_O\_.\[\[ProxyTarget\]\]. 1. Let \_handler\_ be
+-- SPEC: L12977-L13002
 -- | \_O\_.\[\[ProxyHandler\]\]. 1. Assert: \_handler\_ is an Object. 1. Let
 -- | \_trap\_ be ? GetMethod(\_handler\_, \*\"set\"\*). 1. If \_trap\_ is
 -- | \*undefined\*, then 1. Return ? \_target\_.\[\[Set\]\](\_P\_, \_V\_,
@@ -27217,15 +27242,18 @@ theorem elaborate_correct (p : Source.Program) (cp : Core.Program)
 -- | \*true\*, then 1. If \_targetDesc\_.\[\[Set\]\] is \*undefined\*, throw
 -- | a \*TypeError\* exception. 1. Return \*true\*.
 -- |
+-- | \[\[Set\]\] for Proxy objects enforces the following invariants:
+-- |
+-- | - The result of \[\[Set\]\] is a Boolean value.
+-- | - Cannot change the value of a property to be different from the value
+-- |   of the corresponding target object property if the corresponding
+-- |   target object property is a non-writable, non-configurable own data
+-- |   property.
+-- | - Cannot set the value of a property if the corresponding target object
+-- |   property is a non-configurable own accessor property that has
+-- |   \*undefined\* as its \[\[Set\]\] attribute.
 
--- SPEC: L13087-L13121
--- | # \[\[Delete\]\] ( \_P\_: a property key, ): either a normal completion containing a Boolean or a throw completion
--- |
--- | for
--- | :   a Proxy exotic object \_O\_
--- |
--- | 1\. Perform ? ValidateNonRevokedProxy(\_O\_). 1. Let \_target\_ be
--- | \_O\_.\[\[ProxyTarget\]\]. 1. Let \_handler\_ be
+-- SPEC: L13011-L13041
 -- | \_O\_.\[\[ProxyHandler\]\]. 1. Assert: \_handler\_ is an Object. 1. Let
 -- | \_trap\_ be ? GetMethod(\_handler\_, \*\"deleteProperty\"\*). 1. If
 -- | \_trap\_ is \*undefined\*, then 1. Return ?
@@ -27239,8 +27267,14 @@ theorem elaborate_correct (p : Source.Program) (cp : Core.Program)
 -- | If \_extensibleTarget\_ is \*false\*, throw a \*TypeError\*
 -- | exception. 1. Return \*true\*.
 -- |
-
--- SPEC: L13122-L13146
+-- | \[\[Delete\]\] for Proxy objects enforces the following invariants:
+-- |
+-- | - The result of \[\[Delete\]\] is a Boolean value.
+-- | - A property cannot be reported as deleted, if it exists as a
+-- |   non-configurable own property of the target object.
+-- | - A property cannot be reported as deleted, if it exists as an own
+-- |   property of the target object and the target object is non-extensible.
+-- |
 -- | # \[\[OwnPropertyKeys\]\] ( ): either a normal completion containing a List of property keys or a throw completion
 -- |
 -- | for
@@ -27251,24 +27285,43 @@ theorem elaborate_correct (p : Source.Program) (cp : Core.Program)
 -- | \_O\_.\[\[ProxyHandler\]\]. 1. Assert: \_handler\_ is an Object. 1. Let
 -- | \_trap\_ be ? GetMethod(\_handler\_, \*\"ownKeys\"\*). 1. If \_trap\_ is
 -- | \*undefined\*, then 1. Return ? \_target\_.\[\[OwnPropertyKeys\]\](). 1.
--- | Let \_trapResultArray\_ be ? Call(\_trap\_, \_handler\_, « \_target\_
--- | »). 1. Let \_trapResult\_ be ?
--- | CreateListFromArrayLike(\_trapResultArray\_, \~property-key\~). 1. If
--- | \_trapResult\_ contains any duplicate entries, throw a \*TypeError\*
--- | exception. 1. Let \_extensibleTarget\_ be ? IsExtensible(\_target\_). 1.
--- | Let \_targetKeys\_ be ? \_target\_.\[\[OwnPropertyKeys\]\](). 1. Assert:
--- | \_targetKeys\_ is a List of property keys. 1. Assert: \_targetKeys\_
--- | contains no duplicate entries.
--- |
 
--- SPEC: L13147-L13177
+-- SPEC: L13050-L13082
+-- | new empty List. 1. Let \_targetNonconfigurableKeys\_ be a new empty
+-- | List. 1. For each element \_key\_ of \_targetKeys\_, do 1. Let \_desc\_
+-- | be ? \_target\_.\[\[GetOwnProperty\]\](\_key\_). 1. If \_desc\_ is not
+-- | \*undefined\* and \_desc\_.\[\[Configurable\]\] is \*false\*, then 1.
+-- | Append \_key\_ to \_targetNonconfigurableKeys\_. 1. Else, 1. Append
+-- | \_key\_ to \_targetConfigurableKeys\_. 1. If \_extensibleTarget\_ is
+-- | \*true\* and \_targetNonconfigurableKeys\_ is empty, then 1. Return
+-- | \_trapResult\_. 1. Let \_uncheckedResultKeys\_ be a List whose elements
+-- | are the elements of \_trapResult\_. 1. For each element \_key\_ of
+-- | \_targetNonconfigurableKeys\_, do 1. If \_uncheckedResultKeys\_ does not
+-- | contain \_key\_, throw a \*TypeError\* exception. 1. Remove \_key\_ from
+-- | \_uncheckedResultKeys\_. 1. If \_extensibleTarget\_ is \*true\*, return
+-- | \_trapResult\_. 1. For each element \_key\_ of
+-- | \_targetConfigurableKeys\_, do 1. If \_uncheckedResultKeys\_ does not
+-- | contain \_key\_, throw a \*TypeError\* exception. 1. Remove \_key\_ from
+-- | \_uncheckedResultKeys\_. 1. If \_uncheckedResultKeys\_ is not empty,
+-- | throw a \*TypeError\* exception. 1. Return \_trapResult\_.
+-- |
+-- | \[\[OwnPropertyKeys\]\] for Proxy objects enforces the following
+-- | invariants:
+-- |
+-- | - The result of \[\[OwnPropertyKeys\]\] is a List.
+-- | - The returned List contains no duplicate entries.
+-- | - Each element of the returned List is a property key.
+-- | - The result List must contain the keys of all non-configurable own
+-- |   properties of the target object.
+-- | - If the target object is not extensible, then the result List must
+-- |   contain all the keys of the own properties of the target object and no
+-- |   other values.
+-- |
 -- | # \[\[Call\]\] ( \_thisArgument\_: an ECMAScript language value, \_argumentsList\_: a List of ECMAScript language values, ): either a normal completion containing an ECMAScript language value or a throw completion
 -- |
 -- | for
--- | :   a Proxy exotic object \_O\_
--- |
--- | 1\. Perform ? ValidateNonRevokedProxy(\_O\_). 1. Let \_target\_ be
--- | \_O\_.\[\[ProxyTarget\]\]. 1. Let \_handler\_ be
+
+-- SPEC: L13087-L13120
 -- | \_O\_.\[\[ProxyHandler\]\]. 1. Assert: \_handler\_ is an Object. 1. Let
 -- | \_trap\_ be ? GetMethod(\_handler\_, \*\"apply\"\*). 1. If \_trap\_ is
 -- | \*undefined\*, then 1. Return ? Call(\_target\_, \_thisArgument\_,
@@ -27276,8 +27329,10 @@ theorem elaborate_correct (p : Source.Program) (cp : Core.Program)
 -- | CreateArrayFromList(\_argumentsList\_). 1. Return ? Call(\_trap\_,
 -- | \_handler\_, « \_target\_, \_thisArgument\_, \_argArray\_ »).
 -- |
-
--- SPEC: L13183-L13210
+-- | A Proxy exotic object only has a \[\[Call\]\] internal method if the
+-- | initial value of its \[\[ProxyTarget\]\] internal slot is an object that
+-- | has a \[\[Call\]\] internal method.
+-- |
 -- | # \[\[Construct\]\] ( \_argumentsList\_: a List of ECMAScript language values, \_newTarget\_: a constructor, ): either a normal completion containing an Object or a throw completion
 -- |
 -- | for
@@ -27294,6 +27349,102 @@ theorem elaborate_correct (p : Source.Program) (cp : Core.Program)
 -- | \_newTarget\_ »). 1. If \_newObj\_ is not an Object, throw a
 -- | \*TypeError\* exception. 1. Return \_newObj\_.
 -- |
+-- | A Proxy exotic object only has a \[\[Construct\]\] internal method if
+-- | the initial value of its \[\[ProxyTarget\]\] internal slot is an object
+-- | that has a \[\[Construct\]\] internal method.
+-- |
+-- | \[\[Construct\]\] for Proxy objects enforces the following invariants:
+-- |
+-- | - The result of \[\[Construct\]\] must be an Object.
+
+-- SPEC: L13122-L13145
+-- | # ValidateNonRevokedProxy ( \_proxy\_: a Proxy exotic object, ): either a normal completion containing \~unused\~ or a throw completion
+-- |
+-- | description
+-- | :   It throws a \*TypeError\* exception if \_proxy\_ has been revoked.
+-- |
+-- | 1\. If \_proxy\_.\[\[ProxyTarget\]\] is \*null\*, throw a \*TypeError\*
+-- | exception. 1. Assert: \_proxy\_.\[\[ProxyHandler\]\] is not \*null\*. 1.
+-- | Return \~unused\~.
+-- |
+-- | # ProxyCreate ( \_target\_: an ECMAScript language value, \_handler\_: an ECMAScript language value, ): either a normal completion containing a Proxy exotic object or a throw completion
+-- |
+-- | description
+-- | :   It is used to specify the creation of new Proxy objects.
+-- |
+-- | 1\. If \_target\_ is not an Object, throw a \*TypeError\* exception. 1.
+-- | If \_handler\_ is not an Object, throw a \*TypeError\* exception. 1. Let
+-- | \_P\_ be MakeBasicObject(« \[\[ProxyHandler\]\], \[\[ProxyTarget\]\]
+-- | »). 1. Set \_P\_\'s essential internal methods, except for \[\[Call\]\]
+-- | and \[\[Construct\]\], to the definitions specified in . 1. If
+-- | IsCallable(\_target\_) is \*true\*, then 1. Set \_P\_.\[\[Call\]\] as
+-- | specified in . 1. If IsConstructor(\_target\_) is \*true\*, then 1. Set
+-- | \_P\_.\[\[Construct\]\] as specified in . 1. Set
+-- | \_P\_.\[\[ProxyTarget\]\] to \_target\_. 1. Set
+-- | \_P\_.\[\[ProxyHandler\]\] to \_handler\_. 1. Return \_P\_.
+
+-- SPEC: L13147-L13177
+-- | # ECMAScript Language: Source Text
+-- |
+-- | # Source Text
+-- |
+-- | ## Syntax
+-- |
+-- | SourceCharacter :: \> any Unicode code point
+-- |
+-- | [ECMAScript source text]{.dfn} is a sequence of Unicode code points. All
+-- | Unicode code point values from U+0000 to U+10FFFF, including surrogate
+-- | code points, may occur in ECMAScript source text where permitted by the
+-- | ECMAScript grammars. The actual encodings used to store and interchange
+-- | ECMAScript source text is not relevant to this specification. Regardless
+-- | of the external source text encoding, a conforming ECMAScript
+-- | implementation processes the source text as if it was an equivalent
+-- | sequence of \|SourceCharacter\| values, each \|SourceCharacter\| being a
+-- | Unicode code point. Conforming ECMAScript implementations are not
+-- | required to perform any normalization of source text, or behave as
+-- | though they were performing normalization of source text.
+-- |
+-- | The components of a combining character sequence are treated as
+-- | individual Unicode code points even though a user might think of the
+-- | whole sequence as a single character.
+-- |
+-- | In string literals, regular expression literals, template literals and
+-- | identifiers, any Unicode code point may also be expressed using Unicode
+-- | escape sequences that explicitly express a code point\'s numeric value.
+-- | Within a comment, such an escape sequence is effectively ignored as part
+-- | of the comment.
+-- |
+-- | ECMAScript differs from the Java programming language in the behaviour
+
+-- SPEC: L13183-L13210
+-- | occurs within a string literal in a Java program, it is likewise
+-- | interpreted as a line terminator, which is not allowed within a string
+-- | literal---one must write \`\\\\n\` instead of \`\\\\u000A\` to cause a
+-- | LINE FEED (LF) to be part of the value of a string literal. In an
+-- | ECMAScript program, a Unicode escape sequence occurring within a comment
+-- | is never interpreted and therefore cannot contribute to termination of
+-- | the comment. Similarly, a Unicode escape sequence occurring within a
+-- | string literal in an ECMAScript program always contributes to the
+-- | literal and is never interpreted as a line terminator or as a code point
+-- | that might terminate the string literal.
+-- |
+-- | # Static Semantics: UTF16EncodeCodePoint ( \_cp\_: a Unicode code point, ): a String
+-- |
+-- | 1\. Assert: 0 ≤ \_cp\_ ≤ 0x10FFFF. 1. If \_cp\_ ≤ 0xFFFF, return the
+-- | String value consisting of the code unit whose numeric value is
+-- | \_cp\_. 1. Let \_cu1\_ be the code unit whose numeric value is
+-- | floor((\_cp\_ - 0x10000) / 0x400) + 0xD800. 1. Let \_cu2\_ be the code
+-- | unit whose numeric value is ((\_cp\_ - 0x10000) modulo 0x400) +
+-- | 0xDC00. 1. Return the string-concatenation of \_cu1\_ and \_cu2\_.
+-- |
+-- | # Static Semantics: CodePointsToString ( \_text\_: a sequence of Unicode code points, ): a String
+-- |
+-- | description
+-- | :   It converts \_text\_ into a String value, as described in .
+-- |
+-- | 1\. Let \_result\_ be the empty String. 1. For each code point \_cp\_ of
+-- | \_text\_, do 1. Set \_result\_ to the string-concatenation of \_result\_
+-- | and UTF16EncodeCodePoint(\_cp\_). 1. Return \_result\_.
 
 /-! ## Jobs and Host Operations -/
 
@@ -27332,6 +27483,12 @@ theorem elaborate_correct (p : Source.Program) (cp : Core.Program)
 -- | - The Abstract Closure must return a normal completion, implementing its
 -- |   own handling of errors.
 -- |
+-- | Host environments are not required to treat Jobs uniformly with respect
+-- | to scheduling. For example, web browsers and Node.js treat
+-- | Promise-handling Jobs as a higher priority than other work; future
+-- | features may add Jobs that are not treated at such a high priority.
+-- |
+-- | At any particular time, \_scriptOrModule\_ (a Script Record, a Module
 
 -- SPEC: L10101-L10116
 -- | A [JobCallback Record]{.dfn variants="JobCallback Records"} is a Record
@@ -27350,10 +27507,9 @@ theorem elaborate_correct (p : Source.Program) (cp : Core.Program)
 -- |   Field Name            Value                                   Meaning
 -- |   --------------------- --------------------------------------- -------------------------------------------------
 -- |   \[\[Callback\]\]      a function object                       The function to invoke when the Job is invoked.
--- |   \[\[HostDefined\]\]   anything (default value is \~empty\~)   Field reserved for use by hosts.
--- |
 
 -- SPEC: L10118-L10136
+-- |
 -- | # HostMakeJobCallback ( \_callback\_: a function object, ): a JobCallback Record
 -- |
 -- | An implementation of HostMakeJobCallback must conform to the following
@@ -27371,12 +27527,9 @@ theorem elaborate_correct (p : Source.Program) (cp : Core.Program)
 -- | ECMAScript hosts that are not web browsers must use the default
 -- | implementation of HostMakeJobCallback.
 -- |
+-- | This is called at the time that the callback is passed to the function
 
 -- SPEC: L10146-L10166
--- | # HostCallJobCallback ( \_jobCallback\_: a JobCallback Record, \_V\_: an ECMAScript language value, \_argumentsList\_: a List of ECMAScript language values, ): either a normal completion containing an ECMAScript language value or a throw completion
--- |
--- | An implementation of HostCallJobCallback must conform to the following
--- | requirements:
 -- |
 -- | - It must perform and return the result of
 -- |   Call(\_jobCallback\_.\[\[Callback\]\], \_V\_, \_argumentsList\_).
@@ -27394,13 +27547,12 @@ theorem elaborate_correct (p : Source.Program) (cp : Core.Program)
 -- | ECMAScript hosts that are not web browsers must use the default
 -- | implementation of HostCallJobCallback.
 -- |
-
--- SPEC: L10168-L10179
 -- | # HostEnqueueGenericJob ( \_job\_: a Job Abstract Closure, \_realm\_: a Realm Record, ): \~unused\~
 -- |
 -- | description
 -- | :   It schedules \_job\_ in the realm \_realm\_ in the agent signified
--- |     by \_realm\_.\[\[AgentSignifier\]\] to be performed at some future
+
+-- SPEC: L10168-L10179
 -- |     time. The Abstract Closures used with this algorithm are intended to
 -- |     be scheduled without additional constraints, such as priority and
 -- |     ordering.
@@ -27408,14 +27560,13 @@ theorem elaborate_correct (p : Source.Program) (cp : Core.Program)
 -- | An implementation of HostEnqueueGenericJob must conform to the
 -- | requirements in .
 -- |
-
--- SPEC: L10181-L10207
 -- | # HostEnqueuePromiseJob ( \_job\_: a Job Abstract Closure, \_realm\_: a Realm Record or \*null\*, ): \~unused\~
 -- |
 -- | description
 -- | :   It schedules \_job\_ to be performed at some future time. The
 -- |     Abstract Closures used with this algorithm are intended to be
--- |     related to the handling of Promises, or otherwise, to be scheduled
+
+-- SPEC: L10181-L10207
 -- |     with equal priority to Promise handling operations.
 -- |
 -- | An implementation of HostEnqueuePromiseJob must conform to the
@@ -27433,22 +27584,19 @@ theorem elaborate_correct (p : Source.Program) (cp : Core.Program)
 -- | - Jobs must run in the same order as the HostEnqueuePromiseJob
 -- |   invocations that scheduled them.
 -- |
+-- | The \_realm\_ for Jobs returned by NewPromiseResolveThenableJob is
+-- | usually the result of calling GetFunctionRealm on the \_then\_ function
+-- | object. The \_realm\_ for Jobs returned by NewPromiseReactionJob is
+-- | usually the result of calling GetFunctionRealm on the handler if the
+-- | handler is not \*undefined\*. If the handler is \*undefined\*, \_realm\_
+-- | is \*null\*. For both kinds of Jobs, when GetFunctionRealm completes
+-- | abnormally (i.e. called on a revoked Proxy), \_realm\_ is the current
+-- | Realm Record at the time of the GetFunctionRealm call. When the
+-- | \_realm\_ is \*null\*, no user ECMAScript code will be evaluated and no
+-- | new ECMAScript objects (e.g. Error objects) will be created. The WHATWG
 
--- SPEC: L10221-L10230
--- | # HostEnqueueTimeoutJob ( \_timeoutJob\_: a Job Abstract Closure, \_realm\_: a Realm Record, \_milliseconds\_: a non-negative finite Number, ): \~unused\~
+-- SPEC: L10221-L10229
 -- |
--- | description
--- | :   It schedules \_timeoutJob\_ in the realm \_realm\_ in the agent
--- |     signified by \_realm\_.\[\[AgentSignifier\]\] to be performed after
--- |     at least \_milliseconds\_ milliseconds.
--- |
--- | An implementation of HostEnqueueTimeoutJob must conform to the
--- | requirements in .
--- |
-
-/-! ## Agents -/
-
--- SPEC: L10232-L10287
 -- | # Agents
 -- |
 -- | An [agent]{#agent .dfn variants="agents"} comprises a set of ECMAScript
@@ -27457,8 +27605,10 @@ theorem elaborate_correct (p : Source.Program) (cp : Core.Program)
 -- | and an [executing thread]{#executing-thread .dfn
 -- | variants="executing threads"}. Except for the executing thread, the
 -- | constituents of an agent belong exclusively to that agent.
--- |
--- | An agent\'s executing thread executes algorithmic steps on the agent\'s
+
+/-! ## Agents -/
+
+-- SPEC: L10232-L10286
 -- | execution contexts independently of other agents, except that an
 -- | executing thread may be used as the executing thread by multiple agents,
 -- | provided none of the agents sharing the thread have an Agent Record
@@ -27477,6 +27627,43 @@ theorem elaborate_correct (p : Source.Program) (cp : Core.Program)
 -- | An [agent signifier]{.dfn variants="agent signifiers"} is a
 -- | globally-unique opaque value used to identify an Agent.
 -- |
+-- |   Field Name                           Value                                 Meaning
+-- |   ------------------------------------ ------------------------------------- --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+-- |   \[\[LittleEndian\]\]                 a Boolean                             The default value computed for the *isLittleEndian* parameter when it is needed by the algorithms GetValueFromBuffer and SetValueInBuffer. The choice is implementation-defined and should be the alternative that is most efficient for the implementation.
+-- |   \[\[CanBlock\]\]                     a Boolean                             Determines whether the agent can block or not.
+-- |   \[\[Signifier\]\]                    an agent signifier                    Uniquely identifies the agent within its agent cluster.
+-- |   \[\[IsLockFree1\]\]                  a Boolean                             \*true\* if atomic operations on one-byte values are lock-free, \*false\* otherwise.
+-- |   \[\[IsLockFree2\]\]                  a Boolean                             \*true\* if atomic operations on two-byte values are lock-free, \*false\* otherwise.
+-- |   \[\[IsLockFree8\]\]                  a Boolean                             \*true\* if atomic operations on eight-byte values are lock-free, \*false\* otherwise.
+-- |   \[\[CandidateExecution\]\]           a candidate execution Record          See the memory model.
+-- |   \[\[KeptAlive\]\]                    a List of either Objects or Symbols   Initially a new empty List, representing the list of objects and/or symbols to be kept alive until the end of the current Job
+-- |   \[\[ModuleAsyncEvaluationCount\]\]   an integer                            Initially 0, used to assign unique incrementing values to the \[\[AsyncEvaluationOrder\]\] field of modules that are asynchronous or have asynchronous dependencies.
+-- |
+-- | The values of \[\[LittleEndian\]\], \[\[Signifier\]\],
+-- | \[\[IsLockFree1\]\], \[\[IsLockFree2\]\], and \[\[IsLockFree8\]\] cannot
+-- | change.
+-- |
+-- | The values of \[\[IsLockFree1\]\], \[\[IsLockFree2\]\], and
+-- | \[\[IsLockFree8\]\] are not necessarily determined by the hardware, but
+-- | may also reflect implementation choices that can vary over time and
+-- | between ECMAScript implementations.
+-- |
+-- | There is no \[\[IsLockFree4\]\] field: 4-byte atomic operations are
+-- | always lock-free.
+-- |
+-- | In practice, if an atomic operation is implemented with any type of lock
+-- | the operation is not lock-free. Lock-free does not imply wait-free:
+-- | there is no upper bound on how many machine steps may be required to
+-- | complete a lock-free atomic operation.
+-- |
+-- | That an atomic access of size *n* is lock-free does not imply anything
+-- | about the (perceived) atomicity of non-atomic accesses of size *n*,
+-- | specifically, non-atomic accesses may still be performed as a sequence
+-- | of several separate memory accesses. See ReadSharedMemory and
+-- | WriteSharedMemory for details.
+-- |
+-- | An agent is a specification mechanism and need not correspond to any
+-- | particular artefact of an ECMAScript implementation.
 
 -- SPEC: L10303-L10310
 -- | # IncrementModuleAsyncEvaluationCount ( ): an integer
@@ -27486,8 +27673,10 @@ theorem elaborate_correct (p : Source.Program) (cp : Core.Program)
 -- | \_AR\_.\[\[ModuleAsyncEvaluationCount\]\] to \_count\_ + 1. 1. Return
 -- | \_count\_.
 -- |
+-- | This value is only used to keep track of the relative evaluation order
 
 -- SPEC: L10314-L10379
+-- |
 -- | # Agent Clusters
 -- |
 -- | An [agent cluster]{.dfn variants="agent clusters"} is a maximal set of
@@ -27522,8 +27711,40 @@ theorem elaborate_correct (p : Source.Program) (cp : Core.Program)
 -- | All agents within a cluster must have different values for the
 -- | \[\[Signifier\]\] field in their respective Agent Records.
 -- |
+-- | An embedding may deactivate (stop forward progress) or activate (resume
+-- | forward progress) an agent without the agent\'s knowledge or
+-- | cooperation. If the embedding does so, it must not leave some agents in
+-- | the cluster active while other agents in the cluster are deactivated
+-- | indefinitely.
+-- |
+-- | The purpose of the preceding restriction is to avoid a situation where
+-- | an agent deadlocks or starves because another agent has been
+-- | deactivated. For example, if an HTML shared worker that has a lifetime
+-- | independent of documents in any windows were allowed to share memory
+-- | with the dedicated worker of such an independent document, and the
+-- | document and its dedicated worker were to be deactivated while the
+-- | dedicated worker holds a lock (say, the document is pushed into its
+-- | window\'s history), and the shared worker then tries to acquire the
+-- | lock, then the shared worker will be blocked until the dedicated worker
+-- | is activated again, if ever. Meanwhile other workers trying to access
+-- | the shared worker from other windows will starve.
+-- |
+-- | The implication of the restriction is that it will not be possible to
+-- | share memory between agents that don\'t belong to the same suspend/wake
+-- | collective within the embedding.
+-- |
+-- | An embedding may terminate an agent without any of the agent\'s
+-- | cluster\'s other agents\' prior knowledge or cooperation. If an agent is
+-- | terminated not by programmatic action of its own or of another agent in
+-- | the cluster but by forces external to the cluster, then the embedding
+-- | must choose one of two strategies: Either terminate all the agents in
+-- | the cluster, or provide reliable APIs that allow the agents in the
+-- | cluster to coordinate so that at least one remaining member of the
+-- | cluster will be able to detect the termination, with the termination
+-- | data containing enough information to identify the agent that was
 
 -- SPEC: L10410-L10427
+-- |
 -- | # Forward Progress
 -- |
 -- | For an agent to *make forward progress* is for it to perform an
@@ -27541,12 +27762,15 @@ theorem elaborate_correct (p : Source.Program) (cp : Core.Program)
 -- | - in a set of agents that share an executing thread, one agent
 -- |   eventually makes forward progress
 -- | - an agent does not cause another agent to become blocked except via
--- |   explicit APIs that provide blocking.
--- |
 
 /-! ## WeakRef and FinalizationRegistry Processing Model -/
 
 -- SPEC: L10428-L10440
+-- |   explicit APIs that provide blocking.
+-- |
+-- | This, along with the liveness guarantee in the memory model, ensures
+-- | that all \~seq-cst\~ writes eventually become observable to all agents.
+-- |
 -- | # Processing Model of WeakRef and FinalizationRegistry Targets
 -- |
 -- | # Objectives
@@ -27555,10 +27779,10 @@ theorem elaborate_correct (p : Source.Program) (cp : Core.Program)
 -- | symbol will be garbage collected. Objects or symbols which are not live
 -- | may be released after long periods of time, or never at all. For this
 -- | reason, this specification uses the term \"may\" when describing
--- | behaviour triggered by garbage collection.
--- |
 
 -- SPEC: L10441-L10470
+-- | behaviour triggered by garbage collection.
+-- |
 -- | The semantics of WeakRefs and FinalizationRegistrys is based on two
 -- | operations which happen at particular points in time:
 -- |
@@ -27587,9 +27811,22 @@ theorem elaborate_correct (p : Source.Program) (cp : Core.Program)
 -- | CleanupFinalizationRegistry allows it to resume ECMAScript execution in
 -- | order to run finalizer work, which may free up held values, reducing
 -- | overall memory usage.
--- |
 
--- SPEC: L10560-L10590
+-- SPEC: L10560-L10589
+-- | FinalizationRegistry callbacks for any reason, e.g., if the
+-- | FinalizationRegistry itself becomes dead, or if the application is
+-- | shutting down.
+-- |
+-- | Implementations are not obligated to empty WeakRefs for maximal sets of
+-- | non-live objects or symbols.
+-- |
+-- | If an implementation chooses a non-live set \_S\_ in which to empty
+-- | WeakRefs, this definition requires that it empties WeakRefs for all
+-- | values in \_S\_ simultaneously. In other words, it is not conformant for
+-- | an implementation to empty a WeakRef pointing to a value \_v\_ without
+-- | emptying out other WeakRefs that, if not emptied, could result in an
+-- | execution that observes the value of \_v\_.
+-- |
 -- | # Host Hooks
 -- |
 -- | # HostEnqueueFinalizationRegistryCleanupJob ( \_finalizationRegistry\_: a FinalizationRegistry, ): \~unused\~
@@ -27606,9 +27843,8 @@ theorem elaborate_correct (p : Source.Program) (cp : Core.Program)
 -- | An implementation of HostEnqueueFinalizationRegistryCleanupJob schedules
 -- | \_cleanupJob\_ to be performed at some future time, if possible. It must
 -- | also conform to the requirements in .
--- |
 
-/-! ## Arguments Exotic Objects -/
+/-! ## String/Arguments Exotic Objects -/
 
 -- SPEC: L11930-L11953
 -- | # StringGetOwnProperty ( \_S\_: an Object that has a \[\[StringData\]\] internal slot, \_P\_: a property key, ): a Property Descriptor or \*undefined\*
@@ -27624,46 +27860,60 @@ theorem elaborate_correct (p : Source.Program) (cp : Core.Program)
 -- | \[\[Value\]\]: \_resultStr\_, \[\[Writable\]\]: \*false\*,
 -- | \[\[Enumerable\]\]: \*true\*, \[\[Configurable\]\]: \*false\* }.
 -- |
+-- | # Arguments Exotic Objects
+-- |
+-- | Most ECMAScript functions make an arguments object available to their
+-- | code. Depending upon the characteristics of the function definition, its
+-- | arguments object is either an ordinary object or an arguments exotic
+-- | object. An arguments exotic object is an exotic object whose array index
+-- | properties map to the formal parameters bindings of an invocation of its
+-- | associated ECMAScript function.
+-- |
+-- | An object is an [arguments exotic object]{#arguments-exotic-object .dfn
+-- | variants="arguments exotic objects"} if its internal methods use the
 
 -- SPEC: L12009-L12023
--- | # \[\[GetOwnProperty\]\] ( \_P\_: a property key, ): a normal completion containing either a Property Descriptor or \*undefined\*
--- |
--- | for
--- | :   an arguments exotic object \_args\_
--- |
--- | 1\. Let \_desc\_ be OrdinaryGetOwnProperty(\_args\_, \_P\_). 1. If
--- | \_desc\_ is \*undefined\*, return \*undefined\*. 1. Let \_map\_ be
--- | \_args\_.\[\[ParameterMap\]\]. 1. Let \_isMapped\_ be !
 -- | HasOwnProperty(\_map\_, \_P\_). 1. If \_isMapped\_ is \*true\*, then 1.
 -- | Set \_desc\_.\[\[Value\]\] to ! Get(\_map\_, \_P\_). 1. Return \_desc\_.
 -- |
-
--- SPEC: L12083-L12101
--- | # \[\[Get\]\] ( \_P\_: a property key, \_Receiver\_: an ECMAScript language value, ): either a normal completion containing an ECMAScript language value or a throw completion
+-- | # \[\[DefineOwnProperty\]\] ( \_P\_: a property key, \_Desc\_: a Property Descriptor, ): a normal completion containing a Boolean
 -- |
 -- | for
 -- | :   an arguments exotic object \_args\_
 -- |
 -- | 1\. Let \_map\_ be \_args\_.\[\[ParameterMap\]\]. 1. Let \_isMapped\_ be
--- | ! HasOwnProperty(\_map\_, \_P\_). 1. If \_isMapped\_ is \*false\*,
--- | return ? OrdinaryGet(\_args\_, \_P\_, \_Receiver\_). 1. Assert: \_map\_
--- | contains a formal parameter mapping for \_P\_. 1. Return ! Get(\_map\_,
--- | \_P\_).
+-- | ! HasOwnProperty(\_map\_, \_P\_). 1. Let \_newArgDesc\_ be \_Desc\_. 1.
+-- | If \_isMapped\_ is \*true\* and IsDataDescriptor(\_Desc\_) is \*true\*,
+-- | then 1. If \_Desc\_ does not have a \[\[Value\]\] field, \_Desc\_ has a
+-- | \[\[Writable\]\] field, and \_Desc\_.\[\[Writable\]\] is \*false\*,
+-- | then 1. Set \_newArgDesc\_ to a copy of \_Desc\_. 1. Set
+-- | \_newArgDesc\_.\[\[Value\]\] to ! Get(\_map\_, \_P\_). 1. Let
+
+-- SPEC: L12083-L12101
+-- | \_val\_). 1. Set \_index\_ to \_index\_ + 1. 1. Perform !
+-- | DefinePropertyOrThrow(\_obj\_, %Symbol.iterator%, PropertyDescriptor {
+-- | \[\[Value\]\]: %Array.prototype.values%, \[\[Writable\]\]: \*true\*,
+-- | \[\[Enumerable\]\]: \*false\*, \[\[Configurable\]\]: \*true\* }). 1.
+-- | Perform ! DefinePropertyOrThrow(\_obj\_, \*\"callee\"\*,
+-- | PropertyDescriptor { \[\[Get\]\]: %ThrowTypeError%, \[\[Set\]\]:
+-- | %ThrowTypeError%, \[\[Enumerable\]\]: \*false\*, \[\[Configurable\]\]:
+-- | \*false\* }). 1. Return \_obj\_.
 -- |
+-- | # CreateMappedArgumentsObject ( \_func\_: an Object, \_formals\_: a Parse Node, \_argumentsList\_: a List of ECMAScript language values, \_env\_: an Environment Record, ): an arguments exotic object
+-- |
+-- | 1\. Assert: \_formals\_ does not contain a rest parameter, any binding
+-- | patterns, or any initializers. It may contain duplicate identifiers. 1.
+-- | Let \_len\_ be the number of elements in \_argumentsList\_. 1. Let
+-- | \_obj\_ be MakeBasicObject(« \[\[Prototype\]\], \[\[Extensible\]\],
+-- | \[\[ParameterMap\]\] »). 1. Set \_obj\_.\[\[GetOwnProperty\]\] as
+-- | specified in . 1. Set \_obj\_.\[\[DefineOwnProperty\]\] as specified in
+-- | . 1. Set \_obj\_.\[\[Get\]\] as specified in . 1. Set
+-- | \_obj\_.\[\[Set\]\] as specified in . 1. Set \_obj\_.\[\[Delete\]\] as
 
 /-! ## PerformPromiseThen -/
 
--- SPEC: L11090-L11139
--- | description
--- | :   It performs the "then" operation on \_promise\_ using
--- |     \_onFulfilled\_ and \_onRejected\_ as its settlement actions. If
--- |     \_resultCapability\_ is passed, the result is stored by updating
--- |     \_resultCapability\_\'s promise. If it is not passed, then
--- |     PerformPromiseThen is being called by a specification-internal
--- |     operation where the result does not matter.
--- |
-
 -- SPEC: L41090-L41148
+-- |
 -- | description
 -- | :   It performs the "then" operation on \_promise\_ using
 -- |     \_onFulfilled\_ and \_onRejected\_ as its settlement actions. If
@@ -27705,19 +27955,34 @@ theorem elaborate_correct (p : Source.Program) (cp : Core.Program)
 -- | \_resultCapability\_ is \*undefined\*, return \*undefined\*. 1. Return
 -- | \_resultCapability\_.\[\[Promise\]\].
 -- |
+-- | # Promise.prototype \[ %Symbol.toStringTag% \]
+-- |
+-- | The initial value of the %Symbol.toStringTag% property is the String
+-- | value \*\"Promise\"\*.
+-- |
+-- | This property has the attributes { \[\[Writable\]\]: \*false\*,
+-- | \[\[Enumerable\]\]: \*false\*, \[\[Configurable\]\]: \*true\* }.
+-- |
+-- | # Properties of Promise Instances
+-- |
+-- | Promise instances are ordinary objects that inherit properties from the
+-- | Promise prototype object (the intrinsic, %Promise.prototype%). Promise
+-- | instances are initially created with the internal slots described in .
+-- |
+-- |   Internal Slot                     Type                                          Description
+-- |   --------------------------------- --------------------------------------------- --------------------------------------------------------------------------------------------------------------------------------------------
+-- |   \[\[PromiseState\]\]              \~pending\~, \~fulfilled\~, or \~rejected\~   Governs how a promise will react to incoming calls to its \`then\` method.
 
 /-! ## GeneratorFunction Objects -/
 
 -- SPEC: L41157-L41175
--- | # GeneratorFunction Objects
--- |
--- | GeneratorFunctions are functions that are usually created by evaluating
 -- | \|GeneratorDeclaration\|s, \|GeneratorExpression\|s, and
 -- | \|GeneratorMethod\|s. They may also be created by calling the
 -- | %GeneratorFunction% intrinsic.
 -- |
-
--- SPEC: L41176-L41200
+-- | ![A staggering variety of boxes and
+-- | arrows.](img/figure-2.svg){height="700" width="900"}
+-- |
 -- | # The GeneratorFunction Constructor
 -- |
 -- | The GeneratorFunction constructor:
@@ -27728,9 +27993,18 @@ theorem elaborate_correct (p : Source.Program) (cp : Core.Program)
 -- |   function rather than as a constructor. Thus the function call
 -- |   \`GeneratorFunction (...)\` is equivalent to the object creation
 -- |   expression \`new GeneratorFunction (...)\` with the same arguments.
--- |
+-- | - may be used as the value of an \`extends\` clause of a class
+-- |   definition. Subclass constructors that intend to inherit the specified
 
--- SPEC: L41201-L41215
+-- SPEC: L41176-L41200
+-- |   GeneratorFunction behaviour must include a \`super\` call to the
+-- |   GeneratorFunction constructor to create and initialize subclass
+-- |   instances with the internal slots necessary for built-in
+-- |   GeneratorFunction behaviour. All ECMAScript syntactic forms for
+-- |   defining generator function objects create direct instances of
+-- |   GeneratorFunction. There is no syntactic means to create instances of
+-- |   GeneratorFunction subclasses.
+-- |
 -- | # GeneratorFunction ( \...\_parameterArgs\_, \_bodyArg\_ )
 -- |
 -- | The last argument (if any) specifies the body (executable code) of a
@@ -27743,8 +28017,21 @@ theorem elaborate_correct (p : Source.Program) (cp : Core.Program)
 -- | CreateDynamicFunction(\_C\_, NewTarget, \~generator\~,
 -- | \_parameterArgs\_, \_bodyArg\_).
 -- |
+-- | See NOTE for .
+-- |
+-- | # Properties of the GeneratorFunction Constructor
+-- |
+-- | The GeneratorFunction constructor:
 
--- SPEC: L41220-L41231
+-- SPEC: L41201-L41215
+-- |
+-- | - is a standard built-in function object that inherits from the Function
+-- |   constructor.
+-- | - has a \[\[Prototype\]\] internal slot whose value is %Function%.
+-- | - has a \*\"length\"\* property whose value is \*1\*~𝔽~.
+-- | - has a \*\"name\"\* property whose value is \*\"GeneratorFunction\"\*.
+-- | - has the following properties:
+-- |
 -- | # GeneratorFunction.prototype
 -- |
 -- | The initial value of \`GeneratorFunction.prototype\` is the
@@ -27752,83 +28039,89 @@ theorem elaborate_correct (p : Source.Program) (cp : Core.Program)
 -- |
 -- | This property has the attributes { \[\[Writable\]\]: \*false\*,
 -- | \[\[Enumerable\]\]: \*false\*, \[\[Configurable\]\]: \*false\* }.
--- |
 
--- SPEC: L41257-L41262
+-- SPEC: L41220-L41231
+-- |
+-- | - is [%GeneratorFunction.prototype%]{.dfn} (see ).
+-- | - is an ordinary object.
+-- | - is not a function object and does not have an \[\[ECMAScriptCode\]\]
+-- |   internal slot or any other of the internal slots listed in or .
+-- | - has a \[\[Prototype\]\] internal slot whose value is
+-- |   %Function.prototype%.
+-- |
 -- | # GeneratorFunction.prototype.constructor
 -- |
 -- | The initial value of \`GeneratorFunction.prototype.constructor\` is
 -- | %GeneratorFunction%.
+
+-- SPEC: L41257-L41261
+-- | \*false\*.
 -- |
+-- | Each GeneratorFunction instance has the following own properties:
+-- |
+-- | # length
 
 -- SPEC: L41268-L41273
--- | # GeneratorFunction.prototype.prototype
+-- | The specification for the \*\"name\"\* property of Function instances
+-- | given in also applies to GeneratorFunction instances.
 -- |
--- | The initial value of \`GeneratorFunction.prototype.prototype\` is
--- | %GeneratorPrototype%.
+-- | # prototype
 -- |
+-- | Whenever a GeneratorFunction instance is created another ordinary object
 
 -- SPEC: L41279-L41286
--- | # GeneratorFunction.prototype \[ %Symbol.toStringTag% \]
 -- |
--- | The initial value of the %Symbol.toStringTag% property is the String
--- | value \*\"GeneratorFunction\"\*.
+-- | This property has the attributes { \[\[Writable\]\]: \*true\*,
+-- | \[\[Enumerable\]\]: \*false\*, \[\[Configurable\]\]: \*false\* }.
 -- |
--- | This property has the attributes { \[\[Writable\]\]: \*false\*,
--- | \[\[Enumerable\]\]: \*false\*, \[\[Configurable\]\]: \*true\* }.
--- |
+-- | Unlike Function instances, the object that is the value of a
+-- | GeneratorFunction\'s \*\"prototype\"\* property does not have a
+-- | \*\"constructor\"\* property whose value is the GeneratorFunction
+-- | instance.
 
 /-! ## AsyncGeneratorFunction Objects -/
 
--- SPEC: L41323-L41347
--- | # AsyncGeneratorFunction Objects
--- |
--- | AsyncGeneratorFunctions are functions that are usually created by
--- | evaluating \|AsyncGeneratorDeclaration\|, \|AsyncGeneratorExpression\|,
--- | and \|AsyncGeneratorMethod\| syntactic productions. They may also be
--- | created by calling the %AsyncGeneratorFunction% intrinsic.
--- |
-
--- SPEC: L41348-L41378
--- | # The AsyncGeneratorFunction Constructor
--- |
--- | The AsyncGeneratorFunction constructor:
--- |
--- | - is [%AsyncGeneratorFunction%]{.dfn}.
--- | - is a subclass of \`Function\`.
--- | - creates and initializes a new AsyncGeneratorFunction when called as a
--- |   function rather than as a constructor. Thus the function call
--- |   \`AsyncGeneratorFunction (\...)\` is equivalent to the object creation
--- |   expression \`new AsyncGeneratorFunction (\...)\` with the same
--- |   arguments.
--- |
-
--- SPEC: L41379-L41392
--- | # AsyncGeneratorFunction ( \...\_parameterArgs\_, \_bodyArg\_ )
--- |
--- | The last argument (if any) specifies the body (executable code) of an
--- | async generator function; any preceding arguments specify formal
--- | parameters.
--- |
--- | This function performs the following steps when called:
+-- SPEC: L41323-L41346
 -- |
 -- | 1\. Let \_C\_ be the active function object. 1. If \_bodyArg\_ is not
 -- | present, set \_bodyArg\_ to the empty String. 1. Return ?
 -- | CreateDynamicFunction(\_C\_, NewTarget, \~async-generator\~,
 -- | \_parameterArgs\_, \_bodyArg\_).
 -- |
-
--- SPEC: L41402-L41408
+-- | See NOTE for .
+-- |
+-- | # Properties of the AsyncGeneratorFunction Constructor
+-- |
+-- | The AsyncGeneratorFunction constructor:
+-- |
+-- | - is a standard built-in function object that inherits from the Function
+-- |   constructor.
+-- | - has a \[\[Prototype\]\] internal slot whose value is %Function%.
+-- | - has a \*\"length\"\* property whose value is \*1\*~𝔽~.
+-- | - has a \*\"name\"\* property whose value is
+-- |   \*\"AsyncGeneratorFunction\"\*.
+-- | - has the following properties:
+-- |
 -- | # AsyncGeneratorFunction.prototype
 -- |
 -- | The initial value of \`AsyncGeneratorFunction.prototype\` is the
 -- | AsyncGeneratorFunction prototype object.
--- |
+
+-- SPEC: L41348-L41378
 -- | This property has the attributes { \[\[Writable\]\]: \*false\*,
 -- | \[\[Enumerable\]\]: \*false\*, \[\[Configurable\]\]: \*false\* }.
 -- |
-
--- SPEC: L41420-L41429
+-- | # Properties of the AsyncGeneratorFunction Prototype Object
+-- |
+-- | The [AsyncGeneratorFunction prototype object]{.dfn}:
+-- |
+-- | - is [%AsyncGeneratorFunction.prototype%]{.dfn}.
+-- | - is an ordinary object.
+-- | - is not a function object and does not have an \[\[ECMAScriptCode\]\]
+-- |   internal slot or any other of the internal slots listed in or .
+-- | - has a \[\[Prototype\]\] internal slot whose value is
+-- |   %Function.prototype%.
+-- |
 -- | # AsyncGeneratorFunction.prototype.constructor
 -- |
 -- | The initial value of \`AsyncGeneratorFunction.prototype.constructor\` is
@@ -27837,16 +28130,17 @@ theorem elaborate_correct (p : Source.Program) (cp : Core.Program)
 -- | This property has the attributes { \[\[Writable\]\]: \*false\*,
 -- | \[\[Enumerable\]\]: \*false\*, \[\[Configurable\]\]: \*true\* }.
 -- |
-
--- SPEC: L41430-L41435
 -- | # AsyncGeneratorFunction.prototype.prototype
 -- |
 -- | The initial value of \`AsyncGeneratorFunction.prototype.prototype\` is
 -- | %AsyncGeneratorPrototype%.
 -- |
-
--- SPEC: L41440-L41447
+-- | This property has the attributes { \[\[Writable\]\]: \*false\*,
+-- | \[\[Enumerable\]\]: \*false\*, \[\[Configurable\]\]: \*true\* }.
+-- |
 -- | # AsyncGeneratorFunction.prototype \[ %Symbol.toStringTag% \]
+
+-- SPEC: L41379-L41391
 -- |
 -- | The initial value of the %Symbol.toStringTag% property is the String
 -- | value \*\"AsyncGeneratorFunction\"\*.
@@ -27854,6 +28148,50 @@ theorem elaborate_correct (p : Source.Program) (cp : Core.Program)
 -- | This property has the attributes { \[\[Writable\]\]: \*false\*,
 -- | \[\[Enumerable\]\]: \*false\*, \[\[Configurable\]\]: \*true\* }.
 -- |
+-- | # AsyncGeneratorFunction Instances
+-- |
+-- | Every AsyncGeneratorFunction instance is an ECMAScript function object
+-- | and has the internal slots listed in . The value of the
+-- | \[\[IsClassConstructor\]\] internal slot for all such instances is
+-- | \*false\*.
+
+-- SPEC: L41402-L41408
+-- | the number specified by its \*\"length\"\* property depends on the
+-- | function.
+-- |
+-- | This property has the attributes { \[\[Writable\]\]: \*false\*,
+-- | \[\[Enumerable\]\]: \*false\*, \[\[Configurable\]\]: \*true\* }.
+-- |
+-- | # name
+
+-- SPEC: L41420-L41428
+-- | invoked using \[\[Call\]\].
+-- |
+-- | This property has the attributes { \[\[Writable\]\]: \*true\*,
+-- | \[\[Enumerable\]\]: \*false\*, \[\[Configurable\]\]: \*false\* }.
+-- |
+-- | Unlike function instances, the object that is the value of an
+-- | AsyncGeneratorFunction\'s \*\"prototype\"\* property does not have a
+-- | \*\"constructor\"\* property whose value is the AsyncGeneratorFunction
+-- | instance.
+
+-- SPEC: L41430-L41435
+-- | # Generator Objects
+-- |
+-- | A Generator is created by calling a generator function and conforms to
+-- | both the iterator interface and the iterable interface.
+-- |
+-- | Generator instances directly inherit properties from the initial value
+
+-- SPEC: L41440-L41447
+-- | # The %GeneratorPrototype% Object
+-- |
+-- | The [%GeneratorPrototype%]{.dfn} object:
+-- |
+-- | - is [%GeneratorFunction.prototype.prototype%]{.dfn}.
+-- | - is an ordinary object.
+-- | - is not a Generator instance and does not have a \[\[GeneratorState\]\]
+-- |   internal slot.
 
 /-! ## AsyncGenerator Abstract Operations -/
 
@@ -27874,10 +28212,9 @@ theorem elaborate_correct (p : Source.Program) (cp : Core.Program)
 -- |   \[\[Completion\]\]   a Completion Record          The Completion Record which should be used to resume the async generator.
 -- |   \[\[Capability\]\]   a PromiseCapability Record   The promise capabilities associated with this request.
 -- |
+-- | # AsyncGeneratorStart ( \_generator\_: an AsyncGenerator, \_generatorBody\_: a \|FunctionBody\| Parse Node or an Abstract Closure with no parameters, ): \~unused\~
 
 -- SPEC: L41773-L41817
--- | # AsyncGeneratorStart ( \_generator\_: an AsyncGenerator, \_generatorBody\_: a \|FunctionBody\| Parse Node or an Abstract Closure with no parameters, ): \~unused\~
--- |
 -- | 1\. Assert: \_generator\_.\[\[AsyncGeneratorState\]\] is
 -- | \~suspended-start\~. 1. Let \_genContext\_ be the running execution
 -- | context. 1. Set the Generator component of \_genContext\_ to
@@ -27907,8 +28244,6 @@ theorem elaborate_correct (p : Source.Program) (cp : Core.Program)
 -- | \_generator\_.\[\[AsyncGeneratorQueue\]\] to a new empty List. 1. Return
 -- | \~unused\~.
 -- |
-
--- SPEC: L41819-L41828
 -- | # AsyncGeneratorValidate ( \_generator\_: an ECMAScript language value, \_generatorBrand\_: a String or \~empty\~, ): either a normal completion containing \~unused\~ or a throw completion
 -- |
 -- | 1\. Perform ? RequireInternalSlot(\_generator\_,
@@ -27919,17 +28254,14 @@ theorem elaborate_correct (p : Source.Program) (cp : Core.Program)
 -- | is not \_generatorBrand\_, throw a \*TypeError\* exception. 1. Return
 -- | \~unused\~.
 -- |
-
--- SPEC: L41830-L41836
 -- | # AsyncGeneratorEnqueue ( \_generator\_: an AsyncGenerator, \_completion\_: a Completion Record, \_promiseCapability\_: a PromiseCapability Record, ): \~unused\~
 -- |
 -- | 1\. Let \_request\_ be AsyncGeneratorRequest { \[\[Completion\]\]:
 -- | \_completion\_, \[\[Capability\]\]: \_promiseCapability\_ }. 1. Append
 -- | \_request\_ to \_generator\_.\[\[AsyncGeneratorQueue\]\]. 1. Return
 -- | \~unused\~.
--- |
 
--- SPEC: L41838-L41864
+-- SPEC: L41819-L41828
 -- | # AsyncGeneratorCompleteStep ( \_generator\_: an AsyncGenerator, \_completion\_: a Completion Record, \_done\_: a Boolean, optional \_realm\_: a Realm Record, ): \~unused\~
 -- |
 -- | 1\. Assert: \_generator\_.\[\[AsyncGeneratorQueue\]\] is not empty. 1.
@@ -27940,7 +28272,8 @@ theorem elaborate_correct (p : Source.Program) (cp : Core.Program)
 -- | be \_completion\_.\[\[Value\]\]. 1. If \_completion\_ is a throw
 -- | completion, then 1. Perform ! Call(\_promiseCapability\_.\[\[Reject\]\],
 -- | \*undefined\*, « \_value\_ »). 1. Else, 1. Assert: \_completion\_ is a
--- | normal completion. 1. If \_realm\_ is present, then 1. Let \_oldRealm\_
+
+-- SPEC: L41830-L41836
 -- | be the running execution context\'s Realm. 1. Set the running execution
 -- | context\'s Realm to \_realm\_. 1. Let \_iteratorResult\_ be
 -- | CreateIteratorResultObject(\_value\_, \_done\_). 1. Set the running
@@ -27948,9 +28281,8 @@ theorem elaborate_correct (p : Source.Program) (cp : Core.Program)
 -- | \_iteratorResult\_ be CreateIteratorResultObject(\_value\_,
 -- | \_done\_). 1. Perform ! Call(\_promiseCapability\_.\[\[Resolve\]\],
 -- | \*undefined\*, « \_iteratorResult\_ »). 1. Return \~unused\~.
--- |
 
--- SPEC: L41866-L41880
+-- SPEC: L41838-L41863
 -- | # AsyncGeneratorResume ( \_generator\_: an AsyncGenerator, \_completion\_: a Completion Record, ): \~unused\~
 -- |
 -- | 1\. Assert: \_generator\_.\[\[AsyncGeneratorState\]\] is either
@@ -27967,8 +28299,6 @@ theorem elaborate_correct (p : Source.Program) (cp : Core.Program)
 -- | been removed from the execution context stack and \_callerContext\_ is
 -- | the currently running execution context. 1. Return \~unused\~.
 -- |
-
--- SPEC: L41882-L41890
 -- | # AsyncGeneratorUnwrapYieldResumption ( \_resumptionValue\_: a Completion Record, ): either a normal completion containing an ECMAScript language value or an abrupt completion
 -- |
 -- | 1\. If \_resumptionValue\_ is not a return completion, return ?
@@ -27978,11 +28308,9 @@ theorem elaborate_correct (p : Source.Program) (cp : Core.Program)
 -- | normal completion. 1. Return
 -- | ReturnCompletion(\_awaited\_.\[\[Value\]\]).
 -- |
-
--- SPEC: L41892-L41923
 -- | # AsyncGeneratorYield ( \_value\_: an ECMAScript language value, ): either a normal completion containing an ECMAScript language value or an abrupt completion
--- |
--- | 1\. Let \_genContext\_ be the running execution context. 1. Assert:
+
+-- SPEC: L41866-L41880
 -- | \_genContext\_ is the execution context of a generator. 1. Let
 -- | \_generator\_ be the value of the Generator component of
 -- | \_genContext\_. 1. Assert: GetGeneratorKind() is \~async\~. 1. Let
@@ -27998,7 +28326,8 @@ theorem elaborate_correct (p : Source.Program) (cp : Core.Program)
 -- | \_resumptionValue\_ be Completion(\_toYield\_.\[\[Completion\]\]). 1.
 -- | Return ? AsyncGeneratorUnwrapYieldResumption(\_resumptionValue\_). 1.
 -- | Set \_generator\_.\[\[AsyncGeneratorState\]\] to \~suspended-yield\~. 1.
--- | Remove \_genContext\_ from the execution context stack and restore the
+
+-- SPEC: L41882-L41889
 -- | execution context that is at the top of the execution context stack as
 -- | the running execution context. 1. Let \_callerContext\_ be the running
 -- | execution context. 1. Resume \_callerContext\_ passing \*undefined\*. If
@@ -28007,10 +28336,8 @@ theorem elaborate_correct (p : Source.Program) (cp : Core.Program)
 -- | reaches here, then \_genContext\_ is the running execution context
 -- | again. 1. Return ?
 -- | AsyncGeneratorUnwrapYieldResumption(\_resumptionValue\_).
--- |
 
--- SPEC: L41925-L41960
--- | # AsyncGeneratorAwaitReturn ( \_generator\_: an AsyncGenerator, ): \~unused\~
+-- SPEC: L41892-L41923
 -- |
 -- | 1\. Assert: \_generator\_.\[\[AsyncGeneratorState\]\] is
 -- | \~draining-queue\~. 1. Let \_queue\_ be
@@ -28043,9 +28370,8 @@ theorem elaborate_correct (p : Source.Program) (cp : Core.Program)
 -- | CreateBuiltinFunction(\_rejectedClosure\_, 1, \*\"\"\*, « »). 1. Perform
 -- | PerformPromiseThen(\_promise\_, \_onFulfilled\_, \_onRejected\_). 1.
 -- | Return \~unused\~.
--- |
 
--- SPEC: L41962-L41979
+-- SPEC: L41925-L41960
 -- | # AsyncGeneratorDrainQueue ( \_generator\_: an AsyncGenerator, ): \~unused\~
 -- |
 -- | description
@@ -28065,10 +28391,6 @@ theorem elaborate_correct (p : Source.Program) (cp : Core.Program)
 -- | Set \_generator\_.\[\[AsyncGeneratorState\]\] to \~completed\~. 1.
 -- | Return \~unused\~.
 -- |
-
-/-! ## AsyncFunction Objects -/
-
--- SPEC: L41980-L41993
 -- | # AsyncFunction Objects
 -- |
 -- | AsyncFunctions are functions that are usually created by evaluating
@@ -28076,8 +28398,6 @@ theorem elaborate_correct (p : Source.Program) (cp : Core.Program)
 -- | \|AsyncMethod\|s, and \|AsyncArrowFunction\|s. They may also be created
 -- | by calling the %AsyncFunction% intrinsic.
 -- |
-
--- SPEC: L41994-L42006
 -- | # The AsyncFunction Constructor
 -- |
 -- | The AsyncFunction constructor:
@@ -28088,9 +28408,16 @@ theorem elaborate_correct (p : Source.Program) (cp : Core.Program)
 -- |   rather than as a constructor. Thus the function call
 -- |   \`AsyncFunction(...)\` is equivalent to the object creation expression
 -- |   \`new AsyncFunction(...)\` with the same arguments.
--- |
 
--- SPEC: L42014-L42023
+-- SPEC: L41962-L41979
+-- |   definition. Subclass constructors that intend to inherit the specified
+-- |   AsyncFunction behaviour must include a \`super\` call to the
+-- |   AsyncFunction constructor to create and initialize a subclass instance
+-- |   with the internal slots necessary for built-in async function
+-- |   behaviour. All ECMAScript syntactic forms for defining async function
+-- |   objects create direct instances of AsyncFunction. There is no
+-- |   syntactic means to create instances of AsyncFunction subclasses.
+-- |
 -- | # AsyncFunction ( \...\_parameterArgs\_, \_bodyArg\_ )
 -- |
 -- | The last argument (if any) specifies the body (executable code) of an
@@ -28101,11 +28428,26 @@ theorem elaborate_correct (p : Source.Program) (cp : Core.Program)
 -- | 1\. Let \_C\_ be the active function object. 1. If \_bodyArg\_ is not
 -- | present, set \_bodyArg\_ to the empty String. 1. Return ?
 -- | CreateDynamicFunction(\_C\_, NewTarget, \~async\~, \_parameterArgs\_,
+
+/-! ## AsyncFunction Objects -/
+
+-- SPEC: L41980-L41993
 -- | \_bodyArg\_). See NOTE for .
 -- |
-
--- SPEC: L42034-L42040
+-- | # Properties of the AsyncFunction Constructor
+-- |
+-- | The AsyncFunction constructor:
+-- |
+-- | - is a standard built-in function object that inherits from the Function
+-- |   constructor.
+-- | - has a \[\[Prototype\]\] internal slot whose value is %Function%.
+-- | - has a \*\"length\"\* property whose value is \*1\*~𝔽~.
+-- | - has a \*\"name\"\* property whose value is \*\"AsyncFunction\"\*.
+-- | - has the following properties:
+-- |
 -- | # AsyncFunction.prototype
+
+-- SPEC: L41994-L42006
 -- |
 -- | The initial value of \`AsyncFunction.prototype\` is the AsyncFunction
 -- | prototype object.
@@ -28113,43 +28455,41 @@ theorem elaborate_correct (p : Source.Program) (cp : Core.Program)
 -- | This property has the attributes { \[\[Writable\]\]: \*false\*,
 -- | \[\[Enumerable\]\]: \*false\*, \[\[Configurable\]\]: \*false\* }.
 -- |
-
--- SPEC: L42054-L42059
--- | # AsyncFunction.prototype.constructor
+-- | # Properties of the AsyncFunction Prototype Object
 -- |
+-- | The [AsyncFunction prototype object]{.dfn}:
+-- |
+-- | - is [%AsyncFunction.prototype%]{.dfn}.
+-- | - is an ordinary object.
+
+-- SPEC: L42014-L42023
 -- | The initial value of \`AsyncFunction.prototype.constructor\` is
 -- | %AsyncFunction%.
--- |
-
--- SPEC: L42065-L42072
--- | # AsyncFunction.prototype \[ %Symbol.toStringTag% \]
--- |
--- | The initial value of the %Symbol.toStringTag% property is the String
--- | value \*\"AsyncFunction\"\*.
 -- |
 -- | This property has the attributes { \[\[Writable\]\]: \*false\*,
 -- | \[\[Enumerable\]\]: \*false\*, \[\[Configurable\]\]: \*true\* }.
 -- |
-
-/-! ## Async Functions Abstract Operations -/
-
--- SPEC: L42094-L42102
--- | # AsyncFunctionStart ( \_promiseCapability\_: a PromiseCapability Record, \_asyncFunctionBody\_: a \|FunctionBody\| Parse Node, an \|ExpressionBody\| Parse Node, or an Abstract Closure with no parameters, ): \~unused\~
+-- | # AsyncFunction.prototype \[ %Symbol.toStringTag% \]
 -- |
--- | 1\. Let \_runningContext\_ be the running execution context. 1. Let
+-- | The initial value of the %Symbol.toStringTag% property is the String
+-- | value \*\"AsyncFunction\"\*.
+
+-- SPEC: L42034-L42039
+-- | a \[\[Construct\]\] internal method. AsyncFunction instances do not have
+-- | a prototype property as they are not constructable.
+-- |
+-- | Each AsyncFunction instance has the following own properties:
+-- |
+-- | # length
+
+-- SPEC: L42054-L42058
 -- | \_asyncContext\_ be a copy of \_runningContext\_. 1. NOTE: Copying the
 -- | execution state is required for AsyncBlockStart to resume its execution.
 -- | It is ill-defined to resume a currently executing context. 1. Perform
 -- | AsyncBlockStart(\_promiseCapability\_, \_asyncFunctionBody\_,
 -- | \_asyncContext\_). 1. Return \~unused\~.
--- |
 
--- SPEC: L42104-L42139
--- | # AsyncBlockStart ( \_promiseCapability\_: a PromiseCapability Record, \_asyncBody\_: a Parse Node or an Abstract Closure with no parameters, \_asyncContext\_: an execution context, ): \~unused\~
--- |
--- | 1\. Let \_runningContext\_ be the running execution context. 1. Let
--- | \_closure\_ be a new Abstract Closure with no parameters that captures
--- | \_promiseCapability\_ and \_asyncBody\_ and performs the following steps
+-- SPEC: L42065-L42072
 -- | when called: 1. Let \_acAsyncContext\_ be the running execution
 -- | context. 1. If \_asyncBody\_ is a Parse Node, then 1. Let \_result\_ be
 -- | Completion(Evaluation of \_asyncBody\_). 1. Else, 1. Assert:
@@ -28158,43 +28498,70 @@ theorem elaborate_correct (p : Source.Program) (cp : Core.Program)
 -- | the async function either threw an exception or performed an implicit or
 -- | explicit return; all awaiting is done. 1. Remove \_acAsyncContext\_ from
 -- | the execution context stack and restore the execution context that is at
--- | the top of the execution context stack as the running execution
--- | context. 1. If \_result\_ is a normal completion, then 1. Perform !
--- | Call(\_promiseCapability\_.\[\[Resolve\]\], \*undefined\*, «
--- | \*undefined\* »). 1. Else if \_result\_ is a return completion, then 1.
--- | Perform ! Call(\_promiseCapability\_.\[\[Resolve\]\], \*undefined\*, «
--- | \_result\_.\[\[Value\]\] »). 1. Else, 1. Assert: \_result\_ is a throw
--- | completion. 1. Perform ! Call(\_promiseCapability\_.\[\[Reject\]\],
--- | \*undefined\*, « \_result\_.\[\[Value\]\] »). 1.
--- | \[id=\"step-asyncblockstart-return-undefined\"\] Return
--- | NormalCompletion(\~unused\~). 1. Set the code evaluation state of
--- | \_asyncContext\_ such that when evaluation is resumed for that execution
--- | context, \_closure\_ will be called with no arguments. 1. Push
--- | \_asyncContext\_ onto the execution context stack; \_asyncContext\_ is
--- | now the running execution context. 1. Resume the suspended evaluation of
--- | \_asyncContext\_. Let \_result\_ be the value returned by the resumed
--- | computation. 1. Assert: When we return here, \_asyncContext\_ has
--- | already been removed from the execution context stack and
--- | \_runningContext\_ is the currently running execution context. 1.
--- | Assert: \_result\_ is a normal completion with a value of \~unused\~.
--- | The possible sources of this value are Await or, if the async function
--- | doesn\'t await anything, step above. 1. Return \~unused\~.
+
+/-! ## Async Functions Abstract Operations -/
+
+-- SPEC: L42094-L42102
 -- |
+-- | # Await ( \_value\_: an ECMAScript language value, ): either a normal completion containing either an ECMAScript language value or \~empty\~, or a throw completion
+-- |
+-- | 1\. Let \_asyncContext\_ be the running execution context. 1. Let
+-- | \_promise\_ be ? PromiseResolve(%Promise%, \_value\_). 1. Let
+-- | \_fulfilledClosure\_ be a new Abstract Closure with parameters (\_v\_)
+-- | that captures \_asyncContext\_ and performs the following steps when
+-- | called: 1. Let \_prevContext\_ be the running execution context. 1.
+-- | Suspend \_prevContext\_. 1. Push \_asyncContext\_ onto the execution
+
+-- SPEC: L42104-L42139
+-- | Resume the suspended evaluation of \_asyncContext\_ using
+-- | NormalCompletion(\_v\_) as the result of the operation that suspended
+-- | it. 1. Assert: When we reach this step, \_asyncContext\_ has already
+-- | been removed from the execution context stack and \_prevContext\_ is the
+-- | currently running execution context. 1. Return
+-- | NormalCompletion(\*undefined\*). 1. Let \_onFulfilled\_ be
+-- | CreateBuiltinFunction(\_fulfilledClosure\_, 1, \*\"\"\*, « »). 1. Let
+-- | \_rejectedClosure\_ be a new Abstract Closure with parameters
+-- | (\_reason\_) that captures \_asyncContext\_ and performs the following
+-- | steps when called: 1. Let \_prevContext\_ be the running execution
+-- | context. 1. Suspend \_prevContext\_. 1. Push \_asyncContext\_ onto the
+-- | execution context stack; \_asyncContext\_ is now the running execution
+-- | context. 1. Resume the suspended evaluation of \_asyncContext\_ using
+-- | ThrowCompletion(\_reason\_) as the result of the operation that
+-- | suspended it. 1. Assert: When we reach this step, \_asyncContext\_ has
+-- | already been removed from the execution context stack and
+-- | \_prevContext\_ is the currently running execution context. 1. Return
+-- | NormalCompletion(\*undefined\*). 1. Let \_onRejected\_ be
+-- | CreateBuiltinFunction(\_rejectedClosure\_, 1, \*\"\"\*, « »). 1. Perform
+-- | PerformPromiseThen(\_promise\_, \_onFulfilled\_, \_onRejected\_). 1.
+-- | Remove \_asyncContext\_ from the execution context stack and restore the
+-- | execution context that is at the top of the execution context stack as
+-- | the running execution context. 1. Let \_callerContext\_ be the running
+-- | execution context. 1. Resume \_callerContext\_ passing \~empty\~. If
+-- | \_asyncContext\_ is ever resumed again, let \_completion\_ be the
+-- | Completion Record with which it is resumed. 1. Assert: If control
+-- | reaches here, then \_asyncContext\_ is the running execution context
+-- | again. 1. Return \_completion\_.
+-- |
+-- | # Reflection
+-- |
+-- | # The Reflect Object
+-- |
+-- | The Reflect object:
+-- |
+-- | - is [%Reflect%]{.dfn}.
 
 /-! ## Atomics Abstract Operations -/
 
--- SPEC: L38230-L38237
+-- SPEC: L38230-L38236
 -- | # ValidateAtomicAccessOnIntegerTypedArray ( \_typedArray\_: an ECMAScript language value, \_requestIndex\_: an ECMAScript language value, ): either a normal completion containing an integer or a throw completion
 -- |
 -- | 1\. Let \_taRecord\_ be ? ValidateIntegerTypedArray(\_typedArray\_,
 -- | \*false\*). 1. Return ? ValidateAtomicAccess(\_taRecord\_,
 -- | \_requestIndex\_).
 -- |
+-- | # RevalidateAtomicAccess ( \_typedArray\_: a TypedArray, \_byteIndexInBuffer\_: an integer, ): either a normal completion containing \~unused\~ or a throw completion
 
 -- SPEC: L38239-L38260
--- | # RevalidateAtomicAccess ( \_typedArray\_: a TypedArray, \_byteIndexInBuffer\_: an integer, ): either a normal completion containing \~unused\~ or a throw completion
--- |
--- | description
 -- | :   This operation revalidates the index within the backing buffer for
 -- |     atomic operations after all argument coercions are performed in
 -- |     Atomics methods, as argument coercions can have arbitrary side
@@ -28212,16 +28579,13 @@ theorem elaborate_correct (p : Source.Program) (cp : Core.Program)
 -- | \_taRecord\_.\[\[CachedBufferByteLength\]\], throw a \*RangeError\*
 -- | exception. 1. Return \~unused\~.
 -- |
-
--- SPEC: L38262-L38269
 -- | # GetWaiterList ( \_block\_: a Shared Data Block, \_i\_: a non-negative integer that is evenly divisible by 4, ): a WaiterList Record
 -- |
 -- | 1\. Assert: \_i\_ and \_i\_ + 3 are valid byte offsets within the memory
 -- | of \_block\_. 1. Return the WaiterList Record that is referenced by the
 -- | pair (\_block\_, \_i\_).
--- |
 
--- SPEC: L38271-L38295
+-- SPEC: L38262-L38269
 -- | # EnterCriticalSection ( \_WL\_: a WaiterList Record, ): \~unused\~
 -- |
 -- | 1\. Assert: The surrounding agent is not in the critical section for any
@@ -28230,7 +28594,8 @@ theorem elaborate_correct (p : Source.Program) (cp : Core.Program)
 -- | other agent to enter). 1. If \_WL\_.\[\[MostRecentLeaveEvent\]\] is not
 -- | \~empty\~, then 1. NOTE: A \_WL\_ whose critical section has been
 -- | entered at least once has a Synchronize event set by
--- | LeaveCriticalSection. 1. Let \_AR\_ be the Agent Record of the
+
+-- SPEC: L38271-L38295
 -- | surrounding agent. 1. Let \_execution\_ be
 -- | \_AR\_.\[\[CandidateExecution\]\]. 1. Let \_eventsRecord\_ be the Agent
 -- | Events Record of \_execution\_.\[\[EventsRecords\]\] whose
@@ -28240,8 +28605,12 @@ theorem elaborate_correct (p : Source.Program) (cp : Core.Program)
 -- | (\_WL\_.\[\[MostRecentLeaveEvent\]\], \_enterEvent\_) to
 -- | \_eventsRecord\_.\[\[AgentSynchronizesWith\]\]. 1. Return \~unused\~.
 -- |
-
--- SPEC: L38304-L38318
+-- | EnterCriticalSection has [contention]{.dfn} when an agent attempting to
+-- | enter the critical section must wait for another agent to leave it. When
+-- | there is no contention, FIFO order of EnterCriticalSection calls is
+-- | observable. When there is contention, an implementation may choose an
+-- | arbitrary order but may not cause an agent to wait indefinitely.
+-- |
 -- | # LeaveCriticalSection ( \_WL\_: a WaiterList Record, ): \~unused\~
 -- |
 -- | 1\. Assert: The surrounding agent is in the critical section for
@@ -28252,22 +28621,12 @@ theorem elaborate_correct (p : Source.Program) (cp : Core.Program)
 -- | AgentSignifier(). 1. Let \_leaveEvent\_ be a new Synchronize event. 1.
 -- | Append \_leaveEvent\_ to \_eventsRecord\_.\[\[EventList\]\]. 1. Set
 -- | \_WL\_.\[\[MostRecentLeaveEvent\]\] to \_leaveEvent\_. 1. Leave the
--- | critical section for \_WL\_. 1. Return \~unused\~.
--- |
 
--- SPEC: L38320-L38330
--- | # AddWaiter ( \_WL\_: a WaiterList Record, \_waiterRecord\_: a Waiter Record, ): \~unused\~
--- |
--- | 1\. Assert: The surrounding agent is in the critical section for
--- | \_WL\_. 1. Assert: There is no Waiter Record in \_WL\_.\[\[Waiters\]\]
--- | whose \[\[PromiseCapability\]\] field is
--- | \_waiterRecord\_.\[\[PromiseCapability\]\] and whose
+-- SPEC: L38304-L38318
 -- | \[\[AgentSignifier\]\] field is
 -- | \_waiterRecord\_.\[\[AgentSignifier\]\]. 1. Append \_waiterRecord\_ to
 -- | \_WL\_.\[\[Waiters\]\]. 1. Return \~unused\~.
 -- |
-
--- SPEC: L38332-L38339
 -- | # RemoveWaiter ( \_WL\_: a WaiterList Record, \_waiterRecord\_: a Waiter Record, ): \~unused\~
 -- |
 -- | 1\. Assert: The surrounding agent is in the critical section for
@@ -28275,19 +28634,16 @@ theorem elaborate_correct (p : Source.Program) (cp : Core.Program)
 -- | Remove \_waiterRecord\_ from \_WL\_.\[\[Waiters\]\]. 1. Return
 -- | \~unused\~.
 -- |
-
--- SPEC: L38341-L38352
 -- | # RemoveWaiters ( \_WL\_: a WaiterList Record, \_c\_: a non-negative integer or +∞, ): a List of Waiter Records
 -- |
 -- | 1\. Assert: The surrounding agent is in the critical section for
 -- | \_WL\_. 1. Let \_len\_ be the number of elements in
--- | \_WL\_.\[\[Waiters\]\]. 1. Let \_n\_ be min(\_c\_, \_len\_). 1. Let
+
+-- SPEC: L38320-L38330
 -- | \_L\_ be a List whose elements are the first \_n\_ elements of
 -- | \_WL\_.\[\[Waiters\]\]. 1. Remove the first \_n\_ elements of
 -- | \_WL\_.\[\[Waiters\]\]. 1. Return \_L\_.
 -- |
-
--- SPEC: L38354-L38374
 -- | # SuspendThisAgent ( \_WL\_: a WaiterList Record, \_waiterRecord\_: a Waiter Record, ): \~unused\~
 -- |
 -- | 1\. Assert: The surrounding agent is in the critical section for
@@ -28295,7 +28651,8 @@ theorem elaborate_correct (p : Source.Program) (cp : Core.Program)
 -- | Let \_thisAgent\_ be AgentSignifier(). 1. Assert:
 -- | \_waiterRecord\_.\[\[AgentSignifier\]\] is \_thisAgent\_. 1. Assert:
 -- | \_waiterRecord\_.\[\[PromiseCapability\]\] is \~blocking\~. 1. Assert:
--- | AgentCanSuspend() is \*true\*. 1. Perform LeaveCriticalSection(\_WL\_)
+
+-- SPEC: L38332-L38339
 -- | and suspend the surrounding agent until the time is
 -- | \_waiterRecord\_.\[\[TimeoutTime\]\], performing the combined operation
 -- | in such a way that a notification that arrives after the critical
@@ -28304,9 +28661,8 @@ theorem elaborate_correct (p : Source.Program) (cp : Core.Program)
 -- | due to another agent calling NotifyWaiter with arguments \_WL\_ and
 -- | \_thisAgent\_ (i.e. via a call to \`Atomics.notify\`). 1. Perform
 -- | EnterCriticalSection(\_WL\_). 1. Return \~unused\~.
--- |
 
--- SPEC: L38376-L38400
+-- SPEC: L38341-L38352
 -- | # NotifyWaiter ( \_WL\_: a WaiterList Record, \_waiterRecord\_: a Waiter Record, ): \~unused\~
 -- |
 -- | 1\. Assert: The surrounding agent is in the critical section for
@@ -28319,11 +28675,13 @@ theorem elaborate_correct (p : Source.Program) (cp : Core.Program)
 -- | Perform ! Call(\_promiseCapability\_.\[\[Resolve\]\], \*undefined\*, «
 -- | \_waiterRecord\_.\[\[Result\]\] »). 1. Else, 1. Perform
 -- | EnqueueResolveInAgentJob(\_waiterRecord\_.\[\[AgentSignifier\]\],
--- | \_waiterRecord\_.\[\[PromiseCapability\]\],
+
+-- SPEC: L38354-L38374
 -- | \_waiterRecord\_.\[\[Result\]\]). 1. Return \~unused\~.
 -- |
-
--- SPEC: L38404-L38420
+-- | An agent must not access another agent\'s promise capability in any
+-- | capacity beyond passing it to the host.
+-- |
 -- | # EnqueueResolveInAgentJob ( \_agentSignifier\_: an agent signifier, \_promiseCapability\_: a PromiseCapability Record, \_resolution\_: \*\"ok\"\* or \*\"timed-out\"\*, ): \~unused\~
 -- |
 -- | 1\. Let \_resolveJob\_ be a new Job Abstract Closure with no parameters
@@ -28337,24 +28695,57 @@ theorem elaborate_correct (p : Source.Program) (cp : Core.Program)
 -- | Perform HostEnqueueGenericJob(\_resolveJob\_,
 -- | \_realmInTargetAgent\_). 1. Return \~unused\~.
 -- |
-
--- SPEC: L38467-L38527
--- | # AtomicCompareExchangeInSharedBlock ( \_block\_: a Shared Data Block, \_byteIndexInBuffer\_: an integer, \_elementSize\_: a non-negative integer, \_expectedBytes\_: a List of byte values, \_replacementBytes\_: a List of byte values, ): a List of byte values
+-- | # DoWait ( \_mode\_: \~sync\~ or \~async\~, \_typedArray\_: an ECMAScript language value, \_index\_: an ECMAScript language value, \_value\_: an ECMAScript language value, \_timeout\_: an ECMAScript language value, ): either a normal completion containing either an Object, \*\"not-equal\"\*, \*\"timed-out\"\*, or \*\"ok\"\*, or a throw completion
 -- |
--- | 1\. Let \_AR\_ be the Agent Record of the surrounding agent. 1. Let
--- | \_execution\_ be \_AR\_.\[\[CandidateExecution\]\]. 1. Let
--- | \_eventsRecord\_ be the Agent Events Record of
--- | \_execution\_.\[\[EventsRecords\]\] whose \[\[AgentSignifier\]\] is
--- | AgentSignifier(). 1. Let \_rawBytesRead\_ be a List of length
--- | \_elementSize\_ whose elements are nondeterministically chosen byte
--- | values. 1. NOTE: In implementations, \_rawBytesRead\_ is the result of a
--- | load-link, of a load-exclusive, or of an operand of a read-modify-write
--- | instruction on the underlying hardware. The nondeterminism is a semantic
--- | prescription of the memory model to describe observable behaviour of
--- | hardware with weak consistency. 1. NOTE: The comparison of the expected
--- | value and the read value is performed outside of the read-modify-write
--- | modification function to avoid needlessly strong synchronization when
--- | the expected value is not equal to the read value. 1. If
+-- | 1\. Let \_taRecord\_ be ? ValidateIntegerTypedArray(\_typedArray\_,
+
+-- SPEC: L38376-L38400
+-- | \_taRecord\_.\[\[Object\]\].\[\[ViewedArrayBuffer\]\]. 1. If
+-- | IsSharedArrayBuffer(\_buffer\_) is \*false\*, throw a \*TypeError\*
+-- | exception. 1. Let \_byteIndexInBuffer\_ be ?
+-- | ValidateAtomicAccess(\_taRecord\_, \_index\_). 1. Let \_arrayTypeName\_
+-- | be \_typedArray\_.\[\[TypedArrayName\]\]. 1. If \_arrayTypeName\_ is
+-- | \*\"BigInt64Array\"\*, let \_v\_ be ? ToBigInt64(\_value\_). 1. Else,
+-- | let \_v\_ be ? ToInt32(\_value\_). 1. Let \_q\_ be ?
+-- | ToNumber(\_timeout\_). 1. If \_q\_ is either \*NaN\* or \*+∞\*~𝔽~, let
+-- | \_t\_ be +∞. 1. Else if \_q\_ is \*-∞\*~𝔽~, let \_t\_ be 0. 1. Else, let
+-- | \_t\_ be max(ℝ(\_q\_), 0). 1. If \_mode\_ is \~sync\~ and
+-- | AgentCanSuspend() is \*false\*, throw a \*TypeError\* exception. 1. Let
+-- | \_block\_ be \_buffer\_.\[\[ArrayBufferData\]\]. 1. Let \_WL\_ be
+-- | GetWaiterList(\_block\_, \_byteIndexInBuffer\_). 1. If \_mode\_ is
+-- | \~sync\~, then 1. Let \_promiseCapability\_ be \~blocking\~. 1. Let
+-- | \_resultObject\_ be \*undefined\*. 1. Else, 1. Let \_promiseCapability\_
+-- | be ! NewPromiseCapability(%Promise%). 1. Let \_resultObject\_ be
+-- | OrdinaryObjectCreate(%Object.prototype%). 1. Perform
+-- | EnterCriticalSection(\_WL\_). 1. Let \_elementType\_ be
+-- | TypedArrayElementType(\_typedArray\_). 1. Let \_w\_ be
+-- | GetValueFromBuffer(\_buffer\_, \_byteIndexInBuffer\_, \_elementType\_,
+-- | \*true\*, \~seq-cst\~). 1. If \_v\_ ≠ \_w\_, then 1. Perform
+-- | LeaveCriticalSection(\_WL\_). 1. If \_mode\_ is \~sync\~, return
+-- | \*\"not-equal\"\*. 1. Perform !
+-- | CreateDataPropertyOrThrow(\_resultObject\_, \*\"async\"\*,
+-- | \*false\*). 1. Perform ! CreateDataPropertyOrThrow(\_resultObject\_,
+
+-- SPEC: L38404-L38420
+-- | timeouts have special handling in order to fail fast and avoid
+-- | unnecessary Promise jobs. 1. Perform LeaveCriticalSection(\_WL\_). 1.
+-- | Perform ! CreateDataPropertyOrThrow(\_resultObject\_, \*\"async\"\*,
+-- | \*false\*). 1. Perform ! CreateDataPropertyOrThrow(\_resultObject\_,
+-- | \*\"value\"\*, \*\"timed-out\"\*). 1. Return \_resultObject\_. 1. Let
+-- | \_thisAgent\_ be AgentSignifier(). 1. Let \_now\_ be the time value
+-- | (UTC) identifying the current time. 1. Let \_additionalTimeout\_ be an
+-- | implementation-defined non-negative mathematical value. 1. Let
+-- | \_timeoutTime\_ be ℝ(\_now\_) + \_t\_ + \_additionalTimeout\_. 1. NOTE:
+-- | When \_t\_ is +∞, \_timeoutTime\_ is also +∞. 1. Let \_waiterRecord\_ be
+-- | a new Waiter Record { \[\[AgentSignifier\]\]: \_thisAgent\_,
+-- | \[\[PromiseCapability\]\]: \_promiseCapability\_, \[\[TimeoutTime\]\]:
+-- | \_timeoutTime\_, \[\[Result\]\]: \*\"ok\"\* }. 1. Perform
+-- | AddWaiter(\_WL\_, \_waiterRecord\_). 1. If \_mode\_ is \~sync\~, then 1.
+-- | Perform SuspendThisAgent(\_WL\_, \_waiterRecord\_). 1. Else if
+-- | \_timeoutTime\_ is finite, then 1. Perform
+-- | EnqueueAtomicsWaitAsyncTimeoutJob(\_WL\_, \_waiterRecord\_). 1. Perform
+
+-- SPEC: L38467-L38526
 -- | ByteListEqual(\_rawBytesRead\_, \_expectedBytes\_) is \*true\*, then 1.
 -- | Let \_second\_ be a new read-modify-write modification function with
 -- | parameters (\_oldBytes\_, \_newBytes\_) that captures nothing and
@@ -28371,8 +28762,6 @@ theorem elaborate_correct (p : Source.Program) (cp : Core.Program)
 -- | Record { \[\[Event\]\]: \_event\_, \[\[ChosenValue\]\]: \_rawBytesRead\_
 -- | } to \_execution\_.\[\[ChosenValues\]\]. 1. Return \_rawBytesRead\_.
 -- |
-
--- SPEC: L38529-L38549
 -- | # AtomicReadModifyWrite ( \_typedArray\_: an ECMAScript language value, \_index\_: an ECMAScript language value, \_value\_: an ECMAScript language value, \_op\_: a read-modify-write modification function, ): either a normal completion containing either a Number or a BigInt, or a throw completion
 -- |
 -- | description
@@ -28392,6 +28781,98 @@ theorem elaborate_correct (p : Source.Program) (cp : Core.Program)
 -- | GetModifySetValueInBuffer(\_buffer\_, \_byteIndexInBuffer\_,
 -- | \_elementType\_, \_v\_, \_op\_).
 -- |
+-- | # ByteListBitwiseOp ( \_op\_: \`&\`, \`\^\`, or \`\|\`, \_xBytes\_: a List of byte values, \_yBytes\_: a List of byte values, ): a List of byte values
+-- |
+-- | description
+-- | :   The operation atomically performs a bitwise operation on all byte
+-- |     values of the arguments and returns a List of byte values.
+-- |
+-- | 1\. Assert: \_xBytes\_ and \_yBytes\_ have the same number of
+-- | elements. 1. Let \_result\_ be a new empty List. 1. Let \_i\_ be 0. 1.
+-- | For each element \_xByte\_ of \_xBytes\_, do 1. Let \_yByte\_ be
+-- | \_yBytes\_\[\_i\_\]. 1. If \_op\_ is \`&\`, then 1. Let \_resultByte\_
+-- | be the result of applying the bitwise AND operation to \_xByte\_ and
+-- | \_yByte\_. 1. Else if \_op\_ is \`\^\`, then 1. Let \_resultByte\_ be
+-- | the result of applying the bitwise exclusive OR (XOR) operation to
+-- | \_xByte\_ and \_yByte\_. 1. Else, 1. Assert: \_op\_ is \`\|\`. 1. Let
+-- | \_resultByte\_ be the result of applying the bitwise inclusive OR
+-- | operation to \_xByte\_ and \_yByte\_. 1. Set \_i\_ to \_i\_ + 1. 1.
+-- | Append \_resultByte\_ to \_result\_. 1. Return \_result\_.
+-- |
+-- | # ByteListEqual ( \_xBytes\_: a List of byte values, \_yBytes\_: a List of byte values, ): a Boolean
+-- |
+-- | 1\. If \_xBytes\_ and \_yBytes\_ do not have the same number of
+-- | elements, return \*false\*. 1. Let \_i\_ be 0. 1. For each element
+-- | \_xByte\_ of \_xBytes\_, do 1. Let \_yByte\_ be \_yBytes\_\[\_i\_\]. 1.
+-- | If \_xByte\_ ≠ \_yByte\_, return \*false\*. 1. Set \_i\_ to
+-- | \_i\_ + 1. 1. Return \*true\*.
+
+-- SPEC: L38529-L38549
+-- |
+-- | This function performs the following steps when called:
+-- |
+-- | 1\. Let \_add\_ be a new read-modify-write modification function with
+-- | parameters (\_xBytes\_, \_yBytes\_) that captures \_typedArray\_ and
+-- | performs the following steps atomically when called: 1. Let \_type\_ be
+-- | TypedArrayElementType(\_typedArray\_). 1. Let \_AR\_ be the Agent Record
+-- | of the surrounding agent. 1. Let \_isLittleEndian\_ be
+-- | \_AR\_.\[\[LittleEndian\]\]. 1. Let \_x\_ be RawBytesToNumeric(\_type\_,
+-- | \_xBytes\_, \_isLittleEndian\_). 1. Let \_y\_ be
+-- | RawBytesToNumeric(\_type\_, \_yBytes\_, \_isLittleEndian\_). 1. If \_x\_
+-- | is a Number, then 1. Let \_sum\_ be Number::add(\_x\_, \_y\_). 1.
+-- | Else, 1. Assert: \_x\_ is a BigInt. 1. Let \_sum\_ be BigInt::add(\_x\_,
+-- | \_y\_). 1. Let \_sumBytes\_ be NumericToRawBytes(\_type\_, \_sum\_,
+-- | \_isLittleEndian\_). 1. Assert: \_sumBytes\_, \_xBytes\_, and \_yBytes\_
+-- | have the same number of elements. 1. Return \_sumBytes\_. 1. Return ?
+-- | AtomicReadModifyWrite(\_typedArray\_, \_index\_, \_value\_, \_add\_).
+-- |
+-- | # Atomics.and ( \_typedArray\_, \_index\_, \_value\_ )
+-- |
+-- | This function performs the following steps when called:
+
+-- SPEC: L38551-L38580
+-- | 1\. Let \_and\_ be a new read-modify-write modification function with
+-- | parameters (\_xBytes\_, \_yBytes\_) that captures nothing and performs
+-- | the following steps atomically when called: 1. Return
+-- | ByteListBitwiseOp(\`&\`, \_xBytes\_, \_yBytes\_). 1. Return ?
+-- | AtomicReadModifyWrite(\_typedArray\_, \_index\_, \_value\_, \_and\_).
+-- |
+-- | # Atomics.compareExchange ( \_typedArray\_, \_index\_, \_expectedValue\_, \_replacementValue\_ )
+-- |
+-- | This function performs the following steps when called:
+-- |
+-- | 1\. Let \_byteIndexInBuffer\_ be ?
+-- | ValidateAtomicAccessOnIntegerTypedArray(\_typedArray\_, \_index\_). 1.
+-- | Let \_buffer\_ be \_typedArray\_.\[\[ViewedArrayBuffer\]\]. 1. Let
+-- | \_block\_ be \_buffer\_.\[\[ArrayBufferData\]\]. 1. If
+-- | \_typedArray\_.\[\[ContentType\]\] is \~bigint\~, then 1. Let
+-- | \_expected\_ be ? ToBigInt(\_expectedValue\_). 1. Let \_replacement\_ be
+-- | ? ToBigInt(\_replacementValue\_). 1. Else, 1. Let \_expected\_ be 𝔽(?
+-- | ToIntegerOrInfinity(\_expectedValue\_)). 1. Let \_replacement\_ be 𝔽(?
+-- | ToIntegerOrInfinity(\_replacementValue\_)). 1. Perform ?
+-- | RevalidateAtomicAccess(\_typedArray\_, \_byteIndexInBuffer\_). 1. Let
+-- | \_elementType\_ be TypedArrayElementType(\_typedArray\_). 1. Let
+-- | \_elementSize\_ be TypedArrayElementSize(\_typedArray\_). 1. Let \_AR\_
+-- | be the Agent Record of the surrounding agent. 1. Let \_isLittleEndian\_
+-- | be \_AR\_.\[\[LittleEndian\]\]. 1. Let \_expectedBytes\_ be
+-- | NumericToRawBytes(\_elementType\_, \_expected\_, \_isLittleEndian\_). 1.
+-- | Let \_replacementBytes\_ be NumericToRawBytes(\_elementType\_,
+-- | \_replacement\_, \_isLittleEndian\_). 1. If
+-- | IsSharedArrayBuffer(\_buffer\_) is \*true\*, then 1. Let
+-- | \_rawBytesRead\_ be AtomicCompareExchangeInSharedBlock(\_block\_,
+-- | \_byteIndexInBuffer\_, \_elementSize\_, \_expectedBytes\_,
+
+-- SPEC: L38582-L38591
+-- | length \_elementSize\_ whose elements are the sequence of
+-- | \_elementSize\_ bytes starting with
+-- | \_block\_\[\_byteIndexInBuffer\_\]. 1. If
+-- | ByteListEqual(\_rawBytesRead\_, \_expectedBytes\_) is \*true\*, then 1.
+-- | Store the individual bytes of \_replacementBytes\_ into \_block\_,
+-- | starting at \_block\_\[\_byteIndexInBuffer\_\]. 1. Return
+-- | RawBytesToNumeric(\_elementType\_, \_rawBytesRead\_,
+-- | \_isLittleEndian\_).
+-- |
+-- | # Atomics.exchange ( \_typedArray\_, \_index\_, \_value\_ )
 
 /-! ## TypedArray Constructors -/
 
@@ -28433,8 +28914,6 @@ theorem elaborate_correct (p : Source.Program) (cp : Core.Program)
 -- | Return ? AllocateTypedArray(\_constructorName\_, NewTarget, \_proto\_,
 -- | \_elementLength\_).
 -- |
-
--- SPEC: L34910-L34935
 -- | # AllocateTypedArray ( \_constructorName\_: a String which is the name of a TypedArray constructor in , \_newTarget\_: a constructor, \_defaultProto\_: a String, optional \_length\_: a non-negative integer, ): either a normal completion containing a TypedArray or a throw completion
 -- |
 -- | description
@@ -28443,7 +28922,8 @@ theorem elaborate_correct (p : Source.Program) (cp : Core.Program)
 -- |     that length is also allocated and associated with the new TypedArray
 -- |     instance. AllocateTypedArray provides common semantics that is used
 -- |     by \_TypedArray\_.
--- |
+
+-- SPEC: L34910-L34935
 -- | 1\. Let \_proto\_ be ? GetPrototypeFromConstructor(\_newTarget\_,
 -- | \_defaultProto\_). 1. Let \_obj\_ be TypedArrayCreate(\_proto\_). 1.
 -- | Assert: \_obj\_.\[\[ViewedArrayBuffer\]\] is \*undefined\*. 1. Set
@@ -28456,8 +28936,6 @@ theorem elaborate_correct (p : Source.Program) (cp : Core.Program)
 -- | \_obj\_.\[\[ArrayLength\]\] to 0. 1. Else, 1. Perform ?
 -- | AllocateTypedArrayBuffer(\_obj\_, \_length\_). 1. Return \_obj\_.
 -- |
-
--- SPEC: L34937-L34970
 -- | # InitializeTypedArrayFromTypedArray ( \_O\_: a TypedArray, \_srcArray\_: a TypedArray, ): either a normal completion containing \~unused\~ or a throw completion
 -- |
 -- | 1\. Let \_srcData\_ be \_srcArray\_.\[\[ViewedArrayBuffer\]\]. 1. Let
@@ -28472,7 +28950,8 @@ theorem elaborate_correct (p : Source.Program) (cp : Core.Program)
 -- | TypedArrayLength(\_srcRecord\_). 1. Let \_byteLength\_ be
 -- | \_elementSize\_ × \_elementLength\_. 1. If \_elementType\_ is
 -- | \_srcType\_, then 1. Let \_data\_ be ? CloneArrayBuffer(\_srcData\_,
--- | \_srcByteOffset\_, \_byteLength\_). 1. Else, 1. Let \_data\_ be ?
+
+-- SPEC: L34937-L34970
 -- | AllocateArrayBuffer(%ArrayBuffer%, \_byteLength\_). 1. If
 -- | \_srcArray\_.\[\[ContentType\]\] is not \_O\_.\[\[ContentType\]\], throw
 -- | a \*TypeError\* exception. 1. Let \_srcByteIndex\_ be
@@ -28489,6 +28968,24 @@ theorem elaborate_correct (p : Source.Program) (cp : Core.Program)
 -- | \_O\_.\[\[ByteOffset\]\] to 0. 1. Set \_O\_.\[\[ArrayLength\]\] to
 -- | \_elementLength\_. 1. Return \~unused\~.
 -- |
+-- | # InitializeTypedArrayFromArrayBuffer ( \_O\_: a TypedArray, \_buffer\_: an ArrayBuffer or a SharedArrayBuffer, \_byteOffset\_: an ECMAScript language value, \_length\_: an ECMAScript language value, ): either a normal completion containing \~unused\~ or a throw completion
+-- |
+-- | 1\. Let \_elementSize\_ be TypedArrayElementSize(\_O\_). 1. Let
+-- | \_offset\_ be ? ToIndex(\_byteOffset\_). 1. If \_offset\_ modulo
+-- | \_elementSize\_ ≠ 0, throw a \*RangeError\* exception. 1. Let
+-- | \_bufferIsFixedLength\_ be IsFixedLengthArrayBuffer(\_buffer\_). 1. If
+-- | \_length\_ is not \*undefined\*, then 1. Let \_newLength\_ be ?
+-- | ToIndex(\_length\_). 1. If IsDetachedBuffer(\_buffer\_) is \*true\*,
+-- | throw a \*TypeError\* exception. 1. Let \_bufferByteLength\_ be
+-- | ArrayBufferByteLength(\_buffer\_, \~seq-cst\~). 1. If \_length\_ is
+-- | \*undefined\* and \_bufferIsFixedLength\_ is \*false\*, then 1. If
+-- | \_offset\_ \> \_bufferByteLength\_, throw a \*RangeError\* exception. 1.
+-- | Set \_O\_.\[\[ByteLength\]\] to \~auto\~. 1. Set
+-- | \_O\_.\[\[ArrayLength\]\] to \~auto\~. 1. Else, 1. If \_length\_ is
+-- | \*undefined\*, then 1. If \_bufferByteLength\_ modulo \_elementSize\_ ≠
+-- | 0, throw a \*RangeError\* exception. 1. Let \_newByteLength\_ be
+-- | \_bufferByteLength\_ - \_offset\_. 1. If \_newByteLength\_ \< 0, throw a
+-- | \*RangeError\* exception. 1. Else, 1. Let \_newByteLength\_ be
 
 /-! ## Array Sort Operations -/
 
@@ -28508,56 +29005,64 @@ theorem elaborate_correct (p : Source.Program) (cp : Core.Program)
 -- | calls to \_SortCompare\_ and return that Completion Record. 1. Return
 -- | \_items\_.
 -- |
+-- | The [sort order]{#sort-order .dfn} is the ordering of \_items\_ after
+-- | completion of step of the algorithm above. The sort order is
+-- | implementation-defined if \_SortCompare\_ is not a consistent comparator
+-- | for the elements of \_items\_. When SortIndexedProperties is invoked by
+-- | Array.prototype.sort or Array.prototype.toSorted, the sort order is also
+-- | implementation-defined if \_comparator\_ is \*undefined\*, and all
+-- | applications of ToString, to any specific value passed as an argument to
+-- | \_SortCompare\_, do not produce the same result.
+-- |
+-- | Unless the sort order is specified to be implementation-defined, it must
+-- | satisfy all of the following conditions:
+-- |
+-- | - There must be some mathematical permutation π of the non-negative
+-- |   integers less than \_itemCount\_, such that for every non-negative
+-- |   integer \_j\_ less than \_itemCount\_, the element old\[\_j\_\] is
+-- |   exactly the same as new\[π(\_j\_)\].
+-- | - Then for all non-negative integers \_j\_ and \_k\_, each less than
+-- |   \_itemCount\_, if ℝ(\_SortCompare\_(old\[\_j\_\], old\[\_k\_\])) \< 0,
+-- |   then π(\_j\_) \< π(\_k\_).
+-- | - And for all non-negative integers \_j\_ and \_k\_ such that \_j\_ \<
+-- |   \_k\_ \< \_itemCount\_, if ℝ(\_SortCompare\_(old\[\_j\_\],
+-- |   old\[\_k\_\])) = 0, then π(\_j\_) \< π(\_k\_); i.e., the sort is
+-- |   stable.
+-- |
+-- | Here the notation old\[\_j\_\] is used to refer to \_items\_\[\_j\_\]
+-- | before step is executed, and the notation new\[\_j\_\] to refer to
+-- | \_items\_\[\_j\_\] after step has been executed.
+-- |
+-- | An abstract closure or function \_comparator\_ is a [consistent
+-- | comparator]{#consistent-comparator .dfn} for a set of values \_S\_ if
+-- | all of the requirements below are met for all values \_a\_, \_b\_, and
+-- | \_c\_ (possibly the same value) in the set \_S\_: The notation \_a\_
+-- | \<~C~ \_b\_ means ℝ(\_comparator\_(\_a\_, \_b\_)) \< 0; \_a\_ =~C~ \_b\_
+-- | means ℝ(\_comparator\_(\_a\_, \_b\_)) = 0; and \_a\_ \>~C~ \_b\_ means
+-- | ℝ(\_comparator\_(\_a\_, \_b\_)) \> 0.
+-- |
+-- | - Calling \_comparator\_(\_a\_, \_b\_) always returns the same value
+-- |   \_v\_ when given a specific pair of values \_a\_ and \_b\_ as its two
+-- |   arguments. Furthermore, \_v\_ is a Number, and \_v\_ is not \*NaN\*.
+-- |   Note that this implies that exactly one of \_a\_ \<~C~ \_b\_, \_a\_
+-- |   =~C~ \_b\_, and \_a\_ \>~C~ \_b\_ will be true for a given pair of
+-- |   \_a\_ and \_b\_.
+-- | - Calling \_comparator\_(\_a\_, \_b\_) does not modify \_obj\_ or any
 
--- SPEC: L33418-L33456
--- | # CompareArrayElements ( \_x\_: an ECMAScript language value, \_y\_: an ECMAScript language value, \_comparator\_: a function object or \*undefined\*, ): either a normal completion containing a Number or an abrupt completion
--- |
--- | 1\. If \_x\_ and \_y\_ are both \*undefined\*, return \*+0\*~𝔽~. 1. If
--- | \_x\_ is \*undefined\*, return \*1\*~𝔽~. 1. If \_y\_ is \*undefined\*,
--- | return \*-1\*~𝔽~. 1. If \_comparator\_ is not \*undefined\*, then 1. Let
--- | \_v\_ be ? ToNumber(? Call(\_comparator\_, \*undefined\*, « \_x\_, \_y\_
--- | »)). 1. If \_v\_ is \*NaN\*, return \*+0\*~𝔽~. 1. Return \_v\_. 1.
--- | \[id=\"step-sortcompare-tostring-x\"\] Let \_xString\_ be ?
--- | ToString(\_x\_). 1. \[id=\"step-sortcompare-tostring-y\"\] Let
--- | \_yString\_ be ? ToString(\_y\_). 1. Let \_xSmaller\_ be !
--- | IsLessThan(\_xString\_, \_yString\_, \*true\*). 1. If \_xSmaller\_ is
--- | \*true\*, return \*-1\*~𝔽~. 1. Let \_ySmaller\_ be !
--- | IsLessThan(\_yString\_, \_xString\_, \*true\*). 1. If \_ySmaller\_ is
--- | \*true\*, return \*1\*~𝔽~. 1. Return \*+0\*~𝔽~.
--- |
-
--- SPEC: L33457-L33584
--- | # Array.prototype.splice ( \_start\_, \_deleteCount\_, \...\_items\_ )
--- |
--- | This method deletes the \_deleteCount\_ elements of the array starting
--- | at integer index \_start\_ and replaces them with the elements of
--- | \_items\_. It returns an Array containing the deleted elements (if any).
--- |
--- | This method performs the following steps when called:
--- |
--- | 1\. Let \_O\_ be ? ToObject(\*this\* value). 1. Let \_len\_ be ?
--- | LengthOfArrayLike(\_O\_). 1. Let \_relativeStart\_ be ?
--- | ToIntegerOrInfinity(\_start\_). 1. If \_relativeStart\_ = -∞, let
--- | \_actualStart\_ be 0. 1. Else if \_relativeStart\_ \< 0, let
--- | \_actualStart\_ be max(\_len\_ + \_relativeStart\_, 0). 1. Else, let
--- | \_actualStart\_ be min(\_relativeStart\_, \_len\_). 1. Let \_itemCount\_
--- | be the number of elements in \_items\_. 1. If \_start\_ is not present,
--- | then 1. Let \_actualDeleteCount\_ be 0. 1. Else if \_deleteCount\_ is
--- | not present, then 1. Let \_actualDeleteCount\_ be \_len\_ -
--- | \_actualStart\_. 1. Else, 1. Let \_dc\_ be ?
--- | ToIntegerOrInfinity(\_deleteCount\_). 1. Let \_actualDeleteCount\_ be
--- | the result of clamping \_dc\_ between 0 and \_len\_ -
--- | \_actualStart\_. 1. If \_len\_ + \_itemCount\_ - \_actualDeleteCount\_
--- | \> 2^53^ - 1, throw a \*TypeError\* exception.
--- |
-
--- SPEC: L33585-L33611
+-- SPEC: L33418-L33455
 -- | # Array.prototype.toLocaleString ( \[ \_reserved1\_ \[ , \_reserved2\_ \] \] )
 -- |
 -- | An ECMAScript implementation that includes the ECMA-402
 -- | Internationalization API must implement this method as specified in the
 -- | ECMA-402 specification. If an ECMAScript implementation does not include
 -- | the ECMA-402 API the following specification of this method is used.
+-- |
+-- | The first edition of ECMA-402 did not include a replacement
+-- | specification for this method.
+-- |
+-- | The meanings of the optional parameters to this method are defined in
+-- | the ECMA-402 specification; implementations that do not include ECMA-402
+-- | support must not use those parameter positions for anything else.
 -- |
 -- | This method performs the following steps when called:
 -- |
@@ -28573,27 +29078,190 @@ theorem elaborate_correct (p : Source.Program) (cp : Core.Program)
 -- | \*\"toLocaleString\"\*)). 1. Set \_R\_ to the string-concatenation of
 -- | \_R\_ and \_S\_. 1. Set \_k\_ to \_k\_ + 1. 1. Return \_R\_.
 -- |
+-- | This method converts the elements of the array to Strings using their
+-- | \`toLocaleString\` methods, and then concatenates these Strings,
+-- | separated by occurrences of an implementation-defined locale-sensitive
+-- | separator String. This method is analogous to \`toString\` except that
+-- | it is intended to yield a locale-sensitive result corresponding with
+-- | conventions of the host environment\'s current locale.
+-- |
+-- | This method is intentionally generic; it does not require that its
+-- | \*this\* value be an Array. Therefore it can be transferred to other
+-- | kinds of objects for use as a method.
+
+-- SPEC: L33457-L33583
+-- | # Array.prototype.toReversed ( )
+-- |
+-- | This method performs the following steps when called:
+-- |
+-- | 1\. Let \_O\_ be ? ToObject(\*this\* value). 1. Let \_len\_ be ?
+-- | LengthOfArrayLike(\_O\_). 1. Let \_A\_ be ? ArrayCreate(\_len\_). 1. Let
+-- | \_k\_ be 0. 1. Repeat, while \_k\_ \< \_len\_, 1. Let \_from\_ be !
+-- | ToString(𝔽(\_len\_ - \_k\_ - 1)). 1. Let \_Pk\_ be !
+-- | ToString(𝔽(\_k\_)). 1. Let \_fromValue\_ be ? Get(\_O\_, \_from\_). 1.
+-- | Perform ! CreateDataPropertyOrThrow(\_A\_, \_Pk\_, \_fromValue\_). 1.
+-- | Set \_k\_ to \_k\_ + 1. 1. Return \_A\_.
+-- |
+-- | # Array.prototype.toSorted ( \_comparator\_ )
+-- |
+-- | This method performs the following steps when called:
+-- |
+-- | 1\. If \_comparator\_ is not \*undefined\* and
+-- | IsCallable(\_comparator\_) is \*false\*, throw a \*TypeError\*
+-- | exception. 1. Let \_O\_ be ? ToObject(\*this\* value). 1. Let \_len\_ be
+-- | ? LengthOfArrayLike(\_O\_). 1. Let \_A\_ be ? ArrayCreate(\_len\_). 1.
+-- | Let \_SortCompare\_ be a new Abstract Closure with parameters (\_x\_,
+-- | \_y\_) that captures \_comparator\_ and performs the following steps
+-- | when called: 1. Return ? CompareArrayElements(\_x\_, \_y\_,
+-- | \_comparator\_). 1. Let \_sortedList\_ be ? SortIndexedProperties(\_O\_,
+-- | \_len\_, \_SortCompare\_, \~read-through-holes\~). 1. Let \_j\_ be 0. 1.
+-- | Repeat, while \_j\_ \< \_len\_, 1. Perform !
+-- | CreateDataPropertyOrThrow(\_A\_, ! ToString(𝔽(\_j\_)),
+-- | \_sortedList\_\[\_j\_\]). 1. Set \_j\_ to \_j\_ + 1. 1. Return \_A\_.
+-- |
+-- | # Array.prototype.toSpliced ( \_start\_, \_skipCount\_, \...\_items\_ )
+-- |
+-- | This method performs the following steps when called:
+-- |
+-- | 1\. Let \_O\_ be ? ToObject(\*this\* value). 1. Let \_len\_ be ?
+-- | LengthOfArrayLike(\_O\_). 1. Let \_relativeStart\_ be ?
+-- | ToIntegerOrInfinity(\_start\_). 1. If \_relativeStart\_ = -∞, let
+-- | \_actualStart\_ be 0. 1. Else if \_relativeStart\_ \< 0, let
+-- | \_actualStart\_ be max(\_len\_ + \_relativeStart\_, 0). 1. Else, let
+-- | \_actualStart\_ be min(\_relativeStart\_, \_len\_). 1. Let
+-- | \_insertCount\_ be the number of elements in \_items\_. 1. If \_start\_
+-- | is not present, then 1. Let \_actualSkipCount\_ be 0. 1. Else if
+-- | \_skipCount\_ is not present, then 1. Let \_actualSkipCount\_ be
+-- | \_len\_ - \_actualStart\_. 1. Else, 1. Let \_sc\_ be ?
+-- | ToIntegerOrInfinity(\_skipCount\_). 1. Let \_actualSkipCount\_ be the
+-- | result of clamping \_sc\_ between 0 and \_len\_ - \_actualStart\_. 1.
+-- | Let \_newLen\_ be \_len\_ + \_insertCount\_ - \_actualSkipCount\_. 1. If
+-- | \_newLen\_ \> 2^53^ - 1, throw a \*TypeError\* exception. 1. Let \_A\_
+-- | be ? ArrayCreate(\_newLen\_). 1. Let \_i\_ be 0. 1. Let \_r\_ be
+-- | \_actualStart\_ + \_actualSkipCount\_. 1. Repeat, while \_i\_ \<
+-- | \_actualStart\_, 1. Let \_Pi\_ be ! ToString(𝔽(\_i\_)). 1. Let
+-- | \_iValue\_ be ? Get(\_O\_, \_Pi\_). 1. Perform !
+-- | CreateDataPropertyOrThrow(\_A\_, \_Pi\_, \_iValue\_). 1. Set \_i\_ to
+-- | \_i\_ + 1. 1. For each element \_E\_ of \_items\_, do 1. Let \_Pi\_ be !
+-- | ToString(𝔽(\_i\_)). 1. Perform ! CreateDataPropertyOrThrow(\_A\_,
+-- | \_Pi\_, \_E\_). 1. Set \_i\_ to \_i\_ + 1. 1. Repeat, while \_i\_ \<
+-- | \_newLen\_, 1. Let \_Pi\_ be ! ToString(𝔽(\_i\_)). 1. Let \_from\_ be !
+-- | ToString(𝔽(\_r\_)). 1. Let \_fromValue\_ be ? Get(\_O\_, \_from\_). 1.
+-- | Perform ! CreateDataPropertyOrThrow(\_A\_, \_Pi\_, \_fromValue\_). 1.
+-- | Set \_i\_ to \_i\_ + 1. 1. Set \_r\_ to \_r\_ + 1. 1. Return \_A\_.
+-- |
+-- | # Array.prototype.toString ( )
+-- |
+-- | This method performs the following steps when called:
+-- |
+-- | 1\. Let \_array\_ be ? ToObject(\*this\* value). 1. Let \_func\_ be ?
+-- | Get(\_array\_, \*\"join\"\*). 1. If IsCallable(\_func\_) is \*false\*,
+-- | set \_func\_ to the intrinsic function %Object.prototype.toString%. 1.
+-- | Return ? Call(\_func\_, \_array\_).
+-- |
+-- | This method is intentionally generic; it does not require that its
+-- | \*this\* value be an Array. Therefore it can be transferred to other
+-- | kinds of objects for use as a method.
+-- |
+-- | # Array.prototype.unshift ( \...\_items\_ )
+-- |
+-- | This method prepends the arguments to the start of the array, such that
+-- | their order within the array is the same as the order in which they
+-- | appear in the argument list.
+-- |
+-- | It performs the following steps when called:
+-- |
+-- | 1\. Let \_O\_ be ? ToObject(\*this\* value). 1. Let \_len\_ be ?
+-- | LengthOfArrayLike(\_O\_). 1. Let \_argCount\_ be the number of elements
+-- | in \_items\_. 1. If \_argCount\_ \> 0, then 1. If \_len\_ + \_argCount\_
+-- | \> 2^53^ - 1, throw a \*TypeError\* exception. 1. Let \_k\_ be
+-- | \_len\_. 1. Repeat, while \_k\_ \> 0, 1. Let \_from\_ be !
+-- | ToString(𝔽(\_k\_ - 1)). 1. Let \_to\_ be ! ToString(𝔽(\_k\_ +
+-- | \_argCount\_ - 1)). 1. Let \_fromPresent\_ be ? HasProperty(\_O\_,
+-- | \_from\_). 1. If \_fromPresent\_ is \*true\*, then 1. Let \_fromValue\_
+-- | be ? Get(\_O\_, \_from\_). 1. Perform ? Set(\_O\_, \_to\_,
+-- | \_fromValue\_, \*true\*). 1. Else, 1. Assert: \_fromPresent\_ is
+-- | \*false\*. 1. Perform ? DeletePropertyOrThrow(\_O\_, \_to\_). 1. Set
+-- | \_k\_ to \_k\_ - 1. 1. Let \_j\_ be \*+0\*~𝔽~. 1. For each element \_E\_
+-- | of \_items\_, do 1. Perform ? Set(\_O\_, ! ToString(\_j\_), \_E\_,
+-- | \*true\*). 1. Set \_j\_ to \_j\_ + \*1\*~𝔽~. 1. Perform ? Set(\_O\_,
+-- | \*\"length\"\*, 𝔽(\_len\_ + \_argCount\_), \*true\*). 1. Return
+-- | 𝔽(\_len\_ + \_argCount\_).
+-- |
+-- | The \*\"length\"\* property of this method is \*1\*~𝔽~.
+-- |
+-- | This method is intentionally generic; it does not require that its
+-- | \*this\* value be an Array. Therefore it can be transferred to other
+-- | kinds of objects for use as a method.
+-- |
+-- | # Array.prototype.values ( )
+-- |
+-- | This method performs the following steps when called:
+-- |
+-- | 1\. Let \_O\_ be ? ToObject(\*this\* value). 1. Return
+-- | CreateArrayIterator(\_O\_, \~value\~).
+-- |
+-- | # Array.prototype.with ( \_index\_, \_value\_ )
+-- |
+-- | This method performs the following steps when called:
+-- |
+-- | 1\. Let \_O\_ be ? ToObject(\*this\* value). 1. Let \_len\_ be ?
+-- | LengthOfArrayLike(\_O\_). 1. Let \_relativeIndex\_ be ?
+-- | ToIntegerOrInfinity(\_index\_). 1. If \_relativeIndex\_ ≥ 0, let
+-- | \_actualIndex\_ be \_relativeIndex\_. 1. Else, let \_actualIndex\_ be
+-- | \_len\_ + \_relativeIndex\_. 1. If \_actualIndex\_ ≥ \_len\_ or
+-- | \_actualIndex\_ \< 0, throw a \*RangeError\* exception. 1. Let \_A\_ be
+-- | ? ArrayCreate(\_len\_). 1. Let \_k\_ be 0. 1. Repeat, while \_k\_ \<
+-- | \_len\_, 1. Let \_Pk\_ be ! ToString(𝔽(\_k\_)). 1. If \_k\_ =
+-- | \_actualIndex\_, let \_fromValue\_ be \_value\_. 1. Else, let
+-- | \_fromValue\_ be ? Get(\_O\_, \_Pk\_). 1. Perform !
+-- | CreateDataPropertyOrThrow(\_A\_, \_Pk\_, \_fromValue\_). 1. Set \_k\_ to
+-- | \_k\_ + 1. 1. Return \_A\_.
+
+-- SPEC: L33585-L33611
+-- | # Array.prototype \[ %Symbol.iterator% \] ( )
+-- |
+-- | The initial value of the %Symbol.iterator% property is
+-- | %Array.prototype.values%, defined in .
+-- |
+-- | # Array.prototype \[ %Symbol.unscopables% \]
+-- |
+-- | The initial value of the %Symbol.unscopables% data property is an object
+-- | created by the following steps:
+-- |
+-- | 1\. Let \_unscopableList\_ be OrdinaryObjectCreate(\*null\*). 1. Perform
+-- | ! CreateDataPropertyOrThrow(\_unscopableList\_, \*\"at\"\*,
+-- | \*true\*). 1. Perform ! CreateDataPropertyOrThrow(\_unscopableList\_,
+-- | \*\"copyWithin\"\*, \*true\*). 1. Perform !
+-- | CreateDataPropertyOrThrow(\_unscopableList\_, \*\"entries\"\*,
+-- | \*true\*). 1. Perform ! CreateDataPropertyOrThrow(\_unscopableList\_,
+-- | \*\"fill\"\*, \*true\*). 1. Perform !
+-- | CreateDataPropertyOrThrow(\_unscopableList\_, \*\"find\"\*,
+-- | \*true\*). 1. Perform ! CreateDataPropertyOrThrow(\_unscopableList\_,
+-- | \*\"findIndex\"\*, \*true\*). 1. Perform !
+-- | CreateDataPropertyOrThrow(\_unscopableList\_, \*\"findLast\"\*,
+-- | \*true\*). 1. Perform ! CreateDataPropertyOrThrow(\_unscopableList\_,
+-- | \*\"findLastIndex\"\*, \*true\*). 1. Perform !
+-- | CreateDataPropertyOrThrow(\_unscopableList\_, \*\"flat\"\*,
+-- | \*true\*). 1. Perform ! CreateDataPropertyOrThrow(\_unscopableList\_,
+-- | \*\"flatMap\"\*, \*true\*). 1. Perform !
+-- | CreateDataPropertyOrThrow(\_unscopableList\_, \*\"includes\"\*,
 
 /-! ## Promise Instance Slots -/
 
 -- SPEC: L41149-L41156
--- | # Promise.prototype \[ %Symbol.toStringTag% \]
+-- |   \[\[PromiseResult\]\]             an ECMAScript language value or \~empty\~     The value with which the promise has been fulfilled or rejected, if any. \~empty\~ if and only if the \[\[PromiseState\]\] is \~pending\~.
+-- |   \[\[PromiseFulfillReactions\]\]   a List of PromiseReaction Records             Records to be processed when/if the promise transitions from the \~pending\~ state to the \~fulfilled\~ state.
+-- |   \[\[PromiseRejectReactions\]\]    a List of PromiseReaction Records             Records to be processed when/if the promise transitions from the \~pending\~ state to the \~rejected\~ state.
+-- |   \[\[PromiseIsHandled\]\]          a Boolean                                     Indicates whether the promise has ever had a fulfillment or rejection handler; used in unhandled rejection tracking.
 -- |
--- | The initial value of the %Symbol.toStringTag% property is the String
--- | value \*\"Promise\"\*.
+-- | # GeneratorFunction Objects
 -- |
--- | This property has the attributes { \[\[Writable\]\]: \*false\*,
--- | \[\[Enumerable\]\]: \*false\*, \[\[Configurable\]\]: \*true\* }.
--- |
+-- | GeneratorFunctions are functions that are usually created by evaluating
 
 /-! ## Eval -/
 
 -- SPEC: L23205-L23244
--- | # HostEnsureCanCompileStrings ( \_calleeRealm\_: a Realm Record, \_parameterStrings\_: a List of Strings, \_bodyString\_: a String, \_direct\_: a Boolean, ): either a normal completion containing \~unused\~ or a throw completion
--- |
--- | description
--- | :   It allows host environments to block certain ECMAScript functions
--- |     which allow developers to interpret and evaluate strings as
 -- |     ECMAScript code.
 -- |
 -- | \_parameterStrings\_ represents the strings that, when using one of the
@@ -28605,36 +29273,35 @@ theorem elaborate_correct (p : Source.Program) (cp : Core.Program)
 -- | The default implementation of HostEnsureCanCompileStrings is to return
 -- | NormalCompletion(\~unused\~).
 -- |
-
--- SPEC: L38551-L38580
--- | # ByteListBitwiseOp ( \_op\_: \`&\`, \`\^\`, or \`\|\`, \_xBytes\_: a List of byte values, \_yBytes\_: a List of byte values, ): a List of byte values
+-- | # EvalDeclarationInstantiation ( \_body\_: a \|ScriptBody\| Parse Node, \_varEnv\_: an Environment Record, \_lexEnv\_: a Declarative Environment Record, \_privateEnv\_: a PrivateEnvironment Record or \*null\*, \_strict\_: a Boolean, ): either a normal completion containing \~unused\~ or a throw completion
 -- |
--- | description
--- | :   The operation atomically performs a bitwise operation on all byte
--- |     values of the arguments and returns a List of byte values.
--- |
--- | 1\. Assert: \_xBytes\_ and \_yBytes\_ have the same number of
--- | elements. 1. Let \_result\_ be a new empty List. 1. Let \_i\_ be 0. 1.
--- | For each element \_xByte\_ of \_xBytes\_, do 1. Let \_yByte\_ be
--- | \_yBytes\_\[\_i\_\]. 1. If \_op\_ is \`&\`, then 1. Let \_resultByte\_
--- | be the result of applying the bitwise AND operation to \_xByte\_ and
--- | \_yByte\_. 1. Else if \_op\_ is \`\^\`, then 1. Let \_resultByte\_ be
--- | the result of applying the bitwise exclusive OR (XOR) operation to
--- | \_xByte\_ and \_yByte\_. 1. Else, 1. Assert: \_op\_ is \`\|\`. 1. Let
--- | \_resultByte\_ be the result of applying the bitwise inclusive OR
--- | operation to \_xByte\_ and \_yByte\_. 1. Set \_i\_ to \_i\_ + 1. 1.
--- | Append \_resultByte\_ to \_result\_. 1. Return \_result\_.
--- |
-
--- SPEC: L38582-L38592
--- | # ByteListEqual ( \_xBytes\_: a List of byte values, \_yBytes\_: a List of byte values, ): a Boolean
--- |
--- | 1\. If \_xBytes\_ and \_yBytes\_ do not have the same number of
--- | elements, return \*false\*. 1. Let \_i\_ be 0. 1. For each element
--- | \_xByte\_ of \_xBytes\_, do 1. Let \_yByte\_ be \_yBytes\_\[\_i\_\]. 1.
--- | If \_xByte\_ ≠ \_yByte\_, return \*false\*. 1. Set \_i\_ to
--- | \_i\_ + 1. 1. Return \*true\*.
--- |
+-- | 1\. Let \_varNames\_ be the VarDeclaredNames of \_body\_. 1. Let
+-- | \_varDeclarations\_ be the VarScopedDeclarations of \_body\_. 1. If
+-- | \_strict\_ is \*false\*, then 1. If \_varEnv\_ is a Global Environment
+-- | Record, then 1. For each element \_name\_ of \_varNames\_, do 1. If
+-- | HasLexicalDeclaration(\_varEnv\_, \_name\_) is \*true\*, throw a
+-- | \*SyntaxError\* exception. 1. NOTE: \`eval\` will not create a global
+-- | var declaration that would be shadowed by a global lexical
+-- | declaration. 1. Let \_thisEnv\_ be \_lexEnv\_. 1. Assert: The following
+-- | loop will terminate. 1. Repeat, while \_thisEnv\_ and \_varEnv\_ are not
+-- | the same Environment Record, 1. If \_thisEnv\_ is not an Object
+-- | Environment Record, then 1. NOTE: The environment of with statements
+-- | cannot contain any lexical declaration so it doesn\'t need to be checked
+-- | for var/let hoisting conflicts. 1. For each element \_name\_ of
+-- | \_varNames\_, do 1. If ! \_thisEnv\_.HasBinding(\_name\_) is \*true\*,
+-- | then 1.
+-- | \[id=\"step-evaldeclarationinstantiation-throw-duplicate-binding\",
+-- | normative-optional\] If the host is a web browser or otherwise supports
+-- | , then 1. If \_thisEnv\_ is not the Environment Record for a \|Catch\|
+-- | clause, throw a \*SyntaxError\* exception. 1. Else, 1. Throw a
+-- | \*SyntaxError\* exception. 1. NOTE: A direct eval will not hoist var
+-- | declaration over a like-named lexical declaration. 1. Set \_thisEnv\_ to
+-- | \_thisEnv\_.\[\[OuterEnv\]\]. 1. Let \_privateIdentifiers\_ be a new
+-- | empty List. 1. Let \_pointer\_ be \_privateEnv\_. 1. Repeat, while
+-- | \_pointer\_ is not \*null\*, 1. For each Private Name \_binding\_ of
+-- | \_pointer\_.\[\[Names\]\], do 1. If \_privateIdentifiers\_ does not
+-- | contain \_binding\_.\[\[Description\]\], append
+-- | \_binding\_.\[\[Description\]\] to \_privateIdentifiers\_. 1. Set
 
 
 end VerifiedJS.Source
