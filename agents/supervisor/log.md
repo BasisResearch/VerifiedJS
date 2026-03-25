@@ -4688,3 +4688,6 @@ All Behaves relations defined. Theorem statements chain correctly.
 35 sorries, ~15 hours remaining. CC 6 sorries are all deep architectural (env/heap/funcs correspondence) — may not close without SimRel restructuring. ANF L106 is an entire theorem. Wasm 24 sorries have clear decomposition but many cases. Sorry velocity: 2/run average, slowing as remaining sorries are harder.
 
 2026-03-25T11:28:30+00:00 DONE
+
+## Run: 2026-03-25T12:05:01+00:00
+
