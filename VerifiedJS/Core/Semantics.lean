@@ -50070,4 +50070,4208 @@ theorem elaborate_correct (p : Source.Program) (cp : Core.Program)
 -- | between a \`then()\` call and an \`await\` expression.
 
 
+-- SPEC: L3586-L3639
+-- |
+-- | A [syntax-directed operation]{.dfn
+-- | variants="syntax-directed operations"} is a named operation whose
+-- | definition consists of algorithms, each of which is associated with one
+-- | or more productions from one of the ECMAScript grammars. A production
+-- | that has multiple alternative definitions will typically have a distinct
+-- | algorithm for each alternative. When an algorithm is associated with a
+-- | grammar production, it may reference the terminal and nonterminal
+-- | symbols of the production alternative as if they were parameters of the
+-- | algorithm. When used in this manner, nonterminal symbols refer to the
+-- | actual alternative definition that is matched when parsing the source
+-- | text. The [source text matched by]{.dfn
+-- | oldids="sec-static-semantics-sourcetext"} a grammar production or Parse
+-- | Node derived from it is the portion of the source text that starts at
+-- | the beginning of the first terminal that participated in the match and
+-- | ends at the end of the last terminal that participated in the match.
+-- |
+-- | When an algorithm is associated with a production alternative, the
+-- | alternative is typically shown without any "\[ \]" grammar annotations.
+-- | Such annotations should only affect the syntactic recognition of the
+-- | alternative and have no effect on the associated semantics for the
+-- | alternative.
+-- |
+-- | Syntax-directed operations are invoked with a parse node and,
+-- | optionally, other parameters by using the conventions on steps , , and
+-- | in the following algorithm:
+-- |
+-- | 1\. \[id=\"step-sdo-invocation-example-1\"\] Let \_status\_ be
+-- | SyntaxDirectedOperation of \|SomeNonTerminal\|. 1. Let \_someParseNode\_
+-- | be the parse of some source text. 1.
+-- | \[id=\"step-sdo-invocation-example-2\"\] Perform SyntaxDirectedOperation
+-- | of \_someParseNode\_. 1. \[id=\"step-sdo-invocation-example-3\"\]
+-- | Perform SyntaxDirectedOperation of \_someParseNode\_ with argument
+-- | \*\"value\"\*.
+-- |
+-- | Unless explicitly specified otherwise, all chain productions have an
+-- | implicit definition for every operation that might be applied to that
+-- | production\'s left-hand side nonterminal. The implicit definition simply
+-- | reapplies the same operation with the same parameters, if any, to the
+-- | chain production\'s sole right-hand side nonterminal and then returns
+-- | the result. For example, assume that some algorithm has a step of the
+-- | form: "Return Evaluation of \|Block\|" and that there is a production:
+-- |
+-- | Block : \`{\` StatementList \`}\`
+-- |
+-- | but the Evaluation operation does not associate an algorithm with that
+-- | production. In that case, the Evaluation operation implicitly includes
+-- | an association of the form:
+-- |
+-- | **Runtime Semantics: Evaluation**
+-- |
+-- | Block : \`{\` StatementList \`}\` 1. Return Evaluation of
+-- | \|StatementList\|.
+-- |
+
+-- SPEC: L3941-L3979
+-- | their characteristics (except their identity) changed in-place, causing
+-- | all holders of the value to observe the new characteristics. A value
+-- | without identity is never equal to a value with identity.
+-- |
+-- | From the perspective of this specification, the word "is" is used to
+-- | compare two values for equality, as in "If \_bool\_ is \*true\*, then
+-- | \...", and the word "contains" is used to search for a value inside
+-- | lists using equality comparisons, as in \"If \_list\_ contains a Record
+-- | \_r\_ such that \_r\_.\[\[Foo\]\] is \*true\*, then \...\". The
+-- | *specification identity* of values determines the result of these
+-- | comparisons and is axiomatic in this specification.
+-- |
+-- | From the perspective of the ECMAScript language, language values are
+-- | compared for equality using the SameValue abstract operation and the
+-- | abstract operations it transitively calls. The algorithms of these
+-- | comparison abstract operations determine *language identity* of
+-- | ECMAScript language values.
+-- |
+-- | For specification values, examples of values without specification
+-- | identity include, but are not limited to: mathematical values and
+-- | extended mathematical values; ECMAScript source text, surrogate pairs,
+-- | Directive Prologues, etc; UTF-16 code units; Unicode code points; enums;
+-- | abstract operations, including syntax-directed operations, host hooks,
+-- | etc; and ordered pairs. Examples of specification values with
+-- | specification identity include, but are not limited to: any kind of
+-- | Records, including Property Descriptors, PrivateElements, etc; Parse
+-- | Nodes; Lists; Sets and Relations; Abstract Closures; Data Blocks;
+-- | Private Names; execution contexts and execution context stacks; agent
+-- | signifiers; and WaiterList Records.
+-- |
+-- | Specification identity agrees with language identity for all ECMAScript
+-- | language values except Symbol values produced by Symbol.for. The
+-- | ECMAScript language values without specification identity and without
+-- | language identity are \*undefined\*, \*null\*, Booleans, Strings,
+-- | Numbers, and BigInts. The ECMAScript language values with specification
+-- | identity and language identity are Symbols not produced by Symbol.for
+-- | and Objects. Symbol values produced by Symbol.for have specification
+-- | identity, but not language identity.
+-- |
+
+-- SPEC: L4036-L4090
+-- | more formally as a [high-surrogate code unit]{#high-surrogate-code-unit
+-- | .dfn variants="high-surrogate code units"}) and every code unit with a
+-- | numeric value in the inclusive interval from 0xDC00 to 0xDFFF (defined
+-- | as a [trailing surrogate]{#trailing-surrogate .dfn
+-- | variants="trailing surrogates"}, or more formally as a [low-surrogate
+-- | code unit]{#low-surrogate-code-unit .dfn
+-- | variants="low-surrogate code units"}) using the following rules:
+-- |
+-- | - A code unit that is not a leading surrogate and not a trailing
+-- |   surrogate is interpreted as a code point with the same value.
+-- | - A sequence of two code units, where the first code unit \_c1\_ is a
+-- |   leading surrogate and the second code unit \_c2\_ a trailing
+-- |   surrogate, is a [surrogate pair]{#surrogate-pair .dfn
+-- |   variants="surrogate pairs"} and is interpreted as a code point with
+-- |   the value (\_c1\_ - 0xD800) × 0x400 + (\_c2\_ - 0xDC00) + 0x10000.
+-- |   (See )
+-- | - A code unit that is a leading surrogate or trailing surrogate, but is
+-- |   not part of a surrogate pair, is interpreted as a code point with the
+-- |   same value.
+-- |
+-- | The function \`String.prototype.normalize\` (see ) can be used to
+-- | explicitly normalize a String value. \`String.prototype.localeCompare\`
+-- | (see ) internally normalizes String values, but no other operations
+-- | implicitly normalize the strings upon which they operate. Operation
+-- | results are not language- and/or locale-sensitive unless stated
+-- | otherwise.
+-- |
+-- | The rationale behind this design was to keep the implementation of
+-- | Strings as simple and high-performing as possible. If ECMAScript source
+-- | text is in Normalized Form C, string literals are guaranteed to also be
+-- | normalized, as long as they do not contain any Unicode escape sequences.
+-- |
+-- | In this specification, the phrase \"the
+-- | [string-concatenation]{#string-concatenation .dfn} of \_A\_, \_B\_,
+-- | \...\" (where each argument is a String value, a code unit, or a
+-- | sequence of code units) denotes the String value whose sequence of code
+-- | units is the concatenation of the code units (in order) of each of the
+-- | arguments (in order).
+-- |
+-- | The phrase \"the [substring]{#substring .dfn} of \_S\_ from
+-- | \_inclusiveStart\_ to \_exclusiveEnd\_\" (where \_S\_ is a String value
+-- | or a sequence of code units and \_inclusiveStart\_ and \_exclusiveEnd\_
+-- | are integers) denotes the String value consisting of the consecutive
+-- | code units of \_S\_ beginning at index \_inclusiveStart\_ and ending
+-- | immediately before index \_exclusiveEnd\_ (which is the empty String
+-- | when \_inclusiveStart\_ = \_exclusiveEnd\_). If the \"to\" suffix is
+-- | omitted, the length of \_S\_ is used as the value of \_exclusiveEnd\_.
+-- |
+-- | The phrase \"[the ASCII word characters]{#ASCII-word-characters .dfn}\"
+-- | denotes the following String value, which consists solely of every
+-- | letter and number in the Unicode Basic Latin block along with U+005F
+-- | (LOW LINE):\
+-- | \*\"ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789\_\"\*.\
+-- | For historical reasons, it has significance to various algorithms.
+-- |
+
+-- SPEC: L4134-L4167
+-- |
+-- | Well-known symbols are built-in Symbol values that are explicitly
+-- | referenced by algorithms of this specification. They are typically used
+-- | as the keys of properties whose values serve as extension points of a
+-- | specification algorithm. Unless otherwise specified, well-known symbols
+-- | values are shared by all realms ().
+-- |
+-- | Within this specification a well-known symbol is referred to using the
+-- | standard intrinsic notation where the intrinsic is one of the values
+-- | listed in .
+-- |
+-- | Previous editions of this specification used a notation of the form
+-- | @@name, where the current edition would use \`%Symbol.name%\`. In
+-- | particular, the following names were used: @@asyncIterator,
+-- | @@hasInstance, @@isConcatSpreadable, @@iterator, @@match, @@matchAll,
+-- | @@replace, @@search, @@species, @@split, @@toPrimitive, @@toStringTag,
+-- | and @@unscopables.
+-- |
+-- |   Specification Name                    \[\[Description\]\]                 Value and Purpose
+-- |   ------------------------------------- ----------------------------------- --------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+-- |   [%Symbol.asyncIterator%]{.dfn}        \*\"Symbol.asyncIterator\"\*        A method that returns the default async iterator for an object. Called by the semantics of the \`for\`-\`await\`-\`of\` statement.
+-- |   [%Symbol.hasInstance%]{.dfn}          \*\"Symbol.hasInstance\"\*          A method that determines if a constructor object recognizes an object as one of the constructor\'s instances. Called by the semantics of the \`instanceof\` operator.
+-- |   [%Symbol.isConcatSpreadable%]{.dfn}   \*\"Symbol.isConcatSpreadable\"\*   A Boolean valued property that if true indicates that an object should be flattened to its array elements by \`Array.prototype.concat\`.
+-- |   [%Symbol.iterator%]{.dfn}             \*\"Symbol.iterator\"\*             A method that returns the default iterator for an object. Called by the semantics of the for-of statement.
+-- |   [%Symbol.match%]{.dfn}                \*\"Symbol.match\"\*                A regular expression method that matches the regular expression against a string. Called by the \`String.prototype.match\` method.
+-- |   [%Symbol.matchAll%]{.dfn}             \*\"Symbol.matchAll\"\*             A regular expression method that returns an iterator that yields matches of the regular expression against a string. Called by the \`String.prototype.matchAll\` method.
+-- |   [%Symbol.replace%]{.dfn}              \*\"Symbol.replace\"\*              A regular expression method that replaces matched substrings of a string. Called by the \`String.prototype.replace\` method.
+-- |   [%Symbol.search%]{.dfn}               \*\"Symbol.search\"\*               A regular expression method that returns the index within a string that matches the regular expression. Called by the \`String.prototype.search\` method.
+-- |   [%Symbol.species%]{.dfn}              \*\"Symbol.species\"\*              A function valued property that is the constructor function that is used to create derived objects.
+-- |   [%Symbol.split%]{.dfn}                \*\"Symbol.split\"\*                A regular expression method that splits a string at the indices that match the regular expression. Called by the \`String.prototype.split\` method.
+-- |   [%Symbol.toPrimitive%]{.dfn}          \*\"Symbol.toPrimitive\"\*          A method that converts an object to a corresponding primitive value. Called by the ToPrimitive abstract operation.
+-- |   [%Symbol.toStringTag%]{.dfn}          \*\"Symbol.toStringTag\"\*          A String valued property that is used in the creation of the default string description of an object. Accessed by the built-in method \`Object.prototype.toString\`.
+-- |   [%Symbol.unscopables%]{.dfn}          \*\"Symbol.unscopables\"\*          An object valued property whose own and inherited property names are property names that are excluded from the \`with\` environment bindings of the associated object.
+-- |
+
+-- SPEC: L4327-L4404
+-- | There are two other special values, called \*positive Infinity\* and
+-- | \*negative Infinity\*. For brevity, these values are also referred to
+-- | for expository purposes by the symbols \*+∞\*~𝔽~ and \*-∞\*~𝔽~,
+-- | respectively. (Note that these two infinite Number values are produced
+-- | by the program expressions \`+Infinity\` (or simply \`Infinity\`) and
+-- | \`-Infinity\`.)
+-- |
+-- | The other 18,437,736,874,454,810,624 (that is, 2^64^ - 2^53^) values are
+-- | called the [finite]{#finite .dfn} numbers. Half of these are positive
+-- | numbers and half are negative numbers; for every finite positive Number
+-- | value there is a corresponding negative value having the same magnitude.
+-- |
+-- | Note that there is both a \*positive zero\* and a \*negative zero\*. For
+-- | brevity, these values are also referred to for expository purposes by
+-- | the symbols \*+0\*~𝔽~ and \*-0\*~𝔽~, respectively. (Note that these two
+-- | different zero Number values are produced by the program expressions
+-- | \`+0\` (or simply \`0\`) and \`-0\`.)
+-- |
+-- | The 18,437,736,874,454,810,622 (that is, 2^64^ - 2^53^ - 2) finite
+-- | non-zero values are of two kinds:
+-- |
+-- | 18,428,729,675,200,069,632 (that is, 2^64^ - 2^54^) of them are
+-- | normalized, having the form
+-- |
+-- | ::: math-display
+-- | \_s\_ × \_m\_ × 2^\_e\_^
+-- | :::
+-- |
+-- | where \_s\_ is 1 or -1, \_m\_ is an integer in the interval from 2^52^
+-- | (inclusive) to 2^53^ (exclusive), and \_e\_ is an integer in the
+-- | inclusive interval from -1074 to 971.
+-- |
+-- | The remaining 9,007,199,254,740,990 (that is, 2^53^ - 2) values are
+-- | denormalized, having the form
+-- |
+-- | ::: math-display
+-- | \_s\_ × \_m\_ × 2^\_e\_^
+-- | :::
+-- |
+-- | where \_s\_ is 1 or -1, \_m\_ is an integer in the interval from 0
+-- | (exclusive) to 2^52^ (exclusive), and \_e\_ is -1074.
+-- |
+-- | Note that all the positive and negative integers whose magnitude is no
+-- | greater than 2^53^ are representable in the Number type. The integer 0
+-- | has two representations in the Number type: \*+0\*~𝔽~ and \*-0\*~𝔽~.
+-- |
+-- | A finite number has an *odd significand* if it is non-zero and the
+-- | integer \_m\_ used to express it (in one of the two forms shown above)
+-- | is odd. Otherwise, it has an *even significand*.
+-- |
+-- | In this specification, the phrase "the [Number value
+-- | for]{#number-value-for .dfn oldids="number-value"} \_x\_" where \_x\_
+-- | represents an exact real mathematical quantity (which might even be an
+-- | irrational number such as π) means a Number value chosen in the
+-- | following manner. Consider the set of all finite values of the Number
+-- | type, with \*-0\*~𝔽~ removed and with two additional values added to it
+-- | that are not representable in the Number type, namely 2^1024^ (which is
+-- | +1 × 2^53^ × 2^971^) and -2^1024^ (which is -1 × 2^53^ × 2^971^). Choose
+-- | the member of this set that is closest in value to \_x\_. If two values
+-- | of the set are equally close, then the one with an even significand is
+-- | chosen; for this purpose, the two extra values 2^1024^ and -2^1024^ are
+-- | considered to have even significands. Finally, if 2^1024^ was chosen,
+-- | replace it with \*+∞\*~𝔽~; if -2^1024^ was chosen, replace it with
+-- | \*-∞\*~𝔽~; if \*+0\*~𝔽~ was chosen, replace it with \*-0\*~𝔽~ if and
+-- | only if \_x\_ \< 0; any other chosen value is used unchanged. The result
+-- | is the Number value for \_x\_. (This procedure corresponds exactly to
+-- | the behaviour of the IEEE 754-2019 roundTiesToEven mode.)
+-- |
+-- | The Number value for +∞ is \*+∞\*~𝔽~, and the Number value for -∞ is
+-- | \*-∞\*~𝔽~.
+-- |
+-- | Some ECMAScript operators deal only with integers in specific ranges
+-- | such as the inclusive interval from -2^31^ to 2^31^ - 1 or the inclusive
+-- | interval from 0 to 2^16^ - 1. These operators accept any value of the
+-- | Number type but first convert each such value to an integer value in the
+-- | expected range. See the descriptions of the numeric conversion
+-- | operations in .
+-- |
+
+-- SPEC: L4661-L4721
+-- | Return the string-concatenation of: \* the code units of the \_k\_
+-- | digits of the representation of \_s\_ using radix \_radix\_ \* \_n\_ -
+-- | \_k\_ occurrences of the code unit 0x0030 (DIGIT ZERO) 1. If \_n\_ \> 0,
+-- | then 1. Return the string-concatenation of: \* the code units of the
+-- | most significant \_n\_ digits of the representation of \_s\_ using radix
+-- | \_radix\_ \* the code unit 0x002E (FULL STOP) \* the code units of the
+-- | remaining \_k\_ - \_n\_ digits of the representation of \_s\_ using
+-- | radix \_radix\_ 1. Assert: \_n\_ ≤ 0. 1. Return the string-concatenation
+-- | of: \* the code unit 0x0030 (DIGIT ZERO) \* the code unit 0x002E (FULL
+-- | STOP) \* -\_n\_ occurrences of the code unit 0x0030 (DIGIT ZERO) \* the
+-- | code units of the \_k\_ digits of the representation of \_s\_ using
+-- | radix \_radix\_ 1. NOTE: In this case, the input will be represented
+-- | using scientific E notation, such as \`1.2e+3\`. 1. Assert: \_radix\_ is
+-- | 10. 1. If \_n\_ \< 0, then 1. Let \_exponentSign\_ be the code unit
+-- | 0x002D (HYPHEN-MINUS). 1. Else, 1. Let \_exponentSign\_ be the code unit
+-- | 0x002B (PLUS SIGN). 1. If \_k\_ = 1, then 1. Return the
+-- | string-concatenation of: \* the code unit of the single digit of \_s\_
+-- | \* the code unit 0x0065 (LATIN SMALL LETTER E) \* \_exponentSign\_ \*
+-- | the code units of the decimal representation of abs(\_n\_ - 1) 1. Return
+-- | the string-concatenation of: \* the code unit of the most significant
+-- | digit of the decimal representation of \_s\_ \* the code unit 0x002E
+-- | (FULL STOP) \* the code units of the remaining \_k\_ - 1 digits of the
+-- | decimal representation of \_s\_ \* the code unit 0x0065 (LATIN SMALL
+-- | LETTER E) \* \_exponentSign\_ \* the code units of the decimal
+-- | representation of abs(\_n\_ - 1)
+-- |
+-- | The following observations may be useful as guidelines for
+-- | implementations, but are not part of the normative requirements of this
+-- | Standard:
+-- |
+-- | - If x is any Number value other than \*-0\*~𝔽~, then
+-- |   ToNumber(ToString(x)) is x.
+-- | - The least significant digit of s is not always uniquely determined by
+-- |   the requirements listed in step .
+-- |
+-- | For implementations that provide more accurate conversions than required
+-- | by the rules above, it is recommended that the following alternative
+-- | version of step be used as a guideline:
+-- |
+-- | 1\. Let \_n\_, \_k\_, and \_s\_ be integers such that \_k\_ ≥ 1,
+-- | \_radix\_^\_k\_\ -\ 1^ ≤ \_s\_ \< \_radix\_^\_k\_^, 𝔽(\_s\_ ×
+-- | \_radix\_^\_n\_\ -\ \_k\_^) is \_x\_, and \_k\_ is as small as possible.
+-- | If there are multiple possibilities for \_s\_, choose the value of \_s\_
+-- | for which \_s\_ × \_radix\_^\_n\_\ -\ \_k\_^ is closest in value to
+-- | ℝ(\_x\_). If there are two such possible values of \_s\_, choose the one
+-- | that is even. Note that \_k\_ is the number of digits in the
+-- | representation of \_s\_ using radix \_radix\_ and that \_s\_ is not
+-- | divisible by \_radix\_.
+-- |
+-- | Implementers of ECMAScript may find useful the paper and code written by
+-- | David M. Gay for binary-to-decimal conversion of floating-point numbers:
+-- |
+-- | Gay, David M. Correctly Rounded Binary-Decimal and Decimal-Binary
+-- | Conversions. Numerical Analysis, Manuscript 90-10. AT&T Bell
+-- | Laboratories (Murray Hill, New Jersey). 30 November 1990. Available as\
+-- | <https://ampl.com/_archive/first-website/REFS/rounding.pdf>. Associated
+-- | code available as\
+-- | <http://netlib.sandia.gov/fp/dtoa.c> and as\
+-- | <http://netlib.sandia.gov/fp/g_fmt.c> and may also be found at the
+-- | various \`netlib\` mirror sites.
+-- |
+
+-- SPEC: L5241-L5316
+-- |   ---------------------------------- -------------------------- -------------------------------------------------------------------------------------
+-- |   %AggregateError%                   \`AggregateError\`         The \`AggregateError\` constructor ()
+-- |   %Array%                            \`Array\`                  The Array constructor ()
+-- |   %ArrayBuffer%                      \`ArrayBuffer\`            The ArrayBuffer constructor ()
+-- |   %ArrayIteratorPrototype%                                      The prototype of Array Iterator objects ()
+-- |   %AsyncFromSyncIteratorPrototype%                              The prototype of Async-from-Sync Iterator objects ()
+-- |   %AsyncFunction%                                               The constructor of async function objects ()
+-- |   %AsyncGeneratorFunction%                                      The constructor of async generator function objects ()
+-- |   %AsyncGeneratorPrototype%                                     The prototype of async generator objects ()
+-- |   %AsyncIteratorPrototype%                                      An object that all standard built-in async iterator objects indirectly inherit from
+-- |   %Atomics%                          \`Atomics\`                The \`Atomics\` object ()
+-- |   %BigInt%                           \`BigInt\`                 The BigInt constructor ()
+-- |   %BigInt64Array%                    \`BigInt64Array\`          The BigInt64Array constructor ()
+-- |   %BigUint64Array%                   \`BigUint64Array\`         The BigUint64Array constructor ()
+-- |   %Boolean%                          \`Boolean\`                The Boolean constructor ()
+-- |   %DataView%                         \`DataView\`               The DataView constructor ()
+-- |   %Date%                             \`Date\`                   The Date constructor ()
+-- |   %decodeURI%                        \`decodeURI\`              The \`decodeURI\` function ()
+-- |   %decodeURIComponent%               \`decodeURIComponent\`     The \`decodeURIComponent\` function ()
+-- |   %encodeURI%                        \`encodeURI\`              The \`encodeURI\` function ()
+-- |   %encodeURIComponent%               \`encodeURIComponent\`     The \`encodeURIComponent\` function ()
+-- |   %Error%                            \`Error\`                  The Error constructor ()
+-- |   %eval%                             \`eval\`                   The \`eval\` function ()
+-- |   %EvalError%                        \`EvalError\`              The EvalError constructor ()
+-- |   %FinalizationRegistry%             \`FinalizationRegistry\`   The FinalizationRegistry constructor ()
+-- |   %Float16Array%                     \`Float16Array\`           The Float16Array constructor ()
+-- |   %Float32Array%                     \`Float32Array\`           The Float32Array constructor ()
+-- |   %Float64Array%                     \`Float64Array\`           The Float64Array constructor ()
+-- |   %ForInIteratorPrototype%                                      The prototype of For-In Iterator objects ()
+-- |   %Function%                         \`Function\`               The Function constructor ()
+-- |   %GeneratorFunction%                                           The constructor of generator function objects ()
+-- |   %GeneratorPrototype%                                          The prototype of generator objects ()
+-- |   %Int8Array%                        \`Int8Array\`              The Int8Array constructor ()
+-- |   %Int16Array%                       \`Int16Array\`             The Int16Array constructor ()
+-- |   %Int32Array%                       \`Int32Array\`             The Int32Array constructor ()
+-- |   %isFinite%                         \`isFinite\`               The \`isFinite\` function ()
+-- |   %isNaN%                            \`isNaN\`                  The \`isNaN\` function ()
+-- |   %Iterator%                         \`Iterator\`               The \`Iterator\` constructor ()
+-- |   %IteratorHelperPrototype%                                     The prototype of Iterator Helper objects ()
+-- |   %JSON%                             \`JSON\`                   The \`JSON\` object ()
+-- |   %Map%                              \`Map\`                    The Map constructor ()
+-- |   %MapIteratorPrototype%                                        The prototype of Map Iterator objects ()
+-- |   %Math%                             \`Math\`                   The \`Math\` object ()
+-- |   %Number%                           \`Number\`                 The Number constructor ()
+-- |   %Object%                           \`Object\`                 The Object constructor ()
+-- |   %parseFloat%                       \`parseFloat\`             The \`parseFloat\` function ()
+-- |   %parseInt%                         \`parseInt\`               The \`parseInt\` function ()
+-- |   %Promise%                          \`Promise\`                The Promise constructor ()
+-- |   %Proxy%                            \`Proxy\`                  The Proxy constructor ()
+-- |   %RangeError%                       \`RangeError\`             The RangeError constructor ()
+-- |   %ReferenceError%                   \`ReferenceError\`         The ReferenceError constructor ()
+-- |   %Reflect%                          \`Reflect\`                The \`Reflect\` object ()
+-- |   %RegExp%                           \`RegExp\`                 The RegExp constructor ()
+-- |   %RegExpStringIteratorPrototype%                               The prototype of RegExp String Iterator objects ()
+-- |   %Set%                              \`Set\`                    The Set constructor ()
+-- |   %SetIteratorPrototype%                                        The prototype of Set Iterator objects ()
+-- |   %SharedArrayBuffer%                \`SharedArrayBuffer\`      The SharedArrayBuffer constructor ()
+-- |   %String%                           \`String\`                 The String constructor ()
+-- |   %StringIteratorPrototype%                                     The prototype of String Iterator objects ()
+-- |   %Symbol%                           \`Symbol\`                 The Symbol constructor ()
+-- |   %SyntaxError%                      \`SyntaxError\`            The SyntaxError constructor ()
+-- |   %ThrowTypeError%                                              A function object that unconditionally throws a new instance of %TypeError%
+-- |   %TypedArray%                                                  The super class of all typed Array constructors ()
+-- |   %TypeError%                        \`TypeError\`              The TypeError constructor ()
+-- |   %Uint8Array%                       \`Uint8Array\`             The Uint8Array constructor ()
+-- |   %Uint8ClampedArray%                \`Uint8ClampedArray\`      The Uint8ClampedArray constructor ()
+-- |   %Uint16Array%                      \`Uint16Array\`            The Uint16Array constructor ()
+-- |   %Uint32Array%                      \`Uint32Array\`            The Uint32Array constructor ()
+-- |   %URIError%                         \`URIError\`               The URIError constructor ()
+-- |   %WeakMap%                          \`WeakMap\`                The WeakMap constructor ()
+-- |   %WeakRef%                          \`WeakRef\`                The WeakRef constructor ()
+-- |   %WeakSet%                          \`WeakSet\`                The WeakSet constructor ()
+-- |   %WrapForValidIteratorPrototype%                               The prototype of wrapped iterator objects returned by Iterator.from ()
+-- |
+-- | Additional entries in .
+-- |
+
+-- SPEC: L5371-L5398
+-- | the shorter string, and sorting the shorter string before the longer
+-- | string if all are equal, as described in the abstract operation
+-- | IsLessThan.
+-- |
+-- | The [Record]{.dfn variants="Records"} type is used to describe data
+-- | aggregations within the algorithms of this specification. A Record type
+-- | value consists of one or more named fields. The value of each field is
+-- | an ECMAScript language value or specification value. Field names are
+-- | always enclosed in double brackets, for example \[\[Value\]\].
+-- |
+-- | For notational convenience within this specification, an object
+-- | literal-like syntax can be used to express a Record value. For example,
+-- | { \[\[Field1\]\]: 42, \[\[Field2\]\]: \*false\*, \[\[Field3\]\]:
+-- | \~empty\~ } defines a Record value that has three fields, each of which
+-- | is initialized to a specific value. Field name order is not significant.
+-- | Any fields that are not explicitly listed are considered to be absent.
+-- |
+-- | In specification text and algorithms, dot notation may be used to refer
+-- | to a specific field of a Record value. For example, if R is the record
+-- | shown in the previous paragraph then R.\[\[Field2\]\] is shorthand for
+-- | "the field of R named \[\[Field2\]\]".
+-- |
+-- | Schema for commonly used Record field combinations may be named, and
+-- | that name may be used as a prefix to a literal Record value to identify
+-- | the specific kind of aggregations that is being described. For example:
+-- | PropertyDescriptor { \[\[Value\]\]: 42, \[\[Writable\]\]: \*false\*,
+-- | \[\[Configurable\]\]: \*true\* }.
+-- |
+
+-- SPEC: L5431-L5442
+-- | A [strict total order]{.dfn variants="strict total orders"} is a
+-- | Relation value \_R\_ that satisfies the following.
+-- |
+-- | - For all \_a\_, \_b\_, and \_c\_ in \_R\_\'s domain:
+-- |
+-- |   - \_a\_ is \_b\_ or \_a\_ \_R\_ \_b\_ or \_b\_ \_R\_ \_a\_, and
+-- |   - It is not the case that \_a\_ \_R\_ \_a\_, and
+-- |   - If \_a\_ \_R\_ \_b\_ and \_b\_ \_R\_ \_c\_, then \_a\_ \_R\_ \_c\_.
+-- |
+-- | The three properties above are called totality, irreflexivity, and
+-- | transitivity, respectively.
+-- |
+
+-- SPEC: L5879-L5888
+-- | variants="PrivateElement"}.
+-- |
+-- |   Field Name      Values of the \[\[Kind\]\] field for which it is present   Value                                    Meaning
+-- |   --------------- ---------------------------------------------------------- ---------------------------------------- ---------------------------------------------
+-- |   \[\[Key\]\]     All                                                        a Private Name                           The name of the field, method, or accessor.
+-- |   \[\[Kind\]\]    All                                                        \~field\~, \~method\~, or \~accessor\~   The kind of the element.
+-- |   \[\[Value\]\]   \~field\~ and \~method\~                                   an ECMAScript language value             The value of the field.
+-- |   \[\[Get\]\]     \~accessor\~                                               a function object or \*undefined\*       The getter for a private accessor.
+-- |   \[\[Set\]\]     \~accessor\~                                               a function object or \*undefined\*       The setter for a private accessor.
+-- |
+
+-- SPEC: L7016-L7035
+-- | # HostEnsureCanAddPrivateElement ( \_O\_: an Object, ): either a normal completion containing \~unused\~ or a throw completion
+-- |
+-- | description
+-- | :   It allows host environments to prevent the addition of private
+-- |     elements to particular host-defined exotic objects.
+-- |
+-- | An implementation of HostEnsureCanAddPrivateElement must conform to the
+-- | following requirements:
+-- |
+-- | - If \_O\_ is not a host-defined exotic object, this abstract operation
+-- |   must return NormalCompletion(\~unused\~) and perform no other steps.
+-- | - Any two calls of this abstract operation with the same argument must
+-- |   return the same kind of Completion Record.
+-- |
+-- | The default implementation of HostEnsureCanAddPrivateElement is to
+-- | return NormalCompletion(\~unused\~).
+-- |
+-- | This abstract operation is only invoked by ECMAScript hosts that are web
+-- | browsers.
+-- |
+
+-- SPEC: L7695-L7753
+-- | be the BoundNames of \|ForBinding\|. 1. Let \_names2\_ be the
+-- | VarDeclaredNames of \|Statement\|. 1. Return the list-concatenation of
+-- | \_names1\_ and \_names2\_.
+-- |
+-- | This section is extended by Annex .
+-- |
+-- | WithStatement : \`with\` \`(\` Expression \`)\` Statement 1. Return the
+-- | VarDeclaredNames of \|Statement\|. SwitchStatement : \`switch\` \`(\`
+-- | Expression \`)\` CaseBlock 1. Return the VarDeclaredNames of
+-- | \|CaseBlock\|. CaseBlock : \`{\` \`}\` 1. Return a new empty List.
+-- | CaseBlock : \`{\` CaseClauses? DefaultClause CaseClauses? \`}\` 1. If
+-- | the first \|CaseClauses\| is present, let \_names1\_ be the
+-- | VarDeclaredNames of the first \|CaseClauses\|. 1. Else, let \_names1\_
+-- | be a new empty List. 1. Let \_names2\_ be the VarDeclaredNames of
+-- | \|DefaultClause\|. 1. If the second \|CaseClauses\| is present, let
+-- | \_names3\_ be the VarDeclaredNames of the second \|CaseClauses\|. 1.
+-- | Else, let \_names3\_ be a new empty List. 1. Return the
+-- | list-concatenation of \_names1\_, \_names2\_, and \_names3\_.
+-- | CaseClauses : CaseClauses CaseClause 1. Let \_names1\_ be the
+-- | VarDeclaredNames of \|CaseClauses\|. 1. Let \_names2\_ be the
+-- | VarDeclaredNames of \|CaseClause\|. 1. Return the list-concatenation of
+-- | \_names1\_ and \_names2\_. CaseClause : \`case\` Expression \`:\`
+-- | StatementList? 1. If the \|StatementList\| is present, return the
+-- | VarDeclaredNames of \|StatementList\|. 1. Return a new empty List.
+-- | DefaultClause : \`default\` \`:\` StatementList? 1. If the
+-- | \|StatementList\| is present, return the VarDeclaredNames of
+-- | \|StatementList\|. 1. Return a new empty List. LabelledStatement :
+-- | LabelIdentifier \`:\` LabelledItem 1. Return the VarDeclaredNames of
+-- | \|LabelledItem\|. LabelledItem : FunctionDeclaration 1. Return a new
+-- | empty List. TryStatement : \`try\` Block Catch 1. Let \_names1\_ be the
+-- | VarDeclaredNames of \|Block\|. 1. Let \_names2\_ be the VarDeclaredNames
+-- | of \|Catch\|. 1. Return the list-concatenation of \_names1\_ and
+-- | \_names2\_. TryStatement : \`try\` Block Finally 1. Let \_names1\_ be
+-- | the VarDeclaredNames of \|Block\|. 1. Let \_names2\_ be the
+-- | VarDeclaredNames of \|Finally\|. 1. Return the list-concatenation of
+-- | \_names1\_ and \_names2\_. TryStatement : \`try\` Block Catch Finally 1.
+-- | Let \_names1\_ be the VarDeclaredNames of \|Block\|. 1. Let \_names2\_
+-- | be the VarDeclaredNames of \|Catch\|. 1. Let \_names3\_ be the
+-- | VarDeclaredNames of \|Finally\|. 1. Return the list-concatenation of
+-- | \_names1\_, \_names2\_, and \_names3\_. Catch : \`catch\` \`(\`
+-- | CatchParameter \`)\` Block 1. Return the VarDeclaredNames of \|Block\|.
+-- | FunctionStatementList : \[empty\] 1. Return a new empty List.
+-- | FunctionStatementList : StatementList 1. Return the
+-- | TopLevelVarDeclaredNames of \|StatementList\|.
+-- | ClassStaticBlockStatementList : \[empty\] 1. Return a new empty List.
+-- | ClassStaticBlockStatementList : StatementList 1. Return the
+-- | TopLevelVarDeclaredNames of \|StatementList\|. ConciseBody :
+-- | ExpressionBody 1. Return a new empty List. AsyncConciseBody :
+-- | ExpressionBody 1. Return a new empty List. Script : \[empty\] 1. Return
+-- | a new empty List. ScriptBody : StatementList 1. Return the
+-- | TopLevelVarDeclaredNames of \|StatementList\|. ModuleItemList :
+-- | ModuleItemList ModuleItem 1. Let \_names1\_ be the VarDeclaredNames of
+-- | \|ModuleItemList\|. 1. Let \_names2\_ be the VarDeclaredNames of
+-- | \|ModuleItem\|. 1. Return the list-concatenation of \_names1\_ and
+-- | \_names2\_. ModuleItem : ImportDeclaration 1. Return a new empty List.
+-- | ModuleItem : ExportDeclaration 1. If \|ExportDeclaration\| is \`export\`
+-- | \|VariableStatement\|, return the BoundNames of
+-- | \|ExportDeclaration\|. 1. Return a new empty List.
+-- |
+
+-- SPEC: L7795-L7865
+-- | AssignmentExpression \`)\` Statement \`for\` \`await\` \`(\`
+-- | ForDeclaration \`of\` AssignmentExpression \`)\` Statement 1. Return the
+-- | VarScopedDeclarations of \|Statement\|. ForInOfStatement : \`for\` \`(\`
+-- | \`var\` ForBinding \`in\` Expression \`)\` Statement \`for\` \`(\`
+-- | \`var\` ForBinding \`of\` AssignmentExpression \`)\` Statement \`for\`
+-- | \`await\` \`(\` \`var\` ForBinding \`of\` AssignmentExpression \`)\`
+-- | Statement 1. Let \_declarations1\_ be « \|ForBinding\| ». 1. Let
+-- | \_declarations2\_ be the VarScopedDeclarations of \|Statement\|. 1.
+-- | Return the list-concatenation of \_declarations1\_ and
+-- | \_declarations2\_.
+-- |
+-- | This section is extended by Annex .
+-- |
+-- | WithStatement : \`with\` \`(\` Expression \`)\` Statement 1. Return the
+-- | VarScopedDeclarations of \|Statement\|. SwitchStatement : \`switch\`
+-- | \`(\` Expression \`)\` CaseBlock 1. Return the VarScopedDeclarations of
+-- | \|CaseBlock\|. CaseBlock : \`{\` \`}\` 1. Return a new empty List.
+-- | CaseBlock : \`{\` CaseClauses? DefaultClause CaseClauses? \`}\` 1. If
+-- | the first \|CaseClauses\| is present, let \_declarations1\_ be the
+-- | VarScopedDeclarations of the first \|CaseClauses\|. 1. Else, let
+-- | \_declarations1\_ be a new empty List. 1. Let \_declarations2\_ be the
+-- | VarScopedDeclarations of \|DefaultClause\|. 1. If the second
+-- | \|CaseClauses\| is present, let \_declarations3\_ be the
+-- | VarScopedDeclarations of the second \|CaseClauses\|. 1. Else, let
+-- | \_declarations3\_ be a new empty List. 1. Return the list-concatenation
+-- | of \_declarations1\_, \_declarations2\_, and \_declarations3\_.
+-- | CaseClauses : CaseClauses CaseClause 1. Let \_declarations1\_ be the
+-- | VarScopedDeclarations of \|CaseClauses\|. 1. Let \_declarations2\_ be
+-- | the VarScopedDeclarations of \|CaseClause\|. 1. Return the
+-- | list-concatenation of \_declarations1\_ and \_declarations2\_.
+-- | CaseClause : \`case\` Expression \`:\` StatementList? 1. If the
+-- | \|StatementList\| is present, return the VarScopedDeclarations of
+-- | \|StatementList\|. 1. Return a new empty List. DefaultClause :
+-- | \`default\` \`:\` StatementList? 1. If the \|StatementList\| is present,
+-- | return the VarScopedDeclarations of \|StatementList\|. 1. Return a new
+-- | empty List. LabelledStatement : LabelIdentifier \`:\` LabelledItem 1.
+-- | Return the VarScopedDeclarations of \|LabelledItem\|. LabelledItem :
+-- | FunctionDeclaration 1. Return a new empty List. TryStatement : \`try\`
+-- | Block Catch 1. Let \_declarations1\_ be the VarScopedDeclarations of
+-- | \|Block\|. 1. Let \_declarations2\_ be the VarScopedDeclarations of
+-- | \|Catch\|. 1. Return the list-concatenation of \_declarations1\_ and
+-- | \_declarations2\_. TryStatement : \`try\` Block Finally 1. Let
+-- | \_declarations1\_ be the VarScopedDeclarations of \|Block\|. 1. Let
+-- | \_declarations2\_ be the VarScopedDeclarations of \|Finally\|. 1. Return
+-- | the list-concatenation of \_declarations1\_ and \_declarations2\_.
+-- | TryStatement : \`try\` Block Catch Finally 1. Let \_declarations1\_ be
+-- | the VarScopedDeclarations of \|Block\|. 1. Let \_declarations2\_ be the
+-- | VarScopedDeclarations of \|Catch\|. 1. Let \_declarations3\_ be the
+-- | VarScopedDeclarations of \|Finally\|. 1. Return the list-concatenation
+-- | of \_declarations1\_, \_declarations2\_, and \_declarations3\_. Catch :
+-- | \`catch\` \`(\` CatchParameter \`)\` Block 1. Return the
+-- | VarScopedDeclarations of \|Block\|. FunctionStatementList : \[empty\] 1.
+-- | Return a new empty List. FunctionStatementList : StatementList 1. Return
+-- | the TopLevelVarScopedDeclarations of \|StatementList\|.
+-- | ClassStaticBlockStatementList : \[empty\] 1. Return a new empty List.
+-- | ClassStaticBlockStatementList : StatementList 1. Return the
+-- | TopLevelVarScopedDeclarations of \|StatementList\|. ConciseBody :
+-- | ExpressionBody 1. Return a new empty List. AsyncConciseBody :
+-- | ExpressionBody 1. Return a new empty List. Script : \[empty\] 1. Return
+-- | a new empty List. ScriptBody : StatementList 1. Return the
+-- | TopLevelVarScopedDeclarations of \|StatementList\|. Module :
+-- | \[empty\] 1. Return a new empty List. ModuleItemList : ModuleItemList
+-- | ModuleItem 1. Let \_declarations1\_ be the VarScopedDeclarations of
+-- | \|ModuleItemList\|. 1. Let \_declarations2\_ be the
+-- | VarScopedDeclarations of \|ModuleItem\|. 1. Return the
+-- | list-concatenation of \_declarations1\_ and \_declarations2\_.
+-- | ModuleItem : ImportDeclaration 1. Return a new empty List. ModuleItem :
+-- | ExportDeclaration 1. If \|ExportDeclaration\| is \`export\`
+-- | \|VariableStatement\|, return the VarScopedDeclarations of
+-- | \|VariableStatement\|. 1. Return a new empty List.
+-- |
+
+-- SPEC: L7977-L8028
+-- | WithStatement : \`with\` \`(\` Expression \`)\` Statement 1. Return
+-- | ContainsDuplicateLabels of \|Statement\| with argument \_labelSet\_.
+-- | SwitchStatement : \`switch\` \`(\` Expression \`)\` CaseBlock 1. Return
+-- | ContainsDuplicateLabels of \|CaseBlock\| with argument \_labelSet\_.
+-- | CaseBlock : \`{\` \`}\` 1. Return \*false\*. CaseBlock : \`{\`
+-- | CaseClauses? DefaultClause CaseClauses? \`}\` 1. If the first
+-- | \|CaseClauses\| is present, then 1. If ContainsDuplicateLabels of the
+-- | first \|CaseClauses\| with argument \_labelSet\_ is \*true\*, return
+-- | \*true\*. 1. If ContainsDuplicateLabels of \|DefaultClause\| with
+-- | argument \_labelSet\_ is \*true\*, return \*true\*. 1. If the second
+-- | \|CaseClauses\| is not present, return \*false\*. 1. Return
+-- | ContainsDuplicateLabels of the second \|CaseClauses\| with argument
+-- | \_labelSet\_. CaseClauses : CaseClauses CaseClause 1. Let
+-- | \_hasDuplicates\_ be ContainsDuplicateLabels of \|CaseClauses\| with
+-- | argument \_labelSet\_. 1. If \_hasDuplicates\_ is \*true\*, return
+-- | \*true\*. 1. Return ContainsDuplicateLabels of \|CaseClause\| with
+-- | argument \_labelSet\_. CaseClause : \`case\` Expression \`:\`
+-- | StatementList? 1. If the \|StatementList\| is present, return
+-- | ContainsDuplicateLabels of \|StatementList\| with argument
+-- | \_labelSet\_. 1. Return \*false\*. DefaultClause : \`default\` \`:\`
+-- | StatementList? 1. If the \|StatementList\| is present, return
+-- | ContainsDuplicateLabels of \|StatementList\| with argument
+-- | \_labelSet\_. 1. Return \*false\*. LabelledStatement : LabelIdentifier
+-- | \`:\` LabelledItem 1. Let \_label\_ be the StringValue of
+-- | \|LabelIdentifier\|. 1. If \_labelSet\_ contains \_label\_, return
+-- | \*true\*. 1. Let \_newLabelSet\_ be the list-concatenation of
+-- | \_labelSet\_ and « \_label\_ ». 1. Return ContainsDuplicateLabels of
+-- | \|LabelledItem\| with argument \_newLabelSet\_. LabelledItem :
+-- | FunctionDeclaration 1. Return \*false\*. TryStatement : \`try\` Block
+-- | Catch 1. Let \_hasDuplicates\_ be ContainsDuplicateLabels of \|Block\|
+-- | with argument \_labelSet\_. 1. If \_hasDuplicates\_ is \*true\*, return
+-- | \*true\*. 1. Return ContainsDuplicateLabels of \|Catch\| with argument
+-- | \_labelSet\_. TryStatement : \`try\` Block Finally 1. Let
+-- | \_hasDuplicates\_ be ContainsDuplicateLabels of \|Block\| with argument
+-- | \_labelSet\_. 1. If \_hasDuplicates\_ is \*true\*, return \*true\*. 1.
+-- | Return ContainsDuplicateLabels of \|Finally\| with argument
+-- | \_labelSet\_. TryStatement : \`try\` Block Catch Finally 1. If
+-- | ContainsDuplicateLabels of \|Block\| with argument \_labelSet\_ is
+-- | \*true\*, return \*true\*. 1. If ContainsDuplicateLabels of \|Catch\|
+-- | with argument \_labelSet\_ is \*true\*, return \*true\*. 1. Return
+-- | ContainsDuplicateLabels of \|Finally\| with argument \_labelSet\_. Catch
+-- | : \`catch\` \`(\` CatchParameter \`)\` Block 1. Return
+-- | ContainsDuplicateLabels of \|Block\| with argument \_labelSet\_.
+-- | FunctionStatementList : \[empty\] 1. Return \*false\*.
+-- | ClassStaticBlockStatementList : \[empty\] 1. Return \*false\*.
+-- | ModuleItemList : ModuleItemList ModuleItem 1. Let \_hasDuplicates\_ be
+-- | ContainsDuplicateLabels of \|ModuleItemList\| with argument
+-- | \_labelSet\_. 1. If \_hasDuplicates\_ is \*true\*, return \*true\*. 1.
+-- | Return ContainsDuplicateLabels of \|ModuleItem\| with argument
+-- | \_labelSet\_. ModuleItem : ImportDeclaration ExportDeclaration 1. Return
+-- | \*false\*.
+-- |
+
+-- SPEC: L8061-L8127
+-- | \`for\` \`(\` \`var\` ForBinding \`of\` AssignmentExpression \`)\`
+-- | Statement \`for\` \`(\` ForDeclaration \`of\` AssignmentExpression \`)\`
+-- | Statement \`for\` \`await\` \`(\` LeftHandSideExpression \`of\`
+-- | AssignmentExpression \`)\` Statement \`for\` \`await\` \`(\` \`var\`
+-- | ForBinding \`of\` AssignmentExpression \`)\` Statement \`for\` \`await\`
+-- | \`(\` ForDeclaration \`of\` AssignmentExpression \`)\` Statement 1.
+-- | Return ContainsUndefinedBreakTarget of \|Statement\| with argument
+-- | \_labelSet\_.
+-- |
+-- | This section is extended by Annex .
+-- |
+-- | BreakStatement : \`break\` \`;\` 1. Return \*false\*. BreakStatement :
+-- | \`break\` LabelIdentifier \`;\` 1. If \_labelSet\_ contains the
+-- | StringValue of \|LabelIdentifier\|, return \*false\*. 1. Return
+-- | \*true\*. WithStatement : \`with\` \`(\` Expression \`)\` Statement 1.
+-- | Return ContainsUndefinedBreakTarget of \|Statement\| with argument
+-- | \_labelSet\_. SwitchStatement : \`switch\` \`(\` Expression \`)\`
+-- | CaseBlock 1. Return ContainsUndefinedBreakTarget of \|CaseBlock\| with
+-- | argument \_labelSet\_. CaseBlock : \`{\` \`}\` 1. Return \*false\*.
+-- | CaseBlock : \`{\` CaseClauses? DefaultClause CaseClauses? \`}\` 1. If
+-- | the first \|CaseClauses\| is present, then 1. If
+-- | ContainsUndefinedBreakTarget of the first \|CaseClauses\| with argument
+-- | \_labelSet\_ is \*true\*, return \*true\*. 1. If
+-- | ContainsUndefinedBreakTarget of \|DefaultClause\| with argument
+-- | \_labelSet\_ is \*true\*, return \*true\*. 1. If the second
+-- | \|CaseClauses\| is not present, return \*false\*. 1. Return
+-- | ContainsUndefinedBreakTarget of the second \|CaseClauses\| with argument
+-- | \_labelSet\_. CaseClauses : CaseClauses CaseClause 1. Let
+-- | \_hasUndefinedLabels\_ be ContainsUndefinedBreakTarget of
+-- | \|CaseClauses\| with argument \_labelSet\_. 1. If \_hasUndefinedLabels\_
+-- | is \*true\*, return \*true\*. 1. Return ContainsUndefinedBreakTarget of
+-- | \|CaseClause\| with argument \_labelSet\_. CaseClause : \`case\`
+-- | Expression \`:\` StatementList? 1. If the \|StatementList\| is present,
+-- | return ContainsUndefinedBreakTarget of \|StatementList\| with argument
+-- | \_labelSet\_. 1. Return \*false\*. DefaultClause : \`default\` \`:\`
+-- | StatementList? 1. If the \|StatementList\| is present, return
+-- | ContainsUndefinedBreakTarget of \|StatementList\| with argument
+-- | \_labelSet\_. 1. Return \*false\*. LabelledStatement : LabelIdentifier
+-- | \`:\` LabelledItem 1. Let \_label\_ be the StringValue of
+-- | \|LabelIdentifier\|. 1. Let \_newLabelSet\_ be the list-concatenation of
+-- | \_labelSet\_ and « \_label\_ ». 1. Return ContainsUndefinedBreakTarget
+-- | of \|LabelledItem\| with argument \_newLabelSet\_. LabelledItem :
+-- | FunctionDeclaration 1. Return \*false\*. TryStatement : \`try\` Block
+-- | Catch 1. Let \_hasUndefinedLabels\_ be ContainsUndefinedBreakTarget of
+-- | \|Block\| with argument \_labelSet\_. 1. If \_hasUndefinedLabels\_ is
+-- | \*true\*, return \*true\*. 1. Return ContainsUndefinedBreakTarget of
+-- | \|Catch\| with argument \_labelSet\_. TryStatement : \`try\` Block
+-- | Finally 1. Let \_hasUndefinedLabels\_ be ContainsUndefinedBreakTarget of
+-- | \|Block\| with argument \_labelSet\_. 1. If \_hasUndefinedLabels\_ is
+-- | \*true\*, return \*true\*. 1. Return ContainsUndefinedBreakTarget of
+-- | \|Finally\| with argument \_labelSet\_. TryStatement : \`try\` Block
+-- | Catch Finally 1. If ContainsUndefinedBreakTarget of \|Block\| with
+-- | argument \_labelSet\_ is \*true\*, return \*true\*. 1. If
+-- | ContainsUndefinedBreakTarget of \|Catch\| with argument \_labelSet\_ is
+-- | \*true\*, return \*true\*. 1. Return ContainsUndefinedBreakTarget of
+-- | \|Finally\| with argument \_labelSet\_. Catch : \`catch\` \`(\`
+-- | CatchParameter \`)\` Block 1. Return ContainsUndefinedBreakTarget of
+-- | \|Block\| with argument \_labelSet\_. FunctionStatementList :
+-- | \[empty\] 1. Return \*false\*. ClassStaticBlockStatementList :
+-- | \[empty\] 1. Return \*false\*. ModuleItemList : ModuleItemList
+-- | ModuleItem 1. Let \_hasUndefinedLabels\_ be ContainsUndefinedBreakTarget
+-- | of \|ModuleItemList\| with argument \_labelSet\_. 1. If
+-- | \_hasUndefinedLabels\_ is \*true\*, return \*true\*. 1. Return
+-- | ContainsUndefinedBreakTarget of \|ModuleItem\| with argument
+-- | \_labelSet\_. ModuleItem : ImportDeclaration ExportDeclaration 1. Return
+-- | \*false\*.
+-- |
+
+-- SPEC: L8161-L8241
+-- | \`)\` Statement 1. Return ContainsUndefinedContinueTarget of
+-- | \|Statement\| with arguments \_iterationSet\_ and « ». ForInOfStatement
+-- | : \`for\` \`(\` LeftHandSideExpression \`in\` Expression \`)\` Statement
+-- | \`for\` \`(\` \`var\` ForBinding \`in\` Expression \`)\` Statement
+-- | \`for\` \`(\` ForDeclaration \`in\` Expression \`)\` Statement \`for\`
+-- | \`(\` LeftHandSideExpression \`of\` AssignmentExpression \`)\` Statement
+-- | \`for\` \`(\` \`var\` ForBinding \`of\` AssignmentExpression \`)\`
+-- | Statement \`for\` \`(\` ForDeclaration \`of\` AssignmentExpression \`)\`
+-- | Statement \`for\` \`await\` \`(\` LeftHandSideExpression \`of\`
+-- | AssignmentExpression \`)\` Statement \`for\` \`await\` \`(\` \`var\`
+-- | ForBinding \`of\` AssignmentExpression \`)\` Statement \`for\` \`await\`
+-- | \`(\` ForDeclaration \`of\` AssignmentExpression \`)\` Statement 1.
+-- | Return ContainsUndefinedContinueTarget of \|Statement\| with arguments
+-- | \_iterationSet\_ and « ».
+-- |
+-- | This section is extended by Annex .
+-- |
+-- | ContinueStatement : \`continue\` \`;\` 1. Return \*false\*.
+-- | ContinueStatement : \`continue\` LabelIdentifier \`;\` 1. If
+-- | \_iterationSet\_ contains the StringValue of \|LabelIdentifier\|, return
+-- | \*false\*. 1. Return \*true\*. WithStatement : \`with\` \`(\` Expression
+-- | \`)\` Statement 1. Return ContainsUndefinedContinueTarget of
+-- | \|Statement\| with arguments \_iterationSet\_ and « ». SwitchStatement :
+-- | \`switch\` \`(\` Expression \`)\` CaseBlock 1. Return
+-- | ContainsUndefinedContinueTarget of \|CaseBlock\| with arguments
+-- | \_iterationSet\_ and « ». CaseBlock : \`{\` \`}\` 1. Return \*false\*.
+-- | CaseBlock : \`{\` CaseClauses? DefaultClause CaseClauses? \`}\` 1. If
+-- | the first \|CaseClauses\| is present, then 1. If
+-- | ContainsUndefinedContinueTarget of the first \|CaseClauses\| with
+-- | arguments \_iterationSet\_ and « » is \*true\*, return \*true\*. 1. If
+-- | ContainsUndefinedContinueTarget of \|DefaultClause\| with arguments
+-- | \_iterationSet\_ and « » is \*true\*, return \*true\*. 1. If the second
+-- | \|CaseClauses\| is not present, return \*false\*. 1. Return
+-- | ContainsUndefinedContinueTarget of the second \|CaseClauses\| with
+-- | arguments \_iterationSet\_ and « ». CaseClauses : CaseClauses
+-- | CaseClause 1. Let \_hasUndefinedLabels\_ be
+-- | ContainsUndefinedContinueTarget of \|CaseClauses\| with arguments
+-- | \_iterationSet\_ and « ». 1. If \_hasUndefinedLabels\_ is \*true\*,
+-- | return \*true\*. 1. Return ContainsUndefinedContinueTarget of
+-- | \|CaseClause\| with arguments \_iterationSet\_ and « ». CaseClause :
+-- | \`case\` Expression \`:\` StatementList? 1. If the \|StatementList\| is
+-- | present, return ContainsUndefinedContinueTarget of \|StatementList\|
+-- | with arguments \_iterationSet\_ and « ». 1. Return \*false\*.
+-- | DefaultClause : \`default\` \`:\` StatementList? 1. If the
+-- | \|StatementList\| is present, return ContainsUndefinedContinueTarget of
+-- | \|StatementList\| with arguments \_iterationSet\_ and « ». 1. Return
+-- | \*false\*. LabelledStatement : LabelIdentifier \`:\` LabelledItem 1. Let
+-- | \_label\_ be the StringValue of \|LabelIdentifier\|. 1. Let
+-- | \_newLabelSet\_ be the list-concatenation of \_labelSet\_ and «
+-- | \_label\_ ». 1. Return ContainsUndefinedContinueTarget of
+-- | \|LabelledItem\| with arguments \_iterationSet\_ and \_newLabelSet\_.
+-- | LabelledItem : FunctionDeclaration 1. Return \*false\*. TryStatement :
+-- | \`try\` Block Catch 1. Let \_hasUndefinedLabels\_ be
+-- | ContainsUndefinedContinueTarget of \|Block\| with arguments
+-- | \_iterationSet\_ and « ». 1. If \_hasUndefinedLabels\_ is \*true\*,
+-- | return \*true\*. 1. Return ContainsUndefinedContinueTarget of \|Catch\|
+-- | with arguments \_iterationSet\_ and « ». TryStatement : \`try\` Block
+-- | Finally 1. Let \_hasUndefinedLabels\_ be ContainsUndefinedContinueTarget
+-- | of \|Block\| with arguments \_iterationSet\_ and « ». 1. If
+-- | \_hasUndefinedLabels\_ is \*true\*, return \*true\*. 1. Return
+-- | ContainsUndefinedContinueTarget of \|Finally\| with arguments
+-- | \_iterationSet\_ and « ». TryStatement : \`try\` Block Catch Finally 1.
+-- | If ContainsUndefinedContinueTarget of \|Block\| with arguments
+-- | \_iterationSet\_ and « » is \*true\*, return \*true\*. 1. If
+-- | ContainsUndefinedContinueTarget of \|Catch\| with arguments
+-- | \_iterationSet\_ and « » is \*true\*, return \*true\*. 1. Return
+-- | ContainsUndefinedContinueTarget of \|Finally\| with arguments
+-- | \_iterationSet\_ and « ». Catch : \`catch\` \`(\` CatchParameter \`)\`
+-- | Block 1. Return ContainsUndefinedContinueTarget of \|Block\| with
+-- | arguments \_iterationSet\_ and « ». FunctionStatementList : \[empty\] 1.
+-- | Return \*false\*. ClassStaticBlockStatementList : \[empty\] 1. Return
+-- | \*false\*. ModuleItemList : ModuleItemList ModuleItem 1. Let
+-- | \_hasUndefinedLabels\_ be ContainsUndefinedContinueTarget of
+-- | \|ModuleItemList\| with arguments \_iterationSet\_ and « ». 1. If
+-- | \_hasUndefinedLabels\_ is \*true\*, return \*true\*. 1. Return
+-- | ContainsUndefinedContinueTarget of \|ModuleItem\| with arguments
+-- | \_iterationSet\_ and « ». ModuleItem : ImportDeclaration
+-- | ExportDeclaration 1. Return \*false\*.
+-- |
+-- | # Function Name Inference
+-- |
+
+-- SPEC: L8301-L8326
+-- | \`===\` RelationalExpression EqualityExpression \`!==\`
+-- | RelationalExpression BitwiseANDExpression : BitwiseANDExpression \`&\`
+-- | EqualityExpression BitwiseXORExpression : BitwiseXORExpression \`\^\`
+-- | BitwiseANDExpression BitwiseORExpression : BitwiseORExpression \`\|\`
+-- | BitwiseXORExpression LogicalANDExpression : LogicalANDExpression \`&&\`
+-- | BitwiseORExpression LogicalORExpression : LogicalORExpression \`\|\|\`
+-- | LogicalANDExpression CoalesceExpression : CoalesceExpressionHead \`??\`
+-- | BitwiseORExpression ConditionalExpression : ShortCircuitExpression \`?\`
+-- | AssignmentExpression \`:\` AssignmentExpression AssignmentExpression :
+-- | YieldExpression LeftHandSideExpression \`=\` AssignmentExpression
+-- | LeftHandSideExpression AssignmentOperator AssignmentExpression
+-- | LeftHandSideExpression \`&&=\` AssignmentExpression
+-- | LeftHandSideExpression \`\|\|=\` AssignmentExpression
+-- | LeftHandSideExpression \`??=\` AssignmentExpression Expression :
+-- | Expression \`,\` AssignmentExpression 1. Return \*false\*.
+-- | AssignmentExpression : ArrowFunction AsyncArrowFunction
+-- | FunctionExpression : \`function\` BindingIdentifier? \`(\`
+-- | FormalParameters \`)\` \`{\` FunctionBody \`}\` GeneratorExpression :
+-- | \`function\` \`\*\` BindingIdentifier? \`(\` FormalParameters \`)\`
+-- | \`{\` GeneratorBody \`}\` AsyncGeneratorExpression : \`async\`
+-- | \`function\` \`\*\` BindingIdentifier? \`(\` FormalParameters \`)\`
+-- | \`{\` AsyncGeneratorBody \`}\` AsyncFunctionExpression : \`async\`
+-- | \`function\` BindingIdentifier? \`(\` FormalParameters \`)\` \`{\`
+-- | AsyncFunctionBody \`}\` ClassExpression : \`class\` BindingIdentifier?
+-- | ClassTail 1. Return \*true\*.
+-- |
+
+-- SPEC: L8426-L8475
+-- | Return the result of ComputedPropertyContains of \|ClassBody\| with
+-- | argument \_symbol\_.
+-- |
+-- | Static semantic rules that depend upon substructure generally do not
+-- | look into class bodies except for \|PropertyName\|s.
+-- |
+-- | ClassStaticBlock : \`static\` \`{\` ClassStaticBlockBody \`}\` 1. Return
+-- | \*false\*.
+-- |
+-- | Static semantic rules that depend upon substructure generally do not
+-- | look into \`static\` initialization blocks.
+-- |
+-- | ArrowFunction : ArrowParameters \`=\>\` ConciseBody 1. If \_symbol\_ is
+-- | not one of \|NewTarget\|, \|SuperProperty\|, \|SuperCall\|, \`super\`,
+-- | or \`this\`, return \*false\*. 1. If \|ArrowParameters\| Contains
+-- | \_symbol\_ is \*true\*, return \*true\*. 1. Return \|ConciseBody\|
+-- | Contains \_symbol\_. ArrowParameters :
+-- | CoverParenthesizedExpressionAndArrowParameterList 1. Let \_formals\_ be
+-- | the \|ArrowFormalParameters\| that is covered by
+-- | \|CoverParenthesizedExpressionAndArrowParameterList\|. 1. Return
+-- | \_formals\_ Contains \_symbol\_. AsyncArrowFunction : \`async\`
+-- | AsyncArrowBindingIdentifier \`=\>\` AsyncConciseBody 1. If \_symbol\_ is
+-- | not one of \|NewTarget\|, \|SuperProperty\|, \|SuperCall\|, \`super\`,
+-- | or \`this\`, return \*false\*. 1. Return \|AsyncConciseBody\| Contains
+-- | \_symbol\_. AsyncArrowFunction : CoverCallExpressionAndAsyncArrowHead
+-- | \`=\>\` AsyncConciseBody 1. If \_symbol\_ is not one of \|NewTarget\|,
+-- | \|SuperProperty\|, \|SuperCall\|, \`super\`, or \`this\`, return
+-- | \*false\*. 1. Let \_head\_ be the \|AsyncArrowHead\| that is covered by
+-- | \|CoverCallExpressionAndAsyncArrowHead\|. 1. If \_head\_ Contains
+-- | \_symbol\_ is \*true\*, return \*true\*. 1. Return \|AsyncConciseBody\|
+-- | Contains \_symbol\_.
+-- |
+-- | Contains is used to detect \`new.target\`, \`this\`, and \`super\` usage
+-- | within an \|ArrowFunction\| or \|AsyncArrowFunction\|.
+-- |
+-- | PropertyDefinition : MethodDefinition 1. If \_symbol\_ is
+-- | \|MethodDefinition\|, return \*true\*. 1. Return the result of
+-- | ComputedPropertyContains of \|MethodDefinition\| with argument
+-- | \_symbol\_. LiteralPropertyName : IdentifierName 1. Return \*false\*.
+-- | MemberExpression : MemberExpression \`.\` IdentifierName 1. If
+-- | \|MemberExpression\| Contains \_symbol\_ is \*true\*, return
+-- | \*true\*. 1. Return \*false\*. SuperProperty : \`super\` \`.\`
+-- | IdentifierName 1. If \_symbol\_ is the \|ReservedWord\| \`super\`,
+-- | return \*true\*. 1. Return \*false\*. CallExpression : CallExpression
+-- | \`.\` IdentifierName 1. If \|CallExpression\| Contains \_symbol\_ is
+-- | \*true\*, return \*true\*. 1. Return \*false\*. OptionalChain : \`?.\`
+-- | IdentifierName 1. Return \*false\*. OptionalChain : OptionalChain \`.\`
+-- | IdentifierName 1. If \|OptionalChain\| Contains \_symbol\_ is \*true\*,
+-- | return \*true\*. 1. Return \*false\*.
+-- |
+
+-- SPEC: L8601-L8680
+-- | Perform ? IteratorBindingInitialization of \|BindingElementList\| with
+-- | arguments \_iteratorRecord\_ and \_environment\_. 1. If \|Elision\| is
+-- | present, then 1. Perform ? IteratorDestructuringAssignmentEvaluation of
+-- | \|Elision\| with argument \_iteratorRecord\_. 1. Return ?
+-- | IteratorBindingInitialization of \|BindingRestElement\| with arguments
+-- | \_iteratorRecord\_ and \_environment\_. BindingElementList :
+-- | BindingElementList \`,\` BindingElisionElement 1. Perform ?
+-- | IteratorBindingInitialization of \|BindingElementList\| with arguments
+-- | \_iteratorRecord\_ and \_environment\_. 1. Return ?
+-- | IteratorBindingInitialization of \|BindingElisionElement\| with
+-- | arguments \_iteratorRecord\_ and \_environment\_. BindingElisionElement
+-- | : Elision BindingElement 1. Perform ?
+-- | IteratorDestructuringAssignmentEvaluation of \|Elision\| with argument
+-- | \_iteratorRecord\_. 1. Return ? IteratorBindingInitialization of
+-- | \|BindingElement\| with arguments \_iteratorRecord\_ and
+-- | \_environment\_. SingleNameBinding : BindingIdentifier Initializer? 1.
+-- | Let \_bindingId\_ be the StringValue of \|BindingIdentifier\|. 1. Let
+-- | \_lhs\_ be ? ResolveBinding(\_bindingId\_, \_environment\_). 1. Let
+-- | \_v\_ be \*undefined\*. 1. If \_iteratorRecord\_.\[\[Done\]\] is
+-- | \*false\*, then 1. Let \_next\_ be ?
+-- | IteratorStepValue(\_iteratorRecord\_). 1. If \_next\_ is not \~done\~,
+-- | then 1. Set \_v\_ to \_next\_. 1. If \|Initializer\| is present and
+-- | \_v\_ is \*undefined\*, then 1. If
+-- | IsAnonymousFunctionDefinition(\|Initializer\|) is \*true\*, then 1. Set
+-- | \_v\_ to ? NamedEvaluation of \|Initializer\| with argument
+-- | \_bindingId\_. 1. Else, 1. Let \_defaultValue\_ be ? Evaluation of
+-- | \|Initializer\|. 1. Set \_v\_ to ? GetValue(\_defaultValue\_). 1. If
+-- | \_environment\_ is \*undefined\*, return ? PutValue(\_lhs\_, \_v\_). 1.
+-- | Return ? InitializeReferencedBinding(\_lhs\_, \_v\_). BindingElement :
+-- | BindingPattern Initializer? 1. Let \_v\_ be \*undefined\*. 1. If
+-- | \_iteratorRecord\_.\[\[Done\]\] is \*false\*, then 1. Let \_next\_ be ?
+-- | IteratorStepValue(\_iteratorRecord\_). 1. If \_next\_ is not \~done\~,
+-- | then 1. Set \_v\_ to \_next\_. 1. If \|Initializer\| is present and
+-- | \_v\_ is \*undefined\*, then 1. Let \_defaultValue\_ be ? Evaluation of
+-- | \|Initializer\|. 1. Set \_v\_ to ? GetValue(\_defaultValue\_). 1. Return
+-- | ? BindingInitialization of \|BindingPattern\| with arguments \_v\_ and
+-- | \_environment\_. BindingRestElement : \`\...\` BindingIdentifier 1. Let
+-- | \_lhs\_ be ? ResolveBinding(StringValue of \|BindingIdentifier\|,
+-- | \_environment\_). 1. Let \_A\_ be ! ArrayCreate(0). 1. Let \_n\_ be
+-- | 0. 1. Repeat, 1. Let \_next\_ be \~done\~. 1. If
+-- | \_iteratorRecord\_.\[\[Done\]\] is \*false\*, then 1. Set \_next\_ to ?
+-- | IteratorStepValue(\_iteratorRecord\_). 1. If \_next\_ is \~done\~,
+-- | then 1. If \_environment\_ is \*undefined\*, return ? PutValue(\_lhs\_,
+-- | \_A\_). 1. Return ? InitializeReferencedBinding(\_lhs\_, \_A\_). 1.
+-- | Perform ! CreateDataPropertyOrThrow(\_A\_, ! ToString(𝔽(\_n\_)),
+-- | \_next\_). 1. Set \_n\_ to \_n\_ + 1. BindingRestElement : \`\...\`
+-- | BindingPattern 1. Let \_A\_ be ! ArrayCreate(0). 1. Let \_n\_ be 0. 1.
+-- | Repeat, 1. Let \_next\_ be \~done\~. 1. If
+-- | \_iteratorRecord\_.\[\[Done\]\] is \*false\*, then 1. Set \_next\_ to ?
+-- | IteratorStepValue(\_iteratorRecord\_). 1. If \_next\_ is \~done\~,
+-- | then 1. Return ? BindingInitialization of \|BindingPattern\| with
+-- | arguments \_A\_ and \_environment\_. 1. Perform !
+-- | CreateDataPropertyOrThrow(\_A\_, ! ToString(𝔽(\_n\_)), \_next\_). 1. Set
+-- | \_n\_ to \_n\_ + 1. FormalParameters : \[empty\] 1. Return \~unused\~.
+-- | FormalParameters : FormalParameterList \`,\` FunctionRestParameter 1.
+-- | Perform ? IteratorBindingInitialization of \|FormalParameterList\| with
+-- | arguments \_iteratorRecord\_ and \_environment\_. 1. Return ?
+-- | IteratorBindingInitialization of \|FunctionRestParameter\| with
+-- | arguments \_iteratorRecord\_ and \_environment\_. FormalParameterList :
+-- | FormalParameterList \`,\` FormalParameter 1. Perform ?
+-- | IteratorBindingInitialization of \|FormalParameterList\| with arguments
+-- | \_iteratorRecord\_ and \_environment\_. 1. Return ?
+-- | IteratorBindingInitialization of \|FormalParameter\| with arguments
+-- | \_iteratorRecord\_ and \_environment\_. ArrowParameters :
+-- | BindingIdentifier 1. Let \_v\_ be \*undefined\*. 1. Assert:
+-- | \_iteratorRecord\_.\[\[Done\]\] is \*false\*. 1. Let \_next\_ be ?
+-- | IteratorStepValue(\_iteratorRecord\_). 1. If \_next\_ is not \~done\~,
+-- | then 1. Set \_v\_ to \_next\_. 1. Return ? BindingInitialization of
+-- | \|BindingIdentifier\| with arguments \_v\_ and \_environment\_.
+-- | ArrowParameters : CoverParenthesizedExpressionAndArrowParameterList 1.
+-- | Let \_formals\_ be the \|ArrowFormalParameters\| that is covered by
+-- | \|CoverParenthesizedExpressionAndArrowParameterList\|. 1. Return ?
+-- | IteratorBindingInitialization of \_formals\_ with arguments
+-- | \_iteratorRecord\_ and \_environment\_. AsyncArrowBindingIdentifier :
+-- | BindingIdentifier 1. Let \_v\_ be \*undefined\*. 1. Assert:
+-- | \_iteratorRecord\_.\[\[Done\]\] is \*false\*. 1. Let \_next\_ be ?
+-- | IteratorStepValue(\_iteratorRecord\_). 1. If \_next\_ is not \~done\~,
+-- | then 1. Set \_v\_ to \_next\_. 1. Return ? BindingInitialization of
+-- | \|BindingIdentifier\| with arguments \_v\_ and \_environment\_.
+-- |
+
+-- SPEC: L8721-L8742
+-- | RelationalExpression \`\>\` ShiftExpression RelationalExpression \`\<=\`
+-- | ShiftExpression RelationalExpression \`\>=\` ShiftExpression
+-- | RelationalExpression \`instanceof\` ShiftExpression RelationalExpression
+-- | \`in\` ShiftExpression PrivateIdentifier \`in\` ShiftExpression
+-- | EqualityExpression : EqualityExpression \`==\` RelationalExpression
+-- | EqualityExpression \`!=\` RelationalExpression EqualityExpression
+-- | \`===\` RelationalExpression EqualityExpression \`!==\`
+-- | RelationalExpression BitwiseANDExpression : BitwiseANDExpression \`&\`
+-- | EqualityExpression BitwiseXORExpression : BitwiseXORExpression \`\^\`
+-- | BitwiseANDExpression BitwiseORExpression : BitwiseORExpression \`\|\`
+-- | BitwiseXORExpression LogicalANDExpression : LogicalANDExpression \`&&\`
+-- | BitwiseORExpression LogicalORExpression : LogicalORExpression \`\|\|\`
+-- | LogicalANDExpression CoalesceExpression : CoalesceExpressionHead \`??\`
+-- | BitwiseORExpression ConditionalExpression : ShortCircuitExpression \`?\`
+-- | AssignmentExpression \`:\` AssignmentExpression AssignmentExpression :
+-- | YieldExpression ArrowFunction AsyncArrowFunction LeftHandSideExpression
+-- | \`=\` AssignmentExpression LeftHandSideExpression AssignmentOperator
+-- | AssignmentExpression LeftHandSideExpression \`&&=\` AssignmentExpression
+-- | LeftHandSideExpression \`\|\|=\` AssignmentExpression
+-- | LeftHandSideExpression \`??=\` AssignmentExpression Expression :
+-- | Expression \`,\` AssignmentExpression 1. Return \~invalid\~.
+-- |
+
+-- SPEC: L8813-L8863
+-- |
+-- | - Environment Record (abstract)
+-- |
+-- |   - A *Declarative Environment Record* is used to define the effect of
+-- |     ECMAScript language syntactic elements such as
+-- |     \|FunctionDeclaration\|s, \|VariableDeclaration\|s, and \|Catch\|
+-- |     clauses that directly associate identifier bindings with ECMAScript
+-- |     language values.
+-- |
+-- |     - A *Function Environment Record* corresponds to the invocation of
+-- |       an ECMAScript function object, and contains bindings for the
+-- |       top-level declarations within that function. It may establish a
+-- |       new \`this\` binding. It also captures the state necessary to
+-- |       support \`super\` method invocations.
+-- |
+-- |     - A *Module Environment Record* contains the bindings for the
+-- |       top-level declarations of a \|Module\|. It also contains the
+-- |       bindings that are explicitly imported by the \|Module\|. Its
+-- |       \[\[OuterEnv\]\] is a Global Environment Record.
+-- |
+-- |   - An *Object Environment Record* is used to define the effect of
+-- |     ECMAScript elements such as \|WithStatement\| that associate
+-- |     identifier bindings with the properties of some object.
+-- |
+-- |   - A *Global Environment Record* is used for \|Script\| global
+-- |     declarations. It does not have an outer environment; its
+-- |     \[\[OuterEnv\]\] is \*null\*. It may be prepopulated with identifier
+-- |     bindings and it includes an associated global object whose
+-- |     properties provide some of the global environment\'s identifier
+-- |     bindings. As ECMAScript code is executed, additional properties may
+-- |     be added to the global object and the initial properties may be
+-- |     modified.
+-- |
+-- | The Environment Record abstract class includes the abstract
+-- | specification methods defined in . These abstract methods have distinct
+-- | concrete algorithms for each of the concrete subclasses.
+-- |
+-- |   Method                                                                                                                                                                  Purpose                                                                                                                                                                                                                                                                                                                                                                                                                                                                  Definitions
+-- |   ----------------------------------------------------------------------------------------------------------------------------------------------------------------------- ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ -----------------------------------------------------
+-- |   HasBinding ( \_N\_: a String, ): either a normal completion containing a Boolean or a throw completion                                                                  It determines if an Environment Record has a binding for \_N\_.                                                                                                                                                                                                                                                                                                                                                                                                          It has concrete definitions in the following types:
+-- |   CreateMutableBinding ( \_N\_: a String, \_D\_: a Boolean, ): either a normal completion containing \~unused\~ or a throw completion                                     It creates a new but uninitialized mutable binding in an Environment Record. \_N\_ is the text of the bound name. If \_D\_ is \*true\* the binding may be subsequently deleted.                                                                                                                                                                                                                                                                                          It has concrete definitions in the following types:
+-- |   CreateImmutableBinding ( \_N\_: a String, \_S\_: a Boolean, ): either a normal completion containing \~unused\~ or a throw completion                                   It creates a new but uninitialized immutable binding in an Environment Record. \_N\_ is the text of the bound name. If \_S\_ is \*true\* then attempts to set it after it has been initialized will always throw an exception, regardless of the strict mode setting of operations that reference that binding.                                                                                                                                                          It has concrete definitions in the following types:
+-- |   InitializeBinding ( \_N\_: a String, \_V\_: an ECMAScript language value, ): either a normal completion containing \~unused\~ or a throw completion                     It sets the value of an already existing but uninitialized binding in an Environment Record. \_N\_ is the text of the bound name. \_V\_ is the value for the binding.                                                                                                                                                                                                                                                                                                    It has concrete definitions in the following types:
+-- |   SetMutableBinding ( \_N\_: a String, \_V\_: an ECMAScript language value, \_S\_: a Boolean, ): either a normal completion containing \~unused\~ or a throw completion   It sets the value of an already existing mutable binding in an Environment Record. \_N\_ is the text of the bound name. \_V\_ is the value for the binding. If \_S\_ is \*true\* and the binding cannot be set, this will throw a \*TypeError\* exception.                                                                                                                                                                                                               It has concrete definitions in the following types:
+-- |   GetBindingValue ( \_N\_: a String, \_S\_: a Boolean, ): either a normal completion containing an ECMAScript language value or a throw completion                        It returns the value of an already existing binding from an Environment Record. \_N\_ is the text of the bound name. \_S\_ is used to identify references originating in strict mode code or that otherwise require strict mode reference semantics. If \_S\_ is \*true\* and the binding does not exist, this will throw a \*ReferenceError\* exception. If the binding exists but is uninitialized a \*ReferenceError\* is thrown, regardless of the value of \_S\_.   It has concrete definitions in the following types:
+-- |   DeleteBinding ( \_N\_: a String, ): either a normal completion containing a Boolean or a throw completion                                                               It deletes a binding from an Environment Record. \_N\_ is the text of the bound name. If a binding for \_N\_ exists, this removes the binding and returns \*true\*. If the binding exists but cannot be removed, this returns \*false\*. If the binding does not exist, this returns \*true\*.                                                                                                                                                                           It has concrete definitions in the following types:
+-- |   HasThisBinding ( ): a Boolean                                                                                                                                           It determines if an Environment Record establishes a \`this\` binding. This returns \*true\* if it does and \*false\* if it does not.                                                                                                                                                                                                                                                                                                                                    It has concrete definitions in the following types:
+-- |   GetThisBinding ( ): either a normal completion containing an ECMAScript language value or a throw completion                                                            It returns the value of this Environment Record\'s \`this\` binding. It throws a \*ReferenceError\* if the \`this\` binding has not been initialized.                                                                                                                                                                                                                                                                                                                    It has concrete definitions in the following types:
+-- |   HasSuperBinding ( ): a Boolean                                                                                                                                          It determines if an Environment Record establishes a \`super\` method binding. This returns \*true\* if it does and \*false\* if it does not. If it returns \*true\* it implies that the Environment Record is a Function Environment Record, although the reverse implication does not hold.                                                                                                                                                                            It has concrete definitions in the following types:
+-- |   WithBaseObject ( ): an Object or \*undefined\*                                                                                                                          If this Environment Record is associated with a \`with\` statement, it returns the with object. Otherwise, it returns \*undefined\*.                                                                                                                                                                                                                                                                                                                                     It has concrete definitions in the following types:
+-- |
+
+-- SPEC: L9551-L9567
+-- | \_existingProp\_ be ? \_globalObject\_.\[\[GetOwnProperty\]\](\_N\_). 1.
+-- | If \_existingProp\_ is \*undefined\* or
+-- | \_existingProp\_.\[\[Configurable\]\] is \*true\*, then 1. Let \_desc\_
+-- | be the PropertyDescriptor { \[\[Value\]\]: \_V\_, \[\[Writable\]\]:
+-- | \*true\*, \[\[Enumerable\]\]: \*true\*, \[\[Configurable\]\]: \_D\_
+-- | }. 1. Else, 1. Let \_desc\_ be the PropertyDescriptor { \[\[Value\]\]:
+-- | \_V\_ }. 1. Perform ? DefinePropertyOrThrow(\_globalObject\_, \_N\_,
+-- | \_desc\_). 1. \[id=\"step-createglobalfunctionbinding-set\"\] Perform ?
+-- | Set(\_globalObject\_, \_N\_, \_V\_, \*false\*). 1. Return \~unused\~.
+-- |
+-- | Global function declarations are always represented as own properties of
+-- | the global object. If possible, an existing own property is reconfigured
+-- | to have a standard set of attribute values. Step is equivalent to what
+-- | calling the InitializeBinding concrete method would do and if
+-- | \_globalObject\_ is a Proxy will produce the same sequence of Proxy trap
+-- | calls.
+-- |
+
+-- SPEC: L9744-L9769
+-- | # Realms
+-- |
+-- | Before it is evaluated, all ECMAScript code must be associated with a
+-- | [realm]{#realm .dfn variants="realms"}. Conceptually, a realm consists
+-- | of a set of intrinsic objects, an ECMAScript global environment, all of
+-- | the ECMAScript code that is loaded within the scope of that global
+-- | environment, and other associated state and resources.
+-- |
+-- | A realm is represented in this specification as a [Realm
+-- | Record]{#realm-record .dfn variants="Realm Records"} with the fields
+-- | specified in :
+-- |
+-- | +------------------------+-----------------------+-----------------------------+
+-- | | Field Name             | Value                 | Meaning                     |
+-- | +========================+=======================+=============================+
+-- | | \[\[AgentSignifier\]\] | an agent signifier    | The agent that owns this    |
+-- | |                        |                       | realm                       |
+-- | +------------------------+-----------------------+-----------------------------+
+-- | | \[\[Intrinsics\]\]     | a Record whose field  | The intrinsic values used   |
+-- | |                        | names are intrinsic   | by code associated with     |
+-- | |                        | keys and whose values | this realm                  |
+-- | |                        | are objects           |                             |
+-- | +------------------------+-----------------------+-----------------------------+
+-- | | \[\[GlobalObject\]\]   | an Object             | The global object for this  |
+-- | |                        |                       | realm                       |
+-- | +------------------------+-----------------------+-----------------------------+
+
+-- SPEC: L9791-L9820
+-- | |                        |                       | implementation removed the  |
+-- | |                        |                       | pair from the               |
+-- | |                        |                       | \[\[TemplateMap\]\] list.   |
+-- | +------------------------+-----------------------+-----------------------------+
+-- | | \[\[LoadedModules\]\]  | a List of             | A map from the specifier    |
+-- | |                        | LoadedModuleRequest   | strings imported by this    |
+-- | |                        | Records               | realm to the resolved       |
+-- | |                        |                       | Module Record. The list     |
+-- | |                        |                       | does not contain two        |
+-- | |                        |                       | different Records \_r1\_    |
+-- | |                        |                       | and \_r2\_ such that        |
+-- | |                        |                       | ModuleRequestsEqual(\_r1\_, |
+-- | |                        |                       | \_r2\_) is \*true\*.        |
+-- | |                        |                       |                             |
+-- | |                        |                       | As mentioned in             |
+-- | |                        |                       | HostLoadImportedModule (),  |
+-- | |                        |                       | \[\[LoadedModules\]\] in    |
+-- | |                        |                       | Realm Records is only used  |
+-- | |                        |                       | when running an             |
+-- | |                        |                       | \`import()\` expression in  |
+-- | |                        |                       | a context where there is no |
+-- | |                        |                       | active script or module.    |
+-- | +------------------------+-----------------------+-----------------------------+
+-- | | \[\[HostDefined\]\]    | anything (default     | Field reserved for use by   |
+-- | |                        | value is              | hosts that need to          |
+-- | |                        | \*undefined\*)        | associate additional        |
+-- | |                        |                       | information with a Realm    |
+-- | |                        |                       | Record.                     |
+-- | +------------------------+-----------------------+-----------------------------+
+-- |
+
+-- SPEC: L9870-L9879
+-- |
+-- | 1\. Let \_global\_ be \_realmRec\_.\[\[GlobalObject\]\]. 1. For each
+-- | property of the Global Object specified in clause , do 1. Let \_name\_
+-- | be the String value of the property name. 1. Let \_desc\_ be the fully
+-- | populated data Property Descriptor for the property, containing the
+-- | specified attributes for the property. For properties listed in , , or
+-- | the value of the \[\[Value\]\] attribute is the corresponding intrinsic
+-- | object from \_realmRec\_. 1. Perform ? DefinePropertyOrThrow(\_global\_,
+-- | \_name\_, \_desc\_). 1. Return \~unused\~.
+-- |
+
+-- SPEC: L9921-L9958
+-- | require non-LIFO transitions of the running execution context.
+-- |
+-- | The value of the Realm component of the running execution context is
+-- | also called [the current Realm Record]{#current-realm .dfn}. The value
+-- | of the Function component of the running execution context is also
+-- | called the [active function object]{#active-function-object .dfn}.
+-- |
+-- | [ECMAScript code execution contexts]{#ecmascript-code-execution-context
+-- | .dfn variants="ECMAScript code execution context"} have the additional
+-- | state components listed in .
+-- |
+-- |   Component             Purpose
+-- |   --------------------- ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+-- |   LexicalEnvironment    Identifies the Environment Record used to resolve identifier references made by code within this execution context.
+-- |   VariableEnvironment   Identifies the Environment Record that holds bindings created by \|VariableStatement\|s within this execution context.
+-- |   PrivateEnvironment    Identifies the PrivateEnvironment Record that holds Private Names created by \|ClassElement\|s in the nearest containing class. \*null\* if there is no containing class.
+-- |
+-- | The LexicalEnvironment and VariableEnvironment components of an
+-- | execution context are always Environment Records.
+-- |
+-- | Execution contexts representing the evaluation of Generators have the
+-- | additional state components listed in .
+-- |
+-- |   Component   Purpose
+-- |   ----------- ----------------------------------------------------------
+-- |   Generator   The Generator that this execution context is evaluating.
+-- |
+-- | In most situations only the running execution context (the top of the
+-- | execution context stack) is directly manipulated by algorithms within
+-- | this specification. Hence when the terms "LexicalEnvironment", and
+-- | "VariableEnvironment" are used without qualification they are in
+-- | reference to those components of the running execution context.
+-- |
+-- | An execution context is purely a specification mechanism and need not
+-- | correspond to any particular artefact of an ECMAScript implementation.
+-- | It is impossible for ECMAScript code to directly access or observe an
+-- | execution context.
+-- |
+
+-- SPEC: L10069-L10100
+-- | Record, or \*null\*) is the [active script or
+-- | module]{#job-activescriptormodule .dfn} if all of the following
+-- | conditions are true:
+-- |
+-- | - GetActiveScriptOrModule() is \_scriptOrModule\_.
+-- | - If \_scriptOrModule\_ is a Script Record or Module Record, let \_ec\_
+-- |   be the topmost execution context on the execution context stack whose
+-- |   ScriptOrModule component is \_scriptOrModule\_. The Realm component of
+-- |   \_ec\_ is \_scriptOrModule\_.\[\[Realm\]\].
+-- |
+-- | At any particular time, an execution is [prepared to evaluate ECMAScript
+-- | code]{#job-preparedtoevaluatecode .dfn} if all of the following
+-- | conditions are true:
+-- |
+-- | - The execution context stack is not empty.
+-- | - The Realm component of the topmost execution context on the execution
+-- |   context stack is a Realm Record.
+-- |
+-- | Host environments may prepare an execution to evaluate code by pushing
+-- | execution contexts onto the execution context stack. The specific steps
+-- | are implementation-defined.
+-- |
+-- | The specific choice of Realm is up to the host environment. This initial
+-- | execution context and Realm is only in use before any callback function
+-- | is invoked. When a callback function related to a Job, like a Promise
+-- | handler, is invoked, the invocation pushes its own execution context and
+-- | Realm.
+-- |
+-- | Particular kinds of Jobs have additional conformance requirements.
+-- |
+-- | # JobCallback Records
+-- |
+
+-- SPEC: L10380-L10409
+-- | terminated.
+-- |
+-- | Examples of that type of termination are: operating systems or users
+-- | terminating agents that are running in separate processes; the embedding
+-- | itself terminating an agent that is running in-process with the other
+-- | agents when per-agent resource accounting indicates that the agent is
+-- | runaway.
+-- |
+-- | Each of the following specification values, and values transitively
+-- | reachable from them, belong to exactly one agent cluster.
+-- |
+-- | - candidate execution Record
+-- | - Shared Data Block
+-- | - WaiterList Record
+-- |
+-- | Prior to any evaluation of any ECMAScript code by any agent in a
+-- | cluster, the \[\[CandidateExecution\]\] field of the Agent Record for
+-- | all agents in the cluster is set to the initial candidate execution. The
+-- | initial candidate execution is an empty candidate execution whose
+-- | \[\[EventsRecords\]\] field is a List containing, for each agent, an
+-- | Agent Events Record whose \[\[AgentSignifier\]\] field is that agent\'s
+-- | agent signifier, and whose \[\[EventList\]\] and
+-- | \[\[AgentSynchronizesWith\]\] fields are empty Lists.
+-- |
+-- | All agents in an agent cluster share the same candidate execution in its
+-- | Agent Record\'s \[\[CandidateExecution\]\] field. The candidate
+-- | execution is a specification mechanism used by the memory model.
+-- |
+-- | An agent cluster is a specification mechanism and need not correspond to
+-- | any particular artefact of an ECMAScript implementation.
+
+-- SPEC: L10661-L10682
+-- | get access and set access.
+-- |
+-- | Every ordinary object has a Boolean-valued \[\[Extensible\]\] internal
+-- | slot which is used to fulfill the extensibility-related internal method
+-- | invariants specified in . Namely, once the value of an object\'s
+-- | \[\[Extensible\]\] internal slot has been set to \*false\*, it is no
+-- | longer possible to add properties to the object, to modify the value of
+-- | the object\'s \[\[Prototype\]\] internal slot, or to subsequently change
+-- | the value of \[\[Extensible\]\] to \*true\*.
+-- |
+-- | In the following algorithm descriptions, assume \_O\_ is an ordinary
+-- | object, \_P\_ is a property key value, \_V\_ is any ECMAScript language
+-- | value, and \_Desc\_ is a Property Descriptor record.
+-- |
+-- | Each ordinary object internal method delegates to a similarly-named
+-- | abstract operation. If such an abstract operation depends on another
+-- | internal method, then the internal method is invoked on \_O\_ rather
+-- | than calling the similarly-named abstract operation directly. These
+-- | semantics ensure that exotic objects have their overridden internal
+-- | methods invoked when ordinary object internal methods are applied to
+-- | them.
+-- |
+
+-- SPEC: L11049-L11073
+-- | In addition to \[\[Extensible\]\] and \[\[Prototype\]\], ECMAScript
+-- | function objects also have the internal slots listed in .
+-- |
+-- |   Internal Slot                       Type                                               Description
+-- |   ----------------------------------- -------------------------------------------------- ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+-- |   \[\[Environment\]\]                 an Environment Record                              The Environment Record that the function was closed over. Used as the outer environment when evaluating the code of the function.
+-- |   \[\[PrivateEnvironment\]\]          a PrivateEnvironment Record or \*null\*            The PrivateEnvironment Record for Private Names that the function was closed over. \*null\* if this function is not syntactically contained within a class. Used as the outer PrivateEnvironment for inner classes when evaluating the code of the function.
+-- |   \[\[FormalParameters\]\]            a Parse Node                                       The root parse node of the source text that defines the function\'s formal parameter list.
+-- |   \[\[ECMAScriptCode\]\]              a Parse Node                                       The root parse node of the source text that defines the function\'s body.
+-- |   \[\[ConstructorKind\]\]             \~base\~ or \~derived\~                            Whether or not the function is a derived class constructor.
+-- |   \[\[Realm\]\]                       a Realm Record                                     The realm in which the function was created and which provides any intrinsic objects that are accessed when evaluating the function.
+-- |   \[\[ScriptOrModule\]\]              a Script Record or a Module Record                 The script or module in which the function was created.
+-- |   \[\[ThisMode\]\]                    \~lexical\~, \~strict\~, or \~global\~             Defines how \`this\` references are interpreted within the formal parameters and code body of the function. \~lexical\~ means that \`this\` refers to the \*this\* value of a lexically enclosing function. \~strict\~ means that the \*this\* value is used exactly as provided by an invocation of the function. \~global\~ means that a \*this\* value of \*undefined\* or \*null\* is interpreted as a reference to the global object, and any other \*this\* value is first passed to ToObject.
+-- |   \[\[Strict\]\]                      a Boolean                                          \*true\* if this is a strict function, \*false\* if this is a non-strict function.
+-- |   \[\[HomeObject\]\]                  an Object                                          If the function uses \`super\`, this is the object whose \[\[GetPrototypeOf\]\] provides the object where \`super\` property lookups begin.
+-- |   \[\[SourceText\]\]                  a sequence of Unicode code points                  The source text that defines the function.
+-- |   \[\[Fields\]\]                      a List of ClassFieldDefinition Records             If the function is a class, this is a list of Records representing the non-static fields and corresponding initializers of the class.
+-- |   \[\[PrivateMethods\]\]              a List of PrivateElements                          If the function is a class, this is a list representing the non-static private methods and accessors of the class.
+-- |   \[\[ClassFieldInitializerName\]\]   a String, a Symbol, a Private Name, or \~empty\~   If the function is created as the initializer of a class field, the name to use for NamedEvaluation of the field; \~empty\~ otherwise.
+-- |   \[\[IsClassConstructor\]\]          a Boolean                                          Indicates whether the function is a class constructor. (If \*true\*, invoking the function\'s \[\[Call\]\] will immediately throw a \*TypeError\* exception.)
+-- |
+-- | All ECMAScript function objects have the \[\[Call\]\] internal method
+-- | defined here. ECMAScript functions that are also constructors in
+-- | addition have the \[\[Construct\]\] internal method.
+-- |
+
+-- SPEC: L11581-L11613
+-- | \*true\*, then 1. Let \_promiseCapability\_ be !
+-- | NewPromiseCapability(%Promise%). 1. Let \_resultsClosure\_ be a new
+-- | Abstract Closure with no parameters that captures \_F\_,
+-- | \_thisArgument\_, \_argumentsList\_, and \_newTarget\_ and performs the
+-- | following steps when called: 1. Let \_result\_ be the Completion Record
+-- | that is the result of evaluating \_F\_ in a manner that conforms to the
+-- | specification of \_F\_. If \_thisArgument\_ is \~uninitialized\~, the
+-- | \*this\* value is uninitialized; else \_thisArgument\_ provides the
+-- | \*this\* value. \_argumentsList\_ provides the named parameters.
+-- | \_newTarget\_ provides the NewTarget value. 1. NOTE: If \_F\_ is defined
+-- | in this document, "the specification of \_F\_" is the behaviour
+-- | specified for it via algorithm steps or other means. 1. Return
+-- | Completion(\_result\_). 1. Perform
+-- | AsyncFunctionStart(\_promiseCapability\_, \_resultsClosure\_). 1. Remove
+-- | \_calleeContext\_ from the execution context stack and restore
+-- | \_callerContext\_ as the running execution context. 1. Return
+-- | \_promiseCapability\_.\[\[Promise\]\]. 1.
+-- | \[id=\"step-call-builtin-function-result\"\] Let \_result\_ be the
+-- | Completion Record that is the result of evaluating \_F\_ in a manner
+-- | that conforms to the specification of \_F\_. If \_thisArgument\_ is
+-- | \~uninitialized\~, the \*this\* value is uninitialized; else
+-- | \_thisArgument\_ provides the \*this\* value. \_argumentsList\_ provides
+-- | the named parameters. \_newTarget\_ provides the NewTarget value. 1.
+-- | NOTE: If \_F\_ is defined in this document, "the specification of \_F\_"
+-- | is the behaviour specified for it via algorithm steps or other means. 1.
+-- | Remove \_calleeContext\_ from the execution context stack and restore
+-- | \_callerContext\_ as the running execution context. 1. Return ?
+-- | \_result\_.
+-- |
+-- | When \_calleeContext\_ is removed from the execution context stack it
+-- | must not be destroyed if it has been suspended and retained by an
+-- | accessible Generator for later resumption.
+-- |
+
+-- SPEC: L11874-L11912
+-- | # \[\[GetOwnProperty\]\] ( \_P\_: a property key, ): a normal completion containing either a Property Descriptor or \*undefined\*
+-- |
+-- | for
+-- | :   a String exotic object \_S\_
+-- |
+-- | 1\. Let \_desc\_ be OrdinaryGetOwnProperty(\_S\_, \_P\_). 1. If \_desc\_
+-- | is not \*undefined\*, return \_desc\_. 1. Return
+-- | StringGetOwnProperty(\_S\_, \_P\_).
+-- |
+-- | # \[\[DefineOwnProperty\]\] ( \_P\_: a property key, \_Desc\_: a Property Descriptor, ): a normal completion containing a Boolean
+-- |
+-- | for
+-- | :   a String exotic object \_S\_
+-- |
+-- | 1\. Let \_stringDesc\_ be StringGetOwnProperty(\_S\_, \_P\_). 1. If
+-- | \_stringDesc\_ is not \*undefined\*, then 1. Let \_extensible\_ be
+-- | \_S\_.\[\[Extensible\]\]. 1. Return
+-- | IsCompatiblePropertyDescriptor(\_extensible\_, \_Desc\_,
+-- | \_stringDesc\_). 1. Return ! OrdinaryDefineOwnProperty(\_S\_, \_P\_,
+-- | \_Desc\_).
+-- |
+-- | # \[\[OwnPropertyKeys\]\] ( ): a normal completion containing a List of property keys
+-- |
+-- | for
+-- | :   a String exotic object \_O\_
+-- |
+-- | 1\. Let \_keys\_ be a new empty List. 1. Let \_str\_ be
+-- | \_O\_.\[\[StringData\]\]. 1. Assert: \_str\_ is a String. 1. Let \_len\_
+-- | be the length of \_str\_. 1. For each integer \_i\_ such that 0 ≤ \_i\_
+-- | \< \_len\_, in ascending order, do 1. Append ! ToString(𝔽(\_i\_)) to
+-- | \_keys\_. 1. For each own property key \_P\_ of \_O\_ such that \_P\_ is
+-- | an array index and ! ToIntegerOrInfinity(\_P\_) ≥ \_len\_, in ascending
+-- | numeric index order, do 1. Append \_P\_ to \_keys\_. 1. For each own
+-- | property key \_P\_ of \_O\_ such that \_P\_ is a String and \_P\_ is not
+-- | an array index, in ascending chronological order of property creation,
+-- | do 1. Append \_P\_ to \_keys\_. 1. For each own property key \_P\_ of
+-- | \_O\_ such that \_P\_ is a Symbol, in ascending chronological order of
+-- | property creation, do 1. Append \_P\_ to \_keys\_. 1. Return \_keys\_.
+-- |
+
+-- SPEC: L11954-L12000
+-- | following implementations, with the ones not specified here using those
+-- | found in . These methods are installed in CreateMappedArgumentsObject.
+-- |
+-- | While CreateUnmappedArgumentsObject is grouped into this clause, it
+-- | creates an ordinary object, not an arguments exotic object.
+-- |
+-- | Arguments exotic objects have the same internal slots as ordinary
+-- | objects. They also have a \[\[ParameterMap\]\] internal slot. Ordinary
+-- | arguments objects also have a \[\[ParameterMap\]\] internal slot whose
+-- | value is always \*undefined\*. For ordinary argument objects the
+-- | \[\[ParameterMap\]\] internal slot is only used by
+-- | \`Object.prototype.toString\` () to identify them as such.
+-- |
+-- | The integer-indexed data properties of an arguments exotic object whose
+-- | numeric name values are less than the number of formal parameters of the
+-- | corresponding function object initially share their values with the
+-- | corresponding argument bindings in the function\'s execution context.
+-- | This means that changing the property changes the corresponding value of
+-- | the argument binding and vice-versa. This correspondence is broken if
+-- | such a property is deleted and then redefined or if the property is
+-- | changed into an accessor property. If the arguments object is an
+-- | ordinary object, the values of its properties are simply a copy of the
+-- | arguments passed to the function and there is no dynamic linkage between
+-- | the property values and the formal parameter values.
+-- |
+-- | The ParameterMap object and its property values are used as a device for
+-- | specifying the arguments object correspondence to argument bindings. The
+-- | ParameterMap object and the objects that are the values of its
+-- | properties are not directly observable from ECMAScript code. An
+-- | ECMAScript implementation does not need to actually create or use such
+-- | objects to implement the specified semantics.
+-- |
+-- | Ordinary arguments objects define a non-configurable accessor property
+-- | named \*\"callee\"\* which throws a \*TypeError\* exception on access.
+-- | The \*\"callee\"\* property has a more specific meaning for arguments
+-- | exotic objects, which are created only for some class of non-strict
+-- | functions. The definition of this property in the ordinary variant
+-- | exists to ensure that it is not defined in any other manner by
+-- | conforming ECMAScript implementations.
+-- |
+-- | ECMAScript implementations of arguments exotic objects have historically
+-- | contained an accessor property named \*\"caller\"\*. Prior to ECMAScript
+-- | 2017, this specification included the definition of a throwing
+-- | \*\"caller\"\* property on ordinary arguments objects. Since
+-- | implementations do not contain this extension any longer, ECMAScript
+-- | 2017 dropped the requirement for a throwing \*\"caller\"\* accessor.
+-- |
+
+-- SPEC: L12024-L12034
+-- | \_allowed\_ be ! OrdinaryDefineOwnProperty(\_args\_, \_P\_,
+-- | \_newArgDesc\_). 1. If \_allowed\_ is \*false\*, return \*false\*. 1. If
+-- | \_isMapped\_ is \*true\*, then 1. If IsAccessorDescriptor(\_Desc\_) is
+-- | \*true\*, then 1. Perform ! \_map\_.\[\[Delete\]\](\_P\_). 1. Else, 1.
+-- | If \_Desc\_ has a \[\[Value\]\] field, then 1. Assert: The following Set
+-- | will succeed, since formal parameters mapped by arguments objects are
+-- | always writable. 1. Perform ! Set(\_map\_, \_P\_,
+-- | \_Desc\_.\[\[Value\]\], \*false\*). 1. If \_Desc\_ has a
+-- | \[\[Writable\]\] field and \_Desc\_.\[\[Writable\]\] is \*false\*,
+-- | then 1. Perform ! \_map\_.\[\[Delete\]\](\_P\_). 1. Return \*true\*.
+-- |
+
+-- SPEC: L12046-L12082
+-- | # \[\[Set\]\] ( \_P\_: a property key, \_V\_: an ECMAScript language value, \_Receiver\_: an ECMAScript language value, ): either a normal completion containing a Boolean or a throw completion
+-- |
+-- | for
+-- | :   an arguments exotic object \_args\_
+-- |
+-- | 1\. If SameValue(\_args\_, \_Receiver\_) is \*false\*, then 1. Let
+-- | \_isMapped\_ be \*false\*. 1. Else, 1. Let \_map\_ be
+-- | \_args\_.\[\[ParameterMap\]\]. 1. Let \_isMapped\_ be !
+-- | HasOwnProperty(\_map\_, \_P\_). 1. If \_isMapped\_ is \*true\*, then 1.
+-- | Assert: The following Set will succeed, since formal parameters mapped
+-- | by arguments objects are always writable. 1. Perform ! Set(\_map\_,
+-- | \_P\_, \_V\_, \*false\*). 1. Return ? OrdinarySet(\_args\_, \_P\_,
+-- | \_V\_, \_Receiver\_).
+-- |
+-- | # \[\[Delete\]\] ( \_P\_: a property key, ): either a normal completion containing a Boolean or a throw completion
+-- |
+-- | for
+-- | :   an arguments exotic object \_args\_
+-- |
+-- | 1\. Let \_map\_ be \_args\_.\[\[ParameterMap\]\]. 1. Let \_isMapped\_ be
+-- | ! HasOwnProperty(\_map\_, \_P\_). 1. Let \_result\_ be ?
+-- | OrdinaryDelete(\_args\_, \_P\_). 1. If \_result\_ is \*true\* and
+-- | \_isMapped\_ is \*true\*, then 1. Perform !
+-- | \_map\_.\[\[Delete\]\](\_P\_). 1. Return \_result\_.
+-- |
+-- | # CreateUnmappedArgumentsObject ( \_argumentsList\_: a List of ECMAScript language values, ): an ordinary object
+-- |
+-- | 1\. Let \_len\_ be the number of elements in \_argumentsList\_. 1. Let
+-- | \_obj\_ be OrdinaryObjectCreate(%Object.prototype%, «
+-- | \[\[ParameterMap\]\] »). 1. Set \_obj\_.\[\[ParameterMap\]\] to
+-- | \*undefined\*. 1. Perform ! DefinePropertyOrThrow(\_obj\_,
+-- | \*\"length\"\*, PropertyDescriptor { \[\[Value\]\]: 𝔽(\_len\_),
+-- | \[\[Writable\]\]: \*true\*, \[\[Enumerable\]\]: \*false\*,
+-- | \[\[Configurable\]\]: \*true\* }). 1. Let \_index\_ be 0. 1. Repeat,
+-- | while \_index\_ \< \_len\_, 1. Let \_val\_ be
+-- | \_argumentsList\_\[\_index\_\]. 1. Perform !
+-- | CreateDataPropertyOrThrow(\_obj\_, ! ToString(𝔽(\_index\_)),
+
+-- SPEC: L12102-L12159
+-- | specified in . 1. Set \_obj\_.\[\[Prototype\]\] to
+-- | %Object.prototype%. 1. Let \_map\_ be OrdinaryObjectCreate(\*null\*). 1.
+-- | Set \_obj\_.\[\[ParameterMap\]\] to \_map\_. 1. Let \_parameterNames\_
+-- | be the BoundNames of \_formals\_. 1. Let \_numberOfParameters\_ be the
+-- | number of elements in \_parameterNames\_. 1. Let \_index\_ be 0. 1.
+-- | Repeat, while \_index\_ \< \_len\_, 1. Let \_val\_ be
+-- | \_argumentsList\_\[\_index\_\]. 1. Perform !
+-- | CreateDataPropertyOrThrow(\_obj\_, ! ToString(𝔽(\_index\_)),
+-- | \_val\_). 1. Set \_index\_ to \_index\_ + 1. 1. Perform !
+-- | DefinePropertyOrThrow(\_obj\_, \*\"length\"\*, PropertyDescriptor {
+-- | \[\[Value\]\]: 𝔽(\_len\_), \[\[Writable\]\]: \*true\*,
+-- | \[\[Enumerable\]\]: \*false\*, \[\[Configurable\]\]: \*true\* }). 1. Let
+-- | \_mappedNames\_ be a new empty List. 1. Set \_index\_ to
+-- | \_numberOfParameters\_ - 1. 1. Repeat, while \_index\_ ≥ 0, 1. Let
+-- | \_name\_ be \_parameterNames\_\[\_index\_\]. 1. If \_mappedNames\_ does
+-- | not contain \_name\_, then 1. Append \_name\_ to \_mappedNames\_. 1. If
+-- | \_index\_ \< \_len\_, then 1. Let \_g\_ be MakeArgGetter(\_name\_,
+-- | \_env\_). 1. Let \_p\_ be MakeArgSetter(\_name\_, \_env\_). 1. Perform !
+-- | \_map\_.\[\[DefineOwnProperty\]\](! ToString(𝔽(\_index\_)),
+-- | PropertyDescriptor { \[\[Set\]\]: \_p\_, \[\[Get\]\]: \_g\_,
+-- | \[\[Enumerable\]\]: \*false\*, \[\[Configurable\]\]: \*true\* }). 1. Set
+-- | \_index\_ to \_index\_ - 1. 1. Perform ! DefinePropertyOrThrow(\_obj\_,
+-- | %Symbol.iterator%, PropertyDescriptor { \[\[Value\]\]:
+-- | %Array.prototype.values%, \[\[Writable\]\]: \*true\*,
+-- | \[\[Enumerable\]\]: \*false\*, \[\[Configurable\]\]: \*true\* }). 1.
+-- | Perform ! DefinePropertyOrThrow(\_obj\_, \*\"callee\"\*,
+-- | PropertyDescriptor { \[\[Value\]\]: \_func\_, \[\[Writable\]\]:
+-- | \*true\*, \[\[Enumerable\]\]: \*false\*, \[\[Configurable\]\]: \*true\*
+-- | }). 1. Return \_obj\_.
+-- |
+-- | # MakeArgGetter ( \_name\_: a String, \_env\_: an Environment Record, ): a function object
+-- |
+-- | description
+-- | :   It creates a built-in function object that when executed returns the
+-- |     value bound for \_name\_ in \_env\_.
+-- |
+-- | 1\. Let \_getterClosure\_ be a new Abstract Closure with no parameters
+-- | that captures \_name\_ and \_env\_ and performs the following steps when
+-- | called: 1. Return NormalCompletion(! \_env\_.GetBindingValue(\_name\_,
+-- | \*false\*)). 1. Let \_getter\_ be
+-- | CreateBuiltinFunction(\_getterClosure\_, 0, \*\"\"\*, « »). 1. NOTE:
+-- | \_getter\_ is never directly accessible to ECMAScript code. 1. Return
+-- | \_getter\_.
+-- |
+-- | # MakeArgSetter ( \_name\_: a String, \_env\_: an Environment Record, ): a function object
+-- |
+-- | description
+-- | :   It creates a built-in function object that when executed sets the
+-- |     value bound for \_name\_ in \_env\_.
+-- |
+-- | 1\. Let \_setterClosure\_ be a new Abstract Closure with parameters
+-- | (\_value\_) that captures \_name\_ and \_env\_ and performs the
+-- | following steps when called: 1. Return NormalCompletion(!
+-- | \_env\_.SetMutableBinding(\_name\_, \_value\_, \*false\*)). 1. Let
+-- | \_setter\_ be CreateBuiltinFunction(\_setterClosure\_, 1, \*\"\"\*, «
+-- | »). 1. NOTE: \_setter\_ is never directly accessible to ECMAScript
+-- | code. 1. Return \_setter\_.
+-- |
+
+-- SPEC: L12901-L12910
+-- | - A property cannot be added, if the target object is not extensible.
+-- | - A property cannot be non-configurable, unless there exists a
+-- |   corresponding non-configurable own property of the target object.
+-- | - A non-configurable property cannot be non-writable, unless there
+-- |   exists a corresponding non-configurable, non-writable own property of
+-- |   the target object.
+-- | - If a property has a corresponding target object property then applying
+-- |   the Property Descriptor of the property to the target object using
+-- |   \[\[DefineOwnProperty\]\] will not throw an exception.
+-- |
+
+-- SPEC: L12964-L12976
+-- |   corresponding target object property if the target object property is
+-- |   a non-writable, non-configurable own data property.
+-- | - The value reported for a property must be \*undefined\* if the
+-- |   corresponding target object property is a non-configurable own
+-- |   accessor property that has \*undefined\* as its \[\[Get\]\] attribute.
+-- |
+-- | # \[\[Set\]\] ( \_P\_: a property key, \_V\_: an ECMAScript language value, \_Receiver\_: an ECMAScript language value, ): either a normal completion containing a Boolean or a throw completion
+-- |
+-- | for
+-- | :   a Proxy exotic object \_O\_
+-- |
+-- | 1\. Perform ? ValidateNonRevokedProxy(\_O\_). 1. Let \_target\_ be
+-- | \_O\_.\[\[ProxyTarget\]\]. 1. Let \_handler\_ be
+
+-- SPEC: L13211-L13259
+-- |
+-- | # Static Semantics: UTF16SurrogatePairToCodePoint ( \_lead\_: a code unit, \_trail\_: a code unit, ): a code point
+-- |
+-- | description
+-- | :   Two code units that form a UTF-16 surrogate pair are converted to a
+-- |     code point.
+-- |
+-- | 1\. Assert: \_lead\_ is a leading surrogate and \_trail\_ is a trailing
+-- | surrogate. 1. Let \_cp\_ be (\_lead\_ - 0xD800) × 0x400 + (\_trail\_ -
+-- | 0xDC00) + 0x10000. 1. Return the code point \_cp\_.
+-- |
+-- | # Static Semantics: CodePointAt ( \_string\_: a String, \_position\_: a non-negative integer, ): a Record with fields \[\[CodePoint\]\] (a code point), \[\[CodeUnitCount\]\] (a positive integer), and \[\[IsUnpairedSurrogate\]\] (a Boolean)
+-- |
+-- | description
+-- | :   It interprets \_string\_ as a sequence of UTF-16 encoded code
+-- |     points, as described in , and reads from it a single code point
+-- |     starting with the code unit at index \_position\_.
+-- |
+-- | 1\. Let \_size\_ be the length of \_string\_. 1. Assert: \_position\_ ≥
+-- | 0 and \_position\_ \< \_size\_. 1. Let \_first\_ be the code unit at
+-- | index \_position\_ within \_string\_. 1. Let \_cp\_ be the code point
+-- | whose numeric value is the numeric value of \_first\_. 1. If \_first\_
+-- | is neither a leading surrogate nor a trailing surrogate, then 1. Return
+-- | the Record { \[\[CodePoint\]\]: \_cp\_, \[\[CodeUnitCount\]\]: 1,
+-- | \[\[IsUnpairedSurrogate\]\]: \*false\* }. 1. If \_first\_ is a trailing
+-- | surrogate or \_position\_ + 1 = \_size\_, then 1. Return the Record {
+-- | \[\[CodePoint\]\]: \_cp\_, \[\[CodeUnitCount\]\]: 1,
+-- | \[\[IsUnpairedSurrogate\]\]: \*true\* }. 1. Let \_second\_ be the code
+-- | unit at index \_position\_ + 1 within \_string\_. 1. If \_second\_ is
+-- | not a trailing surrogate, then 1. Return the Record { \[\[CodePoint\]\]:
+-- | \_cp\_, \[\[CodeUnitCount\]\]: 1, \[\[IsUnpairedSurrogate\]\]: \*true\*
+-- | }. 1. Set \_cp\_ to UTF16SurrogatePairToCodePoint(\_first\_,
+-- | \_second\_). 1. Return the Record { \[\[CodePoint\]\]: \_cp\_,
+-- | \[\[CodeUnitCount\]\]: 2, \[\[IsUnpairedSurrogate\]\]: \*false\* }.
+-- |
+-- | # Static Semantics: StringToCodePoints ( \_string\_: a String, ): a List of code points
+-- |
+-- | description
+-- | :   It returns the sequence of Unicode code points that results from
+-- |     interpreting \_string\_ as UTF-16 encoded Unicode text as described
+-- |     in .
+-- |
+-- | 1\. Let \_codePoints\_ be a new empty List. 1. Let \_size\_ be the
+-- | length of \_string\_. 1. Let \_position\_ be 0. 1. Repeat, while
+-- | \_position\_ \< \_size\_, 1. Let \_cp\_ be CodePointAt(\_string\_,
+-- | \_position\_). 1. Append \_cp\_.\[\[CodePoint\]\] to \_codePoints\_. 1.
+-- | Set \_position\_ to \_position\_ + \_cp\_.\[\[CodeUnitCount\]\]. 1.
+-- | Return \_codePoints\_.
+-- |
+
+-- SPEC: L13357-L13385
+-- | # Directive Prologues and the Use Strict Directive
+-- |
+-- | A [Directive Prologue]{#directive-prologue .dfn
+-- | variants="Directive Prologues"} is the longest sequence of
+-- | \|ExpressionStatement\|s occurring as the initial \|StatementListItem\|s
+-- | or \|ModuleItem\|s of a \|FunctionBody\|, a \|ScriptBody\|, or a
+-- | \|ModuleBody\| and where each \|ExpressionStatement\| in the sequence
+-- | consists entirely of a \|StringLiteral\| token followed by a semicolon.
+-- | The semicolon may appear explicitly or may be inserted by automatic
+-- | semicolon insertion (). A Directive Prologue may be an empty sequence.
+-- |
+-- | A [Use Strict Directive]{#use-strict-directive .dfn
+-- | variants="Use Strict Directives"} is an \|ExpressionStatement\| in a
+-- | Directive Prologue whose \|StringLiteral\| is either of the exact code
+-- | point sequences \`\"use strict\"\` or \`\'use strict\'\`. A Use Strict
+-- | Directive may not contain an \|EscapeSequence\| or \|LineContinuation\|.
+-- |
+-- | A Directive Prologue may contain more than one Use Strict Directive.
+-- | However, an implementation may issue a warning if this occurs.
+-- |
+-- | The \|ExpressionStatement\|s of a Directive Prologue are evaluated
+-- | normally during evaluation of the containing production. Implementations
+-- | may define implementation specific meanings for \|ExpressionStatement\|s
+-- | which are not a Use Strict Directive and which occur in a Directive
+-- | Prologue. If an appropriate notification mechanism exists, an
+-- | implementation should issue a warning if it encounters in a Directive
+-- | Prologue an \|ExpressionStatement\| that is not a Use Strict Directive
+-- | and which does not have a meaning defined by the implementation.
+-- |
+
+-- SPEC: L15050-L15119
+-- | IdentifierReference\[?Yield, ?Await\] Initializer\[+In, ?Yield, ?Await\]
+-- | Initializer\[In, Yield, Await\] : \`=\` AssignmentExpression\[?In,
+-- | ?Yield, ?Await\]
+-- |
+-- | \|MethodDefinition\| is defined in .
+-- |
+-- | In certain contexts, \|ObjectLiteral\| is used as a cover grammar for a
+-- | more restricted secondary grammar. The \|CoverInitializedName\|
+-- | production is necessary to fully cover these secondary grammars.
+-- | However, use of this production results in an early Syntax Error in
+-- | normal contexts where an actual \|ObjectLiteral\| is expected.
+-- |
+-- | # Static Semantics: Early Errors
+-- |
+-- | PropertyDefinition : MethodDefinition
+-- |
+-- | - It is a Syntax Error if HasDirectSuper of \|MethodDefinition\| is
+-- |   \*true\*.
+-- | - It is a Syntax Error if the PrivateBoundIdentifiers of
+-- |   \|MethodDefinition\| is not empty.
+-- |
+-- | In addition to describing an actual object initializer the
+-- | \|ObjectLiteral\| productions are also used as a cover grammar for
+-- | \|ObjectAssignmentPattern\| and may be recognized as part of a
+-- | \|CoverParenthesizedExpressionAndArrowParameterList\|. When
+-- | \|ObjectLiteral\| appears in a context where \|ObjectAssignmentPattern\|
+-- | is required the following Early Error rules are **not** applied. In
+-- | addition, they are not applied when initially parsing a
+-- | \|CoverParenthesizedExpressionAndArrowParameterList\| or
+-- | \|CoverCallExpressionAndAsyncArrowHead\|.
+-- |
+-- | PropertyDefinition : CoverInitializedName
+-- |
+-- | - It is a Syntax Error if any source text is matched by this production.
+-- |
+-- | This production exists so that \|ObjectLiteral\| can serve as a cover
+-- | grammar for \|ObjectAssignmentPattern\|. It cannot occur in an actual
+-- | object initializer.
+-- |
+-- | ObjectLiteral : \`{\` PropertyDefinitionList \`}\` \`{\`
+-- | PropertyDefinitionList \`,\` \`}\`
+-- |
+-- | - It is a Syntax Error if the PropertyNameList of
+-- |   \|PropertyDefinitionList\| contains any duplicate entries for
+-- |   \*\"\_\_proto\_\_\"\* and at least two of those entries were obtained
+-- |   from productions of the form PropertyDefinition : PropertyName \`:\`
+-- |   AssignmentExpression. This rule is not applied if this
+-- |   \|ObjectLiteral\| is contained within a \|Script\| that is being
+-- |   parsed for ParseJSON (see step of ParseJSON).
+-- |
+-- | The List returned by PropertyNameList does not include property names
+-- | defined using a \|ComputedPropertyName\|.
+-- |
+-- | # Static Semantics: IsComputedPropertyKey ( ): a Boolean
+-- |
+-- | PropertyName : LiteralPropertyName 1. Return \*false\*. PropertyName :
+-- | ComputedPropertyName 1. Return \*true\*.
+-- |
+-- | # Static Semantics: PropertyNameList ( ): a List of Strings
+-- |
+-- | PropertyDefinitionList : PropertyDefinition 1. Let \_propName\_ be the
+-- | PropName of \|PropertyDefinition\|. 1. If \_propName\_ is \~empty\~,
+-- | return a new empty List. 1. Return « \_propName\_ ».
+-- | PropertyDefinitionList : PropertyDefinitionList \`,\`
+-- | PropertyDefinition 1. Let \_list\_ be the PropertyNameList of
+-- | \|PropertyDefinitionList\|. 1. Let \_propName\_ be the PropName of
+-- | \|PropertyDefinition\|. 1. If \_propName\_ is \~empty\~, return
+-- | \_list\_. 1. Return the list-concatenation of \_list\_ and «
+-- | \_propName\_ ».
+-- |
+
+-- SPEC: L15203-L15222
+-- | # Static Semantics: IsValidRegularExpressionLiteral ( \_literal\_: a \|RegularExpressionLiteral\| Parse Node, ): a Boolean
+-- |
+-- | description
+-- | :   It determines if its argument is a valid regular expression literal.
+-- |
+-- | 1\. Let \_flags\_ be the FlagText of \_literal\_. 1. If \_flags\_
+-- | contains any code points other than \`d\`, \`g\`, \`i\`, \`m\`, \`s\`,
+-- | \`u\`, \`v\`, or \`y\`, or if \_flags\_ contains any code point more
+-- | than once, return \*false\*. 1. If \_flags\_ contains \`u\`, let \_u\_
+-- | be \*true\*; else let \_u\_ be \*false\*. 1. If \_flags\_ contains
+-- | \`v\`, let \_v\_ be \*true\*; else let \_v\_ be \*false\*. 1. Let
+-- | \_patternText\_ be the BodyText of \_literal\_. 1. If \_u\_ is \*false\*
+-- | and \_v\_ is \*false\*, then 1. Let \_stringValue\_ be
+-- | CodePointsToString(\_patternText\_). 1. Set \_patternText\_ to the
+-- | sequence of code points resulting from interpreting each of the 16-bit
+-- | elements of \_stringValue\_ as a Unicode BMP code point. UTF-16 decoding
+-- | is not applied to the elements. 1. Let \_parseResult\_ be
+-- | ParsePattern(\_patternText\_, \_u\_, \_v\_). 1. If \_parseResult\_ is a
+-- | Parse Node, return \*true\*. 1. Return \*false\*.
+-- |
+
+-- SPEC: L15461-L15521
+-- | ?Await\] ArgumentList\[?Yield, ?Await\] \`,\` \`\...\`
+-- | AssignmentExpression\[+In, ?Yield, ?Await\] OptionalExpression\[Yield,
+-- | Await\] : MemberExpression\[?Yield, ?Await\] OptionalChain\[?Yield,
+-- | ?Await\] CallExpression\[?Yield, ?Await\] OptionalChain\[?Yield,
+-- | ?Await\] OptionalExpression\[?Yield, ?Await\] OptionalChain\[?Yield,
+-- | ?Await\] OptionalChain\[Yield, Await\] : \`?.\` Arguments\[?Yield,
+-- | ?Await\] \`?.\` \`\[\` Expression\[+In, ?Yield, ?Await\] \`\]\` \`?.\`
+-- | IdentifierName \`?.\` TemplateLiteral\[?Yield, ?Await, +Tagged\] \`?.\`
+-- | PrivateIdentifier OptionalChain\[?Yield, ?Await\] Arguments\[?Yield,
+-- | ?Await\] OptionalChain\[?Yield, ?Await\] \`\[\` Expression\[+In, ?Yield,
+-- | ?Await\] \`\]\` OptionalChain\[?Yield, ?Await\] \`.\` IdentifierName
+-- | OptionalChain\[?Yield, ?Await\] TemplateLiteral\[?Yield, ?Await,
+-- | +Tagged\] OptionalChain\[?Yield, ?Await\] \`.\` PrivateIdentifier
+-- | LeftHandSideExpression\[Yield, Await\] : NewExpression\[?Yield, ?Await\]
+-- | CallExpression\[?Yield, ?Await\] OptionalExpression\[?Yield, ?Await\]
+-- |
+-- | ## Supplemental Syntax
+-- |
+-- | When processing an instance of the production\
+-- | CallExpression : CoverCallExpressionAndAsyncArrowHead\
+-- | the interpretation of \|CoverCallExpressionAndAsyncArrowHead\| is
+-- | refined using the following grammar:
+-- |
+-- | CallMemberExpression\[Yield, Await\] : MemberExpression\[?Yield,
+-- | ?Await\] Arguments\[?Yield, ?Await\]
+-- |
+-- | # Static Semantics
+-- |
+-- | # Static Semantics: Early Errors
+-- |
+-- | OptionalChain : \`?.\` TemplateLiteral OptionalChain TemplateLiteral
+-- |
+-- | - It is a Syntax Error if any source text is matched by this production.
+-- |
+-- | This production exists in order to prevent automatic semicolon insertion
+-- | rules () from being applied to the following code:
+-- |
+-- | ``` javascript
+-- |
+-- |             a?.b
+-- |             `c`
+-- |           
+-- | ```
+-- |
+-- | so that it would be interpreted as two valid statements. The purpose is
+-- | to maintain consistency with similar code without optional chaining:
+-- |
+-- | ``` javascript
+-- |
+-- |             a.b
+-- |             `c`
+-- |           
+-- | ```
+-- |
+-- | which is a valid statement and where automatic semicolon insertion does
+-- | not apply.
+-- |
+-- | ImportMeta : \`import\` \`.\` \`meta\`
+-- |
+-- | - It is a Syntax Error if the syntactic goal symbol is not \|Module\|.
+-- |
+
+-- SPEC: L15714-L15735
+-- | # GetSuperConstructor ( ): an ECMAScript language value
+-- |
+-- | 1\. Let \_envRec\_ be GetThisEnvironment(). 1. Assert: \_envRec\_ is a
+-- | Function Environment Record. 1. Let \_activeFunction\_ be
+-- | \_envRec\_.\[\[FunctionObject\]\]. 1. Assert: \_activeFunction\_ is an
+-- | ECMAScript function object. 1. Let \_superConstructor\_ be !
+-- | \_activeFunction\_.\[\[GetPrototypeOf\]\](). 1. Return
+-- | \_superConstructor\_.
+-- |
+-- | # MakeSuperPropertyReference ( \_actualThis\_: an ECMAScript language value, \_propertyKey\_: an ECMAScript language value, \_strict\_: a Boolean, ): a Super Reference Record
+-- |
+-- | 1\. Let \_env\_ be GetThisEnvironment(). 1. Assert:
+-- | \_env\_.HasSuperBinding() is \*true\*. 1. Assert: \_env\_ is a Function
+-- | Environment Record. 1. Let \_baseValue\_ be GetSuperBase(\_env\_). 1.
+-- | Return the Reference Record { \[\[Base\]\]: \_baseValue\_,
+-- | \[\[ReferencedName\]\]: \_propertyKey\_, \[\[Strict\]\]: \_strict\_,
+-- | \[\[ThisValue\]\]: \_actualThis\_ }.
+-- |
+-- | # Argument Lists
+-- |
+-- | The evaluation of an argument list produces a List of values.
+-- |
+
+-- SPEC: L15861-L15946
+-- | GetValue(\_optionsRef\_). 1. Else, 1. Let \_options\_ be
+-- | \*undefined\*. 1. Let \_promiseCapability\_ be !
+-- | NewPromiseCapability(%Promise%). 1. Let \_specifierString\_ be
+-- | Completion(ToString(\_specifier\_)). 1.
+-- | IfAbruptRejectPromise(\_specifierString\_, \_promiseCapability\_). 1.
+-- | Let \_attributes\_ be a new empty List. 1. If \_options\_ is not
+-- | \*undefined\*, then 1. If \_options\_ is not an Object, then 1. Perform
+-- | ! Call(\_promiseCapability\_.\[\[Reject\]\], \*undefined\*, « a newly
+-- | created \*TypeError\* object »). 1. Return
+-- | \_promiseCapability\_.\[\[Promise\]\]. 1. Let \_attributesObj\_ be
+-- | Completion(Get(\_options\_, \*\"with\"\*)). 1.
+-- | IfAbruptRejectPromise(\_attributesObj\_, \_promiseCapability\_). 1. If
+-- | \_attributesObj\_ is not \*undefined\*, then 1. If \_attributesObj\_ is
+-- | not an Object, then 1. Perform !
+-- | Call(\_promiseCapability\_.\[\[Reject\]\], \*undefined\*, « a newly
+-- | created \*TypeError\* object »). 1. Return
+-- | \_promiseCapability\_.\[\[Promise\]\]. 1. Let \_entries\_ be
+-- | Completion(EnumerableOwnProperties(\_attributesObj\_,
+-- | \~key+value\~)). 1. IfAbruptRejectPromise(\_entries\_,
+-- | \_promiseCapability\_). 1. For each element \_entry\_ of \_entries\_,
+-- | do 1. Let \_key\_ be ! Get(\_entry\_, \*\"0\"\*). 1. Let \_value\_ be !
+-- | Get(\_entry\_, \*\"1\"\*). 1. If \_key\_ is a String, then 1. If
+-- | \_value\_ is not a String, then 1. Perform !
+-- | Call(\_promiseCapability\_.\[\[Reject\]\], \*undefined\*, « a newly
+-- | created \*TypeError\* object »). 1. Return
+-- | \_promiseCapability\_.\[\[Promise\]\]. 1. Append the ImportAttribute
+-- | Record { \[\[Key\]\]: \_key\_, \[\[Value\]\]: \_value\_ } to
+-- | \_attributes\_. 1. If AllImportAttributesSupported(\_attributes\_) is
+-- | \*false\*, then 1. Perform ! Call(\_promiseCapability\_.\[\[Reject\]\],
+-- | \*undefined\*, « a newly created \*TypeError\* object »). 1. Return
+-- | \_promiseCapability\_.\[\[Promise\]\]. 1. Sort \_attributes\_ according
+-- | to the lexicographic order of their \[\[Key\]\] field, treating the
+-- | value of each such field as a sequence of UTF-16 code unit values. NOTE:
+-- | This sorting is observable only in that hosts are prohibited from
+-- | changing behaviour based on the order in which attributes are
+-- | enumerated. 1. Let \_moduleRequest\_ be a new ModuleRequest Record {
+-- | \[\[Specifier\]\]: \_specifierString\_, \[\[Attributes\]\]:
+-- | \_attributes\_ }. 1. Perform HostLoadImportedModule(\_referrer\_,
+-- | \_moduleRequest\_, \~empty\~, \_promiseCapability\_). 1. Return
+-- | \_promiseCapability\_.\[\[Promise\]\].
+-- |
+-- | # ContinueDynamicImport ( \_promiseCapability\_: a PromiseCapability Record, \_moduleCompletion\_: either a normal completion containing a Module Record or a throw completion, ): \~unused\~
+-- |
+-- | description
+-- | :   It completes the process of a dynamic import originally started by
+-- |     an \`import()\` call, resolving or rejecting the promise returned by
+-- |     that call as appropriate.
+-- |
+-- | 1\. If \_moduleCompletion\_ is an abrupt completion, then 1. Perform !
+-- | Call(\_promiseCapability\_.\[\[Reject\]\], \*undefined\*, «
+-- | \_moduleCompletion\_.\[\[Value\]\] »). 1. Return \~unused\~. 1. Let
+-- | \_module\_ be \_moduleCompletion\_.\[\[Value\]\]. 1. Let \_loadPromise\_
+-- | be \_module\_.LoadRequestedModules(). 1. Let \_rejectedClosure\_ be a
+-- | new Abstract Closure with parameters (\_reason\_) that captures
+-- | \_promiseCapability\_ and performs the following steps when called: 1.
+-- | Perform ! Call(\_promiseCapability\_.\[\[Reject\]\], \*undefined\*, «
+-- | \_reason\_ »). 1. Return NormalCompletion(\*undefined\*). 1. Let
+-- | \_onRejected\_ be CreateBuiltinFunction(\_rejectedClosure\_, 1,
+-- | \*\"\"\*, « »). 1. Let \_linkAndEvaluateClosure\_ be a new Abstract
+-- | Closure with no parameters that captures \_module\_,
+-- | \_promiseCapability\_, and \_onRejected\_ and performs the following
+-- | steps when called: 1. Let \_link\_ be Completion(\_module\_.Link()). 1.
+-- | If \_link\_ is an abrupt completion, then 1. Perform !
+-- | Call(\_promiseCapability\_.\[\[Reject\]\], \*undefined\*, «
+-- | \_link\_.\[\[Value\]\] »). 1. Return NormalCompletion(\*undefined\*). 1.
+-- | Let \_evaluatePromise\_ be \_module\_.Evaluate(). 1. Let
+-- | \_fulfilledClosure\_ be a new Abstract Closure with no parameters that
+-- | captures \_module\_ and \_promiseCapability\_ and performs the following
+-- | steps when called: 1. Let \_namespace\_ be
+-- | GetModuleNamespace(\_module\_). 1. Perform !
+-- | Call(\_promiseCapability\_.\[\[Resolve\]\], \*undefined\*, «
+-- | \_namespace\_ »). 1. Return NormalCompletion(\*undefined\*). 1. Let
+-- | \_onFulfilled\_ be CreateBuiltinFunction(\_fulfilledClosure\_, 0,
+-- | \*\"\"\*, « »). 1. Perform PerformPromiseThen(\_evaluatePromise\_,
+-- | \_onFulfilled\_, \_onRejected\_). 1. Return \~unused\~. 1. Let
+-- | \_linkAndEvaluate\_ be CreateBuiltinFunction(\_linkAndEvaluateClosure\_,
+-- | 0, \*\"\"\*, « »). 1. Perform PerformPromiseThen(\_loadPromise\_,
+-- | \_linkAndEvaluate\_, \_onRejected\_). 1. Return \~unused\~.
+-- |
+-- | # Tagged Templates
+-- |
+-- | A tagged template is a function call where the arguments of the call are
+-- | derived from a \|TemplateLiteral\| (). The actual arguments include a
+-- | template object () and the values produced by evaluating the expressions
+-- | embedded within the \|TemplateLiteral\|.
+-- |
+
+-- SPEC: L15979-L16002
+-- | # HostGetImportMetaProperties ( \_moduleRecord\_: a Module Record, ): a List of Records with fields \[\[Key\]\] (a property key) and \[\[Value\]\] (an ECMAScript language value)
+-- |
+-- | description
+-- | :   It allows hosts to provide property keys and values for the object
+-- |     returned from \`import.meta\`.
+-- |
+-- | The default implementation of HostGetImportMetaProperties is to return a
+-- | new empty List.
+-- |
+-- | # HostFinalizeImportMeta ( \_importMeta\_: an Object, \_moduleRecord\_: a Module Record, ): \~unused\~
+-- |
+-- | description
+-- | :   It allows hosts to perform any extraordinary operations to prepare
+-- |     the object returned from \`import.meta\`.
+-- |
+-- | Most hosts will be able to simply define HostGetImportMetaProperties,
+-- | and leave HostFinalizeImportMeta with its default behaviour. However,
+-- | HostFinalizeImportMeta provides an \"escape hatch\" for hosts which need
+-- | to directly manipulate the object before it is exposed to ECMAScript
+-- | code.
+-- |
+-- | The default implementation of HostFinalizeImportMeta is to return
+-- | \~unused\~.
+-- |
+
+-- SPEC: L16013-L16027
+-- | # Static Semantics: Early Errors
+-- |
+-- | UpdateExpression : LeftHandSideExpression \`++\` LeftHandSideExpression
+-- | \`\--\`
+-- |
+-- | - It is an early Syntax Error if the AssignmentTargetType of
+-- |   \|LeftHandSideExpression\| is \~invalid\~.
+-- |
+-- | UpdateExpression : \`++\` UnaryExpression \`\--\` UnaryExpression
+-- |
+-- | - It is an early Syntax Error if the AssignmentTargetType of
+-- |   \|UnaryExpression\| is \~invalid\~.
+-- |
+-- | # Postfix Increment Operator
+-- |
+
+-- SPEC: L16475-L16499
+-- |
+-- | The equality operators maintain the following invariants:
+-- |
+-- | - \`A != B\` is equivalent to \`!(A == B)\`.
+-- | - \`A == B\` is equivalent to \`B == A\`, except in the order of
+-- |   evaluation of \`A\` and \`B\`.
+-- |
+-- | The equality operator is not always transitive. For example, there might
+-- | be two distinct String objects, each representing the same String value;
+-- | each String object would be considered equal to the String value by the
+-- | \`==\` operator, but the two String objects would not be equal to each
+-- | other. For example:
+-- |
+-- | - \`new String(\"a\") == \"a\"\` and \`\"a\" == new String(\"a\")\` are
+-- |   both \*true\*.
+-- | - \`new String(\"a\") == new String(\"a\")\` is \*false\*.
+-- |
+-- | Comparison of Strings uses a simple equality test on sequences of code
+-- | unit values. There is no attempt to use the more complex, semantically
+-- | oriented definitions of character or string equality and collating order
+-- | defined in the Unicode specification. Therefore Strings values that are
+-- | canonically equal according to the Unicode Standard could test as
+-- | unequal. In effect this algorithm assumes that both Strings are already
+-- | in normalized form.
+-- |
+
+-- SPEC: L16614-L16637
+-- | # Static Semantics: Early Errors
+-- |
+-- | AssignmentExpression : LeftHandSideExpression \`=\` AssignmentExpression
+-- |
+-- | - If \|LeftHandSideExpression\| is either an \|ObjectLiteral\| or an
+-- |   \|ArrayLiteral\|, \|LeftHandSideExpression\| must cover an
+-- |   \|AssignmentPattern\|.
+-- | - If \|LeftHandSideExpression\| is neither an \|ObjectLiteral\| nor an
+-- |   \|ArrayLiteral\|, it is a Syntax Error if the AssignmentTargetType of
+-- |   \|LeftHandSideExpression\| is \~invalid\~.
+-- |
+-- | AssignmentExpression : LeftHandSideExpression AssignmentOperator
+-- | AssignmentExpression
+-- |
+-- | - It is a Syntax Error if the AssignmentTargetType of
+-- |   \|LeftHandSideExpression\| is \~invalid\~.
+-- |
+-- | AssignmentExpression : LeftHandSideExpression \`&&=\`
+-- | AssignmentExpression LeftHandSideExpression \`\|\|=\`
+-- | AssignmentExpression LeftHandSideExpression \`??=\` AssignmentExpression
+-- |
+-- | - It is a Syntax Error if the AssignmentTargetType of
+-- |   \|LeftHandSideExpression\| is not \~simple\~.
+-- |
+
+-- SPEC: L17244-L17261
+-- | ?Return\] Declaration\[?Yield, ?Await\]
+-- |
+-- | # Static Semantics: Early Errors
+-- |
+-- | Block : \`{\` StatementList \`}\`
+-- |
+-- | - It is a Syntax Error if the LexicallyDeclaredNames of
+-- |   \|StatementList\| contains any duplicate entries[, unless the host is
+-- |   a web browser or otherwise supports , and both of the following
+-- |   conditions are true:]{normative-optional=""}
+-- |
+-- |   - IsStrict(this production) is \*false\*.
+-- |   - The duplicate entries are only bound by FunctionDeclarations.
+-- |
+-- | - It is a Syntax Error if any element of the LexicallyDeclaredNames of
+-- |   \|StatementList\| also occurs in the VarDeclaredNames of
+-- |   \|StatementList\|.
+-- |
+
+-- SPEC: L17351-L17371
+-- | Yield, Await\] : LexicalBinding\[?In, ?Yield, ?Await\] BindingList\[?In,
+-- | ?Yield, ?Await\] \`,\` LexicalBinding\[?In, ?Yield, ?Await\]
+-- | LexicalBinding\[In, Yield, Await\] : BindingIdentifier\[?Yield, ?Await\]
+-- | Initializer\[?In, ?Yield, ?Await\]? BindingPattern\[?Yield, ?Await\]
+-- | Initializer\[?In, ?Yield, ?Await\]
+-- |
+-- | # Static Semantics: Early Errors
+-- |
+-- | LexicalDeclaration : LetOrConst BindingList \`;\`
+-- |
+-- | - It is a Syntax Error if the BoundNames of \|BindingList\| contains
+-- |   \*\"let\"\*.
+-- | - It is a Syntax Error if the BoundNames of \|BindingList\| contains any
+-- |   duplicate entries.
+-- |
+-- | LexicalBinding : BindingIdentifier Initializer?
+-- |
+-- | - It is a Syntax Error if \|Initializer\| is not present and
+-- |   IsConstantDeclaration of the \|LexicalDeclaration\| containing this
+-- |   \|LexicalBinding\| is \*true\*.
+-- |
+
+-- SPEC: L17461-L17483
+-- | \`{\` BindingPropertyList\[?Yield, ?Await\] \`}\` \`{\`
+-- | BindingPropertyList\[?Yield, ?Await\] \`,\` BindingRestProperty\[?Yield,
+-- | ?Await\]? \`}\` ArrayBindingPattern\[Yield, Await\] : \`\[\` Elision?
+-- | BindingRestElement\[?Yield, ?Await\]? \`\]\` \`\[\`
+-- | BindingElementList\[?Yield, ?Await\] \`\]\` \`\[\`
+-- | BindingElementList\[?Yield, ?Await\] \`,\` Elision?
+-- | BindingRestElement\[?Yield, ?Await\]? \`\]\` BindingRestProperty\[Yield,
+-- | Await\] : \`\...\` BindingIdentifier\[?Yield, ?Await\]
+-- | BindingPropertyList\[Yield, Await\] : BindingProperty\[?Yield, ?Await\]
+-- | BindingPropertyList\[?Yield, ?Await\] \`,\` BindingProperty\[?Yield,
+-- | ?Await\] BindingElementList\[Yield, Await\] :
+-- | BindingElisionElement\[?Yield, ?Await\] BindingElementList\[?Yield,
+-- | ?Await\] \`,\` BindingElisionElement\[?Yield, ?Await\]
+-- | BindingElisionElement\[Yield, Await\] : Elision? BindingElement\[?Yield,
+-- | ?Await\] BindingProperty\[Yield, Await\] : SingleNameBinding\[?Yield,
+-- | ?Await\] PropertyName\[?Yield, ?Await\] \`:\` BindingElement\[?Yield,
+-- | ?Await\] BindingElement\[Yield, Await\] : SingleNameBinding\[?Yield,
+-- | ?Await\] BindingPattern\[?Yield, ?Await\] Initializer\[+In, ?Yield,
+-- | ?Await\]? SingleNameBinding\[Yield, Await\] : BindingIdentifier\[?Yield,
+-- | ?Await\] Initializer\[+In, ?Yield, ?Await\]? BindingRestElement\[Yield,
+-- | Await\] : \`\...\` BindingIdentifier\[?Yield, ?Await\] \`\...\`
+-- | BindingPattern\[?Yield, ?Await\]
+-- |
+
+-- SPEC: L17504-L17514
+-- | # Runtime Semantics: RestBindingInitialization ( \_value\_: an ECMAScript language value, \_environment\_: an Environment Record or \*undefined\*, \_excludedNames\_: a List of property keys, ): either a normal completion containing \~unused\~ or an abrupt completion
+-- |
+-- | BindingRestProperty : \`\...\` BindingIdentifier 1. Let \_lhs\_ be ?
+-- | ResolveBinding(StringValue of \|BindingIdentifier\|,
+-- | \_environment\_). 1. Let \_restObj\_ be
+-- | OrdinaryObjectCreate(%Object.prototype%). 1. Perform ?
+-- | CopyDataProperties(\_restObj\_, \_value\_, \_excludedNames\_). 1. If
+-- | \_environment\_ is \*undefined\*, return ? PutValue(\_lhs\_,
+-- | \_restObj\_). 1. Return ? InitializeReferencedBinding(\_lhs\_,
+-- | \_restObj\_).
+-- |
+
+-- SPEC: L17586-L17605
+-- | is, when the choice of associated \`if\` is otherwise ambiguous, the
+-- | \`else\` is associated with the nearest (innermost) of the candidate
+-- | \`if\`s
+-- |
+-- | # Static Semantics: Early Errors
+-- |
+-- | IfStatement : \`if\` \`(\` Expression \`)\` Statement \`else\` Statement
+-- |
+-- | - It is a Syntax Error if IsLabelledFunction(the first \|Statement\|) is
+-- |   \*true\*.
+-- | - It is a Syntax Error if IsLabelledFunction(the second \|Statement\|)
+-- |   is \*true\*.
+-- |
+-- | IfStatement : \`if\` \`(\` Expression \`)\` Statement
+-- |
+-- | - It is a Syntax Error if IsLabelledFunction(\|Statement\|) is \*true\*.
+-- |
+-- | It is only necessary to apply this rule if the extension specified in is
+-- | implemented.
+-- |
+
+-- SPEC: L18101-L18154
+-- | objects must be obtained by invoking EnumerateObjectProperties passing
+-- | the prototype object as the argument. EnumerateObjectProperties must
+-- | obtain the own property keys of the target object by calling its
+-- | \[\[OwnPropertyKeys\]\] internal method. Property attributes of the
+-- | target object must be obtained by calling its \[\[GetOwnProperty\]\]
+-- | internal method.
+-- |
+-- | In addition, if neither \_O\_ nor any object in its prototype chain is a
+-- | Proxy exotic object, TypedArray, module namespace exotic object, or
+-- | implementation provided exotic object, then the iterator must behave as
+-- | would the iterator given by CreateForInIterator(\_O\_) until one of the
+-- | following occurs:
+-- |
+-- | - the value of the \[\[Prototype\]\] internal slot of \_O\_ or an object
+-- |   in its prototype chain changes,
+-- | - a property is removed from \_O\_ or an object in its prototype chain,
+-- | - a property is added to an object in \_O\_\'s prototype chain, or
+-- | - the value of the \[\[Enumerable\]\] attribute of a property of \_O\_
+-- |   or an object in its prototype chain changes.
+-- |
+-- | ECMAScript implementations are not required to implement the algorithm
+-- | in directly. They may choose any implementation whose behaviour will not
+-- | deviate from that algorithm unless one of the constraints in the
+-- | previous paragraph is violated.
+-- |
+-- | The following is an informative definition of an ECMAScript generator
+-- | function that conforms to these rules:
+-- |
+-- | ``` javascript
+-- |
+-- |             function* EnumerateObjectProperties(obj) {
+-- |               const visited = new Set();
+-- |               for (const key of Reflect.ownKeys(obj)) {
+-- |                 if (typeof key === "symbol") continue;
+-- |                 const desc = Reflect.getOwnPropertyDescriptor(obj, key);
+-- |                 if (desc) {
+-- |                   visited.add(key);
+-- |                   if (desc.enumerable) yield key;
+-- |                 }
+-- |               }
+-- |               const proto = Reflect.getPrototypeOf(obj);
+-- |               if (proto === null) return;
+-- |               for (const protoKey of EnumerateObjectProperties(proto)) {
+-- |                 if (!visited.has(protoKey)) yield protoKey;
+-- |               }
+-- |             }
+-- |           
+-- | ```
+-- |
+-- | The list of exotic objects for which implementations are not required to
+-- | match CreateForInIterator was chosen because implementations
+-- | historically differed in behaviour for those cases, and agreed in all
+-- | others.
+-- |
+
+-- SPEC: L18470-L18485
+-- | # Static Semantics: Early Errors
+-- |
+-- | LabelledItem : FunctionDeclaration
+-- |
+-- | - It is a Syntax Error if any source text is matched by this
+-- |   production[, unless that source text is non-strict code and the host
+-- |   is a web browser or otherwise supports ]{normative-optional=""}.
+-- |
+-- | # Static Semantics: IsLabelledFunction ( \_stmt\_: a \|Statement\| Parse Node, ): a Boolean
+-- |
+-- | 1\. If \_stmt\_ is not a \|LabelledStatement\|, return \*false\*. 1. Let
+-- | \_item\_ be the \|LabelledItem\| of \_stmt\_. 1. If \_item\_ is
+-- | LabelledItem : FunctionDeclaration, return \*true\*. 1. Let \_subStmt\_
+-- | be the \|Statement\| of \_item\_. 1. Return
+-- | IsLabelledFunction(\_subStmt\_).
+-- |
+
+-- SPEC: L18566-L18578
+-- | Catch : \`catch\` \`(\` CatchParameter \`)\` Block
+-- |
+-- | - It is a Syntax Error if the BoundNames of \|CatchParameter\| contains
+-- |   any duplicate elements.
+-- | - It is a Syntax Error if any element of the BoundNames of
+-- |   \|CatchParameter\| also occurs in the LexicallyDeclaredNames of
+-- |   \|Block\|.
+-- | - It is a Syntax Error if any element of the BoundNames of
+-- |   \|CatchParameter\| also occurs in the VarDeclaredNames of \|Block\|[,
+-- |   unless \|CatchParameter\| is CatchParameter : BindingIdentifier and
+-- |   the host is a web browser or otherwise supports
+-- |   ]{normative-optional=""}.
+-- |
+
+-- SPEC: L23131-L23204
+-- | HostEnsureCanCompileStrings(\_evalRealm\_, « », \_x\_, \_direct\_). 1.
+-- | Let \_inFunction\_ be \*false\*. 1. Let \_inMethod\_ be \*false\*. 1.
+-- | Let \_inDerivedConstructor\_ be \*false\*. 1. Let
+-- | \_inClassFieldInitializer\_ be \*false\*. 1. If \_direct\_ is \*true\*,
+-- | then 1. Let \_thisEnvRec\_ be GetThisEnvironment(). 1. If \_thisEnvRec\_
+-- | is a Function Environment Record, then 1. Let \_F\_ be
+-- | \_thisEnvRec\_.\[\[FunctionObject\]\]. 1. Set \_inFunction\_ to
+-- | \*true\*. 1. Set \_inMethod\_ to \_thisEnvRec\_.HasSuperBinding(). 1. If
+-- | \_F\_.\[\[ConstructorKind\]\] is \~derived\~, set
+-- | \_inDerivedConstructor\_ to \*true\*. 1. Let
+-- | \_classFieldInitializerName\_ be
+-- | \_F\_.\[\[ClassFieldInitializerName\]\]. 1. If
+-- | \_classFieldInitializerName\_ is not \~empty\~, set
+-- | \_inClassFieldInitializer\_ to \*true\*. 1. Perform the following
+-- | substeps in an implementation-defined order, possibly interleaving
+-- | parsing and error detection: 1. Let \_script\_ be ParseText(\_x\_,
+-- | \|Script\|). 1. If \_script\_ is a List of errors, throw a
+-- | \*SyntaxError\* exception. 1. If \_script\_ Contains \|ScriptBody\| is
+-- | \*false\*, return \*undefined\*. 1. Let \_body\_ be the \|ScriptBody\|
+-- | of \_script\_. 1. If \_inFunction\_ is \*false\* and \_body\_ Contains
+-- | \|NewTarget\|, throw a \*SyntaxError\* exception. 1. If \_inMethod\_ is
+-- | \*false\* and \_body\_ Contains \|SuperProperty\|, throw a
+-- | \*SyntaxError\* exception. 1. If \_inDerivedConstructor\_ is \*false\*
+-- | and \_body\_ Contains \|SuperCall\|, throw a \*SyntaxError\*
+-- | exception. 1. If \_inClassFieldInitializer\_ is \*true\* and
+-- | ContainsArguments of \_body\_ is \*true\*, throw a \*SyntaxError\*
+-- | exception. 1. If \_strictCaller\_ is \*true\*, let \_strictEval\_ be
+-- | \*true\*. 1. Else, let \_strictEval\_ be ScriptIsStrict of
+-- | \_script\_. 1. Let \_runningContext\_ be the running execution
+-- | context. 1. NOTE: If \_direct\_ is \*true\*, \_runningContext\_ will be
+-- | the execution context that performed the direct eval. If \_direct\_ is
+-- | \*false\*, \_runningContext\_ will be the execution context for the
+-- | invocation of the \`eval\` function. 1. If \_direct\_ is \*true\*,
+-- | then 1. Let \_lexEnv\_ be
+-- | NewDeclarativeEnvironment(\_runningContext\_\'s LexicalEnvironment). 1.
+-- | Let \_varEnv\_ be \_runningContext\_\'s VariableEnvironment. 1. Let
+-- | \_privateEnv\_ be \_runningContext\_\'s PrivateEnvironment. 1. Else, 1.
+-- | Let \_lexEnv\_ be
+-- | NewDeclarativeEnvironment(\_evalRealm\_.\[\[GlobalEnv\]\]). 1. Let
+-- | \_varEnv\_ be \_evalRealm\_.\[\[GlobalEnv\]\]. 1. Let \_privateEnv\_ be
+-- | \*null\*. 1. If \_strictEval\_ is \*true\*, set \_varEnv\_ to
+-- | \_lexEnv\_. 1. If \_runningContext\_ is not already suspended, suspend
+-- | \_runningContext\_. 1. Let \_evalContext\_ be a new ECMAScript code
+-- | execution context. 1. Set \_evalContext\_\'s Function to \*null\*. 1.
+-- | Set \_evalContext\_\'s Realm to \_evalRealm\_. 1. Set \_evalContext\_\'s
+-- | ScriptOrModule to \_runningContext\_\'s ScriptOrModule. 1. Set
+-- | \_evalContext\_\'s VariableEnvironment to \_varEnv\_. 1. Set
+-- | \_evalContext\_\'s LexicalEnvironment to \_lexEnv\_. 1. Set
+-- | \_evalContext\_\'s PrivateEnvironment to \_privateEnv\_. 1. Push
+-- | \_evalContext\_ onto the execution context stack; \_evalContext\_ is now
+-- | the running execution context. 1. Let \_result\_ be
+-- | Completion(EvalDeclarationInstantiation(\_body\_, \_varEnv\_,
+-- | \_lexEnv\_, \_privateEnv\_, \_strictEval\_)). 1. If \_result\_ is a
+-- | normal completion, then 1. Set \_result\_ to Completion(Evaluation of
+-- | \_body\_). 1. If \_result\_ is a normal completion and
+-- | \_result\_.\[\[Value\]\] is \~empty\~, then 1. Set \_result\_ to
+-- | NormalCompletion(\*undefined\*). 1. Suspend \_evalContext\_ and remove
+-- | it from the execution context stack. 1. Resume the context that is now
+-- | on the top of the execution context stack as the running execution
+-- | context. 1. Return ? \_result\_.
+-- |
+-- | The eval code cannot instantiate variable or function bindings in the
+-- | variable environment of the calling context that invoked the eval if
+-- | either the code of the calling context or the eval code is strict mode
+-- | code. Instead such bindings are instantiated in a new
+-- | VariableEnvironment that is only accessible to the eval code. Bindings
+-- | introduced by \`let\`, \`const\`, or \`class\` declarations are always
+-- | instantiated in a new LexicalEnvironment.
+-- |
+-- | # HostEnsureCanCompileStrings ( \_calleeRealm\_: a Realm Record, \_parameterStrings\_: a List of Strings, \_bodyString\_: a String, \_direct\_: a Boolean, ): either a normal completion containing \~unused\~ or a throw completion
+-- |
+-- | description
+-- | :   It allows host environments to block certain ECMAScript functions
+-- |     which allow developers to interpret and evaluate strings as
+
+-- SPEC: L23521-L23605
+-- | # Encode ( \_string\_: a String, \_extraUnescaped\_: a String, ): either a normal completion containing a String or a throw completion
+-- |
+-- | description
+-- | :   It performs URI encoding and escaping, interpreting \_string\_ as a
+-- |     sequence of UTF-16 encoded code points as described in . If a
+-- |     character is identified as unreserved in RFC 2396 or appears in
+-- |     \_extraUnescaped\_, it is not escaped.
+-- |
+-- | 1\. Let \_len\_ be the length of \_string\_. 1. Let \_R\_ be the empty
+-- | String. 1. Let \_alwaysUnescaped\_ be the string-concatenation of the
+-- | ASCII word characters and \*\"-.!\~\\\*\'()\"\*. 1. Let \_unescapedSet\_
+-- | be the string-concatenation of \_alwaysUnescaped\_ and
+-- | \_extraUnescaped\_. 1. Let \_k\_ be 0. 1. Repeat, while \_k\_ \<
+-- | \_len\_, 1. Let \_C\_ be the code unit at index \_k\_ within
+-- | \_string\_. 1. If \_unescapedSet\_ contains \_C\_, then 1. Set \_k\_ to
+-- | \_k\_ + 1. 1. Set \_R\_ to the string-concatenation of \_R\_ and
+-- | \_C\_. 1. Else, 1. Let \_cp\_ be CodePointAt(\_string\_, \_k\_). 1. If
+-- | \_cp\_.\[\[IsUnpairedSurrogate\]\] is \*true\*, throw a \*URIError\*
+-- | exception. 1. Set \_k\_ to \_k\_ + \_cp\_.\[\[CodeUnitCount\]\]. 1. Let
+-- | \_Octets\_ be the List of octets resulting by applying the UTF-8
+-- | transformation to \_cp\_.\[\[CodePoint\]\]. 1. For each element
+-- | \_octet\_ of \_Octets\_, do 1. Let \_hex\_ be the String representation
+-- | of \_octet\_, formatted as an uppercase hexadecimal number. 1. Set \_R\_
+-- | to the string-concatenation of \_R\_, \*\"%\"\*, and StringPad(\_hex\_,
+-- | 2, \*\"0\"\*, \~start\~). 1. Return \_R\_.
+-- |
+-- | Because percent-encoding is used to represent individual octets, a
+-- | single code point may be expressed as multiple consecutive escape
+-- | sequences (one for each of its 8-bit UTF-8 code units).
+-- |
+-- | # Decode ( \_string\_: a String, \_preserveEscapeSet\_: a String, ): either a normal completion containing a String or a throw completion
+-- |
+-- | description
+-- | :   It performs URI unescaping and decoding, preserving any escape
+-- |     sequences that correspond to Basic Latin characters in
+-- |     \_preserveEscapeSet\_.
+-- |
+-- | 1\. Let \_len\_ be the length of \_string\_. 1. Let \_R\_ be the empty
+-- | String. 1. Let \_k\_ be 0. 1. Repeat, while \_k\_ \< \_len\_, 1. Let
+-- | \_C\_ be the code unit at index \_k\_ within \_string\_. 1. Let \_S\_ be
+-- | \_C\_. 1. If \_C\_ is the code unit 0x0025 (PERCENT SIGN), then 1. If
+-- | \_k\_ + 3 \> \_len\_, throw a \*URIError\* exception. 1. Let \_escape\_
+-- | be the substring of \_string\_ from \_k\_ to \_k\_ + 3. 1. Let \_B\_ be
+-- | ParseHexOctet(\_string\_, \_k\_ + 1). 1. If \_B\_ is not an integer,
+-- | throw a \*URIError\* exception. 1. Set \_k\_ to \_k\_ + 2. 1. Let \_n\_
+-- | be the number of leading 1 bits in \_B\_. 1. If \_n\_ = 0, then 1. Let
+-- | \_asciiChar\_ be the code unit whose numeric value is \_B\_. 1. If
+-- | \_preserveEscapeSet\_ contains \_asciiChar\_, set \_S\_ to \_escape\_;
+-- | else set \_S\_ to \_asciiChar\_. 1. Else, 1. If \_n\_ = 1 or \_n\_ \> 4,
+-- | throw a \*URIError\* exception. 1. Let \_Octets\_ be « \_B\_ ». 1. Let
+-- | \_j\_ be 1. 1. Repeat, while \_j\_ \< \_n\_, 1. Set \_k\_ to
+-- | \_k\_ + 1. 1. If \_k\_ + 3 \> \_len\_, throw a \*URIError\*
+-- | exception. 1. If the code unit at index \_k\_ within \_string\_ is not
+-- | the code unit 0x0025 (PERCENT SIGN), throw a \*URIError\* exception. 1.
+-- | Let \_continuationByte\_ be ParseHexOctet(\_string\_, \_k\_ + 1). 1. If
+-- | \_continuationByte\_ is not an integer, throw a \*URIError\*
+-- | exception. 1. Append \_continuationByte\_ to \_Octets\_. 1. Set \_k\_ to
+-- | \_k\_ + 2. 1. Set \_j\_ to \_j\_ + 1. 1. Assert: The length of
+-- | \_Octets\_ is \_n\_. 1. If \_Octets\_ does not contain a valid UTF-8
+-- | encoding of a Unicode code point, throw a \*URIError\* exception. 1. Let
+-- | \_V\_ be the code point obtained by applying the UTF-8 transformation to
+-- | \_Octets\_, that is, from a List of octets into a 21-bit value. 1. Set
+-- | \_S\_ to UTF16EncodeCodePoint(\_V\_). 1. Set \_R\_ to the
+-- | string-concatenation of \_R\_ and \_S\_. 1. Set \_k\_ to \_k\_ + 1. 1.
+-- | Return \_R\_.
+-- |
+-- | RFC 3629 prohibits the decoding of invalid UTF-8 octet sequences. For
+-- | example, the invalid sequence 0xC0 0x80 must not decode into the code
+-- | unit 0x0000. Implementations of the Decode algorithm are required to
+-- | throw a \*URIError\* when encountering such invalid sequences.
+-- |
+-- | # ParseHexOctet ( \_string\_: a String, \_position\_: a non-negative integer, ): either a non-negative integer or a non-empty List of \*SyntaxError\* objects
+-- |
+-- | description
+-- | :   It parses a sequence of two hexadecimal characters at the specified
+-- |     \_position\_ in \_string\_ into an unsigned 8-bit integer.
+-- |
+-- | 1\. Let \_len\_ be the length of \_string\_. 1. Assert: \_position\_ + 2
+-- | ≤ \_len\_. 1. Let \_hexDigits\_ be the substring of \_string\_ from
+-- | \_position\_ to \_position\_ + 2. 1. Let \_parseResult\_ be
+-- | ParseText(\_hexDigits\_, \|HexDigits\[\~Sep\]\|). 1. If \_parseResult\_
+-- | is not a Parse Node, return \_parseResult\_. 1. Let \_n\_ be the MV of
+-- | \_parseResult\_. 1. Assert: \_n\_ is in the inclusive interval from 0 to
+-- | 255. 1. Return \_n\_.
+-- |
+
+-- SPEC: L24148-L24167
+-- | # Object.prototype.toLocaleString ( \[ \_reserved1\_ \[ , \_reserved2\_ \] \] )
+-- |
+-- | This method performs the following steps when called:
+-- |
+-- | 1\. Let \_O\_ be the \*this\* value. 1. Return ? Invoke(\_O\_,
+-- | \*\"toString\"\*).
+-- |
+-- | The optional parameters to this method are not used but are intended to
+-- | correspond to the parameter pattern used by ECMA-402 \`toLocaleString\`
+-- | methods. Implementations that do not include ECMA-402 support must not
+-- | use those parameter positions for other purposes.
+-- |
+-- | This method provides a generic \`toLocaleString\` implementation for
+-- | objects that have no locale-sensitive \`toString\` behaviour. \`Array\`,
+-- | \`Number\`, \`Date\`, and %TypedArray% provide their own
+-- | locale-sensitive \`toLocaleString\` methods.
+-- |
+-- | ECMA-402 intentionally does not provide an alternative to this default
+-- | implementation.
+-- |
+
+-- SPEC: L24338-L24422
+-- | # CreateDynamicFunction ( \_constructor\_: a constructor, \_newTarget\_: a constructor or \*undefined\*, \_kind\_: \~normal\~, \~generator\~, \~async\~, or \~async-generator\~, \_parameterArgs\_: a List of ECMAScript language values, \_bodyArg\_: an ECMAScript language value, ): either a normal completion containing an ECMAScript function object or a throw completion
+-- |
+-- | description
+-- | :   \_constructor\_ is the constructor function that is performing this
+-- |     action. \_newTarget\_ is the constructor that \`new\` was initially
+-- |     applied to. \_parameterArgs\_ and \_bodyArg\_ reflect the argument
+-- |     values that were passed to \_constructor\_.
+-- |
+-- | 1\. If \_newTarget\_ is \*undefined\*, set \_newTarget\_ to
+-- | \_constructor\_. 1. If \_kind\_ is \~normal\~, then 1. Let \_prefix\_ be
+-- | \*\"function\"\*. 1. Let \_exprSym\_ be the grammar symbol
+-- | \|FunctionExpression\|. 1. Let \_bodySym\_ be the grammar symbol
+-- | \|FunctionBody\[\~Yield, \~Await\]\|. 1. Let \_parameterSym\_ be the
+-- | grammar symbol \|FormalParameters\[\~Yield, \~Await\]\|. 1. Let
+-- | \_fallbackProto\_ be \*\"%Function.prototype%\"\*. 1. Else if \_kind\_
+-- | is \~generator\~, then 1. Let \_prefix\_ be \*\"function\\\*\"\*. 1. Let
+-- | \_exprSym\_ be the grammar symbol \|GeneratorExpression\|. 1. Let
+-- | \_bodySym\_ be the grammar symbol \|GeneratorBody\|. 1. Let
+-- | \_parameterSym\_ be the grammar symbol \|FormalParameters\[+Yield,
+-- | \~Await\]\|. 1. Let \_fallbackProto\_ be
+-- | \*\"%GeneratorFunction.prototype%\"\*. 1. Else if \_kind\_ is \~async\~,
+-- | then 1. Let \_prefix\_ be \*\"async function\"\*. 1. Let \_exprSym\_ be
+-- | the grammar symbol \|AsyncFunctionExpression\|. 1. Let \_bodySym\_ be
+-- | the grammar symbol \|AsyncFunctionBody\|. 1. Let \_parameterSym\_ be the
+-- | grammar symbol \|FormalParameters\[\~Yield, +Await\]\|. 1. Let
+-- | \_fallbackProto\_ be \*\"%AsyncFunction.prototype%\"\*. 1. Else, 1.
+-- | Assert: \_kind\_ is \~async-generator\~. 1. Let \_prefix\_ be \*\"async
+-- | function\\\*\"\*. 1. Let \_exprSym\_ be the grammar symbol
+-- | \|AsyncGeneratorExpression\|. 1. Let \_bodySym\_ be the grammar symbol
+-- | \|AsyncGeneratorBody\|. 1. Let \_parameterSym\_ be the grammar symbol
+-- | \|FormalParameters\[+Yield, +Await\]\|. 1. Let \_fallbackProto\_ be
+-- | \*\"%AsyncGeneratorFunction.prototype%\"\*. 1. Let \_argCount\_ be the
+-- | number of elements in \_parameterArgs\_. 1. Let \_parameterStrings\_ be
+-- | a new empty List. 1. For each element \_arg\_ of \_parameterArgs\_,
+-- | do 1. Append ? ToString(\_arg\_) to \_parameterStrings\_. 1. Let
+-- | \_bodyString\_ be ? ToString(\_bodyArg\_). 1. Let \_currentRealm\_ be
+-- | the current Realm Record. 1. Perform ?
+-- | HostEnsureCanCompileStrings(\_currentRealm\_, \_parameterStrings\_,
+-- | \_bodyString\_, \*false\*). 1. Let \_P\_ be the empty String. 1. If
+-- | \_argCount\_ \> 0, then 1. Set \_P\_ to \_parameterStrings\_\[0\]. 1.
+-- | Let \_k\_ be 1. 1. Repeat, while \_k\_ \< \_argCount\_, 1. Let
+-- | \_nextArgString\_ be \_parameterStrings\_\[\_k\_\]. 1. Set \_P\_ to the
+-- | string-concatenation of \_P\_, \*\",\"\* (a comma), and
+-- | \_nextArgString\_. 1. Set \_k\_ to \_k\_ + 1. 1. Let \_bodyParseString\_
+-- | be the string-concatenation of 0x000A (LINE FEED), \_bodyString\_, and
+-- | 0x000A (LINE FEED). 1. Let \_sourceString\_ be the string-concatenation
+-- | of \_prefix\_, \*\" anonymous(\"\*, \_P\_, 0x000A (LINE FEED), \*\")
+-- | {\"\*, \_bodyParseString\_, and \*\"}\"\*. 1. Let \_sourceText\_ be
+-- | StringToCodePoints(\_sourceString\_). 1. Let \_parameters\_ be
+-- | ParseText(\_P\_, \_parameterSym\_). 1. If \_parameters\_ is a List of
+-- | errors, throw a \*SyntaxError\* exception. 1. Let \_body\_ be
+-- | ParseText(\_bodyParseString\_, \_bodySym\_). 1. If \_body\_ is a List of
+-- | errors, throw a \*SyntaxError\* exception. 1. NOTE: The parameters and
+-- | body are parsed separately to ensure that each is valid alone. For
+-- | example, \`new Function(\"/\*\", \"\*/ ) {\")\` does not evaluate to a
+-- | function. 1. NOTE: If this step is reached, \_sourceText\_ must have the
+-- | syntax of \_exprSym\_ (although the reverse implication does not hold).
+-- | The purpose of the next two steps is to enforce any Early Error rules
+-- | which apply to \_exprSym\_ directly. 1. Let \_expr\_ be
+-- | ParseText(\_sourceText\_, \_exprSym\_). 1. If \_expr\_ is a List of
+-- | errors, throw a \*SyntaxError\* exception. 1. Let \_proto\_ be ?
+-- | GetPrototypeFromConstructor(\_newTarget\_, \_fallbackProto\_). 1. Let
+-- | \_env\_ be \_currentRealm\_.\[\[GlobalEnv\]\]. 1. Let \_privateEnv\_ be
+-- | \*null\*. 1. Let \_F\_ be OrdinaryFunctionCreate(\_proto\_,
+-- | \_sourceText\_, \_parameters\_, \_body\_, \~non-lexical-this\~, \_env\_,
+-- | \_privateEnv\_). 1. Perform SetFunctionName(\_F\_,
+-- | \*\"anonymous\"\*). 1. If \_kind\_ is \~generator\~, then 1. Let
+-- | \_prototype\_ be OrdinaryObjectCreate(%GeneratorPrototype%). 1. Perform
+-- | ! DefinePropertyOrThrow(\_F\_, \*\"prototype\"\*, PropertyDescriptor {
+-- | \[\[Value\]\]: \_prototype\_, \[\[Writable\]\]: \*true\*,
+-- | \[\[Enumerable\]\]: \*false\*, \[\[Configurable\]\]: \*false\* }). 1.
+-- | Else if \_kind\_ is \~async-generator\~, then 1. Let \_prototype\_ be
+-- | OrdinaryObjectCreate(%AsyncGeneratorPrototype%). 1. Perform !
+-- | DefinePropertyOrThrow(\_F\_, \*\"prototype\"\*, PropertyDescriptor {
+-- | \[\[Value\]\]: \_prototype\_, \[\[Writable\]\]: \*true\*,
+-- | \[\[Enumerable\]\]: \*false\*, \[\[Configurable\]\]: \*false\* }). 1.
+-- | Else if \_kind\_ is \~normal\~, then 1. Perform
+-- | MakeConstructor(\_F\_). 1. NOTE: Functions whose \_kind\_ is \~async\~
+-- | are not constructable and do not have a \[\[Construct\]\] internal
+-- | method or a \*\"prototype\"\* property. 1. Return \_F\_.
+-- |
+-- | CreateDynamicFunction defines a \*\"prototype\"\* property on any
+-- | function it creates whose \_kind\_ is not \~async\~ to provide for the
+-- | possibility that the function will be used as a constructor.
+-- |
+
+-- SPEC: L25602-L25643
+-- | finite, return Number::toString(\_x\_, 10). 1. If \_f\_ \< 0 or \_f\_ \>
+-- | 100, throw a \*RangeError\* exception. 1. Set \_x\_ to ℝ(\_x\_). 1. Let
+-- | \_s\_ be the empty String. 1. If \_x\_ \< 0, then 1. Set \_s\_ to
+-- | \*\"-\"\*. 1. Set \_x\_ to -\_x\_. 1. If \_x\_ = 0, then 1. Let \_m\_ be
+-- | the String value consisting of \_f\_ + 1 occurrences of the code unit
+-- | 0x0030 (DIGIT ZERO). 1. Let \_e\_ be 0. 1. Else, 1. If
+-- | \_fractionDigits\_ is not \*undefined\*, then 1. Let \_e\_ and \_n\_ be
+-- | integers such that 10^\_f\_^ ≤ \_n\_ \< 10^\_f\_\ +\ 1^ and for which
+-- | \_n\_ × 10^\_e\_\ -\ \_f\_^ - \_x\_ is as close to zero as possible. If
+-- | there are two such sets of \_e\_ and \_n\_, pick the \_e\_ and \_n\_ for
+-- | which \_n\_ × 10^\_e\_\ -\ \_f\_^ is larger. 1. Else, 1.
+-- | \[id=\"step-number-proto-toexponential-intermediate-values\"\] Let
+-- | \_e\_, \_n\_, and \_ff\_ be integers such that \_ff\_ ≥ 0, 10^\_ff\_^ ≤
+-- | \_n\_ \< 10^\_ff\_\ +\ 1^, 𝔽(\_n\_ × 10^\_e\_\ -\ \_ff\_^) is 𝔽(\_x\_),
+-- | and \_ff\_ is as small as possible. Note that the decimal representation
+-- | of \_n\_ has \_ff\_ + 1 digits, \_n\_ is not divisible by 10, and the
+-- | least significant digit of \_n\_ is not necessarily uniquely determined
+-- | by these criteria. 1. Set \_f\_ to \_ff\_. 1. Let \_m\_ be the String
+-- | value consisting of the digits of the decimal representation of \_n\_
+-- | (in order, with no leading zeroes). 1. If \_f\_ ≠ 0, then 1. Let \_a\_
+-- | be the first code unit of \_m\_. 1. Let \_b\_ be the other \_f\_ code
+-- | units of \_m\_. 1. Set \_m\_ to the string-concatenation of \_a\_,
+-- | \*\".\"\*, and \_b\_. 1. If \_e\_ = 0, then 1. Let \_c\_ be
+-- | \*\"+\"\*. 1. Let \_d\_ be \*\"0\"\*. 1. Else, 1. If \_e\_ \> 0, then 1.
+-- | Let \_c\_ be \*\"+\"\*. 1. Else, 1. Assert: \_e\_ \< 0. 1. Let \_c\_ be
+-- | \*\"-\"\*. 1. Set \_e\_ to -\_e\_. 1. Let \_d\_ be the String value
+-- | consisting of the digits of the decimal representation of \_e\_ (in
+-- | order, with no leading zeroes). 1. Set \_m\_ to the string-concatenation
+-- | of \_m\_, \*\"e\"\*, \_c\_, and \_d\_. 1. Return the
+-- | string-concatenation of \_s\_ and \_m\_.
+-- |
+-- | For implementations that provide more accurate conversions than required
+-- | by the rules above, it is recommended that the following alternative
+-- | version of step be used as a guideline:
+-- |
+-- | 1\. Let \_e\_, \_n\_, and \_ff\_ be integers such that \_ff\_ ≥ 0,
+-- | 10^\_ff\_^ ≤ \_n\_ \< 10^\_ff\_\ +\ 1^, 𝔽(\_n\_ × 10^\_e\_\ -\ \_ff\_^)
+-- | is 𝔽(\_x\_), and \_ff\_ is as small as possible. If there are multiple
+-- | possibilities for \_n\_, choose the value of \_n\_ for which 𝔽(\_n\_ ×
+-- | 10^\_e\_\ -\ \_ff\_^) is closest in value to 𝔽(\_x\_). If there are two
+-- | such possible values of \_n\_, choose the one that is even.
+-- |
+
+-- SPEC: L25659-L25682
+-- | Set \_x\_ to -\_x\_. 1. If \_x\_ ≥ 10^21^, then 1. Let \_m\_ be !
+-- | ToString(𝔽(\_x\_)). 1. Else, 1. Let \_n\_ be an integer for which \_n\_
+-- | / 10^\_f\_^ - \_x\_ is as close to zero as possible. If there are two
+-- | such \_n\_, pick the larger \_n\_. 1. If \_n\_ = 0, let \_m\_ be
+-- | \*\"0\"\*; else let \_m\_ be the String value consisting of the digits
+-- | of the decimal representation of \_n\_ (in order, with no leading
+-- | zeroes). 1. If \_f\_ ≠ 0, then 1. Let \_k\_ be the length of \_m\_. 1.
+-- | If \_k\_ ≤ \_f\_, then 1. Let \_z\_ be the String value consisting of
+-- | \_f\_ + 1 - \_k\_ occurrences of the code unit 0x0030 (DIGIT ZERO). 1.
+-- | Set \_m\_ to the string-concatenation of \_z\_ and \_m\_. 1. Set \_k\_
+-- | to \_f\_ + 1. 1. Let \_a\_ be the first \_k\_ - \_f\_ code units of
+-- | \_m\_. 1. Let \_b\_ be the other \_f\_ code units of \_m\_. 1. Set \_m\_
+-- | to the string-concatenation of \_a\_, \*\".\"\*, and \_b\_. 1. Return
+-- | the string-concatenation of \_s\_ and \_m\_.
+-- |
+-- | The output of \`toFixed\` may be more precise than \`toString\` for some
+-- | values because toString only prints enough significant digits to
+-- | distinguish the number from adjacent Number values. For example,
+-- |
+-- | \`(1000000000000000128).toString()\` returns
+-- | \*\"1000000000000000100\"\*, while\
+-- | \`(1000000000000000128).toFixed(0)\` returns
+-- | \*\"1000000000000000128\"\*.
+-- |
+
+-- SPEC: L25715-L25744
+-- | \*RangeError\* exception. 1. Set \_x\_ to ℝ(\_x\_). 1. Let \_s\_ be the
+-- | empty String. 1. If \_x\_ \< 0, then 1. Set \_s\_ to the code unit
+-- | 0x002D (HYPHEN-MINUS). 1. Set \_x\_ to -\_x\_. 1. If \_x\_ = 0, then 1.
+-- | Let \_m\_ be the String value consisting of \_p\_ occurrences of the
+-- | code unit 0x0030 (DIGIT ZERO). 1. Let \_e\_ be 0. 1. Else, 1. Let \_e\_
+-- | and \_n\_ be integers such that 10^\_p\_\ -\ 1^ ≤ \_n\_ \< 10^\_p\_^ and
+-- | for which \_n\_ × 10^\_e\_\ -\ \_p\_\ +\ 1^ - \_x\_ is as close to zero
+-- | as possible. If there are two such sets of \_e\_ and \_n\_, pick the
+-- | \_e\_ and \_n\_ for which \_n\_ × 10^\_e\_\ -\ \_p\_\ +\ 1^ is
+-- | larger. 1. Let \_m\_ be the String value consisting of the digits of the
+-- | decimal representation of \_n\_ (in order, with no leading zeroes). 1.
+-- | If \_e\_ \< -6 or \_e\_ ≥ \_p\_, then 1. Assert: \_e\_ ≠ 0. 1. If \_p\_
+-- | ≠ 1, then 1. Let \_a\_ be the first code unit of \_m\_. 1. Let \_b\_ be
+-- | the other \_p\_ - 1 code units of \_m\_. 1. Set \_m\_ to the
+-- | string-concatenation of \_a\_, \*\".\"\*, and \_b\_. 1. If \_e\_ \> 0,
+-- | then 1. Let \_c\_ be the code unit 0x002B (PLUS SIGN). 1. Else, 1.
+-- | Assert: \_e\_ \< 0. 1. Let \_c\_ be the code unit 0x002D
+-- | (HYPHEN-MINUS). 1. Set \_e\_ to -\_e\_. 1. Let \_d\_ be the String value
+-- | consisting of the digits of the decimal representation of \_e\_ (in
+-- | order, with no leading zeroes). 1. Return the string-concatenation of
+-- | \_s\_, \_m\_, the code unit 0x0065 (LATIN SMALL LETTER E), \_c\_, and
+-- | \_d\_. 1. If \_e\_ = \_p\_ - 1, return the string-concatenation of \_s\_
+-- | and \_m\_. 1. If \_e\_ ≥ 0, then 1. Set \_m\_ to the
+-- | string-concatenation of the first \_e\_ + 1 code units of \_m\_, the
+-- | code unit 0x002E (FULL STOP), and the remaining \_p\_ - (\_e\_ + 1) code
+-- | units of \_m\_. 1. Else, 1. Set \_m\_ to the string-concatenation of the
+-- | code unit 0x0030 (DIGIT ZERO), the code unit 0x002E (FULL STOP),
+-- | -(\_e\_ + 1) occurrences of the code unit 0x0030 (DIGIT ZERO), and the
+-- | String \_m\_. 1. Return the string-concatenation of \_s\_ and \_m\_.
+-- |
+
+-- SPEC: L26018-L26048
+-- | \[\[Enumerable\]\]: \*false\*, \[\[Configurable\]\]: \*false\* }.
+-- |
+-- | # Math \[ %Symbol.toStringTag% \]
+-- |
+-- | The initial value of the %Symbol.toStringTag% property is the String
+-- | value \*\"Math\"\*.
+-- |
+-- | This property has the attributes { \[\[Writable\]\]: \*false\*,
+-- | \[\[Enumerable\]\]: \*false\*, \[\[Configurable\]\]: \*true\* }.
+-- |
+-- | # Function Properties of the Math Object
+-- |
+-- | The behaviour of the functions \`acos\`, \`acosh\`, \`asin\`, \`asinh\`,
+-- | \`atan\`, \`atanh\`, \`atan2\`, \`cbrt\`, \`cos\`, \`cosh\`, \`exp\`,
+-- | \`expm1\`, \`hypot\`, \`log\`, \`log1p\`, \`log2\`, \`log10\`, \`pow\`,
+-- | \`random\`, \`sin\`, \`sinh\`, \`tan\`, and \`tanh\` is not precisely
+-- | specified here except to require specific results for certain argument
+-- | values that represent boundary cases of interest. For other argument
+-- | values, these functions are intended to compute approximations to the
+-- | results of familiar mathematical functions, but some latitude is allowed
+-- | in the choice of approximation algorithms. The general intent is that an
+-- | implementer should be able to use the same mathematical library for
+-- | ECMAScript on a given hardware platform that is available to C
+-- | programmers on that platform.
+-- |
+-- | Although the choice of algorithms is left to the implementation, it is
+-- | recommended (but not specified by this standard) that implementations
+-- | use the approximation algorithms for IEEE 754-2019 arithmetic contained
+-- | in \`fdlibm\`, the freely distributable mathematical library from Sun
+-- | Microsystems (<http://www.netlib.org/fdlibm>).
+-- |
+
+-- SPEC: L26152-L26181
+-- | return an implementation-approximated Number value representing π /
+-- | 4. 1. If \_nx\_ is \*-∞\*~𝔽~, return an implementation-approximated
+-- | Number value representing 3π / 4. 1. Return an
+-- | implementation-approximated Number value representing π / 2. 1. If
+-- | \_ny\_ is \*-∞\*~𝔽~, then 1. If \_nx\_ is \*+∞\*~𝔽~, return an
+-- | implementation-approximated Number value representing -π / 4. 1. If
+-- | \_nx\_ is \*-∞\*~𝔽~, return an implementation-approximated Number value
+-- | representing -3π / 4. 1. Return an implementation-approximated Number
+-- | value representing -π / 2. 1. If \_ny\_ is \*+0\*~𝔽~, then 1. If \_nx\_
+-- | \> \*+0\*~𝔽~ or \_nx\_ is \*+0\*~𝔽~, return \*+0\*~𝔽~. 1. Return an
+-- | implementation-approximated Number value representing π. 1. If \_ny\_ is
+-- | \*-0\*~𝔽~, then 1. If \_nx\_ \> \*+0\*~𝔽~ or \_nx\_ is \*+0\*~𝔽~, return
+-- | \*-0\*~𝔽~. 1. Return an implementation-approximated Number value
+-- | representing -π. 1. Assert: \_ny\_ is finite and is neither \*+0\*~𝔽~
+-- | nor \*-0\*~𝔽~. 1. If \_ny\_ \> \*+0\*~𝔽~, then 1. If \_nx\_ is
+-- | \*+∞\*~𝔽~, return \*+0\*~𝔽~. 1. If \_nx\_ is \*-∞\*~𝔽~, return an
+-- | implementation-approximated Number value representing π. 1. If \_nx\_ is
+-- | either \*+0\*~𝔽~ or \*-0\*~𝔽~, return an implementation-approximated
+-- | Number value representing π / 2. 1. If \_ny\_ \< \*-0\*~𝔽~, then 1. If
+-- | \_nx\_ is \*+∞\*~𝔽~, return \*-0\*~𝔽~. 1. If \_nx\_ is \*-∞\*~𝔽~, return
+-- | an implementation-approximated Number value representing -π. 1. If
+-- | \_nx\_ is either \*+0\*~𝔽~ or \*-0\*~𝔽~, return an
+-- | implementation-approximated Number value representing -π / 2. 1. Assert:
+-- | \_nx\_ is finite and is neither \*+0\*~𝔽~ nor \*-0\*~𝔽~. 1. Let \_r\_ be
+-- | the inverse tangent of abs(ℝ(\_ny\_) / ℝ(\_nx\_)). 1. If \_nx\_ \<
+-- | \*-0\*~𝔽~, then 1. If \_ny\_ \> \*+0\*~𝔽~, set \_r\_ to π - \_r\_. 1.
+-- | Else, set \_r\_ to -π + \_r\_. 1. Else, 1. If \_ny\_ \< \*-0\*~𝔽~, set
+-- | \_r\_ to -\_r\_. 1. Return an implementation-approximated Number value
+-- | representing \_r\_.
+-- |
+
+-- SPEC: L26321-L26334
+-- | Math.f16round(\_k\_) is \*1.0009765625\*~𝔽~, but
+-- | Math.f16round(Math.fround(\_k\_)) is \*1\*~𝔽~.
+-- |
+-- | Not all platforms provide native support for casting from binary64 to
+-- | binary16. There are various libraries which can provide this, including
+-- | the MIT-licensed [half](https://half.sourceforge.net/) library.
+-- | Alternatively, it is possible to first cast from binary64 to binary32
+-- | under roundTiesToEven and then check whether the result could lead to
+-- | incorrect double-rounding. Such cases can be handled explicitly by
+-- | adjusting the mantissa of the binary32 value so that it is the value
+-- | which would be produced by performing the initial cast under
+-- | roundTiesToOdd. Casting the adjusted value to binary16 under
+-- | roundTiesToEven then produces the correct value.
+-- |
+
+-- SPEC: L26350-L26359
+-- | implementation-approximated Number value representing the square root of
+-- | the sum of squares of the mathematical values of the elements of
+-- | \_coerced\_.
+-- |
+-- | The \*\"length\"\* property of this function is \*2\*~𝔽~.
+-- |
+-- | Implementations should take care to avoid the loss of precision from
+-- | overflows and underflows that are prone to occur in naive
+-- | implementations when this function is called with two or more arguments.
+-- |
+
+-- SPEC: L26565-L26593
+-- | included only so that implementations may rely on inputs being
+-- | \"reasonably sized\" without violating this specification. 1. Let
+-- | \_error\_ be ThrowCompletion(a newly created \*RangeError\* object). 1.
+-- | Return ? IteratorClose(\_iteratorRecord\_, \_error\_). 1. If \_next\_ is
+-- | not a Number, then 1. Let \_error\_ be ThrowCompletion(a newly created
+-- | \*TypeError\* object). 1. Return ? IteratorClose(\_iteratorRecord\_,
+-- | \_error\_). 1. Let \_n\_ be \_next\_. 1. If \_state\_ is not
+-- | \~not-a-number\~, then 1. If \_n\_ is \*NaN\*, then 1. Set \_state\_ to
+-- | \~not-a-number\~. 1. Else if \_n\_ is \*+∞\*~𝔽~, then 1. If \_state\_ is
+-- | \~minus-infinity\~, set \_state\_ to \~not-a-number\~. 1. Else, set
+-- | \_state\_ to \~plus-infinity\~. 1. Else if \_n\_ is \*-∞\*~𝔽~, then 1.
+-- | If \_state\_ is \~plus-infinity\~, set \_state\_ to \~not-a-number\~. 1.
+-- | Else, set \_state\_ to \~minus-infinity\~. 1. Else if \_n\_ is not
+-- | \*-0\*~𝔽~ and \_state\_ is either \~minus-zero\~ or \~finite\~, then 1.
+-- | Set \_state\_ to \~finite\~. 1. Set \_sum\_ to \_sum\_ + ℝ(\_n\_). 1.
+-- | Set \_count\_ to \_count\_ + 1. 1. If \_state\_ is \~not-a-number\~,
+-- | return \*NaN\*. 1. If \_state\_ is \~plus-infinity\~, return
+-- | \*+∞\*~𝔽~. 1. If \_state\_ is \~minus-infinity\~, return \*-∞\*~𝔽~. 1.
+-- | If \_state\_ is \~minus-zero\~, return \*-0\*~𝔽~. 1. Return 𝔽(\_sum\_).
+-- |
+-- | The value of \_sum\_ can be computed without arbitrary-precision
+-- | arithmetic by a variety of algorithms. One such is the
+-- | \"Grow-Expansion\" algorithm given in *Adaptive Precision Floating-Point
+-- | Arithmetic and Fast Robust Geometric Predicates* by Jonathan Richard
+-- | Shewchuk. A more recent algorithm is given in \"[Fast exact summation
+-- | using small and large
+-- | superaccumulators](https://arxiv.org/abs/1505.05571)\", code for which
+-- | is available at <https://gitlab.com/radfordneal/xsum>.
+-- |
+
+-- SPEC: L26641-L26692
+-- | \*NaN\*, the result will be \*NaN\*.
+-- |
+-- | # Time Values and Time Range
+-- |
+-- | Time measurement in ECMAScript is analogous to time measurement in
+-- | POSIX, in particular sharing definition in terms of the proleptic
+-- | Gregorian calendar, an [epoch]{#epoch .dfn} of midnight at the beginning
+-- | of 1 January 1970 UTC, and an accounting of every day as comprising
+-- | exactly 86,400 seconds (each of which is 1000 milliseconds long).
+-- |
+-- | An ECMAScript [time value]{.dfn variants="time values"} is a Number,
+-- | either a finite integral Number representing an instant in time to
+-- | millisecond precision or \*NaN\* representing no specific instant. A
+-- | time value that is a multiple of 24 × 60 × 60 × 1000 = 86,400,000 (i.e.,
+-- | is 86,400,000 × \_d\_ for some integer \_d\_) represents the instant at
+-- | the start of the UTC day that follows the epoch by \_d\_ whole UTC days
+-- | (preceding the epoch for negative \_d\_). Every other finite time value
+-- | \_t\_ is defined relative to the greatest preceding time value \_s\_
+-- | that is such a multiple, and represents the instant that occurs within
+-- | the same UTC day as \_s\_ but follows it by (\_t\_ - \_s\_)
+-- | milliseconds.
+-- |
+-- | Time values do not account for UTC leap seconds---there are no time
+-- | values representing instants within positive leap seconds, and there are
+-- | time values representing instants removed from the UTC timeline by
+-- | negative leap seconds. However, the definition of time values
+-- | nonetheless yields piecewise alignment with UTC, with discontinuities
+-- | only at leap second boundaries and zero difference outside of leap
+-- | seconds.
+-- |
+-- | A Number can exactly represent all integers from -9,007,199,254,740,992
+-- | to 9,007,199,254,740,992 ( and ). A time value supports a slightly
+-- | smaller range of -8,640,000,000,000,000 to 8,640,000,000,000,000
+-- | milliseconds. This yields a supported time value range of exactly
+-- | -100,000,000 days to 100,000,000 days relative to midnight at the
+-- | beginning of 1 January 1970 UTC.
+-- |
+-- | The exact moment of midnight at the beginning of 1 January 1970 UTC is
+-- | represented by the time value \*+0\*~𝔽~.
+-- |
+-- | In the proleptic Gregorian calendar, leap years are precisely those
+-- | which are both divisible by 4 and either divisible by 400 or not
+-- | divisible by 100.
+-- |
+-- | The 400 year cycle of the proleptic Gregorian calendar contains 97 leap
+-- | years. This yields an average of 365.2425 days per year, which is
+-- | 31,556,952,000 milliseconds. Therefore, the maximum range a Number could
+-- | represent exactly with millisecond precision is approximately -285,426
+-- | to 285,426 years relative to 1970. The smaller range supported by a time
+-- | value as specified in this section is approximately -273,790 to 273,790
+-- | years relative to 1970.
+-- |
+
+-- SPEC: L26876-L26961
+-- | # Time Zone Identifiers
+-- |
+-- | Time zones in ECMAScript are represented by [time zone identifiers]{.dfn
+-- | variants="time zone identifier"}, which are Strings composed entirely of
+-- | code units in the inclusive interval from 0x0000 to 0x007F. Time zones
+-- | supported by an ECMAScript implementation may be [available named time
+-- | zones]{.dfn variants="available named time zone"}, represented by the
+-- | \[\[Identifier\]\] field of the Time Zone Identifier Records returned by
+-- | AvailableNamedTimeZoneIdentifiers, or [offset time zones]{.dfn
+-- | variants="offset time zone"}, represented by Strings for which
+-- | IsTimeZoneOffsetString returns \*true\*.
+-- |
+-- | A [primary time zone identifier]{.dfn
+-- | variants="primary time zone identifiers"} is the preferred identifier
+-- | for an available named time zone. A [non-primary time zone
+-- | identifier]{.dfn variants="non-primary time zone identifiers"} is an
+-- | identifier for an available named time zone that is not a primary time
+-- | zone identifier. An [available named time zone identifier]{.dfn
+-- | variants="available named time zone identifiers"} is either a primary
+-- | time zone identifier or a non-primary time zone identifier. Each
+-- | available named time zone identifier is associated with exactly one
+-- | available named time zone. Each available named time zone is associated
+-- | with exactly one primary time zone identifier and zero or more
+-- | non-primary time zone identifiers.
+-- |
+-- | ECMAScript implementations must support an available named time zone
+-- | with the identifier \*\"UTC\"\*, which must be the primary time zone
+-- | identifier for the UTC time zone. In addition, implementations may
+-- | support any number of other available named time zones.
+-- |
+-- | Implementations that follow the requirements for time zones as described
+-- | in the ECMA-402 Internationalization API specification are called [time
+-- | zone aware]{.dfn}. Time zone aware implementations must support
+-- | available named time zones corresponding to the Zone and Link names of
+-- | the IANA Time Zone Database, and only such names. In time zone aware
+-- | implementations, a primary time zone identifier is a Zone name, and a
+-- | non-primary time zone identifier is a Link name, respectively, in the
+-- | IANA Time Zone Database except as specifically overridden by
+-- | AvailableNamedTimeZoneIdentifiers as specified in the ECMA-402
+-- | specification. Implementations that do not support the entire IANA Time
+-- | Zone Database are still recommended to use IANA Time Zone Database names
+-- | as identifiers to represent time zones.
+-- |
+-- | # GetNamedTimeZoneEpochNanoseconds ( \_timeZoneIdentifier\_: a String, \_year\_: an integer, \_month\_: an integer in the inclusive interval from 1 to 12, \_day\_: an integer in the inclusive interval from 1 to 31, \_hour\_: an integer in the inclusive interval from 0 to 23, \_minute\_: an integer in the inclusive interval from 0 to 59, \_second\_: an integer in the inclusive interval from 0 to 59, \_millisecond\_: an integer in the inclusive interval from 0 to 999, \_microsecond\_: an integer in the inclusive interval from 0 to 999, \_nanosecond\_: an integer in the inclusive interval from 0 to 999, ): a List of BigInts
+-- |
+-- | description
+-- | :   Each value in the returned List represents a number of nanoseconds
+-- |     since the epoch that corresponds to the given ISO 8601 calendar date
+-- |     and wall-clock time in the named time zone identified by
+-- |     \_timeZoneIdentifier\_.
+-- |
+-- | When the input represents a local time occurring more than once because
+-- | of a negative time zone transition (e.g. when daylight saving time ends
+-- | or the time zone offset is decreased due to a time zone rule change),
+-- | the returned List will have more than one element and will be sorted by
+-- | ascending numerical value. When the input represents a local time
+-- | skipped because of a positive time zone transition (e.g. when daylight
+-- | saving time begins or the time zone offset is increased due to a time
+-- | zone rule change), the returned List will be empty. Otherwise, the
+-- | returned List will have one element.
+-- |
+-- | The default implementation of GetNamedTimeZoneEpochNanoseconds, to be
+-- | used for ECMAScript implementations that do not include local political
+-- | rules for any time zones, performs the following steps when called:
+-- |
+-- | 1\. Assert: \_timeZoneIdentifier\_ is \*\"UTC\"\*. 1. Let
+-- | \_epochNanoseconds\_ be GetUTCEpochNanoseconds(\_year\_, \_month\_,
+-- | \_day\_, \_hour\_, \_minute\_, \_second\_, \_millisecond\_,
+-- | \_microsecond\_, \_nanosecond\_). 1. Return « \_epochNanoseconds\_ ».
+-- |
+-- | It is required for time zone aware implementations (and recommended for
+-- | all others) to use the time zone information of the IANA Time Zone
+-- | Database <https://www.iana.org/time-zones/>.
+-- |
+-- | 1:30 AM on 5 November 2017 in America/New_York is repeated twice, so
+-- | GetNamedTimeZoneEpochNanoseconds(\*\"America/New_York\"\*, 2017, 11, 5,
+-- | 1, 30, 0, 0, 0, 0) would return a List of length 2 in which the first
+-- | element represents 05:30 UTC (corresponding with 01:30 US Eastern
+-- | Daylight Time at UTC offset -04:00) and the second element represents
+-- | 06:30 UTC (corresponding with 01:30 US Eastern Standard Time at UTC
+-- | offset -05:00).
+-- |
+-- | 2:30 AM on 12 March 2017 in America/New_York does not exist, so
+-- | GetNamedTimeZoneEpochNanoseconds(\*\"America/New_York\"\*, 2017, 3, 12,
+-- | 2, 30, 0, 0, 0, 0) would return an empty List.
+-- |
+
+-- SPEC: L27088-L27162
+-- | # UTC ( \_t\_: a Number, ): a time value
+-- |
+-- | description
+-- | :   It converts \_t\_ from local time to a UTC time value. The local
+-- |     political rules for standard time and daylight saving time in effect
+-- |     at \_t\_ should be used to determine the result in the way specified
+-- |     in this section.
+-- |
+-- | 1\. If \_t\_ is not finite, return \*NaN\*. 1. Let
+-- | \_systemTimeZoneIdentifier\_ be SystemTimeZoneIdentifier(). 1. If
+-- | IsTimeZoneOffsetString(\_systemTimeZoneIdentifier\_) is \*true\*,
+-- | then 1. Let \_offsetNs\_ be
+-- | ParseTimeZoneOffsetString(\_systemTimeZoneIdentifier\_). 1. Else, 1. Let
+-- | \_possibleInstants\_ be
+-- | GetNamedTimeZoneEpochNanoseconds(\_systemTimeZoneIdentifier\_,
+-- | ℝ(YearFromTime(\_t\_)), ℝ(MonthFromTime(\_t\_)) + 1,
+-- | ℝ(DateFromTime(\_t\_)), ℝ(HourFromTime(\_t\_)), ℝ(MinFromTime(\_t\_)),
+-- | ℝ(SecFromTime(\_t\_)), ℝ(msFromTime(\_t\_)), 0, 0). 1. NOTE: The
+-- | following steps ensure that when \_t\_ represents local time repeating
+-- | multiple times at a negative time zone transition (e.g. when the
+-- | daylight saving time ends or the time zone offset is decreased due to a
+-- | time zone rule change) or skipped local time at a positive time zone
+-- | transition (e.g. when the daylight saving time starts or the time zone
+-- | offset is increased due to a time zone rule change), \_t\_ is
+-- | interpreted using the time zone offset before the transition. 1. If
+-- | \_possibleInstants\_ is not empty, then 1. Let \_disambiguatedInstant\_
+-- | be \_possibleInstants\_\[0\]. 1. Else, 1. NOTE: \_t\_ represents a local
+-- | time skipped at a positive time zone transition (e.g. due to daylight
+-- | saving time starting or a time zone rule change increasing the UTC
+-- | offset). 1. \[declared=\"tBefore\"\] Let \_possibleInstantsBefore\_ be
+-- | GetNamedTimeZoneEpochNanoseconds(\_systemTimeZoneIdentifier\_,
+-- | ℝ(YearFromTime(\_tBefore\_)), ℝ(MonthFromTime(\_tBefore\_)) + 1,
+-- | ℝ(DateFromTime(\_tBefore\_)), ℝ(HourFromTime(\_tBefore\_)),
+-- | ℝ(MinFromTime(\_tBefore\_)), ℝ(SecFromTime(\_tBefore\_)),
+-- | ℝ(msFromTime(\_tBefore\_)), 0, 0), where \_tBefore\_ is the largest
+-- | integral Number \< \_t\_ for which \_possibleInstantsBefore\_ is not
+-- | empty (i.e., \_tBefore\_ represents the last local time before the
+-- | transition). 1. Let \_disambiguatedInstant\_ be the last element of
+-- | \_possibleInstantsBefore\_. 1. Let \_offsetNs\_ be
+-- | GetNamedTimeZoneOffsetNanoseconds(\_systemTimeZoneIdentifier\_,
+-- | \_disambiguatedInstant\_). 1. Let \_offsetMs\_ be truncate(\_offsetNs\_
+-- | / 10^6^). 1. Return \_t\_ - 𝔽(\_offsetMs\_).
+-- |
+-- | Input \_t\_ is nominally a time value but may be any Number value. The
+-- | algorithm must not limit \_t\_ to the time value range, so that inputs
+-- | corresponding with a boundary of the time value range can be supported
+-- | regardless of local UTC offset. For example, the maximum time value is
+-- | 8.64 × 10^15^, corresponding with \*\"+275760-09-13T00:00:00Z\"\*. In an
+-- | environment where the local time zone offset is ahead of UTC by 1 hour
+-- | at that instant, it is represented by the larger input of 8.64 ×
+-- | 10^15^ + 3.6 × 10^6^, corresponding with
+-- | \*\"+275760-09-13T01:00:00+01:00\"\*.
+-- |
+-- | If political rules for the local time \_t\_ are not available within the
+-- | implementation, the result is \_t\_ because SystemTimeZoneIdentifier
+-- | returns \*\"UTC\"\* and GetNamedTimeZoneOffsetNanoseconds returns 0.
+-- |
+-- | It is required for time zone aware implementations (and recommended for
+-- | all others) to use the time zone information of the IANA Time Zone
+-- | Database <https://www.iana.org/time-zones/>.
+-- |
+-- | 1:30 AM on 5 November 2017 in America/New_York is repeated twice (fall
+-- | backward), but it must be interpreted as 1:30 AM UTC-04 instead of 1:30
+-- | AM UTC-05. In UTC(TimeClip(MakeDate(MakeDay(2017, 10, 5), MakeTime(1,
+-- | 30, 0, 0)))), the value of \_offsetMs\_ is -4 × msPerHour.
+-- |
+-- | 2:30 AM on 12 March 2017 in America/New_York does not exist, but it must
+-- | be interpreted as 2:30 AM UTC-05 (equivalent to 3:30 AM UTC-04). In
+-- | UTC(TimeClip(MakeDate(MakeDay(2017, 2, 12), MakeTime(2, 30, 0, 0)))),
+-- | the value of \_offsetMs\_ is -5 × msPerHour.
+-- |
+-- | UTC(LocalTime(\_t\_~UTC~)) is not necessarily always equal to
+-- | \_t\_~UTC~. Correspondingly, LocalTime(UTC(\_t\_~local~)) is not
+-- | necessarily always equal to \_t\_~local~.
+-- |
+
+-- SPEC: L27539-L27591
+-- | # Date.parse ( \_string\_ )
+-- |
+-- | This function applies the ToString operator to its argument. If ToString
+-- | results in an abrupt completion the Completion Record is immediately
+-- | returned. Otherwise, this function interprets the resulting String as a
+-- | date and time; it returns a Number, the UTC time value corresponding to
+-- | the date and time. The String may be interpreted as a local time, a UTC
+-- | time, or a time in some other time zone, depending on the contents of
+-- | the String. The function first attempts to parse the String according to
+-- | the format described in Date Time String Format (), including expanded
+-- | years. If the String does not conform to that format the function may
+-- | fall back to any implementation-specific heuristics or
+-- | implementation-specific date formats. Strings that are unrecognizable or
+-- | contain out-of-bounds format element values shall cause this function to
+-- | return \*NaN\*.
+-- |
+-- | If the String conforms to the Date Time String Format, substitute values
+-- | take the place of absent format elements. When the \`MM\` or \`DD\`
+-- | elements are absent, \*\"01\"\* is used. When the \`HH\`, \`mm\`, or
+-- | \`ss\` elements are absent, \*\"00\"\* is used. When the \`sss\` element
+-- | is absent, \*\"000\"\* is used. When the UTC offset representation is
+-- | absent, date-only forms are interpreted as a UTC time and date-time
+-- | forms are interpreted as a local time.
+-- |
+-- | If \`x\` is any Date whose milliseconds amount is zero within a
+-- | particular implementation of ECMAScript, then all of the following
+-- | expressions should produce the same numeric value in that
+-- | implementation, if all the properties referenced have their initial
+-- | values:
+-- |
+-- | ``` javascript
+-- |
+-- |           x.valueOf()
+-- |           Date.parse(x.toString())
+-- |           Date.parse(x.toUTCString())
+-- |           Date.parse(x.toISOString())
+-- |         
+-- | ```
+-- |
+-- | However, the expression
+-- |
+-- | ``` javascript
+-- |
+-- |           Date.parse(x.toLocaleString())
+-- |         
+-- | ```
+-- |
+-- | is not required to produce the same Number value as the preceding three
+-- | expressions and, in general, the value produced by this function is
+-- | implementation-defined when given any String value that does not conform
+-- | to the Date Time String Format () and that could not be produced in that
+-- | implementation by the \`toString\` or \`toUTCString\` method.
+-- |
+
+-- SPEC: L28440-L28452
+-- | \_nextLiteral\_ be ? ToString(\_nextLiteralVal\_). 1. Set \_R\_ to the
+-- | string-concatenation of \_R\_ and \_nextLiteral\_. 1. If \_nextIndex\_ +
+-- | 1 = \_literalCount\_, return \_R\_. 1. If \_nextIndex\_ \<
+-- | \_substitutionCount\_, then 1. Let \_nextSubVal\_ be
+-- | \_substitutions\_\[\_nextIndex\_\]. 1. Let \_nextSub\_ be ?
+-- | ToString(\_nextSubVal\_). 1. Set \_R\_ to the string-concatenation of
+-- | \_R\_ and \_nextSub\_. 1. Set \_nextIndex\_ to \_nextIndex\_ + 1.
+-- |
+-- | This function is intended for use as a tag function of a Tagged Template
+-- | (). When called as such, the first argument will be a well formed
+-- | template object and the rest parameter will contain the substitution
+-- | values.
+-- |
+
+-- SPEC: L28711-L28784
+-- | ordering between \_S\_ and \_thatValue\_).
+-- |
+-- | Before performing the comparisons, this method performs the following
+-- | steps to prepare the Strings:
+-- |
+-- | 1\. Let \_O\_ be the \*this\* value. 1. Perform ?
+-- | RequireObjectCoercible(\_O\_). 1. Let \_S\_ be ? ToString(\_O\_). 1. Let
+-- | \_thatValue\_ be ? ToString(\_that\_).
+-- |
+-- | The meaning of the optional second and third parameters to this method
+-- | are defined in the ECMA-402 specification; implementations that do not
+-- | include ECMA-402 support must not assign any other interpretation to
+-- | those parameter positions.
+-- |
+-- | The actual return values are implementation-defined to permit encoding
+-- | additional information in them, but this method, when considered as a
+-- | method of two arguments, is required to be a consistent comparator
+-- | defining a total ordering on the set of all Strings. This method is also
+-- | required to recognize and honour canonical equivalence according to the
+-- | Unicode Standard, including returning \*+0\*~𝔽~ when comparing
+-- | distinguishable Strings that are canonically equivalent.
+-- |
+-- | This method itself is not directly suitable as an argument to
+-- | \`Array.prototype.sort\` because the latter requires a function of two
+-- | arguments.
+-- |
+-- | This method may rely on whatever language- and/or locale-sensitive
+-- | comparison functionality is available to the ECMAScript environment from
+-- | the host environment, and is intended to compare according to the
+-- | conventions of the host environment\'s current locale. However,
+-- | regardless of comparison capabilities, this method must recognize and
+-- | honour canonical equivalence according to the Unicode Standard---for
+-- | example, the following comparisons must all return \*+0\*~𝔽~:
+-- |
+-- | ``` javascript
+-- |
+-- |             // Å ANGSTROM SIGN vs.
+-- |             // Å LATIN CAPITAL LETTER A + COMBINING RING ABOVE
+-- |             "\u212B".localeCompare("A\u030A")
+-- |
+-- |             // Ω OHM SIGN vs.
+-- |             // Ω GREEK CAPITAL LETTER OMEGA
+-- |             "\u2126".localeCompare("\u03A9")
+-- |
+-- |             // ṩ LATIN SMALL LETTER S WITH DOT BELOW AND DOT ABOVE vs.
+-- |             // ṩ LATIN SMALL LETTER S + COMBINING DOT ABOVE + COMBINING DOT BELOW
+-- |             "\u1E69".localeCompare("s\u0307\u0323")
+-- |
+-- |             // ḍ̇ LATIN SMALL LETTER D WITH DOT ABOVE + COMBINING DOT BELOW vs.
+-- |             // ḍ̇ LATIN SMALL LETTER D WITH DOT BELOW + COMBINING DOT ABOVE
+-- |             "\u1E0B\u0323".localeCompare("\u1E0D\u0307")
+-- |
+-- |             // 가 HANGUL CHOSEONG KIYEOK + HANGUL JUNGSEONG A vs.
+-- |             // 가 HANGUL SYLLABLE GA
+-- |             "\u1100\u1161".localeCompare("\uAC00")
+-- |           
+-- | ```
+-- |
+-- | For a definition and discussion of canonical equivalence see the Unicode
+-- | Standard, chapters 2 and 3, as well as [Unicode Standard Annex #15,
+-- | Unicode Normalization Forms](https://unicode.org/reports/tr15/) and
+-- | [Unicode Technical Note #5, Canonical Equivalence in
+-- | Applications](https://unicode.org/notes/tn5/). Also see [Unicode
+-- | Technical Standard #10, Unicode Collation
+-- | Algorithm](https://unicode.org/reports/tr10/).
+-- |
+-- | It is recommended that this method should not honour Unicode
+-- | compatibility equivalents or compatibility decompositions as defined in
+-- | the Unicode Standard, chapter 3, section 3.7.
+-- |
+-- | This method is intentionally generic; it does not require that its
+-- | \*this\* value be a String object. Therefore, it can be transferred to
+-- | other kinds of objects for use as a method.
+-- |
+
+-- SPEC: L28948-L29013
+-- | # GetSubstitution ( \_matched\_: a String, \_str\_: a String, \_position\_: a non-negative integer, \_captures\_: a List of either Strings or \*undefined\*, \_namedCaptures\_: an Object or \*undefined\*, \_replacementTemplate\_: a String, ): either a normal completion containing a String or a throw completion
+-- |
+-- | description
+-- | :   For the purposes of this abstract operation, a *decimal digit* is a
+-- |     code unit in the inclusive interval from 0x0030 (DIGIT ZERO) to
+-- |     0x0039 (DIGIT NINE).
+-- |
+-- | 1\. Let \_stringLength\_ be the length of \_str\_. 1. Assert:
+-- | \_position\_ ≤ \_stringLength\_. 1. Let \_result\_ be the empty
+-- | String. 1. Let \_templateRemainder\_ be \_replacementTemplate\_. 1.
+-- | Repeat, while \_templateRemainder\_ is not the empty String, 1.
+-- | \[declared=\"ref,refReplacement\"\] NOTE: The following steps isolate
+-- | \_ref\_ (a prefix of \_templateRemainder\_), determine
+-- | \_refReplacement\_ (its replacement), and then append that replacement
+-- | to \_result\_. 1. If \_templateRemainder\_ starts with \*\"\$\$\"\*,
+-- | then 1. Let \_ref\_ be \*\"\$\$\"\*. 1. Let \_refReplacement\_ be
+-- | \*\"\$\"\*. 1. Else if \_templateRemainder\_ starts with \*\"\$\`\"\*,
+-- | then 1. Let \_ref\_ be \*\"\$\`\"\*. 1. Let \_refReplacement\_ be the
+-- | substring of \_str\_ from 0 to \_position\_. 1. Else if
+-- | \_templateRemainder\_ starts with \*\"\$&\"\*, then 1. Let \_ref\_ be
+-- | \*\"\$&\"\*. 1. Let \_refReplacement\_ be \_matched\_. 1. Else if
+-- | \_templateRemainder\_ starts with \*\"\$\'\"\* (0x0024 (DOLLAR SIGN)
+-- | followed by 0x0027 (APOSTROPHE)), then 1. Let \_ref\_ be
+-- | \*\"\$\'\"\*. 1. Let \_matchLength\_ be the length of \_matched\_. 1.
+-- | Let \_tailPos\_ be \_position\_ + \_matchLength\_. 1. Let
+-- | \_refReplacement\_ be the substring of \_str\_ from min(\_tailPos\_,
+-- | \_stringLength\_). 1. NOTE: \_tailPos\_ can exceed \_stringLength\_ only
+-- | if this abstract operation was invoked by a call to the intrinsic
+-- | %Symbol.replace% method of %RegExp.prototype% on an object whose
+-- | \*\"exec\"\* property is not the intrinsic %RegExp.prototype.exec%. 1.
+-- | Else if \_templateRemainder\_ starts with \*\"\$\"\* followed by 1 or
+-- | more decimal digits, then 1. If \_templateRemainder\_ starts with
+-- | \*\"\$\"\* followed by 2 or more decimal digits, let \_digitCount\_ be
+-- | 2; else let \_digitCount\_ be 1. 1. Let \_digits\_ be the substring of
+-- | \_templateRemainder\_ from 1 to 1 + \_digitCount\_. 1. Let \_index\_ be
+-- | ℝ(StringToNumber(\_digits\_)). 1. Assert: 0 ≤ \_index\_ ≤ 99. 1. Let
+-- | \_captureLen\_ be the number of elements in \_captures\_. 1. If
+-- | \_index\_ \> \_captureLen\_ and \_digitCount\_ = 2, then 1. NOTE: When a
+-- | two-digit replacement pattern specifies an index exceeding the count of
+-- | capturing groups, it is treated as a one-digit replacement pattern
+-- | followed by a literal digit. 1. Set \_digitCount\_ to 1. 1. Set
+-- | \_digits\_ to the substring of \_digits\_ from 0 to 1. 1. Set \_index\_
+-- | to ℝ(StringToNumber(\_digits\_)). 1. Let \_ref\_ be the substring of
+-- | \_templateRemainder\_ from 0 to 1 + \_digitCount\_. 1. If 1 ≤ \_index\_
+-- | ≤ \_captureLen\_, then 1. Let \_capture\_ be \_captures\_\[\_index\_ -
+-- | 1\]. 1. If \_capture\_ is \*undefined\*, then 1. Let \_refReplacement\_
+-- | be the empty String. 1. Else, 1. Let \_refReplacement\_ be
+-- | \_capture\_. 1. Else, 1. Let \_refReplacement\_ be \_ref\_. 1. Else if
+-- | \_templateRemainder\_ starts with \*\"\$\<\"\*, then 1. Let \_gtPos\_ be
+-- | StringIndexOf(\_templateRemainder\_, \*\"\>\"\*, 0). 1. If \_gtPos\_ is
+-- | \~not-found\~ or \_namedCaptures\_ is \*undefined\*, then 1. Let \_ref\_
+-- | be \*\"\$\<\"\*. 1. Let \_refReplacement\_ be \_ref\_. 1. Else, 1. Let
+-- | \_ref\_ be the substring of \_templateRemainder\_ from 0 to
+-- | \_gtPos\_ + 1. 1. Let \_groupName\_ be the substring of
+-- | \_templateRemainder\_ from 2 to \_gtPos\_. 1. Assert: \_namedCaptures\_
+-- | is an Object. 1. Let \_capture\_ be ? Get(\_namedCaptures\_,
+-- | \_groupName\_). 1. If \_capture\_ is \*undefined\*, then 1. Let
+-- | \_refReplacement\_ be the empty String. 1. Else, 1. Let
+-- | \_refReplacement\_ be ? ToString(\_capture\_). 1. Else, 1. Let \_ref\_
+-- | be the substring of \_templateRemainder\_ from 0 to 1. 1. Let
+-- | \_refReplacement\_ be \_ref\_. 1. Let \_refLength\_ be the length of
+-- | \_ref\_. 1. Set \_templateRemainder\_ to the substring of
+-- | \_templateRemainder\_ from \_refLength\_. 1. Set \_result\_ to the
+-- | string-concatenation of \_result\_ and \_refReplacement\_. 1. Return
+-- | \_result\_.
+-- |
+
+-- SPEC: L29223-L29268
+-- | An ECMAScript implementation that includes the ECMA-402
+-- | Internationalization API must implement this method as specified in the
+-- | ECMA-402 specification. If an ECMAScript implementation does not include
+-- | the ECMA-402 API the following specification of this method is used:
+-- |
+-- | This method interprets a String value as a sequence of UTF-16 encoded
+-- | code points, as described in .
+-- |
+-- | It works exactly the same as \`toLowerCase\` except that it is intended
+-- | to yield a locale-sensitive result corresponding with conventions of the
+-- | host environment\'s current locale. There will only be a difference in
+-- | the few cases (such as Turkish) where the rules for that language
+-- | conflict with the regular Unicode case mappings.
+-- |
+-- | The meaning of the optional parameters to this method are defined in the
+-- | ECMA-402 specification; implementations that do not include ECMA-402
+-- | support must not use those parameter positions for anything else.
+-- |
+-- | This method is intentionally generic; it does not require that its
+-- | \*this\* value be a String object. Therefore, it can be transferred to
+-- | other kinds of objects for use as a method.
+-- |
+-- | # String.prototype.toLocaleUpperCase ( \[ \_reserved1\_ \[ , \_reserved2\_ \] \] )
+-- |
+-- | An ECMAScript implementation that includes the ECMA-402
+-- | Internationalization API must implement this method as specified in the
+-- | ECMA-402 specification. If an ECMAScript implementation does not include
+-- | the ECMA-402 API the following specification of this method is used:
+-- |
+-- | This method interprets a String value as a sequence of UTF-16 encoded
+-- | code points, as described in .
+-- |
+-- | It works exactly the same as \`toUpperCase\` except that it is intended
+-- | to yield a locale-sensitive result corresponding with conventions of the
+-- | host environment\'s current locale. There will only be a difference in
+-- | the few cases (such as Turkish) where the rules for that language
+-- | conflict with the regular Unicode case mappings.
+-- |
+-- | The meaning of the optional parameters to this method are defined in the
+-- | ECMA-402 specification; implementations that do not include ECMA-402
+-- | support must not use those parameter positions for anything else.
+-- |
+-- | This method is intentionally generic; it does not require that its
+-- | \*this\* value be a String object. Therefore, it can be transferred to
+-- | other kinds of objects for use as a method.
+-- |
+
+-- SPEC: L30582-L30681
+-- | # Runtime Semantics: CompileAtom ( \_rer\_: a RegExp Record, \_direction\_: \~forward\~ or \~backward\~, ): a Matcher
+-- |
+-- | This section is amended in .
+-- |
+-- | Atom :: PatternCharacter 1. Let \_ch\_ be the character matched by
+-- | \|PatternCharacter\|. 1. Let \_A\_ be a one-element CharSet containing
+-- | the character \_ch\_. 1. Return CharacterSetMatcher(\_rer\_, \_A\_,
+-- | \*false\*, \_direction\_). Atom :: \`.\` 1. Let \_A\_ be
+-- | AllCharacters(\_rer\_). 1. If \_rer\_.\[\[DotAll\]\] is not \*true\*,
+-- | then 1. Remove from \_A\_ all characters corresponding to a code point
+-- | on the right-hand side of the \|LineTerminator\| production. 1. Return
+-- | CharacterSetMatcher(\_rer\_, \_A\_, \*false\*, \_direction\_). Atom ::
+-- | CharacterClass 1. Let \_cc\_ be CompileCharacterClass of
+-- | \|CharacterClass\| with argument \_rer\_. 1. Let \_cs\_ be
+-- | \_cc\_.\[\[CharSet\]\]. 1. If \_rer\_.\[\[UnicodeSets\]\] is \*false\*,
+-- | or if every CharSetElement of \_cs\_ consists of a single character
+-- | (including if \_cs\_ is empty), return CharacterSetMatcher(\_rer\_,
+-- | \_cs\_, \_cc\_.\[\[Invert\]\], \_direction\_). 1. Assert:
+-- | \_cc\_.\[\[Invert\]\] is \*false\*. 1. Let \_lm\_ be an empty List of
+-- | Matchers. 1. For each CharSetElement \_s\_ in \_cs\_ containing more
+-- | than 1 character, iterating in descending order of length, do 1. Let
+-- | \_cs2\_ be a one-element CharSet containing the last code point of
+-- | \_s\_. 1. Let \_m2\_ be CharacterSetMatcher(\_rer\_, \_cs2\_, \*false\*,
+-- | \_direction\_). 1. For each code point \_c1\_ in \_s\_, iterating
+-- | backwards from its second-to-last code point, do 1. Let \_cs1\_ be a
+-- | one-element CharSet containing \_c1\_. 1. Let \_m1\_ be
+-- | CharacterSetMatcher(\_rer\_, \_cs1\_, \*false\*, \_direction\_). 1. Set
+-- | \_m2\_ to MatchSequence(\_m1\_, \_m2\_, \_direction\_). 1. Append \_m2\_
+-- | to \_lm\_. 1. Let \_singles\_ be the CharSet containing every
+-- | CharSetElement of \_cs\_ that consists of a single character. 1. Append
+-- | CharacterSetMatcher(\_rer\_, \_singles\_, \*false\*, \_direction\_) to
+-- | \_lm\_. 1. If \_cs\_ contains the empty sequence of characters, append
+-- | EmptyMatcher() to \_lm\_. 1. Let \_m2\_ be the last Matcher in
+-- | \_lm\_. 1. For each Matcher \_m1\_ of \_lm\_, iterating backwards from
+-- | its second-to-last element, do 1. Set \_m2\_ to
+-- | MatchTwoAlternatives(\_m1\_, \_m2\_). 1. Return \_m2\_. Atom :: \`(\`
+-- | GroupSpecifier? Disjunction \`)\` 1. Let \_m\_ be CompileSubpattern of
+-- | \|Disjunction\| with arguments \_rer\_ and \_direction\_. 1. Let
+-- | \_parenIndex\_ be CountLeftCapturingParensBefore(\|Atom\|). 1. Return a
+-- | new Matcher with parameters (\_x\_, \_c\_) that captures \_direction\_,
+-- | \_m\_, and \_parenIndex\_ and performs the following steps when
+-- | called: 1. Assert: \_x\_ is a MatchState. 1. Assert: \_c\_ is a
+-- | MatcherContinuation. 1. Let \_d\_ be a new MatcherContinuation with
+-- | parameters (\_y\_) that captures \_x\_, \_c\_, \_direction\_, and
+-- | \_parenIndex\_ and performs the following steps when called: 1. Assert:
+-- | \_y\_ is a MatchState. 1. Let \_cap\_ be a copy of
+-- | \_y\_.\[\[Captures\]\]. 1. Let \_Input\_ be \_x\_.\[\[Input\]\]. 1. Let
+-- | \_xe\_ be \_x\_.\[\[EndIndex\]\]. 1. Let \_ye\_ be
+-- | \_y\_.\[\[EndIndex\]\]. 1. If \_direction\_ is \~forward\~, then 1.
+-- | Assert: \_xe\_ ≤ \_ye\_. 1. Let \_r\_ be the CaptureRange {
+-- | \[\[StartIndex\]\]: \_xe\_, \[\[EndIndex\]\]: \_ye\_ }. 1. Else, 1.
+-- | Assert: \_direction\_ is \~backward\~. 1. Assert: \_ye\_ ≤ \_xe\_. 1.
+-- | Let \_r\_ be the CaptureRange { \[\[StartIndex\]\]: \_ye\_,
+-- | \[\[EndIndex\]\]: \_xe\_ }. 1. Set \_cap\_\[\_parenIndex\_ + 1\] to
+-- | \_r\_. 1. Let \_z\_ be the MatchState { \[\[Input\]\]: \_Input\_,
+-- | \[\[EndIndex\]\]: \_ye\_, \[\[Captures\]\]: \_cap\_ }. 1. Return
+-- | \_c\_(\_z\_). 1. Return \_m\_(\_x\_, \_d\_).
+-- |
+-- | Parentheses of the form \`(\` \|Disjunction\| \`)\` serve both to group
+-- | the components of the \|Disjunction\| pattern together and to save the
+-- | result of the match. The result can be used either in a backreference
+-- | (\`\\\\\` followed by a non-zero decimal number), referenced in a
+-- | replace String, or returned as part of an array from the regular
+-- | expression matching Abstract Closure. To inhibit the capturing behaviour
+-- | of parentheses, use the form \`(?:\` \|Disjunction\| \`)\` instead.
+-- |
+-- | Atom :: \`(?\` RegularExpressionModifiers \`:\` Disjunction \`)\` 1. Let
+-- | \_addModifiers\_ be the source text matched by
+-- | \|RegularExpressionModifiers\|. 1. Let \_removeModifiers\_ be the empty
+-- | String. 1. Let \_modifiedRer\_ be UpdateModifiers(\_rer\_,
+-- | CodePointsToString(\_addModifiers\_), \_removeModifiers\_). 1. Return
+-- | CompileSubpattern of \|Disjunction\| with arguments \_modifiedRer\_ and
+-- | \_direction\_. Atom :: \`(?\` RegularExpressionModifiers \`-\`
+-- | RegularExpressionModifiers \`:\` Disjunction \`)\` 1. Let
+-- | \_addModifiers\_ be the source text matched by the first
+-- | \|RegularExpressionModifiers\|. 1. Let \_removeModifiers\_ be the source
+-- | text matched by the second \|RegularExpressionModifiers\|. 1. Let
+-- | \_modifiedRer\_ be UpdateModifiers(\_rer\_,
+-- | CodePointsToString(\_addModifiers\_),
+-- | CodePointsToString(\_removeModifiers\_)). 1. Return CompileSubpattern of
+-- | \|Disjunction\| with arguments \_modifiedRer\_ and \_direction\_.
+-- | AtomEscape :: DecimalEscape 1. Let \_n\_ be the CapturingGroupNumber of
+-- | \|DecimalEscape\|. 1. Assert: \_n\_ ≤
+-- | \_rer\_.\[\[CapturingGroupsCount\]\]. 1. Return
+-- | BackreferenceMatcher(\_rer\_, « \_n\_ », \_direction\_).
+-- |
+-- | An escape sequence of the form \`\\\\\` followed by a non-zero decimal
+-- | number \_n\_ matches the result of the \_n\_^th^ set of capturing
+-- | parentheses (). It is an error if the regular expression has fewer than
+-- | \_n\_ capturing parentheses. If the regular expression has \_n\_ or more
+-- | capturing parentheses but the \_n\_^th^ one is \*undefined\* because it
+-- | has not captured anything, then the backreference always succeeds.
+-- |
+-- | AtomEscape :: CharacterEscape 1. Let \_cv\_ be the CharacterValue of
+-- | \|CharacterEscape\|. 1. Let \_ch\_ be the character whose character
+-- | value is \_cv\_. 1. Let \_A\_ be a one-element CharSet containing the
+-- | character \_ch\_. 1. Return CharacterSetMatcher(\_rer\_, \_A\_,
+-- | \*false\*, \_direction\_). AtomEscape :: CharacterClassEscape 1. Let
+-- | \_cs\_ be CompileToCharSet of \|CharacterClassEscape\| with argument
+-- | \_rer\_. 1. If \_rer\_.\[\[UnicodeSets\]\] is \*false\*, or if every
+
+-- SPEC: L30682-L30709
+-- | CharSetElement of \_cs\_ consists of a single character (including if
+-- | \_cs\_ is empty), return CharacterSetMatcher(\_rer\_, \_cs\_, \*false\*,
+-- | \_direction\_). 1. Let \_lm\_ be an empty List of Matchers. 1. For each
+-- | CharSetElement \_s\_ in \_cs\_ containing more than 1 character,
+-- | iterating in descending order of length, do 1. Let \_cs2\_ be a
+-- | one-element CharSet containing the last code point of \_s\_. 1. Let
+-- | \_m2\_ be CharacterSetMatcher(\_rer\_, \_cs2\_, \*false\*,
+-- | \_direction\_). 1. For each code point \_c1\_ in \_s\_, iterating
+-- | backwards from its second-to-last code point, do 1. Let \_cs1\_ be a
+-- | one-element CharSet containing \_c1\_. 1. Let \_m1\_ be
+-- | CharacterSetMatcher(\_rer\_, \_cs1\_, \*false\*, \_direction\_). 1. Set
+-- | \_m2\_ to MatchSequence(\_m1\_, \_m2\_, \_direction\_). 1. Append \_m2\_
+-- | to \_lm\_. 1. Let \_singles\_ be the CharSet containing every
+-- | CharSetElement of \_cs\_ that consists of a single character. 1. Append
+-- | CharacterSetMatcher(\_rer\_, \_singles\_, \*false\*, \_direction\_) to
+-- | \_lm\_. 1. If \_cs\_ contains the empty sequence of characters, append
+-- | EmptyMatcher() to \_lm\_. 1. Let \_m2\_ be the last Matcher in
+-- | \_lm\_. 1. For each Matcher \_m1\_ of \_lm\_, iterating backwards from
+-- | its second-to-last element, do 1. Set \_m2\_ to
+-- | MatchTwoAlternatives(\_m1\_, \_m2\_). 1. Return \_m2\_. AtomEscape ::
+-- | \`k\` GroupName 1. Let \_matchingGroupSpecifiers\_ be
+-- | GroupSpecifiersThatMatch(\|GroupName\|). 1. Let \_parenIndices\_ be a
+-- | new empty List. 1. For each \|GroupSpecifier\| \_groupSpecifier\_ of
+-- | \_matchingGroupSpecifiers\_, do 1. Let \_parenIndex\_ be
+-- | CountLeftCapturingParensBefore(\_groupSpecifier\_). 1. Append
+-- | \_parenIndex\_ to \_parenIndices\_. 1. Return
+-- | BackreferenceMatcher(\_rer\_, \_parenIndices\_, \_direction\_).
+-- |
+
+-- SPEC: L32249-L32267
+-- | # Array.of ( \...\_items\_ )
+-- |
+-- | This method performs the following steps when called:
+-- |
+-- | 1\. Let \_len\_ be the number of elements in \_items\_. 1. Let
+-- | \_lenNumber\_ be 𝔽(\_len\_). 1. Let \_C\_ be the \*this\* value. 1. If
+-- | IsConstructor(\_C\_) is \*true\*, then 1. Let \_A\_ be ?
+-- | Construct(\_C\_, « \_lenNumber\_ »). 1. Else, 1. Let \_A\_ be ?
+-- | ArrayCreate(\_len\_). 1. Let \_k\_ be 0. 1. Repeat, while \_k\_ \<
+-- | \_len\_, 1. Let \_kValue\_ be \_items\_\[\_k\_\]. 1. Let \_Pk\_ be !
+-- | ToString(𝔽(\_k\_)). 1. Perform ? CreateDataPropertyOrThrow(\_A\_,
+-- | \_Pk\_, \_kValue\_). 1. Set \_k\_ to \_k\_ + 1. 1. Perform ? Set(\_A\_,
+-- | \*\"length\"\*, \_lenNumber\_, \*true\*). 1. Return \_A\_.
+-- |
+-- | This method is an intentionally generic factory method; it does not
+-- | require that its \*this\* value be the Array constructor. Therefore it
+-- | can be transferred to or inherited by other constructors that may be
+-- | called with a single numeric argument.
+-- |
+
+-- SPEC: L32275-L32290
+-- | # get Array \[ %Symbol.species% \]
+-- |
+-- | \`Array\[%Symbol.species%\]\` is an accessor property whose set accessor
+-- | function is \*undefined\*. Its get accessor function performs the
+-- | following steps when called:
+-- |
+-- | 1\. Return the \*this\* value.
+-- |
+-- | The value of the \*\"name\"\* property of this function is \*\"get
+-- | \[Symbol.species\]\"\*.
+-- |
+-- | Array prototype methods normally use their \*this\* value\'s constructor
+-- | to create a derived object. However, a subclass constructor may
+-- | over-ride that default behaviour by redefining its %Symbol.species%
+-- | property.
+-- |
+
+-- SPEC: L32623-L32671
+-- | # FindViaPredicate ( \_O\_: an Object, \_len\_: a non-negative integer, \_direction\_: \~ascending\~ or \~descending\~, \_predicate\_: an ECMAScript language value, \_thisArg\_: an ECMAScript language value, ): either a normal completion containing a Record with fields \[\[Index\]\] (an integral Number) and \[\[Value\]\] (an ECMAScript language value) or a throw completion
+-- |
+-- | description
+-- |
+-- | :   \_O\_ should be an array-like object or a TypedArray. This operation
+-- |     calls \_predicate\_ once for each element of \_O\_, in either
+-- |     ascending index order or descending index order (as indicated by
+-- |     \_direction\_), until it finds one where \_predicate\_ returns a
+-- |     value that coerces to \*true\*. At that point, this operation
+-- |     returns a Record that gives the index and value of the element
+-- |     found. If no such element is found, this operation returns a Record
+-- |     that specifies \*-1\*~𝔽~ for the index and \*undefined\* for the
+-- |     value.
+-- |
+-- |     \_predicate\_ should be a function. When called for an element of
+-- |     the array, it is passed three arguments: the value of the element,
+-- |     the index of the element, and the object being traversed. Its return
+-- |     value will be coerced to a Boolean value.
+-- |
+-- |     \_thisArg\_ will be used as the \*this\* value for each invocation
+-- |     of \_predicate\_.
+-- |
+-- |     This operation does not directly mutate the object on which it is
+-- |     called, but the object may be mutated by the calls to \_predicate\_.
+-- |
+-- |     The range of elements processed is set before the first call to
+-- |     \_predicate\_, just before the traversal begins. Elements that are
+-- |     appended to the array after this will not be visited by
+-- |     \_predicate\_. If existing elements of the array are changed, their
+-- |     value as passed to \_predicate\_ will be the value at the time that
+-- |     this operation visits them. Elements that are deleted after
+-- |     traversal begins and before being visited are still visited and are
+-- |     either looked up from the prototype or are \*undefined\*.
+-- |
+-- | 1\. If IsCallable(\_predicate\_) is \*false\*, throw a \*TypeError\*
+-- | exception. 1. If \_direction\_ is \~ascending\~, then 1. Let \_indices\_
+-- | be a List of the integers in the interval from 0 (inclusive) to \_len\_
+-- | (exclusive), in ascending order. 1. Else, 1. Let \_indices\_ be a List
+-- | of the integers in the interval from 0 (inclusive) to \_len\_
+-- | (exclusive), in descending order. 1. For each integer \_k\_ of
+-- | \_indices\_, do 1. Let \_Pk\_ be ! ToString(𝔽(\_k\_)). 1. NOTE: If \_O\_
+-- | is a TypedArray, the following invocation of Get will return a normal
+-- | completion. 1. Let \_kValue\_ be ? Get(\_O\_, \_Pk\_). 1. Let
+-- | \_testResult\_ be ? Call(\_predicate\_, \_thisArg\_, « \_kValue\_,
+-- | 𝔽(\_k\_), \_O\_ »). 1. If ToBoolean(\_testResult\_) is \*true\*, return
+-- | the Record { \[\[Index\]\]: 𝔽(\_k\_), \[\[Value\]\]: \_kValue\_ }. 1.
+-- | Return the Record { \[\[Index\]\]: \*-1\*~𝔽~, \[\[Value\]\]:
+-- | \*undefined\* }.
+-- |
+
+-- SPEC: L32684-L32707
+-- | # FlattenIntoArray ( \_target\_: an Object, \_source\_: an Object, \_sourceLen\_: a non-negative integer, \_start\_: a non-negative integer, \_depth\_: a non-negative integer or +∞, optional \_mapperFunction\_: a function object, optional \_thisArg\_: an ECMAScript language value, ): either a normal completion containing a non-negative integer or a throw completion
+-- |
+-- | 1\. Assert: If \_mapperFunction\_ is present, then
+-- | IsCallable(\_mapperFunction\_) is \*true\*, \_thisArg\_ is present, and
+-- | \_depth\_ is 1. 1. Let \_targetIndex\_ be \_start\_. 1. Let
+-- | \_sourceIndex\_ be \*+0\*~𝔽~. 1. Repeat, while ℝ(\_sourceIndex\_) \<
+-- | \_sourceLen\_, 1. Let \_P\_ be ! ToString(\_sourceIndex\_). 1. Let
+-- | \_exists\_ be ? HasProperty(\_source\_, \_P\_). 1. If \_exists\_ is
+-- | \*true\*, then 1. Let \_element\_ be ? Get(\_source\_, \_P\_). 1. If
+-- | \_mapperFunction\_ is present, then 1. Set \_element\_ to ?
+-- | Call(\_mapperFunction\_, \_thisArg\_, « \_element\_, \_sourceIndex\_,
+-- | \_source\_ »). 1. Let \_shouldFlatten\_ be \*false\*. 1. If \_depth\_ \>
+-- | 0, then 1. Set \_shouldFlatten\_ to ? IsArray(\_element\_). 1. If
+-- | \_shouldFlatten\_ is \*true\*, then 1. If \_depth\_ = +∞, let
+-- | \_newDepth\_ be +∞. 1. Else, let \_newDepth\_ be \_depth\_ - 1. 1. Let
+-- | \_elementLen\_ be ? LengthOfArrayLike(\_element\_). 1. Set
+-- | \_targetIndex\_ to ? FlattenIntoArray(\_target\_, \_element\_,
+-- | \_elementLen\_, \_targetIndex\_, \_newDepth\_). 1. Else, 1. If
+-- | \_targetIndex\_ ≥ 2^53^ - 1, throw a \*TypeError\* exception. 1. Perform
+-- | ? CreateDataPropertyOrThrow(\_target\_, ! ToString(𝔽(\_targetIndex\_)),
+-- | \_element\_). 1. Set \_targetIndex\_ to \_targetIndex\_ + 1. 1. Set
+-- | \_sourceIndex\_ to \_sourceIndex\_ + \*1\*~𝔽~. 1. Return
+-- | \_targetIndex\_.
+-- |
+
+-- SPEC: L33612-L33662
+-- | \*true\*). 1. Perform ! CreateDataPropertyOrThrow(\_unscopableList\_,
+-- | \*\"keys\"\*, \*true\*). 1. Perform !
+-- | CreateDataPropertyOrThrow(\_unscopableList\_, \*\"toReversed\"\*,
+-- | \*true\*). 1. Perform ! CreateDataPropertyOrThrow(\_unscopableList\_,
+-- | \*\"toSorted\"\*, \*true\*). 1. Perform !
+-- | CreateDataPropertyOrThrow(\_unscopableList\_, \*\"toSpliced\"\*,
+-- | \*true\*). 1. Perform ! CreateDataPropertyOrThrow(\_unscopableList\_,
+-- | \*\"values\"\*, \*true\*). 1. Return \_unscopableList\_.
+-- |
+-- | This property has the attributes { \[\[Writable\]\]: \*false\*,
+-- | \[\[Enumerable\]\]: \*false\*, \[\[Configurable\]\]: \*true\* }.
+-- |
+-- | The own property names of this object are property names that were not
+-- | included as standard properties of \`Array.prototype\` prior to the
+-- | ECMAScript 2015 specification. These names are ignored for \`with\`
+-- | statement binding purposes in order to preserve the behaviour of
+-- | existing code that might use one of these names as a binding in an outer
+-- | scope that is shadowed by a \`with\` statement whose binding object is
+-- | an Array.
+-- |
+-- | The reason that \*\"with\"\* is not included in the \_unscopableList\_
+-- | is because it is already a reserved word.
+-- |
+-- | # Properties of Array Instances
+-- |
+-- | Array instances are Array exotic objects and have the internal methods
+-- | specified for such objects. Array instances inherit properties from the
+-- | Array prototype object.
+-- |
+-- | Array instances have a \*\"length\"\* property, and a set of enumerable
+-- | properties with array index names.
+-- |
+-- | # length
+-- |
+-- | The \*\"length\"\* property of an Array instance is a data property
+-- | whose value is always numerically greater than the name of every
+-- | configurable own property whose name is an array index.
+-- |
+-- | The \*\"length\"\* property initially has the attributes {
+-- | \[\[Writable\]\]: \*true\*, \[\[Enumerable\]\]: \*false\*,
+-- | \[\[Configurable\]\]: \*false\* }.
+-- |
+-- | Reducing the value of the \*\"length\"\* property has the side-effect of
+-- | deleting own array elements whose array index is between the old and new
+-- | length values. However, non-configurable properties can not be deleted.
+-- | Attempting to set the \*\"length\"\* property of an Array to a value
+-- | that is numerically less than or equal to the largest numeric own
+-- | property name of an existing non-configurable array-indexed property of
+-- | the array will result in the length being set to a numeric value that is
+-- | one greater than that non-configurable numeric own property name. See .
+-- |
+
+-- SPEC: L35422-L35444
+-- | # AddEntriesFromIterable ( \_target\_: an Object, \_iterable\_: an ECMAScript language value, but not \*undefined\* or \*null\*, \_adder\_: a function object, ): either a normal completion containing an ECMAScript language value or a throw completion
+-- |
+-- | description
+-- | :   \_adder\_ will be invoked, with \_target\_ as the receiver.
+-- |
+-- | 1\. Let \_iteratorRecord\_ be ? GetIterator(\_iterable\_, \~sync\~). 1.
+-- | Repeat, 1. Let \_next\_ be ? IteratorStepValue(\_iteratorRecord\_). 1.
+-- | If \_next\_ is \~done\~, return \_target\_. 1. If \_next\_ is not an
+-- | Object, then 1. Let \_error\_ be ThrowCompletion(a newly created
+-- | \*TypeError\* object). 1. Return ? IteratorClose(\_iteratorRecord\_,
+-- | \_error\_). 1. Let \_k\_ be Completion(Get(\_next\_, \*\"0\"\*)). 1.
+-- | IfAbruptCloseIterator(\_k\_, \_iteratorRecord\_). 1. Let \_v\_ be
+-- | Completion(Get(\_next\_, \*\"1\"\*)). 1. IfAbruptCloseIterator(\_v\_,
+-- | \_iteratorRecord\_). 1. Let \_status\_ be Completion(Call(\_adder\_,
+-- | \_target\_, « \_k\_, \_v\_ »)). 1. IfAbruptCloseIterator(\_status\_,
+-- | \_iteratorRecord\_).
+-- |
+-- | The parameter \_iterable\_ is expected to be an object that implements a
+-- | %Symbol.iterator% method that returns an iterator object that produces a
+-- | two element array-like object whose first element is a value that will
+-- | be used as a Map key and whose second element is the value to associate
+-- | with that key.
+-- |
+
+-- SPEC: L35872-L35894
+-- | # Set.prototype
+-- |
+-- | The initial value of \`Set.prototype\` is the Set prototype object.
+-- |
+-- | This property has the attributes { \[\[Writable\]\]: \*false\*,
+-- | \[\[Enumerable\]\]: \*false\*, \[\[Configurable\]\]: \*false\* }.
+-- |
+-- | # get Set \[ %Symbol.species% \]
+-- |
+-- | \`Set\[%Symbol.species%\]\` is an accessor property whose set accessor
+-- | function is \*undefined\*. Its get accessor function performs the
+-- | following steps when called:
+-- |
+-- | 1\. Return the \*this\* value.
+-- |
+-- | The value of the \*\"name\"\* property of this function is \*\"get
+-- | \[Symbol.species\]\"\*.
+-- |
+-- | Methods that create derived collection objects should call
+-- | %Symbol.species% to determine the constructor to use to create the
+-- | derived objects. Subclass constructor may over-ride %Symbol.species% to
+-- | change the default constructor assignment.
+-- |
+
+-- SPEC: L37266-L37310
+-- | # Resizable ArrayBuffer Guidelines
+-- |
+-- | The following are guidelines for ECMAScript programmers working with
+-- | resizable ArrayBuffer.
+-- |
+-- | We recommend that programs be tested in their deployment environments
+-- | where possible. The amount of available physical memory differs greatly
+-- | between hardware devices. Similarly, virtual memory subsystems also
+-- | differ greatly between hardware devices as well as operating systems. An
+-- | application that runs without out-of-memory errors on a 64-bit desktop
+-- | web browser could run out of memory on a 32-bit mobile web browser.
+-- |
+-- | When choosing a value for the \*\"maxByteLength\"\* option for resizable
+-- | ArrayBuffer, we recommend that the smallest possible size for the
+-- | application be chosen. We recommend that \*\"maxByteLength\"\* does not
+-- | exceed 1,073,741,824 (2^30^ bytes or 1GiB).
+-- |
+-- | Please note that successfully constructing a resizable ArrayBuffer for a
+-- | particular maximum size does not guarantee that future resizes will
+-- | succeed.
+-- |
+-- | The following are guidelines for ECMAScript implementers implementing
+-- | resizable ArrayBuffer.
+-- |
+-- | Resizable ArrayBuffer can be implemented as copying upon resize, as
+-- | in-place growth via reserving virtual memory up front, or as a
+-- | combination of both for different values of the constructor\'s
+-- | \*\"maxByteLength\"\* option.
+-- |
+-- | If a host is multi-tenanted (i.e. it runs many ECMAScript applications
+-- | simultaneously), such as a web browser, and its implementations choose
+-- | to implement in-place growth by reserving virtual memory, we recommend
+-- | that both 32-bit and 64-bit implementations throw for values of
+-- | \*\"maxByteLength\"\* ≥ 1GiB to 1.5GiB. This is to reduce the likelihood
+-- | a single application can exhaust the virtual memory address space and to
+-- | reduce interoperability risk.
+-- |
+-- | If a host does not have virtual memory, such as those running on
+-- | embedded devices without an MMU, or if a host only implements resizing
+-- | by copying, it may accept any Number value for the \*\"maxByteLength\"\*
+-- | option. However, we recommend a \*RangeError\* be thrown if a memory
+-- | block of the requested size can never be allocated. For example, if the
+-- | requested size is greater than the maximum amount of usable memory on
+-- | the device.
+-- |
+
+-- SPEC: L37373-L37414
+-- | # HostGrowSharedArrayBuffer ( \_buffer\_: a SharedArrayBuffer, \_newByteLength\_: a non-negative integer, ): either a normal completion containing either \~handled\~ or \~unhandled\~, or a throw completion
+-- |
+-- | description
+-- | :   It gives the host an opportunity to perform implementation-defined
+-- |     growing of \_buffer\_. If the host chooses not to handle growing of
+-- |     \_buffer\_, it may return \~unhandled\~ for the default behaviour.
+-- |
+-- | The implementation of HostGrowSharedArrayBuffer must conform to the
+-- | following requirements:
+-- |
+-- | - If the abstract operation does not complete normally with
+-- |   \~unhandled\~, and \_newByteLength\_ \< the current byte length of the
+-- |   \_buffer\_ or \_newByteLength\_ \>
+-- |   \_buffer\_.\[\[ArrayBufferMaxByteLength\]\], throw a \*RangeError\*
+-- |   exception.
+-- | - Let \_AR\_ be the Agent Record of the surrounding agent. Let
+-- |   \_isLittleEndian\_ be \_AR\_.\[\[LittleEndian\]\]. If the abstract
+-- |   operation completes normally with \~handled\~, a WriteSharedMemory or
+-- |   ReadModifyWriteSharedMemory event whose \[\[Order\]\] is \~seq-cst\~,
+-- |   \[\[Payload\]\] is NumericToRawBytes(\~biguint64\~, \_newByteLength\_,
+-- |   \_isLittleEndian\_), \[\[Block\]\] is
+-- |   \_buffer\_.\[\[ArrayBufferByteLengthData\]\], \[\[ByteIndex\]\] is 0,
+-- |   and \[\[ElementSize\]\] is 8 is added to the surrounding agent\'s
+-- |   candidate execution such that racing calls to are not \"lost\", i.e.
+-- |   silently do nothing.
+-- |
+-- | The second requirement above is intentionally vague about how or when
+-- | the current byte length of \_buffer\_ is read. Because the byte length
+-- | must be updated via an atomic read-modify-write operation on the
+-- | underlying hardware, architectures that use load-link/store-conditional
+-- | or load-exclusive/store-exclusive instruction pairs may wish to keep the
+-- | paired instructions close in the instruction stream. As such, itself
+-- | does not perform bounds checking on \_newByteLength\_ before calling
+-- | HostGrowSharedArrayBuffer, nor is there a requirement on when the
+-- | current byte length is read.
+-- |
+-- | This is in contrast with HostResizeArrayBuffer, which is guaranteed that
+-- | 0 ≤ \_newByteLength\_ ≤ \_buffer\_.\[\[ArrayBufferMaxByteLength\]\].
+-- |
+-- | The default implementation of HostGrowSharedArrayBuffer is to return
+-- | NormalCompletion(\~unhandled\~).
+-- |
+
+-- SPEC: L37638-L37709
+-- | # Growable SharedArrayBuffer Guidelines
+-- |
+-- | The following are guidelines for ECMAScript programmers working with
+-- | growable SharedArrayBuffer.
+-- |
+-- | We recommend that programs be tested in their deployment environments
+-- | where possible. The amount of available physical memory differ greatly
+-- | between hardware devices. Similarly, virtual memory subsystems also
+-- | differ greatly between hardware devices as well as operating systems. An
+-- | application that runs without out-of-memory errors on a 64-bit desktop
+-- | web browser could run out of memory on a 32-bit mobile web browser.
+-- |
+-- | When choosing a value for the \*\"maxByteLength\"\* option for growable
+-- | SharedArrayBuffer, we recommend that the smallest possible size for the
+-- | application be chosen. We recommend that \*\"maxByteLength\"\* does not
+-- | exceed 1073741824, or 1GiB.
+-- |
+-- | Please note that successfully constructing a growable SharedArrayBuffer
+-- | for a particular maximum size does not guarantee that future grows will
+-- | succeed.
+-- |
+-- | Not all loads of a growable SharedArrayBuffer\'s length are
+-- | synchronizing \~seq-cst\~ loads. Loads of the length that are for
+-- | bounds-checking of an integer-indexed property access, e.g.
+-- | \`u8\[idx\]\`, are not synchronizing. In general, in the absence of
+-- | explicit synchronization, one property access being in-bound does not
+-- | imply a subsequent property access in the same agent is also in-bound.
+-- | In contrast, explicit loads of the length via the \`length\` and
+-- | \`byteLength\` getters on SharedArrayBuffer, %TypedArray%.prototype, and
+-- | DataView.prototype are synchronizing. Loads of the length that are
+-- | performed by built-in methods to check if a TypedArray is entirely
+-- | out-of-bounds are also synchronizing.
+-- |
+-- | The following are guidelines for ECMAScript implementers implementing
+-- | growable SharedArrayBuffer.
+-- |
+-- | We recommend growable SharedArrayBuffer be implemented as in-place
+-- | growth via reserving virtual memory up front.
+-- |
+-- | Because grow operations can happen in parallel with memory accesses on a
+-- | growable SharedArrayBuffer, the constraints of the memory model require
+-- | that even unordered accesses do not \"tear\" (bits of their values will
+-- | not be mixed). In practice, this means the underlying data block of a
+-- | growable SharedArrayBuffer cannot be grown by being copied without
+-- | stopping the world. We do not recommend stopping the world as an
+-- | implementation strategy because it introduces a serialization point and
+-- | is slow.
+-- |
+-- | Grown memory must appear zeroed from the moment of its creation,
+-- | including to any racy accesses in parallel. This can be accomplished via
+-- | zero-filled-on-demand virtual memory pages, or careful synchronization
+-- | if manually zeroing memory.
+-- |
+-- | Integer-indexed property access on TypedArray views of growable
+-- | SharedArrayBuffers is intended to be optimizable similarly to access on
+-- | TypedArray views of non-growable SharedArrayBuffers, because
+-- | integer-indexed property loads on are not synchronizing on the
+-- | underlying buffer\'s length (see programmer guidelines above). For
+-- | example, bounds checks for property accesses may still be hoisted out of
+-- | loops.
+-- |
+-- | In practice it is difficult to implement growable SharedArrayBuffer by
+-- | copying on hosts that do not have virtual memory, such as those running
+-- | on embedded devices without an MMU. Memory usage behaviour of growable
+-- | SharedArrayBuffers on such hosts may significantly differ from that of
+-- | hosts with virtual memory. Such hosts should clearly communicate memory
+-- | usage expectations to users.
+-- |
+-- | # DataView Objects
+-- |
+-- | # Abstract Operations For DataView Objects
+-- |
+
+-- SPEC: L37764-L37813
+-- | # GetViewValue ( \_view\_: an ECMAScript language value, \_requestIndex\_: an ECMAScript language value, \_isLittleEndian\_: an ECMAScript language value, \_type\_: a TypedArray element type, ): either a normal completion containing either a Number or a BigInt, or a throw completion
+-- |
+-- | description
+-- | :   It is used by functions on DataView instances to retrieve values
+-- |     from the view\'s buffer.
+-- |
+-- | 1\. Perform ? RequireInternalSlot(\_view\_, \[\[DataView\]\]). 1.
+-- | Assert: \_view\_ has a \[\[ViewedArrayBuffer\]\] internal slot. 1. Let
+-- | \_getIndex\_ be ? ToIndex(\_requestIndex\_). 1. Set \_isLittleEndian\_
+-- | to ToBoolean(\_isLittleEndian\_). 1. Let \_viewOffset\_ be
+-- | \_view\_.\[\[ByteOffset\]\]. 1. Let \_viewRecord\_ be
+-- | MakeDataViewWithBufferWitnessRecord(\_view\_, \~unordered\~). 1. NOTE:
+-- | Bounds checking is not a synchronizing operation when \_view\_\'s
+-- | backing buffer is a growable SharedArrayBuffer. 1. If
+-- | IsViewOutOfBounds(\_viewRecord\_) is \*true\*, throw a \*TypeError\*
+-- | exception. 1. Let \_viewSize\_ be GetViewByteLength(\_viewRecord\_). 1.
+-- | Let \_elementSize\_ be the Element Size value specified in for Element
+-- | Type \_type\_. 1. If \_getIndex\_ + \_elementSize\_ \> \_viewSize\_,
+-- | throw a \*RangeError\* exception. 1. Let \_bufferIndex\_ be
+-- | \_getIndex\_ + \_viewOffset\_. 1. Return
+-- | GetValueFromBuffer(\_view\_.\[\[ViewedArrayBuffer\]\], \_bufferIndex\_,
+-- | \_type\_, \*false\*, \~unordered\~, \_isLittleEndian\_).
+-- |
+-- | # SetViewValue ( \_view\_: an ECMAScript language value, \_requestIndex\_: an ECMAScript language value, \_isLittleEndian\_: an ECMAScript language value, \_type\_: a TypedArray element type, \_value\_: an ECMAScript language value, ): either a normal completion containing \*undefined\* or a throw completion
+-- |
+-- | description
+-- | :   It is used by functions on DataView instances to store values into
+-- |     the view\'s buffer.
+-- |
+-- | 1\. Perform ? RequireInternalSlot(\_view\_, \[\[DataView\]\]). 1.
+-- | Assert: \_view\_ has a \[\[ViewedArrayBuffer\]\] internal slot. 1. Let
+-- | \_getIndex\_ be ? ToIndex(\_requestIndex\_). 1. If
+-- | IsBigIntElementType(\_type\_) is \*true\*, let \_numberValue\_ be ?
+-- | ToBigInt(\_value\_). 1. Else, let \_numberValue\_ be ?
+-- | ToNumber(\_value\_). 1. Set \_isLittleEndian\_ to
+-- | ToBoolean(\_isLittleEndian\_). 1. Let \_viewOffset\_ be
+-- | \_view\_.\[\[ByteOffset\]\]. 1. Let \_viewRecord\_ be
+-- | MakeDataViewWithBufferWitnessRecord(\_view\_, \~unordered\~). 1. NOTE:
+-- | Bounds checking is not a synchronizing operation when \_view\_\'s
+-- | backing buffer is a growable SharedArrayBuffer. 1. If
+-- | IsViewOutOfBounds(\_viewRecord\_) is \*true\*, throw a \*TypeError\*
+-- | exception. 1. Let \_viewSize\_ be GetViewByteLength(\_viewRecord\_). 1.
+-- | Let \_elementSize\_ be the Element Size value specified in for Element
+-- | Type \_type\_. 1. If \_getIndex\_ + \_elementSize\_ \> \_viewSize\_,
+-- | throw a \*RangeError\* exception. 1. Let \_bufferIndex\_ be
+-- | \_getIndex\_ + \_viewOffset\_. 1. Perform
+-- | SetValueInBuffer(\_view\_.\[\[ViewedArrayBuffer\]\], \_bufferIndex\_,
+-- | \_type\_, \_numberValue\_, \*false\*, \~unordered\~,
+-- | \_isLittleEndian\_). 1. Return \*undefined\*.
+-- |
+
+-- SPEC: L38150-L38205
+-- |
+-- | For informative guidelines for programming and implementing shared
+-- | memory in ECMAScript, please see the notes at the end of the memory
+-- | model section.
+-- |
+-- | # Waiter Record
+-- |
+-- | A [Waiter Record]{.dfn variants="Waiter Records"} is a Record value used
+-- | to denote a particular call to \`Atomics.wait\` or
+-- | \`Atomics.waitAsync\`.
+-- |
+-- | A Waiter Record has fields listed in .
+-- |
+-- |   Field Name                  Value                                        Meaning
+-- |   --------------------------- -------------------------------------------- ---------------------------------------------------------------------------------------------
+-- |   \[\[AgentSignifier\]\]      an agent signifier                           The agent that called \`Atomics.wait\` or \`Atomics.waitAsync\`.
+-- |   \[\[PromiseCapability\]\]   a PromiseCapability Record or \~blocking\~   If denoting a call to \`Atomics.waitAsync\`, the resulting promise, otherwise \~blocking\~.
+-- |   \[\[TimeoutTime\]\]         a non-negative extended mathematical value   The earliest time by which timeout may be triggered; computed using time values.
+-- |   \[\[Result\]\]              \*\"ok\"\* or \*\"timed-out\"\*              The return value of the call.
+-- |
+-- | # WaiterList Records
+-- |
+-- | A [WaiterList Record]{.dfn variants="WaiterList Records"} is used to
+-- | explain waiting and notification of agents via \`Atomics.wait\`,
+-- | \`Atomics.waitAsync\`, and \`Atomics.notify\`.
+-- |
+-- | A WaiterList Record has fields listed in .
+-- |
+-- |   Field Name                     Value                              Meaning
+-- |   ------------------------------ ---------------------------------- -----------------------------------------------------------------------------------------------------------------------------------
+-- |   \[\[Waiters\]\]                a List of Waiter Records           The calls to \`Atomics.wait\` or \`Atomics.waitAsync\` that are waiting on the location with which this WaiterList is associated.
+-- |   \[\[MostRecentLeaveEvent\]\]   a Synchronize event or \~empty\~   The event of the most recent leaving of its critical section, or \~empty\~ if its critical section has never been entered.
+-- |
+-- | There can be multiple Waiter Records in a WaiterList with the same agent
+-- | signifier.
+-- |
+-- | The agent cluster has a store of WaiterList Records; the store is
+-- | indexed by (\_block\_, \_i\_), where \_block\_ is a Shared Data Block
+-- | and \_i\_ a byte offset into the memory of \_block\_. WaiterList Records
+-- | are agent-independent: a lookup in the store of WaiterList Records by
+-- | (\_block\_, \_i\_) will result in the same WaiterList Record in any
+-- | agent in the agent cluster.
+-- |
+-- | Each WaiterList Record has a [critical section]{.dfn
+-- | variants="critical sections"} that controls exclusive access to that
+-- | WaiterList Record during evaluation. Only a single agent may enter a
+-- | WaiterList Record\'s critical section at one time. Entering and leaving
+-- | a WaiterList Record\'s critical section is controlled by the abstract
+-- | operations EnterCriticalSection and LeaveCriticalSection. Operations on
+-- | a WaiterList Record---adding and removing waiting agents, traversing the
+-- | list of agents, suspending and notifying agents on the list, setting and
+-- | retrieving the Synchronize event---may only be performed by agents that
+-- | have entered the WaiterList Record\'s critical section.
+-- |
+-- | # Abstract Operations for Atomics
+-- |
+
+-- SPEC: L38421-L38466
+-- | LeaveCriticalSection(\_WL\_). 1. If \_mode\_ is \~sync\~, return
+-- | \_waiterRecord\_.\[\[Result\]\]. 1. Perform !
+-- | CreateDataPropertyOrThrow(\_resultObject\_, \*\"async\"\*, \*true\*). 1.
+-- | Perform ! CreateDataPropertyOrThrow(\_resultObject\_, \*\"value\"\*,
+-- | \_promiseCapability\_.\[\[Promise\]\]). 1. Return \_resultObject\_.
+-- |
+-- | \_additionalTimeout\_ allows implementations to pad timeouts as
+-- | necessary, such as for reducing power consumption or coarsening timer
+-- | resolution to mitigate timing attacks. This value may differ from call
+-- | to call of DoWait.
+-- |
+-- | # EnqueueAtomicsWaitAsyncTimeoutJob ( \_WL\_: a WaiterList Record, \_waiterRecord\_: a Waiter Record, ): \~unused\~
+-- |
+-- | 1\. Let \_timeoutJob\_ be a new Job Abstract Closure with no parameters
+-- | that captures \_WL\_ and \_waiterRecord\_ and performs the following
+-- | steps when called: 1. Perform EnterCriticalSection(\_WL\_). 1. If
+-- | \_WL\_.\[\[Waiters\]\] contains \_waiterRecord\_, then 1. Let
+-- | \_timeOfJobExecution\_ be the time value (UTC) identifying the current
+-- | time. 1. Assert: ℝ(\_timeOfJobExecution\_) ≥
+-- | \_waiterRecord\_.\[\[TimeoutTime\]\] (ignoring potential
+-- | non-monotonicity of time values). 1. Set \_waiterRecord\_.\[\[Result\]\]
+-- | to \*\"timed-out\"\*. 1. Perform RemoveWaiter(\_WL\_,
+-- | \_waiterRecord\_). 1. Perform NotifyWaiter(\_WL\_, \_waiterRecord\_). 1.
+-- | Perform LeaveCriticalSection(\_WL\_). 1. Return \~unused\~. 1. Let
+-- | \_now\_ be the time value (UTC) identifying the current time. 1. Let
+-- | \_currentRealm\_ be the current Realm Record. 1. Perform
+-- | HostEnqueueTimeoutJob(\_timeoutJob\_, \_currentRealm\_,
+-- | 𝔽(\_waiterRecord\_.\[\[TimeoutTime\]\]) - \_now\_). 1. Return
+-- | \~unused\~.
+-- |
+-- | # AtomicCompareExchangeInSharedBlock ( \_block\_: a Shared Data Block, \_byteIndexInBuffer\_: an integer, \_elementSize\_: a non-negative integer, \_expectedBytes\_: a List of byte values, \_replacementBytes\_: a List of byte values, ): a List of byte values
+-- |
+-- | 1\. Let \_AR\_ be the Agent Record of the surrounding agent. 1. Let
+-- | \_execution\_ be \_AR\_.\[\[CandidateExecution\]\]. 1. Let
+-- | \_eventsRecord\_ be the Agent Events Record of
+-- | \_execution\_.\[\[EventsRecords\]\] whose \[\[AgentSignifier\]\] is
+-- | AgentSignifier(). 1. Let \_rawBytesRead\_ be a List of length
+-- | \_elementSize\_ whose elements are nondeterministically chosen byte
+-- | values. 1. NOTE: In implementations, \_rawBytesRead\_ is the result of a
+-- | load-link, of a load-exclusive, or of an operand of a read-modify-write
+-- | instruction on the underlying hardware. The nondeterminism is a semantic
+-- | prescription of the memory model to describe observable behaviour of
+-- | hardware with weak consistency. 1. NOTE: The comparison of the expected
+-- | value and the read value is performed outside of the read-modify-write
+-- | modification function to avoid needlessly strong synchronization when
+-- | the expected value is not equal to the read value. 1. If
+
+-- SPEC: L39041-L39051
+-- | # UnicodeEscape ( \_C\_: a code unit, ): a String
+-- |
+-- | description
+-- | :   It represents \_C\_ as a Unicode escape sequence.
+-- |
+-- | 1\. Let \_n\_ be the numeric value of \_C\_. 1. Assert: \_n\_ ≤
+-- | 0xFFFF. 1. Let \_hex\_ be the String representation of \_n\_, formatted
+-- | as a lowercase hexadecimal number. 1. Return the string-concatenation of
+-- | the code unit 0x005C (REVERSE SOLIDUS), \*\"u\"\*, and
+-- | StringPad(\_hex\_, 4, \*\"0\"\*, \~start\~).
+-- |
+
+-- SPEC: L40750-L40815
+-- | # PerformPromiseAllSettled ( \_iteratorRecord\_: an Iterator Record, \_constructor\_: a constructor, \_resultCapability\_: a PromiseCapability Record, \_promiseResolve\_: a function object, ): either a normal completion containing an ECMAScript language value or a throw completion
+-- |
+-- | 1\. Let \_values\_ be a new empty List. 1.
+-- | \[declared=\"remainingElementsCount\"\] NOTE: \_remainingElementsCount\_
+-- | starts at 1 instead of 0 to ensure \_resultCapability\_.\[\[Resolve\]\]
+-- | is only called once, even in the presence of a misbehaving \*\"then\"\*
+-- | which calls one of the passed callbacks before the input iterator is
+-- | exhausted. 1. Let \_remainingElementsCount\_ be the Record {
+-- | \[\[Value\]\]: 1 }. 1. Let \_index\_ be 0. 1. Repeat, 1. Let \_next\_ be
+-- | ? IteratorStepValue(\_iteratorRecord\_). 1. If \_next\_ is \~done\~,
+-- | then 1. Set \_remainingElementsCount\_.\[\[Value\]\] to
+-- | \_remainingElementsCount\_.\[\[Value\]\] - 1. 1. If
+-- | \_remainingElementsCount\_.\[\[Value\]\] = 0, then 1. Let
+-- | \_valuesArray\_ be CreateArrayFromList(\_values\_). 1. Perform ?
+-- | Call(\_resultCapability\_.\[\[Resolve\]\], \*undefined\*, «
+-- | \_valuesArray\_ »). 1. Return \_resultCapability\_.\[\[Promise\]\]. 1.
+-- | Append \*undefined\* to \_values\_. 1. Let \_nextPromise\_ be ?
+-- | Call(\_promiseResolve\_, \_constructor\_, « \_next\_ »). 1. Let
+-- | \_alreadyCalled\_ be the Record { \[\[Value\]\]: \*false\* }. 1. Let
+-- | \_fulfilledSteps\_ be a new Abstract Closure with parameters (\_value\_)
+-- | that captures \_values\_, \_resultCapability\_, and
+-- | \_remainingElementsCount\_ and performs the following steps when
+-- | called: 1. Let \_F\_ be the active function object. 1. If
+-- | \_F\_.\[\[AlreadyCalled\]\].\[\[Value\]\] is \*true\*, return
+-- | \*undefined\*. 1. Set \_F\_.\[\[AlreadyCalled\]\].\[\[Value\]\] to
+-- | \*true\*. 1. Let \_obj\_ be OrdinaryObjectCreate(%Object.prototype%). 1.
+-- | Perform ! CreateDataPropertyOrThrow(\_obj\_, \*\"status\"\*,
+-- | \*\"fulfilled\"\*). 1. Perform ! CreateDataPropertyOrThrow(\_obj\_,
+-- | \*\"value\"\*, \_value\_). 1. Let \_thisIndex\_ be
+-- | \_F\_.\[\[Index\]\]. 1. Set \_values\_\[\_thisIndex\_\] to \_obj\_. 1.
+-- | Set \_remainingElementsCount\_.\[\[Value\]\] to
+-- | \_remainingElementsCount\_.\[\[Value\]\] - 1. 1. If
+-- | \_remainingElementsCount\_.\[\[Value\]\] = 0, then 1. Let
+-- | \_valuesArray\_ be CreateArrayFromList(\_values\_). 1. Return ?
+-- | Call(\_resultCapability\_.\[\[Resolve\]\], \*undefined\*, «
+-- | \_valuesArray\_ »). 1. Return \*undefined\*. 1. Let \_onFulfilled\_ be
+-- | CreateBuiltinFunction(\_fulfilledSteps\_, 1, \*\"\"\*, «
+-- | \[\[AlreadyCalled\]\], \[\[Index\]\] »). 1. Set
+-- | \_onFulfilled\_.\[\[AlreadyCalled\]\] to \_alreadyCalled\_. 1. Set
+-- | \_onFulfilled\_.\[\[Index\]\] to \_index\_. 1. Let \_rejectedSteps\_ be
+-- | a new Abstract Closure with parameters (\_error\_) that captures
+-- | \_values\_, \_resultCapability\_, and \_remainingElementsCount\_ and
+-- | performs the following steps when called: 1. Let \_F\_ be the active
+-- | function object. 1. If \_F\_.\[\[AlreadyCalled\]\].\[\[Value\]\] is
+-- | \*true\*, return \*undefined\*. 1. Set
+-- | \_F\_.\[\[AlreadyCalled\]\].\[\[Value\]\] to \*true\*. 1. Let \_obj\_ be
+-- | OrdinaryObjectCreate(%Object.prototype%). 1. Perform !
+-- | CreateDataPropertyOrThrow(\_obj\_, \*\"status\"\*, \*\"rejected\"\*). 1.
+-- | Perform ! CreateDataPropertyOrThrow(\_obj\_, \*\"reason\"\*,
+-- | \_error\_). 1. Let \_thisIndex\_ be \_F\_.\[\[Index\]\]. 1. Set
+-- | \_values\_\[\_thisIndex\_\] to \_obj\_. 1. Set
+-- | \_remainingElementsCount\_.\[\[Value\]\] to
+-- | \_remainingElementsCount\_.\[\[Value\]\] - 1. 1. If
+-- | \_remainingElementsCount\_.\[\[Value\]\] = 0, then 1. Let
+-- | \_valuesArray\_ be CreateArrayFromList(\_values\_). 1. Return ?
+-- | Call(\_resultCapability\_.\[\[Resolve\]\], \*undefined\*, «
+-- | \_valuesArray\_ »). 1. Return \*undefined\*. 1. Let \_onRejected\_ be
+-- | CreateBuiltinFunction(\_rejectedSteps\_, 1, \*\"\"\*, «
+-- | \[\[AlreadyCalled\]\], \[\[Index\]\] »). 1. Set
+-- | \_onRejected\_.\[\[AlreadyCalled\]\] to \_alreadyCalled\_. 1. Set
+-- | \_onRejected\_.\[\[Index\]\] to \_index\_. 1. Set \_index\_ to
+-- | \_index\_ + 1. 1. Set \_remainingElementsCount\_.\[\[Value\]\] to
+-- | \_remainingElementsCount\_.\[\[Value\]\] + 1. 1. Perform ?
+-- | Invoke(\_nextPromise\_, \*\"then\"\*, « \_onFulfilled\_, \_onRejected\_
+-- | »).
+-- |
+
+-- SPEC: L40842-L40889
+-- | # PerformPromiseAny ( \_iteratorRecord\_: an Iterator Record, \_constructor\_: a constructor, \_resultCapability\_: a PromiseCapability Record, \_promiseResolve\_: a function object, ): either a normal completion containing an ECMAScript language value or a throw completion
+-- |
+-- | 1\. Let \_errors\_ be a new empty List. 1.
+-- | \[declared=\"remainingElementsCount\"\] NOTE: \_remainingElementsCount\_
+-- | starts at 1 instead of 0 to ensure \_resultCapability\_.\[\[Reject\]\]
+-- | is only called once, even in the presence of a misbehaving \*\"then\"\*
+-- | which calls the passed callback before the input iterator is
+-- | exhausted. 1. Let \_remainingElementsCount\_ be the Record {
+-- | \[\[Value\]\]: 1 }. 1. Let \_index\_ be 0. 1. Repeat, 1. Let \_next\_ be
+-- | ? IteratorStepValue(\_iteratorRecord\_). 1. If \_next\_ is \~done\~,
+-- | then 1. Set \_remainingElementsCount\_.\[\[Value\]\] to
+-- | \_remainingElementsCount\_.\[\[Value\]\] - 1. 1. If
+-- | \_remainingElementsCount\_.\[\[Value\]\] = 0, then 1. Let
+-- | \_aggregateError\_ be a newly created \*AggregateError\* object. 1.
+-- | Perform ! DefinePropertyOrThrow(\_aggregateError\_, \*\"errors\"\*,
+-- | PropertyDescriptor { \[\[Configurable\]\]: \*true\*, \[\[Enumerable\]\]:
+-- | \*false\*, \[\[Writable\]\]: \*true\*, \[\[Value\]\]:
+-- | CreateArrayFromList(\_errors\_) }). 1. Perform ?
+-- | Call(\_resultCapability\_.\[\[Reject\]\], \*undefined\*, «
+-- | \_aggregateError\_ »). 1. Return
+-- | \_resultCapability\_.\[\[Promise\]\]. 1. Append \*undefined\* to
+-- | \_errors\_. 1. Let \_nextPromise\_ be ? Call(\_promiseResolve\_,
+-- | \_constructor\_, « \_next\_ »). 1. Let \_rejectedSteps\_ be a new
+-- | Abstract Closure with parameters (\_error\_) that captures \_errors\_,
+-- | \_resultCapability\_, and \_remainingElementsCount\_ and performs the
+-- | following steps when called: 1. Let \_F\_ be the active function
+-- | object. 1. If \_F\_.\[\[AlreadyCalled\]\] is \*true\*, return
+-- | \*undefined\*. 1. Set \_F\_.\[\[AlreadyCalled\]\] to \*true\*. 1. Let
+-- | \_thisIndex\_ be \_F\_.\[\[Index\]\]. 1. Set \_errors\_\[\_thisIndex\_\]
+-- | to \_error\_. 1. Set \_remainingElementsCount\_.\[\[Value\]\] to
+-- | \_remainingElementsCount\_.\[\[Value\]\] - 1. 1. If
+-- | \_remainingElementsCount\_.\[\[Value\]\] = 0, then 1. Let
+-- | \_aggregateError\_ be a newly created \*AggregateError\* object. 1.
+-- | Perform ! DefinePropertyOrThrow(\_aggregateError\_, \*\"errors\"\*,
+-- | PropertyDescriptor { \[\[Configurable\]\]: \*true\*, \[\[Enumerable\]\]:
+-- | \*false\*, \[\[Writable\]\]: \*true\*, \[\[Value\]\]:
+-- | CreateArrayFromList(\_errors\_) }). 1. Return ?
+-- | Call(\_resultCapability\_.\[\[Reject\]\], \*undefined\*, «
+-- | \_aggregateError\_ »). 1. Return \*undefined\*. 1. Let \_onRejected\_ be
+-- | CreateBuiltinFunction(\_rejectedSteps\_, 1, \*\"\"\*, «
+-- | \[\[AlreadyCalled\]\], \[\[Index\]\] »). 1. Set
+-- | \_onRejected\_.\[\[AlreadyCalled\]\] to \*false\*. 1. Set
+-- | \_onRejected\_.\[\[Index\]\] to \_index\_. 1. Set \_index\_ to
+-- | \_index\_ + 1. 1. Set \_remainingElementsCount\_.\[\[Value\]\] to
+-- | \_remainingElementsCount\_.\[\[Value\]\] + 1. 1. Perform ?
+-- | Invoke(\_nextPromise\_, \*\"then\"\*, «
+-- | \_resultCapability\_.\[\[Resolve\]\], \_onRejected\_ »).
+-- |
+
+-- SPEC: L41392-L41401
+-- |
+-- | Each AsyncGeneratorFunction instance has the following own properties:
+-- |
+-- | # length
+-- |
+-- | The value of the \*\"length\"\* property is an integral Number that
+-- | indicates the typical number of arguments expected by the
+-- | AsyncGeneratorFunction. However, the language permits the function to be
+-- | invoked with some other number of arguments. The behaviour of an
+-- | AsyncGeneratorFunction when invoked on a number of arguments other than
+
+-- SPEC: L41409-L41419
+-- |
+-- | The specification for the \*\"name\"\* property of Function instances
+-- | given in also applies to AsyncGeneratorFunction instances.
+-- |
+-- | # prototype
+-- |
+-- | Whenever an AsyncGeneratorFunction instance is created, another ordinary
+-- | object is also created and is the initial value of the async generator
+-- | function\'s \*\"prototype\"\* property. The value of the prototype
+-- | property is used to initialize the \[\[Prototype\]\] internal slot of a
+-- | newly created AsyncGenerator when the generator function object is
+
+-- SPEC: L41511-L41586
+-- | \_acGenContext\_. 1. If \_generatorBody\_ is a Parse Node, then 1. Let
+-- | \_result\_ be Completion(Evaluation of \_generatorBody\_). 1. Else, 1.
+-- | Assert: \_generatorBody\_ is an Abstract Closure with no parameters. 1.
+-- | Let \_result\_ be Completion(\_generatorBody\_()). 1. Assert: If we
+-- | return here, the generator either threw an exception or performed either
+-- | an implicit or explicit return. 1. Remove \_acGenContext\_ from the
+-- | execution context stack and restore the execution context that is at the
+-- | top of the execution context stack as the running execution context. 1.
+-- | Set \_acGenerator\_.\[\[GeneratorState\]\] to \~completed\~. 1. NOTE:
+-- | Once a generator enters the \~completed\~ state it never leaves it and
+-- | its associated execution context is never resumed. Any execution state
+-- | associated with \_acGenerator\_ can be discarded at this point. 1. If
+-- | \_result\_ is a normal completion, then 1. Let \_resultValue\_ be
+-- | \*undefined\*. 1. Else if \_result\_ is a return completion, then 1. Let
+-- | \_resultValue\_ be \_result\_.\[\[Value\]\]. 1. Else, 1. Assert:
+-- | \_result\_ is a throw completion. 1. Return ? \_result\_. 1. Return
+-- | NormalCompletion(CreateIteratorResultObject(\_resultValue\_,
+-- | \*true\*)). 1. Set the code evaluation state of \_genContext\_ such that
+-- | when evaluation is resumed for that execution context, \_closure\_ will
+-- | be called with no arguments. 1. Set
+-- | \_generator\_.\[\[GeneratorContext\]\] to \_genContext\_. 1. Return
+-- | \~unused\~.
+-- |
+-- | # GeneratorValidate ( \_generator\_: an ECMAScript language value, \_generatorBrand\_: a String or \~empty\~, ): either a normal completion containing one of \~suspended-start\~, \~suspended-yield\~, or \~completed\~, or a throw completion
+-- |
+-- | 1\. Perform ? RequireInternalSlot(\_generator\_,
+-- | \[\[GeneratorState\]\]). 1. Perform ? RequireInternalSlot(\_generator\_,
+-- | \[\[GeneratorBrand\]\]). 1. If \_generator\_.\[\[GeneratorBrand\]\] is
+-- | not \_generatorBrand\_, throw a \*TypeError\* exception. 1. Assert:
+-- | \_generator\_ has a \[\[GeneratorContext\]\] internal slot. 1. Let
+-- | \_state\_ be \_generator\_.\[\[GeneratorState\]\]. 1. If \_state\_ is
+-- | \~executing\~, throw a \*TypeError\* exception. 1. Return \_state\_.
+-- |
+-- | # GeneratorResume ( \_generator\_: an ECMAScript language value, \_value\_: an ECMAScript language value or \~empty\~, \_generatorBrand\_: a String or \~empty\~, ): either a normal completion containing an ECMAScript language value or a throw completion
+-- |
+-- | 1\. Let \_state\_ be ? GeneratorValidate(\_generator\_,
+-- | \_generatorBrand\_). 1. If \_state\_ is \~completed\~, return
+-- | CreateIteratorResultObject(\*undefined\*, \*true\*). 1. Assert:
+-- | \_state\_ is either \~suspended-start\~ or \~suspended-yield\~. 1. Let
+-- | \_genContext\_ be \_generator\_.\[\[GeneratorContext\]\]. 1. Let
+-- | \_methodContext\_ be the running execution context. 1. Suspend
+-- | \_methodContext\_. 1. Set \_generator\_.\[\[GeneratorState\]\] to
+-- | \~executing\~. 1. Push \_genContext\_ onto the execution context stack;
+-- | \_genContext\_ is now the running execution context. 1. Resume the
+-- | suspended evaluation of \_genContext\_ using NormalCompletion(\_value\_)
+-- | as the result of the operation that suspended it. Let \_result\_ be the
+-- | value returned by the resumed computation. 1. Assert: When we return
+-- | here, \_genContext\_ has already been removed from the execution context
+-- | stack and \_methodContext\_ is the currently running execution
+-- | context. 1. Return ? \_result\_.
+-- |
+-- | # GeneratorResumeAbrupt ( \_generator\_: an ECMAScript language value, \_abruptCompletion\_: a return completion or a throw completion, \_generatorBrand\_: a String or \~empty\~, ): either a normal completion containing an ECMAScript language value or a throw completion
+-- |
+-- | 1\. Let \_state\_ be ? GeneratorValidate(\_generator\_,
+-- | \_generatorBrand\_). 1. If \_state\_ is \~suspended-start\~, then 1. Set
+-- | \_generator\_.\[\[GeneratorState\]\] to \~completed\~. 1. NOTE: Once a
+-- | generator enters the \~completed\~ state it never leaves it and its
+-- | associated execution context is never resumed. Any execution state
+-- | associated with \_generator\_ can be discarded at this point. 1. Set
+-- | \_state\_ to \~completed\~. 1. If \_state\_ is \~completed\~, then 1. If
+-- | \_abruptCompletion\_ is a return completion, then 1. Return
+-- | CreateIteratorResultObject(\_abruptCompletion\_.\[\[Value\]\],
+-- | \*true\*). 1. Return ? \_abruptCompletion\_. 1. Assert: \_state\_ is
+-- | \~suspended-yield\~. 1. Let \_genContext\_ be
+-- | \_generator\_.\[\[GeneratorContext\]\]. 1. Let \_methodContext\_ be the
+-- | running execution context. 1. Suspend \_methodContext\_. 1. Set
+-- | \_generator\_.\[\[GeneratorState\]\] to \~executing\~. 1. Push
+-- | \_genContext\_ onto the execution context stack; \_genContext\_ is now
+-- | the running execution context. 1. Resume the suspended evaluation of
+-- | \_genContext\_ using \_abruptCompletion\_ as the result of the operation
+-- | that suspended it. Let \_result\_ be the Completion Record returned by
+-- | the resumed computation. 1. Assert: When we return here, \_genContext\_
+-- | has already been removed from the execution context stack and
+-- | \_methodContext\_ is the currently running execution context. 1. Return
+-- | ? \_result\_.
+-- |
+
+-- SPEC: L41595-L41613
+-- | # GeneratorYield ( \_iteratorResult\_: an Object that conforms to the IteratorResult interface, ): either a normal completion containing an ECMAScript language value or an abrupt completion
+-- |
+-- | skip return checks
+-- | :   true
+-- |
+-- | 1\. Let \_genContext\_ be the running execution context. 1. Assert:
+-- | \_genContext\_ is the execution context of a generator. 1. Let
+-- | \_generator\_ be the value of the Generator component of
+-- | \_genContext\_. 1. Assert: GetGeneratorKind() is \~sync\~. 1. Set
+-- | \_generator\_.\[\[GeneratorState\]\] to \~suspended-yield\~. 1. Remove
+-- | \_genContext\_ from the execution context stack and restore the
+-- | execution context that is at the top of the execution context stack as
+-- | the running execution context. 1. Let \_callerContext\_ be the running
+-- | execution context. 1. Resume \_callerContext\_ passing
+-- | NormalCompletion(\_iteratorResult\_). If \_genContext\_ is ever resumed
+-- | again, let \_resumptionValue\_ be the Completion Record with which it is
+-- | resumed. 1. Assert: If control reaches here, then \_genContext\_ is the
+-- | running execution context again. 1. Return \_resumptionValue\_.
+-- |
+
+-- SPEC: L41621-L41643
+-- | # CreateIteratorFromClosure ( \_closure\_: an Abstract Closure with no parameters, \_generatorBrand\_: a String or \~empty\~, \_generatorPrototype\_: an Object, optional \_extraSlots\_: a List of names of internal slots, ): a Generator
+-- |
+-- | 1\. NOTE: \_closure\_ can contain uses of the Yield operation to yield
+-- | an IteratorResult object. 1. If \_extraSlots\_ is not present, set
+-- | \_extraSlots\_ to a new empty List. 1. Let \_internalSlotsList\_ be the
+-- | list-concatenation of \_extraSlots\_ and « \[\[GeneratorState\]\],
+-- | \[\[GeneratorContext\]\], \[\[GeneratorBrand\]\] ». 1. Let \_generator\_
+-- | be OrdinaryObjectCreate(\_generatorPrototype\_,
+-- | \_internalSlotsList\_). 1. Set \_generator\_.\[\[GeneratorBrand\]\] to
+-- | \_generatorBrand\_. 1. Set \_generator\_.\[\[GeneratorState\]\] to
+-- | \~suspended-start\~. 1. Let \_callerContext\_ be the running execution
+-- | context. 1. Let \_calleeContext\_ be a new execution context. 1. Set the
+-- | Function of \_calleeContext\_ to \*null\*. 1. Set the Realm of
+-- | \_calleeContext\_ to the current Realm Record. 1. Set the ScriptOrModule
+-- | of \_calleeContext\_ to \_callerContext\_\'s ScriptOrModule. 1. If
+-- | \_callerContext\_ is not already suspended, suspend
+-- | \_callerContext\_. 1. Push \_calleeContext\_ onto the execution context
+-- | stack; \_calleeContext\_ is now the running execution context. 1.
+-- | Perform GeneratorStart(\_generator\_, \_closure\_). 1. Remove
+-- | \_calleeContext\_ from the execution context stack and restore
+-- | \_callerContext\_ as the running execution context. 1. Return
+-- | \_generator\_.
+-- |
+
+-- SPEC: L42024-L42033
+-- |
+-- | This property has the attributes { \[\[Writable\]\]: \*false\*,
+-- | \[\[Enumerable\]\]: \*false\*, \[\[Configurable\]\]: \*true\* }.
+-- |
+-- | # AsyncFunction Instances
+-- |
+-- | Every AsyncFunction instance is an ECMAScript function object and has
+-- | the internal slots listed in . The value of the
+-- | \[\[IsClassConstructor\]\] internal slot for all such instances is
+-- | \*false\*. AsyncFunction instances are not constructors and do not have
+
+-- SPEC: L42040-L42053
+-- |
+-- | The specification for the \*\"length\"\* property of Function instances
+-- | given in also applies to AsyncFunction instances.
+-- |
+-- | # name
+-- |
+-- | The specification for the \*\"name\"\* property of Function instances
+-- | given in also applies to AsyncFunction instances.
+-- |
+-- | # Async Functions Abstract Operations
+-- |
+-- | # AsyncFunctionStart ( \_promiseCapability\_: a PromiseCapability Record, \_asyncFunctionBody\_: a \|FunctionBody\| Parse Node, an \|ExpressionBody\| Parse Node, or an Abstract Closure with no parameters, ): \~unused\~
+-- |
+-- | 1\. Let \_runningContext\_ be the running execution context. 1. Let
+
+-- SPEC: L42073-L42093
+-- | the top of the execution context stack as the running execution
+-- | context. 1. If \_result\_ is a normal completion, then 1. Perform !
+-- | Call(\_promiseCapability\_.\[\[Resolve\]\], \*undefined\*, «
+-- | \*undefined\* »). 1. Else if \_result\_ is a return completion, then 1.
+-- | Perform ! Call(\_promiseCapability\_.\[\[Resolve\]\], \*undefined\*, «
+-- | \_result\_.\[\[Value\]\] »). 1. Else, 1. Assert: \_result\_ is a throw
+-- | completion. 1. Perform ! Call(\_promiseCapability\_.\[\[Reject\]\],
+-- | \*undefined\*, « \_result\_.\[\[Value\]\] »). 1.
+-- | \[id=\"step-asyncblockstart-return-undefined\"\] Return
+-- | NormalCompletion(\~unused\~). 1. Set the code evaluation state of
+-- | \_asyncContext\_ such that when evaluation is resumed for that execution
+-- | context, \_closure\_ will be called with no arguments. 1. Push
+-- | \_asyncContext\_ onto the execution context stack; \_asyncContext\_ is
+-- | now the running execution context. 1. Resume the suspended evaluation of
+-- | \_asyncContext\_. Let \_result\_ be the value returned by the resumed
+-- | computation. 1. Assert: When we return here, \_asyncContext\_ has
+-- | already been removed from the execution context stack and
+-- | \_runningContext\_ is the currently running execution context. 1.
+-- | Assert: \_result\_ is a normal completion with a value of \~unused\~.
+-- | The possible sources of this value are Await or, if the async function
+-- | doesn\'t await anything, step above. 1. Return \~unused\~.
+
+
 end VerifiedJS.Source
