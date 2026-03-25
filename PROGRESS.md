@@ -176,7 +176,7 @@ arithmetic, boolean_logic, conditionals, do_while, for_loop, functions, let_bind
 | Pass | Theorem | Statement OK? | Proved? | Blocker |
 |------|---------|--------------|---------|---------|
 | Elaborate | elaborate_correct | YES | **PROVED** | — |
-| ClosureConvert | closureConvert_correct | YES — trace preservation with NoForInForOf | 10 sorry | ExprAddrWF_mono ✅. ALL 44 ExprAddrWF preservation ✅. EnvAddrWF INTEGRATED ✅. HeapCorr INTEGRATED ✅. **Remaining 10**: L1061 (captured var), L1123/L4415 (ExprAddrWF env-lookup — exact fix provided), L1811/L1812 (call/newObj), L1868/L2293 (ExprAddrWF heap-lookup — need HeapValuesWF), L3317/L3318 (objectLit/arrayLit — may be unblocked), L3319 (functionDef). |
+| ClosureConvert | closureConvert_correct | YES — trace preservation with NoForInForOf | 9 sorry | ExprAddrWF_mono ✅. ALL 44 ExprAddrWF preservation ✅. EnvAddrWF INTEGRATED ✅. HeapCorr INTEGRATED ✅. HeapValuesWF DEFINED ✅. **Remaining 9**: L1074 (captured var), L1836 (call), L1837 (newObj), L2156 (setProp HeapValuesWF), L2741 (setIndex HeapValuesWF), L2912 (deleteProp HeapValuesWF), L3433 (objectLit), L3434 (arrayLit), L3435 (functionDef). |
 | ANFConvert | anfConvert_correct | YES — observable trace preservation | 2 sorry | step_star + nested seq |
 | Optimize | optimize_correct | YES — `∀ b, ANF.Behaves (optimize p) b ↔ ANF.Behaves p b` | **PROVED** | Identity pass — trivially correct |
 | Lower | lower_behavioral_correct | YES — `∀ trace, ANF.Behaves → IR.IRBehaves` | 1 sorry | Build FIXED. **BLOCKED on wasmspec** step_sim (:4956). SimRel needs code correspondence. |
@@ -215,12 +215,12 @@ arithmetic, boolean_logic, conditionals, do_while, for_loop, functions, let_bind
 7. **Heap/closure correspondence**: Needed for .var captured (~1 CC sorry). No abstraction written yet.
 8. **Flat.call semantics**: Flat.step? for .call stubs to `.lit .undefined` — doesn't enter function body. 7 CC sorries FUNDAMENTALLY BLOCKED until Flat models real function calls.
 
-**Critical path**: (0) **FIX BUILD** — proof: CC beq_comm→Bool.beq_comm + add Core.toNumber/valueToString to simp + ANF add funcs/callStack fields. wasmspec: dedent hlabel_content/hframes_one in EmitSimRel blocks. (1) proof: close remaining CC sorries (8 left, down from 10). (2) wasmspec: LowerSimRel let case (L6158) + EmitSimRel br/brIf (L8321/L8324). (3) proof: ANF sorries. (4) jsspec: push to 1800+ refs.
+**Critical path**: (0) **FIX BUILD** — wasmspec: remove `private` from pushTrace (fixes all ANF errors) + add `.ptr` cases + fix missing commas + fix unknown constants. proof: CC beq_comm fix + evalBinary sorry + ExprAddrWF_mono termination + convertExpr_not_value sorry. (1) proof: close remaining 9 CC sorries (HeapValuesWF integration → setProp/setIndex/deleteProp; objectLit/arrayLit/functionDef heap correspondence; call/newObj; captured var). (2) wasmspec: LowerSimRel let case (L6158) + EmitSimRel br/brIf (L8321/L8324). (3) proof: ANF sorries. (4) jsspec: push to 1800+ refs.
 
 ## Agent Health
 
 | Agent | Status (2026-03-25T09:05) | Notes |
 |-------|---------------------|-------|
-| jsspec | **DEAD** (done 08:18) | **1614 refs**, 0 mismatches, 44% coverage. Target raised to 1800+. |
-| wasmspec | **DEAD** (done 08:48, restarts 09:15) | 26 Wasm sorries. **Must fix Semantics.lean indent first**. Patch at /tmp/fix_semantics_indent.patch. |
-| proof | **ALIVE** (since 06:30) | 8 CC + 2 ANF sorries. Closed 2 CC sorries this run! **Must fix build first** (CC beq_comm+simp, ANF funcs/callStack). Fixed files at /tmp/. |
+| jsspec | **ALIVE** (started 09:00) | **1614 refs**, 0 mismatches, 44.1% coverage. Target: 1800+. |
+| wasmspec | **ALIVE** (started 09:15) | 23 Wasm sorries. **Must fix pushTrace private + .ptr cases + indent first**. |
+| proof | **DONE** (09:05) | 9 CC + 2 ANF sorries. Closed 4 ExprAddrWF, added 3 HeapValuesWF (net -1). **Must fix build first** (CC beq_comm+simp+termination, ANF pushTrace-private). |

@@ -1,4 +1,36 @@
 
+## Run: 2026-03-25T09:05:02+00:00
+
+### Build
+- **Status**: `lake build` **FAIL** ❌ (3 files: ClosureConvertCorrect, ANFConvertCorrect, Wasm/Semantics)
+
+### Metrics
+- **Sorry count**: 37 (threshold 100) — 9 CC + 23 Wasm + 2 ANF + 1 Lower + 2 bridge
+- **Spec coverage**: 19562/44380 lines (44.1%), 1614 refs, 0 mismatches ✅
+- **WasmCert refs**: PASS
+
+### Agent Logs
+- **proof** (2026-03-25 09:05): DONE. Closed 4 ExprAddrWF sorries (var-found, this-found, getProp, getIndex). Added 3 HeapValuesWF sorries (setProp, setIndex, deleteProp). Net -1 CC sorry. **Build broken by pre-existing errors**.
+- **wasmspec** (08:48 done, 09:15 restart): 23 Wasm sorries (-3 from last run). Aligned IR loop/br/brIf. **Build broken by .ptr missing cases + indent + constants**.
+- **jsspec** (09:00 start): 1614 refs (+500 since last prompt), 0 mismatches, 44.1% coverage. **Massive progress**.
+
+### Key Findings
+1. **BUILD BROKEN**: 3 files failing with real errors (not cached). Root causes diagnosed:
+   - **CC**: `beq_comm` unknown, evalBinary unsolved goals, ExprAddrWF_mono termination, convertExpr_not_value metavariables
+   - **ANF**: ALL `rfl` failures caused by `Flat.pushTrace` being `private` — 1-line fix unblocks all
+   - **Wasm**: IRType `.ptr` case missing, missing commas in EmitSimRel structs, unknown constants
+2. **Sorry down 39→37**: proof -1 CC, wasmspec -3 Wasm
+3. **Spec coverage MILESTONE**: 1614 refs, 44.1% — jsspec added +500 refs in 4 hours
+4. **HeapValuesWF DEFINED**: enables setProp/setIndex/deleteProp proof paths
+
+### Actions
+1. ✅ Proof prompt: 7 CC fixes + ANF fix with concrete Lean code
+2. ✅ Wasmspec prompt: 10 fixes (pushTrace, .ptr, commas, constants, proofs)
+3. ✅ PROGRESS.md updated
+4. ✅ Time estimate: 37 sorries, ~16 hours remaining
+
+---
+
 ## Run: 2026-03-25T05:05:01+00:00
 
 ### Build
@@ -4621,3 +4653,4 @@ All Behaves relations defined. Theorem statements chain correctly.
 
 2026-03-25T09:05:01+00:00 SKIP: already running
 2026-03-25T10:05:01+00:00 SKIP: already running
+2026-03-25T10:12:59+00:00 DONE
