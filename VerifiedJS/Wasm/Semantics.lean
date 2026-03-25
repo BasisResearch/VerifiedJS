@@ -7097,6 +7097,12 @@ structure EmitSimRel (irmod : IRModule) (wmod : Module)
       irLbl.isLoop = wLbl.isLoop
   /- Frame count: exactly one frame (top-level). -/
   hframes_one : ir.frames.length = 1
+  /- IR module invariant: runtime module equals the parameter module. -/
+  hmodule : ir.module = irmod
+  /- Wasm store.funcs invariant: never modified during execution. -/
+  hstore_funcs : w.store.funcs = wmod.funcs
+  /- Wasm store.types invariant: never modified during execution. -/
+  hstore_types : w.store.types = wmod.types
 
 namespace EmitSimRel
 
@@ -7293,6 +7299,9 @@ theorem init (irmod : IRModule) (wmod : Module)
   hlabel_content := by
     intro i hi; simp [irInitialState] at hi
   hframes_one := by simp [irInitialState]
+  hmodule := by simp [irInitialState]
+  hstore_funcs := by simp [Wasm.initialState, initialStore]
+  hstore_types := by simp [Wasm.initialState, initialStore]
 
 /-- Derive halt correspondence from code + label correspondence.
     Used to reconstruct `hhalt` in step_sim proofs. -/
@@ -7352,13 +7361,14 @@ theorem step_sim (irmod : IRModule) (wmod : Module) :
               simp at this; exact this
             exact ⟨_, hw,
               ⟨hrel.hemit, hlc, hrel.hstack, hrel.hframes_len, hrel.hframes_locals,
-                hrel.hframes_vals, hrel.hglobals, hrel.hmemory, hrel.hmemLimits, hrel.hmemory_aligned, hlabels_post,
+                hrel.hframes_vals, hrel.hglobals, hrel.hmemory, hrel.hmemLimits, hrel.hmemory_aligned,
+                hrel.hmemory_nonempty, hlabels_post,
                 hhalt_of_structural hlc hlabels_post, by
                   intro i hi
                   have := hrel.hlabel_content (i + 1) (by rw [hlabels_ir]; simp; omega)
                   rw [hlabels_ir, hlabels_w] at this
                   simpa using this,
-                hrel.hframes_one⟩⟩
+                hrel.hframes_one, hrel.hmodule, hrel.hstore_funcs, hrel.hstore_types⟩⟩
       | [] =>
           -- Labels empty: IR has code=[] and labels=[].
           -- With hframes_one, frames.length = 1, so IR is halted.
@@ -7379,7 +7389,7 @@ theorem step_sim (irmod : IRModule) (wmod : Module) :
             simp only [Option.some.injEq, Prod.mk.injEq] at hstep
             obtain ⟨rfl, rfl⟩ := hstep
             have hw := step?_eq_i32Const s2 n rest_w hcw
-            refine ⟨_, hw, ⟨hrel.hemit, hrest, ?_, hrel.hframes_len, hrel.hframes_locals, hrel.hframes_vals, hrel.hglobals, hrel.hmemory, hrel.hmemLimits, hrel.hmemory_aligned, hrel.hlabels, hhalt_of_structural hrest hrel.hlabels, hrel.hlabel_content, hrel.hframes_one⟩⟩
+            refine ⟨_, hw, ⟨hrel.hemit, hrest, ?_, hrel.hframes_len, hrel.hframes_locals, hrel.hframes_vals, hrel.hglobals, hrel.hmemory, hrel.hmemLimits, hrel.hmemory_aligned, hrel.hmemory_nonempty, hrel.hlabels, hhalt_of_structural hrest hrel.hlabels, hrel.hlabel_content, hrel.hframes_one, hrel.hmodule, hrel.hstore_funcs, hrel.hstore_types⟩⟩
             dsimp only []
             exact stack_corr_cons hrel.hstack.1 hrel.hstack.2 (.i32 n)
           · exact hf.elim
@@ -7393,7 +7403,7 @@ theorem step_sim (irmod : IRModule) (wmod : Module) :
             simp only [Option.some.injEq, Prod.mk.injEq] at hstep
             obtain ⟨rfl, rfl⟩ := hstep
             have hw := step?_eq_i64Const s2 n rest_w hcw
-            refine ⟨_, hw, ⟨hrel.hemit, hrest, ?_, hrel.hframes_len, hrel.hframes_locals, hrel.hframes_vals, hrel.hglobals, hrel.hmemory, hrel.hmemLimits, hrel.hmemory_aligned, hrel.hlabels, hhalt_of_structural hrest hrel.hlabels, hrel.hlabel_content, hrel.hframes_one⟩⟩
+            refine ⟨_, hw, ⟨hrel.hemit, hrest, ?_, hrel.hframes_len, hrel.hframes_locals, hrel.hframes_vals, hrel.hglobals, hrel.hmemory, hrel.hmemLimits, hrel.hmemory_aligned, hrel.hmemory_nonempty, hrel.hlabels, hhalt_of_structural hrest hrel.hlabels, hrel.hlabel_content, hrel.hframes_one, hrel.hmodule, hrel.hstore_funcs, hrel.hstore_types⟩⟩
             dsimp only []
             exact stack_corr_cons hrel.hstack.1 hrel.hstack.2 (.i64 n)
           · exact hf.elim
@@ -7407,7 +7417,7 @@ theorem step_sim (irmod : IRModule) (wmod : Module) :
             simp only [Option.some.injEq, Prod.mk.injEq] at hstep
             obtain ⟨rfl, rfl⟩ := hstep
             have hw := step?_eq_f64Const s2 _ rest_w hcw
-            refine ⟨_, hw, ⟨hrel.hemit, hrest, ?_, hrel.hframes_len, hrel.hframes_locals, hrel.hframes_vals, hrel.hglobals, hrel.hmemory, hrel.hmemLimits, hrel.hmemory_aligned, hrel.hlabels, hhalt_of_structural hrest hrel.hlabels, hrel.hlabel_content, hrel.hframes_one⟩⟩
+            refine ⟨_, hw, ⟨hrel.hemit, hrest, ?_, hrel.hframes_len, hrel.hframes_locals, hrel.hframes_vals, hrel.hglobals, hrel.hmemory, hrel.hmemLimits, hrel.hmemory_aligned, hrel.hmemory_nonempty, hrel.hlabels, hhalt_of_structural hrest hrel.hlabels, hrel.hlabel_content, hrel.hframes_one, hrel.hmodule, hrel.hstore_funcs, hrel.hstore_types⟩⟩
             dsimp only []
             exact stack_corr_cons hrel.hstack.1 hrel.hstack.2 (.f64 _)
           · exact hf.elim
@@ -7440,8 +7450,10 @@ theorem step_sim (irmod : IRModule) (wmod : Module) :
                 by simp [traceToWasm]; exact hw,
                 ⟨hrel.hemit, .nil, by dsimp only []; exact hrel.hstack,
                   by dsimp only []; exact hrel.hframes_len, hrel.hframes_locals, hrel.hframes_vals,
-                  hrel.hglobals, hrel.hmemory, hrel.hmemLimits, hrel.hmemory_aligned, by dsimp only []; exact hrel.hlabels,
-                  hhalt_of_structural .nil hrel.hlabels, hrel.hlabel_content, hrel.hframes_one⟩⟩
+                  hrel.hglobals, hrel.hmemory, hrel.hmemLimits, hrel.hmemory_aligned, hrel.hmemory_nonempty,
+                  by dsimp only []; exact hrel.hlabels,
+                  hhalt_of_structural .nil hrel.hlabels, hrel.hlabel_content, hrel.hframes_one,
+                  hrel.hmodule, hrel.hstore_funcs, hrel.hstore_types⟩⟩
             | irf :: irfs =>
               match hlocal : irf.locals[idx]? with
               | none =>
@@ -7466,8 +7478,10 @@ theorem step_sim (irmod : IRModule) (wmod : Module) :
                     by simp [traceToWasm]; exact hw,
                     ⟨hrel.hemit, .nil, by dsimp only []; exact hrel.hstack,
                       by dsimp only []; exact hrel.hframes_len, hrel.hframes_locals, hrel.hframes_vals,
-                      hrel.hglobals, hrel.hmemory, hrel.hmemLimits, hrel.hmemory_aligned, by dsimp only []; exact hrel.hlabels,
-                      hhalt_of_structural .nil hrel.hlabels, hrel.hlabel_content, hrel.hframes_one⟩⟩
+                      hrel.hglobals, hrel.hmemory, hrel.hmemLimits, hrel.hmemory_aligned, hrel.hmemory_nonempty,
+                      by dsimp only []; exact hrel.hlabels,
+                      hhalt_of_structural .nil hrel.hlabels, hrel.hlabel_content, hrel.hframes_one,
+                      hrel.hmodule, hrel.hstore_funcs, hrel.hstore_types⟩⟩
               | some val =>
                 have hir := irStep?_eq_localGet s1 idx rest irf irfs val hcode_ir hfr_ir hlocal
                 rw [hir] at hstep
@@ -7493,7 +7507,7 @@ theorem step_sim (irmod : IRModule) (wmod : Module) :
                     have := getElem?_pos irf.locals idx hidx_ir
                     rw [this] at hlocal; exact (Option.some.inj hlocal).symm
                   rw [hval_eq]
-                  exact ⟨_, hw, hrel.hemit, hrest, by dsimp only []; exact stack_corr_cons hrel.hstack.1 hrel.hstack.2 hval_corr, hrel.hframes_len, hrel.hframes_locals, hrel.hframes_vals, hrel.hglobals, hrel.hmemory, hrel.hmemLimits, hrel.hmemory_aligned, hrel.hlabels, hhalt_of_structural hrest hrel.hlabels, hrel.hlabel_content, hrel.hframes_one⟩
+                  exact ⟨_, hw, hrel.hemit, hrest, by dsimp only []; exact stack_corr_cons hrel.hstack.1 hrel.hstack.2 hval_corr, hrel.hframes_len, hrel.hframes_locals, hrel.hframes_vals, hrel.hglobals, hrel.hmemory, hrel.hmemLimits, hrel.hmemory_aligned, hrel.hmemory_nonempty, hrel.hlabels, hhalt_of_structural hrest hrel.hlabels, hrel.hlabel_content, hrel.hframes_one, hrel.hmodule, hrel.hstore_funcs, hrel.hstore_types⟩
           · exact hf.elim
       | .localSet idx =>
           -- local.set: pop value from stack, set local[idx]
@@ -7532,7 +7546,10 @@ theorem step_sim (irmod : IRModule) (wmod : Module) :
                     hlabels := by dsimp only []; exact hrel.hlabels
                     hhalt := hhalt_of_structural .nil hrel.hlabels
                     hlabel_content := hrel.hlabel_content
-                    hframes_one := hrel.hframes_one }⟩
+                    hframes_one := hrel.hframes_one
+                    hmodule := hrel.hmodule
+                    hstore_funcs := hrel.hstore_funcs
+                    hstore_types := hrel.hstore_types }⟩
               | irf :: irfs =>
                 -- Has frame but empty stack: IR traps "stack underflow in local.set"
                 have hir := irStep?_eq_localSet_emptyStack s1 idx rest irf irfs hcode_ir hstk hfr_ir0
@@ -7565,7 +7582,10 @@ theorem step_sim (irmod : IRModule) (wmod : Module) :
                       hlabels := by dsimp only []; exact hrel.hlabels
                       hhalt := hhalt_of_structural .nil hrel.hlabels
                       hlabel_content := hrel.hlabel_content
-                      hframes_one := hrel.hframes_one }⟩
+                      hframes_one := hrel.hframes_one
+                    hmodule := hrel.hmodule
+                    hstore_funcs := hrel.hstore_funcs
+                    hstore_types := hrel.hstore_types }⟩
             | iv :: istk =>
               -- Need a frame
               match hfr_ir : s1.frames with
@@ -7596,7 +7616,10 @@ theorem step_sim (irmod : IRModule) (wmod : Module) :
                     hlabels := by dsimp only []; exact hrel.hlabels
                     hhalt := hhalt_of_structural .nil hrel.hlabels
                     hlabel_content := hrel.hlabel_content
-                    hframes_one := hrel.hframes_one }⟩
+                    hframes_one := hrel.hframes_one
+                    hmodule := hrel.hmodule
+                    hstore_funcs := hrel.hstore_funcs
+                    hstore_types := hrel.hstore_types }⟩
               | irf :: irfs =>
                 -- Need idx in bounds
                 if hlt : idx < irf.locals.size then
@@ -7690,7 +7713,10 @@ theorem step_sim (irmod : IRModule) (wmod : Module) :
                           hlabels := by dsimp only []; exact hrel.hlabels
                           hhalt := hhalt_of_structural .nil hrel.hlabels
                           hlabel_content := hrel.hlabel_content
-                          hframes_one := hrel.hframes_one }⟩
+                          hframes_one := hrel.hframes_one
+                    hmodule := hrel.hmodule
+                    hstore_funcs := hrel.hstore_funcs
+                    hstore_types := hrel.hstore_types }⟩
           · exact hf.elim
       | .globalGet idx =>
           -- global.get: IR pushes globals[idx], Wasm pushes store.globals[idx]
@@ -7739,7 +7765,10 @@ theorem step_sim (irmod : IRModule) (wmod : Module) :
                       hlabels := hrel.hlabels
                       hhalt := hhalt_of_structural hrest hrel.hlabels
                       hlabel_content := hrel.hlabel_content
-                      hframes_one := hrel.hframes_one }
+                      hframes_one := hrel.hframes_one
+                    hmodule := hrel.hmodule
+                    hstore_funcs := hrel.hstore_funcs
+                    hstore_types := hrel.hstore_types }
             | none =>
               -- Out-of-bounds: both sides trap
               have hir := irStep?_eq_globalGet_oob s1 idx rest hcode_ir hglob
@@ -7769,7 +7798,10 @@ theorem step_sim (irmod : IRModule) (wmod : Module) :
                       hlabels := by dsimp only []; exact hrel.hlabels
                       hhalt := hhalt_of_structural .nil hrel.hlabels
                       hlabel_content := hrel.hlabel_content
-                      hframes_one := hrel.hframes_one }
+                      hframes_one := hrel.hframes_one
+                    hmodule := hrel.hmodule
+                    hstore_funcs := hrel.hstore_funcs
+                    hstore_types := hrel.hstore_types }
           · exact hf.elim
       | .globalSet idx =>
           -- global.set: pop value from stack, set globals[idx]
@@ -7804,7 +7836,10 @@ theorem step_sim (irmod : IRModule) (wmod : Module) :
                       hlabels := by dsimp only []; exact hrel.hlabels
                       hhalt := hhalt_of_structural .nil hrel.hlabels
                       hlabel_content := hrel.hlabel_content
-                      hframes_one := hrel.hframes_one }
+                      hframes_one := hrel.hframes_one
+                    hmodule := hrel.hmodule
+                    hstore_funcs := hrel.hstore_funcs
+                    hstore_types := hrel.hstore_types }
             | irv :: irstk =>
               -- Non-empty stack: check bounds
               if hbounds : idx < s1.globals.size then
@@ -7868,7 +7903,10 @@ theorem step_sim (irmod : IRModule) (wmod : Module) :
                           hlabels := hrel.hlabels
                           hhalt := hhalt_of_structural hrest hrel.hlabels
                           hlabel_content := hrel.hlabel_content
-                          hframes_one := hrel.hframes_one }
+                          hframes_one := hrel.hframes_one
+                    hmodule := hrel.hmodule
+                    hstore_funcs := hrel.hstore_funcs
+                    hstore_types := hrel.hstore_types }
               else
                 -- Out-of-bounds: both sides trap
                 have hir := irStep?_eq_globalSet_oob s1 idx rest irv irstk hcode_ir hstk hbounds
@@ -7900,7 +7938,10 @@ theorem step_sim (irmod : IRModule) (wmod : Module) :
                           hlabels := by dsimp only []; exact hrel.hlabels
                           hhalt := hhalt_of_structural .nil hrel.hlabels
                           hlabel_content := hrel.hlabel_content
-                          hframes_one := hrel.hframes_one }
+                          hframes_one := hrel.hframes_one
+                    hmodule := hrel.hmodule
+                    hstore_funcs := hrel.hstore_funcs
+                    hstore_types := hrel.hstore_types }
           · exact hf.elim
       | .load t offset =>
           -- memory load: IR uses readLE?, Wasm uses readLE? on store.memories[0]
@@ -7927,7 +7968,10 @@ theorem step_sim (irmod : IRModule) (wmod : Module) :
                     hframes_vals := hrel.hframes_vals, hglobals := hrel.hglobals, hmemory := hrel.hmemory, hmemLimits := hrel.hmemLimits, hmemory_aligned := hrel.hmemory_aligned, hmemory_nonempty := hrel.hmemory_nonempty,
                     hlabels := hrel.hlabels, hhalt := hhalt_of_structural .nil hrel.hlabels
                     hlabel_content := hrel.hlabel_content
-                    hframes_one := hrel.hframes_one }⟩
+                    hframes_one := hrel.hframes_one
+                    hmodule := hrel.hmodule
+                    hstore_funcs := hrel.hstore_funcs
+                    hstore_types := hrel.hstore_types }⟩
               | .i32 addr :: stk =>
                 -- i32 address on stack: read memory
                 -- Case split on readLE? result
@@ -7976,7 +8020,10 @@ theorem step_sim (irmod : IRModule) (wmod : Module) :
                         hframes_vals := hrel.hframes_vals, hglobals := hrel.hglobals, hmemory := hrel.hmemory, hmemLimits := hrel.hmemLimits, hmemory_aligned := hrel.hmemory_aligned, hmemory_nonempty := hrel.hmemory_nonempty,
                         hlabels := hrel.hlabels, hhalt := hhalt_of_structural .nil hrel.hlabels
                         hlabel_content := hrel.hlabel_content
-                        hframes_one := hrel.hframes_one }⟩
+                        hframes_one := hrel.hframes_one
+                    hmodule := hrel.hmodule
+                    hstore_funcs := hrel.hstore_funcs
+                    hstore_types := hrel.hstore_types }⟩
                   · -- No memory: trap
                     have hw : step? s2 = some (.trap ("memory access fault in " ++ _),
                         { s2 with code := [], trace := s2.trace ++ [.trap ("memory access fault in " ++ _)] }) := by
@@ -7987,7 +8034,10 @@ theorem step_sim (irmod : IRModule) (wmod : Module) :
                         hframes_vals := hrel.hframes_vals, hglobals := hrel.hglobals, hmemory := hrel.hmemory, hmemLimits := hrel.hmemLimits, hmemory_aligned := hrel.hmemory_aligned, hmemory_nonempty := hrel.hmemory_nonempty,
                         hlabels := hrel.hlabels, hhalt := hhalt_of_structural .nil hrel.hlabels
                         hlabel_content := hrel.hlabel_content
-                        hframes_one := hrel.hframes_one }⟩
+                        hframes_one := hrel.hframes_one
+                    hmodule := hrel.hmodule
+                    hstore_funcs := hrel.hstore_funcs
+                    hstore_types := hrel.hstore_types }⟩
               | .f64 _ :: _ | .i64 _ :: _ =>
                 -- Non-i32 on stack: both trap with type mismatch
                 all_goals (
@@ -8011,7 +8061,10 @@ theorem step_sim (irmod : IRModule) (wmod : Module) :
                         hframes_vals := hrel.hframes_vals, hglobals := hrel.hglobals, hmemory := hrel.hmemory, hmemLimits := hrel.hmemLimits, hmemory_aligned := hrel.hmemory_aligned, hmemory_nonempty := hrel.hmemory_nonempty,
                         hlabels := hrel.hlabels, hhalt := hhalt_of_structural .nil hrel.hlabels
                         hlabel_content := hrel.hlabel_content
-                        hframes_one := hrel.hframes_one }⟩)
+                        hframes_one := hrel.hframes_one
+                    hmodule := hrel.hmodule
+                    hstore_funcs := hrel.hstore_funcs
+                    hstore_types := hrel.hstore_types }⟩)
             · exact hf.elim
           | .f64 =>
             rcases hc_full.load_f64_inv with ⟨rest_w, hcw, hrest⟩ | hf
@@ -8033,7 +8086,10 @@ theorem step_sim (irmod : IRModule) (wmod : Module) :
                     hframes_vals := hrel.hframes_vals, hglobals := hrel.hglobals, hmemory := hrel.hmemory, hmemLimits := hrel.hmemLimits, hmemory_aligned := hrel.hmemory_aligned, hmemory_nonempty := hrel.hmemory_nonempty,
                     hlabels := hrel.hlabels, hhalt := hhalt_of_structural .nil hrel.hlabels
                     hlabel_content := hrel.hlabel_content
-                    hframes_one := hrel.hframes_one }⟩
+                    hframes_one := hrel.hframes_one
+                    hmodule := hrel.hmodule
+                    hstore_funcs := hrel.hstore_funcs
+                    hstore_types := hrel.hstore_types }⟩
               | .i32 addr :: stk =>
                 -- i32 address on stack: read memory
                 match hread : readLE? s1.memory (addr.toNat + offset) 8 with
@@ -8081,7 +8137,10 @@ theorem step_sim (irmod : IRModule) (wmod : Module) :
                         hframes_vals := hrel.hframes_vals, hglobals := hrel.hglobals, hmemory := hrel.hmemory, hmemLimits := hrel.hmemLimits, hmemory_aligned := hrel.hmemory_aligned, hmemory_nonempty := hrel.hmemory_nonempty,
                         hlabels := hrel.hlabels, hhalt := hhalt_of_structural .nil hrel.hlabels
                         hlabel_content := hrel.hlabel_content
-                        hframes_one := hrel.hframes_one }⟩
+                        hframes_one := hrel.hframes_one
+                    hmodule := hrel.hmodule
+                    hstore_funcs := hrel.hstore_funcs
+                    hstore_types := hrel.hstore_types }⟩
                   · -- No memory: trap
                     have hw : step? s2 = some (.trap ("memory access fault in " ++ _),
                         { s2 with code := [], trace := s2.trace ++ [.trap ("memory access fault in " ++ _)] }) := by
@@ -8092,7 +8151,10 @@ theorem step_sim (irmod : IRModule) (wmod : Module) :
                         hframes_vals := hrel.hframes_vals, hglobals := hrel.hglobals, hmemory := hrel.hmemory, hmemLimits := hrel.hmemLimits, hmemory_aligned := hrel.hmemory_aligned, hmemory_nonempty := hrel.hmemory_nonempty,
                         hlabels := hrel.hlabels, hhalt := hhalt_of_structural .nil hrel.hlabels
                         hlabel_content := hrel.hlabel_content
-                        hframes_one := hrel.hframes_one }⟩
+                        hframes_one := hrel.hframes_one
+                    hmodule := hrel.hmodule
+                    hstore_funcs := hrel.hstore_funcs
+                    hstore_types := hrel.hstore_types }⟩
               | .f64 _ :: _ | .i64 _ :: _ =>
                 -- Non-i32 on stack: both trap with type mismatch
                 all_goals (
@@ -8121,7 +8183,10 @@ theorem step_sim (irmod : IRModule) (wmod : Module) :
                         hframes_vals := hrel.hframes_vals, hglobals := hrel.hglobals, hmemory := hrel.hmemory, hmemLimits := hrel.hmemLimits, hmemory_aligned := hrel.hmemory_aligned, hmemory_nonempty := hrel.hmemory_nonempty,
                         hlabels := hrel.hlabels, hhalt := hhalt_of_structural .nil hrel.hlabels
                         hlabel_content := hrel.hlabel_content
-                        hframes_one := hrel.hframes_one }⟩)
+                        hframes_one := hrel.hframes_one
+                    hmodule := hrel.hmodule
+                    hstore_funcs := hrel.hstore_funcs
+                    hstore_types := hrel.hstore_types }⟩)
             · exact hf.elim
           | .i64 =>
             rcases hc_full.load_i64_inv with ⟨rest_w, hcw, hrest⟩ | hf
@@ -8143,7 +8208,10 @@ theorem step_sim (irmod : IRModule) (wmod : Module) :
                     hframes_vals := hrel.hframes_vals, hglobals := hrel.hglobals, hmemory := hrel.hmemory, hmemLimits := hrel.hmemLimits, hmemory_aligned := hrel.hmemory_aligned, hmemory_nonempty := hrel.hmemory_nonempty,
                     hlabels := hrel.hlabels, hhalt := hhalt_of_structural .nil hrel.hlabels
                     hlabel_content := hrel.hlabel_content
-                    hframes_one := hrel.hframes_one }⟩
+                    hframes_one := hrel.hframes_one
+                    hmodule := hrel.hmodule
+                    hstore_funcs := hrel.hstore_funcs
+                    hstore_types := hrel.hstore_types }⟩
               | .i32 addr :: stk =>
                 -- i32 address on stack: read memory
                 match hread : readLE? s1.memory (addr.toNat + offset) 8 with
@@ -8189,7 +8257,10 @@ theorem step_sim (irmod : IRModule) (wmod : Module) :
                         hframes_vals := hrel.hframes_vals, hglobals := hrel.hglobals, hmemory := hrel.hmemory, hmemLimits := hrel.hmemLimits, hmemory_aligned := hrel.hmemory_aligned, hmemory_nonempty := hrel.hmemory_nonempty,
                         hlabels := hrel.hlabels, hhalt := hhalt_of_structural .nil hrel.hlabels
                         hlabel_content := hrel.hlabel_content
-                        hframes_one := hrel.hframes_one }⟩
+                        hframes_one := hrel.hframes_one
+                    hmodule := hrel.hmodule
+                    hstore_funcs := hrel.hstore_funcs
+                    hstore_types := hrel.hstore_types }⟩
                   · -- No memory: trap
                     have hw : step? s2 = some (.trap ("memory access fault in " ++ _),
                         { s2 with code := [], trace := s2.trace ++ [.trap ("memory access fault in " ++ _)] }) := by
@@ -8200,7 +8271,10 @@ theorem step_sim (irmod : IRModule) (wmod : Module) :
                         hframes_vals := hrel.hframes_vals, hglobals := hrel.hglobals, hmemory := hrel.hmemory, hmemLimits := hrel.hmemLimits, hmemory_aligned := hrel.hmemory_aligned, hmemory_nonempty := hrel.hmemory_nonempty,
                         hlabels := hrel.hlabels, hhalt := hhalt_of_structural .nil hrel.hlabels
                         hlabel_content := hrel.hlabel_content
-                        hframes_one := hrel.hframes_one }⟩
+                        hframes_one := hrel.hframes_one
+                    hmodule := hrel.hmodule
+                    hstore_funcs := hrel.hstore_funcs
+                    hstore_types := hrel.hstore_types }⟩
               | .f64 _ :: _ | .i64 _ :: _ =>
                 -- Non-i32 on stack: both trap with type mismatch
                 all_goals (
@@ -8224,7 +8298,10 @@ theorem step_sim (irmod : IRModule) (wmod : Module) :
                         hframes_vals := hrel.hframes_vals, hglobals := hrel.hglobals, hmemory := hrel.hmemory, hmemLimits := hrel.hmemLimits, hmemory_aligned := hrel.hmemory_aligned, hmemory_nonempty := hrel.hmemory_nonempty,
                         hlabels := hrel.hlabels, hhalt := hhalt_of_structural .nil hrel.hlabels
                         hlabel_content := hrel.hlabel_content
-                        hframes_one := hrel.hframes_one }⟩)
+                        hframes_one := hrel.hframes_one
+                    hmodule := hrel.hmodule
+                    hstore_funcs := hrel.hstore_funcs
+                    hstore_types := hrel.hstore_types }⟩)
             · exact hf.elim
           | .ptr =>
             -- No EmitCodeCorr constructor for ptr load
@@ -8254,7 +8331,10 @@ theorem step_sim (irmod : IRModule) (wmod : Module) :
                     hframes_vals := hrel.hframes_vals, hglobals := hrel.hglobals, hmemory := hrel.hmemory, hmemLimits := hrel.hmemLimits, hmemory_aligned := hrel.hmemory_aligned, hmemory_nonempty := hrel.hmemory_nonempty,
                     hlabels := hrel.hlabels, hhalt := hhalt_of_structural .nil hrel.hlabels
                     hlabel_content := hrel.hlabel_content
-                    hframes_one := hrel.hframes_one }⟩
+                    hframes_one := hrel.hframes_one
+                    hmodule := hrel.hmodule
+                    hstore_funcs := hrel.hstore_funcs
+                    hstore_types := hrel.hstore_types }⟩
               | [x] =>
                 -- One element: irPop2? fails → trap with stack underflow
                 simp [irStep?, hcode_ir, hstk, irPop2?, irTrapState, irPushTrace] at hstep
@@ -8275,7 +8355,10 @@ theorem step_sim (irmod : IRModule) (wmod : Module) :
                     hframes_vals := hrel.hframes_vals, hglobals := hrel.hglobals, hmemory := hrel.hmemory, hmemLimits := hrel.hmemLimits, hmemory_aligned := hrel.hmemory_aligned, hmemory_nonempty := hrel.hmemory_nonempty,
                     hlabels := hrel.hlabels, hhalt := hhalt_of_structural .nil hrel.hlabels
                     hlabel_content := hrel.hlabel_content
-                    hframes_one := hrel.hframes_one }⟩
+                    hframes_one := hrel.hframes_one
+                    hmodule := hrel.hmodule
+                    hstore_funcs := hrel.hstore_funcs
+                    hstore_types := hrel.hstore_types }⟩
               | .i32 val :: .i32 addr :: stk =>
                 -- i32 val, i32 addr on stack: write memory
                 match hwrite : writeLE? s1.memory (addr.toNat + offset) 4 val.toUInt64 with
@@ -8328,7 +8411,10 @@ theorem step_sim (irmod : IRModule) (wmod : Module) :
                         hframes_vals := hrel.hframes_vals, hglobals := hrel.hglobals, hmemory := hrel.hmemory, hmemLimits := hrel.hmemLimits, hmemory_aligned := hrel.hmemory_aligned, hmemory_nonempty := hrel.hmemory_nonempty,
                         hlabels := hrel.hlabels, hhalt := hhalt_of_structural .nil hrel.hlabels
                         hlabel_content := hrel.hlabel_content
-                        hframes_one := hrel.hframes_one }⟩
+                        hframes_one := hrel.hframes_one
+                    hmodule := hrel.hmodule
+                    hstore_funcs := hrel.hstore_funcs
+                    hstore_types := hrel.hstore_types }⟩
                   · -- No memory: trap
                     have hw : step? s2 = some (.trap ("memory access fault in i32.store"),
                         { s2 with code := [], trace := s2.trace ++ [.trap ("memory access fault in i32.store")] }) := by
@@ -8339,7 +8425,10 @@ theorem step_sim (irmod : IRModule) (wmod : Module) :
                         hframes_vals := hrel.hframes_vals, hglobals := hrel.hglobals, hmemory := hrel.hmemory, hmemLimits := hrel.hmemLimits, hmemory_aligned := hrel.hmemory_aligned, hmemory_nonempty := hrel.hmemory_nonempty,
                         hlabels := hrel.hlabels, hhalt := hhalt_of_structural .nil hrel.hlabels
                         hlabel_content := hrel.hlabel_content
-                        hframes_one := hrel.hframes_one }⟩
+                        hframes_one := hrel.hframes_one
+                    hmodule := hrel.hmodule
+                    hstore_funcs := hrel.hstore_funcs
+                    hstore_types := hrel.hstore_types }⟩
               | .f64 _ :: _ | .i64 _ :: _ | .i32 _ :: .f64 _ :: _ | .i32 _ :: .i64 _ :: _ =>
                 -- Type mismatch on stack: both trap
                 all_goals (
@@ -8363,7 +8452,10 @@ theorem step_sim (irmod : IRModule) (wmod : Module) :
                         hframes_vals := hrel.hframes_vals, hglobals := hrel.hglobals, hmemory := hrel.hmemory, hmemLimits := hrel.hmemLimits, hmemory_aligned := hrel.hmemory_aligned, hmemory_nonempty := hrel.hmemory_nonempty,
                         hlabels := hrel.hlabels, hhalt := hhalt_of_structural .nil hrel.hlabels
                         hlabel_content := hrel.hlabel_content
-                        hframes_one := hrel.hframes_one }⟩)
+                        hframes_one := hrel.hframes_one
+                    hmodule := hrel.hmodule
+                    hstore_funcs := hrel.hstore_funcs
+                    hstore_types := hrel.hstore_types }⟩)
             · exact hf.elim
           | .f64 =>
             rcases hc_full.store_f64_inv with ⟨rest_w, hcw, hrest⟩ | hf
@@ -8383,7 +8475,10 @@ theorem step_sim (irmod : IRModule) (wmod : Module) :
                     hframes_vals := hrel.hframes_vals, hglobals := hrel.hglobals, hmemory := hrel.hmemory, hmemLimits := hrel.hmemLimits, hmemory_aligned := hrel.hmemory_aligned, hmemory_nonempty := hrel.hmemory_nonempty,
                     hlabels := hrel.hlabels, hhalt := hhalt_of_structural .nil hrel.hlabels
                     hlabel_content := hrel.hlabel_content
-                    hframes_one := hrel.hframes_one }⟩
+                    hframes_one := hrel.hframes_one
+                    hmodule := hrel.hmodule
+                    hstore_funcs := hrel.hstore_funcs
+                    hstore_types := hrel.hstore_types }⟩
               | [x] =>
                 simp [irStep?, hcode_ir, hstk, irPop2?, irTrapState, irPushTrace] at hstep
                 obtain ⟨rfl, rfl⟩ := hstep
@@ -8403,7 +8498,10 @@ theorem step_sim (irmod : IRModule) (wmod : Module) :
                     hframes_vals := hrel.hframes_vals, hglobals := hrel.hglobals, hmemory := hrel.hmemory, hmemLimits := hrel.hmemLimits, hmemory_aligned := hrel.hmemory_aligned, hmemory_nonempty := hrel.hmemory_nonempty,
                     hlabels := hrel.hlabels, hhalt := hhalt_of_structural .nil hrel.hlabels
                     hlabel_content := hrel.hlabel_content
-                    hframes_one := hrel.hframes_one }⟩
+                    hframes_one := hrel.hframes_one
+                    hmodule := hrel.hmodule
+                    hstore_funcs := hrel.hstore_funcs
+                    hstore_types := hrel.hstore_types }⟩
               | .f64 val :: .i32 addr :: stk =>
                 match hwrite : writeLE? s1.memory (addr.toNat + offset) 8 (floatToU64Bits val) with
                 | some mem' =>
@@ -8448,7 +8546,10 @@ theorem step_sim (irmod : IRModule) (wmod : Module) :
                         hframes_vals := hrel.hframes_vals, hglobals := hrel.hglobals, hmemory := hrel.hmemory, hmemLimits := hrel.hmemLimits, hmemory_aligned := hrel.hmemory_aligned, hmemory_nonempty := hrel.hmemory_nonempty,
                         hlabels := hrel.hlabels, hhalt := hhalt_of_structural .nil hrel.hlabels
                         hlabel_content := hrel.hlabel_content
-                        hframes_one := hrel.hframes_one }⟩
+                        hframes_one := hrel.hframes_one
+                    hmodule := hrel.hmodule
+                    hstore_funcs := hrel.hstore_funcs
+                    hstore_types := hrel.hstore_types }⟩
                   · have hw : step? s2 = some (.trap ("memory access fault in f64.store"),
                         { s2 with code := [], trace := s2.trace ++ [.trap ("memory access fault in f64.store")] }) := by
                       simp [step?, hcw, hstack_eq, pop2?, hmem_none, trapState, pushTrace, Option.bind]
@@ -8458,7 +8559,10 @@ theorem step_sim (irmod : IRModule) (wmod : Module) :
                         hframes_vals := hrel.hframes_vals, hglobals := hrel.hglobals, hmemory := hrel.hmemory, hmemLimits := hrel.hmemLimits, hmemory_aligned := hrel.hmemory_aligned, hmemory_nonempty := hrel.hmemory_nonempty,
                         hlabels := hrel.hlabels, hhalt := hhalt_of_structural .nil hrel.hlabels
                         hlabel_content := hrel.hlabel_content
-                        hframes_one := hrel.hframes_one }⟩
+                        hframes_one := hrel.hframes_one
+                    hmodule := hrel.hmodule
+                    hstore_funcs := hrel.hstore_funcs
+                    hstore_types := hrel.hstore_types }⟩
               | .i32 _ :: _ | .i64 _ :: _ | .f64 _ :: .f64 _ :: _ | .f64 _ :: .i64 _ :: _ =>
                 all_goals (
                   simp [irStep?, hcode_ir, hstk, irPop2?, irTrapState, irPushTrace] at hstep
@@ -8481,7 +8585,10 @@ theorem step_sim (irmod : IRModule) (wmod : Module) :
                         hframes_vals := hrel.hframes_vals, hglobals := hrel.hglobals, hmemory := hrel.hmemory, hmemLimits := hrel.hmemLimits, hmemory_aligned := hrel.hmemory_aligned, hmemory_nonempty := hrel.hmemory_nonempty,
                         hlabels := hrel.hlabels, hhalt := hhalt_of_structural .nil hrel.hlabels
                         hlabel_content := hrel.hlabel_content
-                        hframes_one := hrel.hframes_one }⟩)
+                        hframes_one := hrel.hframes_one
+                    hmodule := hrel.hmodule
+                    hstore_funcs := hrel.hstore_funcs
+                    hstore_types := hrel.hstore_types }⟩)
             · exact hf.elim
           | .i64 =>
             rcases hc_full.store_i64_inv with ⟨rest_w, hcw, hrest⟩ | hf
@@ -8501,7 +8608,10 @@ theorem step_sim (irmod : IRModule) (wmod : Module) :
                     hframes_vals := hrel.hframes_vals, hglobals := hrel.hglobals, hmemory := hrel.hmemory, hmemLimits := hrel.hmemLimits, hmemory_aligned := hrel.hmemory_aligned, hmemory_nonempty := hrel.hmemory_nonempty,
                     hlabels := hrel.hlabels, hhalt := hhalt_of_structural .nil hrel.hlabels
                     hlabel_content := hrel.hlabel_content
-                    hframes_one := hrel.hframes_one }⟩
+                    hframes_one := hrel.hframes_one
+                    hmodule := hrel.hmodule
+                    hstore_funcs := hrel.hstore_funcs
+                    hstore_types := hrel.hstore_types }⟩
               | [x] =>
                 simp [irStep?, hcode_ir, hstk, irPop2?, irTrapState, irPushTrace] at hstep
                 obtain ⟨rfl, rfl⟩ := hstep
@@ -8521,7 +8631,10 @@ theorem step_sim (irmod : IRModule) (wmod : Module) :
                     hframes_vals := hrel.hframes_vals, hglobals := hrel.hglobals, hmemory := hrel.hmemory, hmemLimits := hrel.hmemLimits, hmemory_aligned := hrel.hmemory_aligned, hmemory_nonempty := hrel.hmemory_nonempty,
                     hlabels := hrel.hlabels, hhalt := hhalt_of_structural .nil hrel.hlabels
                     hlabel_content := hrel.hlabel_content
-                    hframes_one := hrel.hframes_one }⟩
+                    hframes_one := hrel.hframes_one
+                    hmodule := hrel.hmodule
+                    hstore_funcs := hrel.hstore_funcs
+                    hstore_types := hrel.hstore_types }⟩
               | .i64 val :: .i32 addr :: stk =>
                 match hwrite : writeLE? s1.memory (addr.toNat + offset) 8 val with
                 | some mem' =>
@@ -8566,7 +8679,10 @@ theorem step_sim (irmod : IRModule) (wmod : Module) :
                         hframes_vals := hrel.hframes_vals, hglobals := hrel.hglobals, hmemory := hrel.hmemory, hmemLimits := hrel.hmemLimits, hmemory_aligned := hrel.hmemory_aligned, hmemory_nonempty := hrel.hmemory_nonempty,
                         hlabels := hrel.hlabels, hhalt := hhalt_of_structural .nil hrel.hlabels
                         hlabel_content := hrel.hlabel_content
-                        hframes_one := hrel.hframes_one }⟩
+                        hframes_one := hrel.hframes_one
+                    hmodule := hrel.hmodule
+                    hstore_funcs := hrel.hstore_funcs
+                    hstore_types := hrel.hstore_types }⟩
                   · have hw : step? s2 = some (.trap ("memory access fault in i64.store"),
                         { s2 with code := [], trace := s2.trace ++ [.trap ("memory access fault in i64.store")] }) := by
                       simp [step?, hcw, hstack_eq, pop2?, hmem_none, trapState, pushTrace, Option.bind]
@@ -8576,7 +8692,10 @@ theorem step_sim (irmod : IRModule) (wmod : Module) :
                         hframes_vals := hrel.hframes_vals, hglobals := hrel.hglobals, hmemory := hrel.hmemory, hmemLimits := hrel.hmemLimits, hmemory_aligned := hrel.hmemory_aligned, hmemory_nonempty := hrel.hmemory_nonempty,
                         hlabels := hrel.hlabels, hhalt := hhalt_of_structural .nil hrel.hlabels
                         hlabel_content := hrel.hlabel_content
-                        hframes_one := hrel.hframes_one }⟩
+                        hframes_one := hrel.hframes_one
+                    hmodule := hrel.hmodule
+                    hstore_funcs := hrel.hstore_funcs
+                    hstore_types := hrel.hstore_types }⟩
               | .i32 _ :: _ | .f64 _ :: _ | .i64 _ :: .f64 _ :: _ | .i64 _ :: .i64 _ :: _ =>
                 all_goals (
                   simp [irStep?, hcode_ir, hstk, irPop2?, irTrapState, irPushTrace] at hstep
@@ -8599,7 +8718,10 @@ theorem step_sim (irmod : IRModule) (wmod : Module) :
                         hframes_vals := hrel.hframes_vals, hglobals := hrel.hglobals, hmemory := hrel.hmemory, hmemLimits := hrel.hmemLimits, hmemory_aligned := hrel.hmemory_aligned, hmemory_nonempty := hrel.hmemory_nonempty,
                         hlabels := hrel.hlabels, hhalt := hhalt_of_structural .nil hrel.hlabels
                         hlabel_content := hrel.hlabel_content
-                        hframes_one := hrel.hframes_one }⟩)
+                        hframes_one := hrel.hframes_one
+                    hmodule := hrel.hmodule
+                    hstore_funcs := hrel.hstore_funcs
+                    hstore_types := hrel.hstore_types }⟩)
             · exact hf.elim
           | .ptr =>
             exfalso; generalize s2.code = wcode at hc_full
@@ -8624,7 +8746,10 @@ theorem step_sim (irmod : IRModule) (wmod : Module) :
                   hframes_vals := hrel.hframes_vals, hglobals := hrel.hglobals, hmemory := hrel.hmemory, hmemLimits := hrel.hmemLimits, hmemory_aligned := hrel.hmemory_aligned, hmemory_nonempty := hrel.hmemory_nonempty,
                   hlabels := hrel.hlabels, hhalt := hhalt_of_structural .nil hrel.hlabels
                   hlabel_content := hrel.hlabel_content
-                  hframes_one := hrel.hframes_one }⟩
+                  hframes_one := hrel.hframes_one
+                    hmodule := hrel.hmodule
+                    hstore_funcs := hrel.hstore_funcs
+                    hstore_types := hrel.hstore_types }⟩
             | [x] =>
               simp [irStep?, hcode_ir, hstk, irPop2?, irTrapState, irPushTrace] at hstep
               obtain ⟨rfl, rfl⟩ := hstep
@@ -8644,7 +8769,10 @@ theorem step_sim (irmod : IRModule) (wmod : Module) :
                   hframes_vals := hrel.hframes_vals, hglobals := hrel.hglobals, hmemory := hrel.hmemory, hmemLimits := hrel.hmemLimits, hmemory_aligned := hrel.hmemory_aligned, hmemory_nonempty := hrel.hmemory_nonempty,
                   hlabels := hrel.hlabels, hhalt := hhalt_of_structural .nil hrel.hlabels
                   hlabel_content := hrel.hlabel_content
-                  hframes_one := hrel.hframes_one }⟩
+                  hframes_one := hrel.hframes_one
+                    hmodule := hrel.hmodule
+                    hstore_funcs := hrel.hstore_funcs
+                    hstore_types := hrel.hstore_types }⟩
             | .i32 val :: .i32 addr :: stk =>
               match hwrite : writeLE? s1.memory (addr.toNat + offset) 1 val.toUInt64 with
               | some mem' =>
@@ -8689,7 +8817,10 @@ theorem step_sim (irmod : IRModule) (wmod : Module) :
                       hframes_vals := hrel.hframes_vals, hglobals := hrel.hglobals, hmemory := hrel.hmemory, hmemLimits := hrel.hmemLimits, hmemory_aligned := hrel.hmemory_aligned, hmemory_nonempty := hrel.hmemory_nonempty,
                       hlabels := hrel.hlabels, hhalt := hhalt_of_structural .nil hrel.hlabels
                       hlabel_content := hrel.hlabel_content
-                      hframes_one := hrel.hframes_one }⟩
+                      hframes_one := hrel.hframes_one
+                    hmodule := hrel.hmodule
+                    hstore_funcs := hrel.hstore_funcs
+                    hstore_types := hrel.hstore_types }⟩
                 · have hw : step? s2 = some (.trap ("memory access fault in i32.store"),
                       { s2 with code := [], trace := s2.trace ++ [.trap ("memory access fault in i32.store")] }) := by
                     simp [step?, hcw, hstack_eq, pop2?, hmem_none, trapState, pushTrace, Option.bind]
@@ -8699,7 +8830,10 @@ theorem step_sim (irmod : IRModule) (wmod : Module) :
                       hframes_vals := hrel.hframes_vals, hglobals := hrel.hglobals, hmemory := hrel.hmemory, hmemLimits := hrel.hmemLimits, hmemory_aligned := hrel.hmemory_aligned, hmemory_nonempty := hrel.hmemory_nonempty,
                       hlabels := hrel.hlabels, hhalt := hhalt_of_structural .nil hrel.hlabels
                       hlabel_content := hrel.hlabel_content
-                      hframes_one := hrel.hframes_one }⟩
+                      hframes_one := hrel.hframes_one
+                    hmodule := hrel.hmodule
+                    hstore_funcs := hrel.hstore_funcs
+                    hstore_types := hrel.hstore_types }⟩
             | .f64 _ :: _ | .i64 _ :: _ | .i32 _ :: .f64 _ :: _ | .i32 _ :: .i64 _ :: _ =>
               all_goals (
                 simp [irStep?, hcode_ir, hstk, irPop2?, irTrapState, irPushTrace] at hstep
@@ -8722,7 +8856,10 @@ theorem step_sim (irmod : IRModule) (wmod : Module) :
                       hframes_vals := hrel.hframes_vals, hglobals := hrel.hglobals, hmemory := hrel.hmemory, hmemLimits := hrel.hmemLimits, hmemory_aligned := hrel.hmemory_aligned, hmemory_nonempty := hrel.hmemory_nonempty,
                       hlabels := hrel.hlabels, hhalt := hhalt_of_structural .nil hrel.hlabels
                       hlabel_content := hrel.hlabel_content
-                      hframes_one := hrel.hframes_one }⟩)
+                      hframes_one := hrel.hframes_one
+                    hmodule := hrel.hmodule
+                    hstore_funcs := hrel.hstore_funcs
+                    hstore_types := hrel.hstore_types }⟩)
           · exact hf.elim
       | .binOp t op =>
           -- binary operation: IR and Wasm use same semantics
@@ -8756,7 +8893,10 @@ theorem step_sim (irmod : IRModule) (wmod : Module) :
                     hframes_vals := hrel.hframes_vals, hglobals := hrel.hglobals, hmemory := hrel.hmemory, hmemLimits := hrel.hmemLimits, hmemory_aligned := hrel.hmemory_aligned, hmemory_nonempty := hrel.hmemory_nonempty,
                     hlabels := hrel.hlabels, hhalt := hhalt_of_structural .nil hrel.hlabels
                     hlabel_content := hrel.hlabel_content
-                    hframes_one := hrel.hframes_one }⟩
+                    hframes_one := hrel.hframes_one
+                    hmodule := hrel.hmodule
+                    hstore_funcs := hrel.hstore_funcs
+                    hstore_types := hrel.hstore_types }⟩
               | v1 :: [] =>
                 -- Only 1 element: IR traps (irPop2? needs 2)
                 simp [irStep?, hcode_ir, hstk, irPop2?, irTrapState, irPushTrace] at hstep
@@ -8776,7 +8916,10 @@ theorem step_sim (irmod : IRModule) (wmod : Module) :
                     hframes_vals := hrel.hframes_vals, hglobals := hrel.hglobals, hmemory := hrel.hmemory, hmemLimits := hrel.hmemLimits, hmemory_aligned := hrel.hmemory_aligned, hmemory_nonempty := hrel.hmemory_nonempty,
                     hlabels := hrel.hlabels, hhalt := hhalt_of_structural .nil hrel.hlabels
                     hlabel_content := hrel.hlabel_content
-                    hframes_one := hrel.hframes_one }⟩
+                    hframes_one := hrel.hframes_one
+                    hmodule := hrel.hmodule
+                    hstore_funcs := hrel.hstore_funcs
+                    hstore_types := hrel.hstore_types }⟩
               | .i32 rhs :: .i32 lhs :: stk =>
                 -- Both i32: success case. IR and Wasm compute the same result.
                 -- Simplify IR step
@@ -8825,6 +8968,9 @@ theorem step_sim (irmod : IRModule) (wmod : Module) :
                   hhalt := hhalt_of_structural hrest hrel.hlabels
                   hlabel_content := hrel.hlabel_content
                   hframes_one := hrel.hframes_one
+                    hmodule := hrel.hmodule
+                    hstore_funcs := hrel.hstore_funcs
+                    hstore_types := hrel.hstore_types
                 }
               | .i64 _ :: _ :: _ | .f64 _ :: _ :: _ | .i32 _ :: .i64 _ :: _ | .i32 _ :: .f64 _ :: _ =>
                 -- Type mismatch (at least one non-i32): both trap
@@ -8856,7 +9002,10 @@ theorem step_sim (irmod : IRModule) (wmod : Module) :
                         hlabels := hrel.hlabels,
                         hhalt := hhalt_of_structural .nil hrel.hlabels
                         hlabel_content := hrel.hlabel_content
-                        hframes_one := hrel.hframes_one }))
+                        hframes_one := hrel.hframes_one
+                    hmodule := hrel.hmodule
+                    hstore_funcs := hrel.hstore_funcs
+                    hstore_types := hrel.hstore_types }))
           | .f64 =>
             rcases hc.binOp_f64_inv with
               ⟨rfl, rest_w, hcw, hrest⟩ | ⟨rfl, rest_w, hcw, hrest⟩ |
@@ -8878,7 +9027,10 @@ theorem step_sim (irmod : IRModule) (wmod : Module) :
                     hframes_vals := hrel.hframes_vals, hglobals := hrel.hglobals, hmemory := hrel.hmemory, hmemLimits := hrel.hmemLimits, hmemory_aligned := hrel.hmemory_aligned, hmemory_nonempty := hrel.hmemory_nonempty,
                     hlabels := hrel.hlabels, hhalt := hhalt_of_structural .nil hrel.hlabels
                     hlabel_content := hrel.hlabel_content
-                    hframes_one := hrel.hframes_one }⟩
+                    hframes_one := hrel.hframes_one
+                    hmodule := hrel.hmodule
+                    hstore_funcs := hrel.hstore_funcs
+                    hstore_types := hrel.hstore_types }⟩
               | v1 :: [] =>
                 -- Only 1 element: both trap
                 simp [irStep?, hcode_ir, hstk, irPop2?, irTrapState, irPushTrace] at hstep
@@ -8898,7 +9050,10 @@ theorem step_sim (irmod : IRModule) (wmod : Module) :
                     hframes_vals := hrel.hframes_vals, hglobals := hrel.hglobals, hmemory := hrel.hmemory, hmemLimits := hrel.hmemLimits, hmemory_aligned := hrel.hmemory_aligned, hmemory_nonempty := hrel.hmemory_nonempty,
                     hlabels := hrel.hlabels, hhalt := hhalt_of_structural .nil hrel.hlabels
                     hlabel_content := hrel.hlabel_content
-                    hframes_one := hrel.hframes_one }⟩
+                    hframes_one := hrel.hframes_one
+                    hmodule := hrel.hmodule
+                    hstore_funcs := hrel.hstore_funcs
+                    hstore_types := hrel.hstore_types }⟩
               | .f64 rhs :: .f64 lhs :: stk =>
                 -- Both f64: success case
                 unfold irStep? at hstep; rw [hcode_ir, hstk] at hstep
@@ -8931,6 +9086,9 @@ theorem step_sim (irmod : IRModule) (wmod : Module) :
                   hhalt := hhalt_of_structural hrest hrel.hlabels
                   hlabel_content := hrel.hlabel_content
                   hframes_one := hrel.hframes_one
+                    hmodule := hrel.hmodule
+                    hstore_funcs := hrel.hstore_funcs
+                    hstore_types := hrel.hstore_types
                 }
               | .i32 _ :: _ :: _ | .i64 _ :: _ :: _ | .f64 _ :: .i32 _ :: _ | .f64 _ :: .i64 _ :: _ =>
                 -- Type mismatch (at least one non-f64): both trap
@@ -8959,7 +9117,10 @@ theorem step_sim (irmod : IRModule) (wmod : Module) :
                         hlabels := hrel.hlabels,
                         hhalt := hhalt_of_structural .nil hrel.hlabels
                         hlabel_content := hrel.hlabel_content
-                        hframes_one := hrel.hframes_one }))
+                        hframes_one := hrel.hframes_one
+                    hmodule := hrel.hmodule
+                    hstore_funcs := hrel.hstore_funcs
+                    hstore_types := hrel.hstore_types }))
           | .i64 | .ptr =>
             -- No EmitCodeCorr constructor for i64/ptr binOps
             exfalso; generalize s2.code = wcode at hc
@@ -8991,7 +9152,10 @@ theorem step_sim (irmod : IRModule) (wmod : Module) :
                     hframes_vals := hrel.hframes_vals, hglobals := hrel.hglobals, hmemory := hrel.hmemory, hmemLimits := hrel.hmemLimits, hmemory_aligned := hrel.hmemory_aligned, hmemory_nonempty := hrel.hmemory_nonempty,
                     hlabels := hrel.hlabels, hhalt := hhalt_of_structural .nil hrel.hlabels
                     hlabel_content := hrel.hlabel_content
-                    hframes_one := hrel.hframes_one }⟩
+                    hframes_one := hrel.hframes_one
+                    hmodule := hrel.hmodule
+                    hstore_funcs := hrel.hstore_funcs
+                    hstore_types := hrel.hstore_types }⟩
               | .i32 v :: stk =>
                 -- Success: both compute eqz
                 have hir := irStep?_eq_i32Eqz s1 rest v stk hcode_ir hstk
@@ -9040,7 +9204,10 @@ theorem step_sim (irmod : IRModule) (wmod : Module) :
                         hframes_vals := hrel.hframes_vals, hglobals := hrel.hglobals, hmemory := hrel.hmemory, hmemLimits := hrel.hmemLimits, hmemory_aligned := hrel.hmemory_aligned, hmemory_nonempty := hrel.hmemory_nonempty,
                         hlabels := hrel.hlabels, hhalt := hhalt_of_structural .nil hrel.hlabels
                         hlabel_content := hrel.hlabel_content
-                        hframes_one := hrel.hframes_one }⟩
+                        hframes_one := hrel.hframes_one
+                    hmodule := hrel.hmodule
+                    hstore_funcs := hrel.hstore_funcs
+                    hstore_types := hrel.hstore_types }⟩
               | .f64 v :: stk =>
                 -- Type mismatch: both trap
                 have hir : irStep? s1 = some (.trap "type mismatch in i32.eqz",
@@ -9066,7 +9233,10 @@ theorem step_sim (irmod : IRModule) (wmod : Module) :
                         hframes_vals := hrel.hframes_vals, hglobals := hrel.hglobals, hmemory := hrel.hmemory, hmemLimits := hrel.hmemLimits, hmemory_aligned := hrel.hmemory_aligned, hmemory_nonempty := hrel.hmemory_nonempty,
                         hlabels := hrel.hlabels, hhalt := hhalt_of_structural .nil hrel.hlabels
                         hlabel_content := hrel.hlabel_content
-                        hframes_one := hrel.hframes_one }⟩
+                        hframes_one := hrel.hframes_one
+                    hmodule := hrel.hmodule
+                    hstore_funcs := hrel.hstore_funcs
+                    hstore_types := hrel.hstore_types }⟩
             · -- wrap_i64 case
               subst hwrap
               match hstk : s1.stack with
@@ -9088,7 +9258,10 @@ theorem step_sim (irmod : IRModule) (wmod : Module) :
                     hframes_vals := hrel.hframes_vals, hglobals := hrel.hglobals, hmemory := hrel.hmemory, hmemLimits := hrel.hmemLimits, hmemory_aligned := hrel.hmemory_aligned, hmemory_nonempty := hrel.hmemory_nonempty,
                     hlabels := hrel.hlabels, hhalt := hhalt_of_structural .nil hrel.hlabels
                     hlabel_content := hrel.hlabel_content
-                    hframes_one := hrel.hframes_one }⟩
+                    hframes_one := hrel.hframes_one
+                    hmodule := hrel.hmodule
+                    hstore_funcs := hrel.hstore_funcs
+                    hstore_types := hrel.hstore_types }⟩
               | .i32 v :: stk =>
                 -- Type mismatch: IR traps (i32 given to wrap_i64), Wasm also traps
                 have hir : irStep? s1 = some (.trap "type mismatch in i32.wrap_i64",
@@ -9115,7 +9288,10 @@ theorem step_sim (irmod : IRModule) (wmod : Module) :
                         hframes_vals := hrel.hframes_vals, hglobals := hrel.hglobals, hmemory := hrel.hmemory, hmemLimits := hrel.hmemLimits, hmemory_aligned := hrel.hmemory_aligned, hmemory_nonempty := hrel.hmemory_nonempty,
                         hlabels := hrel.hlabels, hhalt := hhalt_of_structural .nil hrel.hlabels
                         hlabel_content := hrel.hlabel_content
-                        hframes_one := hrel.hframes_one }⟩
+                        hframes_one := hrel.hframes_one
+                    hmodule := hrel.hmodule
+                    hstore_funcs := hrel.hstore_funcs
+                    hstore_types := hrel.hstore_types }⟩
               | .i64 v :: stk =>
                 -- Success: both compute wrap_i64
                 have hir := irStep?_eq_i32WrapI64 s1 rest v stk hcode_ir hstk
@@ -9162,7 +9338,10 @@ theorem step_sim (irmod : IRModule) (wmod : Module) :
                         hframes_vals := hrel.hframes_vals, hglobals := hrel.hglobals, hmemory := hrel.hmemory, hmemLimits := hrel.hmemLimits, hmemory_aligned := hrel.hmemory_aligned, hmemory_nonempty := hrel.hmemory_nonempty,
                         hlabels := hrel.hlabels, hhalt := hhalt_of_structural .nil hrel.hlabels
                         hlabel_content := hrel.hlabel_content
-                        hframes_one := hrel.hframes_one }⟩
+                        hframes_one := hrel.hframes_one
+                    hmodule := hrel.hmodule
+                    hstore_funcs := hrel.hstore_funcs
+                    hstore_types := hrel.hstore_types }⟩
             · exact hf.elim
           | .i64 | .f64 | .ptr =>
             -- No EmitCodeCorr constructor for these types
@@ -9264,7 +9443,10 @@ theorem step_sim (irmod : IRModule) (wmod : Module) :
                   hlabels := by dsimp only []; exact hrel.hlabels
                   hhalt := hhalt_of_structural .nil hrel.hlabels
                   hlabel_content := hrel.hlabel_content
-                  hframes_one := hrel.hframes_one }⟩
+                  hframes_one := hrel.hframes_one
+                    hmodule := hrel.hmodule
+                    hstore_funcs := hrel.hstore_funcs
+                    hstore_types := hrel.hstore_types }⟩
             | .i32 cond :: stk =>
               -- i32 condition: decide true/false
               match hcond : decide (cond = 0) with
@@ -9380,7 +9562,10 @@ theorem step_sim (irmod : IRModule) (wmod : Module) :
                       hlabels := by dsimp only []; exact hrel.hlabels
                       hhalt := hhalt_of_structural .nil hrel.hlabels
                       hlabel_content := hrel.hlabel_content
-                      hframes_one := hrel.hframes_one }⟩
+                      hframes_one := hrel.hframes_one
+                    hmodule := hrel.hmodule
+                    hstore_funcs := hrel.hstore_funcs
+                    hstore_types := hrel.hstore_types }⟩
             | .f64 n :: stk =>
               -- f64 on stack: type mismatch trap
               have hir : irStep? s1 = some (.trap "if condition is not i32",
@@ -9418,7 +9603,10 @@ theorem step_sim (irmod : IRModule) (wmod : Module) :
                       hlabels := by dsimp only []; exact hrel.hlabels
                       hhalt := hhalt_of_structural .nil hrel.hlabels
                       hlabel_content := hrel.hlabel_content
-                      hframes_one := hrel.hframes_one }⟩
+                      hframes_one := hrel.hframes_one
+                    hmodule := hrel.hmodule
+                    hstore_funcs := hrel.hstore_funcs
+                    hstore_types := hrel.hstore_types }⟩
           · exact hf.elim
       | .br label =>
           -- unconditional branch
@@ -9460,7 +9648,10 @@ theorem step_sim (irmod : IRModule) (wmod : Module) :
                 hlabels := by simp
                 hhalt := by intro _; apply step?_halted; exact ⟨rfl, rfl⟩
                 hlabel_content := by intro i hi; simp at hi
-                hframes_one := hrel.hframes_one }⟩
+                hframes_one := hrel.hframes_one
+                    hmodule := hrel.hmodule
+                    hstore_funcs := hrel.hstore_funcs
+                    hstore_types := hrel.hstore_types }⟩
           · exact hf.elim
       | .drop =>
           -- drop: IR and Wasm both pop top of stack (or both trap on empty stack)
@@ -9500,7 +9691,10 @@ theorem step_sim (irmod : IRModule) (wmod : Module) :
                   hlabels := hrel.hlabels
                   hhalt := hhalt_of_structural .nil hrel.hlabels
                   hlabel_content := hrel.hlabel_content
-                  hframes_one := hrel.hframes_one }⟩
+                  hframes_one := hrel.hframes_one
+                    hmodule := hrel.hmodule
+                    hstore_funcs := hrel.hstore_funcs
+                    hstore_types := hrel.hstore_types }⟩
             | v :: stk =>
               -- Non-empty stack: both sides drop silently
               have hir := irStep?_eq_drop s1 rest v stk hcode_ir hstk
@@ -9537,7 +9731,10 @@ theorem step_sim (irmod : IRModule) (wmod : Module) :
                     hlabels := hrel.hlabels
                     hhalt := hhalt_of_structural hrest hrel.hlabels
                     hlabel_content := hrel.hlabel_content
-                    hframes_one := hrel.hframes_one }⟩
+                    hframes_one := hrel.hframes_one
+                    hmodule := hrel.hmodule
+                    hstore_funcs := hrel.hstore_funcs
+                    hstore_types := hrel.hstore_types }⟩
           · exact hf.elim
       | .memoryGrow =>
           -- grow memory: IR and Wasm both pop i32 delta, grow or return -1
@@ -9560,7 +9757,10 @@ theorem step_sim (irmod : IRModule) (wmod : Module) :
                   hmemLimits := hrel.hmemLimits, hmemory_aligned := hrel.hmemory_aligned, hmemory_nonempty := hrel.hmemory_nonempty,
                   hlabels := hrel.hlabels, hhalt := hhalt_of_structural .nil hrel.hlabels
                   hlabel_content := hrel.hlabel_content
-                  hframes_one := hrel.hframes_one }⟩
+                  hframes_one := hrel.hframes_one
+                    hmodule := hrel.hmodule
+                    hstore_funcs := hrel.hstore_funcs
+                    hstore_types := hrel.hstore_types }⟩
             | .i32 pages :: stk =>
               -- i32 on stack: grow or fail
               rcases hrel.hmemory with hmem_eq | ⟨hmem_none, hmem_sz⟩
@@ -9661,7 +9861,10 @@ theorem step_sim (irmod : IRModule) (wmod : Module) :
                       hlabels := hrel.hlabels
                       hhalt := hhalt_of_structural hrest hrel.hlabels
                       hlabel_content := hrel.hlabel_content
-                      hframes_one := hrel.hframes_one }⟩
+                      hframes_one := hrel.hframes_one
+                    hmodule := hrel.hmodule
+                    hstore_funcs := hrel.hstore_funcs
+                    hstore_types := hrel.hstore_types }⟩
               · -- No memory (unreachable in practice: lower always declares memory,
                 -- so memories[0]? ≠ none. Requires module-level invariant to prove.)
                 sorry
@@ -9689,7 +9892,10 @@ theorem step_sim (irmod : IRModule) (wmod : Module) :
                       hmemLimits := hrel.hmemLimits, hmemory_aligned := hrel.hmemory_aligned, hmemory_nonempty := hrel.hmemory_nonempty,
                       hlabels := hrel.hlabels, hhalt := hhalt_of_structural .nil hrel.hlabels
                       hlabel_content := hrel.hlabel_content
-                      hframes_one := hrel.hframes_one }⟩)
+                      hframes_one := hrel.hframes_one
+                    hmodule := hrel.hmodule
+                    hstore_funcs := hrel.hstore_funcs
+                    hstore_types := hrel.hstore_types }⟩)
           · exact hf.elim
 
 /-- Step simulation (stuttering): if the IR takes one step, the Wasm takes
