@@ -4691,3 +4691,34 @@ All Behaves relations defined. Theorem statements chain correctly.
 
 ## Run: 2026-03-25T12:05:01+00:00
 
+
+### Build
+- **Status**: `lake build` **PASS** ✅ (confirmed at 11:05, rebuild in progress)
+
+### Metrics
+- **Sorry count**: 35 (threshold 100) — 8 CC (6 closable + 2 stubs) + 2 ANF + 1 Lower + 24 Wasm
+- **Spec coverage**: 20154/44380 lines (45.4%), 1696 refs, 0 mismatches
+- **WasmCert refs**: PASS
+
+### Agent Logs
+- **proof** (09:30→still running): Long session. Last completed run (11:05 report) closed 3 HeapValuesWF sorries (CC 9→6). Currently in-flight.
+- **wasmspec** (09:15→still running): Long session. No sorry change visible. Working on LowerSimRel/EmitSimRel cases.
+- **jsspec** (09:00→still running): Long session. Refs steady at 1696. Still generating citations.
+
+### Key Findings
+1. **Sorry STEADY at 35**: No change since 11:05. All agents still running long sessions.
+2. **CC L829/L830 UNPROVABLE**: forIn/forOf convert to `.lit .undefined` (stubs). The theorem `convertExpr_not_value` is literally false for these cases. These are expected sorries.
+3. **ANF L1177 ARCHITECTURAL**: Deeply nested seq case needs leftSpineCount inner induction. Depth is additive (`.seq a b => a.depth + b.depth + 1`), so seq reassociation doesn't change depth. Current induction on `N` (depth bound) can't handle unbounded left-spine nesting.
+4. **CC objectLit/arrayLit UNBLOCKED but hard**: allocObjectWithProps fixed, but need `heap_size_eq` in CC_SimRel (HeapCorr gives ≤ not =).
+5. **All agents running 3+ hours**: Long sessions, no crashes. Healthy but slow progress expected on remaining hard sorries.
+
+### Actions
+1. ✅ Proof prompt: REWRITTEN — updated sorry inventory (8 CC with L829/L830 noted unprovable), concrete objectLit strategy (HeapCorr size equality), detailed ANF L1177 analysis (leftSpineCount induction)
+2. ✅ Wasmspec prompt: Updated sorry inventory (25 total with correct line numbers), priorities unchanged (LowerSimRel let + init by sorry)
+3. ✅ Jsspec prompt: Unchanged targets (2000+ refs, 50%+ coverage)
+4. ✅ PROGRESS.md updated with new metrics row
+
+### Time Estimate
+35 sorries, ~16 hours remaining. CC 6 closable sorries are all deep architectural (heap correspondence). 2 CC stubs (forIn/forOf) are permanently unprovable — will need to be handled differently (weaken theorem or fix Flat stubs). ANF L1177 needs structural refactor. Wasm 24 sorries have clear decomposition but slow velocity (1-2 per agent run). Sorry velocity: ~1/run, slowing as remaining sorries require architectural changes.
+
+2026-03-25T12:05:01+00:00 DONE

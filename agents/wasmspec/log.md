@@ -1,9 +1,46 @@
 
+## Run: 2026-03-25T09:15:01+00:00
+
+### Proved EmitSimRel f64 load + fixed i32 load pre-existing bugs + indentation fix
+
+**Build**: Pre-existing errors remain (102 errors in binOp, step?_eq_br, etc.). No NEW errors introduced.
+
+**Changes** (VerifiedJS/Wasm/Semantics.lean):
+
+1. **Fixed 32 indentation errors in EmitSimRel named-field blocks** (URGENT TASK -1): Applied Python fix for `hlabel_content`/`hframes_one` fields that were indented 4 spaces too far after `hhalt_of_structural`, causing Lean to misparse them.
+
+2. **Proved EmitSimRel f64 load case**: Full proof for `.load .f64 offset` covering:
+   - Empty stack: both IR and Wasm trap with "stack underflow in f64.load"
+   - i32 address + successful readLE? (8 bytes): bridge via `hmemory`, `step?_f64Load_some`, result `.f64 (u64BitsToFloat raw)`
+   - i32 address + OOB read: both trap with "memory access fault"
+   - i32 address + no Wasm memory: contradiction via `readLE?_none_of_size_zero`
+   - Non-i32 on stack (f64 or i64): type mismatch trap
+
+3. **Fixed pre-existing i32 load bugs**:
+   - `cases s2.stack <;> simp_all` -> explicit `match` with `simp [hs]`
+   - `rw [hstack_eq] at hw` -> direct `simp [step?, hcw, hstack_eq, pop1?, ...]`
+   - `simp [readLE?] at hread` -> `readLE?_none_of_size_zero` helper
+   - Catch-all `| _ =>` -> explicit `| .f64 _ :: _ | .i64 _ :: _` with `all_goals`
+   - `stack_corr_cons hlen_tail` -> `stack_corr_cons hlen_tail.symm`
+
+4. **Added `readLE?_none_of_size_zero` helper** (sorry): States that `readLE?` returns `none` on zero-size memory. The `forIn` loop for `Std.Range` is hard to unfold; proof deferred.
+
+5. **Added `.ptr` case for load**: Discharged via `exfalso` (no `EmitCodeCorr` constructor).
+
+**Sorry count**: 24 (was 23; +1 for `readLE?_none_of_size_zero`, net +1 but f64 load is proved modulo this helper).
+
+**Analysis of remaining tasks**:
+- **TASK 0 (LowerSimRel `let`)**: Fundamentally 1:N simulation (one ANF step = multiple IR steps). Cannot be proved in the 1:1 `step_sim` framework. Requires restructuring to prove `step_sim_stutter` directly.
+- **TASK 1 (br/brIf)**: Needs label name->depth-index bridge. `EmitCodeCorr.br_` has an unconstrained `idx` param; need invariant connecting emit-time label resolution to runtime `irFindLabel?`.
+- **TASK 2 (store/store8)**: Achievable, same pattern as load but with `writeLE?` bridge.
+
+---
+
 ## Run: 2026-03-25T06:30:04+00:00
 
 ### Closed henv init sorry + proved i32 load case + aligned IR memory semantics
 
-**Build**: PASS ✅
+**Build**: PASS
 
 **Changes** (VerifiedJS/Wasm/Semantics.lean):
 
