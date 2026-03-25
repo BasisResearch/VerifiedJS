@@ -7868,7 +7868,7 @@ theorem step_sim (irmod : IRModule) (wmod : Module) :
                       hrel.hframes_vals, hrel.hglobals, hrel.hmemory, hrel.hlabels,
                       hhalt_of_structural hrest hrel.hlabels, hrel.hlabel_content, hrel.hframes_one⟩
                     dsimp only []
-                    exact stack_corr_cons hlen_tail htail (.f64 _)
+                    exact stack_corr_cons hlen_tail.symm htail (.f64 _)
                   · -- No memory: readLE? on empty memory fails → contradiction with hread
                     exfalso; exact absurd hread (by rw [readLE?_none_of_size_zero _ _ _ (by omega) hmem_sz]; simp)
                 | none =>
@@ -7903,33 +7903,37 @@ theorem step_sim (irmod : IRModule) (wmod : Module) :
                         hlabels := hrel.hlabels, hhalt := hhalt_of_structural .nil hrel.hlabels
                         hlabel_content := hrel.hlabel_content
                         hframes_one := hrel.hframes_one }⟩
-              | _ =>
-                -- Wrong type on stack: both trap
-                simp [irStep?, hcode_ir, hstk, irPop1?, irTrapState, irPushTrace] at hstep
-                obtain ⟨rfl, rfl⟩ := hstep
-                have hstk_rel := hrel.hstack; rw [hstk] at hstk_rel
-                match hstk_w : s2.stack with
-                | [] => simp [hstk_w] at hstk_rel
-                | wv :: wstk =>
-                  have hw : step? s2 = some (.trap ("type mismatch in " ++ _),
-                      { s2 with code := [], trace := s2.trace ++ [.trap ("type mismatch in " ++ _)] }) := by
-                    simp [step?, hcw, hstk_w, pop1?, trapState, pushTrace]
+              | .f64 fv :: stk | .i64 iv :: stk =>
+                -- Wrong type on stack (not i32 address): both trap
+                all_goals (
+                  simp [irStep?, hcode_ir, hstk, irPop1?, irTrapState, irPushTrace] at hstep
+                  obtain ⟨rfl, rfl⟩ := hstep
+                  have hstk_rel := hrel.hstack; rw [hstk] at hstk_rel
+                  match hstk_w : s2.stack with
+                  | [] => simp [hstk_w] at hstk_rel
+                  | wv :: wstk =>
                     have h0 := hstk_rel.2 0 (by simp)
                     simp [hstk_w] at h0
                     obtain ⟨irv, wv', hirv, hwv', hcorr⟩ := h0
-                    simp at hirv hwv'
-                    subst hirv; subst hwv'
+                    simp at hirv hwv'; subst hirv; subst hwv'
                     cases hcorr with
                     | i32 n => simp at hstk
-                    | i64 => simp
-                    | f64 => simp
-                  exact ⟨_, by simp [traceToWasm]; exact hw,
-                    { hemit := hrel.hemit, hcode := .nil, hstack := by dsimp only []; exact hrel.hstack,
-                      hframes_len := hrel.hframes_len, hframes_locals := hrel.hframes_locals,
-                      hframes_vals := hrel.hframes_vals, hglobals := hrel.hglobals, hmemory := hrel.hmemory,
-                      hlabels := hrel.hlabels, hhalt := hhalt_of_structural .nil hrel.hlabels
-                      hlabel_content := hrel.hlabel_content
-                      hframes_one := hrel.hframes_one }⟩
+                    | i64 =>
+                      exact ⟨_, by simp [traceToWasm, step?, hcw, hstk_w, pop1?, trapState, pushTrace],
+                        { hemit := hrel.hemit, hcode := .nil, hstack := by dsimp only []; exact hrel.hstack,
+                          hframes_len := hrel.hframes_len, hframes_locals := hrel.hframes_locals,
+                          hframes_vals := hrel.hframes_vals, hglobals := hrel.hglobals, hmemory := hrel.hmemory,
+                          hlabels := hrel.hlabels, hhalt := hhalt_of_structural .nil hrel.hlabels
+                          hlabel_content := hrel.hlabel_content
+                          hframes_one := hrel.hframes_one }⟩
+                    | f64 =>
+                      exact ⟨_, by simp [traceToWasm, step?, hcw, hstk_w, pop1?, trapState, pushTrace],
+                        { hemit := hrel.hemit, hcode := .nil, hstack := by dsimp only []; exact hrel.hstack,
+                          hframes_len := hrel.hframes_len, hframes_locals := hrel.hframes_locals,
+                          hframes_vals := hrel.hframes_vals, hglobals := hrel.hglobals, hmemory := hrel.hmemory,
+                          hlabels := hrel.hlabels, hhalt := hhalt_of_structural .nil hrel.hlabels
+                          hlabel_content := hrel.hlabel_content
+                          hframes_one := hrel.hframes_one }⟩)
             · exact hf.elim
           | .i64 => sorry -- i64 load: needs EmitCodeCorr.load_i64 constructor
       | .store t offset =>
