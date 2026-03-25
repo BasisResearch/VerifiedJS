@@ -4,98 +4,58 @@ You own Flat/*, ANF/*, Wasm/Syntax,Semantics,Typing,Numerics, Runtime/*.
 
 ## Current Wasm sorry count: 20 (in Semantics.lean)
 
-### TASK 1 (DO FIRST): Close EmitSimRel memoryGrow (L9510)
+### TASK 1 (DO FIRST): Close init sorries (L9813, L9828, L9852)
 
-No frame changes, no labels — just stack + memory. Follow the exact pattern from `drop` (L9440-9506).
+All 3 are the same: `LowerSimRel.init prog irmod hlower (by sorry)`.
 
-You need a Wasm `step?` equation lemma first. Write it near L5374:
+The `by sorry` must prove: `LowerCodeCorr prog.main (irInitialState irmod).code`.
 
+`lowerExprWithExn` is NOW PUBLIC (no longer blocked!). The proof:
+1. Unfold `Wasm.lower` from `hlower` to get the generated IR code
+2. Show `irInitialState irmod` has `.code = [call startIdx]` or `[]`
+3. Show the lowered ANF expression satisfies `LowerCodeCorr`
+
+Strategy:
 ```lean
-/-- Wasm step? for memory.grow with i32 on stack (success). -/
-theorem step?_eq_memoryGrow_ok (s : ExecState) (rest : List Instr)
-    (delta : UInt32) (stk : List WasmValue)
-    (hcode : s.code = Instr.memoryGrow 0 :: rest)
-    (hstack : s.stack = .i32 delta :: stk)
-    (hMem : 0 < s.store.memories.size)
-    (hMaxOk : -- max check passes
-      (if hLim : 0 < s.store.memLimits.size then
-        match s.store.memLimits[0].max with
-        | some maxPages => (s.store.memories[0]'hMem).size / 65536 + delta.toNat ≤ maxPages
-        | none => (s.store.memories[0]'hMem).size / 65536 + delta.toNat ≤ 65536
-      else (s.store.memories[0]'hMem).size / 65536 + delta.toNat ≤ 65536) = true) :
-    let mem := (s.store.memories[0]'hMem)
-    let oldPages := mem.size / 65536
-    let grown := ByteArray.mk (mem.toList.toArray ++ Array.replicate (delta.toNat * 65536) 0)
-    step? s = some (.silent, pushTrace { s with
-      store := { s.store with memories := s.store.memories.set! 0 grown }
-      code := rest
-      stack := .i32 (UInt32.ofNat oldPages) :: stk } .silent) := by
-  simp [step?, hcode, hstack, pop1?, hMem, pushTrace]
-  sorry -- fill in the maxOk logic; may need split on memLimits
+-- At each `by sorry`:
+-- hlower : Wasm.lower prog = .ok irmod
+-- Need: LowerCodeCorr prog.main (irInitialState irmod).code
+--
+-- Wasm.lower calls lowerExprWithExn on prog.main.
+-- irInitialState sets code from the lowered result.
+-- So (irInitialState irmod).code IS the lowered code.
+-- LowerCodeCorr should hold by construction (lower produces LowerCodeCorr-conforming code).
+--
+-- Use lean_goal at each sorry to see the exact goal, then:
+-- unfold Wasm.lower at hlower (or simp [Wasm.lower] at hlower)
+-- extract the code from hlower
+-- construct LowerCodeCorr by matching the ANF expression to the IR code
 ```
 
-Then write the step_sim case at L9510:
+Use `lean_goal` at L9813 column 38 to see the exact proof state.
 
-```lean
-      | .memoryGrow =>
-          have hc : EmitCodeCorr (IRInstr.memoryGrow :: rest) s2.code := hcode_ir ▸ hrel.hcode
-          rcases hc.memoryGrow_inv with ⟨rest_w, hcw, hrest⟩ | hf
-          · -- Case split on IR stack
-            match hstk : s1.stack with
-            | [] =>
-              -- Empty stack: IR traps
-              have hir := irStep?_eq_trap_empty s1 rest hcode_ir hstk  -- or derive from irStep? def
-              sorry -- both trap, match trace
-            | .i32 pages :: stk =>
-              -- i32 on stack: memory grow
-              -- Case split on size check
-              if hsize : s1.memory.size + pages.toNat * 65536 ≤ 65536 * 65536 then
-                -- Success case
-                have hir := irStep?_eq_memoryGrow_ok s1 rest pages stk hcode_ir hstk hsize
-                rw [hir] at hstep
-                simp only [Option.some.injEq, Prod.mk.injEq] at hstep
-                obtain ⟨rfl, rfl⟩ := hstep
-                -- Wasm side: use hmemory to get memories[0] = ir.memory
-                -- Use hmemLimits to show max = none → newPages ≤ 65536 always true
-                -- Build new EmitSimRel with updated memory + stack
-                sorry -- fill in Wasm step + SimRel construction
-              else
-                -- Failure case: push 0xFFFFFFFF
-                sorry -- both push -1, memory unchanged
-            | v :: stk =>
-              -- Non-i32 on stack: IR traps with type mismatch
-              sorry -- both trap, match trace
-          · exact hf.elim
-```
+### TASK 2: Close L9628 (memoryGrow no-memory case)
 
-Key hints:
-- `hmemory` gives you `w.store.memories[0]? = some ir.memory` — use `Option.some.injEq` to get equality
-- `hmemLimits` gives you `lim.max = none` — so the maxOk condition reduces to `newPages ≤ 65536`
-- `hmemory_aligned` gives you `65536 ∣ ir.memory.size` — needed for oldPages computation
-- Stack correspondence: old stack corresponded, push `IRValue.i32 oldPages` / `WasmValue.i32 oldPages` — use `IRValueToWasmValue.i32`
+This sorry is in the branch where `hmemory` gives `w.store.memories[0]? = none ∧ ir.memory.size = 0`. But then we're in the `| .i32 pages :: stk =>` case, meaning the IR has memory (just size 0). Show:
+- IR memoryGrow with 0-size memory and pages on stack → either grows (allocating pages*65536 bytes) or fails
+- Wasm has no memory (`memories[0]? = none`) → step? for memoryGrow returns trap or -1
+- Both produce matching events
 
-### TASK 2: Close EmitSimRel br/brIf (L9394, L9397)
+Use `lean_goal` at L9628 to see the proof state, then match IR and Wasm behaviors.
 
-Both need label index correspondence. Pattern:
-```lean
-      | .br label =>
-          have hc : EmitCodeCorr (IRInstr.br label :: rest) s2.code := hcode_ir ▸ hrel.hcode
-          rcases hc.br_inv with ⟨idx, rest_w, hcw, hrest⟩ | hf
-          · sorry -- use hlabel_content to relate IR label → Wasm label idx
-          · exact hf.elim
-```
+### TASK 3: Close br/brIf if possible (L9394, L9397)
 
-### TASK 3: Close EmitSimRel call/callIndirect (L9148, L9151)
+The `br_inv` gives `wcode = Instr.br idx :: rest_w`. Need to connect:
+- IR: `irFindLabel? s1.labels label = some (pos, lbl)` → branch to `lbl.onBranch`
+- Wasm: `br idx` → branch to label at index `idx` in Wasm label stack
 
-**BLOCKER**: `hframes_one` asserts exactly 1 frame. A `call` pushes a second frame. Skip if blocked.
+Missing link: how does IR label name `label` relate to Wasm label index `idx`? The `br_` EmitCodeCorr constructor has both `label` and `idx` but doesn't constrain their relationship. You may need to add an invariant to EmitSimRel connecting IR label names to Wasm label indices.
 
-### LowerSimRel sorries (12 total, L6261-L6338)
+If this is too hard, skip and focus on TASK 1+2.
 
-**ARCHITECTURAL BLOCKER**: `step_sim` is 1:1 but most cases need 1:N. Focus on EmitSimRel first.
+### LowerSimRel sorries (12: L6261-L6338)
 
-### Init sorries (3: L9669, L9684, L9708)
-
-All need `LowerSimRel.init` with `LowerCodeCorr` for the initial program.
+ALL blocked by 1:N stepping. Don't work on these unless you restructure step_sim to multi-step.
 
 ## Rules
 - `bash scripts/lake_build_concise.sh` to build
@@ -103,4 +63,4 @@ All need `LowerSimRel.init` with `LowerCodeCorr` for the initial program.
 - Do NOT break the build
 - CLOSE sorries, don't decompose them into more sorries
 - Use `lean_goal` + `lean_multi_attempt` BEFORE editing
-- Do TASK 1 (memoryGrow) FIRST — it's the quickest win (no frame issues)
+- Do TASK 1 FIRST — init sorries are the quickest wins
