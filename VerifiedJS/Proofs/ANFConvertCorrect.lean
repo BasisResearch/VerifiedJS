@@ -1686,9 +1686,44 @@ private theorem anfConvert_halt_star_aux
                 simp [Flat.Expr.depth]
                 rw [hsf] at hdepth; rw [ha, ha1, hc, hc1] at hdepth
                 simp [Flat.Expr.depth] at hdepth; omega
-              -- Flat steps from sf to target: by evaluating c1 in the nested context
-              -- c1 = .seq c1a c1b is a trivial chain, evaluation preserves env/heap and is silent
-              sorry
+              -- Derive trivial chain property
+              have htc_a := normalizeExpr_trivial_implies_chain c1a.depth c1a (Nat.le_refl _) _ n m tv hnorm
+              have htc_b := normalizeExpr_trivial_implies_chain c1b.depth c1b (Nat.le_refl _) _ n m tv hnorm_c1b
+              have htc_seq : isTrivialChain (Flat.Expr.seq c1a c1b) = true := by
+                simp [isTrivialChain]; exact ⟨htc_a, htc_b⟩
+              -- sf.expr = wrapSeqCtx (.seq c1a c1b) [c2, d, a2, b]
+              have hsf_tc : sf.expr = wrapSeqCtx (Flat.Expr.seq c1a c1b) [c2, d, a2, b] := by
+                rw [hsf, ha, ha1, hc, hc1]
+              have hwf_tc : ∀ x, VarFreeIn x (Flat.Expr.seq c1a c1b) → sf.env.lookup x ≠ none := by
+                intro x hfx; apply hwf x; rw [hsf, ha, ha1, hc, hc1]
+                exact .seq_l _ _ _ (.seq_l _ _ _ (.seq_l _ _ _ (.seq_l _ _ _ hfx)))
+              obtain ⟨evs_tc, sf3, hsteps_tc, hexpr3, henv3, hheap3, htrace3, hobs_tc⟩ :=
+                trivialChain_consume_ctx (trivialChainCost (Flat.Expr.seq c1a c1b))
+                  (Flat.Expr.seq c1a c1b) [c2, d, a2, b] sf htc_seq (Nat.le_refl _)
+                  (List.cons_ne_nil _ _) hsf_tc hwf_tc
+              have hsf3_expr : sf3.expr = Flat.Expr.seq (Flat.Expr.seq (Flat.Expr.seq c2 d) a2) b := by
+                rw [hexpr3]
+              have hrel3 : ANF_SimRel s t sa sf3 := by
+                refine ⟨hheap.trans hheap3.symm, henv.trans henv3.symm, htrace.trans htrace3.symm, k, n, m, ?_, hfaithful⟩
+                rw [hsf3_expr]; simp only [ANF.normalizeExpr]; rw [hat]; exact hnorm_c2
+              have hbd3 : sf3.expr.depth ≤ N := by rw [hsf3_expr]; exact hbd
+              have hwf3 : ExprWellFormed sf3.expr sf3.env := by
+                rw [hsf3_expr, henv3]; intro x hfx
+                apply hwf x; rw [hsf]
+                cases hfx with
+                | seq_l _ _ hfx' =>
+                  rw [ha]; exact .seq_l _ _ _ (by
+                    cases hfx' with
+                    | seq_l _ _ hfx'' =>
+                      rw [ha1]; exact .seq_l _ _ _ (by
+                        cases hfx'' with
+                        | seq_l _ _ hfx''' => rw [hc, hc1]; exact .seq_l _ _ _ (.seq_r _ _ _ hfx''')
+                        | seq_r _ _ hfx''' => exact .seq_r _ _ _ hfx''')
+                    | seq_r _ _ hfx'' => exact .seq_r _ _ _ hfx'')
+                | seq_r _ _ hfx' => exact .seq_r _ _ _ hfx'
+              obtain ⟨sf', evs, hsteps', hhalt', hobs', hrel'⟩ := ih sa sf3 hbd3 hrel3 hstuck hwf3
+              exact ⟨sf', evs_tc ++ evs, Flat.Steps.append hsteps_tc hsteps', hhalt',
+                by rw [observableTrace_append, hobs_tc, hobs']; rfl, hrel'⟩
             | _ =>
               -- Compound c1: normalizeExpr c1 can't produce trivial
               exfalso
