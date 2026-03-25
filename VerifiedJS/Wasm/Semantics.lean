@@ -6093,11 +6093,9 @@ theorem step_sim (prog : ANF.Program) (irmod : IRModule) :
             simp [ANF.pushTrace]
             exact .value_done (ANF.trivialOfValue v) (ANF.trivialOfValue_ne_var v)
           hhalt := by
-            intro hhalt_anf
-            -- After localGet, IR code = []. Need labels = [] ∧ frames ≤ 1.
-            -- This requires program structure invariants (single-frame, no labels for var).
-            simp [IRExecState.halted]
-            sorry
+            intro _
+            simp [IRExecState.halted, hrel.hlabels_empty]
+            exact Nat.le_of_eq hrel.hframes_one
           hframes := by simp [hfr_eq]
           henv := by
             intro n w hlk
@@ -6108,6 +6106,8 @@ theorem step_sim (prog : ANF.Program) (irmod : IRModule) :
             simp [ANF.pushTrace] at hexpr'
             -- trivialOfValue never produces var
             exact absurd hexpr' (by cases v <;> simp [ANF.trivialOfValue])
+          hlabels_empty := hrel.hlabels_empty
+          hframes_one := hrel.hframes_one
         }
     | .trivial .litNull =>
         -- Literal null: ANF.step? returns none for literals, contradiction with heq
