@@ -1,8 +1,89 @@
-# proof — URGENT: Fix build errors in ClosureConvertCorrect.lean FIRST
+# proof — URGENT: Fix build errors FIRST
 
-**The build is broken.** Fix these errors in `VerifiedJS/Proofs/ClosureConvertCorrect.lean` before doing anything else.
+**The build is broken.** Fix ALL errors below before doing anything else.
 
-## FIX 1: Lines 323, 341 — `beq_comm` does not exist
+## FIX 0 (HIGHEST PRIORITY): ANFConvertCorrect.lean — `funcs`/`callStack` fields missing
+
+`Flat.State` gained two new fields (`funcs : Array FuncDef := #[]` and `callStack : List Env := []`).
+State literals in `ANFConvertCorrect.lean` that only specify `expr`, `env`, `heap`, `trace` now silently
+use default values for `funcs`/`callStack`, causing type mismatches with the actual `step?` output.
+
+**Fix:** Add `funcs := sf.funcs, callStack := sf.callStack` to every `Flat.State` literal in `obtain` targets
+and `let sf2` definitions. There are 12 lines to change (6 `obtain` targets, 6 `let sf2` definitions).
+
+Apply this diff exactly — every change is adding `, funcs := sf.funcs, callStack := sf.callStack` before the `}`:
+
+**Line 725** — change:
+```lean
+          obtain ⟨val, hstep1⟩ : ∃ val, Flat.step? sf = some (.silent, { expr := .seq (.lit val) b, env := sf.env, heap := sf.heap, trace := sf.trace ++ [.silent] }) := by
+```
+to:
+```lean
+          obtain ⟨val, hstep1⟩ : ∃ val, Flat.step? sf = some (.silent, { expr := .seq (.lit val) b, env := sf.env, heap := sf.heap, trace := sf.trace ++ [.silent], funcs := sf.funcs, callStack := sf.callStack }) := by
+```
+
+**Line 730** — change:
+```lean
+          let sf2 : Flat.State := { expr := .seq (.lit val) b, env := sf.env, heap := sf.heap, trace := sf.trace ++ [.silent] }
+```
+to:
+```lean
+          let sf2 : Flat.State := { expr := .seq (.lit val) b, env := sf.env, heap := sf.heap, trace := sf.trace ++ [.silent], funcs := sf.funcs, callStack := sf.callStack }
+```
+
+**Line 770** — change:
+```lean
+        obtain ⟨val, hstep1⟩ : ∃ val, Flat.step? sf = some (.silent, { expr := .seq (.lit val) b, env := sf.env, heap := sf.heap, trace := sf.trace ++ [.silent] }) := by
+```
+to:
+```lean
+        obtain ⟨val, hstep1⟩ : ∃ val, Flat.step? sf = some (.silent, { expr := .seq (.lit val) b, env := sf.env, heap := sf.heap, trace := sf.trace ++ [.silent], funcs := sf.funcs, callStack := sf.callStack }) := by
+```
+
+**Lines 772-776** — also replace the proof body. Change:
+```lean
+          rw [ha]; unfold Flat.step? Flat.exprValue?
+          unfold Flat.step?
+          cases sf.env.lookup "this" with
+          | some v => exact ⟨v, rfl⟩
+          | none => exact ⟨.undefined, rfl⟩
+```
+to:
+```lean
+          rw [ha]; exact Flat.step?_seq_this_steps_to_lit sf b
+```
+
+**Line 777** — change:
+```lean
+        let sf2 : Flat.State := { expr := .seq (.lit val) b, env := sf.env, heap := sf.heap, trace := sf.trace ++ [.silent] }
+```
+to:
+```lean
+        let sf2 : Flat.State := { expr := .seq (.lit val) b, env := sf.env, heap := sf.heap, trace := sf.trace ++ [.silent], funcs := sf.funcs, callStack := sf.callStack }
+```
+
+**Line 911** (inside `have hstep1`) — add `, funcs := sf.funcs, callStack := sf.callStack` before `})`.
+
+**Line 917** (`let sf2`) — add `, funcs := sf.funcs, callStack := sf.callStack` before `}`.
+
+**Line 962** (inside `obtain ⟨val, hstep1⟩`) — add `, funcs := sf.funcs, callStack := sf.callStack` before `})`.
+
+**Line 970** (`let sf2`) — add `, funcs := sf.funcs, callStack := sf.callStack` before `}`.
+
+**Line 1079** (inside `have hstep1`) — add `, funcs := sf.funcs, callStack := sf.callStack` before `})`.
+
+**Line 1086** (`let sf2`) — add `, funcs := sf.funcs, callStack := sf.callStack` before `}`.
+
+**Line 1132** (inside `obtain ⟨val, hstep1⟩`) — add `, funcs := sf.funcs, callStack := sf.callStack` before `})`.
+
+**Line 1141** (`let sf2`) — add `, funcs := sf.funcs, callStack := sf.callStack` before `}`.
+
+The complete fixed file is at `/tmp/ANFConvertCorrect.lean` — you can copy it:
+```bash
+cp /tmp/ANFConvertCorrect.lean /opt/verifiedjs/VerifiedJS/Proofs/ANFConvertCorrect.lean
+```
+
+## FIX 1: ClosureConvertCorrect.lean — `beq_comm` does not exist (Lines 323, 341)
 
 Replace `beq_comm` with `Bool.beq_comm` (the correct name in current Lean/Mathlib).
 
@@ -24,7 +105,7 @@ to:
   · have hne' : (name == other) = false := by simp [Bool.beq_comm] at hne ⊢; exact hne
 ```
 
-## FIX 2: Lines 207, 242, 245, 248, 251, 254, 257 — unsolved goals in evalBinary cases
+## FIX 2: ClosureConvertCorrect.lean — unsolved goals in evalBinary cases (Lines 207, 242, 245, 248, 251, 254, 257)
 
 The `simp` calls leave unsolved goals because `Core.toNumber`, `Core.valueToString`, `Flat.toNumber`, `Flat.valueToString` are not being unfolded. Add them to the simp lemma lists.
 

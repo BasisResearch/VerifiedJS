@@ -1,4 +1,35 @@
 
+## Run: 2026-03-25T06:30:04+00:00
+
+### Closed henv init sorry + proved i32 load case + aligned IR memory semantics
+
+**Build**: PASS ✅
+
+**Changes** (VerifiedJS/Wasm/Semantics.lean):
+
+1. **Closed LowerSimRel init `henv` sorry (was L6037)**: Modified `henv` field to exclude the "console" binding — it's a compile-time built-in handled via `getProp` pattern matching in Lower.lean, not a runtime local. The guard `name ≠ "console"` makes the initial state proof trivial: after simp, the only env binding is "console", which is excluded by the guard. Updated 2 forwarding sites in step_sim.
+
+2. **Aligned IR load/store/store8 to use `readLE?`/`writeLE?`**: Changed IR step function for `.load`, `.store`, `.store8` from byte-by-byte memory access to using `readLE?`/`writeLE?` directly. This makes IR memory operations identical to Wasm's, enabling direct forward simulation without bit-level bridge lemmas. Added type dispatch for load (i32: 4 bytes, f64/i64: 8 bytes) and store (i32/f64/i64 with correct stack types).
+
+3. **Aligned IR trap messages with Wasm**: Updated load/store/store8 trap messages ("memory access fault in i32.load", "type mismatch in i32.store", etc.) to exactly match Wasm step? messages, enabling trap correspondence in step_sim.
+
+4. **Strengthened `hmemory` to disjunctive form**: Changed from `∀ mem, w.store.memories[0]? = some mem → mem = ir.memory` to `(w.store.memories[0]? = some ir.memory) ∨ (w.store.memories[0]? = none ∧ ir.memory.size = 0)`. This captures both cases: memory exists (values equal) or absent (both empty). Updated init proof.
+
+5. **Proved EmitSimRel i32 load case**: Full proof for `load .i32 offset` covering:
+   - Empty stack: both trap with matching message
+   - i32 addr on stack, readLE? succeeds: bridge via hmemory, both produce .silent with matching i32 value
+   - i32 addr on stack, readLE? fails (OOB or no memory): both trap with matching message
+   - Non-i32 on stack: type mismatch trap via stack correspondence inversion
+
+6. **Added `stack_corr_i32_inv` helper**: Single-i32 stack correspondence inversion lemma for load/unary operations.
+
+**Sorry count**: 23 actual sorries (was 23, net 0: closed henv -1, decomposed load into proved i32 + remaining f64/i64 +0 net for load).
+
+**Remaining blockers**:
+- **br/brIf**: Need label name→depth-index bridge. Requires parameterizing EmitCodeCorr with label context or adding a new EmitSimRel field connecting EmitCodeCorr.br_'s idx to irFindLabel?.
+- **f64/i64 load**: Same bridge as i32 but with width 8 — straightforward to add.
+- **store/store8**: Same pattern as load proof — can follow i32 load template.
+
 ## Run: 2026-03-25T04:15:01+00:00
 
 ### Closed emit_globals_init_valcorr + aligned IR br/loop to Wasm semantics
