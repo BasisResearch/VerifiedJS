@@ -30672,4 +30672,5349 @@ theorem elaborate_correct (p : Source.Program) (cp : Core.Program)
 
 
 
+
+-- SPEC: L31325-L31333
+-- | # RegExp.prototype
+-- |
+-- | The initial value of \`RegExp.prototype\` is the RegExp prototype
+-- | object.
+-- |
+-- | This property has the attributes { \[\[Writable\]\]: \*false\*,
+-- | \[\[Enumerable\]\]: \*false\*, \[\[Configurable\]\]: \*false\* }.
+-- |
+-- | # get RegExp \[ %Symbol.species% \]
+
+-- SPEC: L31334-L31346
+-- |
+-- | \`RegExp\[%Symbol.species%\]\` is an accessor property whose set
+-- | accessor function is \*undefined\*. Its get accessor function performs
+-- | the following steps when called:
+-- |
+-- | 1\. Return the \*this\* value.
+-- |
+-- | The value of the \*\"name\"\* property of this function is \*\"get
+-- | \[Symbol.species\]\"\*.
+-- |
+-- | RegExp prototype methods normally use their \*this\* value\'s
+-- | constructor to create a derived object. However, a subclass constructor
+-- | may over-ride that default behaviour by redefining its %Symbol.species%
+
+-- SPEC: L31348-L31365
+-- |
+-- | # Properties of the RegExp Prototype Object
+-- |
+-- | The [RegExp prototype object]{.dfn}:
+-- |
+-- | - is [%RegExp.prototype%]{.dfn}.
+-- | - is an ordinary object.
+-- | - is not a RegExp instance and does not have a \[\[RegExpMatcher\]\]
+-- |   internal slot or any of the other internal slots of RegExp instance
+-- |   objects.
+-- | - has a \[\[Prototype\]\] internal slot whose value is
+-- |   %Object.prototype%.
+-- |
+-- | The RegExp prototype object does not have a \*\"valueOf\"\* property of
+-- | its own; however, it inherits the \*\"valueOf\"\* property from the
+-- | Object prototype object.
+-- |
+-- | # RegExp.prototype.constructor
+
+-- SPEC: L31367-L31378
+-- | The initial value of \`RegExp.prototype.constructor\` is %RegExp%.
+-- |
+-- | # RegExp.prototype.exec ( \_string\_ )
+-- |
+-- | This method searches \_string\_ for an occurrence of the regular
+-- | expression pattern and returns an Array containing the results of the
+-- | match, or \*null\* if \_string\_ did not match.
+-- |
+-- | It performs the following steps when called:
+-- |
+-- | 1\. Let \_R\_ be the \*this\* value. 1. Perform ?
+-- | RequireInternalSlot(\_R\_, \[\[RegExpMatcher\]\]). 1. Let \_S\_ be ?
+
+-- SPEC: L31380-L31388
+-- |
+-- | # get RegExp.prototype.dotAll
+-- |
+-- | \`RegExp.prototype.dotAll\` is an accessor property whose set accessor
+-- | function is \*undefined\*. Its get accessor function performs the
+-- | following steps when called:
+-- |
+-- | 1\. Let \_R\_ be the \*this\* value. 1. Let \_cu\_ be the code unit
+-- | 0x0073 (LATIN SMALL LETTER S). 1. Return ? RegExpHasFlag(\_R\_, \_cu\_).
+
+-- SPEC: L31390-L31422
+-- | # get RegExp.prototype.flags
+-- |
+-- | \`RegExp.prototype.flags\` is an accessor property whose set accessor
+-- | function is \*undefined\*. Its get accessor function performs the
+-- | following steps when called:
+-- |
+-- | 1\. Let \_R\_ be the \*this\* value. 1. If \_R\_ is not an Object, throw
+-- | a \*TypeError\* exception. 1. Let \_codeUnits\_ be a new empty List. 1.
+-- | Let \_hasIndices\_ be ToBoolean(? Get(\_R\_, \*\"hasIndices\"\*)). 1. If
+-- | \_hasIndices\_ is \*true\*, append the code unit 0x0064 (LATIN SMALL
+-- | LETTER D) to \_codeUnits\_. 1. Let \_global\_ be ToBoolean(? Get(\_R\_,
+-- | \*\"global\"\*)). 1. If \_global\_ is \*true\*, append the code unit
+-- | 0x0067 (LATIN SMALL LETTER G) to \_codeUnits\_. 1. Let \_ignoreCase\_ be
+-- | ToBoolean(? Get(\_R\_, \*\"ignoreCase\"\*)). 1. If \_ignoreCase\_ is
+-- | \*true\*, append the code unit 0x0069 (LATIN SMALL LETTER I) to
+-- | \_codeUnits\_. 1. Let \_multiline\_ be ToBoolean(? Get(\_R\_,
+-- | \*\"multiline\"\*)). 1. If \_multiline\_ is \*true\*, append the code
+-- | unit 0x006D (LATIN SMALL LETTER M) to \_codeUnits\_. 1. Let \_dotAll\_
+-- | be ToBoolean(? Get(\_R\_, \*\"dotAll\"\*)). 1. If \_dotAll\_ is
+-- | \*true\*, append the code unit 0x0073 (LATIN SMALL LETTER S) to
+-- | \_codeUnits\_. 1. Let \_unicode\_ be ToBoolean(? Get(\_R\_,
+-- | \*\"unicode\"\*)). 1. If \_unicode\_ is \*true\*, append the code unit
+-- | 0x0075 (LATIN SMALL LETTER U) to \_codeUnits\_. 1. Let \_unicodeSets\_
+-- | be ToBoolean(? Get(\_R\_, \*\"unicodeSets\"\*)). 1. If \_unicodeSets\_
+-- | is \*true\*, append the code unit 0x0076 (LATIN SMALL LETTER V) to
+-- | \_codeUnits\_. 1. Let \_sticky\_ be ToBoolean(? Get(\_R\_,
+-- | \*\"sticky\"\*)). 1. If \_sticky\_ is \*true\*, append the code unit
+-- | 0x0079 (LATIN SMALL LETTER Y) to \_codeUnits\_. 1. Return the String
+-- | value whose code units are the elements of the List \_codeUnits\_. If
+-- | \_codeUnits\_ has no elements, the empty String is returned.
+-- |
+-- | # RegExpHasFlag ( \_R\_: an ECMAScript language value, \_codeUnit\_: a code unit, ): either a normal completion containing either a Boolean or \*undefined\*, or a throw completion
+-- |
+
+-- SPEC: L31424-L31436
+-- | \_R\_ does not have an \[\[OriginalFlags\]\] internal slot, then 1. If
+-- | SameValue(\_R\_, %RegExp.prototype%) is \*true\*, return
+-- | \*undefined\*. 1. Throw a \*TypeError\* exception. 1. Let \_flags\_ be
+-- | \_R\_.\[\[OriginalFlags\]\]. 1. If \_flags\_ contains \_codeUnit\_,
+-- | return \*true\*. 1. Return \*false\*.
+-- |
+-- | # get RegExp.prototype.global
+-- |
+-- | \`RegExp.prototype.global\` is an accessor property whose set accessor
+-- | function is \*undefined\*. Its get accessor function performs the
+-- | following steps when called:
+-- |
+-- | 1\. Let \_R\_ be the \*this\* value. 1. Let \_cu\_ be the code unit
+
+-- SPEC: L31438-L31445
+-- |
+-- | # get RegExp.prototype.hasIndices
+-- |
+-- | \`RegExp.prototype.hasIndices\` is an accessor property whose set
+-- | accessor function is \*undefined\*. Its get accessor function performs
+-- | the following steps when called:
+-- |
+-- | 1\. Let \_R\_ be the \*this\* value. 1. Let \_cu\_ be the code unit
+
+-- SPEC: L31447-L31454
+-- |
+-- | # get RegExp.prototype.ignoreCase
+-- |
+-- | \`RegExp.prototype.ignoreCase\` is an accessor property whose set
+-- | accessor function is \*undefined\*. Its get accessor function performs
+-- | the following steps when called:
+-- |
+-- | 1\. Let \_R\_ be the \*this\* value. 1. Let \_cu\_ be the code unit
+
+-- SPEC: L31456-L31498
+-- |
+-- | # RegExp.prototype \[ %Symbol.match% \] ( \_string\_ )
+-- |
+-- | This method performs the following steps when called:
+-- |
+-- | 1\. Let \_rx\_ be the \*this\* value. 1. If \_rx\_ is not an Object,
+-- | throw a \*TypeError\* exception. 1. Let \_S\_ be ?
+-- | ToString(\_string\_). 1. Let \_flags\_ be ? ToString(? Get(\_rx\_,
+-- | \*\"flags\"\*)). 1. If \_flags\_ does not contain \*\"g\"\*, return ?
+-- | RegExpExec(\_rx\_, \_S\_). 1. If \_flags\_ contains \*\"u\"\* or
+-- | \_flags\_ contains \*\"v\"\*, let \_fullUnicode\_ be \*true\*; else let
+-- | \_fullUnicode\_ be \*false\*. 1. Perform ? Set(\_rx\_,
+-- | \*\"lastIndex\"\*, \*+0\*~𝔽~, \*true\*). 1. Let \_A\_ be !
+-- | ArrayCreate(0). 1. Let \_n\_ be 0. 1. Repeat, 1. Let \_result\_ be ?
+-- | RegExpExec(\_rx\_, \_S\_). 1. If \_result\_ is \*null\*, then 1. If
+-- | \_n\_ = 0, return \*null\*. 1. Return \_A\_. 1. Let \_matchStr\_ be ?
+-- | ToString(? Get(\_result\_, \*\"0\"\*)). 1. Perform !
+-- | CreateDataPropertyOrThrow(\_A\_, ! ToString(𝔽(\_n\_)), \_matchStr\_). 1.
+-- | If \_matchStr\_ is the empty String, then 1. Let \_thisIndex\_ be ℝ(?
+-- | ToLength(? Get(\_rx\_, \*\"lastIndex\"\*))). 1. Let \_nextIndex\_ be
+-- | AdvanceStringIndex(\_S\_, \_thisIndex\_, \_fullUnicode\_). 1. Perform ?
+-- | Set(\_rx\_, \*\"lastIndex\"\*, 𝔽(\_nextIndex\_), \*true\*). 1. Set \_n\_
+-- | to \_n\_ + 1.
+-- |
+-- | The value of the \*\"name\"\* property of this method is
+-- | \*\"\[Symbol.match\]\"\*.
+-- |
+-- | The %Symbol.match% property is used by the IsRegExp abstract operation
+-- | to identify objects that have the basic behaviour of regular
+-- | expressions. The absence of a %Symbol.match% property or the existence
+-- | of such a property whose value does not Boolean coerce to \*true\*
+-- | indicates that the object is not intended to be used as a regular
+-- | expression object.
+-- |
+-- | # RegExp.prototype \[ %Symbol.matchAll% \] ( \_string\_ )
+-- |
+-- | This method performs the following steps when called:
+-- |
+-- | 1\. Let \_R\_ be the \*this\* value. 1. If \_R\_ is not an Object, throw
+-- | a \*TypeError\* exception. 1. Let \_S\_ be ? ToString(\_string\_). 1.
+-- | Let \_C\_ be ? SpeciesConstructor(\_R\_, %RegExp%). 1. Let \_flags\_ be
+-- | ? ToString(? Get(\_R\_, \*\"flags\"\*)). 1. Let \_matcher\_ be ?
+-- | Construct(\_C\_, « \_R\_, \_flags\_ »). 1. Let \_lastIndex\_ be ?
+
+-- SPEC: L31500-L31519
+-- | \*\"lastIndex\"\*, \_lastIndex\_, \*true\*). 1. If \_flags\_ contains
+-- | \*\"g\"\*, let \_global\_ be \*true\*. 1. Else, let \_global\_ be
+-- | \*false\*. 1. If \_flags\_ contains \*\"u\"\* or \_flags\_ contains
+-- | \*\"v\"\*, let \_fullUnicode\_ be \*true\*. 1. Else, let \_fullUnicode\_
+-- | be \*false\*. 1. Return CreateRegExpStringIterator(\_matcher\_, \_S\_,
+-- | \_global\_, \_fullUnicode\_).
+-- |
+-- | The value of the \*\"name\"\* property of this method is
+-- | \*\"\[Symbol.matchAll\]\"\*.
+-- |
+-- | # get RegExp.prototype.multiline
+-- |
+-- | \`RegExp.prototype.multiline\` is an accessor property whose set
+-- | accessor function is \*undefined\*. Its get accessor function performs
+-- | the following steps when called:
+-- |
+-- | 1\. Let \_R\_ be the \*this\* value. 1. Let \_cu\_ be the code unit
+-- | 0x006D (LATIN SMALL LETTER M). 1. Return ? RegExpHasFlag(\_R\_, \_cu\_).
+-- |
+-- | # RegExp.prototype \[ %Symbol.replace% \] ( \_string\_, \_replaceValue\_ )
+
+-- SPEC: L31521-L31528
+-- | This method performs the following steps when called:
+-- |
+-- | 1\. Let \_rx\_ be the \*this\* value. 1. If \_rx\_ is not an Object,
+-- | throw a \*TypeError\* exception. 1. Let \_S\_ be ?
+-- | ToString(\_string\_). 1. Let \_lengthS\_ be the length of \_S\_. 1. Let
+-- | \_functionalReplace\_ be IsCallable(\_replaceValue\_). 1. If
+-- | \_functionalReplace\_ is \*false\*, then 1. Set \_replaceValue\_ to ?
+-- | ToString(\_replaceValue\_). 1. Let \_flags\_ be ? ToString(? Get(\_rx\_,
+
+-- SPEC: L31530-L31612
+-- | \*true\*; else let \_global\_ be \*false\*. 1. If \_global\_ is
+-- | \*true\*, then 1. Perform ? Set(\_rx\_, \*\"lastIndex\"\*, \*+0\*~𝔽~,
+-- | \*true\*). 1. Let \_results\_ be a new empty List. 1. Let \_done\_ be
+-- | \*false\*. 1. Repeat, while \_done\_ is \*false\*, 1. Let \_result\_ be
+-- | ? RegExpExec(\_rx\_, \_S\_). 1. If \_result\_ is \*null\*, then 1. Set
+-- | \_done\_ to \*true\*. 1. Else, 1. Append \_result\_ to \_results\_. 1.
+-- | If \_global\_ is \*false\*, then 1. Set \_done\_ to \*true\*. 1.
+-- | Else, 1. Let \_matchStr\_ be ? ToString(? Get(\_result\_,
+-- | \*\"0\"\*)). 1. If \_matchStr\_ is the empty String, then 1. Let
+-- | \_thisIndex\_ be ℝ(? ToLength(? Get(\_rx\_, \*\"lastIndex\"\*))). 1. If
+-- | \_flags\_ contains \*\"u\"\* or \_flags\_ contains \*\"v\"\*, let
+-- | \_fullUnicode\_ be \*true\*; else let \_fullUnicode\_ be \*false\*. 1.
+-- | Let \_nextIndex\_ be AdvanceStringIndex(\_S\_, \_thisIndex\_,
+-- | \_fullUnicode\_). 1. Perform ? Set(\_rx\_, \*\"lastIndex\"\*,
+-- | 𝔽(\_nextIndex\_), \*true\*). 1. Let \_accumulatedResult\_ be the empty
+-- | String. 1. Let \_nextSourcePosition\_ be 0. 1. For each element
+-- | \_result\_ of \_results\_, do 1. Let \_resultLength\_ be ?
+-- | LengthOfArrayLike(\_result\_). 1. Let \_nCaptures\_ be
+-- | max(\_resultLength\_ - 1, 0). 1. Let \_matched\_ be ? ToString(?
+-- | Get(\_result\_, \*\"0\"\*)). 1. Let \_matchLength\_ be the length of
+-- | \_matched\_. 1. Let \_position\_ be ? ToIntegerOrInfinity(?
+-- | Get(\_result\_, \*\"index\"\*)). 1. Set \_position\_ to the result of
+-- | clamping \_position\_ between 0 and \_lengthS\_. 1. Let \_captures\_ be
+-- | a new empty List. 1. Let \_n\_ be 1. 1. Repeat, while \_n\_ ≤
+-- | \_nCaptures\_, 1. Let \_capN\_ be ? Get(\_result\_, !
+-- | ToString(𝔽(\_n\_))). 1. If \_capN\_ is not \*undefined\*, then 1. Set
+-- | \_capN\_ to ? ToString(\_capN\_). 1. Append \_capN\_ to \_captures\_. 1.
+-- | NOTE: When \_n\_ = 1, the preceding step puts the first element into
+-- | \_captures\_ (at index 0). More generally, the \_n\_^th^ capture (the
+-- | characters captured by the \_n\_^th^ set of capturing parentheses) is at
+-- | \_captures\_\[\_n\_ - 1\]. 1. Set \_n\_ to \_n\_ + 1. 1. Let
+-- | \_namedCaptures\_ be ? Get(\_result\_, \*\"groups\"\*). 1. If
+-- | \_functionalReplace\_ is \*true\*, then 1. Let \_replacerArgs\_ be the
+-- | list-concatenation of « \_matched\_ », \_captures\_, and «
+-- | 𝔽(\_position\_), \_S\_ ». 1. If \_namedCaptures\_ is not \*undefined\*,
+-- | then 1. Append \_namedCaptures\_ to \_replacerArgs\_. 1. Let
+-- | \_replacementValue\_ be ? Call(\_replaceValue\_, \*undefined\*,
+-- | \_replacerArgs\_). 1. Let \_replacementString\_ be ?
+-- | ToString(\_replacementValue\_). 1. Else, 1. If \_namedCaptures\_ is not
+-- | \*undefined\*, then 1. Set \_namedCaptures\_ to ?
+-- | ToObject(\_namedCaptures\_). 1. Let \_replacementString\_ be ?
+-- | GetSubstitution(\_matched\_, \_S\_, \_position\_, \_captures\_,
+-- | \_namedCaptures\_, \_replaceValue\_). 1. If \_position\_ ≥
+-- | \_nextSourcePosition\_, then 1. NOTE: \_position\_ should not normally
+-- | move backwards. If it does, it is an indication of an ill-behaving
+-- | RegExp subclass or use of an access triggered side-effect to change the
+-- | global flag or other characteristics of \_rx\_. In such cases, the
+-- | corresponding substitution is ignored. 1. Set \_accumulatedResult\_ to
+-- | the string-concatenation of \_accumulatedResult\_, the substring of
+-- | \_S\_ from \_nextSourcePosition\_ to \_position\_, and
+-- | \_replacementString\_. 1. Set \_nextSourcePosition\_ to \_position\_ +
+-- | \_matchLength\_. 1. If \_nextSourcePosition\_ ≥ \_lengthS\_, return
+-- | \_accumulatedResult\_. 1. Return the string-concatenation of
+-- | \_accumulatedResult\_ and the substring of \_S\_ from
+-- | \_nextSourcePosition\_.
+-- |
+-- | The value of the \*\"name\"\* property of this method is
+-- | \*\"\[Symbol.replace\]\"\*.
+-- |
+-- | # RegExp.prototype \[ %Symbol.search% \] ( \_string\_ )
+-- |
+-- | This method performs the following steps when called:
+-- |
+-- | 1\. Let \_rx\_ be the \*this\* value. 1. If \_rx\_ is not an Object,
+-- | throw a \*TypeError\* exception. 1. Let \_S\_ be ?
+-- | ToString(\_string\_). 1. Let \_previousLastIndex\_ be ? Get(\_rx\_,
+-- | \*\"lastIndex\"\*). 1. If \_previousLastIndex\_ is not \*+0\*~𝔽~,
+-- | then 1. Perform ? Set(\_rx\_, \*\"lastIndex\"\*, \*+0\*~𝔽~,
+-- | \*true\*). 1. Let \_result\_ be ? RegExpExec(\_rx\_, \_S\_). 1. Let
+-- | \_currentLastIndex\_ be ? Get(\_rx\_, \*\"lastIndex\"\*). 1. If
+-- | SameValue(\_currentLastIndex\_, \_previousLastIndex\_) is \*false\*,
+-- | then 1. Perform ? Set(\_rx\_, \*\"lastIndex\"\*, \_previousLastIndex\_,
+-- | \*true\*). 1. If \_result\_ is \*null\*, return \*-1\*~𝔽~. 1. Return ?
+-- | Get(\_result\_, \*\"index\"\*).
+-- |
+-- | The value of the \*\"name\"\* property of this method is
+-- | \*\"\[Symbol.search\]\"\*.
+-- |
+-- | The \*\"lastIndex\"\* and \*\"global\"\* properties of this RegExp
+-- | object are ignored when performing the search. The \*\"lastIndex\"\*
+-- | property is left unchanged.
+-- |
+-- | # get RegExp.prototype.source
+
+-- SPEC: L31614-L31634
+-- | \`RegExp.prototype.source\` is an accessor property whose set accessor
+-- | function is \*undefined\*. Its get accessor function performs the
+-- | following steps when called:
+-- |
+-- | 1\. Let \_R\_ be the \*this\* value. 1. If \_R\_ is not an Object, throw
+-- | a \*TypeError\* exception. 1. If \_R\_ does not have an
+-- | \[\[OriginalSource\]\] internal slot, then 1. If SameValue(\_R\_,
+-- | %RegExp.prototype%) is \*true\*, return \*\"(?:)\"\*. 1. Throw a
+-- | \*TypeError\* exception. 1. Assert: \_R\_ has an \[\[OriginalFlags\]\]
+-- | internal slot. 1. Let \_src\_ be \_R\_.\[\[OriginalSource\]\]. 1. Let
+-- | \_flags\_ be \_R\_.\[\[OriginalFlags\]\]. 1. Return
+-- | EscapeRegExpPattern(\_src\_, \_flags\_).
+-- |
+-- | # EscapeRegExpPattern ( \_P\_: a String, \_F\_: a String, ): a String
+-- |
+-- | 1\. If \_F\_ contains \*\"v\"\*, then 1. Let \_patternSymbol\_ be
+-- | \|Pattern\[+UnicodeMode, +UnicodeSetsMode\]\|. 1. Else if \_F\_ contains
+-- | \*\"u\"\*, then 1. Let \_patternSymbol\_ be \|Pattern\[+UnicodeMode,
+-- | \~UnicodeSetsMode\]\|. 1. Else, 1. Let \_patternSymbol\_ be
+-- | \|Pattern\[\~UnicodeMode, \~UnicodeSetsMode\]\|. 1. Let \_S\_ be a
+-- | String in the form of a \_patternSymbol\_ equivalent to \_P\_
+
+-- SPEC: L31636-L31672
+-- | code points are escaped as described below. \_S\_ may or may not differ
+-- | from \_P\_; however, the Abstract Closure that would result from
+-- | evaluating \_S\_ as a \_patternSymbol\_ must behave identically to the
+-- | Abstract Closure given by the constructed object\'s
+-- | \[\[RegExpMatcher\]\] internal slot. Multiple calls to this abstract
+-- | operation using the same values for \_P\_ and \_F\_ must produce
+-- | identical results. 1. The code points \`/\` or any \|LineTerminator\|
+-- | occurring in the pattern shall be escaped in \_S\_ as necessary to
+-- | ensure that the string-concatenation of \*\"/\"\*, \_S\_, \*\"/\"\*, and
+-- | \_F\_ can be parsed (in an appropriate lexical context) as a
+-- | \|RegularExpressionLiteral\| that behaves identically to the constructed
+-- | regular expression. For example, if \_P\_ is \*\"/\"\*, then \_S\_ could
+-- | be \*\"\\\\/\"\* or \*\"\\\\u002F\"\*, among other possibilities, but
+-- | not \*\"/\"\*, because \`///\` followed by \_F\_ would be parsed as a
+-- | \|SingleLineComment\| rather than a \|RegularExpressionLiteral\|. If
+-- | \_P\_ is the empty String, this specification can be met by letting
+-- | \_S\_ be \*\"(?:)\"\*. 1. Return \_S\_.
+-- |
+-- | Despite having similar names, \`RegExp.escape\` and EscapeRegExpPattern
+-- | do not perform similar actions. The former escapes a string for
+-- | representation inside a pattern, while this function escapes a pattern
+-- | for representation as a string.
+-- |
+-- | # RegExp.prototype \[ %Symbol.split% \] ( \_string\_, \_limit\_ )
+-- |
+-- | This method returns an Array into which substrings of the result of
+-- | converting \_string\_ to a String have been stored. The substrings are
+-- | determined by searching from left to right for matches of the \*this\*
+-- | value regular expression; these occurrences are not part of any String
+-- | in the returned array, but serve to divide up the String value.
+-- |
+-- | The \*this\* value may be an empty regular expression or a regular
+-- | expression that can match an empty String. In this case, the regular
+-- | expression does not match the empty substring at the beginning or end of
+-- | the input String, nor does it match the empty substring at the end of
+-- | the previous separator match. (For example, if the regular expression
+-- | matches the empty String, the String is split up into individual code
+
+-- SPEC: L31674-L31759
+-- | String, and each substring contains one code unit.) Only the first match
+-- | at a given index of the String is considered, even if backtracking could
+-- | yield a non-empty substring match at that index. (For example,
+-- | \`/a\*?/\[Symbol.split\](\"ab\")\` evaluates to the array \`\[\"a\",
+-- | \"b\"\]\`, while \`/a\*/\[Symbol.split\](\"ab\")\` evaluates to the
+-- | array \`\[\"\",\"b\"\]\`.)
+-- |
+-- | If \_string\_ is (or converts to) the empty String, the result depends
+-- | on whether the regular expression can match the empty String. If it can,
+-- | the result array contains no elements. Otherwise, the result array
+-- | contains one element, which is the empty String.
+-- |
+-- | If the regular expression contains capturing parentheses, then each time
+-- | \_separator\_ is matched the results (including any \*undefined\*
+-- | results) of the capturing parentheses are spliced into the output array.
+-- | For example,
+-- |
+-- | ``` javascript
+-- | /<(\/)?([^<>]+)>/[Symbol.split]("A<B>bold</B>and<CODE>coded</CODE>")
+-- | ```
+-- |
+-- | evaluates to the array
+-- |
+-- | ``` javascript
+-- | ["A", undefined, "B", "bold", "/", "B", "and", undefined, "CODE", "coded", "/", "CODE", ""]
+-- | ```
+-- |
+-- | If \_limit\_ is not \*undefined\*, then the output array is truncated so
+-- | that it contains no more than \_limit\_ elements.
+-- |
+-- | This method performs the following steps when called:
+-- |
+-- | 1\. Let \_rx\_ be the \*this\* value. 1. If \_rx\_ is not an Object,
+-- | throw a \*TypeError\* exception. 1. Let \_S\_ be ?
+-- | ToString(\_string\_). 1. Let \_C\_ be ? SpeciesConstructor(\_rx\_,
+-- | %RegExp%). 1. Let \_flags\_ be ? ToString(? Get(\_rx\_,
+-- | \*\"flags\"\*)). 1. If \_flags\_ contains \*\"u\"\* or \_flags\_
+-- | contains \*\"v\"\*, let \_unicodeMatching\_ be \*true\*. 1. Else, let
+-- | \_unicodeMatching\_ be \*false\*. 1. If \_flags\_ contains \*\"y\"\*,
+-- | let \_newFlags\_ be \_flags\_. 1. Else, let \_newFlags\_ be the
+-- | string-concatenation of \_flags\_ and \*\"y\"\*. 1. Let \_splitter\_ be
+-- | ? Construct(\_C\_, « \_rx\_, \_newFlags\_ »). 1. Let \_A\_ be !
+-- | ArrayCreate(0). 1. Let \_lengthA\_ be 0. 1. If \_limit\_ is
+-- | \*undefined\*, let \_lim\_ be 2^32^ - 1; else let \_lim\_ be ℝ(?
+-- | ToUint32(\_limit\_)). 1. If \_lim\_ = 0, return \_A\_. 1. If \_S\_ is
+-- | the empty String, then 1. Let \_z\_ be ? RegExpExec(\_splitter\_,
+-- | \_S\_). 1. If \_z\_ is not \*null\*, return \_A\_. 1. Perform !
+-- | CreateDataPropertyOrThrow(\_A\_, \*\"0\"\*, \_S\_). 1. Return \_A\_. 1.
+-- | Let \_size\_ be the length of \_S\_. 1. Let \_p\_ be 0. 1. Let \_q\_ be
+-- | \_p\_. 1. Repeat, while \_q\_ \< \_size\_, 1. Perform ?
+-- | Set(\_splitter\_, \*\"lastIndex\"\*, 𝔽(\_q\_), \*true\*). 1. Let \_z\_
+-- | be ? RegExpExec(\_splitter\_, \_S\_). 1. If \_z\_ is \*null\*, then 1.
+-- | Set \_q\_ to AdvanceStringIndex(\_S\_, \_q\_, \_unicodeMatching\_). 1.
+-- | Else, 1. Let \_e\_ be ℝ(? ToLength(? Get(\_splitter\_,
+-- | \*\"lastIndex\"\*))). 1. Set \_e\_ to min(\_e\_, \_size\_). 1. If \_e\_
+-- | = \_p\_, then 1. Set \_q\_ to AdvanceStringIndex(\_S\_, \_q\_,
+-- | \_unicodeMatching\_). 1. Else, 1. Let \_T\_ be the substring of \_S\_
+-- | from \_p\_ to \_q\_. 1. Perform ! CreateDataPropertyOrThrow(\_A\_, !
+-- | ToString(𝔽(\_lengthA\_)), \_T\_). 1. Set \_lengthA\_ to
+-- | \_lengthA\_ + 1. 1. If \_lengthA\_ = \_lim\_, return \_A\_. 1. Set \_p\_
+-- | to \_e\_. 1. Let \_numberOfCaptures\_ be ? LengthOfArrayLike(\_z\_). 1.
+-- | Set \_numberOfCaptures\_ to max(\_numberOfCaptures\_ - 1, 0). 1. Let
+-- | \_i\_ be 1. 1. Repeat, while \_i\_ ≤ \_numberOfCaptures\_, 1. Let
+-- | \_nextCapture\_ be ? Get(\_z\_, ! ToString(𝔽(\_i\_))). 1. Perform !
+-- | CreateDataPropertyOrThrow(\_A\_, ! ToString(𝔽(\_lengthA\_)),
+-- | \_nextCapture\_). 1. Set \_i\_ to \_i\_ + 1. 1. Set \_lengthA\_ to
+-- | \_lengthA\_ + 1. 1. If \_lengthA\_ = \_lim\_, return \_A\_. 1. Set \_q\_
+-- | to \_p\_. 1. Let \_T\_ be the substring of \_S\_ from \_p\_ to
+-- | \_size\_. 1. Perform ! CreateDataPropertyOrThrow(\_A\_, !
+-- | ToString(𝔽(\_lengthA\_)), \_T\_). 1. Return \_A\_.
+-- |
+-- | The value of the \*\"name\"\* property of this method is
+-- | \*\"\[Symbol.split\]\"\*.
+-- |
+-- | This method ignores the value of the \*\"global\"\* and \*\"sticky\"\*
+-- | properties of this RegExp object.
+-- |
+-- | # get RegExp.prototype.sticky
+-- |
+-- | \`RegExp.prototype.sticky\` is an accessor property whose set accessor
+-- | function is \*undefined\*. Its get accessor function performs the
+-- | following steps when called:
+-- |
+-- | 1\. Let \_R\_ be the \*this\* value. 1. Let \_cu\_ be the code unit
+-- | 0x0079 (LATIN SMALL LETTER Y). 1. Return ? RegExpHasFlag(\_R\_, \_cu\_).
+-- |
+
+-- SPEC: L31761-L31768
+-- |
+-- | This method performs the following steps when called:
+-- |
+-- | 1\. Let \_R\_ be the \*this\* value. 1. If \_R\_ is not an Object, throw
+-- | a \*TypeError\* exception. 1. Let \_string\_ be ? ToString(\_S\_). 1.
+-- | Let \_match\_ be ? RegExpExec(\_R\_, \_string\_). 1. If \_match\_ is
+-- | \*null\*, return \*false\*. 1. Return \*true\*.
+-- |
+
+-- SPEC: L31770-L31780
+-- |
+-- | 1\. Let \_R\_ be the \*this\* value. 1. If \_R\_ is not an Object, throw
+-- | a \*TypeError\* exception. 1. Let \_pattern\_ be ? ToString(? Get(\_R\_,
+-- | \*\"source\"\*)). 1. Let \_flags\_ be ? ToString(? Get(\_R\_,
+-- | \*\"flags\"\*)). 1. Let \_result\_ be the string-concatenation of
+-- | \*\"/\"\*, \_pattern\_, \*\"/\"\*, and \_flags\_. 1. Return \_result\_.
+-- |
+-- | The returned String has the form of a \|RegularExpressionLiteral\| that
+-- | evaluates to another RegExp object with the same behaviour as this
+-- | object.
+-- |
+
+-- SPEC: L31782-L31794
+-- |
+-- | \`RegExp.prototype.unicode\` is an accessor property whose set accessor
+-- | function is \*undefined\*. Its get accessor function performs the
+-- | following steps when called:
+-- |
+-- | 1\. Let \_R\_ be the \*this\* value. 1. Let \_cu\_ be the code unit
+-- | 0x0075 (LATIN SMALL LETTER U). 1. Return ? RegExpHasFlag(\_R\_, \_cu\_).
+-- |
+-- | # get RegExp.prototype.unicodeSets
+-- |
+-- | \`RegExp.prototype.unicodeSets\` is an accessor property whose set
+-- | accessor function is \*undefined\*. Its get accessor function performs
+-- | the following steps when called:
+
+-- SPEC: L31796-L31812
+-- | 1\. Let \_R\_ be the \*this\* value. 1. Let \_cu\_ be the code unit
+-- | 0x0076 (LATIN SMALL LETTER V). 1. Return ? RegExpHasFlag(\_R\_, \_cu\_).
+-- |
+-- | # Abstract Operations for RegExp Matching
+-- |
+-- | # RegExpExec ( \_R\_: an Object, \_S\_: a String, ): either a normal completion containing either an Object or \*null\*, or a throw completion
+-- |
+-- | 1\. Let \_exec\_ be ? Get(\_R\_, \*\"exec\"\*). 1. If
+-- | IsCallable(\_exec\_) is \*true\*, then 1. Let \_result\_ be ?
+-- | Call(\_exec\_, \_R\_, « \_S\_ »). 1. If \_result\_ is not an Object and
+-- | \_result\_ is not \*null\*, throw a \*TypeError\* exception. 1. Return
+-- | \_result\_. 1. Perform ? RequireInternalSlot(\_R\_,
+-- | \[\[RegExpMatcher\]\]). 1. Return ? RegExpBuiltinExec(\_R\_, \_S\_).
+-- |
+-- | If a callable \*\"exec\"\* property is not found this algorithm falls
+-- | back to attempting to use the built-in RegExp matching algorithm. This
+-- | provides compatible behaviour for code written for prior editions where
+
+-- SPEC: L25090-L25099
+-- | The [Error prototype object]{.dfn}:
+-- |
+-- | - is [%Error.prototype%]{.dfn}.
+-- | - is an ordinary object.
+-- | - is not an Error instance and does not have an \[\[ErrorData\]\]
+-- |   internal slot.
+-- | - has a \[\[Prototype\]\] internal slot whose value is
+-- |   %Object.prototype%.
+-- |
+-- | # Error.prototype.constructor
+
+-- SPEC: L25100-L25102
+-- |
+-- | The initial value of \`Error.prototype.constructor\` is %Error%.
+-- |
+
+-- SPEC: L25104-L25106
+-- |
+-- | The initial value of \`Error.prototype.message\` is the empty String.
+-- |
+
+-- SPEC: L25108-L25110
+-- |
+-- | The initial value of \`Error.prototype.name\` is \*\"Error\"\*.
+-- |
+
+-- SPEC: L25127-L25133
+-- |
+-- | Error instances are ordinary objects that inherit properties from the
+-- | Error prototype object and have an \[\[ErrorData\]\] internal slot whose
+-- | value is \*undefined\*. The only specified use of \[\[ErrorData\]\] is
+-- | to identify Error, AggregateError, and \_NativeError\_ instances as
+-- | Error objects within \`Object.prototype.toString\` and
+-- | \`Error.isError\`.
+
+-- SPEC: L25135-L25140
+-- | # Native Error Types Used in This Standard
+-- |
+-- | A new instance of one of the \_NativeError\_ objects below or of the
+-- | AggregateError object is thrown when a runtime error is detected. All
+-- | \_NativeError\_ objects share the same structure, as described in .
+-- |
+
+-- SPEC: L25183-L25200
+-- |
+-- | Each of these objects has the structure described below, differing only
+-- | in the name used as the constructor name and in the \*\"name\"\*
+-- | property of the prototype object.
+-- |
+-- | For each error object, references to \_NativeError\_ in the definition
+-- | should be replaced with the appropriate error object name from .
+-- |
+-- | # The \_NativeError\_ Constructors
+-- |
+-- | Each \_NativeError\_ constructor:
+-- |
+-- | - creates and initializes a new \_NativeError\_ object when called as a
+-- |   function rather than as a constructor. A call of the object as a
+-- |   function is equivalent to calling it as a constructor with the same
+-- |   arguments. Thus the function call `NativeError`{.variable}`(…)` is
+-- |   equivalent to the object creation expression
+-- |   `new ``NativeError`{.variable}`(…)` with the same arguments.
+
+-- SPEC: L25201-L25215
+-- | - may be used as the value of an \`extends\` clause of a class
+-- |   definition. Subclass constructors that intend to inherit the specified
+-- |   \_NativeError\_ behaviour must include a \`super\` call to the
+-- |   \_NativeError\_ constructor to create and initialize subclass
+-- |   instances with an \[\[ErrorData\]\] internal slot.
+-- |
+-- | # \_NativeError\_ ( \_message\_ \[ , \_options\_ \] )
+-- |
+-- | Each \_NativeError\_ function performs the following steps when called:
+-- |
+-- | 1\. If NewTarget is \*undefined\*, let \_newTarget\_ be the active
+-- | function object; else let \_newTarget\_ be NewTarget. 1.
+-- | \[id=\"step-nativeerror-ordinarycreatefromconstructor\"\] Let \_O\_ be ?
+-- | OrdinaryCreateFromConstructor(\_newTarget\_,
+-- | `"%``NativeError`{.variable}`.prototype%"`, « \[\[ErrorData\]\] »). 1.
+
+-- SPEC: L25217-L25240
+-- | ToString(\_message\_). 1. Perform
+-- | CreateNonEnumerableDataPropertyOrThrow(\_O\_, \*\"message\"\*,
+-- | \_msg\_). 1. Perform ? InstallErrorCause(\_O\_, \_options\_). 1. Return
+-- | \_O\_.
+-- |
+-- | The actual value of the string passed in step is either
+-- | \*\"%EvalError.prototype%\"\*, \*\"%RangeError.prototype%\"\*,
+-- | \*\"%ReferenceError.prototype%\"\*, \*\"%SyntaxError.prototype%\"\*,
+-- | \*\"%TypeError.prototype%\"\*, or \*\"%URIError.prototype%\"\*
+-- | corresponding to which \_NativeError\_ constructor is being defined.
+-- |
+-- | # Properties of the \_NativeError\_ Constructors
+-- |
+-- | Each \_NativeError\_ constructor:
+-- |
+-- | - has a \[\[Prototype\]\] internal slot whose value is %Error%.
+-- | - has a \*\"name\"\* property whose value is the String value
+-- |   \"`NativeError`{.variable}\".
+-- | - has the following properties:
+-- |
+-- | # \_NativeError\_.prototype
+-- |
+-- | The initial value of `NativeError`{.variable}`.prototype` is a
+-- | \_NativeError\_ prototype object (). Each \_NativeError\_ constructor
+
+-- SPEC: L25241-L25257
+-- | has a distinct prototype object.
+-- |
+-- | This property has the attributes { \[\[Writable\]\]: \*false\*,
+-- | \[\[Enumerable\]\]: \*false\*, \[\[Configurable\]\]: \*false\* }.
+-- |
+-- | # Properties of the \_NativeError\_ Prototype Objects
+-- |
+-- | Each [\_NativeError\_ prototype object]{.dfn}:
+-- |
+-- | - is an ordinary object.
+-- | - is not an Error instance and does not have an \[\[ErrorData\]\]
+-- |   internal slot.
+-- | - has a \[\[Prototype\]\] internal slot whose value is
+-- |   %Error.prototype%.
+-- |
+-- | # \_NativeError\_.prototype.constructor
+-- |
+
+-- SPEC: L25258-L25270
+-- | The initial value of the \*\"constructor\"\* property of the prototype
+-- | for a given \_NativeError\_ constructor is the constructor itself.
+-- |
+-- | # \_NativeError\_.prototype.message
+-- |
+-- | The initial value of the \*\"message\"\* property of the prototype for a
+-- | given \_NativeError\_ constructor is the empty String.
+-- |
+-- | # \_NativeError\_.prototype.name
+-- |
+-- | The initial value of the \*\"name\"\* property of the prototype for a
+-- | given \_NativeError\_ constructor is the String value consisting of the
+-- | name of the constructor (the name used instead of \_NativeError\_).
+
+-- SPEC: L25271-L25276
+-- |
+-- | # Properties of \_NativeError\_ Instances
+-- |
+-- | \_NativeError\_ instances are ordinary objects that inherit properties
+-- | from their \_NativeError\_ prototype object and have an
+-- | \[\[ErrorData\]\] internal slot whose value is \*undefined\*. The only
+
+-- SPEC: L27838-L27864
+-- | # Date.prototype.setHours ( \_hour\_ \[ , \_min\_ \[ , \_sec\_ \[ , \_ms\_ \] \] \] )
+-- |
+-- | This method performs the following steps when called:
+-- |
+-- | 1\. Let \_dateObject\_ be the \*this\* value. 1. Perform ?
+-- | RequireInternalSlot(\_dateObject\_, \[\[DateValue\]\]). 1. Let \_t\_ be
+-- | \_dateObject\_.\[\[DateValue\]\]. 1. Let \_h\_ be ?
+-- | ToNumber(\_hour\_). 1. If \_min\_ is present, let \_m\_ be ?
+-- | ToNumber(\_min\_). 1. If \_sec\_ is present, let \_s\_ be ?
+-- | ToNumber(\_sec\_). 1. If \_ms\_ is present, let \_milli\_ be ?
+-- | ToNumber(\_ms\_). 1. If \_t\_ is \*NaN\*, return \*NaN\*. 1. Set \_t\_
+-- | to LocalTime(\_t\_). 1. If \_min\_ is not present, let \_m\_ be
+-- | MinFromTime(\_t\_). 1. If \_sec\_ is not present, let \_s\_ be
+-- | SecFromTime(\_t\_). 1. If \_ms\_ is not present, let \_milli\_ be
+-- | msFromTime(\_t\_). 1. Let \_date\_ be MakeDate(Day(\_t\_),
+-- | MakeTime(\_h\_, \_m\_, \_s\_, \_milli\_)). 1. Let \_u\_ be
+-- | TimeClip(UTC(\_date\_)). 1. Set \_dateObject\_.\[\[DateValue\]\] to
+-- | \_u\_. 1. Return \_u\_.
+-- |
+-- | The \*\"length\"\* property of this method is \*4\*~𝔽~.
+-- |
+-- | If \_min\_ is not present, this method behaves as if \_min\_ was present
+-- | with the value \`getMinutes()\`. If \_sec\_ is not present, it behaves
+-- | as if \_sec\_ was present with the value \`getSeconds()\`. If \_ms\_ is
+-- | not present, it behaves as if \_ms\_ was present with the value
+-- | \`getMilliseconds()\`.
+-- |
+
+-- SPEC: L27866-L27878
+-- |
+-- | This method performs the following steps when called:
+-- |
+-- | 1\. Let \_dateObject\_ be the \*this\* value. 1. Perform ?
+-- | RequireInternalSlot(\_dateObject\_, \[\[DateValue\]\]). 1. Let \_t\_ be
+-- | \_dateObject\_.\[\[DateValue\]\]. 1. Set \_ms\_ to ?
+-- | ToNumber(\_ms\_). 1. If \_t\_ is \*NaN\*, return \*NaN\*. 1. Set \_t\_
+-- | to LocalTime(\_t\_). 1. Let \_time\_ be MakeTime(HourFromTime(\_t\_),
+-- | MinFromTime(\_t\_), SecFromTime(\_t\_), \_ms\_). 1. Let \_u\_ be
+-- | TimeClip(UTC(MakeDate(Day(\_t\_), \_time\_))). 1. Set
+-- | \_dateObject\_.\[\[DateValue\]\] to \_u\_. 1. Return \_u\_.
+-- |
+-- | # Date.prototype.setMinutes ( \_min\_ \[ , \_sec\_ \[ , \_ms\_ \] \] )
+
+-- SPEC: L27880-L27909
+-- | This method performs the following steps when called:
+-- |
+-- | 1\. Let \_dateObject\_ be the \*this\* value. 1. Perform ?
+-- | RequireInternalSlot(\_dateObject\_, \[\[DateValue\]\]). 1. Let \_t\_ be
+-- | \_dateObject\_.\[\[DateValue\]\]. 1. Let \_m\_ be ?
+-- | ToNumber(\_min\_). 1. If \_sec\_ is present, let \_s\_ be ?
+-- | ToNumber(\_sec\_). 1. If \_ms\_ is present, let \_milli\_ be ?
+-- | ToNumber(\_ms\_). 1. If \_t\_ is \*NaN\*, return \*NaN\*. 1. Set \_t\_
+-- | to LocalTime(\_t\_). 1. If \_sec\_ is not present, let \_s\_ be
+-- | SecFromTime(\_t\_). 1. If \_ms\_ is not present, let \_milli\_ be
+-- | msFromTime(\_t\_). 1. Let \_date\_ be MakeDate(Day(\_t\_),
+-- | MakeTime(HourFromTime(\_t\_), \_m\_, \_s\_, \_milli\_)). 1. Let \_u\_ be
+-- | TimeClip(UTC(\_date\_)). 1. Set \_dateObject\_.\[\[DateValue\]\] to
+-- | \_u\_. 1. Return \_u\_.
+-- |
+-- | The \*\"length\"\* property of this method is \*3\*~𝔽~.
+-- |
+-- | If \_sec\_ is not present, this method behaves as if \_sec\_ was present
+-- | with the value \`getSeconds()\`. If \_ms\_ is not present, this behaves
+-- | as if \_ms\_ was present with the value \`getMilliseconds()\`.
+-- |
+-- | # Date.prototype.setMonth ( \_month\_ \[ , \_date\_ \] )
+-- |
+-- | This method performs the following steps when called:
+-- |
+-- | 1\. Let \_dateObject\_ be the \*this\* value. 1. Perform ?
+-- | RequireInternalSlot(\_dateObject\_, \[\[DateValue\]\]). 1. Let \_t\_ be
+-- | \_dateObject\_.\[\[DateValue\]\]. 1. Let \_m\_ be ?
+-- | ToNumber(\_month\_). 1. If \_date\_ is present, let \_dt\_ be ?
+-- | ToNumber(\_date\_). 1. If \_t\_ is \*NaN\*, return \*NaN\*. 1. Set \_t\_
+
+-- SPEC: L27911-L27940
+-- | DateFromTime(\_t\_). 1. Let \_newDate\_ be
+-- | MakeDate(MakeDay(YearFromTime(\_t\_), \_m\_, \_dt\_),
+-- | TimeWithinDay(\_t\_)). 1. Let \_u\_ be TimeClip(UTC(\_newDate\_)). 1.
+-- | Set \_dateObject\_.\[\[DateValue\]\] to \_u\_. 1. Return \_u\_.
+-- |
+-- | The \*\"length\"\* property of this method is \*2\*~𝔽~.
+-- |
+-- | If \_date\_ is not present, this method behaves as if \_date\_ was
+-- | present with the value \`getDate()\`.
+-- |
+-- | # Date.prototype.setSeconds ( \_sec\_ \[ , \_ms\_ \] )
+-- |
+-- | This method performs the following steps when called:
+-- |
+-- | 1\. Let \_dateObject\_ be the \*this\* value. 1. Perform ?
+-- | RequireInternalSlot(\_dateObject\_, \[\[DateValue\]\]). 1. Let \_t\_ be
+-- | \_dateObject\_.\[\[DateValue\]\]. 1. Let \_s\_ be ?
+-- | ToNumber(\_sec\_). 1. If \_ms\_ is present, let \_milli\_ be ?
+-- | ToNumber(\_ms\_). 1. If \_t\_ is \*NaN\*, return \*NaN\*. 1. Set \_t\_
+-- | to LocalTime(\_t\_). 1. If \_ms\_ is not present, let \_milli\_ be
+-- | msFromTime(\_t\_). 1. Let \_date\_ be MakeDate(Day(\_t\_),
+-- | MakeTime(HourFromTime(\_t\_), MinFromTime(\_t\_), \_s\_, \_milli\_)). 1.
+-- | Let \_u\_ be TimeClip(UTC(\_date\_)). 1. Set
+-- | \_dateObject\_.\[\[DateValue\]\] to \_u\_. 1. Return \_u\_.
+-- |
+-- | The \*\"length\"\* property of this method is \*2\*~𝔽~.
+-- |
+-- | If \_ms\_ is not present, this method behaves as if \_ms\_ was present
+-- | with the value \`getMilliseconds()\`.
+-- |
+
+-- SPEC: L27942-L27965
+-- |
+-- | This method performs the following steps when called:
+-- |
+-- | 1\. Let \_dateObject\_ be the \*this\* value. 1. Perform ?
+-- | RequireInternalSlot(\_dateObject\_, \[\[DateValue\]\]). 1. Let \_t\_ be
+-- | ? ToNumber(\_time\_). 1. Let \_v\_ be TimeClip(\_t\_). 1. Set
+-- | \_dateObject\_.\[\[DateValue\]\] to \_v\_. 1. Return \_v\_.
+-- |
+-- | # Date.prototype.setUTCDate ( \_date\_ )
+-- |
+-- | This method performs the following steps when called:
+-- |
+-- | 1\. Let \_dateObject\_ be the \*this\* value. 1. Perform ?
+-- | RequireInternalSlot(\_dateObject\_, \[\[DateValue\]\]). 1. Let \_t\_ be
+-- | \_dateObject\_.\[\[DateValue\]\]. 1. Let \_dt\_ be ?
+-- | ToNumber(\_date\_). 1. If \_t\_ is \*NaN\*, return \*NaN\*. 1. Let
+-- | \_newDate\_ be MakeDate(MakeDay(YearFromTime(\_t\_),
+-- | MonthFromTime(\_t\_), \_dt\_), TimeWithinDay(\_t\_)). 1. Let \_v\_ be
+-- | TimeClip(\_newDate\_). 1. Set \_dateObject\_.\[\[DateValue\]\] to
+-- | \_v\_. 1. Return \_v\_.
+-- |
+-- | # Date.prototype.setUTCFullYear ( \_year\_ \[ , \_month\_ \[ , \_date\_ \] \] )
+-- |
+-- | This method performs the following steps when called:
+
+-- SPEC: L27967-L27977
+-- | 1\. Let \_dateObject\_ be the \*this\* value. 1. Perform ?
+-- | RequireInternalSlot(\_dateObject\_, \[\[DateValue\]\]). 1. Let \_t\_ be
+-- | \_dateObject\_.\[\[DateValue\]\]. 1. If \_t\_ is \*NaN\*, set \_t\_ to
+-- | \*+0\*~𝔽~. 1. Let \_y\_ be ? ToNumber(\_year\_). 1. If \_month\_ is
+-- | present, let \_m\_ be ? ToNumber(\_month\_); else let \_m\_ be
+-- | MonthFromTime(\_t\_). 1. If \_date\_ is present, let \_dt\_ be ?
+-- | ToNumber(\_date\_); else let \_dt\_ be DateFromTime(\_t\_). 1. Let
+-- | \_newDate\_ be MakeDate(MakeDay(\_y\_, \_m\_, \_dt\_),
+-- | TimeWithinDay(\_t\_)). 1. Let \_v\_ be TimeClip(\_newDate\_). 1. Set
+-- | \_dateObject\_.\[\[DateValue\]\] to \_v\_. 1. Return \_v\_.
+-- |
+
+-- SPEC: L27979-L27992
+-- |
+-- | If \_month\_ is not present, this method behaves as if \_month\_ was
+-- | present with the value \`getUTCMonth()\`. If \_date\_ is not present, it
+-- | behaves as if \_date\_ was present with the value \`getUTCDate()\`.
+-- |
+-- | # Date.prototype.setUTCHours ( \_hour\_ \[ , \_min\_ \[ , \_sec\_ \[ , \_ms\_ \] \] \] )
+-- |
+-- | This method performs the following steps when called:
+-- |
+-- | 1\. Let \_dateObject\_ be the \*this\* value. 1. Perform ?
+-- | RequireInternalSlot(\_dateObject\_, \[\[DateValue\]\]). 1. Let \_t\_ be
+-- | \_dateObject\_.\[\[DateValue\]\]. 1. Let \_h\_ be ?
+-- | ToNumber(\_hour\_). 1. If \_min\_ is present, let \_m\_ be ?
+-- | ToNumber(\_min\_). 1. If \_sec\_ is present, let \_s\_ be ?
+
+-- SPEC: L25945-L25950
+-- | # Value Properties of the Math Object
+-- |
+-- | # Math.E
+-- |
+-- | The Number value for *e*, the base of the natural logarithms, which is
+-- | approximately 2.7182818284590452354.
+
+-- SPEC: L25952-L25957
+-- | This property has the attributes { \[\[Writable\]\]: \*false\*,
+-- | \[\[Enumerable\]\]: \*false\*, \[\[Configurable\]\]: \*false\* }.
+-- |
+-- | # Math.LN10
+-- |
+-- | The Number value for the natural logarithm of 10, which is approximately
+
+-- SPEC: L25959-L25964
+-- |
+-- | This property has the attributes { \[\[Writable\]\]: \*false\*,
+-- | \[\[Enumerable\]\]: \*false\*, \[\[Configurable\]\]: \*false\* }.
+-- |
+-- | # Math.LN2
+-- |
+
+-- SPEC: L25966-L25974
+-- | 0.6931471805599453.
+-- |
+-- | This property has the attributes { \[\[Writable\]\]: \*false\*,
+-- | \[\[Enumerable\]\]: \*false\*, \[\[Configurable\]\]: \*false\* }.
+-- |
+-- | # Math.LOG10E
+-- |
+-- | The Number value for the base-10 logarithm of *e*, the base of the
+-- | natural logarithms; this value is approximately 0.4342944819032518.
+
+-- SPEC: L25976-L25984
+-- | This property has the attributes { \[\[Writable\]\]: \*false\*,
+-- | \[\[Enumerable\]\]: \*false\*, \[\[Configurable\]\]: \*false\* }.
+-- |
+-- | The value of \`Math.LOG10E\` is approximately the reciprocal of the
+-- | value of \`Math.LN10\`.
+-- |
+-- | # Math.LOG2E
+-- |
+-- | The Number value for the base-2 logarithm of *e*, the base of the
+
+-- SPEC: L25986-L25991
+-- |
+-- | This property has the attributes { \[\[Writable\]\]: \*false\*,
+-- | \[\[Enumerable\]\]: \*false\*, \[\[Configurable\]\]: \*false\* }.
+-- |
+-- | The value of \`Math.LOG2E\` is approximately the reciprocal of the value
+-- | of \`Math.LN2\`.
+
+-- SPEC: L25993-L26001
+-- | # Math.PI
+-- |
+-- | The Number value for π, the ratio of the circumference of a circle to
+-- | its diameter, which is approximately 3.1415926535897932.
+-- |
+-- | This property has the attributes { \[\[Writable\]\]: \*false\*,
+-- | \[\[Enumerable\]\]: \*false\*, \[\[Configurable\]\]: \*false\* }.
+-- |
+-- | # Math.SQRT1_2
+
+-- SPEC: L26003-L26009
+-- | The Number value for the square root of ½, which is approximately
+-- | 0.7071067811865476.
+-- |
+-- | This property has the attributes { \[\[Writable\]\]: \*false\*,
+-- | \[\[Enumerable\]\]: \*false\*, \[\[Configurable\]\]: \*false\* }.
+-- |
+-- | The value of \`Math.SQRT1_2\` is approximately the reciprocal of the
+
+-- SPEC: L26011-L26017
+-- |
+-- | # Math.SQRT2
+-- |
+-- | The Number value for the square root of 2, which is approximately
+-- | 1.4142135623730951.
+-- |
+-- | This property has the attributes { \[\[Writable\]\]: \*false\*,
+
+-- SPEC: L25281-L25282
+-- | # AggregateError Objects
+-- |
+
+-- SPEC: L25300-L25317
+-- | # AggregateError ( \_errors\_, \_message\_ \[ , \_options\_ \] )
+-- |
+-- | This function performs the following steps when called:
+-- |
+-- | 1\. If NewTarget is \*undefined\*, let \_newTarget\_ be the active
+-- | function object; else let \_newTarget\_ be NewTarget. 1. Let \_O\_ be ?
+-- | OrdinaryCreateFromConstructor(\_newTarget\_,
+-- | \*\"%AggregateError.prototype%\"\*, « \[\[ErrorData\]\] »). 1. If
+-- | \_message\_ is not \*undefined\*, then 1. Let \_msg\_ be ?
+-- | ToString(\_message\_). 1. Perform
+-- | CreateNonEnumerableDataPropertyOrThrow(\_O\_, \*\"message\"\*,
+-- | \_msg\_). 1. Perform ? InstallErrorCause(\_O\_, \_options\_). 1. Let
+-- | \_errorsList\_ be ? IteratorToList(? GetIterator(\_errors\_,
+-- | \~sync\~)). 1. Perform ! DefinePropertyOrThrow(\_O\_, \*\"errors\"\*,
+-- | PropertyDescriptor { \[\[Configurable\]\]: \*true\*, \[\[Enumerable\]\]:
+-- | \*false\*, \[\[Writable\]\]: \*true\*, \[\[Value\]\]:
+-- | CreateArrayFromList(\_errorsList\_) }). 1. Return \_O\_.
+-- |
+
+-- SPEC: L25318-L25324
+-- | # Properties of the AggregateError Constructor
+-- |
+-- | The AggregateError constructor:
+-- |
+-- | - has a \[\[Prototype\]\] internal slot whose value is %Error%.
+-- | - has the following properties:
+-- |
+
+-- SPEC: L25325-L25332
+-- | # AggregateError.prototype
+-- |
+-- | The initial value of \`AggregateError.prototype\` is
+-- | %AggregateError.prototype%.
+-- |
+-- | This property has the attributes { \[\[Writable\]\]: \*false\*,
+-- | \[\[Enumerable\]\]: \*false\*, \[\[Configurable\]\]: \*false\* }.
+-- |
+
+-- SPEC: L25333-L25343
+-- | # Properties of the AggregateError Prototype Object
+-- |
+-- | The [AggregateError prototype object]{.dfn}:
+-- |
+-- | - is [%AggregateError.prototype%]{.dfn}.
+-- | - is an ordinary object.
+-- | - is not an Error instance or an AggregateError instance and does not
+-- |   have an \[\[ErrorData\]\] internal slot.
+-- | - has a \[\[Prototype\]\] internal slot whose value is
+-- |   %Error.prototype%.
+-- |
+
+-- SPEC: L25344-L25348
+-- | # AggregateError.prototype.constructor
+-- |
+-- | The initial value of \`AggregateError.prototype.constructor\` is
+-- | %AggregateError%.
+-- |
+
+-- SPEC: L25349-L25353
+-- | # AggregateError.prototype.message
+-- |
+-- | The initial value of \`AggregateError.prototype.message\` is the empty
+-- | String.
+-- |
+
+-- SPEC: L25354-L25358
+-- | # AggregateError.prototype.name
+-- |
+-- | The initial value of \`AggregateError.prototype.name\` is
+-- | \*\"AggregateError\"\*.
+-- |
+
+-- SPEC: L25359-L25367
+-- | # Properties of AggregateError Instances
+-- |
+-- | AggregateError instances are ordinary objects that inherit properties
+-- | from their AggregateError prototype object and have an \[\[ErrorData\]\]
+-- | internal slot whose value is \*undefined\*. The only specified use of
+-- | \[\[ErrorData\]\] is by \`Object.prototype.toString\` () and
+-- | \`Error.isError\` () to identify Error, AggregateError, or
+-- | \_NativeError\_ instances.
+-- |
+
+-- SPEC: L25785-L25798
+-- | # The BigInt Constructor
+-- |
+-- | The BigInt constructor:
+-- |
+-- | - is [%BigInt%]{.dfn}.
+-- | - is the initial value of the \*\"BigInt\"\* property of the global
+-- |   object.
+-- | - performs a type conversion when called as a function rather than as a
+-- |   constructor.
+-- | - is not intended to be used with the \`new\` operator or to be
+-- |   subclassed. It may be used as the value of an \`extends\` clause of a
+-- |   class definition but a \`super\` call to the BigInt constructor will
+-- |   cause an exception.
+-- |
+
+-- SPEC: L25799-L25807
+-- | # BigInt ( \_value\_ )
+-- |
+-- | This function performs the following steps when called:
+-- |
+-- | 1\. If NewTarget is not \*undefined\*, throw a \*TypeError\*
+-- | exception. 1. Let \_prim\_ be ? ToPrimitive(\_value\_, \~number\~). 1.
+-- | If \_prim\_ is a Number, return ? NumberToBigInt(\_prim\_). 1. Return ?
+-- | ToBigInt(\_prim\_).
+-- |
+
+-- SPEC: L25808-L25812
+-- | # NumberToBigInt ( \_number\_: a Number, ): either a normal completion containing a BigInt or a throw completion
+-- |
+-- | 1\. If \_number\_ is not an integral Number, throw a \*RangeError\*
+-- | exception. 1. Return ℤ(ℝ(\_number\_)).
+-- |
+
+-- SPEC: L25813-L25820
+-- | # Properties of the BigInt Constructor
+-- |
+-- | The BigInt constructor:
+-- |
+-- | - has a \[\[Prototype\]\] internal slot whose value is
+-- |   %Function.prototype%.
+-- | - has the following properties:
+-- |
+
+-- SPEC: L25821-L25829
+-- | # BigInt.asIntN ( \_bits\_, \_bigint\_ )
+-- |
+-- | This function performs the following steps when called:
+-- |
+-- | 1\. Set \_bits\_ to ? ToIndex(\_bits\_). 1. Set \_bigint\_ to ?
+-- | ToBigInt(\_bigint\_). 1. Let \_mod\_ be ℝ(\_bigint\_) modulo
+-- | 2^\_bits\_^. 1. If \_mod\_ ≥ 2^\_bits\_\ -\ 1^, return ℤ(\_mod\_ -
+-- | 2^\_bits\_^). 1. Return ℤ(\_mod\_).
+-- |
+
+-- SPEC: L25830-L25836
+-- | # BigInt.asUintN ( \_bits\_, \_bigint\_ )
+-- |
+-- | This function performs the following steps when called:
+-- |
+-- | 1\. Set \_bits\_ to ? ToIndex(\_bits\_). 1. Set \_bigint\_ to ?
+-- | ToBigInt(\_bigint\_). 1. Return ℤ(ℝ(\_bigint\_) modulo 2^\_bits\_^).
+-- |
+
+-- SPEC: L25837-L25844
+-- | # BigInt.prototype
+-- |
+-- | The initial value of \`BigInt.prototype\` is the BigInt prototype
+-- | object.
+-- |
+-- | This property has the attributes { \[\[Writable\]\]: \*false\*,
+-- | \[\[Enumerable\]\]: \*false\*, \[\[Configurable\]\]: \*false\* }.
+-- |
+
+-- SPEC: L25845-L25860
+-- | # Properties of the BigInt Prototype Object
+-- |
+-- | The [BigInt prototype object]{.dfn}:
+-- |
+-- | - is [%BigInt.prototype%]{.dfn}.
+-- | - is an ordinary object.
+-- | - is not a BigInt object; it does not have a \[\[BigIntData\]\] internal
+-- |   slot.
+-- | - has a \[\[Prototype\]\] internal slot whose value is
+-- |   %Object.prototype%.
+-- |
+-- | The phrase "this BigInt value" within the specification of a method
+-- | refers to the result returned by calling the abstract operation
+-- | ThisBigIntValue with the \*this\* value of the method invocation passed
+-- | as the argument.
+-- |
+
+-- SPEC: L25861-L25864
+-- | # BigInt.prototype.constructor
+-- |
+-- | The initial value of \`BigInt.prototype.constructor\` is %BigInt%.
+-- |
+
+-- SPEC: L25865-L25881
+-- | # BigInt.prototype.toLocaleString ( \[ \_reserved1\_ \[ , \_reserved2\_ \] \] )
+-- |
+-- | An ECMAScript implementation that includes the ECMA-402
+-- | Internationalization API must implement this method as specified in the
+-- | ECMA-402 specification. If an ECMAScript implementation does not include
+-- | the ECMA-402 API the following specification of this method is used:
+-- |
+-- | This method produces a String value that represents this BigInt value
+-- | formatted according to the conventions of the host environment\'s
+-- | current locale. This method is implementation-defined, and it is
+-- | permissible, but not encouraged, for it to return the same thing as
+-- | \`toString\`.
+-- |
+-- | The meanings of the optional parameters to this method are defined in
+-- | the ECMA-402 specification; implementations that do not include ECMA-402
+-- | support must not use those parameter positions for anything else.
+-- |
+
+-- SPEC: L25882-L25899
+-- | # BigInt.prototype.toString ( \[ \_radix\_ \] )
+-- |
+-- | The optional \_radix\_ should be an integral Number value in the
+-- | inclusive interval from \*2\*~𝔽~ to \*36\*~𝔽~. If \_radix\_ is
+-- | \*undefined\* then \*10\*~𝔽~ is used as the value of \_radix\_.
+-- |
+-- | This method performs the following steps when called:
+-- |
+-- | 1\. Let \_x\_ be ? ThisBigIntValue(\*this\* value). 1. If \_radix\_ is
+-- | \*undefined\*, let \_radixMV\_ be 10. 1. Else, let \_radixMV\_ be ?
+-- | ToIntegerOrInfinity(\_radix\_). 1. If \_radixMV\_ is not in the
+-- | inclusive interval from 2 to 36, throw a \*RangeError\* exception. 1.
+-- | Return BigInt::toString(\_x\_, \_radixMV\_).
+-- |
+-- | This method is not generic; it throws a \*TypeError\* exception if its
+-- | \*this\* value is not a BigInt or a BigInt object. Therefore, it cannot
+-- | be transferred to other kinds of objects for use as a method.
+-- |
+
+-- SPEC: L25900-L25903
+-- | # BigInt.prototype.valueOf ( )
+-- |
+-- | 1\. Return ? ThisBigIntValue(\*this\* value).
+-- |
+
+-- SPEC: L25904-L25910
+-- | # ThisBigIntValue ( \_value\_: an ECMAScript language value, ): either a normal completion containing a BigInt or a throw completion
+-- |
+-- | 1\. If \_value\_ is a BigInt, return \_value\_. 1. If \_value\_ is an
+-- | Object and \_value\_ has a \[\[BigIntData\]\] internal slot, then 1.
+-- | Assert: \_value\_.\[\[BigIntData\]\] is a BigInt. 1. Return
+-- | \_value\_.\[\[BigIntData\]\]. 1. Throw a \*TypeError\* exception.
+-- |
+
+-- SPEC: L25911-L25918
+-- | # BigInt.prototype \[ %Symbol.toStringTag% \]
+-- |
+-- | The initial value of the %Symbol.toStringTag% property is the String
+-- | value \*\"BigInt\"\*.
+-- |
+-- | This property has the attributes { \[\[Writable\]\]: \*false\*,
+-- | \[\[Enumerable\]\]: \*false\*, \[\[Configurable\]\]: \*true\* }.
+-- |
+
+-- SPEC: L25919-L25925
+-- | # Properties of BigInt Instances
+-- |
+-- | BigInt instances are ordinary objects that inherit properties from the
+-- | BigInt prototype object. BigInt instances also have a \[\[BigIntData\]\]
+-- | internal slot. The \[\[BigIntData\]\] internal slot is the BigInt value
+-- | represented by this BigInt object.
+-- |
+
+-- SPEC: L27963-L27983
+-- | # Date.prototype.setUTCFullYear ( \_year\_ \[ , \_month\_ \[ , \_date\_ \] \] )
+-- |
+-- | This method performs the following steps when called:
+-- |
+-- | 1\. Let \_dateObject\_ be the \*this\* value. 1. Perform ?
+-- | RequireInternalSlot(\_dateObject\_, \[\[DateValue\]\]). 1. Let \_t\_ be
+-- | \_dateObject\_.\[\[DateValue\]\]. 1. If \_t\_ is \*NaN\*, set \_t\_ to
+-- | \*+0\*~𝔽~. 1. Let \_y\_ be ? ToNumber(\_year\_). 1. If \_month\_ is
+-- | present, let \_m\_ be ? ToNumber(\_month\_); else let \_m\_ be
+-- | MonthFromTime(\_t\_). 1. If \_date\_ is present, let \_dt\_ be ?
+-- | ToNumber(\_date\_); else let \_dt\_ be DateFromTime(\_t\_). 1. Let
+-- | \_newDate\_ be MakeDate(MakeDay(\_y\_, \_m\_, \_dt\_),
+-- | TimeWithinDay(\_t\_)). 1. Let \_v\_ be TimeClip(\_newDate\_). 1. Set
+-- | \_dateObject\_.\[\[DateValue\]\] to \_v\_. 1. Return \_v\_.
+-- |
+-- | The \*\"length\"\* property of this method is \*3\*~𝔽~.
+-- |
+-- | If \_month\_ is not present, this method behaves as if \_month\_ was
+-- | present with the value \`getUTCMonth()\`. If \_date\_ is not present, it
+-- | behaves as if \_date\_ was present with the value \`getUTCDate()\`.
+-- |
+
+-- SPEC: L27984-L28009
+-- | # Date.prototype.setUTCHours ( \_hour\_ \[ , \_min\_ \[ , \_sec\_ \[ , \_ms\_ \] \] \] )
+-- |
+-- | This method performs the following steps when called:
+-- |
+-- | 1\. Let \_dateObject\_ be the \*this\* value. 1. Perform ?
+-- | RequireInternalSlot(\_dateObject\_, \[\[DateValue\]\]). 1. Let \_t\_ be
+-- | \_dateObject\_.\[\[DateValue\]\]. 1. Let \_h\_ be ?
+-- | ToNumber(\_hour\_). 1. If \_min\_ is present, let \_m\_ be ?
+-- | ToNumber(\_min\_). 1. If \_sec\_ is present, let \_s\_ be ?
+-- | ToNumber(\_sec\_). 1. If \_ms\_ is present, let \_milli\_ be ?
+-- | ToNumber(\_ms\_). 1. If \_t\_ is \*NaN\*, return \*NaN\*. 1. If \_min\_
+-- | is not present, let \_m\_ be MinFromTime(\_t\_). 1. If \_sec\_ is not
+-- | present, let \_s\_ be SecFromTime(\_t\_). 1. If \_ms\_ is not present,
+-- | let \_milli\_ be msFromTime(\_t\_). 1. Let \_date\_ be
+-- | MakeDate(Day(\_t\_), MakeTime(\_h\_, \_m\_, \_s\_, \_milli\_)). 1. Let
+-- | \_v\_ be TimeClip(\_date\_). 1. Set \_dateObject\_.\[\[DateValue\]\] to
+-- | \_v\_. 1. Return \_v\_.
+-- |
+-- | The \*\"length\"\* property of this method is \*4\*~𝔽~.
+-- |
+-- | If \_min\_ is not present, this method behaves as if \_min\_ was present
+-- | with the value \`getUTCMinutes()\`. If \_sec\_ is not present, it
+-- | behaves as if \_sec\_ was present with the value \`getUTCSeconds()\`. If
+-- | \_ms\_ is not present, it behaves as if \_ms\_ was present with the
+-- | value \`getUTCMilliseconds()\`.
+-- |
+
+-- SPEC: L28010-L28022
+-- | # Date.prototype.setUTCMilliseconds ( \_ms\_ )
+-- |
+-- | This method performs the following steps when called:
+-- |
+-- | 1\. Let \_dateObject\_ be the \*this\* value. 1. Perform ?
+-- | RequireInternalSlot(\_dateObject\_, \[\[DateValue\]\]). 1. Let \_t\_ be
+-- | \_dateObject\_.\[\[DateValue\]\]. 1. Set \_ms\_ to ?
+-- | ToNumber(\_ms\_). 1. If \_t\_ is \*NaN\*, return \*NaN\*. 1. Let
+-- | \_time\_ be MakeTime(HourFromTime(\_t\_), MinFromTime(\_t\_),
+-- | SecFromTime(\_t\_), \_ms\_). 1. Let \_v\_ be
+-- | TimeClip(MakeDate(Day(\_t\_), \_time\_)). 1. Set
+-- | \_dateObject\_.\[\[DateValue\]\] to \_v\_. 1. Return \_v\_.
+-- |
+
+-- SPEC: L28023-L28045
+-- | # Date.prototype.setUTCMinutes ( \_min\_ \[ , \_sec\_ \[ , \_ms\_ \] \] )
+-- |
+-- | This method performs the following steps when called:
+-- |
+-- | 1\. Let \_dateObject\_ be the \*this\* value. 1. Perform ?
+-- | RequireInternalSlot(\_dateObject\_, \[\[DateValue\]\]). 1. Let \_t\_ be
+-- | \_dateObject\_.\[\[DateValue\]\]. 1. Let \_m\_ be ?
+-- | ToNumber(\_min\_). 1. If \_sec\_ is present, let \_s\_ be ?
+-- | ToNumber(\_sec\_). 1. If \_ms\_ is present, let \_milli\_ be ?
+-- | ToNumber(\_ms\_). 1. If \_t\_ is \*NaN\*, return \*NaN\*. 1. If \_sec\_
+-- | is not present, let \_s\_ be SecFromTime(\_t\_). 1. If \_ms\_ is not
+-- | present, let \_milli\_ be msFromTime(\_t\_). 1. Let \_date\_ be
+-- | MakeDate(Day(\_t\_), MakeTime(HourFromTime(\_t\_), \_m\_, \_s\_,
+-- | \_milli\_)). 1. Let \_v\_ be TimeClip(\_date\_). 1. Set
+-- | \_dateObject\_.\[\[DateValue\]\] to \_v\_. 1. Return \_v\_.
+-- |
+-- | The \*\"length\"\* property of this method is \*3\*~𝔽~.
+-- |
+-- | If \_sec\_ is not present, this method behaves as if \_sec\_ was present
+-- | with the value \`getUTCSeconds()\`. If \_ms\_ is not present, it behaves
+-- | as if \_ms\_ was present with the value return by
+-- | \`getUTCMilliseconds()\`.
+-- |
+
+-- SPEC: L28046-L28064
+-- | # Date.prototype.setUTCMonth ( \_month\_ \[ , \_date\_ \] )
+-- |
+-- | This method performs the following steps when called:
+-- |
+-- | 1\. Let \_dateObject\_ be the \*this\* value. 1. Perform ?
+-- | RequireInternalSlot(\_dateObject\_, \[\[DateValue\]\]). 1. Let \_t\_ be
+-- | \_dateObject\_.\[\[DateValue\]\]. 1. Let \_m\_ be ?
+-- | ToNumber(\_month\_). 1. If \_date\_ is present, let \_dt\_ be ?
+-- | ToNumber(\_date\_). 1. If \_t\_ is \*NaN\*, return \*NaN\*. 1. If
+-- | \_date\_ is not present, let \_dt\_ be DateFromTime(\_t\_). 1. Let
+-- | \_newDate\_ be MakeDate(MakeDay(YearFromTime(\_t\_), \_m\_, \_dt\_),
+-- | TimeWithinDay(\_t\_)). 1. Let \_v\_ be TimeClip(\_newDate\_). 1. Set
+-- | \_dateObject\_.\[\[DateValue\]\] to \_v\_. 1. Return \_v\_.
+-- |
+-- | The \*\"length\"\* property of this method is \*2\*~𝔽~.
+-- |
+-- | If \_date\_ is not present, this method behaves as if \_date\_ was
+-- | present with the value \`getUTCDate()\`.
+-- |
+
+-- SPEC: L28065-L28083
+-- | # Date.prototype.setUTCSeconds ( \_sec\_ \[ , \_ms\_ \] )
+-- |
+-- | This method performs the following steps when called:
+-- |
+-- | 1\. Let \_dateObject\_ be the \*this\* value. 1. Perform ?
+-- | RequireInternalSlot(\_dateObject\_, \[\[DateValue\]\]). 1. Let \_t\_ be
+-- | \_dateObject\_.\[\[DateValue\]\]. 1. Let \_s\_ be ?
+-- | ToNumber(\_sec\_). 1. If \_ms\_ is present, let \_milli\_ be ?
+-- | ToNumber(\_ms\_). 1. If \_t\_ is \*NaN\*, return \*NaN\*. 1. If \_ms\_
+-- | is not present, let \_milli\_ be msFromTime(\_t\_). 1. Let \_date\_ be
+-- | MakeDate(Day(\_t\_), MakeTime(HourFromTime(\_t\_), MinFromTime(\_t\_),
+-- | \_s\_, \_milli\_)). 1. Let \_v\_ be TimeClip(\_date\_). 1. Set
+-- | \_dateObject\_.\[\[DateValue\]\] to \_v\_. 1. Return \_v\_.
+-- |
+-- | The \*\"length\"\* property of this method is \*2\*~𝔽~.
+-- |
+-- | If \_ms\_ is not present, this method behaves as if \_ms\_ was present
+-- | with the value \`getUTCMilliseconds()\`.
+-- |
+
+-- SPEC: L28084-L28126
+-- | # Date.prototype.toDateString ( )
+-- |
+-- | This method performs the following steps when called:
+-- |
+-- | 1\. Let \_dateObject\_ be the \*this\* value. 1. Perform ?
+-- | RequireInternalSlot(\_dateObject\_, \[\[DateValue\]\]). 1. Let \_tv\_ be
+-- | \_dateObject\_.\[\[DateValue\]\]. 1. If \_tv\_ is \*NaN\*, return
+-- | \*\"Invalid Date\"\*. 1. Let \_t\_ be LocalTime(\_tv\_). 1. Return
+-- | DateString(\_t\_).
+-- |
+-- | # Date.prototype.toISOString ( )
+-- |
+-- | This method performs the following steps when called:
+-- |
+-- | 1\. Let \_dateObject\_ be the \*this\* value. 1. Perform ?
+-- | RequireInternalSlot(\_dateObject\_, \[\[DateValue\]\]). 1. Let \_tv\_ be
+-- | \_dateObject\_.\[\[DateValue\]\]. 1. If \_tv\_ is \*NaN\*, throw a
+-- | \*RangeError\* exception. 1. Assert: \_tv\_ is an integral Number. 1. If
+-- | \_tv\_ corresponds with a year that cannot be represented in the Date
+-- | Time String Format, throw a \*RangeError\* exception. 1. Return a String
+-- | representation of \_tv\_ in the Date Time String Format on the UTC time
+-- | scale, including all format elements and the UTC offset representation
+-- | \*\"Z\"\*.
+-- |
+-- | # Date.prototype.toJSON ( \_key\_ )
+-- |
+-- | This method provides a String representation of a Date for use by
+-- | \`JSON.stringify\` ().
+-- |
+-- | It performs the following steps when called:
+-- |
+-- | 1\. Let \_O\_ be ? ToObject(\*this\* value). 1. Let \_tv\_ be ?
+-- | ToPrimitive(\_O\_, \~number\~). 1. If \_tv\_ is a Number and \_tv\_ is
+-- | not finite, return \*null\*. 1. Return ? Invoke(\_O\_,
+-- | \*\"toISOString\"\*).
+-- |
+-- | The argument is ignored.
+-- |
+-- | This method is intentionally generic; it does not require that its
+-- | \*this\* value be a Date. Therefore, it can be transferred to other
+-- | kinds of objects for use as a method. However, it does require that any
+-- | such object have a \`toISOString\` method.
+-- |
+
+-- SPEC: L28127-L28143
+-- | # Date.prototype.toLocaleDateString ( \[ \_reserved1\_ \[ , \_reserved2\_ \] \] )
+-- |
+-- | An ECMAScript implementation that includes the ECMA-402
+-- | Internationalization API must implement this method as specified in the
+-- | ECMA-402 specification. If an ECMAScript implementation does not include
+-- | the ECMA-402 API the following specification of this method is used:
+-- |
+-- | This method returns a String value. The contents of the String are
+-- | implementation-defined, but are intended to represent the "date" portion
+-- | of the Date in the current time zone in a convenient, human-readable
+-- | form that corresponds to the conventions of the host environment\'s
+-- | current locale.
+-- |
+-- | The meaning of the optional parameters to this method are defined in the
+-- | ECMA-402 specification; implementations that do not include ECMA-402
+-- | support must not use those parameter positions for anything else.
+-- |
+
+-- SPEC: L28144-L28159
+-- | # Date.prototype.toLocaleString ( \[ \_reserved1\_ \[ , \_reserved2\_ \] \] )
+-- |
+-- | An ECMAScript implementation that includes the ECMA-402
+-- | Internationalization API must implement this method as specified in the
+-- | ECMA-402 specification. If an ECMAScript implementation does not include
+-- | the ECMA-402 API the following specification of this method is used:
+-- |
+-- | This method returns a String value. The contents of the String are
+-- | implementation-defined, but are intended to represent the Date in the
+-- | current time zone in a convenient, human-readable form that corresponds
+-- | to the conventions of the host environment\'s current locale.
+-- |
+-- | The meaning of the optional parameters to this method are defined in the
+-- | ECMA-402 specification; implementations that do not include ECMA-402
+-- | support must not use those parameter positions for anything else.
+-- |
+
+-- SPEC: L28160-L28176
+-- | # Date.prototype.toLocaleTimeString ( \[ \_reserved1\_ \[ , \_reserved2\_ \] \] )
+-- |
+-- | An ECMAScript implementation that includes the ECMA-402
+-- | Internationalization API must implement this method as specified in the
+-- | ECMA-402 specification. If an ECMAScript implementation does not include
+-- | the ECMA-402 API the following specification of this method is used:
+-- |
+-- | This method returns a String value. The contents of the String are
+-- | implementation-defined, but are intended to represent the "time" portion
+-- | of the Date in the current time zone in a convenient, human-readable
+-- | form that corresponds to the conventions of the host environment\'s
+-- | current locale.
+-- |
+-- | The meaning of the optional parameters to this method are defined in the
+-- | ECMA-402 specification; implementations that do not include ECMA-402
+-- | support must not use those parameter positions for anything else.
+-- |
+
+-- SPEC: L29418-L29442
+-- | # String.prototype \[ %Symbol.iterator% \] ( )
+-- |
+-- | This method returns an iterator object that iterates over the code
+-- | points of a String value, returning each code point as a String value.
+-- |
+-- | It performs the following steps when called:
+-- |
+-- | 1\. Let \_O\_ be the \*this\* value. 1. Perform ?
+-- | RequireObjectCoercible(\_O\_). 1. Let \_s\_ be ? ToString(\_O\_). 1. Let
+-- | \_closure\_ be a new Abstract Closure with no parameters that captures
+-- | \_s\_ and performs the following steps when called: 1. Let \_len\_ be
+-- | the length of \_s\_. 1. Let \_position\_ be 0. 1. Repeat, while
+-- | \_position\_ \< \_len\_, 1. Let \_cp\_ be CodePointAt(\_s\_,
+-- | \_position\_). 1. Let \_nextIndex\_ be \_position\_ +
+-- | \_cp\_.\[\[CodeUnitCount\]\]. 1. Let \_resultString\_ be the substring
+-- | of \_s\_ from \_position\_ to \_nextIndex\_. 1. Set \_position\_ to
+-- | \_nextIndex\_. 1. Perform ?
+-- | GeneratorYield(CreateIteratorResultObject(\_resultString\_,
+-- | \*false\*)). 1. Return NormalCompletion(\~unused\~). 1. Return
+-- | CreateIteratorFromClosure(\_closure\_,
+-- | \*\"%StringIteratorPrototype%\"\*, %StringIteratorPrototype%).
+-- |
+-- | The value of the \*\"name\"\* property of this method is
+-- | \*\"\[Symbol.iterator\]\"\*.
+-- |
+
+-- SPEC: L29443-L29453
+-- | # Properties of String Instances
+-- |
+-- | String instances are String exotic objects and have the internal methods
+-- | specified for such objects. String instances inherit properties from the
+-- | String prototype object. String instances also have a \[\[StringData\]\]
+-- | internal slot. The \[\[StringData\]\] internal slot is the String value
+-- | represented by this String object.
+-- |
+-- | String instances have a \*\"length\"\* property, and a set of enumerable
+-- | properties with integer-indexed names.
+-- |
+
+-- SPEC: L29454-L29462
+-- | # length
+-- |
+-- | The number of elements in the String value represented by this String
+-- | object.
+-- |
+-- | Once a String object is initialized, this property is unchanging. It has
+-- | the attributes { \[\[Writable\]\]: \*false\*, \[\[Enumerable\]\]:
+-- | \*false\*, \[\[Configurable\]\]: \*false\* }.
+-- |
+
+-- SPEC: L29463-L29471
+-- | # String Iterator Objects
+-- |
+-- | A [String Iterator]{.dfn
+-- | variants="String Iterators,String Iterator object,String Iterator objects"}
+-- | is an object that represents a specific iteration over some specific
+-- | String instance object. There is not a named constructor for String
+-- | Iterator objects. Instead, String Iterator objects are created by
+-- | calling certain methods of String instance objects.
+-- |
+
+-- SPEC: L29472-L29481
+-- | # The %StringIteratorPrototype% Object
+-- |
+-- | The [%StringIteratorPrototype%]{.dfn} object:
+-- |
+-- | - has properties that are inherited by all String Iterator objects.
+-- | - is an ordinary object.
+-- | - has a \[\[Prototype\]\] internal slot whose value is
+-- |   %Iterator.prototype%.
+-- | - has the following properties:
+-- |
+
+-- SPEC: L29482-L29486
+-- | # %StringIteratorPrototype%.next ( )
+-- |
+-- | 1\. Return ? GeneratorResume(\*this\* value, \~empty\~,
+-- | \*\"%StringIteratorPrototype%\"\*).
+-- |
+
+-- SPEC: L29487-L29494
+-- | # %StringIteratorPrototype% \[ %Symbol.toStringTag% \]
+-- |
+-- | The initial value of the %Symbol.toStringTag% property is the String
+-- | value \*\"String Iterator\"\*.
+-- |
+-- | This property has the attributes { \[\[Writable\]\]: \*false\*,
+-- | \[\[Enumerable\]\]: \*false\*, \[\[Configurable\]\]: \*true\* }.
+-- |
+
+-- SPEC: L29495-L29501
+-- | # RegExp (Regular Expression) Objects
+-- |
+-- | A RegExp object contains a regular expression and the associated flags.
+-- |
+-- | The form and functionality of regular expressions is modelled after the
+-- | regular expression facility in the Perl 5 programming language.
+-- |
+
+-- SPEC: L31996-L32005
+-- | # RegExp String Iterator Objects
+-- |
+-- | A [RegExp String Iterator]{.dfn
+-- | variants="RegExp String Iterators,RegExp String Iterator object,RegExp String Iterator objects"}
+-- | is an object that represents a specific iteration over some specific
+-- | String instance object, matching against some specific RegExp instance
+-- | object. There is not a named constructor for RegExp String Iterator
+-- | objects. Instead, RegExp String Iterator objects are created by calling
+-- | certain methods of RegExp instance objects.
+-- |
+
+-- SPEC: L32006-L32017
+-- | # CreateRegExpStringIterator ( \_R\_: an Object, \_S\_: a String, \_global\_: a Boolean, \_fullUnicode\_: a Boolean, ): an Object
+-- |
+-- | 1\. Let \_iterator\_ be
+-- | OrdinaryObjectCreate(%RegExpStringIteratorPrototype%, «
+-- | \[\[IteratingRegExp\]\], \[\[IteratedString\]\], \[\[Global\]\],
+-- | \[\[Unicode\]\], \[\[Done\]\] »). 1. Set
+-- | \_iterator\_.\[\[IteratingRegExp\]\] to \_R\_. 1. Set
+-- | \_iterator\_.\[\[IteratedString\]\] to \_S\_. 1. Set
+-- | \_iterator\_.\[\[Global\]\] to \_global\_. 1. Set
+-- | \_iterator\_.\[\[Unicode\]\] to \_fullUnicode\_. 1. Set
+-- | \_iterator\_.\[\[Done\]\] to \*false\*. 1. Return \_iterator\_.
+-- |
+
+-- SPEC: L32018-L32028
+-- | # The %RegExpStringIteratorPrototype% Object
+-- |
+-- | The [%RegExpStringIteratorPrototype%]{.dfn} object:
+-- |
+-- | - has properties that are inherited by all RegExp String Iterator
+-- |   objects.
+-- | - is an ordinary object.
+-- | - has a \[\[Prototype\]\] internal slot whose value is
+-- |   %Iterator.prototype%.
+-- | - has the following properties:
+-- |
+
+-- SPEC: L32029-L32051
+-- | # %RegExpStringIteratorPrototype%.next ( )
+-- |
+-- | 1\. Let \_O\_ be the \*this\* value. 1. If \_O\_ is not an Object, throw
+-- | a \*TypeError\* exception. 1. If \_O\_ does not have all of the internal
+-- | slots of a RegExp String Iterator Object Instance (see ), throw a
+-- | \*TypeError\* exception. 1. If \_O\_.\[\[Done\]\] is \*true\*, then 1.
+-- | Return CreateIteratorResultObject(\*undefined\*, \*true\*). 1. Let \_R\_
+-- | be \_O\_.\[\[IteratingRegExp\]\]. 1. Let \_S\_ be
+-- | \_O\_.\[\[IteratedString\]\]. 1. Let \_global\_ be
+-- | \_O\_.\[\[Global\]\]. 1. Let \_fullUnicode\_ be
+-- | \_O\_.\[\[Unicode\]\]. 1. Let \_match\_ be ? RegExpExec(\_R\_,
+-- | \_S\_). 1. If \_match\_ is \*null\*, then 1. Set \_O\_.\[\[Done\]\] to
+-- | \*true\*. 1. Return CreateIteratorResultObject(\*undefined\*,
+-- | \*true\*). 1. If \_global\_ is \*false\*, then 1. Set \_O\_.\[\[Done\]\]
+-- | to \*true\*. 1. Return CreateIteratorResultObject(\_match\_,
+-- | \*false\*). 1. Let \_matchStr\_ be ? ToString(? Get(\_match\_,
+-- | \*\"0\"\*)). 1. If \_matchStr\_ is the empty String, then 1. Let
+-- | \_thisIndex\_ be ℝ(? ToLength(? Get(\_R\_, \*\"lastIndex\"\*))). 1. Let
+-- | \_nextIndex\_ be AdvanceStringIndex(\_S\_, \_thisIndex\_,
+-- | \_fullUnicode\_). 1. Perform ? Set(\_R\_, \*\"lastIndex\"\*,
+-- | 𝔽(\_nextIndex\_), \*true\*). 1. Return
+-- | CreateIteratorResultObject(\_match\_, \*false\*).
+-- |
+
+-- SPEC: L32052-L32059
+-- | # %RegExpStringIteratorPrototype% \[ %Symbol.toStringTag% \]
+-- |
+-- | The initial value of the %Symbol.toStringTag% property is the String
+-- | value \*\"RegExp String Iterator\"\*.
+-- |
+-- | This property has the attributes { \[\[Writable\]\]: \*false\*,
+-- | \[\[Enumerable\]\]: \*false\*, \[\[Configurable\]\]: \*true\* }.
+-- |
+
+-- SPEC: L32060-L32074
+-- | # Properties of RegExp String Iterator Instances
+-- |
+-- | RegExp String Iterator instances are ordinary objects that inherit
+-- | properties from the %RegExpStringIteratorPrototype% intrinsic object.
+-- | RegExp String Iterator instances are initially created with the internal
+-- | slots listed in .
+-- |
+-- |   Internal Slot             Type        Description
+-- |   ------------------------- ----------- -----------------------------------------------------------------------------------------------------
+-- |   \[\[IteratingRegExp\]\]   an Object   The regular expression used for iteration. IsRegExp(\[\[IteratingRegExp\]\]) is initially \*true\*.
+-- |   \[\[IteratedString\]\]    a String    The String value being iterated upon.
+-- |   \[\[Global\]\]            a Boolean   Indicates whether the \[\[IteratingRegExp\]\] is global or not.
+-- |   \[\[Unicode\]\]           a Boolean   Indicates whether the \[\[IteratingRegExp\]\] is in Unicode mode or not.
+-- |   \[\[Done\]\]              a Boolean   Indicates whether the iteration is complete or not.
+-- |
+
+-- SPEC: L33663-L33671
+-- | # Array Iterator Objects
+-- |
+-- | An [Array Iterator]{.dfn
+-- | variants="Array Iterators,Array Iterator object,Array Iterator objects"}
+-- | is an object that represents a specific iteration over some specific
+-- | Array instance object. There is not a named constructor for Array
+-- | Iterator objects. Instead, Array Iterator objects are created by calling
+-- | certain methods of Array instance objects.
+-- |
+
+-- SPEC: L33672-L33685
+-- | # CreateArrayIterator ( \_array\_: an Object, \_kind\_: \~key+value\~, \~key\~, or \~value\~, ): an Object
+-- |
+-- | description
+-- | :   It is used to create iterator objects for Array methods that return
+-- |     such iterators.
+-- |
+-- | 1\. Let \_iterator\_ be OrdinaryObjectCreate(%ArrayIteratorPrototype%, «
+-- | \[\[IteratedArrayLike\]\], \[\[ArrayLikeNextIndex\]\],
+-- | \[\[ArrayLikeIterationKind\]\] »). 1. Set
+-- | \_iterator\_.\[\[IteratedArrayLike\]\] to \_array\_. 1. Set
+-- | \_iterator\_.\[\[ArrayLikeNextIndex\]\] to 0. 1. Set
+-- | \_iterator\_.\[\[ArrayLikeIterationKind\]\] to \_kind\_. 1. Return
+-- | \_iterator\_.
+-- |
+
+-- SPEC: L33686-L33695
+-- | # The %ArrayIteratorPrototype% Object
+-- |
+-- | The [%ArrayIteratorPrototype%]{.dfn} object:
+-- |
+-- | - has properties that are inherited by all Array Iterator objects.
+-- | - is an ordinary object.
+-- | - has a \[\[Prototype\]\] internal slot whose value is
+-- |   %Iterator.prototype%.
+-- | - has the following properties:
+-- |
+
+-- SPEC: L33696-L33721
+-- | # %ArrayIteratorPrototype%.next ( )
+-- |
+-- | 1\. Let \_O\_ be the \*this\* value. 1. If \_O\_ is not an Object, throw
+-- | a \*TypeError\* exception. 1. If \_O\_ does not have all of the internal
+-- | slots of an Array Iterator Instance (), throw a \*TypeError\*
+-- | exception. 1. Let \_array\_ be \_O\_.\[\[IteratedArrayLike\]\]. 1. If
+-- | \_array\_ is \*undefined\*, return
+-- | CreateIteratorResultObject(\*undefined\*, \*true\*). 1. Let \_index\_ be
+-- | \_O\_.\[\[ArrayLikeNextIndex\]\]. 1. Let \_kind\_ be
+-- | \_O\_.\[\[ArrayLikeIterationKind\]\]. 1. If \_array\_ has a
+-- | \[\[TypedArrayName\]\] internal slot, then 1. Let \_taRecord\_ be
+-- | MakeTypedArrayWithBufferWitnessRecord(\_array\_, \~seq-cst\~). 1. If
+-- | IsTypedArrayOutOfBounds(\_taRecord\_) is \*true\*, throw a \*TypeError\*
+-- | exception. 1. Let \_len\_ be TypedArrayLength(\_taRecord\_). 1. Else, 1.
+-- | Let \_len\_ be ? LengthOfArrayLike(\_array\_). 1. If \_index\_ ≥
+-- | \_len\_, then 1. Set \_O\_.\[\[IteratedArrayLike\]\] to
+-- | \*undefined\*. 1. Return CreateIteratorResultObject(\*undefined\*,
+-- | \*true\*). 1. Set \_O\_.\[\[ArrayLikeNextIndex\]\] to \_index\_ + 1. 1.
+-- | Let \_indexNumber\_ be 𝔽(\_index\_). 1. If \_kind\_ is \~key\~, then 1.
+-- | Let \_result\_ be \_indexNumber\_. 1. Else, 1. Let \_elementKey\_ be !
+-- | ToString(\_indexNumber\_). 1. Let \_elementValue\_ be ? Get(\_array\_,
+-- | \_elementKey\_). 1. If \_kind\_ is \~value\~, then 1. Let \_result\_ be
+-- | \_elementValue\_. 1. Else, 1. Assert: \_kind\_ is \~key+value\~. 1. Let
+-- | \_result\_ be CreateArrayFromList(« \_indexNumber\_, \_elementValue\_
+-- | »). 1. Return CreateIteratorResultObject(\_result\_, \*false\*).
+-- |
+
+-- SPEC: L33722-L33729
+-- | # %ArrayIteratorPrototype% \[ %Symbol.toStringTag% \]
+-- |
+-- | The initial value of the %Symbol.toStringTag% property is the String
+-- | value \*\"Array Iterator\"\*.
+-- |
+-- | This property has the attributes { \[\[Writable\]\]: \*false\*,
+-- | \[\[Enumerable\]\]: \*false\*, \[\[Configurable\]\]: \*true\* }.
+-- |
+
+-- SPEC: L33730-L33741
+-- | # Properties of Array Iterator Instances
+-- |
+-- | Array Iterator instances are ordinary objects that inherit properties
+-- | from the %ArrayIteratorPrototype% intrinsic object. Array Iterator
+-- | instances are initially created with the internal slots listed in .
+-- |
+-- |   Internal Slot                    Type                                   Description
+-- |   -------------------------------- -------------------------------------- -----------------------------------------------------------------------------
+-- |   \[\[IteratedArrayLike\]\]        an Object or \*undefined\*             The array-like object that is being iterated.
+-- |   \[\[ArrayLikeNextIndex\]\]       a non-negative integer                 The integer index of the next element to be examined by this iterator.
+-- |   \[\[ArrayLikeIterationKind\]\]   \~key+value\~, \~key\~, or \~value\~   A value that identifies what is returned for each element of the iteration.
+-- |
+
+-- SPEC: L37326-L37355
+-- | # AllocateSharedArrayBuffer ( \_constructor\_: a constructor, \_byteLength\_: a non-negative integer, optional \_maxByteLength\_: a non-negative integer or \~empty\~, ): either a normal completion containing a SharedArrayBuffer or a throw completion
+-- |
+-- | description
+-- | :   It is used to create a SharedArrayBuffer.
+-- |
+-- | 1\. Let \_slots\_ be « \[\[ArrayBufferData\]\] ». 1. If
+-- | \_maxByteLength\_ is present and \_maxByteLength\_ is not \~empty\~, let
+-- | \_allocatingGrowableBuffer\_ be \*true\*; else let
+-- | \_allocatingGrowableBuffer\_ be \*false\*. 1. If
+-- | \_allocatingGrowableBuffer\_ is \*true\*, then 1. If \_byteLength\_ \>
+-- | \_maxByteLength\_, throw a \*RangeError\* exception. 1. Append
+-- | \[\[ArrayBufferByteLengthData\]\] and \[\[ArrayBufferMaxByteLength\]\]
+-- | to \_slots\_. 1. Else, 1. Append \[\[ArrayBufferByteLength\]\] to
+-- | \_slots\_. 1. Let \_obj\_ be ?
+-- | OrdinaryCreateFromConstructor(\_constructor\_,
+-- | \*\"%SharedArrayBuffer.prototype%\"\*, \_slots\_). 1. If
+-- | \_allocatingGrowableBuffer\_ is \*true\*, let \_allocLength\_ be
+-- | \_maxByteLength\_; else let \_allocLength\_ be \_byteLength\_. 1. Let
+-- | \_block\_ be ? CreateSharedByteDataBlock(\_allocLength\_). 1. Set
+-- | \_obj\_.\[\[ArrayBufferData\]\] to \_block\_. 1. If
+-- | \_allocatingGrowableBuffer\_ is \*true\*, then 1. Assert: \_byteLength\_
+-- | ≤ \_maxByteLength\_. 1. Let \_byteLengthBlock\_ be ?
+-- | CreateSharedByteDataBlock(8). 1. Perform
+-- | SetValueInBuffer(\_byteLengthBlock\_, 0, \~biguint64\~,
+-- | ℤ(\_byteLength\_), \*true\*, \~seq-cst\~). 1. Set
+-- | \_obj\_.\[\[ArrayBufferByteLengthData\]\] to \_byteLengthBlock\_. 1. Set
+-- | \_obj\_.\[\[ArrayBufferMaxByteLength\]\] to \_maxByteLength\_. 1.
+-- | Else, 1. Set \_obj\_.\[\[ArrayBufferByteLength\]\] to \_byteLength\_. 1.
+-- | Return \_obj\_.
+-- |
+
+-- SPEC: L37356-L37363
+-- | # IsSharedArrayBuffer ( \_obj\_: an ArrayBuffer or a SharedArrayBuffer, ): a Boolean
+-- |
+-- | description
+-- | :   It tests whether an object is a SharedArrayBuffer.
+-- |
+-- | 1\. If \_obj\_.\[\[ArrayBufferData\]\] is a Shared Data Block, return
+-- | \*true\*. 1. Return \*false\*.
+-- |
+
+-- SPEC: L37364-L37372
+-- | # IsGrowableSharedArrayBuffer ( \_obj\_: an ArrayBuffer or a SharedArrayBuffer, ): a Boolean
+-- |
+-- | description
+-- | :   It tests whether an object is a growable SharedArrayBuffer.
+-- |
+-- | 1\. If IsSharedArrayBuffer(\_obj\_) is \*true\* and \_obj\_ has an
+-- | \[\[ArrayBufferByteLengthData\]\] internal slot, return \*true\*. 1.
+-- | Return \*false\*.
+-- |
+
+-- SPEC: L38643-L38652
+-- | # Atomics.or ( \_typedArray\_, \_index\_, \_value\_ )
+-- |
+-- | This function performs the following steps when called:
+-- |
+-- | 1\. Let \_or\_ be a new read-modify-write modification function with
+-- | parameters (\_xBytes\_, \_yBytes\_) that captures nothing and performs
+-- | the following steps atomically when called: 1. Return
+-- | ByteListBitwiseOp(\`\|\`, \_xBytes\_, \_yBytes\_). 1. Return ?
+-- | AtomicReadModifyWrite(\_typedArray\_, \_index\_, \_value\_, \_or\_).
+-- |
+
+-- SPEC: L38668-L38688
+-- | # Atomics.sub ( \_typedArray\_, \_index\_, \_value\_ )
+-- |
+-- | This function performs the following steps when called:
+-- |
+-- | 1\. Let \_subtract\_ be a new read-modify-write modification function
+-- | with parameters (\_xBytes\_, \_yBytes\_) that captures \_typedArray\_
+-- | and performs the following steps atomically when called: 1. Let \_type\_
+-- | be TypedArrayElementType(\_typedArray\_). 1. Let \_AR\_ be the Agent
+-- | Record of the surrounding agent. 1. Let \_isLittleEndian\_ be
+-- | \_AR\_.\[\[LittleEndian\]\]. 1. Let \_x\_ be RawBytesToNumeric(\_type\_,
+-- | \_xBytes\_, \_isLittleEndian\_). 1. Let \_y\_ be
+-- | RawBytesToNumeric(\_type\_, \_yBytes\_, \_isLittleEndian\_). 1. If \_x\_
+-- | is a Number, then 1. Let \_difference\_ be Number::subtract(\_x\_,
+-- | \_y\_). 1. Else, 1. Assert: \_x\_ is a BigInt. 1. Let \_difference\_ be
+-- | BigInt::subtract(\_x\_, \_y\_). 1. Let \_differenceBytes\_ be
+-- | NumericToRawBytes(\_type\_, \_difference\_, \_isLittleEndian\_). 1.
+-- | Assert: \_differenceBytes\_, \_xBytes\_, and \_yBytes\_ have the same
+-- | number of elements. 1. Return \_differenceBytes\_. 1. Return ?
+-- | AtomicReadModifyWrite(\_typedArray\_, \_index\_, \_value\_,
+-- | \_subtract\_).
+-- |
+
+-- SPEC: L38689-L38699
+-- | # Atomics.wait ( \_typedArray\_, \_index\_, \_value\_, \_timeout\_ )
+-- |
+-- | This function puts the surrounding agent in a wait queue and suspends it
+-- | until notified or until the wait times out, returning a String
+-- | differentiating those cases.
+-- |
+-- | It performs the following steps when called:
+-- |
+-- | 1\. Return ? DoWait(\~sync\~, \_typedArray\_, \_index\_, \_value\_,
+-- | \_timeout\_).
+-- |
+
+-- SPEC: L38700-L38709
+-- | # Atomics.waitAsync ( \_typedArray\_, \_index\_, \_value\_, \_timeout\_ )
+-- |
+-- | This function returns a Promise that is resolved when the calling agent
+-- | is notified or the timeout is reached.
+-- |
+-- | It performs the following steps when called:
+-- |
+-- | 1\. Return ? DoWait(\~async\~, \_typedArray\_, \_index\_, \_value\_,
+-- | \_timeout\_).
+-- |
+
+-- SPEC: L38710-L38729
+-- | # Atomics.notify ( \_typedArray\_, \_index\_, \_count\_ )
+-- |
+-- | This function notifies some agents that are sleeping in the wait queue.
+-- |
+-- | It performs the following steps when called:
+-- |
+-- | 1\. Let \_taRecord\_ be ? ValidateIntegerTypedArray(\_typedArray\_,
+-- | \*true\*). 1. Let \_byteIndexInBuffer\_ be ?
+-- | ValidateAtomicAccess(\_taRecord\_, \_index\_). 1. If \_count\_ is
+-- | \*undefined\*, then 1. Let \_c\_ be +∞. 1. Else, 1. Let \_intCount\_ be
+-- | ? ToIntegerOrInfinity(\_count\_). 1. Let \_c\_ be max(\_intCount\_,
+-- | 0). 1. Let \_buffer\_ be \_typedArray\_.\[\[ViewedArrayBuffer\]\]. 1.
+-- | Let \_block\_ be \_buffer\_.\[\[ArrayBufferData\]\]. 1. If
+-- | IsSharedArrayBuffer(\_buffer\_) is \*false\*, return \*+0\*~𝔽~. 1. Let
+-- | \_WL\_ be GetWaiterList(\_block\_, \_byteIndexInBuffer\_). 1. Perform
+-- | EnterCriticalSection(\_WL\_). 1. Let \_S\_ be RemoveWaiters(\_WL\_,
+-- | \_c\_). 1. For each element \_W\_ of \_S\_, do 1. Perform
+-- | NotifyWaiter(\_WL\_, \_W\_). 1. Perform LeaveCriticalSection(\_WL\_). 1.
+-- | Let \_n\_ be the number of elements in \_S\_. 1. Return 𝔽(\_n\_).
+-- |
+
+-- SPEC: L38730-L38739
+-- | # Atomics.xor ( \_typedArray\_, \_index\_, \_value\_ )
+-- |
+-- | This function performs the following steps when called:
+-- |
+-- | 1\. Let \_xor\_ be a new read-modify-write modification function with
+-- | parameters (\_xBytes\_, \_yBytes\_) that captures nothing and performs
+-- | the following steps atomically when called: 1. Return
+-- | ByteListBitwiseOp(\`\^\`, \_xBytes\_, \_yBytes\_). 1. Return ?
+-- | AtomicReadModifyWrite(\_typedArray\_, \_index\_, \_value\_, \_xor\_).
+-- |
+
+-- SPEC: L38740-L38747
+-- | # Atomics \[ %Symbol.toStringTag% \]
+-- |
+-- | The initial value of the %Symbol.toStringTag% property is the String
+-- | value \*\"Atomics\"\*.
+-- |
+-- | This property has the attributes { \[\[Writable\]\]: \*false\*,
+-- | \[\[Enumerable\]\]: \*false\*, \[\[Configurable\]\]: \*true\* }.
+-- |
+
+-- SPEC: L18155-L18162
+-- | # For-In Iterator Objects
+-- |
+-- | A [For-In Iterator]{.dfn
+-- | variants="For-In Iterator object,For-In Iterator objects"} is an object
+-- | that represents a specific iteration over some specific object. For-In
+-- | Iterator objects are never directly accessible to ECMAScript code; they
+-- | exist solely to illustrate the behaviour of EnumerateObjectProperties.
+-- |
+
+-- SPEC: L18178-L18188
+-- | # The %ForInIteratorPrototype% Object
+-- |
+-- | The [%ForInIteratorPrototype%]{.dfn} object:
+-- |
+-- | - has properties that are inherited by all For-In Iterator objects.
+-- | - is an ordinary object.
+-- | - has a \[\[Prototype\]\] internal slot whose value is
+-- |   %Iterator.prototype%.
+-- | - is never directly accessible to ECMAScript code.
+-- | - has the following properties:
+-- |
+
+-- SPEC: L18189-L18210
+-- | # %ForInIteratorPrototype%.next ( )
+-- |
+-- | 1\. Let \_O\_ be the \*this\* value. 1. Assert: \_O\_ is an Object. 1.
+-- | Assert: \_O\_ has all of the internal slots of a For-In Iterator
+-- | instance (). 1. Let \_object\_ be \_O\_.\[\[Object\]\]. 1. Repeat, 1. If
+-- | \_O\_.\[\[ObjectWasVisited\]\] is \*false\*, then 1. Let \_keys\_ be ?
+-- | \_object\_.\[\[OwnPropertyKeys\]\](). 1. For each element \_key\_ of
+-- | \_keys\_, do 1. If \_key\_ is a String, then 1. Append \_key\_ to
+-- | \_O\_.\[\[RemainingKeys\]\]. 1. Set \_O\_.\[\[ObjectWasVisited\]\] to
+-- | \*true\*. 1. Repeat, while \_O\_.\[\[RemainingKeys\]\] is not empty, 1.
+-- | Let \_r\_ be the first element of \_O\_.\[\[RemainingKeys\]\]. 1. Remove
+-- | the first element from \_O\_.\[\[RemainingKeys\]\]. 1. If
+-- | \_O\_.\[\[VisitedKeys\]\] does not contain \_r\_, then 1. Let \_desc\_
+-- | be ? \_object\_.\[\[GetOwnProperty\]\](\_r\_). 1. If \_desc\_ is not
+-- | \*undefined\*, then 1. Append \_r\_ to \_O\_.\[\[VisitedKeys\]\]. 1. If
+-- | \_desc\_.\[\[Enumerable\]\] is \*true\*, return
+-- | CreateIteratorResultObject(\_r\_, \*false\*). 1. Set \_object\_ to ?
+-- | \_object\_.\[\[GetPrototypeOf\]\](). 1. Set \_O\_.\[\[Object\]\] to
+-- | \_object\_. 1. Set \_O\_.\[\[ObjectWasVisited\]\] to \*false\*. 1. If
+-- | \_object\_ is \*null\*, return CreateIteratorResultObject(\*undefined\*,
+-- | \*true\*).
+-- |
+
+-- SPEC: L18211-L18223
+-- | # Properties of For-In Iterator Instances
+-- |
+-- | For-In Iterator instances are ordinary objects that inherit properties
+-- | from the %ForInIteratorPrototype% intrinsic object. For-In Iterator
+-- | instances are initially created with the internal slots listed in .
+-- |
+-- |   Internal Slot              Type                Description
+-- |   -------------------------- ------------------- -------------------------------------------------------------------------------------------------------------------------------------------------
+-- |   \[\[Object\]\]             an Object           The Object value whose properties are being iterated.
+-- |   \[\[ObjectWasVisited\]\]   a Boolean           \*true\* if the iterator has invoked \[\[OwnPropertyKeys\]\] on \[\[Object\]\], \*false\* otherwise.
+-- |   \[\[VisitedKeys\]\]        a List of Strings   The values that have been emitted by this iterator thus far.
+-- |   \[\[RemainingKeys\]\]      a List of Strings   The values remaining to be emitted for the current object, before iterating the properties of its prototype (if its prototype is not \*null\*).
+-- |
+
+-- SPEC: L7129-L7169
+-- | # Operations on Iterator Objects
+-- |
+-- | See Common Iteration Interfaces ().
+-- |
+-- | # Iterator Records
+-- |
+-- | An [Iterator Record]{.dfn variants="Iterator Records"} is a Record value
+-- | used to encapsulate an iterator or async iterator along with the
+-- | \`next\` method.
+-- |
+-- | Iterator Records have the fields listed in .
+-- |
+-- |   Field Name           Value                          Meaning
+-- |   -------------------- ------------------------------ ------------------------------------------------------------------------------------
+-- |   \[\[Iterator\]\]     an Object                      An object that conforms to the iterator interface or the async iterator interface.
+-- |   \[\[NextMethod\]\]   an ECMAScript language value   The \`next\` method of the \[\[Iterator\]\] object.
+-- |   \[\[Done\]\]         a Boolean                      Whether the iterator has completed or been closed.
+-- |
+-- | # GetIteratorDirect ( \_obj\_: an Object, ): either a normal completion containing an Iterator Record or a throw completion
+-- |
+-- | 1\. Let \_nextMethod\_ be ? Get(\_obj\_, \*\"next\"\*). 1. Let
+-- | \_iteratorRecord\_ be the Iterator Record { \[\[Iterator\]\]: \_obj\_,
+-- | \[\[NextMethod\]\]: \_nextMethod\_, \[\[Done\]\]: \*false\* }. 1. Return
+-- | \_iteratorRecord\_.
+-- |
+-- | # GetIteratorFromMethod ( \_obj\_: an ECMAScript language value, \_method\_: a function object, ): either a normal completion containing an Iterator Record or a throw completion
+-- |
+-- | 1\. Let \_iterator\_ be ? Call(\_method\_, \_obj\_). 1. If \_iterator\_
+-- | is not an Object, throw a \*TypeError\* exception. 1. Return ?
+-- | GetIteratorDirect(\_iterator\_).
+-- |
+-- | # GetIterator ( \_obj\_: an ECMAScript language value, \_kind\_: \~sync\~ or \~async\~, ): either a normal completion containing an Iterator Record or a throw completion
+-- |
+-- | 1\. If \_kind\_ is \~async\~, then 1. Let \_method\_ be ?
+-- | GetMethod(\_obj\_, %Symbol.asyncIterator%). 1. If \_method\_ is
+-- | \*undefined\*, then 1. Let \_syncMethod\_ be ? GetMethod(\_obj\_,
+-- | %Symbol.iterator%). 1. If \_syncMethod\_ is \*undefined\*, throw a
+-- | \*TypeError\* exception. 1. Let \_syncIteratorRecord\_ be ?
+-- | GetIteratorFromMethod(\_obj\_, \_syncMethod\_). 1. Return
+-- | CreateAsyncFromSyncIterator(\_syncIteratorRecord\_). 1. Else, 1. Let
+-- | \_method\_ be ? GetMethod(\_obj\_, %Symbol.iterator%). 1. If \_method\_
+
+-- SPEC: L29014-L29052
+-- | # String.prototype.replaceAll ( \_searchValue\_, \_replaceValue\_ )
+-- |
+-- | This method performs the following steps when called:
+-- |
+-- | 1\. Let \_O\_ be the \*this\* value. 1. Perform ?
+-- | RequireObjectCoercible(\_O\_). 1. If \_searchValue\_ is an Object,
+-- | then 1. Let \_isRegExp\_ be ? IsRegExp(\_searchValue\_). 1. If
+-- | \_isRegExp\_ is \*true\*, then 1. Let \_flags\_ be ?
+-- | Get(\_searchValue\_, \*\"flags\"\*). 1. Perform ?
+-- | RequireObjectCoercible(\_flags\_). 1. If ? ToString(\_flags\_) does not
+-- | contain \*\"g\"\*, throw a \*TypeError\* exception. 1. Let \_replacer\_
+-- | be ? GetMethod(\_searchValue\_, %Symbol.replace%). 1. If \_replacer\_ is
+-- | not \*undefined\*, then 1. Return ? Call(\_replacer\_, \_searchValue\_,
+-- | « \_O\_, \_replaceValue\_ »). 1. Let \_string\_ be ? ToString(\_O\_). 1.
+-- | Let \_searchString\_ be ? ToString(\_searchValue\_). 1. Let
+-- | \_functionalReplace\_ be IsCallable(\_replaceValue\_). 1. If
+-- | \_functionalReplace\_ is \*false\*, then 1. Set \_replaceValue\_ to ?
+-- | ToString(\_replaceValue\_). 1. Let \_searchLength\_ be the length of
+-- | \_searchString\_. 1. Let \_advanceBy\_ be max(1, \_searchLength\_). 1.
+-- | Let \_matchPositions\_ be a new empty List. 1. Let \_position\_ be
+-- | StringIndexOf(\_string\_, \_searchString\_, 0). 1. Repeat, while
+-- | \_position\_ is not \~not-found\~, 1. Append \_position\_ to
+-- | \_matchPositions\_. 1. Set \_position\_ to StringIndexOf(\_string\_,
+-- | \_searchString\_, \_position\_ + \_advanceBy\_). 1. Let
+-- | \_endOfLastMatch\_ be 0. 1. Let \_result\_ be the empty String. 1. For
+-- | each element \_p\_ of \_matchPositions\_, do 1. Let \_preserved\_ be the
+-- | substring of \_string\_ from \_endOfLastMatch\_ to \_p\_. 1. If
+-- | \_functionalReplace\_ is \*true\*, then 1. Let \_replacement\_ be ?
+-- | ToString(? Call(\_replaceValue\_, \*undefined\*, « \_searchString\_,
+-- | 𝔽(\_p\_), \_string\_ »)). 1. Else, 1. Assert: \_replaceValue\_ is a
+-- | String. 1. Let \_captures\_ be a new empty List. 1. Let \_replacement\_
+-- | be ! GetSubstitution(\_searchString\_, \_string\_, \_p\_, \_captures\_,
+-- | \*undefined\*, \_replaceValue\_). 1. Set \_result\_ to the
+-- | string-concatenation of \_result\_, \_preserved\_, and
+-- | \_replacement\_. 1. Set \_endOfLastMatch\_ to \_p\_ +
+-- | \_searchLength\_. 1. If \_endOfLastMatch\_ \< the length of \_string\_,
+-- | then 1. Set \_result\_ to the string-concatenation of \_result\_ and the
+-- | substring of \_string\_ from \_endOfLastMatch\_. 1. Return \_result\_.
+-- |
+
+-- SPEC: L28696-L28710
+-- | # String.prototype.localeCompare ( \_that\_ \[ , \_reserved1\_ \[ , \_reserved2\_ \] \] )
+-- |
+-- | An ECMAScript implementation that includes the ECMA-402
+-- | Internationalization API must implement this method as specified in the
+-- | ECMA-402 specification. If an ECMAScript implementation does not include
+-- | the ECMA-402 API the following specification of this method is used:
+-- |
+-- | This method returns a Number other than \*NaN\* representing the result
+-- | of an implementation-defined locale-sensitive String comparison of the
+-- | \*this\* value (converted to a String \_S\_) with \_that\_ (converted to
+-- | a String \_thatValue\_). The result is intended to correspond with a
+-- | sort order of String values according to conventions of the host
+-- | environment\'s current locale, and will be negative when \_S\_ is
+-- | ordered before \_thatValue\_, positive when \_S\_ is ordered after
+-- | \_thatValue\_, and zero in all other cases (representing no relative
+
+-- SPEC: L32268-L32274
+-- | # Array.prototype
+-- |
+-- | The value of \`Array.prototype\` is the Array prototype object.
+-- |
+-- | This property has the attributes { \[\[Writable\]\]: \*false\*,
+-- | \[\[Enumerable\]\]: \*false\*, \[\[Configurable\]\]: \*false\* }.
+-- |
+
+-- SPEC: L32672-L32683
+-- | # Array.prototype.flat ( \[ \_depth\_ \] )
+-- |
+-- | This method performs the following steps when called:
+-- |
+-- | 1\. Let \_O\_ be ? ToObject(\*this\* value). 1. Let \_sourceLen\_ be ?
+-- | LengthOfArrayLike(\_O\_). 1. Let \_depthNum\_ be 1. 1. If \_depth\_ is
+-- | not \*undefined\*, then 1. Set \_depthNum\_ to ?
+-- | ToIntegerOrInfinity(\_depth\_). 1. If \_depthNum\_ \< 0, set
+-- | \_depthNum\_ to 0. 1. Let \_A\_ be ? ArraySpeciesCreate(\_O\_, 0). 1.
+-- | Perform ? FlattenIntoArray(\_A\_, \_O\_, \_sourceLen\_, 0,
+-- | \_depthNum\_). 1. Return \_A\_.
+-- |
+
+-- SPEC: L32708-L32718
+-- | # Array.prototype.flatMap ( \_mapperFunction\_ \[ , \_thisArg\_ \] )
+-- |
+-- | This method performs the following steps when called:
+-- |
+-- | 1\. Let \_O\_ be ? ToObject(\*this\* value). 1. Let \_sourceLen\_ be ?
+-- | LengthOfArrayLike(\_O\_). 1. If IsCallable(\_mapperFunction\_) is
+-- | \*false\*, throw a \*TypeError\* exception. 1. Let \_A\_ be ?
+-- | ArraySpeciesCreate(\_O\_, 0). 1. Perform ? FlattenIntoArray(\_A\_,
+-- | \_O\_, \_sourceLen\_, 0, 1, \_mapperFunction\_, \_thisArg\_). 1. Return
+-- | \_A\_.
+-- |
+
+-- SPEC: L24209-L24215
+-- | # Object.prototype.\_\_proto\_\_
+-- |
+-- | \`Object.prototype.\_\_proto\_\_\` is an accessor property with
+-- | attributes { \[\[Enumerable\]\]: \*false\*, \[\[Configurable\]\]:
+-- | \*true\* }. The \[\[Get\]\] and \[\[Set\]\] attributes are defined as
+-- | follows:
+-- |
+
+-- SPEC: L24216-L24223
+-- | # get Object.prototype.\_\_proto\_\_
+-- |
+-- | The value of the \[\[Get\]\] attribute is a built-in function that
+-- | requires no arguments. It performs the following steps when called:
+-- |
+-- | 1\. Let \_O\_ be ? ToObject(\*this\* value). 1. Return ?
+-- | \_O\_.\[\[GetPrototypeOf\]\]().
+-- |
+
+-- SPEC: L24224-L24235
+-- | # set Object.prototype.\_\_proto\_\_
+-- |
+-- | The value of the \[\[Set\]\] attribute is a built-in function that takes
+-- | an argument \_proto\_. It performs the following steps when called:
+-- |
+-- | 1\. Let \_O\_ be the \*this\* value. 1. Perform ?
+-- | RequireObjectCoercible(\_O\_). 1. If \_proto\_ is not an Object and
+-- | \_proto\_ is not \*null\*, return \*undefined\*. 1. If \_O\_ is not an
+-- | Object, return \*undefined\*. 1. Let \_status\_ be ?
+-- | \_O\_.\[\[SetPrototypeOf\]\](\_proto\_). 1. If \_status\_ is \*false\*,
+-- | throw a \*TypeError\* exception. 1. Return \*undefined\*.
+-- |
+
+-- SPEC: L24238-L24249
+-- | # Object.prototype.\_\_defineGetter\_\_ ( \_P\_, \_getter\_ )
+-- |
+-- | This method performs the following steps when called:
+-- |
+-- | 1\. Let \_O\_ be ? ToObject(\*this\* value). 1. If
+-- | IsCallable(\_getter\_) is \*false\*, throw a \*TypeError\* exception. 1.
+-- | Let \_desc\_ be PropertyDescriptor { \[\[Get\]\]: \_getter\_,
+-- | \[\[Enumerable\]\]: \*true\*, \[\[Configurable\]\]: \*true\* }. 1. Let
+-- | \_key\_ be ? ToPropertyKey(\_P\_). 1. Perform ?
+-- | DefinePropertyOrThrow(\_O\_, \_key\_, \_desc\_). 1. Return
+-- | \*undefined\*.
+-- |
+
+-- SPEC: L24250-L24261
+-- | # Object.prototype.\_\_defineSetter\_\_ ( \_P\_, \_setter\_ )
+-- |
+-- | This method performs the following steps when called:
+-- |
+-- | 1\. Let \_O\_ be ? ToObject(\*this\* value). 1. If
+-- | IsCallable(\_setter\_) is \*false\*, throw a \*TypeError\* exception. 1.
+-- | Let \_desc\_ be PropertyDescriptor { \[\[Set\]\]: \_setter\_,
+-- | \[\[Enumerable\]\]: \*true\*, \[\[Configurable\]\]: \*true\* }. 1. Let
+-- | \_key\_ be ? ToPropertyKey(\_P\_). 1. Perform ?
+-- | DefinePropertyOrThrow(\_O\_, \_key\_, \_desc\_). 1. Return
+-- | \*undefined\*.
+-- |
+
+-- SPEC: L24262-L24273
+-- | # Object.prototype.\_\_lookupGetter\_\_ ( \_P\_ )
+-- |
+-- | This method performs the following steps when called:
+-- |
+-- | 1\. Let \_O\_ be ? ToObject(\*this\* value). 1. Let \_key\_ be ?
+-- | ToPropertyKey(\_P\_). 1. Repeat, 1. Let \_desc\_ be ?
+-- | \_O\_.\[\[GetOwnProperty\]\](\_key\_). 1. If \_desc\_ is not
+-- | \*undefined\*, then 1. If IsAccessorDescriptor(\_desc\_) is \*true\*,
+-- | return \_desc\_.\[\[Get\]\]. 1. Return \*undefined\*. 1. Set \_O\_ to ?
+-- | \_O\_.\[\[GetPrototypeOf\]\](). 1. If \_O\_ is \*null\*, return
+-- | \*undefined\*.
+-- |
+
+-- SPEC: L24274-L24285
+-- | # Object.prototype.\_\_lookupSetter\_\_ ( \_P\_ )
+-- |
+-- | This method performs the following steps when called:
+-- |
+-- | 1\. Let \_O\_ be ? ToObject(\*this\* value). 1. Let \_key\_ be ?
+-- | ToPropertyKey(\_P\_). 1. Repeat, 1. Let \_desc\_ be ?
+-- | \_O\_.\[\[GetOwnProperty\]\](\_key\_). 1. If \_desc\_ is not
+-- | \*undefined\*, then 1. If IsAccessorDescriptor(\_desc\_) is \*true\*,
+-- | return \_desc\_.\[\[Set\]\]. 1. Return \*undefined\*. 1. Set \_O\_ to ?
+-- | \_O\_.\[\[GetPrototypeOf\]\](). 1. If \_O\_ is \*null\*, return
+-- | \*undefined\*.
+-- |
+
+-- SPEC: L24286-L24290
+-- | # Properties of Object Instances
+-- |
+-- | Object instances have no special properties beyond those inherited from
+-- | the Object prototype object.
+-- |
+
+-- SPEC: L24423-L24432
+-- | # Properties of the Function Constructor
+-- |
+-- | The Function constructor:
+-- |
+-- | - is itself a built-in function object.
+-- | - has a \[\[Prototype\]\] internal slot whose value is
+-- |   %Function.prototype%.
+-- | - has a \*\"length\"\* property whose value is \*1\*~𝔽~.
+-- | - has the following properties:
+-- |
+
+-- SPEC: L24433-L24439
+-- | # Function.prototype
+-- |
+-- | The value of \`Function.prototype\` is the Function prototype object.
+-- |
+-- | This property has the attributes { \[\[Writable\]\]: \*false\*,
+-- | \[\[Enumerable\]\]: \*false\*, \[\[Configurable\]\]: \*false\* }.
+-- |
+
+-- SPEC: L24600-L24608
+-- | # Function Instances
+-- |
+-- | Every Function instance is an ECMAScript function object and has the
+-- | internal slots listed in . Function objects created using the
+-- | \`Function.prototype.bind\` method () have the internal slots listed in
+-- | .
+-- |
+-- | Function instances have the following properties:
+-- |
+
+-- SPEC: L24609-L24619
+-- | # length
+-- |
+-- | The value of the \*\"length\"\* property is an integral Number that
+-- | indicates the typical number of arguments expected by the function.
+-- | However, the language permits the function to be invoked with some other
+-- | number of arguments. The behaviour of a function when invoked on a
+-- | number of arguments other than the number specified by its
+-- | \*\"length\"\* property depends on the function. This property has the
+-- | attributes { \[\[Writable\]\]: \*false\*, \[\[Enumerable\]\]: \*false\*,
+-- | \[\[Configurable\]\]: \*true\* }.
+-- |
+
+-- SPEC: L24620-L24632
+-- | # name
+-- |
+-- | The value of the \*\"name\"\* property is a String that is descriptive
+-- | of the function. The name has no semantic significance but is typically
+-- | a variable or property name that is used to refer to the function at its
+-- | point of definition in ECMAScript source text. This property has the
+-- | attributes { \[\[Writable\]\]: \*false\*, \[\[Enumerable\]\]: \*false\*,
+-- | \[\[Configurable\]\]: \*true\* }.
+-- |
+-- | Anonymous function objects that do not have a contextual name associated
+-- | with them by this specification use the empty String as the value of the
+-- | \*\"name\"\* property.
+-- |
+
+-- SPEC: L24633-L24650
+-- | # prototype
+-- |
+-- | Function instances that can be used as a constructor have a
+-- | \*\"prototype\"\* property. Whenever such a Function instance is created
+-- | another ordinary object is also created and is the initial value of the
+-- | function\'s \*\"prototype\"\* property. Unless otherwise specified, the
+-- | value of the \*\"prototype\"\* property is used to initialize the
+-- | \[\[Prototype\]\] internal slot of the object created when that function
+-- | is invoked as a constructor.
+-- |
+-- | This property has the attributes { \[\[Writable\]\]: \*true\*,
+-- | \[\[Enumerable\]\]: \*false\*, \[\[Configurable\]\]: \*false\* }.
+-- |
+-- | Function objects created using \`Function.prototype.bind\`, or by
+-- | evaluating a \|MethodDefinition\| (that is not a \|GeneratorMethod\| or
+-- | \|AsyncGeneratorMethod\|) or an \|ArrowFunction\| do not have a
+-- | \*\"prototype\"\* property.
+-- |
+
+-- SPEC: L24651-L24666
+-- | # HostHasSourceTextAvailable ( \_func\_: a function object, ): a Boolean
+-- |
+-- | description
+-- | :   It allows host environments to prevent the source text from being
+-- |     provided for \_func\_.
+-- |
+-- | An implementation of HostHasSourceTextAvailable must conform to the
+-- | following requirements:
+-- |
+-- | - It must be deterministic with respect to its parameters. Each time it
+-- |   is called with a specific \_func\_ as its argument, it must return the
+-- |   same result.
+-- |
+-- | The default implementation of HostHasSourceTextAvailable is to return
+-- | \*true\*.
+-- |
+
+-- SPEC: L24695-L24702
+-- | # Properties of the Boolean Constructor
+-- |
+-- | The Boolean constructor:
+-- |
+-- | - has a \[\[Prototype\]\] internal slot whose value is
+-- |   %Function.prototype%.
+-- | - has the following properties:
+-- |
+
+-- SPEC: L24703-L24710
+-- | # Boolean.prototype
+-- |
+-- | The initial value of \`Boolean.prototype\` is the Boolean prototype
+-- | object.
+-- |
+-- | This property has the attributes { \[\[Writable\]\]: \*false\*,
+-- | \[\[Enumerable\]\]: \*false\*, \[\[Configurable\]\]: \*false\* }.
+-- |
+
+-- SPEC: L24722-L24725
+-- | # Boolean.prototype.constructor
+-- |
+-- | The initial value of \`Boolean.prototype.constructor\` is %Boolean%.
+-- |
+
+-- SPEC: L24746-L24752
+-- | # Properties of Boolean Instances
+-- |
+-- | Boolean instances are ordinary objects that inherit properties from the
+-- | Boolean prototype object. Boolean instances have a \[\[BooleanData\]\]
+-- | internal slot. The \[\[BooleanData\]\] internal slot is the Boolean
+-- | value represented by this Boolean object.
+-- |
+
+-- SPEC: L24921-L24928
+-- | # Symbol.unscopables
+-- |
+-- | The initial value of \`Symbol.unscopables\` is the well-known symbol
+-- | %Symbol.unscopables% ().
+-- |
+-- | This property has the attributes { \[\[Writable\]\]: \*false\*,
+-- | \[\[Enumerable\]\]: \*false\*, \[\[Configurable\]\]: \*false\* }.
+-- |
+
+-- SPEC: L24940-L24943
+-- | # Symbol.prototype.constructor
+-- |
+-- | The initial value of \`Symbol.prototype.constructor\` is %Symbol%.
+-- |
+
+-- SPEC: L24980-L24996
+-- | # Symbol.prototype \[ %Symbol.toPrimitive% \] ( \_hint\_ )
+-- |
+-- | This method is called by ECMAScript language operators to convert a
+-- | Symbol object to a primitive value.
+-- |
+-- | It performs the following steps when called:
+-- |
+-- | 1\. Return ? ThisSymbolValue(\*this\* value).
+-- |
+-- | The argument is ignored.
+-- |
+-- | This property has the attributes { \[\[Writable\]\]: \*false\*,
+-- | \[\[Enumerable\]\]: \*false\*, \[\[Configurable\]\]: \*true\* }.
+-- |
+-- | The value of the \*\"name\"\* property of this method is
+-- | \*\"\[Symbol.toPrimitive\]\"\*.
+-- |
+
+-- SPEC: L24997-L25004
+-- | # Symbol.prototype \[ %Symbol.toStringTag% \]
+-- |
+-- | The initial value of the %Symbol.toStringTag% property is the String
+-- | value \*\"Symbol\"\*.
+-- |
+-- | This property has the attributes { \[\[Writable\]\]: \*false\*,
+-- | \[\[Enumerable\]\]: \*false\*, \[\[Configurable\]\]: \*true\* }.
+-- |
+
+-- SPEC: L25005-L25011
+-- | # Properties of Symbol Instances
+-- |
+-- | Symbol instances are ordinary objects that inherit properties from the
+-- | Symbol prototype object. Symbol instances have a \[\[SymbolData\]\]
+-- | internal slot. The \[\[SymbolData\]\] internal slot is the Symbol value
+-- | represented by this Symbol object.
+-- |
+
+-- SPEC: L25065-L25072
+-- | # Properties of the Error Constructor
+-- |
+-- | The Error constructor:
+-- |
+-- | - has a \[\[Prototype\]\] internal slot whose value is
+-- |   %Function.prototype%.
+-- | - has the following properties:
+-- |
+
+-- SPEC: L25081-L25087
+-- | # Error.prototype
+-- |
+-- | The initial value of \`Error.prototype\` is the Error prototype object.
+-- |
+-- | This property has the attributes { \[\[Writable\]\]: \*false\*,
+-- | \[\[Enumerable\]\]: \*false\*, \[\[Configurable\]\]: \*false\* }.
+-- |
+
+-- SPEC: L29798-L29812
+-- | # Static Semantics: CountLeftCapturingParensWithin ( \_node\_: a Parse Node, ): a non-negative integer
+-- |
+-- | description
+-- | :   It returns the number of left-capturing parentheses in \_node\_. A
+-- |     [left-capturing parenthesis]{.dfn
+-- |     variants="left-capturing parentheses"} is any \`(\` pattern
+-- |     character that is matched by the \`(\` terminal of the Atom :: \`(\`
+-- |     GroupSpecifier? Disjunction \`)\` production.
+-- |
+-- | This section is amended in .
+-- |
+-- | 1\. Assert: \_node\_ is an instance of a production in the RegExp
+-- | Pattern grammar. 1. Return the number of Atom :: \`(\` GroupSpecifier?
+-- | Disjunction \`)\` Parse Nodes contained within \_node\_.
+-- |
+
+-- SPEC: L29813-L29826
+-- | # Static Semantics: CountLeftCapturingParensBefore ( \_node\_: a Parse Node, ): a non-negative integer
+-- |
+-- | description
+-- | :   It returns the number of left-capturing parentheses within the
+-- |     enclosing pattern that occur to the left of \_node\_.
+-- |
+-- | This section is amended in .
+-- |
+-- | 1\. Assert: \_node\_ is an instance of a production in the RegExp
+-- | Pattern grammar. 1. Let \_pattern\_ be the \|Pattern\| containing
+-- | \_node\_. 1. Return the number of Atom :: \`(\` GroupSpecifier?
+-- | Disjunction \`)\` Parse Nodes contained within \_pattern\_ that either
+-- | occur before \_node\_ or contain \_node\_.
+-- |
+
+-- SPEC: L29827-L29836
+-- | # Static Semantics: MightBothParticipate ( \_x\_: a Parse Node, \_y\_: a Parse Node, ): a Boolean
+-- |
+-- | 1\. Assert: \_x\_ and \_y\_ have the same enclosing \|Pattern\|. 1. If
+-- | the enclosing \|Pattern\| contains a Disjunction :: Alternative \`\|\`
+-- | Disjunction Parse Node such that either \_x\_ is contained within the
+-- | \|Alternative\| and \_y\_ is contained within the derived
+-- | \|Disjunction\|, or \_x\_ is contained within the derived
+-- | \|Disjunction\| and \_y\_ is contained within the \|Alternative\|,
+-- | return \*false\*. 1. Return \*true\*.
+-- |
+
+-- SPEC: L29837-L29848
+-- | # Static Semantics: CapturingGroupNumber ( ): a positive integer
+-- |
+-- | This section is amended in .
+-- |
+-- | DecimalEscape :: NonZeroDigit 1. Return the MV of \|NonZeroDigit\|.
+-- | DecimalEscape :: NonZeroDigit DecimalDigits 1. Let \_n\_ be the number
+-- | of code points in \|DecimalDigits\|. 1. Return (the MV of
+-- | \|NonZeroDigit\| × 10^\_n\_^ plus the MV of \|DecimalDigits\|).
+-- |
+-- | The definitions of "the MV of \|NonZeroDigit\|" and "the MV of
+-- | \|DecimalDigits\|" are in .
+-- |
+
+-- SPEC: L29849-L29857
+-- | # Static Semantics: IsCharacterClass ( ): a Boolean
+-- |
+-- | This section is amended in .
+-- |
+-- | ClassAtom :: \`-\` ClassAtomNoDash :: SourceCharacter but not one of
+-- | \`\\\` or \`\]\` or \`-\` ClassEscape :: \`b\` \`-\` CharacterEscape 1.
+-- | Return \*false\*. ClassEscape :: CharacterClassEscape 1. Return
+-- | \*true\*.
+-- |
+
+-- SPEC: L29908-L29944
+-- | # Static Semantics: MayContainStrings ( ): a Boolean
+-- |
+-- | CharacterClassEscape :: \`d\` \`D\` \`s\` \`S\` \`w\` \`W\` \`P{\`
+-- | UnicodePropertyValueExpression \`}\` UnicodePropertyValueExpression ::
+-- | UnicodePropertyName \`=\` UnicodePropertyValue NestedClass :: \`\[\^\`
+-- | ClassContents \`\]\` ClassContents :: \[empty\] NonemptyClassRanges
+-- | ClassSetOperand :: ClassSetCharacter 1. Return \*false\*.
+-- | UnicodePropertyValueExpression :: LoneUnicodePropertyNameOrValue 1. If
+-- | the source text matched by \|LoneUnicodePropertyNameOrValue\| is a
+-- | binary property of strings listed in the "Property name" column of ,
+-- | return \*true\*. 1. Return \*false\*. ClassUnion :: ClassSetRange
+-- | ClassUnion? 1. If the \|ClassUnion\| is present, return
+-- | MayContainStrings of the \|ClassUnion\|. 1. Return \*false\*. ClassUnion
+-- | :: ClassSetOperand ClassUnion? 1. If MayContainStrings of the
+-- | \|ClassSetOperand\| is \*true\*, return \*true\*. 1. If \|ClassUnion\|
+-- | is present, return MayContainStrings of the \|ClassUnion\|. 1. Return
+-- | \*false\*. ClassIntersection :: ClassSetOperand \`&&\`
+-- | ClassSetOperand 1. If MayContainStrings of the first \|ClassSetOperand\|
+-- | is \*false\*, return \*false\*. 1. If MayContainStrings of the second
+-- | \|ClassSetOperand\| is \*false\*, return \*false\*. 1. Return \*true\*.
+-- | ClassIntersection :: ClassIntersection \`&&\` ClassSetOperand 1. If
+-- | MayContainStrings of the \|ClassIntersection\| is \*false\*, return
+-- | \*false\*. 1. If MayContainStrings of the \|ClassSetOperand\| is
+-- | \*false\*, return \*false\*. 1. Return \*true\*. ClassSubtraction ::
+-- | ClassSetOperand \`\--\` ClassSetOperand 1. Return MayContainStrings of
+-- | the first \|ClassSetOperand\|. ClassSubtraction :: ClassSubtraction
+-- | \`\--\` ClassSetOperand 1. Return MayContainStrings of the
+-- | \|ClassSubtraction\|. ClassStringDisjunctionContents :: ClassString
+-- | \`\|\` ClassStringDisjunctionContents 1. If MayContainStrings of the
+-- | \|ClassString\| is \*true\*, return \*true\*. 1. Return
+-- | MayContainStrings of the \|ClassStringDisjunctionContents\|. ClassString
+-- | :: \[empty\] 1. Return \*true\*. ClassString :: NonEmptyClassString 1.
+-- | Return MayContainStrings of the \|NonEmptyClassString\|.
+-- | NonEmptyClassString :: ClassSetCharacter NonEmptyClassString? 1. If
+-- | \|NonEmptyClassString\| is present, return \*true\*. 1. Return
+-- | \*false\*.
+-- |
+
+-- SPEC: L29945-L29952
+-- | # Static Semantics: GroupSpecifiersThatMatch ( \_thisGroupName\_: a \|GroupName\| Parse Node, ): a List of \|GroupSpecifier\| Parse Nodes
+-- |
+-- | 1\. Let \_name\_ be the CapturingGroupName of \_thisGroupName\_. 1. Let
+-- | \_pattern\_ be the \|Pattern\| containing \_thisGroupName\_. 1. Let
+-- | \_result\_ be a new empty List. 1. For each \|GroupSpecifier\| \_gs\_
+-- | that \_pattern\_ contains, do 1. If the CapturingGroupName of \_gs\_ is
+-- | \_name\_, then 1. Append \_gs\_ to \_result\_. 1. Return \_result\_.
+-- |
+
+-- SPEC: L29953-L29959
+-- | # Static Semantics: CapturingGroupName ( ): a String
+-- |
+-- | GroupName :: \`\<\` RegExpIdentifierName \`\>\` 1. Let
+-- | \_idTextUnescaped\_ be the RegExpIdentifierCodePoints of
+-- | \|RegExpIdentifierName\|. 1. Return
+-- | CodePointsToString(\_idTextUnescaped\_).
+-- |
+
+-- SPEC: L29960-L29969
+-- | # Static Semantics: RegExpIdentifierCodePoints ( ): a List of code points
+-- |
+-- | RegExpIdentifierName :: RegExpIdentifierStart 1. Let \_cp\_ be the
+-- | RegExpIdentifierCodePoint of \|RegExpIdentifierStart\|. 1. Return «
+-- | \_cp\_ ». RegExpIdentifierName :: RegExpIdentifierName
+-- | RegExpIdentifierPart 1. Let \_cps\_ be the RegExpIdentifierCodePoints of
+-- | the derived \|RegExpIdentifierName\|. 1. Let \_cp\_ be the
+-- | RegExpIdentifierCodePoint of \|RegExpIdentifierPart\|. 1. Return the
+-- | list-concatenation of \_cps\_ and « \_cp\_ ».
+-- |
+
+-- SPEC: L29970-L29986
+-- | # Static Semantics: RegExpIdentifierCodePoint ( ): a code point
+-- |
+-- | RegExpIdentifierStart :: IdentifierStartChar 1. Return the code point
+-- | matched by \|IdentifierStartChar\|. RegExpIdentifierPart ::
+-- | IdentifierPartChar 1. Return the code point matched by
+-- | \|IdentifierPartChar\|. RegExpIdentifierStart :: \`\\\`
+-- | RegExpUnicodeEscapeSequence RegExpIdentifierPart :: \`\\\`
+-- | RegExpUnicodeEscapeSequence 1. Return the code point whose numeric value
+-- | is the CharacterValue of \|RegExpUnicodeEscapeSequence\|.
+-- | RegExpIdentifierStart :: UnicodeLeadSurrogate UnicodeTrailSurrogate
+-- | RegExpIdentifierPart :: UnicodeLeadSurrogate UnicodeTrailSurrogate 1.
+-- | Let \_lead\_ be the code unit whose numeric value is the numeric value
+-- | of the code point matched by \|UnicodeLeadSurrogate\|. 1. Let \_trail\_
+-- | be the code unit whose numeric value is the numeric value of the code
+-- | point matched by \|UnicodeTrailSurrogate\|. 1. Return
+-- | UTF16SurrogatePairToCodePoint(\_lead\_, \_trail\_).
+-- |
+
+-- SPEC: L30116-L30143
+-- | # Runtime Semantics: CompilePattern ( \_rer\_: a RegExp Record, ): an Abstract Closure that takes a List of characters and a non-negative integer and returns either a MatchState or \~failure\~
+-- |
+-- | Pattern :: Disjunction 1. Let \_m\_ be CompileSubpattern of
+-- | \|Disjunction\| with arguments \_rer\_ and \~forward\~. 1. Return a new
+-- | Abstract Closure with parameters (\_Input\_, \_index\_) that captures
+-- | \_rer\_ and \_m\_ and performs the following steps when called: 1.
+-- | Assert: \_Input\_ is a List of characters. 1. Assert: 0 ≤ \_index\_ ≤
+-- | the number of elements in \_Input\_. 1. Let \_c\_ be a new
+-- | MatcherContinuation with parameters (\_y\_) that captures nothing and
+-- | performs the following steps when called: 1. Assert: \_y\_ is a
+-- | MatchState. 1. Return \_y\_. 1. Let \_cap\_ be a List of
+-- | \_rer\_.\[\[CapturingGroupsCount\]\] \*undefined\* values, indexed 1
+-- | through \_rer\_.\[\[CapturingGroupsCount\]\]. 1. Let \_x\_ be the
+-- | MatchState { \[\[Input\]\]: \_Input\_, \[\[EndIndex\]\]: \_index\_,
+-- | \[\[Captures\]\]: \_cap\_ }. 1. Return \_m\_(\_x\_, \_c\_).
+-- |
+-- | A Pattern compiles to an Abstract Closure value. RegExpBuiltinExec can
+-- | then apply this procedure to a List of characters and an offset within
+-- | that List to determine whether the pattern would match starting at
+-- | exactly that offset within the List, and, if it does match, what the
+-- | values of the capturing parentheses would be. The algorithms in are
+-- | designed so that compiling a pattern may throw a \*SyntaxError\*
+-- | exception; on the other hand, once the pattern is successfully compiled,
+-- | applying the resulting Abstract Closure to find a match in a List of
+-- | characters cannot throw an exception (except for any
+-- | implementation-defined exceptions that can occur anywhere such as
+-- | out-of-memory).
+-- |
+
+-- SPEC: L30360-L30366
+-- | # EmptyMatcher ( ): a Matcher
+-- |
+-- | 1\. Return a new Matcher with parameters (\_x\_, \_c\_) that captures
+-- | nothing and performs the following steps when called: 1. Assert: \_x\_
+-- | is a MatchState. 1. Assert: \_c\_ is a MatcherContinuation. 1. Return
+-- | \_c\_(\_x\_).
+-- |
+
+-- SPEC: L30367-L30374
+-- | # MatchTwoAlternatives ( \_m1\_: a Matcher, \_m2\_: a Matcher, ): a Matcher
+-- |
+-- | 1\. Return a new Matcher with parameters (\_x\_, \_c\_) that captures
+-- | \_m1\_ and \_m2\_ and performs the following steps when called: 1.
+-- | Assert: \_x\_ is a MatchState. 1. Assert: \_c\_ is a
+-- | MatcherContinuation. 1. Let \_r\_ be \_m1\_(\_x\_, \_c\_). 1. If \_r\_
+-- | is not \~failure\~, return \_r\_. 1. Return \_m2\_(\_x\_, \_c\_).
+-- |
+
+-- SPEC: L30375-L30392
+-- | # MatchSequence ( \_m1\_: a Matcher, \_m2\_: a Matcher, \_direction\_: \~forward\~ or \~backward\~, ): a Matcher
+-- |
+-- | 1\. If \_direction\_ is \~forward\~, then 1. Return a new Matcher with
+-- | parameters (\_x\_, \_c\_) that captures \_m1\_ and \_m2\_ and performs
+-- | the following steps when called: 1. Assert: \_x\_ is a MatchState. 1.
+-- | Assert: \_c\_ is a MatcherContinuation. 1. Let \_d\_ be a new
+-- | MatcherContinuation with parameters (\_y\_) that captures \_c\_ and
+-- | \_m2\_ and performs the following steps when called: 1. Assert: \_y\_ is
+-- | a MatchState. 1. Return \_m2\_(\_y\_, \_c\_). 1. Return \_m1\_(\_x\_,
+-- | \_d\_). 1. Assert: \_direction\_ is \~backward\~. 1. Return a new
+-- | Matcher with parameters (\_x\_, \_c\_) that captures \_m1\_ and \_m2\_
+-- | and performs the following steps when called: 1. Assert: \_x\_ is a
+-- | MatchState. 1. Assert: \_c\_ is a MatcherContinuation. 1. Let \_d\_ be a
+-- | new MatcherContinuation with parameters (\_y\_) that captures \_c\_ and
+-- | \_m1\_ and performs the following steps when called: 1. Assert: \_y\_ is
+-- | a MatchState. 1. Return \_m1\_(\_y\_, \_c\_). 1. Return \_m2\_(\_x\_,
+-- | \_d\_).
+-- |
+
+-- SPEC: L30549-L30555
+-- | # IsWordChar ( \_rer\_: a RegExp Record, \_Input\_: a List of characters, \_e\_: an integer, ): a Boolean
+-- |
+-- | 1\. Let \_InputLength\_ be the number of elements in \_Input\_. 1. If
+-- | \_e\_ = -1 or \_e\_ = \_InputLength\_, return \*false\*. 1. Let \_c\_ be
+-- | the character \_Input\_\[\_e\_\]. 1. If WordCharacters(\_rer\_) contains
+-- | \_c\_, return \*true\*. 1. Return \*false\*.
+-- |
+
+-- SPEC: L30556-L30565
+-- | # Runtime Semantics: CompileQuantifier ( ): a Record with fields \[\[Min\]\] (a non-negative integer), \[\[Max\]\] (a non-negative integer or +∞), and \[\[Greedy\]\] (a Boolean)
+-- |
+-- | Quantifier :: QuantifierPrefix 1. Let \_qp\_ be CompileQuantifierPrefix
+-- | of \|QuantifierPrefix\|. 1. Return the Record { \[\[Min\]\]:
+-- | \_qp\_.\[\[Min\]\], \[\[Max\]\]: \_qp\_.\[\[Max\]\], \[\[Greedy\]\]:
+-- | \*true\* }. Quantifier :: QuantifierPrefix \`?\` 1. Let \_qp\_ be
+-- | CompileQuantifierPrefix of \|QuantifierPrefix\|. 1. Return the Record {
+-- | \[\[Min\]\]: \_qp\_.\[\[Min\]\], \[\[Max\]\]: \_qp\_.\[\[Max\]\],
+-- | \[\[Greedy\]\]: \*false\* }.
+-- |
+
+-- SPEC: L30566-L30581
+-- | # Runtime Semantics: CompileQuantifierPrefix ( ): a Record with fields \[\[Min\]\] (a non-negative integer) and \[\[Max\]\] (a non-negative integer or +∞)
+-- |
+-- | QuantifierPrefix :: \`\*\` 1. Return the Record { \[\[Min\]\]: 0,
+-- | \[\[Max\]\]: +∞ }. QuantifierPrefix :: \`+\` 1. Return the Record {
+-- | \[\[Min\]\]: 1, \[\[Max\]\]: +∞ }. QuantifierPrefix :: \`?\` 1. Return
+-- | the Record { \[\[Min\]\]: 0, \[\[Max\]\]: 1 }. QuantifierPrefix :: \`{\`
+-- | DecimalDigits \`}\` 1. Let \_i\_ be the MV of \|DecimalDigits\| (see
+-- | ). 1. Return the Record { \[\[Min\]\]: \_i\_, \[\[Max\]\]: \_i\_ }.
+-- | QuantifierPrefix :: \`{\` DecimalDigits \`,}\` 1. Let \_i\_ be the MV of
+-- | \|DecimalDigits\|. 1. Return the Record { \[\[Min\]\]: \_i\_,
+-- | \[\[Max\]\]: +∞ }. QuantifierPrefix :: \`{\` DecimalDigits \`,\`
+-- | DecimalDigits \`}\` 1. Let \_i\_ be the MV of the first
+-- | \|DecimalDigits\|. 1. Let \_j\_ be the MV of the second
+-- | \|DecimalDigits\|. 1. Return the Record { \[\[Min\]\]: \_i\_,
+-- | \[\[Max\]\]: \_j\_ }.
+-- |
+
+-- SPEC: L5818-L5832
+-- | # CreateSharedByteDataBlock ( \_size\_: a non-negative integer, ): either a normal completion containing a Shared Data Block or a throw completion
+-- |
+-- | 1\. Let \_db\_ be a new Shared Data Block value consisting of \_size\_
+-- | bytes. If it is impossible to create such a Shared Data Block, throw a
+-- | \*RangeError\* exception. 1. Let \_AR\_ be the Agent Record of the
+-- | surrounding agent. 1. Let \_execution\_ be
+-- | \_AR\_.\[\[CandidateExecution\]\]. 1. Let \_eventsRecord\_ be the Agent
+-- | Events Record of \_execution\_.\[\[EventsRecords\]\] whose
+-- | \[\[AgentSignifier\]\] is AgentSignifier(). 1. Let \_zero\_ be « 0 ». 1.
+-- | For each index \_i\_ of \_db\_, do 1. Append WriteSharedMemory {
+-- | \[\[Order\]\]: \~init\~, \[\[NoTear\]\]: \*true\*, \[\[Block\]\]:
+-- | \_db\_, \[\[ByteIndex\]\]: \_i\_, \[\[ElementSize\]\]: 1,
+-- | \[\[Payload\]\]: \_zero\_ } to \_eventsRecord\_.\[\[EventList\]\]. 1.
+-- | Return \_db\_.
+-- |
+
+-- SPEC: L5833-L5866
+-- | # CopyDataBlockBytes ( \_toBlock\_: a Data Block or a Shared Data Block, \_toIndex\_: a non-negative integer, \_fromBlock\_: a Data Block or a Shared Data Block, \_fromIndex\_: a non-negative integer, \_count\_: a non-negative integer, ): \~unused\~
+-- |
+-- | 1\. Assert: \_fromBlock\_ and \_toBlock\_ are distinct values. 1. Let
+-- | \_fromSize\_ be the number of bytes in \_fromBlock\_. 1. Assert:
+-- | \_fromIndex\_ + \_count\_ ≤ \_fromSize\_. 1. Let \_toSize\_ be the
+-- | number of bytes in \_toBlock\_. 1. Assert: \_toIndex\_ + \_count\_ ≤
+-- | \_toSize\_. 1. Repeat, while \_count\_ \> 0, 1. If \_fromBlock\_ is a
+-- | Shared Data Block, then 1. Let \_AR\_ be the Agent Record of the
+-- | surrounding agent. 1. Let \_execution\_ be
+-- | \_AR\_.\[\[CandidateExecution\]\]. 1. Let \_eventsRecord\_ be the Agent
+-- | Events Record of \_execution\_.\[\[EventsRecords\]\] whose
+-- | \[\[AgentSignifier\]\] is AgentSignifier(). 1. Let \_bytes\_ be a List
+-- | whose sole element is a nondeterministically chosen byte value. 1. NOTE:
+-- | In implementations, \_bytes\_ is the result of a non-atomic read
+-- | instruction on the underlying hardware. The nondeterminism is a semantic
+-- | prescription of the memory model to describe observable behaviour of
+-- | hardware with weak consistency. 1. Let \_readEvent\_ be ReadSharedMemory
+-- | { \[\[Order\]\]: \~unordered\~, \[\[NoTear\]\]: \*true\*, \[\[Block\]\]:
+-- | \_fromBlock\_, \[\[ByteIndex\]\]: \_fromIndex\_, \[\[ElementSize\]\]: 1
+-- | }. 1. Append \_readEvent\_ to \_eventsRecord\_.\[\[EventList\]\]. 1.
+-- | Append Chosen Value Record { \[\[Event\]\]: \_readEvent\_,
+-- | \[\[ChosenValue\]\]: \_bytes\_ } to
+-- | \_execution\_.\[\[ChosenValues\]\]. 1. If \_toBlock\_ is a Shared Data
+-- | Block, then 1. Append WriteSharedMemory { \[\[Order\]\]: \~unordered\~,
+-- | \[\[NoTear\]\]: \*true\*, \[\[Block\]\]: \_toBlock\_, \[\[ByteIndex\]\]:
+-- | \_toIndex\_, \[\[ElementSize\]\]: 1, \[\[Payload\]\]: \_bytes\_ } to
+-- | \_eventsRecord\_.\[\[EventList\]\]. 1. Else, 1. Set
+-- | \_toBlock\_\[\_toIndex\_\] to \_bytes\_\[0\]. 1. Else, 1. Assert:
+-- | \_toBlock\_ is not a Shared Data Block. 1. Set
+-- | \_toBlock\_\[\_toIndex\_\] to \_fromBlock\_\[\_fromIndex\_\]. 1. Set
+-- | \_toIndex\_ to \_toIndex\_ + 1. 1. Set \_fromIndex\_ to
+-- | \_fromIndex\_ + 1. 1. Set \_count\_ to \_count\_ - 1. 1. Return
+-- | \~unused\~.
+-- |
+
+-- SPEC: L30710-L30733
+-- | # CharacterSetMatcher ( \_rer\_: a RegExp Record, \_A\_: a CharSet, \_invert\_: a Boolean, \_direction\_: \~forward\~ or \~backward\~, ): a Matcher
+-- |
+-- | 1\. If \_rer\_.\[\[UnicodeSets\]\] is \*true\*, then 1. Assert:
+-- | \_invert\_ is \*false\*. 1. Assert: Every CharSetElement of \_A\_
+-- | consists of a single character. 1. Return a new Matcher with parameters
+-- | (\_x\_, \_c\_) that captures \_rer\_, \_A\_, \_invert\_, and
+-- | \_direction\_ and performs the following steps when called: 1. Assert:
+-- | \_x\_ is a MatchState. 1. Assert: \_c\_ is a MatcherContinuation. 1. Let
+-- | \_Input\_ be \_x\_.\[\[Input\]\]. 1. Let \_e\_ be
+-- | \_x\_.\[\[EndIndex\]\]. 1. If \_direction\_ is \~forward\~, let \_f\_ be
+-- | \_e\_ + 1. 1. Else, let \_f\_ be \_e\_ - 1. 1. Let \_InputLength\_ be
+-- | the number of elements in \_Input\_. 1. If \_f\_ \< 0 or \_f\_ \>
+-- | \_InputLength\_, return \~failure\~. 1. Let \_index\_ be min(\_e\_,
+-- | \_f\_). 1. Let \_ch\_ be the character \_Input\_\[\_index\_\]. 1. Let
+-- | \_cc\_ be Canonicalize(\_rer\_, \_ch\_). 1. If there exists a
+-- | CharSetElement in \_A\_ containing exactly one character \_a\_ such that
+-- | Canonicalize(\_rer\_, \_a\_) is \_cc\_, let \_found\_ be \*true\*; else
+-- | let \_found\_ be \*false\*. 1. If \_invert\_ is \*false\* and \_found\_
+-- | is \*false\*, return \~failure\~. 1. If \_invert\_ is \*true\* and
+-- | \_found\_ is \*true\*, return \~failure\~. 1. Let \_cap\_ be
+-- | \_x\_.\[\[Captures\]\]. 1. Let \_y\_ be the MatchState { \[\[Input\]\]:
+-- | \_Input\_, \[\[EndIndex\]\]: \_f\_, \[\[Captures\]\]: \_cap\_ }. 1.
+-- | Return \_c\_(\_y\_).
+-- |
+
+-- SPEC: L30734-L30757
+-- | # BackreferenceMatcher ( \_rer\_: a RegExp Record, \_ns\_: a List of positive integers, \_direction\_: \~forward\~ or \~backward\~, ): a Matcher
+-- |
+-- | 1\. Return a new Matcher with parameters (\_x\_, \_c\_) that captures
+-- | \_rer\_, \_ns\_, and \_direction\_ and performs the following steps when
+-- | called: 1. Assert: \_x\_ is a MatchState. 1. Assert: \_c\_ is a
+-- | MatcherContinuation. 1. Let \_Input\_ be \_x\_.\[\[Input\]\]. 1. Let
+-- | \_cap\_ be \_x\_.\[\[Captures\]\]. 1. Let \_r\_ be \*undefined\*. 1. For
+-- | each integer \_n\_ of \_ns\_, do 1. If \_cap\_\[\_n\_\] is not
+-- | \*undefined\*, then 1. Assert: \_r\_ is \*undefined\*. 1. Set \_r\_ to
+-- | \_cap\_\[\_n\_\]. 1. If \_r\_ is \*undefined\*, return \_c\_(\_x\_). 1.
+-- | Let \_e\_ be \_x\_.\[\[EndIndex\]\]. 1. Let \_rs\_ be
+-- | \_r\_.\[\[StartIndex\]\]. 1. Let \_re\_ be \_r\_.\[\[EndIndex\]\]. 1.
+-- | Let \_len\_ be \_re\_ - \_rs\_. 1. If \_direction\_ is \~forward\~, let
+-- | \_f\_ be \_e\_ + \_len\_. 1. Else, let \_f\_ be \_e\_ - \_len\_. 1. Let
+-- | \_InputLength\_ be the number of elements in \_Input\_. 1. If \_f\_ \< 0
+-- | or \_f\_ \> \_InputLength\_, return \~failure\~. 1. Let \_g\_ be
+-- | min(\_e\_, \_f\_). 1. If there exists an integer \_i\_ in the interval
+-- | from 0 (inclusive) to \_len\_ (exclusive) such that
+-- | Canonicalize(\_rer\_, \_Input\_\[\_rs\_ + \_i\_\]) is not
+-- | Canonicalize(\_rer\_, \_Input\_\[\_g\_ + \_i\_\]), return
+-- | \~failure\~. 1. Let \_y\_ be the MatchState { \[\[Input\]\]: \_Input\_,
+-- | \[\[EndIndex\]\]: \_f\_, \[\[Captures\]\]: \_cap\_ }. 1. Return
+-- | \_c\_(\_y\_).
+-- |
+
+-- SPEC: L30758-L30798
+-- | # Canonicalize ( \_rer\_: a RegExp Record, \_ch\_: a character, ): a character
+-- |
+-- | 1\. If HasEitherUnicodeFlag(\_rer\_) is \*true\* and
+-- | \_rer\_.\[\[IgnoreCase\]\] is \*true\*, then 1. If the file
+-- | [`CaseFolding.txt`](https://unicode.org/Public/UCD/latest/ucd/CaseFolding.txt)
+-- | of the Unicode Character Database provides a simple or common case
+-- | folding mapping for \_ch\_, return the result of applying that mapping
+-- | to \_ch\_. 1. Return \_ch\_. 1. If \_rer\_.\[\[IgnoreCase\]\] is
+-- | \*false\*, return \_ch\_. 1. Assert: \_ch\_ is a UTF-16 code unit. 1.
+-- | Let \_cp\_ be the code point whose numeric value is the numeric value of
+-- | \_ch\_. 1. Let \_u\_ be toUppercase(« \_cp\_ »), according to the
+-- | Unicode Default Case Conversion algorithm. 1. Let \_uStr\_ be
+-- | CodePointsToString(\_u\_). 1. If the length of \_uStr\_ ≠ 1, return
+-- | \_ch\_. 1. Let \_cu\_ be \_uStr\_\'s single code unit element. 1. If the
+-- | numeric value of \_ch\_ ≥ 128 and the numeric value of \_cu\_ \< 128,
+-- | return \_ch\_. 1. Return \_cu\_.
+-- |
+-- | In case-insignificant matches when HasEitherUnicodeFlag(\_rer\_) is
+-- | \*true\*, all characters are implicitly case-folded using the simple
+-- | mapping provided by the Unicode Standard immediately before they are
+-- | compared. The simple mapping always maps to a single code point, so it
+-- | does not map, for example, \`ß\` (U+00DF LATIN SMALL LETTER SHARP S) to
+-- | \`ss\` or \`SS\`. It may however map code points outside the Basic Latin
+-- | block to code points within it---for example, \`ſ\` (U+017F LATIN SMALL
+-- | LETTER LONG S) case-folds to \`s\` (U+0073 LATIN SMALL LETTER S) and
+-- | \`K\` (U+212A KELVIN SIGN) case-folds to \`k\` (U+006B LATIN SMALL
+-- | LETTER K). Strings containing those code points are matched by regular
+-- | expressions such as \`/\[a-z\]/ui\`.
+-- |
+-- | In case-insignificant matches when HasEitherUnicodeFlag(\_rer\_) is
+-- | \*false\*, the mapping is based on Unicode Default Case Conversion
+-- | algorithm toUppercase rather than toCasefold, which results in some
+-- | subtle differences. For example, \`Ω\` (U+2126 OHM SIGN) is mapped by
+-- | toUppercase to itself but by toCasefold to \`ω\` (U+03C9 GREEK SMALL
+-- | LETTER OMEGA) along with \`Ω\` (U+03A9 GREEK CAPITAL LETTER OMEGA), so
+-- | \*\"\\u2126\"\* is matched by \`/\[ω\]/ui\` and \`/\[\\u03A9\]/ui\` but
+-- | not by \`/\[ω\]/i\` or \`/\[\\u03A9\]/i\`. Also, no code point outside
+-- | the Basic Latin block is mapped to a code point within it, so strings
+-- | such as \*\"\\u017F ſ\"\* and \*\"\\u212A K\"\* are not matched by
+-- | \`/\[a-z\]/i\`.
+-- |
+
+-- SPEC: L30799-L30818
+-- | # UpdateModifiers ( \_rer\_: a RegExp Record, \_add\_: a String, \_remove\_: a String, ): a RegExp Record
+-- |
+-- | 1\. Assert: \_add\_ and \_remove\_ have no elements in common. 1. Let
+-- | \_ignoreCase\_ be \_rer\_.\[\[IgnoreCase\]\]. 1. Let \_multiline\_ be
+-- | \_rer\_.\[\[Multiline\]\]. 1. Let \_dotAll\_ be
+-- | \_rer\_.\[\[DotAll\]\]. 1. Let \_unicode\_ be
+-- | \_rer\_.\[\[Unicode\]\]. 1. Let \_unicodeSets\_ be
+-- | \_rer\_.\[\[UnicodeSets\]\]. 1. Let \_capturingGroupsCount\_ be
+-- | \_rer\_.\[\[CapturingGroupsCount\]\]. 1. If \_remove\_ contains
+-- | \*\"i\"\*, set \_ignoreCase\_ to \*false\*. 1. Else if \_add\_ contains
+-- | \*\"i\"\*, set \_ignoreCase\_ to \*true\*. 1. If \_remove\_ contains
+-- | \*\"m\"\*, set \_multiline\_ to \*false\*. 1. Else if \_add\_ contains
+-- | \*\"m\"\*, set \_multiline\_ to \*true\*. 1. If \_remove\_ contains
+-- | \*\"s\"\*, set \_dotAll\_ to \*false\*. 1. Else if \_add\_ contains
+-- | \*\"s\"\*, set \_dotAll\_ to \*true\*. 1. Return the RegExp Record {
+-- | \[\[IgnoreCase\]\]: \_ignoreCase\_, \[\[Multiline\]\]: \_multiline\_,
+-- | \[\[DotAll\]\]: \_dotAll\_, \[\[Unicode\]\]: \_unicode\_,
+-- | \[\[UnicodeSets\]\]: \_unicodeSets\_, \[\[CapturingGroupsCount\]\]:
+-- | \_capturingGroupsCount\_ }.
+-- |
+
+-- SPEC: L30819-L30830
+-- | # Runtime Semantics: CompileCharacterClass ( \_rer\_: a RegExp Record, ): a Record with fields \[\[CharSet\]\] (a CharSet) and \[\[Invert\]\] (a Boolean)
+-- |
+-- | CharacterClass :: \`\[\` ClassContents \`\]\` 1. Let \_A\_ be
+-- | CompileToCharSet of \|ClassContents\| with argument \_rer\_. 1. Return
+-- | the Record { \[\[CharSet\]\]: \_A\_, \[\[Invert\]\]: \*false\* }.
+-- | CharacterClass :: \`\[\^\` ClassContents \`\]\` 1. Let \_A\_ be
+-- | CompileToCharSet of \|ClassContents\| with argument \_rer\_. 1. If
+-- | \_rer\_.\[\[UnicodeSets\]\] is \*true\*, then 1. Return the Record {
+-- | \[\[CharSet\]\]: CharacterComplement(\_rer\_, \_A\_), \[\[Invert\]\]:
+-- | \*false\* }. 1. Return the Record { \[\[CharSet\]\]: \_A\_,
+-- | \[\[Invert\]\]: \*true\* }.
+-- |
+
+-- SPEC: L31008-L31017
+-- | # CharacterRange ( \_A\_: a CharSet, \_B\_: a CharSet, ): a CharSet
+-- |
+-- | 1\. Assert: \_A\_ and \_B\_ each contain exactly one character. 1. Let
+-- | \_a\_ be the one character in CharSet \_A\_. 1. Let \_b\_ be the one
+-- | character in CharSet \_B\_. 1. Let \_i\_ be the character value of
+-- | character \_a\_. 1. Let \_j\_ be the character value of character
+-- | \_b\_. 1. Assert: \_i\_ ≤ \_j\_. 1. Return the CharSet containing all
+-- | characters with a character value in the inclusive interval from \_i\_
+-- | to \_j\_.
+-- |
+
+-- SPEC: L31018-L31023
+-- | # HasEitherUnicodeFlag ( \_rer\_: a RegExp Record, ): a Boolean
+-- |
+-- | 1\. If \_rer\_.\[\[Unicode\]\] is \*true\* or
+-- | \_rer\_.\[\[UnicodeSets\]\] is \*true\*, return \*true\*. 1. Return
+-- | \*false\*.
+-- |
+
+-- SPEC: L31024-L31039
+-- | # WordCharacters ( \_rer\_: a RegExp Record, ): a CharSet
+-- |
+-- | description
+-- | :   Returns a CharSet containing the characters considered \"word
+-- |     characters\" for the purposes of \`\\\\b\`, \`\\\\B\`, \`\\\\w\`,
+-- |     and \`\\\\W\`
+-- |
+-- | 1\. Let \_basicWordChars\_ be the CharSet containing every character in
+-- | the ASCII word characters. 1. Let \_extraWordChars\_ be the CharSet
+-- | containing all characters \_c\_ such that \_c\_ is not in
+-- | \_basicWordChars\_ but Canonicalize(\_rer\_, \_c\_) is in
+-- | \_basicWordChars\_. 1. Assert: \_extraWordChars\_ is empty unless
+-- | HasEitherUnicodeFlag(\_rer\_) is \*true\* and \_rer\_.\[\[IgnoreCase\]\]
+-- | is \*true\*. 1. Return the union of \_basicWordChars\_ and
+-- | \_extraWordChars\_.
+-- |
+
+-- SPEC: L31040-L31054
+-- | # AllCharacters ( \_rer\_: a RegExp Record, ): a CharSet
+-- |
+-- | description
+-- | :   Returns the set of "all characters" according to the regular
+-- |     expression flags.
+-- |
+-- | 1\. If \_rer\_.\[\[UnicodeSets\]\] is \*true\* and
+-- | \_rer\_.\[\[IgnoreCase\]\] is \*true\*, then 1. \[declared=\"c\"\]
+-- | Return the CharSet containing all Unicode code points \_c\_ that do not
+-- | have a [Simple Case
+-- | Folding](https://www.unicode.org/reports/tr44/#Simple_Case_Folding)
+-- | mapping (that is, scf(\_c\_)=\_c\_). 1. If HasEitherUnicodeFlag(\_rer\_)
+-- | is \*true\*, then 1. Return the CharSet containing all code point
+-- | values. 1. Return the CharSet containing all code unit values.
+-- |
+
+-- SPEC: L31055-L31075
+-- | # MaybeSimpleCaseFolding ( \_rer\_: a RegExp Record, \_A\_: a CharSet, ): a CharSet
+-- |
+-- | description
+-- | :   If \_rer\_.\[\[UnicodeSets\]\] is \*false\* or
+-- |     \_rer\_.\[\[IgnoreCase\]\] is \*false\*, it returns \_A\_.
+-- |     Otherwise, it uses the [Simple Case
+-- |     Folding](https://www.unicode.org/reports/tr44/#Simple_Case_Folding)
+-- |     (scf(\_cp\_)) definitions in the file
+-- |     [`CaseFolding.txt`](https://unicode.org/Public/UCD/latest/ucd/CaseFolding.txt)
+-- |     of the Unicode Character Database (each of which maps a single code
+-- |     point to another single code point) to map each CharSetElement of
+-- |     \_A\_ character-by-character into a canonical form and returns the
+-- |     resulting CharSet.
+-- |
+-- | 1\. If \_rer\_.\[\[UnicodeSets\]\] is \*false\* or
+-- | \_rer\_.\[\[IgnoreCase\]\] is \*false\*, return \_A\_. 1. Let \_B\_ be a
+-- | new empty CharSet. 1. For each CharSetElement \_s\_ of \_A\_, do 1. Let
+-- | \_t\_ be an empty sequence of characters. 1. For each single code point
+-- | \_cp\_ in \_s\_, do 1. Append scf(\_cp\_) to \_t\_. 1. Add \_t\_ to
+-- | \_B\_. 1. Return \_B\_.
+-- |
+
+-- SPEC: L31076-L31081
+-- | # CharacterComplement ( \_rer\_: a RegExp Record, \_S\_: a CharSet, ): a CharSet
+-- |
+-- | 1\. Let \_A\_ be AllCharacters(\_rer\_). 1. Return the CharSet
+-- | containing the CharSetElements of \_A\_ which are not also
+-- | CharSetElements of \_S\_.
+-- |
+
+-- SPEC: L31082-L31108
+-- | # UnicodeMatchProperty ( \_rer\_: a RegExp Record, \_p\_: ECMAScript source text, ): a Unicode property name
+-- |
+-- | 1\. If \_rer\_.\[\[UnicodeSets\]\] is \*true\* and \_p\_ is a Unicode
+-- | property name listed in the "Property name" column of , then 1. Return
+-- | the List of Unicode code points \_p\_. 1. Assert: \_p\_ is a Unicode
+-- | property name or property alias listed in the "Property name and
+-- | aliases" column of or . 1. Let \_c\_ be the canonical property name of
+-- | \_p\_ as given in the "Canonical property name" column of the
+-- | corresponding row. 1. Return the List of Unicode code points \_c\_.
+-- |
+-- | Implementations must support the Unicode property names and aliases
+-- | listed in , , and . To ensure interoperability, implementations must not
+-- | support any other property names or aliases.
+-- |
+-- | For example, \`Script_Extensions\` (property name) and \`scx\` (property
+-- | alias) are valid, but \`script_extensions\` or \`Scx\` aren\'t.
+-- |
+-- | The listed properties form a superset of what [UTS18
+-- | RL1.2](https://unicode.org/reports/tr18/#RL1.2) requires.
+-- |
+-- | The spellings of entries in these tables (including casing) match the
+-- | spellings used in the file
+-- | [`PropertyAliases.txt`](https://unicode.org/Public/UCD/latest/ucd/PropertyAliases.txt)
+-- | in the Unicode Character Database. The precise spellings in that file
+-- | are [guaranteed to be
+-- | stable](https://www.unicode.org/policies/stability_policy.html#Alias_Stability).
+-- |
+
+-- SPEC: L31109-L31134
+-- | # UnicodeMatchPropertyValue ( \_p\_: ECMAScript source text, \_v\_: ECMAScript source text, ): a Unicode property value
+-- |
+-- | 1\. Assert: \_p\_ is a canonical, unaliased Unicode property name listed
+-- | in the "Canonical property name" column of . 1. Assert: \_v\_ is a
+-- | property value or property value alias for the Unicode property \_p\_
+-- | listed in
+-- | [`PropertyValueAliases.txt`](https://unicode.org/Public/UCD/latest/ucd/PropertyValueAliases.txt). 1.
+-- | Let \_value\_ be the canonical property value of \_v\_ as given in the
+-- | "Canonical property value" column of the corresponding row. 1. Return
+-- | the List of Unicode code points \_value\_.
+-- |
+-- | Implementations must support the Unicode property values and property
+-- | value aliases listed in
+-- | [`PropertyValueAliases.txt`](https://unicode.org/Public/UCD/latest/ucd/PropertyValueAliases.txt)
+-- | for the properties listed in . To ensure interoperability,
+-- | implementations must not support any other property values or property
+-- | value aliases.
+-- |
+-- | For example, \`Xpeo\` and \`Old_Persian\` are valid
+-- | \`Script_Extensions\` values, but \`xpeo\` and \`Old Persian\` aren\'t.
+-- |
+-- | This algorithm differs from [the matching rules for symbolic values
+-- | listed in UAX44](https://unicode.org/reports/tr44/#Matching_Symbolic):
+-- | case, white space, U+002D (HYPHEN-MINUS), and U+005F (LOW LINE) are not
+-- | ignored, and the \`Is\` prefix is not supported.
+-- |
+
+-- SPEC: L31135-L31147
+-- | # Runtime Semantics: CompileClassSetString ( \_rer\_: a RegExp Record, ): a sequence of characters
+-- |
+-- | ClassString :: \[empty\] 1. Return an empty sequence of characters.
+-- | ClassString :: NonEmptyClassString 1. Return CompileClassSetString of
+-- | \|NonEmptyClassString\| with argument \_rer\_. NonEmptyClassString ::
+-- | ClassSetCharacter NonEmptyClassString? 1. Let \_cs\_ be CompileToCharSet
+-- | of \|ClassSetCharacter\| with argument \_rer\_. 1. Let \_s1\_ be the
+-- | sequence of characters that is the single CharSetElement of \_cs\_. 1.
+-- | If \|NonEmptyClassString\| is present, then 1. Let \_s2\_ be
+-- | CompileClassSetString of \|NonEmptyClassString\| with argument
+-- | \_rer\_. 1. Return the concatenation of \_s1\_ and \_s2\_. 1. Return
+-- | \_s1\_.
+-- |
+
+-- SPEC: L31197-L31210
+-- | # Static Semantics: ParsePattern ( \_patternText\_: a sequence of Unicode code points, \_u\_: a Boolean, \_v\_: a Boolean, ): a Parse Node or a non-empty List of \*SyntaxError\* objects
+-- |
+-- | This section is amended in .
+-- |
+-- | 1\. If \_v\_ is \*true\* and \_u\_ is \*true\*, then 1. Let
+-- | \_parseResult\_ be a List containing one or more \*SyntaxError\*
+-- | objects. 1. Else if \_v\_ is \*true\*, then 1. Let \_parseResult\_ be
+-- | ParseText(\_patternText\_, \|Pattern\[+UnicodeMode, +UnicodeSetsMode,
+-- | +NamedCaptureGroups\]\|). 1. Else if \_u\_ is \*true\*, then 1. Let
+-- | \_parseResult\_ be ParseText(\_patternText\_, \|Pattern\[+UnicodeMode,
+-- | \~UnicodeSetsMode, +NamedCaptureGroups\]\|). 1. Else, 1. Let
+-- | \_parseResult\_ be ParseText(\_patternText\_, \|Pattern\[\~UnicodeMode,
+-- | \~UnicodeSetsMode, +NamedCaptureGroups\]\|). 1. Return \_parseResult\_.
+-- |
+
+-- SPEC: L31257-L31264
+-- | # Properties of the RegExp Constructor
+-- |
+-- | The RegExp constructor:
+-- |
+-- | - has a \[\[Prototype\]\] internal slot whose value is
+-- |   %Function.prototype%.
+-- | - has the following properties:
+-- |
+
+-- SPEC: L31265-L31294
+-- | # RegExp.escape ( \_S\_ )
+-- |
+-- | This function returns a copy of \_S\_ in which characters that are
+-- | potentially special in a regular expression \|Pattern\| have been
+-- | replaced by equivalent escape sequences.
+-- |
+-- | It performs the following steps when called:
+-- |
+-- | 1\. If \_S\_ is not a String, throw a \*TypeError\* exception. 1. Let
+-- | \_escaped\_ be the empty String. 1. Let \_cpList\_ be
+-- | StringToCodePoints(\_S\_). 1. For each code point \_cp\_ of \_cpList\_,
+-- | do 1. If \_escaped\_ is the empty String and \_cp\_ is matched by either
+-- | \|DecimalDigit\| or \|AsciiLetter\|, then 1. NOTE: Escaping a leading
+-- | digit ensures that output corresponds with pattern text which may be
+-- | used after a \`\\0\` character escape or a \|DecimalEscape\| such as
+-- | \`\\1\` and still match \_S\_ rather than be interpreted as an extension
+-- | of the preceding escape sequence. Escaping a leading ASCII letter does
+-- | the same for the context after \`\\c\`. 1. Let \_numericValue\_ be the
+-- | numeric value of \_cp\_. 1. Let \_hex\_ be
+-- | Number::toString(𝔽(\_numericValue\_), 16). 1. Assert: The length of
+-- | \_hex\_ is 2. 1. Set \_escaped\_ to the string-concatenation of the code
+-- | unit 0x005C (REVERSE SOLIDUS), \*\"x\"\*, and \_hex\_. 1. Else, 1. Set
+-- | \_escaped\_ to the string-concatenation of \_escaped\_ and
+-- | EncodeForRegExpEscape(\_cp\_). 1. Return \_escaped\_.
+-- |
+-- | Despite having similar names, EscapeRegExpPattern and \`RegExp.escape\`
+-- | do not perform similar actions. The former escapes a pattern for
+-- | representation as a string, while this function escapes a string for
+-- | representation inside a pattern.
+-- |
+
+-- SPEC: L31295-L31324
+-- | # EncodeForRegExpEscape ( \_cp\_: a code point, ): a String
+-- |
+-- | description
+-- | :   It returns a String representing a \|Pattern\| for matching \_cp\_.
+-- |     If \_cp\_ is white space or an ASCII punctuator, the returned value
+-- |     is an escape sequence. Otherwise, the returned value is a String
+-- |     representation of \_cp\_ itself.
+-- |
+-- | 1\. If \_cp\_ is matched by \|SyntaxCharacter\| or \_cp\_ is U+002F
+-- | (SOLIDUS), then 1. Return the string-concatenation of 0x005C (REVERSE
+-- | SOLIDUS) and UTF16EncodeCodePoint(\_cp\_). 1. If \_cp\_ is a code point
+-- | listed in the "Code Point" column of , then 1. Return the
+-- | string-concatenation of 0x005C (REVERSE SOLIDUS) and the string in the
+-- | "ControlEscape" column of the row whose "Code Point" column contains
+-- | \_cp\_. 1. Let \_otherPunctuators\_ be the string-concatenation of
+-- | \*\",-=\<\>#&!%:;@\~\'\`\"\* and the code unit 0x0022 (QUOTATION
+-- | MARK). 1. Let \_toEscape\_ be
+-- | StringToCodePoints(\_otherPunctuators\_). 1. If \_toEscape\_ contains
+-- | \_cp\_, \_cp\_ is matched by either \|WhiteSpace\| or
+-- | \|LineTerminator\|, or \_cp\_ has the same numeric value as a leading
+-- | surrogate or trailing surrogate, then 1. Let \_cpNum\_ be the numeric
+-- | value of \_cp\_. 1. If \_cpNum\_ ≤ 0xFF, then 1. Let \_hex\_ be
+-- | Number::toString(𝔽(\_cpNum\_), 16). 1. Return the string-concatenation
+-- | of the code unit 0x005C (REVERSE SOLIDUS), \*\"x\"\*, and
+-- | StringPad(\_hex\_, 2, \*\"0\"\*, \~start\~). 1. Let \_escaped\_ be the
+-- | empty String. 1. Let \_codeUnits\_ be UTF16EncodeCodePoint(\_cp\_). 1.
+-- | For each code unit \_cu\_ of \_codeUnits\_, do 1. Set \_escaped\_ to the
+-- | string-concatenation of \_escaped\_ and UnicodeEscape(\_cu\_). 1. Return
+-- | \_escaped\_. 1. Return UTF16EncodeCodePoint(\_cp\_).
+-- |
+
+-- SPEC: L36210-L36214
+-- | # Set.prototype \[ %Symbol.iterator% \] ( )
+-- |
+-- | The initial value of the %Symbol.iterator% property is
+-- | %Set.prototype.values%, defined in .
+-- |
+
+-- SPEC: L36215-L36222
+-- | # Set.prototype \[ %Symbol.toStringTag% \]
+-- |
+-- | The initial value of the %Symbol.toStringTag% property is the String
+-- | value \*\"Set\"\*.
+-- |
+-- | This property has the attributes { \[\[Writable\]\]: \*false\*,
+-- | \[\[Enumerable\]\]: \*false\*, \[\[Configurable\]\]: \*true\* }.
+-- |
+
+-- SPEC: L36263-L36272
+-- | # The %SetIteratorPrototype% Object
+-- |
+-- | The [%SetIteratorPrototype%]{.dfn} object:
+-- |
+-- | - has properties that are inherited by all Set Iterator objects.
+-- | - is an ordinary object.
+-- | - has a \[\[Prototype\]\] internal slot whose value is
+-- |   %Iterator.prototype%.
+-- | - has the following properties:
+-- |
+
+-- SPEC: L36278-L36285
+-- | # %SetIteratorPrototype% \[ %Symbol.toStringTag% \]
+-- |
+-- | The initial value of the %Symbol.toStringTag% property is the String
+-- | value \*\"Set Iterator\"\*.
+-- |
+-- | This property has the attributes { \[\[Writable\]\]: \*false\*,
+-- | \[\[Enumerable\]\]: \*false\*, \[\[Configurable\]\]: \*true\* }.
+-- |
+
+-- SPEC: L36396-L36399
+-- | # WeakMap.prototype.constructor
+-- |
+-- | The initial value of \`WeakMap.prototype.constructor\` is %WeakMap%.
+-- |
+
+-- SPEC: L36603-L36606
+-- | # WeakSet.prototype.constructor
+-- |
+-- | The initial value of \`WeakSet.prototype.constructor\` is %WeakSet%.
+-- |
+
+-- SPEC: L36659-L36683
+-- | # Notation
+-- |
+-- | The descriptions below in this section, , and use the read-modify-write
+-- | modification function internal data structure.
+-- |
+-- | A [read-modify-write modification function]{.dfn
+-- | variants="read-modify-write modification functions"} is a mathematical
+-- | function that is represented as an abstract closure that takes two Lists
+-- | of byte values as arguments and returns a List of byte values. These
+-- | abstract closures satisfy all of the following properties:
+-- |
+-- | - They perform all their algorithm steps atomically.
+-- | - Their individual algorithm steps are not observable.
+-- |
+-- | To aid verifying that a read-modify-write modification function\'s
+-- | algorithm steps constitute a pure, mathematical function, the following
+-- | editorial conventions are recommended:
+-- |
+-- | - They do not access, directly or transitively via invoked abstract
+-- |   operations and abstract closures, any language or specification values
+-- |   except their parameters and captured values.
+-- | - They do not invoke, directly or transitively, abstract operations and
+-- |   abstract closures that return Completion Records.
+-- | - They do not return Completion Records.
+-- |
+
+-- SPEC: L36736-L36762
+-- | # ArrayBufferCopyAndDetach ( \_arrayBuffer\_: an ECMAScript language value, \_newLength\_: an ECMAScript language value, \_preserveResizability\_: \~preserve-resizability\~ or \~fixed-length\~, ): either a normal completion containing an ArrayBuffer or a throw completion
+-- |
+-- | 1\. Perform ? RequireInternalSlot(\_arrayBuffer\_,
+-- | \[\[ArrayBufferData\]\]). 1. If IsSharedArrayBuffer(\_arrayBuffer\_) is
+-- | \*true\*, throw a \*TypeError\* exception. 1. If \_newLength\_ is
+-- | \*undefined\*, then 1. Let \_newByteLength\_ be
+-- | \_arrayBuffer\_.\[\[ArrayBufferByteLength\]\]. 1. Else, 1. Let
+-- | \_newByteLength\_ be ? ToIndex(\_newLength\_). 1. If
+-- | IsDetachedBuffer(\_arrayBuffer\_) is \*true\*, throw a \*TypeError\*
+-- | exception. 1. If \_preserveResizability\_ is \~preserve-resizability\~
+-- | and IsFixedLengthArrayBuffer(\_arrayBuffer\_) is \*false\*, then 1. Let
+-- | \_newMaxByteLength\_ be
+-- | \_arrayBuffer\_.\[\[ArrayBufferMaxByteLength\]\]. 1. Else, 1. Let
+-- | \_newMaxByteLength\_ be \~empty\~. 1. If
+-- | \_arrayBuffer\_.\[\[ArrayBufferDetachKey\]\] is not \*undefined\*, throw
+-- | a \*TypeError\* exception. 1. Let \_newBuffer\_ be ?
+-- | AllocateArrayBuffer(%ArrayBuffer%, \_newByteLength\_,
+-- | \_newMaxByteLength\_). 1. Let \_copyLength\_ be min(\_newByteLength\_,
+-- | \_arrayBuffer\_.\[\[ArrayBufferByteLength\]\]). 1. Let \_fromBlock\_ be
+-- | \_arrayBuffer\_.\[\[ArrayBufferData\]\]. 1. Let \_toBlock\_ be
+-- | \_newBuffer\_.\[\[ArrayBufferData\]\]. 1. Perform
+-- | CopyDataBlockBytes(\_toBlock\_, 0, \_fromBlock\_, 0, \_copyLength\_). 1.
+-- | NOTE: Neither creation of the new Data Block nor copying from the old
+-- | Data Block are observable. Implementations may implement this method as
+-- | a zero-copy move or a \`realloc\`. 1. Perform !
+-- | DetachArrayBuffer(\_arrayBuffer\_). 1. Return \_newBuffer\_.
+-- |
+
+-- SPEC: L36806-L36823
+-- | # HostResizeArrayBuffer ( \_buffer\_: an ArrayBuffer, \_newByteLength\_: a non-negative integer, ): either a normal completion containing either \~handled\~ or \~unhandled\~, or a throw completion
+-- |
+-- | description
+-- | :   It gives the host an opportunity to perform implementation-defined
+-- |     resizing of \_buffer\_. If the host chooses not to handle resizing
+-- |     of \_buffer\_, it may return \~unhandled\~ for the default
+-- |     behaviour.
+-- |
+-- | The implementation of HostResizeArrayBuffer must conform to the
+-- | following requirements:
+-- |
+-- | - The abstract operation does not detach \_buffer\_.
+-- | - If the abstract operation completes normally with \~handled\~,
+-- |   \_buffer\_.\[\[ArrayBufferByteLength\]\] is \_newByteLength\_.
+-- |
+-- | The default implementation of HostResizeArrayBuffer is to return
+-- | NormalCompletion(\~unhandled\~).
+-- |
+
+-- SPEC: L36856-L36862
+-- | # IsNoTearConfiguration ( \_type\_: a TypedArray element type, \_order\_: \~seq-cst\~, \~unordered\~, or \~init\~, ): a Boolean
+-- |
+-- | 1\. If IsUnclampedIntegerElementType(\_type\_) is \*true\*, return
+-- | \*true\*. 1. If IsBigIntElementType(\_type\_) is \*true\* and \_order\_
+-- | is neither \~init\~ nor \~unordered\~, return \*true\*. 1. Return
+-- | \*false\*.
+-- |
+
+-- SPEC: L36863-L36889
+-- | # RawBytesToNumeric ( \_type\_: a TypedArray element type, \_rawBytes\_: a List of byte values, \_isLittleEndian\_: a Boolean, ): a Number or a BigInt
+-- |
+-- | 1\. Let \_elementSize\_ be the Element Size value specified in for
+-- | Element Type \_type\_. 1. If \_isLittleEndian\_ is \*false\*, reverse
+-- | the order of the elements of \_rawBytes\_. 1. If \_type\_ is
+-- | \~float16\~, then 1. Let \_value\_ be the byte elements of \_rawBytes\_
+-- | concatenated and interpreted as a little-endian bit string encoding of
+-- | an IEEE 754-2019 binary16 value. 1. If \_value\_ is a NaN, return
+-- | \*NaN\*. 1. Return the Number value that corresponds to \_value\_. 1. If
+-- | \_type\_ is \~float32\~, then 1. Let \_value\_ be the byte elements of
+-- | \_rawBytes\_ concatenated and interpreted as a little-endian bit string
+-- | encoding of an IEEE 754-2019 binary32 value. 1. If \_value\_ is a NaN,
+-- | return \*NaN\*. 1. Return the Number value that corresponds to
+-- | \_value\_. 1. If \_type\_ is \~float64\~, then 1. Let \_value\_ be the
+-- | byte elements of \_rawBytes\_ concatenated and interpreted as a
+-- | little-endian bit string encoding of an IEEE 754-2019 binary64 value. 1.
+-- | If \_value\_ is a NaN, return \*NaN\*. 1. Return the Number value that
+-- | corresponds to \_value\_. 1. If IsUnsignedElementType(\_type\_) is
+-- | \*true\*, then 1. Let \_intValue\_ be the byte elements of \_rawBytes\_
+-- | concatenated and interpreted as a bit string encoding of an unsigned
+-- | little-endian binary number. 1. Else, 1. Let \_intValue\_ be the byte
+-- | elements of \_rawBytes\_ concatenated and interpreted as a bit string
+-- | encoding of a binary little-endian two\'s complement number of bit
+-- | length \_elementSize\_ × 8. 1. If IsBigIntElementType(\_type\_) is
+-- | \*true\*, return the BigInt value that corresponds to \_intValue\_. 1.
+-- | Return the Number value that corresponds to \_intValue\_.
+-- |
+
+-- SPEC: L36890-L36912
+-- | # GetRawBytesFromSharedBlock ( \_block\_: a Shared Data Block, \_byteIndex\_: a non-negative integer, \_type\_: a TypedArray element type, \_isTypedArray\_: a Boolean, \_order\_: \~seq-cst\~ or \~unordered\~, ): a List of byte values
+-- |
+-- | 1\. Let \_elementSize\_ be the Element Size value specified in for
+-- | Element Type \_type\_. 1. Let \_AR\_ be the Agent Record of the
+-- | surrounding agent. 1. Let \_execution\_ be
+-- | \_AR\_.\[\[CandidateExecution\]\]. 1. Let \_eventsRecord\_ be the Agent
+-- | Events Record of \_execution\_.\[\[EventsRecords\]\] whose
+-- | \[\[AgentSignifier\]\] is AgentSignifier(). 1. If \_isTypedArray\_ is
+-- | \*true\* and IsNoTearConfiguration(\_type\_, \_order\_) is \*true\*, let
+-- | \_noTear\_ be \*true\*; else let \_noTear\_ be \*false\*. 1. Let
+-- | \_rawValue\_ be a List of length \_elementSize\_ whose elements are
+-- | nondeterministically chosen byte values. 1. NOTE: In implementations,
+-- | \_rawValue\_ is the result of a non-atomic or atomic read instruction on
+-- | the underlying hardware. The nondeterminism is a semantic prescription
+-- | of the memory model to describe observable behaviour of hardware with
+-- | weak consistency. 1. Let \_readEvent\_ be ReadSharedMemory {
+-- | \[\[Order\]\]: \_order\_, \[\[NoTear\]\]: \_noTear\_, \[\[Block\]\]:
+-- | \_block\_, \[\[ByteIndex\]\]: \_byteIndex\_, \[\[ElementSize\]\]:
+-- | \_elementSize\_ }. 1. Append \_readEvent\_ to
+-- | \_eventsRecord\_.\[\[EventList\]\]. 1. Append Chosen Value Record {
+-- | \[\[Event\]\]: \_readEvent\_, \[\[ChosenValue\]\]: \_rawValue\_ } to
+-- | \_execution\_.\[\[ChosenValues\]\]. 1. Return \_rawValue\_.
+-- |
+
+-- SPEC: L36913-L36931
+-- | # GetValueFromBuffer ( \_arrayBuffer\_: an ArrayBuffer or SharedArrayBuffer, \_byteIndex\_: a non-negative integer, \_type\_: a TypedArray element type, \_isTypedArray\_: a Boolean, \_order\_: \~seq-cst\~ or \~unordered\~, optional \_isLittleEndian\_: a Boolean, ): a Number or a BigInt
+-- |
+-- | 1\. Assert: IsDetachedBuffer(\_arrayBuffer\_) is \*false\*. 1. Assert:
+-- | There are sufficient bytes in \_arrayBuffer\_ starting at \_byteIndex\_
+-- | to represent a value of \_type\_. 1. Let \_block\_ be
+-- | \_arrayBuffer\_.\[\[ArrayBufferData\]\]. 1. Let \_elementSize\_ be the
+-- | Element Size value specified in for Element Type \_type\_. 1. If
+-- | IsSharedArrayBuffer(\_arrayBuffer\_) is \*true\*, then 1. Assert:
+-- | \_block\_ is a Shared Data Block. 1. Let \_rawValue\_ be
+-- | GetRawBytesFromSharedBlock(\_block\_, \_byteIndex\_, \_type\_,
+-- | \_isTypedArray\_, \_order\_). 1. Else, 1. Let \_rawValue\_ be a List
+-- | whose elements are bytes from \_block\_ at indices in the interval from
+-- | \_byteIndex\_ (inclusive) to \_byteIndex\_ + \_elementSize\_
+-- | (exclusive). 1. Assert: The number of elements in \_rawValue\_ is
+-- | \_elementSize\_. 1. If \_isLittleEndian\_ is not present, then 1. Let
+-- | \_AR\_ be the Agent Record of the surrounding agent. 1. Set
+-- | \_isLittleEndian\_ to \_AR\_.\[\[LittleEndian\]\]. 1. Return
+-- | RawBytesToNumeric(\_type\_, \_rawValue\_, \_isLittleEndian\_).
+-- |
+
+-- SPEC: L36932-L36965
+-- | # NumericToRawBytes ( \_type\_: a TypedArray element type, \_value\_: a Number or a BigInt, \_isLittleEndian\_: a Boolean, ): a List of byte values
+-- |
+-- | 1\. If \_type\_ is \~float16\~, then 1. Let \_rawBytes\_ be a List whose
+-- | elements are the 2 bytes that are the result of converting \_value\_ to
+-- | IEEE 754-2019 binary16 format using roundTiesToEven mode. The bytes are
+-- | arranged in little endian order. If \_value\_ is \*NaN\*, \_rawBytes\_
+-- | may be set to any implementation chosen IEEE 754-2019 binary16 format
+-- | NaN encoding. An implementation must always choose the same encoding for
+-- | each implementation distinguishable \*NaN\* value. 1. Else if \_type\_
+-- | is \~float32\~, then 1. Let \_rawBytes\_ be a List whose elements are
+-- | the 4 bytes that are the result of converting \_value\_ to IEEE 754-2019
+-- | binary32 format using roundTiesToEven mode. The bytes are arranged in
+-- | little endian order. If \_value\_ is \*NaN\*, \_rawBytes\_ may be set to
+-- | any implementation chosen IEEE 754-2019 binary32 format NaN encoding. An
+-- | implementation must always choose the same encoding for each
+-- | implementation distinguishable \*NaN\* value. 1. Else if \_type\_ is
+-- | \~float64\~, then 1. Let \_rawBytes\_ be a List whose elements are the 8
+-- | bytes that are the IEEE 754-2019 binary64 format encoding of \_value\_.
+-- | The bytes are arranged in little endian order. If \_value\_ is \*NaN\*,
+-- | \_rawBytes\_ may be set to any implementation chosen IEEE 754-2019
+-- | binary64 format NaN encoding. An implementation must always choose the
+-- | same encoding for each implementation distinguishable \*NaN\* value. 1.
+-- | Else, 1. Let \_n\_ be the Element Size value specified in for Element
+-- | Type \_type\_. 1. Let \_conversionOperation\_ be the abstract operation
+-- | named in the "Conversion Operation" column of for Element Type
+-- | \_type\_. 1. Let \_intValue\_ be ℝ(!
+-- | \_conversionOperation\_(\_value\_)). 1. If \_intValue\_ ≥ 0, then 1. Let
+-- | \_rawBytes\_ be a List whose elements are the \_n\_-byte binary encoding
+-- | of \_intValue\_. The bytes are ordered in little endian order. 1.
+-- | Else, 1. Let \_rawBytes\_ be a List whose elements are the \_n\_-byte
+-- | binary two\'s complement encoding of \_intValue\_. The bytes are ordered
+-- | in little endian order. 1. If \_isLittleEndian\_ is \*false\*, reverse
+-- | the order of the elements of \_rawBytes\_. 1. Return \_rawBytes\_.
+-- |
+
+-- SPEC: L36966-L36991
+-- | # SetValueInBuffer ( \_arrayBuffer\_: an ArrayBuffer or SharedArrayBuffer, \_byteIndex\_: a non-negative integer, \_type\_: a TypedArray element type, \_value\_: a Number or a BigInt, \_isTypedArray\_: a Boolean, \_order\_: \~seq-cst\~, \~unordered\~, or \~init\~, optional \_isLittleEndian\_: a Boolean, ): \~unused\~
+-- |
+-- | 1\. Assert: IsDetachedBuffer(\_arrayBuffer\_) is \*false\*. 1. Assert:
+-- | There are sufficient bytes in \_arrayBuffer\_ starting at \_byteIndex\_
+-- | to represent a value of \_type\_. 1. Assert: \_value\_ is a BigInt if
+-- | IsBigIntElementType(\_type\_) is \*true\*; else, \_value\_ is a
+-- | Number. 1. Let \_block\_ be \_arrayBuffer\_.\[\[ArrayBufferData\]\]. 1.
+-- | Let \_elementSize\_ be the Element Size value specified in for Element
+-- | Type \_type\_. 1. Let \_AR\_ be the Agent Record of the surrounding
+-- | agent. 1. If \_isLittleEndian\_ is not present, then 1. Set
+-- | \_isLittleEndian\_ to \_AR\_.\[\[LittleEndian\]\]. 1. Let \_rawBytes\_
+-- | be NumericToRawBytes(\_type\_, \_value\_, \_isLittleEndian\_). 1. If
+-- | IsSharedArrayBuffer(\_arrayBuffer\_) is \*true\*, then 1. Let
+-- | \_execution\_ be \_AR\_.\[\[CandidateExecution\]\]. 1. Let
+-- | \_eventsRecord\_ be the Agent Events Record of
+-- | \_execution\_.\[\[EventsRecords\]\] whose \[\[AgentSignifier\]\] is
+-- | AgentSignifier(). 1. If \_isTypedArray\_ is \*true\* and
+-- | IsNoTearConfiguration(\_type\_, \_order\_) is \*true\*, let \_noTear\_
+-- | be \*true\*; else let \_noTear\_ be \*false\*. 1. Append
+-- | WriteSharedMemory { \[\[Order\]\]: \_order\_, \[\[NoTear\]\]:
+-- | \_noTear\_, \[\[Block\]\]: \_block\_, \[\[ByteIndex\]\]: \_byteIndex\_,
+-- | \[\[ElementSize\]\]: \_elementSize\_, \[\[Payload\]\]: \_rawBytes\_ } to
+-- | \_eventsRecord\_.\[\[EventList\]\]. 1. Else, 1. Store the individual
+-- | bytes of \_rawBytes\_ into \_block\_, starting at
+-- | \_block\_\[\_byteIndex\_\]. 1. Return \~unused\~.
+-- |
+
+-- SPEC: L36992-L37028
+-- | # GetModifySetValueInBuffer ( \_arrayBuffer\_: an ArrayBuffer or a SharedArrayBuffer, \_byteIndex\_: a non-negative integer, \_type\_: a TypedArray element type, \_value\_: a Number or a BigInt, \_op\_: a read-modify-write modification function, ): a Number or a BigInt
+-- |
+-- | 1\. Assert: IsDetachedBuffer(\_arrayBuffer\_) is \*false\*. 1. Assert:
+-- | There are sufficient bytes in \_arrayBuffer\_ starting at \_byteIndex\_
+-- | to represent a value of \_type\_. 1. Assert: \_value\_ is a BigInt if
+-- | IsBigIntElementType(\_type\_) is \*true\*; else, \_value\_ is a
+-- | Number. 1. Let \_block\_ be \_arrayBuffer\_.\[\[ArrayBufferData\]\]. 1.
+-- | Let \_elementSize\_ be the Element Size value specified in for Element
+-- | Type \_type\_. 1. Let \_AR\_ be the Agent Record of the surrounding
+-- | agent. 1. Let \_isLittleEndian\_ be \_AR\_.\[\[LittleEndian\]\]. 1. Let
+-- | \_rawBytes\_ be NumericToRawBytes(\_type\_, \_value\_,
+-- | \_isLittleEndian\_). 1. If IsSharedArrayBuffer(\_arrayBuffer\_) is
+-- | \*true\*, then 1. Let \_execution\_ be
+-- | \_AR\_.\[\[CandidateExecution\]\]. 1. Let \_eventsRecord\_ be the Agent
+-- | Events Record of \_execution\_.\[\[EventsRecords\]\] whose
+-- | \[\[AgentSignifier\]\] is AgentSignifier(). 1. Let \_rawBytesRead\_ be a
+-- | List of length \_elementSize\_ whose elements are nondeterministically
+-- | chosen byte values. 1. NOTE: In implementations, \_rawBytesRead\_ is the
+-- | result of a load-link, of a load-exclusive, or of an operand of a
+-- | read-modify-write instruction on the underlying hardware. The
+-- | nondeterminism is a semantic prescription of the memory model to
+-- | describe observable behaviour of hardware with weak consistency. 1. Let
+-- | \_rmwEvent\_ be ReadModifyWriteSharedMemory { \[\[Order\]\]:
+-- | \~seq-cst\~, \[\[NoTear\]\]: \*true\*, \[\[Block\]\]: \_block\_,
+-- | \[\[ByteIndex\]\]: \_byteIndex\_, \[\[ElementSize\]\]: \_elementSize\_,
+-- | \[\[Payload\]\]: \_rawBytes\_, \[\[ModifyOp\]\]: \_op\_ }. 1. Append
+-- | \_rmwEvent\_ to \_eventsRecord\_.\[\[EventList\]\]. 1. Append Chosen
+-- | Value Record { \[\[Event\]\]: \_rmwEvent\_, \[\[ChosenValue\]\]:
+-- | \_rawBytesRead\_ } to \_execution\_.\[\[ChosenValues\]\]. 1. Else, 1.
+-- | Let \_rawBytesRead\_ be a List of length \_elementSize\_ whose elements
+-- | are the sequence of \_elementSize\_ bytes starting with
+-- | \_block\_\[\_byteIndex\_\]. 1. Let \_rawBytesModified\_ be
+-- | \_op\_(\_rawBytesRead\_, \_rawBytes\_). 1. Store the individual bytes of
+-- | \_rawBytesModified\_ into \_block\_, starting at
+-- | \_block\_\[\_byteIndex\_\]. 1. Return RawBytesToNumeric(\_type\_,
+-- | \_rawBytesRead\_, \_isLittleEndian\_).
+-- |
+
+-- SPEC: L39399-L39407
+-- | # Common Iteration Interfaces
+-- |
+-- | An interface is a set of property keys whose associated values match a
+-- | specific specification. Any object that provides all the properties as
+-- | described by an interface\'s specification *conforms* to that interface.
+-- | An interface is not represented by a distinct object. There may be many
+-- | separately implemented objects that conform to any interface. An
+-- | individual object may conform to multiple interfaces.
+-- |
+
+-- SPEC: L39408-L39417
+-- | # The Iterable Interface
+-- |
+-- | The [iterable interface]{.dfn
+-- | variants="iterable,iterables,iterable object,iterable objects"} includes
+-- | the property described in :
+-- |
+-- |   Property                Value                                        Requirements
+-- |   ----------------------- -------------------------------------------- -------------------------------------------------------------
+-- |   \`%Symbol.iterator%\`   a function that returns an iterator object   The returned object must conform to the iterator interface.
+-- |
+
+-- SPEC: L39418-L39445
+-- | # The Iterator Interface
+-- |
+-- | An object that implements the [iterator interface]{.dfn
+-- | variants="iterator object,iterator objects,iterator,iterators"} must
+-- | include the property in . Such objects may also implement the properties
+-- | in .
+-- |
+-- |   Property       Value                                              Requirements
+-- |   -------------- -------------------------------------------------- -----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+-- |   \*\"next\"\*   a function that returns an IteratorResult object   The returned object must conform to the IteratorResult interface. If a previous call to the \`next\` method of an iterator has returned an IteratorResult object whose \*\"done\"\* property is \*true\*, then all subsequent calls to the \`next\` method of that object should also return an IteratorResult object whose \*\"done\"\* property is \*true\*. However, this requirement is not enforced.
+-- |
+-- | Arguments may be passed to the \`next\` function but their
+-- | interpretation and validity is dependent upon the target iterator. The
+-- | for-of statement and other common users of iterators do not pass any
+-- | arguments, so iterator objects that expect to be used in such a manner
+-- | must be prepared to deal with being called with no arguments.
+-- |
+-- |   Property         Value                                              Requirements
+-- |   ---------------- -------------------------------------------------- -----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+-- |   \*\"return\"\*   a function that returns an IteratorResult object   The returned object must conform to the IteratorResult interface. Invoking this method notifies the iterator object that the caller does not intend to make any more \`next\` method calls to the iterator. The returned IteratorResult object will typically have a \*\"done\"\* property whose value is \*true\*, and a \*\"value\"\* property with the value passed as the argument of the \`return\` method. However, this requirement is not enforced.
+-- |   \*\"throw\"\*    a function that returns an IteratorResult object   The returned object must conform to the IteratorResult interface. Invoking this method notifies the iterator object that the caller has detected an error condition. The argument may be used to identify the error condition and typically will be an exception object. A typical response is to \`throw\` the value passed as the argument. If the method does not \`throw\`, the returned IteratorResult object will typically have a \*\"done\"\* property whose value is \*true\*.
+-- |
+-- | Typically callers of these methods should check for their existence
+-- | before invoking them. Certain ECMAScript language features including
+-- | \`for\`-\`of\`, \`yield\*\`, and array destructuring call these methods
+-- | after performing an existence check. Most ECMAScript library functions
+-- | that accept iterable objects as arguments also conditionally call them.
+-- |
+
+-- SPEC: L39446-L39455
+-- | # The Async Iterable Interface
+-- |
+-- | The [async iterable interface]{.dfn
+-- | variants="async iterable,async iterables,async iterable object,async iterable objects"}
+-- | includes the properties described in :
+-- |
+-- |   Property                     Value                                              Requirements
+-- |   ---------------------------- -------------------------------------------------- -------------------------------------------------------------------
+-- |   \`%Symbol.asyncIterator%\`   a function that returns an async iterator object   The returned object must conform to the async iterator interface.
+-- |
+
+-- SPEC: L39619-L39629
+-- | # The IteratorResult Interface
+-- |
+-- | The [IteratorResult interface]{.dfn
+-- | variants="IteratorResult object,IteratorResult objects"} includes the
+-- | properties listed in :
+-- |
+-- |   Property        Value                          Requirements
+-- |   --------------- ------------------------------ ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+-- |   \*\"done\"\*    a Boolean                      This is the result status of an iterator \`next\` method call. If the end of the iterator was reached \*\"done\"\* is \*true\*. If the end was not reached \*\"done\"\* is \*false\* and a value is available. If a \*\"done\"\* property (either own or inherited) does not exist, it is considered to have the value \*false\*.
+-- |   \*\"value\"\*   an ECMAScript language value   If done is \*false\*, this is the current iteration element value. If done is \*true\*, this is the return value of the iterator, if it supplied one. If the iterator does not have a return value, \*\"value\"\* is \*undefined\*. In that case, the \*\"value\"\* property may be absent from the conforming object if it does not inherit an explicit \*\"value\"\* property.
+-- |
+
+-- SPEC: L39678-L39687
+-- | # The Iterator Constructor
+-- |
+-- | The [Iterator]{.dfn} constructor:
+-- |
+-- | - is [%Iterator%]{.dfn}.
+-- | - is the initial value of the \*\"Iterator\"\* property of the global
+-- |   object.
+-- | - is designed to be subclassable. It may be used as the value of an
+-- |   \*extends\* clause of a class definition.
+-- |
+
+-- SPEC: L39688-L39695
+-- | # Iterator ( )
+-- |
+-- | This function performs the following steps when called:
+-- |
+-- | 1\. If NewTarget is either \*undefined\* or the active function object,
+-- | throw a \*TypeError\* exception. 1. Return ?
+-- | OrdinaryCreateFromConstructor(NewTarget, \*\"%Iterator.prototype%\"\*).
+-- |
+
+-- SPEC: L39696-L39703
+-- | # Properties of the Iterator Constructor
+-- |
+-- | The Iterator constructor:
+-- |
+-- | - has a \[\[Prototype\]\] internal slot whose value is
+-- |   %Function.prototype%.
+-- | - has the following properties:
+-- |
+
+-- SPEC: L39704-L39729
+-- | # Iterator.concat ( \...\_items\_ )
+-- |
+-- | 1\. Let \_iterables\_ be a new empty List. 1. For each element \_item\_
+-- | of \_items\_, do 1. If \_item\_ is not an Object, throw a \*TypeError\*
+-- | exception. 1. Let \_method\_ be ? GetMethod(\_item\_,
+-- | %Symbol.iterator%). 1. If \_method\_ is \*undefined\*, throw a
+-- | \*TypeError\* exception. 1. Append the Record { \[\[OpenMethod\]\]:
+-- | \_method\_, \[\[Iterable\]\]: \_item\_ } to \_iterables\_. 1. Let
+-- | \_closure\_ be a new Abstract Closure with no parameters that captures
+-- | \_iterables\_ and performs the following steps when called: 1. For each
+-- | Record \_iterable\_ of \_iterables\_, do 1. Let \_iter\_ be ?
+-- | Call(\_iterable\_.\[\[OpenMethod\]\], \_iterable\_.\[\[Iterable\]\]). 1.
+-- | If \_iter\_ is not an Object, throw a \*TypeError\* exception. 1. Let
+-- | \_iteratorRecord\_ be ? GetIteratorDirect(\_iter\_). 1. Let
+-- | \_innerAlive\_ be \*true\*. 1. Repeat, while \_innerAlive\_ is
+-- | \*true\*, 1. Let \_innerValue\_ be ?
+-- | IteratorStepValue(\_iteratorRecord\_). 1. If \_innerValue\_ is \~done\~,
+-- | then 1. Set \_innerAlive\_ to \*false\*. 1. Else, 1. Let \_completion\_
+-- | be Completion(Yield(\_innerValue\_)). 1. If \_completion\_ is an abrupt
+-- | completion, then 1. Return ? IteratorClose(\_iteratorRecord\_,
+-- | \_completion\_). 1. Return ReturnCompletion(\*undefined\*). 1. Let
+-- | \_gen\_ be CreateIteratorFromClosure(\_closure\_, \*\"Iterator
+-- | Helper\"\*, %IteratorHelperPrototype%, « \[\[UnderlyingIterators\]\]
+-- | »). 1. Set \_gen\_.\[\[UnderlyingIterators\]\] to a new empty List. 1.
+-- | Return \_gen\_.
+-- |
+
+-- SPEC: L39730-L39740
+-- | # Iterator.from ( \_O\_ )
+-- |
+-- | 1\. Let \_iteratorRecord\_ be ? GetIteratorFlattenable(\_O\_,
+-- | \~iterate-string-primitives\~). 1. Let \_hasInstance\_ be ?
+-- | OrdinaryHasInstance(%Iterator%, \_iteratorRecord\_.\[\[Iterator\]\]). 1.
+-- | If \_hasInstance\_ is \*true\*, then 1. Return
+-- | \_iteratorRecord\_.\[\[Iterator\]\]. 1. Let \_wrapper\_ be
+-- | OrdinaryObjectCreate(%WrapForValidIteratorPrototype%, « \[\[Iterated\]\]
+-- | »). 1. Set \_wrapper\_.\[\[Iterated\]\] to \_iteratorRecord\_. 1. Return
+-- | \_wrapper\_.
+-- |
+
+-- SPEC: L39741-L39748
+-- | # The %WrapForValidIteratorPrototype% Object
+-- |
+-- | The [%WrapForValidIteratorPrototype%]{.dfn} object:
+-- |
+-- | - is an ordinary object.
+-- | - has a \[\[Prototype\]\] internal slot whose value is
+-- |   %Iterator.prototype%.
+-- |
+
+-- SPEC: L39749-L39756
+-- | # %WrapForValidIteratorPrototype%.next ( )
+-- |
+-- | 1\. Let \_O\_ be \*this\* value. 1. Perform ? RequireInternalSlot(\_O\_,
+-- | \[\[Iterated\]\]). 1. Let \_iteratorRecord\_ be
+-- | \_O\_.\[\[Iterated\]\]. 1. Return ?
+-- | Call(\_iteratorRecord\_.\[\[NextMethod\]\],
+-- | \_iteratorRecord\_.\[\[Iterator\]\]).
+-- |
+
+-- SPEC: L39757-L39766
+-- | # %WrapForValidIteratorPrototype%.return ( )
+-- |
+-- | 1\. Let \_O\_ be \*this\* value. 1. Perform ? RequireInternalSlot(\_O\_,
+-- | \[\[Iterated\]\]). 1. Let \_iterator\_ be
+-- | \_O\_.\[\[Iterated\]\].\[\[Iterator\]\]. 1. Assert: \_iterator\_ is an
+-- | Object. 1. Let \_returnMethod\_ be ? GetMethod(\_iterator\_,
+-- | \*\"return\"\*). 1. If \_returnMethod\_ is \*undefined\*, then 1. Return
+-- | CreateIteratorResultObject(\*undefined\*, \*true\*). 1. Return ?
+-- | Call(\_returnMethod\_, \_iterator\_).
+-- |
+
+-- SPEC: L39767-L39774
+-- | # Iterator.prototype
+-- |
+-- | The initial value of Iterator.prototype is the Iterator prototype
+-- | object.
+-- |
+-- | This property has the attributes { \[\[Writable\]\]: \*false\*,
+-- | \[\[Enumerable\]\]: \*false\*, \[\[Configurable\]\]: \*false\* }.
+-- |
+
+-- SPEC: L39775-L39796
+-- | # Properties of the Iterator Prototype Object
+-- |
+-- | The [Iterator prototype object]{.dfn}:
+-- |
+-- | - is [%Iterator.prototype%]{.dfn}.
+-- | - has a \[\[Prototype\]\] internal slot whose value is
+-- |   %Object.prototype%.
+-- | - is an ordinary object.
+-- |
+-- | All objects defined in this specification that implement the iterator
+-- | interface also inherit from %Iterator.prototype%. ECMAScript code may
+-- | also define objects that inherit from %Iterator.prototype%.
+-- | %Iterator.prototype% provides a place where additional methods that are
+-- | applicable to all iterator objects may be added.
+-- |
+-- | The following expression is one way that ECMAScript code can access the
+-- | %Iterator.prototype% object:
+-- |
+-- | ``` javascript
+-- | Object.getPrototypeOf(Object.getPrototypeOf([][Symbol.iterator]()))
+-- | ```
+-- |
+
+-- SPEC: L39797-L39803
+-- | # Iterator.prototype.constructor
+-- |
+-- | \`Iterator.prototype.constructor\` is an accessor property with
+-- | attributes { \[\[Enumerable\]\]: \*false\*, \[\[Configurable\]\]:
+-- | \*true\* }. The \[\[Get\]\] and \[\[Set\]\] attributes are defined as
+-- | follows:
+-- |
+
+-- SPEC: L39804-L39810
+-- | # get Iterator.prototype.constructor
+-- |
+-- | The value of the \[\[Get\]\] attribute is a built-in function that
+-- | requires no arguments. It performs the following steps when called:
+-- |
+-- | 1\. Return %Iterator%.
+-- |
+
+-- SPEC: L39811-L39822
+-- | # set Iterator.prototype.constructor
+-- |
+-- | The value of the \[\[Set\]\] attribute is a built-in function that takes
+-- | an argument \_v\_. It performs the following steps when called:
+-- |
+-- | 1\. Perform ? SetterThatIgnoresPrototypeProperties(\*this\* value,
+-- | %Iterator.prototype%, \*\"constructor\"\*, \_v\_). 1. Return
+-- | \*undefined\*.
+-- |
+-- | Unlike the \*\"constructor\"\* property on most built-in prototypes, for
+-- | web-compatibility reasons this property must be an accessor.
+-- |
+
+-- SPEC: L39823-L39853
+-- | # Iterator.prototype.drop ( \_limit\_ )
+-- |
+-- | This method performs the following steps when called:
+-- |
+-- | 1\. Let \_O\_ be the \*this\* value. 1. If \_O\_ is not an Object, throw
+-- | a \*TypeError\* exception. 1. Let \_iterated\_ be the Iterator Record {
+-- | \[\[Iterator\]\]: \_O\_, \[\[NextMethod\]\]: \*undefined\*,
+-- | \[\[Done\]\]: \*false\* }. 1. Let \_numLimit\_ be
+-- | Completion(ToNumber(\_limit\_)). 1. IfAbruptCloseIterator(\_numLimit\_,
+-- | \_iterated\_). 1. If \_numLimit\_ is \*NaN\*, then 1. Let \_error\_ be
+-- | ThrowCompletion(a newly created \*RangeError\* object). 1. Return ?
+-- | IteratorClose(\_iterated\_, \_error\_). 1. Let \_integerLimit\_ be !
+-- | ToIntegerOrInfinity(\_numLimit\_). 1. If \_integerLimit\_ \< 0, then 1.
+-- | Let \_error\_ be ThrowCompletion(a newly created \*RangeError\*
+-- | object). 1. Return ? IteratorClose(\_iterated\_, \_error\_). 1. Set
+-- | \_iterated\_ to ? GetIteratorDirect(\_O\_). 1. Let \_closure\_ be a new
+-- | Abstract Closure with no parameters that captures \_iterated\_ and
+-- | \_integerLimit\_ and performs the following steps when called: 1. Let
+-- | \_remaining\_ be \_integerLimit\_. 1. Repeat, while \_remaining\_ \>
+-- | 0, 1. If \_remaining\_ ≠ +∞, then 1. Set \_remaining\_ to
+-- | \_remaining\_ - 1. 1. Let \_next\_ be ? IteratorStep(\_iterated\_). 1.
+-- | If \_next\_ is \~done\~, return ReturnCompletion(\*undefined\*). 1.
+-- | Repeat, 1. Let \_value\_ be ? IteratorStepValue(\_iterated\_). 1. If
+-- | \_value\_ is \~done\~, return ReturnCompletion(\*undefined\*). 1. Let
+-- | \_completion\_ be Completion(Yield(\_value\_)). 1.
+-- | IfAbruptCloseIterator(\_completion\_, \_iterated\_). 1. Let \_result\_
+-- | be CreateIteratorFromClosure(\_closure\_, \*\"Iterator Helper\"\*,
+-- | %IteratorHelperPrototype%, « \[\[UnderlyingIterators\]\] »). 1. Set
+-- | \_result\_.\[\[UnderlyingIterators\]\] to « \_iterated\_ ». 1. Return
+-- | \_result\_.
+-- |
+
+-- SPEC: L39854-L39872
+-- | # Iterator.prototype.every ( \_predicate\_ )
+-- |
+-- | This method performs the following steps when called:
+-- |
+-- | 1\. Let \_O\_ be the \*this\* value. 1. If \_O\_ is not an Object, throw
+-- | a \*TypeError\* exception. 1. Let \_iterated\_ be the Iterator Record {
+-- | \[\[Iterator\]\]: \_O\_, \[\[NextMethod\]\]: \*undefined\*,
+-- | \[\[Done\]\]: \*false\* }. 1. If IsCallable(\_predicate\_) is \*false\*,
+-- | then 1. Let \_error\_ be ThrowCompletion(a newly created \*TypeError\*
+-- | object). 1. Return ? IteratorClose(\_iterated\_, \_error\_). 1. Set
+-- | \_iterated\_ to ? GetIteratorDirect(\_O\_). 1. Let \_counter\_ be 0. 1.
+-- | Repeat, 1. Let \_value\_ be ? IteratorStepValue(\_iterated\_). 1. If
+-- | \_value\_ is \~done\~, return \*true\*. 1. Let \_result\_ be
+-- | Completion(Call(\_predicate\_, \*undefined\*, « \_value\_,
+-- | 𝔽(\_counter\_) »)). 1. IfAbruptCloseIterator(\_result\_,
+-- | \_iterated\_). 1. If ToBoolean(\_result\_) is \*false\*, return ?
+-- | IteratorClose(\_iterated\_, NormalCompletion(\*false\*)). 1. Set
+-- | \_counter\_ to \_counter\_ + 1.
+-- |
+
+-- SPEC: L39873-L39899
+-- | # Iterator.prototype.filter ( \_predicate\_ )
+-- |
+-- | This method performs the following steps when called:
+-- |
+-- | 1\. Let \_O\_ be the \*this\* value. 1. If \_O\_ is not an Object, throw
+-- | a \*TypeError\* exception. 1. Let \_iterated\_ be the Iterator Record {
+-- | \[\[Iterator\]\]: \_O\_, \[\[NextMethod\]\]: \*undefined\*,
+-- | \[\[Done\]\]: \*false\* }. 1. If IsCallable(\_predicate\_) is \*false\*,
+-- | then 1. Let \_error\_ be ThrowCompletion(a newly created \*TypeError\*
+-- | object). 1. Return ? IteratorClose(\_iterated\_, \_error\_). 1. Set
+-- | \_iterated\_ to ? GetIteratorDirect(\_O\_). 1. Let \_closure\_ be a new
+-- | Abstract Closure with no parameters that captures \_iterated\_ and
+-- | \_predicate\_ and performs the following steps when called: 1. Let
+-- | \_counter\_ be 0. 1. Repeat, 1. Let \_value\_ be ?
+-- | IteratorStepValue(\_iterated\_). 1. If \_value\_ is \~done\~, return
+-- | ReturnCompletion(\*undefined\*). 1. Let \_selected\_ be
+-- | Completion(Call(\_predicate\_, \*undefined\*, « \_value\_,
+-- | 𝔽(\_counter\_) »)). 1. IfAbruptCloseIterator(\_selected\_,
+-- | \_iterated\_). 1. If ToBoolean(\_selected\_) is \*true\*, then 1. Let
+-- | \_completion\_ be Completion(Yield(\_value\_)). 1.
+-- | IfAbruptCloseIterator(\_completion\_, \_iterated\_). 1. Set \_counter\_
+-- | to \_counter\_ + 1. 1. Let \_result\_ be
+-- | CreateIteratorFromClosure(\_closure\_, \*\"Iterator Helper\"\*,
+-- | %IteratorHelperPrototype%, « \[\[UnderlyingIterators\]\] »). 1. Set
+-- | \_result\_.\[\[UnderlyingIterators\]\] to « \_iterated\_ ». 1. Return
+-- | \_result\_.
+-- |
+
+-- SPEC: L39900-L39918
+-- | # Iterator.prototype.find ( \_predicate\_ )
+-- |
+-- | This method performs the following steps when called:
+-- |
+-- | 1\. Let \_O\_ be the \*this\* value. 1. If \_O\_ is not an Object, throw
+-- | a \*TypeError\* exception. 1. Let \_iterated\_ be the Iterator Record {
+-- | \[\[Iterator\]\]: \_O\_, \[\[NextMethod\]\]: \*undefined\*,
+-- | \[\[Done\]\]: \*false\* }. 1. If IsCallable(\_predicate\_) is \*false\*,
+-- | then 1. Let \_error\_ be ThrowCompletion(a newly created \*TypeError\*
+-- | object). 1. Return ? IteratorClose(\_iterated\_, \_error\_). 1. Set
+-- | \_iterated\_ to ? GetIteratorDirect(\_O\_). 1. Let \_counter\_ be 0. 1.
+-- | Repeat, 1. Let \_value\_ be ? IteratorStepValue(\_iterated\_). 1. If
+-- | \_value\_ is \~done\~, return \*undefined\*. 1. Let \_result\_ be
+-- | Completion(Call(\_predicate\_, \*undefined\*, « \_value\_,
+-- | 𝔽(\_counter\_) »)). 1. IfAbruptCloseIterator(\_result\_,
+-- | \_iterated\_). 1. If ToBoolean(\_result\_) is \*true\*, return ?
+-- | IteratorClose(\_iterated\_, NormalCompletion(\_value\_)). 1. Set
+-- | \_counter\_ to \_counter\_ + 1.
+-- |
+
+-- SPEC: L39919-L39954
+-- | # Iterator.prototype.flatMap ( \_mapper\_ )
+-- |
+-- | This method performs the following steps when called:
+-- |
+-- | 1\. Let \_O\_ be the \*this\* value. 1. If \_O\_ is not an Object, throw
+-- | a \*TypeError\* exception. 1. Let \_iterated\_ be the Iterator Record {
+-- | \[\[Iterator\]\]: \_O\_, \[\[NextMethod\]\]: \*undefined\*,
+-- | \[\[Done\]\]: \*false\* }. 1. If IsCallable(\_mapper\_) is \*false\*,
+-- | then 1. Let \_error\_ be ThrowCompletion(a newly created \*TypeError\*
+-- | object). 1. Return ? IteratorClose(\_iterated\_, \_error\_). 1. Set
+-- | \_iterated\_ to ? GetIteratorDirect(\_O\_). 1. Let \_closure\_ be a new
+-- | Abstract Closure with no parameters that captures \_iterated\_ and
+-- | \_mapper\_ and performs the following steps when called: 1. Let
+-- | \_counter\_ be 0. 1. Repeat, 1. Let \_value\_ be ?
+-- | IteratorStepValue(\_iterated\_). 1. If \_value\_ is \~done\~, return
+-- | ReturnCompletion(\*undefined\*). 1. Let \_mapped\_ be
+-- | Completion(Call(\_mapper\_, \*undefined\*, « \_value\_, 𝔽(\_counter\_)
+-- | »)). 1. IfAbruptCloseIterator(\_mapped\_, \_iterated\_). 1. Let
+-- | \_innerIterator\_ be Completion(GetIteratorFlattenable(\_mapped\_,
+-- | \~reject-primitives\~)). 1. IfAbruptCloseIterator(\_innerIterator\_,
+-- | \_iterated\_). 1. Let \_innerAlive\_ be \*true\*. 1. Repeat, while
+-- | \_innerAlive\_ is \*true\*, 1. Let \_innerValue\_ be
+-- | Completion(IteratorStepValue(\_innerIterator\_)). 1.
+-- | IfAbruptCloseIterator(\_innerValue\_, \_iterated\_). 1. If
+-- | \_innerValue\_ is \~done\~, then 1. Set \_innerAlive\_ to \*false\*. 1.
+-- | Else, 1. Let \_completion\_ be Completion(Yield(\_innerValue\_)). 1. If
+-- | \_completion\_ is an abrupt completion, then 1. Let \_backupCompletion\_
+-- | be Completion(IteratorClose(\_innerIterator\_, \_completion\_)). 1.
+-- | IfAbruptCloseIterator(\_backupCompletion\_, \_iterated\_). 1. Return ?
+-- | IteratorClose(\_iterated\_, \_completion\_). 1. Set \_counter\_ to
+-- | \_counter\_ + 1. 1. Let \_result\_ be
+-- | CreateIteratorFromClosure(\_closure\_, \*\"Iterator Helper\"\*,
+-- | %IteratorHelperPrototype%, « \[\[UnderlyingIterators\]\] »). 1. Set
+-- | \_result\_.\[\[UnderlyingIterators\]\] to « \_iterated\_ ». 1. Return
+-- | \_result\_.
+-- |
+
+-- SPEC: L39955-L39971
+-- | # Iterator.prototype.forEach ( \_procedure\_ )
+-- |
+-- | This method performs the following steps when called:
+-- |
+-- | 1\. Let \_O\_ be the \*this\* value. 1. If \_O\_ is not an Object, throw
+-- | a \*TypeError\* exception. 1. Let \_iterated\_ be the Iterator Record {
+-- | \[\[Iterator\]\]: \_O\_, \[\[NextMethod\]\]: \*undefined\*,
+-- | \[\[Done\]\]: \*false\* }. 1. If IsCallable(\_procedure\_) is \*false\*,
+-- | then 1. Let \_error\_ be ThrowCompletion(a newly created \*TypeError\*
+-- | object). 1. Return ? IteratorClose(\_iterated\_, \_error\_). 1. Set
+-- | \_iterated\_ to ? GetIteratorDirect(\_O\_). 1. Let \_counter\_ be 0. 1.
+-- | Repeat, 1. Let \_value\_ be ? IteratorStepValue(\_iterated\_). 1. If
+-- | \_value\_ is \~done\~, return \*undefined\*. 1. Let \_result\_ be
+-- | Completion(Call(\_procedure\_, \*undefined\*, « \_value\_,
+-- | 𝔽(\_counter\_) »)). 1. IfAbruptCloseIterator(\_result\_,
+-- | \_iterated\_). 1. Set \_counter\_ to \_counter\_ + 1.
+-- |
+
+-- SPEC: L39972-L39997
+-- | # Iterator.prototype.map ( \_mapper\_ )
+-- |
+-- | This method performs the following steps when called:
+-- |
+-- | 1\. Let \_O\_ be the \*this\* value. 1. If \_O\_ is not an Object, throw
+-- | a \*TypeError\* exception. 1. Let \_iterated\_ be the Iterator Record {
+-- | \[\[Iterator\]\]: \_O\_, \[\[NextMethod\]\]: \*undefined\*,
+-- | \[\[Done\]\]: \*false\* }. 1. If IsCallable(\_mapper\_) is \*false\*,
+-- | then 1. Let \_error\_ be ThrowCompletion(a newly created \*TypeError\*
+-- | object). 1. Return ? IteratorClose(\_iterated\_, \_error\_). 1. Set
+-- | \_iterated\_ to ? GetIteratorDirect(\_O\_). 1. Let \_closure\_ be a new
+-- | Abstract Closure with no parameters that captures \_iterated\_ and
+-- | \_mapper\_ and performs the following steps when called: 1. Let
+-- | \_counter\_ be 0. 1. Repeat, 1. Let \_value\_ be ?
+-- | IteratorStepValue(\_iterated\_). 1. If \_value\_ is \~done\~, return
+-- | ReturnCompletion(\*undefined\*). 1. Let \_mapped\_ be
+-- | Completion(Call(\_mapper\_, \*undefined\*, « \_value\_, 𝔽(\_counter\_)
+-- | »)). 1. IfAbruptCloseIterator(\_mapped\_, \_iterated\_). 1. Let
+-- | \_completion\_ be Completion(Yield(\_mapped\_)). 1.
+-- | IfAbruptCloseIterator(\_completion\_, \_iterated\_). 1. Set \_counter\_
+-- | to \_counter\_ + 1. 1. Let \_result\_ be
+-- | CreateIteratorFromClosure(\_closure\_, \*\"Iterator Helper\"\*,
+-- | %IteratorHelperPrototype%, « \[\[UnderlyingIterators\]\] »). 1. Set
+-- | \_result\_.\[\[UnderlyingIterators\]\] to « \_iterated\_ ». 1. Return
+-- | \_result\_.
+-- |
+
+-- SPEC: L39998-L40019
+-- | # Iterator.prototype.reduce ( \_reducer\_ \[ , \_initialValue\_ \] )
+-- |
+-- | This method performs the following steps when called:
+-- |
+-- | 1\. Let \_O\_ be the \*this\* value. 1. If \_O\_ is not an Object, throw
+-- | a \*TypeError\* exception. 1. Let \_iterated\_ be the Iterator Record {
+-- | \[\[Iterator\]\]: \_O\_, \[\[NextMethod\]\]: \*undefined\*,
+-- | \[\[Done\]\]: \*false\* }. 1. If IsCallable(\_reducer\_) is \*false\*,
+-- | then 1. Let \_error\_ be ThrowCompletion(a newly created \*TypeError\*
+-- | object). 1. Return ? IteratorClose(\_iterated\_, \_error\_). 1. Set
+-- | \_iterated\_ to ? GetIteratorDirect(\_O\_). 1. If \_initialValue\_ is
+-- | not present, then 1. Let \_accumulator\_ be ?
+-- | IteratorStepValue(\_iterated\_). 1. If \_accumulator\_ is \~done\~,
+-- | throw a \*TypeError\* exception. 1. Let \_counter\_ be 1. 1. Else, 1.
+-- | Let \_accumulator\_ be \_initialValue\_. 1. Let \_counter\_ be 0. 1.
+-- | Repeat, 1. Let \_value\_ be ? IteratorStepValue(\_iterated\_). 1. If
+-- | \_value\_ is \~done\~, return \_accumulator\_. 1. Let \_result\_ be
+-- | Completion(Call(\_reducer\_, \*undefined\*, « \_accumulator\_,
+-- | \_value\_, 𝔽(\_counter\_) »)). 1. IfAbruptCloseIterator(\_result\_,
+-- | \_iterated\_). 1. Set \_accumulator\_ to \_result\_. 1. Set \_counter\_
+-- | to \_counter\_ + 1.
+-- |
+
+-- SPEC: L40020-L40038
+-- | # Iterator.prototype.some ( \_predicate\_ )
+-- |
+-- | This method performs the following steps when called:
+-- |
+-- | 1\. Let \_O\_ be the \*this\* value. 1. If \_O\_ is not an Object, throw
+-- | a \*TypeError\* exception. 1. Let \_iterated\_ be the Iterator Record {
+-- | \[\[Iterator\]\]: \_O\_, \[\[NextMethod\]\]: \*undefined\*,
+-- | \[\[Done\]\]: \*false\* }. 1. If IsCallable(\_predicate\_) is \*false\*,
+-- | then 1. Let \_error\_ be ThrowCompletion(a newly created \*TypeError\*
+-- | object). 1. Return ? IteratorClose(\_iterated\_, \_error\_). 1. Set
+-- | \_iterated\_ to ? GetIteratorDirect(\_O\_). 1. Let \_counter\_ be 0. 1.
+-- | Repeat, 1. Let \_value\_ be ? IteratorStepValue(\_iterated\_). 1. If
+-- | \_value\_ is \~done\~, return \*false\*. 1. Let \_result\_ be
+-- | Completion(Call(\_predicate\_, \*undefined\*, « \_value\_,
+-- | 𝔽(\_counter\_) »)). 1. IfAbruptCloseIterator(\_result\_,
+-- | \_iterated\_). 1. If ToBoolean(\_result\_) is \*true\*, return ?
+-- | IteratorClose(\_iterated\_, NormalCompletion(\*true\*)). 1. Set
+-- | \_counter\_ to \_counter\_ + 1.
+-- |
+
+-- SPEC: L40039-L40069
+-- | # Iterator.prototype.take ( \_limit\_ )
+-- |
+-- | This method performs the following steps when called:
+-- |
+-- | 1\. Let \_O\_ be the \*this\* value. 1. If \_O\_ is not an Object, throw
+-- | a \*TypeError\* exception. 1. Let \_iterated\_ be the Iterator Record {
+-- | \[\[Iterator\]\]: \_O\_, \[\[NextMethod\]\]: \*undefined\*,
+-- | \[\[Done\]\]: \*false\* }. 1. Let \_numLimit\_ be
+-- | Completion(ToNumber(\_limit\_)). 1. IfAbruptCloseIterator(\_numLimit\_,
+-- | \_iterated\_). 1. If \_numLimit\_ is \*NaN\*, then 1. Let \_error\_ be
+-- | ThrowCompletion(a newly created \*RangeError\* object). 1. Return ?
+-- | IteratorClose(\_iterated\_, \_error\_). 1. Let \_integerLimit\_ be !
+-- | ToIntegerOrInfinity(\_numLimit\_). 1. If \_integerLimit\_ \< 0, then 1.
+-- | Let \_error\_ be ThrowCompletion(a newly created \*RangeError\*
+-- | object). 1. Return ? IteratorClose(\_iterated\_, \_error\_). 1. Set
+-- | \_iterated\_ to ? GetIteratorDirect(\_O\_). 1. Let \_closure\_ be a new
+-- | Abstract Closure with no parameters that captures \_iterated\_ and
+-- | \_integerLimit\_ and performs the following steps when called: 1. Let
+-- | \_remaining\_ be \_integerLimit\_. 1. Repeat, 1. If \_remaining\_ = 0,
+-- | then 1. Return ? IteratorClose(\_iterated\_,
+-- | ReturnCompletion(\*undefined\*)). 1. If \_remaining\_ ≠ +∞, then 1. Set
+-- | \_remaining\_ to \_remaining\_ - 1. 1. Let \_value\_ be ?
+-- | IteratorStepValue(\_iterated\_). 1. If \_value\_ is \~done\~, return
+-- | ReturnCompletion(\*undefined\*). 1. Let \_completion\_ be
+-- | Completion(Yield(\_value\_)). 1. IfAbruptCloseIterator(\_completion\_,
+-- | \_iterated\_). 1. Let \_result\_ be
+-- | CreateIteratorFromClosure(\_closure\_, \*\"Iterator Helper\"\*,
+-- | %IteratorHelperPrototype%, « \[\[UnderlyingIterators\]\] »). 1. Set
+-- | \_result\_.\[\[UnderlyingIterators\]\] to « \_iterated\_ ». 1. Return
+-- | \_result\_.
+-- |
+
+-- SPEC: L40070-L40080
+-- | # Iterator.prototype.toArray ( )
+-- |
+-- | This method performs the following steps when called:
+-- |
+-- | 1\. Let \_O\_ be the \*this\* value. 1. If \_O\_ is not an Object, throw
+-- | a \*TypeError\* exception. 1. Let \_iterated\_ be ?
+-- | GetIteratorDirect(\_O\_). 1. Let \_items\_ be a new empty List. 1.
+-- | Repeat, 1. Let \_value\_ be ? IteratorStepValue(\_iterated\_). 1. If
+-- | \_value\_ is \~done\~, return CreateArrayFromList(\_items\_). 1. Append
+-- | \_value\_ to \_items\_.
+-- |
+
+-- SPEC: L40081-L40089
+-- | # Iterator.prototype \[ %Symbol.iterator% \] ( )
+-- |
+-- | This function performs the following steps when called:
+-- |
+-- | 1\. Return the \*this\* value.
+-- |
+-- | The value of the \*\"name\"\* property of this function is
+-- | \*\"\[Symbol.iterator\]\"\*.
+-- |
+
+-- SPEC: L40090-L40096
+-- | # Iterator.prototype \[ %Symbol.toStringTag% \]
+-- |
+-- | \`Iterator.prototype\[%Symbol.toStringTag%\]\` is an accessor property
+-- | with attributes { \[\[Enumerable\]\]: \*false\*, \[\[Configurable\]\]:
+-- | \*true\* }. The \[\[Get\]\] and \[\[Set\]\] attributes are defined as
+-- | follows:
+-- |
+
+-- SPEC: L40097-L40103
+-- | # get Iterator.prototype \[ %Symbol.toStringTag% \]
+-- |
+-- | The value of the \[\[Get\]\] attribute is a built-in function that
+-- | requires no arguments. It performs the following steps when called:
+-- |
+-- | 1\. Return \*\"Iterator\"\*.
+-- |
+
+-- SPEC: L40104-L40115
+-- | # set Iterator.prototype \[ %Symbol.toStringTag% \]
+-- |
+-- | The value of the \[\[Set\]\] attribute is a built-in function that takes
+-- | an argument \_v\_. It performs the following steps when called:
+-- |
+-- | 1\. Perform ? SetterThatIgnoresPrototypeProperties(\*this\* value,
+-- | %Iterator.prototype%, %Symbol.toStringTag%, \_v\_). 1. Return
+-- | \*undefined\*.
+-- |
+-- | Unlike the %Symbol.toStringTag% property on most built-in prototypes,
+-- | for web-compatibility reasons this property must be an accessor.
+-- |
+
+-- SPEC: L40116-L40130
+-- | # The %AsyncIteratorPrototype% Object
+-- |
+-- | The [%AsyncIteratorPrototype%]{.dfn} object:
+-- |
+-- | - has a \[\[Prototype\]\] internal slot whose value is
+-- |   %Object.prototype%.
+-- | - is an ordinary object.
+-- |
+-- | All objects defined in this specification that implement the async
+-- | iterator interface also inherit from %AsyncIteratorPrototype%.
+-- | ECMAScript code may also define objects that inherit from
+-- | %AsyncIteratorPrototype%. The %AsyncIteratorPrototype% object provides a
+-- | place where additional methods that are applicable to all async iterator
+-- | objects may be added.
+-- |
+
+-- SPEC: L40131-L40139
+-- | # %AsyncIteratorPrototype% \[ %Symbol.asyncIterator% \] ( )
+-- |
+-- | This function performs the following steps when called:
+-- |
+-- | 1\. Return the \*this\* value.
+-- |
+-- | The value of the \*\"name\"\* property of this function is
+-- | \*\"\[Symbol.asyncIterator\]\"\*.
+-- |
+
+-- SPEC: L40140-L40149
+-- | # Async-from-Sync Iterator Objects
+-- |
+-- | An [Async-from-Sync Iterator object]{.dfn
+-- | variants="Async-from-Sync Iterator objects"} is an async iterator that
+-- | adapts a specific synchronous iterator. Async-from-Sync Iterator objects
+-- | are never directly accessible to ECMAScript code. There is not a named
+-- | constructor for Async-from-Sync Iterator objects. Instead,
+-- | Async-from-Sync Iterator objects are created by the
+-- | CreateAsyncFromSyncIterator abstract operation as needed.
+-- |
+
+-- SPEC: L40150-L40165
+-- | # CreateAsyncFromSyncIterator ( \_syncIteratorRecord\_: an Iterator Record, ): an Iterator Record
+-- |
+-- | description
+-- | :   It is used to create an async Iterator Record from a synchronous
+-- |     Iterator Record.
+-- |
+-- | 1\. Let \_asyncIterator\_ be
+-- | OrdinaryObjectCreate(%AsyncFromSyncIteratorPrototype%, «
+-- | \[\[SyncIteratorRecord\]\] »). 1. Set
+-- | \_asyncIterator\_.\[\[SyncIteratorRecord\]\] to
+-- | \_syncIteratorRecord\_. 1. Let \_nextMethod\_ be !
+-- | Get(\_asyncIterator\_, \*\"next\"\*). 1. Let \_iteratorRecord\_ be the
+-- | Iterator Record { \[\[Iterator\]\]: \_asyncIterator\_,
+-- | \[\[NextMethod\]\]: \_nextMethod\_, \[\[Done\]\]: \*false\* }. 1. Return
+-- | \_iteratorRecord\_.
+-- |
+
+-- SPEC: L40166-L40177
+-- | # The %AsyncFromSyncIteratorPrototype% Object
+-- |
+-- | The [%AsyncFromSyncIteratorPrototype%]{.dfn} object:
+-- |
+-- | - has properties that are inherited by all Async-from-Sync Iterator
+-- |   objects.
+-- | - is an ordinary object.
+-- | - has a \[\[Prototype\]\] internal slot whose value is
+-- |   %AsyncIteratorPrototype%.
+-- | - is never directly accessible to ECMAScript code.
+-- | - has the following properties:
+-- |
+
+-- SPEC: L40178-L40190
+-- | # %AsyncFromSyncIteratorPrototype%.next ( \[ \_value\_ \] )
+-- |
+-- | 1\. Let \_O\_ be the \*this\* value. 1. Assert: \_O\_ is an Object that
+-- | has a \[\[SyncIteratorRecord\]\] internal slot. 1. Let
+-- | \_promiseCapability\_ be ! NewPromiseCapability(%Promise%). 1. Let
+-- | \_syncIteratorRecord\_ be \_O\_.\[\[SyncIteratorRecord\]\]. 1. If
+-- | \_value\_ is present, then 1. Let \_result\_ be
+-- | Completion(IteratorNext(\_syncIteratorRecord\_, \_value\_)). 1. Else, 1.
+-- | Let \_result\_ be Completion(IteratorNext(\_syncIteratorRecord\_)). 1.
+-- | IfAbruptRejectPromise(\_result\_, \_promiseCapability\_). 1. Return
+-- | AsyncFromSyncIteratorContinuation(\_result\_, \_promiseCapability\_,
+-- | \_syncIteratorRecord\_, \*true\*).
+-- |
+
+-- SPEC: L40191-L40215
+-- | # %AsyncFromSyncIteratorPrototype%.return ( \[ \_value\_ \] )
+-- |
+-- | 1\. Let \_O\_ be the \*this\* value. 1. Assert: \_O\_ is an Object that
+-- | has a \[\[SyncIteratorRecord\]\] internal slot. 1. Let
+-- | \_promiseCapability\_ be ! NewPromiseCapability(%Promise%). 1. Let
+-- | \_syncIteratorRecord\_ be \_O\_.\[\[SyncIteratorRecord\]\]. 1. Let
+-- | \_syncIterator\_ be \_syncIteratorRecord\_.\[\[Iterator\]\]. 1. Let
+-- | \_return\_ be Completion(GetMethod(\_syncIterator\_,
+-- | \*\"return\"\*)). 1. IfAbruptRejectPromise(\_return\_,
+-- | \_promiseCapability\_). 1. If \_return\_ is \*undefined\*, then 1. Let
+-- | \_iteratorResult\_ be CreateIteratorResultObject(\_value\_,
+-- | \*true\*). 1. Perform ! Call(\_promiseCapability\_.\[\[Resolve\]\],
+-- | \*undefined\*, « \_iteratorResult\_ »). 1. Return
+-- | \_promiseCapability\_.\[\[Promise\]\]. 1. If \_value\_ is present,
+-- | then 1. Let \_result\_ be Completion(Call(\_return\_, \_syncIterator\_,
+-- | « \_value\_ »)). 1. Else, 1. Let \_result\_ be
+-- | Completion(Call(\_return\_, \_syncIterator\_)). 1.
+-- | IfAbruptRejectPromise(\_result\_, \_promiseCapability\_). 1. If
+-- | \_result\_ is not an Object, then 1. Perform !
+-- | Call(\_promiseCapability\_.\[\[Reject\]\], \*undefined\*, « a newly
+-- | created \*TypeError\* object »). 1. Return
+-- | \_promiseCapability\_.\[\[Promise\]\]. 1. Return
+-- | AsyncFromSyncIteratorContinuation(\_result\_, \_promiseCapability\_,
+-- | \_syncIteratorRecord\_, \*false\*).
+-- |
+
+-- SPEC: L40216-L40250
+-- | # %AsyncFromSyncIteratorPrototype%.throw ( \[ \_value\_ \] )
+-- |
+-- | In this specification, \_value\_ is always provided, but is left
+-- | optional for consistency with . 1. Let \_O\_ be the \*this\* value. 1.
+-- | Assert: \_O\_ is an Object that has a \[\[SyncIteratorRecord\]\]
+-- | internal slot. 1. Let \_promiseCapability\_ be !
+-- | NewPromiseCapability(%Promise%). 1. Let \_syncIteratorRecord\_ be
+-- | \_O\_.\[\[SyncIteratorRecord\]\]. 1. Let \_syncIterator\_ be
+-- | \_syncIteratorRecord\_.\[\[Iterator\]\]. 1. Let \_throw\_ be
+-- | Completion(GetMethod(\_syncIterator\_, \*\"throw\"\*)). 1.
+-- | IfAbruptRejectPromise(\_throw\_, \_promiseCapability\_). 1. If \_throw\_
+-- | is \*undefined\*, then 1. NOTE: If \_syncIterator\_ does not have a
+-- | \`throw\` method, close it to give it a chance to clean up before we
+-- | reject the capability. 1. Let \_closeCompletion\_ be
+-- | NormalCompletion(\~empty\~). 1. Let \_result\_ be
+-- | Completion(IteratorClose(\_syncIteratorRecord\_,
+-- | \_closeCompletion\_)). 1. IfAbruptRejectPromise(\_result\_,
+-- | \_promiseCapability\_). 1. NOTE: The next step throws a \*TypeError\* to
+-- | indicate that there was a protocol violation: \_syncIterator\_ does not
+-- | have a \`throw\` method. 1. NOTE: If closing \_syncIterator\_ does not
+-- | throw then the result of that operation is ignored, even if it yields a
+-- | rejected promise. 1. Perform !
+-- | Call(\_promiseCapability\_.\[\[Reject\]\], \*undefined\*, « a newly
+-- | created \*TypeError\* object »). 1. Return
+-- | \_promiseCapability\_.\[\[Promise\]\]. 1. If \_value\_ is present,
+-- | then 1. Let \_result\_ be Completion(Call(\_throw\_, \_syncIterator\_, «
+-- | \_value\_ »)). 1. Else, 1. Let \_result\_ be Completion(Call(\_throw\_,
+-- | \_syncIterator\_)). 1. IfAbruptRejectPromise(\_result\_,
+-- | \_promiseCapability\_). 1. If \_result\_ is not an Object, then 1.
+-- | Perform ! Call(\_promiseCapability\_.\[\[Reject\]\], \*undefined\*, « a
+-- | newly created \*TypeError\* object »). 1. Return
+-- | \_promiseCapability\_.\[\[Promise\]\]. 1. Return
+-- | AsyncFromSyncIteratorContinuation(\_result\_, \_promiseCapability\_,
+-- | \_syncIteratorRecord\_, \*true\*).
+-- |
+
+-- SPEC: L40251-L40261
+-- | # Properties of Async-from-Sync Iterator Instances
+-- |
+-- | Async-from-Sync Iterator instances are ordinary objects that inherit
+-- | properties from the %AsyncFromSyncIteratorPrototype% intrinsic object.
+-- | Async-from-Sync Iterator instances are initially created with the
+-- | internal slots listed in .
+-- |
+-- |   Internal Slot                Type                 Description
+-- |   ---------------------------- -------------------- ----------------------------------------------------------------------
+-- |   \[\[SyncIteratorRecord\]\]   an Iterator Record   Represents the original synchronous iterator which is being adapted.
+-- |
+
+-- SPEC: L40262-L40295
+-- | # AsyncFromSyncIteratorContinuation ( \_result\_: an Object, \_promiseCapability\_: a PromiseCapability Record for an intrinsic %Promise%, \_syncIteratorRecord\_: an Iterator Record, \_closeOnRejection\_: a Boolean, ): a Promise
+-- |
+-- | 1\. NOTE: Because \_promiseCapability\_ is derived from the intrinsic
+-- | %Promise%, the calls to \_promiseCapability\_.\[\[Reject\]\] entailed by
+-- | the use IfAbruptRejectPromise below are guaranteed not to throw. 1. Let
+-- | \_done\_ be Completion(IteratorComplete(\_result\_)). 1.
+-- | IfAbruptRejectPromise(\_done\_, \_promiseCapability\_). 1. Let \_value\_
+-- | be Completion(IteratorValue(\_result\_)). 1.
+-- | IfAbruptRejectPromise(\_value\_, \_promiseCapability\_). 1. Let
+-- | \_valueWrapper\_ be Completion(PromiseResolve(%Promise%, \_value\_)). 1.
+-- | If \_valueWrapper\_ is an abrupt completion, \_done\_ is \*false\*, and
+-- | \_closeOnRejection\_ is \*true\*, then 1. Set \_valueWrapper\_ to
+-- | Completion(IteratorClose(\_syncIteratorRecord\_, \_valueWrapper\_)). 1.
+-- | IfAbruptRejectPromise(\_valueWrapper\_, \_promiseCapability\_). 1. Let
+-- | \_unwrap\_ be a new Abstract Closure with parameters (\_v\_) that
+-- | captures \_done\_ and performs the following steps when called: 1.
+-- | Return CreateIteratorResultObject(\_v\_, \_done\_). 1. Let
+-- | \_onFulfilled\_ be CreateBuiltinFunction(\_unwrap\_, 1, \*\"\"\*, «
+-- | »). 1. NOTE: \_onFulfilled\_ is used when processing the \*\"value\"\*
+-- | property of an IteratorResult object in order to wait for its value if
+-- | it is a promise and re-package the result in a new \"unwrapped\"
+-- | IteratorResult object. 1. If \_done\_ is \*true\*, or if
+-- | \_closeOnRejection\_ is \*false\*, then 1. Let \_onRejected\_ be
+-- | \*undefined\*. 1. Else, 1. Let \_closeIterator\_ be a new Abstract
+-- | Closure with parameters (\_error\_) that captures \_syncIteratorRecord\_
+-- | and performs the following steps when called: 1. Return ?
+-- | IteratorClose(\_syncIteratorRecord\_, ThrowCompletion(\_error\_)). 1.
+-- | Let \_onRejected\_ be CreateBuiltinFunction(\_closeIterator\_, 1,
+-- | \*\"\"\*, « »). 1. NOTE: \_onRejected\_ is used to close the Iterator
+-- | when the \*\"value\"\* property of an IteratorResult object it yields is
+-- | a rejected promise. 1. Perform PerformPromiseThen(\_valueWrapper\_,
+-- | \_onFulfilled\_, \_onRejected\_, \_promiseCapability\_). 1. Return
+-- | \_promiseCapability\_.\[\[Promise\]\].
+-- |
+
+-- SPEC: L40685-L40724
+-- | # PerformPromiseAll ( \_iteratorRecord\_: an Iterator Record, \_constructor\_: a constructor, \_resultCapability\_: a PromiseCapability Record, \_promiseResolve\_: a function object, ): either a normal completion containing an ECMAScript language value or a throw completion
+-- |
+-- | 1\. Let \_values\_ be a new empty List. 1.
+-- | \[declared=\"remainingElementsCount\"\] NOTE: \_remainingElementsCount\_
+-- | starts at 1 instead of 0 to ensure \_resultCapability\_.\[\[Resolve\]\]
+-- | is only called once, even in the presence of a misbehaving \*\"then\"\*
+-- | which calls the passed callback before the input iterator is
+-- | exhausted. 1. Let \_remainingElementsCount\_ be the Record {
+-- | \[\[Value\]\]: 1 }. 1. Let \_index\_ be 0. 1. Repeat, 1. Let \_next\_ be
+-- | ? IteratorStepValue(\_iteratorRecord\_). 1. If \_next\_ is \~done\~,
+-- | then 1. Set \_remainingElementsCount\_.\[\[Value\]\] to
+-- | \_remainingElementsCount\_.\[\[Value\]\] - 1. 1. If
+-- | \_remainingElementsCount\_.\[\[Value\]\] = 0, then 1. Let
+-- | \_valuesArray\_ be CreateArrayFromList(\_values\_). 1. Perform ?
+-- | Call(\_resultCapability\_.\[\[Resolve\]\], \*undefined\*, «
+-- | \_valuesArray\_ »). 1. Return \_resultCapability\_.\[\[Promise\]\]. 1.
+-- | Append \*undefined\* to \_values\_. 1. Let \_nextPromise\_ be ?
+-- | Call(\_promiseResolve\_, \_constructor\_, « \_next\_ »). 1. Let
+-- | \_fulfilledSteps\_ be a new Abstract Closure with parameters (\_value\_)
+-- | that captures \_values\_, \_resultCapability\_, and
+-- | \_remainingElementsCount\_ and performs the following steps when
+-- | called: 1. Let \_F\_ be the active function object. 1. If
+-- | \_F\_.\[\[AlreadyCalled\]\] is \*true\*, return \*undefined\*. 1. Set
+-- | \_F\_.\[\[AlreadyCalled\]\] to \*true\*. 1. Let \_thisIndex\_ be
+-- | \_F\_.\[\[Index\]\]. 1. Set \_values\_\[\_thisIndex\_\] to \_value\_. 1.
+-- | Set \_remainingElementsCount\_.\[\[Value\]\] to
+-- | \_remainingElementsCount\_.\[\[Value\]\] - 1. 1. If
+-- | \_remainingElementsCount\_.\[\[Value\]\] = 0, then 1. Let
+-- | \_valuesArray\_ be CreateArrayFromList(\_values\_). 1. Return ?
+-- | Call(\_resultCapability\_.\[\[Resolve\]\], \*undefined\*, «
+-- | \_valuesArray\_ »). 1. Return \*undefined\*. 1. Let \_onFulfilled\_ be
+-- | CreateBuiltinFunction(\_fulfilledSteps\_, 1, \*\"\"\*, «
+-- | \[\[AlreadyCalled\]\], \[\[Index\]\] »). 1. Set
+-- | \_onFulfilled\_.\[\[AlreadyCalled\]\] to \*false\*. 1. Set
+-- | \_onFulfilled\_.\[\[Index\]\] to \_index\_. 1. Set \_index\_ to
+-- | \_index\_ + 1. 1. Set \_remainingElementsCount\_.\[\[Value\]\] to
+-- | \_remainingElementsCount\_.\[\[Value\]\] + 1. 1. Perform ?
+-- | Invoke(\_nextPromise\_, \*\"then\"\*, « \_onFulfilled\_,
+-- | \_resultCapability\_.\[\[Reject\]\] »).
+-- |
+
+-- SPEC: L40890-L40897
+-- | # Promise.prototype
+-- |
+-- | The initial value of \`Promise.prototype\` is the Promise prototype
+-- | object.
+-- |
+-- | This property has the attributes { \[\[Writable\]\]: \*false\*,
+-- | \[\[Enumerable\]\]: \*false\*, \[\[Configurable\]\]: \*false\* }.
+-- |
+
+-- SPEC: L40973-L40990
+-- | # Promise.try ( \_callback\_, \...\_args\_ )
+-- |
+-- | This function performs the following steps when called:
+-- |
+-- | 1\. Let \_C\_ be the \*this\* value. 1. If \_C\_ is not an Object, throw
+-- | a \*TypeError\* exception. 1. Let \_promiseCapability\_ be ?
+-- | NewPromiseCapability(\_C\_). 1. Let \_status\_ be
+-- | Completion(Call(\_callback\_, \*undefined\*, \_args\_)). 1. If
+-- | \_status\_ is an abrupt completion, then 1. Perform ?
+-- | Call(\_promiseCapability\_.\[\[Reject\]\], \*undefined\*, «
+-- | \_status\_.\[\[Value\]\] »). 1. Else, 1. Perform ?
+-- | Call(\_promiseCapability\_.\[\[Resolve\]\], \*undefined\*, «
+-- | \_status\_.\[\[Value\]\] »). 1. Return
+-- | \_promiseCapability\_.\[\[Promise\]\].
+-- |
+-- | This function expects its \*this\* value to be a constructor function
+-- | that supports the parameter conventions of the Promise constructor.
+-- |
+
+-- SPEC: L40991-L41006
+-- | # Promise.withResolvers ( )
+-- |
+-- | This function returns an object with three properties: a new promise
+-- | together with the \`resolve\` and \`reject\` functions associated with
+-- | it.
+-- |
+-- | 1\. Let \_C\_ be the \*this\* value. 1. Let \_promiseCapability\_ be ?
+-- | NewPromiseCapability(\_C\_). 1. Let \_obj\_ be
+-- | OrdinaryObjectCreate(%Object.prototype%). 1. Perform !
+-- | CreateDataPropertyOrThrow(\_obj\_, \*\"promise\"\*,
+-- | \_promiseCapability\_.\[\[Promise\]\]). 1. Perform !
+-- | CreateDataPropertyOrThrow(\_obj\_, \*\"resolve\"\*,
+-- | \_promiseCapability\_.\[\[Resolve\]\]). 1. Perform !
+-- | CreateDataPropertyOrThrow(\_obj\_, \*\"reject\"\*,
+-- | \_promiseCapability\_.\[\[Reject\]\]). 1. Return \_obj\_.
+-- |
+
+-- SPEC: L41007-L41022
+-- | # get Promise \[ %Symbol.species% \]
+-- |
+-- | \`Promise\[%Symbol.species%\]\` is an accessor property whose set
+-- | accessor function is \*undefined\*. Its get accessor function performs
+-- | the following steps when called:
+-- |
+-- | 1\. Return the \*this\* value.
+-- |
+-- | The value of the \*\"name\"\* property of this function is \*\"get
+-- | \[Symbol.species\]\"\*.
+-- |
+-- | Promise prototype methods normally use their \*this\* value\'s
+-- | constructor to create a derived object. However, a subclass constructor
+-- | may over-ride that default behaviour by redefining its %Symbol.species%
+-- | property.
+-- |
+
+-- SPEC: L41023-L41033
+-- | # Properties of the Promise Prototype Object
+-- |
+-- | The [Promise prototype object]{.dfn}:
+-- |
+-- | - is [%Promise.prototype%]{.dfn}.
+-- | - has a \[\[Prototype\]\] internal slot whose value is
+-- |   %Object.prototype%.
+-- | - is an ordinary object.
+-- | - does not have a \[\[PromiseState\]\] internal slot or any of the other
+-- |   internal slots of Promise instances.
+-- |
+
+-- SPEC: L41045-L41077
+-- | # Promise.prototype.finally ( \_onFinally\_ )
+-- |
+-- | This method performs the following steps when called:
+-- |
+-- | 1\. Let \_promise\_ be the \*this\* value. 1. If \_promise\_ is not an
+-- | Object, throw a \*TypeError\* exception. 1. Let \_C\_ be ?
+-- | SpeciesConstructor(\_promise\_, %Promise%). 1. Assert:
+-- | IsConstructor(\_C\_) is \*true\*. 1. If IsCallable(\_onFinally\_) is
+-- | \*false\*, then 1. Let \_thenFinally\_ be \_onFinally\_. 1. Let
+-- | \_catchFinally\_ be \_onFinally\_. 1. Else, 1. Let
+-- | \_thenFinallyClosure\_ be a new Abstract Closure with parameters
+-- | (\_value\_) that captures \_onFinally\_ and \_C\_ and performs the
+-- | following steps when called: 1. Let \_result\_ be ? Call(\_onFinally\_,
+-- | \*undefined\*). 1. Let \_p\_ be ? PromiseResolve(\_C\_, \_result\_). 1.
+-- | Let \_returnValue\_ be a new Abstract Closure with no parameters that
+-- | captures \_value\_ and performs the following steps when called: 1.
+-- | Return NormalCompletion(\_value\_). 1. Let \_valueThunk\_ be
+-- | CreateBuiltinFunction(\_returnValue\_, 0, \*\"\"\*, « »). 1. Return ?
+-- | Invoke(\_p\_, \*\"then\"\*, « \_valueThunk\_ »). 1. Let \_thenFinally\_
+-- | be CreateBuiltinFunction(\_thenFinallyClosure\_, 1, \*\"\"\*, « »). 1.
+-- | Let \_catchFinallyClosure\_ be a new Abstract Closure with parameters
+-- | (\_reason\_) that captures \_onFinally\_ and \_C\_ and performs the
+-- | following steps when called: 1. Let \_result\_ be ? Call(\_onFinally\_,
+-- | \*undefined\*). 1. Let \_p\_ be ? PromiseResolve(\_C\_, \_result\_). 1.
+-- | Let \_throwReason\_ be a new Abstract Closure with no parameters that
+-- | captures \_reason\_ and performs the following steps when called: 1.
+-- | Return ThrowCompletion(\_reason\_). 1. Let \_thrower\_ be
+-- | CreateBuiltinFunction(\_throwReason\_, 0, \*\"\"\*, « »). 1. Return ?
+-- | Invoke(\_p\_, \*\"then\"\*, « \_thrower\_ »). 1. Let \_catchFinally\_ be
+-- | CreateBuiltinFunction(\_catchFinallyClosure\_, 1, \*\"\"\*, « »). 1.
+-- | Return ? Invoke(\_promise\_, \*\"then\"\*, « \_thenFinally\_,
+-- | \_catchFinally\_ »).
+-- |
+
+-- SPEC: L41217-L41227
+-- | # Properties of the GeneratorFunction Prototype Object
+-- |
+-- | The [GeneratorFunction prototype object]{.dfn}:
+-- |
+-- | - is [%GeneratorFunction.prototype%]{.dfn} (see ).
+-- | - is an ordinary object.
+-- | - is not a function object and does not have an \[\[ECMAScriptCode\]\]
+-- |   internal slot or any other of the internal slots listed in or .
+-- | - has a \[\[Prototype\]\] internal slot whose value is
+-- |   %Function.prototype%.
+-- |
+
+-- SPEC: L41236-L41243
+-- | # GeneratorFunction.prototype.prototype
+-- |
+-- | The initial value of \`GeneratorFunction.prototype.prototype\` is
+-- | %GeneratorPrototype%.
+-- |
+-- | This property has the attributes { \[\[Writable\]\]: \*false\*,
+-- | \[\[Enumerable\]\]: \*false\*, \[\[Configurable\]\]: \*true\* }.
+-- |
+
+-- SPEC: L41244-L41251
+-- | # GeneratorFunction.prototype \[ %Symbol.toStringTag% \]
+-- |
+-- | The initial value of the %Symbol.toStringTag% property is the String
+-- | value \*\"GeneratorFunction\"\*.
+-- |
+-- | This property has the attributes { \[\[Writable\]\]: \*false\*,
+-- | \[\[Enumerable\]\]: \*false\*, \[\[Configurable\]\]: \*true\* }.
+-- |
+
+-- SPEC: L41252-L41260
+-- | # GeneratorFunction Instances
+-- |
+-- | Every GeneratorFunction instance is an ECMAScript function object and
+-- | has the internal slots listed in . The value of the
+-- | \[\[IsClassConstructor\]\] internal slot for all such instances is
+-- | \*false\*.
+-- |
+-- | Each GeneratorFunction instance has the following own properties:
+-- |
+
+-- SPEC: L41288-L41294
+-- | # AsyncGeneratorFunction Objects
+-- |
+-- | AsyncGeneratorFunctions are functions that are usually created by
+-- | evaluating \|AsyncGeneratorDeclaration\|, \|AsyncGeneratorExpression\|,
+-- | and \|AsyncGeneratorMethod\| syntactic productions. They may also be
+-- | created by calling the %AsyncGeneratorFunction% intrinsic.
+-- |
+
+-- SPEC: L41295-L41315
+-- | # The AsyncGeneratorFunction Constructor
+-- |
+-- | The AsyncGeneratorFunction constructor:
+-- |
+-- | - is [%AsyncGeneratorFunction%]{.dfn}.
+-- | - is a subclass of \`Function\`.
+-- | - creates and initializes a new AsyncGeneratorFunction when called as a
+-- |   function rather than as a constructor. Thus the function call
+-- |   \`AsyncGeneratorFunction (\...)\` is equivalent to the object creation
+-- |   expression \`new AsyncGeneratorFunction (\...)\` with the same
+-- |   arguments.
+-- | - may be used as the value of an \`extends\` clause of a class
+-- |   definition. Subclass constructors that intend to inherit the specified
+-- |   AsyncGeneratorFunction behaviour must include a \`super\` call to the
+-- |   AsyncGeneratorFunction constructor to create and initialize subclass
+-- |   instances with the internal slots necessary for built-in
+-- |   AsyncGeneratorFunction behaviour. All ECMAScript syntactic forms for
+-- |   defining async generator function objects create direct instances of
+-- |   AsyncGeneratorFunction. There is no syntactic means to create
+-- |   instances of AsyncGeneratorFunction subclasses.
+-- |
+
+-- SPEC: L41316-L41330
+-- | # AsyncGeneratorFunction ( \...\_parameterArgs\_, \_bodyArg\_ )
+-- |
+-- | The last argument (if any) specifies the body (executable code) of an
+-- | async generator function; any preceding arguments specify formal
+-- | parameters.
+-- |
+-- | This function performs the following steps when called:
+-- |
+-- | 1\. Let \_C\_ be the active function object. 1. If \_bodyArg\_ is not
+-- | present, set \_bodyArg\_ to the empty String. 1. Return ?
+-- | CreateDynamicFunction(\_C\_, NewTarget, \~async-generator\~,
+-- | \_parameterArgs\_, \_bodyArg\_).
+-- |
+-- | See NOTE for .
+-- |
+
+-- SPEC: L28193-L28201
+-- | # TimeString ( \_tv\_: a Number, but not \*NaN\*, ): a String
+-- |
+-- | 1\. Let \_hour\_ be ToZeroPaddedDecimalString(ℝ(HourFromTime(\_tv\_)),
+-- | 2). 1. Let \_minute\_ be
+-- | ToZeroPaddedDecimalString(ℝ(MinFromTime(\_tv\_)), 2). 1. Let \_second\_
+-- | be ToZeroPaddedDecimalString(ℝ(SecFromTime(\_tv\_)), 2). 1. Return the
+-- | string-concatenation of \_hour\_, \*\":\"\*, \_minute\_, \*\":\"\*,
+-- | \_second\_, the code unit 0x0020 (SPACE), and \*\"GMT\"\*.
+-- |
+
+-- SPEC: L28202-L28240
+-- | # DateString ( \_tv\_: a Number, but not \*NaN\*, ): a String
+-- |
+-- | 1\. Let \_weekday\_ be the Name of the entry in with the Number
+-- | WeekDay(\_tv\_). 1. Let \_month\_ be the Name of the entry in with the
+-- | Number MonthFromTime(\_tv\_). 1. Let \_day\_ be
+-- | ToZeroPaddedDecimalString(ℝ(DateFromTime(\_tv\_)), 2). 1. Let \_yv\_ be
+-- | YearFromTime(\_tv\_). 1. If \_yv\_ is \*+0\*~𝔽~ or \_yv\_ \> \*+0\*~𝔽~,
+-- | let \_yearSign\_ be the empty String; else let \_yearSign\_ be
+-- | \*\"-\"\*. 1. Let \_paddedYear\_ be
+-- | ToZeroPaddedDecimalString(abs(ℝ(\_yv\_)), 4). 1. Return the
+-- | string-concatenation of \_weekday\_, the code unit 0x0020 (SPACE),
+-- | \_month\_, the code unit 0x0020 (SPACE), \_day\_, the code unit 0x0020
+-- | (SPACE), \_yearSign\_, and \_paddedYear\_.
+-- |
+-- |   Number      Name
+-- |   ----------- -------------
+-- |   \*+0\*~𝔽~   \*\"Sun\"\*
+-- |   \*1\*~𝔽~    \*\"Mon\"\*
+-- |   \*2\*~𝔽~    \*\"Tue\"\*
+-- |   \*3\*~𝔽~    \*\"Wed\"\*
+-- |   \*4\*~𝔽~    \*\"Thu\"\*
+-- |   \*5\*~𝔽~    \*\"Fri\"\*
+-- |   \*6\*~𝔽~    \*\"Sat\"\*
+-- |
+-- |   Number      Name
+-- |   ----------- -------------
+-- |   \*+0\*~𝔽~   \*\"Jan\"\*
+-- |   \*1\*~𝔽~    \*\"Feb\"\*
+-- |   \*2\*~𝔽~    \*\"Mar\"\*
+-- |   \*3\*~𝔽~    \*\"Apr\"\*
+-- |   \*4\*~𝔽~    \*\"May\"\*
+-- |   \*5\*~𝔽~    \*\"Jun\"\*
+-- |   \*6\*~𝔽~    \*\"Jul\"\*
+-- |   \*7\*~𝔽~    \*\"Aug\"\*
+-- |   \*8\*~𝔽~    \*\"Sep\"\*
+-- |   \*9\*~𝔽~    \*\"Oct\"\*
+-- |   \*10\*~𝔽~   \*\"Nov\"\*
+-- |   \*11\*~𝔽~   \*\"Dec\"\*
+-- |
+
+-- SPEC: L28241-L28263
+-- | # TimeZoneString ( \_tv\_: an integral Number, ): a String
+-- |
+-- | 1\. Let \_systemTimeZoneIdentifier\_ be SystemTimeZoneIdentifier(). 1.
+-- | If IsTimeZoneOffsetString(\_systemTimeZoneIdentifier\_) is \*true\*,
+-- | then 1. Let \_offsetNs\_ be
+-- | ParseTimeZoneOffsetString(\_systemTimeZoneIdentifier\_). 1. Else, 1. Let
+-- | \_offsetNs\_ be
+-- | GetNamedTimeZoneOffsetNanoseconds(\_systemTimeZoneIdentifier\_,
+-- | ℤ(ℝ(\_tv\_) × 10^6^)). 1. Let \_offset\_ be 𝔽(truncate(\_offsetNs\_ /
+-- | 10^6^)). 1. If \_offset\_ is \*+0\*~𝔽~ or \_offset\_ \> \*+0\*~𝔽~,
+-- | then 1. Let \_offsetSign\_ be \*\"+\"\*. 1. Let \_absOffset\_ be
+-- | \_offset\_. 1. Else, 1. Let \_offsetSign\_ be \*\"-\"\*. 1. Let
+-- | \_absOffset\_ be -\_offset\_. 1. Let \_offsetMin\_ be
+-- | ToZeroPaddedDecimalString(ℝ(MinFromTime(\_absOffset\_)), 2). 1. Let
+-- | \_offsetHour\_ be
+-- | ToZeroPaddedDecimalString(ℝ(HourFromTime(\_absOffset\_)), 2). 1. Let
+-- | \_tzName\_ be an implementation-defined string that is either the empty
+-- | String or the string-concatenation of the code unit 0x0020 (SPACE), the
+-- | code unit 0x0028 (LEFT PARENTHESIS), an implementation-defined timezone
+-- | name, and the code unit 0x0029 (RIGHT PARENTHESIS). 1. Return the
+-- | string-concatenation of \_offsetSign\_, \_offsetHour\_, \_offsetMin\_,
+-- | and \_tzName\_.
+-- |
+
+-- SPEC: L28264-L28270
+-- | # ToDateString ( \_tv\_: an integral Number or \*NaN\*, ): a String
+-- |
+-- | 1\. If \_tv\_ is \*NaN\*, return \*\"Invalid Date\"\*. 1. Let \_t\_ be
+-- | LocalTime(\_tv\_). 1. Return the string-concatenation of
+-- | DateString(\_t\_), the code unit 0x0020 (SPACE), TimeString(\_t\_), and
+-- | TimeZoneString(\_tv\_).
+-- |
+
+-- SPEC: L28417-L28424
+-- | # String.prototype
+-- |
+-- | The initial value of \`String.prototype\` is the String prototype
+-- | object.
+-- |
+-- | This property has the attributes { \[\[Writable\]\]: \*false\*,
+-- | \[\[Enumerable\]\]: \*false\*, \[\[Configurable\]\]: \*false\* }.
+-- |
+
+-- SPEC: L28453-L28473
+-- | # Properties of the String Prototype Object
+-- |
+-- | The [String prototype object]{.dfn}:
+-- |
+-- | - is [%String.prototype%]{.dfn}.
+-- | - is a String exotic object and has the internal methods specified for
+-- |   such objects.
+-- | - has a \[\[StringData\]\] internal slot whose value is the empty
+-- |   String.
+-- | - has a \*\"length\"\* property whose initial value is \*+0\*~𝔽~ and
+-- |   whose attributes are { \[\[Writable\]\]: \*false\*,
+-- |   \[\[Enumerable\]\]: \*false\*, \[\[Configurable\]\]: \*false\* }.
+-- | - has a \[\[Prototype\]\] internal slot whose value is
+-- |   %Object.prototype%.
+-- |
+-- | Unless explicitly stated otherwise, the methods of the String prototype
+-- | object defined below are not generic and the \*this\* value passed to
+-- | them must be either a String value or an object that has a
+-- | \[\[StringData\]\] internal slot that has been initialized to a String
+-- | value.
+-- |
+
+-- SPEC: L26693-L26702
+-- | # Time-related Constants
+-- |
+-- | These constants are referenced by algorithms in the following sections.
+-- |
+-- | HoursPerDay = 24 MinutesPerHour = 60 SecondsPerMinute = 60 msPerSecond =
+-- | \*1000\*~𝔽~ msPerMinute = \*60000\*~𝔽~ = msPerSecond ×
+-- | 𝔽(SecondsPerMinute) msPerHour = \*3600000\*~𝔽~ = msPerMinute ×
+-- | 𝔽(MinutesPerHour) msPerDay = \*86400000\*~𝔽~ = msPerHour ×
+-- | 𝔽(HoursPerDay)
+-- |
+
+-- SPEC: L26773-L26799
+-- | # MonthFromTime ( \_t\_: a finite time value, ): an integral Number in the inclusive interval from \*+0\*~𝔽~ to \*11\*~𝔽~
+-- |
+-- | description
+-- | :   It returns a Number identifying the month in which \_t\_ falls. A
+-- |     month value of \*+0\*~𝔽~ specifies January; \*1\*~𝔽~ specifies
+-- |     February; \*2\*~𝔽~ specifies March; \*3\*~𝔽~ specifies April;
+-- |     \*4\*~𝔽~ specifies May; \*5\*~𝔽~ specifies June; \*6\*~𝔽~ specifies
+-- |     July; \*7\*~𝔽~ specifies August; \*8\*~𝔽~ specifies September;
+-- |     \*9\*~𝔽~ specifies October; \*10\*~𝔽~ specifies November; and
+-- |     \*11\*~𝔽~ specifies December. Note that MonthFromTime(\*+0\*~𝔽~) =
+-- |     \*+0\*~𝔽~, corresponding to Thursday, 1 January 1970.
+-- |
+-- | 1\. Let \_inLeapYear\_ be InLeapYear(\_t\_). 1. Let \_dayWithinYear\_ be
+-- | DayWithinYear(\_t\_). 1. If \_dayWithinYear\_ \< \*31\*~𝔽~, return
+-- | \*+0\*~𝔽~. 1. If \_dayWithinYear\_ \< \*59\*~𝔽~ + \_inLeapYear\_, return
+-- | \*1\*~𝔽~. 1. If \_dayWithinYear\_ \< \*90\*~𝔽~ + \_inLeapYear\_, return
+-- | \*2\*~𝔽~. 1. If \_dayWithinYear\_ \< \*120\*~𝔽~ + \_inLeapYear\_, return
+-- | \*3\*~𝔽~. 1. If \_dayWithinYear\_ \< \*151\*~𝔽~ + \_inLeapYear\_, return
+-- | \*4\*~𝔽~. 1. If \_dayWithinYear\_ \< \*181\*~𝔽~ + \_inLeapYear\_, return
+-- | \*5\*~𝔽~. 1. If \_dayWithinYear\_ \< \*212\*~𝔽~ + \_inLeapYear\_, return
+-- | \*6\*~𝔽~. 1. If \_dayWithinYear\_ \< \*243\*~𝔽~ + \_inLeapYear\_, return
+-- | \*7\*~𝔽~. 1. If \_dayWithinYear\_ \< \*273\*~𝔽~ + \_inLeapYear\_, return
+-- | \*8\*~𝔽~. 1. If \_dayWithinYear\_ \< \*304\*~𝔽~ + \_inLeapYear\_, return
+-- | \*9\*~𝔽~. 1. If \_dayWithinYear\_ \< \*334\*~𝔽~ + \_inLeapYear\_, return
+-- | \*10\*~𝔽~. 1. Assert: \_dayWithinYear\_ \< \*365\*~𝔽~ +
+-- | \_inLeapYear\_. 1. Return \*11\*~𝔽~.
+-- |
+
+-- SPEC: L26863-L26875
+-- | # GetUTCEpochNanoseconds ( \_year\_: an integer, \_month\_: an integer in the inclusive interval from 1 to 12, \_day\_: an integer in the inclusive interval from 1 to 31, \_hour\_: an integer in the inclusive interval from 0 to 23, \_minute\_: an integer in the inclusive interval from 0 to 59, \_second\_: an integer in the inclusive interval from 0 to 59, \_millisecond\_: an integer in the inclusive interval from 0 to 999, \_microsecond\_: an integer in the inclusive interval from 0 to 999, \_nanosecond\_: an integer in the inclusive interval from 0 to 999, ): a BigInt
+-- |
+-- | description
+-- | :   The returned value represents a number of nanoseconds since the
+-- |     epoch that corresponds to the given ISO 8601 calendar date and
+-- |     wall-clock time in UTC.
+-- |
+-- | 1\. Let \_date\_ be MakeDay(𝔽(\_year\_), 𝔽(\_month\_ - 1),
+-- | 𝔽(\_day\_)). 1. Let \_time\_ be MakeTime(𝔽(\_hour\_), 𝔽(\_minute\_),
+-- | 𝔽(\_second\_), 𝔽(\_millisecond\_)). 1. Let \_ms\_ be MakeDate(\_date\_,
+-- | \_time\_). 1. Assert: \_ms\_ is an integral Number. 1. Return
+-- | ℤ(ℝ(\_ms\_) × 10^6^ + \_microsecond\_ × 10^3^ + \_nanosecond\_).
+-- |
+
+-- SPEC: L26962-L26975
+-- | # GetNamedTimeZoneOffsetNanoseconds ( \_timeZoneIdentifier\_: a String, \_epochNanoseconds\_: a BigInt, ): an integer
+-- |
+-- | The returned integer represents the offset from UTC of the named time
+-- | zone identified by \_timeZoneIdentifier\_, at the instant corresponding
+-- | with \_epochNanoseconds\_ relative to the epoch, both in nanoseconds.
+-- |
+-- | The default implementation of GetNamedTimeZoneOffsetNanoseconds, to be
+-- | used for ECMAScript implementations that do not include local political
+-- | rules for any time zones, performs the following steps when called:
+-- |
+-- | 1\. Assert: \_timeZoneIdentifier\_ is \*\"UTC\"\*. 1. Return 0.
+-- |
+-- | Time zone offset values may be positive or negative.
+-- |
+
+-- SPEC: L26976-L26992
+-- | # Time Zone Identifier Record
+-- |
+-- | A [Time Zone Identifier Record]{.dfn
+-- | variants="Time Zone Identifier Records"} is a Record used to describe an
+-- | available named time zone identifier and its corresponding primary time
+-- | zone identifier.
+-- |
+-- | Time Zone Identifier Records have the fields listed in .
+-- |
+-- |   Field Name                  Value      Meaning
+-- |   --------------------------- ---------- ----------------------------------------------------------------------------------
+-- |   \[\[Identifier\]\]          a String   An available named time zone identifier that is supported by the implementation.
+-- |   \[\[PrimaryIdentifier\]\]   a String   The primary time zone identifier that \[\[Identifier\]\] resolves to.
+-- |
+-- | If \[\[Identifier\]\] is a primary time zone identifier, then
+-- | \[\[Identifier\]\] is \[\[PrimaryIdentifier\]\].
+-- |
+
+-- SPEC: L26993-L27027
+-- | # AvailableNamedTimeZoneIdentifiers ( ): a List of Time Zone Identifier Records
+-- |
+-- | description
+-- | :   Its result describes all available named time zone identifiers in
+-- |     this implementation, as well as the primary time zone identifier
+-- |     corresponding to each available named time zone identifier. The List
+-- |     is ordered according to the \[\[Identifier\]\] field of each Time
+-- |     Zone Identifier Record.
+-- |
+-- | Time zone aware implementations, including all implementations that
+-- | implement the ECMA-402 Internationalization API, must implement the
+-- | AvailableNamedTimeZoneIdentifiers abstract operation as specified in the
+-- | ECMA-402 specification. For implementations that are not time zone
+-- | aware, AvailableNamedTimeZoneIdentifiers performs the following steps
+-- | when called:
+-- |
+-- | 1\. If the implementation does not include local political rules for any
+-- | time zones, then 1. Return « the Time Zone Identifier Record {
+-- | \[\[Identifier\]\]: \*\"UTC\"\*, \[\[PrimaryIdentifier\]\]: \*\"UTC\"\*
+-- | } ». 1. Let \_identifiers\_ be the List of unique available named time
+-- | zone identifiers, sorted according to lexicographic code unit order. 1.
+-- | Let \_result\_ be a new empty List. 1. For each element \_identifier\_
+-- | of \_identifiers\_, do 1. Let \_primary\_ be \_identifier\_. 1. If
+-- | \_identifier\_ is a non-primary time zone identifier in this
+-- | implementation and \_identifier\_ is not \*\"UTC\"\*, then 1. Set
+-- | \_primary\_ to the primary time zone identifier associated with
+-- | \_identifier\_. 1. NOTE: An implementation may need to resolve
+-- | \_identifier\_ iteratively to obtain the primary time zone
+-- | identifier. 1. Let \_record\_ be the Time Zone Identifier Record {
+-- | \[\[Identifier\]\]: \_identifier\_, \[\[PrimaryIdentifier\]\]:
+-- | \_primary\_ }. 1. Append \_record\_ to \_result\_. 1. Assert: \_result\_
+-- | contains a Time Zone Identifier Record \_r\_ such that
+-- | \_r\_.\[\[Identifier\]\] is \*\"UTC\"\* and
+-- | \_r\_.\[\[PrimaryIdentifier\]\] is \*\"UTC\"\*. 1. Return \_result\_.
+-- |
+
+-- SPEC: L27028-L27053
+-- | # SystemTimeZoneIdentifier ( ): a String
+-- |
+-- | description
+-- | :   It returns a String representing the host environment\'s current
+-- |     time zone, which is either a String representing a UTC offset for
+-- |     which IsTimeZoneOffsetString returns \*true\*, or a primary time
+-- |     zone identifier.
+-- |
+-- | 1\. If the implementation only supports the UTC time zone, return
+-- | \*\"UTC\"\*. 1. Let \_systemTimeZoneString\_ be the String representing
+-- | the host environment\'s current time zone, either a primary time zone
+-- | identifier or an offset time zone identifier. 1. Return
+-- | \_systemTimeZoneString\_.
+-- |
+-- | To ensure the level of functionality that implementations commonly
+-- | provide in the methods of the Date object, it is recommended that
+-- | SystemTimeZoneIdentifier return an IANA time zone name corresponding to
+-- | the host environment\'s time zone setting, if such a thing exists.
+-- | GetNamedTimeZoneEpochNanoseconds and GetNamedTimeZoneOffsetNanoseconds
+-- | must reflect the local political rules for standard time and daylight
+-- | saving time in that time zone, if such rules exist.
+-- |
+-- | For example, if the host environment is a browser on a system where the
+-- | user has chosen US Eastern Time as their time zone,
+-- | SystemTimeZoneIdentifier returns \*\"America/New_York\"\*.
+-- |
+
+-- SPEC: L27054-L27087
+-- | # LocalTime ( \_t\_: a finite time value, ): an integral Number
+-- |
+-- | description
+-- | :   It converts \_t\_ from UTC to local time. The local political rules
+-- |     for standard time and daylight saving time in effect at \_t\_ should
+-- |     be used to determine the result in the way specified in this
+-- |     section.
+-- |
+-- | 1\. Let \_systemTimeZoneIdentifier\_ be SystemTimeZoneIdentifier(). 1.
+-- | If IsTimeZoneOffsetString(\_systemTimeZoneIdentifier\_) is \*true\*,
+-- | then 1. Let \_offsetNs\_ be
+-- | ParseTimeZoneOffsetString(\_systemTimeZoneIdentifier\_). 1. Else, 1. Let
+-- | \_offsetNs\_ be
+-- | GetNamedTimeZoneOffsetNanoseconds(\_systemTimeZoneIdentifier\_,
+-- | ℤ(ℝ(\_t\_) × 10^6^)). 1. Let \_offsetMs\_ be truncate(\_offsetNs\_ /
+-- | 10^6^). 1. Return \_t\_ + 𝔽(\_offsetMs\_).
+-- |
+-- | If political rules for the local time \_t\_ are not available within the
+-- | implementation, the result is \_t\_ because SystemTimeZoneIdentifier
+-- | returns \*\"UTC\"\* and GetNamedTimeZoneOffsetNanoseconds returns 0.
+-- |
+-- | It is required for time zone aware implementations (and recommended for
+-- | all others) to use the time zone information of the IANA Time Zone
+-- | Database <https://www.iana.org/time-zones/>.
+-- |
+-- | Two different input time values \_t\_~UTC~ are converted to the same
+-- | local time t~local~ at a negative time zone transition when there are
+-- | repeated times (e.g. the daylight saving time ends or the time zone
+-- | adjustment is decreased.).
+-- |
+-- | LocalTime(UTC(\_t\_~local~)) is not necessarily always equal to
+-- | \_t\_~local~. Correspondingly, UTC(LocalTime(\_t\_~UTC~)) is not
+-- | necessarily always equal to \_t\_~UTC~.
+-- |
+
+-- SPEC: L27391-L27422
+-- | # Time Zone Offset String Format
+-- |
+-- | ECMAScript defines a string interchange format for UTC offsets, derived
+-- | from ISO 8601. The format is described by the following grammar.
+-- |
+-- | ## Syntax
+-- |
+-- | UTCOffset ::: ASCIISign Hour ASCIISign Hour
+-- | HourSubcomponents\[+Extended\] ASCIISign Hour
+-- | HourSubcomponents\[\~Extended\] ASCIISign ::: one of \`+\` \`-\` Hour
+-- | ::: \`0\` DecimalDigit \`1\` DecimalDigit \`20\` \`21\` \`22\` \`23\`
+-- | HourSubcomponents\[Extended\] ::: TimeSeparator\[?Extended\]
+-- | MinuteSecond TimeSeparator\[?Extended\] MinuteSecond
+-- | TimeSeparator\[?Extended\] MinuteSecond TemporalDecimalFraction?
+-- | TimeSeparator\[Extended\] ::: \[+Extended\] \`:\` \[\~Extended\]
+-- | \[empty\] MinuteSecond ::: \`0\` DecimalDigit \`1\` DecimalDigit \`2\`
+-- | DecimalDigit \`3\` DecimalDigit \`4\` DecimalDigit \`5\` DecimalDigit
+-- | TemporalDecimalFraction ::: TemporalDecimalSeparator DecimalDigit
+-- | TemporalDecimalSeparator DecimalDigit DecimalDigit
+-- | TemporalDecimalSeparator DecimalDigit DecimalDigit DecimalDigit
+-- | TemporalDecimalSeparator DecimalDigit DecimalDigit DecimalDigit
+-- | DecimalDigit TemporalDecimalSeparator DecimalDigit DecimalDigit
+-- | DecimalDigit DecimalDigit DecimalDigit TemporalDecimalSeparator
+-- | DecimalDigit DecimalDigit DecimalDigit DecimalDigit DecimalDigit
+-- | DecimalDigit TemporalDecimalSeparator DecimalDigit DecimalDigit
+-- | DecimalDigit DecimalDigit DecimalDigit DecimalDigit DecimalDigit
+-- | TemporalDecimalSeparator DecimalDigit DecimalDigit DecimalDigit
+-- | DecimalDigit DecimalDigit DecimalDigit DecimalDigit DecimalDigit
+-- | TemporalDecimalSeparator DecimalDigit DecimalDigit DecimalDigit
+-- | DecimalDigit DecimalDigit DecimalDigit DecimalDigit DecimalDigit
+-- | DecimalDigit TemporalDecimalSeparator ::: one of \`.\` \`,\`
+-- |
+
+-- SPEC: L27423-L27432
+-- | # IsTimeZoneOffsetString ( \_offsetString\_: a String, ): a Boolean
+-- |
+-- | description
+-- | :   The return value indicates whether \_offsetString\_ conforms to the
+-- |     grammar given by \|UTCOffset\|.
+-- |
+-- | 1\. Let \_parseResult\_ be ParseText(\_offsetString\_,
+-- | \|UTCOffset\|). 1. If \_parseResult\_ is a List of errors, return
+-- | \*false\*. 1. Return \*true\*.
+-- |
+
+-- SPEC: L27433-L27472
+-- | # ParseTimeZoneOffsetString ( \_offsetString\_: a String, ): an integer
+-- |
+-- | description
+-- | :   The return value is the UTC offset, as a number of nanoseconds, that
+-- |     corresponds to the String \_offsetString\_.
+-- |
+-- | 1\. Let \_parseResult\_ be ParseText(\_offsetString\_,
+-- | \|UTCOffset\|). 1. Assert: \_parseResult\_ is not a List of errors. 1.
+-- | Assert: \_parseResult\_ contains a \|ASCIISign\| Parse Node. 1. Let
+-- | \_parsedSign\_ be the source text matched by the \|ASCIISign\| Parse
+-- | Node contained within \_parseResult\_. 1. If \_parsedSign\_ is the
+-- | single code point U+002D (HYPHEN-MINUS), then 1. Let \_sign\_ be -1. 1.
+-- | Else, 1. Let \_sign\_ be 1. 1. NOTE: Applications of StringToNumber
+-- | below do not lose precision, since each of the parsed values is
+-- | guaranteed to be a sufficiently short string of decimal digits. 1.
+-- | Assert: \_parseResult\_ contains an \|Hour\| Parse Node. 1. Let
+-- | \_parsedHours\_ be the source text matched by the \|Hour\| Parse Node
+-- | contained within \_parseResult\_. 1. Let \_hours\_ be
+-- | ℝ(StringToNumber(CodePointsToString(\_parsedHours\_))). 1. If
+-- | \_parseResult\_ does not contain a \|MinuteSecond\| Parse Node, then 1.
+-- | Let \_minutes\_ be 0. 1. Else, 1. Let \_parsedMinutes\_ be the source
+-- | text matched by the first \|MinuteSecond\| Parse Node contained within
+-- | \_parseResult\_. 1. Let \_minutes\_ be
+-- | ℝ(StringToNumber(CodePointsToString(\_parsedMinutes\_))). 1. If
+-- | \_parseResult\_ does not contain two \|MinuteSecond\| Parse Nodes,
+-- | then 1. Let \_seconds\_ be 0. 1. Else, 1. Let \_parsedSeconds\_ be the
+-- | source text matched by the second \|MinuteSecond\| Parse Node contained
+-- | within \_parseResult\_. 1. Let \_seconds\_ be
+-- | ℝ(StringToNumber(CodePointsToString(\_parsedSeconds\_))). 1. If
+-- | \_parseResult\_ does not contain a \|TemporalDecimalFraction\| Parse
+-- | Node, then 1. Let \_nanoseconds\_ be 0. 1. Else, 1. Let
+-- | \_parsedFraction\_ be the source text matched by the
+-- | \|TemporalDecimalFraction\| Parse Node contained within
+-- | \_parseResult\_. 1. Let \_fraction\_ be the string-concatenation of
+-- | CodePointsToString(\_parsedFraction\_) and \*\"000000000\"\*. 1. Let
+-- | \_nanosecondsString\_ be the substring of \_fraction\_ from 1 to 10. 1.
+-- | Let \_nanoseconds\_ be ℝ(StringToNumber(\_nanosecondsString\_)). 1.
+-- | Return \_sign\_ × (((\_hours\_ × 60 + \_minutes\_) × 60 + \_seconds\_) ×
+-- | 10^9^ + \_nanoseconds\_).
+-- |
+
+-- SPEC: L27592-L27598
+-- | # Date.prototype
+-- |
+-- | The initial value of \`Date.prototype\` is the Date prototype object.
+-- |
+-- | This property has the attributes { \[\[Writable\]\]: \*false\*,
+-- | \[\[Enumerable\]\]: \*false\*, \[\[Configurable\]\]: \*false\* }.
+-- |
+
+-- SPEC: L27638-L27641
+-- | # Date.prototype.constructor
+-- |
+-- | The initial value of \`Date.prototype.constructor\` is %Date%.
+-- |
+
+-- SPEC: L9004-L9008
+-- | # GetThisBinding ( )
+-- |
+-- | The GetThisBinding concrete method of a Declarative Environment Record
+-- | is never used within this specification.
+-- |
+
+-- SPEC: L9331-L9346
+-- | # CreateMutableBinding ( \_N\_: a String, \_D\_: a Boolean, ): either a normal completion containing \~unused\~ or a throw completion
+-- |
+-- | for
+-- | :   a Global Environment Record \_envRec\_
+-- |
+-- | description
+-- | :   It creates a new mutable binding for the name \_N\_ that is
+-- |     uninitialized. The binding is created in the associated
+-- |     DeclarativeRecord. A binding for \_N\_ must not already exist in the
+-- |     DeclarativeRecord. If \_D\_ is \*true\*, the new binding is marked
+-- |     as being subject to deletion.
+-- |
+-- | 1\. Let \_DclRec\_ be \_envRec\_.\[\[DeclarativeRecord\]\]. 1. If !
+-- | \_DclRec\_.HasBinding(\_N\_) is \*true\*, throw a \*TypeError\*
+-- | exception. 1. Return ! \_DclRec\_.CreateMutableBinding(\_N\_, \_D\_).
+-- |
+
+-- SPEC: L9347-L9361
+-- | # CreateImmutableBinding ( \_N\_: a String, \_S\_: a Boolean, ): either a normal completion containing \~unused\~ or a throw completion
+-- |
+-- | for
+-- | :   a Global Environment Record \_envRec\_
+-- |
+-- | description
+-- | :   It creates a new immutable binding for the name \_N\_ that is
+-- |     uninitialized. A binding must not already exist in this Environment
+-- |     Record for \_N\_. If \_S\_ is \*true\*, the new binding is marked as
+-- |     a strict binding.
+-- |
+-- | 1\. Let \_DclRec\_ be \_envRec\_.\[\[DeclarativeRecord\]\]. 1. If !
+-- | \_DclRec\_.HasBinding(\_N\_) is \*true\*, throw a \*TypeError\*
+-- | exception. 1. Return ! \_DclRec\_.CreateImmutableBinding(\_N\_, \_S\_).
+-- |
+
+-- SPEC: L9362-L9378
+-- | # InitializeBinding ( \_N\_: a String, \_V\_: an ECMAScript language value, ): either a normal completion containing \~unused\~ or a throw completion
+-- |
+-- | for
+-- | :   a Global Environment Record \_envRec\_
+-- |
+-- | description
+-- | :   It is used to set the bound value of the current binding of the
+-- |     identifier whose name is \_N\_ to the value \_V\_. An uninitialized
+-- |     binding for \_N\_ must already exist.
+-- |
+-- | 1\. Let \_DclRec\_ be \_envRec\_.\[\[DeclarativeRecord\]\]. 1. If !
+-- | \_DclRec\_.HasBinding(\_N\_) is \*true\*, then 1. Return !
+-- | \_DclRec\_.InitializeBinding(\_N\_, \_V\_). 1. Assert: If the binding
+-- | exists, it must be in the Object Environment Record. 1. Let \_ObjRec\_
+-- | be \_envRec\_.\[\[ObjectRecord\]\]. 1. Return ?
+-- | \_ObjRec\_.InitializeBinding(\_N\_, \_V\_).
+-- |
+
+-- SPEC: L9398-L9415
+-- | # GetBindingValue ( \_N\_: a String, \_S\_: a Boolean, ): either a normal completion containing an ECMAScript language value or a throw completion
+-- |
+-- | for
+-- | :   a Global Environment Record \_envRec\_
+-- |
+-- | description
+-- | :   It returns the value of its bound identifier whose name is \_N\_. If
+-- |     the binding is an uninitialized binding throw a \*ReferenceError\*
+-- |     exception. A property named \_N\_ normally already exists but if it
+-- |     does not or is not currently writable, error handling is determined
+-- |     by \_S\_.
+-- |
+-- | 1\. Let \_DclRec\_ be \_envRec\_.\[\[DeclarativeRecord\]\]. 1. If !
+-- | \_DclRec\_.HasBinding(\_N\_) is \*true\*, then 1. Return ?
+-- | \_DclRec\_.GetBindingValue(\_N\_, \_S\_). 1. Let \_ObjRec\_ be
+-- | \_envRec\_.\[\[ObjectRecord\]\]. 1. Return ?
+-- | \_ObjRec\_.GetBindingValue(\_N\_, \_S\_).
+-- |
+
+-- SPEC: L9416-L9433
+-- | # DeleteBinding ( \_N\_: a String, ): either a normal completion containing a Boolean or a throw completion
+-- |
+-- | for
+-- | :   a Global Environment Record \_envRec\_
+-- |
+-- | description
+-- | :   It can only delete bindings that have been explicitly designated as
+-- |     being subject to deletion.
+-- |
+-- | 1\. Let \_DclRec\_ be \_envRec\_.\[\[DeclarativeRecord\]\]. 1. If !
+-- | \_DclRec\_.HasBinding(\_N\_) is \*true\*, then 1. Return !
+-- | \_DclRec\_.DeleteBinding(\_N\_). 1. Let \_ObjRec\_ be
+-- | \_envRec\_.\[\[ObjectRecord\]\]. 1. Let \_globalObject\_ be
+-- | \_ObjRec\_.\[\[BindingObject\]\]. 1. Let \_existingProp\_ be ?
+-- | HasOwnProperty(\_globalObject\_, \_N\_). 1. If \_existingProp\_ is
+-- | \*true\*, then 1. Return ? \_ObjRec\_.DeleteBinding(\_N\_). 1. Return
+-- | \*true\*.
+-- |
+
+-- SPEC: L9434-L9442
+-- | # HasThisBinding ( ): \*true\*
+-- |
+-- | for
+-- | :   a Global Environment Record \_envRec\_
+-- |
+-- | 1\. Return \*true\*.
+-- |
+-- | Global Environment Records always provide a \`this\` binding.
+-- |
+
+-- SPEC: L9443-L9449
+-- | # GetThisBinding ( ): a normal completion containing an Object
+-- |
+-- | for
+-- | :   a Global Environment Record \_envRec\_
+-- |
+-- | 1\. Return \_envRec\_.\[\[GlobalThisValue\]\].
+-- |
+
+-- SPEC: L9476-L9495
+-- | # HasRestrictedGlobalProperty ( \_envRec\_: a Global Environment Record, \_N\_: a String, ): either a normal completion containing a Boolean or a throw completion
+-- |
+-- | description
+-- | :   It determines if the argument identifier is the name of a property
+-- |     of the global object that must not be shadowed by a global lexical
+-- |     binding.
+-- |
+-- | 1\. Let \_ObjRec\_ be \_envRec\_.\[\[ObjectRecord\]\]. 1. Let
+-- | \_globalObject\_ be \_ObjRec\_.\[\[BindingObject\]\]. 1. Let
+-- | \_existingProp\_ be ? \_globalObject\_.\[\[GetOwnProperty\]\](\_N\_). 1.
+-- | If \_existingProp\_ is \*undefined\*, return \*false\*. 1. If
+-- | \_existingProp\_.\[\[Configurable\]\] is \*true\*, return \*false\*. 1.
+-- | Return \*true\*.
+-- |
+-- | Properties may exist upon a global object that were directly created
+-- | rather than being declared using a var or function declaration. A global
+-- | lexical binding may not be created that has the same name as a
+-- | non-configurable property of the global object. The global property
+-- | \*\"undefined\"\* is an example of such a property.
+-- |
+
+-- SPEC: L9496-L9509
+-- | # CanDeclareGlobalVar ( \_envRec\_: a Global Environment Record, \_N\_: a String, ): either a normal completion containing a Boolean or a throw completion
+-- |
+-- | description
+-- | :   It determines if a corresponding CreateGlobalVarBinding call would
+-- |     succeed if called for the same argument \_N\_. Redundant var
+-- |     declarations and var declarations for pre-existing global object
+-- |     properties are allowed.
+-- |
+-- | 1\. Let \_ObjRec\_ be \_envRec\_.\[\[ObjectRecord\]\]. 1. Let
+-- | \_globalObject\_ be \_ObjRec\_.\[\[BindingObject\]\]. 1. Let
+-- | \_hasProperty\_ be ? HasOwnProperty(\_globalObject\_, \_N\_). 1. If
+-- | \_hasProperty\_ is \*true\*, return \*true\*. 1. Return ?
+-- | IsExtensible(\_globalObject\_).
+-- |
+
+-- SPEC: L9510-L9525
+-- | # CanDeclareGlobalFunction ( \_envRec\_: a Global Environment Record, \_N\_: a String, ): either a normal completion containing a Boolean or a throw completion
+-- |
+-- | description
+-- | :   It determines if a corresponding CreateGlobalFunctionBinding call
+-- |     would succeed if called for the same argument \_N\_.
+-- |
+-- | 1\. Let \_ObjRec\_ be \_envRec\_.\[\[ObjectRecord\]\]. 1. Let
+-- | \_globalObject\_ be \_ObjRec\_.\[\[BindingObject\]\]. 1. Let
+-- | \_existingProp\_ be ? \_globalObject\_.\[\[GetOwnProperty\]\](\_N\_). 1.
+-- | If \_existingProp\_ is \*undefined\*, return ?
+-- | IsExtensible(\_globalObject\_). 1. If
+-- | \_existingProp\_.\[\[Configurable\]\] is \*true\*, return \*true\*. 1.
+-- | If IsDataDescriptor(\_existingProp\_) is \*true\* and \_existingProp\_
+-- | has attribute values { \[\[Writable\]\]: \*true\*, \[\[Enumerable\]\]:
+-- | \*true\* }, return \*true\*. 1. Return \*false\*.
+-- |
+
+-- SPEC: L9526-L9541
+-- | # CreateGlobalVarBinding ( \_envRec\_: a Global Environment Record, \_N\_: a String, \_D\_: a Boolean, ): either a normal completion containing \~unused\~ or a throw completion
+-- |
+-- | description
+-- | :   It creates and initializes a mutable binding in the associated
+-- |     Object Environment Record. If a binding already exists, it is reused
+-- |     and assumed to be initialized.
+-- |
+-- | 1\. Let \_ObjRec\_ be \_envRec\_.\[\[ObjectRecord\]\]. 1. Let
+-- | \_globalObject\_ be \_ObjRec\_.\[\[BindingObject\]\]. 1. Let
+-- | \_hasProperty\_ be ? HasOwnProperty(\_globalObject\_, \_N\_). 1. Let
+-- | \_extensible\_ be ? IsExtensible(\_globalObject\_). 1. If
+-- | \_hasProperty\_ is \*false\* and \_extensible\_ is \*true\*, then 1.
+-- | Perform ? \_ObjRec\_.CreateMutableBinding(\_N\_, \_D\_). 1. Perform ?
+-- | \_ObjRec\_.InitializeBinding(\_N\_, \*undefined\*). 1. Return
+-- | \~unused\~.
+-- |
+
+-- SPEC: L9568-L9582
+-- | # Module Environment Records
+-- |
+-- | A [Module Environment Record]{.dfn
+-- | variants="Module Environment Records"} is a Declarative Environment
+-- | Record that is used to represent the outer scope of an ECMAScript
+-- | \|Module\|. In additional to normal mutable and immutable bindings,
+-- | Module Environment Records also provide immutable import bindings which
+-- | are bindings that provide indirect access to a target binding that
+-- | exists in another Environment Record.
+-- |
+-- | Module Environment Records support all of the Declarative Environment
+-- | Record methods listed in and share the same specifications for all of
+-- | those methods except for GetBindingValue, DeleteBinding, HasThisBinding,
+-- | and GetThisBinding.
+-- |
+
+-- SPEC: L9583-L9607
+-- | # GetBindingValue ( \_N\_: a String, \_S\_: a Boolean, ): either a normal completion containing an ECMAScript language value or a throw completion
+-- |
+-- | for
+-- | :   a Module Environment Record \_envRec\_
+-- |
+-- | description
+-- | :   It returns the value of its bound identifier whose name is \_N\_.
+-- |     However, if the binding is an indirect binding the value of the
+-- |     target binding is returned. If the binding exists but is
+-- |     uninitialized a \*ReferenceError\* is thrown.
+-- |
+-- | 1\. Assert: \_S\_ is \*true\*. 1. Assert: \_envRec\_ has a binding for
+-- | \_N\_. 1. If the binding for \_N\_ is an indirect binding, then 1. Let
+-- | \_M\_ and \_N2\_ be the indirection values provided when this binding
+-- | for \_N\_ was created. 1. Let \_targetEnv\_ be
+-- | \_M\_.\[\[Environment\]\]. 1. If \_targetEnv\_ is \~empty\~, throw a
+-- | \*ReferenceError\* exception. 1. Return ?
+-- | \_targetEnv\_.GetBindingValue(\_N2\_, \*true\*). 1. If the binding for
+-- | \_N\_ in \_envRec\_ is an uninitialized binding, throw a
+-- | \*ReferenceError\* exception. 1. Return the value currently bound to
+-- | \_N\_ in \_envRec\_.
+-- |
+-- | \_S\_ will always be \*true\* because a \|Module\| is always strict mode
+-- | code.
+-- |
+
+-- SPEC: L9634-L9649
+-- | # CreateImportBinding ( \_envRec\_: a Module Environment Record, \_N\_: a String, \_M\_: a Module Record, \_N2\_: a String, ): \~unused\~
+-- |
+-- | description
+-- | :   It creates a new initialized immutable indirect binding for the name
+-- |     \_N\_. A binding must not already exist in \_envRec\_ for \_N\_.
+-- |     \_N2\_ is the name of a binding that exists in \_M\_\'s Module
+-- |     Environment Record. Accesses to the value of the new binding will
+-- |     indirectly access the bound value of the target binding.
+-- |
+-- | 1\. Assert: \_envRec\_ does not already have a binding for \_N\_. 1.
+-- | Assert: When \_M\_.\[\[Environment\]\] is instantiated, it will have a
+-- | direct binding for \_N2\_. 1. Create an immutable indirect binding in
+-- | \_envRec\_ for \_N\_ that references \_M\_ and \_N2\_ as its target
+-- | binding and record that the binding is initialized. 1. Return
+-- | \~unused\~.
+-- |
+
+-- SPEC: L9650-L9654
+-- | # Environment Record Operations
+-- |
+-- | The following abstract operations are used in this specification to
+-- | operate upon Environment Records:
+-- |
+
+-- SPEC: L9705-L9723
+-- | # PrivateEnvironment Records
+-- |
+-- | A [PrivateEnvironment Record]{#privateenvironment-record .dfn
+-- | variants="PrivateEnvironment Records"} is a specification mechanism used
+-- | to track Private Names based upon the lexical nesting structure of
+-- | \|ClassDeclaration\|s and \|ClassExpression\|s in ECMAScript code. They
+-- | are similar to, but distinct from, Environment Records. Each
+-- | PrivateEnvironment Record is associated with a \|ClassDeclaration\| or
+-- | \|ClassExpression\|. Each time such a class is evaluated, a new
+-- | PrivateEnvironment Record is created to record the Private Names
+-- | declared by that class.
+-- |
+-- | Each PrivateEnvironment Record has the fields defined in .
+-- |
+-- |   Field Name                        Value Type                                Meaning
+-- |   --------------------------------- ----------------------------------------- -----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+-- |   \[\[OuterPrivateEnvironment\]\]   a PrivateEnvironment Record or \*null\*   The PrivateEnvironment Record of the nearest containing class. \*null\* if the class with which this PrivateEnvironment Record is associated is not contained in any other class.
+-- |   \[\[Names\]\]                     a List of Private Names                   The Private Names declared by this class.
+-- |
+
+-- SPEC: L9724-L9728
+-- | # PrivateEnvironment Record Operations
+-- |
+-- | The following abstract operations are used in this specification to
+-- | operate upon PrivateEnvironment Records:
+-- |
+
+-- SPEC: L9821-L9844
+-- | # InitializeHostDefinedRealm ( ): either a normal completion containing \~unused\~ or a throw completion
+-- |
+-- | 1\. Let \_realm\_ be a new Realm Record. 1. Perform
+-- | CreateIntrinsics(\_realm\_). 1. Set \_realm\_.\[\[AgentSignifier\]\] to
+-- | AgentSignifier(). 1. Set \_realm\_.\[\[TemplateMap\]\] to a new empty
+-- | List. 1. Let \_newContext\_ be a new execution context. 1. Set the
+-- | Function of \_newContext\_ to \*null\*. 1. Set the Realm of
+-- | \_newContext\_ to \_realm\_. 1. Set the ScriptOrModule of \_newContext\_
+-- | to \*null\*. 1. Push \_newContext\_ onto the execution context stack;
+-- | \_newContext\_ is now the running execution context. 1. If the host
+-- | requires use of a specific object to serve as \_realm\_\'s global
+-- | object, then 1. Let \_global\_ be such an object created in a
+-- | host-defined manner. 1. Else, 1. Let \_global\_ be
+-- | OrdinaryObjectCreate(\_realm\_.\[\[Intrinsics\]\].\[\[%Object.prototype%\]\]). 1.
+-- | If the host requires that the \`this\` binding in \_realm\_\'s global
+-- | scope return an object other than the global object, then 1. Let
+-- | \_thisValue\_ be such an object created in a host-defined manner. 1.
+-- | Else, 1. Let \_thisValue\_ be \_global\_. 1. Set
+-- | \_realm\_.\[\[GlobalObject\]\] to \_global\_. 1. Set
+-- | \_realm\_.\[\[GlobalEnv\]\] to NewGlobalEnvironment(\_global\_,
+-- | \_thisValue\_). 1. Perform ? SetDefaultGlobalBindings(\_realm\_). 1.
+-- | Create any host-defined global object properties on \_global\_. 1.
+-- | Return \~unused\~.
+-- |
+
+-- SPEC: L9845-L9868
+-- | # CreateIntrinsics ( \_realmRec\_: a Realm Record, ): \~unused\~
+-- |
+-- | 1\. Set \_realmRec\_.\[\[Intrinsics\]\] to a new Record. 1.
+-- | \[declared=\"steps,name,length,slots,prototype,async\"\] Set fields of
+-- | \_realmRec\_.\[\[Intrinsics\]\] with the values listed in . The field
+-- | names are the names listed in the "Intrinsic Name" column of the table.
+-- | The value of each field is a new object value fully and recursively
+-- | populated with property values as defined by the specification of each
+-- | object in clauses through . All object property values are newly created
+-- | object values. All values that are built-in function objects are created
+-- | by performing CreateBuiltinFunction(\_steps\_, \_length\_, \_name\_,
+-- | \_slots\_, \_realmRec\_, \_prototype\_, \_async\_) where \_steps\_ is
+-- | the definition of that function provided by this specification, \_name\_
+-- | is the initial value of the function\'s \*\"name\"\* property,
+-- | \_length\_ is the initial value of the function\'s \*\"length\"\*
+-- | property, \_slots\_ is a list of the names, if any, of the function\'s
+-- | specified internal slots, \_prototype\_ is the specified value of the
+-- | function\'s \[\[Prototype\]\] internal slot, and \_async\_ is \*true\*
+-- | if the function is described as "async" and \*false\* otherwise. The
+-- | creation of the intrinsics and their properties must be ordered to avoid
+-- | any dependencies upon objects that have not yet been created. 1. Perform
+-- | AddRestrictedFunctionProperties(\_realmRec\_.\[\[Intrinsics\]\].\[\[%Function.prototype%\]\],
+-- | \_realmRec\_). 1. Return \~unused\~.
+-- |
+
+-- SPEC: L9959-L9969
+-- | # GetActiveScriptOrModule ( ): a Script Record, a Module Record, or \*null\*
+-- |
+-- | description
+-- | :   It is used to determine the running script or module, based on the
+-- |     running execution context.
+-- |
+-- | 1\. If the execution context stack is empty, return \*null\*. 1. Let
+-- | \_ec\_ be the topmost execution context on the execution context stack
+-- | whose ScriptOrModule component is not \*null\*. 1. If no such execution
+-- | context exists, return \*null\*. 1. Return \_ec\_\'s ScriptOrModule.
+-- |
+
+-- SPEC: L10142-L10162
+-- | # HostCallJobCallback ( \_jobCallback\_: a JobCallback Record, \_V\_: an ECMAScript language value, \_argumentsList\_: a List of ECMAScript language values, ): either a normal completion containing an ECMAScript language value or a throw completion
+-- |
+-- | An implementation of HostCallJobCallback must conform to the following
+-- | requirements:
+-- |
+-- | - It must perform and return the result of
+-- |   Call(\_jobCallback\_.\[\[Callback\]\], \_V\_, \_argumentsList\_).
+-- |
+-- | This requirement means that hosts cannot change the \[\[Call\]\]
+-- | behaviour of function objects defined in this specification.
+-- |
+-- | The default implementation of HostCallJobCallback performs the following
+-- | steps when called:
+-- |
+-- | 1\. Assert: IsCallable(\_jobCallback\_.\[\[Callback\]\]) is \*true\*. 1.
+-- | Return ? Call(\_jobCallback\_.\[\[Callback\]\], \_V\_,
+-- | \_argumentsList\_).
+-- |
+-- | ECMAScript hosts that are not web browsers must use the default
+-- | implementation of HostCallJobCallback.
+-- |
+
+-- SPEC: L10212-L10221
+-- | # HostEnqueueTimeoutJob ( \_timeoutJob\_: a Job Abstract Closure, \_realm\_: a Realm Record, \_milliseconds\_: a non-negative finite Number, ): \~unused\~
+-- |
+-- | description
+-- | :   It schedules \_timeoutJob\_ in the realm \_realm\_ in the agent
+-- |     signified by \_realm\_.\[\[AgentSignifier\]\] to be performed after
+-- |     at least \_milliseconds\_ milliseconds.
+-- |
+-- | An implementation of HostEnqueueTimeoutJob must conform to the
+-- | requirements in .
+-- |
+
+-- SPEC: L11521-L11551
+-- | # Built-in Function Objects
+-- |
+-- | A built-in function object is an ordinary object; it must satisfy the
+-- | requirements for ordinary objects set out in .
+-- |
+-- | In addition to the internal slots required of every ordinary object (see
+-- | ), a built-in function object must also have the following internal
+-- | slots:
+-- |
+-- | - \[\[Realm\]\], a Realm Record that represents the realm in which the
+-- |   function was created.
+-- | - \[\[InitialName\]\], a String that is the initial name of the
+-- |   function. It is used by .
+-- | - \[\[Async\]\], a Boolean that indicates whether the function has async
+-- |   function call and construct behaviour in BuiltinCallOrConstruct.
+-- |
+-- | The initial value of a built-in function object\'s \[\[Prototype\]\]
+-- | internal slot is %Function.prototype%, unless otherwise specified.
+-- |
+-- | A built-in function object must have a \[\[Call\]\] internal method that
+-- | conforms to the definition in .
+-- |
+-- | A built-in function object has a \[\[Construct\]\] internal method if
+-- | and only if it is described as a "constructor", or some algorithm in
+-- | this specification explicitly sets its \[\[Construct\]\] internal
+-- | method. Such a \[\[Construct\]\] internal method must conform to the
+-- | definition in .
+-- |
+-- | An implementation may provide additional built-in function objects that
+-- | are not defined in this specification.
+-- |
+
+-- SPEC: L11552-L11559
+-- | # \[\[Call\]\] ( \_thisArgument\_: an ECMAScript language value, \_argumentsList\_: a List of ECMAScript language values, ): either a normal completion containing an ECMAScript language value or a throw completion
+-- |
+-- | for
+-- | :   a built-in function object \_F\_
+-- |
+-- | 1\. Return ? BuiltinCallOrConstruct(\_F\_, \_thisArgument\_,
+-- | \_argumentsList\_, \*undefined\*).
+-- |
+
+-- SPEC: L11560-L11568
+-- | # \[\[Construct\]\] ( \_argumentsList\_: a List of ECMAScript language values, \_newTarget\_: a constructor, ): either a normal completion containing an Object or a throw completion
+-- |
+-- | for
+-- | :   a built-in function object \_F\_ (when the method is present)
+-- |
+-- | 1\. Let \_result\_ be ? BuiltinCallOrConstruct(\_F\_, \~uninitialized\~,
+-- | \_argumentsList\_, \_newTarget\_). 1. Assert: \_result\_ is an
+-- | Object. 1. Return \_result\_.
+-- |
+
+-- SPEC: L11645-L11652
+-- | # Built-in Exotic Object Internal Methods and Slots
+-- |
+-- | This specification defines several kinds of built-in exotic objects.
+-- | These objects generally behave similar to ordinary objects except for a
+-- | few specific situations. The following exotic objects use the ordinary
+-- | object internal methods except where it is explicitly specified
+-- | otherwise below:
+-- |
+
+-- SPEC: L11653-L11679
+-- | # Bound Function Exotic Objects
+-- |
+-- | A bound function exotic object is an exotic object that wraps another
+-- | function object. A bound function exotic object is callable (it has a
+-- | \[\[Call\]\] internal method and may have a \[\[Construct\]\] internal
+-- | method). Calling a bound function exotic object generally results in a
+-- | call of its wrapped function.
+-- |
+-- | An object is a [bound function exotic
+-- | object]{#bound-function-exotic-object .dfn
+-- | variants="bound function exotic objects"} if its \[\[Call\]\] and (if
+-- | applicable) \[\[Construct\]\] internal methods use the following
+-- | implementations, and its other essential internal methods use the
+-- | definitions found in . These methods are installed in
+-- | BoundFunctionCreate.
+-- |
+-- | Bound function exotic objects do not have the internal slots of
+-- | ECMAScript function objects listed in . Instead they have the internal
+-- | slots listed in , in addition to \[\[Prototype\]\] and
+-- | \[\[Extensible\]\].
+-- |
+-- |   Internal Slot                 Type                                   Description
+-- |   ----------------------------- -------------------------------------- ------------------------------------------------------------------------------------------------------
+-- |   \[\[BoundTargetFunction\]\]   a callable Object                      The wrapped function object.
+-- |   \[\[BoundThis\]\]             an ECMAScript language value           The value that is always passed as the \*this\* value when calling the wrapped function.
+-- |   \[\[BoundArguments\]\]        a List of ECMAScript language values   A list of values whose elements are used as the first arguments to any call to the wrapped function.
+-- |
+
+-- SPEC: L11680-L11690
+-- | # \[\[Call\]\] ( \_thisArgument\_: an ECMAScript language value, \_argumentsList\_: a List of ECMAScript language values, ): either a normal completion containing an ECMAScript language value or a throw completion
+-- |
+-- | for
+-- | :   a bound function exotic object \_F\_
+-- |
+-- | 1\. Let \_target\_ be \_F\_.\[\[BoundTargetFunction\]\]. 1. Let
+-- | \_boundThis\_ be \_F\_.\[\[BoundThis\]\]. 1. Let \_boundArgs\_ be
+-- | \_F\_.\[\[BoundArguments\]\]. 1. Let \_args\_ be the list-concatenation
+-- | of \_boundArgs\_ and \_argumentsList\_. 1. Return ? Call(\_target\_,
+-- | \_boundThis\_, \_args\_).
+-- |
+
+-- SPEC: L11691-L11702
+-- | # \[\[Construct\]\] ( \_argumentsList\_: a List of ECMAScript language values, \_newTarget\_: a constructor, ): either a normal completion containing an Object or a throw completion
+-- |
+-- | for
+-- | :   a bound function exotic object \_F\_
+-- |
+-- | 1\. Let \_target\_ be \_F\_.\[\[BoundTargetFunction\]\]. 1. Assert:
+-- | IsConstructor(\_target\_) is \*true\*. 1. Let \_boundArgs\_ be
+-- | \_F\_.\[\[BoundArguments\]\]. 1. Let \_args\_ be the list-concatenation
+-- | of \_boundArgs\_ and \_argumentsList\_. 1. If SameValue(\_F\_,
+-- | \_newTarget\_) is \*true\*, set \_newTarget\_ to \_target\_. 1. Return ?
+-- | Construct(\_target\_, \_args\_, \_newTarget\_).
+-- |
+
+-- SPEC: L11703-L11719
+-- | # BoundFunctionCreate ( \_targetFunction\_: a function object, \_boundThis\_: an ECMAScript language value, \_boundArgs\_: a List of ECMAScript language values, ): either a normal completion containing a function object or a throw completion
+-- |
+-- | description
+-- | :   It is used to specify the creation of new bound function exotic
+-- |     objects.
+-- |
+-- | 1\. Let \_proto\_ be ? \_targetFunction\_.\[\[GetPrototypeOf\]\](). 1.
+-- | Let \_internalSlotsList\_ be the list-concatenation of «
+-- | \[\[Prototype\]\], \[\[Extensible\]\] » and the internal slots listed in
+-- | . 1. Let \_obj\_ be MakeBasicObject(\_internalSlotsList\_). 1. Set
+-- | \_obj\_.\[\[Prototype\]\] to \_proto\_. 1. Set \_obj\_.\[\[Call\]\] as
+-- | specified in . 1. If IsConstructor(\_targetFunction\_) is \*true\*,
+-- | then 1. Set \_obj\_.\[\[Construct\]\] as specified in . 1. Set
+-- | \_obj\_.\[\[BoundTargetFunction\]\] to \_targetFunction\_. 1. Set
+-- | \_obj\_.\[\[BoundThis\]\] to \_boundThis\_. 1. Set
+-- | \_obj\_.\[\[BoundArguments\]\] to \_boundArgs\_. 1. Return \_obj\_.
+-- |
+
+-- SPEC: L12001-L12011
+-- | # \[\[GetOwnProperty\]\] ( \_P\_: a property key, ): a normal completion containing either a Property Descriptor or \*undefined\*
+-- |
+-- | for
+-- | :   an arguments exotic object \_args\_
+-- |
+-- | 1\. Let \_desc\_ be OrdinaryGetOwnProperty(\_args\_, \_P\_). 1. If
+-- | \_desc\_ is \*undefined\*, return \*undefined\*. 1. Let \_map\_ be
+-- | \_args\_.\[\[ParameterMap\]\]. 1. Let \_isMapped\_ be !
+-- | HasOwnProperty(\_map\_, \_P\_). 1. If \_isMapped\_ is \*true\*, then 1.
+-- | Set \_desc\_.\[\[Value\]\] to ! Get(\_map\_, \_P\_). 1. Return \_desc\_.
+-- |
+
+-- SPEC: L12035-L12045
+-- | # \[\[Get\]\] ( \_P\_: a property key, \_Receiver\_: an ECMAScript language value, ): either a normal completion containing an ECMAScript language value or a throw completion
+-- |
+-- | for
+-- | :   an arguments exotic object \_args\_
+-- |
+-- | 1\. Let \_map\_ be \_args\_.\[\[ParameterMap\]\]. 1. Let \_isMapped\_ be
+-- | ! HasOwnProperty(\_map\_, \_P\_). 1. If \_isMapped\_ is \*false\*,
+-- | return ? OrdinaryGet(\_args\_, \_P\_, \_Receiver\_). 1. Assert: \_map\_
+-- | contains a formal parameter mapping for \_P\_. 1. Return ! Get(\_map\_,
+-- | \_P\_).
+-- |
+
+
 end VerifiedJS.Source
