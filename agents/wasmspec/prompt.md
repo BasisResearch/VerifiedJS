@@ -2,70 +2,122 @@
 
 You own Flat/*, ANF/*, Wasm/Syntax,Semantics,Typing,Numerics, Runtime/*.
 
-## Current Wasm sorry count: 24 (in Semantics.lean)
+## Current Wasm sorry count: 22 (in Semantics.lean)
 
-### PROVABLE NOW (no label stack needed)
+### TASK 1: Add EmitCodeCorr.load_i64 + store_i64 (closes 2 sorry)
 
-**Priority 1: return (some t) — L6271**
-
-Follows the `return none` pattern (L6237-6270). LowerCodeCorr is `return_some arg argCode`, so IR code = `argCode ++ [.return_]`. ANF `return (some t)` evaluates `t` via `evalTrivial`, produces `.silent`. Use `step?_return_some_ok`.
+L7974 and L8232 are blocked only by missing constructors. Add these to `EmitCodeCorr`:
 
 ```lean
-    | some t =>
-        have hc := hrel.hcode; rw [hexpr] at hc
-        generalize s2.code = c at hc
-        cases hc with
-        | return_some arg argCode =>
-          -- argCode evaluates the trivial, then return_
-          -- ANF step: evalTrivial env t = .ok v → (.silent, pushTrace ... .silent)
-          -- IR: execute argCode (pushes value), then return_ (pops frame)
-          -- Use IRSteps_trans for the 2-step sequence
-          sorry
+  /-- i64.load maps to i64.load. REF: Emit.lean line 92. -/
+  | load_i64 (offset : Nat) (rest_ir : List IRInstr) (rest_w : List Instr) :
+      EmitCodeCorr rest_ir rest_w →
+      EmitCodeCorr (.load .i64 offset :: rest_ir)
+        (.i64Load { offset := offset, align := 3 } :: rest_w)
+  /-- i64.store maps to i64.store. REF: Emit.lean line 96. -/
+  | store_i64 (offset : Nat) (rest_ir : List IRInstr) (rest_w : List Instr) :
+      EmitCodeCorr rest_ir rest_w →
+      EmitCodeCorr (.store .i64 offset :: rest_ir)
+        (.i64Store { offset := offset, align := 3 } :: rest_w)
 ```
 
-**Priority 2: readLE? (L262) — provable**
+Then add inversion lemmas (mirror `load_i32_inv`/`store_i32_inv`):
 
-Goal: `readLE? mem addr width = none` given `mem.size = 0`, `0 < width`.
-The `for k in [0:width]` loop hits `¬(addr + 0 < mem.size)` on first iteration (k=0), returning `none`. Try unfolding `readLE?` and working with the `Std.Range.forIn` loop. This may need a custom lemma about `forIn` on `[0:width]` when the body returns `ForInStep.done` on first iteration.
-
-**Priority 3: throw (L6227)**
-
-ANF `throw arg` evaluates `arg` and produces `.error`. Similar to return.
-
-### BLOCKED (need label stack correspondence)
-
-**LowerSimRel has `hlabels_empty : ir.labels = []`**, which makes break/continue/while/labeled UNPROVABLE — they all need labels on the stack. To unblock:
-
-Replace `hlabels_empty` with a label stack correspondence:
 ```lean
-/-- Labels on the IR stack correspond to enclosing control structures in ANF. -/
-hlabels : LabelStackCorr s.expr ir.labels
+theorem EmitCodeCorr.load_i64_inv {offset : Nat} {rest : List IRInstr} {wcode : List Instr}
+    (h : EmitCodeCorr (IRInstr.load .i64 offset :: rest) wcode) :
+    (∃ rest_w, wcode = Instr.i64Load { offset := offset, align := 3 } :: rest_w ∧ EmitCodeCorr rest rest_w) ∨
+    False := by
+  cases h with
+  | load_i64 _ _ rw hrw => left; exact ⟨rw, rfl, hrw⟩
+  | general _ _ _ _ hf _ => exact hf.elim
+
+theorem EmitCodeCorr.store_i64_inv {offset : Nat} {rest : List IRInstr} {wcode : List Instr}
+    (h : EmitCodeCorr (IRInstr.store .i64 offset :: rest) wcode) :
+    (∃ rest_w, wcode = Instr.i64Store { offset := offset, align := 3 } :: rest_w ∧ EmitCodeCorr rest rest_w) ∨
+    False := by
+  cases h with
+  | store_i64 _ _ rw hrw => left; exact ⟨rw, rfl, hrw⟩
+  | general _ _ _ _ hf _ => exact hf.elim
 ```
 
-Where `LabelStackCorr` is a new inductive relating ANF nesting to IR label stack. This is architectural — do NOT attempt until return/throw are closed.
-
-Blocked cases: L6209(let), L6217(seq), L6221(if), L6224(while), L6230(tryCatch), L6274(yield), L6277(await), L6280(labeled), L6283(break), L6286(continue)
-
-### EmitSimRel cases (8 sorries)
-```
-L7928  i64 load     sorry — needs EmitCodeCorr.load_i64
-L7935  store        sorry
-L7938  store8       sorry
-L8379  emit case    sorry
-L8382  emit case    sorry
-L8619  emit case    sorry
-L8622  emit case    sorry
-L8729  emit case    sorry
+Update `EmitCodeCorr.head_inv` to include the new cases:
+```lean
+  | load_i64 _ _ rw hrw => exact ⟨[_], rw, rfl, hrw⟩
+  | store_i64 _ _ rw hrw => exact ⟨[_], rw, rfl, hrw⟩
 ```
 
-### Init (3 `by sorry`)
-```
-L8888  LowerSimRel.init by sorry
-L8903  LowerSimRel.init by sorry
-L8927  LowerSimRel.init by sorry
+Then prove L7974 and L8232 following the i32 pattern exactly:
+- L7974: `rcases hc_full.load_i64_inv with ⟨rest_w, hcw, hrest⟩ | hf` then mirror L7758-7972
+- L8232: `rcases hc_full.store_i64_inv with ⟨rest_w, hcw, hrest⟩ | hf` then mirror L7984-8230
+
+You'll also need `irStep?_eq_load_i64` and `irStep?_eq_store_i64` (mirror the i32 versions at L5251 and L5279), and Wasm step lemmas `step?_eq_i64Load` / `step?_eq_i64Store`.
+
+### TASK 2: Restructure LowerSimRel step_sim to multi-step
+
+**ARCHITECTURAL BLOCKER**: `step_sim` (L6126) uses `∃ s2', irStep? s2 = some (t, s2')` (1 ANF step → 1 IR step). This is FALSE for return(some), throw, let, seq, if, while — all need multiple IR steps.
+
+Change the conclusion to use `IRSteps`:
+
+```lean
+theorem step_sim (prog : ANF.Program) (irmod : IRModule) :
+    ∀ (s1 : ANF.State) (s2 : IRExecState) (t : Core.TraceEvent) (s1' : ANF.State),
+    LowerSimRel prog irmod s1 s2 → ANF.step? s1 = some (t, s1') →
+    ∃ (s2' : IRExecState) (ir_trace : List TraceEvent),
+      IRSteps s2 ir_trace s2' ∧
+      LowerSimRel prog irmod s1' s2' ∧
+      observableEvents ir_trace = observableEvents [traceFromCore t] := by
 ```
 
-These need `LowerCodeCorr` for the initial program, which requires `lowerExpr` to be public.
+Fix existing proofs (var case, return none) by wrapping single steps:
+```lean
+-- Where you had: exact ⟨_, hir, hrel'⟩
+-- Change to:
+exact ⟨_, [traceFromCore ct], .tail (.mk hir) (.refl _), hrel', rfl⟩
+```
+
+Then `step_sim_stutter` becomes trivial (or delete it, it's now identical to `step_sim`).
+
+### TASK 3: After TASK 2, close return(some) at L6294
+
+Add inner code correspondence to `return_some`:
+```lean
+  | return_some (arg : ANF.Trivial) (argCode : List IRInstr) :
+      LowerCodeCorr (.trivial arg) argCode →  -- ADD THIS
+      LowerCodeCorr (.«return» (some arg)) (argCode ++ [.return_])
+```
+
+Then prove the return(some) case using 2 IR steps (compose with IRSteps). Case split on `evalTrivial env t`:
+- `.ok v`: ANF silent, IR executes argCode (1 step) then return_ (1 step)
+- `.error msg`: ANF error, IR traps
+
+### Emit sorries summary (7 remaining after TASK 1)
+```
+L8796  call           sorry — needs EmitCodeCorr.call constructor
+L8799  callIndirect   sorry — needs EmitCodeCorr.callIndirect
+L9036  br             sorry — needs label correspondence
+L9039  brIf           sorry — needs label correspondence
+L9146  memoryGrow     sorry — needs EmitCodeCorr.memoryGrow
+L9305  init           by sorry — needs lowerExpr public
+L9320  init           by sorry
+L9344  init           by sorry
+```
+
+### Lower step_sim sorries (12, after restructure)
+```
+L6232  let            sorry — multi-step, no labels
+L6240  seq            sorry — multi-step, no labels
+L6244  if             sorry — multi-step, no labels
+L6247  while          sorry — needs labels (block/loop)
+L6250  throw          sorry — multi-step (throw_ret) or labels (throw_br)
+L6253  tryCatch       sorry — opaque
+L6294  return some    sorry — TASK 3 (2 IR steps)
+L6297  yield          sorry — opaque
+L6300  await          sorry — opaque
+L6303  labeled        sorry — needs labels
+L6306  break          sorry — needs labels
+L6309  continue       sorry — needs labels
+```
 
 ## Rules
 - `bash scripts/lake_build_concise.sh` to build
@@ -73,3 +125,4 @@ These need `LowerCodeCorr` for the initial program, which requires `lowerExpr` t
 - Do NOT break the build
 - CLOSE sorries, don't decompose them into more sorries
 - Use `lean_goal` + `lean_multi_attempt` BEFORE editing
+- Do TASK 1 FIRST — it's the quickest win (2 sorries, pattern already exists)
