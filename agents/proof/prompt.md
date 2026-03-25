@@ -2,19 +2,18 @@
 
 You own ClosureConvertCorrect.lean, ANFConvertCorrect.lean, LowerCorrect.lean.
 
-## Current sorry count: 12 (9 CC + 2 ANF + 1 Lower)
+## Current sorry count: 11 (8 CC + 2 ANF + 1 Lower)
 
 ### CC sorries (ClosureConvertCorrect.lean)
 ```
 L829   forIn           sorry — UNPROVABLE (stub, skip)
 L830   forOf           sorry — UNPROVABLE (stub, skip)
-L1113  var (captured)  sorry — needs env object lookup via heap
-L1258  let-value       sorry — convertExpr unfold blocked
-L1824  call            sorry — needs env/heap/funcs correspondence
-L1825  newObj          sorry — needs env/heap correspondence
-L3474  objectLit       sorry — needs heap correspondence (allocObjectWithProps)
-L3475  arrayLit        sorry — needs heap correspondence
-L3476  functionDef     sorry — needs env/heap/funcs + CC state
+L1113  var (captured)  sorry — needs EnvObjCorr (see Priority 1)
+L1897  call            sorry — needs env/heap/funcs correspondence
+L1898  newObj          sorry — needs env/heap correspondence
+L3547  objectLit       sorry — needs heap correspondence
+L3548  arrayLit        sorry — needs heap correspondence
+L3549  functionDef     sorry — needs env/heap/funcs + CC state
 ```
 
 **L829/L830 are expected sorry — skip them.**
@@ -30,42 +29,58 @@ L1177  nested seq case        sorry — in anfConvert_halt_star_aux
 L69    LowerSimRel.init  by sorry — init field proof (owned by wasmspec, skip)
 ```
 
-## Priority 1: CC L1258 (let-value case)
+## Priority 1: CC L1113 (captured var — needs EnvObjCorr)
 
-This is at the `let` case where the init expression IS a value (`Core.exprValue? init = some v`). Both Core and Flat step to the body with env extended. The proof pattern:
+When `lookupEnv envMap name = some idx`, `convertExpr (.var name)` produces `.getEnv (.var envVar) idx`. The Flat semantics evaluates this by:
+1. Looking up `envVar` in env → `.object envAddr`
+2. Getting property `envSlotKey idx` from heap object at `envAddr`
+3. Returning the value
 
-1. Core steps: `Core.step? sc = some (.silent, sc')` where `sc'` has `env.extend name v` and `expr = body`
-2. Flat steps: `Flat.step? sf = some (.silent, sf')` where `sf'` has `env.extend name (convertValue v)` and `expr = body'`
+**Missing abstraction**: CC_SimRel needs an env-object correspondence invariant. Add to CC_SimRel:
 
 ```lean
--- After subst ha_lit, hconv gives sf.expr = .let name (.lit (convertValue v)) body'
--- Flat step for let-value is deterministic:
-have hflat_step : Flat.step? sf = some (.silent, ⟨body', sf.env.extend name (Flat.convertValue v), sf.heap, sf.trace, sf.funcs, sf.callStack⟩) := by
-  rw [show sf = {sf with expr := .let name (.lit (Flat.convertValue v)) body'} from by cases sf; simp_all]
-  simp [Flat.step?, Flat.exprValue?]
--- Core step for let-value:
-have hcore_step : Core.step? sc = some (.silent, ⟨body, sc.env.extend name v, sc.heap, sc.trace, sc.funcs, sc.callStack⟩) := by
-  rw [show sc = {sc with expr := .let name (.lit v) body} from by cases sc; simp_all]
-  simp [Core.step?, Core.exprValue?]
--- Then use EnvCorr_extend + IH on body
+private def CC_SimRel (_s : Core.Program) (_t : Flat.Program)
+    (sf : Flat.State) (sc : Core.State) : Prop :=
+  sf.trace = sc.trace ∧
+  EnvCorr sc.env sf.env ∧
+  HeapCorr sc.heap sf.heap ∧
+  noCallFrameReturn sc.expr = true ∧
+  ExprAddrWF sc.expr sc.heap.objects.size ∧
+  EnvAddrWF sc.env sc.heap.objects.size ∧
+  HeapValuesWF sc.heap ∧
+  ∃ (scope : List String) (envVar : String) (envMap : Flat.EnvMapping) (st st' : Flat.CCState),
+    (sf.expr, st') = Flat.convertExpr sc.expr scope envVar envMap st ∧
+    -- NEW: env object correspondence for captured variables
+    EnvObjCorr sc.env sf.env sf.heap envVar envMap
 ```
 
-The key is that `convertExpr body (name::scope) ...` produces `body'`, and the IH gives you the simulation for `body` at depth `n-1`.
-
-## Priority 2: CC objectLit (L3474)
-
-Both Core and Flat allocate an object on the heap. **Key issue**: HeapCorr gives `≤` not `=` for heap sizes. If sizes differ, addrs won't match.
-
-**Check `HeapCorr` definition** — if it has `size_eq`, use it. Otherwise add `heap_size_eq : sc.heap.objects.size = sf.heap.objects.size` to CC_SimRel and prove it's an invariant.
-
-## Priority 3: ANF L1177 (nested seq — ARCHITECTURAL)
-
-Skip for now unless CC sorries are all done. See leftSpineCount approach:
+Define:
 ```lean
-def leftSpineCount : Flat.Expr → Nat
-  | .seq a _ => leftSpineCount a + 1
-  | _ => 0
+/-- Env object correspondence: if envMap is non-empty, envVar maps to an object
+    on the Flat heap whose slots contain the captured variable values. -/
+private def EnvObjCorr (cenv : Core.Env) (fenv : Flat.Env) (fheap : Core.Heap)
+    (envVar : String) (envMap : Flat.EnvMapping) : Prop :=
+  ∀ name idx, envMap.find? (fun p => p.1 == name) = some (name, idx) →
+    ∃ cv fv envAddr props,
+      cenv.lookup name = some cv ∧
+      fenv.lookup envVar = some (.object envAddr) ∧
+      Flat.heapObjectAt? fheap envAddr = some props ∧
+      props.find? (fun kv => kv.1 == Flat.envSlotKey idx) = some (Flat.envSlotKey idx, cv)
 ```
+
+**NOTE**: `Flat.envSlotKey` is `private`. Either:
+1. Make it public in Flat/Semantics.lean (ask wasmspec), or
+2. Define your own copy: `private def envSlotKey (idx : Nat) : Core.PropName := "__env" ++ toString idx`
+
+**For initial state**: `envMap = []` so `EnvObjCorr` is vacuously true. No change to `closureConvert_init_related`.
+
+**For most cases**: env object doesn't change, so `EnvObjCorr` is preserved (same heap, same env).
+
+## Priority 2: CC objectLit/arrayLit (L3547-3548)
+
+Both allocate objects. Check `HeapCorr` — if it has `size_eq`, use it. Otherwise add `heap_size_eq : sc.heap.objects.size = sf.heap.objects.size` to CC_SimRel.
+
+## Priority 3: ANF L1177 (nested seq — skip unless CC done)
 
 ## Rules
 - `bash scripts/lake_build_concise.sh` to build (only ONCE at end)
