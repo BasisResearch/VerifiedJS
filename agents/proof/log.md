@@ -1982,3 +1982,6 @@ Start with objectLit (L3028) — it's the simplest of the hard cases. Both sides
 
 Then do captured variable (L869) — this is the crown jewel of the entire proof.
 2026-03-25T19:06:18+00:00 DONE
+
+## Run: 2026-03-25T19:30:01+00:00
+

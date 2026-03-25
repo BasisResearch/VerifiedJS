@@ -7078,6 +7078,10 @@ structure EmitSimRel (irmod : IRModule) (wmod : Module)
   /- Memory correspondence: Wasm and IR memories are equal or both absent/empty. -/
   hmemory : (w.store.memories[0]? = some ir.memory) ∨
             (w.store.memories[0]? = none ∧ ir.memory.size = 0)
+  /- Memory limits: max is none (needed for memoryGrow correspondence). -/
+  hmemLimits : ∀ lim, w.store.memLimits[0]? = some lim → lim.max = none
+  /- Memory page alignment (needed for memoryGrow condition equivalence). -/
+  hmemory_aligned : 65536 ∣ ir.memory.size
   /- Label correspondence (needed for halt derivation). -/
   hlabels : ir.labels.length = w.labels.length
   /- Halt correspondence. -/
@@ -7235,6 +7239,25 @@ theorem init (irmod : IRModule) (wmod : Module)
         · simp [ByteArray.mkEmpty, ByteArray.size]
       | some memType =>
         left; simp [buildModule, Array.getElem?_map, h0, initMemory]
+  hmemLimits := by
+    intro lim hlim
+    simp only [Wasm.initialState, initialStore] at hlim
+    have hemit' := hemit
+    unfold emit at hemit'
+    simp only [Bind.bind, Except.bind] at hemit'
+    split at hemit'
+    · simp at hemit'
+    · simp only [Except.ok.injEq] at hemit'
+      subst hemit'
+      simp [buildModule, Array.getElem?_map] at hlim
+      cases h0 : irmod.memories[0]? with
+      | none => simp [h0] at hlim
+      | some memType => simp [h0] at hlim; rw [← hlim]
+  hmemory_aligned := by
+    simp only [irInitialState, initIRMemory]
+    cases h0 : irmod.memories[0]? with
+    | none => simp [ByteArray.mkEmpty, ByteArray.size]; exact dvd_zero _
+    | some memType => simp [initMemory, ByteArray.size]; exact dvd_mul_left _ _
   hlabels := by simp [irInitialState, Wasm.initialState]
   hhalt := by
     intro hirHalt
@@ -7310,7 +7333,7 @@ theorem step_sim (irmod : IRModule) (wmod : Module) :
               simp at this; exact this
             exact ⟨_, hw,
               ⟨hrel.hemit, hlc, hrel.hstack, hrel.hframes_len, hrel.hframes_locals,
-                hrel.hframes_vals, hrel.hglobals, hrel.hmemory, hlabels_post,
+                hrel.hframes_vals, hrel.hglobals, hrel.hmemory, hrel.hmemLimits, hrel.hmemory_aligned, hlabels_post,
                 hhalt_of_structural hlc hlabels_post, by
                   intro i hi
                   have := hrel.hlabel_content (i + 1) (by rw [hlabels_ir]; simp; omega)
@@ -7337,7 +7360,7 @@ theorem step_sim (irmod : IRModule) (wmod : Module) :
             simp only [Option.some.injEq, Prod.mk.injEq] at hstep
             obtain ⟨rfl, rfl⟩ := hstep
             have hw := step?_eq_i32Const s2 n rest_w hcw
-            refine ⟨_, hw, ⟨hrel.hemit, hrest, ?_, hrel.hframes_len, hrel.hframes_locals, hrel.hframes_vals, hrel.hglobals, hrel.hmemory, hrel.hlabels, hhalt_of_structural hrest hrel.hlabels, hrel.hlabel_content, hrel.hframes_one⟩⟩
+            refine ⟨_, hw, ⟨hrel.hemit, hrest, ?_, hrel.hframes_len, hrel.hframes_locals, hrel.hframes_vals, hrel.hglobals, hrel.hmemory, hrel.hmemLimits, hrel.hmemory_aligned, hrel.hlabels, hhalt_of_structural hrest hrel.hlabels, hrel.hlabel_content, hrel.hframes_one⟩⟩
             dsimp only []
             exact stack_corr_cons hrel.hstack.1 hrel.hstack.2 (.i32 n)
           · exact hf.elim
@@ -7351,7 +7374,7 @@ theorem step_sim (irmod : IRModule) (wmod : Module) :
             simp only [Option.some.injEq, Prod.mk.injEq] at hstep
             obtain ⟨rfl, rfl⟩ := hstep
             have hw := step?_eq_i64Const s2 n rest_w hcw
-            refine ⟨_, hw, ⟨hrel.hemit, hrest, ?_, hrel.hframes_len, hrel.hframes_locals, hrel.hframes_vals, hrel.hglobals, hrel.hmemory, hrel.hlabels, hhalt_of_structural hrest hrel.hlabels, hrel.hlabel_content, hrel.hframes_one⟩⟩
+            refine ⟨_, hw, ⟨hrel.hemit, hrest, ?_, hrel.hframes_len, hrel.hframes_locals, hrel.hframes_vals, hrel.hglobals, hrel.hmemory, hrel.hmemLimits, hrel.hmemory_aligned, hrel.hlabels, hhalt_of_structural hrest hrel.hlabels, hrel.hlabel_content, hrel.hframes_one⟩⟩
             dsimp only []
             exact stack_corr_cons hrel.hstack.1 hrel.hstack.2 (.i64 n)
           · exact hf.elim
@@ -7365,7 +7388,7 @@ theorem step_sim (irmod : IRModule) (wmod : Module) :
             simp only [Option.some.injEq, Prod.mk.injEq] at hstep
             obtain ⟨rfl, rfl⟩ := hstep
             have hw := step?_eq_f64Const s2 _ rest_w hcw
-            refine ⟨_, hw, ⟨hrel.hemit, hrest, ?_, hrel.hframes_len, hrel.hframes_locals, hrel.hframes_vals, hrel.hglobals, hrel.hmemory, hrel.hlabels, hhalt_of_structural hrest hrel.hlabels, hrel.hlabel_content, hrel.hframes_one⟩⟩
+            refine ⟨_, hw, ⟨hrel.hemit, hrest, ?_, hrel.hframes_len, hrel.hframes_locals, hrel.hframes_vals, hrel.hglobals, hrel.hmemory, hrel.hmemLimits, hrel.hmemory_aligned, hrel.hlabels, hhalt_of_structural hrest hrel.hlabels, hrel.hlabel_content, hrel.hframes_one⟩⟩
             dsimp only []
             exact stack_corr_cons hrel.hstack.1 hrel.hstack.2 (.f64 _)
           · exact hf.elim
@@ -7398,7 +7421,7 @@ theorem step_sim (irmod : IRModule) (wmod : Module) :
                 by simp [traceToWasm]; exact hw,
                 ⟨hrel.hemit, .nil, by dsimp only []; exact hrel.hstack,
                   by dsimp only []; exact hrel.hframes_len, hrel.hframes_locals, hrel.hframes_vals,
-                  hrel.hglobals, hrel.hmemory, by dsimp only []; exact hrel.hlabels,
+                  hrel.hglobals, hrel.hmemory, hrel.hmemLimits, hrel.hmemory_aligned, by dsimp only []; exact hrel.hlabels,
                   hhalt_of_structural .nil hrel.hlabels, hrel.hlabel_content, hrel.hframes_one⟩⟩
             | irf :: irfs =>
               match hlocal : irf.locals[idx]? with
@@ -7424,7 +7447,7 @@ theorem step_sim (irmod : IRModule) (wmod : Module) :
                     by simp [traceToWasm]; exact hw,
                     ⟨hrel.hemit, .nil, by dsimp only []; exact hrel.hstack,
                       by dsimp only []; exact hrel.hframes_len, hrel.hframes_locals, hrel.hframes_vals,
-                      hrel.hglobals, hrel.hmemory, by dsimp only []; exact hrel.hlabels,
+                      hrel.hglobals, hrel.hmemory, hrel.hmemLimits, hrel.hmemory_aligned, by dsimp only []; exact hrel.hlabels,
                       hhalt_of_structural .nil hrel.hlabels, hrel.hlabel_content, hrel.hframes_one⟩⟩
               | some val =>
                 have hir := irStep?_eq_localGet s1 idx rest irf irfs val hcode_ir hfr_ir hlocal
@@ -7451,7 +7474,7 @@ theorem step_sim (irmod : IRModule) (wmod : Module) :
                     have := getElem?_pos irf.locals idx hidx_ir
                     rw [this] at hlocal; exact (Option.some.inj hlocal).symm
                   rw [hval_eq]
-                  exact ⟨_, hw, hrel.hemit, hrest, by dsimp only []; exact stack_corr_cons hrel.hstack.1 hrel.hstack.2 hval_corr, hrel.hframes_len, hrel.hframes_locals, hrel.hframes_vals, hrel.hglobals, hrel.hmemory, hrel.hlabels, hhalt_of_structural hrest hrel.hlabels, hrel.hlabel_content, hrel.hframes_one⟩
+                  exact ⟨_, hw, hrel.hemit, hrest, by dsimp only []; exact stack_corr_cons hrel.hstack.1 hrel.hstack.2 hval_corr, hrel.hframes_len, hrel.hframes_locals, hrel.hframes_vals, hrel.hglobals, hrel.hmemory, hrel.hmemLimits, hrel.hmemory_aligned, hrel.hlabels, hhalt_of_structural hrest hrel.hlabels, hrel.hlabel_content, hrel.hframes_one⟩
           · exact hf.elim
       | .localSet idx =>
           -- local.set: pop value from stack, set local[idx]
@@ -7484,6 +7507,8 @@ theorem step_sim (irmod : IRModule) (wmod : Module) :
                     hframes_vals := hrel.hframes_vals
                     hglobals := hrel.hglobals
                     hmemory := hrel.hmemory
+                    hmemLimits := hrel.hmemLimits
+                    hmemory_aligned := hrel.hmemory_aligned
                     hlabels := by dsimp only []; exact hrel.hlabels
                     hhalt := hhalt_of_structural .nil hrel.hlabels
                     hlabel_content := hrel.hlabel_content
@@ -7514,6 +7539,8 @@ theorem step_sim (irmod : IRModule) (wmod : Module) :
                       hframes_vals := hrel.hframes_vals
                       hglobals := hrel.hglobals
                       hmemory := hrel.hmemory
+                      hmemLimits := hrel.hmemLimits
+                      hmemory_aligned := hrel.hmemory_aligned
                       hlabels := by dsimp only []; exact hrel.hlabels
                       hhalt := hhalt_of_structural .nil hrel.hlabels
                       hlabel_content := hrel.hlabel_content
@@ -7542,6 +7569,8 @@ theorem step_sim (irmod : IRModule) (wmod : Module) :
                     hframes_vals := hrel.hframes_vals
                     hglobals := hrel.hglobals
                     hmemory := hrel.hmemory
+                    hmemLimits := hrel.hmemLimits
+                    hmemory_aligned := hrel.hmemory_aligned
                     hlabels := by dsimp only []; exact hrel.hlabels
                     hhalt := hhalt_of_structural .nil hrel.hlabels
                     hlabel_content := hrel.hlabel_content
@@ -7569,7 +7598,7 @@ theorem step_sim (irmod : IRModule) (wmod : Module) :
                       have hlt_w : idx < wf.locals.size := hloc_sz ▸ hlt
                       -- Wasm step
                       have hw := step?_eq_localSet s2 idx rest_w wv wstk wf wfs hcw hstk_w hfr_w hlt_w
-                      refine ⟨_, hw, hrel.hemit, hrest, ?_, ?_, ?_, ?_, hrel.hglobals, hrel.hmemory, hrel.hlabels, hhalt_of_structural hrest hrel.hlabels, hrel.hlabel_content, hrel.hframes_one⟩
+                      refine ⟨_, hw, hrel.hemit, hrest, ?_, ?_, ?_, ?_, hrel.hglobals, hrel.hmemory, hrel.hmemLimits, hrel.hmemory_aligned, hrel.hlabels, hhalt_of_structural hrest hrel.hlabels, hrel.hlabel_content, hrel.hframes_one⟩
                       · -- Stack correspondence (tail after pop)
                         rw [hstk_w] at hstk_rel
                         exact stack_corr_tail hstk_rel.1 hstk_rel.2
@@ -7633,6 +7662,8 @@ theorem step_sim (irmod : IRModule) (wmod : Module) :
                           hframes_vals := hrel.hframes_vals
                           hglobals := hrel.hglobals
                           hmemory := hrel.hmemory
+                          hmemLimits := hrel.hmemLimits
+                          hmemory_aligned := hrel.hmemory_aligned
                           hlabels := by dsimp only []; exact hrel.hlabels
                           hhalt := hhalt_of_structural .nil hrel.hlabels
                           hlabel_content := hrel.hlabel_content
@@ -7679,6 +7710,8 @@ theorem step_sim (irmod : IRModule) (wmod : Module) :
                       hframes_vals := hrel.hframes_vals
                       hglobals := hrel.hglobals
                       hmemory := hrel.hmemory
+                      hmemLimits := hrel.hmemLimits
+                      hmemory_aligned := hrel.hmemory_aligned
                       hlabels := hrel.hlabels
                       hhalt := hhalt_of_structural hrest hrel.hlabels
                       hlabel_content := hrel.hlabel_content
@@ -7706,6 +7739,8 @@ theorem step_sim (irmod : IRModule) (wmod : Module) :
                       hframes_vals := hrel.hframes_vals
                       hglobals := hrel.hglobals
                       hmemory := hrel.hmemory
+                      hmemLimits := hrel.hmemLimits
+                      hmemory_aligned := hrel.hmemory_aligned
                       hlabels := by dsimp only []; exact hrel.hlabels
                       hhalt := hhalt_of_structural .nil hrel.hlabels
                       hlabel_content := hrel.hlabel_content
@@ -7738,6 +7773,8 @@ theorem step_sim (irmod : IRModule) (wmod : Module) :
                       hframes_vals := hrel.hframes_vals
                       hglobals := hrel.hglobals
                       hmemory := hrel.hmemory
+                      hmemLimits := hrel.hmemLimits
+                      hmemory_aligned := hrel.hmemory_aligned
                       hlabels := by dsimp only []; exact hrel.hlabels
                       hhalt := hhalt_of_structural .nil hrel.hlabels
                       hlabel_content := hrel.hlabel_content
@@ -7799,6 +7836,8 @@ theorem step_sim (irmod : IRModule) (wmod : Module) :
                                   rw [Array.getElem?_eq_getElem (by simp [Array.size_setIfInBounds]; omega)]
                                   simp [Array.getElem_setIfInBounds, Ne.symm hjidx, hwv'']
                           hmemory := by dsimp only []; exact hrel.hmemory
+                          hmemLimits := by dsimp only []; exact hrel.hmemLimits
+                          hmemory_aligned := hrel.hmemory_aligned
                           hlabels := hrel.hlabels
                           hhalt := hhalt_of_structural hrest hrel.hlabels
                           hlabel_content := hrel.hlabel_content
@@ -7828,6 +7867,8 @@ theorem step_sim (irmod : IRModule) (wmod : Module) :
                           hframes_vals := hrel.hframes_vals
                           hglobals := hrel.hglobals
                           hmemory := hrel.hmemory
+                          hmemLimits := hrel.hmemLimits
+                          hmemory_aligned := hrel.hmemory_aligned
                           hlabels := by dsimp only []; exact hrel.hlabels
                           hhalt := hhalt_of_structural .nil hrel.hlabels
                           hlabel_content := hrel.hlabel_content
@@ -7855,7 +7896,7 @@ theorem step_sim (irmod : IRModule) (wmod : Module) :
                 exact ⟨_, by simp [traceToWasm]; exact hw,
                   { hemit := hrel.hemit, hcode := .nil, hstack := by simp [hs2],
                     hframes_len := hrel.hframes_len, hframes_locals := hrel.hframes_locals,
-                    hframes_vals := hrel.hframes_vals, hglobals := hrel.hglobals, hmemory := hrel.hmemory,
+                    hframes_vals := hrel.hframes_vals, hglobals := hrel.hglobals, hmemory := hrel.hmemory, hmemLimits := hrel.hmemLimits, hmemory_aligned := hrel.hmemory_aligned,
                     hlabels := hrel.hlabels, hhalt := hhalt_of_structural .nil hrel.hlabels
                     hlabel_content := hrel.hlabel_content
                     hframes_one := hrel.hframes_one }⟩
@@ -7881,7 +7922,7 @@ theorem step_sim (irmod : IRModule) (wmod : Module) :
                       simp [step?, hcw, hstack_eq, pop1?, hmem_eq, hread]
                     simp only [traceToWasm]
                     refine ⟨_, hw, hrel.hemit, hrest, ?_, hrel.hframes_len, hrel.hframes_locals,
-                      hrel.hframes_vals, hrel.hglobals, hrel.hmemory, hrel.hlabels,
+                      hrel.hframes_vals, hrel.hglobals, hrel.hmemory, hrel.hmemLimits, hrel.hmemory_aligned, hrel.hlabels,
                       hhalt_of_structural hrest hrel.hlabels, hrel.hlabel_content, hrel.hframes_one⟩
                     dsimp only []
                     exact stack_corr_cons hlen_tail.symm htail (.i32 _)
@@ -7904,7 +7945,7 @@ theorem step_sim (irmod : IRModule) (wmod : Module) :
                     exact ⟨_, by simp [traceToWasm]; exact hw,
                       { hemit := hrel.hemit, hcode := .nil, hstack := by dsimp only []; exact hrel.hstack,
                         hframes_len := hrel.hframes_len, hframes_locals := hrel.hframes_locals,
-                        hframes_vals := hrel.hframes_vals, hglobals := hrel.hglobals, hmemory := hrel.hmemory,
+                        hframes_vals := hrel.hframes_vals, hglobals := hrel.hglobals, hmemory := hrel.hmemory, hmemLimits := hrel.hmemLimits, hmemory_aligned := hrel.hmemory_aligned,
                         hlabels := hrel.hlabels, hhalt := hhalt_of_structural .nil hrel.hlabels
                         hlabel_content := hrel.hlabel_content
                         hframes_one := hrel.hframes_one }⟩
@@ -7915,7 +7956,7 @@ theorem step_sim (irmod : IRModule) (wmod : Module) :
                     exact ⟨_, by simp [traceToWasm]; exact hw,
                       { hemit := hrel.hemit, hcode := .nil, hstack := by dsimp only []; exact hrel.hstack,
                         hframes_len := hrel.hframes_len, hframes_locals := hrel.hframes_locals,
-                        hframes_vals := hrel.hframes_vals, hglobals := hrel.hglobals, hmemory := hrel.hmemory,
+                        hframes_vals := hrel.hframes_vals, hglobals := hrel.hglobals, hmemory := hrel.hmemory, hmemLimits := hrel.hmemLimits, hmemory_aligned := hrel.hmemory_aligned,
                         hlabels := hrel.hlabels, hhalt := hhalt_of_structural .nil hrel.hlabels
                         hlabel_content := hrel.hlabel_content
                         hframes_one := hrel.hframes_one }⟩
@@ -7939,7 +7980,7 @@ theorem step_sim (irmod : IRModule) (wmod : Module) :
                     exact ⟨_, by simp [traceToWasm]; exact hw,
                       { hemit := hrel.hemit, hcode := .nil, hstack := by dsimp only []; exact hrel.hstack,
                         hframes_len := hrel.hframes_len, hframes_locals := hrel.hframes_locals,
-                        hframes_vals := hrel.hframes_vals, hglobals := hrel.hglobals, hmemory := hrel.hmemory,
+                        hframes_vals := hrel.hframes_vals, hglobals := hrel.hglobals, hmemory := hrel.hmemory, hmemLimits := hrel.hmemLimits, hmemory_aligned := hrel.hmemory_aligned,
                         hlabels := hrel.hlabels, hhalt := hhalt_of_structural .nil hrel.hlabels
                         hlabel_content := hrel.hlabel_content
                         hframes_one := hrel.hframes_one }⟩)
@@ -7961,7 +8002,7 @@ theorem step_sim (irmod : IRModule) (wmod : Module) :
                 exact ⟨_, by simp [traceToWasm]; exact hw,
                   { hemit := hrel.hemit, hcode := .nil, hstack := by simp [hs2],
                     hframes_len := hrel.hframes_len, hframes_locals := hrel.hframes_locals,
-                    hframes_vals := hrel.hframes_vals, hglobals := hrel.hglobals, hmemory := hrel.hmemory,
+                    hframes_vals := hrel.hframes_vals, hglobals := hrel.hglobals, hmemory := hrel.hmemory, hmemLimits := hrel.hmemLimits, hmemory_aligned := hrel.hmemory_aligned,
                     hlabels := hrel.hlabels, hhalt := hhalt_of_structural .nil hrel.hlabels
                     hlabel_content := hrel.hlabel_content
                     hframes_one := hrel.hframes_one }⟩
@@ -7986,7 +8027,7 @@ theorem step_sim (irmod : IRModule) (wmod : Module) :
                       simp [step?, hcw, hstack_eq, pop1?, hmem_eq, hread]
                     simp only [traceToWasm]
                     refine ⟨_, hw, hrel.hemit, hrest, ?_, hrel.hframes_len, hrel.hframes_locals,
-                      hrel.hframes_vals, hrel.hglobals, hrel.hmemory, hrel.hlabels,
+                      hrel.hframes_vals, hrel.hglobals, hrel.hmemory, hrel.hmemLimits, hrel.hmemory_aligned, hrel.hlabels,
                       hhalt_of_structural hrest hrel.hlabels, hrel.hlabel_content, hrel.hframes_one⟩
                     dsimp only []
                     exact stack_corr_cons hlen_tail.symm htail (.f64 _)
@@ -8009,7 +8050,7 @@ theorem step_sim (irmod : IRModule) (wmod : Module) :
                     exact ⟨_, by simp [traceToWasm]; exact hw,
                       { hemit := hrel.hemit, hcode := .nil, hstack := by dsimp only []; exact hrel.hstack,
                         hframes_len := hrel.hframes_len, hframes_locals := hrel.hframes_locals,
-                        hframes_vals := hrel.hframes_vals, hglobals := hrel.hglobals, hmemory := hrel.hmemory,
+                        hframes_vals := hrel.hframes_vals, hglobals := hrel.hglobals, hmemory := hrel.hmemory, hmemLimits := hrel.hmemLimits, hmemory_aligned := hrel.hmemory_aligned,
                         hlabels := hrel.hlabels, hhalt := hhalt_of_structural .nil hrel.hlabels
                         hlabel_content := hrel.hlabel_content
                         hframes_one := hrel.hframes_one }⟩
@@ -8020,7 +8061,7 @@ theorem step_sim (irmod : IRModule) (wmod : Module) :
                     exact ⟨_, by simp [traceToWasm]; exact hw,
                       { hemit := hrel.hemit, hcode := .nil, hstack := by dsimp only []; exact hrel.hstack,
                         hframes_len := hrel.hframes_len, hframes_locals := hrel.hframes_locals,
-                        hframes_vals := hrel.hframes_vals, hglobals := hrel.hglobals, hmemory := hrel.hmemory,
+                        hframes_vals := hrel.hframes_vals, hglobals := hrel.hglobals, hmemory := hrel.hmemory, hmemLimits := hrel.hmemLimits, hmemory_aligned := hrel.hmemory_aligned,
                         hlabels := hrel.hlabels, hhalt := hhalt_of_structural .nil hrel.hlabels
                         hlabel_content := hrel.hlabel_content
                         hframes_one := hrel.hframes_one }⟩
@@ -8049,7 +8090,7 @@ theorem step_sim (irmod : IRModule) (wmod : Module) :
                     exact ⟨_, by simp [traceToWasm]; exact hw,
                       { hemit := hrel.hemit, hcode := .nil, hstack := by dsimp only []; exact hrel.hstack,
                         hframes_len := hrel.hframes_len, hframes_locals := hrel.hframes_locals,
-                        hframes_vals := hrel.hframes_vals, hglobals := hrel.hglobals, hmemory := hrel.hmemory,
+                        hframes_vals := hrel.hframes_vals, hglobals := hrel.hglobals, hmemory := hrel.hmemory, hmemLimits := hrel.hmemLimits, hmemory_aligned := hrel.hmemory_aligned,
                         hlabels := hrel.hlabels, hhalt := hhalt_of_structural .nil hrel.hlabels
                         hlabel_content := hrel.hlabel_content
                         hframes_one := hrel.hframes_one }⟩)
@@ -8071,7 +8112,7 @@ theorem step_sim (irmod : IRModule) (wmod : Module) :
                 exact ⟨_, by simp [traceToWasm]; exact hw,
                   { hemit := hrel.hemit, hcode := .nil, hstack := by simp [hs2],
                     hframes_len := hrel.hframes_len, hframes_locals := hrel.hframes_locals,
-                    hframes_vals := hrel.hframes_vals, hglobals := hrel.hglobals, hmemory := hrel.hmemory,
+                    hframes_vals := hrel.hframes_vals, hglobals := hrel.hglobals, hmemory := hrel.hmemory, hmemLimits := hrel.hmemLimits, hmemory_aligned := hrel.hmemory_aligned,
                     hlabels := hrel.hlabels, hhalt := hhalt_of_structural .nil hrel.hlabels
                     hlabel_content := hrel.hlabel_content
                     hframes_one := hrel.hframes_one }⟩
@@ -8094,7 +8135,7 @@ theorem step_sim (irmod : IRModule) (wmod : Module) :
                       simp [step?, hcw, hstack_eq, pop1?, hmem_eq, hread]
                     simp only [traceToWasm]
                     refine ⟨_, hw, hrel.hemit, hrest, ?_, hrel.hframes_len, hrel.hframes_locals,
-                      hrel.hframes_vals, hrel.hglobals, hrel.hmemory, hrel.hlabels,
+                      hrel.hframes_vals, hrel.hglobals, hrel.hmemory, hrel.hmemLimits, hrel.hmemory_aligned, hrel.hlabels,
                       hhalt_of_structural hrest hrel.hlabels, hrel.hlabel_content, hrel.hframes_one⟩
                     dsimp only []
                     exact stack_corr_cons hlen_tail.symm htail (.i64 _)
@@ -8117,7 +8158,7 @@ theorem step_sim (irmod : IRModule) (wmod : Module) :
                     exact ⟨_, by simp [traceToWasm]; exact hw,
                       { hemit := hrel.hemit, hcode := .nil, hstack := by dsimp only []; exact hrel.hstack,
                         hframes_len := hrel.hframes_len, hframes_locals := hrel.hframes_locals,
-                        hframes_vals := hrel.hframes_vals, hglobals := hrel.hglobals, hmemory := hrel.hmemory,
+                        hframes_vals := hrel.hframes_vals, hglobals := hrel.hglobals, hmemory := hrel.hmemory, hmemLimits := hrel.hmemLimits, hmemory_aligned := hrel.hmemory_aligned,
                         hlabels := hrel.hlabels, hhalt := hhalt_of_structural .nil hrel.hlabels
                         hlabel_content := hrel.hlabel_content
                         hframes_one := hrel.hframes_one }⟩
@@ -8128,7 +8169,7 @@ theorem step_sim (irmod : IRModule) (wmod : Module) :
                     exact ⟨_, by simp [traceToWasm]; exact hw,
                       { hemit := hrel.hemit, hcode := .nil, hstack := by dsimp only []; exact hrel.hstack,
                         hframes_len := hrel.hframes_len, hframes_locals := hrel.hframes_locals,
-                        hframes_vals := hrel.hframes_vals, hglobals := hrel.hglobals, hmemory := hrel.hmemory,
+                        hframes_vals := hrel.hframes_vals, hglobals := hrel.hglobals, hmemory := hrel.hmemory, hmemLimits := hrel.hmemLimits, hmemory_aligned := hrel.hmemory_aligned,
                         hlabels := hrel.hlabels, hhalt := hhalt_of_structural .nil hrel.hlabels
                         hlabel_content := hrel.hlabel_content
                         hframes_one := hrel.hframes_one }⟩
@@ -8152,7 +8193,7 @@ theorem step_sim (irmod : IRModule) (wmod : Module) :
                     exact ⟨_, by simp [traceToWasm]; exact hw,
                       { hemit := hrel.hemit, hcode := .nil, hstack := by dsimp only []; exact hrel.hstack,
                         hframes_len := hrel.hframes_len, hframes_locals := hrel.hframes_locals,
-                        hframes_vals := hrel.hframes_vals, hglobals := hrel.hglobals, hmemory := hrel.hmemory,
+                        hframes_vals := hrel.hframes_vals, hglobals := hrel.hglobals, hmemory := hrel.hmemory, hmemLimits := hrel.hmemLimits, hmemory_aligned := hrel.hmemory_aligned,
                         hlabels := hrel.hlabels, hhalt := hhalt_of_structural .nil hrel.hlabels
                         hlabel_content := hrel.hlabel_content
                         hframes_one := hrel.hframes_one }⟩)
@@ -8182,7 +8223,7 @@ theorem step_sim (irmod : IRModule) (wmod : Module) :
                 exact ⟨_, by simp [traceToWasm]; exact hw,
                   { hemit := hrel.hemit, hcode := .nil, hstack := by dsimp only []; exact hrel.hstack,
                     hframes_len := hrel.hframes_len, hframes_locals := hrel.hframes_locals,
-                    hframes_vals := hrel.hframes_vals, hglobals := hrel.hglobals, hmemory := hrel.hmemory,
+                    hframes_vals := hrel.hframes_vals, hglobals := hrel.hglobals, hmemory := hrel.hmemory, hmemLimits := hrel.hmemLimits, hmemory_aligned := hrel.hmemory_aligned,
                     hlabels := hrel.hlabels, hhalt := hhalt_of_structural .nil hrel.hlabels
                     hlabel_content := hrel.hlabel_content
                     hframes_one := hrel.hframes_one }⟩
@@ -8203,7 +8244,7 @@ theorem step_sim (irmod : IRModule) (wmod : Module) :
                 exact ⟨_, by simp [traceToWasm]; exact hw,
                   { hemit := hrel.hemit, hcode := .nil, hstack := by dsimp only []; exact hrel.hstack,
                     hframes_len := hrel.hframes_len, hframes_locals := hrel.hframes_locals,
-                    hframes_vals := hrel.hframes_vals, hglobals := hrel.hglobals, hmemory := hrel.hmemory,
+                    hframes_vals := hrel.hframes_vals, hglobals := hrel.hglobals, hmemory := hrel.hmemory, hmemLimits := hrel.hmemLimits, hmemory_aligned := hrel.hmemory_aligned,
                     hlabels := hrel.hlabels, hhalt := hhalt_of_structural .nil hrel.hlabels
                     hlabel_content := hrel.hlabel_content
                     hframes_one := hrel.hframes_one }⟩
@@ -8256,7 +8297,7 @@ theorem step_sim (irmod : IRModule) (wmod : Module) :
                     exact ⟨_, by simp [traceToWasm]; exact hw,
                       { hemit := hrel.hemit, hcode := .nil, hstack := by dsimp only []; exact hrel.hstack,
                         hframes_len := hrel.hframes_len, hframes_locals := hrel.hframes_locals,
-                        hframes_vals := hrel.hframes_vals, hglobals := hrel.hglobals, hmemory := hrel.hmemory,
+                        hframes_vals := hrel.hframes_vals, hglobals := hrel.hglobals, hmemory := hrel.hmemory, hmemLimits := hrel.hmemLimits, hmemory_aligned := hrel.hmemory_aligned,
                         hlabels := hrel.hlabels, hhalt := hhalt_of_structural .nil hrel.hlabels
                         hlabel_content := hrel.hlabel_content
                         hframes_one := hrel.hframes_one }⟩
@@ -8267,7 +8308,7 @@ theorem step_sim (irmod : IRModule) (wmod : Module) :
                     exact ⟨_, by simp [traceToWasm]; exact hw,
                       { hemit := hrel.hemit, hcode := .nil, hstack := by dsimp only []; exact hrel.hstack,
                         hframes_len := hrel.hframes_len, hframes_locals := hrel.hframes_locals,
-                        hframes_vals := hrel.hframes_vals, hglobals := hrel.hglobals, hmemory := hrel.hmemory,
+                        hframes_vals := hrel.hframes_vals, hglobals := hrel.hglobals, hmemory := hrel.hmemory, hmemLimits := hrel.hmemLimits, hmemory_aligned := hrel.hmemory_aligned,
                         hlabels := hrel.hlabels, hhalt := hhalt_of_structural .nil hrel.hlabels
                         hlabel_content := hrel.hlabel_content
                         hframes_one := hrel.hframes_one }⟩
@@ -8291,7 +8332,7 @@ theorem step_sim (irmod : IRModule) (wmod : Module) :
                     exact ⟨_, by simp [traceToWasm]; exact hw,
                       { hemit := hrel.hemit, hcode := .nil, hstack := by dsimp only []; exact hrel.hstack,
                         hframes_len := hrel.hframes_len, hframes_locals := hrel.hframes_locals,
-                        hframes_vals := hrel.hframes_vals, hglobals := hrel.hglobals, hmemory := hrel.hmemory,
+                        hframes_vals := hrel.hframes_vals, hglobals := hrel.hglobals, hmemory := hrel.hmemory, hmemLimits := hrel.hmemLimits, hmemory_aligned := hrel.hmemory_aligned,
                         hlabels := hrel.hlabels, hhalt := hhalt_of_structural .nil hrel.hlabels
                         hlabel_content := hrel.hlabel_content
                         hframes_one := hrel.hframes_one }⟩)
@@ -8311,7 +8352,7 @@ theorem step_sim (irmod : IRModule) (wmod : Module) :
                 exact ⟨_, by simp [traceToWasm]; exact hw,
                   { hemit := hrel.hemit, hcode := .nil, hstack := by dsimp only []; exact hrel.hstack,
                     hframes_len := hrel.hframes_len, hframes_locals := hrel.hframes_locals,
-                    hframes_vals := hrel.hframes_vals, hglobals := hrel.hglobals, hmemory := hrel.hmemory,
+                    hframes_vals := hrel.hframes_vals, hglobals := hrel.hglobals, hmemory := hrel.hmemory, hmemLimits := hrel.hmemLimits, hmemory_aligned := hrel.hmemory_aligned,
                     hlabels := hrel.hlabels, hhalt := hhalt_of_structural .nil hrel.hlabels
                     hlabel_content := hrel.hlabel_content
                     hframes_one := hrel.hframes_one }⟩
@@ -8331,7 +8372,7 @@ theorem step_sim (irmod : IRModule) (wmod : Module) :
                 exact ⟨_, by simp [traceToWasm]; exact hw,
                   { hemit := hrel.hemit, hcode := .nil, hstack := by dsimp only []; exact hrel.hstack,
                     hframes_len := hrel.hframes_len, hframes_locals := hrel.hframes_locals,
-                    hframes_vals := hrel.hframes_vals, hglobals := hrel.hglobals, hmemory := hrel.hmemory,
+                    hframes_vals := hrel.hframes_vals, hglobals := hrel.hglobals, hmemory := hrel.hmemory, hmemLimits := hrel.hmemLimits, hmemory_aligned := hrel.hmemory_aligned,
                     hlabels := hrel.hlabels, hhalt := hhalt_of_structural .nil hrel.hlabels
                     hlabel_content := hrel.hlabel_content
                     hframes_one := hrel.hframes_one }⟩
@@ -8376,7 +8417,7 @@ theorem step_sim (irmod : IRModule) (wmod : Module) :
                     exact ⟨_, by simp [traceToWasm]; exact hw,
                       { hemit := hrel.hemit, hcode := .nil, hstack := by dsimp only []; exact hrel.hstack,
                         hframes_len := hrel.hframes_len, hframes_locals := hrel.hframes_locals,
-                        hframes_vals := hrel.hframes_vals, hglobals := hrel.hglobals, hmemory := hrel.hmemory,
+                        hframes_vals := hrel.hframes_vals, hglobals := hrel.hglobals, hmemory := hrel.hmemory, hmemLimits := hrel.hmemLimits, hmemory_aligned := hrel.hmemory_aligned,
                         hlabels := hrel.hlabels, hhalt := hhalt_of_structural .nil hrel.hlabels
                         hlabel_content := hrel.hlabel_content
                         hframes_one := hrel.hframes_one }⟩
@@ -8386,7 +8427,7 @@ theorem step_sim (irmod : IRModule) (wmod : Module) :
                     exact ⟨_, by simp [traceToWasm]; exact hw,
                       { hemit := hrel.hemit, hcode := .nil, hstack := by dsimp only []; exact hrel.hstack,
                         hframes_len := hrel.hframes_len, hframes_locals := hrel.hframes_locals,
-                        hframes_vals := hrel.hframes_vals, hglobals := hrel.hglobals, hmemory := hrel.hmemory,
+                        hframes_vals := hrel.hframes_vals, hglobals := hrel.hglobals, hmemory := hrel.hmemory, hmemLimits := hrel.hmemLimits, hmemory_aligned := hrel.hmemory_aligned,
                         hlabels := hrel.hlabels, hhalt := hhalt_of_structural .nil hrel.hlabels
                         hlabel_content := hrel.hlabel_content
                         hframes_one := hrel.hframes_one }⟩
@@ -8409,7 +8450,7 @@ theorem step_sim (irmod : IRModule) (wmod : Module) :
                     exact ⟨_, by simp [traceToWasm]; exact hw,
                       { hemit := hrel.hemit, hcode := .nil, hstack := by dsimp only []; exact hrel.hstack,
                         hframes_len := hrel.hframes_len, hframes_locals := hrel.hframes_locals,
-                        hframes_vals := hrel.hframes_vals, hglobals := hrel.hglobals, hmemory := hrel.hmemory,
+                        hframes_vals := hrel.hframes_vals, hglobals := hrel.hglobals, hmemory := hrel.hmemory, hmemLimits := hrel.hmemLimits, hmemory_aligned := hrel.hmemory_aligned,
                         hlabels := hrel.hlabels, hhalt := hhalt_of_structural .nil hrel.hlabels
                         hlabel_content := hrel.hlabel_content
                         hframes_one := hrel.hframes_one }⟩)
@@ -8429,7 +8470,7 @@ theorem step_sim (irmod : IRModule) (wmod : Module) :
                 exact ⟨_, by simp [traceToWasm]; exact hw,
                   { hemit := hrel.hemit, hcode := .nil, hstack := by dsimp only []; exact hrel.hstack,
                     hframes_len := hrel.hframes_len, hframes_locals := hrel.hframes_locals,
-                    hframes_vals := hrel.hframes_vals, hglobals := hrel.hglobals, hmemory := hrel.hmemory,
+                    hframes_vals := hrel.hframes_vals, hglobals := hrel.hglobals, hmemory := hrel.hmemory, hmemLimits := hrel.hmemLimits, hmemory_aligned := hrel.hmemory_aligned,
                     hlabels := hrel.hlabels, hhalt := hhalt_of_structural .nil hrel.hlabels
                     hlabel_content := hrel.hlabel_content
                     hframes_one := hrel.hframes_one }⟩
@@ -8449,7 +8490,7 @@ theorem step_sim (irmod : IRModule) (wmod : Module) :
                 exact ⟨_, by simp [traceToWasm]; exact hw,
                   { hemit := hrel.hemit, hcode := .nil, hstack := by dsimp only []; exact hrel.hstack,
                     hframes_len := hrel.hframes_len, hframes_locals := hrel.hframes_locals,
-                    hframes_vals := hrel.hframes_vals, hglobals := hrel.hglobals, hmemory := hrel.hmemory,
+                    hframes_vals := hrel.hframes_vals, hglobals := hrel.hglobals, hmemory := hrel.hmemory, hmemLimits := hrel.hmemLimits, hmemory_aligned := hrel.hmemory_aligned,
                     hlabels := hrel.hlabels, hhalt := hhalt_of_structural .nil hrel.hlabels
                     hlabel_content := hrel.hlabel_content
                     hframes_one := hrel.hframes_one }⟩
@@ -8494,7 +8535,7 @@ theorem step_sim (irmod : IRModule) (wmod : Module) :
                     exact ⟨_, by simp [traceToWasm]; exact hw,
                       { hemit := hrel.hemit, hcode := .nil, hstack := by dsimp only []; exact hrel.hstack,
                         hframes_len := hrel.hframes_len, hframes_locals := hrel.hframes_locals,
-                        hframes_vals := hrel.hframes_vals, hglobals := hrel.hglobals, hmemory := hrel.hmemory,
+                        hframes_vals := hrel.hframes_vals, hglobals := hrel.hglobals, hmemory := hrel.hmemory, hmemLimits := hrel.hmemLimits, hmemory_aligned := hrel.hmemory_aligned,
                         hlabels := hrel.hlabels, hhalt := hhalt_of_structural .nil hrel.hlabels
                         hlabel_content := hrel.hlabel_content
                         hframes_one := hrel.hframes_one }⟩
@@ -8504,7 +8545,7 @@ theorem step_sim (irmod : IRModule) (wmod : Module) :
                     exact ⟨_, by simp [traceToWasm]; exact hw,
                       { hemit := hrel.hemit, hcode := .nil, hstack := by dsimp only []; exact hrel.hstack,
                         hframes_len := hrel.hframes_len, hframes_locals := hrel.hframes_locals,
-                        hframes_vals := hrel.hframes_vals, hglobals := hrel.hglobals, hmemory := hrel.hmemory,
+                        hframes_vals := hrel.hframes_vals, hglobals := hrel.hglobals, hmemory := hrel.hmemory, hmemLimits := hrel.hmemLimits, hmemory_aligned := hrel.hmemory_aligned,
                         hlabels := hrel.hlabels, hhalt := hhalt_of_structural .nil hrel.hlabels
                         hlabel_content := hrel.hlabel_content
                         hframes_one := hrel.hframes_one }⟩
@@ -8527,7 +8568,7 @@ theorem step_sim (irmod : IRModule) (wmod : Module) :
                     exact ⟨_, by simp [traceToWasm]; exact hw,
                       { hemit := hrel.hemit, hcode := .nil, hstack := by dsimp only []; exact hrel.hstack,
                         hframes_len := hrel.hframes_len, hframes_locals := hrel.hframes_locals,
-                        hframes_vals := hrel.hframes_vals, hglobals := hrel.hglobals, hmemory := hrel.hmemory,
+                        hframes_vals := hrel.hframes_vals, hglobals := hrel.hglobals, hmemory := hrel.hmemory, hmemLimits := hrel.hmemLimits, hmemory_aligned := hrel.hmemory_aligned,
                         hlabels := hrel.hlabels, hhalt := hhalt_of_structural .nil hrel.hlabels
                         hlabel_content := hrel.hlabel_content
                         hframes_one := hrel.hframes_one }⟩)
@@ -8552,7 +8593,7 @@ theorem step_sim (irmod : IRModule) (wmod : Module) :
               exact ⟨_, by simp [traceToWasm]; exact hw,
                 { hemit := hrel.hemit, hcode := .nil, hstack := by dsimp only []; exact hrel.hstack,
                   hframes_len := hrel.hframes_len, hframes_locals := hrel.hframes_locals,
-                  hframes_vals := hrel.hframes_vals, hglobals := hrel.hglobals, hmemory := hrel.hmemory,
+                  hframes_vals := hrel.hframes_vals, hglobals := hrel.hglobals, hmemory := hrel.hmemory, hmemLimits := hrel.hmemLimits, hmemory_aligned := hrel.hmemory_aligned,
                   hlabels := hrel.hlabels, hhalt := hhalt_of_structural .nil hrel.hlabels
                   hlabel_content := hrel.hlabel_content
                   hframes_one := hrel.hframes_one }⟩
@@ -8572,7 +8613,7 @@ theorem step_sim (irmod : IRModule) (wmod : Module) :
               exact ⟨_, by simp [traceToWasm]; exact hw,
                 { hemit := hrel.hemit, hcode := .nil, hstack := by dsimp only []; exact hrel.hstack,
                   hframes_len := hrel.hframes_len, hframes_locals := hrel.hframes_locals,
-                  hframes_vals := hrel.hframes_vals, hglobals := hrel.hglobals, hmemory := hrel.hmemory,
+                  hframes_vals := hrel.hframes_vals, hglobals := hrel.hglobals, hmemory := hrel.hmemory, hmemLimits := hrel.hmemLimits, hmemory_aligned := hrel.hmemory_aligned,
                   hlabels := hrel.hlabels, hhalt := hhalt_of_structural .nil hrel.hlabels
                   hlabel_content := hrel.hlabel_content
                   hframes_one := hrel.hframes_one }⟩
@@ -8617,7 +8658,7 @@ theorem step_sim (irmod : IRModule) (wmod : Module) :
                   exact ⟨_, by simp [traceToWasm]; exact hw,
                     { hemit := hrel.hemit, hcode := .nil, hstack := by dsimp only []; exact hrel.hstack,
                       hframes_len := hrel.hframes_len, hframes_locals := hrel.hframes_locals,
-                      hframes_vals := hrel.hframes_vals, hglobals := hrel.hglobals, hmemory := hrel.hmemory,
+                      hframes_vals := hrel.hframes_vals, hglobals := hrel.hglobals, hmemory := hrel.hmemory, hmemLimits := hrel.hmemLimits, hmemory_aligned := hrel.hmemory_aligned,
                       hlabels := hrel.hlabels, hhalt := hhalt_of_structural .nil hrel.hlabels
                       hlabel_content := hrel.hlabel_content
                       hframes_one := hrel.hframes_one }⟩
@@ -8627,7 +8668,7 @@ theorem step_sim (irmod : IRModule) (wmod : Module) :
                   exact ⟨_, by simp [traceToWasm]; exact hw,
                     { hemit := hrel.hemit, hcode := .nil, hstack := by dsimp only []; exact hrel.hstack,
                       hframes_len := hrel.hframes_len, hframes_locals := hrel.hframes_locals,
-                      hframes_vals := hrel.hframes_vals, hglobals := hrel.hglobals, hmemory := hrel.hmemory,
+                      hframes_vals := hrel.hframes_vals, hglobals := hrel.hglobals, hmemory := hrel.hmemory, hmemLimits := hrel.hmemLimits, hmemory_aligned := hrel.hmemory_aligned,
                       hlabels := hrel.hlabels, hhalt := hhalt_of_structural .nil hrel.hlabels
                       hlabel_content := hrel.hlabel_content
                       hframes_one := hrel.hframes_one }⟩
@@ -8650,7 +8691,7 @@ theorem step_sim (irmod : IRModule) (wmod : Module) :
                   exact ⟨_, by simp [traceToWasm]; exact hw,
                     { hemit := hrel.hemit, hcode := .nil, hstack := by dsimp only []; exact hrel.hstack,
                       hframes_len := hrel.hframes_len, hframes_locals := hrel.hframes_locals,
-                      hframes_vals := hrel.hframes_vals, hglobals := hrel.hglobals, hmemory := hrel.hmemory,
+                      hframes_vals := hrel.hframes_vals, hglobals := hrel.hglobals, hmemory := hrel.hmemory, hmemLimits := hrel.hmemLimits, hmemory_aligned := hrel.hmemory_aligned,
                       hlabels := hrel.hlabels, hhalt := hhalt_of_structural .nil hrel.hlabels
                       hlabel_content := hrel.hlabel_content
                       hframes_one := hrel.hframes_one }⟩)
@@ -8684,7 +8725,7 @@ theorem step_sim (irmod : IRModule) (wmod : Module) :
                 exact ⟨_, by simp [traceToWasm]; exact hw,
                   { hemit := hrel.hemit, hcode := .nil, hstack := by simp [hs2],
                     hframes_len := hrel.hframes_len, hframes_locals := hrel.hframes_locals,
-                    hframes_vals := hrel.hframes_vals, hglobals := hrel.hglobals, hmemory := hrel.hmemory,
+                    hframes_vals := hrel.hframes_vals, hglobals := hrel.hglobals, hmemory := hrel.hmemory, hmemLimits := hrel.hmemLimits, hmemory_aligned := hrel.hmemory_aligned,
                     hlabels := hrel.hlabels, hhalt := hhalt_of_structural .nil hrel.hlabels
                     hlabel_content := hrel.hlabel_content
                     hframes_one := hrel.hframes_one }⟩
@@ -8704,7 +8745,7 @@ theorem step_sim (irmod : IRModule) (wmod : Module) :
                 exact ⟨_, by simp [traceToWasm]; exact hw,
                   { hemit := hrel.hemit, hcode := .nil, hstack := by dsimp only []; exact hrel.hstack,
                     hframes_len := hrel.hframes_len, hframes_locals := hrel.hframes_locals,
-                    hframes_vals := hrel.hframes_vals, hglobals := hrel.hglobals, hmemory := hrel.hmemory,
+                    hframes_vals := hrel.hframes_vals, hglobals := hrel.hglobals, hmemory := hrel.hmemory, hmemLimits := hrel.hmemLimits, hmemory_aligned := hrel.hmemory_aligned,
                     hlabels := hrel.hlabels, hhalt := hhalt_of_structural .nil hrel.hlabels
                     hlabel_content := hrel.hlabel_content
                     hframes_one := hrel.hframes_one }⟩
@@ -8749,6 +8790,8 @@ theorem step_sim (irmod : IRModule) (wmod : Module) :
                   hframes_vals := hrel.hframes_vals
                   hglobals := hrel.hglobals
                   hmemory := hrel.hmemory
+                  hmemLimits := hrel.hmemLimits
+                  hmemory_aligned := hrel.hmemory_aligned
                   hlabels := hrel.hlabels
                   hhalt := hhalt_of_structural hrest hrel.hlabels
                   hlabel_content := hrel.hlabel_content
@@ -8780,7 +8823,7 @@ theorem step_sim (irmod : IRModule) (wmod : Module) :
                         hframes_len := hrel.hframes_len,
                         hframes_locals := hrel.hframes_locals,
                         hframes_vals := hrel.hframes_vals,
-                        hglobals := hrel.hglobals, hmemory := hrel.hmemory,
+                        hglobals := hrel.hglobals, hmemory := hrel.hmemory, hmemLimits := hrel.hmemLimits, hmemory_aligned := hrel.hmemory_aligned,
                         hlabels := hrel.hlabels,
                         hhalt := hhalt_of_structural .nil hrel.hlabels
                         hlabel_content := hrel.hlabel_content
@@ -8803,7 +8846,7 @@ theorem step_sim (irmod : IRModule) (wmod : Module) :
                 exact ⟨_, by simp [traceToWasm]; exact hw,
                   { hemit := hrel.hemit, hcode := .nil, hstack := by simp [hs2],
                     hframes_len := hrel.hframes_len, hframes_locals := hrel.hframes_locals,
-                    hframes_vals := hrel.hframes_vals, hglobals := hrel.hglobals, hmemory := hrel.hmemory,
+                    hframes_vals := hrel.hframes_vals, hglobals := hrel.hglobals, hmemory := hrel.hmemory, hmemLimits := hrel.hmemLimits, hmemory_aligned := hrel.hmemory_aligned,
                     hlabels := hrel.hlabels, hhalt := hhalt_of_structural .nil hrel.hlabels
                     hlabel_content := hrel.hlabel_content
                     hframes_one := hrel.hframes_one }⟩
@@ -8823,7 +8866,7 @@ theorem step_sim (irmod : IRModule) (wmod : Module) :
                 exact ⟨_, by simp [traceToWasm]; exact hw,
                   { hemit := hrel.hemit, hcode := .nil, hstack := by dsimp only []; exact hrel.hstack,
                     hframes_len := hrel.hframes_len, hframes_locals := hrel.hframes_locals,
-                    hframes_vals := hrel.hframes_vals, hglobals := hrel.hglobals, hmemory := hrel.hmemory,
+                    hframes_vals := hrel.hframes_vals, hglobals := hrel.hglobals, hmemory := hrel.hmemory, hmemLimits := hrel.hmemLimits, hmemory_aligned := hrel.hmemory_aligned,
                     hlabels := hrel.hlabels, hhalt := hhalt_of_structural .nil hrel.hlabels
                     hlabel_content := hrel.hlabel_content
                     hframes_one := hrel.hframes_one }⟩
@@ -8852,6 +8895,8 @@ theorem step_sim (irmod : IRModule) (wmod : Module) :
                   hframes_vals := hrel.hframes_vals
                   hglobals := hrel.hglobals
                   hmemory := hrel.hmemory
+                  hmemLimits := hrel.hmemLimits
+                  hmemory_aligned := hrel.hmemory_aligned
                   hlabels := hrel.hlabels
                   hhalt := hhalt_of_structural hrest hrel.hlabels
                   hlabel_content := hrel.hlabel_content
@@ -8880,7 +8925,7 @@ theorem step_sim (irmod : IRModule) (wmod : Module) :
                         hframes_len := hrel.hframes_len,
                         hframes_locals := hrel.hframes_locals,
                         hframes_vals := hrel.hframes_vals,
-                        hglobals := hrel.hglobals, hmemory := hrel.hmemory,
+                        hglobals := hrel.hglobals, hmemory := hrel.hmemory, hmemLimits := hrel.hmemLimits, hmemory_aligned := hrel.hmemory_aligned,
                         hlabels := hrel.hlabels,
                         hhalt := hhalt_of_structural .nil hrel.hlabels
                         hlabel_content := hrel.hlabel_content
@@ -8913,7 +8958,7 @@ theorem step_sim (irmod : IRModule) (wmod : Module) :
                 exact ⟨_, by simp [traceToWasm]; exact hw,
                   { hemit := hrel.hemit, hcode := .nil, hstack := by simp [hs2],
                     hframes_len := hrel.hframes_len, hframes_locals := hrel.hframes_locals,
-                    hframes_vals := hrel.hframes_vals, hglobals := hrel.hglobals, hmemory := hrel.hmemory,
+                    hframes_vals := hrel.hframes_vals, hglobals := hrel.hglobals, hmemory := hrel.hmemory, hmemLimits := hrel.hmemLimits, hmemory_aligned := hrel.hmemory_aligned,
                     hlabels := hrel.hlabels, hhalt := hhalt_of_structural .nil hrel.hlabels
                     hlabel_content := hrel.hlabel_content
                     hframes_one := hrel.hframes_one }⟩
@@ -8935,7 +8980,7 @@ theorem step_sim (irmod : IRModule) (wmod : Module) :
                     rename_i hneq; rw [hneq] at hs2
                     have hw := step?_eq_i32Eqz s2 rest_w n wstk hcw hs2
                     simp only [traceToWasm]
-                    refine ⟨_, hw, hrel.hemit, hrest, ?_, hrel.hframes_len, hrel.hframes_locals, hrel.hframes_vals, hrel.hglobals, hrel.hmemory, hrel.hlabels, hhalt_of_structural hrest hrel.hlabels, hrel.hlabel_content, hrel.hframes_one⟩
+                    refine ⟨_, hw, hrel.hemit, hrest, ?_, hrel.hframes_len, hrel.hframes_locals, hrel.hframes_vals, hrel.hglobals, hrel.hmemory, hrel.hmemLimits, hrel.hmemory_aligned, hrel.hlabels, hhalt_of_structural hrest hrel.hlabels, hrel.hlabel_content, hrel.hframes_one⟩
                     dsimp only []
                     exact stack_corr_cons (by simp [hstk, hs2] at hstk_rel ⊢; omega)
                       (fun i hi => hstk_rel.2 (i + 1) (by simp; omega)) (.i32 _)
@@ -8962,7 +9007,7 @@ theorem step_sim (irmod : IRModule) (wmod : Module) :
                     exact ⟨_, by simp [traceToWasm]; exact hw,
                       { hemit := hrel.hemit, hcode := .nil, hstack := by dsimp only []; exact hrel.hstack,
                         hframes_len := hrel.hframes_len, hframes_locals := hrel.hframes_locals,
-                        hframes_vals := hrel.hframes_vals, hglobals := hrel.hglobals, hmemory := hrel.hmemory,
+                        hframes_vals := hrel.hframes_vals, hglobals := hrel.hglobals, hmemory := hrel.hmemory, hmemLimits := hrel.hmemLimits, hmemory_aligned := hrel.hmemory_aligned,
                         hlabels := hrel.hlabels, hhalt := hhalt_of_structural .nil hrel.hlabels
                         hlabel_content := hrel.hlabel_content
                         hframes_one := hrel.hframes_one }⟩
@@ -8988,7 +9033,7 @@ theorem step_sim (irmod : IRModule) (wmod : Module) :
                     exact ⟨_, by simp [traceToWasm]; exact hw,
                       { hemit := hrel.hemit, hcode := .nil, hstack := by dsimp only []; exact hrel.hstack,
                         hframes_len := hrel.hframes_len, hframes_locals := hrel.hframes_locals,
-                        hframes_vals := hrel.hframes_vals, hglobals := hrel.hglobals, hmemory := hrel.hmemory,
+                        hframes_vals := hrel.hframes_vals, hglobals := hrel.hglobals, hmemory := hrel.hmemory, hmemLimits := hrel.hmemLimits, hmemory_aligned := hrel.hmemory_aligned,
                         hlabels := hrel.hlabels, hhalt := hhalt_of_structural .nil hrel.hlabels
                         hlabel_content := hrel.hlabel_content
                         hframes_one := hrel.hframes_one }⟩
@@ -9010,7 +9055,7 @@ theorem step_sim (irmod : IRModule) (wmod : Module) :
                 exact ⟨_, by simp [traceToWasm]; exact hw,
                   { hemit := hrel.hemit, hcode := .nil, hstack := by simp [hs2],
                     hframes_len := hrel.hframes_len, hframes_locals := hrel.hframes_locals,
-                    hframes_vals := hrel.hframes_vals, hglobals := hrel.hglobals, hmemory := hrel.hmemory,
+                    hframes_vals := hrel.hframes_vals, hglobals := hrel.hglobals, hmemory := hrel.hmemory, hmemLimits := hrel.hmemLimits, hmemory_aligned := hrel.hmemory_aligned,
                     hlabels := hrel.hlabels, hhalt := hhalt_of_structural .nil hrel.hlabels
                     hlabel_content := hrel.hlabel_content
                     hframes_one := hrel.hframes_one }⟩
@@ -9037,7 +9082,7 @@ theorem step_sim (irmod : IRModule) (wmod : Module) :
                     exact ⟨_, by simp [traceToWasm]; exact hw,
                       { hemit := hrel.hemit, hcode := .nil, hstack := by dsimp only []; exact hrel.hstack,
                         hframes_len := hrel.hframes_len, hframes_locals := hrel.hframes_locals,
-                        hframes_vals := hrel.hframes_vals, hglobals := hrel.hglobals, hmemory := hrel.hmemory,
+                        hframes_vals := hrel.hframes_vals, hglobals := hrel.hglobals, hmemory := hrel.hmemory, hmemLimits := hrel.hmemLimits, hmemory_aligned := hrel.hmemory_aligned,
                         hlabels := hrel.hlabels, hhalt := hhalt_of_structural .nil hrel.hlabels
                         hlabel_content := hrel.hlabel_content
                         hframes_one := hrel.hframes_one }⟩
@@ -9058,7 +9103,7 @@ theorem step_sim (irmod : IRModule) (wmod : Module) :
                     rename_i hneq; rw [hneq] at hs2
                     have hw := step?_eq_i32WrapI64 s2 rest_w n wstk hcw hs2
                     simp only [traceToWasm]
-                    refine ⟨_, hw, hrel.hemit, hrest, ?_, hrel.hframes_len, hrel.hframes_locals, hrel.hframes_vals, hrel.hglobals, hrel.hmemory, hrel.hlabels, hhalt_of_structural hrest hrel.hlabels, hrel.hlabel_content, hrel.hframes_one⟩
+                    refine ⟨_, hw, hrel.hemit, hrest, ?_, hrel.hframes_len, hrel.hframes_locals, hrel.hframes_vals, hrel.hglobals, hrel.hmemory, hrel.hmemLimits, hrel.hmemory_aligned, hrel.hlabels, hhalt_of_structural hrest hrel.hlabels, hrel.hlabel_content, hrel.hframes_one⟩
                     dsimp only []
                     exact stack_corr_cons (by simp [hstk, hs2] at hstk_rel ⊢; omega)
                       (fun i hi => hstk_rel.2 (i + 1) (by simp; omega)) (.i32 _)
@@ -9084,7 +9129,7 @@ theorem step_sim (irmod : IRModule) (wmod : Module) :
                     exact ⟨_, by simp [traceToWasm]; exact hw,
                       { hemit := hrel.hemit, hcode := .nil, hstack := by dsimp only []; exact hrel.hstack,
                         hframes_len := hrel.hframes_len, hframes_locals := hrel.hframes_locals,
-                        hframes_vals := hrel.hframes_vals, hglobals := hrel.hglobals, hmemory := hrel.hmemory,
+                        hframes_vals := hrel.hframes_vals, hglobals := hrel.hglobals, hmemory := hrel.hmemory, hmemLimits := hrel.hmemLimits, hmemory_aligned := hrel.hmemory_aligned,
                         hlabels := hrel.hlabels, hhalt := hhalt_of_structural .nil hrel.hlabels
                         hlabel_content := hrel.hlabel_content
                         hframes_one := hrel.hframes_one }⟩
@@ -9180,6 +9225,8 @@ theorem step_sim (irmod : IRModule) (wmod : Module) :
                   hframes_vals := hrel.hframes_vals
                   hglobals := hrel.hglobals
                   hmemory := hrel.hmemory
+                  hmemLimits := hrel.hmemLimits
+                  hmemory_aligned := hrel.hmemory_aligned
                   hlabels := by dsimp only []; exact hrel.hlabels
                   hhalt := hhalt_of_structural .nil hrel.hlabels
                   hlabel_content := hrel.hlabel_content
@@ -9293,6 +9340,8 @@ theorem step_sim (irmod : IRModule) (wmod : Module) :
                       hframes_vals := hrel.hframes_vals
                       hglobals := hrel.hglobals
                       hmemory := hrel.hmemory
+                      hmemLimits := hrel.hmemLimits
+                      hmemory_aligned := hrel.hmemory_aligned
                       hlabels := by dsimp only []; exact hrel.hlabels
                       hhalt := hhalt_of_structural .nil hrel.hlabels
                       hlabel_content := hrel.hlabel_content
@@ -9328,6 +9377,8 @@ theorem step_sim (irmod : IRModule) (wmod : Module) :
                       hframes_vals := hrel.hframes_vals
                       hglobals := hrel.hglobals
                       hmemory := hrel.hmemory
+                      hmemLimits := hrel.hmemLimits
+                      hmemory_aligned := hrel.hmemory_aligned
                       hlabels := by dsimp only []; exact hrel.hlabels
                       hhalt := hhalt_of_structural .nil hrel.hlabels
                       hlabel_content := hrel.hlabel_content
@@ -9367,6 +9418,8 @@ theorem step_sim (irmod : IRModule) (wmod : Module) :
                 hframes_vals := hrel.hframes_vals
                 hglobals := hrel.hglobals
                 hmemory := hrel.hmemory
+                hmemLimits := hrel.hmemLimits
+                hmemory_aligned := hrel.hmemory_aligned
                 hlabels := by simp
                 hhalt := by intro _; apply step?_halted; exact ⟨rfl, rfl⟩
                 hlabel_content := by intro i hi; simp at hi
@@ -9404,6 +9457,8 @@ theorem step_sim (irmod : IRModule) (wmod : Module) :
                   hframes_vals := hrel.hframes_vals
                   hglobals := hrel.hglobals
                   hmemory := hrel.hmemory
+                  hmemLimits := hrel.hmemLimits
+                  hmemory_aligned := hrel.hmemory_aligned
                   hlabels := hrel.hlabels
                   hhalt := hhalt_of_structural .nil hrel.hlabels
                   hlabel_content := hrel.hlabel_content
@@ -9438,6 +9493,8 @@ theorem step_sim (irmod : IRModule) (wmod : Module) :
                     hframes_vals := hrel.hframes_vals
                     hglobals := hrel.hglobals
                     hmemory := hrel.hmemory
+                    hmemLimits := hrel.hmemLimits
+                    hmemory_aligned := hrel.hmemory_aligned
                     hlabels := hrel.hlabels
                     hhalt := hhalt_of_structural hrest hrel.hlabels
                     hlabel_content := hrel.hlabel_content
