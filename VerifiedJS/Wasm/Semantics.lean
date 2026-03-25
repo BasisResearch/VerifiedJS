@@ -9535,17 +9535,20 @@ theorem step_sim (irmod : IRModule) (wmod : Module) :
                   (hstk ▸ hrel.hstack.1) (hstk ▸ hrel.hstack.2)
                 obtain ⟨wstk', hstack_eq, hlen_tail, htail⟩ := hstk_w
                 have h0mem : 0 < s2.store.memories.size := List.getElem?_eq_some_length hmem_eq
-                -- Get memLimits info
-                have hLimSize : 0 < s2.store.memLimits.size := by
-                  -- memLimits and memories have same size from initialization
-                  sorry
-                have hMaxNone : s2.store.memLimits[0].max = none := by
-                  have := hrel.hmemLimits s2.store.memLimits[0] (by simp [Array.getElem?_eq_getElem hLimSize])
-                  exact this
-                -- The Wasm maxOk check resolves to newPages.ble 65536
-                -- With max = none, this is: (mem.size / 65536 + delta.toNat) ≤ 65536
-                -- The IR check is: mem.size + delta.toNat * 65536 ≤ 65536 * 65536
-                -- These are equivalent (proved via Nat division properties)
+                -- Wasm maxOk resolves to (newPages ≤ 65536):
+                -- If memLimits[0] has max = none (via hmemLimits), or memLimits empty, both give .ble 65536
+                have hMaxOk_eq : (if hLim : 0 < s2.store.memLimits.size then
+                    match s2.store.memLimits[0].max with
+                    | some maxPages => (s1.memory.size / 65536 + pages.toNat).ble maxPages
+                    | none => (s1.memory.size / 65536 + pages.toNat).ble 65536
+                  else (s1.memory.size / 65536 + pages.toNat).ble 65536) =
+                  (s1.memory.size / 65536 + pages.toNat).ble 65536 := by
+                  split
+                  · next hLim =>
+                    have hml := hrel.hmemLimits s2.store.memLimits[0]
+                      (by rw [Array.getElem?_eq_getElem hLim])
+                    simp [hml]
+                  · rfl
                 match hgrow : decide (s1.memory.size + pages.toNat * 65536 ≤ 65536 * 65536) with
                 | isTrue hok =>
                   -- Success: both grow memory
@@ -9553,18 +9556,17 @@ theorem step_sim (irmod : IRModule) (wmod : Module) :
                   rw [hir] at hstep
                   simp only [Option.some.injEq, Prod.mk.injEq] at hstep
                   obtain ⟨rfl, rfl⟩ := hstep
-                  -- Wasm also grows: maxOk = true because the conditions agree
                   have hNewPages_le : (s1.memory.size / 65536 + pages.toNat) ≤ 65536 := by
                     have := Nat.div_add_mod s1.memory.size 65536
                     omega
-                  let oldPages := s1.memory.size / 65536
-                  let grown := ByteArray.mk (s1.memory.toList.toArray ++ Array.replicate (pages.toNat * 65536) 0)
                   have hw : step? s2 = some (.silent,
-                      pushTrace { s2 with code := rest_w, stack := .i32 oldPages.toUInt32 :: wstk',
-                        store := { s2.store with memories := s2.store.memories.set! 0 grown } } .silent) := by
-                    simp only [step?, hcw, hstack_eq, pop1?, hmem_eq]
-                    simp only [hMaxNone, Nat.ble_eq]
-                    simp [hNewPages_le, pushTrace]
+                      pushTrace { s2 with code := rest_w,
+                        stack := .i32 (s1.memory.size / 65536).toUInt32 :: wstk',
+                        store := { s2.store with memories := s2.store.memories.set! 0
+                          (ByteArray.mk (s1.memory.toList.toArray ++ Array.replicate (pages.toNat * 65536) 0)) } } .silent) := by
+                    simp only [step?, hcw, hstack_eq, pop1?, hmem_eq, h0mem, dite_true]
+                    rw [hMaxOk_eq]
+                    simp [Nat.ble_eq, hNewPages_le, pushTrace]
                   simp only [traceToWasm]
                   refine ⟨_, hw, hrel.hemit, hrest, ?_, hrel.hframes_len, hrel.hframes_locals,
                     hrel.hframes_vals, hrel.hglobals, ?_, ?_, ?_, hrel.hlabels,
@@ -9575,31 +9577,33 @@ theorem step_sim (irmod : IRModule) (wmod : Module) :
                   · -- hmemory: memories.set!(0, grown)[0]? = some grown
                     left; dsimp only []
                     simp [Array.set!, Array.setIfInBounds, h0mem]
-                  · -- hmemLimits: memLimits unchanged
+                  · -- hmemLimits: memLimits unchanged by memory grow
                     dsimp only []; exact hrel.hmemLimits
-                  · -- hmemory_aligned: grown memory is still page-aligned
+                  · -- hmemory_aligned: grown.size = memory.size + pages*65536, both div by 65536
                     dsimp only []
-                    simp only [ByteArray.size, ByteArray.mk.sizeOf_spec]
-                    sorry -- grown.size = memory.size + pages*65536, both divisible by 65536
+                    have hgsz : (ByteArray.mk (s1.memory.toList.toArray ++ Array.replicate (pages.toNat * 65536) 0)).size =
+                        s1.memory.size + pages.toNat * 65536 := by
+                      simp [ByteArray.size, ByteArray.toList, Array.toList_toArray]
+                    rw [hgsz]
+                    exact Dvd.dvd.add hrel.hmemory_aligned ⟨pages.toNat, rfl⟩
                 | isFalse hfail =>
                   -- Failure: both push -1 (0xFFFFFFFF)
                   simp [irStep?, hcode_ir, hstk, irPop1?, irPushTrace] at hstep
                   have hgt : 65536 * 65536 < s1.memory.size + pages.toNat * 65536 := by omega
                   simp [hgt] at hstep
                   obtain ⟨rfl, rfl⟩ := hstep
-                  -- Wasm also fails: maxOk = false
                   have hNewPages_gt : ¬ (s1.memory.size / 65536 + pages.toNat ≤ 65536) := by
-                    intro h
-                    apply hfail
+                    intro h; apply hfail
                     have hmod := Nat.div_add_mod s1.memory.size 65536
                     have hmod_lt := Nat.mod_lt s1.memory.size (by omega : 0 < 65536)
-                    have := Nat.div_le_iff_le_mul (by omega : 0 < 65536) |>.mp (by omega)
+                    have hle : s1.memory.size ≤ (s1.memory.size / 65536) * 65536 + 65535 := by omega
                     omega
                   have hw : step? s2 = some (.silent,
-                      pushTrace { s2 with code := rest_w, stack := .i32 (UInt32.ofNat 0xFFFFFFFF) :: wstk' } .silent) := by
-                    simp only [step?, hcw, hstack_eq, pop1?, hmem_eq]
-                    simp only [hMaxNone, Nat.ble_eq]
-                    simp [hNewPages_gt, pushTrace]
+                      pushTrace { s2 with code := rest_w,
+                        stack := .i32 (UInt32.ofNat 0xFFFFFFFF) :: wstk' } .silent) := by
+                    simp only [step?, hcw, hstack_eq, pop1?, hmem_eq, h0mem, dite_true]
+                    rw [hMaxOk_eq]
+                    simp [Nat.ble_eq, hNewPages_gt, pushTrace]
                   simp only [traceToWasm]
                   exact ⟨_, hw,
                     { hemit := hrel.hemit
@@ -9618,18 +9622,10 @@ theorem step_sim (irmod : IRModule) (wmod : Module) :
                       hhalt := hhalt_of_structural hrest hrel.hlabels
                       hlabel_content := hrel.hlabel_content
                       hframes_one := hrel.hframes_one }⟩
-              · -- No memory: ir.memory.size = 0
-                -- With memoryGrow and empty memory, IR might succeed (growing from 0)
-                -- but Wasm has no memory → trap "unknown memory index 0"
-                -- However, with hmem_sz (ir.memory.size = 0), pages = 0 would give
-                -- IR oldPages = 0, newSize = 0 ≤ limit → success with grown = empty
-                -- But Wasm traps because memories[0]? = none
-                -- Fortunately, with no memory, the code shouldn't contain memoryGrow
-                -- (this would be a type error in a well-formed module)
-                simp [irStep?, hcode_ir, hstk, irPop1?, irPushTrace] at hstep
-                -- IR step produces some result. Wasm traps.
-                -- Both produce .silent (or trap). Need to match.
-                sorry -- no-memory case: derive contradiction or handle
+              · -- No memory (unreachable in practice: lower always declares memory,
+                -- so memories[0]? = some ... always holds. This case requires
+                -- a module-level invariant connecting hemit to memory existence.)
+                sorry
             | .f64 _ :: _ | .i64 _ :: _ =>
               -- Non-i32 on stack: both trap with type mismatch
               all_goals (
