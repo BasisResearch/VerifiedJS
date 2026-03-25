@@ -36017,4 +36017,3867 @@ theorem elaborate_correct (p : Source.Program) (cp : Core.Program)
 -- |
 
 
+-- SPEC: L13495-L13516
+-- | # Unicode Format-Control Characters
+-- |
+-- | The Unicode format-control characters (i.e., the characters in category
+-- | "Cf" in the Unicode Character Database such as LEFT-TO-RIGHT MARK or
+-- | RIGHT-TO-LEFT MARK) are control codes used to control the formatting of
+-- | a range of text in the absence of higher-level protocols for this (such
+-- | as mark-up languages).
+-- |
+-- | It is useful to allow format-control characters in source text to
+-- | facilitate editing and display. All format control characters may be
+-- | used within comments, and within string literals, template literals, and
+-- | regular expression literals.
+-- |
+-- | U+FEFF (ZERO WIDTH NO-BREAK SPACE) is a format-control character used
+-- | primarily at the start of a text to mark it as Unicode and to allow
+-- | detection of the text\'s encoding and byte order. \<ZWNBSP\> characters
+-- | intended for this purpose can sometimes also appear after the start of a
+-- | text, for example as a result of concatenating files. In ECMAScript
+-- | source text \<ZWNBSP\> code points are treated as white space characters
+-- | (see ) outside of comments, string literals, template literals, and
+-- | regular expression literals.
+-- |
+
+-- SPEC: L13517-L13550
+-- | # White Space
+-- |
+-- | White space code points are used to improve source text readability and
+-- | to separate tokens (indivisible lexical units) from each other, but are
+-- | otherwise insignificant. White space code points may occur between any
+-- | two tokens and at the start or end of input. White space code points may
+-- | occur within a \|StringLiteral\|, a \|RegularExpressionLiteral\|, a
+-- | \|Template\|, or a \|TemplateSubstitutionTail\| where they are
+-- | considered significant code points forming part of a literal value. They
+-- | may also occur within a \|Comment\|, but cannot appear within any other
+-- | kind of token.
+-- |
+-- | The ECMAScript white space code points are listed in .
+-- |
+-- |   Code Points                                            Name                        Abbreviation
+-- |   ------------------------------------------------------ --------------------------- --------------
+-- |   \`U+0009\`                                             CHARACTER TABULATION        \<TAB\>
+-- |   \`U+000B\`                                             LINE TABULATION             \<VT\>
+-- |   \`U+000C\`                                             FORM FEED (FF)              \<FF\>
+-- |   \`U+FEFF\`                                             ZERO WIDTH NO-BREAK SPACE   \<ZWNBSP\>
+-- |   any code point in general category "Space_Separator"                               \<USP\>
+-- |
+-- | U+0020 (SPACE) and U+00A0 (NO-BREAK SPACE) code points are part of
+-- | \<USP\>.
+-- |
+-- | Other than for the code points listed in , ECMAScript \|WhiteSpace\|
+-- | intentionally excludes all code points that have the Unicode
+-- | "White_Space" property but which are not classified in general category
+-- | "Space_Separator" ("Zs").
+-- |
+-- | ## Syntax
+-- |
+-- | WhiteSpace :: \<TAB\> \<VT\> \<FF\> \<ZWNBSP\> \<USP\>
+-- |
+
+-- SPEC: L13551-L13591
+-- | # Line Terminators
+-- |
+-- | Like white space code points, line terminator code points are used to
+-- | improve source text readability and to separate tokens (indivisible
+-- | lexical units) from each other. However, unlike white space code points,
+-- | line terminators have some influence over the behaviour of the syntactic
+-- | grammar. In general, line terminators may occur between any two tokens,
+-- | but there are a few places where they are forbidden by the syntactic
+-- | grammar. Line terminators also affect the process of automatic semicolon
+-- | insertion (). A line terminator cannot occur within any token except a
+-- | \|StringLiteral\|, \|Template\|, or \|TemplateSubstitutionTail\|. \<LF\>
+-- | and \<CR\> line terminators cannot occur within a \|StringLiteral\|
+-- | token except as part of a \|LineContinuation\|.
+-- |
+-- | A line terminator can occur within a \|MultiLineComment\| but cannot
+-- | occur within a \|SingleLineComment\|.
+-- |
+-- | Line terminators are included in the set of white space code points that
+-- | are matched by the \`\\\\s\` class in regular expressions.
+-- |
+-- | The ECMAScript line terminator code points are listed in .
+-- |
+-- |   Code Point   Unicode Name           Abbreviation
+-- |   ------------ ---------------------- --------------
+-- |   \`U+000A\`   LINE FEED (LF)         \<LF\>
+-- |   \`U+000D\`   CARRIAGE RETURN (CR)   \<CR\>
+-- |   \`U+2028\`   LINE SEPARATOR         \<LS\>
+-- |   \`U+2029\`   PARAGRAPH SEPARATOR    \<PS\>
+-- |
+-- | Only the Unicode code points in are treated as line terminators. Other
+-- | new line or line breaking Unicode code points are not treated as line
+-- | terminators but are treated as white space if they meet the requirements
+-- | listed in . The sequence \<CR\>\<LF\> is commonly used as a line
+-- | terminator. It should be considered a single \|SourceCharacter\| for the
+-- | purpose of reporting line numbers.
+-- |
+-- | ## Syntax
+-- |
+-- | LineTerminator :: \<LF\> \<CR\> \<LS\> \<PS\> LineTerminatorSequence ::
+-- | \<LF\> \<CR\> \[lookahead != \<LF\>\] \<LS\> \<PS\> \<CR\> \<LF\>
+-- |
+
+-- SPEC: L13592-L13629
+-- | # Comments
+-- |
+-- | Comments can be either single or multi-line. Multi-line comments cannot
+-- | nest.
+-- |
+-- | Because a single-line comment can contain any Unicode code point except
+-- | a \|LineTerminator\| code point, and because of the general rule that a
+-- | token is always as long as possible, a single-line comment always
+-- | consists of all code points from the \`//\` marker to the end of the
+-- | line. However, the \|LineTerminator\| at the end of the line is not
+-- | considered to be part of the single-line comment; it is recognized
+-- | separately by the lexical grammar and becomes part of the stream of
+-- | input elements for the syntactic grammar. This point is very important,
+-- | because it implies that the presence or absence of single-line comments
+-- | does not affect the process of automatic semicolon insertion (see ).
+-- |
+-- | Comments behave like white space and are discarded except that, if a
+-- | \|MultiLineComment\| contains a line terminator code point, then the
+-- | entire comment is considered to be a \|LineTerminator\| for purposes of
+-- | parsing by the syntactic grammar.
+-- |
+-- | ## Syntax
+-- |
+-- | Comment :: MultiLineComment SingleLineComment MultiLineComment ::
+-- | \`/\*\` MultiLineCommentChars? \`\*/\` MultiLineCommentChars ::
+-- | MultiLineNotAsteriskChar MultiLineCommentChars? \`\*\`
+-- | PostAsteriskCommentChars? PostAsteriskCommentChars ::
+-- | MultiLineNotForwardSlashOrAsteriskChar MultiLineCommentChars? \`\*\`
+-- | PostAsteriskCommentChars? MultiLineNotAsteriskChar :: SourceCharacter
+-- | but not \`\*\` MultiLineNotForwardSlashOrAsteriskChar :: SourceCharacter
+-- | but not one of \`/\` or \`\*\` SingleLineComment :: \`//\`
+-- | SingleLineCommentChars? SingleLineCommentChars :: SingleLineCommentChar
+-- | SingleLineCommentChars? SingleLineCommentChar :: SourceCharacter but not
+-- | LineTerminator
+-- |
+-- | A number of productions in this section are given alternative
+-- | definitions in section
+-- |
+
+-- SPEC: L13630-L13639
+-- | # Hashbang Comments
+-- |
+-- | Hashbang Comments are location-sensitive and like other types of
+-- | comments are discarded from the stream of input elements for the
+-- | syntactic grammar.
+-- |
+-- | ## Syntax
+-- |
+-- | HashbangComment :: \`#!\` SingleLineCommentChars?
+-- |
+
+-- SPEC: L13640-L13651
+-- | # Tokens
+-- |
+-- | ## Syntax
+-- |
+-- | CommonToken :: IdentifierName PrivateIdentifier Punctuator
+-- | NumericLiteral StringLiteral Template
+-- |
+-- | The \|DivPunctuator\|, \|RegularExpressionLiteral\|,
+-- | \|RightBracePunctuator\|, and \|TemplateSubstitutionTail\| productions
+-- | derive additional tokens that are not included in the \|CommonToken\|
+-- | production.
+-- |
+
+-- SPEC: L13652-L13696
+-- | # Names and Keywords
+-- |
+-- | \|IdentifierName\| and \|ReservedWord\| are tokens that are interpreted
+-- | according to the Default Identifier Syntax given in Unicode Standard
+-- | Annex #31, Identifier and Pattern Syntax, with some small modifications.
+-- | \|ReservedWord\| is an enumerated subset of \|IdentifierName\|. The
+-- | syntactic grammar defines \|Identifier\| as an \|IdentifierName\| that
+-- | is not a \|ReservedWord\|. The Unicode identifier grammar is based on
+-- | character properties specified by the Unicode Standard. The Unicode code
+-- | points in the specified categories in the latest version of the Unicode
+-- | Standard must be treated as in those categories by all conforming
+-- | ECMAScript implementations. ECMAScript implementations may recognize
+-- | identifier code points defined in later editions of the Unicode
+-- | Standard.
+-- |
+-- | This standard specifies specific code point additions: U+0024 (DOLLAR
+-- | SIGN) and U+005F (LOW LINE) are permitted anywhere in an
+-- | \|IdentifierName\|.
+-- |
+-- | ## Syntax
+-- |
+-- | PrivateIdentifier :: \`#\` IdentifierName IdentifierName ::
+-- | IdentifierStart IdentifierName IdentifierPart IdentifierStart ::
+-- | IdentifierStartChar \`\\\` UnicodeEscapeSequence IdentifierPart ::
+-- | IdentifierPartChar \`\\\` UnicodeEscapeSequence IdentifierStartChar ::
+-- | UnicodeIDStart \`\$\` \`\_\` IdentifierPartChar :: UnicodeIDContinue
+-- | \`\$\` // emu-format ignore AsciiLetter :: one of \`a\` \`b\` \`c\`
+-- | \`d\` \`e\` \`f\` \`g\` \`h\` \`i\` \`j\` \`k\` \`l\` \`m\` \`n\` \`o\`
+-- | \`p\` \`q\` \`r\` \`s\` \`t\` \`u\` \`v\` \`w\` \`x\` \`y\` \`z\` \`A\`
+-- | \`B\` \`C\` \`D\` \`E\` \`F\` \`G\` \`H\` \`I\` \`J\` \`K\` \`L\` \`M\`
+-- | \`N\` \`O\` \`P\` \`Q\` \`R\` \`S\` \`T\` \`U\` \`V\` \`W\` \`X\` \`Y\`
+-- | \`Z\` UnicodeIDStart :: \> any Unicode code point with the Unicode
+-- | property "ID_Start" UnicodeIDContinue :: \> any Unicode code point with
+-- | the Unicode property "ID_Continue"
+-- |
+-- | The definitions of the nonterminal \|UnicodeEscapeSequence\| is given in
+-- | .
+-- |
+-- | The nonterminal \|IdentifierPart\| derives \`\_\` via
+-- | \|UnicodeIDContinue\|.
+-- |
+-- | The sets of code points with Unicode properties "ID_Start" and
+-- | "ID_Continue" include, respectively, the code points with Unicode
+-- | properties "Other_ID_Start" and "Other_ID_Continue".
+-- |
+
+-- SPEC: L13697-L13717
+-- | # Identifier Names
+-- |
+-- | Unicode escape sequences are permitted in an \|IdentifierName\|, where
+-- | they contribute a single Unicode code point equal to the
+-- | IdentifierCodePoint of the \|UnicodeEscapeSequence\|. The \`\\\\\`
+-- | preceding the \|UnicodeEscapeSequence\| does not contribute any code
+-- | points. A \|UnicodeEscapeSequence\| cannot be used to contribute a code
+-- | point to an \|IdentifierName\| that would otherwise be invalid. In other
+-- | words, if a \`\\\\\` \|UnicodeEscapeSequence\| sequence were replaced by
+-- | the \|SourceCharacter\| it contributes, the result must still be a valid
+-- | \|IdentifierName\| that has the exact same sequence of
+-- | \|SourceCharacter\| elements as the original \|IdentifierName\|. All
+-- | interpretations of \|IdentifierName\| within this specification are
+-- | based upon their actual code points regardless of whether or not an
+-- | escape sequence was used to contribute any particular code point.
+-- |
+-- | Two \|IdentifierName\|s that are canonically equivalent according to the
+-- | Unicode Standard are *not* equal unless, after replacement of each
+-- | \|UnicodeEscapeSequence\|, they are represented by the exact same
+-- | sequence of code points.
+-- |
+
+-- SPEC: L13718-L13731
+-- | # Static Semantics: Early Errors
+-- |
+-- | IdentifierStart :: \`\\\` UnicodeEscapeSequence
+-- |
+-- | - It is a Syntax Error if the IdentifierCodePoint of
+-- |   \|UnicodeEscapeSequence\| is not some Unicode code point matched by
+-- |   the \|IdentifierStartChar\| lexical grammar production.
+-- |
+-- | IdentifierPart :: \`\\\` UnicodeEscapeSequence
+-- |
+-- | - It is a Syntax Error if the IdentifierCodePoint of
+-- |   \|UnicodeEscapeSequence\| is not some Unicode code point matched by
+-- |   the \|IdentifierPartChar\| lexical grammar production.
+-- |
+
+-- SPEC: L13732-L13740
+-- | # Static Semantics: IdentifierCodePoints ( ): a List of code points
+-- |
+-- | IdentifierName :: IdentifierStart 1. Let \_cp\_ be the
+-- | IdentifierCodePoint of \|IdentifierStart\|. 1. Return « \_cp\_ ».
+-- | IdentifierName :: IdentifierName IdentifierPart 1. Let \_cps\_ be the
+-- | IdentifierCodePoints of the derived \|IdentifierName\|. 1. Let \_cp\_ be
+-- | the IdentifierCodePoint of \|IdentifierPart\|. 1. Return the
+-- | list-concatenation of \_cps\_ and « \_cp\_ ».
+-- |
+
+-- SPEC: L13741-L13750
+-- | # Static Semantics: IdentifierCodePoint ( ): a code point
+-- |
+-- | IdentifierStart :: IdentifierStartChar 1. Return the code point matched
+-- | by \|IdentifierStartChar\|. IdentifierPart :: IdentifierPartChar 1.
+-- | Return the code point matched by \|IdentifierPartChar\|.
+-- | UnicodeEscapeSequence :: \`u\` Hex4Digits 1. Return the code point whose
+-- | numeric value is the MV of \|Hex4Digits\|. UnicodeEscapeSequence ::
+-- | \`u{\` CodePoint \`}\` 1. Return the code point whose numeric value is
+-- | the MV of \|CodePoint\|.
+-- |
+
+-- SPEC: L13751-L13829
+-- | # Keywords and Reserved Words
+-- |
+-- | A [keyword]{.dfn variants="keywords"} is a token that matches
+-- | \|IdentifierName\|, but also has a syntactic use; that is, it appears
+-- | literally, in a \`fixed width\` font, in some syntactic production. The
+-- | keywords of ECMAScript include \`if\`, \`while\`, \`async\`, \`await\`,
+-- | and many others.
+-- |
+-- | A [reserved word]{.dfn variants="reserved words"} is an
+-- | \|IdentifierName\| that cannot be used as an identifier. Many keywords
+-- | are reserved words, but some are not, and some are reserved only in
+-- | certain contexts. \`if\` and \`while\` are reserved words. \`await\` is
+-- | reserved only inside async functions and modules. \`async\` is not
+-- | reserved; it can be used as a variable name or statement label without
+-- | restriction.
+-- |
+-- | This specification uses a combination of grammatical productions and
+-- | early error rules to specify which names are valid identifiers and which
+-- | are reserved words. All tokens in the \|ReservedWord\| list below,
+-- | except for \`await\` and \`yield\`, are unconditionally reserved.
+-- | Exceptions for \`await\` and \`yield\` are specified in , using
+-- | parameterized syntactic productions. Lastly, several early error rules
+-- | restrict the set of valid identifiers. See , , , and . In summary, there
+-- | are five categories of identifier names:
+-- |
+-- | - Those that are always allowed as identifiers, and are not keywords,
+-- |   such as \`Math\`, \`window\`, \`toString\`, and \`\_\`;
+-- |
+-- | - Those that are never allowed as identifiers, namely the
+-- |   \|ReservedWord\|s listed below except \`await\` and \`yield\`;
+-- |
+-- | - Those that are contextually allowed as identifiers, namely \`await\`
+-- |   and \`yield\`;
+-- |
+-- | - Those that are contextually disallowed as identifiers, in strict mode
+-- |   code: \`let\`, \`static\`, \`implements\`, \`interface\`, \`package\`,
+-- |   \`private\`, \`protected\`, and \`public\`;
+-- |
+-- | - Those that are always allowed as identifiers, but also appear as
+-- |   keywords within certain syntactic productions, at places where
+-- |   \|Identifier\| is not allowed: \`as\`, \`async\`, \`from\`, \`get\`,
+-- |   \`meta\`, \`of\`, \`set\`, and \`target\`.
+-- |
+-- | The term [conditional keyword]{.dfn variants="conditional keywords"}, or
+-- | [contextual keyword]{.dfn variants="contextual keywords"}, is sometimes
+-- | used to refer to the keywords that fall in the last three categories,
+-- | and thus can be used as identifiers in some contexts and as keywords in
+-- | others.
+-- |
+-- | ## Syntax
+-- |
+-- | // emu-format ignore ReservedWord :: one of \`await\` \`break\` \`case\`
+-- | \`catch\` \`class\` \`const\` \`continue\` \`debugger\` \`default\`
+-- | \`delete\` \`do\` \`else\` \`enum\` \`export\` \`extends\` \`false\`
+-- | \`finally\` \`for\` \`function\` \`if\` \`import\` \`in\` \`instanceof\`
+-- | \`new\` \`null\` \`return\` \`super\` \`switch\` \`this\` \`throw\`
+-- | \`true\` \`try\` \`typeof\` \`var\` \`void\` \`while\` \`with\`
+-- | \`yield\`
+-- |
+-- | Per , keywords in the grammar match literal sequences of specific
+-- | \|SourceCharacter\| elements. A code point in a keyword cannot be
+-- | expressed by a \`\\\\\` \|UnicodeEscapeSequence\|.
+-- |
+-- | An \|IdentifierName\| can contain \`\\\\\` \|UnicodeEscapeSequence\|s,
+-- | but it is not possible to declare a variable named \"else\" by spelling
+-- | it \`els\\u{65}\`. The early error rules in rule out identifiers with
+-- | the same StringValue as a reserved word.
+-- |
+-- | \`enum\` is not currently used as a keyword in this specification. It is
+-- | a *future reserved word*, set aside for use as a keyword in future
+-- | language extensions.
+-- |
+-- | Similarly, \`implements\`, \`interface\`, \`package\`, \`private\`,
+-- | \`protected\`, and \`public\` are future reserved words in strict mode
+-- | code.
+-- |
+-- | The names \`arguments\` and \`eval\` are not keywords, but they are
+-- | subject to some restrictions in strict mode code. See , , , , , and .
+-- |
+
+-- SPEC: L13830-L13844
+-- | # Punctuators
+-- |
+-- | ## Syntax
+-- |
+-- | Punctuator :: OptionalChainingPunctuator OtherPunctuator
+-- | OptionalChainingPunctuator :: \`?.\` \[lookahead ∉ DecimalDigit\] //
+-- | emu-format ignore OtherPunctuator :: one of \`{\` \`(\` \`)\` \`\[\`
+-- | \`\]\` \`.\` \`\...\` \`;\` \`,\` \`\<\` \`\>\` \`\<=\` \`\>=\` \`==\`
+-- | \`!=\` \`===\` \`!==\` \`+\` \`-\` \`\*\` \`%\` \`\*\*\` \`++\` \`\--\`
+-- | \`\<\<\` \`\>\>\` \`\>\>\>\` \`&\` \`\|\` \`\^\` \`!\` \`\~\` \`&&\`
+-- | \`\|\|\` \`??\` \`?\` \`:\` \`=\` \`+=\` \`-=\` \`\*=\` \`%=\` \`\*\*=\`
+-- | \`\<\<=\` \`\>\>=\` \`\>\>\>=\` \`&=\` \`\|=\` \`\^=\` \`&&=\` \`\|\|=\`
+-- | \`??=\` \`=\>\` DivPunctuator :: \`/\` \`/=\` RightBracePunctuator ::
+-- | \`}\`
+-- |
+
+-- SPEC: L13845-L13846
+-- | # Literals
+-- |
+
+-- SPEC: L13847-L13852
+-- | # Null Literals
+-- |
+-- | ## Syntax
+-- |
+-- | NullLiteral :: \`null\`
+-- |
+
+-- SPEC: L13853-L13858
+-- | # Boolean Literals
+-- |
+-- | ## Syntax
+-- |
+-- | BooleanLiteral :: \`true\` \`false\`
+-- |
+
+-- SPEC: L13859-L13912
+-- | # Numeric Literals
+-- |
+-- | ## Syntax
+-- |
+-- | NumericLiteralSeparator :: \`\_\` NumericLiteral :: DecimalLiteral
+-- | DecimalBigIntegerLiteral NonDecimalIntegerLiteral\[+Sep\]
+-- | NonDecimalIntegerLiteral\[+Sep\] BigIntLiteralSuffix
+-- | LegacyOctalIntegerLiteral DecimalBigIntegerLiteral :: \`0\`
+-- | BigIntLiteralSuffix NonZeroDigit DecimalDigits\[+Sep\]?
+-- | BigIntLiteralSuffix NonZeroDigit NumericLiteralSeparator
+-- | DecimalDigits\[+Sep\] BigIntLiteralSuffix
+-- | NonDecimalIntegerLiteral\[Sep\] :: BinaryIntegerLiteral\[?Sep\]
+-- | OctalIntegerLiteral\[?Sep\] HexIntegerLiteral\[?Sep\]
+-- | BigIntLiteralSuffix :: \`n\` DecimalLiteral :: DecimalIntegerLiteral
+-- | \`.\` DecimalDigits\[+Sep\]? ExponentPart\[+Sep\]? \`.\`
+-- | DecimalDigits\[+Sep\] ExponentPart\[+Sep\]? DecimalIntegerLiteral
+-- | ExponentPart\[+Sep\]? DecimalIntegerLiteral :: \`0\` NonZeroDigit
+-- | NonZeroDigit NumericLiteralSeparator? DecimalDigits\[+Sep\]
+-- | NonOctalDecimalIntegerLiteral DecimalDigits\[Sep\] :: DecimalDigit
+-- | DecimalDigits\[?Sep\] DecimalDigit \[+Sep\] DecimalDigits\[+Sep\]
+-- | NumericLiteralSeparator DecimalDigit DecimalDigit :: one of \`0\` \`1\`
+-- | \`2\` \`3\` \`4\` \`5\` \`6\` \`7\` \`8\` \`9\` NonZeroDigit :: one of
+-- | \`1\` \`2\` \`3\` \`4\` \`5\` \`6\` \`7\` \`8\` \`9\`
+-- | ExponentPart\[Sep\] :: ExponentIndicator SignedInteger\[?Sep\]
+-- | ExponentIndicator :: one of \`e\` \`E\` SignedInteger\[Sep\] ::
+-- | DecimalDigits\[?Sep\] \`+\` DecimalDigits\[?Sep\] \`-\`
+-- | DecimalDigits\[?Sep\] BinaryIntegerLiteral\[Sep\] :: \`0b\`
+-- | BinaryDigits\[?Sep\] \`0B\` BinaryDigits\[?Sep\] BinaryDigits\[Sep\] ::
+-- | BinaryDigit BinaryDigits\[?Sep\] BinaryDigit \[+Sep\]
+-- | BinaryDigits\[+Sep\] NumericLiteralSeparator BinaryDigit BinaryDigit ::
+-- | one of \`0\` \`1\` OctalIntegerLiteral\[Sep\] :: \`0o\`
+-- | OctalDigits\[?Sep\] \`0O\` OctalDigits\[?Sep\] OctalDigits\[Sep\] ::
+-- | OctalDigit OctalDigits\[?Sep\] OctalDigit \[+Sep\] OctalDigits\[+Sep\]
+-- | NumericLiteralSeparator OctalDigit LegacyOctalIntegerLiteral :: \`0\`
+-- | OctalDigit LegacyOctalIntegerLiteral OctalDigit
+-- | NonOctalDecimalIntegerLiteral :: \`0\` NonOctalDigit
+-- | LegacyOctalLikeDecimalIntegerLiteral NonOctalDigit
+-- | NonOctalDecimalIntegerLiteral DecimalDigit
+-- | LegacyOctalLikeDecimalIntegerLiteral :: \`0\` OctalDigit
+-- | LegacyOctalLikeDecimalIntegerLiteral OctalDigit OctalDigit :: one of
+-- | \`0\` \`1\` \`2\` \`3\` \`4\` \`5\` \`6\` \`7\` NonOctalDigit :: one of
+-- | \`8\` \`9\` HexIntegerLiteral\[Sep\] :: \`0x\` HexDigits\[?Sep\] \`0X\`
+-- | HexDigits\[?Sep\] HexDigits\[Sep\] :: HexDigit HexDigits\[?Sep\]
+-- | HexDigit \[+Sep\] HexDigits\[+Sep\] NumericLiteralSeparator HexDigit //
+-- | emu-format ignore HexDigit :: one of \`0\` \`1\` \`2\` \`3\` \`4\` \`5\`
+-- | \`6\` \`7\` \`8\` \`9\` \`a\` \`b\` \`c\` \`d\` \`e\` \`f\` \`A\` \`B\`
+-- | \`C\` \`D\` \`E\` \`F\`
+-- |
+-- | The \|SourceCharacter\| immediately following a \|NumericLiteral\| must
+-- | not be an \|IdentifierStart\| or \|DecimalDigit\|.
+-- |
+-- | For example: \`3in\` is an error and not the two input elements \`3\`
+-- | and \`in\`.
+-- |
+
+-- SPEC: L13913-L13921
+-- | # Static Semantics: Early Errors
+-- |
+-- | NumericLiteral :: LegacyOctalIntegerLiteral DecimalIntegerLiteral ::
+-- | NonOctalDecimalIntegerLiteral
+-- |
+-- | - It is a Syntax Error if IsStrict(this production) is \*true\*.
+-- |
+-- | In non-strict code, this syntax is Legacy.
+-- |
+
+-- SPEC: L13922-L14024
+-- | # Static Semantics: MV
+-- |
+-- | A numeric literal stands for a value of the Number type or the BigInt
+-- | type.
+-- |
+-- | - The MV of DecimalLiteral :: DecimalIntegerLiteral \`.\` DecimalDigits
+-- |   is the MV of \|DecimalIntegerLiteral\| plus (the MV of
+-- |   \|DecimalDigits\| × 10^-\_n\_^), where \_n\_ is the number of code
+-- |   points in \|DecimalDigits\|, excluding all occurrences of
+-- |   \|NumericLiteralSeparator\|.
+-- | - The MV of DecimalLiteral :: DecimalIntegerLiteral \`.\` ExponentPart
+-- |   is the MV of \|DecimalIntegerLiteral\| × 10^\_e\_^, where \_e\_ is the
+-- |   MV of \|ExponentPart\|.
+-- | - The MV of DecimalLiteral :: DecimalIntegerLiteral \`.\` DecimalDigits
+-- |   ExponentPart is (the MV of \|DecimalIntegerLiteral\| plus (the MV of
+-- |   \|DecimalDigits\| × 10^-\_n\_^)) × 10^\_e\_^, where \_n\_ is the
+-- |   number of code points in \|DecimalDigits\|, excluding all occurrences
+-- |   of \|NumericLiteralSeparator\| and \_e\_ is the MV of
+-- |   \|ExponentPart\|.
+-- | - The MV of DecimalLiteral :: \`.\` DecimalDigits is the MV of
+-- |   \|DecimalDigits\| × 10^-\_n\_^, where \_n\_ is the number of code
+-- |   points in \|DecimalDigits\|, excluding all occurrences of
+-- |   \|NumericLiteralSeparator\|.
+-- | - The MV of DecimalLiteral :: \`.\` DecimalDigits ExponentPart is the MV
+-- |   of \|DecimalDigits\| × 10^\_e\_\ -\ \_n\_^, where \_n\_ is the number
+-- |   of code points in \|DecimalDigits\|, excluding all occurrences of
+-- |   \|NumericLiteralSeparator\|, and \_e\_ is the MV of \|ExponentPart\|.
+-- | - The MV of DecimalLiteral :: DecimalIntegerLiteral ExponentPart is the
+-- |   MV of \|DecimalIntegerLiteral\| × 10^\_e\_^, where \_e\_ is the MV of
+-- |   \|ExponentPart\|.
+-- | - The MV of DecimalIntegerLiteral :: \`0\` is 0.
+-- | - The MV of DecimalIntegerLiteral :: NonZeroDigit
+-- |   NumericLiteralSeparator? DecimalDigits is (the MV of \|NonZeroDigit\|
+-- |   × 10^\_n\_^) plus the MV of \|DecimalDigits\|, where \_n\_ is the
+-- |   number of code points in \|DecimalDigits\|, excluding all occurrences
+-- |   of \|NumericLiteralSeparator\|.
+-- | - The MV of DecimalDigits :: DecimalDigits DecimalDigit is (the MV of
+-- |   \|DecimalDigits\| × 10) plus the MV of \|DecimalDigit\|.
+-- | - The MV of DecimalDigits :: DecimalDigits NumericLiteralSeparator
+-- |   DecimalDigit is (the MV of \|DecimalDigits\| × 10) plus the MV of
+-- |   \|DecimalDigit\|.
+-- | - The MV of ExponentPart :: ExponentIndicator SignedInteger is the MV of
+-- |   \|SignedInteger\|.
+-- | - The MV of SignedInteger :: \`-\` DecimalDigits is the negative of the
+-- |   MV of \|DecimalDigits\|.
+-- | - The MV of DecimalDigit :: \`0\` or of HexDigit :: \`0\` or of
+-- |   OctalDigit :: \`0\` or of LegacyOctalEscapeSequence :: \`0\` or of
+-- |   BinaryDigit :: \`0\` is 0.
+-- | - The MV of DecimalDigit :: \`1\` or of NonZeroDigit :: \`1\` or of
+-- |   HexDigit :: \`1\` or of OctalDigit :: \`1\` or of BinaryDigit :: \`1\`
+-- |   is 1.
+-- | - The MV of DecimalDigit :: \`2\` or of NonZeroDigit :: \`2\` or of
+-- |   HexDigit :: \`2\` or of OctalDigit :: \`2\` is 2.
+-- | - The MV of DecimalDigit :: \`3\` or of NonZeroDigit :: \`3\` or of
+-- |   HexDigit :: \`3\` or of OctalDigit :: \`3\` is 3.
+-- | - The MV of DecimalDigit :: \`4\` or of NonZeroDigit :: \`4\` or of
+-- |   HexDigit :: \`4\` or of OctalDigit :: \`4\` is 4.
+-- | - The MV of DecimalDigit :: \`5\` or of NonZeroDigit :: \`5\` or of
+-- |   HexDigit :: \`5\` or of OctalDigit :: \`5\` is 5.
+-- | - The MV of DecimalDigit :: \`6\` or of NonZeroDigit :: \`6\` or of
+-- |   HexDigit :: \`6\` or of OctalDigit :: \`6\` is 6.
+-- | - The MV of DecimalDigit :: \`7\` or of NonZeroDigit :: \`7\` or of
+-- |   HexDigit :: \`7\` or of OctalDigit :: \`7\` is 7.
+-- | - The MV of DecimalDigit :: \`8\` or of NonZeroDigit :: \`8\` or of
+-- |   NonOctalDigit :: \`8\` or of HexDigit :: \`8\` is 8.
+-- | - The MV of DecimalDigit :: \`9\` or of NonZeroDigit :: \`9\` or of
+-- |   NonOctalDigit :: \`9\` or of HexDigit :: \`9\` is 9.
+-- | - The MV of HexDigit :: \`a\` or of HexDigit :: \`A\` is 10.
+-- | - The MV of HexDigit :: \`b\` or of HexDigit :: \`B\` is 11.
+-- | - The MV of HexDigit :: \`c\` or of HexDigit :: \`C\` is 12.
+-- | - The MV of HexDigit :: \`d\` or of HexDigit :: \`D\` is 13.
+-- | - The MV of HexDigit :: \`e\` or of HexDigit :: \`E\` is 14.
+-- | - The MV of HexDigit :: \`f\` or of HexDigit :: \`F\` is 15.
+-- | - The MV of BinaryDigits :: BinaryDigits BinaryDigit is (the MV of
+-- |   \|BinaryDigits\| × 2) plus the MV of \|BinaryDigit\|.
+-- | - The MV of BinaryDigits :: BinaryDigits NumericLiteralSeparator
+-- |   BinaryDigit is (the MV of \|BinaryDigits\| × 2) plus the MV of
+-- |   \|BinaryDigit\|.
+-- | - The MV of OctalDigits :: OctalDigits OctalDigit is (the MV of
+-- |   \|OctalDigits\| × 8) plus the MV of \|OctalDigit\|.
+-- | - The MV of OctalDigits :: OctalDigits NumericLiteralSeparator
+-- |   OctalDigit is (the MV of \|OctalDigits\| × 8) plus the MV of
+-- |   \|OctalDigit\|.
+-- | - The MV of LegacyOctalIntegerLiteral :: LegacyOctalIntegerLiteral
+-- |   OctalDigit is (the MV of \|LegacyOctalIntegerLiteral\| times 8) plus
+-- |   the MV of \|OctalDigit\|.
+-- | - The MV of NonOctalDecimalIntegerLiteral ::
+-- |   LegacyOctalLikeDecimalIntegerLiteral NonOctalDigit is (the MV of
+-- |   \|LegacyOctalLikeDecimalIntegerLiteral\| times 10) plus the MV of
+-- |   \|NonOctalDigit\|.
+-- | - The MV of NonOctalDecimalIntegerLiteral ::
+-- |   NonOctalDecimalIntegerLiteral DecimalDigit is (the MV of
+-- |   \|NonOctalDecimalIntegerLiteral\| times 10) plus the MV of
+-- |   \|DecimalDigit\|.
+-- | - The MV of LegacyOctalLikeDecimalIntegerLiteral ::
+-- |   LegacyOctalLikeDecimalIntegerLiteral OctalDigit is (the MV of
+-- |   \|LegacyOctalLikeDecimalIntegerLiteral\| times 10) plus the MV of
+-- |   \|OctalDigit\|.
+-- | - The MV of HexDigits :: HexDigits HexDigit is (the MV of \|HexDigits\|
+-- |   × 16) plus the MV of \|HexDigit\|.
+-- | - The MV of HexDigits :: HexDigits NumericLiteralSeparator HexDigit is
+-- |   (the MV of \|HexDigits\| × 16) plus the MV of \|HexDigit\|.
+-- |
+
+-- SPEC: L14025-L14043
+-- | # Static Semantics: NumericValue ( ): a Number or a BigInt
+-- |
+-- | NumericLiteral :: DecimalLiteral 1. Return RoundMVResult(MV of
+-- | \|DecimalLiteral\|). NumericLiteral :: NonDecimalIntegerLiteral 1.
+-- | Return 𝔽(MV of \|NonDecimalIntegerLiteral\|). NumericLiteral ::
+-- | LegacyOctalIntegerLiteral 1. Return 𝔽(MV of
+-- | \|LegacyOctalIntegerLiteral\|). NumericLiteral ::
+-- | NonDecimalIntegerLiteral BigIntLiteralSuffix 1. Return the BigInt value
+-- | for the MV of \|NonDecimalIntegerLiteral\|. DecimalBigIntegerLiteral ::
+-- | \`0\` BigIntLiteralSuffix 1. Return \*0\*~ℤ~. DecimalBigIntegerLiteral
+-- | :: NonZeroDigit BigIntLiteralSuffix 1. Return the BigInt value for the
+-- | MV of \|NonZeroDigit\|. DecimalBigIntegerLiteral :: NonZeroDigit
+-- | DecimalDigits BigIntLiteralSuffix NonZeroDigit NumericLiteralSeparator
+-- | DecimalDigits BigIntLiteralSuffix 1. Let \_n\_ be the number of code
+-- | points in \|DecimalDigits\|, excluding all occurrences of
+-- | \|NumericLiteralSeparator\|. 1. Let \_mv\_ be (the MV of
+-- | \|NonZeroDigit\| × 10^\_n\_^) plus the MV of \|DecimalDigits\|. 1.
+-- | Return ℤ(\_mv\_).
+-- |
+
+-- SPEC: L14044-L14092
+-- | # String Literals
+-- |
+-- | A string literal is 0 or more Unicode code points enclosed in single or
+-- | double quotes. Unicode code points may also be represented by an escape
+-- | sequence. All code points may appear literally in a string literal
+-- | except for the closing quote code points, U+005C (REVERSE SOLIDUS),
+-- | U+000D (CARRIAGE RETURN), and U+000A (LINE FEED). Any code points may
+-- | appear in the form of an escape sequence. String literals evaluate to
+-- | ECMAScript String values. When generating these String values Unicode
+-- | code points are UTF-16 encoded as defined in . Code points belonging to
+-- | the Basic Multilingual Plane are encoded as a single code unit element
+-- | of the string. All other code points are encoded as two code unit
+-- | elements of the string.
+-- |
+-- | ## Syntax
+-- |
+-- | StringLiteral :: \`\"\` DoubleStringCharacters? \`\"\` \`\'\`
+-- | SingleStringCharacters? \`\'\` DoubleStringCharacters ::
+-- | DoubleStringCharacter DoubleStringCharacters? SingleStringCharacters ::
+-- | SingleStringCharacter SingleStringCharacters? DoubleStringCharacter ::
+-- | SourceCharacter but not one of \`\"\` or \`\\\` or LineTerminator \<LS\>
+-- | \<PS\> \`\\\` EscapeSequence LineContinuation SingleStringCharacter ::
+-- | SourceCharacter but not one of \`\'\` or \`\\\` or LineTerminator \<LS\>
+-- | \<PS\> \`\\\` EscapeSequence LineContinuation LineContinuation :: \`\\\`
+-- | LineTerminatorSequence EscapeSequence :: CharacterEscapeSequence \`0\`
+-- | \[lookahead ∉ DecimalDigit\] LegacyOctalEscapeSequence
+-- | NonOctalDecimalEscapeSequence HexEscapeSequence UnicodeEscapeSequence
+-- | CharacterEscapeSequence :: SingleEscapeCharacter NonEscapeCharacter
+-- | SingleEscapeCharacter :: one of \`\'\` \`\"\` \`\\\` \`b\` \`f\` \`n\`
+-- | \`r\` \`t\` \`v\` NonEscapeCharacter :: SourceCharacter but not one of
+-- | EscapeCharacter or LineTerminator EscapeCharacter ::
+-- | SingleEscapeCharacter DecimalDigit \`x\` \`u\` LegacyOctalEscapeSequence
+-- | :: \`0\` \[lookahead ∈ { \`8\`, \`9\` }\] NonZeroOctalDigit \[lookahead
+-- | ∉ OctalDigit\] ZeroToThree OctalDigit \[lookahead ∉ OctalDigit\]
+-- | FourToSeven OctalDigit ZeroToThree OctalDigit OctalDigit
+-- | NonZeroOctalDigit :: OctalDigit but not \`0\` ZeroToThree :: one of
+-- | \`0\` \`1\` \`2\` \`3\` FourToSeven :: one of \`4\` \`5\` \`6\` \`7\`
+-- | NonOctalDecimalEscapeSequence :: one of \`8\` \`9\` HexEscapeSequence ::
+-- | \`x\` HexDigit HexDigit UnicodeEscapeSequence :: \`u\` Hex4Digits \`u{\`
+-- | CodePoint \`}\` Hex4Digits :: HexDigit HexDigit HexDigit HexDigit
+-- |
+-- | The definition of the nonterminal \|HexDigit\| is given in .
+-- | \|SourceCharacter\| is defined in .
+-- |
+-- | \<LF\> and \<CR\> cannot appear in a string literal, except as part of a
+-- | \|LineContinuation\| to produce the empty code points sequence. The
+-- | proper way to include either in the String value of a string literal is
+-- | to use an escape sequence such as \`\\\\n\` or \`\\\\u000A\`.
+-- |
+
+-- SPEC: L14093-L14112
+-- | # Static Semantics: Early Errors
+-- |
+-- | EscapeSequence :: LegacyOctalEscapeSequence
+-- | NonOctalDecimalEscapeSequence
+-- |
+-- | - It is a Syntax Error if IsStrict(this production) is \*true\*.
+-- |
+-- | In non-strict code, this syntax is Legacy.
+-- |
+-- | It is possible for string literals to precede a Use Strict Directive
+-- | that places the enclosing code in strict mode, and implementations must
+-- | take care to enforce the above rules for such literals. For example, the
+-- | following source text contains a Syntax Error:
+-- |
+-- | ``` javascript
+-- |
+-- |             function invalid() { "\7"; "use strict"; }
+-- |           
+-- | ```
+-- |
+
+-- SPEC: L14113-L14157
+-- | # Static Semantics: SV ( ): a String
+-- |
+-- | description
+-- |
+-- | :   A string literal stands for a value of the String type. SV produces
+-- |     String values for string literals through recursive application on
+-- |     the various parts of the string literal. As part of this process,
+-- |     some Unicode code points within the string literal are interpreted
+-- |     as having a mathematical value, as described below or in .
+-- |
+-- | - The SV of StringLiteral :: \`\"\` \`\"\` is the empty String.
+-- | - The SV of StringLiteral :: \`\'\` \`\'\` is the empty String.
+-- | - The SV of DoubleStringCharacters :: DoubleStringCharacter
+-- |   DoubleStringCharacters is the string-concatenation of the SV of
+-- |   \|DoubleStringCharacter\| and the SV of \|DoubleStringCharacters\|.
+-- | - The SV of SingleStringCharacters :: SingleStringCharacter
+-- |   SingleStringCharacters is the string-concatenation of the SV of
+-- |   \|SingleStringCharacter\| and the SV of \|SingleStringCharacters\|.
+-- | - The SV of DoubleStringCharacter :: SourceCharacter but not one of
+-- |   \`\"\` or \`\\\` or LineTerminator is the result of performing
+-- |   UTF16EncodeCodePoint on the code point matched by \|SourceCharacter\|.
+-- | - The SV of DoubleStringCharacter :: \<LS\> is the String value
+-- |   consisting of the code unit 0x2028 (LINE SEPARATOR).
+-- | - The SV of DoubleStringCharacter :: \<PS\> is the String value
+-- |   consisting of the code unit 0x2029 (PARAGRAPH SEPARATOR).
+-- | - The SV of DoubleStringCharacter :: LineContinuation is the empty
+-- |   String.
+-- | - The SV of SingleStringCharacter :: SourceCharacter but not one of
+-- |   \`\'\` or \`\\\` or LineTerminator is the result of performing
+-- |   UTF16EncodeCodePoint on the code point matched by \|SourceCharacter\|.
+-- | - The SV of SingleStringCharacter :: \<LS\> is the String value
+-- |   consisting of the code unit 0x2028 (LINE SEPARATOR).
+-- | - The SV of SingleStringCharacter :: \<PS\> is the String value
+-- |   consisting of the code unit 0x2029 (PARAGRAPH SEPARATOR).
+-- | - The SV of SingleStringCharacter :: LineContinuation is the empty
+-- |   String.
+-- | - The SV of EscapeSequence :: \`0\` is the String value consisting of
+-- |   the code unit 0x0000 (NULL).
+-- | - The SV of CharacterEscapeSequence :: SingleEscapeCharacter is the
+-- |   String value consisting of the code unit whose numeric value is
+-- |   determined by the \|SingleEscapeCharacter\| according to .
+-- |
+-- |   Escape Sequence   Code Unit Value   Unicode Character Name   Symbol
+-- |   ----------------- ----------------- ------------------------ ----------
+-- |   \`\\\\b\`         \`0x0008\`        BACKSPACE                \<BS\>
+
+-- SPEC: L14158-L14210
+-- |   \`\\\\t\`         \`0x0009\`        CHARACTER TABULATION     \<HT\>
+-- |   \`\\\\n\`         \`0x000A\`        LINE FEED (LF)           \<LF\>
+-- |   \`\\\\v\`         \`0x000B\`        LINE TABULATION          \<VT\>
+-- |   \`\\\\f\`         \`0x000C\`        FORM FEED (FF)           \<FF\>
+-- |   \`\\\\r\`         \`0x000D\`        CARRIAGE RETURN (CR)     \<CR\>
+-- |   \`\\\\\"\`        \`0x0022\`        QUOTATION MARK           \`\"\`
+-- |   \`\\\\\'\`        \`0x0027\`        APOSTROPHE               \`\'\`
+-- |   \`\\\\\\\\\`      \`0x005C\`        REVERSE SOLIDUS          \`\\\\\`
+-- |
+-- | - The SV of NonEscapeCharacter :: SourceCharacter but not one of
+-- |   EscapeCharacter or LineTerminator is the result of performing
+-- |   UTF16EncodeCodePoint on the code point matched by \|SourceCharacter\|.
+-- | - The SV of EscapeSequence :: LegacyOctalEscapeSequence is the String
+-- |   value consisting of the code unit whose numeric value is the MV of
+-- |   \|LegacyOctalEscapeSequence\|.
+-- | - The SV of NonOctalDecimalEscapeSequence :: \`8\` is the String value
+-- |   consisting of the code unit 0x0038 (DIGIT EIGHT).
+-- | - The SV of NonOctalDecimalEscapeSequence :: \`9\` is the String value
+-- |   consisting of the code unit 0x0039 (DIGIT NINE).
+-- | - The SV of HexEscapeSequence :: \`x\` HexDigit HexDigit is the String
+-- |   value consisting of the code unit whose numeric value is the MV of
+-- |   \|HexEscapeSequence\|.
+-- | - The SV of Hex4Digits :: HexDigit HexDigit HexDigit HexDigit is the
+-- |   String value consisting of the code unit whose numeric value is the MV
+-- |   of \|Hex4Digits\|.
+-- | - The SV of UnicodeEscapeSequence :: \`u{\` CodePoint \`}\` is the
+-- |   result of performing UTF16EncodeCodePoint on the MV of \|CodePoint\|.
+-- | - The SV of TemplateEscapeSequence :: \`0\` is the String value
+-- |   consisting of the code unit 0x0000 (NULL).
+-- |
+-- | # Static Semantics: MV
+-- |
+-- | - The MV of LegacyOctalEscapeSequence :: ZeroToThree OctalDigit is (8
+-- |   times the MV of \|ZeroToThree\|) plus the MV of \|OctalDigit\|.
+-- | - The MV of LegacyOctalEscapeSequence :: FourToSeven OctalDigit is (8
+-- |   times the MV of \|FourToSeven\|) plus the MV of \|OctalDigit\|.
+-- | - The MV of LegacyOctalEscapeSequence :: ZeroToThree OctalDigit
+-- |   OctalDigit is (64 (that is, 8^2^) times the MV of \|ZeroToThree\|)
+-- |   plus (8 times the MV of the first \|OctalDigit\|) plus the MV of the
+-- |   second \|OctalDigit\|.
+-- | - The MV of ZeroToThree :: \`0\` is 0.
+-- | - The MV of ZeroToThree :: \`1\` is 1.
+-- | - The MV of ZeroToThree :: \`2\` is 2.
+-- | - The MV of ZeroToThree :: \`3\` is 3.
+-- | - The MV of FourToSeven :: \`4\` is 4.
+-- | - The MV of FourToSeven :: \`5\` is 5.
+-- | - The MV of FourToSeven :: \`6\` is 6.
+-- | - The MV of FourToSeven :: \`7\` is 7.
+-- | - The MV of HexEscapeSequence :: \`x\` HexDigit HexDigit is (16 times
+-- |   the MV of the first \|HexDigit\|) plus the MV of the second
+-- |   \|HexDigit\|.
+-- | - The MV of Hex4Digits :: HexDigit HexDigit HexDigit HexDigit is (0x1000
+-- |   × the MV of the first \|HexDigit\|) plus (0x100 × the MV of the second
+
+-- SPEC: L14211-L14237
+-- |   \|HexDigit\|) plus (0x10 × the MV of the third \|HexDigit\|) plus the
+-- |   MV of the fourth \|HexDigit\|.
+-- |
+-- | # Regular Expression Literals
+-- |
+-- | A regular expression literal is an input element that is converted to a
+-- | RegExp object (see ) each time the literal is evaluated. Two regular
+-- | expression literals in a program evaluate to regular expression objects
+-- | that never compare as \`===\` to each other even if the two literals\'
+-- | contents are identical. A RegExp object may also be created at runtime
+-- | by \`new RegExp\` or calling the RegExp constructor as a function (see
+-- | ).
+-- |
+-- | The productions below describe the syntax for a regular expression
+-- | literal and are used by the input element scanner to find the end of the
+-- | regular expression literal. The source text comprising the
+-- | \|RegularExpressionBody\| and the \|RegularExpressionFlags\| are
+-- | subsequently parsed again using the more stringent ECMAScript Regular
+-- | Expression grammar ().
+-- |
+-- | An implementation may extend the ECMAScript Regular Expression grammar
+-- | defined in , but it must not extend the \|RegularExpressionBody\| and
+-- | \|RegularExpressionFlags\| productions defined below or the productions
+-- | used by these productions.
+-- |
+-- | ## Syntax
+-- |
+
+-- SPEC: L14238-L14262
+-- | RegularExpressionLiteral :: \`/\` RegularExpressionBody \`/\`
+-- | RegularExpressionFlags RegularExpressionBody ::
+-- | RegularExpressionFirstChar RegularExpressionChars RegularExpressionChars
+-- | :: \[empty\] RegularExpressionChars RegularExpressionChar
+-- | RegularExpressionFirstChar :: RegularExpressionNonTerminator but not one
+-- | of \`\*\` or \`\\\` or \`/\` or \`\[\`
+-- | RegularExpressionBackslashSequence RegularExpressionClass
+-- | RegularExpressionChar :: RegularExpressionNonTerminator but not one of
+-- | \`\\\` or \`/\` or \`\[\` RegularExpressionBackslashSequence
+-- | RegularExpressionClass RegularExpressionBackslashSequence :: \`\\\`
+-- | RegularExpressionNonTerminator RegularExpressionNonTerminator ::
+-- | SourceCharacter but not LineTerminator RegularExpressionClass :: \`\[\`
+-- | RegularExpressionClassChars \`\]\` RegularExpressionClassChars ::
+-- | \[empty\] RegularExpressionClassChars RegularExpressionClassChar
+-- | RegularExpressionClassChar :: RegularExpressionNonTerminator but not one
+-- | of \`\]\` or \`\\\` RegularExpressionBackslashSequence
+-- | RegularExpressionFlags :: \[empty\] RegularExpressionFlags
+-- | IdentifierPartChar
+-- |
+-- | Regular expression literals may not be empty; instead of representing an
+-- | empty regular expression literal, the code unit sequence \`//\` starts a
+-- | single-line comment. To specify an empty regular expression, use:
+-- | \`/(?:)/\`.
+-- |
+-- | # Static Semantics: BodyText ( ): source text
+
+-- SPEC: L14263-L14296
+-- |
+-- | RegularExpressionLiteral :: \`/\` RegularExpressionBody \`/\`
+-- | RegularExpressionFlags 1. Return the source text that was recognized as
+-- | \|RegularExpressionBody\|.
+-- |
+-- | # Static Semantics: FlagText ( ): source text
+-- |
+-- | RegularExpressionLiteral :: \`/\` RegularExpressionBody \`/\`
+-- | RegularExpressionFlags 1. Return the source text that was recognized as
+-- | \|RegularExpressionFlags\|.
+-- |
+-- | # Template Literal Lexical Components
+-- |
+-- | ## Syntax
+-- |
+-- | Template :: NoSubstitutionTemplate TemplateHead NoSubstitutionTemplate
+-- | :: \`\`\` TemplateCharacters? \`\`\` TemplateHead :: \`\`\`
+-- | TemplateCharacters? \`\${\` TemplateSubstitutionTail :: TemplateMiddle
+-- | TemplateTail TemplateMiddle :: \`}\` TemplateCharacters? \`\${\`
+-- | TemplateTail :: \`}\` TemplateCharacters? \`\`\` TemplateCharacters ::
+-- | TemplateCharacter TemplateCharacters? TemplateCharacter :: \`\$\`
+-- | \[lookahead != \`{\`\] \`\\\` TemplateEscapeSequence \`\\\`
+-- | NotEscapeSequence LineContinuation LineTerminatorSequence
+-- | SourceCharacter but not one of \`\`\` or \`\\\` or \`\$\` or
+-- | LineTerminator TemplateEscapeSequence :: CharacterEscapeSequence \`0\`
+-- | \[lookahead ∉ DecimalDigit\] HexEscapeSequence UnicodeEscapeSequence
+-- | NotEscapeSequence :: \`0\` DecimalDigit DecimalDigit but not \`0\` \`x\`
+-- | \[lookahead ∉ HexDigit\] \`x\` HexDigit \[lookahead ∉ HexDigit\] \`u\`
+-- | \[lookahead ∉ HexDigit\] \[lookahead != \`{\`\] \`u\` HexDigit
+-- | \[lookahead ∉ HexDigit\] \`u\` HexDigit HexDigit \[lookahead ∉
+-- | HexDigit\] \`u\` HexDigit HexDigit HexDigit \[lookahead ∉ HexDigit\]
+-- | \`u\` \`{\` \[lookahead ∉ HexDigit\] \`u\` \`{\` NotCodePoint
+-- | \[lookahead ∉ HexDigit\] \`u\` \`{\` CodePoint \[lookahead ∉ HexDigit\]
+-- | \[lookahead != \`}\`\] NotCodePoint :: HexDigits\[\~Sep\] \[\> but only
+
+-- SPEC: L14297-L14322
+-- | if the MV of \|HexDigits\| \> 0x10FFFF\] CodePoint :: HexDigits\[\~Sep\]
+-- | \[\> but only if the MV of \|HexDigits\| ≤ 0x10FFFF\]
+-- |
+-- | \|TemplateSubstitutionTail\| is used by the \|InputElementTemplateTail\|
+-- | alternative lexical goal.
+-- |
+-- | # Static Semantics: TV ( ): a String or \*undefined\*
+-- |
+-- | description
+-- | :   A template literal component is interpreted by TV as a value of the
+-- |     String type. TV is used to construct the indexed components of a
+-- |     template object (colloquially, the template values). In TV, escape
+-- |     sequences are replaced by the UTF-16 code unit(s) of the Unicode
+-- |     code point represented by the escape sequence.
+-- |
+-- | - The TV of NoSubstitutionTemplate :: \`\`\` \`\`\` is the empty String.
+-- | - The TV of TemplateHead :: \`\`\` \`\${\` is the empty String.
+-- | - The TV of TemplateMiddle :: \`}\` \`\${\` is the empty String.
+-- | - The TV of TemplateTail :: \`}\` \`\`\` is the empty String.
+-- | - The TV of TemplateCharacters :: TemplateCharacter TemplateCharacters
+-- |   is \*undefined\* if the TV of \|TemplateCharacter\| is \*undefined\*
+-- |   or the TV of \|TemplateCharacters\| is \*undefined\*. Otherwise, it is
+-- |   the string-concatenation of the TV of \|TemplateCharacter\| and the TV
+-- |   of \|TemplateCharacters\|.
+-- | - The TV of TemplateCharacter :: SourceCharacter but not one of \`\`\`
+-- |   or \`\\\` or \`\$\` or LineTerminator is the result of performing
+
+-- SPEC: L14323-L14350
+-- |   UTF16EncodeCodePoint on the code point matched by \|SourceCharacter\|.
+-- | - The TV of TemplateCharacter :: \`\$\` is the String value consisting
+-- |   of the code unit 0x0024 (DOLLAR SIGN).
+-- | - The TV of TemplateCharacter :: \`\\\` TemplateEscapeSequence is the SV
+-- |   of \|TemplateEscapeSequence\|.
+-- | - The TV of TemplateCharacter :: \`\\\` NotEscapeSequence is
+-- |   \*undefined\*.
+-- | - The TV of TemplateCharacter :: LineTerminatorSequence is the TRV of
+-- |   \|LineTerminatorSequence\|.
+-- | - The TV of LineContinuation :: \`\\\` LineTerminatorSequence is the
+-- |   empty String.
+-- |
+-- | # Static Semantics: TRV ( ): a String
+-- |
+-- | description
+-- | :   A template literal component is interpreted by TRV as a value of the
+-- |     String type. TRV is used to construct the raw components of a
+-- |     template object (colloquially, the template raw values). TRV is
+-- |     similar to TV with the difference being that in TRV, escape
+-- |     sequences are interpreted as they appear in the literal.
+-- |
+-- | - The TRV of NoSubstitutionTemplate :: \`\`\` \`\`\` is the empty
+-- |   String.
+-- | - The TRV of TemplateHead :: \`\`\` \`\${\` is the empty String.
+-- | - The TRV of TemplateMiddle :: \`}\` \`\${\` is the empty String.
+-- | - The TRV of TemplateTail :: \`}\` \`\`\` is the empty String.
+-- | - The TRV of TemplateCharacters :: TemplateCharacter TemplateCharacters
+-- |   is the string-concatenation of the TRV of \|TemplateCharacter\| and
+
+-- SPEC: L14351-L14374
+-- |   the TRV of \|TemplateCharacters\|.
+-- | - The TRV of TemplateCharacter :: SourceCharacter but not one of \`\`\`
+-- |   or \`\\\` or \`\$\` or LineTerminator is the result of performing
+-- |   UTF16EncodeCodePoint on the code point matched by \|SourceCharacter\|.
+-- | - The TRV of TemplateCharacter :: \`\$\` is the String value consisting
+-- |   of the code unit 0x0024 (DOLLAR SIGN).
+-- | - The TRV of TemplateCharacter :: \`\\\` TemplateEscapeSequence is the
+-- |   string-concatenation of the code unit 0x005C (REVERSE SOLIDUS) and the
+-- |   TRV of \|TemplateEscapeSequence\|.
+-- | - The TRV of TemplateCharacter :: \`\\\` NotEscapeSequence is the
+-- |   string-concatenation of the code unit 0x005C (REVERSE SOLIDUS) and the
+-- |   TRV of \|NotEscapeSequence\|.
+-- | - The TRV of TemplateEscapeSequence :: \`0\` is the String value
+-- |   consisting of the code unit 0x0030 (DIGIT ZERO).
+-- | - The TRV of NotEscapeSequence :: \`0\` DecimalDigit is the
+-- |   string-concatenation of the code unit 0x0030 (DIGIT ZERO) and the TRV
+-- |   of \|DecimalDigit\|.
+-- | - The TRV of NotEscapeSequence :: \`x\` \[lookahead ∉ HexDigit\] is the
+-- |   String value consisting of the code unit 0x0078 (LATIN SMALL LETTER
+-- |   X).
+-- | - The TRV of NotEscapeSequence :: \`x\` HexDigit \[lookahead ∉
+-- |   HexDigit\] is the string-concatenation of the code unit 0x0078 (LATIN
+-- |   SMALL LETTER X) and the TRV of \|HexDigit\|.
+-- | - The TRV of NotEscapeSequence :: \`u\` \[lookahead ∉ HexDigit\]
+
+-- SPEC: L14375-L14405
+-- |   \[lookahead != \`{\`\] is the String value consisting of the code unit
+-- |   0x0075 (LATIN SMALL LETTER U).
+-- | - The TRV of NotEscapeSequence :: \`u\` HexDigit \[lookahead ∉
+-- |   HexDigit\] is the string-concatenation of the code unit 0x0075 (LATIN
+-- |   SMALL LETTER U) and the TRV of \|HexDigit\|.
+-- | - The TRV of NotEscapeSequence :: \`u\` HexDigit HexDigit \[lookahead ∉
+-- |   HexDigit\] is the string-concatenation of the code unit 0x0075 (LATIN
+-- |   SMALL LETTER U), the TRV of the first \|HexDigit\|, and the TRV of the
+-- |   second \|HexDigit\|.
+-- | - The TRV of NotEscapeSequence :: \`u\` HexDigit HexDigit HexDigit
+-- |   \[lookahead ∉ HexDigit\] is the string-concatenation of the code unit
+-- |   0x0075 (LATIN SMALL LETTER U), the TRV of the first \|HexDigit\|, the
+-- |   TRV of the second \|HexDigit\|, and the TRV of the third \|HexDigit\|.
+-- | - The TRV of NotEscapeSequence :: \`u\` \`{\` \[lookahead ∉ HexDigit\]
+-- |   is the string-concatenation of the code unit 0x0075 (LATIN SMALL
+-- |   LETTER U) and the code unit 0x007B (LEFT CURLY BRACKET).
+-- | - The TRV of NotEscapeSequence :: \`u\` \`{\` NotCodePoint \[lookahead ∉
+-- |   HexDigit\] is the string-concatenation of the code unit 0x0075 (LATIN
+-- |   SMALL LETTER U), the code unit 0x007B (LEFT CURLY BRACKET), and the
+-- |   TRV of \|NotCodePoint\|.
+-- | - The TRV of NotEscapeSequence :: \`u\` \`{\` CodePoint \[lookahead ∉
+-- |   HexDigit\] \[lookahead != \`}\`\] is the string-concatenation of the
+-- |   code unit 0x0075 (LATIN SMALL LETTER U), the code unit 0x007B (LEFT
+-- |   CURLY BRACKET), and the TRV of \|CodePoint\|.
+-- | - The TRV of DecimalDigit :: one of \`0\` \`1\` \`2\` \`3\` \`4\` \`5\`
+-- |   \`6\` \`7\` \`8\` \`9\` is the result of performing
+-- |   UTF16EncodeCodePoint on the single code point matched by this
+-- |   production.
+-- | - The TRV of CharacterEscapeSequence :: NonEscapeCharacter is the SV of
+-- |   \|NonEscapeCharacter\|.
+-- | - The TRV of SingleEscapeCharacter :: one of \`\'\` \`\"\` \`\\\` \`b\`
+
+-- SPEC: L14406-L14432
+-- |   \`f\` \`n\` \`r\` \`t\` \`v\` is the result of performing
+-- |   UTF16EncodeCodePoint on the single code point matched by this
+-- |   production.
+-- | - The TRV of HexEscapeSequence :: \`x\` HexDigit HexDigit is the
+-- |   string-concatenation of the code unit 0x0078 (LATIN SMALL LETTER X),
+-- |   the TRV of the first \|HexDigit\|, and the TRV of the second
+-- |   \|HexDigit\|.
+-- | - The TRV of UnicodeEscapeSequence :: \`u\` Hex4Digits is the
+-- |   string-concatenation of the code unit 0x0075 (LATIN SMALL LETTER U)
+-- |   and the TRV of \|Hex4Digits\|.
+-- | - The TRV of UnicodeEscapeSequence :: \`u{\` CodePoint \`}\` is the
+-- |   string-concatenation of the code unit 0x0075 (LATIN SMALL LETTER U),
+-- |   the code unit 0x007B (LEFT CURLY BRACKET), the TRV of \|CodePoint\|,
+-- |   and the code unit 0x007D (RIGHT CURLY BRACKET).
+-- | - The TRV of Hex4Digits :: HexDigit HexDigit HexDigit HexDigit is the
+-- |   string-concatenation of the TRV of the first \|HexDigit\|, the TRV of
+-- |   the second \|HexDigit\|, the TRV of the third \|HexDigit\|, and the
+-- |   TRV of the fourth \|HexDigit\|.
+-- | - The TRV of HexDigits :: HexDigits HexDigit is the string-concatenation
+-- |   of the TRV of \|HexDigits\| and the TRV of \|HexDigit\|.
+-- | - The TRV of HexDigit :: one of \`0\` \`1\` \`2\` \`3\` \`4\` \`5\`
+-- |   \`6\` \`7\` \`8\` \`9\` \`a\` \`b\` \`c\` \`d\` \`e\` \`f\` \`A\`
+-- |   \`B\` \`C\` \`D\` \`E\` \`F\` is the result of performing
+-- |   UTF16EncodeCodePoint on the single code point matched by this
+-- |   production.
+-- | - The TRV of LineContinuation :: \`\\\` LineTerminatorSequence is the
+-- |   string-concatenation of the code unit 0x005C (REVERSE SOLIDUS) and the
+
+-- SPEC: L14433-L14480
+-- |   TRV of \|LineTerminatorSequence\|.
+-- | - The TRV of LineTerminatorSequence :: \<LF\> is the String value
+-- |   consisting of the code unit 0x000A (LINE FEED).
+-- | - The TRV of LineTerminatorSequence :: \<CR\> is the String value
+-- |   consisting of the code unit 0x000A (LINE FEED).
+-- | - The TRV of LineTerminatorSequence :: \<LS\> is the String value
+-- |   consisting of the code unit 0x2028 (LINE SEPARATOR).
+-- | - The TRV of LineTerminatorSequence :: \<PS\> is the String value
+-- |   consisting of the code unit 0x2029 (PARAGRAPH SEPARATOR).
+-- | - The TRV of LineTerminatorSequence :: \<CR\> \<LF\> is the String value
+-- |   consisting of the code unit 0x000A (LINE FEED).
+-- |
+-- | TV excludes the code units of \|LineContinuation\| while TRV includes
+-- | them. \<CR\>\<LF\> and \<CR\> \|LineTerminatorSequence\|s are normalized
+-- | to \<LF\> for both TV and TRV. An explicit \|TemplateEscapeSequence\| is
+-- | needed to include a \<CR\> or \<CR\>\<LF\> sequence.
+-- |
+-- | # Automatic Semicolon Insertion
+-- |
+-- | Most ECMAScript statements and declarations must be terminated with a
+-- | semicolon. Such semicolons may always appear explicitly in the source
+-- | text. For convenience, however, such semicolons may be omitted from the
+-- | source text in certain situations. These situations are described by
+-- | saying that semicolons are automatically inserted into the source code
+-- | token stream in those situations.
+-- |
+-- | # Rules of Automatic Semicolon Insertion
+-- |
+-- | In the following rules, "token" means the actual recognized lexical
+-- | token determined using the current lexical goal symbol as described in
+-- | clause .
+-- |
+-- | There are three basic rules of semicolon insertion:
+-- |
+-- | 1.  When, as the source text is parsed from left to right, a token
+-- |     (called the *offending token*) is encountered that is not allowed by
+-- |     any production of the grammar, then a semicolon is automatically
+-- |     inserted before the offending token if one or more of the following
+-- |     conditions is true:
+-- |
+-- |     - The offending token is separated from the previous token by at
+-- |       least one \|LineTerminator\|.
+-- |     - The offending token is \`}\`.
+-- |     - The previous token is \`)\` and the inserted semicolon would then
+-- |       be parsed as the terminating semicolon of a do-while statement ().
+-- |
+-- | 2.  When, as the source text is parsed from left to right, the end of
+-- |     the input stream of tokens is encountered and the parser is unable
+
+-- SPEC: L14481-L14514
+-- |     to parse the input token stream as a single instance of the goal
+-- |     nonterminal, then a semicolon is automatically inserted at the end
+-- |     of the input stream.
+-- |
+-- | 3.  When, as the source text is parsed from left to right, a token is
+-- |     encountered that is allowed by some production of the grammar, but
+-- |     the production is a *restricted production* and the token would be
+-- |     the first token for a terminal or nonterminal immediately following
+-- |     the annotation "\[no \|LineTerminator\| here\]" within the
+-- |     restricted production (and therefore such a token is called a
+-- |     restricted token), and the restricted token is separated from the
+-- |     previous token by at least one \|LineTerminator\|, then a semicolon
+-- |     is automatically inserted before the restricted token.
+-- |
+-- | However, there is an additional overriding condition on the preceding
+-- | rules: a semicolon is never inserted automatically if the semicolon
+-- | would then be parsed as an empty statement or if that semicolon would
+-- | become one of the two semicolons in the header of a \`for\` statement
+-- | (see ).
+-- |
+-- | The following are the only restricted productions in the grammar:
+-- |
+-- | UpdateExpression\[Yield, Await\] : LeftHandSideExpression\[?Yield,
+-- | ?Await\] \[no LineTerminator here\] \`++\`
+-- | LeftHandSideExpression\[?Yield, ?Await\] \[no LineTerminator here\]
+-- | \`\--\` ContinueStatement\[Yield, Await\] : \`continue\` \`;\`
+-- | \`continue\` \[no LineTerminator here\] LabelIdentifier\[?Yield,
+-- | ?Await\] \`;\` BreakStatement\[Yield, Await\] : \`break\` \`;\`
+-- | \`break\` \[no LineTerminator here\] LabelIdentifier\[?Yield, ?Await\]
+-- | \`;\` ReturnStatement\[Yield, Await\] : \`return\` \`;\` \`return\` \[no
+-- | LineTerminator here\] Expression\[+In, ?Yield, ?Await\] \`;\`
+-- | ThrowStatement\[Yield, Await\] : \`throw\` \[no LineTerminator here\]
+-- | Expression\[+In, ?Yield, ?Await\] \`;\` YieldExpression\[In, Await\] :
+-- | \`yield\` \`yield\` \[no LineTerminator here\]
+
+-- SPEC: L14515-L14547
+-- | AssignmentExpression\[?In, +Yield, ?Await\] \`yield\` \[no
+-- | LineTerminator here\] \`\*\` AssignmentExpression\[?In, +Yield, ?Await\]
+-- | ArrowFunction\[In, Yield, Await\] : ArrowParameters\[?Yield, ?Await\]
+-- | \[no LineTerminator here\] \`=\>\` ConciseBody\[?In\]
+-- | AsyncFunctionDeclaration\[Yield, Await, Default\] : \`async\` \[no
+-- | LineTerminator here\] \`function\` BindingIdentifier\[?Yield, ?Await\]
+-- | \`(\` FormalParameters\[\~Yield, +Await\] \`)\` \`{\` AsyncFunctionBody
+-- | \`}\` \[+Default\] \`async\` \[no LineTerminator here\] \`function\`
+-- | \`(\` FormalParameters\[\~Yield, +Await\] \`)\` \`{\` AsyncFunctionBody
+-- | \`}\` AsyncFunctionExpression : \`async\` \[no LineTerminator here\]
+-- | \`function\` BindingIdentifier\[\~Yield, +Await\]? \`(\`
+-- | FormalParameters\[\~Yield, +Await\] \`)\` \`{\` AsyncFunctionBody \`}\`
+-- | AsyncMethod\[Yield, Await\] : \`async\` \[no LineTerminator here\]
+-- | ClassElementName\[?Yield, ?Await\] \`(\`
+-- | UniqueFormalParameters\[\~Yield, +Await\] \`)\` \`{\` AsyncFunctionBody
+-- | \`}\` AsyncGeneratorDeclaration\[Yield, Await, Default\] : \`async\`
+-- | \[no LineTerminator here\] \`function\` \`\*\`
+-- | BindingIdentifier\[?Yield, ?Await\] \`(\` FormalParameters\[+Yield,
+-- | +Await\] \`)\` \`{\` AsyncGeneratorBody \`}\` \[+Default\] \`async\`
+-- | \[no LineTerminator here\] \`function\` \`\*\` \`(\`
+-- | FormalParameters\[+Yield, +Await\] \`)\` \`{\` AsyncGeneratorBody \`}\`
+-- | AsyncGeneratorExpression : \`async\` \[no LineTerminator here\]
+-- | \`function\` \`\*\` BindingIdentifier\[+Yield, +Await\]? \`(\`
+-- | FormalParameters\[+Yield, +Await\] \`)\` \`{\` AsyncGeneratorBody \`}\`
+-- | AsyncGeneratorMethod\[Yield, Await\] : \`async\` \[no LineTerminator
+-- | here\] \`\*\` ClassElementName\[?Yield, ?Await\] \`(\`
+-- | UniqueFormalParameters\[+Yield, +Await\] \`)\` \`{\` AsyncGeneratorBody
+-- | \`}\` AsyncArrowFunction\[In, Yield, Await\] : \`async\` \[no
+-- | LineTerminator here\] AsyncArrowBindingIdentifier\[?Yield\] \[no
+-- | LineTerminator here\] \`=\>\` AsyncConciseBody\[?In\]
+-- | CoverCallExpressionAndAsyncArrowHead\[?Yield, ?Await\] \[no
+-- | LineTerminator here\] \`=\>\` AsyncConciseBody\[?In\] #callcover
+-- | AsyncArrowHead : \`async\` \[no LineTerminator here\]
+
+-- SPEC: L14548-L14568
+-- | ArrowFormalParameters\[\~Yield, +Await\]
+-- |
+-- | The practical effect of these restricted productions is as follows:
+-- |
+-- | - When a \`++\` or \`\--\` token is encountered where the parser would
+-- |   treat it as a postfix operator, and at least one \|LineTerminator\|
+-- |   occurred between the preceding token and the \`++\` or \`\--\` token,
+-- |   then a semicolon is automatically inserted before the \`++\` or
+-- |   \`\--\` token.
+-- | - When a \`continue\`, \`break\`, \`return\`, \`throw\`, or \`yield\`
+-- |   token is encountered and a \|LineTerminator\| is encountered before
+-- |   the next token, a semicolon is automatically inserted after the
+-- |   \`continue\`, \`break\`, \`return\`, \`throw\`, or \`yield\` token.
+-- | - When arrow function parameter(s) are followed by a \|LineTerminator\|
+-- |   before a \`=\>\` token, a semicolon is automatically inserted and the
+-- |   punctuator causes a syntax error.
+-- | - When an \`async\` token is followed by a \|LineTerminator\| before a
+-- |   \`function\` or \|IdentifierName\| or \`(\` token, a semicolon is
+-- |   automatically inserted and the \`async\` token is not treated as part
+-- |   of the same expression or class element as the following tokens.
+-- | - When an \`async\` token is followed by a \|LineTerminator\| before a
+
+-- SPEC: L14569-L14606
+-- |   \`\*\` token, a semicolon is automatically inserted and the punctuator
+-- |   causes a syntax error.
+-- |
+-- | The resulting practical advice to ECMAScript programmers is:
+-- |
+-- | - A postfix \`++\` or \`\--\` operator should be on the same line as its
+-- |   operand.
+-- | - An \|Expression\| in a \`return\` or \`throw\` statement or an
+-- |   \|AssignmentExpression\| in a \`yield\` expression should start on the
+-- |   same line as the \`return\`, \`throw\`, or \`yield\` token.
+-- | - A \|LabelIdentifier\| in a \`break\` or \`continue\` statement should
+-- |   be on the same line as the \`break\` or \`continue\` token.
+-- | - The end of an arrow function\'s parameter(s) and its \`=\>\` should be
+-- |   on the same line.
+-- | - The \`async\` token preceding an asynchronous function or method
+-- |   should be on the same line as the immediately following token.
+-- |
+-- | # Examples of Automatic Semicolon Insertion
+-- |
+-- | *This section is non-normative.*
+-- |
+-- | The source
+-- |
+-- | ``` javascript
+-- | { 1 2 } 3
+-- | ```
+-- |
+-- | is not a valid sentence in the ECMAScript grammar, even with the
+-- | automatic semicolon insertion rules. In contrast, the source
+-- |
+-- | ``` javascript
+-- |
+-- |         { 1
+-- |         2 } 3
+-- |       
+-- | ```
+-- |
+-- | is also not a valid ECMAScript sentence, but is transformed by automatic
+
+-- SPEC: L14607-L14659
+-- | semicolon insertion into the following:
+-- |
+-- | ``` javascript
+-- |
+-- |         { 1
+-- |         ;2 ;} 3;
+-- |       
+-- | ```
+-- |
+-- | which is a valid ECMAScript sentence.
+-- |
+-- | The source
+-- |
+-- | ``` javascript
+-- |
+-- |         for (a; b
+-- |         )
+-- |       
+-- | ```
+-- |
+-- | is not a valid ECMAScript sentence and is not altered by automatic
+-- | semicolon insertion because the semicolon is needed for the header of a
+-- | \`for\` statement. Automatic semicolon insertion never inserts one of
+-- | the two semicolons in the header of a \`for\` statement.
+-- |
+-- | The source
+-- |
+-- | ``` javascript
+-- |
+-- |         return
+-- |         a + b
+-- |       
+-- | ```
+-- |
+-- | is transformed by automatic semicolon insertion into the following:
+-- |
+-- | ``` javascript
+-- |
+-- |         return;
+-- |         a + b;
+-- |       
+-- | ```
+-- |
+-- | The expression \`a + b\` is not treated as a value to be returned by the
+-- | \`return\` statement, because a \|LineTerminator\| separates it from the
+-- | token \`return\`.
+-- |
+-- | The source
+-- |
+-- | ``` javascript
+-- |
+-- |         a = b
+-- |         ++c
+
+-- SPEC: L14660-L14688
+-- |       
+-- | ```
+-- |
+-- | is transformed by automatic semicolon insertion into the following:
+-- |
+-- | ``` javascript
+-- |
+-- |         a = b;
+-- |         ++c;
+-- |       
+-- | ```
+-- |
+-- | The token \`++\` is not treated as a postfix operator applying to the
+-- | variable \`b\`, because a \|LineTerminator\| occurs between \`b\` and
+-- | \`++\`.
+-- |
+-- | The source
+-- |
+-- | ``` javascript
+-- |
+-- |         if (a > b)
+-- |         else c = d
+-- |       
+-- | ```
+-- |
+-- | is not a valid ECMAScript sentence and is not altered by automatic
+-- | semicolon insertion before the \`else\` token, even though no production
+-- | of the grammar applies at that point, because an automatically inserted
+-- | semicolon would then be parsed as an empty statement.
+
+-- SPEC: L14689-L14708
+-- |
+-- | The source
+-- |
+-- | ``` javascript
+-- |
+-- |         a = b + c
+-- |         (d + e).print()
+-- |       
+-- | ```
+-- |
+-- | is *not* transformed by automatic semicolon insertion, because the
+-- | parenthesized expression that begins the second line can be interpreted
+-- | as an argument list for a function call:
+-- |
+-- | ``` javascript
+-- | a = b + c(d + e).print()
+-- | ```
+-- |
+-- | In the circumstance that an assignment statement must begin with a left
+-- | parenthesis, it is a good idea for the programmer to provide an explicit
+
+-- SPEC: L14709-L14775
+-- | semicolon at the end of the preceding statement rather than to rely on
+-- | automatic semicolon insertion.
+-- |
+-- | # Interesting Cases of Automatic Semicolon Insertion
+-- |
+-- | *This section is non-normative.*
+-- |
+-- | ECMAScript programs can be written in a style with very few semicolons
+-- | by relying on automatic semicolon insertion. As described above,
+-- | semicolons are not inserted at every newline, and automatic semicolon
+-- | insertion can depend on multiple tokens across line terminators.
+-- |
+-- | As new syntactic features are added to ECMAScript, additional grammar
+-- | productions could be added that cause lines relying on automatic
+-- | semicolon insertion preceding them to change grammar productions when
+-- | parsed.
+-- |
+-- | For the purposes of this section, a case of automatic semicolon
+-- | insertion is considered interesting if it is a place where a semicolon
+-- | may or may not be inserted, depending on the source text which precedes
+-- | it. The rest of this section describes a number of interesting cases of
+-- | automatic semicolon insertion in this version of ECMAScript.
+-- |
+-- | # Interesting Cases of Automatic Semicolon Insertion in Statement Lists
+-- |
+-- | In a \|StatementList\|, many \|StatementListItem\|s end in semicolons,
+-- | which may be omitted using automatic semicolon insertion. As a
+-- | consequence of the rules above, at the end of a line ending an
+-- | expression, a semicolon is required if the following line begins with
+-- | any of the following:
+-- |
+-- | - **An opening parenthesis (`(`)**. Without a semicolon, the two lines
+-- |   together are treated as a \|CallExpression\|.
+-- | - **An opening square bracket (`[`)**. Without a semicolon, the two
+-- |   lines together are treated as property access, rather than an
+-- |   \|ArrayLiteral\| or \|ArrayAssignmentPattern\|.
+-- | - **A template literal (`` ` ``)**. Without a semicolon, the two lines
+-- |   together are interpreted as a tagged Template (), with the previous
+-- |   expression as the \|MemberExpression\|.
+-- | - **Unary `+` or `-`**. Without a semicolon, the two lines together are
+-- |   interpreted as a usage of the corresponding binary operator.
+-- | - **A RegExp literal**. Without a semicolon, the two lines together may
+-- |   be parsed instead as the \`/\` \|MultiplicativeOperator\|, for example
+-- |   if the RegExp has flags.
+-- |
+-- | # Cases of Automatic Semicolon Insertion and "\[no \|LineTerminator\| here\]"
+-- |
+-- | *This section is non-normative.*
+-- |
+-- | ECMAScript contains grammar productions which include "\[no
+-- | \|LineTerminator\| here\]". These productions are sometimes a means to
+-- | have optional operands in the grammar. Introducing a \|LineTerminator\|
+-- | in these locations would change the grammar production of a source text
+-- | by using the grammar production without the optional operand.
+-- |
+-- | The rest of this section describes a number of productions using "\[no
+-- | \|LineTerminator\| here\]" in this version of ECMAScript.
+-- |
+-- | # List of Grammar Productions with Optional Operands and "\[no \|LineTerminator\| here\]"
+-- |
+-- | - \|UpdateExpression\|.
+-- | - \|ContinueStatement\|.
+-- | - \|BreakStatement\|.
+-- | - \|ReturnStatement\|.
+-- | - \|YieldExpression\|.
+-- | - Async Function Definitions () with relation to Function Definitions ()
+-- |
+
+-- SPEC: L20269-L20294
+-- | # Async Arrow Function Definitions
+-- |
+-- | ## Syntax
+-- |
+-- | AsyncArrowFunction\[In, Yield, Await\] : \`async\` \[no LineTerminator
+-- | here\] AsyncArrowBindingIdentifier\[?Yield\] \[no LineTerminator here\]
+-- | \`=\>\` AsyncConciseBody\[?In\]
+-- | CoverCallExpressionAndAsyncArrowHead\[?Yield, ?Await\] \[no
+-- | LineTerminator here\] \`=\>\` AsyncConciseBody\[?In\] #callcover
+-- | AsyncConciseBody\[In\] : \[lookahead != \`{\`\] ExpressionBody\[?In,
+-- | +Await\] \`{\` AsyncFunctionBody \`}\`
+-- | AsyncArrowBindingIdentifier\[Yield\] : BindingIdentifier\[?Yield,
+-- | +Await\] CoverCallExpressionAndAsyncArrowHead\[Yield, Await\] :
+-- | MemberExpression\[?Yield, ?Await\] Arguments\[?Yield, ?Await\]
+-- |
+-- | ## Supplemental Syntax
+-- |
+-- | When processing an instance of the production\
+-- | AsyncArrowFunction : CoverCallExpressionAndAsyncArrowHead \`=\>\`
+-- | AsyncConciseBody\
+-- | the interpretation of \|CoverCallExpressionAndAsyncArrowHead\| is
+-- | refined using the following grammar:
+-- |
+-- | AsyncArrowHead : \`async\` \[no LineTerminator here\]
+-- | ArrowFormalParameters\[\~Yield, +Await\]
+-- |
+
+-- SPEC: L20295-L20319
+-- | # Static Semantics: Early Errors
+-- |
+-- | AsyncArrowFunction : \`async\` AsyncArrowBindingIdentifier \`=\>\`
+-- | AsyncConciseBody
+-- |
+-- | - It is a Syntax Error if any element of the BoundNames of
+-- |   \|AsyncArrowBindingIdentifier\| also occurs in the
+-- |   LexicallyDeclaredNames of \|AsyncConciseBody\|.
+-- |
+-- | AsyncArrowFunction : CoverCallExpressionAndAsyncArrowHead \`=\>\`
+-- | AsyncConciseBody
+-- |
+-- | - \|CoverCallExpressionAndAsyncArrowHead\| must cover an
+-- |   \|AsyncArrowHead\|.
+-- | - It is a Syntax Error if \|CoverCallExpressionAndAsyncArrowHead\|
+-- |   Contains \|YieldExpression\| is \*true\*.
+-- | - It is a Syntax Error if \|CoverCallExpressionAndAsyncArrowHead\|
+-- |   Contains \|AwaitExpression\| is \*true\*.
+-- | - It is a Syntax Error if any element of the BoundNames of
+-- |   \|CoverCallExpressionAndAsyncArrowHead\| also occurs in the
+-- |   LexicallyDeclaredNames of \|AsyncConciseBody\|.
+-- | - It is a Syntax Error if AsyncConciseBodyContainsUseStrict of
+-- |   \|AsyncConciseBody\| is \*true\* and IsSimpleParameterList of
+-- |   \|CoverCallExpressionAndAsyncArrowHead\| is \*false\*.
+-- |
+
+-- SPEC: L20320-L20325
+-- | # Static Semantics: AsyncConciseBodyContainsUseStrict ( ): a Boolean
+-- |
+-- | AsyncConciseBody : ExpressionBody 1. Return \*false\*. AsyncConciseBody
+-- | : \`{\` AsyncFunctionBody \`}\` 1. Return FunctionBodyContainsUseStrict
+-- | of \|AsyncFunctionBody\|.
+-- |
+
+-- SPEC: L20326-L20336
+-- | # Runtime Semantics: EvaluateAsyncConciseBody ( \_functionObject\_: an ECMAScript function object, \_argumentsList\_: a List of ECMAScript language values, ): a return completion
+-- |
+-- | AsyncConciseBody : ExpressionBody 1. Let \_promiseCapability\_ be !
+-- | NewPromiseCapability(%Promise%). 1. Let \_completion\_ be
+-- | Completion(FunctionDeclarationInstantiation(\_functionObject\_,
+-- | \_argumentsList\_)). 1. If \_completion\_ is an abrupt completion,
+-- | then 1. Perform ! Call(\_promiseCapability\_.\[\[Reject\]\],
+-- | \*undefined\*, « \_completion\_.\[\[Value\]\] »). 1. Else, 1. Perform
+-- | AsyncFunctionStart(\_promiseCapability\_, \|ExpressionBody\|). 1. Return
+-- | ReturnCompletion(\_promiseCapability\_.\[\[Promise\]\]).
+-- |
+
+-- SPEC: L20337-L20362
+-- | # Runtime Semantics: InstantiateAsyncArrowFunctionExpression ( optional \_name\_: a property key or a Private Name, ): an ECMAScript function object
+-- |
+-- | AsyncArrowFunction : \`async\` AsyncArrowBindingIdentifier \`=\>\`
+-- | AsyncConciseBody 1. If \_name\_ is not present, set \_name\_ to
+-- | \*\"\"\*. 1. Let \_env\_ be the LexicalEnvironment of the running
+-- | execution context. 1. Let \_privateEnv\_ be the running execution
+-- | context\'s PrivateEnvironment. 1. Let \_sourceText\_ be the source text
+-- | matched by \|AsyncArrowFunction\|. 1. Let \_parameters\_ be
+-- | \|AsyncArrowBindingIdentifier\|. 1. Let \_closure\_ be
+-- | OrdinaryFunctionCreate(%AsyncFunction.prototype%, \_sourceText\_,
+-- | \_parameters\_, \|AsyncConciseBody\|, \~lexical-this\~, \_env\_,
+-- | \_privateEnv\_). 1. Perform SetFunctionName(\_closure\_, \_name\_). 1.
+-- | Return \_closure\_. AsyncArrowFunction :
+-- | CoverCallExpressionAndAsyncArrowHead \`=\>\` AsyncConciseBody 1. If
+-- | \_name\_ is not present, set \_name\_ to \*\"\"\*. 1. Let \_env\_ be the
+-- | LexicalEnvironment of the running execution context. 1. Let
+-- | \_privateEnv\_ be the running execution context\'s
+-- | PrivateEnvironment. 1. Let \_sourceText\_ be the source text matched by
+-- | \|AsyncArrowFunction\|. 1. Let \_head\_ be the \|AsyncArrowHead\| that
+-- | is covered by \|CoverCallExpressionAndAsyncArrowHead\|. 1. Let
+-- | \_parameters\_ be the \|ArrowFormalParameters\| of \_head\_. 1. Let
+-- | \_closure\_ be OrdinaryFunctionCreate(%AsyncFunction.prototype%,
+-- | \_sourceText\_, \_parameters\_, \|AsyncConciseBody\|, \~lexical-this\~,
+-- | \_env\_, \_privateEnv\_). 1. Perform SetFunctionName(\_closure\_,
+-- | \_name\_). 1. Return \_closure\_.
+-- |
+
+-- SPEC: L20363-L20369
+-- | # Runtime Semantics: Evaluation
+-- |
+-- | AsyncArrowFunction : \`async\` AsyncArrowBindingIdentifier \`=\>\`
+-- | AsyncConciseBody CoverCallExpressionAndAsyncArrowHead \`=\>\`
+-- | AsyncConciseBody 1. Return InstantiateAsyncArrowFunctionExpression of
+-- | \|AsyncArrowFunction\|.
+-- |
+
+-- SPEC: L20370-L20371
+-- | # Tail Position Calls
+-- |
+
+-- SPEC: L20372-L20389
+-- | # Static Semantics: IsInTailPosition ( \_call\_: a \|CallExpression\| Parse Node, a \|MemberExpression\| Parse Node, or an \|OptionalChain\| Parse Node, ): a Boolean
+-- |
+-- | 1\. If IsStrict(\_call\_) is \*false\*, return \*false\*. 1. If \_call\_
+-- | is not contained within a \|FunctionBody\|, a \|ConciseBody\|, or an
+-- | \|AsyncConciseBody\|, return \*false\*. 1. Let \_body\_ be the
+-- | \|FunctionBody\|, \|ConciseBody\|, or \|AsyncConciseBody\| that most
+-- | closely contains \_call\_. 1. If \_body\_ is the \|FunctionBody\| of a
+-- | \|GeneratorBody\|, return \*false\*. 1. If \_body\_ is the
+-- | \|FunctionBody\| of an \|AsyncFunctionBody\|, return \*false\*. 1. If
+-- | \_body\_ is the \|FunctionBody\| of an \|AsyncGeneratorBody\|, return
+-- | \*false\*. 1. If \_body\_ is an \|AsyncConciseBody\|, return
+-- | \*false\*. 1. Return the result of HasCallInTailPosition of \_body\_
+-- | with argument \_call\_.
+-- |
+-- | Tail Position calls are only defined in strict mode code because of a
+-- | common non-standard language extension (see ) that enables observation
+-- | of the chain of caller contexts.
+-- |
+
+-- SPEC: L20390-L20529
+-- | # Static Semantics: HasCallInTailPosition ( \_call\_: a \|CallExpression\| Parse Node, a \|MemberExpression\| Parse Node, or an \|OptionalChain\| Parse Node, ): a Boolean
+-- |
+-- | \_call\_ is a Parse Node that represents a specific range of source
+-- | text. When the following algorithms compare \_call\_ to another Parse
+-- | Node, it is a test of whether they represent the same source text.
+-- |
+-- | A potential tail position call that is immediately followed by return
+-- | GetValue of the call result is also a possible tail position call. A
+-- | function call cannot return a Reference Record, so such a GetValue
+-- | operation will always return the same value as the actual function call
+-- | result.
+-- |
+-- | StatementList : StatementList StatementListItem 1. Let \_has\_ be
+-- | HasCallInTailPosition of \|StatementList\| with argument \_call\_. 1. If
+-- | \_has\_ is \*true\*, return \*true\*. 1. Return HasCallInTailPosition of
+-- | \|StatementListItem\| with argument \_call\_. FunctionStatementList :
+-- | \[empty\] StatementListItem : Declaration Statement : VariableStatement
+-- | EmptyStatement ExpressionStatement ContinueStatement BreakStatement
+-- | ThrowStatement DebuggerStatement Block : \`{\` \`}\` ReturnStatement :
+-- | \`return\` \`;\` LabelledItem : FunctionDeclaration ForInOfStatement :
+-- | \`for\` \`(\` LeftHandSideExpression \`of\` AssignmentExpression \`)\`
+-- | Statement \`for\` \`(\` \`var\` ForBinding \`of\` AssignmentExpression
+-- | \`)\` Statement \`for\` \`(\` ForDeclaration \`of\` AssignmentExpression
+-- | \`)\` Statement CaseBlock : \`{\` \`}\` 1. Return \*false\*. IfStatement
+-- | : \`if\` \`(\` Expression \`)\` Statement \`else\` Statement 1. Let
+-- | \_has\_ be HasCallInTailPosition of the first \|Statement\| with
+-- | argument \_call\_. 1. If \_has\_ is \*true\*, return \*true\*. 1. Return
+-- | HasCallInTailPosition of the second \|Statement\| with argument
+-- | \_call\_. IfStatement : \`if\` \`(\` Expression \`)\` Statement
+-- | DoWhileStatement : \`do\` Statement \`while\` \`(\` Expression \`)\`
+-- | \`;\` WhileStatement : \`while\` \`(\` Expression \`)\` Statement
+-- | ForStatement : \`for\` \`(\` Expression? \`;\` Expression? \`;\`
+-- | Expression? \`)\` Statement \`for\` \`(\` \`var\`
+-- | VariableDeclarationList \`;\` Expression? \`;\` Expression? \`)\`
+-- | Statement \`for\` \`(\` LexicalDeclaration Expression? \`;\` Expression?
+-- | \`)\` Statement ForInOfStatement : \`for\` \`(\` LeftHandSideExpression
+-- | \`in\` Expression \`)\` Statement \`for\` \`(\` \`var\` ForBinding
+-- | \`in\` Expression \`)\` Statement \`for\` \`(\` ForDeclaration \`in\`
+-- | Expression \`)\` Statement WithStatement : \`with\` \`(\` Expression
+-- | \`)\` Statement 1. Return HasCallInTailPosition of \|Statement\| with
+-- | argument \_call\_. LabelledStatement : LabelIdentifier \`:\`
+-- | LabelledItem 1. Return HasCallInTailPosition of \|LabelledItem\| with
+-- | argument \_call\_. ReturnStatement : \`return\` Expression \`;\` 1.
+-- | Return HasCallInTailPosition of \|Expression\| with argument \_call\_.
+-- | SwitchStatement : \`switch\` \`(\` Expression \`)\` CaseBlock 1. Return
+-- | HasCallInTailPosition of \|CaseBlock\| with argument \_call\_. CaseBlock
+-- | : \`{\` CaseClauses? DefaultClause CaseClauses? \`}\` 1. Let \_has\_ be
+-- | \*false\*. 1. If the first \|CaseClauses\| is present, set \_has\_ to
+-- | HasCallInTailPosition of the first \|CaseClauses\| with argument
+-- | \_call\_. 1. If \_has\_ is \*true\*, return \*true\*. 1. Set \_has\_ to
+-- | HasCallInTailPosition of \|DefaultClause\| with argument \_call\_. 1. If
+-- | \_has\_ is \*true\*, return \*true\*. 1. If the second \|CaseClauses\|
+-- | is present, set \_has\_ to HasCallInTailPosition of the second
+-- | \|CaseClauses\| with argument \_call\_. 1. Return \_has\_. CaseClauses :
+-- | CaseClauses CaseClause 1. Let \_has\_ be HasCallInTailPosition of
+-- | \|CaseClauses\| with argument \_call\_. 1. If \_has\_ is \*true\*,
+-- | return \*true\*. 1. Return HasCallInTailPosition of \|CaseClause\| with
+-- | argument \_call\_. CaseClause : \`case\` Expression \`:\` StatementList?
+-- | DefaultClause : \`default\` \`:\` StatementList? 1. If \|StatementList\|
+-- | is present, return HasCallInTailPosition of \|StatementList\| with
+-- | argument \_call\_. 1. Return \*false\*. TryStatement : \`try\` Block
+-- | Catch 1. Return HasCallInTailPosition of \|Catch\| with argument
+-- | \_call\_. TryStatement : \`try\` Block Finally \`try\` Block Catch
+-- | Finally 1. Return HasCallInTailPosition of \|Finally\| with argument
+-- | \_call\_. Catch : \`catch\` \`(\` CatchParameter \`)\` Block 1. Return
+-- | HasCallInTailPosition of \|Block\| with argument \_call\_.
+-- | AssignmentExpression : YieldExpression ArrowFunction AsyncArrowFunction
+-- | LeftHandSideExpression \`=\` AssignmentExpression LeftHandSideExpression
+-- | AssignmentOperator AssignmentExpression LeftHandSideExpression \`&&=\`
+-- | AssignmentExpression LeftHandSideExpression \`\|\|=\`
+-- | AssignmentExpression LeftHandSideExpression \`??=\` AssignmentExpression
+-- | BitwiseANDExpression : BitwiseANDExpression \`&\` EqualityExpression
+-- | BitwiseXORExpression : BitwiseXORExpression \`\^\` BitwiseANDExpression
+-- | BitwiseORExpression : BitwiseORExpression \`\|\` BitwiseXORExpression
+-- | EqualityExpression : EqualityExpression \`==\` RelationalExpression
+-- | EqualityExpression \`!=\` RelationalExpression EqualityExpression
+-- | \`===\` RelationalExpression EqualityExpression \`!==\`
+-- | RelationalExpression RelationalExpression : RelationalExpression \`\<\`
+-- | ShiftExpression RelationalExpression \`\>\` ShiftExpression
+-- | RelationalExpression \`\<=\` ShiftExpression RelationalExpression
+-- | \`\>=\` ShiftExpression RelationalExpression \`instanceof\`
+-- | ShiftExpression RelationalExpression \`in\` ShiftExpression
+-- | PrivateIdentifier \`in\` ShiftExpression ShiftExpression :
+-- | ShiftExpression \`\<\<\` AdditiveExpression ShiftExpression \`\>\>\`
+-- | AdditiveExpression ShiftExpression \`\>\>\>\` AdditiveExpression
+-- | AdditiveExpression : AdditiveExpression \`+\` MultiplicativeExpression
+-- | AdditiveExpression \`-\` MultiplicativeExpression
+-- | MultiplicativeExpression : MultiplicativeExpression
+-- | MultiplicativeOperator ExponentiationExpression ExponentiationExpression
+-- | : UpdateExpression \`\*\*\` ExponentiationExpression UpdateExpression :
+-- | LeftHandSideExpression \`++\` LeftHandSideExpression \`\--\` \`++\`
+-- | UnaryExpression \`\--\` UnaryExpression UnaryExpression : \`delete\`
+-- | UnaryExpression \`void\` UnaryExpression \`typeof\` UnaryExpression
+-- | \`+\` UnaryExpression \`-\` UnaryExpression \`\~\` UnaryExpression \`!\`
+-- | UnaryExpression AwaitExpression CallExpression : SuperCall ImportCall
+-- | CallExpression \`\[\` Expression \`\]\` CallExpression \`.\`
+-- | IdentifierName CallExpression \`.\` PrivateIdentifier NewExpression :
+-- | \`new\` NewExpression MemberExpression : MemberExpression \`\[\`
+-- | Expression \`\]\` MemberExpression \`.\` IdentifierName SuperProperty
+-- | MetaProperty \`new\` MemberExpression Arguments MemberExpression \`.\`
+-- | PrivateIdentifier PrimaryExpression : \`this\` IdentifierReference
+-- | Literal ArrayLiteral ObjectLiteral FunctionExpression ClassExpression
+-- | GeneratorExpression AsyncFunctionExpression AsyncGeneratorExpression
+-- | RegularExpressionLiteral TemplateLiteral 1. Return \*false\*. Expression
+-- | : AssignmentExpression Expression \`,\` AssignmentExpression 1. Return
+-- | HasCallInTailPosition of \|AssignmentExpression\| with argument
+-- | \_call\_. ConditionalExpression : ShortCircuitExpression \`?\`
+-- | AssignmentExpression \`:\` AssignmentExpression 1. Let \_has\_ be
+-- | HasCallInTailPosition of the first \|AssignmentExpression\| with
+-- | argument \_call\_. 1. If \_has\_ is \*true\*, return \*true\*. 1. Return
+-- | HasCallInTailPosition of the second \|AssignmentExpression\| with
+-- | argument \_call\_. LogicalANDExpression : LogicalANDExpression \`&&\`
+-- | BitwiseORExpression 1. Return HasCallInTailPosition of
+-- | \|BitwiseORExpression\| with argument \_call\_. LogicalORExpression :
+-- | LogicalORExpression \`\|\|\` LogicalANDExpression 1. Return
+-- | HasCallInTailPosition of \|LogicalANDExpression\| with argument
+-- | \_call\_. CoalesceExpression : CoalesceExpressionHead \`??\`
+-- | BitwiseORExpression 1. Return HasCallInTailPosition of
+-- | \|BitwiseORExpression\| with argument \_call\_. CallExpression :
+-- | CoverCallExpressionAndAsyncArrowHead CallExpression Arguments
+-- | CallExpression TemplateLiteral 1. If this \|CallExpression\| is
+-- | \_call\_, return \*true\*. 1. Return \*false\*. OptionalExpression :
+-- | MemberExpression OptionalChain CallExpression OptionalChain
+-- | OptionalExpression OptionalChain 1. Return HasCallInTailPosition of
+-- | \|OptionalChain\| with argument \_call\_. OptionalChain : \`?.\` \`\[\`
+-- | Expression \`\]\` \`?.\` IdentifierName \`?.\` PrivateIdentifier
+-- | OptionalChain \`\[\` Expression \`\]\` OptionalChain \`.\`
+-- | IdentifierName OptionalChain \`.\` PrivateIdentifier 1. Return
+-- | \*false\*. OptionalChain : \`?.\` Arguments OptionalChain Arguments 1.
+-- | If this \|OptionalChain\| is \_call\_, return \*true\*. 1. Return
+-- | \*false\*. MemberExpression : MemberExpression TemplateLiteral 1. If
+-- | this \|MemberExpression\| is \_call\_, return \*true\*. 1. Return
+-- | \*false\*. PrimaryExpression :
+-- | CoverParenthesizedExpressionAndArrowParameterList 1. Let \_expr\_ be the
+-- | \|ParenthesizedExpression\| that is covered by
+-- | \|CoverParenthesizedExpressionAndArrowParameterList\|. 1. Return
+-- | HasCallInTailPosition of \_expr\_ with argument \_call\_.
+-- | ParenthesizedExpression : \`(\` Expression \`)\` 1. Return
+-- | HasCallInTailPosition of \|Expression\| with argument \_call\_.
+-- |
+
+-- SPEC: L20530-L20549
+-- | # PrepareForTailCall ( ): \~unused\~
+-- |
+-- | 1\. Assert: The current execution context will not subsequently be used
+-- | for the evaluation of any ECMAScript code or built-in functions. The
+-- | invocation of Call subsequent to the invocation of this abstract
+-- | operation will create and push a new execution context before performing
+-- | any such evaluation. 1. Discard all resources associated with the
+-- | current execution context. 1. Return \~unused\~.
+-- |
+-- | A tail position call must either release any transient internal
+-- | resources associated with the currently executing function execution
+-- | context before invoking the target function or reuse those resources in
+-- | support of the target function.
+-- |
+-- | For example, a tail position call should only grow an implementation\'s
+-- | activation record stack by the amount that the size of the target
+-- | function\'s activation record exceeds the size of the calling
+-- | function\'s activation record. If the target function\'s activation
+-- | record is smaller, then the total size of the stack should decrease.
+-- |
+
+-- SPEC: L20550-L20558
+-- | # ECMAScript Language: Scripts and Modules
+-- |
+-- | # Scripts
+-- |
+-- | ## Syntax
+-- |
+-- | Script : ScriptBody? ScriptBody : StatementList\[\~Yield, \~Await,
+-- | \~Return\]
+-- |
+
+-- SPEC: L20559-L20588
+-- | # Static Semantics: Early Errors
+-- |
+-- | Script : ScriptBody
+-- |
+-- | - It is a Syntax Error if the LexicallyDeclaredNames of \|ScriptBody\|
+-- |   contains any duplicate entries.
+-- | - It is a Syntax Error if any element of the LexicallyDeclaredNames of
+-- |   \|ScriptBody\| also occurs in the VarDeclaredNames of \|ScriptBody\|.
+-- |
+-- | ScriptBody : StatementList
+-- |
+-- | - It is a Syntax Error if \|StatementList\| Contains \`super\` unless
+-- |   the source text containing \`super\` is eval code that is being
+-- |   processed by a direct eval. Additional early error rules for \`super\`
+-- |   within direct eval are defined in .
+-- | - It is a Syntax Error if \|StatementList\| Contains \|NewTarget\|
+-- |   unless the source text containing \|NewTarget\| is eval code that is
+-- |   being processed by a direct eval. Additional early error rules for
+-- |   \|NewTarget\| in direct eval are defined in .
+-- | - It is a Syntax Error if ContainsDuplicateLabels of \|StatementList\|
+-- |   with argument « » is \*true\*.
+-- | - It is a Syntax Error if ContainsUndefinedBreakTarget of
+-- |   \|StatementList\| with argument « » is \*true\*.
+-- | - It is a Syntax Error if ContainsUndefinedContinueTarget of
+-- |   \|StatementList\| with arguments « » and « » is \*true\*.
+-- | - It is a Syntax Error if AllPrivateIdentifiersValid of
+-- |   \|StatementList\| with argument « » is \*false\* unless the source
+-- |   text containing \|ScriptBody\| is eval code that is being processed by
+-- |   a direct eval.
+-- |
+
+-- SPEC: L20589-L20594
+-- | # Static Semantics: ScriptIsStrict ( ): a Boolean
+-- |
+-- | Script : ScriptBody? 1. If \|ScriptBody\| is present and the Directive
+-- | Prologue of \|ScriptBody\| contains a Use Strict Directive, return
+-- | \*true\*. 1. Return \*false\*.
+-- |
+
+-- SPEC: L20595-L20598
+-- | # Runtime Semantics: Evaluation
+-- |
+-- | Script : \[empty\] 1. Return \*undefined\*.
+-- |
+
+-- SPEC: L20599-L20611
+-- | # Script Records
+-- |
+-- | A [Script Record]{#script-record .dfn variants="Script Records"}
+-- | encapsulates information about a script being evaluated. Each script
+-- | record contains the fields listed in .
+-- |
+-- |   Field Name               Value Type                              Meaning
+-- |   ------------------------ --------------------------------------- ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+-- |   \[\[Realm\]\]            a Realm Record                          The realm within which this script was created.
+-- |   \[\[ECMAScriptCode\]\]   a \|Script\| Parse Node                 The result of parsing the source text of this script.
+-- |   \[\[LoadedModules\]\]    a List of LoadedModuleRequest Records   A map from the specifier strings imported by this script to the resolved Module Record. The list does not contain two different Records \_r1\_ and \_r2\_ such that ModuleRequestsEqual(\_r1\_, \_r2\_) is \*true\*.
+-- |   \[\[HostDefined\]\]      anything (default value is \~empty\~)   Field reserved for use by host environments that need to associate additional information with a script.
+-- |
+
+-- SPEC: L20612-L20628
+-- | # ParseScript ( \_sourceText\_: ECMAScript source text, \_realm\_: a Realm Record, \_hostDefined\_: anything, ): a Script Record or a non-empty List of \*SyntaxError\* objects
+-- |
+-- | description
+-- | :   It creates a Script Record based upon the result of parsing
+-- |     \_sourceText\_ as a \|Script\|.
+-- |
+-- | 1\. Let \_script\_ be ParseText(\_sourceText\_, \|Script\|). 1. If
+-- | \_script\_ is a List of errors, return \_script\_. 1. Return Script
+-- | Record { \[\[Realm\]\]: \_realm\_, \[\[ECMAScriptCode\]\]: \_script\_,
+-- | \[\[LoadedModules\]\]: « », \[\[HostDefined\]\]: \_hostDefined\_ }.
+-- |
+-- | An implementation may parse script source text and analyse it for Early
+-- | Error conditions prior to evaluation of ParseScript for that script
+-- | source text. However, the reporting of any errors must be deferred until
+-- | the point where this specification actually performs ParseScript upon
+-- | that source text.
+-- |
+
+-- SPEC: L20654-L20764
+-- | # GlobalDeclarationInstantiation ( \_script\_: a \|Script\| Parse Node, \_env\_: a Global Environment Record, ): either a normal completion containing \~unused\~ or a throw completion
+-- |
+-- | description
+-- | :   \_script\_ is the \|Script\| for which the execution context is
+-- |     being established. \_env\_ is the global environment in which
+-- |     bindings are to be created.
+-- |
+-- | When an execution context is established for evaluating scripts,
+-- | declarations are instantiated in the current global environment. Each
+-- | global binding declared in the code is instantiated.
+-- |
+-- | It performs the following steps when called:
+-- |
+-- | 1\. Let \_lexNames\_ be the LexicallyDeclaredNames of \_script\_. 1. Let
+-- | \_varNames\_ be the VarDeclaredNames of \_script\_. 1. For each element
+-- | \_name\_ of \_lexNames\_, do 1. If HasLexicalDeclaration(\_env\_,
+-- | \_name\_) is \*true\*, throw a \*SyntaxError\* exception. 1. Let
+-- | \_hasRestrictedGlobal\_ be ? HasRestrictedGlobalProperty(\_env\_,
+-- | \_name\_). 1. NOTE: Global \`var\` and \`function\` bindings (except
+-- | those that are introduced by non-strict direct eval) are
+-- | non-configurable and are therefore restricted global properties. 1. If
+-- | \_hasRestrictedGlobal\_ is \*true\*, throw a \*SyntaxError\*
+-- | exception. 1. For each element \_name\_ of \_varNames\_, do 1. If
+-- | HasLexicalDeclaration(\_env\_, \_name\_) is \*true\*, throw a
+-- | \*SyntaxError\* exception. 1. Let \_varDeclarations\_ be the
+-- | VarScopedDeclarations of \_script\_. 1. Let \_functionsToInitialize\_ be
+-- | a new empty List. 1. Let \_declaredFunctionNames\_ be a new empty
+-- | List. 1. For each element \_d\_ of \_varDeclarations\_, in reverse List
+-- | order, do 1. If \_d\_ is not either a \|VariableDeclaration\|, a
+-- | \|ForBinding\|, or a \|BindingIdentifier\|, then 1. Assert: \_d\_ is
+-- | either a \|FunctionDeclaration\|, a \|GeneratorDeclaration\|, an
+-- | \|AsyncFunctionDeclaration\|, or an \|AsyncGeneratorDeclaration\|. 1.
+-- | NOTE: If there are multiple function declarations for the same name, the
+-- | last declaration is used. 1. Let \_fn\_ be the sole element of the
+-- | BoundNames of \_d\_. 1. If \_declaredFunctionNames\_ does not contain
+-- | \_fn\_, then 1. Let \_fnDefinable\_ be ?
+-- | CanDeclareGlobalFunction(\_env\_, \_fn\_). 1. If \_fnDefinable\_ is
+-- | \*false\*, throw a \*TypeError\* exception. 1. Append \_fn\_ to
+-- | \_declaredFunctionNames\_. 1. Insert \_d\_ as the first element of
+-- | \_functionsToInitialize\_. 1. Let \_declaredVarNames\_ be a new empty
+-- | List. 1. For each element \_d\_ of \_varDeclarations\_, do 1. If \_d\_
+-- | is either a \|VariableDeclaration\|, a \|ForBinding\|, or a
+-- | \|BindingIdentifier\|, then 1. For each String \_vn\_ of the BoundNames
+-- | of \_d\_, do 1. If \_declaredFunctionNames\_ does not contain \_vn\_,
+-- | then 1. Let \_vnDefinable\_ be ? CanDeclareGlobalVar(\_env\_,
+-- | \_vn\_). 1. If \_vnDefinable\_ is \*false\*, throw a \*TypeError\*
+-- | exception. 1. If \_declaredVarNames\_ does not contain \_vn\_, then 1.
+-- | Append \_vn\_ to \_declaredVarNames\_. 1. NOTE: No abnormal terminations
+-- | occur after this algorithm step if the global object is an ordinary
+-- | object. However, if the global object is a Proxy exotic object it may
+-- | exhibit behaviours that cause abnormal terminations in some of the
+-- | following steps. 1.
+-- | \[id=\"step-globaldeclarationinstantiation-web-compat-insertion-point\",
+-- | normative-optional\] If the host is a web browser or otherwise supports
+-- | , then 1. Let \_strict\_ be ScriptIsStrict of \_script\_. 1. If
+-- | \_strict\_ is \*false\*, then 1. Let \_declaredFunctionOrVarNames\_ be
+-- | the list-concatenation of \_declaredFunctionNames\_ and
+-- | \_declaredVarNames\_. 1. For each \|FunctionDeclaration\| \_f\_ that is
+-- | directly contained in the \|StatementList\| of any \|Block\|,
+-- | \|CaseClause\|, or \|DefaultClause\| \_x\_ such that \_script\_ Contains
+-- | \_x\_ is \*true\*, do 1. Let \_F\_ be the StringValue of the
+-- | \|BindingIdentifier\| of \_f\_. 1. If replacing the
+-- | \|FunctionDeclaration\| \_f\_ with a \|VariableStatement\| that has
+-- | \_F\_ as a \|BindingIdentifier\| would not produce any Early Errors for
+-- | \_script\_, then 1. If HasLexicalDeclaration(\_env\_, \_F\_) is
+-- | \*false\*, then 1. Let \_fnDefinable\_ be ? CanDeclareGlobalVar(\_env\_,
+-- | \_F\_). 1. If \_fnDefinable\_ is \*true\*, then 1. NOTE: A var binding
+-- | for \_F\_ is only instantiated here if it is neither a VarDeclaredName
+-- | nor the name of another \|FunctionDeclaration\|. 1. If
+-- | \_declaredFunctionOrVarNames\_ does not contain \_F\_, then 1. Perform ?
+-- | CreateGlobalVarBinding(\_env\_, \_F\_, \*false\*). 1. Append \_F\_ to
+-- | \_declaredFunctionOrVarNames\_. 1.
+-- | \[id=\"step-globaldeclarationinstantiation-alt-funcdecl-eval\"\] When
+-- | the \|FunctionDeclaration\| \_f\_ is evaluated, perform the following
+-- | steps in place of the \|FunctionDeclaration\| Evaluation algorithm
+-- | provided in : 1. Let \_gEnv\_ be the running execution context\'s
+-- | VariableEnvironment. 1. Let \_bEnv\_ be the running execution context\'s
+-- | LexicalEnvironment. 1. Let \_fObj\_ be ! \_bEnv\_.GetBindingValue(\_F\_,
+-- | \*false\*). 1. Perform ? \_gEnv\_.SetMutableBinding(\_F\_, \_fObj\_,
+-- | \*false\*). 1. Return \~unused\~. 1. Let \_lexDeclarations\_ be the
+-- | LexicallyScopedDeclarations of \_script\_. 1. Let \_privateEnv\_ be
+-- | \*null\*. 1. For each element \_d\_ of \_lexDeclarations\_, do 1. NOTE:
+-- | Lexically declared names are only instantiated here but not
+-- | initialized. 1. For each element \_dn\_ of the BoundNames of \_d\_,
+-- | do 1. If IsConstantDeclaration of \_d\_ is \*true\*, then 1. Perform ?
+-- | \_env\_.CreateImmutableBinding(\_dn\_, \*true\*). 1. Else, 1. Perform ?
+-- | \_env\_.CreateMutableBinding(\_dn\_, \*false\*). 1. For each Parse Node
+-- | \_f\_ of \_functionsToInitialize\_, do 1. Let \_fn\_ be the sole element
+-- | of the BoundNames of \_f\_. 1. Let \_fo\_ be InstantiateFunctionObject
+-- | of \_f\_ with arguments \_env\_ and \_privateEnv\_. 1. Perform ?
+-- | CreateGlobalFunctionBinding(\_env\_, \_fn\_, \_fo\_, \*false\*). 1. For
+-- | each String \_vn\_ of \_declaredVarNames\_, do 1. Perform ?
+-- | CreateGlobalVarBinding(\_env\_, \_vn\_, \*false\*). 1. Return
+-- | \~unused\~.
+-- |
+-- | Early errors specified in prevent name conflicts between function/var
+-- | declarations and let/const/class declarations as well as redeclaration
+-- | of let/const/class bindings for declaration contained within a single
+-- | \|Script\|. However, such conflicts and redeclarations that span more
+-- | than one \|Script\| are detected as runtime errors during
+-- | GlobalDeclarationInstantiation. If any such errors are detected, no
+-- | bindings are instantiated for the script. However, if the global object
+-- | is defined using Proxy exotic objects then the runtime tests for
+-- | conflicting declarations may be unreliable resulting in an abrupt
+-- | completion and some global declarations not being instantiated. If this
+-- | occurs, the code for the \|Script\| is not evaluated.
+-- |
+-- | Unlike explicit var or function declarations, properties that are
+-- | directly created on the global object result in global bindings that may
+-- | be shadowed by let/const/class declarations.
+-- |
+
+-- SPEC: L20765-L20773
+-- | # Modules
+-- |
+-- | ## Syntax
+-- |
+-- | Module : ModuleBody? ModuleBody : ModuleItemList ModuleItemList :
+-- | ModuleItem ModuleItemList ModuleItem ModuleItem : ImportDeclaration
+-- | ExportDeclaration StatementListItem\[\~Yield, +Await, \~Return\]
+-- | ModuleExportName : IdentifierName StringLiteral
+-- |
+
+-- SPEC: L20774-L20775
+-- | # Module Semantics
+-- |
+
+-- SPEC: L20776-L20813
+-- | # Static Semantics: Early Errors
+-- |
+-- | ModuleBody : ModuleItemList
+-- |
+-- | - It is a Syntax Error if the LexicallyDeclaredNames of
+-- |   \|ModuleItemList\| contains any duplicate entries.
+-- | - It is a Syntax Error if any element of the LexicallyDeclaredNames of
+-- |   \|ModuleItemList\| also occurs in the VarDeclaredNames of
+-- |   \|ModuleItemList\|.
+-- | - It is a Syntax Error if the ExportedNames of \|ModuleItemList\|
+-- |   contains any duplicate entries.
+-- | - It is a Syntax Error if any element of the ExportedBindings of
+-- |   \|ModuleItemList\| does not also occur in either the VarDeclaredNames
+-- |   of \|ModuleItemList\|, or the LexicallyDeclaredNames of
+-- |   \|ModuleItemList\|.
+-- | - It is a Syntax Error if \|ModuleItemList\| Contains \`super\`.
+-- | - It is a Syntax Error if \|ModuleItemList\| Contains \|NewTarget\|.
+-- | - It is a Syntax Error if ContainsDuplicateLabels of \|ModuleItemList\|
+-- |   with argument « » is \*true\*.
+-- | - It is a Syntax Error if ContainsUndefinedBreakTarget of
+-- |   \|ModuleItemList\| with argument « » is \*true\*.
+-- | - It is a Syntax Error if ContainsUndefinedContinueTarget of
+-- |   \|ModuleItemList\| with arguments « » and « » is \*true\*.
+-- | - It is a Syntax Error if AllPrivateIdentifiersValid of
+-- |   \|ModuleItemList\| with argument « » is \*false\*.
+-- |
+-- | The duplicate ExportedNames rule implies that multiple \`export
+-- | default\` \|ExportDeclaration\| items within a \|ModuleBody\| is a
+-- | Syntax Error. Additional error conditions relating to conflicting or
+-- | duplicate declarations are checked during module linking prior to
+-- | evaluation of a \|Module\|. If any such errors are detected the
+-- | \|Module\| is not evaluated.
+-- |
+-- | ModuleExportName : StringLiteral
+-- |
+-- | - It is a Syntax Error if IsStringWellFormedUnicode(SV of
+-- |   \|StringLiteral\|) is \*false\*.
+-- |
+
+-- SPEC: L20814-L20823
+-- | # Static Semantics: ImportedLocalNames ( \_importEntries\_: a List of ImportEntry Records, ): a List of Strings
+-- |
+-- | description
+-- | :   It creates a List of all of the local name bindings defined by
+-- |     \_importEntries\_.
+-- |
+-- | 1\. Let \_localNames\_ be a new empty List. 1. For each ImportEntry
+-- | Record \_i\_ of \_importEntries\_, do 1. Append \_i\_.\[\[LocalName\]\]
+-- | to \_localNames\_. 1. Return \_localNames\_.
+-- |
+
+-- SPEC: L20824-L20854
+-- | # ModuleRequest Records
+-- |
+-- | A [ModuleRequest Record]{#modulerequest-record .dfn
+-- | variants="ModuleRequest Records"} represents the request to import a
+-- | module with given import attributes. It consists of the following
+-- | fields:
+-- |
+-- |   Field Name           Value Type                          Meaning
+-- |   -------------------- ----------------------------------- -----------------------
+-- |   \[\[Specifier\]\]    a String                            The module specifier
+-- |   \[\[Attributes\]\]   a List of ImportAttribute Records   The import attributes
+-- |
+-- | A [LoadedModuleRequest Record]{#loadedmodulerequest-record .dfn
+-- | variants="LoadedModuleRequest Records"} represents the request to import
+-- | a module together with the resulting Module Record. It consists of the
+-- | same fields defined in table , with the addition of \[\[Module\]\]:
+-- |
+-- |   Field Name           Value Type                          Meaning
+-- |   -------------------- ----------------------------------- --------------------------------------------------------
+-- |   \[\[Specifier\]\]    a String                            The module specifier
+-- |   \[\[Attributes\]\]   a List of ImportAttribute Records   The import attributes
+-- |   \[\[Module\]\]       a Module Record                     The loaded module corresponding to this module request
+-- |
+-- | An [ImportAttribute Record]{#importattribute-record .dfn
+-- | variants="ImportAttribute Records"} consists of the following fields:
+-- |
+-- |   Field Name      Value Type   Meaning
+-- |   --------------- ------------ ---------------------
+-- |   \[\[Key\]\]     a String     The attribute key
+-- |   \[\[Value\]\]   a String     The attribute value
+-- |
+
+-- SPEC: L20855-L20872
+-- | # ModuleRequestsEqual ( \_left\_: a ModuleRequest Record or a LoadedModuleRequest Record, \_right\_: a ModuleRequest Record or a LoadedModuleRequest Record, ): a Boolean
+-- |
+-- | description
+-- |
+-- | :   
+-- |
+-- | 1\. If \_left\_.\[\[Specifier\]\] is not \_right\_.\[\[Specifier\]\],
+-- | return \*false\*. 1. Let \_leftAttrs\_ be
+-- | \_left\_.\[\[Attributes\]\]. 1. Let \_rightAttrs\_ be
+-- | \_right\_.\[\[Attributes\]\]. 1. Let \_leftAttrsCount\_ be the number of
+-- | elements in \_leftAttrs\_. 1. Let \_rightAttrsCount\_ be the number of
+-- | elements in \_rightAttrs\_. 1. If \_leftAttrsCount\_ ≠
+-- | \_rightAttrsCount\_, return \*false\*. 1. For each ImportAttribute
+-- | Record \_l\_ of \_leftAttrs\_, do 1. If \_rightAttrs\_ does not contain
+-- | an ImportAttribute Record \_r\_ such that \_l\_.\[\[Key\]\] is
+-- | \_r\_.\[\[Key\]\] and \_l\_.\[\[Value\]\] is \_r\_.\[\[Value\]\], return
+-- | \*false\*. 1. Return \*true\*.
+-- |
+
+-- SPEC: L20873-L20913
+-- | # Static Semantics: ModuleRequests ( ): a List of ModuleRequest Records
+-- |
+-- | Module : \[empty\] 1. Return a new empty List. ModuleItemList :
+-- | ModuleItem 1. Return the ModuleRequests of \|ModuleItem\|.
+-- | ModuleItemList : ModuleItemList ModuleItem 1. Let \_requests\_ be the
+-- | ModuleRequests of \|ModuleItemList\|. 1. Let \_additionalRequests\_ be
+-- | the ModuleRequests of \|ModuleItem\|. 1. For each ModuleRequest Record
+-- | \_mr\_ of \_additionalRequests\_, do 1. If \_requests\_ does not contain
+-- | a ModuleRequest Record \_mr2\_ such that ModuleRequestsEqual(\_mr\_,
+-- | \_mr2\_) is \*true\*, then 1. Append \_mr\_ to \_requests\_. 1. Return
+-- | \_requests\_. ModuleItem : StatementListItem 1. Return a new empty List.
+-- | ImportDeclaration : \`import\` ImportClause FromClause \`;\` 1. Let
+-- | \_specifier\_ be the SV of \|FromClause\|. 1. Return a List whose sole
+-- | element is the ModuleRequest Record { \[\[Specifier\]\]: \_specifier\_,
+-- | \[\[Attributes\]\]: « » }. ImportDeclaration : \`import\` ImportClause
+-- | FromClause WithClause \`;\` 1. Let \_specifier\_ be the SV of
+-- | \|FromClause\|. 1. Let \_attributes\_ be WithClauseToAttributes of
+-- | \|WithClause\|. 1. Return a List whose sole element is the ModuleRequest
+-- | Record { \[\[Specifier\]\]: \_specifier\_, \[\[Attributes\]\]:
+-- | \_attributes\_ }. ImportDeclaration : \`import\` ModuleSpecifier
+-- | \`;\` 1. Let \_specifier\_ be the SV of \|ModuleSpecifier\|. 1. Return a
+-- | List whose sole element is the ModuleRequest Record { \[\[Specifier\]\]:
+-- | \_specifier\_, \[\[Attributes\]\]: « » }. ImportDeclaration : \`import\`
+-- | ModuleSpecifier WithClause \`;\` 1. Let \_specifier\_ be the SV of
+-- | \|ModuleSpecifier\|. 1. Let \_attributes\_ be WithClauseToAttributes of
+-- | \|WithClause\|. 1. Return a List whose sole element is the ModuleRequest
+-- | Record { \[\[Specifier\]\]: \_specifier\_, \[\[Attributes\]\]:
+-- | \_attributes\_ }. ExportDeclaration : \`export\` ExportFromClause
+-- | FromClause \`;\` 1. Let \_specifier\_ be the SV of \|FromClause\|. 1.
+-- | Return a List whose sole element is the ModuleRequest Record {
+-- | \[\[Specifier\]\]: \_specifier\_, \[\[Attributes\]\]: « » }.
+-- | ExportDeclaration : \`export\` ExportFromClause FromClause WithClause
+-- | \`;\` 1. Let \_specifier\_ be the SV of \|FromClause\|. 1. Let
+-- | \_attributes\_ be WithClauseToAttributes of \|WithClause\|. 1. Return a
+-- | List whose sole element is the ModuleRequest Record { \[\[Specifier\]\]:
+-- | \_specifier\_, \[\[Attributes\]\]: \_attributes\_ }. ExportDeclaration :
+-- | \`export\` NamedExports \`;\` \`export\` VariableStatement \`export\`
+-- | Declaration \`export\` \`default\` HoistableDeclaration \`export\`
+-- | \`default\` ClassDeclaration \`export\` \`default\` AssignmentExpression
+-- | \`;\` 1. Return a new empty List.
+-- |
+
+-- SPEC: L20914-L21019
+-- | # Abstract Module Records
+-- |
+-- | A [Module Record]{.dfn variants="Module Records"} encapsulates
+-- | structural information about the imports and exports of a single module.
+-- | This information is used to link the imports and exports of sets of
+-- | connected modules. A Module Record includes four fields that are only
+-- | used when evaluating a module.
+-- |
+-- | For specification purposes Module Record values are values of the Record
+-- | specification type and can be thought of as existing in a simple
+-- | object-oriented hierarchy where Module Record is an abstract class with
+-- | both abstract and concrete subclasses. This specification defines the
+-- | abstract subclass named Cyclic Module Record and its concrete subclass
+-- | named Source Text Module Record. Other specifications and
+-- | implementations may define additional Module Record subclasses
+-- | corresponding to alternative module definition facilities that they
+-- | defined.
+-- |
+-- | Module Record defines the fields listed in . All Module Definition
+-- | subclasses include at least those fields. Module Record also defines the
+-- | abstract method list in . All Module definition subclasses must provide
+-- | concrete implementations of these abstract methods.
+-- |
+-- |   Field Name            Value Type                                  Meaning
+-- |   --------------------- ------------------------------------------- ------------------------------------------------------------------------------------------------------------------------
+-- |   \[\[Realm\]\]         a Realm Record                              The Realm within which this module was created.
+-- |   \[\[Environment\]\]   a Module Environment Record or \~empty\~    The Environment Record containing the top level bindings for this module. This field is set when the module is linked.
+-- |   \[\[Namespace\]\]     an Object or \~empty\~                      The Module Namespace Object () if one has been created for this module.
+-- |   \[\[HostDefined\]\]   anything (default value is \*undefined\*)   Field reserved for use by host environments that need to associate additional information with a module.
+-- |
+-- | +-----------------------+--------------------------------------+-----------------------+
+-- | | Method                | Purpose                              | Definitions           |
+-- | +=======================+======================================+=======================+
+-- | | LoadRequestedModules  | It prepares the module for linking   | Within this           |
+-- | | ( optional            | by recursively loading all its       | specification it has  |
+-- | | \_hostDefined\_:      | dependencies.                        | definitions in the    |
+-- | | anything, ): a        |                                      | following types;      |
+-- | | Promise               |                                      | hosts may provide     |
+-- | |                       |                                      | additional types with |
+-- | |                       |                                      | their own             |
+-- | |                       |                                      | definitions:          |
+-- | +-----------------------+--------------------------------------+-----------------------+
+-- | | GetExportedNames (    | It returns a list of all names that  | Within this           |
+-- | | optional              | are either directly or indirectly    | specification it has  |
+-- | | \_exportStarSet\_: a  | exported from this module.           | definitions in the    |
+-- | | List of Source Text   |                                      | following types;      |
+-- | | Module Records, ): a  | LoadRequestedModules must have       | hosts may provide     |
+-- | | List of Strings       | completed successfully prior to      | additional types with |
+-- | |                       | invoking this method.                | their own             |
+-- | |                       |                                      | definitions:          |
+-- | +-----------------------+--------------------------------------+-----------------------+
+-- | | ResolveExport (       | It returns the binding of a name     | Within this           |
+-- | | \_exportName\_: a     | exported by this module. Bindings    | specification it has  |
+-- | | String, optional      | are represented by a                 | definitions in the    |
+-- | | \_resolveSet\_: a     | [ResolvedBinding                     | following types;      |
+-- | | List of Records with  | Record]{#resolvedbinding-record .dfn | hosts may provide     |
+-- | | fields \[\[Module\]\] | variants="ResolvedBinding Records"}, | additional types with |
+-- | | (a Module Record) and | of the form { \[\[Module\]\]: Module | their own             |
+-- | | \[\[ExportName\]\] (a | Record, \[\[BindingName\]\]: String  | definitions:          |
+-- | | String), ): a         | \| \~namespace\~ }. If the export is |                       |
+-- | | ResolvedBinding       | a Module Namespace Object without a  |                       |
+-- | | Record, \*null\*, or  | direct binding in any module,        |                       |
+-- | | \~ambiguous\~         | \[\[BindingName\]\] will be set to   |                       |
+-- | |                       | \~namespace\~. It returns \*null\*   |                       |
+-- | |                       | if the name cannot be resolved, or   |                       |
+-- | |                       | \~ambiguous\~ if multiple bindings   |                       |
+-- | |                       | were found.                          |                       |
+-- | |                       |                                      |                       |
+-- | |                       | Each time this operation is called   |                       |
+-- | |                       | with a specific \_exportName\_,      |                       |
+-- | |                       | \_resolveSet\_ pair as arguments it  |                       |
+-- | |                       | must return the same result.         |                       |
+-- | |                       |                                      |                       |
+-- | |                       | LoadRequestedModules must have       |                       |
+-- | |                       | completed successfully prior to      |                       |
+-- | |                       | invoking this method.                |                       |
+-- | +-----------------------+--------------------------------------+-----------------------+
+-- | | Link ( ): either a    | It prepares the module for           | Within this           |
+-- | | normal completion     | evaluation by transitively resolving | specification it has  |
+-- | | containing \~unused\~ | all module dependencies and creating | definitions in the    |
+-- | | or a throw completion | a Module Environment Record.         | following types;      |
+-- | |                       |                                      | hosts may provide     |
+-- | |                       | LoadRequestedModules must have       | additional types with |
+-- | |                       | completed successfully prior to      | their own             |
+-- | |                       | invoking this method.                | definitions:          |
+-- | +-----------------------+--------------------------------------+-----------------------+
+-- | | Evaluate ( ): a       | It returns a promise for the         | Within this           |
+-- | | Promise               | evaluation of this module and its    | specification it has  |
+-- | |                       | dependencies, resolving on           | definitions in the    |
+-- | |                       | successful evaluation or if it has   | following types;      |
+-- | |                       | already been evaluated successfully, | hosts may provide     |
+-- | |                       | and rejecting for an evaluation      | additional types with |
+-- | |                       | error or if it has already been      | their own             |
+-- | |                       | evaluated unsuccessfully. If the     | definitions:          |
+-- | |                       | promise is rejected, hosts are       |                       |
+-- | |                       | expected to handle the promise       |                       |
+-- | |                       | rejection and rethrow the evaluation |                       |
+-- | |                       | error. Unless this module is a       |                       |
+-- | |                       | Cyclic Module Record, the returned   |                       |
+-- | |                       | promise must be already settled.     |                       |
+-- | |                       |                                      |                       |
+-- | |                       | Link must have completed             |                       |
+-- | |                       | successfully prior to invoking this  |                       |
+-- | |                       | method.                              |                       |
+-- | +-----------------------+--------------------------------------+-----------------------+
+-- |
+
+-- SPEC: L21020-L21036
+-- | # EvaluateModuleSync ( \_module\_: a Module Record, ): either a normal completion containing \~unused\~ or a throw completion
+-- |
+-- | description
+-- | :   It synchronously evaluates \_module\_, provided that the caller
+-- |     guarantees that \_module\_\'s evaluation will return an already
+-- |     settled promise.
+-- |
+-- | 1\. Assert: \_module\_ is not a Cyclic Module Record. 1. Let \_promise\_
+-- | be \_module\_.Evaluate(). 1. Assert: \_promise\_.\[\[PromiseState\]\] is
+-- | either \~fulfilled\~ or \~rejected\~. 1. If
+-- | \_promise\_.\[\[PromiseState\]\] is \~rejected\~, then 1. If
+-- | \_promise\_.\[\[PromiseIsHandled\]\] is \*false\*, perform
+-- | HostPromiseRejectionTracker(\_promise\_, \*\"handle\"\*). 1. Set
+-- | \_promise\_.\[\[PromiseIsHandled\]\] to \*true\*. 1. Return
+-- | ThrowCompletion(\_promise\_.\[\[PromiseResult\]\]). 1. Return
+-- | \~unused\~.
+-- |
+
+-- SPEC: L21037-L21084
+-- | # Cyclic Module Records
+-- |
+-- | A [Cyclic Module Record]{#cyclic-module-record .dfn
+-- | variants="Cyclic Module Records"} is used to represent information about
+-- | a module that can participate in dependency cycles with other modules
+-- | that are subclasses of the Cyclic Module Record type. Module Records
+-- | that are not subclasses of the Cyclic Module Record type must not
+-- | participate in dependency cycles with Source Text Module Records.
+-- |
+-- | In addition to the fields defined in Cyclic Module Records have the
+-- | additional fields listed in
+-- |
+-- |   Field Name                         Value Type                                                                                               Meaning
+-- |   ---------------------------------- -------------------------------------------------------------------------------------------------------- ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+-- |   \[\[Status\]\]                     \~new\~, \~unlinked\~, \~linking\~, \~linked\~, \~evaluating\~, \~evaluating-async\~, or \~evaluated\~   Initially \~new\~. Transitions to \~unlinked\~, \~linking\~, \~linked\~, \~evaluating\~, possibly \~evaluating-async\~, \~evaluated\~ (in that order) as the module progresses throughout its lifecycle. \~evaluating-async\~ indicates this module is queued to execute on completion of its asynchronous dependencies or it is a module whose \[\[HasTLA\]\] field is \*true\* that has been executed and is pending top-level completion.
+-- |   \[\[EvaluationError\]\]            a throw completion or \~empty\~                                                                          A throw completion representing the exception that occurred during evaluation. \*undefined\* if no exception occurred or if \[\[Status\]\] is not \~evaluated\~.
+-- |   \[\[DFSAncestorIndex\]\]           an integer or \~empty\~                                                                                  Auxiliary field used during Link and Evaluate only. If \[\[Status\]\] is either \~linking\~ or \~evaluating\~, this is either the module\'s depth-first traversal index or that of an \"earlier\" module in the same strongly connected component.
+-- |   \[\[RequestedModules\]\]           a List of ModuleRequest Records                                                                          A List of the ModuleRequest Records associated with the imports in this module. The List is in source text occurrence order of the imports.
+-- |   \[\[LoadedModules\]\]              a List of LoadedModuleRequest Records                                                                    A map from the specifier strings used by the module represented by this record to request the importation of a module with the relative import attributes to the resolved Module Record. The list does not contain two different Records \_r1\_ and \_r2\_ such that ModuleRequestsEqual(\_r1\_, \_r2\_) is \*true\*.
+-- |   \[\[CycleRoot\]\]                  a Cyclic Module Record or \~empty\~                                                                      The first visited module of the cycle, the root DFS ancestor of the strongly connected component. For a module not in a cycle, this would be the module itself. Once Evaluate has completed, a module\'s \[\[DFSAncestorIndex\]\] is the depth-first traversal index of its \[\[CycleRoot\]\].
+-- |   \[\[HasTLA\]\]                     a Boolean                                                                                                Whether this module is individually asynchronous (for example, if it\'s a Source Text Module Record containing a top-level await). Having an asynchronous dependency does not mean this field is \*true\*. This field must not change after the module is parsed.
+-- |   \[\[AsyncEvaluationOrder\]\]       \~unset\~, an integer, or \~done\~                                                                       This field is initially set to \~unset\~, and remains \~unset\~ for fully synchronous modules. For modules that are either themselves asynchronous or have an asynchronous dependency, it is set to an integer that determines the order in which execution of pending modules is queued by . Once the pending module is executed, the field is set to \~done\~.
+-- |   \[\[TopLevelCapability\]\]         a PromiseCapability Record or \~empty\~                                                                  If this module is the \[\[CycleRoot\]\] of some cycle, and Evaluate() was called on some module in that cycle, this field contains the PromiseCapability Record for that entire evaluation. It is used to settle the Promise object that is returned from the Evaluate() abstract method. This field will be \~empty\~ for any dependencies of that module, unless a top-level Evaluate() has been initiated for some of those dependencies.
+-- |   \[\[AsyncParentModules\]\]         a List of Cyclic Module Records                                                                          If this module or a dependency has \[\[HasTLA\]\] \*true\*, and execution is in progress, this tracks the parent importers of this module for the top-level execution job. These parent modules will not start executing before this module has successfully completed execution.
+-- |   \[\[PendingAsyncDependencies\]\]   an integer or \~empty\~                                                                                  If this module has any asynchronous dependencies, this tracks the number of asynchronous dependency modules remaining to execute for this module. A module with asynchronous dependencies will be executed when this field reaches 0 and there are no execution errors.
+-- |
+-- | In addition to the methods defined in Cyclic Module Records have the
+-- | additional methods listed in :
+-- |
+-- |   Method                                                                                                                                           Purpose                                                                                                                                                                                                                                                                                                                                                            Definitions
+-- |   ------------------------------------------------------------------------------------------------------------------------------------------------ ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ -------------------------------------------------------------------------------------------------------------------------------------
+-- |   InitializeEnvironment ( ): either a normal completion containing \~unused\~ or a throw completion                                                It initializes the Environment Record of the module, including resolving all imported bindings, and creates the module\'s execution context.                                                                                                                                                                                                                       Within this specification it has definitions in the following types; hosts may provide additional types with their own definitions:
+-- |   ExecuteModule ( optional \_capability\_: a PromiseCapability Record, ): either a normal completion containing \~unused\~ or a throw completion   It evaluates the module\'s code within its execution context. If this module has \*true\* in \[\[HasTLA\]\], then a PromiseCapability Record is passed as an argument, and the method is expected to resolve or reject the given capability. In this case, the method must not throw an exception, but instead reject the PromiseCapability Record if necessary.   Within this specification it has definitions in the following types; hosts may provide additional types with their own definitions:
+-- |
+-- | A [GraphLoadingState Record]{#graphloadingstate-record .dfn
+-- | variants="GraphLoadingState Records"} is a Record that contains
+-- | information about the loading process of a module graph. It\'s used to
+-- | continue loading after a call to HostLoadImportedModule. Each
+-- | GraphLoadingState Record has the fields defined in :
+-- |
+-- |   Field Name                    Value Type                              Meaning
+-- |   ----------------------------- --------------------------------------- -------------------------------------------------------------------------------------------------------------------------------------------------------------
+-- |   \[\[PromiseCapability\]\]     a PromiseCapability Record              The promise to resolve when the loading process finishes.
+-- |   \[\[IsLoading\]\]             a Boolean                               It is true if the loading process has not finished yet, neither successfully nor with an error.
+-- |   \[\[PendingModulesCount\]\]   a non-negative integer                  It tracks the number of pending HostLoadImportedModule calls.
+-- |   \[\[Visited\]\]               a List of Cyclic Module Records         It is a list of the Cyclic Module Records that have been already loaded by the current loading process, to avoid infinite loops with circular dependencies.
+-- |   \[\[HostDefined\]\]           anything (default value is \~empty\~)   It contains host-defined data to pass from the LoadRequestedModules caller to HostLoadImportedModule.
+-- |
+
+-- SPEC: L21085-L21089
+-- | # Implementation of Module Record Abstract Methods
+-- |
+-- | The following are the concrete methods for Cyclic Module Record that
+-- | implement the corresponding Module Record abstract methods defined in .
+-- |
+
+-- SPEC: L21090-L21113
+-- | # LoadRequestedModules ( optional \_hostDefined\_: anything, ): a Promise
+-- |
+-- | for
+-- | :   a Cyclic Module Record \_module\_
+-- |
+-- | description
+-- | :   It populates the \[\[LoadedModules\]\] of all the Module Records in
+-- |     the dependency graph of \_module\_ (most of the work is done by the
+-- |     auxiliary function InnerModuleLoading). It takes an optional
+-- |     \_hostDefined\_ parameter that is passed to the
+-- |     HostLoadImportedModule hook.
+-- |
+-- | 1\. If \_hostDefined\_ is not present, set \_hostDefined\_ to
+-- | \~empty\~. 1. Let \_pc\_ be ! NewPromiseCapability(%Promise%). 1. Let
+-- | \_state\_ be the GraphLoadingState Record { \[\[IsLoading\]\]: \*true\*,
+-- | \[\[PendingModulesCount\]\]: 1, \[\[Visited\]\]: « »,
+-- | \[\[PromiseCapability\]\]: \_pc\_, \[\[HostDefined\]\]: \_hostDefined\_
+-- | }. 1. Perform InnerModuleLoading(\_state\_, \_module\_). 1. Return
+-- | \_pc\_.\[\[Promise\]\]. The \_hostDefined\_ parameter can be used to
+-- | pass additional information necessary to fetch the imported modules. It
+-- | is used, for example, by HTML to set the correct fetch destination for
+-- | `<link rel="preload" as="...">` tags. `import()` expressions never set
+-- | the \_hostDefined\_ parameter.
+-- |
+
+-- SPEC: L21114-L21152
+-- | # InnerModuleLoading ( \_state\_: a GraphLoadingState Record, \_module\_: a Module Record, ): \~unused\~
+-- |
+-- | description
+-- | :   It is used by LoadRequestedModules to recursively perform the actual
+-- |     loading process for \_module\_\'s dependency graph.
+-- |
+-- | 1\. Assert: \_state\_.\[\[IsLoading\]\] is \*true\*. 1. If \_module\_ is
+-- | a Cyclic Module Record, \_module\_.\[\[Status\]\] is \~new\~, and
+-- | \_state\_.\[\[Visited\]\] does not contain \_module\_, then 1. Append
+-- | \_module\_ to \_state\_.\[\[Visited\]\]. 1. Let
+-- | \_requestedModulesCount\_ be the number of elements in
+-- | \_module\_.\[\[RequestedModules\]\]. 1. Set
+-- | \_state\_.\[\[PendingModulesCount\]\] to
+-- | \_state\_.\[\[PendingModulesCount\]\] + \_requestedModulesCount\_. 1.
+-- | For each ModuleRequest Record \_request\_ of
+-- | \_module\_.\[\[RequestedModules\]\], do 1. If
+-- | AllImportAttributesSupported(\_request\_.\[\[Attributes\]\]) is
+-- | \*false\*, then 1. Let \_error\_ be ThrowCompletion(a newly created
+-- | \*SyntaxError\* object). 1. Perform ContinueModuleLoading(\_state\_,
+-- | \_error\_). 1. Else if \_module\_.\[\[LoadedModules\]\] contains a
+-- | LoadedModuleRequest Record \_record\_ such that
+-- | ModuleRequestsEqual(\_record\_, \_request\_) is \*true\*, then 1.
+-- | Perform InnerModuleLoading(\_state\_, \_record\_.\[\[Module\]\]). 1.
+-- | Else, 1. Perform HostLoadImportedModule(\_module\_, \_request\_,
+-- | \_state\_.\[\[HostDefined\]\], \_state\_). 1. NOTE:
+-- | HostLoadImportedModule will call FinishLoadingImportedModule, which
+-- | re-enters the graph loading process through ContinueModuleLoading. 1. If
+-- | \_state\_.\[\[IsLoading\]\] is \*false\*, return \~unused\~. 1. Assert:
+-- | \_state\_.\[\[PendingModulesCount\]\] ≥ 1. 1. Set
+-- | \_state\_.\[\[PendingModulesCount\]\] to
+-- | \_state\_.\[\[PendingModulesCount\]\] - 1. 1. If
+-- | \_state\_.\[\[PendingModulesCount\]\] = 0, then 1. Set
+-- | \_state\_.\[\[IsLoading\]\] to \*false\*. 1. For each Cyclic Module
+-- | Record \_loaded\_ of \_state\_.\[\[Visited\]\], do 1. If
+-- | \_loaded\_.\[\[Status\]\] is \~new\~, set \_loaded\_.\[\[Status\]\] to
+-- | \~unlinked\~. 1. Perform !
+-- | Call(\_state\_.\[\[PromiseCapability\]\].\[\[Resolve\]\], \*undefined\*,
+-- | « \*undefined\* »). 1. Return \~unused\~.
+-- |
+
+-- SPEC: L21153-L21165
+-- | # ContinueModuleLoading ( \_state\_: a GraphLoadingState Record, \_moduleCompletion\_: either a normal completion containing a Module Record or a throw completion, ): \~unused\~
+-- |
+-- | description
+-- | :   It is used to re-enter the loading process after a call to
+-- |     HostLoadImportedModule.
+-- |
+-- | 1\. If \_state\_.\[\[IsLoading\]\] is \*false\*, return \~unused\~. 1.
+-- | If \_moduleCompletion\_ is a normal completion, then 1. Perform
+-- | InnerModuleLoading(\_state\_, \_moduleCompletion\_.\[\[Value\]\]). 1.
+-- | Else, 1. Set \_state\_.\[\[IsLoading\]\] to \*false\*. 1. Perform !
+-- | Call(\_state\_.\[\[PromiseCapability\]\].\[\[Reject\]\], \*undefined\*,
+-- | « \_moduleCompletion\_.\[\[Value\]\] »). 1. Return \~unused\~.
+-- |
+
+-- SPEC: L21166-L21188
+-- | # Link ( ): either a normal completion containing \~unused\~ or a throw completion
+-- |
+-- | for
+-- | :   a Cyclic Module Record \_module\_
+-- |
+-- | description
+-- | :   On success, Link transitions this module\'s \[\[Status\]\] from
+-- |     \~unlinked\~ to \~linked\~. On failure, an exception is thrown and
+-- |     this module\'s \[\[Status\]\] remains \~unlinked\~. (Most of the
+-- |     work is done by the auxiliary function InnerModuleLinking.)
+-- |
+-- | 1\. Assert: \_module\_.\[\[Status\]\] is one of \~unlinked\~,
+-- | \~linked\~, \~evaluating-async\~, or \~evaluated\~. 1. Let \_stack\_ be
+-- | a new empty List. 1. Let \_result\_ be
+-- | Completion(InnerModuleLinking(\_module\_, \_stack\_, 0)). 1. If
+-- | \_result\_ is an abrupt completion, then 1. For each Cyclic Module
+-- | Record \_m\_ of \_stack\_, do 1. Assert: \_m\_.\[\[Status\]\] is
+-- | \~linking\~. 1. Set \_m\_.\[\[Status\]\] to \~unlinked\~. 1. Assert:
+-- | \_module\_.\[\[Status\]\] is \~unlinked\~. 1. Return ? \_result\_. 1.
+-- | Assert: \_module\_.\[\[Status\]\] is one of \~linked\~,
+-- | \~evaluating-async\~, or \~evaluated\~. 1. Assert: \_stack\_ is
+-- | empty. 1. Return \~unused\~.
+-- |
+
+-- SPEC: L21189-L21232
+-- | # InnerModuleLinking ( \_module\_: a Module Record, \_stack\_: a List of Cyclic Module Records, \_index\_: a non-negative integer, ): either a normal completion containing a non-negative integer or a throw completion
+-- |
+-- | description
+-- | :   It is used by Link to perform the actual linking process for
+-- |     \_module\_, as well as recursively on all other modules in the
+-- |     dependency graph. The \_stack\_ and \_index\_ parameters, as well as
+-- |     a module\'s \[\[DFSAncestorIndex\]\] field, keep track of the
+-- |     depth-first search (DFS) traversal. In particular,
+-- |     \[\[DFSAncestorIndex\]\] is used to discover strongly connected
+-- |     components (SCCs), such that all modules in an SCC transition to
+-- |     \~linked\~ together.
+-- |
+-- | 1\. If \_module\_ is not a Cyclic Module Record, then 1. Perform ?
+-- | \_module\_.Link(). 1. Return \_index\_. 1. If \_module\_.\[\[Status\]\]
+-- | is one of \~linking\~, \~linked\~, \~evaluating-async\~, or
+-- | \~evaluated\~, then 1. Return \_index\_. 1. Assert:
+-- | \_module\_.\[\[Status\]\] is \~unlinked\~. 1. Set
+-- | \_module\_.\[\[Status\]\] to \~linking\~. 1. Let \_moduleIndex\_ be
+-- | \_index\_. 1. Set \_module\_.\[\[DFSAncestorIndex\]\] to \_index\_. 1.
+-- | Set \_index\_ to \_index\_ + 1. 1. Append \_module\_ to \_stack\_. 1.
+-- | For each ModuleRequest Record \_request\_ of
+-- | \_module\_.\[\[RequestedModules\]\], do 1. Let \_requiredModule\_ be
+-- | GetImportedModule(\_module\_, \_request\_). 1. Set \_index\_ to ?
+-- | InnerModuleLinking(\_requiredModule\_, \_stack\_, \_index\_). 1. If
+-- | \_requiredModule\_ is a Cyclic Module Record, then 1. Assert:
+-- | \_requiredModule\_.\[\[Status\]\] is one of \~linking\~, \~linked\~,
+-- | \~evaluating-async\~, or \~evaluated\~. 1. Assert:
+-- | \_requiredModule\_.\[\[Status\]\] is \~linking\~ if and only if
+-- | \_stack\_ contains \_requiredModule\_. 1. If
+-- | \_requiredModule\_.\[\[Status\]\] is \~linking\~, then 1. Set
+-- | \_module\_.\[\[DFSAncestorIndex\]\] to
+-- | min(\_module\_.\[\[DFSAncestorIndex\]\],
+-- | \_requiredModule\_.\[\[DFSAncestorIndex\]\]). 1. Perform ?
+-- | \_module\_.InitializeEnvironment(). 1. Assert: \_module\_ occurs exactly
+-- | once in \_stack\_. 1. Assert: \_module\_.\[\[DFSAncestorIndex\]\] ≤
+-- | \_moduleIndex\_. 1. If \_module\_.\[\[DFSAncestorIndex\]\] =
+-- | \_moduleIndex\_, then 1. Let \_done\_ be \*false\*. 1. Repeat, while
+-- | \_done\_ is \*false\*, 1. Let \_requiredModule\_ be the last element of
+-- | \_stack\_. 1. Remove the last element of \_stack\_. 1. Assert:
+-- | \_requiredModule\_ is a Cyclic Module Record. 1. Set
+-- | \_requiredModule\_.\[\[Status\]\] to \~linked\~. 1. If
+-- | \_requiredModule\_ and \_module\_ are the same Module Record, set
+-- | \_done\_ to \*true\*. 1. Return \_index\_.
+-- |
+
+-- SPEC: L21233-L21282
+-- | # Evaluate ( ): a Promise
+-- |
+-- | for
+-- | :   a Cyclic Module Record \_module\_
+-- |
+-- | description
+-- | :   Evaluate transitions this module\'s \[\[Status\]\] from \~linked\~
+-- |     to either \~evaluating-async\~ or \~evaluated\~. The first time it
+-- |     is called on a module in a given strongly connected component,
+-- |     Evaluate creates and returns a Promise which resolves when the
+-- |     module has finished evaluating. This Promise is stored in the
+-- |     \[\[TopLevelCapability\]\] field of the \[\[CycleRoot\]\] for the
+-- |     component. Future invocations of Evaluate on any module in the
+-- |     component return the same Promise. (Most of the work is done by the
+-- |     auxiliary function InnerModuleEvaluation.)
+-- |
+-- | 1\. Assert: This call to Evaluate is not happening at the same time as
+-- | another call to Evaluate within the surrounding agent. 1. Assert:
+-- | \_module\_.\[\[Status\]\] is one of \~linked\~, \~evaluating-async\~, or
+-- | \~evaluated\~. 1. If \_module\_.\[\[Status\]\] is either
+-- | \~evaluating-async\~ or \~evaluated\~, then 1. If
+-- | \_module\_.\[\[CycleRoot\]\] is not \~empty\~, then 1. Set \_module\_ to
+-- | \_module\_.\[\[CycleRoot\]\]. 1. Else, 1. Assert:
+-- | \_module\_.\[\[Status\]\] is \~evaluated\~ and
+-- | \_module\_.\[\[EvaluationError\]\] is a throw completion. 1. If
+-- | \_module\_.\[\[TopLevelCapability\]\] is not \~empty\~, then 1. Return
+-- | \_module\_.\[\[TopLevelCapability\]\].\[\[Promise\]\]. 1. Let \_stack\_
+-- | be a new empty List. 1. Let \_capability\_ be !
+-- | NewPromiseCapability(%Promise%). 1. Set
+-- | \_module\_.\[\[TopLevelCapability\]\] to \_capability\_. 1. Let
+-- | \_result\_ be Completion(InnerModuleEvaluation(\_module\_, \_stack\_,
+-- | 0)). 1. If \_result\_ is an abrupt completion, then 1. For each Cyclic
+-- | Module Record \_m\_ of \_stack\_, do 1. Assert: \_m\_.\[\[Status\]\] is
+-- | \~evaluating\~. 1. Assert: \_m\_.\[\[AsyncEvaluationOrder\]\] is
+-- | \~unset\~. 1. Set \_m\_.\[\[Status\]\] to \~evaluated\~. 1. Set
+-- | \_m\_.\[\[EvaluationError\]\] to \_result\_. 1. Assert:
+-- | \_module\_.\[\[Status\]\] is \~evaluated\~. 1. Assert:
+-- | \_module\_.\[\[EvaluationError\]\] and \_result\_ are the same
+-- | Completion Record. 1. Perform ! Call(\_capability\_.\[\[Reject\]\],
+-- | \*undefined\*, « \_result\_.\[\[Value\]\] »). 1. Else, 1. Assert:
+-- | \_module\_.\[\[Status\]\] is either \~evaluating-async\~ or
+-- | \~evaluated\~. 1. Assert: \_module\_.\[\[EvaluationError\]\] is
+-- | \~empty\~. 1. If \_module\_.\[\[Status\]\] is \~evaluated\~, then 1.
+-- | Assert: \_module\_.\[\[AsyncEvaluationOrder\]\] is either \~unset\~ or
+-- | \~done\~. 1. NOTE: \_module\_.\[\[AsyncEvaluationOrder\]\] is \~done\~
+-- | if and only if \_module\_ had already been evaluated and that evaluation
+-- | was asynchronous. 1. Perform ! Call(\_capability\_.\[\[Resolve\]\],
+-- | \*undefined\*, « \*undefined\* »). 1. Assert: \_stack\_ is empty. 1.
+-- | Return \_capability\_.\[\[Promise\]\].
+-- |
+
+-- SPEC: L21283-L21357
+-- | # InnerModuleEvaluation ( \_module\_: a Module Record, \_stack\_: a List of Cyclic Module Records, \_index\_: a non-negative integer, ): either a normal completion containing a non-negative integer or a throw completion
+-- |
+-- | description
+-- | :   It is used by Evaluate to perform the actual evaluation process for
+-- |     \_module\_, as well as recursively on all other modules in the
+-- |     dependency graph. The \_stack\_ and \_index\_ parameters, as well as
+-- |     \_module\_\'s \[\[DFSAncestorIndex\]\] field, are used the same way
+-- |     as in InnerModuleLinking.
+-- |
+-- | 1\. If \_module\_ is not a Cyclic Module Record, then 1. Perform ?
+-- | EvaluateModuleSync(\_module\_). 1. Return \_index\_. 1. If
+-- | \_module\_.\[\[Status\]\] is either \~evaluating-async\~ or
+-- | \~evaluated\~, then 1. If \_module\_.\[\[EvaluationError\]\] is
+-- | \~empty\~, return \_index\_. 1. Return ?
+-- | \_module\_.\[\[EvaluationError\]\]. 1. If \_module\_.\[\[Status\]\] is
+-- | \~evaluating\~, return \_index\_. 1. Assert: \_module\_.\[\[Status\]\]
+-- | is \~linked\~. 1. Set \_module\_.\[\[Status\]\] to \~evaluating\~. 1.
+-- | Let \_moduleIndex\_ be \_index\_. 1. Set
+-- | \_module\_.\[\[DFSAncestorIndex\]\] to \_index\_. 1. Set
+-- | \_module\_.\[\[PendingAsyncDependencies\]\] to 0. 1. Set \_index\_ to
+-- | \_index\_ + 1. 1. Append \_module\_ to \_stack\_. 1. For each
+-- | ModuleRequest Record \_request\_ of \_module\_.\[\[RequestedModules\]\],
+-- | do 1. Let \_requiredModule\_ be GetImportedModule(\_module\_,
+-- | \_request\_). 1. Set \_index\_ to ?
+-- | InnerModuleEvaluation(\_requiredModule\_, \_stack\_, \_index\_). 1. If
+-- | \_requiredModule\_ is a Cyclic Module Record, then 1. Assert:
+-- | \_requiredModule\_.\[\[Status\]\] is one of \~evaluating\~,
+-- | \~evaluating-async\~, or \~evaluated\~. 1. Assert:
+-- | \_requiredModule\_.\[\[Status\]\] is \~evaluating\~ if and only if
+-- | \_stack\_ contains \_requiredModule\_. 1. If
+-- | \_requiredModule\_.\[\[Status\]\] is \~evaluating\~, then 1. Set
+-- | \_module\_.\[\[DFSAncestorIndex\]\] to
+-- | min(\_module\_.\[\[DFSAncestorIndex\]\],
+-- | \_requiredModule\_.\[\[DFSAncestorIndex\]\]). 1. Else, 1. Set
+-- | \_requiredModule\_ to \_requiredModule\_.\[\[CycleRoot\]\]. 1. Assert:
+-- | \_requiredModule\_.\[\[Status\]\] is either \~evaluating-async\~ or
+-- | \~evaluated\~. 1. If \_requiredModule\_.\[\[EvaluationError\]\] is not
+-- | \~empty\~, return ? \_requiredModule\_.\[\[EvaluationError\]\]. 1. If
+-- | \_requiredModule\_.\[\[AsyncEvaluationOrder\]\] is an integer, then 1.
+-- | Set \_module\_.\[\[PendingAsyncDependencies\]\] to
+-- | \_module\_.\[\[PendingAsyncDependencies\]\] + 1. 1. Append \_module\_ to
+-- | \_requiredModule\_.\[\[AsyncParentModules\]\]. 1. If
+-- | \_module\_.\[\[PendingAsyncDependencies\]\] \> 0 or
+-- | \_module\_.\[\[HasTLA\]\] is \*true\*, then 1. Assert:
+-- | \_module\_.\[\[AsyncEvaluationOrder\]\] is \~unset\~. 1. Set
+-- | \_module\_.\[\[AsyncEvaluationOrder\]\] to
+-- | IncrementModuleAsyncEvaluationCount(). 1. If
+-- | \_module\_.\[\[PendingAsyncDependencies\]\] = 0, perform
+-- | ExecuteAsyncModule(\_module\_). 1. Else, 1. Perform ?
+-- | \_module\_.ExecuteModule(). 1. Assert: \_module\_ occurs exactly once in
+-- | \_stack\_. 1. Assert: \_module\_.\[\[DFSAncestorIndex\]\] ≤
+-- | \_moduleIndex\_. 1. If \_module\_.\[\[DFSAncestorIndex\]\] =
+-- | \_moduleIndex\_, then 1. Let \_done\_ be \*false\*. 1. Repeat, while
+-- | \_done\_ is \*false\*, 1. Let \_requiredModule\_ be the last element of
+-- | \_stack\_. 1. Remove the last element of \_stack\_. 1. Assert:
+-- | \_requiredModule\_ is a Cyclic Module Record. 1. Assert:
+-- | \_requiredModule\_.\[\[AsyncEvaluationOrder\]\] is either an integer or
+-- | \~unset\~. 1. If \_requiredModule\_.\[\[AsyncEvaluationOrder\]\] is
+-- | \~unset\~, set \_requiredModule\_.\[\[Status\]\] to \~evaluated\~. 1.
+-- | Else, set \_requiredModule\_.\[\[Status\]\] to \~evaluating-async\~. 1.
+-- | If \_requiredModule\_ and \_module\_ are the same Module Record, set
+-- | \_done\_ to \*true\*. 1. Set \_requiredModule\_.\[\[CycleRoot\]\] to
+-- | \_module\_. 1. Return \_index\_.
+-- |
+-- | A module is \~evaluating\~ while it is being traversed by
+-- | InnerModuleEvaluation. A module is \~evaluated\~ on execution completion
+-- | or \~evaluating-async\~ during execution if its \[\[HasTLA\]\] field is
+-- | \*true\* or if it has asynchronous dependencies.
+-- |
+-- | Any modules depending on a module of an asynchronous cycle when that
+-- | cycle is not \~evaluating\~ will instead depend on the execution of the
+-- | root of the cycle via \[\[CycleRoot\]\]. This ensures that the cycle
+-- | state can be treated as a single strongly connected component through
+-- | its root module state.
+-- |
+
+-- SPEC: L21358-L21377
+-- | # ExecuteAsyncModule ( \_module\_: a Cyclic Module Record, ): \~unused\~
+-- |
+-- | 1\. Assert: \_module\_.\[\[Status\]\] is either \~evaluating\~ or
+-- | \~evaluating-async\~. 1. Assert: \_module\_.\[\[HasTLA\]\] is
+-- | \*true\*. 1. Let \_capability\_ be ! NewPromiseCapability(%Promise%). 1.
+-- | Let \_fulfilledClosure\_ be a new Abstract Closure with no parameters
+-- | that captures \_module\_ and performs the following steps when
+-- | called: 1. Perform AsyncModuleExecutionFulfilled(\_module\_). 1. Return
+-- | NormalCompletion(\*undefined\*). 1. Let \_onFulfilled\_ be
+-- | CreateBuiltinFunction(\_fulfilledClosure\_, 0, \*\"\"\*, « »). 1. Let
+-- | \_rejectedClosure\_ be a new Abstract Closure with parameters
+-- | (\_error\_) that captures \_module\_ and performs the following steps
+-- | when called: 1. Perform AsyncModuleExecutionRejected(\_module\_,
+-- | \_error\_). 1. Return NormalCompletion(\*undefined\*). 1. Let
+-- | \_onRejected\_ be CreateBuiltinFunction(\_rejectedClosure\_, 0,
+-- | \*\"\"\*, « »). 1. Perform
+-- | PerformPromiseThen(\_capability\_.\[\[Promise\]\], \_onFulfilled\_,
+-- | \_onRejected\_). 1. Perform !
+-- | \_module\_.ExecuteModule(\_capability\_). 1. Return \~unused\~.
+-- |
+
+-- SPEC: L21378-L21396
+-- | # GatherAvailableAncestors ( \_module\_: a Cyclic Module Record, \_execList\_: a List of Cyclic Module Records, ): \~unused\~
+-- |
+-- | 1\. For each Cyclic Module Record \_m\_ of
+-- | \_module\_.\[\[AsyncParentModules\]\], do 1. If \_execList\_ does not
+-- | contain \_m\_ and \_m\_.\[\[CycleRoot\]\].\[\[EvaluationError\]\] is
+-- | \~empty\~, then 1. Assert: \_m\_.\[\[Status\]\] is
+-- | \~evaluating-async\~. 1. Assert: \_m\_.\[\[EvaluationError\]\] is
+-- | \~empty\~. 1. Assert: \_m\_.\[\[AsyncEvaluationOrder\]\] is an
+-- | integer. 1. Assert: \_m\_.\[\[PendingAsyncDependencies\]\] \> 0. 1. Set
+-- | \_m\_.\[\[PendingAsyncDependencies\]\] to
+-- | \_m\_.\[\[PendingAsyncDependencies\]\] - 1. 1. If
+-- | \_m\_.\[\[PendingAsyncDependencies\]\] = 0, then 1. Append \_m\_ to
+-- | \_execList\_. 1. If \_m\_.\[\[HasTLA\]\] is \*false\*, perform
+-- | GatherAvailableAncestors(\_m\_, \_execList\_). 1. Return \~unused\~.
+-- |
+-- | When an asynchronous execution for a root \_module\_ is fulfilled, this
+-- | function determines the list of modules which are able to synchronously
+-- | execute together on this completion, populating them in \_execList\_.
+-- |
+
+-- SPEC: L21397-L21432
+-- | # AsyncModuleExecutionFulfilled ( \_module\_: a Cyclic Module Record, ): \~unused\~
+-- |
+-- | 1\. If \_module\_.\[\[Status\]\] is \~evaluated\~, then 1. Assert:
+-- | \_module\_.\[\[EvaluationError\]\] is not \~empty\~. 1. Return
+-- | \~unused\~. 1. Assert: \_module\_.\[\[Status\]\] is
+-- | \~evaluating-async\~. 1. Assert: \_module\_.\[\[AsyncEvaluationOrder\]\]
+-- | is an integer. 1. Assert: \_module\_.\[\[EvaluationError\]\] is
+-- | \~empty\~. 1. Set \_module\_.\[\[AsyncEvaluationOrder\]\] to
+-- | \~done\~. 1. Set \_module\_.\[\[Status\]\] to \~evaluated\~. 1. If
+-- | \_module\_.\[\[TopLevelCapability\]\] is not \~empty\~, then 1. Assert:
+-- | \_module\_.\[\[CycleRoot\]\] and \_module\_ are the same Module
+-- | Record. 1. Perform !
+-- | Call(\_module\_.\[\[TopLevelCapability\]\].\[\[Resolve\]\],
+-- | \*undefined\*, « \*undefined\* »). 1. Let \_execList\_ be a new empty
+-- | List. 1. Perform GatherAvailableAncestors(\_module\_, \_execList\_). 1.
+-- | Assert: All elements of \_execList\_ have their
+-- | \[\[AsyncEvaluationOrder\]\] field set to an integer,
+-- | \[\[PendingAsyncDependencies\]\] field set to 0, and
+-- | \[\[EvaluationError\]\] field set to \~empty\~. 1. Let
+-- | \_sortedExecList\_ be a List whose elements are the elements of
+-- | \_execList\_, sorted by their \[\[AsyncEvaluationOrder\]\] field in
+-- | ascending order. 1. For each Cyclic Module Record \_m\_ of
+-- | \_sortedExecList\_, do 1. If \_m\_.\[\[Status\]\] is \~evaluated\~,
+-- | then 1. Assert: \_m\_.\[\[EvaluationError\]\] is not \~empty\~. 1. Else
+-- | if \_m\_.\[\[HasTLA\]\] is \*true\*, then 1. Perform
+-- | ExecuteAsyncModule(\_m\_). 1. Else, 1. Let \_result\_ be
+-- | Completion(\_m\_.ExecuteModule()). 1. If \_result\_ is an abrupt
+-- | completion, then 1. Perform AsyncModuleExecutionRejected(\_m\_,
+-- | \_result\_.\[\[Value\]\]). 1. Else, 1. Set
+-- | \_m\_.\[\[AsyncEvaluationOrder\]\] to \~done\~. 1. Set
+-- | \_m\_.\[\[Status\]\] to \~evaluated\~. 1. If
+-- | \_m\_.\[\[TopLevelCapability\]\] is not \~empty\~, then 1. Assert:
+-- | \_m\_.\[\[CycleRoot\]\] and \_m\_ are the same Module Record. 1. Perform
+-- | ! Call(\_m\_.\[\[TopLevelCapability\]\].\[\[Resolve\]\], \*undefined\*,
+-- | « \*undefined\* »). 1. Return \~unused\~.
+-- |
+
+-- SPEC: L21433-L21455
+-- | # AsyncModuleExecutionRejected ( \_module\_: a Cyclic Module Record, \_error\_: an ECMAScript language value, ): \~unused\~
+-- |
+-- | 1\. If \_module\_.\[\[Status\]\] is \~evaluated\~, then 1. Assert:
+-- | \_module\_.\[\[EvaluationError\]\] is not \~empty\~. 1. Return
+-- | \~unused\~. 1. Assert: \_module\_.\[\[Status\]\] is
+-- | \~evaluating-async\~. 1. Assert: \_module\_.\[\[AsyncEvaluationOrder\]\]
+-- | is an integer. 1. Assert: \_module\_.\[\[EvaluationError\]\] is
+-- | \~empty\~. 1. Set \_module\_.\[\[EvaluationError\]\] to
+-- | ThrowCompletion(\_error\_). 1. Set \_module\_.\[\[Status\]\] to
+-- | \~evaluated\~. 1. Set \_module\_.\[\[AsyncEvaluationOrder\]\] to
+-- | \~done\~. 1. NOTE: \_module\_.\[\[AsyncEvaluationOrder\]\] is set to
+-- | \~done\~ for symmetry with AsyncModuleExecutionFulfilled. In
+-- | InnerModuleEvaluation, the value of a module\'s
+-- | \[\[AsyncEvaluationOrder\]\] internal slot is unused when its
+-- | \[\[EvaluationError\]\] internal slot is not \~empty\~. 1. If
+-- | \_module\_.\[\[TopLevelCapability\]\] is not \~empty\~, then 1. Assert:
+-- | \_module\_.\[\[CycleRoot\]\] and \_module\_ are the same Module
+-- | Record. 1. Perform !
+-- | Call(\_module\_.\[\[TopLevelCapability\]\].\[\[Reject\]\],
+-- | \*undefined\*, « \_error\_ »). 1. For each Cyclic Module Record \_m\_ of
+-- | \_module\_.\[\[AsyncParentModules\]\], do 1. Perform
+-- | AsyncModuleExecutionRejected(\_m\_, \_error\_). 1. Return \~unused\~.
+-- |
+
+-- SPEC: L21456-L21871
+-- | # Example Cyclic Module Record Graphs
+-- |
+-- | This non-normative section gives a series of examples of the linking and
+-- | evaluation of a few common module graphs, with a specific focus on how
+-- | errors can occur.
+-- |
+-- | First consider the following simple module graph:
+-- |
+-- | ![A module graph in which module A depends on module B, and module B
+-- | depends on module C](img/module-graph-simple.svg){width="60"
+-- | height="198"}
+-- |
+-- | Let\'s first assume that there are no error conditions. When a host
+-- | first calls \_A\_.LoadRequestedModules(), this will complete
+-- | successfully by assumption, and recursively load the dependencies of
+-- | \_B\_ and \_C\_ as well (respectively, \_C\_ and none), and then set
+-- | \_A\_.\[\[Status\]\] = \_B\_.\[\[Status\]\] = \_C\_.\[\[Status\]\] =
+-- | \~unlinked\~. Then, when the host calls \_A\_.Link(), it will complete
+-- | successfully (again by assumption) such that \_A\_.\[\[Status\]\] =
+-- | \_B\_.\[\[Status\]\] = \_C\_.\[\[Status\]\] = \~linked\~. These
+-- | preparatory steps can be performed at any time. Later, when the host is
+-- | ready to incur any possible side effects of the modules, it can call
+-- | \_A\_.Evaluate(), which will complete successfully, returning a Promise
+-- | resolving to \*undefined\* (again by assumption), recursively having
+-- | evaluated first \_C\_ and then \_B\_. Each module\'s \[\[Status\]\] at
+-- | this point will be \~evaluated\~.
+-- |
+-- | Consider then cases involving linking errors, after a successful call to
+-- | \_A\_.LoadRequestedModules(). If InnerModuleLinking of \_C\_ succeeds
+-- | but, thereafter, fails for \_B\_, for example because it imports
+-- | something that \_C\_ does not provide, then the original \_A\_.Link()
+-- | will fail, and both \_A\_ and \_B\_\'s \[\[Status\]\] remain
+-- | \~unlinked\~. \_C\_\'s \[\[Status\]\] has become \~linked\~, though.
+-- |
+-- | Finally, consider a case involving evaluation errors after a successful
+-- | call to Link(). If InnerModuleEvaluation of \_C\_ succeeds but,
+-- | thereafter, fails for \_B\_, for example because \_B\_ contains code
+-- | that throws an exception, then the original \_A\_.Evaluate() will fail,
+-- | returning a rejected Promise. The resulting exception will be recorded
+-- | in both \_A\_ and \_B\_\'s \[\[EvaluationError\]\] fields, and their
+-- | \[\[Status\]\] will become \~evaluated\~. \_C\_ will also become
+-- | \~evaluated\~ but, in contrast to \_A\_ and \_B\_, will remain without
+-- | an \[\[EvaluationError\]\], as it successfully completed evaluation.
+-- | Storing the exception ensures that any time a host tries to reuse \_A\_
+-- | or \_B\_ by calling their Evaluate() method, it will encounter the same
+-- | exception. (Hosts are not required to reuse Cyclic Module Records;
+-- | similarly, hosts are not required to expose the exception objects thrown
+-- | by these methods. However, the specification enables such uses.)
+-- |
+-- | Now consider a different type of error condition:
+-- |
+-- | ![A module graph in which module A depends on a missing (unresolvable)
+-- | module, represented by ???](img/module-graph-missing.svg){width="60"
+-- | height="121"}
+-- |
+-- | In this scenario, module \_A\_ declares a dependency on some other
+-- | module, but no Module Record exists for that module, i.e.
+-- | HostLoadImportedModule calls FinishLoadingImportedModule with an
+-- | exception when asked for it. This could occur for a variety of reasons,
+-- | such as the corresponding resource not existing, or the resource
+-- | existing but ParseModule returning some errors when trying to parse the
+-- | resulting source text. Hosts can choose to expose the cause of failure
+-- | via the completion they pass to FinishLoadingImportedModule. In any
+-- | case, this exception causes a loading failure, which results in \_A\_\'s
+-- | \[\[Status\]\] remaining \~new\~.
+-- |
+-- | The difference here between loading, linking and evaluation errors is
+-- | due to the following characteristic:
+-- |
+-- | - Evaluation must be only performed once, as it can cause side effects;
+-- |   it is thus important to remember whether evaluation has already been
+-- |   performed, even if unsuccessfully. (In the error case, it makes sense
+-- |   to also remember the exception because otherwise subsequent Evaluate()
+-- |   calls would have to synthesize a new one.)
+-- | - Linking, on the other hand, is side-effect-free, and thus even if it
+-- |   fails, it can be retried at a later time with no issues.
+-- | - Loading closely interacts with the host, and it may be desirable for
+-- |   some of them to allow users to retry failed loads (for example, if the
+-- |   failure is caused by temporarily bad network conditions).
+-- |
+-- | Now, consider a module graph with a cycle:
+-- |
+-- | ![A module graph in which module A depends on module B and C, but module
+-- | B also depends on module A](img/module-graph-cycle.svg){width="181"
+-- | height="121"}
+-- |
+-- | Here we assume that the entry point is module \_A\_, so that the host
+-- | proceeds by calling \_A\_.LoadRequestedModules(), which performs
+-- | InnerModuleLoading on \_A\_. This in turn calls InnerModuleLoading on
+-- | \_B\_ and \_C\_. Because of the cycle, this again triggers
+-- | InnerModuleLoading on \_A\_, but at this point it is a no-op since
+-- | \_A\_\'s dependencies loading has already been triggered during this
+-- | LoadRequestedModules process. When all the modules in the graph have
+-- | been successfully loaded, their \[\[Status\]\] transitions from \~new\~
+-- | to \~unlinked\~ at the same time.
+-- |
+-- | Then the host proceeds by calling \_A\_.Link(), which performs
+-- | InnerModuleLinking on \_A\_. This in turn calls InnerModuleLinking on
+-- | \_B\_. Because of the cycle, this again triggers InnerModuleLinking on
+-- | \_A\_, but at this point it is a no-op since \_A\_.\[\[Status\]\] is
+-- | already \~linking\~. \_B\_.\[\[Status\]\] itself remains \~linking\~
+-- | when control gets back to \_A\_ and InnerModuleLinking is triggered on
+-- | \_C\_. After this returns with \_C\_.\[\[Status\]\] being \~linked\~,
+-- | both \_A\_ and \_B\_ transition from \~linking\~ to \~linked\~ together;
+-- | this is by design, since they form a strongly connected component. It\'s
+-- | possible to transition the status of modules in the same SCC at the same
+-- | time because during this phase the module graph is traversed with a
+-- | depth-first search.
+-- |
+-- | An analogous story occurs for the evaluation phase of a cyclic module
+-- | graph, in the success case.
+-- |
+-- | Now consider a case where \_A\_ has a linking error; for example, it
+-- | tries to import a binding from \_C\_ that does not exist. In that case,
+-- | the above steps still occur, including the early return from the second
+-- | call to InnerModuleLinking on \_A\_. However, once we unwind back to the
+-- | original InnerModuleLinking on \_A\_, it fails during
+-- | InitializeEnvironment, namely right after \_C\_.ResolveExport(). The
+-- | thrown \*SyntaxError\* exception propagates up to \_A\_.Link, which
+-- | resets all modules that are currently on its \_stack\_ (these are always
+-- | exactly the modules that are still \~linking\~). Hence both \_A\_ and
+-- | \_B\_ become \~unlinked\~. Note that \_C\_ is left as \~linked\~.
+-- |
+-- | Alternatively, consider a case where \_A\_ has an evaluation error; for
+-- | example, its source code throws an exception. In that case, the
+-- | evaluation-time analogue of the above steps still occurs, including the
+-- | early return from the second call to InnerModuleEvaluation on \_A\_.
+-- | However, once we unwind back to the original InnerModuleEvaluation on
+-- | \_A\_, it fails by assumption. The exception thrown propagates up to
+-- | \_A\_.Evaluate(), which records the error in all modules that are
+-- | currently on its \_stack\_ (i.e., the modules that are still
+-- | \~evaluating\~) as well as via \[\[AsyncParentModules\]\], which form a
+-- | chain for modules which contain or depend on top-level \`await\` through
+-- | the whole dependency graph through the AsyncModuleExecutionRejected
+-- | algorithm. Hence both \_A\_ and \_B\_ become \~evaluated\~ and the
+-- | exception is recorded in both \_A\_ and \_B\_\'s \[\[EvaluationError\]\]
+-- | fields, while \_C\_ is left as \~evaluated\~ with no
+-- | \[\[EvaluationError\]\].
+-- |
+-- | Lastly, consider a module graph with a cycle, where all modules complete
+-- | asynchronously:
+-- |
+-- | ![A module graph in which module A depends on module B and C, module B
+-- | depends on module D, module C depends on module D and E, and module D
+-- | depends on module A](img/module-graph-cycle-async.svg){width="241"
+-- | height="211"}
+-- |
+-- | Loading and linking happen as before, and all modules end up with
+-- | \[\[Status\]\] set to \~linked\~.
+-- |
+-- | Calling \_A\_.Evaluate() calls InnerModuleEvaluation on \_A\_, \_B\_,
+-- | and \_D\_, which all transition to \~evaluating\~. Then
+-- | InnerModuleEvaluation is called on \_A\_ again, which is a no-op because
+-- | it is already \~evaluating\~. At this point,
+-- | \_D\_.\[\[PendingAsyncDependencies\]\] is 0, so
+-- | ExecuteAsyncModule(\_D\_) is called and we call \_D\_.ExecuteModule with
+-- | a new PromiseCapability tracking the asynchronous execution of \_D\_. We
+-- | unwind back to the InnerModuleEvaluation on \_B\_, setting
+-- | \_B\_.\[\[PendingAsyncDependencies\]\] to 1 and
+-- | \_B\_.\[\[AsyncEvaluationOrder\]\] to 1. We unwind back to the original
+-- | InnerModuleEvaluation on \_A\_, setting
+-- | \_A\_.\[\[PendingAsyncDependencies\]\] to 1. In the next iteration of
+-- | the loop over \_A\_\'s dependencies, we call InnerModuleEvaluation on
+-- | \_C\_ and thus on \_D\_ (again a no-op) and \_E\_. As \_E\_ has no
+-- | dependencies and is not part of a cycle, we call
+-- | ExecuteAsyncModule(\_E\_) in the same manner as \_D\_ and \_E\_ is
+-- | immediately removed from the stack. We unwind once more to the
+-- | InnerModuleEvaluation on \_C\_, setting
+-- | \_C\_.\[\[AsyncEvaluationOrder\]\] to 3. Now we finish the loop over
+-- | \_A\_\'s dependencies, set \_A\_.\[\[AsyncEvaluationOrder\]\] to 4, and
+-- | remove the entire strongly connected component from the stack,
+-- | transitioning all of the modules to \~evaluating-async\~ at once. At
+-- | this point, the fields of the modules are as given in .
+-- |
+-- | +----------------------------------+----------------------+----------------------+----------------------+----------------------+----------------------+
+-- | | [Field]{.column}                 | \_A\_                | \_B\_                | \_C\_                | \_D\_                | \_E\_                |
+-- | |                                  |                      |                      |                      |                      |                      |
+-- | | ::: slash                        |                      |                      |                      |                      |                      |
+-- | | :::                              |                      |                      |                      |                      |                      |
+-- | |                                  |                      |                      |                      |                      |                      |
+-- | | [Module]{.row}                   |                      |                      |                      |                      |                      |
+-- | +==================================+======================+======================+======================+======================+======================+
+-- | | \[\[DFSAncestorIndex\]\]         | 0                    | 0                    | 0                    | 0                    | 4                    |
+-- | +----------------------------------+----------------------+----------------------+----------------------+----------------------+----------------------+
+-- | | \[\[Status\]\]                   | \~evaluating-async\~ | \~evaluating-async\~ | \~evaluating-async\~ | \~evaluating-async\~ | \~evaluating-async\~ |
+-- | +----------------------------------+----------------------+----------------------+----------------------+----------------------+----------------------+
+-- | | \[\[AsyncEvaluationOrder\]\]     | 4                    | 1                    | 3                    | 0                    | 2                    |
+-- | +----------------------------------+----------------------+----------------------+----------------------+----------------------+----------------------+
+-- | | \[\[AsyncParentModules\]\]       | « »                  | « \_A\_ »            | « \_A\_ »            | « \_B\_, \_C\_ »     | « \_C\_ »            |
+-- | +----------------------------------+----------------------+----------------------+----------------------+----------------------+----------------------+
+-- | | \[\[PendingAsyncDependencies\]\] | 2 (\_B\_ and \_C\_)  | 1 (\_D\_)            | 2 (\_D\_ and \_E\_)  | 0                    | 0                    |
+-- | +----------------------------------+----------------------+----------------------+----------------------+----------------------+----------------------+
+-- |
+-- | Let us assume that \_E\_ finishes executing first. When that happens,
+-- | AsyncModuleExecutionFulfilled is called, \_E\_.\[\[Status\]\] is set to
+-- | \~evaluated\~ and \_C\_.\[\[PendingAsyncDependencies\]\] is decremented
+-- | to become 1. The fields of the updated modules are as given in .
+-- |
+-- | +----------------------------------+-----------------------+-----------------------+
+-- | | [Field]{.column}                 | \_C\_                 | \_E\_                 |
+-- | |                                  |                       |                       |
+-- | | ::: slash                        |                       |                       |
+-- | | :::                              |                       |                       |
+-- | |                                  |                       |                       |
+-- | | [Module]{.row}                   |                       |                       |
+-- | +==================================+=======================+=======================+
+-- | | \[\[DFSAncestorIndex\]\]         | 0                     | 4                     |
+-- | +----------------------------------+-----------------------+-----------------------+
+-- | | \[\[Status\]\]                   | \~evaluating-async\~  | \~evaluated\~         |
+-- | +----------------------------------+-----------------------+-----------------------+
+-- | | \[\[AsyncEvaluationOrder\]\]     | 3                     | \~done\~              |
+-- | +----------------------------------+-----------------------+-----------------------+
+-- | | \[\[AsyncParentModules\]\]       | « \_A\_ »             | « \_C\_ »             |
+-- | +----------------------------------+-----------------------+-----------------------+
+-- | | \[\[PendingAsyncDependencies\]\] | 1 (\_D\_)             | 0                     |
+-- | +----------------------------------+-----------------------+-----------------------+
+-- |
+-- | \_D\_ is next to finish (as it was the only module that was still
+-- | executing). When that happens, AsyncModuleExecutionFulfilled is called
+-- | again and \_D\_.\[\[Status\]\] is set to \~evaluated\~. Its ancestors
+-- | available for execution are \_B\_ (whose \[\[AsyncEvaluationOrder\]\]
+-- | is 1) and \_C\_ (whose \[\[AsyncEvaluationOrder\]\] is 3), thus \_B\_
+-- | will be handled first: \_B\_.\[\[PendingAsyncDependencies\]\] is
+-- | decremented to become 0, ExecuteAsyncModule is called on \_B\_, and it
+-- | starts executing. \_C\_.\[\[PendingAsyncDependencies\]\] is also
+-- | decremented to become 0, and \_C\_ starts executing (potentially in
+-- | parallel to \_B\_ if \_B\_ contains an \`await\`). The fields of the
+-- | updated modules are as given in .
+-- |
+-- | +----------------------------------+----------------------+----------------------+-----------------+
+-- | | [Field]{.column}                 | \_B\_                | \_C\_                | \_D\_           |
+-- | |                                  |                      |                      |                 |
+-- | | ::: slash                        |                      |                      |                 |
+-- | | :::                              |                      |                      |                 |
+-- | |                                  |                      |                      |                 |
+-- | | [Module]{.row}                   |                      |                      |                 |
+-- | +==================================+======================+======================+=================+
+-- | | \[\[DFSAncestorIndex\]\]         | 0                    | 0                    | 0               |
+-- | +----------------------------------+----------------------+----------------------+-----------------+
+-- | | \[\[Status\]\]                   | \~evaluating-async\~ | \~evaluating-async\~ | \~evaluated\~   |
+-- | +----------------------------------+----------------------+----------------------+-----------------+
+-- | | \[\[AsyncEvaluationOrder\]\]     | 1                    | 3                    | \~done\~        |
+-- | +----------------------------------+----------------------+----------------------+-----------------+
+-- | | \[\[AsyncParentModules\]\]       | « \_A\_ »            | « \_A\_ »            | « \_B\_, \_C\_  |
+-- | |                                  |                      |                      | »               |
+-- | +----------------------------------+----------------------+----------------------+-----------------+
+-- | | \[\[PendingAsyncDependencies\]\] | 0                    | 0                    | 0               |
+-- | +----------------------------------+----------------------+----------------------+-----------------+
+-- |
+-- | Let us assume that \_C\_ finishes executing next. When that happens,
+-- | AsyncModuleExecutionFulfilled is called again, \_C\_.\[\[Status\]\] is
+-- | set to \~evaluated\~ and \_A\_.\[\[PendingAsyncDependencies\]\] is
+-- | decremented to become 1. The fields of the updated modules are as given
+-- | in .
+-- |
+-- | +----------------------------------+-----------------------+-----------------------+
+-- | | [Field]{.column}                 | \_A\_                 | \_C\_                 |
+-- | |                                  |                       |                       |
+-- | | ::: slash                        |                       |                       |
+-- | | :::                              |                       |                       |
+-- | |                                  |                       |                       |
+-- | | [Module]{.row}                   |                       |                       |
+-- | +==================================+=======================+=======================+
+-- | | \[\[DFSAncestorIndex\]\]         | 0                     | 0                     |
+-- | +----------------------------------+-----------------------+-----------------------+
+-- | | \[\[Status\]\]                   | \~evaluating-async\~  | \~evaluated\~         |
+-- | +----------------------------------+-----------------------+-----------------------+
+-- | | \[\[AsyncEvaluationOrder\]\]     | 4                     | \~done\~              |
+-- | +----------------------------------+-----------------------+-----------------------+
+-- | | \[\[AsyncParentModules\]\]       | « »                   | « \_A\_ »             |
+-- | +----------------------------------+-----------------------+-----------------------+
+-- | | \[\[PendingAsyncDependencies\]\] | 1 (\_B\_)             | 0                     |
+-- | +----------------------------------+-----------------------+-----------------------+
+-- |
+-- | Then, \_B\_ finishes executing. When that happens,
+-- | AsyncModuleExecutionFulfilled is called again and \_B\_.\[\[Status\]\]
+-- | is set to \~evaluated\~. \_A\_.\[\[PendingAsyncDependencies\]\] is
+-- | decremented to become 0, so ExecuteAsyncModule is called and it starts
+-- | executing. The fields of the updated modules are as given in .
+-- |
+-- | +----------------------------------+-----------------------+-----------------------+
+-- | | [Field]{.column}                 | \_A\_                 | \_B\_                 |
+-- | |                                  |                       |                       |
+-- | | ::: slash                        |                       |                       |
+-- | | :::                              |                       |                       |
+-- | |                                  |                       |                       |
+-- | | [Module]{.row}                   |                       |                       |
+-- | +==================================+=======================+=======================+
+-- | | \[\[DFSAncestorIndex\]\]         | 0                     | 0                     |
+-- | +----------------------------------+-----------------------+-----------------------+
+-- | | \[\[Status\]\]                   | \~evaluating-async\~  | \~evaluated\~         |
+-- | +----------------------------------+-----------------------+-----------------------+
+-- | | \[\[AsyncEvaluationOrder\]\]     | 4                     | \~done\~              |
+-- | +----------------------------------+-----------------------+-----------------------+
+-- | | \[\[AsyncParentModules\]\]       | « »                   | « \_A\_ »             |
+-- | +----------------------------------+-----------------------+-----------------------+
+-- | | \[\[PendingAsyncDependencies\]\] | 0                     | 0                     |
+-- | +----------------------------------+-----------------------+-----------------------+
+-- |
+-- | Finally, \_A\_ finishes executing. When that happens,
+-- | AsyncModuleExecutionFulfilled is called again and \_A\_.\[\[Status\]\]
+-- | is set to \~evaluated\~. At this point, the Promise in
+-- | \_A\_.\[\[TopLevelCapability\]\] (which was returned from
+-- | \_A\_.Evaluate()) is resolved, and this concludes the handling of this
+-- | module graph. The fields of the updated module are as given in .
+-- |
+-- | +-----------------------------------+-----------------------------------+
+-- | | [Field]{.column}                  | \_A\_                             |
+-- | |                                   |                                   |
+-- | | ::: slash                         |                                   |
+-- | | :::                               |                                   |
+-- | |                                   |                                   |
+-- | | [Module]{.row}                    |                                   |
+-- | +===================================+===================================+
+-- | | \[\[DFSAncestorIndex\]\]          | 0                                 |
+-- | +-----------------------------------+-----------------------------------+
+-- | | \[\[Status\]\]                    | \~evaluated\~                     |
+-- | +-----------------------------------+-----------------------------------+
+-- | | \[\[AsyncEvaluationOrder\]\]      | \~done\~                          |
+-- | +-----------------------------------+-----------------------------------+
+-- | | \[\[AsyncParentModules\]\]        | « »                               |
+-- | +-----------------------------------+-----------------------------------+
+-- | | \[\[PendingAsyncDependencies\]\]  | 0                                 |
+-- | +-----------------------------------+-----------------------------------+
+-- |
+-- | Alternatively, consider a failure case where \_C\_ fails execution and
+-- | returns an error before \_B\_ has finished executing. When that happens,
+-- | AsyncModuleExecutionRejected is called, which sets \_C\_.\[\[Status\]\]
+-- | to \~evaluated\~ and \_C\_.\[\[EvaluationError\]\] to the error. It then
+-- | propagates this error to all of the AsyncParentModules by performing
+-- | AsyncModuleExecutionRejected on each of them. The fields of the updated
+-- | modules are as given in .
+-- |
+-- | +----------------------------------+-----------------------+-----------------------+
+-- | | [Field]{.column}                 | \_A\_                 | \_C\_                 |
+-- | |                                  |                       |                       |
+-- | | ::: slash                        |                       |                       |
+-- | | :::                              |                       |                       |
+-- | |                                  |                       |                       |
+-- | | [Module]{.row}                   |                       |                       |
+-- | +==================================+=======================+=======================+
+-- | | \[\[DFSAncestorIndex\]\]         | 0                     | 0                     |
+-- | +----------------------------------+-----------------------+-----------------------+
+-- | | \[\[Status\]\]                   | \~evaluated\~         | \~evaluated\~         |
+-- | +----------------------------------+-----------------------+-----------------------+
+-- | | \[\[AsyncEvaluationOrder\]\]     | \~done\~              | \~done\~              |
+-- | +----------------------------------+-----------------------+-----------------------+
+-- | | \[\[AsyncParentModules\]\]       | « »                   | « \_A\_ »             |
+-- | +----------------------------------+-----------------------+-----------------------+
+-- | | \[\[PendingAsyncDependencies\]\] | 1 (\_B\_)             | 0                     |
+-- | +----------------------------------+-----------------------+-----------------------+
+-- | | \[\[EvaluationError\]\]          | \~empty\~             | \_C\_\'s evaluation   |
+-- | |                                  |                       | error                 |
+-- | +----------------------------------+-----------------------+-----------------------+
+-- |
+-- | \_A\_ will be rejected with the same error as \_C\_ since \_C\_ will
+-- | call AsyncModuleExecutionRejected on \_A\_ with \_C\_\'s error.
+-- | \_A\_.\[\[Status\]\] is set to \~evaluated\~. At this point the Promise
+-- | in \_A\_.\[\[TopLevelCapability\]\] (which was returned from
+-- | \_A\_.Evaluate()) is rejected. The fields of the updated module are as
+-- | given in .
+-- |
+-- | +-----------------------------------+-----------------------------------+
+-- | | [Field]{.column}                  | \_A\_                             |
+-- | |                                   |                                   |
+-- | | ::: slash                         |                                   |
+-- | | :::                               |                                   |
+-- | |                                   |                                   |
+-- | | [Module]{.row}                    |                                   |
+-- | +===================================+===================================+
+-- | | \[\[DFSAncestorIndex\]\]          | 0                                 |
+-- | +-----------------------------------+-----------------------------------+
+-- | | \[\[Status\]\]                    | \~evaluated\~                     |
+-- | +-----------------------------------+-----------------------------------+
+-- | | \[\[AsyncEvaluationOrder\]\]      | \~done\~                          |
+-- | +-----------------------------------+-----------------------------------+
+-- | | \[\[AsyncParentModules\]\]        | « »                               |
+-- | +-----------------------------------+-----------------------------------+
+-- | | \[\[PendingAsyncDependencies\]\]  | 0                                 |
+-- | +-----------------------------------+-----------------------------------+
+-- | | \[\[EvaluationError\]\]           | \_C\_\'s Evaluation Error         |
+-- | +-----------------------------------+-----------------------------------+
+-- |
+-- | Then, \_B\_ finishes executing without an error. When that happens,
+-- | AsyncModuleExecutionFulfilled is called again and \_B\_.\[\[Status\]\]
+-- | is set to \~evaluated\~. GatherAvailableAncestors is called on \_B\_.
+-- | However, \_A\_.\[\[CycleRoot\]\] is \_A\_ which has an evaluation error,
+-- | so it will not be added to the returned \_sortedExecList\_ and
+-- | AsyncModuleExecutionFulfilled will return without further processing.
+-- | Any future importer of \_B\_ will resolve the rejection of
+-- | \_B\_.\[\[CycleRoot\]\].\[\[EvaluationError\]\] from the evaluation
+-- | error from \_C\_ that was set on the cycle root \_A\_. The fields of the
+-- | updated modules are as given in .
+-- |
+-- | +----------------------------------+-----------------------+-----------------------+
+-- | | [Field]{.column}                 | \_A\_                 | \_B\_                 |
+-- | |                                  |                       |                       |
+-- | | ::: slash                        |                       |                       |
+-- | | :::                              |                       |                       |
+-- | |                                  |                       |                       |
+-- | | [Module]{.row}                   |                       |                       |
+-- | +==================================+=======================+=======================+
+-- | | \[\[DFSAncestorIndex\]\]         | 0                     | 0                     |
+-- | +----------------------------------+-----------------------+-----------------------+
+-- | | \[\[Status\]\]                   | \~evaluated\~         | \~evaluated\~         |
+-- | +----------------------------------+-----------------------+-----------------------+
+-- | | \[\[AsyncEvaluationOrder\]\]     | 4                     | 1                     |
+-- | +----------------------------------+-----------------------+-----------------------+
+-- | | \[\[AsyncParentModules\]\]       | « »                   | « \_A\_ »             |
+-- | +----------------------------------+-----------------------+-----------------------+
+-- | | \[\[PendingAsyncDependencies\]\] | 0                     | 0                     |
+-- | +----------------------------------+-----------------------+-----------------------+
+-- | | \[\[EvaluationError\]\]          | \_C\_\'s Evaluation   | \~empty\~             |
+-- | |                                  | Error                 |                       |
+-- | +----------------------------------+-----------------------+-----------------------+
+-- |
+
+-- SPEC: L21872-L21968
+-- | # Source Text Module Records
+-- |
+-- | A [Source Text Module Record]{#sourctextmodule-record .dfn
+-- | variants="Source Text Module Records"} is used to represent information
+-- | about a module that was defined from ECMAScript source text () that was
+-- | parsed using the goal symbol \|Module\|. Its fields contain digested
+-- | information about the names that are imported and exported by the
+-- | module, and its concrete methods use these digests to link and evaluate
+-- | the module.
+-- |
+-- | A Source Text Module Record can exist in a module graph with other
+-- | subclasses of the abstract Module Record type, and can participate in
+-- | cycles with other subclasses of the Cyclic Module Record type.
+-- |
+-- | In addition to the fields defined in , Source Text Module Records have
+-- | the additional fields listed in . Each of these fields is initially set
+-- | in ParseModule.
+-- |
+-- |   Field Name                      Value Type                                          Meaning
+-- |   ------------------------------- --------------------------------------------------- -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+-- |   \[\[ECMAScriptCode\]\]          a Parse Node                                        The result of parsing the source text of this module using \|Module\| as the goal symbol.
+-- |   \[\[Context\]\]                 an ECMAScript code execution context or \~empty\~   The execution context associated with this module. It is \~empty\~ until the module\'s environment has been initialized.
+-- |   \[\[ImportMeta\]\]              an Object or \~empty\~                              An object exposed through the \`import.meta\` meta property. It is \~empty\~ until it is accessed by ECMAScript code.
+-- |   \[\[ImportEntries\]\]           a List of ImportEntry Records                       A List of ImportEntry records derived from the code of this module.
+-- |   \[\[LocalExportEntries\]\]      a List of ExportEntry Records                       A List of ExportEntry records derived from the code of this module that correspond to declarations that occur within the module.
+-- |   \[\[IndirectExportEntries\]\]   a List of ExportEntry Records                       A List of ExportEntry records derived from the code of this module that correspond to reexported imports that occur within the module or exports from \`export \* as namespace\` declarations.
+-- |   \[\[StarExportEntries\]\]       a List of ExportEntry Records                       A List of ExportEntry records derived from the code of this module that correspond to \`export \*\` declarations that occur within the module, not including \`export \* as namespace\` declarations.
+-- |
+-- | An [ImportEntry Record]{#importentry-record .dfn
+-- | variants="ImportEntry Records"} is a Record that digests information
+-- | about a single declarative import. Each ImportEntry Record has the
+-- | fields defined in :
+-- |
+-- |   Field Name              Value Type                         Meaning
+-- |   ----------------------- ---------------------------------- ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+-- |   \[\[ModuleRequest\]\]   a ModuleRequest Record             ModuleRequest Record representing the \|ModuleSpecifier\| and import attributes of the \|ImportDeclaration\|.
+-- |   \[\[ImportName\]\]      a String or \~namespace-object\~   The name under which the desired binding is exported by the module identified by \[\[ModuleRequest\]\]. The value \~namespace-object\~ indicates that the import request is for the target module\'s namespace object.
+-- |   \[\[LocalName\]\]       a String                           The name that is used to locally access the imported value from within the importing module.
+-- |
+-- | gives examples of ImportEntry records fields used to represent the
+-- | syntactic import forms:
+-- |
+-- | +----------------+-----------------------+----------------------+-------------------+
+-- | | Import         | \[\[ModuleRequest\]\] | \[\[ImportName\]\]   | \[\[LocalName\]\] |
+-- | | Statement Form |                       |                      |                   |
+-- | +================+=======================+======================+===================+
+-- | | \`import v     | \*\"mod\"\*           | \*\"default\"\*      | \*\"v\"\*         |
+-- | | from           |                       |                      |                   |
+-- | | \"mod\";\`     |                       |                      |                   |
+-- | +----------------+-----------------------+----------------------+-------------------+
+-- | | \`import \* as | \*\"mod\"\*           | \~namespace-object\~ | \*\"ns\"\*        |
+-- | | ns from        |                       |                      |                   |
+-- | | \"mod\";\`     |                       |                      |                   |
+-- | +----------------+-----------------------+----------------------+-------------------+
+-- | | \`import {x}   | \*\"mod\"\*           | \*\"x\"\*            | \*\"x\"\*         |
+-- | | from           |                       |                      |                   |
+-- | | \"mod\";\`     |                       |                      |                   |
+-- | +----------------+-----------------------+----------------------+-------------------+
+-- | | \`import {x as | \*\"mod\"\*           | \*\"x\"\*            | \*\"v\"\*         |
+-- | | v} from        |                       |                      |                   |
+-- | | \"mod\";\`     |                       |                      |                   |
+-- | +----------------+-----------------------+----------------------+-------------------+
+-- | | \`import       | An ImportEntry Record is not created.                            |
+-- | | \"mod\";\`     |                                                                  |
+-- | +----------------+------------------------------------------------------------------+
+-- |
+-- | An [ExportEntry Record]{#exportentry-record .dfn
+-- | variants="ExportEntry Records"} is a Record that digests information
+-- | about a single declarative export. Each ExportEntry Record has the
+-- | fields defined in :
+-- |
+-- |   Field Name              Value Type                                            Meaning
+-- |   ----------------------- ----------------------------------------------------- --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+-- |   \[\[ExportName\]\]      a String or \*null\*                                  The name used to export this binding by this module.
+-- |   \[\[ModuleRequest\]\]   a ModuleRequest Record or \*null\*                    The ModuleRequest Record representing the \|ModuleSpecifier\| and import attributes of the \|ExportDeclaration\|. \*null\* if the \|ExportDeclaration\| does not have a \|ModuleSpecifier\|.
+-- |   \[\[ImportName\]\]      a String, \*null\*, \~all\~, or \~all-but-default\~   The name under which the desired binding is exported by the module identified by \[\[ModuleRequest\]\]. \*null\* if the \|ExportDeclaration\| does not have a \|ModuleSpecifier\|. \~all\~ is used for \`export \* as ns from \"mod\"\` declarations. \~all-but-default\~ is used for \`export \* from \"mod\"\` declarations.
+-- |   \[\[LocalName\]\]       a String or \*null\*                                  The name that is used to locally access the exported value from within the importing module. \*null\* if the exported value is not locally accessible from within the module.
+-- |
+-- | gives examples of the ExportEntry record fields used to represent the
+-- | syntactic export forms:
+-- |
+-- |   Export Statement Form                \[\[ExportName\]\]   \[\[ModuleRequest\]\]   \[\[ImportName\]\]    \[\[LocalName\]\]
+-- |   ------------------------------------ -------------------- ----------------------- --------------------- -------------------------
+-- |   \`export var v;\`                    \*\"v\"\*            \*null\*                \*null\*              \*\"v\"\*
+-- |   \`export default function f() {}\`   \*\"default\"\*      \*null\*                \*null\*              \*\"f\"\*
+-- |   \`export default function () {}\`    \*\"default\"\*      \*null\*                \*null\*              \*\"\\\*default\\\*\"\*
+-- |   \`export default 42;\`               \*\"default\"\*      \*null\*                \*null\*              \*\"\\\*default\\\*\"\*
+-- |   \`export {x};\`                      \*\"x\"\*            \*null\*                \*null\*              \*\"x\"\*
+-- |   \`export {v as x};\`                 \*\"x\"\*            \*null\*                \*null\*              \*\"v\"\*
+-- |   \`export {x} from \"mod\";\`         \*\"x\"\*            \*\"mod\"\*             \*\"x\"\*             \*null\*
+-- |   \`export {v as x} from \"mod\";\`    \*\"x\"\*            \*\"mod\"\*             \*\"v\"\*             \*null\*
+-- |   \`export \* from \"mod\";\`          \*null\*             \*\"mod\"\*             \~all-but-default\~   \*null\*
+-- |   \`export \* as ns from \"mod\";\`    \*\"ns\"\*           \*\"mod\"\*             \~all\~               \*null\*
+-- |
+-- | The following definitions specify the required concrete methods and
+-- | other abstract operations for Source Text Module Records
+-- |
+
+-- SPEC: L21969-L22030
+-- | # ParseModule ( \_sourceText\_: ECMAScript source text, \_realm\_: a Realm Record, \_hostDefined\_: anything, ): a Source Text Module Record or a non-empty List of \*SyntaxError\* objects
+-- |
+-- | description
+-- | :   It creates a Source Text Module Record based upon the result of
+-- |     parsing \_sourceText\_ as a \|Module\|.
+-- |
+-- | 1\. Let \_body\_ be ParseText(\_sourceText\_, \|Module\|). 1. If
+-- | \_body\_ is a List of errors, return \_body\_. 1. Let
+-- | \_requestedModules\_ be the ModuleRequests of \_body\_. 1. Let
+-- | \_importEntries\_ be the ImportEntries of \_body\_. 1. Let
+-- | \_importedBoundNames\_ be ImportedLocalNames(\_importEntries\_). 1. Let
+-- | \_indirectExportEntries\_ be a new empty List. 1. Let
+-- | \_localExportEntries\_ be a new empty List. 1. Let \_starExportEntries\_
+-- | be a new empty List. 1. Let \_exportEntries\_ be the ExportEntries of
+-- | \_body\_. 1. For each ExportEntry Record \_ee\_ of \_exportEntries\_,
+-- | do 1. If \_ee\_.\[\[ModuleRequest\]\] is \*null\*, then 1. If
+-- | \_importedBoundNames\_ does not contain \_ee\_.\[\[LocalName\]\],
+-- | then 1. Append \_ee\_ to \_localExportEntries\_. 1. Else, 1. NOTE: When
+-- | exporting a binding or namespace object which was originally imported
+-- | from another module, the ExportEntry Record is rewritten to match the
+-- | form it would have if the binding or namespace object had been
+-- | re-exported directly from the original module rather than imported then
+-- | exported. This allows conflicts which arise from exporting the same
+-- | binding or namespace twice under the same name through \`export \*
+-- | from\` to be ignored rather than being treated as ambiguous in step of
+-- | the ResolveExport concrete method of Source Text Module Records. 1. Let
+-- | \_ie\_ be the element of \_importEntries\_ whose \[\[LocalName\]\] is
+-- | \_ee\_.\[\[LocalName\]\]. 1. If \_ie\_.\[\[ImportName\]\] is
+-- | \~namespace-object\~, then 1. NOTE: This is a re-export of an imported
+-- | module namespace object. 1. Append the ExportEntry Record {
+-- | \[\[ModuleRequest\]\]: \_ie\_.\[\[ModuleRequest\]\], \[\[ImportName\]\]:
+-- | \~all\~, \[\[LocalName\]\]: \*null\*, \[\[ExportName\]\]:
+-- | \_ee\_.\[\[ExportName\]\] } to \_indirectExportEntries\_. 1. Else, 1.
+-- | NOTE: This is a re-export of a single name. 1. Append the ExportEntry
+-- | Record { \[\[ModuleRequest\]\]: \_ie\_.\[\[ModuleRequest\]\],
+-- | \[\[ImportName\]\]: \_ie\_.\[\[ImportName\]\], \[\[LocalName\]\]:
+-- | \*null\*, \[\[ExportName\]\]: \_ee\_.\[\[ExportName\]\] } to
+-- | \_indirectExportEntries\_. 1. Else if \_ee\_.\[\[ImportName\]\] is
+-- | \~all-but-default\~, then 1. Assert: \_ee\_.\[\[ExportName\]\] is
+-- | \*null\*. 1. Append \_ee\_ to \_starExportEntries\_. 1. Else, 1. Append
+-- | \_ee\_ to \_indirectExportEntries\_. 1. Let \_async\_ be \_body\_
+-- | Contains \`await\`. 1. Return Source Text Module Record { \[\[Realm\]\]:
+-- | \_realm\_, \[\[Environment\]\]: \~empty\~, \[\[Namespace\]\]: \~empty\~,
+-- | \[\[CycleRoot\]\]: \~empty\~, \[\[HasTLA\]\]: \_async\_,
+-- | \[\[AsyncEvaluationOrder\]\]: \~unset\~, \[\[TopLevelCapability\]\]:
+-- | \~empty\~, \[\[AsyncParentModules\]\]: « »,
+-- | \[\[PendingAsyncDependencies\]\]: \~empty\~, \[\[Status\]\]: \~new\~,
+-- | \[\[EvaluationError\]\]: \~empty\~, \[\[HostDefined\]\]:
+-- | \_hostDefined\_, \[\[ECMAScriptCode\]\]: \_body\_, \[\[Context\]\]:
+-- | \~empty\~, \[\[ImportMeta\]\]: \~empty\~, \[\[RequestedModules\]\]:
+-- | \_requestedModules\_, \[\[LoadedModules\]\]: « », \[\[ImportEntries\]\]:
+-- | \_importEntries\_, \[\[LocalExportEntries\]\]: \_localExportEntries\_,
+-- | \[\[IndirectExportEntries\]\]: \_indirectExportEntries\_,
+-- | \[\[StarExportEntries\]\]: \_starExportEntries\_,
+-- | \[\[DFSAncestorIndex\]\]: \~empty\~ }.
+-- |
+-- | An implementation may parse module source text and analyse it for Early
+-- | Error conditions prior to the evaluation of ParseModule for that module
+-- | source text. However, the reporting of any errors must be deferred until
+-- | the point where this specification actually performs ParseModule upon
+-- | that source text.
+-- |
+
+-- SPEC: L22031-L22036
+-- | # Implementation of Module Record Abstract Methods
+-- |
+-- | The following are the concrete methods for Source Text Module Record
+-- | that implement the corresponding Module Record abstract methods defined
+-- | in .
+-- |
+
+-- SPEC: L22037-L22067
+-- | # GetExportedNames ( optional \_exportStarSet\_: a List of Source Text Module Records, ): a List of Strings
+-- |
+-- | for
+-- | :   a Source Text Module Record \_module\_
+-- |
+-- | 1\. Assert: \_module\_.\[\[Status\]\] is not \~new\~. 1. If
+-- | \_exportStarSet\_ is not present, set \_exportStarSet\_ to a new empty
+-- | List. 1. If \_exportStarSet\_ contains \_module\_, then 1. Assert:
+-- | We\'ve reached the starting point of an \`export \*\` circularity. 1.
+-- | Return a new empty List. 1. Append \_module\_ to \_exportStarSet\_. 1.
+-- | Let \_exportedNames\_ be a new empty List. 1. For each ExportEntry
+-- | Record \_e\_ of \_module\_.\[\[LocalExportEntries\]\], do 1. Assert:
+-- | \_module\_ provides the direct binding for this export. 1. Assert:
+-- | \_e\_.\[\[ExportName\]\] is not \*null\*. 1. Append
+-- | \_e\_.\[\[ExportName\]\] to \_exportedNames\_. 1. For each ExportEntry
+-- | Record \_e\_ of \_module\_.\[\[IndirectExportEntries\]\], do 1. Assert:
+-- | \_module\_ imports a specific binding for this export. 1. Assert:
+-- | \_e\_.\[\[ExportName\]\] is not \*null\*. 1. Append
+-- | \_e\_.\[\[ExportName\]\] to \_exportedNames\_. 1. For each ExportEntry
+-- | Record \_e\_ of \_module\_.\[\[StarExportEntries\]\], do 1. Assert:
+-- | \_e\_.\[\[ModuleRequest\]\] is not \*null\*. 1. Let \_requestedModule\_
+-- | be GetImportedModule(\_module\_, \_e\_.\[\[ModuleRequest\]\]). 1. Let
+-- | \_starNames\_ be
+-- | \_requestedModule\_.GetExportedNames(\_exportStarSet\_). 1. For each
+-- | element \_n\_ of \_starNames\_, do 1. If \_n\_ is not \*\"default\"\*,
+-- | then 1. If \_exportedNames\_ does not contain \_n\_, then 1. Append
+-- | \_n\_ to \_exportedNames\_. 1. Return \_exportedNames\_.
+-- |
+-- | GetExportedNames does not filter out or throw an exception for names
+-- | that have ambiguous star export bindings.
+-- |
+
+-- SPEC: L22068-L22138
+-- | # ResolveExport ( \_exportName\_: a String, optional \_resolveSet\_: a List of Records with fields \[\[Module\]\] (a Module Record) and \[\[ExportName\]\] (a String), ): a ResolvedBinding Record, \*null\*, or \~ambiguous\~
+-- |
+-- | for
+-- | :   a Source Text Module Record \_module\_
+-- |
+-- | description
+-- |
+-- | :   ResolveExport attempts to resolve an imported binding to the actual
+-- |     defining module and local binding name. The defining module may be
+-- |     the module represented by the Module Record this method was invoked
+-- |     on or some other module that is imported by that module. The
+-- |     parameter \_resolveSet\_ is used to detect unresolved circular
+-- |     import/export paths. If a pair consisting of specific Module Record
+-- |     and \_exportName\_ is reached that is already in \_resolveSet\_, an
+-- |     import circularity has been encountered. Before recursively calling
+-- |     ResolveExport, a pair consisting of \_module\_ and \_exportName\_ is
+-- |     added to \_resolveSet\_.
+-- |
+-- |     If a defining module is found, a ResolvedBinding Record {
+-- |     \[\[Module\]\], \[\[BindingName\]\] } is returned. This record
+-- |     identifies the resolved binding of the originally requested export,
+-- |     unless this is the export of a namespace with no local binding. In
+-- |     this case, \[\[BindingName\]\] will be set to \~namespace\~. If no
+-- |     definition was found or the request is found to be circular,
+-- |     \*null\* is returned. If the request is found to be ambiguous,
+-- |     \~ambiguous\~ is returned.
+-- |
+-- | 1\. Assert: \_module\_.\[\[Status\]\] is not \~new\~. 1. If
+-- | \_resolveSet\_ is not present, set \_resolveSet\_ to a new empty
+-- | List. 1. For each Record { \[\[Module\]\], \[\[ExportName\]\] } \_r\_ of
+-- | \_resolveSet\_, do 1. If \_module\_ and \_r\_.\[\[Module\]\] are the
+-- | same Module Record and \_exportName\_ is \_r\_.\[\[ExportName\]\],
+-- | then 1. Assert: This is a circular import request. 1. Return
+-- | \*null\*. 1. Append the Record { \[\[Module\]\]: \_module\_,
+-- | \[\[ExportName\]\]: \_exportName\_ } to \_resolveSet\_. 1. For each
+-- | ExportEntry Record \_e\_ of \_module\_.\[\[LocalExportEntries\]\], do 1.
+-- | If \_e\_.\[\[ExportName\]\] is \_exportName\_, then 1. Assert:
+-- | \_module\_ provides the direct binding for this export. 1. Return
+-- | ResolvedBinding Record { \[\[Module\]\]: \_module\_,
+-- | \[\[BindingName\]\]: \_e\_.\[\[LocalName\]\] }. 1. For each ExportEntry
+-- | Record \_e\_ of \_module\_.\[\[IndirectExportEntries\]\], do 1. If
+-- | \_e\_.\[\[ExportName\]\] is \_exportName\_, then 1. Assert:
+-- | \_e\_.\[\[ModuleRequest\]\] is not \*null\*. 1. Let \_importedModule\_
+-- | be GetImportedModule(\_module\_, \_e\_.\[\[ModuleRequest\]\]). 1. If
+-- | \_e\_.\[\[ImportName\]\] is \~all\~, then 1. Assert: \_module\_ does not
+-- | provide the direct binding for this export. 1. Return ResolvedBinding
+-- | Record { \[\[Module\]\]: \_importedModule\_, \[\[BindingName\]\]:
+-- | \~namespace\~ }. 1. Assert: \_module\_ imports a specific binding for
+-- | this export. 1. Assert: \_e\_.\[\[ImportName\]\] is a String. 1. Return
+-- | \_importedModule\_.ResolveExport(\_e\_.\[\[ImportName\]\],
+-- | \_resolveSet\_). 1. If \_exportName\_ is \*\"default\"\*, then 1.
+-- | Assert: A \`default\` export was not explicitly defined by this
+-- | module. 1. Return \*null\*. 1. NOTE: A \`default\` export cannot be
+-- | provided by an \`export \* from \"mod\"\` declaration. 1. Let
+-- | \_starResolution\_ be \*null\*. 1. For each ExportEntry Record \_e\_ of
+-- | \_module\_.\[\[StarExportEntries\]\], do 1. Assert:
+-- | \_e\_.\[\[ModuleRequest\]\] is not \*null\*. 1. Let \_importedModule\_
+-- | be GetImportedModule(\_module\_, \_e\_.\[\[ModuleRequest\]\]). 1. Let
+-- | \_resolution\_ be \_importedModule\_.ResolveExport(\_exportName\_,
+-- | \_resolveSet\_). 1. If \_resolution\_ is \~ambiguous\~, return
+-- | \~ambiguous\~. 1. If \_resolution\_ is not \*null\*, then 1. Assert:
+-- | \_resolution\_ is a ResolvedBinding Record. 1. If \_starResolution\_ is
+-- | \*null\*, then 1. Set \_starResolution\_ to \_resolution\_. 1.
+-- | \[id=\"step-resolveexport-conflict\"\] Else, 1. Assert: There is more
+-- | than one \`\*\` export that includes the requested name. 1. If
+-- | \_resolution\_.\[\[Module\]\] and \_starResolution\_.\[\[Module\]\] are
+-- | not the same Module Record, return \~ambiguous\~. 1. If
+-- | \_resolution\_.\[\[BindingName\]\] is not
+-- | \_starResolution\_.\[\[BindingName\]\], return \~ambiguous\~. 1. Return
+-- | \_starResolution\_.
+-- |
+
+-- SPEC: L22139-L22144
+-- | # Implementation of Cyclic Module Record Abstract Methods
+-- |
+-- | The following are the concrete methods for Source Text Module Record
+-- | that implement the corresponding Cyclic Module Record abstract methods
+-- | defined in .
+-- |
+
+-- SPEC: L22145-L22210
+-- | # InitializeEnvironment ( ): either a normal completion containing \~unused\~ or a throw completion
+-- |
+-- | for
+-- | :   a Source Text Module Record \_module\_
+-- |
+-- | 1\. For each ExportEntry Record \_e\_ of
+-- | \_module\_.\[\[IndirectExportEntries\]\], do 1. Assert:
+-- | \_e\_.\[\[ExportName\]\] is not \*null\*. 1. Let \_resolution\_ be
+-- | \_module\_.ResolveExport(\_e\_.\[\[ExportName\]\]). 1. If \_resolution\_
+-- | is either \*null\* or \~ambiguous\~, throw a \*SyntaxError\*
+-- | exception. 1. Assert: \_resolution\_ is a ResolvedBinding Record. 1.
+-- | Assert: All named exports from \_module\_ are resolvable. 1. Let
+-- | \_realm\_ be \_module\_.\[\[Realm\]\]. 1. Assert: \_realm\_ is not
+-- | \*undefined\*. 1. Let \_env\_ be
+-- | NewModuleEnvironment(\_realm\_.\[\[GlobalEnv\]\]). 1. Set
+-- | \_module\_.\[\[Environment\]\] to \_env\_. 1. For each ImportEntry
+-- | Record \_in\_ of \_module\_.\[\[ImportEntries\]\], do 1. Let
+-- | \_importedModule\_ be GetImportedModule(\_module\_,
+-- | \_in\_.\[\[ModuleRequest\]\]). 1. If \_in\_.\[\[ImportName\]\] is
+-- | \~namespace-object\~, then 1. Let \_namespace\_ be
+-- | GetModuleNamespace(\_importedModule\_). 1. Perform !
+-- | \_env\_.CreateImmutableBinding(\_in\_.\[\[LocalName\]\], \*true\*). 1.
+-- | Perform ! \_env\_.InitializeBinding(\_in\_.\[\[LocalName\]\],
+-- | \_namespace\_). 1. Else, 1. Let \_resolution\_ be
+-- | \_importedModule\_.ResolveExport(\_in\_.\[\[ImportName\]\]). 1. If
+-- | \_resolution\_ is either \*null\* or \~ambiguous\~, throw a
+-- | \*SyntaxError\* exception. 1. If \_resolution\_.\[\[BindingName\]\] is
+-- | \~namespace\~, then 1. Let \_namespace\_ be
+-- | GetModuleNamespace(\_resolution\_.\[\[Module\]\]). 1. Perform !
+-- | \_env\_.CreateImmutableBinding(\_in\_.\[\[LocalName\]\], \*true\*). 1.
+-- | Perform ! \_env\_.InitializeBinding(\_in\_.\[\[LocalName\]\],
+-- | \_namespace\_). 1. Else, 1. Perform CreateImportBinding(\_env\_,
+-- | \_in\_.\[\[LocalName\]\], \_resolution\_.\[\[Module\]\],
+-- | \_resolution\_.\[\[BindingName\]\]). 1. Let \_moduleContext\_ be a new
+-- | ECMAScript code execution context. 1. Set the Function of
+-- | \_moduleContext\_ to \*null\*. 1. Assert: \_module\_.\[\[Realm\]\] is
+-- | not \*undefined\*. 1. Set the Realm of \_moduleContext\_ to
+-- | \_module\_.\[\[Realm\]\]. 1. Set the ScriptOrModule of \_moduleContext\_
+-- | to \_module\_. 1. Set the VariableEnvironment of \_moduleContext\_ to
+-- | \_module\_.\[\[Environment\]\]. 1. Set the LexicalEnvironment of
+-- | \_moduleContext\_ to \_module\_.\[\[Environment\]\]. 1. Set the
+-- | PrivateEnvironment of \_moduleContext\_ to \*null\*. 1. Set
+-- | \_module\_.\[\[Context\]\] to \_moduleContext\_. 1. Push
+-- | \_moduleContext\_ onto the execution context stack; \_moduleContext\_ is
+-- | now the running execution context. 1. Let \_code\_ be
+-- | \_module\_.\[\[ECMAScriptCode\]\]. 1. Let \_varDeclarations\_ be the
+-- | VarScopedDeclarations of \_code\_. 1. Let \_declaredVarNames\_ be a new
+-- | empty List. 1. For each element \_d\_ of \_varDeclarations\_, do 1. For
+-- | each element \_dn\_ of the BoundNames of \_d\_, do 1. If
+-- | \_declaredVarNames\_ does not contain \_dn\_, then 1. Perform !
+-- | \_env\_.CreateMutableBinding(\_dn\_, \*false\*). 1. Perform !
+-- | \_env\_.InitializeBinding(\_dn\_, \*undefined\*). 1. Append \_dn\_ to
+-- | \_declaredVarNames\_. 1. Let \_lexDeclarations\_ be the
+-- | LexicallyScopedDeclarations of \_code\_. 1. Let \_privateEnv\_ be
+-- | \*null\*. 1. For each element \_d\_ of \_lexDeclarations\_, do 1. For
+-- | each element \_dn\_ of the BoundNames of \_d\_, do 1. If
+-- | IsConstantDeclaration of \_d\_ is \*true\*, then 1. Perform !
+-- | \_env\_.CreateImmutableBinding(\_dn\_, \*true\*). 1. Else, 1. Perform !
+-- | \_env\_.CreateMutableBinding(\_dn\_, \*false\*). 1. If \_d\_ is either a
+-- | \|FunctionDeclaration\|, a \|GeneratorDeclaration\|, an
+-- | \|AsyncFunctionDeclaration\|, or an \|AsyncGeneratorDeclaration\|,
+-- | then 1. Let \_fo\_ be InstantiateFunctionObject of \_d\_ with arguments
+-- | \_env\_ and \_privateEnv\_. 1. Perform !
+-- | \_env\_.InitializeBinding(\_dn\_, \_fo\_). 1. Remove \_moduleContext\_
+-- | from the execution context stack. 1. Return \~unused\~.
+-- |
+
+-- SPEC: L22211-L22236
+-- | # ExecuteModule ( optional \_capability\_: a PromiseCapability Record, ): either a normal completion containing \~unused\~ or a throw completion
+-- |
+-- | for
+-- | :   a Source Text Module Record \_module\_
+-- |
+-- | 1\. Let \_moduleContext\_ be a new ECMAScript code execution context. 1.
+-- | Set the Function of \_moduleContext\_ to \*null\*. 1. Set the Realm of
+-- | \_moduleContext\_ to \_module\_.\[\[Realm\]\]. 1. Set the ScriptOrModule
+-- | of \_moduleContext\_ to \_module\_. 1. Assert: \_module\_ has been
+-- | linked and declarations in its module environment have been
+-- | instantiated. 1. Set the VariableEnvironment of \_moduleContext\_ to
+-- | \_module\_.\[\[Environment\]\]. 1. Set the LexicalEnvironment of
+-- | \_moduleContext\_ to \_module\_.\[\[Environment\]\]. 1. Suspend the
+-- | running execution context. 1. If \_module\_.\[\[HasTLA\]\] is \*false\*,
+-- | then 1. Assert: \_capability\_ is not present. 1. Push \_moduleContext\_
+-- | onto the execution context stack; \_moduleContext\_ is now the running
+-- | execution context. 1. Let \_result\_ be Completion(Evaluation of
+-- | \_module\_.\[\[ECMAScriptCode\]\]). 1. Suspend \_moduleContext\_ and
+-- | remove it from the execution context stack. 1. Resume the context that
+-- | is now on the top of the execution context stack as the running
+-- | execution context. 1. If \_result\_ is an abrupt completion, then 1.
+-- | Return ? \_result\_. 1. Else, 1. Assert: \_capability\_ is a
+-- | PromiseCapability Record. 1. Perform AsyncBlockStart(\_capability\_,
+-- | \_module\_.\[\[ECMAScriptCode\]\], \_moduleContext\_). 1. Return
+-- | \~unused\~.
+-- |
+
+-- SPEC: L22237-L22272
+-- | # Synthetic Module Records
+-- |
+-- | A [Synthetic Module Record]{.dfn variants="Synthetic Module Records"} is
+-- | used to represent information about a module that is defined by
+-- | specifications. Its exported names are statically defined at creation,
+-- | while their corresponding values can change over time using
+-- | SetSyntheticModuleExport. It has no imports or dependencies.
+-- |
+-- | A Synthetic Module Record could be used for defining a variety of module
+-- | types: for example, JSON modules or CSS modules.
+-- |
+-- | In addition to the fields defined in Synthetic Module Records have the
+-- | additional fields listed in .
+-- |
+-- |   Field Name                Value Type            Meaning
+-- |   ------------------------- --------------------- ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+-- |   \[\[ExportNames\]\]       a List of Strings     The names of the exports of the module. This list does not contain duplicates.
+-- |   \[\[EvaluationSteps\]\]   an Abstract Closure   The initialization logic to perform upon evaluation of the module, taking the Synthetic Module Record as its sole argument. It must not modify \[\[ExportNames\]\]. It may return an abrupt completion.
+-- |
+-- | # CreateDefaultExportSyntheticModule ( \_defaultExport\_: an ECMAScript language value, ): a Synthetic Module Record
+-- |
+-- | description
+-- | :   It creates a Synthetic Module Record whose default export is
+-- |     \_defaultExport\_.
+-- |
+-- | 1\. Let \_realm\_ be the current Realm Record. 1. Let
+-- | \_setDefaultExport\_ be a new Abstract Closure with parameters
+-- | (\_module\_) that captures \_defaultExport\_ and performs the following
+-- | steps when called: 1. Perform SetSyntheticModuleExport(\_module\_,
+-- | \*\"default\"\*, \_defaultExport\_). 1. Return
+-- | NormalCompletion(\~unused\~). 1. Return the Synthetic Module Record {
+-- | \[\[Realm\]\]: \_realm\_, \[\[Environment\]\]: \~empty\~,
+-- | \[\[Namespace\]\]: \~empty\~, \[\[HostDefined\]\]: \*undefined\*,
+-- | \[\[ExportNames\]\]: « \*\"default\"\* », \[\[EvaluationSteps\]\]:
+-- | \_setDefaultExport\_ }.
+-- |
+
+-- SPEC: L34971-L34990
+-- | \_newLength\_ × \_elementSize\_. 1. If \_offset\_ + \_newByteLength\_ \>
+-- | \_bufferByteLength\_, throw a \*RangeError\* exception. 1. Set
+-- | \_O\_.\[\[ByteLength\]\] to \_newByteLength\_. 1. Set
+-- | \_O\_.\[\[ArrayLength\]\] to \_newByteLength\_ / \_elementSize\_. 1. Set
+-- | \_O\_.\[\[ViewedArrayBuffer\]\] to \_buffer\_. 1. Set
+-- | \_O\_.\[\[ByteOffset\]\] to \_offset\_. 1. Return \~unused\~.
+-- |
+-- | # InitializeTypedArrayFromList ( \_O\_: a TypedArray, \_values\_: a List of ECMAScript language values, ): either a normal completion containing \~unused\~ or a throw completion
+-- |
+-- | 1\. Let \_len\_ be the number of elements in \_values\_. 1. Perform ?
+-- | AllocateTypedArrayBuffer(\_O\_, \_len\_). 1. Let \_k\_ be 0. 1. Repeat,
+-- | while \_k\_ \< \_len\_, 1. Let \_Pk\_ be ! ToString(𝔽(\_k\_)). 1. Let
+-- | \_kValue\_ be the first element of \_values\_. 1. Remove the first
+-- | element from \_values\_. 1. Perform ? Set(\_O\_, \_Pk\_, \_kValue\_,
+-- | \*true\*). 1. Set \_k\_ to \_k\_ + 1. 1. Assert: \_values\_ is now an
+-- | empty List. 1. Return \~unused\~.
+-- |
+-- | # InitializeTypedArrayFromArrayLike ( \_O\_: a TypedArray, \_arrayLike\_: an Object, but not a TypedArray or an ArrayBuffer, ): either a normal completion containing \~unused\~ or a throw completion
+-- |
+-- | 1\. Let \_len\_ be ? LengthOfArrayLike(\_arrayLike\_). 1. Perform ?
+
+-- SPEC: L34991-L35029
+-- | AllocateTypedArrayBuffer(\_O\_, \_len\_). 1. Let \_k\_ be 0. 1. Repeat,
+-- | while \_k\_ \< \_len\_, 1. Let \_Pk\_ be ! ToString(𝔽(\_k\_)). 1. Let
+-- | \_kValue\_ be ? Get(\_arrayLike\_, \_Pk\_). 1. Perform ? Set(\_O\_,
+-- | \_Pk\_, \_kValue\_, \*true\*). 1. Set \_k\_ to \_k\_ + 1. 1. Return
+-- | \~unused\~.
+-- |
+-- | # AllocateTypedArrayBuffer ( \_O\_: a TypedArray, \_length\_: a non-negative integer, ): either a normal completion containing \~unused\~ or a throw completion
+-- |
+-- | description
+-- | :   It allocates and associates an ArrayBuffer with \_O\_.
+-- |
+-- | 1\. Assert: \_O\_.\[\[ViewedArrayBuffer\]\] is \*undefined\*. 1. Let
+-- | \_elementSize\_ be TypedArrayElementSize(\_O\_). 1. Let \_byteLength\_
+-- | be \_elementSize\_ × \_length\_. 1. Let \_data\_ be ?
+-- | AllocateArrayBuffer(%ArrayBuffer%, \_byteLength\_). 1. Set
+-- | \_O\_.\[\[ViewedArrayBuffer\]\] to \_data\_. 1. Set
+-- | \_O\_.\[\[ByteLength\]\] to \_byteLength\_. 1. Set
+-- | \_O\_.\[\[ByteOffset\]\] to 0. 1. Set \_O\_.\[\[ArrayLength\]\] to
+-- | \_length\_. 1. Return \~unused\~.
+-- |
+-- | # Properties of the \_TypedArray\_ Constructors
+-- |
+-- | Each \_TypedArray\_ constructor:
+-- |
+-- | - has a \[\[Prototype\]\] internal slot whose value is %TypedArray%.
+-- | - has a \*\"length\"\* property whose value is \*3\*~𝔽~.
+-- | - has a \*\"name\"\* property whose value is the String value of the
+-- |   constructor name specified for it in .
+-- | - has the following properties:
+-- |
+-- | # \_TypedArray\_.BYTES_PER_ELEMENT
+-- |
+-- | The value of \_TypedArray\_\`.BYTES_PER_ELEMENT\` is the Element Size
+-- | value specified in for \_TypedArray\_.
+-- |
+-- | This property has the attributes { \[\[Writable\]\]: \*false\*,
+-- | \[\[Enumerable\]\]: \*false\*, \[\[Configurable\]\]: \*false\* }.
+-- |
+-- | # \_TypedArray\_.prototype
+
+-- SPEC: L35030-L35064
+-- |
+-- | The initial value of \_TypedArray\_\`.prototype\` is the corresponding
+-- | \_TypedArray\_ prototype intrinsic object ().
+-- |
+-- | This property has the attributes { \[\[Writable\]\]: \*false\*,
+-- | \[\[Enumerable\]\]: \*false\*, \[\[Configurable\]\]: \*false\* }.
+-- |
+-- | # Properties of the \_TypedArray\_ Prototype Objects
+-- |
+-- | Each \_TypedArray\_ prototype object:
+-- |
+-- | - has a \[\[Prototype\]\] internal slot whose value is
+-- |   %TypedArray.prototype%.
+-- | - is an ordinary object.
+-- | - does not have a \[\[ViewedArrayBuffer\]\] or any other of the internal
+-- |   slots that are specific to \_TypedArray\_ instance objects.
+-- |
+-- | # \_TypedArray\_.prototype.BYTES_PER_ELEMENT
+-- |
+-- | The value of \_TypedArray\_\`.prototype.BYTES_PER_ELEMENT\` is the
+-- | Element Size value specified in for \_TypedArray\_.
+-- |
+-- | This property has the attributes { \[\[Writable\]\]: \*false\*,
+-- | \[\[Enumerable\]\]: \*false\*, \[\[Configurable\]\]: \*false\* }.
+-- |
+-- | # \_TypedArray\_.prototype.constructor
+-- |
+-- | The initial value of the \*\"constructor\"\* property of the prototype
+-- | for a given \_TypedArray\_ constructor is the constructor itself.
+-- |
+-- | # Properties of \_TypedArray\_ Instances
+-- |
+-- | \_TypedArray\_ instances are TypedArrays. Each \_TypedArray\_ instance
+-- | inherits properties from the corresponding \_TypedArray\_ prototype
+-- | object. Each \_TypedArray\_ instance has the following internal slots:
+
+-- SPEC: L35065-L35102
+-- | \[\[ViewedArrayBuffer\]\], \[\[TypedArrayName\]\], \[\[ContentType\]\],
+-- | \[\[ByteLength\]\], \[\[ByteOffset\]\], and \[\[ArrayLength\]\].
+-- |
+-- | # Uint8Array Objects
+-- |
+-- | A Uint8Array is a particular kind of \_TypedArray\_ as described above.
+-- | In addition, there are additional methods on the Uint8Array constructor
+-- | () and on the Uint8Array prototype object ().
+-- |
+-- | # Additional Properties of the Uint8Array Constructor
+-- |
+-- | # Uint8Array.fromBase64 ( \_string\_ \[ , \_options\_ \] )
+-- |
+-- | 1\. If \_string\_ is not a String, throw a \*TypeError\* exception. 1.
+-- | Let \_opts\_ be ? GetOptionsObject(\_options\_). 1. Let \_alphabet\_ be
+-- | ? Get(\_opts\_, \*\"alphabet\"\*). 1. If \_alphabet\_ is \*undefined\*,
+-- | set \_alphabet\_ to \*\"base64\"\*. 1. If \_alphabet\_ is neither
+-- | \*\"base64\"\* nor \*\"base64url\"\*, throw a \*TypeError\*
+-- | exception. 1. Let \_lastChunkHandling\_ be ? Get(\_opts\_,
+-- | \*\"lastChunkHandling\"\*). 1. If \_lastChunkHandling\_ is
+-- | \*undefined\*, set \_lastChunkHandling\_ to \*\"loose\"\*. 1. If
+-- | \_lastChunkHandling\_ is not one of \*\"loose\"\*, \*\"strict\"\*, or
+-- | \*\"stop-before-partial\"\*, throw a \*TypeError\* exception. 1. Let
+-- | \_result\_ be FromBase64(\_string\_, \_alphabet\_,
+-- | \_lastChunkHandling\_). 1. If \_result\_.\[\[Error\]\] is not \~none\~,
+-- | then 1. Return ThrowCompletion(\_result\_.\[\[Error\]\]). 1. Let
+-- | \_resultLength\_ be the number of elements in
+-- | \_result\_.\[\[Bytes\]\]. 1. Let \_ta\_ be ?
+-- | AllocateTypedArray(\*\"Uint8Array\"\*, %Uint8Array%,
+-- | \*\"%Uint8Array.prototype%\"\*, \_resultLength\_). 1. Assert:
+-- | \_ta\_.\[\[ViewedArrayBuffer\]\].\[\[ArrayBufferByteLength\]\] is the
+-- | number of elements in \_result\_.\[\[Bytes\]\]. 1. Set the value at each
+-- | index of \_ta\_.\[\[ViewedArrayBuffer\]\].\[\[ArrayBufferData\]\] to the
+-- | value at the corresponding index of \_result\_.\[\[Bytes\]\]. 1. Return
+-- | \_ta\_.
+-- |
+-- | # Uint8Array.fromHex ( \_string\_ )
+-- |
+
+-- SPEC: L35103-L35144
+-- | 1\. If \_string\_ is not a String, throw a \*TypeError\* exception. 1.
+-- | Let \_result\_ be FromHex(\_string\_). 1. If \_result\_.\[\[Error\]\] is
+-- | not \~none\~, then 1. Return
+-- | ThrowCompletion(\_result\_.\[\[Error\]\]). 1. Let \_resultLength\_ be
+-- | the number of elements in \_result\_.\[\[Bytes\]\]. 1. Let \_ta\_ be ?
+-- | AllocateTypedArray(\*\"Uint8Array\"\*, %Uint8Array%,
+-- | \*\"%Uint8Array.prototype%\"\*, \_resultLength\_). 1. Assert:
+-- | \_ta\_.\[\[ViewedArrayBuffer\]\].\[\[ArrayBufferByteLength\]\] is the
+-- | number of elements in \_result\_.\[\[Bytes\]\]. 1. Set the value at each
+-- | index of \_ta\_.\[\[ViewedArrayBuffer\]\].\[\[ArrayBufferData\]\] to the
+-- | value at the corresponding index of \_result\_.\[\[Bytes\]\]. 1. Return
+-- | \_ta\_.
+-- |
+-- | # Additional Properties of the Uint8Array Prototype Object
+-- |
+-- | # Uint8Array.prototype.setFromBase64 ( \_string\_ \[ , \_options\_ \] )
+-- |
+-- | 1\. Let \_into\_ be the \*this\* value. 1. Perform ?
+-- | ValidateUint8Array(\_into\_). 1. If \_string\_ is not a String, throw a
+-- | \*TypeError\* exception. 1. Let \_opts\_ be ?
+-- | GetOptionsObject(\_options\_). 1. Let \_alphabet\_ be ? Get(\_opts\_,
+-- | \*\"alphabet\"\*). 1. If \_alphabet\_ is \*undefined\*, set \_alphabet\_
+-- | to \*\"base64\"\*. 1. If \_alphabet\_ is neither \*\"base64\"\* nor
+-- | \*\"base64url\"\*, throw a \*TypeError\* exception. 1. Let
+-- | \_lastChunkHandling\_ be ? Get(\_opts\_, \*\"lastChunkHandling\"\*). 1.
+-- | If \_lastChunkHandling\_ is \*undefined\*, set \_lastChunkHandling\_ to
+-- | \*\"loose\"\*. 1. If \_lastChunkHandling\_ is not one of \*\"loose\"\*,
+-- | \*\"strict\"\*, or \*\"stop-before-partial\"\*, throw a \*TypeError\*
+-- | exception. 1. Let \_taRecord\_ be
+-- | MakeTypedArrayWithBufferWitnessRecord(\_into\_, \~seq-cst\~). 1. If
+-- | IsTypedArrayOutOfBounds(\_taRecord\_) is \*true\*, throw a \*TypeError\*
+-- | exception. 1. Let \_byteLength\_ be TypedArrayLength(\_taRecord\_). 1.
+-- | Let \_result\_ be FromBase64(\_string\_, \_alphabet\_,
+-- | \_lastChunkHandling\_, \_byteLength\_). 1. Let \_bytes\_ be
+-- | \_result\_.\[\[Bytes\]\]. 1. Let \_written\_ be the number of elements
+-- | in \_bytes\_. 1. NOTE: FromBase64 does not invoke any user code, so the
+-- | ArrayBuffer backing \_into\_ cannot have been detached or shrunk. 1.
+-- | Assert: \_written\_ ≤ \_byteLength\_. 1. Perform
+-- | SetUint8ArrayBytes(\_into\_, \_bytes\_). 1. If \_result\_.\[\[Error\]\]
+-- | is not \~none\~, then 1. Return
+-- | ThrowCompletion(\_result\_.\[\[Error\]\]). 1. Let \_resultObject\_ be
+-- | OrdinaryObjectCreate(%Object.prototype%). 1. Perform !
+
+-- SPEC: L35145-L35175
+-- | CreateDataPropertyOrThrow(\_resultObject\_, \*\"read\"\*,
+-- | 𝔽(\_result\_.\[\[Read\]\])). 1. Perform !
+-- | CreateDataPropertyOrThrow(\_resultObject\_, \*\"written\"\*,
+-- | 𝔽(\_written\_)). 1. Return \_resultObject\_.
+-- |
+-- | # Uint8Array.prototype.setFromHex ( \_string\_ )
+-- |
+-- | 1\. Let \_into\_ be the \*this\* value. 1. Perform ?
+-- | ValidateUint8Array(\_into\_). 1. If \_string\_ is not a String, throw a
+-- | \*TypeError\* exception. 1. Let \_taRecord\_ be
+-- | MakeTypedArrayWithBufferWitnessRecord(\_into\_, \~seq-cst\~). 1. If
+-- | IsTypedArrayOutOfBounds(\_taRecord\_) is \*true\*, throw a \*TypeError\*
+-- | exception. 1. Let \_byteLength\_ be TypedArrayLength(\_taRecord\_). 1.
+-- | Let \_result\_ be FromHex(\_string\_, \_byteLength\_). 1. Let \_bytes\_
+-- | be \_result\_.\[\[Bytes\]\]. 1. Let \_written\_ be the number of
+-- | elements in \_bytes\_. 1. NOTE: FromHex does not invoke any user code,
+-- | so the ArrayBuffer backing \_into\_ cannot have been detached or
+-- | shrunk. 1. Assert: \_written\_ ≤ \_byteLength\_. 1. Perform
+-- | SetUint8ArrayBytes(\_into\_, \_bytes\_). 1. If \_result\_.\[\[Error\]\]
+-- | is not \~none\~, then 1. Return
+-- | ThrowCompletion(\_result\_.\[\[Error\]\]). 1. Let \_resultObject\_ be
+-- | OrdinaryObjectCreate(%Object.prototype%). 1. Perform !
+-- | CreateDataPropertyOrThrow(\_resultObject\_, \*\"read\"\*,
+-- | 𝔽(\_result\_.\[\[Read\]\])). 1. Perform !
+-- | CreateDataPropertyOrThrow(\_resultObject\_, \*\"written\"\*,
+-- | 𝔽(\_written\_)). 1. Return \_resultObject\_.
+-- |
+-- | # Uint8Array.prototype.toBase64 ( \[ \_options\_ \] )
+-- |
+-- | 1\. Let \_O\_ be the \*this\* value. 1. Perform ?
+-- | ValidateUint8Array(\_O\_). 1. Let \_opts\_ be ?
+
+-- SPEC: L35176-L35197
+-- | GetOptionsObject(\_options\_). 1. Let \_alphabet\_ be ? Get(\_opts\_,
+-- | \*\"alphabet\"\*). 1. If \_alphabet\_ is \*undefined\*, set \_alphabet\_
+-- | to \*\"base64\"\*. 1. If \_alphabet\_ is neither \*\"base64\"\* nor
+-- | \*\"base64url\"\*, throw a \*TypeError\* exception. 1. Let
+-- | \_omitPadding\_ be ToBoolean(? Get(\_opts\_, \*\"omitPadding\"\*)). 1.
+-- | Let \_toEncode\_ be ? GetUint8ArrayBytes(\_O\_). 1. If \_alphabet\_ is
+-- | \*\"base64\"\*, then 1. Let \_outAscii\_ be the sequence of code points
+-- | which results from encoding \_toEncode\_ according to the base64
+-- | encoding specified in section 4 of [RFC
+-- | 4648](https://datatracker.ietf.org/doc/html/rfc4648). Padding is
+-- | included if and only if \_omitPadding\_ is \*false\*. 1. Else, 1.
+-- | Assert: \_alphabet\_ is \*\"base64url\"\*. 1. Let \_outAscii\_ be the
+-- | sequence of code points which results from encoding \_toEncode\_
+-- | according to the base64url encoding specified in section 5 of [RFC
+-- | 4648](https://datatracker.ietf.org/doc/html/rfc4648). Padding is
+-- | included if and only if \_omitPadding\_ is \*false\*. 1. Return
+-- | CodePointsToString(\_outAscii\_).
+-- |
+-- | # Uint8Array.prototype.toHex ( )
+-- |
+-- | 1\. Let \_O\_ be the \*this\* value. 1. Perform ?
+-- | ValidateUint8Array(\_O\_). 1. Let \_toEncode\_ be ?
+
+-- SPEC: L35198-L35234
+-- | GetUint8ArrayBytes(\_O\_). 1. Let \_out\_ be the empty String. 1. For
+-- | each byte \_byte\_ of \_toEncode\_, do 1. Let \_hex\_ be
+-- | Number::toString(𝔽(\_byte\_), 16). 1. Set \_hex\_ to StringPad(\_hex\_,
+-- | 2, \*\"0\"\*, \~start\~). 1. Set \_out\_ to the string-concatenation of
+-- | \_out\_ and \_hex\_. 1. Return \_out\_.
+-- |
+-- | # Abstract Operations for Uint8Array Objects
+-- |
+-- | # ValidateUint8Array ( \_ta\_: an ECMAScript language value, ): either a normal completion containing \~unused\~ or a throw completion
+-- |
+-- | 1\. Perform ? RequireInternalSlot(\_ta\_, \[\[TypedArrayName\]\]). 1. If
+-- | \_ta\_.\[\[TypedArrayName\]\] is not \*\"Uint8Array\"\*, throw a
+-- | \*TypeError\* exception. 1. Return \~unused\~.
+-- |
+-- | # GetUint8ArrayBytes ( \_ta\_: a Uint8Array, ): either a normal completion containing a List of byte values or a throw completion
+-- |
+-- | 1\. Let \_buffer\_ be \_ta\_.\[\[ViewedArrayBuffer\]\]. 1. Let
+-- | \_taRecord\_ be MakeTypedArrayWithBufferWitnessRecord(\_ta\_,
+-- | \~seq-cst\~). 1. If IsTypedArrayOutOfBounds(\_taRecord\_) is \*true\*,
+-- | throw a \*TypeError\* exception. 1. Let \_len\_ be
+-- | TypedArrayLength(\_taRecord\_). 1. Let \_byteOffset\_ be
+-- | \_ta\_.\[\[ByteOffset\]\]. 1. Let \_bytes\_ be a new empty List. 1. Let
+-- | \_index\_ be 0. 1. Repeat, while \_index\_ \< \_len\_, 1. Let
+-- | \_byteIndex\_ be \_byteOffset\_ + \_index\_. 1. Let \_byte\_ be
+-- | ℝ(GetValueFromBuffer(\_buffer\_, \_byteIndex\_, \~uint8\~, \*true\*,
+-- | \~unordered\~)). 1. Append \_byte\_ to \_bytes\_. 1. Set \_index\_ to
+-- | \_index\_ + 1. 1. Return \_bytes\_.
+-- |
+-- | # SetUint8ArrayBytes ( \_into\_: a Uint8Array, \_bytes\_: a List of byte values, ): \~unused\~
+-- |
+-- | 1\. Let \_offset\_ be \_into\_.\[\[ByteOffset\]\]. 1. Let \_len\_ be the
+-- | number of elements in \_bytes\_. 1. Let \_index\_ be 0. 1. Repeat, while
+-- | \_index\_ \< \_len\_, 1. Let \_byte\_ be \_bytes\_\[\_index\_\]. 1. Let
+-- | \_byteIndexInBuffer\_ be \_index\_ + \_offset\_. 1. Perform
+-- | SetValueInBuffer(\_into\_.\[\[ViewedArrayBuffer\]\],
+-- | \_byteIndexInBuffer\_, \~uint8\~, 𝔽(\_byte\_), \*true\*,
+-- | \~unordered\~). 1. Set \_index\_ to \_index\_ + 1. 1. Return \~unused\~.
+
+-- SPEC: L35235-L35255
+-- |
+-- | # SkipAsciiWhitespace ( \_string\_: a String, \_index\_: a non-negative integer, ): a non-negative integer
+-- |
+-- | 1\. Let \_length\_ be the length of \_string\_. 1. Repeat, while
+-- | \_index\_ \< \_length\_, 1. Let \_char\_ be the code unit at index
+-- | \_index\_ within \_string\_. 1. If \_char\_ is not one of 0x0009 (TAB),
+-- | 0x000A (LF), 0x000C (FF), 0x000D (CR), or 0x0020 (SPACE), then 1. Return
+-- | \_index\_. 1. Set \_index\_ to \_index\_ + 1. 1. Return \_index\_.
+-- |
+-- | # DecodeFinalBase64Chunk ( \_chunk\_: a String of length 2 or 3, \_throwOnExtraBits\_: a Boolean, ): either a normal completion containing a List of byte values, or a throw completion
+-- |
+-- | 1\. Let \_chunkLength\_ be the length of \_chunk\_. 1. If
+-- | \_chunkLength\_ = 2, then 1. Set \_chunk\_ to the string-concatenation
+-- | of \_chunk\_ and \*\"AA\"\*. 1. Else, 1. Assert: \_chunkLength\_ is
+-- | 3. 1. Set \_chunk\_ to the string-concatenation of \_chunk\_ and
+-- | \*\"A\"\*. 1. Let \_bytes\_ be
+-- | DecodeFullLengthBase64Chunk(\_chunk\_). 1. If \_chunkLength\_ = 2,
+-- | then 1. If \_throwOnExtraBits\_ is \*true\* and \_bytes\_\[1\] ≠ 0,
+-- | throw a \*SyntaxError\* exception. 1. Return « \_bytes\_\[0\] ». 1. If
+-- | \_throwOnExtraBits\_ is \*true\* and \_bytes\_\[2\] ≠ 0, throw a
+-- | \*SyntaxError\* exception. 1. Return « \_bytes\_\[0\], \_bytes\_\[1\] ».
+
+-- SPEC: L35256-L35372
+-- |
+-- | # DecodeFullLengthBase64Chunk ( \_chunk\_: a String of length 4, ): a List of byte values of length 3
+-- |
+-- | The [standard base64 alphabet]{#standard-base64-alphabet .dfn} is
+-- | \*\"ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/\"\*,
+-- | i.e., the String whose elements are the code units corresponding to
+-- | every letter and number in the Unicode Basic Latin block along with
+-- | \*\"+\"\* and \*\"/\"\*.
+-- |
+-- | 1\. Let \_byteSequence\_ be the unique sequence of 3 bytes resulting
+-- | from decoding \_chunk\_ as base64 (i.e., the sequence such that applying
+-- | the base64 encoding specified in section 4 of [RFC
+-- | 4648](https://datatracker.ietf.org/doc/html/rfc4648) to \_byteSequence\_
+-- | would produce \_chunk\_). 1. Return a List whose elements are the
+-- | elements of \_byteSequence\_, in order.
+-- |
+-- | # FromBase64 ( \_string\_: a String, \_alphabet\_: \*\"base64\"\* or \*\"base64url\"\*, \_lastChunkHandling\_: \*\"loose\"\*, \*\"strict\"\*, or \*\"stop-before-partial\"\*, optional \_maxLength\_: a non-negative integer, ): a Record with fields \[\[Read\]\] (an integer), \[\[Bytes\]\] (a List of byte values), and \[\[Error\]\] (a \*SyntaxError\* object or \~none\~)
+-- |
+-- | 1\. If \_maxLength\_ is not present, then 1. Set \_maxLength\_ to
+-- | 2^53^ - 1. 1. NOTE: Because the input is a String, the length of Strings
+-- | is limited to 2^53^ - 1 characters, and the output requires no more
+-- | bytes than the input has characters, this limit can never be reached.
+-- | However, it is editorially convenient to use a finite value for
+-- | \_maxLength\_. 1. NOTE: The order of validation and decoding in the
+-- | algorithm below is not observable. Implementations are encouraged to
+-- | perform them in whatever order is most efficient, possibly interleaving
+-- | validation with decoding. 1. If \_maxLength\_ = 0, then 1. Return the
+-- | Record { \[\[Read\]\]: 0, \[\[Bytes\]\]: « », \[\[Error\]\]: \~none\~
+-- | }. 1. Let \_read\_ be 0. 1. Let \_bytes\_ be a new empty List. 1. Let
+-- | \_chunk\_ be the empty String. 1. Let \_chunkLength\_ be 0. 1. Let
+-- | \_index\_ be 0. 1. Let \_length\_ be the length of \_string\_. 1.
+-- | Repeat, 1. Set \_index\_ to SkipAsciiWhitespace(\_string\_,
+-- | \_index\_). 1. If \_index\_ = \_length\_, then 1. If \_chunkLength\_ \>
+-- | 0, then 1. If \_lastChunkHandling\_ is \*\"stop-before-partial\"\*,
+-- | then 1. Return the Record { \[\[Read\]\]: \_read\_, \[\[Bytes\]\]:
+-- | \_bytes\_, \[\[Error\]\]: \~none\~ }. 1. If \_lastChunkHandling\_ is
+-- | \*\"strict\"\*, then 1. Let \_error\_ be a newly created \*SyntaxError\*
+-- | object. 1. Return the Record { \[\[Read\]\]: \_read\_, \[\[Bytes\]\]:
+-- | \_bytes\_, \[\[Error\]\]: \_error\_ }. 1. Assert: \_lastChunkHandling\_
+-- | is \*\"loose\"\*. 1. If \_chunkLength\_ = 1, then 1. Let \_error\_ be a
+-- | newly created \*SyntaxError\* object. 1. Return the Record {
+-- | \[\[Read\]\]: \_read\_, \[\[Bytes\]\]: \_bytes\_, \[\[Error\]\]:
+-- | \_error\_ }. 1. Set \_bytes\_ to the list-concatenation of \_bytes\_ and
+-- | ! DecodeFinalBase64Chunk(\_chunk\_, \*false\*). 1. Return the Record {
+-- | \[\[Read\]\]: \_length\_, \[\[Bytes\]\]: \_bytes\_, \[\[Error\]\]:
+-- | \~none\~ }. 1. Let \_char\_ be the substring of \_string\_ from
+-- | \_index\_ to \_index\_ + 1. 1. Set \_index\_ to \_index\_ + 1. 1. If
+-- | \_char\_ is \*\"=\"\*, then 1. If \_chunkLength\_ \< 2, then 1. Let
+-- | \_error\_ be a newly created \*SyntaxError\* object. 1. Return the
+-- | Record { \[\[Read\]\]: \_read\_, \[\[Bytes\]\]: \_bytes\_,
+-- | \[\[Error\]\]: \_error\_ }. 1. Set \_index\_ to
+-- | SkipAsciiWhitespace(\_string\_, \_index\_). 1. If \_chunkLength\_ = 2,
+-- | then 1. If \_index\_ = \_length\_, then 1. If \_lastChunkHandling\_ is
+-- | \*\"stop-before-partial\"\*, then 1. Return the Record { \[\[Read\]\]:
+-- | \_read\_, \[\[Bytes\]\]: \_bytes\_, \[\[Error\]\]: \~none\~ }. 1. Let
+-- | \_error\_ be a newly created \*SyntaxError\* object. 1. Return the
+-- | Record { \[\[Read\]\]: \_read\_, \[\[Bytes\]\]: \_bytes\_,
+-- | \[\[Error\]\]: \_error\_ }. 1. Set \_char\_ to the substring of
+-- | \_string\_ from \_index\_ to \_index\_ + 1. 1. If \_char\_ is \*\"=\"\*,
+-- | then 1. Set \_index\_ to SkipAsciiWhitespace(\_string\_, \_index\_ +
+-- | 1). 1. If \_index\_ \< \_length\_, then 1. Let \_error\_ be a newly
+-- | created \*SyntaxError\* object. 1. Return the Record { \[\[Read\]\]:
+-- | \_read\_, \[\[Bytes\]\]: \_bytes\_, \[\[Error\]\]: \_error\_ }. 1. If
+-- | \_lastChunkHandling\_ is \*\"strict\"\*, let \_throwOnExtraBits\_ be
+-- | \*true\*; else let \_throwOnExtraBits\_ be \*false\*. 1. Let
+-- | \_decodeResult\_ be Completion(DecodeFinalBase64Chunk(\_chunk\_,
+-- | \_throwOnExtraBits\_)). 1. If \_decodeResult\_ is an abrupt completion,
+-- | then 1. Let \_error\_ be \_decodeResult\_.\[\[Value\]\]. 1. Return the
+-- | Record { \[\[Read\]\]: \_read\_, \[\[Bytes\]\]: \_bytes\_,
+-- | \[\[Error\]\]: \_error\_ }. 1. Set \_bytes\_ to the list-concatenation
+-- | of \_bytes\_ and ! \_decodeResult\_. 1. Return the Record {
+-- | \[\[Read\]\]: \_length\_, \[\[Bytes\]\]: \_bytes\_, \[\[Error\]\]:
+-- | \~none\~ }. 1. If \_alphabet\_ is \*\"base64url\"\*, then 1. If \_char\_
+-- | is either \*\"+\"\* or \*\"/\"\*, then 1. Let \_error\_ be a newly
+-- | created \*SyntaxError\* object. 1. Return the Record { \[\[Read\]\]:
+-- | \_read\_, \[\[Bytes\]\]: \_bytes\_, \[\[Error\]\]: \_error\_ }. 1. Else
+-- | if \_char\_ is \*\"-\"\*, then 1. Set \_char\_ to \*\"+\"\*. 1. Else if
+-- | \_char\_ is \*\"\_\"\*, then 1. Set \_char\_ to \*\"/\"\*. 1. If the
+-- | sole code unit of \_char\_ is not an element of the standard base64
+-- | alphabet, then 1. Let \_error\_ be a newly created \*SyntaxError\*
+-- | object. 1. Return the Record { \[\[Read\]\]: \_read\_, \[\[Bytes\]\]:
+-- | \_bytes\_, \[\[Error\]\]: \_error\_ }. 1. Let \_remaining\_ be
+-- | \_maxLength\_ - the number of elements in \_bytes\_. 1. If \_remaining\_
+-- | = 1 and \_chunkLength\_ = 2, or if \_remaining\_ = 2 and \_chunkLength\_
+-- | = 3, then 1. Return the Record { \[\[Read\]\]: \_read\_, \[\[Bytes\]\]:
+-- | \_bytes\_, \[\[Error\]\]: \~none\~ }. 1. Set \_chunk\_ to the
+-- | string-concatenation of \_chunk\_ and \_char\_. 1. Set \_chunkLength\_
+-- | to the length of \_chunk\_. 1. If \_chunkLength\_ = 4, then 1. Set
+-- | \_bytes\_ to the list-concatenation of \_bytes\_ and
+-- | DecodeFullLengthBase64Chunk(\_chunk\_). 1. Set \_chunk\_ to the empty
+-- | String. 1. Set \_chunkLength\_ to 0. 1. Set \_read\_ to \_index\_. 1. If
+-- | the number of elements in \_bytes\_ = \_maxLength\_, then 1. Return the
+-- | Record { \[\[Read\]\]: \_read\_, \[\[Bytes\]\]: \_bytes\_,
+-- | \[\[Error\]\]: \~none\~ }.
+-- |
+-- | # FromHex ( \_string\_: a String, optional \_maxLength\_: a non-negative integer, ): a Record with fields \[\[Read\]\] (an integer), \[\[Bytes\]\] (a List of byte values), and \[\[Error\]\] (a \*SyntaxError\* object or \~none\~)
+-- |
+-- | 1\. If \_maxLength\_ is not present, set \_maxLength\_ to 2^53^ - 1. 1.
+-- | Let \_length\_ be the length of \_string\_. 1. Let \_bytes\_ be a new
+-- | empty List. 1. Let \_read\_ be 0. 1. If \_length\_ modulo 2 ≠ 0, then 1.
+-- | Let \_error\_ be a newly created \*SyntaxError\* object. 1. Return the
+-- | Record { \[\[Read\]\]: \_read\_, \[\[Bytes\]\]: \_bytes\_,
+-- | \[\[Error\]\]: \_error\_ }. 1. Repeat, while \_read\_ \< \_length\_ and
+-- | the number of elements in \_bytes\_ \< \_maxLength\_, 1. Let \_hexits\_
+-- | be the substring of \_string\_ from \_read\_ to \_read\_ + 2. 1. If
+-- | \_hexits\_ contains any code units which are not in
+-- | \*\"0123456789abcdefABCDEF\"\*, then 1. Let \_error\_ be a newly created
+-- | \*SyntaxError\* object. 1. Return the Record { \[\[Read\]\]: \_read\_,
+-- | \[\[Bytes\]\]: \_bytes\_, \[\[Error\]\]: \_error\_ }. 1. Set \_read\_ to
+-- | \_read\_ + 2. 1. Let \_byte\_ be the integer value represented by
+-- | \_hexits\_ in base-16 notation, using the letters \*A\* through \*F\*
+-- | and \*a\* through \*f\* for digits with values 10 through 15. 1. Append
+-- | \_byte\_ to \_bytes\_. 1. Return the Record { \[\[Read\]\]: \_read\_,
+-- | \[\[Bytes\]\]: \_bytes\_, \[\[Error\]\]: \~none\~ }.
+-- |
+-- | # Keyed Collections
+-- |
+
+
 end VerifiedJS.Source
