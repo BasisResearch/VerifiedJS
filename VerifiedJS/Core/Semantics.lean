@@ -26994,5 +26994,1647 @@ theorem elaborate_correct (p : Source.Program) (cp : Core.Program)
 -- | \_v\_, \*true\*, \~seq-cst\~). 1. Return \_v\_.
 -- |
 
+/-! ## Proxy Internal Methods -/
+
+-- SPEC: L12708-L12730
+-- | # \[\[GetPrototypeOf\]\] ( ): either a normal completion containing either an Object or \*null\*, or a throw completion
+-- |
+-- | for
+-- | :   a Proxy exotic object \_O\_
+-- |
+-- | 1\. Perform ? ValidateNonRevokedProxy(\_O\_). 1. Let \_target\_ be
+-- | \_O\_.\[\[ProxyTarget\]\]. 1. Let \_handler\_ be
+-- | \_O\_.\[\[ProxyHandler\]\]. 1. Assert: \_handler\_ is an Object. 1. Let
+-- | \_trap\_ be ? GetMethod(\_handler\_, \*\"getPrototypeOf\"\*). 1. If
+-- | \_trap\_ is \*undefined\*, then 1. Return ?
+-- | \_target\_.\[\[GetPrototypeOf\]\](). 1. Let \_handlerProto\_ be ?
+-- | Call(\_trap\_, \_handler\_, « \_target\_ »). 1. If \_handlerProto\_ is
+-- | not an Object and \_handlerProto\_ is not \*null\*, throw a
+-- | \*TypeError\* exception. 1. Let \_extensibleTarget\_ be ?
+-- | IsExtensible(\_target\_). 1. If \_extensibleTarget\_ is \*true\*, return
+-- | \_handlerProto\_. 1. Let \_targetProto\_ be ?
+-- | \_target\_.\[\[GetPrototypeOf\]\](). 1. If SameValue(\_handlerProto\_,
+-- | \_targetProto\_) is \*false\*, throw a \*TypeError\* exception. 1.
+-- | Return \_handlerProto\_.
+-- |
+
+-- SPEC: L12737-L12767
+-- | # \[\[SetPrototypeOf\]\] ( \_V\_: an Object or \*null\*, ): either a normal completion containing a Boolean or a throw completion
+-- |
+-- | for
+-- | :   a Proxy exotic object \_O\_
+-- |
+-- | 1\. Perform ? ValidateNonRevokedProxy(\_O\_). 1. Let \_target\_ be
+-- | \_O\_.\[\[ProxyTarget\]\]. 1. Let \_handler\_ be
+-- | \_O\_.\[\[ProxyHandler\]\]. 1. Assert: \_handler\_ is an Object. 1. Let
+-- | \_trap\_ be ? GetMethod(\_handler\_, \*\"setPrototypeOf\"\*). 1. If
+-- | \_trap\_ is \*undefined\*, then 1. Return ?
+-- | \_target\_.\[\[SetPrototypeOf\]\](\_V\_). 1. Let \_booleanTrapResult\_
+-- | be ToBoolean(? Call(\_trap\_, \_handler\_, « \_target\_, \_V\_ »)). 1.
+-- | If \_booleanTrapResult\_ is \*false\*, return \*false\*. 1. Let
+-- | \_extensibleTarget\_ be ? IsExtensible(\_target\_). 1. If
+-- | \_extensibleTarget\_ is \*true\*, return \*true\*. 1. Let
+-- | \_targetProto\_ be ? \_target\_.\[\[GetPrototypeOf\]\](). 1. If
+-- | SameValue(\_V\_, \_targetProto\_) is \*false\*, throw a \*TypeError\*
+-- | exception. 1. Return \*true\*.
+-- |
+
+-- SPEC: L12776-L12800
+-- | # \[\[IsExtensible\]\] ( ): either a normal completion containing a Boolean or a throw completion
+-- |
+-- | for
+-- | :   a Proxy exotic object \_O\_
+-- |
+-- | 1\. Perform ? ValidateNonRevokedProxy(\_O\_). 1. Let \_target\_ be
+-- | \_O\_.\[\[ProxyTarget\]\]. 1. Let \_handler\_ be
+-- | \_O\_.\[\[ProxyHandler\]\]. 1. Assert: \_handler\_ is an Object. 1. Let
+-- | \_trap\_ be ? GetMethod(\_handler\_, \*\"isExtensible\"\*). 1. If
+-- | \_trap\_ is \*undefined\*, then 1. Return ? IsExtensible(\_target\_). 1.
+-- | Let \_booleanTrapResult\_ be ToBoolean(? Call(\_trap\_, \_handler\_, «
+-- | \_target\_ »)). 1. Let \_targetResult\_ be ?
+-- | IsExtensible(\_target\_). 1. If \_booleanTrapResult\_ is not
+-- | \_targetResult\_, throw a \*TypeError\* exception. 1. Return
+-- | \_booleanTrapResult\_.
+-- |
+
+-- SPEC: L12808-L12835
+-- | # \[\[PreventExtensions\]\] ( ): either a normal completion containing a Boolean or a throw completion
+-- |
+-- | for
+-- | :   a Proxy exotic object \_O\_
+-- |
+-- | 1\. Perform ? ValidateNonRevokedProxy(\_O\_). 1. Let \_target\_ be
+-- | \_O\_.\[\[ProxyTarget\]\]. 1. Let \_handler\_ be
+-- | \_O\_.\[\[ProxyHandler\]\]. 1. Assert: \_handler\_ is an Object. 1. Let
+-- | \_trap\_ be ? GetMethod(\_handler\_, \*\"preventExtensions\"\*). 1. If
+-- | \_trap\_ is \*undefined\*, then 1. Return ?
+-- | \_target\_.\[\[PreventExtensions\]\](). 1. Let \_booleanTrapResult\_ be
+-- | ToBoolean(? Call(\_trap\_, \_handler\_, « \_target\_ »)). 1. If
+-- | \_booleanTrapResult\_ is \*true\*, then 1. Let \_extensibleTarget\_ be ?
+-- | IsExtensible(\_target\_). 1. If \_extensibleTarget\_ is \*true\*, throw
+-- | a \*TypeError\* exception. 1. Return \_booleanTrapResult\_.
+-- |
+
+-- SPEC: L12843-L12900
+-- | # \[\[GetOwnProperty\]\] ( \_P\_: a property key, ): either a normal completion containing either a Property Descriptor or \*undefined\*, or a throw completion
+-- |
+-- | for
+-- | :   a Proxy exotic object \_O\_
+-- |
+-- | 1\. Perform ? ValidateNonRevokedProxy(\_O\_). 1. Let \_target\_ be
+-- | \_O\_.\[\[ProxyTarget\]\]. 1. Let \_handler\_ be
+-- | \_O\_.\[\[ProxyHandler\]\]. 1. Assert: \_handler\_ is an Object. 1. Let
+-- | \_trap\_ be ? GetMethod(\_handler\_,
+-- | \*\"getOwnPropertyDescriptor\"\*). 1. If \_trap\_ is \*undefined\*,
+-- | then 1. Return ? \_target\_.\[\[GetOwnProperty\]\](\_P\_). 1. Let
+-- | \_trapResultObj\_ be ? Call(\_trap\_, \_handler\_, « \_target\_, \_P\_
+-- | »). 1. If \_trapResultObj\_ is not an Object and \_trapResultObj\_ is
+-- | not \*undefined\*, throw a \*TypeError\* exception. 1. Let
+-- | \_targetDesc\_ be ? \_target\_.\[\[GetOwnProperty\]\](\_P\_). 1. If
+-- | \_trapResultObj\_ is \*undefined\*, then 1. If \_targetDesc\_ is
+-- | \*undefined\*, return \*undefined\*. 1. If
+-- | \_targetDesc\_.\[\[Configurable\]\] is \*false\*, throw a \*TypeError\*
+-- | exception. 1. Let \_extensibleTarget\_ be ? IsExtensible(\_target\_). 1.
+-- | If \_extensibleTarget\_ is \*false\*, throw a \*TypeError\*
+-- | exception. 1. Return \*undefined\*. 1. Let \_extensibleTarget\_ be ?
+-- | IsExtensible(\_target\_). 1. Let \_resultDesc\_ be ?
+-- | ToPropertyDescriptor(\_trapResultObj\_). 1. Perform
+-- | CompletePropertyDescriptor(\_resultDesc\_). 1. Let \_valid\_ be
+-- | IsCompatiblePropertyDescriptor(\_extensibleTarget\_, \_resultDesc\_,
+-- | \_targetDesc\_). 1. If \_valid\_ is \*false\*, throw a \*TypeError\*
+-- | exception. 1. If \_resultDesc\_.\[\[Configurable\]\] is \*false\*,
+-- | then 1. If \_targetDesc\_ is \*undefined\* or
+-- | \_targetDesc\_.\[\[Configurable\]\] is \*true\*, then 1. Throw a
+-- | \*TypeError\* exception. 1. If \_resultDesc\_ has a \[\[Writable\]\]
+-- | field and \_resultDesc\_.\[\[Writable\]\] is \*false\*, then 1. Assert:
+-- | \_targetDesc\_ has a \[\[Writable\]\] field. 1. If
+-- | \_targetDesc\_.\[\[Writable\]\] is \*true\*, throw a \*TypeError\*
+-- | exception. 1. Return \_resultDesc\_.
+-- |
+
+-- SPEC: L12911-L12963
+-- | # \[\[DefineOwnProperty\]\] ( \_P\_: a property key, \_Desc\_: a Property Descriptor, ): either a normal completion containing a Boolean or a throw completion
+-- |
+-- | for
+-- | :   a Proxy exotic object \_O\_
+-- |
+-- | 1\. Perform ? ValidateNonRevokedProxy(\_O\_). 1. Let \_target\_ be
+-- | \_O\_.\[\[ProxyTarget\]\]. 1. Let \_handler\_ be
+-- | \_O\_.\[\[ProxyHandler\]\]. 1. Assert: \_handler\_ is an Object. 1. Let
+-- | \_trap\_ be ? GetMethod(\_handler\_, \*\"defineProperty\"\*). 1. If
+-- | \_trap\_ is \*undefined\*, then 1. Return ?
+-- | \_target\_.\[\[DefineOwnProperty\]\](\_P\_, \_Desc\_). 1. Let
+-- | \_descObj\_ be FromPropertyDescriptor(\_Desc\_). 1. Let
+-- | \_booleanTrapResult\_ be ToBoolean(? Call(\_trap\_, \_handler\_, «
+-- | \_target\_, \_P\_, \_descObj\_ »)). 1. If \_booleanTrapResult\_ is
+-- | \*false\*, return \*false\*. 1. Let \_targetDesc\_ be ?
+-- | \_target\_.\[\[GetOwnProperty\]\](\_P\_). 1. Let \_extensibleTarget\_ be
+-- | ? IsExtensible(\_target\_). 1. If \_Desc\_ has a \[\[Configurable\]\]
+-- | field and \_Desc\_.\[\[Configurable\]\] is \*false\*, then 1. Let
+-- | \_settingConfigFalse\_ be \*true\*. 1. Else, 1. Let
+-- | \_settingConfigFalse\_ be \*false\*. 1. If \_targetDesc\_ is
+-- | \*undefined\*, then 1. If \_extensibleTarget\_ is \*false\*, throw a
+-- | \*TypeError\* exception. 1. If \_settingConfigFalse\_ is \*true\*, throw
+-- | a \*TypeError\* exception. 1. Else, 1. If
+-- | IsCompatiblePropertyDescriptor(\_extensibleTarget\_, \_Desc\_,
+-- | \_targetDesc\_) is \*false\*, throw a \*TypeError\* exception. 1. If
+-- | \_settingConfigFalse\_ is \*true\* and
+-- | \_targetDesc\_.\[\[Configurable\]\] is \*true\*, throw a \*TypeError\*
+-- | exception. 1. If IsDataDescriptor(\_targetDesc\_) is \*true\*,
+-- | \_targetDesc\_.\[\[Configurable\]\] is \*false\*, and
+-- | \_targetDesc\_.\[\[Writable\]\] is \*true\*, then 1. If \_Desc\_ has a
+-- | \[\[Writable\]\] field and \_Desc\_.\[\[Writable\]\] is \*false\*, throw
+-- | a \*TypeError\* exception. 1. Return \*true\*.
+-- |
+
+-- SPEC: L12977-L13002
+-- | # \[\[HasProperty\]\] ( \_P\_: a property key, ): either a normal completion containing a Boolean or a throw completion
+-- |
+-- | for
+-- | :   a Proxy exotic object \_O\_
+-- |
+-- | 1\. Perform ? ValidateNonRevokedProxy(\_O\_). 1. Let \_target\_ be
+-- | \_O\_.\[\[ProxyTarget\]\]. 1. Let \_handler\_ be
+-- | \_O\_.\[\[ProxyHandler\]\]. 1. Assert: \_handler\_ is an Object. 1. Let
+-- | \_trap\_ be ? GetMethod(\_handler\_, \*\"has\"\*). 1. If \_trap\_ is
+-- | \*undefined\*, then 1. Return ?
+-- | \_target\_.\[\[HasProperty\]\](\_P\_). 1. Let \_booleanTrapResult\_ be
+-- | ToBoolean(? Call(\_trap\_, \_handler\_, « \_target\_, \_P\_ »)). 1. If
+-- | \_booleanTrapResult\_ is \*false\*, then 1. Let \_targetDesc\_ be ?
+-- | \_target\_.\[\[GetOwnProperty\]\](\_P\_). 1. If \_targetDesc\_ is not
+-- | \*undefined\*, then 1. If \_targetDesc\_.\[\[Configurable\]\] is
+-- | \*false\*, throw a \*TypeError\* exception. 1. Let \_extensibleTarget\_
+-- | be ? IsExtensible(\_target\_). 1. If \_extensibleTarget\_ is \*false\*,
+-- | throw a \*TypeError\* exception. 1. Return \_booleanTrapResult\_.
+-- |
+
+-- SPEC: L13011-L13041
+-- | # \[\[Get\]\] ( \_P\_: a property key, \_Receiver\_: an ECMAScript language value, ): either a normal completion containing an ECMAScript language value or a throw completion
+-- |
+-- | for
+-- | :   a Proxy exotic object \_O\_
+-- |
+-- | 1\. Perform ? ValidateNonRevokedProxy(\_O\_). 1. Let \_target\_ be
+-- | \_O\_.\[\[ProxyTarget\]\]. 1. Let \_handler\_ be
+-- | \_O\_.\[\[ProxyHandler\]\]. 1. Assert: \_handler\_ is an Object. 1. Let
+-- | \_trap\_ be ? GetMethod(\_handler\_, \*\"get\"\*). 1. If \_trap\_ is
+-- | \*undefined\*, then 1. Return ? \_target\_.\[\[Get\]\](\_P\_,
+-- | \_Receiver\_). 1. Let \_trapResult\_ be ? Call(\_trap\_, \_handler\_, «
+-- | \_target\_, \_P\_, \_Receiver\_ »). 1. Let \_targetDesc\_ be ?
+-- | \_target\_.\[\[GetOwnProperty\]\](\_P\_). 1. If \_targetDesc\_ is not
+-- | \*undefined\* and \_targetDesc\_.\[\[Configurable\]\] is \*false\*,
+-- | then 1. If IsDataDescriptor(\_targetDesc\_) is \*true\* and
+-- | \_targetDesc\_.\[\[Writable\]\] is \*false\*, then 1. If
+-- | SameValue(\_trapResult\_, \_targetDesc\_.\[\[Value\]\]) is \*false\*,
+-- | throw a \*TypeError\* exception. 1. If
+-- | IsAccessorDescriptor(\_targetDesc\_) is \*true\* and
+-- | \_targetDesc\_.\[\[Get\]\] is \*undefined\*, then 1. If \_trapResult\_
+-- | is not \*undefined\*, throw a \*TypeError\* exception. 1. Return
+-- | \_trapResult\_.
+-- |
+
+-- SPEC: L13050-L13082
+-- | # \[\[Set\]\] ( \_P\_: a property key, \_V\_: an ECMAScript language value, \_Receiver\_: an ECMAScript language value, ): either a normal completion containing a Boolean or a throw completion
+-- |
+-- | for
+-- | :   a Proxy exotic object \_O\_
+-- |
+-- | 1\. Perform ? ValidateNonRevokedProxy(\_O\_). 1. Let \_target\_ be
+-- | \_O\_.\[\[ProxyTarget\]\]. 1. Let \_handler\_ be
+-- | \_O\_.\[\[ProxyHandler\]\]. 1. Assert: \_handler\_ is an Object. 1. Let
+-- | \_trap\_ be ? GetMethod(\_handler\_, \*\"set\"\*). 1. If \_trap\_ is
+-- | \*undefined\*, then 1. Return ? \_target\_.\[\[Set\]\](\_P\_, \_V\_,
+-- | \_Receiver\_). 1. Let \_booleanTrapResult\_ be ToBoolean(?
+-- | Call(\_trap\_, \_handler\_, « \_target\_, \_P\_, \_V\_, \_Receiver\_
+-- | »)). 1. If \_booleanTrapResult\_ is \*false\*, return \*false\*. 1. Let
+-- | \_targetDesc\_ be ? \_target\_.\[\[GetOwnProperty\]\](\_P\_). 1. If
+-- | \_targetDesc\_ is not \*undefined\* and
+-- | \_targetDesc\_.\[\[Configurable\]\] is \*false\*, then 1. If
+-- | IsDataDescriptor(\_targetDesc\_) is \*true\* and
+-- | \_targetDesc\_.\[\[Writable\]\] is \*false\*, then 1. If
+-- | SameValue(\_V\_, \_targetDesc\_.\[\[Value\]\]) is \*false\*, throw a
+-- | \*TypeError\* exception. 1. If IsAccessorDescriptor(\_targetDesc\_) is
+-- | \*true\*, then 1. If \_targetDesc\_.\[\[Set\]\] is \*undefined\*, throw
+-- | a \*TypeError\* exception. 1. Return \*true\*.
+-- |
+
+-- SPEC: L13087-L13121
+-- | # \[\[Delete\]\] ( \_P\_: a property key, ): either a normal completion containing a Boolean or a throw completion
+-- |
+-- | for
+-- | :   a Proxy exotic object \_O\_
+-- |
+-- | 1\. Perform ? ValidateNonRevokedProxy(\_O\_). 1. Let \_target\_ be
+-- | \_O\_.\[\[ProxyTarget\]\]. 1. Let \_handler\_ be
+-- | \_O\_.\[\[ProxyHandler\]\]. 1. Assert: \_handler\_ is an Object. 1. Let
+-- | \_trap\_ be ? GetMethod(\_handler\_, \*\"deleteProperty\"\*). 1. If
+-- | \_trap\_ is \*undefined\*, then 1. Return ?
+-- | \_target\_.\[\[Delete\]\](\_P\_). 1. Let \_booleanTrapResult\_ be
+-- | ToBoolean(? Call(\_trap\_, \_handler\_, « \_target\_, \_P\_ »)). 1. If
+-- | \_booleanTrapResult\_ is \*false\*, return \*false\*. 1. Let
+-- | \_targetDesc\_ be ? \_target\_.\[\[GetOwnProperty\]\](\_P\_). 1. If
+-- | \_targetDesc\_ is \*undefined\*, return \*true\*. 1. If
+-- | \_targetDesc\_.\[\[Configurable\]\] is \*false\*, throw a \*TypeError\*
+-- | exception. 1. Let \_extensibleTarget\_ be ? IsExtensible(\_target\_). 1.
+-- | If \_extensibleTarget\_ is \*false\*, throw a \*TypeError\*
+-- | exception. 1. Return \*true\*.
+-- |
+
+-- SPEC: L13122-L13146
+-- | # \[\[OwnPropertyKeys\]\] ( ): either a normal completion containing a List of property keys or a throw completion
+-- |
+-- | for
+-- | :   a Proxy exotic object \_O\_
+-- |
+-- | 1\. Perform ? ValidateNonRevokedProxy(\_O\_). 1. Let \_target\_ be
+-- | \_O\_.\[\[ProxyTarget\]\]. 1. Let \_handler\_ be
+-- | \_O\_.\[\[ProxyHandler\]\]. 1. Assert: \_handler\_ is an Object. 1. Let
+-- | \_trap\_ be ? GetMethod(\_handler\_, \*\"ownKeys\"\*). 1. If \_trap\_ is
+-- | \*undefined\*, then 1. Return ? \_target\_.\[\[OwnPropertyKeys\]\](). 1.
+-- | Let \_trapResultArray\_ be ? Call(\_trap\_, \_handler\_, « \_target\_
+-- | »). 1. Let \_trapResult\_ be ?
+-- | CreateListFromArrayLike(\_trapResultArray\_, \~property-key\~). 1. If
+-- | \_trapResult\_ contains any duplicate entries, throw a \*TypeError\*
+-- | exception. 1. Let \_extensibleTarget\_ be ? IsExtensible(\_target\_). 1.
+-- | Let \_targetKeys\_ be ? \_target\_.\[\[OwnPropertyKeys\]\](). 1. Assert:
+-- | \_targetKeys\_ is a List of property keys. 1. Assert: \_targetKeys\_
+-- | contains no duplicate entries.
+-- |
+
+-- SPEC: L13147-L13177
+-- | # \[\[Call\]\] ( \_thisArgument\_: an ECMAScript language value, \_argumentsList\_: a List of ECMAScript language values, ): either a normal completion containing an ECMAScript language value or a throw completion
+-- |
+-- | for
+-- | :   a Proxy exotic object \_O\_
+-- |
+-- | 1\. Perform ? ValidateNonRevokedProxy(\_O\_). 1. Let \_target\_ be
+-- | \_O\_.\[\[ProxyTarget\]\]. 1. Let \_handler\_ be
+-- | \_O\_.\[\[ProxyHandler\]\]. 1. Assert: \_handler\_ is an Object. 1. Let
+-- | \_trap\_ be ? GetMethod(\_handler\_, \*\"apply\"\*). 1. If \_trap\_ is
+-- | \*undefined\*, then 1. Return ? Call(\_target\_, \_thisArgument\_,
+-- | \_argumentsList\_). 1. Let \_argArray\_ be
+-- | CreateArrayFromList(\_argumentsList\_). 1. Return ? Call(\_trap\_,
+-- | \_handler\_, « \_target\_, \_thisArgument\_, \_argArray\_ »).
+-- |
+
+-- SPEC: L13183-L13210
+-- | # \[\[Construct\]\] ( \_argumentsList\_: a List of ECMAScript language values, \_newTarget\_: a constructor, ): either a normal completion containing an Object or a throw completion
+-- |
+-- | for
+-- | :   a Proxy exotic object \_O\_
+-- |
+-- | 1\. Perform ? ValidateNonRevokedProxy(\_O\_). 1. Let \_target\_ be
+-- | \_O\_.\[\[ProxyTarget\]\]. 1. Assert: IsConstructor(\_target\_) is
+-- | \*true\*. 1. Let \_handler\_ be \_O\_.\[\[ProxyHandler\]\]. 1. Assert:
+-- | \_handler\_ is an Object. 1. Let \_trap\_ be ? GetMethod(\_handler\_,
+-- | \*\"construct\"\*). 1. If \_trap\_ is \*undefined\*, then 1. Return ?
+-- | Construct(\_target\_, \_argumentsList\_, \_newTarget\_). 1. Let
+-- | \_argArray\_ be CreateArrayFromList(\_argumentsList\_). 1. Let
+-- | \_newObj\_ be ? Call(\_trap\_, \_handler\_, « \_target\_, \_argArray\_,
+-- | \_newTarget\_ »). 1. If \_newObj\_ is not an Object, throw a
+-- | \*TypeError\* exception. 1. Return \_newObj\_.
+-- |
+
+/-! ## Jobs and Host Operations -/
+
+-- SPEC: L10029-L10068
+-- | # Jobs and Host Operations to Enqueue Jobs
+-- |
+-- | A [Job]{#job .dfn variants="Jobs"} is an Abstract Closure with no
+-- | parameters that initiates an ECMAScript computation when no other
+-- | ECMAScript computation is currently in progress.
+-- |
+-- | Jobs are scheduled for execution by ECMAScript host environments in a
+-- | particular agent. This specification describes the host hooks
+-- | HostEnqueueGenericJob, HostEnqueueFinalizationRegistryCleanupJob,
+-- | HostEnqueuePromiseJob, and HostEnqueueTimeoutJob to schedule jobs. The
+-- | host hooks in this specification are organized by the additional
+-- | constraints imposed on the scheduling of jobs. Hosts may define
+-- | additional abstract operations which schedule jobs. Such operations
+-- | accept a Job Abstract Closure and a realm (a Realm Record or \*null\*)
+-- | as parameters. If a Realm Record is provided, these operations schedule
+-- | the job to be performed at some future time in the provided realm, in
+-- | the agent that owns the realm. If \*null\* is provided instead for the
+-- | realm, then the job does not evaluate ECMAScript code. Their
+-- | implementations must conform to the following requirements:
+-- |
+-- | - At some future point in time, when there is no running context in the
+-- |   agent for which the job is scheduled and that agent\'s execution
+-- |   context stack is empty, the implementation must:
+-- |   1.  Perform any host-defined preparation steps.
+-- |   2.  Invoke the Job Abstract Closure.
+-- |   3.  Perform any host-defined cleanup steps, after which the execution
+-- |       context stack must be empty.
+-- | - Only one Job may be actively undergoing evaluation at any point in
+-- |   time in an agent.
+-- | - Once evaluation of a Job starts, it must run to completion before
+-- |   evaluation of any other Job starts in an agent.
+-- | - The Abstract Closure must return a normal completion, implementing its
+-- |   own handling of errors.
+-- |
+
+-- SPEC: L10101-L10116
+-- | A [JobCallback Record]{.dfn variants="JobCallback Records"} is a Record
+-- | value used to store a function object and a host-defined value. Function
+-- | objects that are invoked via a Job enqueued by the host may have
+-- | additional host-defined context. To propagate the state, Job Abstract
+-- | Closures should not capture and call function objects directly. Instead,
+-- | use HostMakeJobCallback and HostCallJobCallback.
+-- |
+-- | The WHATWG HTML specification (<https://html.spec.whatwg.org/>), for
+-- | example, uses the host-defined value to propagate the incumbent settings
+-- | object for Promise callbacks.
+-- |
+-- | JobCallback Records have the fields listed in .
+-- |
+-- |   Field Name            Value                                   Meaning
+-- |   --------------------- --------------------------------------- -------------------------------------------------
+-- |   \[\[Callback\]\]      a function object                       The function to invoke when the Job is invoked.
+-- |   \[\[HostDefined\]\]   anything (default value is \~empty\~)   Field reserved for use by hosts.
+-- |
+
+-- SPEC: L10118-L10136
+-- | # HostMakeJobCallback ( \_callback\_: a function object, ): a JobCallback Record
+-- |
+-- | An implementation of HostMakeJobCallback must conform to the following
+-- | requirements:
+-- |
+-- | - It must return a JobCallback Record whose \[\[Callback\]\] field is
+-- |   \_callback\_.
+-- |
+-- | The default implementation of HostMakeJobCallback performs the following
+-- | steps when called:
+-- |
+-- | 1\. Return the JobCallback Record { \[\[Callback\]\]: \_callback\_,
+-- | \[\[HostDefined\]\]: \~empty\~ }.
+-- |
+-- | ECMAScript hosts that are not web browsers must use the default
+-- | implementation of HostMakeJobCallback.
+-- |
+
+-- SPEC: L10146-L10166
+-- | # HostCallJobCallback ( \_jobCallback\_: a JobCallback Record, \_V\_: an ECMAScript language value, \_argumentsList\_: a List of ECMAScript language values, ): either a normal completion containing an ECMAScript language value or a throw completion
+-- |
+-- | An implementation of HostCallJobCallback must conform to the following
+-- | requirements:
+-- |
+-- | - It must perform and return the result of
+-- |   Call(\_jobCallback\_.\[\[Callback\]\], \_V\_, \_argumentsList\_).
+-- |
+-- | This requirement means that hosts cannot change the \[\[Call\]\]
+-- | behaviour of function objects defined in this specification.
+-- |
+-- | The default implementation of HostCallJobCallback performs the following
+-- | steps when called:
+-- |
+-- | 1\. Assert: IsCallable(\_jobCallback\_.\[\[Callback\]\]) is \*true\*. 1.
+-- | Return ? Call(\_jobCallback\_.\[\[Callback\]\], \_V\_,
+-- | \_argumentsList\_).
+-- |
+-- | ECMAScript hosts that are not web browsers must use the default
+-- | implementation of HostCallJobCallback.
+-- |
+
+-- SPEC: L10168-L10179
+-- | # HostEnqueueGenericJob ( \_job\_: a Job Abstract Closure, \_realm\_: a Realm Record, ): \~unused\~
+-- |
+-- | description
+-- | :   It schedules \_job\_ in the realm \_realm\_ in the agent signified
+-- |     by \_realm\_.\[\[AgentSignifier\]\] to be performed at some future
+-- |     time. The Abstract Closures used with this algorithm are intended to
+-- |     be scheduled without additional constraints, such as priority and
+-- |     ordering.
+-- |
+-- | An implementation of HostEnqueueGenericJob must conform to the
+-- | requirements in .
+-- |
+
+-- SPEC: L10181-L10207
+-- | # HostEnqueuePromiseJob ( \_job\_: a Job Abstract Closure, \_realm\_: a Realm Record or \*null\*, ): \~unused\~
+-- |
+-- | description
+-- | :   It schedules \_job\_ to be performed at some future time. The
+-- |     Abstract Closures used with this algorithm are intended to be
+-- |     related to the handling of Promises, or otherwise, to be scheduled
+-- |     with equal priority to Promise handling operations.
+-- |
+-- | An implementation of HostEnqueuePromiseJob must conform to the
+-- | requirements in as well as the following:
+-- |
+-- | - If \_realm\_ is not \*null\*, each time \_job\_ is invoked the
+-- |   implementation must perform implementation-defined steps such that
+-- |   execution is prepared to evaluate ECMAScript code at the time of
+-- |   \_job\_\'s invocation.
+-- | - Let \_scriptOrModule\_ be GetActiveScriptOrModule() at the time
+-- |   HostEnqueuePromiseJob is invoked. If \_realm\_ is not \*null\*, each
+-- |   time \_job\_ is invoked the implementation must perform
+-- |   implementation-defined steps such that \_scriptOrModule\_ is the
+-- |   active script or module at the time of \_job\_\'s invocation.
+-- | - Jobs must run in the same order as the HostEnqueuePromiseJob
+-- |   invocations that scheduled them.
+-- |
+
+-- SPEC: L10221-L10230
+-- | # HostEnqueueTimeoutJob ( \_timeoutJob\_: a Job Abstract Closure, \_realm\_: a Realm Record, \_milliseconds\_: a non-negative finite Number, ): \~unused\~
+-- |
+-- | description
+-- | :   It schedules \_timeoutJob\_ in the realm \_realm\_ in the agent
+-- |     signified by \_realm\_.\[\[AgentSignifier\]\] to be performed after
+-- |     at least \_milliseconds\_ milliseconds.
+-- |
+-- | An implementation of HostEnqueueTimeoutJob must conform to the
+-- | requirements in .
+-- |
+
+/-! ## Agents -/
+
+-- SPEC: L10232-L10287
+-- | # Agents
+-- |
+-- | An [agent]{#agent .dfn variants="agents"} comprises a set of ECMAScript
+-- | execution contexts, an execution context stack, a running execution
+-- | context, an [Agent Record]{#agent-record .dfn variants="Agent Records"},
+-- | and an [executing thread]{#executing-thread .dfn
+-- | variants="executing threads"}. Except for the executing thread, the
+-- | constituents of an agent belong exclusively to that agent.
+-- |
+-- | An agent\'s executing thread executes algorithmic steps on the agent\'s
+-- | execution contexts independently of other agents, except that an
+-- | executing thread may be used as the executing thread by multiple agents,
+-- | provided none of the agents sharing the thread have an Agent Record
+-- | whose \[\[CanBlock\]\] field is \*true\*.
+-- |
+-- | Some web browsers share a single executing thread across multiple
+-- | unrelated tabs of a browser window, for example.
+-- |
+-- | While an agent\'s executing thread is executing algorithmic steps, the
+-- | agent is the [surrounding agent]{#surrounding-agent .dfn
+-- | variants="surrounding agents"} for those steps. The steps use the
+-- | surrounding agent to access the specification-level execution objects
+-- | held within the agent: the running execution context, the execution
+-- | context stack, and the Agent Record\'s fields.
+-- |
+-- | An [agent signifier]{.dfn variants="agent signifiers"} is a
+-- | globally-unique opaque value used to identify an Agent.
+-- |
+
+-- SPEC: L10303-L10310
+-- | # IncrementModuleAsyncEvaluationCount ( ): an integer
+-- |
+-- | 1\. Let \_AR\_ be the Agent Record of the surrounding agent. 1. Let
+-- | \_count\_ be \_AR\_.\[\[ModuleAsyncEvaluationCount\]\]. 1. Set
+-- | \_AR\_.\[\[ModuleAsyncEvaluationCount\]\] to \_count\_ + 1. 1. Return
+-- | \_count\_.
+-- |
+
+-- SPEC: L10314-L10379
+-- | # Agent Clusters
+-- |
+-- | An [agent cluster]{.dfn variants="agent clusters"} is a maximal set of
+-- | agents that can communicate by operating on shared memory.
+-- |
+-- | Programs within different agents may share memory by unspecified means.
+-- | At a minimum, the backing memory for SharedArrayBuffers can be shared
+-- | among the agents in the cluster.
+-- |
+-- | There may be agents that can communicate by message passing that cannot
+-- | share memory; they are never in the same agent cluster.
+-- |
+-- | Every agent belongs to exactly one agent cluster.
+-- |
+-- | The agents in a cluster need not all be alive at some particular point
+-- | in time. If agent **A** creates another agent **B**, after which **A**
+-- | terminates and **B** creates agent **C**, the three agents are in the
+-- | same cluster if **A** could share some memory with **B** and **B** could
+-- | share some memory with **C**.
+-- |
+-- | All agents within a cluster must have the same value for the
+-- | \[\[LittleEndian\]\] field in their respective Agent Records.
+-- |
+-- | If different agents within an agent cluster have different values of
+-- | \[\[LittleEndian\]\] it becomes hard to use shared memory for multi-byte
+-- | data.
+-- |
+-- | All agents within a cluster must have the same values for the
+-- | \[\[IsLockFree1\]\] field in their respective Agent Records; similarly
+-- | for the \[\[IsLockFree2\]\] and \[\[IsLockFree8\]\] fields.
+-- |
+-- | All agents within a cluster must have different values for the
+-- | \[\[Signifier\]\] field in their respective Agent Records.
+-- |
+
+-- SPEC: L10410-L10427
+-- | # Forward Progress
+-- |
+-- | For an agent to *make forward progress* is for it to perform an
+-- | evaluation step according to this specification.
+-- |
+-- | An agent becomes *blocked* when its running execution context waits
+-- | synchronously and indefinitely for an external event. Only agents whose
+-- | Agent Record\'s \[\[CanBlock\]\] field is \*true\* can become blocked in
+-- | this sense. An *unblocked* agent is one that is not blocked.
+-- |
+-- | Implementations must ensure that:
+-- |
+-- | - every unblocked agent with a dedicated executing thread eventually
+-- |   makes forward progress
+-- | - in a set of agents that share an executing thread, one agent
+-- |   eventually makes forward progress
+-- | - an agent does not cause another agent to become blocked except via
+-- |   explicit APIs that provide blocking.
+-- |
+
+/-! ## WeakRef and FinalizationRegistry Processing Model -/
+
+-- SPEC: L10428-L10440
+-- | # Processing Model of WeakRef and FinalizationRegistry Targets
+-- |
+-- | # Objectives
+-- |
+-- | This specification does not make any guarantees that any object or
+-- | symbol will be garbage collected. Objects or symbols which are not live
+-- | may be released after long periods of time, or never at all. For this
+-- | reason, this specification uses the term \"may\" when describing
+-- | behaviour triggered by garbage collection.
+-- |
+
+-- SPEC: L10441-L10470
+-- | The semantics of WeakRefs and FinalizationRegistrys is based on two
+-- | operations which happen at particular points in time:
+-- |
+-- | - When \`WeakRef.prototype.deref\` is called, the referent (if
+-- |   \*undefined\* is not returned) is kept alive so that subsequent,
+-- |   synchronous accesses also return the same value. This list is reset
+-- |   when synchronous work is done using the ClearKeptObjects abstract
+-- |   operation.
+-- | - When an object or symbol which is registered with a
+-- |   FinalizationRegistry becomes unreachable, a call of the
+-- |   FinalizationRegistry\'s cleanup callback may eventually be made, after
+-- |   synchronous ECMAScript execution completes. The FinalizationRegistry
+-- |   cleanup is performed with the CleanupFinalizationRegistry abstract
+-- |   operation.
+-- |
+-- | Neither of these actions (ClearKeptObjects or
+-- | CleanupFinalizationRegistry) may interrupt synchronous ECMAScript
+-- | execution. Because hosts may assemble longer, synchronous ECMAScript
+-- | execution runs, this specification defers the scheduling of
+-- | ClearKeptObjects and CleanupFinalizationRegistry to the host
+-- | environment.
+-- |
+-- | Some ECMAScript implementations include garbage collector
+-- | implementations which run in the background, including when ECMAScript
+-- | is idle. Letting the host environment schedule
+-- | CleanupFinalizationRegistry allows it to resume ECMAScript execution in
+-- | order to run finalizer work, which may free up held values, reducing
+-- | overall memory usage.
+-- |
+
+-- SPEC: L10560-L10590
+-- | # Host Hooks
+-- |
+-- | # HostEnqueueFinalizationRegistryCleanupJob ( \_finalizationRegistry\_: a FinalizationRegistry, ): \~unused\~
+-- |
+-- | Let \_cleanupJob\_ be a new Job Abstract Closure with no parameters that
+-- | captures \_finalizationRegistry\_ and performs the following steps when
+-- | called:
+-- |
+-- | 1\. Let \_cleanupResult\_ be
+-- | Completion(CleanupFinalizationRegistry(\_finalizationRegistry\_)). 1. If
+-- | \_cleanupResult\_ is an abrupt completion, perform any host-defined
+-- | steps for reporting the error. 1. Return \~unused\~.
+-- |
+-- | An implementation of HostEnqueueFinalizationRegistryCleanupJob schedules
+-- | \_cleanupJob\_ to be performed at some future time, if possible. It must
+-- | also conform to the requirements in .
+-- |
+
+/-! ## Arguments Exotic Objects -/
+
+-- SPEC: L11930-L11953
+-- | # StringGetOwnProperty ( \_S\_: an Object that has a \[\[StringData\]\] internal slot, \_P\_: a property key, ): a Property Descriptor or \*undefined\*
+-- |
+-- | 1\. If \_P\_ is not a String, return \*undefined\*. 1. Let \_index\_ be
+-- | CanonicalNumericIndexString(\_P\_). 1. If \_index\_ is not an integral
+-- | Number, return \*undefined\*. 1. If \_index\_ is \*-0\*~𝔽~ or \_index\_
+-- | \< \*-0\*~𝔽~, return \*undefined\*. 1. Let \_str\_ be
+-- | \_S\_.\[\[StringData\]\]. 1. Assert: \_str\_ is a String. 1. Let \_len\_
+-- | be the length of \_str\_. 1. If ℝ(\_index\_) ≥ \_len\_, return
+-- | \*undefined\*. 1. Let \_resultStr\_ be the substring of \_str\_ from
+-- | ℝ(\_index\_) to ℝ(\_index\_) + 1. 1. Return the PropertyDescriptor {
+-- | \[\[Value\]\]: \_resultStr\_, \[\[Writable\]\]: \*false\*,
+-- | \[\[Enumerable\]\]: \*true\*, \[\[Configurable\]\]: \*false\* }.
+-- |
+
+-- SPEC: L12009-L12023
+-- | # \[\[GetOwnProperty\]\] ( \_P\_: a property key, ): a normal completion containing either a Property Descriptor or \*undefined\*
+-- |
+-- | for
+-- | :   an arguments exotic object \_args\_
+-- |
+-- | 1\. Let \_desc\_ be OrdinaryGetOwnProperty(\_args\_, \_P\_). 1. If
+-- | \_desc\_ is \*undefined\*, return \*undefined\*. 1. Let \_map\_ be
+-- | \_args\_.\[\[ParameterMap\]\]. 1. Let \_isMapped\_ be !
+-- | HasOwnProperty(\_map\_, \_P\_). 1. If \_isMapped\_ is \*true\*, then 1.
+-- | Set \_desc\_.\[\[Value\]\] to ! Get(\_map\_, \_P\_). 1. Return \_desc\_.
+-- |
+
+-- SPEC: L12083-L12101
+-- | # \[\[Get\]\] ( \_P\_: a property key, \_Receiver\_: an ECMAScript language value, ): either a normal completion containing an ECMAScript language value or a throw completion
+-- |
+-- | for
+-- | :   an arguments exotic object \_args\_
+-- |
+-- | 1\. Let \_map\_ be \_args\_.\[\[ParameterMap\]\]. 1. Let \_isMapped\_ be
+-- | ! HasOwnProperty(\_map\_, \_P\_). 1. If \_isMapped\_ is \*false\*,
+-- | return ? OrdinaryGet(\_args\_, \_P\_, \_Receiver\_). 1. Assert: \_map\_
+-- | contains a formal parameter mapping for \_P\_. 1. Return ! Get(\_map\_,
+-- | \_P\_).
+-- |
+
+/-! ## PerformPromiseThen -/
+
+-- SPEC: L11090-L11139
+-- | description
+-- | :   It performs the "then" operation on \_promise\_ using
+-- |     \_onFulfilled\_ and \_onRejected\_ as its settlement actions. If
+-- |     \_resultCapability\_ is passed, the result is stored by updating
+-- |     \_resultCapability\_\'s promise. If it is not passed, then
+-- |     PerformPromiseThen is being called by a specification-internal
+-- |     operation where the result does not matter.
+-- |
+
+-- SPEC: L41090-L41148
+-- | description
+-- | :   It performs the "then" operation on \_promise\_ using
+-- |     \_onFulfilled\_ and \_onRejected\_ as its settlement actions. If
+-- |     \_resultCapability\_ is passed, the result is stored by updating
+-- |     \_resultCapability\_\'s promise. If it is not passed, then
+-- |     PerformPromiseThen is being called by a specification-internal
+-- |     operation where the result does not matter.
+-- |
+-- | 1\. Assert: IsPromise(\_promise\_) is \*true\*. 1. If
+-- | \_resultCapability\_ is not present, then 1. Set \_resultCapability\_ to
+-- | \*undefined\*. 1. If IsCallable(\_onFulfilled\_) is \*false\*, then 1.
+-- | Let \_onFulfilledJobCallback\_ be \~empty\~. 1. Else, 1. Let
+-- | \_onFulfilledJobCallback\_ be HostMakeJobCallback(\_onFulfilled\_). 1.
+-- | If IsCallable(\_onRejected\_) is \*false\*, then 1. Let
+-- | \_onRejectedJobCallback\_ be \~empty\~. 1. Else, 1. Let
+-- | \_onRejectedJobCallback\_ be HostMakeJobCallback(\_onRejected\_). 1. Let
+-- | \_fulfillReaction\_ be the PromiseReaction Record { \[\[Capability\]\]:
+-- | \_resultCapability\_, \[\[Type\]\]: \~fulfill\~, \[\[Handler\]\]:
+-- | \_onFulfilledJobCallback\_ }. 1. Let \_rejectReaction\_ be the
+-- | PromiseReaction Record { \[\[Capability\]\]: \_resultCapability\_,
+-- | \[\[Type\]\]: \~reject\~, \[\[Handler\]\]: \_onRejectedJobCallback\_
+-- | }. 1. If \_promise\_.\[\[PromiseState\]\] is \~pending\~, then 1. Append
+-- | \_fulfillReaction\_ to \_promise\_.\[\[PromiseFulfillReactions\]\]. 1.
+-- | Append \_rejectReaction\_ to
+-- | \_promise\_.\[\[PromiseRejectReactions\]\]. 1. Else if
+-- | \_promise\_.\[\[PromiseState\]\] is \~fulfilled\~, then 1. Let \_value\_
+-- | be \_promise\_.\[\[PromiseResult\]\]. 1. Let \_fulfillJob\_ be
+-- | NewPromiseReactionJob(\_fulfillReaction\_, \_value\_). 1. Perform
+-- | HostEnqueuePromiseJob(\_fulfillJob\_.\[\[Job\]\],
+-- | \_fulfillJob\_.\[\[Realm\]\]). 1. Else, 1. Assert:
+-- | \_promise\_.\[\[PromiseState\]\] is \~rejected\~. 1. Let \_reason\_ be
+-- | \_promise\_.\[\[PromiseResult\]\]. 1. If
+-- | \_promise\_.\[\[PromiseIsHandled\]\] is \*false\*, perform
+-- | HostPromiseRejectionTracker(\_promise\_, \*\"handle\"\*). 1. Let
+-- | \_rejectJob\_ be NewPromiseReactionJob(\_rejectReaction\_,
+-- | \_reason\_). 1. Perform HostEnqueuePromiseJob(\_rejectJob\_.\[\[Job\]\],
+-- | \_rejectJob\_.\[\[Realm\]\]). 1. Set
+-- | \_promise\_.\[\[PromiseIsHandled\]\] to \*true\*. 1. If
+-- | \_resultCapability\_ is \*undefined\*, return \*undefined\*. 1. Return
+-- | \_resultCapability\_.\[\[Promise\]\].
+-- |
+
+/-! ## GeneratorFunction Objects -/
+
+-- SPEC: L41157-L41175
+-- | # GeneratorFunction Objects
+-- |
+-- | GeneratorFunctions are functions that are usually created by evaluating
+-- | \|GeneratorDeclaration\|s, \|GeneratorExpression\|s, and
+-- | \|GeneratorMethod\|s. They may also be created by calling the
+-- | %GeneratorFunction% intrinsic.
+-- |
+
+-- SPEC: L41176-L41200
+-- | # The GeneratorFunction Constructor
+-- |
+-- | The GeneratorFunction constructor:
+-- |
+-- | - is [%GeneratorFunction%]{.dfn}.
+-- | - is a subclass of \`Function\`.
+-- | - creates and initializes a new GeneratorFunction when called as a
+-- |   function rather than as a constructor. Thus the function call
+-- |   \`GeneratorFunction (...)\` is equivalent to the object creation
+-- |   expression \`new GeneratorFunction (...)\` with the same arguments.
+-- |
+
+-- SPEC: L41201-L41215
+-- | # GeneratorFunction ( \...\_parameterArgs\_, \_bodyArg\_ )
+-- |
+-- | The last argument (if any) specifies the body (executable code) of a
+-- | generator function; any preceding arguments specify formal parameters.
+-- |
+-- | This function performs the following steps when called:
+-- |
+-- | 1\. Let \_C\_ be the active function object. 1. If \_bodyArg\_ is not
+-- | present, set \_bodyArg\_ to the empty String. 1. Return ?
+-- | CreateDynamicFunction(\_C\_, NewTarget, \~generator\~,
+-- | \_parameterArgs\_, \_bodyArg\_).
+-- |
+
+-- SPEC: L41220-L41231
+-- | # GeneratorFunction.prototype
+-- |
+-- | The initial value of \`GeneratorFunction.prototype\` is the
+-- | GeneratorFunction prototype object.
+-- |
+-- | This property has the attributes { \[\[Writable\]\]: \*false\*,
+-- | \[\[Enumerable\]\]: \*false\*, \[\[Configurable\]\]: \*false\* }.
+-- |
+
+-- SPEC: L41257-L41262
+-- | # GeneratorFunction.prototype.constructor
+-- |
+-- | The initial value of \`GeneratorFunction.prototype.constructor\` is
+-- | %GeneratorFunction%.
+-- |
+
+-- SPEC: L41268-L41273
+-- | # GeneratorFunction.prototype.prototype
+-- |
+-- | The initial value of \`GeneratorFunction.prototype.prototype\` is
+-- | %GeneratorPrototype%.
+-- |
+
+-- SPEC: L41279-L41286
+-- | # GeneratorFunction.prototype \[ %Symbol.toStringTag% \]
+-- |
+-- | The initial value of the %Symbol.toStringTag% property is the String
+-- | value \*\"GeneratorFunction\"\*.
+-- |
+-- | This property has the attributes { \[\[Writable\]\]: \*false\*,
+-- | \[\[Enumerable\]\]: \*false\*, \[\[Configurable\]\]: \*true\* }.
+-- |
+
+/-! ## AsyncGeneratorFunction Objects -/
+
+-- SPEC: L41323-L41347
+-- | # AsyncGeneratorFunction Objects
+-- |
+-- | AsyncGeneratorFunctions are functions that are usually created by
+-- | evaluating \|AsyncGeneratorDeclaration\|, \|AsyncGeneratorExpression\|,
+-- | and \|AsyncGeneratorMethod\| syntactic productions. They may also be
+-- | created by calling the %AsyncGeneratorFunction% intrinsic.
+-- |
+
+-- SPEC: L41348-L41378
+-- | # The AsyncGeneratorFunction Constructor
+-- |
+-- | The AsyncGeneratorFunction constructor:
+-- |
+-- | - is [%AsyncGeneratorFunction%]{.dfn}.
+-- | - is a subclass of \`Function\`.
+-- | - creates and initializes a new AsyncGeneratorFunction when called as a
+-- |   function rather than as a constructor. Thus the function call
+-- |   \`AsyncGeneratorFunction (\...)\` is equivalent to the object creation
+-- |   expression \`new AsyncGeneratorFunction (\...)\` with the same
+-- |   arguments.
+-- |
+
+-- SPEC: L41379-L41392
+-- | # AsyncGeneratorFunction ( \...\_parameterArgs\_, \_bodyArg\_ )
+-- |
+-- | The last argument (if any) specifies the body (executable code) of an
+-- | async generator function; any preceding arguments specify formal
+-- | parameters.
+-- |
+-- | This function performs the following steps when called:
+-- |
+-- | 1\. Let \_C\_ be the active function object. 1. If \_bodyArg\_ is not
+-- | present, set \_bodyArg\_ to the empty String. 1. Return ?
+-- | CreateDynamicFunction(\_C\_, NewTarget, \~async-generator\~,
+-- | \_parameterArgs\_, \_bodyArg\_).
+-- |
+
+-- SPEC: L41402-L41408
+-- | # AsyncGeneratorFunction.prototype
+-- |
+-- | The initial value of \`AsyncGeneratorFunction.prototype\` is the
+-- | AsyncGeneratorFunction prototype object.
+-- |
+-- | This property has the attributes { \[\[Writable\]\]: \*false\*,
+-- | \[\[Enumerable\]\]: \*false\*, \[\[Configurable\]\]: \*false\* }.
+-- |
+
+-- SPEC: L41420-L41429
+-- | # AsyncGeneratorFunction.prototype.constructor
+-- |
+-- | The initial value of \`AsyncGeneratorFunction.prototype.constructor\` is
+-- | %AsyncGeneratorFunction%.
+-- |
+-- | This property has the attributes { \[\[Writable\]\]: \*false\*,
+-- | \[\[Enumerable\]\]: \*false\*, \[\[Configurable\]\]: \*true\* }.
+-- |
+
+-- SPEC: L41430-L41435
+-- | # AsyncGeneratorFunction.prototype.prototype
+-- |
+-- | The initial value of \`AsyncGeneratorFunction.prototype.prototype\` is
+-- | %AsyncGeneratorPrototype%.
+-- |
+
+-- SPEC: L41440-L41447
+-- | # AsyncGeneratorFunction.prototype \[ %Symbol.toStringTag% \]
+-- |
+-- | The initial value of the %Symbol.toStringTag% property is the String
+-- | value \*\"AsyncGeneratorFunction\"\*.
+-- |
+-- | This property has the attributes { \[\[Writable\]\]: \*false\*,
+-- | \[\[Enumerable\]\]: \*false\*, \[\[Configurable\]\]: \*true\* }.
+-- |
+
+/-! ## AsyncGenerator Abstract Operations -/
+
+-- SPEC: L41755-L41771
+-- | # AsyncGenerator Abstract Operations
+-- |
+-- | # AsyncGeneratorRequest Records
+-- |
+-- | An [AsyncGeneratorRequest]{.dfn variants="AsyncGeneratorRequests"} is a
+-- | Record value used to store information about how an async generator
+-- | should be resumed and contains capabilities for fulfilling or rejecting
+-- | the corresponding promise.
+-- |
+-- | They have the following fields:
+-- |
+-- |   Field Name           Value                        Meaning
+-- |   -------------------- ---------------------------- ---------------------------------------------------------------------------
+-- |   \[\[Completion\]\]   a Completion Record          The Completion Record which should be used to resume the async generator.
+-- |   \[\[Capability\]\]   a PromiseCapability Record   The promise capabilities associated with this request.
+-- |
+
+-- SPEC: L41773-L41817
+-- | # AsyncGeneratorStart ( \_generator\_: an AsyncGenerator, \_generatorBody\_: a \|FunctionBody\| Parse Node or an Abstract Closure with no parameters, ): \~unused\~
+-- |
+-- | 1\. Assert: \_generator\_.\[\[AsyncGeneratorState\]\] is
+-- | \~suspended-start\~. 1. Let \_genContext\_ be the running execution
+-- | context. 1. Set the Generator component of \_genContext\_ to
+-- | \_generator\_. 1. Let \_closure\_ be a new Abstract Closure with no
+-- | parameters that captures \_generatorBody\_ and performs the following
+-- | steps when called: 1. Let \_acGenContext\_ be the running execution
+-- | context. 1. Let \_acGenerator\_ be the Generator component of
+-- | \_acGenContext\_. 1. If \_generatorBody\_ is a Parse Node, then 1. Let
+-- | \_result\_ be Completion(Evaluation of \_generatorBody\_). 1. Else, 1.
+-- | Assert: \_generatorBody\_ is an Abstract Closure with no parameters. 1.
+-- | Let \_result\_ be Completion(\_generatorBody\_()). 1. Assert: If we
+-- | return here, the async generator either threw an exception or performed
+-- | either an implicit or explicit return. 1. Remove \_acGenContext\_ from
+-- | the execution context stack and restore the execution context that is at
+-- | the top of the execution context stack as the running execution
+-- | context. 1. Set \_acGenerator\_.\[\[AsyncGeneratorState\]\] to
+-- | \~draining-queue\~. 1. If \_result\_ is a normal completion, set
+-- | \_result\_ to NormalCompletion(\*undefined\*). 1. If \_result\_ is a
+-- | return completion, set \_result\_ to
+-- | NormalCompletion(\_result\_.\[\[Value\]\]). 1. Perform
+-- | AsyncGeneratorCompleteStep(\_acGenerator\_, \_result\_, \*true\*). 1.
+-- | Perform AsyncGeneratorDrainQueue(\_acGenerator\_). 1. Return
+-- | NormalCompletion(\*undefined\*). 1. Set the code evaluation state of
+-- | \_genContext\_ such that when evaluation is resumed for that execution
+-- | context, \_closure\_ will be called with no arguments. 1. Set
+-- | \_generator\_.\[\[AsyncGeneratorContext\]\] to \_genContext\_. 1. Set
+-- | \_generator\_.\[\[AsyncGeneratorQueue\]\] to a new empty List. 1. Return
+-- | \~unused\~.
+-- |
+
+-- SPEC: L41819-L41828
+-- | # AsyncGeneratorValidate ( \_generator\_: an ECMAScript language value, \_generatorBrand\_: a String or \~empty\~, ): either a normal completion containing \~unused\~ or a throw completion
+-- |
+-- | 1\. Perform ? RequireInternalSlot(\_generator\_,
+-- | \[\[AsyncGeneratorContext\]\]). 1. Perform ?
+-- | RequireInternalSlot(\_generator\_, \[\[AsyncGeneratorState\]\]). 1.
+-- | Perform ? RequireInternalSlot(\_generator\_,
+-- | \[\[AsyncGeneratorQueue\]\]). 1. If \_generator\_.\[\[GeneratorBrand\]\]
+-- | is not \_generatorBrand\_, throw a \*TypeError\* exception. 1. Return
+-- | \~unused\~.
+-- |
+
+-- SPEC: L41830-L41836
+-- | # AsyncGeneratorEnqueue ( \_generator\_: an AsyncGenerator, \_completion\_: a Completion Record, \_promiseCapability\_: a PromiseCapability Record, ): \~unused\~
+-- |
+-- | 1\. Let \_request\_ be AsyncGeneratorRequest { \[\[Completion\]\]:
+-- | \_completion\_, \[\[Capability\]\]: \_promiseCapability\_ }. 1. Append
+-- | \_request\_ to \_generator\_.\[\[AsyncGeneratorQueue\]\]. 1. Return
+-- | \~unused\~.
+-- |
+
+-- SPEC: L41838-L41864
+-- | # AsyncGeneratorCompleteStep ( \_generator\_: an AsyncGenerator, \_completion\_: a Completion Record, \_done\_: a Boolean, optional \_realm\_: a Realm Record, ): \~unused\~
+-- |
+-- | 1\. Assert: \_generator\_.\[\[AsyncGeneratorQueue\]\] is not empty. 1.
+-- | Let \_next\_ be the first element of
+-- | \_generator\_.\[\[AsyncGeneratorQueue\]\]. 1. Remove the first element
+-- | from \_generator\_.\[\[AsyncGeneratorQueue\]\]. 1. Let
+-- | \_promiseCapability\_ be \_next\_.\[\[Capability\]\]. 1. Let \_value\_
+-- | be \_completion\_.\[\[Value\]\]. 1. If \_completion\_ is a throw
+-- | completion, then 1. Perform ! Call(\_promiseCapability\_.\[\[Reject\]\],
+-- | \*undefined\*, « \_value\_ »). 1. Else, 1. Assert: \_completion\_ is a
+-- | normal completion. 1. If \_realm\_ is present, then 1. Let \_oldRealm\_
+-- | be the running execution context\'s Realm. 1. Set the running execution
+-- | context\'s Realm to \_realm\_. 1. Let \_iteratorResult\_ be
+-- | CreateIteratorResultObject(\_value\_, \_done\_). 1. Set the running
+-- | execution context\'s Realm to \_oldRealm\_. 1. Else, 1. Let
+-- | \_iteratorResult\_ be CreateIteratorResultObject(\_value\_,
+-- | \_done\_). 1. Perform ! Call(\_promiseCapability\_.\[\[Resolve\]\],
+-- | \*undefined\*, « \_iteratorResult\_ »). 1. Return \~unused\~.
+-- |
+
+-- SPEC: L41866-L41880
+-- | # AsyncGeneratorResume ( \_generator\_: an AsyncGenerator, \_completion\_: a Completion Record, ): \~unused\~
+-- |
+-- | 1\. Assert: \_generator\_.\[\[AsyncGeneratorState\]\] is either
+-- | \~suspended-start\~ or \~suspended-yield\~. 1. Let \_genContext\_ be
+-- | \_generator\_.\[\[AsyncGeneratorContext\]\]. 1. Let \_callerContext\_ be
+-- | the running execution context. 1. Suspend \_callerContext\_. 1. Set
+-- | \_generator\_.\[\[AsyncGeneratorState\]\] to \~executing\~. 1. Push
+-- | \_genContext\_ onto the execution context stack; \_genContext\_ is now
+-- | the running execution context. 1. Resume the suspended evaluation of
+-- | \_genContext\_ using \_completion\_ as the result of the operation that
+-- | suspended it. Let \_result\_ be the Completion Record returned by the
+-- | resumed computation. 1. Assert: \_result\_ is never an abrupt
+-- | completion. 1. Assert: When we return here, \_genContext\_ has already
+-- | been removed from the execution context stack and \_callerContext\_ is
+-- | the currently running execution context. 1. Return \~unused\~.
+-- |
+
+-- SPEC: L41882-L41890
+-- | # AsyncGeneratorUnwrapYieldResumption ( \_resumptionValue\_: a Completion Record, ): either a normal completion containing an ECMAScript language value or an abrupt completion
+-- |
+-- | 1\. If \_resumptionValue\_ is not a return completion, return ?
+-- | \_resumptionValue\_. 1. Let \_awaited\_ be
+-- | Completion(Await(\_resumptionValue\_.\[\[Value\]\])). 1. If \_awaited\_
+-- | is a throw completion, return ? \_awaited\_. 1. Assert: \_awaited\_ is a
+-- | normal completion. 1. Return
+-- | ReturnCompletion(\_awaited\_.\[\[Value\]\]).
+-- |
+
+-- SPEC: L41892-L41923
+-- | # AsyncGeneratorYield ( \_value\_: an ECMAScript language value, ): either a normal completion containing an ECMAScript language value or an abrupt completion
+-- |
+-- | 1\. Let \_genContext\_ be the running execution context. 1. Assert:
+-- | \_genContext\_ is the execution context of a generator. 1. Let
+-- | \_generator\_ be the value of the Generator component of
+-- | \_genContext\_. 1. Assert: GetGeneratorKind() is \~async\~. 1. Let
+-- | \_completion\_ be NormalCompletion(\_value\_). 1. Assert: The execution
+-- | context stack has at least two elements. 1. Let \_previousContext\_ be
+-- | the second to top element of the execution context stack. 1. Let
+-- | \_previousRealm\_ be \_previousContext\_\'s Realm. 1. Perform
+-- | AsyncGeneratorCompleteStep(\_generator\_, \_completion\_, \*false\*,
+-- | \_previousRealm\_). 1. Let \_queue\_ be
+-- | \_generator\_.\[\[AsyncGeneratorQueue\]\]. 1. If \_queue\_ is not empty,
+-- | then 1. NOTE: Execution continues without suspending the generator. 1.
+-- | Let \_toYield\_ be the first element of \_queue\_. 1. Let
+-- | \_resumptionValue\_ be Completion(\_toYield\_.\[\[Completion\]\]). 1.
+-- | Return ? AsyncGeneratorUnwrapYieldResumption(\_resumptionValue\_). 1.
+-- | Set \_generator\_.\[\[AsyncGeneratorState\]\] to \~suspended-yield\~. 1.
+-- | Remove \_genContext\_ from the execution context stack and restore the
+-- | execution context that is at the top of the execution context stack as
+-- | the running execution context. 1. Let \_callerContext\_ be the running
+-- | execution context. 1. Resume \_callerContext\_ passing \*undefined\*. If
+-- | \_genContext\_ is ever resumed again, let \_resumptionValue\_ be the
+-- | Completion Record with which it is resumed. 1. Assert: If control
+-- | reaches here, then \_genContext\_ is the running execution context
+-- | again. 1. Return ?
+-- | AsyncGeneratorUnwrapYieldResumption(\_resumptionValue\_).
+-- |
+
+-- SPEC: L41925-L41960
+-- | # AsyncGeneratorAwaitReturn ( \_generator\_: an AsyncGenerator, ): \~unused\~
+-- |
+-- | 1\. Assert: \_generator\_.\[\[AsyncGeneratorState\]\] is
+-- | \~draining-queue\~. 1. Let \_queue\_ be
+-- | \_generator\_.\[\[AsyncGeneratorQueue\]\]. 1. Assert: \_queue\_ is not
+-- | empty. 1. Let \_next\_ be the first element of \_queue\_. 1. Let
+-- | \_completion\_ be Completion(\_next\_.\[\[Completion\]\]). 1. Assert:
+-- | \_completion\_ is a return completion. 1. Let \_promiseCompletion\_ be
+-- | Completion(PromiseResolve(%Promise%, \_completion\_.\[\[Value\]\])). 1.
+-- | If \_promiseCompletion\_ is an abrupt completion, then 1. Perform
+-- | AsyncGeneratorCompleteStep(\_generator\_, \_promiseCompletion\_,
+-- | \*true\*). 1. Perform AsyncGeneratorDrainQueue(\_generator\_). 1. Return
+-- | \~unused\~. 1. Assert: \_promiseCompletion\_ is a normal completion. 1.
+-- | Let \_promise\_ be \_promiseCompletion\_.\[\[Value\]\]. 1. Let
+-- | \_fulfilledClosure\_ be a new Abstract Closure with parameters
+-- | (\_value\_) that captures \_generator\_ and performs the following steps
+-- | when called: 1. Assert: \_generator\_.\[\[AsyncGeneratorState\]\] is
+-- | \~draining-queue\~. 1. Let \_result\_ be NormalCompletion(\_value\_). 1.
+-- | Perform AsyncGeneratorCompleteStep(\_generator\_, \_result\_,
+-- | \*true\*). 1. Perform AsyncGeneratorDrainQueue(\_generator\_). 1. Return
+-- | NormalCompletion(\*undefined\*). 1. Let \_onFulfilled\_ be
+-- | CreateBuiltinFunction(\_fulfilledClosure\_, 1, \*\"\"\*, « »). 1. Let
+-- | \_rejectedClosure\_ be a new Abstract Closure with parameters
+-- | (\_reason\_) that captures \_generator\_ and performs the following
+-- | steps when called: 1. Assert: \_generator\_.\[\[AsyncGeneratorState\]\]
+-- | is \~draining-queue\~. 1. Let \_result\_ be
+-- | ThrowCompletion(\_reason\_). 1. Perform
+-- | AsyncGeneratorCompleteStep(\_generator\_, \_result\_, \*true\*). 1.
+-- | Perform AsyncGeneratorDrainQueue(\_generator\_). 1. Return
+-- | NormalCompletion(\*undefined\*). 1. Let \_onRejected\_ be
+-- | CreateBuiltinFunction(\_rejectedClosure\_, 1, \*\"\"\*, « »). 1. Perform
+-- | PerformPromiseThen(\_promise\_, \_onFulfilled\_, \_onRejected\_). 1.
+-- | Return \~unused\~.
+-- |
+
+-- SPEC: L41962-L41979
+-- | # AsyncGeneratorDrainQueue ( \_generator\_: an AsyncGenerator, ): \~unused\~
+-- |
+-- | description
+-- | :   It drains the generator\'s AsyncGeneratorQueue until it encounters
+-- |     an AsyncGeneratorRequest which holds a return completion.
+-- |
+-- | 1\. Assert: \_generator\_.\[\[AsyncGeneratorState\]\] is
+-- | \~draining-queue\~. 1. Let \_queue\_ be
+-- | \_generator\_.\[\[AsyncGeneratorQueue\]\]. 1. Repeat, while \_queue\_ is
+-- | not empty, 1. Let \_next\_ be the first element of \_queue\_. 1. Let
+-- | \_completion\_ be Completion(\_next\_.\[\[Completion\]\]). 1. If
+-- | \_completion\_ is a return completion, then 1. Perform
+-- | AsyncGeneratorAwaitReturn(\_generator\_). 1. Return \~unused\~. 1. If
+-- | \_completion\_ is a normal completion, then 1. Set \_completion\_ to
+-- | NormalCompletion(\*undefined\*). 1. Perform
+-- | AsyncGeneratorCompleteStep(\_generator\_, \_completion\_, \*true\*). 1.
+-- | Set \_generator\_.\[\[AsyncGeneratorState\]\] to \~completed\~. 1.
+-- | Return \~unused\~.
+-- |
+
+/-! ## AsyncFunction Objects -/
+
+-- SPEC: L41980-L41993
+-- | # AsyncFunction Objects
+-- |
+-- | AsyncFunctions are functions that are usually created by evaluating
+-- | \|AsyncFunctionDeclaration\|s, \|AsyncFunctionExpression\|s,
+-- | \|AsyncMethod\|s, and \|AsyncArrowFunction\|s. They may also be created
+-- | by calling the %AsyncFunction% intrinsic.
+-- |
+
+-- SPEC: L41994-L42006
+-- | # The AsyncFunction Constructor
+-- |
+-- | The AsyncFunction constructor:
+-- |
+-- | - is [%AsyncFunction%]{.dfn}.
+-- | - is a subclass of \`Function\`.
+-- | - creates and initializes a new AsyncFunction when called as a function
+-- |   rather than as a constructor. Thus the function call
+-- |   \`AsyncFunction(...)\` is equivalent to the object creation expression
+-- |   \`new AsyncFunction(...)\` with the same arguments.
+-- |
+
+-- SPEC: L42014-L42023
+-- | # AsyncFunction ( \...\_parameterArgs\_, \_bodyArg\_ )
+-- |
+-- | The last argument (if any) specifies the body (executable code) of an
+-- | async function. Any preceding arguments specify formal parameters.
+-- |
+-- | This function performs the following steps when called:
+-- |
+-- | 1\. Let \_C\_ be the active function object. 1. If \_bodyArg\_ is not
+-- | present, set \_bodyArg\_ to the empty String. 1. Return ?
+-- | CreateDynamicFunction(\_C\_, NewTarget, \~async\~, \_parameterArgs\_,
+-- | \_bodyArg\_). See NOTE for .
+-- |
+
+-- SPEC: L42034-L42040
+-- | # AsyncFunction.prototype
+-- |
+-- | The initial value of \`AsyncFunction.prototype\` is the AsyncFunction
+-- | prototype object.
+-- |
+-- | This property has the attributes { \[\[Writable\]\]: \*false\*,
+-- | \[\[Enumerable\]\]: \*false\*, \[\[Configurable\]\]: \*false\* }.
+-- |
+
+-- SPEC: L42054-L42059
+-- | # AsyncFunction.prototype.constructor
+-- |
+-- | The initial value of \`AsyncFunction.prototype.constructor\` is
+-- | %AsyncFunction%.
+-- |
+
+-- SPEC: L42065-L42072
+-- | # AsyncFunction.prototype \[ %Symbol.toStringTag% \]
+-- |
+-- | The initial value of the %Symbol.toStringTag% property is the String
+-- | value \*\"AsyncFunction\"\*.
+-- |
+-- | This property has the attributes { \[\[Writable\]\]: \*false\*,
+-- | \[\[Enumerable\]\]: \*false\*, \[\[Configurable\]\]: \*true\* }.
+-- |
+
+/-! ## Async Functions Abstract Operations -/
+
+-- SPEC: L42094-L42102
+-- | # AsyncFunctionStart ( \_promiseCapability\_: a PromiseCapability Record, \_asyncFunctionBody\_: a \|FunctionBody\| Parse Node, an \|ExpressionBody\| Parse Node, or an Abstract Closure with no parameters, ): \~unused\~
+-- |
+-- | 1\. Let \_runningContext\_ be the running execution context. 1. Let
+-- | \_asyncContext\_ be a copy of \_runningContext\_. 1. NOTE: Copying the
+-- | execution state is required for AsyncBlockStart to resume its execution.
+-- | It is ill-defined to resume a currently executing context. 1. Perform
+-- | AsyncBlockStart(\_promiseCapability\_, \_asyncFunctionBody\_,
+-- | \_asyncContext\_). 1. Return \~unused\~.
+-- |
+
+-- SPEC: L42104-L42139
+-- | # AsyncBlockStart ( \_promiseCapability\_: a PromiseCapability Record, \_asyncBody\_: a Parse Node or an Abstract Closure with no parameters, \_asyncContext\_: an execution context, ): \~unused\~
+-- |
+-- | 1\. Let \_runningContext\_ be the running execution context. 1. Let
+-- | \_closure\_ be a new Abstract Closure with no parameters that captures
+-- | \_promiseCapability\_ and \_asyncBody\_ and performs the following steps
+-- | when called: 1. Let \_acAsyncContext\_ be the running execution
+-- | context. 1. If \_asyncBody\_ is a Parse Node, then 1. Let \_result\_ be
+-- | Completion(Evaluation of \_asyncBody\_). 1. Else, 1. Assert:
+-- | \_asyncBody\_ is an Abstract Closure with no parameters. 1. Let
+-- | \_result\_ be Completion(\_asyncBody\_()). 1. Assert: If we return here,
+-- | the async function either threw an exception or performed an implicit or
+-- | explicit return; all awaiting is done. 1. Remove \_acAsyncContext\_ from
+-- | the execution context stack and restore the execution context that is at
+-- | the top of the execution context stack as the running execution
+-- | context. 1. If \_result\_ is a normal completion, then 1. Perform !
+-- | Call(\_promiseCapability\_.\[\[Resolve\]\], \*undefined\*, «
+-- | \*undefined\* »). 1. Else if \_result\_ is a return completion, then 1.
+-- | Perform ! Call(\_promiseCapability\_.\[\[Resolve\]\], \*undefined\*, «
+-- | \_result\_.\[\[Value\]\] »). 1. Else, 1. Assert: \_result\_ is a throw
+-- | completion. 1. Perform ! Call(\_promiseCapability\_.\[\[Reject\]\],
+-- | \*undefined\*, « \_result\_.\[\[Value\]\] »). 1.
+-- | \[id=\"step-asyncblockstart-return-undefined\"\] Return
+-- | NormalCompletion(\~unused\~). 1. Set the code evaluation state of
+-- | \_asyncContext\_ such that when evaluation is resumed for that execution
+-- | context, \_closure\_ will be called with no arguments. 1. Push
+-- | \_asyncContext\_ onto the execution context stack; \_asyncContext\_ is
+-- | now the running execution context. 1. Resume the suspended evaluation of
+-- | \_asyncContext\_. Let \_result\_ be the value returned by the resumed
+-- | computation. 1. Assert: When we return here, \_asyncContext\_ has
+-- | already been removed from the execution context stack and
+-- | \_runningContext\_ is the currently running execution context. 1.
+-- | Assert: \_result\_ is a normal completion with a value of \~unused\~.
+-- | The possible sources of this value are Await or, if the async function
+-- | doesn\'t await anything, step above. 1. Return \~unused\~.
+-- |
+
+/-! ## Atomics Abstract Operations -/
+
+-- SPEC: L38230-L38237
+-- | # ValidateAtomicAccessOnIntegerTypedArray ( \_typedArray\_: an ECMAScript language value, \_requestIndex\_: an ECMAScript language value, ): either a normal completion containing an integer or a throw completion
+-- |
+-- | 1\. Let \_taRecord\_ be ? ValidateIntegerTypedArray(\_typedArray\_,
+-- | \*false\*). 1. Return ? ValidateAtomicAccess(\_taRecord\_,
+-- | \_requestIndex\_).
+-- |
+
+-- SPEC: L38239-L38260
+-- | # RevalidateAtomicAccess ( \_typedArray\_: a TypedArray, \_byteIndexInBuffer\_: an integer, ): either a normal completion containing \~unused\~ or a throw completion
+-- |
+-- | description
+-- | :   This operation revalidates the index within the backing buffer for
+-- |     atomic operations after all argument coercions are performed in
+-- |     Atomics methods, as argument coercions can have arbitrary side
+-- |     effects, which could cause the buffer to become out of bounds. This
+-- |     operation does not throw when \_typedArray\_\'s backing buffer is a
+-- |     SharedArrayBuffer.
+-- |
+-- | 1\. Let \_taRecord\_ be
+-- | MakeTypedArrayWithBufferWitnessRecord(\_typedArray\_, \~unordered\~). 1.
+-- | NOTE: Bounds checking is not a synchronizing operation when
+-- | \_typedArray\_\'s backing buffer is a growable SharedArrayBuffer. 1. If
+-- | IsTypedArrayOutOfBounds(\_taRecord\_) is \*true\*, throw a \*TypeError\*
+-- | exception. 1. Assert: \_byteIndexInBuffer\_ ≥
+-- | \_typedArray\_.\[\[ByteOffset\]\]. 1. If \_byteIndexInBuffer\_ ≥
+-- | \_taRecord\_.\[\[CachedBufferByteLength\]\], throw a \*RangeError\*
+-- | exception. 1. Return \~unused\~.
+-- |
+
+-- SPEC: L38262-L38269
+-- | # GetWaiterList ( \_block\_: a Shared Data Block, \_i\_: a non-negative integer that is evenly divisible by 4, ): a WaiterList Record
+-- |
+-- | 1\. Assert: \_i\_ and \_i\_ + 3 are valid byte offsets within the memory
+-- | of \_block\_. 1. Return the WaiterList Record that is referenced by the
+-- | pair (\_block\_, \_i\_).
+-- |
+
+-- SPEC: L38271-L38295
+-- | # EnterCriticalSection ( \_WL\_: a WaiterList Record, ): \~unused\~
+-- |
+-- | 1\. Assert: The surrounding agent is not in the critical section for any
+-- | WaiterList Record. 1. Wait until no agent is in the critical section for
+-- | \_WL\_, then enter the critical section for \_WL\_ (without allowing any
+-- | other agent to enter). 1. If \_WL\_.\[\[MostRecentLeaveEvent\]\] is not
+-- | \~empty\~, then 1. NOTE: A \_WL\_ whose critical section has been
+-- | entered at least once has a Synchronize event set by
+-- | LeaveCriticalSection. 1. Let \_AR\_ be the Agent Record of the
+-- | surrounding agent. 1. Let \_execution\_ be
+-- | \_AR\_.\[\[CandidateExecution\]\]. 1. Let \_eventsRecord\_ be the Agent
+-- | Events Record of \_execution\_.\[\[EventsRecords\]\] whose
+-- | \[\[AgentSignifier\]\] is AgentSignifier(). 1. Let \_enterEvent\_ be a
+-- | new Synchronize event. 1. Append \_enterEvent\_ to
+-- | \_eventsRecord\_.\[\[EventList\]\]. 1. Append
+-- | (\_WL\_.\[\[MostRecentLeaveEvent\]\], \_enterEvent\_) to
+-- | \_eventsRecord\_.\[\[AgentSynchronizesWith\]\]. 1. Return \~unused\~.
+-- |
+
+-- SPEC: L38304-L38318
+-- | # LeaveCriticalSection ( \_WL\_: a WaiterList Record, ): \~unused\~
+-- |
+-- | 1\. Assert: The surrounding agent is in the critical section for
+-- | \_WL\_. 1. Let \_AR\_ be the Agent Record of the surrounding agent. 1.
+-- | Let \_execution\_ be \_AR\_.\[\[CandidateExecution\]\]. 1. Let
+-- | \_eventsRecord\_ be the Agent Events Record of
+-- | \_execution\_.\[\[EventsRecords\]\] whose \[\[AgentSignifier\]\] is
+-- | AgentSignifier(). 1. Let \_leaveEvent\_ be a new Synchronize event. 1.
+-- | Append \_leaveEvent\_ to \_eventsRecord\_.\[\[EventList\]\]. 1. Set
+-- | \_WL\_.\[\[MostRecentLeaveEvent\]\] to \_leaveEvent\_. 1. Leave the
+-- | critical section for \_WL\_. 1. Return \~unused\~.
+-- |
+
+-- SPEC: L38320-L38330
+-- | # AddWaiter ( \_WL\_: a WaiterList Record, \_waiterRecord\_: a Waiter Record, ): \~unused\~
+-- |
+-- | 1\. Assert: The surrounding agent is in the critical section for
+-- | \_WL\_. 1. Assert: There is no Waiter Record in \_WL\_.\[\[Waiters\]\]
+-- | whose \[\[PromiseCapability\]\] field is
+-- | \_waiterRecord\_.\[\[PromiseCapability\]\] and whose
+-- | \[\[AgentSignifier\]\] field is
+-- | \_waiterRecord\_.\[\[AgentSignifier\]\]. 1. Append \_waiterRecord\_ to
+-- | \_WL\_.\[\[Waiters\]\]. 1. Return \~unused\~.
+-- |
+
+-- SPEC: L38332-L38339
+-- | # RemoveWaiter ( \_WL\_: a WaiterList Record, \_waiterRecord\_: a Waiter Record, ): \~unused\~
+-- |
+-- | 1\. Assert: The surrounding agent is in the critical section for
+-- | \_WL\_. 1. Assert: \_WL\_.\[\[Waiters\]\] contains \_waiterRecord\_. 1.
+-- | Remove \_waiterRecord\_ from \_WL\_.\[\[Waiters\]\]. 1. Return
+-- | \~unused\~.
+-- |
+
+-- SPEC: L38341-L38352
+-- | # RemoveWaiters ( \_WL\_: a WaiterList Record, \_c\_: a non-negative integer or +∞, ): a List of Waiter Records
+-- |
+-- | 1\. Assert: The surrounding agent is in the critical section for
+-- | \_WL\_. 1. Let \_len\_ be the number of elements in
+-- | \_WL\_.\[\[Waiters\]\]. 1. Let \_n\_ be min(\_c\_, \_len\_). 1. Let
+-- | \_L\_ be a List whose elements are the first \_n\_ elements of
+-- | \_WL\_.\[\[Waiters\]\]. 1. Remove the first \_n\_ elements of
+-- | \_WL\_.\[\[Waiters\]\]. 1. Return \_L\_.
+-- |
+
+-- SPEC: L38354-L38374
+-- | # SuspendThisAgent ( \_WL\_: a WaiterList Record, \_waiterRecord\_: a Waiter Record, ): \~unused\~
+-- |
+-- | 1\. Assert: The surrounding agent is in the critical section for
+-- | \_WL\_. 1. Assert: \_WL\_.\[\[Waiters\]\] contains \_waiterRecord\_. 1.
+-- | Let \_thisAgent\_ be AgentSignifier(). 1. Assert:
+-- | \_waiterRecord\_.\[\[AgentSignifier\]\] is \_thisAgent\_. 1. Assert:
+-- | \_waiterRecord\_.\[\[PromiseCapability\]\] is \~blocking\~. 1. Assert:
+-- | AgentCanSuspend() is \*true\*. 1. Perform LeaveCriticalSection(\_WL\_)
+-- | and suspend the surrounding agent until the time is
+-- | \_waiterRecord\_.\[\[TimeoutTime\]\], performing the combined operation
+-- | in such a way that a notification that arrives after the critical
+-- | section is exited but before the suspension takes effect is not lost.
+-- | The surrounding agent can only wake from suspension due to a timeout or
+-- | due to another agent calling NotifyWaiter with arguments \_WL\_ and
+-- | \_thisAgent\_ (i.e. via a call to \`Atomics.notify\`). 1. Perform
+-- | EnterCriticalSection(\_WL\_). 1. Return \~unused\~.
+-- |
+
+-- SPEC: L38376-L38400
+-- | # NotifyWaiter ( \_WL\_: a WaiterList Record, \_waiterRecord\_: a Waiter Record, ): \~unused\~
+-- |
+-- | 1\. Assert: The surrounding agent is in the critical section for
+-- | \_WL\_. 1. If \_waiterRecord\_.\[\[PromiseCapability\]\] is
+-- | \~blocking\~, then 1. Wake the agent whose signifier is
+-- | \_waiterRecord\_.\[\[AgentSignifier\]\] from suspension. 1. NOTE: This
+-- | causes the agent to resume execution in SuspendThisAgent. 1. Else if
+-- | AgentSignifier() is \_waiterRecord\_.\[\[AgentSignifier\]\], then 1. Let
+-- | \_promiseCapability\_ be \_waiterRecord\_.\[\[PromiseCapability\]\]. 1.
+-- | Perform ! Call(\_promiseCapability\_.\[\[Resolve\]\], \*undefined\*, «
+-- | \_waiterRecord\_.\[\[Result\]\] »). 1. Else, 1. Perform
+-- | EnqueueResolveInAgentJob(\_waiterRecord\_.\[\[AgentSignifier\]\],
+-- | \_waiterRecord\_.\[\[PromiseCapability\]\],
+-- | \_waiterRecord\_.\[\[Result\]\]). 1. Return \~unused\~.
+-- |
+
+-- SPEC: L38404-L38420
+-- | # EnqueueResolveInAgentJob ( \_agentSignifier\_: an agent signifier, \_promiseCapability\_: a PromiseCapability Record, \_resolution\_: \*\"ok\"\* or \*\"timed-out\"\*, ): \~unused\~
+-- |
+-- | 1\. Let \_resolveJob\_ be a new Job Abstract Closure with no parameters
+-- | that captures \_agentSignifier\_, \_promiseCapability\_, and
+-- | \_resolution\_ and performs the following steps when called: 1. Assert:
+-- | AgentSignifier() is \_agentSignifier\_. 1. Perform !
+-- | Call(\_promiseCapability\_.\[\[Resolve\]\], \*undefined\*, «
+-- | \_resolution\_ »). 1. Return \~unused\~. 1. Let \_realmInTargetAgent\_
+-- | be ! GetFunctionRealm(\_promiseCapability\_.\[\[Resolve\]\]). 1. Assert:
+-- | \_agentSignifier\_ is \_realmInTargetAgent\_.\[\[AgentSignifier\]\]. 1.
+-- | Perform HostEnqueueGenericJob(\_resolveJob\_,
+-- | \_realmInTargetAgent\_). 1. Return \~unused\~.
+-- |
+
+-- SPEC: L38467-L38527
+-- | # AtomicCompareExchangeInSharedBlock ( \_block\_: a Shared Data Block, \_byteIndexInBuffer\_: an integer, \_elementSize\_: a non-negative integer, \_expectedBytes\_: a List of byte values, \_replacementBytes\_: a List of byte values, ): a List of byte values
+-- |
+-- | 1\. Let \_AR\_ be the Agent Record of the surrounding agent. 1. Let
+-- | \_execution\_ be \_AR\_.\[\[CandidateExecution\]\]. 1. Let
+-- | \_eventsRecord\_ be the Agent Events Record of
+-- | \_execution\_.\[\[EventsRecords\]\] whose \[\[AgentSignifier\]\] is
+-- | AgentSignifier(). 1. Let \_rawBytesRead\_ be a List of length
+-- | \_elementSize\_ whose elements are nondeterministically chosen byte
+-- | values. 1. NOTE: In implementations, \_rawBytesRead\_ is the result of a
+-- | load-link, of a load-exclusive, or of an operand of a read-modify-write
+-- | instruction on the underlying hardware. The nondeterminism is a semantic
+-- | prescription of the memory model to describe observable behaviour of
+-- | hardware with weak consistency. 1. NOTE: The comparison of the expected
+-- | value and the read value is performed outside of the read-modify-write
+-- | modification function to avoid needlessly strong synchronization when
+-- | the expected value is not equal to the read value. 1. If
+-- | ByteListEqual(\_rawBytesRead\_, \_expectedBytes\_) is \*true\*, then 1.
+-- | Let \_second\_ be a new read-modify-write modification function with
+-- | parameters (\_oldBytes\_, \_newBytes\_) that captures nothing and
+-- | performs the following steps atomically when called: 1. Return
+-- | \_newBytes\_. 1. Let \_event\_ be ReadModifyWriteSharedMemory {
+-- | \[\[Order\]\]: \~seq-cst\~, \[\[NoTear\]\]: \*true\*, \[\[Block\]\]:
+-- | \_block\_, \[\[ByteIndex\]\]: \_byteIndexInBuffer\_,
+-- | \[\[ElementSize\]\]: \_elementSize\_, \[\[Payload\]\]:
+-- | \_replacementBytes\_, \[\[ModifyOp\]\]: \_second\_ }. 1. Else, 1. Let
+-- | \_event\_ be ReadSharedMemory { \[\[Order\]\]: \~seq-cst\~,
+-- | \[\[NoTear\]\]: \*true\*, \[\[Block\]\]: \_block\_, \[\[ByteIndex\]\]:
+-- | \_byteIndexInBuffer\_, \[\[ElementSize\]\]: \_elementSize\_ }. 1. Append
+-- | \_event\_ to \_eventsRecord\_.\[\[EventList\]\]. 1. Append Chosen Value
+-- | Record { \[\[Event\]\]: \_event\_, \[\[ChosenValue\]\]: \_rawBytesRead\_
+-- | } to \_execution\_.\[\[ChosenValues\]\]. 1. Return \_rawBytesRead\_.
+-- |
+
+-- SPEC: L38529-L38549
+-- | # AtomicReadModifyWrite ( \_typedArray\_: an ECMAScript language value, \_index\_: an ECMAScript language value, \_value\_: an ECMAScript language value, \_op\_: a read-modify-write modification function, ): either a normal completion containing either a Number or a BigInt, or a throw completion
+-- |
+-- | description
+-- | :   \_op\_ takes two List of byte values arguments and returns a List of
+-- |     byte values. This operation atomically loads a value, combines it
+-- |     with another value, and stores the combination. It returns the
+-- |     loaded value.
+-- |
+-- | 1\. Let \_byteIndexInBuffer\_ be ?
+-- | ValidateAtomicAccessOnIntegerTypedArray(\_typedArray\_, \_index\_). 1.
+-- | If \_typedArray\_.\[\[ContentType\]\] is \~bigint\~, let \_v\_ be ?
+-- | ToBigInt(\_value\_). 1. Else, let \_v\_ be 𝔽(?
+-- | ToIntegerOrInfinity(\_value\_)). 1. Perform ?
+-- | RevalidateAtomicAccess(\_typedArray\_, \_byteIndexInBuffer\_). 1. Let
+-- | \_buffer\_ be \_typedArray\_.\[\[ViewedArrayBuffer\]\]. 1. Let
+-- | \_elementType\_ be TypedArrayElementType(\_typedArray\_). 1. Return
+-- | GetModifySetValueInBuffer(\_buffer\_, \_byteIndexInBuffer\_,
+-- | \_elementType\_, \_v\_, \_op\_).
+-- |
+
+/-! ## TypedArray Constructors -/
+
+-- SPEC: L34864-L34908
+-- | # \_TypedArray\_ ( \...\_args\_ )
+-- |
+-- | Each \_TypedArray\_ constructor performs the following steps when
+-- | called:
+-- |
+-- | 1\. If NewTarget is \*undefined\*, throw a \*TypeError\* exception. 1.
+-- | Let \_constructorName\_ be the String value of the Constructor Name
+-- | value specified in for this `TypedArray`{.variable} constructor. 1. Let
+-- | \_proto\_ be `"%``TypedArray`{.variable}`.prototype%"`. 1. Let
+-- | \_numberOfArgs\_ be the number of elements in \_args\_. 1. If
+-- | \_numberOfArgs\_ = 0, return ? AllocateTypedArray(\_constructorName\_,
+-- | NewTarget, \_proto\_, 0). 1. Let \_firstArgument\_ be \_args\_\[0\]. 1.
+-- | If \_firstArgument\_ is an Object, then 1. Let \_O\_ be ?
+-- | AllocateTypedArray(\_constructorName\_, NewTarget, \_proto\_). 1. If
+-- | \_firstArgument\_ has a \[\[TypedArrayName\]\] internal slot, then 1.
+-- | Perform ? InitializeTypedArrayFromTypedArray(\_O\_,
+-- | \_firstArgument\_). 1. Else if \_firstArgument\_ has an
+-- | \[\[ArrayBufferData\]\] internal slot, then 1. If \_numberOfArgs\_ \> 1,
+-- | let \_byteOffset\_ be \_args\_\[1\]; else let \_byteOffset\_ be
+-- | \*undefined\*. 1. If \_numberOfArgs\_ \> 2, let \_length\_ be
+-- | \_args\_\[2\]; else let \_length\_ be \*undefined\*. 1. Perform ?
+-- | InitializeTypedArrayFromArrayBuffer(\_O\_, \_firstArgument\_,
+-- | \_byteOffset\_, \_length\_). 1. Else, 1. Assert: \_firstArgument\_ is an
+-- | Object and \_firstArgument\_ does not have either a
+-- | \[\[TypedArrayName\]\] or an \[\[ArrayBufferData\]\] internal slot. 1.
+-- | Let \_usingIterator\_ be ? GetMethod(\_firstArgument\_,
+-- | %Symbol.iterator%). 1. If \_usingIterator\_ is not \*undefined\*,
+-- | then 1. Let \_values\_ be ? IteratorToList(?
+-- | GetIteratorFromMethod(\_firstArgument\_, \_usingIterator\_)). 1. Perform
+-- | ? InitializeTypedArrayFromList(\_O\_, \_values\_). 1. Else, 1. NOTE:
+-- | \_firstArgument\_ is not an iterable object, so assume it is already an
+-- | array-like object. 1. Perform ? InitializeTypedArrayFromArrayLike(\_O\_,
+-- | \_firstArgument\_). 1. Return \_O\_. 1. Assert: \_firstArgument\_ is not
+-- | an Object. 1. Let \_elementLength\_ be ? ToIndex(\_firstArgument\_). 1.
+-- | Return ? AllocateTypedArray(\_constructorName\_, NewTarget, \_proto\_,
+-- | \_elementLength\_).
+-- |
+
+-- SPEC: L34910-L34935
+-- | # AllocateTypedArray ( \_constructorName\_: a String which is the name of a TypedArray constructor in , \_newTarget\_: a constructor, \_defaultProto\_: a String, optional \_length\_: a non-negative integer, ): either a normal completion containing a TypedArray or a throw completion
+-- |
+-- | description
+-- | :   It is used to validate and create an instance of a TypedArray
+-- |     constructor. If the \_length\_ argument is passed, an ArrayBuffer of
+-- |     that length is also allocated and associated with the new TypedArray
+-- |     instance. AllocateTypedArray provides common semantics that is used
+-- |     by \_TypedArray\_.
+-- |
+-- | 1\. Let \_proto\_ be ? GetPrototypeFromConstructor(\_newTarget\_,
+-- | \_defaultProto\_). 1. Let \_obj\_ be TypedArrayCreate(\_proto\_). 1.
+-- | Assert: \_obj\_.\[\[ViewedArrayBuffer\]\] is \*undefined\*. 1. Set
+-- | \_obj\_.\[\[TypedArrayName\]\] to \_constructorName\_. 1. If
+-- | \_constructorName\_ is either \*\"BigInt64Array\"\* or
+-- | \*\"BigUint64Array\"\*, set \_obj\_.\[\[ContentType\]\] to
+-- | \~bigint\~. 1. Else, set \_obj\_.\[\[ContentType\]\] to \~number\~. 1.
+-- | If \_length\_ is not present, then 1. Set \_obj\_.\[\[ByteLength\]\] to
+-- | 0. 1. Set \_obj\_.\[\[ByteOffset\]\] to 0. 1. Set
+-- | \_obj\_.\[\[ArrayLength\]\] to 0. 1. Else, 1. Perform ?
+-- | AllocateTypedArrayBuffer(\_obj\_, \_length\_). 1. Return \_obj\_.
+-- |
+
+-- SPEC: L34937-L34970
+-- | # InitializeTypedArrayFromTypedArray ( \_O\_: a TypedArray, \_srcArray\_: a TypedArray, ): either a normal completion containing \~unused\~ or a throw completion
+-- |
+-- | 1\. Let \_srcData\_ be \_srcArray\_.\[\[ViewedArrayBuffer\]\]. 1. Let
+-- | \_elementType\_ be TypedArrayElementType(\_O\_). 1. Let \_elementSize\_
+-- | be TypedArrayElementSize(\_O\_). 1. Let \_srcType\_ be
+-- | TypedArrayElementType(\_srcArray\_). 1. Let \_srcElementSize\_ be
+-- | TypedArrayElementSize(\_srcArray\_). 1. Let \_srcByteOffset\_ be
+-- | \_srcArray\_.\[\[ByteOffset\]\]. 1. Let \_srcRecord\_ be
+-- | MakeTypedArrayWithBufferWitnessRecord(\_srcArray\_, \~seq-cst\~). 1. If
+-- | IsTypedArrayOutOfBounds(\_srcRecord\_) is \*true\*, throw a
+-- | \*TypeError\* exception. 1. Let \_elementLength\_ be
+-- | TypedArrayLength(\_srcRecord\_). 1. Let \_byteLength\_ be
+-- | \_elementSize\_ × \_elementLength\_. 1. If \_elementType\_ is
+-- | \_srcType\_, then 1. Let \_data\_ be ? CloneArrayBuffer(\_srcData\_,
+-- | \_srcByteOffset\_, \_byteLength\_). 1. Else, 1. Let \_data\_ be ?
+-- | AllocateArrayBuffer(%ArrayBuffer%, \_byteLength\_). 1. If
+-- | \_srcArray\_.\[\[ContentType\]\] is not \_O\_.\[\[ContentType\]\], throw
+-- | a \*TypeError\* exception. 1. Let \_srcByteIndex\_ be
+-- | \_srcByteOffset\_. 1. Let \_targetByteIndex\_ be 0. 1. Let \_count\_ be
+-- | \_elementLength\_. 1. Repeat, while \_count\_ \> 0, 1. Let \_value\_ be
+-- | GetValueFromBuffer(\_srcData\_, \_srcByteIndex\_, \_srcType\_, \*true\*,
+-- | \~unordered\~). 1. Perform SetValueInBuffer(\_data\_,
+-- | \_targetByteIndex\_, \_elementType\_, \_value\_, \*true\*,
+-- | \~unordered\~). 1. Set \_srcByteIndex\_ to \_srcByteIndex\_ +
+-- | \_srcElementSize\_. 1. Set \_targetByteIndex\_ to \_targetByteIndex\_ +
+-- | \_elementSize\_. 1. Set \_count\_ to \_count\_ - 1. 1. Set
+-- | \_O\_.\[\[ViewedArrayBuffer\]\] to \_data\_. 1. Set
+-- | \_O\_.\[\[ByteLength\]\] to \_byteLength\_. 1. Set
+-- | \_O\_.\[\[ByteOffset\]\] to 0. 1. Set \_O\_.\[\[ArrayLength\]\] to
+-- | \_elementLength\_. 1. Return \~unused\~.
+-- |
+
+/-! ## Array Sort Operations -/
+
+-- SPEC: L33269-L33326
+-- | # SortIndexedProperties ( \_obj\_: an Object, \_len\_: a non-negative integer, \_SortCompare\_: an Abstract Closure with two parameters, \_holes\_: \~skip-holes\~ or \~read-through-holes\~, ): either a normal completion containing a List of ECMAScript language values or a throw completion
+-- |
+-- | 1\. Let \_items\_ be a new empty List. 1. Let \_k\_ be 0. 1. Repeat,
+-- | while \_k\_ \< \_len\_, 1. Let \_Pk\_ be ! ToString(𝔽(\_k\_)). 1. If
+-- | \_holes\_ is \~skip-holes\~, then 1. Let \_kRead\_ be ?
+-- | HasProperty(\_obj\_, \_Pk\_). 1. Else, 1. Assert: \_holes\_ is
+-- | \~read-through-holes\~. 1. Let \_kRead\_ be \*true\*. 1. If \_kRead\_ is
+-- | \*true\*, then 1. Let \_kValue\_ be ? Get(\_obj\_, \_Pk\_). 1. Append
+-- | \_kValue\_ to \_items\_. 1. Set \_k\_ to \_k\_ + 1. 1.
+-- | \[id=\"step-array-sort\"\] Sort \_items\_ using an
+-- | implementation-defined sequence of calls to \_SortCompare\_. If any such
+-- | call returns an abrupt completion, stop before performing any further
+-- | calls to \_SortCompare\_ and return that Completion Record. 1. Return
+-- | \_items\_.
+-- |
+
+-- SPEC: L33418-L33456
+-- | # CompareArrayElements ( \_x\_: an ECMAScript language value, \_y\_: an ECMAScript language value, \_comparator\_: a function object or \*undefined\*, ): either a normal completion containing a Number or an abrupt completion
+-- |
+-- | 1\. If \_x\_ and \_y\_ are both \*undefined\*, return \*+0\*~𝔽~. 1. If
+-- | \_x\_ is \*undefined\*, return \*1\*~𝔽~. 1. If \_y\_ is \*undefined\*,
+-- | return \*-1\*~𝔽~. 1. If \_comparator\_ is not \*undefined\*, then 1. Let
+-- | \_v\_ be ? ToNumber(? Call(\_comparator\_, \*undefined\*, « \_x\_, \_y\_
+-- | »)). 1. If \_v\_ is \*NaN\*, return \*+0\*~𝔽~. 1. Return \_v\_. 1.
+-- | \[id=\"step-sortcompare-tostring-x\"\] Let \_xString\_ be ?
+-- | ToString(\_x\_). 1. \[id=\"step-sortcompare-tostring-y\"\] Let
+-- | \_yString\_ be ? ToString(\_y\_). 1. Let \_xSmaller\_ be !
+-- | IsLessThan(\_xString\_, \_yString\_, \*true\*). 1. If \_xSmaller\_ is
+-- | \*true\*, return \*-1\*~𝔽~. 1. Let \_ySmaller\_ be !
+-- | IsLessThan(\_yString\_, \_xString\_, \*true\*). 1. If \_ySmaller\_ is
+-- | \*true\*, return \*1\*~𝔽~. 1. Return \*+0\*~𝔽~.
+-- |
+
+-- SPEC: L33457-L33584
+-- | # Array.prototype.splice ( \_start\_, \_deleteCount\_, \...\_items\_ )
+-- |
+-- | This method deletes the \_deleteCount\_ elements of the array starting
+-- | at integer index \_start\_ and replaces them with the elements of
+-- | \_items\_. It returns an Array containing the deleted elements (if any).
+-- |
+-- | This method performs the following steps when called:
+-- |
+-- | 1\. Let \_O\_ be ? ToObject(\*this\* value). 1. Let \_len\_ be ?
+-- | LengthOfArrayLike(\_O\_). 1. Let \_relativeStart\_ be ?
+-- | ToIntegerOrInfinity(\_start\_). 1. If \_relativeStart\_ = -∞, let
+-- | \_actualStart\_ be 0. 1. Else if \_relativeStart\_ \< 0, let
+-- | \_actualStart\_ be max(\_len\_ + \_relativeStart\_, 0). 1. Else, let
+-- | \_actualStart\_ be min(\_relativeStart\_, \_len\_). 1. Let \_itemCount\_
+-- | be the number of elements in \_items\_. 1. If \_start\_ is not present,
+-- | then 1. Let \_actualDeleteCount\_ be 0. 1. Else if \_deleteCount\_ is
+-- | not present, then 1. Let \_actualDeleteCount\_ be \_len\_ -
+-- | \_actualStart\_. 1. Else, 1. Let \_dc\_ be ?
+-- | ToIntegerOrInfinity(\_deleteCount\_). 1. Let \_actualDeleteCount\_ be
+-- | the result of clamping \_dc\_ between 0 and \_len\_ -
+-- | \_actualStart\_. 1. If \_len\_ + \_itemCount\_ - \_actualDeleteCount\_
+-- | \> 2^53^ - 1, throw a \*TypeError\* exception.
+-- |
+
+-- SPEC: L33585-L33611
+-- | # Array.prototype.toLocaleString ( \[ \_reserved1\_ \[ , \_reserved2\_ \] \] )
+-- |
+-- | An ECMAScript implementation that includes the ECMA-402
+-- | Internationalization API must implement this method as specified in the
+-- | ECMA-402 specification. If an ECMAScript implementation does not include
+-- | the ECMA-402 API the following specification of this method is used.
+-- |
+-- | This method performs the following steps when called:
+-- |
+-- | 1\. Let \_array\_ be ? ToObject(\*this\* value). 1. Let \_len\_ be ?
+-- | LengthOfArrayLike(\_array\_). 1. Let \_separator\_ be the
+-- | implementation-defined list-separator String value appropriate for the
+-- | host environment\'s current locale (such as \*\", \"\*). 1. Let \_R\_ be
+-- | the empty String. 1. Let \_k\_ be 0. 1. Repeat, while \_k\_ \<
+-- | \_len\_, 1. If \_k\_ \> 0, set \_R\_ to the string-concatenation of
+-- | \_R\_ and \_separator\_. 1. Let \_element\_ be ? Get(\_array\_, !
+-- | ToString(𝔽(\_k\_))). 1. If \_element\_ is neither \*undefined\* nor
+-- | \*null\*, then 1. Let \_S\_ be ? ToString(? Invoke(\_element\_,
+-- | \*\"toLocaleString\"\*)). 1. Set \_R\_ to the string-concatenation of
+-- | \_R\_ and \_S\_. 1. Set \_k\_ to \_k\_ + 1. 1. Return \_R\_.
+-- |
+
+/-! ## Promise Instance Slots -/
+
+-- SPEC: L41149-L41156
+-- | # Promise.prototype \[ %Symbol.toStringTag% \]
+-- |
+-- | The initial value of the %Symbol.toStringTag% property is the String
+-- | value \*\"Promise\"\*.
+-- |
+-- | This property has the attributes { \[\[Writable\]\]: \*false\*,
+-- | \[\[Enumerable\]\]: \*false\*, \[\[Configurable\]\]: \*true\* }.
+-- |
+
+/-! ## Eval -/
+
+-- SPEC: L23205-L23244
+-- | # HostEnsureCanCompileStrings ( \_calleeRealm\_: a Realm Record, \_parameterStrings\_: a List of Strings, \_bodyString\_: a String, \_direct\_: a Boolean, ): either a normal completion containing \~unused\~ or a throw completion
+-- |
+-- | description
+-- | :   It allows host environments to block certain ECMAScript functions
+-- |     which allow developers to interpret and evaluate strings as
+-- |     ECMAScript code.
+-- |
+-- | \_parameterStrings\_ represents the strings that, when using one of the
+-- | function constructors, will be concatenated together to build the
+-- | parameters list. \_bodyString\_ represents the function body or the
+-- | string passed to an \`eval\` call. \_direct\_ signifies whether the
+-- | evaluation is a direct eval.
+-- |
+-- | The default implementation of HostEnsureCanCompileStrings is to return
+-- | NormalCompletion(\~unused\~).
+-- |
+
+-- SPEC: L38551-L38580
+-- | # ByteListBitwiseOp ( \_op\_: \`&\`, \`\^\`, or \`\|\`, \_xBytes\_: a List of byte values, \_yBytes\_: a List of byte values, ): a List of byte values
+-- |
+-- | description
+-- | :   The operation atomically performs a bitwise operation on all byte
+-- |     values of the arguments and returns a List of byte values.
+-- |
+-- | 1\. Assert: \_xBytes\_ and \_yBytes\_ have the same number of
+-- | elements. 1. Let \_result\_ be a new empty List. 1. Let \_i\_ be 0. 1.
+-- | For each element \_xByte\_ of \_xBytes\_, do 1. Let \_yByte\_ be
+-- | \_yBytes\_\[\_i\_\]. 1. If \_op\_ is \`&\`, then 1. Let \_resultByte\_
+-- | be the result of applying the bitwise AND operation to \_xByte\_ and
+-- | \_yByte\_. 1. Else if \_op\_ is \`\^\`, then 1. Let \_resultByte\_ be
+-- | the result of applying the bitwise exclusive OR (XOR) operation to
+-- | \_xByte\_ and \_yByte\_. 1. Else, 1. Assert: \_op\_ is \`\|\`. 1. Let
+-- | \_resultByte\_ be the result of applying the bitwise inclusive OR
+-- | operation to \_xByte\_ and \_yByte\_. 1. Set \_i\_ to \_i\_ + 1. 1.
+-- | Append \_resultByte\_ to \_result\_. 1. Return \_result\_.
+-- |
+
+-- SPEC: L38582-L38592
+-- | # ByteListEqual ( \_xBytes\_: a List of byte values, \_yBytes\_: a List of byte values, ): a Boolean
+-- |
+-- | 1\. If \_xBytes\_ and \_yBytes\_ do not have the same number of
+-- | elements, return \*false\*. 1. Let \_i\_ be 0. 1. For each element
+-- | \_xByte\_ of \_xBytes\_, do 1. Let \_yByte\_ be \_yBytes\_\[\_i\_\]. 1.
+-- | If \_xByte\_ ≠ \_yByte\_, return \*false\*. 1. Set \_i\_ to
+-- | \_i\_ + 1. 1. Return \*true\*.
+-- |
+
 
 end VerifiedJS.Source

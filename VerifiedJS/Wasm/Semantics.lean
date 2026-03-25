@@ -3782,45 +3782,66 @@ def irStep? (s : IRExecState) : Option (TraceEvent × IRExecState) :=
           | some _ => some (irTrapState base s!"type mismatch in unary ptr.{op}")
           | none => some (irTrapState base s!"stack underflow in unary ptr.{op}")
 
-      -- Memory: load (4-byte little-endian i32)
-      | .load _t offset =>
+      -- Memory: load (little-endian, width from type: i32=4, f64=8)
+      -- Uses readLE? to match Wasm semantics exactly.
+      | .load t offset =>
           match irPop1? base.stack with
           | some (.i32 addr, stk) =>
               let byteAddr := addr.toNat + offset
-              if byteAddr + 4 ≤ base.memory.size then
-                let b0 := base.memory.get! byteAddr
-                let b1 := base.memory.get! (byteAddr + 1)
-                let b2 := base.memory.get! (byteAddr + 2)
-                let b3 := base.memory.get! (byteAddr + 3)
-                let val : UInt32 := b0.toUInt32 ||| (b1.toUInt32 <<< 8) ||| (b2.toUInt32 <<< 16) ||| (b3.toUInt32 <<< 24)
-                some (.silent, irPushTrace { base with stack := .i32 val :: stk } .silent)
-              else some (irTrapState base s!"memory access out of bounds: {byteAddr}")
+              let width := match t with | .i32 => 4 | .f64 => 8 | .i64 => 8
+              match readLE? base.memory byteAddr width with
+              | some raw =>
+                let val := match t with
+                  | .i32 => IRValue.i32 (UInt32.ofNat raw.toNat)
+                  | .f64 => IRValue.f64 (u64BitsToFloat raw)
+                  | .i64 => IRValue.i64 raw
+                some (.silent, irPushTrace { base with stack := val :: stk } .silent)
+              | none => some (irTrapState base s!"memory access out of bounds: {byteAddr}")
           | some _ => some (irTrapState base "type mismatch in load")
           | none => some (irTrapState base "stack underflow in load")
-      -- Memory: store (4-byte little-endian i32)
-      | .store _t offset =>
-          match irPop2? base.stack with
-          | some (.i32 val, .i32 addr, stk) =>
-              let byteAddr := addr.toNat + offset
-              if byteAddr + 4 ≤ base.memory.size then
-                let mem := base.memory
-                  |>.set! byteAddr (val.toUInt8)
-                  |>.set! (byteAddr + 1) ((val >>> 8).toUInt8)
-                  |>.set! (byteAddr + 2) ((val >>> 16).toUInt8)
-                  |>.set! (byteAddr + 3) ((val >>> 24).toUInt8)
-                some (.silent, irPushTrace { base with stack := stk, memory := mem } .silent)
-              else some (irTrapState base s!"memory store out of bounds: {byteAddr}")
-          | some _ => some (irTrapState base "type mismatch in store")
-          | none => some (irTrapState base "stack underflow in store")
-      -- Memory: store8
+      -- Memory: store (little-endian, width from type: i32=4, f64=8)
+      -- Uses writeLE? to match Wasm semantics exactly.
+      | .store t offset =>
+          match t with
+          | .i32 =>
+            match irPop2? base.stack with
+            | some (.i32 val, .i32 addr, stk) =>
+                let byteAddr := addr.toNat + offset
+                match writeLE? base.memory byteAddr 4 val.toUInt64 with
+                | some mem =>
+                  some (.silent, irPushTrace { base with stack := stk, memory := mem } .silent)
+                | none => some (irTrapState base s!"memory store out of bounds: {byteAddr}")
+            | some _ => some (irTrapState base "type mismatch in store")
+            | none => some (irTrapState base "stack underflow in store")
+          | .f64 =>
+            match irPop2? base.stack with
+            | some (.f64 val, .i32 addr, stk) =>
+                let byteAddr := addr.toNat + offset
+                match writeLE? base.memory byteAddr 8 (floatToU64Bits val) with
+                | some mem =>
+                  some (.silent, irPushTrace { base with stack := stk, memory := mem } .silent)
+                | none => some (irTrapState base s!"memory store out of bounds: {byteAddr}")
+            | some _ => some (irTrapState base "type mismatch in f64.store")
+            | none => some (irTrapState base "stack underflow in f64.store")
+          | .i64 =>
+            match irPop2? base.stack with
+            | some (.i64 val, .i32 addr, stk) =>
+                let byteAddr := addr.toNat + offset
+                match writeLE? base.memory byteAddr 8 val with
+                | some mem =>
+                  some (.silent, irPushTrace { base with stack := stk, memory := mem } .silent)
+                | none => some (irTrapState base s!"memory store out of bounds: {byteAddr}")
+            | some _ => some (irTrapState base "type mismatch in i64.store")
+            | none => some (irTrapState base "stack underflow in i64.store")
+      -- Memory: store8 (1-byte write via writeLE?)
       | .store8 offset =>
           match irPop2? base.stack with
           | some (.i32 val, .i32 addr, stk) =>
               let byteAddr := addr.toNat + offset
-              if byteAddr < base.memory.size then
-                let mem := base.memory.set! byteAddr val.toUInt8
+              match writeLE? base.memory byteAddr 1 val.toUInt64 with
+              | some mem =>
                 some (.silent, irPushTrace { base with stack := stk, memory := mem } .silent)
-              else some (irTrapState base s!"memory store8 out of bounds: {byteAddr}")
+              | none => some (irTrapState base s!"memory store8 out of bounds: {byteAddr}")
           | some _ => some (irTrapState base "type mismatch in store8")
           | none => some (irTrapState base "stack underflow in store8")
 
@@ -5187,63 +5208,78 @@ theorem irStep?_ir_ptrConst (s : IRExecState) (v : String) (n : Nat) (rest : Lis
 Lower.lean emits load/store/store8 for heap access. The proof agent needs
 exact resulting states for forward simulation. -/
 
-/-- Exact state after load: reads 4 bytes little-endian from memory, pushes i32.
+/-- Exact state after i32 load: uses readLE? with width 4.
     REF: Wasm §4.4.7.1 (memory.load) -/
-theorem irStep?_eq_load (s : IRExecState) (rest : List IRInstr) (t : IRType)
-    (offset : Nat) (addr : UInt32) (stk : List IRValue)
-    (hcode : s.code = IRInstr.load t offset :: rest)
+theorem irStep?_eq_load_i32 (s : IRExecState) (rest : List IRInstr)
+    (offset : Nat) (addr : UInt32) (stk : List IRValue) (raw : UInt64)
+    (hcode : s.code = IRInstr.load .i32 offset :: rest)
     (hstack : s.stack = .i32 addr :: stk)
-    (hbounds : addr.toNat + offset + 4 ≤ s.memory.size) :
-    let byteAddr := addr.toNat + offset
-    let b0 := s.memory.get! byteAddr
-    let b1 := s.memory.get! (byteAddr + 1)
-    let b2 := s.memory.get! (byteAddr + 2)
-    let b3 := s.memory.get! (byteAddr + 3)
-    let val : UInt32 := b0.toUInt32 ||| (b1.toUInt32 <<< 8) ||| (b2.toUInt32 <<< 16) ||| (b3.toUInt32 <<< 24)
+    (hread : readLE? s.memory (addr.toNat + offset) 4 = some raw) :
     irStep? s = some (.silent,
       { s with
         code := rest
-        stack := .i32 val :: stk
+        stack := .i32 (UInt32.ofNat raw.toNat) :: stk
         trace := s.trace ++ [.silent] }) := by
-  simp [irStep?, hcode, hstack, irPop1?, irPushTrace, hbounds]
+  simp [irStep?, hcode, hstack, irPop1?, irPushTrace, hread]
 
-/-- Exact state after store: writes 4 bytes little-endian to memory.
+/-- Exact state after f64 load: uses readLE? with width 8.
+    REF: Wasm §4.4.7.1 (memory.load) -/
+theorem irStep?_eq_load_f64 (s : IRExecState) (rest : List IRInstr)
+    (offset : Nat) (addr : UInt32) (stk : List IRValue) (raw : UInt64)
+    (hcode : s.code = IRInstr.load .f64 offset :: rest)
+    (hstack : s.stack = .i32 addr :: stk)
+    (hread : readLE? s.memory (addr.toNat + offset) 8 = some raw) :
+    irStep? s = some (.silent,
+      { s with
+        code := rest
+        stack := .f64 (u64BitsToFloat raw) :: stk
+        trace := s.trace ++ [.silent] }) := by
+  simp [irStep?, hcode, hstack, irPop1?, irPushTrace, hread]
+
+/-- Exact state after i32 store: uses writeLE? with width 4.
     REF: Wasm §4.4.7.2 (memory.store) -/
-theorem irStep?_eq_store (s : IRExecState) (rest : List IRInstr) (t : IRType)
-    (offset : Nat) (val addr : UInt32) (stk : List IRValue)
-    (hcode : s.code = IRInstr.store t offset :: rest)
+theorem irStep?_eq_store_i32 (s : IRExecState) (rest : List IRInstr)
+    (offset : Nat) (val addr : UInt32) (stk : List IRValue) (mem' : ByteArray)
+    (hcode : s.code = IRInstr.store .i32 offset :: rest)
     (hstack : s.stack = .i32 val :: .i32 addr :: stk)
-    (hbounds : addr.toNat + offset + 4 ≤ s.memory.size) :
-    let byteAddr := addr.toNat + offset
-    let mem := s.memory
-      |>.set! byteAddr (val.toUInt8)
-      |>.set! (byteAddr + 1) ((val >>> 8).toUInt8)
-      |>.set! (byteAddr + 2) ((val >>> 16).toUInt8)
-      |>.set! (byteAddr + 3) ((val >>> 24).toUInt8)
+    (hwrite : writeLE? s.memory (addr.toNat + offset) 4 val.toUInt64 = some mem') :
     irStep? s = some (.silent,
       { s with
         code := rest
         stack := stk
-        memory := mem
+        memory := mem'
         trace := s.trace ++ [.silent] }) := by
-  simp [irStep?, hcode, hstack, irPop2?, irPushTrace, hbounds]
+  simp [irStep?, hcode, hstack, irPop2?, irPushTrace, hwrite]
 
-/-- Exact state after store8: writes 1 byte to memory.
+/-- Exact state after f64 store: uses writeLE? with width 8.
+    REF: Wasm §4.4.7.2 (memory.store) -/
+theorem irStep?_eq_store_f64 (s : IRExecState) (rest : List IRInstr)
+    (offset : Nat) (val : Float) (addr : UInt32) (stk : List IRValue) (mem' : ByteArray)
+    (hcode : s.code = IRInstr.store .f64 offset :: rest)
+    (hstack : s.stack = .f64 val :: .i32 addr :: stk)
+    (hwrite : writeLE? s.memory (addr.toNat + offset) 8 (floatToU64Bits val) = some mem') :
+    irStep? s = some (.silent,
+      { s with
+        code := rest
+        stack := stk
+        memory := mem'
+        trace := s.trace ++ [.silent] }) := by
+  simp [irStep?, hcode, hstack, irPop2?, irPushTrace, hwrite]
+
+/-- Exact state after store8: uses writeLE? with width 1.
     REF: Wasm §4.4.7.2 (memory.store, 1-byte variant) -/
 theorem irStep?_eq_store8 (s : IRExecState) (rest : List IRInstr)
-    (offset : Nat) (val addr : UInt32) (stk : List IRValue)
+    (offset : Nat) (val addr : UInt32) (stk : List IRValue) (mem' : ByteArray)
     (hcode : s.code = IRInstr.store8 offset :: rest)
     (hstack : s.stack = .i32 val :: .i32 addr :: stk)
-    (hbounds : addr.toNat + offset < s.memory.size) :
-    let byteAddr := addr.toNat + offset
-    let mem := s.memory.set! byteAddr val.toUInt8
+    (hwrite : writeLE? s.memory (addr.toNat + offset) 1 val.toUInt64 = some mem') :
     irStep? s = some (.silent,
       { s with
         code := rest
         stack := stk
-        memory := mem
+        memory := mem'
         trace := s.trace ++ [.silent] }) := by
-  simp [irStep?, hcode, hstack, irPop2?, irPushTrace, hbounds]
+  simp [irStep?, hcode, hstack, irPop2?, irPushTrace, hwrite]
 
 /-- Exact state after callIndirect: creates callee frame, enters function body.
     REF: Wasm §4.4.8.7 / WasmCert-Coq r_call_indirect_success -/
