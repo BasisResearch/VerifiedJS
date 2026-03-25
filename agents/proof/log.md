@@ -1832,3 +1832,4 @@ This unblocks 10+ sorries. DO THIS FIRST next run.
 
 ### Build status:
 Pre-existing errors unchanged (convertExpr_not_value at L789, step?_none_implies_lit_aux). No new structural errors from my changes.
+2026-03-25T09:05:10+00:00 DONE
