@@ -22359,4 +22359,4640 @@ theorem elaborate_correct (p : Source.Program) (cp : Core.Program)
 -- |
 -- | # %Symbol.toStringTag%
 
+-- SPEC: L6486-L6498
+-- | # SameValueZero ( \_x\_: an ECMAScript language value, \_y\_: an ECMAScript language value, ): a Boolean
+-- | 
+-- | description
+-- | :   It determines whether or not the two arguments are the same value
+-- |     (ignoring the difference between \*+0\*~𝔽~ and \*-0\*~𝔽~).
+-- | 
+-- | 1\. If SameType(\_x\_, \_y\_) is \*false\*, return \*false\*. 1. If
+-- | \_x\_ is a Number, then 1. Return Number::sameValueZero(\_x\_,
+-- | \_y\_). 1. Return SameValueNonNumber(\_x\_, \_y\_).
+-- | 
+-- | SameValueZero differs from SameValue only in that it treats \*+0\*~𝔽~
+-- | and \*-0\*~𝔽~ as equivalent.
+-- | 
+
+-- SPEC: L6377-L6389
+-- | # ToIndex ( \_value\_: an ECMAScript language value, ): either a normal completion containing a non-negative integer or a throw completion
+-- | 
+-- | description
+-- | :   It converts \_value\_ to an integer and returns that integer if it
+-- |     is non-negative and corresponds with an integer index. Otherwise, it
+-- |     throws an exception.
+-- | 
+-- | 1\. Let \_integer\_ be ? ToIntegerOrInfinity(\_value\_). 1. If
+-- | \_integer\_ is not in the inclusive interval from 0 to 2^53^ - 1, throw
+-- | a \*RangeError\* exception. 1. Return \_integer\_.
+-- | 
+-- | # Testing and Comparison Operations
+-- | 
+
+-- SPEC: L6988-L6993
+-- | # PrivateElementFind ( \_O\_: an Object, \_P\_: a Private Name, ): a PrivateElement or \~empty\~
+-- | 
+-- | 1\. If \_O\_.\[\[PrivateElements\]\] contains a PrivateElement \_pe\_
+-- | such that \_pe\_.\[\[Key\]\] is \_P\_, then 1. Return \_pe\_. 1. Return
+-- | \~empty\~.
+-- | 
+
+-- SPEC: L6994-L7002
+-- | # PrivateFieldAdd ( \_O\_: an Object, \_P\_: a Private Name, \_value\_: an ECMAScript language value, ): either a normal completion containing \~unused\~ or a throw completion
+-- | 
+-- | 1\. If the host is a web browser, then 1. Perform ?
+-- | HostEnsureCanAddPrivateElement(\_O\_). 1. Let \_entry\_ be
+-- | PrivateElementFind(\_O\_, \_P\_). 1. If \_entry\_ is not \~empty\~,
+-- | throw a \*TypeError\* exception. 1. Append PrivateElement { \[\[Key\]\]:
+-- | \_P\_, \[\[Kind\]\]: \~field\~, \[\[Value\]\]: \_value\_ } to
+-- | \_O\_.\[\[PrivateElements\]\]. 1. Return \~unused\~.
+-- | 
+
+-- SPEC: L7003-L7015
+-- | # PrivateMethodOrAccessorAdd ( \_O\_: an Object, \_method\_: a PrivateElement, ): either a normal completion containing \~unused\~ or a throw completion
+-- | 
+-- | 1\. Assert: \_method\_.\[\[Kind\]\] is either \~method\~ or
+-- | \~accessor\~. 1. If the host is a web browser, then 1. Perform ?
+-- | HostEnsureCanAddPrivateElement(\_O\_). 1. Let \_entry\_ be
+-- | PrivateElementFind(\_O\_, \_method\_.\[\[Key\]\]). 1. If \_entry\_ is
+-- | not \~empty\~, throw a \*TypeError\* exception. 1. Append \_method\_ to
+-- | \_O\_.\[\[PrivateElements\]\]. 1. Return \~unused\~.
+-- | 
+-- | The values for private methods and accessors are shared across
+-- | instances. This operation does not create a new copy of the method or
+-- | accessor.
+-- | 
+
+-- SPEC: L7036-L7045
+-- | # PrivateGet ( \_O\_: an Object, \_P\_: a Private Name, ): either a normal completion containing an ECMAScript language value or a throw completion
+-- | 
+-- | 1\. Let \_entry\_ be PrivateElementFind(\_O\_, \_P\_). 1. If \_entry\_
+-- | is \~empty\~, throw a \*TypeError\* exception. 1. If
+-- | \_entry\_.\[\[Kind\]\] is either \~field\~ or \~method\~, then 1. Return
+-- | \_entry\_.\[\[Value\]\]. 1. Assert: \_entry\_.\[\[Kind\]\] is
+-- | \~accessor\~. 1. If \_entry\_.\[\[Get\]\] is \*undefined\*, throw a
+-- | \*TypeError\* exception. 1. Let \_getter\_ be \_entry\_.\[\[Get\]\]. 1.
+-- | Return ? Call(\_getter\_, \_O\_).
+-- | 
+
+-- SPEC: L7046-L7064
+-- | # PrivateSet ( \_O\_: an Object, \_P\_: a Private Name, \_value\_: an ECMAScript language value, ): either a normal completion containing \~unused\~ or a throw completion
+-- | 
+-- | 1\. Let \_entry\_ be PrivateElementFind(\_O\_, \_P\_). 1. If \_entry\_
+-- | is \~empty\~, throw a \*TypeError\* exception. 1. If
+-- | \_entry\_.\[\[Kind\]\] is \~method\~, throw a \*TypeError\*
+-- | exception. 1. If \_entry\_.\[\[Kind\]\] is \~field\~, then 1. Set
+-- | \_entry\_.\[\[Value\]\] to \_value\_. 1. Else, 1. Assert:
+-- | \_entry\_.\[\[Kind\]\] is \~accessor\~. 1. If \_entry\_.\[\[Set\]\] is
+-- | \*undefined\*, throw a \*TypeError\* exception. 1. Let \_setter\_ be
+-- | \_entry\_.\[\[Set\]\]. 1. Perform ? Call(\_setter\_, \_O\_, « \_value\_
+-- | »). 1. Return \~unused\~.
+-- | 
+-- | # DefineField ( \_receiver\_: an Object, \_fieldRecord\_: a ClassFieldDefinition Record, ): either a normal completion containing \~unused\~ or a throw completion
+-- | 
+-- | 1\. Let \_fieldName\_ be \_fieldRecord\_.\[\[Name\]\]. 1. Let
+-- | \_initializer\_ be \_fieldRecord\_.\[\[Initializer\]\]. 1. If
+-- | \_initializer\_ is not \~empty\~, then 1. Let \_initValue\_ be ?
+-- | Call(\_initializer\_, \_receiver\_). 1. Else, 1. Let \_initValue\_ be
+-- | \*undefined\*. 1. If \_fieldName\_ is a Private Name, then 1. Perform ?
+
+-- SPEC: L23829-L23848
+-- | # Object.assign ( \_target\_, \...\_sources\_ )
+-- | 
+-- | This function copies the values of all of the enumerable own properties
+-- | from one or more source objects to a \_target\_ object.
+-- | 
+-- | It performs the following steps when called:
+-- | 
+-- | 1\. Let \_to\_ be ? ToObject(\_target\_). 1. If only one argument was
+-- | passed, return \_to\_. 1. For each element \_nextSource\_ of
+-- | \_sources\_, do 1. If \_nextSource\_ is neither \*undefined\* nor
+-- | \*null\*, then 1. Let \_from\_ be ! ToObject(\_nextSource\_). 1. Let
+-- | \_keys\_ be ? \_from\_.\[\[OwnPropertyKeys\]\](). 1. For each element
+-- | \_nextKey\_ of \_keys\_, do 1. Let \_desc\_ be ?
+-- | \_from\_.\[\[GetOwnProperty\]\](\_nextKey\_). 1. If \_desc\_ is not
+-- | \*undefined\* and \_desc\_.\[\[Enumerable\]\] is \*true\*, then 1. Let
+-- | \_propValue\_ be ? Get(\_from\_, \_nextKey\_). 1. Perform ? Set(\_to\_,
+-- | \_nextKey\_, \_propValue\_, \*true\*). 1. Return \_to\_.
+-- | 
+-- | The \*\"length\"\* property of this function is \*2\*~𝔽~.
+-- | 
+
+-- SPEC: L23849-L23860
+-- | # Object.create ( \_O\_, \_Properties\_ )
+-- | 
+-- | This function creates a new object with a specified prototype.
+-- | 
+-- | It performs the following steps when called:
+-- | 
+-- | 1\. If \_O\_ is not an Object and \_O\_ is not \*null\*, throw a
+-- | \*TypeError\* exception. 1. Let \_obj\_ be
+-- | OrdinaryObjectCreate(\_O\_). 1. If \_Properties\_ is not \*undefined\*,
+-- | then 1. Return ? ObjectDefineProperties(\_obj\_, \_Properties\_). 1.
+-- | Return \_obj\_.
+-- | 
+
+-- SPEC: L23861-L23870
+-- | # Object.defineProperties ( \_O\_, \_Properties\_ )
+-- | 
+-- | This function adds own properties and/or updates the attributes of
+-- | existing own properties of an object.
+-- | 
+-- | It performs the following steps when called:
+-- | 
+-- | 1\. If \_O\_ is not an Object, throw a \*TypeError\* exception. 1.
+-- | Return ? ObjectDefineProperties(\_O\_, \_Properties\_).
+-- | 
+
+-- SPEC: L23871-L23884
+-- | # ObjectDefineProperties ( \_O\_: an Object, \_Properties\_: an ECMAScript language value, ): either a normal completion containing an Object or a throw completion
+-- | 
+-- | 1\. Let \_props\_ be ? ToObject(\_Properties\_). 1. Let \_keys\_ be ?
+-- | \_props\_.\[\[OwnPropertyKeys\]\](). 1. Let \_descriptors\_ be a new
+-- | empty List. 1. For each element \_nextKey\_ of \_keys\_, do 1. Let
+-- | \_propDesc\_ be ? \_props\_.\[\[GetOwnProperty\]\](\_nextKey\_). 1. If
+-- | \_propDesc\_ is not \*undefined\* and \_propDesc\_.\[\[Enumerable\]\] is
+-- | \*true\*, then 1. Let \_descObj\_ be ? Get(\_props\_, \_nextKey\_). 1.
+-- | Let \_desc\_ be ? ToPropertyDescriptor(\_descObj\_). 1. Append the
+-- | Record { \[\[Key\]\]: \_nextKey\_, \[\[Descriptor\]\]: \_desc\_ } to
+-- | \_descriptors\_. 1. For each element \_property\_ of \_descriptors\_,
+-- | do 1. Perform ? DefinePropertyOrThrow(\_O\_, \_property\_.\[\[Key\]\],
+-- | \_property\_.\[\[Descriptor\]\]). 1. Return \_O\_.
+-- | 
+
+-- SPEC: L23885-L23896
+-- | # Object.defineProperty ( \_O\_, \_P\_, \_Attributes\_ )
+-- | 
+-- | This function adds an own property and/or updates the attributes of an
+-- | existing own property of an object.
+-- | 
+-- | It performs the following steps when called:
+-- | 
+-- | 1\. If \_O\_ is not an Object, throw a \*TypeError\* exception. 1. Let
+-- | \_key\_ be ? ToPropertyKey(\_P\_). 1. Let \_desc\_ be ?
+-- | ToPropertyDescriptor(\_Attributes\_). 1. Perform ?
+-- | DefinePropertyOrThrow(\_O\_, \_key\_, \_desc\_). 1. Return \_O\_.
+-- | 
+
+-- SPEC: L23897-L23904
+-- | # Object.entries ( \_O\_ )
+-- | 
+-- | This function performs the following steps when called:
+-- | 
+-- | 1\. Let \_obj\_ be ? ToObject(\_O\_). 1. Let \_entryList\_ be ?
+-- | EnumerableOwnProperties(\_obj\_, \~key+value\~). 1. Return
+-- | CreateArrayFromList(\_entryList\_).
+-- | 
+
+-- SPEC: L23905-L23912
+-- | # Object.freeze ( \_O\_ )
+-- | 
+-- | This function performs the following steps when called:
+-- | 
+-- | 1\. If \_O\_ is not an Object, return \_O\_. 1. Let \_status\_ be ?
+-- | SetIntegrityLevel(\_O\_, \~frozen\~). 1. If \_status\_ is \*false\*,
+-- | throw a \*TypeError\* exception. 1. Return \_O\_.
+-- | 
+
+-- SPEC: L23913-L23928
+-- | # Object.fromEntries ( \_iterable\_ )
+-- | 
+-- | This function performs the following steps when called:
+-- | 
+-- | 1\. Perform ? RequireObjectCoercible(\_iterable\_). 1. Let \_obj\_ be
+-- | OrdinaryObjectCreate(%Object.prototype%). 1. Assert: \_obj\_ is an
+-- | extensible ordinary object with no own properties. 1. Let \_closure\_ be
+-- | a new Abstract Closure with parameters (\_key\_, \_value\_) that
+-- | captures \_obj\_ and performs the following steps when called: 1. Let
+-- | \_propertyKey\_ be ? ToPropertyKey(\_key\_). 1. Perform !
+-- | CreateDataPropertyOrThrow(\_obj\_, \_propertyKey\_, \_value\_). 1.
+-- | Return NormalCompletion(\*undefined\*). 1. Let \_adder\_ be
+-- | CreateBuiltinFunction(\_closure\_, 2, \*\"\"\*, « »). 1. Return ?
+-- | AddEntriesFromIterable(\_obj\_, \_iterable\_, \_adder\_). The function
+-- | created for \_adder\_ is never directly accessible to ECMAScript code.
+-- | 
+
+-- SPEC: L23929-L23937
+-- | # Object.getOwnPropertyDescriptor ( \_O\_, \_P\_ )
+-- | 
+-- | This function performs the following steps when called:
+-- | 
+-- | 1\. Let \_obj\_ be ? ToObject(\_O\_). 1. Let \_key\_ be ?
+-- | ToPropertyKey(\_P\_). 1. Let \_desc\_ be ?
+-- | \_obj\_.\[\[GetOwnProperty\]\](\_key\_). 1. Return
+-- | FromPropertyDescriptor(\_desc\_).
+-- | 
+
+-- SPEC: L23938-L23950
+-- | # Object.getOwnPropertyDescriptors ( \_O\_ )
+-- | 
+-- | This function performs the following steps when called:
+-- | 
+-- | 1\. Let \_obj\_ be ? ToObject(\_O\_). 1. Let \_ownKeys\_ be ?
+-- | \_obj\_.\[\[OwnPropertyKeys\]\](). 1. Let \_descriptors\_ be
+-- | OrdinaryObjectCreate(%Object.prototype%). 1. For each element \_key\_ of
+-- | \_ownKeys\_, do 1. Let \_desc\_ be ?
+-- | \_obj\_.\[\[GetOwnProperty\]\](\_key\_). 1. Let \_descriptor\_ be
+-- | FromPropertyDescriptor(\_desc\_). 1. If \_descriptor\_ is not
+-- | \*undefined\*, perform ! CreateDataPropertyOrThrow(\_descriptors\_,
+-- | \_key\_, \_descriptor\_). 1. Return \_descriptors\_.
+-- | 
+
+-- SPEC: L23951-L23956
+-- | # Object.getOwnPropertyNames ( \_O\_ )
+-- | 
+-- | This function performs the following steps when called:
+-- | 
+-- | 1\. Return CreateArrayFromList(? GetOwnPropertyKeys(\_O\_, \~string\~)).
+-- | 
+
+-- SPEC: L23957-L23962
+-- | # Object.getOwnPropertySymbols ( \_O\_ )
+-- | 
+-- | This function performs the following steps when called:
+-- | 
+-- | 1\. Return CreateArrayFromList(? GetOwnPropertyKeys(\_O\_, \~symbol\~)).
+-- | 
+
+-- SPEC: L23963-L23971
+-- | # GetOwnPropertyKeys ( \_O\_: an ECMAScript language value, \_type\_: \~string\~ or \~symbol\~, ): either a normal completion containing a List of property keys or a throw completion
+-- | 
+-- | 1\. Let \_obj\_ be ? ToObject(\_O\_). 1. Let \_keys\_ be ?
+-- | \_obj\_.\[\[OwnPropertyKeys\]\](). 1. Let \_nameList\_ be a new empty
+-- | List. 1. For each element \_nextKey\_ of \_keys\_, do 1. If \_nextKey\_
+-- | is a Symbol and \_type\_ is \~symbol\~, or if \_nextKey\_ is a String
+-- | and \_type\_ is \~string\~, then 1. Append \_nextKey\_ to
+-- | \_nameList\_. 1. Return \_nameList\_.
+-- | 
+
+-- SPEC: L23972-L23978
+-- | # Object.getPrototypeOf ( \_O\_ )
+-- | 
+-- | This function performs the following steps when called:
+-- | 
+-- | 1\. Let \_obj\_ be ? ToObject(\_O\_). 1. Return ?
+-- | \_obj\_.\[\[GetPrototypeOf\]\]().
+-- | 
+
+-- SPEC: L23979-L24003
+-- | # Object.groupBy ( \_items\_, \_callback\_ )
+-- | 
+-- | \_callback\_ should be a function that accepts two arguments.
+-- | \`groupBy\` calls \_callback\_ once for each element in \_items\_, in
+-- | ascending order, and constructs a new object. Each value returned by
+-- | \_callback\_ is coerced to a property key. For each such property key,
+-- | the result object has a property whose key is that property key and
+-- | whose value is an array containing all the elements for which the
+-- | \_callback\_ return value coerced to that key.
+-- | 
+-- | \_callback\_ is called with two arguments: the value of the element and
+-- | the index of the element.
+-- | 
+-- | The return value of \`groupBy\` is an object that does not inherit from
+-- | %Object.prototype%.
+-- | 
+-- | This function performs the following steps when called:
+-- | 
+-- | 1\. Let \_groups\_ be ? GroupBy(\_items\_, \_callback\_,
+-- | \~property\~). 1. Let \_obj\_ be OrdinaryObjectCreate(\*null\*). 1. For
+-- | each Record { \[\[Key\]\], \[\[Elements\]\] } \_g\_ of \_groups\_, do 1.
+-- | Let \_elements\_ be CreateArrayFromList(\_g\_.\[\[Elements\]\]). 1.
+-- | Perform ! CreateDataPropertyOrThrow(\_obj\_, \_g\_.\[\[Key\]\],
+-- | \_elements\_). 1. Return \_obj\_.
+-- | 
+
+-- SPEC: L24004-L24010
+-- | # Object.hasOwn ( \_O\_, \_P\_ )
+-- | 
+-- | This function performs the following steps when called:
+-- | 
+-- | 1\. Let \_obj\_ be ? ToObject(\_O\_). 1. Let \_key\_ be ?
+-- | ToPropertyKey(\_P\_). 1. Return ? HasOwnProperty(\_obj\_, \_key\_).
+-- | 
+
+-- SPEC: L24011-L24016
+-- | # Object.is ( \_value1\_, \_value2\_ )
+-- | 
+-- | This function performs the following steps when called:
+-- | 
+-- | 1\. Return SameValue(\_value1\_, \_value2\_).
+-- | 
+
+-- SPEC: L24017-L24023
+-- | # Object.isExtensible ( \_O\_ )
+-- | 
+-- | This function performs the following steps when called:
+-- | 
+-- | 1\. If \_O\_ is not an Object, return \*false\*. 1. Return ?
+-- | IsExtensible(\_O\_).
+-- | 
+
+-- SPEC: L24024-L24030
+-- | # Object.isFrozen ( \_O\_ )
+-- | 
+-- | This function performs the following steps when called:
+-- | 
+-- | 1\. If \_O\_ is not an Object, return \*true\*. 1. Return ?
+-- | TestIntegrityLevel(\_O\_, \~frozen\~).
+-- | 
+
+-- SPEC: L24031-L24037
+-- | # Object.isSealed ( \_O\_ )
+-- | 
+-- | This function performs the following steps when called:
+-- | 
+-- | 1\. If \_O\_ is not an Object, return \*true\*. 1. Return ?
+-- | TestIntegrityLevel(\_O\_, \~sealed\~).
+-- | 
+
+-- SPEC: L24038-L24045
+-- | # Object.keys ( \_O\_ )
+-- | 
+-- | This function performs the following steps when called:
+-- | 
+-- | 1\. Let \_obj\_ be ? ToObject(\_O\_). 1. Let \_keyList\_ be ?
+-- | EnumerableOwnProperties(\_obj\_, \~key\~). 1. Return
+-- | CreateArrayFromList(\_keyList\_).
+-- | 
+
+-- SPEC: L24046-L24053
+-- | # Object.preventExtensions ( \_O\_ )
+-- | 
+-- | This function performs the following steps when called:
+-- | 
+-- | 1\. If \_O\_ is not an Object, return \_O\_. 1. Let \_status\_ be ?
+-- | \_O\_.\[\[PreventExtensions\]\](). 1. If \_status\_ is \*false\*, throw
+-- | a \*TypeError\* exception. 1. Return \_O\_.
+-- | 
+
+-- SPEC: L24054-L24061
+-- | # Object.prototype
+-- | 
+-- | The initial value of \`Object.prototype\` is the Object prototype
+-- | object.
+-- | 
+-- | This property has the attributes { \[\[Writable\]\]: \*false\*,
+-- | \[\[Enumerable\]\]: \*false\*, \[\[Configurable\]\]: \*false\* }.
+-- | 
+
+-- SPEC: L24062-L24069
+-- | # Object.seal ( \_O\_ )
+-- | 
+-- | This function performs the following steps when called:
+-- | 
+-- | 1\. If \_O\_ is not an Object, return \_O\_. 1. Let \_status\_ be ?
+-- | SetIntegrityLevel(\_O\_, \~sealed\~). 1. If \_status\_ is \*false\*,
+-- | throw a \*TypeError\* exception. 1. Return \_O\_.
+-- | 
+
+-- SPEC: L24070-L24079
+-- | # Object.setPrototypeOf ( \_O\_, \_proto\_ )
+-- | 
+-- | This function performs the following steps when called:
+-- | 
+-- | 1\. Perform ? RequireObjectCoercible(\_O\_). 1. If \_proto\_ is not an
+-- | Object and \_proto\_ is not \*null\*, throw a \*TypeError\*
+-- | exception. 1. If \_O\_ is not an Object, return \_O\_. 1. Let \_status\_
+-- | be ? \_O\_.\[\[SetPrototypeOf\]\](\_proto\_). 1. If \_status\_ is
+-- | \*false\*, throw a \*TypeError\* exception. 1. Return \_O\_.
+-- | 
+
+-- SPEC: L24080-L24087
+-- | # Object.values ( \_O\_ )
+-- | 
+-- | This function performs the following steps when called:
+-- | 
+-- | 1\. Let \_obj\_ be ? ToObject(\_O\_). 1. Let \_valueList\_ be ?
+-- | EnumerableOwnProperties(\_obj\_, \~value\~). 1. Return
+-- | CreateArrayFromList(\_valueList\_).
+-- | 
+
+-- SPEC: L24459-L24482
+-- | # Function.prototype.apply ( \_thisArg\_, \_argArray\_ )
+-- | 
+-- | This method performs the following steps when called:
+-- | 
+-- | 1\. Let \_func\_ be the \*this\* value. 1. If IsCallable(\_func\_) is
+-- | \*false\*, throw a \*TypeError\* exception. 1. If \_argArray\_ is either
+-- | \*undefined\* or \*null\*, then 1. Perform PrepareForTailCall(). 1.
+-- | Return ? Call(\_func\_, \_thisArg\_). 1. Let \_argList\_ be ?
+-- | CreateListFromArrayLike(\_argArray\_). 1. Perform
+-- | PrepareForTailCall(). 1. \[id=\"step-function-proto-apply-call\"\]
+-- | Return ? Call(\_func\_, \_thisArg\_, \_argList\_).
+-- | 
+-- | The \_thisArg\_ value is passed without modification as the \*this\*
+-- | value. This is a change from Edition 3, where an \*undefined\* or
+-- | \*null\* \_thisArg\_ is replaced with the global object and ToObject is
+-- | applied to all other values and that result is passed as the \*this\*
+-- | value. Even though the \_thisArg\_ is passed without modification,
+-- | non-strict functions still perform these transformations upon entry to
+-- | the function.
+-- | 
+-- | If \_func\_ is either an arrow function or a bound function exotic
+-- | object, then the \_thisArg\_ will be ignored by the function
+-- | \[\[Call\]\] in step .
+-- | 
+
+-- SPEC: L24483-L24510
+-- | # Function.prototype.bind ( \_thisArg\_, \...\_args\_ )
+-- | 
+-- | This method performs the following steps when called:
+-- | 
+-- | 1\. Let \_Target\_ be the \*this\* value. 1. If IsCallable(\_Target\_)
+-- | is \*false\*, throw a \*TypeError\* exception. 1. Let \_F\_ be ?
+-- | BoundFunctionCreate(\_Target\_, \_thisArg\_, \_args\_). 1. Let \_L\_ be
+-- | 0. 1. Let \_targetHasLength\_ be ? HasOwnProperty(\_Target\_,
+-- | \*\"length\"\*). 1. If \_targetHasLength\_ is \*true\*, then 1. Let
+-- | \_targetLen\_ be ? Get(\_Target\_, \*\"length\"\*). 1. If \_targetLen\_
+-- | is a Number, then 1. If \_targetLen\_ is \*+∞\*~𝔽~, then 1. Set \_L\_ to
+-- | +∞. 1. Else if \_targetLen\_ is \*-∞\*~𝔽~, then 1. Set \_L\_ to 0. 1.
+-- | Else, 1. Let \_targetLenAsInt\_ be !
+-- | ToIntegerOrInfinity(\_targetLen\_). 1. Assert: \_targetLenAsInt\_ is
+-- | finite. 1. Let \_argCount\_ be the number of elements in \_args\_. 1.
+-- | Set \_L\_ to max(\_targetLenAsInt\_ - \_argCount\_, 0). 1. Perform
+-- | SetFunctionLength(\_F\_, \_L\_). 1. Let \_targetName\_ be ?
+-- | Get(\_Target\_, \*\"name\"\*). 1. If \_targetName\_ is not a String, set
+-- | \_targetName\_ to the empty String. 1. Perform SetFunctionName(\_F\_,
+-- | \_targetName\_, \*\"bound\"\*). 1. Return \_F\_.
+-- | 
+-- | Function objects created using \`Function.prototype.bind\` are exotic
+-- | objects. They also do not have a \*\"prototype\"\* property.
+-- | 
+-- | If \_Target\_ is either an arrow function or a bound function exotic
+-- | object, then the \_thisArg\_ passed to this method will not be used by
+-- | subsequent calls to \_F\_.
+-- | 
+
+-- SPEC: L24511-L24531
+-- | # Function.prototype.call ( \_thisArg\_, \...\_args\_ )
+-- | 
+-- | This method performs the following steps when called:
+-- | 
+-- | 1\. Let \_func\_ be the \*this\* value. 1. If IsCallable(\_func\_) is
+-- | \*false\*, throw a \*TypeError\* exception. 1. Perform
+-- | PrepareForTailCall(). 1. \[id=\"step-function-proto-call-call\"\] Return
+-- | ? Call(\_func\_, \_thisArg\_, \_args\_).
+-- | 
+-- | The \_thisArg\_ value is passed without modification as the \*this\*
+-- | value. This is a change from Edition 3, where an \*undefined\* or
+-- | \*null\* \_thisArg\_ is replaced with the global object and ToObject is
+-- | applied to all other values and that result is passed as the \*this\*
+-- | value. Even though the \_thisArg\_ is passed without modification,
+-- | non-strict functions still perform these transformations upon entry to
+-- | the function.
+-- | 
+-- | If \_func\_ is either an arrow function or a bound function exotic
+-- | object, then the \_thisArg\_ will be ignored by the function
+-- | \[\[Call\]\] in step .
+-- | 
+
+-- SPEC: L42270-L42271
+-- | # Proxy Objects
+-- | 
+
+-- SPEC: L42272-L42283
+-- | # The Proxy Constructor
+-- | 
+-- | The Proxy constructor:
+-- | 
+-- | - is [%Proxy%]{.dfn}.
+-- | - is the initial value of the \*\"Proxy\"\* property of the global
+-- |   object.
+-- | - creates and initializes a new Proxy object when called as a
+-- |   constructor.
+-- | - is not intended to be called as a function and will throw an exception
+-- |   when called in that manner.
+-- | 
+
+-- SPEC: L42284-L42290
+-- | # Proxy ( \_target\_, \_handler\_ )
+-- | 
+-- | This function performs the following steps when called:
+-- | 
+-- | 1\. If NewTarget is \*undefined\*, throw a \*TypeError\* exception. 1.
+-- | Return ? ProxyCreate(\_target\_, \_handler\_).
+-- | 
+
+-- SPEC: L42291-L42301
+-- | # Properties of the Proxy Constructor
+-- | 
+-- | The Proxy constructor:
+-- | 
+-- | - has a \[\[Prototype\]\] internal slot whose value is
+-- |   %Function.prototype%.
+-- | - does not have a \*\"prototype\"\* property because Proxy objects do
+-- |   not have a \[\[Prototype\]\] internal slot that requires
+-- |   initialization.
+-- | - has the following properties:
+-- | 
+
+-- SPEC: L42302-L42324
+-- | # Proxy.revocable ( \_target\_, \_handler\_ )
+-- | 
+-- | This function creates a revocable Proxy object.
+-- | 
+-- | It performs the following steps when called:
+-- | 
+-- | 1\. Let \_proxy\_ be ? ProxyCreate(\_target\_, \_handler\_). 1. Let
+-- | \_revokerClosure\_ be a new Abstract Closure with no parameters that
+-- | captures nothing and performs the following steps when called: 1. Let
+-- | \_F\_ be the active function object. 1. Let \_p\_ be
+-- | \_F\_.\[\[RevocableProxy\]\]. 1. If \_p\_ is \*null\*, return
+-- | NormalCompletion(\*undefined\*). 1. Set \_F\_.\[\[RevocableProxy\]\] to
+-- | \*null\*. 1. Assert: \_p\_ is a Proxy exotic object. 1. Set
+-- | \_p\_.\[\[ProxyTarget\]\] to \*null\*. 1. Set \_p\_.\[\[ProxyHandler\]\]
+-- | to \*null\*. 1. Return NormalCompletion(\*undefined\*). 1. Let
+-- | \_revoker\_ be CreateBuiltinFunction(\_revokerClosure\_, 0, \*\"\"\*, «
+-- | \[\[RevocableProxy\]\] »). 1. Set \_revoker\_.\[\[RevocableProxy\]\] to
+-- | \_proxy\_. 1. Let \_result\_ be
+-- | OrdinaryObjectCreate(%Object.prototype%). 1. Perform !
+-- | CreateDataPropertyOrThrow(\_result\_, \*\"proxy\"\*, \_proxy\_). 1.
+-- | Perform ! CreateDataPropertyOrThrow(\_result\_, \*\"revoke\"\*,
+-- | \_revoker\_). 1. Return \_result\_.
+-- | 
+
+-- SPEC: L41430-L41439
+-- | # Generator Objects
+-- | 
+-- | A Generator is created by calling a generator function and conforms to
+-- | both the iterator interface and the iterable interface.
+-- | 
+-- | Generator instances directly inherit properties from the initial value
+-- | of the \*\"prototype\"\* property of the generator function that created
+-- | the instance. Generator instances indirectly inherit properties from
+-- | %GeneratorPrototype%.
+-- | 
+
+-- SPEC: L41440-L41452
+-- | # The %GeneratorPrototype% Object
+-- | 
+-- | The [%GeneratorPrototype%]{.dfn} object:
+-- | 
+-- | - is [%GeneratorFunction.prototype.prototype%]{.dfn}.
+-- | - is an ordinary object.
+-- | - is not a Generator instance and does not have a \[\[GeneratorState\]\]
+-- |   internal slot.
+-- | - has a \[\[Prototype\]\] internal slot whose value is
+-- |   %Iterator.prototype%.
+-- | - has properties that are indirectly inherited by all Generator
+-- |   instances.
+-- | 
+
+-- SPEC: L41453-L41460
+-- | # %GeneratorPrototype%.constructor
+-- | 
+-- | The initial value of %GeneratorPrototype%\`.constructor\` is
+-- | %GeneratorFunction.prototype%.
+-- | 
+-- | This property has the attributes { \[\[Writable\]\]: \*false\*,
+-- | \[\[Enumerable\]\]: \*false\*, \[\[Configurable\]\]: \*true\* }.
+-- | 
+
+-- SPEC: L41461-L41464
+-- | # %GeneratorPrototype%.next ( \_value\_ )
+-- | 
+-- | 1\. Return ? GeneratorResume(\*this\* value, \_value\_, \~empty\~).
+-- | 
+
+-- SPEC: L41465-L41472
+-- | # %GeneratorPrototype%.return ( \_value\_ )
+-- | 
+-- | This method performs the following steps when called:
+-- | 
+-- | 1\. Let \_g\_ be the \*this\* value. 1. Let \_C\_ be
+-- | ReturnCompletion(\_value\_). 1. Return ? GeneratorResumeAbrupt(\_g\_,
+-- | \_C\_, \~empty\~).
+-- | 
+
+-- SPEC: L41473-L41480
+-- | # %GeneratorPrototype%.throw ( \_exception\_ )
+-- | 
+-- | This method performs the following steps when called:
+-- | 
+-- | 1\. Let \_g\_ be the \*this\* value. 1. Let \_C\_ be
+-- | ThrowCompletion(\_exception\_). 1. Return ? GeneratorResumeAbrupt(\_g\_,
+-- | \_C\_, \~empty\~).
+-- | 
+
+-- SPEC: L41481-L41488
+-- | # %GeneratorPrototype% \[ %Symbol.toStringTag% \]
+-- | 
+-- | The initial value of the %Symbol.toStringTag% property is the String
+-- | value \*\"Generator\"\*.
+-- | 
+-- | This property has the attributes { \[\[Writable\]\]: \*false\*,
+-- | \[\[Enumerable\]\]: \*false\*, \[\[Configurable\]\]: \*true\* }.
+-- | 
+
+-- SPEC: L41489-L41499
+-- | # Properties of Generator Instances
+-- | 
+-- | Generator instances are initially created with the internal slots
+-- | described in .
+-- | 
+-- |   Internal Slot              Type                                                                        Description
+-- |   -------------------------- --------------------------------------------------------------------------- -------------------------------------------------------------------------------------------------------------------------------------------------------------
+-- |   \[\[GeneratorState\]\]     \~suspended-start\~, \~suspended-yield\~, \~executing\~, or \~completed\~   The current execution state of the generator.
+-- |   \[\[GeneratorContext\]\]   an execution context                                                        The execution context that is used when executing the code of this generator.
+-- |   \[\[GeneratorBrand\]\]     a String or \~empty\~                                                       A brand used to distinguish different kinds of generators. The \[\[GeneratorBrand\]\] of generators declared by ECMAScript source text is always \~empty\~.
+-- | 
+
+-- SPEC: L41500-L41501
+-- | # Generator Abstract Operations
+-- | 
+
+-- SPEC: L41502-L41510
+-- | # GeneratorStart ( \_generator\_: a Generator, \_generatorBody\_: a \|FunctionBody\| Parse Node or an Abstract Closure with no parameters, ): \~unused\~
+-- | 
+-- | 1\. Assert: \_generator\_.\[\[GeneratorState\]\] is
+-- | \~suspended-start\~. 1. Let \_genContext\_ be the running execution
+-- | context. 1. Set the Generator component of \_genContext\_ to
+-- | \_generator\_. 1. Let \_closure\_ be a new Abstract Closure with no
+-- | parameters that captures \_generatorBody\_ and performs the following
+-- | steps when called: 1. Let \_acGenContext\_ be the running execution
+-- | context. 1. Let \_acGenerator\_ be the Generator component of
+
+-- SPEC: L41644-L41654
+-- | # AsyncGenerator Objects
+-- | 
+-- | An AsyncGenerator is created by calling an async generator function and
+-- | conforms to both the async iterator interface and the async iterable
+-- | interface.
+-- | 
+-- | AsyncGenerator instances directly inherit properties from the initial
+-- | value of the \*\"prototype\"\* property of the async generator function
+-- | that created the instance. AsyncGenerator instances indirectly inherit
+-- | properties from %AsyncGeneratorPrototype%.
+-- | 
+
+-- SPEC: L41655-L41667
+-- | # The %AsyncGeneratorPrototype% Object
+-- | 
+-- | The [%AsyncGeneratorPrototype%]{.dfn} object:
+-- | 
+-- | - is [%AsyncGeneratorFunction.prototype.prototype%]{.dfn}.
+-- | - is an ordinary object.
+-- | - is not an AsyncGenerator instance and does not have an
+-- |   \[\[AsyncGeneratorState\]\] internal slot.
+-- | - has a \[\[Prototype\]\] internal slot whose value is
+-- |   %AsyncIteratorPrototype%.
+-- | - has properties that are indirectly inherited by all AsyncGenerator
+-- |   instances.
+-- | 
+
+-- SPEC: L41668-L41675
+-- | # %AsyncGeneratorPrototype%.constructor
+-- | 
+-- | The initial value of %AsyncGeneratorPrototype%\`.constructor\` is
+-- | %AsyncGeneratorFunction.prototype%.
+-- | 
+-- | This property has the attributes { \[\[Writable\]\]: \*false\*,
+-- | \[\[Enumerable\]\]: \*false\*, \[\[Configurable\]\]: \*true\* }.
+-- | 
+
+-- SPEC: L41676-L41695
+-- | # %AsyncGeneratorPrototype%.next ( \_value\_ )
+-- | 
+-- | 1\. Let \_generator\_ be the \*this\* value. 1. Let
+-- | \_promiseCapability\_ be ! NewPromiseCapability(%Promise%). 1. Let
+-- | \_result\_ be Completion(AsyncGeneratorValidate(\_generator\_,
+-- | \~empty\~)). 1. IfAbruptRejectPromise(\_result\_,
+-- | \_promiseCapability\_). 1. Let \_state\_ be
+-- | \_generator\_.\[\[AsyncGeneratorState\]\]. 1. If \_state\_ is
+-- | \~completed\~, then 1. Let \_iteratorResult\_ be
+-- | CreateIteratorResultObject(\*undefined\*, \*true\*). 1. Perform !
+-- | Call(\_promiseCapability\_.\[\[Resolve\]\], \*undefined\*, «
+-- | \_iteratorResult\_ »). 1. Return
+-- | \_promiseCapability\_.\[\[Promise\]\]. 1. Let \_completion\_ be
+-- | NormalCompletion(\_value\_). 1. Perform
+-- | AsyncGeneratorEnqueue(\_generator\_, \_completion\_,
+-- | \_promiseCapability\_). 1. If \_state\_ is either \~suspended-start\~ or
+-- | \~suspended-yield\~, then 1. Perform AsyncGeneratorResume(\_generator\_,
+-- | \_completion\_). 1. Else, 1. Assert: \_state\_ is either \~executing\~
+-- | or \~draining-queue\~. 1. Return \_promiseCapability\_.\[\[Promise\]\].
+-- | 
+
+-- SPEC: L41696-L41714
+-- | # %AsyncGeneratorPrototype%.return ( \_value\_ )
+-- | 
+-- | 1\. Let \_generator\_ be the \*this\* value. 1. Let
+-- | \_promiseCapability\_ be ! NewPromiseCapability(%Promise%). 1. Let
+-- | \_result\_ be Completion(AsyncGeneratorValidate(\_generator\_,
+-- | \~empty\~)). 1. IfAbruptRejectPromise(\_result\_,
+-- | \_promiseCapability\_). 1. Let \_completion\_ be
+-- | ReturnCompletion(\_value\_). 1. Perform
+-- | AsyncGeneratorEnqueue(\_generator\_, \_completion\_,
+-- | \_promiseCapability\_). 1. Let \_state\_ be
+-- | \_generator\_.\[\[AsyncGeneratorState\]\]. 1. If \_state\_ is either
+-- | \~suspended-start\~ or \~completed\~, then 1. Set
+-- | \_generator\_.\[\[AsyncGeneratorState\]\] to \~draining-queue\~. 1.
+-- | Perform AsyncGeneratorAwaitReturn(\_generator\_). 1. Else if \_state\_
+-- | is \~suspended-yield\~, then 1. Perform
+-- | AsyncGeneratorResume(\_generator\_, \_completion\_). 1. Else, 1. Assert:
+-- | \_state\_ is either \~executing\~ or \~draining-queue\~. 1. Return
+-- | \_promiseCapability\_.\[\[Promise\]\].
+-- | 
+
+-- SPEC: L41715-L41734
+-- | # %AsyncGeneratorPrototype%.throw ( \_exception\_ )
+-- | 
+-- | 1\. Let \_generator\_ be the \*this\* value. 1. Let
+-- | \_promiseCapability\_ be ! NewPromiseCapability(%Promise%). 1. Let
+-- | \_result\_ be Completion(AsyncGeneratorValidate(\_generator\_,
+-- | \~empty\~)). 1. IfAbruptRejectPromise(\_result\_,
+-- | \_promiseCapability\_). 1. Let \_state\_ be
+-- | \_generator\_.\[\[AsyncGeneratorState\]\]. 1. If \_state\_ is
+-- | \~suspended-start\~, then 1. Set
+-- | \_generator\_.\[\[AsyncGeneratorState\]\] to \~completed\~. 1. Set
+-- | \_state\_ to \~completed\~. 1. If \_state\_ is \~completed\~, then 1.
+-- | Perform ! Call(\_promiseCapability\_.\[\[Reject\]\], \*undefined\*, «
+-- | \_exception\_ »). 1. Return \_promiseCapability\_.\[\[Promise\]\]. 1.
+-- | Let \_completion\_ be ThrowCompletion(\_exception\_). 1. Perform
+-- | AsyncGeneratorEnqueue(\_generator\_, \_completion\_,
+-- | \_promiseCapability\_). 1. If \_state\_ is \~suspended-yield\~, then 1.
+-- | Perform AsyncGeneratorResume(\_generator\_, \_completion\_). 1. Else, 1.
+-- | Assert: \_state\_ is either \~executing\~ or \~draining-queue\~. 1.
+-- | Return \_promiseCapability\_.\[\[Promise\]\].
+-- | 
+
+-- SPEC: L41735-L41742
+-- | # %AsyncGeneratorPrototype% \[ %Symbol.toStringTag% \]
+-- | 
+-- | The initial value of the %Symbol.toStringTag% property is the String
+-- | value \*\"AsyncGenerator\"\*.
+-- | 
+-- | This property has the attributes { \[\[Writable\]\]: \*false\*,
+-- | \[\[Enumerable\]\]: \*false\*, \[\[Configurable\]\]: \*true\* }.
+-- | 
+
+-- SPEC: L41743-L41754
+-- | # Properties of AsyncGenerator Instances
+-- | 
+-- | AsyncGenerator instances are initially created with the internal slots
+-- | described below:
+-- | 
+-- |   Internal Slot                   Type                                                                                            Description
+-- |   ------------------------------- ----------------------------------------------------------------------------------------------- ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+-- |   \[\[AsyncGeneratorState\]\]     \~suspended-start\~, \~suspended-yield\~, \~executing\~, \~draining-queue\~, or \~completed\~   The current execution state of the async generator.
+-- |   \[\[AsyncGeneratorContext\]\]   an execution context                                                                            The execution context that is used when executing the code of this async generator.
+-- |   \[\[AsyncGeneratorQueue\]\]     a List of AsyncGeneratorRequest Records                                                         Records which represent requests to resume the async generator. Except during state transitions, it is non-empty if and only if \[\[AsyncGeneratorState\]\] is either \~executing\~ or \~draining-queue\~.
+-- |   \[\[GeneratorBrand\]\]          a String or \~empty\~                                                                           A brand used to distinguish different kinds of async generators. The \[\[GeneratorBrand\]\] of async generators declared by ECMAScript source text is always \~empty\~.
+-- | 
+
+-- SPEC: L39630-L39637
+-- | # Iterator Helper Objects
+-- | 
+-- | An [Iterator Helper object]{.dfn variants="Iterator Helper objects"} is
+-- | an ordinary object that represents a lazy transformation of some
+-- | specific source iterator object. There is not a named constructor for
+-- | Iterator Helper objects. Instead, Iterator Helper objects are created by
+-- | calling certain methods of Iterator instance objects.
+-- | 
+
+-- SPEC: L39638-L39647
+-- | # The %IteratorHelperPrototype% Object
+-- | 
+-- | The [%IteratorHelperPrototype%]{.dfn} object:
+-- | 
+-- | - has properties that are inherited by all Iterator Helper objects.
+-- | - is an ordinary object.
+-- | - has a \[\[Prototype\]\] internal slot whose value is
+-- |   %Iterator.prototype%.
+-- | - has the following properties:
+-- | 
+
+-- SPEC: L39648-L39652
+-- | # %IteratorHelperPrototype%.next ( )
+-- | 
+-- | 1\. Return ? GeneratorResume(\*this\* value, \*undefined\*, \*\"Iterator
+-- | Helper\"\*).
+-- | 
+
+-- SPEC: L39653-L39667
+-- | # %IteratorHelperPrototype%.return ( )
+-- | 
+-- | 1\. Let \_O\_ be \*this\* value. 1. Perform ? RequireInternalSlot(\_O\_,
+-- | \[\[UnderlyingIterators\]\]). 1. Assert: \_O\_ has a
+-- | \[\[GeneratorState\]\] internal slot. 1. If \_O\_.\[\[GeneratorState\]\]
+-- | is \~suspended-start\~, then 1. Set \_O\_.\[\[GeneratorState\]\] to
+-- | \~completed\~. 1. NOTE: Once a generator enters the completed state it
+-- | never leaves it and its associated execution context is never resumed.
+-- | Any execution state associated with \_O\_ can be discarded at this
+-- | point. 1. Perform ? IteratorCloseAll(\_O\_.\[\[UnderlyingIterators\]\],
+-- | NormalCompletion(\~unused\~)). 1. Return
+-- | CreateIteratorResultObject(\*undefined\*, \*true\*). 1. Let \_C\_ be
+-- | ReturnCompletion(\*undefined\*). 1. Return ?
+-- | GeneratorResumeAbrupt(\_O\_, \_C\_, \*\"Iterator Helper\"\*).
+-- | 
+
+-- SPEC: L39668-L39675
+-- | # %IteratorHelperPrototype% \[ %Symbol.toStringTag% \]
+-- | 
+-- | The initial value of the %Symbol.toStringTag% property is the String
+-- | value \*\"Iterator Helper\"\*.
+-- | 
+-- | This property has the attributes { \[\[Writable\]\]: \*false\*,
+-- | \[\[Enumerable\]\]: \*false\*, \[\[Configurable\]\]: \*true\* }.
+-- | 
+
+-- SPEC: L25457-L25466
+-- | # Number.isSafeInteger ( \_number\_ )
+-- | 
+-- | An integer \_n\_ is a \"[safe integer]{#safe-integer .dfn}\" if and only
+-- | if the Number value for \_n\_ is not the Number value for any other
+-- | integer.
+-- | 
+-- | This function performs the following steps when called:
+-- | 
+-- | 1\. If \_number\_ is an integral Number, then 1. If abs(ℝ(\_number\_)) ≤
+-- | 2^53^ - 1, return \*true\*. 1. Return \*false\*.
+
+-- SPEC: L25468-L25482
+-- | # Number.MAX_SAFE_INTEGER
+-- | 
+-- | Due to rounding behaviour necessitated by precision limitations of IEEE
+-- | 754-2019, the Number value for every integer greater than
+-- | \`Number.MAX_SAFE_INTEGER\` is shared with at least one other integer.
+-- | Such large-magnitude integers are therefore not safe, and are not
+-- | guaranteed to be exactly representable as Number values or even to be
+-- | distinguishable from each other. For example, both \`9007199254740992\`
+-- | and \`9007199254740993\` evaluate to the Number value
+-- | \*9007199254740992\*~𝔽~.
+-- | 
+-- | The value of \`Number.MAX_SAFE_INTEGER\` is \*9007199254740991\*~𝔽~
+-- | (𝔽(2^53^ - 1)).
+-- | 
+-- | This property has the attributes { \[\[Writable\]\]: \*false\*,
+
+-- SPEC: L25485-L25491
+-- | # Number.MAX_VALUE
+-- | 
+-- | The value of \`Number.MAX_VALUE\` is the largest positive finite value
+-- | of the Number type, which is approximately 1.7976931348623157 × 10^308^.
+-- | 
+-- | This property has the attributes { \[\[Writable\]\]: \*false\*,
+-- | \[\[Enumerable\]\]: \*false\*, \[\[Configurable\]\]: \*false\* }.
+
+-- SPEC: L25493-L25507
+-- | # Number.MIN_SAFE_INTEGER
+-- | 
+-- | Due to rounding behaviour necessitated by precision limitations of IEEE
+-- | 754-2019, the Number value for every integer less than
+-- | \`Number.MIN_SAFE_INTEGER\` is shared with at least one other integer.
+-- | Such large-magnitude integers are therefore not safe, and are not
+-- | guaranteed to be exactly representable as Number values or even to be
+-- | distinguishable from each other. For example, both \`-9007199254740992\`
+-- | and \`-9007199254740993\` evaluate to the Number value
+-- | \*-9007199254740992\*~𝔽~.
+-- | 
+-- | The value of \`Number.MIN_SAFE_INTEGER\` is \*-9007199254740991\*~𝔽~
+-- | (𝔽(-(2^53^ - 1))).
+-- | 
+-- | This property has the attributes { \[\[Writable\]\]: \*false\*,
+
+-- SPEC: L25510-L25522
+-- | # Number.MIN_VALUE
+-- | 
+-- | The value of \`Number.MIN_VALUE\` is the smallest positive value of the
+-- | Number type, which is approximately 5 × 10^-324^.
+-- | 
+-- | In the IEEE 754-2019 double precision binary representation, the
+-- | smallest possible value is a denormalized number. If an implementation
+-- | does not support denormalized values, the value of \`Number.MIN_VALUE\`
+-- | must be the smallest non-zero positive value that can actually be
+-- | represented by the implementation.
+-- | 
+-- | This property has the attributes { \[\[Writable\]\]: \*false\*,
+-- | \[\[Enumerable\]\]: \*false\*, \[\[Configurable\]\]: \*false\* }.
+
+-- SPEC: L25531-L25536
+-- | # Number.NEGATIVE_INFINITY
+-- | 
+-- | The value of \`Number.NEGATIVE_INFINITY\` is \*-∞\*~𝔽~.
+-- | 
+-- | This property has the attributes { \[\[Writable\]\]: \*false\*,
+-- | \[\[Enumerable\]\]: \*false\*, \[\[Configurable\]\]: \*false\* }.
+
+-- SPEC: L25538-L25540
+-- | # Number.parseFloat ( \_string\_ )
+-- | 
+-- | The initial value of the \*\"parseFloat\"\* property is %parseFloat%.
+
+-- SPEC: L25542-L25544
+-- | # Number.parseInt ( \_string\_, \_radix\_ )
+-- | 
+-- | The initial value of the \*\"parseInt\"\* property is %parseInt%.
+
+-- SPEC: L25546-L25551
+-- | # Number.POSITIVE_INFINITY
+-- | 
+-- | The value of \`Number.POSITIVE_INFINITY\` is \*+∞\*~𝔽~.
+-- | 
+-- | This property has the attributes { \[\[Writable\]\]: \*false\*,
+-- | \[\[Enumerable\]\]: \*false\*, \[\[Configurable\]\]: \*false\* }.
+
+-- SPEC: L25553-L25559
+-- | # Number.prototype
+-- | 
+-- | The initial value of \`Number.prototype\` is the Number prototype
+-- | object.
+-- | 
+-- | This property has the attributes { \[\[Writable\]\]: \*false\*,
+-- | \[\[Enumerable\]\]: \*false\*, \[\[Configurable\]\]: \*false\* }.
+
+-- SPEC: L25583-L25585
+-- | # Number.prototype.constructor
+-- | 
+-- | The initial value of \`Number.prototype.constructor\` is %Number%.
+
+-- SPEC: L25587-L25601
+-- | # Number.prototype.toExponential ( \_fractionDigits\_ )
+-- | 
+-- | This method returns a String containing this Number value represented in
+-- | decimal exponential notation with one digit before the significand\'s
+-- | decimal point and \_fractionDigits\_ digits after the significand\'s
+-- | decimal point. If \_fractionDigits\_ is \*undefined\*, it includes as
+-- | many significand digits as necessary to uniquely specify the Number
+-- | (just like in ToString except that in this case the Number is always
+-- | output in exponential notation).
+-- | 
+-- | It performs the following steps when called:
+-- | 
+-- | 1\. Let \_x\_ be ? ThisNumberValue(\*this\* value). 1. Let \_f\_ be ?
+-- | ToIntegerOrInfinity(\_fractionDigits\_). 1. Assert: If
+-- | \_fractionDigits\_ is \*undefined\*, then \_f\_ is 0. 1. If \_x\_ is not
+
+-- SPEC: L25644-L25658
+-- | # Number.prototype.toFixed ( \_fractionDigits\_ )
+-- | 
+-- | This method returns a String containing this Number value represented in
+-- | decimal fixed-point notation with \_fractionDigits\_ digits after the
+-- | decimal point. If \_fractionDigits\_ is \*undefined\*, 0 is assumed.
+-- | 
+-- | It performs the following steps when called:
+-- | 
+-- | 1\. Let \_x\_ be ? ThisNumberValue(\*this\* value). 1. Let \_f\_ be ?
+-- | ToIntegerOrInfinity(\_fractionDigits\_). 1. Assert: If
+-- | \_fractionDigits\_ is \*undefined\*, then \_f\_ is 0. 1. If \_f\_ is not
+-- | finite, throw a \*RangeError\* exception. 1. If \_f\_ \< 0 or \_f\_ \>
+-- | 100, throw a \*RangeError\* exception. 1. If \_x\_ is not finite, return
+-- | Number::toString(\_x\_, 10). 1. Set \_x\_ to ℝ(\_x\_). 1. Let \_s\_ be
+-- | the empty String. 1. If \_x\_ \< 0, then 1. Set \_s\_ to \*\"-\"\*. 1.
+
+-- SPEC: L25683-L25697
+-- | # Number.prototype.toLocaleString ( \[ \_reserved1\_ \[ , \_reserved2\_ \] \] )
+-- | 
+-- | An ECMAScript implementation that includes the ECMA-402
+-- | Internationalization API must implement this method as specified in the
+-- | ECMA-402 specification. If an ECMAScript implementation does not include
+-- | the ECMA-402 API the following specification of this method is used:
+-- | 
+-- | This method produces a String value that represents this Number value
+-- | formatted according to the conventions of the host environment\'s
+-- | current locale. This method is implementation-defined, and it is
+-- | permissible, but not encouraged, for it to return the same thing as
+-- | \`toString\`.
+-- | 
+-- | The meanings of the optional parameters to this method are defined in
+-- | the ECMA-402 specification; implementations that do not include ECMA-402
+
+-- SPEC: L25700-L25714
+-- | # Number.prototype.toPrecision ( \_precision\_ )
+-- | 
+-- | This method returns a String containing this Number value represented
+-- | either in decimal exponential notation with one digit before the
+-- | significand\'s decimal point and \_precision\_ - 1 digits after the
+-- | significand\'s decimal point or in decimal fixed notation with
+-- | \_precision\_ significant digits. If \_precision\_ is \*undefined\*, it
+-- | calls ToString instead.
+-- | 
+-- | It performs the following steps when called:
+-- | 
+-- | 1\. Let \_x\_ be ? ThisNumberValue(\*this\* value). 1. If \_precision\_
+-- | is \*undefined\*, return ! ToString(\_x\_). 1. Let \_p\_ be ?
+-- | ToIntegerOrInfinity(\_precision\_). 1. If \_x\_ is not finite, return
+-- | Number::toString(\_x\_, 10). 1. If \_p\_ \< 1 or \_p\_ \> 100, throw a
+
+-- SPEC: L26061-L26072
+-- | # Math.acos ( \_x\_ )
+-- | 
+-- | This function returns the inverse cosine of \_x\_. The result is
+-- | expressed in radians and is in the inclusive interval from \*+0\*~𝔽~ to
+-- | 𝔽(π).
+-- | 
+-- | It performs the following steps when called:
+-- | 
+-- | 1\. Let \_n\_ be ? ToNumber(\_x\_). 1. If \_n\_ is \*NaN\*, \_n\_ \>
+-- | \*1\*~𝔽~, or \_n\_ \< \*-1\*~𝔽~, return \*NaN\*. 1. If \_n\_ is
+-- | \*1\*~𝔽~, return \*+0\*~𝔽~. 1. Return an implementation-approximated
+-- | Number value representing the inverse cosine of ℝ(\_n\_).
+
+-- SPEC: L26074-L26084
+-- | # Math.acosh ( \_x\_ )
+-- | 
+-- | This function returns the inverse hyperbolic cosine of \_x\_.
+-- | 
+-- | It performs the following steps when called:
+-- | 
+-- | 1\. Let \_n\_ be ? ToNumber(\_x\_). 1. If \_n\_ is either \*NaN\* or
+-- | \*+∞\*~𝔽~, return \_n\_. 1. If \_n\_ is \*1\*~𝔽~, return \*+0\*~𝔽~. 1.
+-- | If \_n\_ \< \*1\*~𝔽~, return \*NaN\*. 1. Return an
+-- | implementation-approximated Number value representing the inverse
+-- | hyperbolic cosine of ℝ(\_n\_).
+
+-- SPEC: L26086-L26096
+-- | # Math.asin ( \_x\_ )
+-- | 
+-- | This function returns the inverse sine of \_x\_. The result is expressed
+-- | in radians and is in the inclusive interval from 𝔽(-π / 2) to 𝔽(π / 2).
+-- | 
+-- | It performs the following steps when called:
+-- | 
+-- | 1\. Let \_n\_ be ? ToNumber(\_x\_). 1. If \_n\_ is one of \*NaN\*,
+-- | \*+0\*~𝔽~, or \*-0\*~𝔽~, return \_n\_. 1. If \_n\_ \> \*1\*~𝔽~ or \_n\_
+-- | \< \*-1\*~𝔽~, return \*NaN\*. 1. Return an implementation-approximated
+-- | Number value representing the inverse sine of ℝ(\_n\_).
+
+-- SPEC: L26098-L26107
+-- | # Math.asinh ( \_x\_ )
+-- | 
+-- | This function returns the inverse hyperbolic sine of \_x\_.
+-- | 
+-- | It performs the following steps when called:
+-- | 
+-- | 1\. Let \_n\_ be ? ToNumber(\_x\_). 1. If \_n\_ is not finite or \_n\_
+-- | is either \*+0\*~𝔽~ or \*-0\*~𝔽~, return \_n\_. 1. Return an
+-- | implementation-approximated Number value representing the inverse
+-- | hyperbolic sine of ℝ(\_n\_).
+
+-- SPEC: L26109-L26122
+-- | # Math.atan ( \_x\_ )
+-- | 
+-- | This function returns the inverse tangent of \_x\_. The result is
+-- | expressed in radians and is in the inclusive interval from 𝔽(-π / 2) to
+-- | 𝔽(π / 2).
+-- | 
+-- | It performs the following steps when called:
+-- | 
+-- | 1\. Let \_n\_ be ? ToNumber(\_x\_). 1. If \_n\_ is one of \*NaN\*,
+-- | \*+0\*~𝔽~, or \*-0\*~𝔽~, return \_n\_. 1. If \_n\_ is \*+∞\*~𝔽~, return
+-- | an implementation-approximated Number value representing π / 2. 1. If
+-- | \_n\_ is \*-∞\*~𝔽~, return an implementation-approximated Number value
+-- | representing -π / 2. 1. Return an implementation-approximated Number
+-- | value representing the inverse tangent of ℝ(\_n\_).
+
+-- SPEC: L26124-L26135
+-- | # Math.atanh ( \_x\_ )
+-- | 
+-- | This function returns the inverse hyperbolic tangent of \_x\_.
+-- | 
+-- | It performs the following steps when called:
+-- | 
+-- | 1\. Let \_n\_ be ? ToNumber(\_x\_). 1. If \_n\_ is one of \*NaN\*,
+-- | \*+0\*~𝔽~, or \*-0\*~𝔽~, return \_n\_. 1. If \_n\_ \> \*1\*~𝔽~ or \_n\_
+-- | \< \*-1\*~𝔽~, return \*NaN\*. 1. If \_n\_ is \*1\*~𝔽~, return
+-- | \*+∞\*~𝔽~. 1. If \_n\_ is \*-1\*~𝔽~, return \*-∞\*~𝔽~. 1. Return an
+-- | implementation-approximated Number value representing the inverse
+-- | hyperbolic tangent of ℝ(\_n\_).
+
+-- SPEC: L26137-L26151
+-- | # Math.atan2 ( \_y\_, \_x\_ )
+-- | 
+-- | This function returns the inverse tangent of the quotient \_y\_ / \_x\_
+-- | of the arguments \_y\_ and \_x\_, where the signs of \_y\_ and \_x\_ are
+-- | used to determine the quadrant of the result. Note that it is
+-- | intentional and traditional for the two-argument inverse tangent
+-- | function that the argument named \_y\_ be first and the argument named
+-- | \_x\_ be second. The result is expressed in radians and is in the
+-- | inclusive interval from -π to +π.
+-- | 
+-- | It performs the following steps when called:
+-- | 
+-- | 1\. Let \_ny\_ be ? ToNumber(\_y\_). 1. Let \_nx\_ be ?
+-- | ToNumber(\_x\_). 1. If \_ny\_ is \*NaN\* or \_nx\_ is \*NaN\*, return
+-- | \*NaN\*. 1. If \_ny\_ is \*+∞\*~𝔽~, then 1. If \_nx\_ is \*+∞\*~𝔽~,
+
+-- SPEC: L26182-L26191
+-- | # Math.cbrt ( \_x\_ )
+-- | 
+-- | This function returns the cube root of \_x\_.
+-- | 
+-- | It performs the following steps when called:
+-- | 
+-- | 1\. Let \_n\_ be ? ToNumber(\_x\_). 1. If \_n\_ is not finite or \_n\_
+-- | is either \*+0\*~𝔽~ or \*-0\*~𝔽~, return \_n\_. 1. Return an
+-- | implementation-approximated Number value representing the cube root of
+-- | ℝ(\_n\_).
+
+-- SPEC: L26210-L26220
+-- | # Math.clz32 ( \_x\_ )
+-- | 
+-- | This function performs the following steps when called:
+-- | 
+-- | 1\. Let \_n\_ be ? ToUint32(\_x\_). 1. Let \_p\_ be the number of
+-- | leading zero bits in the unsigned 32-bit binary representation of
+-- | \_n\_. 1. Return 𝔽(\_p\_).
+-- | 
+-- | If \_n\_ is either \*+0\*~𝔽~ or \*-0\*~𝔽~, this method returns
+-- | \*32\*~𝔽~. If the most significant bit of the 32-bit binary encoding of
+-- | \_n\_ is 1, this method returns \*+0\*~𝔽~.
+
+-- SPEC: L26222-L26232
+-- | # Math.cos ( \_x\_ )
+-- | 
+-- | This function returns the cosine of \_x\_. The argument is expressed in
+-- | radians.
+-- | 
+-- | It performs the following steps when called:
+-- | 
+-- | 1\. Let \_n\_ be ? ToNumber(\_x\_). 1. If \_n\_ is not finite, return
+-- | \*NaN\*. 1. If \_n\_ is either \*+0\*~𝔽~ or \*-0\*~𝔽~, return
+-- | \*1\*~𝔽~. 1. Return an implementation-approximated Number value
+-- | representing the cosine of ℝ(\_n\_).
+
+-- SPEC: L26234-L26247
+-- | # Math.cosh ( \_x\_ )
+-- | 
+-- | This function returns the hyperbolic cosine of \_x\_.
+-- | 
+-- | It performs the following steps when called:
+-- | 
+-- | 1\. Let \_n\_ be ? ToNumber(\_x\_). 1. If \_n\_ is \*NaN\*, return
+-- | \*NaN\*. 1. If \_n\_ is either \*+∞\*~𝔽~ or \*-∞\*~𝔽~, return
+-- | \*+∞\*~𝔽~. 1. If \_n\_ is either \*+0\*~𝔽~ or \*-0\*~𝔽~, return
+-- | \*1\*~𝔽~. 1. Return an implementation-approximated Number value
+-- | representing the hyperbolic cosine of ℝ(\_n\_).
+-- | 
+-- | The value of \`Math.cosh(x)\` is the same as the value of
+-- | \`(Math.exp(x) + Math.exp(-x)) / 2\`.
+
+-- SPEC: L26249-L26260
+-- | # Math.exp ( \_x\_ )
+-- | 
+-- | This function returns the exponential function of \_x\_ (\_e\_ raised to
+-- | the power of \_x\_, where \_e\_ is the base of the natural logarithms).
+-- | 
+-- | It performs the following steps when called:
+-- | 
+-- | 1\. Let \_n\_ be ? ToNumber(\_x\_). 1. If \_n\_ is either \*NaN\* or
+-- | \*+∞\*~𝔽~, return \_n\_. 1. If \_n\_ is either \*+0\*~𝔽~ or \*-0\*~𝔽~,
+-- | return \*1\*~𝔽~. 1. If \_n\_ is \*-∞\*~𝔽~, return \*+0\*~𝔽~. 1. Return
+-- | an implementation-approximated Number value representing the exponential
+-- | function of ℝ(\_n\_).
+
+-- SPEC: L26262-L26275
+-- | # Math.expm1 ( \_x\_ )
+-- | 
+-- | This function returns the result of subtracting 1 from the exponential
+-- | function of \_x\_ (\_e\_ raised to the power of \_x\_, where \_e\_ is
+-- | the base of the natural logarithms). The result is computed in a way
+-- | that is accurate even when the value of \_x\_ is close to 0.
+-- | 
+-- | It performs the following steps when called:
+-- | 
+-- | 1\. Let \_n\_ be ? ToNumber(\_x\_). 1. If \_n\_ is one of \*NaN\*,
+-- | \*+0\*~𝔽~, \*-0\*~𝔽~, or \*+∞\*~𝔽~, return \_n\_. 1. If \_n\_ is
+-- | \*-∞\*~𝔽~, return \*-1\*~𝔽~. 1. Let \_exp\_ be the exponential function
+-- | of ℝ(\_n\_). 1. Return an implementation-approximated Number value
+-- | representing \_exp\_ - 1.
+
+-- SPEC: L26277-L26291
+-- | # Math.floor ( \_x\_ )
+-- | 
+-- | This function returns the greatest (closest to +∞) integral Number value
+-- | that is not greater than \_x\_. If \_x\_ is already an integral Number,
+-- | the result is \_x\_.
+-- | 
+-- | It performs the following steps when called:
+-- | 
+-- | 1\. Let \_n\_ be ? ToNumber(\_x\_). 1. If \_n\_ is not finite or \_n\_
+-- | is either \*+0\*~𝔽~ or \*-0\*~𝔽~, return \_n\_. 1. If \_n\_ \< \*1\*~𝔽~
+-- | and \_n\_ \> \*+0\*~𝔽~, return \*+0\*~𝔽~. 1. If \_n\_ is an integral
+-- | Number, return \_n\_. 1. Return the greatest (closest to +∞) integral
+-- | Number value that is not greater than \_n\_.
+-- | 
+-- | The value of \`Math.floor(x)\` is the same as the value of
+
+-- SPEC: L26294-L26304
+-- | # Math.fround ( \_x\_ )
+-- | 
+-- | This function performs the following steps when called:
+-- | 
+-- | 1\. Let \_n\_ be ? ToNumber(\_x\_). 1. If \_n\_ is \*NaN\*, return
+-- | \*NaN\*. 1. If \_n\_ is one of \*+0\*~𝔽~, \*-0\*~𝔽~, \*+∞\*~𝔽~, or
+-- | \*-∞\*~𝔽~, return \_n\_. 1. Let \_n32\_ be the result of converting
+-- | \_n\_ to IEEE 754-2019 binary32 format using roundTiesToEven mode. 1.
+-- | Let \_n64\_ be the result of converting \_n32\_ to IEEE 754-2019
+-- | binary64 format. 1. Return the ECMAScript Number value corresponding to
+-- | \_n64\_.
+
+-- SPEC: L26306-L26320
+-- | # Math.f16round ( \_x\_ )
+-- | 
+-- | This function performs the following steps when called:
+-- | 
+-- | 1\. Let \_n\_ be ? ToNumber(\_x\_). 1. If \_n\_ is \*NaN\*, return
+-- | \*NaN\*. 1. If \_n\_ is one of \*+0\*~𝔽~, \*-0\*~𝔽~, \*+∞\*~𝔽~, or
+-- | \*-∞\*~𝔽~, return \_n\_. 1. Let \_n16\_ be the result of converting
+-- | \_n\_ to IEEE 754-2019 binary16 format using roundTiesToEven mode. 1.
+-- | Let \_n64\_ be the result of converting \_n16\_ to IEEE 754-2019
+-- | binary64 format. 1. Return the ECMAScript Number value corresponding to
+-- | \_n64\_.
+-- | 
+-- | This operation is not the same as casting to binary32 and then to
+-- | binary16 because of the possibility of double-rounding: consider the
+-- | number \_k\_ = \*1.00048828125000022204\*~𝔽~, for example, for which
+
+-- SPEC: L26335-L26349
+-- | # Math.hypot ( \...\_args\_ )
+-- | 
+-- | Given zero or more arguments, this function returns the square root of
+-- | the sum of squares of its arguments.
+-- | 
+-- | It performs the following steps when called:
+-- | 
+-- | 1\. Let \_coerced\_ be a new empty List. 1. For each element \_arg\_ of
+-- | \_args\_, do 1. Let \_n\_ be ? ToNumber(\_arg\_). 1. Append \_n\_ to
+-- | \_coerced\_. 1. For each element \_number\_ of \_coerced\_, do 1. If
+-- | \_number\_ is either \*+∞\*~𝔽~ or \*-∞\*~𝔽~, return \*+∞\*~𝔽~. 1. Let
+-- | \_onlyZero\_ be \*true\*. 1. For each element \_number\_ of \_coerced\_,
+-- | do 1. If \_number\_ is \*NaN\*, return \*NaN\*. 1. If \_number\_ is
+-- | neither \*+0\*~𝔽~ nor \*-0\*~𝔽~, set \_onlyZero\_ to \*false\*. 1. If
+-- | \_onlyZero\_ is \*true\*, return \*+0\*~𝔽~. 1. Return an
+
+-- SPEC: L26360-L26367
+-- | # Math.imul ( \_x\_, \_y\_ )
+-- | 
+-- | This function performs the following steps when called:
+-- | 
+-- | 1\. Let \_a\_ be ℝ(? ToUint32(\_x\_)). 1. Let \_b\_ be ℝ(?
+-- | ToUint32(\_y\_)). 1. Let \_product\_ be (\_a\_ × \_b\_) modulo 2^32^. 1.
+-- | If \_product\_ ≥ 2^31^, return 𝔽(\_product\_ - 2^32^). 1. Return
+-- | 𝔽(\_product\_).
+
+-- SPEC: L26369-L26379
+-- | # Math.log ( \_x\_ )
+-- | 
+-- | This function returns the natural logarithm of \_x\_.
+-- | 
+-- | It performs the following steps when called:
+-- | 
+-- | 1\. Let \_n\_ be ? ToNumber(\_x\_). 1. If \_n\_ is either \*NaN\* or
+-- | \*+∞\*~𝔽~, return \_n\_. 1. If \_n\_ is \*1\*~𝔽~, return \*+0\*~𝔽~. 1.
+-- | If \_n\_ is either \*+0\*~𝔽~ or \*-0\*~𝔽~, return \*-∞\*~𝔽~. 1. If \_n\_
+-- | \< \*-0\*~𝔽~, return \*NaN\*. 1. Return an implementation-approximated
+-- | Number value representing ln(ℝ(\_n\_)).
+
+-- SPEC: L26381-L26393
+-- | # Math.log1p ( \_x\_ )
+-- | 
+-- | This function returns the natural logarithm of 1 + \_x\_. The result is
+-- | computed in a way that is accurate even when the value of x is close to
+-- | zero.
+-- | 
+-- | It performs the following steps when called:
+-- | 
+-- | 1\. Let \_n\_ be ? ToNumber(\_x\_). 1. If \_n\_ is one of \*NaN\*,
+-- | \*+0\*~𝔽~, \*-0\*~𝔽~, or \*+∞\*~𝔽~, return \_n\_. 1. If \_n\_ is
+-- | \*-1\*~𝔽~, return \*-∞\*~𝔽~. 1. If \_n\_ \< \*-1\*~𝔽~, return
+-- | \*NaN\*. 1. Return an implementation-approximated Number value
+-- | representing ln(1 + ℝ(\_n\_)).
+
+-- SPEC: L26395-L26405
+-- | # Math.log10 ( \_x\_ )
+-- | 
+-- | This function returns the base 10 logarithm of \_x\_.
+-- | 
+-- | It performs the following steps when called:
+-- | 
+-- | 1\. Let \_n\_ be ? ToNumber(\_x\_). 1. If \_n\_ is either \*NaN\* or
+-- | \*+∞\*~𝔽~, return \_n\_. 1. If \_n\_ is \*1\*~𝔽~, return \*+0\*~𝔽~. 1.
+-- | If \_n\_ is either \*+0\*~𝔽~ or \*-0\*~𝔽~, return \*-∞\*~𝔽~. 1. If \_n\_
+-- | \< \*-0\*~𝔽~, return \*NaN\*. 1. Return an implementation-approximated
+-- | Number value representing log10(ℝ(\_n\_)).
+
+-- SPEC: L26407-L26417
+-- | # Math.log2 ( \_x\_ )
+-- | 
+-- | This function returns the base 2 logarithm of \_x\_.
+-- | 
+-- | It performs the following steps when called:
+-- | 
+-- | 1\. Let \_n\_ be ? ToNumber(\_x\_). 1. If \_n\_ is either \*NaN\* or
+-- | \*+∞\*~𝔽~, return \_n\_. 1. If \_n\_ is \*1\*~𝔽~, return \*+0\*~𝔽~. 1.
+-- | If \_n\_ is either \*+0\*~𝔽~ or \*-0\*~𝔽~, return \*-∞\*~𝔽~. 1. If \_n\_
+-- | \< \*-0\*~𝔽~, return \*NaN\*. 1. Return an implementation-approximated
+-- | Number value representing log2(ℝ(\_n\_)).
+
+-- SPEC: L26419-L26432
+-- | # Math.max ( \...\_args\_ )
+-- | 
+-- | Given zero or more arguments, this function calls ToNumber on each of
+-- | the arguments and returns the largest of the resulting values.
+-- | 
+-- | It performs the following steps when called:
+-- | 
+-- | 1\. Let \_coerced\_ be a new empty List. 1. For each element \_arg\_ of
+-- | \_args\_, do 1. Let \_n\_ be ? ToNumber(\_arg\_). 1. Append \_n\_ to
+-- | \_coerced\_. 1. Let \_highest\_ be \*-∞\*~𝔽~. 1. For each element
+-- | \_number\_ of \_coerced\_, do 1. If \_number\_ is \*NaN\*, return
+-- | \*NaN\*. 1. If \_number\_ is \*+0\*~𝔽~ and \_highest\_ is \*-0\*~𝔽~, set
+-- | \_highest\_ to \*+0\*~𝔽~. 1. If \_number\_ \> \_highest\_, set
+-- | \_highest\_ to \_number\_. 1. Return \_highest\_.
+
+-- SPEC: L26440-L26453
+-- | # Math.min ( \...\_args\_ )
+-- | 
+-- | Given zero or more arguments, this function calls ToNumber on each of
+-- | the arguments and returns the smallest of the resulting values.
+-- | 
+-- | It performs the following steps when called:
+-- | 
+-- | 1\. Let \_coerced\_ be a new empty List. 1. For each element \_arg\_ of
+-- | \_args\_, do 1. Let \_n\_ be ? ToNumber(\_arg\_). 1. Append \_n\_ to
+-- | \_coerced\_. 1. Let \_lowest\_ be \*+∞\*~𝔽~. 1. For each element
+-- | \_number\_ of \_coerced\_, do 1. If \_number\_ is \*NaN\*, return
+-- | \*NaN\*. 1. If \_number\_ is \*-0\*~𝔽~ and \_lowest\_ is \*+0\*~𝔽~, set
+-- | \_lowest\_ to \*-0\*~𝔽~. 1. If \_number\_ \< \_lowest\_, set \_lowest\_
+-- | to \_number\_. 1. Return \_lowest\_.
+
+-- SPEC: L26461-L26467
+-- | # Math.pow ( \_base\_, \_exponent\_ )
+-- | 
+-- | This function performs the following steps when called:
+-- | 
+-- | 1\. Set \_base\_ to ? ToNumber(\_base\_). 1. Set \_exponent\_ to ?
+-- | ToNumber(\_exponent\_). 1. Return Number::exponentiate(\_base\_,
+-- | \_exponent\_).
+
+-- SPEC: L26469-L26477
+-- | # Math.random ( )
+-- | 
+-- | This function returns a Number value with positive sign, greater than or
+-- | equal to \*+0\*~𝔽~ but strictly less than \*1\*~𝔽~, chosen randomly or
+-- | pseudo randomly with approximately uniform distribution over that range,
+-- | using an implementation-defined algorithm or strategy.
+-- | 
+-- | Each \`Math.random\` function created for distinct realms must produce a
+-- | distinct sequence of values from successive calls.
+
+-- SPEC: L26479-L26492
+-- | # Math.round ( \_x\_ )
+-- | 
+-- | This function returns the Number value that is closest to \_x\_ and is
+-- | integral. If two integral Numbers are equally close to \_x\_, then the
+-- | result is the Number value that is closer to +∞. If \_x\_ is already
+-- | integral, the result is \_x\_.
+-- | 
+-- | It performs the following steps when called:
+-- | 
+-- | 1\. Let \_n\_ be ? ToNumber(\_x\_). 1. If \_n\_ is not finite or \_n\_
+-- | is an integral Number, return \_n\_. 1. If \_n\_ \< \*0.5\*~𝔽~ and \_n\_
+-- | \> \*+0\*~𝔽~, return \*+0\*~𝔽~. 1. If \_n\_ \< \*-0\*~𝔽~ and \_n\_ ≥
+-- | \*-0.5\*~𝔽~, return \*-0\*~𝔽~. 1. Return the integral Number closest to
+-- | \_n\_, preferring the Number closer to +∞ in the case of a tie.
+
+-- SPEC: L26503-L26512
+-- | # Math.sign ( \_x\_ )
+-- | 
+-- | This function returns the sign of \_x\_, indicating whether \_x\_ is
+-- | positive, negative, or zero.
+-- | 
+-- | It performs the following steps when called:
+-- | 
+-- | 1\. Let \_n\_ be ? ToNumber(\_x\_). 1. If \_n\_ is one of \*NaN\*,
+-- | \*+0\*~𝔽~, or \*-0\*~𝔽~, return \_n\_. 1. If \_n\_ \< \*-0\*~𝔽~, return
+-- | \*-1\*~𝔽~. 1. Return \*1\*~𝔽~.
+
+-- SPEC: L26514-L26524
+-- | # Math.sin ( \_x\_ )
+-- | 
+-- | This function returns the sine of \_x\_. The argument is expressed in
+-- | radians.
+-- | 
+-- | It performs the following steps when called:
+-- | 
+-- | 1\. Let \_n\_ be ? ToNumber(\_x\_). 1. If \_n\_ is one of \*NaN\*,
+-- | \*+0\*~𝔽~, or \*-0\*~𝔽~, return \_n\_. 1. If \_n\_ is either \*+∞\*~𝔽~
+-- | or \*-∞\*~𝔽~, return \*NaN\*. 1. Return an implementation-approximated
+-- | Number value representing the sine of ℝ(\_n\_).
+
+-- SPEC: L26526-L26538
+-- | # Math.sinh ( \_x\_ )
+-- | 
+-- | This function returns the hyperbolic sine of \_x\_.
+-- | 
+-- | It performs the following steps when called:
+-- | 
+-- | 1\. Let \_n\_ be ? ToNumber(\_x\_). 1. If \_n\_ is not finite or \_n\_
+-- | is either \*+0\*~𝔽~ or \*-0\*~𝔽~, return \_n\_. 1. Return an
+-- | implementation-approximated Number value representing the hyperbolic
+-- | sine of ℝ(\_n\_).
+-- | 
+-- | The value of \`Math.sinh(x)\` is the same as the value of
+-- | \`(Math.exp(x) - Math.exp(-x)) / 2\`.
+
+-- SPEC: L26540-L26548
+-- | # Math.sqrt ( \_x\_ )
+-- | 
+-- | This function returns the square root of \_x\_.
+-- | 
+-- | It performs the following steps when called:
+-- | 
+-- | 1\. Let \_n\_ be ? ToNumber(\_x\_). 1. If \_n\_ is one of \*NaN\*,
+-- | \*+0\*~𝔽~, \*-0\*~𝔽~, or \*+∞\*~𝔽~, return \_n\_. 1. If \_n\_ \<
+-- | \*-0\*~𝔽~, return \*NaN\*. 1. Return 𝔽(the square root of ℝ(\_n\_)).
+
+-- SPEC: L26550-L26564
+-- | # Math.sumPrecise ( \_items\_ )
+-- | 
+-- | Given an iterable of Numbers, this function sums each value in the
+-- | iterable and returns their sum. If any value is not a Number it throws a
+-- | \*TypeError\* exception.
+-- | 
+-- | It performs the following steps when called:
+-- | 
+-- | 1\. Perform ? RequireObjectCoercible(\_items\_). 1. Let
+-- | \_iteratorRecord\_ be ? GetIterator(\_items\_, \~sync\~). 1. Let
+-- | \_state\_ be \~minus-zero\~. 1. Let \_sum\_ be 0. 1. Let \_count\_ be
+-- | 0. 1. Let \_next\_ be \~not-started\~. 1. Repeat, while \_next\_ is not
+-- | \~done\~, 1. Set \_next\_ to ? IteratorStepValue(\_iteratorRecord\_). 1.
+-- | If \_next\_ is not \~done\~, then 1. If \_count\_ ≥ 2^53^ - 1, then 1.
+-- | NOTE: This step is not expected to be reached in practice and is
+
+-- SPEC: L26594-L26604
+-- | # Math.tan ( \_x\_ )
+-- | 
+-- | This function returns the tangent of \_x\_. The argument is expressed in
+-- | radians.
+-- | 
+-- | It performs the following steps when called:
+-- | 
+-- | 1\. Let \_n\_ be ? ToNumber(\_x\_). 1. If \_n\_ is one of \*NaN\*,
+-- | \*+0\*~𝔽~, or \*-0\*~𝔽~, return \_n\_. 1. If \_n\_ is either \*+∞\*~𝔽~
+-- | or \*-∞\*~𝔽~, return \*NaN\*. 1. Return an implementation-approximated
+-- | Number value representing the tangent of ℝ(\_n\_).
+
+-- SPEC: L26606-L26619
+-- | # Math.tanh ( \_x\_ )
+-- | 
+-- | This function returns the hyperbolic tangent of \_x\_.
+-- | 
+-- | It performs the following steps when called:
+-- | 
+-- | 1\. Let \_n\_ be ? ToNumber(\_x\_). 1. If \_n\_ is one of \*NaN\*,
+-- | \*+0\*~𝔽~, or \*-0\*~𝔽~, return \_n\_. 1. If \_n\_ is \*+∞\*~𝔽~, return
+-- | \*1\*~𝔽~. 1. If \_n\_ is \*-∞\*~𝔽~, return \*-1\*~𝔽~. 1. Return an
+-- | implementation-approximated Number value representing the hyperbolic
+-- | tangent of ℝ(\_n\_).
+-- | 
+-- | The value of \`Math.tanh(x)\` is the same as the value of
+-- | \`(Math.exp(x) - Math.exp(-x)) / (Math.exp(x) + Math.exp(-x))\`.
+
+-- SPEC: L26621-L26633
+-- | # Math.trunc ( \_x\_ )
+-- | 
+-- | This function returns the integral part of the number \_x\_, removing
+-- | any fractional digits. If \_x\_ is already integral, the result is
+-- | \_x\_.
+-- | 
+-- | It performs the following steps when called:
+-- | 
+-- | 1\. Let \_n\_ be ? ToNumber(\_x\_). 1. If \_n\_ is not finite or \_n\_
+-- | is either \*+0\*~𝔽~ or \*-0\*~𝔽~, return \_n\_. 1. If \_n\_ \< \*1\*~𝔽~
+-- | and \_n\_ \> \*+0\*~𝔽~, return \*+0\*~𝔽~. 1. If \_n\_ \< \*-0\*~𝔽~ and
+-- | \_n\_ \> \*-1\*~𝔽~, return \*-0\*~𝔽~. 1. Return the integral Number
+-- | nearest \_n\_ in the direction of \*+0\*~𝔽~.
+
+-- SPEC: L28399-L28413
+-- | # String.fromCodePoint ( \...\_codePoints\_ )
+-- | 
+-- | This function may be called with any number of arguments which form the
+-- | rest parameter \_codePoints\_.
+-- | 
+-- | It performs the following steps when called:
+-- | 
+-- | 1\. Let \_result\_ be the empty String. 1. For each element \_next\_ of
+-- | \_codePoints\_, do 1. Let \_nextCP\_ be ? ToNumber(\_next\_). 1. If
+-- | \_nextCP\_ is not an integral Number, throw a \*RangeError\*
+-- | exception. 1. If ℝ(\_nextCP\_) \< 0 or ℝ(\_nextCP\_) \> 0x10FFFF, throw
+-- | a \*RangeError\* exception. 1. Set \_result\_ to the
+-- | string-concatenation of \_result\_ and
+-- | UTF16EncodeCodePoint(ℝ(\_nextCP\_)). 1. Assert: If \_codePoints\_ is
+-- | empty, then \_result\_ is the empty String. 1. Return \_result\_.
+
+-- SPEC: L28425-L28439
+-- | # String.raw ( \_template\_, \...\_substitutions\_ )
+-- | 
+-- | This function may be called with a variable number of arguments. The
+-- | first argument is \_template\_ and the remainder of the arguments form
+-- | the List \_substitutions\_.
+-- | 
+-- | It performs the following steps when called:
+-- | 
+-- | 1\. Let \_substitutionCount\_ be the number of elements in
+-- | \_substitutions\_. 1. Let \_cooked\_ be ? ToObject(\_template\_). 1. Let
+-- | \_literals\_ be ? ToObject(? Get(\_cooked\_, \*\"raw\"\*)). 1. Let
+-- | \_literalCount\_ be ? LengthOfArrayLike(\_literals\_). 1. If
+-- | \_literalCount\_ ≤ 0, return the empty String. 1. Let \_R\_ be the empty
+-- | String. 1. Let \_nextIndex\_ be 0. 1. Repeat, 1. Let \_nextLiteralVal\_
+-- | be ? Get(\_literals\_, ! ToString(𝔽(\_nextIndex\_))). 1. Let
+
+
+-- SPEC: L27599-L27637
+-- | # Date.UTC ( \_year\_ \[ , \_month\_ \[ , \_date\_ \[ , \_hours\_ \[ , \_minutes\_ \[ , \_seconds\_ \[ , \_ms\_ \] \] \] \] \] \] )
+-- |
+-- | This function performs the following steps when called:
+-- |
+-- | 1\. Let \_y\_ be ? ToNumber(\_year\_). 1. If \_month\_ is present, let
+-- | \_m\_ be ? ToNumber(\_month\_); else let \_m\_ be \*+0\*~𝔽~. 1. If
+-- | \_date\_ is present, let \_dt\_ be ? ToNumber(\_date\_); else let \_dt\_
+-- | be \*1\*~𝔽~. 1. If \_hours\_ is present, let \_h\_ be ?
+-- | ToNumber(\_hours\_); else let \_h\_ be \*+0\*~𝔽~. 1. If \_minutes\_ is
+-- | present, let \_min\_ be ? ToNumber(\_minutes\_); else let \_min\_ be
+-- | \*+0\*~𝔽~. 1. If \_seconds\_ is present, let \_s\_ be ?
+-- | ToNumber(\_seconds\_); else let \_s\_ be \*+0\*~𝔽~. 1. If \_ms\_ is
+-- | present, let \_milli\_ be ? ToNumber(\_ms\_); else let \_milli\_ be
+-- | \*+0\*~𝔽~. 1. Let \_yr\_ be MakeFullYear(\_y\_). 1. Return
+-- | TimeClip(MakeDate(MakeDay(\_yr\_, \_m\_, \_dt\_), MakeTime(\_h\_,
+-- | \_min\_, \_s\_, \_milli\_))).
+-- |
+-- | The \*\"length\"\* property of this function is \*7\*~𝔽~.
+-- |
+-- | This function differs from the Date constructor in two ways: it returns
+-- | a time value as a Number, rather than creating a Date, and it interprets
+-- | the arguments in UTC rather than as local time.
+-- |
+-- | # Properties of the Date Prototype Object
+-- |
+-- | The [Date prototype object]{.dfn}:
+-- |
+-- | - is [%Date.prototype%]{.dfn}.
+-- | - is itself an ordinary object.
+-- | - is not a Date instance and does not have a \[\[DateValue\]\] internal
+-- |   slot.
+-- | - has a \[\[Prototype\]\] internal slot whose value is
+-- |   %Object.prototype%.
+-- |
+-- | Unless explicitly defined otherwise, the methods of the Date prototype
+-- | object defined below are not generic and the \*this\* value passed to
+-- | them must be an object that has a \[\[DateValue\]\] internal slot that
+-- | has been initialized to a time value.
+-- |
+
+-- SPEC: L27816-L27837
+-- | # Date.prototype.setFullYear ( \_year\_ \[ , \_month\_ \[ , \_date\_ \] \] )
+-- |
+-- | This method performs the following steps when called:
+-- |
+-- | 1\. Let \_dateObject\_ be the \*this\* value. 1. Perform ?
+-- | RequireInternalSlot(\_dateObject\_, \[\[DateValue\]\]). 1. Let \_t\_ be
+-- | \_dateObject\_.\[\[DateValue\]\]. 1. Let \_y\_ be ?
+-- | ToNumber(\_year\_). 1. If \_t\_ is \*NaN\*, set \_t\_ to \*+0\*~𝔽~; else
+-- | set \_t\_ to LocalTime(\_t\_). 1. If \_month\_ is present, let \_m\_ be
+-- | ? ToNumber(\_month\_); else let \_m\_ be MonthFromTime(\_t\_). 1. If
+-- | \_date\_ is present, let \_dt\_ be ? ToNumber(\_date\_); else let \_dt\_
+-- | be DateFromTime(\_t\_). 1. Let \_newDate\_ be MakeDate(MakeDay(\_y\_,
+-- | \_m\_, \_dt\_), TimeWithinDay(\_t\_)). 1. Let \_u\_ be
+-- | TimeClip(UTC(\_newDate\_)). 1. Set \_dateObject\_.\[\[DateValue\]\] to
+-- | \_u\_. 1. Return \_u\_.
+-- |
+-- | The \*\"length\"\* property of this method is \*3\*~𝔽~.
+-- |
+-- | If \_month\_ is not present, this method behaves as if \_month\_ was
+-- | present with the value \`getMonth()\`. If \_date\_ is not present, it
+-- | behaves as if \_date\_ was present with the value \`getDate()\`.
+-- |
+
+-- SPEC: L27865-L27877
+-- | # Date.prototype.setMilliseconds ( \_ms\_ )
+-- |
+-- | This method performs the following steps when called:
+-- |
+-- | 1\. Let \_dateObject\_ be the \*this\* value. 1. Perform ?
+-- | RequireInternalSlot(\_dateObject\_, \[\[DateValue\]\]). 1. Let \_t\_ be
+-- | \_dateObject\_.\[\[DateValue\]\]. 1. Set \_ms\_ to ?
+-- | ToNumber(\_ms\_). 1. If \_t\_ is \*NaN\*, return \*NaN\*. 1. Set \_t\_
+-- | to LocalTime(\_t\_). 1. Let \_time\_ be MakeTime(HourFromTime(\_t\_),
+-- | MinFromTime(\_t\_), SecFromTime(\_t\_), \_ms\_). 1. Let \_u\_ be
+-- | TimeClip(UTC(MakeDate(Day(\_t\_), \_time\_))). 1. Set
+-- | \_dateObject\_.\[\[DateValue\]\] to \_u\_. 1. Return \_u\_.
+-- |
+
+-- SPEC: L27941-L27952
+-- | # Date.prototype.setTime ( \_time\_ )
+-- |
+-- | This method performs the following steps when called:
+-- |
+-- | 1\. Let \_dateObject\_ be the \*this\* value. 1. Perform ?
+-- | RequireInternalSlot(\_dateObject\_, \[\[DateValue\]\]). 1. Let \_t\_ be
+-- | ? ToNumber(\_time\_). 1. Let \_v\_ be TimeClip(\_t\_). 1. Set
+-- | \_dateObject\_.\[\[DateValue\]\] to \_v\_. 1. Return \_v\_.
+-- |
+-- | # Date.prototype.setUTCDate ( \_date\_ )
+-- |
+-- | This method performs the following steps when called:
+
+-- SPEC: L24103-L24116
+-- | # Object.prototype.hasOwnProperty ( \_V\_ )
+-- |
+-- | This method performs the following steps when called:
+-- |
+-- | 1\. \[id=\"step-hasownproperty-topropertykey\"\] Let \_P\_ be ?
+-- | ToPropertyKey(\_V\_). 1. \[id=\"step-hasownproperty-toobject\"\] Let
+-- | \_O\_ be ? ToObject(\*this\* value). 1. Return ? HasOwnProperty(\_O\_,
+-- | \_P\_).
+-- |
+-- | The ordering of steps and is chosen to ensure that any exception that
+-- | would have been thrown by step in previous editions of this
+-- | specification will continue to be thrown even if the \*this\* value is
+-- | \*undefined\* or \*null\*.
+-- |
+
+-- SPEC: L24117-L24130
+-- | # Object.prototype.isPrototypeOf ( \_V\_ )
+-- |
+-- | This method performs the following steps when called:
+-- |
+-- | 1\. \[id=\"step-isprototypeof-check-object\"\] If \_V\_ is not an
+-- | Object, return \*false\*. 1. \[id=\"step-isprototypeof-toobject\"\] Let
+-- | \_O\_ be ? ToObject(\*this\* value). 1. Repeat, 1. Set \_V\_ to ?
+-- | \_V\_.\[\[GetPrototypeOf\]\](). 1. If \_V\_ is \*null\*, return
+-- | \*false\*. 1. If SameValue(\_O\_, \_V\_) is \*true\*, return \*true\*.
+-- |
+-- | The ordering of steps and preserves the behaviour specified by previous
+-- | editions of this specification for the case where \_V\_ is not an object
+-- | and the \*this\* value is \*undefined\* or \*null\*.
+-- |
+
+-- SPEC: L24131-L24147
+-- | # Object.prototype.propertyIsEnumerable ( \_V\_ )
+-- |
+-- | This method performs the following steps when called:
+-- |
+-- | 1\. \[id=\"step-propertyisenumerable-topropertykey\"\] Let \_P\_ be ?
+-- | ToPropertyKey(\_V\_). 1. \[id=\"step-propertyisenumerable-toobject\"\]
+-- | Let \_O\_ be ? ToObject(\*this\* value). 1. Let \_desc\_ be ?
+-- | \_O\_.\[\[GetOwnProperty\]\](\_P\_). 1. If \_desc\_ is \*undefined\*,
+-- | return \*false\*. 1. Return \_desc\_.\[\[Enumerable\]\].
+-- |
+-- | This method does not consider objects in the prototype chain.
+-- |
+-- | The ordering of steps and is chosen to ensure that any exception that
+-- | would have been thrown by step in previous editions of this
+-- | specification will continue to be thrown even if the \*this\* value is
+-- | \*undefined\* or \*null\*.
+-- |
+
+-- SPEC: L24168-L24202
+-- | # Object.prototype.toString ( )
+-- |
+-- | This method performs the following steps when called:
+-- |
+-- | 1\. If the \*this\* value is \*undefined\*, return \*\"\[object
+-- | Undefined\]\"\*. 1. If the \*this\* value is \*null\*, return
+-- | \*\"\[object Null\]\"\*. 1. Let \_O\_ be ! ToObject(\*this\* value). 1.
+-- | Let \_isArray\_ be ? IsArray(\_O\_). 1. If \_isArray\_ is \*true\*, let
+-- | \_builtinTag\_ be \*\"Array\"\*. 1. Else if \_O\_ has a
+-- | \[\[ParameterMap\]\] internal slot, let \_builtinTag\_ be
+-- | \*\"Arguments\"\*. 1. Else if \_O\_ has a \[\[Call\]\] internal method,
+-- | let \_builtinTag\_ be \*\"Function\"\*. 1. Else if \_O\_ has an
+-- | \[\[ErrorData\]\] internal slot, let \_builtinTag\_ be \*\"Error\"\*. 1.
+-- | Else if \_O\_ has a \[\[BooleanData\]\] internal slot, let
+-- | \_builtinTag\_ be \*\"Boolean\"\*. 1. Else if \_O\_ has a
+-- | \[\[NumberData\]\] internal slot, let \_builtinTag\_ be
+-- | \*\"Number\"\*. 1. Else if \_O\_ has a \[\[StringData\]\] internal slot,
+-- | let \_builtinTag\_ be \*\"String\"\*. 1. Else if \_O\_ has a
+-- | \[\[DateValue\]\] internal slot, let \_builtinTag\_ be \*\"Date\"\*. 1.
+-- | Else if \_O\_ has a \[\[RegExpMatcher\]\] internal slot, let
+-- | \_builtinTag\_ be \*\"RegExp\"\*. 1. Else, let \_builtinTag\_ be
+-- | \*\"Object\"\*. 1. Let \_tag\_ be ? Get(\_O\_, %Symbol.toStringTag%). 1.
+-- | If \_tag\_ is not a String, set \_tag\_ to \_builtinTag\_. 1. Return the
+-- | string-concatenation of \*\"\[object \"\*, \_tag\_, and \*\"\]\"\*.
+-- |
+-- | Historically, this method was occasionally used to access the String
+-- | value of the \[\[Class\]\] internal slot that was used in previous
+-- | editions of this specification as a nominal type tag for various
+-- | built-in objects. The above definition of \`toString\` preserves
+-- | compatibility for legacy code that uses \`toString\` as a test for those
+-- | specific kinds of built-in objects. It does not provide a reliable type
+-- | testing mechanism for other kinds of built-in or program defined
+-- | objects. In addition, programs can use %Symbol.toStringTag% in ways that
+-- | will invalidate the reliability of such legacy type tests.
+-- |
+
+-- SPEC: L24203-L24208
+-- | # Object.prototype.valueOf ( )
+-- |
+-- | This method performs the following steps when called:
+-- |
+-- | 1\. Return ? ToObject(\*this\* value).
+-- |
+
+-- SPEC: L24293-L24313
+-- | # The Function Constructor
+-- |
+-- | The Function constructor:
+-- |
+-- | - is [%Function%]{.dfn}.
+-- | - is the initial value of the \*\"Function\"\* property of the global
+-- |   object.
+-- | - creates and initializes a new function object when called as a
+-- |   function rather than as a constructor. Thus the function call
+-- |   \`Function(...)\` is equivalent to the object creation expression
+-- |   \`new Function(...)\` with the same arguments.
+-- | - may be used as the value of an \`extends\` clause of a class
+-- |   definition. Subclass constructors that intend to inherit the specified
+-- |   Function behaviour must include a \`super\` call to the Function
+-- |   constructor to create and initialize a subclass instance with the
+-- |   internal slots necessary for built-in function behaviour. All
+-- |   ECMAScript syntactic forms for defining function objects create
+-- |   instances of Function. There is no syntactic means to create instances
+-- |   of Function subclasses except for the built-in GeneratorFunction,
+-- |   AsyncFunction, and AsyncGeneratorFunction subclasses.
+-- |
+
+-- SPEC: L24314-L24337
+-- | # Function ( \...\_parameterArgs\_, \_bodyArg\_ )
+-- |
+-- | The last argument (if any) specifies the body (executable code) of a
+-- | function; any preceding arguments specify formal parameters.
+-- |
+-- | This function performs the following steps when called:
+-- |
+-- | 1\. Let \_C\_ be the active function object. 1. If \_bodyArg\_ is not
+-- | present, set \_bodyArg\_ to the empty String. 1. Return ?
+-- | CreateDynamicFunction(\_C\_, NewTarget, \~normal\~, \_parameterArgs\_,
+-- | \_bodyArg\_).
+-- |
+-- | It is permissible but not necessary to have one argument for each formal
+-- | parameter to be specified. For example, all three of the following
+-- | expressions produce the same result:
+-- |
+-- | ``` javascript
+-- |
+-- |             new Function("a", "b", "c", "return a+b+c")
+-- |             new Function("a, b, c", "return a+b+c")
+-- |             new Function("a,b", "c", "return a+b+c")
+-- |           
+-- | ```
+-- |
+
+-- SPEC: L24536-L24559
+-- | # Function.prototype.toString ( )
+-- |
+-- | This method performs the following steps when called:
+-- |
+-- | 1\. Let \_func\_ be the \*this\* value. 1. If \_func\_ is an Object,
+-- | \_func\_ has a \[\[SourceText\]\] internal slot,
+-- | \_func\_.\[\[SourceText\]\] is a sequence of Unicode code points, and
+-- | HostHasSourceTextAvailable(\_func\_) is \*true\*, then 1. Return
+-- | CodePointsToString(\_func\_.\[\[SourceText\]\]). 1. If \_func\_ is a
+-- | built-in function object, return an implementation-defined String source
+-- | code representation of \_func\_. The representation must have the syntax
+-- | of a \|NativeFunction\|. Additionally, if \_func\_ has an
+-- | \[\[InitialName\]\] internal slot and \_func\_.\[\[InitialName\]\] is a
+-- | String, the portion of the returned String that would be matched by
+-- | \|NativeFunctionAccessor?\| \|PropertyName\| must be
+-- | \_func\_.\[\[InitialName\]\]. 1. If \_func\_ is an Object and
+-- | IsCallable(\_func\_) is \*true\*, return an implementation-defined
+-- | String source code representation of \_func\_. The representation must
+-- | have the syntax of a \|NativeFunction\|. 1. Throw a \*TypeError\*
+-- | exception. NativeFunction : \`function\` NativeFunctionAccessor?
+-- | PropertyName\[\~Yield, \~Await\]? \`(\` FormalParameters\[\~Yield,
+-- | \~Await\] \`)\` \`{\` \`\[\` \`native\` \`code\` \`\]\` \`}\`
+-- | NativeFunctionAccessor : \`get\` \`set\`
+-- |
+-- SPEC: L12185-L12196
+-- | # \[\[PreventExtensions\]\] ( ): a normal completion containing a Boolean
+-- |
+-- | for
+-- | :   a TypedArray \_O\_
+-- |
+-- | 1\. NOTE: The extensibility-related invariants specified in do not allow
+-- | this method to return \*true\* when \_O\_ can gain (or lose and then
+-- | regain) properties, which might occur for properties with integer index
+-- | names when its underlying buffer is resized. 1. If
+-- | IsTypedArrayFixedLength(\_O\_) is \*false\*, return \*false\*. 1. Return
+-- | OrdinaryPreventExtensions(\_O\_).
+-- |
+
+-- SPEC: L12197-L12210
+-- | # \[\[GetOwnProperty\]\] ( \_P\_: a property key, ): a normal completion containing either a Property Descriptor or \*undefined\*
+-- |
+-- | for
+-- | :   a TypedArray \_O\_
+-- |
+-- | 1\. If \_P\_ is a String, then 1. Let \_numericIndex\_ be
+-- | CanonicalNumericIndexString(\_P\_). 1. If \_numericIndex\_ is not
+-- | \*undefined\*, then 1. Let \_value\_ be TypedArrayGetElement(\_O\_,
+-- | \_numericIndex\_). 1. If \_value\_ is \*undefined\*, return
+-- | \*undefined\*. 1. Return the PropertyDescriptor { \[\[Value\]\]:
+-- | \_value\_, \[\[Writable\]\]: \*true\*, \[\[Enumerable\]\]: \*true\*,
+-- | \[\[Configurable\]\]: \*true\* }. 1. Return
+-- | OrdinaryGetOwnProperty(\_O\_, \_P\_).
+-- |
+
+-- SPEC: L12211-L12220
+-- | # \[\[HasProperty\]\] ( \_P\_: a property key, ): either a normal completion containing a Boolean or a throw completion
+-- |
+-- | for
+-- | :   a TypedArray \_O\_
+-- |
+-- | 1\. If \_P\_ is a String, then 1. Let \_numericIndex\_ be
+-- | CanonicalNumericIndexString(\_P\_). 1. If \_numericIndex\_ is not
+-- | \*undefined\*, return IsValidIntegerIndex(\_O\_, \_numericIndex\_). 1.
+-- | Return ? OrdinaryHasProperty(\_O\_, \_P\_).
+-- |
+
+-- SPEC: L12221-L12239
+-- | # \[\[DefineOwnProperty\]\] ( \_P\_: a property key, \_Desc\_: a Property Descriptor, ): either a normal completion containing a Boolean or a throw completion
+-- |
+-- | for
+-- | :   a TypedArray \_O\_
+-- |
+-- | 1\. If \_P\_ is a String, then 1. Let \_numericIndex\_ be
+-- | CanonicalNumericIndexString(\_P\_). 1. If \_numericIndex\_ is not
+-- | \*undefined\*, then 1. If IsValidIntegerIndex(\_O\_, \_numericIndex\_)
+-- | is \*false\*, return \*false\*. 1. If \_Desc\_ has a
+-- | \[\[Configurable\]\] field and \_Desc\_.\[\[Configurable\]\] is
+-- | \*false\*, return \*false\*. 1. If \_Desc\_ has an \[\[Enumerable\]\]
+-- | field and \_Desc\_.\[\[Enumerable\]\] is \*false\*, return \*false\*. 1.
+-- | If IsAccessorDescriptor(\_Desc\_) is \*true\*, return \*false\*. 1. If
+-- | \_Desc\_ has a \[\[Writable\]\] field and \_Desc\_.\[\[Writable\]\] is
+-- | \*false\*, return \*false\*. 1. If \_Desc\_ has a \[\[Value\]\] field,
+-- | perform ? TypedArraySetElement(\_O\_, \_numericIndex\_,
+-- | \_Desc\_.\[\[Value\]\]). 1. Return \*true\*. 1. Return !
+-- | OrdinaryDefineOwnProperty(\_O\_, \_P\_, \_Desc\_).
+-- |
+
+-- SPEC: L12240-L12249
+-- | # \[\[Get\]\] ( \_P\_: a property key, \_Receiver\_: an ECMAScript language value, ): either a normal completion containing an ECMAScript language value or a throw completion
+-- |
+-- | for
+-- | :   a TypedArray \_O\_
+-- |
+-- | 1\. If \_P\_ is a String, then 1. Let \_numericIndex\_ be
+-- | CanonicalNumericIndexString(\_P\_). 1. If \_numericIndex\_ is not
+-- | \*undefined\*, then 1. Return TypedArrayGetElement(\_O\_,
+-- | \_numericIndex\_). 1. Return ? OrdinaryGet(\_O\_, \_P\_, \_Receiver\_).
+-- |
+
+-- SPEC: L12250-L12262
+-- | # \[\[Set\]\] ( \_P\_: a property key, \_V\_: an ECMAScript language value, \_Receiver\_: an ECMAScript language value, ): either a normal completion containing a Boolean or a throw completion
+-- |
+-- | for
+-- | :   a TypedArray \_O\_
+-- |
+-- | 1\. If \_P\_ is a String, then 1. Let \_numericIndex\_ be
+-- | CanonicalNumericIndexString(\_P\_). 1. If \_numericIndex\_ is not
+-- | \*undefined\*, then 1. If SameValue(\_O\_, \_Receiver\_) is \*true\*,
+-- | then 1. Perform ? TypedArraySetElement(\_O\_, \_numericIndex\_,
+-- | \_V\_). 1. Return \*true\*. 1. If IsValidIntegerIndex(\_O\_,
+-- | \_numericIndex\_) is \*false\*, return \*true\*. 1. Return ?
+-- | OrdinarySet(\_O\_, \_P\_, \_V\_, \_Receiver\_).
+-- |
+
+-- SPEC: L12263-L12273
+-- | # \[\[Delete\]\] ( \_P\_: a property key, ): a normal completion containing a Boolean
+-- |
+-- | for
+-- | :   a TypedArray \_O\_
+-- |
+-- | 1\. If \_P\_ is a String, then 1. Let \_numericIndex\_ be
+-- | CanonicalNumericIndexString(\_P\_). 1. If \_numericIndex\_ is not
+-- | \*undefined\*, then 1. If IsValidIntegerIndex(\_O\_, \_numericIndex\_)
+-- | is \*false\*, return \*true\*. 1. Return \*false\*. 1. Return !
+-- | OrdinaryDelete(\_O\_, \_P\_).
+-- |
+
+-- SPEC: L12274-L12290
+-- | # \[\[OwnPropertyKeys\]\] ( ): a normal completion containing a List of property keys
+-- |
+-- | for
+-- | :   a TypedArray \_O\_
+-- |
+-- | 1\. Let \_taRecord\_ be MakeTypedArrayWithBufferWitnessRecord(\_O\_,
+-- | \~seq-cst\~). 1. Let \_keys\_ be a new empty List. 1. If
+-- | IsTypedArrayOutOfBounds(\_taRecord\_) is \*false\*, then 1. Let
+-- | \_length\_ be TypedArrayLength(\_taRecord\_). 1. For each integer \_i\_
+-- | such that 0 ≤ \_i\_ \< \_length\_, in ascending order, do 1. Append !
+-- | ToString(𝔽(\_i\_)) to \_keys\_. 1. For each own property key \_P\_ of
+-- | \_O\_ such that \_P\_ is a String and \_P\_ is not an integer index, in
+-- | ascending chronological order of property creation, do 1. Append \_P\_
+-- | to \_keys\_. 1. For each own property key \_P\_ of \_O\_ such that \_P\_
+-- | is a Symbol, in ascending chronological order of property creation,
+-- | do 1. Append \_P\_ to \_keys\_. 1. Return \_keys\_.
+-- |
+
+-- SPEC: L12291-L12306
+-- | # TypedArray With Buffer Witness Records
+-- |
+-- | An [TypedArray With Buffer Witness Record]{.dfn
+-- | variants="TypedArray With Buffer Witness Records"} is a Record value
+-- | used to encapsulate a TypedArray along with a cached byte length of the
+-- | viewed buffer. It is used to help ensure there is a single
+-- | ReadSharedMemory event of the byte length data block when the viewed
+-- | buffer is a growable SharedArrayBuffer.
+-- |
+-- | TypedArray With Buffer Witness Records have the fields listed in .
+-- |
+-- |   Field Name                       Value                                    Meaning
+-- |   -------------------------------- ---------------------------------------- -----------------------------------------------------------------------------------------
+-- |   \[\[Object\]\]                   a TypedArray                             The TypedArray whose buffer\'s byte length is loaded.
+-- |   \[\[CachedBufferByteLength\]\]   a non-negative integer or \~detached\~   The byte length of the object\'s \[\[ViewedArrayBuffer\]\] when the Record was created.
+-- |
+
+-- SPEC: L12307-L12315
+-- | # MakeTypedArrayWithBufferWitnessRecord ( \_obj\_: a TypedArray, \_order\_: \~seq-cst\~ or \~unordered\~, ): a TypedArray With Buffer Witness Record
+-- |
+-- | 1\. Let \_buffer\_ be \_obj\_.\[\[ViewedArrayBuffer\]\]. 1. If
+-- | IsDetachedBuffer(\_buffer\_) is \*true\*, then 1. Let \_byteLength\_ be
+-- | \~detached\~. 1. Else, 1. Let \_byteLength\_ be
+-- | ArrayBufferByteLength(\_buffer\_, \_order\_). 1. Return the TypedArray
+-- | With Buffer Witness Record { \[\[Object\]\]: \_obj\_,
+-- | \[\[CachedBufferByteLength\]\]: \_byteLength\_ }.
+-- |
+
+-- SPEC: L12316-L12334
+-- | # TypedArrayCreate ( \_prototype\_: an Object, ): a TypedArray
+-- |
+-- | description
+-- | :   It is used to specify the creation of new TypedArrays.
+-- |
+-- | 1\. Let \_internalSlotsList\_ be « \[\[Prototype\]\],
+-- | \[\[Extensible\]\], \[\[ViewedArrayBuffer\]\], \[\[TypedArrayName\]\],
+-- | \[\[ContentType\]\], \[\[ByteLength\]\], \[\[ByteOffset\]\],
+-- | \[\[ArrayLength\]\] ». 1. Let \_A\_ be
+-- | MakeBasicObject(\_internalSlotsList\_). 1. Set
+-- | \_A\_.\[\[PreventExtensions\]\] as specified in . 1. Set
+-- | \_A\_.\[\[GetOwnProperty\]\] as specified in . 1. Set
+-- | \_A\_.\[\[HasProperty\]\] as specified in . 1. Set
+-- | \_A\_.\[\[DefineOwnProperty\]\] as specified in . 1. Set
+-- | \_A\_.\[\[Get\]\] as specified in . 1. Set \_A\_.\[\[Set\]\] as
+-- | specified in . 1. Set \_A\_.\[\[Delete\]\] as specified in . 1. Set
+-- | \_A\_.\[\[OwnPropertyKeys\]\] as specified in . 1. Set
+-- | \_A\_.\[\[Prototype\]\] to \_prototype\_. 1. Return \_A\_.
+-- |
+
+-- SPEC: L12335-L12345
+-- | # TypedArrayByteLength ( \_taRecord\_: a TypedArray With Buffer Witness Record, ): a non-negative integer
+-- |
+-- | 1\. Assert: IsTypedArrayOutOfBounds(\_taRecord\_) is \*false\*. 1. Let
+-- | \_O\_ be \_taRecord\_.\[\[Object\]\]. 1. If \_O\_.\[\[ByteLength\]\] is
+-- | not \~auto\~, return \_O\_.\[\[ByteLength\]\]. 1. Let \_length\_ be
+-- | TypedArrayLength(\_taRecord\_). 1. Let \_elementSize\_ be
+-- | TypedArrayElementSize(\_O\_). 1. NOTE: The returned byte length is
+-- | always an integer multiple of \_elementSize\_, even when the underlying
+-- | buffer has been resized to a non-integer multiple. 1. Return \_length\_
+-- | × \_elementSize\_.
+-- |
+
+-- SPEC: L12346-L12357
+-- | # TypedArrayLength ( \_taRecord\_: a TypedArray With Buffer Witness Record, ): a non-negative integer
+-- |
+-- | 1\. Assert: IsTypedArrayOutOfBounds(\_taRecord\_) is \*false\*. 1. Let
+-- | \_O\_ be \_taRecord\_.\[\[Object\]\]. 1. If \_O\_.\[\[ArrayLength\]\] is
+-- | not \~auto\~, return \_O\_.\[\[ArrayLength\]\]. 1. Assert:
+-- | IsFixedLengthArrayBuffer(\_O\_.\[\[ViewedArrayBuffer\]\]) is
+-- | \*false\*. 1. Let \_byteOffset\_ be \_O\_.\[\[ByteOffset\]\]. 1. Let
+-- | \_elementSize\_ be TypedArrayElementSize(\_O\_). 1. Let \_byteLength\_
+-- | be \_taRecord\_.\[\[CachedBufferByteLength\]\]. 1. Assert:
+-- | \_byteLength\_ is not \~detached\~. 1. Return floor((\_byteLength\_ -
+-- | \_byteOffset\_) / \_elementSize\_).
+-- |
+
+-- SPEC: L12358-L12380
+-- | # IsTypedArrayOutOfBounds ( \_taRecord\_: a TypedArray With Buffer Witness Record, ): a Boolean
+-- |
+-- | description
+-- | :   It checks if any of the object\'s numeric properties reference a
+-- |     value at an index not contained within the underlying buffer\'s
+-- |     bounds.
+-- |
+-- | 1\. Let \_O\_ be \_taRecord\_.\[\[Object\]\]. 1. Let
+-- | \_bufferByteLength\_ be \_taRecord\_.\[\[CachedBufferByteLength\]\]. 1.
+-- | If IsDetachedBuffer(\_O\_.\[\[ViewedArrayBuffer\]\]) is \*true\*,
+-- | then 1. Assert: \_bufferByteLength\_ is \~detached\~. 1. Return
+-- | \*true\*. 1. Assert: \_bufferByteLength\_ is a non-negative integer. 1.
+-- | Let \_byteOffsetStart\_ be \_O\_.\[\[ByteOffset\]\]. 1. If
+-- | \_O\_.\[\[ArrayLength\]\] is \~auto\~, then 1. Let \_byteOffsetEnd\_ be
+-- | \_bufferByteLength\_. 1. Else, 1. Let \_elementSize\_ be
+-- | TypedArrayElementSize(\_O\_). 1. Let \_arrayByteLength\_ be
+-- | \_O\_.\[\[ArrayLength\]\] × \_elementSize\_. 1. Let \_byteOffsetEnd\_ be
+-- | \_byteOffsetStart\_ + \_arrayByteLength\_. 1. NOTE: A 0-length
+-- | TypedArray whose \[\[ByteOffset\]\] is \_bufferByteLength\_ is not
+-- | considered out-of-bounds. 1. If \_byteOffsetStart\_ \>
+-- | \_bufferByteLength\_ or \_byteOffsetEnd\_ \> \_bufferByteLength\_,
+-- | return \*true\*. 1. Return \*false\*.
+-- |
+
+-- SPEC: L12381-L12388
+-- | # IsTypedArrayFixedLength ( \_O\_: a TypedArray, ): a Boolean
+-- |
+-- | 1\. If \_O\_.\[\[ArrayLength\]\] is \~auto\~, return \*false\*. 1. Let
+-- | \_buffer\_ be \_O\_.\[\[ViewedArrayBuffer\]\]. 1. If
+-- | IsFixedLengthArrayBuffer(\_buffer\_) is \*false\* and
+-- | IsSharedArrayBuffer(\_buffer\_) is \*false\*, return \*false\*. 1.
+-- | Return \*true\*.
+-- |
+
+-- SPEC: L12389-L12401
+-- | # IsValidIntegerIndex ( \_O\_: a TypedArray, \_index\_: a Number, ): a Boolean
+-- |
+-- | 1\. If IsDetachedBuffer(\_O\_.\[\[ViewedArrayBuffer\]\]) is \*true\*,
+-- | return \*false\*. 1. If \_index\_ is not an integral Number, return
+-- | \*false\*. 1. If \_index\_ is \*-0\*~𝔽~ or \_index\_ \< \*-0\*~𝔽~,
+-- | return \*false\*. 1. Let \_taRecord\_ be
+-- | MakeTypedArrayWithBufferWitnessRecord(\_O\_, \~unordered\~). 1. NOTE:
+-- | Bounds checking is not a synchronizing operation when \_O\_\'s backing
+-- | buffer is a growable SharedArrayBuffer. 1. If
+-- | IsTypedArrayOutOfBounds(\_taRecord\_) is \*true\*, return \*false\*. 1.
+-- | Let \_length\_ be TypedArrayLength(\_taRecord\_). 1. If ℝ(\_index\_) ≥
+-- | \_length\_, return \*false\*. 1. Return \*true\*.
+-- |
+
+-- SPEC: L12402-L12411
+-- | # TypedArrayGetElement ( \_O\_: a TypedArray, \_index\_: a Number, ): a Number, a BigInt, or \*undefined\*
+-- |
+-- | 1\. If IsValidIntegerIndex(\_O\_, \_index\_) is \*false\*, return
+-- | \*undefined\*. 1. Let \_offset\_ be \_O\_.\[\[ByteOffset\]\]. 1. Let
+-- | \_elementSize\_ be TypedArrayElementSize(\_O\_). 1. Let
+-- | \_byteIndexInBuffer\_ be (ℝ(\_index\_) × \_elementSize\_) +
+-- | \_offset\_. 1. Let \_elementType\_ be TypedArrayElementType(\_O\_). 1.
+-- | Return GetValueFromBuffer(\_O\_.\[\[ViewedArrayBuffer\]\],
+-- | \_byteIndexInBuffer\_, \_elementType\_, \*true\*, \~unordered\~).
+-- |
+
+-- SPEC: L12412-L12428
+-- | # TypedArraySetElement ( \_O\_: a TypedArray, \_index\_: a Number, \_value\_: an ECMAScript language value, ): either a normal completion containing \~unused\~ or a throw completion
+-- |
+-- | 1\. If \_O\_.\[\[ContentType\]\] is \~bigint\~, let \_numValue\_ be ?
+-- | ToBigInt(\_value\_). 1. Else, let \_numValue\_ be ?
+-- | ToNumber(\_value\_). 1. If IsValidIntegerIndex(\_O\_, \_index\_) is
+-- | \*true\*, then 1. Let \_offset\_ be \_O\_.\[\[ByteOffset\]\]. 1. Let
+-- | \_elementSize\_ be TypedArrayElementSize(\_O\_). 1. Let
+-- | \_byteIndexInBuffer\_ be (ℝ(\_index\_) × \_elementSize\_) +
+-- | \_offset\_. 1. Let \_elementType\_ be TypedArrayElementType(\_O\_). 1.
+-- | Perform SetValueInBuffer(\_O\_.\[\[ViewedArrayBuffer\]\],
+-- | \_byteIndexInBuffer\_, \_elementType\_, \_numValue\_, \*true\*,
+-- | \~unordered\~). 1. Return \~unused\~.
+-- |
+-- | This operation always appears to succeed, but it has no effect when
+-- | attempting to write past the end of a TypedArray or to a TypedArray
+-- | which is backed by a detached ArrayBuffer.
+-- |
+
+-- SPEC: L12429-L12442
+-- | # IsArrayBufferViewOutOfBounds ( \_O\_: a TypedArray or a DataView, ): a Boolean
+-- |
+-- | description
+-- | :   It checks if either any of a TypedArray\'s numeric properties or a
+-- |     DataView object\'s methods can reference a value at an index not
+-- |     contained within the underlying data block\'s bounds. This abstract
+-- |     operation exists as a convenience for upstream specifications.
+-- |
+-- | 1\. If \_O\_ has a \[\[DataView\]\] internal slot, then 1. Let
+-- | \_viewRecord\_ be MakeDataViewWithBufferWitnessRecord(\_O\_,
+-- | \~seq-cst\~). 1. Return IsViewOutOfBounds(\_viewRecord\_). 1. Let
+-- | \_taRecord\_ be MakeTypedArrayWithBufferWitnessRecord(\_O\_,
+-- | \~seq-cst\~). 1. Return IsTypedArrayOutOfBounds(\_taRecord\_).
+-- |
+
+-- SPEC: L33742-L33804
+-- | # TypedArray Objects
+-- |
+-- | A \_TypedArray\_ presents an array-like view of an underlying binary
+-- | data buffer (). A [TypedArray element type]{.dfn
+-- | variants="TypedArray element types"} is the underlying binary scalar
+-- | data type that all elements of a \_TypedArray\_ instance have. There is
+-- | a distinct \_TypedArray\_ constructor, listed in , for each of the
+-- | supported element types. Each constructor in has a corresponding
+-- | distinct prototype object.
+-- |
+-- |   ---------------------------------------------------------------------------------------------
+-- |   Constructor Name and          Element Type       Element Size   Conversion     Description
+-- |   Intrinsic                                                       Operation      
+-- |   ----------------------------- ------------------ -------------- -------------- --------------
+-- |   Int8Array\                    \~int8\~           1              ToInt8         8-bit two\'s
+-- |   [%Int8Array%]{.dfn}                                                            complement
+-- |                                                                                  signed integer
+-- |
+-- |   Uint8Array\                   \~uint8\~          1              ToUint8        8-bit unsigned
+-- |   [%Uint8Array%]{.dfn}                                                           integer
+-- |
+-- |   Uint8ClampedArray\            \~uint8clamped\~   1              ToUint8Clamp   8-bit unsigned
+-- |   [%Uint8ClampedArray%]{.dfn}                                                    integer
+-- |                                                                                  (clamped
+-- |                                                                                  conversion)
+-- |
+-- |   Int16Array\                   \~int16\~          2              ToInt16        16-bit two\'s
+-- |   [%Int16Array%]{.dfn}                                                           complement
+-- |                                                                                  signed integer
+-- |
+-- |   Uint16Array\                  \~uint16\~         2              ToUint16       16-bit
+-- |   [%Uint16Array%]{.dfn}                                                          unsigned
+-- |                                                                                  integer
+-- |
+-- |   Int32Array\                   \~int32\~          4              ToInt32        32-bit two\'s
+-- |   [%Int32Array%]{.dfn}                                                           complement
+-- |                                                                                  signed integer
+-- |
+-- |   Uint32Array\                  \~uint32\~         4              ToUint32       32-bit
+-- |   [%Uint32Array%]{.dfn}                                                          unsigned
+-- |                                                                                  integer
+-- |
+-- |   BigInt64Array\                \~bigint64\~       8              ToBigInt64     64-bit two\'s
+-- |   [%BigInt64Array%]{.dfn}                                                        complement
+-- |                                                                                  signed integer
+-- |
+-- |   BigUint64Array\               \~biguint64\~      8              ToBigUint64    64-bit
+-- |   [%BigUint64Array%]{.dfn}                                                       unsigned
+-- |                                                                                  integer
+-- |
+-- |   Float16Array\                 \~float16\~        2                             16-bit IEEE
+-- |   [%Float16Array%]{.dfn}                                                         floating point
+-- |
+-- |   Float32Array\                 \~float32\~        4                             32-bit IEEE
+-- |   [%Float32Array%]{.dfn}                                                         floating point
+-- |
+-- |   Float64Array\                 \~float64\~        8                             64-bit IEEE
+-- |   [%Float64Array%]{.dfn}                                                         floating point
+-- |   ---------------------------------------------------------------------------------------------
+-- |
+-- | In the definitions below, references to \_TypedArray\_ should be
+-- | replaced with the appropriate constructor name from the above table.
+-- |
+
+-- SPEC: L33805-L33821
+-- | # The %TypedArray% Intrinsic Object
+-- |
+-- | The [%TypedArray%]{.dfn} intrinsic object:
+-- |
+-- | - is a constructor function object that all of the \_TypedArray\_
+-- |   constructor objects inherit from.
+-- | - along with its corresponding prototype object, provides common
+-- |   properties that are inherited by all \_TypedArray\_ constructors and
+-- |   their instances.
+-- | - does not have a global name or appear as a property of the global
+-- |   object.
+-- | - acts as the abstract superclass of the various \_TypedArray\_
+-- |   constructors.
+-- | - will throw an error when invoked, because it is an abstract class
+-- |   constructor. The \_TypedArray\_ constructors do not perform a
+-- |   \`super\` call to it.
+-- |
+
+-- SPEC: L33822-L33829
+-- | # %TypedArray% ( )
+-- |
+-- | This function performs the following steps when called:
+-- |
+-- | 1\. Throw a \*TypeError\* exception.
+-- |
+-- | The \*\"length\"\* property of this function is \*+0\*~𝔽~.
+-- |
+
+-- SPEC: L33830-L33838
+-- | # Properties of the %TypedArray% Intrinsic Object
+-- |
+-- | The %TypedArray% intrinsic object:
+-- |
+-- | - has a \[\[Prototype\]\] internal slot whose value is
+-- |   %Function.prototype%.
+-- | - has a \*\"name\"\* property whose value is \*\"TypedArray\"\*.
+-- | - has the following properties:
+-- |
+
+-- SPEC: L33839-L33872
+-- | # %TypedArray%.from ( \_source\_ \[ , \_mapper\_ \[ , \_thisArg\_ \] \] )
+-- |
+-- | This method performs the following steps when called:
+-- |
+-- | 1\. Let \_C\_ be the \*this\* value. 1. If IsConstructor(\_C\_) is
+-- | \*false\*, throw a \*TypeError\* exception. 1. If \_mapper\_ is
+-- | \*undefined\*, then 1. Let \_mapping\_ be \*false\*. 1. Else, 1. If
+-- | IsCallable(\_mapper\_) is \*false\*, throw a \*TypeError\* exception. 1.
+-- | Let \_mapping\_ be \*true\*. 1. Let \_usingIterator\_ be ?
+-- | GetMethod(\_source\_, %Symbol.iterator%). 1. If \_usingIterator\_ is not
+-- | \*undefined\*, then 1. Let \_values\_ be ? IteratorToList(?
+-- | GetIteratorFromMethod(\_source\_, \_usingIterator\_)). 1. Let \_len\_ be
+-- | the number of elements in \_values\_. 1. Let \_targetObj\_ be ?
+-- | TypedArrayCreateFromConstructor(\_C\_, « 𝔽(\_len\_) »). 1. Let \_k\_ be
+-- | 0. 1. Repeat, while \_k\_ \< \_len\_, 1. Let \_Pk\_ be !
+-- | ToString(𝔽(\_k\_)). 1. Let \_kValue\_ be the first element of
+-- | \_values\_. 1. Remove the first element from \_values\_. 1. If
+-- | \_mapping\_ is \*true\*, then 1. Let \_mappedValue\_ be ?
+-- | Call(\_mapper\_, \_thisArg\_, « \_kValue\_, 𝔽(\_k\_) »). 1. Else, 1. Let
+-- | \_mappedValue\_ be \_kValue\_. 1. Perform ? Set(\_targetObj\_, \_Pk\_,
+-- | \_mappedValue\_, \*true\*). 1. Set \_k\_ to \_k\_ + 1. 1. Assert:
+-- | \_values\_ is now an empty List. 1. Return \_targetObj\_. 1. NOTE:
+-- | \_source\_ is not an iterable object, so assume it is already an
+-- | array-like object. 1. Let \_arrayLike\_ be ! ToObject(\_source\_). 1.
+-- | Let \_len\_ be ? LengthOfArrayLike(\_arrayLike\_). 1. Let \_targetObj\_
+-- | be ? TypedArrayCreateFromConstructor(\_C\_, « 𝔽(\_len\_) »). 1. Let
+-- | \_k\_ be 0. 1. Repeat, while \_k\_ \< \_len\_, 1. Let \_Pk\_ be !
+-- | ToString(𝔽(\_k\_)). 1. Let \_kValue\_ be ? Get(\_arrayLike\_,
+-- | \_Pk\_). 1. If \_mapping\_ is \*true\*, then 1. Let \_mappedValue\_ be ?
+-- | Call(\_mapper\_, \_thisArg\_, « \_kValue\_, 𝔽(\_k\_) »). 1. Else, 1. Let
+-- | \_mappedValue\_ be \_kValue\_. 1. Perform ? Set(\_targetObj\_, \_Pk\_,
+-- | \_mappedValue\_, \*true\*). 1. Set \_k\_ to \_k\_ + 1. 1. Return
+-- | \_targetObj\_.
+-- |
+
+-- SPEC: L33873-L33885
+-- | # %TypedArray%.of ( \...\_items\_ )
+-- |
+-- | This method performs the following steps when called:
+-- |
+-- | 1\. Let \_len\_ be the number of elements in \_items\_. 1. Let \_C\_ be
+-- | the \*this\* value. 1. If IsConstructor(\_C\_) is \*false\*, throw a
+-- | \*TypeError\* exception. 1. Let \_newObj\_ be ?
+-- | TypedArrayCreateFromConstructor(\_C\_, « 𝔽(\_len\_) »). 1. Let \_k\_ be
+-- | 0. 1. Repeat, while \_k\_ \< \_len\_, 1. Let \_kValue\_ be
+-- | \_items\_\[\_k\_\]. 1. Let \_Pk\_ be ! ToString(𝔽(\_k\_)). 1. Perform ?
+-- | Set(\_newObj\_, \_Pk\_, \_kValue\_, \*true\*). 1. Set \_k\_ to
+-- | \_k\_ + 1. 1. Return \_newObj\_.
+-- |
+
+-- SPEC: L33886-L33893
+-- | # %TypedArray%.prototype
+-- |
+-- | The initial value of %TypedArray%\`.prototype\` is the %TypedArray%
+-- | prototype object.
+-- |
+-- | This property has the attributes { \[\[Writable\]\]: \*false\*,
+-- | \[\[Enumerable\]\]: \*false\*, \[\[Configurable\]\]: \*false\* }.
+-- |
+
+-- SPEC: L33894-L33909
+-- | # get %TypedArray% \[ %Symbol.species% \]
+-- |
+-- | %TypedArray%\`\[%Symbol.species%\]\` is an accessor property whose set
+-- | accessor function is \*undefined\*. Its get accessor function performs
+-- | the following steps when called:
+-- |
+-- | 1\. Return the \*this\* value.
+-- |
+-- | The value of the \*\"name\"\* property of this function is \*\"get
+-- | \[Symbol.species\]\"\*.
+-- |
+-- | %TypedArray.prototype% methods normally use their \*this\* value\'s
+-- | constructor to create a derived object. However, a subclass constructor
+-- | may over-ride that default behaviour by redefining its %Symbol.species%
+-- | property.
+-- |
+
+-- SPEC: L33910-L33920
+-- | # Properties of the %TypedArray% Prototype Object
+-- |
+-- | The [%TypedArray% prototype object]{.dfn}:
+-- |
+-- | - has a \[\[Prototype\]\] internal slot whose value is
+-- |   %Object.prototype%.
+-- | - is [%TypedArray.prototype%]{.dfn}.
+-- | - is an ordinary object.
+-- | - does not have a \[\[ViewedArrayBuffer\]\] or any other of the internal
+-- |   slots that are specific to \_TypedArray\_ instance objects.
+-- |
+
+-- SPEC: L33921-L33930
+-- | # %TypedArray%.prototype.at ( \_index\_ )
+-- |
+-- | 1\. Let \_O\_ be the \*this\* value. 1. Let \_taRecord\_ be ?
+-- | ValidateTypedArray(\_O\_, \~seq-cst\~). 1. Let \_len\_ be
+-- | TypedArrayLength(\_taRecord\_). 1. Let \_relativeIndex\_ be ?
+-- | ToIntegerOrInfinity(\_index\_). 1. If \_relativeIndex\_ ≥ 0, then 1. Let
+-- | \_k\_ be \_relativeIndex\_. 1. Else, 1. Let \_k\_ be \_len\_ +
+-- | \_relativeIndex\_. 1. If \_k\_ \< 0 or \_k\_ ≥ \_len\_, return
+-- | \*undefined\*. 1. Return ! Get(\_O\_, ! ToString(𝔽(\_k\_))).
+-- |
+
+-- SPEC: L33931-L33941
+-- | # get %TypedArray%.prototype.buffer
+-- |
+-- | %TypedArray%\`.prototype.buffer\` is an accessor property whose set
+-- | accessor function is \*undefined\*. Its get accessor function performs
+-- | the following steps when called:
+-- |
+-- | 1\. Let \_O\_ be the \*this\* value. 1. Perform ?
+-- | RequireInternalSlot(\_O\_, \[\[TypedArrayName\]\]). 1. Assert: \_O\_ has
+-- | a \[\[ViewedArrayBuffer\]\] internal slot. 1. Let \_buffer\_ be
+-- | \_O\_.\[\[ViewedArrayBuffer\]\]. 1. Return \_buffer\_.
+-- |
+
+-- SPEC: L33942-L33955
+-- | # get %TypedArray%.prototype.byteLength
+-- |
+-- | %TypedArray%\`.prototype.byteLength\` is an accessor property whose set
+-- | accessor function is \*undefined\*. Its get accessor function performs
+-- | the following steps when called:
+-- |
+-- | 1\. Let \_O\_ be the \*this\* value. 1. Perform ?
+-- | RequireInternalSlot(\_O\_, \[\[TypedArrayName\]\]). 1. Assert: \_O\_ has
+-- | a \[\[ViewedArrayBuffer\]\] internal slot. 1. Let \_taRecord\_ be
+-- | MakeTypedArrayWithBufferWitnessRecord(\_O\_, \~seq-cst\~). 1. If
+-- | IsTypedArrayOutOfBounds(\_taRecord\_) is \*true\*, return \*+0\*~𝔽~. 1.
+-- | Let \_size\_ be TypedArrayByteLength(\_taRecord\_). 1. Return
+-- | 𝔽(\_size\_).
+-- |
+
+-- SPEC: L33956-L33968
+-- | # get %TypedArray%.prototype.byteOffset
+-- |
+-- | %TypedArray%\`.prototype.byteOffset\` is an accessor property whose set
+-- | accessor function is \*undefined\*. Its get accessor function performs
+-- | the following steps when called:
+-- |
+-- | 1\. Let \_O\_ be the \*this\* value. 1. Perform ?
+-- | RequireInternalSlot(\_O\_, \[\[TypedArrayName\]\]). 1. Assert: \_O\_ has
+-- | a \[\[ViewedArrayBuffer\]\] internal slot. 1. Let \_taRecord\_ be
+-- | MakeTypedArrayWithBufferWitnessRecord(\_O\_, \~seq-cst\~). 1. If
+-- | IsTypedArrayOutOfBounds(\_taRecord\_) is \*true\*, return \*+0\*~𝔽~. 1.
+-- | Let \_offset\_ be \_O\_.\[\[ByteOffset\]\]. 1. Return 𝔽(\_offset\_).
+-- |
+
+-- SPEC: L33969-L33973
+-- | # %TypedArray%.prototype.constructor
+-- |
+-- | The initial value of %TypedArray%\`.prototype.constructor\` is
+-- | %TypedArray%.
+-- |
+
+-- SPEC: L33974-L34026
+-- | # %TypedArray%.prototype.copyWithin ( \_target\_, \_start\_ \[ , \_end\_ \] )
+-- |
+-- | The interpretation and use of the arguments of this method are the same
+-- | as for \`Array.prototype.copyWithin\` as defined in .
+-- |
+-- | This method performs the following steps when called:
+-- |
+-- | 1\. Let \_O\_ be the \*this\* value. 1. Let \_taRecord\_ be ?
+-- | ValidateTypedArray(\_O\_, \~seq-cst\~). 1. Let \_len\_ be
+-- | TypedArrayLength(\_taRecord\_). 1. Let \_relativeTarget\_ be ?
+-- | ToIntegerOrInfinity(\_target\_). 1. If \_relativeTarget\_ = -∞, let
+-- | \_targetIndex\_ be 0. 1. Else if \_relativeTarget\_ \< 0, let
+-- | \_targetIndex\_ be max(\_len\_ + \_relativeTarget\_, 0). 1. Else, let
+-- | \_targetIndex\_ be min(\_relativeTarget\_, \_len\_). 1. Let
+-- | \_relativeStart\_ be ? ToIntegerOrInfinity(\_start\_). 1. If
+-- | \_relativeStart\_ = -∞, let \_startIndex\_ be 0. 1. Else if
+-- | \_relativeStart\_ \< 0, let \_startIndex\_ be max(\_len\_ +
+-- | \_relativeStart\_, 0). 1. Else, let \_startIndex\_ be
+-- | min(\_relativeStart\_, \_len\_). 1. If \_end\_ is \*undefined\*, let
+-- | \_relativeEnd\_ be \_len\_; else let \_relativeEnd\_ be ?
+-- | ToIntegerOrInfinity(\_end\_). 1. If \_relativeEnd\_ = -∞, let
+-- | \_endIndex\_ be 0. 1. Else if \_relativeEnd\_ \< 0, let \_endIndex\_ be
+-- | max(\_len\_ + \_relativeEnd\_, 0). 1. Else, let \_endIndex\_ be
+-- | min(\_relativeEnd\_, \_len\_). 1. Let \_count\_ be min(\_endIndex\_ -
+-- | \_startIndex\_, \_len\_ - \_targetIndex\_). 1. If \_count\_ \> 0,
+-- | then 1. NOTE: The copying must be performed in a manner that preserves
+-- | the bit-level encoding of the source data. 1. Let \_buffer\_ be
+-- | \_O\_.\[\[ViewedArrayBuffer\]\]. 1. Set \_taRecord\_ to
+-- | MakeTypedArrayWithBufferWitnessRecord(\_O\_, \~seq-cst\~). 1. If
+-- | IsTypedArrayOutOfBounds(\_taRecord\_) is \*true\*, throw a \*TypeError\*
+-- | exception. 1. Set \_len\_ to TypedArrayLength(\_taRecord\_). 1. NOTE:
+-- | Side-effects of the above steps may have reduced the size of \_O\_, in
+-- | which case copying should proceed with the longest still-applicable
+-- | prefix. 1. Set \_count\_ to min(\_count\_, \_len\_ - \_startIndex\_,
+-- | \_len\_ - \_targetIndex\_). 1. Let \_elementSize\_ be
+-- | TypedArrayElementSize(\_O\_). 1. Let \_byteOffset\_ be
+-- | \_O\_.\[\[ByteOffset\]\]. 1. Let \_toByteIndex\_ be (\_targetIndex\_ ×
+-- | \_elementSize\_) + \_byteOffset\_. 1. Let \_fromByteIndex\_ be
+-- | (\_startIndex\_ × \_elementSize\_) + \_byteOffset\_. 1. Let
+-- | \_countBytes\_ be \_count\_ × \_elementSize\_. 1. If \_fromByteIndex\_
+-- | \< \_toByteIndex\_ and \_toByteIndex\_ \< \_fromByteIndex\_ +
+-- | \_countBytes\_, then 1. Let \_direction\_ be -1. 1. Set
+-- | \_fromByteIndex\_ to \_fromByteIndex\_ + \_countBytes\_ - 1. 1. Set
+-- | \_toByteIndex\_ to \_toByteIndex\_ + \_countBytes\_ - 1. 1. Else, 1. Let
+-- | \_direction\_ be 1. 1. Repeat, while \_countBytes\_ \> 0, 1. Let
+-- | \_value\_ be GetValueFromBuffer(\_buffer\_, \_fromByteIndex\_,
+-- | \~uint8\~, \*true\*, \~unordered\~). 1. Perform
+-- | SetValueInBuffer(\_buffer\_, \_toByteIndex\_, \~uint8\~, \_value\_,
+-- | \*true\*, \~unordered\~). 1. Set \_fromByteIndex\_ to
+-- | \_fromByteIndex\_ + \_direction\_. 1. Set \_toByteIndex\_ to
+-- | \_toByteIndex\_ + \_direction\_. 1. Set \_countBytes\_ to
+-- | \_countBytes\_ - 1. 1. Return \_O\_.
+-- |
+
+-- SPEC: L34027-L34034
+-- | # %TypedArray%.prototype.entries ( )
+-- |
+-- | This method performs the following steps when called:
+-- |
+-- | 1\. Let \_O\_ be the \*this\* value. 1. Perform ?
+-- | ValidateTypedArray(\_O\_, \~seq-cst\~). 1. Return
+-- | CreateArrayIterator(\_O\_, \~key+value\~).
+-- |
+
+-- SPEC: L34035-L34054
+-- | # %TypedArray%.prototype.every ( \_callback\_ \[ , \_thisArg\_ \] )
+-- |
+-- | The interpretation and use of the arguments of this method are the same
+-- | as for \`Array.prototype.every\` as defined in .
+-- |
+-- | This method performs the following steps when called:
+-- |
+-- | 1\. Let \_O\_ be the \*this\* value. 1. Let \_taRecord\_ be ?
+-- | ValidateTypedArray(\_O\_, \~seq-cst\~). 1. Let \_len\_ be
+-- | TypedArrayLength(\_taRecord\_). 1. If IsCallable(\_callback\_) is
+-- | \*false\*, throw a \*TypeError\* exception. 1. Let \_k\_ be 0. 1.
+-- | Repeat, while \_k\_ \< \_len\_, 1. Let \_Pk\_ be !
+-- | ToString(𝔽(\_k\_)). 1. Let \_kValue\_ be ! Get(\_O\_, \_Pk\_). 1. Let
+-- | \_testResult\_ be ToBoolean(? Call(\_callback\_, \_thisArg\_, «
+-- | \_kValue\_, 𝔽(\_k\_), \_O\_ »)). 1. If \_testResult\_ is \*false\*,
+-- | return \*false\*. 1. Set \_k\_ to \_k\_ + 1. 1. Return \*true\*.
+-- |
+-- | This method is not generic. The \*this\* value must be an object with a
+-- | \[\[TypedArrayName\]\] internal slot.
+-- |
+
+-- SPEC: L34055-L34083
+-- | # %TypedArray%.prototype.fill ( \_value\_ \[ , \_start\_ \[ , \_end\_ \] \] )
+-- |
+-- | The interpretation and use of the arguments of this method are the same
+-- | as for \`Array.prototype.fill\` as defined in .
+-- |
+-- | This method performs the following steps when called:
+-- |
+-- | 1\. Let \_O\_ be the \*this\* value. 1. Let \_taRecord\_ be ?
+-- | ValidateTypedArray(\_O\_, \~seq-cst\~). 1. Let \_len\_ be
+-- | TypedArrayLength(\_taRecord\_). 1. If \_O\_.\[\[ContentType\]\] is
+-- | \~bigint\~, set \_value\_ to ? ToBigInt(\_value\_). 1. Else, set
+-- | \_value\_ to ? ToNumber(\_value\_). 1. Let \_relativeStart\_ be ?
+-- | ToIntegerOrInfinity(\_start\_). 1. If \_relativeStart\_ = -∞, let
+-- | \_startIndex\_ be 0. 1. Else if \_relativeStart\_ \< 0, let
+-- | \_startIndex\_ be max(\_len\_ + \_relativeStart\_, 0). 1. Else, let
+-- | \_startIndex\_ be min(\_relativeStart\_, \_len\_). 1. If \_end\_ is
+-- | \*undefined\*, let \_relativeEnd\_ be \_len\_; else let \_relativeEnd\_
+-- | be ? ToIntegerOrInfinity(\_end\_). 1. If \_relativeEnd\_ = -∞, let
+-- | \_endIndex\_ be 0. 1. Else if \_relativeEnd\_ \< 0, let \_endIndex\_ be
+-- | max(\_len\_ + \_relativeEnd\_, 0). 1. Else, let \_endIndex\_ be
+-- | min(\_relativeEnd\_, \_len\_). 1. Set \_taRecord\_ to
+-- | MakeTypedArrayWithBufferWitnessRecord(\_O\_, \~seq-cst\~). 1. If
+-- | IsTypedArrayOutOfBounds(\_taRecord\_) is \*true\*, throw a \*TypeError\*
+-- | exception. 1. Set \_len\_ to TypedArrayLength(\_taRecord\_). 1. Set
+-- | \_endIndex\_ to min(\_endIndex\_, \_len\_). 1. Let \_k\_ be
+-- | \_startIndex\_. 1. Repeat, while \_k\_ \< \_endIndex\_, 1. Let \_Pk\_ be
+-- | ! ToString(𝔽(\_k\_)). 1. Perform ! Set(\_O\_, \_Pk\_, \_value\_,
+-- | \*true\*). 1. Set \_k\_ to \_k\_ + 1. 1. Return \_O\_.
+-- |
+
+-- SPEC: L34084-L34108
+-- | # %TypedArray%.prototype.filter ( \_callback\_ \[ , \_thisArg\_ \] )
+-- |
+-- | The interpretation and use of the arguments of this method are the same
+-- | as for \`Array.prototype.filter\` as defined in .
+-- |
+-- | This method performs the following steps when called:
+-- |
+-- | 1\. Let \_O\_ be the \*this\* value. 1. Let \_taRecord\_ be ?
+-- | ValidateTypedArray(\_O\_, \~seq-cst\~). 1. Let \_len\_ be
+-- | TypedArrayLength(\_taRecord\_). 1. If IsCallable(\_callback\_) is
+-- | \*false\*, throw a \*TypeError\* exception. 1. Let \_kept\_ be a new
+-- | empty List. 1. Let \_captured\_ be 0. 1. Let \_k\_ be 0. 1. Repeat,
+-- | while \_k\_ \< \_len\_, 1. Let \_Pk\_ be ! ToString(𝔽(\_k\_)). 1. Let
+-- | \_kValue\_ be ! Get(\_O\_, \_Pk\_). 1. Let \_selected\_ be ToBoolean(?
+-- | Call(\_callback\_, \_thisArg\_, « \_kValue\_, 𝔽(\_k\_), \_O\_ »)). 1. If
+-- | \_selected\_ is \*true\*, then 1. Append \_kValue\_ to \_kept\_. 1. Set
+-- | \_captured\_ to \_captured\_ + 1. 1. Set \_k\_ to \_k\_ + 1. 1. Let
+-- | \_A\_ be ? TypedArraySpeciesCreate(\_O\_, « 𝔽(\_captured\_) »). 1. Let
+-- | \_n\_ be 0. 1. For each element \_e\_ of \_kept\_, do 1. Perform !
+-- | Set(\_A\_, ! ToString(𝔽(\_n\_)), \_e\_, \*true\*). 1. Set \_n\_ to
+-- | \_n\_ + 1. 1. Return \_A\_.
+-- |
+-- | This method is not generic. The \*this\* value must be an object with a
+-- | \[\[TypedArrayName\]\] internal slot.
+-- |
+
+-- SPEC: L34109-L34124
+-- | # %TypedArray%.prototype.find ( \_predicate\_ \[ , \_thisArg\_ \] )
+-- |
+-- | The interpretation and use of the arguments of this method are the same
+-- | as for \`Array.prototype.find\` as defined in .
+-- |
+-- | This method performs the following steps when called:
+-- |
+-- | 1\. Let \_O\_ be the \*this\* value. 1. Let \_taRecord\_ be ?
+-- | ValidateTypedArray(\_O\_, \~seq-cst\~). 1. Let \_len\_ be
+-- | TypedArrayLength(\_taRecord\_). 1. Let \_findRec\_ be ?
+-- | FindViaPredicate(\_O\_, \_len\_, \~ascending\~, \_predicate\_,
+-- | \_thisArg\_). 1. Return \_findRec\_.\[\[Value\]\].
+-- |
+-- | This method is not generic. The \*this\* value must be an object with a
+-- | \[\[TypedArrayName\]\] internal slot.
+-- |
+
+-- SPEC: L34125-L34140
+-- | # %TypedArray%.prototype.findIndex ( \_predicate\_ \[ , \_thisArg\_ \] )
+-- |
+-- | The interpretation and use of the arguments of this method are the same
+-- | as for \`Array.prototype.findIndex\` as defined in .
+-- |
+-- | This method performs the following steps when called:
+-- |
+-- | 1\. Let \_O\_ be the \*this\* value. 1. Let \_taRecord\_ be ?
+-- | ValidateTypedArray(\_O\_, \~seq-cst\~). 1. Let \_len\_ be
+-- | TypedArrayLength(\_taRecord\_). 1. Let \_findRec\_ be ?
+-- | FindViaPredicate(\_O\_, \_len\_, \~ascending\~, \_predicate\_,
+-- | \_thisArg\_). 1. Return \_findRec\_.\[\[Index\]\].
+-- |
+-- | This method is not generic. The \*this\* value must be an object with a
+-- | \[\[TypedArrayName\]\] internal slot.
+-- |
+
+-- SPEC: L34141-L34156
+-- | # %TypedArray%.prototype.findLast ( \_predicate\_ \[ , \_thisArg\_ \] )
+-- |
+-- | The interpretation and use of the arguments of this method are the same
+-- | as for \`Array.prototype.findLast\` as defined in .
+-- |
+-- | This method performs the following steps when called:
+-- |
+-- | 1\. Let \_O\_ be the \*this\* value. 1. Let \_taRecord\_ be ?
+-- | ValidateTypedArray(\_O\_, \~seq-cst\~). 1. Let \_len\_ be
+-- | TypedArrayLength(\_taRecord\_). 1. Let \_findRec\_ be ?
+-- | FindViaPredicate(\_O\_, \_len\_, \~descending\~, \_predicate\_,
+-- | \_thisArg\_). 1. Return \_findRec\_.\[\[Value\]\].
+-- |
+-- | This method is not generic. The \*this\* value must be an object with a
+-- | \[\[TypedArrayName\]\] internal slot.
+-- |
+
+-- SPEC: L34157-L34172
+-- | # %TypedArray%.prototype.findLastIndex ( \_predicate\_ \[ , \_thisArg\_ \] )
+-- |
+-- | The interpretation and use of the arguments of this method are the same
+-- | as for \`Array.prototype.findLastIndex\` as defined in .
+-- |
+-- | This method performs the following steps when called:
+-- |
+-- | 1\. Let \_O\_ be the \*this\* value. 1. Let \_taRecord\_ be ?
+-- | ValidateTypedArray(\_O\_, \~seq-cst\~). 1. Let \_len\_ be
+-- | TypedArrayLength(\_taRecord\_). 1. Let \_findRec\_ be ?
+-- | FindViaPredicate(\_O\_, \_len\_, \~descending\~, \_predicate\_,
+-- | \_thisArg\_). 1. Return \_findRec\_.\[\[Index\]\].
+-- |
+-- | This method is not generic. The \*this\* value must be an object with a
+-- | \[\[TypedArrayName\]\] internal slot.
+-- |
+
+-- SPEC: L34173-L34191
+-- | # %TypedArray%.prototype.forEach ( \_callback\_ \[ , \_thisArg\_ \] )
+-- |
+-- | The interpretation and use of the arguments of this method are the same
+-- | as for \`Array.prototype.forEach\` as defined in .
+-- |
+-- | This method performs the following steps when called:
+-- |
+-- | 1\. Let \_O\_ be the \*this\* value. 1. Let \_taRecord\_ be ?
+-- | ValidateTypedArray(\_O\_, \~seq-cst\~). 1. Let \_len\_ be
+-- | TypedArrayLength(\_taRecord\_). 1. If IsCallable(\_callback\_) is
+-- | \*false\*, throw a \*TypeError\* exception. 1. Let \_k\_ be 0. 1.
+-- | Repeat, while \_k\_ \< \_len\_, 1. Let \_Pk\_ be !
+-- | ToString(𝔽(\_k\_)). 1. Let \_kValue\_ be ! Get(\_O\_, \_Pk\_). 1.
+-- | Perform ? Call(\_callback\_, \_thisArg\_, « \_kValue\_, 𝔽(\_k\_), \_O\_
+-- | »). 1. Set \_k\_ to \_k\_ + 1. 1. Return \*undefined\*.
+-- |
+-- | This method is not generic. The \*this\* value must be an object with a
+-- | \[\[TypedArrayName\]\] internal slot.
+-- |
+
+-- SPEC: L34192-L34213
+-- | # %TypedArray%.prototype.includes ( \_searchElement\_ \[ , \_fromIndex\_ \] )
+-- |
+-- | The interpretation and use of the arguments of this method are the same
+-- | as for \`Array.prototype.includes\` as defined in .
+-- |
+-- | This method performs the following steps when called:
+-- |
+-- | 1\. Let \_O\_ be the \*this\* value. 1. Let \_taRecord\_ be ?
+-- | ValidateTypedArray(\_O\_, \~seq-cst\~). 1. Let \_len\_ be
+-- | TypedArrayLength(\_taRecord\_). 1. If \_len\_ = 0, return \*false\*. 1.
+-- | Let \_n\_ be ? ToIntegerOrInfinity(\_fromIndex\_). 1. Assert: If
+-- | \_fromIndex\_ is \*undefined\*, then \_n\_ is 0. 1. If \_n\_ = +∞,
+-- | return \*false\*. 1. If \_n\_ = -∞, set \_n\_ to 0. 1. If \_n\_ ≥ 0,
+-- | then 1. Let \_k\_ be \_n\_. 1. Else, 1. Let \_k\_ be \_len\_ + \_n\_. 1.
+-- | If \_k\_ \< 0, set \_k\_ to 0. 1. Repeat, while \_k\_ \< \_len\_, 1. Let
+-- | \_elementK\_ be ! Get(\_O\_, ! ToString(𝔽(\_k\_))). 1. If
+-- | SameValueZero(\_searchElement\_, \_elementK\_) is \*true\*, return
+-- | \*true\*. 1. Set \_k\_ to \_k\_ + 1. 1. Return \*false\*.
+-- |
+-- | This method is not generic. The \*this\* value must be an object with a
+-- | \[\[TypedArrayName\]\] internal slot.
+-- |
+
+-- SPEC: L34214-L34237
+-- | # %TypedArray%.prototype.indexOf ( \_searchElement\_ \[ , \_fromIndex\_ \] )
+-- |
+-- | The interpretation and use of the arguments of this method are the same
+-- | as for \`Array.prototype.indexOf\` as defined in .
+-- |
+-- | This method performs the following steps when called:
+-- |
+-- | 1\. Let \_O\_ be the \*this\* value. 1. Let \_taRecord\_ be ?
+-- | ValidateTypedArray(\_O\_, \~seq-cst\~). 1. Let \_len\_ be
+-- | TypedArrayLength(\_taRecord\_). 1. If \_len\_ = 0, return \*-1\*~𝔽~. 1.
+-- | Let \_n\_ be ? ToIntegerOrInfinity(\_fromIndex\_). 1. Assert: If
+-- | \_fromIndex\_ is \*undefined\*, then \_n\_ is 0. 1. If \_n\_ = +∞,
+-- | return \*-1\*~𝔽~. 1. If \_n\_ = -∞, set \_n\_ to 0. 1. If \_n\_ ≥ 0,
+-- | then 1. Let \_k\_ be \_n\_. 1. Else, 1. Let \_k\_ be \_len\_ + \_n\_. 1.
+-- | If \_k\_ \< 0, set \_k\_ to 0. 1. Repeat, while \_k\_ \< \_len\_, 1. Let
+-- | \_Pk\_ be ! ToString(𝔽(\_k\_)). 1. Let \_kPresent\_ be !
+-- | HasProperty(\_O\_, \_Pk\_). 1. If \_kPresent\_ is \*true\*, then 1. Let
+-- | \_elementK\_ be ! Get(\_O\_, \_Pk\_). 1. If
+-- | IsStrictlyEqual(\_searchElement\_, \_elementK\_) is \*true\*, return
+-- | 𝔽(\_k\_). 1. Set \_k\_ to \_k\_ + 1. 1. Return \*-1\*~𝔽~.
+-- |
+-- | This method is not generic. The \*this\* value must be an object with a
+-- | \[\[TypedArrayName\]\] internal slot.
+-- |
+
+-- SPEC: L34238-L34259
+-- | # %TypedArray%.prototype.join ( \_separator\_ )
+-- |
+-- | The interpretation and use of the arguments of this method are the same
+-- | as for \`Array.prototype.join\` as defined in .
+-- |
+-- | This method performs the following steps when called:
+-- |
+-- | 1\. Let \_O\_ be the \*this\* value. 1. Let \_taRecord\_ be ?
+-- | ValidateTypedArray(\_O\_, \~seq-cst\~). 1. Let \_len\_ be
+-- | TypedArrayLength(\_taRecord\_). 1. If \_separator\_ is \*undefined\*,
+-- | let \_sep\_ be \*\",\"\*. 1. Else, let \_sep\_ be ?
+-- | ToString(\_separator\_). 1. Let \_R\_ be the empty String. 1. Let \_k\_
+-- | be 0. 1. Repeat, while \_k\_ \< \_len\_, 1. If \_k\_ \> 0, set \_R\_ to
+-- | the string-concatenation of \_R\_ and \_sep\_. 1. Let \_element\_ be !
+-- | Get(\_O\_, ! ToString(𝔽(\_k\_))). 1. If \_element\_ is not
+-- | \*undefined\*, then 1. Let \_S\_ be ! ToString(\_element\_). 1. Set
+-- | \_R\_ to the string-concatenation of \_R\_ and \_S\_. 1. Set \_k\_ to
+-- | \_k\_ + 1. 1. Return \_R\_.
+-- |
+-- | This method is not generic. The \*this\* value must be an object with a
+-- | \[\[TypedArrayName\]\] internal slot.
+-- |
+
+-- SPEC: L34260-L34267
+-- | # %TypedArray%.prototype.keys ( )
+-- |
+-- | This method performs the following steps when called:
+-- |
+-- | 1\. Let \_O\_ be the \*this\* value. 1. Perform ?
+-- | ValidateTypedArray(\_O\_, \~seq-cst\~). 1. Return
+-- | CreateArrayIterator(\_O\_, \~key\~).
+-- |
+
+-- SPEC: L34268-L34290
+-- | # %TypedArray%.prototype.lastIndexOf ( \_searchElement\_ \[ , \_fromIndex\_ \] )
+-- |
+-- | The interpretation and use of the arguments of this method are the same
+-- | as for \`Array.prototype.lastIndexOf\` as defined in .
+-- |
+-- | This method performs the following steps when called:
+-- |
+-- | 1\. Let \_O\_ be the \*this\* value. 1. Let \_taRecord\_ be ?
+-- | ValidateTypedArray(\_O\_, \~seq-cst\~). 1. Let \_len\_ be
+-- | TypedArrayLength(\_taRecord\_). 1. If \_len\_ = 0, return \*-1\*~𝔽~. 1.
+-- | If \_fromIndex\_ is present, let \_n\_ be ?
+-- | ToIntegerOrInfinity(\_fromIndex\_); else let \_n\_ be \_len\_ - 1. 1. If
+-- | \_n\_ = -∞, return \*-1\*~𝔽~. 1. If \_n\_ ≥ 0, then 1. Let \_k\_ be
+-- | min(\_n\_, \_len\_ - 1). 1. Else, 1. Let \_k\_ be \_len\_ + \_n\_. 1.
+-- | Repeat, while \_k\_ ≥ 0, 1. Let \_Pk\_ be ! ToString(𝔽(\_k\_)). 1. Let
+-- | \_kPresent\_ be ! HasProperty(\_O\_, \_Pk\_). 1. If \_kPresent\_ is
+-- | \*true\*, then 1. Let \_elementK\_ be ! Get(\_O\_, \_Pk\_). 1. If
+-- | IsStrictlyEqual(\_searchElement\_, \_elementK\_) is \*true\*, return
+-- | 𝔽(\_k\_). 1. Set \_k\_ to \_k\_ - 1. 1. Return \*-1\*~𝔽~.
+-- |
+-- | This method is not generic. The \*this\* value must be an object with a
+-- | \[\[TypedArrayName\]\] internal slot.
+-- |
+
+-- SPEC: L34291-L34307
+-- | # get %TypedArray%.prototype.length
+-- |
+-- | %TypedArray%\`.prototype.length\` is an accessor property whose set
+-- | accessor function is \*undefined\*. Its get accessor function performs
+-- | the following steps when called:
+-- |
+-- | 1\. Let \_O\_ be the \*this\* value. 1. Perform ?
+-- | RequireInternalSlot(\_O\_, \[\[TypedArrayName\]\]). 1. Assert: \_O\_ has
+-- | \[\[ViewedArrayBuffer\]\] and \[\[ArrayLength\]\] internal slots. 1. Let
+-- | \_taRecord\_ be MakeTypedArrayWithBufferWitnessRecord(\_O\_,
+-- | \~seq-cst\~). 1. If IsTypedArrayOutOfBounds(\_taRecord\_) is \*true\*,
+-- | return \*+0\*~𝔽~. 1. Let \_length\_ be
+-- | TypedArrayLength(\_taRecord\_). 1. Return 𝔽(\_length\_).
+-- |
+-- | This function is not generic. The \*this\* value must be an object with
+-- | a \[\[TypedArrayName\]\] internal slot.
+-- |
+
+-- SPEC: L34308-L34328
+-- | # %TypedArray%.prototype.map ( \_callback\_ \[ , \_thisArg\_ \] )
+-- |
+-- | The interpretation and use of the arguments of this method are the same
+-- | as for \`Array.prototype.map\` as defined in .
+-- |
+-- | This method performs the following steps when called:
+-- |
+-- | 1\. Let \_O\_ be the \*this\* value. 1. Let \_taRecord\_ be ?
+-- | ValidateTypedArray(\_O\_, \~seq-cst\~). 1. Let \_len\_ be
+-- | TypedArrayLength(\_taRecord\_). 1. If IsCallable(\_callback\_) is
+-- | \*false\*, throw a \*TypeError\* exception. 1. Let \_A\_ be ?
+-- | TypedArraySpeciesCreate(\_O\_, « 𝔽(\_len\_) »). 1. Let \_k\_ be 0. 1.
+-- | Repeat, while \_k\_ \< \_len\_, 1. Let \_Pk\_ be !
+-- | ToString(𝔽(\_k\_)). 1. Let \_kValue\_ be ! Get(\_O\_, \_Pk\_). 1. Let
+-- | \_mappedValue\_ be ? Call(\_callback\_, \_thisArg\_, « \_kValue\_,
+-- | 𝔽(\_k\_), \_O\_ »). 1. Perform ? Set(\_A\_, \_Pk\_, \_mappedValue\_,
+-- | \*true\*). 1. Set \_k\_ to \_k\_ + 1. 1. Return \_A\_.
+-- |
+-- | This method is not generic. The \*this\* value must be an object with a
+-- | \[\[TypedArrayName\]\] internal slot.
+-- |
+
+-- SPEC: L34329-L34353
+-- | # %TypedArray%.prototype.reduce ( \_callback\_ \[ , \_initialValue\_ \] )
+-- |
+-- | The interpretation and use of the arguments of this method are the same
+-- | as for \`Array.prototype.reduce\` as defined in .
+-- |
+-- | This method performs the following steps when called:
+-- |
+-- | 1\. Let \_O\_ be the \*this\* value. 1. Let \_taRecord\_ be ?
+-- | ValidateTypedArray(\_O\_, \~seq-cst\~). 1. Let \_len\_ be
+-- | TypedArrayLength(\_taRecord\_). 1. If IsCallable(\_callback\_) is
+-- | \*false\*, throw a \*TypeError\* exception. 1. If \_len\_ = 0 and
+-- | \_initialValue\_ is not present, throw a \*TypeError\* exception. 1. Let
+-- | \_k\_ be 0. 1. Let \_accumulator\_ be \*undefined\*. 1. If
+-- | \_initialValue\_ is present, then 1. Set \_accumulator\_ to
+-- | \_initialValue\_. 1. Else, 1. Let \_Pk\_ be ! ToString(𝔽(\_k\_)). 1. Set
+-- | \_accumulator\_ to ! Get(\_O\_, \_Pk\_). 1. Set \_k\_ to \_k\_ + 1. 1.
+-- | Repeat, while \_k\_ \< \_len\_, 1. Let \_Pk\_ be !
+-- | ToString(𝔽(\_k\_)). 1. Let \_kValue\_ be ! Get(\_O\_, \_Pk\_). 1. Set
+-- | \_accumulator\_ to ? Call(\_callback\_, \*undefined\*, «
+-- | \_accumulator\_, \_kValue\_, 𝔽(\_k\_), \_O\_ »). 1. Set \_k\_ to
+-- | \_k\_ + 1. 1. Return \_accumulator\_.
+-- |
+-- | This method is not generic. The \*this\* value must be an object with a
+-- | \[\[TypedArrayName\]\] internal slot.
+-- |
+
+-- SPEC: L34354-L34378
+-- | # %TypedArray%.prototype.reduceRight ( \_callback\_ \[ , \_initialValue\_ \] )
+-- |
+-- | The interpretation and use of the arguments of this method are the same
+-- | as for \`Array.prototype.reduceRight\` as defined in .
+-- |
+-- | This method performs the following steps when called:
+-- |
+-- | 1\. Let \_O\_ be the \*this\* value. 1. Let \_taRecord\_ be ?
+-- | ValidateTypedArray(\_O\_, \~seq-cst\~). 1. Let \_len\_ be
+-- | TypedArrayLength(\_taRecord\_). 1. If IsCallable(\_callback\_) is
+-- | \*false\*, throw a \*TypeError\* exception. 1. If \_len\_ = 0 and
+-- | \_initialValue\_ is not present, throw a \*TypeError\* exception. 1. Let
+-- | \_k\_ be \_len\_ - 1. 1. Let \_accumulator\_ be \*undefined\*. 1. If
+-- | \_initialValue\_ is present, then 1. Set \_accumulator\_ to
+-- | \_initialValue\_. 1. Else, 1. Let \_Pk\_ be ! ToString(𝔽(\_k\_)). 1. Set
+-- | \_accumulator\_ to ! Get(\_O\_, \_Pk\_). 1. Set \_k\_ to \_k\_ - 1. 1.
+-- | Repeat, while \_k\_ ≥ 0, 1. Let \_Pk\_ be ! ToString(𝔽(\_k\_)). 1. Let
+-- | \_kValue\_ be ! Get(\_O\_, \_Pk\_). 1. Set \_accumulator\_ to ?
+-- | Call(\_callback\_, \*undefined\*, « \_accumulator\_, \_kValue\_,
+-- | 𝔽(\_k\_), \_O\_ »). 1. Set \_k\_ to \_k\_ - 1. 1. Return
+-- | \_accumulator\_.
+-- |
+-- | This method is not generic. The \*this\* value must be an object with a
+-- | \[\[TypedArrayName\]\] internal slot.
+-- |
+
+-- SPEC: L34379-L34400
+-- | # %TypedArray%.prototype.reverse ( )
+-- |
+-- | The interpretation and use of the arguments of this method are the same
+-- | as for \`Array.prototype.reverse\` as defined in .
+-- |
+-- | This method performs the following steps when called:
+-- |
+-- | 1\. Let \_O\_ be the \*this\* value. 1. Let \_taRecord\_ be ?
+-- | ValidateTypedArray(\_O\_, \~seq-cst\~). 1. Let \_len\_ be
+-- | TypedArrayLength(\_taRecord\_). 1. Let \_middle\_ be floor(\_len\_ /
+-- | 2). 1. Let \_lower\_ be 0. 1. Repeat, while \_lower\_ ≠ \_middle\_, 1.
+-- | Let \_upper\_ be \_len\_ - \_lower\_ - 1. 1. Let \_upperP\_ be !
+-- | ToString(𝔽(\_upper\_)). 1. Let \_lowerP\_ be !
+-- | ToString(𝔽(\_lower\_)). 1. Let \_lowerValue\_ be ! Get(\_O\_,
+-- | \_lowerP\_). 1. Let \_upperValue\_ be ! Get(\_O\_, \_upperP\_). 1.
+-- | Perform ! Set(\_O\_, \_lowerP\_, \_upperValue\_, \*true\*). 1. Perform !
+-- | Set(\_O\_, \_upperP\_, \_lowerValue\_, \*true\*). 1. Set \_lower\_ to
+-- | \_lower\_ + 1. 1. Return \_O\_.
+-- |
+-- | This method is not generic. The \*this\* value must be an object with a
+-- | \[\[TypedArrayName\]\] internal slot.
+-- |
+
+-- SPEC: L34401-L34424
+-- | # %TypedArray%.prototype.set ( \_source\_ \[ , \_offset\_ \] )
+-- |
+-- | This method sets multiple values in this \_TypedArray\_, reading the
+-- | values from \_source\_. The details differ based upon the type of
+-- | \_source\_. The optional \_offset\_ value indicates the first element
+-- | index in this \_TypedArray\_ where values are written. If omitted, it is
+-- | assumed to be 0.
+-- |
+-- | It performs the following steps when called:
+-- |
+-- | 1\. Let \_target\_ be the \*this\* value. 1. Perform ?
+-- | RequireInternalSlot(\_target\_, \[\[TypedArrayName\]\]). 1. Assert:
+-- | \_target\_ has a \[\[ViewedArrayBuffer\]\] internal slot. 1. Let
+-- | \_targetOffset\_ be ? ToIntegerOrInfinity(\_offset\_). 1. If
+-- | \_targetOffset\_ \< 0, throw a \*RangeError\* exception. 1. If
+-- | \_source\_ is an Object that has a \[\[TypedArrayName\]\] internal slot,
+-- | then 1. Perform ? SetTypedArrayFromTypedArray(\_target\_,
+-- | \_targetOffset\_, \_source\_). 1. Else, 1. Perform ?
+-- | SetTypedArrayFromArrayLike(\_target\_, \_targetOffset\_, \_source\_). 1.
+-- | Return \*undefined\*.
+-- |
+-- | This method is not generic. The \*this\* value must be an object with a
+-- | \[\[TypedArrayName\]\] internal slot.
+-- |
+
+-- SPEC: L34425-L34445
+-- | # SetTypedArrayFromArrayLike ( \_target\_: a TypedArray, \_targetOffset\_: a non-negative integer or +∞, \_source\_: an ECMAScript language value, but not a TypedArray, ): either a normal completion containing \~unused\~ or a throw completion
+-- |
+-- | description
+-- | :   It sets multiple values in \_target\_, starting at index
+-- |     \_targetOffset\_, reading the values from \_source\_.
+-- |
+-- | 1\. Let \_targetRecord\_ be
+-- | MakeTypedArrayWithBufferWitnessRecord(\_target\_, \~seq-cst\~). 1. If
+-- | IsTypedArrayOutOfBounds(\_targetRecord\_) is \*true\*, throw a
+-- | \*TypeError\* exception. 1. Let \_targetLength\_ be
+-- | TypedArrayLength(\_targetRecord\_). 1. Let \_src\_ be ?
+-- | ToObject(\_source\_). 1. Let \_srcLength\_ be ?
+-- | LengthOfArrayLike(\_src\_). 1. If \_targetOffset\_ = +∞, throw a
+-- | \*RangeError\* exception. 1. If \_srcLength\_ + \_targetOffset\_ \>
+-- | \_targetLength\_, throw a \*RangeError\* exception. 1. Let \_k\_ be
+-- | 0. 1. Repeat, while \_k\_ \< \_srcLength\_, 1. Let \_Pk\_ be !
+-- | ToString(𝔽(\_k\_)). 1. Let \_value\_ be ? Get(\_src\_, \_Pk\_). 1. Let
+-- | \_targetIndex\_ be 𝔽(\_targetOffset\_ + \_k\_). 1. Perform ?
+-- | TypedArraySetElement(\_target\_, \_targetIndex\_, \_value\_). 1. Set
+-- | \_k\_ to \_k\_ + 1. 1. Return \~unused\~.
+-- |
+
+-- SPEC: L34446-L34500
+-- | # SetTypedArrayFromTypedArray ( \_target\_: a TypedArray, \_targetOffset\_: a non-negative integer or +∞, \_source\_: a TypedArray, ): either a normal completion containing \~unused\~ or a throw completion
+-- |
+-- | description
+-- | :   It sets multiple values in \_target\_, starting at index
+-- |     \_targetOffset\_, reading the values from \_source\_.
+-- |
+-- | 1\. Let \_targetBuffer\_ be \_target\_.\[\[ViewedArrayBuffer\]\]. 1. Let
+-- | \_targetRecord\_ be MakeTypedArrayWithBufferWitnessRecord(\_target\_,
+-- | \~seq-cst\~). 1. If IsTypedArrayOutOfBounds(\_targetRecord\_) is
+-- | \*true\*, throw a \*TypeError\* exception. 1. Let \_targetLength\_ be
+-- | TypedArrayLength(\_targetRecord\_). 1. Let \_srcBuffer\_ be
+-- | \_source\_.\[\[ViewedArrayBuffer\]\]. 1. Let \_srcRecord\_ be
+-- | MakeTypedArrayWithBufferWitnessRecord(\_source\_, \~seq-cst\~). 1. If
+-- | IsTypedArrayOutOfBounds(\_srcRecord\_) is \*true\*, throw a
+-- | \*TypeError\* exception. 1. Let \_srcLength\_ be
+-- | TypedArrayLength(\_srcRecord\_). 1. Let \_targetType\_ be
+-- | TypedArrayElementType(\_target\_). 1. Let \_targetElementSize\_ be
+-- | TypedArrayElementSize(\_target\_). 1. Let \_targetByteOffset\_ be
+-- | \_target\_.\[\[ByteOffset\]\]. 1. Let \_srcType\_ be
+-- | TypedArrayElementType(\_source\_). 1. Let \_srcElementSize\_ be
+-- | TypedArrayElementSize(\_source\_). 1. Let \_srcByteOffset\_ be
+-- | \_source\_.\[\[ByteOffset\]\]. 1. If \_targetOffset\_ = +∞, throw a
+-- | \*RangeError\* exception. 1. If \_srcLength\_ + \_targetOffset\_ \>
+-- | \_targetLength\_, throw a \*RangeError\* exception. 1. If
+-- | \_target\_.\[\[ContentType\]\] is not \_source\_.\[\[ContentType\]\],
+-- | throw a \*TypeError\* exception. 1. If
+-- | IsSharedArrayBuffer(\_srcBuffer\_) is \*true\*,
+-- | IsSharedArrayBuffer(\_targetBuffer\_) is \*true\*, and
+-- | \_srcBuffer\_.\[\[ArrayBufferData\]\] is
+-- | \_targetBuffer\_.\[\[ArrayBufferData\]\], let \_sameSharedArrayBuffer\_
+-- | be \*true\*; else let \_sameSharedArrayBuffer\_ be \*false\*. 1. If
+-- | SameValue(\_srcBuffer\_, \_targetBuffer\_) is \*true\* or
+-- | \_sameSharedArrayBuffer\_ is \*true\*, then 1. Let \_srcByteLength\_ be
+-- | TypedArrayByteLength(\_srcRecord\_). 1. Set \_srcBuffer\_ to ?
+-- | CloneArrayBuffer(\_srcBuffer\_, \_srcByteOffset\_,
+-- | \_srcByteLength\_). 1. Let \_srcByteIndex\_ be 0. 1. Else, 1. Let
+-- | \_srcByteIndex\_ be \_srcByteOffset\_. 1. Let \_targetByteIndex\_ be
+-- | (\_targetOffset\_ × \_targetElementSize\_) + \_targetByteOffset\_. 1.
+-- | Let \_limit\_ be \_targetByteIndex\_ + (\_targetElementSize\_ ×
+-- | \_srcLength\_). 1. If \_srcType\_ is \_targetType\_, then 1. NOTE: The
+-- | transfer must be performed in a manner that preserves the bit-level
+-- | encoding of the source data. 1. Repeat, while \_targetByteIndex\_ \<
+-- | \_limit\_, 1. Let \_value\_ be GetValueFromBuffer(\_srcBuffer\_,
+-- | \_srcByteIndex\_, \~uint8\~, \*true\*, \~unordered\~). 1. Perform
+-- | SetValueInBuffer(\_targetBuffer\_, \_targetByteIndex\_, \~uint8\~,
+-- | \_value\_, \*true\*, \~unordered\~). 1. Set \_srcByteIndex\_ to
+-- | \_srcByteIndex\_ + 1. 1. Set \_targetByteIndex\_ to
+-- | \_targetByteIndex\_ + 1. 1. Else, 1. Repeat, while \_targetByteIndex\_
+-- | \< \_limit\_, 1. Let \_value\_ be GetValueFromBuffer(\_srcBuffer\_,
+-- | \_srcByteIndex\_, \_srcType\_, \*true\*, \~unordered\~). 1. Perform
+-- | SetValueInBuffer(\_targetBuffer\_, \_targetByteIndex\_, \_targetType\_,
+-- | \_value\_, \*true\*, \~unordered\~). 1. Set \_srcByteIndex\_ to
+-- | \_srcByteIndex\_ + \_srcElementSize\_. 1. Set \_targetByteIndex\_ to
+-- | \_targetByteIndex\_ + \_targetElementSize\_. 1. Return \~unused\~.
+-- |
+
+-- SPEC: L34501-L34553
+-- | # %TypedArray%.prototype.slice ( \_start\_, \_end\_ )
+-- |
+-- | The interpretation and use of the arguments of this method are the same
+-- | as for \`Array.prototype.slice\` as defined in .
+-- |
+-- | This method performs the following steps when called:
+-- |
+-- | 1\. Let \_O\_ be the \*this\* value. 1. Let \_taRecord\_ be ?
+-- | ValidateTypedArray(\_O\_, \~seq-cst\~). 1. Let \_srcArrayLength\_ be
+-- | TypedArrayLength(\_taRecord\_). 1. Let \_relativeStart\_ be ?
+-- | ToIntegerOrInfinity(\_start\_). 1. If \_relativeStart\_ = -∞, let
+-- | \_startIndex\_ be 0. 1. Else if \_relativeStart\_ \< 0, let
+-- | \_startIndex\_ be max(\_srcArrayLength\_ + \_relativeStart\_, 0). 1.
+-- | Else, let \_startIndex\_ be min(\_relativeStart\_,
+-- | \_srcArrayLength\_). 1. If \_end\_ is \*undefined\*, let \_relativeEnd\_
+-- | be \_srcArrayLength\_; else let \_relativeEnd\_ be ?
+-- | ToIntegerOrInfinity(\_end\_). 1. If \_relativeEnd\_ = -∞, let
+-- | \_endIndex\_ be 0. 1. Else if \_relativeEnd\_ \< 0, let \_endIndex\_ be
+-- | max(\_srcArrayLength\_ + \_relativeEnd\_, 0). 1. Else, let \_endIndex\_
+-- | be min(\_relativeEnd\_, \_srcArrayLength\_). 1. Let \_countBytes\_ be
+-- | max(\_endIndex\_ - \_startIndex\_, 0). 1. Let \_A\_ be ?
+-- | TypedArraySpeciesCreate(\_O\_, « 𝔽(\_countBytes\_) »). 1. If
+-- | \_countBytes\_ \> 0, then 1. Set \_taRecord\_ to
+-- | MakeTypedArrayWithBufferWitnessRecord(\_O\_, \~seq-cst\~). 1. If
+-- | IsTypedArrayOutOfBounds(\_taRecord\_) is \*true\*, throw a \*TypeError\*
+-- | exception. 1. Set \_endIndex\_ to min(\_endIndex\_,
+-- | TypedArrayLength(\_taRecord\_)). 1. Set \_countBytes\_ to
+-- | max(\_endIndex\_ - \_startIndex\_, 0). 1. Let \_srcType\_ be
+-- | TypedArrayElementType(\_O\_). 1. Let \_targetType\_ be
+-- | TypedArrayElementType(\_A\_). 1. If \_srcType\_ is \_targetType\_,
+-- | then 1. NOTE: The transfer must be performed in a manner that preserves
+-- | the bit-level encoding of the source data. 1. Let \_srcBuffer\_ be
+-- | \_O\_.\[\[ViewedArrayBuffer\]\]. 1. Let \_targetBuffer\_ be
+-- | \_A\_.\[\[ViewedArrayBuffer\]\]. 1. Let \_elementSize\_ be
+-- | TypedArrayElementSize(\_O\_). 1. Let \_srcByteOffset\_ be
+-- | \_O\_.\[\[ByteOffset\]\]. 1. Let \_srcByteIndex\_ be (\_startIndex\_ ×
+-- | \_elementSize\_) + \_srcByteOffset\_. 1. Let \_targetByteIndex\_ be
+-- | \_A\_.\[\[ByteOffset\]\]. 1. Let \_endByteIndex\_ be
+-- | \_targetByteIndex\_ + (\_countBytes\_ × \_elementSize\_). 1. Repeat,
+-- | while \_targetByteIndex\_ \< \_endByteIndex\_, 1. Let \_value\_ be
+-- | GetValueFromBuffer(\_srcBuffer\_, \_srcByteIndex\_, \~uint8\~, \*true\*,
+-- | \~unordered\~). 1. Perform SetValueInBuffer(\_targetBuffer\_,
+-- | \_targetByteIndex\_, \~uint8\~, \_value\_, \*true\*, \~unordered\~). 1.
+-- | Set \_srcByteIndex\_ to \_srcByteIndex\_ + 1. 1. Set \_targetByteIndex\_
+-- | to \_targetByteIndex\_ + 1. 1. Else, 1. Let \_n\_ be 0. 1. Let \_k\_ be
+-- | \_startIndex\_. 1. Repeat, while \_k\_ \< \_endIndex\_, 1. Let \_Pk\_ be
+-- | ! ToString(𝔽(\_k\_)). 1. Let \_kValue\_ be ! Get(\_O\_, \_Pk\_). 1.
+-- | Perform ! Set(\_A\_, ! ToString(𝔽(\_n\_)), \_kValue\_, \*true\*). 1. Set
+-- | \_k\_ to \_k\_ + 1. 1. Set \_n\_ to \_n\_ + 1. 1. Return \_A\_.
+-- |
+-- | This method is not generic. The \*this\* value must be an object with a
+-- | \[\[TypedArrayName\]\] internal slot.
+-- |
+
+-- SPEC: L34554-L34573
+-- | # %TypedArray%.prototype.some ( \_callback\_ \[ , \_thisArg\_ \] )
+-- |
+-- | The interpretation and use of the arguments of this method are the same
+-- | as for \`Array.prototype.some\` as defined in .
+-- |
+-- | This method performs the following steps when called:
+-- |
+-- | 1\. Let \_O\_ be the \*this\* value. 1. Let \_taRecord\_ be ?
+-- | ValidateTypedArray(\_O\_, \~seq-cst\~). 1. Let \_len\_ be
+-- | TypedArrayLength(\_taRecord\_). 1. If IsCallable(\_callback\_) is
+-- | \*false\*, throw a \*TypeError\* exception. 1. Let \_k\_ be 0. 1.
+-- | Repeat, while \_k\_ \< \_len\_, 1. Let \_Pk\_ be !
+-- | ToString(𝔽(\_k\_)). 1. Let \_kValue\_ be ! Get(\_O\_, \_Pk\_). 1. Let
+-- | \_testResult\_ be ToBoolean(? Call(\_callback\_, \_thisArg\_, «
+-- | \_kValue\_, 𝔽(\_k\_), \_O\_ »)). 1. If \_testResult\_ is \*true\*,
+-- | return \*true\*. 1. Set \_k\_ to \_k\_ + 1. 1. Return \*false\*.
+-- |
+-- | This method is not generic. The \*this\* value must be an object with a
+-- | \[\[TypedArrayName\]\] internal slot.
+-- |
+
+-- SPEC: L34574-L34606
+-- | # %TypedArray%.prototype.sort ( \_comparator\_ )
+-- |
+-- | This is a distinct method that, except as described below, implements
+-- | the same requirements as those of \`Array.prototype.sort\` as defined in
+-- | . The implementation of this method may be optimized with the knowledge
+-- | that the \*this\* value is an object that has a fixed length and whose
+-- | integer-indexed properties are not sparse.
+-- |
+-- | This method is not generic. The \*this\* value must be an object with a
+-- | \[\[TypedArrayName\]\] internal slot.
+-- |
+-- | It performs the following steps when called:
+-- |
+-- | 1\. If \_comparator\_ is not \*undefined\* and
+-- | IsCallable(\_comparator\_) is \*false\*, throw a \*TypeError\*
+-- | exception. 1. Let \_obj\_ be the \*this\* value. 1. Let \_taRecord\_ be
+-- | ? ValidateTypedArray(\_obj\_, \~seq-cst\~). 1. Let \_len\_ be
+-- | TypedArrayLength(\_taRecord\_). 1. NOTE: The following closure performs
+-- | a numeric comparison rather than the string comparison used in . 1. Let
+-- | \_SortCompare\_ be a new Abstract Closure with parameters (\_x\_, \_y\_)
+-- | that captures \_comparator\_ and performs the following steps when
+-- | called: 1. Return ? CompareTypedArrayElements(\_x\_, \_y\_,
+-- | \_comparator\_). 1. Let \_sortedList\_ be ?
+-- | SortIndexedProperties(\_obj\_, \_len\_, \_SortCompare\_,
+-- | \~read-through-holes\~). 1. Let \_j\_ be 0. 1. Repeat, while \_j\_ \<
+-- | \_len\_, 1. Perform ! Set(\_obj\_, ! ToString(𝔽(\_j\_)),
+-- | \_sortedList\_\[\_j\_\], \*true\*). 1. Set \_j\_ to \_j\_ + 1. 1. Return
+-- | \_obj\_.
+-- |
+-- | Because \*NaN\* always compares greater than any other value (see
+-- | CompareTypedArrayElements), \*NaN\* property values always sort to the
+-- | end of the result when \_comparator\_ is not provided.
+-- |
+
+-- SPEC: L34607-L34647
+-- | # %TypedArray%.prototype.subarray ( \_start\_, \_end\_ )
+-- |
+-- | This method returns a new \_TypedArray\_ whose element type is the
+-- | element type of this \_TypedArray\_ and whose ArrayBuffer is the
+-- | ArrayBuffer of this \_TypedArray\_, referencing the elements in the
+-- | interval from \_start\_ (inclusive) to \_end\_ (exclusive). If either
+-- | \_start\_ or \_end\_ is negative, it refers to an index from the end of
+-- | the array, as opposed to from the beginning.
+-- |
+-- | It performs the following steps when called:
+-- |
+-- | 1\. Let \_O\_ be the \*this\* value. 1. Perform ?
+-- | RequireInternalSlot(\_O\_, \[\[TypedArrayName\]\]). 1. Assert: \_O\_ has
+-- | a \[\[ViewedArrayBuffer\]\] internal slot. 1. Let \_buffer\_ be
+-- | \_O\_.\[\[ViewedArrayBuffer\]\]. 1. Let \_srcRecord\_ be
+-- | MakeTypedArrayWithBufferWitnessRecord(\_O\_, \~seq-cst\~). 1. If
+-- | IsTypedArrayOutOfBounds(\_srcRecord\_) is \*true\*, then 1. Let
+-- | \_srcLength\_ be 0. 1. Else, 1. Let \_srcLength\_ be
+-- | TypedArrayLength(\_srcRecord\_). 1. Let \_relativeStart\_ be ?
+-- | ToIntegerOrInfinity(\_start\_). 1. If \_relativeStart\_ = -∞, let
+-- | \_startIndex\_ be 0. 1. Else if \_relativeStart\_ \< 0, let
+-- | \_startIndex\_ be max(\_srcLength\_ + \_relativeStart\_, 0). 1. Else,
+-- | let \_startIndex\_ be min(\_relativeStart\_, \_srcLength\_). 1. Let
+-- | \_elementSize\_ be TypedArrayElementSize(\_O\_). 1. Let
+-- | \_srcByteOffset\_ be \_O\_.\[\[ByteOffset\]\]. 1. Let
+-- | \_beginByteOffset\_ be \_srcByteOffset\_ + (\_startIndex\_ ×
+-- | \_elementSize\_). 1. If \_O\_.\[\[ArrayLength\]\] is \~auto\~ and
+-- | \_end\_ is \*undefined\*, then 1. Let \_argumentsList\_ be « \_buffer\_,
+-- | 𝔽(\_beginByteOffset\_) ». 1. Else, 1. If \_end\_ is \*undefined\*, let
+-- | \_relativeEnd\_ be \_srcLength\_; else let \_relativeEnd\_ be ?
+-- | ToIntegerOrInfinity(\_end\_). 1. If \_relativeEnd\_ = -∞, let
+-- | \_endIndex\_ be 0. 1. Else if \_relativeEnd\_ \< 0, let \_endIndex\_ be
+-- | max(\_srcLength\_ + \_relativeEnd\_, 0). 1. Else, let \_endIndex\_ be
+-- | min(\_relativeEnd\_, \_srcLength\_). 1. Let \_newLength\_ be
+-- | max(\_endIndex\_ - \_startIndex\_, 0). 1. Let \_argumentsList\_ be «
+-- | \_buffer\_, 𝔽(\_beginByteOffset\_), 𝔽(\_newLength\_) ». 1. Return ?
+-- | TypedArraySpeciesCreate(\_O\_, \_argumentsList\_).
+-- |
+-- | This method is not generic. The \*this\* value must be an object with a
+-- | \[\[TypedArrayName\]\] internal slot.
+-- |
+
+-- SPEC: L34648-L34668
+-- | # %TypedArray%.prototype.toLocaleString ( \[ \_reserved1\_ \[ , \_reserved2\_ \] \] )
+-- |
+-- | This is a distinct method that implements the same algorithm as
+-- | \`Array.prototype.toLocaleString\` as defined in except that
+-- | TypedArrayLength is called in place of performing a \[\[Get\]\] of
+-- | \*\"length\"\*. The implementation of the algorithm may be optimized
+-- | with the knowledge that the \*this\* value has a fixed length when the
+-- | underlying buffer is not resizable and whose integer-indexed properties
+-- | are not sparse. However, such optimization must not introduce any
+-- | observable changes in the specified behaviour of the algorithm.
+-- |
+-- | This method is not generic. ValidateTypedArray is called with the
+-- | \*this\* value and \~seq-cst\~ as arguments prior to evaluating the
+-- | algorithm. If its result is an abrupt completion that exception is
+-- | thrown instead of evaluating the algorithm.
+-- |
+-- | If the ECMAScript implementation includes the ECMA-402
+-- | Internationalization API this method is based upon the algorithm for
+-- | \`Array.prototype.toLocaleString\` that is in the ECMA-402
+-- | specification.
+-- |
+
+-- SPEC: L34669-L34681
+-- | # %TypedArray%.prototype.toReversed ( )
+-- |
+-- | This method performs the following steps when called:
+-- |
+-- | 1\. Let \_O\_ be the \*this\* value. 1. Let \_taRecord\_ be ?
+-- | ValidateTypedArray(\_O\_, \~seq-cst\~). 1. Let \_len\_ be
+-- | TypedArrayLength(\_taRecord\_). 1. Let \_A\_ be ?
+-- | TypedArrayCreateSameType(\_O\_, \_len\_). 1. Let \_k\_ be 0. 1. Repeat,
+-- | while \_k\_ \< \_len\_, 1. Let \_from\_ be ! ToString(𝔽(\_len\_ -
+-- | \_k\_ - 1)). 1. Let \_Pk\_ be ! ToString(𝔽(\_k\_)). 1. Let \_fromValue\_
+-- | be ! Get(\_O\_, \_from\_). 1. Perform ! Set(\_A\_, \_Pk\_,
+-- | \_fromValue\_, \*true\*). 1. Set \_k\_ to \_k\_ + 1. 1. Return \_A\_.
+-- |
+
+-- SPEC: L34682-L34701
+-- | # %TypedArray%.prototype.toSorted ( \_comparator\_ )
+-- |
+-- | This method performs the following steps when called:
+-- |
+-- | 1\. If \_comparator\_ is not \*undefined\* and
+-- | IsCallable(\_comparator\_) is \*false\*, throw a \*TypeError\*
+-- | exception. 1. Let \_O\_ be the \*this\* value. 1. Let \_taRecord\_ be ?
+-- | ValidateTypedArray(\_O\_, \~seq-cst\~). 1. Let \_len\_ be
+-- | TypedArrayLength(\_taRecord\_). 1. Let \_A\_ be ?
+-- | TypedArrayCreateSameType(\_O\_, \_len\_). 1. NOTE: The following closure
+-- | performs a numeric comparison rather than the string comparison used in
+-- | . 1. Let \_SortCompare\_ be a new Abstract Closure with parameters
+-- | (\_x\_, \_y\_) that captures \_comparator\_ and performs the following
+-- | steps when called: 1. Return ? CompareTypedArrayElements(\_x\_, \_y\_,
+-- | \_comparator\_). 1. Let \_sortedList\_ be ? SortIndexedProperties(\_O\_,
+-- | \_len\_, \_SortCompare\_, \~read-through-holes\~). 1. Let \_j\_ be 0. 1.
+-- | Repeat, while \_j\_ \< \_len\_, 1. Perform ! Set(\_A\_, !
+-- | ToString(𝔽(\_j\_)), \_sortedList\_\[\_j\_\], \*true\*). 1. Set \_j\_ to
+-- | \_j\_ + 1. 1. Return \_A\_.
+-- |
+
+-- SPEC: L34702-L34706
+-- | # %TypedArray%.prototype.toString ( )
+-- |
+-- | The initial value of the \*\"toString\"\* property is
+-- | %Array.prototype.toString%, defined in .
+-- |
+
+-- SPEC: L34707-L34714
+-- | # %TypedArray%.prototype.values ( )
+-- |
+-- | This method performs the following steps when called:
+-- |
+-- | 1\. Let \_O\_ be the \*this\* value. 1. Perform ?
+-- | ValidateTypedArray(\_O\_, \~seq-cst\~). 1. Return
+-- | CreateArrayIterator(\_O\_, \~value\~).
+-- |
+
+-- SPEC: L34715-L34735
+-- | # %TypedArray%.prototype.with ( \_index\_, \_value\_ )
+-- |
+-- | This method performs the following steps when called:
+-- |
+-- | 1\. Let \_O\_ be the \*this\* value. 1. Let \_taRecord\_ be ?
+-- | ValidateTypedArray(\_O\_, \~seq-cst\~). 1. Let \_len\_ be
+-- | TypedArrayLength(\_taRecord\_). 1. Let \_relativeIndex\_ be ?
+-- | ToIntegerOrInfinity(\_index\_). 1. If \_relativeIndex\_ ≥ 0, let
+-- | \_actualIndex\_ be \_relativeIndex\_. 1. Else, let \_actualIndex\_ be
+-- | \_len\_ + \_relativeIndex\_. 1. If \_O\_.\[\[ContentType\]\] is
+-- | \~bigint\~, let \_numericValue\_ be ? ToBigInt(\_value\_). 1. Else, let
+-- | \_numericValue\_ be ? ToNumber(\_value\_). 1. If
+-- | IsValidIntegerIndex(\_O\_, 𝔽(\_actualIndex\_)) is \*false\*, throw a
+-- | \*RangeError\* exception. 1. Let \_A\_ be ?
+-- | TypedArrayCreateSameType(\_O\_, \_len\_). 1. Let \_k\_ be 0. 1. Repeat,
+-- | while \_k\_ \< \_len\_, 1. Let \_Pk\_ be ! ToString(𝔽(\_k\_)). 1. If
+-- | \_k\_ = \_actualIndex\_, let \_fromValue\_ be \_numericValue\_. 1. Else,
+-- | let \_fromValue\_ be ! Get(\_O\_, \_Pk\_). 1. Perform ! Set(\_A\_,
+-- | \_Pk\_, \_fromValue\_, \*true\*). 1. Set \_k\_ to \_k\_ + 1. 1. Return
+-- | \_A\_.
+-- |
+
+-- SPEC: L34736-L34740
+-- | # %TypedArray%.prototype \[ %Symbol.iterator% \] ( )
+-- |
+-- | The initial value of the %Symbol.iterator% property is
+-- | %TypedArray.prototype.values%, defined in .
+-- |
+
+-- SPEC: L34741-L34758
+-- | # get %TypedArray%.prototype \[ %Symbol.toStringTag% \]
+-- |
+-- | %TypedArray%\`.prototype\[%Symbol.toStringTag%\]\` is an accessor
+-- | property whose set accessor function is \*undefined\*. Its get accessor
+-- | function performs the following steps when called:
+-- |
+-- | 1\. Let \_O\_ be the \*this\* value. 1. If \_O\_ is not an Object,
+-- | return \*undefined\*. 1. If \_O\_ does not have a \[\[TypedArrayName\]\]
+-- | internal slot, return \*undefined\*. 1. Let \_name\_ be
+-- | \_O\_.\[\[TypedArrayName\]\]. 1. Assert: \_name\_ is a String. 1. Return
+-- | \_name\_.
+-- |
+-- | This property has the attributes { \[\[Enumerable\]\]: \*false\*,
+-- | \[\[Configurable\]\]: \*true\* }.
+-- |
+-- | The initial value of the \*\"name\"\* property of this function is
+-- | \*\"get \[Symbol.toStringTag\]\"\*.
+-- |
+
+-- SPEC: L34759-L34760
+-- | # Abstract Operations for TypedArray Objects
+-- |
+
+-- SPEC: L34761-L34777
+-- | # TypedArrayCreateFromConstructor ( \_constructor\_: a constructor, \_argumentList\_: a List of ECMAScript language values, ): either a normal completion containing a TypedArray or a throw completion
+-- |
+-- | description
+-- | :   It is used to specify the creation of a new TypedArray using a
+-- |     constructor function.
+-- |
+-- | 1\. Let \_newTypedArray\_ be ? Construct(\_constructor\_,
+-- | \_argumentList\_). 1. Let \_taRecord\_ be ?
+-- | ValidateTypedArray(\_newTypedArray\_, \~seq-cst\~). 1. Assert:
+-- | \_newTypedArray\_ has all the internal slots mentioned in . 1. If the
+-- | number of elements in \_argumentList\_ is 1 and \_argumentList\_\[0\] is
+-- | a Number, then 1. If IsTypedArrayOutOfBounds(\_taRecord\_) is \*true\*,
+-- | throw a \*TypeError\* exception. 1. Let \_length\_ be
+-- | TypedArrayLength(\_taRecord\_). 1. If \_length\_ \<
+-- | ℝ(\_argumentList\_\[0\]), throw a \*TypeError\* exception. 1. Return
+-- | \_newTypedArray\_.
+-- |
+
+-- SPEC: L34778-L34794
+-- | # TypedArrayCreateSameType ( \_exemplar\_: a TypedArray, \_length\_: a non-negative integer, ): either a normal completion containing a TypedArray or a throw completion
+-- |
+-- | description
+-- | :   It is used to specify the creation of a new TypedArray using a
+-- |     constructor function that is derived from \_exemplar\_. Unlike
+-- |     TypedArraySpeciesCreate, which can construct custom TypedArray
+-- |     subclasses through the use of %Symbol.species%, this operation
+-- |     always uses one of the built-in TypedArray constructors.
+-- |
+-- | 1\. Let \_constructor\_ be the intrinsic object associated with the
+-- | constructor name \_exemplar\_.\[\[TypedArrayName\]\] in . 1. Let
+-- | \_result\_ be ? TypedArrayCreateFromConstructor(\_constructor\_, «
+-- | 𝔽(\_length\_) »). 1. Assert: \_result\_ has \[\[TypedArrayName\]\] and
+-- | \[\[ContentType\]\] internal slots. 1. Assert:
+-- | \_result\_.\[\[ContentType\]\] is \_exemplar\_.\[\[ContentType\]\]. 1.
+-- | Return \_result\_.
+-- |
+
+-- SPEC: L34795-L34812
+-- | # TypedArraySpeciesCreate ( \_exemplar\_: a TypedArray, \_argumentList\_: a List of ECMAScript language values, ): either a normal completion containing a TypedArray or a throw completion
+-- |
+-- | description
+-- | :   It is used to specify the creation of a new TypedArray using a
+-- |     constructor function that is derived from \_exemplar\_. Unlike
+-- |     ArraySpeciesCreate, which can create non-Array objects through the
+-- |     use of %Symbol.species%, this operation enforces that the
+-- |     constructor function creates an actual TypedArray.
+-- |
+-- | 1\. Let \_defaultConstructor\_ be the intrinsic object associated with
+-- | the constructor name \_exemplar\_.\[\[TypedArrayName\]\] in . 1. Let
+-- | \_constructor\_ be ? SpeciesConstructor(\_exemplar\_,
+-- | \_defaultConstructor\_). 1. Let \_result\_ be ?
+-- | TypedArrayCreateFromConstructor(\_constructor\_, \_argumentList\_). 1.
+-- | If \_result\_.\[\[ContentType\]\] is not
+-- | \_exemplar\_.\[\[ContentType\]\], throw a \*TypeError\* exception. 1.
+-- | Return \_result\_.
+-- |
+
+-- SPEC: L34813-L34820
+-- | # ValidateTypedArray ( \_O\_: an ECMAScript language value, \_order\_: \~seq-cst\~ or \~unordered\~, ): either a normal completion containing a TypedArray With Buffer Witness Record or a throw completion
+-- |
+-- | 1\. Perform ? RequireInternalSlot(\_O\_, \[\[TypedArrayName\]\]). 1.
+-- | Assert: \_O\_ has a \[\[ViewedArrayBuffer\]\] internal slot. 1. Let
+-- | \_taRecord\_ be MakeTypedArrayWithBufferWitnessRecord(\_O\_,
+-- | \_order\_). 1. If IsTypedArrayOutOfBounds(\_taRecord\_) is \*true\*,
+-- | throw a \*TypeError\* exception. 1. Return \_taRecord\_.
+-- |
+
+-- SPEC: L34821-L34825
+-- | # TypedArrayElementSize ( \_O\_: a TypedArray, ): a non-negative integer
+-- |
+-- | 1\. Return the Element Size value specified in for
+-- | \_O\_.\[\[TypedArrayName\]\].
+-- |
+
+-- SPEC: L34826-L34830
+-- | # TypedArrayElementType ( \_O\_: a TypedArray, ): a TypedArray element type
+-- |
+-- | 1\. Return the Element Type value specified in for
+-- | \_O\_.\[\[TypedArrayName\]\].
+-- |
+
+-- SPEC: L34831-L34844
+-- | # CompareTypedArrayElements ( \_x\_: a Number or a BigInt, \_y\_: a Number or a BigInt, \_comparator\_: a function object or \*undefined\*, ): either a normal completion containing a Number or an abrupt completion
+-- |
+-- | 1\. Assert: \_x\_ is a Number and \_y\_ is a Number, or \_x\_ is a
+-- | BigInt and \_y\_ is a BigInt. 1. If \_comparator\_ is not \*undefined\*,
+-- | then 1. Let \_v\_ be ? ToNumber(? Call(\_comparator\_, \*undefined\*, «
+-- | \_x\_, \_y\_ »)). 1. If \_v\_ is \*NaN\*, return \*+0\*~𝔽~. 1. Return
+-- | \_v\_. 1. If \_x\_ and \_y\_ are both \*NaN\*, return \*+0\*~𝔽~. 1. If
+-- | \_x\_ is \*NaN\*, return \*1\*~𝔽~. 1. If \_y\_ is \*NaN\*, return
+-- | \*-1\*~𝔽~. 1. If \_x\_ \< \_y\_, return \*-1\*~𝔽~. 1. If \_x\_ \> \_y\_,
+-- | return \*1\*~𝔽~. 1. If \_x\_ is \*-0\*~𝔽~ and \_y\_ is \*+0\*~𝔽~, return
+-- | \*-1\*~𝔽~. 1. If \_x\_ is \*+0\*~𝔽~ and \_y\_ is \*-0\*~𝔽~, return
+-- | \*1\*~𝔽~. 1. Return \*+0\*~𝔽~. This performs a numeric comparison rather
+-- | than the string comparison used in .
+-- |
+
+-- SPEC: L34845-L34863
+-- | # The \_TypedArray\_ Constructors
+-- |
+-- | Each \_TypedArray\_ constructor:
+-- |
+-- | - is an intrinsic object that has the structure described below,
+-- |   differing only in the name used as the constructor name instead of
+-- |   \_TypedArray\_, in , except where otherwise noted.
+-- | - is a function whose behaviour differs based upon the number and types
+-- |   of its arguments. The actual behaviour of a call of \_TypedArray\_
+-- |   depends upon the number and kind of arguments that are passed to it.
+-- | - is not intended to be called as a function and will throw an exception
+-- |   when called in that manner.
+-- | - may be used as the value of an \`extends\` clause of a class
+-- |   definition. Subclass constructors that intend to inherit the specified
+-- |   \_TypedArray\_ behaviour must include a \`super\` call to the
+-- |   \_TypedArray\_ constructor to create and initialize the subclass
+-- |   instance with the internal state necessary to support the
+-- |   %TypedArray%\`.prototype\` built-in methods.
+-- |
+
+-- SPEC: L38206-L38218
+-- | # ValidateIntegerTypedArray ( \_typedArray\_: an ECMAScript language value, \_waitable\_: a Boolean, ): either a normal completion containing a TypedArray With Buffer Witness Record, or a throw completion
+-- |
+-- | 1\. Let \_taRecord\_ be ? ValidateTypedArray(\_typedArray\_,
+-- | \~unordered\~). 1. NOTE: Bounds checking is not a synchronizing
+-- | operation when \_typedArray\_\'s backing buffer is a growable
+-- | SharedArrayBuffer. 1. If \_waitable\_ is \*true\*, then 1. If
+-- | \_typedArray\_.\[\[TypedArrayName\]\] is neither \*\"Int32Array\"\* nor
+-- | \*\"BigInt64Array\"\*, throw a \*TypeError\* exception. 1. Else, 1. Let
+-- | \_type\_ be TypedArrayElementType(\_typedArray\_). 1. If
+-- | IsUnclampedIntegerElementType(\_type\_) is \*false\* and
+-- | IsBigIntElementType(\_type\_) is \*false\*, throw a \*TypeError\*
+-- | exception. 1. Return \_taRecord\_.
+-- |
+
+-- SPEC: L38219-L38229
+-- | # ValidateAtomicAccess ( \_taRecord\_: a TypedArray With Buffer Witness Record, \_requestIndex\_: an ECMAScript language value, ): either a normal completion containing an integer or a throw completion
+-- |
+-- | 1\. Let \_length\_ be TypedArrayLength(\_taRecord\_). 1. Let
+-- | \_accessIndex\_ be ? ToIndex(\_requestIndex\_). 1. Assert:
+-- | \_accessIndex\_ ≥ 0. 1. If \_accessIndex\_ ≥ \_length\_, throw a
+-- | \*RangeError\* exception. 1. Let \_typedArray\_ be
+-- | \_taRecord\_.\[\[Object\]\]. 1. Let \_elementSize\_ be
+-- | TypedArrayElementSize(\_typedArray\_). 1. Let \_offset\_ be
+-- | \_typedArray\_.\[\[ByteOffset\]\]. 1. Return (\_accessIndex\_ ×
+-- | \_elementSize\_) + \_offset\_.
+-- |
+
+-- ============================================================
+-- DATAVIEW
+-- ============================================================
+
+-- SPEC: L37814-L37830
+-- | # The DataView Constructor
+-- |
+-- | The DataView constructor:
+-- |
+-- | - is [%DataView%]{.dfn}.
+-- | - is the initial value of the \*\"DataView\"\* property of the global
+-- |   object.
+-- | - creates and initializes a new DataView when called as a constructor.
+-- | - is not intended to be called as a function and will throw an exception
+-- |   when called in that manner.
+-- | - may be used as the value of an \`extends\` clause of a class
+-- |   definition. Subclass constructors that intend to inherit the specified
+-- |   DataView behaviour must include a \`super\` call to the DataView
+-- |   constructor to create and initialize subclass instances with the
+-- |   internal state necessary to support the \`DataView.prototype\`
+-- |   built-in methods.
+-- |
+
+-- SPEC: L37831-L37860
+-- | # DataView ( \_buffer\_ \[ , \_byteOffset\_ \[ , \_byteLength\_ \] \] )
+-- |
+-- | This function performs the following steps when called:
+-- |
+-- | 1\. If NewTarget is \*undefined\*, throw a \*TypeError\* exception. 1.
+-- | Perform ? RequireInternalSlot(\_buffer\_, \[\[ArrayBufferData\]\]). 1.
+-- | Let \_offset\_ be ? ToIndex(\_byteOffset\_). 1. If
+-- | IsDetachedBuffer(\_buffer\_) is \*true\*, throw a \*TypeError\*
+-- | exception. 1. Let \_bufferByteLength\_ be
+-- | ArrayBufferByteLength(\_buffer\_, \~seq-cst\~). 1. If \_offset\_ \>
+-- | \_bufferByteLength\_, throw a \*RangeError\* exception. 1. Let
+-- | \_bufferIsFixedLength\_ be IsFixedLengthArrayBuffer(\_buffer\_). 1. If
+-- | \_byteLength\_ is \*undefined\*, then 1. If \_bufferIsFixedLength\_ is
+-- | \*true\*, then 1. Let \_viewByteLength\_ be \_bufferByteLength\_ -
+-- | \_offset\_. 1. Else, 1. Let \_viewByteLength\_ be \~auto\~. 1. Else, 1.
+-- | Let \_viewByteLength\_ be ? ToIndex(\_byteLength\_). 1. If \_offset\_ +
+-- | \_viewByteLength\_ \> \_bufferByteLength\_, throw a \*RangeError\*
+-- | exception. 1. Let \_O\_ be ? OrdinaryCreateFromConstructor(NewTarget,
+-- | \*\"%DataView.prototype%\"\*, « \[\[DataView\]\],
+-- | \[\[ViewedArrayBuffer\]\], \[\[ByteLength\]\], \[\[ByteOffset\]\] »). 1.
+-- | If IsDetachedBuffer(\_buffer\_) is \*true\*, throw a \*TypeError\*
+-- | exception. 1. Set \_bufferByteLength\_ to
+-- | ArrayBufferByteLength(\_buffer\_, \~seq-cst\~). 1. If \_offset\_ \>
+-- | \_bufferByteLength\_, throw a \*RangeError\* exception. 1. If
+-- | \_byteLength\_ is not \*undefined\*, then 1. If \_offset\_ +
+-- | \_viewByteLength\_ \> \_bufferByteLength\_, throw a \*RangeError\*
+-- | exception. 1. Set \_O\_.\[\[ViewedArrayBuffer\]\] to \_buffer\_. 1. Set
+-- | \_O\_.\[\[ByteLength\]\] to \_viewByteLength\_. 1. Set
+-- | \_O\_.\[\[ByteOffset\]\] to \_offset\_. 1. Return \_O\_.
+-- |
+
+-- SPEC: L37861-L37868
+-- | # Properties of the DataView Constructor
+-- |
+-- | The DataView constructor:
+-- |
+-- | - has a \[\[Prototype\]\] internal slot whose value is
+-- |   %Function.prototype%.
+-- | - has the following properties:
+-- |
+
+-- SPEC: L37869-L37876
+-- | # DataView.prototype
+-- |
+-- | The initial value of \`DataView.prototype\` is the DataView prototype
+-- | object.
+-- |
+-- | This property has the attributes { \[\[Writable\]\]: \*false\*,
+-- | \[\[Enumerable\]\]: \*false\*, \[\[Configurable\]\]: \*false\* }.
+-- |
+
+-- SPEC: L37877-L37887
+-- | # Properties of the DataView Prototype Object
+-- |
+-- | The [DataView prototype object]{.dfn}:
+-- |
+-- | - is [%DataView.prototype%]{.dfn}.
+-- | - has a \[\[Prototype\]\] internal slot whose value is
+-- |   %Object.prototype%.
+-- | - is an ordinary object.
+-- | - does not have a \[\[DataView\]\], \[\[ViewedArrayBuffer\]\],
+-- |   \[\[ByteLength\]\], or \[\[ByteOffset\]\] internal slot.
+-- |
+
+-- SPEC: L37888-L37898
+-- | # get DataView.prototype.buffer
+-- |
+-- | \`DataView.prototype.buffer\` is an accessor property whose set accessor
+-- | function is \*undefined\*. Its get accessor function performs the
+-- | following steps when called:
+-- |
+-- | 1\. Let \_O\_ be the \*this\* value. 1. Perform ?
+-- | RequireInternalSlot(\_O\_, \[\[DataView\]\]). 1. Assert: \_O\_ has a
+-- | \[\[ViewedArrayBuffer\]\] internal slot. 1. Let \_buffer\_ be
+-- | \_O\_.\[\[ViewedArrayBuffer\]\]. 1. Return \_buffer\_.
+-- |
+
+-- SPEC: L37899-L37912
+-- | # get DataView.prototype.byteLength
+-- |
+-- | \`DataView.prototype.byteLength\` is an accessor property whose set
+-- | accessor function is \*undefined\*. Its get accessor function performs
+-- | the following steps when called:
+-- |
+-- | 1\. Let \_O\_ be the \*this\* value. 1. Perform ?
+-- | RequireInternalSlot(\_O\_, \[\[DataView\]\]). 1. Assert: \_O\_ has a
+-- | \[\[ViewedArrayBuffer\]\] internal slot. 1. Let \_viewRecord\_ be
+-- | MakeDataViewWithBufferWitnessRecord(\_O\_, \~seq-cst\~). 1. If
+-- | IsViewOutOfBounds(\_viewRecord\_) is \*true\*, throw a \*TypeError\*
+-- | exception. 1. Let \_size\_ be GetViewByteLength(\_viewRecord\_). 1.
+-- | Return 𝔽(\_size\_).
+-- |
+
+-- SPEC: L37913-L37926
+-- | # get DataView.prototype.byteOffset
+-- |
+-- | \`DataView.prototype.byteOffset\` is an accessor property whose set
+-- | accessor function is \*undefined\*. Its get accessor function performs
+-- | the following steps when called:
+-- |
+-- | 1\. Let \_O\_ be the \*this\* value. 1. Perform ?
+-- | RequireInternalSlot(\_O\_, \[\[DataView\]\]). 1. Assert: \_O\_ has a
+-- | \[\[ViewedArrayBuffer\]\] internal slot. 1. Let \_viewRecord\_ be
+-- | MakeDataViewWithBufferWitnessRecord(\_O\_, \~seq-cst\~). 1. If
+-- | IsViewOutOfBounds(\_viewRecord\_) is \*true\*, throw a \*TypeError\*
+-- | exception. 1. Let \_offset\_ be \_O\_.\[\[ByteOffset\]\]. 1. Return
+-- | 𝔽(\_offset\_).
+-- |
+
+-- SPEC: L37927-L37930
+-- | # DataView.prototype.constructor
+-- |
+-- | The initial value of \`DataView.prototype.constructor\` is %DataView%.
+-- |
+
+-- SPEC: L37931-L37937
+-- | # DataView.prototype.getBigInt64 ( \_byteOffset\_ \[ , \_littleEndian\_ \] )
+-- |
+-- | This method performs the following steps when called:
+-- |
+-- | 1\. Let \_view\_ be the \*this\* value. 1. Return ?
+-- | GetViewValue(\_view\_, \_byteOffset\_, \_littleEndian\_, \~bigint64\~).
+-- |
+
+-- SPEC: L37938-L37944
+-- | # DataView.prototype.getBigUint64 ( \_byteOffset\_ \[ , \_littleEndian\_ \] )
+-- |
+-- | This method performs the following steps when called:
+-- |
+-- | 1\. Let \_view\_ be the \*this\* value. 1. Return ?
+-- | GetViewValue(\_view\_, \_byteOffset\_, \_littleEndian\_, \~biguint64\~).
+-- |
+
+-- SPEC: L37945-L37952
+-- | # DataView.prototype.getFloat16 ( \_byteOffset\_ \[ , \_littleEndian\_ \] )
+-- |
+-- | This method performs the following steps when called:
+-- |
+-- | 1\. Let \_view\_ be the \*this\* value. 1. If \_littleEndian\_ is not
+-- | present, set \_littleEndian\_ to \*false\*. 1. Return ?
+-- | GetViewValue(\_view\_, \_byteOffset\_, \_littleEndian\_, \~float16\~).
+-- |
+
+-- SPEC: L37953-L37960
+-- | # DataView.prototype.getFloat32 ( \_byteOffset\_ \[ , \_littleEndian\_ \] )
+-- |
+-- | This method performs the following steps when called:
+-- |
+-- | 1\. Let \_view\_ be the \*this\* value. 1. If \_littleEndian\_ is not
+-- | present, set \_littleEndian\_ to \*false\*. 1. Return ?
+-- | GetViewValue(\_view\_, \_byteOffset\_, \_littleEndian\_, \~float32\~).
+-- |
+
+-- SPEC: L37961-L37968
+-- | # DataView.prototype.getFloat64 ( \_byteOffset\_ \[ , \_littleEndian\_ \] )
+-- |
+-- | This method performs the following steps when called:
+-- |
+-- | 1\. Let \_view\_ be the \*this\* value. 1. If \_littleEndian\_ is not
+-- | present, set \_littleEndian\_ to \*false\*. 1. Return ?
+-- | GetViewValue(\_view\_, \_byteOffset\_, \_littleEndian\_, \~float64\~).
+-- |
+
+-- SPEC: L37969-L37975
+-- | # DataView.prototype.getInt8 ( \_byteOffset\_ )
+-- |
+-- | This method performs the following steps when called:
+-- |
+-- | 1\. Let \_view\_ be the \*this\* value. 1. Return ?
+-- | GetViewValue(\_view\_, \_byteOffset\_, \*true\*, \~int8\~).
+-- |
+
+-- SPEC: L37976-L37983
+-- | # DataView.prototype.getInt16 ( \_byteOffset\_ \[ , \_littleEndian\_ \] )
+-- |
+-- | This method performs the following steps when called:
+-- |
+-- | 1\. Let \_view\_ be the \*this\* value. 1. If \_littleEndian\_ is not
+-- | present, set \_littleEndian\_ to \*false\*. 1. Return ?
+-- | GetViewValue(\_view\_, \_byteOffset\_, \_littleEndian\_, \~int16\~).
+-- |
+
+-- SPEC: L37984-L37991
+-- | # DataView.prototype.getInt32 ( \_byteOffset\_ \[ , \_littleEndian\_ \] )
+-- |
+-- | This method performs the following steps when called:
+-- |
+-- | 1\. Let \_view\_ be the \*this\* value. 1. If \_littleEndian\_ is not
+-- | present, set \_littleEndian\_ to \*false\*. 1. Return ?
+-- | GetViewValue(\_view\_, \_byteOffset\_, \_littleEndian\_, \~int32\~).
+-- |
+
+-- SPEC: L37992-L37998
+-- | # DataView.prototype.getUint8 ( \_byteOffset\_ )
+-- |
+-- | This method performs the following steps when called:
+-- |
+-- | 1\. Let \_view\_ be the \*this\* value. 1. Return ?
+-- | GetViewValue(\_view\_, \_byteOffset\_, \*true\*, \~uint8\~).
+-- |
+
+-- SPEC: L37999-L38006
+-- | # DataView.prototype.getUint16 ( \_byteOffset\_ \[ , \_littleEndian\_ \] )
+-- |
+-- | This method performs the following steps when called:
+-- |
+-- | 1\. Let \_view\_ be the \*this\* value. 1. If \_littleEndian\_ is not
+-- | present, set \_littleEndian\_ to \*false\*. 1. Return ?
+-- | GetViewValue(\_view\_, \_byteOffset\_, \_littleEndian\_, \~uint16\~).
+-- |
+
+-- SPEC: L38007-L38014
+-- | # DataView.prototype.getUint32 ( \_byteOffset\_ \[ , \_littleEndian\_ \] )
+-- |
+-- | This method performs the following steps when called:
+-- |
+-- | 1\. Let \_view\_ be the \*this\* value. 1. If \_littleEndian\_ is not
+-- | present, set \_littleEndian\_ to \*false\*. 1. Return ?
+-- | GetViewValue(\_view\_, \_byteOffset\_, \_littleEndian\_, \~uint32\~).
+-- |
+
+-- SPEC: L38015-L38022
+-- | # DataView.prototype.setBigInt64 ( \_byteOffset\_, \_value\_ \[ , \_littleEndian\_ \] )
+-- |
+-- | This method performs the following steps when called:
+-- |
+-- | 1\. Let \_view\_ be the \*this\* value. 1. Return ?
+-- | SetViewValue(\_view\_, \_byteOffset\_, \_littleEndian\_, \~bigint64\~,
+-- | \_value\_).
+-- |
+
+-- SPEC: L38023-L38030
+-- | # DataView.prototype.setBigUint64 ( \_byteOffset\_, \_value\_ \[ , \_littleEndian\_ \] )
+-- |
+-- | This method performs the following steps when called:
+-- |
+-- | 1\. Let \_view\_ be the \*this\* value. 1. Return ?
+-- | SetViewValue(\_view\_, \_byteOffset\_, \_littleEndian\_, \~biguint64\~,
+-- | \_value\_).
+-- |
+
+-- SPEC: L38031-L38039
+-- | # DataView.prototype.setFloat16 ( \_byteOffset\_, \_value\_ \[ , \_littleEndian\_ \] )
+-- |
+-- | This method performs the following steps when called:
+-- |
+-- | 1\. Let \_view\_ be the \*this\* value. 1. If \_littleEndian\_ is not
+-- | present, set \_littleEndian\_ to \*false\*. 1. Return ?
+-- | SetViewValue(\_view\_, \_byteOffset\_, \_littleEndian\_, \~float16\~,
+-- | \_value\_).
+-- |
+
+-- SPEC: L38040-L38048
+-- | # DataView.prototype.setFloat32 ( \_byteOffset\_, \_value\_ \[ , \_littleEndian\_ \] )
+-- |
+-- | This method performs the following steps when called:
+-- |
+-- | 1\. Let \_view\_ be the \*this\* value. 1. If \_littleEndian\_ is not
+-- | present, set \_littleEndian\_ to \*false\*. 1. Return ?
+-- | SetViewValue(\_view\_, \_byteOffset\_, \_littleEndian\_, \~float32\~,
+-- | \_value\_).
+-- |
+
+-- SPEC: L38049-L38057
+-- | # DataView.prototype.setFloat64 ( \_byteOffset\_, \_value\_ \[ , \_littleEndian\_ \] )
+-- |
+-- | This method performs the following steps when called:
+-- |
+-- | 1\. Let \_view\_ be the \*this\* value. 1. If \_littleEndian\_ is not
+-- | present, set \_littleEndian\_ to \*false\*. 1. Return ?
+-- | SetViewValue(\_view\_, \_byteOffset\_, \_littleEndian\_, \~float64\~,
+-- | \_value\_).
+-- |
+
+-- SPEC: L38058-L38064
+-- | # DataView.prototype.setInt8 ( \_byteOffset\_, \_value\_ )
+-- |
+-- | This method performs the following steps when called:
+-- |
+-- | 1\. Let \_view\_ be the \*this\* value. 1. Return ?
+-- | SetViewValue(\_view\_, \_byteOffset\_, \*true\*, \~int8\~, \_value\_).
+-- |
+
+-- SPEC: L38065-L38073
+-- | # DataView.prototype.setInt16 ( \_byteOffset\_, \_value\_ \[ , \_littleEndian\_ \] )
+-- |
+-- | This method performs the following steps when called:
+-- |
+-- | 1\. Let \_view\_ be the \*this\* value. 1. If \_littleEndian\_ is not
+-- | present, set \_littleEndian\_ to \*false\*. 1. Return ?
+-- | SetViewValue(\_view\_, \_byteOffset\_, \_littleEndian\_, \~int16\~,
+-- | \_value\_).
+-- |
+
+-- SPEC: L38074-L38082
+-- | # DataView.prototype.setInt32 ( \_byteOffset\_, \_value\_ \[ , \_littleEndian\_ \] )
+-- |
+-- | This method performs the following steps when called:
+-- |
+-- | 1\. Let \_view\_ be the \*this\* value. 1. If \_littleEndian\_ is not
+-- | present, set \_littleEndian\_ to \*false\*. 1. Return ?
+-- | SetViewValue(\_view\_, \_byteOffset\_, \_littleEndian\_, \~int32\~,
+-- | \_value\_).
+-- |
+
+-- SPEC: L38083-L38089
+-- | # DataView.prototype.setUint8 ( \_byteOffset\_, \_value\_ )
+-- |
+-- | This method performs the following steps when called:
+-- |
+-- | 1\. Let \_view\_ be the \*this\* value. 1. Return ?
+-- | SetViewValue(\_view\_, \_byteOffset\_, \*true\*, \~uint8\~, \_value\_).
+-- |
+
+-- SPEC: L38090-L38098
+-- | # DataView.prototype.setUint16 ( \_byteOffset\_, \_value\_ \[ , \_littleEndian\_ \] )
+-- |
+-- | This method performs the following steps when called:
+-- |
+-- | 1\. Let \_view\_ be the \*this\* value. 1. If \_littleEndian\_ is not
+-- | present, set \_littleEndian\_ to \*false\*. 1. Return ?
+-- | SetViewValue(\_view\_, \_byteOffset\_, \_littleEndian\_, \~uint16\~,
+-- | \_value\_).
+-- |
+
+-- SPEC: L38099-L38107
+-- | # DataView.prototype.setUint32 ( \_byteOffset\_, \_value\_ \[ , \_littleEndian\_ \] )
+-- |
+-- | This method performs the following steps when called:
+-- |
+-- | 1\. Let \_view\_ be the \*this\* value. 1. If \_littleEndian\_ is not
+-- | present, set \_littleEndian\_ to \*false\*. 1. Return ?
+-- | SetViewValue(\_view\_, \_byteOffset\_, \_littleEndian\_, \~uint32\~,
+-- | \_value\_).
+-- |
+
+-- SPEC: L38108-L38115
+-- | # DataView.prototype \[ %Symbol.toStringTag% \]
+-- |
+-- | The initial value of the %Symbol.toStringTag% property is the String
+-- | value \*\"DataView\"\*.
+-- |
+-- | This property has the attributes { \[\[Writable\]\]: \*false\*,
+-- | \[\[Enumerable\]\]: \*false\*, \[\[Configurable\]\]: \*true\* }.
+-- |
+
+-- SPEC: L38116-L38127
+-- | # Properties of DataView Instances
+-- |
+-- | DataView instances are ordinary objects that inherit properties from the
+-- | DataView prototype object. DataView instances each have
+-- | \[\[DataView\]\], \[\[ViewedArrayBuffer\]\], \[\[ByteLength\]\], and
+-- | \[\[ByteOffset\]\] internal slots.
+-- |
+-- | The value of the \[\[DataView\]\] internal slot is not used within this
+-- | specification. The simple presence of that internal slot is used within
+-- | the specification to identify objects created using the DataView
+-- | constructor.
+-- |
+
+-- ============================================================
+-- SHAREDARRAYBUFFER
+-- ============================================================
+
+-- SPEC: L37311-L37312
+-- | # SharedArrayBuffer Objects
+-- |
+
+-- SPEC: L37313-L37323
+-- | # Fixed-length and Growable SharedArrayBuffer Objects
+-- |
+-- | A [fixed-length SharedArrayBuffer]{.dfn} is a SharedArrayBuffer whose
+-- | byte length cannot change after creation.
+-- |
+-- | A [growable SharedArrayBuffer]{.dfn} is a SharedArrayBuffer whose byte
+-- | length may increase after creation via calls to .
+-- |
+-- | The kind of SharedArrayBuffer object that is created depends on the
+-- | arguments passed to .
+-- |
+
+-- SPEC: L37415-L37439
+-- | # The SharedArrayBuffer Constructor
+-- |
+-- | The SharedArrayBuffer constructor:
+-- |
+-- | - is [%SharedArrayBuffer%]{.dfn}.
+-- | - is the initial value of the \*\"SharedArrayBuffer\"\* property of the
+-- |   global object, if that property is present (see below).
+-- | - creates and initializes a new SharedArrayBuffer when called as a
+-- |   constructor.
+-- | - is not intended to be called as a function and will throw an exception
+-- |   when called in that manner.
+-- | - may be used as the value of an \`extends\` clause of a class
+-- |   definition. Subclass constructors that intend to inherit the specified
+-- |   SharedArrayBuffer behaviour must include a \`super\` call to the
+-- |   SharedArrayBuffer constructor to create and initialize subclass
+-- |   instances with the internal state necessary to support the
+-- |   \`SharedArrayBuffer.prototype\` built-in methods.
+-- |
+-- | Whenever a host does not provide concurrent access to SharedArrayBuffers
+-- | it may omit the \*\"SharedArrayBuffer\"\* property of the global object.
+-- |
+-- | Unlike an \`ArrayBuffer\`, a \`SharedArrayBuffer\` cannot become
+-- | detached, and its internal \[\[ArrayBufferData\]\] slot is never
+-- | \*null\*.
+-- |
+
+-- SPEC: L37440-L37450
+-- | # SharedArrayBuffer ( \_length\_ \[ , \_options\_ \] )
+-- |
+-- | This function performs the following steps when called:
+-- |
+-- | 1\. If NewTarget is \*undefined\*, throw a \*TypeError\* exception. 1.
+-- | Let \_byteLength\_ be ? ToIndex(\_length\_). 1. Let
+-- | \_requestedMaxByteLength\_ be ?
+-- | GetArrayBufferMaxByteLengthOption(\_options\_). 1. Return ?
+-- | AllocateSharedArrayBuffer(NewTarget, \_byteLength\_,
+-- | \_requestedMaxByteLength\_).
+-- |
+
+-- SPEC: L37451-L37458
+-- | # Properties of the SharedArrayBuffer Constructor
+-- |
+-- | The SharedArrayBuffer constructor:
+-- |
+-- | - has a \[\[Prototype\]\] internal slot whose value is
+-- |   %Function.prototype%.
+-- | - has the following properties:
+-- |
+
+-- SPEC: L37459-L37466
+-- | # SharedArrayBuffer.prototype
+-- |
+-- | The initial value of \`SharedArrayBuffer.prototype\` is the
+-- | SharedArrayBuffer prototype object.
+-- |
+-- | This property has the attributes { \[\[Writable\]\]: \*false\*,
+-- | \[\[Enumerable\]\]: \*false\*, \[\[Configurable\]\]: \*false\* }.
+-- |
+
+-- SPEC: L37467-L37477
+-- | # get SharedArrayBuffer \[ %Symbol.species% \]
+-- |
+-- | \`SharedArrayBuffer\[%Symbol.species%\]\` is an accessor property whose
+-- | set accessor function is \*undefined\*. Its get accessor function
+-- | performs the following steps when called:
+-- |
+-- | 1\. Return the \*this\* value.
+-- |
+-- | The value of the \*\"name\"\* property of this function is \*\"get
+-- | \[Symbol.species\]\"\*.
+-- |
+
+-- SPEC: L37478-L37488
+-- | # Properties of the SharedArrayBuffer Prototype Object
+-- |
+-- | The [SharedArrayBuffer prototype object]{.dfn}:
+-- |
+-- | - is [%SharedArrayBuffer.prototype%]{.dfn}.
+-- | - has a \[\[Prototype\]\] internal slot whose value is
+-- |   %Object.prototype%.
+-- | - is an ordinary object.
+-- | - does not have an \[\[ArrayBufferData\]\] or
+-- |   \[\[ArrayBufferByteLength\]\] internal slot.
+-- |
+
+-- SPEC: L37489-L37500
+-- | # get SharedArrayBuffer.prototype.byteLength
+-- |
+-- | \`SharedArrayBuffer.prototype.byteLength\` is an accessor property whose
+-- | set accessor function is \*undefined\*. Its get accessor function
+-- | performs the following steps when called:
+-- |
+-- | 1\. Let \_O\_ be the \*this\* value. 1. Perform ?
+-- | RequireInternalSlot(\_O\_, \[\[ArrayBufferData\]\]). 1. If
+-- | IsSharedArrayBuffer(\_O\_) is \*false\*, throw a \*TypeError\*
+-- | exception. 1. Let \_length\_ be ArrayBufferByteLength(\_O\_,
+-- | \~seq-cst\~). 1. Return 𝔽(\_length\_).
+-- |
+
+-- SPEC: L37501-L37505
+-- | # SharedArrayBuffer.prototype.constructor
+-- |
+-- | The initial value of \`SharedArrayBuffer.prototype.constructor\` is
+-- | %SharedArrayBuffer%.
+-- |
+
+-- SPEC: L37506-L37559
+-- | # SharedArrayBuffer.prototype.grow ( \_newLength\_ )
+-- |
+-- | This method performs the following steps when called:
+-- |
+-- | 1\. Let \_O\_ be the \*this\* value. 1. Perform ?
+-- | RequireInternalSlot(\_O\_, \[\[ArrayBufferMaxByteLength\]\]). 1. If
+-- | IsSharedArrayBuffer(\_O\_) is \*false\*, throw a \*TypeError\*
+-- | exception. 1. Let \_newByteLength\_ be ? ToIndex(\_newLength\_). 1. Let
+-- | \_hostHandled\_ be ? HostGrowSharedArrayBuffer(\_O\_,
+-- | \_newByteLength\_). 1. If \_hostHandled\_ is \~handled\~, return
+-- | \*undefined\*. 1. Let \_AR\_ be the Agent Record of the surrounding
+-- | agent. 1. Let \_isLittleEndian\_ be \_AR\_.\[\[LittleEndian\]\]. 1. Let
+-- | \_byteLengthBlock\_ be \_O\_.\[\[ArrayBufferByteLengthData\]\]. 1. Let
+-- | \_currentByteLengthRawBytes\_ be
+-- | GetRawBytesFromSharedBlock(\_byteLengthBlock\_, 0, \~biguint64\~,
+-- | \*true\*, \~seq-cst\~). 1. Let \_newByteLengthRawBytes\_ be
+-- | NumericToRawBytes(\~biguint64\~, ℤ(\_newByteLength\_),
+-- | \_isLittleEndian\_). 1. Repeat, 1. NOTE: This is a compare-and-exchange
+-- | loop to ensure that parallel, racing grows of the same buffer are
+-- | totally ordered, are not lost, and do not silently do nothing. The loop
+-- | exits if it was able to attempt to grow uncontended. 1. Let
+-- | \_currentByteLength\_ be ℝ(RawBytesToNumeric(\~biguint64\~,
+-- | \_currentByteLengthRawBytes\_, \_isLittleEndian\_)). 1. If
+-- | \_newByteLength\_ = \_currentByteLength\_, return \*undefined\*. 1. If
+-- | \_newByteLength\_ \< \_currentByteLength\_ or \_newByteLength\_ \>
+-- | \_O\_.\[\[ArrayBufferMaxByteLength\]\], throw a \*RangeError\*
+-- | exception. 1. Let \_byteLengthDelta\_ be \_newByteLength\_ -
+-- | \_currentByteLength\_. 1. If it is impossible to create a new Shared
+-- | Data Block value consisting of \_byteLengthDelta\_ bytes, throw a
+-- | \*RangeError\* exception. 1. NOTE: No new Shared Data Block is
+-- | constructed and used here. The observable behaviour of growable
+-- | SharedArrayBuffers is specified by allocating a max-sized Shared Data
+-- | Block at construction time, and this step captures the requirement that
+-- | implementations that run out of memory must throw a \*RangeError\*. 1.
+-- | Let \_readByteLengthRawBytes\_ be
+-- | AtomicCompareExchangeInSharedBlock(\_byteLengthBlock\_, 0, 8,
+-- | \_currentByteLengthRawBytes\_, \_newByteLengthRawBytes\_). 1. If
+-- | ByteListEqual(\_readByteLengthRawBytes\_, \_currentByteLengthRawBytes\_)
+-- | is \*true\*, return \*undefined\*. 1. Set \_currentByteLengthRawBytes\_
+-- | to \_readByteLengthRawBytes\_.
+-- |
+-- | Spurious failures of the compare-exchange to update the length are
+-- | prohibited. If the bounds checking for the new length passes and the
+-- | implementation is not out of memory, a ReadModifyWriteSharedMemory event
+-- | (i.e. a successful compare-exchange) is always added into the candidate
+-- | execution.
+-- |
+-- | Parallel calls to SharedArrayBuffer.prototype.grow are totally ordered.
+-- | For example, consider two racing calls: \`sab.grow(10)\` and
+-- | \`sab.grow(20)\`. One of the two calls is guaranteed to win the race.
+-- | The call to \`sab.grow(10)\` will never shrink \`sab\` even if
+-- | \`sab.grow(20)\` happened first; in that case it will instead throw a
+-- | RangeError.
+-- |
+
+-- SPEC: L37560-L37571
+-- | # get SharedArrayBuffer.prototype.growable
+-- |
+-- | \`SharedArrayBuffer.prototype.growable\` is an accessor property whose
+-- | set accessor function is \*undefined\*. Its get accessor function
+-- | performs the following steps when called:
+-- |
+-- | 1\. Let \_O\_ be the \*this\* value. 1. Perform ?
+-- | RequireInternalSlot(\_O\_, \[\[ArrayBufferData\]\]). 1. If
+-- | IsSharedArrayBuffer(\_O\_) is \*false\*, throw a \*TypeError\*
+-- | exception. 1. If IsFixedLengthArrayBuffer(\_O\_) is \*false\*, return
+-- | \*true\*. 1. Return \*false\*.
+-- |
+
+-- SPEC: L37572-L37585
+-- | # get SharedArrayBuffer.prototype.maxByteLength
+-- |
+-- | \`SharedArrayBuffer.prototype.maxByteLength\` is an accessor property
+-- | whose set accessor function is \*undefined\*. Its get accessor function
+-- | performs the following steps when called:
+-- |
+-- | 1\. Let \_O\_ be the \*this\* value. 1. Perform ?
+-- | RequireInternalSlot(\_O\_, \[\[ArrayBufferData\]\]). 1. If
+-- | IsSharedArrayBuffer(\_O\_) is \*false\*, throw a \*TypeError\*
+-- | exception. 1. If IsFixedLengthArrayBuffer(\_O\_) is \*true\*, then 1.
+-- | Let \_length\_ be \_O\_.\[\[ArrayBufferByteLength\]\]. 1. Else, 1. Let
+-- | \_length\_ be \_O\_.\[\[ArrayBufferMaxByteLength\]\]. 1. Return
+-- | 𝔽(\_length\_).
+-- |
+
+-- SPEC: L37586-L37616
+-- | # SharedArrayBuffer.prototype.slice ( \_start\_, \_end\_ )
+-- |
+-- | This method performs the following steps when called:
+-- |
+-- | 1\. Let \_O\_ be the \*this\* value. 1. Perform ?
+-- | RequireInternalSlot(\_O\_, \[\[ArrayBufferData\]\]). 1. If
+-- | IsSharedArrayBuffer(\_O\_) is \*false\*, throw a \*TypeError\*
+-- | exception. 1. Let \_len\_ be ArrayBufferByteLength(\_O\_,
+-- | \~seq-cst\~). 1. Let \_relativeStart\_ be ?
+-- | ToIntegerOrInfinity(\_start\_). 1. If \_relativeStart\_ = -∞, let
+-- | \_first\_ be 0. 1. Else if \_relativeStart\_ \< 0, let \_first\_ be
+-- | max(\_len\_ + \_relativeStart\_, 0). 1. Else, let \_first\_ be
+-- | min(\_relativeStart\_, \_len\_). 1. If \_end\_ is \*undefined\*, let
+-- | \_relativeEnd\_ be \_len\_; else let \_relativeEnd\_ be ?
+-- | ToIntegerOrInfinity(\_end\_). 1. If \_relativeEnd\_ = -∞, let \_final\_
+-- | be 0. 1. Else if \_relativeEnd\_ \< 0, let \_final\_ be max(\_len\_ +
+-- | \_relativeEnd\_, 0). 1. Else, let \_final\_ be min(\_relativeEnd\_,
+-- | \_len\_). 1. Let \_newLen\_ be max(\_final\_ - \_first\_, 0). 1. Let
+-- | \_ctor\_ be ? SpeciesConstructor(\_O\_, %SharedArrayBuffer%). 1. Let
+-- | \_new\_ be ? Construct(\_ctor\_, « 𝔽(\_newLen\_) »). 1. Perform ?
+-- | RequireInternalSlot(\_new\_, \[\[ArrayBufferData\]\]). 1. If
+-- | IsSharedArrayBuffer(\_new\_) is \*false\*, throw a \*TypeError\*
+-- | exception. 1. If \_new\_.\[\[ArrayBufferData\]\] is
+-- | \_O\_.\[\[ArrayBufferData\]\], throw a \*TypeError\* exception. 1. If
+-- | ArrayBufferByteLength(\_new\_, \~seq-cst\~) \< \_newLen\_, throw a
+-- | \*TypeError\* exception. 1. Let \_fromBuf\_ be
+-- | \_O\_.\[\[ArrayBufferData\]\]. 1. Let \_toBuf\_ be
+-- | \_new\_.\[\[ArrayBufferData\]\]. 1. Perform
+-- | CopyDataBlockBytes(\_toBuf\_, 0, \_fromBuf\_, \_first\_, \_newLen\_). 1.
+-- | Return \_new\_.
+-- |
+
+-- SPEC: L37617-L37624
+-- | # SharedArrayBuffer.prototype \[ %Symbol.toStringTag% \]
+-- |
+-- | The initial value of the %Symbol.toStringTag% property is the String
+-- | value \*\"SharedArrayBuffer\"\*.
+-- |
+-- | This property has the attributes { \[\[Writable\]\]: \*false\*,
+-- | \[\[Enumerable\]\]: \*false\*, \[\[Configurable\]\]: \*true\* }.
+-- |
+
+-- SPEC: L37625-L37637
+-- | # Properties of SharedArrayBuffer Instances
+-- |
+-- | SharedArrayBuffer instances inherit properties from the
+-- | SharedArrayBuffer prototype object. SharedArrayBuffer instances each
+-- | have an \[\[ArrayBufferData\]\] internal slot. SharedArrayBuffer
+-- | instances which are not growable each have an
+-- | \[\[ArrayBufferByteLength\]\] internal slot. SharedArrayBuffer instances
+-- | which are growable each have an \[\[ArrayBufferByteLengthData\]\]
+-- | internal slot and an \[\[ArrayBufferMaxByteLength\]\] internal slot.
+-- |
+-- | SharedArrayBuffer instances, unlike ArrayBuffer instances, are never
+-- | detached.
+-- |
+
+-- ============================================================
+-- ARRAYBUFFER CONSTRUCTOR
+-- ============================================================
+
+-- SPEC: L37029-L37046
+-- | # The ArrayBuffer Constructor
+-- |
+-- | The ArrayBuffer constructor:
+-- |
+-- | - is [%ArrayBuffer%]{.dfn}.
+-- | - is the initial value of the \*\"ArrayBuffer\"\* property of the global
+-- |   object.
+-- | - creates and initializes a new ArrayBuffer when called as a
+-- |   constructor.
+-- | - is not intended to be called as a function and will throw an exception
+-- |   when called in that manner.
+-- | - may be used as the value of an \`extends\` clause of a class
+-- |   definition. Subclass constructors that intend to inherit the specified
+-- |   ArrayBuffer behaviour must include a \`super\` call to the ArrayBuffer
+-- |   constructor to create and initialize subclass instances with the
+-- |   internal state necessary to support the \`ArrayBuffer.prototype\`
+-- |   built-in methods.
+-- |
+
+-- SPEC: L37047-L37057
+-- | # ArrayBuffer ( \_length\_ \[ , \_options\_ \] )
+-- |
+-- | This function performs the following steps when called:
+-- |
+-- | 1\. If NewTarget is \*undefined\*, throw a \*TypeError\* exception. 1.
+-- | Let \_byteLength\_ be ? ToIndex(\_length\_). 1. Let
+-- | \_requestedMaxByteLength\_ be ?
+-- | GetArrayBufferMaxByteLengthOption(\_options\_). 1. Return ?
+-- | AllocateArrayBuffer(NewTarget, \_byteLength\_,
+-- | \_requestedMaxByteLength\_).
+-- |
+
+-- SPEC: L37058-L37065
+-- | # Properties of the ArrayBuffer Constructor
+-- |
+-- | The ArrayBuffer constructor:
+-- |
+-- | - has a \[\[Prototype\]\] internal slot whose value is
+-- |   %Function.prototype%.
+-- | - has the following properties:
+-- |
+
+-- SPEC: L37066-L37073
+-- | # ArrayBuffer.isView ( \_arg\_ )
+-- |
+-- | This function performs the following steps when called:
+-- |
+-- | 1\. If \_arg\_ is not an Object, return \*false\*. 1. If \_arg\_ has a
+-- | \[\[ViewedArrayBuffer\]\] internal slot, return \*true\*. 1. Return
+-- | \*false\*.
+-- |
+
+-- SPEC: L37074-L37081
+-- | # ArrayBuffer.prototype
+-- |
+-- | The initial value of \`ArrayBuffer.prototype\` is the ArrayBuffer
+-- | prototype object.
+-- |
+-- | This property has the attributes { \[\[Writable\]\]: \*false\*,
+-- | \[\[Enumerable\]\]: \*false\*, \[\[Configurable\]\]: \*false\* }.
+-- |
+
+-- SPEC: L37082-L37096
+-- | # get ArrayBuffer \[ %Symbol.species% \]
+-- |
+-- | \`ArrayBuffer\[%Symbol.species%\]\` is an accessor property whose set
+-- | accessor function is \*undefined\*. Its get accessor function performs
+-- | the following steps when called:
+-- |
+-- | 1\. Return the \*this\* value.
+-- |
+-- | The value of the \*\"name\"\* property of this function is \*\"get
+-- | \[Symbol.species\]\"\*.
+-- |
+-- | normally uses its \*this\* value\'s constructor to create a derived
+-- | object. However, a subclass constructor may over-ride that default
+-- | behaviour for the method by redefining its %Symbol.species% property.
+-- |
+
+-- SPEC: L37097-L37107
+-- | # Properties of the ArrayBuffer Prototype Object
+-- |
+-- | The [ArrayBuffer prototype object]{.dfn}:
+-- |
+-- | - is [%ArrayBuffer.prototype%]{.dfn}.
+-- | - has a \[\[Prototype\]\] internal slot whose value is
+-- |   %Object.prototype%.
+-- | - is an ordinary object.
+-- | - does not have an \[\[ArrayBufferData\]\] or
+-- |   \[\[ArrayBufferByteLength\]\] internal slot.
+-- |
+
+-- SPEC: L37108-L37120
+-- | # get ArrayBuffer.prototype.byteLength
+-- |
+-- | \`ArrayBuffer.prototype.byteLength\` is an accessor property whose set
+-- | accessor function is \*undefined\*. Its get accessor function performs
+-- | the following steps when called:
+-- |
+-- | 1\. Let \_O\_ be the \*this\* value. 1. Perform ?
+-- | RequireInternalSlot(\_O\_, \[\[ArrayBufferData\]\]). 1. If
+-- | IsSharedArrayBuffer(\_O\_) is \*true\*, throw a \*TypeError\*
+-- | exception. 1. If IsDetachedBuffer(\_O\_) is \*true\*, return
+-- | \*+0\*~𝔽~. 1. Let \_length\_ be \_O\_.\[\[ArrayBufferByteLength\]\]. 1.
+-- | Return 𝔽(\_length\_).
+-- |
+
+-- SPEC: L37121-L37125
+-- | # ArrayBuffer.prototype.constructor
+-- |
+-- | The initial value of \`ArrayBuffer.prototype.constructor\` is
+-- | %ArrayBuffer%.
+-- |
+
+-- SPEC: L37126-L37136
+-- | # get ArrayBuffer.prototype.detached
+-- |
+-- | \`ArrayBuffer.prototype.detached\` is an accessor property whose set
+-- | accessor function is \*undefined\*. Its get accessor function performs
+-- | the following steps when called:
+-- |
+-- | 1\. Let \_O\_ be the \*this\* value. 1. Perform ?
+-- | RequireInternalSlot(\_O\_, \[\[ArrayBufferData\]\]). 1. If
+-- | IsSharedArrayBuffer(\_O\_) is \*true\*, throw a \*TypeError\*
+-- | exception. 1. Return IsDetachedBuffer(\_O\_).
+-- |
+
+-- SPEC: L37137-L37151
+-- | # get ArrayBuffer.prototype.maxByteLength
+-- |
+-- | \`ArrayBuffer.prototype.maxByteLength\` is an accessor property whose
+-- | set accessor function is \*undefined\*. Its get accessor function
+-- | performs the following steps when called:
+-- |
+-- | 1\. Let \_O\_ be the \*this\* value. 1. Perform ?
+-- | RequireInternalSlot(\_O\_, \[\[ArrayBufferData\]\]). 1. If
+-- | IsSharedArrayBuffer(\_O\_) is \*true\*, throw a \*TypeError\*
+-- | exception. 1. If IsDetachedBuffer(\_O\_) is \*true\*, return
+-- | \*+0\*~𝔽~. 1. If IsFixedLengthArrayBuffer(\_O\_) is \*true\*, then 1.
+-- | Let \_length\_ be \_O\_.\[\[ArrayBufferByteLength\]\]. 1. Else, 1. Let
+-- | \_length\_ be \_O\_.\[\[ArrayBufferMaxByteLength\]\]. 1. Return
+-- | 𝔽(\_length\_).
+-- |
+
+-- SPEC: L37152-L37163
+-- | # get ArrayBuffer.prototype.resizable
+-- |
+-- | \`ArrayBuffer.prototype.resizable\` is an accessor property whose set
+-- | accessor function is \*undefined\*. Its get accessor function performs
+-- | the following steps when called:
+-- |
+-- | 1\. Let \_O\_ be the \*this\* value. 1. Perform ?
+-- | RequireInternalSlot(\_O\_, \[\[ArrayBufferData\]\]). 1. If
+-- | IsSharedArrayBuffer(\_O\_) is \*true\*, throw a \*TypeError\*
+-- | exception. 1. If IsFixedLengthArrayBuffer(\_O\_) is \*false\*, return
+-- | \*true\*. 1. Return \*false\*.
+-- |
+
+-- SPEC: L37164-L37186
+-- | # ArrayBuffer.prototype.resize ( \_newLength\_ )
+-- |
+-- | This method performs the following steps when called:
+-- |
+-- | 1\. Let \_O\_ be the \*this\* value. 1. Perform ?
+-- | RequireInternalSlot(\_O\_, \[\[ArrayBufferMaxByteLength\]\]). 1. If
+-- | IsSharedArrayBuffer(\_O\_) is \*true\*, throw a \*TypeError\*
+-- | exception. 1. Let \_newByteLength\_ be ? ToIndex(\_newLength\_). 1. If
+-- | IsDetachedBuffer(\_O\_) is \*true\*, throw a \*TypeError\* exception. 1.
+-- | If \_newByteLength\_ \> \_O\_.\[\[ArrayBufferMaxByteLength\]\], throw a
+-- | \*RangeError\* exception. 1. Let \_hostHandled\_ be ?
+-- | HostResizeArrayBuffer(\_O\_, \_newByteLength\_). 1. If \_hostHandled\_
+-- | is \~handled\~, return \*undefined\*. 1. Let \_oldBlock\_ be
+-- | \_O\_.\[\[ArrayBufferData\]\]. 1. Let \_newBlock\_ be ?
+-- | CreateByteDataBlock(\_newByteLength\_). 1. Let \_copyLength\_ be
+-- | min(\_newByteLength\_, \_O\_.\[\[ArrayBufferByteLength\]\]). 1. Perform
+-- | CopyDataBlockBytes(\_newBlock\_, 0, \_oldBlock\_, 0, \_copyLength\_). 1.
+-- | NOTE: Neither creation of the new Data Block nor copying from the old
+-- | Data Block are observable. Implementations may implement this method as
+-- | in-place growth or shrinkage. 1. Set \_O\_.\[\[ArrayBufferData\]\] to
+-- | \_newBlock\_. 1. Set \_O\_.\[\[ArrayBufferByteLength\]\] to
+-- | \_newByteLength\_. 1. Return \*undefined\*.
+-- |
+
+-- SPEC: L37187-L37223
+-- | # ArrayBuffer.prototype.slice ( \_start\_, \_end\_ )
+-- |
+-- | This method performs the following steps when called:
+-- |
+-- | 1\. Let \_O\_ be the \*this\* value. 1. Perform ?
+-- | RequireInternalSlot(\_O\_, \[\[ArrayBufferData\]\]). 1. If
+-- | IsSharedArrayBuffer(\_O\_) is \*true\*, throw a \*TypeError\*
+-- | exception. 1. If IsDetachedBuffer(\_O\_) is \*true\*, throw a
+-- | \*TypeError\* exception. 1. Let \_len\_ be
+-- | \_O\_.\[\[ArrayBufferByteLength\]\]. 1. Let \_relativeStart\_ be ?
+-- | ToIntegerOrInfinity(\_start\_). 1. If \_relativeStart\_ = -∞, let
+-- | \_first\_ be 0. 1. Else if \_relativeStart\_ \< 0, let \_first\_ be
+-- | max(\_len\_ + \_relativeStart\_, 0). 1. Else, let \_first\_ be
+-- | min(\_relativeStart\_, \_len\_). 1. If \_end\_ is \*undefined\*, let
+-- | \_relativeEnd\_ be \_len\_; else let \_relativeEnd\_ be ?
+-- | ToIntegerOrInfinity(\_end\_). 1. If \_relativeEnd\_ = -∞, let \_final\_
+-- | be 0. 1. Else if \_relativeEnd\_ \< 0, let \_final\_ be max(\_len\_ +
+-- | \_relativeEnd\_, 0). 1. Else, let \_final\_ be min(\_relativeEnd\_,
+-- | \_len\_). 1. Let \_newLen\_ be max(\_final\_ - \_first\_, 0). 1. Let
+-- | \_ctor\_ be ? SpeciesConstructor(\_O\_, %ArrayBuffer%). 1. Let \_new\_
+-- | be ? Construct(\_ctor\_, « 𝔽(\_newLen\_) »). 1. Perform ?
+-- | RequireInternalSlot(\_new\_, \[\[ArrayBufferData\]\]). 1. If
+-- | IsSharedArrayBuffer(\_new\_) is \*true\*, throw a \*TypeError\*
+-- | exception. 1. If IsDetachedBuffer(\_new\_) is \*true\*, throw a
+-- | \*TypeError\* exception. 1. If SameValue(\_new\_, \_O\_) is \*true\*,
+-- | throw a \*TypeError\* exception. 1. If
+-- | \_new\_.\[\[ArrayBufferByteLength\]\] \< \_newLen\_, throw a
+-- | \*TypeError\* exception. 1. NOTE: Side-effects of the above steps may
+-- | have detached or resized \_O\_. 1. If IsDetachedBuffer(\_O\_) is
+-- | \*true\*, throw a \*TypeError\* exception. 1. Let \_fromBuf\_ be
+-- | \_O\_.\[\[ArrayBufferData\]\]. 1. Let \_toBuf\_ be
+-- | \_new\_.\[\[ArrayBufferData\]\]. 1. Let \_currentLen\_ be
+-- | \_O\_.\[\[ArrayBufferByteLength\]\]. 1. If \_first\_ \< \_currentLen\_,
+-- | then 1. Let \_count\_ be min(\_newLen\_, \_currentLen\_ - \_first\_). 1.
+-- | Perform CopyDataBlockBytes(\_toBuf\_, 0, \_fromBuf\_, \_first\_,
+-- | \_count\_). 1. Return \_new\_.
+-- |
+
+-- SPEC: L37224-L37231
+-- | # ArrayBuffer.prototype.transfer ( \[ \_newLength\_ \] )
+-- |
+-- | This method performs the following steps when called:
+-- |
+-- | 1\. Let \_O\_ be the \*this\* value. 1. Return ?
+-- | ArrayBufferCopyAndDetach(\_O\_, \_newLength\_,
+-- | \~preserve-resizability\~).
+-- |
+
+-- SPEC: L37232-L37238
+-- | # ArrayBuffer.prototype.transferToFixedLength ( \[ \_newLength\_ \] )
+-- |
+-- | This method performs the following steps when called:
+-- |
+-- | 1\. Let \_O\_ be the \*this\* value. 1. Return ?
+-- | ArrayBufferCopyAndDetach(\_O\_, \_newLength\_, \~fixed-length\~).
+-- |
+
+-- SPEC: L37239-L37246
+-- | # ArrayBuffer.prototype \[ %Symbol.toStringTag% \]
+-- |
+-- | The initial value of the %Symbol.toStringTag% property is the String
+-- | value \*\"ArrayBuffer\"\*.
+-- |
+-- | This property has the attributes { \[\[Writable\]\]: \*false\*,
+-- | \[\[Enumerable\]\]: \*false\*, \[\[Configurable\]\]: \*true\* }.
+-- |
+
+-- SPEC: L37247-L37265
+-- | # Properties of ArrayBuffer Instances
+-- |
+-- | ArrayBuffer instances inherit properties from the ArrayBuffer prototype
+-- | object. ArrayBuffer instances each have an \[\[ArrayBufferData\]\]
+-- | internal slot, an \[\[ArrayBufferByteLength\]\] internal slot, and an
+-- | \[\[ArrayBufferDetachKey\]\] internal slot. ArrayBuffer instances which
+-- | are resizable each have an \[\[ArrayBufferMaxByteLength\]\] internal
+-- | slot.
+-- |
+-- | ArrayBuffer instances whose \[\[ArrayBufferData\]\] is \*null\* are
+-- | considered to be detached and all operators to access or modify data
+-- | contained in the ArrayBuffer instance will fail.
+-- |
+-- | ArrayBuffer instances whose \[\[ArrayBufferDetachKey\]\] is set to a
+-- | value other than \*undefined\* need to have all DetachArrayBuffer calls
+-- | passing that same \"detach key\" as an argument, otherwise a TypeError
+-- | will result. This internal slot is only ever set by certain embedding
+-- | environments, not by algorithms in this specification.
+-- |
+
+-- ============================================================
+-- WEAKREF & FINALIZATION
+-- ============================================================
+
+-- SPEC: L39180-L39187
+-- | # Properties of the WeakRef Constructor
+-- |
+-- | The WeakRef constructor:
+-- |
+-- | - has a \[\[Prototype\]\] internal slot whose value is
+-- |   %Function.prototype%.
+-- | - has the following properties:
+-- |
+
+-- SPEC: L39188-L39195
+-- | # WeakRef.prototype
+-- |
+-- | The initial value of \`WeakRef.prototype\` is the WeakRef prototype
+-- | object.
+-- |
+-- | This property has the attributes { \[\[Writable\]\]: \*false\*,
+-- | \[\[Enumerable\]\]: \*false\*, \[\[Configurable\]\]: \*false\* }.
+-- |
+
+-- SPEC: L39196-L39205
+-- | # Properties of the WeakRef Prototype Object
+-- |
+-- | The [WeakRef prototype object]{.dfn}:
+-- |
+-- | - is [%WeakRef.prototype%]{.dfn}.
+-- | - has a \[\[Prototype\]\] internal slot whose value is
+-- |   %Object.prototype%.
+-- | - is an ordinary object.
+-- | - does not have a \[\[WeakRefTarget\]\] internal slot.
+-- |
+
+-- SPEC: L39206-L39209
+-- | # WeakRef.prototype.constructor
+-- |
+-- | The initial value of \`WeakRef.prototype.constructor\` is %WeakRef%.
+-- |
+
+-- SPEC: L39239-L39246
+-- | # WeakRef.prototype \[ %Symbol.toStringTag% \]
+-- |
+-- | The initial value of the %Symbol.toStringTag% property is the String
+-- | value \*\"WeakRef\"\*.
+-- |
+-- | This property has the attributes { \[\[Writable\]\]: \*false\*,
+-- | \[\[Enumerable\]\]: \*false\*, \[\[Configurable\]\]: \*true\* }.
+-- |
+
+-- SPEC: L39247-L39248
+-- | # WeakRef Abstract Operations
+-- |
+
+-- SPEC: L39260-L39265
+-- | # Properties of WeakRef Instances
+-- |
+-- | WeakRef instances are ordinary objects that inherit properties from the
+-- | WeakRef prototype object. WeakRef instances also have a
+-- | \[\[WeakRefTarget\]\] internal slot.
+-- |
+
+-- SPEC: L39266-L39271
+-- | # FinalizationRegistry Objects
+-- |
+-- | A FinalizationRegistry is an object that manages registration and
+-- | unregistration of cleanup operations that are performed when target
+-- | objects and symbols are garbage collected.
+-- |
+
+-- SPEC: L39272-L39290
+-- | # The FinalizationRegistry Constructor
+-- |
+-- | The [FinalizationRegistry]{.dfn variants="FinalizationRegistrys"}
+-- | constructor:
+-- |
+-- | - is [%FinalizationRegistry%]{.dfn}.
+-- | - is the initial value of the \*\"FinalizationRegistry\"\* property of
+-- |   the global object.
+-- | - creates and initializes a new FinalizationRegistry when called as a
+-- |   constructor.
+-- | - is not intended to be called as a function and will throw an exception
+-- |   when called in that manner.
+-- | - may be used as the value in an \`extends\` clause of a class
+-- |   definition. Subclass constructors that intend to inherit the specified
+-- |   \`FinalizationRegistry\` behaviour must include a \`super\` call to
+-- |   the \`FinalizationRegistry\` constructor to create and initialize the
+-- |   subclass instance with the internal state necessary to support the
+-- |   \`FinalizationRegistry.prototype\` built-in methods.
+-- |
+
+-- SPEC: L39291-L39307
+-- | # FinalizationRegistry ( \_cleanupCallback\_ )
+-- |
+-- | This function performs the following steps when called:
+-- |
+-- | 1\. If NewTarget is \*undefined\*, throw a \*TypeError\* exception. 1.
+-- | If IsCallable(\_cleanupCallback\_) is \*false\*, throw a \*TypeError\*
+-- | exception. 1. Let \_finalizationRegistry\_ be ?
+-- | OrdinaryCreateFromConstructor(NewTarget,
+-- | \*\"%FinalizationRegistry.prototype%\"\*, « \[\[Realm\]\],
+-- | \[\[CleanupCallback\]\], \[\[Cells\]\] »). 1. Let \_fn\_ be the active
+-- | function object. 1. Set \_finalizationRegistry\_.\[\[Realm\]\] to
+-- | \_fn\_.\[\[Realm\]\]. 1. Set
+-- | \_finalizationRegistry\_.\[\[CleanupCallback\]\] to
+-- | HostMakeJobCallback(\_cleanupCallback\_). 1. Set
+-- | \_finalizationRegistry\_.\[\[Cells\]\] to a new empty List. 1. Return
+-- | \_finalizationRegistry\_.
+-- |
+
+-- SPEC: L39308-L39315
+-- | # Properties of the FinalizationRegistry Constructor
+-- |
+-- | The FinalizationRegistry constructor:
+-- |
+-- | - has a \[\[Prototype\]\] internal slot whose value is
+-- |   %Function.prototype%.
+-- | - has the following properties:
+-- |
+
+-- SPEC: L39316-L39323
+-- | # FinalizationRegistry.prototype
+-- |
+-- | The initial value of \`FinalizationRegistry.prototype\` is the
+-- | FinalizationRegistry prototype object.
+-- |
+-- | This property has the attributes { \[\[Writable\]\]: \*false\*,
+-- | \[\[Enumerable\]\]: \*false\*, \[\[Configurable\]\]: \*false\* }.
+-- |
+
+-- SPEC: L39324-L39334
+-- | # Properties of the FinalizationRegistry Prototype Object
+-- |
+-- | The [FinalizationRegistry prototype object]{.dfn}:
+-- |
+-- | - is [%FinalizationRegistry.prototype%]{.dfn}.
+-- | - has a \[\[Prototype\]\] internal slot whose value is
+-- |   %Object.prototype%.
+-- | - is an ordinary object.
+-- | - does not have \[\[Cells\]\] and \[\[CleanupCallback\]\] internal
+-- |   slots.
+-- |
+
+-- SPEC: L39335-L39339
+-- | # FinalizationRegistry.prototype.constructor
+-- |
+-- | The initial value of \`FinalizationRegistry.prototype.constructor\` is
+-- | %FinalizationRegistry%.
+-- |
+
+-- SPEC: L39340-L39363
+-- | # FinalizationRegistry.prototype.register ( \_target\_, \_heldValue\_ \[ , \_unregisterToken\_ \] )
+-- |
+-- | This method performs the following steps when called:
+-- |
+-- | 1\. Let \_finalizationRegistry\_ be the \*this\* value. 1. Perform ?
+-- | RequireInternalSlot(\_finalizationRegistry\_, \[\[Cells\]\]). 1. If
+-- | CanBeHeldWeakly(\_target\_) is \*false\*, throw a \*TypeError\*
+-- | exception. 1. If SameValue(\_target\_, \_heldValue\_) is \*true\*, throw
+-- | a \*TypeError\* exception. 1. If CanBeHeldWeakly(\_unregisterToken\_) is
+-- | \*false\*, then 1. If \_unregisterToken\_ is not \*undefined\*, throw a
+-- | \*TypeError\* exception. 1. Set \_unregisterToken\_ to \~empty\~. 1. Let
+-- | \_cell\_ be the Record { \[\[WeakRefTarget\]\]: \_target\_,
+-- | \[\[HeldValue\]\]: \_heldValue\_, \[\[UnregisterToken\]\]:
+-- | \_unregisterToken\_ }. 1. Append \_cell\_ to
+-- | \_finalizationRegistry\_.\[\[Cells\]\]. 1. Return \*undefined\*.
+-- |
+-- | Based on the algorithms and definitions in this specification,
+-- | \_cell\_.\[\[HeldValue\]\] is live when
+-- | \_finalizationRegistry\_.\[\[Cells\]\] contains \_cell\_; however, this
+-- | does not necessarily mean that \_cell\_.\[\[UnregisterToken\]\] or
+-- | \_cell\_.\[\[Target\]\] are live. For example, registering an object
+-- | with itself as its unregister token would not keep the object alive
+-- | forever.
+-- |
+
+-- SPEC: L39364-L39379
+-- | # FinalizationRegistry.prototype.unregister ( \_unregisterToken\_ )
+-- |
+-- | This method performs the following steps when called:
+-- |
+-- | 1\. Let \_finalizationRegistry\_ be the \*this\* value. 1. Perform ?
+-- | RequireInternalSlot(\_finalizationRegistry\_, \[\[Cells\]\]). 1. If
+-- | CanBeHeldWeakly(\_unregisterToken\_) is \*false\*, throw a \*TypeError\*
+-- | exception. 1. Let \_removed\_ be \*false\*. 1. For each Record {
+-- | \[\[WeakRefTarget\]\], \[\[HeldValue\]\], \[\[UnregisterToken\]\] }
+-- | \_cell\_ of \_finalizationRegistry\_.\[\[Cells\]\], do 1. If
+-- | \_cell\_.\[\[UnregisterToken\]\] is not \~empty\~ and
+-- | SameValue(\_cell\_.\[\[UnregisterToken\]\], \_unregisterToken\_) is
+-- | \*true\*, then 1. Remove \_cell\_ from
+-- | \_finalizationRegistry\_.\[\[Cells\]\]. 1. Set \_removed\_ to
+-- | \*true\*. 1. Return \_removed\_.
+-- |
+
+-- SPEC: L39380-L39387
+-- | # FinalizationRegistry.prototype \[ %Symbol.toStringTag% \]
+-- |
+-- | The initial value of the %Symbol.toStringTag% property is the String
+-- | value \*\"FinalizationRegistry\"\*.
+-- |
+-- | This property has the attributes { \[\[Writable\]\]: \*false\*,
+-- | \[\[Enumerable\]\]: \*false\*, \[\[Configurable\]\]: \*true\* }.
+-- |
+
+-- SPEC: L39388-L39394
+-- | # Properties of FinalizationRegistry Instances
+-- |
+-- | FinalizationRegistry instances are ordinary objects that inherit
+-- | properties from the FinalizationRegistry prototype object.
+-- | FinalizationRegistry instances also have \[\[Cells\]\] and
+-- | \[\[CleanupCallback\]\] internal slots.
+-- |
+
+
+-- SPEC: L38128-L38149
+-- | # The Atomics Object
+-- |
+-- | The Atomics object:
+-- |
+-- | - is [%Atomics%]{.dfn}.
+-- | - is the initial value of the \*\"Atomics\"\* property of the global
+-- |   object.
+-- | - is an ordinary object.
+-- | - has a \[\[Prototype\]\] internal slot whose value is
+-- |   %Object.prototype%.
+-- | - does not have a \[\[Construct\]\] internal method; it cannot be used
+-- |   as a constructor with the \`new\` operator.
+-- | - does not have a \[\[Call\]\] internal method; it cannot be invoked as
+-- |   a function.
+-- |
+-- | The Atomics object provides functions that operate indivisibly
+-- | (atomically) on shared memory array cells as well as functions that let
+-- | agents wait for and dispatch primitive events. When used with
+-- | discipline, the Atomics functions allow multi-agent programs that
+-- | communicate through shared memory to execute in a well-understood order
+-- | even on parallel CPUs. The rules that govern shared-memory communication
+-- | are provided by the memory model, defined below.
+
+-- SPEC: L38528-L38546
+-- | # Atomics.add ( \_typedArray\_, \_index\_, \_value\_ )
+-- |
+-- | This function performs the following steps when called:
+-- |
+-- | 1\. Let \_add\_ be a new read-modify-write modification function with
+-- | parameters (\_xBytes\_, \_yBytes\_) that captures \_typedArray\_ and
+-- | performs the following steps atomically when called: 1. Let \_type\_ be
+-- | TypedArrayElementType(\_typedArray\_). 1. Let \_AR\_ be the Agent Record
+-- | of the surrounding agent. 1. Let \_isLittleEndian\_ be
+-- | \_AR\_.\[\[LittleEndian\]\]. 1. Let \_x\_ be RawBytesToNumeric(\_type\_,
+-- | \_xBytes\_, \_isLittleEndian\_). 1. Let \_y\_ be
+-- | RawBytesToNumeric(\_type\_, \_yBytes\_, \_isLittleEndian\_). 1. If \_x\_
+-- | is a Number, then 1. Let \_sum\_ be Number::add(\_x\_, \_y\_). 1.
+-- | Else, 1. Assert: \_x\_ is a BigInt. 1. Let \_sum\_ be BigInt::add(\_x\_,
+-- | \_y\_). 1. Let \_sumBytes\_ be NumericToRawBytes(\_type\_, \_sum\_,
+-- | \_isLittleEndian\_). 1. Assert: \_sumBytes\_, \_xBytes\_, and \_yBytes\_
+-- | have the same number of elements. 1. Return \_sumBytes\_. 1. Return ?
+-- | AtomicReadModifyWrite(\_typedArray\_, \_index\_, \_value\_, \_add\_).
+-- |
+
+-- SPEC: L38547-L38556
+-- | # Atomics.and ( \_typedArray\_, \_index\_, \_value\_ )
+-- |
+-- | This function performs the following steps when called:
+-- |
+-- | 1\. Let \_and\_ be a new read-modify-write modification function with
+-- | parameters (\_xBytes\_, \_yBytes\_) that captures nothing and performs
+-- | the following steps atomically when called: 1. Return
+-- | ByteListBitwiseOp(\`&\`, \_xBytes\_, \_yBytes\_). 1. Return ?
+-- | AtomicReadModifyWrite(\_typedArray\_, \_index\_, \_value\_, \_and\_).
+-- |
+
+-- SPEC: L38601-L38629
+-- | # Atomics.isLockFree ( \_size\_ )
+-- |
+-- | This function performs the following steps when called:
+-- |
+-- | 1\. Let \_n\_ be ? ToIntegerOrInfinity(\_size\_). 1. Let \_AR\_ be the
+-- | Agent Record of the surrounding agent. 1. If \_n\_ = 1, return
+-- | \_AR\_.\[\[IsLockFree1\]\]. 1. If \_n\_ = 2, return
+-- | \_AR\_.\[\[IsLockFree2\]\]. 1. If \_n\_ = 4, return \*true\*. 1. If
+-- | \_n\_ = 8, return \_AR\_.\[\[IsLockFree8\]\]. 1. Return \*false\*.
+-- |
+-- | This function is an optimization primitive. The intuition is that if the
+-- | atomic step of an atomic primitive (\`compareExchange\`, \`load\`,
+-- | \`store\`, \`add\`, \`sub\`, \`and\`, \`or\`, \`xor\`, or \`exchange\`)
+-- | on a datum of size \_n\_ bytes will be performed without the surrounding
+-- | agent acquiring a lock outside the \_n\_ bytes comprising the datum,
+-- | then \`Atomics.isLockFree\`(\_n\_) will return \*true\*.
+-- | High-performance algorithms will use this function to determine whether
+-- | to use locks or atomic operations in critical sections. If an atomic
+-- | primitive is not lock-free then it is often more efficient for an
+-- | algorithm to provide its own locking.
+-- |
+-- | \`Atomics.isLockFree\`(4) always returns \*true\* as that can be
+-- | supported on all known relevant hardware. Being able to assume this will
+-- | generally simplify programs.
+-- |
+-- | Regardless of the value returned by this function, all atomic operations
+-- | are guaranteed to be atomic. For example, they will never have a visible
+-- | operation take place in the middle of the operation (e.g., \"tearing\").
+-- |
+
+-- SPEC: L38630-L38642
+-- | # Atomics.load ( \_typedArray\_, \_index\_ )
+-- |
+-- | This function performs the following steps when called:
+-- |
+-- | 1\. Let \_byteIndexInBuffer\_ be ?
+-- | ValidateAtomicAccessOnIntegerTypedArray(\_typedArray\_, \_index\_). 1.
+-- | Perform ? RevalidateAtomicAccess(\_typedArray\_,
+-- | \_byteIndexInBuffer\_). 1. Let \_buffer\_ be
+-- | \_typedArray\_.\[\[ViewedArrayBuffer\]\]. 1. Let \_elementType\_ be
+-- | TypedArrayElementType(\_typedArray\_). 1. Return
+-- | GetValueFromBuffer(\_buffer\_, \_byteIndexInBuffer\_, \_elementType\_,
+-- | \*true\*, \~seq-cst\~).
+-- |
+
+-- SPEC: L38653-L38667
+-- | # Atomics.store ( \_typedArray\_, \_index\_, \_value\_ )
+-- |
+-- | This function performs the following steps when called:
+-- |
+-- | 1\. Let \_byteIndexInBuffer\_ be ?
+-- | ValidateAtomicAccessOnIntegerTypedArray(\_typedArray\_, \_index\_). 1.
+-- | If \_typedArray\_.\[\[ContentType\]\] is \~bigint\~, let \_v\_ be ?
+-- | ToBigInt(\_value\_). 1. Else, let \_v\_ be 𝔽(?
+-- | ToIntegerOrInfinity(\_value\_)). 1. Perform ?
+-- | RevalidateAtomicAccess(\_typedArray\_, \_byteIndexInBuffer\_). 1. Let
+-- | \_buffer\_ be \_typedArray\_.\[\[ViewedArrayBuffer\]\]. 1. Let
+-- | \_elementType\_ be TypedArrayElementType(\_typedArray\_). 1. Perform
+-- | SetValueInBuffer(\_buffer\_, \_byteIndexInBuffer\_, \_elementType\_,
+-- | \_v\_, \*true\*, \~seq-cst\~). 1. Return \_v\_.
+-- |
+
+
 end VerifiedJS.Source

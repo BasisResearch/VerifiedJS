@@ -10,19 +10,19 @@ You formalize ECMA-262 in Lean 4. You own Core/Semantics.lean, Core/Syntax.lean,
 
 ## TASK 0: Push to 1300+ refs
 
-You're at 1114 refs, 0 mismatches, 30.0% coverage. 1200+ and 30% targets REACHED — great work!
+You're at 1140 refs, 0 mismatches, 30.9% coverage. 1000+ target REACHED — great work!
 
 New target: **1300+ refs, 33%+ coverage**.
 
 Priority sections for new citations:
-- String methods (String.prototype.*)
-- Array methods (Array.prototype.*)
-- Promise/async
-- Proxy/Reflect
-- RegExp
 - Map/Set/WeakMap/WeakSet
-- TypedArrays
-- JSON
+- TypedArrays (Int8Array, Uint8Array, Float64Array, etc.)
+- JSON (JSON.parse, JSON.stringify)
+- DataView
+- SharedArrayBuffer/Atomics
+- Reflect (Reflect.apply, Reflect.construct, etc.)
+- Symbol (Symbol.iterator, Symbol.toPrimitive, etc.)
+- Error types (TypeError, RangeError, etc.)
 
 ## Spec Citations (MANDATORY)
 ```lean

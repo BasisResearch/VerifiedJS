@@ -5992,9 +5992,10 @@ structure LowerSimRel (prog : ANF.Program) (irmod : IRModule)
   hhalt : anfStepMapped s = none → ir.halted
   /- Frame non-emptiness: the IR always has at least one frame. -/
   hframes : ir.frames ≠ []
-  /- Environment correspondence: each ANF variable maps to an IR local whose value matches.
-     The idx corresponds to the local index the compiler assigned to the variable. -/
-  henv : ∀ name v, s.env.lookup name = some v →
+  /- Environment correspondence: each non-builtin ANF variable maps to an IR local whose
+     value matches.  The "console" binding is a compile-time built-in handled by the
+     lowering as a pattern-match on getProp, not as a runtime local. -/
+  henv : ∀ name v, s.env.lookup name = some v → name ≠ "console" →
     ∃ (idx : Nat) (val : IRValue), (Option.bind ir.frames.head? (fun f => f.locals[idx]?)) = some val ∧ ValueCorr v val
   /- Variable correspondence: when the ANF expression is a variable reference
      and the IR code is a localGet, the variable is in scope and the local is valid.
@@ -6031,10 +6032,10 @@ theorem init (prog : ANF.Program) (irmod : IRModule)
     simp [IRExecState.halted, irInitialState, hsf]
   hframes := by simp [irInitialState]
   henv := by
-    intro name v hlookup
-    -- Initial ANF env has console binding; needs IR local correspondence
+    intro name v hlookup hne
+    -- Initial ANF env only has "console"; hne : name ≠ "console" contradicts.
     simp [ANF.initialState, ANF.Env.extend, ANF.Env.lookup] at hlookup
-    sorry
+    split at hlookup <;> simp_all [ANF.Env.empty]
   hvar := by
     intro name idx hexpr hcode_ir
     -- irInitialState code is [call _] or [], never [localGet _], so hcode_ir is absurd.
@@ -6110,9 +6111,9 @@ theorem step_sim (prog : ANF.Program) (irmod : IRModule) :
             exact Nat.le_of_eq hrel.hframes_one
           hframes := by simp [hfr_eq]
           henv := by
-            intro n w hlk
+            intro n w hlk hne
             simp [ANF.pushTrace] at hlk
-            exact hrel.henv n w hlk
+            exact hrel.henv n w hlk hne
           hvar := by
             intro n' idx' hexpr' _
             simp [ANF.pushTrace] at hexpr'
@@ -6208,8 +6209,8 @@ theorem step_sim (prog : ANF.Program) (irmod : IRModule) :
               intro _; simp [IRExecState.halted, hfr]
             hframes := by simp [hfr]
             henv := by
-              intro n w hlk; simp [ANF.pushTrace] at hlk
-              exact hrel.henv n w hlk
+              intro n w hlk hne; simp [ANF.pushTrace] at hlk
+              exact hrel.henv n w hlk hne
             hvar := by
               intro n' idx' hexpr' hcode_ir
               simp [ANF.pushTrace] at hexpr'

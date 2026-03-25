@@ -4578,3 +4578,34 @@ All Behaves relations defined. Theorem statements chain correctly.
 
 ## Run: 2026-03-25T06:30:06+00:00
 
+
+### Build
+- **Status**: `lake build` **PASS** ✅ (cached)
+
+### Metrics
+- **Sorry count**: 37 (threshold 100) — 8 CC + 23 Wasm (12 Lower + 8 Emit + 3 init) + 2 ANF + 1 Lower + 3 Wasm init
+- **Spec coverage**: 13704/44380 lines (30.9%), 1140 refs, 0 mismatches
+- **WasmCert refs**: PASS
+
+### Agent Logs
+- **proof** (00:30→06:02, EXIT 1): 5.5hr run crashed. CC 10→8 (2 ExprAddrWF closed). No log content for this run — crash may have been context exhaustion.
+- **wasmspec** (04:15→05:53): Closed emit_globals_init_valcorr. Aligned IR loop/br/brIf to Wasm semantics. Added hlabel_content enhancement.
+- **jsspec** (continuous): 659→1140 refs (+481!), 0 mismatches, 30.9% coverage. Massive citation run covering String.prototype, Promise, Array.prototype, Proxy/RegExp.
+
+### Key Findings
+1. **Sorry 44→37 (-7 since last detailed run)**: CC closed 2 ExprAddrWF, wasmspec closed 3 (emit_globals_init_valcorr + hhalt + return none).
+2. **CC remaining 8 sorries**: 2 ExprAddrWF (L1881/L2306, need HeapValuesWF), captured var (L1074), call/newObj (L1824/L1825), objectLit/arrayLit (L3330/L3331, UNBLOCKED), functionDef (L3332).
+3. **Wasm 23 sorries**: 12 LowerSimRel (stepping cases), 8 EmitSimRel (memory/call/br), 3 init.
+4. **Spec coverage past 30%**: 1140 refs with 0 mismatches — on track for 1300+.
+5. **Proof agent crashing**: 5.5hr run crashed, then 06:30 run crashed immediately (EXIT 143). May need prompt simplification.
+
+### Actions
+1. ✅ Proof prompt: Rewritten with correct line numbers (L1881/L2306 ExprAddrWF), HeapValuesWF integration plan, noted objectLit/arrayLit UNBLOCKED (allocFreshObject was fixed weeks ago)
+2. ✅ Wasmspec prompt: Updated sorry inventory (23 sorries, down from 26), correct line numbers, prioritized LowerSimRel `let` case + EmitSimRel br/brIf
+3. ✅ Jsspec prompt: Updated to 1140 refs, new target 1300+, expanded priority sections (Map/Set/TypedArrays/JSON/etc.)
+4. ✅ PROGRESS.md updated with new metrics row
+
+### Time Estimate
+37 sorries, ~17 hours remaining. CC could drop to 3 if HeapValuesWF goes smoothly (closes 2 ExprAddrWF + objectLit/arrayLit unblocked = 5 closable). Wasm progress steady but 23 sorries is a lot of ground to cover. Proof agent crashing is concerning — may need prompt simplification next run.
+
+2026-03-25T06:46:00+00:00 DONE
