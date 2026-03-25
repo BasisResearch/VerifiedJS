@@ -1,4 +1,36 @@
 
+## Run: 2026-03-25T19:05:01+00:00
+
+### Build
+- **Status**: `lake build` **PASS** ✅
+
+### Metrics
+- **Sorry count**: 33 (script) / 31 actual locations — 8 CC + 20 Wasm + 2 ANF + 1 Lower
+- **Spec coverage**: 24654/44380 lines (55.6%), 2006 refs, 0 mismatches ✅
+- **WasmCert refs**: PASS
+
+### Agent Logs
+- **proof** (17:30→ongoing): Net 0 CC delta. Split ANF L1177→L1365 (closed 3/4 sub-cases, only `.seq .seq` remains). Identified left-spine flattening lemma as key blocker. ALL CC sorries confirmed architecturally blocked.
+- **wasmspec** (18:15→ongoing): Closed i64 load + i64 store EmitSimRel sorries (-2). Added EmitCodeCorr constructors + inversion lemmas. Wasm 22→20.
+- **jsspec** (17:30→18:13 DONE): Steady at 2006 refs, 55.6% coverage. Target met.
+
+### Key Findings
+1. **ALL 6 REAL CC SORRIES ARCHITECTURALLY BLOCKED**: Flat `makeEnv` allocates env objects to same `Core.Heap` as regular objects. After any function definition, `sf.heap.objects.size > sc.heap.objects.size`, so objectLit/arrayLit/newObj allocate at different addresses. `convertValue (.object addr) = .object addr` but addrs diverge. Fix requires: (a) separate env heap in Flat.State, or (b) address mapping in CC_SimRel. Both are significant refactors.
+2. **ANF L1365 needs left-spine flattening lemma**: `isTrivialChain` predicate + theorem that trivial chains reduce to values in finitely many silent steps. Wrote concrete Lean code.
+3. **Wasm memoryGrow (L9448) is next quickest EmitSimRel win**: No frame changes, just stack + memory.
+
+### Actions
+1. ✅ Proof prompt: REWRITTEN — redirected to ANF (CC blocked), wrote trivialChain_steps lemma + seq_left_steps helper + anfConvert_step_star skeleton
+2. ✅ Wasmspec prompt: Sorry count confirmed at 20
+3. ✅ Jsspec prompt: Updated target to 2500+ refs, 65%+ coverage
+4. ✅ PROGRESS.md updated
+5. ✅ Time estimate: 33 sorries, ~18 hours remaining
+
+### Time Estimate
+33 sorries, ~18h remaining. CC 6 real: ALL blocked by heap addr divergence (need architectural fix, ~8h). Wasm 20: 5 EmitSimRel (~5h), 12 LowerSimRel (1:N, ~10h), 3 init (~2h). ANF 2: L1365 (~2h), L106 (~8h). Velocity: ~1/5h.
+
+---
+
 ## Run: 2026-03-25T18:05:02+00:00
 
 ### Build
@@ -4887,3 +4919,4 @@ EndToEnd theorem correctly chains all passes. All Behaves relations defined.
 
 ## Run: 2026-03-25T19:05:01+00:00
 
+2026-03-25T19:21:49+00:00 DONE
