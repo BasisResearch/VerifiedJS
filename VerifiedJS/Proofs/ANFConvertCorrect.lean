@@ -769,9 +769,201 @@ private theorem step?_seq_ctx (s : Flat.State) (a b : Flat.Expr)
     (t : Core.TraceEvent) (sa : Flat.State)
     (hstep : Flat.step? { s with expr := a } = some (t, sa)) :
     ∃ s', Flat.step? { s with expr := .seq a b } = some (t, s') ∧
-      s'.expr = .seq sa.expr b ∧ s'.env = sa.env ∧ s'.heap = sa.heap := by
+      s'.expr = .seq sa.expr b ∧ s'.env = sa.env ∧ s'.heap = sa.heap ∧
+      s'.funcs = s.funcs ∧ s'.callStack = s.callStack ∧
+      s'.trace = s.trace ++ [t] := by
   simp only [Flat.step?, hnotval, hstep]
-  exact ⟨_, rfl, rfl, rfl, rfl⟩
+  exact ⟨_, rfl, rfl, rfl, rfl, rfl, rfl, rfl⟩
+
+/-- Build left-associated seq spine: wrapSeqCtx e [a,b,c] = .seq (.seq (.seq e a) b) c -/
+private def wrapSeqCtx (inner : Flat.Expr) : List Flat.Expr → Flat.Expr
+  | [] => inner
+  | r :: rs => wrapSeqCtx (.seq inner r) rs
+
+/-- Lift a single Flat step through N layers of left-seq context. -/
+private theorem step_wrapSeqCtx (s : Flat.State) (t : Core.TraceEvent)
+    (ctx : List Flat.Expr) :
+    ∀ (inner : Flat.Expr) (s_inner : Flat.State),
+    Flat.exprValue? inner = none →
+    Flat.step? { s with expr := inner } = some (t, s_inner) →
+    s_inner.funcs = s.funcs → s_inner.callStack = s.callStack → s_inner.trace = s.trace ++ [t] →
+    ∃ s', Flat.step? { s with expr := wrapSeqCtx inner ctx } = some (t, s') ∧
+      s'.expr = wrapSeqCtx s_inner.expr ctx ∧
+      s'.env = s_inner.env ∧ s'.heap = s_inner.heap ∧
+      s'.funcs = s.funcs ∧ s'.callStack = s.callStack ∧
+      s'.trace = s.trace ++ [t] := by
+  induction ctx with
+  | nil =>
+    intro inner s_inner _ hstep hf hc ht
+    exact ⟨s_inner, hstep, rfl, rfl, rfl, hf, hc, ht⟩
+  | cons r rs ih =>
+    intro inner s_inner hnotval hstep hf hc ht
+    obtain ⟨s1, hstep1, hexpr1, henv1, hheap1, hfuncs1, hcs1, htrace1⟩ :=
+      step?_seq_ctx s inner r hnotval t s_inner hstep
+    have hnotval1 : Flat.exprValue? (Flat.Expr.seq inner r) = none := by
+      simp [Flat.exprValue?]
+    obtain ⟨s', hs', he', henv', hheap', hf', hc', ht'⟩ :=
+      ih (Flat.Expr.seq inner r) s1 hnotval1 hstep1 hfuncs1 hcs1 htrace1
+    refine ⟨s', hs', ?_, henv'.trans henv1, hheap'.trans hheap1, hf', hc', ht'⟩
+    rw [he', hexpr1]
+
+/-- Helper: step? on .seq (.lit v) r gives r (silent, preserves env/heap/funcs/callStack). -/
+private theorem step?_seq_lit (sf : Flat.State) (v : Flat.Value) (r : Flat.Expr) :
+    ∃ s_i, Flat.step? { sf with expr := Flat.Expr.seq (.lit v) r } = some (.silent, s_i) ∧
+      s_i.expr = r ∧ s_i.env = sf.env ∧ s_i.heap = sf.heap ∧
+      s_i.funcs = sf.funcs ∧ s_i.callStack = sf.callStack ∧
+      s_i.trace = sf.trace ++ [Core.TraceEvent.silent] := by
+  simp only [Flat.step?, Flat.exprValue?]
+  exact ⟨_, rfl, rfl, rfl, rfl, rfl, rfl, rfl⟩
+
+/-- Helper: step? on .var name when name is bound gives .lit val (silent). -/
+private theorem step?_var_bound (sf : Flat.State) (name : String) (val : Flat.Value)
+    (hval : sf.env.lookup name = some val) :
+    ∃ s_i, Flat.step? { sf with expr := Flat.Expr.var name } = some (.silent, s_i) ∧
+      s_i.expr = .lit val ∧ s_i.env = sf.env ∧ s_i.heap = sf.heap ∧
+      s_i.funcs = sf.funcs ∧ s_i.callStack = sf.callStack ∧
+      s_i.trace = sf.trace ++ [Core.TraceEvent.silent] := by
+  simp only [Flat.step?, hval]
+  exact ⟨_, rfl, rfl, rfl, rfl, rfl, rfl, rfl⟩
+
+/-- Helper: step? on .this gives .lit val (silent, regardless of binding). -/
+private theorem step?_this_resolve (sf : Flat.State) :
+    ∃ val s_i, Flat.step? { sf with expr := Flat.Expr.this } = some (.silent, s_i) ∧
+      s_i.expr = .lit val ∧ s_i.env = sf.env ∧ s_i.heap = sf.heap ∧
+      s_i.funcs = sf.funcs ∧ s_i.callStack = sf.callStack ∧
+      s_i.trace = sf.trace ++ [Core.TraceEvent.silent] := by
+  simp only [Flat.step?]
+  cases sf.env.lookup "this" with
+  | some v => exact ⟨v, _, rfl, rfl, rfl, rfl, rfl, rfl, rfl⟩
+  | none => exact ⟨.undefined, _, rfl, rfl, rfl, rfl, rfl, rfl, rfl⟩
+
+/-- Consume a trivial chain inside a left-seq context via silent Flat steps.
+    wrapSeqCtx tc ctx steps to wrapSeqCtx (ctx.head _) ctx.tail. -/
+private theorem trivialChain_consume_ctx
+    (fuel : Nat) (tc : Flat.Expr) (ctx : List Flat.Expr) (sf : Flat.State)
+    (htc : isTrivialChain tc = true)
+    (hcost : trivialChainCost tc ≤ fuel)
+    (hctx : ctx ≠ [])
+    (hsf : sf.expr = wrapSeqCtx tc ctx)
+    (hwf : ∀ x, VarFreeIn x tc → sf.env.lookup x ≠ none) :
+    ∃ (evs : List Core.TraceEvent) (sf' : Flat.State),
+      Flat.Steps sf evs sf' ∧
+      sf'.expr = wrapSeqCtx (ctx.head hctx) ctx.tail ∧
+      sf'.env = sf.env ∧ sf'.heap = sf.heap ∧
+      observableTrace sf'.trace = observableTrace sf.trace ∧
+      observableTrace evs = [] := by
+  induction fuel generalizing tc sf with
+  | zero =>
+    cases tc with
+    | lit v =>
+      -- One step: .seq (.lit v) r → r, lifted through context
+      obtain ⟨r, rs, rfl⟩ : ∃ r rs, ctx = r :: rs := List.exists_cons_of_ne_nil hctx
+      have hnotval : Flat.exprValue? (Flat.Expr.seq (.lit v) r) = none := by simp [Flat.exprValue?]
+      obtain ⟨s_i, hstep_i, hexpr_i, henv_i, hheap_i, hfuncs_i, hcs_i, htrace_i⟩ :=
+        step?_seq_lit sf v r
+      obtain ⟨sf', hs', he', henv', hheap', _, _, ht'⟩ :=
+        step_wrapSeqCtx sf .silent rs _ s_i hnotval hstep_i hfuncs_i hcs_i htrace_i
+      have hstep_sf : Flat.step? sf = some (.silent, sf') := by
+        have : sf = { sf with expr := wrapSeqCtx (Flat.Expr.seq (.lit v) r) rs } := by
+          cases sf; simp_all [wrapSeqCtx]
+        rw [this]; exact hs'
+      refine ⟨[.silent], sf', .tail ⟨hstep_sf⟩ (.refl _), ?_, ?_, ?_, ?_, ?_⟩
+      · simp only [List.head_cons, List.tail_cons]; rw [he', hexpr_i]
+      · exact henv'.trans henv_i
+      · exact hheap'.trans hheap_i
+      · rw [ht']; simp [observableTrace_append, observableTrace]
+      · simp [observableTrace]
+    | var _ | «this» | seq _ _ => simp [trivialChainCost] at hcost
+    | _ => simp [isTrivialChain] at htc
+  | succ fuel ih =>
+    cases tc with
+    | lit v =>
+      -- Same as zero case
+      obtain ⟨r, rs, rfl⟩ : ∃ r rs, ctx = r :: rs := List.exists_cons_of_ne_nil hctx
+      have hnotval : Flat.exprValue? (Flat.Expr.seq (.lit v) r) = none := by simp [Flat.exprValue?]
+      obtain ⟨s_i, hstep_i, hexpr_i, henv_i, hheap_i, hfuncs_i, hcs_i, htrace_i⟩ :=
+        step?_seq_lit sf v r
+      obtain ⟨sf', hs', he', henv', hheap', _, _, ht'⟩ :=
+        step_wrapSeqCtx sf .silent rs _ s_i hnotval hstep_i hfuncs_i hcs_i htrace_i
+      have hstep_sf : Flat.step? sf = some (.silent, sf') := by
+        have : sf = { sf with expr := wrapSeqCtx (Flat.Expr.seq (.lit v) r) rs } := by
+          cases sf; simp_all [wrapSeqCtx]
+        rw [this]; exact hs'
+      refine ⟨[.silent], sf', .tail ⟨hstep_sf⟩ (.refl _), ?_, ?_, ?_, ?_, ?_⟩
+      · simp only [List.head_cons, List.tail_cons]; rw [he', hexpr_i]
+      · exact henv'.trans henv_i
+      · exact hheap'.trans hheap_i
+      · rw [ht']; simp [observableTrace_append, observableTrace]
+      · simp [observableTrace]
+    | var name =>
+      -- Step 1: resolve var → .lit val
+      have hbound : sf.env.lookup name ≠ none := hwf name (.var _)
+      obtain ⟨val, hval⟩ : ∃ v, sf.env.lookup name = some v := by
+        cases hlu : sf.env.lookup name with
+        | some v => exact ⟨v, rfl⟩
+        | none => exact absurd hlu hbound
+      have hnotval_v : Flat.exprValue? (Flat.Expr.var name) = none := by simp [Flat.exprValue?]
+      obtain ⟨s_v, hstep_v, hexpr_v, henv_v, hheap_v, hfuncs_v, hcs_v, htrace_v⟩ :=
+        step?_var_bound sf name val hval
+      obtain ⟨sf1, hs1, he1, henv1, hheap1, hf1, hc1, ht1⟩ :=
+        step_wrapSeqCtx sf .silent ctx _ s_v hnotval_v hstep_v hfuncs_v hcs_v htrace_v
+      have hstep_sf : Flat.step? sf = some (.silent, sf1) := by
+        have : sf = { sf with expr := wrapSeqCtx (Flat.Expr.var name) ctx } := by
+          cases sf; simp_all
+        rw [this]; exact hs1
+      -- sf1.expr = wrapSeqCtx (.lit val) ctx
+      have hsf1 : sf1.expr = wrapSeqCtx (.lit val) ctx := by rw [he1, hexpr_v]
+      -- Step 2: IH on (.lit val) with same ctx (cost 0 ≤ fuel)
+      obtain ⟨evs_lit, sf', hsteps_lit, hexpr', henv', hheap', htrace', hobs'⟩ :=
+        ih (.lit val) sf1 rfl (Nat.zero_le _) hctx hsf1 (fun x hfx => by cases hfx)
+      exact ⟨.silent :: evs_lit, sf',
+        .tail ⟨hstep_sf⟩ hsteps_lit,
+        hexpr',
+        henv'.trans (henv1.trans henv_v),
+        hheap'.trans (hheap1.trans hheap_v),
+        htrace'.trans (by rw [ht1]; simp [observableTrace_append, observableTrace]),
+        by simp [observableTrace_silent, hobs']⟩
+    | «this» =>
+      -- Step 1: resolve this → .lit val
+      have hnotval_t : Flat.exprValue? Flat.Expr.this = none := by simp [Flat.exprValue?]
+      obtain ⟨val, s_t, hstep_t, hexpr_t, henv_t, hheap_t, hfuncs_t, hcs_t, htrace_t⟩ :=
+        step?_this_resolve sf
+      obtain ⟨sf1, hs1, he1, henv1, hheap1, hf1, hc1, ht1⟩ :=
+        step_wrapSeqCtx sf .silent ctx _ s_t hnotval_t hstep_t hfuncs_t hcs_t htrace_t
+      have hstep_sf : Flat.step? sf = some (.silent, sf1) := by
+        have : sf = { sf with expr := wrapSeqCtx Flat.Expr.this ctx } := by
+          cases sf; simp_all
+        rw [this]; exact hs1
+      have hsf1 : sf1.expr = wrapSeqCtx (.lit val) ctx := by rw [he1, hexpr_t]
+      obtain ⟨evs_lit, sf', hsteps_lit, hexpr', henv', hheap', htrace', hobs'⟩ :=
+        ih (.lit val) sf1 rfl (Nat.zero_le _) hctx hsf1 (fun x hfx => by cases hfx)
+      exact ⟨.silent :: evs_lit, sf',
+        .tail ⟨hstep_sf⟩ hsteps_lit,
+        hexpr',
+        henv'.trans (henv1.trans henv_t),
+        hheap'.trans (hheap1.trans hheap_t),
+        htrace'.trans (by rw [ht1]; simp [observableTrace_append, observableTrace]),
+        by simp [observableTrace_silent, hobs']⟩
+    | seq ea eb =>
+      -- wrapSeqCtx (.seq ea eb) ctx = wrapSeqCtx ea (eb :: ctx)
+      simp [isTrivialChain] at htc
+      obtain ⟨htc_a, htc_b⟩ := htc
+      have hcost_a : trivialChainCost ea ≤ fuel := by simp [trivialChainCost] at hcost; omega
+      have hcost_b : trivialChainCost eb ≤ fuel := by simp [trivialChainCost] at hcost; omega
+      obtain ⟨evs_a, sf_a, hsteps_a, hexpr_a, henv_a, hheap_a, htrace_a, hobs_a⟩ :=
+        ih ea sf htc_a hcost_a (List.cons_ne_nil _ _) hsf
+          (fun x hfx => hwf x (.seq_l _ _ _ hfx))
+      obtain ⟨evs_b, sf_b, hsteps_b, hexpr_b, henv_b, hheap_b, htrace_b, hobs_b⟩ :=
+        ih eb sf_a htc_b hcost_b hctx
+          (by rw [hexpr_a]; simp [List.head_cons, List.tail_cons])
+          (fun x hfx => by rw [henv_a]; exact hwf x (.seq_r _ _ _ hfx))
+      exact ⟨evs_a ++ evs_b, sf_b,
+        Flat.Steps.append hsteps_a hsteps_b,
+        hexpr_b,
+        henv_b.trans henv_a, hheap_b.trans hheap_a,
+        htrace_b.trans htrace_a,
+        by rw [observableTrace_append, hobs_a, hobs_b]; rfl⟩
+    | _ => simp [isTrivialChain] at htc
 
 /-- Auxiliary halt_star with strong induction on Flat expression depth.
     When ANF reaches a terminal state (step? = none), Flat can also reach a
