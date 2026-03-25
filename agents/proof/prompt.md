@@ -5,56 +5,47 @@ You own Proofs/*.lean and compiler passes. EnvAddrWF is defined and integrated i
 ## Current CC sorry count: 10
 
 ```
-L1057  captured var           sorry (multi-step: Core 1 step, Flat 2 steps via getEnv)
-L1119  in-scope var found     sorry /- ExprAddrWF -/
-L1807  call                   sorry (env/heap/funcs correspondence)
-L1808  newObj                 sorry (env/heap correspondence)
-L1864  getProp value          sorry /- ExprAddrWF -/
-L2289  getIndex value         sorry /- ExprAddrWF -/
-L3313  objectLit              sorry — MAY BE UNBLOCKED (see TASK 2)
-L3314  arrayLit               sorry — MAY BE UNBLOCKED (see TASK 2)
-L3315  functionDef            sorry (env/heap/funcs + CC state)
-L4411  this found             sorry /- ExprAddrWF -/
+L1061  captured var           sorry (multi-step: Core 1 step, Flat 2 steps via getEnv)
+L1123  in-scope var found     sorry /- ExprAddrWF -/
+L1811  call                   sorry (env/heap/funcs correspondence)
+L1812  newObj                 sorry (env/heap correspondence)
+L1868  getProp value          sorry /- ExprAddrWF -/
+L2293  getIndex value         sorry /- ExprAddrWF -/
+L3317  objectLit              sorry — MAY BE UNBLOCKED (see TASK 2)
+L3318  arrayLit               sorry — MAY BE UNBLOCKED (see TASK 2)
+L3319  functionDef            sorry (env/heap/funcs + CC state)
+L4415  this found             sorry /- ExprAddrWF -/
 ```
 
-## TASK 0 (DO FIRST): Close L1119 and L4411 ExprAddrWF sorries
+## TASK 0 (DO FIRST): Close L1123 and L4415 ExprAddrWF sorries
 
 The sub-function returns tuple: `⟨trace, envCorr, heapCorr, envAddrWF, noCallFrameReturn, exprAddrWF, scope, st, st', conv⟩`.
 
 The sorry at position 6 is ExprAddrWF. The goal: `ExprAddrWF sc'.expr sc'.heap.objects.size`.
 
-**L1119** (`.var name`, in-scope, found): You have `hsc'_expr`, `hsc'_heap`, `henvwf`, `hcenv : sc.env.lookup name = some cv`.
-Replace `sorry /- ExprAddrWF -/` with:
+**L1123** (`.var name`, in-scope, found): You have `hsc'_expr`, `hsc'_heap`, `henvwf`, `hcenv : sc.env.lookup name = some cv`.
+The sorry is inline: `sorry /- ExprAddrWF -/`. Replace with:
 ```lean
 by rw [hsc'_expr, hsc'_heap]; simp [ExprAddrWF]; exact henvwf name cv hcenv
 ```
-If `simp [ExprAddrWF]` doesn't reduce, try `exact henvwf name cv hcenv` directly (it may reduce by definitional equality).
+If `simp [ExprAddrWF]` doesn't reduce, try `exact henvwf name cv hcenv` directly.
 
-**L4411** (`.this`, found): You have `hsc'_expr`, `henvwf`, `hcenv : sc.env.lookup "this" = some cv`.
-**NOTE**: There is NO `hsc'_heap` in this branch. You need to add it first. Insert before L4411:
+**L4415** (`.this`, found): You have `hsc'_expr`, `henvwf`, `hcenv : sc.env.lookup "this" = some cv`.
+The heap is already rewritten at L4414 (`exact hheap`), so sc'.heap = sc.heap is established in context.
+Replace `sorry /- ExprAddrWF -/` with:
 ```lean
-      have hsc'_heap : sc'.heap = sc.heap := by
-        have h0 := hcstep
-        rw [show sc = {sc with expr := .this} from by cases sc; simp_all] at h0
-        simp only [Core.step?, hcenv] at h0
-        have heq := (Prod.mk.inj (Option.some.inj h0)).2; subst heq; rfl
+by rw [hsc'_expr]; simp [ExprAddrWF]; exact henvwf "this" cv hcenv
 ```
-Then replace `sorry /- ExprAddrWF -/` with:
+If that fails because heap isn't rewritten in ExprAddrWF, try:
 ```lean
-by rw [hsc'_expr, hsc'_heap]; simp [ExprAddrWF]; exact henvwf "this" cv hcenv
+by simp [ExprAddrWF]; exact henvwf "this" cv hcenv
 ```
 
-**Alternative if henvwf already unifies without rewriting**: If `lean_goal` shows the goal is `ExprAddrWF (.lit cv) sc.heap.objects.size` (already simplified), then just use:
-```lean
-by simp [ExprAddrWF]; exact henvwf name cv hcenv  -- L1119
-by simp [ExprAddrWF]; exact henvwf "this" cv hcenv  -- L4411
-```
+Use `lean_goal` at L1123 and L4415 to verify before editing.
 
-Use `lean_goal` at L1119 and L4411 to verify before editing.
+## TASK 1: Close L1868 and L2293 ExprAddrWF sorries (getProp/getIndex)
 
-## TASK 1: Close L1864 and L2289 ExprAddrWF sorries (getProp/getIndex)
-
-These need the looked-up property VALUE to satisfy ValueAddrWF. The value comes from the heap, so you need **HeapValuesWF** (L687):
+These need the looked-up property VALUE to satisfy ValueAddrWF. The value comes from the heap, so you need **HeapValuesWF**:
 ```lean
 private def HeapValuesWF (heap : Core.Heap) : Prop :=
   ∀ addr, addr < heap.objects.size →
@@ -62,21 +53,21 @@ private def HeapValuesWF (heap : Core.Heap) : Prop :=
       ∀ kv, kv ∈ props → ValueAddrWF kv.2 heap.objects.size
 ```
 
-This is NOT yet in CC_SimRel. To close L1864/L2289:
+This is NOT yet in CC_SimRel. To close L1868/L2293:
 1. Add `HeapValuesWF sc.heap` to CC_SimRel (after EnvAddrWF)
-2. Prove it holds initially (closureConvert_init_related): initial heap has 1 object (console) with no props → trivially WF
+2. Prove it holds initially: initial heap has 1 object (console) with no props → trivially WF
 3. Prove it's preserved by each step: heap-mutating steps (setProp, setIndex, objectLit, arrayLit) must maintain it. For non-mutating steps, `hsc'_heap : sc'.heap = sc.heap` gives it for free.
-4. Use it at L1864/L2289: extract the addr < heap.size from ExprAddrWF, look up the property, apply HeapValuesWF
+4. Use it at L1868/L2293: extract the addr < heap.size from ExprAddrWF, look up the property, apply HeapValuesWF
 
-This is a significant invariant addition. Skip if TASK 0 isn't done.
+Skip if TASK 0 isn't done.
 
-## TASK 2: Close L3313 and L3314 (objectLit/arrayLit)
+## TASK 2: Close L3317 and L3318 (objectLit/arrayLit)
 
 Your previous analysis said these are BLOCKED by `allocFreshObject` pushing `[]`. This is STALE:
 - **objectLit** (Flat/Semantics.lean:803) now uses `allocObjectWithProps s.heap heapProps`
 - **arrayLit** (Flat/Semantics.lean:822) also uses `allocObjectWithProps` with indexed props
 
-Re-analyze with `lean_goal` at L3313/L3314.
+Re-analyze with `lean_goal` at L3317/L3318.
 
 ## TASK 3: ANF sorries (2 remain)
 
