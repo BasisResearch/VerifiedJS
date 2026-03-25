@@ -7130,6 +7130,48 @@ private theorem emit_preserves_globals_size (irmod : IRModule) (wmod : Module)
   · simp only [Except.ok.injEq] at hemit
     rw [← hemit]; simp [buildModule]
 
+/-- Each emitOneFunc call pushes exactly one function to the accumulator. -/
+private theorem emitOneFunc_funcs_size (acc : EmitAcc) (f : IRFunc)
+    (acc' : EmitAcc) (h : emitOneFunc acc f = .ok acc') :
+    acc'.funcs.size = acc.funcs.size + 1 := by
+  unfold emitOneFunc at h
+  simp only [Bind.bind, Except.bind] at h
+  split at h
+  · simp at h
+  · simp only [Except.ok.injEq] at h
+    split at h
+    · simp only [Except.ok.injEq] at h; rw [← h]; simp [Array.size_push]
+    · simp only [Except.ok.injEq] at h; rw [← h]; simp [Array.size_push]
+
+/-- The fold over emitOneFunc preserves size: final = initial + list length. -/
+private theorem foldlM_emitOneFunc_size (funcs : List IRFunc) (acc acc' : EmitAcc)
+    (h : funcs.foldlM emitOneFunc acc = .ok acc') :
+    acc'.funcs.size = acc.funcs.size + funcs.length := by
+  induction funcs generalizing acc with
+  | nil => simp [List.foldlM] at h; rw [h]
+  | cons f rest ih =>
+    simp only [List.foldlM, Bind.bind, Except.bind] at h
+    split at h
+    · simp at h
+    · rename_i acc_mid _ heq
+      have hsize := emitOneFunc_funcs_size acc f acc_mid heq
+      have := ih acc_mid h
+      omega
+
+/-- emit preserves function count. -/
+private theorem emit_preserves_funcs_size (irmod : IRModule) (wmod : Module)
+    (hemit : emit irmod = .ok wmod) :
+    wmod.funcs.size = irmod.functions.size := by
+  unfold emit at hemit
+  simp only [Bind.bind, Except.bind, Id.run] at hemit
+  split at hemit
+  · simp at hemit
+  · simp only [Except.ok.injEq] at hemit
+    rw [← hemit]; simp [buildModule]
+    rename_i acc _
+    have hfold := foldlM_emitOneFunc_size irmod.functions.toList _ acc (by assumption)
+    simp at hfold; rw [hfold, List.length_toList]
+
 /-- IRValue.default corresponds to Wasm defaultValue for each IR type. -/
 private theorem irValueDefault_corr (t : IRType) :
     IRValueToWasmValue (IRValue.default t) (defaultValue (match t with
