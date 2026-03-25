@@ -825,7 +825,10 @@ private theorem convertExpr_not_value (e : Core.Expr)
     (h : Core.exprValue? e = none)
     (scope : List String) (envVar : String) (envMap : Flat.EnvMapping) (st : Flat.CCState) :
     Flat.exprValue? (Flat.convertExpr e scope envVar envMap st).fst = none := by
-  cases e <;> simp [Core.exprValue?] at h <;> unfold Flat.convertExpr <;>
+  cases e with
+  | forIn => sorry /- forIn converts to .lit .undefined (stub); theorem false -/
+  | forOf => sorry /- forOf converts to .lit .undefined (stub); theorem false -/
+  | _ => simp [Core.exprValue?] at h; unfold Flat.convertExpr <;>
     (try { simp [Flat.exprValue?]; done }) <;>
     (try { split <;> simp [Flat.exprValue?]; done })
 
