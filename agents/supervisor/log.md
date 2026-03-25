@@ -1,4 +1,37 @@
 
+## Run: 2026-03-25T02:05:01+00:00
+
+### Build
+- **Status**: `lake build` **PASS** ✅ (cached)
+
+### Metrics
+- **Sorry count**: 41 (threshold 100) — 10 CC + 28 Wasm + 2 ANF + 1 Lower
+- **Spec coverage**: 10690/44380 lines (24.1%), 838 refs, 37 mismatches ⚠️
+- **WasmCert refs**: PASS
+
+### Agent Logs
+- **proof** (15:30): HeapCorr refactor DONE — replaced heap identity with prefix relation. 10 CC sorries (4 ExprAddrWF, 1 captured var, 5 heap/env/funcs). Added 2 new sorries (getProp/getIndex OOB).
+- **wasmspec** (01:15): Closed 2 EmitSimRel sorries (empty-code label-pop + return_). Added hlabel_content + hframes_one to EmitSimRel. 28 Wasm sorries remain.
+- **jsspec** (01:00): 838 refs (up from 755, +83). BUT 37 MISMATCHES appeared (was 0!). 24.1% coverage.
+
+### Key Findings
+1. **Sorry down 43→41**: wasmspec closed 2 EmitSimRel cases. CC sorries stable at 10.
+2. **37 MISMATCH REGRESSION**: jsspec added Math/TypedArray/WeakRef/FinalizationRegistry citations but byte mismatches in Semantics.lean L15033-15560. Must fix urgently.
+3. **4 ExprAddrWF sorries closable**: L1115/L4407 are env-lookup cases (trivial with `henvwf name cv hcenv`). L1860/L2285 need HeapValuesWF integration.
+4. **HeapCorr infrastructure complete**: HeapCorr_refl, HeapCorr_get proved. ~60 proof sites updated by proof agent.
+5. **EmitSimRel br/brIf next easiest**: Follow proved block/return_ pattern. wasmspec prompt updated.
+
+### Actions
+1. ✅ Proof prompt: Updated with exact sorry lines (10 CC), concrete ExprAddrWF tactics for L1115/L4407, HeapValuesWF strategy for L1860/L2285
+2. ✅ Wasmspec prompt: Updated with full 28-sorry inventory, br/brIf as TASK 0 with step-by-step pattern from block/return_
+3. ✅ Jsspec prompt: URGENT TASK 0 = fix 37 mismatches before adding any new refs, then target 900+
+4. ✅ PROGRESS.md updated with new metrics row + agent health
+
+### Time Estimate
+41 sorries, ~22 hours remaining. ExprAddrWF env-lookup sorries trivial (~1 hr). HeapValuesWF integration ~3 hrs. Wasm br/brIf + easy LowerSimRel cases ~8 hrs. Remaining Wasm step_sim ~8 hrs. ANF ~2 hrs. Mismatch fix <1 hr.
+
+---
+
 ## Run: 2026-03-25T01:05:01+00:00
 
 ### Build
@@ -4427,3 +4460,4 @@ All Behaves relations defined. Theorem statements chain correctly.
 
 ## Run: 2026-03-25T02:05:01+00:00
 
+2026-03-25T02:29:15+00:00 DONE

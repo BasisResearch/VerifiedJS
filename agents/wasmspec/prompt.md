@@ -2,34 +2,64 @@
 
 You own Flat/*, ANF/*, Wasm/Syntax,Semantics,Typing,Numerics, Runtime/*.
 
-## Current Wasm sorry count: ~25
+## Current Wasm sorry count: 28
 
-## TASK 0 (EASIEST — DO FIRST): Close br/brIf/return_ (L8133, L8136, L8139)
+### EmitSimRel sorries (10):
+```
+L6887  emit_globals_init_valcorr   sorry (irTypeToValType private in Emit.lean)
+L7592  load                        sorry (memory readLE? bridge)
+L7595  store                       sorry (memory writeLE? bridge)
+L7598  store8                      sorry (memory write bridge)
+L8039  call                        sorry (function table correspondence)
+L8042  callIndirect                sorry (function table correspondence)
+L8279  br                          sorry (label name→index resolution)
+L8282  brIf                        sorry (label name→index resolution)
+L8389  memoryGrow                  sorry (memory grow correspondence)
+```
+Plus the empty-code label-pop at ~L7004 was CLOSED last run ✅.
 
-These are at the END of the EmitSimRel step_sim match. They are control flow cases with short IR/Wasm code. Follow the EXACT pattern from `.block` (L7933-7960) which is already proved — it uses EmitCodeCorr inversion + matching steps.
+### LowerSimRel sorries (15):
+```
+L6021  init env                    sorry (ANF console binding → IR local)
+L6094  hhalt (localGet)            sorry (labels=[] ∧ frames≤1 invariant)
+L6139  let                         sorry (rhsCode ++ localSet ++ bodyCode)
+L6147  seq                         sorry (aCode ++ drop ++ bCode)
+L6151  if                          sorry (condCode ++ if_)
+L6154  while                       sorry (loop structure)
+L6157  throw                       sorry (error event)
+L6160  tryCatch                    sorry (try-catch frame)
+L6163  return                      sorry (return event)
+L6166  yield                       sorry (yield event)
+L6169  await                       sorry (await event)
+L6172  labeled                     sorry (labeled block)
+L6175  break                       sorry (break event)
+L6178  continue                    sorry (continue event)
+```
+Plus 3 `by sorry` in init at L8548/8563/8587.
 
-For each:
-1. `have hc : EmitCodeCorr (instr :: rest) s2.code := hcode_ir ▸ hrel.hcode`
-2. `rcases hc.xxx_inv with ⟨rest_w, hcw, hrest⟩ | hf` (you may need to add `xxx_inv` lemma to EmitCodeCorr)
-3. Compute `irStep?` and `Wasm.step?` results
-4. Build post-step `EmitSimRel`
+## TASK 0 (EASIEST — DO FIRST): Close br and brIf (L8279, L8282)
 
-Use `lean_goal` at each line to see the exact goal.
+These follow the EXACT pattern from `.block` (L8043-8084) and `.return_` (L8283-8385) which are already proved.
 
-## TASK 1: Close LowerSimRel sorries (L6094, L6139-6178)
+For **br** (L8279):
+1. `have hc : EmitCodeCorr (IRInstr.br label :: rest) s2.code := hcode_ir ▸ hrel.hcode`
+2. `rcases hc.br_inv with ⟨idx, rest_w, hcw, hrest⟩ | hf` (add `br_inv` lemma to EmitCodeCorr if needed)
+3. Compute `irStep?` for br — it finds label, pops labels/code, continues with onExit
+4. Compute `Wasm.step?` for `Wasm.Instr.br idx` — pops labels to idx
+5. Use `hlabel_content` to connect IR label's onExit to Wasm label's continuation
+6. Build post-step EmitSimRel
 
-14 step_sim cases. **Easiest**: L6163-6178 (break/continue/labeled/return) — these produce events and have short IR code.
+For **brIf** (L8282): Same pattern but with a condition check. Case split on stack top being truthy/falsy.
 
-## TASK 2: Close EmitSimRel init sorries
+## TASK 1: Close easy LowerSimRel cases
 
-- **L6881**: `emit_globals_init_valcorr` — Make `irTypeToValType` public in Wasm/Emit.lean (remove `private`), rebuild, then `cases t <;> simp [irTypeToValType]`
-- **L7004**: `hmemory` init
-- **L7510-7516**: load/store/store8 memory simulation
-- **L7929/7932**: call/callIndirect
+**L6163 (return)**, **L6166 (yield)**, **L6169 (await)**: These produce events and have short IR code. Follow the pattern from the proved localGet case at L6033-6104.
 
-## TASK 3: Close LowerSimRel init (L6021)
+**L6175 (break)**, **L6178 (continue)**: Similar — produce error events with label info.
 
-Initial env correspondence — ANF env has console binding, needs IR local correspondence.
+## TASK 2: Close L6887 (emit_globals_init_valcorr)
+
+Make `irTypeToValType` public in Wasm/Emit.lean (remove `private`), then rebuild, then `cases t <;> simp [irTypeToValType]`.
 
 ## Rules
 - `bash scripts/lake_build_concise.sh` to build

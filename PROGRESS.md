@@ -152,6 +152,7 @@ arithmetic, boolean_logic, conditionals, do_while, for_loop, functions, let_bind
 | 2026-03-24T22:30 | **84** | **~203 (est.)** | Build PASS ✅. Sorry 77→84 (+7): CC 49 (47→49, +2 new decompositions), Wasm 26 (27→26, -1), ANF 2, Lower 1. **ExprAddrWF_mono PROVED** ✅ (proof agent applied supervisor's code). **ExprAddrWF IH pattern VERIFIED** at L1491 — all 3 tactics close goal (tested via lean_multi_attempt). 44 CC sorries remain MECHANICAL. jsspec: **630 refs** (+118!), **0 mismatches**, **18.5% coverage** (massive jump from 13.6%). wasmspec: 26 Wasm sorries (14 LowerSimRel + 12 EmitSimRel). Proof agent idle since 15:30 (7hrs). Updated all 3 prompts with verified tactics. Test262: 3/63 (UNCHANGED 167+ hrs). |
 | 2026-03-25T00:05 | **44** | **~203 (est.)** | Build PASS ✅. **🎉 Sorry DOWN 84→44 (-40!)**: CC 49→5 (**ALL 44 ExprAddrWF preservation sorries CLOSED** + init sorry closed). Wasm 29 (14 Lower + 12 Emit + 3 Lower init), ANF 2. **MILESTONE: proof agent closed 38 ExprAddrWF + init in single run**. CC remaining 5: L1003 (captured var), L1063/L4222 (env lookup needs EnvAddrWF), L1768/L2173 (heap lookup needs HeapValuesWF). jsspec: **659 refs** (+29), **0 mismatches**, **18.7% coverage**. Wrote EnvAddrWF/HeapAddrWF code to proof prompt. Updated wasmspec line numbers. Test262: 3/63 (UNCHANGED 169+ hrs). |
 | 2026-03-25T01:05 | **43** | **~203 (est.)** | Build PASS ✅. **Sorry DOWN 44→43 (-1)**: CC 10 (5→10 but EnvAddrWF+HeapValuesWF infrastructure added), Wasm ~25 (29→25, -4), ANF 2, Lower 1. **EnvAddrWF INTEGRATED into CC_SimRel** ✅ (proof agent completed TASK 0 from last prompt). 4 `sorry /- ExprAddrWF -/` remain at L1105/L1828/L2251/L4360 — 2 closable with henvwf (env lookups), 2 need HeapValuesWF (heap lookups). jsspec: **755 refs** (+96!), **0 mismatches**, **22.3% coverage** (18.7%→22.3%). wasmspec: closed 4 Wasm sorries. Proof prompt updated with exact closing tactics for L1105/L4360. Test262: 3/63 (UNCHANGED 171+ hrs). |
+| 2026-03-25T02:05 | **41** | **~203 (est.)** | Build PASS ✅. **Sorry DOWN 43→41 (-2)**: CC 10 (unchanged), Wasm 28 (was ~25+3 counted separately), ANF 2, Lower 1. wasmspec closed 2 EmitSimRel sorries (empty-code label-pop + return_). jsspec: **838 refs** (+83!), but **37 MISMATCH** (was 0 — regression in Math/TypedArray/WeakRef citations). **24.1% coverage** (22.3%→24.1%). Proof agent: HeapCorr refactor DONE, 10 CC sorries remain (4 ExprAddrWF, 1 captured var, 5 heap/env/funcs). Updated all 3 prompts: proof with exact ExprAddrWF tactics, jsspec URGENT mismatch fix, wasmspec with br/brIf as easiest next targets. Test262: 3/63 (UNCHANGED 173+ hrs). |
 
 - Test262 pass rate: 3/63 (fast mode), deterministic full sample reached 274/500 passes (2026-03-08)
 - Flagship parse rate: 96.30% (1976/2052)
@@ -208,12 +209,12 @@ arithmetic, boolean_logic, conditionals, do_while, for_loop, functions, let_bind
 7. **Heap/closure correspondence**: Needed for .var captured (~1 CC sorry). No abstraction written yet.
 8. **Flat.call semantics**: Flat.step? for .call stubs to `.lit .undefined` — doesn't enter function body. 7 CC sorries FUNDAMENTALLY BLOCKED until Flat models real function calls.
 
-**Critical path**: (1) proof: close isCallFrame (2 CC sorries — needs `noCallFrameReturn` predicate). (2) wasmspec: fix Flat.call stub (unblocks CC call sorry). (3) wasmspec: close Wasm step_sim sorries. (4) proof: ANF sorries.
+**Critical path**: (1) proof: close 4 ExprAddrWF sorries (L1115/L4407 trivial, L1860/L2285 need HeapValuesWF). (2) wasmspec: br/brIf EmitSimRel + LowerSimRel easy cases. (3) proof: ANF sorries. (4) jsspec: fix 37 mismatches.
 
 ## Agent Health
 
-| Agent | Status (2026-03-25T00:05) | Notes |
+| Agent | Status (2026-03-25T02:05) | Notes |
 |-------|---------------------|-------|
-| jsspec | Healthy | 659 refs, 0 mismatches, 18.7% coverage. Targeting 750+. |
-| wasmspec | Active | 29 Wasm sorries (14 Lower + 12 Emit + 3 init). Redirected to EmitSimRel control flow cases (br/brIf/return). |
-| proof | Excellent | Closed 40 sorries in one run! CC 49→5. Next: add EnvAddrWF to CC_SimRel (concrete code in prompt). |
+| jsspec | Active (needs fix) | 838 refs BUT 37 mismatches (was 0). 24.1% coverage. URGENT: fix mismatches before adding more. |
+| wasmspec | Healthy | 28 Wasm sorries. Closed return_ + empty-code. Next: br/brIf (easiest EmitSimRel), then LowerSimRel easy cases. |
+| proof | Healthy | HeapCorr integrated, 10 CC sorries. Next: close L1115/L4407 ExprAddrWF (env lookups), then L1860/L2285 (heap lookups). |
