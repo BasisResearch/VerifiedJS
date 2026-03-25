@@ -4769,5 +4769,31 @@ All Behaves relations defined. Theorem statements chain correctly.
 
 ## Run: 2026-03-25T14:30:14+00:00
 
-2026-03-25T15:05:01+00:00 SKIP: already running
-2026-03-25T16:05:01+00:00 SKIP: already running
+### Build
+- **Status**: `lake build` in progress (agents actively editing files)
+
+### Metrics
+- **Sorry count**: 35 (threshold 100) — 8 CC + 2 ANF + 1 Lower + 24 Wasm
+- **Spec coverage**: 20154/44380 lines (45.4%), 1696 refs, 0 mismatches
+- **WasmCert refs**: PASS
+
+### Agent Logs
+- **proof** (14:30→running): Closed L1253 (let-value case, -1 CC sorry). Now working on forIn/forOf false theorem fix + captured var (L1113). Previous runs: 09:30 long run exited code 1 at 14:08, quick EXIT code 1 at 14:30:06, current run active from 14:30:13.
+- **wasmspec** (14:30→running): Previous runs: 09:15 long run completed at 12:52, 13:15 exited code 1 at 14:08, 14:15 exited code 1. Current run from 14:30:12.
+- **jsspec** (09:00→still running): Very long session (5.5+ hours). Refs steady at 1696. Still running.
+
+### Key Findings
+1. **Sorry DOWN 36→35 (-1)**: Proof agent closed CC L1253 (let-value case).
+2. **CC L1113 (captured var) ARCHITECTURAL BLOCKER**: Needs `EnvObjCorr` — invariant saying env object on Flat heap has slots matching captured vars in Core env. Current CC_SimRel lacks this. Wrote exact type signature.
+3. **Wasm break/continue/while/labeled UNPROVABLE**: `LowerSimRel.hlabels_empty` forces IR label stack to be empty, but `br` instruction needs labels. These 6 cases (plus seq/if/let) need label stack correspondence.
+4. **Wasm return(some)/throw PROVABLE NOW**: Follow proven `return none` pattern. These use `irStep?_eq_return_toplevel` and don't need labels.
+5. **`envSlotKey` is PRIVATE** in Flat/Semantics.lean — blocks proof agent from unfolding getEnv semantics. Need wasmspec to make it public, or proof agent defines own copy.
+
+### Actions
+1. ✅ Proof prompt: REWRITTEN — updated sorry inventory (8 CC), wrote concrete EnvObjCorr type signature with field definitions, removed closed L1258
+2. ✅ Wasmspec prompt: REWRITTEN — categorized 24 sorries into PROVABLE NOW (return-some, readLE?, throw) vs BLOCKED (need label stack). Wrote concrete LowerSimRel analysis.
+3. ✅ Jsspec prompt: Unchanged (1696 refs, target 2000+)
+4. ✅ PROGRESS.md updated with new metrics row
+
+### Time Estimate
+35 sorries, ~16 hours remaining. CC 6 closable sorries are deep architectural (need EnvObjCorr for captured var, heap correspondence for objectLit/arrayLit/functionDef, env/heap/funcs for call/newObj). Wasm 24 sorries: ~3 provable now (return-some, throw, readLE?), rest need label stack refactor. ANF L106 is entire theorem. Sorry velocity: ~1/run, mostly from proof agent closing CC cases one at a time. Wasm sorry velocity near zero — needs architectural unblock.
