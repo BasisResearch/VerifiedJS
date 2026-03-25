@@ -7985,14 +7985,14 @@ theorem step_sim (irmod : IRModule) (wmod : Module) :
             · -- Wasm code = i32Store {offset, align:2} :: rest_w
               match hstk : s1.stack with
               | [] =>
-                -- Empty stack: both trap
+                -- Empty stack: both trap with stack underflow
                 simp [irStep?, hcode_ir, hstk, irPop2?, irTrapState, irPushTrace] at hstep
                 obtain ⟨rfl, rfl⟩ := hstep
                 have hlen := hrel.hstack.1; rw [hstk] at hlen; simp at hlen
                 have hs2 : s2.stack = [] := by
                   match hs : s2.stack with | [] => rfl | _ :: _ => simp [hs] at hlen
-                have hw : step? s2 = some (.trap ("type mismatch in i32.store"),
-                    { s2 with code := [], trace := s2.trace ++ [.trap ("type mismatch in i32.store")] }) := by
+                have hw : step? s2 = some (.trap ("stack underflow in i32.store"),
+                    { s2 with code := [], trace := s2.trace ++ [.trap ("stack underflow in i32.store")] }) := by
                   simp [step?, hcw, hs2, pop2?, trapState, pushTrace]
                 exact ⟨_, by simp [traceToWasm]; exact hw,
                   { hemit := hrel.hemit, hcode := .nil, hstack := by dsimp only []; exact hrel.hstack,
@@ -8002,7 +8002,7 @@ theorem step_sim (irmod : IRModule) (wmod : Module) :
                     hlabel_content := hrel.hlabel_content
                     hframes_one := hrel.hframes_one }⟩
               | [x] =>
-                -- One element: irPop2? fails → trap
+                -- One element: irPop2? fails → trap with stack underflow
                 simp [irStep?, hcode_ir, hstk, irPop2?, irTrapState, irPushTrace] at hstep
                 obtain ⟨rfl, rfl⟩ := hstep
                 have hlen := hrel.hstack.1; rw [hstk] at hlen; simp at hlen
@@ -8012,8 +8012,8 @@ theorem step_sim (irmod : IRModule) (wmod : Module) :
                   | [w] => exact ⟨w, rfl⟩
                   | _ :: _ :: _ => simp [hs] at hlen
                 obtain ⟨w, hs2⟩ := hs2
-                have hw : step? s2 = some (.trap ("type mismatch in i32.store"),
-                    { s2 with code := [], trace := s2.trace ++ [.trap ("type mismatch in i32.store")] }) := by
+                have hw : step? s2 = some (.trap ("stack underflow in i32.store"),
+                    { s2 with code := [], trace := s2.trace ++ [.trap ("stack underflow in i32.store")] }) := by
                   simp [step?, hcw, hs2, pop2?, trapState, pushTrace]
                 exact ⟨_, by simp [traceToWasm]; exact hw,
                   { hemit := hrel.hemit, hcode := .nil, hstack := by dsimp only []; exact hrel.hstack,

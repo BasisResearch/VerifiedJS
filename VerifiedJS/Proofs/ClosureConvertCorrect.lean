@@ -1259,7 +1259,7 @@ private theorem closureConvert_step_simulation
       have hcs : (Flat.convertExpr init scope envVar envMap st).snd = st := by
         rw [hinit_lit]; simp [Flat.convertExpr]
       rw [hcf, hcs] at hsf_expr
-      rw [hinit_lit] at hsc hncfr hexprwf
+      rw [hinit_lit] at hsc
       -- hsc : sc.expr = .let name (.lit v) body
       -- Flat step on let-value: event is .silent
       have hev_eq : ev = .silent := by
