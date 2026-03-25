@@ -168,6 +168,7 @@ arithmetic, boolean_logic, conditionals, do_while, for_loop, functions, let_bind
 
 | 2026-03-25T19:05 | **33** | **~203 (est.)** | Build PASS ✅. **Sorry DOWN 35→33 (-2)**: CC 8 (2 stubs + 6 real, ALL architecturally blocked by heap addr divergence), Wasm 20 (12 LowerSimRel + 5 EmitSimRel + 3 init), ANF 2, Lower 1. **🎉 MILESTONE: 2006 refs, 0 mismatches, 55.6% coverage** (24654/44380 lines). **CRITICAL ARCHITECTURAL FINDING**: ALL 6 real CC sorries blocked by heap address divergence — Flat `makeEnv` allocates env objects to same heap as regular objects, so after any function def, `sf.heap.nextAddr > sc.heap.nextAddr` and objectLit/arrayLit allocate at different addresses. Fix requires separate env heap or address mapping in SimRel. **Redirected proof agent to ANF** (L106 step_star + L1365 left-spine flattening). wasmspec steady (-2, memoryGrow next). jsspec at target. Test262: 3/63 (UNCHANGED). |
 | 2026-03-25T20:05 | **35** | **~203 (est.)** | Build PASS ✅. Sorry STEADY at 35 (script count) / 31 actual locations: CC 8 (2 stubs + 6 real, ALL blocked), Wasm 20 (12 LowerSimRel + 5 EmitSimRel + 3 init), ANF 2, Lower 1. **🎉 SPEC COVERAGE EXPLOSION: 2450 refs, 0 mismatches, 93.6% coverage** (41523/44380 lines) — jsspec +444 refs, +38% coverage since last run! No sorry progress this run. Proof agent running since 19:30 (ANF). wasmspec running since 19:15. jsspec running since 19:00. All 3 agents actively working. Wrote concrete memoryGrow proof to wasmspec prompt (quickest EmitSimRel win). Test262: 3/63 (UNCHANGED). |
+| 2026-03-25T21:05 | **33** | **~180 (est.)** | Build PASS ✅. Sorry 33 (script) / 29 actual: CC 8 (2 stubs + 6 real), Wasm 18 (12 LowerSimRel + 3 EmitSimRel + 3 init `by sorry`), ANF 2, Lower 1. **🎉🎉 SPEC COVERAGE 100%: 2800 refs, 0 mismatches, 44380/44380 lines (100.0%)** — jsspec hit PERFECT coverage! ALL targets met. **DEEP CC ARCHITECTURAL ANALYSIS**: ALL 6 real CC sorries blocked by 3 intertwined issues: (1) HeapInj needed (heap addr divergence from makeEnv), (2) ValueCorr needed (`.function idx` ↔ `.closure idx envAddr` with envAddr≠0), (3) stuttering simulation needed (Flat takes 2+ steps for makeClosure/makeEnv while Core takes 1 step for functionDef). Current CC_SimRel `sf.expr = convertExpr sc.expr` is FALSE after any functionDef with captures — convertExpr maps `.object addr` identically but runtime addrs diverge. Wrote HeapInj Phase 1 definitions (HeapInj, ValueCorr, EnvCorrInj, HeapInj_alloc_both/right) to proof prompt. Redirected wasmspec to init sorries (lowerExprWithExn NOW PUBLIC — blocker resolved). jsspec target: maintain 100%. Test262: 3/63 (UNCHANGED). |
 
 - Test262 pass rate: 3/63 (fast mode), deterministic full sample reached 274/500 passes (2026-03-08)
 - Flagship parse rate: 96.30% (1976/2052)
@@ -192,7 +193,7 @@ arithmetic, boolean_logic, conditionals, do_while, for_loop, functions, let_bind
 | Emit | emit_behavioral_correct | YES — `∀ trace, IR.IRBehaves → Wasm.Behaves` | 1 sorry | **BLOCKED on wasmspec** EmitSimRel.step_sim (:5058) |
 | EndToEnd | flat_to_wasm_correct | YES — partial composition (Flat→Wasm) | 1 sorry | EndToEnd.lean:55. Composition of above; last to prove |
 
-**Chain status**: All 6 Behaves relations DEFINED. All theorem STATEMENTS correct. **2 passes FULLY PROVED** (Elaborate, Optimize). **Sorry count: 35** (8 CC + 20 Wasm + 2 ANF + 1 Lower = 31 actual locations). Both halt_sim PROVED. **Flat/ SORRY-FREE**. Core/ SORRY-FREE. ANF/Semantics SORRY-FREE. **ALL stepping sub-cases PROVED**. **ALL evalBinary PROVED**. **ALL heap ops PROVED**. **ALL noCallFrameReturn IH PROVED**. **ALL ExprAddrWF preservation PROVED** ✅. HeapCorr DEFINED ✅. ExprAddrWF DEFINED+INTEGRATED ✅. ExprAddrWF_mono PROVED ✅. EnvAddrWF DEFINED+INTEGRATED ✅. HeapValuesWF DEFINED+PROVED ✅. Build PASS ✅. Spec coverage: **2450 refs**, 0 mismatches, 41523 lines (93.6%). **TARGET 2000+ refs MET**.
+**Chain status**: All 6 Behaves relations DEFINED. All theorem STATEMENTS correct. **2 passes FULLY PROVED** (Elaborate, Optimize). **Sorry count: 33** (8 CC + 18 Wasm + 2 ANF + 1 Lower = 29 actual locations). Both halt_sim PROVED. **Flat/ SORRY-FREE**. Core/ SORRY-FREE. ANF/Semantics SORRY-FREE. **ALL stepping sub-cases PROVED**. **ALL evalBinary PROVED**. **ALL heap ops PROVED**. **ALL noCallFrameReturn IH PROVED**. **ALL ExprAddrWF preservation PROVED** ✅. HeapCorr DEFINED ✅. ExprAddrWF DEFINED+INTEGRATED ✅. ExprAddrWF_mono PROVED ✅. EnvAddrWF DEFINED+INTEGRATED ✅. HeapValuesWF DEFINED+PROVED ✅. Build PASS ✅. **Spec coverage: 2800 refs, 0 mismatches, 44380/44380 lines (100.0%). ALL TARGETS MET.**
 
 **RESOLVED ABSTRACTIONS**:
 - ✅ LowerCodeCorr constructors FIXED (wasmspec 01:15 — while_, throw, return_, break_, continue_ now specify actual instruction shapes)
@@ -209,27 +210,21 @@ arithmetic, boolean_logic, conditionals, do_while, for_loop, functions, let_bind
 - ✅ ANF break/continue → .silent (wasmspec 04:15)
 - ✅ EmitSimRel const i32/i64/f64 cases proved (wasmspec 04:15)
 
-**OPEN ABSTRACTIONS (updated 2026-03-24T15:05)**:
-1. ~~Bridge lemmas~~ ✅ PROVED.
-2. ~~evalBinary~~ ✅ ALL PROVED.
-3. ~~typeof/unary/throw/return/yield stepping~~ ✅ PROVED.
-4. ~~Stepping sub-cases~~ ✅ ALL PROVED.
-5. ~~noCallFrameReturn IH obligations~~ ✅ ALL PROVED.
-6. **HeapCorr (6 CC sorry)**: Replace `sf.heap = sc.heap` with `HeapCorr sc.heap sf.heap` (prefix relation). Unblocks captured-var, call, newObj, objectLit, arrayLit, functionDef.
-7. **Wasm step_sim (32 sorry)**: ~14 LowerSimRel + ~12 EmitSimRel + 3 init + 3 other. `irTypeToValType` private blocks EmitSimRel init. `lowerExpr` partial blocks LowerSimRel init.
-8. **ANF (2 sorry)**: step_star (line 106) + nested seq (line 1181). Independent from CC/Wasm.
-5. **EmitSimRel step_sim (46 Wasm sorry)**: const i32/i64/f64 + block + loop proved. ~30 remaining cases (globalSet/binOp/unOp next easiest). Many are "general case" fallbacks.
-6. **LowerSimRel step_sim (~6 Wasm sorry)**: `.let`/`.seq`/`.if`/`.while`/`.throw`/`.tryCatch` cases. `.throw` simplest.
-7. **EnvCorr_assign**: Core lemmas ✅. Flat side done. Proof needs to connect them.
-7. **Heap/closure correspondence**: Needed for .var captured (~1 CC sorry). No abstraction written yet.
-8. **Flat.call semantics**: Flat.step? for .call stubs to `.lit .undefined` — doesn't enter function body. 7 CC sorries FUNDAMENTALLY BLOCKED until Flat models real function calls.
+**OPEN ABSTRACTIONS (updated 2026-03-25T21:05)**:
+1. **CC HeapInj (6 CC sorry)**: ALL 6 real CC sorries blocked by 3 intertwined issues: (a) HeapInj needed — Flat `makeEnv` allocates env objects on shared heap, causing addr divergence; (b) ValueCorr needed — `.function idx` ↔ `.closure idx envAddr` with envAddr≠0; (c) stuttering simulation needed — Flat takes 2+ steps for makeClosure/makeEnv while Core takes 1 for functionDef. Current `convertExpr` maps `.object addr` identically but runtime addrs diverge. HeapInj Phase 1 definitions written to proof prompt.
+2. **Wasm LowerSimRel (12 sorry)**: ALL blocked by 1:N stepping architecture. Need multi-step restructure.
+3. **Wasm EmitSimRel (3 sorry)**: L9394 br, L9397 brIf (need label name→index correspondence), L9628 memoryGrow no-memory.
+4. **Wasm init (3 sorry)**: `LowerCodeCorr` for initial program. `lowerExprWithExn` NOW PUBLIC — blocker resolved. Quickest wins.
+5. **ANF (2 sorry)**: step_star (L106, entire theorem body) + nested seq (L1499). Independent from CC/Wasm.
+6. **CC stubs (2 sorry)**: L829 forIn, L830 forOf — UNPROVABLE (stubs convert to .lit .undefined, theorem literally false).
 
-**Critical path**: (0) **FIX BUILD** — wasmspec: remove `private` from pushTrace (fixes all ANF errors) + add `.ptr` cases + fix missing commas + fix unknown constants. proof: CC beq_comm fix + evalBinary sorry + ExprAddrWF_mono termination + convertExpr_not_value sorry. (1) proof: close remaining 9 CC sorries (HeapValuesWF integration → setProp/setIndex/deleteProp; objectLit/arrayLit/functionDef heap correspondence; call/newObj; captured var). (2) wasmspec: LowerSimRel let case (L6158) + EmitSimRel br/brIf (L8321/L8324). (3) proof: ANF sorries. (4) jsspec: push to 1800+ refs.
+**Critical path**: (1) wasmspec: close 3 init `by sorry` (lowerExprWithExn now public). (2) proof: HeapInj Phase 1 definitions (add without changing CC_SimRel). (3) proof: HeapInj Phase 2 (update CC_SimRel + proved cases). (4) wasmspec: br/brIf + memoryGrow. (5) proof: ANF step_star.
 
 ## Agent Health
 
-| Agent | Status (2026-03-25T09:05) | Notes |
+| Agent | Status (2026-03-25T21:05) | Notes |
 |-------|---------------------|-------|
-| jsspec | **ALIVE** (started 09:00) | **1614 refs**, 0 mismatches, 44.1% coverage. Target: 1800+. |
-| wasmspec | **ALIVE** (started 09:15) | 23 Wasm sorries. **Must fix pushTrace private + .ptr cases + indent first**. |
+| jsspec | **ALIVE** (started 21:00) | **2800 refs**, 0 mismatches, **100.0% coverage**. ALL TARGETS MET. |
+| wasmspec | **ALIVE** (started 19:15, still running) | 18 Wasm sorries (12 Lower + 3 Emit + 3 init). Init sorries now unblocked. |
+| proof | **DONE** (last run 21:13) | 8 CC + 2 ANF sorries. HeapInj Phase 1 in prompt. |
 | proof | **DONE** (09:05) | 9 CC + 2 ANF sorries. Closed 4 ExprAddrWF, added 3 HeapValuesWF (net -1). **Must fix build first** (CC beq_comm+simp+termination, ANF pushTrace-private). |

@@ -4959,3 +4959,44 @@ EndToEnd theorem correctly chains all passes. All Behaves relations defined.
 
 ## Run: 2026-03-25T21:05:01+00:00
 
+
+## Run: 2026-03-25T21:05:01+00:00
+
+### Build
+- **Status**: `lake build` **PASS** ✅
+
+### Metrics
+- **Sorry count**: 33 (script) / 29 actual locations (8 CC + 18 Wasm + 2 ANF + 1 Lower)
+- **Spec coverage**: 44380/44380 lines (100.0%), 2800 refs, 0 mismatches
+- **WasmCert refs**: verify_wasmcert_refs PASS
+
+### Agent Logs
+- **proof** (19:30→21:13 DONE): No visible progress in sorry count. Was given HeapInj instructions in log but didn't implement them.
+- **wasmspec** (19:15→still running): No Wasm sorry change since last run.
+- **jsspec** (21:00→running): Achieved 100% coverage! 2800 refs, 0 mismatches. ALL targets met.
+
+### Key Findings
+1. **🎉🎉 SPEC COVERAGE 100%**: jsspec achieved perfect ECMA-262 coverage (2800 refs, 44380/44380 lines, 0 mismatches). All spec coverage targets met.
+2. **Sorry STEADY at 33 (script) / 29 actual**: No change from 20:05. CC 8 (2 stubs + 6 real), Wasm 18 (12 LowerSimRel + 3 EmitSimRel + 3 init), ANF 2, Lower 1.
+3. **DEEP CC ARCHITECTURAL ANALYSIS**: ALL 6 real CC sorries blocked by 3 intertwined issues:
+   - (a) **HeapInj**: `makeEnv` allocates env objects on shared heap → addr divergence after functionDef
+   - (b) **ValueCorr**: `.function idx` ↔ `.closure idx envAddr` where envAddr≠0 after captures
+   - (c) **Stuttering**: Flat takes 2+ steps (makeEnv + makeClosure) for functionDef while Core takes 1
+   - Current CC_SimRel `sf.expr = convertExpr sc.expr` is FALSE after any functionDef with captures because convertExpr maps `.object addr` identically but runtime addrs diverge
+4. **Wasm init `by sorry` NOW UNBLOCKED**: `lowerExprWithExn` is public (was previously private, blocking LowerCodeCorr construction). All 3 init sorries (L9813, L9828, L9852) can now be closed.
+
+### Actions
+1. ✅ Proof prompt: REWRITTEN with HeapInj Phase 1 code — defines HeapInj, ValueCorr, EnvCorrInj, HeapInj_alloc_both/right. Phase 1 adds definitions WITHOUT changing CC_SimRel (no build breakage).
+2. ✅ Wasmspec prompt: REWRITTEN — TASK 1: close init sorries (quickest win, lowerExprWithExn now public). TASK 2: L9628 memoryGrow no-memory. TASK 3: br/brIf if possible.
+3. ✅ Jsspec prompt: Updated to maintenance mode (100% achieved).
+4. ✅ PROGRESS.md updated with new metrics row + updated proof chain + agent health.
+5. ✅ Time estimate: 29 actual sorry locations, ~180 hours remaining. CC 6 need deep architectural refactor (HeapInj+ValueCorr+stuttering). Wasm 18 mostly blocked by 1:N stepping (LowerSimRel) or label correspondence (EmitSimRel). Init 3 newly unblocked. ANF 2 independent. Sorry velocity: ~0/run (stalled — all remaining sorries are architectural).
+
+### Proof Chain
+```
+Elaborate ✅ → ClosureConvert (8 sorry) → ANFConvert (2 sorry) → Optimize ✅ → Lower (1 sorry) → Emit (sorry) → EndToEnd (sorry)
+```
+EndToEnd correctly chains all passes. All Behaves relations defined.
+
+2026-03-25T21:05:01+00:00 DONE
+2026-03-25T21:47:23+00:00 DONE

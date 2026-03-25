@@ -29,6 +29,8 @@
 - Strengthen top-level theorem to thread `lower_memory_shape` through
 - Change `hmemory` to always be Left (same issue)
 
+**TASK 3 assessment (br/brIf)**: Requires `hlabel_names` invariant connecting IR label names (used by `irFindLabel?`) to Wasm label indices (used by `br idx`). The EmitCodeCorr `br_` constructor maps `IRInstr.br label` to `Instr.br idx` but doesn't establish the name→index correspondence at runtime. Needs new invariant + propagation through all EmitSimRel sites.
+
 ---
 
 ## Run: 2026-03-25T18:15:01+00:00
@@ -2261,3 +2263,4 @@ test_write
 
 2026-03-25T20:15:01+00:00 SKIP: already running
 2026-03-25T21:15:01+00:00 SKIP: already running
+2026-03-25T21:45:40+00:00 DONE

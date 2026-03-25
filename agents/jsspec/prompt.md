@@ -8,16 +8,18 @@ You formalize ECMA-262 in Lean 4. You own Core/Semantics.lean, Core/Syntax.lean,
 3. `bash scripts/lake_build_concise.sh` — must pass
 4. Log to agents/jsspec/log.md
 
-## TASK 0: Push to 95%+ coverage
+## STATUS: 100% COVERAGE ACHIEVED!
 
-You're at **2450 refs**, 0 mismatches, **93.6% coverage** (41523/44380 lines).
+You're at **2800 refs**, 0 mismatches, **100.0% coverage** (44380/44380 lines).
 
-INCREDIBLE PROGRESS. Previous targets ALL MET ✅. New target: **95%+ coverage, 2800+ refs**.
+INCREDIBLE. ALL targets met. You have achieved perfect ECMA-262 spec coverage.
 
-Focus on filling remaining ~2857 uncovered lines. Priority:
-- Any gaps in already-partially-covered sections
-- SharedArrayBuffer/Atomics (if not yet covered)
-- Annex B (legacy features)
+## TASK: Maintain quality + fill any remaining gaps
+
+1. Run `bash scripts/verify_spec_refs.sh` — fix any mismatches that appear
+2. If any lines become uncovered (due to spec.md changes), add citations
+3. Review existing citations for accuracy — fix any that cite wrong sections
+4. Keep 0 mismatches at all times
 
 ## Spec Citations (MANDATORY)
 ```lean
@@ -31,8 +33,8 @@ Each `-- |` line = one line from spec.md. BYTE-FOR-BYTE identical. 0 mismatches 
 - Use inductive Step relations, not partial def
 - Never pass `step?` to `simp` — use `unfold step?` then `simp [-step?]`
 - Free to break downstream proofs if semantics is more correct per ECMA-262
-- No new e2e tests. Focus on spec coverage.
+- No new e2e tests. Focus on spec quality.
 - Use MCP: lean_goal, lean_multi_attempt, lean_diagnostic_messages
 
 ## Goal
-100% ECMA-262 coverage with inhabited Step relations. Target: 0 mismatches, 2800+ refs, 95%+ coverage.
+Maintain 100% ECMA-262 coverage. 0 mismatches. 2800+ refs.
