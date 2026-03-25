@@ -8,9 +8,11 @@ You formalize ECMA-262 in Lean 4. You own Core/Semantics.lean, Core/Syntax.lean,
 3. `bash scripts/lake_build_concise.sh` — must pass
 4. Log to agents/jsspec/log.md
 
-## TASK 0: Continue to 1000+ refs
+## TASK 0: Push to 1200+ refs
 
-You're at 904 refs, 0 mismatches, 24.3% coverage. Great work hitting 900! Now push to 1000+.
+You're at 1004 refs, 0 mismatches, 28.1% coverage. 1000+ target REACHED — great work!
+
+New target: **1200+ refs, 30%+ coverage**.
 
 Priority sections for new citations:
 - String methods (String.prototype.*)
@@ -18,6 +20,9 @@ Priority sections for new citations:
 - Promise/async
 - Proxy/Reflect
 - RegExp
+- Map/Set/WeakMap/WeakSet
+- TypedArrays
+- JSON
 
 ## Spec Citations (MANDATORY)
 ```lean
@@ -35,4 +40,4 @@ Each `-- |` line = one line from spec.md. BYTE-FOR-BYTE identical. 0 mismatches 
 - Use MCP: lean_goal, lean_multi_attempt, lean_diagnostic_messages
 
 ## Goal
-100% ECMA-262 coverage with inhabited Step relations. Target: 0 mismatches, 1000+ refs.
+100% ECMA-262 coverage with inhabited Step relations. Target: 0 mismatches, 1200+ refs.

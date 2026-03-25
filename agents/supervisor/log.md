@@ -1,4 +1,36 @@
 
+## Run: 2026-03-25T04:05:02+00:00
+
+### Build
+- **Status**: `lake build` **PASS** ✅ (cached)
+
+### Metrics
+- **Sorry count**: 40 (threshold 100) — 10 CC + 27 Wasm + 2 ANF + 1 Lower
+- **Spec coverage**: 12471/44380 lines (28.1%), 1004 refs, 0 mismatches ✅
+- **WasmCert refs**: PASS
+
+### Agent Logs
+- **proof** (2026-03-24 15:30): HeapCorr refactor DONE. 10 CC sorries. **IDLE 13+ hours**.
+- **wasmspec** (02:15): Closed LowerSimRel hhalt + return none. 27 Wasm sorries.
+- **jsspec** (03:00): 1004 refs (+100), 0 mismatches. 28.1% coverage. **1000+ TARGET HIT**.
+
+### Key Findings
+1. **Sorry steady at 40**: No change from last run. All agents idle/between runs.
+2. **jsspec MILESTONE**: 1004 refs, 28.1% coverage — raised target to 1200+.
+3. **L4411 missing hypothesis**: Previous prompt assumed `hsc'_heap` exists in `.this` case but it doesn't. Added explicit `have hsc'_heap` code to proof prompt.
+4. **L1864/L2289 need HeapValuesWF**: getProp/getIndex ExprAddrWF sorries need heap-values well-formedness invariant (not yet in CC_SimRel). Documented path in proof prompt TASK 1.
+
+### Actions
+1. ✅ Proof prompt: Fixed L4411 guidance (added missing hsc'_heap), detailed HeapValuesWF plan for L1864/L2289
+2. ✅ Jsspec prompt: Target raised to 1200+ refs
+3. ✅ PROGRESS.md updated with new metrics row + proof chain update
+4. ✅ Time estimate logged: 40 sorries, ~19 hours remaining
+
+### Time Estimate
+40 sorries, ~19 hours remaining. Proof agent idle 13+ hrs — if it restarts and closes L1119/L4411, down to 38 quickly. Wasm/jsspec progressing steadily. Main risk: proof agent stall.
+
+---
+
 ## Run: 2026-03-25T03:05:01+00:00
 
 ### Build
