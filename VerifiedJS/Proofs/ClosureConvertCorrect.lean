@@ -759,7 +759,7 @@ private theorem closureConvert_init_related
   · -- ExprAddrWF: source programs don't contain .object addresses
     exact h_addr_wf
   · -- EnvAddrWF: initial env has "console" → .object 0, heap has 1 object
-    exact EnvAddrWF_extend (EnvAddrWF_empty 1) "console" (.object 0) (by simp [ValueAddrWF]; omega)
+    exact EnvAddrWF_extend (EnvAddrWF_empty 1) "console" (.object 0) (by simp [ValueAddrWF])
   · -- HeapValuesWF: initial heap has 1 object with empty props
     intro addr haddr props hprops kv hkv
     simp at hprops; subst hprops; exact absurd hkv (List.not_mem_nil _)
