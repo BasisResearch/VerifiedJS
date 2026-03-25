@@ -2,21 +2,25 @@
 
 You own ClosureConvertCorrect.lean, ANFConvertCorrect.lean, LowerCorrect.lean.
 
-## Current sorry count: 9 (6 CC + 2 ANF + 1 Lower)
+## Current sorry count: 11 (8 CC + 2 ANF + 1 Lower)
 
 ### CC sorries (ClosureConvertCorrect.lean)
 ```
-L1101  var (captured)     sorry — envMap says name→idx, Flat expr is .getEnv (.var envVar) idx
-L1870  call               sorry — needs env/heap/funcs correspondence
-L1871  newObj              sorry — needs env/heap correspondence
-L3520  objectLit           sorry — stepping sub-case + all-values allocation
-L3521  arrayLit            sorry — stepping sub-case + all-values allocation
-L3522  functionDef         sorry — needs env/heap/funcs + CC state
+L829   forIn           sorry — UNPROVABLE (theorem false, forIn converts to .lit .undefined stub)
+L830   forOf           sorry — UNPROVABLE (theorem false, forOf converts to .lit .undefined stub)
+L1113  var (captured)  sorry — needs env object lookup
+L1882  call            sorry — needs env/heap/funcs correspondence
+L1883  newObj          sorry — needs env/heap correspondence
+L3532  objectLit       sorry — needs heap correspondence (allocObjectWithProps)
+L3533  arrayLit        sorry — needs heap correspondence (allocObjectWithProps)
+L3534  functionDef     sorry — needs env/heap/funcs + CC state
 ```
+
+**L829/L830 are expected sorry — skip them.**
 
 ### ANF sorries (ANFConvertCorrect.lean)
 ```
-L106   anfConvert_step_star  sorry — ENTIRE step simulation theorem
+L106   anfConvert_step_star  sorry — ENTIRE step simulation theorem (architecture plan at L107-142)
 L1177  nested seq case        sorry — in anfConvert_halt_star_aux, seq c1 c2
 ```
 
@@ -25,58 +29,55 @@ L1177  nested seq case        sorry — in anfConvert_halt_star_aux, seq c1 c2
 L69    LowerSimRel.init  by sorry — init field proof
 ```
 
-## Priority: ANF L1177 (nested seq case)
+## Priority 1: CC objectLit (L3532)
 
-This is the most tractable sorry. At L1177, inside `anfConvert_halt_star_aux`, the case is `| seq c1 c2 =>` where `c = .seq c1 c2`. The issue: left-spine depth > 3 needs recursive flattening.
+Both Core and Flat allocate an object on the heap. `allocObjectWithProps` was fixed to populate heap props. The pattern:
 
-**Strategy**: Add an inner induction on `c` (the left spine of seq chains) or use well-founded recursion on `Flat.Expr.depth c`. The pattern is:
-1. `c = .seq c1 c2`: flatten by stepping c1, then handle c2
-2. Each flatten step reduces depth by at least 1
+1. Core allocates via `Core.allocObject` → pushes properties, gets addr
+2. Flat allocates via `Flat.allocObjectWithProps` → same thing
 
-Try replacing L1177 with:
-```lean
-            -- Nested seq: step c1 in Flat, which steps the whole .seq (.seq c1 c2) b
-            -- Since c1 might also be a seq, we need to recurse
-            -- But sf.expr.depth strictly decreases when stepping into c1
-            have hd_c1 : Flat.Expr.depth c1 < Flat.Expr.depth c := by
-              rw [hc]; simp [Flat.Expr.depth]; omega
-            -- The Flat step for .seq (.seq c1 c2) b steps into c1
-            -- Use ih with decreased depth on the inner seq
-            sorry -- TODO: construct the Flat step and apply ih
-```
+**Key issue**: HeapCorr gives `sc.heap.objects.size ≤ sf.heap.objects.size` (≤, not =). If sizes differ, Core and Flat get different addrs, so `.lit (.object addr)` won't match.
 
-If this approach is blocked, try adding a helper lemma:
-```lean
-private theorem flatten_seq_left (sf : Flat.State) (c1 c2 b : Flat.Expr) :
-    sf.expr = .seq (.seq c1 c2) b →
-    ∃ sf', Flat.Step sf .silent sf' ∧ sf'.expr.depth < sf.expr.depth := by
-  sorry
-```
-
-## Priority: CC objectLit/arrayLit (L3520-L3521)
-
-These have TWO sub-cases each:
-
-**Sub-case 1 (stepping)**: Some prop/elem is not a value. Both Core and Flat step the same sub-expression. Use `ih_depth` on the sub-expression (depth strictly decreases via `firstNonValueProp_depth`). This follows the same pattern as the `binary`/`seq` stepping cases already proved above.
-
-**Sub-case 2 (all-values allocation)**: All props/elems are values. Both Core and Flat allocate on heap. BUT: HeapCorr is a PREFIX relation (`cheap.objects.size ≤ fheap.objects.size`). When both allocate, Core addr = `sc.heap.nextAddr`, Flat addr = `sf.heap.nextAddr`. If heap sizes differ, addrs differ and `.lit (.object addr)` won't match.
-
-**Key insight**: You need to prove that at objectLit/arrayLit time, `sc.heap.objects.size = sf.heap.objects.size` (no extra Flat env objects yet). This might require strengthening CC_SimRel with a `heap_size_eq` field, or tracking when extra Flat objects are added.
-
-Alternatively, if heap sizes always match (because closure envs haven't been allocated yet for the current expression), use:
+**Check if heaps have equal size** at this point. Read `HeapCorr` definition and `CC_SimRel` to see if `heap_size_eq` can be derived. If HeapCorr gives `=` (because Flat only allocates extra objects for closure envs, and at objectLit time no extra envs exist for this expression), use:
 ```lean
 have hsize : sc.heap.objects.size = sf.heap.objects.size := by
-  -- HeapCorr gives ≤, need = . If no extra Flat objects, this holds.
-  sorry
+  exact hheap.size_eq  -- or derive from HeapCorr fields
 ```
-Then apply `HeapCorr_alloc_both hheap hsize heapProps`.
+Then use `HeapCorr_alloc_both hheap hsize props` to maintain HeapCorr after both push.
+
+If heap sizes CAN differ, you need to add `heap_size_eq : sc.heap.objects.size = sf.heap.objects.size` to CC_SimRel and prove it's preserved.
+
+## Priority 2: ANF L1177 (nested seq — ARCHITECTURAL)
+
+At L1177, case `| seq c1 c2 =>` inside `anfConvert_halt_star_aux`. Variables:
+- `a1 = .seq c d` (from an outer case split)
+- `c = .seq c1 c2` (this case)
+- `sf.expr = .seq (.seq (.seq (.seq c1 c2) d) a2) b`
+
+The induction is on `N` (depth bound, `sf.expr.depth ≤ N + 1`). Depth is ADDITIVE: `.seq a b => a.depth + b.depth + 1`. So seq reassociation does NOT change depth — `ih` can't fire with the same state.
+
+**The case-split approach fails for unbounded left-spine nesting.** Options:
+
+**Option A (recommended)**: Add an INNER induction on `leftSpineCount`:
+```lean
+def leftSpineCount : Flat.Expr → Nat
+  | .seq a _ => leftSpineCount a + 1
+  | _ => 0
+```
+For the `| seq c1 c2 =>` case, show that ONE Flat step either:
+- Eliminates a value from the left spine (decreasing leftSpineCount)
+- Steps a non-value (producing a state the outer `ih` handles)
+
+**Option B**: Factor out a helper that handles arbitrary left-spine depth using well-founded recursion on `leftSpineCount`.
+
+**Option C**: Skip L1177 for now — it's architecturally hard. Focus on CC sorries first.
 
 ## Available lemmas
-- `flatToCoreValue_convertValue : Flat.flatToCoreValue (Flat.convertValue v) = v` (L806)
+- `flatToCoreValue_convertValue` (L806)
 - `HeapCorr_alloc_both` (L591): both push same object, requires `size =`
 - `HeapCorr_alloc_right` (L607): Flat pushes extra object
 - `EnvCorr_extend` (L273), `EnvCorr_assign` (L361)
-- `HeapValuesWF` preservation: already proved for setProp/setIndex/deleteProp
+- `HeapValuesWF` preservation: proved for setProp/setIndex/deleteProp
 
 ## Rules
 - `bash scripts/lake_build_concise.sh` to build (only ONCE at end)

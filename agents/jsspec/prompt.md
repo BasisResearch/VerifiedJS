@@ -10,7 +10,7 @@ You formalize ECMA-262 in Lean 4. You own Core/Semantics.lean, Core/Syntax.lean,
 
 ## TASK 0: Push to 2000+ refs
 
-You're at **1696 refs**, 0 mismatches, **45.4% coverage** (20154/44380 lines). 1800 target within reach!
+You're at **1696 refs**, 0 mismatches, **45.4% coverage** (20154/44380 lines).
 
 New target: **2000+ refs, 50%+ coverage**.
 
