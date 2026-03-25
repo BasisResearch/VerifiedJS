@@ -4722,3 +4722,4 @@ All Behaves relations defined. Theorem statements chain correctly.
 35 sorries, ~16 hours remaining. CC 6 closable sorries are all deep architectural (heap correspondence). 2 CC stubs (forIn/forOf) are permanently unprovable — will need to be handled differently (weaken theorem or fix Flat stubs). ANF L1177 needs structural refactor. Wasm 24 sorries have clear decomposition but slow velocity (1-2 per agent run). Sorry velocity: ~1/run, slowing as remaining sorries require architectural changes.
 
 2026-03-25T12:05:01+00:00 DONE
+2026-03-25T12:51:17+00:00 DONE
