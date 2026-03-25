@@ -909,7 +909,12 @@ private theorem closureConvert_step_simulation
       rw [show sc = {sc with expr := .«break» label} from by cases sc; simp_all] at h0
       simp only [Core.step?] at h0
       cases label <;> (have h1 := (Prod.mk.inj (Option.some.inj h0)).2; subst h1; exact hheap)
-    exact ⟨hsf'_trace_eq_sc'_trace, henv', hheap', henvwf, by rw [hsc'_expr]; simp [noCallFrameReturn], by rw [hsc'_expr]; simp [ExprAddrWF, ValueAddrWF], scope, st', st', by rw [hsc'_expr]; simp [Flat.convertExpr, Flat.convertValue, hsf'_expr]⟩
+    have hsc'_heap : sc'.heap = sc.heap := by
+      have h0 := hcstep
+      rw [show sc = {sc with expr := .«break» label} from by cases sc; simp_all] at h0
+      simp only [Core.step?] at h0
+      cases label <;> (have h1 := (Prod.mk.inj (Option.some.inj h0)).2; subst h1; rfl)
+    exact ⟨hsf'_trace_eq_sc'_trace, henv', hheap', by rw [hsc'_env, hsc'_heap]; exact henvwf, by rw [hsc'_expr]; simp [noCallFrameReturn], by rw [hsc'_expr]; simp [ExprAddrWF, ValueAddrWF], scope, st', st', by rw [hsc'_expr]; simp [Flat.convertExpr, Flat.convertValue, hsf'_expr]⟩
   | «continue» label =>
     rw [hsc] at hconv; simp only [Flat.convertExpr] at hconv
     have hsf_expr : sf.expr = .«continue» label := by cases sf; simp_all [(Prod.mk.inj hconv).1]
@@ -970,7 +975,12 @@ private theorem closureConvert_step_simulation
       rw [show sc = {sc with expr := .«continue» label} from by cases sc; simp_all] at h0
       simp only [Core.step?] at h0
       cases label <;> (have h1 := (Prod.mk.inj (Option.some.inj h0)).2; subst h1; exact hheap)
-    exact ⟨hsf'_trace_eq_sc'_trace, henv', hheap', henvwf, by rw [hsc'_expr]; simp [noCallFrameReturn], by rw [hsc'_expr]; simp [ExprAddrWF, ValueAddrWF], scope, st', st', by rw [hsc'_expr]; simp [Flat.convertExpr, Flat.convertValue, hsf'_expr]⟩
+    have hsc'_heap : sc'.heap = sc.heap := by
+      have h0 := hcstep
+      rw [show sc = {sc with expr := .«continue» label} from by cases sc; simp_all] at h0
+      simp only [Core.step?] at h0
+      cases label <;> (have h1 := (Prod.mk.inj (Option.some.inj h0)).2; subst h1; rfl)
+    exact ⟨hsf'_trace_eq_sc'_trace, henv', hheap', by rw [hsc'_env, hsc'_heap]; exact henvwf, by rw [hsc'_expr]; simp [noCallFrameReturn], by rw [hsc'_expr]; simp [ExprAddrWF, ValueAddrWF], scope, st', st', by rw [hsc'_expr]; simp [Flat.convertExpr, Flat.convertValue, hsf'_expr]⟩
   | labeled label body =>
     rw [hsc] at hconv; simp only [Flat.convertExpr] at hconv
     -- convertExpr (.labeled label body) = (.labeled label body', st1)

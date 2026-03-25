@@ -15399,7 +15399,7 @@ theorem elaborate_correct (p : Source.Program) (cp : Core.Program)
 -- SPEC: L39151-L39167
 -- | # The WeakRef Constructor
 -- |
--- | The WeakRef constructor:
+-- | The [WeakRef]{.dfn variants="WeakRefs"} constructor:
 -- |
 -- | - is [%WeakRef%]{.dfn}.
 -- | - is the initial value of the \*\"WeakRef\"\* property of the global
@@ -15407,9 +15407,9 @@ theorem elaborate_correct (p : Source.Program) (cp : Core.Program)
 -- | - creates and initializes a new WeakRef when called as a constructor.
 -- | - is not intended to be called as a function and will throw an exception
 -- |   when called in that manner.
--- | - may be used as the value of an \`extends\` clause of a class
+-- | - may be used as the value in an \`extends\` clause of a class
 -- |   definition. Subclass constructors that intend to inherit the specified
--- |   WeakRef behaviour must include a \`super\` call to the WeakRef
+-- |   \`WeakRef\` behaviour must include a \`super\` call to the \`WeakRef\`
 -- |   constructor to create and initialize the subclass instance with the
 -- |   internal state necessary to support the \`WeakRef.prototype\` built-in
 -- |   methods.
@@ -15421,10 +15421,10 @@ theorem elaborate_correct (p : Source.Program) (cp : Core.Program)
 -- | 1\. If NewTarget is \*undefined\*, throw a \*TypeError\* exception. 1.
 -- | If CanBeHeldWeakly(\_target\_) is \*false\*, throw a \*TypeError\*
 -- | exception. 1. Let \_weakRef\_ be ?
--- | OrdinaryCreateFromConstructor(NewTarget,
--- | \*\"%WeakRef.prototype%\"\*, « \[\[WeakRefTarget\]\] »). 1. Perform
--- | AddToKeptObjects(\_target\_). 1. Set
--- | \_weakRef\_.\[\[WeakRefTarget\]\] to \_target\_. 1. Return \_weakRef\_.
+-- | OrdinaryCreateFromConstructor(NewTarget, \*\"%WeakRef.prototype%\"\*, «
+-- | \[\[WeakRefTarget\]\] »). 1. Perform AddToKeptObjects(\_target\_). 1.
+-- | Set \_weakRef\_.\[\[WeakRefTarget\]\] to \_target\_. 1. Return
+-- | \_weakRef\_.
 -- SPEC: L39210-L39238
 -- | # WeakRef.prototype.deref ( )
 -- |
@@ -15434,25 +15434,26 @@ theorem elaborate_correct (p : Source.Program) (cp : Core.Program)
 -- | RequireInternalSlot(\_weakRef\_, \[\[WeakRefTarget\]\]). 1. Return
 -- | WeakRefDeref(\_weakRef\_).
 -- |
--- | If the WeakRef returns a \_target\_ value that is not \*undefined\*, then
--- | this \_target\_ value should not be garbage collected until the current
--- | execution of ECMAScript code has completed. The
--- | AddToKeptObjects operation is used to maintain a list of objects that
--- | should not be garbage collected until WeakRef.prototype.deref can no
--- | longer return the value.
+-- | If the WeakRef returns a \_target\_ value that is not \*undefined\*,
+-- | then this \_target\_ value should not be garbage collected until the
+-- | current execution of ECMAScript code has completed. The AddToKeptObjects
+-- | operation makes sure read consistency is maintained.
 -- |
--- | The following steps are performed when WeakRef.prototype.deref is
--- | called:
+-- | ``` javascript
 -- |
--- | 1\. Let \_weakRef\_ be the \*this\* value. 1. Perform ?
--- | RequireInternalSlot(\_weakRef\_, \[\[WeakRefTarget\]\]). 1. Return
--- | WeakRefDeref(\_weakRef\_).
+-- |             let target = { foo() {} };
+-- |             let weakRef = new WeakRef(target);
 -- |
--- | Informative note: If WeakRef.prototype.deref would return the
--- | \_target\_:
+-- |             // ... later ...
 -- |
--- | 1\. Set \_target\_ to AddToKeptObjects(\_target\_). 1. Return
--- | \_target\_.
+-- |             if (weakRef.deref()) {
+-- |               weakRef.deref().foo();
+-- |             }
+-- |           
+-- | ```
+-- |
+-- | In the above example, if the first deref does not evaluate to
+-- | \*undefined\* then the second deref cannot either.
 -- SPEC: L39249-L39259
 -- | # WeakRefDeref ( \_weakRef\_: a WeakRef, ): an ECMAScript language value
 -- |
@@ -15461,10 +15462,9 @@ theorem elaborate_correct (p : Source.Program) (cp : Core.Program)
 -- | AddToKeptObjects(\_target\_). 1. Return \_target\_. 1. Return
 -- | \*undefined\*.
 -- |
--- | The above steps contain a check for \~empty\~ because
--- | \_weakRef\_.\[\[WeakRefTarget\]\] can be cleared to \~empty\~ by
--- | ClearKeptObjects, or it can be cleared to \~empty\~ informally during
--- | garbage collection.
+-- | This abstract operation is defined separately from
+-- | WeakRef.prototype.deref strictly to make it possible to succinctly
+-- | define liveness.
 
 -- ============================================================
 -- The Reflect Object
