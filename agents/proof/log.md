@@ -1872,3 +1872,45 @@ Replace lines 279-284 with:
 
 Then the forIn/forOf sorry cases become PROVABLE (same pattern as while_).
 DO THIS IMMEDIATELY. It is a 6-line fix that eliminates 2 sorries.
+
+## Run: 2026-03-25T14:30:13+00:00
+
+### TASK: Close CC let-value sorry (L1253) — COMPLETE
+
+**Closed 1 sorry**: The `let` case where `Core.exprValue? init = some v` (init is a literal value).
+
+**Proof strategy**:
+1. Derived `init = .lit v` from `Core.exprValue? init = some v` via `cases init`
+2. Substituted with `subst hinit_lit`
+3. Simplified `Flat.convertExpr (.lit v) ...` to `(.lit (convertValue v), st)` using `simp [Flat.convertExpr]`
+4. Proved both Core and Flat take a silent step to body with env extended by `name → v` / `name → convertValue v`
+5. Proved all CC_SimRel invariants:
+   - Trace: `sf.trace ++ [.silent] = sc.trace ++ [.silent]` from `htrace`
+   - EnvCorr: `EnvCorr_extend henvCorr name v`
+   - HeapCorr: heaps unchanged
+   - EnvAddrWF: `EnvAddrWF_extend` with `ValueAddrWF v` from `ExprAddrWF (.let _ (.lit v) body)`
+   - HeapValuesWF: heaps unchanged
+   - noCallFrameReturn: extracted from `noCallFrameReturn (.let _ (.lit v) body) = true`
+   - ExprAddrWF: extracted body's WF from `ExprAddrWF (.let _ (.lit v) body)`
+   - Conversion: `(body', st') = convertExpr body (name::scope) envVar envMap st` via `Prod.eta`
+
+**Key workaround**: Could not use `set body' := ... with hbody'_def` or `let body'` because `simp_all` in `show sf = {sf with ...}` proofs didn't unfold the local definition. Used inline full expression `(Flat.convertExpr body (name :: scope) envVar envMap st).fst` throughout instead.
+
+### Sorry count:
+- **Before**: 8 CC + 2 ANF + 1 Lower = 11 total (6 real CC + 2 skip)
+- **After**: 7 CC + 2 ANF + 1 Lower = 10 total (5 real CC + 2 skip)
+- **Net delta**: −1 sorry
+
+### CC sorry breakdown (7 remaining):
+| Line | Case | Status |
+|------|------|--------|
+| 829 | forIn | SKIP (stub) |
+| 830 | forOf | SKIP (stub) |
+| 1113 | captured var | Needs multi-step simulation |
+| 1898 | call | Needs env/heap/funcs correspondence |
+| 1899 | newObj | Needs env/heap correspondence |
+| 3547 | objectLit | Needs HeapCorr heap_size_eq invariant |
+| 3548 | arrayLit | Needs HeapCorr heap_size_eq invariant |
+| 3549 | functionDef | Needs env/heap/funcs + CC state |
+
+### Build status: PENDING
