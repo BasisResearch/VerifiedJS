@@ -9393,7 +9393,60 @@ theorem step_sim (irmod : IRModule) (wmod : Module) :
           -- function call
           have hc : EmitCodeCorr (IRInstr.call funcIdx :: rest) s2.code := hcode_ir ▸ hrel.hcode
           rcases hc.call_inv with ⟨rest_w, hcw, hrest⟩ | hf
-          · sorry
+          · -- Wasm code = Instr.call funcIdx :: rest_w
+            -- Derive function count correspondence
+            have hfuncs_size : s1.module.functions.size = s2.store.funcs.size := by
+              rw [hrel.hmodule, hrel.hstore_funcs]
+              exact (emit_preserves_funcs_size irmod wmod hrel.hemit).symm
+            match hfunc_ir : s1.module.functions[funcIdx]? with
+            | none =>
+              -- Case 1: funcIdx OOB in IR → also OOB in Wasm
+              have hir : irStep? s1 = some (.trap s!"call: unknown function {funcIdx}",
+                  { s1 with code := [], trace := s1.trace ++ [.trap s!"call: unknown function {funcIdx}"] }) := by
+                simp [irStep?, hcode_ir, hfunc_ir, irTrapState, irPushTrace]
+              rw [hir] at hstep
+              simp only [Option.some.injEq, Prod.mk.injEq] at hstep
+              obtain ⟨rfl, rfl⟩ := hstep
+              -- funcIdx is also OOB in Wasm
+              have hfunc_oob : ¬(funcIdx < s2.store.funcs.size) := by
+                rw [← hfuncs_size]; exact List.getElem?_eq_none.mp hfunc_ir
+              have hw := step?_eq_call_oob s2 funcIdx rest_w hcw hfunc_oob
+              exact ⟨_, by simp [traceToWasm]; exact hw,
+                { hemit := hrel.hemit, hcode := .nil, hstack := by dsimp only []; exact hrel.hstack,
+                  hframes_len := hrel.hframes_len, hframes_locals := hrel.hframes_locals,
+                  hframes_vals := hrel.hframes_vals, hglobals := hrel.hglobals,
+                  hmemory := hrel.hmemory, hmemLimits := hrel.hmemLimits,
+                  hmemory_aligned := hrel.hmemory_aligned, hmemory_nonempty := hrel.hmemory_nonempty,
+                  hlabels := hrel.hlabels,
+                  hhalt := hhalt_of_structural .nil hrel.hlabels,
+                  hlabel_content := hrel.hlabel_content,
+                  hframes_one := hrel.hframes_one,
+                  hmodule := hrel.hmodule, hstore_funcs := hrel.hstore_funcs,
+                  hstore_types := hrel.hstore_types }⟩
+            | some fn =>
+              -- Function exists in IR
+              match hpop : irPopN? s1.stack fn.params.length with
+              | none =>
+                -- Case 2: stack underflow → both trap
+                -- IR traps
+                have hir : irStep? s1 = some (.trap s!"stack underflow in call {funcIdx}",
+                    { s1 with code := [], trace := s1.trace ++ [.trap s!"stack underflow in call {funcIdx}"] }) := by
+                  simp [irStep?, hcode_ir, hfunc_ir, hpop, irTrapState, irPushTrace]
+                rw [hir] at hstep
+                simp only [Option.some.injEq, Prod.mk.injEq] at hstep
+                obtain ⟨rfl, rfl⟩ := hstep
+                -- funcIdx IS in bounds for Wasm (same size)
+                have hfunc_ok : funcIdx < s2.store.funcs.size := by
+                  rw [← hfuncs_size]; exact List.getElem?_isSome.mp (by rw [hfunc_ir]; simp)
+                -- Need to show Wasm also underflows or handle differently
+                -- The Wasm param count might differ from IR param count,
+                -- so we cannot directly show Wasm underflows.
+                -- However, for a valid emit, param counts correspond.
+                sorry
+              | some (args, callerStack) =>
+                -- Case 3: successful call → needs multi-frame EmitSimRel
+                -- (blocked: hframes_one requires frames.length = 1, but call creates 2 frames)
+                sorry
           · exact hf.elim
       | .callIndirect typeIdx =>
           -- indirect call
