@@ -10105,12 +10105,43 @@ theorem step_sim (irmod : IRModule) (wmod : Module) :
                 rw [hir] at hstep
                 simp only [Option.some.injEq, Prod.mk.injEq] at hstep
                 obtain ⟨rfl, rfl⟩ := hstep
-                -- Wasm stack has a corresponding non-i32 value
-                -- For simulation, the stack correspondence means Wasm also has a non-i32 top
-                -- This should also cause Wasm to produce a type mismatch trap
-                -- But Wasm's br_if also pops and checks i32Truth
-                -- With corresponding stacks, non-i32 maps to non-i32, and Wasm traps too
-                sorry -- Non-i32 brIf stack mismatch: needs IRValueToWasmValue non-i32 analysis
+                -- Wasm stack has corresponding non-i32 value → also traps
+                have hlen := hrel.hstack.1; rw [hstk] at hlen
+                match hs2 : s2.stack with
+                | [] => simp [hs2] at hlen
+                | wv :: wstk =>
+                  have hval_corr := hrel.hstack.2 0 (by simp [hstk])
+                  rw [hstk, hs2] at hval_corr
+                  simp at hval_corr
+                  obtain ⟨_, _, h1, h2, hvc⟩ := hval_corr
+                  simp at h1 h2; subst h1; subst h2
+                  -- v is not i32, so corresponding Wasm value is also not i32
+                  have hwv_not_i32 : i32Truth wv = none := by
+                    cases hvc with
+                    | i64 _ => simp [i32Truth]
+                    | f64 _ => simp [i32Truth]
+                  have hw : step? s2 = some (.trap "br_if condition is not i32",
+                      { s2 with code := [], trace := s2.trace ++ [.trap "br_if condition is not i32"] }) := by
+                    simp [step?, hcw, hs2, pop1?, hwv_not_i32, trapState, pushTrace]
+                  exact ⟨_, by simp [traceToWasm]; exact hw,
+                    { hemit := hrel.hemit
+                      hcode := .nil
+                      hstack := by dsimp only []; exact hrel.hstack
+                      hframes_len := hrel.hframes_len
+                      hframes_locals := hrel.hframes_locals
+                      hframes_vals := hrel.hframes_vals
+                      hglobals := hrel.hglobals
+                      hmemory := hrel.hmemory
+                      hmemLimits := hrel.hmemLimits
+                      hmemory_aligned := hrel.hmemory_aligned
+                      hmemory_nonempty := hrel.hmemory_nonempty
+                      hlabels := by dsimp only []; exact hrel.hlabels
+                      hhalt := hhalt_of_structural .nil hrel.hlabels
+                      hlabel_content := hrel.hlabel_content
+                      hframes_one := hrel.hframes_one
+                      hmodule := hrel.hmodule
+                      hstore_funcs := hrel.hstore_funcs
+                      hstore_types := hrel.hstore_types }⟩
           · exact hf.elim
       | .return_ =>
           -- return from function: with hframes_one, frames = [frame], so top-level return

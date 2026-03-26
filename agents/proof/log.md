@@ -1,4 +1,39 @@
 
+## Run: 2026-03-26T02:30+00:00
+- Sorries before: 30 CC case-level sorries (+ 2 pre-existing forIn/forOf)
+- Sorries after: 27 CC case-level sorries (+ 2 pre-existing forIn/forOf + 1 var captured subcase)
+- Net sorry delta: **-3 full cases closed** (break, continue, labeled) + var non-captured subcase proven
+- Build: ⚠️ Pre-existing errors in `step?_none_implies_lit_aux` (L1527+) remain. New code compiles clean.
+
+### What was done:
+1. **Closed `.break` case** — Both Flat and Core step break to error "break:" ++ label.getD "". Used dedicated helper lemmas (`Flat_step?_break`, `Core_step?_break`) to handle private `pushTrace` and `match label` discrepancy between Core (uses `match`) and Flat (uses `getD`).
+
+2. **Closed `.continue` case** — Identical pattern to break but with "continue:" prefix. Used `Flat_step?_continue` / `Core_step?_continue` helper lemmas.
+
+3. **Closed `.labeled` case** — Both Core and Flat unwrap `labeled label body` to `body` with `.silent` event. Used `Flat_step?_labeled` / `Core_step?_labeled` helpers. `noCallFrameReturn` and `ExprAddrWF` for body extracted from the labeled hypothesis.
+
+4. **Partially closed `.var` case** — Split on `lookupEnv envMap name`:
+   - `none` (non-captured): Fully proven, mirrors `.this` exactly but parameterized by `name` instead of `"this"`. Uses `Flat_step?_var_found_explicit` / `Core_step?_var_found` etc.
+   - `some idx` (captured): Left as sorry — requires reasoning about `.getEnv` conversion.
+
+5. **Added 10 helper lemmas** for step? evaluation:
+   - `Flat_step?_var_found_explicit` / `Flat_step?_var_not_found_explicit`: Flat step? on .var
+   - `Core_step?_var_found` / `Core_step?_var_not_found`: Core step? on .var
+   - `Flat_step?_break` / `Core_step?_break`: step? on break with label normalization
+   - `Flat_step?_continue` / `Core_step?_continue`: step? on continue with label normalization
+   - `Flat_step?_labeled` / `Core_step?_labeled`: step? on labeled
+
+### Key pattern for break/continue:
+- Core uses `match label with | some s => "break:" ++ s | none => "break:"` while Flat uses `"break:" ++ label.getD ""`
+- These are propositionally equal but syntactically different. Helper lemmas normalize via `cases label <;> simp [Option.getD]` outside the proof context where the match doesn't capture extra hypotheses.
+
+### Remaining 27 sorry cases:
+- **var captured** (1 sorry): needs `.getEnv` reasoning
+- **Easy** (similar patterns): `.while_`, `.return`, `.throw`, `.yield`, `.await`
+- **Medium** (recursive): `.let`, `.assign`, `.if`, `.seq`, `.unary`, `.binary`, `.typeof`
+- **Hard** (heap/call): `.call`, `.newObj`, `.tryCatch`, `.functionDef`, `.getProp`, `.setProp`, `.getIndex`, `.setIndex`, `.deleteProp`, `.objectLit`, `.arrayLit`
+- **Impossible** (stub conversions): `.forIn`, `.forOf` (pre-existing)
+
 ## Run: 2026-03-26T00:30+00:00
 - Sorries before: 8 CC (1 big exact sorry at L945 covering entire step_sim induction)
 - Sorries after: 30 CC case-level sorries (skeleton expanded) + 2 pre-existing (forIn/forOf)
@@ -2160,3 +2195,4 @@ DO NOT BUILD THE WHOLE PROJECT. Build only ClosureConvertCorrect.
 
 ## Run: 2026-03-26T02:30:01+00:00
 
+2026-03-26T02:58:58+00:00 DONE
