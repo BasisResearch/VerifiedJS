@@ -1,4 +1,4 @@
-# proof — Restore CC step_sim proof (L945)
+# proof — Close CC step_sim cases
 
 ## Build ONLY your module
 ```
@@ -10,79 +10,120 @@ bash scripts/lake_build_concise.sh VerifiedJS.Proofs.ClosureConvertCorrect
 - lean_multi_attempt to test tactics
 - lean_diagnostic_messages for errors
 
-## TASK: Replace `exact sorry` at L945 with case analysis
+## TASK 0 (BUG FIX): Fix `.lit` case error at L982-983
 
-### Context
-At L945, `exact sorry` covers the ENTIRE `closureConvert_step_simulation` inner induction.
+The `unfold Flat.step?; simp [hlit]` fails because `hlit` is `sf.expr = .lit (convertValue v)` but `unfold` doesn't substitute into the match head. Replace L982-984 with:
 
-The suffices block (L915-937) is correct. The intro at L941:
 ```lean
-intro envVar envMap injMap sf sc ev sf' hd htrace hinj henvCorr henvwf hheapvwf hncfr hexprwf ⟨scope, st, st', hconv⟩ ⟨hstep⟩
+    have habs : Flat.step? sf = none := by
+      have hsf_eq : sf = { sf with expr := .lit (Flat.convertValue v) } := by cases sf; simp_all
+      rw [hsf_eq]; exact Flat.step?_lit_none _ _
+    simp [habs] at hstep
 ```
 
-**KEY**: HeapInj and EnvCorrInj are ALIASES (L650, L655):
+This uses the existing `Flat.step?_lit_none` theorem (Flat/Semantics.lean:988).
+
+## TASK 1: Close `.var` case (L985)
+
+`convertExpr (.var n)` has TWO subcases based on `lookupEnv envMap n`:
+
+### Subcase A: `lookupEnv envMap n = none` → Flat expr is `.var n`
+
+This follows the EXACT same pattern as `.this`. Here's the code:
+
 ```lean
-private def HeapInj (_injMap : Nat → Nat) (ch fh : Core.Heap) : Prop := HeapCorr ch fh
-private def EnvCorrInj (_injMap : Nat → Nat) (cenv : Core.Env) (fenv : Flat.Env) : Prop := EnvCorr cenv fenv
-```
-
-`injMap` is IGNORED everywhere. Always output `injMap` unchanged.
-
-### Step 1: Replace `exact sorry` at L945 with this skeleton
-
-```lean
-  -- hstep : Flat.step? sf = some (ev, sf') (from Flat.Step)
-  -- hconv : (sf.expr, st') = Flat.convertExpr sc.expr scope envVar envMap st
-  -- Case-split on sc.expr to determine sf.expr via convertExpr
-  -- Then unfold Flat.step? to analyze the step, construct Core.step? result
-  -- Use convertExpr to relate expressions, use HeapCorr/EnvCorr to transfer values
-
-  -- Start: determine sf.expr from hconv
-  cases hsc : sc.expr with
-  | lit v =>
-    -- convertExpr (.lit v) = .lit (convertValue v), so sf.expr = .lit (convertValue v)
-    -- But Flat.step? of .lit is none → contradicts hstep
+  | var name =>
+    rw [hsc] at hconv hncfr hexprwf hd
     simp [Flat.convertExpr] at hconv
-    obtain ⟨hfexpr, _⟩ := hconv
-    rw [← hfexpr] at hstep
-    simp [Flat.Step] at hstep
-    -- If that doesn't close it, try:
-    -- have : Flat.step? sf = none := by simp [Flat.step?, hfexpr ▸ rfl]
-    -- exact absurd hstep (by simp [this])
-    sorry
-  | var name => sorry
-  | «this» => sorry
-  | «let» name init body => sorry
-  | assign name rhs => sorry
-  | «if» cond then_ else_ => sorry
-  | seq a b => sorry
-  | unary op arg => sorry
-  | binary op lhs rhs => sorry
-  | call f args => sorry
-  | «return» val => sorry
-  | throw val => sorry
-  | tryCatch body name handler => sorry
-  | typeof arg => sorry
-  | _ => sorry  -- remaining cases
+    -- Split on whether this var is captured
+    cases hlookup_env : Flat.lookupEnv envMap name with
+    | none =>
+      -- Non-captured: convertExpr returns (.var name, st)
+      simp [hlookup_env] at hconv
+      obtain ⟨hfexpr, _⟩ := hconv
+      have hsf_eta : sf = { sf with expr := .var name } := by cases sf; simp_all
+      rw [hsf_eta] at hstep
+      have hec : EnvCorr sc.env sf.env := henvCorr
+      obtain ⟨hfwd, hbwd⟩ := hec
+      cases hflookup : sf.env.lookup name with
+      | some fv =>
+        rw [Flat.step?_var_found _ _ _ hflookup] at hstep
+        simp [Flat.State.mk.injEq] at hstep
+        obtain ⟨hev, hsf'⟩ := hstep
+        subst hev hsf'
+        obtain ⟨cv, hclookup, hfvcv⟩ := hfwd name fv hflookup
+        let sc' : Core.State := ⟨.lit cv, sc.env, sc.heap, sc.trace ++ [.silent], sc.funcs, sc.callStack⟩
+        refine ⟨injMap, sc', ⟨?_⟩, ?_, ?_, ?_, ?_, ?_, ?_, ?_, ?_⟩
+        · show Core.step? sc = some (.silent, sc')
+          have hsc' : sc = { sc with expr := .var name } := by
+            cases sc; simp only [Core.State.mk.injEq]; exact ⟨hsc.symm, rfl, rfl, rfl, rfl, rfl⟩
+          rw [hsc']; simp [Core.step?, Core.pushTrace, hclookup]
+        · simp [sc', htrace]
+        · simp [sc']; exact hinj
+        · simp [sc']; exact henvCorr
+        · show EnvAddrWF sc'.env sc'.heap.objects.size
+          simp [sc']; exact henvwf
+        · show HeapValuesWF sc'.heap
+          simp [sc']; exact hheapvwf
+        · show noCallFrameReturn sc'.expr = true
+          simp [sc', noCallFrameReturn]
+        · show ExprAddrWF sc'.expr sc'.heap.objects.size
+          simp [sc', ExprAddrWF]
+          exact henvwf name cv hclookup
+        · exact ⟨scope, st, st, by simp [sc', Flat.convertExpr, hfvcv]⟩
+      | none =>
+        rw [Flat.step?_var_not_found _ _ hflookup] at hstep
+        simp [Flat.State.mk.injEq] at hstep
+        obtain ⟨hev, hsf'⟩ := hstep
+        subst hev hsf'
+        have hclookup : sc.env.lookup name = none := by
+          cases hcl : sc.env.lookup name with
+          | none => rfl
+          | some cv =>
+            obtain ⟨fv', hfl, _⟩ := hbwd name cv hcl
+            simp [hflookup] at hfl
+        let sc' : Core.State := ⟨.lit .undefined, sc.env, sc.heap,
+          sc.trace ++ [.error ("ReferenceError: " ++ name)], sc.funcs, sc.callStack⟩
+        refine ⟨injMap, sc', ⟨?_⟩, ?_, ?_, ?_, ?_, ?_, ?_, ?_, ?_⟩
+        · show Core.step? sc = some (.error ("ReferenceError: " ++ name), sc')
+          have hsc' : sc = { sc with expr := .var name } := by
+            cases sc; simp only [Core.State.mk.injEq]; exact ⟨hsc.symm, rfl, rfl, rfl, rfl, rfl⟩
+          rw [hsc']; simp [Core.step?, Core.pushTrace, hclookup]
+        · simp [sc', htrace]
+        · simp [sc']; exact hinj
+        · simp [sc']; exact henvCorr
+        · show EnvAddrWF sc'.env sc'.heap.objects.size
+          simp [sc']; exact henvwf
+        · show HeapValuesWF sc'.heap
+          simp [sc']; exact hheapvwf
+        · show noCallFrameReturn sc'.expr = true
+          simp [sc', noCallFrameReturn]
+        · show ExprAddrWF sc'.expr sc'.heap.objects.size
+          simp [sc', ExprAddrWF, ValueAddrWF]
+        · exact ⟨scope, st, st, by simp [sc', Flat.convertExpr, Flat.convertValue]⟩
+    | some idx =>
+      -- Captured var: convertExpr returns (.getEnv (.var envVar) idx, st)
+      -- This is a MULTI-STEP case: first the .getEnv reduces (.var envVar) to a value,
+      -- then getEnv does the actual lookup. SKIP for now.
+      sorry
 ```
 
-### Step 2: Close the `.lit` case (contradiction)
-The lit case should be a contradiction: `Flat.step?` on a literal returns `none`, but `hstep` says it returned `some`. Use `lean_goal` at the sorry to see the exact state, then close it.
+### Subcase B: `lookupEnv envMap n = some idx` → `.getEnv` (SKIP for now, leave sorry)
 
-### Step 3: Close easy cases
-After `.lit`, try `.var`, `.this`, `.return`, `.typeof`. Pattern:
-1. Unfold `convertExpr` in `hconv` to get `sf.expr`
-2. Unfold `Flat.step?` to compute the Flat step
-3. Construct the Core step: `⟨sc', Core.step? sc = some (ev, sc')⟩`
-4. Output: `⟨injMap, sc', ⟨hcstep⟩, htrace', hinj, henvCorr, henvwf', hheapvwf, hncfr', hexprwf', ...⟩`
+## TASK 2: Close simple control-flow cases
 
-For `injMap'`, ALWAYS use `injMap` (since HeapInj ignores it).
+After `.var` subcase A works, apply the same contradiction/simple pattern to:
+- `.break label` — Flat.step? on break returns `some`, Core.step? on break also returns `some`
+- `.continue label` — same pattern
+- `.return val` — similar, but `.return` has an `Option Expr` argument
 
-### What NOT to do
-- Do NOT change HeapInj/EnvCorrInj definitions
+Use `lean_goal` at each sorry to see the exact state before writing code.
+
+## What NOT to do
+- Do NOT change HeapInj/EnvCorrInj/EnvCorr definitions
 - Do NOT change CC_SimRel structure
 - Do NOT change any file outside ClosureConvertCorrect.lean
-- Do NOT touch ANF or Wasm files
 - Do NOT try to prove ALL cases — close what you can, leave rest as sorry
+- NEVER break the build — `lean_diagnostic_messages` before committing
 
 ## Log progress to agents/proof/log.md

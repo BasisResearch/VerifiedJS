@@ -213,20 +213,20 @@ arithmetic, boolean_logic, conditionals, do_while, for_loop, functions, let_bind
 - ✅ ANF break/continue → .silent (wasmspec 04:15)
 - ✅ EmitSimRel const i32/i64/f64 cases proved (wasmspec 04:15)
 
-**OPEN ABSTRACTIONS (updated 2026-03-25T23:30)**:
-1. **CC HeapInj staging (1 CC sorry)**: L945 `exact sorry` covers entire step_sim theorem. HeapInj/EnvCorrInj are ALIASES (HeapInj=HeapCorr, EnvCorrInj=EnvCorr), so injMap is ignored. Restoring the proof is mechanical: case-split on `sc.expr`, thread same injMap through.
-2. **Wasm LowerSimRel (12 sorry)**: ALL blocked by 1:N stepping architecture. Need multi-step restructure.
-3. **Wasm EmitSimRel (6 sorry)**: L9445 call underflow, L9449 call success (blocked by hframes_one), L9459 callIndirect, L9715 br, L9718 brIf, L9972 memoryGrow no-memory (unreachable).
-4. **Wasm init (3 sorry)**: `LowerCodeCorr prog.main []` — architecturally challenging since `startFunc = none` gives empty code.
-5. **ANF (1 sorry)**: step_star (L106, entire theorem body). L1499 CLOSED by proof agent.
-6. **CC stubs (2 sorry)**: L899 forIn, L900 forOf — UNPROVABLE (theorem literally false for stubs).
+**OPEN ABSTRACTIONS (updated 2026-03-26T01:05)**:
+1. **CC step_sim (30 case sorries)**: Skeleton expanded — `.lit` (has build error, fix provided), `.this` PROVED, 28 cases sorry'd. `.var` non-captured subcase follows `.this` pattern exactly. Captured-var subcase needs multi-step.
+2. **CC stubs (2 sorry)**: L899 forIn, L900 forOf — UNPROVABLE (theorem literally false for stubs).
+3. **Wasm LowerSimRel (12 sorry)**: ALL blocked by 1:N stepping architecture. Need multi-step restructure.
+4. **Wasm EmitSimRel (5 sorry)**: L9527 call underflow, L9531 call success (blocked by hframes_one), L9541 callIndirect, L9797 br, L9800 brIf. memoryGrow no-memory CLOSED.
+5. **Wasm init (3 sorry)**: `LowerCodeCorr prog.main []` — architecturally challenging since `startFunc = none` gives empty code.
+6. **ANF (1 sorry)**: step_star (L106, entire theorem body). L1499 CLOSED by proof agent.
 
-**Critical path**: (1) proof: restore CC step_sim (L945, mechanical since HeapInj=alias). (2) wasmspec: close EmitSimRel br/brIf (most tractable). (3) proof: ANF step_star (L106, hard). (4) wasmspec: init or memoryGrow. (5) wasmspec: call/callIndirect (blocked by hframes_one).
+**Critical path**: (1) proof: fix `.lit` build error + close `.var`/`.break`/`.continue`/`.return` CC cases. (2) wasmspec: close EmitSimRel br/brIf (most tractable). (3) proof: ANF step_star (L106, hard). (4) wasmspec: call/callIndirect (blocked by hframes_one).
 
 ## Agent Health
 
-| Agent | Status (2026-03-25T23:30) | Notes |
+| Agent | Status (2026-03-26T01:05) | Notes |
 |-------|---------------------|-------|
 | jsspec | **DONE** (last run 21:00) | **2800 refs**, 0 mismatches, **100.0% coverage**. ALL TARGETS MET. No further work needed. |
-| wasmspec | **ACTIVE** (last log 22:30) | 21 Wasm sorries. Call OOB proved, call underflow/success structured. Redirected to br/brIf. |
-| proof | **ACTIVE** (last log 23:00) | **ANF L1499 CLOSED** ✅. 1 ANF + 1 CC sorry. Redirected to restore CC step_sim (L945). |
+| wasmspec | **ACTIVE** (last log 22:30) | 20 Wasm sorries. Redirected to EmitSimRel br/brIf. |
+| proof | **ACTIVE** (last log 23:00) | CC skeleton expanded (`.this` proved, `.lit` has build error). Redirected to fix `.lit` + close `.var`/control-flow cases. |

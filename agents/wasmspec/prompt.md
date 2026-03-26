@@ -1,66 +1,61 @@
-# wasmspec — Close memoryGrow no-memory (L9972)
+# wasmspec — Close EmitSimRel br/brIf (L9797, L9800)
 
 You own Flat/*, ANF/*, Wasm/Syntax,Semantics,Typing,Numerics, Runtime/*.
 
-## Current Wasm sorry count: 21 (in Semantics.lean)
+## Current Wasm sorry count: 20 (in Semantics.lean)
+- L6343-6420: 12 LowerSimRel (blocked by 1:N stepping — DO NOT touch)
+- L9527, 9531: call underflow + success (blocked by hframes_one)
+- L9541: callIndirect (blocked by hframes_one + table)
+- L9797: br (this task)
+- L9800: brIf (this task)
+- L10244, 10259, 10283: init (blocked by LowerCodeCorr)
 
-### TASK 1 (DO FIRST): Close memoryGrow no-memory sorry at L9972
+## TASK: Close br (L9797) and brIf (L9800)
 
-This is a **1-line fix**. The sorry is in the `none` branch of `rcases hrel.hmemory`:
+### Architecture needed
+
+For `br label`, the IR does:
+1. `irFindLabel? ir.labels label` → returns `(ir_idx, irLbl)`
+2. Uses `irLbl.isLoop` to decide: loop → jump to `irLbl.onBranch`, block → jump to `irLbl.onExit`
+
+For Wasm `Instr.br idx`:
+1. `resolveBranch? w.labels idx` → returns `(wLbl, remainingLabels)`
+2. Uses `wLbl.isLoop` to decide loop/block branch target
+
+### What you need to prove
+
+**Step 1**: Add a helper lemma connecting IR label lookup to Wasm label resolution. Use `lean_goal` at L9797 to see what's available, then write:
 
 ```lean
-rcases hrel.hmemory with hmem_eq | ⟨hmem_none, hmem_sz⟩
+private theorem ir_wasm_label_resolve
+    (hlabels : ir.labels.length = w.labels.length)
+    (hlabel_content : ∀ i, i < ir.labels.length →
+      ∃ wl, w.labels[i]? = some wl ∧
+        EmitCodeCorr ir.labels[i]!.onBranch wl.onBranch ∧
+        EmitCodeCorr ir.labels[i]!.onExit wl.onExit ∧
+        ir.labels[i]!.isLoop = wl.isLoop)
+    (hfind : irFindLabel? ir.labels label = some (idx, irLbl))
+    : ∃ wLbl wLabels',
+        resolveBranch? w.labels idx = some (wLbl, wLabels') ∧
+        EmitCodeCorr irLbl.onBranch wLbl.onBranch ∧
+        EmitCodeCorr irLbl.onExit wLbl.onExit ∧
+        irLbl.isLoop = wLbl.isLoop
 ```
 
-In the second branch, `hmem_none : w.store.memories[0]? = none`.
-But `hrel.hmemory_nonempty : 0 < w.store.memories.size`.
+**BUT FIRST**: Check whether `hlabels` and `hlabel_content` (or similar) actually exist in `EmitSimRel`. Use `lean_hover_info` on `EmitSimRel` to see its fields.
 
-These CONTRADICT — if size > 0 then `[0]?` is `some _`, not `none`.
+**Step 2**: If the fields don't exist yet, add them. Propagate to all construction sites (mechanical).
 
-**Replace the `sorry` at L9972 with:**
-```lean
-                exfalso
-                have h := hrel.hmemory_nonempty
-                simp [Array.getElem?_eq_none_iff] at hmem_none
-                omega
-```
+**Step 3**: Write the br case proof using the label resolution helper.
 
-If `Array.getElem?_eq_none_iff` doesn't exist, try:
-```lean
-                exfalso
-                have : (s2.store.memories[0]? ≠ none) := by
-                  exact Option.isSome_iff_ne_none.mp (Array.getElem?_isSome.mpr hrel.hmemory_nonempty)
-                exact this hmem_none
-```
+**Step 4**: brIf is br + a conditional check. Same pattern with an `if toBoolean cond` branch.
 
-Or more simply:
-```lean
-                exact absurd hmem_none (by simp [show 0 < s2.store.memories.size from hrel.hmemory_nonempty])
-```
+### If label infrastructure is too much
 
-Use `lean_multi_attempt` at L9972 to test which tactic works BEFORE editing.
-
-### TASK 2: Investigate br/brIf architecture
-
-The br sorry at L9715 needs a connection between:
-- `irFindLabel? ir.labels label` → returns `(ir_idx, irLbl)` (by name lookup)
-- `resolveBranch? w.labels idx` → resolves by numeric index (from `Instr.br idx`)
-
-**Problem**: EmitCodeCorr `br_` stores `idx` (from emit-time `resolveLabelIdx`), but there's NO proof that `ir_idx = idx`. They're produced by different name lookups on different data structures.
-
-**Solution needed**: Add to EmitSimRel:
-```lean
-hlabel_name_resolve : ∀ (label : String) (ir_idx : Nat) (irLbl : IRLabel),
-  irFindLabel? ir.labels label = some (ir_idx, irLbl) →
-  ∃ wLbl wLabels', resolveBranch? w.labels ir_idx = some (wLbl, wLabels') ∧
-    EmitCodeCorr irLbl.onBranch wLbl.onBranch ∧
-    EmitCodeCorr irLbl.onExit wLbl.onExit ∧
-    irLbl.isLoop = wLbl.isLoop
-```
-
-This follows from `hlabels` + `hlabel_content` + a lemma about `irFindLabel?` returning valid indices. BUT you also need `ir_idx = idx` from the Wasm code — which requires tracking that emit-time and runtime label stacks have the same name ordering.
-
-**If TASK 2 seems too complex, SKIP IT.** Focus on closing L9972.
+If adding label correspondence fields is too much work, at minimum:
+1. Use `lean_goal` at L9797 and L9800 to document what's needed
+2. Structure each sorry into subcases (like call was structured)
+3. Leave targeted sorries with comments about what's blocked
 
 ### DON'T work on:
 - LowerSimRel (12 sorries) — blocked by 1:N stepping
@@ -73,4 +68,3 @@ This follows from `hlabels` + `hlabel_content` + a lemma about `irFindLabel?` re
 - Do NOT break the build
 - CLOSE sorries, don't decompose them into more sorries
 - Use `lean_goal` + `lean_multi_attempt` BEFORE editing
-- Do TASK 1 FIRST — it's a 1-sorry win in 5 minutes

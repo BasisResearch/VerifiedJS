@@ -917,6 +917,25 @@ private theorem Core_step?_this_not_found (s : Core.State)
                        trace := s.trace ++ [.silent], funcs := s.funcs, callStack := s.callStack }) := by
   simp [Core.step?, Core.pushTrace, h]
 
+private theorem Flat_step?_lit (s : Flat.State) (v : Flat.Value) :
+    Flat.step? { s with expr := .lit v } = none := by
+  simp [Flat.step?]
+
+-- Flat.step? explicit field lemmas (step?_this_found uses private pushTrace)
+private theorem Flat_step?_this_found_explicit (s : Flat.State) (v : Flat.Value)
+    (h : s.env.lookup "this" = some v) :
+    Flat.step? { s with expr := .this } =
+      some (.silent, { expr := .lit v, env := s.env, heap := s.heap,
+                       trace := s.trace ++ [.silent], funcs := s.funcs, callStack := s.callStack }) := by
+  simp [Flat.step?, h]; rfl
+
+private theorem Flat_step?_this_not_found_explicit (s : Flat.State)
+    (h : s.env.lookup "this" = none) :
+    Flat.step? { s with expr := .this } =
+      some (.silent, { expr := .lit .undefined, env := s.env, heap := s.heap,
+                       trace := s.trace ++ [.silent], funcs := s.funcs, callStack := s.callStack }) := by
+  simp [Flat.step?, h]; rfl
+
 private theorem closureConvert_step_simulation
     (s : Core.Program) (t : Flat.Program)
     (h : Flat.closureConvert s = .ok t) :
@@ -963,10 +982,10 @@ private theorem closureConvert_step_simulation
     rw [hsc] at hconv
     simp [Flat.convertExpr] at hconv
     have hlit := hconv.1
-    -- step?_none_implies: Flat.step? returns none for lit expressions
-    have habs : Flat.step? sf = none := by
-      unfold Flat.step?; simp [hlit]
-    exact absurd hstep (by rw [habs]; exact fun h => nomatch h)
+    have hsf_eta : sf = { sf with expr := .lit (Flat.convertValue v) } := by cases sf; simp_all
+    rw [hsf_eta] at hstep
+    rw [Flat_step?_lit] at hstep
+    exact absurd hstep (fun h => nomatch h)
   | var name => sorry
   | «this» =>
     rw [hsc] at hconv hncfr hexprwf hd
@@ -979,38 +998,27 @@ private theorem closureConvert_step_simulation
     obtain ⟨hfwd, hbwd⟩ := hec
     cases hflookup : sf.env.lookup "this" with
     | some fv =>
-      rw [Flat.step?_this_found _ _ hflookup] at hstep
-      -- Extract ev = .silent and sf' from hstep
-      simp [Flat.State.mk.injEq] at hstep
-      obtain ⟨hev, hsf'⟩ := hstep
-      subst hev hsf'
+      rw [Flat_step?_this_found_explicit _ _ hflookup] at hstep
+      simp at hstep
+      obtain ⟨hev, hsf'⟩ := hstep; subst hev hsf'
       obtain ⟨cv, hclookup, hfvcv⟩ := hfwd "this" fv hflookup
-      -- Core step: .this with env.lookup "this" = some cv
       let sc' : Core.State := ⟨.lit cv, sc.env, sc.heap, sc.trace ++ [.silent], sc.funcs, sc.callStack⟩
       refine ⟨injMap, sc', ⟨?_⟩, ?_, ?_, ?_, ?_, ?_, ?_, ?_, ?_⟩
-      · show Core.step? sc = some (.silent, sc')
-        have hsc' : sc = { sc with expr := .this } := by
+      · have hsc' : sc = { sc with expr := .this } := by
           obtain ⟨_, _, _, _, _, _⟩ := sc; simp only [] at hsc; subst hsc; rfl
         rw [hsc']; exact Core_step?_this_found _ _ hclookup
       · simp [sc', htrace]
-      · simp [sc']; exact hinj
-      · simp [sc']; exact henvCorr
-      · show EnvAddrWF sc'.env sc'.heap.objects.size
-        simp [sc']; exact henvwf
-      · show HeapValuesWF sc'.heap
-        simp [sc']; exact hheapvwf
-      · show noCallFrameReturn sc'.expr = true
-        simp [sc', noCallFrameReturn]
-      · show ExprAddrWF sc'.expr sc'.heap.objects.size
-        simp [sc', ExprAddrWF]
-        exact henvwf "this" cv hclookup
+      · exact hinj
+      · exact henvCorr
+      · exact henvwf
+      · exact hheapvwf
+      · simp [sc', noCallFrameReturn]
+      · simp [sc', ExprAddrWF]; exact henvwf "this" cv hclookup
       · exact ⟨scope, st, st, by simp [sc', Flat.convertExpr, hfvcv]⟩
     | none =>
-      rw [Flat.step?_this_not_found _ hflookup] at hstep
-      simp [Flat.State.mk.injEq] at hstep
-      obtain ⟨hev, hsf'⟩ := hstep
-      subst hev hsf'
-      -- Core lookup "this" = none (by contraposition of backward direction)
+      rw [Flat_step?_this_not_found_explicit _ hflookup] at hstep
+      simp at hstep
+      obtain ⟨hev, hsf'⟩ := hstep; subst hev hsf'
       have hclookup : sc.env.lookup "this" = none := by
         cases hcl : sc.env.lookup "this" with
         | none => rfl
@@ -1019,21 +1027,16 @@ private theorem closureConvert_step_simulation
           simp [hflookup] at hfl
       let sc' : Core.State := ⟨.lit .undefined, sc.env, sc.heap, sc.trace ++ [.silent], sc.funcs, sc.callStack⟩
       refine ⟨injMap, sc', ⟨?_⟩, ?_, ?_, ?_, ?_, ?_, ?_, ?_, ?_⟩
-      · show Core.step? sc = some (.silent, sc')
-        have hsc' : sc = { sc with expr := .this } := by
+      · have hsc' : sc = { sc with expr := .this } := by
           obtain ⟨_, _, _, _, _, _⟩ := sc; simp only [] at hsc; subst hsc; rfl
         rw [hsc']; exact Core_step?_this_not_found _ hclookup
       · simp [sc', htrace]
-      · simp [sc']; exact hinj
-      · simp [sc']; exact henvCorr
-      · show EnvAddrWF sc'.env sc'.heap.objects.size
-        simp [sc']; exact henvwf
-      · show HeapValuesWF sc'.heap
-        simp [sc']; exact hheapvwf
-      · show noCallFrameReturn sc'.expr = true
-        simp [sc', noCallFrameReturn]
-      · show ExprAddrWF sc'.expr sc'.heap.objects.size
-        simp [sc', ExprAddrWF, ValueAddrWF]
+      · exact hinj
+      · exact henvCorr
+      · exact henvwf
+      · exact hheapvwf
+      · simp [sc', noCallFrameReturn]
+      · simp [sc', ExprAddrWF, ValueAddrWF]
       · exact ⟨scope, st, st, by simp [sc', Flat.convertExpr, Flat.convertValue]⟩
   | «let» name init body => sorry
   | assign name rhs => sorry
