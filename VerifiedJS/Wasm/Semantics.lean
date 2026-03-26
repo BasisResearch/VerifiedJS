@@ -3933,7 +3933,7 @@ def irStep? (s : IRExecState) : Option (TraceEvent × IRExecState) :=
                 | none => some (irTrapState base s!"br_if: unknown label '{label}'")
               else
                 some (.silent, irPushTrace { base with stack := stk } .silent)
-          | some _ => some (irTrapState base "type mismatch in br_if (expected i32)")
+          | some _ => some (irTrapState base "br_if condition is not i32")
           | none => some (irTrapState base "stack underflow in br_if")
       -- Control flow: return
       -- REF: WasmCert-Coq r_return / Wasm §4.4.7.4
@@ -5047,25 +5047,31 @@ private theorem resolveBranch?_spec {labels : List LabelFrame} {depth : Nat}
       · simp [hlbl]
       · unfold resolveBranch?.go; exact hgo
 
-/-- The emitted Wasm br/brIf depth index equals the runtime IR label lookup index.
+/-- For a br instruction in EmitCodeCorr, the label lookup always succeeds and the
+    emitted Wasm depth index equals the runtime IR label lookup index.
     BLOCKED: Requires Emit.lean to pushLabel for if_ bodies (line 119).
     Without this fix, idx can be off-by-1 for br inside if_ bodies.
     FIX: In Emit.lean line 119, add `let s' := pushLabel s "__if"` before emitting
-    then/else branches. Then prove via EmitCodeCorr label context tracking. -/
-private theorem emit_branch_idx_correct
-    {irLabels : List IRLabel} {label : String} {idx ir_idx : Nat} {irLbl : IRLabel}
+    then/else branches. Then add ctx : List String parameter to EmitCodeCorr and
+    prove via label context tracking (ctx.findIdx? matches irFindLabel?). -/
+private theorem emit_br_label_resolve
+    {irLabels : List IRLabel} {wLabels : List LabelFrame}
+    {label : String} {idx : Nat}
     {rest_ir : List IRInstr} {rest_w : List Instr}
     (_hcode : EmitCodeCorr (IRInstr.br label :: rest_ir) (Instr.br idx :: rest_w))
-    (hfind : irFindLabel? irLabels label = some (ir_idx, irLbl)) :
-    idx = ir_idx := by sorry
+    (_hlabels : irLabels.length = wLabels.length) :
+    ∃ ir_idx irLbl, irFindLabel? irLabels label = some (ir_idx, irLbl) ∧ idx = ir_idx := by
+  sorry
 
-/-- Same as emit_branch_idx_correct but for brIf. -/
-private theorem emit_brIf_idx_correct
-    {irLabels : List IRLabel} {label : String} {idx ir_idx : Nat} {irLbl : IRLabel}
+/-- Same as emit_br_label_resolve but for brIf. -/
+private theorem emit_brIf_label_resolve
+    {irLabels : List IRLabel} {wLabels : List LabelFrame}
+    {label : String} {idx : Nat}
     {rest_ir : List IRInstr} {rest_w : List Instr}
     (_hcode : EmitCodeCorr (IRInstr.brIf label :: rest_ir) (Instr.brIf idx :: rest_w))
-    (hfind : irFindLabel? irLabels label = some (ir_idx, irLbl)) :
-    idx = ir_idx := by sorry
+    (_hlabels : irLabels.length = wLabels.length) :
+    ∃ ir_idx irLbl, irFindLabel? irLabels label = some (ir_idx, irLbl) ∧ idx = ir_idx := by
+  sorry
 
 /-- Exact state after br: jumps to label's onBranch code.
     Loop labels are kept (re-entry), non-loop labels are popped.
@@ -9844,10 +9850,268 @@ theorem step_sim (irmod : IRModule) (wmod : Module) :
           · exact hf.elim
       | .br label =>
           -- unconditional branch
-          sorry
+          have hc : EmitCodeCorr (IRInstr.br label :: rest) s2.code := hcode_ir ▸ hrel.hcode
+          rcases hc.br_inv with ⟨idx, rest_w, hcw, hrest⟩ | hf
+          · -- Wasm code = br idx :: rest_w
+            -- Get guaranteed label resolution (sorry'd — blocked by Emit.lean if_ label bug)
+            obtain ⟨ir_idx, irLbl, hfind, hidx⟩ :=
+              emit_br_label_resolve (hcw ▸ hc) hrel.hlabels
+            subst hidx
+            -- Characterize the IR step
+            have hir := irStep?_eq_br s1 label rest ir_idx irLbl hcode_ir hfind
+            rw [hir] at hstep
+            simp only [Option.some.injEq, Prod.mk.injEq] at hstep
+            obtain ⟨rfl, rfl⟩ := hstep
+            -- Label is within bounds
+            have hlt := irFindLabel?_lt_length hfind
+            have hlt_w : ir_idx < s2.labels.length := hrel.hlabels ▸ hlt
+            -- Get resolveBranch? spec
+            obtain ⟨wLbl, hwlbl_get, hresolve⟩ := resolveBranch?_spec hlt_w
+            -- Get label correspondence from hlabel_content
+            obtain ⟨irLbl', wLbl', hirLbl, hwLbl', hcode_exit, hcode_branch, hloop⟩ :=
+              hrel.hlabel_content ir_idx hlt
+            -- irLbl from irFindLabel? = irLbl' from hlabel_content
+            have hirLbl_eq := irFindLabel?_getElem hfind
+            rw [hirLbl_eq] at hirLbl
+            simp only [Option.some.injEq] at hirLbl; subst hirLbl
+            -- wLbl from resolveBranch? = wLbl' from hlabel_content
+            rw [hwlbl_get] at hwLbl'
+            simp only [Option.some.injEq] at hwLbl'; subst hwLbl'
+            -- Wasm step
+            have hw := step?_eq_br s2 ir_idx rest_w wLbl
+              (if wLbl.isLoop then wLbl :: s2.labels.drop (ir_idx + 1)
+               else s2.labels.drop (ir_idx + 1))
+              hcw hresolve
+            -- New labels (both sides use isLoop to decide)
+            have hloop_eq : irLbl.isLoop = wLbl.isLoop := hloop
+            exact ⟨_, hw,
+              { hemit := hrel.hemit
+                hcode := by rw [hloop_eq]; exact hcode_branch
+                hstack := hrel.hstack
+                hframes_len := hrel.hframes_len
+                hframes_locals := hrel.hframes_locals
+                hframes_vals := hrel.hframes_vals
+                hglobals := hrel.hglobals
+                hmemory := hrel.hmemory
+                hmemLimits := hrel.hmemLimits
+                hmemory_aligned := hrel.hmemory_aligned
+                hmemory_nonempty := hrel.hmemory_nonempty
+                hlabels := by
+                  dsimp only []
+                  rw [hloop_eq]
+                  split
+                  · simp; have := hrel.hlabels; omega
+                  · have := hrel.hlabels; omega
+                hhalt := by
+                  rw [hloop_eq]
+                  exact hhalt_of_structural (by rw [hloop_eq]; exact hcode_branch)
+                    (by rw [hloop_eq]; split <;> (simp; have := hrel.hlabels; omega))
+                hlabel_content := by
+                  intro i hi
+                  dsimp only [] at hi ⊢
+                  rw [hloop_eq] at hi ⊢
+                  split at hi ⊢
+                  · -- isLoop = true: new labels = irLbl :: drop(ir_idx+1)
+                    simp only [List.length_cons] at hi
+                    match i with
+                    | 0 =>
+                      -- Position 0: the loop label itself
+                      exact hrel.hlabel_content ir_idx hlt
+                    | i + 1 =>
+                      -- Position i+1: from old labels at ir_idx+1+i
+                      have hi' : ir_idx + 1 + i < s1.labels.length := by omega
+                      exact hrel.hlabel_content (ir_idx + 1 + i) hi'
+                  · -- isLoop = false: new labels = drop(ir_idx+1)
+                    have hi' : ir_idx + 1 + i < s1.labels.length := by omega
+                    exact hrel.hlabel_content (ir_idx + 1 + i) hi'
+                hframes_one := hrel.hframes_one
+                hmodule := hrel.hmodule
+                hstore_funcs := hrel.hstore_funcs
+                hstore_types := hrel.hstore_types }⟩
+          · exact hf.elim
       | .brIf label =>
           -- conditional branch
-          sorry
+          have hc : EmitCodeCorr (IRInstr.brIf label :: rest) s2.code := hcode_ir ▸ hrel.hcode
+          rcases hc.brIf_inv with ⟨idx, rest_w, hcw, hrest⟩ | hf
+          · -- Wasm code = brIf idx :: rest_w
+            -- Case split on IR stack for condition value
+            match hstk : s1.stack with
+            | [] =>
+              -- Empty stack: IR traps "stack underflow in br_if"
+              have hir : irStep? s1 = some (.trap "stack underflow in br_if",
+                  irPushTrace { s1 with code := [] } (.trap "stack underflow in br_if")) := by
+                simp [irStep?, hcode_ir, hstk, irPop1?, irTrapState, irPushTrace]
+              rw [hir] at hstep
+              simp only [Option.some.injEq, Prod.mk.injEq] at hstep
+              obtain ⟨rfl, rfl⟩ := hstep
+              -- Wasm stack also empty
+              have hlen := hrel.hstack.1; rw [hstk] at hlen; simp at hlen
+              have hs2 : s2.stack = [] := by
+                cases hs : s2.stack with | nil => rfl | cons => simp [hs] at hlen
+              have hw : step? s2 = some (.trap "stack underflow in br_if",
+                  { s2 with code := [], trace := s2.trace ++ [.trap "stack underflow in br_if"] }) := by
+                simp [step?, hcw, hs2, pop1?, trapState, pushTrace]
+              exact ⟨_, by simp [traceToWasm]; exact hw,
+                { hemit := hrel.hemit
+                  hcode := .nil
+                  hstack := by dsimp only []; exact hrel.hstack
+                  hframes_len := hrel.hframes_len
+                  hframes_locals := hrel.hframes_locals
+                  hframes_vals := hrel.hframes_vals
+                  hglobals := hrel.hglobals
+                  hmemory := hrel.hmemory
+                  hmemLimits := hrel.hmemLimits
+                  hmemory_aligned := hrel.hmemory_aligned
+                  hmemory_nonempty := hrel.hmemory_nonempty
+                  hlabels := by dsimp only []; exact hrel.hlabels
+                  hhalt := hhalt_of_structural .nil hrel.hlabels
+                  hlabel_content := hrel.hlabel_content
+                  hframes_one := hrel.hframes_one
+                  hmodule := hrel.hmodule
+                  hstore_funcs := hrel.hstore_funcs
+                  hstore_types := hrel.hstore_types }⟩
+            | .i32 cond :: stk =>
+              -- i32 condition: decide true/false
+              match hcond : decide (cond = 0) with
+              | isTrue h0 =>
+                subst h0
+                -- False branch: fall through (cond = 0)
+                have hir := irStep?_eq_brIf_false s1 label rest stk hcode_ir hstk
+                rw [hir] at hstep
+                simp only [Option.some.injEq, Prod.mk.injEq] at hstep
+                obtain ⟨rfl, rfl⟩ := hstep
+                -- Wasm stack correspondence: s2.stack starts with .i32 0
+                have hlen := hrel.hstack.1; rw [hstk] at hlen
+                match hs2 : s2.stack with
+                | [] => simp [hs2] at hlen
+                | wv :: wstk =>
+                  have hval_corr := hrel.hstack.2 0 (by simp [hstk])
+                  rw [hstk, hs2] at hval_corr
+                  simp at hval_corr
+                  obtain ⟨_, _, h1, h2, hvc⟩ := hval_corr
+                  simp at h1 h2; subst h1; subst h2
+                  cases hvc with
+                  | i32 n => rename_i hneq; rw [hneq] at hs2
+                  have hw := step?_eq_brIf_false_gen s2 idx rest_w wstk hcw hs2
+                  refine ⟨_, hw, hrel.hemit, hrest, ?_, hrel.hframes_len, hrel.hframes_locals, hrel.hframes_vals, hrel.hglobals, hrel.hmemory, hrel.hmemLimits, hrel.hmemory_aligned, hrel.hmemory_nonempty, hrel.hlabels, hhalt_of_structural hrest hrel.hlabels, hrel.hlabel_content, hrel.hframes_one, hrel.hmodule, hrel.hstore_funcs, hrel.hstore_types⟩
+                  -- Stack correspondence: tails match
+                  constructor
+                  · simp [hstk, hs2] at hlen ⊢; omega
+                  · intro i hi
+                    have hstk2 := hrel.hstack
+                    rw [hstk, hs2] at hstk2
+                    exact hstk2.2 (i + 1) (by simp; omega)
+              | isFalse hne =>
+                -- True branch: branch to label (cond ≠ 0)
+                -- Get guaranteed label resolution
+                obtain ⟨ir_idx, irLbl, hfind, hidx⟩ :=
+                  emit_brIf_label_resolve (hcw ▸ hc) hrel.hlabels
+                subst hidx
+                -- Characterize the IR step
+                have hcond_ne : cond ≠ 0 := fun h => hne (by subst h; rfl)
+                have hir := irStep?_eq_brIf_true s1 label rest cond stk ir_idx irLbl hcode_ir hstk hcond_ne hfind
+                rw [hir] at hstep
+                simp only [Option.some.injEq, Prod.mk.injEq] at hstep
+                obtain ⟨rfl, rfl⟩ := hstep
+                -- Label is within bounds
+                have hlt := irFindLabel?_lt_length hfind
+                have hlt_w : ir_idx < s2.labels.length := hrel.hlabels ▸ hlt
+                -- Get resolveBranch? spec
+                obtain ⟨wLbl, hwlbl_get, hresolve⟩ := resolveBranch?_spec hlt_w
+                -- Get label correspondence from hlabel_content
+                obtain ⟨irLbl', wLbl', hirLbl, hwLbl', hcode_exit, hcode_branch, hloop⟩ :=
+                  hrel.hlabel_content ir_idx hlt
+                -- irLbl from irFindLabel? = irLbl' from hlabel_content
+                have hirLbl_eq := irFindLabel?_getElem hfind
+                rw [hirLbl_eq] at hirLbl
+                simp only [Option.some.injEq] at hirLbl; subst hirLbl
+                -- wLbl from resolveBranch? = wLbl' from hlabel_content
+                rw [hwlbl_get] at hwLbl'
+                simp only [Option.some.injEq] at hwLbl'; subst hwLbl'
+                -- Wasm stack correspondence
+                have hlen := hrel.hstack.1; rw [hstk] at hlen
+                match hs2 : s2.stack with
+                | [] => simp [hs2] at hlen
+                | wv :: wstk =>
+                  have hval_corr := hrel.hstack.2 0 (by simp [hstk])
+                  rw [hstk, hs2] at hval_corr
+                  simp at hval_corr
+                  obtain ⟨_, _, h1, h2, hvc⟩ := hval_corr
+                  simp at h1 h2; subst h1; subst h2
+                  cases hvc with
+                  | i32 n =>
+                    rename_i hneq; rw [hneq] at hs2
+                    have hwcond_ne : n ≠ 0 := by rw [hneq]; exact hcond_ne
+                    -- Wasm step: brIf true branch
+                    have hw := step?_eq_brIf_true_gen s2 ir_idx rest_w n wstk wLbl
+                      (if wLbl.isLoop then wLbl :: s2.labels.drop (ir_idx + 1)
+                       else s2.labels.drop (ir_idx + 1))
+                      hcw hs2 hwcond_ne hresolve
+                    have hloop_eq : irLbl.isLoop = wLbl.isLoop := hloop
+                    exact ⟨_, hw,
+                      { hemit := hrel.hemit
+                        hcode := by rw [hloop_eq]; exact hcode_branch
+                        hstack := by
+                          constructor
+                          · simp [hstk, hs2] at hlen ⊢; omega
+                          · intro i hi
+                            have hstk2 := hrel.hstack
+                            rw [hstk, hs2] at hstk2
+                            exact hstk2.2 (i + 1) (by simp; omega)
+                        hframes_len := hrel.hframes_len
+                        hframes_locals := hrel.hframes_locals
+                        hframes_vals := hrel.hframes_vals
+                        hglobals := hrel.hglobals
+                        hmemory := hrel.hmemory
+                        hmemLimits := hrel.hmemLimits
+                        hmemory_aligned := hrel.hmemory_aligned
+                        hmemory_nonempty := hrel.hmemory_nonempty
+                        hlabels := by
+                          dsimp only []
+                          rw [hloop_eq]
+                          split
+                          · simp; have := hrel.hlabels; omega
+                          · have := hrel.hlabels; omega
+                        hhalt := by
+                          rw [hloop_eq]
+                          exact hhalt_of_structural (by rw [hloop_eq]; exact hcode_branch)
+                            (by rw [hloop_eq]; split <;> (simp; have := hrel.hlabels; omega))
+                        hlabel_content := by
+                          intro i hi
+                          dsimp only [] at hi ⊢
+                          rw [hloop_eq] at hi ⊢
+                          split at hi ⊢
+                          · simp only [List.length_cons] at hi
+                            match i with
+                            | 0 => exact hrel.hlabel_content ir_idx hlt
+                            | i + 1 =>
+                              have hi' : ir_idx + 1 + i < s1.labels.length := by omega
+                              exact hrel.hlabel_content (ir_idx + 1 + i) hi'
+                          · have hi' : ir_idx + 1 + i < s1.labels.length := by omega
+                            exact hrel.hlabel_content (ir_idx + 1 + i) hi'
+                        hframes_one := hrel.hframes_one
+                        hmodule := hrel.hmodule
+                        hstore_funcs := hrel.hstore_funcs
+                        hstore_types := hrel.hstore_types }⟩
+            | v :: stk =>
+              -- Non-i32 at top of stack: IR traps "type mismatch"
+              -- First show the IR step is a trap
+              match v with
+              | .i32 _ => exact absurd rfl (by simp [hstk])
+              | _ =>
+                have hir : irStep? s1 = some (.trap "br_if condition is not i32",
+                    irPushTrace { s1 with code := [] } (.trap "br_if condition is not i32")) := by
+                  simp [irStep?, hcode_ir, hstk, irPop1?, irTrapState, irPushTrace]
+                rw [hir] at hstep
+                simp only [Option.some.injEq, Prod.mk.injEq] at hstep
+                obtain ⟨rfl, rfl⟩ := hstep
+                -- Wasm stack has a corresponding non-i32 value
+                -- For simulation, the stack correspondence means Wasm also has a non-i32 top
+                -- This should also cause Wasm to produce a type mismatch trap
+                -- But Wasm's br_if also pops and checks i32Truth
+                -- With corresponding stacks, non-i32 maps to non-i32, and Wasm traps too
+                sorry -- Non-i32 brIf stack mismatch: needs IRValueToWasmValue non-i32 analysis
+          · exact hf.elim
       | .return_ =>
           -- return from function: with hframes_one, frames = [frame], so top-level return
           have hc : EmitCodeCorr (IRInstr.return_ :: rest) s2.code := hcode_ir ▸ hrel.hcode
