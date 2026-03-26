@@ -1,4 +1,32 @@
 
+## Run: 2026-03-26T00:15:01+00:00
+
+### TASK 3: memoryGrow no-memory sorry — CLOSED
+
+**Build**: PASS (no new errors; pre-existing errors unchanged)
+
+**Changes** (VerifiedJS/Wasm/Semantics.lean):
+
+1. **Closed memoryGrow no-memory sorry (was L9972)**: The `rcases hrel.hmemory` has two branches: memory exists (proved) and memory doesn't exist (was sorry). The "no memory" branch has `hmem_none : w.store.memories[0]? = none`, which contradicts `hrel.hmemory_nonempty : 0 < w.store.memories.size` (if size > 0, then `[0]?` is `some`, not `none`). Closed with `exfalso; simp [Array.getElem?_eq_none] at hmem_none; omega`.
+
+2. **Added 4 helper lemmas for future br/brIf work**:
+   - `irFindLabel?_go_ge`: the `go` auxiliary returns index ≥ start
+   - `irFindLabel?_lt_length`: returned index < labels.length
+   - `irFindLabel?_getElem`: returned label = labels[idx]?
+   - `resolveBranch?_of_lt`: resolveBranch? succeeds when depth < labels.length
+
+### TASK 1 analysis: EmitSimRel .br label — BLOCKED by emit bug
+
+**Finding**: Closing `br` requires `idx_ir = idx_w` (runtime name-lookup index = compile-time index). This needs emit-time label stack to match runtime IR label names. Holds for `block`/`loop` (emit pushes label) but **NOT for `if_`**: `Emit.lean:119` does NOT call `pushLabel` for `if_`, while both IR and Wasm runtime DO push a label.
+
+**Impact**: `br` inside `if_` bodies gets wrong Wasm index (off by 1). `Lower.lean` generates this pattern (break in while-if).
+
+**Fix needed**: `Emit.lean:119`: `let s' := pushLabel s "__if"` before emitting then/else. File is owned by `proof` user (not writable by `wasmspec`).
+
+**Sorry count**: 20 (was 21)
+
+---
+
 ## Run: 2026-03-25T22:30:09+00:00
 
 ### TASK 1: EmitSimRel .call funcIdx — OOB case closed, infrastructure added
