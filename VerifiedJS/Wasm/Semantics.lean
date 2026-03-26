@@ -4935,6 +4935,80 @@ theorem irStep?_eq_return_toplevel (s : IRExecState) (rest : List IRInstr)
         trace := s.trace ++ [.silent] }) := by
   simp [irStep?, hcode, hframes, irPushTrace]
 
+/-! ### irFindLabel? and resolveBranch? helper lemmas -/
+
+private theorem irFindLabel?_go_ge {ls : List IRLabel} {name : String} {start idx : Nat}
+    {lbl : IRLabel} (h : irFindLabel?.go ls start = some (idx, lbl)) :
+    start ≤ idx := by
+  induction ls generalizing start with
+  | nil => simp [irFindLabel?.go] at h
+  | cons l rest ih =>
+    simp [irFindLabel?.go] at h
+    split at h
+    · simp at h; omega
+    · have := ih h; omega
+
+/-- irFindLabel? returns an index less than the label list length. -/
+private theorem irFindLabel?_lt_length {labels : List IRLabel} {name : String}
+    {idx : Nat} {lbl : IRLabel}
+    (h : irFindLabel? labels name = some (idx, lbl)) :
+    idx < labels.length := by
+  unfold irFindLabel? at h
+  suffices ∀ ls start, irFindLabel?.go ls start = some (idx, lbl) →
+      idx < start + ls.length by
+    have := this labels 0 h; omega
+  intro ls
+  induction ls generalizing with
+  | nil => intro _ h; simp [irFindLabel?.go] at h
+  | cons l rest ih =>
+    intro start h
+    simp [irFindLabel?.go] at h
+    split at h
+    · simp at h; omega
+    · have := ih (start + 1) h; omega
+
+/-- irFindLabel? returns the label at the found index. -/
+private theorem irFindLabel?_getElem {labels : List IRLabel} {name : String}
+    {idx : Nat} {lbl : IRLabel}
+    (h : irFindLabel? labels name = some (idx, lbl)) :
+    labels[idx]? = some lbl := by
+  unfold irFindLabel? at h
+  suffices ∀ ls start, irFindLabel?.go ls start = some (idx, lbl) →
+      ls[idx - start]? = some lbl by
+    have := this labels 0 h; simp at this; exact this
+  intro ls
+  induction ls generalizing with
+  | nil => intro _ h; simp [irFindLabel?.go] at h
+  | cons l rest ih =>
+    intro start h
+    simp [irFindLabel?.go] at h
+    split at h
+    · simp at h; obtain ⟨rfl, rfl⟩ := h; simp
+    · have hge : start + 1 ≤ idx := irFindLabel?_go_ge h
+      have hirrest := ih (start + 1) h
+      have heq : idx - start = (idx - (start + 1)) + 1 := by omega
+      rw [heq]; exact hirrest
+
+/-- resolveBranch? succeeds when the depth is within bounds. -/
+private theorem resolveBranch?_of_lt {labels : List LabelFrame} {depth : Nat}
+    (h : depth < labels.length) :
+    ∃ lbl labels', resolveBranch? labels depth = some (lbl, labels') := by
+  unfold resolveBranch?
+  suffices ∀ ls n, n < ls.length →
+      ∃ lbl labels', resolveBranch?.go ls n = some (lbl, labels') by
+    exact this labels depth h
+  intro ls
+  induction ls with
+  | nil => intro _ h; simp at h
+  | cons l rest ih =>
+    intro n hn
+    simp [resolveBranch?.go]
+    match n with
+    | 0 => exact ⟨l, if l.isLoop then l :: rest else rest, rfl⟩
+    | n + 1 =>
+      simp at hn
+      exact ih n (by omega)
+
 /-- Exact state after br: jumps to label's onBranch code.
     Loop labels are kept (re-entry), non-loop labels are popped.
     REF: Wasm §4.4.8.6 (br label) -/
