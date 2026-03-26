@@ -939,10 +939,46 @@ private theorem closureConvert_step_simulation
   induction n using Nat.strongRecOn with
   | _ n ih_depth =>
   intro envVar envMap injMap sf sc ev sf' hd htrace hinj henvCorr henvwf hheapvwf hncfr hexprwf ⟨scope, st, st', hconv⟩ ⟨hstep⟩
-  -- STAGING: all cases sorry'd during HeapInj refactor.
-  -- Previous proof (in git history) had ~25 proved cases and 6 sorry cases.
-  -- Will be restored with HeapInj/EnvCorrInj types (currently staging aliases).
-  exact sorry
+  -- Case-split on sc.expr to determine sf.expr via convertExpr
+  -- Then unfold Flat.step? to analyze the step, construct Core.step? result
+  cases hsc : sc.expr with
+  | lit v =>
+    -- convertExpr (.lit v) = (.lit (convertValue v), st), so sf.expr = .lit (convertValue v)
+    -- But Flat.step? of .lit is none → contradicts hstep
+    simp [Flat.convertExpr] at hconv
+    obtain ⟨hfexpr, _⟩ := hconv
+    rw [← hfexpr] at hstep
+    simp [Flat.step?] at hstep
+  | var name => sorry
+  | «this» => sorry
+  | «let» name init body => sorry
+  | assign name rhs => sorry
+  | «if» cond then_ else_ => sorry
+  | seq a b => sorry
+  | unary op arg => sorry
+  | binary op lhs rhs => sorry
+  | call f args => sorry
+  | newObj f args => sorry
+  | getProp obj prop => sorry
+  | setProp obj prop value => sorry
+  | getIndex obj idx => sorry
+  | setIndex obj idx value => sorry
+  | deleteProp obj prop => sorry
+  | typeof arg => sorry
+  | objectLit props => sorry
+  | arrayLit elems => sorry
+  | functionDef fname params body isAsync isGen => sorry
+  | throw val => sorry
+  | tryCatch body catchParam catchBody finally_ => sorry
+  | while_ cond body => sorry
+  | forIn binding obj body => sorry
+  | forOf binding iterable body => sorry
+  | «break» label => sorry
+  | «continue» label => sorry
+  | «return» val => sorry
+  | labeled label body => sorry
+  | yield arg delegate => sorry
+  | await arg => sorry
 /-! ### step?_none_implies_lit -/
 
 /-- The only Flat expression where step? returns none is a literal value. -/
