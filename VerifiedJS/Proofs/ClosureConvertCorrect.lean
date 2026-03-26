@@ -936,6 +936,38 @@ private theorem Flat_step?_this_not_found_explicit (s : Flat.State)
                        trace := s.trace ++ [.silent], funcs := s.funcs, callStack := s.callStack }) := by
   simp [Flat.step?, h]; rfl
 
+private theorem Flat_step?_var_found_explicit (s : Flat.State) (name : String) (v : Flat.Value)
+    (h : s.env.lookup name = some v) :
+    Flat.step? { s with expr := .var name } =
+      some (.silent, { expr := .lit v, env := s.env, heap := s.heap,
+                       trace := s.trace ++ [.silent], funcs := s.funcs, callStack := s.callStack }) := by
+  simp [Flat.step?, h]; rfl
+
+private theorem Flat_step?_var_not_found_explicit (s : Flat.State) (name : String)
+    (h : s.env.lookup name = none) :
+    Flat.step? { s with expr := .var name } =
+      some (.error ("ReferenceError: " ++ name),
+        { expr := .lit .undefined, env := s.env, heap := s.heap,
+          trace := s.trace ++ [.error ("ReferenceError: " ++ name)],
+          funcs := s.funcs, callStack := s.callStack }) := by
+  simp [Flat.step?, h]; rfl
+
+private theorem Core_step?_var_found (s : Core.State) (name : String) (v : Core.Value)
+    (h : s.env.lookup name = some v) :
+    Core.step? { s with expr := .var name } =
+      some (.silent, { expr := .lit v, env := s.env, heap := s.heap,
+                       trace := s.trace ++ [.silent], funcs := s.funcs, callStack := s.callStack }) := by
+  simp [Core.step?, Core.pushTrace, h]
+
+private theorem Core_step?_var_not_found (s : Core.State) (name : String)
+    (h : s.env.lookup name = none) :
+    Core.step? { s with expr := .var name } =
+      some (.error ("ReferenceError: " ++ name),
+        { expr := .lit .undefined, env := s.env, heap := s.heap,
+          trace := s.trace ++ [.error ("ReferenceError: " ++ name)],
+          funcs := s.funcs, callStack := s.callStack }) := by
+  simp [Core.step?, Core.pushTrace, h]
+
 private theorem closureConvert_step_simulation
     (s : Core.Program) (t : Flat.Program)
     (h : Flat.closureConvert s = .ok t) :
@@ -986,7 +1018,66 @@ private theorem closureConvert_step_simulation
     rw [hsf_eta] at hstep
     rw [Flat_step?_lit] at hstep
     exact absurd hstep (fun h => nomatch h)
-  | var name => sorry
+  | var name =>
+    rw [hsc] at hconv hncfr hexprwf hd
+    simp [Flat.convertExpr] at hconv
+    -- Case split on whether the variable is captured
+    cases hlookupEnv : Flat.lookupEnv envMap name with
+    | some idx =>
+      -- Captured variable: convertExpr gives .getEnv (.var envVar) idx
+      simp [hlookupEnv] at hconv
+      sorry
+    | none =>
+      -- Non-captured variable: convertExpr gives .var name (same as Core)
+      simp [hlookupEnv] at hconv
+      obtain ⟨hfexpr, _⟩ := hconv
+      have hsf_eta : sf = { sf with expr := .var name } := by cases sf; simp_all
+      rw [hsf_eta] at hstep
+      -- Get EnvCorr
+      have hec : EnvCorr sc.env sf.env := henvCorr
+      obtain ⟨hfwd, hbwd⟩ := hec
+      cases hflookup : sf.env.lookup name with
+      | some fv =>
+        rw [Flat_step?_var_found_explicit _ _ _ hflookup] at hstep
+        simp at hstep
+        obtain ⟨hev, hsf'⟩ := hstep; subst hev hsf'
+        obtain ⟨cv, hclookup, hfvcv⟩ := hfwd name fv hflookup
+        let sc' : Core.State := ⟨.lit cv, sc.env, sc.heap, sc.trace ++ [.silent], sc.funcs, sc.callStack⟩
+        refine ⟨injMap, sc', ⟨?_⟩, ?_, ?_, ?_, ?_, ?_, ?_, ?_, ?_⟩
+        · have hsc' : sc = { sc with expr := .var name } := by
+            obtain ⟨_, _, _, _, _, _⟩ := sc; simp only [] at hsc; subst hsc; rfl
+          rw [hsc']; exact Core_step?_var_found _ _ _ hclookup
+        · simp [sc', htrace]
+        · exact hinj
+        · exact henvCorr
+        · exact henvwf
+        · exact hheapvwf
+        · simp [sc', noCallFrameReturn]
+        · simp [sc', ExprAddrWF]; exact henvwf name cv hclookup
+        · exact ⟨scope, st, st, by simp [sc', Flat.convertExpr, hfvcv]⟩
+      | none =>
+        rw [Flat_step?_var_not_found_explicit _ _ hflookup] at hstep
+        simp at hstep
+        obtain ⟨hev, hsf'⟩ := hstep; subst hev hsf'
+        have hclookup : sc.env.lookup name = none := by
+          cases hcl : sc.env.lookup name with
+          | none => rfl
+          | some cv =>
+            obtain ⟨fv', hfl, _⟩ := hbwd name cv hcl
+            simp [hflookup] at hfl
+        let sc' : Core.State := ⟨.lit .undefined, sc.env, sc.heap, sc.trace ++ [.error ("ReferenceError: " ++ name)], sc.funcs, sc.callStack⟩
+        refine ⟨injMap, sc', ⟨?_⟩, ?_, ?_, ?_, ?_, ?_, ?_, ?_, ?_⟩
+        · have hsc' : sc = { sc with expr := .var name } := by
+            obtain ⟨_, _, _, _, _, _⟩ := sc; simp only [] at hsc; subst hsc; rfl
+          rw [hsc']; exact Core_step?_var_not_found _ _ hclookup
+        · simp [sc', htrace]
+        · exact hinj
+        · exact henvCorr
+        · exact henvwf
+        · exact hheapvwf
+        · simp [sc', noCallFrameReturn]
+        · simp [sc', ExprAddrWF, ValueAddrWF]
+        · exact ⟨scope, st, st, by simp [sc', Flat.convertExpr, Flat.convertValue]⟩
   | «this» =>
     rw [hsc] at hconv hncfr hexprwf hd
     simp [Flat.convertExpr] at hconv
@@ -1060,10 +1151,109 @@ private theorem closureConvert_step_simulation
   | while_ cond body => sorry
   | forIn binding obj body => sorry
   | forOf binding iterable body => sorry
-  | «break» label => sorry
-  | «continue» label => sorry
+  | «break» label =>
+    rw [hsc] at hconv hncfr hexprwf hd
+    simp [Flat.convertExpr] at hconv
+    obtain ⟨hfexpr, hst⟩ := hconv
+    have hsf_eta : sf = { sf with expr := .«break» label } := by cases sf; simp_all
+    rw [hsf_eta] at hstep
+    -- Flat step: break label => error "break:" ++ label.getD ""
+    have hfs : Flat.step? { sf with expr := .«break» label } =
+        some (.error ("break:" ++ (label.getD "")),
+          { expr := .lit .undefined, env := sf.env, heap := sf.heap,
+            trace := sf.trace ++ [.error ("break:" ++ (label.getD ""))],
+            funcs := sf.funcs, callStack := sf.callStack }) := by
+      simp [Flat.step?]; rfl
+    rw [hfs] at hstep
+    simp at hstep
+    obtain ⟨hev, hsf'⟩ := hstep; subst hev hsf'
+    -- Core step: break label => error (match label ...)
+    -- Show the label strings match
+    have hlabel_eq : (match label with | some s => "break:" ++ s | none => "break:") =
+        "break:" ++ label.getD "" := by
+      cases label <;> simp [Option.getD]
+    let sc' : Core.State := ⟨.lit .undefined, sc.env, sc.heap,
+      sc.trace ++ [.error ("break:" ++ label.getD "")], sc.funcs, sc.callStack⟩
+    refine ⟨injMap, sc', ⟨?_⟩, ?_, ?_, ?_, ?_, ?_, ?_, ?_, ?_⟩
+    · show Core.step? sc = some (.error ("break:" ++ label.getD ""), sc')
+      have hsc' : sc = { sc with expr := .«break» label } := by
+        obtain ⟨_, _, _, _, _, _⟩ := sc; simp only [] at hsc; subst hsc; rfl
+      rw [hsc']; simp [Core.step?, Core.pushTrace, hlabel_eq]
+    · simp [sc', htrace]
+    · exact hinj
+    · exact henvCorr
+    · exact henvwf
+    · exact hheapvwf
+    · simp [sc', noCallFrameReturn]
+    · simp [sc', ExprAddrWF, ValueAddrWF]
+    · exact ⟨scope, st, st, by simp [sc', Flat.convertExpr, Flat.convertValue]⟩
+  | «continue» label =>
+    rw [hsc] at hconv hncfr hexprwf hd
+    simp [Flat.convertExpr] at hconv
+    obtain ⟨hfexpr, hst⟩ := hconv
+    have hsf_eta : sf = { sf with expr := .«continue» label } := by cases sf; simp_all
+    rw [hsf_eta] at hstep
+    have hfs : Flat.step? { sf with expr := .«continue» label } =
+        some (.error ("continue:" ++ (label.getD "")),
+          { expr := .lit .undefined, env := sf.env, heap := sf.heap,
+            trace := sf.trace ++ [.error ("continue:" ++ (label.getD ""))],
+            funcs := sf.funcs, callStack := sf.callStack }) := by
+      simp [Flat.step?]; rfl
+    rw [hfs] at hstep
+    simp at hstep
+    obtain ⟨hev, hsf'⟩ := hstep; subst hev hsf'
+    have hlabel_eq : (match label with | some s => "continue:" ++ s | none => "continue:") =
+        "continue:" ++ label.getD "" := by
+      cases label <;> simp [Option.getD]
+    let sc' : Core.State := ⟨.lit .undefined, sc.env, sc.heap,
+      sc.trace ++ [.error ("continue:" ++ label.getD "")], sc.funcs, sc.callStack⟩
+    refine ⟨injMap, sc', ⟨?_⟩, ?_, ?_, ?_, ?_, ?_, ?_, ?_, ?_⟩
+    · show Core.step? sc = some (.error ("continue:" ++ label.getD ""), sc')
+      have hsc' : sc = { sc with expr := .«continue» label } := by
+        obtain ⟨_, _, _, _, _, _⟩ := sc; simp only [] at hsc; subst hsc; rfl
+      rw [hsc']; simp [Core.step?, Core.pushTrace, hlabel_eq]
+    · simp [sc', htrace]
+    · exact hinj
+    · exact henvCorr
+    · exact henvwf
+    · exact hheapvwf
+    · simp [sc', noCallFrameReturn]
+    · simp [sc', ExprAddrWF, ValueAddrWF]
+    · exact ⟨scope, st, st, by simp [sc', Flat.convertExpr, Flat.convertValue]⟩
   | «return» val => sorry
-  | labeled label body => sorry
+  | labeled label body =>
+    rw [hsc] at hconv hncfr hexprwf hd
+    simp [Flat.convertExpr] at hconv
+    obtain ⟨hfexpr, hst'⟩ := hconv
+    -- sf.expr = .labeled label body' where (body', st1) = convertExpr body ...
+    have hsf_eta : sf = { sf with expr := .labeled label (Flat.convertExpr body scope envVar envMap st).fst } := by
+      cases sf; simp_all
+    rw [hsf_eta] at hstep
+    have hfs : Flat.step? { sf with expr := .labeled label (Flat.convertExpr body scope envVar envMap st).fst } =
+        some (.silent, { expr := (Flat.convertExpr body scope envVar envMap st).fst,
+          env := sf.env, heap := sf.heap,
+          trace := sf.trace ++ [.silent], funcs := sf.funcs, callStack := sf.callStack }) := by
+      simp [Flat.step?]; rfl
+    rw [hfs] at hstep
+    simp at hstep
+    obtain ⟨hev, hsf'⟩ := hstep; subst hev hsf'
+    let sc' : Core.State := ⟨body, sc.env, sc.heap,
+      sc.trace ++ [.silent], sc.funcs, sc.callStack⟩
+    refine ⟨injMap, sc', ⟨?_⟩, ?_, ?_, ?_, ?_, ?_, ?_, ?_, ?_⟩
+    · show Core.step? sc = some (.silent, sc')
+      have hsc' : sc = { sc with expr := .labeled label body } := by
+        obtain ⟨_, _, _, _, _, _⟩ := sc; simp only [] at hsc; subst hsc; rfl
+      rw [hsc']; simp [Core.step?, Core.pushTrace]
+    · simp [sc', htrace]
+    · exact hinj
+    · exact henvCorr
+    · exact henvwf
+    · exact hheapvwf
+    · show noCallFrameReturn sc'.expr = true
+      simp [sc']; exact hncfr
+    · show ExprAddrWF sc'.expr sc'.heap.objects.size
+      simp [sc']; exact hexprwf
+    · exact ⟨scope, st, (Flat.convertExpr body scope envVar envMap st).snd, by simp [sc']⟩
   | yield arg delegate => sorry
   | await arg => sorry
 /-! ### step?_none_implies_lit -/
