@@ -947,8 +947,11 @@ private theorem closureConvert_step_simulation
     -- But Flat.step? of .lit is none → contradicts hstep
     rw [hsc] at hconv
     simp [Flat.convertExpr] at hconv
-    rw [hconv.1] at hstep
-    simp [Flat.step?] at hstep
+    have hlit := hconv.1
+    -- step?_none_implies: Flat.step? returns none for lit expressions
+    have habs : Flat.step? sf = none := by
+      unfold Flat.step?; simp [hlit]
+    exact absurd hstep (by rw [habs]; exact fun h => nomatch h)
   | var name => sorry
   | «this» => sorry
   | «let» name init body => sorry
