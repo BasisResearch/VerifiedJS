@@ -902,6 +902,21 @@ private theorem convertExpr_not_value (e : Core.Expr)
     (try { simp [Flat.exprValue?]; done }) <;>
     (try { split <;> simp [Flat.exprValue?]; done })
 
+-- Helper lemmas for Core.step? on simple expressions (Core.step? is too large for simp in context)
+private theorem Core_step?_this_found (s : Core.State) (v : Core.Value)
+    (h : s.env.lookup "this" = some v) :
+    Core.step? { s with expr := .this } =
+      some (.silent, { expr := .lit v, env := s.env, heap := s.heap,
+                       trace := s.trace ++ [.silent], funcs := s.funcs, callStack := s.callStack }) := by
+  simp [Core.step?, Core.pushTrace, h]
+
+private theorem Core_step?_this_not_found (s : Core.State)
+    (h : s.env.lookup "this" = none) :
+    Core.step? { s with expr := .this } =
+      some (.silent, { expr := .lit .undefined, env := s.env, heap := s.heap,
+                       trace := s.trace ++ [.silent], funcs := s.funcs, callStack := s.callStack }) := by
+  simp [Core.step?, Core.pushTrace, h]
+
 private theorem closureConvert_step_simulation
     (s : Core.Program) (t : Flat.Program)
     (h : Flat.closureConvert s = .ok t) :
@@ -974,8 +989,9 @@ private theorem closureConvert_step_simulation
       let sc' : Core.State := ⟨.lit cv, sc.env, sc.heap, sc.trace ++ [.silent], sc.funcs, sc.callStack⟩
       refine ⟨injMap, sc', ⟨?_⟩, ?_, ?_, ?_, ?_, ?_, ?_, ?_, ?_⟩
       · show Core.step? sc = some (.silent, sc')
-        have hsc' : sc = { sc with expr := .this } := by cases sc; simp_all
-        rw [hsc']; simp [Core.step?, hclookup]
+        have hsc' : sc = { sc with expr := .this } := by
+          obtain ⟨_, _, _, _, _, _⟩ := sc; simp only [] at hsc; subst hsc; rfl
+        rw [hsc']; exact Core_step?_this_found _ _ hclookup
       · simp [sc', htrace]
       · simp [sc']; exact hinj
       · simp [sc']; exact henvCorr
@@ -1004,8 +1020,9 @@ private theorem closureConvert_step_simulation
       let sc' : Core.State := ⟨.lit .undefined, sc.env, sc.heap, sc.trace ++ [.silent], sc.funcs, sc.callStack⟩
       refine ⟨injMap, sc', ⟨?_⟩, ?_, ?_, ?_, ?_, ?_, ?_, ?_, ?_⟩
       · show Core.step? sc = some (.silent, sc')
-        have hsc' : sc = { sc with expr := .this } := by cases sc; simp_all
-        rw [hsc']; simp [Core.step?, hclookup]
+        have hsc' : sc = { sc with expr := .this } := by
+          obtain ⟨_, _, _, _, _, _⟩ := sc; simp only [] at hsc; subst hsc; rfl
+        rw [hsc']; exact Core_step?_this_not_found _ hclookup
       · simp [sc', htrace]
       · simp [sc']; exact hinj
       · simp [sc']; exact henvCorr
