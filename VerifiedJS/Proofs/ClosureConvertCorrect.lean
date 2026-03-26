@@ -974,7 +974,8 @@ private theorem closureConvert_step_simulation
       let sc' : Core.State := ⟨.lit cv, sc.env, sc.heap, sc.trace ++ [.silent], sc.funcs, sc.callStack⟩
       refine ⟨injMap, sc', ⟨?_⟩, ?_, ?_, ?_, ?_, ?_, ?_, ?_, ?_⟩
       · show Core.step? sc = some (.silent, sc')
-        simp [Core.step?, hclookup]
+        have hsc' : sc = { sc with expr := .this } := by cases sc; simp_all
+        rw [hsc']; simp [Core.step?, hclookup]
       · simp [sc', htrace]
       · simp [sc']; exact hinj
       · simp [sc']; exact henvCorr
@@ -987,8 +988,7 @@ private theorem closureConvert_step_simulation
       · show ExprAddrWF sc'.expr sc'.heap.objects.size
         simp [sc', ExprAddrWF]
         exact henvwf "this" cv hclookup
-      · refine ⟨scope, st, st, ?_⟩
-        simp [sc', Flat.convertExpr, hfvcv]
+      · exact ⟨scope, st, st, by simp [sc', Flat.convertExpr, hfvcv]⟩
     | none =>
       rw [Flat.step?_this_not_found _ hflookup] at hstep
       simp [Flat.State.mk.injEq] at hstep
@@ -1004,7 +1004,8 @@ private theorem closureConvert_step_simulation
       let sc' : Core.State := ⟨.lit .undefined, sc.env, sc.heap, sc.trace ++ [.silent], sc.funcs, sc.callStack⟩
       refine ⟨injMap, sc', ⟨?_⟩, ?_, ?_, ?_, ?_, ?_, ?_, ?_, ?_⟩
       · show Core.step? sc = some (.silent, sc')
-        simp [Core.step?, hclookup]
+        have hsc' : sc = { sc with expr := .this } := by cases sc; simp_all
+        rw [hsc']; simp [Core.step?, hclookup]
       · simp [sc', htrace]
       · simp [sc']; exact hinj
       · simp [sc']; exact henvCorr
@@ -1016,8 +1017,7 @@ private theorem closureConvert_step_simulation
         simp [sc', noCallFrameReturn]
       · show ExprAddrWF sc'.expr sc'.heap.objects.size
         simp [sc', ExprAddrWF, ValueAddrWF]
-      · refine ⟨scope, st, st, ?_⟩
-        simp [sc', Flat.convertExpr, Flat.convertValue]
+      · exact ⟨scope, st, st, by simp [sc', Flat.convertExpr, Flat.convertValue]⟩
   | «let» name init body => sorry
   | assign name rhs => sorry
   | «if» cond then_ else_ => sorry
