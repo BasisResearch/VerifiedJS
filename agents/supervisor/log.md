@@ -5158,3 +5158,37 @@ EndToEnd correctly chains all passes. All Behaves relations defined.
 
 ## Run: 2026-03-26T02:05:01+00:00
 
+### Build
+- **Status**: `lake build` **PASS** ✅
+
+### Metrics
+- **Sorry count**: 57 (script) / ~52 actual locations (30 CC + 20 Wasm + 1 ANF + 1 Lower)
+- **Spec coverage**: 44380/44380 lines (100.0%), 2800 refs, 0 mismatches
+- **WasmCert refs**: PASS
+
+### Agent Logs
+- **proof** (00:30→01:54 DONE): No sorry change. Multiple runs completing without progress.
+- **wasmspec** (00:15→02:00 DONE): No Wasm sorry change. Working on br/brIf.
+- **jsspec** (02:00→running): Maintenance mode, 100% coverage.
+
+### Key Findings
+1. **Sorry STEADY**: No reduction since 23:30. Both proof and wasmspec stalled (0 sorry/run for 4+ runs).
+2. **CC sorry count HIGH (57 script)**: Previous runs showed 32 because CC L945 `exact sorry` covered everything. Now the case-split is expanded — `.lit` proved (L979-988), `.this` proved (L990-1040), but 28 individual case branches (L989, L1041-1068) each have `sorry`.
+3. **3 TRIVIALLY CLOSABLE CC cases**: `break` (L1063), `continue` (L1064), `labeled` (L1066) are structural copies of the proved `.this` case. Wrote exact Lean code for each into proof prompt.
+4. **`var` subcase A** (non-captured, L989) also follows `.this` pattern with Flat.step?_var_found/not_found.
+
+### Actions
+1. ✅ Proof prompt: REWRITTEN with exact Lean code for break (TASK 1), continue (TASK 1), labeled (TASK 2), var subcase A (TASK 3). Removed stale TASK 0 (`.lit` already proved).
+2. ✅ Wasmspec prompt: Unchanged (br/brIf focus remains correct).
+3. ✅ Jsspec prompt: Unchanged (maintenance mode).
+4. ✅ PROGRESS.md updated with new metrics row + updated agent health.
+5. ✅ Time estimate: 57 sorry (script), ~14 hours remaining. Sorry velocity: 0/run (stalled). CC 3 trivially closable cases should reduce to ~54 next run. Wasm 20 mostly architectural.
+
+### Proof Chain
+```
+Elaborate ✅ → ClosureConvert (30 sorry, 2 stubs unprovable) → ANFConvert (1 sorry) → Optimize ✅ → Lower (1 sorry) → Emit (sorry) → EndToEnd (sorry)
+```
+EndToEnd correctly chains all passes. All Behaves relations defined.
+
+2026-03-26T02:05:01+00:00 DONE
+2026-03-26T02:27:58+00:00 DONE

@@ -10,120 +10,139 @@ bash scripts/lake_build_concise.sh VerifiedJS.Proofs.ClosureConvertCorrect
 - lean_multi_attempt to test tactics
 - lean_diagnostic_messages for errors
 
-## TASK 0 (BUG FIX): Fix `.lit` case error at L982-983
+## TASK 1: Close `break` (L1063) and `continue` (L1064)
 
-The `unfold Flat.step?; simp [hlit]` fails because `hlit` is `sf.expr = .lit (convertValue v)` but `unfold` doesn't substitute into the match head. Replace L982-984 with:
+These are nearly identical. `convertExpr (.break label) = (.break label, st)` and both Core/Flat produce error events with the same label string.
 
-```lean
-    have habs : Flat.step? sf = none := by
-      have hsf_eq : sf = { sf with expr := .lit (Flat.convertValue v) } := by cases sf; simp_all
-      rw [hsf_eq]; exact Flat.step?_lit_none _ _
-    simp [habs] at hstep
-```
-
-This uses the existing `Flat.step?_lit_none` theorem (Flat/Semantics.lean:988).
-
-## TASK 1: Close `.var` case (L985)
-
-`convertExpr (.var n)` has TWO subcases based on `lookupEnv envMap n`:
-
-### Subcase A: `lookupEnv envMap n = none` → Flat expr is `.var n`
-
-This follows the EXACT same pattern as `.this`. Here's the code:
+Replace L1063 `| «break» label => sorry` with:
 
 ```lean
-  | var name =>
+  | «break» label =>
     rw [hsc] at hconv hncfr hexprwf hd
     simp [Flat.convertExpr] at hconv
-    -- Split on whether this var is captured
-    cases hlookup_env : Flat.lookupEnv envMap name with
-    | none =>
-      -- Non-captured: convertExpr returns (.var name, st)
-      simp [hlookup_env] at hconv
-      obtain ⟨hfexpr, _⟩ := hconv
-      have hsf_eta : sf = { sf with expr := .var name } := by cases sf; simp_all
-      rw [hsf_eta] at hstep
-      have hec : EnvCorr sc.env sf.env := henvCorr
-      obtain ⟨hfwd, hbwd⟩ := hec
-      cases hflookup : sf.env.lookup name with
-      | some fv =>
-        rw [Flat.step?_var_found _ _ _ hflookup] at hstep
-        simp [Flat.State.mk.injEq] at hstep
-        obtain ⟨hev, hsf'⟩ := hstep
-        subst hev hsf'
-        obtain ⟨cv, hclookup, hfvcv⟩ := hfwd name fv hflookup
-        let sc' : Core.State := ⟨.lit cv, sc.env, sc.heap, sc.trace ++ [.silent], sc.funcs, sc.callStack⟩
-        refine ⟨injMap, sc', ⟨?_⟩, ?_, ?_, ?_, ?_, ?_, ?_, ?_, ?_⟩
-        · show Core.step? sc = some (.silent, sc')
-          have hsc' : sc = { sc with expr := .var name } := by
-            cases sc; simp only [Core.State.mk.injEq]; exact ⟨hsc.symm, rfl, rfl, rfl, rfl, rfl⟩
-          rw [hsc']; simp [Core.step?, Core.pushTrace, hclookup]
-        · simp [sc', htrace]
-        · simp [sc']; exact hinj
-        · simp [sc']; exact henvCorr
-        · show EnvAddrWF sc'.env sc'.heap.objects.size
-          simp [sc']; exact henvwf
-        · show HeapValuesWF sc'.heap
-          simp [sc']; exact hheapvwf
-        · show noCallFrameReturn sc'.expr = true
-          simp [sc', noCallFrameReturn]
-        · show ExprAddrWF sc'.expr sc'.heap.objects.size
-          simp [sc', ExprAddrWF]
-          exact henvwf name cv hclookup
-        · exact ⟨scope, st, st, by simp [sc', Flat.convertExpr, hfvcv]⟩
-      | none =>
-        rw [Flat.step?_var_not_found _ _ hflookup] at hstep
-        simp [Flat.State.mk.injEq] at hstep
-        obtain ⟨hev, hsf'⟩ := hstep
-        subst hev hsf'
-        have hclookup : sc.env.lookup name = none := by
-          cases hcl : sc.env.lookup name with
-          | none => rfl
-          | some cv =>
-            obtain ⟨fv', hfl, _⟩ := hbwd name cv hcl
-            simp [hflookup] at hfl
-        let sc' : Core.State := ⟨.lit .undefined, sc.env, sc.heap,
-          sc.trace ++ [.error ("ReferenceError: " ++ name)], sc.funcs, sc.callStack⟩
-        refine ⟨injMap, sc', ⟨?_⟩, ?_, ?_, ?_, ?_, ?_, ?_, ?_, ?_⟩
-        · show Core.step? sc = some (.error ("ReferenceError: " ++ name), sc')
-          have hsc' : sc = { sc with expr := .var name } := by
-            cases sc; simp only [Core.State.mk.injEq]; exact ⟨hsc.symm, rfl, rfl, rfl, rfl, rfl⟩
-          rw [hsc']; simp [Core.step?, Core.pushTrace, hclookup]
-        · simp [sc', htrace]
-        · simp [sc']; exact hinj
-        · simp [sc']; exact henvCorr
-        · show EnvAddrWF sc'.env sc'.heap.objects.size
-          simp [sc']; exact henvwf
-        · show HeapValuesWF sc'.heap
-          simp [sc']; exact hheapvwf
-        · show noCallFrameReturn sc'.expr = true
-          simp [sc', noCallFrameReturn]
-        · show ExprAddrWF sc'.expr sc'.heap.objects.size
-          simp [sc', ExprAddrWF, ValueAddrWF]
-        · exact ⟨scope, st, st, by simp [sc', Flat.convertExpr, Flat.convertValue]⟩
-    | some idx =>
-      -- Captured var: convertExpr returns (.getEnv (.var envVar) idx, st)
-      -- This is a MULTI-STEP case: first the .getEnv reduces (.var envVar) to a value,
-      -- then getEnv does the actual lookup. SKIP for now.
-      sorry
+    obtain ⟨hfexpr, hst⟩ := hconv
+    have hsf_eta : sf = { sf with expr := .«break» label } := by cases sf; simp_all
+    rw [hsf_eta] at hstep
+    -- Flat step: break label => error "break:" ++ label.getD ""
+    have hfs : Flat.step? { sf with expr := .«break» label } =
+        some (.error ("break:" ++ (label.getD "")),
+          { expr := .lit .undefined, env := sf.env, heap := sf.heap,
+            trace := sf.trace ++ [.error ("break:" ++ (label.getD ""))],
+            funcs := sf.funcs, callStack := sf.callStack }) := by
+      simp [Flat.step?]; rfl
+    rw [hfs] at hstep
+    simp at hstep
+    obtain ⟨hev, hsf'⟩ := hstep; subst hev hsf'
+    -- Core step: break label => error (match label ...)
+    -- Show the label strings match
+    have hlabel_eq : (match label with | some s => "break:" ++ s | none => "break:") =
+        "break:" ++ label.getD "" := by
+      cases label <;> simp [Option.getD]
+    let sc' : Core.State := ⟨.lit .undefined, sc.env, sc.heap,
+      sc.trace ++ [.error ("break:" ++ label.getD "")], sc.funcs, sc.callStack⟩
+    refine ⟨injMap, sc', ⟨?_⟩, ?_, ?_, ?_, ?_, ?_, ?_, ?_, ?_⟩
+    · show Core.step? sc = some (.error ("break:" ++ label.getD ""), sc')
+      have hsc' : sc = { sc with expr := .«break» label } := by
+        obtain ⟨_, _, _, _, _, _⟩ := sc; simp only [] at hsc; subst hsc; rfl
+      rw [hsc']; simp [Core.step?, Core.pushTrace, hlabel_eq]
+    · simp [sc', htrace]
+    · exact hinj
+    · exact henvCorr
+    · exact henvwf
+    · exact hheapvwf
+    · simp [sc', noCallFrameReturn]
+    · simp [sc', ExprAddrWF, ValueAddrWF]
+    · exact ⟨scope, st, st, by simp [sc', Flat.convertExpr, Flat.convertValue]⟩
 ```
 
-### Subcase B: `lookupEnv envMap n = some idx` → `.getEnv` (SKIP for now, leave sorry)
+Replace L1064 `| «continue» label => sorry` with the SAME pattern but "continue:" instead of "break:":
 
-## TASK 2: Close simple control-flow cases
+```lean
+  | «continue» label =>
+    rw [hsc] at hconv hncfr hexprwf hd
+    simp [Flat.convertExpr] at hconv
+    obtain ⟨hfexpr, hst⟩ := hconv
+    have hsf_eta : sf = { sf with expr := .«continue» label } := by cases sf; simp_all
+    rw [hsf_eta] at hstep
+    have hfs : Flat.step? { sf with expr := .«continue» label } =
+        some (.error ("continue:" ++ (label.getD "")),
+          { expr := .lit .undefined, env := sf.env, heap := sf.heap,
+            trace := sf.trace ++ [.error ("continue:" ++ (label.getD ""))],
+            funcs := sf.funcs, callStack := sf.callStack }) := by
+      simp [Flat.step?]; rfl
+    rw [hfs] at hstep
+    simp at hstep
+    obtain ⟨hev, hsf'⟩ := hstep; subst hev hsf'
+    have hlabel_eq : (match label with | some s => "continue:" ++ s | none => "continue:") =
+        "continue:" ++ label.getD "" := by
+      cases label <;> simp [Option.getD]
+    let sc' : Core.State := ⟨.lit .undefined, sc.env, sc.heap,
+      sc.trace ++ [.error ("continue:" ++ label.getD "")], sc.funcs, sc.callStack⟩
+    refine ⟨injMap, sc', ⟨?_⟩, ?_, ?_, ?_, ?_, ?_, ?_, ?_, ?_⟩
+    · show Core.step? sc = some (.error ("continue:" ++ label.getD ""), sc')
+      have hsc' : sc = { sc with expr := .«continue» label } := by
+        obtain ⟨_, _, _, _, _, _⟩ := sc; simp only [] at hsc; subst hsc; rfl
+      rw [hsc']; simp [Core.step?, Core.pushTrace, hlabel_eq]
+    · simp [sc', htrace]
+    · exact hinj
+    · exact henvCorr
+    · exact henvwf
+    · exact hheapvwf
+    · simp [sc', noCallFrameReturn]
+    · simp [sc', ExprAddrWF, ValueAddrWF]
+    · exact ⟨scope, st, st, by simp [sc', Flat.convertExpr, Flat.convertValue]⟩
+```
 
-After `.var` subcase A works, apply the same contradiction/simple pattern to:
-- `.break label` — Flat.step? on break returns `some`, Core.step? on break also returns `some`
-- `.continue label` — same pattern
-- `.return val` — similar, but `.return` has an `Option Expr` argument
+## TASK 2: Close `labeled` (L1066)
 
-Use `lean_goal` at each sorry to see the exact state before writing code.
+`convertExpr (.labeled label body) = (.labeled label body', st1)` where `(body', st1) = convertExpr body ...`. Both Core and Flat unwrap to body with `.silent`.
+
+```lean
+  | labeled label body =>
+    rw [hsc] at hconv hncfr hexprwf hd
+    simp [Flat.convertExpr] at hconv
+    obtain ⟨hfexpr, hst'⟩ := hconv
+    -- sf.expr = .labeled label body' where (body', st1) = convertExpr body ...
+    have hsf_eta : sf = { sf with expr := .labeled label (Flat.convertExpr body scope envVar envMap st).fst } := by
+      cases sf; simp_all
+    rw [hsf_eta] at hstep
+    have hfs : Flat.step? { sf with expr := .labeled label (Flat.convertExpr body scope envVar envMap st).fst } =
+        some (.silent, { expr := (Flat.convertExpr body scope envVar envMap st).fst,
+          env := sf.env, heap := sf.heap,
+          trace := sf.trace ++ [.silent], funcs := sf.funcs, callStack := sf.callStack }) := by
+      simp [Flat.step?]; rfl
+    rw [hfs] at hstep
+    simp at hstep
+    obtain ⟨hev, hsf'⟩ := hstep; subst hev hsf'
+    let sc' : Core.State := ⟨body, sc.env, sc.heap,
+      sc.trace ++ [.silent], sc.funcs, sc.callStack⟩
+    refine ⟨injMap, sc', ⟨?_⟩, ?_, ?_, ?_, ?_, ?_, ?_, ?_, ?_⟩
+    · show Core.step? sc = some (.silent, sc')
+      have hsc' : sc = { sc with expr := .labeled label body } := by
+        obtain ⟨_, _, _, _, _, _⟩ := sc; simp only [] at hsc; subst hsc; rfl
+      rw [hsc']; simp [Core.step?, Core.pushTrace]
+    · simp [sc', htrace]
+    · exact hinj
+    · exact henvCorr
+    · exact henvwf
+    · exact hheapvwf
+    · show noCallFrameReturn sc'.expr = true
+      simp [sc']; exact hncfr
+    · show ExprAddrWF sc'.expr sc'.heap.objects.size
+      simp [sc']; exact hexprwf
+    · exact ⟨scope, st, (Flat.convertExpr body scope envVar envMap st).snd, by simp [sc']⟩
+```
+
+**Note**: The `noCallFrameReturn` and `ExprAddrWF` for `labeled` recurse into `body`, so `hncfr` and `hexprwf` should provide what we need after `simp [noCallFrameReturn]` / `simp [ExprAddrWF]`. If `exact hncfr` doesn't work, try `simp [noCallFrameReturn] at hncfr ⊢; exact hncfr`.
+
+## TASK 3: Close `var` subcase A (non-captured)
+
+The code is in the PREVIOUS prompt and follows `this` exactly. Copy the `var` code block from the `.this` case pattern, substituting `name` for `"this"`.
 
 ## What NOT to do
 - Do NOT change HeapInj/EnvCorrInj/EnvCorr definitions
 - Do NOT change CC_SimRel structure
 - Do NOT change any file outside ClosureConvertCorrect.lean
-- Do NOT try to prove ALL cases — close what you can, leave rest as sorry
 - NEVER break the build — `lean_diagnostic_messages` before committing
 
 ## Log progress to agents/proof/log.md

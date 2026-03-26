@@ -172,6 +172,7 @@ arithmetic, boolean_logic, conditionals, do_while, for_loop, functions, let_bind
 | 2026-03-25T22:05 | **32** | **~203 (est.)** | Build PASS ✅. **Sorry DOWN 35→32 (-3)**: CC 3 (2 stubs + 1 staging HeapInj refactor `exact sorry`), Wasm 20, ANF 2, Lower 1. **CC HeapInj REFACTORED**: proof agent added HeapInj/EnvCorrInj/EnvAddrWF/HeapValuesWF/ExprAddrWF to CC_SimRel suffices (L915-937), but sorry'd entire case proof during staging. **Currently staging aliases** (HeapInj = HeapCorr, EnvCorrInj wraps EnvCorr). Phase 1 (real definitions) still in prompt. **Spec coverage: 100%** (2800 refs, 0 mismatches). **wasmspec memoryGrow 4/5 subcases proved** (only unreachable no-memory sorry at L9628 remains). Redirected proof to ANF L1499 (trivial chain), wasmspec to EmitSimRel call/callIndirect. |
 | 2026-03-25T23:30 | **32** | **~203 (est.)** | Build PASS ✅. Sorry STEADY at 32 (script) / 26 actual: CC 3 (2 stubs + 1 staging), Wasm 21 (12 LowerSimRel + 6 EmitSimRel + 3 init), ANF 1, Lower 1. **🎉 ANF L1499 CLOSED** by proof agent (trivialChain infrastructure: wrapSeqCtx, step_wrapSeqCtx, trivialChain_consume_ctx). ANF now down to 1 sorry (L106 step_star). wasmspec structured call into OOB (proved) + underflow + success subcases (+1 net). **Spec: 100%** (2800 refs, 0 mismatches). Redirected proof to CC L945 (restore step_sim — HeapInj/EnvCorrInj are aliases, so mechanical). Redirected wasmspec to br/brIf (most tractable EmitSimRel wins). |
 | 2026-03-26T00:05 | **32** | **~203 (est.)** | Build PASS ✅. Sorry STEADY at 32 (script) / 26 actual: CC 3 (L899 forIn stub, L900 forOf stub, L945 staging), Wasm 21 (12 LowerSimRel + 6 EmitSimRel + 3 init), ANF 1 (L106), Lower 1 (L69). No sorry reduction since 23:30. **Spec: 100%** (2800 refs, 0 mismatches). **ANALYSIS: memoryGrow L9972 trivially closable** (hmemory_nonempty contradicts none branch). **br/brIf (L9715/L9718) ARCHITECTURALLY BLOCKED** — need hlabel_name_resolve invariant connecting irFindLabel? to resolveBranch? indices. Redirected wasmspec to close L9972 (1-sorry quick win), then investigate br architecture. Proof agent focus: restore CC step_sim (L945) case-by-case since HeapInj is alias. |
+| 2026-03-26T02:05 | **57** | **~180 (est.)** | Build PASS ✅. Sorry 57 (script) — HIGH because grep counts individual case branches. Actual locations: CC 30 (2 stubs + 28 case-split branches at L989-1068 under L945 staging), Wasm 20 (12 LowerSimRel + 5 EmitSimRel + 3 init), ANF 1 (L106), Lower 1 (L69). `.this` (L990-1040) PROVED — only non-sorry CC case. **Spec: 100%** (2800 refs, 0 mismatches). Both proof and wasmspec agents STALLED (sorry velocity 0/run for 4+ runs). **Wrote exact Lean code** for `break` (L1063), `continue` (L1064), `labeled` (L1066) into proof prompt — each follows `.this` pattern exactly with trivial adaptations. These are the 3 quickest CC wins. Also wrote `var` subcase A (non-captured) instructions. wasmspec redirected to br/brIf with label correspondence helper. |
 
 - Test262 pass rate: 3/63 (fast mode), deterministic full sample reached 274/500 passes (2026-03-08)
 - Flagship parse rate: 96.30% (1976/2052)
@@ -213,20 +214,20 @@ arithmetic, boolean_logic, conditionals, do_while, for_loop, functions, let_bind
 - ✅ ANF break/continue → .silent (wasmspec 04:15)
 - ✅ EmitSimRel const i32/i64/f64 cases proved (wasmspec 04:15)
 
-**OPEN ABSTRACTIONS (updated 2026-03-26T01:05)**:
-1. **CC step_sim (30 case sorries)**: Skeleton expanded — `.lit` (has build error, fix provided), `.this` PROVED, 28 cases sorry'd. `.var` non-captured subcase follows `.this` pattern exactly. Captured-var subcase needs multi-step.
+**OPEN ABSTRACTIONS (updated 2026-03-26T02:05)**:
+1. **CC step_sim (28 case sorries)**: `.lit` PROVED, `.this` PROVED, 28 cases sorry'd (L989-1068). `break`/`continue`/`labeled` are trivial (exact code in proof prompt). `var` subcase A (non-captured) follows `.this`. Captured-var/functionDef need multi-step + HeapInj.
 2. **CC stubs (2 sorry)**: L899 forIn, L900 forOf — UNPROVABLE (theorem literally false for stubs).
 3. **Wasm LowerSimRel (12 sorry)**: ALL blocked by 1:N stepping architecture. Need multi-step restructure.
-4. **Wasm EmitSimRel (5 sorry)**: L9527 call underflow, L9531 call success (blocked by hframes_one), L9541 callIndirect, L9797 br, L9800 brIf. memoryGrow no-memory CLOSED.
+4. **Wasm EmitSimRel (5 sorry)**: L9527 call underflow, L9531 call success (blocked by hframes_one), L9541 callIndirect, L9797 br, L9800 brIf.
 5. **Wasm init (3 sorry)**: `LowerCodeCorr prog.main []` — architecturally challenging since `startFunc = none` gives empty code.
 6. **ANF (1 sorry)**: step_star (L106, entire theorem body). L1499 CLOSED by proof agent.
 
-**Critical path**: (1) proof: fix `.lit` build error + close `.var`/`.break`/`.continue`/`.return` CC cases. (2) wasmspec: close EmitSimRel br/brIf (most tractable). (3) proof: ANF step_star (L106, hard). (4) wasmspec: call/callIndirect (blocked by hframes_one).
+**Critical path**: (1) proof: close `break`/`continue`/`labeled`/`var` CC cases (exact code provided). (2) wasmspec: close EmitSimRel br/brIf (most tractable). (3) proof: ANF step_star (L106, hard). (4) wasmspec: call/callIndirect (blocked by hframes_one).
 
 ## Agent Health
 
-| Agent | Status (2026-03-26T01:05) | Notes |
+| Agent | Status (2026-03-26T02:05) | Notes |
 |-------|---------------------|-------|
-| jsspec | **DONE** (last run 21:00) | **2800 refs**, 0 mismatches, **100.0% coverage**. ALL TARGETS MET. No further work needed. |
-| wasmspec | **ACTIVE** (last log 22:30) | 20 Wasm sorries. Redirected to EmitSimRel br/brIf. |
-| proof | **ACTIVE** (last log 23:00) | CC skeleton expanded (`.this` proved, `.lit` has build error). Redirected to fix `.lit` + close `.var`/control-flow cases. |
+| jsspec | **DONE** (last run 22:00) | **2800 refs**, 0 mismatches, **100.0% coverage**. ALL TARGETS MET. Maintenance mode. |
+| wasmspec | **ACTIVE** (last log 02:00) | 20 Wasm sorries. Redirected to EmitSimRel br/brIf. Stalled (0 sorry/run for 4+ runs). |
+| proof | **ACTIVE** (last log 01:54) | CC `.lit` + `.this` proved. 28 cases sorry'd. Stalled (0 sorry/run for 4+ runs). Exact code for break/continue/labeled provided. |
