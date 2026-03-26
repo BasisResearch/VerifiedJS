@@ -1,4 +1,42 @@
 
+## Run: 2026-03-26T00:30+00:00
+- Sorries before: 8 CC (1 big exact sorry at L945 covering entire step_sim induction)
+- Sorries after: 30 CC case-level sorries (skeleton expanded) + 2 pre-existing (forIn/forOf)
+- Net sorry delta: structurally +29 (1 sorry → 30), but **2 cases fully proved** (.lit, .this)
+- Build: ⚠️ FAIL — CC file has pre-existing errors in `step?_none_implies_lit_aux` (setProp, getIndex, setIndex, tryCatch, call cases). These errors were masked by cached oleans before; editing the file forced recompilation and revealed them. My step_sim changes are clean (verified via LSP: 0 errors in L955-1070).
+
+### What was done:
+1. **Expanded step_sim skeleton** — Replaced `exact sorry` at L945 with `cases hsc : sc.expr` covering all 31 Core.Expr constructors.
+
+2. **Closed `.lit` case** (contradiction) — When `sc.expr = .lit v`, `convertExpr` gives `sf.expr = .lit (convertValue v)`, then `Flat.step?` on a literal returns `none`, contradicting `hstep : Flat.step? sf = some (ev, sf')`.
+
+3. **Closed `.this` case** (full proof, ~50 lines) — Both Flat and Core step `.this` identically (lookup "this" in env). Used `EnvCorr` to transfer between Flat/Core env lookups. Two sub-cases:
+   - `env.lookup "this" = some v`: Core steps to `.lit cv` where `fv = convertValue cv`
+   - `env.lookup "this" = none`: both step to `.lit .undefined`
+
+4. **Added 6 helper lemmas** for the proof infrastructure:
+   - `Flat_step?_lit`: step? returns none for lit (used in .lit contradiction)
+   - `Flat_step?_this_found_explicit` / `Flat_step?_this_not_found_explicit`: Flat step? on .this with explicit struct result (avoids private `pushTrace` issue)
+   - `Core_step?_this_found` / `Core_step?_this_not_found`: Core step? on .this (Core.step? too large for simp in proof context)
+   - Pattern: `{ s with expr := .this }` form + `simp [step?, h]; rfl` (rfl closes private pushTrace residual)
+
+### Key patterns established for remaining cases:
+1. **State eta**: `have hsc' : sc = { sc with expr := .X } := by obtain ⟨_, _, _, _, _, _⟩ := sc; simp only [] at hsc; subst hsc; rfl`
+2. **Core.step? too large for simp**: Must use dedicated helper lemmas (proven outside proof context where simp has fewer hypotheses)
+3. **Flat.pushTrace is private**: Use `simp [Flat.step?, h]; rfl` pattern to close pushTrace residual definitionally
+4. **EnvCorr extraction**: `have hec : EnvCorr sc.env sf.env := henvCorr; obtain ⟨hfwd, hbwd⟩ := hec`
+5. **Invariant preservation for simple cases** (heap/env unchanged): `exact hinj`, `exact henvCorr`, `exact henvwf`, `exact hheapvwf`
+
+### Remaining 30 sorry cases:
+- **Likely easy** (similar to .this): `.var` (when not captured), `.break`, `.continue`, `.while_`, `.labeled`
+- **Medium** (recursive structure): `.let`, `.assign`, `.if`, `.seq`, `.unary`, `.binary`, `.typeof`, `.throw`, `.return`
+- **Hard** (heap/call interaction): `.call`, `.newObj`, `.tryCatch`, `.functionDef`, `.getProp`, `.setProp`, `.getIndex`, `.setIndex`
+- **Impossible** (stub conversions): `.forIn`, `.forOf` (separate pre-existing sorries)
+
+### Pre-existing issues (not introduced by this run):
+- `step?_none_implies_lit_aux` at L1323+ has unsolved goals for setProp, getIndex, setIndex, tryCatch, call cases
+- These errors existed before and are unrelated to the step_sim proof
+
 ## Run: 2026-03-25T23:00+00:00
 - Sorries before: 11 total (8 CC + 2 ANF + 1 Lower), after: 10 total (8 CC + 1 ANF + 1 Lower)
 - Net sorry delta: **-1** (closed ANF L1499 — trivial chain in seq4 context)
@@ -2118,3 +2156,4 @@ DO NOT BUILD THE WHOLE PROJECT. Build only ClosureConvertCorrect.
 ## Run: 2026-03-26T00:30:02+00:00
 
 2026-03-26T01:30:02+00:00 SKIP: already running
+2026-03-26T01:54:54+00:00 DONE
