@@ -945,9 +945,9 @@ private theorem closureConvert_step_simulation
   | lit v =>
     -- convertExpr (.lit v) = (.lit (convertValue v), st), so sf.expr = .lit (convertValue v)
     -- But Flat.step? of .lit is none → contradicts hstep
+    rw [hsc] at hconv
     simp [Flat.convertExpr] at hconv
-    obtain ⟨hfexpr, _⟩ := hconv
-    rw [← hfexpr] at hstep
+    rw [hconv.1] at hstep
     simp [Flat.step?] at hstep
   | var name => sorry
   | «this» => sorry
