@@ -5017,6 +5017,56 @@ private theorem resolveBranch?_of_lt {labels : List LabelFrame} {depth : Nat}
       simp only [List.length_cons] at hn
       exact ih n (by omega)
 
+/-- resolveBranch? returns the label at position `depth` and the appropriate remaining labels. -/
+private theorem resolveBranch?_spec {labels : List LabelFrame} {depth : Nat}
+    (h : depth < labels.length) :
+    ∃ lbl, labels[depth]? = some lbl ∧
+      resolveBranch? labels depth = some (lbl,
+        if lbl.isLoop then lbl :: labels.drop (depth + 1)
+        else labels.drop (depth + 1)) := by
+  unfold resolveBranch?
+  suffices ∀ (ls : List LabelFrame) (n : Nat), n < ls.length →
+      ∃ lbl, ls[n]? = some lbl ∧
+        resolveBranch?.go ls n = some (lbl,
+          if lbl.isLoop then lbl :: ls.drop (n + 1)
+          else ls.drop (n + 1)) by
+    exact this labels depth h
+  intro ls
+  induction ls with
+  | nil => intro _ h; simp at h
+  | cons l rest ih =>
+    intro n hn
+    match n with
+    | 0 =>
+      unfold resolveBranch?.go
+      exact ⟨l, rfl, by split <;> rfl⟩
+    | n + 1 =>
+      simp only [List.length_cons] at hn
+      have ⟨lbl, hlbl, hgo⟩ := ih n (by omega)
+      refine ⟨lbl, ?_, ?_⟩
+      · simp [hlbl]
+      · unfold resolveBranch?.go; exact hgo
+
+/-- The emitted Wasm br/brIf depth index equals the runtime IR label lookup index.
+    BLOCKED: Requires Emit.lean to pushLabel for if_ bodies (line 119).
+    Without this fix, idx can be off-by-1 for br inside if_ bodies.
+    FIX: In Emit.lean line 119, add `let s' := pushLabel s "__if"` before emitting
+    then/else branches. Then prove via EmitCodeCorr label context tracking. -/
+private theorem emit_branch_idx_correct
+    {irLabels : List IRLabel} {label : String} {idx ir_idx : Nat} {irLbl : IRLabel}
+    {rest_ir : List IRInstr} {rest_w : List Instr}
+    (_hcode : EmitCodeCorr (IRInstr.br label :: rest_ir) (Instr.br idx :: rest_w))
+    (hfind : irFindLabel? irLabels label = some (ir_idx, irLbl)) :
+    idx = ir_idx := by sorry
+
+/-- Same as emit_branch_idx_correct but for brIf. -/
+private theorem emit_brIf_idx_correct
+    {irLabels : List IRLabel} {label : String} {idx ir_idx : Nat} {irLbl : IRLabel}
+    {rest_ir : List IRInstr} {rest_w : List Instr}
+    (_hcode : EmitCodeCorr (IRInstr.brIf label :: rest_ir) (Instr.brIf idx :: rest_w))
+    (hfind : irFindLabel? irLabels label = some (ir_idx, irLbl)) :
+    idx = ir_idx := by sorry
+
 /-- Exact state after br: jumps to label's onBranch code.
     Loop labels are kept (re-entry), non-loop labels are popped.
     REF: Wasm §4.4.8.6 (br label) -/

@@ -968,6 +968,50 @@ private theorem Core_step?_var_not_found (s : Core.State) (name : String)
           funcs := s.funcs, callStack := s.callStack }) := by
   simp [Core.step?, Core.pushTrace, h]
 
+private theorem Flat_step?_break (s : Flat.State) (label : Option Core.LabelName) :
+    Flat.step? { s with expr := .«break» label } =
+      some (.error ("break:" ++ label.getD ""),
+        { expr := .lit .undefined, env := s.env, heap := s.heap,
+          trace := s.trace ++ [.error ("break:" ++ label.getD "")],
+          funcs := s.funcs, callStack := s.callStack }) := by
+  simp [Flat.step?]; rfl
+
+private theorem Flat_step?_continue (s : Flat.State) (label : Option Core.LabelName) :
+    Flat.step? { s with expr := .«continue» label } =
+      some (.error ("continue:" ++ label.getD ""),
+        { expr := .lit .undefined, env := s.env, heap := s.heap,
+          trace := s.trace ++ [.error ("continue:" ++ label.getD "")],
+          funcs := s.funcs, callStack := s.callStack }) := by
+  simp [Flat.step?]; rfl
+
+private theorem Core_step?_break (s : Core.State) (label : Option Core.LabelName) :
+    Core.step? { s with expr := .«break» label } =
+      some (.error ("break:" ++ label.getD ""),
+        { expr := .lit .undefined, env := s.env, heap := s.heap,
+          trace := s.trace ++ [.error ("break:" ++ label.getD "")],
+          funcs := s.funcs, callStack := s.callStack }) := by
+  simp [Core.step?, Core.pushTrace]; cases label <;> simp [Option.getD]
+
+private theorem Core_step?_continue (s : Core.State) (label : Option Core.LabelName) :
+    Core.step? { s with expr := .«continue» label } =
+      some (.error ("continue:" ++ label.getD ""),
+        { expr := .lit .undefined, env := s.env, heap := s.heap,
+          trace := s.trace ++ [.error ("continue:" ++ label.getD "")],
+          funcs := s.funcs, callStack := s.callStack }) := by
+  simp [Core.step?, Core.pushTrace]; cases label <;> simp [Option.getD]
+
+private theorem Flat_step?_labeled (s : Flat.State) (label : Core.LabelName) (body : Flat.Expr) :
+    Flat.step? { s with expr := .labeled label body } =
+      some (.silent, { expr := body, env := s.env, heap := s.heap,
+                       trace := s.trace ++ [.silent], funcs := s.funcs, callStack := s.callStack }) := by
+  simp [Flat.step?]; rfl
+
+private theorem Core_step?_labeled (s : Core.State) (label : Core.LabelName) (body : Core.Expr) :
+    Core.step? { s with expr := .labeled label body } =
+      some (.silent, { expr := body, env := s.env, heap := s.heap,
+                       trace := s.trace ++ [.silent], funcs := s.funcs, callStack := s.callStack }) := by
+  simp [Core.step?, Core.pushTrace]
+
 private theorem closureConvert_step_simulation
     (s : Core.Program) (t : Flat.Program)
     (h : Flat.closureConvert s = .ok t) :
@@ -1157,28 +1201,15 @@ private theorem closureConvert_step_simulation
     obtain ⟨hfexpr, hst⟩ := hconv
     have hsf_eta : sf = { sf with expr := .«break» label } := by cases sf; simp_all
     rw [hsf_eta] at hstep
-    -- Flat step: break label => error "break:" ++ label.getD ""
-    have hfs : Flat.step? { sf with expr := .«break» label } =
-        some (.error ("break:" ++ (label.getD "")),
-          { expr := .lit .undefined, env := sf.env, heap := sf.heap,
-            trace := sf.trace ++ [.error ("break:" ++ (label.getD ""))],
-            funcs := sf.funcs, callStack := sf.callStack }) := by
-      simp [Flat.step?]; rfl
-    rw [hfs] at hstep
+    rw [Flat_step?_break] at hstep
     simp at hstep
     obtain ⟨hev, hsf'⟩ := hstep; subst hev hsf'
-    -- Core step: break label => error (match label ...)
-    -- Show the label strings match
-    have hlabel_eq : (match label with | some s => "break:" ++ s | none => "break:") =
-        "break:" ++ label.getD "" := by
-      cases label <;> simp [Option.getD]
     let sc' : Core.State := ⟨.lit .undefined, sc.env, sc.heap,
       sc.trace ++ [.error ("break:" ++ label.getD "")], sc.funcs, sc.callStack⟩
     refine ⟨injMap, sc', ⟨?_⟩, ?_, ?_, ?_, ?_, ?_, ?_, ?_, ?_⟩
-    · show Core.step? sc = some (.error ("break:" ++ label.getD ""), sc')
-      have hsc' : sc = { sc with expr := .«break» label } := by
+    · have hsc' : sc = { sc with expr := .«break» label } := by
         obtain ⟨_, _, _, _, _, _⟩ := sc; simp only [] at hsc; subst hsc; rfl
-      rw [hsc']; simp [Core.step?, Core.pushTrace, hlabel_eq]
+      rw [hsc']; exact Core_step?_break _ _
     · simp [sc', htrace]
     · exact hinj
     · exact henvCorr
@@ -1193,25 +1224,15 @@ private theorem closureConvert_step_simulation
     obtain ⟨hfexpr, hst⟩ := hconv
     have hsf_eta : sf = { sf with expr := .«continue» label } := by cases sf; simp_all
     rw [hsf_eta] at hstep
-    have hfs : Flat.step? { sf with expr := .«continue» label } =
-        some (.error ("continue:" ++ (label.getD "")),
-          { expr := .lit .undefined, env := sf.env, heap := sf.heap,
-            trace := sf.trace ++ [.error ("continue:" ++ (label.getD ""))],
-            funcs := sf.funcs, callStack := sf.callStack }) := by
-      simp [Flat.step?]; rfl
-    rw [hfs] at hstep
+    rw [Flat_step?_continue] at hstep
     simp at hstep
     obtain ⟨hev, hsf'⟩ := hstep; subst hev hsf'
-    have hlabel_eq : (match label with | some s => "continue:" ++ s | none => "continue:") =
-        "continue:" ++ label.getD "" := by
-      cases label <;> simp [Option.getD]
     let sc' : Core.State := ⟨.lit .undefined, sc.env, sc.heap,
       sc.trace ++ [.error ("continue:" ++ label.getD "")], sc.funcs, sc.callStack⟩
     refine ⟨injMap, sc', ⟨?_⟩, ?_, ?_, ?_, ?_, ?_, ?_, ?_, ?_⟩
-    · show Core.step? sc = some (.error ("continue:" ++ label.getD ""), sc')
-      have hsc' : sc = { sc with expr := .«continue» label } := by
+    · have hsc' : sc = { sc with expr := .«continue» label } := by
         obtain ⟨_, _, _, _, _, _⟩ := sc; simp only [] at hsc; subst hsc; rfl
-      rw [hsc']; simp [Core.step?, Core.pushTrace, hlabel_eq]
+      rw [hsc']; exact Core_step?_continue _ _
     · simp [sc', htrace]
     · exact hinj
     · exact henvCorr
@@ -1225,25 +1246,18 @@ private theorem closureConvert_step_simulation
     rw [hsc] at hconv hncfr hexprwf hd
     simp [Flat.convertExpr] at hconv
     obtain ⟨hfexpr, hst'⟩ := hconv
-    -- sf.expr = .labeled label body' where (body', st1) = convertExpr body ...
     have hsf_eta : sf = { sf with expr := .labeled label (Flat.convertExpr body scope envVar envMap st).fst } := by
       cases sf; simp_all
     rw [hsf_eta] at hstep
-    have hfs : Flat.step? { sf with expr := .labeled label (Flat.convertExpr body scope envVar envMap st).fst } =
-        some (.silent, { expr := (Flat.convertExpr body scope envVar envMap st).fst,
-          env := sf.env, heap := sf.heap,
-          trace := sf.trace ++ [.silent], funcs := sf.funcs, callStack := sf.callStack }) := by
-      simp [Flat.step?]; rfl
-    rw [hfs] at hstep
+    rw [Flat_step?_labeled] at hstep
     simp at hstep
     obtain ⟨hev, hsf'⟩ := hstep; subst hev hsf'
     let sc' : Core.State := ⟨body, sc.env, sc.heap,
       sc.trace ++ [.silent], sc.funcs, sc.callStack⟩
     refine ⟨injMap, sc', ⟨?_⟩, ?_, ?_, ?_, ?_, ?_, ?_, ?_, ?_⟩
-    · show Core.step? sc = some (.silent, sc')
-      have hsc' : sc = { sc with expr := .labeled label body } := by
+    · have hsc' : sc = { sc with expr := .labeled label body } := by
         obtain ⟨_, _, _, _, _, _⟩ := sc; simp only [] at hsc; subst hsc; rfl
-      rw [hsc']; simp [Core.step?, Core.pushTrace]
+      rw [hsc']; exact Core_step?_labeled _ _ _
     · simp [sc', htrace]
     · exact hinj
     · exact henvCorr
