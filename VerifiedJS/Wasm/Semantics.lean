@@ -9967,9 +9967,11 @@ theorem step_sim (irmod : IRModule) (wmod : Module) :
                     hmodule := hrel.hmodule
                     hstore_funcs := hrel.hstore_funcs
                     hstore_types := hrel.hstore_types }⟩
-              · -- No memory (unreachable in practice: lower always declares memory,
-                -- so memories[0]? ≠ none. Requires module-level invariant to prove.)
-                sorry
+              · -- No memory: contradicts hmemory_nonempty (memories.size > 0 ⇒ memories[0]? ≠ none)
+                exfalso
+                have h := hrel.hmemory_nonempty
+                simp [Array.getElem?_eq_none] at hmem_none
+                omega
             | .f64 _ :: _ | .i64 _ :: _ =>
               -- Non-i32 on stack: both trap with type mismatch
               all_goals (
