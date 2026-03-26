@@ -5084,3 +5084,37 @@ EndToEnd correctly chains all passes. All Behaves relations defined.
 
 ## Run: 2026-03-26T00:05:01+00:00
 
+### Build
+- **Status**: `lake build` **PASS** ✅
+
+### Metrics
+- **Sorry count**: 32 (script) / 26 actual locations (3 CC + 21 Wasm + 1 ANF + 1 Lower)
+- **Spec coverage**: 44380/44380 lines (100.0%), 2800 refs, 0 mismatches
+- **WasmCert refs**: PASS
+
+### Agent Logs
+- **proof** (23:00→23:36 DONE): No sorry change. Task: restore CC L945 step_sim.
+- **wasmspec** (22:30→23:35 DONE): No Wasm sorry change. Task was br/brIf, architecturally blocked.
+- **jsspec** (23:00→23:30): Maintenance mode, 100% coverage maintained.
+
+### Key Findings
+1. **Sorry STEADY at 32**: No change from 23:30 run.
+2. **memoryGrow L9972 TRIVIALLY CLOSABLE**: `hmemory_nonempty : 0 < w.store.memories.size` contradicts the `none` branch (`hmem_none : w.store.memories[0]? = none`). Just `exfalso` + Array size/getElem? contradiction. Wrote exact code in wasmspec prompt.
+3. **br/brIf (L9715/L9718) ARCHITECTURALLY BLOCKED**: Deep analysis shows the proof needs `ir_idx = idx` where `ir_idx` comes from `irFindLabel?` (runtime name lookup) and `idx` from `Instr.br idx` (emit-time resolution via `resolveLabelIdx`). EmitCodeCorr `br_` doesn't connect these. Would need `hlabel_name_resolve` invariant in EmitSimRel connecting emit-time and runtime label name ordering.
+4. **CC L945 `exact sorry`**: Covers entire step_sim inner induction (~30 cases). HeapInj/EnvCorrInj are aliases ignoring injMap. Proof is mechanically identical to pre-refactor version. Proof agent needs to case-split on `sc.expr` and restore case proofs.
+
+### Actions
+1. ✅ Proof prompt: REWRITTEN with case-split skeleton for L945 restoration + instruction to use injMap unchanged
+2. ✅ Wasmspec prompt: REWRITTEN — TASK 1: close L9972 memoryGrow no-memory (trivial). TASK 2: investigate br architecture (may skip if too complex)
+3. ✅ Jsspec prompt: Unchanged (maintenance mode, 100% achieved)
+4. ✅ PROGRESS.md updated with new metrics row
+5. ✅ Time estimate: 32 sorry (script), ~15 hours remaining. Sorry velocity: 0/run (stalled this cycle). CC L945 is the biggest sorry (covers ~30 cases). Wasm 21 mostly architectural (12 LowerSimRel need 1:N stepping, 6 EmitSimRel need various fixes, 3 init need LowerCodeCorr). One quick win available (L9972).
+
+### Proof Chain
+```
+Elaborate ✅ → ClosureConvert (3 sorry, 1 covers all) → ANFConvert (1 sorry) → Optimize ✅ → Lower (1 sorry) → Emit (sorry) → EndToEnd (sorry)
+```
+EndToEnd correctly chains all passes. All Behaves relations defined.
+
+2026-03-26T00:05:01+00:00 DONE
+2026-03-26T00:24:08+00:00 DONE

@@ -10,46 +10,47 @@ bash scripts/lake_build_concise.sh VerifiedJS.Proofs.ClosureConvertCorrect
 - lean_multi_attempt to test tactics
 - lean_diagnostic_messages for errors
 
-## TASK: Restore the CC step_sim proof at ClosureConvertCorrect.lean L945
+## TASK: Replace `exact sorry` at L945 with case analysis
 
 ### Context
-The sorry at L945 (`exact sorry`) covers the ENTIRE `closureConvert_step_simulation` inner induction. The `suffices` block (L915-937) already has the correct signature with injMap threading. The intro at L941 destructs `hstep` into `⟨hstep⟩`.
+At L945, `exact sorry` covers the ENTIRE `closureConvert_step_simulation` inner induction.
 
-**KEY INSIGHT**: `HeapInj` and `EnvCorrInj` are currently ALIASES:
+The suffices block (L915-937) is correct. The intro at L941:
 ```lean
--- L650:
+intro envVar envMap injMap sf sc ev sf' hd htrace hinj henvCorr henvwf hheapvwf hncfr hexprwf ⟨scope, st, st', hconv⟩ ⟨hstep⟩
+```
+
+**KEY**: HeapInj and EnvCorrInj are ALIASES (L650, L655):
+```lean
 private def HeapInj (_injMap : Nat → Nat) (ch fh : Core.Heap) : Prop := HeapCorr ch fh
--- L655:
 private def EnvCorrInj (_injMap : Nat → Nat) (cenv : Core.Env) (fenv : Flat.Env) : Prop := EnvCorr cenv fenv
 ```
 
-This means `injMap` is IGNORED. You can always use the SAME injMap in the output. The proof is structurally identical to a proof that uses `HeapCorr` and `EnvCorr` directly.
+`injMap` is IGNORED everywhere. Always output `injMap` unchanged.
 
-### Strategy
-Replace `exact sorry` at L945 with case analysis on `Flat.step?`:
+### Step 1: Replace `exact sorry` at L945 with this skeleton
 
 ```lean
-  -- The step destructs to: Flat.step? sf = some (ev, sf')
-  -- Case-split on sf.expr (which determines what Flat.step? does)
-  -- For each case, find the corresponding Core.step? result
-  -- Use hconv to relate sf.expr to convertExpr sc.expr
-  -- Use hinj/henvCorr to transfer values
+  -- hstep : Flat.step? sf = some (ev, sf') (from Flat.Step)
+  -- hconv : (sf.expr, st') = Flat.convertExpr sc.expr scope envVar envMap st
+  -- Case-split on sc.expr to determine sf.expr via convertExpr
+  -- Then unfold Flat.step? to analyze the step, construct Core.step? result
+  -- Use convertExpr to relate expressions, use HeapCorr/EnvCorr to transfer values
 
-  -- Start with the easiest cases first:
-  simp [Flat.step?, Flat.exprValue?] at hstep
-  -- Then split on sc.expr (since sf.expr = convertExpr sc.expr ...)
-  obtain ⟨scope, st, st', hconv⟩ := ⟨scope, st, st', hconv⟩
-  cases sc.expr with
+  -- Start: determine sf.expr from hconv
+  cases hsc : sc.expr with
   | lit v =>
-    -- convertExpr (.lit v) = (.lit (convertValue v), st)
-    -- Flat.step? of .lit is none → contradiction with hstep
+    -- convertExpr (.lit v) = .lit (convertValue v), so sf.expr = .lit (convertValue v)
+    -- But Flat.step? of .lit is none → contradicts hstep
     simp [Flat.convertExpr] at hconv
     obtain ⟨hfexpr, _⟩ := hconv
-    rw [hfexpr] at hstep
-    simp [Flat.step?, Flat.exprValue?] at hstep
-  | var name =>
-    -- convertExpr (.var name) produces .getEnv or .var depending on scope
+    rw [← hfexpr] at hstep
+    simp [Flat.Step] at hstep
+    -- If that doesn't close it, try:
+    -- have : Flat.step? sf = none := by simp [Flat.step?, hfexpr ▸ rfl]
+    -- exact absurd hstep (by simp [this])
     sorry
+  | var name => sorry
   | «this» => sorry
   | «let» name init body => sorry
   | assign name rhs => sorry
@@ -65,23 +66,23 @@ Replace `exact sorry` at L945 with case analysis on `Flat.step?`:
   | _ => sorry  -- remaining cases
 ```
 
-### Approach for each case
-1. Use `hconv` to determine `sf.expr` from `convertExpr sc.expr`
-2. Unfold `Flat.step?` to see what the Flat side does
-3. Construct matching `Core.step?` result
-4. Build output with `⟨injMap, sc', hcstep, htrace', hinj, henvCorr, ...⟩`
-5. For `injMap'`, just use the same `injMap` (since HeapInj ignores it)
+### Step 2: Close the `.lit` case (contradiction)
+The lit case should be a contradiction: `Flat.step?` on a literal returns `none`, but `hstep` says it returned `some`. Use `lean_goal` at the sorry to see the exact state, then close it.
 
-### Priority
-1. Replace `exact sorry` with the `cases sc.expr` skeleton above
-2. Close the `.lit` case (contradiction — should be easy)
-3. Close 2-3 simple value cases (.var in scope, .this, .seq with value)
-4. Leave complex cases (call, tryCatch) as sorry
-5. Do NOT touch ANF or Wasm files
+### Step 3: Close easy cases
+After `.lit`, try `.var`, `.this`, `.return`, `.typeof`. Pattern:
+1. Unfold `convertExpr` in `hconv` to get `sf.expr`
+2. Unfold `Flat.step?` to compute the Flat step
+3. Construct the Core step: `⟨sc', Core.step? sc = some (ev, sc')⟩`
+4. Output: `⟨injMap, sc', ⟨hcstep⟩, htrace', hinj, henvCorr, henvwf', hheapvwf, hncfr', hexprwf', ...⟩`
+
+For `injMap'`, ALWAYS use `injMap` (since HeapInj ignores it).
 
 ### What NOT to do
-- Do NOT try to implement "real" HeapInj — just use the alias
-- Do NOT restructure CC_SimRel
+- Do NOT change HeapInj/EnvCorrInj definitions
+- Do NOT change CC_SimRel structure
 - Do NOT change any file outside ClosureConvertCorrect.lean
+- Do NOT touch ANF or Wasm files
+- Do NOT try to prove ALL cases — close what you can, leave rest as sorry
 
 ## Log progress to agents/proof/log.md
