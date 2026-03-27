@@ -9945,16 +9945,27 @@ theorem step_sim (irmod : IRModule) (wmod : Module) :
                   | _ :: _ :: _ => simp [hs] at hlen
                 obtain ⟨w, hs2⟩ := hs2
                 simp only [traceToWasm]
-                refine ⟨_, ?_, { hemit := hrel.hemit, hcode := .nil, hstack := by rw [← hstk]; exact hrel.hstack,
-                    hframes_len := hrel.hframes_len, hframes_locals := hrel.hframes_locals,
-                    hframes_vals := hrel.hframes_vals, hglobals := hrel.hglobals, hmemory := hrel.hmemory,
-                    hmemLimits := hrel.hmemLimits, hmemory_aligned := hrel.hmemory_aligned,
-                    hmemory_nonempty := hrel.hmemory_nonempty,
-                    hlabels := hrel.hlabels, hhalt := hhalt_of_structural (@EmitCodeCorr.nil (s1.labels.map (·.name))) hrel.hlabels,
-                    hlabel_content := hrel.hlabel_content, hframes_one := hrel.hframes_one,
-                    hmodule := hrel.hmodule, hstore_funcs := hrel.hstore_funcs, hstore_types := hrel.hstore_types }⟩
-                simp [step?, hcw, withI32Bin, withF64Bin, hs2, pop2?, trapState, pushTrace]
-                cases w <;> simp [pop2?, trapState, pushTrace]
+                refine ⟨_, ?_, ?_⟩
+                · simp [step?, hcw, withI32Bin, withF64Bin, hs2, pop2?, trapState, pushTrace]
+                  cases w <;> simp [pop2?, trapState, pushTrace]
+                · exact { hemit := hrel.hemit
+                    hcode := .nil
+                    hstack := (by rw [← hstk]; exact hrel.hstack)
+                    hframes_len := hrel.hframes_len
+                    hframes_locals := hrel.hframes_locals
+                    hframes_vals := hrel.hframes_vals
+                    hglobals := hrel.hglobals
+                    hmemory := hrel.hmemory
+                    hmemLimits := hrel.hmemLimits
+                    hmemory_aligned := hrel.hmemory_aligned
+                    hmemory_nonempty := hrel.hmemory_nonempty
+                    hlabels := hrel.hlabels
+                    hhalt := hhalt_of_structural (@EmitCodeCorr.nil (s1.labels.map (·.name))) hrel.hlabels
+                    hlabel_content := hrel.hlabel_content
+                    hframes_one := hrel.hframes_one
+                    hmodule := hrel.hmodule
+                    hstore_funcs := hrel.hstore_funcs
+                    hstore_types := hrel.hstore_types }
               | .i32 rhs :: .i32 lhs :: stk =>
                 -- Both i32: success case. IR and Wasm compute the same result.
                 -- Simplify IR step
@@ -10068,16 +10079,27 @@ theorem step_sim (irmod : IRModule) (wmod : Module) :
                   | _ :: _ :: _ => simp [hs] at hlen
                 obtain ⟨w, hs2⟩ := hs2
                 simp only [traceToWasm]
-                refine ⟨_, ?_, { hemit := hrel.hemit, hcode := .nil, hstack := by rw [← hstk]; exact hrel.hstack,
-                    hframes_len := hrel.hframes_len, hframes_locals := hrel.hframes_locals,
-                    hframes_vals := hrel.hframes_vals, hglobals := hrel.hglobals, hmemory := hrel.hmemory,
-                    hmemLimits := hrel.hmemLimits, hmemory_aligned := hrel.hmemory_aligned,
-                    hmemory_nonempty := hrel.hmemory_nonempty,
-                    hlabels := hrel.hlabels, hhalt := hhalt_of_structural (@EmitCodeCorr.nil (s1.labels.map (·.name))) hrel.hlabels,
-                    hlabel_content := hrel.hlabel_content, hframes_one := hrel.hframes_one,
-                    hmodule := hrel.hmodule, hstore_funcs := hrel.hstore_funcs, hstore_types := hrel.hstore_types }⟩
-                simp [step?, hcw, withI32Bin, withF64Bin, hs2, pop2?, trapState, pushTrace]
-                cases w <;> simp [pop2?, trapState, pushTrace]
+                refine ⟨_, ?_, ?_⟩
+                · simp [step?, hcw, withI32Bin, withF64Bin, hs2, pop2?, trapState, pushTrace]
+                  cases w <;> simp [pop2?, trapState, pushTrace]
+                · exact { hemit := hrel.hemit
+                    hcode := .nil
+                    hstack := (by rw [← hstk]; exact hrel.hstack)
+                    hframes_len := hrel.hframes_len
+                    hframes_locals := hrel.hframes_locals
+                    hframes_vals := hrel.hframes_vals
+                    hglobals := hrel.hglobals
+                    hmemory := hrel.hmemory
+                    hmemLimits := hrel.hmemLimits
+                    hmemory_aligned := hrel.hmemory_aligned
+                    hmemory_nonempty := hrel.hmemory_nonempty
+                    hlabels := hrel.hlabels
+                    hhalt := hhalt_of_structural (@EmitCodeCorr.nil (s1.labels.map (·.name))) hrel.hlabels
+                    hlabel_content := hrel.hlabel_content
+                    hframes_one := hrel.hframes_one
+                    hmodule := hrel.hmodule
+                    hstore_funcs := hrel.hstore_funcs
+                    hstore_types := hrel.hstore_types }
               | .f64 rhs :: .f64 lhs :: stk =>
                 -- Both f64: success case
                 unfold irStep? at hstep; rw [hcode_ir, hstk] at hstep
