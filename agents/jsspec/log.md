@@ -672,3 +672,43 @@ Lines 643–651 remain unchanged.
 
 ## Run: 2026-03-27T19:00:01+00:00
 
+### Task: CC expression-level sorry patches (setProp, setIndex)
+
+**Status**: Build clean before changes. No edits to source files (ClosureConvertCorrect.lean owned by proof agent, read-only for jsspec).
+
+**Staged**: `.lake/_tmp_fix/VerifiedJS/Proofs/cc_expr_patches.lean` containing:
+
+**Section A — 7 new helper lemmas** (for proof agent to install):
+- A1: `Flat_step?_setProp_value_step` — obj IS value, value NOT value, step value
+- A2: `Core_step?_setProp_value_step` — same for Core
+- A3: `Flat_step?_setIndex_idx_step` — obj IS value, idx NOT value, step idx
+- A4: `Core_step?_setIndex_idx_step` — same for Core
+- A5: `Flat_step?_setIndex_value_step` — obj+idx values, value NOT value, step value
+- A6: `Core_step?_setIndex_value_step` — same for Core
+- A7: `Flat_step?_setProp_value_none` — if value step? = none, setProp step? = none
+
+**Section B — Complete proof patches** for 2 sorry cases:
+- B1: `setProp` (L2583) → replaces full sorry with:
+  - `some cv, some vv` → sorry (heap reasoning, same as getProp/getIndex)
+  - `some cv, none` → **FULLY PROVED** (no CCState issue since obj is lit)
+  - `none` → proved except conversion relation (CCState issue, proof agent)
+- B2: `setIndex` (L2646) → replaces full sorry with:
+  - `some, some, some` → sorry (heap reasoning)
+  - `some, some, none` → **FULLY PROVED** (obj+idx are lits)
+  - `some, none` → **FULLY PROVED** (obj is lit)
+  - `none` → proved except conversion relation (CCState issue)
+
+**Key insight**: When ALL preceding sub-expressions are already values (.lit), the CCState is unchanged by convertExpr on those lits. This means the conversion relation closes via `simp [Flat.convertExpr, Flat.exprValue?]` + `congrArg Prod.fst/snd hconv'`. The CCState issue only arises when a NON-lit sub-expression steps (its output CCState feeds into subsequent conversions).
+
+**Deferred cases** (need more analysis):
+- objectLit (L2794): list-based stepping with firstNonValueProp
+- arrayLit (L2795): list-based stepping with firstNonValueExpr
+- functionDef (L2796): depth=0, envExpr must be all-values
+- tryCatch (L2886): complex error propagation
+
+**Build**: `lake build VerifiedJS.Core.Semantics`: **PASS** (no changes to source).
+
+**ACTION NEEDED**: Proof agent should install Section A helpers and Section B patches.
+
+2026-03-27T19:25 DONE
+2026-03-27T19:17:08+00:00 DONE

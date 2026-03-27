@@ -1,50 +1,30 @@
-# wasmspec — Uncomment if_ proof + close store/binOp sorries
+# wasmspec — Fix if_ proof errors + close store/binOp sorries
 
-## STEP 0: Build check
-```
-lake build VerifiedJS.Wasm.Semantics 2>&1 | grep 'error:'
-```
-If broken, fix or revert to sorry FIRST.
+## CURRENT: You're debugging the if_ proof uncomment — KEEP GOING
 
-## block and loop are DONE ✓ (uncommented and proven)
+The if_ proof is uncommented but has ~6 errors. Key fixes needed:
+- Replace `match hcond : decide (cond = 0)` with `by_cases h0 : cond = 0`
+- Use `irStep?_eq_if_true` (needs `cond ≠ 0`) and `irStep?_eq_if_false` (needs `cond = 0`)
+- For trap cases, use the tuple-style refine pattern from ~L8895:
+  `refine ⟨_, hw, ⟨hrel.hemit, ?_, ?_, hrel.hframes_len, ...⟩⟩`
 
-## PRIORITY 0: UNCOMMENT if_ proof at L10443 — FREE sorry
+## AFTER if_ IS DONE:
 
-Line 10443: `| .if_ result then_ else_ => sorry`
-Line 10444: `/-` — start of commented-out proof
-The proof is ALREADY WRITTEN in the comment block starting at L10444.
+### P1: store proof at L9295
+- Read L9290-9310 to see the sorry and commented proof
+- Delete `sorry`, delete `/-`, find matching `-/` and delete it
+- Build and fix errors
 
-Steps:
-1. Delete the `sorry` on L10443
-2. Delete the `/-` on L10444
-3. Find the matching `-/` and delete it
-4. Build to verify: `lake build VerifiedJS.Wasm.Semantics`
-5. If build fails, use `lean_diagnostic_messages` to fix
+### P2: store8 proof at L9754
+- Same approach as store
 
-## PRIORITY 1: UNCOMMENT store proof at L9295 — FREE sorry
-
-Line 9295: `sorry`
-Line 9296: `/-` — start of commented-out proof
-
-Steps:
-1. Delete `sorry` on L9295
-2. Delete `/-` on L9296
-3. Find the matching `-/` and delete it
-4. Build to verify
-
-## PRIORITY 2: UNCOMMENT store8 proof at L9754 — FREE sorry
-
-Line 9754: `sorry`
-The commented-out proof should be immediately after.
-Same approach as store.
-
-## PRIORITY 3: binOp trap cases — 6 sorries around L9923-10036
-
-These are stack underflow / type mismatch trap cases. Each needs:
+### P3: binOp trap cases (L9923-10036)
+These are 6 mechanical sorries for stack underflow / type mismatch traps.
+Pattern for each:
 ```lean
 have hlen := hrel.hstack.1; rw [hstk] at hlen; simp at hlen
 ```
-Or for trap record construction:
+Or for type mismatch:
 ```lean
 exact ⟨_, by simp [step?_eq_trap ...], { ... with hstack := by ... }⟩
 ```
@@ -52,9 +32,10 @@ Use `lean_goal` + `lean_multi_attempt` on each.
 
 ## DO NOT touch:
 - Inner step_sim cases (L6470-6548) — architecturally blocked (1:N mapping)
-- br/brIf (L10648/L10731) — complex label unwinding
-- callIndirect (L10357) / memoryGrow (L11065) — skip
+- br/brIf (L10633/L10716) — complex label unwinding
+- callIndirect (L10357) / memoryGrow (L11050) — skip
 - call cases (L10350/L10354) — blocked on multi-frame
+- Any file other than Wasm/Semantics.lean
 
 ## Build: `lake build VerifiedJS.Wasm.Semantics`
 ## Log progress to agents/wasmspec/log.md.

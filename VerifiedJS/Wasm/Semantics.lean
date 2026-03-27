@@ -10490,7 +10490,9 @@ theorem step_sim (irmod : IRModule) (wmod : Module) :
                   cases hval_corr with
                   | i32 n =>
                   have hw := step?_eq_if_false s2 bt then_w else_w rest_w wstk hcw hs2
-                  refine ⟨_, hw, hrel.hemit, helse, ?_, hrel.hframes_len, hrel.hframes_locals, hrel.hframes_vals, hrel.hglobals, ?_, ?_, ?_, ?_⟩
+                  refine ⟨_, hw, ⟨hrel.hemit, helse, ?_, hrel.hframes_len, hrel.hframes_locals,
+                    hrel.hframes_vals, hrel.hglobals, hrel.hmemory, hrel.hmemLimits, hrel.hmemory_aligned, hrel.hmemory_nonempty,
+                    ?_, ?_, ?_, hrel.hframes_one, hrel.hmodule, hrel.hstore_funcs, hrel.hstore_types⟩⟩
                   · -- Stack correspondence: tails match
                     constructor
                     · simp [hstk, hs2] at hlen ⊢; omega
@@ -10498,15 +10500,16 @@ theorem step_sim (irmod : IRModule) (wmod : Module) :
                       have hstk2 := hrel.hstack
                       rw [hstk, hs2] at hstk2
                       exact hstk2.2 (i + 1) (by simp; omega)
-                  · simp; exact hrel.hlabels
-                  · exact hhalt_of_structural helse (by simp; exact hrel.hlabels)
+                  · -- hlabels
+                    simp; exact hrel.hlabels
+                  · -- hhalt
+                    exact hhalt_of_structural helse (by simp; exact hrel.hlabels)
                   · -- Label content: if_ pushes label with onExit = rest
                     intro i hi
                     simp only [List.length_cons] at hi
                     match i with
                     | 0 => exact ⟨_, _, rfl, rfl, hrest⟩
                     | i + 1 => exact hrel.hlabel_content i (by omega)
-                  · exact hrel.hframes_one
               · -- True branch: enter then
                 have hne := h0
                 have hir := irStep?_eq_if_true s1 result then_ else_ rest cond stk hcode_ir hstk hne
@@ -10523,8 +10526,10 @@ theorem step_sim (irmod : IRModule) (wmod : Module) :
                   simp at hval_corr
                   cases hval_corr with
                   | i32 n =>
-                    have hw := step?_eq_if_true s2 bt then_w else_w rest_w n wstk hcw hs2 hne
-                    refine ⟨_, hw, hrel.hemit, hthen, ?_, hrel.hframes_len, hrel.hframes_locals, hrel.hframes_vals, hrel.hglobals, ?_, ?_, ?_, ?_⟩
+                    have hw := step?_eq_if_true s2 bt then_w else_w rest_w cond wstk hcw hs2 hne
+                    refine ⟨_, hw, ⟨hrel.hemit, hthen, ?_, hrel.hframes_len, hrel.hframes_locals,
+                      hrel.hframes_vals, hrel.hglobals, hrel.hmemory, hrel.hmemLimits, hrel.hmemory_aligned, hrel.hmemory_nonempty,
+                      ?_, ?_, ?_, hrel.hframes_one, hrel.hmodule, hrel.hstore_funcs, hrel.hstore_types⟩⟩
                     · -- Stack correspondence: tails match
                       constructor
                       · simp [hstk, hs2] at hlen ⊢; omega
@@ -10532,15 +10537,16 @@ theorem step_sim (irmod : IRModule) (wmod : Module) :
                         have hstk2 := hrel.hstack
                         rw [hstk, hs2] at hstk2
                         exact hstk2.2 (i + 1) (by simp; omega)
-                    · simp; exact hrel.hlabels
-                    · exact hhalt_of_structural hthen (by simp; exact hrel.hlabels)
+                    · -- hlabels
+                      simp; exact hrel.hlabels
+                    · -- hhalt
+                      exact hhalt_of_structural hthen (by simp; exact hrel.hlabels)
                     · -- Label content: if_ pushes label with onExit = rest
                       intro i hi
                       simp only [List.length_cons] at hi
                       match i with
                       | 0 => exact ⟨_, _, rfl, rfl, hrest⟩
                       | i + 1 => exact hrel.hlabel_content i (by omega)
-                    · exact hrel.hframes_one
             | .i64 n :: stk =>
               -- i64 on stack: type mismatch trap
               have hir : irStep? s1 = some (.trap "if condition is not i32",

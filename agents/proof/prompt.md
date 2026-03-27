@@ -1,72 +1,146 @@
-# proof — Close CC CCState sorries using convertExpr_state_determined (IT'S COMPLETE NOW!)
+# proof — CRITICAL: Strengthen suffices with CCStateAgree to unblock ALL 6 CCState sorries
 
-## BUILD FIX NEEDED FIRST
-Line 641 has `simp only [Flat.CCState.freshVar, Flat.CCState.addFunc, hid]` which causes
-"simp made no progress" error. Fix by changing to:
+## WHY YOU'RE STUCK (and the fix)
+
+The 6 CCState sorries (L1987, L2194, L2283, L2522, L2645, L2917) are ALL blocked by the same root cause:
+
+When a sub-expression steps (e.g., `init` in `let x = init in body`), the IH gives back
+`scope', st_a, st_a'` with `(sa.expr, st_a') = convertExpr sc_sub'.expr scope' envVar envMap st_a`.
+
+But the body was converted under `(convertExpr init scope envVar envMap st).snd`, and the
+reconverted body uses `(convertExpr sc_sub'.expr scope' envVar envMap st_a).snd = st_a'`.
+You need `CCStateAgree (convertExpr init scope envVar envMap st).snd st_a'` to bridge via
+`convertExpr_state_determined`, but the current suffices doesn't track this.
+
+## THE FIX: Strengthen the suffices (L1748-1770)
+
+### Step 1: Change the suffices statement
+
+Current (L1748-1766):
 ```lean
-try simp only [Flat.CCState.freshVar, Flat.CCState.addFunc, hid]
+suffices ∀ (n : Nat) (envVar : String) (envMap : Flat.EnvMapping) (injMap : Nat → Nat)
+    (sf : Flat.State) (sc : Core.State) (ev : Core.TraceEvent) (sf' : Flat.State),
+    sc.expr.depth = n → sf.trace = sc.trace →
+    HeapInj injMap sc.heap sf.heap → EnvCorrInj injMap sc.env sf.env →
+    EnvAddrWF sc.env sc.heap.objects.size →
+    HeapValuesWF sc.heap →
+    noCallFrameReturn sc.expr = true →
+    ExprAddrWF sc.expr sc.heap.objects.size →
+    (∃ (scope : List String) (st st' : Flat.CCState),
+      (sf.expr, st') = Flat.convertExpr sc.expr scope envVar envMap st) →
+    Flat.Step sf ev sf' →
+    ∃ (injMap' : Nat → Nat) (sc' : Core.State), Core.Step sc ev sc' ∧ sf'.trace = sc'.trace ∧
+      HeapInj injMap' sc'.heap sf'.heap ∧ EnvCorrInj injMap' sc'.env sf'.env ∧
+      EnvAddrWF sc'.env sc'.heap.objects.size ∧
+      HeapValuesWF sc'.heap ∧
+      noCallFrameReturn sc'.expr = true ∧
+      ExprAddrWF sc'.expr sc'.heap.objects.size ∧
+      (∃ (scope : List String) (st st' : Flat.CCState),
+        (sf'.expr, st') = Flat.convertExpr sc'.expr scope envVar envMap st)
 ```
-Or if that doesn't help, just delete the line — the `unfold` on L640 may already do the work.
-Then run: `lake build VerifiedJS.Proofs.ClosureConvertCorrect` — must PASS before any sorry work.
 
-## THE KEY LEMMA IS READY — USE IT
-
-`convertExpr_state_determined` (line 548) is COMPLETE with NO sorry. It proves:
+Change to (move scope/st/st' from existential to universal, add CCStateAgree output):
 ```lean
-theorem convertExpr_state_determined (e : Core.Expr) (scope envVar envMap) (st1 st2 : CCState)
-    (hid : st1.nextId = st2.nextId) (hsz : st1.funcs.size = st2.funcs.size) :
-    (convertExpr e scope envVar envMap st1).fst = (convertExpr e scope envVar envMap st2).fst ∧
-    CCStateAgree (convertExpr e scope envVar envMap st1).snd (convertExpr e scope envVar envMap st2).snd
+suffices ∀ (n : Nat) (envVar : String) (envMap : Flat.EnvMapping) (injMap : Nat → Nat)
+    (sf : Flat.State) (sc : Core.State) (ev : Core.TraceEvent) (sf' : Flat.State)
+    (scope : List String) (st st' : Flat.CCState),
+    sc.expr.depth = n → sf.trace = sc.trace →
+    HeapInj injMap sc.heap sf.heap → EnvCorrInj injMap sc.env sf.env →
+    EnvAddrWF sc.env sc.heap.objects.size →
+    HeapValuesWF sc.heap →
+    noCallFrameReturn sc.expr = true →
+    ExprAddrWF sc.expr sc.heap.objects.size →
+    (sf.expr, st') = Flat.convertExpr sc.expr scope envVar envMap st →
+    Flat.Step sf ev sf' →
+    ∃ (injMap' : Nat → Nat) (sc' : Core.State), Core.Step sc ev sc' ∧ sf'.trace = sc'.trace ∧
+      HeapInj injMap' sc'.heap sf'.heap ∧ EnvCorrInj injMap' sc'.env sf'.env ∧
+      EnvAddrWF sc'.env sc'.heap.objects.size ∧
+      HeapValuesWF sc'.heap ∧
+      noCallFrameReturn sc'.expr = true ∧
+      ExprAddrWF sc'.expr sc'.heap.objects.size ∧
+      (∃ (st_a st_a' : Flat.CCState),
+        (sf'.expr, st_a') = Flat.convertExpr sc'.expr scope envVar envMap st_a ∧
+        CCStateAgree st st_a ∧ CCStateAgree st' st_a')
 ```
 
-Use `.1` for expression equality, `.2` for output state agreement.
+### Step 2: Update the outer proof (L1767-1770)
 
-## PRIORITY 1: 6 CCState sorries — ALL USE THE SAME PATTERN
-
-### Lines: L1973, L2180, L2269, L2508, L2631, L2903
-
-Each sorry is at a point where:
-- An inner sub-expression stepped (e.g., cond in if, a in seq, lhs in binary)
-- The IH gave a new Flat state with the sub-expression converted under st
-- But the REST of the expression was converted under a different CCState (output of converting the sub-expression)
-- Need to show the Flat expr matches the Core expr when CCState differs
-
-### Strategy for each:
-1. `lean_goal` at the sorry line to see the exact goal
-2. The goal should involve `(convertExpr e scope envVar envMap st').fst` vs `(convertExpr e scope envVar envMap st'').fst` where st' and st'' have different nextId/funcs.size
-3. Use `convertExpr_state_determined` to rewrite one into the other
-4. You need to show `st'.nextId = st''.nextId` and `st'.funcs.size = st''.funcs.size` — these come from `CCStateAgree` in the hypothesis context
-5. Try tactics like:
 ```lean
-have hsd := convertExpr_state_determined <subexpr> scope envVar envMap <st1> <st2> <hid> <hsz>
-rw [hsd.1]
-```
-6. `lean_multi_attempt` at each line with:
-```
-["rw [(convertExpr_state_determined _ scope envVar envMap _ _ (by assumption) (by assumption)).1]",
- "exact (convertExpr_state_determined _ scope envVar envMap _ _ ‹_› ‹_›).1 ▸ rfl",
- "congr 1; exact (convertExpr_state_determined _ scope envVar envMap _ _ ‹_› ‹_›).1"]
+  by
+    intro sf sc ev sf' ⟨htrace, ⟨injMap, hinj, henv⟩, hncfr, hexprwf, henvwf, hheapvwf, scope, envVar, envMap, st, st', hconv⟩ hstep
+    obtain ⟨injMap', sc', hcstep, htrace', hinj', henv', henvwf', hheapvwf', hncfr', hexprwf', st_a, st_a', hconv', _, _⟩ :=
+      this sc.expr.depth envVar envMap injMap sf sc ev sf' scope st st' rfl htrace hinj henv henvwf hheapvwf hncfr hexprwf hconv hstep
+    exact ⟨sc', hcstep, htrace', ⟨injMap', hinj', henv'⟩, hncfr', hexprwf', henvwf', hheapvwf', scope, envVar, envMap, st_a, st_a', hconv'.1⟩
 ```
 
-Start with L2180 (if stepping) — it's the clearest case. Then apply to all others.
+### Step 3: Update the intro (L1774)
 
-## PRIORITY 2: call/newObj (L2509, L2510)
-These need sub-expression stepping + argument list reasoning. Try:
+Old: `intro envVar envMap injMap sf sc ev sf' hd htrace hinj henvCorr henvwf hheapvwf hncfr hexprwf ⟨scope, st, st', hconv⟩ ⟨hstep⟩`
+New: `intro envVar envMap injMap sf sc ev sf' scope st st' hd htrace hinj henvCorr henvwf hheapvwf hncfr hexprwf hconv ⟨hstep⟩`
+
+(scope/st/st' are now regular arguments, not from an existential. hconv is direct, not in ∃.)
+
+### Step 4: Update each IH call and its output
+
+For the IH call at L1962-1968 (let case), change:
+- Input: `⟨scope, st, (Flat.convertExpr init scope envVar envMap st).snd, by simp⟩` → `scope st (Flat.convertExpr init scope envVar envMap st).snd (by simp)`
+- Output: add `hAgreeIn, hAgreeOut` to destructor:
+  ```lean
+  obtain ⟨injMap', sc_sub', ⟨hcstep_sub⟩, htrace_sub, hinj', henvCorr', henvwf', hheapvwf', hncfr', hexprwf', st_a, st_a', hconv', hAgreeIn, hAgreeOut⟩ := ...
+  ```
+
+### Step 5: Close the CCState sorry (L1987 etc.) using the new invariants
+
+At L1987, the goal is now:
+```
+∃ st_a st_a', (sf'.expr, st_a') = convertExpr (.let name sc_sub'.expr body) scope envVar envMap st_a ∧
+  CCStateAgree st st_a ∧ CCStateAgree st' st_a'
+```
+
+Proof:
 ```lean
-lean_goal at L2509
+· -- Choose st_a from the IH
+  refine ⟨st_a, ?_, ?_, ?_, ?_⟩   -- or however the structure works
+  -- Unfold convertExpr for .let:
+  -- convertExpr (.let name sc_sub'.expr body) scope envVar envMap st_a
+  -- = let (e1, s1) = convertExpr sc_sub'.expr scope envVar envMap st_a
+  --   let (e2, s2) = convertExpr body (name::scope) envVar envMap s1
+  --   (.let name e1 e2, s2)
+  -- From hconv': sa.expr = (convertExpr sc_sub'.expr scope envVar envMap st_a).fst
+  -- Need body part: use convertExpr_state_determined with hAgreeOut
+  have hbody := (convertExpr_state_determined body (name :: scope) envVar envMap
+    (Flat.convertExpr init scope envVar envMap st).snd st_a' hAgreeOut.1 hAgreeOut.2).1
+  -- Then show the pair equality using ext/Prod.mk.injEq
+  simp only [Flat.convertExpr]  -- unfold the let
+  constructor
+  · -- Expression equality
+    rw [show (Flat.convertExpr sc_sub'.expr scope envVar envMap st_a).fst = sa.expr from hconv'.1.symm ▸ ... ]
+    rw [hbody]
+  · constructor
+    · exact hAgreeIn
+    · -- CCStateAgree for output: use convertExpr_state_determined on body
+      exact (convertExpr_state_determined body (name :: scope) envVar envMap
+        (Flat.convertExpr init scope envVar envMap st).snd st_a' hAgreeOut.1 hAgreeOut.2).2
 ```
-Then attempt `sorry` decomposition if complex.
 
-## PRIORITY 3: objectLit/arrayLit/functionDef (L2784, L2785, L2786)
-- objectLit/arrayLit: list-based conversion, may need `convertExprList` lemmas
-- functionDef: closure creation, needs `addFunc`/`freshVar` reasoning
+The EXACT tactics will depend on the goal state. Use `lean_goal` at each sorry after the refactor.
+
+### Step 6: For non-stepping cases (lit, var value, assign value, etc.)
+
+These cases don't sub-step, so choose `st_a = st, st_a' = st'` and prove `CCStateAgree st st` by `⟨rfl, rfl⟩`.
+
+Example: change the final `⟨scope, st, st', by ...⟩` to `⟨st, st', by ..., ⟨rfl, rfl⟩, ⟨rfl, rfl⟩⟩`.
+
+## EXECUTION ORDER
+1. Make the suffices change (Steps 1-3) FIRST
+2. Build to check — expect new errors at each case's final existential
+3. Fix non-stepping cases (easy: add `⟨rfl, rfl⟩, ⟨rfl, rfl⟩`)
+4. Fix stepping cases using `hAgreeOut` + `convertExpr_state_determined`
 
 ## DO NOT TOUCH:
-- ANFConvertCorrect (architecturally blocked)
-- LowerCorrect (blocked on lowerExpr)
-- Wasm/Semantics (wasmspec owns)
-- forIn/forOf at L1118/L1119 (conversion is stub → theorem may be false for these)
-- Value sub-cases at L2516/L2579/L2638 (heap reasoning, skip for now)
+- ANFConvertCorrect, LowerCorrect, Wasm/Semantics
+- forIn/forOf at L1132/L1133 (theorem false)
+- Value sub-cases at L2530/L2589/L2652
 
 ## Build: `lake build VerifiedJS.Proofs.ClosureConvertCorrect`
 ## Use lean_goal + lean_multi_attempt BEFORE every edit.
