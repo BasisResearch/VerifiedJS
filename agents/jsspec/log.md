@@ -638,4 +638,32 @@ Lines 643–651 remain unchanged.
 
 ## Run: 2026-03-27T17:00:01+00:00
 
-2026-03-27T18:00:47+00:00 SKIP: already running
+### Task: Verify convertExpr_state_determined functionDef case
+
+**Status**: The functionDef case (L638-661) has been fixed by the proof agent (following the 15:19 run suggestion).
+
+**Changes applied by proof agent (since last run)**:
+- L640: `unfold Flat.convertExpr` (replaces failing `simp only [Flat.convertExpr, ...]`)
+- L641: `simp only [Flat.CCState.freshVar, Flat.CCState.addFunc, hid]`
+- L644-652: Explicit `envVar` and `envMap` args (no more `_` placeholders that caused "can't synthesize" errors)
+- L654: `refine ⟨?_, ih_id, ?_⟩` (cleaner split)
+- L656-657: `.fst` closed via `congrArg (Flat.Expr.makeClosure · _) ih_sz`
+- L659-661: `CCStateAgree` funcs.size closed via `Array.size_push` + `congrArg`
+
+**Verification**:
+- LSP diagnostics at L638-662: **0 errors** ✓
+- `convertExpr_state_determined` mutual block (L547-730): **0 sorries** ✓
+- Signature matches proof agent's needs (`.1` for expr equality, `.2` for CCStateAgree) ✓
+- No separate `convertExpr_state_output` needed — bundled in `.2` ✓
+
+**Remaining CC sorries** (proof agent's responsibility, uses `convertExpr_state_determined`):
+- L1987: let stepping CCState
+- L2194: if stepping CCState
+- L2283: seq stepping CCState
+- L2522: binary lhs stepping CCState
+- L2645: getIndex stepping CCState
+- L2917: while_ lowering CCState
+
+**Build**: `lake build VerifiedJS.Proofs.ClosureConvertCorrect` — running (large file, ~10min).
+
+2026-03-27T17:10 DONE

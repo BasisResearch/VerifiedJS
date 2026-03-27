@@ -1,3 +1,28 @@
+## Run: 2026-03-27T15:00+00:00
+- **CC BUILD: CHECKING** (LSP diagnostics show 0 errors; full build running)
+- **CC Sorries: 20** (was 22 at start of session — closed 3 sorry statements, fixed 1 build error)
+
+### Changes applied:
+1. **Closed forIn/forOf in main step simulation (L2872-2885)**: forIn/forOf convert to `.lit .undefined` (stub). Since `.lit` doesn't step in Flat (`Flat_step?_lit`), the `Flat.Step sf ev sf'` hypothesis is contradictory. Proof: `rw [hsc] at hconv; simp [Flat.convertExpr] at hconv; hsf_eta; rw [Flat_step?_lit]; exact absurd hstep (fun h => nomatch h)`. Closes 2 sorries.
+
+2. **Closed convertExpr_state_determined functionDef (L642)**: The key lemma for CCState threading. Proved that `convertExpr (.functionDef ...)` produces the same `.fst` and `CCStateAgree` `.snd` when input CCStates agree on nextId and funcs.size. Approach: `unfold Flat.convertExpr; simp only [CCState.freshVar, CCState.addFunc, hid]` to expose the let-bindings, then IH for the body conversion with named-field states. `.fst` equality via `congrArg`. CCStateAgree via `ih_id` and `congrArg (· + 1) ih_sz`. Note: `simp only [Flat.convertExpr]` doesn't work for functionDef (equation lemma issue); must use `unfold`. Closes 1 sorry.
+
+3. **Fixed maxHeartbeats simp config error (L680)**: `simp_all (config := { maxHeartbeats := 200000 })` → `simp_all` — `maxHeartbeats` is not a valid field of `Lean.Meta.Simp.ConfigCtx` in Lean v4.29.0-rc6.
+
+4. **Added helper lemmas**: `Flat_step?_setProp_obj_step`, `Core_step?_setProp_obj_step`, `Flat_step?_setIndex_obj_step`, `Core_step?_setIndex_obj_step` — for future setProp/setIndex case proofs.
+
+### Analysis of remaining 20 CC sorries:
+- **Theorem false (2):** L1122, L1123 — convertExpr_not_value forIn/forOf: forIn/forOf convert to `.lit .undefined` which IS a value, making the theorem statement false. Needs conversion fix, not proof fix.
+- **CCState threading (6):** L1977, L2184, L2273, L2512, L2635, L2907 — After stepping a sub-expression, the CCState used for converting remaining sub-expressions may differ. Requires either: (a) `convertExpr_noFD_state_unchanged` lemma proving conversion doesn't change CCState for functionDef-free expressions, or (b) restructuring the SimRel to fix st_a = st.
+- **Captured variable (1):** L1786 — Multi-step mismatch: Core resolves `.var name` → `.lit v` in one step, but Flat needs two steps for `.getEnv (.var envVar) idx` → `.getEnv (.lit envVal) idx` → `.lit result`. Requires multi-step simulation or proof restructuring.
+- **Value sub-cases (3):** L2520, L2579, L2642 — getProp/getIndex/deleteProp when obj is a value. Heap reasoning needed via HeapCorr. Appears closeable: both Core and Flat share `Core.Heap`, `coreToFlatValue = convertValue`, and `HeapCorr` ensures matching property lookups.
+- **Full unstarted cases (8):** L2513 call, L2514 newObj, L2573 setProp, L2636 setIndex, L2784 objectLit, L2785 arrayLit, L2786 functionDef, L2876 tryCatch — Each requires full stepping + conversion + SimRel proof. Helper lemmas added for setProp/setIndex obj-stepping. All will end with CCState sorry.
+
+### Key discoveries:
+- `unfold Flat.convertExpr` works where `simp only [Flat.convertExpr]` fails for the functionDef case
+- `convertExpr_state_determined` is now fully proved — can be used to close CCState cases if `CCStateAgree` between IH output state and original state can be established
+- The CCState threading issue is fundamentally about whether `st_a` (IH output) = `st` (original input). Analysis shows this holds for all base cases (var→lit, etc.) but needs formalization
+
 ## Run: 2026-03-27T08:30+00:00
 - **CC BUILD: PASSES** ✓ (was broken at evalBinary_valueAddrWF L848)
 - **ANF BUILD: PASSES** ✓
@@ -2725,3 +2750,4 @@ FOCUS ON THE 23 REAL SORRIES. Define shared tactics for the 4 CCState cases (L16
 2026-03-27T15:30:01+00:00 SKIP: already running
 2026-03-27T16:30:01+00:00 SKIP: already running
 2026-03-27T17:30:02+00:00 SKIP: already running
+2026-03-27T18:30:16+00:00 SKIP: already running
