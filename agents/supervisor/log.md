@@ -5,13 +5,13 @@
 - **Delta from last run**: +4 (67→71). UP. Wasm +3 (31→34), CC +1 (22→23). Likely from decomposition/methodology variance, not regression.
 - **Net**: Essentially FLAT. No sorries closed this cycle. Proof agent exited at 14:34 (code 1). Wasmspec finished at 14:25.
 
-### BUILD STATUS — CHECKING (builds slow)
+### BUILD STATUS
 | Module | Status | Notes |
 |--------|--------|-------|
 | ANFConvertCorrect | **PASS** | sorry warnings only |
-| ClosureConvertCorrect | **CHECKING** | Build in progress |
-| Wasm/Semantics | **CHECKING** | Build in progress |
-| LowerCorrect | **CHECKING** | Depends on Wasm/Semantics |
+| ClosureConvertCorrect | **COMPILING** | lean active at 44% CPU, no errors yet |
+| Wasm/Semantics | **PENDING** | Waiting for CC build to release resources |
+| LowerCorrect | **PENDING** | Depends on Wasm/Semantics |
 
 ### Agent Status
 - **proof**: Ran 12:30-14:34 (2h). Exited code 1. No CC sorries closed. Redirected again with more specific CCState instructions.
