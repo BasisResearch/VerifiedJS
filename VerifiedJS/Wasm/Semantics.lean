@@ -10382,8 +10382,10 @@ theorem step_sim (irmod : IRModule) (wmod : Module) :
                       intro i hi
                       simp only [List.length_cons] at hi
                       match i with
-                      | 0 => exact ⟨_, _, rfl, rfl, hrest⟩
-                      | i + 1 => exact hrel.hlabel_content i (by omega)
+                      | 0 => exact ⟨_, _, rfl, rfl, hrest, hrest, rfl⟩
+                      | i + 1 =>
+                        simp only [List.getElem?_cons_succ, List.drop_succ_cons]
+                        exact hrel.hlabel_content i (by omega)
                     hframes_one := hrel.hframes_one
                     hmodule := hrel.hmodule
                     hstore_funcs := hrel.hstore_funcs
@@ -10418,8 +10420,10 @@ theorem step_sim (irmod : IRModule) (wmod : Module) :
                       intro i hi
                       simp only [List.length_cons] at hi
                       match i with
-                      | 0 => exact ⟨_, _, rfl, rfl, hrest⟩
-                      | i + 1 => exact hrel.hlabel_content i (by omega)
+                      | 0 => exact ⟨_, _, rfl, rfl, hrest, hrest, rfl⟩
+                      | i + 1 =>
+                        simp only [List.getElem?_cons_succ, List.drop_succ_cons]
+                        exact hrel.hlabel_content i (by omega)
                     hframes_one := hrel.hframes_one
                     hmodule := hrel.hmodule
                     hstore_funcs := hrel.hstore_funcs
