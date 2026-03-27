@@ -636,49 +636,45 @@ private theorem convertExpr_state_determined (e : Core.Expr)
     have he := convertExprList_state_determined elems scope envVar envMap st1 st2 hid hsz
     exact ⟨by rw [he.1], he.2⟩
   | functionDef fname params body _isAsync _isGenerator =>
-    -- freshVar/addFunc depend only on nextId/funcs.size. We track agreement through let bindings.
-    simp only [Flat.convertExpr, Flat.CCState.freshVar]
-    -- innerEnvVar is the same since nextId agrees
-    have henv_name : s!"__env_{st1.nextId}" = s!"__env_{st2.nextId}" := by rw [hid]
-    rw [henv_name]
-    -- IH for body: the new states after freshVar agree
-    have ih_body := convertExpr_state_determined body params (s!"__env_{st2.nextId}")
-      (Flat.indexedMap (Flat.dedupStrings
-        (match fname with
-         | some n => ((Flat.freeVars body).filter fun v => !params.elem v).filter (· != n)
-         | none => (Flat.freeVars body).filter fun v => !params.elem v) []) 0)
+    -- freshVar/addFunc depend only on nextId/funcs.size.
+    -- Extract the common state-independent parts
+    let free := match fname with
+      | some n => ((Flat.freeVars body).filter fun v => !params.elem v).filter (· != n)
+      | none => (Flat.freeVars body).filter fun v => !params.elem v
+    let captured := Flat.dedupStrings free []
+    let innerEnvMap := Flat.indexedMap captured 0
+    let capturedExprs := captured.map (fun v =>
+      match Flat.lookupEnv envMap v with
+      | some idx => Flat.Expr.getEnv (.var envVar) idx
+      | none => Flat.Expr.var v)
+    -- freshVar gives same name since nextId agrees
+    have hfv : Flat.CCState.freshVar st1 "__env" = (s!"__env_{st1.nextId}", ⟨st1.funcs, st1.nextId + 1⟩) := rfl
+    have hfv2 : Flat.CCState.freshVar st2 "__env" = (s!"__env_{st2.nextId}", ⟨st2.funcs, st2.nextId + 1⟩) := rfl
+    -- IH for body conversion
+    have ih := convertExpr_state_determined body params (s!"__env_{st1.nextId}") innerEnvMap
       ⟨st1.funcs, st1.nextId + 1⟩ ⟨st2.funcs, st2.nextId + 1⟩
-      (by simp; omega) (by simp; exact hsz)
-    -- body' is the same
-    rw [show (Flat.convertExpr body params (s!"__env_{st2.nextId}")
-        (Flat.indexedMap (Flat.dedupStrings
-          (match fname with
-           | some n => ((Flat.freeVars body).filter fun v => !params.elem v).filter (· != n)
-           | none => (Flat.freeVars body).filter fun v => !params.elem v) []) 0)
-        ⟨st1.funcs, st1.nextId + 1⟩).fst =
-      (Flat.convertExpr body params (s!"__env_{st2.nextId}")
-        (Flat.indexedMap (Flat.dedupStrings
-          (match fname with
-           | some n => ((Flat.freeVars body).filter fun v => !params.elem v).filter (· != n)
-           | none => (Flat.freeVars body).filter fun v => !params.elem v) []) 0)
-        ⟨st2.funcs, st2.nextId + 1⟩).fst from ih_body.1]
-    -- funcName: for anonymous functions, depends on st2.nextId which agrees
-    have hid' := ih_body.2.1  -- nextId agrees after body conversion
-    have hsz' := ih_body.2.2  -- funcs.size agrees after body conversion
-    simp only [Flat.CCState.addFunc]
+      (by simp [hid]) (by simp [hsz])
+    -- Convenience: state agreement after body
+    obtain ⟨ih_fst, ih_id, ih_sz⟩ := ih
+    -- Show that the full convertExpr results are equal
+    -- convertExpr (.functionDef ...) unfolds through a chain of let-bindings
+    -- All state-independent parts are definitionally equal; state-dependent parts
+    -- are tracked by hid, hsz, and ih.
+    show (Flat.convertExpr (.functionDef fname params body _isAsync _isGenerator) scope envVar envMap st1).fst =
+         (Flat.convertExpr (.functionDef fname params body _isAsync _isGenerator) scope envVar envMap st2).fst ∧
+         CCStateAgree (Flat.convertExpr (.functionDef fname params body _isAsync _isGenerator) scope envVar envMap st1).snd
+                      (Flat.convertExpr (.functionDef fname params body _isAsync _isGenerator) scope envVar envMap st2).snd
+    simp only [Flat.convertExpr, Flat.CCState.freshVar, Flat.CCState.addFunc, hid]
     constructor
-    · -- .fst: .makeClosure funcIdx envExpr — funcIdx = snd.funcs.size
+    · -- .fst equality
       congr 1
-      · -- funcIdx equality
-        exact hsz'
-    · -- CCStateAgree on output states
-      constructor
-      · -- nextId preserved through addFunc
-        simp only [CCStateAgree] at hid' hsz'
-        exact hid'
-      · -- funcs.size: old size + 1
-        simp only [Array.size_push]
-        exact congrArg (· + 1) hsz'
+      · -- funcIdx: both = snd.funcs.size, which agree
+        simp only [ih_fst]
+        exact ih_sz
+      · -- envExpr: state-independent (same captured vars)
+        rfl
+    · -- CCStateAgree
+      exact ⟨by simp only [ih_fst]; exact ih_id, by simp only [ih_fst, Array.size_push]; omega⟩
   | throw arg =>
     simp only [Flat.convertExpr]
     have ha := convertExpr_state_determined arg scope envVar envMap st1 st2 hid hsz

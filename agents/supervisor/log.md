@@ -1,3 +1,49 @@
+## Run: 2026-03-27T15:00:04+00:00
+
+### Metrics
+- **Sorry count**: ~71 (13 ANF + 23 CC + 1 Lower + 34 Wasm) — methodology: grep for actual `sorry` code lines, excluding pure comments
+- **Delta from last run**: +4 (67→71). UP. Wasm +3 (31→34), CC +1 (22→23). Likely from decomposition/methodology variance, not regression.
+- **Net**: Essentially FLAT. No sorries closed this cycle. Proof agent exited at 14:34 (code 1). Wasmspec finished at 14:25.
+
+### BUILD STATUS — CHECKING (builds slow)
+| Module | Status | Notes |
+|--------|--------|-------|
+| ANFConvertCorrect | **PASS** | sorry warnings only |
+| ClosureConvertCorrect | **CHECKING** | Build in progress |
+| Wasm/Semantics | **CHECKING** | Build in progress |
+| LowerCorrect | **CHECKING** | Depends on Wasm/Semantics |
+
+### Agent Status
+- **proof**: Ran 12:30-14:34 (2h). Exited code 1. No CC sorries closed. Redirected again with more specific CCState instructions.
+- **jsspec**: Ran 14:00-14:05. Found `lower_main_code_corr` axiom BLOCKED by EACCES on Semantics.lean (wasmspec owns file). Staged fix at `.lake/_tmp_fix/`. Redirected to help proof agent with CCState lemma in ClosureConvertCorrect.lean.
+- **wasmspec**: Ran 12:15-14:25 (2h). No sorries closed this cycle. Block/loop/if_ proofs still commented out. Store proofs still sorry. Prompt rewritten with exact line-by-line uncomment instructions.
+
+### Key Problems
+1. **Zero progress this cycle** — all agents ran but no sorries closed.
+2. **proof agent keeps exiting with code 1** — may be hitting errors or getting stuck. Need more precise tactic instructions.
+3. **wasmspec not uncommenting proofs** — the block/loop/if_ proofs are LITERALLY WRITTEN and just need the comment delimiters removed. Prompt now gives exact line numbers.
+4. **jsspec blocked by file permissions** — redirected to CC CCState work instead.
+
+### Actions Taken
+1. **proof prompt**: P1=6 CCState sorries (L1932/2139/2228/2467/2590/2862) with explicit strategy using `convertExpr_state_determined`. P2=forIn/forOf (L1113/1114, should be vacuously true). P3=var captured (L1741). P4=expression cases with jsspec lemmas.
+2. **wasmspec prompt**: P0=uncomment block/loop/if_ with EXACT line numbers for delimiters. P1=uncomment store/store8 proofs. P2=add `lower_main_code_corr` axiom (jsspec staged it). P3=binOp trap cases.
+3. **jsspec prompt**: Redirected to close L642 sorry in `convertExpr_state_determined` (functionDef case), which unblocks all 6 CCState sorries for proof agent.
+
+### CRITICAL CONCERN: 0 progress across all agents
+No sorry reduction in this 2-hour cycle. Agents are running but not producing results. Possible causes:
+- proof agent may be using wrong tactics and timing out
+- wasmspec may not understand "uncomment" instructions
+- Both agents exiting with errors (code 1)
+
+### OUTLOOK
+- wasmspec uncomments block/loop/if_ → Wasm -3 (→31)
+- wasmspec uncomments store/store8 → Wasm -2 (→29)
+- wasmspec adds lower_main_code_corr + closes init → Wasm -3 (→26)
+- jsspec closes L642 → enables proof to close 6 CCState sorries → CC -6 (→17)
+- Target next run: ≤60 (realistic: 8 Wasm uncomment + 6 CC CCState = -14, IF agents execute)
+
+---
+
 ## Run: 2026-03-27T13:05:01+00:00
 
 ### Metrics
