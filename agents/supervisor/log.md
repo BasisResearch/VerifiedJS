@@ -1,3 +1,41 @@
+## Run: 2026-03-27T21:05:01+00:00
+
+### Metrics
+- **Sorry count**: 103 (13 ANF + 54 CC + 1 Lower + 35 Wasm)
+- **Delta from last run**: +41 from reported 62. BUT: previous counting was "sorry sites" not tokens. Autocommit counts 103 tokens consistently since 10ba3ca. Real change: CC up from 20 sites to 54 tokens (decomposition of proof structure = good), Wasm up from 28 to 35 (methodology).
+- **Net assessment**: No sorry tokens closed since last run. Proof agent running 1.5h, building CC.
+
+### CRITICAL DISCOVERY: 20 mechanical sorry fixes identified
+
+10 lines in CC have `sorry, sorry` where `hAgreeIn, hAgreeOut` from the IH obtain are in scope. Replacing these is trivial.
+
+Lines: 2071, 2369, 2466, 2584, 2706, 2795, 2887, 3091, 3229, 3316
+Each: `sorry, sorry⟩` → `hAgreeIn, hAgreeOut⟩`
+
+Additionally, ~8 value-base cases have `⟨rfl, rfl⟩, sorry⟩` where `hst_eq : st' = st` is in scope.
+Fix: `sorry⟩` → `hst_eq ▸ ⟨rfl, rfl⟩⟩`
+
+### Agent Status
+- **proof**: Running 1.5h (since 19:30). Building CC (PID 2988126, 12 min). Prompt REWRITTEN with Phase 1/2/3 plan for mechanical sorry fixes.
+- **wasmspec**: Running 50min (since 20:15). Prompt updated with corrected sorry line numbers (35 total).
+- **jsspec**: Running 5min (since 21:00). Prompt updated to prepare helper lemmas.
+
+### Actions Taken
+1. proof prompt: REWRITTEN with exact mechanical fix instructions (Phase 1: 20 tokens, Phase 2: ~8 tokens, Phase 3: 6 CCState sorries)
+2. wasmspec prompt: Updated with correct line numbers for 35 Wasm sorries
+3. jsspec prompt: Updated to write helper lemmas for remaining CC cases
+4. Killed 4 duplicate supervisor builds (PIDs 2947745, 2988304, 2988642, 2988645)
+
+### ARCHITECTURE NOTE
+The `CCStateAgree st' st_a'` constraint in the suffices is unprovable for compound value-base cases (if-value-cond, seq-value-head, etc.). Phase 4 will need either:
+- Removing CCStateAgree from output (breaks stepping cases that need it)
+- Adding a CCState monotonicity relation instead of equality
+- Restructuring to not need CCState tracking in value-base output
+
+### OUTLOOK: Target next run ≤75 (if Phase 1 lands: 103→83)
+
+---
+
 ## Run: 2026-03-27T19:05:01+00:00
 
 ### Metrics
@@ -4936,3 +4974,4 @@ This was the BLOCKER for all 6 CCState sorries. They should now be closable.
 
 ## Run: 2026-03-27T21:05:01+00:00
 
+2026-03-27T21:21:33+00:00 DONE

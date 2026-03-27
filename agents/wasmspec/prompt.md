@@ -1,42 +1,44 @@
-# wasmspec — GREAT PROGRESS: Wasm 28→24 (-4). Keep pushing.
+# wasmspec — Close store/store8 and binOp trap cases
 
-## CURRENT STATUS
-You've closed 4 Wasm sorries this session. Excellent work.
+## CURRENT STATUS: 35 Wasm sorry tokens
 
-## REMAINING PRIORITIES (24 sorries total)
+## PRIORITIES
 
-### P0: store (L9295) + store8 (L9754)
-If not already done, uncomment these proofs. They exist in comments.
+### P0: binOp trap cases (6 sorries: L9932, L9935, L9991, L10002, L10005, L10045)
+These are stack underflow and type mismatch cases. All mechanical.
 
-### P1: binOp trap cases (~L10005, L10083, L10090)
-These are mechanical. Pattern:
-- Stack underflow: `have hlen := hrel.hstack.1; rw [hstk] at hlen; simp at hlen`
-- Type mismatch: use `step?_eq_trap` + construct the EmitSimRel record
+**Pattern for stack underflow** (L9932, L9935, L10002, L10005):
+```lean
+-- Stack underflow: show step? produces trap, build EmitSimRel
+have hlen := hrel.hstack.1; rw [hstk] at hlen; simp at hlen
+-- OR for 1-element case:
+have hlen := hrel.hstack.1; rw [hstk] at hlen; omega
+```
 
-Use `lean_goal` + `lean_multi_attempt` on each.
+**Pattern for type mismatch** (L9991, L10045):
+```lean
+-- Type mismatch trap: cases on value types, show trap step, build EmitSimRel
+cases v1 <;> cases v2 <;> simp_all [withI32Bin, withI32Rel, withF64Bin]
+```
 
-### P2: if_ proof (L10443 area)
-If the if_ uncomment still has errors:
-- Use `by_cases h0 : cond = 0` instead of `match hcond : decide (cond = 0)`
-- For true branch (cond ≠ 0): use `irStep?_eq_if_true`
-- For false branch (cond = 0): use `irStep?_eq_if_false`
+Use `lean_goal` at each line, then `lean_multi_attempt` to test tactics.
+
+### P1: store (L9295) and store8 (L9754)
+Check if proof exists in comments nearby. If so, uncomment and fix.
+Key issue from previous run: `setIfInBounds` vs `set!` mismatch.
+Check current API: `lean_hover_info` on `setIfInBounds` and `Array.set!`.
+
+### P2: Other achievable targets
+- L10051: check what this sorry is about
+- L10306: check this sorry
+- L308: top-level sorry — check what it guards
 
 ### SKIP (architecturally blocked):
-- Inner step_sim (L6470-6548) — 1:N mapping, needs architecture change
-- call (L10350/L10354) — multi-frame, needs hframes_one relaxation
-- callIndirect (L10357) — skip
-- memoryGrow (L11082) — skip
-- br/brIf (L10665/L10748) — complex label unwinding
-
-### STRETCH: br (L10665) and brIf (L10748)
-If P0-P2 are done, attempt br/brIf. These need label unwinding:
-- `br label`: pop `label` frames from labels stack, jump to onBranch code
-- `brIf label`: check condition, then either br or continue
-- Key: show EmitCodeCorr is preserved through label pops
-
-## DO NOT touch:
-- Any file other than Wasm/Semantics.lean
-- The inner step_sim cases (L6470-6548)
+- Inner step_sim L6475-6553 (12 sorries) — 1:N mapping
+- call L10359/L10363 — multi-frame
+- callIndirect L10366 — skip
+- memoryGrow L11043 — skip
+- br/brIf L10626/L10709 — complex
 
 ## Build: `lake build VerifiedJS.Wasm.Semantics`
 ## Log progress to agents/wasmspec/log.md.
