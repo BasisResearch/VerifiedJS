@@ -1,79 +1,65 @@
-# proof — CLOSE 30+ SORRIES RIGHT NOW (mechanical fixes)
+# proof — CLOSE 20 SORRY TOKENS IN 60 SECONDS (then 15 more)
 
-## PHASE 1: Replace `sorry, sorry` with `hAgreeIn, hAgreeOut` (20 sorry tokens)
+## CONGRATULATIONS: Phase 3 is DONE (5/6 CCState stepping cases closed)
+You already proved: let (L1989), if (L2208), seq (L2304), binary (L2550), getIndex (L2680).
+Only while_ (L2957) remains from Phase 3.
 
-These 10 lines each have `sorry, sorry` where `hAgreeIn` and `hAgreeOut` are in scope from the IH obtain.
+## STEP 1 (DO FIRST — ONE sed COMMAND): 20 sorry tokens gone instantly
 
-**The exact edit** on each line: replace `sorry, sorry⟩` with `hAgreeIn, hAgreeOut⟩`
+The old Phase 1 line numbers shifted. Use `grep -n` to find them, then sed:
 
-Lines: **2071, 2369, 2466, 2584, 2706, 2795, 2887, 3091, 3229, 3316**
-
-Each line looks like:
-```lean
-exact ⟨congrArg Prod.fst hconv', congrArg Prod.snd hconv'⟩, sorry, sorry⟩
-```
-Replace with:
-```lean
-exact ⟨congrArg Prod.fst hconv', congrArg Prod.snd hconv'⟩, hAgreeIn, hAgreeOut⟩
+```bash
+sed -i "s/exact ⟨congrArg Prod.fst hconv', congrArg Prod.snd hconv'⟩, sorry, sorry⟩/exact ⟨congrArg Prod.fst hconv', congrArg Prod.snd hconv'⟩, hAgreeIn, hAgreeOut⟩/g" VerifiedJS/Proofs/ClosureConvertCorrect.lean
 ```
 
-DO THIS FIRST. It is 100% mechanical and closes 20 sorry tokens.
+This hits exactly 10 lines (currently L2078, L2393, L2490, L2615, L2744, L2833, L2925, L3129, L3267, L3354).
+Each has `hAgreeIn` and `hAgreeOut` in scope from the IH obtain on preceding lines.
 
-## PHASE 2: Replace `⟨rfl, rfl⟩, sorry⟩` where st' = st (simple base cases)
+**DO NOT BUILD YET** — do Step 2 first to batch fixes.
 
-For var and this cases where `hst_eq : st' = st` is in scope:
-- **L1825**: replace `sorry⟩` with `hst_eq ▸ ⟨rfl, rfl⟩⟩`
-- **L1848**: same
-- **L1876**: same
-- **L1899**: same
+## STEP 2: Fix value-base CCStateAgree sorries (single `sorry` after `⟨rfl, rfl⟩`)
 
-For cases where `hst` is `st' = (Flat.convertExpr (.lit cv) ... st).snd`:
-- **L2019** (assign value): replace `sorry⟩` with `by simp [Flat.convertExpr] at hst; subst hst; exact ⟨rfl, rfl⟩⟩`
-- **L2829** (throw value): same pattern
-- **L2956, L2979** (break/continue): `hst : st' = st` directly → `hst ▸ ⟨rfl, rfl⟩⟩`
+These lines have `⟨rfl, rfl⟩, sorry⟩`. The sorry needs CCStateAgree which is trivial for value expressions.
 
-For cases past L2919 (return/yield/await/labeled base cases):
-- **L3005, L3035, L3143, L3173, L3260**: check `hst` type, if it's `st' = st`, use `hst ▸ ⟨rfl, rfl⟩`
-- If `hst` is more complex, use `by simp [Flat.convertExpr] at hst; subst hst; exact ⟨rfl, rfl⟩`
+**Try this for each**: replace `sorry⟩` with `⟨rfl, rfl⟩⟩`
 
-## PHASE 3: The 6 CCState stepping sorries
+Current lines (use lean_goal to verify if unsure):
+- L1825, L1848, L1876, L1899 (var/this value): `sorry⟩` → `⟨rfl, rfl⟩⟩`
+- L2026, L2867 (assign/throw value): `sorry⟩` → `by simp [Flat.convertExpr]; exact ⟨rfl, rfl⟩⟩`
+- L2115, L2245 (if-value true/seq-value): use lean_goal, try `⟨rfl, rfl⟩⟩` or `by simp [CCStateAgree, Flat.convertExpr]`
+- L2137 (if-value false): `sorry, sorry⟩` — try `⟨rfl, rfl⟩, ⟨rfl, rfl⟩⟩`
+- L2339 (unary value): same as L2115
+- L2779 (deleteProp value): same pattern
+- L2994, L3017, L3043, L3073 (while/break/continue/return): same pattern
+- L3155, L3181, L3211, L3298 (yield/await/labeled): same pattern
 
-Lines: **1989, 2196, 2285, 2524, 2647, 2919**
+Use `lean_multi_attempt` on a few to confirm which tactic works.
 
-### Pattern for L1989 (let stepping):
+**NOW BUILD**: `lake build VerifiedJS.Proofs.ClosureConvertCorrect`
+
+## STEP 3: while_ CCState (L2957) — last Phase 3 case
+
+Follow the exact pattern you used for let/if/seq/binary/getIndex:
 ```lean
-· -- CCState for let stepping
-  have hsd := convertExpr_state_determined body (name :: scope) envVar envMap
-    (Flat.convertExpr init scope envVar envMap st).snd st_a' hAgreeOut.1 hAgreeOut.2
-  refine ⟨st_a, (Flat.convertExpr body (name :: scope) envVar envMap st_a').snd, ?_, hAgreeIn, hsd.2⟩
-  simp only [sc', Flat.convertExpr]
-  have h1 := congrArg Prod.fst hconv'.symm  -- sa.expr = (convertExpr sc_sub'.expr ... st_a).fst
-  have h2 := congrArg Prod.snd hconv'.symm  -- st_a' = (convertExpr sc_sub'.expr ... st_a).snd
-  rw [h1, h2, ← hsd.1]
+-- while_ unrolls to: if cond (seq body (while_ cond body)) (lit undefined)
+-- Need: convertExpr_state_determined chained for cond, body, cond-again, body-again
+have hcond := convertExpr_state_determined cond scope envVar envMap st st_a <agree...>
+-- Then chain through the compound expression
 ```
+Use lean_goal at L2957 to see the exact goal shape.
 
-Use `lean_goal` at each line to see the exact goal, then adapt this pattern.
+## STEP 4: Hard cases (only after Steps 1-3 land)
 
-### For L2196 (if stepping): same pattern but with cond/then_/else_
-### For L2285 (seq stepping): same pattern but with a/b
-### For L2524 (binary lhs stepping): same pattern but with lhs/rhs
-### For L2647 (getIndex stepping): same pattern but with obj/idx
-### For L2919 (while_): may be simpler since while_ unrolls
+Remaining after Steps 1-3:
+- L2556/2557: call/newObj (jsspec has patches in .lake/_tmp_fix/)
+- L2563/2622/2692: value sub-cases (heap reasoning)
+- L2616/2686: setProp/setIndex full cases
+- L2834/2835/2836: objectLit/arrayLit/functionDef
+- L2926: tryCatch
+- L1132/1133: forIn/forOf (skip — stubs)
+- L1797: main suffices (skip)
 
-## PHASE 4: Compound value-base sorry cases (SKIP for now)
-Lines L1932, L2108, L2130, L2228, L2315, L2410, L2741, L3117 — these need architectural analysis.
-DO NOT attempt these until Phases 1-3 are done.
-
-## DO NOT TOUCH:
-- ANFConvertCorrect, LowerCorrect, Wasm/Semantics
-- forIn/forOf at L1132/L1133
-- Full-case sorries: L1797, L2525, L2526, L2585, L2648, L2796, L2797, L2798, L2888
-- Value sub-cases: L2532, L2591, L2654
-
-## EXECUTION ORDER
-1. Phase 1 first (all 10 lines). Build. Verify.
-2. Phase 2 next (as many as you can). Build. Verify.
-3. Phase 3 if time permits.
+## DO NOT TOUCH: ANFConvertCorrect, LowerCorrect, Wasm/Semantics
 
 ## Build: `lake build VerifiedJS.Proofs.ClosureConvertCorrect`
 ## Log progress to agents/proof/log.md.
