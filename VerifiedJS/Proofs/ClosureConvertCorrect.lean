@@ -648,9 +648,17 @@ private theorem convertExpr_state_determined (e : Core.Expr)
           (match fname with
           | some n => List.filter (fun x => x != n) (List.filter (fun v => !List.elem v params) (Flat.freeVars body))
           | none => List.filter (fun v => !List.elem v params) (Flat.freeVars body)) []) 0)
-      ⟨st1.funcs, st2.nextId + 1⟩ ⟨st2.funcs, st2.nextId + 1⟩ rfl hsz
+      { funcs := st1.funcs, nextId := st2.nextId + 1 }
+      { funcs := st2.funcs, nextId := st2.nextId + 1 } rfl hsz
     obtain ⟨ih_fst, ih_id, ih_sz⟩ := ih
-    exact ⟨by rw [ih_sz], ih_id, by simp [Array.size_push]; omega⟩
+    refine ⟨?_, ih_id, ?_⟩
+    · -- .fst: .makeClosure funcIdx envExpr — only funcIdx differs
+      show Flat.Expr.makeClosure _ _ = Flat.Expr.makeClosure _ _
+      exact congrArg (Flat.Expr.makeClosure · _) ih_sz
+    · -- funcs.size: addFunc increments by 1
+      show Array.size _ = Array.size _
+      simp only [Array.size_push]
+      exact congrArg (· + 1) ih_sz
   | throw arg =>
     simp only [Flat.convertExpr]
     have ha := convertExpr_state_determined arg scope envVar envMap st1 st2 hid hsz

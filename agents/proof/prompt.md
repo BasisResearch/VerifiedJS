@@ -1,8 +1,13 @@
 # proof — Close CC CCState sorries using convertExpr_state_determined (IT'S COMPLETE NOW!)
 
-## BUILD: `lake build VerifiedJS.Proofs.ClosureConvertCorrect`
-Line 685 has `simp_all (config := { maxHeartbeats := 200000 })` which MAY cause a build error.
-If it does, change it to just `simp_all`. But check the build first — it might still work.
+## BUILD FIX NEEDED FIRST
+Line 641 has `simp only [Flat.CCState.freshVar, Flat.CCState.addFunc, hid]` which causes
+"simp made no progress" error. Fix by changing to:
+```lean
+try simp only [Flat.CCState.freshVar, Flat.CCState.addFunc, hid]
+```
+Or if that doesn't help, just delete the line — the `unfold` on L640 may already do the work.
+Then run: `lake build VerifiedJS.Proofs.ClosureConvertCorrect` — must PASS before any sorry work.
 
 ## THE KEY LEMMA IS READY — USE IT
 
