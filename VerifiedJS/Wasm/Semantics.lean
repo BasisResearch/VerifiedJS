@@ -10508,8 +10508,15 @@ theorem step_sim (irmod : IRModule) (wmod : Module) :
                     intro i hi
                     simp only [List.length_cons] at hi
                     match i with
-                    | 0 => exact ⟨_, _, rfl, rfl, hrest⟩
-                    | i + 1 => exact hrel.hlabel_content i (by omega)
+                    | 0 => exact ⟨_, _, rfl, rfl, hrest, hrest, rfl⟩
+                    | i + 1 =>
+                      simp only [List.getElem?_cons_succ]
+                      have h := hrel.hlabel_content i (by omega)
+                      obtain ⟨irLbl, wLbl, h1, h2, hE, hB, hL⟩ := h
+                      refine ⟨irLbl, wLbl, h1, h2, by simp only [List.drop_succ_cons]; exact hE, ?_, hL⟩
+                      rw [show (if irLbl.isLoop = true then i + 1 else i + 1 + 1) = (if irLbl.isLoop = true then i else i + 1) + 1 from by split <;> omega]
+                      simp only [List.drop_succ_cons]
+                      exact hB
               · -- True branch: enter then
                 have hne := h0
                 have hir := irStep?_eq_if_true s1 result then_ else_ rest cond stk hcode_ir hstk hne
@@ -10545,8 +10552,15 @@ theorem step_sim (irmod : IRModule) (wmod : Module) :
                       intro i hi
                       simp only [List.length_cons] at hi
                       match i with
-                      | 0 => exact ⟨_, _, rfl, rfl, hrest⟩
-                      | i + 1 => exact hrel.hlabel_content i (by omega)
+                      | 0 => exact ⟨_, _, rfl, rfl, hrest, hrest, rfl⟩
+                      | i + 1 =>
+                        simp only [List.getElem?_cons_succ]
+                        have h := hrel.hlabel_content i (by omega)
+                        obtain ⟨irLbl, wLbl, h1, h2, hE, hB, hL⟩ := h
+                        refine ⟨irLbl, wLbl, h1, h2, by simp only [List.drop_succ_cons]; exact hE, ?_, hL⟩
+                        rw [show (if irLbl.isLoop = true then i + 1 else i + 1 + 1) = (if irLbl.isLoop = true then i else i + 1) + 1 from by split <;> omega]
+                        simp only [List.drop_succ_cons]
+                        exact hB
             | .i64 n :: stk =>
               -- i64 on stack: type mismatch trap
               have hir : irStep? s1 = some (.trap "if condition is not i32",
