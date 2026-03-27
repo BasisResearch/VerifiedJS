@@ -9292,8 +9292,7 @@ theorem step_sim (irmod : IRModule) (wmod : Module) :
             exfalso; generalize s2.code = wcode at hc_full
             cases hc_full with | general _ _ _ _ hf _ => exact hf.elim
       | .store t offset =>
-          sorry
-          /-
+
           have hc_full : EmitCodeCorr _ (IRInstr.store t offset :: rest) s2.code := hcode_ir ▸ hrel.hcode
           match t with
           | .i32 =>
@@ -9749,10 +9748,8 @@ theorem step_sim (irmod : IRModule) (wmod : Module) :
           | .ptr =>
             exfalso; generalize s2.code = wcode at hc_full
             cases hc_full with | general _ _ _ _ hf _ => exact hf.elim
-          -/
       | .store8 offset =>
-          sorry
-          /-
+
           have hc_full : EmitCodeCorr _ (IRInstr.store8 offset :: rest) s2.code := hcode_ir ▸ hrel.hcode
           rcases hc_full.store8_inv with ⟨rest_w, hcw, hrest⟩ | hf
           · match hstk : s1.stack with
@@ -9899,7 +9896,6 @@ theorem step_sim (irmod : IRModule) (wmod : Module) :
                       hstore_funcs := hrel.hstore_funcs
                       hstore_types := hrel.hstore_types }⟩)
           · exact hf.elim
-          -/
       | .binOp t op =>
           have hc : EmitCodeCorr _ (IRInstr.binOp t op :: rest) s2.code := hcode_ir ▸ hrel.hcode
           match t with
@@ -10440,8 +10436,8 @@ theorem step_sim (irmod : IRModule) (wmod : Module) :
                     hstore_funcs := hrel.hstore_funcs
                     hstore_types := hrel.hstore_types }
           · exact hf.elim
-      | .if_ result then_ else_ => sorry
-          /-
+      | .if_ result then_ else_ =>
+
           -- if: conditional branch. Both IR and Wasm pop i32, push label, enter branch.
           have hc : EmitCodeCorr _ (IRInstr.if_ result then_ else_ :: rest) s2.code := hcode_ir ▸ hrel.hcode
           rcases hc.if_inv with ⟨bt, then_w, else_w, rest_w, hcw, hthen, helse, hrest⟩ | hf
@@ -10644,7 +10640,6 @@ theorem step_sim (irmod : IRModule) (wmod : Module) :
                       hstore_funcs := hrel.hstore_funcs
                       hstore_types := hrel.hstore_types }⟩
           · exact hf.elim
-          -/
       | .br label => sorry
           /-
           -- unconditional branch

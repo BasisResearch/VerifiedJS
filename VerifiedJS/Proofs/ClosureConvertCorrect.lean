@@ -644,12 +644,7 @@ private theorem convertExpr_state_determined (e : Core.Expr)
     have ih := convertExpr_state_determined body params _
       _ ⟨st1.funcs, st2.nextId + 1⟩ ⟨st2.funcs, st2.nextId + 1⟩ rfl hsz
     obtain ⟨ih_fst, ih_id, ih_sz⟩ := ih
-    constructor
-    · -- .fst: .makeClosure funcIdx envExpr — funcIdx = snd.funcs.size
-      congr 1
-      exact ih_sz
-    · -- CCStateAgree: nextId and funcs.size+1
-      exact ⟨ih_id, by simp [Array.size_push]; omega⟩
+    exact ⟨by rw [ih_sz], ih_id, by simp [Array.size_push]; omega⟩
   | throw arg =>
     simp only [Flat.convertExpr]
     have ha := convertExpr_state_determined arg scope envVar envMap st1 st2 hid hsz
