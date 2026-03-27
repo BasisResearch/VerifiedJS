@@ -9356,11 +9356,12 @@ theorem step_sim (irmod : IRModule) (wmod : Module) :
                   obtain ⟨wstk', hstack_eq, hlen_tail, htail⟩ := hstk_w
                   rcases hrel.hmemory with hmem_eq | ⟨hmem_none, hmem_sz⟩
                   · -- Memory exists
-                    have hwrite_w : writeLE? s1.memory (addr.toNat + offset) 4 val.toUInt64 = some mem' := hwrite
+                    have hbind : s2.store.memories[0]? >>= fun mem => writeLE? mem (addr.toNat + offset) 4 (UInt64.ofNat val.toNat) = some mem' := by
+                      rw [hmem_eq]; simp [hwrite]
                     let store' := { s2.store with memories := s2.store.memories.set! 0 mem' }
                     let s2' := { s2 with code := rest_w, stack := wstk', store := store' }
                     have hw : step? s2 = some (.silent, pushTrace s2' .silent) := by
-                      simp [step?, hcw, hstack_eq, pop2?, hmem_eq, hwrite_w]
+                      simp [step?, hcw, hstack_eq, pop2?, hbind]
                     simp only [traceToWasm]
                     refine ⟨_, hw, ?_⟩
                     exact { hemit := hrel.hemit
@@ -9371,7 +9372,7 @@ theorem step_sim (irmod : IRModule) (wmod : Module) :
                             hframes_vals := hrel.hframes_vals
                             hglobals := hrel.hglobals
                             hmemory := by
-                              left; simp only [pushTrace, Array.set!_eq_setIfInBounds, Array.setIfInBounds]
+                              left; simp only [pushTrace, Array.set!_eq_setIfInBounds, Array.getElem?_setIfInBounds]
                               have h0 : 0 < s2.store.memories.size := Array.lt_size_of_getElem? hmem_eq
                               simp [h0]
                             hmemLimits := by simp only [pushTrace]; exact hrel.hmemLimits
@@ -9508,10 +9509,12 @@ theorem step_sim (irmod : IRModule) (wmod : Module) :
                     (hstk ▸ hrel.hstack.1) (hstk ▸ hrel.hstack.2)
                   obtain ⟨wstk', hstack_eq, hlen_tail, htail⟩ := hstk_w
                   rcases hrel.hmemory with hmem_eq | ⟨hmem_none, hmem_sz⟩
-                  · let store_f64 := { s2.store with memories := s2.store.memories.set! 0 mem' }
+                  · have hbind : s2.store.memories[0]? >>= fun mem => writeLE? mem (addr.toNat + offset) 8 (floatToU64Bits val) = some mem' := by
+                      rw [hmem_eq]; simp [hwrite]
+                    let store_f64 := { s2.store with memories := s2.store.memories.set! 0 mem' }
                     let s2_f64 := { s2 with code := rest_w, stack := wstk', store := store_f64 }
                     have hw : step? s2 = some (.silent, pushTrace s2_f64 .silent) := by
-                      simp [step?, hcw, hstack_eq, pop2?, hmem_eq, hwrite]
+                      simp [step?, hcw, hstack_eq, pop2?, hbind]
                     simp only [traceToWasm]
                     refine ⟨_, hw, ?_⟩
                     exact { hemit := hrel.hemit
@@ -9522,7 +9525,7 @@ theorem step_sim (irmod : IRModule) (wmod : Module) :
                             hframes_vals := hrel.hframes_vals
                             hglobals := hrel.hglobals
                             hmemory := by
-                              left; simp only [pushTrace, Array.set!_eq_setIfInBounds, Array.setIfInBounds]
+                              left; simp only [pushTrace, Array.set!_eq_setIfInBounds, Array.getElem?_setIfInBounds]
                               have h0 : 0 < s2.store.memories.size := Array.lt_size_of_getElem? hmem_eq
                               simp [h0]
                             hmemLimits := by simp only [pushTrace]; exact hrel.hmemLimits
@@ -9654,10 +9657,12 @@ theorem step_sim (irmod : IRModule) (wmod : Module) :
                     (hstk ▸ hrel.hstack.1) (hstk ▸ hrel.hstack.2)
                   obtain ⟨wstk', hstack_eq, hlen_tail, htail⟩ := hstk_w
                   rcases hrel.hmemory with hmem_eq | ⟨hmem_none, hmem_sz⟩
-                  · let store_i64 := { s2.store with memories := s2.store.memories.set! 0 mem' }
+                  · have hbind : s2.store.memories[0]? >>= fun mem => writeLE? mem (addr.toNat + offset) 8 val = some mem' := by
+                      rw [hmem_eq]; simp [hwrite]
+                    let store_i64 := { s2.store with memories := s2.store.memories.set! 0 mem' }
                     let s2_i64 := { s2 with code := rest_w, stack := wstk', store := store_i64 }
                     have hw : step? s2 = some (.silent, pushTrace s2_i64 .silent) := by
-                      simp [step?, hcw, hstack_eq, pop2?, hmem_eq, hwrite]
+                      simp [step?, hcw, hstack_eq, pop2?, hbind]
                     simp only [traceToWasm]
                     refine ⟨_, hw, ?_⟩
                     exact { hemit := hrel.hemit
@@ -9668,7 +9673,7 @@ theorem step_sim (irmod : IRModule) (wmod : Module) :
                             hframes_vals := hrel.hframes_vals
                             hglobals := hrel.hglobals
                             hmemory := by
-                              left; simp only [pushTrace, Array.set!_eq_setIfInBounds, Array.setIfInBounds]
+                              left; simp only [pushTrace, Array.set!_eq_setIfInBounds, Array.getElem?_setIfInBounds]
                               have h0 : 0 < s2.store.memories.size := Array.lt_size_of_getElem? hmem_eq
                               simp [h0]
                             hmemLimits := by simp only [pushTrace]; exact hrel.hmemLimits
@@ -9804,10 +9809,12 @@ theorem step_sim (irmod : IRModule) (wmod : Module) :
                   (hstk ▸ hrel.hstack.1) (hstk ▸ hrel.hstack.2)
                 obtain ⟨wstk', hstack_eq, hlen_tail, htail⟩ := hstk_w
                 rcases hrel.hmemory with hmem_eq | ⟨hmem_none, hmem_sz⟩
-                · let store_s8 := { s2.store with memories := s2.store.memories.set! 0 mem' }
+                · have hbind : s2.store.memories[0]? >>= fun mem => writeLE? mem (addr.toNat + offset) 1 (UInt64.ofNat val.toNat) = some mem' := by
+                    rw [hmem_eq]; simp [hwrite]
+                  let store_s8 := { s2.store with memories := s2.store.memories.set! 0 mem' }
                   let s2_s8 := { s2 with code := rest_w, stack := wstk', store := store_s8 }
                   have hw : step? s2 = some (.silent, pushTrace s2_s8 .silent) := by
-                    simp [step?, hcw, hstack_eq, pop2?, hmem_eq, hwrite]
+                    simp [step?, hcw, hstack_eq, pop2?, hbind]
                   simp only [traceToWasm]
                   refine ⟨_, hw, ?_⟩
                   exact { hemit := hrel.hemit
@@ -9818,7 +9825,7 @@ theorem step_sim (irmod : IRModule) (wmod : Module) :
                           hframes_vals := hrel.hframes_vals
                           hglobals := hrel.hglobals
                           hmemory := by
-                            left; simp only [pushTrace, Array.set!_eq_setIfInBounds, Array.setIfInBounds]
+                            left; simp only [pushTrace, Array.set!_eq_setIfInBounds, Array.getElem?_setIfInBounds]
                             have h0 : 0 < s2.store.memories.size := Array.lt_size_of_getElem? hmem_eq
                             simp [h0]
                           hmemLimits := by simp only [pushTrace]; exact hrel.hmemLimits
