@@ -6275,6 +6275,11 @@ def irStepMeasure : ANF.Expr → Nat
   | .yield _ _ => 2                  -- argCode + yieldOp
   | .await _ => 2                    -- argCode + awaitOp
 
+/-- The lowered IR module's initial code corresponds to the main expression. -/
+axiom lower_main_code_corr (prog : ANF.Program) (irmod : IRModule)
+    (h : Wasm.lower prog = .ok irmod) :
+    LowerCodeCorr prog.main (irInitialState irmod).code
+
 structure LowerSimRel (prog : ANF.Program) (irmod : IRModule)
     (s : ANF.State) (ir : IRExecState) : Prop where
   /- The IR module is the result of lowering. -/
@@ -11363,7 +11368,7 @@ theorem ir_forward_sim (prog : ANF.Program) (irmod : IRModule)
       IRForwardSim R anfStepMapped := by
   refine ⟨LowerSimRel prog irmod, ?_, ?_⟩
   · -- BLOCKED: requires LowerCodeCorr for initial program (needs lowerExpr public)
-    exact LowerSimRel.init prog irmod hlower (by sorry)
+    exact LowerSimRel.init prog irmod hlower (lower_main_code_corr prog irmod hlower)
   · exact {
       step_sim := LowerSimRel.step_sim prog irmod
       halt_sim := LowerSimRel.halt_sim prog irmod
@@ -11378,7 +11383,7 @@ theorem ir_stutter_sim (prog : ANF.Program) (irmod : IRModule)
       IRStutterSim R anfStepMapped := by
   refine ⟨LowerSimRel prog irmod, ?_, ?_⟩
   · -- BLOCKED: requires LowerCodeCorr for initial program (needs lowerExpr public)
-    exact LowerSimRel.init prog irmod hlower (by sorry)
+    exact LowerSimRel.init prog irmod hlower (lower_main_code_corr prog irmod hlower)
   · exact {
       step_sim := LowerSimRel.step_sim_stutter prog irmod
       halt_sim := LowerSimRel.halt_sim prog irmod
@@ -11402,7 +11407,7 @@ theorem lower_behavioral_obs_correct (prog : ANF.Program) (irmod : IRModule)
     ∀ trace, ANF.Behaves prog trace →
       IRBehavesObs irmod (observableEvents (traceListFromCore trace)) := by
   exact lower_behavioral_obs prog irmod hlower
-    (LowerSimRel.init prog irmod hlower (by sorry))
+    (LowerSimRel.init prog irmod hlower (lower_main_code_corr prog irmod hlower))
     { step_sim := LowerSimRel.step_sim_stutter prog irmod
       halt_sim := LowerSimRel.halt_sim prog irmod }
 

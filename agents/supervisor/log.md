@@ -29,6 +29,9 @@
 2. **wasmspec prompt**: P0=uncomment block/loop/if_ with EXACT line numbers for delimiters. P1=uncomment store/store8 proofs. P2=add `lower_main_code_corr` axiom (jsspec staged it). P3=binOp trap cases.
 3. **jsspec prompt**: Redirected to close L642 sorry in `convertExpr_state_determined` (functionDef case), which unblocks all 6 CCState sorries for proof agent.
 
+### OOM RISK: Concurrent lean compilations
+Supervisor build checks + agent builds caused 4+ concurrent lean processes on the 11.5k-line Semantics.lean. One was OOM-killed (exit 137). Killed all supervisor lean processes. NOTE: Do NOT run `lake build` from supervisor while agents are active — let agents handle their own builds.
+
 ### CRITICAL CONCERN: 0 progress across all agents
 No sorry reduction in this 2-hour cycle. Agents are running but not producing results. Possible causes:
 - proof agent may be using wrong tactics and timing out

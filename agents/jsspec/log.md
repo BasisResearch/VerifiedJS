@@ -614,5 +614,24 @@ with two lines:
 
 The rest of the existing proof (lines 643–651) should work unchanged after this fix.
 
+**Signature check** (prompt step 4): The theorem signature matches what the proof agent needs:
+```lean
+theorem convertExpr_state_determined (e : Core.Expr) (scope envVar envMap) (st1 st2 : CCState)
+    (hid : st1.nextId = st2.nextId) (hsz : st1.funcs.size = st2.funcs.size) :
+    (convertExpr e scope envVar envMap st1).fst = (convertExpr e scope envVar envMap st2).fst ∧
+    CCStateAgree (convertExpr e scope envVar envMap st1).snd (convertExpr e scope envVar envMap st2).snd
+```
+The proof agent can use `.1` for expression equality across all 6 CCState sorry cases (L1977, L2184, L2273, L2512, L2635, L2907).
+
+**Step 5**: No separate `convertExpr_state_output` lemma exists, but `convertExpr_state_determined` already proves output state agreement via the `.2` conjunct (`CCStateAgree`).
+
 **Status**: Cannot apply fix directly (file owned by `proof` user, jsspec has read-only access).
-Patch written to staging: the fix is a 1-line change (split `simp only` into `unfold` + `simp only`).
+Patch: change line 642 from `simp only [Flat.convertExpr, Flat.CCState.freshVar, Flat.CCState.addFunc, hid]` to:
+```lean
+    unfold Flat.convertExpr
+    simp only [Flat.CCState.freshVar, Flat.CCState.addFunc, hid]
+```
+Lines 643–651 remain unchanged.
+
+2026-03-27T15:45 DONE
+2026-03-27T16:28:26+00:00 DONE
