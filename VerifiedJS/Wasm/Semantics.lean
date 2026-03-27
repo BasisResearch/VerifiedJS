@@ -9448,10 +9448,11 @@ theorem step_sim (irmod : IRModule) (wmod : Module) :
                     have h0 := hstk_rel.2 0 (by simp)
                     simp [hstk_w] at h0; cases h0
                     have h1 := hstk_rel.2 1 (by simp)
-                    simp [hstk_w] at h1; cases h1
+                    simp [hstk_w] at h1
+                    cases h1 <;> (
                     have hw : step? s2 = some (.trap ("type mismatch in i32.store"),
                         { s2 with code := [], trace := s2.trace ++ [.trap ("type mismatch in i32.store")] }) := by
-                      simp only [step?, hcw, hstk_w, pop2?, trapState, pushTrace]; try rfl; sorry
+                      simp only [step?, hcw, hstk_w, pop2?, trapState, pushTrace]
                     simp only [traceToWasm]; exact ⟨_, hw,
                       { hemit := hrel.hemit, hcode := .nil, hstack := by rw [← hstk]; exact hrel.hstack,
                         hframes_len := hrel.hframes_len, hframes_locals := hrel.hframes_locals,
@@ -9461,7 +9462,7 @@ theorem step_sim (irmod : IRModule) (wmod : Module) :
                         hframes_one := hrel.hframes_one
                         hmodule := hrel.hmodule
                         hstore_funcs := hrel.hstore_funcs
-                        hstore_types := hrel.hstore_types }⟩)
+                        hstore_types := hrel.hstore_types }⟩))
             · exact hf.elim
           | .f64 =>
             rcases hc_full.store_f64_inv with ⟨rest_w, hcw, hrest⟩ | hf
@@ -9601,7 +9602,8 @@ theorem step_sim (irmod : IRModule) (wmod : Module) :
                     have h0 := hstk_rel.2 0 (by simp)
                     simp [hstk_w] at h0; cases h0
                     have h1 := hstk_rel.2 1 (by simp)
-                    simp [hstk_w] at h1; cases h1
+                    simp [hstk_w] at h1
+                    cases h1 <;> (
                     have hw : step? s2 = some (.trap ("type mismatch in f64.store"),
                         { s2 with code := [], trace := s2.trace ++ [.trap ("type mismatch in f64.store")] }) := by
                       simp only [step?, hcw, hstk_w, pop2?, trapState, pushTrace]
@@ -9614,7 +9616,7 @@ theorem step_sim (irmod : IRModule) (wmod : Module) :
                         hframes_one := hrel.hframes_one
                         hmodule := hrel.hmodule
                         hstore_funcs := hrel.hstore_funcs
-                        hstore_types := hrel.hstore_types }⟩)
+                        hstore_types := hrel.hstore_types }⟩))
             · exact hf.elim
           | .i64 =>
             rcases hc_full.store_i64_inv with ⟨rest_w, hcw, hrest⟩ | hf
@@ -9754,7 +9756,8 @@ theorem step_sim (irmod : IRModule) (wmod : Module) :
                     have h0 := hstk_rel.2 0 (by simp)
                     simp [hstk_w] at h0; cases h0
                     have h1 := hstk_rel.2 1 (by simp)
-                    simp [hstk_w] at h1; cases h1
+                    simp [hstk_w] at h1
+                    cases h1 <;> (
                     have hw : step? s2 = some (.trap ("type mismatch in i64.store"),
                         { s2 with code := [], trace := s2.trace ++ [.trap ("type mismatch in i64.store")] }) := by
                       simp only [step?, hcw, hstk_w, pop2?, trapState, pushTrace]
@@ -9767,7 +9770,7 @@ theorem step_sim (irmod : IRModule) (wmod : Module) :
                         hframes_one := hrel.hframes_one
                         hmodule := hrel.hmodule
                         hstore_funcs := hrel.hstore_funcs
-                        hstore_types := hrel.hstore_types }⟩)
+                        hstore_types := hrel.hstore_types }⟩))
             · exact hf.elim
           | .ptr =>
             exfalso; generalize s2.code = wcode at hc_full
@@ -9911,7 +9914,8 @@ theorem step_sim (irmod : IRModule) (wmod : Module) :
                   have h0 := hstk_rel.2 0 (by simp)
                   simp [hstk_w] at h0; cases h0
                   have h1 := hstk_rel.2 1 (by simp)
-                  simp [hstk_w] at h1; cases h1
+                  simp [hstk_w] at h1
+                  cases h1 <;> (
                   have hw : step? s2 = some (.trap ("type mismatch in i32.store"),
                       { s2 with code := [], trace := s2.trace ++ [.trap ("type mismatch in i32.store")] }) := by
                     simp only [step?, hcw, hstk_w, pop2?, trapState, pushTrace]
@@ -9924,7 +9928,7 @@ theorem step_sim (irmod : IRModule) (wmod : Module) :
                       hframes_one := hrel.hframes_one
                       hmodule := hrel.hmodule
                       hstore_funcs := hrel.hstore_funcs
-                      hstore_types := hrel.hstore_types }⟩)
+                      hstore_types := hrel.hstore_types }⟩))
           · exact hf.elim
       | .binOp t op =>
           have hc : EmitCodeCorr _ (IRInstr.binOp t op :: rest) s2.code := hcode_ir ▸ hrel.hcode
