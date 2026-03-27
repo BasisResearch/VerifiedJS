@@ -881,3 +881,58 @@ Updated `.lake/_tmp_fix/VerifiedJS/Proofs/cc_call_patches.lean`:
 
 ## Run: 2026-03-27T23:30:02+00:00
 
+### Priority 0: CCStateAgree helpers — DONE (no sorry!)
+Staged at `.lake/_tmp_fix/VerifiedJS/Proofs/cc_agree_helpers.lean`:
+- `CCStateAgree_refl` — `⟨rfl, rfl⟩` (reflexivity)
+- `CCStateAgree_symm` — symmetry
+- `CCStateAgree_trans` — transitivity
+- `convertExpr_lit_snd'` — literal preserves state @[simp]
+- `convertExpr_lit_fst'` — literal produces Flat literal @[simp]
+- `convertExpr_lit_CCStateAgree` — lit output agrees with input
+- `convertExpr_this_CCStateAgree` — this output agrees with input
+- `convertExpr_var_CCStateAgree` — var output agrees with input
+- All compile cleanly: `lake env lean .lake/_tmp_fix/VerifiedJS/Proofs/cc_agree_helpers.lean` PASS.
+
+### Priority 1: Value-base sorry pattern analysis — DONE
+Tested all sorry sites from prompt (line numbers shifted from original):
+- **L1797** (var captured): NOT ⟨rfl, rfl⟩ — needs full env lookup correspondence
+- **L2116** (if true CCState): NOT ⟨rfl, rfl⟩ — CCStateAgree st_else st_then, false in general
+- **L2138 1st** (if false CCState): NOT ⟨rfl, rfl⟩ — CCStateAgree st st_then, false in general
+- **L2138 2nd** (if false CCState): **YES ⟨rfl, rfl⟩** — CCStateAgree st_else st_else, trivially reflexive
+- **L2958** (while_ CCState): NOT ⟨rfl, rfl⟩ — needs chained convertExpr_state_determined
+
+Only **1 of 5** tested sorry sites closes with ⟨rfl, rfl⟩ (L2138 2nd sorry).
+Full analysis staged at `.lake/_tmp_fix/VerifiedJS/Proofs/cc_value_patches.lean`.
+
+**PATCH for L2138**: Replace 2nd `sorry` with `⟨rfl, rfl⟩`:
+```lean
+simp [sc', Flat.convertExpr], sorry, ⟨rfl, rfl⟩⟩
+```
+
+### Priority 2: newObj/functionDef design issues — DOCUMENTED
+Staged at `.lake/_tmp_fix/VerifiedJS/Proofs/design_issues.md`:
+1. **newObj**: Core evaluates atomically (1 step), Flat steps sub-expressions (N steps).
+   - RECOMMENDED FIX: Change Core.step? for newObj to step sub-expressions first (Option A, ~20 lines).
+2. **functionDef**: Core returns `.function idx` in 1 step, Flat builds `makeClosure/makeEnv` over 2+ steps.
+   - RECOMMENDED FIX: Weaken conversion relation to allow bounded evaluation distance (Option D).
+
+### Build: `lake build VerifiedJS.Core.Semantics`: **PASS** (0 errors).
+
+### Staging files:
+- `.lake/_tmp_fix/VerifiedJS/Proofs/cc_agree_helpers.lean` — NEW: CCStateAgree helpers (verified)
+- `.lake/_tmp_fix/VerifiedJS/Proofs/cc_value_patches.lean` — NEW: sorry analysis + L2138 patch
+- `.lake/_tmp_fix/VerifiedJS/Proofs/design_issues.md` — NEW: newObj/functionDef design issues
+- `.lake/_tmp_fix/VerifiedJS/Proofs/cc_call_patches.lean` — existing: call/newObj patches
+- `.lake/_tmp_fix/VerifiedJS/Proofs/cc_expr_patches.lean` — existing: setProp/setIndex/tryCatch patches
+- `.lake/_tmp_fix/VerifiedJS/Proofs/cc_st_lemma.lean` — existing: convertExpr_preserves_st lemmas
+
+### ACTION NEEDED by proof agent:
+1. Install CCStateAgree helpers from cc_agree_helpers.lean (after L545 in ClosureConvertCorrect.lean)
+2. Replace L2138 2nd sorry with `⟨rfl, rfl⟩`
+3. Decide on newObj fix (recommend changing Core semantics, see design_issues.md)
+4. Address remaining CCState-threading sorries (L2116, L2138 1st, L2958) — all need either:
+   - Weakened CCStateAgree (≤ instead of =), or
+   - Restructured witness choices using convertExpr_state_determined
+
+2026-03-27T23:45 DONE
+2026-03-27T23:38:04+00:00 DONE
