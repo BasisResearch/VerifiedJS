@@ -12671,6 +12671,40 @@ theorem step_tryCatch_step_body_log (body : Expr) (catchParam : VarName) (catchB
       some (.log msg, pushTrace { sb with expr := .tryCatch sb.expr catchParam catchBody finally_, trace := trace } (.log msg)) := by
   simp [step?, hbody, hstep]
 
+/-- step? on tryCatch with non-value body: any non-error step wraps in tryCatch. -/
+theorem step_tryCatch_step_body_nonError (body : Expr) (catchParam : VarName) (catchBody : Expr)
+    (finally_ : Option Expr) (env : Env) (heap : Heap)
+    (trace : List TraceEvent) (funcs : Array FuncClosure)
+    (cs : List (List (VarName × Value)))
+    (hbody : exprValue? body = none)
+    (t : TraceEvent) (sb : State)
+    (hstep : step? ⟨body, env, heap, trace, funcs, cs⟩ = some (t, sb))
+    (hne : ∀ msg, t ≠ .error msg) :
+    step? ⟨.tryCatch body catchParam catchBody finally_, env, heap, trace, funcs, cs⟩ =
+      some (t, pushTrace { sb with expr := .tryCatch sb.expr catchParam catchBody finally_, trace := trace } t) := by
+  simp [step?, hbody, hstep]
+  cases t with
+  | silent => simp [pushTrace]
+  | log msg => simp [pushTrace]
+  | error msg => exact absurd rfl (hne msg)
+
+/-- step? on tryCatch with non-value body: error step activates catch (non-callframe). -/
+theorem step_tryCatch_step_body_error (body : Expr) (catchParam : VarName) (catchBody : Expr)
+    (finally_ : Option Expr) (env : Env) (heap : Heap)
+    (trace : List TraceEvent) (funcs : Array FuncClosure)
+    (cs : List (List (VarName × Value)))
+    (hbody : exprValue? body = none)
+    (hncf : catchParam ≠ "__call_frame_return__")
+    (msg : String) (sb : State)
+    (hstep : step? ⟨body, env, heap, trace, funcs, cs⟩ = some (.error msg, sb)) :
+    step? ⟨.tryCatch body catchParam catchBody finally_, env, heap, trace, funcs, cs⟩ =
+      some (.error msg,
+        pushTrace { sb with
+          expr := match finally_ with | some fin => .seq catchBody fin | none => catchBody,
+          env := sb.env.extend catchParam (.string msg),
+          trace := trace } (.error msg)) := by
+  simp [step?, hbody, hstep, hncf, pushTrace]
+
 /-- Steps inversion: from [t] there is exactly one step. -/
 theorem Steps_single_inv {s1 s2 : State} {t : TraceEvent}
     (h : Steps s1 [t] s2) : Step s1 t s2 := by

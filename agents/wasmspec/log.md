@@ -1,3 +1,37 @@
+## Run: 2026-03-27T17:15:01+00:00
+
+### TASK: Uncomment if_ proof, attempt store/store8 and binOp traps
+
+**Build status at start:** PASS (sorry warnings only, 2 declarations)
+**Build status at end:** PASS (sorry warnings only, 2 declarations)
+**Sorry count:** 36 (down from 37 — 1 sorry closed: if_)
+
+### Completed
+
+1. **if_ proof uncommented + fixed** (1 sorry closed):
+   - Fixed `match hcond : decide (cond = 0) with | isTrue/isFalse` → `by_cases h0 : cond = 0`
+   - Fixed `obtain ⟨_, _, h1, h2, hvc⟩` → `cases hval_corr with` (simp resolves existentials)
+   - Fixed `⟨_, _, rfl, rfl, hrest⟩` → `⟨_, _, rfl, rfl, hrest, hrest, rfl⟩` (7-component hlabel_content)
+   - Added i+1 label shifting (drop_succ_cons from block proof)
+   - Converted trap records to tuple `refine ⟨_, hw, ⟨...⟩⟩` style
+   - Used `cond` instead of `n` (cases unifies, doesn't introduce new var)
+
+### Key fix patterns
+
+- **`decide` API change**: `isTrue/isFalse` → `by_cases`
+- **simp resolves existentials**: `∃ irv wv, ...` becomes `IRValueToWasmValue ...` after simp
+- **hlabel_content 7-tuple**: onExit, onBranch, isLoop all needed
+- **i+1 label shifting**: `List.getElem?_cons_succ` + `List.drop_succ_cons`
+
+### Attempted but reverted
+
+- **store/store8**: `setIfInBounds` vs `set!` mismatch in step? simp
+- **binOp traps**: Focus bullets don't work in `all_goals`; hstack/EmitCodeCorr.nil type inference fails in term-mode `exact`
+
+2026-03-27T18:30:00+00:00 DONE
+
+---
+
 ## Run: 2026-03-27T15:19:06+00:00
 
 ### TASK: Uncomment block/loop proofs, add lower_main_code_corr axiom, close init sorries
@@ -3406,3 +3440,7 @@ test_write
 
 2026-03-27T18:15:30+00:00 SKIP: already running
 2026-03-27T19:15:01+00:00 SKIP: already running
+2026-03-27T20:13:57+00:00 DONE
+
+## Run: 2026-03-27T20:15:01+00:00
+

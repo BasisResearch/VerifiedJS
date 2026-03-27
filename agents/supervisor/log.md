@@ -4889,3 +4889,47 @@ Wasm went 34→44. If these are decomposed monolithic sorries, that's structural
 
 ## Run: 2026-03-27T20:05:01+00:00
 
+
+### Metrics
+- **Sorry count**: 58 (13 ANF + 20 CC + 24 Wasm + 1 Lower)
+- **Delta from last run**: -4 (62→58). Wasm 28→24 (-4 closed by wasmspec). CC/ANF/Lower unchanged.
+- **Net assessment**: Good progress. Wasm agent productive. CC suffices refactor landed but CCState sorries not yet closed.
+
+### KEY DEVELOPMENT: Suffices refactor is DONE
+The proof agent completed the CCStateAgree suffices refactor (L1748-1775):
+- scope/st/st' moved from existential to universal
+- CCStateAgree added to output
+- Intro pattern updated
+This was the BLOCKER for all 6 CCState sorries. They should now be closable.
+
+### Agent Status
+- **proof**: Running since 19:30 (~35min). Suffices refactor COMPLETE. Now needs to close 6 CCState sorries (L1988, L2195, L2284, L2523, L2646, L2918). Prompt updated with exact closure pattern using convertExpr_state_determined + CCStateAgree.
+- **jsspec**: Running since 20:00 (~5min). Still cannot write to CC file (owned by proof). Previous patches ready in .lake/_tmp_fix. Redirected to analyze call/newObj/objectLit/arrayLit/functionDef/tryCatch cases and prepare more patches.
+- **wasmspec**: Running since 17:15 (~2.75h). Closed 4 Wasm sorries! Prompt updated to push on store/store8/binOp remaining.
+
+### CC Sorry Breakdown (20 total)
+- 6 CCState sorries: L1988, L2195, L2284, L2523, L2646, L2918 → proof agent (NOW UNBLOCKED by suffices refactor)
+- 1 var captured: L1797 → proof agent
+- 2 forIn/forOf: L1132, L1133 → theorem false (stubs)
+- 2 call/newObj: L2524, L2525 → jsspec preparing patches
+- 3 value sub-cases: L2531, L2590, L2653 → heap reasoning, deferred
+- 4 expression cases: L2584 (setProp), L2647 (setIndex), L2795-2797 (objectLit/arrayLit/functionDef), L2887 (tryCatch) → jsspec patches ready for setProp/setIndex
+- 1 main suffices: none (RESOLVED)
+
+### Wasm Sorry Breakdown (24 total, down from 28)
+- 12 inner step_sim: L6470-6548 → architecturally blocked
+- Remaining ~12: store, store8, binOp trap, call, callIndirect, br, brIf, memoryGrow
+
+### Actions Taken
+1. proof prompt: Updated with CCState sorry closure pattern (convertExpr_state_determined + CCStateAgree)
+2. jsspec prompt: Redirected to call/newObj/expression case analysis and patch preparation
+3. wasmspec prompt: Acknowledged -4 progress, pushed on store/binOp/if_ remaining
+4. Killed supervisor lake build (PID 2947472) to free memory
+
+### OUTLOOK: Target next run ≤52
+- proof closes 6 CCState sorries → CC 20→14 (aggressive but now unblocked)
+- wasmspec closes 2-3 more → Wasm 24→21
+- **Target: ≤52** (realistic: 54 if proof agent closes 4 of 6)
+
+2026-03-27T20:15:00+00:00 DONE
+2026-03-27T20:12:44+00:00 DONE

@@ -1,54 +1,55 @@
-# jsspec — Close CC expression-level sorries (setProp, setIndex, objectLit, arrayLit, functionDef, tryCatch)
+# jsspec — Prepare CC expression patches + analyze call/newObj cases
 
-## STATUS: convertExpr_state_determined is COMPLETE ✓
+## STATUS: You CANNOT write to ClosureConvertCorrect.lean (owned by proof agent)
+Your patches in `.lake/_tmp_fix/VerifiedJS/Proofs/cc_expr_patches.lean` for setProp/setIndex are ready.
+The proof agent has been instructed to install them.
 
-## YOUR TASK: Close expression-level CC sorries
+## YOUR TASK: Analyze and document remaining expression cases
 
-The proof agent is doing the suffices CCStateAgree refactor (see proof/prompt.md for details).
-YOU should work on the expression cases that are full sorry (not CCState-related).
+### Priority 1: call (L2524) and newObj (L2525)
 
-### Target sorries in ClosureConvertCorrect.lean:
+These are full sorry expressions. Analyze the goal and write complete proof patches:
 
-1. **L2583: setProp** — `| setProp obj prop value => sorry`
-   - Read L2560-2600 for context
-   - Pattern: unfold convertExpr for setProp, show the obj sub-expression steps similarly to getProp/binary
-   - Use helper lemmas `Flat_step?_setProp_obj_step` and `Core_step?_setProp_obj_step` if they exist
-   - `lean_goal` at L2583 to see the goal
+1. Read ClosureConvertCorrect.lean L2524-2525 context
+2. Use `lean_goal` to check what the exact goal is at those lines
+3. Read how `Flat.convertExpr` handles `.call f args`:
+   - It converts f and each arg, producing a flat call
+   - The stepping logic: if f is not a value, step f; else if some arg is not a value, step that arg; else execute the call
+4. Check if helper lemmas `Flat_step?_call_*` and `Core_step?_call_*` exist
+5. Write the proof patch to `.lake/_tmp_fix/VerifiedJS/Proofs/cc_call_patches.lean`
 
-2. **L2646: setIndex** — `| setIndex obj idx value => sorry`
-   - Similar to setProp but with index
+### Priority 2: objectLit (L2795), arrayLit (L2796), functionDef (L2797)
 
-3. **L2794: objectLit** — `| objectLit props => sorry`
-   - Read L2780-2810 for context
-   - May need list-based conversion reasoning
+1. **functionDef**: This should be simple — `functionDef` is a value in Core, so `Core.exprValue?` returns `some`. The Flat side converts to a closure allocation. Check if `Flat.step?` on the converted form returns `none` (contradiction with hstep) or if it allocates.
 
-4. **L2795: arrayLit** — `| arrayLit elems => sorry`
-   - Similar to objectLit
+2. **objectLit/arrayLit**: These involve list-based conversion (`convertExprList`/`convertPropList`). Check the Flat stepping for these — do they step the first non-value element?
 
-5. **L2796: functionDef** — `| functionDef fname params body isAsync isGen => sorry`
-   - This is a VALUE in Core (functionDef evaluates to itself/closure)
-   - So `Flat.step?` on the converted form should be `none` → contradiction with `hstep`
-   - Check if `convertExpr (.functionDef ...)` produces a value (like `.lit`)
+3. Write patches to `.lake/_tmp_fix/VerifiedJS/Proofs/cc_expr2_patches.lean`
 
-6. **L2886: tryCatch** — `| tryCatch body catchParam catchBody finally_ => sorry`
-   - Read L2870-2900 for context
+### Priority 3: tryCatch (L2887)
 
-### Approach for each:
-1. `lean_goal` at the sorry line to see the exact goal state
-2. Read surrounding proven cases (getProp at L2525, binary at L2460) as templates
-3. Try `lean_multi_attempt` with candidate tactics
-4. If complex, decompose with `constructor`/`refine`
+Read the tryCatch conversion and stepping. This is complex (error propagation). Document:
+- What `Flat.convertExpr (.tryCatch body catchParam catchBody finally_)` produces
+- What `Flat.step?` does on the converted form
+- What `Core.step?` does on `.tryCatch`
+- Write a skeleton proof or identify which sub-cases are easy vs hard
 
-### IMPORTANT: The suffices is being refactored by proof agent
-The proof agent may change the structure of the suffices (moving scope/st/st' from existential to universal, adding CCStateAgree). If you see new type errors in the expression cases after the proof agent's changes, adapt:
-- The input `hconv` will change from `⟨scope, st, st', hconv⟩` to direct `hconv`
-- The output needs `⟨st_a, st_a', hconv_new, ⟨rfl, rfl⟩, ⟨rfl, rfl⟩⟩` for non-stepping cases
+## PATCH FORMAT
 
-### What NOT to do:
-- Do NOT touch CCState sorries (L1987, L2194, L2283, L2522, L2645, L2917) — proof agent owns those
-- Do NOT touch the suffices statement — proof agent is refactoring it
+For each patch, write:
+```lean
+-- PATCH for L<line>: <case name>
+-- Replace: sorry
+-- With:
+<exact proof text>
+```
+
+Include all needed helper lemmas with their full statements and proofs.
+
+## What NOT to do:
+- Do NOT try to edit ClosureConvertCorrect.lean (you don't have write access)
 - Do NOT touch ANF, Wasm, or Lower files
-- Do NOT break the build
+- Do NOT start a lake build of the full project
 
-## Build: `lake build VerifiedJS.Proofs.ClosureConvertCorrect`
+## Build (for checking helpers): `lake build VerifiedJS.Core.Semantics`
 ## Log progress to agents/jsspec/log.md.
