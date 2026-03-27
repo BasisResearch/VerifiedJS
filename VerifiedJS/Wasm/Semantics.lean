@@ -9292,8 +9292,6 @@ theorem step_sim (irmod : IRModule) (wmod : Module) :
             exfalso; generalize s2.code = wcode at hc_full
             cases hc_full with | general _ _ _ _ hf _ => exact hf.elim
       | .store t offset =>
-          sorry
-          /-
           have hc_full : EmitCodeCorr _ (IRInstr.store t offset :: rest) s2.code := hcode_ir ▸ hrel.hcode
           match t with
           | .i32 =>
@@ -9749,10 +9747,7 @@ theorem step_sim (irmod : IRModule) (wmod : Module) :
           | .ptr =>
             exfalso; generalize s2.code = wcode at hc_full
             cases hc_full with | general _ _ _ _ hf _ => exact hf.elim
-          -/
       | .store8 offset =>
-          sorry
-          /-
           have hc_full : EmitCodeCorr _ (IRInstr.store8 offset :: rest) s2.code := hcode_ir ▸ hrel.hcode
           rcases hc_full.store8_inv with ⟨rest_w, hcw, hrest⟩ | hf
           · match hstk : s1.stack with
@@ -9899,7 +9894,6 @@ theorem step_sim (irmod : IRModule) (wmod : Module) :
                       hstore_funcs := hrel.hstore_funcs
                       hstore_types := hrel.hstore_types }⟩)
           · exact hf.elim
-          -/
       | .binOp t op =>
           have hc : EmitCodeCorr _ (IRInstr.binOp t op :: rest) s2.code := hcode_ir ▸ hrel.hcode
           match t with
@@ -10585,7 +10579,7 @@ theorem step_sim (irmod : IRModule) (wmod : Module) :
                     hrel.hframes_vals, hrel.hglobals, hrel.hmemory, hrel.hmemLimits, hrel.hmemory_aligned, hrel.hmemory_nonempty,
                     hrel.hlabels, ?_, hrel.hlabel_content, hrel.hframes_one, hrel.hmodule, hrel.hstore_funcs, hrel.hstore_types⟩⟩
                   · exact EmitCodeCorr.nil
-                  · simp [hstk, hs2]
+                  · exact hrel.hstack
                   · exact hhalt_of_structural (@EmitCodeCorr.nil (s1.labels.map (·.name))) hrel.hlabels
             | .f64 n :: stk =>
               -- f64 on stack: type mismatch trap
@@ -10611,7 +10605,7 @@ theorem step_sim (irmod : IRModule) (wmod : Module) :
                     hrel.hframes_vals, hrel.hglobals, hrel.hmemory, hrel.hmemLimits, hrel.hmemory_aligned, hrel.hmemory_nonempty,
                     hrel.hlabels, ?_, hrel.hlabel_content, hrel.hframes_one, hrel.hmodule, hrel.hstore_funcs, hrel.hstore_types⟩⟩
                   · exact EmitCodeCorr.nil
-                  · simp [hstk, hs2]
+                  · exact hrel.hstack
                   · exact hhalt_of_structural (@EmitCodeCorr.nil (s1.labels.map (·.name))) hrel.hlabels
           · exact hf.elim
       | .br label => sorry
