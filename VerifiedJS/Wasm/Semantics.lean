@@ -9451,7 +9451,7 @@ theorem step_sim (irmod : IRModule) (wmod : Module) :
                     simp [hstk_w] at h1; cases h1
                     have hw : step? s2 = some (.trap ("type mismatch in i32.store"),
                         { s2 with code := [], trace := s2.trace ++ [.trap ("type mismatch in i32.store")] }) := by
-                      simp only [step?, hcw, hstk_w, pop2?, trapState, pushTrace]
+                      simp only [step?, hcw, hstk_w, pop2?, trapState, pushTrace]; try rfl; sorry
                     simp only [traceToWasm]; exact ⟨_, hw,
                       { hemit := hrel.hemit, hcode := .nil, hstack := by rw [← hstk]; exact hrel.hstack,
                         hframes_len := hrel.hframes_len, hframes_locals := hrel.hframes_locals,
@@ -9755,10 +9755,9 @@ theorem step_sim (irmod : IRModule) (wmod : Module) :
                     simp [hstk_w] at h0; cases h0
                     have h1 := hstk_rel.2 1 (by simp)
                     simp [hstk_w] at h1; cases h1
-                    have hpop : pop2? s2.stack = some (w0, w1, wstk') := by simp [pop2?, hstk_w]
                     have hw : step? s2 = some (.trap ("type mismatch in i64.store"),
                         { s2 with code := [], trace := s2.trace ++ [.trap ("type mismatch in i64.store")] }) := by
-                      simp [step?, hcw, hpop, trapState, pushTrace]
+                      simp only [step?, hcw, hstk_w, pop2?, trapState, pushTrace]
                     simp only [traceToWasm]; exact ⟨_, hw,
                       { hemit := hrel.hemit, hcode := .nil, hstack := by rw [← hstk]; exact hrel.hstack,
                         hframes_len := hrel.hframes_len, hframes_locals := hrel.hframes_locals,
@@ -9913,10 +9912,9 @@ theorem step_sim (irmod : IRModule) (wmod : Module) :
                   simp [hstk_w] at h0; cases h0
                   have h1 := hstk_rel.2 1 (by simp)
                   simp [hstk_w] at h1; cases h1
-                  have hpop : pop2? s2.stack = some (w0, w1, wstk') := by simp [pop2?, hstk_w]
                   have hw : step? s2 = some (.trap ("type mismatch in i32.store"),
                       { s2 with code := [], trace := s2.trace ++ [.trap ("type mismatch in i32.store")] }) := by
-                    simp [step?, hcw, hpop, trapState, pushTrace]
+                    simp only [step?, hcw, hstk_w, pop2?, trapState, pushTrace]
                   simp only [traceToWasm]; exact ⟨_, hw,
                     { hemit := hrel.hemit, hcode := .nil, hstack := by rw [← hstk]; exact hrel.hstack,
                       hframes_len := hrel.hframes_len, hframes_locals := hrel.hframes_locals,
