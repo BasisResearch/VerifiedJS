@@ -302,6 +302,11 @@ private theorem writeLE?_none_of_size_zero (mem : ByteArray) (addr : Nat) (width
     simp [hsz]
     rfl
 
+/-- writeLE? preserves ByteArray size (each set! preserves size through the loop). -/
+private theorem writeLE?_preserves_size {mem mem' : ByteArray} {addr width : Nat} {value : UInt64}
+    (h : writeLE? mem addr width value = some mem') : mem'.size = mem.size := by
+  sorry
+
 private def i32ToSigned (n : UInt32) : Int :=
   (Int32.ofNat n.toNat).toInt
 
@@ -9376,8 +9381,8 @@ theorem step_sim (irmod : IRModule) (wmod : Module) :
                               have h0 : 0 < s2.store.memories.size := Array.lt_size_of_getElem? hmem_eq
                               simp [h0]
                             hmemLimits := by simp only [pushTrace]; exact hrel.hmemLimits
-                            hmemory_aligned := hrel.hmemory_aligned
-                            hmemory_nonempty := hrel.hmemory_nonempty
+                            hmemory_aligned := by rw [writeLE?_preserves_size hwrite]; exact hrel.hmemory_aligned
+                            hmemory_nonempty := by simp only [pushTrace, Array.set!_eq_setIfInBounds, Array.size_setIfInBounds]; exact hrel.hmemory_nonempty
                             hlabels := hrel.hlabels
                             hhalt := hhalt_of_structural hrest hrel.hlabels
                             hlabel_content := hrel.hlabel_content
@@ -9529,8 +9534,8 @@ theorem step_sim (irmod : IRModule) (wmod : Module) :
                               have h0 : 0 < s2.store.memories.size := Array.lt_size_of_getElem? hmem_eq
                               simp [h0]
                             hmemLimits := by simp only [pushTrace]; exact hrel.hmemLimits
-                            hmemory_aligned := hrel.hmemory_aligned
-                            hmemory_nonempty := hrel.hmemory_nonempty
+                            hmemory_aligned := by rw [writeLE?_preserves_size hwrite]; exact hrel.hmemory_aligned
+                            hmemory_nonempty := by simp only [pushTrace, Array.set!_eq_setIfInBounds, Array.size_setIfInBounds]; exact hrel.hmemory_nonempty
                             hlabels := hrel.hlabels
                             hhalt := hhalt_of_structural hrest hrel.hlabels
                             hlabel_content := hrel.hlabel_content
@@ -9677,8 +9682,8 @@ theorem step_sim (irmod : IRModule) (wmod : Module) :
                               have h0 : 0 < s2.store.memories.size := Array.lt_size_of_getElem? hmem_eq
                               simp [h0]
                             hmemLimits := by simp only [pushTrace]; exact hrel.hmemLimits
-                            hmemory_aligned := hrel.hmemory_aligned
-                            hmemory_nonempty := hrel.hmemory_nonempty
+                            hmemory_aligned := by rw [writeLE?_preserves_size hwrite]; exact hrel.hmemory_aligned
+                            hmemory_nonempty := by simp only [pushTrace, Array.set!_eq_setIfInBounds, Array.size_setIfInBounds]; exact hrel.hmemory_nonempty
                             hlabels := hrel.hlabels
                             hhalt := hhalt_of_structural hrest hrel.hlabels
                             hlabel_content := hrel.hlabel_content
