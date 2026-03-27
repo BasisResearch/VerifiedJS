@@ -641,8 +641,14 @@ private theorem convertExpr_state_determined (e : Core.Expr)
     simp only [Flat.CCState.freshVar, Flat.CCState.addFunc, hid]
     -- IH for body conversion: states { funcs := st1.funcs, nextId := st2.nextId + 1 } and
     -- { funcs := st2.funcs, nextId := st2.nextId + 1 } agree on nextId (rfl) and funcs.size (hsz).
-    have ih := convertExpr_state_determined body params _
-      _ ⟨st1.funcs, st2.nextId + 1⟩ ⟨st2.funcs, st2.nextId + 1⟩ rfl hsz
+    have ih := convertExpr_state_determined body params
+      (toString "__env" ++ toString "_" ++ toString st2.nextId)
+      (Flat.indexedMap
+        (Flat.dedupStrings
+          (match fname with
+          | some n => List.filter (fun x => x != n) (List.filter (fun v => !List.elem v params) (Flat.freeVars body))
+          | none => List.filter (fun v => !List.elem v params) (Flat.freeVars body)) []) 0)
+      ⟨st1.funcs, st2.nextId + 1⟩ ⟨st2.funcs, st2.nextId + 1⟩ rfl hsz
     obtain ⟨ih_fst, ih_id, ih_sz⟩ := ih
     exact ⟨by rw [ih_sz], ih_id, by simp [Array.size_push]; omega⟩
   | throw arg =>
