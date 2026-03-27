@@ -9361,7 +9361,7 @@ theorem step_sim (irmod : IRModule) (wmod : Module) :
                   obtain ⟨wstk', hstack_eq, hlen_tail, htail⟩ := hstk_w
                   rcases hrel.hmemory with hmem_eq | ⟨hmem_none, hmem_sz⟩
                   · -- Memory exists
-                    have hbind : Option.bind s2.store.memories[0]? (fun m => writeLE? m (addr.toNat + offset) 4 (UInt64.ofNat val.toNat)) = some mem' := by
+                    have hbind : Option.bind s2.store.memories[0]? (fun m => writeLE? m (addr.toNat + offset) 4 val.toUInt64) = some mem' := by
                       rw [hmem_eq]; simp [hwrite]
                     let store' := { s2.store with memories := s2.store.memories.set! 0 mem' }
                     let s2' := { s2 with code := rest_w, stack := wstk', store := store' }
@@ -9401,7 +9401,7 @@ theorem step_sim (irmod : IRModule) (wmod : Module) :
                   obtain ⟨wstk', hstack_eq, _, _⟩ := hstk_w
                   rcases hrel.hmemory with hmem_eq | ⟨hmem_none, _⟩
                   · -- Memory exists but OOB
-                    have hwrite_w : Option.bind s2.store.memories[0]? (fun m => writeLE? m (addr.toNat + offset) 4 (UInt64.ofNat val.toNat)) = none := by
+                    have hwrite_w : Option.bind s2.store.memories[0]? (fun m => writeLE? m (addr.toNat + offset) 4 val.toUInt64) = none := by
                       rw [hmem_eq]; simp [hwrite]
                     have hw : step? s2 = some (.trap ("memory access fault in i32.store"),
                         { s2 with code := [], trace := s2.trace ++ [.trap ("memory access fault in i32.store")] }) := by
@@ -9814,7 +9814,7 @@ theorem step_sim (irmod : IRModule) (wmod : Module) :
                   (hstk ▸ hrel.hstack.1) (hstk ▸ hrel.hstack.2)
                 obtain ⟨wstk', hstack_eq, hlen_tail, htail⟩ := hstk_w
                 rcases hrel.hmemory with hmem_eq | ⟨hmem_none, hmem_sz⟩
-                · have hbind : Option.bind s2.store.memories[0]? (fun m => writeLE? m (addr.toNat + offset) 1 (UInt64.ofNat val.toNat)) = some mem' := by
+                · have hbind : Option.bind s2.store.memories[0]? (fun m => writeLE? m (addr.toNat + offset) 1 val.toUInt64) = some mem' := by
                     rw [hmem_eq]; simp [hwrite]
                   let store_s8 := { s2.store with memories := s2.store.memories.set! 0 mem' }
                   let s2_s8 := { s2 with code := rest_w, stack := wstk', store := store_s8 }
@@ -9851,7 +9851,7 @@ theorem step_sim (irmod : IRModule) (wmod : Module) :
                   (hstk ▸ hrel.hstack.1) (hstk ▸ hrel.hstack.2)
                 obtain ⟨wstk', hstack_eq, _, _⟩ := hstk_w
                 rcases hrel.hmemory with hmem_eq | ⟨hmem_none, _⟩
-                · have hwrite_w : Option.bind s2.store.memories[0]? (fun m => writeLE? m (addr.toNat + offset) 1 (UInt64.ofNat val.toNat)) = none := by
+                · have hwrite_w : Option.bind s2.store.memories[0]? (fun m => writeLE? m (addr.toNat + offset) 1 val.toUInt64) = none := by
                     rw [hmem_eq]; simp [hwrite]
                   have hw : step? s2 = some (.trap ("memory access fault in i32.store"),
                       { s2 with code := [], trace := s2.trace ++ [.trap ("memory access fault in i32.store")] }) := by
