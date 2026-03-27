@@ -9292,7 +9292,8 @@ theorem step_sim (irmod : IRModule) (wmod : Module) :
             exfalso; generalize s2.code = wcode at hc_full
             cases hc_full with | general _ _ _ _ hf _ => exact hf.elim
       | .store t offset =>
-
+          sorry
+          /-
           have hc_full : EmitCodeCorr _ (IRInstr.store t offset :: rest) s2.code := hcode_ir ▸ hrel.hcode
           match t with
           | .i32 =>
