@@ -9382,7 +9382,10 @@ theorem step_sim (irmod : IRModule) (wmod : Module) :
                               simp [h0]
                             hmemLimits := by simp only [pushTrace]; exact hrel.hmemLimits
                             hmemory_aligned := by rw [writeLE?_preserves_size hwrite]; exact hrel.hmemory_aligned
-                            hmemory_nonempty := by simp only [pushTrace, Array.set!_eq_setIfInBounds, Array.size_setIfInBounds]; exact hrel.hmemory_nonempty
+                            hmemory_nonempty := by
+                              show 0 < (s2.store.memories.set! 0 mem').size
+                              rw [Array.set!_eq_setIfInBounds, Array.size_setIfInBounds]
+                              exact hrel.hmemory_nonempty
                             hlabels := hrel.hlabels
                             hhalt := hhalt_of_structural hrest hrel.hlabels
                             hlabel_content := hrel.hlabel_content
@@ -9430,7 +9433,7 @@ theorem step_sim (irmod : IRModule) (wmod : Module) :
                         hmodule := hrel.hmodule
                         hstore_funcs := hrel.hstore_funcs
                         hstore_types := hrel.hstore_types }⟩
-              | .f64 _ :: _ | .i64 _ :: _ | .i32 _ :: .f64 _ :: _ | .i32 _ :: .i64 _ :: _ =>
+              | .f64 _ :: _ :: _ | .i64 _ :: _ :: _ | .i32 _ :: .f64 _ :: _ | .i32 _ :: .i64 _ :: _ =>
                 -- Type mismatch on stack: both trap
                 all_goals (
                   simp [irStep?, hcode_ir, hstk, irPop2?, irTrapState, irPushTrace] at hstep
@@ -9535,7 +9538,7 @@ theorem step_sim (irmod : IRModule) (wmod : Module) :
                               simp [h0]
                             hmemLimits := by simp only [pushTrace]; exact hrel.hmemLimits
                             hmemory_aligned := by rw [writeLE?_preserves_size hwrite]; exact hrel.hmemory_aligned
-                            hmemory_nonempty := by simp only [pushTrace, Array.set!_eq_setIfInBounds, Array.size_setIfInBounds]; exact hrel.hmemory_nonempty
+                            hmemory_nonempty := by show 0 < (s2.store.memories.set! 0 mem').size; rw [Array.set!_eq_setIfInBounds, Array.size_setIfInBounds]; exact hrel.hmemory_nonempty
                             hlabels := hrel.hlabels
                             hhalt := hhalt_of_structural hrest hrel.hlabels
                             hlabel_content := hrel.hlabel_content
@@ -9579,7 +9582,7 @@ theorem step_sim (irmod : IRModule) (wmod : Module) :
                         hmodule := hrel.hmodule
                         hstore_funcs := hrel.hstore_funcs
                         hstore_types := hrel.hstore_types }⟩
-              | .i32 _ :: _ | .i64 _ :: _ | .f64 _ :: .f64 _ :: _ | .f64 _ :: .i64 _ :: _ =>
+              | .i32 _ :: _ :: _ | .i64 _ :: _ :: _ | .f64 _ :: .f64 _ :: _ | .f64 _ :: .i64 _ :: _ =>
                 all_goals (
                   simp [irStep?, hcode_ir, hstk, irPop2?, irTrapState, irPushTrace] at hstep
                   obtain ⟨rfl, rfl⟩ := hstep
@@ -9683,7 +9686,7 @@ theorem step_sim (irmod : IRModule) (wmod : Module) :
                               simp [h0]
                             hmemLimits := by simp only [pushTrace]; exact hrel.hmemLimits
                             hmemory_aligned := by rw [writeLE?_preserves_size hwrite]; exact hrel.hmemory_aligned
-                            hmemory_nonempty := by simp only [pushTrace, Array.set!_eq_setIfInBounds, Array.size_setIfInBounds]; exact hrel.hmemory_nonempty
+                            hmemory_nonempty := by show 0 < (s2.store.memories.set! 0 mem').size; rw [Array.set!_eq_setIfInBounds, Array.size_setIfInBounds]; exact hrel.hmemory_nonempty
                             hlabels := hrel.hlabels
                             hhalt := hhalt_of_structural hrest hrel.hlabels
                             hlabel_content := hrel.hlabel_content
@@ -9727,7 +9730,7 @@ theorem step_sim (irmod : IRModule) (wmod : Module) :
                         hmodule := hrel.hmodule
                         hstore_funcs := hrel.hstore_funcs
                         hstore_types := hrel.hstore_types }⟩
-              | .i32 _ :: _ | .f64 _ :: _ | .i64 _ :: .f64 _ :: _ | .i64 _ :: .i64 _ :: _ =>
+              | .i32 _ :: _ :: _ | .f64 _ :: _ :: _ | .i64 _ :: .f64 _ :: _ | .i64 _ :: .i64 _ :: _ =>
                 all_goals (
                   simp [irStep?, hcode_ir, hstk, irPop2?, irTrapState, irPushTrace] at hstep
                   obtain ⟨rfl, rfl⟩ := hstep
@@ -9835,7 +9838,7 @@ theorem step_sim (irmod : IRModule) (wmod : Module) :
                             simp [h0]
                           hmemLimits := by simp only [pushTrace]; exact hrel.hmemLimits
                           hmemory_aligned := by rw [writeLE?_preserves_size hwrite]; exact hrel.hmemory_aligned
-                          hmemory_nonempty := by simp only [pushTrace, Array.set!_eq_setIfInBounds, Array.size_setIfInBounds]; exact hrel.hmemory_nonempty
+                          hmemory_nonempty := by show 0 < (s2.store.memories.set! 0 mem').size; rw [Array.set!_eq_setIfInBounds, Array.size_setIfInBounds]; exact hrel.hmemory_nonempty
                           hlabels := hrel.hlabels
                           hhalt := hhalt_of_structural hrest hrel.hlabels
                           hlabel_content := hrel.hlabel_content
@@ -9879,7 +9882,7 @@ theorem step_sim (irmod : IRModule) (wmod : Module) :
                       hmodule := hrel.hmodule
                       hstore_funcs := hrel.hstore_funcs
                       hstore_types := hrel.hstore_types }⟩
-            | .f64 _ :: _ | .i64 _ :: _ | .i32 _ :: .f64 _ :: _ | .i32 _ :: .i64 _ :: _ =>
+            | .f64 _ :: _ :: _ | .i64 _ :: _ :: _ | .i32 _ :: .f64 _ :: _ | .i32 _ :: .i64 _ :: _ =>
               all_goals (
                 simp [irStep?, hcode_ir, hstk, irPop2?, irTrapState, irPushTrace] at hstep
                 obtain ⟨rfl, rfl⟩ := hstep

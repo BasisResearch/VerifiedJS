@@ -1927,9 +1927,9 @@ private theorem closureConvert_step_simulation
       · exact hheapvwf
       · simp [sc', noCallFrameReturn] at hncfr ⊢; exact hncfr
       · simp [sc', ExprAddrWF] at hexprwf ⊢; exact hexprwf.2
-      · exact ⟨st, (Flat.convertExpr body scope envVar envMap st).snd, by
-          rw [convertExpr_scope_irrelevant body scope (name :: scope)]; simp [sc', Flat.convertExpr],
-          ⟨rfl, rfl⟩, sorry⟩
+      · refine ⟨st, (Flat.convertExpr body scope envVar envMap st).snd, ?_, ⟨rfl, rfl⟩, ?_⟩
+        · rw [convertExpr_scope_irrelevant body scope (name :: scope)]; simp [sc', Flat.convertExpr]
+        · sorry
     | none =>
       have hfnv : Flat.exprValue? (Flat.convertExpr init scope envVar envMap st).fst = none :=
         convertExpr_not_value init hcev scope envVar envMap st
