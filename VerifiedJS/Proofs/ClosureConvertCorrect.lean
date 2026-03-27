@@ -1746,15 +1746,15 @@ private theorem closureConvert_step_simulation
   -- The suffices and all ~30 case proofs need injMap threading.
   -- Previous proof (in git history) had 6 sorry cases; will be restored with HeapInj types.
   suffices ∀ (n : Nat) (envVar : String) (envMap : Flat.EnvMapping) (injMap : Nat → Nat)
-      (sf : Flat.State) (sc : Core.State) (ev : Core.TraceEvent) (sf' : Flat.State),
+      (sf : Flat.State) (sc : Core.State) (ev : Core.TraceEvent) (sf' : Flat.State)
+      (scope : List String) (st st' : Flat.CCState),
       sc.expr.depth = n → sf.trace = sc.trace →
       HeapInj injMap sc.heap sf.heap → EnvCorrInj injMap sc.env sf.env →
       EnvAddrWF sc.env sc.heap.objects.size →
       HeapValuesWF sc.heap →
       noCallFrameReturn sc.expr = true →
       ExprAddrWF sc.expr sc.heap.objects.size →
-      (∃ (scope : List String) (st st' : Flat.CCState),
-        (sf.expr, st') = Flat.convertExpr sc.expr scope envVar envMap st) →
+      (sf.expr, st') = Flat.convertExpr sc.expr scope envVar envMap st →
       Flat.Step sf ev sf' →
       ∃ (injMap' : Nat → Nat) (sc' : Core.State), Core.Step sc ev sc' ∧ sf'.trace = sc'.trace ∧
         HeapInj injMap' sc'.heap sf'.heap ∧ EnvCorrInj injMap' sc'.env sf'.env ∧
@@ -1762,16 +1762,17 @@ private theorem closureConvert_step_simulation
         HeapValuesWF sc'.heap ∧
         noCallFrameReturn sc'.expr = true ∧
         ExprAddrWF sc'.expr sc'.heap.objects.size ∧
-        (∃ (scope : List String) (st st' : Flat.CCState),
-          (sf'.expr, st') = Flat.convertExpr sc'.expr scope envVar envMap st) by
+        (∃ (st_a st_a' : Flat.CCState),
+          (sf'.expr, st_a') = Flat.convertExpr sc'.expr scope envVar envMap st_a ∧
+          CCStateAgree st st_a ∧ CCStateAgree st' st_a') by
     intro sf sc ev sf' ⟨htrace, ⟨injMap, hinj, henv⟩, hncfr, hexprwf, henvwf, hheapvwf, scope, envVar, envMap, st, st', hconv⟩ hstep
-    obtain ⟨injMap', sc', hcstep, htrace', hinj', henv', henvwf', hheapvwf', hncfr', hexprwf', scope', st_a, st_a', hconv'⟩ :=
-      this sc.expr.depth envVar envMap injMap sf sc ev sf' rfl htrace hinj henv henvwf hheapvwf hncfr hexprwf ⟨scope, st, st', hconv⟩ hstep
-    exact ⟨sc', hcstep, htrace', ⟨injMap', hinj', henv'⟩, hncfr', hexprwf', henvwf', hheapvwf', scope', envVar, envMap, st_a, st_a', hconv'⟩
+    obtain ⟨injMap', sc', hcstep, htrace', hinj', henv', henvwf', hheapvwf', hncfr', hexprwf', st_a, st_a', hconv', _, _⟩ :=
+      this sc.expr.depth envVar envMap injMap sf sc ev sf' scope st st' rfl htrace hinj henv henvwf hheapvwf hncfr hexprwf hconv hstep
+    exact ⟨sc', hcstep, htrace', ⟨injMap', hinj', henv'⟩, hncfr', hexprwf', henvwf', hheapvwf', scope, envVar, envMap, st_a, st_a', hconv'⟩
   intro n
   induction n using Nat.strongRecOn with
   | _ n ih_depth =>
-  intro envVar envMap injMap sf sc ev sf' hd htrace hinj henvCorr henvwf hheapvwf hncfr hexprwf ⟨scope, st, st', hconv⟩ ⟨hstep⟩
+  intro envVar envMap injMap sf sc ev sf' scope st st' hd htrace hinj henvCorr henvwf hheapvwf hncfr hexprwf hconv ⟨hstep⟩
   -- Case-split on sc.expr to determine sf.expr via convertExpr
   -- Then unfold Flat.step? to analyze the step, construct Core.step? result
   cases hsc : sc.expr with
