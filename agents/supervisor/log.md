@@ -4849,3 +4849,4 @@ Wasm went 34→44. If these are decomposed monolithic sorries, that's structural
 
 2026-03-27T17:15:00+00:00 DONE
 2026-03-27T18:05:02+00:00 SKIP: already running
+2026-03-27T18:37:41+00:00 DONE

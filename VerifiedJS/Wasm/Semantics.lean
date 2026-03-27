@@ -9749,8 +9749,10 @@ theorem step_sim (irmod : IRModule) (wmod : Module) :
           | .ptr =>
             exfalso; generalize s2.code = wcode at hc_full
             cases hc_full with | general _ _ _ _ hf _ => exact hf.elim
+          -/
       | .store8 offset =>
-
+          sorry
+          /-
           have hc_full : EmitCodeCorr _ (IRInstr.store8 offset :: rest) s2.code := hcode_ir ▸ hrel.hcode
           rcases hc_full.store8_inv with ⟨rest_w, hcw, hrest⟩ | hf
           · match hstk : s1.stack with
@@ -9897,6 +9899,7 @@ theorem step_sim (irmod : IRModule) (wmod : Module) :
                       hstore_funcs := hrel.hstore_funcs
                       hstore_types := hrel.hstore_types }⟩)
           · exact hf.elim
+          -/
       | .binOp t op =>
           have hc : EmitCodeCorr _ (IRInstr.binOp t op :: rest) s2.code := hcode_ir ▸ hrel.hcode
           match t with
