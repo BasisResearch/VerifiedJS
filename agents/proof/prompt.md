@@ -1,61 +1,68 @@
-# proof — CLOSE 20 SORRY TOKENS IN 60 SECONDS (then 15+ more)
+# proof — CC REMAINING + ANF DECOMPOSITION
 
-## YOU ALREADY COMPLETED Phase 3 — GREAT WORK (5/6 CCState stepping cases done)
-Let, if, seq, binary, getIndex stepping all DONE. Only while_ CCState (L2957) remains.
+## STATUS: 58 total sorries (was 99 — you closed 41! EXCELLENT WORK)
 
-## STEP 1 (DO THIS IMMEDIATELY — ONE sed COMMAND): 20 sorry tokens gone
+CC is down to 17 sorry tokens. ANF still has 13 sorries UNTOUCHED FOR 5+ DAYS. The end-to-end theorem CANNOT compose without anfConvert_step_star. You MUST pivot to ANF after finishing the CC mechanical leftovers.
 
-Run this EXACT command (copy-paste, do not modify):
-```bash
-sed -i "s/exact ⟨congrArg Prod.fst hconv', congrArg Prod.snd hconv'⟩, sorry, sorry⟩/exact ⟨congrArg Prod.fst hconv', congrArg Prod.snd hconv'⟩, hAgreeIn, hAgreeOut⟩/g" VerifiedJS/Proofs/ClosureConvertCorrect.lean
-```
+## STEP 1: CC L2138 sorry,sorry (last mechanical pair)
 
-This fixes 10 IDENTICAL lines (L2078, L2393, L2490, L2615, L2744, L2833, L2925, L3129, L3267, L3354).
-`hAgreeIn` and `hAgreeOut` are ALWAYS in scope from the IH `obtain` on preceding lines.
-
-**DO NOT BUILD YET** — do Step 2 first to batch changes.
-
-## STEP 2: Fix value-base CCStateAgree sorries (single sorry after ⟨rfl, rfl⟩)
-
-These have pattern: `⟨rfl, rfl⟩, sorry⟩`. The sorry needs `CCStateAgree st st` (trivial — same state).
-
-**Simple var/this value cases** (L1825, L1848, L1876, L1899):
-Replace `sorry⟩` with `⟨rfl, rfl⟩⟩`
-
-**Assign/throw value cases** (L2026, L2867):
-Replace `sorry⟩` with `by simp [Flat.convertExpr]; exact ⟨rfl, rfl⟩⟩`
-
-**Return/yield/await/break/continue/labeled value-base** (L1932, L2994, L3017, L3043, L3073, L3155, L3181, L3211, L3298):
-Use `lean_goal` to check what CCStateAgree looks like. Most should be `⟨rfl, rfl⟩⟩`.
-
-**If/seq value-base** (L2115, L2137, L2245, L2339, L2779):
-These are trickier — `sorry⟩` may need `by simp [Flat.convertExpr, CCStateAgree]` or specific state threading.
-Use `lean_goal` at each, try `lean_multi_attempt` with: `["⟨rfl, rfl⟩", "by simp [Flat.convertExpr]; exact ⟨rfl, rfl⟩", "by simp [CCStateAgree, Flat.convertExpr]"]`
-
-**NOW BUILD**: `lake build VerifiedJS.Proofs.ClosureConvertCorrect`
-
-## STEP 3: while_ CCState (L2957) — last Phase 3 case
-
-Follow your own pattern from let/if/seq:
+At L2138, there is:
 ```lean
-have hcond := convertExpr_state_determined cond scope envVar envMap st st_a' <agree>.1 <agree>.2
--- while_ duplicates: cond appears twice, body appears twice
--- Chain convertExpr_state_determined for each copy
+simp [sc', Flat.convertExpr], sorry, sorry⟩
+```
+This is the if-cond stepping case. The two sorries need CCStateAgree for `then_` and `else_` branch states after `convertExpr cond`. Use `lean_goal` at L2138 to see what's needed. Try:
+```lean
+lean_multi_attempt at L2138: ["hAgreeIn, hAgreeOut", "by exact CCStateAgree_refl _", "by simp [CCStateAgree]"]
 ```
 
-Use `lean_goal` at L2957 to see what's needed.
+## STEP 2: while_ CCState (L2958) — last Phase 3 case
 
-## STEP 4: Harder expression cases (if time)
+Use your successful pattern from let/if/seq. Chain `convertExpr_state_determined` calls. Use `lean_goal` at L2958.
 
-Remaining after Steps 1-3:
-- call (L2556), newObj (L2557): need sub-expression stepping (jsspec has patches in .lake/_tmp_fix/)
-- setProp (L2616), setIndex (L2686): need heap reasoning
-- objectLit (L2834), arrayLit (L2835), functionDef (L2836): design issues (jsspec documented)
-- tryCatch (L2926): error case analysis needed
-- forIn/forOf (L1132/1133): stubs, skip
-- Main suffices (L1797): skip
+## STEP 3: PIVOT TO ANF (THIS IS CRITICAL)
 
-## DO NOT TOUCH: ANFConvertCorrect, LowerCorrect, Wasm/Semantics
+File: `VerifiedJS/Proofs/ANFConvertCorrect.lean`
 
-## Build: `lake build VerifiedJS.Proofs.ClosureConvertCorrect`
+The 13 sorries are already decomposed by constructor (L138-174). Each needs a proof. The architecture comment at L175-210 explains the approach.
+
+**Start with the easiest cases:**
+
+1. **break (L172), continue (L174)**: Produce error events directly. Should be straightforward — both ANF and Flat produce same event.
+```lean
+-- Try at L172:
+simp_all [ANF.step?, Flat.step?]
+-- or construct the witness explicitly
+```
+
+2. **throw (L155)**: Evaluate trivial arg, produce error event. Similar to break/continue.
+
+3. **return (L159), yield (L161), await (L163)**: Evaluate optional trivial arg.
+
+4. **var lookup (L138)**: step? resolves the variable in env. Match to Flat var lookup.
+
+5. **seq (L149)**: Two sub-cases — a is value (skip to b) or step inner a.
+
+6. **if (L151)**: Evaluate cond trivial, branch.
+
+7. **let (L147)**: evalComplex evaluates rhs, extends env, continues.
+
+8. **while (L153)**: Evaluate cond, unroll or terminate. Hardest.
+
+9. **tryCatch (L157)**: Error handling cases. Hard.
+
+10. **labeled (L170)**: Architecture issue noted — needs restructuring.
+
+**Use `lean_goal` at each sorry, then `lean_multi_attempt` aggressively.**
+
+Even replacing 1 monolithic sorry with 5 smaller ones is progress. The key is decomposing into sub-goals that can be attacked independently.
+
+## STEP 4: Remaining CC hard cases (ONLY if ANF is progressing)
+
+- call (L2557): jsspec staged helpers in `.lake/_tmp_fix/VerifiedJS/Proofs/cc_call_patches.lean`
+- Others (newObj, setProp, setIndex, objectLit, arrayLit, functionDef, tryCatch): design issues, lower priority
+
+## DO NOT TOUCH: Wasm/Semantics.lean, LowerCorrect.lean
+
+## Build CC: `lake build VerifiedJS.Proofs.ClosureConvertCorrect`
+## Build ANF: `lake build VerifiedJS.Proofs.ANFConvertCorrect`
 ## Log progress to agents/proof/log.md.

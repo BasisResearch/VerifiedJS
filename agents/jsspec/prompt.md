@@ -1,51 +1,54 @@
-# jsspec — Write CCStateAgree helper lemmas + test value-base fixes
+# jsspec — INTEGRATE STAGED HELPERS + ANF SUPPORT
 
-## STATUS UPDATE
-The proof agent closed 5/6 Phase 3 CCState stepping cases. Phase 1 (20 sorry,sorry tokens)
-and Phase 2 (value-base CCStateAgree) are NEXT.
+## STATUS: Sorry count dropped 99→58. Your staged helpers contributed to this. Now integrate them.
 
-## YOUR TASK: Write and test CCStateAgree helpers
+## PRIORITY 0: Install cc_st_lemma.lean @[simp] lemmas into main codebase
 
-### Priority 0: `convertExpr_value_CCStateAgree` lemma
-Many CC value-base sorries need: if expr is a value, then `CCStateAgree st st` (trivially).
-But the actual goal shape may be `CCStateAgree st (convertExpr (.lit v) scope envVar envMap st).snd`.
+The lemmas in `.lake/_tmp_fix/VerifiedJS/Proofs/cc_st_lemma.lean` are verified sorry-free.
+They need to go into `VerifiedJS/Proofs/ClosureConvertCorrect.lean` BEFORE the main theorem.
 
-Write and test in `.lake/_tmp_fix/VerifiedJS/Proofs/cc_agree_helpers.lean`:
+Add these ABOVE the `theorem closureConvert_sim_step` line:
 ```lean
-import VerifiedJS.Proofs.ClosureConvertCorrect
-
--- For literal values, convertExpr doesn't change state
-theorem convertExpr_lit_snd (v : Core.Value) (scope : List String)
+@[simp] theorem convertExpr_lit_snd (v : Core.Value) (scope : List String)
     (envVar : String) (envMap : Std.HashMap String Nat) (st : Nat) :
     (Flat.convertExpr (.lit v) scope envVar envMap st).snd = st := by
   simp [Flat.convertExpr]
 
--- CCStateAgree is reflexive (both sides same state)
-theorem CCStateAgree_refl (st : Nat) : CCStateAgree st st := ⟨rfl, rfl⟩
+@[simp] theorem convertExpr_this_snd (scope : List String)
+    (envVar : String) (envMap : Std.HashMap String Nat) (st : Nat) :
+    (Flat.convertExpr .this scope envVar envMap st).snd = st := by
+  simp [Flat.convertExpr]
+
+@[simp] theorem convertExpr_var_snd (name : String) (scope : List String)
+    (envVar : String) (envMap : Std.HashMap String Nat) (st : Nat) :
+    (Flat.convertExpr (.var name) scope envVar envMap st).snd = st := by
+  simp [Flat.convertExpr]
 ```
 
-### Priority 1: Test which value-base sorry patterns actually close with ⟨rfl, rfl⟩
-Use `lean_goal` at these CC lines to document the EXACT goal shape:
-- L1825 (var value)
-- L2115 (if-value true branch)
-- L2137 (if-value false branch — has sorry, sorry not sorry)
-- L1932 (assign? or return?)
-- L2957 (while_ CCState)
+## PRIORITY 1: Write ANF helper lemmas
 
-Write the exact proof term needed for each into `.lake/_tmp_fix/VerifiedJS/Proofs/cc_value_patches.lean`.
+The proof agent is pivoting to ANF. It needs helper lemmas for `anfConvert_step_star`.
 
-### Priority 2: Document newObj/functionDef design issues
-You already identified the stuttering mismatch. Write a clear summary of:
-1. What Core does vs what Flat does for each
-2. Proposed fix options (change Core semantics vs stuttering bisimulation)
-3. Which option is less disruptive
+Write and verify in `.lake/_tmp_fix/VerifiedJS/Proofs/anf_helpers.lean`:
 
-Stage in `.lake/_tmp_fix/VerifiedJS/Proofs/design_issues.md`.
+1. **ANF.step?_break**: `ANF.step? (.break label) env heap = some (.error (.breakSignal label), ...)`
+2. **ANF.step?_continue**: Similar for continue
+3. **ANF.step?_throw**: `ANF.step? (.throw arg) env heap = some (.error (.throwSignal (evalTrivial arg env)), ...)`
+4. **ANF.step?_return**: `ANF.step? (.return arg) env heap = some (.return (evalTrivial arg env), ...)`
+5. **normalizeExpr inversion lemmas**: What does `normalizeExpr (.break label) k` produce?
+
+Use `lean_hover_info` on `ANF.step?` to understand the definition, then write the simp lemmas.
+
+## PRIORITY 2: Document remaining CC design issues
+
+Update `.lake/_tmp_fix/VerifiedJS/Proofs/design_issues.md` with:
+- newObj: Core evaluates atomically, Flat multi-step → stuttering simulation needed
+- functionDef: same issue
+- Proposed fix: which is less disruptive?
 
 ## What NOT to do:
-- Do NOT edit ClosureConvertCorrect.lean (owned by proof)
-- Do NOT edit Wasm/Semantics.lean (owned by wasmspec)
-- Do NOT start a full `lake build`
+- Do NOT run full `lake build` — use `lake env lean` for individual files
+- Do NOT edit Wasm/Semantics.lean
+- Be careful editing ClosureConvertCorrect.lean — coordinate with proof agent
 
-## Build (for checking helpers): `lake env lean .lake/_tmp_fix/VerifiedJS/Proofs/cc_agree_helpers.lean` or use lean_run_code
 ## Log progress to agents/jsspec/log.md.

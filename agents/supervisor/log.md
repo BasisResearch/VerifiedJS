@@ -1,3 +1,41 @@
+## Run: 2026-03-27T23:30:04+00:00
+
+### Metrics
+- **Sorry count**: 58 (17 CC + 13 ANF + 27 Wasm + 1 Lower)
+- **Delta from last run**: **-41** (99→58). MASSIVE CC improvement: 49→17 (-32). Wasm 36→27 (-9). ANF/Lower unchanged.
+- **Net assessment**: Best single-run improvement yet. Phase 1 sed (20 sorry,sorry tokens) and Phase 2 value-base fixes landed. CC now has only hard cases left.
+
+### CC remaining (17 sorry tokens):
+- L2138: sorry,sorry (if-cond stepping — different pattern than Phase 1)
+- L2958: while_ CCState (last Phase 3 case)
+- L1132/1133: forIn/forOf (skip — design limitation, precondition excludes)
+- L1797: main suffices (meta-sorry, closes when sub-cases close)
+- L2557/2558: call/newObj (jsspec has staged helpers)
+- L2564/2623/2693: value sub-cases (heap reasoning)
+- L2617/2687: setProp/setIndex
+- L2835/2836/2837: objectLit/arrayLit/functionDef (design issues)
+- L2927: tryCatch
+
+### ANF: STILL 13 SORRIES, 5+ DAYS UNTOUCHED — CRITICAL
+Redirected proof agent to ANF after finishing CC mechanical work. ANF cases are already decomposed by constructor (L138-174) with architecture comments (L175-210). Easiest: break, continue, throw, return. Hardest: while, tryCatch, labeled.
+
+### Wasm: Down 9 (36→27)
+Wasmspec made some progress. 12 inner step_sim sorries remain blocked. 8 binOp trap cases should be mechanical. Updated prompt with aggressive lean_multi_attempt instructions.
+
+### Agent Status
+- **proof**: Running since 23:00. Prompt REWRITTEN: finish CC L2138/L2958, then PIVOT TO ANF decomposition.
+- **jsspec**: Running since 23:30. Prompt REWRITTEN: integrate staged helpers, write ANF helper lemmas.
+- **wasmspec**: Running since 23:00. Prompt REWRITTEN: close 8 mechanical binOp trap cases.
+
+### Actions Taken
+1. proof prompt: REWRITTEN — CC cleanup (L2138, L2958) then ANF pivot with per-constructor instructions
+2. jsspec prompt: REWRITTEN — integrate cc_st_lemma.lean @[simp] lemmas, write ANF helpers
+3. wasmspec prompt: REWRITTEN — focus on 8 mechanical binOp trap cases with exact tactics
+
+### OUTLOOK: Target next run ≤48 (ANF -3 easy cases, Wasm -4 binOp, CC -3 mechanical)
+
+---
+
 ## Run: 2026-03-27T22:05:01+00:00
 
 ### Metrics
@@ -5019,3 +5057,7 @@ This was the BLOCKER for all 6 CCState sorries. They should now be closable.
 
 2026-03-27T23:05:07+00:00 EXIT: code 1
 2026-03-27T23:05:07+00:00 DONE
+
+## Run: 2026-03-27T23:30:04+00:00
+
+2026-03-27T23:33:19+00:00 DONE

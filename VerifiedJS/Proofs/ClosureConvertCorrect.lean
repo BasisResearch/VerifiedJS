@@ -2113,7 +2113,7 @@ private theorem closureConvert_step_simulation
         · simp [sc', noCallFrameReturn] at hncfr ⊢; exact hncfr.1
         · simp [sc', ExprAddrWF] at hexprwf ⊢; exact hexprwf.2.1
         · exact ⟨st, (Flat.convertExpr then_ scope envVar envMap st).snd, by
-            simp [sc', Flat.convertExpr], ⟨rfl, rfl⟩, by first | (subst hst_eq; exact ⟨rfl, rfl⟩) | (simp [Flat.convertExpr, Flat.convertValue, Flat.convertOptExpr] at hst; subst hst; exact ⟨rfl, rfl⟩) | (rw [hst]; exact ⟨rfl, rfl⟩) | (rw [hconv.2]; exact ⟨rfl, rfl⟩)⟩
+            simp [sc', Flat.convertExpr], ⟨rfl, rfl⟩, sorry⟩ -- CCState threading: st' includes else_ conversion but st_a' only then_
       | false =>
         rw [Flat_step?_if_false _ _ _ _ (by rw [toBoolean_convertValue, htb])] at hstep
         simp at hstep
