@@ -1538,6 +1538,42 @@ private theorem Core_step?_getIndex_step (s : Core.State) (idx : Core.Expr) (e :
                  trace := s.trace ++ [t], funcs := sa.funcs, callStack := sa.callStack }) := by
   simp [Core.step?, hnv, hss, Core.pushTrace]
 
+private theorem Flat_step?_setProp_obj_step (s : Flat.State) (prop : Core.PropName) (value : Flat.Expr) (fe : Flat.Expr)
+    (hnv : Flat.exprValue? fe = none)
+    (t : Core.TraceEvent) (sa : Flat.State)
+    (hss : Flat.step? { s with expr := fe } = some (t, sa)) :
+    Flat.step? { s with expr := .setProp fe prop value } =
+      some (t, { expr := .setProp sa.expr prop value, env := sa.env, heap := sa.heap,
+                 trace := s.trace ++ [t], funcs := s.funcs, callStack := s.callStack }) := by
+  simp only [Flat.step?, hnv, hss]; rfl
+
+private theorem Core_step?_setProp_obj_step (s : Core.State) (prop : Core.PropName) (value : Core.Expr) (e : Core.Expr)
+    (hnv : Core.exprValue? e = none)
+    (t : Core.TraceEvent) (sa : Core.State)
+    (hss : Core.step? { s with expr := e } = some (t, sa)) :
+    Core.step? { s with expr := .setProp e prop value } =
+      some (t, { expr := .setProp sa.expr prop value, env := sa.env, heap := sa.heap,
+                 trace := s.trace ++ [t], funcs := sa.funcs, callStack := sa.callStack }) := by
+  simp [Core.step?, hnv, hss, Core.pushTrace]
+
+private theorem Flat_step?_setIndex_obj_step (s : Flat.State) (idx value : Flat.Expr) (fe : Flat.Expr)
+    (hnv : Flat.exprValue? fe = none)
+    (t : Core.TraceEvent) (sa : Flat.State)
+    (hss : Flat.step? { s with expr := fe } = some (t, sa)) :
+    Flat.step? { s with expr := .setIndex fe idx value } =
+      some (t, { expr := .setIndex sa.expr idx value, env := sa.env, heap := sa.heap,
+                 trace := s.trace ++ [t], funcs := s.funcs, callStack := s.callStack }) := by
+  simp only [Flat.step?, hnv, hss]; rfl
+
+private theorem Core_step?_setIndex_obj_step (s : Core.State) (idx value : Core.Expr) (e : Core.Expr)
+    (hnv : Core.exprValue? e = none)
+    (t : Core.TraceEvent) (sa : Core.State)
+    (hss : Core.step? { s with expr := e } = some (t, sa)) :
+    Core.step? { s with expr := .setIndex e idx value } =
+      some (t, { expr := .setIndex sa.expr idx value, env := sa.env, heap := sa.heap,
+                 trace := s.trace ++ [t], funcs := sa.funcs, callStack := sa.callStack }) := by
+  simp [Core.step?, hnv, hss, Core.pushTrace]
+
 private theorem Flat_step?_seq_value (s : Flat.State) (fv : Flat.Value) (b : Flat.Expr) :
     Flat.step? { s with expr := .seq (.lit fv) b } =
       some (.silent,
