@@ -10624,6 +10624,7 @@ theorem step_sim (irmod : IRModule) (wmod : Module) :
                       hstore_funcs := hrel.hstore_funcs
                       hstore_types := hrel.hstore_types }⟩
           · exact hf.elim
+          -/
       | .br label => sorry
           /-
           -- unconditional branch
