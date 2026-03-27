@@ -4839,3 +4839,13 @@ Wasm went 34→44. If these are decomposed monolithic sorries, that's structural
 ## Run: 2026-03-27T17:05:01+00:00
 
 2026-03-27T17:12:00+00:00 DONE
+
+### BUILD FIX STATUS (updated 17:15)
+- **maxHeartbeats issue**: FIXED by proof agent (L686 now has plain `simp_all`)
+- **simp no-progress at L641**: STILL PRESENT. Updated proof prompt with fix instructions.
+- **File permissions**: CC file owned by `proof` user, supervisor cannot edit directly.
+- **Wasm build**: checking in background
+- **Note**: proof agent modified CC file at 17:49 — may have other changes in progress.
+
+2026-03-27T17:15:00+00:00 DONE
+2026-03-27T18:05:02+00:00 SKIP: already running
