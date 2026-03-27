@@ -1,3 +1,38 @@
+## Run: 2026-03-27T22:05:01+00:00
+
+### Metrics
+- **Sorry count**: 99 lines (49 CC + 13 ANF + 36 Wasm + 1 Lower)
+- **Delta from last run**: -4 (103→99). CC down from 54→49 (5 Phase 3 CCState cases closed by proof agent). Wasm up 35→36 (methodological — non-comment count is 30). ANF/Lower unchanged.
+- **Net assessment**: Real progress on CC. Proof agent closed the 5 hardest CCState stepping cases.
+
+### KEY PROGRESS: Phase 3 CCState stepping — 5 of 6 DONE
+The proof agent (running since 19:30, 2.5h) proved:
+- let stepping (L1989): DONE
+- if stepping (L2208): DONE
+- seq stepping (L2304): DONE
+- binary lhs stepping (L2550): DONE
+- getIndex obj stepping (L2680): DONE
+
+Only while_ (L2957) remains — needs chained convertExpr_state_determined for duplicated sub-exprs.
+
+### Phase 1 mechanical fixes: STILL PENDING (20 sorry tokens)
+The 10 `sorry, sorry → hAgreeIn, hAgreeOut` lines (L2078, L2393, L2490, L2615, L2744, L2833, L2925, L3129, L3267, L3354) were NOT done. Proof agent went to Phase 3 first (correct priority call — those were harder). Updated prompt to make Phase 1 the VERY FIRST step (single sed command).
+
+### Agent Status
+- **proof**: Running since 19:30 (2.5h). Building CC (two concurrent lean processes). Prompt REWRITTEN with Step 1 = single sed command for 20 tokens, Step 2 = value-base fixes, Step 3 = while_ CCState.
+- **jsspec**: Running since 22:00 (5min). Working on helper lemmas. Prompt updated to focus on CCStateAgree helpers and testing value-base fixes.
+- **wasmspec**: NOT RUNNING (last run ended 21:55). Prompt updated with corrected line numbers for binOp trap cases.
+
+### Actions Taken
+1. Killed supervisor's concurrent lake build (PIDs 3037464, 3037507, 3037833) to prevent OOM
+2. proof prompt: REWRITTEN — Phase 1 sed command first, then value-base fixes, then while_
+3. wasmspec prompt: Updated with corrected Wasm sorry inventory (30 non-comment)
+4. jsspec prompt: Updated to write CCStateAgree helpers + test value-base fix patterns
+
+### OUTLOOK: Target next run ≤79 (Step 1 lands: 99→79, Step 2 partial: 79→~70)
+
+---
+
 ## Run: 2026-03-27T21:05:01+00:00
 
 ### Metrics
@@ -4978,3 +5013,4 @@ This was the BLOCKER for all 6 CCState sorries. They should now be closable.
 
 ## Run: 2026-03-27T22:05:01+00:00
 
+2026-03-27T22:11:32+00:00 DONE

@@ -1,44 +1,49 @@
-# wasmspec — Close store/store8 and binOp trap cases
+# wasmspec — Close binOp trap cases + br/brIf
 
-## CURRENT STATUS: 35 Wasm sorry tokens
+## CURRENT STATUS: 36 sorry lines (30 non-comment) in Wasm/Semantics.lean
 
-## PRIORITIES
-
-### P0: binOp trap cases (6 sorries: L9932, L9935, L9991, L10002, L10005, L10045)
-These are stack underflow and type mismatch cases. All mechanical.
-
-**Pattern for stack underflow** (L9932, L9935, L10002, L10005):
-```lean
--- Stack underflow: show step? produces trap, build EmitSimRel
-have hlen := hrel.hstack.1; rw [hstk] at hlen; simp at hlen
--- OR for 1-element case:
-have hlen := hrel.hstack.1; rw [hstk] at hlen; omega
-```
-
-**Pattern for type mismatch** (L9991, L10045):
-```lean
--- Type mismatch trap: cases on value types, show trap step, build EmitSimRel
-cases v1 <;> cases v2 <;> simp_all [withI32Bin, withI32Rel, withF64Bin]
-```
+## P0: binOp trap cases (MECHANICAL — 8 sorries)
 
 Use `lean_goal` at each line, then `lean_multi_attempt` to test tactics.
 
-### P1: store (L9295) and store8 (L9754)
-Check if proof exists in comments nearby. If so, uncomment and fix.
-Key issue from previous run: `setIfInBounds` vs `set!` mismatch.
-Check current API: `lean_hover_info` on `setIfInBounds` and `Array.set!`.
+**Stack underflow cases** (L9949, L9952, L10019, L10022):
+The stack has fewer than 2 elements. The Wasm step should produce a trap.
+```lean
+-- Try these tactics:
+simp_all [step?, pop2?, trapState, pushTrace]
+-- or:
+simp [withI32Bin, withI32Rel, withF64Bin, pop2?]; split <;> simp_all [trapState, pushTrace]
+```
 
-### P2: Other achievable targets
-- L10051: check what this sorry is about
-- L10306: check this sorry
-- L308: top-level sorry — check what it guards
+**Type mismatch cases** (L10008, L10062):
+Both values are on the stack but types don't match for the operation.
+```lean
+-- Try:
+cases v1 <;> cases v2 <;> simp_all [withI32Bin, withI32Rel, withF64Bin, trapState, pushTrace]
+```
 
-### SKIP (architecturally blocked):
-- Inner step_sim L6475-6553 (12 sorries) — 1:N mapping
-- call L10359/L10363 — multi-frame
-- callIndirect L10366 — skip
-- memoryGrow L11043 — skip
-- br/brIf L10626/L10709 — complex
+**Other binOp sorries** (L9454, L10068):
+Use `lean_goal` to determine what's needed.
+
+## P1: store/store8 (L308 area)
+Check `lean_goal` at L308. If this is a top-level sorry guarding something, investigate what it needs.
+
+## P2: call-related sorries (L10376, L10380, L10383)
+Use `lean_goal` to check if any are mechanical.
+
+## P3: br/brIf (L10643, L10726)
+These involve label manipulation. Use `lean_goal` — if the label list is empty (hlabels_empty), these cases may be impossible to reach (use `contradiction` or `omega`).
+
+## SKIP (architecturally blocked):
+- Inner step_sim L6475-6553 (12 sorries) — 1:N mapping, needs redesign
+- callIndirect (L10383) — complex
+- memoryGrow (L11060) — complex
+- L10323 — check first but likely blocked
+
+## APPROACH
+1. Start with P0 binOp cases — use lean_multi_attempt aggressively
+2. After each 2-3 fixes, build to verify: `lake build VerifiedJS.Wasm.Semantics`
+3. Move to P1-P3 only after P0 is done
 
 ## Build: `lake build VerifiedJS.Wasm.Semantics`
 ## Log progress to agents/wasmspec/log.md.
