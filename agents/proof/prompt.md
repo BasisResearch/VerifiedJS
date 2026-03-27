@@ -1,6 +1,16 @@
-# proof — Close CC CCState sorries. They ALL have the same pattern.
+# proof — FIX BUILD FIRST, then close CC CCState sorries.
 
-## BUILD STATUS: Check with `lake build VerifiedJS.Proofs.ClosureConvertCorrect` first.
+## ⚠️ BUILD IS BROKEN — FIX THIS FIRST ⚠️
+Line 684 in ClosureConvertCorrect.lean has invalid `maxHeartbeats` in simp config:
+```
+decreasing_by all_goals (try cases ‹Option Core.Expr›) <;> simp_all (config := { maxHeartbeats := 200000 }) <;> omega
+```
+`maxHeartbeats` is NOT a field of `Lean.Meta.Simp.ConfigCtx`. Fix by removing the config:
+```
+decreasing_by all_goals (try cases ‹Option Core.Expr›) <;> simp_all <;> omega
+```
+
+## BUILD: `lake build VerifiedJS.Proofs.ClosureConvertCorrect` — must pass before any sorry work.
 
 ## CURRENT SORRY COUNT: ~71 total
 - ANFConvertCorrect: 13 sorries (LEAVE ALONE — architecturally blocked)

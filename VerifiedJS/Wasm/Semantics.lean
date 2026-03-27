@@ -9923,10 +9923,8 @@ theorem step_sim (irmod : IRModule) (wmod : Module) :
                 have hlen := hrel.hstack.1; rw [hstk] at hlen; simp at hlen
                 have hs2 : s2.stack = [] := by
                   cases hs : s2.stack with | nil => rfl | cons => simp [hs] at hlen
-                have hw : step? s2 = some _ := by
-                  simp [step?, hcw, withI32Bin, hs2, pop2?, trapState, pushTrace]
-                simp only [traceToWasm] at hw ⊢
-                exact ⟨_, hw,
+                simp only [traceToWasm]
+                exact ⟨_, by simp [step?, hcw, withI32Bin, withF64Bin, hs2, pop2?, trapState, pushTrace],
                   { hemit := hrel.hemit, hcode := .nil, hstack := by rw [← hstk]; exact hrel.hstack,
                     hframes_len := hrel.hframes_len, hframes_locals := hrel.hframes_locals,
                     hframes_vals := hrel.hframes_vals, hglobals := hrel.hglobals, hmemory := hrel.hmemory,
@@ -9946,12 +9944,8 @@ theorem step_sim (irmod : IRModule) (wmod : Module) :
                   | [w] => exact ⟨w, rfl⟩
                   | _ :: _ :: _ => simp [hs] at hlen
                 obtain ⟨w, hs2⟩ := hs2
-                have hw : step? s2 = some _ := by
-                  simp [step?, hcw, withI32Bin, withF64Bin, hs2, pop2?, trapState, pushTrace]
-                  cases w <;> simp [pop2?, trapState, pushTrace]
-                simp only [traceToWasm] at hw ⊢
-                exact ⟨_, hw,
-                  { hemit := hrel.hemit, hcode := .nil, hstack := by rw [← hstk]; exact hrel.hstack,
+                simp only [traceToWasm]
+                refine ⟨_, ?_, { hemit := hrel.hemit, hcode := .nil, hstack := by rw [← hstk]; exact hrel.hstack,
                     hframes_len := hrel.hframes_len, hframes_locals := hrel.hframes_locals,
                     hframes_vals := hrel.hframes_vals, hglobals := hrel.hglobals, hmemory := hrel.hmemory,
                     hmemLimits := hrel.hmemLimits, hmemory_aligned := hrel.hmemory_aligned,
@@ -9959,6 +9953,8 @@ theorem step_sim (irmod : IRModule) (wmod : Module) :
                     hlabels := hrel.hlabels, hhalt := hhalt_of_structural (@EmitCodeCorr.nil (s1.labels.map (·.name))) hrel.hlabels,
                     hlabel_content := hrel.hlabel_content, hframes_one := hrel.hframes_one,
                     hmodule := hrel.hmodule, hstore_funcs := hrel.hstore_funcs, hstore_types := hrel.hstore_types }⟩
+                simp [step?, hcw, withI32Bin, withF64Bin, hs2, pop2?, trapState, pushTrace]
+                cases w <;> simp [pop2?, trapState, pushTrace]
               | .i32 rhs :: .i32 lhs :: stk =>
                 -- Both i32: success case. IR and Wasm compute the same result.
                 -- Simplify IR step
@@ -10024,11 +10020,9 @@ theorem step_sim (irmod : IRModule) (wmod : Module) :
                   | w0 :: w1 :: wstk' =>
                     rw [hstk_w] at hstk_rel
                     have h0 := hstk_rel.2 0 (by simp)
-                    simp only [List.getElem?_cons_zero, Option.some.injEq] at h0
-                    obtain ⟨_, h0a, hvc0⟩ := h0; subst h0a; cases hvc0
+                    simp at h0; subst h0
                     have h1 := hstk_rel.2 1 (by simp)
-                    simp only [List.getElem?_cons_succ, List.getElem?_cons_zero, Option.some.injEq] at h1
-                    obtain ⟨_, h1a, hvc1⟩ := h1; subst h1a; cases hvc1
+                    simp at h1; subst h1
                     have hw : step? s2 = some _ := by
                       simp [step?, hcw, withI32Bin, withF64Bin, pop2?, trapState, pushTrace]
                     simp only [traceToWasm] at hw ⊢
@@ -10051,11 +10045,10 @@ theorem step_sim (irmod : IRModule) (wmod : Module) :
                 simp [irStep?, hcode_ir, hstk, irPop2?, irTrapState, irPushTrace] at hstep
                 obtain ⟨rfl, rfl⟩ := hstep
                 have hlen := hrel.hstack.1; rw [hstk] at hlen; simp at hlen
-                have hs2 : s2.stack = [] := by cases s2.stack <;> simp_all
-                have hw : step? s2 = some (trapState { s2 with code := rest_w } _) := by
-                  simp [step?, hcw, withF64Bin, hs2, pop2?]
-                simp only [trapState, traceToWasm] at hw ⊢
-                exact ⟨_, hw,
+                have hs2 : s2.stack = [] := by
+                  cases hs : s2.stack with | nil => rfl | cons => simp [hs] at hlen
+                simp only [traceToWasm]
+                exact ⟨_, by simp [step?, hcw, withI32Bin, withF64Bin, hs2, pop2?, trapState, pushTrace],
                   { hemit := hrel.hemit, hcode := .nil, hstack := by rw [← hstk]; exact hrel.hstack,
                     hframes_len := hrel.hframes_len, hframes_locals := hrel.hframes_locals,
                     hframes_vals := hrel.hframes_vals, hglobals := hrel.hglobals, hmemory := hrel.hmemory,
@@ -10074,12 +10067,8 @@ theorem step_sim (irmod : IRModule) (wmod : Module) :
                   | [w] => exact ⟨w, rfl⟩
                   | _ :: _ :: _ => simp [hs] at hlen
                 obtain ⟨w, hs2⟩ := hs2
-                have hw : step? s2 = some (trapState { s2 with code := rest_w } _) := by
-                  simp [step?, hcw, withF64Bin, hs2, pop2?]
-                  cases w <;> simp [pop2?, trapState, pushTrace]
-                simp only [trapState, traceToWasm] at hw ⊢
-                exact ⟨_, hw,
-                  { hemit := hrel.hemit, hcode := .nil, hstack := by rw [← hstk]; exact hrel.hstack,
+                simp only [traceToWasm]
+                refine ⟨_, ?_, { hemit := hrel.hemit, hcode := .nil, hstack := by rw [← hstk]; exact hrel.hstack,
                     hframes_len := hrel.hframes_len, hframes_locals := hrel.hframes_locals,
                     hframes_vals := hrel.hframes_vals, hglobals := hrel.hglobals, hmemory := hrel.hmemory,
                     hmemLimits := hrel.hmemLimits, hmemory_aligned := hrel.hmemory_aligned,
@@ -10087,6 +10076,8 @@ theorem step_sim (irmod : IRModule) (wmod : Module) :
                     hlabels := hrel.hlabels, hhalt := hhalt_of_structural (@EmitCodeCorr.nil (s1.labels.map (·.name))) hrel.hlabels,
                     hlabel_content := hrel.hlabel_content, hframes_one := hrel.hframes_one,
                     hmodule := hrel.hmodule, hstore_funcs := hrel.hstore_funcs, hstore_types := hrel.hstore_types }⟩
+                simp [step?, hcw, withI32Bin, withF64Bin, hs2, pop2?, trapState, pushTrace]
+                cases w <;> simp [pop2?, trapState, pushTrace]
               | .f64 rhs :: .f64 lhs :: stk =>
                 -- Both f64: success case
                 unfold irStep? at hstep; rw [hcode_ir, hstk] at hstep
