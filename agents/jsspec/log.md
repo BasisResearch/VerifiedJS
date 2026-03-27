@@ -664,6 +664,11 @@ Lines 643–651 remain unchanged.
 - L2645: getIndex stepping CCState
 - L2917: while_ lowering CCState
 
-**Build**: `lake build VerifiedJS.Proofs.ClosureConvertCorrect` — running (large file, ~10min).
+**Build**: `lake build VerifiedJS.Proofs.ClosureConvertCorrect` — exit code 1 (expected: ~20 pre-existing sorries in proof agent's theorem cases). Only lint warnings (unused simp args, unused variable). **No compilation errors.**
 
-2026-03-27T17:10 DONE
+2026-03-27T17:15 DONE
+2026-03-27T17:15:00+00:00 DONE
+2026-03-27T18:55:52+00:00 DONE
+
+## Run: 2026-03-27T19:00:01+00:00
+
