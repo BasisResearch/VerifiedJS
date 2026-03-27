@@ -691,7 +691,7 @@ private theorem convertExpr_state_determined (e : Core.Expr)
     have ha := convertExpr_state_determined arg scope envVar envMap st1 st2 hid hsz
     exact ⟨by rw [ha.1], ha.2⟩
   termination_by sizeOf e
-  decreasing_by all_goals (try cases ‹Option Core.Expr›) <;> simp_all <;> omega
+  decreasing_by all_goals (try cases ‹Option Core.Expr›) <;> simp_wf <;> omega
 
 private theorem convertExprList_state_determined (es : List Core.Expr)
     (scope : List String) (envVar : String) (envMap : Flat.EnvMapping)

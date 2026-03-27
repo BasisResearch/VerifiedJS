@@ -10487,9 +10487,7 @@ theorem step_sim (irmod : IRModule) (wmod : Module) :
                   have hval_corr := hrel.hstack.2 0 (by simp [hstk])
                   rw [hstk, hs2] at hval_corr
                   simp at hval_corr
-                  obtain ⟨_, _, h1, h2, hvc⟩ := hval_corr
-                  simp at h1 h2; subst h1; subst h2
-                  cases hvc with
+                  cases hval_corr with
                   | i32 n => rename_i hneq; rw [hneq] at hs2
                   have hw := step?_eq_if_false s2 bt then_w else_w rest_w wstk hcw hs2
                   refine ⟨_, hw, hrel.hemit, helse, ?_, hrel.hframes_len, hrel.hframes_locals, hrel.hframes_vals, hrel.hglobals, ?_, ?_, ?_, ?_⟩
@@ -10523,9 +10521,7 @@ theorem step_sim (irmod : IRModule) (wmod : Module) :
                   have hval_corr := hrel.hstack.2 0 (by simp [hstk])
                   rw [hstk, hs2] at hval_corr
                   simp at hval_corr
-                  obtain ⟨_, _, h1, h2, hvc⟩ := hval_corr
-                  simp at h1 h2; subst h1; subst h2
-                  cases hvc with
+                  cases hval_corr with
                   | i32 n =>
                     rename_i hneq; rw [hneq] at hs2
                     have hne_w : n ≠ 0 := by rw [← hneq]; exact hne
@@ -10562,32 +10558,17 @@ theorem step_sim (irmod : IRModule) (wmod : Module) :
                 have hval_corr := hrel.hstack.2 0 (by simp [hstk])
                 rw [hstk, hs2] at hval_corr
                 simp at hval_corr
-                obtain ⟨_, _, h1, h2, hvc⟩ := hval_corr
-                simp at h1 h2; subst h1; subst h2
-                cases hvc with
+                cases hval_corr with
                 | i64 m =>
                   have hw : step? s2 = some (.trap "if condition is not i32",
                       { s2 with code := [], trace := s2.trace ++ [.trap "if condition is not i32"] }) := by
                     simp [step?, hcw, hs2, pop1?, i32Truth, trapState, pushTrace]
-                  exact ⟨_, by simp [traceToWasm]; exact hw,
-                    { hemit := hrel.hemit
-                      hcode := .nil
-                      hstack := by dsimp only []; exact hrel.hstack
-                      hframes_len := hrel.hframes_len
-                      hframes_locals := hrel.hframes_locals
-                      hframes_vals := hrel.hframes_vals
-                      hglobals := hrel.hglobals
-                      hmemory := hrel.hmemory
-                      hmemLimits := hrel.hmemLimits
-                      hmemory_aligned := hrel.hmemory_aligned
-                      hmemory_nonempty := hrel.hmemory_nonempty
-                      hlabels := by dsimp only []; exact hrel.hlabels
-                      hhalt := hhalt_of_structural (@EmitCodeCorr.nil []) (by dsimp only []; exact hrel.hlabels)
-                      hlabel_content := hrel.hlabel_content
-                      hframes_one := hrel.hframes_one
-                      hmodule := hrel.hmodule
-                      hstore_funcs := hrel.hstore_funcs
-                      hstore_types := hrel.hstore_types }⟩
+                  refine ⟨_, hw, ⟨hrel.hemit, ?_, ?_, hrel.hframes_len, hrel.hframes_locals,
+                    hrel.hframes_vals, hrel.hglobals, hrel.hmemory, hrel.hmemLimits, hrel.hmemory_aligned, hrel.hmemory_nonempty,
+                    hrel.hlabels, ?_, hrel.hlabel_content, hrel.hframes_one, hrel.hmodule, hrel.hstore_funcs, hrel.hstore_types⟩⟩
+                  · exact EmitCodeCorr.nil
+                  · simp [hstk, hs2]
+                  · exact hhalt_of_structural (@EmitCodeCorr.nil (s1.labels.map (·.name))) hrel.hlabels
             | .f64 n :: stk =>
               -- f64 on stack: type mismatch trap
               have hir : irStep? s1 = some (.trap "if condition is not i32",
@@ -10603,32 +10584,17 @@ theorem step_sim (irmod : IRModule) (wmod : Module) :
                 have hval_corr := hrel.hstack.2 0 (by simp [hstk])
                 rw [hstk, hs2] at hval_corr
                 simp at hval_corr
-                obtain ⟨_, _, h1, h2, hvc⟩ := hval_corr
-                simp at h1 h2; subst h1; subst h2
-                cases hvc with
+                cases hval_corr with
                 | f64 m =>
                   have hw : step? s2 = some (.trap "if condition is not i32",
                       { s2 with code := [], trace := s2.trace ++ [.trap "if condition is not i32"] }) := by
                     simp [step?, hcw, hs2, pop1?, i32Truth, trapState, pushTrace]
-                  exact ⟨_, by simp [traceToWasm]; exact hw,
-                    { hemit := hrel.hemit
-                      hcode := .nil
-                      hstack := by dsimp only []; exact hrel.hstack
-                      hframes_len := hrel.hframes_len
-                      hframes_locals := hrel.hframes_locals
-                      hframes_vals := hrel.hframes_vals
-                      hglobals := hrel.hglobals
-                      hmemory := hrel.hmemory
-                      hmemLimits := hrel.hmemLimits
-                      hmemory_aligned := hrel.hmemory_aligned
-                      hmemory_nonempty := hrel.hmemory_nonempty
-                      hlabels := by dsimp only []; exact hrel.hlabels
-                      hhalt := hhalt_of_structural (@EmitCodeCorr.nil []) (by dsimp only []; exact hrel.hlabels)
-                      hlabel_content := hrel.hlabel_content
-                      hframes_one := hrel.hframes_one
-                      hmodule := hrel.hmodule
-                      hstore_funcs := hrel.hstore_funcs
-                      hstore_types := hrel.hstore_types }⟩
+                  refine ⟨_, hw, ⟨hrel.hemit, ?_, ?_, hrel.hframes_len, hrel.hframes_locals,
+                    hrel.hframes_vals, hrel.hglobals, hrel.hmemory, hrel.hmemLimits, hrel.hmemory_aligned, hrel.hmemory_nonempty,
+                    hrel.hlabels, ?_, hrel.hlabel_content, hrel.hframes_one, hrel.hmodule, hrel.hstore_funcs, hrel.hstore_types⟩⟩
+                  · exact EmitCodeCorr.nil
+                  · simp [hstk, hs2]
+                  · exact hhalt_of_structural (@EmitCodeCorr.nil (s1.labels.map (·.name))) hrel.hlabels
           · exact hf.elim
       | .br label => sorry
           /-
