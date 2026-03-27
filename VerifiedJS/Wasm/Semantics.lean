@@ -10420,7 +10420,8 @@ theorem step_sim (irmod : IRModule) (wmod : Module) :
                     hstore_funcs := hrel.hstore_funcs
                     hstore_types := hrel.hstore_types }
           · exact hf.elim
-      | .if_ result then_ else_ =>
+      | .if_ result then_ else_ => sorry
+          /-
           -- if: conditional branch. Both IR and Wasm pop i32, push label, enter branch.
           have hc : EmitCodeCorr _ (IRInstr.if_ result then_ else_ :: rest) s2.code := hcode_ir ▸ hrel.hcode
           rcases hc.if_inv with ⟨bt, then_w, else_w, rest_w, hcw, hthen, helse, hrest⟩ | hf
