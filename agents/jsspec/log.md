@@ -768,3 +768,58 @@ Updated `.lake/_tmp_fix/VerifiedJS/Proofs/cc_expr_patches.lean` with:
 
 ## Run: 2026-03-27T21:00:01+00:00
 
+### Priority 1: call (L2525) — proof patch written
+Staged at `.lake/_tmp_fix/VerifiedJS/Proofs/cc_call_patches.lean`:
+
+**Section A: 12 new helper lemmas** (stepping lemmas for call/newObj/objectLit/arrayLit/tryCatch):
+- A1/A2: `Flat_step?_call_func_step` / `Core_step?_call_func_step` — callee stepping
+- A3: `Flat_step?_call_func_none` — callee stepping contradiction helper
+- A4/A5: `Flat_step?_call_arg_step` / `Core_step?_call_arg_step` — arg list stepping
+- A6: `Flat_step?_newObj_func_step` — newObj callee stepping
+- A7/A8: `Flat_step?_objectLit_prop_step` / `Core_step?_objectLit_prop_step` — prop stepping
+- A9/A10: `Flat_step?_arrayLit_elem_step` / `Core_step?_arrayLit_elem_step` — elem stepping
+- A11/A12: tryCatch body stepping helpers (sorry — need error case analysis)
+
+**Section B: 5 list-conversion preservation lemmas**:
+- B1: `convertExpr_lit` — lit conversion is identity
+- B2: `convertExpr_value_lit` — value expression converts to lit
+- B3: `convertExprList_not_allValues` — allValues=none preserved through conversion
+- B4: `convertExprList_firstNonValueExpr` — firstNonValueExpr preserved (sorry)
+- B5: `convertPropList_firstNonValueProp` — firstNonValueProp preserved (sorry)
+
+**Section C: call proof patch** (replaces L2525 sorry):
+- C1: Callee stepping (exprValue? f = none) — **FULLY PROVED** except CCState
+  - Follows getProp pattern exactly
+  - ExprAddrWF (.call _ _) = True → trivial
+- C2: Arg stepping (f value, some arg non-value) — sorry (needs B3, B4)
+- C3: All values call execution — sorry (function/closure lookup correspondence)
+
+### Priority 1: newObj (L2526) — DESIGN ISSUE documented
+**FUNDAMENTAL MISMATCH**: Core evaluates `.newObj` atomically (ignores callee/args, allocates
+ directly in ONE step). Flat evaluates sub-expressions first (multi-step). When Flat steps
+ a sub-expression, there's no matching Core step because Core already completed.
+**RECOMMENDATION**: Change Core.step? for newObj to step sub-expressions first (matching call).
+
+### Priority 2: objectLit/arrayLit/functionDef (L2796-2798)
+- **objectLit** (Section E): Skeleton proof with prop-stepping and heap-allocation sub-cases.
+  Both Core and Flat step first non-value prop, so pattern matches call arg stepping.
+- **arrayLit** (Section F): Same pattern as objectLit but with expression lists.
+- **functionDef** (Section G): **DESIGN ISSUE** — same stuttering problem as prior run.
+  Core evaluates atomically to `.lit (.function idx)`, Flat produces `makeClosure/makeEnv`
+  requiring multiple steps.
+
+### Priority 3: tryCatch (L2888)
+- Section H: Skeleton proof with body-stepping, value-completion, and error-activation sub-cases.
+- Body-stepping non-error case follows callee-stepping pattern.
+- Error and callframe cases need error value correspondence.
+
+### Build: `lake build VerifiedJS.Core.Semantics`: **PASS** (0 errors).
+
+### Key findings:
+1. **Two design issues** identified: newObj and functionDef both have Core↔Flat step mismatch
+2. **CCState threading** remains the common sorry pattern across all ~25 sorry sites
+3. Call callee-stepping is fully provable (first non-trivial call sub-case)
+4. List-conversion preservation lemmas (B3-B5) are needed but non-trivial
+
+2026-03-27T21:25 DONE
+2026-03-27T21:12:25+00:00 DONE

@@ -9366,7 +9366,8 @@ theorem step_sim (irmod : IRModule) (wmod : Module) :
                     let store' := { s2.store with memories := s2.store.memories.set! 0 mem' }
                     let s2' := { s2 with code := rest_w, stack := wstk', store := store' }
                     have hw : step? s2 = some (.silent, pushTrace s2' .silent) := by
-                      simp [step?, hcw, hstack_eq, pop2?, hbind]
+                      dsimp only [s2', store']
+                      simp [step?, hcw, hstack_eq, pop2?, hbind, Array.set!_eq_setIfInBounds]
                     simp only [traceToWasm]
                     refine ⟨_, hw, ?_⟩
                     exact { hemit := hrel.hemit
@@ -9377,13 +9378,14 @@ theorem step_sim (irmod : IRModule) (wmod : Module) :
                             hframes_vals := hrel.hframes_vals
                             hglobals := hrel.hglobals
                             hmemory := by
-                              left; simp only [pushTrace, Array.set!_eq_setIfInBounds, Array.getElem?_setIfInBounds]
+                              left; dsimp only [s2', store', pushTrace]
+                              simp only [Array.set!_eq_setIfInBounds, Array.getElem?_setIfInBounds]
                               have h0 : 0 < s2.store.memories.size := Array.lt_size_of_getElem? hmem_eq
                               simp [h0]
-                            hmemLimits := by simp only [pushTrace]; exact hrel.hmemLimits
+                            hmemLimits := by dsimp only [s2', store', pushTrace]; exact hrel.hmemLimits
                             hmemory_aligned := by rw [writeLE?_preserves_size hwrite]; exact hrel.hmemory_aligned
                             hmemory_nonempty := by
-                              show 0 < (s2.store.memories.set! 0 mem').size
+                              dsimp only [s2', store', pushTrace]
                               rw [Array.set!_eq_setIfInBounds, Array.size_setIfInBounds]
                               exact hrel.hmemory_nonempty
                             hlabels := hrel.hlabels
@@ -9522,23 +9524,28 @@ theorem step_sim (irmod : IRModule) (wmod : Module) :
                     let store_f64 := { s2.store with memories := s2.store.memories.set! 0 mem' }
                     let s2_f64 := { s2 with code := rest_w, stack := wstk', store := store_f64 }
                     have hw : step? s2 = some (.silent, pushTrace s2_f64 .silent) := by
-                      simp [step?, hcw, hstack_eq, pop2?, hbind]
+                      dsimp only [s2_f64, store_f64]
+                      simp [step?, hcw, hstack_eq, pop2?, hbind, Array.set!_eq_setIfInBounds]
                     simp only [traceToWasm]
                     refine ⟨_, hw, ?_⟩
                     exact { hemit := hrel.hemit
                             hcode := hrest
-                            hstack := by simp only [pushTrace]; exact ⟨hlen_tail.symm, htail⟩
+                            hstack := by dsimp only [s2_f64, store_f64, pushTrace]; exact ⟨hlen_tail.symm, htail⟩
                             hframes_len := hrel.hframes_len
                             hframes_locals := hrel.hframes_locals
                             hframes_vals := hrel.hframes_vals
                             hglobals := hrel.hglobals
                             hmemory := by
-                              left; simp only [pushTrace, Array.set!_eq_setIfInBounds, Array.getElem?_setIfInBounds]
+                              left; dsimp only [s2_f64, store_f64, pushTrace]
+                              simp only [Array.set!_eq_setIfInBounds, Array.getElem?_setIfInBounds]
                               have h0 : 0 < s2.store.memories.size := Array.lt_size_of_getElem? hmem_eq
                               simp [h0]
-                            hmemLimits := by simp only [pushTrace]; exact hrel.hmemLimits
+                            hmemLimits := by dsimp only [s2_f64, store_f64, pushTrace]; exact hrel.hmemLimits
                             hmemory_aligned := by rw [writeLE?_preserves_size hwrite]; exact hrel.hmemory_aligned
-                            hmemory_nonempty := by show 0 < (s2.store.memories.set! 0 mem').size; rw [Array.set!_eq_setIfInBounds, Array.size_setIfInBounds]; exact hrel.hmemory_nonempty
+                            hmemory_nonempty := by
+                              dsimp only [s2_f64, store_f64, pushTrace]
+                              rw [Array.set!_eq_setIfInBounds, Array.size_setIfInBounds]
+                              exact hrel.hmemory_nonempty
                             hlabels := hrel.hlabels
                             hhalt := hhalt_of_structural hrest hrel.hlabels
                             hlabel_content := hrel.hlabel_content
@@ -9670,23 +9677,28 @@ theorem step_sim (irmod : IRModule) (wmod : Module) :
                     let store_i64 := { s2.store with memories := s2.store.memories.set! 0 mem' }
                     let s2_i64 := { s2 with code := rest_w, stack := wstk', store := store_i64 }
                     have hw : step? s2 = some (.silent, pushTrace s2_i64 .silent) := by
-                      simp [step?, hcw, hstack_eq, pop2?, hbind]
+                      dsimp only [s2_i64, store_i64]
+                      simp [step?, hcw, hstack_eq, pop2?, hbind, Array.set!_eq_setIfInBounds]
                     simp only [traceToWasm]
                     refine ⟨_, hw, ?_⟩
                     exact { hemit := hrel.hemit
                             hcode := hrest
-                            hstack := by simp only [pushTrace]; exact ⟨hlen_tail.symm, htail⟩
+                            hstack := by dsimp only [s2_i64, store_i64, pushTrace]; exact ⟨hlen_tail.symm, htail⟩
                             hframes_len := hrel.hframes_len
                             hframes_locals := hrel.hframes_locals
                             hframes_vals := hrel.hframes_vals
                             hglobals := hrel.hglobals
                             hmemory := by
-                              left; simp only [pushTrace, Array.set!_eq_setIfInBounds, Array.getElem?_setIfInBounds]
+                              left; dsimp only [s2_i64, store_i64, pushTrace]
+                              simp only [Array.set!_eq_setIfInBounds, Array.getElem?_setIfInBounds]
                               have h0 : 0 < s2.store.memories.size := Array.lt_size_of_getElem? hmem_eq
                               simp [h0]
-                            hmemLimits := by simp only [pushTrace]; exact hrel.hmemLimits
+                            hmemLimits := by dsimp only [s2_i64, store_i64, pushTrace]; exact hrel.hmemLimits
                             hmemory_aligned := by rw [writeLE?_preserves_size hwrite]; exact hrel.hmemory_aligned
-                            hmemory_nonempty := by show 0 < (s2.store.memories.set! 0 mem').size; rw [Array.set!_eq_setIfInBounds, Array.size_setIfInBounds]; exact hrel.hmemory_nonempty
+                            hmemory_nonempty := by
+                              dsimp only [s2_i64, store_i64, pushTrace]
+                              rw [Array.set!_eq_setIfInBounds, Array.size_setIfInBounds]
+                              exact hrel.hmemory_nonempty
                             hlabels := hrel.hlabels
                             hhalt := hhalt_of_structural hrest hrel.hlabels
                             hlabel_content := hrel.hlabel_content
@@ -9822,23 +9834,28 @@ theorem step_sim (irmod : IRModule) (wmod : Module) :
                   let store_s8 := { s2.store with memories := s2.store.memories.set! 0 mem' }
                   let s2_s8 := { s2 with code := rest_w, stack := wstk', store := store_s8 }
                   have hw : step? s2 = some (.silent, pushTrace s2_s8 .silent) := by
-                    simp [step?, hcw, hstack_eq, pop2?, hbind]
+                    dsimp only [s2_s8, store_s8]
+                    simp [step?, hcw, hstack_eq, pop2?, hbind, Array.set!_eq_setIfInBounds]
                   simp only [traceToWasm]
                   refine ⟨_, hw, ?_⟩
                   exact { hemit := hrel.hemit
                           hcode := hrest
-                          hstack := by simp only [pushTrace]; exact ⟨hlen_tail.symm, htail⟩
+                          hstack := by dsimp only [s2_s8, store_s8, pushTrace]; exact ⟨hlen_tail.symm, htail⟩
                           hframes_len := hrel.hframes_len
                           hframes_locals := hrel.hframes_locals
                           hframes_vals := hrel.hframes_vals
                           hglobals := hrel.hglobals
                           hmemory := by
-                            left; simp only [pushTrace, Array.set!_eq_setIfInBounds, Array.getElem?_setIfInBounds]
+                            left; dsimp only [s2_s8, store_s8, pushTrace]
+                            simp only [Array.set!_eq_setIfInBounds, Array.getElem?_setIfInBounds]
                             have h0 : 0 < s2.store.memories.size := Array.lt_size_of_getElem? hmem_eq
                             simp [h0]
-                          hmemLimits := by simp only [pushTrace]; exact hrel.hmemLimits
+                          hmemLimits := by dsimp only [s2_s8, store_s8, pushTrace]; exact hrel.hmemLimits
                           hmemory_aligned := by rw [writeLE?_preserves_size hwrite]; exact hrel.hmemory_aligned
-                          hmemory_nonempty := by show 0 < (s2.store.memories.set! 0 mem').size; rw [Array.set!_eq_setIfInBounds, Array.size_setIfInBounds]; exact hrel.hmemory_nonempty
+                          hmemory_nonempty := by
+                            dsimp only [s2_s8, store_s8, pushTrace]
+                            rw [Array.set!_eq_setIfInBounds, Array.size_setIfInBounds]
+                            exact hrel.hmemory_nonempty
                           hlabels := hrel.hlabels
                           hhalt := hhalt_of_structural hrest hrel.hlabels
                           hlabel_content := hrel.hlabel_content
