@@ -11782,6 +11782,15 @@ theorem step_tryCatch_normal_noFinally (v : Value) (catchParam : VarName) (catch
       some (.silent, pushTrace ⟨.lit v, env, heap, trace, funcs, cs⟩ .silent) := by
   simp [step?, exprValue?, hNotCallFrame]
 
+/-- §13.15 tryCatch with value body and finally: runs seq fin (.lit v). -/
+theorem step_tryCatch_normal_withFinally (v : Value) (catchParam : VarName) (catchBody : Expr)
+    (fin : Expr) (env : Env) (heap : Heap) (trace : List TraceEvent) (funcs : Array FuncClosure)
+    (cs : List (List (VarName × Value)))
+    (hNotCallFrame : catchParam ≠ "__call_frame_return__") :
+    step? ⟨.tryCatch (.lit v) catchParam catchBody (some fin), env, heap, trace, funcs, cs⟩ =
+      some (.silent, pushTrace ⟨.seq fin (.lit v), env, heap, trace, funcs, cs⟩ .silent) := by
+  simp [step?, exprValue?, hNotCallFrame]
+
 /-- §13.1 return with valued argument produces error event. -/
 theorem step_return_some_value (v : Value) (env : Env) (heap : Heap)
     (trace : List TraceEvent) (funcs : Array FuncClosure)
@@ -12682,10 +12691,9 @@ theorem step_tryCatch_step_body_nonError (body : Expr) (catchParam : VarName) (c
     (hne : ∀ msg, t ≠ .error msg) :
     step? ⟨.tryCatch body catchParam catchBody finally_, env, heap, trace, funcs, cs⟩ =
       some (t, pushTrace { sb with expr := .tryCatch sb.expr catchParam catchBody finally_, trace := trace } t) := by
-  simp [step?, hbody, hstep]
   cases t with
-  | silent => simp [pushTrace]
-  | log msg => simp [pushTrace]
+  | silent => simp [step?, hbody, hstep, pushTrace]
+  | log msg => simp [step?, hbody, hstep, pushTrace]
   | error msg => exact absurd rfl (hne msg)
 
 /-- step? on tryCatch with non-value body: error step activates catch (non-callframe). -/
@@ -12699,11 +12707,14 @@ theorem step_tryCatch_step_body_error (body : Expr) (catchParam : VarName) (catc
     (hstep : step? ⟨body, env, heap, trace, funcs, cs⟩ = some (.error msg, sb)) :
     step? ⟨.tryCatch body catchParam catchBody finally_, env, heap, trace, funcs, cs⟩ =
       some (.error msg,
+        let handler := match finally_ with | some fin => Expr.seq catchBody fin | none => catchBody
         pushTrace { sb with
-          expr := match finally_ with | some fin => .seq catchBody fin | none => catchBody,
+          expr := handler,
           env := sb.env.extend catchParam (.string msg),
           trace := trace } (.error msg)) := by
-  simp [step?, hbody, hstep, hncf, pushTrace]
+  cases finally_ with
+  | none => simp [step?, hbody, hstep, hncf, pushTrace]
+  | some fin => simp [step?, hbody, hstep, hncf, pushTrace]
 
 /-- Steps inversion: from [t] there is exactly one step. -/
 theorem Steps_single_inv {s1 s2 : State} {t : TraceEvent}
