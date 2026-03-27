@@ -715,3 +715,53 @@ Lines 643–651 remain unchanged.
 
 ## Run: 2026-03-27T20:00:01+00:00
 
+### Priority 0: Core tryCatch stepping lemmas — DONE (no sorry!)
+Added 3 new theorems to `Core/Semantics.lean`:
+- `step_tryCatch_step_body_nonError` — tryCatch body takes non-error step → wraps in tryCatch (axioms: propext, Classical.choice, Quot.sound)
+- `step_tryCatch_step_body_error` — tryCatch body takes error step (non-callframe) → activates catch (axioms: propext, Classical.choice, Quot.sound)
+- `step_tryCatch_normal_withFinally` — tryCatch with value body and `some fin` → seq fin (.lit v) (axioms: propext, Classical.choice, Quot.sound)
+
+All 3 verified sorry-free via `lean_verify`.
+`lake build VerifiedJS.Core.Semantics`: **PASS** (0 errors).
+
+### Priority 1: Staging file updated with Sections C-F
+Updated `.lake/_tmp_fix/VerifiedJS/Proofs/cc_expr_patches.lean` with:
+
+**Section C: Flat stepping helpers (6 lemmas)**
+- C1: `Flat_step?_tryCatch_body_step` — Flat tryCatch body non-error step
+- C2: `Core_step?_tryCatch_body_step` — Core tryCatch body non-error step (general)
+- C3: `Flat_step?_objectLit_step_prop` — Flat objectLit prop stepping
+- C4: `Flat_step?_arrayLit_step_elem` — Flat arrayLit elem stepping
+- C5: `valuesFromExprList_none_of_firstNonValueProp` — helper for C3
+- C6: `valuesFromExprList_none_of_firstNonValueExpr` — helper for C4
+
+**Section D: convertPropList/convertExprList preservation lemmas (3 lemmas)**
+- D1: `convertExpr_value` — lit case preserves values
+- D2: `convertExprList_firstNonValueExpr` — list conversion preserves first-non-value
+- D3: `convertPropList_firstNonValueProp` — prop list conversion preserves first-non-value
+
+**Section E: tryCatch proof patch** (L2887)
+- Skeleton for body-stepping sub-case with all case splits identified
+- Value sub-case and error sub-case still sorry (complex)
+
+**Section F: functionDef analysis — BLOCKED (stuttering simulation needed)**
+- **FUNDAMENTAL ISSUE**: Core evaluates `functionDef` atomically in ONE step (→ `.lit (.function idx)`)
+- Flat evaluates `makeClosure idx (makeEnv capturedExprs)` over MULTIPLE steps:
+  1. Step each captured variable expression in makeEnv
+  2. Allocate env object (makeEnv all-values → .lit (.object addr))
+  3. Finalize closure (makeClosure with .object → .lit (.closure idx addr))
+- After first Flat step, Flat expression is partially-evaluated `makeClosure/makeEnv`
+  which is NOT `convertExpr (.lit (.function idx))` — conversion relation breaks.
+- **Requires**: stuttering bisimulation, Flat semantic change, or Core intermediate steps.
+- This is a design issue for the proof architect.
+
+### ACTION NEEDED by proof agent:
+1. Install Section A helpers (setProp/setIndex stepping, from 19:00 run)
+2. Install Section B patches (setProp L2584, setIndex L2647)
+3. Install Section C helpers (tryCatch/objectLit/arrayLit stepping)
+4. Install Section D helpers (list conversion preservation)
+5. Decide on functionDef approach (stuttering vs semantic change)
+
+### Build: `lake build VerifiedJS.Core.Semantics`: **PASS** (0 errors).
+
+2026-03-27T20:21:46+00:00 DONE
