@@ -636,10 +636,49 @@ private theorem convertExpr_state_determined (e : Core.Expr)
     have he := convertExprList_state_determined elems scope envVar envMap st1 st2 hid hsz
     exact ⟨by rw [he.1], he.2⟩
   | functionDef fname params body _isAsync _isGenerator =>
-    -- The only case using CCState (freshVar, addFunc). Output depends only on nextId/funcs.size:
-    -- freshVar uses nextId, addFunc uses funcs.size, recursive calls preserve agreement by IH.
-    -- TODO: close this sorry (term-level proof needed due to let-binding expansion)
-    sorry
+    -- freshVar/addFunc depend only on nextId/funcs.size. We track agreement through let bindings.
+    simp only [Flat.convertExpr, Flat.CCState.freshVar]
+    -- innerEnvVar is the same since nextId agrees
+    have henv_name : s!"__env_{st1.nextId}" = s!"__env_{st2.nextId}" := by rw [hid]
+    rw [henv_name]
+    -- IH for body: the new states after freshVar agree
+    have ih_body := convertExpr_state_determined body params (s!"__env_{st2.nextId}")
+      (Flat.indexedMap (Flat.dedupStrings
+        (match fname with
+         | some n => ((Flat.freeVars body).filter fun v => !params.elem v).filter (· != n)
+         | none => (Flat.freeVars body).filter fun v => !params.elem v) []) 0)
+      ⟨st1.funcs, st1.nextId + 1⟩ ⟨st2.funcs, st2.nextId + 1⟩
+      (by simp; omega) (by simp; exact hsz)
+    -- body' is the same
+    rw [show (Flat.convertExpr body params (s!"__env_{st2.nextId}")
+        (Flat.indexedMap (Flat.dedupStrings
+          (match fname with
+           | some n => ((Flat.freeVars body).filter fun v => !params.elem v).filter (· != n)
+           | none => (Flat.freeVars body).filter fun v => !params.elem v) []) 0)
+        ⟨st1.funcs, st1.nextId + 1⟩).fst =
+      (Flat.convertExpr body params (s!"__env_{st2.nextId}")
+        (Flat.indexedMap (Flat.dedupStrings
+          (match fname with
+           | some n => ((Flat.freeVars body).filter fun v => !params.elem v).filter (· != n)
+           | none => (Flat.freeVars body).filter fun v => !params.elem v) []) 0)
+        ⟨st2.funcs, st2.nextId + 1⟩).fst from ih_body.1]
+    -- funcName: for anonymous functions, depends on st2.nextId which agrees
+    have hid' := ih_body.2.1  -- nextId agrees after body conversion
+    have hsz' := ih_body.2.2  -- funcs.size agrees after body conversion
+    simp only [Flat.CCState.addFunc]
+    constructor
+    · -- .fst: .makeClosure funcIdx envExpr — funcIdx = snd.funcs.size
+      congr 1
+      · -- funcIdx equality
+        exact hsz'
+    · -- CCStateAgree on output states
+      constructor
+      · -- nextId preserved through addFunc
+        simp only [CCStateAgree] at hid' hsz'
+        exact hid'
+      · -- funcs.size: old size + 1
+        simp only [Array.size_push]
+        exact congrArg (· + 1) hsz'
   | throw arg =>
     simp only [Flat.convertExpr]
     have ha := convertExpr_state_determined arg scope envVar envMap st1 st2 hid hsz

@@ -9287,8 +9287,6 @@ theorem step_sim (irmod : IRModule) (wmod : Module) :
             exfalso; generalize s2.code = wcode at hc_full
             cases hc_full with | general _ _ _ _ hf _ => exact hf.elim
       | .store t offset =>
-          sorry
-          /-
           have hc_full : EmitCodeCorr _ (IRInstr.store t offset :: rest) s2.code := hcode_ir ▸ hrel.hcode
           match t with
           | .i32 =>
@@ -9744,10 +9742,7 @@ theorem step_sim (irmod : IRModule) (wmod : Module) :
           | .ptr =>
             exfalso; generalize s2.code = wcode at hc_full
             cases hc_full with | general _ _ _ _ hf _ => exact hf.elim
-          -/
       | .store8 offset =>
-          sorry
-          /-
           have hc_full : EmitCodeCorr _ (IRInstr.store8 offset :: rest) s2.code := hcode_ir ▸ hrel.hcode
           rcases hc_full.store8_inv with ⟨rest_w, hcw, hrest⟩ | hf
           · match hstk : s1.stack with
@@ -9894,7 +9889,6 @@ theorem step_sim (irmod : IRModule) (wmod : Module) :
                       hstore_funcs := hrel.hstore_funcs
                       hstore_types := hrel.hstore_types }⟩)
           · exact hf.elim
-          -/
       | .binOp t op =>
           have hc : EmitCodeCorr _ (IRInstr.binOp t op :: rest) s2.code := hcode_ir ▸ hrel.hcode
           match t with
@@ -10349,8 +10343,7 @@ theorem step_sim (irmod : IRModule) (wmod : Module) :
           · exact hf.elim
       -/
       | .callIndirect typeIdx => sorry
-      | .block label body => sorry
-          /-
+      | .block label body =>
           -- block: push label frame, enter body. Both IR and Wasm do the same.
           have hc : EmitCodeCorr _ (IRInstr.block label body :: rest) s2.code := hcode_ir ▸ hrel.hcode
           rcases hc.block_inv with ⟨body_w, rest_w, hcw, hbody, hrest⟩ | hf
@@ -10374,9 +10367,7 @@ theorem step_sim (irmod : IRModule) (wmod : Module) :
             · -- Frame count
               exact hrel.hframes_one
           · exact hf.elim
-          -/
-      | .loop label body => sorry
-          /-
+      | .loop label body =>
           -- loop: push loop label frame, enter body. Both IR and Wasm do the same.
           -- Key difference from block: onBranch points to body (re-enter loop), not rest.
           have hc : EmitCodeCorr _ (IRInstr.loop label body :: rest) s2.code := hcode_ir ▸ hrel.hcode
@@ -10401,9 +10392,7 @@ theorem step_sim (irmod : IRModule) (wmod : Module) :
             · -- Frame count
               exact hrel.hframes_one
           · exact hf.elim
-          -/
-      | .if_ result then_ else_ => sorry
-          /-
+      | .if_ result then_ else_ =>
           -- if: conditional branch. Both IR and Wasm pop i32, push label, enter branch.
           have hc : EmitCodeCorr _ (IRInstr.if_ result then_ else_ :: rest) s2.code := hcode_ir ▸ hrel.hcode
           rcases hc.if_inv with ⟨bt, then_w, else_w, rest_w, hcw, hthen, helse, hrest⟩ | hf
@@ -10606,7 +10595,6 @@ theorem step_sim (irmod : IRModule) (wmod : Module) :
                       hstore_funcs := hrel.hstore_funcs
                       hstore_types := hrel.hstore_types }⟩
           · exact hf.elim
-          -/
       | .br label => sorry
           /-
           -- unconditional branch
