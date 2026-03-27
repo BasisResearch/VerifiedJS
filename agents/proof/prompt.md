@@ -1,84 +1,79 @@
-# proof — CLOSE THE 6 CCState SORRIES NOW
+# proof — CLOSE 30+ SORRIES RIGHT NOW (mechanical fixes)
 
-## GREAT NEWS: Suffices refactor is DONE
-The suffices at L1748 now has scope/st/st' as universal args and CCStateAgree in the output.
-Your IH calls should now produce `hAgreeIn : CCStateAgree st st_a` and `hAgreeOut : CCStateAgree st' st_a'`.
+## PHASE 1: Replace `sorry, sorry` with `hAgreeIn, hAgreeOut` (20 sorry tokens)
 
-## YOUR SOLE PRIORITY: Close these 6 sorries
+These 10 lines each have `sorry, sorry` where `hAgreeIn` and `hAgreeOut` are in scope from the IH obtain.
 
-### 1. L1988: let stepping CCState
-### 2. L2195: if stepping CCState
-### 3. L2284: seq stepping CCState
-### 4. L2523: binary lhs stepping CCState
-### 5. L2646: getIndex stepping CCState
-### 6. L2918: while_ CCState
+**The exact edit** on each line: replace `sorry, sorry⟩` with `hAgreeIn, hAgreeOut⟩`
 
-## THE PATTERN (same for all 6)
+Lines: **2071, 2369, 2466, 2584, 2706, 2795, 2887, 3091, 3229, 3316**
 
-Each sorry has the goal:
+Each line looks like:
+```lean
+exact ⟨congrArg Prod.fst hconv', congrArg Prod.snd hconv'⟩, sorry, sorry⟩
 ```
-∃ st_a st_a' : Flat.CCState,
-  (sf'.expr, st_a') = Flat.convertExpr sc'.expr scope envVar envMap st_a ∧
-  CCStateAgree st st_a ∧ CCStateAgree st' st_a'
+Replace with:
+```lean
+exact ⟨congrArg Prod.fst hconv', congrArg Prod.snd hconv'⟩, hAgreeIn, hAgreeOut⟩
 ```
 
-From the IH on the sub-expression, you already have:
-- `st_a, st_a'` (from the IH output existential)
-- `hconv' : (sub_sf'.expr, st_a') = convertExpr sc_sub'.expr scope envVar envMap st_a`
-- `hAgreeIn : CCStateAgree st_orig st_a` (or similar)
-- `hAgreeOut : CCStateAgree st_orig' st_a'`
+DO THIS FIRST. It is 100% mechanical and closes 20 sorry tokens.
 
-### For let (L1988):
-The goal is about `convertExpr (.let name sc_sub'.expr body) scope envVar envMap st_a`.
-This unfolds to:
+## PHASE 2: Replace `⟨rfl, rfl⟩, sorry⟩` where st' = st (simple base cases)
+
+For var and this cases where `hst_eq : st' = st` is in scope:
+- **L1825**: replace `sorry⟩` with `hst_eq ▸ ⟨rfl, rfl⟩⟩`
+- **L1848**: same
+- **L1876**: same
+- **L1899**: same
+
+For cases where `hst` is `st' = (Flat.convertExpr (.lit cv) ... st).snd`:
+- **L2019** (assign value): replace `sorry⟩` with `by simp [Flat.convertExpr] at hst; subst hst; exact ⟨rfl, rfl⟩⟩`
+- **L2829** (throw value): same pattern
+- **L2956, L2979** (break/continue): `hst : st' = st` directly → `hst ▸ ⟨rfl, rfl⟩⟩`
+
+For cases past L2919 (return/yield/await/labeled base cases):
+- **L3005, L3035, L3143, L3173, L3260**: check `hst` type, if it's `st' = st`, use `hst ▸ ⟨rfl, rfl⟩`
+- If `hst` is more complex, use `by simp [Flat.convertExpr] at hst; subst hst; exact ⟨rfl, rfl⟩`
+
+## PHASE 3: The 6 CCState stepping sorries
+
+Lines: **1989, 2196, 2285, 2524, 2647, 2919**
+
+### Pattern for L1989 (let stepping):
+```lean
+· -- CCState for let stepping
+  have hsd := convertExpr_state_determined body (name :: scope) envVar envMap
+    (Flat.convertExpr init scope envVar envMap st).snd st_a' hAgreeOut.1 hAgreeOut.2
+  refine ⟨st_a, (Flat.convertExpr body (name :: scope) envVar envMap st_a').snd, ?_, hAgreeIn, hsd.2⟩
+  simp only [sc', Flat.convertExpr]
+  have h1 := congrArg Prod.fst hconv'.symm  -- sa.expr = (convertExpr sc_sub'.expr ... st_a).fst
+  have h2 := congrArg Prod.snd hconv'.symm  -- st_a' = (convertExpr sc_sub'.expr ... st_a).snd
+  rw [h1, h2, ← hsd.1]
 ```
-let (e1, s1) = convertExpr sc_sub'.expr scope envVar envMap st_a
-let (e2, s2) = convertExpr body (name::scope) envVar envMap s1
-(.let name e1 e2, s2)
-```
 
-You need:
-1. `e1 = sub_sf'.expr` (from hconv')
-2. `s1 = st_a'` (from hconv')
-3. Body part: use `convertExpr_state_determined` with CCStateAgree to show the body converts the same way
+Use `lean_goal` at each line to see the exact goal, then adapt this pattern.
 
-Key lemma: `convertExpr_state_determined` — if `CCStateAgree s1 s2`, then
-`convertExpr e scope envVar envMap s1` and `convertExpr e scope envVar envMap s2`
-produce the same expression (fst) and `CCStateAgree` output states (snd).
+### For L2196 (if stepping): same pattern but with cond/then_/else_
+### For L2285 (seq stepping): same pattern but with a/b
+### For L2524 (binary lhs stepping): same pattern but with lhs/rhs
+### For L2647 (getIndex stepping): same pattern but with obj/idx
+### For L2919 (while_): may be simpler since while_ unrolls
 
-### For if (L2195):
-Same idea: `convertExpr (.if sc_sub'.expr then_ else_) scope envVar envMap st_a` unfolds.
-Sub-expression gives the cond part, then use `convertExpr_state_determined` for then_ and else_ branches.
-
-### For seq (L2284), binary (L2523), getIndex (L2646):
-Same pattern, just different sub-expression structure.
-
-### For while_ (L2918):
-`convertExpr (.while_ cond body)` duplicates cond and body:
-```
-let (c, s1) = convertExpr cond scope envVar envMap st
-let (b, s2) = convertExpr body scope envVar envMap s1
-(.if c (.seq b (.while_ c b)) (.lit .undefined), s2)
-```
-Since while_ doesn't step its sub-expressions (it unfolds to if), the CCState witnesses are `st` and `st'` directly, with `CCStateAgree st st ∧ CCStateAgree st' st'` via reflexivity.
-
-## ALSO: Install jsspec patches for setProp/setIndex
-
-jsspec prepared patches in `.lake/_tmp_fix/VerifiedJS/Proofs/cc_expr_patches.lean`.
-After closing CCState sorries, read that file and apply the setProp (L2584) and setIndex (L2647) patches.
-
-## EXECUTION CHECKLIST
-1. Use `lean_goal` at L1988 to see exact goal state
-2. Try to close it with the pattern above
-3. Repeat for L2195, L2284, L2523, L2646, L2918
-4. Each closure = 1 fewer sorry. Target: 20 → 14
+## PHASE 4: Compound value-base sorry cases (SKIP for now)
+Lines L1932, L2108, L2130, L2228, L2315, L2410, L2741, L3117 — these need architectural analysis.
+DO NOT attempt these until Phases 1-3 are done.
 
 ## DO NOT TOUCH:
 - ANFConvertCorrect, LowerCorrect, Wasm/Semantics
-- forIn/forOf at L1132/L1133 (theorem false — stubs)
-- Value sub-cases at L2531/L2590/L2653
-- The suffices statement itself (it's correct now)
+- forIn/forOf at L1132/L1133
+- Full-case sorries: L1797, L2525, L2526, L2585, L2648, L2796, L2797, L2798, L2888
+- Value sub-cases: L2532, L2591, L2654
+
+## EXECUTION ORDER
+1. Phase 1 first (all 10 lines). Build. Verify.
+2. Phase 2 next (as many as you can). Build. Verify.
+3. Phase 3 if time permits.
 
 ## Build: `lake build VerifiedJS.Proofs.ClosureConvertCorrect`
-## Use lean_goal + lean_multi_attempt BEFORE every edit.
 ## Log progress to agents/proof/log.md.
