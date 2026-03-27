@@ -7,7 +7,7 @@
 
 2. **Closed convertExpr_state_determined functionDef (L642)**: The key lemma for CCState threading. Proved that `convertExpr (.functionDef ...)` produces the same `.fst` and `CCStateAgree` `.snd` when input CCStates agree on nextId and funcs.size. Approach: `unfold Flat.convertExpr; simp only [CCState.freshVar, CCState.addFunc, hid]` to expose the let-bindings, then IH for the body conversion with named-field states. `.fst` equality via `congrArg`. CCStateAgree via `ih_id` and `congrArg (· + 1) ih_sz`. Note: `simp only [Flat.convertExpr]` doesn't work for functionDef (equation lemma issue); must use `unfold`. Closes 1 sorry.
 
-3. **Fixed maxHeartbeats simp config error (L680)**: `simp_all (config := { maxHeartbeats := 200000 })` → `simp_all` — `maxHeartbeats` is not a valid field of `Lean.Meta.Simp.ConfigCtx` in Lean v4.29.0-rc6.
+3. **Fixed maxHeartbeats simp config error (L680)**: `simp_all (config := { maxHeartbeats := 200000 })` → `simp_wf` — `maxHeartbeats` is not a valid field of `Lean.Meta.Simp.ConfigCtx` in Lean v4.29.0-rc6. `simp_wf` is the correct tactic for `decreasing_by` goals. Plain `simp_all` timed out at 800000 heartbeats.
 
 4. **Added helper lemmas**: `Flat_step?_setProp_obj_step`, `Core_step?_setProp_obj_step`, `Flat_step?_setIndex_obj_step`, `Core_step?_setIndex_obj_step` — for future setProp/setIndex case proofs.
 

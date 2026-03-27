@@ -10488,7 +10488,7 @@ theorem step_sim (irmod : IRModule) (wmod : Module) :
                   rw [hstk, hs2] at hval_corr
                   simp at hval_corr
                   cases hval_corr with
-                  | i32 n => rename_i hneq; rw [hneq] at hs2
+                  | i32 n =>
                   have hw := step?_eq_if_false s2 bt then_w else_w rest_w wstk hcw hs2
                   refine ⟨_, hw, hrel.hemit, helse, ?_, hrel.hframes_len, hrel.hframes_locals, hrel.hframes_vals, hrel.hglobals, ?_, ?_, ?_, ?_⟩
                   · -- Stack correspondence: tails match
@@ -10523,9 +10523,7 @@ theorem step_sim (irmod : IRModule) (wmod : Module) :
                   simp at hval_corr
                   cases hval_corr with
                   | i32 n =>
-                    rename_i hneq; rw [hneq] at hs2
-                    have hne_w : n ≠ 0 := by rw [← hneq]; exact hne
-                    have hw := step?_eq_if_true s2 bt then_w else_w rest_w n wstk hcw hs2 hne_w
+                    have hw := step?_eq_if_true s2 bt then_w else_w rest_w n wstk hcw hs2 hne
                     refine ⟨_, hw, hrel.hemit, hthen, ?_, hrel.hframes_len, hrel.hframes_locals, hrel.hframes_vals, hrel.hglobals, ?_, ?_, ?_, ?_⟩
                     · -- Stack correspondence: tails match
                       constructor
