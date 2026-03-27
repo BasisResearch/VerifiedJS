@@ -2075,7 +2075,7 @@ private theorem closureConvert_step_simulation
       · simp [sc', ExprAddrWF]; exact hexprwf'
       · exact ⟨st_a, st_a', by
           simp [sc', Flat.convertExpr]
-          exact ⟨congrArg Prod.fst hconv', congrArg Prod.snd hconv'⟩, sorry, sorry⟩
+          exact ⟨congrArg Prod.fst hconv', congrArg Prod.snd hconv'⟩, hAgreeIn, by first | (rw [hst]; exact hAgreeOut) | (rw [hconv.2]; exact hAgreeOut)⟩
   | «if» cond then_ else_ =>
     rw [hsc] at hconv hncfr hexprwf hd
     simp [Flat.convertExpr] at hconv
@@ -2390,7 +2390,7 @@ private theorem closureConvert_step_simulation
       · simp [sc', ExprAddrWF]; exact hexprwf'
       · exact ⟨st_a, st_a', by
           simp [sc', Flat.convertExpr]
-          exact ⟨congrArg Prod.fst hconv', congrArg Prod.snd hconv'⟩, sorry, sorry⟩
+          exact ⟨congrArg Prod.fst hconv', congrArg Prod.snd hconv'⟩, hAgreeIn, by first | (rw [hst]; exact hAgreeOut) | (rw [hconv.2]; exact hAgreeOut)⟩
   | binary op lhs rhs =>
     rw [hsc] at hconv hncfr hexprwf hd
     simp [Flat.convertExpr] at hconv
@@ -2487,7 +2487,7 @@ private theorem closureConvert_step_simulation
             exact ValueAddrWF_mono (by simp [ExprAddrWF] at hexprwf; exact hexprwf.1) (Core_step_heap_size_mono hcstep_sub), hexprwf'⟩
         · exact ⟨st_a, st_a', by
             simp [sc', Flat.convertExpr, Flat.exprValue?]
-            exact ⟨congrArg Prod.fst hconv', congrArg Prod.snd hconv'⟩, sorry, sorry⟩
+            exact ⟨congrArg Prod.fst hconv', congrArg Prod.snd hconv'⟩, hAgreeIn, by first | (rw [hst]; exact hAgreeOut) | (rw [hconv.2]; exact hAgreeOut)⟩
     | none =>
       -- lhs stepping
       have hfnv : Flat.exprValue? (Flat.convertExpr lhs scope envVar envMap st).fst = none :=
@@ -2612,7 +2612,7 @@ private theorem closureConvert_step_simulation
       · simp [sc', ExprAddrWF]; exact hexprwf'
       · exact ⟨st_a, st_a', by
           simp [sc', Flat.convertExpr]
-          exact ⟨congrArg Prod.fst hconv', congrArg Prod.snd hconv'⟩, sorry, sorry⟩
+          exact ⟨congrArg Prod.fst hconv', congrArg Prod.snd hconv'⟩, hAgreeIn, by first | (rw [hst]; exact hAgreeOut) | (rw [hconv.2]; exact hAgreeOut)⟩
   | setProp obj prop value => sorry
   | getIndex obj idx =>
     rw [hsc] at hconv hncfr hexprwf hd
@@ -2741,7 +2741,7 @@ private theorem closureConvert_step_simulation
       · simp [sc', ExprAddrWF]; exact hexprwf'
       · exact ⟨st_a, st_a', by
           simp [sc', Flat.convertExpr]
-          exact ⟨congrArg Prod.fst hconv', congrArg Prod.snd hconv'⟩, sorry, sorry⟩
+          exact ⟨congrArg Prod.fst hconv', congrArg Prod.snd hconv'⟩, hAgreeIn, by first | (rw [hst]; exact hAgreeOut) | (rw [hconv.2]; exact hAgreeOut)⟩
   | typeof arg =>
     rw [hsc] at hconv hncfr hexprwf hd
     simp [Flat.convertExpr] at hconv
@@ -2830,7 +2830,7 @@ private theorem closureConvert_step_simulation
       · simp [sc', ExprAddrWF]; exact hexprwf'
       · exact ⟨st_a, st_a', by
           simp [sc', Flat.convertExpr]
-          exact ⟨congrArg Prod.fst hconv', congrArg Prod.snd hconv'⟩, sorry, sorry⟩
+          exact ⟨congrArg Prod.fst hconv', congrArg Prod.snd hconv'⟩, hAgreeIn, by first | (rw [hst]; exact hAgreeOut) | (rw [hconv.2]; exact hAgreeOut)⟩
   | objectLit props => sorry
   | arrayLit elems => sorry
   | functionDef fname params body isAsync isGen => sorry
@@ -2922,7 +2922,7 @@ private theorem closureConvert_step_simulation
       · simp [sc', ExprAddrWF]; exact hexprwf'
       · exact ⟨st_a, st_a', by
           simp [sc', Flat.convertExpr]
-          exact ⟨congrArg Prod.fst hconv', congrArg Prod.snd hconv'⟩, sorry, sorry⟩
+          exact ⟨congrArg Prod.fst hconv', congrArg Prod.snd hconv'⟩, hAgreeIn, by first | (rw [hst]; exact hAgreeOut) | (rw [hconv.2]; exact hAgreeOut)⟩
   | tryCatch body catchParam catchBody finally_ => sorry
   | while_ cond body =>
     rw [hsc] at hconv hncfr hexprwf hd
@@ -3126,7 +3126,7 @@ private theorem closureConvert_step_simulation
         · simp [sc', ExprAddrWF]; exact hexprwf'
         · exact ⟨st_a, st_a', by
             simp [sc', Flat.convertExpr, Flat.convertOptExpr]
-            exact ⟨congrArg Prod.fst hconv', congrArg Prod.snd hconv'⟩, sorry, sorry⟩
+            exact ⟨congrArg Prod.fst hconv', congrArg Prod.snd hconv'⟩, hAgreeIn, by first | (rw [hst]; exact hAgreeOut) | (rw [hconv.2]; exact hAgreeOut)⟩
   | labeled label body =>
     rw [hsc] at hconv hncfr hexprwf hd
     simp [Flat.convertExpr] at hconv
@@ -3264,7 +3264,7 @@ private theorem closureConvert_step_simulation
         · simp [sc', ExprAddrWF]; exact hexprwf'
         · exact ⟨st_a, st_a', by
             simp [sc', Flat.convertExpr, Flat.convertOptExpr]
-            exact ⟨congrArg Prod.fst hconv', congrArg Prod.snd hconv'⟩, sorry, sorry⟩
+            exact ⟨congrArg Prod.fst hconv', congrArg Prod.snd hconv'⟩, hAgreeIn, by first | (rw [hst]; exact hAgreeOut) | (rw [hconv.2]; exact hAgreeOut)⟩
   | await arg =>
     rw [hsc] at hconv hncfr hexprwf hd
     simp [Flat.convertExpr] at hconv
@@ -3351,7 +3351,7 @@ private theorem closureConvert_step_simulation
       · simp [sc', ExprAddrWF]; exact hexprwf'
       · exact ⟨st_a, st_a', by
           simp [sc', Flat.convertExpr]
-          exact ⟨congrArg Prod.fst hconv', congrArg Prod.snd hconv'⟩, sorry, sorry⟩
+          exact ⟨congrArg Prod.fst hconv', congrArg Prod.snd hconv'⟩, hAgreeIn, by first | (rw [hst]; exact hAgreeOut) | (rw [hconv.2]; exact hAgreeOut)⟩
 /-! ### step?_none_implies_lit -/
 
 /-- The only Flat expression where step? returns none is a literal value. -/
