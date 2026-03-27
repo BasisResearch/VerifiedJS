@@ -10430,7 +10430,7 @@ theorem step_sim (irmod : IRModule) (wmod : Module) :
             | [] =>
               -- Empty stack: IR traps "stack underflow in if"
               have hir : irStep? s1 = some (.trap "stack underflow in if",
-                  { s1 with code := rest, code := [], trace := s1.trace ++ [.trap "stack underflow in if"] }) := by
+                  { s1 with code := [], trace := s1.trace ++ [.trap "stack underflow in if"] }) := by
                 simp [irStep?, hcode_ir, hstk, irPop1?, irTrapState, irPushTrace]
               rw [hir] at hstep
               simp only [Option.some.injEq, Prod.mk.injEq] at hstep
