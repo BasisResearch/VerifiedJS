@@ -1960,13 +1960,13 @@ private theorem closureConvert_step_simulation
         simp [noCallFrameReturn] at hncfr; exact hncfr.1
       have hexprwf_init : ExprAddrWF init sc.heap.objects.size := by
         simp [ExprAddrWF] at hexprwf; exact hexprwf.1
-      obtain ⟨injMap', sc_sub', ⟨hcstep_sub⟩, htrace_sub, hinj', henvCorr', henvwf', hheapvwf', hncfr', hexprwf', scope', st_a, st_a', hconv'⟩ :=
+      obtain ⟨injMap', sc_sub', ⟨hcstep_sub⟩, htrace_sub, hinj', henvCorr', henvwf', hheapvwf', hncfr', hexprwf', st_a, st_a', hconv', hAgreeIn, hAgreeOut⟩ :=
         ih_depth init.depth hdepth envVar envMap injMap
           { sf with expr := (Flat.convertExpr init scope envVar envMap st).fst }
           { sc with expr := init }
-          ev sa
+          ev sa scope st (Flat.convertExpr init scope envVar envMap st).snd
           (by simp [Core.Expr.depth]) htrace hinj henvCorr henvwf hheapvwf hncfr_init hexprwf_init
-          ⟨scope, st, (Flat.convertExpr init scope envVar envMap st).snd, by simp⟩
+          (by simp)
           ⟨hsubstep⟩
       let sc' : Core.State :=
         ⟨.«let» name sc_sub'.expr body, sc_sub'.env, sc_sub'.heap,
@@ -2041,13 +2041,13 @@ private theorem closureConvert_step_simulation
         simp [noCallFrameReturn] at hncfr; exact hncfr
       have hexprwf_rhs : ExprAddrWF rhs sc.heap.objects.size := by
         simp [ExprAddrWF] at hexprwf; exact hexprwf
-      obtain ⟨injMap', sc_sub', ⟨hcstep_sub⟩, htrace_sub, hinj', henvCorr', henvwf', hheapvwf', hncfr', hexprwf', scope', st_a, st_a', hconv'⟩ :=
+      obtain ⟨injMap', sc_sub', ⟨hcstep_sub⟩, htrace_sub, hinj', henvCorr', henvwf', hheapvwf', hncfr', hexprwf', st_a, st_a', hconv', hAgreeIn, hAgreeOut⟩ :=
         ih_depth rhs.depth hdepth envVar envMap injMap
           { sf with expr := (Flat.convertExpr rhs scope envVar envMap st).fst }
           { sc with expr := rhs }
-          ev sa
+          ev sa scope st (Flat.convertExpr rhs scope envVar envMap st).snd
           (by simp [Core.Expr.depth]) htrace hinj henvCorr henvwf hheapvwf hncfr_rhs hexprwf_rhs
-          ⟨scope, st, (Flat.convertExpr rhs scope envVar envMap st).snd, by simp⟩
+          (by simp)
           ⟨hsubstep⟩
       let sc' : Core.State :=
         ⟨.assign name sc_sub'.expr, sc_sub'.env, sc_sub'.heap,
@@ -2166,13 +2166,13 @@ private theorem closureConvert_step_simulation
         simp [noCallFrameReturn] at hncfr; exact hncfr.1.1
       have hexprwf_cond : ExprAddrWF cond sc.heap.objects.size := by
         simp [ExprAddrWF] at hexprwf; exact hexprwf.1
-      obtain ⟨injMap', sc_sub', ⟨hcstep_sub⟩, htrace_sub, hinj', henvCorr', henvwf', hheapvwf', hncfr', hexprwf', scope', st_a, st_a', hconv'⟩ :=
+      obtain ⟨injMap', sc_sub', ⟨hcstep_sub⟩, htrace_sub, hinj', henvCorr', henvwf', hheapvwf', hncfr', hexprwf', st_a, st_a', hconv', hAgreeIn, hAgreeOut⟩ :=
         ih_depth cond.depth hdepth envVar envMap injMap
           { sf with expr := (Flat.convertExpr cond scope envVar envMap st).fst }
           { sc with expr := cond }
-          ev sa
+          ev sa scope st (Flat.convertExpr cond scope envVar envMap st).snd
           (by simp [Core.Expr.depth]) htrace hinj henvCorr henvwf hheapvwf hncfr_cond hexprwf_cond
-          ⟨scope, st, (Flat.convertExpr cond scope envVar envMap st).snd, by simp⟩
+          (by simp)
           ⟨hsubstep⟩
       let sc' : Core.State :=
         ⟨.«if» sc_sub'.expr then_ else_, sc_sub'.env, sc_sub'.heap,
@@ -2256,13 +2256,13 @@ private theorem closureConvert_step_simulation
         simp [noCallFrameReturn] at hncfr; exact hncfr.1
       have hexprwf_a : ExprAddrWF a sc.heap.objects.size := by
         simp [ExprAddrWF] at hexprwf; exact hexprwf.1
-      obtain ⟨injMap', sc_sub', ⟨hcstep_sub⟩, htrace_sub, hinj', henvCorr', henvwf', hheapvwf', hncfr', hexprwf', scope', st_a, st_a', hconv'⟩ :=
+      obtain ⟨injMap', sc_sub', ⟨hcstep_sub⟩, htrace_sub, hinj', henvCorr', henvwf', hheapvwf', hncfr', hexprwf', st_a, st_a', hconv', hAgreeIn, hAgreeOut⟩ :=
         ih_depth a.depth hdepth envVar envMap injMap
           { sf with expr := (Flat.convertExpr a scope envVar envMap st).fst }
           { sc with expr := a }
-          ev sa
+          ev sa scope st (Flat.convertExpr a scope envVar envMap st).snd
           (by simp [Core.Expr.depth]) htrace hinj henvCorr henvwf hheapvwf hncfr_a hexprwf_a
-          ⟨scope, st, (Flat.convertExpr a scope envVar envMap st).snd, by simp⟩
+          (by simp)
           ⟨hsubstep⟩
       let sc' : Core.State :=
         ⟨.seq sc_sub'.expr b, sc_sub'.env, sc_sub'.heap,
@@ -2339,13 +2339,13 @@ private theorem closureConvert_step_simulation
         simp [noCallFrameReturn] at hncfr; exact hncfr
       have hexprwf_arg : ExprAddrWF arg sc.heap.objects.size := by
         simp [ExprAddrWF] at hexprwf; exact hexprwf
-      obtain ⟨injMap', sc_sub', ⟨hcstep_sub⟩, htrace_sub, hinj', henvCorr', henvwf', hheapvwf', hncfr', hexprwf', scope', st_a, st_a', hconv'⟩ :=
+      obtain ⟨injMap', sc_sub', ⟨hcstep_sub⟩, htrace_sub, hinj', henvCorr', henvwf', hheapvwf', hncfr', hexprwf', st_a, st_a', hconv', hAgreeIn, hAgreeOut⟩ :=
         ih_depth arg.depth hdepth envVar envMap injMap
           { sf with expr := (Flat.convertExpr arg scope envVar envMap st).fst }
           { sc with expr := arg }
-          ev sa
+          ev sa scope st (Flat.convertExpr arg scope envVar envMap st).snd
           (by simp [Core.Expr.depth]) htrace hinj henvCorr henvwf hheapvwf hncfr_arg hexprwf_arg
-          ⟨scope, st, (Flat.convertExpr arg scope envVar envMap st).snd, by simp⟩
+          (by simp)
           ⟨hsubstep⟩
       let sc' : Core.State :=
         ⟨.unary op sc_sub'.expr, sc_sub'.env, sc_sub'.heap,
@@ -2435,13 +2435,13 @@ private theorem closureConvert_step_simulation
           simp [noCallFrameReturn] at hncfr; exact hncfr
         have hexprwf_rhs : ExprAddrWF rhs sc.heap.objects.size := by
           simp [ExprAddrWF] at hexprwf; exact hexprwf.2
-        obtain ⟨injMap', sc_sub', ⟨hcstep_sub⟩, htrace_sub, hinj', henvCorr', henvwf', hheapvwf', hncfr', hexprwf', scope', st_a, st_a', hconv'⟩ :=
+        obtain ⟨injMap', sc_sub', ⟨hcstep_sub⟩, htrace_sub, hinj', henvCorr', henvwf', hheapvwf', hncfr', hexprwf', st_a, st_a', hconv', hAgreeIn, hAgreeOut⟩ :=
           ih_depth rhs.depth hdepth envVar envMap injMap
             { sf with expr := (Flat.convertExpr rhs scope envVar envMap st).fst }
             { sc with expr := rhs }
-            ev sa
+            ev sa scope st (Flat.convertExpr rhs scope envVar envMap st).snd
             (by simp [Core.Expr.depth]) htrace hinj henvCorr henvwf hheapvwf hncfr_rhs hexprwf_rhs
-            ⟨scope, st, (Flat.convertExpr rhs scope envVar envMap st).snd, by simp⟩
+            (by simp)
             ⟨hsubstep⟩
         let sc' : Core.State :=
           ⟨.binary op (.lit lv) sc_sub'.expr, sc_sub'.env, sc_sub'.heap,
@@ -2495,13 +2495,13 @@ private theorem closureConvert_step_simulation
         simp [noCallFrameReturn] at hncfr; exact hncfr.1
       have hexprwf_lhs : ExprAddrWF lhs sc.heap.objects.size := by
         simp [ExprAddrWF] at hexprwf; exact hexprwf.1
-      obtain ⟨injMap', sc_sub', ⟨hcstep_sub⟩, htrace_sub, hinj', henvCorr', henvwf', hheapvwf', hncfr', hexprwf', scope', st_a, st_a', hconv'⟩ :=
+      obtain ⟨injMap', sc_sub', ⟨hcstep_sub⟩, htrace_sub, hinj', henvCorr', henvwf', hheapvwf', hncfr', hexprwf', st_a, st_a', hconv', hAgreeIn, hAgreeOut⟩ :=
         ih_depth lhs.depth hdepth envVar envMap injMap
           { sf with expr := (Flat.convertExpr lhs scope envVar envMap st).fst }
           { sc with expr := lhs }
-          ev sa
+          ev sa scope st (Flat.convertExpr lhs scope envVar envMap st).snd
           (by simp [Core.Expr.depth]) htrace hinj henvCorr henvwf hheapvwf hncfr_lhs hexprwf_lhs
-          ⟨scope, st, (Flat.convertExpr lhs scope envVar envMap st).snd, by simp⟩
+          (by simp)
           ⟨hsubstep⟩
       let sc' : Core.State :=
         ⟨.binary op sc_sub'.expr rhs, sc_sub'.env, sc_sub'.heap,
@@ -2554,13 +2554,13 @@ private theorem closureConvert_step_simulation
         simp [noCallFrameReturn] at hncfr; exact hncfr
       have hexprwf_arg : ExprAddrWF obj sc.heap.objects.size := by
         simp [ExprAddrWF] at hexprwf; exact hexprwf
-      obtain ⟨injMap', sc_sub', ⟨hcstep_sub⟩, htrace_sub, hinj', henvCorr', henvwf', hheapvwf', hncfr', hexprwf', scope', st_a, st_a', hconv'⟩ :=
+      obtain ⟨injMap', sc_sub', ⟨hcstep_sub⟩, htrace_sub, hinj', henvCorr', henvwf', hheapvwf', hncfr', hexprwf', st_a, st_a', hconv', hAgreeIn, hAgreeOut⟩ :=
         ih_depth obj.depth hdepth envVar envMap injMap
           { sf with expr := (Flat.convertExpr obj scope envVar envMap st).fst }
           { sc with expr := obj }
-          ev sa
+          ev sa scope st (Flat.convertExpr obj scope envVar envMap st).snd
           (by simp [Core.Expr.depth]) htrace hinj henvCorr henvwf hheapvwf hncfr_arg hexprwf_arg
-          ⟨scope, st, (Flat.convertExpr obj scope envVar envMap st).snd, by simp⟩
+          (by simp)
           ⟨hsubstep⟩
       let sc' : Core.State :=
         ⟨.getProp sc_sub'.expr prop, sc_sub'.env, sc_sub'.heap,
@@ -2618,13 +2618,13 @@ private theorem closureConvert_step_simulation
         simp [noCallFrameReturn] at hncfr; exact hncfr.1
       have hexprwf_arg : ExprAddrWF obj sc.heap.objects.size := by
         simp [ExprAddrWF] at hexprwf; exact hexprwf.1
-      obtain ⟨injMap', sc_sub', ⟨hcstep_sub⟩, htrace_sub, hinj', henvCorr', henvwf', hheapvwf', hncfr', hexprwf', scope', st_a, st_a', hconv'⟩ :=
+      obtain ⟨injMap', sc_sub', ⟨hcstep_sub⟩, htrace_sub, hinj', henvCorr', henvwf', hheapvwf', hncfr', hexprwf', st_a, st_a', hconv', hAgreeIn, hAgreeOut⟩ :=
         ih_depth obj.depth hdepth envVar envMap injMap
           { sf with expr := (Flat.convertExpr obj scope envVar envMap st).fst }
           { sc with expr := obj }
-          ev sa
+          ev sa scope st (Flat.convertExpr obj scope envVar envMap st).snd
           (by simp [Core.Expr.depth]) htrace hinj henvCorr henvwf hheapvwf hncfr_arg hexprwf_arg
-          ⟨scope, st, (Flat.convertExpr obj scope envVar envMap st).snd, by simp⟩
+          (by simp)
           ⟨hsubstep⟩
       let sc' : Core.State :=
         ⟨.getIndex sc_sub'.expr idx, sc_sub'.env, sc_sub'.heap,
@@ -2676,13 +2676,13 @@ private theorem closureConvert_step_simulation
         simp [noCallFrameReturn] at hncfr; exact hncfr
       have hexprwf_arg : ExprAddrWF obj sc.heap.objects.size := by
         simp [ExprAddrWF] at hexprwf; exact hexprwf
-      obtain ⟨injMap', sc_sub', ⟨hcstep_sub⟩, htrace_sub, hinj', henvCorr', henvwf', hheapvwf', hncfr', hexprwf', scope', st_a, st_a', hconv'⟩ :=
+      obtain ⟨injMap', sc_sub', ⟨hcstep_sub⟩, htrace_sub, hinj', henvCorr', henvwf', hheapvwf', hncfr', hexprwf', st_a, st_a', hconv', hAgreeIn, hAgreeOut⟩ :=
         ih_depth obj.depth hdepth envVar envMap injMap
           { sf with expr := (Flat.convertExpr obj scope envVar envMap st).fst }
           { sc with expr := obj }
-          ev sa
+          ev sa scope st (Flat.convertExpr obj scope envVar envMap st).snd
           (by simp [Core.Expr.depth]) htrace hinj henvCorr henvwf hheapvwf hncfr_arg hexprwf_arg
-          ⟨scope, st, (Flat.convertExpr obj scope envVar envMap st).snd, by simp⟩
+          (by simp)
           ⟨hsubstep⟩
       let sc' : Core.State :=
         ⟨.deleteProp sc_sub'.expr prop, sc_sub'.env, sc_sub'.heap,
@@ -2765,7 +2765,7 @@ private theorem closureConvert_step_simulation
         simp [noCallFrameReturn] at hncfr; exact hncfr
       have hexprwf_arg : ExprAddrWF arg sc.heap.objects.size := by
         simp [ExprAddrWF] at hexprwf; exact hexprwf
-      obtain ⟨injMap', sc_sub', ⟨hcstep_sub⟩, htrace_sub, hinj', henvCorr', henvwf', hheapvwf', hncfr', hexprwf', scope', st_a, st_a', hconv'⟩ :=
+      obtain ⟨injMap', sc_sub', ⟨hcstep_sub⟩, htrace_sub, hinj', henvCorr', henvwf', hheapvwf', hncfr', hexprwf', st_a, st_a', hconv', hAgreeIn, hAgreeOut⟩ :=
         ih_depth arg.depth hdepth envVar envMap injMap
           { sf with expr := (Flat.convertExpr arg scope envVar envMap st).fst }
           { sc with expr := arg }
@@ -2854,7 +2854,7 @@ private theorem closureConvert_step_simulation
         simp [noCallFrameReturn] at hncfr; exact hncfr
       have hexprwf_val : ExprAddrWF val sc.heap.objects.size := by
         simp [ExprAddrWF] at hexprwf; exact hexprwf
-      obtain ⟨injMap', sc_sub', ⟨hcstep_sub⟩, htrace_sub, hinj', henvCorr', henvwf', hheapvwf', hncfr', hexprwf', scope', st_a, st_a', hconv'⟩ :=
+      obtain ⟨injMap', sc_sub', ⟨hcstep_sub⟩, htrace_sub, hinj', henvCorr', henvwf', hheapvwf', hncfr', hexprwf', st_a, st_a', hconv', hAgreeIn, hAgreeOut⟩ :=
         ih_depth val.depth hdepth envVar envMap injMap
           { sf with expr := (Flat.convertExpr val scope envVar envMap st).fst }
           { sc with expr := val }
@@ -3060,7 +3060,7 @@ private theorem closureConvert_step_simulation
           simp [noCallFrameReturn] at hncfr; exact hncfr
         have hexprwf_val : ExprAddrWF e sc.heap.objects.size := by
           simp [ExprAddrWF] at hexprwf; exact hexprwf
-        obtain ⟨injMap', sc_sub', ⟨hcstep_sub⟩, htrace_sub, hinj', henvCorr', henvwf', hheapvwf', hncfr', hexprwf', scope', st_a, st_a', hconv'⟩ :=
+        obtain ⟨injMap', sc_sub', ⟨hcstep_sub⟩, htrace_sub, hinj', henvCorr', henvwf', hheapvwf', hncfr', hexprwf', st_a, st_a', hconv', hAgreeIn, hAgreeOut⟩ :=
           ih_depth e.depth hdepth envVar envMap injMap
             { sf with expr := (Flat.convertExpr e scope envVar envMap st).fst }
             { sc with expr := e }
@@ -3198,7 +3198,7 @@ private theorem closureConvert_step_simulation
           simp [noCallFrameReturn] at hncfr; exact hncfr
         have hexprwf_val : ExprAddrWF e sc.heap.objects.size := by
           simp [ExprAddrWF] at hexprwf; exact hexprwf
-        obtain ⟨injMap', sc_sub', ⟨hcstep_sub⟩, htrace_sub, hinj', henvCorr', henvwf', hheapvwf', hncfr', hexprwf', scope', st_a, st_a', hconv'⟩ :=
+        obtain ⟨injMap', sc_sub', ⟨hcstep_sub⟩, htrace_sub, hinj', henvCorr', henvwf', hheapvwf', hncfr', hexprwf', st_a, st_a', hconv', hAgreeIn, hAgreeOut⟩ :=
           ih_depth e.depth hdepth envVar envMap injMap
             { sf with expr := (Flat.convertExpr e scope envVar envMap st).fst }
             { sc with expr := e }
@@ -3285,7 +3285,7 @@ private theorem closureConvert_step_simulation
         simp [noCallFrameReturn] at hncfr; exact hncfr
       have hexprwf_val : ExprAddrWF arg sc.heap.objects.size := by
         simp [ExprAddrWF] at hexprwf; exact hexprwf
-      obtain ⟨injMap', sc_sub', ⟨hcstep_sub⟩, htrace_sub, hinj', henvCorr', henvwf', hheapvwf', hncfr', hexprwf', scope', st_a, st_a', hconv'⟩ :=
+      obtain ⟨injMap', sc_sub', ⟨hcstep_sub⟩, htrace_sub, hinj', henvCorr', henvwf', hheapvwf', hncfr', hexprwf', st_a, st_a', hconv', hAgreeIn, hAgreeOut⟩ :=
         ih_depth arg.depth hdepth envVar envMap injMap
           { sf with expr := (Flat.convertExpr arg scope envVar envMap st).fst }
           { sc with expr := arg }
