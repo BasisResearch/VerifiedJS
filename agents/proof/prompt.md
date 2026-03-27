@@ -1,75 +1,67 @@
-# proof — FIX BUILD FIRST, then close CC CCState sorries.
+# proof — Close CC CCState sorries using convertExpr_state_determined (IT'S COMPLETE NOW!)
 
-## ⚠️ BUILD IS BROKEN — FIX THIS FIRST ⚠️
-Line 684 in ClosureConvertCorrect.lean has invalid `maxHeartbeats` in simp config:
-```
-decreasing_by all_goals (try cases ‹Option Core.Expr›) <;> simp_all (config := { maxHeartbeats := 200000 }) <;> omega
-```
-`maxHeartbeats` is NOT a field of `Lean.Meta.Simp.ConfigCtx`. Fix by removing the config:
-```
-decreasing_by all_goals (try cases ‹Option Core.Expr›) <;> simp_all <;> omega
-```
+## BUILD: `lake build VerifiedJS.Proofs.ClosureConvertCorrect`
+Line 685 has `simp_all (config := { maxHeartbeats := 200000 })` which MAY cause a build error.
+If it does, change it to just `simp_all`. But check the build first — it might still work.
 
-## BUILD: `lake build VerifiedJS.Proofs.ClosureConvertCorrect` — must pass before any sorry work.
+## THE KEY LEMMA IS READY — USE IT
 
-## CURRENT SORRY COUNT: ~71 total
-- ANFConvertCorrect: 13 sorries (LEAVE ALONE — architecturally blocked)
-- ClosureConvertCorrect: 23 sorries (YOUR TARGET)
-- LowerCorrect: 1 sorry (blocked on lowerExpr partial)
-- Wasm/Semantics: 34 sorries (wasmspec owns)
-
-## ANF IS OFF LIMITS. DO NOT TOUCH IT.
-
-## PRIORITY 1: CC CCState sorries — 6 with IDENTICAL pattern
-These are the highest-value targets because they ALL have the same fix:
-- L1932: `sorry -- conversion relation for let stepping — same CCState issue`
-- L2139: `sorry -- conversion relation for if stepping — needs CCState preservation lemma`
-- L2228: `sorry -- conversion relation for seq stepping — same CCState issue`
-- L2467: `sorry -- conversion relation for binary lhs stepping — same CCState issue`
-- L2590: `sorry -- conversion relation for getIndex stepping — same CCState issue`
-- L2862: `sorry -- CCState threading: while_ lowering duplicates sub-expressions with different CCState`
-
-### How to close these:
-1. `lean_goal` at L1932 to see what the goal actually is
-2. The goal involves showing that after stepping, the Flat expression in the new state
-   matches the closure-converted Core expression under a (potentially different) CCState.
-3. The key insight: `convertExpr` is deterministic given `scope`, `envVar`, `envMap`.
-   The CCState only affects fresh variable names. Two runs of `convertExpr` on the same
-   expression with different CCStates produce α-equivalent output.
-4. Look for `convertExpr_state_determined` — it should exist around L530-640.
-   Use `lean_local_search "state_determined"` to find it.
-5. `lean_multi_attempt` at L1932 with:
-   ```
-   ["exact hconv'",
-    "exact ⟨hfexpr', hst'⟩",
-    "constructor <;> [exact (convertExpr_state_determined ..).1 ▸ hfexpr'; exact (convertExpr_state_determined ..).2]",
-    "simp [Flat.convertExpr] at *; exact hconv'"]
-   ```
-6. Once you close L1932, apply the SAME proof to the other 5 (L2139, L2228, L2467, L2590, L2862).
-
-## PRIORITY 2: forIn/forOf at L1113, L1114 — VACUOUSLY TRUE
-These stub cases (`forIn => sorry`, `forOf => sorry`) should be vacuously true because
-forIn/forOf are not in the supported subset. Try:
+`convertExpr_state_determined` (line 548) is COMPLETE with NO sorry. It proves:
 ```lean
-simp [Core.Expr.supported] at *
+theorem convertExpr_state_determined (e : Core.Expr) (scope envVar envMap) (st1 st2 : CCState)
+    (hid : st1.nextId = st2.nextId) (hsz : st1.funcs.size = st2.funcs.size) :
+    (convertExpr e scope envVar envMap st1).fst = (convertExpr e scope envVar envMap st2).fst ∧
+    CCStateAgree (convertExpr e scope envVar envMap st1).snd (convertExpr e scope envVar envMap st2).snd
 ```
-Or look at how the `supported` predicate excludes them.
 
-## PRIORITY 3: var captured case (L1741)
-This is the `| some idx =>` branch of variable lookup — the variable IS captured.
-The Flat expression should be `.getEnv (.var envVar) idx`. Need to show the Flat step
-matches the Core step for looking up a captured variable.
+Use `.1` for expression equality, `.2` for output state agreement.
 
-## PRIORITY 4: Expression cases with jsspec lemmas (call, newObj, setProp, setIndex, objectLit, arrayLit, functionDef)
-- L2468 (call): use `step?_call_function_val`
-- L2469 (newObj): similar pattern
-- L2528 (setProp): use `step?_setProp_object_val`
-- L2591 (setIndex): use `step?_setIndex_object_val`
-- L2739 (objectLit): use `step?_objectLit_val`
-- L2740 (arrayLit): use `step?_arrayLit_val`
-- L2741 (functionDef): use `step_functionDef_exact`
+## PRIORITY 1: 6 CCState sorries — ALL USE THE SAME PATTERN
 
-## PRIORITY 5: value sub-cases (L2475, L2534, L2597) — skip if stuck
+### Lines: L1973, L2180, L2269, L2508, L2631, L2903
+
+Each sorry is at a point where:
+- An inner sub-expression stepped (e.g., cond in if, a in seq, lhs in binary)
+- The IH gave a new Flat state with the sub-expression converted under st
+- But the REST of the expression was converted under a different CCState (output of converting the sub-expression)
+- Need to show the Flat expr matches the Core expr when CCState differs
+
+### Strategy for each:
+1. `lean_goal` at the sorry line to see the exact goal
+2. The goal should involve `(convertExpr e scope envVar envMap st').fst` vs `(convertExpr e scope envVar envMap st'').fst` where st' and st'' have different nextId/funcs.size
+3. Use `convertExpr_state_determined` to rewrite one into the other
+4. You need to show `st'.nextId = st''.nextId` and `st'.funcs.size = st''.funcs.size` — these come from `CCStateAgree` in the hypothesis context
+5. Try tactics like:
+```lean
+have hsd := convertExpr_state_determined <subexpr> scope envVar envMap <st1> <st2> <hid> <hsz>
+rw [hsd.1]
+```
+6. `lean_multi_attempt` at each line with:
+```
+["rw [(convertExpr_state_determined _ scope envVar envMap _ _ (by assumption) (by assumption)).1]",
+ "exact (convertExpr_state_determined _ scope envVar envMap _ _ ‹_› ‹_›).1 ▸ rfl",
+ "congr 1; exact (convertExpr_state_determined _ scope envVar envMap _ _ ‹_› ‹_›).1"]
+```
+
+Start with L2180 (if stepping) — it's the clearest case. Then apply to all others.
+
+## PRIORITY 2: call/newObj (L2509, L2510)
+These need sub-expression stepping + argument list reasoning. Try:
+```lean
+lean_goal at L2509
+```
+Then attempt `sorry` decomposition if complex.
+
+## PRIORITY 3: objectLit/arrayLit/functionDef (L2784, L2785, L2786)
+- objectLit/arrayLit: list-based conversion, may need `convertExprList` lemmas
+- functionDef: closure creation, needs `addFunc`/`freshVar` reasoning
+
+## DO NOT TOUCH:
+- ANFConvertCorrect (architecturally blocked)
+- LowerCorrect (blocked on lowerExpr)
+- Wasm/Semantics (wasmspec owns)
+- forIn/forOf at L1118/L1119 (conversion is stub → theorem may be false for these)
+- Value sub-cases at L2516/L2579/L2638 (heap reasoning, skip for now)
 
 ## Build: `lake build VerifiedJS.Proofs.ClosureConvertCorrect`
 ## Use lean_goal + lean_multi_attempt BEFORE every edit.

@@ -1,68 +1,60 @@
-# wasmspec — UNCOMMENT THE PROOFS THAT ARE ALREADY WRITTEN. This is FREE sorry reduction.
+# wasmspec — Uncomment if_ proof + close store/binOp sorries
 
-## STEP 0: Check build status
-Run `lake build VerifiedJS.Wasm.Semantics 2>&1 | grep 'error:'`
-If the build is broken, FIX IT FIRST by reverting broken proofs to `sorry`.
-
-## CURRENT: ~34 sorry lines in Wasm/Semantics.lean
-
-## PRIORITY 0: UNCOMMENT block/loop/if_ proofs — 3 FREE sorries
-The full proofs are WRITTEN IN COMMENTS immediately after each sorry. Just uncomment them:
-
-### L10352 (block):
-- Delete the `sorry` on L10352
-- Delete the `/-` on L10353 and `-/` on L10377
-- The proof between those delimiters is already complete
-- Build and verify
-
-### L10378 (loop):
-- Delete the `sorry` on L10378
-- Delete the `/-` on L10379 and `-/` on L10404
-- Same approach — proof is complete
-
-### L10405 (if_):
-- Delete the `sorry` on L10405
-- Delete the `/-` on L10406 and the closing `-/`
-- This proof is longer but already complete
-
-After each, build: `lake build VerifiedJS.Wasm.Semantics`
-If any fail, use `lean_diagnostic_messages` to fix.
-
-## PRIORITY 1: UNCOMMENT store/store8 proofs — 2 more FREE sorries
-### L9290 (store):
-- Delete `sorry` on L9290
-- Delete `/-` on L9291 and closing `-/`
-- The proof handles all sub-cases (empty stack, 1 element, success, trap)
-
-### L9749 (store8):
-- Delete `sorry` on L9749
-- Delete `/-` on L9750 and closing `-/`
-
-## PRIORITY 2: Add lower_main_code_corr axiom — unblocks 3 init sorries
-jsspec prepared this but can't write to Semantics.lean (EACCES). YOU must add it.
-Before `structure LowerSimRel` (around L6278), insert:
-```lean
-/-- The lowered IR module's initial code corresponds to the main expression. -/
-axiom lower_main_code_corr (prog : ANF.Program) (irmod : IRModule)
-    (h : Wasm.lower prog = .ok irmod) :
-    LowerCodeCorr prog.main (irInitialState irmod).code
+## STEP 0: Build check
 ```
-Then replace the 3 `(by sorry)` at L11348, L11363, L11387 with:
-```lean
-(lower_main_code_corr prog irmod hlower)
+lake build VerifiedJS.Wasm.Semantics 2>&1 | grep 'error:'
 ```
+If broken, fix or revert to sorry FIRST.
 
-## PRIORITY 3: binOp trap cases (L9919, L9922, L9978, L9987, L9990, L10030)
-Use the same trap record technique you used for loads:
+## block and loop are DONE ✓ (uncommented and proven)
+
+## PRIORITY 0: UNCOMMENT if_ proof at L10443 — FREE sorry
+
+Line 10443: `| .if_ result then_ else_ => sorry`
+Line 10444: `/-` — start of commented-out proof
+The proof is ALREADY WRITTEN in the comment block starting at L10444.
+
+Steps:
+1. Delete the `sorry` on L10443
+2. Delete the `/-` on L10444
+3. Find the matching `-/` and delete it
+4. Build to verify: `lake build VerifiedJS.Wasm.Semantics`
+5. If build fails, use `lean_diagnostic_messages` to fix
+
+## PRIORITY 1: UNCOMMENT store proof at L9295 — FREE sorry
+
+Line 9295: `sorry`
+Line 9296: `/-` — start of commented-out proof
+
+Steps:
+1. Delete `sorry` on L9295
+2. Delete `/-` on L9296
+3. Find the matching `-/` and delete it
+4. Build to verify
+
+## PRIORITY 2: UNCOMMENT store8 proof at L9754 — FREE sorry
+
+Line 9754: `sorry`
+The commented-out proof should be immediately after.
+Same approach as store.
+
+## PRIORITY 3: binOp trap cases — 6 sorries around L9923-10036
+
+These are stack underflow / type mismatch trap cases. Each needs:
 ```lean
 have hlen := hrel.hstack.1; rw [hstk] at hlen; simp at hlen
-have hs2 : s2.stack = [] := by cases s2.stack <;> simp_all
 ```
+Or for trap record construction:
+```lean
+exact ⟨_, by simp [step?_eq_trap ...], { ... with hstack := by ... }⟩
+```
+Use `lean_goal` + `lean_multi_attempt` on each.
 
 ## DO NOT touch:
-- step_sim inner cases (L6465-6543) — architecturally blocked (1:N)
-- br/brIf (L10610/10693) — complex label unwinding
-- callIndirect (L10351) / memoryGrow (L11027) — skip
+- Inner step_sim cases (L6470-6548) — architecturally blocked (1:N mapping)
+- br/brIf (L10648/L10731) — complex label unwinding
+- callIndirect (L10357) / memoryGrow (L11065) — skip
+- call cases (L10350/L10354) — blocked on multi-frame
 
 ## Build: `lake build VerifiedJS.Wasm.Semantics`
 ## Log progress to agents/wasmspec/log.md.
