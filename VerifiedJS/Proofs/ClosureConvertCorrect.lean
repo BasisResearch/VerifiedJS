@@ -2200,7 +2200,17 @@ private theorem closureConvert_step_simulation
       · simp only [sc']; simp only [ExprAddrWF]; exact ⟨hexprwf',
             ExprAddrWF_mono then_ (by simp [ExprAddrWF] at hexprwf; exact hexprwf.2.1) (Core_step_heap_size_mono hcstep_sub),
             ExprAddrWF_mono else_ (by simp [ExprAddrWF] at hexprwf; exact hexprwf.2.2) (Core_step_heap_size_mono hcstep_sub)⟩
-      · sorry -- conversion relation for if stepping — needs CCState preservation lemma
+      · have hthen := convertExpr_state_determined then_ scope envVar envMap
+            (Flat.convertExpr cond scope envVar envMap st).snd st_a' hAgreeOut.1 hAgreeOut.2
+        have helse := convertExpr_state_determined else_ scope envVar envMap
+            (Flat.convertExpr then_ scope envVar envMap (Flat.convertExpr cond scope envVar envMap st).snd).snd
+            (Flat.convertExpr then_ scope envVar envMap st_a').snd hthen.2.1 hthen.2.2
+        refine ⟨st_a, (Flat.convertExpr else_ scope envVar envMap (Flat.convertExpr then_ scope envVar envMap st_a').snd).snd, ?_, hAgreeIn, ?_⟩
+        · simp only [sc', Flat.convertExpr]
+          rw [show (Flat.convertExpr sc_sub'.expr scope envVar envMap st_a).fst = sa.expr from (congrArg Prod.fst hconv').symm]
+          rw [show (Flat.convertExpr sc_sub'.expr scope envVar envMap st_a).snd = st_a' from (congrArg Prod.snd hconv').symm]
+          rw [hthen.1, helse.1]
+        · rw [hconv.2]; exact helse.2
   | seq a b =>
     rw [hsc] at hconv hncfr hexprwf hd
     simp [Flat.convertExpr] at hconv
@@ -2289,7 +2299,14 @@ private theorem closureConvert_step_simulation
       · simp [sc', noCallFrameReturn]; exact ⟨hncfr', by simp [noCallFrameReturn] at hncfr; exact hncfr.2⟩
       · simp only [sc']; simp only [ExprAddrWF]; exact ⟨hexprwf',
             ExprAddrWF_mono b (by simp [ExprAddrWF] at hexprwf; exact hexprwf.2) (Core_step_heap_size_mono hcstep_sub)⟩
-      · sorry -- conversion relation for seq stepping — same CCState issue as if stepping
+      · have hb := convertExpr_state_determined b scope envVar envMap
+            (Flat.convertExpr a scope envVar envMap st).snd st_a' hAgreeOut.1 hAgreeOut.2
+        refine ⟨st_a, (Flat.convertExpr b scope envVar envMap st_a').snd, ?_, hAgreeIn, ?_⟩
+        · simp only [sc', Flat.convertExpr]
+          rw [show (Flat.convertExpr sc_sub'.expr scope envVar envMap st_a).fst = sa.expr from (congrArg Prod.fst hconv').symm]
+          rw [show (Flat.convertExpr sc_sub'.expr scope envVar envMap st_a).snd = st_a' from (congrArg Prod.snd hconv').symm]
+          rw [hb.1]
+        · rw [hconv.2]; exact hb.2
   | unary op arg =>
     rw [hsc] at hconv hncfr hexprwf hd
     simp [Flat.convertExpr] at hconv
@@ -2528,7 +2545,14 @@ private theorem closureConvert_step_simulation
       · simp [sc', noCallFrameReturn]; exact ⟨hncfr', by simp [noCallFrameReturn] at hncfr; exact hncfr.2⟩
       · simp only [sc']; simp only [ExprAddrWF]; exact ⟨hexprwf', by
             exact ExprAddrWF_mono rhs (by simp [ExprAddrWF] at hexprwf; exact hexprwf.2) (Core_step_heap_size_mono hcstep_sub)⟩
-      · sorry -- conversion relation for binary lhs stepping — same CCState issue as if stepping
+      · have hrhs := convertExpr_state_determined rhs scope envVar envMap
+            (Flat.convertExpr lhs scope envVar envMap st).snd st_a' hAgreeOut.1 hAgreeOut.2
+        refine ⟨st_a, (Flat.convertExpr rhs scope envVar envMap st_a').snd, ?_, hAgreeIn, ?_⟩
+        · simp only [sc', Flat.convertExpr]
+          rw [show (Flat.convertExpr sc_sub'.expr scope envVar envMap st_a).fst = sa.expr from (congrArg Prod.fst hconv').symm]
+          rw [show (Flat.convertExpr sc_sub'.expr scope envVar envMap st_a).snd = st_a' from (congrArg Prod.snd hconv').symm]
+          rw [hrhs.1]
+        · rw [hconv.2]; exact hrhs.2
   | call f args => sorry
   | newObj f args => sorry
   | getProp obj prop =>
@@ -2651,7 +2675,14 @@ private theorem closureConvert_step_simulation
       · simp [sc', noCallFrameReturn]; exact ⟨hncfr', by simp [noCallFrameReturn] at hncfr; exact hncfr.2⟩
       · simp only [sc']; simp only [ExprAddrWF]; exact ⟨hexprwf', by
             exact ExprAddrWF_mono idx (by simp [ExprAddrWF] at hexprwf; exact hexprwf.2) (Core_step_heap_size_mono hcstep_sub)⟩
-      · sorry -- conversion relation for getIndex stepping — same CCState issue
+      · have hidx := convertExpr_state_determined idx scope envVar envMap
+            (Flat.convertExpr obj scope envVar envMap st).snd st_a' hAgreeOut.1 hAgreeOut.2
+        refine ⟨st_a, (Flat.convertExpr idx scope envVar envMap st_a').snd, ?_, hAgreeIn, ?_⟩
+        · simp only [sc', Flat.convertExpr]
+          rw [show (Flat.convertExpr sc_sub'.expr scope envVar envMap st_a).fst = sa.expr from (congrArg Prod.fst hconv').symm]
+          rw [show (Flat.convertExpr sc_sub'.expr scope envVar envMap st_a).snd = st_a' from (congrArg Prod.snd hconv').symm]
+          rw [hidx.1]
+        · rw [hconv.2]; exact hidx.2
   | setIndex obj idx value => sorry
   | deleteProp obj prop =>
     rw [hsc] at hconv hncfr hexprwf hd
