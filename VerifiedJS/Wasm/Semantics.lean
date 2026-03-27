@@ -9446,12 +9446,12 @@ theorem step_sim (irmod : IRModule) (wmod : Module) :
                   | [_] => simp [hstk_w] at hstk_rel
                   | w0 :: w1 :: wstk' =>
                     have h0 := hstk_rel.2 0 (by simp)
-                    simp at h0; cases h0
+                    simp [hstk_w] at h0; cases h0
                     have h1 := hstk_rel.2 1 (by simp)
-                    simp at h1; cases h1
+                    simp [hstk_w] at h1; cases h1
                     have hw : step? s2 = some (.trap ("type mismatch in i32.store"),
                         { s2 with code := [], trace := s2.trace ++ [.trap ("type mismatch in i32.store")] }) := by
-                      simp [step?, hcw, pop2?, trapState, pushTrace]
+                      simp [step?, hcw, pop2?, trapState, pushTrace, hstk_w]
                     simp only [traceToWasm]; exact ⟨_, hw,
                       { hemit := hrel.hemit, hcode := .nil, hstack := by rw [← hstk]; exact hrel.hstack,
                         hframes_len := hrel.hframes_len, hframes_locals := hrel.hframes_locals,
@@ -9599,12 +9599,12 @@ theorem step_sim (irmod : IRModule) (wmod : Module) :
                   | [_] => simp [hstk_w] at hstk_rel
                   | w0 :: w1 :: wstk' =>
                     have h0 := hstk_rel.2 0 (by simp)
-                    simp at h0; cases h0
+                    simp [hstk_w] at h0; cases h0
                     have h1 := hstk_rel.2 1 (by simp)
-                    simp at h1; cases h1
+                    simp [hstk_w] at h1; cases h1
                     have hw : step? s2 = some (.trap ("type mismatch in f64.store"),
                         { s2 with code := [], trace := s2.trace ++ [.trap ("type mismatch in f64.store")] }) := by
-                      simp [step?, hcw, pop2?, trapState, pushTrace]
+                      simp [step?, hcw, pop2?, trapState, pushTrace, hstk_w]
                     simp only [traceToWasm]; exact ⟨_, hw,
                       { hemit := hrel.hemit, hcode := .nil, hstack := by rw [← hstk]; exact hrel.hstack,
                         hframes_len := hrel.hframes_len, hframes_locals := hrel.hframes_locals,
@@ -9752,12 +9752,12 @@ theorem step_sim (irmod : IRModule) (wmod : Module) :
                   | [_] => simp [hstk_w] at hstk_rel
                   | w0 :: w1 :: wstk' =>
                     have h0 := hstk_rel.2 0 (by simp)
-                    simp at h0; cases h0
+                    simp [hstk_w] at h0; cases h0
                     have h1 := hstk_rel.2 1 (by simp)
-                    simp at h1; cases h1
+                    simp [hstk_w] at h1; cases h1
                     have hw : step? s2 = some (.trap ("type mismatch in i64.store"),
                         { s2 with code := [], trace := s2.trace ++ [.trap ("type mismatch in i64.store")] }) := by
-                      simp [step?, hcw, pop2?, trapState, pushTrace]
+                      simp [step?, hcw, pop2?, trapState, pushTrace, hstk_w]
                     simp only [traceToWasm]; exact ⟨_, hw,
                       { hemit := hrel.hemit, hcode := .nil, hstack := by rw [← hstk]; exact hrel.hstack,
                         hframes_len := hrel.hframes_len, hframes_locals := hrel.hframes_locals,
@@ -9909,12 +9909,12 @@ theorem step_sim (irmod : IRModule) (wmod : Module) :
                 | [_] => simp [hstk_w] at hstk_rel
                 | w0 :: w1 :: wstk' =>
                   have h0 := hstk_rel.2 0 (by simp)
-                  simp at h0; cases h0
+                  simp [hstk_w] at h0; cases h0
                   have h1 := hstk_rel.2 1 (by simp)
-                  simp at h1; cases h1
+                  simp [hstk_w] at h1; cases h1
                   have hw : step? s2 = some (.trap ("type mismatch in i32.store"),
                       { s2 with code := [], trace := s2.trace ++ [.trap ("type mismatch in i32.store")] }) := by
-                    simp [step?, hcw, pop2?, trapState, pushTrace]
+                    simp [step?, hcw, pop2?, trapState, pushTrace, hstk_w]
                   simp only [traceToWasm]; exact ⟨_, hw,
                     { hemit := hrel.hemit, hcode := .nil, hstack := by rw [← hstk]; exact hrel.hstack,
                       hframes_len := hrel.hframes_len, hframes_locals := hrel.hframes_locals,
