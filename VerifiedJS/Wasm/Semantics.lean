@@ -9923,9 +9923,9 @@ theorem step_sim (irmod : IRModule) (wmod : Module) :
                 have hlen := hrel.hstack.1; rw [hstk] at hlen; simp at hlen
                 have hs2 : s2.stack = [] := by
                   cases hs : s2.stack with | nil => rfl | cons => simp [hs] at hlen
-                have hw : step? s2 = some (trapState { s2 with code := rest_w } _) := by
-                  simp [step?, hcw, withI32Bin, hs2, pop2?]
-                simp only [trapState, traceToWasm] at hw ⊢
+                have hw : step? s2 = some _ := by
+                  simp [step?, hcw, withI32Bin, hs2, pop2?, trapState, pushTrace]
+                simp only [traceToWasm] at hw ⊢
                 exact ⟨_, hw,
                   { hemit := hrel.hemit, hcode := .nil, hstack := by rw [← hstk]; exact hrel.hstack,
                     hframes_len := hrel.hframes_len, hframes_locals := hrel.hframes_locals,
@@ -9946,10 +9946,10 @@ theorem step_sim (irmod : IRModule) (wmod : Module) :
                   | [w] => exact ⟨w, rfl⟩
                   | _ :: _ :: _ => simp [hs] at hlen
                 obtain ⟨w, hs2⟩ := hs2
-                have hw : step? s2 = some (trapState { s2 with code := rest_w } _) := by
-                  simp [step?, hcw, withI32Bin, hs2, pop2?]
+                have hw : step? s2 = some _ := by
+                  simp [step?, hcw, withI32Bin, withF64Bin, hs2, pop2?, trapState, pushTrace]
                   cases w <;> simp [pop2?, trapState, pushTrace]
-                simp only [trapState, traceToWasm] at hw ⊢
+                simp only [traceToWasm] at hw ⊢
                 exact ⟨_, hw,
                   { hemit := hrel.hemit, hcode := .nil, hstack := by rw [← hstk]; exact hrel.hstack,
                     hframes_len := hrel.hframes_len, hframes_locals := hrel.hframes_locals,
@@ -10024,12 +10024,14 @@ theorem step_sim (irmod : IRModule) (wmod : Module) :
                   | w0 :: w1 :: wstk' =>
                     rw [hstk_w] at hstk_rel
                     have h0 := hstk_rel.2 0 (by simp)
-                    simp at h0; obtain ⟨rfl, hvc0⟩ := h0; try cases hvc0
+                    simp only [List.getElem?_cons_zero, Option.some.injEq] at h0
+                    obtain ⟨_, h0a, hvc0⟩ := h0; subst h0a; cases hvc0
                     have h1 := hstk_rel.2 1 (by simp)
-                    simp at h1; obtain ⟨rfl, hvc1⟩ := h1; try cases hvc1
-                    have hw : step? s2 = some (trapState { s2 with code := rest_w } _) := by
+                    simp only [List.getElem?_cons_succ, List.getElem?_cons_zero, Option.some.injEq] at h1
+                    obtain ⟨_, h1a, hvc1⟩ := h1; subst h1a; cases hvc1
+                    have hw : step? s2 = some _ := by
                       simp [step?, hcw, withI32Bin, withF64Bin, pop2?, trapState, pushTrace]
-                    simp only [trapState, traceToWasm] at hw ⊢
+                    simp only [traceToWasm] at hw ⊢
                     exact ⟨_, hw,
                       { hemit := hrel.hemit, hcode := .nil, hstack := by rw [← hstk]; exact hrel.hstack,
                         hframes_len := hrel.hframes_len, hframes_locals := hrel.hframes_locals,
