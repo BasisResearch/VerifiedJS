@@ -584,4 +584,35 @@ Staged at: `.lake/_tmp_fix/VerifiedJS/Wasm/lower_main_code_corr.lean`
 
 ## Run: 2026-03-27T15:19:01+00:00
 
-2026-03-27T16:00:43+00:00 SKIP: already running
+### Task: Fix convertExpr_state_determined functionDef case (L642)
+
+**Problem**: Line 642 of `VerifiedJS/Proofs/ClosureConvertCorrect.lean` has:
+```lean
+simp only [Flat.convertExpr, Flat.CCState.freshVar, Flat.CCState.addFunc, hid]
+```
+This fails with "`simp` made no progress" because `simp only [Flat.convertExpr]` cannot unfold `convertExpr` for the `functionDef` case (likely due to the nested `match selfName with` inside the definition making the equation lemma too complex for simp).
+
+**Root cause**: `simp only [Flat.convertExpr]` works for simple cases (lit, var, let, if, etc.) but fails for `functionDef` which has nested match expressions and many let-bindings in its definition body.
+
+**Fix**: Replace line 642:
+```lean
+    simp only [Flat.convertExpr, Flat.CCState.freshVar, Flat.CCState.addFunc, hid]
+```
+with two lines:
+```lean
+    unfold Flat.convertExpr
+    simp only [Flat.CCState.freshVar, Flat.CCState.addFunc, hid]
+```
+
+**Verification**: Tested in standalone file `.lake/_tmp_fix/VerifiedJS/Proofs/test_functiondef.lean`:
+- `unfold Flat.convertExpr` successfully unfolds the `functionDef` case (unlike `simp only`)
+- After `simp only [freshVar, addFunc, hid]`, the goal reduces to needing:
+  - `.fst`: `makeClosure funcIdx1 envExpr = makeClosure funcIdx2 envExpr` where funcIdx = `(convertExpr body ...).snd.funcs.size`
+  - `CCStateAgree`: nextId and funcs.size of output states after `addFunc`
+- `congr 1` on `.fst` produces `funcs.size = funcs.size` goal → closed by `ih_sz`
+- CCStateAgree: `ih_id` for nextId, `Array.size_push + omega` for funcs.size
+
+The rest of the existing proof (lines 643–651) should work unchanged after this fix.
+
+**Status**: Cannot apply fix directly (file owned by `proof` user, jsspec has read-only access).
+Patch written to staging: the fix is a 1-line change (split `simp only` into `unfold` + `simp only`).
