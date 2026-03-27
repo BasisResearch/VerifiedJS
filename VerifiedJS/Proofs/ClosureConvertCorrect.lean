@@ -1822,7 +1822,7 @@ private theorem closureConvert_step_simulation
         · exact hheapvwf
         · simp [sc', noCallFrameReturn]
         · simp [sc', ExprAddrWF]; exact henvwf name cv hclookup
-        · exact ⟨st, st, by simp [sc', Flat.convertExpr, hfvcv], ⟨rfl, rfl⟩, sorry⟩
+        · exact ⟨st, st, by simp [sc', Flat.convertExpr, hfvcv], ⟨rfl, rfl⟩, by first | (subst hst_eq; exact ⟨rfl, rfl⟩) | (simp [Flat.convertExpr, Flat.convertValue, Flat.convertOptExpr] at hst; subst hst; exact ⟨rfl, rfl⟩) | (rw [hst]; exact ⟨rfl, rfl⟩) | (rw [hconv.2]; exact ⟨rfl, rfl⟩)⟩
       | none =>
         rw [Flat_step?_var_not_found_explicit _ _ hflookup] at hstep
         simp at hstep
@@ -1845,7 +1845,7 @@ private theorem closureConvert_step_simulation
         · exact hheapvwf
         · simp [sc', noCallFrameReturn]
         · simp [sc', ExprAddrWF, ValueAddrWF]
-        · exact ⟨st, st, by simp [sc', Flat.convertExpr, Flat.convertValue], ⟨rfl, rfl⟩, sorry⟩
+        · exact ⟨st, st, by simp [sc', Flat.convertExpr, Flat.convertValue], ⟨rfl, rfl⟩, by first | (subst hst_eq; exact ⟨rfl, rfl⟩) | (simp [Flat.convertExpr, Flat.convertValue, Flat.convertOptExpr] at hst; subst hst; exact ⟨rfl, rfl⟩) | (rw [hst]; exact ⟨rfl, rfl⟩) | (rw [hconv.2]; exact ⟨rfl, rfl⟩)⟩
   | «this» =>
     rw [hsc] at hconv hncfr hexprwf hd
     simp [Flat.convertExpr] at hconv
@@ -1873,7 +1873,7 @@ private theorem closureConvert_step_simulation
       · exact hheapvwf
       · simp [sc', noCallFrameReturn]
       · simp [sc', ExprAddrWF]; exact henvwf "this" cv hclookup
-      · exact ⟨st, st, by simp [sc', Flat.convertExpr, hfvcv], ⟨rfl, rfl⟩, sorry⟩
+      · exact ⟨st, st, by simp [sc', Flat.convertExpr, hfvcv], ⟨rfl, rfl⟩, by first | (subst hst_eq; exact ⟨rfl, rfl⟩) | (simp [Flat.convertExpr, Flat.convertValue, Flat.convertOptExpr] at hst; subst hst; exact ⟨rfl, rfl⟩) | (rw [hst]; exact ⟨rfl, rfl⟩) | (rw [hconv.2]; exact ⟨rfl, rfl⟩)⟩
     | none =>
       rw [Flat_step?_this_not_found_explicit _ hflookup] at hstep
       simp at hstep
@@ -1896,7 +1896,7 @@ private theorem closureConvert_step_simulation
       · exact hheapvwf
       · simp [sc', noCallFrameReturn]
       · simp [sc', ExprAddrWF, ValueAddrWF]
-      · exact ⟨st, st, by simp [sc', Flat.convertExpr, Flat.convertValue], ⟨rfl, rfl⟩, sorry⟩
+      · exact ⟨st, st, by simp [sc', Flat.convertExpr, Flat.convertValue], ⟨rfl, rfl⟩, by first | (subst hst_eq; exact ⟨rfl, rfl⟩) | (simp [Flat.convertExpr, Flat.convertValue, Flat.convertOptExpr] at hst; subst hst; exact ⟨rfl, rfl⟩) | (rw [hst]; exact ⟨rfl, rfl⟩) | (rw [hconv.2]; exact ⟨rfl, rfl⟩)⟩
   | «let» name init body =>
     rw [hsc] at hconv hncfr hexprwf hd
     simp [Flat.convertExpr] at hconv
@@ -1929,7 +1929,7 @@ private theorem closureConvert_step_simulation
       · simp [sc', ExprAddrWF] at hexprwf ⊢; exact hexprwf.2
       · have hscope := convertExpr_scope_irrelevant body scope (name :: scope) envVar envMap st
         exact ⟨st, (Flat.convertExpr body scope envVar envMap st).snd, by
-          simp only [sc']; rw [hscope], ⟨rfl, rfl⟩, sorry⟩
+          simp only [sc']; rw [hscope], ⟨rfl, rfl⟩, by first | (subst hst_eq; exact ⟨rfl, rfl⟩) | (simp [Flat.convertExpr, Flat.convertValue, Flat.convertOptExpr] at hst; subst hst; exact ⟨rfl, rfl⟩) | (rw [hst]; exact ⟨rfl, rfl⟩) | (rw [hconv.2]; exact ⟨rfl, rfl⟩)⟩
     | none =>
       have hfnv : Flat.exprValue? (Flat.convertExpr init scope envVar envMap st).fst = none :=
         convertExpr_not_value init hcev scope envVar envMap st
@@ -2023,7 +2023,7 @@ private theorem closureConvert_step_simulation
       · exact hheapvwf
       · simp only [sc']; simp [noCallFrameReturn]
       · simp only [sc']; simp [ExprAddrWF]; exact (by simp [ExprAddrWF] at hexprwf; exact hexprwf)
-      · exact ⟨st, st, by simp only [sc']; simp [Flat.convertExpr, Flat.convertValue], ⟨rfl, rfl⟩, sorry⟩
+      · exact ⟨st, st, by simp only [sc']; simp [Flat.convertExpr, Flat.convertValue], ⟨rfl, rfl⟩, by first | (subst hst_eq; exact ⟨rfl, rfl⟩) | (simp [Flat.convertExpr, Flat.convertValue, Flat.convertOptExpr] at hst; subst hst; exact ⟨rfl, rfl⟩) | (rw [hst]; exact ⟨rfl, rfl⟩) | (rw [hconv.2]; exact ⟨rfl, rfl⟩)⟩
     | none =>
       have hfnv : Flat.exprValue? (Flat.convertExpr rhs scope envVar envMap st).fst = none :=
         convertExpr_not_value rhs hcev scope envVar envMap st
@@ -2112,7 +2112,7 @@ private theorem closureConvert_step_simulation
         · simp [sc', noCallFrameReturn] at hncfr ⊢; exact hncfr.1
         · simp [sc', ExprAddrWF] at hexprwf ⊢; exact hexprwf.2.1
         · exact ⟨st, (Flat.convertExpr then_ scope envVar envMap st).snd, by
-            simp [sc', Flat.convertExpr], ⟨rfl, rfl⟩, sorry⟩
+            simp [sc', Flat.convertExpr], ⟨rfl, rfl⟩, by first | (subst hst_eq; exact ⟨rfl, rfl⟩) | (simp [Flat.convertExpr, Flat.convertValue, Flat.convertOptExpr] at hst; subst hst; exact ⟨rfl, rfl⟩) | (rw [hst]; exact ⟨rfl, rfl⟩) | (rw [hconv.2]; exact ⟨rfl, rfl⟩)⟩
       | false =>
         rw [Flat_step?_if_false _ _ _ _ (by rw [toBoolean_convertValue, htb])] at hstep
         simp at hstep
@@ -2242,7 +2242,7 @@ private theorem closureConvert_step_simulation
       · simp [sc', noCallFrameReturn] at hncfr ⊢; exact hncfr
       · simp [sc', ExprAddrWF] at hexprwf ⊢; exact hexprwf.2
       · exact ⟨st, (Flat.convertExpr b scope envVar envMap st).snd, by
-          simp [sc', Flat.convertExpr], ⟨rfl, rfl⟩, sorry⟩
+          simp [sc', Flat.convertExpr], ⟨rfl, rfl⟩, by first | (subst hst_eq; exact ⟨rfl, rfl⟩) | (simp [Flat.convertExpr, Flat.convertValue, Flat.convertOptExpr] at hst; subst hst; exact ⟨rfl, rfl⟩) | (rw [hst]; exact ⟨rfl, rfl⟩) | (rw [hconv.2]; exact ⟨rfl, rfl⟩)⟩
     | none =>
       have hfnv : Flat.exprValue? (Flat.convertExpr a scope envVar envMap st).fst = none :=
         convertExpr_not_value a hcev scope envVar envMap st
@@ -2336,7 +2336,7 @@ private theorem closureConvert_step_simulation
       · exact hheapvwf
       · simp only [sc']; simp [noCallFrameReturn]
       · simp only [sc']; simp [ExprAddrWF]; exact evalUnary_valueAddrWF op cv sc.heap.objects.size (by simp [ExprAddrWF] at hexprwf; exact hexprwf)
-      · refine ⟨st, st, ?_, ⟨rfl, rfl⟩, sorry⟩
+      · refine ⟨st, st, ?_, ⟨rfl, rfl⟩, by first | (subst hst_eq; exact ⟨rfl, rfl⟩) | (simp [Flat.convertExpr, Flat.convertValue, Flat.convertOptExpr] at hst; subst hst; exact ⟨rfl, rfl⟩) | (rw [hst]; exact ⟨rfl, rfl⟩) | (rw [hconv.2]; exact ⟨rfl, rfl⟩)⟩
         show (Flat.Expr.lit (Flat.evalUnary op (Flat.convertValue cv)), st) = Flat.convertExpr (.lit (Core.evalUnary op cv)) scope envVar envMap st
         rw [evalUnary_convertValue]; simp [Flat.convertExpr]
     | none =>
@@ -2431,7 +2431,7 @@ private theorem closureConvert_step_simulation
             (by simp [ExprAddrWF] at hexprwf; exact hexprwf.1)
             (by simp [ExprAddrWF] at hexprwf; exact hexprwf.2)
         · exact ⟨st, st, by
-            simp [sc', Flat.convertExpr, evalBinary_convertValue], ⟨rfl, rfl⟩, sorry⟩
+            simp [sc', Flat.convertExpr, evalBinary_convertValue], ⟨rfl, rfl⟩, by first | (subst hst_eq; exact ⟨rfl, rfl⟩) | (simp [Flat.convertExpr, Flat.convertValue, Flat.convertOptExpr] at hst; subst hst; exact ⟨rfl, rfl⟩) | (rw [hst]; exact ⟨rfl, rfl⟩) | (rw [hconv.2]; exact ⟨rfl, rfl⟩)⟩
       | none =>
         -- rhs stepping, lhs is a value
         have hfnv : Flat.exprValue? (Flat.convertExpr rhs scope envVar envMap st).fst = none :=
@@ -2776,7 +2776,7 @@ private theorem closureConvert_step_simulation
       · exact hheapvwf
       · simp only [sc']; simp [noCallFrameReturn]
       · simp only [sc']; simp [ExprAddrWF, ValueAddrWF, coreResult]
-      · refine ⟨st, st, ?_, ⟨rfl, rfl⟩, sorry⟩
+      · refine ⟨st, st, ?_, ⟨rfl, rfl⟩, by first | (subst hst_eq; exact ⟨rfl, rfl⟩) | (simp [Flat.convertExpr, Flat.convertValue, Flat.convertOptExpr] at hst; subst hst; exact ⟨rfl, rfl⟩) | (rw [hst]; exact ⟨rfl, rfl⟩) | (rw [hconv.2]; exact ⟨rfl, rfl⟩)⟩
         simp only [sc']; simp [Flat.convertExpr, Flat.convertValue, coreResult]
         cases cv <;> simp [Flat.convertValue]
     | none =>
@@ -2864,7 +2864,7 @@ private theorem closureConvert_step_simulation
       · exact hheapvwf
       · simp [sc', noCallFrameReturn]
       · simp [sc', ExprAddrWF, ValueAddrWF]
-      · exact ⟨st, st, by simp [sc', Flat.convertExpr, Flat.convertValue], ⟨rfl, rfl⟩, sorry⟩
+      · exact ⟨st, st, by simp [sc', Flat.convertExpr, Flat.convertValue], ⟨rfl, rfl⟩, by first | (subst hst_eq; exact ⟨rfl, rfl⟩) | (simp [Flat.convertExpr, Flat.convertValue, Flat.convertOptExpr] at hst; subst hst; exact ⟨rfl, rfl⟩) | (rw [hst]; exact ⟨rfl, rfl⟩) | (rw [hconv.2]; exact ⟨rfl, rfl⟩)⟩
     | none =>
       -- Sub-expression not a value; Flat steps the sub-expression
       have hfnv : Flat.exprValue? (Flat.convertExpr val scope envVar envMap st).fst = none :=
@@ -2991,7 +2991,7 @@ private theorem closureConvert_step_simulation
     · exact hheapvwf
     · simp [sc', noCallFrameReturn]
     · simp [sc', ExprAddrWF, ValueAddrWF]
-    · exact ⟨st, st, by simp [sc', Flat.convertExpr, Flat.convertValue], ⟨rfl, rfl⟩, sorry⟩
+    · exact ⟨st, st, by simp [sc', Flat.convertExpr, Flat.convertValue], ⟨rfl, rfl⟩, by first | (subst hst_eq; exact ⟨rfl, rfl⟩) | (simp [Flat.convertExpr, Flat.convertValue, Flat.convertOptExpr] at hst; subst hst; exact ⟨rfl, rfl⟩) | (rw [hst]; exact ⟨rfl, rfl⟩) | (rw [hconv.2]; exact ⟨rfl, rfl⟩)⟩
   | «continue» label =>
     rw [hsc] at hconv hncfr hexprwf hd
     simp [Flat.convertExpr] at hconv
@@ -3014,7 +3014,7 @@ private theorem closureConvert_step_simulation
     · exact hheapvwf
     · simp [sc', noCallFrameReturn]
     · simp [sc', ExprAddrWF, ValueAddrWF]
-    · exact ⟨st, st, by simp [sc', Flat.convertExpr, Flat.convertValue], ⟨rfl, rfl⟩, sorry⟩
+    · exact ⟨st, st, by simp [sc', Flat.convertExpr, Flat.convertValue], ⟨rfl, rfl⟩, by first | (subst hst_eq; exact ⟨rfl, rfl⟩) | (simp [Flat.convertExpr, Flat.convertValue, Flat.convertOptExpr] at hst; subst hst; exact ⟨rfl, rfl⟩) | (rw [hst]; exact ⟨rfl, rfl⟩) | (rw [hconv.2]; exact ⟨rfl, rfl⟩)⟩
   | «return» val =>
     rw [hsc] at hconv hncfr hexprwf hd
     cases val with
@@ -3040,7 +3040,7 @@ private theorem closureConvert_step_simulation
       · exact hheapvwf
       · simp [sc', noCallFrameReturn]
       · simp [sc', ExprAddrWF, ValueAddrWF]
-      · exact ⟨st, st, by simp [sc', Flat.convertExpr, Flat.convertValue, Flat.convertOptExpr], ⟨rfl, rfl⟩, sorry⟩
+      · exact ⟨st, st, by simp [sc', Flat.convertExpr, Flat.convertValue, Flat.convertOptExpr], ⟨rfl, rfl⟩, by first | (subst hst_eq; exact ⟨rfl, rfl⟩) | (simp [Flat.convertExpr, Flat.convertValue, Flat.convertOptExpr] at hst; subst hst; exact ⟨rfl, rfl⟩) | (rw [hst]; exact ⟨rfl, rfl⟩) | (rw [hconv.2]; exact ⟨rfl, rfl⟩)⟩
     | some e =>
       simp [Flat.convertExpr, Flat.convertOptExpr] at hconv
       obtain ⟨hfexpr, hst⟩ := hconv
@@ -3070,7 +3070,7 @@ private theorem closureConvert_step_simulation
         · exact hheapvwf
         · simp [sc', noCallFrameReturn]
         · simp only [sc']; simp [ExprAddrWF] at hexprwf ⊢; exact hexprwf
-        · exact ⟨st, st, by simp [sc', Flat.convertExpr, Flat.convertValue], ⟨rfl, rfl⟩, sorry⟩
+        · exact ⟨st, st, by simp [sc', Flat.convertExpr, Flat.convertValue], ⟨rfl, rfl⟩, by first | (subst hst_eq; exact ⟨rfl, rfl⟩) | (simp [Flat.convertExpr, Flat.convertValue, Flat.convertOptExpr] at hst; subst hst; exact ⟨rfl, rfl⟩) | (rw [hst]; exact ⟨rfl, rfl⟩) | (rw [hconv.2]; exact ⟨rfl, rfl⟩)⟩
       | none =>
         -- Sub-expression not a value; Flat steps the sub-expression
         have hfnv : Flat.exprValue? (Flat.convertExpr e scope envVar envMap st).fst = none :=
@@ -3152,7 +3152,7 @@ private theorem closureConvert_step_simulation
       simp [sc']; exact hncfr
     · show ExprAddrWF sc'.expr sc'.heap.objects.size
       simp [sc']; exact hexprwf
-    · exact ⟨st, (Flat.convertExpr body scope envVar envMap st).snd, by simp [sc'], ⟨rfl, rfl⟩, sorry⟩
+    · exact ⟨st, (Flat.convertExpr body scope envVar envMap st).snd, by simp [sc'], ⟨rfl, rfl⟩, by first | (subst hst_eq; exact ⟨rfl, rfl⟩) | (simp [Flat.convertExpr, Flat.convertValue, Flat.convertOptExpr] at hst; subst hst; exact ⟨rfl, rfl⟩) | (rw [hst]; exact ⟨rfl, rfl⟩) | (rw [hconv.2]; exact ⟨rfl, rfl⟩)⟩
   | yield arg delegate =>
     rw [hsc] at hconv hncfr hexprwf hd
     cases arg with
@@ -3178,7 +3178,7 @@ private theorem closureConvert_step_simulation
       · exact hheapvwf
       · simp [sc', noCallFrameReturn]
       · simp [sc', ExprAddrWF, ValueAddrWF]
-      · exact ⟨st, st, by simp [sc', Flat.convertExpr, Flat.convertValue, Flat.convertOptExpr], ⟨rfl, rfl⟩, sorry⟩
+      · exact ⟨st, st, by simp [sc', Flat.convertExpr, Flat.convertValue, Flat.convertOptExpr], ⟨rfl, rfl⟩, by first | (subst hst_eq; exact ⟨rfl, rfl⟩) | (simp [Flat.convertExpr, Flat.convertValue, Flat.convertOptExpr] at hst; subst hst; exact ⟨rfl, rfl⟩) | (rw [hst]; exact ⟨rfl, rfl⟩) | (rw [hconv.2]; exact ⟨rfl, rfl⟩)⟩
     | some e =>
       simp [Flat.convertExpr, Flat.convertOptExpr] at hconv
       obtain ⟨hfexpr, hst⟩ := hconv
@@ -3208,7 +3208,7 @@ private theorem closureConvert_step_simulation
         · exact hheapvwf
         · simp [sc', noCallFrameReturn]
         · simp only [sc']; simp [ExprAddrWF] at hexprwf ⊢; exact hexprwf
-        · exact ⟨st, st, by simp [sc', Flat.convertExpr, Flat.convertValue], ⟨rfl, rfl⟩, sorry⟩
+        · exact ⟨st, st, by simp [sc', Flat.convertExpr, Flat.convertValue], ⟨rfl, rfl⟩, by first | (subst hst_eq; exact ⟨rfl, rfl⟩) | (simp [Flat.convertExpr, Flat.convertValue, Flat.convertOptExpr] at hst; subst hst; exact ⟨rfl, rfl⟩) | (rw [hst]; exact ⟨rfl, rfl⟩) | (rw [hconv.2]; exact ⟨rfl, rfl⟩)⟩
       | none =>
         -- Sub-expression not a value; Flat steps the sub-expression
         have hfnv : Flat.exprValue? (Flat.convertExpr e scope envVar envMap st).fst = none :=
@@ -3295,7 +3295,7 @@ private theorem closureConvert_step_simulation
       · exact hheapvwf
       · simp [sc', noCallFrameReturn]
       · simp only [sc']; simp [ExprAddrWF] at hexprwf ⊢; exact hexprwf
-      · exact ⟨st, st, by simp [sc', Flat.convertExpr, Flat.convertValue], ⟨rfl, rfl⟩, sorry⟩
+      · exact ⟨st, st, by simp [sc', Flat.convertExpr, Flat.convertValue], ⟨rfl, rfl⟩, by first | (subst hst_eq; exact ⟨rfl, rfl⟩) | (simp [Flat.convertExpr, Flat.convertValue, Flat.convertOptExpr] at hst; subst hst; exact ⟨rfl, rfl⟩) | (rw [hst]; exact ⟨rfl, rfl⟩) | (rw [hconv.2]; exact ⟨rfl, rfl⟩)⟩
     | none =>
       -- Sub-expression not a value; Flat steps the sub-expression
       have hfnv : Flat.exprValue? (Flat.convertExpr arg scope envVar envMap st).fst = none :=
