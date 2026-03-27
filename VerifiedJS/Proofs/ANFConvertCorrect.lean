@@ -62,8 +62,8 @@ private def ANF_SimRel (_s : Flat.Program) (_t : ANF.Program) (sa : ANF.State) (
   observableTrace sa.trace = observableTrace sf.trace ∧
   ∃ (k : ANF.Trivial → ANF.ConvM ANF.Expr) (n m : Nat),
     (ANF.normalizeExpr sf.expr k).run n = Except.ok (sa.expr, m) ∧
-    (∀ (arg : ANF.Trivial) (n' m' : Nat) (t : ANF.Trivial),
-      (k arg).run n' = .ok (.trivial t, m') → t = arg)
+    (∀ (arg : ANF.Trivial) (n' : Nat), ∃ (m' : Nat),
+      (k arg).run n' = Except.ok (.trivial arg, m'))
 
 /-- Initial states are related: both have empty traces and heaps,
     and the ANF main expression is the normalization of the Flat main. -/
@@ -74,19 +74,41 @@ private theorem anfConvert_init_related
   simp only [ANF.initialState, Flat.initialState]
   obtain ⟨m, hm⟩ := ANF.convert_main_from_normalizeExpr s t h
   refine ⟨rfl, rfl, rfl, fun t => pure (.trivial t), 0, m, hm, ?_⟩
-  intro arg n' m' t' hk
-  have := (Prod.mk.inj (Except.ok.inj hk)).1
-  exact ANF.Expr.trivial.inj this.symm
+  intro arg n'
+  exact ⟨n', rfl⟩
 
 /-- A variable name is free in a Flat expression (tracks .var in .seq chains). -/
 private inductive VarFreeIn : String → Flat.Expr → Prop where
   | var (x : String) : VarFreeIn x (.var x)
   | seq_l (x : String) (a b : Flat.Expr) : VarFreeIn x a → VarFreeIn x (.seq a b)
   | seq_r (x : String) (a b : Flat.Expr) : VarFreeIn x b → VarFreeIn x (.seq a b)
+  | labeled_body (x : String) (label : Core.LabelName) (body : Flat.Expr) :
+      VarFreeIn x body → VarFreeIn x (.labeled label body)
+  | let_init (x name : String) (init body : Flat.Expr) :
+      VarFreeIn x init → VarFreeIn x (.«let» name init body)
+  | let_body (x name : String) (init body : Flat.Expr) :
+      VarFreeIn x body → VarFreeIn x (.«let» name init body)
+  | if_cond (x : String) (c t e : Flat.Expr) : VarFreeIn x c → VarFreeIn x (.«if» c t e)
+  | if_then (x : String) (c t e : Flat.Expr) : VarFreeIn x t → VarFreeIn x (.«if» c t e)
+  | if_else (x : String) (c t e : Flat.Expr) : VarFreeIn x e → VarFreeIn x (.«if» c t e)
+  | while_cond (x : String) (c b : Flat.Expr) : VarFreeIn x c → VarFreeIn x (.while_ c b)
+  | while_body (x : String) (c b : Flat.Expr) : VarFreeIn x b → VarFreeIn x (.while_ c b)
+  | throw_arg (x : String) (arg : Flat.Expr) : VarFreeIn x arg → VarFreeIn x (.throw arg)
+  | tryCatch_body (x : String) (b : Flat.Expr) (cp : String) (cb : Flat.Expr) (fin : Option Flat.Expr) :
+      VarFreeIn x b → VarFreeIn x (.tryCatch b cp cb fin)
+  | tryCatch_catch (x : String) (b : Flat.Expr) (cp : String) (cb : Flat.Expr) (fin : Option Flat.Expr) :
+      VarFreeIn x cb → VarFreeIn x (.tryCatch b cp cb fin)
 
 /-- An expression is well-formed w.r.t. an environment if all free vars are bound. -/
 def ExprWellFormed (expr : Flat.Expr) (env : Flat.Env) : Prop :=
   ∀ x, VarFreeIn x expr → env.lookup x ≠ none
+
+private theorem ANF_step?_trivial_non_var (env : ANF.Env) (heap : Core.Heap) (trace : List Core.TraceEvent)
+    (t : ANF.Trivial) (h : ∀ name, t ≠ .var name) :
+    ANF.step? ⟨.trivial t, env, heap, trace⟩ = none := by
+  cases t with
+  | var name => exact absurd rfl (h name)
+  | _ => unfold ANF.step?; rfl
 
 /-- Stuttering simulation: one ANF step corresponds to one or more Flat steps,
     preserving observable events and the simulation relation.
@@ -103,7 +125,53 @@ private theorem anfConvert_step_star
         observableTrace [ev] = observableTrace evs ∧
         ANF_SimRel s t sa' sf' ∧
         ExprWellFormed sf'.expr sf'.env := by
-  sorry
+  intro sa sf ev sa' hrel hewf hstep
+  obtain ⟨hstep_eq⟩ := hstep
+  -- Decompose SimRel
+  obtain ⟨hheap, henv, htrace, k, n, m, hnorm, hk_triv⟩ := hrel
+  -- Case split on the ANF expression
+  cases hsa : sa.expr with
+  | trivial t =>
+    -- step? on trivial: only .var steps, rest are none (absurd)
+    cases t with
+    | var name =>
+      sorry -- var lookup case: step? resolves the variable
+    | litNull | litUndefined | litBool _ | litNum _ | litStr _ | litObject _ | litClosure _ _ =>
+      -- Non-var trivials don't step (step? returns none), contradicts hstep_eq
+      obtain ⟨_, senv, sheap, strace⟩ := sa
+      simp only [] at hsa; subst hsa
+      rw [ANF_step?_trivial_non_var] at hstep_eq
+      · exact absurd hstep_eq (by intro h; exact nomatch h)
+      · intro name; exact ANF.Trivial.noConfusion
+  | «let» name rhs body =>
+    sorry -- let-binding: evalComplex evaluates rhs, extends env, continues with body
+  | seq a b =>
+    sorry -- sequence: either a is a value (skip to b) or step inner a
+  | «if» cond then_ else_ =>
+    sorry -- conditional: evaluate cond trivial, branch
+  | while_ cond body =>
+    sorry -- while: evaluate cond, unroll or terminate
+  | throw arg =>
+    sorry -- throw: evaluate trivial arg, produce error event
+  | tryCatch body catchParam catchBody finally_ =>
+    sorry -- try-catch: step body, catch errors, handle finally
+  | «return» arg =>
+    sorry -- return: evaluate optional trivial arg
+  | yield arg delegate =>
+    sorry -- yield: evaluate optional trivial arg
+  | await arg =>
+    sorry -- await: evaluate trivial arg
+  | labeled label body =>
+    -- ARCHITECTURE NOTE: case-splitting on sa.expr here requires normalizeExpr inversion
+    -- (determining sf.expr from sa.expr). This is impossible because normalizeExpr can produce
+    -- .labeled from non-.labeled inputs (e.g., .let name (.labeled ...) body → .labeled).
+    -- The proof needs restructuring: induct on sf.expr.depth, case-split on sf.expr instead.
+    -- See PROOF ARCHITECTURE comment at end of theorem.
+    sorry
+  | «break» label =>
+    sorry -- break: produce silent event
+  | «continue» label =>
+    sorry -- continue: produce silent event
   -- PROOF ARCHITECTURE for anfConvert_step_star:
   --
   -- Structure: strong induction on sf.expr.depth
@@ -805,7 +873,7 @@ private theorem step_wrapSeqCtx (s : Flat.State) (t : Core.TraceEvent)
     obtain ⟨s', hs', he', henv', hheap', hf', hc', ht'⟩ :=
       ih (Flat.Expr.seq inner r) s1 hnotval1 hstep1 hfuncs1 hcs1 htrace1
     refine ⟨s', hs', ?_, henv'.trans henv1, hheap'.trans hheap1, hf', hc', ht'⟩
-    rw [he', hexpr1]
+    rw [he', hexpr1]; rfl
 
 /-- Helper: step? on .seq (.lit v) r gives r (silent, preserves env/heap/funcs/callStack). -/
 private theorem step?_seq_lit (sf : Flat.State) (v : Flat.Value) (r : Flat.Expr) :
@@ -852,7 +920,7 @@ private theorem trivialChain_consume_ctx
       sf'.env = sf.env ∧ sf'.heap = sf.heap ∧
       observableTrace sf'.trace = observableTrace sf.trace ∧
       observableTrace evs = [] := by
-  induction fuel generalizing tc sf with
+  induction fuel generalizing tc sf ctx with
   | zero =>
     cases tc with
     | lit v =>
@@ -871,8 +939,8 @@ private theorem trivialChain_consume_ctx
       · simp only [List.head_cons, List.tail_cons]; rw [he', hexpr_i]
       · exact henv'.trans henv_i
       · exact hheap'.trans hheap_i
-      · rw [ht']; simp [observableTrace_append, observableTrace]
-      · simp [observableTrace]
+      · rw [ht']; simp [observableTrace_append, observableTrace]; decide
+      · decide
     | var _ | «this» | seq _ _ => simp [trivialChainCost] at hcost
     | _ => simp [isTrivialChain] at htc
   | succ fuel ih =>
@@ -893,8 +961,8 @@ private theorem trivialChain_consume_ctx
       · simp only [List.head_cons, List.tail_cons]; rw [he', hexpr_i]
       · exact henv'.trans henv_i
       · exact hheap'.trans hheap_i
-      · rw [ht']; simp [observableTrace_append, observableTrace]
-      · simp [observableTrace]
+      · rw [ht']; simp [observableTrace_append, observableTrace]; decide
+      · decide
     | var name =>
       -- Step 1: resolve var → .lit val
       have hbound : sf.env.lookup name ≠ none := hwf name (.var _)
@@ -915,14 +983,14 @@ private theorem trivialChain_consume_ctx
       have hsf1 : sf1.expr = wrapSeqCtx (.lit val) ctx := by rw [he1, hexpr_v]
       -- Step 2: IH on (.lit val) with same ctx (cost 0 ≤ fuel)
       obtain ⟨evs_lit, sf', hsteps_lit, hexpr', henv', hheap', htrace', hobs'⟩ :=
-        ih (.lit val) sf1 rfl (Nat.zero_le _) hctx hsf1 (fun x hfx => by cases hfx)
+        ih (.lit val) ctx sf1 rfl (Nat.zero_le _) hctx hsf1 (fun x hfx => by cases hfx)
       exact ⟨.silent :: evs_lit, sf',
         .tail ⟨hstep_sf⟩ hsteps_lit,
         hexpr',
         henv'.trans (henv1.trans henv_v),
         hheap'.trans (hheap1.trans hheap_v),
-        htrace'.trans (by rw [ht1]; simp [observableTrace_append, observableTrace]),
-        by simp [observableTrace_silent, hobs']⟩
+        ⟨htrace'.trans (by rw [ht1]; simp [observableTrace_append, observableTrace]; decide),
+         by simp [observableTrace_silent, hobs']⟩⟩
     | «this» =>
       -- Step 1: resolve this → .lit val
       have hnotval_t : Flat.exprValue? Flat.Expr.this = none := by simp [Flat.exprValue?]
@@ -936,14 +1004,14 @@ private theorem trivialChain_consume_ctx
         rw [this]; exact hs1
       have hsf1 : sf1.expr = wrapSeqCtx (.lit val) ctx := by rw [he1, hexpr_t]
       obtain ⟨evs_lit, sf', hsteps_lit, hexpr', henv', hheap', htrace', hobs'⟩ :=
-        ih (.lit val) sf1 rfl (Nat.zero_le _) hctx hsf1 (fun x hfx => by cases hfx)
+        ih (.lit val) ctx sf1 rfl (Nat.zero_le _) hctx hsf1 (fun x hfx => by cases hfx)
       exact ⟨.silent :: evs_lit, sf',
         .tail ⟨hstep_sf⟩ hsteps_lit,
         hexpr',
         henv'.trans (henv1.trans henv_t),
         hheap'.trans (hheap1.trans hheap_t),
-        htrace'.trans (by rw [ht1]; simp [observableTrace_append, observableTrace]),
-        by simp [observableTrace_silent, hobs']⟩
+        ⟨htrace'.trans (by rw [ht1]; simp [observableTrace_append, observableTrace]; decide),
+         by simp [observableTrace_silent, hobs']⟩⟩
     | seq ea eb =>
       -- wrapSeqCtx (.seq ea eb) ctx = wrapSeqCtx ea (eb :: ctx)
       simp [isTrivialChain] at htc
@@ -951,10 +1019,10 @@ private theorem trivialChain_consume_ctx
       have hcost_a : trivialChainCost ea ≤ fuel := by simp [trivialChainCost] at hcost; omega
       have hcost_b : trivialChainCost eb ≤ fuel := by simp [trivialChainCost] at hcost; omega
       obtain ⟨evs_a, sf_a, hsteps_a, hexpr_a, henv_a, hheap_a, htrace_a, hobs_a⟩ :=
-        ih ea sf htc_a hcost_a (List.cons_ne_nil _ _) hsf
+        ih ea (eb :: ctx) sf htc_a hcost_a (List.cons_ne_nil _ _) hsf
           (fun x hfx => hwf x (.seq_l _ _ _ hfx))
       obtain ⟨evs_b, sf_b, hsteps_b, hexpr_b, henv_b, hheap_b, htrace_b, hobs_b⟩ :=
-        ih eb sf_a htc_b hcost_b hctx
+        ih eb ctx sf_a htc_b hcost_b hctx
           (by rw [hexpr_a]; simp [List.head_cons, List.tail_cons])
           (fun x hfx => by rw [henv_a]; exact hwf x (.seq_r _ _ _ hfx))
       exact ⟨evs_a ++ evs_b, sf_b,
@@ -986,6 +1054,13 @@ private theorem anfConvert_halt_star_aux
   induction N with
   | zero =>
     intro sa sf hdepth ⟨hheap, henv, htrace, k, n, m, hnorm, hfaithful⟩ hstuck hwf
+    -- Convert strengthened k-constraint to old-style injectivity for call sites below
+    have hk_inj : ∀ (arg : ANF.Trivial) (n' m' : Nat) (t : ANF.Trivial),
+        (k arg).run n' = .ok (.trivial t, m') → t = arg := by
+      intro arg n' m' t' hk
+      obtain ⟨m'', hk'⟩ := hfaithful arg n'
+      have := hk.symm.trans hk' |> Except.ok.inj |> Prod.mk.inj |>.1
+      exact ANF.Expr.trivial.inj this
     obtain ⟨tv, hat, hnovar⟩ := ANF_step?_none_implies_trivial sa hstuck
     cases hsf : sf.expr with
     | lit v =>
@@ -996,12 +1071,12 @@ private theorem anfConvert_halt_star_aux
       exfalso
       rw [hsf] at hnorm; simp only [ANF.normalizeExpr] at hnorm
       rw [hat] at hnorm
-      exact absurd (hfaithful (.var name) n m tv hnorm) (hnovar name)
+      exact absurd (hk_inj (.var name) n m tv hnorm) (hnovar name)
     | this =>
       exfalso
       rw [hsf] at hnorm; simp only [ANF.normalizeExpr] at hnorm
       rw [hat] at hnorm
-      exact absurd (hfaithful (.var "this") n m tv hnorm) (hnovar "this")
+      exact absurd (hk_inj (.var "this") n m tv hnorm) (hnovar "this")
     | seq _ _ => exfalso; rw [hsf] at hdepth; simp [Flat.Expr.depth] at hdepth
     | _ =>
       -- All other constructors at depth 0: normalizeExpr produces non-trivial result
@@ -1013,6 +1088,12 @@ private theorem anfConvert_halt_star_aux
       exact absurd hnorm (normalizeExpr_compound_not_trivial sf.expr k h1 h2 h3 h4 n m tv)
   | succ N ih =>
     intro sa sf hdepth ⟨hheap, henv, htrace, k, n, m, hnorm, hfaithful⟩ hstuck hwf
+    have hk_inj : ∀ (arg : ANF.Trivial) (n' m' : Nat) (t : ANF.Trivial),
+        (k arg).run n' = .ok (.trivial t, m') → t = arg := by
+      intro arg n' m' t' hk
+      obtain ⟨m'', hk'⟩ := hfaithful arg n'
+      have := hk.symm.trans hk' |> Except.ok.inj |> Prod.mk.inj |>.1
+      exact ANF.Expr.trivial.inj this
     obtain ⟨tv, hat, hnovar⟩ := ANF_step?_none_implies_trivial sa hstuck
     cases hsf : sf.expr with
     | lit v =>
@@ -1023,12 +1104,12 @@ private theorem anfConvert_halt_star_aux
       exfalso
       rw [hsf] at hnorm; simp only [ANF.normalizeExpr] at hnorm
       rw [hat] at hnorm
-      exact absurd (hfaithful (.var name) n m tv hnorm) (hnovar name)
+      exact absurd (hk_inj (.var name) n m tv hnorm) (hnovar name)
     | this =>
       exfalso
       rw [hsf] at hnorm; simp only [ANF.normalizeExpr] at hnorm
       rw [hat] at hnorm
-      exact absurd (hfaithful (.var "this") n m tv hnorm) (hnovar "this")
+      exact absurd (hk_inj (.var "this") n m tv hnorm) (hnovar "this")
     | seq a b =>
       rw [hsf] at hnorm; simp only [ANF.normalizeExpr] at hnorm
       rw [hat] at hnorm
@@ -1693,7 +1774,7 @@ private theorem anfConvert_halt_star_aux
                 simp [isTrivialChain]; exact ⟨htc_a, htc_b⟩
               -- sf.expr = wrapSeqCtx (.seq c1a c1b) [c2, d, a2, b]
               have hsf_tc : sf.expr = wrapSeqCtx (Flat.Expr.seq c1a c1b) [c2, d, a2, b] := by
-                rw [hsf, ha, ha1, hc, hc1]
+                rw [hsf, ha, ha1, hc, hc1]; rfl
               have hwf_tc : ∀ x, VarFreeIn x (Flat.Expr.seq c1a c1b) → sf.env.lookup x ≠ none := by
                 intro x hfx; apply hwf x; rw [hsf, ha, ha1, hc, hc1]
                 exact .seq_l _ _ _ (.seq_l _ _ _ (.seq_l _ _ _ (.seq_l _ _ _ hfx)))
@@ -1702,7 +1783,7 @@ private theorem anfConvert_halt_star_aux
                   (Flat.Expr.seq c1a c1b) [c2, d, a2, b] sf htc_seq (Nat.le_refl _)
                   (List.cons_ne_nil _ _) hsf_tc hwf_tc
               have hsf3_expr : sf3.expr = Flat.Expr.seq (Flat.Expr.seq (Flat.Expr.seq c2 d) a2) b := by
-                rw [hexpr3]
+                rw [hexpr3]; rfl
               have hrel3 : ANF_SimRel s t sa sf3 := by
                 refine ⟨hheap.trans hheap3.symm, henv.trans henv3.symm, htrace.trans htrace3.symm, k, n, m, ?_, hfaithful⟩
                 rw [hsf3_expr]; simp only [ANF.normalizeExpr]; rw [hat]; exact hnorm_c2

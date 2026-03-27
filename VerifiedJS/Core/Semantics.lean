@@ -525,7 +525,7 @@ inductive TraceEvent where
   | log (s : String)
   | error (s : String)
   | silent
-  deriving Repr, BEq
+  deriving Repr, BEq, DecidableEq
 
 -- SPEC: L4856-L4909
 -- | # The Object Type
@@ -11558,27 +11558,27 @@ theorem step_labeled (label : LabelName) (body : Expr) (env : Env) (heap : Heap)
   simp [step?]
 
 /-- §12.8.3 Adding two numbers produces a number. -/
-theorem evalBinary_add_nums (a b : Float) :
+@[simp] theorem evalBinary_add_nums (a b : Float) :
     evalBinary .add (.number a) (.number b) = .number (a + b) := by
   unfold evalBinary; rfl
 
 /-- §12.8.3 Adding two strings concatenates them. -/
-theorem evalBinary_add_strings (a b : String) :
+@[simp] theorem evalBinary_add_strings (a b : String) :
     evalBinary .add (.string a) (.string b) = .string (a ++ b) := by
   simp [evalBinary]
 
 /-- §7.2.15 Strict equality of same value is true. -/
-theorem evalBinary_strictEq_refl (v : Value) :
+@[simp] theorem evalBinary_strictEq_refl (v : Value) :
     evalBinary .strictEq v v = .bool (v == v) := by
   simp [evalBinary]
 
 /-- §7.2.14 null == undefined is true. -/
-theorem evalBinary_eq_null_undefined :
+@[simp] theorem evalBinary_eq_null_undefined :
     evalBinary .eq .null .undefined = .bool true := by
   simp [evalBinary, abstractEq]
 
 /-- §7.2.14 undefined == null is true. -/
-theorem evalBinary_eq_undefined_null :
+@[simp] theorem evalBinary_eq_undefined_null :
     evalBinary .eq .undefined .null = .bool true := by
   simp [evalBinary, abstractEq]
 
@@ -11854,17 +11854,17 @@ theorem step_var_unbound (name : VarName) (env : Env) (heap : Heap)
   simp [step?, h]
 
 /-- §13.5 Negation produces a number. -/
-theorem evalUnary_neg (v : Value) :
+@[simp] theorem evalUnary_neg (v : Value) :
     evalUnary .neg v = .number (-toNumber v) := by
   simp [evalUnary]
 
 /-- §13.5 Logical NOT produces a bool. -/
-theorem evalUnary_logNot (v : Value) :
+@[simp] theorem evalUnary_logNot (v : Value) :
     evalUnary .logNot v = .bool (!toBoolean v) := by
   simp [evalUnary]
 
 /-- §13.5 void produces undefined. -/
-theorem evalUnary_void (v : Value) :
+@[simp] theorem evalUnary_void (v : Value) :
     evalUnary .void v = .undefined := by
   simp [evalUnary]
 
@@ -11880,7 +11880,7 @@ theorem Env.extend_bindings (env : Env) (name : VarName) (v : Value) :
   simp [Env.extend]
 
 /-- exprValue? of a literal is some. -/
-theorem exprValue_lit (v : Value) : exprValue? (.lit v) = some v := by
+@[simp] theorem exprValue_lit (v : Value) : exprValue? (.lit v) = some v := by
   simp [exprValue?]
 
 /-- exprValue? of a non-literal is none. -/
@@ -11980,46 +11980,50 @@ theorem pushTrace_env (s : State) (t : TraceEvent) :
   simp [pushTrace]
 
 /-- pushTrace preserves the heap. -/
-theorem pushTrace_heap (s : State) (t : TraceEvent) :
+@[simp] theorem pushTrace_heap (s : State) (t : TraceEvent) :
     (pushTrace s t).heap = s.heap := by
   simp [pushTrace]
 
 /-- pushTrace appends to the trace. -/
-theorem pushTrace_trace (s : State) (t : TraceEvent) :
+@[simp] theorem pushTrace_trace (s : State) (t : TraceEvent) :
     (pushTrace s t).trace = s.trace ++ [t] := by
   simp [pushTrace]
 
 /-- pushTrace preserves funcs. -/
-theorem pushTrace_funcs (s : State) (t : TraceEvent) :
+@[simp] theorem pushTrace_funcs (s : State) (t : TraceEvent) :
     (pushTrace s t).funcs = s.funcs := by
   simp [pushTrace]
 
 /-- pushTrace preserves callStack. -/
-theorem pushTrace_callStack (s : State) (t : TraceEvent) :
+@[simp] theorem pushTrace_callStack (s : State) (t : TraceEvent) :
     (pushTrace s t).callStack = s.callStack := by
   simp [pushTrace]
+
+/-- pushTrace fully expanded — useful when `pushTrace` is private/opaque. -/
+@[simp] theorem pushTrace_expand (s : State) (t : TraceEvent) :
+    pushTrace s t = { s with trace := s.trace ++ [t] } := rfl
 
 /-- Env.lookup on empty env returns none. -/
 theorem Env.lookup_empty (name : VarName) : Env.empty.lookup name = none := by
   simp [Env.empty, Env.lookup]
 
 /-- §12.8.3 Adding a number to a string concatenates after ToString. -/
-theorem evalBinary_add_num_string (n : Float) (s : String) :
+@[simp] theorem evalBinary_add_num_string (n : Float) (s : String) :
     evalBinary .add (.number n) (.string s) = .string (valueToString (.number n) ++ s) := by
   simp [evalBinary]
 
 /-- §12.8.3 Adding a string to a number concatenates after ToString. -/
-theorem evalBinary_add_string_num (s : String) (n : Float) :
+@[simp] theorem evalBinary_add_string_num (s : String) (n : Float) :
     evalBinary .add (.string s) (.number n) = .string (s ++ valueToString (.number n)) := by
   simp [evalBinary]
 
 /-- §7.2.15 Strict inequality is negation of equality. -/
-theorem evalBinary_strictNeq (a b : Value) :
+@[simp] theorem evalBinary_strictNeq (a b : Value) :
     evalBinary .strictNeq a b = .bool (a != b) := by
   simp [evalBinary]
 
 /-- §7.2.14 Abstract inequality is negation of abstract equality. -/
-theorem evalBinary_neq (a b : Value) :
+@[simp] theorem evalBinary_neq (a b : Value) :
     evalBinary .neq a b = .bool (!abstractEq a b) := by
   simp [evalBinary]
 
@@ -12091,7 +12095,7 @@ theorem evalBinary_in_bool (a b : Value) :
   cases a <;> cases b <;> exact ⟨_, rfl⟩
 
 /-- §13.5 Positive unary produces a number. -/
-theorem evalUnary_pos (v : Value) :
+@[simp] theorem evalUnary_pos (v : Value) :
     evalUnary .pos v = .number (toNumber v) := by
   cases v <;> simp [evalUnary]
 
@@ -12151,22 +12155,22 @@ theorem step_setIndex_values (objVal idxVal v : Value) (env : Env) (heap : Heap)
   cases objVal <;> simp [step?, exprValue?] <;> split <;> simp
 
 /-- Nullish coalescing: logOr with non-falsy left returns the left operand. -/
-theorem evalBinary_logOr_truthy (a b : Value) (h : toBoolean a = true) :
+@[simp] theorem evalBinary_logOr_truthy (a b : Value) (h : toBoolean a = true) :
     evalBinary .logOr a b = a := by
   simp [evalBinary, h]
 
 /-- Nullish coalescing: logOr with falsy left returns the right operand. -/
-theorem evalBinary_logOr_falsy (a b : Value) (h : toBoolean a = false) :
+@[simp] theorem evalBinary_logOr_falsy (a b : Value) (h : toBoolean a = false) :
     evalBinary .logOr a b = b := by
   simp [evalBinary, h]
 
 /-- Logical AND with truthy left returns right operand. -/
-theorem evalBinary_logAnd_truthy (a b : Value) (h : toBoolean a = true) :
+@[simp] theorem evalBinary_logAnd_truthy (a b : Value) (h : toBoolean a = true) :
     evalBinary .logAnd a b = b := by
   simp [evalBinary, h]
 
 /-- Logical AND with falsy left returns left operand. -/
-theorem evalBinary_logAnd_falsy (a b : Value) (h : toBoolean a = false) :
+@[simp] theorem evalBinary_logAnd_falsy (a b : Value) (h : toBoolean a = false) :
     evalBinary .logAnd a b = a := by
   simp [evalBinary, h]
 
@@ -12536,6 +12540,57 @@ theorem step_setProp_step_obj (obj : Expr) (prop : PropName) (value : Expr) (env
     step? ⟨.setProp obj prop value, env, heap, trace, funcs, cs⟩ =
       some (t, pushTrace { so with expr := .setProp so.expr prop value, trace := trace } t) := by
   simp [step?, hobj, hstep]
+
+/-- step? on setProp with value obj but non-value value steps the value. ECMA-262 §9.1.9. -/
+theorem step_setProp_step_value (objVal : Value) (prop : PropName) (value : Expr) (env : Env) (heap : Heap)
+    (trace : List TraceEvent) (funcs : Array FuncClosure)
+    (cs : List (List (VarName × Value)))
+    (hval : exprValue? value = none)
+    (t : TraceEvent) (sv : State)
+    (hstep : step? ⟨value, env, heap, trace, funcs, cs⟩ = some (t, sv)) :
+    step? ⟨.setProp (.lit objVal) prop value, env, heap, trace, funcs, cs⟩ =
+      some (t, pushTrace { sv with expr := .setProp (.lit objVal) prop sv.expr, trace := trace } t) := by
+  unfold step?
+  have hlit : exprValue? (.lit objVal) = some objVal := rfl
+  rw [hlit, hval]; simp [hstep]
+
+/-- step? on setIndex with non-value obj steps the obj. ECMA-262 §9.1.9. -/
+theorem step_setIndex_step_obj (obj idx value : Expr) (env : Env) (heap : Heap)
+    (trace : List TraceEvent) (funcs : Array FuncClosure)
+    (cs : List (List (VarName × Value)))
+    (hobj : exprValue? obj = none)
+    (t : TraceEvent) (so : State)
+    (hstep : step? ⟨obj, env, heap, trace, funcs, cs⟩ = some (t, so)) :
+    step? ⟨.setIndex obj idx value, env, heap, trace, funcs, cs⟩ =
+      some (t, pushTrace { so with expr := .setIndex so.expr idx value, trace := trace } t) := by
+  simp [step?, hobj, hstep]
+
+/-- step? on setIndex with value obj but non-value idx steps the idx. ECMA-262 §9.1.9. -/
+theorem step_setIndex_step_idx (objVal : Value) (idx value : Expr) (env : Env) (heap : Heap)
+    (trace : List TraceEvent) (funcs : Array FuncClosure)
+    (cs : List (List (VarName × Value)))
+    (hidx : exprValue? idx = none)
+    (t : TraceEvent) (si : State)
+    (hstep : step? ⟨idx, env, heap, trace, funcs, cs⟩ = some (t, si)) :
+    step? ⟨.setIndex (.lit objVal) idx value, env, heap, trace, funcs, cs⟩ =
+      some (t, pushTrace { si with expr := .setIndex (.lit objVal) si.expr value, trace := trace } t) := by
+  unfold step?
+  have hlit : exprValue? (.lit objVal) = some objVal := rfl
+  simp only [hlit, hidx, hstep]
+
+/-- step? on setIndex with value obj and idx but non-value value steps the value. ECMA-262 §9.1.9. -/
+theorem step_setIndex_step_value (objVal idxVal : Value) (value : Expr) (env : Env) (heap : Heap)
+    (trace : List TraceEvent) (funcs : Array FuncClosure)
+    (cs : List (List (VarName × Value)))
+    (hval : exprValue? value = none)
+    (t : TraceEvent) (sv : State)
+    (hstep : step? ⟨value, env, heap, trace, funcs, cs⟩ = some (t, sv)) :
+    step? ⟨.setIndex (.lit objVal) (.lit idxVal) value, env, heap, trace, funcs, cs⟩ =
+      some (t, pushTrace { sv with expr := .setIndex (.lit objVal) (.lit idxVal) sv.expr, trace := trace } t) := by
+  unfold step?
+  have ho : exprValue? (.lit objVal) = some objVal := rfl
+  have hi : exprValue? (.lit idxVal) = some idxVal := rfl
+  rw [ho, hi, hval]; simp [hstep]
 
 /-- step? on call with non-value callee steps the callee. ECMA-262 §13.3.1. -/
 theorem step_call_step_callee (callee : Expr) (args : List Expr) (env : Env) (heap : Heap)
@@ -12960,6 +13015,610 @@ theorem Behaves_final_lit {p : Program} {b : List TraceEvent}
   obtain ⟨sf, hsteps, hhalt⟩ := hB
   obtain ⟨v, hv⟩ := stuck_implies_lit hhalt
   exact ⟨sf, v, hsteps, hhalt, hv⟩
+
+-- ============================================================================
+-- Heap monotonicity simp lemmas for step?
+-- ============================================================================
+
+/-- functionDef preserves the heap (only grows funcs). -/
+@[simp] theorem step?_functionDef_heap_eq (fname : Option VarName) (params : List VarName)
+    (body : Expr) (isAsync isGen : Bool) (env : Env) (heap : Heap)
+    (trace : List TraceEvent) (funcs : Array FuncClosure)
+    (cs : List (List (VarName × Value))) :
+    match step? ⟨.functionDef fname params body isAsync isGen, env, heap, trace, funcs, cs⟩ with
+    | some (_, s') => s'.heap = heap
+    | none => True := by
+  unfold step?; simp [pushTrace]
+
+/-- newObj grows the heap by exactly one object. -/
+@[simp] theorem step?_newObj_heap_grows (callee : Expr) (args : List Expr) (env : Env) (heap : Heap)
+    (trace : List TraceEvent) (funcs : Array FuncClosure)
+    (cs : List (List (VarName × Value))) :
+    match step? ⟨.newObj callee args, env, heap, trace, funcs, cs⟩ with
+    | some (_, s') => s'.heap.objects.size = heap.objects.size + 1
+    | none => True := by
+  unfold step?; simp [pushTrace, Array.size_push]
+
+/-- objectLit with all-value props grows the heap by exactly one object. -/
+theorem step?_objectLit_allValues_heap_grows (props : List (PropName × Expr)) (env : Env)
+    (heap : Heap) (trace : List TraceEvent) (funcs : Array FuncClosure)
+    (cs : List (List (VarName × Value)))
+    (hall : firstNonValueProp props = none) :
+    match step? ⟨.objectLit props, env, heap, trace, funcs, cs⟩ with
+    | some (_, s') => s'.heap.objects.size = heap.objects.size + 1
+    | none => True := by
+  unfold step?; simp only []; rw [hall]; simp [pushTrace]
+
+/-- arrayLit with all-value elems grows the heap by exactly one object. -/
+theorem step?_arrayLit_allValues_heap_grows (elems : List Expr) (env : Env)
+    (heap : Heap) (trace : List TraceEvent) (funcs : Array FuncClosure)
+    (cs : List (List (VarName × Value)))
+    (hall : firstNonValueExpr elems = none) :
+    match step? ⟨.arrayLit elems, env, heap, trace, funcs, cs⟩ with
+    | some (_, s') => s'.heap.objects.size = heap.objects.size + 1
+    | none => True := by
+  unfold step?; simp only []; rw [hall]; simp [pushTrace]
+
+/-- var lookup preserves the heap. -/
+@[simp] theorem step?_var_heap_eq (name : String) (env : Env) (heap : Heap)
+    (trace : List TraceEvent) (funcs : Array FuncClosure)
+    (cs : List (List (VarName × Value))) :
+    match step? ⟨.var name, env, heap, trace, funcs, cs⟩ with
+    | some (_, s') => s'.heap = heap
+    | none => True := by
+  unfold step?; cases env.lookup name <;> simp [pushTrace]
+
+/-- assign with a value RHS preserves the heap (only modifies env). -/
+@[simp] theorem step?_assign_val_heap_eq (name : VarName) (v : Value)
+    (env : Env) (heap : Heap) (trace : List TraceEvent) (funcs : Array FuncClosure)
+    (cs : List (List (VarName × Value))) :
+    match step? ⟨.assign name (.lit v), env, heap, trace, funcs, cs⟩ with
+    | some (_, s') => s'.heap = heap
+    | none => True := by
+  unfold step?; simp [exprValue?, pushTrace]
+
+/-- unary with a value arg preserves the heap. -/
+@[simp] theorem step?_unary_val_heap_eq (op : UnaryOp) (v : Value)
+    (env : Env) (heap : Heap) (trace : List TraceEvent) (funcs : Array FuncClosure)
+    (cs : List (List (VarName × Value))) :
+    match step? ⟨.unary op (.lit v), env, heap, trace, funcs, cs⟩ with
+    | some (_, s') => s'.heap = heap
+    | none => True := by
+  unfold step?; simp [exprValue?, pushTrace]
+
+/-- binary with both value args preserves the heap. -/
+@[simp] theorem step?_binary_vals_heap_eq (op : BinOp) (lv rv : Value)
+    (env : Env) (heap : Heap) (trace : List TraceEvent) (funcs : Array FuncClosure)
+    (cs : List (List (VarName × Value))) :
+    match step? ⟨.binary op (.lit lv) (.lit rv), env, heap, trace, funcs, cs⟩ with
+    | some (_, s') => s'.heap = heap
+    | none => True := by
+  unfold step?; simp [exprValue?, pushTrace]
+
+/-- typeof with a value arg preserves the heap. -/
+@[simp] theorem step?_typeof_val_heap_eq (v : Value)
+    (env : Env) (heap : Heap) (trace : List TraceEvent) (funcs : Array FuncClosure)
+    (cs : List (List (VarName × Value))) :
+    match step? ⟨.typeof (.lit v), env, heap, trace, funcs, cs⟩ with
+    | some (_, s') => s'.heap = heap
+    | none => True := by
+  unfold step?; simp [exprValue?, pushTrace]
+
+/-- `Array.set!` preserves array size. -/
+private theorem Array.size_set!_le {α : Type} (a : Array α) (i : Nat) (v : α) :
+    a.size ≤ (a.set! i v).size := by
+  simp [Array.set!, Array.setIfInBounds]
+  split <;> simp
+
+/-- Setting a heap object preserves heap size. -/
+@[simp] theorem Heap.objects_set!_size (heap : Heap) (addr : Nat)
+    (props : List (PropName × Value)) :
+    (heap.objects.set! addr props).size ≥ heap.objects.size := by
+  exact Array.size_set!_le heap.objects addr props
+
+/-- §8.2.1 After heap allocation, looking up the new address returns the allocated properties. -/
+@[simp] theorem Heap.alloc_lookup_new (heap : Heap) (props : List (PropName × Value)) :
+    (heap.objects.push props)[heap.objects.size]? = some props := by
+  simp
+
+/-- §8.2.1 After heap allocation, looking up an old address returns the same as before. -/
+@[simp] theorem Heap.alloc_lookup_old (heap : Heap) (props : List (PropName × Value))
+    (addr : Nat) (h : addr < heap.objects.size) :
+    (heap.objects.push props)[addr]? = heap.objects[addr]? := by
+  simp [Array.getElem?_push, h]
+  omega
+
+/-- §8.2.1 After heap allocation, heap size increases by 1. -/
+@[simp] theorem Heap.alloc_size (heap : Heap) (props : List (PropName × Value)) :
+    (heap.objects.push props).size = heap.objects.size + 1 := by
+  simp
+
+/-- let with value init preserves heap. -/
+@[simp] theorem step?_let_val_heap_eq (name : VarName) (v : Value) (body : Expr)
+    (env : Env) (heap : Heap) (trace : List TraceEvent) (funcs : Array FuncClosure)
+    (cs : List (List (VarName × Value))) :
+    match step? ⟨.let name (.lit v) body, env, heap, trace, funcs, cs⟩ with
+    | some (_, s') => s'.heap = heap
+    | none => True := by
+  unfold step?; simp [exprValue?, pushTrace]
+
+/-- if with value cond preserves heap. -/
+@[simp] theorem step?_if_val_heap_eq (v : Value) (then_ else_ : Expr)
+    (env : Env) (heap : Heap) (trace : List TraceEvent) (funcs : Array FuncClosure)
+    (cs : List (List (VarName × Value))) :
+    match step? ⟨.if (.lit v) then_ else_, env, heap, trace, funcs, cs⟩ with
+    | some (_, s') => s'.heap = heap
+    | none => True := by
+  unfold step?; simp [exprValue?, pushTrace]
+
+/-- seq with value head preserves heap. -/
+@[simp] theorem step?_seq_val_heap_eq (v : Value) (b : Expr)
+    (env : Env) (heap : Heap) (trace : List TraceEvent) (funcs : Array FuncClosure)
+    (cs : List (List (VarName × Value))) :
+    match step? ⟨.seq (.lit v) b, env, heap, trace, funcs, cs⟩ with
+    | some (_, s') => s'.heap = heap
+    | none => True := by
+  unfold step?; simp [exprValue?, pushTrace]
+
+/-- while_ preserves heap (desugars to if). -/
+@[simp] theorem step?_while_heap_eq (cond body : Expr)
+    (env : Env) (heap : Heap) (trace : List TraceEvent) (funcs : Array FuncClosure)
+    (cs : List (List (VarName × Value))) :
+    match step? ⟨.while_ cond body, env, heap, trace, funcs, cs⟩ with
+    | some (_, s') => s'.heap = heap
+    | none => True := by
+  unfold step?; simp [pushTrace]
+
+/-- labeled preserves heap. -/
+@[simp] theorem step?_labeled_heap_eq (label : String) (body : Expr)
+    (env : Env) (heap : Heap) (trace : List TraceEvent) (funcs : Array FuncClosure)
+    (cs : List (List (VarName × Value))) :
+    match step? ⟨.labeled label body, env, heap, trace, funcs, cs⟩ with
+    | some (_, s') => s'.heap = heap
+    | none => True := by
+  unfold step?; simp [pushTrace]
+
+/-- this preserves heap. -/
+@[simp] theorem step?_this_heap_eq (env : Env) (heap : Heap) (trace : List TraceEvent)
+    (funcs : Array FuncClosure) (cs : List (List (VarName × Value))) :
+    match step? ⟨.this, env, heap, trace, funcs, cs⟩ with
+    | some (_, s') => s'.heap = heap
+    | none => True := by
+  unfold step?; cases env.lookup "this" <;> simp [pushTrace]
+
+/-- throw with value arg preserves heap. -/
+@[simp] theorem step?_throw_val_heap_eq (v : Value)
+    (env : Env) (heap : Heap) (trace : List TraceEvent) (funcs : Array FuncClosure)
+    (cs : List (List (VarName × Value))) :
+    match step? ⟨.throw (.lit v), env, heap, trace, funcs, cs⟩ with
+    | some (_, s') => s'.heap = heap
+    | none => True := by
+  unfold step?; simp [exprValue?, pushTrace]
+
+/-- break preserves heap. -/
+@[simp] theorem step?_break_heap_eq (label : Option String)
+    (env : Env) (heap : Heap) (trace : List TraceEvent) (funcs : Array FuncClosure)
+    (cs : List (List (VarName × Value))) :
+    match step? ⟨.break label, env, heap, trace, funcs, cs⟩ with
+    | some (_, s') => s'.heap = heap
+    | none => True := by
+  unfold step?; cases label <;> simp [pushTrace]
+
+/-- continue preserves heap. -/
+@[simp] theorem step?_continue_heap_eq (label : Option String)
+    (env : Env) (heap : Heap) (trace : List TraceEvent) (funcs : Array FuncClosure)
+    (cs : List (List (VarName × Value))) :
+    match step? ⟨.continue label, env, heap, trace, funcs, cs⟩ with
+    | some (_, s') => s'.heap = heap
+    | none => True := by
+  unfold step?; cases label <;> simp [pushTrace]
+
+/-- return none preserves heap. -/
+@[simp] theorem step?_return_none_heap_eq
+    (env : Env) (heap : Heap) (trace : List TraceEvent) (funcs : Array FuncClosure)
+    (cs : List (List (VarName × Value))) :
+    match step? ⟨.return none, env, heap, trace, funcs, cs⟩ with
+    | some (_, s') => s'.heap = heap
+    | none => True := by
+  unfold step?; simp [pushTrace]
+
+/-- return (some value) preserves heap. -/
+@[simp] theorem step?_return_val_heap_eq (v : Value)
+    (env : Env) (heap : Heap) (trace : List TraceEvent) (funcs : Array FuncClosure)
+    (cs : List (List (VarName × Value))) :
+    match step? ⟨.return (some (.lit v)), env, heap, trace, funcs, cs⟩ with
+    | some (_, s') => s'.heap = heap
+    | none => True := by
+  unfold step?; simp [exprValue?, pushTrace]
+
+set_option maxHeartbeats 32000000 in
+/-- Core.step? never shrinks the heap. -/
+theorem step?_heap_ge (s : State) (t : TraceEvent) (s' : State)
+    (h : step? s = some (t, s')) : s.heap.objects.size ≤ s'.heap.objects.size := by
+  suffices ∀ n, s.expr.depth ≤ n → s.heap.objects.size ≤ s'.heap.objects.size from
+    this s.expr.depth (Nat.le_refl _)
+  intro n
+  induction n generalizing s t s' with
+  | zero =>
+    intro hd
+    obtain ⟨expr, env, heap, trace, funcs, callStack⟩ := s
+    cases expr <;> (try (simp [Expr.depth] at hd; omega)) <;>
+      (try (cases ‹Option Expr› <;> simp [Expr.depth] at hd <;> omega)) <;>
+      (unfold step? at h; try simp only [] at h) <;>
+      (repeat (first | split at h | contradiction)) <;>
+      (try (simp only [Option.some.injEq, Prod.mk.injEq] at h)) <;>
+      (try (obtain ⟨-, rfl⟩ := h)) <;>
+      (try simp_all) <;> (try omega) <;>
+      (try (subst_eqs; omega))
+  | succ n ih =>
+    intro hd
+    obtain ⟨expr, env, heap, trace, funcs, callStack⟩ := s
+    unfold step? at h
+    revert h hd
+    cases expr <;> intro hd h <;> (try simp only [] at h) <;>
+      (repeat (first | split at h | contradiction)) <;>
+      (try (simp only [Option.some.injEq, Prod.mk.injEq, pushTrace] at h;
+            obtain ⟨-, rfl⟩ := h; simp_all [Array.size_push]; omega)) <;>
+      (try (exact ih _ _ _ ‹_› (by simp_all [Expr.depth]; omega)))
+    -- Close remaining cases: more splitting then simp/IH
+    all_goals (repeat (first | split at h | contradiction))
+    all_goals
+      try
+        simp only [Option.some.injEq, Prod.mk.injEq, pushTrace] at h
+        obtain ⟨-, rfl⟩ := h
+        simp_all [Array.size_push]
+        try omega
+    all_goals (try (exact ih _ _ _ ‹_› (by simp_all [Expr.depth]; omega)))
+    -- Catch contradictions: h : none = some _
+    all_goals (try contradiction)
+    all_goals (try (simp at h))
+    -- IH for recursive cases (sub-expression stepping)
+    all_goals (try (exact ih _ _ _ ‹_› (by simp [Expr.depth] at hd; omega)))
+    -- Handle remaining nested matches then close
+    all_goals (try (repeat (first | split at h | contradiction)))
+    all_goals (try contradiction)
+    all_goals (try
+      simp only [Option.some.injEq, Prod.mk.injEq] at h
+      obtain ⟨-, rfl⟩ := h
+      simp_all
+      try omega)
+    -- Close remaining: call args, objectLit, arrayLit via depth lemmas;
+    -- tryCatch via Option Expr case split; return/yield via subst_eqs
+    all_goals (first
+      | (have := firstNonValueExpr_depth ‹_›
+         exact ih _ _ _ ‹_› (by simp_all [Expr.depth]; omega))
+      | (have := firstNonValueProp_depth ‹_›
+         exact ih _ _ _ ‹_› (by simp_all [Expr.depth]; omega))
+      | (exact ih _ _ _ ‹_› (by cases ‹Option Expr› <;> simp_all [Expr.depth] <;> omega))
+      | (subst_eqs; exact ih _ _ _ ‹_› (by simp [Expr.depth] at hd; omega)))
+
+/-- §9.1.9 After set! at addr (in bounds), looking up addr gives the new value. -/
+@[simp] theorem Heap.set_objects_lookup_same (heap : Heap) (addr : Nat)
+    (props : List (PropName × Value)) (h : addr < heap.objects.size) :
+    (heap.objects.set! addr props)[addr]? = some props := by
+  simp [Array.set!, Array.setIfInBounds, h]
+
+/-- §9.1.9 After set! at addr, looking up a different index is unchanged. -/
+@[simp] theorem Heap.set_objects_lookup_other (heap : Heap) (addr j : Nat)
+    (props : List (PropName × Value)) (hne : addr ≠ j) :
+    (heap.objects.set! addr props)[j]? = heap.objects[j]? := by
+  simp [Array.set!, Array.setIfInBounds]
+  split
+  · simp [Array.getElem?_set (by assumption), hne]
+  · rfl
+
+/-- §9.1.9 After set! at addr (in bounds), heap objects size is unchanged. -/
+@[simp] theorem Heap.set_objects_size_eq (heap : Heap) (addr : Nat)
+    (props : List (PropName × Value)) (h : addr < heap.objects.size) :
+    (heap.objects.set! addr props).size = heap.objects.size := by
+  simp [Array.set!, Array.setIfInBounds, h]
+
+/-- §13.5 evalUnary never produces an object for any op. -/
+@[simp] theorem evalUnary_not_object (op : UnaryOp) (v : Value) (addr : Nat) :
+    evalUnary op v ≠ .object addr := by
+  cases op <;> cases v <;> simp [evalUnary]
+
+/-- §12.8 evalBinary .mod never produces an object (avoids kernel Float == reduction). -/
+@[simp] theorem evalBinary_mod_not_object (a b : Value) (addr : Nat) :
+    evalBinary .mod a b ≠ .object addr := by
+  simp only [evalBinary]; split <;> simp
+
+/-- §12.8 evalBinary for non-logical ops never returns .object.
+    Covers add/sub/mul/div/mod/exp/eq/neq/strictEq/strictNeq/lt/gt/le/ge/
+    bitAnd/bitOr/bitXor/shl/shr/ushr/instanceof/in. -/
+theorem evalBinary_not_object_unless_logical (op : BinOp) (a b : Value) (addr : Nat)
+    (hop1 : op ≠ .logAnd) (hop2 : op ≠ .logOr) :
+    evalBinary op a b ≠ .object addr := by
+  cases op <;> simp_all [evalBinary]
+  all_goals first
+    | (split <;> simp)
+    | (cases a <;> cases b <;> simp)
+
+/-- §12.8 If evalBinary returns an object, it came from an input (logAnd/logOr passthrough).
+    This means evalBinary never creates new object addresses. -/
+theorem evalBinary_object_from_inputs (op : BinOp) (a b : Value) (addr : Nat)
+    (h : evalBinary op a b = .object addr) :
+    a = .object addr ∨ b = .object addr := by
+  cases op <;> simp only [evalBinary] at h
+  -- add: string pattern match
+  · cases a <;> cases b <;> simp_all [valueToString]
+  -- sub, mul, div, exp: always .number
+  all_goals try (simp at h; done)
+  -- mod: if-then-else but always .number
+  · split at h <;> simp at h
+  -- eq, neq, strictEq, strictNeq, lt, gt, le, ge: always .bool
+  all_goals try (simp only [Value.object.injEq] at h; done)
+  -- bitwise ops: all .number (complex expression)
+  all_goals try (exact absurd h (by simp))
+  -- logAnd, logOr: passthrough
+  all_goals try (split at h <;> simp_all; done)
+  -- instanceof, in: case split on constructors
+  all_goals (cases a <;> cases b <;> simp_all)
+
+/-- §12.8 Corollary: if evalBinary returns .object addr with addr < n,
+    then the addr came from inputs that also have addr < n.
+    Directly usable for ValueAddrWF-style proofs. -/
+theorem evalBinary_object_addr_lt (op : BinOp) (a b : Value) (addr n : Nat)
+    (h : evalBinary op a b = .object addr)
+    (ha : ∀ i, a = .object i → i < n)
+    (hb : ∀ i, b = .object i → i < n) :
+    addr < n := by
+  cases evalBinary_object_from_inputs op a b addr h with
+  | inl h => exact ha addr h
+  | inr h => exact hb addr h
+
+/-- §9.1.9 setProp on object with value: full result including heap mutation. -/
+theorem step?_setProp_object_val (addr : Nat) (prop : PropName) (v : Value)
+    (env : Env) (heap : Heap) (trace : List TraceEvent)
+    (funcs : Array FuncClosure) (cs : List (List (VarName × Value))) :
+    step? ⟨.setProp (.lit (.object addr)) prop (.lit v), env, heap, trace, funcs, cs⟩ =
+      some (.silent, pushTrace
+        { expr := .lit v, env := env,
+          heap := match heap.objects[addr]? with
+            | some props =>
+                let updated := if props.any (fun kv => kv.fst == prop)
+                  then props.map (fun kv => if kv.fst == prop then (prop, v) else kv)
+                  else props ++ [(prop, v)]
+                { heap with objects := heap.objects.set! addr updated }
+            | none => heap,
+          trace := trace, funcs := funcs, callStack := cs } .silent) := by
+  simp [step?, exprValue?, pushTrace]
+
+/-- §9.1.9 setProp on non-object with value: heap unchanged, returns value. -/
+theorem step?_setProp_nonobject_val (objVal : Value) (prop : PropName) (v : Value)
+    (env : Env) (heap : Heap) (trace : List TraceEvent)
+    (funcs : Array FuncClosure) (cs : List (List (VarName × Value)))
+    (hobj : ∀ addr, objVal ≠ .object addr) :
+    step? ⟨.setProp (.lit objVal) prop (.lit v), env, heap, trace, funcs, cs⟩ =
+      some (.silent, pushTrace { expr := .lit v, env := env, heap := heap, trace := trace, funcs := funcs, callStack := cs } .silent) := by
+  cases objVal with
+  | object addr => exact absurd rfl (hobj addr)
+  | _ => simp [step?, exprValue?, pushTrace]
+
+/-- §9.1.9 setIndex on object with all values: full result including heap mutation. -/
+theorem step?_setIndex_object_val (addr : Nat) (idxVal v : Value)
+    (env : Env) (heap : Heap) (trace : List TraceEvent)
+    (funcs : Array FuncClosure) (cs : List (List (VarName × Value))) :
+    step? ⟨.setIndex (.lit (.object addr)) (.lit idxVal) (.lit v), env, heap, trace, funcs, cs⟩ =
+      some (.silent, pushTrace
+        { expr := .lit v, env := env,
+          heap := let propName := valueToString idxVal
+            match heap.objects[addr]? with
+            | some props =>
+                let updated := if props.any (fun kv => kv.fst == propName)
+                  then props.map (fun kv => if kv.fst == propName then (propName, v) else kv)
+                  else props ++ [(propName, v)]
+                { heap with objects := heap.objects.set! addr updated }
+            | none => heap,
+          trace := trace, funcs := funcs, callStack := cs } .silent) := by
+  simp [step?, exprValue?, pushTrace]
+
+/-- §9.1.9 setIndex on non-object with all values: heap unchanged, returns value. -/
+theorem step?_setIndex_nonobject_val (objVal idxVal v : Value)
+    (env : Env) (heap : Heap) (trace : List TraceEvent)
+    (funcs : Array FuncClosure) (cs : List (List (VarName × Value)))
+    (hobj : ∀ addr, objVal ≠ .object addr) :
+    step? ⟨.setIndex (.lit objVal) (.lit idxVal) (.lit v), env, heap, trace, funcs, cs⟩ =
+      some (.silent, pushTrace { expr := .lit v, env := env, heap := heap, trace := trace, funcs := funcs, callStack := cs } .silent) := by
+  cases objVal with
+  | object addr => exact absurd rfl (hobj addr)
+  | _ => simp [step?, exprValue?, pushTrace]
+
+/-- §12.3.2 getProp on object with value obj: looks up property in heap. -/
+theorem step?_getProp_object_val (addr : Nat) (prop : PropName)
+    (env : Env) (heap : Heap) (trace : List TraceEvent)
+    (funcs : Array FuncClosure) (cs : List (List (VarName × Value))) :
+    let lookupResult := match heap.objects[addr]? with
+      | some props =>
+          match props.find? (fun kv => kv.fst == prop) with
+          | some (_, v) => v
+          | none => if prop == "length" then .number (Float.ofNat props.length) else .undefined
+      | none => .undefined
+    step? ⟨.getProp (.lit (.object addr)) prop, env, heap, trace, funcs, cs⟩ =
+      some (.silent, pushTrace ⟨.lit lookupResult, env, heap, trace, funcs, cs⟩ .silent) := by
+  simp [step?, exprValue?, pushTrace]
+
+/-- §12.3.2 getProp on string: returns length or undefined. -/
+theorem step?_getProp_string_val (str : String) (prop : PropName)
+    (env : Env) (heap : Heap) (trace : List TraceEvent)
+    (funcs : Array FuncClosure) (cs : List (List (VarName × Value))) :
+    let result := if prop == "length" then Value.number (Float.ofNat str.length) else .undefined
+    step? ⟨.getProp (.lit (.string str)) prop, env, heap, trace, funcs, cs⟩ =
+      some (.silent, pushTrace ⟨.lit result, env, heap, trace, funcs, cs⟩ .silent) := by
+  simp [step?, exprValue?, pushTrace]
+
+/-- §12.3.2 getProp on non-object non-string primitive: returns undefined. -/
+theorem step?_getProp_primitive_val (v : Value) (prop : PropName)
+    (env : Env) (heap : Heap) (trace : List TraceEvent)
+    (funcs : Array FuncClosure) (cs : List (List (VarName × Value)))
+    (hobj : ∀ addr, v ≠ .object addr) (hstr : ∀ s, v ≠ .string s) :
+    step? ⟨.getProp (.lit v) prop, env, heap, trace, funcs, cs⟩ =
+      some (.silent, pushTrace ⟨.lit .undefined, env, heap, trace, funcs, cs⟩ .silent) := by
+  cases v with
+  | object addr => exact absurd rfl (hobj addr)
+  | string s => exact absurd rfl (hstr s)
+  | _ => simp [step?, exprValue?, pushTrace]
+
+/-- §12.4.3 deleteProp on object: removes property, returns true. -/
+theorem step?_deleteProp_object_val (addr : Nat) (prop : PropName)
+    (env : Env) (heap : Heap) (trace : List TraceEvent)
+    (funcs : Array FuncClosure) (cs : List (List (VarName × Value))) :
+    let heap' := match heap.objects[addr]? with
+      | some props =>
+          let filtered := props.filter (fun kv => kv.fst != prop)
+          { heap with objects := heap.objects.set! addr filtered }
+      | none => heap
+    step? ⟨.deleteProp (.lit (.object addr)) prop, env, heap, trace, funcs, cs⟩ =
+      some (.silent, pushTrace ⟨.lit (.bool true), env, heap', trace, funcs, cs⟩ .silent) := by
+  simp [step?, exprValue?, pushTrace]
+
+/-- §12.4.3 deleteProp on non-object: returns true, heap unchanged. -/
+theorem step?_deleteProp_nonobject_val (v : Value) (prop : PropName)
+    (env : Env) (heap : Heap) (trace : List TraceEvent)
+    (funcs : Array FuncClosure) (cs : List (List (VarName × Value)))
+    (hobj : ∀ addr, v ≠ .object addr) :
+    step? ⟨.deleteProp (.lit v) prop, env, heap, trace, funcs, cs⟩ =
+      some (.silent, pushTrace ⟨.lit (.bool true), env, heap, trace, funcs, cs⟩ .silent) := by
+  cases v with
+  | object addr => exact absurd rfl (hobj addr)
+  | _ => simp [step?, exprValue?, pushTrace]
+
+/-- §12.3.4 getIndex on object with value obj and index: looks up property by index. -/
+theorem step?_getIndex_object_val (addr : Nat) (idxVal : Value)
+    (env : Env) (heap : Heap) (trace : List TraceEvent)
+    (funcs : Array FuncClosure) (cs : List (List (VarName × Value))) :
+    let propName := valueToString idxVal
+    let lookupResult := match heap.objects[addr]? with
+      | some props =>
+          match props.find? (fun kv => kv.fst == propName) with
+          | some (_, v) => v
+          | none => if propName == "length" then .number (Float.ofNat props.length) else .undefined
+      | none => .undefined
+    step? ⟨.getIndex (.lit (.object addr)) (.lit idxVal), env, heap, trace, funcs, cs⟩ =
+      some (.silent, pushTrace ⟨.lit lookupResult, env, heap, trace, funcs, cs⟩ .silent) := by
+  simp [step?, exprValue?, pushTrace]
+
+/-- §12.3.4 getIndex on non-object non-string with value args: returns undefined, heap unchanged. -/
+theorem step?_getIndex_primitive_val (objVal idxVal : Value)
+    (env : Env) (heap : Heap) (trace : List TraceEvent)
+    (funcs : Array FuncClosure) (cs : List (List (VarName × Value)))
+    (hobj : ∀ addr, objVal ≠ .object addr) (hstr : ∀ s, objVal ≠ .string s) :
+    step? ⟨.getIndex (.lit objVal) (.lit idxVal), env, heap, trace, funcs, cs⟩ =
+      some (.silent, pushTrace ⟨.lit .undefined, env, heap, trace, funcs, cs⟩ .silent) := by
+  cases objVal with
+  | object addr => exact absurd rfl (hobj addr)
+  | string s => exact absurd rfl (hstr s)
+  | _ => simp [step?, exprValue?, pushTrace]
+
+/-- §13.3.6 When callee is a function value, all args are values, not console.log,
+    and closure is found: call steps to wrapped body with bound params. -/
+theorem step?_call_function_val (idx : FuncIdx) (args : List Expr) (argVals : List Value)
+    (env : Env) (heap : Heap) (trace : List TraceEvent)
+    (funcs : Array FuncClosure) (cs : List (List (VarName × Value)))
+    (closure : FuncClosure)
+    (hargs : allValues args = some argVals)
+    (hnotlog : idx ≠ consoleLogIdx)
+    (hfunc : funcs[idx]? = some closure) :
+    let pairs := closure.params.zip argVals
+    let bodyBindings := pairs.foldr (fun pv bs => (pv.1, pv.2) :: bs) closure.capturedEnv
+    let bodyEnv : Env := { bindings := bodyBindings }
+    let bodyEnv' : Env := match closure.name with
+      | some n => { bindings := (n, .function idx) :: bodyEnv.bindings }
+      | none => bodyEnv
+    let wrapped := Expr.tryCatch closure.body "__call_frame_return__"
+      (.var "__call_frame_return__") none
+    step? ⟨.call (.lit (.function idx)) args, env, heap, trace, funcs, cs⟩ =
+      some (.silent, pushTrace ⟨wrapped, bodyEnv', heap,
+        trace, funcs, env.bindings :: cs⟩ .silent) := by
+  unfold step?; simp [exprValue?, hargs, hnotlog, hfunc, pushTrace]
+
+/-- §13.2.5.4 When all property values are literals, objectLit allocates on heap. -/
+theorem step?_objectLit_val (props : List (PropName × Expr))
+    (env : Env) (heap : Heap) (trace : List TraceEvent)
+    (funcs : Array FuncClosure) (cs : List (List (VarName × Value)))
+    (hnv : firstNonValueProp props = none) :
+    let heapProps := props.filterMap fun (k, e) =>
+      match exprValue? e with
+      | some v => some (k, v)
+      | none => none
+    let addr := heap.nextAddr
+    let heap' : Heap := { objects := heap.objects.push heapProps, nextAddr := addr + 1 }
+    step? ⟨.objectLit props, env, heap, trace, funcs, cs⟩ =
+      some (.silent, pushTrace ⟨.lit (.object addr), env, heap',
+        trace, funcs, cs⟩ .silent) := by
+  unfold step?; split <;> simp_all [pushTrace]
+
+/-- §12.2.5 When all elements are literals, arrayLit allocates on heap. -/
+theorem step?_arrayLit_val (elems : List Expr)
+    (env : Env) (heap : Heap) (trace : List TraceEvent)
+    (funcs : Array FuncClosure) (cs : List (List (VarName × Value)))
+    (hnv : firstNonValueExpr elems = none) :
+    let heapProps := mkIndexedProps 0 elems
+    let addr := heap.nextAddr
+    let heap' : Heap := { objects := heap.objects.push heapProps, nextAddr := addr + 1 }
+    step? ⟨.arrayLit elems, env, heap, trace, funcs, cs⟩ =
+      some (.silent, pushTrace ⟨.lit (.object addr), env, heap',
+        trace, funcs, cs⟩ .silent) := by
+  unfold step?; split <;> simp_all [pushTrace]
+
+/-- §12.3.4.1 Calling a non-function value with all-value args produces undefined. -/
+theorem step_call_nonfunc_exact (v : Value) (args : List Expr) (vs : List Value)
+    (env : Env) (heap : Heap) (trace : List TraceEvent)
+    (funcs : Array FuncClosure) (cs : List (List (VarName × Value)))
+    (hv : ∀ idx, v ≠ .function idx) (hargs : allValues args = some vs) :
+    step? ⟨.call (.lit v) args, env, heap, trace, funcs, cs⟩ =
+      some (.silent, pushTrace ⟨.lit .undefined, env, heap, trace, funcs, cs⟩ .silent) := by
+  cases v with
+  | function idx => exact absurd rfl (hv idx)
+  | _ => simp [step?, exprValue?, hargs, pushTrace]
+
+/-- §12.3.4.1 When callee is a value but some arg is not, step the first non-value arg. -/
+theorem step_call_step_arg (cv : Value) (args : List Expr)
+    (env : Env) (heap : Heap) (trace : List TraceEvent)
+    (funcs : Array FuncClosure) (cs : List (List (VarName × Value)))
+    (hallv : allValues args = none)
+    (done : List Expr) (target : Expr) (remaining : List Expr)
+    (hfnv : firstNonValueExpr args = some (done, target, remaining))
+    (t : TraceEvent) (sa : State)
+    (hstep : step? ⟨target, env, heap, trace, funcs, cs⟩ = some (t, sa)) :
+    step? ⟨.call (.lit cv) args, env, heap, trace, funcs, cs⟩ =
+      some (t, pushTrace { sa with expr := .call (.lit cv) (done ++ [sa.expr] ++ remaining), trace := trace } t) := by
+  unfold step?; simp [exprValue?, hallv]; split <;> simp_all [pushTrace]
+
+/-- §13.2.5.4 When some prop value is not a value, step the first non-value prop. -/
+theorem step_objectLit_step_prop (props : List (PropName × Expr))
+    (env : Env) (heap : Heap) (trace : List TraceEvent)
+    (funcs : Array FuncClosure) (cs : List (List (VarName × Value)))
+    (done : List (PropName × Expr)) (k : PropName) (target : Expr) (rest : List (PropName × Expr))
+    (hfnv : firstNonValueProp props = some (done, k, target, rest))
+    (t : TraceEvent) (se : State)
+    (hstep : step? ⟨target, env, heap, trace, funcs, cs⟩ = some (t, se)) :
+    step? ⟨.objectLit props, env, heap, trace, funcs, cs⟩ =
+      some (t, pushTrace { se with expr := .objectLit (done ++ [(k, se.expr)] ++ rest), trace := trace } t) := by
+  unfold step?; split <;> simp_all [pushTrace]
+
+/-- §12.2.5 When some element is not a value, step the first non-value element. -/
+theorem step_arrayLit_step_elem (elems : List Expr)
+    (env : Env) (heap : Heap) (trace : List TraceEvent)
+    (funcs : Array FuncClosure) (cs : List (List (VarName × Value)))
+    (done : List Expr) (target : Expr) (rest : List Expr)
+    (hfnv : firstNonValueExpr elems = some (done, target, rest))
+    (t : TraceEvent) (se : State)
+    (hstep : step? ⟨target, env, heap, trace, funcs, cs⟩ = some (t, se)) :
+    step? ⟨.arrayLit elems, env, heap, trace, funcs, cs⟩ =
+      some (t, pushTrace { se with expr := .arrayLit (done ++ [se.expr] ++ rest), trace := trace } t) := by
+  unfold step?; split <;> simp_all [pushTrace]
+
+/-- §12.3.4.1 When callee is not a value, step the callee sub-expression. -/
+theorem step_call_step_func (callee : Expr) (args : List Expr)
+    (env : Env) (heap : Heap) (trace : List TraceEvent)
+    (funcs : Array FuncClosure) (cs : List (List (VarName × Value)))
+    (hnv : exprValue? callee = none)
+    (t : TraceEvent) (sc : State)
+    (hstep : step? ⟨callee, env, heap, trace, funcs, cs⟩ = some (t, sc)) :
+    step? ⟨.call callee args, env, heap, trace, funcs, cs⟩ =
+      some (t, pushTrace { sc with expr := .call sc.expr args, trace := trace } t) := by
+  unfold step?; simp [hnv, hstep, pushTrace]
 
 end VerifiedJS.Core
 

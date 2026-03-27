@@ -241,4 +241,25 @@ structure Program where
   main : Expr
   deriving Repr, BEq
 
+-- Depth lemmas for call, newObj, objectLit, arrayLit constructors
+theorem Expr.depth_call_funcExpr (f e : Expr) (args : List Expr) :
+    f.depth < (Expr.call f e args).depth := by simp [Expr.depth]; omega
+theorem Expr.depth_call_envExpr (f e : Expr) (args : List Expr) :
+    e.depth < (Expr.call f e args).depth := by simp [Expr.depth]; omega
+theorem Expr.listDepth_le_call (f e : Expr) (args : List Expr) :
+    Expr.listDepth args < (Expr.call f e args).depth := by simp [Expr.depth]; omega
+
+theorem Expr.depth_newObj_funcExpr (f e : Expr) (args : List Expr) :
+    f.depth < (Expr.newObj f e args).depth := by simp [Expr.depth]; omega
+theorem Expr.depth_newObj_envExpr (f e : Expr) (args : List Expr) :
+    e.depth < (Expr.newObj f e args).depth := by simp [Expr.depth]; omega
+theorem Expr.listDepth_le_newObj (f e : Expr) (args : List Expr) :
+    Expr.listDepth args < (Expr.newObj f e args).depth := by simp [Expr.depth]; omega
+
+theorem Expr.propListDepth_le_objectLit (props : List (PropName × Expr)) :
+    Expr.propListDepth props < (Expr.objectLit props).depth := by simp [Expr.depth]
+
+theorem Expr.listDepth_le_arrayLit (elems : List Expr) :
+    Expr.listDepth elems < (Expr.arrayLit elems).depth := by simp [Expr.depth]
+
 end VerifiedJS.Flat

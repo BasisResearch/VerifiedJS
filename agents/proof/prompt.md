@@ -1,148 +1,66 @@
-# proof — Close CC step_sim cases
+# proof — Close CC CCState sorries. They ALL have the same pattern.
 
-## Build ONLY your module
-```
-bash scripts/lake_build_concise.sh VerifiedJS.Proofs.ClosureConvertCorrect
-```
+## BUILD STATUS: Check with `lake build VerifiedJS.Proofs.ClosureConvertCorrect` first.
 
-## Use MCP BEFORE editing
-- lean_goal to see state
-- lean_multi_attempt to test tactics
-- lean_diagnostic_messages for errors
+## CURRENT SORRY COUNT: ~71 total
+- ANFConvertCorrect: 13 sorries (LEAVE ALONE — architecturally blocked)
+- ClosureConvertCorrect: 23 sorries (YOUR TARGET)
+- LowerCorrect: 1 sorry (blocked on lowerExpr partial)
+- Wasm/Semantics: 34 sorries (wasmspec owns)
 
-## TASK 1: Close `break` (L1063) and `continue` (L1064)
+## ANF IS OFF LIMITS. DO NOT TOUCH IT.
 
-These are nearly identical. `convertExpr (.break label) = (.break label, st)` and both Core/Flat produce error events with the same label string.
+## PRIORITY 1: CC CCState sorries — 6 with IDENTICAL pattern
+These are the highest-value targets because they ALL have the same fix:
+- L1932: `sorry -- conversion relation for let stepping — same CCState issue`
+- L2139: `sorry -- conversion relation for if stepping — needs CCState preservation lemma`
+- L2228: `sorry -- conversion relation for seq stepping — same CCState issue`
+- L2467: `sorry -- conversion relation for binary lhs stepping — same CCState issue`
+- L2590: `sorry -- conversion relation for getIndex stepping — same CCState issue`
+- L2862: `sorry -- CCState threading: while_ lowering duplicates sub-expressions with different CCState`
 
-Replace L1063 `| «break» label => sorry` with:
+### How to close these:
+1. `lean_goal` at L1932 to see what the goal actually is
+2. The goal involves showing that after stepping, the Flat expression in the new state
+   matches the closure-converted Core expression under a (potentially different) CCState.
+3. The key insight: `convertExpr` is deterministic given `scope`, `envVar`, `envMap`.
+   The CCState only affects fresh variable names. Two runs of `convertExpr` on the same
+   expression with different CCStates produce α-equivalent output.
+4. Look for `convertExpr_state_determined` — it should exist around L530-640.
+   Use `lean_local_search "state_determined"` to find it.
+5. `lean_multi_attempt` at L1932 with:
+   ```
+   ["exact hconv'",
+    "exact ⟨hfexpr', hst'⟩",
+    "constructor <;> [exact (convertExpr_state_determined ..).1 ▸ hfexpr'; exact (convertExpr_state_determined ..).2]",
+    "simp [Flat.convertExpr] at *; exact hconv'"]
+   ```
+6. Once you close L1932, apply the SAME proof to the other 5 (L2139, L2228, L2467, L2590, L2862).
 
+## PRIORITY 2: forIn/forOf at L1113, L1114 — VACUOUSLY TRUE
+These stub cases (`forIn => sorry`, `forOf => sorry`) should be vacuously true because
+forIn/forOf are not in the supported subset. Try:
 ```lean
-  | «break» label =>
-    rw [hsc] at hconv hncfr hexprwf hd
-    simp [Flat.convertExpr] at hconv
-    obtain ⟨hfexpr, hst⟩ := hconv
-    have hsf_eta : sf = { sf with expr := .«break» label } := by cases sf; simp_all
-    rw [hsf_eta] at hstep
-    -- Flat step: break label => error "break:" ++ label.getD ""
-    have hfs : Flat.step? { sf with expr := .«break» label } =
-        some (.error ("break:" ++ (label.getD "")),
-          { expr := .lit .undefined, env := sf.env, heap := sf.heap,
-            trace := sf.trace ++ [.error ("break:" ++ (label.getD ""))],
-            funcs := sf.funcs, callStack := sf.callStack }) := by
-      simp [Flat.step?]; rfl
-    rw [hfs] at hstep
-    simp at hstep
-    obtain ⟨hev, hsf'⟩ := hstep; subst hev hsf'
-    -- Core step: break label => error (match label ...)
-    -- Show the label strings match
-    have hlabel_eq : (match label with | some s => "break:" ++ s | none => "break:") =
-        "break:" ++ label.getD "" := by
-      cases label <;> simp [Option.getD]
-    let sc' : Core.State := ⟨.lit .undefined, sc.env, sc.heap,
-      sc.trace ++ [.error ("break:" ++ label.getD "")], sc.funcs, sc.callStack⟩
-    refine ⟨injMap, sc', ⟨?_⟩, ?_, ?_, ?_, ?_, ?_, ?_, ?_, ?_⟩
-    · show Core.step? sc = some (.error ("break:" ++ label.getD ""), sc')
-      have hsc' : sc = { sc with expr := .«break» label } := by
-        obtain ⟨_, _, _, _, _, _⟩ := sc; simp only [] at hsc; subst hsc; rfl
-      rw [hsc']; simp [Core.step?, Core.pushTrace, hlabel_eq]
-    · simp [sc', htrace]
-    · exact hinj
-    · exact henvCorr
-    · exact henvwf
-    · exact hheapvwf
-    · simp [sc', noCallFrameReturn]
-    · simp [sc', ExprAddrWF, ValueAddrWF]
-    · exact ⟨scope, st, st, by simp [sc', Flat.convertExpr, Flat.convertValue]⟩
+simp [Core.Expr.supported] at *
 ```
+Or look at how the `supported` predicate excludes them.
 
-Replace L1064 `| «continue» label => sorry` with the SAME pattern but "continue:" instead of "break:":
+## PRIORITY 3: var captured case (L1741)
+This is the `| some idx =>` branch of variable lookup — the variable IS captured.
+The Flat expression should be `.getEnv (.var envVar) idx`. Need to show the Flat step
+matches the Core step for looking up a captured variable.
 
-```lean
-  | «continue» label =>
-    rw [hsc] at hconv hncfr hexprwf hd
-    simp [Flat.convertExpr] at hconv
-    obtain ⟨hfexpr, hst⟩ := hconv
-    have hsf_eta : sf = { sf with expr := .«continue» label } := by cases sf; simp_all
-    rw [hsf_eta] at hstep
-    have hfs : Flat.step? { sf with expr := .«continue» label } =
-        some (.error ("continue:" ++ (label.getD "")),
-          { expr := .lit .undefined, env := sf.env, heap := sf.heap,
-            trace := sf.trace ++ [.error ("continue:" ++ (label.getD ""))],
-            funcs := sf.funcs, callStack := sf.callStack }) := by
-      simp [Flat.step?]; rfl
-    rw [hfs] at hstep
-    simp at hstep
-    obtain ⟨hev, hsf'⟩ := hstep; subst hev hsf'
-    have hlabel_eq : (match label with | some s => "continue:" ++ s | none => "continue:") =
-        "continue:" ++ label.getD "" := by
-      cases label <;> simp [Option.getD]
-    let sc' : Core.State := ⟨.lit .undefined, sc.env, sc.heap,
-      sc.trace ++ [.error ("continue:" ++ label.getD "")], sc.funcs, sc.callStack⟩
-    refine ⟨injMap, sc', ⟨?_⟩, ?_, ?_, ?_, ?_, ?_, ?_, ?_, ?_⟩
-    · show Core.step? sc = some (.error ("continue:" ++ label.getD ""), sc')
-      have hsc' : sc = { sc with expr := .«continue» label } := by
-        obtain ⟨_, _, _, _, _, _⟩ := sc; simp only [] at hsc; subst hsc; rfl
-      rw [hsc']; simp [Core.step?, Core.pushTrace, hlabel_eq]
-    · simp [sc', htrace]
-    · exact hinj
-    · exact henvCorr
-    · exact henvwf
-    · exact hheapvwf
-    · simp [sc', noCallFrameReturn]
-    · simp [sc', ExprAddrWF, ValueAddrWF]
-    · exact ⟨scope, st, st, by simp [sc', Flat.convertExpr, Flat.convertValue]⟩
-```
+## PRIORITY 4: Expression cases with jsspec lemmas (call, newObj, setProp, setIndex, objectLit, arrayLit, functionDef)
+- L2468 (call): use `step?_call_function_val`
+- L2469 (newObj): similar pattern
+- L2528 (setProp): use `step?_setProp_object_val`
+- L2591 (setIndex): use `step?_setIndex_object_val`
+- L2739 (objectLit): use `step?_objectLit_val`
+- L2740 (arrayLit): use `step?_arrayLit_val`
+- L2741 (functionDef): use `step_functionDef_exact`
 
-## TASK 2: Close `labeled` (L1066)
+## PRIORITY 5: value sub-cases (L2475, L2534, L2597) — skip if stuck
 
-`convertExpr (.labeled label body) = (.labeled label body', st1)` where `(body', st1) = convertExpr body ...`. Both Core and Flat unwrap to body with `.silent`.
-
-```lean
-  | labeled label body =>
-    rw [hsc] at hconv hncfr hexprwf hd
-    simp [Flat.convertExpr] at hconv
-    obtain ⟨hfexpr, hst'⟩ := hconv
-    -- sf.expr = .labeled label body' where (body', st1) = convertExpr body ...
-    have hsf_eta : sf = { sf with expr := .labeled label (Flat.convertExpr body scope envVar envMap st).fst } := by
-      cases sf; simp_all
-    rw [hsf_eta] at hstep
-    have hfs : Flat.step? { sf with expr := .labeled label (Flat.convertExpr body scope envVar envMap st).fst } =
-        some (.silent, { expr := (Flat.convertExpr body scope envVar envMap st).fst,
-          env := sf.env, heap := sf.heap,
-          trace := sf.trace ++ [.silent], funcs := sf.funcs, callStack := sf.callStack }) := by
-      simp [Flat.step?]; rfl
-    rw [hfs] at hstep
-    simp at hstep
-    obtain ⟨hev, hsf'⟩ := hstep; subst hev hsf'
-    let sc' : Core.State := ⟨body, sc.env, sc.heap,
-      sc.trace ++ [.silent], sc.funcs, sc.callStack⟩
-    refine ⟨injMap, sc', ⟨?_⟩, ?_, ?_, ?_, ?_, ?_, ?_, ?_, ?_⟩
-    · show Core.step? sc = some (.silent, sc')
-      have hsc' : sc = { sc with expr := .labeled label body } := by
-        obtain ⟨_, _, _, _, _, _⟩ := sc; simp only [] at hsc; subst hsc; rfl
-      rw [hsc']; simp [Core.step?, Core.pushTrace]
-    · simp [sc', htrace]
-    · exact hinj
-    · exact henvCorr
-    · exact henvwf
-    · exact hheapvwf
-    · show noCallFrameReturn sc'.expr = true
-      simp [sc']; exact hncfr
-    · show ExprAddrWF sc'.expr sc'.heap.objects.size
-      simp [sc']; exact hexprwf
-    · exact ⟨scope, st, (Flat.convertExpr body scope envVar envMap st).snd, by simp [sc']⟩
-```
-
-**Note**: The `noCallFrameReturn` and `ExprAddrWF` for `labeled` recurse into `body`, so `hncfr` and `hexprwf` should provide what we need after `simp [noCallFrameReturn]` / `simp [ExprAddrWF]`. If `exact hncfr` doesn't work, try `simp [noCallFrameReturn] at hncfr ⊢; exact hncfr`.
-
-## TASK 3: Close `var` subcase A (non-captured)
-
-The code is in the PREVIOUS prompt and follows `this` exactly. Copy the `var` code block from the `.this` case pattern, substituting `name` for `"this"`.
-
-## What NOT to do
-- Do NOT change HeapInj/EnvCorrInj/EnvCorr definitions
-- Do NOT change CC_SimRel structure
-- Do NOT change any file outside ClosureConvertCorrect.lean
-- NEVER break the build — `lean_diagnostic_messages` before committing
-
-## Log progress to agents/proof/log.md
+## Build: `lake build VerifiedJS.Proofs.ClosureConvertCorrect`
+## Use lean_goal + lean_multi_attempt BEFORE every edit.
+## Log progress to agents/proof/log.md.

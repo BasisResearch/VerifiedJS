@@ -116,8 +116,9 @@ private partial def emitInstr (s : EmitState) : IR.IRInstr → Except String (Li
     let bodyInstrs ← emitInstrs s' body
     .ok [.loop .none bodyInstrs]
   | .if_ result then_ else_ => do
-    let thenInstrs ← emitInstrs s then_
-    let elseInstrs ← emitInstrs s else_
+    let s' := pushLabel s "__if"
+    let thenInstrs ← emitInstrs s' then_
+    let elseInstrs ← emitInstrs s' else_
     let bt := match result with
       | some t => .valType (irTypeToValType t)
       | none => .none
@@ -256,13 +257,13 @@ where
       .ok (instrs ++ restInstrs)
 
 /-- Accumulator for emit: types, type map, and funcs -/
-private structure EmitAcc where
+structure EmitAcc where
   types : Array FuncType := #[]
   typeMap : List (FuncType × Nat) := []
   funcs : Array Func := #[]
 
 /-- Process one IR function, deduplicating its type -/
-private def emitOneFunc (acc : EmitAcc) (f : IR.IRFunc) : Except String EmitAcc := do
+def emitOneFunc (acc : EmitAcc) (f : IR.IRFunc) : Except String EmitAcc := do
   let (func, funcType) ← emitFunc f
   match acc.typeMap.find? (fun (ft, _) => ft == funcType) with
   | some (_, idx) =>

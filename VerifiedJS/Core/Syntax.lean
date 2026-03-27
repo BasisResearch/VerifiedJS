@@ -130,6 +130,51 @@ def Expr.propListDepth : List (PropName × Expr) → Nat
   | (_, e) :: rest => Expr.depth e + Expr.propListDepth rest + 1
 end
 
+mutual
+/-- ECMA-262 §16.1 — Returns true if the expression uses only the synchronous,
+    non-generator, non-iterator subset of Core IL (no forIn/forOf/yield/await).
+    This delineates the statically-analyzable fragment for which we provide
+    verified semantics per §8 (Executable Code) and §13 (Expressions). -/
+def Expr.supported : Expr → Bool
+  | .forIn _ _ _ => false
+  | .forOf _ _ _ => false
+  | .yield _ _ => false
+  | .await _ => false
+  | .seq a b => a.supported && b.supported
+  | .«let» _ i b => i.supported && b.supported
+  | .«if» c t e => c.supported && t.supported && e.supported
+  | .while_ c b => c.supported && b.supported
+  | .tryCatch b _ c f => b.supported && c.supported && (match f with | some x => x.supported | none => true)
+  | .call f args => f.supported && Expr.listSupported args
+  | .newObj f args => f.supported && Expr.listSupported args
+  | .objectLit ps => Expr.propListSupported ps
+  | .arrayLit es => Expr.listSupported es
+  | .assign _ v => v.supported
+  | .getProp o _ => o.supported
+  | .setProp o _ v => o.supported && v.supported
+  | .getIndex o i => o.supported && i.supported
+  | .setIndex o i v => o.supported && i.supported && v.supported
+  | .deleteProp o _ => o.supported
+  | .typeof a => a.supported
+  | .unary _ a => a.supported
+  | .binary _ l r => l.supported && r.supported
+  | .throw a => a.supported
+  | .«return» (some e) => e.supported
+  | .labeled _ b => b.supported
+  | .functionDef n ps body _ _ => body.supported
+  | _ => true  -- lit, var, break, continue, return none, this
+
+/-- Check support for all expressions in a list. -/
+def Expr.listSupported : List Expr → Bool
+  | [] => true
+  | e :: r => e.supported && Expr.listSupported r
+
+/-- Check support for all property-expression pairs in a list. -/
+def Expr.propListSupported : List (PropName × Expr) → Bool
+  | [] => true
+  | (_, e) :: r => e.supported && Expr.propListSupported r
+end
+
 theorem Expr.mem_listDepth_lt {e : Expr} {l : List Expr} (h : e ∈ l) :
     Expr.depth e < Expr.listDepth l := by
   induction l with
@@ -279,5 +324,21 @@ structure Program where
   body : Expr
   functions : Array FuncDef
   deriving Repr, BEq
+
+/-- Map heap addresses in a Value via an injection function. -/
+def convertValueInj (map : Nat → Nat) : Value → Value
+  | .object addr => .object (map addr)
+  | v => v
+
+@[simp] theorem convertValueInj_null (m : Nat → Nat) : convertValueInj m .null = .null := rfl
+@[simp] theorem convertValueInj_undefined (m : Nat → Nat) : convertValueInj m .undefined = .undefined := rfl
+@[simp] theorem convertValueInj_bool (m : Nat → Nat) (b : Bool) : convertValueInj m (.bool b) = .bool b := rfl
+@[simp] theorem convertValueInj_number (m : Nat → Nat) (n : Float) : convertValueInj m (.number n) = .number n := rfl
+@[simp] theorem convertValueInj_string (m : Nat → Nat) (s : String) : convertValueInj m (.string s) = .string s := rfl
+@[simp] theorem convertValueInj_object (m : Nat → Nat) (a : Nat) : convertValueInj m (.object a) = .object (m a) := rfl
+@[simp] theorem convertValueInj_function (m : Nat → Nat) (i : FuncIdx) : convertValueInj m (.function i) = .function i := rfl
+
+/-- ECMA-262 §16.1 — A program is supported iff its body expression is supported. -/
+def Program.supported (p : Program) : Bool := p.body.supported
 
 end VerifiedJS.Core

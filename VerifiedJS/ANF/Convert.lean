@@ -210,4 +210,18 @@ theorem convert_main_from_normalizeExpr (prog : Flat.Program) (t : Program)
       rw [this] at h
       simp at h
 
+@[simp] theorem normalizeExpr_break (label : Option Flat.LabelName) (k : Trivial → ConvM Expr) :
+    normalizeExpr (.«break» label) k = pure (.«break» label) := by
+  simp [normalizeExpr]
+
+@[simp] theorem normalizeExpr_continue (label : Option Flat.LabelName) (k : Trivial → ConvM Expr) :
+    normalizeExpr (.«continue» label) k = pure (.«continue» label) := by
+  simp [normalizeExpr]
+
+@[simp] theorem normalizeExpr_labeled (label : Flat.LabelName) (body : Flat.Expr) (k : Trivial → ConvM Expr) :
+    normalizeExpr (.labeled label body) k = (do
+      let bodyExpr ← normalizeExpr body k
+      pure (.labeled label bodyExpr)) := by
+  simp [normalizeExpr]
+
 end VerifiedJS.ANF

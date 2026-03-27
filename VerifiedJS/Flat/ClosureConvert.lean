@@ -277,10 +277,10 @@ def convertExpr
     let (body', st2) := convertExpr body scope envVar envMap st1
     (.while_ cond' body', st2)
   | .forIn _binding _obj _body =>
-    -- for-in not supported yet; lower to undefined
+    -- for-in not in Flat.Expr; desugar to undefined (excluded by SupportedExpr precondition)
     (.lit .undefined, st)
   | .forOf _binding _iterable _body =>
-    -- for-of not supported yet; lower to undefined
+    -- for-of not in Flat.Expr; desugar to undefined (excluded by SupportedExpr precondition)
     (.lit .undefined, st)
   | .«break» label => (.«break» label, st)
   | .«continue» label => (.«continue» label, st)
@@ -331,5 +331,38 @@ def closureConvert (prog : Core.Program) : Except String Program :=
   -- Convert the main body expression
   let (mainExpr, st3) := convertExpr prog.body [] "__env_main" [] st2
   .ok { functions := st3.funcs, main := mainExpr }
+
+theorem convertExpr_let_unfold (name : VarName) (init body : Core.Expr)
+    (scope : List String) (envVar : String) (envMap : EnvMapping) (st : CCState) :
+    (convertExpr (.«let» name init body) scope envVar envMap st) =
+    let (initE, st') := convertExpr init scope envVar envMap st
+    let (bodyE, st'') := convertExpr body (name :: scope) envVar envMap st'
+    (Flat.Expr.«let» name initE bodyE, st'') := by
+  simp [convertExpr]
+
+theorem convertExpr_if_unfold (cond then_ else_ : Core.Expr)
+    (scope : List String) (envVar : String) (envMap : EnvMapping) (st : CCState) :
+    (convertExpr (.«if» cond then_ else_) scope envVar envMap st) =
+    let (condE, st1) := convertExpr cond scope envVar envMap st
+    let (thenE, st2) := convertExpr then_ scope envVar envMap st1
+    let (elseE, st3) := convertExpr else_ scope envVar envMap st2
+    (Flat.Expr.«if» condE thenE elseE, st3) := by
+  simp [convertExpr]
+
+theorem convertExpr_seq_unfold (a b : Core.Expr)
+    (scope : List String) (envVar : String) (envMap : EnvMapping) (st : CCState) :
+    (convertExpr (.seq a b) scope envVar envMap st) =
+    let (aE, st1) := convertExpr a scope envVar envMap st
+    let (bE, st2) := convertExpr b scope envVar envMap st1
+    (Flat.Expr.seq aE bE, st2) := by
+  simp [convertExpr]
+
+theorem convertExpr_binary_unfold (op : Core.BinOp) (lhs rhs : Core.Expr)
+    (scope : List String) (envVar : String) (envMap : EnvMapping) (st : CCState) :
+    (convertExpr (.binary op lhs rhs) scope envVar envMap st) =
+    let (lhsE, st1) := convertExpr lhs scope envVar envMap st
+    let (rhsE, st2) := convertExpr rhs scope envVar envMap st1
+    (Flat.Expr.binary op lhsE rhsE, st2) := by
+  simp [convertExpr]
 
 end VerifiedJS.Flat

@@ -197,6 +197,28 @@ private def allocFreshObject (h : Core.Heap) : Nat × Core.Heap :=
     { objects := h.objects.push [], nextAddr := addr + 1 }
   (addr, h')
 
+@[simp] theorem allocFreshObject_fst (h : Core.Heap) :
+    (allocFreshObject h).1 = h.nextAddr := rfl
+
+@[simp] theorem allocFreshObject_objects_size (h : Core.Heap) :
+    (allocFreshObject h).2.objects.size = h.objects.size + 1 := by
+  simp [allocFreshObject, Array.size_push]
+
+@[simp] theorem allocFreshObject_nextAddr (h : Core.Heap) :
+    (allocFreshObject h).2.nextAddr = h.nextAddr + 1 := rfl
+
+@[simp] theorem allocFreshObject_get_old (h : Core.Heap) (a : Nat) (ha : a < h.objects.size) :
+    (allocFreshObject h).2.objects[a]? = h.objects[a]? := by
+  simp only [allocFreshObject]
+  rw [Array.getElem?_push]
+  split
+  · omega
+  · rfl
+
+@[simp] theorem allocFreshObject_get_new (h : Core.Heap) :
+    (allocFreshObject h).2.objects[h.objects.size]? = some [] := by
+  simp [allocFreshObject, Array.getElem?_push]
+
 private def allocObjectWithProps (h : Core.Heap) (props : List (Core.PropName × Core.Value)) : Nat × Core.Heap :=
   let addr := h.nextAddr
   let h' : Core.Heap :=
@@ -239,6 +261,28 @@ private def allocEnvObject (h : Core.Heap) (values : List Value) : Nat × Core.H
     { objects := h.objects.push (encodeEnvProps values), nextAddr := addr + 1 }
   (addr, h')
 
+@[simp] theorem allocEnvObject_fst (h : Core.Heap) (vs : List Value) :
+    (allocEnvObject h vs).1 = h.nextAddr := rfl
+
+@[simp] theorem allocEnvObject_objects_size (h : Core.Heap) (vs : List Value) :
+    (allocEnvObject h vs).2.objects.size = h.objects.size + 1 := by
+  simp [allocEnvObject, Array.size_push]
+
+@[simp] theorem allocEnvObject_nextAddr (h : Core.Heap) (vs : List Value) :
+    (allocEnvObject h vs).2.nextAddr = h.nextAddr + 1 := rfl
+
+@[simp] theorem allocEnvObject_get_old (h : Core.Heap) (vs : List Value) (a : Nat) (ha : a < h.objects.size) :
+    (allocEnvObject h vs).2.objects[a]? = h.objects[a]? := by
+  simp only [allocEnvObject]
+  rw [Array.getElem?_push]
+  split
+  · omega
+  · rfl
+
+@[simp] theorem allocEnvObject_get_new (h : Core.Heap) (vs : List Value) :
+    (allocEnvObject h vs).2.objects[h.objects.size]? = some (encodeEnvProps vs) := by
+  simp [allocEnvObject, Array.getElem?_push]
+
 def heapObjectAt? (h : Core.Heap) (addr : Nat) : Option (List (Core.PropName × Core.Value)) :=
   if hAddr : addr < h.objects.size then
     let _ := hAddr
@@ -246,23 +290,23 @@ def heapObjectAt? (h : Core.Heap) (addr : Nat) : Option (List (Core.PropName × 
   else
     none
 
--- Equation lemmas for coreToFlatValue (no @[simp] to avoid breaking existing proofs)
-theorem coreToFlatValue_null : coreToFlatValue .null = .null := rfl
-theorem coreToFlatValue_undefined : coreToFlatValue .undefined = .undefined := rfl
-theorem coreToFlatValue_bool (b : Bool) : coreToFlatValue (.bool b) = .bool b := rfl
-theorem coreToFlatValue_number (n : Float) : coreToFlatValue (.number n) = .number n := rfl
-theorem coreToFlatValue_string (s : String) : coreToFlatValue (.string s) = .string s := rfl
-theorem coreToFlatValue_object (addr : Nat) : coreToFlatValue (.object addr) = .object addr := rfl
-theorem coreToFlatValue_function (idx : Nat) : coreToFlatValue (.function idx) = .closure idx 0 := rfl
+-- Equation lemmas for coreToFlatValue
+@[simp] theorem coreToFlatValue_null : coreToFlatValue .null = .null := rfl
+@[simp] theorem coreToFlatValue_undefined : coreToFlatValue .undefined = .undefined := rfl
+@[simp] theorem coreToFlatValue_bool (b : Bool) : coreToFlatValue (.bool b) = .bool b := rfl
+@[simp] theorem coreToFlatValue_number (n : Float) : coreToFlatValue (.number n) = .number n := rfl
+@[simp] theorem coreToFlatValue_string (s : String) : coreToFlatValue (.string s) = .string s := rfl
+@[simp] theorem coreToFlatValue_object (addr : Nat) : coreToFlatValue (.object addr) = .object addr := rfl
+@[simp] theorem coreToFlatValue_function (idx : Nat) : coreToFlatValue (.function idx) = .closure idx 0 := rfl
 
 -- Equation lemmas for flatToCoreValue
-theorem flatToCoreValue_null : flatToCoreValue .null = .null := rfl
-theorem flatToCoreValue_undefined : flatToCoreValue .undefined = .undefined := rfl
-theorem flatToCoreValue_bool (b : Bool) : flatToCoreValue (.bool b) = .bool b := rfl
-theorem flatToCoreValue_number (n : Float) : flatToCoreValue (.number n) = .number n := rfl
-theorem flatToCoreValue_string (s : String) : flatToCoreValue (.string s) = .string s := rfl
-theorem flatToCoreValue_object (addr : Nat) : flatToCoreValue (.object addr) = .object addr := rfl
-theorem flatToCoreValue_closure (idx envPtr : Nat) : flatToCoreValue (.closure idx envPtr) = .function idx := rfl
+@[simp] theorem flatToCoreValue_null : flatToCoreValue .null = .null := rfl
+@[simp] theorem flatToCoreValue_undefined : flatToCoreValue .undefined = .undefined := rfl
+@[simp] theorem flatToCoreValue_bool (b : Bool) : flatToCoreValue (.bool b) = .bool b := rfl
+@[simp] theorem flatToCoreValue_number (n : Float) : flatToCoreValue (.number n) = .number n := rfl
+@[simp] theorem flatToCoreValue_string (s : String) : flatToCoreValue (.string s) = .string s := rfl
+@[simp] theorem flatToCoreValue_object (addr : Nat) : flatToCoreValue (.object addr) = .object addr := rfl
+@[simp] theorem flatToCoreValue_closure (idx envPtr : Nat) : flatToCoreValue (.closure idx envPtr) = .function idx := rfl
 
 /-- flatToCoreValue is a left inverse of coreToFlatValue on non-function values -/
 theorem flatToCoreValue_coreToFlatValue_null : flatToCoreValue (coreToFlatValue .null) = .null := rfl
@@ -1848,5 +1892,9 @@ theorem step?_none_implies_lit (s : State) (h : step? s = none) :
     (h : env.any (fun kv => kv.fst == name) = false) :
     (env.assign name v).lookup name = some v := by
   simp [Env.assign, h, Env.lookup]
+
+/-- pushTrace only modifies the trace field; heap is unchanged. -/
+@[simp] theorem step?_pushTrace_expand (s : State) (t : Core.TraceEvent) :
+    pushTrace s t = { s with trace := s.trace ++ [t] } := rfl
 
 end VerifiedJS.Flat

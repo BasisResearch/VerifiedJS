@@ -1,40 +1,41 @@
-# jsspec — JS Semantics
+# jsspec — Help proof agent with CC CCState lemma
 
-You formalize ECMA-262 in Lean 4. You own Core/Semantics.lean, Core/Syntax.lean, Source/*.lean, tests/.
+## BUILD STATUS: Core/Semantics PASSES ✓. All stepping lemmas DONE ✓.
 
-## Every Run
-1. `bash scripts/verify_spec_refs.sh` — check citations
-2. Add SPEC refs with verbatim text from spec.md (TOC in first 2356 lines, use `sed -n` to read sections)
-3. `bash scripts/lake_build_concise.sh` — must pass
-4. Log to agents/jsspec/log.md
+## NEW TASK: Create CCState independence lemma for proof agent
 
-## STATUS: 100% COVERAGE ACHIEVED!
+The proof agent is blocked on 6 identical CC sorries that all need to show:
+when `convertExpr` is called on the same expression with two different CCStates,
+the result Flat expressions are equivalent (α-equivalent / identical up to fresh names).
 
-You're at **2800 refs**, 0 mismatches, **100.0% coverage** (44380/44380 lines).
+### What to do:
+1. Read `VerifiedJS/Proofs/ClosureConvertCorrect.lean` around L530-640
+2. Find `convertExpr_state_determined` — it exists but the `functionDef` case (L642) is sorry
+3. Close the L642 sorry in `convertExpr_state_determined` for `functionDef`
+   - The case uses `freshVar` (consumes nextId) and `addFunc` (uses funcs.size)
+   - Two CCStates with same `nextId` and `funcs.size` produce the same output
+   - Use `lean_goal` at L642 to see what's needed
+   - Try structural induction or `simp [CCState.freshVar, CCState.addFunc]`
 
-INCREDIBLE. ALL targets met. You have achieved perfect ECMA-262 spec coverage.
+4. If `convertExpr_state_determined` is complete, verify it has the signature the proof agent needs:
+   ```
+   theorem convertExpr_state_determined (e : Core.Expr) (scope envVar envMap) (st1 st2 : CCState)
+       (hid : st1.nextId = st2.nextId) (hsz : st1.funcs.size = st2.funcs.size) :
+       (Flat.convertExpr e scope envVar envMap st1).fst = (Flat.convertExpr e scope envVar envMap st2).fst
+   ```
+   This would let the proof agent use it to close all 6 CCState sorries.
 
-## TASK: Maintain quality + fill any remaining gaps
+5. Also check: does a `convertExpr_state_output` lemma exist that shows the *output state*
+   is also determined? That might be needed too.
 
-1. Run `bash scripts/verify_spec_refs.sh` — fix any mismatches that appear
-2. If any lines become uncovered (due to spec.md changes), add citations
-3. Review existing citations for accuracy — fix any that cite wrong sections
-4. Keep 0 mismatches at all times
-
-## Spec Citations (MANDATORY)
+### ALTERNATIVE: If L642 is too hard
+Write a standalone helper lemma in ClosureConvertCorrect.lean:
 ```lean
--- SPEC: L12345-L12360
--- | line1 from spec.md
--- | line2 from spec.md
+theorem cc_conversion_preserved (e : Core.Expr) (scope envVar envMap st st')
+    (hconv : Flat.convertExpr e scope envVar envMap st = (fe, st'))
+    (hconv2 : Flat.convertExpr e scope envVar envMap st2 = (fe2, st2')) :
+    fe = fe2 -- if st.nextId = st2.nextId ∧ st.funcs.size = st2.funcs.size
 ```
-Each `-- |` line = one line from spec.md. BYTE-FOR-BYTE identical. 0 mismatches always.
 
-## Rules
-- Use inductive Step relations, not partial def
-- Never pass `step?` to `simp` — use `unfold step?` then `simp [-step?]`
-- Free to break downstream proofs if semantics is more correct per ECMA-262
-- No new e2e tests. Focus on spec quality.
-- Use MCP: lean_goal, lean_multi_attempt, lean_diagnostic_messages
-
-## Goal
-Maintain 100% ECMA-262 coverage. 0 mismatches. 2800+ refs.
+## Build: `lake build VerifiedJS.Proofs.ClosureConvertCorrect`
+## Log progress to agents/jsspec/log.md.
