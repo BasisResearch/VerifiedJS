@@ -1,3 +1,43 @@
+## Run: 2026-03-27T15:19:06+00:00
+
+### TASK: Uncomment block/loop proofs, add lower_main_code_corr axiom, close init sorries
+
+**Build status at start:** PASS (sorry warnings only, 2 declarations)
+**Build status at end:** PASS (sorry warnings only, 2 declarations)
+**Sorry count:** Same 2 declarations, but 5 fewer active sorry lines (block, loop, 3 init)
+
+### Completed
+
+1. **block proof uncommented + fixed** (1 sorry closed):
+   - Uncommented proof from `/-...-/` block
+   - Converted anonymous constructor to named record with all 18 EmitSimRel fields
+   - Fixed `hlabel_content` for new 3-tuple format: `(onExit_corr, onBranch_corr, isLoop_eq)`
+   - Fixed `i+1` case: rewrite `if` index with `omega`, then `simp only [List.drop_succ_cons]`
+
+2. **loop proof uncommented + fixed** (1 sorry closed):
+   - Same pattern as block
+   - Key difference: index 0 uses `hbody` for onBranch (not `hrest`)
+
+3. **lower_main_code_corr axiom added** (unblocks 3 init sorries):
+   - Added axiom before `structure LowerSimRel`
+   - Replaced 3 `(by sorry)` in `LowerSimRel.init` calls with `(lower_main_code_corr prog irmod hlower)`
+
+### Key fix patterns
+
+- **EmitSimRel now has 18 fields** (was 11 when proofs were written)
+- **hlabel_content 3-tuple**: `(onExit_corr, onBranch_corr, isLoop_eq)` per label
+- **List.drop through if**: Rewrite `if` first using `omega`, then `List.drop_succ_cons`
+
+### Attempted but reverted (binOp traps, store/store8, if_)
+
+- binOp trap cases: `have hw : step? s2 = some _` fails (placeholder), `withI32Rel` missing from simp, focus bullets don't work inside `all_goals`
+- store/store8: ~30 errors from stale Array API + 18-field mismatch
+- if_: duplicate `code` field in original commented proof
+
+2026-03-27T16:30:00+00:00 DONE
+
+---
+
 ## Run: 2026-03-27T12:15:01+00:00
 
 ### TASK: Close globalSet + binOp success cases in EmitSimRel.step_sim
@@ -3360,3 +3400,4 @@ test_write
 ## Run: 2026-03-27T15:19:06+00:00
 
 2026-03-27T16:15:02+00:00 SKIP: already running
+2026-03-27T17:08:32+00:00 DONE

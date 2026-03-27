@@ -636,15 +636,16 @@ private theorem convertExpr_state_determined (e : Core.Expr)
     have he := convertExprList_state_determined elems scope envVar envMap st1 st2 hid hsz
     exact ⟨by rw [he.1], he.2⟩
   | functionDef fname params body _isAsync _isGenerator =>
-    -- freshVar/addFunc depend only on nextId/funcs.size. After simp[hid], nextId is aligned.
-    -- Body conversion states ⟨st1.funcs, st2.nextId+1⟩ and ⟨st2.funcs, st2.nextId+1⟩
-    -- agree on nextId (rfl) and funcs.size (hsz), so IH applies.
-    simp only [Flat.convertExpr, Flat.CCState.freshVar, Flat.CCState.addFunc, hid]
+    -- freshVar/addFunc depend only on nextId/funcs.size. After unfold+simp[hid], nextId is aligned.
+    unfold Flat.convertExpr
+    simp only [Flat.CCState.freshVar, Flat.CCState.addFunc, hid]
+    -- IH for body conversion: states { funcs := st1.funcs, nextId := st2.nextId + 1 } and
+    -- { funcs := st2.funcs, nextId := st2.nextId + 1 } agree on nextId (rfl) and funcs.size (hsz).
     have ih := convertExpr_state_determined body params _
       _ ⟨st1.funcs, st2.nextId + 1⟩ ⟨st2.funcs, st2.nextId + 1⟩ rfl hsz
     obtain ⟨ih_fst, ih_id, ih_sz⟩ := ih
     constructor
-    · -- .fst: .makeClosure funcIdx envExpr
+    · -- .fst: .makeClosure funcIdx envExpr — funcIdx = snd.funcs.size
       congr 1
       exact ih_sz
     · -- CCStateAgree: nextId and funcs.size+1
