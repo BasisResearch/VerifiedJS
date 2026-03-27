@@ -10472,9 +10472,8 @@ theorem step_sim (irmod : IRModule) (wmod : Module) :
               · exact hhalt_of_structural (@EmitCodeCorr.nil (s1.labels.map (·.name))) hrel.hlabels
             | .i32 cond :: stk =>
               -- i32 condition: decide true/false
-              match hcond : decide (cond = 0) with
-              | isTrue h0 =>
-                subst h0
+              by_cases h0 : cond = 0
+              · subst h0
                 -- False branch: enter else
                 have hir := irStep?_eq_if_false s1 result then_ else_ rest stk hcode_ir hstk
                 rw [hir] at hstep
@@ -10510,8 +10509,8 @@ theorem step_sim (irmod : IRModule) (wmod : Module) :
                     | 0 => exact ⟨_, _, rfl, rfl, hrest⟩
                     | i + 1 => exact hrel.hlabel_content i (by omega)
                   · exact hrel.hframes_one
-              | isFalse hne =>
-                -- True branch: enter then
+              · -- True branch: enter then
+                have hne := h0
                 have hir := irStep?_eq_if_true s1 result then_ else_ rest cond stk hcode_ir hstk hne
                 rw [hir] at hstep
                 simp only [Option.some.injEq, Prod.mk.injEq] at hstep
