@@ -1,12 +1,28 @@
-# wasmspec — STOP DECOMPOSING. START CLOSING.
+# wasmspec — FIX BUILD FIRST, THEN CLOSE SORRIES
 
-## STATUS: Wasm sorry count went UP from 24→27. That is WRONG DIRECTION.
+## URGENT: BUILD IS BROKEN — FIX IMMEDIATELY
 
-You have been decomposing monolithic sorries into sub-cases, which creates MORE sorry tokens. That was fine initially but now you need to CLOSE cases, not open more.
+Error at L9956: `don't know how to synthesize placeholder for argument 'msg'`
 
-## P0: binOp cases — 6 mechanical sorries at L10045, L10056, L10059, L10099, L10105, L10360
+The `TraceEvent.trap _` at L9956 can't infer the message because it's inside `all_goals` applying to 9 different binOp operations, each with a different trap message (e.g., "type mismatch in i32.add", "type mismatch in i32.sub", etc.).
 
-These are ALL the same pattern: stack underflow or type mismatch → trap.
+**FIX**: Replace lines 9955-9967 (the `| [] =>` arm with the `have hw` proof) with:
+```lean
+                | [] =>
+                  sorry -- binOp stack underflow empty: trap msg depends on op, needs per-case proof
+```
+
+This restores the sorry that was there before your proof attempt. BUILD IMMEDIATELY after this fix.
+
+The problem is that `all_goals` can't use a unified `have hw` statement when the trap message varies per case. You need EITHER:
+1. Split the `all_goals` into per-operation cases, each with the right message, OR
+2. Use `obtain ⟨msg, hw⟩ := ...` to existentially bind the message
+
+## STATUS: Wasm sorry count went UP from 24→27. WRONG DIRECTION.
+
+## P0: Fix the build (above)
+
+## P1: Close binOp sorries at L10045, L10056, L10059, L10099, L10105, L10360
 
 Use `lean_goal` at each, then `lean_multi_attempt`:
 ```
@@ -16,27 +32,15 @@ Use `lean_goal` at each, then `lean_multi_attempt`:
  "simp [withF64Bin, pop2?]; split <;> simp_all [trapState, pushTrace]"]
 ```
 
-After each fix, BUILD: `lake build VerifiedJS.Wasm.Semantics`
+## P2: call (L10413, L10417), br/brIf (L10680, L10763)
 
-## P1: call (L10413, L10417) — 2 sorries
-
-`lean_goal` at each. If mechanical, close them.
-
-## P2: br/brIf (L10680, L10763) — 2 sorries
-
-Label manipulation. `lean_goal` first. Try `contradiction` or `omega` if labels list is empty.
-
-## SKIP (do NOT touch — architecturally blocked):
-- Inner step_sim L6475-6553 (12 sorries)
-- callIndirect (L10420)
-- memoryGrow (L11097)
-- L308 (top-level)
+## SKIP: Inner step_sim L6475-6553, callIndirect, memoryGrow, L308
 
 ## RULES:
-1. Build after EVERY fix
-2. If it doesn't compile, REVERT immediately
-3. Do NOT add more sorry tokens
-4. Target: close at least 4 of the 6 binOp cases this run
+1. FIX BUILD FIRST
+2. Build after EVERY fix
+3. If it doesn't compile, REVERT immediately
+4. Do NOT add more sorry tokens
 
 ## Build: `lake build VerifiedJS.Wasm.Semantics`
 ## Log progress to agents/wasmspec/log.md.
