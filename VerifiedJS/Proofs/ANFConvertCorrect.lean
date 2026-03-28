@@ -440,6 +440,316 @@ private theorem normalizeProps_not_trivial
     (ANF.normalizeProps ps k).run n ≠ .ok (.trivial t, m) :=
   (normalizeExpr_not_trivial_family (Flat.Expr.propListDepth ps)).2.2 ps k hk (Nat.le_refl _) n m t
 
+/-- bindComplex always produces .let, never .while_. -/
+private theorem bindComplex_not_while (rhs : ANF.ComplexExpr) (k : ANF.Trivial → ANF.ConvM ANF.Expr)
+    (n m : Nat) (c b : ANF.Expr) :
+    (ANF.bindComplex rhs k).run n ≠ .ok (.while_ c b, m) := by
+  show ANF.bindComplex rhs k n ≠ .ok (.while_ c b, m)
+  simp only [ANF.bindComplex, ANF.freshName, bind, Bind.bind, StateT.bind, Except.bind,
+             get, GetElem.getElem, MonadState.get, StateT.get, set, MonadState.set,
+             StateT.set, pure, Pure.pure, StateT.pure, Except.pure, getThe, MonadStateOf.get]
+  cases hk : k (.var (toString "_anf" ++ toString (Nat.repr n))) (n + 1) with
+  | error => simp [hk]
+  | ok v => intro habs; exact ANF.Expr.noConfusion (Prod.mk.inj (Except.ok.inj habs)).1
+
+/-- normalizeExpr never produces .while_ at the top level when k doesn't.
+    Combined with normalizeExprList and normalizeProps by strong induction on depth. -/
+private theorem normalizeExpr_not_while_family :
+    ∀ (d : Nat),
+      (∀ (e : Flat.Expr) (k : ANF.Trivial → ANF.ConvM ANF.Expr),
+        (∀ x n' m' c b, (k x) n' ≠ .ok (.while_ c b, m')) →
+        e.depth ≤ d → ∀ n m c b, (ANF.normalizeExpr e k) n ≠ .ok (.while_ c b, m)) ∧
+      (∀ (es : List Flat.Expr) (k : List ANF.Trivial → ANF.ConvM ANF.Expr),
+        (∀ xs n' m' c b, (k xs) n' ≠ .ok (.while_ c b, m')) →
+        Flat.Expr.listDepth es ≤ d → ∀ n m c b, (ANF.normalizeExprList es k) n ≠ .ok (.while_ c b, m)) ∧
+      (∀ (ps : List (Flat.PropName × Flat.Expr)) (k : List (ANF.PropName × ANF.Trivial) → ANF.ConvM ANF.Expr),
+        (∀ xs n' m' c b, (k xs) n' ≠ .ok (.while_ c b, m')) →
+        Flat.Expr.propListDepth ps ≤ d → ∀ n m c b, (ANF.normalizeProps ps k) n ≠ .ok (.while_ c b, m))
+    := by
+  intro d
+  induction d with
+  | zero =>
+    refine ⟨?_, ?_, ?_⟩
+    · intro e k hk hd n m c b
+      cases e with
+      | lit v =>
+        simp only [ANF.normalizeExpr]
+        cases ANF.trivialOfFlatValue v with
+        | ok tv => exact hk tv n m c b
+        | error _ => nofun
+      | var name => simp only [ANF.normalizeExpr]; exact hk (.var name) n m c b
+      | this => simp only [ANF.normalizeExpr]; exact hk (.var "this") n m c b
+      | «break» _ =>
+        simp only [ANF.normalizeExpr, pure, Pure.pure, StateT.pure, Except.pure]
+        intro habs; exact ANF.Expr.noConfusion (Prod.mk.inj (Except.ok.inj habs)).1
+      | «continue» _ =>
+        simp only [ANF.normalizeExpr, pure, Pure.pure, StateT.pure, Except.pure]
+        intro habs; exact ANF.Expr.noConfusion (Prod.mk.inj (Except.ok.inj habs)).1
+      | «return» arg =>
+        cases arg with
+        | none =>
+          simp only [ANF.normalizeExpr, pure, Pure.pure, StateT.pure, Except.pure]
+          intro habs; exact ANF.Expr.noConfusion (Prod.mk.inj (Except.ok.inj habs)).1
+        | some _ => exfalso; simp [Flat.Expr.depth] at hd
+      | yield arg _ =>
+        cases arg with
+        | none =>
+          simp only [ANF.normalizeExpr, pure, Pure.pure, StateT.pure, Except.pure]
+          intro habs; exact ANF.Expr.noConfusion (Prod.mk.inj (Except.ok.inj habs)).1
+        | some _ => exfalso; simp [Flat.Expr.depth] at hd
+      | tryCatch _ _ _ fin => exfalso; cases fin <;> simp [Flat.Expr.depth] at hd
+      | _ => exfalso; simp [Flat.Expr.depth] at hd
+    · intro es k hk hd n m c b
+      cases es with
+      | nil => simp only [ANF.normalizeExprList]; exact hk [] n m c b
+      | cons e rest => exfalso; simp [Flat.Expr.listDepth] at hd
+    · intro ps k hk hd n m c b
+      cases ps with
+      | nil => simp only [ANF.normalizeProps]; exact hk [] n m c b
+      | cons p rest => exfalso; simp [Flat.Expr.propListDepth] at hd
+  | succ d ih =>
+    obtain ⟨ihe, ihes, ihps⟩ := ih
+    refine ⟨?_, ?_, ?_⟩
+    -- normalizeExpr
+    · intro e k hk hd n m c b
+      cases e with
+      | lit v =>
+        simp only [ANF.normalizeExpr]
+        cases ANF.trivialOfFlatValue v with
+        | ok tv => exact hk tv n m c b
+        | error _ => nofun
+      | var name => simp only [ANF.normalizeExpr]; exact hk (.var name) n m c b
+      | this => simp only [ANF.normalizeExpr]; exact hk (.var "this") n m c b
+      | «break» _ =>
+        simp only [ANF.normalizeExpr, pure, Pure.pure, StateT.pure, Except.pure]
+        intro habs; exact ANF.Expr.noConfusion (Prod.mk.inj (Except.ok.inj habs)).1
+      | «continue» _ =>
+        simp only [ANF.normalizeExpr, pure, Pure.pure, StateT.pure, Except.pure]
+        intro habs; exact ANF.Expr.noConfusion (Prod.mk.inj (Except.ok.inj habs)).1
+      | «return» arg =>
+        cases arg with
+        | none =>
+          simp only [ANF.normalizeExpr, pure, Pure.pure, StateT.pure, Except.pure]
+          intro habs; exact ANF.Expr.noConfusion (Prod.mk.inj (Except.ok.inj habs)).1
+        | some value =>
+          simp only [ANF.normalizeExpr]
+          exact ihe value (fun t => pure (.return (some t)))
+            (by intro x n' m' c' b' habs; simp [pure, Pure.pure, StateT.pure, Except.pure] at habs)
+            (by simp [Flat.Expr.depth] at hd ⊢; omega) n m c b
+      | yield arg delegate =>
+        cases arg with
+        | none =>
+          simp only [ANF.normalizeExpr, pure, Pure.pure, StateT.pure, Except.pure]
+          intro habs; exact ANF.Expr.noConfusion (Prod.mk.inj (Except.ok.inj habs)).1
+        | some value =>
+          simp only [ANF.normalizeExpr]
+          exact ihe value (fun t => pure (.yield (some t) delegate))
+            (by intro x n' m' c' b' habs; simp [pure, Pure.pure, StateT.pure, Except.pure] at habs)
+            (by simp [Flat.Expr.depth] at hd ⊢; omega) n m c b
+      | throw arg =>
+        simp only [ANF.normalizeExpr]
+        exact ihe arg (fun t => pure (.throw t))
+          (by intro x n' m' c' b' habs; simp [pure, Pure.pure, StateT.pure, Except.pure] at habs)
+          (by simp [Flat.Expr.depth] at hd ⊢; omega) n m c b
+      | await arg =>
+        simp only [ANF.normalizeExpr]
+        exact ihe arg (fun t => pure (.await t))
+          (by intro x n' m' c' b' habs; simp [pure, Pure.pure, StateT.pure, Except.pure] at habs)
+          (by simp [Flat.Expr.depth] at hd ⊢; omega) n m c b
+      | assign name value =>
+        simp only [ANF.normalizeExpr]
+        exact ihe value (fun vt => ANF.bindComplex (.assign name vt) k)
+          (by intro x n' m' c' b'; exact bindComplex_not_while _ k n' m' c' b')
+          (by simp [Flat.Expr.depth] at hd ⊢; omega) n m c b
+      | unary op arg =>
+        simp only [ANF.normalizeExpr]
+        exact ihe arg (fun at_ => ANF.bindComplex (.unary op at_) k)
+          (by intro x n' m' c' b'; exact bindComplex_not_while _ k n' m' c' b')
+          (by simp [Flat.Expr.depth] at hd ⊢; omega) n m c b
+      | typeof arg =>
+        simp only [ANF.normalizeExpr]
+        exact ihe arg (fun at_ => ANF.bindComplex (.typeof at_) k)
+          (by intro x n' m' c' b'; exact bindComplex_not_while _ k n' m' c' b')
+          (by simp [Flat.Expr.depth] at hd ⊢; omega) n m c b
+      | getProp obj prop =>
+        simp only [ANF.normalizeExpr]
+        exact ihe obj (fun ot => ANF.bindComplex (.getProp ot prop) k)
+          (by intro x n' m' c' b'; exact bindComplex_not_while _ k n' m' c' b')
+          (by simp [Flat.Expr.depth] at hd ⊢; omega) n m c b
+      | deleteProp obj prop =>
+        simp only [ANF.normalizeExpr]
+        exact ihe obj (fun ot => ANF.bindComplex (.deleteProp ot prop) k)
+          (by intro x n' m' c' b'; exact bindComplex_not_while _ k n' m' c' b')
+          (by simp [Flat.Expr.depth] at hd ⊢; omega) n m c b
+      | getEnv envPtr idx =>
+        simp only [ANF.normalizeExpr]
+        exact ihe envPtr (fun et => ANF.bindComplex (.getEnv et idx) k)
+          (by intro x n' m' c' b'; exact bindComplex_not_while _ k n' m' c' b')
+          (by simp [Flat.Expr.depth] at hd ⊢; omega) n m c b
+      | makeClosure funcIdx env =>
+        simp only [ANF.normalizeExpr]
+        exact ihe env (fun et => ANF.bindComplex (.makeClosure funcIdx et) k)
+          (by intro x n' m' c' b'; exact bindComplex_not_while _ k n' m' c' b')
+          (by simp [Flat.Expr.depth] at hd ⊢; omega) n m c b
+      | setProp obj prop value =>
+        simp only [ANF.normalizeExpr]
+        exact ihe obj (fun ot => ANF.normalizeExpr value (fun vt => ANF.bindComplex (.setProp ot prop vt) k))
+          (by intro x n' m' c' b'
+              exact ihe value (fun vt => ANF.bindComplex (.setProp x prop vt) k)
+                (by intro y n'' m'' c'' b''; exact bindComplex_not_while _ k n'' m'' c'' b'')
+                (by simp [Flat.Expr.depth] at hd ⊢; omega) n' m' c' b')
+          (by simp [Flat.Expr.depth] at hd ⊢; omega) n m c b
+      | getIndex obj idx =>
+        simp only [ANF.normalizeExpr]
+        exact ihe obj (fun ot => ANF.normalizeExpr idx (fun it => ANF.bindComplex (.getIndex ot it) k))
+          (by intro x n' m' c' b'
+              exact ihe idx (fun it => ANF.bindComplex (.getIndex x it) k)
+                (by intro y n'' m'' c'' b''; exact bindComplex_not_while _ k n'' m'' c'' b'')
+                (by simp [Flat.Expr.depth] at hd ⊢; omega) n' m' c' b')
+          (by simp [Flat.Expr.depth] at hd ⊢; omega) n m c b
+      | setIndex obj idx value =>
+        simp only [ANF.normalizeExpr]
+        exact ihe obj
+          (fun ot => ANF.normalizeExpr idx (fun it => ANF.normalizeExpr value
+            (fun vt => ANF.bindComplex (.setIndex ot it vt) k)))
+          (by intro x n' m' c' b'
+              exact ihe idx (fun it => ANF.normalizeExpr value (fun vt => ANF.bindComplex (.setIndex x it vt) k))
+                (by intro y n'' m'' c'' b''
+                    exact ihe value (fun vt => ANF.bindComplex (.setIndex x y vt) k)
+                      (by intro z n3 m3 c3 b3; exact bindComplex_not_while _ k n3 m3 c3 b3)
+                      (by simp [Flat.Expr.depth] at hd ⊢; omega) n'' m'' c'' b'')
+                (by simp [Flat.Expr.depth] at hd ⊢; omega) n' m' c' b')
+          (by simp [Flat.Expr.depth] at hd ⊢; omega) n m c b
+      | binary op lhs rhs =>
+        simp only [ANF.normalizeExpr]
+        exact ihe lhs (fun lt => ANF.normalizeExpr rhs (fun rt => ANF.bindComplex (.binary op lt rt) k))
+          (by intro x n' m' c' b'
+              exact ihe rhs (fun rt => ANF.bindComplex (.binary op x rt) k)
+                (by intro y n'' m'' c'' b''; exact bindComplex_not_while _ k n'' m'' c'' b'')
+                (by simp [Flat.Expr.depth] at hd ⊢; omega) n' m' c' b')
+          (by simp [Flat.Expr.depth] at hd ⊢; omega) n m c b
+      | «let» name init body =>
+        simp only [ANF.normalizeExpr]
+        exact ihe init (fun initTriv => do
+            let bodyExpr ← ANF.normalizeExpr body k
+            pure (.let name (.trivial initTriv) bodyExpr))
+          (by intro x n' m' c' b'
+              simp only [bind, Bind.bind, StateT.bind, Except.bind]
+              intro habs; split at habs
+              · cases habs
+              · simp [pure, Pure.pure, StateT.pure, Except.pure] at habs)
+          (by simp [Flat.Expr.depth] at hd ⊢; omega) n m c b
+      | «if» cond then_ else_ =>
+        simp only [ANF.normalizeExpr]
+        exact ihe cond (fun condTriv => do
+            let thenExpr ← ANF.normalizeExpr then_ k
+            let elseExpr ← ANF.normalizeExpr else_ k
+            pure (.if condTriv thenExpr elseExpr))
+          (by intro x n' m' c' b'
+              simp only [bind, Bind.bind, StateT.bind, Except.bind]
+              intro habs
+              repeat (first | split at habs | (simp [pure, Pure.pure, StateT.pure, Except.pure] at habs)))
+          (by simp [Flat.Expr.depth] at hd ⊢; omega) n m c b
+      | seq a₁ b₁ =>
+        simp only [ANF.normalizeExpr]
+        exact ihe a₁ (fun _ => ANF.normalizeExpr b₁ k)
+          (by intro x n' m' c' b'
+              exact ihe b₁ k hk (by simp [Flat.Expr.depth] at hd ⊢; omega) n' m' c' b')
+          (by simp [Flat.Expr.depth] at hd ⊢; omega) n m c b
+      | labeled label body₁ =>
+        simp only [ANF.normalizeExpr, bind, Bind.bind, StateT.bind, Except.bind]
+        intro habs
+        split at habs
+        · cases habs
+        · simp [pure, Pure.pure, StateT.pure, Except.pure] at habs
+      | while_ cond body₁ =>
+        simp only [ANF.normalizeExpr, bind, Bind.bind, StateT.bind, Except.bind]
+        intro habs
+        repeat (first | split at habs | (simp [pure, Pure.pure, StateT.pure, Except.pure] at habs) | cases habs)
+      | tryCatch body₁ catchParam catchBody finally_ =>
+        simp only [ANF.normalizeExpr, bind, Bind.bind, StateT.bind, Except.bind]
+        intro habs
+        cases finally_ with
+        | none =>
+          repeat (first | split at habs | (simp [pure, Pure.pure, StateT.pure, Except.pure] at habs) | cases habs)
+        | some fin =>
+          simp only [Functor.map, StateT.map, bind, Bind.bind, StateT.bind, Except.bind] at habs
+          repeat (first | split at habs | (simp [pure, Pure.pure, StateT.pure, Except.pure] at habs) | cases habs)
+      | call funcIdx envPtr args =>
+        simp only [ANF.normalizeExpr]
+        exact ihe funcIdx (fun ft => ANF.normalizeExpr envPtr (fun et =>
+            ANF.normalizeExprList args (fun ats => ANF.bindComplex (.call ft et ats) k)))
+          (by intro x n' m' c' b'
+              exact ihe envPtr (fun et =>
+                  ANF.normalizeExprList args (fun ats => ANF.bindComplex (.call x et ats) k))
+                (by intro y n'' m'' c'' b''
+                    exact ihes args (fun ats => ANF.bindComplex (.call x y ats) k)
+                      (by intro xs n3 m3 c3 b3; exact bindComplex_not_while _ k n3 m3 c3 b3)
+                      (by simp [Flat.Expr.depth, Flat.Expr.listDepth] at hd ⊢; omega) n'' m'' c'' b'')
+                (by simp [Flat.Expr.depth] at hd ⊢; omega) n' m' c' b')
+          (by simp [Flat.Expr.depth] at hd ⊢; omega) n m c b
+      | newObj funcIdx envPtr args =>
+        simp only [ANF.normalizeExpr]
+        exact ihe funcIdx (fun ft => ANF.normalizeExpr envPtr (fun et =>
+            ANF.normalizeExprList args (fun ats => ANF.bindComplex (.newObj ft et ats) k)))
+          (by intro x n' m' c' b'
+              exact ihe envPtr (fun et =>
+                  ANF.normalizeExprList args (fun ats => ANF.bindComplex (.newObj x et ats) k))
+                (by intro y n'' m'' c'' b''
+                    exact ihes args (fun ats => ANF.bindComplex (.newObj x y ats) k)
+                      (by intro xs n3 m3 c3 b3; exact bindComplex_not_while _ k n3 m3 c3 b3)
+                      (by simp [Flat.Expr.depth, Flat.Expr.listDepth] at hd ⊢; omega) n'' m'' c'' b'')
+                (by simp [Flat.Expr.depth] at hd ⊢; omega) n' m' c' b')
+          (by simp [Flat.Expr.depth] at hd ⊢; omega) n m c b
+      | makeEnv values =>
+        simp only [ANF.normalizeExpr]
+        exact ihes values (fun vts => ANF.bindComplex (.makeEnv vts) k)
+          (by intro xs n' m' c' b'; exact bindComplex_not_while _ k n' m' c' b')
+          (by simp [Flat.Expr.depth, Flat.Expr.listDepth] at hd ⊢; omega) n m c b
+      | objectLit props =>
+        simp only [ANF.normalizeExpr]
+        exact ihps props (fun pts => ANF.bindComplex (.objectLit pts) k)
+          (by intro xs n' m' c' b'; exact bindComplex_not_while _ k n' m' c' b')
+          (by simp [Flat.Expr.depth, Flat.Expr.propListDepth] at hd ⊢; omega) n m c b
+      | arrayLit elems =>
+        simp only [ANF.normalizeExpr]
+        exact ihes elems (fun ets => ANF.bindComplex (.arrayLit ets) k)
+          (by intro xs n' m' c' b'; exact bindComplex_not_while _ k n' m' c' b')
+          (by simp [Flat.Expr.depth, Flat.Expr.listDepth] at hd ⊢; omega) n m c b
+    -- normalizeExprList
+    · intro es k hk hd n m c b
+      cases es with
+      | nil => simp only [ANF.normalizeExprList]; exact hk [] n m c b
+      | cons e rest =>
+        simp only [ANF.normalizeExprList]
+        exact ihe e (fun et => ANF.normalizeExprList rest (fun ts => k (et :: ts)))
+          (by intro x n' m' c' b'
+              exact ihes rest (fun ts => k (x :: ts))
+                (by intro xs n'' m'' c'' b''; exact hk (x :: xs) n'' m'' c'' b'')
+                (by simp [Flat.Expr.listDepth] at hd ⊢; omega) n' m' c' b')
+          (by simp [Flat.Expr.listDepth] at hd ⊢; omega) n m c b
+    -- normalizeProps
+    · intro ps k hk hd n m c b
+      cases ps with
+      | nil => simp only [ANF.normalizeProps]; exact hk [] n m c b
+      | cons p rest =>
+        obtain ⟨pn, pe⟩ := p
+        simp only [ANF.normalizeProps]
+        exact ihe pe (fun pt => ANF.normalizeProps rest (fun pts => k ((pn, pt) :: pts)))
+          (by intro x n' m' c' b'
+              exact ihps rest (fun pts => k ((pn, x) :: pts))
+                (by intro xs n'' m'' c'' b''; exact hk ((pn, x) :: xs) n'' m'' c'' b'')
+                (by simp [Flat.Expr.propListDepth] at hd ⊢; omega) n' m' c' b')
+          (by simp [Flat.Expr.propListDepth] at hd ⊢; omega) n m c b
+
+/-- Convenience wrapper: normalizeExpr never produces .while_ when k doesn't. -/
+private theorem normalizeExpr_not_while
+    (e : Flat.Expr) (k : ANF.Trivial → ANF.ConvM ANF.Expr)
+    (hk : ∀ x n' m' c b, (k x).run n' ≠ .ok (.while_ c b, m'))
+    (n m : Nat) (c b : ANF.Expr) :
+    (ANF.normalizeExpr e k).run n ≠ .ok (.while_ c b, m) :=
+  (normalizeExpr_not_while_family e.depth).1 e k hk (Nat.le_refl _) n m c b
+
 /-- normalizeExpr on compound expressions (non-atom, non-seq) never produces .trivial,
     regardless of the continuation k. All compound constructors either wrap the result
     in a non-trivial constructor (let, if, labeled, etc.) or route through bindComplex
@@ -1385,7 +1695,13 @@ private theorem anfConvert_step_star
   | «if» cond then_ else_ =>
     sorry -- conditional: evaluate cond trivial, branch
   | while_ cond body =>
-    sorry -- while: evaluate cond, unroll or terminate
+    exfalso
+    rw [hsa] at hnorm
+    exact normalizeExpr_not_while sf.expr k
+      (fun x n' m' c' b' h => by
+        obtain ⟨m'', hm''⟩ := hk_triv x n'
+        rw [hm''] at h; exact ANF.Expr.noConfusion (Prod.mk.inj (Except.ok.inj h)).1)
+      n m cond body hnorm
   | throw arg =>
     sorry -- throw: evaluate trivial arg, produce error event
   | tryCatch body catchParam catchBody finally_ =>
