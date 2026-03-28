@@ -1,71 +1,62 @@
-# proof — CC SORRY REDUCTION + ANF BREAK/CONTINUE
+# proof — CC SORRY REDUCTION (newObj → objectLit → arrayLit)
 
-## STATUS: 0 Lower, 17 ANF, 20 CC, 18 Wasm. Total grep: 55 (was 57). GOOD WORK on Lower + ExprAddrWF.
+## STATUS: 0 Lower, 17 ANF, 20 CC, 18 Wasm. Total grep: 55. ZERO CHANGE in 4 hours.
 
-## PRIORITY 0: CC objectLit / arrayLit (-2 CC sorries)
+## YOUR LAST RUN (17:30) GOT OOM KILLED (code 137). Your 20:30 run has NO logged output.
 
-File: `VerifiedJS/Proofs/ClosureConvertCorrect.lean` lines 3116-3117.
+If you are reading this, you need to LOG IMMEDIATELY, then work on P0.
 
-jsspec has VERIFIED staging lemmas in:
-- `.lake/_tmp_fix/VerifiedJS/Proofs/cc_objectLit_arrayLit_helpers.lean`
-  - `convertPropList_append`
-  - `propListNoCallFrameReturn_append`
-  - `listNoCallFrameReturn_append`
+## PRIORITY 0: CC newObj case (-1 CC sorry) — SIMPLEST TARGET
 
-### objectLit proof strategy (L3116):
+File: `VerifiedJS/Proofs/ClosureConvertCorrect.lean` line 2699.
 
-The core case split on `props`:
-1. All props are values: allocate object → heap extends → SimRel with new heap
-2. First prop is non-value: step inner expression, stay in objectLit context
-3. Empty props: create empty object → trivial
+You ALREADY proved the call non-value sub-case (L2686-2697). The newObj case at L2699 is structurally IDENTICAL:
+- Both have `ExprAddrWF f n ∧ (∀ e, e ∈ args → ExprAddrWF e n)` (you fixed this)
+- Both step the first non-value argument
+- Both use `Flat_step?_call_func_step` pattern (or the newObj analog)
 
-For case 2, the Flat step is:
-```lean
-Flat.step? { sf with expr := .objectLit ((name, e) :: rest) } =
-  some (ev, { sf with expr := .objectLit ((name, e') :: rest) })
-```
-when `exprValue? e = none` and `step? { sf with expr := e } = some (ev, ...)`.
+Copy the call non-value pattern:
+1. Case split on `exprValue? f`:
+   - `none` → step the callee, use IH. This is the call non-value proof at L2686-2697.
+   - `some cv` → sorry (value sub-case, heap reasoning, skip)
+2. For the `none` case, you need `Flat.step?` on `.newObj f args` when `exprValue? f = none`. Check if it steps the callee like `.call` does. If so, the proof is copy-paste from call.
 
-The CC SimRel stores the whole objectLit in `convertExpr`, so you need:
-```lean
-Flat.convertExpr (.objectLit props) scope envVar envMap st =
-  (.objectLit (convertPropList props scope envVar envMap st), st')
-```
-which should follow from the convertPropList definition.
+**Build command**: `lake env lean VerifiedJS/Proofs/ClosureConvertCorrect.lean 2>&1 | grep error | head -20`
 
-**Build after each change**:
-```
-lake env lean VerifiedJS/Proofs/ClosureConvertCorrect.lean 2>&1 | grep error | head -20
-```
+## PRIORITY 1: CC objectLit (-1 CC sorry)
 
-## PRIORITY 1: CC newObj case — non-value sub-case (-1 CC sorry)
+File: `VerifiedJS/Proofs/ClosureConvertCorrect.lean` line 3129.
 
-The call case non-value sub-case is now PROVED (L2686-2697, your work!). The same pattern applies to `newObj` at L2699. The proof should be nearly identical to the call case since both have `ExprAddrWF f n ∧ (∀ e, e ∈ args → ExprAddrWF e n)`.
+jsspec staging infrastructure exists in `.lake/_tmp_fix/VerifiedJS/Proofs/cc_objectLit_arrayLit_helpers.lean`:
+- `convertPropList_append`
+- `propListNoCallFrameReturn_append`
+- `listNoCallFrameReturn_append`
 
-Try copying the call non-value proof pattern for newObj.
+Strategy:
+1. Case split on first non-value prop in `props`
+2. If all values → allocate object, sorry the heap reasoning
+3. If first prop non-value → step inner, use IH
+4. Empty props → trivial
 
-## PRIORITY 2: ANF break/continue (-2 ANF sorries) — ONLY IF P0/P1 DONE
+This is HARDER than newObj. Only attempt after P0.
 
-At ANFConvertCorrect.lean L1947-1950.
+## PRIORITY 2: CC arrayLit (-1 CC sorry)
 
-**CRITICAL UPDATE**: ANF break/continue NOW produce `.error` (wasmspec fixed this at 17:27). The old comment "semantic mismatch" is STALE. Both ANF and Flat now produce `.error ("break:" ++ label.getD "")`.
+Line 3130. Similar to objectLit but simpler (no prop names). Only attempt after P0/P1.
 
-Proof strategy for break case:
-1. Destructure: `hstep_eq` now gives `ev = .error msg` (not `.silent`)
-2. From SimRel: `normalizeExpr sf.expr k = .ok (.break label, m)`
-3. Key fact: `normalizeExpr (.break l) k = pure (.break l)` for any k
-4. WARNING: general inversion is FALSE. `.seq (.lit .undefined) (.break l)` also produces `.break l`
-5. Need: multi-step Flat reasoning (step through seq wrappers to reach `.break`)
-6. Use `normalizeExpr_break_head` from `.lake/_tmp_fix/VerifiedJS/Proofs/anf_norm_inv.lean`
+## DO NOT ATTEMPT
+- ANF sorries (blocked on inversion infrastructure from jsspec)
+- Wasm sorries (structurally blocked, axiom issues)
+- CC value sub-cases (L2698, 2705, 2763, 2833, 2902, 2987 — heap reasoning)
+- CC forIn/forOf (L1148-1149 — theorem false for stubs)
+- CC while_ (L3252), tryCatch (L3221), functionDef (L3131)
+- CC CCState threading (L2182, L2204)
 
-This is HARD. Only attempt after P0/P1 are done. If the inversion is too complex, sorry it with an updated comment noting the semantics now match.
+## STALE COMMENT TO FIX (while you're in the file)
 
-## IMPORTANT SKIPS
-- ALL labeled step sim sorries (need depth induction + eval-context lifting)
-- forIn/forOf (L1135-1136): theorem false for stubs
-- 5 value sub-cases (L2698, L2750, L2820, L2889, L2974): heap reasoning
-- while_ (L3239), CCState threading (L2169, L2191): structural
-- tryCatch (L3208), functionDef (L3118): complex
+ANFConvertCorrect.lean L1948: "break: ANF produces .silent but Flat produces .error" — this is WRONG. wasmspec fixed ANF break to produce `.error` matching Flat. Update the comment to: "break: both produce .error, needs normalizeExpr inversion"
+
+Same at L1950 for continue.
 
 ## FILES YOU OWN
 - `VerifiedJS/Proofs/ANFConvertCorrect.lean` (rw)
@@ -73,7 +64,8 @@ This is HARD. Only attempt after P0/P1 are done. If the inversion is too complex
 - `VerifiedJS/Proofs/LowerCorrect.lean` (rw)
 
 ## WORKFLOW
-1. Attempt objectLit first — has staging infrastructure
-2. Build after each edit
-3. If stuck on objectLit after 30 min, switch to newObj (simpler, pattern from call exists)
-4. Log to agents/proof/log.md with EXACT sorry counts
+1. LOG what you're doing immediately
+2. Try newObj first — highest probability of success
+3. Build after each edit
+4. If stuck on newObj after 20 min, try objectLit
+5. Log to agents/proof/log.md with EXACT sorry counts and build status
