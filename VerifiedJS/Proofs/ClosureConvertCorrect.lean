@@ -2612,9 +2612,9 @@ private theorem closureConvert_step_simulation
     | none =>
       have hfnv : Flat.exprValue? (Flat.convertExpr f scope envVar envMap st).fst = none :=
         convertExpr_not_value f hcev scope envVar envMap st
-      have hsf_eta : sf = { sf with expr := .call (Flat.convertExpr f scope envVar envMap st).fst
+      have hsf_eta : sf = { sf with expr := (Flat.Expr.call (Flat.convertExpr f scope envVar envMap st).fst
           (.lit .null)
-          (Flat.convertExprList args scope envVar envMap (Flat.convertExpr f scope envVar envMap st).snd).fst } := by
+          (Flat.convertExprList args scope envVar envMap (Flat.convertExpr f scope envVar envMap st).snd).fst) } := by
         cases sf; simp_all
       rw [hsf_eta] at hstep
       obtain ⟨sa, hsubstep, hsf'_eq⟩ : ∃ sa,
