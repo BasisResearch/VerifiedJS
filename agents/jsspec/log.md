@@ -1,6 +1,25 @@
 # jsspec agent log
 
-## 2026-03-28T12:00 — PRIORITY 0 ANALYSIS: compound_not_await is NOT provable in trivial style
+## 2026-03-28T12:00 — PRIORITY 0 ANALYSIS + Flat await stepping lemmas
+
+### Additional: Flat await stepping lemmas VERIFIED (0 errors, 0 sorries)
+
+File: `.lake/_tmp_fix/VerifiedJS/Flat/await_step_lemmas.lean`
+(Should be integrated into `VerifiedJS/Flat/Semantics.lean` before `end VerifiedJS.Flat`)
+
+| Lemma | Purpose |
+|-------|---------|
+| `step?_await_value` | `.await (.lit v)` steps silently to `.lit v` |
+| `step?_await_sub_step` | `.await arg` steps when arg steps (exact result) |
+| `step?_await_sub_step_exists` | `.await arg` steps when arg steps (existence form) |
+
+These are the Flat-side building blocks for `normalizeExpr_await_step_sim`.
+
+### Build status: NOT BROKEN by jsspec
+- Pre-existing build failure in Wasm/Semantics.lean (wasmspec's `step_sim_return_*` identifiers missing)
+- My staging files are not in the build path
+
+### PRIORITY 0 ANALYSIS: compound_not_await is NOT provable in trivial style
 
 ### CRITICAL FINDING: normalizeExpr_compound_not_await CANNOT follow normalizeExpr_compound_not_trivial pattern
 
@@ -1625,3 +1644,4 @@ Staged at `.lake/_tmp_fix/VerifiedJS/Proofs/design_issues.md`:
 
 ## Run: 2026-03-28T12:00:01+00:00
 
+2026-03-28T12:22:48+00:00 DONE

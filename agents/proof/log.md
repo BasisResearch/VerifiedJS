@@ -1,3 +1,77 @@
+## Run: 2026-03-28T11:30+00:00
+- **BUILD: PASSES** ✓ (Wasm.Semantics failure is pre-existing)
+- **ANF Sorries: 17** (unchanged — no sorries closed this run)
+- **CRITICAL FINDING: Prompt's P0/P1 approach is fundamentally flawed**
+
+### Analysis: Why await/yield (P0/P1) can't be closed as described
+
+The prompt suggests writing `normalizeExpr_await_step_sim` following the `normalizeExpr_var_step_sim` pattern. This approach is **UNPROVABLE** because:
+
+1. **Nesting contamination**: `normalizeExpr (.throw (.await inner)) k` produces `.await t` (the `.await` ignores the `.throw` continuation). So `sf.expr = .throw (.await inner)` is valid under the SimRel when `sa.expr = .await t`.
+
+2. **Observable trace mismatch**: When `sf.expr = .throw (.await inner)`, Flat steps produce `.error` events (from the `.throw` context), while ANF's `.await` step produces `.silent`. The observable traces diverge: `[] ≠ [.error msg]`.
+
+3. **Postcondition impossible**: The suggested theorem requires `sf'.expr = .await flat_arg` — but Flat stepping `.throw (.await inner)` never reaches `.await (...)` as a top-level expression. It reaches `.throw (.lit v)` → `.error`.
+
+**Scope**: This affects `.await`, `.yield`, `.throw`, and `.return` similarly. Any constructor that ignores its continuation in `normalizeExpr` can be "swallowed" by an outer constructor, creating a semantic mismatch.
+
+### Analysis: Why labeled step sim sorries need eval-context lifting
+
+All 7 sorries in `normalizeExpr_labeled_step_sim` (L1582, L1586, L1597, L1648, L1652, L1663, L1680) require:
+
+1. **Depth induction**: The theorem needs `(d : Nat)` parameter with `e.depth ≤ d` and `induction d`. Without this, recursive nesting (`.return (some (.return (some inner)))`) can't be handled.
+
+2. **Eval-context lifting**: For cases like `.return (some val)` where `val = .return (some inner)`:
+   - IH gives: Flat steps from `{expr = .return (some inner)}` to `sf_val`
+   - Needed: Flat steps from `{expr = .return (some (.return (some inner)))}` to `sf'`
+   - Each IH step must be "lifted" through the outer `.return (some ·)` context
+   - This requires a multi-step lifting lemma: `steps_return_some_lift`
+
+3. **Continuation mismatch**: The IH uses `k' = trivial-preserving`, but the recursive call uses `k_ret = fun t => pure (.return (some t))` which is NOT trivial-preserving. The theorem postcondition must be restructured:
+   - Either use the SAME k in input/output (requires `.return` wrapper to ignore k)
+   - Or add a universal postcondition (requires proving sf'.expr is k-ignoring)
+
+4. **Compound cases (L1597, L1663, L1680)**: Beyond nesting, these need understanding of how Flat.step? evaluates sub-expressions inside compound contexts (.call, .assign, etc.). Each compound constructor is an evaluation context with specific stepping semantics.
+
+### Infrastructure needed for future progress
+
+To close the labeled step sim sorries (-7 if all closed):
+
+**Step 1**: Write `steps_return_some_lift` (multi-step lifting for .return context):
+- Proof by induction on `Flat.Steps`
+- Key insight: `exprValue? (.return (some e)) = none` always, so delegation works
+- Needs: proof that `step? s = some (t, s')` implies `exprValue? s.expr = none` (since step? on .lit returns none)
+- Similar lemma needed for .yield, .throw, .await contexts
+
+**Step 2**: Restructure `normalizeExpr_labeled_step_sim` with depth parameter:
+- Change input condition: `hk` (trivial-preserving) → `hk_no_labeled` (k doesn't produce .labeled)
+- Keep same output: ∃ k' trivial-preserving
+- For .labeled base case: k' = input k (trivial-preserving at top level, k-ignoring wrapper at recursive level)
+- For .return (some val) → .return (some inner): apply IH + lifting
+
+**Step 3**: For compound cases, need additional "eval context" stepping lemmas for .call, .assign, etc.
+
+### To close the anfConvert_step_star sorries:
+
+All 10 sorries in `anfConvert_step_star` (L1760-1818) need **normalizeExpr inversion**: given `normalizeExpr sf.expr k = .ok (specific_anf_expr, m)`, determine the shape of `sf.expr` and construct corresponding Flat steps.
+
+- The await/yield cases (L1790, L1792) have the additional nesting contamination issue
+- The throw/return/break/continue cases (L1784, L1788, L1816, L1818) are PERMANENT semantic mismatches
+- The let/seq/if cases (L1760, L1762, L1764) need eval-context lemmas for ANF compound expressions
+
+### Updated sorry breakdown
+- **normalizeExpr_labeled_step_sim** (7 sorries): All need depth induction + eval-context lifting
+  - L1582, L1586: nested return/yield inside return — needs .return lifting
+  - L1597: compound inside return — needs compound eval-context stepping
+  - L1648, L1652: nested return/yield inside yield — needs .yield lifting
+  - L1663: compound inside yield — needs compound eval-context stepping
+  - L1680: top-level compound/seq/throw/await — needs all of the above
+- **anfConvert_step_star** (10 sorries):
+  - L1760, L1762, L1764: let/seq/if — need normalizeExpr inversion + ANF eval-context
+  - L1784, L1788, L1816, L1818: throw/return/break/continue — PERMANENT semantic mismatches
+  - L1786: tryCatch — complex
+  - L1790, L1792: yield/await — nesting contamination makes these harder than expected
+
 ## Run: 2026-03-28T08:30+00:00
 - **BUILD: PASSES** ✓ (Wasm.Semantics failure is pre-existing, not our files)
 - **ANF Sorries: 17 lines** (was 13 lines, but each original wildcard covered ~30 constructors; now ~27 sub-cases proved per block)
@@ -3257,3 +3331,4 @@ These are the SAME requirements as for the wildcard cases. The entire `normalize
 
 ## Run: 2026-03-28T11:30:01+00:00
 
+2026-03-28T12:24:02+00:00 DONE
