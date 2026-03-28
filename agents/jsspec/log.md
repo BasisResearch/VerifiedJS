@@ -1,5 +1,123 @@
 # jsspec agent log
 
+## 2026-03-28T17:00 — normalizeExpr .let INVERSION + supported PROPAGATION infrastructure
+
+### PRIORITY 0: normalizeExpr .let inversion lemmas — ALL VERIFIED
+
+File: `.lake/_tmp_fix/VerifiedJS/ANF/ConvertHelpers.lean` (lines 489-755)
+
+**No-confusion lemmas (trivial input + trivial-preserving k → not .let):**
+
+| Lemma | Status | Purpose |
+|-------|--------|---------|
+| `normalizeExpr_var_not_let` | **VERIFIED** | var + trivial-preserving k → never .let |
+| `normalizeExpr_this_not_let` | **VERIFIED** | this + trivial-preserving k → never .let |
+| `normalizeExpr_lit_not_let` | **VERIFIED** | lit + trivial-preserving k → never .let |
+
+**No-confusion lemmas (control flow ignores k → not .let):**
+
+| Lemma | Status | Purpose |
+|-------|--------|---------|
+| `normalizeExpr_return_none_not_let` | **VERIFIED** | return none → .return, never .let |
+| `normalizeExpr_yield_none_not_let` | **VERIFIED** | yield none → .yield, never .let |
+| `normalizeExpr_break_not_let` | **VERIFIED** | break → .break, never .let |
+| `normalizeExpr_continue_not_let` | **VERIFIED** | continue → .continue, never .let |
+| `normalizeExpr_while_not_let_any_k` | **VERIFIED** | while → .seq, never .let (any k) |
+| `normalizeExpr_tryCatch_none_not_let_any_k` | **VERIFIED** | tryCatch none → .tryCatch, never .let |
+| `normalizeExpr_tryCatch_some_not_let_any_k` | **VERIFIED** | tryCatch some → .tryCatch, never .let |
+| `normalizeExpr_labeled_not_let` | **VERIFIED** | labeled → .labeled, never .let |
+
+**Positive characterization:**
+
+| Lemma | Status | Purpose |
+|-------|--------|---------|
+| `let_k_produces_let` | **VERIFIED** | let-continuation always produces .let |
+| `normalizeExpr_lit'` (simp) | **VERIFIED** | Unfolding lemma for normalizeExpr (.lit v) |
+
+**Decomposition lemmas (.let output → sub-expression source):**
+
+| Lemma | Status | Purpose |
+|-------|--------|---------|
+| `normalizeExpr_seq_let_source` | **VERIFIED** | .seq .let traces to normalizeExpr a |
+| `normalizeExpr_throw_let_source` | **VERIFIED** | .throw .let traces to normalizeExpr arg |
+| `normalizeExpr_await_let_source` | **VERIFIED** | .await .let traces to normalizeExpr arg |
+| `normalizeExpr_assign_let_source` | **VERIFIED** | .assign .let traces to normalizeExpr value |
+| `normalizeExpr_let_let_source` | **VERIFIED** | .let .let traces to normalizeExpr init |
+| `normalizeExpr_if_let_source` | **VERIFIED** | .if .let traces to normalizeExpr cond |
+| `normalizeExpr_unary_let_source` | **VERIFIED** | .unary .let traces to normalizeExpr arg |
+| `normalizeExpr_typeof_let_source` | **VERIFIED** | .typeof .let traces to normalizeExpr arg |
+| `normalizeExpr_deleteProp_let_source` | **VERIFIED** | .deleteProp .let traces to normalizeExpr obj |
+| `normalizeExpr_getEnv_let_source` | **VERIFIED** | .getEnv .let traces to normalizeExpr envPtr |
+| `normalizeExpr_makeClosure_let_source` | **VERIFIED** | .makeClosure .let traces to normalizeExpr env |
+| `normalizeExpr_getProp_let_source` | **VERIFIED** | .getProp .let traces to normalizeExpr obj |
+| `normalizeExpr_return_some_let_source` | **VERIFIED** | .return some .let traces to normalizeExpr v |
+| `normalizeExpr_yield_some_let_source` | **VERIFIED** | .yield some .let traces to normalizeExpr v |
+
+### PRIORITY 1: Supported propagation infrastructure — ALL VERIFIED
+
+**New file:** `.lake/_tmp_fix/VerifiedJS/Flat/Supported.lean`
+- Defines `Flat.Expr.supported`, `Flat.Expr.listSupported`, `Flat.Expr.propListSupported`
+- Mirrors `Core.Expr.supported`: excludes `.yield` and `.await`
+- VERIFIED (0 axioms)
+
+**Predicates + bridge lemmas** (in ConvertHelpers.lean):
+
+| Lemma | Status | Purpose |
+|-------|--------|---------|
+| `k_no_yield` (def) | **VERIFIED** | Predicate: k never produces .yield |
+| `k_no_await` (def) | **VERIFIED** | Predicate: k never produces .await |
+| `trivial_preserving_no_yield` | **VERIFIED (0 axioms)** | trivial-preserving k → k_no_yield |
+| `trivial_preserving_no_await` | **VERIFIED (0 axioms)** | trivial-preserving k → k_no_await |
+
+**Base case lemmas (trivial inputs):**
+
+| Lemma | Status | Purpose |
+|-------|--------|---------|
+| `normalizeExpr_var_not_yield` | **VERIFIED** | var + k_no_yield → not .yield |
+| `normalizeExpr_this_not_yield` | **VERIFIED** | this + k_no_yield → not .yield |
+| `normalizeExpr_lit_not_yield` | **VERIFIED** | lit + k_no_yield → not .yield |
+| `normalizeExpr_var_not_await` | **VERIFIED** | var + k_no_await → not .await |
+| `normalizeExpr_this_not_await` | **VERIFIED** | this + k_no_await → not .await |
+| `normalizeExpr_lit_not_await` | **VERIFIED** | lit + k_no_await → not .await |
+
+**Structural lemmas (bindComplex + continuations):**
+
+| Lemma | Status | Purpose |
+|-------|--------|---------|
+| `bindComplex_not_yield` | **VERIFIED** | bindComplex always .let, never .yield |
+| `bindComplex_not_await` | **VERIFIED** | bindComplex always .let, never .await |
+| `return_some_k_no_yield` | **VERIFIED** | return-k never produces .yield |
+| `return_some_k_no_await` | **VERIFIED** | return-k never produces .await |
+| `yield_some_k_no_await` | **VERIFIED** | yield-k never produces .await |
+| `throw_k_no_yield` | **VERIFIED** | throw-k never produces .yield |
+| `throw_k_no_await` | **VERIFIED** | throw-k never produces .await |
+| `await_k_no_yield` | **VERIFIED** | await-k never produces .yield |
+
+**Control flow (never yield/await regardless of k):**
+
+| Lemma | Status | Purpose |
+|-------|--------|---------|
+| `normalizeExpr_return_none_not_yield` | **VERIFIED** | return none → never .yield |
+| `normalizeExpr_return_none_not_await` | **VERIFIED** | return none → never .await |
+| `normalizeExpr_break_not_yield` | **VERIFIED** | break → never .yield |
+| `normalizeExpr_break_not_await` | **VERIFIED** | break → never .await |
+| `normalizeExpr_continue_not_yield` | **VERIFIED** | continue → never .yield |
+| `normalizeExpr_continue_not_await` | **VERIFIED** | continue → never .await |
+| `normalizeExpr_while_not_yield` | **VERIFIED** | while → never .yield |
+| `normalizeExpr_while_not_await` | **VERIFIED** | while → never .await |
+
+### Note on full inductive proof
+
+The full theorem `normalizeExpr_supported_no_yield` (if `e.supported` then output is not yield/await)
+requires mutual well-founded induction on `e.depth` across `normalizeExpr`/`normalizeExprList`/`normalizeProps`.
+All per-case building blocks are now in place:
+- Base cases: lit/var/this handled by `normalizeExpr_{lit,var,this}_not_{yield,await}`
+- Eliminated cases: yield/await contradicted by `e.supported = false`
+- Control flow: break/continue/return none/while handled
+- Structural: bindComplex never yields/awaits, continuations characterized
+
+The proof agent can compose these into the full induction.
+
 ## 2026-03-28T16:00 — ANF trivial-preserving + CC append lemmas VERIFIED
 
 ### PRIORITY 0: return_k/yield_k trivial_preserving — VERIFIED
@@ -1929,3 +2047,4 @@ Staged at `.lake/_tmp_fix/VerifiedJS/Proofs/design_issues.md`:
 
 ## Run: 2026-03-28T17:00:01+00:00
 
+2026-03-28T17:10:40+00:00 DONE

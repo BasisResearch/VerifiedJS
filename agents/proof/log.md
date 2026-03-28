@@ -3428,3 +3428,46 @@ These are the SAME requirements as for the wildcard cases. The entire `normalize
 
 ## Run: 2026-03-28T16:30:01+00:00
 
+
+## Run: 2026-03-28T16:30:01+00:00
+- **BUILD: PASSES** ✓
+- **ANF Sorries: 17** (unchanged)
+- **CC Sorries: 21** (unchanged)
+
+### Wasmspec status check
+- ANF/Semantics.lean: break/continue still produce `.silent` (L448-452)
+- throw still produces `.error "throw"` (L379), not `.error (valueToString v)`
+- **BLOCKED**: break/continue/return/throw cases still waiting for semantics fix
+
+### Infrastructure added: .if context stepping helpers
+- **File**: `VerifiedJS/Proofs/ANFConvertCorrect.lean`
+- Added 5 helper lemmas for stepping Flat expressions inside `.if` condition context:
+  1. `step?_if_cond_step`: Lifts a single condition sub-step through .if context (analog of step?_seq_ctx)
+  2. `step?_if_lit_branch`: Steps .if with literal condition (existential form)
+  3. `steps_if_var_branch`: Two-step evaluation of .if (.var name) when name is bound (lookup + branch)
+  4. `steps_if_lit_branch`: One-step evaluation of .if (.lit v) (direct branch)
+  5. `steps_if_this_branch`: Two-step evaluation of .if .this (resolve + branch)
+- All lemmas are FULLY PROVED (no sorry)
+- These are prerequisites for the future `normalizeExpr_if_step_sim` lemma
+
+### Analysis: normalizeExpr inversion for let/seq/if (P0)
+
+**Core blocker**: All three P0 cases require determining what `sf.expr` is, given only that `(normalizeExpr sf.expr k).run n = .ok (target_constructor, m)` with k trivial-preserving. This is the "normalizeExpr inversion" problem.
+
+**Which Flat constructors can produce `.if` at top level through normalizeExpr:**
+- **Cannot**: .lit, .var, .this (call k → .trivial), .break, .continue, .return none, .yield none (produce own constructor), .labeled (→ .labeled), .while_ (→ .seq), .tryCatch (→ .tryCatch)
+- **Can**: .if (direct), .seq (if second part produces .if after trivial chain), and ALL compound expressions (.let, .assign, .call, .newObj, .getProp, .setProp, .getIndex, .setIndex, .deleteProp, .typeof, .getEnv, .makeEnv, .makeClosure, .objectLit, .arrayLit, .throw, .return (some _), .yield (some _), .await, .unary, .binary) — any of these can produce .if if their sub-expression's normalizeExpr hits an .if in the evaluation path
+
+**Consequence**: The inversion must handle not just .if and .seq cases, but also arbitrary nesting through compound expressions. This requires eval-context lifting: when the .if is inside e.g. `.let name (.if c t e) body`, Flat steps must be lifted through the .let init context.
+
+**Recommended approach for future runs**: Write `normalizeExpr_if_step_sim` by depth induction:
+- Base (d=0): exfalso for all cases
+- Inductive (d+1): handle .if direct case (using new helpers), .seq case (trivialChain_consume_ctx + IH), sorry for compound cases
+- The compound case sorries are the eval-context lifting problem — needs step lifting lemmas for each compound constructor
+
+### Sorry counts (verified):
+- **ANF**: 17 sorries (same as before)
+- **CC**: 21 sorries (same as before)
+
+2026-03-28T16:30:01+00:00 DONE
+2026-03-28T17:14:55+00:00 DONE
