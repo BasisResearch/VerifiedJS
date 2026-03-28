@@ -8437,6 +8437,7 @@ private theorem emit_brIf_label_resolve
     exact ⟨idx, lbl, hirfind, rfl⟩
   · exact hf.elim
 
+set_option maxHeartbeats 400000 in
 /-- Step simulation (1:1): if the IR takes one step, the Wasm takes a matching step.
     Now provable with EmitCodeCorr: case analysis on the IR instruction form
     tells us what the Wasm code looks like, which determines what Wasm.step? returns.
@@ -10458,8 +10459,6 @@ theorem step_sim (irmod : IRModule) (wmod : Module) :
             exfalso; generalize s2.code = wcode at hc
             cases hc with | general _ _ _ _ hf _ => exact hf.elim
       | .unOp t op =>
-          sorry
-          /- unary operation: IR and Wasm compute the same result
           have hc : EmitCodeCorr _ (IRInstr.unOp t op :: rest) s2.code := hcode_ir ▸ hrel.hcode
           match t with
           | .i32 =>
@@ -10710,7 +10709,6 @@ theorem step_sim (irmod : IRModule) (wmod : Module) :
             -- No EmitCodeCorr constructor for these types
             exfalso; generalize s2.code = wcode at hc
             cases hc with | general _ _ _ _ hf _ => exact hf.elim
-          -/
       | .call funcIdx =>
           -- SORRY: call case needs API updates + hframes_one invariant rework
           sorry
