@@ -4478,6 +4478,20 @@ def isControlFlowSignal (msg : String) : Bool :=
   msg.startsWith "break:" || msg.startsWith "continue:" ||
   msg.startsWith "return:" || msg.startsWith "throw:"
 
+/-- Control flow signal strings are recognized by prefix. -/
+@[simp] theorem isControlFlowSignal_return (s : String) :
+    isControlFlowSignal ("return:" ++ s) = true := by
+  simp [isControlFlowSignal, String.startsWith, String.isPrefixOf, List.isPrefixOf]
+@[simp] theorem isControlFlowSignal_break (s : String) :
+    isControlFlowSignal ("break:" ++ s) = true := by
+  simp [isControlFlowSignal, String.startsWith, String.isPrefixOf, List.isPrefixOf]
+@[simp] theorem isControlFlowSignal_continue (s : String) :
+    isControlFlowSignal ("continue:" ++ s) = true := by
+  simp [isControlFlowSignal, String.startsWith, String.isPrefixOf, List.isPrefixOf]
+@[simp] theorem isControlFlowSignal_throw (s : String) :
+    isControlFlowSignal ("throw:" ++ s) = true := by
+  simp [isControlFlowSignal, String.startsWith, String.isPrefixOf, List.isPrefixOf]
+
 /-- Map a Core.TraceEvent to an IR.TraceEvent.
     Used by LowerCorrect: ∀ trace, ANF.Behaves s trace → IR.Behaves t (map traceFromCore trace).
     Control-flow signal errors (break/continue/return/throw) are mapped to .silent because
@@ -6558,8 +6572,8 @@ theorem LowerCodeCorr.if_inv {cond : ANF.Trivial} {then_ else_ : ANF.Expr} {code
       code = condCode ++ [.call RuntimeIdx.truthy, .if_ (some .f64) thenCode elseCode] ∧
       TrivialCodeCorr cond condCode ∧
       LowerCodeCorr then_ thenCode ∧ LowerCodeCorr else_ elseCode := by
-  match h with
-  | .if_ _ _ _ cc _ _ htcc hthen helse => exact ⟨cc, _, _, rfl, htcc, hthen, helse⟩
+  cases h with
+  | if_ condCode thenCode elseCode htcc hthen helse => exact ⟨condCode, thenCode, elseCode, rfl, htcc, hthen, helse⟩
 
 /-- Step-count measure: how many IR steps a given ANF expression needs.
     Used for stuttering simulation arguments. Returns 0 for halted expressions,
