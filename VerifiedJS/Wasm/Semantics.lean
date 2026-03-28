@@ -3171,91 +3171,104 @@ private theorem step?_eq_i32Add_type_mismatch (s : ExecState) (rest : List Instr
     (hcode : s.code = Instr.i32Add :: rest) (hstack : s.stack = a :: b :: stk)
     (hmis : ∀ x y, (a, b) ≠ (.i32 x, .i32 y)) :
     step? s = some (trapState { s with code := rest } "type mismatch in i32.add") := by
-  cases s; simp_all [step?]; exact withI32Bin_type_mismatch _ _ _ _ _ _ rfl hmis
+  simp [step?, withI32Bin, pop2?, hcode, hstack]
+  cases a <;> cases b <;> simp_all [trapState, pushTrace]
 
 private theorem step?_eq_i32Sub_type_mismatch (s : ExecState) (rest : List Instr)
     (a b : WasmValue) (stk : List WasmValue)
     (hcode : s.code = Instr.i32Sub :: rest) (hstack : s.stack = a :: b :: stk)
     (hmis : ∀ x y, (a, b) ≠ (.i32 x, .i32 y)) :
     step? s = some (trapState { s with code := rest } "type mismatch in i32.sub") := by
-  cases s; simp_all [step?]; exact withI32Bin_type_mismatch _ _ _ _ _ _ rfl hmis
+  simp [step?, withI32Bin, pop2?, hcode, hstack]
+  cases a <;> cases b <;> simp_all [trapState, pushTrace]
 
 private theorem step?_eq_i32Mul_type_mismatch (s : ExecState) (rest : List Instr)
     (a b : WasmValue) (stk : List WasmValue)
     (hcode : s.code = Instr.i32Mul :: rest) (hstack : s.stack = a :: b :: stk)
     (hmis : ∀ x y, (a, b) ≠ (.i32 x, .i32 y)) :
     step? s = some (trapState { s with code := rest } "type mismatch in i32.mul") := by
-  cases s; simp_all [step?]; exact withI32Bin_type_mismatch _ _ _ _ _ _ rfl hmis
+  simp [step?, withI32Bin, pop2?, hcode, hstack]
+  cases a <;> cases b <;> simp_all [trapState, pushTrace]
 
 private theorem step?_eq_i32And_type_mismatch (s : ExecState) (rest : List Instr)
     (a b : WasmValue) (stk : List WasmValue)
     (hcode : s.code = Instr.i32And :: rest) (hstack : s.stack = a :: b :: stk)
     (hmis : ∀ x y, (a, b) ≠ (.i32 x, .i32 y)) :
     step? s = some (trapState { s with code := rest } "type mismatch in i32.and") := by
-  cases s; simp_all [step?]; exact withI32Bin_type_mismatch _ _ _ _ _ _ rfl hmis
+  simp [step?, withI32Bin, pop2?, hcode, hstack]
+  cases a <;> cases b <;> simp_all [trapState, pushTrace]
 
 private theorem step?_eq_i32Or_type_mismatch (s : ExecState) (rest : List Instr)
     (a b : WasmValue) (stk : List WasmValue)
     (hcode : s.code = Instr.i32Or :: rest) (hstack : s.stack = a :: b :: stk)
     (hmis : ∀ x y, (a, b) ≠ (.i32 x, .i32 y)) :
     step? s = some (trapState { s with code := rest } "type mismatch in i32.or") := by
-  cases s; simp_all [step?]; exact withI32Bin_type_mismatch _ _ _ _ _ _ rfl hmis
+  simp [step?, withI32Bin, pop2?, hcode, hstack]
+  cases a <;> cases b <;> simp_all [trapState, pushTrace]
 
 private theorem step?_eq_i32Eq_type_mismatch (s : ExecState) (rest : List Instr)
     (a b : WasmValue) (stk : List WasmValue)
     (hcode : s.code = Instr.i32Eq :: rest) (hstack : s.stack = a :: b :: stk)
     (hmis : ∀ x y, (a, b) ≠ (.i32 x, .i32 y)) :
     step? s = some (trapState { s with code := rest } "type mismatch in i32.eq") := by
-  cases s; simp_all [step?]; exact withI32Rel_type_mismatch _ _ _ _ _ _ rfl hmis
+  simp [step?, withI32Rel, pop2?, hcode, hstack, boolToI32]
+  cases a <;> cases b <;> simp_all [trapState, pushTrace]
 
 private theorem step?_eq_i32Ne_type_mismatch (s : ExecState) (rest : List Instr)
     (a b : WasmValue) (stk : List WasmValue)
     (hcode : s.code = Instr.i32Ne :: rest) (hstack : s.stack = a :: b :: stk)
     (hmis : ∀ x y, (a, b) ≠ (.i32 x, .i32 y)) :
     step? s = some (trapState { s with code := rest } "type mismatch in i32.ne") := by
-  cases s; simp_all [step?]; exact withI32Rel_type_mismatch _ _ _ _ _ _ rfl hmis
+  simp [step?, withI32Rel, pop2?, hcode, hstack, boolToI32]
+  cases a <;> cases b <;> simp_all [trapState, pushTrace]
 
 private theorem step?_eq_i32Lts_type_mismatch (s : ExecState) (rest : List Instr)
     (a b : WasmValue) (stk : List WasmValue)
     (hcode : s.code = Instr.i32Lts :: rest) (hstack : s.stack = a :: b :: stk)
     (hmis : ∀ x y, (a, b) ≠ (.i32 x, .i32 y)) :
     step? s = some (trapState { s with code := rest } "type mismatch in i32.lt_s") := by
-  cases s; simp_all [step?]; exact withI32Rel_type_mismatch _ _ _ _ _ _ rfl hmis
+  simp [step?, withI32Rel, pop2?, hcode, hstack, boolToI32]
+  cases a <;> cases b <;> simp_all [trapState, pushTrace]
 
 private theorem step?_eq_i32Gts_type_mismatch (s : ExecState) (rest : List Instr)
     (a b : WasmValue) (stk : List WasmValue)
     (hcode : s.code = Instr.i32Gts :: rest) (hstack : s.stack = a :: b :: stk)
     (hmis : ∀ x y, (a, b) ≠ (.i32 x, .i32 y)) :
     step? s = some (trapState { s with code := rest } "type mismatch in i32.gt_s") := by
-  cases s; simp_all [step?]; exact withI32Rel_type_mismatch _ _ _ _ _ _ rfl hmis
+  simp [step?, withI32Rel, pop2?, hcode, hstack, boolToI32]
+  cases a <;> cases b <;> simp_all [trapState, pushTrace]
 
 private theorem step?_eq_f64Add_type_mismatch (s : ExecState) (rest : List Instr)
     (a b : WasmValue) (stk : List WasmValue)
     (hcode : s.code = Instr.f64Add :: rest) (hstack : s.stack = a :: b :: stk)
     (hmis : ∀ x y, (a, b) ≠ (.f64 x, .f64 y)) :
     step? s = some (trapState { s with code := rest } "type mismatch in f64.add") := by
-  cases s; simp_all [step?]; exact withF64Bin_type_mismatch _ _ _ _ _ _ rfl hmis
+  simp [step?, withF64Bin, pop2?, hcode, hstack]
+  cases a <;> cases b <;> simp_all [trapState, pushTrace]
 
 private theorem step?_eq_f64Sub_type_mismatch (s : ExecState) (rest : List Instr)
     (a b : WasmValue) (stk : List WasmValue)
     (hcode : s.code = Instr.f64Sub :: rest) (hstack : s.stack = a :: b :: stk)
     (hmis : ∀ x y, (a, b) ≠ (.f64 x, .f64 y)) :
     step? s = some (trapState { s with code := rest } "type mismatch in f64.sub") := by
-  cases s; simp_all [step?]; exact withF64Bin_type_mismatch _ _ _ _ _ _ rfl hmis
+  simp [step?, withF64Bin, pop2?, hcode, hstack]
+  cases a <;> cases b <;> simp_all [trapState, pushTrace]
 
 private theorem step?_eq_f64Mul_type_mismatch (s : ExecState) (rest : List Instr)
     (a b : WasmValue) (stk : List WasmValue)
     (hcode : s.code = Instr.f64Mul :: rest) (hstack : s.stack = a :: b :: stk)
     (hmis : ∀ x y, (a, b) ≠ (.f64 x, .f64 y)) :
     step? s = some (trapState { s with code := rest } "type mismatch in f64.mul") := by
-  cases s; simp_all [step?]; exact withF64Bin_type_mismatch _ _ _ _ _ _ rfl hmis
+  simp [step?, withF64Bin, pop2?, hcode, hstack]
+  cases a <;> cases b <;> simp_all [trapState, pushTrace]
 
 private theorem step?_eq_f64Div_type_mismatch (s : ExecState) (rest : List Instr)
     (a b : WasmValue) (stk : List WasmValue)
     (hcode : s.code = Instr.f64Div :: rest) (hstack : s.stack = a :: b :: stk)
     (hmis : ∀ x y, (a, b) ≠ (.f64 x, .f64 y)) :
     step? s = some (trapState { s with code := rest } "type mismatch in f64.div") := by
-  cases s; simp_all [step?]; exact withF64Bin_type_mismatch _ _ _ _ _ _ rfl hmis
+  simp [step?, withF64Bin, pop2?, hcode, hstack]
+  cases a <;> cases b <;> simp_all [trapState, pushTrace]
 
 /-! ## i64 bitwise @[simp] lemmas (used by Emit.lean) -/
 
@@ -10279,11 +10292,26 @@ theorem step_sim (irmod : IRModule) (wmod : Module) :
                   have h1 := hstk_rel.2 1 (by simp)
                   simp [hstk_w] at h1
                   cases h1 <;> (
-                    have hw := by
-                      show step? s2 = _
-                      rw [show s2.code = _ from hcw, show s2.stack = _ from hstk_w]
-                      simp [step?, withI32Bin, withI32Rel, pop2?, trapState, pushTrace]
-                    sorry)))
+                    have hmis : ∀ x y, (w0, w1) ≠ (.i32 x, .i32 y) := by simp_all
+                    have hw := by first
+                      | exact step?_eq_i32Add_type_mismatch s2 rest_w w0 w1 wstk' hcw hstk_w hmis
+                      | exact step?_eq_i32Sub_type_mismatch s2 rest_w w0 w1 wstk' hcw hstk_w hmis
+                      | exact step?_eq_i32Mul_type_mismatch s2 rest_w w0 w1 wstk' hcw hstk_w hmis
+                      | exact step?_eq_i32And_type_mismatch s2 rest_w w0 w1 wstk' hcw hstk_w hmis
+                      | exact step?_eq_i32Or_type_mismatch s2 rest_w w0 w1 wstk' hcw hstk_w hmis
+                      | exact step?_eq_i32Eq_type_mismatch s2 rest_w w0 w1 wstk' hcw hstk_w hmis
+                      | exact step?_eq_i32Ne_type_mismatch s2 rest_w w0 w1 wstk' hcw hstk_w hmis
+                      | exact step?_eq_i32Lts_type_mismatch s2 rest_w w0 w1 wstk' hcw hstk_w hmis
+                      | exact step?_eq_i32Gts_type_mismatch s2 rest_w w0 w1 wstk' hcw hstk_w hmis
+                    simp only [trapState, pushTrace] at hw
+                    exact ⟨_, hw, hrel.hemit, @EmitCodeCorr.nil (s1.labels.map (fun l => l.name)),
+                      by (rw [← hstk]; exact hrel.hstack),
+                      hrel.hframes_len, hrel.hframes_locals, hrel.hframes_vals, hrel.hglobals,
+                      hrel.hmemory, hrel.hmemLimits, hrel.hmemory_aligned, hrel.hmemory_nonempty,
+                      hrel.hlabels,
+                      hhalt_of_structural (@EmitCodeCorr.nil (s1.labels.map (fun l => l.name))) hrel.hlabels,
+                      hrel.hlabel_content, hrel.hframes_one, hrel.hmodule,
+                      hrel.hstore_funcs, hrel.hstore_types⟩)))
           | .f64 =>
             rcases hc.binOp_f64_inv with
               ⟨rfl, rest_w, hcw, hrest⟩ | ⟨rfl, rest_w, hcw, hrest⟩ |
