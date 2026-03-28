@@ -1,5 +1,51 @@
 # jsspec agent log
 
+## 2026-03-28T04:00 — Flat.step? simp lemmas + normalizeExpr labeled inversion + blocked case docs
+
+### File: `.lake/_tmp_fix/VerifiedJS/Proofs/anf_helpers.lean`
+- **0 errors, 0 warnings, no sorry**
+- Verified with `lean_verify` — only standard axioms (propext, Classical.choice, Quot.sound)
+
+#### Priority 0: @[simp] Flat.step? exact-equality lemmas
+Added to `VerifiedJS.Flat` namespace (new import: `VerifiedJS.Flat.Semantics`):
+- `step?_labeled` — labeled steps to body with `.silent`, expanded pushTrace
+- `step?_yield_none` — yield none steps to `.lit .undefined` with `.silent`
+- `step?_yield_some_value` — yield (some (.lit v)) steps to `.lit v` with `.silent`
+- `step?_await_value` — await (.lit v) steps to `.lit v` with `.silent`
+- Plus `isSome`/`ne_none` variants for yield_none, yield_some_value, await_value
+- `Step_yield_none`, `Step_yield_some_value`, `Step_await_value` — relation forms
+
+### File: `.lake/_tmp_fix/VerifiedJS/Proofs/anf_labeled_inv.lean`
+- **0 errors, 0 warnings, no sorry**
+- Verified with `lean_verify` — only standard axioms (propext, Quot.sound)
+
+#### Priority 1: normalizeExpr labeled inversion
+- `normalizeExpr_yield_none_not_labeled` — yield none can't produce labeled
+- `normalizeExpr_break_not_labeled'` — break can't produce labeled
+- `normalizeExpr_continue_not_labeled'` — continue can't produce labeled
+- `normalizeExpr_return_none_not_labeled'` — return none can't produce labeled
+- `normalizeExpr_var_not_labeled'` — var with hk_triv can't produce labeled
+- `normalizeExpr_this_not_labeled'` — this with hk_triv can't produce labeled
+- `normalizeExpr_lit_not_labeled` — lit with hk_triv can't produce labeled
+- `normalizeExpr_labeled_extract` — forward: labeled l body → l = l' ∧ body extraction
+
+**Key finding**: Full inversion (all constructors) requires well-founded induction on `Expr.depth` because compound cases (let, if, throw, return some, yield some, await, etc.) recurse into normalizeExpr. The `.seq` case propagates `.labeled` from its second argument. Strategy documented in the file for proof agent's use.
+
+#### Priority 2: Blocked case documentation
+Updated `.lake/_tmp_fix/VerifiedJS/Proofs/design_issues.md` (Issue 3) with:
+- Full provable vs blocked case table
+- Root cause: Flat uses `.error` events for control flow, ANF uses `.silent`
+- Fix recommendation: extend `observableTrace` to filter control-flow error events
+- Inventory of helper lemmas written in staging files
+
+### What proof agent still needs
+- For labeled case: use `normalizeExpr_labeled_extract` + `step?_labeled` for simulation
+- For yield/await cases: use `step?_yield_none`/`step?_await_value` + corresponding ANF step lemmas
+- For compound cases in labeled inversion: well-founded induction on `Expr.depth`
+- For blocked cases (return/throw/break/continue): needs `observableTrace` change or accept as design limitation
+
+---
+
 ## 2026-03-28T03:00 — Extended normalizeExpr forward/no-confusion + Flat step? lemmas
 
 ### File: `.lake/_tmp_fix/VerifiedJS/Proofs/anf_inv_trial.lean`
@@ -1087,3 +1133,4 @@ Staged at `.lake/_tmp_fix/VerifiedJS/Proofs/design_issues.md`:
 
 ## Run: 2026-03-28T04:00:01+00:00
 
+2026-03-28T04:10:55+00:00 DONE
