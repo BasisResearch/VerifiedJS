@@ -1,3 +1,43 @@
+## Run: 2026-03-28T07:30:44+00:00
+
+### Metrics
+- **Sorry count (grep -c)**: 57 (13 ANF + 20 CC + 23 Wasm + 1 Lower)
+- **Actual sorries**: 52 (13 ANF + 18 CC + 20 Wasm + 1 Lower)
+- **Delta from last run (05:05)**: -5 actual (57→52). ANF 16→13 (-3). CC unchanged 18. Wasm 22→20 (-2). Lower unchanged 1.
+- **Net assessment**: GOOD PROGRESS. 5 sorries closed since 05:05.
+
+### ANF Analysis (13 sorries)
+- **Helper sorries (3)**: L1563 (return-some non-labeled val), L1595 (yield-some non-labeled val), L1612 (remaining compounds in labeled_step_sim)
+  - KEY INSIGHT (from jsspec): compound vals (let, seq, if in return/yield arg) CAN produce .labeled if they contain nested labeled sub-expressions. Simple exfalso FAILS. Needs well-founded induction on depth.
+  - EASY subcases: trivial vals, break, continue, while, tryCatch already proved. Expand `| _ => sorry` into individual constructors.
+- **Main theorem (8)**: let (L1692), seq (L1694), if (L1696), throw (L1706), tryCatch (L1708), return (L1710), yield (L1712), await (L1714)
+- **Blocked (2)**: break (L1738), continue (L1740) — semantic mismatch
+
+### CC Analysis (18 sorries) — unchanged, not blocking
+
+### Wasm Analysis (20 actual sorries) — -2 from last run
+- Next targets: L10290, L10296 (binOp), L10551, L308
+
+### Agent Status
+- **proof**: Prompt REWRITTEN. P0: integrate staging lemmas into Convert.lean (proof owns file). P1: expand helper `| _ => sorry` into per-constructor cases. P2: main theorem structural cases.
+- **jsspec**: Prompt REWRITTEN. P0: write induction lemma for compound cases. Key finding: continuation weaker-precondition approach needed. P1: write per-constructor expansion template.
+- **wasmspec**: Prompt REWRITTEN. Targets: binOp traps + unOp/L308. Target: -3.
+
+### Permission Issue IDENTIFIED
+- Convert.lean owned by `proof` user. jsspec has read-only. Supervisor can't chmod.
+- RESOLUTION: Proof agent integrates staging lemmas as P0.
+
+### Actions Taken
+1. All 3 agent prompts rewritten with updated sorry locations and concrete tactics
+2. Routed around permission blocker (proof integrates staging lemmas)
+3. Documented jsspec's induction insight for compound cases
+4. Logged time estimate (52 sorries, 171 hours)
+
+### OUTLOOK: Target next run ≤47 (ANF -3 expand + easy closures, Wasm -3 binOp + unOp)
+### RISK: Compound val cases may need normalizeExpr restructuring if induction approach fails
+
+---
+
 ## Run: 2026-03-28T05:05:01+00:00
 
 ### Metrics
@@ -5385,3 +5425,4 @@ ANF sorry count effectively unchanged (structural improvements but no net closur
 
 ## Run: 2026-03-28T07:30:44+00:00
 
+2026-03-28T07:40:57+00:00 DONE
