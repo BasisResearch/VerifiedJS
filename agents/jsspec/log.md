@@ -969,3 +969,49 @@ Staged at `.lake/_tmp_fix/VerifiedJS/Proofs/design_issues.md`:
 
 ## Run: 2026-03-28T01:00:01+00:00
 
+### Priority 0: ANF normalizeExpr simp + StateT.run lemmas — DONE (no sorry!)
+- File: `.lake/_tmp_fix/VerifiedJS/Proofs/anf_helpers.lean`
+- **Verified clean**: 0 errors, 0 warnings, 0 sorries.
+- **Existing lemmas confirmed** (already in codebase, no install needed):
+  - `step?_break`, `step?_continue`, `step?_throw_ok/error`, `step?_return_none/some_ok/some_error` → ANF/Semantics.lean:567-621
+  - `normalizeExpr_break`, `normalizeExpr_continue`, `normalizeExpr_labeled` → ANF/Convert.lean:213-225
+- **New simp lemmas** (for install into ANF/Convert.lean before `end VerifiedJS.ANF`):
+  - `normalizeExpr_return_none` — `.return none` ignores continuation
+  - `normalizeExpr_return_some` — `.return (some v)` normalizes v then wraps
+  - `normalizeExpr_throw` — `.throw arg` normalizes arg then wraps
+  - `normalizeExpr_lit_ok` — `.lit v` calls continuation with trivial form
+  - `normalizeExpr_var` — `.var name` calls continuation with `.var name`
+  - `normalizeExpr_await` — `.await arg` normalizes arg then wraps
+  - `normalizeExpr_yield_none` / `normalizeExpr_yield_some` — yield cases
+  - `normalizeExpr_this` — `.this` delegates to `k (.var "this")`
+- **New StateT.run lemmas** (directly match `hnorm` hypothesis in anfConvert_step_star):
+  - `normalizeExpr_break_run` — produces `(.break label, n)` unchanged state
+  - `normalizeExpr_continue_run` — produces `(.continue label, n)` unchanged state
+  - `normalizeExpr_return_none_run` — produces `(.return none, n)` unchanged state
+  - `normalizeExpr_var_run` — delegates to `StateT.run (k (.var name)) n`
+  - `normalizeExpr_this_run` — delegates to `StateT.run (k (.var "this")) n`
+- **New inversion lemmas** (prove normalizeExpr can't produce .break from non-.break sources):
+  - `normalizeExpr_break_inv_var` — `.var` with trivial k can't produce `.break`
+  - `normalizeExpr_break_inv_this` — `.this` with trivial k can't produce `.break`
+  - `normalizeExpr_break_inv_lit` — `.lit` with trivial k can't produce `.break`
+  - `normalizeExpr_break_inv_continue` — `.continue` can never produce `.break`
+  - `normalizeExpr_break_inv_break` — `.break l` always produces `.break l` with same state
+
+### Priority 1: CC patches NOT installable
+- Main files (`ANF/Convert.lean`, `Proofs/ClosureConvertCorrect.lean`) owned by `proof` user, read-only for jsspec.
+- Staging files remain ready for proof agent to install.
+
+### Priority 2: CC call patches line numbers — UPDATED
+- `cc_call_patches.lean` updated with current line numbers:
+  - call: L2588 (was L2556)
+  - newObj: L2589 (design issue)
+  - objectLit: L2866 (was L2796)
+  - arrayLit: L2867 (was L2797)
+  - functionDef: L2868 (design issue)
+  - tryCatch: L2958 (was L2888)
+- Added full sorry inventory (20 sorries in ClosureConvertCorrect.lean).
+
+### Sorry count: CC=20, ANF=13, Lower=1 → **34 total** (unchanged from prior run)
+
+2026-03-28T01:00:01+00:00 DONE
+2026-03-28T01:07:32+00:00 DONE
