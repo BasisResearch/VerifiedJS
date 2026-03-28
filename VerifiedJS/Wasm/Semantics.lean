@@ -5725,7 +5725,6 @@ theorem irStep?_eq_callIndirect (s : IRExecState) (rest : List IRInstr)
         trace := s.trace ++ [.silent] }) := by
   simp [irStep?, hcode, hstack, irPop1?, hfunc, hpopn, irPushTrace]
 
-/-- ByteArray.toList preserves length (needed because ByteArray.toList.loop is irreducible). -/
 attribute [local semireducible] ByteArray.toList.loop in
 private theorem ByteArray_toList_loop_length (ba : ByteArray) :
     ∀ (i : Nat) (r : List UInt8), i ≤ ba.size →
