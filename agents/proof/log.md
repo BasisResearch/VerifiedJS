@@ -3379,4 +3379,49 @@ These are the SAME requirements as for the wildcard cases. The entire `normalize
 
 ## Run: 2026-03-28T14:30:10+00:00
 
-2026-03-28T15:30:01+00:00 SKIP: already running
+### Changes made
+
+#### Bug fix: setIndex noCallFrameReturn association (pre-existing)
+- **File**: `VerifiedJS/Proofs/ClosureConvertCorrect.lean`
+- Fixed `noCallFrameReturn` destructuring for setIndex case
+- `noCallFrameReturn (.setIndex o i v) = (o && i) && v` (left-associated)
+- `hncfr.1` gave `(ncfr_o ∧ ncfr_i)` not `ncfr_o`; fixed to `hncfr.1.1`
+- Also fixed conclusion: `⟨hncfr', ...⟩` → `⟨⟨hncfr', hncfr.1.2⟩, hncfr.2⟩` for correct nesting
+- **This was a pre-existing bug** that prevented the build from passing
+
+#### P1: Expanded CC call case (L2607)
+- **File**: `VerifiedJS/Proofs/ClosureConvertCorrect.lean`
+- Added `Flat_step?_call_func_step` and `Core_step?_call_func_step` helper lemmas
+- Replaced `| call f args => sorry` with expanded proof:
+  - `| none =>` (callee not a value): PROVED except ExprAddrWF gap
+  - `| some cv =>` (callee is a value): sorry (arg stepping + call execution)
+- **Net sorry change: +1** (1 → 2: ExprAddrWF gap + callee-is-value)
+
+#### ExprAddrWF gap analysis
+- `ExprAddrWF (.call _ _) _ = True` by definition
+- Cannot extract `ExprAddrWF f` from `ExprAddrWF (.call f args) = True`
+- Same issue affects newObj, objectLit, arrayLit cases
+- **Root cause**: ExprAddrWF definition doesn't track through call/newObj/objectLit/arrayLit
+- **Fix**: Change ExprAddrWF to track sub-expressions (requires mutual def with list variants)
+- This is a structural issue affecting ALL list-bearing constructors
+
+### Build status: PASSES ✓
+- ClosureConvertCorrect.lean: 0 errors, warnings only
+- ANFConvertCorrect.lean: 0 errors
+
+### Sorry counts:
+- **ANF**: 17 sorries (unchanged)
+- **CC**: 21 sorries (was 20; +1 from ExprAddrWF gap in call case)
+- **Total grep**: 38 (was 37 from previous baseline of 20; actual previous was broken)
+
+### What is FULLY PROVED in the call non-value callee sub-case:
+1. Flat sub-step extraction from `.call` stepping
+2. IH application on callee (modulo ExprAddrWF sorry)
+3. Core step construction via `Core_step?_call_func_step`
+4. Trace correspondence
+5. HeapInj, EnvCorrInj, EnvAddrWF, HeapValuesWF preservation (from IH)
+6. noCallFrameReturn preservation
+7. ExprAddrWF for result (trivially True for call)
+8. CCState threading via `convertExprList_state_determined`
+9. Depth bound for IH
+2026-03-28T16:18:35+00:00 DONE

@@ -1,5 +1,54 @@
 # jsspec agent log
 
+## 2026-03-28T16:00 — ANF trivial-preserving + CC append lemmas VERIFIED
+
+### PRIORITY 0: return_k/yield_k trivial_preserving — VERIFIED
+
+File: `.lake/_tmp_fix/VerifiedJS/ANF/ConvertHelpers.lean` (lines 474-486)
+
+| Lemma | Status | Purpose |
+|-------|--------|---------|
+| `return_k_trivial_preserving` | **VERIFIED (0 axioms)** | return-some continuation is trivial-preserving |
+| `yield_k_trivial_preserving` | **VERIFIED (0 axioms)** | yield-some continuation is trivial-preserving |
+
+Both proved by `intro arg n'; exact ⟨n', rfl⟩`. Needed for ANF sorries L1617, L1621, L1683, L1687.
+
+### PRIORITY 1: noCallFrameReturn append lemmas — VERIFIED
+
+File: `.lake/_tmp_fix/VerifiedJS/Proofs/cc_objectLit_arrayLit_helpers.lean` (lines 197-211)
+
+| Lemma | Status | Purpose |
+|-------|--------|---------|
+| `propListNoCallFrameReturn_append` | **VERIFIED** | `propListNoCallFrameReturn (a ++ b) = ... a && ... b` |
+| `listNoCallFrameReturn_append` | **VERIFIED** | `listNoCallFrameReturn (a ++ b) = ... a && ... b` |
+
+Both proved by induction on `a` with `simp [f, ih, Bool.and_assoc]`.
+
+### PRIORITY 2: convertPropList_append — VERIFIED
+
+File: `.lake/_tmp_fix/VerifiedJS/Proofs/cc_objectLit_arrayLit_helpers.lean` (lines 214-235)
+
+| Lemma | Status | Purpose |
+|-------|--------|---------|
+| `convertPropList_append` | **VERIFIED** | fst of convertPropList distributes over ++ |
+| `convertPropList_append_snd` | **VERIFIED** | snd (state) threads through correctly |
+
+Note: prompt suggested `Std.HashMap String Nat` for envMap but actual type is `Flat.EnvMapping = List (String × Nat)`. Used correct type. Proof required `obtain ⟨pname, e⟩ := hd` to destructure pairs for `convertPropList` pattern matching.
+
+### PRIORITY 3: bindComplex continuations — NOT trivial-preserving (by design)
+
+`bindComplex` definition:
+```lean
+def bindComplex (rhs : ComplexExpr) (k : Trivial → ConvM Expr) : ConvM Expr := do
+  let tmp ← freshName
+  let body ← k (.var tmp)
+  pure (.let tmp rhs body)
+```
+
+**Analysis**: `bindComplex` always produces `.let tmp rhs body`, never `.trivial arg`. So continuations like `fun vt => bindComplex (.assign name vt) k` are NOT trivial-preserving.
+
+**However, this is fine for L1632/L1698/L1715**: These sorries need well-founded induction on `e.depth`, not trivial-preserving continuations. The key property needed is that `bindComplex` continuations **never produce `.labeled`** — already proven by `bindComplex_not_labeled` in ConvertHelpers.lean. The proof strategy (documented in ConvertHelpers.lean comments) is to use induction with `hk : k never produces .labeled` instead of `hk : k is trivial-preserving`.
+
 ## 2026-03-28T15:30 — Priority 2 INVALIDATED + CC getEnv/makeClosure helpers VERIFIED
 
 ### PRIORITY 2: INVALIDATED — `.labeled` appears in source programs
@@ -1876,3 +1925,4 @@ Staged at `.lake/_tmp_fix/VerifiedJS/Proofs/design_issues.md`:
 
 ## Run: 2026-03-28T16:00:01+00:00
 
+2026-03-28T16:15:38+00:00 DONE
