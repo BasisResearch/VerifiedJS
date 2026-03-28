@@ -11648,8 +11648,68 @@ theorem step_sim (irmod : IRModule) (wmod : Module) :
                   have h : s2.store.memories[0]? = some (s2.store.memories[0]'h0mem) :=
                     Array.getElem?_eq_getElem h0mem
                   rw [hmem_eq] at h; exact (Option.some.inj h).symm
-                -- SORRY: grow success/failure — memoryGrow step? alignment needs careful lemma work
-                sorry
+                by_cases hok : s1.memory.size + pages.toNat * 65536 ≤ 65536 * 65536
+                · -- Success: grow memory
+                  have hir := irStep?_eq_memoryGrow_ok s1 rest pages stk hcode_ir hstk hok
+                  rw [hir] at hstep
+                  simp only [Option.some.injEq, Prod.mk.injEq] at hstep
+                  obtain ⟨rfl, rfl⟩ := hstep
+                  have hNewPages_le : (s1.memory.size / 65536 + pages.toNat) ≤ 65536 := by
+                    have := Nat.div_add_mod s1.memory.size 65536; omega
+                  have hw : step? s2 = some (.silent, pushTrace
+                    { s2 with code := rest_w,
+                      stack := .i32 (s1.memory.size / 65536).toUInt32 :: wstk',
+                      store := { s2.store with memories := s2.store.memories.set! 0
+                        (ByteArray.mk (s1.memory.toList.toArray ++ Array.replicate (pages.toNat * 65536) 0)) } } .silent) := by
+                    simp only [step?, hcw, hstack_eq, pop1?, h0mem, dite_true, hmem_val]
+                    rw [hMaxOk_eq]
+                    simp [Nat.ble_eq, hNewPages_le, pushTrace]
+                  simp only [traceToWasm]
+                  refine ⟨_, hw, hrel.hemit, hrest, ?_, hrel.hframes_len, hrel.hframes_locals,
+                    hrel.hframes_vals, hrel.hglobals, ?_, ?_, ?_, ?_, hrel.hlabels,
+                    hhalt_of_structural hrest hrel.hlabels, hrel.hlabel_content, hrel.hframes_one, hrel.hmodule, hrel.hstore_funcs, hrel.hstore_types⟩
+                  · -- hstack
+                    simp only [pushTrace]
+                    exact ⟨by simp; omega, fun i hi => htail i (by simp at hi; omega)⟩
+                  · -- hmemory
+                    left; simp only [pushTrace]
+                    rw [Array.getElem?_set! (i := 0) (v := _)]
+                    simp [h0mem]
+                  · -- hmemLimits
+                    exact hrel.hmemLimits
+                  · -- hmemory_aligned
+                    simp only [pushTrace, ByteArray.size]
+                    rw [Array.size_append, Array.size_toArray, List.length_toList, Array.size_replicate]
+                    exact Nat.dvd_add hrel.hmemory_aligned ⟨pages.toNat, rfl⟩
+                  · -- hmemory_nonempty
+                    simp only [pushTrace, Array.size_set!]
+                    exact hrel.hmemory_nonempty
+                · -- Failure: both push -1 (0xFFFFFFFF)
+                  have hir : irStep? s1 = some (.silent, irPushTrace
+                    { s1 with code := rest, stack := .i32 (0xFFFFFFFF : UInt32) :: stk } .silent) := by
+                    simp only [irStep?, hcode_ir, hstk, irPop1?]
+                    have hgt : ¬(s1.memory.size + pages.toNat * 65536 ≤ 65536 * 65536) := hok
+                    simp [hgt]
+                  rw [hir] at hstep
+                  simp only [Option.some.injEq, Prod.mk.injEq] at hstep
+                  obtain ⟨rfl, rfl⟩ := hstep
+                  have hNewPages_gt : ¬ (s1.memory.size / 65536 + pages.toNat ≤ 65536) := by
+                    intro h; apply hok
+                    have hmod := Nat.div_add_mod s1.memory.size 65536
+                    have hmod_lt := Nat.mod_lt s1.memory.size (by omega : 0 < 65536)
+                    omega
+                  have hw : step? s2 = some (.silent, pushTrace
+                    { s2 with code := rest_w, stack := .i32 (UInt32.ofNat 0xFFFFFFFF) :: wstk' } .silent) := by
+                    simp only [step?, hcw, hstack_eq, pop1?, h0mem, dite_true, hmem_val]
+                    rw [hMaxOk_eq]
+                    simp [Nat.ble_eq, hNewPages_gt, pushTrace]
+                  simp only [traceToWasm]
+                  refine ⟨_, hw, ⟨hrel.hemit, hrest, ?_, hrel.hframes_len, hrel.hframes_locals,
+                    hrel.hframes_vals, hrel.hglobals, hrel.hmemory, hrel.hmemLimits, hrel.hmemory_aligned, hrel.hmemory_nonempty,
+                    hrel.hlabels, hhalt_of_structural hrest hrel.hlabels, hrel.hlabel_content, hrel.hframes_one, hrel.hmodule, hrel.hstore_funcs, hrel.hstore_types⟩⟩
+                  · -- hstack
+                    simp only [pushTrace]
+                    exact ⟨by simp; omega, fun i hi => htail i (by simp at hi; omega)⟩
               · -- No memory: contradicts hmemory_nonempty (memories.size > 0 ⇒ memories[0]? ≠ none)
                 exfalso
                 have h := hrel.hmemory_nonempty
