@@ -11656,11 +11656,10 @@ theorem step_sim (irmod : IRModule) (wmod : Module) :
                   obtain ⟨rfl, rfl⟩ := hstep
                   have hNewPages_le : (s1.memory.size / 65536 + pages.toNat) ≤ 65536 := by
                     have := Nat.div_add_mod s1.memory.size 65536; omega
-                  have hw : step? s2 = some (.silent, pushTrace
-                    { s2 with code := rest_w,
-                      stack := .i32 (s1.memory.size / 65536).toUInt32 :: wstk',
-                      store := { s2.store with memories := s2.store.memories.set! 0
-                        (ByteArray.mk (s1.memory.toList.toArray ++ Array.replicate (pages.toNat * 65536) 0)) } } .silent) := by
+                  let grownMem := ByteArray.mk (s1.memory.toList.toArray ++ Array.replicate (pages.toNat * 65536) 0)
+                  let store' := { s2.store with memories := s2.store.memories.set! 0 grownMem }
+                  let s2' := { s2 with code := rest_w, stack := .i32 (s1.memory.size / 65536).toUInt32 :: wstk', store := store' }
+                  have hw : step? s2 = some (.silent, pushTrace s2' .silent) := by
                     simp only [step?, hcw, hstack_eq, pop1?, h0mem, dite_true, hmem_val]
                     rw [hMaxOk_eq]
                     simp [Nat.ble_eq, hNewPages_le, pushTrace]
