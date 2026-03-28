@@ -11692,7 +11692,10 @@ theorem step_sim (irmod : IRModule) (wmod : Module) :
                       hmemory_aligned := by
                         dsimp only [s2', store', pushTrace, grownMem]
                         rw [ByteArray.size, Array.size_append, Array.size_replicate]
-                        simp only [ByteArray.toList, List.toArray_length, List.length_toList]
+                        simp only [List.size_toArray]
+                        have : s1.memory.toList.length = s1.memory.size := by
+                          simp [ByteArray.size, ByteArray.toList]
+                        rw [this]
                         exact Nat.dvd_add hrel.hmemory_aligned ⟨pages.toNat, Nat.mul_comm _ _⟩
                       hmemory_nonempty := by
                         dsimp only [s2', store', pushTrace]
@@ -11718,11 +11721,11 @@ theorem step_sim (irmod : IRModule) (wmod : Module) :
                     intro h; apply hok
                     have halign := hrel.hmemory_aligned
                     obtain ⟨k, hk⟩ := halign
-                    rw [hk]
-                    simp [Nat.mul_div_cancel_left _ (by omega : 0 < 65536)]
-                    rw [hk] at h
-                    simp [Nat.mul_div_cancel_left _ (by omega : 0 < 65536)] at h
-                    nlinarith
+                    rw [hk] at h ⊢
+                    rw [Nat.mul_div_cancel_left _ (by omega : 0 < 65536)] at h
+                    calc 65536 * k + pages.toNat * 65536
+                        = (k + pages.toNat) * 65536 := by ring
+                      _ ≤ 65536 * 65536 := by omega
                   have hw : step? s2 = some (.silent, pushTrace
                     { s2 with code := rest_w, stack := .i32 (UInt32.ofNat 0xFFFFFFFF) :: wstk' } .silent) := by
                     simp only [step?, hcw, hstack_eq, pop1?, h0mem, dite_true, hmem_val]
