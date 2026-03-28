@@ -944,18 +944,10 @@ private theorem ExprAddrWF_mono : (e : Core.Expr) → {n m : Nat} →
     ExprAddrWF e n → (n ≤ m) → ExprAddrWF e m
   | .lit v, _, _, h, hle => ValueAddrWF_mono h hle
   | .var _, _, _, _, _ => trivial
-  | .call f args, _, _, h, hle => ⟨ExprAddrWF_mono f h.1 hle, by
-      have : ∀ (es : List Core.Expr), ExprAddrListWF es _ → ExprAddrListWF es _ :=
-        fun es h => by induction es with
-          | nil => trivial
-          | cons e es ih => exact ⟨ExprAddrWF_mono e h.1 hle, ih h.2⟩
-      exact this args h.2⟩
-  | .newObj f args, _, _, h, hle => ⟨ExprAddrWF_mono f h.1 hle, by
-      have : ∀ (es : List Core.Expr), ExprAddrListWF es _ → ExprAddrListWF es _ :=
-        fun es h => by induction es with
-          | nil => trivial
-          | cons e es ih => exact ⟨ExprAddrWF_mono e h.1 hle, ih h.2⟩
-      exact this args h.2⟩
+  | .call f args, _, _, h, hle => ⟨ExprAddrWF_mono f h.1 hle,
+      fun e hmem => ExprAddrWF_mono e (h.2 e hmem) hle⟩
+  | .newObj f args, _, _, h, hle => ⟨ExprAddrWF_mono f h.1 hle,
+      fun e hmem => ExprAddrWF_mono e (h.2 e hmem) hle⟩
   | .objectLit _, _, _, _, _ => trivial
   | .arrayLit _, _, _, _, _ => trivial
   | .break _, _, _, _, _ => trivial
@@ -987,7 +979,8 @@ private theorem ExprAddrWF_mono : (e : Core.Expr) → {n m : Nat} →
   | .labeled _ b, _, _, h, hle => ExprAddrWF_mono b h hle
   | .await arg, _, _, h, hle => ExprAddrWF_mono arg h hle
   termination_by e => sizeOf e
-  decreasing_by all_goals (try simp_wf) <;> omega
+  decreasing_by all_goals (try simp_wf) <;> (try omega) <;>
+    (have := List.sizeOf_lt_of_mem ‹_ ∈ _›; omega)
 
 private theorem Core_step_heap_size_mono
     {s s' : Core.State} {t : Core.TraceEvent}
@@ -2652,7 +2645,7 @@ private theorem closureConvert_step_simulation
       have hncfr_f : noCallFrameReturn f = true := by
         simp [noCallFrameReturn] at hncfr; exact hncfr.1
       have hexprwf_f : ExprAddrWF f sc.heap.objects.size := by
-        sorry -- ExprAddrWF (.call _ _) = True; cannot extract sub-expression WF
+        simp [ExprAddrWF] at hexprwf; exact hexprwf.1
       obtain ⟨injMap', sc_sub', ⟨hcstep_sub⟩, htrace_sub, hinj', henvCorr', henvwf', hheapvwf',
              hncfr', hexprwf', st_a, st_a', hconv', hAgreeIn, hAgreeOut⟩ :=
         ih_depth f.depth hdepth envVar envMap injMap
@@ -2677,7 +2670,10 @@ private theorem closureConvert_step_simulation
       · exact henvwf'
       · exact hheapvwf'
       · simp [sc', noCallFrameReturn]; exact ⟨hncfr', by simp [noCallFrameReturn] at hncfr; exact hncfr.2⟩
-      · simp [sc', ExprAddrWF]
+      · simp only [sc', ExprAddrWF]; exact ⟨hexprwf',
+            fun e hmem => ExprAddrWF_mono e
+              (by simp [ExprAddrWF] at hexprwf; exact hexprwf.2 e hmem)
+              (Core_step_heap_size_mono hcstep_sub)⟩
       · have hargs := convertExprList_state_determined args scope envVar envMap
             (Flat.convertExpr f scope envVar envMap st).snd st_a' hAgreeOut.1 hAgreeOut.2
         refine ⟨st_a, (Flat.convertExprList args scope envVar envMap st_a').snd, ?_, hAgreeIn, ?_⟩
