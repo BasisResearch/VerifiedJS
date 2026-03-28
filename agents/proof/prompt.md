@@ -1,68 +1,62 @@
-# proof — CC REMAINING + ANF DECOMPOSITION
+# proof — ANF IS NOW YOUR #1 PRIORITY
 
-## STATUS: 58 total sorries (was 99 — you closed 41! EXCELLENT WORK)
+## STATUS: 59 total sorries. CC at 18, ANF STILL at 13 — UNTOUCHED FOR 6 DAYS.
 
-CC is down to 17 sorry tokens. ANF still has 13 sorries UNTOUCHED FOR 5+ DAYS. The end-to-end theorem CANNOT compose without anfConvert_step_star. You MUST pivot to ANF after finishing the CC mechanical leftovers.
+The end-to-end `compiler_correct` theorem CANNOT compose without `anfConvert_step_star`. CC is at diminishing returns. **PIVOT TO ANF NOW.**
 
-## STEP 1: CC L2138 sorry,sorry (last mechanical pair)
+## STEP 1: ANF break/continue (L172, L174) — EASIEST, DO FIRST
 
-At L2138, there is:
+These are terminal control flow — no sub-expressions to evaluate.
+
 ```lean
-simp [sc', Flat.convertExpr], sorry, sorry⟩
-```
-This is the if-cond stepping case. The two sorries need CCStateAgree for `then_` and `else_` branch states after `convertExpr cond`. Use `lean_goal` at L2138 to see what's needed. Try:
-```lean
-lean_multi_attempt at L2138: ["hAgreeIn, hAgreeOut", "by exact CCStateAgree_refl _", "by simp [CCStateAgree]"]
-```
+-- At L172 (break):
+lean_goal at L172
+-- Expected: ANF.step? (.break label) and normalizeExpr (.break label) k produce same trace
+-- Try: simp_all [ANF.step?, Source.step?, normalizeExpr]
+-- Or: unfold ANF.step? Source.step?; simp_all
 
-## STEP 2: while_ CCState (L2958) — last Phase 3 case
-
-Use your successful pattern from let/if/seq. Chain `convertExpr_state_determined` calls. Use `lean_goal` at L2958.
-
-## STEP 3: PIVOT TO ANF (THIS IS CRITICAL)
-
-File: `VerifiedJS/Proofs/ANFConvertCorrect.lean`
-
-The 13 sorries are already decomposed by constructor (L138-174). Each needs a proof. The architecture comment at L175-210 explains the approach.
-
-**Start with the easiest cases:**
-
-1. **break (L172), continue (L174)**: Produce error events directly. Should be straightforward — both ANF and Flat produce same event.
-```lean
--- Try at L172:
-simp_all [ANF.step?, Flat.step?]
--- or construct the witness explicitly
+-- At L174 (continue):
+-- Same pattern as break
 ```
 
-2. **throw (L155)**: Evaluate trivial arg, produce error event. Similar to break/continue.
+Use `lean_goal` at each line, then `lean_multi_attempt` with:
+```
+["simp_all [ANF.step?, Source.step?, normalizeExpr]",
+ "unfold ANF.step? Source.step?; simp_all",
+ "simp [ANF.step?]; rfl",
+ "cases h_step <;> simp_all"]
+```
 
-3. **return (L159), yield (L161), await (L163)**: Evaluate optional trivial arg.
+## STEP 2: ANF throw/return/yield/await (L155, L159, L161, L163)
 
-4. **var lookup (L138)**: step? resolves the variable in env. Match to Flat var lookup.
+These evaluate a trivial arg then produce an event. Pattern:
+1. `evalTrivial` resolves the arg
+2. Event is produced
+3. Match to source semantics
 
-5. **seq (L149)**: Two sub-cases — a is value (skip to b) or step inner a.
+```lean
+lean_goal at L155  -- throw
+lean_goal at L159  -- return
+lean_goal at L161  -- yield
+lean_goal at L163  -- await
+```
 
-6. **if (L151)**: Evaluate cond trivial, branch.
+## STEP 3: ANF var lookup (L138)
 
-7. **let (L147)**: evalComplex evaluates rhs, extends env, continues.
+Variable resolution in ANF env should match source env.
 
-8. **while (L153)**: Evaluate cond, unroll or terminate. Hardest.
+## STEP 4: ANF seq (L149), if (L151), let (L147)
 
-9. **tryCatch (L157)**: Error handling cases. Hard.
+These need sub-expression stepping. Harder but follow the same pattern as CC proofs.
 
-10. **labeled (L170)**: Architecture issue noted — needs restructuring.
+## STEP 5: CC remaining (ONLY after making ANF progress)
 
-**Use `lean_goal` at each sorry, then `lean_multi_attempt` aggressively.**
-
-Even replacing 1 monolithic sorry with 5 smaller ones is progress. The key is decomposing into sub-goals that can be attacked independently.
-
-## STEP 4: Remaining CC hard cases (ONLY if ANF is progressing)
-
-- call (L2557): jsspec staged helpers in `.lake/_tmp_fix/VerifiedJS/Proofs/cc_call_patches.lean`
-- Others (newObj, setProp, setIndex, objectLit, arrayLit, functionDef, tryCatch): design issues, lower priority
+- L2138: jsspec confirmed 2nd sorry closes with `⟨rfl, rfl⟩`. Replace `sorry, sorry⟩` with `sorry, ⟨rfl, rfl⟩⟩`.
+- CCStateAgree helpers staged at `.lake/_tmp_fix/VerifiedJS/Proofs/cc_agree_helpers.lean` — install them.
+- L3068 (while_ CCState): chain `convertExpr_state_determined` calls.
 
 ## DO NOT TOUCH: Wasm/Semantics.lean, LowerCorrect.lean
 
-## Build CC: `lake build VerifiedJS.Proofs.ClosureConvertCorrect`
 ## Build ANF: `lake build VerifiedJS.Proofs.ANFConvertCorrect`
+## Build CC: `lake build VerifiedJS.Proofs.ClosureConvertCorrect`
 ## Log progress to agents/proof/log.md.

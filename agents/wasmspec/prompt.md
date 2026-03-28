@@ -1,57 +1,42 @@
-# wasmspec — Close binOp trap cases (8 mechanical sorries)
+# wasmspec — STOP DECOMPOSING. START CLOSING.
 
-## STATUS: 27 Wasm sorry tokens. Overall project: 99→58 (-41). CC made huge progress. Now Wasm needs to contribute.
+## STATUS: Wasm sorry count went UP from 24→27. That is WRONG DIRECTION.
 
-## P0: binOp trap cases — THESE ARE MECHANICAL, CLOSE THEM NOW
+You have been decomposing monolithic sorries into sub-cases, which creates MORE sorry tokens. That was fine initially but now you need to CLOSE cases, not open more.
 
-Use `lean_goal` at each line, then `lean_multi_attempt` aggressively.
+## P0: binOp cases — 6 mechanical sorries at L10045, L10056, L10059, L10099, L10105, L10360
 
-**Stack underflow (4 sorries):**
-- L9953: withI32Bin/withI32Rel/withF64Bin stack underflow → trap
-- L9956: only 1 element → trap
-- L10023: same pattern (second binOp group)
-- L10026: same pattern
+These are ALL the same pattern: stack underflow or type mismatch → trap.
 
-```lean
--- Try these in lean_multi_attempt:
+Use `lean_goal` at each, then `lean_multi_attempt`:
+```
 ["simp_all [step?, pop2?, trapState, pushTrace]",
  "simp [withI32Bin, pop2?]; split <;> simp_all [trapState, pushTrace]",
- "simp [withF64Bin, pop2?]; split <;> simp_all [trapState, pushTrace]",
- "omega"]
+ "cases v1 <;> cases v2 <;> simp_all [withI32Bin, withI32Rel, withF64Bin, trapState, pushTrace]",
+ "simp [withF64Bin, pop2?]; split <;> simp_all [trapState, pushTrace]"]
 ```
 
-**Type mismatch (2 sorries):**
-- L10012: both values on stack, types don't match
-- L10066: same pattern
+After each fix, BUILD: `lake build VerifiedJS.Wasm.Semantics`
 
-```lean
--- Try:
-["cases v1 <;> cases v2 <;> simp_all [withI32Bin, withI32Rel, withF64Bin, trapState, pushTrace]",
- "simp_all [withI32Bin, withI32Rel, withF64Bin]; split <;> simp_all [trapState, pushTrace]"]
-```
+## P1: call (L10413, L10417) — 2 sorries
 
-**Other binOp (2 sorries):**
-- L10072: Use `lean_goal` first
-- L10327: Use `lean_goal` first
-
-## P1: store/store8 (L308)
-`lean_goal` at L308 to understand what's needed. This is a top-level sorry — could unlock structural progress.
-
-## P2: call-related (L10380, L10384)
 `lean_goal` at each. If mechanical, close them.
 
-## P3: br/brIf (L10647, L10730)
-Label manipulation. Use `lean_goal` — if labels list is empty, use `contradiction` or `omega`.
+## P2: br/brIf (L10680, L10763) — 2 sorries
 
-## SKIP (architecturally blocked):
-- Inner step_sim L6475-6553 (12 sorries) — 1:N mapping, needs redesign
-- callIndirect (L10387) — complex
-- memoryGrow (L11064) — complex
+Label manipulation. `lean_goal` first. Try `contradiction` or `omega` if labels list is empty.
 
-## APPROACH
-1. Start with P0 — use lean_multi_attempt on all 8 binOp cases
-2. Build after every 2-3 fixes: `lake build VerifiedJS.Wasm.Semantics`
-3. Move to P1-P3 only after P0 is done
+## SKIP (do NOT touch — architecturally blocked):
+- Inner step_sim L6475-6553 (12 sorries)
+- callIndirect (L10420)
+- memoryGrow (L11097)
+- L308 (top-level)
+
+## RULES:
+1. Build after EVERY fix
+2. If it doesn't compile, REVERT immediately
+3. Do NOT add more sorry tokens
+4. Target: close at least 4 of the 6 binOp cases this run
 
 ## Build: `lake build VerifiedJS.Wasm.Semantics`
 ## Log progress to agents/wasmspec/log.md.
