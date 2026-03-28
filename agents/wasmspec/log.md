@@ -1,3 +1,46 @@
+## Run: 2026-03-28T15:00:03+00:00
+
+### TASK: Fix broken build (memoryGrow proof errors) + ByteArray.toList_length lemma
+
+**Build status at start:** FAIL (4 errors in memoryGrow proof at L11687-11721)
+**Build status at end:** PASS (sorry warnings only)
+**Sorry instances:** 16 in Semantics.lean (unchanged — no sorry closures this run)
+
+### Completed
+
+1. **Fixed memoryGrow hmemory proof (L11687-11690)**:
+   - Error: `simp [h0mem]` left unsolved goal `grownMem = { data := ... }`
+   - Fix: `simp [h0mem, grownMem]` — adding `grownMem` to simp set resolves the definition
+
+2. **Fixed memoryGrow hmemory_aligned proof (L11692-11700)**:
+   - Error: `ByteArray.size` simp produced `(ByteArray.toList.loop ...).length` which couldn't be related to `s1.memory.size`; also `rfl` failed for `pages.toNat * 65536 = 65536 * pages.toNat`
+   - Root cause: No `ByteArray.toList_length` lemma exists in Lean 4.29.0 stdlib (`ByteArray.toList.loop` is `@[irreducible]`)
+   - Fix: Added `ByteArray_toList_loop_length` and `ByteArray_toList_length` helper lemmas (L5728-5744) proving `ba.toList.length = ba.size` by induction on `ba.size - i` with `attribute [local semireducible] ByteArray.toList.loop`
+   - Used `Nat.mul_comm` for commutativity witness in `Nat.dvd_add`
+
+3. **Fixed memoryGrow failure case omega (L11717-11721)**:
+   - Error: omega couldn't prove `¬(s1.memory.size / 65536 + pages.toNat ≤ 65536)` from `¬(s1.memory.size + pages.toNat * 65536 ≤ 65536 * 65536)` — needed memory alignment
+   - Fix: Extract `hrel.hmemory_aligned` to get `⟨k, hk⟩`, rewrite with aligned size, then use `calc` with `omega` to close
+
+### Assessment of Priority 0 (step_sim 1:1 cases)
+
+All 12 remaining `step_sim` sorries are BLOCKED:
+- **let, seq, if, while_, throw, tryCatch, return some**: 1:N cases (one ANF step → multiple IR steps). Need to be handled in `step_sim_stutter`, not `step_sim`.
+- **yield, await**: Also 1:N (argCode ++ [call runtime_op]).
+- **labeled**: Opaque LowerCodeCorr (generic `instrs`), 1:N.
+- **break, continue**: IR has `[.br target]` but `hlabels_empty` means `irFindLabel? [] target = none`, so IR traps with `"br: unknown label '{label}'"` while ANF steps silently. These are unreachable at top level but proving impossibility needs a well-formedness invariant on ANF expressions (break/continue only inside while/labeled blocks).
+
+### Assessment of Priority 1 (callIndirect exfalso)
+
+`callIndirect` IS a valid IR instruction (has EmitCodeCorr constructor at L7572). It's NOT excluded by any `supported` predicate. The case requires a full proof mirroring `call` (which is also sorry'd at L10794). Both are blocked by:
+- Trap message string mismatch between IR and Wasm
+- `hframes_one` invariant (requires frames.length = 1, but call creates 2 frames)
+
+### Key patterns discovered
+
+- **ByteArray.toList.loop is @[irreducible]** in Lean 4.29.0. No stdlib lemma relates `ByteArray.toList.length` to `ByteArray.size`. Use `attribute [local semireducible]` to unfold and prove by induction on `ba.size - i`.
+- **Memory alignment hypothesis** (`65536 ∣ s1.memory.size`) is essential for memoryGrow correctness proofs. It bridges the gap between byte-level sizes and page-level arithmetic that `omega` cannot handle alone.
+
 ## Run: 2026-03-28T09:15:01+00:00
 
 ### TASK: writeLE?_preserves_size + unOp proof
@@ -3718,3 +3761,4 @@ test_write
 
 2026-03-28T15:15:01+00:00 SKIP: already running
 2026-03-28T16:15:01+00:00 SKIP: already running
+2026-03-28T16:54:44+00:00 DONE
