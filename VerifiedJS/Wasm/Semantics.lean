@@ -4478,19 +4478,53 @@ def isControlFlowSignal (msg : String) : Bool :=
   msg.startsWith "break:" || msg.startsWith "continue:" ||
   msg.startsWith "return:" || msg.startsWith "throw:"
 
-/-- Control flow signal strings are recognized by prefix. -/
-@[simp] theorem isControlFlowSignal_return (s : String) :
-    isControlFlowSignal ("return:" ++ s) = true := by
-  simp [isControlFlowSignal, String.startsWith, String.isPrefixOf, List.isPrefixOf]
-@[simp] theorem isControlFlowSignal_break (s : String) :
-    isControlFlowSignal ("break:" ++ s) = true := by
-  simp [isControlFlowSignal, String.startsWith, String.isPrefixOf, List.isPrefixOf]
-@[simp] theorem isControlFlowSignal_continue (s : String) :
-    isControlFlowSignal ("continue:" ++ s) = true := by
-  simp [isControlFlowSignal, String.startsWith, String.isPrefixOf, List.isPrefixOf]
-@[simp] theorem isControlFlowSignal_throw (s : String) :
-    isControlFlowSignal ("throw:" ++ s) = true := by
-  simp [isControlFlowSignal, String.startsWith, String.isPrefixOf, List.isPrefixOf]
+/-- Control flow signal: `traceFromCore` maps "return:..." errors to `.silent`. -/
+@[simp] theorem traceFromCore_return (s : String) :
+    traceFromCore (.error ("return:" ++ s)) = .silent := by
+  simp only [traceFromCore]
+  have : isControlFlowSignal ("return:" ++ s) = true := by
+    unfold isControlFlowSignal
+    simp only [Bool.or_eq_true]
+    right; right; left
+    show ("return:" ++ s).startsWith "return:" = true
+    rfl
+  simp [this]
+
+/-- Control flow signal: `traceFromCore` maps "break:..." errors to `.silent`. -/
+@[simp] theorem traceFromCore_break (s : String) :
+    traceFromCore (.error ("break:" ++ s)) = .silent := by
+  simp only [traceFromCore]
+  have : isControlFlowSignal ("break:" ++ s) = true := by
+    unfold isControlFlowSignal
+    simp only [Bool.or_eq_true]
+    left
+    show ("break:" ++ s).startsWith "break:" = true
+    rfl
+  simp [this]
+
+/-- Control flow signal: `traceFromCore` maps "continue:..." errors to `.silent`. -/
+@[simp] theorem traceFromCore_continue (s : String) :
+    traceFromCore (.error ("continue:" ++ s)) = .silent := by
+  simp only [traceFromCore]
+  have : isControlFlowSignal ("continue:" ++ s) = true := by
+    unfold isControlFlowSignal
+    simp only [Bool.or_eq_true]
+    right; left
+    show ("continue:" ++ s).startsWith "continue:" = true
+    rfl
+  simp [this]
+
+/-- Control flow signal: `traceFromCore` maps "throw:..." errors to `.silent`. -/
+@[simp] theorem traceFromCore_throw (s : String) :
+    traceFromCore (.error ("throw:" ++ s)) = .silent := by
+  simp only [traceFromCore]
+  have : isControlFlowSignal ("throw:" ++ s) = true := by
+    unfold isControlFlowSignal
+    simp only [Bool.or_eq_true]
+    right; right; right
+    show ("throw:" ++ s).startsWith "throw:" = true
+    rfl
+  simp [this]
 
 /-- Map a Core.TraceEvent to an IR.TraceEvent.
     Used by LowerCorrect: ∀ trace, ANF.Behaves s trace → IR.Behaves t (map traceFromCore trace).
