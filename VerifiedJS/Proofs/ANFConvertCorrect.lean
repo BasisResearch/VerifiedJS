@@ -1091,30 +1091,28 @@ private theorem normalizeExpr_labeled_step_sim
       ExprWellFormed sf'.expr sf'.env := by
   cases e with
   | labeled label' body_flat =>
-    -- normalizeExpr (.labeled label' body_flat) k produces .labeled label' bodyExpr
-    -- Decompose: (do bodyExpr ← normalizeExpr body_flat k; pure (.labeled label' bodyExpr)).run n
-    unfold ANF.normalizeExpr at hnorm
-    -- hnorm now has bind form. Split on normalizeExpr body_flat k result.
-    revert hnorm; simp only [bind, Bind.bind, StateT.bind, StateT.run, Except.bind]
-    split
-    · intro hnorm
-      simp only [pure, Pure.pure, StateT.pure, Except.pure] at hnorm
-      have ⟨h1, h2⟩ := Prod.mk.inj (Except.ok.inj hnorm)
-      have ⟨hlabel, hbody⟩ := ANF.Expr.labeled.inj h1
-      subst hlabel; subst hbody
-      rename_i heq; obtain ⟨bodyExpr, m'⟩ := heq; simp at h2; subst h2
-      -- One Flat step: .labeled label body_flat → body_flat
+    -- normalizeExpr (.labeled label' body_flat) k = do { bodyExpr ← normalizeExpr body_flat k; pure (.labeled label' bodyExpr) }
+    simp only [ANF.normalizeExpr] at hnorm
+    simp only [bind, Bind.bind, StateT.bind, StateT.run, Except.bind] at hnorm
+    cases hres : ANF.normalizeExpr body_flat k n with
+    | ok val =>
+      simp [hres, pure, Pure.pure, StateT.pure, Except.pure] at hnorm
+      obtain ⟨⟨hlabel, hbody⟩, hm⟩ := hnorm
+      subst hlabel
+      obtain ⟨body_expr, m'⟩ := val; simp at hbody hm; subst hbody; subst hm
+      -- One Flat step: .labeled label' body_flat → body_flat
       obtain ⟨sf', hstep, hexpr, henv', hheap', htrace'⟩ : ∃ sf',
           Flat.step? sf = some (.silent, sf') ∧ sf'.expr = body_flat ∧
           sf'.env = sf.env ∧ sf'.heap = sf.heap ∧
           sf'.trace = sf.trace ++ [Core.TraceEvent.silent] := by
-        have hsf_eq : sf = { sf with expr := Flat.Expr.labeled label body_flat } := by cases sf; simp_all
+        have hsf_eq : sf = { sf with expr := Flat.Expr.labeled label' body_flat } := by
+          cases sf; simp_all
         rw [hsf_eq]; unfold Flat.step?; exact ⟨_, rfl, rfl, rfl, rfl, rfl⟩
       refine ⟨[.silent], sf', .tail ⟨hstep⟩ (.refl _), ?_, henv', hheap', ?_, rfl, ?_⟩
-      · rw [hexpr]; exact ⟨k, n, m', ‹_›, hk⟩
+      · rw [hexpr]; exact ⟨k, n, m', hres, hk⟩
       · rw [htrace', observableTrace_append]; simp [observableTrace]; decide
-      · rw [hexpr]; intro x hfx; exact hwf x (VarFreeIn.labeled _ _ _ hfx)
-    · intro hnorm; simp at hnorm
+      · rw [hexpr]; intro x hfx; exact hwf x (VarFreeIn.labeled_body _ _ _ hfx)
+    | error msg => simp [hres] at hnorm
   | var name =>
     exfalso
     simp only [ANF.normalizeExpr] at hnorm
