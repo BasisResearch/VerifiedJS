@@ -1145,19 +1145,13 @@ private theorem normalizeExpr_labeled_step_sim
     | none =>
       exfalso; simp only [ANF.normalizeExpr, pure, Pure.pure, StateT.pure, Except.pure] at hnorm
       exact ANF.Expr.noConfusion (Prod.mk.inj (Except.ok.inj hnorm)).1
-    | some _ =>
-      exfalso; unfold ANF.normalizeExpr at hnorm
-      simp only [StateT.run, bind, Bind.bind, StateT.bind, Except.bind] at hnorm
-      repeat (first | split at hnorm | (simp [pure, Pure.pure, StateT.pure, Except.pure] at hnorm; try exact ANF.Expr.noConfusion (Prod.mk.inj (Except.ok.inj hnorm)).1))
+    | some _ => sorry -- return (some v) wrapping .labeled in sub-expression
   | yield arg delegate =>
     cases arg with
     | none =>
       exfalso; simp only [ANF.normalizeExpr, pure, Pure.pure, StateT.pure, Except.pure] at hnorm
       exact ANF.Expr.noConfusion (Prod.mk.inj (Except.ok.inj hnorm)).1
-    | some _ =>
-      exfalso; unfold ANF.normalizeExpr at hnorm
-      simp only [StateT.run, bind, Bind.bind, StateT.bind, Except.bind] at hnorm
-      repeat (first | split at hnorm | (simp [pure, Pure.pure, StateT.pure, Except.pure] at hnorm; try exact ANF.Expr.noConfusion (Prod.mk.inj (Except.ok.inj hnorm)).1))
+    | some _ => sorry -- yield (some v) wrapping .labeled
   | while_ cond body_w =>
     -- while produces .seq (.while_ ...) rest, never .labeled
     exfalso; unfold ANF.normalizeExpr at hnorm
@@ -1174,8 +1168,7 @@ private theorem normalizeExpr_labeled_step_sim
     | some fin =>
       simp only [Functor.map, StateT.map, StateT.run, bind, Bind.bind, StateT.bind, Except.bind] at hnorm
       repeat (first | split at hnorm | (simp [pure, Pure.pure, StateT.pure, Except.pure] at hnorm; try exact ANF.Expr.noConfusion (Prod.mk.inj (Except.ok.inj hnorm)).1))
-  | _ =>
-    all_goals (exfalso; unfold ANF.normalizeExpr at hnorm; simp only [StateT.run, bind, Bind.bind, StateT.bind, Except.bind] at hnorm; repeat (first | split at hnorm | (simp [pure, Pure.pure, StateT.pure, Except.pure] at hnorm; try exact ANF.Expr.noConfusion (Prod.mk.inj (Except.ok.inj hnorm)).1)))
+  | _ => sorry -- remaining compound cases and seq
 
 /-- Stuttering simulation: one ANF step corresponds to one or more Flat steps,
     preserving observable events and the simulation relation.
