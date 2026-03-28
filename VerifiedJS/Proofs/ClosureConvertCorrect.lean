@@ -2826,7 +2826,7 @@ private theorem closureConvert_step_simulation
       subst hsf'_eq
       have hdepth : obj.depth < n := by simp [Core.Expr.depth] at hd; omega
       have hncfr_obj : noCallFrameReturn obj = true := by
-        simp [noCallFrameReturn] at hncfr; exact hncfr.1
+        simp [noCallFrameReturn] at hncfr; exact hncfr.1.1
       have hexprwf_obj : ExprAddrWF obj sc.heap.objects.size := by
         simp [ExprAddrWF] at hexprwf; exact hexprwf.1
       obtain ⟨injMap', sc_sub', ⟨hcstep_sub⟩, htrace_sub, hinj', henvCorr', henvwf', hheapvwf', hncfr', hexprwf', st_a, st_a', hconv', hAgreeIn, hAgreeOut⟩ :=
@@ -2851,8 +2851,9 @@ private theorem closureConvert_step_simulation
       · exact henvCorr'
       · exact henvwf'
       · exact hheapvwf'
-      · simp [sc', noCallFrameReturn]; exact ⟨hncfr', by
-          simp [noCallFrameReturn] at hncfr; exact ⟨hncfr.2.1, hncfr.2.2⟩⟩
+      · simp [sc', noCallFrameReturn]; exact ⟨⟨hncfr', by
+          simp [noCallFrameReturn] at hncfr; exact hncfr.1.2⟩, by
+          simp [noCallFrameReturn] at hncfr; exact hncfr.2⟩
       · simp only [sc']; simp only [ExprAddrWF]; refine ⟨hexprwf', ?_, ?_⟩
         · exact ExprAddrWF_mono idx (by simp [ExprAddrWF] at hexprwf; exact hexprwf.2.1) (Core_step_heap_size_mono hcstep_sub)
         · exact ExprAddrWF_mono value (by simp [ExprAddrWF] at hexprwf; exact hexprwf.2.2) (Core_step_heap_size_mono hcstep_sub)
