@@ -1145,7 +1145,46 @@ private theorem normalizeExpr_labeled_step_sim
     | none =>
       exfalso; simp only [ANF.normalizeExpr, pure, Pure.pure, StateT.pure, Except.pure] at hnorm
       exact ANF.Expr.noConfusion (Prod.mk.inj (Except.ok.inj hnorm)).1
-    | some _ => sorry -- return (some v) wrapping .labeled in sub-expression
+    | some val =>
+      -- normalizeExpr (.return (some val)) k = normalizeExpr val (fun t => pure (.return (some t)))
+      -- The outer k is discarded. .labeled can only come from val having .labeled in first position.
+      simp only [ANF.normalizeExpr] at hnorm
+      -- hnorm : (normalizeExpr val (fun t => pure (.return (some t)))).run n = .ok (.labeled label body, m)
+      -- We proceed by cases on val. If val = .labeled, we can directly construct the witness.
+      cases val with
+      | labeled l b_flat =>
+        -- normalizeExpr (.labeled l b_flat) k_inner = .labeled l (normalizeExpr b_flat k_inner)
+        simp only [ANF.normalizeExpr, bind, Bind.bind, StateT.bind, StateT.run, Except.bind] at hnorm
+        cases hbf : (ANF.normalizeExpr b_flat (fun t => StateT.pure (ANF.Expr.return (some t)))).run n with
+        | error msg => simp [hbf] at hnorm
+        | ok val_pair =>
+          obtain ⟨body_expr, m'⟩ := val_pair
+          simp [hbf, pure, Pure.pure, StateT.pure, Except.pure] at hnorm
+          obtain ⟨⟨rfl, rfl⟩, rfl⟩ := hnorm
+          -- One Flat step: .return (some (.labeled l b_flat)) → .return (some b_flat)
+          -- Flat.step? evaluates inside .return context: .labeled l b_flat → b_flat
+          have hnotval : Flat.exprValue? (Flat.Expr.labeled l b_flat) = none := by
+            simp [Flat.exprValue?]
+          have hstep_inner : Flat.step? { sf with expr := Flat.Expr.labeled l b_flat } =
+              some (.silent, { sf with expr := b_flat, trace := sf.trace ++ [Core.TraceEvent.silent] }) := by
+            simp [Flat.step?]
+          have hstep_ret : ∃ s', Flat.step? sf = some (.silent, s') ∧
+              s'.expr = .return (some b_flat) ∧ s'.env = sf.env ∧ s'.heap = sf.heap ∧
+              s'.trace = sf.trace ++ [Core.TraceEvent.silent] := by
+            rw [hsf]; simp only [Flat.step?, Flat.exprValue?, hstep_inner]
+            exact ⟨_, rfl, rfl, rfl, rfl, rfl⟩
+          obtain ⟨s', hstep_s, hexpr_s, henv_s, hheap_s, htrace_s⟩ := hstep_ret
+          refine ⟨[.silent], s', .tail ⟨hstep_s⟩ (.refl _), ?_, henv_s, hheap_s, ?_, rfl, ?_⟩
+          · -- normalizeExpr (.return (some b_flat)) k' = body for trivial-preserving k'
+            -- Since normalizeExpr (.return (some b_flat)) k' = normalizeExpr b_flat (fun t => pure (.return (some t)))
+            -- = body_expr, we just need any trivial-preserving k'
+            refine ⟨fun arg => pure (.trivial arg), n, m', ?_, ?_⟩
+            · rw [hexpr_s]; simp only [ANF.normalizeExpr, ANF.normalizeExpr.match_2]; exact hbf
+            · intro arg n''; exact ⟨n'', by simp [pure, Pure.pure, StateT.pure, Except.pure, StateT.run]⟩
+          · rw [htrace_s, observableTrace_append]; simp [observableTrace]; decide
+          · rw [hexpr_s]; intro x hfx; rw [henv_s]
+            exact hwf x (VarFreeIn.return_some _ _ hfx |>.labeled_body l _ _ |>.return_some)
+      | _ => sorry -- non-labeled sub-expression: requires induction on val depth
   | yield arg delegate =>
     cases arg with
     | none =>

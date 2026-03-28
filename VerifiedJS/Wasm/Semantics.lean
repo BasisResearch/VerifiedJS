@@ -3070,6 +3070,73 @@ private theorem withI32Rel_some (s : ExecState) (op : UInt32 → UInt32 → Bool
     ∃ t s', withI32Rel s op name = some (t, s') := by
   simp [withI32Rel, pop2?, hstk]
 
+/-! ## binOp trap step lemmas: when pop2? fails, withI32Bin/withI32Rel/withF64Bin trap -/
+
+private theorem step?_eq_i32Add_trap (s : ExecState) (rest : List Instr)
+    (hcode : s.code = Instr.i32Add :: rest) (hpop : pop2? s.stack = none) :
+    step? s = some (trapState { s with code := rest } "type mismatch in i32.add") := by
+  cases s; simp_all [step?, withI32Bin, trapState, pushTrace]
+
+private theorem step?_eq_i32Sub_trap (s : ExecState) (rest : List Instr)
+    (hcode : s.code = Instr.i32Sub :: rest) (hpop : pop2? s.stack = none) :
+    step? s = some (trapState { s with code := rest } "type mismatch in i32.sub") := by
+  cases s; simp_all [step?, withI32Bin, trapState, pushTrace]
+
+private theorem step?_eq_i32Mul_trap (s : ExecState) (rest : List Instr)
+    (hcode : s.code = Instr.i32Mul :: rest) (hpop : pop2? s.stack = none) :
+    step? s = some (trapState { s with code := rest } "type mismatch in i32.mul") := by
+  cases s; simp_all [step?, withI32Bin, trapState, pushTrace]
+
+private theorem step?_eq_i32And_trap (s : ExecState) (rest : List Instr)
+    (hcode : s.code = Instr.i32And :: rest) (hpop : pop2? s.stack = none) :
+    step? s = some (trapState { s with code := rest } "type mismatch in i32.and") := by
+  cases s; simp_all [step?, withI32Bin, trapState, pushTrace]
+
+private theorem step?_eq_i32Or_trap (s : ExecState) (rest : List Instr)
+    (hcode : s.code = Instr.i32Or :: rest) (hpop : pop2? s.stack = none) :
+    step? s = some (trapState { s with code := rest } "type mismatch in i32.or") := by
+  cases s; simp_all [step?, withI32Bin, trapState, pushTrace]
+
+private theorem step?_eq_i32Eq_trap (s : ExecState) (rest : List Instr)
+    (hcode : s.code = Instr.i32Eq :: rest) (hpop : pop2? s.stack = none) :
+    step? s = some (trapState { s with code := rest } "type mismatch in i32.eq") := by
+  cases s; simp_all [step?, withI32Rel, trapState, pushTrace]
+
+private theorem step?_eq_i32Ne_trap (s : ExecState) (rest : List Instr)
+    (hcode : s.code = Instr.i32Ne :: rest) (hpop : pop2? s.stack = none) :
+    step? s = some (trapState { s with code := rest } "type mismatch in i32.ne") := by
+  cases s; simp_all [step?, withI32Rel, trapState, pushTrace]
+
+private theorem step?_eq_i32Lts_trap (s : ExecState) (rest : List Instr)
+    (hcode : s.code = Instr.i32Lts :: rest) (hpop : pop2? s.stack = none) :
+    step? s = some (trapState { s with code := rest } "type mismatch in i32.lt_s") := by
+  cases s; simp_all [step?, withI32Rel, trapState, pushTrace]
+
+private theorem step?_eq_i32Gts_trap (s : ExecState) (rest : List Instr)
+    (hcode : s.code = Instr.i32Gts :: rest) (hpop : pop2? s.stack = none) :
+    step? s = some (trapState { s with code := rest } "type mismatch in i32.gt_s") := by
+  cases s; simp_all [step?, withI32Rel, trapState, pushTrace]
+
+private theorem step?_eq_f64Add_trap (s : ExecState) (rest : List Instr)
+    (hcode : s.code = Instr.f64Add :: rest) (hpop : pop2? s.stack = none) :
+    step? s = some (trapState { s with code := rest } "type mismatch in f64.add") := by
+  cases s; simp_all [step?, withF64Bin, trapState, pushTrace]
+
+private theorem step?_eq_f64Sub_trap (s : ExecState) (rest : List Instr)
+    (hcode : s.code = Instr.f64Sub :: rest) (hpop : pop2? s.stack = none) :
+    step? s = some (trapState { s with code := rest } "type mismatch in f64.sub") := by
+  cases s; simp_all [step?, withF64Bin, trapState, pushTrace]
+
+private theorem step?_eq_f64Mul_trap (s : ExecState) (rest : List Instr)
+    (hcode : s.code = Instr.f64Mul :: rest) (hpop : pop2? s.stack = none) :
+    step? s = some (trapState { s with code := rest } "type mismatch in f64.mul") := by
+  cases s; simp_all [step?, withF64Bin, trapState, pushTrace]
+
+private theorem step?_eq_f64Div_trap (s : ExecState) (rest : List Instr)
+    (hcode : s.code = Instr.f64Div :: rest) (hpop : pop2? s.stack = none) :
+    step? s = some (trapState { s with code := rest } "type mismatch in f64.div") := by
+  cases s; simp_all [step?, withF64Bin, trapState, pushTrace]
+
 /-! ## i64 bitwise @[simp] lemmas (used by Emit.lean) -/
 
 /-- i64.and on two i64 values. -/
