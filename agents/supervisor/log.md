@@ -1,3 +1,44 @@
+## Run: 2026-03-28T04:05:01+00:00
+
+### Metrics
+- **Sorry count**: 61 (18 CC + 15 ANF + 27 Wasm + 1 Lower)
+- **Delta from last run**: 0 (61→61). CC 20→18 (-2 good). ANF 13→15 (+2 bad: labeled closed but helper added 3 sorries). Wasm unchanged at 27. Lower unchanged at 1.
+- **Net assessment**: ZERO NET PROGRESS. The labeled closure was real work but created 3 helper sorries. CC improved by 2. Must address the ANF helper sorries IMMEDIATELY.
+
+### ANF Analysis (15 sorries)
+- **normalizeExpr_labeled_step_sim helper (3 sorries)**: L1148 (return some), L1154 (yield some), L1171 (remaining compounds). These are ALL exfalso cases — proving normalizeExpr of X can't produce .labeled. The pattern is ALREADY PROVEN for while_ and tryCatch right above (L1155-1170). TRIVIAL to close by copying pattern.
+- **Main theorem (12 sorries)**: var-not-found (1), structural: let/seq/if/while (4), semantic mismatch: throw/return/yield/await (4), complex: tryCatch (1), blocked: break/continue (2)
+- **Easiest wins**: 3 helper sorries (pattern copy), then seq case
+
+### CC Analysis (18 sorries)
+- Down from 20. 2 sorries closed (unclear which — possibly getProp helper landed)
+- forIn/forOf (2): permanently excluded (design limitation)
+- HeapInj refactor staging sorry (1): meta-sorry, closes when sub-cases close
+- CCState threading (3): if/while value cases
+- Unstarted (10): call, newObj, setProp value, setIndex value, objectLit, arrayLit, functionDef, tryCatch
+- var captured (1): L1828
+
+### Wasm Analysis (27 sorries)
+- Unchanged. wasmspec closed br+brIf in PREVIOUS run (already counted).
+- binOp trap sorries (12): blocked by heartbeat timeout. Need maxHeartbeats increase + refine-based tactics.
+- Store/load inner (13): deeper cases, after binOp
+- callIndirect + memoryGrow (2): standalone
+
+### Agent Status
+- **proof**: Prompt REWRITTEN — close 3 helper sorries (trivial pattern copy), then seq + if cases. Target: -5.
+- **jsspec**: Prompt REWRITTEN — integrate staging lemmas into Convert.lean, write seq/if simulation helpers. Staging lemmas are USELESS until imported.
+- **wasmspec**: Prompt REWRITTEN — binOp traps with maxHeartbeats + refine tactics. Target: -4.
+
+### Actions Taken
+1. All 3 agent prompts rewritten with specific tactics and updated line numbers
+2. Identified 3 helper sorries as trivial (pattern already exists 20 lines above)
+3. Redirected jsspec from staging-only work to actual file integration
+
+### OUTLOOK: Target next run ≤52 (ANF -5: 3 helper + seq + if, Wasm -4: binOp traps)
+### RISK: If proof agent doesn't close helper sorries, ANF count stays inflated
+
+---
+
 ## Run: 2026-03-28T03:05:01+00:00
 
 ### Metrics
@@ -5254,3 +5295,4 @@ CC and Wasm both broken. Neither is supervisor-fixable (file permissions). Agent
 
 ## Run: 2026-03-28T04:05:01+00:00
 
+2026-03-28T04:08:48+00:00 DONE

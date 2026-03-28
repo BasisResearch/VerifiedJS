@@ -1,65 +1,62 @@
-# jsspec — ANF CASE HELPERS (LABELED, YIELD, AWAIT)
+# jsspec — INTEGRATE STAGING LEMMAS + SEQ/IF SIMULATION HELPERS
 
-## STATUS: proof agent is installing your simp lemmas from staging. You now need to write CASE-SPECIFIC helpers.
+## STATUS: You've written great lemmas in staging files. But NONE of them are in the actual proof files yet. The proof agent CANNOT USE staging lemmas.
 
-## CRITICAL DISCOVERY: MORE BLOCKED CASES
+## CRITICAL: YOUR STAGING LEMMAS MUST BE INTEGRATED
 
-observableTrace only filters `.silent`. These ANF cases produce DIFFERENT events from their Flat counterparts:
-- **return none**: ANF → `.silent`, Flat → `.error "return:undefined"`. BLOCKED.
-- **return some**: ANF → `.silent`, Flat → `.error "return:..."`. BLOCKED.
-- **throw**: ANF → `.error "throw"`, Flat → `.error (valueToString v)`. BLOCKED (different strings).
-- **break/continue**: Already known BLOCKED.
+The proof agent's normalizeExpr_labeled_step_sim has 3 helper sorries because it needs no-confusion lemmas for compound cases. Your staging files have some of these but they're in `.lake/_tmp_fix/` which is NOT imported.
 
-PROVABLE CASES (both sides produce matching events):
-- **labeled** (L1158): both `.silent` → body
-- **yield none** (L1154): both `.silent` → `.lit .undefined`/`.trivial .litUndefined`
-- **yield some** (L1154): both `.silent` on success
-- **await** (L1156): both `.silent` on success
-- **if** (L1144): both `.silent` on branch
-- **let** (L1140): complex (evalComplex)
-- **seq** (L1142): complex (inner stepping)
-- **while** (L1146): complex
-- **tryCatch** (L1150): complex
+## PRIORITY 0: Write normalizeExpr compound no-confusion lemmas INTO `VerifiedJS/ANF/Convert.lean`
 
-## PRIORITY 0: Flat.step? simp lemmas for labeled/yield/await
+These lemmas prove that normalizeExpr of compound expressions (return some, yield some, let, seq, if, throw, await) cannot produce `.labeled`. They should go BEFORE `end VerifiedJS.ANF` in Convert.lean.
 
-Write these in `.lake/_tmp_fix/VerifiedJS/Proofs/anf_helpers.lean` (or new file):
+Pattern (all should be provable by `unfold normalizeExpr; simp [bind, StateT.bind, ...]; split; ...`):
 
 ```lean
--- Flat.step? on labeled: steps to body with .silent
-@[simp] theorem Flat.step?_labeled (s : Flat.State) (label : Flat.LabelName) (body : Flat.Expr) :
-    Flat.step? { s with expr := .labeled label body } =
-      some (.silent, Flat.pushTrace { s with expr := body } .silent) := by
-  simp [Flat.step?]
+theorem normalizeExpr_return_some_not_labeled (v : Flat.Expr) (k : Trivial → ConvM Expr)
+    (n : Nat) (label : String) (body : Expr) :
+    (normalizeExpr (.return (some v)) k).run n ≠ .ok (.labeled label body, _) := by
+  unfold normalizeExpr
+  simp only [bind, Bind.bind, StateT.bind, StateT.run, Except.bind]
+  intro h; split at h <;> simp [pure, Pure.pure, StateT.pure, Except.pure] at h
+  <;> exact Expr.noConfusion (Prod.mk.inj (Except.ok.inj h)).1
 
--- Flat.step? on yield none: steps to .lit .undefined with .silent
-@[simp] theorem Flat.step?_yield_none (s : Flat.State) (delegate : Bool) :
-    Flat.step? { s with expr := .yield none delegate } =
-      some (.silent, Flat.pushTrace { s with expr := .lit .undefined } .silent) := by
-  simp [Flat.step?]
-
--- Flat.step? on await with value: steps to .lit v with .silent
-@[simp] theorem Flat.step?_await_value (s : Flat.State) (v : Flat.Value) :
-    Flat.step? { s with expr := .await (.lit v) } =
-      some (.silent, Flat.pushTrace { s with expr := .lit v } .silent) := by
-  simp [Flat.step?, Flat.exprValue?]
+theorem normalizeExpr_seq_not_labeled (a b : Flat.Expr) (k : Trivial → ConvM Expr)
+    (n : Nat) (label : String) (body : Expr) :
+    (normalizeExpr (.seq a b) k).run n ≠ .ok (.labeled label body, _) := by
+  unfold normalizeExpr
+  simp only [bind, Bind.bind, StateT.bind, StateT.run, Except.bind]
+  intro h; split at h <;> simp [pure, Pure.pure, StateT.pure, Except.pure] at h
+  <;> exact Expr.noConfusion (Prod.mk.inj (Except.ok.inj h)).1
 ```
 
-Verify each with `lean_verify`. These are needed by proof agent for the easy cases.
+If this exact pattern doesn't work, use `lean_multi_attempt` at each to find what does.
 
-## PRIORITY 1: normalizeExpr inversion for labeled case
+## PRIORITY 1: Write seq simulation helper
 
-The proof agent needs: if `(normalizeExpr sf.expr k).run n = .ok (.labeled label body_anf, m)`, then sf.expr = `.labeled label body_flat` for some `body_flat` and `(normalizeExpr body_flat k).run n = .ok (body_anf, m)`.
+The proof agent needs a helper like `normalizeExpr_var_step_sim` but for the seq case in anfConvert_step_star. The seq case is:
 
-This is hard to prove for ALL Flat.Expr constructors (need StateT monad reasoning for compound cases). Try the approach:
-1. Case split on `sf.expr`
-2. For simple cases (var, lit, this, break, continue, etc.), `simp [normalizeExpr]` should give contradiction
-3. For compound cases, may need `unfold normalizeExpr; simp` or monad reasoning
+ANF.step? for `.seq a b`:
+- If a steps: inner step on a, remain in seq
+- If a is value: skip to b
 
-If full inversion is too hard, prove it for just the cases where `hk_triv` (k only produces .trivial) is available — this eliminates many compound cases.
+normalizeExpr (.seq a b) k = `normalizeExpr a (fun _ => normalizeExpr b k)`
 
-## PRIORITY 2: Document which cases are provable vs blocked
+Helper needed:
+```lean
+/-- When ANF steps .seq a b by stepping a, Flat can simulate with steps on normalizeExpr a -/
+private theorem normalizeExpr_seq_inner_step_sim
+    (a b : Flat.Expr) (k : ANF.Trivial → ANF.ConvM ANF.Expr)
+    (n m : Nat) (result : ANF.Expr)
+    (hk : ∀ (arg : ANF.Trivial) (n' : Nat), ∃ m', (k arg).run n' = .ok (.trivial arg, m'))
+    (hnorm : (ANF.normalizeExpr (.seq a b) k).run n = .ok (result, m))
+    ... -- fill in from lean_goal
+```
 
-Update `.lake/_tmp_fix/VerifiedJS/Proofs/design_issues.md` with the full blocked-case analysis above.
+Use `lean_goal` at L1245 in ANFConvertCorrect.lean to understand exactly what the proof agent needs.
 
-## DO NOT edit main proof files. Log to agents/jsspec/log.md.
+## PRIORITY 2: Write if simulation helper (same pattern as seq but for branching)
+
+## DO NOT edit main proof files (ANFConvertCorrect.lean, ClosureConvertCorrect.lean).
+## You CAN edit: VerifiedJS/ANF/Convert.lean, staging files, VerifiedJS/Flat/Semantics.lean helpers
+## Log to agents/jsspec/log.md
