@@ -1,44 +1,42 @@
-# wasmspec — CLOSE return-some (L6801) THIS RUN
+# wasmspec — STOP TRYING return-some IN step_sim. IT IS 1:N.
 
-## STATUS: 15 actual Wasm sorries. Target: 14 (-1). return-some is GUARANTEED.
+## CRITICAL CORRECTION
 
-File: `VerifiedJS/Wasm/Semantics.lean`
+**L6801 (`| some t => sorry`) in `step_sim` is UNPROVABLE.**
 
-## PRIORITY 0: return-some (L6801) — ALL 9 LEMMAS ALREADY PROVED
+`step_sim` proves `∃ s2', irStep? s2 = some (t, s2')` — a SINGLE IR step.
+But `return (some triv)` emits `argCode ++ [return_]` = 2+ IR steps. This is 1:N, not 1:1.
 
-All 9 `step_sim_return_*` lemmas are fully proved (no sorry). You JUST need to dispatch.
+**step_sim_stutter (L7370) ALREADY handles return-some correctly.** All 9 per-trivial lemmas are already wired in there. No work needed on return-some.
 
-**EXACT EDIT** — replace `| some t => sorry` at L6801 with:
-```lean
-        | some triv =>
-          -- Dispatch to per-trivial-type lemmas (all proved above)
-          cases triv with
-          | litNull => exact step_sim_return_litNull prog irmod s1 s2 t s1' hrel hexpr hstep
-          | litNum n => exact step_sim_return_litNum prog irmod s1 s2 t s1' hrel hexpr hstep
-          | var name => exact step_sim_return_var prog irmod s1 s2 t s1' hrel hexpr hstep
-          | litUndefined => exact step_sim_return_litUndefined prog irmod s1 s2 t s1' hrel hexpr hstep
-          | litBool b =>
-            cases b with
-            | true => exact step_sim_return_litBoolTrue prog irmod s1 s2 t s1' hrel hexpr hstep
-            | false => exact step_sim_return_litBoolFalse prog irmod s1 s2 t s1' hrel hexpr hstep
-          | litObject addr => exact step_sim_return_litObject prog irmod s1 s2 t s1' hrel hexpr hstep
-          | litStr s => exact step_sim_return_litStr prog irmod s1 s2 t s1' hrel hexpr hstep
-          | litClosure fi ep => exact step_sim_return_litClosure prog irmod s1 s2 t s1' hrel hexpr hstep
-```
+The L6801 sorry stays. Move on.
 
-**IMPORTANT**: The `| some t =>` at L6801 shadows the outer `t` (TraceEvent). You MUST rename it to `triv` (or any name). After `cases triv`, the outer `t` (TraceEvent) remains accessible for the lemma calls.
+## ACTUAL PRIORITY 0: Prove 1:1 cases in step_sim
 
-After the edit:
-1. Rename `| some t =>` to `| some triv =>`
-2. Add the cases block above
-3. Build: `lake build VerifiedJS.Wasm.Semantics`
-4. If type errors occur, check if `hexpr` has the right form. After match on `arg` then `cases triv`, `hexpr` should be `s1.expr = .return (some .litNull)` etc. If Lean doesn't propagate the match info, you may need `(hexpr ▸ rfl : s1.expr = .return (some .litNull))` or similar.
+Some expression forms in step_sim ARE 1:1 (single IR instruction). Focus on these:
 
-## PRIORITY 1: call case (L10776)
+### yield (L6804) and await (L6807)
+Check: does ANF `yield`/`await` map to a single IR instruction? Look at `LowerCodeCorr` constructors for `.yield` and `.await`. If the IR is a single instruction, it's 1:1 and provable following the return-none pattern (L6764-6800).
 
-The call case was consolidated to a single sorry. Read L10777-10837 for the commented-out attempt. The main blockers are trap message alignment and multi-frame. Skip if return-some takes time.
+### break (L6813) and continue (L6816)
+Check: do these map to single IR instructions (`br label` / `br_if` something)? If so, prove them 1:1 following the return-none pattern.
 
-## LSP TIMEOUT WORKAROUND
-This file is 11K+ lines. Use `lean_diagnostic_messages` with start_line/end_line around edited area.
+### labeled (L6810)
+Check: does `.labeled label body` map to a single IR `block` instruction? If so, prove 1:1.
 
+### How to check: Use `lean_hover_info` on LowerCodeCorr constructors, or grep for `yield_inv|await_inv|break_inv|continue_inv|labeled_inv` in EmitCodeCorr/LowerCodeCorr.
+
+## PRIORITY 1: callIndirect (L10838) — exfalso?
+
+Check if `.callIndirect` is excluded by `supported`. If `ANF.Expr.supported` or `Flat.Expr.supported` excludes callIndirect, close with `exfalso`.
+
+## PRIORITY 2: Expand step_sim_stutter for 1:N cases
+
+For compound cases (let, seq, if, while, throw, tryCatch) that need N IR steps:
+1. Add them as explicit matches in `step_sim_stutter` (like return-some at L7380)
+2. Write per-case lemmas (like `step_sim_return_litNull`) showing IR takes N steps with matching observable events
+
+Start with `throw` — it's likely the simplest (1 event, simple IR sequence).
+
+## File: `VerifiedJS/Wasm/Semantics.lean`
 ## Log to agents/wasmspec/log.md
