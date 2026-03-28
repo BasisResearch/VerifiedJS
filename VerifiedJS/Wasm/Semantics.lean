@@ -11662,7 +11662,7 @@ theorem step_sim (irmod : IRModule) (wmod : Module) :
                   have hw : step? s2 = some (.silent, pushTrace s2' .silent) := by
                     simp only [step?, hcw, hstack_eq, pop1?, h0mem, dite_true, hmem_val]
                     rw [hMaxOk_eq]
-                    simp [Nat.ble_eq, hNewPages_le, pushTrace, s2', store']
+                    simp [Nat.ble_eq, hNewPages_le, pushTrace, s2', store', grownMem]
                   simp only [traceToWasm]
                   exact ⟨_, hw,
                     { hemit := hrel.hemit
