@@ -11674,7 +11674,9 @@ theorem step_sim (irmod : IRModule) (wmod : Module) :
                         · intro i hi
                           simp only [List.length_cons] at hi
                           match i with
-                          | 0 => simp; exact ⟨_, _, rfl, rfl, .i32 _⟩
+                          | 0 =>
+                            simp only [List.getElem?_cons_zero]
+                            exact ⟨_, _, rfl, rfl, .i32 _⟩
                           | i + 1 =>
                             simp only [List.getElem?_cons_succ]
                             exact htail i (by omega)
@@ -11690,7 +11692,7 @@ theorem step_sim (irmod : IRModule) (wmod : Module) :
                       hmemory_aligned := by
                         dsimp only [s2', store', pushTrace, grownMem]
                         simp only [ByteArray.size, Array.size_append, Array.size_replicate,
-                          ByteArray.toList, Array.toList_toArray, ByteArray.data, ByteArray.size_data]
+                          ByteArray.toList, Array.toArray_toList, ByteArray.data, ByteArray.size_data]
                         exact Nat.dvd_add hrel.hmemory_aligned ⟨pages.toNat, rfl⟩
                       hmemory_nonempty := by
                         dsimp only [s2', store', pushTrace]
@@ -11733,7 +11735,9 @@ theorem step_sim (irmod : IRModule) (wmod : Module) :
                         · intro i hi
                           simp only [List.length_cons] at hi
                           match i with
-                          | 0 => simp; exact ⟨_, _, rfl, rfl, .i32 _⟩
+                          | 0 =>
+                            simp only [List.getElem?_cons_zero]
+                            exact ⟨_, _, rfl, rfl, .i32 _⟩
                           | i + 1 =>
                             simp only [List.getElem?_cons_succ]
                             exact htail i (by omega)
