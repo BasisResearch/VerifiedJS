@@ -10690,8 +10690,9 @@ theorem step_sim (irmod : IRModule) (wmod : Module) :
                     irLbl'.onBranch wLbl'.onBranch ∧
                   irLbl'.isLoop = wLbl'.isLoop := by
               intro j hj
-              simp only [List.length_drop] at hj
-              have hj' : idx + 1 + j < s1.labels.length := by have := hlt; omega
+              rw [List.length_drop] at hj
+              have hj' : idx + 1 + j < s1.labels.length := by
+                rw [Nat.add_comm]; exact Nat.add_lt_of_lt_sub hj
               obtain ⟨irL, wL, h1, h2, hE, hB, hL⟩ := hrel.hlabel_content (idx + 1 + j) hj'
               refine ⟨irL, wL, ?_, ?_, ?_, ?_, hL⟩
               · rwa [List.getElem?_drop]
@@ -10755,14 +10756,12 @@ theorem step_sim (irmod : IRModule) (wmod : Module) :
                       rw [hwlbl_get] at h2; simp at h2; subst h2
                       refine ⟨irLbl, wLbl, rfl, rfl, ?_, ?_, hL⟩
                       · simp only [List.drop_succ_cons]; exact hE
-                      · simp only [hIsLoop, ite_true, List.drop_zero]
-                        rw [hdrop_ir] at hB
-                        simp only [hIsLoop, ite_true] at hB
-                        exact hB
+                      · simp [hIsLoop] at hB ⊢
+                        rw [hdrop_ir] at hB; exact hB
                     | i + 1 =>
-                      simp only [List.getElem?_cons_succ]
                       obtain ⟨irL, wL, h1, h2, hE, hB, hL⟩ := hlc_tail i (by omega)
-                      refine ⟨irL, wL, h1, ?_, ?_, ?_, hL⟩
+                      refine ⟨irL, wL, ?_, ?_, ?_, ?_, hL⟩
+                      · simp only [List.getElem?_cons_succ]; exact h1
                       · simp only [List.getElem?_cons_succ]; exact h2
                       · simp only [List.drop_succ_cons]; exact hE
                       · rw [show (if irL.isLoop = true then i + 1 else i + 1 + 1) =
