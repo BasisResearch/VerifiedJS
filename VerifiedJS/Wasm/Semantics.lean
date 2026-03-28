@@ -314,21 +314,21 @@ private theorem ByteArray.size_set! (a : ByteArray) (i : Nat) (v : UInt8) :
 /-- Helper: the writeLE? loop body preserves the snd.size invariant. -/
 private theorem writeLE?_loop_size (ks : List Nat) (addr : Nat) (value : UInt64)
     (buf : ByteArray) :
-    let r := (ks.forIn (m := Id) ⟨(none : Option (Option ByteArray)), buf⟩
+    (forIn (m := Id) ks ⟨(none : Option (Option ByteArray)), buf⟩
       (fun k (acc : Option (Option ByteArray) × ByteArray) =>
         if addr + k < acc.snd.size then
           pure (ForInStep.yield ⟨none, acc.snd.set! (addr + k)
             (UInt8.ofNat ((value.toNat / 2 ^ (8 * k)) % 256))⟩)
-        else pure (ForInStep.done ⟨some none, acc.snd⟩)))
-    r.snd.size = buf.size := by
+        else pure (ForInStep.done ⟨some none, acc.snd⟩))).snd.size = buf.size := by
   induction ks generalizing buf with
-  | nil => simp [List.forIn]
+  | nil => simp [List.forIn_nil]
   | cons k ks ih =>
-    simp only [List.forIn, Id.run, bind, pure, Id.bind]
+    simp only [List.forIn_cons, Id.run, bind, pure, Id.bind]
     split
     · -- in-bounds: set! preserves size, then IH
-      simp only [ByteArray.size_set!]
-      exact ih (buf.set! (addr + k) _)
+      have hsz := ih (buf.set! (addr + k) (UInt8.ofNat ((value.toNat / 2 ^ (8 * k)) % 256)))
+      rw [ByteArray.size_set!] at hsz
+      exact hsz
     · -- out-of-bounds: done immediately, snd unchanged
       rfl
 
@@ -336,23 +336,19 @@ private theorem writeLE?_loop_size (ks : List Nat) (addr : Nat) (value : UInt64)
 private theorem writeLE?_preserves_size {mem mem' : ByteArray} {addr width : Nat} {value : UInt64}
     (h : writeLE? mem addr width value = some mem') : mem'.size = mem.size := by
   simp [writeLE?] at h
-  -- After simp, h involves the forIn loop result
-  -- The loop returns (Option (Option ByteArray) × ByteArray); if fst = none → some snd; if fst = some a → a
-  set r := (List.range' 0 width).forIn (m := Id) ⟨(none : Option (Option ByteArray)), mem⟩
+  -- After simp, h involves the forIn loop result; extract the loop result
+  generalize hr : (forIn (m := Id) (List.range' 0 width) ⟨(none : Option (Option ByteArray)), mem⟩
     (fun k (acc : Option (Option ByteArray) × ByteArray) =>
       if addr + k < acc.snd.size then
         pure (ForInStep.yield ⟨none, acc.snd.set! (addr + k)
           (UInt8.ofNat ((value.toNat / 2 ^ (8 * k)) % 256))⟩)
-      else pure (ForInStep.done ⟨some none, acc.snd⟩)) with hr
-  have hsz := writeLE?_loop_size (List.range' 0 width) addr value mem
-  rw [← hr] at hsz
+      else pure (ForInStep.done ⟨some none, acc.snd⟩))) = r at h
+  have hsz : r.snd.size = mem.size := by rw [← hr]; exact writeLE?_loop_size _ _ _ _
   match hfst : r.fst with
   | none =>
-    -- Loop completed: result is some r.snd
     simp [hfst] at h
     rw [← h]; exact hsz
   | some a =>
-    -- Early exit: result is a, which must be none (contradiction with h = some mem')
     simp [hfst] at h
 
 private def i32ToSigned (n : UInt32) : Int :=
