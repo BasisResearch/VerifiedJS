@@ -1,3 +1,64 @@
+## Run: 2026-03-28T19:15:12+00:00
+
+### TASK: Analyze lower_main_code_corr + sorry reduction (Priority 0/1)
+
+**Build status at start:** Building (previous run exit 137 = OOM/killed)
+**Sorry count:** 16 source sorries in Wasm/Semantics.lean (unchanged), 1 axiom (lower_main_code_corr)
+
+### Analysis: lower_main_code_corr is UNPROVABLE as-is
+
+The axiom states:
+```
+axiom lower_main_code_corr (prog : ANF.Program) (irmod : IRModule)
+    (h : Wasm.lower prog = .ok irmod) :
+    LowerCodeCorr prog.main (irInitialState irmod).code
+```
+
+**Root cause:** `lower` (Lower.lean L1426) sets `startFunc := none`. Therefore `irInitialState irmod` (Semantics.lean L3714-3725) computes `code = []`. The axiom thus asserts `LowerCodeCorr prog.main []`, which only holds for non-variable trivials (via `value_done` constructor). This is FALSE for any non-trivial program.
+
+**Why this wasn't caught:** The axiom is only used at L12001-12002 and L12016-12017 to establish `LowerSimRel.init`. The proof chain typechecks because axioms are trusted.
+
+**Three blockers to fixing:**
+1. `irInitialState` has `code = []` when `startFunc = none` — the module embeds the main body in `functions[mainIdx].body`, not in `startFunc`
+2. `lowerExpr` is `partial def` (Lower.lean L530), making it opaque to the kernel — cannot unfold in proofs
+3. `buildFuncBindings` (Lower.lean L575) wraps `prog.main` with function closure bindings, so the lowered body corresponds to `buildFuncBindings prog.functions prog.main`, NOT `prog.main` directly
+
+**Fix requires (all out of scope — Lower.lean/IR.lean are read-only):**
+- Change `irInitialState` to extract main body from module exports (44 uses, large ripple effect)
+- OR change `lower` to set `startFunc := some mainIdx`
+- AND make `lowerExpr` non-partial (prove termination) or add equation lemmas
+- AND account for `buildFuncBindings` wrapping in the axiom signature
+
+### Analysis: All 12 step_sim sorries remain blocked
+
+Re-examined all 12 cases after the ANF semantics fix:
+
+| Case | Lines | Blocker |
+|------|-------|---------|
+| let | 6756 | 1:N (rhsCode + localSet + bodyCode) |
+| seq | 6764 | 1:N (aCode + drop + bCode) |
+| if | 6768 | 1:N (condCode + if_) |
+| while | 6771 | 1:N (block + loop) + violates hlabels_empty |
+| throw | 6774 | 1:N (argCode + call throwOp + return_) + hframes_one violated by call |
+| tryCatch | 6777 | 1:N (block structure) + hlabels_empty |
+| return some | 6819 | 1:N (argCode + return_) — handled by step_sim_stutter for specific literals |
+| yield | 6822 | 1:N (argCode + call yieldOp) |
+| await | 6825 | 1:N (argCode + call awaitOp) |
+| labeled | 6828 | Enters block → violates hlabels_empty |
+| break | 6831 | hlabels_empty → irFindLabel? [] = none → IR traps |
+| continue | 6834 | Same as break |
+
+**Key structural blockers in LowerSimRel:**
+- `hlabels_empty : ir.labels = []` — prevents any proof involving block/loop/br
+- `hframes_one : ir.frames.length = 1` — prevents any proof involving function calls
+- 1:1 step_sim framework — all remaining cases are 1:N
+
+### IR→Wasm sorries (4) — still blocked per instructions
+
+### No changes made this run
+
+---
+
 ## Run: 2026-03-28T17:15:01+00:00
 
 ### TASK: Fix ANF break/continue/return/throw semantics (Priority 0)
