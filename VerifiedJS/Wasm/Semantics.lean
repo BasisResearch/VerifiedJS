@@ -10652,52 +10652,59 @@ theorem step_sim (irmod : IRModule) (wmod : Module) :
           have hc : EmitCodeCorr _ (IRInstr.br label :: rest) s2.code := hcode_ir ▸ hrel.hcode
           rcases hc.br_inv with ⟨idx, rest_w, hcw, hfind_ctx, hrest⟩ | hf
           · -- Wasm code = br idx :: rest_w
-            -- Get label resolution from EmitCodeCorr ctx + findIdx?_map_name_irFindLabel?
             obtain ⟨ir_idx, irLbl, hfind, hidx⟩ :=
               emit_br_label_resolve (hcw ▸ hc) hrel.hlabels
             subst hidx
-            -- Characterize the IR step
             have hir := irStep?_eq_br s1 label rest idx irLbl hcode_ir hfind
             rw [hir] at hstep
             simp only [Option.some.injEq, Prod.mk.injEq] at hstep
             obtain ⟨rfl, rfl⟩ := hstep
-            -- Label is within bounds
             have hlt := irFindLabel?_lt_length hfind
             have hlt_w : idx < s2.labels.length := hrel.hlabels ▸ hlt
-            -- Get resolveBranch? spec
             obtain ⟨wLbl, hwlbl_get, hresolve⟩ := resolveBranch?_spec hlt_w
-            -- Get label correspondence from hlabel_content
             obtain ⟨irLbl', wLbl', hirLbl, hwLbl', hcode_exit, hcode_branch, hloop⟩ :=
               hrel.hlabel_content idx hlt
-            -- irLbl from irFindLabel? = irLbl' from hlabel_content
             have hirLbl_eq := irFindLabel?_getElem hfind
             rw [hirLbl_eq] at hirLbl
             simp only [Option.some.injEq] at hirLbl; subst hirLbl
-            -- wLbl from resolveBranch? = wLbl' from hlabel_content
             rw [hwlbl_get] at hwLbl'
             simp only [Option.some.injEq] at hwLbl'; subst hwLbl'
-            -- Wasm step
             have hw := step?_eq_br s2 idx rest_w wLbl
               (if wLbl.isLoop then wLbl :: s2.labels.drop (idx + 1)
                else s2.labels.drop (idx + 1))
               hcw hresolve
-            -- New labels (both sides use isLoop to decide)
             have hloop_eq : irLbl.isLoop = wLbl.isLoop := hloop
-            -- Key fact: drop idx labels = labels[idx] :: drop(idx+1) labels
+            -- drop idx = label :: drop(idx+1)
             have hdrop_ir : s1.labels.drop idx = irLbl :: s1.labels.drop (idx + 1) := by
-              rw [List.drop_eq_getElem_cons hlt]
-              congr 1
-              have := List.getElem?_eq_getElem hlt
-              rw [hirLbl_eq] at this; exact Option.some.injEq.mp this
-            -- Rewrite hcode_branch for isLoop=true case
-            have hcode_branch' : EmitCodeCorr ((irLbl :: s1.labels.drop (idx + 1)).map (·.name))
-                irLbl.onBranch wLbl.onBranch := by
-              simp only [hloop_eq, ite_true] at hcode_branch
-              rwa [hdrop_ir] at hcode_branch
+              rw [List.drop_eq_getElem_cons hlt]; congr 1
+              have h := List.getElem?_eq_getElem hlt
+              rw [hirLbl_eq] at h; simp at h; exact h.symm
+            -- hlabel_content for tail indices (in drop(idx+1))
+            have hlc_tail : ∀ j, j < (s1.labels.drop (idx + 1)).length →
+                ∃ irLbl' wLbl', (s1.labels.drop (idx + 1))[j]? = some irLbl' ∧
+                  (s2.labels.drop (idx + 1))[j]? = some wLbl' ∧
+                  EmitCodeCorr (((s1.labels.drop (idx + 1)).drop (j + 1)).map (fun x => x.name))
+                    irLbl'.onExit wLbl'.onExit ∧
+                  EmitCodeCorr (((s1.labels.drop (idx + 1)).drop
+                    (if irLbl'.isLoop = true then j else j + 1)).map (fun x => x.name))
+                    irLbl'.onBranch wLbl'.onBranch ∧
+                  irLbl'.isLoop = wLbl'.isLoop := by
+              intro j hj
+              simp only [List.length_drop] at hj
+              have hj' : idx + 1 + j < s1.labels.length := by have := hlt; omega
+              obtain ⟨irL, wL, h1, h2, hE, hB, hL⟩ := hrel.hlabel_content (idx + 1 + j) hj'
+              refine ⟨irL, wL, ?_, ?_, ?_, ?_, hL⟩
+              · rwa [List.getElem?_drop]
+              · rwa [List.getElem?_drop]
+              · rw [List.drop_drop]; exact hE
+              · rw [List.drop_drop,
+                  show idx + 1 + (if irL.isLoop = true then j else j + 1) =
+                    (if irL.isLoop = true then idx + 1 + j else idx + 1 + j + 1) from by split <;> omega]
+                exact hB
             cases hIsLoop : irLbl.isLoop
             · -- isLoop = false
               have hWLoop : wLbl.isLoop = false := by rw [← hloop_eq]; exact hIsLoop
-              simp only [hIsLoop, hWLoop, ite_false] at hcode_branch ⊢
+              simp only [hIsLoop, hWLoop, ite_false] at hcode_branch hw ⊢
               exact ⟨_, hw,
                 { hemit := hrel.hemit
                   hcode := hcode_branch
@@ -10710,23 +10717,21 @@ theorem step_sim (irmod : IRModule) (wmod : Module) :
                   hmemLimits := hrel.hmemLimits
                   hmemory_aligned := hrel.hmemory_aligned
                   hmemory_nonempty := hrel.hmemory_nonempty
-                  hlabels := by simp; have := hrel.hlabels; omega
-                  hhalt := hhalt_of_structural hcode_branch (by simp; have := hrel.hlabels; omega)
-                  hlabel_content := by
-                    intro i hi
-                    dsimp only [] at hi ⊢
-                    have hi' : idx + 1 + i < s1.labels.length := by omega
-                    exact hrel.hlabel_content (idx + 1 + i) hi'
+                  hlabels := by simp [List.length_drop]; have := hrel.hlabels; omega
+                  hhalt := hhalt_of_structural hcode_branch
+                    (by simp [List.length_drop]; have := hrel.hlabels; omega)
+                  hlabel_content := hlc_tail
                   hframes_one := hrel.hframes_one
                   hmodule := hrel.hmodule
                   hstore_funcs := hrel.hstore_funcs
                   hstore_types := hrel.hstore_types }⟩
             · -- isLoop = true
               have hWLoop : wLbl.isLoop = true := by rw [← hloop_eq]; exact hIsLoop
-              simp only [hIsLoop, hWLoop, ite_true] at hcode_branch ⊢
+              simp only [hIsLoop, hWLoop, ite_true] at hcode_branch hw ⊢
+              rw [hdrop_ir] at hcode_branch
               exact ⟨_, hw,
                 { hemit := hrel.hemit
-                  hcode := hcode_branch'
+                  hcode := hcode_branch
                   hstack := hrel.hstack
                   hframes_len := hrel.hframes_len
                   hframes_locals := hrel.hframes_locals
@@ -10736,17 +10741,34 @@ theorem step_sim (irmod : IRModule) (wmod : Module) :
                   hmemLimits := hrel.hmemLimits
                   hmemory_aligned := hrel.hmemory_aligned
                   hmemory_nonempty := hrel.hmemory_nonempty
-                  hlabels := by simp; have := hrel.hlabels; omega
-                  hhalt := hhalt_of_structural hcode_branch' (by simp; have := hrel.hlabels; omega)
+                  hlabels := by simp [List.length_drop]; have := hrel.hlabels; omega
+                  hhalt := hhalt_of_structural hcode_branch
+                    (by simp [List.length_drop]; have := hrel.hlabels; omega)
                   hlabel_content := by
                     intro i hi
-                    dsimp only [] at hi ⊢
                     simp only [List.length_cons] at hi
                     match i with
-                    | 0 => exact hrel.hlabel_content idx hlt
+                    | 0 =>
+                      simp only [List.getElem?_cons_zero]
+                      obtain ⟨_, _, h1, h2, hE, hB, hL⟩ := hrel.hlabel_content idx hlt
+                      rw [hirLbl_eq] at h1; simp at h1; subst h1
+                      rw [hwlbl_get] at h2; simp at h2; subst h2
+                      refine ⟨irLbl, wLbl, rfl, rfl, ?_, ?_, hL⟩
+                      · simp only [List.drop_succ_cons]; exact hE
+                      · simp only [hIsLoop, ite_true, List.drop_zero]
+                        rw [hdrop_ir] at hB
+                        simp only [hIsLoop, ite_true] at hB
+                        exact hB
                     | i + 1 =>
-                      have hi' : idx + 1 + i < s1.labels.length := by omega
-                      exact hrel.hlabel_content (idx + 1 + i) hi'
+                      simp only [List.getElem?_cons_succ]
+                      obtain ⟨irL, wL, h1, h2, hE, hB, hL⟩ := hlc_tail i (by omega)
+                      refine ⟨irL, wL, h1, ?_, ?_, ?_, hL⟩
+                      · simp only [List.getElem?_cons_succ]; exact h2
+                      · simp only [List.drop_succ_cons]; exact hE
+                      · rw [show (if irL.isLoop = true then i + 1 else i + 1 + 1) =
+                            (if irL.isLoop = true then i else i + 1) + 1 from by split <;> omega]
+                        simp only [List.drop_succ_cons]
+                        exact hB
                   hframes_one := hrel.hframes_one
                   hmodule := hrel.hmodule
                   hstore_funcs := hrel.hstore_funcs
