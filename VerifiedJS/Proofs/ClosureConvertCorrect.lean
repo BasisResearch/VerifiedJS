@@ -2714,7 +2714,7 @@ private theorem closureConvert_step_simulation
           rw [show (Flat.convertExpr sc_sub'.expr scope envVar envMap st_a).fst = sa.expr from (congrArg Prod.fst hconv').symm]
           rw [show (Flat.convertExpr sc_sub'.expr scope envVar envMap st_a).snd = st_a' from (congrArg Prod.snd hconv').symm]
           rw [hval.1]
-        · rw [hconv.2]; exact hval.2
+        · rw [hst]; exact hval.2
   | getIndex obj idx =>
     rw [hsc] at hconv hncfr hexprwf hd
     simp [Flat.convertExpr] at hconv

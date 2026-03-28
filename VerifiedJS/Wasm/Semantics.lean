@@ -11643,9 +11643,8 @@ theorem step_sim (irmod : IRModule) (wmod : Module) :
                       (by rw [Array.getElem?_eq_getElem hLim])
                     simp [hml]
                   · simp [hLim]
-                match hgrow : decide (s1.memory.size + pages.toNat * 65536 ≤ 65536 * 65536) with
-                | isTrue hok =>
-                  -- Success: both grow memory
+                by_cases hok : s1.memory.size + pages.toNat * 65536 ≤ 65536 * 65536
+                · -- Success: both grow memory
                   have hir := irStep?_eq_memoryGrow_ok s1 rest pages stk hcode_ir hstk hok
                   rw [hir] at hstep
                   simp only [Option.some.injEq, Prod.mk.injEq] at hstep
@@ -11680,14 +11679,17 @@ theorem step_sim (irmod : IRModule) (wmod : Module) :
                   · -- hmemory_nonempty: set! preserves size
                     simp [pushTrace, Array.size_set!]
                     exact hrel.hmemory_nonempty
-                | isFalse hfail =>
-                  -- Failure: both push -1 (0xFFFFFFFF)
+                · -- Failure: both push -1 (0xFFFFFFFF)
                   simp [irStep?, hcode_ir, hstk, irPop1?, irPushTrace] at hstep
                   have hgt : 65536 * 65536 < s1.memory.size + pages.toNat * 65536 := by omega
                   simp [hgt] at hstep
                   obtain ⟨rfl, rfl⟩ := hstep
                   have hNewPages_gt : ¬ (s1.memory.size / 65536 + pages.toNat ≤ 65536) := by
-                    intro h; apply hfail
+                    intro h; apply hok
+                    have hmod := Nat.div_add_mod s1.memory.size 65536
+                    have hmod_lt := Nat.mod_lt s1.memory.size (by omega : 0 < 65536)
+                    have hle : s1.memory.size ≤ (s1.memory.size / 65536) * 65536 + 65535 := by omega
+                    omega
                     have hmod := Nat.div_add_mod s1.memory.size 65536
                     have hmod_lt := Nat.mod_lt s1.memory.size (by omega : 0 < 65536)
                     have hle : s1.memory.size ≤ (s1.memory.size / 65536) * 65536 + 65535 := by omega
