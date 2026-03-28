@@ -1677,16 +1677,7 @@ private theorem normalizeExpr_labeled_step_sim
     | some fin =>
       simp only [Functor.map, StateT.map, StateT.run, bind, Bind.bind, StateT.bind, Except.bind] at hnorm
       repeat (first | split at hnorm | (simp [pure, Pure.pure, StateT.pure, Except.pure] at hnorm; try exact ANF.Expr.noConfusion (Prod.mk.inj (Except.ok.inj hnorm)).1))
-  | call _ _ _ | newObj _ _ _ | getProp _ _ | setProp _ _ _ | getIndex _ _ | setIndex _ _ _ | deleteProp _ _ | typeof _ | getEnv _ _ | makeEnv _ | makeClosure _ _ | unary _ _ | binary _ _ _ | assign _ _ =>
-    exfalso; unfold ANF.normalizeExpr at hnorm
-    simp only [ANF.bindComplex, StateT.run, bind, Bind.bind, StateT.bind, Except.bind] at hnorm
-    repeat (first | split at hnorm | (simp [pure, Pure.pure, StateT.pure, Except.pure] at hnorm; try exact ANF.Expr.noConfusion (Prod.mk.inj (Except.ok.inj hnorm)).1))
-  | «throw» _ | «await» _ =>
-    exfalso; unfold ANF.normalizeExpr at hnorm
-    simp only [ANF.bindComplex, StateT.run, bind, Bind.bind, StateT.bind, Except.bind] at hnorm
-    repeat (first | split at hnorm | (simp [pure, Pure.pure, StateT.pure, Except.pure] at hnorm; try exact ANF.Expr.noConfusion (Prod.mk.inj (Except.ok.inj hnorm)).1))
-  | «let» _ _ _ | seq _ _ | «if» _ _ _ => sorry -- compound: needs induction on depth
-  | objectLit _ | arrayLit _ => sorry -- list-based bindComplex
+  | _ => sorry -- compound/bindComplex/throw/await cases: needs induction on depth
 
 /-- Stuttering simulation: one ANF step corresponds to one or more Flat steps,
     preserving observable events and the simulation relation.

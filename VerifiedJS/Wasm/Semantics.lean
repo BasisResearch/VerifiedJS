@@ -10459,8 +10459,6 @@ theorem step_sim (irmod : IRModule) (wmod : Module) :
             exfalso; generalize s2.code = wcode at hc
             cases hc with | general _ _ _ _ hf _ => exact hf.elim
       | .unOp t op =>
-          sorry
-          /- unary operation: IR and Wasm compute the same result
           have hc : EmitCodeCorr _ (IRInstr.unOp t op :: rest) s2.code := hcode_ir ▸ hrel.hcode
           match t with
           | .i32 =>
@@ -10470,10 +10468,8 @@ theorem step_sim (irmod : IRModule) (wmod : Module) :
               match hstk : s1.stack with
               | [] =>
                 -- Empty stack: both trap
-                have hir : irStep? s1 = some (.trap "stack underflow in i32.eqz",
-                    { s1 with code := [], trace := s1.trace ++ [.trap "stack underflow in i32.eqz"] }) := by
-                  simp [irStep?, hcode_ir, hstk, irPop1?, irTrapState, irPushTrace]
-                rw [hir] at hstep; simp only [Option.some.injEq, Prod.mk.injEq] at hstep
+                unfold irStep? at hstep; rw [hcode_ir] at hstep
+                simp only [irPop1?, hstk, irTrapState, irPushTrace] at hstep
                 obtain ⟨rfl, rfl⟩ := hstep
                 have hlen := hrel.hstack.1; rw [hstk] at hlen; simp at hlen
                 have hs2 : s2.stack = [] := by cases s2.stack with | nil => rfl | cons => simp_all
@@ -10711,7 +10707,6 @@ theorem step_sim (irmod : IRModule) (wmod : Module) :
             -- No EmitCodeCorr constructor for these types
             exfalso; generalize s2.code = wcode at hc
             cases hc with | general _ _ _ _ hf _ => exact hf.elim
-          -/
       | .call funcIdx =>
           -- SORRY: call case needs API updates + hframes_one invariant rework
           sorry
