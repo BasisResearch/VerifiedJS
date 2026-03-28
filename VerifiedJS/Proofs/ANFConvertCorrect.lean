@@ -1089,7 +1089,78 @@ private theorem normalizeExpr_labeled_step_sim
       observableTrace sf'.trace = observableTrace sf.trace ∧
       observableTrace evs = [] ∧
       ExprWellFormed sf'.expr sf'.env := by
-  sorry
+  subst hsf
+  cases e with
+  | labeled label' body_flat =>
+    -- normalizeExpr (.labeled label' body_flat) k = do { bodyExpr ← normalizeExpr body_flat k; pure (.labeled label' bodyExpr) }
+    unfold ANF.normalizeExpr at hnorm
+    -- Extract bind result
+    simp only [StateT.run, bind, Bind.bind, StateT.bind, Except.bind] at hnorm
+    split at hnorm
+    · next bodyExpr m' heq =>
+      simp only [pure, Pure.pure, StateT.pure, Except.pure] at hnorm
+      have ⟨h1, h2⟩ := Prod.mk.inj (Except.ok.inj hnorm)
+      have ⟨hlabel, hbody⟩ := ANF.Expr.labeled.inj h1
+      subst hlabel; subst hbody; subst h2
+      -- One Flat step: .labeled label body_flat → body_flat
+      let sf' : Flat.State := { sf with expr := body_flat, trace := sf.trace ++ [Core.TraceEvent.silent] }
+      have hstep : Flat.step? sf = some (.silent, sf') := by
+        have : sf = { sf with expr := .labeled label body_flat } := by cases sf; rfl
+        rw [this]; simp [Flat.step?, sf', Flat.pushTrace]
+      refine ⟨[.silent], sf', .tail ⟨hstep⟩ (.refl _), ?_, rfl, rfl, ?_, rfl, ?_⟩
+      · -- normalizeExpr body_flat k produces body (= bodyExpr)
+        exact ⟨k, n, m', heq, hk⟩
+      · -- observableTrace
+        simp [sf', observableTrace_append, observableTrace]; decide
+      · -- ExprWellFormed
+        intro x hfx; exact hwf x (VarFreeIn.labeled _ _ _ hfx)
+    · simp at hnorm
+  | var name =>
+    exfalso
+    simp only [ANF.normalizeExpr] at hnorm
+    obtain ⟨m', hm'⟩ := hk (.var name) n
+    rw [hm'] at hnorm; exact absurd hnorm (by intro h; exact ANF.Expr.noConfusion (Prod.mk.inj (Except.ok.inj h)).1)
+  | this =>
+    exfalso
+    simp only [ANF.normalizeExpr] at hnorm
+    obtain ⟨m', hm'⟩ := hk (.var "this") n
+    rw [hm'] at hnorm; exact absurd hnorm (by intro h; exact ANF.Expr.noConfusion (Prod.mk.inj (Except.ok.inj h)).1)
+  | lit v =>
+    exfalso
+    simp only [ANF.normalizeExpr] at hnorm
+    cases htv : ANF.trivialOfFlatValue v <;> simp [htv] at hnorm
+    · rename_i t
+      obtain ⟨m', hm'⟩ := hk t n
+      rw [hm'] at hnorm; exact absurd hnorm (by intro h; exact ANF.Expr.noConfusion (Prod.mk.inj (Except.ok.inj h)).1)
+  | «break» l =>
+    exfalso; simp only [ANF.normalizeExpr, pure, Pure.pure, StateT.pure, Except.pure] at hnorm
+    exact ANF.Expr.noConfusion (Prod.mk.inj (Except.ok.inj hnorm)).1
+  | «continue» l =>
+    exfalso; simp only [ANF.normalizeExpr, pure, Pure.pure, StateT.pure, Except.pure] at hnorm
+    exact ANF.Expr.noConfusion (Prod.mk.inj (Except.ok.inj hnorm)).1
+  | «return» arg =>
+    cases arg with
+    | none =>
+      exfalso; simp only [ANF.normalizeExpr, pure, Pure.pure, StateT.pure, Except.pure] at hnorm
+      exact ANF.Expr.noConfusion (Prod.mk.inj (Except.ok.inj hnorm)).1
+    | some _ => sorry -- return (some v) wrapping .labeled in sub-expression
+  | yield arg delegate =>
+    cases arg with
+    | none =>
+      exfalso; simp only [ANF.normalizeExpr, pure, Pure.pure, StateT.pure, Except.pure] at hnorm
+      exact ANF.Expr.noConfusion (Prod.mk.inj (Except.ok.inj hnorm)).1
+    | some _ => sorry -- yield (some v) wrapping .labeled
+  | while_ cond body_w =>
+    -- while produces .seq (.while_ ...) rest, never .labeled
+    exfalso; unfold ANF.normalizeExpr at hnorm
+    simp only [StateT.run, bind, Bind.bind, StateT.bind, Except.bind] at hnorm
+    repeat (first | split at hnorm | (simp [pure, Pure.pure, StateT.pure, Except.pure] at hnorm))
+  | tryCatch body_tc catchParam catchBody finally_ =>
+    -- tryCatch produces .tryCatch, never .labeled
+    exfalso; unfold ANF.normalizeExpr at hnorm
+    simp only [StateT.run, bind, Bind.bind, StateT.bind, Except.bind] at hnorm
+    cases finally_ <;> (repeat (first | split at hnorm | (simp [pure, Pure.pure, StateT.pure, Except.pure, Functor.map, StateT.map] at hnorm)))
+  | _ => sorry -- remaining compound cases and seq
 
 /-- Stuttering simulation: one ANF step corresponds to one or more Flat steps,
     preserving observable events and the simulation relation.
@@ -1183,28 +1254,21 @@ private theorem anfConvert_step_star
     simp only [] at hsa; subst hsa
     simp [ANF.step?, ANF.pushTrace] at hstep_eq
     obtain ⟨rfl, rfl⟩ := hstep_eq
-    have hnorm' : (ANF.normalizeExpr sf.expr k).run n =
-      .ok (ANF.Expr.labeled label body, m) := by exact hnorm
     obtain ⟨evs, sf', hsteps, ⟨k', n', m', hbody, hk'⟩, henv', hheap', htrace', hobs, hwf'⟩ :=
-      normalizeExpr_labeled_step_sim sf.expr k n m label body hk_triv hnorm' sf rfl hewf
-    refine ⟨evs, sf', hsteps, ?_, ?_, ?_⟩
+      normalizeExpr_labeled_step_sim sf.expr k n m label body hk_triv hnorm sf rfl hewf
+    refine ⟨sf', evs, hsteps, ?_, ?_, ?_⟩
     · -- observableTrace [.silent] = observableTrace evs
       show observableTrace [Core.TraceEvent.silent] = observableTrace evs
       rw [hobs]; decide
     · -- ANF_SimRel
-      constructor
+      refine ⟨?_, ?_, ?_, k', n', m', hbody, hk'⟩
       · -- heap
-        simp only [ANF.State.heap] at hheap; rw [hheap, ← hheap']
-      constructor
+        rw [hheap, ← hheap']
       · -- env
-        simp only [ANF.State.env] at henv; rw [henv, ← henv']
-      constructor
+        rw [henv, ← henv']
       · -- trace
-        simp only [ANF.State.trace] at htrace
         rw [observableTrace_append, htrace, ← htrace']
         simp [observableTrace]; decide
-      · -- normalizeExpr + k
-        exact ⟨k', n', m', hbody, hk'⟩
     · -- ExprWellFormed
       exact hwf'
   | «break» label =>

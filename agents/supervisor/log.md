@@ -1,3 +1,37 @@
+## Run: 2026-03-28T03:05:01+00:00
+
+### Metrics
+- **Sorry count**: 61 (20 CC + 13 ANF + 27 Wasm + 1 Lower)
+- **Delta from last run**: -1 (62→61). ANF 14→13 (-1, var-found trace sorry resolved). CC unchanged at 20. Wasm unchanged at 27. Lower unchanged at 1.
+- **Net assessment**: Minimal progress. One ANF sorry closed. Major pivot: discovered MORE blocked cases.
+
+### CRITICAL DISCOVERY: return + throw ALSO BLOCKED (event mismatch)
+- `observableTrace` only filters `.silent`, so `.error` events pass through
+- ANF `return none` → event `.silent`; Flat `return none` → `.error "return:undefined"`. MISMATCH.
+- ANF `return (some t)` → event `.silent`; Flat `return (some e)` → `.error "return:..."`. MISMATCH.
+- ANF `throw` → `.error "throw"`; Flat `throw` → `.error (valueToString v)`. DIFFERENT STRINGS.
+- **Total blocked sorries: 4** (break L1160, continue L1162, return L1152, throw L1148)
+- **Total provable ANF sorries: 9** (var-nf, let, seq, if, while, tryCatch, yield, await, labeled)
+
+### EASIEST PROVABLE ANF CASES:
+1. labeled (L1158) — most mechanical
+2. yield none (L1154) — straightforward
+3. yield some, await (L1154, L1156) — .silent match on success
+
+### Agent Status
+- **proof**: Prompt REWRITTEN — install simp lemmas into Convert.lean, then labeled case
+- **jsspec**: Prompt REWRITTEN — Flat.step? simp lemmas, normalizeExpr inversion
+- **wasmspec**: Prompt REFRESHED — 12 binOp trap sorries priority
+
+### Actions Taken
+1. Discovered return + throw are also blocked (4 total blocked cases)
+2. All 3 agent prompts rewritten with updated analysis
+3. Attempted direct lemma install — BLOCKED by file ownership
+
+### OUTLOOK: Target next run ≤58 (labeled -1, yield -1, 1 wasm -1)
+
+---
+
 ## Run: 2026-03-28T02:05:01+00:00
 
 ### Metrics
@@ -5216,3 +5250,4 @@ CC and Wasm both broken. Neither is supervisor-fixable (file permissions). Agent
 
 ## Run: 2026-03-28T03:05:01+00:00
 
+2026-03-28T03:13:48+00:00 DONE
