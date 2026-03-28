@@ -1760,11 +1760,11 @@ private theorem Core_step?_getProp_primitive (s : Core.State) (v : Core.Value) (
 -- Helper: convertValue of non-object non-string is non-object non-string
 private theorem convertValue_not_object (v : Core.Value)
     (h : ∀ a, v ≠ .object a) : ∀ a, Flat.convertValue v ≠ .object a := by
-  cases v <;> simp [Flat.convertValue] <;> intro a <;> exact absurd rfl (h a)
+  intro a; cases v <;> simp [Flat.convertValue] at * <;> exact h a rfl
 
 private theorem convertValue_not_string (v : Core.Value)
     (h : ∀ s, v ≠ .string s) : ∀ s, Flat.convertValue v ≠ .string s := by
-  cases v <;> simp [Flat.convertValue] <;> intro s <;> exact absurd rfl (h s)
+  intro s; cases v <;> simp [Flat.convertValue] at * <;> exact h s rfl
 
 private theorem closureConvert_step_simulation
     (s : Core.Program) (t : Flat.Program)

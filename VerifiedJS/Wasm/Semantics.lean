@@ -8943,7 +8943,7 @@ theorem step_sim (irmod : IRModule) (wmod : Module) :
                       simp [step?, hcw, hstack_eq, pop1?, hmem_eq, hread, trapState, pushTrace]
                     exact ⟨_, hw,
                       { hemit := hrel.hemit, hcode := .nil,
-                        hstack := by rw [← hstk]; exact hrel.hstack,
+                        hstack := (by rw [← hstk]; exact hrel.hstack),
                         hframes_len := hrel.hframes_len, hframes_locals := hrel.hframes_locals,
                         hframes_vals := hrel.hframes_vals, hglobals := hrel.hglobals,
                         hmemory := hrel.hmemory, hmemLimits := hrel.hmemLimits,
@@ -8958,7 +8958,7 @@ theorem step_sim (irmod : IRModule) (wmod : Module) :
                       simp [step?, hcw, hstack_eq, pop1?, hmem_none, trapState, pushTrace]
                     exact ⟨_, hw,
                       { hemit := hrel.hemit, hcode := .nil,
-                        hstack := by rw [← hstk]; exact hrel.hstack,
+                        hstack := (by rw [← hstk]; exact hrel.hstack),
                         hframes_len := hrel.hframes_len, hframes_locals := hrel.hframes_locals,
                         hframes_vals := hrel.hframes_vals, hglobals := hrel.hglobals,
                         hmemory := hrel.hmemory, hmemLimits := hrel.hmemLimits,
@@ -9081,7 +9081,7 @@ theorem step_sim (irmod : IRModule) (wmod : Module) :
                       simp [step?, hcw, hstack_eq, pop1?, hmem_eq, hread, trapState, pushTrace]
                     exact ⟨_, hw,
                       { hemit := hrel.hemit, hcode := .nil,
-                        hstack := by rw [← hstk]; exact hrel.hstack,
+                        hstack := (by rw [← hstk]; exact hrel.hstack),
                         hframes_len := hrel.hframes_len, hframes_locals := hrel.hframes_locals,
                         hframes_vals := hrel.hframes_vals, hglobals := hrel.hglobals,
                         hmemory := hrel.hmemory, hmemLimits := hrel.hmemLimits,
@@ -9096,7 +9096,7 @@ theorem step_sim (irmod : IRModule) (wmod : Module) :
                       simp [step?, hcw, hstack_eq, pop1?, hmem_none, trapState, pushTrace]
                     exact ⟨_, hw,
                       { hemit := hrel.hemit, hcode := .nil,
-                        hstack := by rw [← hstk]; exact hrel.hstack,
+                        hstack := (by rw [← hstk]; exact hrel.hstack),
                         hframes_len := hrel.hframes_len, hframes_locals := hrel.hframes_locals,
                         hframes_vals := hrel.hframes_vals, hglobals := hrel.hglobals,
                         hmemory := hrel.hmemory, hmemLimits := hrel.hmemLimits,
@@ -9215,7 +9215,7 @@ theorem step_sim (irmod : IRModule) (wmod : Module) :
                       simp [step?, hcw, hstack_eq, pop1?, hmem_eq, hread, trapState, pushTrace]
                     exact ⟨_, hw,
                       { hemit := hrel.hemit, hcode := .nil,
-                        hstack := by rw [← hstk]; exact hrel.hstack,
+                        hstack := (by rw [← hstk]; exact hrel.hstack),
                         hframes_len := hrel.hframes_len, hframes_locals := hrel.hframes_locals,
                         hframes_vals := hrel.hframes_vals, hglobals := hrel.hglobals,
                         hmemory := hrel.hmemory, hmemLimits := hrel.hmemLimits,
@@ -9230,7 +9230,7 @@ theorem step_sim (irmod : IRModule) (wmod : Module) :
                       simp [step?, hcw, hstack_eq, pop1?, hmem_none, trapState, pushTrace]
                     exact ⟨_, hw,
                       { hemit := hrel.hemit, hcode := .nil,
-                        hstack := by rw [← hstk]; exact hrel.hstack,
+                        hstack := (by rw [← hstk]; exact hrel.hstack),
                         hframes_len := hrel.hframes_len, hframes_locals := hrel.hframes_locals,
                         hframes_vals := hrel.hframes_vals, hglobals := hrel.hglobals,
                         hmemory := hrel.hmemory, hmemLimits := hrel.hmemLimits,
@@ -9412,7 +9412,7 @@ theorem step_sim (irmod : IRModule) (wmod : Module) :
                         { s2 with code := [], trace := s2.trace ++ [.trap ("memory access fault in i32.store")] }) := by
                       simp [step?, hcw, hstack_eq, pop2?, hwrite_w, trapState, pushTrace]
                     simp only [traceToWasm]; exact ⟨_, hw,
-                      { hemit := hrel.hemit, hcode := .nil, hstack := by rw [← hstk]; exact hrel.hstack,
+                      { hemit := hrel.hemit, hcode := .nil, hstack := (by rw [← hstk]; exact hrel.hstack),
                         hframes_len := hrel.hframes_len, hframes_locals := hrel.hframes_locals,
                         hframes_vals := hrel.hframes_vals, hglobals := hrel.hglobals, hmemory := hrel.hmemory, hmemLimits := hrel.hmemLimits, hmemory_aligned := hrel.hmemory_aligned, hmemory_nonempty := hrel.hmemory_nonempty,
                         hlabels := hrel.hlabels, hhalt := hhalt_of_structural (@EmitCodeCorr.nil (s1.labels.map (·.name))) hrel.hlabels
@@ -9426,7 +9426,7 @@ theorem step_sim (irmod : IRModule) (wmod : Module) :
                         { s2 with code := [], trace := s2.trace ++ [.trap ("memory access fault in i32.store")] }) := by
                       simp [step?, hcw, hstack_eq, pop2?, hmem_none, trapState, pushTrace, Option.bind]
                     simp only [traceToWasm]; exact ⟨_, hw,
-                      { hemit := hrel.hemit, hcode := .nil, hstack := by rw [← hstk]; exact hrel.hstack,
+                      { hemit := hrel.hemit, hcode := .nil, hstack := (by rw [← hstk]; exact hrel.hstack),
                         hframes_len := hrel.hframes_len, hframes_locals := hrel.hframes_locals,
                         hframes_vals := hrel.hframes_vals, hglobals := hrel.hglobals, hmemory := hrel.hmemory, hmemLimits := hrel.hmemLimits, hmemory_aligned := hrel.hmemory_aligned, hmemory_nonempty := hrel.hmemory_nonempty,
                         hlabels := hrel.hlabels, hhalt := hhalt_of_structural (@EmitCodeCorr.nil (s1.labels.map (·.name))) hrel.hlabels
@@ -9454,7 +9454,7 @@ theorem step_sim (irmod : IRModule) (wmod : Module) :
                         { s2 with code := [], trace := s2.trace ++ [.trap ("type mismatch in i32.store")] }) := by
                       simp only [step?, hcw, hstk_w, pop2?, trapState, pushTrace]
                     simp only [traceToWasm]; exact ⟨_, hw,
-                      { hemit := hrel.hemit, hcode := .nil, hstack := by rw [← hstk]; exact hrel.hstack,
+                      { hemit := hrel.hemit, hcode := .nil, hstack := (by rw [← hstk]; exact hrel.hstack),
                         hframes_len := hrel.hframes_len, hframes_locals := hrel.hframes_locals,
                         hframes_vals := hrel.hframes_vals, hglobals := hrel.hglobals, hmemory := hrel.hmemory, hmemLimits := hrel.hmemLimits, hmemory_aligned := hrel.hmemory_aligned, hmemory_nonempty := hrel.hmemory_nonempty,
                         hlabels := hrel.hlabels, hhalt := hhalt_of_structural (@EmitCodeCorr.nil (s1.labels.map (·.name))) hrel.hlabels
@@ -9568,7 +9568,7 @@ theorem step_sim (irmod : IRModule) (wmod : Module) :
                         { s2 with code := [], trace := s2.trace ++ [.trap ("memory access fault in f64.store")] }) := by
                       simp [step?, hcw, hstack_eq, pop2?, hwrite_w, trapState, pushTrace]
                     simp only [traceToWasm]; exact ⟨_, hw,
-                      { hemit := hrel.hemit, hcode := .nil, hstack := by rw [← hstk]; exact hrel.hstack,
+                      { hemit := hrel.hemit, hcode := .nil, hstack := (by rw [← hstk]; exact hrel.hstack),
                         hframes_len := hrel.hframes_len, hframes_locals := hrel.hframes_locals,
                         hframes_vals := hrel.hframes_vals, hglobals := hrel.hglobals, hmemory := hrel.hmemory, hmemLimits := hrel.hmemLimits, hmemory_aligned := hrel.hmemory_aligned, hmemory_nonempty := hrel.hmemory_nonempty,
                         hlabels := hrel.hlabels, hhalt := hhalt_of_structural (@EmitCodeCorr.nil (s1.labels.map (·.name))) hrel.hlabels
@@ -9581,7 +9581,7 @@ theorem step_sim (irmod : IRModule) (wmod : Module) :
                         { s2 with code := [], trace := s2.trace ++ [.trap ("memory access fault in f64.store")] }) := by
                       simp [step?, hcw, hstack_eq, pop2?, hmem_none, trapState, pushTrace, Option.bind]
                     simp only [traceToWasm]; exact ⟨_, hw,
-                      { hemit := hrel.hemit, hcode := .nil, hstack := by rw [← hstk]; exact hrel.hstack,
+                      { hemit := hrel.hemit, hcode := .nil, hstack := (by rw [← hstk]; exact hrel.hstack),
                         hframes_len := hrel.hframes_len, hframes_locals := hrel.hframes_locals,
                         hframes_vals := hrel.hframes_vals, hglobals := hrel.hglobals, hmemory := hrel.hmemory, hmemLimits := hrel.hmemLimits, hmemory_aligned := hrel.hmemory_aligned, hmemory_nonempty := hrel.hmemory_nonempty,
                         hlabels := hrel.hlabels, hhalt := hhalt_of_structural (@EmitCodeCorr.nil (s1.labels.map (·.name))) hrel.hlabels
@@ -9608,7 +9608,7 @@ theorem step_sim (irmod : IRModule) (wmod : Module) :
                         { s2 with code := [], trace := s2.trace ++ [.trap ("type mismatch in f64.store")] }) := by
                       simp only [step?, hcw, hstk_w, pop2?, trapState, pushTrace]
                     simp only [traceToWasm]; exact ⟨_, hw,
-                      { hemit := hrel.hemit, hcode := .nil, hstack := by rw [← hstk]; exact hrel.hstack,
+                      { hemit := hrel.hemit, hcode := .nil, hstack := (by rw [← hstk]; exact hrel.hstack),
                         hframes_len := hrel.hframes_len, hframes_locals := hrel.hframes_locals,
                         hframes_vals := hrel.hframes_vals, hglobals := hrel.hglobals, hmemory := hrel.hmemory, hmemLimits := hrel.hmemLimits, hmemory_aligned := hrel.hmemory_aligned, hmemory_nonempty := hrel.hmemory_nonempty,
                         hlabels := hrel.hlabels, hhalt := hhalt_of_structural (@EmitCodeCorr.nil (s1.labels.map (·.name))) hrel.hlabels
@@ -9722,7 +9722,7 @@ theorem step_sim (irmod : IRModule) (wmod : Module) :
                         { s2 with code := [], trace := s2.trace ++ [.trap ("memory access fault in i64.store")] }) := by
                       simp [step?, hcw, hstack_eq, pop2?, hwrite_w, trapState, pushTrace]
                     simp only [traceToWasm]; exact ⟨_, hw,
-                      { hemit := hrel.hemit, hcode := .nil, hstack := by rw [← hstk]; exact hrel.hstack,
+                      { hemit := hrel.hemit, hcode := .nil, hstack := (by rw [← hstk]; exact hrel.hstack),
                         hframes_len := hrel.hframes_len, hframes_locals := hrel.hframes_locals,
                         hframes_vals := hrel.hframes_vals, hglobals := hrel.hglobals, hmemory := hrel.hmemory, hmemLimits := hrel.hmemLimits, hmemory_aligned := hrel.hmemory_aligned, hmemory_nonempty := hrel.hmemory_nonempty,
                         hlabels := hrel.hlabels, hhalt := hhalt_of_structural (@EmitCodeCorr.nil (s1.labels.map (·.name))) hrel.hlabels
@@ -9735,7 +9735,7 @@ theorem step_sim (irmod : IRModule) (wmod : Module) :
                         { s2 with code := [], trace := s2.trace ++ [.trap ("memory access fault in i64.store")] }) := by
                       simp [step?, hcw, hstack_eq, pop2?, hmem_none, trapState, pushTrace, Option.bind]
                     simp only [traceToWasm]; exact ⟨_, hw,
-                      { hemit := hrel.hemit, hcode := .nil, hstack := by rw [← hstk]; exact hrel.hstack,
+                      { hemit := hrel.hemit, hcode := .nil, hstack := (by rw [← hstk]; exact hrel.hstack),
                         hframes_len := hrel.hframes_len, hframes_locals := hrel.hframes_locals,
                         hframes_vals := hrel.hframes_vals, hglobals := hrel.hglobals, hmemory := hrel.hmemory, hmemLimits := hrel.hmemLimits, hmemory_aligned := hrel.hmemory_aligned, hmemory_nonempty := hrel.hmemory_nonempty,
                         hlabels := hrel.hlabels, hhalt := hhalt_of_structural (@EmitCodeCorr.nil (s1.labels.map (·.name))) hrel.hlabels
@@ -9762,7 +9762,7 @@ theorem step_sim (irmod : IRModule) (wmod : Module) :
                         { s2 with code := [], trace := s2.trace ++ [.trap ("type mismatch in i64.store")] }) := by
                       simp only [step?, hcw, hstk_w, pop2?, trapState, pushTrace]
                     simp only [traceToWasm]; exact ⟨_, hw,
-                      { hemit := hrel.hemit, hcode := .nil, hstack := by rw [← hstk]; exact hrel.hstack,
+                      { hemit := hrel.hemit, hcode := .nil, hstack := (by rw [← hstk]; exact hrel.hstack),
                         hframes_len := hrel.hframes_len, hframes_locals := hrel.hframes_locals,
                         hframes_vals := hrel.hframes_vals, hglobals := hrel.hglobals, hmemory := hrel.hmemory, hmemLimits := hrel.hmemLimits, hmemory_aligned := hrel.hmemory_aligned, hmemory_nonempty := hrel.hmemory_nonempty,
                         hlabels := hrel.hlabels, hhalt := hhalt_of_structural (@EmitCodeCorr.nil (s1.labels.map (·.name))) hrel.hlabels
@@ -10056,7 +10056,7 @@ theorem step_sim (irmod : IRModule) (wmod : Module) :
                   all_goals (simp only [traceToWasm]; refine ⟨_, ?_, ?_⟩)
                   all_goals first
                     | (unfold step? withI32Bin withI32Rel pop2?; simp [hcw, hstk_w, trapState, pushTrace])
-                    | (exact { hemit := hrel.hemit, hcode := .nil, hstack := by rw [← hstk]; exact hrel.hstack,
+                    | (exact { hemit := hrel.hemit, hcode := .nil, hstack := (by rw [← hstk]; exact hrel.hstack),
                         hframes_len := hrel.hframes_len, hframes_locals := hrel.hframes_locals,
                         hframes_vals := hrel.hframes_vals, hglobals := hrel.hglobals, hmemory := hrel.hmemory, hmemLimits := hrel.hmemLimits, hmemory_aligned := hrel.hmemory_aligned, hmemory_nonempty := hrel.hmemory_nonempty,
                         hlabels := hrel.hlabels, hhalt := hhalt_of_structural (@EmitCodeCorr.nil (s1.labels.map (·.name))) hrel.hlabels
@@ -10165,7 +10165,7 @@ theorem step_sim (irmod : IRModule) (wmod : Module) :
                   all_goals (simp only [traceToWasm]; refine ⟨_, ?_, ?_⟩)
                   all_goals first
                     | (unfold step? withF64Bin pop2?; simp [hcw, hstk_w, trapState, pushTrace])
-                    | (exact { hemit := hrel.hemit, hcode := .nil, hstack := by rw [← hstk]; exact hrel.hstack,
+                    | (exact { hemit := hrel.hemit, hcode := .nil, hstack := (by rw [← hstk]; exact hrel.hstack),
                         hframes_len := hrel.hframes_len, hframes_locals := hrel.hframes_locals,
                         hframes_vals := hrel.hframes_vals, hglobals := hrel.hglobals, hmemory := hrel.hmemory, hmemLimits := hrel.hmemLimits, hmemory_aligned := hrel.hmemory_aligned, hmemory_nonempty := hrel.hmemory_nonempty,
                         hlabels := hrel.hlabels, hhalt := hhalt_of_structural (@EmitCodeCorr.nil (s1.labels.map (·.name))) hrel.hlabels
@@ -10268,7 +10268,7 @@ theorem step_sim (irmod : IRModule) (wmod : Module) :
                         { s2 with code := [], trace := s2.trace ++ [.trap "type mismatch in i32.eqz"] }) := by
                       simp [step?, hcw, hs2, pop1?, trapState, pushTrace]
                     simp only [traceToWasm]; exact ⟨_, hw,
-                      { hemit := hrel.hemit, hcode := .nil, hstack := by rw [← hstk]; exact hrel.hstack,
+                      { hemit := hrel.hemit, hcode := .nil, hstack := (by rw [← hstk]; exact hrel.hstack),
                         hframes_len := hrel.hframes_len, hframes_locals := hrel.hframes_locals,
                         hframes_vals := hrel.hframes_vals, hglobals := hrel.hglobals, hmemory := hrel.hmemory, hmemLimits := hrel.hmemLimits, hmemory_aligned := hrel.hmemory_aligned, hmemory_nonempty := hrel.hmemory_nonempty,
                         hlabels := hrel.hlabels, hhalt := hhalt_of_structural (@EmitCodeCorr.nil (s1.labels.map (·.name))) hrel.hlabels,
@@ -10297,7 +10297,7 @@ theorem step_sim (irmod : IRModule) (wmod : Module) :
                         { s2 with code := [], trace := s2.trace ++ [.trap "type mismatch in i32.eqz"] }) := by
                       simp [step?, hcw, hs2, pop1?, trapState, pushTrace]
                     simp only [traceToWasm]; exact ⟨_, hw,
-                      { hemit := hrel.hemit, hcode := .nil, hstack := by rw [← hstk]; exact hrel.hstack,
+                      { hemit := hrel.hemit, hcode := .nil, hstack := (by rw [← hstk]; exact hrel.hstack),
                         hframes_len := hrel.hframes_len, hframes_locals := hrel.hframes_locals,
                         hframes_vals := hrel.hframes_vals, hglobals := hrel.hglobals, hmemory := hrel.hmemory, hmemLimits := hrel.hmemLimits, hmemory_aligned := hrel.hmemory_aligned, hmemory_nonempty := hrel.hmemory_nonempty,
                         hlabels := hrel.hlabels, hhalt := hhalt_of_structural (@EmitCodeCorr.nil (s1.labels.map (·.name))) hrel.hlabels,
@@ -10352,7 +10352,7 @@ theorem step_sim (irmod : IRModule) (wmod : Module) :
                         { s2 with code := [], trace := s2.trace ++ [.trap "type mismatch in i32.wrap_i64"] }) := by
                       simp [step?, hcw, hs2, pop1?, trapState, pushTrace]
                     simp only [traceToWasm]; exact ⟨_, hw,
-                      { hemit := hrel.hemit, hcode := .nil, hstack := by rw [← hstk]; exact hrel.hstack,
+                      { hemit := hrel.hemit, hcode := .nil, hstack := (by rw [← hstk]; exact hrel.hstack),
                         hframes_len := hrel.hframes_len, hframes_locals := hrel.hframes_locals,
                         hframes_vals := hrel.hframes_vals, hglobals := hrel.hglobals, hmemory := hrel.hmemory, hmemLimits := hrel.hmemLimits, hmemory_aligned := hrel.hmemory_aligned, hmemory_nonempty := hrel.hmemory_nonempty,
                         hlabels := hrel.hlabels, hhalt := hhalt_of_structural (@EmitCodeCorr.nil (s1.labels.map (·.name))) hrel.hlabels,
@@ -10417,7 +10417,7 @@ theorem step_sim (irmod : IRModule) (wmod : Module) :
                         { s2 with code := [], trace := s2.trace ++ [.trap "type mismatch in i32.wrap_i64"] }) := by
                       simp [step?, hcw, hs2, pop1?, trapState, pushTrace]
                     simp only [traceToWasm]; exact ⟨_, hw,
-                      { hemit := hrel.hemit, hcode := .nil, hstack := by rw [← hstk]; exact hrel.hstack,
+                      { hemit := hrel.hemit, hcode := .nil, hstack := (by rw [← hstk]; exact hrel.hstack),
                         hframes_len := hrel.hframes_len, hframes_locals := hrel.hframes_locals,
                         hframes_vals := hrel.hframes_vals, hglobals := hrel.hglobals, hmemory := hrel.hmemory, hmemLimits := hrel.hmemLimits, hmemory_aligned := hrel.hmemory_aligned, hmemory_nonempty := hrel.hmemory_nonempty,
                         hlabels := hrel.hlabels, hhalt := hhalt_of_structural (@EmitCodeCorr.nil (s1.labels.map (·.name))) hrel.hlabels,
