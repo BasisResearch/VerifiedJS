@@ -1579,17 +1579,11 @@ private theorem normalizeExpr_labeled_step_sim
       | «return» arg =>
         cases arg with
         | none => exfalso; simp only [ANF.normalizeExpr, pure, Pure.pure, StateT.pure, Except.pure, StateT.run] at hnorm; exact ANF.Expr.noConfusion (Prod.mk.inj (Except.ok.inj hnorm)).1
-        | some _ =>
-          exfalso; unfold ANF.normalizeExpr at hnorm
-          simp only [ANF.bindComplex, StateT.run, bind, Bind.bind, StateT.bind, Except.bind] at hnorm
-          repeat (first | split at hnorm | (simp [pure, Pure.pure, StateT.pure, Except.pure] at hnorm; try exact ANF.Expr.noConfusion (Prod.mk.inj (Except.ok.inj hnorm)).1))
+        | some _ => sorry -- nested return-some: recursive, needs induction on depth
       | yield arg delegate =>
         cases arg with
         | none => exfalso; simp only [ANF.normalizeExpr, pure, Pure.pure, StateT.pure, Except.pure, StateT.run] at hnorm; exact ANF.Expr.noConfusion (Prod.mk.inj (Except.ok.inj hnorm)).1
-        | some _ =>
-          exfalso; unfold ANF.normalizeExpr at hnorm
-          simp only [ANF.bindComplex, StateT.run, bind, Bind.bind, StateT.bind, Except.bind] at hnorm
-          repeat (first | split at hnorm | (simp [pure, Pure.pure, StateT.pure, Except.pure] at hnorm; try exact ANF.Expr.noConfusion (Prod.mk.inj (Except.ok.inj hnorm)).1))
+        | some _ => sorry -- nested yield-some: recursive, needs induction on depth
       | while_ _ _ =>
         exfalso; unfold ANF.normalizeExpr at hnorm
         simp only [StateT.run, bind, Bind.bind, StateT.bind, Except.bind] at hnorm
@@ -1600,10 +1594,7 @@ private theorem normalizeExpr_labeled_step_sim
         cases ‹Option Flat.Expr› with
         | none => simp only [StateT.run, bind, Bind.bind, StateT.bind, Except.bind] at hnorm; repeat (first | split at hnorm | (simp [pure, Pure.pure, StateT.pure, Except.pure] at hnorm; try exact ANF.Expr.noConfusion (Prod.mk.inj (Except.ok.inj hnorm)).1))
         | some _ => simp only [Functor.map, StateT.map, StateT.run, bind, Bind.bind, StateT.bind, Except.bind] at hnorm; repeat (first | split at hnorm | (simp [pure, Pure.pure, StateT.pure, Except.pure] at hnorm; try exact ANF.Expr.noConfusion (Prod.mk.inj (Except.ok.inj hnorm)).1))
-      | _ =>
-        exfalso; unfold ANF.normalizeExpr at hnorm
-        simp only [ANF.bindComplex, StateT.run, bind, Bind.bind, StateT.bind, Except.bind] at hnorm
-        repeat (first | split at hnorm | (simp [pure, Pure.pure, StateT.pure, Except.pure] at hnorm; try exact ANF.Expr.noConfusion (Prod.mk.inj (Except.ok.inj hnorm)).1))
+      | _ => sorry -- compound/bindComplex cases: needs induction on depth
   | yield arg delegate =>
     cases arg with
     | none =>
@@ -1654,17 +1645,11 @@ private theorem normalizeExpr_labeled_step_sim
       | «return» arg =>
         cases arg with
         | none => exfalso; simp only [ANF.normalizeExpr, pure, Pure.pure, StateT.pure, Except.pure, StateT.run] at hnorm; exact ANF.Expr.noConfusion (Prod.mk.inj (Except.ok.inj hnorm)).1
-        | some _ =>
-          exfalso; unfold ANF.normalizeExpr at hnorm
-          simp only [ANF.bindComplex, StateT.run, bind, Bind.bind, StateT.bind, Except.bind] at hnorm
-          repeat (first | split at hnorm | (simp [pure, Pure.pure, StateT.pure, Except.pure] at hnorm; try exact ANF.Expr.noConfusion (Prod.mk.inj (Except.ok.inj hnorm)).1))
+        | some _ => sorry -- nested return-some: recursive, needs induction on depth
       | yield arg delegate' =>
         cases arg with
         | none => exfalso; simp only [ANF.normalizeExpr, pure, Pure.pure, StateT.pure, Except.pure, StateT.run] at hnorm; exact ANF.Expr.noConfusion (Prod.mk.inj (Except.ok.inj hnorm)).1
-        | some _ =>
-          exfalso; unfold ANF.normalizeExpr at hnorm
-          simp only [ANF.bindComplex, StateT.run, bind, Bind.bind, StateT.bind, Except.bind] at hnorm
-          repeat (first | split at hnorm | (simp [pure, Pure.pure, StateT.pure, Except.pure] at hnorm; try exact ANF.Expr.noConfusion (Prod.mk.inj (Except.ok.inj hnorm)).1))
+        | some _ => sorry -- nested yield-some: recursive, needs induction on depth
       | while_ _ _ =>
         exfalso; unfold ANF.normalizeExpr at hnorm
         simp only [StateT.run, bind, Bind.bind, StateT.bind, Except.bind] at hnorm
@@ -1675,10 +1660,7 @@ private theorem normalizeExpr_labeled_step_sim
         cases ‹Option Flat.Expr› with
         | none => simp only [StateT.run, bind, Bind.bind, StateT.bind, Except.bind] at hnorm; repeat (first | split at hnorm | (simp [pure, Pure.pure, StateT.pure, Except.pure] at hnorm; try exact ANF.Expr.noConfusion (Prod.mk.inj (Except.ok.inj hnorm)).1))
         | some _ => simp only [Functor.map, StateT.map, StateT.run, bind, Bind.bind, StateT.bind, Except.bind] at hnorm; repeat (first | split at hnorm | (simp [pure, Pure.pure, StateT.pure, Except.pure] at hnorm; try exact ANF.Expr.noConfusion (Prod.mk.inj (Except.ok.inj hnorm)).1))
-      | _ =>
-        exfalso; unfold ANF.normalizeExpr at hnorm
-        simp only [ANF.bindComplex, StateT.run, bind, Bind.bind, StateT.bind, Except.bind] at hnorm
-        repeat (first | split at hnorm | (simp [pure, Pure.pure, StateT.pure, Except.pure] at hnorm; try exact ANF.Expr.noConfusion (Prod.mk.inj (Except.ok.inj hnorm)).1))
+      | _ => sorry -- compound/bindComplex cases: needs induction on depth
   | while_ cond body_w =>
     -- while produces .seq (.while_ ...) rest, never .labeled
     exfalso; unfold ANF.normalizeExpr at hnorm
@@ -1695,10 +1677,7 @@ private theorem normalizeExpr_labeled_step_sim
     | some fin =>
       simp only [Functor.map, StateT.map, StateT.run, bind, Bind.bind, StateT.bind, Except.bind] at hnorm
       repeat (first | split at hnorm | (simp [pure, Pure.pure, StateT.pure, Except.pure] at hnorm; try exact ANF.Expr.noConfusion (Prod.mk.inj (Except.ok.inj hnorm)).1))
-  | _ =>
-    exfalso; unfold ANF.normalizeExpr at hnorm
-    simp only [ANF.bindComplex, StateT.run, bind, Bind.bind, StateT.bind, Except.bind] at hnorm
-    repeat (first | split at hnorm | (simp [pure, Pure.pure, StateT.pure, Except.pure] at hnorm; try exact ANF.Expr.noConfusion (Prod.mk.inj (Except.ok.inj hnorm)).1))
+  | _ => sorry -- compound/bindComplex/throw/await cases: needs induction on depth
 
 /-- Stuttering simulation: one ANF step corresponds to one or more Flat steps,
     preserving observable events and the simulation relation.

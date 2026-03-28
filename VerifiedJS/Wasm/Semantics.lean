@@ -10531,11 +10531,12 @@ theorem step_sim (irmod : IRModule) (wmod : Module) :
               match hstk : s1.stack with
               | [] =>
                 -- Empty stack: both trap
-                unfold irStep? at hstep; rw [hcode_ir] at hstep
-                simp only [irPop1?, hstk, irTrapState, irPushTrace] at hstep
+                have hir := irStep?_eq_i32Eqz_underflow s1 rest hcode_ir hstk
+                simp only [irTrapState, irPushTrace] at hir
+                rw [hir] at hstep; simp only [Option.some.injEq, Prod.mk.injEq] at hstep
                 obtain ⟨rfl, rfl⟩ := hstep
                 have hlen := hrel.hstack.1; rw [hstk] at hlen; simp at hlen
-                have hs2 : s2.stack = [] := by cases s2.stack with | nil => rfl | cons => simp_all
+                have hs2 : s2.stack = [] := by match hs : s2.stack with | [] => rfl | _ :: _ => simp [hs] at hlen
                 have hw : step? s2 = some (.trap "stack underflow in i32.eqz",
                     { s2 with code := [], trace := s2.trace ++ [.trap "stack underflow in i32.eqz"] }) := by
                   simp [step?, hcw, hs2, pop1?, trapState, pushTrace]
@@ -10559,8 +10560,8 @@ theorem step_sim (irmod : IRModule) (wmod : Module) :
                 match hs2 : s2.stack with
                 | [] => simp [hs2] at hstk_rel
                 | wv :: wstk =>
-                  have hval := hstk_rel.2 0 (by simp [hstk])
-                  rw [hstk, hs2] at hval; simp at hval
+                  have hval := hstk_rel.2 0 (by simp)
+                  simp [hs2] at hval
                   obtain ⟨_, _, h1, h2, hvc⟩ := hval; simp at h1 h2; subst h1; subst h2
                   cases hvc with
                   | i32 n =>
@@ -10588,17 +10589,16 @@ theorem step_sim (irmod : IRModule) (wmod : Module) :
                             hstore_types := hrel.hstore_types }
               | .i64 v :: stk =>
                 -- Type mismatch: both trap
-                have hir : irStep? s1 = some (.trap "type mismatch in i32.eqz",
-                    { s1 with code := [], trace := s1.trace ++ [.trap "type mismatch in i32.eqz"] }) := by
-                  simp [irStep?, hcode_ir, hstk, irPop1?, irTrapState, irPushTrace]
+                have hir := irStep?_eq_i32Eqz_type_mismatch_i64 s1 rest v stk hcode_ir hstk
+                simp only [irTrapState, irPushTrace] at hir
                 rw [hir] at hstep; simp only [Option.some.injEq, Prod.mk.injEq] at hstep
                 obtain ⟨rfl, rfl⟩ := hstep
                 have hstk_rel := hrel.hstack; rw [hstk] at hstk_rel
                 match hs2 : s2.stack with
                 | [] => simp [hs2] at hstk_rel
                 | wv :: wstk =>
-                  have hval := hstk_rel.2 0 (by simp [hstk])
-                  rw [hstk, hs2] at hval; simp at hval
+                  have hval := hstk_rel.2 0 (by simp)
+                  simp [hs2] at hval
                   obtain ⟨_, _, h1, h2, hvc⟩ := hval; simp at h1 h2; subst h1; subst h2
                   cases hvc with
                   | i64 n =>
@@ -10618,17 +10618,16 @@ theorem step_sim (irmod : IRModule) (wmod : Module) :
                         hstore_types := hrel.hstore_types }⟩
               | .f64 v :: stk =>
                 -- Type mismatch: both trap
-                have hir : irStep? s1 = some (.trap "type mismatch in i32.eqz",
-                    { s1 with code := [], trace := s1.trace ++ [.trap "type mismatch in i32.eqz"] }) := by
-                  simp [irStep?, hcode_ir, hstk, irPop1?, irTrapState, irPushTrace]
+                have hir := irStep?_eq_i32Eqz_type_mismatch_f64 s1 rest v stk hcode_ir hstk
+                simp only [irTrapState, irPushTrace] at hir
                 rw [hir] at hstep; simp only [Option.some.injEq, Prod.mk.injEq] at hstep
                 obtain ⟨rfl, rfl⟩ := hstep
                 have hstk_rel := hrel.hstack; rw [hstk] at hstk_rel
                 match hs2 : s2.stack with
                 | [] => simp [hs2] at hstk_rel
                 | wv :: wstk =>
-                  have hval := hstk_rel.2 0 (by simp [hstk])
-                  rw [hstk, hs2] at hval; simp at hval
+                  have hval := hstk_rel.2 0 (by simp)
+                  simp [hs2] at hval
                   obtain ⟨_, _, h1, h2, hvc⟩ := hval; simp at h1 h2; subst h1; subst h2
                   cases hvc with
                   | f64 m =>
@@ -10650,13 +10649,12 @@ theorem step_sim (irmod : IRModule) (wmod : Module) :
               match hstk : s1.stack with
               | [] =>
                 -- Empty stack: both trap
-                have hir : irStep? s1 = some (.trap "stack underflow in i32.wrap_i64",
-                    { s1 with code := [], trace := s1.trace ++ [.trap "stack underflow in i32.wrap_i64"] }) := by
-                  simp [irStep?, hcode_ir, hstk, irPop1?, irTrapState, irPushTrace]
+                have hir := irStep?_eq_i32WrapI64_underflow s1 rest hcode_ir hstk
+                simp only [irTrapState, irPushTrace] at hir
                 rw [hir] at hstep; simp only [Option.some.injEq, Prod.mk.injEq] at hstep
                 obtain ⟨rfl, rfl⟩ := hstep
                 have hlen := hrel.hstack.1; rw [hstk] at hlen; simp at hlen
-                have hs2 : s2.stack = [] := by cases s2.stack with | nil => rfl | cons => simp_all
+                have hs2 : s2.stack = [] := by match hs : s2.stack with | [] => rfl | _ :: _ => simp [hs] at hlen
                 have hw : step? s2 = some (.trap "stack underflow in i32.wrap_i64",
                     { s2 with code := [], trace := s2.trace ++ [.trap "stack underflow in i32.wrap_i64"] }) := by
                   simp [step?, hcw, hs2, pop1?, trapState, pushTrace]
@@ -10672,17 +10670,16 @@ theorem step_sim (irmod : IRModule) (wmod : Module) :
                     hstore_types := hrel.hstore_types }⟩
               | .i32 v :: stk =>
                 -- Type mismatch: IR traps (i32 given to wrap_i64), Wasm also traps
-                have hir : irStep? s1 = some (.trap "type mismatch in i32.wrap_i64",
-                    { s1 with code := [], trace := s1.trace ++ [.trap "type mismatch in i32.wrap_i64"] }) := by
-                  simp [irStep?, hcode_ir, hstk, irPop1?, irTrapState, irPushTrace]
+                have hir := irStep?_eq_i32WrapI64_type_mismatch_i32 s1 rest v stk hcode_ir hstk
+                simp only [irTrapState, irPushTrace] at hir
                 rw [hir] at hstep; simp only [Option.some.injEq, Prod.mk.injEq] at hstep
                 obtain ⟨rfl, rfl⟩ := hstep
                 have hstk_rel := hrel.hstack; rw [hstk] at hstk_rel
                 match hs2 : s2.stack with
                 | [] => simp [hs2] at hstk_rel
                 | wv :: wstk =>
-                  have hval := hstk_rel.2 0 (by simp [hstk])
-                  rw [hstk, hs2] at hval; simp at hval
+                  have hval := hstk_rel.2 0 (by simp)
+                  simp [hs2] at hval
                   obtain ⟨_, _, h1, h2, hvc⟩ := hval; simp at h1 h2; subst h1; subst h2
                   cases hvc with
                   | i32 n =>
@@ -10709,8 +10706,8 @@ theorem step_sim (irmod : IRModule) (wmod : Module) :
                 match hs2 : s2.stack with
                 | [] => simp [hs2] at hstk_rel
                 | wv :: wstk =>
-                  have hval := hstk_rel.2 0 (by simp [hstk])
-                  rw [hstk, hs2] at hval; simp at hval
+                  have hval := hstk_rel.2 0 (by simp)
+                  simp [hs2] at hval
                   obtain ⟨_, _, h1, h2, hvc⟩ := hval; simp at h1 h2; subst h1; subst h2
                   cases hvc with
                   | i64 n =>
@@ -10738,17 +10735,16 @@ theorem step_sim (irmod : IRModule) (wmod : Module) :
                             hstore_types := hrel.hstore_types }
               | .f64 v :: stk =>
                 -- Type mismatch: both trap
-                have hir : irStep? s1 = some (.trap "type mismatch in i32.wrap_i64",
-                    { s1 with code := [], trace := s1.trace ++ [.trap "type mismatch in i32.wrap_i64"] }) := by
-                  simp [irStep?, hcode_ir, hstk, irPop1?, irTrapState, irPushTrace]
+                have hir := irStep?_eq_i32WrapI64_type_mismatch_f64 s1 rest v stk hcode_ir hstk
+                simp only [irTrapState, irPushTrace] at hir
                 rw [hir] at hstep; simp only [Option.some.injEq, Prod.mk.injEq] at hstep
                 obtain ⟨rfl, rfl⟩ := hstep
                 have hstk_rel := hrel.hstack; rw [hstk] at hstk_rel
                 match hs2 : s2.stack with
                 | [] => simp [hs2] at hstk_rel
                 | wv :: wstk =>
-                  have hval := hstk_rel.2 0 (by simp [hstk])
-                  rw [hstk, hs2] at hval; simp at hval
+                  have hval := hstk_rel.2 0 (by simp)
+                  simp [hs2] at hval
                   obtain ⟨_, _, h1, h2, hvc⟩ := hval; simp at h1 h2; subst h1; subst h2
                   cases hvc with
                   | f64 m =>
