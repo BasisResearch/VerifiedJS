@@ -900,6 +900,7 @@ private def ValueAddrWF (v : Core.Value) (heapSize : Nat) : Prop :=
 
 /-- All object addresses in a Core expression are valid heap addresses.
     Fully recursive to propagate through compound expressions. -/
+mutual
 def ExprAddrWF : Core.Expr → Nat → Prop
   | .lit v, n => ValueAddrWF v n
   | .var _, _ => True
@@ -907,8 +908,8 @@ def ExprAddrWF : Core.Expr → Nat → Prop
   | .assign _ value, n => ExprAddrWF value n
   | .«if» cond t e, n => ExprAddrWF cond n ∧ ExprAddrWF t n ∧ ExprAddrWF e n
   | .seq a b, n => ExprAddrWF a n ∧ ExprAddrWF b n
-  | .call f args, n => ExprAddrWF f n ∧ (∀ e, e ∈ args → ExprAddrWF e n)
-  | .newObj f args, n => ExprAddrWF f n ∧ (∀ e, e ∈ args → ExprAddrWF e n)
+  | .call f args, n => ExprAddrWF f n ∧ ExprAddrListWF args n
+  | .newObj f args, n => ExprAddrWF f n ∧ ExprAddrListWF args n
   | .getProp e _, n => ExprAddrWF e n
   | .setProp o _ v, n => ExprAddrWF o n ∧ ExprAddrWF v n
   | .getIndex e1 e2, n => ExprAddrWF e1 n ∧ ExprAddrWF e2 n
@@ -936,18 +937,23 @@ def ExprAddrWF : Core.Expr → Nat → Prop
   | .await e, n => ExprAddrWF e n
   | .this, _ => True
 
+/-- All object addresses in a list of Core expressions are valid heap addresses. -/
+def ExprAddrListWF : List Core.Expr → Nat → Prop
+  | [], _ => True
+  | e :: es, n => ExprAddrWF e n ∧ ExprAddrListWF es n
+end
+
 private theorem ValueAddrWF_mono {v : Core.Value} {n m : Nat}
     (h : ValueAddrWF v n) (hle : n ≤ m) : ValueAddrWF v m := by
   cases v <;> simp [ValueAddrWF] at * <;> omega
 
+mutual
 private theorem ExprAddrWF_mono : (e : Core.Expr) → {n m : Nat} →
     ExprAddrWF e n → (n ≤ m) → ExprAddrWF e m
   | .lit v, _, _, h, hle => ValueAddrWF_mono h hle
   | .var _, _, _, _, _ => trivial
-  | .call f args, _, _, h, hle => ⟨ExprAddrWF_mono f h.1 hle,
-      fun e hmem => ExprAddrWF_mono e (h.2 e hmem) hle⟩
-  | .newObj f args, _, _, h, hle => ⟨ExprAddrWF_mono f h.1 hle,
-      fun e hmem => ExprAddrWF_mono e (h.2 e hmem) hle⟩
+  | .call f args, _, _, h, hle => ⟨ExprAddrWF_mono f h.1 hle, ExprAddrListWF_mono args h.2 hle⟩
+  | .newObj f args, _, _, h, hle => ⟨ExprAddrWF_mono f h.1 hle, ExprAddrListWF_mono args h.2 hle⟩
   | .objectLit _, _, _, _, _ => trivial
   | .arrayLit _, _, _, _, _ => trivial
   | .break _, _, _, _, _ => trivial
@@ -979,8 +985,15 @@ private theorem ExprAddrWF_mono : (e : Core.Expr) → {n m : Nat} →
   | .labeled _ b, _, _, h, hle => ExprAddrWF_mono b h hle
   | .await arg, _, _, h, hle => ExprAddrWF_mono arg h hle
   termination_by e => sizeOf e
-  decreasing_by all_goals (try simp_wf) <;> (try omega) <;>
-    (have := List.sizeOf_lt_of_mem ‹_ ∈ _›; omega)
+  decreasing_by all_goals (try simp_wf) <;> omega
+
+private theorem ExprAddrListWF_mono : (es : List Core.Expr) → {n m : Nat} →
+    ExprAddrListWF es n → (n ≤ m) → ExprAddrListWF es m
+  | [], _, _, _, _ => trivial
+  | e :: es, _, _, h, hle => ⟨ExprAddrWF_mono e h.1 hle, ExprAddrListWF_mono es h.2 hle⟩
+  termination_by es => sizeOf es
+  decreasing_by all_goals (try simp_wf) <;> omega
+end
 
 private theorem Core_step_heap_size_mono
     {s s' : Core.State} {t : Core.TraceEvent}
