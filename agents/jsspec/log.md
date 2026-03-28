@@ -1,5 +1,98 @@
 # jsspec agent log
 
+## 2026-03-28T14:00 — normalizeExpr_not_labeled_family FULLY VERIFIED
+
+### PRIORITY 0: All ConvertHelpers.lean lemmas already integrated
+
+All lemmas from `.lake/_tmp_fix/VerifiedJS/ANF/ConvertHelpers.lean` are already in
+`VerifiedJS/ANF/Convert.lean`. The staging file has name collisions (stale). No action needed.
+
+Integrated lemmas: `let_k_not_labeled`, `if_k_not_labeled`, `bindComplex_k_not_labeled`,
+`bindComplex_not_labeled`, all `normalizeExpr_*_not_labeled` variants, all `*_labeled_source` lemmas.
+
+### PRIORITY 1: normalizeExpr_not_labeled_family VERIFIED (0 errors, 0 sorries)
+
+File: `.lake/_tmp_fix/VerifiedJS/Proofs/anf_not_labeled.lean`
+
+| Definition/Theorem | Status | Purpose |
+|-------------------|--------|---------|
+| `Flat.Expr.noLabeled` | Defined | Recursive predicate: expr has no .labeled at any depth |
+| `Flat.Expr.listNoLabeled` | Defined | List variant of noLabeled |
+| `Flat.Expr.propListNoLabeled` | Defined | PropList variant of noLabeled |
+| `bindComplex_not_labeled` | **VERIFIED** | bindComplex never produces .labeled |
+| `normalizeExpr_not_labeled_family` | **VERIFIED** | Family theorem: normalizeExpr e k ≠ .labeled when e.noLabeled ∧ k not-labeled |
+| `normalizeExpr_not_labeled` | **VERIFIED** | Convenience wrapper |
+
+**KEY INSIGHT**: The original prompt's hypothesis `(h_not_labeled : ∀ l b, e ≠ .labeled l b)`
+(top-level only) is INSUFFICIENT for recursive cases. The correct version requires a recursive
+`noLabeled` predicate that checks ALL sub-expressions. The proof follows the exact structure
+of `normalizeExpr_not_trivial_family` with the additional `noLabeled` hypothesis propagated
+through each case.
+
+**INTEGRATION INSTRUCTIONS for proof agent**:
+1. Add `noLabeled`/`listNoLabeled`/`propListNoLabeled` mutual defs to `VerifiedJS/Flat/Syntax.lean`
+   (after `Expr.depth`/`listDepth`/`propListDepth`)
+2. Add `normalizeExpr_not_labeled_family` to `ANFConvertCorrect.lean` after `normalizeExpr_not_trivial_family`
+3. The convenience wrapper `normalizeExpr_not_labeled` can close goals where the expression
+   is known to have no .labeled sub-expressions
+
+### ARCHITECTURAL ANALYSIS: L1632/L1698/L1715 sorry cases
+
+**These sorries CANNOT be closed with `normalizeExpr_not_labeled`** because the expressions
+at those lines DO contain .labeled sub-expressions (that's the whole point of the
+`normalizeExpr_labeled_step_sim` theorem — it handles expressions that produce .labeled output).
+
+**The fundamental blocker for L1632/L1698/L1715**:
+- The theorem `normalizeExpr_labeled_step_sim` requires `hk_triv` (continuation always produces .trivial)
+- At L1632 (return some val, val compound): normalizeExpr unfolds to `normalizeExpr val (fun t => pure (.return (some t)))` — the continuation produces .return, NOT .trivial
+- So the IH (which requires `hk_triv`) CANNOT be applied to val
+- Same issue at L1698 (yield some) and L1715 (top-level compounds)
+
+**RECOMMENDED FIX**: Generalize `normalizeExpr_labeled_step_sim` to replace `hk_triv` with
+`hk_not_labeled`:
+```
+hk_not_labeled : ∀ arg n' m' l b, (k arg).run n' ≠ .ok (.labeled l b, m')
+```
+
+With this generalization:
+- Base cases (var, this, lit): use `hk_not_labeled` for contradiction (k can't produce .labeled) ✓
+- .labeled case: same peeling proof as now ✓
+- Single-sub-expression compounds (throw, await, return some, yield some, assign, unary, typeof,
+  getProp, deleteProp, getEnv, makeClosure): continuation produces fixed constructor
+  (.throw/.await/.return/.yield) or uses bindComplex (.let) — all satisfy hk_not_labeled.
+  Apply IH on sub-expression. ✓
+- Multi-sub-expression: .let and .if continuations produce .let/.if (noConfusion). ✓
+- **REMAINING HARD CASE**: .seq a b — continuation for a is `fun _ => normalizeExpr b k`.
+  This CAN produce .labeled from b's sub-expressions. Cannot satisfy hk_not_labeled.
+
+For .seq and similar multi-sub-expression forms where the continuation involves
+normalizeExpr on a later sub-expression: the proof needs to show that Flat steps through
+the first sub-expression before reaching the .labeled in a later sub-expression. This
+requires either:
+(a) Case-splitting: if .labeled is in a, apply IH; if in b, need to step a to completion first
+(b) A combined measure (e.g., total .labeled count in the Flat expression) that decreases
+
+This is the core challenge remaining in the ANF correctness proof.
+
+### Additional: Bridge lemmas for generalized theorem VERIFIED (0 errors, 0 sorries)
+
+File: `.lake/_tmp_fix/VerifiedJS/Proofs/anf_labeled_sim_generalized.lean`
+
+| Lemma | Status | Purpose |
+|-------|--------|---------|
+| `hk_triv_implies_not_labeled` | **VERIFIED** | Bridge: hk_triv → hk_not_labeled |
+| `return_some_k_not_labeled'` | **VERIFIED** | return-cont satisfies hk_not_labeled |
+| `throw_k_not_labeled'` | **VERIFIED** | throw-cont satisfies hk_not_labeled |
+| `await_k_not_labeled'` | **VERIFIED** | await-cont satisfies hk_not_labeled |
+| `yield_some_k_not_labeled'` | **VERIFIED** | yield-cont satisfies hk_not_labeled |
+| `bindComplex_k_not_labeled'` | **VERIFIED** | bindComplex-cont satisfies hk_not_labeled |
+
+These lemmas enable the proof agent to generalize `normalizeExpr_labeled_step_sim` from
+`hk_triv` to `hk_not_labeled`. The bridge lemma ensures the generalized theorem can be
+used at the original call site.
+
+---
+
 ## 2026-03-28T13:00 — PRIORITY 0/1/2 work
 
 ### PRIORITY 0: bindComplex_not_labeled VERIFIED (0 errors, 0 sorries)
@@ -1709,3 +1802,4 @@ Staged at `.lake/_tmp_fix/VerifiedJS/Proofs/design_issues.md`:
 
 ## Run: 2026-03-28T14:00:01+00:00
 
+2026-03-28T14:17:53+00:00 DONE

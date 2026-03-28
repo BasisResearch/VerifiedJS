@@ -1,42 +1,74 @@
-# wasmspec — STOP TRYING return-some IN step_sim. IT IS 1:N.
+# wasmspec — CLOSE 1:1 CASES IN step_sim
 
-## CRITICAL CORRECTION
+## CURRENT STATE: 18 grep sorries in Wasm/Semantics.lean. ~14 actual (some in comments).
 
-**L6801 (`| some t => sorry`) in `step_sim` is UNPROVABLE.**
+## STOP: L6801 (return-some) is 1:N. Already handled in step_sim_stutter. Move on.
 
-`step_sim` proves `∃ s2', irStep? s2 = some (t, s2')` — a SINGLE IR step.
-But `return (some triv)` emits `argCode ++ [return_]` = 2+ IR steps. This is 1:N, not 1:1.
+## PRIORITY 0: Prove 1:1 cases in step_sim
 
-**step_sim_stutter (L7370) ALREADY handles return-some correctly.** All 9 per-trivial lemmas are already wired in there. No work needed on return-some.
+These expressions map to SINGLE IR instructions and are provable in step_sim:
 
-The L6801 sorry stays. Move on.
+### yield (L6804)
+1. Check `LowerCodeCorr` for `.yield` — what IR does it emit?
+2. If it's a single instruction (e.g., `yield_`), follow the return-none pattern (L6764-6800)
+3. The pattern: unfold step_sim hypothesis, get the IR instruction, show irStep? produces a matching step
 
-## ACTUAL PRIORITY 0: Prove 1:1 cases in step_sim
-
-Some expression forms in step_sim ARE 1:1 (single IR instruction). Focus on these:
-
-### yield (L6804) and await (L6807)
-Check: does ANF `yield`/`await` map to a single IR instruction? Look at `LowerCodeCorr` constructors for `.yield` and `.await`. If the IR is a single instruction, it's 1:1 and provable following the return-none pattern (L6764-6800).
+### await (L6807)
+Same approach as yield. Check IR emission for `.await`.
 
 ### break (L6813) and continue (L6816)
-Check: do these map to single IR instructions (`br label` / `br_if` something)? If so, prove them 1:1 following the return-none pattern.
+These likely map to `br label` or similar. Check IR emission.
 
 ### labeled (L6810)
-Check: does `.labeled label body` map to a single IR `block` instruction? If so, prove 1:1.
+`.labeled label body` likely maps to IR `block` instruction. Check IR emission.
 
-### How to check: Use `lean_hover_info` on LowerCodeCorr constructors, or grep for `yield_inv|await_inv|break_inv|continue_inv|labeled_inv` in EmitCodeCorr/LowerCodeCorr.
+### HOW TO CHECK IR EMISSION:
+```
+lean_hover_info on LowerCodeCorr constructors
+```
+Or grep:
+```
+grep -n "yield\|await\|break\|continue\|labeled" VerifiedJS/Wasm/Lower.lean | head -30
+```
 
-## PRIORITY 1: callIndirect (L10838) — exfalso?
+### PROOF TEMPLATE (from return-none at L6764):
+```lean
+| .yield (some arg) delegate =>
+  -- 1. Unfold the LowerCodeCorr hypothesis to get IR code
+  obtain ⟨irCode, hirCorr, hirPrefix⟩ := hlower
+  -- 2. Show irCode is the expected instruction(s)
+  simp [Lower.lowerExpr] at hirCorr  -- or whatever the lowering function is
+  -- 3. Show irStep? on the instruction produces a matching step
+  refine ⟨ir₂, ?_, ?_⟩
+  ...
+```
 
-Check if `.callIndirect` is excluded by `supported`. If `ANF.Expr.supported` or `Flat.Expr.supported` excludes callIndirect, close with `exfalso`.
+Adapt this template for each 1:1 case.
 
-## PRIORITY 2: Expand step_sim_stutter for 1:N cases
+## PRIORITY 1: callIndirect exfalso (L10838)
 
-For compound cases (let, seq, if, while, throw, tryCatch) that need N IR steps:
-1. Add them as explicit matches in `step_sim_stutter` (like return-some at L7380)
-2. Write per-case lemmas (like `step_sim_return_litNull`) showing IR takes N steps with matching observable events
+Check if `ANF.Expr.supported` or `Flat.Expr.supported` excludes `.callIndirect`. If so:
+```lean
+| .callIndirect typeIdx => exfalso; simp [supported] at h_supported
+```
 
-Start with `throw` — it's likely the simplest (1 event, simple IR sequence).
+Look for the supported definition:
+```
+grep -n "def supported" VerifiedJS/ANF/Syntax.lean VerifiedJS/Flat/Syntax.lean
+```
+
+## PRIORITY 2: Compound step_sim cases (L6738-6759)
+
+These 6 sorries (let, seq, if, while_, throw, tryCatch) are 1:N cases. They need multiple IR steps.
+
+For each one, check if `step_sim_stutter` already handles it (like return-some). If not, add an explicit match.
+
+Start with `throw` — it's likely simplest:
+1. Check IR emission for `.throw`
+2. If it emits `[pushArg, throw_]`, that's 2 instructions
+3. Add a `| .throw arg =>` case in `step_sim_stutter` with a lemma showing 2 IR steps
 
 ## File: `VerifiedJS/Wasm/Semantics.lean`
 ## Log to agents/wasmspec/log.md
+
+## IMPORTANT: Your runs are taking 1-2+ hours. Focus on ONE case at a time. Get yield or await closed first, then move on.

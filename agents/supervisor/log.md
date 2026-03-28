@@ -1,3 +1,58 @@
+## Run: 2026-03-28T14:05:01+00:00
+
+### Metrics
+- **Sorry count (grep -c)**: 56 (17 ANF + 20 CC + 18 Wasm + 1 Lower)
+- **Actual sorries**: ~50 (17 ANF + 18 CC + 14 Wasm + 1 Lower)
+- **Delta from last run (13:05)**: ZERO. No change in any file.
+- **Net assessment**: 0. Proof agent ran at 13:30 but produced no output. jsspec running short cycles with no visible output. wasmspec still running from 12:15.
+
+### CRITICAL DISCOVERY: ANF hk generalization CANNOT be done as simple hypothesis swap
+
+Deep analysis reveals cascading dependency chain:
+1. `normalizeExpr_labeled_step_sim` conclusion (L1467) guarantees k' is trivial-preserving
+2. The labeled case (L1528) satisfies this by passing `hk` through: `exact ⟨k, n, m', hres, hk⟩`
+3. If hypothesis weakened to "not-labeled", conclusion can't guarantee trivial-preserving
+4. Conclusion feeds into `ANF_SimRel` (L65-66) which stores trivial-preserving k
+5. ALL proved cases of `anfConvert_step_star` extract and use `hk_triv` from SimRel
+6. Helper theorems `normalizeExpr_var_step_sim`, `normalizeExpr_var_implies_free` also need it
+
+**Required fix**: Full `ANF_SimRel` redesign — change stored property from trivial-preserving to not-labeled, then cascade through ~10 helper theorems and ~8 proved cases. This is a 2+ hour coordinated refactor.
+
+### STRATEGY PIVOT: Focus on CC sorry reductions
+
+ANF is architecturally blocked. CC has more tractable individual case proofs:
+- objectLit/arrayLit (L3018-3019): staging proofs exist, ready to integrate
+- call/newObj (L2588-2589): staging may exist
+- captured var (L1828): needs EnvCorrInj threading
+- functionDef (L3020): needs analysis
+
+### Agent Analysis
+1. **proof agent**: Last substantive work at 12:30 (depth induction + setProp/setIndex, net 0). Run at 13:30+ produced NO output — just "DONE". Redirected to CC objectLit/arrayLit integration (P0) and call case (P1).
+2. **jsspec**: Running short cycles (07:00-14:00) with no visible log output since 06:00. Last substantive work: continuation no-confusion lemmas. normalizeExpr_not_labeled_family needs recursive `noLabeledAnywhere` predicate. Redirected to write this predicate (P0).
+3. **wasmspec**: Still running from 12:15 (almost 2 hours). No sorry reductions. Redirected to focus on single 1:1 cases (yield/await first).
+
+### Agent Prompt Rewrites
+1. **proof**: MAJOR PIVOT. Abandoned hk generalization (blocked by SimRel cascade). P0: integrate objectLit/arrayLit staging proofs into CC. P1: attempt call case. P2: captured var.
+2. **jsspec**: P0: Write `Flat.Expr.noLabeledAnywhere` recursive predicate. P1: Complete normalizeExpr_not_labeled_family with noLabeledAnywhere. P2: Check if initial expressions are noLabeledAnywhere.
+3. **wasmspec**: Narrowed focus to ONE case at a time. P0: prove yield or await (1:1 cases). P1: callIndirect exfalso.
+
+### forIn/forOf (L1132-1133) — NOT a priority
+These sorries are in `convertExpr_not_value` which is not referenced by any other Lean code. The main theorem's forIn/forOf cases (L3142-3155) are ALREADY PROVED via absurd.
+
+### Actions Taken
+1. Counted sorries: 56 grep / 50 actual (unchanged)
+2. Deep analysis of hk generalization — proved it requires full SimRel redesign
+3. Traced the dependency chain: hk → conclusion → SimRel → all helpers
+4. Strategic pivot to CC sorry reductions
+5. All 3 prompts rewritten with corrected strategy
+6. Logged time estimate (56 grep, 160 hours)
+
+### OUTLOOK: Target next run ≤54 (CC objectLit/arrayLit -2, possible Wasm 1:1 -1)
+### RISK: Proof agent may fail to integrate staging proofs (build errors). jsspec noLabeledAnywhere predicate may be complex.
+### ESCALATION: ANF is architecturally blocked. 17 sorries cannot be reduced without SimRel redesign. This is the CRITICAL PATH for end-to-end proof.
+
+---
+
 ## Run: 2026-03-28T13:05:03+00:00
 
 ### Metrics
@@ -5724,3 +5779,4 @@ ANF sorry count effectively unchanged (structural improvements but no net closur
 
 ## Run: 2026-03-28T14:05:01+00:00
 
+2026-03-28T14:18:20+00:00 DONE

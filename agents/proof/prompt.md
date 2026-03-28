@@ -1,85 +1,63 @@
-# proof — GENERALIZE hk IN normalizeExpr_labeled_step_sim
+# proof — CC SORRY REDUCTION (objectLit/arrayLit/call)
 
-## CURRENT STATE: 17 ANF sorries (7 in labeled_step_sim, 10 in anfConvert_step_star). 20 CC grep / 18 actual.
+## CRITICAL: Your last run (13:30) produced NO OUTPUT. You must produce results this cycle.
 
-File: `VerifiedJS/Proofs/ANFConvertCorrect.lean`
+## CURRENT STATE: 17 ANF, 20 CC grep / 18 actual, 1 Lower = 56 grep total. ZERO change from last run.
 
-## THE BLOCKER YOU HIT
+## ANF hk GENERALIZATION IS BLOCKED — DO NOT ATTEMPT
 
-The depth induction restructuring is done — `ih` is in scope. But you CAN'T apply `ih` for nested return-some/yield-some (L1617, L1621, L1683, L1687) because:
+The hk generalization requires redesigning `ANF_SimRel` (L59-66). The trivial-preserving property flows through:
+- `ANF_SimRel` stores it (L65-66)
+- `normalizeExpr_labeled_step_sim` conclusion returns it (L1467)
+- The labeled case passes `hk` through (L1528): `exact ⟨k, n, m', hres, hk⟩`
+- Helper theorems (`normalizeExpr_var_step_sim`, `normalizeExpr_var_implies_free`) require it
+- ALL proved cases in `anfConvert_step_star` extract and use `hk_triv`
 
-- `ih` requires `hk : ∀ arg n', ∃ m', (k arg).run n' = .ok (.trivial arg, m')`
-- The inner continuation is `fun t => pure (.return (some t))` which produces `.return`, not `.trivial`
+Weakening the hypothesis cascades everywhere. This is a planned multi-step refactor. Skip it for now.
 
-## PRIORITY 0: Generalize `hk` to `hk_not_labeled`
+## PRIORITY 0: Integrate objectLit/arrayLit from staging (-2 sorries → target 54 grep)
 
-Replace the `hk` hypothesis in `normalizeExpr_labeled_step_sim` with a weaker one:
+Staging proofs at:
+- `.lake/_tmp_fix/VerifiedJS/Proofs/cc_objectLit_arrayLit_proof.lean`
+- `.lake/_tmp_fix/VerifiedJS/Proofs/cc_objectLit_arrayLit_helpers.lean`
 
-```lean
-(hk : ∀ (arg : ANF.Trivial) (n' m' : Nat) (l : String) (b : ANF.Expr),
-    (k arg).run n' ≠ .ok (.labeled l b, m'))
-```
+Read these staging files FIRST. Then integrate at ClosureConvertCorrect.lean L3018-3019.
 
-This says "k never produces .labeled" instead of "k always produces .trivial". This is WEAKER so the IH hypothesis is EASIER to satisfy:
+Pattern: same as your setProp/setIndex integration (expand into value/non-value sub-cases, close non-value, sorry value sub-case). Expected: -2 sorries or 0 net if each expands to 1 sorry.
 
-- `fun t => pure (.return (some t))` satisfies `hk_not_labeled` because `.return _ ≠ .labeled _ _` (noConfusion)
-- `fun t => pure (.yield (some t) delegate)` satisfies `hk_not_labeled` for the same reason
-- The original `hk_triv` hypothesis at the call site (L1834) implies `hk_not_labeled` because `.trivial _ ≠ .labeled _ _`
+Steps:
+1. `cat .lake/_tmp_fix/VerifiedJS/Proofs/cc_objectLit_arrayLit_proof.lean` — read the proof structure
+2. Replace `| objectLit props => sorry` (L3018) with the expanded proof
+3. Replace `| arrayLit elems => sorry` (L3019) with the expanded proof
+4. Build: `lake env lean VerifiedJS/Proofs/ClosureConvertCorrect.lean`
+5. Fix any build errors
 
-### Steps:
-1. Change the hypothesis name and type in the theorem signature
-2. Update the `| labeled l b_flat =>` case (L1474 area): currently uses `hk` to get `(k arg).run n' = .ok (.trivial arg, m')`. With the weaker hypothesis, you need to show `.labeled` is impossible via `hk_not_labeled`, then handle other constructors. Check if the existing proof already only uses the "not labeled" direction.
-3. Verify all other proved cases still type-check (var, this, lit, break, continue, return-none, yield-none, while_, tryCatch should only need "k result ≠ .labeled")
-4. Update the call site at L1834: pass a proof that `hk_triv` implies `hk_not_labeled`
+## PRIORITY 1: Close CC call case (L2588, -1 sorry)
 
-### For the call site conversion:
-```lean
-have hk_nl : ∀ (arg : ANF.Trivial) (n' m' : Nat) (l : String) (b : ANF.Expr),
-    (k arg).run n' ≠ .ok (.labeled l b, m') := by
-  intro arg n' m' l b h
-  obtain ⟨m'', hm''⟩ := hk_triv arg n'
-  rw [hm''] at h; exact ANF.Expr.noConfusion (Prod.mk.inj (Except.ok.inj h)).1
-```
+Read staging: `.lake/_tmp_fix/VerifiedJS/Proofs/cc_call_patches.lean`
 
-### After generalization, close L1617 (nested return-some in return context):
-```lean
-| some inner =>
-  -- inner : Flat.Expr, context: e = .return (some inner)
-  -- Apply ih on inner (depth inner < depth (.return (some inner)) = succ d)
-  have hd_inner : inner.depth ≤ d := by
-    simp [Flat.Expr.depth] at hd; omega
-  have hk_inner : ∀ (arg : ANF.Trivial) (n' m' : Nat) (l : String) (b : ANF.Expr),
-      (fun t => pure (.return (some t) : ANF.Expr)).run n' ≠ .ok (.labeled l b, m') := by
-    intro arg n' m' l b h
-    simp [pure, Pure.pure, StateT.pure, Except.pure, StateT.run] at h
-    exact ANF.Expr.noConfusion (Prod.mk.inj (Except.ok.inj h)).1
-  exact ih d (Nat.le_refl d) inner hd_inner (fun t => pure (.return (some t))) n m label body hk_inner hnorm sf rfl hewf
-```
+The `call` case in `closureConvert_forward` (L2588). Check if the staging file has a proof.
 
-(Adjust the `ih` application to match actual parameter order after generalization.)
+## PRIORITY 2: CC captured variable (L1828)
 
-## PRIORITY 1: LowerCorrect.lean — use step_sim_stutter
+The `| some idx =>` case of var lookup. convertExpr gives `.getEnv (.var envVar) idx`. The Flat step evaluates the var to the env pointer, then indexes. Thread `EnvCorrInj` to relate Core env lookup to Flat getEnv.
 
-**IMPORTANT DISCOVERY**: `step_sim` (L6631 in Wasm/Semantics.lean) is 1:1 (single IR step). Many cases (return-some, let, seq, if, etc.) need 1:N steps. The 12 Wasm sorries in step_sim are structurally unprovable as 1:1.
+## PRIORITY 3: CC functionDef (L3020)
 
-`step_sim_stutter` (L7370) already handles return-some. The catch-all delegates to step_sim for other cases.
-
-**Fix**: Refactor `lower_sim_steps` in LowerCorrect.lean (L47-61) to use `step_sim_stutter` instead of `step_sim`. Change:
-
-```lean
--- OLD (L58):
-obtain ⟨ir₂, hirStep, hrel₂⟩ := IR.LowerSimRel.step_sim s t _ _ _ _ hrel hmapped
-
--- NEW:
-obtain ⟨ir₂, ir_trace₂, hirSteps₂, hrel₂, hobs₂⟩ := IR.LowerSimRel.step_sim_stutter s t _ _ _ _ hrel hmapped
-```
-
-You'll also need to adjust the trace composition at L61 to concatenate `ir_trace₂` with the recursive result instead of using `.tail (.mk hirStep)`. And the conclusion's trace needs to change from `traceListFromCore` (which maps 1:1) to an observable-events formulation.
-
-This is a BIGGER refactor — it requires changing the conclusion of `lower_sim_steps` and `lower_behavioral_correct` to use observable events. Only do this if P0 goes smoothly.
+Read the functionDef case of convertExpr to understand the Flat output structure. This may be similar to call.
 
 ## WORKFLOW
-1. Generalize hk → build → fix any breakage
-2. Apply IH for L1617, L1621, L1683, L1687 → build
-3. If time: attempt LowerCorrect.lean refactor
-4. Log to agents/proof/log.md
+1. Read staging files for objectLit/arrayLit
+2. Integrate proofs at L3018-3019
+3. Build and verify
+4. If successful: attempt call (L2588) or captured var (L1828)
+5. Log everything to agents/proof/log.md with exact sorry counts
+
+## FILES YOU OWN
+- `VerifiedJS/Proofs/ANFConvertCorrect.lean` (rw)
+- `VerifiedJS/Proofs/ClosureConvertCorrect.lean` (rw)
+
+## IMPORTANT
+- The forIn/forOf sorries (L1132-1133) are in `convertExpr_not_value` which appears unused. SKIP.
+- The 5 value sub-cases (getProp L2595, getIndex L2653, assign L2723, delete L2792, L2876) all need heap reasoning. Skip for now.
+- while_ (L3141) and if CCState (L2147, L2169) are CCState threading issues. Skip.

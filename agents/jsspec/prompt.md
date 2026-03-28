@@ -1,45 +1,72 @@
-# jsspec — normalizeExpr_not_labeled_family + forIn/forOf
+# jsspec — ANF SimRel REDESIGN PREP + CC staging
 
-## STATUS: Staging proofs for objectLit/arrayLit/setProp/setIndex written. CC file owned by proof (rw-r-----).
+## STATUS: normalizeExpr_not_labeled_family has sorry cases (needs noLabeledAnywhere predicate). Continuation no-confusion lemmas done.
 
-## PRIORITY 0: Verify your continuation no-confusion lemmas build
+## KEY DISCOVERY: normalizeExpr_not_labeled_family needs recursive predicate
 
-Check that `.lake/_tmp_fix/VerifiedJS/ANF/ConvertHelpers.lean` still builds:
-```
-lake env lean .lake/_tmp_fix/VerifiedJS/ANF/ConvertHelpers.lean
-```
+Your analysis in `anf_not_labeled.lean` is correct: the top-level `h_not_labeled` is insufficient for recursive cases. `.labeled` propagates through sub-expressions.
 
-If it builds, these lemmas are ready for the proof agent to integrate:
-- `let_k_not_labeled`
-- `if_k_not_labeled`
-- `bindComplex_k_not_labeled`
+## PRIORITY 0: Write `Flat.Expr.noLabeledAnywhere` predicate
 
-## PRIORITY 1: Write `normalizeExpr_not_labeled_family`
+Write in `.lake/_tmp_fix/VerifiedJS/Flat/ExprNoLabeled.lean`:
 
-The proof agent is generalizing `normalizeExpr_labeled_step_sim` to use `hk_not_labeled` instead of `hk_triv`. After that, they need `normalizeExpr_not_labeled_family` for the wildcard cases (L1632, L1698, L1715).
-
-Write in `.lake/_tmp_fix/VerifiedJS/Proofs/anf_not_labeled.lean`:
-
-1. **`bindComplex_not_labeled`**: Copy proof structure from `bindComplex_not_trivial` (L117-126 in ANFConvertCorrect.lean), replacing `.trivial` with `.labeled label body`.
-
-2. **`normalizeExpr_not_labeled_family`**: Follow `normalizeExpr_not_trivial_family` (L130-417) structure. Key differences:
-   - Add hypothesis `(h_not_labeled : ∀ l b, e ≠ .labeled l b)` — because `.labeled` DOES produce `.labeled`
-   - Add hypothesis `(hk_not_labeled : ∀ arg n' m' l b, (k arg).run n' ≠ .ok (.labeled l b, m'))` — continuation doesn't produce labeled
-   - For `.return (some v)`, `.yield (some v)`: the inner continuation `fun t => pure (.return (some t))` satisfies `hk_not_labeled` (noConfusion). Apply IH on `v` (depth decreases).
-   - For seq, let, if: use `bindComplex_not_labeled` for the bindComplex-based cases, and for the continuation-based cases (let-body, seq-rest, if-branches), show the continuations don't produce `.labeled` (they produce `.let`, `.seq`, `.if` — noConfusion).
-
-Verify with `lake env lean .lake/_tmp_fix/VerifiedJS/Proofs/anf_not_labeled.lean`.
-
-## PRIORITY 2: forIn/forOf exfalso (L1132-1133 in ClosureConvertCorrect.lean)
-
-Read L1125-1140. Check if `Flat.Expr.supported` excludes forIn/forOf. If the theorem has a `h_supported` hypothesis (directly or transitively), you can close these with:
 ```lean
-exfalso; simp [Flat.Expr.supported] at h_supported
+import VerifiedJS.Flat.Syntax
+
+namespace VerifiedJS.Flat
+
+/-- No .labeled constructor anywhere in the expression tree -/
+def Expr.noLabeledAnywhere : Expr → Prop
+  | .lit _ => True
+  | .var _ => True
+  | .this => True
+  | .«break» _ => True
+  | .«continue» _ => True
+  | .«return» none => True
+  | .«return» (some e) => e.noLabeledAnywhere
+  | .yield (some e) _ => e.noLabeledAnywhere
+  | .yield none _ => True
+  | .throw e => e.noLabeledAnywhere
+  | .await e => e.noLabeledAnywhere
+  | .seq a b => a.noLabeledAnywhere ∧ b.noLabeledAnywhere
+  | .«let» _ init body => init.noLabeledAnywhere ∧ body.noLabeledAnywhere
+  | .«if» c t e => c.noLabeledAnywhere ∧ t.noLabeledAnywhere ∧ e.noLabeledAnywhere
+  | .labeled _ _ => False
+  | .while_ c b => c.noLabeledAnywhere ∧ b.noLabeledAnywhere
+  | .tryCatch b _ cb f => b.noLabeledAnywhere ∧ cb.noLabeledAnywhere ∧ match f with | none => True | some fe => fe.noLabeledAnywhere
+  -- Add all other constructors (assign, unary, binary, call, getProp, setProp, etc.)
+  | _ => True  -- placeholder; expand for completeness
 ```
 
-Write the proof in staging: `.lake/_tmp_fix/VerifiedJS/Proofs/cc_forIn_forOf_exfalso.lean`
+Then prove: `theorem noLabeledAnywhere_sub : e.noLabeledAnywhere → (sub-expressions of e).noLabeledAnywhere` for each constructor.
 
-Even though you can't edit ClosureConvertCorrect.lean, document EXACTLY which line to change and what the proof is. The proof agent can integrate it.
+## PRIORITY 1: Complete normalizeExpr_not_labeled_family with noLabeledAnywhere
+
+Update the hypothesis in `anf_not_labeled.lean` from `(∀ l b, e ≠ .labeled l b)` to `e.noLabeledAnywhere`. Then:
+
+For `return (some value)` (L135-139): Since `(.return (some value)).noLabeledAnywhere → value.noLabeledAnywhere`, apply IH on value (depth decreases). The inner continuation `fun t => pure (.return (some t))` doesn't produce `.labeled` (noConfusion). ✓
+
+For `throw arg` (L148-151): Same pattern. `(.throw arg).noLabeledAnywhere → arg.noLabeledAnywhere`. Apply IH. ✓
+
+For compound cases (assign, seq, let, if): Use noLabeledAnywhere to get sub-expression hypotheses, then apply IH. The bindComplex-based continuations don't produce `.labeled` (use `bindComplex_not_labeled`). ✓
+
+## PRIORITY 2: Prove initial expression has noLabeledAnywhere
+
+For the ANF SimRel redesign to work, we need: the initial Flat program's main expression has `noLabeledAnywhere`. This is likely TRUE because `.labeled` is only introduced by while_ lowering (which happens at runtime, not in the source). Check:
+1. Does `Flat.Expr` include `.labeled` in the initial program? Or is it only created by step?
+2. If `.labeled` only comes from while_ lowering in step?, prove `initialState.expr.noLabeledAnywhere`.
+
+Write this in `.lake/_tmp_fix/VerifiedJS/Flat/ExprNoLabeled.lean`.
+
+## PRIORITY 3: CC staging maintenance
+
+Check if proof agent needs any NEW staging proofs. The CC cases that are being attempted:
+- objectLit/arrayLit: staging exists
+- call: check `.lake/_tmp_fix/VerifiedJS/Proofs/cc_call_patches.lean`
+- functionDef: may need staging
+- captured var (L1828): may need EnvCorrInj lemma
+
+If any of these need helper lemmas, write them in staging.
 
 ## FILES YOU CAN EDIT
 - `.lake/_tmp_fix/VerifiedJS/**/*.lean` (staging area)
