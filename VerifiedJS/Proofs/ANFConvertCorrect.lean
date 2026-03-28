@@ -1092,28 +1092,29 @@ private theorem normalizeExpr_labeled_step_sim
   cases e with
   | labeled label' body_flat =>
     -- normalizeExpr (.labeled label' body_flat) k produces .labeled label' bodyExpr
-    -- where bodyExpr = normalizeExpr body_flat k
-    simp only [ANF.normalizeExpr_labeled] at hnorm
-    -- hnorm is now a bind: (do bodyExpr ← normalizeExpr body_flat k; pure (.labeled label' bodyExpr)).run n = ...
-    -- Decompose the monadic bind
-    have hbind := hnorm
-    simp only [bind, Bind.bind, StateT.bind, StateT.run, Except.bind] at hbind
-    split at hbind
-    · next bodyExpr_m heq =>
-      obtain ⟨bodyExpr, m'⟩ := bodyExpr_m
-      simp only [pure, Pure.pure, StateT.pure, Except.pure] at hbind
-      have ⟨h1, h2⟩ := Prod.mk.inj (Except.ok.inj hbind)
+    -- Decompose: (do bodyExpr ← normalizeExpr body_flat k; pure (.labeled label' bodyExpr)).run n
+    unfold ANF.normalizeExpr at hnorm
+    -- hnorm now has bind form. Split on normalizeExpr body_flat k result.
+    revert hnorm; simp only [bind, Bind.bind, StateT.bind, StateT.run, Except.bind]
+    split
+    · intro hnorm
+      simp only [pure, Pure.pure, StateT.pure, Except.pure] at hnorm
+      have ⟨h1, h2⟩ := Prod.mk.inj (Except.ok.inj hnorm)
       have ⟨hlabel, hbody⟩ := ANF.Expr.labeled.inj h1
-      subst hlabel; subst hbody; subst h2
+      subst hlabel; subst hbody
+      rename_i heq; obtain ⟨bodyExpr, m'⟩ := heq; simp at h2; subst h2
       -- One Flat step: .labeled label body_flat → body_flat
-      let sf' : Flat.State := { sf with expr := body_flat, trace := sf.trace ++ [Core.TraceEvent.silent] }
-      have hstep : Flat.step? sf = some (.silent, sf') := by
-        rw [hsf]; simp [Flat.step?, sf', Flat.pushTrace]
-      refine ⟨[.silent], sf', .tail ⟨hstep⟩ (.refl _), ?_, rfl, rfl, ?_, rfl, ?_⟩
-      · exact ⟨k, n, m', heq, hk⟩
-      · simp [sf', observableTrace_append, observableTrace]; decide
-      · intro x hfx; exact hwf x (VarFreeIn.labeled _ _ _ hfx)
-    · simp at hbind
+      obtain ⟨sf', hstep, hexpr, henv', hheap', htrace'⟩ : ∃ sf',
+          Flat.step? sf = some (.silent, sf') ∧ sf'.expr = body_flat ∧
+          sf'.env = sf.env ∧ sf'.heap = sf.heap ∧
+          sf'.trace = sf.trace ++ [Core.TraceEvent.silent] := by
+        have hsf_eq : sf = { sf with expr := Flat.Expr.labeled label body_flat } := by cases sf; simp_all
+        rw [hsf_eq]; unfold Flat.step?; exact ⟨_, rfl, rfl, rfl, rfl, rfl⟩
+      refine ⟨[.silent], sf', .tail ⟨hstep⟩ (.refl _), ?_, henv', hheap', ?_, rfl, ?_⟩
+      · rw [hexpr]; exact ⟨k, n, m', ‹_›, hk⟩
+      · rw [htrace', observableTrace_append]; simp [observableTrace]; decide
+      · rw [hexpr]; intro x hfx; exact hwf x (VarFreeIn.labeled _ _ _ hfx)
+    · intro hnorm; simp at hnorm
   | var name =>
     exfalso
     simp only [ANF.normalizeExpr] at hnorm
