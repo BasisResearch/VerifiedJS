@@ -1,5 +1,62 @@
 # jsspec agent log
 
+## 2026-03-28T13:00 — PRIORITY 0/1/2 work
+
+### PRIORITY 0: bindComplex_not_labeled VERIFIED (0 errors, 0 sorries)
+
+File: `.lake/_tmp_fix/VerifiedJS/Proofs/anf_not_labeled.lean`
+
+| Lemma | Status | Purpose |
+|-------|--------|---------|
+| `bindComplex_not_labeled` | **VERIFIED** (propext only) | bindComplex never produces .labeled |
+| `normalizeExpr_not_labeled_family` | Partial (many sorry) | See analysis below |
+
+**CRITICAL FINDING**: `normalizeExpr_not_labeled_family` CANNOT follow the exact structure
+of `normalizeExpr_not_trivial_family`. Fundamental asymmetry:
+- `.trivial` is NEVER produced by normalizeExpr except through the continuation `k`
+- `.labeled` IS produced by normalizeExpr when the input has `.labeled` sub-expressions
+
+Example: `normalizeExpr (.seq (.labeled "x" (.lit .null)) (.lit .null)) k` produces
+`.labeled "x" _` regardless of `k`. So the hypothesis `h_not_labeled : ∀ l b, e ≠ .labeled l b`
+(top-level only) is insufficient for recursive cases (.seq, .let, .if, .assign, etc.).
+
+Cases that DO work with top-level h_not_labeled:
+- lit, var, this (use hk), break, continue, return none, yield none (noConfusion)
+- while_, tryCatch (do-block wraps in .seq/.tryCatch)
+- labeled (contradiction via h_not_labeled)
+
+Cases that NEED recursive noLabeled hypothesis (sorry):
+- ALL recursive expression cases (seq, let, if, assign, unary, binary, throw, await, etc.)
+
+**Recommendation to proof agent**: The 7 sorries at L1617/L1621/L1632/L1683/L1687/L1698/L1715
+cannot be closed with `exfalso`. `.labeled` sub-expressions propagate through normalizeExpr.
+The correct approach for `normalizeExpr_labeled_step_sim` is depth induction where `.labeled`
+layers are peeled one at a time, each corresponding to a `Flat.step?` that evaluates `.labeled`
+to its body.
+
+### PRIORITY 1: cc_objectLit_arrayLit_proof.lean — updated dependency references
+
+Fixed stale references to `test_helpers*.lean` → all helpers are in
+`cc_objectLit_arrayLit_helpers.lean` and `cc_objectLit_arrayLit.lean`.
+
+Remaining sorries (6 total, 3 per case):
+- Heap allocation (all-values case)
+- noCallFrameReturn preservation over list concatenation
+- CCState threading (convertPropList/convertExprList over concatenated lists)
+
+### PRIORITY 2: forIn/forOf at L1132-1133 — CANNOT be closed
+
+`convertExpr_not_value` is false for `forIn`/`forOf`:
+- `Core.exprValue? (.forIn ...) = none` ✓
+- `Flat.convertExpr (.forIn ...) = (.lit .undefined, st)` (stub)
+- `Flat.exprValue? (.lit .undefined) = some .undefined ≠ none` ✗
+
+There is NO `supported` hypothesis in `ClosureConvertCorrect.lean`.
+Fix requires adding `h_supported : e.supported = true` to the theorem statement.
+
+### Build status: NOT BROKEN by jsspec
+- Staging files are not in the build path
+
 ## 2026-03-28T12:00 — PRIORITY 0 ANALYSIS + Flat await stepping lemmas
 
 ### Additional: Flat await stepping lemmas VERIFIED (0 errors, 0 sorries)
@@ -1648,3 +1705,4 @@ Staged at `.lake/_tmp_fix/VerifiedJS/Proofs/design_issues.md`:
 
 ## Run: 2026-03-28T13:00:01+00:00
 
+2026-03-28T13:33:39+00:00 DONE

@@ -1,64 +1,54 @@
-# jsspec — CC HELPER INTEGRATION + forIn/forOf CHECK
+# jsspec — normalizeExpr_not_labeled_family + forIn/forOf
 
-## STATUS: Staging proofs written for objectLit/arrayLit, setProp/setIndex. CC file is OWNED BY PROOF USER (rw-r-----). You CANNOT edit it directly.
+## STATUS: Staging proofs for objectLit/arrayLit/setProp/setIndex written. CC file owned by proof (rw-r-----).
 
-## PRIORITY 0: Write `normalizeExpr_not_labeled_family` infrastructure
+## PRIORITY 0: Verify your continuation no-confusion lemmas build
 
-The proof agent is restructuring `normalizeExpr_labeled_step_sim` to use induction on depth. To close the 7 sorry cases (L1582, L1586, L1597, L1648, L1652, L1663, L1680), it needs a lemma showing compound expressions can't produce `.labeled` through normalizeExpr.
+Check that `.lake/_tmp_fix/VerifiedJS/ANF/ConvertHelpers.lean` still builds:
+```
+lake env lean .lake/_tmp_fix/VerifiedJS/ANF/ConvertHelpers.lean
+```
+
+If it builds, these lemmas are ready for the proof agent to integrate:
+- `let_k_not_labeled`
+- `if_k_not_labeled`
+- `bindComplex_k_not_labeled`
+
+## PRIORITY 1: Write `normalizeExpr_not_labeled_family`
+
+The proof agent is generalizing `normalizeExpr_labeled_step_sim` to use `hk_not_labeled` instead of `hk_triv`. After that, they need `normalizeExpr_not_labeled_family` for the wildcard cases (L1632, L1698, L1715).
 
 Write in `.lake/_tmp_fix/VerifiedJS/Proofs/anf_not_labeled.lean`:
 
-```lean
-/-- bindComplex never produces .labeled -/
-private theorem bindComplex_not_labeled (rhs : ANF.ComplexExpr) (k : ANF.Trivial → ANF.ConvM ANF.Expr)
-    (n m : Nat) (label : String) (body : ANF.Expr) :
-    (ANF.bindComplex rhs k).run n ≠ .ok (.labeled label body, m) := by
-  -- Copy proof from bindComplex_not_trivial (L117-126), replacing .trivial with .labeled
-  show ANF.bindComplex rhs k n ≠ .ok (.labeled label body, m)
-  simp only [ANF.bindComplex, ANF.freshName, bind, Bind.bind, StateT.bind, Except.bind,
-             get, GetElem.getElem, MonadState.get, StateT.get, set, MonadState.set,
-             StateT.set, pure, Pure.pure, StateT.pure, Except.pure, getThe, MonadStateOf.get]
-  cases hk : k (.var (toString "_anf" ++ toString (Nat.repr n))) (n + 1) with
-  | error => simp [hk]
-  | ok v => intro habs; exact ANF.Expr.noConfusion (Prod.mk.inj (Except.ok.inj habs)).1
-```
+1. **`bindComplex_not_labeled`**: Copy proof structure from `bindComplex_not_trivial` (L117-126 in ANFConvertCorrect.lean), replacing `.trivial` with `.labeled label body`.
 
-Then write `normalizeExpr_not_labeled_family` following the EXACT same structure as `normalizeExpr_not_trivial_family` (L130-417), replacing `.trivial t` with `.labeled label body` and `bindComplex_not_trivial` with `bindComplex_not_labeled`.
-
-**KEY DIFFERENCE from _not_trivial**: The `.labeled label' body_flat` case DOES produce `.labeled`:
-```
-normalizeExpr (.labeled label' body_flat) k = do { bodyExpr ← normalizeExpr body_flat k; pure (.labeled label' bodyExpr) }
-```
-So the family version CANNOT handle `.labeled` without excluding it. Add hypothesis `(h_not_labeled : ∀ l b, e ≠ .labeled l b)`.
-
-For `.return none`, `.yield none`, `.break`, `.continue`, `.throw`, `.await`: continuations produce non-labeled constructors → noConfusion ✓
-For `.return (some v)`, `.yield (some v)`: recursion with continuation `fun t => pure (.return (some t))`. This continuation doesn't produce .labeled (noConfusion). Apply IH ✓.
-For compound expressions: `bindComplex_not_labeled` ✓.
-For `.let`, `.if`: continuations produce `.let`/`.if` → noConfusion ✓.
-For `.seq a b`: recurse on `a` then `b` → IH ✓.
+2. **`normalizeExpr_not_labeled_family`**: Follow `normalizeExpr_not_trivial_family` (L130-417) structure. Key differences:
+   - Add hypothesis `(h_not_labeled : ∀ l b, e ≠ .labeled l b)` — because `.labeled` DOES produce `.labeled`
+   - Add hypothesis `(hk_not_labeled : ∀ arg n' m' l b, (k arg).run n' ≠ .ok (.labeled l b, m'))` — continuation doesn't produce labeled
+   - For `.return (some v)`, `.yield (some v)`: the inner continuation `fun t => pure (.return (some t))` satisfies `hk_not_labeled` (noConfusion). Apply IH on `v` (depth decreases).
+   - For seq, let, if: use `bindComplex_not_labeled` for the bindComplex-based cases, and for the continuation-based cases (let-body, seq-rest, if-branches), show the continuations don't produce `.labeled` (they produce `.let`, `.seq`, `.if` — noConfusion).
 
 Verify with `lake env lean .lake/_tmp_fix/VerifiedJS/Proofs/anf_not_labeled.lean`.
 
-## PRIORITY 1: CC objectLit/arrayLit — polish staging proof
+## PRIORITY 2: forIn/forOf exfalso (L1132-1133 in ClosureConvertCorrect.lean)
 
-Your `cc_objectLit_arrayLit_proof.lean` is written. Clean it up:
-- Ensure all import paths are correct
-- Document which sorries remain (heap alloc, ncfr, CCState)
-- Write a summary comment at the top showing exactly which lines of ClosureConvertCorrect.lean each block replaces
+Read L1125-1140. Check if `Flat.Expr.supported` excludes forIn/forOf. If the theorem has a `h_supported` hypothesis (directly or transitively), you can close these with:
+```lean
+exfalso; simp [Flat.Expr.supported] at h_supported
+```
 
-## PRIORITY 2: Check forIn/forOf (L1132-1133)
+Write the proof in staging: `.lake/_tmp_fix/VerifiedJS/Proofs/cc_forIn_forOf_exfalso.lean`
 
-Read L1125-1140 of ClosureConvertCorrect.lean. Check if there's a `supported` hypothesis reachable. If `Flat.Expr.supported` excludes forIn/forOf, we can close these with `exfalso; simp [Flat.Expr.supported] at h_supported`. Write the proof in staging.
+Even though you can't edit ClosureConvertCorrect.lean, document EXACTLY which line to change and what the proof is. The proof agent can integrate it.
 
 ## FILES YOU CAN EDIT
 - `.lake/_tmp_fix/VerifiedJS/**/*.lean` (staging area)
-- `VerifiedJS/Flat/*.lean`
-- `VerifiedJS/Core/*.lean`
-- `VerifiedJS/ANF/Convert.lean` (for helper lemmas only)
+- `VerifiedJS/Flat/*.lean`, `VerifiedJS/Core/*.lean`
+- `VerifiedJS/ANF/Convert.lean` (helper lemmas only)
 
 ## DO NOT EDIT
 - `VerifiedJS/Proofs/ANFConvertCorrect.lean` (owned by proof)
-- `VerifiedJS/Proofs/LowerCorrect.lean` (owned by proof)
+- `VerifiedJS/Proofs/ClosureConvertCorrect.lean` (owned by proof)
 - `VerifiedJS/Wasm/Semantics.lean` (owned by wasmspec)
 
 ## Log to agents/jsspec/log.md

@@ -1,3 +1,55 @@
+## Run: 2026-03-28T13:05:03+00:00
+
+### Metrics
+- **Sorry count (grep -c)**: 56 (17 ANF + 20 CC + 18 Wasm + 1 Lower)
+- **Actual sorries**: ~50 (17 ANF + 18 CC + 14 Wasm + 1 Lower)
+- **Delta from last run (12:05)**: Grep -1 (Wasm 19→18). Actual -1.
+- **Net assessment**: -1 actual. Slow but steady. Proof agent made structural progress (depth induction, setProp/setIndex integration). No net sorry reduction from agents this run.
+
+### CRITICAL DISCOVERY: step_sim return-some is UNPROVABLE
+
+**The wasmspec prompt was WRONG for 3+ runs.** The return-some dispatch code I provided targets `step_sim` (L6631), which proves `∃ s2', irStep? s2 = some (t, s2')` — a SINGLE IR step. But return-some needs 2+ IR steps (argCode ++ [return_]). This is structurally impossible.
+
+**step_sim_stutter (L7370) ALREADY handles return-some correctly** — all 9 per-trivial lemmas are wired in and working. The sorry at L6801 only affects the 1:1 forward sim path, not the stuttering path.
+
+**Impact**: The 12 sorries at L6738-6816 in step_sim are ALL for compound/1:N cases. They are likely ALL unprovable as 1:1. The architecture needs `lower_sim_steps` in LowerCorrect.lean to use `step_sim_stutter` instead of `step_sim`.
+
+### ANF Analysis (17 sorries) — hk GENERALIZATION NEEDED
+- Proof agent restructured normalizeExpr_labeled_step_sim with depth induction (net 0 sorry change)
+- IH now in scope but CANNOT be applied: `hk` requires continuation to produce `.trivial`, but inner continuations produce `.return`/`.yield`
+- **Fix**: Generalize `hk` to `hk_not_labeled` (k never produces `.labeled`). This is weaker, so IH applies for nested return-some/yield-some.
+- If successful: -4 sorries (L1617, L1621, L1683, L1687)
+- Wildcards (L1632, L1698, L1715) also closable after jsspec writes `normalizeExpr_not_labeled_family`
+
+### CC Analysis (18 actual sorries) — setProp/setIndex INTEGRATED
+- Proof agent integrated setProp/setIndex from staging. Each: 1 sorry → 1 sorry (non-value sub-case still needs heap reasoning). Net 0.
+- forIn/forOf (L1132-1133): jsspec to check if exfalso via `supported`
+- Remaining: call, newObj, objectLit, arrayLit, functionDef, tryCatch, while_, if (CCState), getProp/getIndex/assign/delete value sub-cases
+
+### Wasm Analysis (14 actual sorries) — STRATEGY CORRECTED
+- **return-some (L6801): STAYS SORRY in step_sim. Already handled in step_sim_stutter.**
+- Redirected wasmspec to: (1) prove 1:1 cases (yield, await, break, continue, labeled), (2) check callIndirect exfalso, (3) expand step_sim_stutter for 1:N compound cases
+- Architecture fix needed: LowerCorrect.lean should use step_sim_stutter instead of step_sim
+
+### Agent Prompt Rewrites
+1. **wasmspec**: MAJOR CORRECTION. Stopped chasing return-some (3 runs wasted). Redirected to 1:1 provable cases (yield, await, break, continue, labeled) and step_sim_stutter expansion.
+2. **proof**: P0: Generalize hk → hk_not_labeled in normalizeExpr_labeled_step_sim. P1: Refactor LowerCorrect.lean to use step_sim_stutter.
+3. **jsspec**: P0: Verify continuation no-confusion lemmas build. P1: Write normalizeExpr_not_labeled_family. P2: Check forIn/forOf exfalso.
+
+### Actions Taken
+1. Counted sorries: 56 grep / 50 actual (ANF 17, CC 18, Wasm 14, Lower 1)
+2. Deep analysis of step_sim vs step_sim_stutter architecture — found return-some unprovable in 1:1
+3. Traced end-to-end proof chain: LowerCorrect.lean uses step_sim (1:1) → needs refactoring
+4. Identified hk generalization as highest-leverage ANF fix
+5. All 3 prompts rewritten with corrected strategy
+6. Logged time estimate (56 grep, 161 hours)
+
+### OUTLOOK: Target next run ≤48 actual (ANF -4 from hk generalization, possible Wasm 1:1 cases)
+### RISK: hk generalization may break the labeled case proof (L1474-1496). Proof agent must verify existing proofs still work with weaker hypothesis.
+### ESCALATION: 4 ANF semantic mismatches (throw/return/break/continue) remain DESIGN BUGS. LowerCorrect.lean architecture needs step_sim → step_sim_stutter migration.
+
+---
+
 ## Run: 2026-03-28T12:05:01+00:00
 
 ### Metrics
@@ -5668,3 +5720,4 @@ ANF sorry count effectively unchanged (structural improvements but no net closur
 
 ## Run: 2026-03-28T13:05:03+00:00
 
+2026-03-28T13:32:37+00:00 DONE

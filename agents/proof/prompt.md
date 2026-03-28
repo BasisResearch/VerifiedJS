@@ -1,103 +1,85 @@
-# proof — RESTRUCTURE normalizeExpr_labeled_step_sim WITH INDUCTION
+# proof — GENERALIZE hk IN normalizeExpr_labeled_step_sim
 
-## CURRENT STATE: 17 ANF sorries. 7 in normalizeExpr_labeled_step_sim, 10 in anfConvert_step_star.
+## CURRENT STATE: 17 ANF sorries (7 in labeled_step_sim, 10 in anfConvert_step_star). 20 CC grep / 18 actual.
 
 File: `VerifiedJS/Proofs/ANFConvertCorrect.lean`
 
-## CRITICAL CONTEXT
-The `normalizeExpr_labeled_step_sim` theorem (L1456-1680) has 7 sorries that ALL need induction on `e.depth`. The current proof is a flat `cases e` but NEEDS `termination_by` or `WellFoundedRelation` to handle recursive cases. Without this infrastructure, await/yield/compound cases in the main theorem are also blocked.
+## THE BLOCKER YOU HIT
 
-## PRIORITY 0: Restructure `normalizeExpr_labeled_step_sim` to use strong induction
+The depth induction restructuring is done — `ih` is in scope. But you CAN'T apply `ih` for nested return-some/yield-some (L1617, L1621, L1683, L1687) because:
 
-Convert the theorem to take `(d : Nat)` and `(hd : e.depth ≤ d)` parameters, proved by induction on `d`. This follows the same pattern as `normalizeExpr_not_trivial_family` (L130-417).
+- `ih` requires `hk : ∀ arg n', ∃ m', (k arg).run n' = .ok (.trivial arg, m')`
+- The inner continuation is `fun t => pure (.return (some t))` which produces `.return`, not `.trivial`
 
-**Replace the current theorem signature** (L1456-1472) with:
+## PRIORITY 0: Generalize `hk` to `hk_not_labeled`
+
+Replace the `hk` hypothesis in `normalizeExpr_labeled_step_sim` with a weaker one:
+
 ```lean
-private theorem normalizeExpr_labeled_step_sim
-    (d : Nat) (e : Flat.Expr) (hd : e.depth ≤ d)
-    (k : ANF.Trivial → ANF.ConvM ANF.Expr) (n m : Nat)
-    (label : String) (body : ANF.Expr)
-    (hk : ∀ (arg : ANF.Trivial) (n' : Nat), ∃ m', (k arg).run n' = .ok (.trivial arg, m'))
-    (hnorm : (ANF.normalizeExpr e k).run n = .ok (ANF.Expr.labeled label body, m))
-    (sf : Flat.State) (hsf : sf.expr = e)
-    (hwf : ExprWellFormed e sf.env) :
-    ∃ (evs : List Core.TraceEvent) (sf' : Flat.State),
-      Flat.Steps sf evs sf' ∧
-      (∃ (k' : ANF.Trivial → ANF.ConvM ANF.Expr) (n' m' : Nat),
-        (ANF.normalizeExpr sf'.expr k').run n' = .ok (body, m') ∧
-        (∀ (arg : ANF.Trivial) (n'' : Nat), ∃ m'', (k' arg).run n'' = .ok (.trivial arg, m''))) ∧
-      sf'.env = sf.env ∧ sf'.heap = sf.heap ∧
-      observableTrace sf'.trace = observableTrace sf.trace ∧
-      observableTrace evs = [] ∧
-      ExprWellFormed sf'.expr sf'.env := by
-  induction d with
-  | zero => ...
-  | succ d ih => cases e with ...
+(hk : ∀ (arg : ANF.Trivial) (n' m' : Nat) (l : String) (b : ANF.Expr),
+    (k arg).run n' ≠ .ok (.labeled l b, m'))
 ```
 
-**Then update the call site** at L1799 to pass `sf.expr.depth` and `Nat.le_refl _`:
+This says "k never produces .labeled" instead of "k always produces .trivial". This is WEAKER so the IH hypothesis is EASIER to satisfy:
+
+- `fun t => pure (.return (some t))` satisfies `hk_not_labeled` because `.return _ ≠ .labeled _ _` (noConfusion)
+- `fun t => pure (.yield (some t) delegate)` satisfies `hk_not_labeled` for the same reason
+- The original `hk_triv` hypothesis at the call site (L1834) implies `hk_not_labeled` because `.trivial _ ≠ .labeled _ _`
+
+### Steps:
+1. Change the hypothesis name and type in the theorem signature
+2. Update the `| labeled l b_flat =>` case (L1474 area): currently uses `hk` to get `(k arg).run n' = .ok (.trivial arg, m')`. With the weaker hypothesis, you need to show `.labeled` is impossible via `hk_not_labeled`, then handle other constructors. Check if the existing proof already only uses the "not labeled" direction.
+3. Verify all other proved cases still type-check (var, this, lit, break, continue, return-none, yield-none, while_, tryCatch should only need "k result ≠ .labeled")
+4. Update the call site at L1834: pass a proof that `hk_triv` implies `hk_not_labeled`
+
+### For the call site conversion:
 ```lean
-    obtain ... := normalizeExpr_labeled_step_sim sf.expr.depth sf.expr (Nat.le_refl _) k n m label body hk_triv hnorm sf rfl hewf
+have hk_nl : ∀ (arg : ANF.Trivial) (n' m' : Nat) (l : String) (b : ANF.Expr),
+    (k arg).run n' ≠ .ok (.labeled l b, m') := by
+  intro arg n' m' l b h
+  obtain ⟨m'', hm''⟩ := hk_triv arg n'
+  rw [hm''] at h; exact ANF.Expr.noConfusion (Prod.mk.inj (Except.ok.inj h)).1
 ```
 
-### What changes in the proof with induction:
-
-1. **zero case**: All recursive cases are impossible (depth ≤ 0 means only leaves). The `.labeled` case still works (depth = 1 + body.depth, impossible at d=0). Actually `.lit`, `.var`, `.this`, `.break`, `.continue`, `.return none`, `.yield none` are the only depth-0 cases. All are exfalso (existing proofs work).
-
-2. **succ case**: All existing `cases e` proofs work unchanged. The 7 sorry cases can now use `ih`:
-   - **L1582** (nested return (some inner_ret)): Apply `ih` on `inner_ret` (depth < e.depth). This recurses through nested `.return (some ...)`.
-   - **L1586** (nested yield (some inner_val)): Same, apply `ih` on `inner_val`.
-   - **L1597** (wildcard inside return): These are compound expressions. Prove `normalizeExpr_compound_not_labeled` (analogous to `normalizeExpr_compound_not_trivial`) OR use `ih` after taking one Flat step.
-   - **L1648, L1652, L1663**: Same pattern as L1582, L1586, L1597 but inside yield context.
-   - **L1680** (outer wildcard): catch-all for seq, throw, await, and compound expressions.
-
-### For L1582 (nested return-some) specifically:
-
-The state: `e = .return (some (.return (some inner_ret)))`. Actually no — `e = .return (some val)` where `val` has been case-split and `val = .return (some inner)`.
-
-```
-normalizeExpr (.return (some (.return (some inner)))) k
-= normalizeExpr (.return (some inner)) (fun t => pure (.return (some t)))
+### After generalization, close L1617 (nested return-some in return context):
+```lean
+| some inner =>
+  -- inner : Flat.Expr, context: e = .return (some inner)
+  -- Apply ih on inner (depth inner < depth (.return (some inner)) = succ d)
+  have hd_inner : inner.depth ≤ d := by
+    simp [Flat.Expr.depth] at hd; omega
+  have hk_inner : ∀ (arg : ANF.Trivial) (n' m' : Nat) (l : String) (b : ANF.Expr),
+      (fun t => pure (.return (some t) : ANF.Expr)).run n' ≠ .ok (.labeled l b, m') := by
+    intro arg n' m' l b h
+    simp [pure, Pure.pure, StateT.pure, Except.pure, StateT.run] at h
+    exact ANF.Expr.noConfusion (Prod.mk.inj (Except.ok.inj h)).1
+  exact ih d (Nat.le_refl d) inner hd_inner (fun t => pure (.return (some t))) n m label body hk_inner hnorm sf rfl hewf
 ```
 
-So `.labeled` comes from `normalizeExpr (.return (some inner)) (fun t => pure (.return (some t)))`. The inner continuation `fun t => pure (.return (some t))` produces trivials... wait, no. It produces `.return (some (.trivial t))`, not `.trivial t`. So `hk` doesn't hold for the inner call.
+(Adjust the `ih` application to match actual parameter order after generalization.)
 
-**KEY ISSUE**: The IH requires `hk' : ∀ arg n', ∃ m', (k' arg).run n' = .ok (.trivial arg, m')`. But the inner k is `fun t => pure (.return (some t))` which produces `.return`, not `.trivial`.
+## PRIORITY 1: LowerCorrect.lean — use step_sim_stutter
 
-This means you CANNOT directly use the IH. You need a GENERALIZED version that works with any k that is "labeled-transparent" (i.e., never produces .labeled). The generalization:
-- Replace `hk : ∀ arg n', ∃ m', (k arg).run n' = .ok (.trivial arg, m')` with `hk : ∀ arg n' m' l b, (k arg).run n' ≠ .ok (.labeled l b, m')`
+**IMPORTANT DISCOVERY**: `step_sim` (L6631 in Wasm/Semantics.lean) is 1:1 (single IR step). Many cases (return-some, let, seq, if, etc.) need 1:N steps. The 12 Wasm sorries in step_sim are structurally unprovable as 1:1.
 
-This is a WEAKER hypothesis. It says k doesn't produce `.labeled`, rather than k produces `.trivial`. With this hypothesis, the exfalso cases still work (they already only use the fact that k result ≠ .labeled).
+`step_sim_stutter` (L7370) already handles return-some. The catch-all delegates to step_sim for other cases.
 
-**APPROACH**:
-1. First, try the restructuring with the CURRENT `hk` hypothesis. Keep sorry for cases that can't use it.
-2. The labeled case (L1474-1496), var/this/lit/break/continue cases (L1497-1523), return-none/yield-none cases — all work unchanged.
-3. For L1582: prove `fun t => pure (.return (some t))` satisfies `hk` condition... wait, it doesn't produce `.trivial`. Hmm.
+**Fix**: Refactor `lower_sim_steps` in LowerCorrect.lean (L47-61) to use `step_sim_stutter` instead of `step_sim`. Change:
 
-Actually, re-read the theorem: it needs `hk` to prove that k produces trivials, which is used in the `.labeled` case (L1493) to show the normalizeExpr of the inner body with k gives `body`. The generalized version would need a different conclusion shape.
+```lean
+-- OLD (L58):
+obtain ⟨ir₂, hirStep, hrel₂⟩ := IR.LowerSimRel.step_sim s t _ _ _ _ hrel hmapped
 
-**BOTTOM LINE**: This restructuring is complex. For this run:
+-- NEW:
+obtain ⟨ir₂, ir_trace₂, hirSteps₂, hrel₂, hobs₂⟩ := IR.LowerSimRel.step_sim_stutter s t _ _ _ _ hrel hmapped
+```
 
-1. Add the induction parameter `(d : Nat) (hd : e.depth ≤ d)` to the theorem signature
-2. Prove `| zero =>` case (all existing exfalso cases for leaf nodes)
-3. Prove `| succ d ih =>` for the already-proved cases (labeled, var, this, lit, break, continue, return-none, yield-none, while_, tryCatch)
-4. Keep sorry for the 7 recursive cases — they now have `ih` available for the NEXT run
-5. Update the call site at L1799
+You'll also need to adjust the trace composition at L61 to concatenate `ir_trace₂` with the recursive result instead of using `.tail (.mk hirStep)`. And the conclusion's trace needs to change from `traceListFromCore` (which maps 1:1) to an observable-events formulation.
 
-This is structural progress: it sets up the infrastructure for the IH to be applied in the next run.
-
-## PRIORITY 1: Integrate CC setProp/setIndex proofs from staging
-
-File: `VerifiedJS/Proofs/ClosureConvertCorrect.lean`
-
-The jsspec agent wrote setProp/setIndex proof expansions in `.lake/_tmp_fix/VerifiedJS/Proofs/cc_setProp_setIndex_proof.lean`. Read it and integrate into L2648 (setProp) and L2718 (setIndex). Each expands the single sorry into:
-- `| none =>` sub-case: FULLY PROVED
-- `| some cv =>` sub-case: sorry (value sub-case, needs heap reasoning)
-
-This is NET ZERO sorry change but structural progress.
+This is a BIGGER refactor — it requires changing the conclusion of `lower_sim_steps` and `lower_behavioral_correct` to use observable events. Only do this if P0 goes smoothly.
 
 ## WORKFLOW
-1. Restructure normalizeExpr_labeled_step_sim → build → fix errors
-2. Update call site → build
-3. Integrate CC setProp/setIndex if time permits
-4. Log progress to agents/proof/log.md
+1. Generalize hk → build → fix any breakage
+2. Apply IH for L1617, L1621, L1683, L1687 → build
+3. If time: attempt LowerCorrect.lean refactor
+4. Log to agents/proof/log.md
