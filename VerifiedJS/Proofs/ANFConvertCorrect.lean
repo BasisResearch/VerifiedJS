@@ -954,6 +954,7 @@ private theorem normalizeExpr_var_step_sim :
       Flat.Steps sf evs sf' ∧
       sf'.expr = .lit val ∧
       sf'.env = sf.env ∧ sf'.heap = sf.heap ∧
+      observableTrace sf'.trace = observableTrace sf.trace ∧
       observableTrace evs = [] := by
   intro d; induction d with
   | zero =>
@@ -965,25 +966,27 @@ private theorem normalizeExpr_var_step_sim :
       have hname_eq := hnorm.symm.trans hk' |> Except.ok.inj |> Prod.mk.inj |>.1
         |> ANF.Expr.trivial.inj |> ANF.Trivial.var.inj
       subst hname_eq
-      obtain ⟨s_i, hstep_i, hexpr_i, henv_i, hheap_i, _, _, _⟩ :=
+      obtain ⟨s_i, hstep_i, hexpr_i, henv_i, hheap_i, _, _, htrace_i⟩ :=
         step?_var_bound sf name val hval
       have hstep_sf : Flat.step? sf = some (.silent, s_i) := by
         have : sf = { sf with expr := .var name } := by cases sf; simp_all
         rw [this]; exact hstep_i
-      exact ⟨[.silent], s_i, .tail ⟨hstep_sf⟩ (.refl _), hexpr_i, henv_i, hheap_i, rfl⟩
+      have htobs : observableTrace s_i.trace = observableTrace sf.trace := by
+        rw [htrace_i]; simp [observableTrace_append, observableTrace]; decide
+      exact ⟨[.silent], s_i, .tail ⟨hstep_sf⟩ (.refl _), hexpr_i, henv_i, hheap_i, htobs, rfl⟩
     | this =>
       simp only [ANF.normalizeExpr] at hnorm
       obtain ⟨m', hk'⟩ := hk (.var "this") n
       have hname_eq := hnorm.symm.trans hk' |> Except.ok.inj |> Prod.mk.inj |>.1
         |> ANF.Expr.trivial.inj |> ANF.Trivial.var.inj
       subst hname_eq
-      -- Construct the Flat step for .this directly
-      -- .this with env.lookup "this" = some val steps to .lit val
       let sf' : Flat.State := { sf with expr := .lit val, trace := sf.trace ++ [.silent] }
       have hstep_sf : Flat.step? sf = some (.silent, sf') := by
         have : sf = { sf with expr := .this } := by cases sf; simp_all
         rw [this]; simp only [Flat.step?, hval, sf']; rfl
-      exact ⟨[.silent], sf', .tail ⟨hstep_sf⟩ (.refl _), rfl, rfl, rfl, rfl⟩
+      have htobs : observableTrace sf'.trace = observableTrace sf.trace := by
+        simp [sf', observableTrace_append, observableTrace]; decide
+      exact ⟨[.silent], sf', .tail ⟨hstep_sf⟩ (.refl _), rfl, rfl, rfl, htobs, rfl⟩
     | lit v =>
       exfalso
       simp only [ANF.normalizeExpr] at hnorm
@@ -1005,25 +1008,27 @@ private theorem normalizeExpr_var_step_sim :
       have hname_eq := hnorm.symm.trans hk' |> Except.ok.inj |> Prod.mk.inj |>.1
         |> ANF.Expr.trivial.inj |> ANF.Trivial.var.inj
       subst hname_eq
-      obtain ⟨s_i, hstep_i, hexpr_i, henv_i, hheap_i, _, _, _⟩ :=
+      obtain ⟨s_i, hstep_i, hexpr_i, henv_i, hheap_i, _, _, htrace_i⟩ :=
         step?_var_bound sf name val hval
       have hstep_sf : Flat.step? sf = some (.silent, s_i) := by
         have : sf = { sf with expr := .var name } := by cases sf; simp_all
         rw [this]; exact hstep_i
-      exact ⟨[.silent], s_i, .tail ⟨hstep_sf⟩ (.refl _), hexpr_i, henv_i, hheap_i, rfl⟩
+      have htobs : observableTrace s_i.trace = observableTrace sf.trace := by
+        rw [htrace_i]; simp [observableTrace_append, observableTrace]; decide
+      exact ⟨[.silent], s_i, .tail ⟨hstep_sf⟩ (.refl _), hexpr_i, henv_i, hheap_i, htobs, rfl⟩
     | this =>
       simp only [ANF.normalizeExpr] at hnorm
       obtain ⟨m', hk'⟩ := hk (.var "this") n
       have hname_eq := hnorm.symm.trans hk' |> Except.ok.inj |> Prod.mk.inj |>.1
         |> ANF.Expr.trivial.inj |> ANF.Trivial.var.inj
       subst hname_eq
-      -- Construct the Flat step for .this directly
-      -- .this with env.lookup "this" = some val steps to .lit val
       let sf' : Flat.State := { sf with expr := .lit val, trace := sf.trace ++ [.silent] }
       have hstep_sf : Flat.step? sf = some (.silent, sf') := by
         have : sf = { sf with expr := .this } := by cases sf; simp_all
         rw [this]; simp only [Flat.step?, hval, sf']; rfl
-      exact ⟨[.silent], sf', .tail ⟨hstep_sf⟩ (.refl _), rfl, rfl, rfl, rfl⟩
+      have htobs : observableTrace sf'.trace = observableTrace sf.trace := by
+        simp [sf', observableTrace_append, observableTrace]; decide
+      exact ⟨[.silent], sf', .tail ⟨hstep_sf⟩ (.refl _), rfl, rfl, rfl, htobs, rfl⟩
     | lit v =>
       exfalso
       simp only [ANF.normalizeExpr] at hnorm
@@ -1051,12 +1056,13 @@ private theorem normalizeExpr_var_step_sim :
       have hwf_b : ExprWellFormed b sf_a.env := by
         rw [henv_a]; intro x hfx; exact hwf x (.seq_r _ _ _ hfx)
       have hval_a : sf_a.env.lookup name = some val := by rw [henv_a]; exact hval
-      obtain ⟨evs_b, sf', hsteps_b, hexpr', henv', hheap', hobs'⟩ :=
+      obtain ⟨evs_b, sf', hsteps_b, hexpr', henv', hheap', htobs', hobs'⟩ :=
         ih b hdb k n m name hk hb_norm sf_a hsf_a_expr val hval_a hwf_b
       exact ⟨evs_a ++ evs_b, sf',
         Flat.Steps.append hsteps_a hsteps_b,
         hexpr',
         henv'.trans henv_a, hheap'.trans hheap_a,
+        htobs'.trans htrace_a,
         by rw [observableTrace_append, hobs_a, hobs']; rfl⟩
     | _ => exfalso; exact absurd hnorm (normalizeExpr_compound_not_trivial _ k
         (by intro v hc; exact Flat.Expr.noConfusion hc) (by intro nm hc; exact Flat.Expr.noConfusion hc)
@@ -1100,22 +1106,31 @@ private theorem anfConvert_step_star
           simp only [ANF.State.env] at henv; rw [← henv]; exact hlookup
         have hnorm_simp : (ANF.normalizeExpr sf.expr k).run n = .ok (.trivial (.var name), m) := by
           simp only [ANF.State.expr] at hnorm; exact hnorm
-        obtain ⟨evs, sf', hsteps, hexpr', henv', hheap', hobs'⟩ :=
+        obtain ⟨evs, sf', hsteps, hexpr', henv', hheap', htrace_obs, hobs_evs⟩ :=
           normalizeExpr_var_step_sim sf.expr.depth sf.expr (Nat.le_refl _) k n m name
             hk_triv hnorm_simp sf rfl val hval_sf hewf
         refine ⟨sf', evs, hsteps, ?_, ?_, ?_⟩
-        · show observableTrace [.silent] = observableTrace evs
-          simp [observableTrace, hobs']
-        · refine ⟨?_, ?_, ?_, fun t => pure (.trivial t), 0, 0, ?_, ?_⟩
-          · simp only [ANF.State.heap, ANF.pushTrace] at hheap ⊢; rw [← hheap', ← hheap]
-          · simp only [ANF.State.env, ANF.pushTrace] at henv ⊢; rw [← henv', ← henv]
-          · simp only [ANF.State.trace, ANF.pushTrace] at htrace ⊢
-            rw [observableTrace_append]; simp [observableTrace]
-            rw [htrace]; rw [← hobs']; rw [← observableTrace_append]; congr 1
-            sorry -- trace alignment: needs sf'.trace = sf.trace ++ evs relationship
-          · rw [hexpr']; simp only [ANF.normalizeExpr, trivialOfFlatValue_eq_trivialOfValue]
-          · intro arg n'; exact ⟨n', rfl⟩
-        · rw [hexpr']; intro x hfx; cases hfx
+        · -- observableTrace [.silent] = observableTrace evs
+          show observableTrace [.silent] = observableTrace evs
+          rw [hobs_evs]; decide
+        · -- ANF_SimRel
+          constructor
+          · -- heap: sa_heap = sf'.heap
+            simp only [ANF.State.heap] at hheap; rw [hheap, ← hheap']
+          constructor
+          · -- env: sa_env = sf'.env
+            simp only [ANF.State.env] at henv; rw [henv, ← henv']
+          constructor
+          · -- trace: observableTrace (sa_trace ++ [.silent]) = observableTrace sf'.trace
+            simp only [ANF.State.trace] at htrace
+            rw [observableTrace_append, htrace, ← htrace_obs]
+            simp [observableTrace]; decide
+          · -- normalizeExpr + k
+            exact ⟨fun t => pure (.trivial t), 0, 0,
+              by rw [hexpr']; simp [ANF.normalizeExpr, trivialOfFlatValue_eq_trivialOfValue],
+              fun arg n' => ⟨n', rfl⟩⟩
+        · -- ExprWellFormed
+          rw [hexpr']; intro x hfx; cases hfx
     | litNull | litUndefined | litBool _ | litNum _ | litStr _ | litObject _ | litClosure _ _ =>
       obtain ⟨_, senv, sheap, strace⟩ := sa
       simp only [] at hsa; subst hsa
