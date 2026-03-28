@@ -10791,7 +10791,8 @@ theorem step_sim (irmod : IRModule) (wmod : Module) :
               obtain ⟨rfl, rfl⟩ := hstep
               -- funcIdx is also OOB in Wasm
               have hfunc_oob : ¬(funcIdx < s2.store.funcs.size) := by
-                rw [← hfuncs_size]; exact List.getElem?_eq_none.mp hfunc_ir
+                rw [← hfuncs_size]; intro h
+                exact absurd (List.getElem?_isSome.mpr h) (by rw [hfunc_ir]; simp)
               have hw := step?_eq_call_oob s2 funcIdx rest_w hcw hfunc_oob
               exact ⟨_, by simp [traceToWasm]; exact hw,
                 { hemit := hrel.hemit, hcode := .nil, hstack := by dsimp only []; exact hrel.hstack,
@@ -10819,7 +10820,8 @@ theorem step_sim (irmod : IRModule) (wmod : Module) :
                 obtain ⟨rfl, rfl⟩ := hstep
                 -- funcIdx IS in bounds for Wasm (same size)
                 have hfunc_ok : funcIdx < s2.store.funcs.size := by
-                  rw [← hfuncs_size]; exact List.getElem?_isSome.mp (by rw [hfunc_ir]; simp)
+                  rw [← hfuncs_size]; exact List.getElem?_isSome.mpr (by rw [hfunc_ir]; simp) |>.mp rfl
+
                 -- Need to show Wasm also underflows or handle differently
                 -- The Wasm param count might differ from IR param count,
                 -- so we cannot directly show Wasm underflows.
