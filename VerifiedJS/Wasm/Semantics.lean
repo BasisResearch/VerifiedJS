@@ -10714,36 +10714,31 @@ theorem step_sim (irmod : IRModule) (wmod : Module) :
                 have hir := irStep?_eq_i32WrapI64 s1 rest v stk hcode_ir hstk
                 rw [hir] at hstep; simp only [Option.some.injEq, Prod.mk.injEq] at hstep
                 obtain ⟨rfl, rfl⟩ := hstep
-                have hstk_rel := hrel.hstack; rw [hstk] at hstk_rel
-                match hs2 : s2.stack with
-                | [] => simp [hs2] at hstk_rel
-                | wv :: wstk =>
-                  have hval := hstk_rel.2 0 (by simp)
-                  simp [hs2] at hval
-                  cases hval with
-                  | i64 n =>
-
-                    have hw := step?_eq_i32WrapI64 s2 rest_w n wstk hcw hs2
-                    simp only [traceToWasm]
-                    refine ⟨_, hw, ?_⟩
-                    exact { hemit := hrel.hemit
-                            hcode := hrest
-                            hstack := by simp only [pushTrace]; exact stack_corr_cons (by simp [hstk, hs2] at hstk_rel ⊢; omega) (fun i hi => hstk_rel.2 (i + 1) (by simp; omega)) (.i32 _)
-                            hframes_len := hrel.hframes_len
-                            hframes_locals := hrel.hframes_locals
-                            hframes_vals := hrel.hframes_vals
-                            hglobals := hrel.hglobals
-                            hmemory := hrel.hmemory
-                            hmemLimits := hrel.hmemLimits
-                            hmemory_aligned := hrel.hmemory_aligned
-                            hmemory_nonempty := hrel.hmemory_nonempty
-                            hlabels := hrel.hlabels
-                            hhalt := hhalt_of_structural hrest hrel.hlabels
-                            hlabel_content := hrel.hlabel_content
-                            hframes_one := hrel.hframes_one
-                            hmodule := hrel.hmodule
-                            hstore_funcs := hrel.hstore_funcs
-                            hstore_types := hrel.hstore_types }
+                -- Derive Wasm stack
+                have hstk_w := stack_corr_i64_inv v stk s2.stack
+                  (hstk ▸ hrel.hstack.1) (hstk ▸ hrel.hstack.2)
+                obtain ⟨wstk', hstack_eq, hlen_tail, htail⟩ := hstk_w
+                have hw := step?_eq_i32WrapI64 s2 rest_w v wstk' hcw hstack_eq
+                simp only [traceToWasm]
+                refine ⟨_, hw, ?_⟩
+                exact { hemit := hrel.hemit
+                        hcode := hrest
+                        hstack := by simp only [pushTrace]; exact stack_corr_cons hlen_tail.symm htail (.i32 _)
+                        hframes_len := hrel.hframes_len
+                        hframes_locals := hrel.hframes_locals
+                        hframes_vals := hrel.hframes_vals
+                        hglobals := hrel.hglobals
+                        hmemory := hrel.hmemory
+                        hmemLimits := hrel.hmemLimits
+                        hmemory_aligned := hrel.hmemory_aligned
+                        hmemory_nonempty := hrel.hmemory_nonempty
+                        hlabels := hrel.hlabels
+                        hhalt := hhalt_of_structural hrest hrel.hlabels
+                        hlabel_content := hrel.hlabel_content
+                        hframes_one := hrel.hframes_one
+                        hmodule := hrel.hmodule
+                        hstore_funcs := hrel.hstore_funcs
+                        hstore_types := hrel.hstore_types }
               | .f64 v :: stk =>
                 -- Type mismatch: both trap
                 have hir := irStep?_eq_i32WrapI64_type_mismatch_f64 s1 rest v stk hcode_ir hstk
@@ -10777,9 +10772,7 @@ theorem step_sim (irmod : IRModule) (wmod : Module) :
             exfalso; generalize s2.code = wcode at hc
             cases hc with | general _ _ _ _ hf _ => exact hf.elim
       | .call funcIdx =>
-          -- SORRY: call case needs API updates + hframes_one invariant rework
-          sorry
-          /- function call
+          -- function call
           have hc : EmitCodeCorr _ (IRInstr.call funcIdx :: rest) s2.code := hcode_ir ▸ hrel.hcode
           rcases hc.call_inv with ⟨rest_w, hcw, hrest⟩ | hf
           · -- Wasm code = Instr.call funcIdx :: rest_w
@@ -10837,7 +10830,6 @@ theorem step_sim (irmod : IRModule) (wmod : Module) :
                 -- (blocked: hframes_one requires frames.length = 1, but call creates 2 frames)
                 sorry
           · exact hf.elim
-      -/
       | .callIndirect typeIdx => sorry
       | .block label body =>
           -- block: push label frame, enter body. Both IR and Wasm do the same.

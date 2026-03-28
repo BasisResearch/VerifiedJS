@@ -3194,3 +3194,63 @@ infrastructure (inductive normalizeExpr_labeled_step_sim, evaluation context lem
 
 ## Run: 2026-03-28T10:30:00+00:00
 
+### Goal: Reduce 17 ANF sorries to ≤12
+
+### Approach 1: Expand wildcard `| _ => sorry` at L1597, L1663, L1680 with exfalso
+
+**Attempted**: Replace wildcard sorry with `exfalso; unfold ANF.normalizeExpr at hnorm; simp only [ANF.bindComplex, ...]; repeat (first | split at hnorm | ...)`.
+
+**Result**: FAILED. The exfalso approach does NOT work because `normalizeExpr e k` CAN produce `.labeled` even when `e` is NOT `.labeled` — sub-expressions of `e` may contain `.labeled` constructors, and these propagate through recursive calls.
+
+For example: `normalizeExpr (.let name (.labeled l b) body) k` produces `.labeled l bodyExpr` because `normalizeExpr` recursively enters the `.labeled` sub-expression and wraps the result in `.labeled`.
+
+The `lean_multi_attempt` tool initially reported success, but this was due to LSP caching the old file version before edits took effect. When the actual file was checked, unsolved goals appeared for `case return.some.return.some`, `case return.some.let`, etc.
+
+**Same failure for nested return-some/yield-some at L1582, L1586, L1648, L1652**: These also need induction because the inner value expression can be `.labeled`.
+
+### Approach 2: Prove throw/return/await cases in main theorem
+
+**Analysis of throw (L1774)**:
+- Restructured throw case with `cases sa; subst hsa; simp [ANF.step?, ANF.pushTrace]; cases evalTrivial`
+- Two subgoals emerge:
+  1. `ok v`: ANF produces `.error "throw"` but Flat produces `.error (valueToString v)` → **SEMANTIC MISMATCH** (different error strings)
+  2. `error msg`: ANF produces `.error msg`, Flat also errors → might match but requires `normalizeExpr` inversion lemma
+
+**Key blocker for ALL remaining cases** (throw, return, await, yield, let, seq, if, tryCatch): The hypothesis `hnorm : normalizeExpr sf.expr k n = ok (sa.expr, m)` doesn't constrain `sf.expr`. Multiple Flat expressions can normalize to the same ANF expression (e.g., `.throw flat_arg`, `.seq (.throw flat_arg) b`, `.let name (.throw flat_arg) body` all normalize to `.throw trivial_arg`). The proof needs to handle ALL such cases, requiring:
+
+1. **normalizeExpr inversion lemma**: Characterize what `sf.expr` can be given the output
+2. **Evaluation context lifting for Flat.Steps**: If inner expression steps, the outer context steps correspondingly
+3. **Induction on expression depth**: To handle arbitrary nesting
+
+These are the SAME requirements as for the wildcard cases. The entire `normalizeExpr_labeled_step_sim` theorem needs to be restructured to use induction on `Flat.Expr.depth` (similar to `normalizeExpr_not_while_family`, which is ~280 lines).
+
+### Semantic mismatches (permanently unprovable):
+- **throw (ok case)**: ANF event `.error "throw"` ≠ Flat event `.error (valueToString v)`
+- **return**: ANF event `.silent` ≠ Flat event `.error "return:..."`
+- **break/continue**: ANF event `.silent` ≠ Flat event `.error ...`
+
+### Potentially provable with infrastructure:
+- **await**: Both produce `.silent` events. Observable traces match trivially.
+- **yield**: Both produce `.silent` events. Observable traces match.
+- **throw (error case)**: Error messages might match if evalTrivial error = Flat var-lookup error
+- **All wildcard cases**: Provable with induction on depth + eval context lifting
+
+### Changes made:
+- **L1774-1784**: Restructured throw sorry with `cases sa; subst hsa; simp [ANF.step?, ANF.pushTrace]; cases evalTrivial` for clearer goal structure (0 net sorry change, goals now show exact semantic mismatch)
+
+### Sorry count: 17 → 17 (no change)
+
+### Required infrastructure for future progress:
+1. `normalizeExpr_labeled_step_sim_family (d : Nat)`: Inductive version by depth, handling all expression forms. Estimated ~300 lines.
+2. Flat evaluation context lifting lemmas: `Steps_lift_throw`, `Steps_lift_let`, `Steps_lift_seq`, etc.
+3. `normalizeExpr_inversion_throw`: When `normalizeExpr e k = .throw arg`, characterize possible `e` forms.
+
+### Recommended priority for next run:
+1. Write `normalizeExpr_labeled_step_sim_family` by induction on depth (closes 7 sorries: L1582, L1586, L1597, L1648, L1652, L1663, L1680)
+2. Write Flat eval context lifting lemmas
+3. Use both to close await and yield cases (-2 more sorries)
+4. Accept throw/return/break/continue as permanent semantic mismatches (4 sorries)
+
+2026-03-28T10:30:00+00:00 ANALYSIS COMPLETE — 1 structural change made (throw case decomposition)
+
+2026-03-28T10:56:58+00:00 DONE
