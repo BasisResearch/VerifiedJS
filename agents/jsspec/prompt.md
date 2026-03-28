@@ -1,59 +1,51 @@
-# jsspec — WRITE CC EASY WINS + SUPPORT PROOF AGENT
+# jsspec — CLOSE CC SORRIES: objectLit, arrayLit, tryCatch
 
-## STATUS: Staging lemmas delivered. Proof agent will integrate them. Focus on CC now.
+## STATUS: ANF staging lemmas DELIVERED and INTEGRATED. CC is your domain now.
 
-## CURRENT SORRY COUNT: ANF=13, CC=18, Wasm=20, Lower=1 → 52 total
+## CURRENT SORRY COUNT: ANF=17, CC=18, Wasm=19, Lower=1 → 55 total
 
-## PRIORITY 0: CLOSE EASY CC SORRIES
+## PRIORITY 0: objectLit (L2866), arrayLit (L2867) — EASY WINS
 
 File: `VerifiedJS/Proofs/ClosureConvertCorrect.lean`
 
-The CC file has 18 actual sorries. Some are easy no-confusion/exfalso cases. Focus on these:
+Use `lean_goal` at L2866 and L2867. These are likely stub implementations where closureConvert produces a simplified form. If the goal is straightforward (e.g., the converted form is identical or trivially related), close it.
 
-### L2866 (objectLit), L2867 (arrayLit):
-These are stub implementations (objectLit/arrayLit not fully implemented in closure convert).
-Use `lean_goal` at these lines to check the goal. If the closureConvert for these produces `.lit .undefined` (stub), then the simulation is trivially:
+Common pattern: if closureConvert just wraps/unwraps, the simulation is:
 ```lean
   | objectLit props =>
-    -- closureConvert produces stub → step? on stub = step? on source
-    sorry -- check goal first
+    -- Check: does closureConvert objectLit just produce objectLit with converted props?
+    -- If so, use the stepping relation directly
+    simp [Flat.closureConvert, Flat.convertExpr]
+    sorry -- fill after seeing goal
 ```
 
-### L2868 (functionDef):
-Check with `lean_goal`. If it's a design issue, leave it.
+## PRIORITY 1: tryCatch (L2958)
 
-### L2588 (call), L2589 (newObj):
-These are complex (need multi-step simulation). SKIP.
+Use `lean_goal` at L2958. The tryCatch simulation follows the pattern:
+- closureConvert preserves tryCatch structure
+- Step the body, compose with catch handler
+- May need the HeapInj invariant — if so, leave as sorry with a comment
 
-### L2595, L2654, L2724 (value sub-cases with heap reasoning):
-SKIP — need heap invariant.
+## PRIORITY 2: setProp stepping case (L2648), setIndex stepping case (L2718)
 
-### L2648 (setProp), L2718 (setIndex):
-Check if the non-value case (expression stepping) is provable. The pattern: if the sub-expression steps, the overall expression steps the same way.
+These are cases where the sub-expression steps (not a value). Pattern:
+```lean
+  | setProp obj prop value =>
+    -- If obj is not a value, it steps → closureConvert preserves the step
+    -- Goal: show cc(setProp e p v) steps to cc(setProp e' p v) when e → e'
+    sorry -- check with lean_goal
+```
 
-### L2147, L2169 (CCState threading in if/while):
-These are about CCState mismatches when the conversion creates different states for then/else branches. SKIP — need CCState invariant refactor.
+## PRIORITY 3: forIn/forOf with supported hypothesis (L1132, L1133)
 
-### L2989 (while_ CCState):
-SKIP — same CCState issue.
-
-## PRIORITY 1: WRITE TEMPLATE FOR PROOF AGENT'S EXFALSO CASES
-
-Write into `.lake/_tmp_fix/VerifiedJS/Proofs/anf_exfalso_template.lean` a complete template file showing the expansion of `| _ => sorry` at L1563 with all the exfalso cases. The proof agent can copy this directly.
-
-Include:
-1. All trivial cases (var, lit, this) with complete proofs
-2. All bindComplex cases with complete proofs
-3. Control flow cases (break, continue, return-none, yield-none, throw, await)
-4. Leave compound cases (let, seq, if) as sorry with comments
-
-## PRIORITY 2: Check if forIn/forOf sorries (L1132, L1133) can be closed
-
-These are permanently excluded (`forIn => sorry`, `forOf => sorry`). The `supported` predicate should exclude them. Check if there's a `supported` hypothesis available. If so:
+Check if there's an `h_supported` or `supported` hypothesis in scope:
 ```lean
   | forIn => exfalso; simp [Flat.Expr.supported] at h_supported
+  | forOf => exfalso; simp [Flat.Expr.supported] at h_supported
 ```
 
+If no supported hypothesis is available at this point in the proof, SKIP.
+
 ## DO NOT edit: ANFConvertCorrect.lean, EmitCorrect.lean, EndToEnd.lean, LowerCorrect.lean
-## YOU CAN edit: .lake/_tmp_fix/**, VerifiedJS/Core/*, VerifiedJS/Flat/*, ClosureConvertCorrect.lean
+## YOU CAN edit: ClosureConvertCorrect.lean, .lake/_tmp_fix/**, VerifiedJS/Core/*, VerifiedJS/Flat/*
 ## Log to agents/jsspec/log.md

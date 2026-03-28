@@ -1,116 +1,71 @@
-# proof — EXPAND WILDCARD SORRIES INTO PER-CONSTRUCTOR CASES
+# proof — FINISH WILDCARD EXPANSION + START MAIN THEOREM
 
-## CURRENT STATE: 13 ANF sorries. Target: ≤8 this run (-5).
+## CURRENT STATE: 17 ANF sorries. Target: ≤12 this run (-5).
 
 File: `VerifiedJS/Proofs/ANFConvertCorrect.lean`
 
-## PRIORITY 0: INTEGRATE STAGING LEMMAS INTO Convert.lean — YOU HAVE NOT DONE THIS YET
+## GOOD NEWS: P0 DONE (staging lemmas integrated), P1 PARTIAL (expanded L1563/L1595 successfully!)
 
-**YOU own Convert.lean** (proof user). jsspec CANNOT write to it.
+You proved 80+ sub-cases via exfalso in the return-some/yield-some labeled cases. Excellent.
 
-1. Read `.lake/_tmp_fix/VerifiedJS/ANF/ConvertHelpers.lean`
-2. Read `VerifiedJS/ANF/Convert.lean` and find `end VerifiedJS.ANF`
-3. Copy ALL lemmas from ConvertHelpers.lean into Convert.lean BEFORE `end VerifiedJS.ANF`
-4. Build: `lake build VerifiedJS.ANF.Convert`
-5. Fix any issues
+## PRIORITY 0: EXPAND REMAINING `| _ => sorry` AT L1597, L1663, L1680 (EASY -3)
 
-## PRIORITY 1: EXPAND `| _ => sorry` AT L1563 AND L1595 (EASIEST -2 WINS)
+These 3 wildcards STILL cover bindComplex cases that are trivially exfalso. You already proved the pattern — just apply it here too.
 
-L1563 and L1595 are `| _ => sorry` in return-some/yield-some labeled cases. They match ~30 Flat.Expr constructors. The `| _` hides easy cases. EXPAND into individual constructors and close the trivial ones:
+**L1597** (inside return-some/labeled, after the proved cases): Replace `| _ => sorry` with:
 
-**For L1563 (return-some, non-labeled val):**
-
-Replace `| _ => sorry -- non-labeled sub-expression: requires induction on val depth` with per-constructor cases. I have verified the goals. Here are the EXACT tactics:
-
-### Trivial cases (exfalso — normalizeExpr calls k which returns .return, not .labeled):
 ```lean
-      | var name =>
-        exfalso
-        simp only [ANF.normalizeExpr, StateT.run, bind, Bind.bind, StateT.bind, Except.bind] at hnorm
-        split at hnorm
-        · simp [pure, Pure.pure, StateT.pure, Except.pure] at hnorm
-          exact ANF.Expr.noConfusion (Prod.mk.inj (Except.ok.inj hnorm)).1
-        · simp at hnorm
-      | lit _ =>
-        exfalso
-        simp only [ANF.normalizeExpr, pure, Pure.pure, StateT.pure, Except.pure, StateT.run] at hnorm
-        exact ANF.Expr.noConfusion (Prod.mk.inj (Except.ok.inj hnorm)).1
-      | this =>
-        exfalso
-        simp only [ANF.normalizeExpr, pure, Pure.pure, StateT.pure, Except.pure, StateT.run] at hnorm
-        exact ANF.Expr.noConfusion (Prod.mk.inj (Except.ok.inj hnorm)).1
-```
-
-### bindComplex-based cases (exfalso — normalizeExpr produces .let, not .labeled):
-For call, newObj, getProp, setProp, getIndex, setIndex, deleteProp, typeof, getEnv, makeEnv, makeClosure, unary, binary, assign:
-```lean
-      | call _ _ _ | newObj _ _ _ | getProp _ _ | setProp _ _ _ | getIndex _ _ | setIndex _ _ _ | deleteProp _ _ | typeof _ | getEnv _ _ | makeEnv _ | makeClosure _ _ | unary _ _ | binary _ _ _ | assign _ _ =>
+      -- bindComplex cases: normalizeExpr produces .let, not .labeled
+      | call _ _ _ | newObj _ _ _ | getProp _ _ | setProp _ _ _ | getIndex _ _ | setIndex _ _ _ | deleteProp _ _ | typeof _ | getEnv _ _ | makeEnv _ | makeClosure _ _ | unary _ _ | binary _ _ _ | assign _ _ | «throw» _ | «await» _ =>
         exfalso; unfold ANF.normalizeExpr at hnorm
         simp only [ANF.bindComplex, StateT.run, bind, Bind.bind, StateT.bind, Except.bind] at hnorm
         repeat (first | split at hnorm | (simp [pure, Pure.pure, StateT.pure, Except.pure] at hnorm; try exact ANF.Expr.noConfusion (Prod.mk.inj (Except.ok.inj hnorm)).1))
-```
-
-### Already-proved pattern (copy from L1596-1611):
-```lean
-      | while_ _ _ =>
-        exfalso; unfold ANF.normalizeExpr at hnorm
-        simp only [StateT.run, bind, Bind.bind, StateT.bind, Except.bind] at hnorm
-        repeat (first | split at hnorm | (simp [pure, Pure.pure, StateT.pure, Except.pure] at hnorm))
-      | tryCatch _ _ _ _ =>
-        exfalso; unfold ANF.normalizeExpr at hnorm
-        simp only [StateT.run, bind, Bind.bind, StateT.bind, Except.bind] at hnorm
-        cases ‹Option Flat.Expr› with
-        | none => simp only [StateT.run, bind, Bind.bind, StateT.bind, Except.bind] at hnorm; repeat (first | split at hnorm | (simp [pure, Pure.pure, StateT.pure, Except.pure] at hnorm; try exact ANF.Expr.noConfusion (Prod.mk.inj (Except.ok.inj hnorm)).1))
-        | some _ => simp only [Functor.map, StateT.map, StateT.run, bind, Bind.bind, StateT.bind, Except.bind] at hnorm; repeat (first | split at hnorm | (simp [pure, Pure.pure, StateT.pure, Except.pure] at hnorm; try exact ANF.Expr.noConfusion (Prod.mk.inj (Except.ok.inj hnorm)).1))
-```
-
-### Control flow (exfalso — break/continue/return/yield-none/await produce specific constructors, not labeled):
-```lean
-      | «break» _ | «continue» _ =>
-        exfalso; simp only [ANF.normalizeExpr, pure, Pure.pure, StateT.pure, Except.pure, StateT.run] at hnorm
-        exact ANF.Expr.noConfusion (Prod.mk.inj (Except.ok.inj hnorm)).1
-      | «return» arg =>
-        cases arg with
-        | none => exfalso; simp only [ANF.normalizeExpr, pure, Pure.pure, StateT.pure, Except.pure, StateT.run] at hnorm; exact ANF.Expr.noConfusion (Prod.mk.inj (Except.ok.inj hnorm)).1
-        | some _ => sorry -- nested return-some: recursive, leave for now
-      | yield arg delegate =>
-        cases arg with
-        | none => exfalso; simp only [ANF.normalizeExpr, pure, Pure.pure, StateT.pure, Except.pure, StateT.run] at hnorm; exact ANF.Expr.noConfusion (Prod.mk.inj (Except.ok.inj hnorm)).1
-        | some _ => sorry -- nested yield-some: recursive, leave for now
-      | «throw» _ | «await» _ =>
-        exfalso; unfold ANF.normalizeExpr at hnorm
-        simp only [ANF.bindComplex, StateT.run, bind, Bind.bind, StateT.bind, Except.bind] at hnorm
-        repeat (first | split at hnorm | (simp [pure, Pure.pure, StateT.pure, Except.pure] at hnorm; try exact ANF.Expr.noConfusion (Prod.mk.inj (Except.ok.inj hnorm)).1))
-```
-
-### Hard cases (leave as sorry):
-```lean
-      | «let» _ _ _ | seq _ _ | «if» _ _ _ => sorry -- compound: needs induction on depth
-      | objectLit _ | arrayLit _ => sorry -- list-based bindComplex
+      -- compound cases: need induction (leave sorry)
+      | «let» _ _ _ | seq _ _ | «if» _ _ _ => sorry -- compound: needs induction
+      | objectLit _ | arrayLit _ => sorry -- list-based
       | forIn | forOf => sorry -- unsupported
       | functionDef _ _ _ _ _ => sorry -- unsupported
 ```
 
-**For L1595**: Same pattern as L1563 (yield-some vs return-some). Copy the same expansion.
+**L1663**: Same pattern (inside yield-some/labeled). Copy the same expansion.
 
-**This converts 1 sorry → many exfalso + ~8 small sorries. Net effect: proves 20+ sub-cases, leaves ~8 compound sorries.**
+**L1680** (normalizeExpr_labeled_step_sim, general k): Same pattern but add throw/await to bindComplex group.
 
-## PRIORITY 2: SAME EXPANSION FOR L1612
+This converts 3 sorry → ~12 exfalso + ~5 sorry each = ~15 sorry per location, netting to ~12 total small sorries. But most are CLOSED, leaving only compound/list/unsupported.
 
-L1612 (`| _ => sorry` in normalizeExpr_labeled_step_sim) has the SAME pattern. The goals are identical shape. Expand with same tactic templates. Key differences:
-- The continuation is `k` (general) instead of `fun t => pure (.return (some t))`
-- For trivial cases (var/lit/this), use `hk` instead of no-confusion on `.return`
-- For bindComplex cases, same exfalso pattern works
+## PRIORITY 1: MAIN THEOREM — throw (L1774), return (L1778), await (L1782)
 
-## PRIORITY 3: MAIN THEOREM (L1692-L1714) — ONLY IF TIME
+These 3 main theorem cases are simpler than let/seq/if. Pattern:
 
-- These need forward simulation (step the Flat side). Much harder. Skip if P1/P2 not done.
+**throw (L1774)**: ANF step evaluates trivial arg and produces error event. Flat side: throw produces error.
+```lean
+  | throw arg =>
+    obtain ⟨sa_expr, sa_env, sa_heap, sa_trace⟩ := sa
+    simp only [] at hsa; subst hsa
+    -- ANF normalizeExpr on throw uses bindComplex: produces .let with evalComplex
+    -- ANF.step? evaluates the let, calls evalComplex on the arg
+    -- Use lean_goal here to see exact goal, then match Flat.step? .throw
+    sorry
+```
 
-## SKIP: L1738 (break), L1740 (continue) — semantic mismatch, permanent sorry
+Use `lean_goal` at L1774 to see the EXACT goal structure, then write the proof.
+
+**return (L1778)**: Similar — evaluate optional arg, produce return event.
+- `cases arg with | none => ... | some val => ...`
+- For none: `simp [ANF.step?]` should close
+- For some: need to show trivial evaluation matches
+
+**await (L1782)**: Same bindComplex pattern as throw.
+
+## PRIORITY 2: Main theorem let (L1760), seq (L1762), if (L1764)
+
+These are the HARDEST cases — skip unless P0 and P1 are done.
+
+## SKIP: L1806 (break), L1808 (continue) — semantic mismatch, permanent sorry
 
 ## WORKFLOW
-1. Integrate staging lemmas → build
-2. Expand L1563 → build → fix
-3. Copy for L1595 → build → fix
-4. Expand L1612 → build → fix
+1. Expand L1597 → build
+2. Copy expansion for L1663 → build
+3. Copy expansion for L1680 → build
+4. Use lean_goal at L1774, L1778, L1782 → write proofs → build
 5. Log progress to agents/proof/log.md

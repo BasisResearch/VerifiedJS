@@ -5473,3 +5473,42 @@ ANF sorry count effectively unchanged (structural improvements but no net closur
 
 ## Run: 2026-03-28T09:05:01+00:00
 
+
+### Metrics
+- **Sorry count (grep -c)**: 59 (17 ANF + 20 CC + 21 Wasm + 1 Lower)
+- **Actual sorries**: 55 (17 ANF + 18 CC + 19 Wasm + 1 Lower)
+- **Delta from last run (08:05)**: +3 actual (52→55). ANF 13→17 (+4 from wildcard expansion). Wasm 20→19 (-1 closed). CC unchanged 18. Lower unchanged 1.
+- **Net assessment**: STRUCTURAL PROGRESS despite +3 count. ANF +4 is from expanding 3 wildcard sorries (each covering ~30 constructors) into specific cases — 80+ sub-cases proved via exfalso. Wasm closed 1 sorry.
+
+### ANF Analysis (17 sorries)
+- **Proof agent DELIVERED**: Expanded L1563/L1595 wildcards into per-constructor cases. Proved ~80 trivial/bindComplex/control-flow sub-cases via exfalso. EXCELLENT work.
+- **Remaining helper sorries (7)**: 
+  - L1582, L1586, L1648, L1652: nested return-some/yield-some recursive (needs induction)
+  - L1597, L1663, L1680: STILL WILDCARDS — cover bindComplex + compound + unsupported. Proof agent ran out of time before expanding these.
+- **Main theorem (8)**: L1760 (let), L1762 (seq), L1764 (if), L1774 (throw), L1776 (tryCatch), L1778 (return), L1780 (yield), L1782 (await)
+- **Permanent (2)**: L1806 (break), L1808 (continue) — semantic mismatch
+- **Staging lemmas INTEGRATED**: let_k_not_labeled, if_k_not_labeled, bindComplex_k_not_labeled all at Convert.lean L396/L408/L419. P0 COMPLETE.
+
+### CC Analysis (18 sorries) — UNCHANGED since 01:00
+- jsspec has not closed any CC sorries this run cycle.
+- Redirected jsspec to objectLit/arrayLit (L2866/L2867) as easiest targets.
+
+### Wasm Analysis (19 actual sorries, was 20) — -1
+- wasmspec closed 1 sorry (likely L10290 or similar binOp case based on its targets).
+- L308 writeLE?_preserves_size STILL OPEN — keep pushing.
+
+### Agent Prompt Rewrites
+1. **proof**: P0: Expand L1597/L1663/L1680 (separate bindComplex exfalso from compound sorry). P1: Main theorem throw/return/await (simpler cases). P2: let/seq/if (hardest).
+2. **jsspec**: Redirected to CC objectLit/arrayLit (L2866/L2867), tryCatch (L2958), setProp/setIndex stepping.
+3. **wasmspec**: Continue L308, binOp L10462/L10715, unOp L10768/L10772.
+
+### Actions Taken
+1. Counted sorries across all files — precise actual counts
+2. Verified staging lemma integration (Convert.lean L396/408/419)
+3. Verified proof agent's wildcard expansion success (80+ sub-cases proved)
+4. All 3 agent prompts rewritten with updated targets
+5. Logged time estimate (55 sorries, 168 hours)
+
+### OUTLOOK: Target next run ≤50 (ANF L1597/1663/1680 expansion -3 net, throw/return/await -3, Wasm -1)
+### RISK: CC is stagnant — jsspec hasn't changed CC since 01:00. If no CC progress by next run, will investigate blockers.
+2026-03-28T09:08:50+00:00 DONE

@@ -1,84 +1,55 @@
-# wasmspec — CLOSE writeLE? LEMMA + binOp CASES
+# wasmspec — CONTINUE: writeLE? + binOp + unOp CASES
 
-## STATUS: 20 actual Wasm sorries in Semantics.lean. Target: -3 this run.
+## STATUS: 19 Wasm sorries remaining (was 20 last run — good, -1). Target: ≤16 this run (-3).
 
 File: `VerifiedJS/Wasm/Semantics.lean`
 
-## P0: L308 — writeLE?_preserves_size (EASY WIN, PURE LEMMA)
+## P0: L308 — writeLE?_preserves_size (STILL OPEN)
 
-Goal is:
+This is a PURE LEMMA, no semantic complexity. Goal:
 ```
-mem mem' : ByteArray
-addr width : Nat
-value : UInt64
-h : writeLE? mem addr width value = some mem'
+mem' : ByteArray, h : writeLE? mem addr width value = some mem'
 ⊢ mem'.size = mem.size
 ```
 
-writeLE? is defined at L269:
+The `writeLE?` loop does `ByteArray.set!` at each iteration, which preserves size (index is checked in-bounds by the `if idx < out.size` guard — if out of bounds, returns `none`).
+
+Strategy: The loop is `for k in [0:width]` which is `List.forIn [0, 1, ..., width-1]`. Unfold the `Id.run do` and prove the loop invariant `out.size = mem.size` is preserved.
+
+If direct induction on width is hard, try:
 ```lean
-private def writeLE? (mem : ByteArray) (addr width : Nat) (value : UInt64) : Option ByteArray := Id.run do
-  let mut out := mem
-  for k in [0:width] do
-    let idx := addr + k
-    if idx < out.size then
-      let byte := UInt8.ofNat ((value.toNat / Nat.pow 2 (8 * k)) % 256)
-      out := out.set! idx byte
-    else
-      return none
-  return some out
+  -- The loop body only calls set! when idx < out.size, so size is preserved
+  -- set! with in-bounds index preserves size
+  unfold writeLE? Id.run at h
+  simp only [forIn, ForIn.forIn] at h
+  sorry -- examine goal after simp, continue from there
 ```
 
-Key insight: `ByteArray.set!` preserves size (it uses `Array.set!` which preserves size when index is in bounds). The loop maintains the invariant `out.size = mem.size`.
-
-Approach: Prove by induction on `width`. The for loop `[0:width]` iterates width times.
-
-Try:
-```lean
-  induction width generalizing mem with
-  | zero => simp [writeLE?, Id.run, forIn, ForIn.forIn] at h; exact h ▸ rfl
-  | succ n ih =>
-    unfold writeLE? at h
-    simp [Id.run] at h
-    -- unfold the for loop one step, use set! preserves size, apply ih
-    sorry
+Or try `lean_multi_attempt` at L308 with:
+```
+["omega", "simp [writeLE?]", "unfold writeLE? at h; simp [Id.run] at h"]
 ```
 
-Or try unfolding the `Id.run do` loop as `List.forIn` and proving the invariant. You may need:
-```lean
-theorem ByteArray.size_set! (a : ByteArray) (i : Nat) (v : UInt8) : (a.set! i v).size = a.size
-```
+**LSP TIMEOUT WORKAROUND**: This file is 11K+ lines. If lean_goal/lean_multi_attempt timeout:
+1. Read the code around L300-310
+2. Write the proof directly
+3. Build: `lake build VerifiedJS.Wasm.Semantics`
+4. Use `lean_diagnostic_messages` on line 308 to check errors
 
-Check if this lemma exists with `lean_local_search` for "ByteArray" "size" "set". If not, prove it inline.
+## P1: L10462 and L10715 — binOp/unOp cases
 
-**NOTE**: LSP may time out on this file (11K+ lines). If `lean_goal` times out:
-1. Try `lean_multi_attempt` with shorter snippets
-2. Or just write the proof and build: `lake build VerifiedJS.Wasm.Semantics`
-3. Use `lean_diagnostic_messages` to check errors
+Read 50 lines of context around each sorry. These typically follow the pattern from nearby proved cases:
+- Match on operator type
+- Show IR evaluation matches Wasm evaluation
+- Construct EmitSimRel with updated stack
 
-## P1: binOp cases (L10284, L10290)
+Write proof by analogy with the nearest proved case above/below the sorry.
 
-These are deep in the file so LSP may time out. Use this strategy:
-1. Read the surrounding code (50 lines around each sorry) to understand the goal
-2. Write the proof based on the pattern of nearby proved cases
-3. Build to check
+## P2: L10768, L10772 — deeper cases
 
-The binOp cases typically follow the pattern:
-- IR evaluates binOp on two values
-- If types mismatch → IR traps → show Wasm also traps
-- If types match → produce result → show Wasm produces same result
-- Build EmitSimRel with updated stack
+Same approach: read context, find nearest proved case, adapt.
 
-## P2: L10545
+## SKIP: L6675-L6753 (structural decomposition block — 12 sorries, complex), L10775 (callIndirect), L11535 (memoryGrow)
 
-Same approach — read context, write proof, build.
-
-## SKIP: L6542-6620 (structural), L10598/L10602 (call), L10605 (callIndirect), L11365 (memoryGrow)
-
-## WORKFLOW
-1. Prove writeLE?_preserves_size at L308 → build
-2. Read context around L10284, L10290 → write proofs → build
-3. Read context around L10545 → write proof → build
-4. Log to agents/wasmspec/log.md
-
-## BUILD COMMAND: `lake build VerifiedJS.Wasm.Semantics`
+## BUILD: `lake build VerifiedJS.Wasm.Semantics`
+## Log to agents/wasmspec/log.md
