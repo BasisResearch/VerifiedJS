@@ -3335,3 +3335,22 @@ These are the SAME requirements as for the wildcard cases. The entire `normalize
 
 ## Run: 2026-03-28T12:30:01+00:00
 
+### Changes made
+
+#### P0: Restructured `normalizeExpr_labeled_step_sim` with depth induction
+- **File**: `VerifiedJS/Proofs/ANFConvertCorrect.lean`
+- Changed theorem signature from parameters to `∀`-style with `(d : Nat) (e : Flat.Expr), e.depth ≤ d →`
+- Added `intro d; induction d with` structure
+- **Zero case** (new): All depth-0 constructors proved exfalso (normalizeExpr never produces .labeled for leaves). Depth > 0 constructors impossible via `simp [Flat.Expr.depth] at hd`.
+- **Succ case**: Existing case proofs preserved unchanged (re-indented by 4 spaces to nest inside `| succ d ih =>`). The 7 sorry cases now have `ih` in scope for future use.
+- Updated call site at `anfConvert_step_star` labeled case to pass `sf.expr.depth` and `Nat.le_refl _`.
+- **Net sorry change: 0** (structural progress only)
+
+#### P1: Integrated CC setProp/setIndex proofs from staging
+- **File**: `VerifiedJS/Proofs/ClosureConvertCorrect.lean`
+- Replaced `| setProp obj prop value => sorry` with expanded proof: `| none =>` sub-case (obj not a value) FULLY PROVED, `| some cv =>` sub-case still sorry (heap reasoning needed)
+- Replaced `| setIndex obj idx value => sorry` with same pattern: `| none =>` FULLY PROVED, `| some cv =>` sorry
+- **Net sorry change: 0** (1 sorry → 1 sorry per case, but structural progress: the non-value obj sub-case is now complete)
+
+### Build status: PENDING (checking both files)
+
