@@ -6439,9 +6439,12 @@ inductive LowerCodeCorr : ANF.Expr → List IRInstr → Prop where
   | seq (a b : ANF.Expr) (aCode bCode : List IRInstr) :
       LowerCodeCorr a aCode → LowerCodeCorr b bCode →
       LowerCodeCorr (.seq a b) (aCode ++ [.drop] ++ bCode)
-  /-- An if lowers to: [lowered cond] ++ [if_ ...]. -/
+  /-- An if lowers to: [lowered cond] ++ [if_ ...].
+      `htcc` connects the condition trivial to its IR code (needed for step_sim).
+      REF: Lower.lean lowerExpr, lines 419-425. -/
   | if_ (cond : ANF.Trivial) (then_ else_ : ANF.Expr)
       (condCode thenCode elseCode : List IRInstr) :
+      TrivialCodeCorr cond condCode →
       LowerCodeCorr then_ thenCode → LowerCodeCorr else_ elseCode →
       LowerCodeCorr (.«if» cond then_ else_) (condCode ++ [.if_ none thenCode elseCode])
   /-- A while_ lowers to block+loop: [block exitLbl [loop loopLbl (condCode ++ [call truthy, eqz, brIf exit] ++ bodyCode ++ [drop, br loop])]] ++ [undefinedConst].
@@ -6540,6 +6543,16 @@ theorem LowerCodeCorr.throw_inv {arg : ANF.Trivial} {code : List IRInstr}
   match h with
   | .throw_br _ ac lbl htc => exact .inl ⟨ac, lbl, rfl, htc⟩
   | .throw_ret _ ac htc => exact .inr ⟨ac, rfl, htc⟩
+
+/-- Inversion: LowerCodeCorr for if extracts TrivialCodeCorr and branch codes. -/
+theorem LowerCodeCorr.if_inv {cond : ANF.Trivial} {then_ else_ : ANF.Expr} {code : List IRInstr}
+    (h : LowerCodeCorr (.«if» cond then_ else_) code) :
+    ∃ condCode thenCode elseCode,
+      code = condCode ++ [.if_ none thenCode elseCode] ∧
+      TrivialCodeCorr cond condCode ∧
+      LowerCodeCorr then_ thenCode ∧ LowerCodeCorr else_ elseCode := by
+  match h with
+  | .if_ _ _ _ cc _ htcc hthen helse => exact ⟨cc, _, _, rfl, htcc, hthen, helse⟩
 
 /-- Step-count measure: how many IR steps a given ANF expression needs.
     Used for stuttering simulation arguments. Returns 0 for halted expressions,
