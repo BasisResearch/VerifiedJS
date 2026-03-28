@@ -1,3 +1,36 @@
+## Run: 2026-03-28T02:15:01+00:00
+
+### TASK: Close br and brIf sorries
+
+**Build status at start:** PASS (sorry warnings only)
+**Build status at end:** PASS (sorry warnings only)
+**Sorry count:** 31 → 29 (2 sorries closed: br, brIf)
+
+### Completed
+
+1. **br proof uncommented + fixed** (1 sorry closed):
+   - Fixed `ir_idx` → `idx` after `subst hidx`
+   - Wrote `hlc_tail` helper for dropped-label hlabel_content using `List.getElem?_drop`, `List.drop_drop`, `List.drop_eq_getElem_cons`
+   - Split on `cases hIsLoop : irLbl.isLoop` for separate isLoop true/false branches
+   - Fixed omega failures with `Nat.add_lt_of_lt_sub`
+   - Fixed `if` arithmetic with `suffices ... split <;> rfl`
+
+2. **brIf proof uncommented + fixed** (1 sorry closed):
+   - Same `ir_idx` → `idx` fix; same `hlc_tail` pattern for true branch
+   - `match decide ... | isTrue | isFalse` → `by_cases h0 : cond = 0`
+   - `| v :: stk => match v` → separate `| .i64 _ :: stk | .f64 _ :: stk` arms
+   - Trap records use `refine ⟨_, hw, ⟨...⟩⟩` tuple pattern (matches if_ style)
+
+### Key patterns
+
+- **`List.drop_eq_getElem_cons`**: `drop n l = l[n] :: drop (n+1) l` — for loop re-entry labels
+- **`Nat.add_lt_of_lt_sub`**: solves omega failures with `List.length_drop` subtraction
+- **`hlc_tail` for label shifting**: shift `hlabel_content (idx+1+j)` into `drop(idx+1)` indexing
+
+2026-03-28T03:30:00+00:00 DONE
+
+---
+
 ## Run: 2026-03-27T23:00:03+00:00
 
 ### TASK: Fix store type mismatch build errors, close store/binOp sorry lines
@@ -3502,3 +3535,4 @@ test_write
 ## Run: 2026-03-28T02:15:01+00:00
 
 2026-03-28T03:15:01+00:00 SKIP: already running
+2026-03-28T03:16:01+00:00 DONE

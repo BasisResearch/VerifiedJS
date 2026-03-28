@@ -1089,32 +1089,31 @@ private theorem normalizeExpr_labeled_step_sim
       observableTrace sf'.trace = observableTrace sf.trace ∧
       observableTrace evs = [] ∧
       ExprWellFormed sf'.expr sf'.env := by
-  subst hsf
   cases e with
   | labeled label' body_flat =>
-    -- normalizeExpr (.labeled label' body_flat) k = do { bodyExpr ← normalizeExpr body_flat k; pure (.labeled label' bodyExpr) }
-    unfold ANF.normalizeExpr at hnorm
-    -- Extract bind result
-    simp only [StateT.run, bind, Bind.bind, StateT.bind, Except.bind] at hnorm
-    split at hnorm
-    · next bodyExpr m' heq =>
-      simp only [pure, Pure.pure, StateT.pure, Except.pure] at hnorm
-      have ⟨h1, h2⟩ := Prod.mk.inj (Except.ok.inj hnorm)
+    -- normalizeExpr (.labeled label' body_flat) k produces .labeled label' bodyExpr
+    -- where bodyExpr = normalizeExpr body_flat k
+    simp only [ANF.normalizeExpr_labeled] at hnorm
+    -- hnorm is now a bind: (do bodyExpr ← normalizeExpr body_flat k; pure (.labeled label' bodyExpr)).run n = ...
+    -- Decompose the monadic bind
+    have hbind := hnorm
+    simp only [bind, Bind.bind, StateT.bind, StateT.run, Except.bind] at hbind
+    split at hbind
+    · next bodyExpr_m heq =>
+      obtain ⟨bodyExpr, m'⟩ := bodyExpr_m
+      simp only [pure, Pure.pure, StateT.pure, Except.pure] at hbind
+      have ⟨h1, h2⟩ := Prod.mk.inj (Except.ok.inj hbind)
       have ⟨hlabel, hbody⟩ := ANF.Expr.labeled.inj h1
       subst hlabel; subst hbody; subst h2
       -- One Flat step: .labeled label body_flat → body_flat
       let sf' : Flat.State := { sf with expr := body_flat, trace := sf.trace ++ [Core.TraceEvent.silent] }
       have hstep : Flat.step? sf = some (.silent, sf') := by
-        have : sf = { sf with expr := .labeled label body_flat } := by cases sf; rfl
-        rw [this]; simp [Flat.step?, sf', Flat.pushTrace]
+        rw [hsf]; simp [Flat.step?, sf', Flat.pushTrace]
       refine ⟨[.silent], sf', .tail ⟨hstep⟩ (.refl _), ?_, rfl, rfl, ?_, rfl, ?_⟩
-      · -- normalizeExpr body_flat k produces body (= bodyExpr)
-        exact ⟨k, n, m', heq, hk⟩
-      · -- observableTrace
-        simp [sf', observableTrace_append, observableTrace]; decide
-      · -- ExprWellFormed
-        intro x hfx; exact hwf x (VarFreeIn.labeled _ _ _ hfx)
-    · simp at hnorm
+      · exact ⟨k, n, m', heq, hk⟩
+      · simp [sf', observableTrace_append, observableTrace]; decide
+      · intro x hfx; exact hwf x (VarFreeIn.labeled _ _ _ hfx)
+    · simp at hbind
   | var name =>
     exfalso
     simp only [ANF.normalizeExpr] at hnorm

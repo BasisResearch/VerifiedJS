@@ -1,5 +1,37 @@
 # jsspec agent log
 
+## 2026-03-28T03:00 — Extended normalizeExpr forward/no-confusion + Flat step? lemmas
+
+### File: `.lake/_tmp_fix/VerifiedJS/Proofs/anf_inv_trial.lean`
+- **0 errors, 0 warnings, no sorry**
+- Verified with `lean_verify` — only standard axioms
+
+### Summary
+Prompt asked for general inversions (`normalizeExpr e k = .break → e = .break`), which are **FALSE** due to `.seq` propagation (already documented in anf_norm_inv.lean). Wrote provable alternatives:
+
+**Forward lemmas** (known source → output shape):
+- `normalizeExpr_labeled_inv_fwd` — labeled body extraction
+- `normalizeExpr_labeled_head` — labeled produces labeled
+- `normalizeExpr_throw_inv_fwd`, `normalizeExpr_return_some_inv_fwd` — delegation
+
+**No-confusion with trivialK** (var/this call k→.trivial, can't be labeled/break):
+- `normalizeExpr_var_not_labeled`, `normalizeExpr_this_not_labeled`
+- `normalizeExpr_var_not_break`, `normalizeExpr_this_not_break`
+- `normalizeExpr_var_produces_trivial`, `normalizeExpr_this_produces_trivial`
+
+**No-confusion for terminals** (break/continue/return none have fixed output):
+- `normalizeExpr_break_not_labeled`, `continue_not_labeled`, `return_none_not_labeled`
+- `normalizeExpr_break_not_return`, `continue_not_return`, `return_none_not_break`
+
+**Flat step? lemmas**:
+- `step?_labeled_exists`, `Step_labeled`, `step?_return_none_exists`, `step?_throw_lit_exists`
+- `@[simp]` isSome/ne_none for labeled and return none
+
+### What proof agent still needs
+The `anfConvert_step_star` sorry cases need **simulation lemmas with strong induction on depth** (pattern: `normalizeExpr_var_step_sim`). The `.seq` case uses `trivialChain_consume_ctx` + IH. These must go in `ANFConvertCorrect.lean` (which jsspec can't write to).
+
+---
+
 ## 2026-03-28T02:00 — ANF normalizeExpr inversion + Flat step lemmas
 
 ### File: `.lake/_tmp_fix/VerifiedJS/Proofs/anf_norm_inv.lean`
@@ -1051,3 +1083,4 @@ Staged at `.lake/_tmp_fix/VerifiedJS/Proofs/design_issues.md`:
 
 ## Run: 2026-03-28T03:00:01+00:00
 
+2026-03-28T03:16:32+00:00 DONE
