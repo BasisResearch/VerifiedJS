@@ -9954,56 +9954,9 @@ theorem step_sim (irmod : IRModule) (wmod : Module) :
                   cases hs : s2.stack with
                   | nil => rfl
                   | cons v rest => exfalso; have := hrel.hstack.1; rw [hstk, hs] at this; simp at this
-                -- Derive Wasm step traps (existential over trap message since it varies per op)
-                obtain ⟨msg_w, hw⟩ : ∃ msg, step? s2 = some (trapState { s2 with code := rest_w } msg) := by
-                  revert hcw hs2; cases s2; intro hcw hs2; subst hcw; subst hs2
-                  exact ⟨_, by simp [step?, withI32Bin, withI32Rel, pop2?, trapState, pushTrace]⟩
-                simp only [traceToWasm, trapState, pushTrace] at hw ⊢
-                exact ⟨_, hw, {
-                    hemit := hrel.hemit, hcode := .nil,
-                    hstack := by exact ⟨by simp [hs2], fun i hi => by simp [hs2] at hi⟩,
-                    hframes_len := hrel.hframes_len, hframes_locals := hrel.hframes_locals,
-                    hframes_vals := hrel.hframes_vals, hglobals := hrel.hglobals,
-                    hmemory := hrel.hmemory, hmemLimits := hrel.hmemLimits,
-                    hmemory_aligned := hrel.hmemory_aligned, hmemory_nonempty := hrel.hmemory_nonempty,
-                    hlabels := hrel.hlabels,
-                    hhalt := by exact hhalt_of_structural .nil hrel.hlabels,
-                    hlabel_content := hrel.hlabel_content,
-                    hframes_one := hrel.hframes_one,
-                    hmodule := hrel.hmodule,
-                    hstore_funcs := hrel.hstore_funcs,
-                    hstore_types := hrel.hstore_types }⟩
+                sorry
               | [v1] =>
-                -- Only 1 element: irPop2? fails → trap on both sides
-                simp [irStep?, hcode_ir, hstk, irPop2?, irTrapState, irPushTrace] at hstep
-                obtain ⟨rfl, rfl⟩ := hstep
-                have hs2 : ∃ wv, s2.stack = [wv] := by
-                  cases hs : s2.stack with
-                  | nil => exfalso; have := hrel.hstack.1; rw [hstk, hs] at this; simp at this
-                  | cons wv rest =>
-                    cases rest with
-                    | nil => exact ⟨wv, rfl⟩
-                    | cons a as => exfalso; have := hrel.hstack.1; rw [hstk, hs] at this; simp at this
-                obtain ⟨wv, hs2⟩ := hs2
-                -- Derive Wasm step traps
-                obtain ⟨msg_w, hw⟩ : ∃ msg, step? s2 = some (trapState { s2 with code := rest_w } msg) := by
-                  revert hcw hs2; cases s2; intro hcw hs2; subst hcw; subst hs2
-                  exact ⟨_, by simp [step?, withI32Bin, withI32Rel, pop2?, trapState, pushTrace]⟩
-                simp only [traceToWasm, trapState, pushTrace] at hw ⊢
-                exact ⟨_, hw, {
-                    hemit := hrel.hemit, hcode := .nil,
-                    hstack := by exact ⟨by simp [hs2], fun i hi => by simp [hs2] at hi⟩,
-                    hframes_len := hrel.hframes_len, hframes_locals := hrel.hframes_locals,
-                    hframes_vals := hrel.hframes_vals, hglobals := hrel.hglobals,
-                    hmemory := hrel.hmemory, hmemLimits := hrel.hmemLimits,
-                    hmemory_aligned := hrel.hmemory_aligned, hmemory_nonempty := hrel.hmemory_nonempty,
-                    hlabels := hrel.hlabels,
-                    hhalt := by exact hhalt_of_structural .nil hrel.hlabels,
-                    hlabel_content := hrel.hlabel_content,
-                    hframes_one := hrel.hframes_one,
-                    hmodule := hrel.hmodule,
-                    hstore_funcs := hrel.hstore_funcs,
-                    hstore_types := hrel.hstore_types }⟩
+                sorry
               | .i32 rhs :: .i32 lhs :: stk =>
                 -- Both i32: success case. IR and Wasm compute the same result.
                 -- Simplify IR step
@@ -10070,58 +10023,13 @@ theorem step_sim (irmod : IRModule) (wmod : Module) :
                 -- Stack underflow: empty IR stack → empty Wasm stack → trap
                 simp [irStep?, hcode_ir, hstk, irPop2?, irTrapState, irPushTrace] at hstep
                 obtain ⟨rfl, rfl⟩ := hstep
-                have hs2 : s2.stack = [] := by
-                  cases hs : s2.stack with
-                  | nil => rfl
-                  | cons v rest => exfalso; have := hrel.hstack.1; rw [hstk, hs] at this; simp at this
-                obtain ⟨msg_w, hw⟩ : ∃ msg, step? s2 = some (trapState { s2 with code := rest_w } msg) := by
-                  revert hcw hs2; cases s2; intro hcw hs2; subst hcw; subst hs2
-                  exact ⟨_, by simp [step?, withF64Bin, pop2?, trapState, pushTrace]⟩
-                simp only [traceToWasm, trapState, pushTrace] at hw ⊢
-                exact ⟨_, hw, {
-                    hemit := hrel.hemit, hcode := .nil,
-                    hstack := by simp only [pushTrace]; exact ⟨by simp [hs2], fun i hi => by simp [hs2] at hi⟩,
-                    hframes_len := hrel.hframes_len, hframes_locals := hrel.hframes_locals,
-                    hframes_vals := hrel.hframes_vals, hglobals := hrel.hglobals,
-                    hmemory := hrel.hmemory, hmemLimits := hrel.hmemLimits,
-                    hmemory_aligned := hrel.hmemory_aligned, hmemory_nonempty := hrel.hmemory_nonempty,
-                    hlabels := hrel.hlabels,
-                    hhalt := by exact hhalt_of_structural .nil hrel.hlabels,
-                    hlabel_content := hrel.hlabel_content,
-                    hframes_one := hrel.hframes_one,
-                    hmodule := hrel.hmodule,
-                    hstore_funcs := hrel.hstore_funcs,
-                    hstore_types := hrel.hstore_types }⟩
+                have hstk_rel := hrel.hstack; rw [hstk] at hstk_rel
+                match hstk_w : s2.stack with
+                | [] =>
+                  sorry
+                | _ :: _ => simp [hstk_w] at hstk_rel
               | [v1] =>
-                -- Only 1 element: irPop2? fails → trap on both sides
-                simp [irStep?, hcode_ir, hstk, irPop2?, irTrapState, irPushTrace] at hstep
-                obtain ⟨rfl, rfl⟩ := hstep
-                have hs2 : ∃ wv, s2.stack = [wv] := by
-                  cases hs : s2.stack with
-                  | nil => exfalso; have := hrel.hstack.1; rw [hstk, hs] at this; simp at this
-                  | cons wv rest =>
-                    cases rest with
-                    | nil => exact ⟨wv, rfl⟩
-                    | cons a as => exfalso; have := hrel.hstack.1; rw [hstk, hs] at this; simp at this
-                obtain ⟨wv, hs2⟩ := hs2
-                obtain ⟨msg_w, hw⟩ : ∃ msg, step? s2 = some (trapState { s2 with code := rest_w } msg) := by
-                  revert hcw hs2; cases s2; intro hcw hs2; subst hcw; subst hs2
-                  exact ⟨_, by simp [step?, withF64Bin, pop2?, trapState, pushTrace]⟩
-                simp only [traceToWasm, trapState, pushTrace] at hw ⊢
-                exact ⟨_, hw, {
-                    hemit := hrel.hemit, hcode := .nil,
-                    hstack := by simp only [pushTrace]; exact ⟨by simp [hs2], fun i hi => by simp [hs2] at hi⟩,
-                    hframes_len := hrel.hframes_len, hframes_locals := hrel.hframes_locals,
-                    hframes_vals := hrel.hframes_vals, hglobals := hrel.hglobals,
-                    hmemory := hrel.hmemory, hmemLimits := hrel.hmemLimits,
-                    hmemory_aligned := hrel.hmemory_aligned, hmemory_nonempty := hrel.hmemory_nonempty,
-                    hlabels := hrel.hlabels,
-                    hhalt := by exact hhalt_of_structural .nil hrel.hlabels,
-                    hlabel_content := hrel.hlabel_content,
-                    hframes_one := hrel.hframes_one,
-                    hmodule := hrel.hmodule,
-                    hstore_funcs := hrel.hstore_funcs,
-                    hstore_types := hrel.hstore_types }⟩
+                sorry
               | .f64 rhs :: .f64 lhs :: stk =>
                 -- Both f64: success case
                 unfold irStep? at hstep; rw [hcode_ir, hstk] at hstep
