@@ -11643,6 +11643,10 @@ theorem step_sim (irmod : IRModule) (wmod : Module) :
                       (by rw [Array.getElem?_eq_getElem hLim])
                     simp [hml]
                   · simp [hLim]
+                -- Derive that Wasm memory[0] equals IR memory
+                have hmem_val : s2.store.memories[0]'h0mem = s1.memory := by
+                  have := Array.getElem?_eq_getElem h0mem (a := s2.store.memories)
+                  rw [hmem_eq] at this; exact Option.some.inj this
                 by_cases hok : s1.memory.size + pages.toNat * 65536 ≤ 65536 * 65536
                 · -- Success: both grow memory
                   have hir := irStep?_eq_memoryGrow_ok s1 rest pages stk hcode_ir hstk hok
@@ -11656,7 +11660,7 @@ theorem step_sim (irmod : IRModule) (wmod : Module) :
                   let store_mg := { s2.store with memories := s2.store.memories.set! 0 newMem }
                   let s2_mg := { s2 with code := rest_w, stack := .i32 (s1.memory.size / 65536).toUInt32 :: wstk', store := store_mg }
                   have hw : step? s2 = some (.silent, pushTrace s2_mg .silent) := by
-                    simp only [step?, hcw, hstack_eq, pop1?, hmem_eq, h0mem, dite_true]
+                    simp only [step?, hcw, hstack_eq, pop1?, h0mem, dite_true, hmem_val]
                     rw [hMaxOk_eq]
                     simp [Nat.ble_eq, hNewPages_le, pushTrace]
                   simp only [traceToWasm]
@@ -11671,13 +11675,12 @@ theorem step_sim (irmod : IRModule) (wmod : Module) :
                   · -- hmemLimits: memLimits unchanged by memory grow
                     exact hrel.hmemLimits
                   · -- hmemory_aligned: grown.size = memory.size + pages*65536
-                    have hgsz : (ByteArray.mk (s1.memory.toList.toArray ++ Array.replicate (pages.toNat * 65536) 0)).size =
-                        s1.memory.size + pages.toNat * 65536 := by
-                      simp [ByteArray.size, ByteArray.toList, Array.toList_toArray]
-                    rw [hgsz]
-                    exact Dvd.dvd.add hrel.hmemory_aligned ⟨pages.toNat, rfl⟩
+                    show 65536 ∣ (ByteArray.mk (s1.memory.toList.toArray ++ Array.replicate (pages.toNat * 65536) 0)).size
+                    simp only [ByteArray.size, Array.size_append, Array.size_toArray, List.length_toList, Array.size_replicate]
+                    exact Nat.dvd_add hrel.hmemory_aligned ⟨pages.toNat, rfl⟩
                   · -- hmemory_nonempty: set! preserves size
-                    simp [pushTrace, Array.size_set!]
+                    show 0 < { s2.store with memories := s2.store.memories.set! 0 newMem }.memories.size
+                    simp [Array.size_set!]
                     exact hrel.hmemory_nonempty
                 · -- Failure: both push -1 (0xFFFFFFFF)
                   simp [irStep?, hcode_ir, hstk, irPop1?, irPushTrace] at hstep
@@ -11690,13 +11693,9 @@ theorem step_sim (irmod : IRModule) (wmod : Module) :
                     have hmod_lt := Nat.mod_lt s1.memory.size (by omega : 0 < 65536)
                     have hle : s1.memory.size ≤ (s1.memory.size / 65536) * 65536 + 65535 := by omega
                     omega
-                    have hmod := Nat.div_add_mod s1.memory.size 65536
-                    have hmod_lt := Nat.mod_lt s1.memory.size (by omega : 0 < 65536)
-                    have hle : s1.memory.size ≤ (s1.memory.size / 65536) * 65536 + 65535 := by omega
-                    omega
                   let s2_fail := { s2 with code := rest_w, stack := .i32 (UInt32.ofNat 0xFFFFFFFF) :: wstk' }
                   have hw : step? s2 = some (.silent, pushTrace s2_fail .silent) := by
-                    simp only [step?, hcw, hstack_eq, pop1?, hmem_eq, h0mem, dite_true]
+                    simp only [step?, hcw, hstack_eq, pop1?, h0mem, dite_true, hmem_val]
                     rw [hMaxOk_eq]
                     simp [Nat.ble_eq, hNewPages_gt, pushTrace]
                   simp only [traceToWasm]
