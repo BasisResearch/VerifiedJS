@@ -10291,12 +10291,8 @@ theorem step_sim (irmod : IRModule) (wmod : Module) :
                   simp [hstk_w] at h0; cases h0
                   have h1 := hstk_rel.2 1 (by simp)
                   simp [hstk_w] at h1
-                  -- After cases h0 and cases h1, w0 and w1 are substituted with
-                  -- concrete WasmValue constructors. We handle all sub-goals uniformly.
-                  -- First, save hstk_w before it gets consumed
+                  cases h1
                   all_goals (
-                    cases ‹IRValueToWasmValue _ _›
-                    -- Now w0 or w1 is a concrete type. Derive the mismatch and step.
                     have hw := by first
                       | exact step?_eq_i32Add_type_mismatch s2 rest_w _ _ wstk' hcw hstk_w (by simp)
                       | exact step?_eq_i32Sub_type_mismatch s2 rest_w _ _ wstk' hcw hstk_w (by simp)
@@ -10428,8 +10424,35 @@ theorem step_sim (irmod : IRModule) (wmod : Module) :
                   hstore_types := hrel.hstore_types
                 }
               | .i32 _ :: _ :: _ | .i64 _ :: _ :: _ | .f64 _ :: .i32 _ :: _ | .f64 _ :: .i64 _ :: _ =>
-                -- Type mismatch: both trap (sorry: cases + record unification)
-                sorry)
+                -- Type mismatch: both trap
+                all_goals (
+                simp [irStep?, hcode_ir, hstk, irPop2?, irTrapState, irPushTrace] at hstep
+                obtain ⟨rfl, rfl⟩ := hstep
+                have hstk_rel := hrel.hstack; rw [hstk] at hstk_rel
+                match hstk_w : s2.stack with
+                | [] => simp [hstk_w] at hstk_rel
+                | [_] => simp [hstk_w] at hstk_rel
+                | w0 :: w1 :: wstk' =>
+                  have h0 := hstk_rel.2 0 (by simp)
+                  simp [hstk_w] at h0; cases h0
+                  have h1 := hstk_rel.2 1 (by simp)
+                  simp [hstk_w] at h1
+                  cases h1
+                  all_goals (
+                    have hw := by first
+                      | exact step?_eq_f64Add_type_mismatch s2 rest_w _ _ wstk' hcw hstk_w (by simp)
+                      | exact step?_eq_f64Sub_type_mismatch s2 rest_w _ _ wstk' hcw hstk_w (by simp)
+                      | exact step?_eq_f64Mul_type_mismatch s2 rest_w _ _ wstk' hcw hstk_w (by simp)
+                      | exact step?_eq_f64Div_type_mismatch s2 rest_w _ _ wstk' hcw hstk_w (by simp)
+                    simp only [trapState, pushTrace] at hw
+                    exact ⟨_, hw, hrel.hemit, @EmitCodeCorr.nil (s1.labels.map (fun l => l.name)),
+                      by (rw [← hstk]; exact hrel.hstack),
+                      hrel.hframes_len, hrel.hframes_locals, hrel.hframes_vals, hrel.hglobals,
+                      hrel.hmemory, hrel.hmemLimits, hrel.hmemory_aligned, hrel.hmemory_nonempty,
+                      hrel.hlabels,
+                      hhalt_of_structural (@EmitCodeCorr.nil (s1.labels.map (fun l => l.name))) hrel.hlabels,
+                      hrel.hlabel_content, hrel.hframes_one, hrel.hmodule,
+                      hrel.hstore_funcs, hrel.hstore_types⟩)))
           | .i64 | .ptr =>
             -- No EmitCodeCorr constructor for i64/ptr binOps
             exfalso; generalize s2.code = wcode at hc

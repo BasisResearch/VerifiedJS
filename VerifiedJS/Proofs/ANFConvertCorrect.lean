@@ -1560,7 +1560,54 @@ private theorem normalizeExpr_labeled_step_sim
             · intro arg n''; exact ⟨n'', by simp [pure, Pure.pure, StateT.pure, Except.pure, StateT.run]⟩
           · rw [htrace_s, observableTrace_append]; simp [observableTrace]; decide
           · rw [hexpr_s, henv_s]; intro x hfx; cases hfx
-      | _ => sorry -- non-labeled sub-expression: requires induction on val depth
+      | var name =>
+        exfalso
+        simp only [ANF.normalizeExpr, StateT.run, bind, Bind.bind, StateT.bind, Except.bind] at hnorm
+        split at hnorm
+        · simp [pure, Pure.pure, StateT.pure, Except.pure] at hnorm
+          exact ANF.Expr.noConfusion (Prod.mk.inj (Except.ok.inj hnorm)).1
+        · simp at hnorm
+      | lit _ =>
+        exfalso
+        simp only [ANF.normalizeExpr, pure, Pure.pure, StateT.pure, Except.pure, StateT.run] at hnorm
+        exact ANF.Expr.noConfusion (Prod.mk.inj (Except.ok.inj hnorm)).1
+      | this =>
+        exfalso
+        simp only [ANF.normalizeExpr, pure, Pure.pure, StateT.pure, Except.pure, StateT.run] at hnorm
+        exact ANF.Expr.noConfusion (Prod.mk.inj (Except.ok.inj hnorm)).1
+      | call _ _ _ | newObj _ _ _ | getProp _ _ | setProp _ _ _ | getIndex _ _ | setIndex _ _ _ | deleteProp _ _ | typeof _ | getEnv _ _ | makeEnv _ | makeClosure _ _ | unary _ _ | binary _ _ _ | assign _ _ =>
+        exfalso; unfold ANF.normalizeExpr at hnorm
+        simp only [ANF.bindComplex, StateT.run, bind, Bind.bind, StateT.bind, Except.bind] at hnorm
+        repeat (first | split at hnorm | (simp [pure, Pure.pure, StateT.pure, Except.pure] at hnorm; try exact ANF.Expr.noConfusion (Prod.mk.inj (Except.ok.inj hnorm)).1))
+      | while_ _ _ =>
+        exfalso; unfold ANF.normalizeExpr at hnorm
+        simp only [StateT.run, bind, Bind.bind, StateT.bind, Except.bind] at hnorm
+        repeat (first | split at hnorm | (simp [pure, Pure.pure, StateT.pure, Except.pure] at hnorm))
+      | tryCatch _ _ _ _ =>
+        exfalso; unfold ANF.normalizeExpr at hnorm
+        simp only [StateT.run, bind, Bind.bind, StateT.bind, Except.bind] at hnorm
+        cases ‹Option Flat.Expr› with
+        | none => simp only [StateT.run, bind, Bind.bind, StateT.bind, Except.bind] at hnorm; repeat (first | split at hnorm | (simp [pure, Pure.pure, StateT.pure, Except.pure] at hnorm; try exact ANF.Expr.noConfusion (Prod.mk.inj (Except.ok.inj hnorm)).1))
+        | some _ => simp only [Functor.map, StateT.map, StateT.run, bind, Bind.bind, StateT.bind, Except.bind] at hnorm; repeat (first | split at hnorm | (simp [pure, Pure.pure, StateT.pure, Except.pure] at hnorm; try exact ANF.Expr.noConfusion (Prod.mk.inj (Except.ok.inj hnorm)).1))
+      | «break» _ | «continue» _ =>
+        exfalso; simp only [ANF.normalizeExpr, pure, Pure.pure, StateT.pure, Except.pure, StateT.run] at hnorm
+        exact ANF.Expr.noConfusion (Prod.mk.inj (Except.ok.inj hnorm)).1
+      | «return» arg =>
+        cases arg with
+        | none => exfalso; simp only [ANF.normalizeExpr, pure, Pure.pure, StateT.pure, Except.pure, StateT.run] at hnorm; exact ANF.Expr.noConfusion (Prod.mk.inj (Except.ok.inj hnorm)).1
+        | some _ => sorry -- nested return-some: recursive, leave for now
+      | yield arg delegate =>
+        cases arg with
+        | none => exfalso; simp only [ANF.normalizeExpr, pure, Pure.pure, StateT.pure, Except.pure, StateT.run] at hnorm; exact ANF.Expr.noConfusion (Prod.mk.inj (Except.ok.inj hnorm)).1
+        | some _ => sorry -- nested yield-some: recursive, leave for now
+      | «throw» _ | «await» _ =>
+        exfalso; unfold ANF.normalizeExpr at hnorm
+        simp only [ANF.bindComplex, StateT.run, bind, Bind.bind, StateT.bind, Except.bind] at hnorm
+        repeat (first | split at hnorm | (simp [pure, Pure.pure, StateT.pure, Except.pure] at hnorm; try exact ANF.Expr.noConfusion (Prod.mk.inj (Except.ok.inj hnorm)).1))
+      | «let» _ _ _ | seq _ _ | «if» _ _ _ => sorry -- compound: needs induction on depth
+      | objectLit _ | arrayLit _ => sorry -- list-based bindComplex
+      | forIn | forOf => sorry -- unsupported
+      | functionDef _ _ _ _ _ => sorry -- unsupported
   | yield arg delegate =>
     cases arg with
     | none =>
@@ -1592,7 +1639,54 @@ private theorem normalizeExpr_labeled_step_sim
             · intro arg n''; exact ⟨n'', by simp [pure, Pure.pure, StateT.pure, Except.pure, StateT.run]⟩
           · rw [htrace_s, observableTrace_append]; simp [observableTrace]; decide
           · rw [hexpr_s, henv_s]; intro x hfx; cases hfx
-      | _ => sorry -- non-labeled sub-expression: requires induction on val depth
+      | var name =>
+        exfalso
+        simp only [ANF.normalizeExpr, StateT.run, bind, Bind.bind, StateT.bind, Except.bind] at hnorm
+        split at hnorm
+        · simp [pure, Pure.pure, StateT.pure, Except.pure] at hnorm
+          exact ANF.Expr.noConfusion (Prod.mk.inj (Except.ok.inj hnorm)).1
+        · simp at hnorm
+      | lit _ =>
+        exfalso
+        simp only [ANF.normalizeExpr, pure, Pure.pure, StateT.pure, Except.pure, StateT.run] at hnorm
+        exact ANF.Expr.noConfusion (Prod.mk.inj (Except.ok.inj hnorm)).1
+      | this =>
+        exfalso
+        simp only [ANF.normalizeExpr, pure, Pure.pure, StateT.pure, Except.pure, StateT.run] at hnorm
+        exact ANF.Expr.noConfusion (Prod.mk.inj (Except.ok.inj hnorm)).1
+      | call _ _ _ | newObj _ _ _ | getProp _ _ | setProp _ _ _ | getIndex _ _ | setIndex _ _ _ | deleteProp _ _ | typeof _ | getEnv _ _ | makeEnv _ | makeClosure _ _ | unary _ _ | binary _ _ _ | assign _ _ =>
+        exfalso; unfold ANF.normalizeExpr at hnorm
+        simp only [ANF.bindComplex, StateT.run, bind, Bind.bind, StateT.bind, Except.bind] at hnorm
+        repeat (first | split at hnorm | (simp [pure, Pure.pure, StateT.pure, Except.pure] at hnorm; try exact ANF.Expr.noConfusion (Prod.mk.inj (Except.ok.inj hnorm)).1))
+      | while_ _ _ =>
+        exfalso; unfold ANF.normalizeExpr at hnorm
+        simp only [StateT.run, bind, Bind.bind, StateT.bind, Except.bind] at hnorm
+        repeat (first | split at hnorm | (simp [pure, Pure.pure, StateT.pure, Except.pure] at hnorm))
+      | tryCatch _ _ _ _ =>
+        exfalso; unfold ANF.normalizeExpr at hnorm
+        simp only [StateT.run, bind, Bind.bind, StateT.bind, Except.bind] at hnorm
+        cases ‹Option Flat.Expr› with
+        | none => simp only [StateT.run, bind, Bind.bind, StateT.bind, Except.bind] at hnorm; repeat (first | split at hnorm | (simp [pure, Pure.pure, StateT.pure, Except.pure] at hnorm; try exact ANF.Expr.noConfusion (Prod.mk.inj (Except.ok.inj hnorm)).1))
+        | some _ => simp only [Functor.map, StateT.map, StateT.run, bind, Bind.bind, StateT.bind, Except.bind] at hnorm; repeat (first | split at hnorm | (simp [pure, Pure.pure, StateT.pure, Except.pure] at hnorm; try exact ANF.Expr.noConfusion (Prod.mk.inj (Except.ok.inj hnorm)).1))
+      | «break» _ | «continue» _ =>
+        exfalso; simp only [ANF.normalizeExpr, pure, Pure.pure, StateT.pure, Except.pure, StateT.run] at hnorm
+        exact ANF.Expr.noConfusion (Prod.mk.inj (Except.ok.inj hnorm)).1
+      | «return» arg =>
+        cases arg with
+        | none => exfalso; simp only [ANF.normalizeExpr, pure, Pure.pure, StateT.pure, Except.pure, StateT.run] at hnorm; exact ANF.Expr.noConfusion (Prod.mk.inj (Except.ok.inj hnorm)).1
+        | some _ => sorry -- nested return-some: recursive, leave for now
+      | yield arg delegate' =>
+        cases arg with
+        | none => exfalso; simp only [ANF.normalizeExpr, pure, Pure.pure, StateT.pure, Except.pure, StateT.run] at hnorm; exact ANF.Expr.noConfusion (Prod.mk.inj (Except.ok.inj hnorm)).1
+        | some _ => sorry -- nested yield-some: recursive, leave for now
+      | «throw» _ | «await» _ =>
+        exfalso; unfold ANF.normalizeExpr at hnorm
+        simp only [ANF.bindComplex, StateT.run, bind, Bind.bind, StateT.bind, Except.bind] at hnorm
+        repeat (first | split at hnorm | (simp [pure, Pure.pure, StateT.pure, Except.pure] at hnorm; try exact ANF.Expr.noConfusion (Prod.mk.inj (Except.ok.inj hnorm)).1))
+      | «let» _ _ _ | seq _ _ | «if» _ _ _ => sorry -- compound: needs induction on depth
+      | objectLit _ | arrayLit _ => sorry -- list-based bindComplex
+      | forIn | forOf => sorry -- unsupported
+      | functionDef _ _ _ _ _ => sorry -- unsupported
   | while_ cond body_w =>
     -- while produces .seq (.while_ ...) rest, never .labeled
     exfalso; unfold ANF.normalizeExpr at hnorm
@@ -1609,7 +1703,47 @@ private theorem normalizeExpr_labeled_step_sim
     | some fin =>
       simp only [Functor.map, StateT.map, StateT.run, bind, Bind.bind, StateT.bind, Except.bind] at hnorm
       repeat (first | split at hnorm | (simp [pure, Pure.pure, StateT.pure, Except.pure] at hnorm; try exact ANF.Expr.noConfusion (Prod.mk.inj (Except.ok.inj hnorm)).1))
-  | _ => sorry -- remaining compound cases and seq
+  | var name =>
+    exfalso
+    simp only [ANF.normalizeExpr] at hnorm
+    obtain ⟨m', hm'⟩ := hk (.var name) n
+    rw [hm'] at hnorm; exact ANF.Expr.noConfusion (Prod.mk.inj (Except.ok.inj hnorm)).1
+  | this =>
+    exfalso
+    simp only [ANF.normalizeExpr] at hnorm
+    obtain ⟨m', hm'⟩ := hk (.var "this") n
+    rw [hm'] at hnorm; exact ANF.Expr.noConfusion (Prod.mk.inj (Except.ok.inj hnorm)).1
+  | lit v =>
+    exfalso
+    simp only [ANF.normalizeExpr] at hnorm
+    cases htv : ANF.trivialOfFlatValue v with
+    | error msg =>
+      simp [htv] at hnorm
+      exact absurd hnorm (by simp [throw, throwThe, MonadExceptOf.throw, Functor.map, Except.map])
+    | ok triv =>
+      simp [htv] at hnorm
+      obtain ⟨m', hm'⟩ := hk triv n
+      rw [hm'] at hnorm; exact ANF.Expr.noConfusion (Prod.mk.inj (Except.ok.inj hnorm)).1
+  | call _ _ _ | newObj _ _ _ | getProp _ _ | setProp _ _ _ | getIndex _ _ | setIndex _ _ _ | deleteProp _ _ | typeof _ | getEnv _ _ | makeEnv _ | makeClosure _ _ | unary _ _ | binary _ _ _ | assign _ _ =>
+    exfalso; unfold ANF.normalizeExpr at hnorm
+    simp only [ANF.bindComplex, StateT.run, bind, Bind.bind, StateT.bind, Except.bind] at hnorm
+    repeat (first | split at hnorm | (simp [pure, Pure.pure, StateT.pure, Except.pure] at hnorm; try exact ANF.Expr.noConfusion (Prod.mk.inj (Except.ok.inj hnorm)).1))
+  | «throw» _ | «await» _ =>
+    exfalso; unfold ANF.normalizeExpr at hnorm
+    simp only [ANF.bindComplex, StateT.run, bind, Bind.bind, StateT.bind, Except.bind] at hnorm
+    repeat (first | split at hnorm | (simp [pure, Pure.pure, StateT.pure, Except.pure] at hnorm; try exact ANF.Expr.noConfusion (Prod.mk.inj (Except.ok.inj hnorm)).1))
+  | «let» _ _ _ | seq _ _ | «if» _ _ _ => sorry -- compound: needs induction on depth
+  | «return» arg =>
+    cases arg with
+    | none => exfalso; simp only [ANF.normalizeExpr, pure, Pure.pure, StateT.pure, Except.pure] at hnorm; exact ANF.Expr.noConfusion (Prod.mk.inj (Except.ok.inj hnorm)).1
+    | some _ => sorry -- nested return-some: recursive, leave for now
+  | yield arg delegate =>
+    cases arg with
+    | none => exfalso; simp only [ANF.normalizeExpr, pure, Pure.pure, StateT.pure, Except.pure] at hnorm; exact ANF.Expr.noConfusion (Prod.mk.inj (Except.ok.inj hnorm)).1
+    | some _ => sorry -- nested yield-some: recursive, leave for now
+  | objectLit _ | arrayLit _ => sorry -- list-based bindComplex
+  | forIn | forOf => sorry -- unsupported
+  | functionDef _ _ _ _ _ => sorry -- unsupported
 
 /-- Stuttering simulation: one ANF step corresponds to one or more Flat steps,
     preserving observable events and the simulation relation.
