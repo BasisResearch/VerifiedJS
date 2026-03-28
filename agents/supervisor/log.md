@@ -1,3 +1,47 @@
+## Run: 2026-03-28T10:05:01+00:00
+
+### Metrics
+- **Sorry count (grep -c)**: 58 (17 ANF + 20 CC + 20 Wasm + 1 Lower)
+- **Actual sorries**: ~52 (17 ANF + 18 CC + 16 Wasm + 1 Lower)
+- **Delta from last run (08:05)**: ANF +4 (wildcard expansion, NOT regression), Wasm -2 to -4 (L308 proved, possibly more in comments). CC unchanged. Net: ~0 to -2.
+- **Net assessment**: MIXED. ANF structurally improved (wildcards → per-constructor, many closed via exfalso) but sorry count up due to expansion. Wasm writeLE? proved. CC flat.
+
+### ANF Analysis (17 sorries)
+- **Helper sorries (7)**: L1582 return-some/nested, L1586 yield-some/nested, L1597 wildcard, L1648 return-some/nested, L1652 yield-some/nested, L1663 wildcard, L1680 wildcard
+  - The 3 wildcards (L1597, L1663, L1680) STILL need expanding → P0 for proof agent
+  - 4 nested recursive cases need induction on depth → hard, not immediate target
+- **Main theorem (8)**: let L1760, seq L1762, if L1764, throw L1774, tryCatch L1776, return L1778, yield L1780, await L1782
+  - throw/return/await are tractable (lean_goal confirmed goal structure)
+  - let/seq/if are hardest
+- **Blocked (2)**: break L1806, continue L1808
+
+### CC Analysis (18 actual sorries) — unchanged
+- objectLit/arrayLit (L2866/L2867) remain easiest targets for jsspec
+
+### Wasm Analysis (~16 actual sorries)
+- **L308 writeLE?_preserves_size: PROVED** (was P0 last run)
+- L10731-10789 is a comment block — grep counts sorries inside comments
+- unOp (L10477) has full commented-out proof attempt → P0 for wasmspec
+- return-some (L6753) can adapt from proved return-none case
+
+### Agent Prompt Rewrites
+1. **proof**: Updated P0 with exact wildcard expansion code for L1597/L1663/L1680. P1: throw (L1774) with detailed goal analysis from lean_goal. P2: return (L1778). Provided ANF.step? semantics for throw.
+2. **jsspec**: Updated sorry map for CC. P0: objectLit/arrayLit. P1: forIn/forOf exfalso check. P2: setProp/setIndex stepping.
+3. **wasmspec**: CELEBRATED L308 proof. Updated sorry map (16 actual, not 20). P0: unOp (un-comment existing proof). P1: return-some (adapt from return-none). P2: yield/await.
+
+### Actions Taken
+1. `lean_goal` at ANF L1774, L1778, L1760 — got exact goal structures for throw/return/let
+2. `lean_goal` at Wasm L6691, L10478, CC L2866 — all timed out (large files)
+3. Verified L308 is proved (read code, confirmed no sorry)
+4. Corrected Wasm sorry count: L10784/L10788 are inside comment block
+5. All 3 agent prompts rewritten with specific code and updated targets
+6. Logged time estimate (54, 167 hours)
+
+### OUTLOOK: Target next run ≤49 (ANF wildcard expansion net -3, Wasm unOp -1, CC objectLit -1)
+### RISK: Proof agent has been told to expand wildcards for 2 runs now. If P0 still not done next run, I will write the expansion directly.
+
+---
+
 ## Run: 2026-03-28T08:05:01+00:00
 
 ### Metrics
@@ -5515,3 +5559,4 @@ ANF sorry count effectively unchanged (structural improvements but no net closur
 
 ## Run: 2026-03-28T10:05:01+00:00
 
+2026-03-28T10:12:44+00:00 DONE
