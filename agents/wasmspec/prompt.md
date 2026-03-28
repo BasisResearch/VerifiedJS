@@ -1,62 +1,59 @@
-# wasmspec — CLOSE BINOP TRAP + UNOP SORRIES
+# wasmspec — CLOSE WASM SORRIES: TARGET -3 THIS RUN
 
-## STATUS: 21 Wasm sorries in Semantics.lean. You closed br/brIf and stack underflow traps — good work.
+## STATUS: 20 actual Wasm sorries in Semantics.lean. return-none proved earlier — good work.
 
 File: `VerifiedJS/Wasm/Semantics.lean`
 
-## BUILD STATUS: BROKEN (EmitCorrect.lean type mismatch — proof agent fixing). DO NOT touch Proofs/*.lean.
-
-## SORRY INVENTORY (~21 actual sorries):
+## SORRY INVENTORY (20 actual):
 
 ### Top-level (1):
-- L308: Check what this is with `lean_goal`
+- L308: Use `lean_goal` to check what this needs
 
 ### step_sim constructor cases (12, L6542-6620):
 - L6542: let, L6550: seq, L6554: if, L6557: while_, L6560: throw, L6563: tryCatch
 - L6605: return some, L6608: yield, L6611: await, L6614: labeled, L6617: break, L6620: continue
-- SKIP these — structural, blocked by ANF proof
+- **SKIP ALL 12** — these are structural, blocked by ANF proof progress
 
-### binOp type mismatch traps (2):
-- L10149: i32 type mismatch trap
-- L10263: f64 type mismatch trap
+### binOp (2):
+- L10290: type mismatch trap case
+- L10296: another binOp case
 
-### Other (6):
-- L10269: unOp
-- L10524: call sorry
-- L10577, L10581: call stack frames
-- L10584: callIndirect
-- L11344: memoryGrow
+### Other (5):
+- L10551: unOp or similar
+- L10604, L10608: call stack frame cases
+- L10611: callIndirect
+- L11371: memoryGrow
 
-## P0: binOp type mismatch traps (L10149, L10263) — 2 EASY WINS
+## P0: binOp cases (L10290, L10296) — EASIEST WINS
 
-You already proved the stack underflow trap cases. The type mismatch cases are similar:
-- `pop2?` returns `some (a, b)` but types don't match (e.g., not both i32)
-- Both IR and Wasm trap with the same trace
-- Use `lean_goal` at each line, then `lean_multi_attempt`
+Use `lean_goal` at L10290 and L10296. These are type mismatch / trap cases similar to the ones you already proved.
 
-Pattern:
+Pattern from your prior successes:
+1. Show IR traps because types don't match
+2. Show Wasm also traps (step? produces trap state)
+3. Build EmitSimRel with trap states matching
+
 ```lean
--- IR traps because types don't match
--- Wasm also traps: show step? produces trap state
--- Build EmitSimRel with trap state
+-- At the sorry, try:
+lean_multi_attempt at L10290: ["simp_all", "exact ⟨_, rfl, by simp_all⟩", "refine ⟨_, ?_, ?_⟩ <;> simp_all"]
 ```
 
-## P1: unOp (L10269) — 1 sorry
+## P1: L10551 — check with lean_goal
 
-Check if there's a commented-out proof below. The wasmspec log mentions "L10262-10512 commented-out proof". Try uncommenting and fixing API changes.
+If it's a straightforward case (unOp, comparison), close it. If it requires deep stack reasoning, skip.
 
-## P2: call (L10524) — if straightforward
+## P2: L308 — check with lean_goal
 
-Use `lean_goal` to see what's needed. If it requires multi-frame reasoning, skip.
+This is the top-level sorry. May be easy or may be a placeholder for a large proof obligation.
 
-## SKIP: step_sim constructor cases (L6542-6620), callIndirect, memoryGrow — too complex for now
+## SKIP: L6542-6620 (structural step_sim), L10604/L10608 (call multi-frame), L10611 (callIndirect), L11371 (memoryGrow)
+
+## TARGET: Close 3 sorries (-3): binOp (2) + one of L10551/L308
 
 ## WORKFLOW
-1. `lean_goal` at sorry line
-2. `lean_multi_attempt` with tactic candidates
+1. `lean_goal` at sorry line → understand the goal
+2. `lean_multi_attempt` with candidate tactics
 3. Edit sorry → build: `lake build VerifiedJS.Wasm.Semantics`
-4. Move to next
-
-## TARGET: Close 2 binOp traps (-2) + unOp (-1) = net -3 this run
+4. Move to next sorry
 
 ## Log progress to agents/wasmspec/log.md
