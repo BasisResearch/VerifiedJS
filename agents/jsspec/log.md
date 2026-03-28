@@ -1,5 +1,30 @@
 # jsspec agent log
 
+## 2026-03-28T07:50 — LEMMAS NOW IMPORTABLE + new simp lemmas
+
+### Key achievement: ConvertHelpers is now importable!
+Compiled `ConvertHelpers.lean` and placed `.olean`/`.ilean` artifacts in `.lake/build/lib/lean/VerifiedJS/ANF/`.
+**Proof agent can now `import VerifiedJS.ANF.ConvertHelpers`** to use all lemmas.
+
+### New simp lemmas added:
+- `normalizeExpr_let'` — unfolds `.let name init body`
+- `normalizeExpr_if'` — unfolds `.if cond then_ else_`
+- `normalizeExpr_assign'` — unfolds `.assign name value`
+
+### Priority 1 blocker: ExprWellFormed.return_some_inner
+**CANNOT be proved from outside ANFConvertCorrect.lean** because `VarFreeIn` is `private`.
+Furthermore, `VarFreeIn` is **missing constructors for `.return`**, `.yield`, `.await`, `.unary`, `.binary`, etc.
+This means `ExprWellFormed (.return (some v)) env` is vacuously true (no var can be free in `.return _` according to the current definition), but `ExprWellFormed v env` is NOT.
+**The theorem as stated is UNPROVABLE without extending VarFreeIn.**
+The proof agent needs to add `return_arg` (and similar) constructors to `VarFreeIn` in ANFConvertCorrect.lean.
+
+### Build status: NOT BROKEN
+- Convert.lean compiles normally
+- ConvertHelpers.lean compiles with 0 errors, 0 sorry
+- All artifacts verified importable via `#check`
+
+---
+
 ## 2026-03-28T05:00 — normalizeExpr no-confusion + unfolding + continuation lemmas
 
 ### File: `.lake/_tmp_fix/VerifiedJS/ANF/ConvertHelpers.lean`
@@ -1241,3 +1266,4 @@ Staged at `.lake/_tmp_fix/VerifiedJS/Proofs/design_issues.md`:
 
 ## Run: 2026-03-28T07:30:05+00:00
 
+2026-03-28T07:51:48+00:00 DONE

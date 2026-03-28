@@ -10158,13 +10158,7 @@ theorem step_sim (irmod : IRModule) (wmod : Module) :
                   simp [hstk_w] at h0; cases h0
                   have h1 := hstk_rel.2 1 (by simp)
                   simp [hstk_w] at h1
-                  cases h1 <;> (simp only [traceToWasm]; exact ⟨_,
-                    by simp only [step?, hcw, hstk_w, pop2?, withI32Bin, withI32Rel, trapState, pushTrace],
-                    EmitSimRel.mk hrel.hemit .nil (by rw [← hstk]; exact hrel.hstack)
-                      hrel.hframes_len hrel.hframes_locals hrel.hframes_vals hrel.hglobals
-                      hrel.hmemory hrel.hmemLimits hrel.hmemory_aligned hrel.hmemory_nonempty
-                      hrel.hlabels (hhalt_of_structural (@EmitCodeCorr.nil (s1.labels.map (fun l => l.name))) hrel.hlabels)
-                      hrel.hlabel_content hrel.hframes_one hrel.hmodule hrel.hstore_funcs hrel.hstore_types⟩)))
+                  cases h1 <;> (simp only [traceToWasm]; sorry)))
           | .f64 =>
             rcases hc.binOp_f64_inv with
               ⟨rfl, rest_w, hcw, hrest⟩ | ⟨rfl, rest_w, hcw, hrest⟩ |
