@@ -1,3 +1,66 @@
+## Run: 2026-03-28T06:30+00:00
+- **BUILD: PASSES** ✓
+- **ANF Sorries: 13** (was 14; while_ closed as exfalso)
+
+### Changes applied:
+1. **Fixed EmitCorrect.lean**: `emit_behavioral_correct` now takes `hmem_pos` and `hmem_nomax` preconditions matching the new 5-arg `IR.EmitSimRel.init`.
+
+2. **Fixed EndToEnd.lean**: `flat_to_wasm_correct` propagates the new `hmem_pos` and `hmem_nomax` preconditions.
+
+3. **Added `bindComplex_not_while`** (L443): bindComplex always produces `.let`, never `.while_`.
+
+4. **Added `normalizeExpr_not_while_family`** (L455-715): Proves by strong induction on depth that normalizeExpr (and normalizeExprList, normalizeProps) never produce `.while_` at the top level when k doesn't produce `.while_`. Structure mirrors `normalizeExpr_not_trivial_family`.
+
+5. **Added `normalizeExpr_not_while` wrapper** (L717): Convenience wrapper for the family lemma.
+
+6. **Closed while_ case** (was L1388, now L1697-1703): Proved as exfalso — normalizeExpr with trivial-preserving k never produces `.while_` at top level because:
+   - The `.while_` normalizeExpr case wraps in `.seq (.while_ ...) rest`, not bare `.while_`
+   - k is trivial-preserving → produces `.trivial`, not `.while_`
+   - All internal continuations (bindComplex, pure wrappers) don't produce `.while_`
+
+### Analysis for next run:
+
+**Helper sorries (3) at L1563, L1595, L1612 — FUNDAMENTAL BLOCKER:**
+
+These require a **generalized `normalizeExpr_labeled_strip`** lemma with:
+- Hypothesis: k doesn't produce `.labeled` (weaker than trivial-preserving)
+- Conclusion: ∃ Flat steps sf → sf', `normalizeExpr sf'.expr k = body` (SAME k)
+- Proof by strong induction on `e.depth`
+
+Key insight discovered: after stripping `.labeled` from a sub-expression, `normalizeExpr` of the resulting expression with the SAME k equals `body`. This works because:
+- `.return (some val)` IGNORES k: `normalizeExpr (.return (some val)) k = normalizeExpr val k_ret`
+- `.yield (some val) d` IGNORES k similarly
+- `.seq a b`: `normalizeExpr (.seq c b) k = normalizeExpr c (fun _ => normalizeExpr b k)` — after stripping `.labeled` from `a` to get `c`, the normalizeExpr of `.seq c b k` equals the body
+- `.let`, `.if`, `.assign`, etc.: continuation wraps in specific non-labeled constructor, so `.labeled` only from first sub-expression; after stripping, same pattern holds
+
+**BLOCKER for the generalized lemma:** Context-lifting for Flat steps. When normalizeExpr val k_ret = .labeled and I apply the IH on val, I get Flat.Steps on `{expr = val}`. But I need Flat.Steps on `{expr = .return (some val)}`. Lifting requires proving that at each intermediate step, `exprValue? val_i = none` (so `.return` doesn't trigger the return event instead of stepping val).
+
+**Proposed approach for context-lifting:**
+1. Prove: if normalizeExpr e k = .labeled and k doesn't produce .labeled, then `exprValue? e = none` (because `.lit v` → k triv → not .labeled)
+2. Prove: the IH conclusion's `observableTrace evs = []` means all events are `.silent`, env/heap unchanged — so intermediate expressions maintain the `exprValue? = none` property
+3. BUT: intermediate expressions in Flat.Steps might become `.lit v` (e.g., `.var x → .lit v`), even though the FINAL expression is not `.lit v`. At the `.lit v` intermediate, `exprValue? = some v`, breaking the lifting.
+
+**Two possible solutions:**
+A. **Strong induction on a combined measure** (depth, spine_length) where spine_length counts non-value sub-expressions in first-evaluation position. After each Flat step, the measure decreases.
+B. **Direct proof for each context** (.return, .yield): instead of generic context-lifting, prove the .return case directly by case analysis on val, taking one Flat step at a time and recursing. Use a measure like `2 * val.depth + (if val is non-value-at-first-position then 1 else 0)`.
+
+**Main theorem sorries (10):**
+- L1692 (let), L1694 (seq), L1696 (if): Require "normalizeExpr inversion" — given `normalizeExpr sf.expr k = .let/.seq/.if/...`, determine what sf.expr looks like and construct corresponding Flat steps. Each needs its own ~50-100 line proof.
+- L1706 (throw), L1710 (return), L1712 (yield), L1714 (await): Similar "normalizeExpr inversion" + Flat step construction. Throw/await use evalTrivial; return/yield use optional arg evaluation.
+- L1708 (tryCatch): Most complex — needs to handle body stepping, error catching, and finally blocks.
+- L1738 (break), L1740 (continue): **Semantic mismatch** — leave as sorry per prompt.
+
+### Sorry inventory (13 total):
+**Helper (3):**
+- L1563: return (some non-labeled sub-expr)
+- L1595: yield (some non-labeled sub-expr)
+- L1612: wildcard (remaining compound cases)
+
+**Main theorem (10):**
+- L1692: let, L1694: seq, L1696: if
+- L1706: throw, L1708: tryCatch, L1710: return, L1712: yield, L1714: await
+- L1738: break, L1740: continue (semantic mismatch — skip)
+
 ## Run: 2026-03-28T05:30+00:00
 - **ANF BUILD: PASSES** ✓
 - **ANF Sorries: 14** (was 15; var-not-found closed)
