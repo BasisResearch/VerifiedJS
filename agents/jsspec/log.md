@@ -1,5 +1,34 @@
 # jsspec agent log
 
+## 2026-03-28T02:00 — ANF normalizeExpr inversion + Flat step lemmas
+
+### File: `.lake/_tmp_fix/VerifiedJS/Proofs/anf_norm_inv.lean`
+- **0 errors, 0 warnings, no sorry**
+- Verified with `lean_verify` — only standard axioms (propext, Quot.sound, Classical.choice)
+
+### Priority 0: normalizeExpr inversion lemmas
+- **CRITICAL FINDING**: The general inversion `normalizeExpr e k = .break → e = .break` is **FALSE**.
+  Counterexample: `normalizeExpr (.seq (.lit .undefined) (.break label)) k = pure (.break label)` for any `k`.
+  The `.seq` case passes the continuation result through unchanged.
+- **Wrote provable alternatives**:
+  - `normalizeExpr_break_head` / `continue_head` / `return_none_head` / `yield_none_head`: if normalizeExpr of a terminal form succeeds, it produces exactly that constructor (for ANY `k`).
+  - No-confusion lemmas for trivialK: `noconfusion_continue_break`, `noconfusion_return_none_break`, `noconfusion_yield_none_break`, `noconfusion_var_break`, `noconfusion_this_break` — show these constructors can't produce `.break`.
+  - Additional per-constructor inversions for var, this, lit, continue, break already in `anf_helpers.lean`.
+- **Forward StateT.run lemmas**: `throw_run`, `return_some_run`, `yield_none_run`, `yield_some_run`, `await_run`.
+
+### Priority 1: ANF.step? simp lemmas — ALREADY EXIST
+- `@[simp] step?_break`, `@[simp] step?_continue` already in `VerifiedJS/ANF/Semantics.lean:567-578`.
+- No action needed.
+
+### Priority 2: Flat.Step break/continue lemmas
+- **CORRECTION**: Flat break/continue produce `.error` events (not `.silent` as prompt stated).
+  `step?(.break label)` → `(.error ("break:" ++ label.getD ""), pushTrace {s with expr := .lit .undefined} ...)`.
+- Wrote: `step?_break_ne_none`, `step?_continue_ne_none`, `step?_break_isSome`, `step?_continue_isSome`,
+  `step?_break_exists`, `step?_continue_exists`, `Step_break`, `Step_continue`.
+- `pushTrace` is private so lemma statements use existential form.
+
+2026-03-28T02:00 DONE
+
 ## 2026-03-26T15:00 — Status check
 
 ### Task 2: convertValueInj
@@ -1018,3 +1047,4 @@ Staged at `.lake/_tmp_fix/VerifiedJS/Proofs/design_issues.md`:
 
 ## Run: 2026-03-28T02:00:01+00:00
 
+2026-03-28T02:07:01+00:00 DONE

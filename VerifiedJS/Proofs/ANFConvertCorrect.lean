@@ -110,105 +110,6 @@ private theorem ANF_step?_trivial_non_var (env : ANF.Env) (heap : Core.Heap) (tr
   | var name => exact absurd rfl (h name)
   | _ => unfold ANF.step?; rfl
 
-/-- Stuttering simulation: one ANF step corresponds to one or more Flat steps,
-    preserving observable events and the simulation relation.
-    This is the key theorem requiring detailed case analysis over expression forms. -/
-private theorem anfConvert_step_star
-    (s : Flat.Program) (t : ANF.Program)
-    (h : ANF.convert s = .ok t) :
-    ∀ (sa : ANF.State) (sf : Flat.State) (ev : Core.TraceEvent) (sa' : ANF.State),
-      ANF_SimRel s t sa sf →
-      ExprWellFormed sf.expr sf.env →
-      ANF.Step sa ev sa' →
-      ∃ (sf' : Flat.State) (evs : List Core.TraceEvent),
-        Flat.Steps sf evs sf' ∧
-        observableTrace [ev] = observableTrace evs ∧
-        ANF_SimRel s t sa' sf' ∧
-        ExprWellFormed sf'.expr sf'.env := by
-  intro sa sf ev sa' hrel hewf hstep
-  obtain ⟨hstep_eq⟩ := hstep
-  -- Decompose SimRel
-  obtain ⟨hheap, henv, htrace, k, n, m, hnorm, hk_triv⟩ := hrel
-  -- Case split on the ANF expression
-  cases hsa : sa.expr with
-  | trivial t =>
-    -- step? on trivial: only .var steps, rest are none (absurd)
-    cases t with
-    | var name =>
-      sorry -- var lookup case: step? resolves the variable
-    | litNull | litUndefined | litBool _ | litNum _ | litStr _ | litObject _ | litClosure _ _ =>
-      -- Non-var trivials don't step (step? returns none), contradicts hstep_eq
-      obtain ⟨_, senv, sheap, strace⟩ := sa
-      simp only [] at hsa; subst hsa
-      rw [ANF_step?_trivial_non_var] at hstep_eq
-      · exact absurd hstep_eq (by intro h; exact nomatch h)
-      · intro name; exact ANF.Trivial.noConfusion
-  | «let» name rhs body =>
-    sorry -- let-binding: evalComplex evaluates rhs, extends env, continues with body
-  | seq a b =>
-    sorry -- sequence: either a is a value (skip to b) or step inner a
-  | «if» cond then_ else_ =>
-    sorry -- conditional: evaluate cond trivial, branch
-  | while_ cond body =>
-    sorry -- while: evaluate cond, unroll or terminate
-  | throw arg =>
-    sorry -- throw: evaluate trivial arg, produce error event
-  | tryCatch body catchParam catchBody finally_ =>
-    sorry -- try-catch: step body, catch errors, handle finally
-  | «return» arg =>
-    sorry -- return: evaluate optional trivial arg
-  | yield arg delegate =>
-    sorry -- yield: evaluate optional trivial arg
-  | await arg =>
-    sorry -- await: evaluate trivial arg
-  | labeled label body =>
-    -- ARCHITECTURE NOTE: case-splitting on sa.expr here requires normalizeExpr inversion
-    -- (determining sf.expr from sa.expr). This is impossible because normalizeExpr can produce
-    -- .labeled from non-.labeled inputs (e.g., .let name (.labeled ...) body → .labeled).
-    -- The proof needs restructuring: induct on sf.expr.depth, case-split on sf.expr instead.
-    -- See PROOF ARCHITECTURE comment at end of theorem.
-    sorry
-  | «break» label =>
-    sorry -- break: produce silent event
-  | «continue» label =>
-    sorry -- continue: produce silent event
-  -- PROOF ARCHITECTURE for anfConvert_step_star:
-  --
-  -- Structure: strong induction on sf.expr.depth
-  --
-  -- Case 1: sf.expr = .seq (.lit v) b (seq-lit wrapper)
-  --   Take one silent Flat step: sf → {expr = b, ...}
-  --   normalizeExpr (.seq (.lit v) b) k = normalizeExpr b k (lit is consumed by k which is ignored)
-  --   Apply IH (depth decreases)
-  --
-  -- Case 2: sf.expr = .break label / .continue label
-  --   normalizeExpr produces .break/.continue directly (ignores k)
-  --   Both ANF and Flat produce same error event → match directly
-  --   New SimRel: sf'.expr = .lit .undefined, sa'.expr = .trivial .litUndefined
-  --   with k' = fun t => pure (.trivial t) (identity continuation)
-  --
-  -- Case 3: sf.expr = .lit v (terminal in Flat)
-  --   normalizeExpr (.lit v) k = k (trivialOfFlatValue v)
-  --   sa.expr = whatever k produces. Since sf is terminal, ev must be .silent
-  --   (all ANF work is "internal" — let-binding evaluation via evalComplex)
-  --   Take 0 Flat steps. New SimRel needs careful k' construction.
-  --   KEY DIFFICULTY: k can produce any ANF.Expr (.let, .seq, etc.)
-  --   so sa.expr varies widely. Need case analysis on sa.expr too.
-  --
-  -- Case 4: sf.expr = .var name / .this
-  --   Similar to .lit but the Flat side also steps (var lookup)
-  --   After Flat step, sf'.expr = .lit v, then falls into Case 3
-  --
-  -- Case 5: sf.expr = .seq a b where a is NOT a value
-  --   normalizeExpr (.seq a b) k = normalizeExpr a (fun _ => normalizeExpr b k)
-  --   Need to step inner a, relate to ANF step
-  --   Most complex case — requires relating inner Flat steps to ANF steps
-  --
-  -- Case 6: sf.expr = compound (.let, .if, .call, etc.)
-  --   normalizeExpr decomposes into ANF let-bindings with evalComplex
-  --   ANF step evaluates one evalComplex; Flat steps evaluate sub-expressions
-  --   Requires showing Flat multi-step matches ANF single-step
-
 /-! ### normalizeExpr output characterization -/
 
 /-- bindComplex always produces .let, never .trivial. -/
@@ -1160,6 +1061,91 @@ private theorem normalizeExpr_var_step_sim :
     | _ => exfalso; exact absurd hnorm (normalizeExpr_compound_not_trivial _ k
         (by intro v hc; exact Flat.Expr.noConfusion hc) (by intro nm hc; exact Flat.Expr.noConfusion hc)
         (by intro hc; exact Flat.Expr.noConfusion hc) (by intro a' b' hc; exact Flat.Expr.noConfusion hc) n m _)
+
+/-- Stuttering simulation: one ANF step corresponds to one or more Flat steps,
+    preserving observable events and the simulation relation.
+    This is the key theorem requiring detailed case analysis over expression forms. -/
+private theorem anfConvert_step_star
+    (s : Flat.Program) (t : ANF.Program)
+    (h : ANF.convert s = .ok t) :
+    ∀ (sa : ANF.State) (sf : Flat.State) (ev : Core.TraceEvent) (sa' : ANF.State),
+      ANF_SimRel s t sa sf →
+      ExprWellFormed sf.expr sf.env →
+      ANF.Step sa ev sa' →
+      ∃ (sf' : Flat.State) (evs : List Core.TraceEvent),
+        Flat.Steps sf evs sf' ∧
+        observableTrace [ev] = observableTrace evs ∧
+        ANF_SimRel s t sa' sf' ∧
+        ExprWellFormed sf'.expr sf'.env := by
+  intro sa sf ev sa' hrel hewf hstep
+  obtain ⟨hstep_eq⟩ := hstep
+  -- Decompose SimRel
+  obtain ⟨hheap, henv, htrace, k, n, m, hnorm, hk_triv⟩ := hrel
+  -- Case split on the ANF expression
+  cases hsa : sa.expr with
+  | trivial t =>
+    -- step? on trivial: only .var steps, rest are none (absurd)
+    cases t with
+    | var name =>
+      obtain ⟨sa_expr, sa_env, sa_heap, sa_trace⟩ := sa
+      simp only [] at hsa; subst hsa
+      simp only [ANF.step?, ANF.pushTrace] at hstep_eq
+      cases hlookup : sa_env.lookup name <;> simp [hlookup] at hstep_eq
+      case none =>
+        obtain ⟨rfl, rfl⟩ := hstep_eq
+        sorry -- var not-found: requires VarFreeIn inversion or .this handling
+      case some val =>
+        obtain ⟨rfl, rfl⟩ := hstep_eq
+        have hval_sf : sf.env.lookup name = some val := by
+          simp only [ANF.State.env] at henv; rw [← henv]; exact hlookup
+        have hnorm_simp : (ANF.normalizeExpr sf.expr k).run n = .ok (.trivial (.var name), m) := by
+          simp only [ANF.State.expr] at hnorm; exact hnorm
+        obtain ⟨evs, sf', hsteps, hexpr', henv', hheap', hobs'⟩ :=
+          normalizeExpr_var_step_sim sf.expr.depth sf.expr (Nat.le_refl _) k n m name
+            hk_triv hnorm_simp sf rfl val hval_sf hewf
+        refine ⟨sf', evs, hsteps, ?_, ?_, ?_⟩
+        · show observableTrace [.silent] = observableTrace evs
+          simp [observableTrace, hobs']
+        · refine ⟨?_, ?_, ?_, fun t => pure (.trivial t), 0, 0, ?_, ?_⟩
+          · simp only [ANF.State.heap, ANF.pushTrace] at hheap ⊢; rw [← hheap', ← hheap]
+          · simp only [ANF.State.env, ANF.pushTrace] at henv ⊢; rw [← henv', ← henv]
+          · simp only [ANF.State.trace, ANF.pushTrace] at htrace ⊢
+            rw [observableTrace_append]; simp [observableTrace]
+            rw [htrace]; rw [← hobs']; rw [← observableTrace_append]; congr 1
+            sorry -- trace alignment: needs sf'.trace = sf.trace ++ evs relationship
+          · rw [hexpr']; simp only [ANF.normalizeExpr, trivialOfFlatValue_eq_trivialOfValue]
+          · intro arg n'; exact ⟨n', rfl⟩
+        · rw [hexpr']; intro x hfx; cases hfx
+    | litNull | litUndefined | litBool _ | litNum _ | litStr _ | litObject _ | litClosure _ _ =>
+      obtain ⟨_, senv, sheap, strace⟩ := sa
+      simp only [] at hsa; subst hsa
+      rw [ANF_step?_trivial_non_var] at hstep_eq
+      · exact absurd hstep_eq (by intro h; exact nomatch h)
+      · intro name; exact ANF.Trivial.noConfusion
+  | «let» name rhs body =>
+    sorry -- let-binding: evalComplex evaluates rhs, extends env, continues with body
+  | seq a b =>
+    sorry -- sequence: either a is a value (skip to b) or step inner a
+  | «if» cond then_ else_ =>
+    sorry -- conditional: evaluate cond trivial, branch
+  | while_ cond body =>
+    sorry -- while: evaluate cond, unroll or terminate
+  | throw arg =>
+    sorry -- throw: evaluate trivial arg, produce error event
+  | tryCatch body catchParam catchBody finally_ =>
+    sorry -- try-catch: step body, catch errors, handle finally
+  | «return» arg =>
+    sorry -- return: evaluate optional trivial arg
+  | yield arg delegate =>
+    sorry -- yield: evaluate optional trivial arg
+  | await arg =>
+    sorry -- await: evaluate trivial arg
+  | labeled label body =>
+    sorry -- labeled: needs normalizeExpr inversion
+  | «break» label =>
+    sorry -- break: ANF produces .silent but Flat produces .error — semantic mismatch
+  | «continue» label =>
+    sorry -- continue: ANF produces .silent but Flat produces .error — semantic mismatch
 
 /-- Auxiliary halt_star with strong induction on Flat expression depth.
     When ANF reaches a terminal state (step? = none), Flat can also reach a
