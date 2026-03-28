@@ -907,8 +907,8 @@ def ExprAddrWF : Core.Expr → Nat → Prop
   | .assign _ value, n => ExprAddrWF value n
   | .«if» cond t e, n => ExprAddrWF cond n ∧ ExprAddrWF t n ∧ ExprAddrWF e n
   | .seq a b, n => ExprAddrWF a n ∧ ExprAddrWF b n
-  | .call _ _, _ => True
-  | .newObj _ _, _ => True
+  | .call f args, n => ExprAddrWF f n ∧ (∀ e, e ∈ args → ExprAddrWF e n)
+  | .newObj f args, n => ExprAddrWF f n ∧ (∀ e, e ∈ args → ExprAddrWF e n)
   | .getProp e _, n => ExprAddrWF e n
   | .setProp o _ v, n => ExprAddrWF o n ∧ ExprAddrWF v n
   | .getIndex e1 e2, n => ExprAddrWF e1 n ∧ ExprAddrWF e2 n
@@ -944,8 +944,18 @@ private theorem ExprAddrWF_mono : (e : Core.Expr) → {n m : Nat} →
     ExprAddrWF e n → (n ≤ m) → ExprAddrWF e m
   | .lit v, _, _, h, hle => ValueAddrWF_mono h hle
   | .var _, _, _, _, _ => trivial
-  | .call _ _, _, _, _, _ => trivial
-  | .newObj _ _, _, _, _, _ => trivial
+  | .call f args, _, _, h, hle => ⟨ExprAddrWF_mono f h.1 hle, by
+      have : ∀ (es : List Core.Expr), ExprAddrListWF es _ → ExprAddrListWF es _ :=
+        fun es h => by induction es with
+          | nil => trivial
+          | cons e es ih => exact ⟨ExprAddrWF_mono e h.1 hle, ih h.2⟩
+      exact this args h.2⟩
+  | .newObj f args, _, _, h, hle => ⟨ExprAddrWF_mono f h.1 hle, by
+      have : ∀ (es : List Core.Expr), ExprAddrListWF es _ → ExprAddrListWF es _ :=
+        fun es h => by induction es with
+          | nil => trivial
+          | cons e es ih => exact ⟨ExprAddrWF_mono e h.1 hle, ih h.2⟩
+      exact this args h.2⟩
   | .objectLit _, _, _, _, _ => trivial
   | .arrayLit _, _, _, _, _ => trivial
   | .break _, _, _, _, _ => trivial
