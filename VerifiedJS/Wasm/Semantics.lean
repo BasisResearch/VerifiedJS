@@ -6439,14 +6439,16 @@ inductive LowerCodeCorr : ANF.Expr → List IRInstr → Prop where
   | seq (a b : ANF.Expr) (aCode bCode : List IRInstr) :
       LowerCodeCorr a aCode → LowerCodeCorr b bCode →
       LowerCodeCorr (.seq a b) (aCode ++ [.drop] ++ bCode)
-  /-- An if lowers to: [lowered cond] ++ [if_ ...].
+  /-- An if lowers to: condCode ++ [call truthy, if_ (some .f64) thenCode elseCode].
+      The `call truthy` converts the boxed JS value to an i32 boolean for the Wasm if.
       `htcc` connects the condition trivial to its IR code (needed for step_sim).
-      REF: Lower.lean lowerExpr, lines 419-425. -/
+      REF: Lower.lean lowerExpr, line 443. -/
   | if_ (cond : ANF.Trivial) (then_ else_ : ANF.Expr)
       (condCode thenCode elseCode : List IRInstr) :
       TrivialCodeCorr cond condCode →
       LowerCodeCorr then_ thenCode → LowerCodeCorr else_ elseCode →
-      LowerCodeCorr (.«if» cond then_ else_) (condCode ++ [.if_ none thenCode elseCode])
+      LowerCodeCorr (.«if» cond then_ else_)
+        (condCode ++ [.call RuntimeIdx.truthy, .if_ (some .f64) thenCode elseCode])
   /-- A while_ lowers to block+loop: [block exitLbl [loop loopLbl (condCode ++ [call truthy, eqz, brIf exit] ++ bodyCode ++ [drop, br loop])]] ++ [undefinedConst].
       REF: Lower.lean lowerWhile, lines 519-526. -/
   | while_ (cond body : ANF.Expr) (condCode bodyCode : List IRInstr)
@@ -6478,12 +6480,17 @@ inductive LowerCodeCorr : ANF.Expr → List IRInstr → Prop where
       REF: Lower.lean lines 466-471. -/
   | return_none :
       LowerCodeCorr (.«return» none) [.return_]
-  /-- yield lowers to some instruction sequence. -/
-  | yield (arg : Option ANF.Trivial) (delegate : Bool) (instrs : List IRInstr) :
-      LowerCodeCorr (.yield arg delegate) instrs
-  /-- await lowers to some instruction sequence. -/
-  | await (arg : ANF.Trivial) (instrs : List IRInstr) :
-      LowerCodeCorr (.await arg) instrs
+  /-- yield lowers to: argCode ++ [boolConst, call yieldOp].
+      REF: Lower.lean lines 472-479. -/
+  | yield (arg : Option ANF.Trivial) (delegate : Bool)
+      (argCode : List IRInstr) (boolConst : IRInstr) :
+      LowerCodeCorr (.yield arg delegate)
+        (argCode ++ [boolConst, .call RuntimeIdx.yieldOp])
+  /-- await lowers to: argCode ++ [call awaitOp].
+      REF: Lower.lean lines 480-482. -/
+  | await (arg : ANF.Trivial) (argCode : List IRInstr) :
+      TrivialCodeCorr arg argCode →
+      LowerCodeCorr (.await arg) (argCode ++ [.call RuntimeIdx.awaitOp])
   /-- labeled lowers to a block structure. -/
   | labeled (label : String) (body : ANF.Expr) (instrs : List IRInstr) :
       LowerCodeCorr (.labeled label body) instrs
@@ -6548,7 +6555,7 @@ theorem LowerCodeCorr.throw_inv {arg : ANF.Trivial} {code : List IRInstr}
 theorem LowerCodeCorr.if_inv {cond : ANF.Trivial} {then_ else_ : ANF.Expr} {code : List IRInstr}
     (h : LowerCodeCorr (.«if» cond then_ else_) code) :
     ∃ condCode thenCode elseCode,
-      code = condCode ++ [.if_ none thenCode elseCode] ∧
+      code = condCode ++ [.call RuntimeIdx.truthy, .if_ (some .f64) thenCode elseCode] ∧
       TrivialCodeCorr cond condCode ∧
       LowerCodeCorr then_ thenCode ∧ LowerCodeCorr else_ elseCode := by
   match h with
@@ -6568,11 +6575,11 @@ def irStepMeasure : ANF.Expr → Nat
   | .labeled _ _ => 1               -- block
   | .«let» _ _ _ => 3               -- rhsCode + localSet + bodyCode (minimum)
   | .seq _ _ => 2                    -- aCode + drop + bCode (minimum)
-  | .«if» _ _ _ => 2                -- condCode + if_
+  | .«if» _ _ _ => 3                -- condCode + call truthy + if_
   | .while_ _ _ => 1                -- block/loop structure
   | .tryCatch _ _ _ _ => 1          -- block structure
-  | .yield _ _ => 2                  -- argCode + yieldOp
-  | .await _ => 2                    -- argCode + awaitOp
+  | .yield _ _ => 3                  -- argCode + boolConst + call yieldOp
+  | .await _ => 2                    -- argCode + call awaitOp
 
 /-- The lowered IR module's initial code corresponds to the main expression. -/
 axiom lower_main_code_corr (prog : ANF.Program) (irmod : IRModule)

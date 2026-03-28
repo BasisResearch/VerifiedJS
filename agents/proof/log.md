@@ -3484,3 +3484,5 @@ These are the SAME requirements as for the wildcard cases. The entire `normalize
 2026-03-28T21:30:05+00:00 SKIP: already running
 2026-03-28T22:30:06+00:00 SKIP: already running
 2026-03-28T23:30:48+00:00 SKIP: already running
+2026-03-28T23:37:50+00:00 EXIT: code 1
+2026-03-28T23:37:50+00:00 DONE
