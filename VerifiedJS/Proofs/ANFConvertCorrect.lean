@@ -1076,13 +1076,13 @@ private theorem step?_if_cond_step (s : Flat.State) (cond then_ else_ : Flat.Exp
 /-- Stepping .if with a literal condition branches directly. -/
 private theorem step?_if_lit_branch (s : Flat.State) (v : Flat.Value)
     (then_ else_ : Flat.Expr) :
-    Flat.step? { s with expr := .«if» (.lit v) then_ else_ } =
-      some (.silent, { expr := if Flat.toBoolean v then then_ else else_,
-                       env := s.env, heap := s.heap,
-                       trace := s.trace ++ [Core.TraceEvent.silent],
-                       funcs := s.funcs, callStack := s.callStack }) := by
-  simp only [Flat.step?, Flat.exprValue?, Flat.pushTrace]
-  rfl
+    ∃ s', Flat.step? { s with expr := .«if» (.lit v) then_ else_ } = some (.silent, s') ∧
+      s'.expr = (if Flat.toBoolean v then then_ else else_) ∧
+      s'.env = s.env ∧ s'.heap = s.heap ∧
+      s'.funcs = s.funcs ∧ s'.callStack = s.callStack ∧
+      s'.trace = s.trace ++ [Core.TraceEvent.silent] := by
+  simp only [Flat.step?, Flat.exprValue?]
+  exact ⟨_, rfl, rfl, rfl, rfl, rfl, rfl, rfl⟩
 
 /-- Build left-associated seq spine: wrapSeqCtx e [a,b,c] = .seq (.seq (.seq e a) b) c -/
 private def wrapSeqCtx (inner : Flat.Expr) : List Flat.Expr → Flat.Expr
@@ -1145,6 +1145,78 @@ private theorem step?_this_resolve (sf : Flat.State) :
   cases sf.env.lookup "this" with
   | some v => exact ⟨v, _, rfl, rfl, rfl, rfl, rfl, rfl, rfl⟩
   | none => exact ⟨.undefined, _, rfl, rfl, rfl, rfl, rfl, rfl, rfl⟩
+
+/-- Evaluating .if (.var name) then_ else_ when name is bound: two steps (lookup + branch). -/
+private theorem steps_if_var_branch (sf : Flat.State) (name : String) (val : Flat.Value)
+    (then_ else_ : Flat.Expr)
+    (hval : sf.env.lookup name = some val) :
+    ∃ (sf' : Flat.State),
+      Flat.Steps { sf with expr := .«if» (.var name) then_ else_ }
+        [.silent, .silent] sf' ∧
+      sf'.expr = (if Flat.toBoolean val then then_ else else_) ∧
+      sf'.env = sf.env ∧ sf'.heap = sf.heap ∧
+      sf'.trace = sf.trace ++ [.silent, .silent] := by
+  -- Step 1: .var name → .lit val (inside .if context)
+  have hnotval : Flat.exprValue? (Flat.Expr.var name) = none := by simp [Flat.exprValue?]
+  obtain ⟨s_var, hstep_var, hexpr_var, henv_var, hheap_var, _, _, htrace_var⟩ :=
+    step?_var_bound { sf with expr := .var name } name val (by simp [hval])
+  obtain ⟨s1, hstep1, hexpr1, henv1, hheap1, _, _, htrace1⟩ :=
+    step?_if_cond_step sf (.var name) then_ else_ hnotval .silent s_var hstep_var
+  -- Step 2: .if (.lit val) then_ else_ → branch
+  have hs1_eq : s1 = { sf with expr := .«if» (.lit val) then_ else_,
+      trace := sf.trace ++ [.silent] } := by
+    cases s1; simp_all
+  obtain ⟨s2, hstep2, hexpr2, henv2, hheap2, _, _, htrace2⟩ :=
+    step?_if_lit_branch { sf with trace := sf.trace ++ [.silent] } val then_ else_
+  have hstep2' : Flat.step? s1 = some (.silent, s2) := by
+    rw [hs1_eq]; exact hstep2
+  exact ⟨s2,
+    .tail ⟨hstep1⟩ (.tail ⟨hstep2'⟩ (.refl _)),
+    hexpr2,
+    by rw [henv2, henv1, henv_var],
+    by rw [hheap2, hheap1, hheap_var],
+    by rw [htrace2]; simp [List.append_assoc]⟩
+
+/-- Evaluating .if (.lit v) then_ else_: one step (branch). -/
+private theorem steps_if_lit_branch (sf : Flat.State) (v : Flat.Value)
+    (then_ else_ : Flat.Expr) :
+    ∃ (sf' : Flat.State),
+      Flat.Steps { sf with expr := .«if» (.lit v) then_ else_ }
+        [.silent] sf' ∧
+      sf'.expr = (if Flat.toBoolean v then then_ else else_) ∧
+      sf'.env = sf.env ∧ sf'.heap = sf.heap ∧
+      sf'.trace = sf.trace ++ [.silent] := by
+  obtain ⟨s', hstep, hexpr, henv, hheap, _, _, htrace⟩ :=
+    step?_if_lit_branch sf v then_ else_
+  exact ⟨s', .tail ⟨hstep⟩ (.refl _), hexpr, henv, hheap, htrace⟩
+
+/-- Evaluating .if .this then_ else_: two steps (resolve this + branch). -/
+private theorem steps_if_this_branch (sf : Flat.State)
+    (then_ else_ : Flat.Expr) :
+    ∃ (val : Flat.Value) (sf' : Flat.State),
+      Flat.Steps { sf with expr := .«if» .this then_ else_ }
+        [.silent, .silent] sf' ∧
+      sf'.expr = (if Flat.toBoolean val then then_ else else_) ∧
+      sf'.env = sf.env ∧ sf'.heap = sf.heap ∧
+      sf'.trace = sf.trace ++ [.silent, .silent] := by
+  have hnotval : Flat.exprValue? Flat.Expr.this = none := by simp [Flat.exprValue?]
+  obtain ⟨val, s_this, hstep_this, hexpr_this, henv_this, hheap_this, _, _, htrace_this⟩ :=
+    step?_this_resolve { sf with expr := .this }
+  obtain ⟨s1, hstep1, hexpr1, henv1, hheap1, _, _, htrace1⟩ :=
+    step?_if_cond_step sf .this then_ else_ hnotval .silent s_this hstep_this
+  have hs1_eq : s1 = { sf with expr := .«if» (.lit val) then_ else_,
+      trace := sf.trace ++ [.silent] } := by
+    cases s1; simp_all
+  obtain ⟨s2, hstep2, hexpr2, henv2, hheap2, _, _, htrace2⟩ :=
+    step?_if_lit_branch { sf with trace := sf.trace ++ [.silent] } val then_ else_
+  have hstep2' : Flat.step? s1 = some (.silent, s2) := by
+    rw [hs1_eq]; exact hstep2
+  exact ⟨val, s2,
+    .tail ⟨hstep1⟩ (.tail ⟨hstep2'⟩ (.refl _)),
+    hexpr2,
+    by rw [henv2, henv1, henv_this],
+    by rw [hheap2, hheap1, hheap_this],
+    by rw [htrace2]; simp [List.append_assoc]⟩
 
 /-- Consume a trivial chain inside a left-seq context via silent Flat steps.
     wrapSeqCtx tc ctx steps to wrapSeqCtx (ctx.head _) ctx.tail. -/
