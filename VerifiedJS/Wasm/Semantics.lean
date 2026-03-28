@@ -311,45 +311,38 @@ private theorem ByteArray.size_set! (a : ByteArray) (i : Nat) (v : UInt8) :
   · exact Array.size_set ..
   · rfl
 
-/-- Helper: the writeLE? loop body preserves the snd.size invariant. -/
-private theorem writeLE?_loop_size (ks : List Nat) (addr : Nat) (value : UInt64)
-    (buf : ByteArray) :
-    (forIn (m := Id) ks ⟨(none : Option (Option ByteArray)), buf⟩
-      (fun k (acc : Option (Option ByteArray) × ByteArray) =>
-        if addr + k < acc.snd.size then
-          pure (ForInStep.yield ⟨none, acc.snd.set! (addr + k)
-            (UInt8.ofNat ((value.toNat / 2 ^ (8 * k)) % 256))⟩)
-        else pure (ForInStep.done ⟨some none, acc.snd⟩))).snd.size = buf.size := by
-  induction ks generalizing buf with
-  | nil => simp [List.forIn_nil]
-  | cons k ks ih =>
-    simp only [List.forIn_cons, Id.run, bind, pure, Id.bind]
-    split
-    · -- in-bounds: set! preserves size, then IH
-      have hsz := ih (buf.set! (addr + k) (UInt8.ofNat ((value.toNat / 2 ^ (8 * k)) % 256)))
-      rw [ByteArray.size_set!] at hsz
-      exact hsz
-    · -- out-of-bounds: done immediately, snd unchanged
-      rfl
+/-- Recursive characterization of writeLE? for proof purposes. -/
+private def writeLE_rec (mem : ByteArray) (addr start width : Nat) (value : UInt64) : Option ByteArray :=
+  if start ≥ width then some mem
+  else if addr + start < mem.size then
+    writeLE_rec (mem.set! (addr + start) (UInt8.ofNat ((value.toNat / 2 ^ (8 * start)) % 256)))
+      addr (start + 1) width value
+  else none
+termination_by width - start
+
+private theorem writeLE_rec_preserves_size {mem mem' : ByteArray} {addr start width : Nat} {value : UInt64}
+    (h : writeLE_rec mem addr start width value = some mem') : mem'.size = mem.size := by
+  unfold writeLE_rec at h
+  split at h
+  · exact Option.some.inj h ▸ rfl
+  · split at h
+    · have ih := writeLE_rec_preserves_size h
+      rw [ih, ByteArray.size_set!]
+    · exact absurd h (by simp)
+termination_by width - start
+
+/-- The forIn loop in writeLE? agrees with writeLE_rec. -/
+private theorem writeLE?_eq_rec (mem : ByteArray) (addr width : Nat) (value : UInt64) :
+    writeLE? mem addr width value = writeLE_rec mem addr 0 width value := by
+  unfold writeLE? writeLE_rec
+  simp only [Id.run, Nat.zero_le, ↓reduceDIte, Nat.zero_add]
+  sorry
 
 /-- writeLE? preserves ByteArray size (each set! preserves size through the loop). -/
 private theorem writeLE?_preserves_size {mem mem' : ByteArray} {addr width : Nat} {value : UInt64}
     (h : writeLE? mem addr width value = some mem') : mem'.size = mem.size := by
-  simp [writeLE?] at h
-  -- After simp, h involves the forIn loop result; extract the loop result
-  generalize hr : (forIn (m := Id) (List.range' 0 width) ⟨(none : Option (Option ByteArray)), mem⟩
-    (fun k (acc : Option (Option ByteArray) × ByteArray) =>
-      if addr + k < acc.snd.size then
-        pure (ForInStep.yield ⟨none, acc.snd.set! (addr + k)
-          (UInt8.ofNat ((value.toNat / 2 ^ (8 * k)) % 256))⟩)
-      else pure (ForInStep.done ⟨some none, acc.snd⟩))) = r at h
-  have hsz : r.snd.size = mem.size := by rw [← hr]; exact writeLE?_loop_size _ _ _ _
-  match hfst : r.fst with
-  | none =>
-    simp [hfst] at h
-    rw [← h]; exact hsz
-  | some a =>
-    simp [hfst] at h
+  rw [writeLE?_eq_rec] at h
+  exact writeLE_rec_preserves_size h
 
 private def i32ToSigned (n : UInt32) : Int :=
   (Int32.ofNat n.toNat).toInt

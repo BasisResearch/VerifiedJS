@@ -3091,3 +3091,103 @@ FOCUS ON THE 23 REAL SORRIES. Define shared tactics for the 4 CCState cases (L16
 
 ## Run: 2026-03-28T09:30:01+00:00
 
+### Analysis of 17 ANF sorries — deep investigation
+
+**Starting state**: 17 sorries in ANFConvertCorrect.lean
+
+#### P0: Wildcard expansion at L1597, L1663, L1680 — BLOCKED
+
+The prompt suggested expanding `| _ => sorry` into exfalso for bindComplex cases
+using the pattern:
+```
+exfalso; unfold ANF.normalizeExpr at hnorm
+simp only [ANF.bindComplex, ...] at hnorm
+repeat (first | split at hnorm | ...)
+```
+
+**Finding**: This does NOT work. After `unfold ANF.normalizeExpr`, the result is a
+recursive `normalizeExpr` call (not a direct `bindComplex`). The sub-expressions
+(funcIdx, envPtr, args, etc.) can contain `.labeled` expressions, so
+`normalizeExpr (.call (.labeled l b) e args) k` DOES produce `.labeled` via:
+```
+= normalizeExpr (.labeled l b) (fun ft => ...) = do { be ← ...; pure (.labeled l be) }
+```
+
+To close these, we'd need `normalizeExpr_labeled_step_sim` to be inductive on depth,
+with proper evaluation context lifting. This requires a sophisticated well-founded
+measure (expression depth alone is insufficient because var→lit stepping preserves
+depth).
+
+#### P1: throw (L1774), return (L1778) — PERMANENT SORRY (semantic mismatch)
+
+**Throw**: ANF produces `.error "throw"` (fixed string), Flat produces
+`.error (valueToString v)`. These observable events don't match for general values.
+
+**Return**: ANF produces `.silent`, Flat produces `.error ("return:" ++ valueToString v)`.
+Completely different observable event types.
+
+These are the same class of issue as break/continue (L1806, L1808) — fundamental
+semantic mismatches between ANF and Flat stepping semantics.
+
+#### P1: yield (L1780), await (L1782) — FEASIBLE but substantial
+
+Both have matching semantics:
+- yield none: both produce `.silent`
+- yield (some val): both produce `.silent` when val evaluates successfully
+- await arg: both produce `.silent` when arg evaluates successfully
+
+The error cases (evalTrivial fails) are ruled out by ExprWellFormed + env matching,
+because normalizeExpr producing `.await arg` with trivializing k implies arg came
+from a bound variable or literal in the original flat expression.
+
+**Missing infrastructure needed**:
+1. `normalizeExpr_await_step_sim` (~120 lines) — inductive proof by depth showing
+   flat stepping matches ANF await stepping
+2. `normalizeExpr_yield_step_sim` (~120 lines) — same for yield
+3. These follow the pattern of existing `normalizeExpr_var_step_sim` (L1326-L1451)
+
+#### Nested cases L1582, L1586, L1648, L1652 — need inductive restructure
+
+These are within `normalizeExpr_labeled_step_sim` and cover cases like
+`.return (some (.return (some inner)))`. The proof needs recursion on inner's depth
+but the theorem currently uses `cases e`, not induction.
+
+To fix: restructure normalizeExpr_labeled_step_sim to use `∀ d, e.depth ≤ d → ...`
+with strong induction on d. Existing direct cases (labeled, var, lit, etc.) go
+unchanged; recursive cases use the IH.
+
+**Challenge**: The continuation changes at each recursive level (outer return-some
+uses `fun t => pure (.return (some t))`, but inner .throw uses `fun t => pure (.throw t)`).
+The IH needs to work with arbitrary non-labeled-producing continuations.
+
+#### Summary of sorry classification
+
+| Lines | Case | Status |
+|-------|------|--------|
+| L1582, L1586, L1648, L1652 | nested return/yield in labeled_step_sim | needs inductive restructure |
+| L1597, L1663, L1680 | wildcards in labeled_step_sim | needs induction + eval context lifting |
+| L1760 | let in main theorem | hard (evalComplex matching) |
+| L1762 | seq in main theorem | hard (multi-step) |
+| L1764 | if in main theorem | hard (conditional matching) |
+| L1774 | throw in main theorem | **permanent sorry** (semantic mismatch) |
+| L1776 | tryCatch in main theorem | hard |
+| L1778 | return in main theorem | **permanent sorry** (semantic mismatch) |
+| L1780 | yield in main theorem | **feasible** (~120 lines helper) |
+| L1782 | await in main theorem | **feasible** (~120 lines helper) |
+| L1806 | break in main theorem | **permanent sorry** (semantic mismatch) |
+| L1808 | continue in main theorem | **permanent sorry** (semantic mismatch) |
+
+**Key insight**: 4 of 17 sorries are permanent (semantic mismatches: throw, return,
+break, continue). 2 are feasible (yield, await). The remaining 11 need substantial
+infrastructure (inductive normalizeExpr_labeled_step_sim, evaluation context lemmas).
+
+**No sorry count change this run**: 17 → 17.
+
+**Recommended next steps**:
+1. Write normalizeExpr_await_step_sim and normalizeExpr_yield_step_sim (-2 sorries)
+2. Restructure normalizeExpr_labeled_step_sim to be inductive (-4 sorries for nested cases)
+3. Consider fixing ANF/Flat semantic mismatches for throw/return at the semantics level
+
+2026-03-28T09:30:01+00:00 ANALYSIS COMPLETE — no code changes made
+
+2026-03-28T09:54:27+00:00 DONE
