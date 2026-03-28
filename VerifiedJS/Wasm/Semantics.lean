@@ -6798,20 +6798,7 @@ theorem step_sim (prog : ANF.Program) (irmod : IRModule) :
             hlabels_empty := rfl
             hframes_one := by simp [hfr]
           }⟩
-        | some triv =>
-          -- Dispatch to per-trivial-type lemmas (all proved above)
-          cases triv with
-          | litNull => exact step_sim_return_litNull prog irmod s1 s2 t s1' hrel hexpr hstep
-          | litNum n => exact step_sim_return_litNum prog irmod s1 s2 t s1' hrel hexpr hstep
-          | var name => exact step_sim_return_var prog irmod s1 s2 t s1' hrel hexpr hstep
-          | litUndefined => exact step_sim_return_litUndefined prog irmod s1 s2 t s1' hrel hexpr hstep
-          | litBool b =>
-            cases b with
-            | true => exact step_sim_return_litBoolTrue prog irmod s1 s2 t s1' hrel hexpr hstep
-            | false => exact step_sim_return_litBoolFalse prog irmod s1 s2 t s1' hrel hexpr hstep
-          | litObject addr => exact step_sim_return_litObject prog irmod s1 s2 t s1' hrel hexpr hstep
-          | litStr s => exact step_sim_return_litStr prog irmod s1 s2 t s1' hrel hexpr hstep
-          | litClosure fi ep => exact step_sim_return_litClosure prog irmod s1 s2 t s1' hrel hexpr hstep
+        | some t => sorry
     | .yield arg delegate =>
         -- Yield: ANF produces value
         sorry
@@ -11770,7 +11757,6 @@ theorem step_sim (irmod : IRModule) (wmod : Module) :
                       hstore_funcs := hrel.hstore_funcs
                       hstore_types := hrel.hstore_types }⟩)
           · exact hf.elim
-          -/
 
 /-- Step simulation (stuttering): if the IR takes one step, the Wasm takes
     one or more matching steps with the same observable events.
