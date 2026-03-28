@@ -1,69 +1,127 @@
-# wasmspec — CLOSE WASM SORRY CASES
+# wasmspec — FIX ANF SEMANTICS + CLOSE WASM SORRIES
 
-## STATUS: 14 actual sorries in Wasm/Semantics.lean. Runs taking 2+ hours or crashing. FOCUS ON ONE CASE AT A TIME.
+## STATUS: 18 Wasm sorries. ANF semantics have SEMANTIC MISMATCHES blocking 4+ proof-agent sorries. FIX THESE FIRST.
 
-## CURRENT SORRIES:
-- L6738-6759: compound cases (let, seq, if, while_, throw, tryCatch) — 6 sorries, 1:N stepping
-- L6801: return-some — 1 sorry, 1:N stepping
-- L6804: yield — 1 sorry
-- L6807: await — 1 sorry
-- L6810: labeled — 1 sorry
-- L6813: break — 1 sorry
-- L6816: continue — 1 sorry
-- L10776: call — 1 sorry (trap alignment)
-- L10831: call stack underflow — 1 sorry
-- L10835: call successful — 1 sorry (multi-frame)
-- L10838: callIndirect — 1 sorry
+## PRIORITY 0: Fix ANF break/continue/return/throw semantics (-4 ANF sorries unblocked)
 
-## STOP: yield/await/break/continue may NOT be in supported subset
-Check `Expr.supported` in `VerifiedJS/Core/Syntax.lean` L138-165:
-- `.yield _ _` → **false** (unsupported!)
-- `.await _` → **false** (unsupported!)
-- `.break _` → **true** (supported, via `| _ => true`)
-- `.continue _` → **true** (supported)
+**File: `VerifiedJS/ANF/Semantics.lean` (you own this file)**
 
-So yield (L6804) and await (L6807) can be closed with **exfalso** if the step_sim theorem has a supported hypothesis. CHECK: does `step_sim` at L6700+ have `h_supported` or similar? If yes:
+The ANF semantics produce `.silent` for break/continue/return but Flat produces `.error "break:..."` etc. This mismatch makes 4 sorries in ANFConvertCorrect.lean PERMANENTLY UNPROVABLE. You MUST fix this.
+
+### Fix 1: break (L447-449)
+Change from:
 ```lean
-| .yield arg delegate => exfalso; simp [ANF.Expr.supported] at h_supported
-| .await arg => exfalso; simp [ANF.Expr.supported] at h_supported
+| .«break» label =>
+    let s' := pushTrace { s with expr := .trivial .litUndefined } .silent
+    some (.silent, s')
 ```
-
-## PRIORITY 0: Close yield and await with exfalso (-2 sorries)
-
-1. Read the theorem signature around L6700 to find the supported hypothesis
-2. If it exists: close yield and await with `exfalso; simp [supported] at h_supported`
-3. If NOT: check if supported flows through from `compiler_correct` and add it
-
-## PRIORITY 1: Close callIndirect with exfalso (-1 sorry)
-
-L10838: `callIndirect` is likely not in the supported subset. Check if `ANF.Expr.supported` excludes it or if there's an IR-level supported predicate. If unsupported:
+To:
 ```lean
-| .callIndirect typeIdx => exfalso; simp [supported] at h_supported
+| .«break» label =>
+    let l := label.getD ""
+    let msg := "break:" ++ l
+    let s' := pushTrace { s with expr := .trivial .litUndefined } (.error msg)
+    some (.error msg, s')
 ```
 
-## PRIORITY 2: break/continue (L6813, L6816) — check IR emission
-
-Break and continue ARE supported. Check what `lowerExpr` produces for break/continue:
+### Fix 2: continue (L450-452)
+Change from:
+```lean
+| .«continue» label =>
+    let s' := pushTrace { s with expr := .trivial .litUndefined } .silent
+    some (.silent, s')
 ```
-grep -n "break\|continue" VerifiedJS/Wasm/Lower.lean | head -20
+To:
+```lean
+| .«continue» label =>
+    let l := label.getD ""
+    let msg := "continue:" ++ l
+    let s' := pushTrace { s with expr := .trivial .litUndefined } (.error msg)
+    some (.error msg, s')
 ```
 
-If break maps to a single IR instruction (e.g., `br label`), follow the return-none pattern at L6764-6800:
-1. Invert LowerCodeCorr to get the IR instruction
-2. Show ANF step? produces the event
-3. Show irStep? on the instruction produces a matching step
-4. Construct the new LowerSimRel
+### Fix 3: return (L409-421)
+Change from `.silent` events to `.error "return:..."` events:
+```lean
+| .«return» arg =>
+    match arg with
+    | none =>
+        let s' := pushTrace { s with expr := .trivial .litUndefined } (.error "return:undefined")
+        some (.error "return:undefined", s')
+    | some t =>
+        match evalTrivial s.env t with
+        | .ok v =>
+            let msg := "return:" ++ Core.valueToString v
+            let s' := pushTrace { s with expr := .trivial (trivialOfValue v) } (.error msg)
+            some (.error msg, s')
+        | .error msg =>
+            let s' := pushTrace { s with expr := .trivial .litUndefined } (.error msg)
+            some (.error msg, s')
+```
 
-## PRIORITY 3: labeled (L6810)
+### Fix 4: throw (L376-383)
+Change `.error "throw"` to `.error (Core.valueToString v)` to match Flat:
+```lean
+| .throw arg =>
+    match evalTrivial s.env arg with
+    | .ok v =>
+        let msg := Core.valueToString v
+        let s' := pushTrace { s with expr := .trivial .litUndefined } (.error msg)
+        some (.error msg, s')
+    | .error msg =>
+        let s' := pushTrace { s with expr := .trivial .litUndefined } (.error msg)
+        some (.error msg, s')
+```
 
-`.labeled label body` maps to IR `block` instruction. Check if there's already a `block` case proved elsewhere (L10839+ looks like it handles `block`). If so, the labeled case may just delegate to the block handling.
+**IMPORTANT**: After making these changes, build:
+```
+lake env lean VerifiedJS/ANF/Semantics.lean
+```
+If `Core.valueToString` isn't in scope, check if it's `VerifiedJS.Core.valueToString` or `Flat.valueToString`. The file imports `VerifiedJS.Core.Semantics` so `Core.valueToString` should work.
+
+**After build succeeds**, also check:
+```
+lake env lean VerifiedJS/Proofs/ANFConvertCorrect.lean 2>&1 | grep -c "error"
+```
+The sorry cases at L1808-1853 will still be sorry'd but should still build (they don't reference the specific event values).
+
+## PRIORITY 1: Close yield/await in Wasm with `h_supported` hypothesis
+
+The `step_sim` theorem at L6631 does NOT have a supported hypothesis. You need to ADD one.
+
+Change the signature from:
+```lean
+theorem step_sim (prog : ANF.Program) (irmod : IRModule) :
+    ∀ (s1 : ANF.State) (s2 : IRExecState) (t : TraceEvent) (s1' : ANF.State),
+    LowerSimRel prog irmod s1 s2 → anfStepMapped s1 = some (t, s1') →
+    ∃ s2', irStep? s2 = some (t, s2') ∧ LowerSimRel prog irmod s1' s2'
+```
+To:
+```lean
+theorem step_sim (prog : ANF.Program) (irmod : IRModule) :
+    ∀ (s1 : ANF.State) (s2 : IRExecState) (t : TraceEvent) (s1' : ANF.State),
+    s1.expr.supported = true →
+    LowerSimRel prog irmod s1 s2 → anfStepMapped s1 = some (t, s1') →
+    ∃ s2', irStep? s2 = some (t, s2') ∧ LowerSimRel prog irmod s1' s2'
+```
+
+Wait — `ANF.Expr` doesn't have `.supported`. You need `Core.Expr.supported` but ANF uses `ANF.Expr`. Check if there's an `ANF.Expr.supported` or if you need to define one first. If not, you may need to thread the supported predicate from the Flat/Core level.
+
+If adding supported is too complex, use this alternative approach: prove that yield/await cases are unreachable because `anfStepMapped` on `.yield`/`.await` still produces valid step results. Just close the sorry by following the ANF step? equation:
+- yield (none): ANF produces `.silent` → show IR can match
+- yield (some): ANF evaluates trivial → show IR can match
+- await: same pattern
+
+Check if `lowerExpr` for yield/await produces any IR. If it maps to nothing (stub/unreachable), you may need exfalso via LowerCodeCorr inversion.
+
+## PRIORITY 2: Close break/continue in Wasm (L6813, L6816)
+
+After fixing ANF semantics (Priority 0), break now produces `.error "break:..."`. Check what `lowerExpr` produces for break and follow the pattern.
 
 ## DO NOT ATTEMPT
-- Compound cases (L6738-6759): these are 1:N and complex
-- return-some (L6801): 1:N stuttering, template exists but not trivial
-- call cases (L10776, 10831, 10835): needs multi-frame rework
+- Compound cases (L6738-6759)
+- return-some (L6801)
+- call cases (L10776, 10831, 10835)
 
-## FILE: `VerifiedJS/Wasm/Semantics.lean`
+## FILE: `VerifiedJS/ANF/Semantics.lean` (rw), `VerifiedJS/Wasm/Semantics.lean` (rw)
 ## LOG to agents/wasmspec/log.md
-
-## CRITICAL: Keep runs SHORT. Target ONE case, close it, build, log. Don't try to solve everything.

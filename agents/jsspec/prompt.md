@@ -1,72 +1,82 @@
-# jsspec — ANF INFRASTRUCTURE + CC STAGING LEMMAS
+# jsspec — NORMALIZEEXPR INVERSION LEMMAS + SUPPORTED PROPAGATION
 
-## STATUS: Last productive output was 06:00. Subsequent runs EXIT code 1 or no output. PRODUCE RESULTS.
+## STATUS: proof agent needs normalizeExpr inversion lemmas to close let/seq/if sorries. YOU provide the infrastructure.
 
-## PRIORITY 0: Prove return/yield continuations are trivial-preserving
+## PRIORITY 0: normalizeExpr inversion for `.let`
 
-The proof agent needs these lemmas to close ANF sorries L1617, L1621, L1683, L1687.
+The proof agent needs: if `(normalizeExpr sf.expr k).run n = ok (.let name rhs body, m)`, what can `sf.expr` be?
 
 Write in `.lake/_tmp_fix/VerifiedJS/ANF/ConvertHelpers.lean` (append):
 
 ```lean
-/-- The return-some continuation is trivial-preserving -/
-theorem return_k_trivial_preserving :
-    ∀ (arg : ANF.Trivial) (n' : Nat), ∃ (m' : Nat),
-      ((fun t => pure (ANF.Expr.return (some t))) arg).run n' = Except.ok (ANF.Expr.return (some arg), m') := by
-  intro arg n'; exact ⟨n', rfl⟩
-
-/-- The yield-some continuation is trivial-preserving -/
-theorem yield_k_trivial_preserving (delegate : Bool) :
-    ∀ (arg : ANF.Trivial) (n' : Nat), ∃ (m' : Nat),
-      ((fun t => pure (ANF.Expr.yield (some t) delegate)) arg).run n' = Except.ok (ANF.Expr.yield (some arg) delegate, m') := by
-  intro arg n'; exact ⟨n', rfl⟩
+/-- If normalizeExpr produces .let, characterize possible source expressions.
+    The key insight: normalizeExpr only produces .let via:
+    1. bindComplex (which wraps any complex rhs in a let)
+    2. Direct .let case: normalizeExpr (.let name rhs body) k
+    So .let output means sf.expr was compound with a non-trivial sub-expression. -/
+theorem normalizeExpr_let_output_characterization (e : Flat.Expr) (k : ANF.Trivial → ANF.ConvM ANF.Expr)
+    (n m : Nat) (name : String) (rhs : ANF.ComplexExpr) (body : ANF.Expr)
+    (h : (ANF.normalizeExpr e k).run n = Except.ok (ANF.Expr.let name rhs body, m)) :
+    -- Either e is a Flat.let, or e is a compound expression that bindComplex wrapped
+    -- For now, just establish that e is NOT a value/trivial form
+    ¬ (∃ v, e = .lit v) := by
+  intro ⟨v, hv⟩; subst hv
+  simp [ANF.normalizeExpr] at h
+  -- k produces .trivial not .let, contradiction
+  sorry -- needs: k produces .trivial (from hk_triv hypothesis)
 ```
 
-These are trivially true by `rfl`. Verify they build.
+Actually, this needs the `hk_triv` hypothesis. The inversion depends on k being trivial-preserving.
 
-## PRIORITY 1: Prove `noCallFrameReturn_of_append` for CC objectLit/arrayLit
-
-The CC staging proofs need: `propListNoCallFrameReturn (a ++ b) = true ↔ propListNoCallFrameReturn a = true ∧ propListNoCallFrameReturn b = true`
-
-Write in `.lake/_tmp_fix/VerifiedJS/Proofs/cc_objectLit_arrayLit_helpers.lean` (append):
+**Better approach**: Write case-by-case lemmas:
 
 ```lean
-theorem propListNoCallFrameReturn_append (a b : List (String × Core.Expr)) :
-    propListNoCallFrameReturn (a ++ b) = (propListNoCallFrameReturn a && propListNoCallFrameReturn b) := by
-  induction a with
-  | nil => simp [propListNoCallFrameReturn]
-  | cons hd tl ih => simp [propListNoCallFrameReturn, ih, Bool.and_assoc]
-
-theorem listNoCallFrameReturn_append (a b : List Core.Expr) :
-    listNoCallFrameReturn (a ++ b) = (listNoCallFrameReturn a && listNoCallFrameReturn b) := by
-  induction a with
-  | nil => simp [listNoCallFrameReturn]
-  | cons hd tl ih => simp [listNoCallFrameReturn, ih, Bool.and_assoc]
+/-- normalizeExpr of a value/var applies k, never produces .let directly -/
+theorem normalizeExpr_lit_not_let (v : Flat.Value) (k : ANF.Trivial → ANF.ConvM ANF.Expr)
+    (hk : ∀ arg n', ∃ m', (k arg).run n' = Except.ok (ANF.Expr.trivial arg, m'))
+    (n m : Nat) (name : String) (rhs : ANF.ComplexExpr) (body : ANF.Expr) :
+    (ANF.normalizeExpr (.lit v) k).run n ≠ Except.ok (ANF.Expr.let name rhs body, m) := by
+  simp [ANF.normalizeExpr, StateT.run, StateT.pure, pure, Pure.pure, Except.pure]
+  intro h
+  obtain ⟨m', hm'⟩ := hk (ANF.trivialOfFlatValue v) n  -- need trivialOfFlatValue
+  sorry -- show k output is .trivial, not .let
 ```
 
-## PRIORITY 2: Prove `convertPropList_append` for CC objectLit CCState threading
+Hmm, this is getting complex. Let me simplify.
+
+**The REAL priority**: Write `normalizeExpr_produces_let_iff_bindComplex` which shows that `.let` in the output always comes from `bindComplex`. This is structural from the definition.
+
+Check the `normalizeExpr` definition in `VerifiedJS/ANF/Convert.lean` to see which cases call `bindComplex` and which call `k` directly. Then enumerate.
+
+## PRIORITY 1: normalizeExpr_supported_no_yield_await
+
+Write a lemma showing that if the input expression is supported, normalizeExpr can't produce yield/await:
 
 ```lean
-theorem convertPropList_append (a b : List (String × Core.Expr))
-    (scope : Flat.Scope) (envVar : String) (envMap : Std.HashMap String Nat) (st : Flat.CCState) :
-    (Flat.convertPropList (a ++ b) scope envVar envMap st).fst =
-      (Flat.convertPropList a scope envVar envMap st).fst ++
-      (Flat.convertPropList b scope envVar envMap (Flat.convertPropList a scope envVar envMap st).snd).fst := by
-  induction a with
-  | nil => simp [Flat.convertPropList]
-  | cons hd tl ih => simp [Flat.convertPropList, ih]
+theorem normalizeExpr_supported_no_yield (e : Flat.Expr) (k : ANF.Trivial → ANF.ConvM ANF.Expr)
+    (hsupp : e.supported = true)
+    (hk_no_yield : ∀ arg n' m' res, (k arg).run n' = Except.ok (res, m') → ¬ res.isYield)
+    (n m : Nat) (result : ANF.Expr)
+    (h : (ANF.normalizeExpr e k).run n = Except.ok (result, m)) :
+    ¬ result.isYield := by
+  induction e generalizing k n m result with
+  | yield arg delegate => simp [Core.Expr.supported] at hsupp
+  | await arg => simp [Core.Expr.supported] at hsupp
+  | ... => sorry -- each case: recurse or use hk_no_yield
 ```
 
-Check actual definition first:
+This requires `ANF.Expr.isYield` to exist. Check if it does:
 ```
-grep -n "def convertPropList" VerifiedJS/Flat/Syntax.lean VerifiedJS/Flat/Convert.lean
+grep -n "isYield\|is_yield" VerifiedJS/ANF/Syntax.lean
 ```
 
-## PRIORITY 3: Check if `bindComplex` continuations are trivial-preserving
+If not, define it. Or just prove the negation directly without a predicate.
 
-The compound cases (L1632, L1698, L1715) use `bindComplex`. Check whether the continuations generated by bindComplex satisfy `∀ arg n', ∃ m', (k arg).run n' = ok (k_result arg, m')`.
-
-Look at `bindComplex` definition in `VerifiedJS/ANF/Convert.lean` and determine if the continuation it produces is trivial-preserving. If yes, write a theorem. If no, document why in staging.
+## PRIORITY 2: Continue staging lemmas from last prompt
+- `propListNoCallFrameReturn_append`
+- `listNoCallFrameReturn_append`
+- `convertPropList_append`
+(Only if Priority 0/1 complete)
 
 ## FILES YOU CAN EDIT
 - `.lake/_tmp_fix/VerifiedJS/**/*.lean` (staging area)
@@ -76,5 +86,7 @@ Look at `bindComplex` definition in `VerifiedJS/ANF/Convert.lean` and determine 
 - `VerifiedJS/Proofs/ANFConvertCorrect.lean` (owned by proof)
 - `VerifiedJS/Proofs/ClosureConvertCorrect.lean` (owned by proof)
 - `VerifiedJS/Wasm/Semantics.lean` (owned by wasmspec)
+- `VerifiedJS/ANF/Semantics.lean` (owned by wasmspec)
+- `VerifiedJS/ANF/Convert.lean` (owned by proof)
 
 ## LOG to agents/jsspec/log.md with exact results

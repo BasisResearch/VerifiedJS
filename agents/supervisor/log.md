@@ -5845,3 +5845,67 @@ ANF sorry count effectively unchanged (structural improvements but no net closur
 ## Run: 2026-03-28T16:00:02+00:00
 
 2026-03-28T16:05:01+00:00 SKIP: already running
+
+### Metrics
+- **Sorry count (grep -c)**: 55 (17 ANF + 19 CC + 18 Wasm + 1 Lower)
+- **Delta from last run (15:30)**: ZERO. No agent produced changes since 12:30.
+
+### Agent Status
+
+#### proof agent: STALLED since 12:30
+- Last productive: 12:30 (depth induction restructuring, setProp/setIndex integration)
+- Runs at 14:30+: EXIT code 1 or old prompt
+- Key discovery: **4 semantic mismatches** (throw/return/break/continue) are PERMANENTLY UNPROVABLE with current ANF semantics
+- break/continue: ANF=`.silent`, Flat=`.error "break:..."/"continue:..."`
+- return: ANF=`.silent`, Flat=`.error "return:..."`
+- throw: ANF=`.error "throw"`, Flat=`.error (valueToString v)`
+
+#### jsspec agent: STALLED
+- Last productive: 06:00 (continuation no-confusion lemmas)
+- Wrote let_k_not_labeled, if_k_not_labeled, bindComplex_k_not_labeled
+- Blocked by file permissions (can't edit Convert.lean or ANFConvertCorrect.lean)
+
+#### wasmspec agent: STALLED
+- Running 2+ hours per run or crashing
+- No sorry count changes visible
+- step_sim theorem LACKS supported hypothesis → can't close yield/await with exfalso
+
+### ROOT CAUSE ANALYSIS: Why sorry count isn't decreasing
+
+1. **ANF semantic mismatches** (4 sorries): break/continue/return/throw produce different events in ANF vs Flat. This is a DESIGN BUG in ANF/Semantics.lean. Blocks proof agent.
+2. **No supported hypothesis in step_sim** (2+ Wasm sorries): yield/await are unsupported but step_sim can't use that fact.
+3. **Continuation not trivial-preserving** (7 ANF sorries): depth induction IH cases need hk generalization or normalizeExpr inversion.
+4. **Agent crashes** (EXIT code 1): Intermittent API auth failures causing lost cycles.
+
+### Prompt Rewrites (all 3 agents)
+
+1. **wasmspec** (CRITICAL PATH): 
+   - PRIORITY 0: Fix ANF semantics for break/continue/return/throw to produce `.error` events matching Flat
+   - This unblocks 4 ANF sorries for proof agent
+   - Gave exact code diffs for all 4 fixes
+   - PRIORITY 1: Add supported hypothesis to step_sim, close yield/await
+   
+2. **proof**: 
+   - Marked break/continue/return/throw as BLOCKED until wasmspec fixes semantics
+   - Redirected to let/seq/if cases (L1795-1799) which don't have semantic mismatches
+   - These need normalizeExpr inversion lemmas (delegated to jsspec)
+   
+3. **jsspec**:
+   - PRIORITY 0: normalizeExpr inversion lemmas for .let output characterization
+   - PRIORITY 1: normalizeExpr_supported_no_yield_await propagation lemma
+   - Stopped return/yield trivial-preserving work (superseded by semantic fix)
+
+### Key Discovery This Run
+**The ANF semantics are WRONG for break/continue/return/throw.** They produce `.silent`/`.error "throw"` while Flat produces `.error "break:..."` etc. This isn't a proof gap — it's a semantics design bug. Fix is straightforward: 4 edits to ANF/Semantics.lean L376-452.
+
+### OUTLOOK
+- If wasmspec fixes ANF semantics: -4 ANF sorries (break/continue/return/throw)  
+- If wasmspec adds supported to step_sim: -2 Wasm sorries (yield/await)
+- If proof closes let/seq/if: -3 ANF sorries
+- **Best case next run: 55 → 46 (-9)**
+- **Realistic next run: 55 → 51 (-4, just the semantic fix)**
+
+### RISK: wasmspec has been unreliable (2+ hour runs, crashes). The semantic fix is 4 small edits — if wasmspec can't do it in 1 run, escalate.
+
+2026-03-28T16:08:12+00:00 DONE
+2026-03-28T16:08:25+00:00 DONE

@@ -11694,8 +11694,8 @@ theorem step_sim (irmod : IRModule) (wmod : Module) :
                         have hgsz : grownMem.size = s1.memory.size + pages.toNat * 65536 := by
                           simp only [grownMem, ByteArray.size, Array.size_append, Array.size_replicate]
                           have : s1.memory.toList.toArray.size = s1.memory.size := by
-                            rw [List.size_toArray]
-                            simp [ByteArray.toList, ByteArray.size, ← Array.size_eq_length_toList]
+                            rw [List.size_toArray, ByteArray.toList,
+                              ← Array.size_eq_length_toList, ByteArray.size]
                           omega
                         rw [hgsz]
                         exact Nat.dvd_add hrel.hmemory_aligned ⟨pages.toNat, Nat.mul_comm _ _⟩
