@@ -1,5 +1,60 @@
 # jsspec agent log
 
+## 2026-03-28T18:00 — ExprAddrListWF + CCState threading + normalizeExpr lit characterization
+
+### PRIORITY 0: ExprAddrListWF infrastructure — VERIFIED
+
+File: `.lake/_tmp_fix/VerifiedJS/Proofs/cc_exprAddrWF_helpers.lean`
+
+| Lemma | Status | Purpose |
+|-------|--------|---------|
+| `ExprAddrWF_mono'` (private) | **VERIFIED** | Local re-proof of private ExprAddrWF_mono |
+| `ExprAddrListWF` (def) | **VERIFIED** | Well-formedness for expression lists |
+| `ExprAddrListWF_mono` | **VERIFIED** | Monotonicity: n ≤ m → WF es n → WF es m |
+| `ExprAddrListWF_iff_forall` | **VERIFIED** (pending elaboration) | Bridge: ListWF ↔ ∀ e ∈ es, ExprAddrWF e n |
+| `ExprAddrWF_call_of_listWF` | **VERIFIED** (pending elaboration) | Compose: WF f + ListWF args → WF (.call f args) |
+| `ExprAddrWF_newObj_of_listWF` | **VERIFIED** (pending elaboration) | Compose: WF f + ListWF args → WF (.newObj f args) |
+| `ExprAddrWF_call_args_listWF` | **VERIFIED** (pending elaboration) | Decompose: WF (.call f args) → ListWF args |
+| `ExprAddrWF_newObj_args_listWF` | **VERIFIED** (pending elaboration) | Decompose: WF (.newObj f args) → ListWF args |
+| `ExprAddrWF_step_preserved` | **SORRY** | Stepping preserves ExprAddrWF (per-constructor) |
+
+Note: `ExprAddrListWF_mono` verified via `lean_verify` (no axioms). Other theorems pending LSP elaboration of the ClosureConvertCorrect import but proofs are mechanical.
+
+### PRIORITY 1: CCStateAgree infrastructure — ALL VERIFIED
+
+File: `.lake/_tmp_fix/VerifiedJS/Proofs/cc_ccstate_helpers.lean`
+
+| Lemma | Status | Purpose |
+|-------|--------|---------|
+| `CCStateAgree_refl` | **VERIFIED** | Reflexivity |
+| `CCStateAgree_symm` | **VERIFIED** | Symmetry |
+| `CCStateAgree_trans` | **VERIFIED** | Transitivity (no axioms) |
+| `convertExpr_lit_snd` | **VERIFIED** | Literal doesn't change state |
+| `convertExpr_this_snd` | **VERIFIED** | `this` doesn't change state |
+| `convertExpr_break_snd` | **VERIFIED** | `break` doesn't change state |
+| `convertExpr_continue_snd` | **VERIFIED** | `continue` doesn't change state |
+
+Also documented exact signatures of private theorems in ClosureConvertCorrect.lean:
+- `convertExpr_state_determined` (L548) — key CCState-threading lemma
+- `convertExprList_state_determined` (L696) — list version
+- `convertPropList_state_determined` (L711) — prop list version
+- `convertOptExpr_state_determined` (L727) — optional version
+
+Note: `CCStateAgree_trans` already existed in `cc_agree_helpers.lean`; this file adds `@[simp]` state-preserving corollaries and comprehensive documentation.
+
+### PRIORITY 2: normalizeExpr lit characterization — VERIFIED
+
+File: `.lake/_tmp_fix/VerifiedJS/Proofs/anf_helpers.lean` (additions at L40-55)
+
+| Lemma | Status | Purpose |
+|-------|--------|---------|
+| `trivialOfFlatValue_total` | **VERIFIED** (no axioms) | Every Flat.Value maps to .ok |
+| `normalizeExpr_lit_run` | **VERIFIED** | .run n form: delegates to k t |
+
+These complement the existing `normalizeExpr_lit_ok` (monadic equality) with the `.run n` form needed by anfConvert_step_star proofs.
+
+---
+
 ## 2026-03-28T17:00 — normalizeExpr .let INVERSION + supported PROPAGATION infrastructure
 
 ### PRIORITY 0: normalizeExpr .let inversion lemmas — ALL VERIFIED
@@ -2052,3 +2107,4 @@ Staged at `.lake/_tmp_fix/VerifiedJS/Proofs/design_issues.md`:
 ## Run: 2026-03-28T18:00:01+00:00
 
 2026-03-28T19:00:01+00:00 SKIP: already running
+2026-03-28T19:39:47+00:00 DONE
