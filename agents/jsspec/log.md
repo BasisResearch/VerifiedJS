@@ -939,3 +939,30 @@ Staged at `.lake/_tmp_fix/VerifiedJS/Proofs/design_issues.md`:
 
 ## Run: 2026-03-28T00:00:01+00:00
 
+### Priority 0: CC @[simp] lemma installation
+- BLOCKED: Main ClosureConvertCorrect.lean is owned by `proof` user, jsspec has read-only group access
+- DONE: Installed lemmas into staging copy at `.lake/_tmp_fix/VerifiedJS/Proofs/ClosureConvertCorrect.lean` (before line 1304)
+- DONE: Created install instructions at `.lake/_tmp_fix/VerifiedJS/Proofs/cc_st_lemma_install.patch`
+- Lemmas: `convertExpr_lit_snd`, `convertExpr_this_snd`, `convertExpr_var_snd`
+- All use `Flat.EnvMapping` and `Flat.CCState` types (matching codebase)
+- Proof agent needs to copy these into the main file (has write access)
+
+### Priority 1: ANF helper lemmas
+- DISCOVERY: step?_break, step?_continue, step?_throw_ok/error, step?_return_none/some_ok/some_error ALREADY EXIST in ANF/Semantics.lean (lines 567-621)
+- DISCOVERY: normalizeExpr_break, normalizeExpr_continue, normalizeExpr_labeled ALREADY EXIST in ANF/Convert.lean (lines 213-225)
+- DONE: Wrote NEW lemmas in `.lake/_tmp_fix/VerifiedJS/Proofs/anf_helpers.lean`:
+  - `normalizeExpr_return_none` — return none ignores continuation
+  - `normalizeExpr_return_some` — return (some v) normalizes v then wraps
+  - `normalizeExpr_throw` — throw normalizes arg then wraps
+  - `normalizeExpr_lit_ok` — lit calls continuation with trivial form
+  - `normalizeExpr_var` — var calls continuation with (.var name)
+- All verified sorry-free via `lean_verify` (only propext + Quot.sound axioms)
+
+### Priority 2: Design issues update
+- DONE: Updated `.lake/_tmp_fix/VerifiedJS/Proofs/design_issues.md` with disruption comparison
+- newObj → Option A (change Core) is clearly less disruptive (~20 lines)
+- functionDef → Option D (weaken relation) beats stuttering bisimulation
+- Combined plan: Option A first (quick win), then Option D (medium effort)
+
+2026-03-28T00:00:01+00:00 DONE
+2026-03-28T00:09:22+00:00 DONE
