@@ -1,127 +1,100 @@
-# wasmspec — FIX ANF SEMANTICS + CLOSE WASM SORRIES
+# wasmspec — ANF SEMANTICS FIX + LOWER_MAIN_CODE_CORR
 
-## STATUS: 18 Wasm sorries. ANF semantics have SEMANTIC MISMATCHES blocking 4+ proof-agent sorries. FIX THESE FIRST.
+## STATUS: 18 grep / 16 actual Wasm sorries. ALL step_sim 1:1 cases blocked (compound/1:N). Build passes.
 
-## PRIORITY 0: Fix ANF break/continue/return/throw semantics (-4 ANF sorries unblocked)
+## CRITICAL: You've failed to make the ANF semantics fix for 3+ runs. DO IT NOW.
 
-**File: `VerifiedJS/ANF/Semantics.lean` (you own this file)**
+## PRIORITY 0: Fix ANF break/continue/return/throw semantics
 
-The ANF semantics produce `.silent` for break/continue/return but Flat produces `.error "break:..."` etc. This mismatch makes 4 sorries in ANFConvertCorrect.lean PERMANENTLY UNPROVABLE. You MUST fix this.
+**File: `VerifiedJS/ANF/Semantics.lean`**
+
+The ANF semantics produce `.silent` for break/continue/return but Core/Flat produce `.error`. This mismatch blocks ANF proofs. Fix these 4 cases:
 
 ### Fix 1: break (L447-449)
-Change from:
 ```lean
-| .«break» label =>
-    let s' := pushTrace { s with expr := .trivial .litUndefined } .silent
-    some (.silent, s')
-```
-To:
-```lean
-| .«break» label =>
-    let l := label.getD ""
-    let msg := "break:" ++ l
-    let s' := pushTrace { s with expr := .trivial .litUndefined } (.error msg)
-    some (.error msg, s')
+  | .«break» label =>
+      let l := match label with | some s => "break:" ++ s | none => "break:"
+      let s' := pushTrace { s with expr := .trivial .litUndefined } (.error l)
+      some (.error l, s')
 ```
 
 ### Fix 2: continue (L450-452)
-Change from:
 ```lean
-| .«continue» label =>
-    let s' := pushTrace { s with expr := .trivial .litUndefined } .silent
-    some (.silent, s')
+  | .«continue» label =>
+      let l := match label with | some s => "continue:" ++ s | none => "continue:"
+      let s' := pushTrace { s with expr := .trivial .litUndefined } (.error l)
+      some (.error l, s')
 ```
-To:
+
+### Fix 3: return none (L411-413)
 ```lean
-| .«continue» label =>
-    let l := label.getD ""
-    let msg := "continue:" ++ l
-    let s' := pushTrace { s with expr := .trivial .litUndefined } (.error msg)
-    some (.error msg, s')
+      | none =>
+          let s' := pushTrace { s with expr := .trivial .litUndefined } (.error "return:undefined")
+          some (.error "return:undefined", s')
 ```
 
-### Fix 3: return (L409-421)
-Change from `.silent` events to `.error "return:..."` events:
+### Fix 4: return some — ok case (L415-418)
 ```lean
-| .«return» arg =>
-    match arg with
-    | none =>
-        let s' := pushTrace { s with expr := .trivial .litUndefined } (.error "return:undefined")
-        some (.error "return:undefined", s')
-    | some t =>
-        match evalTrivial s.env t with
-        | .ok v =>
-            let msg := "return:" ++ Core.valueToString v
-            let s' := pushTrace { s with expr := .trivial (trivialOfValue v) } (.error msg)
-            some (.error msg, s')
-        | .error msg =>
-            let s' := pushTrace { s with expr := .trivial .litUndefined } (.error msg)
-            some (.error msg, s')
+      | some t =>
+          match evalTrivial s.env t with
+          | .ok v =>
+              let msg := "return:" ++ Core.valueToString v
+              let s' := pushTrace { s with expr := .trivial (trivialOfValue v) } (.error msg)
+              some (.error msg, s')
 ```
 
-### Fix 4: throw (L376-383)
-Change `.error "throw"` to `.error (Core.valueToString v)` to match Flat:
+### Fix 5: throw — ok case (L378-380)
 ```lean
-| .throw arg =>
-    match evalTrivial s.env arg with
-    | .ok v =>
-        let msg := Core.valueToString v
-        let s' := pushTrace { s with expr := .trivial .litUndefined } (.error msg)
-        some (.error msg, s')
-    | .error msg =>
-        let s' := pushTrace { s with expr := .trivial .litUndefined } (.error msg)
-        some (.error msg, s')
+      | .ok v =>
+          let msg := Core.valueToString v
+          let s' := pushTrace { s with expr := .trivial .litUndefined } (.error msg)
+          some (.error msg, s')
 ```
 
-**IMPORTANT**: After making these changes, build:
-```
-lake env lean VerifiedJS/ANF/Semantics.lean
-```
-If `Core.valueToString` isn't in scope, check if it's `VerifiedJS.Core.valueToString` or `Flat.valueToString`. The file imports `VerifiedJS.Core.Semantics` so `Core.valueToString` should work.
+`Core.valueToString` is in scope (file imports `VerifiedJS.Core.Semantics`).
 
-**After build succeeds**, also check:
+### AFTER changing step?, fix the simp lemmas (L567-621):
+
+1. `step?_break` (L567): change `.silent` to `.error l` with the match expression
+2. `step?_continue` (L575): same
+3. `step?_throw_ok` (L583): change `(.error "throw")` to `(.error (Core.valueToString v))`
+   — add hypothesis `(v : Flat.Value)` and use it
+4. `step?_return_none` (L601): change `.silent` to `(.error "return:undefined")`
+5. `step?_return_some_ok` (L608): change `.silent` to `(.error ("return:" ++ Core.valueToString v))`
+
+Each simp lemma proof is `simp [step?, h]` — should still work after the change.
+
+**WARNING**: This WILL break 9 uses of `step?_return_some_ok` in step_sim_stutter (L6856-7341). Each one currently matches `.silent` and will need to match `.error "return:..."`. The proofs use `hanf` to derive the trace event, so updating the lemma statement should cascade correctly through `simp`. But CHECK:
 ```
-lake env lean VerifiedJS/Proofs/ANFConvertCorrect.lean 2>&1 | grep -c "error"
+lake env lean VerifiedJS/Wasm/Semantics.lean 2>&1 | grep "error" | head -20
 ```
-The sorry cases at L1808-1853 will still be sorry'd but should still build (they don't reference the specific event values).
 
-## PRIORITY 1: Close yield/await in Wasm with `h_supported` hypothesis
+If Wasm breaks, look at each `step?_return_some_ok` use site and update the proof to handle `.error` instead of `.silent`.
 
-The `step_sim` theorem at L6631 does NOT have a supported hypothesis. You need to ADD one.
+## PRIORITY 1: Prove lower_main_code_corr (replace axiom with theorem)
 
-Change the signature from:
+`lower_main_code_corr` at L6565 is an **axiom**. It should be a theorem proved from the `lower` function definition. This blocks the end-to-end proof at a fundamental level.
+
+Check `VerifiedJS/Wasm/Lower.lean` for the `lower` and `lowerExpr` definitions. The theorem needs:
 ```lean
-theorem step_sim (prog : ANF.Program) (irmod : IRModule) :
-    ∀ (s1 : ANF.State) (s2 : IRExecState) (t : TraceEvent) (s1' : ANF.State),
-    LowerSimRel prog irmod s1 s2 → anfStepMapped s1 = some (t, s1') →
-    ∃ s2', irStep? s2 = some (t, s2') ∧ LowerSimRel prog irmod s1' s2'
-```
-To:
-```lean
-theorem step_sim (prog : ANF.Program) (irmod : IRModule) :
-    ∀ (s1 : ANF.State) (s2 : IRExecState) (t : TraceEvent) (s1' : ANF.State),
-    s1.expr.supported = true →
-    LowerSimRel prog irmod s1 s2 → anfStepMapped s1 = some (t, s1') →
-    ∃ s2', irStep? s2 = some (t, s2') ∧ LowerSimRel prog irmod s1' s2'
+theorem lower_main_code_corr (prog : ANF.Program) (irmod : IRModule)
+    (h : Wasm.lower prog = .ok irmod) :
+    LowerCodeCorr prog.main (irInitialState irmod).code
 ```
 
-Wait — `ANF.Expr` doesn't have `.supported`. You need `Core.Expr.supported` but ANF uses `ANF.Expr`. Check if there's an `ANF.Expr.supported` or if you need to define one first. If not, you may need to thread the supported predicate from the Flat/Core level.
-
-If adding supported is too complex, use this alternative approach: prove that yield/await cases are unreachable because `anfStepMapped` on `.yield`/`.await` still produces valid step results. Just close the sorry by following the ANF step? equation:
-- yield (none): ANF produces `.silent` → show IR can match
-- yield (some): ANF evaluates trivial → show IR can match
-- await: same pattern
-
-Check if `lowerExpr` for yield/await produces any IR. If it maps to nothing (stub/unreachable), you may need exfalso via LowerCodeCorr inversion.
-
-## PRIORITY 2: Close break/continue in Wasm (L6813, L6816)
-
-After fixing ANF semantics (Priority 0), break now produces `.error "break:..."`. Check what `lowerExpr` produces for break and follow the pattern.
+If `lowerExpr` is private, you may need to make it `protected` or add a public wrapper.
 
 ## DO NOT ATTEMPT
-- Compound cases (L6738-6759)
-- return-some (L6801)
-- call cases (L10776, 10831, 10835)
+- step_sim 1:1 cases (ALL blocked — compound/1:N)
+- callIndirect (NOT exfalso, needs full proof)
+- call cases (blocked by hframes_one)
 
 ## FILE: `VerifiedJS/ANF/Semantics.lean` (rw), `VerifiedJS/Wasm/Semantics.lean` (rw)
-## LOG to agents/wasmspec/log.md
+
+## WORKFLOW
+1. Make ALL 5 step? definition changes at once
+2. Update ALL 5 simp lemma statements
+3. Build ANF/Semantics.lean first
+4. Then build Wasm/Semantics.lean — fix any cascade errors
+5. Build ANFConvertCorrect.lean — should still pass (sorries don't reference specific events)
+6. Log to agents/wasmspec/log.md with EXACT sorry counts and build status

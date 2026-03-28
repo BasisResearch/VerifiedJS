@@ -375,9 +375,10 @@ def step? (s : State) : Option (Core.TraceEvent × State) :=
           | none => none
   | .throw arg =>
       match evalTrivial s.env arg with
-      | .ok _ =>
-          let s' := pushTrace { s with expr := .trivial .litUndefined } (.error "throw")
-          some (.error "throw", s')
+      | .ok v =>
+          let msg := Core.valueToString v
+          let s' := pushTrace { s with expr := .trivial .litUndefined } (.error msg)
+          some (.error msg, s')
       | .error msg =>
           let s' := pushTrace { s with expr := .trivial .litUndefined } (.error msg)
           some (.error msg, s')
@@ -409,13 +410,14 @@ def step? (s : State) : Option (Core.TraceEvent × State) :=
   | .«return» arg =>
       match arg with
       | none =>
-          let s' := pushTrace { s with expr := .trivial .litUndefined } .silent
-          some (.silent, s')
+          let s' := pushTrace { s with expr := .trivial .litUndefined } (.error "return:undefined")
+          some (.error "return:undefined", s')
       | some t =>
           match evalTrivial s.env t with
           | .ok v =>
-              let s' := pushTrace { s with expr := .trivial (trivialOfValue v) } .silent
-              some (.silent, s')
+              let msg := "return:" ++ Core.valueToString v
+              let s' := pushTrace { s with expr := .trivial (trivialOfValue v) } (.error msg)
+              some (.error msg, s')
           | .error msg =>
               let s' := pushTrace { s with expr := .trivial .litUndefined } (.error msg)
               some (.error msg, s')
@@ -445,11 +447,15 @@ def step? (s : State) : Option (Core.TraceEvent × State) :=
       let s' := pushTrace { s with expr := body } .silent
       some (.silent, s')
   | .«break» label =>
-      let s' := pushTrace { s with expr := .trivial .litUndefined } .silent
-      some (.silent, s')
+      let l := label.getD ""
+      let msg := "break:" ++ l
+      let s' := pushTrace { s with expr := .trivial .litUndefined } (.error msg)
+      some (.error msg, s')
   | .«continue» label =>
-      let s' := pushTrace { s with expr := .trivial .litUndefined } .silent
-      some (.silent, s')
+      let l := label.getD ""
+      let msg := "continue:" ++ l
+      let s' := pushTrace { s with expr := .trivial .litUndefined } (.error msg)
+      some (.error msg, s')
   termination_by s.expr.depth
   decreasing_by all_goals (try cases ‹Option Expr›) <;> simp_all [Expr.depth] <;> omega
 

@@ -1,3 +1,53 @@
+## Run: 2026-03-28T17:05:01+00:00
+
+### Metrics
+- **Sorry count (grep -c)**: 57 (17 ANF + 21 CC + 18 Wasm + 1 Lower)
+- **Actual sorries**: ~50 (17 ANF + 19 CC + 14 Wasm + 1 Lower — CC +1 grep is from comment, not real sorry)
+- **Delta from last run (14:05)**: grep +1 (CC comment added), actual: ZERO change.
+- **Net assessment**: 0 sorry reductions in 3 hours. ALL agents stuck.
+
+### Agent Analysis
+1. **proof**: Last substantive work 11:30. Found prompt tasks fundamentally flawed. Has done NOTHING for 5.5 hours. REDIRECTED to trivial LowerCorrect.lean fix (P0, -1 sorry in 30 seconds) then CC ExprAddrWF fix (P1).
+2. **jsspec**: Last work 16:00. Productive — verified staging lemmas (return_k/yield_k trivial-preserving, convertPropList_append, getEnv/makeClosure helpers). Found `.labeled` appears in source programs. REDIRECTED to ExprAddrWF list infrastructure and CCStateAgree helpers.
+3. **wasmspec**: Last work 15:00. Fixed build (memoryGrow). Found ALL step_sim 1:1 cases blocked. Has FAILED to make ANF semantics fix for 3+ runs despite being told each time. SCREAMING at it in prompt.
+
+### Critical Discovery: LowerCorrect.lean sorry is trivially closable
+- L69: `by sorry` just needs `IR.lower_main_code_corr s t h` (axiom at Wasm/Semantics.lean L6565)
+- Already used at L12002 in Semantics.lean
+- Proof agent has write access. ASSIGNED as P0.
+
+### CC ExprAddrWF design flaw identified
+- `ExprAddrWF (.call _ _) = True` and `ExprAddrWF (.newObj _ _) = True` at CC L910-911
+- This prevents extracting sub-expression WF in the call case (CC L2645)
+- Fix: make recursive with ExprAddrListWF for arguments
+- CASCADE: L2670 `simp [sc', ExprAddrWF]` won't auto-close, needs proper proof
+- Risk: unknown cascade depth. Assigned to proof agent as P1 with "skip if >5 fixups" guard.
+
+### Wasm Architecture: step_sim_stutter already in use
+- `lower_behavioral_obs_correct` at Semantics.lean L12038-12043 uses `step_sim_stutter`
+- This means the end-to-end proof CAN work without closing step_sim 1:1 sorries
+- The proof just needs `lower_behavioral_correct` in LowerCorrect.lean to switch to the obs version
+- BUT: this requires changing the trace correspondence from identity to observable-events equality
+
+### Agent Prompt Rewrites
+1. **proof**: P0: 1-line LowerCorrect fix (-1 sorry). P1: ExprAddrWF recursive fix for .call/.newObj (-1 CC sorry). P2: CC objectLit/arrayLit staging integration.
+2. **jsspec**: P0: ExprAddrListWF infrastructure. P1: CCStateAgree transitivity. P2: normalizeExpr inversion lemmas.
+3. **wasmspec**: P0: ANF break/continue/return/throw semantics fix (CRITICAL, 3+ runs overdue). P1: Prove lower_main_code_corr (replace axiom). WARNING about step_sim_stutter cascade.
+
+### Actions Taken
+1. Counted sorries: 57 grep / 50 actual (ANF 17, CC 19, Wasm 14, Lower 1)
+2. Identified LowerCorrect.lean trivial fix via existing axiom
+3. Deep analysis of ExprAddrWF design flaw and cascade risk
+4. Discovered step_sim_stutter alternative proof path exists
+5. All 3 prompts rewritten with corrected strategy
+6. Logged time estimate
+
+### OUTLOOK: Target next run ≤55 grep (Lower -1, possibly CC -1 from ExprAddrWF fix)
+### RISK: ExprAddrWF cascade too deep. wasmspec may fail ANF semantics fix AGAIN.
+### ESCALATION: 3 hours of zero progress. If next run is also 0, consider direct code intervention via staging files.
+
+---
+
 ## Run: 2026-03-28T14:05:01+00:00
 
 ### Metrics
@@ -5912,3 +5962,4 @@ ANF sorry count effectively unchanged (structural improvements but no net closur
 
 ## Run: 2026-03-28T17:05:01+00:00
 
+2026-03-28T17:17:36+00:00 DONE

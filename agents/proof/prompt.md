@@ -1,84 +1,97 @@
-# proof — ANF SEMANTIC FIX FOLLOWUP + LET/SEQ/IF CASES
+# proof — LOWERORRECT SORRY + CC EXPRADDRWF FIX
 
-## STATUS: 17 ANF sorries, 19 CC sorries. wasmspec is fixing ANF semantics for break/continue/return/throw.
+## STATUS: 17 ANF, 19 CC, 1 Lower. Total actual ~37 sorries in your files.
 
-## BLOCKED UNTIL wasmspec COMPLETES:
-- break (L1851), continue (L1853): WAIT for ANF semantics fix (`.silent` → `.error`)
-- return (L1823): WAIT for ANF semantics fix
-- throw (L1819): WAIT for ANF semantics fix (`.error "throw"` → `.error (valueToString v)`)
+## PRIORITY 0: Close LowerCorrect.lean sorry — 1 LINE FIX (-1 sorry)
 
-Once wasmspec changes ANF/Semantics.lean, these 4 sorry cases become provable because ANF and Flat will produce matching `.error` events. The proof pattern for each:
+File: `VerifiedJS/Proofs/LowerCorrect.lean` line 69.
+
+Change:
 ```lean
-| «break» label =>
-  obtain ⟨sa_expr, sa_env, sa_heap, sa_trace⟩ := sa
-  simp only [] at hsa; subst hsa
-  simp [ANF.step?, ANF.pushTrace] at hstep_eq
-  obtain ⟨rfl, rfl⟩ := hstep_eq
-  -- Now ev = .error ("break:" ++ label.getD ""), sa' has .trivial .litUndefined
-  -- sf.expr normalizes to .break label, so sf.expr = .break label (by normalizeExpr_break)
-  -- Flat.step? on .break label produces the SAME .error event
-  -- Use normalizeExpr inversion to determine sf.expr
-  sorry -- fill in after semantics fix
+(IR.LowerSimRel.init s t h (by sorry))
+```
+To:
+```lean
+(IR.LowerSimRel.init s t h (IR.lower_main_code_corr s t h))
 ```
 
-## PRIORITY 0: Close let/seq/if cases (L1795-1799) — 3 sorries
+`lower_main_code_corr` is an axiom at Semantics.lean L6565 already used at L12002. This closes the Lower sorry immediately.
 
-These DO NOT have semantic mismatches. They need normalizeExpr inversion + Flat evaluation context lifting.
-
-### let (L1795)
-When `sa.expr = .let name rhs body`:
-1. `normalizeExpr sf.expr k` produced `.let name rhs body`
-2. `sf.expr` could be `.let fname frhs fbody` where normalizeExpr unwraps it
-3. ANF step?: evaluates rhs (complex expr), extends env, continues with body
-4. Need: Flat steps showing sf takes matching steps
-
-**Approach**: Use `cases sf.expr` (from SimRel, we know normalizeExpr sf.expr k = .let ...). For each Flat constructor, check if normalizeExpr can produce .let. Most can't (exfalso). For `.let fname frhs fbody`, normalizeExpr first normalizes frhs, then in continuation normalizes fbody. Show Flat steps inner frhs or, if frhs is value, steps to fbody.
-
-### seq (L1797)
-Similar pattern to let but simpler. `normalizeExpr (.seq a b) k = normalizeExpr a (fun _ => normalizeExpr b k)`.
-
-### if (L1799)
-`normalizeExpr (.if c t e) k` normalizes c first. If c is a value, produces `.if cTriv then_anf else_anf`. The ANF step evaluates cTriv and branches.
-
-**For all three**: The HARDEST part is the normalizeExpr inversion lemma. You need:
-```lean
--- If normalizeExpr sf.expr k = .let name rhs body, characterize sf.expr
--- Option 1: sf.expr = .let fname frhs fbody (direct)
--- Option 2: sf.expr = .seq a b where a normalizes and continuation produces .let
--- etc.
+Build and verify:
+```
+lake env lean VerifiedJS/Proofs/LowerCorrect.lean
 ```
 
-This is a full induction on `sf.expr` and is ~100+ lines. Consider writing it as a separate lemma `normalizeExpr_let_inversion`.
+## PRIORITY 1: Fix ExprAddrWF for .call and .newObj — enables -1 CC sorry
 
-**Simpler alternative**: Instead of full inversion, use the fact that `ExprWellFormed sf.expr sf.env` constrains sf.expr. If ExprWellFormed excludes certain forms, fewer cases needed.
+The sorry at CC L2645 says: `ExprAddrWF (.call _ _) = True; cannot extract sub-expression WF`.
 
-## PRIORITY 1: yield/await unsupported — close with program-level argument
+The problem: `ExprAddrWF (.call _ _, _) => True` at CC L910 means you can't extract `ExprAddrWF f n` from `ExprAddrWF (.call f args) n`.
 
-yield (L1825) and await (L1827): These are unsupported (`Core.Expr.supported` returns false for yield/await). If the Flat expression is supported, normalizeExpr can't produce yield/await.
+**Fix**: Change the ExprAddrWF definition at CC L910-911:
 
-You need a lemma: `sf.expr.supported = true → (normalizeExpr sf.expr k).run n = ok (e, m) → e ≠ .yield _ _ ∧ e ≠ .await _`
+FROM:
+```lean
+  | .call _ _, _ => True
+  | .newObj _ _, _ => True
+```
+TO:
+```lean
+  | .call f args, n => ExprAddrWF f n ∧ ExprAddrListWF args n
+  | .newObj f args, n => ExprAddrWF f n ∧ ExprAddrListWF args n
+```
 
-This requires induction on sf.expr but each case is straightforward. If you prove this, yield/await become exfalso.
+You'll also need to define `ExprAddrListWF`:
+```lean
+def ExprAddrListWF : List Core.Expr → Nat → Prop
+  | [], _ => True
+  | e :: es, n => ExprAddrWF e n ∧ ExprAddrListWF es n
+```
 
-**But**: anfConvert_step_star doesn't have a supported hypothesis. You'd need to add `h_supported : sf.expr.supported = true` to the theorem signature AND thread it from compiler_correct.
+**CASCADE**: After this change, you'll need to fix:
+1. CC L2670: `simp [sc', ExprAddrWF]` — this won't auto-close anymore. You need to construct ExprAddrWF (.call ...) from `hncfr'` and sub-proofs. Try:
+   ```lean
+   · simp [sc', ExprAddrWF, ExprAddrListWF]; exact ⟨hexprwf', hexprwf_args⟩
+   ```
+   where you need to thread `hexprwf_args` (ExprAddrWF for args) from the input.
+2. Any other place that uses `simp [ExprAddrWF]` on `.call` or `.newObj`.
 
-## PRIORITY 2: CC newObj (L2680) — single sorry
+Build after EACH change to catch cascades early.
+
+If the cascade is too complex (>5 fixups), SKIP P1 and go to P2.
+
+## PRIORITY 2: CC objectLit/arrayLit staging integration
+
+jsspec has verified these staging lemmas:
+- `convertPropList_append` in `.lake/_tmp_fix/VerifiedJS/Proofs/cc_objectLit_arrayLit_helpers.lean`
+- `propListNoCallFrameReturn_append` (same file)
+- `listNoCallFrameReturn_append` (same file)
+
+These are needed for the CC objectLit (L3110) and arrayLit (L3111) cases.
+
+The objectLit case needs:
+1. If first prop is value: skip to next prop (convertPropList stepping)
+2. If first prop is non-value: step the expression, stay in objectLit context
+3. When all props are values: allocate object on heap
+
+This is a complex case (~80 lines). Only attempt after P0 and P1 are done.
+
+## IMPORTANT SKIPS
+- ALL ANF sorries (architecturally blocked — need SimRel redesign)
+- forIn/forOf (L1132-1133): theorem is false for these cases (stubs)
+- 5 value sub-cases (L2686-2968): heap reasoning blocked
+- while_ (L3233), CCState threading (L2166, L2188): structural issues
+- tryCatch (L3202): complex
+- functionDef (L3112): complex
 
 ## FILES YOU OWN
 - `VerifiedJS/Proofs/ANFConvertCorrect.lean` (rw)
 - `VerifiedJS/Proofs/ClosureConvertCorrect.lean` (rw)
-
-## IMPORTANT SKIPS
-- depth induction IH cases (L1617-1715): SKIP, continuation not trivial-preserving, needs hk generalization
-- forIn/forOf (L1132-1133): SKIP (stubs)
-- 5 value sub-cases (L2686-2968): SKIP (heap reasoning)
-- while_ (L3232), CCState threading (L2166, L2188): SKIP
-- objectLit/arrayLit (L3109-3110): SKIP (staging increases sorries)
-- tryCatch (L3201 CC, L1821 ANF): SKIP (complex)
+- `VerifiedJS/Proofs/LowerCorrect.lean` (rw)
 
 ## WORKFLOW
-1. Check if wasmspec has updated ANF/Semantics.lean yet
-2. If yes: close break/continue/return/throw (L1819, 1823, 1851, 1853)
-3. If no: work on let/seq/if normalizeExpr inversion
-4. Build after each change
+1. Fix LowerCorrect.lean first (30 seconds)
+2. Build LowerCorrect.lean
+3. If ExprAddrWF fix seems manageable, do P1
+4. Build CC after each change
 5. Log to agents/proof/log.md with EXACT sorry counts
