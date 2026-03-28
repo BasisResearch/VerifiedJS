@@ -830,6 +830,11 @@ private theorem normalizeExpr_trivial_implies_chain :
         (by intro v hc; simp at hc) (by intro nm hc; simp at hc)
         (by intro hc; simp at hc) (by intro a' b' hc; simp at hc) n m tv)
 
+/-- trivialOfFlatValue agrees with trivialOfValue. -/
+private theorem trivialOfFlatValue_eq_trivialOfValue (v : Flat.Value) :
+    ANF.trivialOfFlatValue v = .ok (ANF.trivialOfValue v) := by
+  cases v <;> rfl
+
 /-- Contextual stepping: if a is not a value and steps, .seq a b steps with
     the result wrapped. Returns existence with field projections. -/
 private theorem step?_seq_ctx (s : Flat.State) (a b : Flat.Expr)
@@ -1032,6 +1037,149 @@ private theorem trivialChain_consume_ctx
         htrace_b.trans htrace_a,
         by rw [observableTrace_append, hobs_a, hobs_b]; rfl⟩
     | _ => simp [isTrivialChain] at htc
+
+/-- When normalizeExpr e k produces .trivial (.var name) with k trivial-preserving,
+    and env.lookup name = some val, there exist silent Flat steps from sf to sf'
+    where sf'.expr = .lit val. This is the core simulation lemma for the var case. -/
+private theorem normalizeExpr_var_step_sim :
+    ∀ (d : Nat) (e : Flat.Expr), e.depth ≤ d →
+    ∀ (k : ANF.Trivial → ANF.ConvM ANF.Expr) (n m : Nat) (name : ANF.VarName),
+    (∀ (arg : ANF.Trivial) (n' : Nat), ∃ m', (k arg).run n' = .ok (.trivial arg, m')) →
+    (ANF.normalizeExpr e k).run n = .ok (.trivial (.var name), m) →
+    ∀ (sf : Flat.State), sf.expr = e →
+    ∀ (val : Flat.Value), sf.env.lookup name = some val →
+    ExprWellFormed e sf.env →
+    ∃ (evs : List Core.TraceEvent) (sf' : Flat.State),
+      Flat.Steps sf evs sf' ∧
+      sf'.expr = .lit val ∧
+      sf'.env = sf.env ∧ sf'.heap = sf.heap ∧
+      observableTrace evs = [] := by
+  intro d; induction d with
+  | zero =>
+    intro e hd k n m name hk hnorm sf hsf val hval hwf
+    cases e with
+    | var vname =>
+      simp only [ANF.normalizeExpr] at hnorm
+      obtain ⟨m', hk'⟩ := hk (.var vname) n
+      have hname_eq := hnorm.symm.trans hk' |> Except.ok.inj |> Prod.mk.inj |>.1
+        |> ANF.Expr.trivial.inj |> ANF.Trivial.var.inj
+      subst hname_eq
+      obtain ⟨s_i, hstep_i, hexpr_i, henv_i, hheap_i, _, _, _⟩ :=
+        step?_var_bound sf name val hval
+      have hstep_sf : Flat.step? sf = some (.silent, s_i) := by
+        have : sf = { sf with expr := .var name } := by cases sf; simp_all
+        rw [this]; exact hstep_i
+      exact ⟨[.silent], s_i, .tail ⟨hstep_sf⟩ (.refl _), hexpr_i, henv_i, hheap_i, rfl⟩
+    | this =>
+      simp only [ANF.normalizeExpr] at hnorm
+      obtain ⟨m', hk'⟩ := hk (.var "this") n
+      have hname_eq := hnorm.symm.trans hk' |> Except.ok.inj |> Prod.mk.inj |>.1
+        |> ANF.Expr.trivial.inj |> ANF.Trivial.var.inj
+      subst hname_eq
+      obtain ⟨resolved_val, s_i, hstep_i, hexpr_i, henv_i, hheap_i, _, _, _⟩ :=
+        step?_this_resolve sf
+      have hstep_sf : Flat.step? sf = some (.silent, s_i) := by
+        have : sf = { sf with expr := .this } := by cases sf; simp_all
+        rw [this]; exact hstep_i
+      have hresolved : resolved_val = val := by
+        have h0 := hstep_i
+        rw [show sf = {sf with expr := Flat.Expr.this} from by cases sf; simp_all] at h0
+        simp only [Flat.step?] at h0
+        cases hlu : sf.env.lookup "this" with
+        | some v =>
+          rw [hlu] at h0; simp at h0
+          rw [hlu] at hval; exact (Option.some.inj hval).symm ▸
+            congrArg Flat.State.expr (Prod.mk.inj (Option.some.inj h0)).2 ▸ rfl
+        | none => rw [hlu] at hval; exact absurd hval (by simp)
+      subst hresolved
+      exact ⟨[.silent], s_i, .tail ⟨hstep_sf⟩ (.refl _), hexpr_i, henv_i, hheap_i, rfl⟩
+    | lit v =>
+      exfalso
+      simp only [ANF.normalizeExpr] at hnorm
+      rw [trivialOfFlatValue_eq_trivialOfValue] at hnorm
+      obtain ⟨m', hk'⟩ := hk (ANF.trivialOfValue v) n
+      have heq := hnorm.symm.trans hk' |> Except.ok.inj |> Prod.mk.inj |>.1
+        |> ANF.Expr.trivial.inj
+      exact absurd heq.symm (ANF.trivialOfValue_ne_var v name)
+    | seq _ _ => exfalso; simp [Flat.Expr.depth] at hd
+    | _ => exfalso; exact absurd hnorm (normalizeExpr_compound_not_trivial _ k
+        (by intro v hc; exact Flat.Expr.noConfusion hc) (by intro nm hc; exact Flat.Expr.noConfusion hc)
+        (by intro hc; exact Flat.Expr.noConfusion hc) (by intro a' b' hc; exact Flat.Expr.noConfusion hc) n m _)
+  | succ d ih =>
+    intro e hd k n m name hk hnorm sf hsf val hval hwf
+    cases e with
+    | var vname =>
+      simp only [ANF.normalizeExpr] at hnorm
+      obtain ⟨m', hk'⟩ := hk (.var vname) n
+      have hname_eq := hnorm.symm.trans hk' |> Except.ok.inj |> Prod.mk.inj |>.1
+        |> ANF.Expr.trivial.inj |> ANF.Trivial.var.inj
+      subst hname_eq
+      obtain ⟨s_i, hstep_i, hexpr_i, henv_i, hheap_i, _, _, _⟩ :=
+        step?_var_bound sf name val hval
+      have hstep_sf : Flat.step? sf = some (.silent, s_i) := by
+        have : sf = { sf with expr := .var name } := by cases sf; simp_all
+        rw [this]; exact hstep_i
+      exact ⟨[.silent], s_i, .tail ⟨hstep_sf⟩ (.refl _), hexpr_i, henv_i, hheap_i, rfl⟩
+    | this =>
+      simp only [ANF.normalizeExpr] at hnorm
+      obtain ⟨m', hk'⟩ := hk (.var "this") n
+      have hname_eq := hnorm.symm.trans hk' |> Except.ok.inj |> Prod.mk.inj |>.1
+        |> ANF.Expr.trivial.inj |> ANF.Trivial.var.inj
+      subst hname_eq
+      obtain ⟨resolved_val, s_i, hstep_i, hexpr_i, henv_i, hheap_i, _, _, _⟩ :=
+        step?_this_resolve sf
+      have hstep_sf : Flat.step? sf = some (.silent, s_i) := by
+        have : sf = { sf with expr := .this } := by cases sf; simp_all
+        rw [this]; exact hstep_i
+      have hresolved : resolved_val = val := by
+        have h0 := hstep_i
+        rw [show sf = {sf with expr := Flat.Expr.this} from by cases sf; simp_all] at h0
+        simp only [Flat.step?] at h0
+        cases hlu : sf.env.lookup "this" with
+        | some v =>
+          rw [hlu] at h0; simp at h0
+          rw [hlu] at hval; exact (Option.some.inj hval).symm ▸
+            congrArg Flat.State.expr (Prod.mk.inj (Option.some.inj h0)).2 ▸ rfl
+        | none => rw [hlu] at hval; exact absurd hval (by simp)
+      subst hresolved
+      exact ⟨[.silent], s_i, .tail ⟨hstep_sf⟩ (.refl _), hexpr_i, henv_i, hheap_i, rfl⟩
+    | lit v =>
+      exfalso
+      simp only [ANF.normalizeExpr] at hnorm
+      rw [trivialOfFlatValue_eq_trivialOfValue] at hnorm
+      obtain ⟨m', hk'⟩ := hk (ANF.trivialOfValue v) n
+      have heq := hnorm.symm.trans hk' |> Except.ok.inj |> Prod.mk.inj |>.1
+        |> ANF.Expr.trivial.inj
+      exact absurd heq.symm (ANF.trivialOfValue_ne_var v name)
+    | seq a b =>
+      simp only [ANF.normalizeExpr] at hnorm
+      have hda : a.depth ≤ d := by simp [Flat.Expr.depth] at hd; omega
+      have hdb : b.depth ≤ d := by simp [Flat.Expr.depth] at hd; omega
+      have htc : isTrivialChain a = true :=
+        normalizeExpr_trivial_implies_chain d a hda _ n m _ hnorm
+      have hb_norm : (ANF.normalizeExpr b k).run n = .ok (.trivial (.var name), m) :=
+        normalizeExpr_ignored_bypass_trivial d a hda _ n m _ hnorm
+      have hwf_a : ∀ x, VarFreeIn x a → sf.env.lookup x ≠ none := by
+        intro x hfx; exact hwf x (.seq_l _ _ _ hfx)
+      have hsf_eq : sf.expr = wrapSeqCtx a [b] := by rw [hsf]; rfl
+      obtain ⟨evs_a, sf_a, hsteps_a, hexpr_a, henv_a, hheap_a, htrace_a, hobs_a⟩ :=
+        trivialChain_consume_ctx (trivialChainCost a) a [b] sf htc le_refl
+          (List.cons_ne_nil _ _) hsf_eq hwf_a
+      have hsf_a_expr : sf_a.expr = b := by
+        rw [hexpr_a]; simp [List.head_cons, List.tail_cons, wrapSeqCtx]
+      have hwf_b : ExprWellFormed b sf_a.env := by
+        rw [henv_a]; intro x hfx; exact hwf x (.seq_r _ _ _ hfx)
+      have hval_a : sf_a.env.lookup name = some val := by rw [henv_a]; exact hval
+      obtain ⟨evs_b, sf', hsteps_b, hexpr', henv', hheap', hobs'⟩ :=
+        ih b hdb k n m name hk hb_norm sf_a hsf_a_expr val hval_a hwf_b
+      exact ⟨evs_a ++ evs_b, sf',
+        Flat.Steps.append hsteps_a hsteps_b,
+        hexpr',
+        henv'.trans henv_a, hheap'.trans hheap_a,
+        by rw [observableTrace_append, hobs_a, hobs']; rfl⟩
+    | _ => exfalso; exact absurd hnorm (normalizeExpr_compound_not_trivial _ k
+        (by intro v hc; exact Flat.Expr.noConfusion hc) (by intro nm hc; exact Flat.Expr.noConfusion hc)
+        (by intro hc; exact Flat.Expr.noConfusion hc) (by intro a' b' hc; exact Flat.Expr.noConfusion hc) n m _)
 
 /-- Auxiliary halt_star with strong induction on Flat expression depth.
     When ANF reaches a terminal state (step? = none), Flat can also reach a
