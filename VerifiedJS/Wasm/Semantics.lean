@@ -6559,7 +6559,7 @@ theorem LowerCodeCorr.if_inv {cond : ANF.Trivial} {then_ else_ : ANF.Expr} {code
       TrivialCodeCorr cond condCode ∧
       LowerCodeCorr then_ thenCode ∧ LowerCodeCorr else_ elseCode := by
   match h with
-  | .if_ _ _ _ cc _ htcc hthen helse => exact ⟨cc, _, _, rfl, htcc, hthen, helse⟩
+  | .if_ _ _ _ cc _ _ htcc hthen helse => exact ⟨cc, _, _, rfl, htcc, hthen, helse⟩
 
 /-- Step-count measure: how many IR steps a given ANF expression needs.
     Used for stuttering simulation arguments. Returns 0 for halted expressions,
