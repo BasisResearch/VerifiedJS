@@ -2684,8 +2684,8 @@ private theorem closureConvert_step_simulation
       · exact hheapvwf'
       · simp [sc', noCallFrameReturn]; exact ⟨hncfr', by simp [noCallFrameReturn] at hncfr; exact hncfr.2⟩
       · simp only [sc', ExprAddrWF]; exact ⟨hexprwf',
-            fun e hmem => ExprAddrWF_mono e
-              (by simp [ExprAddrWF] at hexprwf; exact hexprwf.2 e hmem)
+            ExprAddrListWF_mono args
+              (by simp [ExprAddrWF] at hexprwf; exact hexprwf.2)
               (Core_step_heap_size_mono hcstep_sub)⟩
       · have hargs := convertExprList_state_determined args scope envVar envMap
             (Flat.convertExpr f scope envVar envMap st).snd st_a' hAgreeOut.1 hAgreeOut.2
