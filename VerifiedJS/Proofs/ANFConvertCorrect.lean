@@ -1771,7 +1771,17 @@ private theorem anfConvert_step_star
         rw [hm''] at h; exact ANF.Expr.noConfusion (Prod.mk.inj (Except.ok.inj h)).1)
       n m cond body hnorm
   | throw arg =>
-    sorry -- throw: evaluate trivial arg, produce error event
+    cases sa with
+    | mk sa_expr sa_env sa_heap sa_trace =>
+    simp only [] at hsa; subst hsa
+    simp only [ANF.step?, ANF.pushTrace] at hstep_eq
+    cases heval : ANF.evalTrivial sa_env arg <;> simp [heval] at hstep_eq
+    all_goals obtain ⟨rfl, rfl⟩ := hstep_eq
+    -- case ok: ev = .error "throw", sa' has .trivial .litUndefined
+    -- case error: ev = .error msg, sa' has .trivial .litUndefined
+    -- Need: Flat steps from sf producing matching observable trace
+    -- Blocked: sf.expr unknown, requires normalizeExpr inversion lemma
+    all_goals sorry
   | tryCatch body catchParam catchBody finally_ =>
     sorry -- try-catch: step body, catch errors, handle finally
   | «return» arg =>

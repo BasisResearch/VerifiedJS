@@ -8026,6 +8026,28 @@ theorem stack_corr_i32_inv
       have := helems (i + 1) (by simp; omega)
       simpa using this⟩
 
+/-- Stack correspondence inversion: if IR stack starts with an i64 value,
+    the Wasm stack starts with the corresponding i64 value. -/
+theorem stack_corr_i64_inv
+    (a : UInt64) (stk : List IRValue) (wstk : List WasmValue)
+    (hlen : (IRValue.i64 a :: stk).length = wstk.length)
+    (helems : ∀ i, i < (IRValue.i64 a :: stk).length →
+      ∃ irv wv, (IRValue.i64 a :: stk)[i]? = some irv ∧ wstk[i]? = some wv ∧ IRValueToWasmValue irv wv) :
+    ∃ wstk', wstk = .i64 a :: wstk' ∧
+      wstk'.length = stk.length ∧
+      ∀ i, i < stk.length →
+        ∃ irv wv, stk[i]? = some irv ∧ wstk'[i]? = some wv ∧ IRValueToWasmValue irv wv := by
+  match wstk with
+  | [] => simp at hlen
+  | w0 :: wstk' =>
+    simp at hlen
+    have h0 := helems 0 (by simp)
+    simp at h0
+    cases h0
+    exact ⟨wstk', rfl, hlen.symm, fun i hi => by
+      have := helems (i + 1) (by simp; omega)
+      simpa using this⟩
+
 /-- Stack correspondence inversion: if IR stack starts with two i32 values,
     the Wasm stack starts with the corresponding i32 values. -/
 theorem stack_corr_i32_i32_inv
@@ -10556,36 +10578,30 @@ theorem step_sim (irmod : IRModule) (wmod : Module) :
                 rw [hir] at hstep; simp only [Option.some.injEq, Prod.mk.injEq] at hstep
                 obtain ⟨rfl, rfl⟩ := hstep
                 -- Derive Wasm stack
-                have hstk_rel := hrel.hstack; rw [hstk] at hstk_rel
-                match hs2 : s2.stack with
-                | [] => simp [hs2] at hstk_rel
-                | wv :: wstk =>
-                  have hval := hstk_rel.2 0 (by simp)
-                  simp [hs2] at hval
-                  cases hval with
-                  | i32 n =>
-
-                    have hw := step?_eq_i32Eqz s2 rest_w n wstk hcw hs2
-                    simp only [traceToWasm]
-                    refine ⟨_, hw, ?_⟩
-                    exact { hemit := hrel.hemit
-                            hcode := hrest
-                            hstack := by simp only [pushTrace]; exact stack_corr_cons (by simp [hstk, hs2] at hstk_rel ⊢; omega) (fun i hi => hstk_rel.2 (i + 1) (by simp; omega)) (.i32 _)
-                            hframes_len := hrel.hframes_len
-                            hframes_locals := hrel.hframes_locals
-                            hframes_vals := hrel.hframes_vals
-                            hglobals := hrel.hglobals
-                            hmemory := hrel.hmemory
-                            hmemLimits := hrel.hmemLimits
-                            hmemory_aligned := hrel.hmemory_aligned
-                            hmemory_nonempty := hrel.hmemory_nonempty
-                            hlabels := hrel.hlabels
-                            hhalt := hhalt_of_structural hrest hrel.hlabels
-                            hlabel_content := hrel.hlabel_content
-                            hframes_one := hrel.hframes_one
-                            hmodule := hrel.hmodule
-                            hstore_funcs := hrel.hstore_funcs
-                            hstore_types := hrel.hstore_types }
+                have hstk_w := stack_corr_i32_inv v stk s2.stack
+                  (hstk ▸ hrel.hstack.1) (hstk ▸ hrel.hstack.2)
+                obtain ⟨wstk', hstack_eq, hlen_tail, htail⟩ := hstk_w
+                have hw := step?_eq_i32Eqz s2 rest_w v wstk' hcw hstack_eq
+                simp only [traceToWasm]
+                refine ⟨_, hw, ?_⟩
+                exact { hemit := hrel.hemit
+                        hcode := hrest
+                        hstack := by simp only [pushTrace]; exact stack_corr_cons hlen_tail.symm htail (.i32 _)
+                        hframes_len := hrel.hframes_len
+                        hframes_locals := hrel.hframes_locals
+                        hframes_vals := hrel.hframes_vals
+                        hglobals := hrel.hglobals
+                        hmemory := hrel.hmemory
+                        hmemLimits := hrel.hmemLimits
+                        hmemory_aligned := hrel.hmemory_aligned
+                        hmemory_nonempty := hrel.hmemory_nonempty
+                        hlabels := hrel.hlabels
+                        hhalt := hhalt_of_structural hrest hrel.hlabels
+                        hlabel_content := hrel.hlabel_content
+                        hframes_one := hrel.hframes_one
+                        hmodule := hrel.hmodule
+                        hstore_funcs := hrel.hstore_funcs
+                        hstore_types := hrel.hstore_types }
               | .i64 v :: stk =>
                 -- Type mismatch: both trap
                 have hir := irStep?_eq_i32Eqz_type_mismatch_i64 s1 rest v stk hcode_ir hstk
