@@ -1,3 +1,52 @@
+## Run: 2026-03-28T11:05:01+00:00
+
+### Metrics
+- **Sorry count (grep -c)**: 56 (17 ANF + 20 CC + 18 Wasm + 1 Lower)
+- **Actual sorries**: ~52 (17 ANF + 18 CC + 16 Wasm + 1 Lower)
+- **Delta from last run (10:05)**: Wasm grep -2 (comment block cleanup). Actual: 0 change. ANF 0, CC 0, Wasm 0 (unOp proved but call expanded 1→2), Lower 0.
+- **Net assessment**: FLAT. No net sorry reduction despite agent activity.
+
+### ANF Analysis (17 sorries) — STRATEGY CHANGE
+- **Proof agent discovered**: exfalso on wildcards DOESN'T WORK (compound sub-exprs CAN produce .labeled)
+- **4 PERMANENT semantic mismatches identified**: throw (L1784), return (L1788), break (L1816), continue (L1818)
+  - ANF events ≠ Flat events (e.g., ANF `.error "throw"` vs Flat `.error (valueToString v)`)
+  - These need SEMANTICS-LEVEL fixes, not proof-level
+- **2 FEASIBLE**: await (L1792), yield (L1790) — both produce `.silent` in both ANF and Flat
+- **Approach**: Build `normalizeExpr_await_step_sim` and `normalizeExpr_yield_step_sim` following `normalizeExpr_var_step_sim` (L1326-1450) template
+- **Infrastructure gap**: Need `normalizeExpr_compound_not_await` (analog of `normalizeExpr_compound_not_trivial`)
+
+### CC Analysis (18 actual sorries) — PERMISSION BLOCKED
+- ClosureConvertCorrect.lean owned by `proof` (rw-r-----), jsspec CANNOT edit
+- jsspec writing to staging files in `.lake/_tmp_fix/` but proof agent not integrating
+- Redirected jsspec to write ANF helper lemmas (normalizeExpr_compound_not_await) that proof agent needs
+
+### Wasm Analysis (16 actual sorries) — unOp PROVED
+- **unOp: PROVED** (wasmspec agent, since last run)
+- **call: EXPANDED** from 1 sorry to 2 (underflow L10829 + success L10833). Net: 0 in emit block.
+- **return-none: PROVED** (already done before this run)
+- **P0**: return-some (L6801) — adapt from return-none proof directly above
+- **P1**: call underflow (L10829)
+
+### Agent Prompt Rewrites
+1. **proof**: MAJOR REWRITE. Abandoned exfalso wildcard approach. P0: write normalizeExpr_await_step_sim (template: var_step_sim at L1326). P1: yield_step_sim. Provided full theorem statement and structural outline.
+2. **jsspec**: Redirected to write normalizeExpr_compound_not_await helper for proof agent. Also CC objectLit/arrayLit staging. Acknowledged permission blocker.
+3. **wasmspec**: Celebrated unOp proof. Updated sorry map with current line numbers. P0: return-some (adapt from return-none). P1: call underflow.
+
+### Actions Taken
+1. Counted sorries: 56 grep / 52 actual (ANF 17, CC 18, Wasm 16, Lower 1)
+2. Read proof agent log: exfalso failed, 4 permanent semantic mismatches identified
+3. Read ANF.step? yield/await semantics: both produce .silent, confirming feasibility
+4. Read normalizeExpr_var_step_sim (L1326-1450): identified as template for await/yield
+5. Checked lean_goal at L1790 (yield) and L1792 (await): confirmed goal structure
+6. All 3 prompts rewritten with corrected strategy
+7. Logged time estimate (56 grep, 165 hours)
+
+### OUTLOOK: Target next run ≤50 actual (await -1, yield -1, Wasm return-some -1)
+### RISK: Infrastructure build is slow. If proof agent can't write normalizeExpr_await_step_sim, I'll need to provide a complete proof draft next run.
+### ESCALATION NEEDED: 4 ANF semantic mismatches (throw/return/break/continue) are DESIGN BUGS. Someone needs to fix ANF/Semantics.lean or Flat/Semantics.lean to align events. This is outside proof agent's scope.
+
+---
+
 ## Run: 2026-03-28T10:05:01+00:00
 
 ### Metrics
@@ -5563,3 +5612,4 @@ ANF sorry count effectively unchanged (structural improvements but no net closur
 
 ## Run: 2026-03-28T11:05:01+00:00
 
+2026-03-28T11:12:04+00:00 DONE

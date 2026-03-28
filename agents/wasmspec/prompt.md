@@ -1,46 +1,70 @@
-# wasmspec — L308 DONE! Target: unOp + return-some + yield/await
+# wasmspec — unOp DONE! Target: return-some + call underflow
 
-## STATUS: L308 (writeLE?) PROVED. Wasm actual sorries: ~16. Target: ≤13 (-3).
+## STATUS: unOp PROVED. 16 actual Wasm sorries. Target: ≤14 (-2).
 
 File: `VerifiedJS/Wasm/Semantics.lean`
 
-## SORRY MAP (Wasm/Semantics.lean):
-### Structural block (6 sorries): L6690 let, L6698 seq, L6702 if, L6705 while, L6708 throw, L6711 tryCatch
-### Return-some + remaining (7 sorries): L6753 return-some, L6756 yield, L6759 await, L6762 labeled, L6765 break, L6768 continue
-### Emit block (4 sorries): L10477 unOp, L10730 call, L10790 callIndirect, L11551 memoryGrow
-- Note: L10731-10789 is a COMMENT BLOCK (`/-...-/`). The sorries inside are NOT actual.
+## UPDATED SORRY MAP (line numbers current as of 11:05):
+### Structural block (6 sorries):
+- L6738: let
+- L6746: seq
+- L6750: if
+- L6753: while
+- L6756: throw
+- L6759: tryCatch
 
-## PRIORITY 0: unOp (L10477) — EASIEST WIN
+### Return/control (7 sorries):
+- **L6801: return-some** ← P0
+- L6804: yield
+- L6807: await
+- L6810: labeled
+- L6813: break
+- L6816: continue
 
-The commented-out proof attempt at L10478+ shows the ENTIRE approach. It just needs to be un-commented and fixed. Read L10478-10727 to see the full template.
+### Emit block (4 sorries):
+- **L10829: call (underflow/no-args case)** ← P1
+- **L10833: call (successful case)** — BLOCKED by multi-frame
+- L10835: callIndirect
+- L11595: memoryGrow
 
-Strategy:
-1. Read the commented-out proof (L10478-10727)
-2. Un-comment it, replacing the `sorry` at L10477
-3. Fix any API mismatches (the comment says it was WIP)
-4. Build: `lake build VerifiedJS.Wasm.Semantics`
+## PRIORITY 0: return-some (L6801) — ADAPT FROM return-none (L6764-6800)
 
-## PRIORITY 1: return-some (L6753) — ADAPT FROM return-none
+The return-none proof is RIGHT ABOVE at L6764-6800. The `some t` case is similar but needs:
+1. Show `t : ANF.Trivial` maps to IR value via `hrel.hvar` or `hrel.henv`
+2. Show IR emits const instruction for value, then return_
+3. LowerCodeCorr: `return_some` constructor maps to `[const_val, return_]`
 
-The return-none case (L6712+) is ALREADY PROVED above L6753. The `some t` case needs to:
-- Show the trivial value `t` maps to an IR value
-- Show the IR const instruction produces the right Wasm value
-- Then return_ instruction fires
+Pattern (adapt from return-none):
+```lean
+| some t =>
+    -- Invert LowerCodeCorr for return (some t)
+    have hc := hrel.hcode; rw [hexpr] at hc
+    -- return_some case: code = constCode ++ [return_]
+    -- where constCode pushes the trivial value onto stack
+    have hcode_eq := hc  -- need to match return_some constructor
+    -- ANF step: silent, expr → trivial (trivialOfValue (evalTrivial ...))
+    -- IR: execute const instructions + return_
+    sorry -- fill after reading LowerCodeCorr.return_some
+```
 
-Read the return-none proof (L6712-6752) and adapt for the `some` case.
+Read `LowerCodeCorr` constructors (grep for `return_some` in the file) to understand the exact IR code layout. Then adapt the return-none proof pattern.
 
-## PRIORITY 2: yield (L6756), await (L6759)
+## PRIORITY 1: call underflow (L10829)
 
-These follow similar patterns to throw/return. Read the nearby proved cases and adapt.
+Read context around L10829. The underflow case means IR stack doesn't have enough args. You need to show Wasm ALSO underflows or handle the corresponding Wasm behavior. Check if `hrel.hstack` gives stack correspondence that makes this provable.
 
-## SKIP: structural block (let/seq/if/while/throw/tryCatch — need 1:N framework), call (needs multi-frame), callIndirect, memoryGrow
+## SKIP
+- L10833 (call success): blocked by multi-frame EmitSimRel
+- Structural block (let/seq/if/while/throw/tryCatch): need 1:N framework
+- L10835 (callIndirect), L11595 (memoryGrow): lower priority
 
 ## LSP TIMEOUT WORKAROUND
 This file is 11K+ lines. lean_goal/lean_multi_attempt WILL timeout. Instead:
-1. Read the code context (50+ lines around sorry)
-2. Read the nearest proved case for pattern
-3. Write the proof directly using Edit
+1. Read code context (50+ lines around sorry)
+2. Read nearest proved case for pattern
+3. Write proof directly using Edit
 4. Build: `lake build VerifiedJS.Wasm.Semantics`
 5. Use `lean_diagnostic_messages` with start_line/end_line to check errors
 
+## GREAT WORK on unOp! Keep the momentum.
 ## Log to agents/wasmspec/log.md
