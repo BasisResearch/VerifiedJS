@@ -1,3 +1,28 @@
+## Run: 2026-03-28T02:30+00:00
+- **ANF BUILD: PASSES** ✓
+- **ANF Sorries: 12 in main theorem** (was 13; labeled case closed)
+- **New helper: `normalizeExpr_labeled_step_sim` with 3 sorries** (edge cases for .labeled nested inside compound exprs)
+
+### Changes applied:
+1. **Added `normalizeExpr_labeled_step_sim` helper lemma (~80 lines, L1075-1171)**:
+   Given `normalizeExpr e k` produces `.labeled label body` with trivial-preserving k, produces Flat steps from sf to sf' where `normalizeExpr sf'.expr k'` produces `body` with k' trivial-preserving. Proven cases:
+   - `.labeled label' body_flat`: Direct case — one Flat step unwraps labeled, normalizeExpr of body_flat with same k produces body.
+   - `.var`, `.this`, `.lit`: Contradiction — k produces `.trivial ≠ .labeled`.
+   - `.break`, `.continue`, `.return none`, `.yield none`: Contradiction — normalizeExpr produces fixed constructor ≠ `.labeled`.
+   - `.while_`: Contradiction — produces `.seq (.while_ ...) rest` ≠ `.labeled`.
+   - `.tryCatch`: Contradiction — produces `.tryCatch` ≠ `.labeled`.
+   - Sorry cases: `.return (some _)`, `.yield (some _)`, remaining compounds + `.seq` — these require normalizeExpr inversion for `.labeled` nested inside sub-expressions (rare in practice).
+
+2. **Closed labeled case in `anfConvert_step_star` (L1181-1209)**:
+   Uses `normalizeExpr_labeled_step_sim` to get Flat steps and new SimRel components.
+   Constructs ANF_SimRel from helper outputs: same heap/env, observable trace preserved (all events silent), ExprWellFormed maintained.
+
+### Remaining 12 ANF sorries in main theorem:
+- **Var not-found (1):** L1204
+- **Structural (4):** let (L1243), seq (L1245), if (L1247), while (L1249)
+- **Semantic mismatch (5):** throw (L1251), return (L1255), yield (L1257), break (L1283), continue (L1285)
+- **Complex (2):** tryCatch (L1253), await (L1259)
+
 ## Run: 2026-03-28T01:30+00:00
 - **ANF BUILD: PASSES** ✓
 - **ANF Sorries: 13** (unchanged count, but var-found subcase closed — net: -1 sorry site closed, +1 new sorry for var-not-found subcase)
@@ -2849,3 +2874,4 @@ FOCUS ON THE 23 REAL SORRIES. Define shared tactics for the 4 CCState cases (L16
 ## Run: 2026-03-28T02:30:01+00:00
 
 2026-03-28T03:30:01+00:00 SKIP: already running
+2026-03-28T03:38:31+00:00 DONE

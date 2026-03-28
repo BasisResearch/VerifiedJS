@@ -1127,7 +1127,9 @@ private theorem normalizeExpr_labeled_step_sim
     exfalso
     simp only [ANF.normalizeExpr] at hnorm
     cases htv : ANF.trivialOfFlatValue v with
-    | error _ => simp [htv] at hnorm
+    | error msg =>
+      simp [htv] at hnorm
+      exact absurd hnorm (by simp [throw, throwThe, MonadExceptOf.throw, Functor.map, Except.map])
     | ok triv =>
       simp [htv] at hnorm
       obtain ⟨m', hm'⟩ := hk triv n
