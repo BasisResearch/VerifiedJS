@@ -1,3 +1,35 @@
+## Run: 2026-03-27T23:00+00:00
+- **CC BUILD: PASSES** ✓
+- **CC Sorries: 20** (was 19 sorry + 2 build errors at start; fixed 2 build errors, added 1 sorry for broken proof)
+
+### Changes applied:
+1. **Fixed L3156 build error (labeled case CCState agree)**: `hconv` was destructed into `hfexpr` and `hst'` but proof referenced nonexistent `hst` and `hconv.2`. Fixed to use `hst'`.
+
+2. **Fixed L2116 build error → sorry (if-true value CCState threading)**: The if-true value case proof was broken — all 4 `first | ...` alternatives referenced nonexistent hypotheses (`hst_eq`, `hst`, `hconv.2`). Root cause: CCState output agree is unprovable for if value cases where unused branches are skipped. Specifically, `st' = (convertExpr else_ ... (convertExpr then_ ... st).snd).snd` but `st_a' = (convertExpr then_ ... st).snd`, and these disagree because converting else_ changes the state. Converted to explicit sorry.
+
+3. **Added helper lemmas for getProp value simulation**:
+   - `Flat_step?_getProp_primitive`: Flat step for getProp on non-object non-string value → .undefined
+   - `Core_step?_getProp_primitive`: Core step for getProp on non-object non-string value → .undefined
+   - `convertValue_not_object`, `convertValue_not_string`: convertValue preserves non-object/non-string
+
+### Key analysis: CCState threading issue is pervasive
+The `CCStateAgree st' st_a'` invariant cannot be maintained for ANY compound expression value case where unused branches are skipped:
+- **if-true/false value** (L2147, L2169): st' includes both then_ and else_ conversion, st_a' only includes the taken branch
+- **while_ value** (L2989): while_ desugars to if+seq+while_, duplicating sub-expressions with different CCState
+- **tryCatch value** (L2958): st' includes body+catchBody+finally_ conversion, but stepping to value skips catch/finally
+
+These are all blocked on the same architectural issue: the CCStateAgree invariant is too strong for value cases. Fix requires either:
+1. Weakening the invariant (breaking the chaining proof for non-value compound cases)
+2. Proving `CCStateAgree st (convertExpr e ... st).snd` for arbitrary expressions (FALSE when e contains functionDef)
+3. Adding a `noFunctionDef` predicate for the "skipped" branches
+
+### Remaining 20 CC sorries:
+- **Theorem false (2):** L1132, L1133 — forIn/forOf stub
+- **CCState threading (4):** L2147 (if-true), L2169 (if-false, 2 sorries), L2989 (while_)
+- **Captured variable (1):** L1828 — multi-step simulation
+- **Value sub-cases (3):** L2595, L2654, L2724 — getProp/getIndex/deleteProp when obj is a value. Closeable with tactic-level case analysis + HeapCorr.
+- **Full unstarted (10):** L2588 call, L2589 newObj, L2648 setProp, L2718 setIndex, L2866 objectLit, L2867 arrayLit, L2868 functionDef, L2958 tryCatch, plus helper lemmas added for future use.
+
 ## Run: 2026-03-27T15:00+00:00
 - **CC BUILD: PASSES** ✓
 - **CC Sorries: 20** (was 22 at start of session — closed 3 sorry statements, fixed 1 build error)
