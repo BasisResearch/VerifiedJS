@@ -6,6 +6,7 @@
 
 import VerifiedJS.ANF.Syntax
 import VerifiedJS.Flat.Syntax
+import VerifiedJS.Flat.Semantics
 import VerifiedJS.Core.Semantics
 
 namespace VerifiedJS.ANF
@@ -376,7 +377,7 @@ def step? (s : State) : Option (Core.TraceEvent × State) :=
   | .throw arg =>
       match evalTrivial s.env arg with
       | .ok v =>
-          let msg := Core.valueToString v
+          let msg := Flat.valueToString v
           let s' := pushTrace { s with expr := .trivial .litUndefined } (.error msg)
           some (.error msg, s')
       | .error msg =>
@@ -415,7 +416,7 @@ def step? (s : State) : Option (Core.TraceEvent × State) :=
       | some t =>
           match evalTrivial s.env t with
           | .ok v =>
-              let msg := "return:" ++ Core.valueToString v
+              let msg := "return:" ++ Flat.valueToString v
               let s' := pushTrace { s with expr := .trivial (trivialOfValue v) } (.error msg)
               some (.error msg, s')
           | .error msg =>
@@ -572,16 +573,16 @@ theorem step?_labeled (s : State) (label : String) (body : Expr) :
 @[simp]
 theorem step?_break (s : State) (label : Option String) :
     step? { s with expr := .break label } =
-      some (.silent,
-            pushTrace { s with expr := .trivial .litUndefined } .silent) := by
+      some (.error ("break:" ++ label.getD ""),
+            pushTrace { s with expr := .trivial .litUndefined } (.error ("break:" ++ label.getD ""))) := by
   simp [step?]
 
-/-- Continue always steps silently (control-flow signal handled by while/labeled). -/
+/-- Continue always steps with an error event (control-flow signal handled by while/labeled). -/
 @[simp]
 theorem step?_continue (s : State) (label : Option String) :
     step? { s with expr := .continue label } =
-      some (.silent,
-            pushTrace { s with expr := .trivial .litUndefined } .silent) := by
+      some (.error ("continue:" ++ label.getD ""),
+            pushTrace { s with expr := .trivial .litUndefined } (.error ("continue:" ++ label.getD ""))) := by
   simp [step?]
 
 /-- Throw with successful eval always steps with an error event. -/
@@ -589,8 +590,8 @@ theorem step?_continue (s : State) (label : Option String) :
 theorem step?_throw_ok (s : State) (arg : Trivial) (v : Flat.Value)
     (h : evalTrivial s.env arg = .ok v) :
     step? { s with expr := .throw arg } =
-      some (.error "throw",
-            pushTrace { s with expr := .trivial .litUndefined } (.error "throw")) := by
+      some (.error (Flat.valueToString v),
+            pushTrace { s with expr := .trivial .litUndefined } (.error (Flat.valueToString v))) := by
   simp [step?, h]
 
 /-- Throw with failed eval always steps with an error event. -/
@@ -606,7 +607,7 @@ theorem step?_throw_error (s : State) (arg : Trivial) (msg : String)
 @[simp]
 theorem step?_return_none (s : State) :
     step? { s with expr := .return none } =
-      some (.silent, pushTrace { s with expr := .trivial .litUndefined } .silent) := by
+      some (.error "return:undefined", pushTrace { s with expr := .trivial .litUndefined } (.error "return:undefined")) := by
   simp [step?]
 
 /-- Return with successful arg eval always steps. -/
@@ -614,7 +615,8 @@ theorem step?_return_none (s : State) :
 theorem step?_return_some_ok (s : State) (t : Trivial) (v : Flat.Value)
     (h : evalTrivial s.env t = .ok v) :
     step? { s with expr := .return (some t) } =
-      some (.silent, pushTrace { s with expr := .trivial (trivialOfValue v) } .silent) := by
+      some (.error ("return:" ++ Flat.valueToString v),
+            pushTrace { s with expr := .trivial (trivialOfValue v) } (.error ("return:" ++ Flat.valueToString v))) := by
   simp [step?, h]
 
 /-- Return with failed arg eval produces an error. -/
