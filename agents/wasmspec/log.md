@@ -1,3 +1,56 @@
+## Run: 2026-03-28T07:00:02+00:00
+
+### TASK: Close binOp type mismatch trap sorries + attempt unOp
+
+**Build status at start:** PASS (sorry warnings only)
+**Build status at end:** PASS (sorry warnings only)
+**Sorry instances:** 21 → 19 (2 closed: i32 type mismatch, f64 type mismatch)
+
+### Completed
+
+1. **Added 16 type mismatch step lemmas** (L3140-3280 area):
+   - `withI32Bin_type_mismatch`, `withI32Rel_type_mismatch`, `withF64Bin_type_mismatch` — generic helper lemmas
+   - `step?_eq_i32Add_type_mismatch`, ..., `step?_eq_i32Gts_type_mismatch` (9 i32 ops)
+   - `step?_eq_f64Add_type_mismatch`, ..., `step?_eq_f64Div_type_mismatch` (4 f64 ops)
+   - All use pattern: `simp [step?, withI32Bin/withI32Rel/withF64Bin, pop2?, hcode, hstack]; cases a <;> cases b <;> simp_all [trapState, pushTrace]`
+   - Condition: `hmis : ∀ x y, (a, b) ≠ (.i32 x, .i32 y)` (or `.f64`)
+
+2. **Closed i32 binOp type mismatch sorry** (was L10149):
+   - Match pattern: `.i64 _ :: _ :: _ | .f64 _ :: _ :: _ | .i32 _ :: .i64 _ :: _ | .i32 _ :: .f64 _ :: _`
+   - Used stack_corr to extract Wasm stack shape via `h0` and `h1` from `hstk_rel`
+   - After `cases h0; cases h1`, Wasm stack types are concrete → `hmis` provable by `simp`
+   - Applied `step?_eq_i32*_type_mismatch` lemmas via `by first | exact ...`
+   - Built EmitSimRel with `.nil` code corr and preserved stack/frame invariants
+
+3. **Closed f64 binOp type mismatch sorry** (was L10263):
+   - Same pattern as i32 but using `step?_eq_f64*_type_mismatch` lemmas
+   - Match pattern: `.i32 _ :: _ :: _ | .i64 _ :: _ :: _ | .f64 _ :: .i32 _ :: _ | .f64 _ :: .i64 _ :: _`
+
+4. **Added `set_option maxHeartbeats 400000`** for `step_sim` theorem
+   - Required because adding type mismatch proofs pushed the proof past the 200000 heartbeat limit
+
+### Not completed
+
+- **unOp sorry** (L10462): Uncommented proof had 16+ errors:
+  - String interpolation (`s!"type mismatch in i32.{op}"`) doesn't reduce via `simp` in the commented-out proof
+  - `simp [step?, hcw, ...]` can't unfold `step?` on abstract states (same issue as binOp, needs step lemmas)
+  - `rw [hstk, hs2] at hval` rewrites fail (API changes)
+  - Needs: (a) step lemmas for `i32Eqz`, `i32WrapI64` trap/underflow cases, (b) fix all `rw` patterns for current API
+
+### Key patterns for future proofs
+
+For type mismatch traps, the proof pattern is:
+1. `simp [irStep?, ...] at hstep; obtain ⟨rfl, rfl⟩ := hstep` — IR trap
+2. `have hstk_rel := hrel.hstack; rw [hstk] at hstk_rel` — transfer stack
+3. `match hstk_w : s2.stack with | [] | [_] => contradiction | w0 :: w1 :: wstk' => ...` — Wasm stack
+4. `h0/h1` from `hstk_rel.2` + `simp; cases` to determine Wasm value types
+5. `step?_eq_*_type_mismatch` lemma with `hmis` from `by simp`
+6. `simp only [trapState, pushTrace] at hw` + EmitSimRel record
+
+The `step?` function can't be unfolded by `simp` on abstract states — always use pre-proven step lemmas.
+
+---
+
 ## Run: 2026-03-28T04:15:02+00:00
 
 ### TASK: Close binOp trap sorries (stack underflow / single element)
@@ -3594,3 +3647,4 @@ test_write
 
 2026-03-28T07:15:01+00:00 SKIP: already running
 2026-03-28T08:15:02+00:00 SKIP: already running
+2026-03-28T08:58:13+00:00 DONE
