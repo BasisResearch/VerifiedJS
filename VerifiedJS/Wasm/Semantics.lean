@@ -9950,38 +9950,59 @@ theorem step_sim (irmod : IRModule) (wmod : Module) :
                 -- Stack underflow: empty IR stack → empty Wasm stack → both trap
                 simp [irStep?, hcode_ir, hstk, irPop2?, irTrapState, irPushTrace] at hstep
                 obtain ⟨rfl, rfl⟩ := hstep
-                have hlen := hrel.hstack.1; rw [hstk] at hlen; simp at hlen
-                have hs2 : s2.stack = [] := by cases s2.stack with | nil => rfl | cons => simp_all
-                simp only [traceToWasm]; exact ⟨_, by simp [step?, hcw, hs2, withI32Bin, withI32Rel, pop2?, trapState, pushTrace],
-                  { hemit := hrel.hemit, hcode := .nil, hstack := by simp [hs2],
+                have hs2 : s2.stack = [] := by
+                  cases hs : s2.stack with
+                  | nil => rfl
+                  | cons v rest => exfalso; have := hrel.hstack.1; rw [hstk, hs] at this; simp at this
+                simp only [traceToWasm]
+                refine ⟨_, ?_, ?_⟩
+                · simp [step?, hcw, hs2, withI32Bin, withI32Rel, pop2?, trapState, pushTrace]
+                · exact {
+                    hemit := hrel.hemit, hcode := .nil,
+                    hstack := by simp only [hs2, hstk]; exact ⟨rfl, fun i hi => absurd hi (by omega)⟩,
                     hframes_len := hrel.hframes_len, hframes_locals := hrel.hframes_locals,
-                    hframes_vals := hrel.hframes_vals, hglobals := hrel.hglobals, hmemory := hrel.hmemory, hmemLimits := hrel.hmemLimits, hmemory_aligned := hrel.hmemory_aligned, hmemory_nonempty := hrel.hmemory_nonempty,
-                    hlabels := hrel.hlabels, hhalt := hhalt_of_structural (@EmitCodeCorr.nil (s1.labels.map (·.name))) hrel.hlabels,
+                    hframes_vals := hrel.hframes_vals, hglobals := hrel.hglobals,
+                    hmemory := hrel.hmemory, hmemLimits := hrel.hmemLimits,
+                    hmemory_aligned := hrel.hmemory_aligned, hmemory_nonempty := hrel.hmemory_nonempty,
+                    hlabels := hrel.hlabels,
+                    hhalt := by exact hhalt_of_structural .nil hrel.hlabels,
                     hlabel_content := hrel.hlabel_content,
                     hframes_one := hrel.hframes_one,
                     hmodule := hrel.hmodule,
                     hstore_funcs := hrel.hstore_funcs,
-                    hstore_types := hrel.hstore_types }⟩
+                    hstore_types := hrel.hstore_types }
               | [v1] =>
                 -- Only 1 element: irPop2? fails → trap on both sides
                 simp [irStep?, hcode_ir, hstk, irPop2?, irTrapState, irPushTrace] at hstep
                 obtain ⟨rfl, rfl⟩ := hstep
-                have hlen := hrel.hstack.1; rw [hstk] at hlen; simp at hlen
                 have hs2 : ∃ wv, s2.stack = [wv] := by
-                  cases s2.stack with
-                  | nil => simp at hlen
-                  | cons wv rest => cases rest with | nil => exact ⟨wv, rfl⟩ | cons => simp at hlen; omega
+                  cases hs : s2.stack with
+                  | nil => exfalso; have := hrel.hstack.1; rw [hstk, hs] at this; simp at this
+                  | cons wv rest =>
+                    cases rest with
+                    | nil => exact ⟨wv, rfl⟩
+                    | cons a as => exfalso; have := hrel.hstack.1; rw [hstk, hs] at this; simp at this
                 obtain ⟨wv, hs2⟩ := hs2
-                simp only [traceToWasm]; exact ⟨_, by simp [step?, hcw, hs2, withI32Bin, withI32Rel, pop2?, trapState, pushTrace],
-                  { hemit := hrel.hemit, hcode := .nil, hstack := hrel.hstack,
+                simp only [traceToWasm]
+                refine ⟨_, ?_, ?_⟩
+                · simp [step?, hcw, hs2, withI32Bin, withI32Rel, pop2?, trapState, pushTrace]
+                · exact {
+                    hemit := hrel.hemit, hcode := .nil,
+                    hstack := by
+                      constructor
+                      · simp [hstk, hs2]
+                      · intro i hi; simp [hstk] at hi; omega,
                     hframes_len := hrel.hframes_len, hframes_locals := hrel.hframes_locals,
-                    hframes_vals := hrel.hframes_vals, hglobals := hrel.hglobals, hmemory := hrel.hmemory, hmemLimits := hrel.hmemLimits, hmemory_aligned := hrel.hmemory_aligned, hmemory_nonempty := hrel.hmemory_nonempty,
-                    hlabels := hrel.hlabels, hhalt := hhalt_of_structural (@EmitCodeCorr.nil (s1.labels.map (·.name))) hrel.hlabels,
+                    hframes_vals := hrel.hframes_vals, hglobals := hrel.hglobals,
+                    hmemory := hrel.hmemory, hmemLimits := hrel.hmemLimits,
+                    hmemory_aligned := hrel.hmemory_aligned, hmemory_nonempty := hrel.hmemory_nonempty,
+                    hlabels := hrel.hlabels,
+                    hhalt := by exact hhalt_of_structural .nil hrel.hlabels,
                     hlabel_content := hrel.hlabel_content,
                     hframes_one := hrel.hframes_one,
                     hmodule := hrel.hmodule,
                     hstore_funcs := hrel.hstore_funcs,
-                    hstore_types := hrel.hstore_types }⟩
+                    hstore_types := hrel.hstore_types }
               | .i32 rhs :: .i32 lhs :: stk =>
                 -- Both i32: success case. IR and Wasm compute the same result.
                 -- Simplify IR step
@@ -10048,40 +10069,59 @@ theorem step_sim (irmod : IRModule) (wmod : Module) :
                 -- Stack underflow: empty IR stack → empty Wasm stack → trap
                 simp [irStep?, hcode_ir, hstk, irPop2?, irTrapState, irPushTrace] at hstep
                 obtain ⟨rfl, rfl⟩ := hstep
-                have hstk_rel := hrel.hstack; rw [hstk] at hstk_rel
-                match hstk_w : s2.stack with
-                | [] =>
-                  simp only [traceToWasm]; exact ⟨_, by simp [step?, hcw, hstk_w, withF64Bin, pop2?, trapState, pushTrace],
-                    { hemit := hrel.hemit, hcode := .nil, hstack := by simp [hstk_w],
-                      hframes_len := hrel.hframes_len, hframes_locals := hrel.hframes_locals,
-                      hframes_vals := hrel.hframes_vals, hglobals := hrel.hglobals, hmemory := hrel.hmemory, hmemLimits := hrel.hmemLimits, hmemory_aligned := hrel.hmemory_aligned, hmemory_nonempty := hrel.hmemory_nonempty,
-                      hlabels := hrel.hlabels, hhalt := hhalt_of_structural (@EmitCodeCorr.nil (s1.labels.map (·.name))) hrel.hlabels,
-                      hlabel_content := hrel.hlabel_content,
-                      hframes_one := hrel.hframes_one,
-                      hmodule := hrel.hmodule,
-                      hstore_funcs := hrel.hstore_funcs,
-                      hstore_types := hrel.hstore_types }⟩
-                | _ :: _ => simp [hstk_w] at hstk_rel
-              | [v1] =>
-                -- Only 1 element: irPop2? fails → trap on both sides
-                simp [irStep?, hcode_ir, hstk, irPop2?, irTrapState, irPushTrace] at hstep
-                obtain ⟨rfl, rfl⟩ := hstep
-                have hlen := hrel.hstack.1; rw [hstk] at hlen; simp at hlen
-                have hs2 : ∃ wv, s2.stack = [wv] := by
-                  cases s2.stack with
-                  | nil => simp at hlen
-                  | cons wv rest => cases rest with | nil => exact ⟨wv, rfl⟩ | cons => simp at hlen; omega
-                obtain ⟨wv, hs2⟩ := hs2
-                simp only [traceToWasm]; exact ⟨_, by simp [step?, hcw, hs2, withF64Bin, pop2?, trapState, pushTrace],
-                  { hemit := hrel.hemit, hcode := .nil, hstack := hrel.hstack,
+                have hs2 : s2.stack = [] := by
+                  cases hs : s2.stack with
+                  | nil => rfl
+                  | cons v rest => exfalso; have := hrel.hstack.1; rw [hstk, hs] at this; simp at this
+                simp only [traceToWasm]
+                refine ⟨_, ?_, ?_⟩
+                · simp [step?, hcw, hs2, withF64Bin, pop2?, trapState, pushTrace]
+                · exact {
+                    hemit := hrel.hemit, hcode := .nil,
+                    hstack := by simp only [hs2, hstk]; exact ⟨rfl, fun i hi => absurd hi (by omega)⟩,
                     hframes_len := hrel.hframes_len, hframes_locals := hrel.hframes_locals,
-                    hframes_vals := hrel.hframes_vals, hglobals := hrel.hglobals, hmemory := hrel.hmemory, hmemLimits := hrel.hmemLimits, hmemory_aligned := hrel.hmemory_aligned, hmemory_nonempty := hrel.hmemory_nonempty,
-                    hlabels := hrel.hlabels, hhalt := hhalt_of_structural (@EmitCodeCorr.nil (s1.labels.map (·.name))) hrel.hlabels,
+                    hframes_vals := hrel.hframes_vals, hglobals := hrel.hglobals,
+                    hmemory := hrel.hmemory, hmemLimits := hrel.hmemLimits,
+                    hmemory_aligned := hrel.hmemory_aligned, hmemory_nonempty := hrel.hmemory_nonempty,
+                    hlabels := hrel.hlabels,
+                    hhalt := by exact hhalt_of_structural .nil hrel.hlabels,
                     hlabel_content := hrel.hlabel_content,
                     hframes_one := hrel.hframes_one,
                     hmodule := hrel.hmodule,
                     hstore_funcs := hrel.hstore_funcs,
-                    hstore_types := hrel.hstore_types }⟩
+                    hstore_types := hrel.hstore_types }
+              | [v1] =>
+                -- Only 1 element: irPop2? fails → trap on both sides
+                simp [irStep?, hcode_ir, hstk, irPop2?, irTrapState, irPushTrace] at hstep
+                obtain ⟨rfl, rfl⟩ := hstep
+                have hs2 : ∃ wv, s2.stack = [wv] := by
+                  cases hs : s2.stack with
+                  | nil => exfalso; have := hrel.hstack.1; rw [hstk, hs] at this; simp at this
+                  | cons wv rest =>
+                    cases rest with
+                    | nil => exact ⟨wv, rfl⟩
+                    | cons a as => exfalso; have := hrel.hstack.1; rw [hstk, hs] at this; simp at this
+                obtain ⟨wv, hs2⟩ := hs2
+                simp only [traceToWasm]
+                refine ⟨_, ?_, ?_⟩
+                · simp [step?, hcw, hs2, withF64Bin, pop2?, trapState, pushTrace]
+                · exact {
+                    hemit := hrel.hemit, hcode := .nil,
+                    hstack := by
+                      constructor
+                      · simp [hstk, hs2]
+                      · intro i hi; simp [hstk] at hi; omega,
+                    hframes_len := hrel.hframes_len, hframes_locals := hrel.hframes_locals,
+                    hframes_vals := hrel.hframes_vals, hglobals := hrel.hglobals,
+                    hmemory := hrel.hmemory, hmemLimits := hrel.hmemLimits,
+                    hmemory_aligned := hrel.hmemory_aligned, hmemory_nonempty := hrel.hmemory_nonempty,
+                    hlabels := hrel.hlabels,
+                    hhalt := by exact hhalt_of_structural .nil hrel.hlabels,
+                    hlabel_content := hrel.hlabel_content,
+                    hframes_one := hrel.hframes_one,
+                    hmodule := hrel.hmodule,
+                    hstore_funcs := hrel.hstore_funcs,
+                    hstore_types := hrel.hstore_types }
               | .f64 rhs :: .f64 lhs :: stk =>
                 -- Both f64: success case
                 unfold irStep? at hstep; rw [hcode_ir, hstk] at hstep
