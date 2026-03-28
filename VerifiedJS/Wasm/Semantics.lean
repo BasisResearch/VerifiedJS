@@ -11687,13 +11687,13 @@ theorem step_sim (irmod : IRModule) (wmod : Module) :
                       hmemory := by
                         left; dsimp only [s2', store', pushTrace]
                         simp only [Array.set!_eq_setIfInBounds, Array.getElem?_setIfInBounds]
-                        simp [h0mem]
+                        simp [h0mem, grownMem]
                       hmemLimits := by dsimp only [s2', store', pushTrace]; exact hrel.hmemLimits
                       hmemory_aligned := by
                         dsimp only [s2', store', pushTrace, grownMem]
-                        simp only [ByteArray.size, Array.size_append, Array.size_replicate,
-                          ByteArray.toList, Array.toArray_toList, ByteArray.data, ByteArray.size_data]
-                        exact Nat.dvd_add hrel.hmemory_aligned ⟨pages.toNat, rfl⟩
+                        rw [ByteArray.size, Array.size_append, Array.size_replicate]
+                        simp only [ByteArray.toList, List.toArray_length, List.length_toList]
+                        exact Nat.dvd_add hrel.hmemory_aligned ⟨pages.toNat, Nat.mul_comm _ _⟩
                       hmemory_nonempty := by
                         dsimp only [s2', store', pushTrace]
                         rw [Array.set!_eq_setIfInBounds, Array.size_setIfInBounds]
@@ -11716,9 +11716,13 @@ theorem step_sim (irmod : IRModule) (wmod : Module) :
                   obtain ⟨rfl, rfl⟩ := hstep
                   have hNewPages_gt : ¬ (s1.memory.size / 65536 + pages.toNat ≤ 65536) := by
                     intro h; apply hok
-                    have hmod := Nat.div_add_mod s1.memory.size 65536
-                    have hmod_lt := Nat.mod_lt s1.memory.size (by omega : 0 < 65536)
-                    omega
+                    have halign := hrel.hmemory_aligned
+                    obtain ⟨k, hk⟩ := halign
+                    rw [hk]
+                    simp [Nat.mul_div_cancel_left _ (by omega : 0 < 65536)]
+                    rw [hk] at h
+                    simp [Nat.mul_div_cancel_left _ (by omega : 0 < 65536)] at h
+                    nlinarith
                   have hw : step? s2 = some (.silent, pushTrace
                     { s2 with code := rest_w, stack := .i32 (UInt32.ofNat 0xFFFFFFFF) :: wstk' } .silent) := by
                     simp only [step?, hcw, hstack_eq, pop1?, h0mem, dite_true, hmem_val]
