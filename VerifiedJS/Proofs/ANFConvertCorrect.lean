@@ -1068,6 +1068,29 @@ private theorem normalizeExpr_var_step_sim :
         (by intro v hc; exact Flat.Expr.noConfusion hc) (by intro nm hc; exact Flat.Expr.noConfusion hc)
         (by intro hc; exact Flat.Expr.noConfusion hc) (by intro a' b' hc; exact Flat.Expr.noConfusion hc) n m _)
 
+/-- When normalizeExpr sf.expr k produces .labeled label body, there exist Flat steps
+    from sf to sf' such that normalizeExpr sf'.expr k' produces body (with k' trivial-preserving).
+    The .labeled may be embedded inside .seq chains or compound expression prefixes;
+    the Flat machine steps through these to reach the underlying .labeled statement. -/
+private theorem normalizeExpr_labeled_step_sim
+    (e : Flat.Expr)
+    (k : ANF.Trivial → ANF.ConvM ANF.Expr) (n m : Nat)
+    (label : String) (body : ANF.Expr)
+    (hk : ∀ (arg : ANF.Trivial) (n' : Nat), ∃ m', (k arg).run n' = .ok (.trivial arg, m'))
+    (hnorm : (ANF.normalizeExpr e k).run n = .ok (ANF.Expr.labeled label body, m))
+    (sf : Flat.State) (hsf : sf.expr = e)
+    (hwf : ExprWellFormed e sf.env) :
+    ∃ (evs : List Core.TraceEvent) (sf' : Flat.State),
+      Flat.Steps sf evs sf' ∧
+      (∃ (k' : ANF.Trivial → ANF.ConvM ANF.Expr) (n' m' : Nat),
+        (ANF.normalizeExpr sf'.expr k').run n' = .ok (body, m') ∧
+        (∀ (arg : ANF.Trivial) (n'' : Nat), ∃ m'', (k' arg).run n'' = .ok (.trivial arg, m''))) ∧
+      sf'.env = sf.env ∧ sf'.heap = sf.heap ∧
+      observableTrace sf'.trace = observableTrace sf.trace ∧
+      observableTrace evs = [] ∧
+      ExprWellFormed sf'.expr sf'.env := by
+  sorry
+
 /-- Stuttering simulation: one ANF step corresponds to one or more Flat steps,
     preserving observable events and the simulation relation.
     This is the key theorem requiring detailed case analysis over expression forms. -/
@@ -1156,7 +1179,34 @@ private theorem anfConvert_step_star
   | await arg =>
     sorry -- await: evaluate trivial arg
   | labeled label body =>
-    sorry -- labeled: needs normalizeExpr inversion
+    obtain ⟨sa_expr, sa_env, sa_heap, sa_trace⟩ := sa
+    simp only [] at hsa; subst hsa
+    simp [ANF.step?, ANF.pushTrace] at hstep_eq
+    obtain ⟨rfl, rfl⟩ := hstep_eq
+    have hnorm' : (ANF.normalizeExpr sf.expr k).run n =
+      .ok (ANF.Expr.labeled label body, m) := by exact hnorm
+    obtain ⟨evs, sf', hsteps, ⟨k', n', m', hbody, hk'⟩, henv', hheap', htrace', hobs, hwf'⟩ :=
+      normalizeExpr_labeled_step_sim sf.expr k n m label body hk_triv hnorm' sf rfl hewf
+    refine ⟨evs, sf', hsteps, ?_, ?_, ?_⟩
+    · -- observableTrace [.silent] = observableTrace evs
+      show observableTrace [Core.TraceEvent.silent] = observableTrace evs
+      rw [hobs]; decide
+    · -- ANF_SimRel
+      constructor
+      · -- heap
+        simp only [ANF.State.heap] at hheap; rw [hheap, ← hheap']
+      constructor
+      · -- env
+        simp only [ANF.State.env] at henv; rw [henv, ← henv']
+      constructor
+      · -- trace
+        simp only [ANF.State.trace] at htrace
+        rw [observableTrace_append, htrace, ← htrace']
+        simp [observableTrace]; decide
+      · -- normalizeExpr + k
+        exact ⟨k', n', m', hbody, hk'⟩
+    · -- ExprWellFormed
+      exact hwf'
   | «break» label =>
     sorry -- break: ANF produces .silent but Flat produces .error — semantic mismatch
   | «continue» label =>

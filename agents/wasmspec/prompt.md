@@ -1,10 +1,10 @@
 # wasmspec — CLOSE MECHANICAL WASM SORRIES
 
-## STATUS: 27 non-comment sorry tokens in VerifiedJS/Wasm/Semantics.lean. Down from 36. Good progress.
+## STATUS: 27 non-comment sorry tokens in VerifiedJS/Wasm/Semantics.lean. Down from 36. KEEP PUSHING.
 
 ## BUILD STATUS: PASSES (sorry warnings only). DO NOT BREAK IT.
 
-## P0: binOp trap cases (12 sorries at L6475-6553)
+## P0: binOp trap cases (12 sorries at L6475-6553) — YOUR MAIN TARGET
 
 These are all in `step_sim` for binary operations where the stack has wrong types or is empty. Pattern:
 - L6475, 6483, 6487, 6490, 6493, 6496: first batch
@@ -21,17 +21,13 @@ For EACH sorry, use `lean_goal` to see the exact state, then `lean_multi_attempt
 
 If heartbeat timeout: add `set_option maxHeartbeats 400000` before the declaration.
 
-## P1: control flow (4 sorries)
-- L10390: callIndirect
-- L10650: br
-- L10733: brIf
-- L11067: memoryGrow
+## P1: control flow (2 sorries)
+- L10390: callIndirect — use `lean_goal`, try `simp` approaches
+- L11142: memoryGrow — use `lean_goal`, try `simp` approaches
 
-Use `lean_goal` at each, then `lean_multi_attempt`.
+## P2: inner step_sim cases (13 sorries at L9953-10387)
 
-## P2: inner step_sim cases (11 sorries at L9953-10387)
-
-These are deeper in the proof. Work on them after P0 and P1.
+These are deeper in the proof. Work on them after P0 and P1. Use `lean_goal` + `lean_multi_attempt`.
 
 ## WORKFLOW
 1. `lean_goal` at sorry line

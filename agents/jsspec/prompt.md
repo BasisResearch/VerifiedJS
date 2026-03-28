@@ -1,92 +1,65 @@
-# jsspec — normalizeExpr INVERSION LEMMAS (ANF CRITICAL PATH)
+# jsspec — ANF CASE HELPERS (LABELED, YIELD, AWAIT)
 
-## STATUS: proof agent is working on ANF. It NEEDS inversion lemmas to make progress.
+## STATUS: proof agent is installing your simp lemmas from staging. You now need to write CASE-SPECIFIC helpers.
 
-## PRIORITY 0: normalizeExpr inversion lemmas (URGENT)
+## CRITICAL DISCOVERY: MORE BLOCKED CASES
 
-The proof agent needs to invert `hnorm : StateT.run (ANF.normalizeExpr sf.expr k) n = Except.ok (result, m)` to determine what `sf.expr` is from the shape of `result`.
+observableTrace only filters `.silent`. These ANF cases produce DIFFERENT events from their Flat counterparts:
+- **return none**: ANF → `.silent`, Flat → `.error "return:undefined"`. BLOCKED.
+- **return some**: ANF → `.silent`, Flat → `.error "return:..."`. BLOCKED.
+- **throw**: ANF → `.error "throw"`, Flat → `.error (valueToString v)`. BLOCKED (different strings).
+- **break/continue**: Already known BLOCKED.
 
-Look at `VerifiedJS/ANF/Convert.lean:36-136`. Key observation: each normalizeExpr case produces output with a UNIQUE top-level constructor. So the result constructor determines the input constructor.
+PROVABLE CASES (both sides produce matching events):
+- **labeled** (L1158): both `.silent` → body
+- **yield none** (L1154): both `.silent` → `.lit .undefined`/`.trivial .litUndefined`
+- **yield some** (L1154): both `.silent` on success
+- **await** (L1156): both `.silent` on success
+- **if** (L1144): both `.silent` on branch
+- **let** (L1140): complex (evalComplex)
+- **seq** (L1142): complex (inner stepping)
+- **while** (L1146): complex
+- **tryCatch** (L1150): complex
 
-Write these lemmas in `VerifiedJS/Proofs/ANFConvertCorrect.lean` as `private theorem` (before `anfConvert_step_star`):
+## PRIORITY 0: Flat.step? simp lemmas for labeled/yield/await
 
-### 1. labeled inversion (MOST URGENT)
-```lean
--- normalizeExpr only produces .labeled from .labeled input
-private theorem normalizeExpr_labeled_inv (e : Flat.Expr) (k : ANF.Trivial → ANF.ConvM ANF.Expr)
-    (n m : Nat) (label : Option String) (body_anf : ANF.Expr)
-    (h : (ANF.normalizeExpr e k).run n = .ok (.labeled label body_anf, m)) :
-    ∃ body_flat, e = .labeled label body_flat ∧
-      (ANF.normalizeExpr body_flat k).run n = .ok (body_anf, m) := by
-  -- Proof: case split on e. For every constructor except .labeled,
-  -- normalizeExpr produces a different constructor, contradiction.
-  cases e <;> simp [ANF.normalizeExpr] at h
-  -- Only .labeled case survives
-  case labeled label' body' =>
-    -- h : (.labeled label' bodyExpr, m') = (.labeled label body_anf, m)
-    exact ⟨body', rfl, h⟩
-```
-
-### 2. return inversion
-```lean
-private theorem normalizeExpr_return_none_inv (e : Flat.Expr) (k : ANF.Trivial → ANF.ConvM ANF.Expr)
-    (n m : Nat)
-    (h : (ANF.normalizeExpr e k).run n = .ok (.return none, m)) :
-    e = .return none := by
-  cases e <;> simp [ANF.normalizeExpr] at h
-```
-
-### 3. break/continue inversion (for future use)
-```lean
-private theorem normalizeExpr_break_inv (e : Flat.Expr) (k : ANF.Trivial → ANF.ConvM ANF.Expr)
-    (n m : Nat) (label : Option String)
-    (h : (ANF.normalizeExpr e k).run n = .ok (.break label, m)) :
-    e = .break label := by
-  cases e <;> simp [ANF.normalizeExpr] at h
-
-private theorem normalizeExpr_continue_inv (e : Flat.Expr) (k : ANF.Trivial → ANF.ConvM ANF.Expr)
-    (n m : Nat) (label : Option String)
-    (h : (ANF.normalizeExpr e k).run n = .ok (.continue label, m)) :
-    e = .continue label := by
-  cases e <;> simp [ANF.normalizeExpr] at h
-```
-
-### 4. throw inversion
-```lean
-private theorem normalizeExpr_throw_inv (e : Flat.Expr) (k : ANF.Trivial → ANF.ConvM ANF.Expr)
-    (n m : Nat) (arg : ANF.Trivial)
-    (h : (ANF.normalizeExpr e k).run n = .ok (.throw arg, m)) :
-    ∃ arg_flat, e = .throw arg_flat := by
-  cases e <;> simp [ANF.normalizeExpr] at h
-  case throw a => exact ⟨a, rfl⟩
-```
-
-## HOW TO PROVE THESE
-
-The key tactic pattern is:
-1. `cases e` — split on all Flat.Expr constructors
-2. For each non-matching case, `simp [ANF.normalizeExpr]` at h produces contradiction (the output constructor doesn't match)
-3. For the matching case, extract the relationship
-
-**IMPORTANT**: `simp [ANF.normalizeExpr]` may not fully unfold the recursive cases. You may need `unfold ANF.normalizeExpr` or `simp only [ANF.normalizeExpr]` with equation lemmas. If `simp` fails for a case, use `lean_goal` to see what's left and try `contradiction` or `exact absurd h (by ...)`.
-
-## VERIFY EACH LEMMA
-
-After writing each lemma:
-1. `lean_goal` at the `by` to check no unsolved goals
-2. `lean_diagnostic_messages` to check no errors
-
-## PRIORITY 1: Flat.step? lemmas for labeled/return
+Write these in `.lake/_tmp_fix/VerifiedJS/Proofs/anf_helpers.lean` (or new file):
 
 ```lean
--- What does Flat.step? do for .labeled and .return?
--- Check VerifiedJS/Flat/Semantics.lean
--- Write @[simp] lemmas if they don't already exist
+-- Flat.step? on labeled: steps to body with .silent
+@[simp] theorem Flat.step?_labeled (s : Flat.State) (label : Flat.LabelName) (body : Flat.Expr) :
+    Flat.step? { s with expr := .labeled label body } =
+      some (.silent, Flat.pushTrace { s with expr := body } .silent) := by
+  simp [Flat.step?]
+
+-- Flat.step? on yield none: steps to .lit .undefined with .silent
+@[simp] theorem Flat.step?_yield_none (s : Flat.State) (delegate : Bool) :
+    Flat.step? { s with expr := .yield none delegate } =
+      some (.silent, Flat.pushTrace { s with expr := .lit .undefined } .silent) := by
+  simp [Flat.step?]
+
+-- Flat.step? on await with value: steps to .lit v with .silent
+@[simp] theorem Flat.step?_await_value (s : Flat.State) (v : Flat.Value) :
+    Flat.step? { s with expr := .await (.lit v) } =
+      some (.silent, Flat.pushTrace { s with expr := .lit v } .silent) := by
+  simp [Flat.step?, Flat.exprValue?]
 ```
 
-## DO NOT:
-- Edit the main theorem cases (those are for proof agent)
-- Run full `lake build`
-- Touch CC or Wasm files
+Verify each with `lean_verify`. These are needed by proof agent for the easy cases.
 
-## Log progress to agents/jsspec/log.md
+## PRIORITY 1: normalizeExpr inversion for labeled case
+
+The proof agent needs: if `(normalizeExpr sf.expr k).run n = .ok (.labeled label body_anf, m)`, then sf.expr = `.labeled label body_flat` for some `body_flat` and `(normalizeExpr body_flat k).run n = .ok (body_anf, m)`.
+
+This is hard to prove for ALL Flat.Expr constructors (need StateT monad reasoning for compound cases). Try the approach:
+1. Case split on `sf.expr`
+2. For simple cases (var, lit, this, break, continue, etc.), `simp [normalizeExpr]` should give contradiction
+3. For compound cases, may need `unfold normalizeExpr; simp` or monad reasoning
+
+If full inversion is too hard, prove it for just the cases where `hk_triv` (k only produces .trivial) is available — this eliminates many compound cases.
+
+## PRIORITY 2: Document which cases are provable vs blocked
+
+Update `.lake/_tmp_fix/VerifiedJS/Proofs/design_issues.md` with the full blocked-case analysis above.
+
+## DO NOT edit main proof files. Log to agents/jsspec/log.md.
