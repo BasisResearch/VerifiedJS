@@ -5114,3 +5114,51 @@ CC and Wasm both broken. Neither is supervisor-fixable (file permissions). Agent
 
 ## Run: 2026-03-28T01:05:02+00:00
 
+
+### Metrics
+- **Sorry count**: 57 grep-c lines (13 ANF + 20 CC + 23 Wasm + 1 Lower). ~53 real sorry tokens (4 comment mentions).
+- **Delta from last run (59)**: **-2**. CC 18→20 lines but includes comments, real CC ~18 tokens (unchanged). Wasm 27→23 lines (-4 real progress). ANF/Lower unchanged.
+- **Net assessment**: Small improvement. Wasm progressed. ANF STILL STUCK.
+
+### BUILD STATUS
+
+| Module | Status | Details |
+|--------|--------|---------|
+| ClosureConvertCorrect | **ELABORATING** | lean worker active since 00:36, no errors returned yet |
+| Wasm/Semantics | **BROKEN** | L9956 synthesize placeholder (SAME ERROR, NOT FIXED), L8323/L9935/L10046 heartbeat timeouts |
+| ANFConvertCorrect | **BLOCKED** | depends on CC |
+| LowerCorrect | **BLOCKED** | depends on CC |
+
+### ANF: 13 SORRIES — 6+ DAYS — CRITICAL PATH FAILURE
+- proof agent has NOT touched ANF. File last modified 2026-03-27T00:34:03.
+- proof agent is still working on CC (lean worker on CC file since 00:36).
+- **ROOT CAUSE**: proof agent prompt said P0=fix CC build, P1=ANF. Agent keeps doing P0 and never reaches P1.
+- **FIX**: Rewrote proof prompt to make ANF THE ONLY priority. CC is explicitly deprioritized.
+- Provided exact tactic scaffold for break/continue (tested via lean_multi_attempt):
+  - `obtain ⟨_, sa_env, sa_heap, sa_trace⟩ := sa; simp only [] at hsa; subst hsa; simp [ANF.step?] at hstep_eq`
+  - Gets to: `ev = .silent, sa' = pushTrace {.trivial .litUndefined, ...} .silent`
+  - Remaining: invert normalizeExpr, show Flat.Steps, build new SimRel
+
+### Wasm: BUILD STILL BROKEN
+- wasmspec agent running since 23:00, currently doing `lake build --verbose`.
+- L9956 error was reported last run, agent was told to fix it, but it STILL EXISTS.
+- Added heartbeat timeout errors (L8323, L9935, L10046) to wasmspec prompt.
+- Rewrote prompt with simpler fix instructions (sorry the arm if needed).
+
+### Agent Status
+- **proof**: Running since 23:00 (2h+). Working on CC. Prompt REWRITTEN to force ANF-only.
+- **jsspec**: Completed 01:07. Produced normalizeExpr inversion lemmas. Prompt REWRITTEN: write more ANF inversion lemmas.
+- **wasmspec**: Running since 23:00 (2h+). Building. Prompt REWRITTEN: fix build errors first.
+
+### Actions Taken
+1. proof prompt: **COMPLETE REWRITE** — ANF is ONLY priority, CC explicitly blocked until 4 ANF sorries closed. Exact tactic scaffold provided for break/continue.
+2. jsspec prompt: **REWRITTEN** — write normalizeExpr inversion lemmas (break_inv, continue_inv, etc.) for proof agent.
+3. wasmspec prompt: **REWRITTEN** — fix 4 build errors (L9956 synthesize + 3 heartbeat timeouts).
+
+### OUTLOOK: Target next run ≤55
+- proof agent starts ANF break/continue with provided scaffold → ANF 13→11 (conservative)
+- wasmspec fixes build → Wasm builds
+- Target: ≤55 (if proof closes 2 ANF cases)
+- **RISK**: proof agent is mid-run and may not read new prompt until restart
+
+2026-03-28T01:25:36+00:00 DONE

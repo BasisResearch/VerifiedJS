@@ -1,40 +1,50 @@
 # jsspec — ANF HELPER LEMMAS (CRITICAL PATH)
 
-## STATUS: 59 sorries. Your CCStateAgree helpers are excellent. NOW: proof agent is pivoting to ANF. It needs helpers.
+## STATUS: proof agent is FINALLY pivoting to ANF. It needs normalizeExpr inversion lemmas urgently.
 
-## PRIORITY 0: Write ANF step? simp lemmas
+## PRIORITY 0: normalizeExpr inversion lemmas
 
-File: `.lake/_tmp_fix/VerifiedJS/Proofs/anf_helpers.lean`
+The proof agent needs to invert `hnorm : StateT.run (ANF.normalizeExpr sf.expr k) n = Except.ok (ANF.Expr.break label, m)` to conclude `sf.expr = Flat.Expr.break label`.
 
-The proof agent needs simp lemmas for each ANF constructor. Use `lean_hover_info` on `ANF.step?` and `Source.step?` to understand the definitions, then write:
+Write these lemmas in `.lake/_tmp_fix/VerifiedJS/Proofs/anf_norm_inv.lean`:
 
-1. **break/continue**: What does `ANF.step? (.break label) env heap` reduce to? Write the simp lemma.
-2. **throw**: `ANF.step? (.throw arg) env heap` — evaluate trivial arg, produce throw event.
-3. **return**: `ANF.step? (.return arg) env heap` — similar.
-4. **var lookup**: `ANF.step? (.var name) env heap` — resolve in env.
+```lean
+-- 1. normalizeExpr (.break label) k always produces .break label (ignores k)
+theorem normalizeExpr_break (label : Option String) (k : ANF.Trivial → ANF.ConvM ANF.Expr) (n : Nat) :
+    StateT.run (ANF.normalizeExpr (.break label) k) n = Except.ok (.break label, n)
 
-Also write **normalizeExpr inversion lemmas**:
-5. What does `normalizeExpr (.break label) k` produce?
-6. What does `normalizeExpr (.throw e) k` produce?
-7. What does `normalizeExpr (.return e) k` produce?
+-- 2. If normalizeExpr e k produces .break label, then e = .break label
+theorem normalizeExpr_break_inv (e : Flat.Expr) (k : ANF.Trivial → ANF.ConvM ANF.Expr) (n m : Nat) (label : Option String)
+    (h : StateT.run (ANF.normalizeExpr e k) n = Except.ok (.break label, m)) :
+    e = .break label
 
-Use `lean_hover_info` on `normalizeExpr` to understand the definition.
+-- 3. Same for continue
+theorem normalizeExpr_continue_inv (e : Flat.Expr) (k : ANF.Trivial → ANF.ConvM ANF.Expr) (n m : Nat) (label : Option String)
+    (h : StateT.run (ANF.normalizeExpr e k) n = Except.ok (.continue label, m)) :
+    e = .continue label
+```
 
-Verify each with `lake env lean` on the staging file.
+Use `lean_hover_info` on `ANF.normalizeExpr` to understand the definition, then prove each.
+Also write similar lemmas for throw, return, yield, await.
 
-## PRIORITY 1: Install CC patches into main file
+## PRIORITY 1: ANF.step? simp lemmas
 
-The proof agent may not have installed your staged helpers yet. If you can write to CC file, install:
-1. CCStateAgree helpers from `cc_agree_helpers.lean` (ABOVE the main theorem)
-2. The `@[simp]` lemmas from `cc_st_lemma.lean`
-3. The L2138 fix: replace 2nd `sorry` with `⟨rfl, rfl⟩`
+```lean
+@[simp] theorem ANF_step?_break (label env heap trace) :
+    ANF.step? ⟨.break label, env, heap, trace⟩ = some (.silent, ANF.pushTrace ⟨.trivial .litUndefined, env, heap, trace⟩ .silent)
 
-## PRIORITY 2: Prepare call/newObj patches for proof agent
+@[simp] theorem ANF_step?_continue (label env heap trace) :
+    ANF.step? ⟨.continue label, env, heap, trace⟩ = some (.silent, ANF.pushTrace ⟨.trivial .litUndefined, env, heap, trace⟩ .silent)
+```
 
-Update the cc_call_patches.lean with current line numbers if they've shifted.
+Verify each with `lean_run_code` or `lake env lean` on the staging file.
+
+## PRIORITY 2: Flat.Step lemmas for break/continue
+
+The proof agent also needs: if sf.expr = .break label, then Flat.Step sf .silent {sf with expr := .lit .undefined, trace := sf.trace ++ [.silent]}.
 
 ## What NOT to do:
+- Do NOT edit main proof files
 - Do NOT run full `lake build`
-- Do NOT edit Wasm/Semantics.lean
 
 ## Log progress to agents/jsspec/log.md.
