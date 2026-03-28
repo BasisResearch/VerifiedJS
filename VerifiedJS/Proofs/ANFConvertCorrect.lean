@@ -941,6 +941,76 @@ private theorem trivialChain_consume_ctx
     | _ => simp [isTrivialChain] at htc
 
 /-- When normalizeExpr e k produces .trivial (.var name) with k trivial-preserving,
+    the variable name (or "this") is free in e. This is used to derive a contradiction
+    in the var-not-found case via ExprWellFormed. -/
+private theorem normalizeExpr_var_implies_free :
+    ∀ (d : Nat) (e : Flat.Expr), e.depth ≤ d →
+    ∀ (k : ANF.Trivial → ANF.ConvM ANF.Expr) (n m : Nat) (name : ANF.VarName),
+    (∀ (arg : ANF.Trivial) (n' : Nat), ∃ m', (k arg).run n' = .ok (.trivial arg, m')) →
+    (ANF.normalizeExpr e k).run n = .ok (.trivial (.var name), m) →
+    VarFreeIn name e := by
+  intro d; induction d with
+  | zero =>
+    intro e hd k n m name hk hnorm
+    cases e with
+    | var vname =>
+      simp only [ANF.normalizeExpr] at hnorm
+      obtain ⟨m', hk'⟩ := hk (.var vname) n
+      have hname_eq := hnorm.symm.trans hk' |> Except.ok.inj |> Prod.mk.inj |>.1
+        |> ANF.Expr.trivial.inj |> ANF.Trivial.var.inj
+      subst hname_eq; exact .var name
+    | this =>
+      simp only [ANF.normalizeExpr] at hnorm
+      obtain ⟨m', hk'⟩ := hk (.var "this") n
+      have hname_eq := hnorm.symm.trans hk' |> Except.ok.inj |> Prod.mk.inj |>.1
+        |> ANF.Expr.trivial.inj |> ANF.Trivial.var.inj
+      subst hname_eq; exact .this_var
+    | lit v =>
+      exfalso
+      simp only [ANF.normalizeExpr] at hnorm
+      rw [trivialOfFlatValue_eq_trivialOfValue] at hnorm
+      obtain ⟨m', hk'⟩ := hk (ANF.trivialOfValue v) n
+      have heq := hnorm.symm.trans hk' |> Except.ok.inj |> Prod.mk.inj |>.1
+        |> ANF.Expr.trivial.inj
+      exact absurd heq.symm (ANF.trivialOfValue_ne_var v name)
+    | seq _ _ => exfalso; simp [Flat.Expr.depth] at hd
+    | _ => exfalso; exact absurd hnorm (normalizeExpr_compound_not_trivial _ k
+        (by intro v hc; exact Flat.Expr.noConfusion hc) (by intro nm hc; exact Flat.Expr.noConfusion hc)
+        (by intro hc; exact Flat.Expr.noConfusion hc) (by intro a' b' hc; exact Flat.Expr.noConfusion hc) n m _)
+  | succ d ih =>
+    intro e hd k n m name hk hnorm
+    cases e with
+    | var vname =>
+      simp only [ANF.normalizeExpr] at hnorm
+      obtain ⟨m', hk'⟩ := hk (.var vname) n
+      have hname_eq := hnorm.symm.trans hk' |> Except.ok.inj |> Prod.mk.inj |>.1
+        |> ANF.Expr.trivial.inj |> ANF.Trivial.var.inj
+      subst hname_eq; exact .var name
+    | this =>
+      simp only [ANF.normalizeExpr] at hnorm
+      obtain ⟨m', hk'⟩ := hk (.var "this") n
+      have hname_eq := hnorm.symm.trans hk' |> Except.ok.inj |> Prod.mk.inj |>.1
+        |> ANF.Expr.trivial.inj |> ANF.Trivial.var.inj
+      subst hname_eq; exact .this_var
+    | lit v =>
+      exfalso
+      simp only [ANF.normalizeExpr] at hnorm
+      rw [trivialOfFlatValue_eq_trivialOfValue] at hnorm
+      obtain ⟨m', hk'⟩ := hk (ANF.trivialOfValue v) n
+      have heq := hnorm.symm.trans hk' |> Except.ok.inj |> Prod.mk.inj |>.1
+        |> ANF.Expr.trivial.inj
+      exact absurd heq.symm (ANF.trivialOfValue_ne_var v name)
+    | seq a b =>
+      simp only [ANF.normalizeExpr] at hnorm
+      have hdb : b.depth ≤ d := by simp [Flat.Expr.depth] at hd; omega
+      have hb_norm : (ANF.normalizeExpr b k).run n = .ok (.trivial (.var name), m) :=
+        normalizeExpr_ignored_bypass_trivial d a (by simp [Flat.Expr.depth] at hd; omega) _ n m _ hnorm
+      exact .seq_r _ _ _ (ih b hdb k n m name hk hb_norm)
+    | _ => exfalso; exact absurd hnorm (normalizeExpr_compound_not_trivial _ k
+        (by intro v hc; exact Flat.Expr.noConfusion hc) (by intro nm hc; exact Flat.Expr.noConfusion hc)
+        (by intro hc; exact Flat.Expr.noConfusion hc) (by intro a' b' hc; exact Flat.Expr.noConfusion hc) n m _)
+
+/-- When normalizeExpr e k produces .trivial (.var name) with k trivial-preserving,
     and env.lookup name = some val, there exist silent Flat steps from sf to sf'
     where sf'.expr = .lit val. This is the core simulation lemma for the var case. -/
 private theorem normalizeExpr_var_step_sim :
@@ -1262,7 +1332,15 @@ private theorem anfConvert_step_star
       cases hlookup : sa_env.lookup name <;> simp [hlookup] at hstep_eq
       case none =>
         obtain ⟨rfl, rfl⟩ := hstep_eq
-        sorry -- var not-found: requires VarFreeIn inversion or .this handling
+        exfalso
+        have hnorm_simp : (ANF.normalizeExpr sf.expr k).run n = .ok (.trivial (.var name), m) := by
+          simp only [ANF.State.expr] at hnorm; exact hnorm
+        have hfree := normalizeExpr_var_implies_free sf.expr.depth sf.expr (Nat.le_refl _)
+          k n m name hk_triv hnorm_simp
+        have hbound := hewf name hfree
+        simp only [ANF.State.env] at henv
+        rw [← henv] at hbound
+        exact hbound hlookup
       case some val =>
         obtain ⟨rfl, rfl⟩ := hstep_eq
         have hval_sf : sf.env.lookup name = some val := by
@@ -1869,13 +1947,12 @@ private theorem anfConvert_halt_star_aux
             have hwf3 : ExprWellFormed sf3.expr sf3.env := by
               rw [hsf3_expr, hsf3_env]; intro x hfx
               apply hwf x; rw [hsf]
-              cases hfx with
-              | seq_l _ _ hfx' =>
-                rw [ha]; exact .seq_l _ _ _ (by
-                  cases hfx' with
-                  | seq_l _ _ hfx'' => rw [ha1, hc]; exact .seq_l _ _ _ (.seq_r _ _ _ hfx'')
-                  | seq_r _ _ hfx'' => exact .seq_r _ _ _ hfx'')
-              | seq_r _ _ hfx' => exact .seq_r _ _ _ hfx'
+              rw [ha]; exact match hfx with
+              | .seq_l _ _ _ hfx' => .seq_l _ _ _ (by
+                  exact match hfx' with
+                  | .seq_l _ _ _ hfx'' => by rw [ha1, hc]; exact .seq_l _ _ _ (.seq_r _ _ _ hfx'')
+                  | .seq_r _ _ _ hfx'' => .seq_r _ _ _ hfx'')
+              | .seq_r _ _ _ hfx' => .seq_r _ _ _ hfx'
             obtain ⟨sf', evs, hsteps', hhalt', hobs', hrel'⟩ := ih sa sf3 hbd3 hrel3 hstuck hwf3
             let steps12 := Flat.Steps.tail (⟨hstep1⟩ : Flat.Step sf .silent sf2) (Flat.Steps.tail (⟨hstep2_eq⟩ : Flat.Step sf2 .silent sf3) hsteps')
             have hobsAll : observableTrace (.silent :: .silent :: evs) = [] := by simp [observableTrace_silent, hobs']
@@ -1922,17 +1999,16 @@ private theorem anfConvert_halt_star_aux
                 have hwf2 : ExprWellFormed sf2.expr sf2.env := by
                   rw [he, henv2]; intro x hfx
                   apply hwf x; rw [hsf]
-                  cases hfx with
-                  | seq_l _ _ hfx' =>
-                    rw [ha]; exact .seq_l _ _ _ (by
-                      cases hfx' with
-                      | seq_l _ _ hfx'' =>
-                        rw [ha1]; exact .seq_l _ _ _ (by
-                          cases hfx'' with
-                          | seq_l _ _ hfx''' => rw [hc, hc1]; exact .seq_l _ _ _ (.seq_r _ _ _ hfx''')
-                          | seq_r _ _ hfx''' => exact .seq_r _ _ _ hfx''')
-                      | seq_r _ _ hfx'' => exact .seq_r _ _ _ hfx'')
-                  | seq_r _ _ hfx' => exact .seq_r _ _ _ hfx'
+                  rw [ha]; exact match hfx with
+                  | .seq_l _ _ _ hfx' => .seq_l _ _ _ (by
+                      exact match hfx' with
+                      | .seq_l _ _ _ hfx'' =>
+                        by rw [ha1]; exact .seq_l _ _ _ (by
+                          exact match hfx'' with
+                          | .seq_l _ _ _ hfx''' => by rw [hc, hc1]; exact .seq_l _ _ _ (.seq_r _ _ _ hfx''')
+                          | .seq_r _ _ _ hfx''' => .seq_r _ _ _ hfx''')
+                      | .seq_r _ _ _ hfx'' => .seq_r _ _ _ hfx'')
+                  | .seq_r _ _ _ hfx' => .seq_r _ _ _ hfx'
                 obtain ⟨sf', evs, hsteps', hhalt', hobs', hrel'⟩ :=
                   ih sa sf2 hbd2 hrel2 hstuck hwf2
                 exact ⟨sf', .silent :: evs,
@@ -1990,17 +2066,16 @@ private theorem anfConvert_halt_star_aux
               have hwf3 : ExprWellFormed sf3.expr sf3.env := by
                 rw [hsf3_expr, hsf3_env]; intro x hfx
                 apply hwf x; rw [hsf]
-                cases hfx with
-                | seq_l _ _ hfx' =>
-                  rw [ha]; exact .seq_l _ _ _ (by
-                    cases hfx' with
-                    | seq_l _ _ hfx'' =>
-                      rw [ha1]; exact .seq_l _ _ _ (by
-                        cases hfx'' with
-                        | seq_l _ _ hfx''' => rw [hc, hc1]; exact .seq_l _ _ _ (.seq_r _ _ _ hfx''')
-                        | seq_r _ _ hfx''' => exact .seq_r _ _ _ hfx''')
-                    | seq_r _ _ hfx'' => exact .seq_r _ _ _ hfx'')
-                | seq_r _ _ hfx' => exact .seq_r _ _ _ hfx'
+                rw [ha]; exact match hfx with
+                | .seq_l _ _ _ hfx' => .seq_l _ _ _ (by
+                    exact match hfx' with
+                    | .seq_l _ _ _ hfx'' =>
+                      by rw [ha1]; exact .seq_l _ _ _ (by
+                        exact match hfx'' with
+                        | .seq_l _ _ _ hfx''' => by rw [hc, hc1]; exact .seq_l _ _ _ (.seq_r _ _ _ hfx''')
+                        | .seq_r _ _ _ hfx''' => .seq_r _ _ _ hfx''')
+                    | .seq_r _ _ _ hfx'' => .seq_r _ _ _ hfx'')
+                | .seq_r _ _ _ hfx' => .seq_r _ _ _ hfx'
               obtain ⟨sf', evs, hsteps', hhalt', hobs', hrel'⟩ := ih sa sf3 hbd3 hrel3 hstuck hwf3
               let steps12 := Flat.Steps.tail (⟨hstep1⟩ : Flat.Step sf .silent sf2) (Flat.Steps.tail (⟨hstep2_eq⟩ : Flat.Step sf2 .silent sf3) hsteps')
               have hobsAll : observableTrace (.silent :: .silent :: evs) = [] := by simp [observableTrace_silent, hobs']
@@ -2051,17 +2126,16 @@ private theorem anfConvert_halt_star_aux
               have hwf3 : ExprWellFormed sf3.expr sf3.env := by
                 rw [hsf3_expr, hsf3_env]; intro x hfx
                 apply hwf x; rw [hsf]
-                cases hfx with
-                | seq_l _ _ hfx' =>
-                  rw [ha]; exact .seq_l _ _ _ (by
-                    cases hfx' with
-                    | seq_l _ _ hfx'' =>
-                      rw [ha1]; exact .seq_l _ _ _ (by
-                        cases hfx'' with
-                        | seq_l _ _ hfx''' => rw [hc, hc1]; exact .seq_l _ _ _ (.seq_r _ _ _ hfx''')
-                        | seq_r _ _ hfx''' => exact .seq_r _ _ _ hfx''')
-                    | seq_r _ _ hfx'' => exact .seq_r _ _ _ hfx'')
-                | seq_r _ _ hfx' => exact .seq_r _ _ _ hfx'
+                rw [ha]; exact match hfx with
+                | .seq_l _ _ _ hfx' => .seq_l _ _ _ (by
+                    exact match hfx' with
+                    | .seq_l _ _ _ hfx'' =>
+                      by rw [ha1]; exact .seq_l _ _ _ (by
+                        exact match hfx'' with
+                        | .seq_l _ _ _ hfx''' => by rw [hc, hc1]; exact .seq_l _ _ _ (.seq_r _ _ _ hfx''')
+                        | .seq_r _ _ _ hfx''' => .seq_r _ _ _ hfx''')
+                    | .seq_r _ _ _ hfx'' => .seq_r _ _ _ hfx'')
+                | .seq_r _ _ _ hfx' => .seq_r _ _ _ hfx'
               obtain ⟨sf', evs, hsteps', hhalt', hobs', hrel'⟩ := ih sa sf3 hbd3 hrel3 hstuck hwf3
               let steps12 := Flat.Steps.tail (⟨hstep1⟩ : Flat.Step sf .silent sf2) (Flat.Steps.tail (⟨hstep2_eq⟩ : Flat.Step sf2 .silent sf3) hsteps')
               have hobsAll : observableTrace (.silent :: .silent :: evs) = [] := by simp [observableTrace_silent, hobs']
@@ -2101,17 +2175,16 @@ private theorem anfConvert_halt_star_aux
               have hwf3 : ExprWellFormed sf3.expr sf3.env := by
                 rw [hsf3_expr, henv3]; intro x hfx
                 apply hwf x; rw [hsf]
-                cases hfx with
-                | seq_l _ _ hfx' =>
-                  rw [ha]; exact .seq_l _ _ _ (by
-                    cases hfx' with
-                    | seq_l _ _ hfx'' =>
-                      rw [ha1]; exact .seq_l _ _ _ (by
-                        cases hfx'' with
-                        | seq_l _ _ hfx''' => rw [hc, hc1]; exact .seq_l _ _ _ (.seq_r _ _ _ hfx''')
-                        | seq_r _ _ hfx''' => exact .seq_r _ _ _ hfx''')
-                    | seq_r _ _ hfx'' => exact .seq_r _ _ _ hfx'')
-                | seq_r _ _ hfx' => exact .seq_r _ _ _ hfx'
+                rw [ha]; exact match hfx with
+                | .seq_l _ _ _ hfx' => .seq_l _ _ _ (by
+                    exact match hfx' with
+                    | .seq_l _ _ _ hfx'' =>
+                      by rw [ha1]; exact .seq_l _ _ _ (by
+                        exact match hfx'' with
+                        | .seq_l _ _ _ hfx''' => by rw [hc, hc1]; exact .seq_l _ _ _ (.seq_r _ _ _ hfx''')
+                        | .seq_r _ _ _ hfx''' => .seq_r _ _ _ hfx''')
+                    | .seq_r _ _ _ hfx'' => .seq_r _ _ _ hfx'')
+                | .seq_r _ _ _ hfx' => .seq_r _ _ _ hfx'
               obtain ⟨sf', evs, hsteps', hhalt', hobs', hrel'⟩ := ih sa sf3 hbd3 hrel3 hstuck hwf3
               exact ⟨sf', evs_tc ++ evs, Flat.Steps.append hsteps_tc hsteps', hhalt',
                 by rw [observableTrace_append, hobs_tc, hobs']; rfl, hrel'⟩
