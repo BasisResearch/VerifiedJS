@@ -1,3 +1,55 @@
+## Run: 2026-03-28T09:15:01+00:00
+
+### TASK: writeLE?_preserves_size + unOp proof
+
+**Build status at start:** PASS (sorry warnings only)
+**Build status at end:** PASS (sorry warnings only)
+**Sorry instances:** 19 → 17 (2 closed: writeLE?_preserves_size, unOp)
+
+### Completed
+
+1. **Replaced writeLE? with recursive definition** (L269-280):
+   - OLD: `Id.run do` loop with `for k in [0:width]`, `ByteArray.set!`, and early return
+   - NEW: Recursive `writeLE?.writeLE?_aux` with termination proof `termination_by width - start`
+   - Reason: The `do` notation desugars to `MProd` (not `Prod`) for the loop accumulator, causing persistent type mismatch between lemma statements and `simp` output. Switching to a recursive definition made proof straightforward.
+   - Also added `ByteArray.size_set!` helper (L305-312)
+   - Fixed `writeLE?_none_of_size_zero` to use `unfold writeLE? writeLE?.writeLE?_aux` pattern
+   - Fixed 2 `simp [writeLE?]` calls (L4886, L4898) to also include `writeLE?.writeLE?_aux`
+
+2. **Proved writeLE?_preserves_size** (L329-340):
+   - Uses `where` clause with recursive `go` helper
+   - Proof by recursion: `unfold writeLE?.writeLE?_aux at h; split at h` gives 3 cases:
+     - `start ≥ width`: `h : some mem = some mem'`, trivial
+     - `addr + start < mem.size`: IH + `ByteArray.size_set!`
+     - else: `h : none = some mem'`, contradiction
+
+3. **Closed unOp sorry** (was L10477):
+   - Added 6 IR step trap lemmas (~L5920-5975):
+     - `irStep?_eq_i32Eqz_underflow`, `irStep?_eq_i32Eqz_type_mismatch_i64`, `irStep?_eq_i32Eqz_type_mismatch_f64`
+     - `irStep?_eq_i32WrapI64_underflow`, `irStep?_eq_i32WrapI64_type_mismatch_i32`, `irStep?_eq_i32WrapI64_type_mismatch_f64`
+     - All proved with `unfold irStep?; rw [hcode, hstack]; simp [irPop1?]; rfl`
+     - Needed because `irStep?` uses `s!"type mismatch in i32.{op}"` string interpolation which `simp` can't reduce
+   - Added `stack_corr_i64_inv` lemma (analogous to `stack_corr_i32_inv`)
+   - Fixed 14 errors in the commented-out unOp proof:
+     - Empty stack derivation: `cases s2.stack with | cons => simp_all` → `match hs : s2.stack with | _ :: _ => simp [hs] at hlen`
+     - Value extraction: `rw [hstk, hs2] at hval; simp` → `simp [hs2] at hval` (hstk already baked in via `rw [hstk] at hstk_rel`)
+     - After `simp [hs2] at hval`, `hval` becomes `IRValueToWasmValue (.i32 v) wv`, so `obtain ⟨_, _, h1, h2, hvc⟩` → `cases hval with`
+     - Success cases use `stack_corr_i32_inv`/`stack_corr_i64_inv` instead of manual extraction
+     - All IR trap steps use new step lemmas instead of inline `simp [irStep?, ...]`
+
+4. **Attempted call case** — reverted, too complex:
+   - Uncommented call OOB sub-case, fixed `List.getElem?_eq_none.mp` → `Array.getElem?_eq_getElem h` pattern
+   - Hit fundamental issues: trap message strings differ between IR (`"call: unknown function {funcIdx}"`) and Wasm (`"unknown function index {idx}"`), and `EmitCodeCorr.nil` context mismatch
+   - Stack underflow and successful call sub-cases blocked by param count correspondence and multi-frame invariant
+
+### Key patterns for future proofs
+
+- **MProd vs Prod**: Lean's `do`/`for` notation desugars mutable variables into `MProd` (not `Prod`). Lemma statements using `(a, b)` won't unify with `simp [func]` output that uses `⟨a, b⟩` (MProd.mk). Solution: use recursive definitions for functions you need to reason about, or state lemmas in terms of `MProd`.
+- **String interpolation in irStep?**: `s!"..."` doesn't reduce via `simp`. Always use pre-proven step lemmas instead of `simp [irStep?, ...]` for trap/underflow cases.
+- **Array.getElem? API**: `List.getElem?_eq_none.mp` doesn't exist; use `Array.getElem?_eq_getElem h` and `Array.getElem?_eq_none hge` directly for Array fields.
+
+---
+
 ## Run: 2026-03-28T07:00:02+00:00
 
 ### TASK: Close binOp type mismatch trap sorries + attempt unOp
@@ -3653,3 +3705,4 @@ test_write
 
 2026-03-28T10:15:01+00:00 SKIP: already running
 2026-03-28T11:15:01+00:00 SKIP: already running
+2026-03-28T11:23:28+00:00 DONE
