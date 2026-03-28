@@ -1,3 +1,49 @@
+## Run: 2026-03-28T04:30+00:00
+- **ANF BUILD: PASSES** ✓
+- **ANF Sorries: 15** (same count: 12 in main theorem + 3 in helper, but net structure improved)
+
+### Analysis & Findings:
+1. **Prompt's suggested approach for helper sorries was WRONG**: The prompt claimed all 3 helper sorries (return some, yield some, wildcard) in `normalizeExpr_labeled_step_sim` are `exfalso` cases. They are NOT. `normalizeExpr` recurses into sub-expressions, and `.labeled` can propagate from nested sub-expressions (e.g., `.return (some (.labeled l b))` → `.labeled l (normalizeExpr b k')`). The exfalso approach fails because it can't derive False from `hnorm` when the recursive call on an arbitrary sub-expression produces `.labeled`.
+
+2. **Root cause**: `normalizeExpr_labeled_step_sim` uses `cases e` (simple case split), but the recursive cases need INDUCTION on depth to handle `.labeled` nested inside sub-expressions. This is the same pattern used by `normalizeExpr_var_step_sim` (which uses `induction d` with `e.depth ≤ d`).
+
+3. **Additional blocker for full induction refactor**: The lemma requires `hk` (continuation is trivial-preserving), but recursive calls use different continuations (e.g., `fun t => pure (.return (some t))`) that are NOT trivial-preserving. A full refactor requires either:
+   - Removing `hk` from hypotheses and changing conclusion to use same `k` (changes API at use site)
+   - Or a two-level approach with a general inner lemma
+   - The seq case is especially tricky because `.labeled` can come from EITHER the sub-expression OR the continuation
+
+### Changes applied:
+1. **Partially proved `return (some val)` case (L1148-1181)**: When `val` is directly `.labeled l b_flat`:
+   - One Flat step: `.return (some (.labeled l b_flat))` → `.return (some b_flat)` (evaluate inside return context, unwrap labeled)
+   - Witness: `k' = fun arg => pure (.trivial arg)` (trivially trivial-preserving, since normalizeExpr for `.return` discards outer `k`)
+   - ExprWellFormed proved trivially: `VarFreeIn` has no constructor for `.return`
+   - Non-labeled sub-expression sub-case remains sorry (requires depth induction)
+
+2. **Partially proved `yield (some val)` case (L1188-1214)**: Same pattern as return, when `val` is directly `.labeled l b_flat`:
+   - One Flat step through yield evaluation context
+   - Same witness pattern
+   - Non-labeled sub-case remains sorry
+
+### Key architectural insight for next run:
+To fully close the 3 helper sorries, the recommended approach is:
+- **Change lemma signature**: Remove `hk` from hypotheses. Change conclusion from `∃ k' n' m', normalizeExpr sf'.expr k' = body ∧ k' trivial-preserving` to `∃ n' m', normalizeExpr sf'.expr k = body` (same `k` as input).
+- **Add depth parameter**: `∀ (d : Nat) (e : Flat.Expr), e.depth ≤ d → ...` with `induction d`.
+- **Terminal cases**: Use `hk_not_labeled` (derivable: since normalizeExpr e k = k(e_trivial) for terminals, and k produces .trivial, it can't be .labeled).
+- **Recursive cases**: IH applies with the same `k` (not the inner continuation) because `normalizeExpr (.C sub ..) k` recurses into `sub` with a fixed inner continuation that doesn't depend on what `sub` evaluates to.
+- **Use site update**: At L1266, use `k` directly (already known trivial-preserving from main theorem) instead of existentially quantified `k'`.
+
+### Sorry inventory (15 total):
+**Helper (3):**
+- L1182: return (some non-labeled sub-expr) — needs depth induction
+- L1214: yield (some non-labeled sub-expr) — needs depth induction
+- L1231: wildcard (21 constructors) — needs depth induction
+
+**Main theorem (12):**
+- L1264: var not-found
+- L1303: let, L1305: seq, L1307: if, L1309: while
+- L1311: throw, L1313: tryCatch, L1315: return, L1317: yield, L1319: await
+- L1343: break, L1345: continue (semantic mismatch — leave as sorry)
+
 ## Run: 2026-03-28T02:30+00:00
 - **ANF BUILD: PASSES** ✓
 - **ANF Sorries: 12 in main theorem** (was 13; labeled case closed)
@@ -2878,3 +2924,4 @@ FOCUS ON THE 23 REAL SORRIES. Define shared tactics for the 4 CCState cases (L16
 
 ## Run: 2026-03-28T04:30:01+00:00
 
+2026-03-28T05:18:42+00:00 DONE

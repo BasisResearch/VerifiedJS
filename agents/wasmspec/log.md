@@ -1,3 +1,46 @@
+## Run: 2026-03-28T04:15:02+00:00
+
+### TASK: Close binOp trap sorries (stack underflow / single element)
+
+**Build status at start:** PASS (sorry warnings only)
+**Build status at end:** PASS (sorry warnings only)
+**Sorry declarations:** 3 (was 3 before — same 3 declarations, but 4 fewer sorry instances within them)
+
+### Completed
+
+1. **Added 13 trap step lemmas** (L3075-3143 area):
+   - `step?_eq_i32Add_trap`, `step?_eq_i32Sub_trap`, ..., `step?_eq_i32Gts_trap` (9 i32 ops)
+   - `step?_eq_f64Add_trap`, ..., `step?_eq_f64Div_trap` (4 f64 ops)
+   - All use pattern: `cases s; simp_all [step?, withI32Bin/withI32Rel/withF64Bin, trapState, pushTrace]`
+   - Condition: `hpop : pop2? s.stack = none` (covers both empty and single-element stacks)
+
+2. **Closed i32 empty stack sorry** (was L9953):
+   - Derived `hs2 : s2.stack = []` from stack_corr + hstk
+   - Derived `hpop : pop2? s2.stack = none` from hs2
+   - Applied trap lemma via `first | exact step?_eq_i32Add_trap ...`
+   - Built EmitSimRel record with `.nil` code corr and `by simp [hs2]` stack corr
+
+3. **Closed i32 single-element sorry** (was L9956):
+   - Same pattern but derived `hs2 : s2.stack = [wv]` for the Wasm single element
+   - Stack correspondence proved by rewriting through `hstk` to transfer `hrel.hstack`
+
+4. **Closed f64 empty stack sorry** (was L10026):
+   - Same as i32 empty stack but using f64 trap lemmas
+
+5. **Closed f64 single-element sorry** (was L10029):
+   - Same as i32 single-element but using f64 trap lemmas
+
+### Remaining sorries in step_sim (Wasm level)
+- **i32 type mismatch** (L10149): pop2? returns some but wrong types
+- **f64 type mismatch** (L10263): pop2? returns some but wrong types
+- **unOp** (L10269): separate sorry
+- Other store/load/call cases
+
+### Key pattern for future trap proofs
+The `step?_eq_*_trap` lemmas work for ANY `pop2? s.stack = none` case. For the remaining **type mismatch** cases, we need analogous lemmas where `pop2?` returns `some` but the types don't match the expected i32×i32 or f64×f64 pattern.
+
+---
+
 ## Run: 2026-03-28T02:15:01+00:00
 
 ### TASK: Close br and brIf sorries
@@ -3540,3 +3583,4 @@ test_write
 ## Run: 2026-03-28T04:15:02+00:00
 
 2026-03-28T05:15:01+00:00 SKIP: already running
+2026-03-28T05:19:10+00:00 DONE
