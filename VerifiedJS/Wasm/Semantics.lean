@@ -10291,18 +10291,22 @@ theorem step_sim (irmod : IRModule) (wmod : Module) :
                   simp [hstk_w] at h0; cases h0
                   have h1 := hstk_rel.2 1 (by simp)
                   simp [hstk_w] at h1
-                  cases h1 <;> (
-                    have hmis : ∀ x y, (w0, w1) ≠ (.i32 x, .i32 y) := by simp_all
+                  -- After cases h0 and cases h1, w0 and w1 are substituted with
+                  -- concrete WasmValue constructors. We handle all sub-goals uniformly.
+                  -- First, save hstk_w before it gets consumed
+                  all_goals (
+                    cases ‹IRValueToWasmValue _ _›
+                    -- Now w0 or w1 is a concrete type. Derive the mismatch and step.
                     have hw := by first
-                      | exact step?_eq_i32Add_type_mismatch s2 rest_w w0 w1 wstk' hcw hstk_w hmis
-                      | exact step?_eq_i32Sub_type_mismatch s2 rest_w w0 w1 wstk' hcw hstk_w hmis
-                      | exact step?_eq_i32Mul_type_mismatch s2 rest_w w0 w1 wstk' hcw hstk_w hmis
-                      | exact step?_eq_i32And_type_mismatch s2 rest_w w0 w1 wstk' hcw hstk_w hmis
-                      | exact step?_eq_i32Or_type_mismatch s2 rest_w w0 w1 wstk' hcw hstk_w hmis
-                      | exact step?_eq_i32Eq_type_mismatch s2 rest_w w0 w1 wstk' hcw hstk_w hmis
-                      | exact step?_eq_i32Ne_type_mismatch s2 rest_w w0 w1 wstk' hcw hstk_w hmis
-                      | exact step?_eq_i32Lts_type_mismatch s2 rest_w w0 w1 wstk' hcw hstk_w hmis
-                      | exact step?_eq_i32Gts_type_mismatch s2 rest_w w0 w1 wstk' hcw hstk_w hmis
+                      | exact step?_eq_i32Add_type_mismatch s2 rest_w _ _ wstk' hcw hstk_w (by simp)
+                      | exact step?_eq_i32Sub_type_mismatch s2 rest_w _ _ wstk' hcw hstk_w (by simp)
+                      | exact step?_eq_i32Mul_type_mismatch s2 rest_w _ _ wstk' hcw hstk_w (by simp)
+                      | exact step?_eq_i32And_type_mismatch s2 rest_w _ _ wstk' hcw hstk_w (by simp)
+                      | exact step?_eq_i32Or_type_mismatch s2 rest_w _ _ wstk' hcw hstk_w (by simp)
+                      | exact step?_eq_i32Eq_type_mismatch s2 rest_w _ _ wstk' hcw hstk_w (by simp)
+                      | exact step?_eq_i32Ne_type_mismatch s2 rest_w _ _ wstk' hcw hstk_w (by simp)
+                      | exact step?_eq_i32Lts_type_mismatch s2 rest_w _ _ wstk' hcw hstk_w (by simp)
+                      | exact step?_eq_i32Gts_type_mismatch s2 rest_w _ _ wstk' hcw hstk_w (by simp)
                     simp only [trapState, pushTrace] at hw
                     exact ⟨_, hw, hrel.hemit, @EmitCodeCorr.nil (s1.labels.map (fun l => l.name)),
                       by (rw [← hstk]; exact hrel.hstack),
