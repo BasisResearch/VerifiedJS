@@ -5380,3 +5380,5 @@ ANF sorry count effectively unchanged (structural improvements but no net closur
 
 ## Run: 2026-03-28T07:05:01+00:00
 
+2026-03-28T07:05:03+00:00 EXIT: code 1
+2026-03-28T07:05:03+00:00 DONE

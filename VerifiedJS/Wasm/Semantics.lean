@@ -10145,8 +10145,31 @@ theorem step_sim (irmod : IRModule) (wmod : Module) :
                   hstore_types := hrel.hstore_types
                 }
               | .i64 _ :: _ :: _ | .f64 _ :: _ :: _ | .i32 _ :: .i64 _ :: _ | .i32 _ :: .f64 _ :: _ =>
-                -- Type mismatch: both trap (sorry: cases + record unification)
-                sorry)
+                -- Type mismatch: both trap
+                all_goals (
+                simp [irStep?, hcode_ir, hstk, irPop2?, irTrapState, irPushTrace] at hstep
+                obtain ⟨rfl, rfl⟩ := hstep
+                have hstk_rel := hrel.hstack; rw [hstk] at hstk_rel
+                match hstk_w : s2.stack with
+                | [] => simp [hstk_w] at hstk_rel
+                | [_] => simp [hstk_w] at hstk_rel
+                | w0 :: w1 :: wstk' =>
+                  have h0 := hstk_rel.2 0 (by simp)
+                  simp [hstk_w] at h0; cases h0
+                  have h1 := hstk_rel.2 1 (by simp)
+                  simp [hstk_w] at h1
+                  cases h1 <;> (
+                  simp only [traceToWasm]; refine ⟨_, ?_, {
+                    hemit := hrel.hemit, hcode := .nil, hstack := by rw [← hstk]; exact hrel.hstack,
+                    hframes_len := hrel.hframes_len, hframes_locals := hrel.hframes_locals,
+                    hframes_vals := hrel.hframes_vals, hglobals := hrel.hglobals, hmemory := hrel.hmemory, hmemLimits := hrel.hmemLimits, hmemory_aligned := hrel.hmemory_aligned, hmemory_nonempty := hrel.hmemory_nonempty,
+                    hlabels := hrel.hlabels, hhalt := hhalt_of_structural (@EmitCodeCorr.nil (s1.labels.map (·.name))) hrel.hlabels
+                    hlabel_content := hrel.hlabel_content
+                    hframes_one := hrel.hframes_one
+                    hmodule := hrel.hmodule
+                    hstore_funcs := hrel.hstore_funcs
+                    hstore_types := hrel.hstore_types }⟩
+                  simp only [step?, hcw, hstk_w, pop2?, withI32Bin, withI32Rel, trapState, pushTrace])))
           | .f64 =>
             rcases hc.binOp_f64_inv with
               ⟨rfl, rest_w, hcw, hrest⟩ | ⟨rfl, rest_w, hcw, hrest⟩ |
