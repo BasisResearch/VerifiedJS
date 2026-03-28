@@ -10159,7 +10159,10 @@ theorem step_sim (irmod : IRModule) (wmod : Module) :
                   have h1 := hstk_rel.2 1 (by simp)
                   simp [hstk_w] at h1
                   cases h1 <;> (
-                    have hw := by cases s2; simp_all [step?, withI32Bin, withI32Rel, trapState, pushTrace, pop2?]
+                    have hw := by
+                      show step? s2 = _
+                      rw [show s2.code = _ from hcw, show s2.stack = _ from hstk_w]
+                      simp [step?, withI32Bin, withI32Rel, pop2?, trapState, pushTrace]
                     sorry)))
           | .f64 =>
             rcases hc.binOp_f64_inv with

@@ -1,5 +1,58 @@
 # jsspec agent log
 
+## 2026-03-28T08:11 — Induction analysis + decomposition lemmas + templates
+
+### Key finding: L1563/L1595/L1612 require well-founded induction on e.depth
+
+The proof `normalizeExpr_labeled_step_sim` currently uses `cases e` which can't handle
+compound recursive cases. A nested `.labeled` sub-expression propagates up through
+`seq`, `let`, `if`, etc. Example: `normalizeExpr (.seq (.var x) (.labeled "L" body)) k`
+produces `.labeled` even though `.seq` is not `.labeled`.
+
+**The fix**: restructure as `induction e using Flat.Expr.depth.lt_wfRel.wf.induction`
+and generalize `hk` from "k produces trivial" to "k never produces .labeled."
+
+### New lemmas in ConvertHelpers.lean (0 errors, 0 warnings, 0 sorry):
+
+#### Universal not-labeled (any k):
+- `normalizeExpr_while_not_labeled_any_k` — while_ always produces .seq, never .labeled
+- `normalizeExpr_tryCatch_none_not_labeled_any_k` — tryCatch none always produces .tryCatch
+- `normalizeExpr_tryCatch_some_not_labeled_any_k` — tryCatch (some fin) always produces .tryCatch
+
+#### Decomposition lemmas (labeled result → sub-expression labeled):
+- `normalizeExpr_seq_labeled_source` — .seq a b → normalizeExpr a (seq-k)
+- `normalizeExpr_throw_labeled_source` — .throw arg → normalizeExpr arg throw_k
+- `normalizeExpr_await_labeled_source` — .await arg → normalizeExpr arg await_k
+- `normalizeExpr_assign_labeled_source` — .assign n v → normalizeExpr v (assign-k)
+- `normalizeExpr_let_labeled_source` — .let n i b → normalizeExpr i (let-k)
+- `normalizeExpr_if_labeled_source` — .if c t e → normalizeExpr c (if-k)
+- `normalizeExpr_unary_labeled_source` — .unary op arg → normalizeExpr arg (unary-k)
+- `normalizeExpr_typeof_labeled_source` — .typeof arg → normalizeExpr arg (typeof-k)
+- `normalizeExpr_deleteProp_labeled_source` — .deleteProp obj prop → normalizeExpr obj (delprop-k)
+- `normalizeExpr_getEnv_labeled_source` — .getEnv ep idx → normalizeExpr ep (getenv-k)
+- `normalizeExpr_makeClosure_labeled_source` — .makeClosure fi env → normalizeExpr env (mkclosure-k)
+- `normalizeExpr_getProp_labeled_source` — .getProp obj prop → normalizeExpr obj (getprop-k)
+
+#### Templates provided:
+- Full case expansion for L1563/L1595 (return some val / yield some val)
+  - Easy cases proved (var, this, lit, break, continue, return none, yield none, while_, tryCatch)
+  - Compound recursive cases marked with individual sorries
+- Detailed analysis of WHY induction is needed and HOW to restructure the proof
+
+### Build status: NOT BROKEN
+- ConvertHelpers.lean: 0 errors, 0 warnings
+- Convert.lean: compiles normally
+- .olean/.ilean artifacts updated in .lake/build/lib/
+
+### Critical insight for proof agent:
+The `hk` hypothesis must be GENERALIZED. Current form: "k produces trivial."
+Needed form: "k never produces .labeled." This weaker condition is preserved
+by ALL intermediate continuations (let_k, if_k, bindComplex_k, etc.),
+making the induction work. Existing callers still satisfy it since
+trivial ≠ labeled.
+
+---
+
 ## 2026-03-28T07:50 — LEMMAS NOW IMPORTABLE + new simp lemmas
 
 ### Key achievement: ConvertHelpers is now importable!
@@ -1270,3 +1323,4 @@ Staged at `.lake/_tmp_fix/VerifiedJS/Proofs/design_issues.md`:
 
 ## Run: 2026-03-28T08:00:02+00:00
 
+2026-03-28T08:13:04+00:00 DONE
