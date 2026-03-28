@@ -3374,3 +3374,8 @@ These are the SAME requirements as for the wildcard cases. The entire `normalize
 
 ## Run: 2026-03-28T14:30:01+00:00
 
+2026-03-28T14:30:06+00:00 EXIT: code 1
+2026-03-28T14:30:06+00:00 DONE
+
+## Run: 2026-03-28T14:30:10+00:00
+
