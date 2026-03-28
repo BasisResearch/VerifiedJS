@@ -1,63 +1,70 @@
-# proof — CC SORRY REDUCTION (objectLit/arrayLit/call)
+# proof — ANF DEPTH INDUCTION + CC SORRY REDUCTION
 
-## CRITICAL: Your last run (13:30) produced NO OUTPUT. You must produce results this cycle.
+## STATUS: 17 ANF sorries, 21 CC grep (18 actual), 1 Lower = ~36 actual project sorries.
+## LAST 3 RUNS: EXIT code 1 or no output. YOU MUST PRODUCE RESULTS.
 
-## CURRENT STATE: 17 ANF, 20 CC grep / 18 actual, 1 Lower = 56 grep total. ZERO change from last run.
+## STOP: DO NOT attempt objectLit/arrayLit integration
+The staging proofs INCREASE sorries (1→3 per case, net +4). Skip until noCallFrameReturn and CCState lemmas exist.
 
-## ANF hk GENERALIZATION IS BLOCKED — DO NOT ATTEMPT
+## STOP: DO NOT attempt ANF hk generalization
+Cascading refactor. Blocked.
 
-The hk generalization requires redesigning `ANF_SimRel` (L59-66). The trivial-preserving property flows through:
-- `ANF_SimRel` stores it (L65-66)
-- `normalizeExpr_labeled_step_sim` conclusion returns it (L1467)
-- The labeled case passes `hk` through (L1528): `exact ⟨k, n, m', hres, hk⟩`
-- Helper theorems (`normalizeExpr_var_step_sim`, `normalizeExpr_var_implies_free`) require it
-- ALL proved cases in `anfConvert_step_star` extract and use `hk_triv`
+## PRIORITY 0: Close ANF depth induction IH cases (-3 to -7 sorries)
 
-Weakening the hypothesis cascades everywhere. This is a planned multi-step refactor. Skip it for now.
+You already restructured `normalizeExpr_labeled_step_sim` with `induction d` at L1598+. The 7 sorry cases at L1617, L1621, L1632, L1683, L1687, L1698, L1715 now have `ih` in scope.
 
-## PRIORITY 0: Integrate objectLit/arrayLit from staging (-2 sorries → target 54 grep)
+**The blocker**: the continuation `k` passed to `normalizeExpr` on the sub-expression is NOT trivial-preserving (e.g., `fun t => pure (.return (some t))`).
 
-Staging proofs at:
-- `.lake/_tmp_fix/VerifiedJS/Proofs/cc_objectLit_arrayLit_proof.lean`
-- `.lake/_tmp_fix/VerifiedJS/Proofs/cc_objectLit_arrayLit_helpers.lean`
+**Solution for return-some (L1617)**:
+The continuation IS trivial-preserving! `fun t => pure (.return (some t))` satisfies `∀ arg n', ∃ m', (k arg).run n' = ok (.return (some arg), m')` trivially — just unfold pure. So:
+```lean
+| some val =>
+  -- The continuation fun t => pure (.return (some t)) IS trivial-preserving
+  have hk_ret : ∀ (arg : ANF.Trivial) (n' : Nat), ∃ m',
+    ((fun t => pure (ANF.Expr.return (some t))) arg).run n' = Except.ok (ANF.Expr.return (some arg), m') := by
+    intro arg n'; exact ⟨n', rfl⟩
+  exact ih ⟨...normalizeExpr val (fun t => pure (.return (some t))) ...⟩ hk_ret ...
+```
 
-Read these staging files FIRST. Then integrate at ClosureConvertCorrect.lean L3018-3019.
+Apply the same pattern for **yield-some (L1621, L1687)**: `fun t => pure (.yield (some t) delegate)` is also trivially trivial-preserving.
 
-Pattern: same as your setProp/setIndex integration (expand into value/non-value sub-cases, close non-value, sorry value sub-case). Expected: -2 sorries or 0 net if each expands to 1 sorry.
+For **compound cases (L1632, L1698, L1715)**: These use `bindComplex` which generates `let tmp_N = ...` continuations. Check if `bindComplex`-generated continuations are trivial-preserving. jsspec proved `bindComplex_k_not_labeled` but we need `bindComplex_k_trivial_preserving`. If they ARE: apply ih. If NOT: these need the hk generalization (skip).
 
-Steps:
-1. `cat .lake/_tmp_fix/VerifiedJS/Proofs/cc_objectLit_arrayLit_proof.lean` — read the proof structure
-2. Replace `| objectLit props => sorry` (L3018) with the expanded proof
-3. Replace `| arrayLit elems => sorry` (L3019) with the expanded proof
-4. Build: `lake env lean VerifiedJS/Proofs/ClosureConvertCorrect.lean`
-5. Fix any build errors
+**Concrete steps**:
+1. Read L1610-1720 to see exact goal structure
+2. For L1617: write `hk_ret` as above, then `exact ih ...`
+3. For L1621: same with yield continuation
+4. For L1683, L1687: same patterns (these are the yield.labeled branch)
+5. Build after each change: `lake env lean VerifiedJS/Proofs/ANFConvertCorrect.lean`
+6. For L1632/1698/1715: check if bindComplex continuations are trivial-preserving
 
-## PRIORITY 1: Close CC call case (L2588, -1 sorry)
+## PRIORITY 1: ANF break/continue semantic mismatch (L1851, L1853)
 
-Read staging: `.lake/_tmp_fix/VerifiedJS/Proofs/cc_call_patches.lean`
+ANF break → `.silent`, Flat break → `.error "break:..."`. Observable traces differ.
 
-The `call` case in `closureConvert_forward` (L2588). Check if the staging file has a proof.
+**Investigation needed**: Does the proof need to account for labeled/while_ consuming these events? If break only appears inside while_ (which wraps with labeled), the `anfConvert_step_star` theorem may never be called directly on a break expression — it's always consumed by the labeled case first.
 
-## PRIORITY 2: CC captured variable (L1828)
+Check: does the labeled case at L1828 handle the break sub-step? If the labeled case produces a `.silent` event that matches the ANF break's `.silent`, the mismatch doesn't matter because break is always enclosed.
 
-The `| some idx =>` case of var lookup. convertExpr gives `.getEnv (.var envVar) idx`. The Flat step evaluates the var to the env pointer, then indexes. Thread `EnvCorrInj` to relate Core env lookup to Flat getEnv.
+If break CAN appear at top level: this is a genuine semantics BUG. Flag it in PROOF_BLOCKERS.md but don't try to fix it.
 
-## PRIORITY 3: CC functionDef (L3020)
+## PRIORITY 2: CC newObj (L2680) — single sorry, possibly simple
 
-Read the functionDef case of convertExpr to understand the Flat output structure. This may be similar to call.
-
-## WORKFLOW
-1. Read staging files for objectLit/arrayLit
-2. Integrate proofs at L3018-3019
-3. Build and verify
-4. If successful: attempt call (L2588) or captured var (L1828)
-5. Log everything to agents/proof/log.md with exact sorry counts
+Read convertExpr for `.newObj` and the stepping equation. If it follows the same pattern as call (arg stepping), it may be closeable with the same technique as throw-non-value.
 
 ## FILES YOU OWN
 - `VerifiedJS/Proofs/ANFConvertCorrect.lean` (rw)
 - `VerifiedJS/Proofs/ClosureConvertCorrect.lean` (rw)
 
 ## IMPORTANT
-- The forIn/forOf sorries (L1132-1133) are in `convertExpr_not_value` which appears unused. SKIP.
-- The 5 value sub-cases (getProp L2595, getIndex L2653, assign L2723, delete L2792, L2876) all need heap reasoning. Skip for now.
-- while_ (L3141) and if CCState (L2147, L2169) are CCState threading issues. Skip.
+- forIn/forOf (L1132-1133): SKIP (stubs, not in supported)
+- 5 value sub-cases (L2686, L2744, L2814, L2883, L2967): SKIP (need heap reasoning)
+- while_ (L3232), if CCState (L2166, L2188): SKIP (CCState threading)
+- objectLit/arrayLit (L3109-3110): SKIP (staging increases sorries)
+- tryCatch (L3201): SKIP (complex)
+
+## WORKFLOW
+1. Attempt return-some IH application (L1617) — this is the most likely to close
+2. Attempt yield-some IH applications (L1621, L1683, L1687)
+3. Build and verify
+4. Log to agents/proof/log.md with EXACT sorry counts before/after
