@@ -1076,23 +1076,13 @@ private theorem normalizeExpr_var_step_sim :
       have hname_eq := hnorm.symm.trans hk' |> Except.ok.inj |> Prod.mk.inj |>.1
         |> ANF.Expr.trivial.inj |> ANF.Trivial.var.inj
       subst hname_eq
-      obtain ⟨resolved_val, s_i, hstep_i, hexpr_i, henv_i, hheap_i, _, _, _⟩ :=
-        step?_this_resolve sf
-      have hstep_sf : Flat.step? sf = some (.silent, s_i) := by
+      -- Construct the Flat step for .this directly
+      -- .this with env.lookup "this" = some val steps to .lit val
+      let sf' : Flat.State := { sf with expr := .lit val, trace := sf.trace ++ [.silent] }
+      have hstep_sf : Flat.step? sf = some (.silent, sf') := by
         have : sf = { sf with expr := .this } := by cases sf; simp_all
-        rw [this]; exact hstep_i
-      have hresolved : resolved_val = val := by
-        have h0 := hstep_i
-        rw [show sf = {sf with expr := Flat.Expr.this} from by cases sf; simp_all] at h0
-        simp only [Flat.step?] at h0
-        cases hlu : sf.env.lookup "this" with
-        | some v =>
-          rw [hlu] at h0; simp at h0
-          rw [hlu] at hval; exact (Option.some.inj hval).symm ▸
-            congrArg Flat.State.expr (Prod.mk.inj (Option.some.inj h0)).2 ▸ rfl
-        | none => rw [hlu] at hval; exact absurd hval (by simp)
-      subst hresolved
-      exact ⟨[.silent], s_i, .tail ⟨hstep_sf⟩ (.refl _), hexpr_i, henv_i, hheap_i, rfl⟩
+        rw [this]; simp only [Flat.step?, hval, sf']; rfl
+      exact ⟨[.silent], sf', .tail ⟨hstep_sf⟩ (.refl _), rfl, rfl, rfl, rfl⟩
     | lit v =>
       exfalso
       simp only [ANF.normalizeExpr] at hnorm
@@ -1126,23 +1116,13 @@ private theorem normalizeExpr_var_step_sim :
       have hname_eq := hnorm.symm.trans hk' |> Except.ok.inj |> Prod.mk.inj |>.1
         |> ANF.Expr.trivial.inj |> ANF.Trivial.var.inj
       subst hname_eq
-      obtain ⟨resolved_val, s_i, hstep_i, hexpr_i, henv_i, hheap_i, _, _, _⟩ :=
-        step?_this_resolve sf
-      have hstep_sf : Flat.step? sf = some (.silent, s_i) := by
+      -- Construct the Flat step for .this directly
+      -- .this with env.lookup "this" = some val steps to .lit val
+      let sf' : Flat.State := { sf with expr := .lit val, trace := sf.trace ++ [.silent] }
+      have hstep_sf : Flat.step? sf = some (.silent, sf') := by
         have : sf = { sf with expr := .this } := by cases sf; simp_all
-        rw [this]; exact hstep_i
-      have hresolved : resolved_val = val := by
-        have h0 := hstep_i
-        rw [show sf = {sf with expr := Flat.Expr.this} from by cases sf; simp_all] at h0
-        simp only [Flat.step?] at h0
-        cases hlu : sf.env.lookup "this" with
-        | some v =>
-          rw [hlu] at h0; simp at h0
-          rw [hlu] at hval; exact (Option.some.inj hval).symm ▸
-            congrArg Flat.State.expr (Prod.mk.inj (Option.some.inj h0)).2 ▸ rfl
-        | none => rw [hlu] at hval; exact absurd hval (by simp)
-      subst hresolved
-      exact ⟨[.silent], s_i, .tail ⟨hstep_sf⟩ (.refl _), hexpr_i, henv_i, hheap_i, rfl⟩
+        rw [this]; simp only [Flat.step?, hval, sf']; rfl
+      exact ⟨[.silent], sf', .tail ⟨hstep_sf⟩ (.refl _), rfl, rfl, rfl, rfl⟩
     | lit v =>
       exfalso
       simp only [ANF.normalizeExpr] at hnorm
@@ -1163,7 +1143,7 @@ private theorem normalizeExpr_var_step_sim :
         intro x hfx; exact hwf x (.seq_l _ _ _ hfx)
       have hsf_eq : sf.expr = wrapSeqCtx a [b] := by rw [hsf]; rfl
       obtain ⟨evs_a, sf_a, hsteps_a, hexpr_a, henv_a, hheap_a, htrace_a, hobs_a⟩ :=
-        trivialChain_consume_ctx (trivialChainCost a) a [b] sf htc le_refl
+        trivialChain_consume_ctx (trivialChainCost a) a [b] sf htc (Nat.le_refl _)
           (List.cons_ne_nil _ _) hsf_eq hwf_a
       have hsf_a_expr : sf_a.expr = b := by
         rw [hexpr_a]; simp [List.head_cons, List.tail_cons, wrapSeqCtx]
