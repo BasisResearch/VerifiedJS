@@ -1,70 +1,44 @@
-# wasmspec — unOp DONE! Target: return-some + call underflow
+# wasmspec — CLOSE return-some (L6801) THIS RUN
 
-## STATUS: unOp PROVED. 16 actual Wasm sorries. Target: ≤14 (-2).
+## STATUS: 15 actual Wasm sorries. Target: 14 (-1). return-some is GUARANTEED.
 
 File: `VerifiedJS/Wasm/Semantics.lean`
 
-## UPDATED SORRY MAP (line numbers current as of 11:05):
-### Structural block (6 sorries):
-- L6738: let
-- L6746: seq
-- L6750: if
-- L6753: while
-- L6756: throw
-- L6759: tryCatch
+## PRIORITY 0: return-some (L6801) — ALL 9 LEMMAS ALREADY PROVED
 
-### Return/control (7 sorries):
-- **L6801: return-some** ← P0
-- L6804: yield
-- L6807: await
-- L6810: labeled
-- L6813: break
-- L6816: continue
+All 9 `step_sim_return_*` lemmas are fully proved (no sorry). You JUST need to dispatch.
 
-### Emit block (4 sorries):
-- **L10829: call (underflow/no-args case)** ← P1
-- **L10833: call (successful case)** — BLOCKED by multi-frame
-- L10835: callIndirect
-- L11595: memoryGrow
-
-## PRIORITY 0: return-some (L6801) — ADAPT FROM return-none (L6764-6800)
-
-The return-none proof is RIGHT ABOVE at L6764-6800. The `some t` case is similar but needs:
-1. Show `t : ANF.Trivial` maps to IR value via `hrel.hvar` or `hrel.henv`
-2. Show IR emits const instruction for value, then return_
-3. LowerCodeCorr: `return_some` constructor maps to `[const_val, return_]`
-
-Pattern (adapt from return-none):
+**EXACT EDIT** — replace `| some t => sorry` at L6801 with:
 ```lean
-| some t =>
-    -- Invert LowerCodeCorr for return (some t)
-    have hc := hrel.hcode; rw [hexpr] at hc
-    -- return_some case: code = constCode ++ [return_]
-    -- where constCode pushes the trivial value onto stack
-    have hcode_eq := hc  -- need to match return_some constructor
-    -- ANF step: silent, expr → trivial (trivialOfValue (evalTrivial ...))
-    -- IR: execute const instructions + return_
-    sorry -- fill after reading LowerCodeCorr.return_some
+        | some triv =>
+          -- Dispatch to per-trivial-type lemmas (all proved above)
+          cases triv with
+          | litNull => exact step_sim_return_litNull prog irmod s1 s2 t s1' hrel hexpr hstep
+          | litNum n => exact step_sim_return_litNum prog irmod s1 s2 t s1' hrel hexpr hstep
+          | var name => exact step_sim_return_var prog irmod s1 s2 t s1' hrel hexpr hstep
+          | litUndefined => exact step_sim_return_litUndefined prog irmod s1 s2 t s1' hrel hexpr hstep
+          | litBool b =>
+            cases b with
+            | true => exact step_sim_return_litBoolTrue prog irmod s1 s2 t s1' hrel hexpr hstep
+            | false => exact step_sim_return_litBoolFalse prog irmod s1 s2 t s1' hrel hexpr hstep
+          | litObject addr => exact step_sim_return_litObject prog irmod s1 s2 t s1' hrel hexpr hstep
+          | litStr s => exact step_sim_return_litStr prog irmod s1 s2 t s1' hrel hexpr hstep
+          | litClosure fi ep => exact step_sim_return_litClosure prog irmod s1 s2 t s1' hrel hexpr hstep
 ```
 
-Read `LowerCodeCorr` constructors (grep for `return_some` in the file) to understand the exact IR code layout. Then adapt the return-none proof pattern.
+**IMPORTANT**: The `| some t =>` at L6801 shadows the outer `t` (TraceEvent). You MUST rename it to `triv` (or any name). After `cases triv`, the outer `t` (TraceEvent) remains accessible for the lemma calls.
 
-## PRIORITY 1: call underflow (L10829)
+After the edit:
+1. Rename `| some t =>` to `| some triv =>`
+2. Add the cases block above
+3. Build: `lake build VerifiedJS.Wasm.Semantics`
+4. If type errors occur, check if `hexpr` has the right form. After match on `arg` then `cases triv`, `hexpr` should be `s1.expr = .return (some .litNull)` etc. If Lean doesn't propagate the match info, you may need `(hexpr ▸ rfl : s1.expr = .return (some .litNull))` or similar.
 
-Read context around L10829. The underflow case means IR stack doesn't have enough args. You need to show Wasm ALSO underflows or handle the corresponding Wasm behavior. Check if `hrel.hstack` gives stack correspondence that makes this provable.
+## PRIORITY 1: call case (L10776)
 
-## SKIP
-- L10833 (call success): blocked by multi-frame EmitSimRel
-- Structural block (let/seq/if/while/throw/tryCatch): need 1:N framework
-- L10835 (callIndirect), L11595 (memoryGrow): lower priority
+The call case was consolidated to a single sorry. Read L10777-10837 for the commented-out attempt. The main blockers are trap message alignment and multi-frame. Skip if return-some takes time.
 
 ## LSP TIMEOUT WORKAROUND
-This file is 11K+ lines. lean_goal/lean_multi_attempt WILL timeout. Instead:
-1. Read code context (50+ lines around sorry)
-2. Read nearest proved case for pattern
-3. Write proof directly using Edit
-4. Build: `lake build VerifiedJS.Wasm.Semantics`
-5. Use `lean_diagnostic_messages` with start_line/end_line to check errors
+This file is 11K+ lines. Use `lean_diagnostic_messages` with start_line/end_line around edited area.
 
-## GREAT WORK on unOp! Keep the momentum.
 ## Log to agents/wasmspec/log.md

@@ -1,5 +1,79 @@
 # jsspec agent log
 
+## 2026-03-28T12:00 — PRIORITY 0 ANALYSIS: compound_not_await is NOT provable in trivial style
+
+### CRITICAL FINDING: normalizeExpr_compound_not_await CANNOT follow normalizeExpr_compound_not_trivial pattern
+
+**Root cause**: `.await` sub-expressions "leak" through normalizeExpr. The `.await arg` case
+in normalizeExpr substitutes its OWN continuation `(fun t => pure (.await t))`, ignoring
+the outer continuation entirely. Example:
+```
+normalizeExpr (.assign "x" (.await (.var "y"))) k = .ok (.await (.var "y"), _)
+```
+regardless of what `k` does. This means compound expressions CAN produce `.await`.
+
+In contrast, `normalizeExpr_compound_not_trivial` works because `.trivial` can NEVER leak
+through `.await` (the await continuation produces `.await`, not `.trivial`).
+
+### Helper lemmas WRITTEN + VERIFIED (0 errors, 0 sorries)
+
+File: `.lake/_tmp_fix/VerifiedJS/ANF/compound_not_await.lean`
+
+| Lemma | Purpose |
+|-------|---------|
+| `bindComplex_not_await` | bindComplex always produces .let, never .await |
+| `normalizeExpr_break_not_await` | .break never produces .await |
+| `normalizeExpr_continue_not_await` | .continue never produces .await |
+| `normalizeExpr_return_none_not_await` | .return none never produces .await |
+| `normalizeExpr_yield_none_not_await` | .yield none never produces .await |
+| `normalizeExpr_while_not_await` | .while_ never produces .await (do-block) |
+| `normalizeExpr_tryCatch_not_await` | .tryCatch never produces .await (do-block) |
+| `normalizeExpr_labeled_not_await` | .labeled never produces .await (do-block) |
+| `let_continuation_not_await` | .let inner continuation → .let, not .await |
+| `if_continuation_not_await` | .if inner continuation → .if, not .await |
+| `throw_continuation_not_await` | .throw continuation → .throw, not .await |
+| `return_some_continuation_not_await` | .return some continuation → .return, not .await |
+| `yield_some_continuation_not_await` | .yield some continuation → .yield, not .await |
+
+### Architecture recommendation for proof agent
+
+`normalizeExpr_await_step_sim` CANNOT use exfalso for compound wildcard (unlike var_step_sim).
+Instead, compound cases must be handled RECURSIVELY:
+
+1. Unfold normalizeExpr for each compound form
+2. Show inner continuation never produces .await (via lemmas above + `bindComplex_not_await`)
+3. Apply IH on sub-expression (smaller depth)
+4. Lift Flat steps to compound context
+
+**Key**: The theorem should use a WEAKER condition on k:
+```
+(hk : ∀ t n' m' a, (k t).run n' ≠ .ok (.await a, m'))  -- k never produces .await
+```
+instead of:
+```
+(hk_triv : ∀ t n', ∃ m', (k t).run n' = .ok (.trivial t, m'))  -- k produces trivials
+```
+
+The weaker condition is preserved by ALL inner continuations (bindComplex → .let,
+let/if → .let/.if via do-block, throw/return/yield → .throw/.return/.yield).
+The original `hk_triv` at the call site implies `hk` since `.trivial ≠ .await`.
+
+### Expression categories
+
+**Can exfalso (never .await regardless of sub-expressions)**:
+break, continue, return none, yield none, while_, tryCatch, labeled
+
+**Need recursive handling (sub-expressions can contain .await)**:
+let, if, assign, throw, return some, yield some, unary, typeof, getProp, deleteProp,
+setProp, getIndex, setIndex, binary, call, newObj, objectLit, arrayLit, makeClosure,
+getEnv, makeEnv, seq
+
+### Build status: NOT BROKEN
+- Staging file compiles with 0 errors, 0 sorries
+- Original source files unchanged
+
+---
+
 ## 2026-03-28T11:00 — objectLit/arrayLit helper lemmas VERIFIED + proof text written
 
 ### Helper lemmas — ALL VERIFIED by `lake env lean`
