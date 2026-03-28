@@ -5064,3 +5064,50 @@ This was the BLOCKER for all 6 CCState sorries. They should now be closable.
 
 ## Run: 2026-03-28T00:05:01+00:00
 
+
+## Run: 2026-03-28T00:05:01+00:00
+
+### Metrics
+- **Sorry count**: 59 (13 ANF + 18 CC + 27 Wasm + 1 Lower)
+- **Delta from last run (58)**: +1. CC -2, Wasm +3. ANF/Lower unchanged.
+- **Net**: Slight regression. CC improved but Wasm regressed.
+
+### BUILD STATUS — **BROKEN** (2 modules)
+
+| Module | Status | Error |
+|--------|--------|-------|
+| ClosureConvertCorrect | **FAIL** | L2577: Alternative `string`/`function` not provided (cascades to L1778). All match arms ARE present — likely type error inside `.object addr` sub-case of getProp (L2614-2661). Suspected: `List.find?_mem` or `hheapvwf` signature mismatch. |
+| Wasm/Semantics | **FAIL** | L9956: `can't synthesize placeholder for argument msg`. `TraceEvent.trap _` inside `all_goals` block — trap message varies per binOp operation, can't unify. |
+| ANFConvertCorrect | **BLOCKED** | depends on CC |
+| LowerCorrect | **BLOCKED** | depends on CC |
+
+### Sorry Breakdown
+- **ANF (13)**: L138 (var), L147 (let), L149 (seq), L151 (if), L153 (while), L155 (throw), L157 (tryCatch), L159 (return), L161 (yield), L163 (await), L170 (labeled), L172 (break), L174 (continue). ALL UNTOUCHED 6+ DAYS.
+- **CC (18)**: L1132-1133 (forIn/forOf stubs), L1797 (var captured), L2116 (if CCState), L2138 (if CCState x2), L2557-2558 (call/newObj), L2727 (setProp), L2733 (setProp value), L2797 (setIndex), L2803 (setIndex value), L2945-2947 (objectLit/arrayLit/functionDef), L3037 (tryCatch), L3068 (while_ CCState)
+- **Wasm (27)**: 12 inner step_sim + L308 + 6 binOp + 2 call + 1 callIndirect + 1 br + 1 brIf + 1 memoryGrow + 2 other
+- **Lower (1)**: unchanged
+
+### Agent Status
+- **proof**: Running since 23:00 (>1h). Still active. CC file modified at 00:23. Working on CC cases but ANF untouched.
+- **jsspec**: Completed 23:38. Produced cc_agree_helpers.lean (CCStateAgree helpers) and cc_value_patches.lean. Good output. Started new run at 00:00.
+- **wasmspec**: Running since 23:00. Previous run crashed. Wasm file modified at 00:22. Introduced build error at L9956.
+
+### Actions Taken
+1. **proof prompt**: P0=fix CC build (investigate `.object addr` arm type error). P1=PIVOT TO ANF (easiest cases: break/continue/throw/return first). P2=CC remaining only after ANF progress.
+2. **jsspec prompt**: P0=write ANF step? simp lemmas for proof agent. P1=install CC staged patches. P2=update call/newObj patches.
+3. **wasmspec prompt**: URGENT=fix L9956 build error (replace broken `have hw` with sorry). Then close binOp sorries.
+
+### CONCERN: ANF 13 sorries — 6 DAYS STUCK
+This is the CRITICAL PATH. Without anfConvert_step_star, end-to-end proof CANNOT compose. proof agent keeps working on CC instead. Prompt now makes ANF P1 (right after build fix). jsspec redirected to write ANF helper lemmas.
+
+### CONCERN: Both builds broken
+CC and Wasm both broken. Neither is supervisor-fixable (file permissions). Agents must fix.
+
+### OUTLOOK
+- wasmspec fixes L9956 → Wasm builds
+- proof fixes CC getProp arm → CC builds
+- proof starts ANF break/continue → first ANF progress in 6 days
+- Target next run: ≤57 sorry, ALL BUILDS PASSING
+
+2026-03-28T00:15:00+00:00 DONE
+2026-03-28T00:34:28+00:00 DONE
