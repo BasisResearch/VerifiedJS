@@ -266,16 +266,17 @@ private theorem readLE?_none_of_size_zero (mem : ByteArray) (addr : Nat) (width 
     simp [hsz]
     rfl
 
-private def writeLE? (mem : ByteArray) (addr width : Nat) (value : UInt64) : Option ByteArray := Id.run do
-  let mut out := mem
-  for k in [0:width] do
-    let idx := addr + k
-    if idx < out.size then
-      let byte := UInt8.ofNat ((value.toNat / Nat.pow 2 (8 * k)) % 256)
-      out := out.set! idx byte
-    else
-      return none
-  return some out
+/-- Write `width` bytes of `value` in little-endian order starting at `addr`. -/
+private def writeLE? (mem : ByteArray) (addr width : Nat) (value : UInt64) : Option ByteArray :=
+  writeLE?_aux mem addr 0 width value
+where
+  writeLE?_aux (mem : ByteArray) (addr start width : Nat) (value : UInt64) : Option ByteArray :=
+    if start ≥ width then some mem
+    else if addr + start < mem.size then
+      writeLE?_aux (mem.set! (addr + start) (UInt8.ofNat ((value.toNat / 2 ^ (8 * start)) % 256)))
+        addr (start + 1) width value
+    else none
+  termination_by width - start
 
 /-- If `a[i]? = some v`, then `i < a.size`. -/
 private theorem Array.lt_size_of_getElem? {α : Type} {a : Array α} {i : Nat} {v : α}
@@ -291,16 +292,9 @@ private theorem Array.lt_size_of_getElem? {α : Type} {a : Array α} {i : Nat} {
 /-- writeLE? on a zero-size memory always returns none (first byte access fails). -/
 private theorem writeLE?_none_of_size_zero (mem : ByteArray) (addr : Nat) (width : Nat) (hw : 0 < width)
     (value : UInt64) (hsz : mem.size = 0) : writeLE? mem addr width value = none := by
+  unfold writeLE? writeLE?.writeLE?_aux
   have h0 : ¬ (addr + 0 < mem.size) := by omega
-  unfold writeLE?
-  simp [Id.run]
-  cases width with
-  | zero => omega
-  | succ n =>
-    simp only [List.range']
-    dsimp [forIn, ForIn.forIn, h0]
-    simp [hsz]
-    rfl
+  simp [Nat.not_le.mpr hw, h0, hsz]
 
 /-- ByteArray.set! preserves size. -/
 private theorem ByteArray.size_set! (a : ByteArray) (i : Nat) (v : UInt8) :
@@ -311,38 +305,22 @@ private theorem ByteArray.size_set! (a : ByteArray) (i : Nat) (v : UInt8) :
   · exact Array.size_set ..
   · rfl
 
-/-- Recursive characterization of writeLE? for proof purposes. -/
-private def writeLE_rec (mem : ByteArray) (addr start width : Nat) (value : UInt64) : Option ByteArray :=
-  if start ≥ width then some mem
-  else if addr + start < mem.size then
-    writeLE_rec (mem.set! (addr + start) (UInt8.ofNat ((value.toNat / 2 ^ (8 * start)) % 256)))
-      addr (start + 1) width value
-  else none
-termination_by width - start
-
-private theorem writeLE_rec_preserves_size {mem mem' : ByteArray} {addr start width : Nat} {value : UInt64}
-    (h : writeLE_rec mem addr start width value = some mem') : mem'.size = mem.size := by
-  unfold writeLE_rec at h
-  split at h
-  · exact Option.some.inj h ▸ rfl
-  · split at h
-    · have ih := writeLE_rec_preserves_size h
-      rw [ih, ByteArray.size_set!]
-    · exact absurd h (by simp)
-termination_by width - start
-
-/-- The forIn loop in writeLE? agrees with writeLE_rec. -/
-private theorem writeLE?_eq_rec (mem : ByteArray) (addr width : Nat) (value : UInt64) :
-    writeLE? mem addr width value = writeLE_rec mem addr 0 width value := by
-  unfold writeLE? writeLE_rec
-  simp only [Id.run, Nat.zero_le, ↓reduceDIte, Nat.zero_add]
-  sorry
-
 /-- writeLE? preserves ByteArray size (each set! preserves size through the loop). -/
 private theorem writeLE?_preserves_size {mem mem' : ByteArray} {addr width : Nat} {value : UInt64}
     (h : writeLE? mem addr width value = some mem') : mem'.size = mem.size := by
-  rw [writeLE?_eq_rec] at h
-  exact writeLE_rec_preserves_size h
+  unfold writeLE? at h
+  exact go h
+where
+  go {mem mem' : ByteArray} {addr start width : Nat} {value : UInt64}
+      (h : writeLE?.writeLE?_aux mem addr start width value = some mem') : mem'.size = mem.size := by
+    unfold writeLE?.writeLE?_aux at h
+    split at h
+    · exact Option.some.inj h ▸ rfl
+    · split at h
+      · have ih := go h
+        rw [ih, ByteArray.size_set!]
+      · exact absurd h (by simp)
+    termination_by width - start
 
 private def i32ToSigned (n : UInt32) : Int :=
   (Int32.ofNat n.toNat).toInt
