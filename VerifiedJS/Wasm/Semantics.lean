@@ -10859,12 +10859,10 @@ theorem step_sim (irmod : IRModule) (wmod : Module) :
                   simp at hval_corr
                   cases hval_corr with
                   | i32 n =>
-                    rename_i hneq; rw [hneq] at hs2
-                    have hwcond_ne : n ≠ 0 := by rw [hneq]; exact h0
                     have hw := step?_eq_brIf_true_gen s2 idx rest_w n wstk wLbl
                       (if wLbl.isLoop then wLbl :: s2.labels.drop (idx + 1)
                        else s2.labels.drop (idx + 1))
-                      hcw hs2 hwcond_ne hresolve
+                      hcw hs2 h0 hresolve
                     have hloop_eq : irLbl.isLoop = wLbl.isLoop := hloop
                     have hdrop_ir : s1.labels.drop idx = irLbl :: s1.labels.drop (idx + 1) := by
                       rw [List.drop_eq_getElem_cons hlt]; congr 1
