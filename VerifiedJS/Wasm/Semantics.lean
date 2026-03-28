@@ -10562,10 +10562,9 @@ theorem step_sim (irmod : IRModule) (wmod : Module) :
                 | wv :: wstk =>
                   have hval := hstk_rel.2 0 (by simp)
                   simp [hs2] at hval
-                  obtain ⟨_, _, h1, h2, hvc⟩ := hval; simp at h1 h2; subst h1; subst h2
-                  cases hvc with
+                  cases hval with
                   | i32 n =>
-                    rename_i hneq; rw [hneq] at hs2
+
                     have hw := step?_eq_i32Eqz s2 rest_w n wstk hcw hs2
                     simp only [traceToWasm]
                     refine ⟨_, hw, ?_⟩
@@ -10599,10 +10598,9 @@ theorem step_sim (irmod : IRModule) (wmod : Module) :
                 | wv :: wstk =>
                   have hval := hstk_rel.2 0 (by simp)
                   simp [hs2] at hval
-                  obtain ⟨_, _, h1, h2, hvc⟩ := hval; simp at h1 h2; subst h1; subst h2
-                  cases hvc with
+                  cases hval with
                   | i64 n =>
-                    rename_i hneq; rw [hneq] at hs2
+
                     have hw : step? s2 = some (.trap "type mismatch in i32.eqz",
                         { s2 with code := [], trace := s2.trace ++ [.trap "type mismatch in i32.eqz"] }) := by
                       simp [step?, hcw, hs2, pop1?, trapState, pushTrace]
@@ -10628,8 +10626,7 @@ theorem step_sim (irmod : IRModule) (wmod : Module) :
                 | wv :: wstk =>
                   have hval := hstk_rel.2 0 (by simp)
                   simp [hs2] at hval
-                  obtain ⟨_, _, h1, h2, hvc⟩ := hval; simp at h1 h2; subst h1; subst h2
-                  cases hvc with
+                  cases hval with
                   | f64 m =>
                     have hw : step? s2 = some (.trap "type mismatch in i32.eqz",
                         { s2 with code := [], trace := s2.trace ++ [.trap "type mismatch in i32.eqz"] }) := by
@@ -10680,10 +10677,9 @@ theorem step_sim (irmod : IRModule) (wmod : Module) :
                 | wv :: wstk =>
                   have hval := hstk_rel.2 0 (by simp)
                   simp [hs2] at hval
-                  obtain ⟨_, _, h1, h2, hvc⟩ := hval; simp at h1 h2; subst h1; subst h2
-                  cases hvc with
+                  cases hval with
                   | i32 n =>
-                    rename_i hneq; rw [hneq] at hs2
+
                     have hw : step? s2 = some (.trap "type mismatch in i32.wrap_i64",
                         { s2 with code := [], trace := s2.trace ++ [.trap "type mismatch in i32.wrap_i64"] }) := by
                       simp [step?, hcw, hs2, pop1?, trapState, pushTrace]
@@ -10708,10 +10704,9 @@ theorem step_sim (irmod : IRModule) (wmod : Module) :
                 | wv :: wstk =>
                   have hval := hstk_rel.2 0 (by simp)
                   simp [hs2] at hval
-                  obtain ⟨_, _, h1, h2, hvc⟩ := hval; simp at h1 h2; subst h1; subst h2
-                  cases hvc with
+                  cases hval with
                   | i64 n =>
-                    rename_i hneq; rw [hneq] at hs2
+
                     have hw := step?_eq_i32WrapI64 s2 rest_w n wstk hcw hs2
                     simp only [traceToWasm]
                     refine ⟨_, hw, ?_⟩
@@ -10745,8 +10740,7 @@ theorem step_sim (irmod : IRModule) (wmod : Module) :
                 | wv :: wstk =>
                   have hval := hstk_rel.2 0 (by simp)
                   simp [hs2] at hval
-                  obtain ⟨_, _, h1, h2, hvc⟩ := hval; simp at h1 h2; subst h1; subst h2
-                  cases hvc with
+                  cases hval with
                   | f64 m =>
                     have hw : step? s2 = some (.trap "type mismatch in i32.wrap_i64",
                         { s2 with code := [], trace := s2.trace ++ [.trap "type mismatch in i32.wrap_i64"] }) := by
