@@ -10159,10 +10159,9 @@ theorem step_sim (irmod : IRModule) (wmod : Module) :
                   have h1 := hstk_rel.2 1 (by simp)
                   simp [hstk_w] at h1
                   cases h1 <;> (
-                    simp only [traceToWasm]
                     have hw := by simp [step?, hcw, hstk_w, pop2?, withI32Bin, withI32Rel, trapState, pushTrace]
                     exact ⟨_, hw, hrel.hemit, @EmitCodeCorr.nil (s1.labels.map (fun l => l.name)),
-                      by (rw [show s1.stack = hstk ▸ s1.stack from rfl]; rw [← hstk]; exact hrel.hstack),
+                      by (rw [← hstk]; exact hrel.hstack),
                       hrel.hframes_len, hrel.hframes_locals, hrel.hframes_vals, hrel.hglobals,
                       hrel.hmemory, hrel.hmemLimits, hrel.hmemory_aligned, hrel.hmemory_nonempty,
                       hrel.hlabels,
