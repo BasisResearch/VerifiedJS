@@ -1060,6 +1060,30 @@ private theorem step?_seq_ctx (s : Flat.State) (a b : Flat.Expr)
   simp only [Flat.step?, hnotval, hstep]
   exact ⟨_, rfl, rfl, rfl, rfl, rfl, rfl, rfl⟩
 
+/-- Contextual stepping: if cond is not a value and steps, .if cond then_ else_ steps with
+    the result wrapped. -/
+private theorem step?_if_cond_step (s : Flat.State) (cond then_ else_ : Flat.Expr)
+    (hnotval : Flat.exprValue? cond = none)
+    (t : Core.TraceEvent) (sc : Flat.State)
+    (hstep : Flat.step? { s with expr := cond } = some (t, sc)) :
+    ∃ s', Flat.step? { s with expr := .«if» cond then_ else_ } = some (t, s') ∧
+      s'.expr = .«if» sc.expr then_ else_ ∧ s'.env = sc.env ∧ s'.heap = sc.heap ∧
+      s'.funcs = s.funcs ∧ s'.callStack = s.callStack ∧
+      s'.trace = s.trace ++ [t] := by
+  simp only [Flat.step?, hnotval, hstep]
+  exact ⟨_, rfl, rfl, rfl, rfl, rfl, rfl, rfl⟩
+
+/-- Stepping .if with a literal condition branches directly. -/
+private theorem step?_if_lit_branch (s : Flat.State) (v : Flat.Value)
+    (then_ else_ : Flat.Expr) :
+    Flat.step? { s with expr := .«if» (.lit v) then_ else_ } =
+      some (.silent, { expr := if Flat.toBoolean v then then_ else else_,
+                       env := s.env, heap := s.heap,
+                       trace := s.trace ++ [Core.TraceEvent.silent],
+                       funcs := s.funcs, callStack := s.callStack }) := by
+  simp only [Flat.step?, Flat.exprValue?, Flat.pushTrace]
+  rfl
+
 /-- Build left-associated seq spine: wrapSeqCtx e [a,b,c] = .seq (.seq (.seq e a) b) c -/
 private def wrapSeqCtx (inner : Flat.Expr) : List Flat.Expr → Flat.Expr
   | [] => inner
