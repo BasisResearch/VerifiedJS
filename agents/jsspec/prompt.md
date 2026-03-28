@@ -1,74 +1,83 @@
-# jsspec — EXPRADDRWF LIST LEMMA + CC STATE THREADING INFRASTRUCTURE
+# jsspec — NORMALIZEEXPR BREAK INVERSION + CC INFRASTRUCTURE
 
-## STATUS: Your verified staging lemmas are good. Now write infrastructure that DIRECTLY enables CC sorry closures.
+## STATUS: Your inversion infrastructure in anf_norm_inv.lean is EXCELLENT. Now extend it for the break/continue case proof.
 
-## PRIORITY 0: ExprAddrListWF infrastructure
+## CRITICAL CONTEXT: ANF break/continue semantics FIXED
 
-The proof agent is about to change `ExprAddrWF` for `.call` and `.newObj` from `True` to recursive. This needs a list version. Write in `.lake/_tmp_fix/VerifiedJS/Proofs/cc_exprAddrWF_helpers.lean`:
+wasmspec fixed ANF/Semantics.lean at 17:27. Break/continue/return/throw now produce `.error` events matching Flat. The ANF break/continue sorries (ANFConvertCorrect L1947-1950) are NO LONGER permanent mismatches. But they need normalizeExpr inversion to close.
 
-```lean
-import VerifiedJS.Proofs.ClosureConvertCorrect
+## PRIORITY 0: normalizeExpr break SOURCE CHARACTERIZATION
 
-namespace VerifiedJS.Proofs
+The proof agent needs: given `normalizeExpr e k = .ok (.break label, m)` with `k` trivial-preserving, characterize ALL possible shapes of `e`.
 
-/-- Well-formedness for expression lists. -/
-def ExprAddrListWF : List Core.Expr → Nat → Prop
-  | [], _ => True
-  | e :: es, n => ExprAddrWF e n ∧ ExprAddrListWF es n
+**Key insight from your anf_norm_inv.lean**: general inversion is FALSE because `.seq (.lit .undefined) (.break l)` produces `.break l` for any k. So we need a STRUCTURAL characterization.
 
-theorem ExprAddrListWF_mono {es : List Core.Expr} {n m : Nat} (h : n ≤ m)
-    (hwf : ExprAddrListWF es n) : ExprAddrListWF es m := by
-  induction es with
-  | nil => trivial
-  | cons e es ih =>
-    obtain ⟨he, hes⟩ := hwf
-    exact ⟨ExprAddrWF_mono h he, ih hes⟩
-
-theorem ExprAddrListWF_map_convertExpr (args : List Core.Expr)
-    (scope : List String) (envVar : String) (envMap : Flat.EnvMapping)
-    (st : Flat.CCState) (n : Nat)
-    (hwf : ExprAddrListWF args n) :
-    -- property propagates through conversion
-    sorry := by sorry
-```
-
-**Also write**: monotonicity lemma for ExprAddrWF propagation through Core.step?:
-```lean
-theorem ExprAddrWF_step_preserved (s : Core.State) (ev : Core.TraceEvent) (s' : Core.State)
-    (hstep : Core.step? s = some (ev, s'))
-    (hwf : ExprAddrWF s.expr s.heap.objects.size) :
-    ExprAddrWF s'.expr s'.heap.objects.size := by
-  sorry -- needs per-constructor analysis, but each case is mechanical
-```
-
-This is a critical infrastructure lemma needed by ALL CC stepping proofs. Even if you can only prove a few cases (lit, var, unary, binary), each proved case is useful.
-
-## PRIORITY 1: CCStateAgree transitivity
-
-Write in `.lake/_tmp_fix/VerifiedJS/Proofs/cc_ccstate_helpers.lean`:
+Write in `.lake/_tmp_fix/VerifiedJS/Proofs/anf_break_inversion.lean`:
 
 ```lean
-theorem CCStateAgree_trans {st1 st2 st3 : Flat.CCState}
-    (h12 : CCStateAgree st1 st2) (h23 : CCStateAgree st2 st3) :
-    CCStateAgree st1 st3 := by
-  exact ⟨h12.1.trans h23.1, h12.2.trans h23.2⟩
+import VerifiedJS.ANF.Convert
+import VerifiedJS.Flat.Semantics
+
+namespace VerifiedJS
+
+/-- If normalizeExpr produces .break, the source expression "contains .break" in
+    an evaluation-head position. Specifically, either:
+    1. e = .break l directly, OR
+    2. e = .seq a b where a is a "value" (exprValue? a ≠ none) and
+       normalizeExpr b k = .ok (.break l, m') for some m', OR
+    3. e = .seq a b where normalizeExpr a produces value via bindComplex,
+       and normalizeExpr b k = .ok (.break l, m'), OR
+    4. e = .let name init body where normalizeExpr init finishes with value,
+       and normalizeExpr body k = .ok (.break l, m')
+-/
+
+-- Step 1: For each "leaf" constructor, prove it CAN'T produce .break with trivial-preserving k
+-- You already have many of these in anf_norm_inv.lean. Complete the set:
+
+-- Missing from your existing infrastructure (check and fill gaps):
+-- normalizeExpr (.getProp e name) k — uses bindComplex, produces .let, not .break
+-- normalizeExpr (.setProp obj name val) k — produces .let, not .break
+-- normalizeExpr (.binary op l r) k — produces .let, not .break
+-- normalizeExpr (.unary op e) k — produces .let, not .break
+-- normalizeExpr (.typeof e) k — produces .let, not .break
+-- normalizeExpr (.deleteProp e name) k — produces .let, not .break
+-- normalizeExpr (.assign name val) k — produces .let or .assign, not .break
+-- normalizeExpr (.if cond t e) k — produces .if, not .break
+-- normalizeExpr (.while_ cond body) k — produces .seq (.while_ ..), not .break
+-- normalizeExpr (.call f args) k — uses bindComplex, produces .let, not .break
+-- normalizeExpr (.newObj f args) k — uses bindComplex, produces .let, not .break
+
+-- Step 2: For each "compound" constructor (.seq, .let), prove that .break output
+-- implies .break exists in a sub-expression (recursive characterization)
+
+-- Step 3: Write the MASTER inversion lemma (by induction on e.depth or structural):
+theorem normalizeExpr_break_source (e : Flat.Expr) (k : ANF.Trivial → ANF.ConvM ANF.Expr)
+    (hk : ∀ t n, ∃ m, (k t).run n = .ok (.trivial t, m))
+    (label : Option String) (n m : Nat)
+    (h : (ANF.normalizeExpr e k).run n = .ok (.break label, m)) :
+    -- Flat can step from {expr := e} to {expr := .break label} in zero or more steps
+    -- (This is the version the proof agent actually needs)
+    ∃ evs sf', Flat.Steps { expr := e, env := default, heap := default, trace := [] } evs sf' ∧
+               sf'.expr = .break label := by
+  sorry -- prove by structural induction on e
 ```
 
-And a key lemma: if we convert expression `e` from two CCStateAgree states, the output states also CCStateAgree. This is already proved at CC L548 (`convertExpr_state_determined`), but you need to verify it exists and document its exact signature.
+This is the KEY MISSING PIECE for -2 ANF sorries. Even a partial version (proving just the `.break l` and `.seq` cases) is extremely valuable.
 
-## PRIORITY 2: normalizeExpr inversion (if time permits)
+## PRIORITY 1: Flat multi-step seq-value lemma
 
-For each Flat.Expr constructor, determine what `normalizeExpr` produces. Specifically:
-- `normalizeExpr (.lit v) k` always applies `k`
-- `normalizeExpr (.let name rhs body) k` uses bindComplex on rhs
-- `normalizeExpr (.call f args) k` wraps in bindComplex
+The break inversion needs: if `e = .seq (.lit v) body`, then Flat steps to `{expr := body}` in one step. Write:
 
-Write simple characterization lemmas:
 ```lean
-theorem normalizeExpr_lit (v : Flat.Value) (k : ANF.Trivial → ANF.ConvM ANF.Expr) (n : Nat) :
-    (ANF.normalizeExpr (.lit v) k).run n = (k (ANF.trivialOfFlatValue v)).run n := by
-  simp [ANF.normalizeExpr]
+theorem Flat.steps_seq_value (s : Flat.State) (v : Flat.Value) (body : Flat.Expr) :
+    Flat.step? { s with expr := .seq (.lit v) body } =
+      some (.silent, Flat.pushTrace { s with expr := body } .silent) := by
+  simp [Flat.step?, Flat.exprValue?]
 ```
+
+## PRIORITY 2: Complete "leaf not-break" lemmas
+
+For the master inversion, you need: `normalizeExpr (.X ...) k` with trivial-preserving k NEVER produces `.break` for each non-break, non-seq, non-let constructor. You have many already. Complete the missing ones listed above.
 
 ## FILES YOU CAN EDIT
 - `.lake/_tmp_fix/VerifiedJS/**/*.lean` (staging area)

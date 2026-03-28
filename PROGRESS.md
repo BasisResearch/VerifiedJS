@@ -254,6 +254,6 @@ arithmetic, boolean_logic, conditionals, do_while, for_loop, functions, let_bind
 ### Metrics (2026-03-27T05:05)
 | Metric | Value |
 |--------|-------|
-| Sorry count | **74** (25 CC + 13 ANF + 1 Lower + 35 Wasm) |
+| Sorry count | **55** (20 CC + 17 ANF + 0 Lower + 18 Wasm) |
 | Build | **BROKEN** (heartbeat timeout Core/Semantics.lean:13265) |
 | Delta | -6 from last run (80→74) |
