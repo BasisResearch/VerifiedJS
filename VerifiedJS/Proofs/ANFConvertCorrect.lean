@@ -1127,7 +1127,7 @@ private theorem anfConvert_step_star
             simp [observableTrace]; decide
           · -- normalizeExpr + k
             exact ⟨fun t => pure (.trivial t), 0, 0,
-              by rw [hexpr']; simp [ANF.normalizeExpr, trivialOfFlatValue_eq_trivialOfValue],
+              by rw [hexpr']; simp [ANF.normalizeExpr, trivialOfFlatValue_eq_trivialOfValue, StateT.run, StateT.pure, pure, Pure.pure, Except.pure],
               fun arg n' => ⟨n', rfl⟩⟩
         · -- ExprWellFormed
           rw [hexpr']; intro x hfx; cases hfx
