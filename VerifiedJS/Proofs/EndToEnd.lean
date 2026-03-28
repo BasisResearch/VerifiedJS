@@ -48,7 +48,10 @@ theorem flat_to_wasm_correct
         (∀ b o f, sc.expr ≠ .forIn b o f) ∧ (∀ b i f, sc.expr ≠ .forOf b i f))
     (h_wf : noCallFrameReturn core.body = true)
     (h_addr_wf : ExprAddrWF core.body 1)
-    (hwf_flat : ExprWellFormed flat.main (Flat.initialState flat).env) :
+    (hwf_flat : ExprWellFormed flat.main (Flat.initialState flat).env)
+    (hmem_pos : 0 < ir.memories.size)
+    (hmem_nomax : ∀ (i : Nat) (mt : Wasm.MemType),
+      ir.memories[i]? = some mt → mt.lim.max = none) :
     ∀ anfTrace, ANF.Behaves anf anfTrace →
       -- Forward: ANF → Wasm behavioral preservation
       Wasm.Behaves wasm (IR.traceListToWasm (IR.traceListFromCore anfTrace)) ∧
@@ -58,7 +61,7 @@ theorem flat_to_wasm_correct
   intro anfTrace hanfb
   constructor
   · -- Forward: ANF → optimize → lower → emit → Wasm
-    exact emit_behavioral_correct ir wasm hemit _
+    exact emit_behavioral_correct ir wasm hemit hmem_pos hmem_nomax _
       (lower_behavioral_correct _ ir hlower _
         ((optimize_correct anf anfTrace).mpr hanfb))
   · -- Backward: ANF → Flat → Core

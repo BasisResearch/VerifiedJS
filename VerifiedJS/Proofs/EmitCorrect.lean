@@ -53,11 +53,15 @@ private theorem emit_sim_steps (s : IR.IRModule) (t : Wasm.Module)
 
 /-- Emit preserves behavior: every IR trace maps to a Wasm trace. -/
 theorem emit_behavioral_correct (s : IR.IRModule) (t : Wasm.Module)
-    (h : emit s = .ok t) :
+    (h : emit s = .ok t)
+    (hmem_pos : 0 < s.memories.size)
+    (hmem_nomax : ∀ (i : Nat) (mt : MemType),
+      s.memories[i]? = some mt → mt.lim.max = none) :
     ∀ trace, IR.IRBehaves s trace →
       Wasm.Behaves t (IR.traceListToWasm trace) := by
   intro trace ⟨sf, hsteps, hhalt⟩
-  obtain ⟨w', hwsteps, hrel'⟩ := emit_sim_steps s t h _ _ _ _ (IR.EmitSimRel.init s t h) hsteps
+  obtain ⟨w', hwsteps, hrel'⟩ := emit_sim_steps s t h _ _ _ _
+    (IR.EmitSimRel.init s t h hmem_pos hmem_nomax) hsteps
   exact ⟨w', hwsteps, IR.EmitSimRel.halt_sim s t _ _ hrel' hhalt⟩
 
 end VerifiedJS.Proofs
