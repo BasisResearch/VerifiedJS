@@ -1178,14 +1178,40 @@ private theorem normalizeExpr_labeled_step_sim
             · rw [hexpr_s]; simp only [ANF.normalizeExpr, StateT.run]; exact hbf
             · intro arg n''; exact ⟨n'', by simp [pure, Pure.pure, StateT.pure, Except.pure, StateT.run]⟩
           · rw [htrace_s, observableTrace_append]; simp [observableTrace]; decide
-          · rw [hexpr_s]; sorry -- ExprWellFormed
+          · rw [hexpr_s, henv_s]; intro x hfx; cases hfx
       | _ => sorry -- non-labeled sub-expression: requires induction on val depth
   | yield arg delegate =>
     cases arg with
     | none =>
       exfalso; simp only [ANF.normalizeExpr, pure, Pure.pure, StateT.pure, Except.pure] at hnorm
       exact ANF.Expr.noConfusion (Prod.mk.inj (Except.ok.inj hnorm)).1
-    | some _ => sorry -- yield (some v) wrapping .labeled
+    | some val =>
+      simp only [ANF.normalizeExpr] at hnorm
+      cases val with
+      | labeled l b_flat =>
+        unfold ANF.normalizeExpr at hnorm
+        simp only [StateT.run, bind, Bind.bind, StateT.bind, Except.bind] at hnorm
+        generalize hbf : ANF.normalizeExpr b_flat
+          (fun t => pure (ANF.Expr.yield (some t) delegate)) n = res at hnorm
+        cases res with
+        | error msg => simp at hnorm
+        | ok v =>
+          simp only [pure, Pure.pure, StateT.pure, Except.pure, Except.ok.injEq, Prod.mk.injEq] at hnorm
+          obtain ⟨⟨rfl, rfl⟩, rfl⟩ := hnorm
+          have hstep_ret : ∃ s', Flat.step? sf = some (.silent, s') ∧
+              s'.expr = .yield (some b_flat) delegate ∧ s'.env = sf.env ∧ s'.heap = sf.heap ∧
+              s'.trace = sf.trace ++ [Core.TraceEvent.silent] := by
+            have hsf_eq : sf = { sf with expr := Flat.Expr.yield (some (Flat.Expr.labeled label b_flat)) delegate } := by
+              cases sf; simp_all
+            rw [hsf_eq]; unfold Flat.step?; simp [Flat.exprValue?, Flat.step?]
+          obtain ⟨s', hstep_s, hexpr_s, henv_s, hheap_s, htrace_s⟩ := hstep_ret
+          refine ⟨[.silent], s', .tail ⟨hstep_s⟩ (.refl _), ?_, henv_s, hheap_s, ?_, rfl, ?_⟩
+          · refine ⟨fun arg => pure (.trivial arg), n, v.2, ?_, ?_⟩
+            · rw [hexpr_s]; simp only [ANF.normalizeExpr, StateT.run]; exact hbf
+            · intro arg n''; exact ⟨n'', by simp [pure, Pure.pure, StateT.pure, Except.pure, StateT.run]⟩
+          · rw [htrace_s, observableTrace_append]; simp [observableTrace]; decide
+          · rw [hexpr_s, henv_s]; intro x hfx; cases hfx
+      | _ => sorry -- non-labeled sub-expression: requires induction on val depth
   | while_ cond body_w =>
     -- while produces .seq (.while_ ...) rest, never .labeled
     exfalso; unfold ANF.normalizeExpr at hnorm

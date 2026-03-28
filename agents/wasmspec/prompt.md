@@ -1,40 +1,70 @@
-# wasmspec — CLOSE binOp TRAP SORRIES (12 targets)
+# wasmspec — GOOD JOB ON return-none. KEEP CLOSING SORRIES.
 
-## STATUS: 27 sorries in VerifiedJS/Wasm/Semantics.lean. You closed br + brIf last run. KEEP PUSHING.
+## STATUS: 25 Wasm sorries (was 27). You closed return-none — excellent work. KEEP PUSHING.
+
+File: `VerifiedJS/Wasm/Semantics.lean`
 
 ## BUILD STATUS: PASSES (sorry warnings only). DO NOT BREAK IT.
 
-## P0: binOp trap cases — 12 sorries (L6475-6553)
+## SORRY INVENTORY (25 grep lines, ~22 actual sorries):
 
-These are your MAIN TARGET. You've been blocked by heartbeat timeouts. Solutions:
+### step_sim constructor cases (12 sorries, L6542-6620):
+- L6542: let
+- L6550: seq
+- L6554: if
+- L6557: while_
+- L6560: throw
+- L6563: tryCatch
+- L6605: return (some t)
+- L6608: yield
+- L6611: await
+- L6614: labeled
+- L6617: break
+- L6620: continue
 
-1. **Add `set_option maxHeartbeats 800000` before the theorem** (if not already present)
-2. **Use `refine` instead of `simp_all`** — simp_all is the timeout culprit
-3. **Work in smaller chunks** — close 2-3 sorries per edit, build, verify, repeat
+### Deeper cases (8 sorries):
+- L10145: binOp i32 type mismatch trap
+- L10255: binOp f64 type mismatch trap
+- L10261: unOp (entire case)
+- L10516: call (sorry'd, commented-out proof below)
+- L10569: call stack underflow
+- L10573: call successful (blocked: multi-frame)
+- L10576: callIndirect
+- L11336: memoryGrow
 
-Specific tactic to try at EACH sorry (use `lean_multi_attempt` first):
+### Top-level (1 sorry):
+- L308: (check what this is)
+
+## P0: return (some t) at L6605 — EASIEST WIN
+
+You already proved return-none (L6568-6604). `return (some t)` is similar:
+- ANF step: evaluates trivial t, produces silent event
+- IR code: from LowerCodeCorr, should be value code + return_
+- Copy the return-none pattern but handle the value
+
+Use `lean_goal` at L6605 to see exact goal. Use `lean_multi_attempt` with candidates.
+
+## P1: binOp trap cases (L10145, L10255) — 2 sorries
+
+These are type-mismatch trap cases. Both IR and Wasm trap with same trace. Pattern:
+```lean
+simp [irStep?, hcode_ir, irPop2?, irTrapState, irPushTrace] at hstep
+obtain ⟨rfl, rfl⟩ := hstep
+-- Show Wasm also traps
+refine ⟨_, ?_, { ... }⟩
 ```
-["refine ⟨_, by simp only [step?, pop2?, trapState, pushTrace, withI32Bin, withI32Rel, withF64Bin]; rfl, ?_⟩; constructor <;> simp_all [traceToWasm]",
- "exact ⟨_, rfl, by constructor <;> simp_all [traceToWasm]⟩",
- "simp only [step?, pop2?, trapState, pushTrace, withI32Bin, withI32Rel, withF64Bin, traceToWasm]; exact ⟨_, rfl, by constructor <;> assumption⟩",
- "unfold step? withI32Bin pop2?; simp only [trapState, pushTrace]; refine ⟨_, rfl, ?_⟩; constructor <;> simp_all"]
-```
+Use `lean_goal` at each, then `lean_multi_attempt`.
 
-If ALL of those fail: use `lean_goal` to see the EXACT goal, then construct the proof term manually with `exact ⟨state, proof_step, proof_record⟩`.
+## P2: unOp (L10261) — 1 sorry
 
-## P1: Store/load inner cases — 13 sorries (L9950-10387)
+The commented-out proof below (L10262-10512) shows the intended approach. It was sorry'd because of API changes. Try uncommenting and fixing.
 
-These are deeper in `step_sim`. Same pattern as binOp but with different Wasm instructions. Work on after P0.
+## P3: call stack underflow (L10569) — needs emit_preserves_params
 
-Priority order within P1:
-1. L9950-9956: stack underflow cases (simplest)
-2. L10011-10012, L10068-10069: type mismatch cases
-3. L10026-10029: remaining store cases
-4. L10075, L10330, L10383-10387: other
+The comment says "Wasm param count might differ from IR param count, but for valid emit, param counts correspond." Write or find that lemma.
 
-## P2: callIndirect (L10390) and memoryGrow (L11150) — 2 sorries
-
-These are standalone. Try after P0 and P1.
+## SKIP: call successful (L10573) — blocked by multi-frame invariant. Leave as sorry.
+## SKIP: step_sim constructor cases (L6542-6620) — these are structural, need ANF proof first.
 
 ## WORKFLOW
 1. `lean_goal` at sorry → understand exact goal
@@ -43,6 +73,6 @@ These are standalone. Try after P0 and P1.
 4. If timeout: add maxHeartbeats, try simpler tactic decomposition
 5. Move to next
 
-## TARGET: Close at least 4 binOp trap sorries this run (-4 minimum)
+## TARGET: Close return-some (-1) + 2 binOp traps (-2) + unOp (-1) = net -4 this run
 
 ## Log progress to agents/wasmspec/log.md

@@ -1,5 +1,59 @@
 # jsspec agent log
 
+## 2026-03-28T05:00 — normalizeExpr no-confusion + unfolding + continuation lemmas
+
+### File: `.lake/_tmp_fix/VerifiedJS/ANF/ConvertHelpers.lean`
+- **0 errors, 0 warnings, no sorry**
+- Verified with `lean_verify` — only standard axioms (propext, Quot.sound)
+
+**NOTE**: Could not write to `VerifiedJS/ANF/Convert.lean` (owned by `proof` user). Lemmas are in staging; need `proof` user to integrate them into Convert.lean before `end VerifiedJS.ANF`.
+
+#### No-confusion lemmas (these normalizeExpr cases NEVER produce .labeled):
+- `bindComplex_not_labeled` — bindComplex always produces .let, never .labeled
+- `normalizeExpr_return_none_not_labeled` — return none → .return none
+- `normalizeExpr_yield_none_not_labeled` — yield none d → .yield none d
+- `normalizeExpr_break_not_labeled'` — break l → .break l
+- `normalizeExpr_continue_not_labeled'` — continue l → .continue l
+- `normalizeExpr_var_not_labeled` — var name with hk_triv → .trivial (not labeled)
+- `normalizeExpr_this_not_labeled` — this with hk_triv → .trivial (not labeled)
+- `normalizeExpr_lit_not_labeled` — lit v with hk_triv → .trivial (not labeled)
+
+#### Continuation no-confusion (specific k's never produce .labeled):
+- `return_some_k_not_labeled` — `fun t => pure (.return (some t))` ≠ .labeled
+- `throw_k_not_labeled` — `fun t => pure (.throw t)` ≠ .labeled
+- `await_k_not_labeled` — `fun t => pure (.await t)` ≠ .labeled
+- `yield_some_k_not_labeled` — `fun t => pure (.yield (some t) d)` ≠ .labeled
+- `bindComplex_produces_let` — forward: if bindComplex succeeds, result is .let
+
+#### Unfolding/rewrite lemmas (@[simp]):
+- `normalizeExpr_seq'` — `.seq a b` = `normalizeExpr a (fun _ => normalizeExpr b k)`
+- `normalizeExpr_return_none'`, `normalizeExpr_return_some'`
+- `normalizeExpr_yield_none'`, `normalizeExpr_yield_some'`
+- `normalizeExpr_throw'`, `normalizeExpr_await'`
+- `normalizeExpr_var'`, `normalizeExpr_this'`
+
+### Critical architectural finding for proof agent
+
+The `normalizeExpr_labeled_step_sim` theorem (ANFConvertCorrect.lean ~L1078) **cannot be proven by simple case analysis** for compound cases. The sorries at L1174, L1180, L1197 all require **well-founded induction on `Flat.Expr.depth`**.
+
+**Why**: For compound expressions (seq, if, let, return some, yield some, throw, await, assign, call, etc.), `normalizeExpr` recurses into sub-expressions. `.labeled` can only appear in the result if some sub-expression is `.labeled`. But the sub-expression could be arbitrarily nested (e.g., `.seq (.var x) (.seq (.var y) (.labeled l b))`).
+
+**How to fix**: Restructure the proof to use induction:
+```lean
+private theorem normalizeExpr_labeled_step_sim ... := by
+  induction e using Flat.Expr.depth.lt_wfRel.wf.induction with
+  | ind e ih => cases e with ...
+```
+
+Then for compound cases, unfold `normalizeExpr`, use the continuation no-confusion lemmas to show the `.labeled` must come from a sub-expression (not from k), and apply `ih` on that sub-expression (which has smaller depth).
+
+**Key helper usage**:
+- Cases where k is discarded (return some, yield some, throw, await): use `return_some_k_not_labeled` / `throw_k_not_labeled` / `await_k_not_labeled` / `yield_some_k_not_labeled` to show the new k can't produce .labeled
+- Cases where k passes through bindComplex: use `bindComplex_not_labeled` to show the wrapped k can't produce .labeled
+- Cases that are impossible (while_ → .seq, tryCatch → .tryCatch): already proven by exfalso
+
+---
+
 ## 2026-03-28T04:00 — Flat.step? simp lemmas + normalizeExpr labeled inversion + blocked case docs
 
 ### File: `.lake/_tmp_fix/VerifiedJS/Proofs/anf_helpers.lean`
@@ -1137,3 +1191,4 @@ Staged at `.lake/_tmp_fix/VerifiedJS/Proofs/design_issues.md`:
 
 ## Run: 2026-03-28T05:00:01+00:00
 
+2026-03-28T05:13:32+00:00 DONE

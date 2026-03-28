@@ -1,3 +1,42 @@
+## Run: 2026-03-28T05:05:01+00:00
+
+### Metrics
+- **Sorry count**: 62 (16 ANF + 20 CC + 25 Wasm + 1 Lower) [grep -c, includes comment lines]
+- **Actual sorries**: ~57 (16 ANF + 18 CC + 22 Wasm + 1 Lower)
+- **Delta from last run**: +1 (61→62 by grep -c). Wasm 27→25 (-2 good: return-none proved). ANF 15→16 (+1: ExprWellFormed sorry added in return-some/labeled case). CC 18→20 (+2: possibly comment lines, actual count unchanged at 18).
+- **Net assessment**: Wasm making real progress (return-none fully proved). ANF regressed slightly — proof agent expanded return-some/labeled but left ExprWellFormed sorry. CC unchanged.
+
+### ANF Analysis (16 sorries)
+- **Helper sorries (4)**: L1180 (ExprWellFormed in return-some/labeled), L1181 (non-labeled wildcard in return-some), L1187 (yield-some), L1204 (remaining compounds: let/seq/if/throw/await)
+- **Main theorem (10)**: var-nf (L1236), let (L1275), seq (L1277), if (L1279), while (L1281), throw (L1283), tryCatch (L1285), return (L1287), yield (L1289), await (L1291)
+- **Blocked (2)**: break (L1315), continue (L1317) — semantic mismatch
+- **Easiest wins**: L1204 (compound no-confusion, pattern exists at L1188-1202), L1180 (ExprWellFormed inversion)
+
+### CC Analysis (18 actual sorries, 20 grep lines)
+- Unchanged from prior run. forIn/forOf (2 permanent), HeapInj staging (1), CCState threading (3), unstarted cases (10), var-captured (1), while-CCState (1).
+- CC is NOT blocking — focus on ANF and Wasm.
+
+### Wasm Analysis (22 actual sorries, 25 grep lines)
+- **return-none PROVED** — wasmspec closed 2 sorries. Excellent.
+- Next easiest: return-some (L6605), binOp traps (L10145, L10255), unOp (L10261)
+- call successful (L10573) blocked by multi-frame invariant — skip
+
+### Agent Status
+- **proof**: Prompt REWRITTEN — 4 helper sorries with exact line numbers and tactic templates. ExprWellFormed at L1180 is new priority. Target: -5.
+- **jsspec**: Prompt REWRITTEN — write compound no-confusion lemmas into Convert.lean (not staging). Also ExprWellFormed inversion lemma. These unblock proof agent's helper sorries.
+- **wasmspec**: Prompt REWRITTEN — acknowledged return-none success. Targets: return-some, binOp traps, unOp. Target: -4.
+
+### Actions Taken
+1. All 3 agent prompts rewritten with updated line numbers and specific tactics
+2. Identified ExprWellFormed sorry (L1180) as new blocker — jsspec tasked with inversion lemma
+3. Redirected wasmspec to return-some as next easiest win after return-none success
+4. Confirmed CC unchanged — not blocking, no action needed
+
+### OUTLOOK: Target next run ≤54 (ANF -5: 4 helper + seq, Wasm -4: return-some + 2 binOp + unOp)
+### RISK: If jsspec doesn't deliver no-confusion lemmas, proof agent can't close L1204 helper sorry
+
+---
+
 ## Run: 2026-03-28T04:05:01+00:00
 
 ### Metrics
@@ -5299,3 +5338,4 @@ CC and Wasm both broken. Neither is supervisor-fixable (file permissions). Agent
 
 ## Run: 2026-03-28T05:05:01+00:00
 
+2026-03-28T05:11:34+00:00 DONE
