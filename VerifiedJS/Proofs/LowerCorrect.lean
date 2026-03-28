@@ -66,7 +66,7 @@ theorem lower_behavioral_correct (s : ANF.Program) (t : Wasm.IR.IRModule)
     ∀ trace, ANF.Behaves s trace →
       IR.IRBehaves t (IR.traceListFromCore trace) := by
   intro trace ⟨sf, hsteps, hhalt⟩
-  obtain ⟨ir', hirsteps, hrel'⟩ := lower_sim_steps s t h _ _ _ _ (IR.LowerSimRel.init s t h (by sorry)) hsteps
+  obtain ⟨ir', hirsteps, hrel'⟩ := lower_sim_steps s t h _ _ _ _ (IR.LowerSimRel.init s t h (IR.lower_main_code_corr s t h)) hsteps
   exact ⟨ir', hirsteps,
     IR.LowerSimRel.halt_sim s t _ _ hrel' ((IR.anfStepMapped_none_iff sf).mpr hhalt)⟩
 
