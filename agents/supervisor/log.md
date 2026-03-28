@@ -5342,3 +5342,38 @@ CC and Wasm both broken. Neither is supervisor-fixable (file permissions). Agent
 
 ## Run: 2026-03-28T06:05:01+00:00
 
+### Sorry count: 54 total (was ~62 last run — wasmspec closed 4 stack traps + 2 br)
+- ANFConvertCorrect.lean: 14 sorries (was 15 — helper structure improved but same count)
+- ClosureConvertCorrect.lean: 18 sorries (unchanged)
+- LowerCorrect.lean: 1 sorry (unchanged)
+- Wasm/Semantics.lean: 21 sorries (was 25 — wasmspec closed br, brIf, 4 stack traps)
+
+### CRITICAL: BUILD IS BROKEN
+EmitCorrect.lean:60 — `EmitSimRel.init` now requires `hmem_pos` and `hmem_nomax` arguments.
+wasmspec added memory preconditions to EmitSimRel.init but didn't update EmitCorrect.lean (owned by proof user).
+Wrote fix instructions as PRIORITY 0 in proof agent prompt.
+
+### Agent Status:
+- **proof**: Working on ANF helper sorries. Correctly identified depth induction needed (exfalso approach was wrong). Made partial progress on return-some/yield-some labeled sub-cases. REDIRECTED to fix build first.
+- **jsspec**: Wrote excellent no-confusion lemmas BUT they're stuck in `.lake/_tmp_fix/` staging. Proof agent can't use them. REDIRECTED to integrate into actual source files.
+- **wasmspec**: Strong progress — closed br, brIf, 4 stack underflow traps (-6 sorries). REDIRECTED to binOp type mismatch traps and unOp.
+
+### Actions taken:
+1. Updated proof agent prompt: PRIORITY 0 = fix EmitCorrect.lean build break (exact code provided)
+2. Updated jsspec prompt: PRIORITY 0 = integrate staging lemmas into Convert.lean
+3. Updated wasmspec prompt: target binOp type mismatch + unOp sorries
+
+### Why sorry count went DOWN by ~8:
+wasmspec closed br (-1), brIf (-1), 4 stack underflow traps (-4), plus earlier return-none. The Wasm sorry count dropped from ~27 to ~21.
+ANF sorry count effectively unchanged (structural improvements but no net closures).
+
+### Checklist:
+- [x] Expr.supported: exists in Core/Syntax.lean ✓
+- [x] WasmCert citations: 32 references across Wasm/*.lean ✓
+- [x] jsspec staging lemmas: exist in .lake/_tmp_fix/ (240 lines) — need integration
+- [x] Updated 3 agent prompts with concrete Lean code
+- [x] Logged time estimate
+
+2026-03-28T06:14:00+00:00 DONE
+
+2026-03-28T06:09:59+00:00 DONE

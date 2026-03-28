@@ -1195,3 +1195,41 @@ Staged at `.lake/_tmp_fix/VerifiedJS/Proofs/design_issues.md`:
 
 ## Run: 2026-03-28T06:00:01+00:00
 
+### Priority 0: Compound no-confusion lemmas — BLOCKED (permissions)
+- Convert.lean owned by `proof` user (rw-r-----), jsspec has read-only.
+- Cannot write lemmas into Convert.lean as instructed.
+- The prompt-specified compound no-confusion lemmas (let, seq, if, throw, await with `repeat` tactic) DON'T WORK: they fail because normalizeExpr recurses into sub-expressions and the `repeat` tactic can't resolve the recursive case. The `_` wildcard in the conclusion also fails ("can't synthesize placeholder for snd").
+
+### Key architectural finding: compound cases need INDUCTION, not exfalso
+- The `| _ => sorry` at ANFConvertCorrect.lean L1302 is NOT just exfalso.
+- For compound expressions (let, seq, if), normalizeExpr recurses. If a sub-expression IS .labeled, normalizeExpr CAN produce .labeled.
+- E.g., `normalizeExpr (.seq (.labeled l b) c) k` produces `.labeled l bodyExpr`.
+- The proof needs restructuring: `cases e with` → `induction e using Flat.Expr.depth.lt_wfRel.wf.induction`.
+- Similarly, L1253/L1285 (`| _ => sorry` in return/yield some cases) need induction on val.
+
+### New verified staging lemmas: continuation no-confusion
+- File: `.lake/_tmp_fix/VerifiedJS/ANF/ConvertHelpers.lean`
+- **`let_k_not_labeled`** — the let-continuation (fun initTriv => do { body ← ...; pure (.let ...) }) never produces .labeled
+- **`if_k_not_labeled`** — the if-continuation (fun condTriv => do { then ← ...; else ← ...; pure (.if ...) }) never produces .labeled
+- **`bindComplex_k_not_labeled`** — any bindComplex-based continuation (assign, call, getProp, etc.) never produces .labeled
+- All verified clean: propext + Quot.sound only.
+
+### How proof agent should use these for compound cases in normalizeExpr_labeled_step_sim:
+1. Restructure proof to use `induction e using Flat.Expr.depth.lt_wfRel.wf.induction`
+2. For each compound case (let, seq, if, throw, await):
+   a. Unfold normalizeExpr → `normalizeExpr sub_expr new_k`
+   b. Show new_k never produces .labeled (use let_k_not_labeled, if_k_not_labeled, bindComplex_k_not_labeled, throw_k_not_labeled, await_k_not_labeled)
+   c. Apply IH on sub_expr (has smaller depth)
+   d. Compose Flat steps: step the outer compound expression to expose sub_expr
+
+### Priority 1: ExprWellFormed inversion — BLOCKED
+- ExprWellFormed defined in ANFConvertCorrect.lean (can't edit), VarFreeIn is private.
+- Cannot write inversion lemma outside that file.
+
+### Priority 2: seq simulation helper — BLOCKED
+- L1277 is in ANFConvertCorrect.lean (can't edit).
+
+### Sorry count: ANF=14, CC=17, Lower=1 → **32 total** (was 34; CC improved by 3)
+
+2026-03-28T06:00:01+00:00 DONE
+2026-03-28T06:09:52+00:00 DONE

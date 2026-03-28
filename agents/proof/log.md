@@ -1,3 +1,46 @@
+## Run: 2026-03-28T05:30+00:00
+- **ANF BUILD: PASSES** ✓
+- **ANF Sorries: 14** (was 15; var-not-found closed)
+
+### Changes applied:
+1. **Added `VarFreeIn.this_var` constructor** (L101): `VarFreeIn "this" .this`. This ensures ExprWellFormed covers `.this` expressions, requiring "this" to be bound in the environment. Fixed 10 cascading `cases hfx with` → `exact match hfx with` conversions throughout the file.
+
+2. **Added `normalizeExpr_var_implies_free` lemma** (L943-993): Proves by induction on depth that if `normalizeExpr e k` produces `.trivial (.var name)` with trivial-preserving `k`, then `VarFreeIn name e`. Handles:
+   - `var name`: directly `VarFreeIn.var`
+   - `this`: uses new `VarFreeIn.this_var` constructor
+   - `lit`: exfalso via `trivialOfValue_ne_var`
+   - `seq a b`: recursion through `normalizeExpr_ignored_bypass_trivial` + IH on `b`
+   - Compound expressions: exfalso via `normalizeExpr_compound_not_trivial`
+
+3. **Closed var-not-found sorry** (was L1264, now ~L1335): Proved by exfalso — `normalizeExpr_var_implies_free` gives `VarFreeIn name sf.expr`, then `ExprWellFormed` gives `sf.env.lookup name ≠ none`, contradicting `hlookup : sa_env.lookup name = none`.
+
+### Analysis for next run:
+
+**Helper sorries (3)** at L1253, L1285, L1302:
+- All require depth induction AND handling non-trivial-preserving continuations
+- The fundamental blocker: recursion into sub-expressions uses inner continuations that are NOT trivial-preserving, so the current IH (which requires hk) doesn't apply
+- Recommended approach: prove a general `normalizeExpr_labeled_propagation` lemma with hypothesis `∀ arg n' l b m', (k arg).run n' ≠ .ok (.labeled l b, m')` (k doesn't produce labeled) instead of requiring k to be trivial-preserving. Then for the main helper, use trivial-preserving to satisfy this.
+- This is a 200+ line proof by mutual induction (similar to `normalizeExpr_not_trivial_family`)
+
+**Main theorem sorries (11)** at L1382-1424:
+- **while_ (L1388)**: PROVABLE AS EXFALSO. `normalizeExpr e k` with trivial-preserving k NEVER produces `.while_` at the top level (the `.while_` case produces `.seq (.while_ ...) (.trivial .litUndefined)`). Requires a `normalizeExpr_not_while` lemma by induction on depth (~100 lines).
+- **let, seq, if, throw, tryCatch, return, yield, await**: Each requires backwards reasoning about what Flat expression could produce the given ANF expression through normalizeExpr. Very complex — each case likely needs its own ~100 line helper.
+- **break, continue (L1422, L1424)**: Semantic mismatch (ANF: silent, Flat: error). Leave as sorry.
+
+### Key architectural insight:
+The `.while_` case being exfalso reveals that `normalizeExpr` has a restricted output shape. A general "constructor exclusion" family (like `normalizeExpr_not_trivial_family` but parameterized) could close MULTIPLE main theorem cases. The while_ case is the clearest example, but other impossible-at-top-level constructors may exist.
+
+### Sorry inventory (14 total):
+**Helper (3):**
+- L1253: return (some non-labeled sub-expr)
+- L1285: yield (some non-labeled sub-expr)
+- L1302: wildcard (21 constructors)
+
+**Main theorem (11):**
+- L1382: let, L1384: seq, L1386: if, L1388: while_ (exfalso — needs normalizeExpr_not_while)
+- L1390: throw, L1392: tryCatch, L1394: return, L1396: yield, L1398: await
+- L1422: break, L1424: continue (semantic mismatch)
+
 ## Run: 2026-03-28T04:30+00:00
 - **ANF BUILD: PASSES** ✓
 - **ANF Sorries: 15** (same count: 12 in main theorem + 3 in helper, but net structure improved)
@@ -2928,3 +2971,4 @@ FOCUS ON THE 23 REAL SORRIES. Define shared tactics for the 4 CCState cases (L16
 
 ## Run: 2026-03-28T05:30:01+00:00
 
+2026-03-28T06:09:26+00:00 DONE

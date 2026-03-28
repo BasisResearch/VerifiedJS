@@ -1,76 +1,60 @@
-# jsspec — INTEGRATE STAGING LEMMAS + COMPOUND NO-CONFUSION
+# jsspec — INTEGRATE STAGING LEMMAS INTO SOURCE FILES
 
-## STATUS: Staging lemmas written but NOT integrated. The proof agent CANNOT USE them from `.lake/_tmp_fix/`. You MUST write them into actual source files.
+## STATUS: Your lemmas are stuck in `.lake/_tmp_fix/` — they are USELESS there. The proof agent CANNOT import them.
 
-## CRITICAL: Proof agent has 4 helper sorries in normalizeExpr_labeled_step_sim that need no-confusion lemmas.
+## CRITICAL: BUILD IS BROKEN
+`EmitCorrect.lean:60` has a type mismatch — the proof agent is fixing this. DO NOT touch Proofs/*.lean files. Focus on your own deliverables.
 
-The 4 helper sorries (L1180, L1181, L1187, L1204 in ANFConvertCorrect.lean) need to show normalizeExpr of compound expressions can't produce `.labeled`. The while_ and tryCatch cases are already proved (L1188-1203). You need lemmas for the remaining cases.
+## PRIORITY 0: Move no-confusion lemmas into VerifiedJS/ANF/Convert.lean
 
-## PRIORITY 0: Write normalizeExpr compound no-confusion lemmas INTO `VerifiedJS/ANF/Convert.lean`
+Your lemmas from `.lake/_tmp_fix/VerifiedJS/ANF/ConvertHelpers.lean` need to go into `VerifiedJS/ANF/Convert.lean` BEFORE `end VerifiedJS.ANF`.
 
-Add these BEFORE `end VerifiedJS.ANF` in Convert.lean. Each proves normalizeExpr of a compound expression can't produce `.labeled`:
+Key lemmas to integrate:
+- `bindComplex_not_labeled`
+- `normalizeExpr_return_none_not_labeled`
+- `normalizeExpr_yield_none_not_labeled`
+- `normalizeExpr_break_not_labeled'`
+- `normalizeExpr_continue_not_labeled'`
+- `normalizeExpr_var_not_labeled`
+- `normalizeExpr_this_not_labeled`
+- `normalizeExpr_lit_not_labeled`
+- `return_some_k_not_labeled`
+- `throw_k_not_labeled`
+- `await_k_not_labeled`
+- `yield_some_k_not_labeled`
+- `bindComplex_produces_let`
+- All the `normalizeExpr_*'` simp lemmas
 
-```lean
-@[simp] theorem normalizeExpr_let_not_labeled (name : String) (rhs body : Flat.Expr)
-    (k : Trivial → ConvM Expr) (n : Nat) (label : String) (b : Expr) :
-    (normalizeExpr (.let name rhs body) k).run n ≠ .ok (.labeled label b, _) := by
-  unfold normalizeExpr
-  simp only [bind, Bind.bind, StateT.bind, StateT.run, Except.bind]
-  intro h; repeat (first | split at h | (simp [pure, Pure.pure, StateT.pure, Except.pure] at h; try exact Expr.noConfusion (Prod.mk.inj (Except.ok.inj h)).1))
-
-@[simp] theorem normalizeExpr_seq_not_labeled (a b : Flat.Expr)
-    (k : Trivial → ConvM Expr) (n : Nat) (label : String) (body : Expr) :
-    (normalizeExpr (.seq a b) k).run n ≠ .ok (.labeled label body, _) := by
-  unfold normalizeExpr
-  simp only [bind, Bind.bind, StateT.bind, StateT.run, Except.bind]
-  intro h; repeat (first | split at h | (simp [pure, Pure.pure, StateT.pure, Except.pure] at h; try exact Expr.noConfusion (Prod.mk.inj (Except.ok.inj h)).1))
-
-@[simp] theorem normalizeExpr_if_not_labeled (cond then_ else_ : Flat.Expr)
-    (k : Trivial → ConvM Expr) (n : Nat) (label : String) (body : Expr) :
-    (normalizeExpr (.if cond then_ else_) k).run n ≠ .ok (.labeled label body, _) := by
-  unfold normalizeExpr
-  simp only [bind, Bind.bind, StateT.bind, StateT.run, Except.bind]
-  intro h; repeat (first | split at h | (simp [pure, Pure.pure, StateT.pure, Except.pure] at h; try exact Expr.noConfusion (Prod.mk.inj (Except.ok.inj h)).1))
-
-@[simp] theorem normalizeExpr_throw_not_labeled (arg : Flat.Expr)
-    (k : Trivial → ConvM Expr) (n : Nat) (label : String) (body : Expr) :
-    (normalizeExpr (.throw arg) k).run n ≠ .ok (.labeled label body, _) := by
-  unfold normalizeExpr
-  simp only [bind, Bind.bind, StateT.bind, StateT.run, Except.bind]
-  intro h; repeat (first | split at h | (simp [pure, Pure.pure, StateT.pure, Except.pure] at h; try exact Expr.noConfusion (Prod.mk.inj (Except.ok.inj h)).1))
-
-@[simp] theorem normalizeExpr_await_not_labeled (arg : Flat.Expr)
-    (k : Trivial → ConvM Expr) (n : Nat) (label : String) (body : Expr) :
-    (normalizeExpr (.await arg) k).run n ≠ .ok (.labeled label body, _) := by
-  unfold normalizeExpr
-  simp only [bind, Bind.bind, StateT.bind, StateT.run, Except.bind]
-  intro h; repeat (first | split at h | (simp [pure, Pure.pure, StateT.pure, Except.pure] at h; try exact Expr.noConfusion (Prod.mk.inj (Except.ok.inj h)).1))
-```
-
-Use `lean_multi_attempt` to verify each tactic works BEFORE editing. If `repeat` times out, try `set_option maxHeartbeats 400000`.
-
-Also add simple cases for trivial expressions:
-```lean
-@[simp] theorem normalizeExpr_var_not_labeled (name : String)
-    (k : Trivial → ConvM Expr) (n : Nat) (label : String) (body : Expr)
-    (hk : ∀ t n', (k t).run n' ≠ .ok (.labeled label body, _)) :
-    (normalizeExpr (.var name) k).run n ≠ .ok (.labeled label body, _) := by
-  simp [normalizeExpr]; exact hk ..
-```
+**Steps:**
+1. Read `VerifiedJS/ANF/Convert.lean` to find `end VerifiedJS.ANF`
+2. Read `.lake/_tmp_fix/VerifiedJS/ANF/ConvertHelpers.lean` to get the lemma code
+3. Insert all lemmas BEFORE `end VerifiedJS.ANF`
+4. Build: `lake build VerifiedJS.ANF.Convert`
+5. Fix any issues
 
 ## PRIORITY 1: ExprWellFormed inversion lemma
 
-The proof agent has an ExprWellFormed sorry at L1180. They need:
+The proof agent needs:
 ```lean
 theorem ExprWellFormed.return_some_inner {v : Flat.Expr} {env : Flat.Env}
     (h : ExprWellFormed (.return (some v)) env) : ExprWellFormed v env
 ```
-Check how ExprWellFormed is defined, then write this inversion into the appropriate file.
 
-## PRIORITY 2: seq simulation helper (for anfConvert_step_star L1277)
+Find where `ExprWellFormed` is defined (probably in `Flat/Semantics.lean` or similar), then add this inversion lemma there.
 
-Use `lean_goal` at L1277 in ANFConvertCorrect.lean to understand what the proof agent needs, then write a helper theorem.
+## PRIORITY 2: Compound normalizeExpr no-confusion lemmas
 
-## DO NOT edit ANFConvertCorrect.lean or ClosureConvertCorrect.lean.
+Write these compound cases that the proof agent needs (or they may already be in your staging):
+```lean
+@[simp] theorem normalizeExpr_let_not_labeled ...
+@[simp] theorem normalizeExpr_seq_not_labeled ...
+@[simp] theorem normalizeExpr_if_not_labeled ...
+@[simp] theorem normalizeExpr_throw_not_labeled ...
+@[simp] theorem normalizeExpr_await_not_labeled ...
+```
+
+Use the same pattern from your staging file.
+
+## DO NOT edit ANFConvertCorrect.lean or ClosureConvertCorrect.lean or EmitCorrect.lean or EndToEnd.lean
 ## You CAN edit: VerifiedJS/ANF/Convert.lean, VerifiedJS/Flat/Semantics.lean, VerifiedJS/Core/*.lean
 ## Log to agents/jsspec/log.md

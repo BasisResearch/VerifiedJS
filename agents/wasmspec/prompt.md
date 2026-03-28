@@ -1,78 +1,62 @@
-# wasmspec — GOOD JOB ON return-none. KEEP CLOSING SORRIES.
+# wasmspec — CLOSE BINOP TRAP + UNOP SORRIES
 
-## STATUS: 25 Wasm sorries (was 27). You closed return-none — excellent work. KEEP PUSHING.
+## STATUS: 21 Wasm sorries in Semantics.lean. You closed br/brIf and stack underflow traps — good work.
 
 File: `VerifiedJS/Wasm/Semantics.lean`
 
-## BUILD STATUS: PASSES (sorry warnings only). DO NOT BREAK IT.
+## BUILD STATUS: BROKEN (EmitCorrect.lean type mismatch — proof agent fixing). DO NOT touch Proofs/*.lean.
 
-## SORRY INVENTORY (25 grep lines, ~22 actual sorries):
+## SORRY INVENTORY (~21 actual sorries):
 
-### step_sim constructor cases (12 sorries, L6542-6620):
-- L6542: let
-- L6550: seq
-- L6554: if
-- L6557: while_
-- L6560: throw
-- L6563: tryCatch
-- L6605: return (some t)
-- L6608: yield
-- L6611: await
-- L6614: labeled
-- L6617: break
-- L6620: continue
+### Top-level (1):
+- L308: Check what this is with `lean_goal`
 
-### Deeper cases (8 sorries):
-- L10145: binOp i32 type mismatch trap
-- L10255: binOp f64 type mismatch trap
-- L10261: unOp (entire case)
-- L10516: call (sorry'd, commented-out proof below)
-- L10569: call stack underflow
-- L10573: call successful (blocked: multi-frame)
-- L10576: callIndirect
-- L11336: memoryGrow
+### step_sim constructor cases (12, L6542-6620):
+- L6542: let, L6550: seq, L6554: if, L6557: while_, L6560: throw, L6563: tryCatch
+- L6605: return some, L6608: yield, L6611: await, L6614: labeled, L6617: break, L6620: continue
+- SKIP these — structural, blocked by ANF proof
 
-### Top-level (1 sorry):
-- L308: (check what this is)
+### binOp type mismatch traps (2):
+- L10149: i32 type mismatch trap
+- L10263: f64 type mismatch trap
 
-## P0: return (some t) at L6605 — EASIEST WIN
+### Other (6):
+- L10269: unOp
+- L10524: call sorry
+- L10577, L10581: call stack frames
+- L10584: callIndirect
+- L11344: memoryGrow
 
-You already proved return-none (L6568-6604). `return (some t)` is similar:
-- ANF step: evaluates trivial t, produces silent event
-- IR code: from LowerCodeCorr, should be value code + return_
-- Copy the return-none pattern but handle the value
+## P0: binOp type mismatch traps (L10149, L10263) — 2 EASY WINS
 
-Use `lean_goal` at L6605 to see exact goal. Use `lean_multi_attempt` with candidates.
+You already proved the stack underflow trap cases. The type mismatch cases are similar:
+- `pop2?` returns `some (a, b)` but types don't match (e.g., not both i32)
+- Both IR and Wasm trap with the same trace
+- Use `lean_goal` at each line, then `lean_multi_attempt`
 
-## P1: binOp trap cases (L10145, L10255) — 2 sorries
-
-These are type-mismatch trap cases. Both IR and Wasm trap with same trace. Pattern:
+Pattern:
 ```lean
-simp [irStep?, hcode_ir, irPop2?, irTrapState, irPushTrace] at hstep
-obtain ⟨rfl, rfl⟩ := hstep
--- Show Wasm also traps
-refine ⟨_, ?_, { ... }⟩
+-- IR traps because types don't match
+-- Wasm also traps: show step? produces trap state
+-- Build EmitSimRel with trap state
 ```
-Use `lean_goal` at each, then `lean_multi_attempt`.
 
-## P2: unOp (L10261) — 1 sorry
+## P1: unOp (L10269) — 1 sorry
 
-The commented-out proof below (L10262-10512) shows the intended approach. It was sorry'd because of API changes. Try uncommenting and fixing.
+Check if there's a commented-out proof below. The wasmspec log mentions "L10262-10512 commented-out proof". Try uncommenting and fixing API changes.
 
-## P3: call stack underflow (L10569) — needs emit_preserves_params
+## P2: call (L10524) — if straightforward
 
-The comment says "Wasm param count might differ from IR param count, but for valid emit, param counts correspond." Write or find that lemma.
+Use `lean_goal` to see what's needed. If it requires multi-frame reasoning, skip.
 
-## SKIP: call successful (L10573) — blocked by multi-frame invariant. Leave as sorry.
-## SKIP: step_sim constructor cases (L6542-6620) — these are structural, need ANF proof first.
+## SKIP: step_sim constructor cases (L6542-6620), callIndirect, memoryGrow — too complex for now
 
 ## WORKFLOW
-1. `lean_goal` at sorry → understand exact goal
-2. `lean_multi_attempt` with 4-5 candidates
-3. If found: edit sorry → build → verify
-4. If timeout: add maxHeartbeats, try simpler tactic decomposition
-5. Move to next
+1. `lean_goal` at sorry line
+2. `lean_multi_attempt` with tactic candidates
+3. Edit sorry → build: `lake build VerifiedJS.Wasm.Semantics`
+4. Move to next
 
-## TARGET: Close return-some (-1) + 2 binOp traps (-2) + unOp (-1) = net -4 this run
+## TARGET: Close 2 binOp traps (-2) + unOp (-1) = net -3 this run
 
 ## Log progress to agents/wasmspec/log.md

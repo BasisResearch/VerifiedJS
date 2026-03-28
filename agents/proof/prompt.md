@@ -1,80 +1,79 @@
-# proof — CLOSE HELPER SORRIES THEN STRUCTURAL CASES
+# proof — FIX BROKEN BUILD THEN CLOSE ANF SORRIES
 
-## STATUS: 16 ANF sorries (was 15). Helper grew from 3→4 sorries because return-some/labeled case added ExprWellFormed sorry. FIX THIS.
+## PRIORITY 0: BUILD IS BROKEN — FIX IMMEDIATELY
+
+`EmitCorrect.lean:60` has a type mismatch. `IR.EmitSimRel.init` now takes 5 args:
+`EmitSimRel.init s t hemit hmem_pos hmem_nomax`
+
+### Fix EmitCorrect.lean (exact replacement for lines 54-61):
+```lean
+/-- Emit preserves behavior: every IR trace maps to a Wasm trace. -/
+theorem emit_behavioral_correct (s : IR.IRModule) (t : Wasm.Module)
+    (h : emit s = .ok t)
+    (hmem_pos : 0 < s.memories.size)
+    (hmem_nomax : ∀ (i : Nat) (mt : MemType),
+      s.memories[i]? = some mt → mt.lim.max = none) :
+    ∀ trace, IR.IRBehaves s trace →
+      Wasm.Behaves t (IR.traceListToWasm trace) := by
+  intro trace ⟨sf, hsteps, hhalt⟩
+  obtain ⟨w', hwsteps, hrel'⟩ := emit_sim_steps s t h _ _ _ _
+    (IR.EmitSimRel.init s t h hmem_pos hmem_nomax) hsteps
+  exact ⟨w', hwsteps, IR.EmitSimRel.halt_sim s t _ _ hrel' hhalt⟩
+```
+
+### Then fix EndToEnd.lean line 61 — propagate preconditions:
+Add to `flat_to_wasm_correct` signature (after `hwf_flat`):
+```lean
+    (hmem_pos : 0 < ir.memories.size)
+    (hmem_nomax : ∀ (i : Nat) (mt : Wasm.MemType),
+      ir.memories[i]? = some mt → mt.lim.max = none) :
+```
+And on line 61, change:
+```lean
+    exact emit_behavioral_correct ir wasm hemit _
+```
+to:
+```lean
+    exact emit_behavioral_correct ir wasm hemit hmem_pos hmem_nomax _
+```
+
+**Build after fixing: `lake build VerifiedJS`. It MUST pass before doing anything else.**
+
+## PRIORITY 1: CLOSE ANF HELPER SORRIES (normalizeExpr_labeled_step_sim)
 
 File: `VerifiedJS/Proofs/ANFConvertCorrect.lean`
 
-## BUILD STATUS: PASSES (sorry warnings only). DO NOT BREAK IT.
+The proof agent log at 04:30 identified the correct approach. The 3 helper sorries (L1253, L1285, L1302) need **depth induction**, not simple case analysis.
 
-## STEP 0: CLOSE THE 4 HELPER SORRIES IN normalizeExpr_labeled_step_sim (HIGHEST PRIORITY)
-
-### L1180: ExprWellFormed sorry (return-some/labeled sub-case)
-After `rw [hexpr_s]`, goal is `ExprWellFormed (.return (some b_flat)) s'.env`.
-`b_flat` is a sub-expression of the original well-formed expression. Try:
+**Recommended refactor**: Replace the `cases e` in `normalizeExpr_labeled_step_sim` with:
 ```lean
-    · rw [hexpr_s]
-      intro x hfx; cases hfx with
-      | return_some hinner => exact hewf _ (ExprFreeIn.return_some hinner)
+  induction e using Flat.Expr.depth.lt_wfRel.wf.induction with
+  | ind e ih => cases e with ...
 ```
-If `ExprFreeIn` doesn't have a `return_some` constructor, check what constructors it has with `lean_hover_info` on `ExprFreeIn`. Alternative:
-```lean
-    · rw [hexpr_s]; exact hewf.return_some
-```
-Use `lean_goal` at L1180 and `lean_multi_attempt` to find working tactic.
 
-### L1181: `| _ => sorry` — non-labeled val in return-some
-For val ≠ labeled, normalizeExpr (.return (some val)) k can't produce .labeled.
-The val cases to handle: var, lit*, this, let, seq, if, while_, tryCatch, throw, return, yield, await, break, continue.
-For simple cases (var, lit*, this, break, continue): `exfalso; simp [ANF.normalizeExpr, ...] at hnorm`
-For compound cases: same exfalso + unfold + split pattern as while_ (L1188-1192).
+For compound cases (let, seq, if, throw, await, return some, yield some):
+1. Unfold normalizeExpr
+2. Show the `.labeled` must come from a sub-expression (the continuation k never produces .labeled since k is trivial-preserving)
+3. Apply IH on the sub-expression (smaller depth)
 
-### L1187: yield-some — same structure as return-some
-Copy the return-some pattern: cases on the inner expression, labeled sub-case steps, others are exfalso.
+The jsspec agent has written no-confusion lemmas in `.lake/_tmp_fix/VerifiedJS/ANF/ConvertHelpers.lean` — check if they exist and integrate them into `Convert.lean` BEFORE `end VerifiedJS.ANF`.
 
-### L1204: `| _ => sorry` — remaining compound cases (let, seq, if, throw, await)
-These ALL produce non-.labeled output. Replace wildcard with explicit cases:
-```lean
-  | «let» name rhs body =>
-    exfalso; unfold ANF.normalizeExpr at hnorm
-    simp only [StateT.run, bind, Bind.bind, StateT.bind, Except.bind] at hnorm
-    repeat (first | split at hnorm | (simp [pure, Pure.pure, StateT.pure, Except.pure] at hnorm; try exact ANF.Expr.noConfusion (Prod.mk.inj (Except.ok.inj hnorm)).1))
-  | seq a b =>
-    exfalso; unfold ANF.normalizeExpr at hnorm
-    simp only [StateT.run, bind, Bind.bind, StateT.bind, Except.bind] at hnorm
-    repeat (first | split at hnorm | (simp [pure, Pure.pure, StateT.pure, Except.pure] at hnorm; try exact ANF.Expr.noConfusion (Prod.mk.inj (Except.ok.inj hnorm)).1))
-  | «if» cond then_ else_ =>
-    exfalso; unfold ANF.normalizeExpr at hnorm
-    simp only [StateT.run, bind, Bind.bind, StateT.bind, Except.bind] at hnorm
-    repeat (first | split at hnorm | (simp [pure, Pure.pure, StateT.pure, Except.pure] at hnorm; try exact ANF.Expr.noConfusion (Prod.mk.inj (Except.ok.inj hnorm)).1))
-  | throw arg =>
-    exfalso; unfold ANF.normalizeExpr at hnorm
-    simp only [StateT.run, bind, Bind.bind, StateT.bind, Except.bind] at hnorm
-    repeat (first | split at hnorm | (simp [pure, Pure.pure, StateT.pure, Except.pure] at hnorm; try exact ANF.Expr.noConfusion (Prod.mk.inj (Except.ok.inj hnorm)).1))
-  | await arg =>
-    exfalso; unfold ANF.normalizeExpr at hnorm
-    simp only [StateT.run, bind, Bind.bind, StateT.bind, Except.bind] at hnorm
-    repeat (first | split at hnorm | (simp [pure, Pure.pure, StateT.pure, Except.pure] at hnorm; try exact ANF.Expr.noConfusion (Prod.mk.inj (Except.ok.inj hnorm)).1))
-```
-If `repeat` times out, add `set_option maxHeartbeats 400000` before the theorem.
+## PRIORITY 2: CLOSE STRUCTURAL CASES (let, seq, if)
 
-## STEP 1: AFTER HELPERS ARE DONE, tackle seq (L1277) in anfConvert_step_star
+After helper sorries are done:
+- L1382 (let): `normalizeExpr (.let n r b) k` = `bindComplex r (fun fresh => normalizeExpr (.seq (.assign fresh r) b) k)`. ANF step evaluates rhs, extends env, continues with body.
+- L1384 (seq): `normalizeExpr (.seq a b) k` = `normalizeExpr a (fun _ => normalizeExpr b k)`. If a is value → skip to b. If a steps → inner step.
+- L1386 (if): Branch on condition trivial value. Each branch evaluates to normalizeExpr of then_/else_.
 
-Use `lean_goal` at L1277 to see exact goal. Pattern:
-- ANF.step? for `.seq a b`: if a steps → inner step; if a is value → skip to b
-- From hnorm: `normalizeExpr (.seq a b) k` = `normalizeExpr a (fun _ => normalizeExpr b k)`
-- Use the var-found case (L1229-1265) as a template for constructing the simulation witness
+Use the var-found case (around L1229-1265) as a template for constructing SimRel witnesses.
 
-## STEP 2: if case (L1279) — similar pattern to seq but with branching
-
-## CASES TO SKIP: break (L1315), continue (L1317) — SEMANTIC MISMATCH, LEAVE AS SORRY
+## CASES TO SKIP
+- L1422 (break), L1424 (continue): semantic mismatch, leave as sorry
 
 ## WORKFLOW
-1. `lean_goal` at the sorry line
-2. `lean_multi_attempt` with tactic candidates
-3. Edit the sorry with working tactic
-4. Build: `lake build VerifiedJS.Proofs.ANFConvertCorrect`
-5. Move to next
-
-## TARGET: Close 4 helper sorries (-4) + seq (-1) = net -5 this run
+1. Fix EmitCorrect.lean and EndToEnd.lean FIRST
+2. `lake build VerifiedJS` — verify it passes
+3. Then work on ANF sorries
+4. `lean_goal` at sorry → `lean_multi_attempt` → edit → build
 
 ## Log progress to agents/proof/log.md
