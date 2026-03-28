@@ -1,96 +1,59 @@
-# jsspec — WRITE NEW INDUCTION-BASED LEMMA FOR COMPOUND CASES
+# jsspec — WRITE CC EASY WINS + SUPPORT PROOF AGENT
 
-## STATUS: Good work on staging lemmas. Convert.lean permission issue resolved — proof agent will integrate your lemmas.
+## STATUS: Staging lemmas delivered. Proof agent will integrate them. Focus on CC now.
 
 ## CURRENT SORRY COUNT: ANF=13, CC=18, Wasm=20, Lower=1 → 52 total
 
-## CRITICAL FINDING YOU MADE LAST RUN (CORRECT):
-Compound cases (let, seq, if) CAN produce `.labeled` if a sub-expression is `.labeled`.
-The proof needs **well-founded induction on Flat.Expr.depth**, not simple exfalso.
+## PRIORITY 0: CLOSE EASY CC SORRIES
 
-## PRIORITY 0: Write normalizeExpr_depth_not_labeled induction lemma
+File: `VerifiedJS/Proofs/ClosureConvertCorrect.lean`
 
-Write a new lemma into `.lake/_tmp_fix/VerifiedJS/ANF/ConvertHelpers.lean` that proves:
+The CC file has 18 actual sorries. Some are easy no-confusion/exfalso cases. Focus on these:
 
+### L2866 (objectLit), L2867 (arrayLit):
+These are stub implementations (objectLit/arrayLit not fully implemented in closure convert).
+Use `lean_goal` at these lines to check the goal. If the closureConvert for these produces `.lit .undefined` (stub), then the simulation is trivially:
 ```lean
-/-- For any expression e that is NOT .labeled, if k always produces trivial,
-    then normalizeExpr e k never produces .labeled.
-    Proved by well-founded induction on e.depth. -/
-theorem normalizeExpr_not_labeled_of_not_labeled
-    (e : Flat.Expr) (he : ∀ l b, e ≠ .labeled l b)
-    (k : Trivial → ConvM Expr)
-    (hk : ∀ (arg : Trivial) (n' : Nat), ∃ m', (k arg).run n' = .ok (.trivial arg, m'))
-    (n : Nat) (label : String) (body : Expr) (m : Nat) :
-    (normalizeExpr e k).run n ≠ .ok (.labeled label body, m) := by
-  -- Well-founded induction on e.depth (or sizeOf)
-  induction e using ... with
-  | ... => ...
+  | objectLit props =>
+    -- closureConvert produces stub → step? on stub = step? on source
+    sorry -- check goal first
 ```
 
-This single lemma would close L1563, L1595, and L1612 ALL AT ONCE.
+### L2868 (functionDef):
+Check with `lean_goal`. If it's a design issue, leave it.
 
-**Approach for compound cases in the induction:**
-- For `let n r b`: normalizeExpr unfolds to `bindComplex (evalComplex r) (fun fresh => normalizeExpr b' k')`.
-  - bindComplex always produces `.let` → contradiction (use `bindComplex_not_labeled`)
-  - Wait — actually bindComplex produces `.let fresh (normalizeExpr sub k')`. So the RESULT is always `.let`, never `.labeled`. So bindComplex_not_labeled handles it.
-- For `seq a b`: normalizeExpr unfolds to `normalizeExpr a (fun _ => normalizeExpr b k)`.
-  - The outer result comes from normalizeExpr on `a` with a new continuation.
-  - Need to show the new continuation preserves the "produces trivial" property... but it doesn't! `fun _ => normalizeExpr b k` might not produce trivial.
+### L2588 (call), L2589 (newObj):
+These are complex (need multi-step simulation). SKIP.
 
-**KEY INSIGHT**: The continuation `fun _ => normalizeExpr b k` does NOT produce trivial — it produces whatever normalizeExpr b k produces. So the simple "k produces trivial" approach FAILS for seq/if/let.
+### L2595, L2654, L2724 (value sub-cases with heap reasoning):
+SKIP — need heap invariant.
 
-**REVISED APPROACH**: The lemma needs a WEAKER precondition. Instead of "k produces trivial", prove:
+### L2648 (setProp), L2718 (setIndex):
+Check if the non-value case (expression stepping) is provable. The pattern: if the sub-expression steps, the overall expression steps the same way.
+
+### L2147, L2169 (CCState threading in if/while):
+These are about CCState mismatches when the conversion creates different states for then/else branches. SKIP — need CCState invariant refactor.
+
+### L2989 (while_ CCState):
+SKIP — same CCState issue.
+
+## PRIORITY 1: WRITE TEMPLATE FOR PROOF AGENT'S EXFALSO CASES
+
+Write into `.lake/_tmp_fix/VerifiedJS/Proofs/anf_exfalso_template.lean` a complete template file showing the expansion of `| _ => sorry` at L1563 with all the exfalso cases. The proof agent can copy this directly.
+
+Include:
+1. All trivial cases (var, lit, this) with complete proofs
+2. All bindComplex cases with complete proofs
+3. Control flow cases (break, continue, return-none, yield-none, throw, await)
+4. Leave compound cases (let, seq, if) as sorry with comments
+
+## PRIORITY 2: Check if forIn/forOf sorries (L1132, L1133) can be closed
+
+These are permanently excluded (`forIn => sorry`, `forOf => sorry`). The `supported` predicate should exclude them. Check if there's a `supported` hypothesis available. If so:
 ```lean
-theorem normalizeExpr_not_labeled_of_not_labeled
-    (e : Flat.Expr) (he : ∀ l b, e ≠ .labeled l b)
-    (k : Trivial → ConvM Expr)
-    (hk : ∀ (arg : Trivial) (n' : Nat) (label : String) (body : Expr) (m' : Nat),
-      (k arg).run n' ≠ .ok (.labeled label body, m'))
-    (n : Nat) (label : String) (body : Expr) (m : Nat) :
-    (normalizeExpr e k).run n ≠ .ok (.labeled label body, m)
+  | forIn => exfalso; simp [Flat.Expr.supported] at h_supported
 ```
 
-Where `hk` says "k never produces labeled" (weaker than "k produces trivial").
-
-Then the induction works:
-- Trivial k that produces trivial → trivial is not labeled → satisfies hk
-- `fun _ => normalizeExpr b k` → by IH on b (smaller depth), normalizeExpr b k doesn't produce labeled (if b isn't labeled)...
-
-Wait, but b COULD be labeled! The issue is: in `seq a b`, b might be `.labeled l body`. In that case normalizeExpr b k DOES produce `.labeled`.
-
-**ACTUAL CORRECT APPROACH**: Use induction to show that the ONLY way normalizeExpr produces `.labeled` is if there exists a sub-expression that IS `.labeled`. Then in the caller (normalizeExpr_labeled_step_sim), we know the expression structure.
-
-Actually, maybe simpler: the helper sorries L1563/L1595 are specifically about `return (some val)` and `yield (some val) delegate` where `val` is NOT `.labeled` (the `| _ =>` branch). So we need: "if val is not .labeled, then normalizeExpr val k (with k producing trivial) doesn't produce .labeled." This is FALSE for compound val containing labeled sub-expressions!
-
-**CORRECT FIX**: L1563 and L1595 match on `| _ =>` meaning all val constructors EXCEPT `.labeled`. For TRIVIAL constructors (var, lit, this), it's immediate. For compound constructors, val could contain a nested `.labeled` — so it's genuinely hard.
-
-Write up your analysis of WHY this is hard and what approaches could work, in ConvertHelpers.lean as a comment block. Then focus on:
-
-## PRIORITY 1: Prove the EASY cases in L1563/L1595
-
-Even if you can't handle all cases, expand `| _ => sorry` into individual constructor cases and prove the easy ones:
-```lean
-| var name => exfalso; ... (normalizeExpr_var_not_labeled + hk_triv)
-| this => exfalso; ...
-| lit _ => exfalso; ...
-| «break» _ => exfalso; (normalizeExpr_break_not_labeled')
-| «continue» _ => exfalso; (normalizeExpr_continue_not_labeled')
-| while_ _ _ => exfalso; (already proved pattern at L1596-1600)
-| tryCatch _ _ _ _ => exfalso; (already proved pattern at L1601-1611)
-| call _ _ => exfalso; (bindComplex_not_labeled pattern)
-| ... other bindComplex cases ...
-| «return» none => exfalso; (normalizeExpr_return_none_not_labeled)
-| yield none _ => exfalso; (normalizeExpr_yield_none_not_labeled)
-```
-
-Then leave the compound recursive cases (let, seq, if, return some, yield some) as individual sorries.
-
-**Write these as a template in ConvertHelpers.lean** so proof agent can copy-paste into ANFConvertCorrect.lean.
-
-## PRIORITY 2: Write more continuation no-confusion lemmas if needed
-
-Check what other staging lemmas the proof agent might need.
-
-## DO NOT edit: ANFConvertCorrect.lean, ClosureConvertCorrect.lean, EmitCorrect.lean, EndToEnd.lean, LowerCorrect.lean
-## YOU CAN edit: .lake/_tmp_fix/**, VerifiedJS/Core/*, VerifiedJS/Flat/Semantics.lean
+## DO NOT edit: ANFConvertCorrect.lean, EmitCorrect.lean, EndToEnd.lean, LowerCorrect.lean
+## YOU CAN edit: .lake/_tmp_fix/**, VerifiedJS/Core/*, VerifiedJS/Flat/*, ClosureConvertCorrect.lean
 ## Log to agents/jsspec/log.md

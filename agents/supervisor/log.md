@@ -1,3 +1,43 @@
+## Run: 2026-03-28T08:05:01+00:00
+
+### Metrics
+- **Sorry count (grep -c)**: 57 (13 ANF + 20 CC + 23 Wasm + 1 Lower)
+- **Actual sorries**: 52 (13 ANF + 18 CC + 20 Wasm + 1 Lower)
+- **Delta from last run (07:30)**: 0. No changes. Agents were between runs.
+- **Net assessment**: FLAT. 35 minutes with no sorry reduction. Agents completed runs but no code changes landed.
+
+### Analysis
+- **Proof agent**: Last completed at 07:55. Has NOT integrated staging lemmas (P0 from last prompt). ConvertHelpers.lean still in staging only. This is the #1 blocker.
+- **jsspec agent**: Running since 08:00. Delivered continuation no-confusion lemmas (let_k_not_labeled, if_k_not_labeled, bindComplex_k_not_labeled) but proof agent hasn't used them.
+- **wasmspec agent**: Still running from 07:00 (1+ hour). LSP timeouts on deep file positions may be blocking it.
+
+### Key Finding from Goal Analysis
+**L1563/L1595 (`| _ => sorry`)**: I examined all 30+ sub-goals via `lean_goal`. Many are TRIVIALLY exfalso:
+- Trivial vals (var, lit, this): normalizeExpr calls k, k returns `.return`/`.yield`, not `.labeled`. Simple no-confusion.
+- bindComplex-based (call, getProp, etc.): normalizeExpr produces `.let`, not `.labeled`. exfalso.
+- Control flow (break, continue, return-none, yield-none): produce specific constructors, not labeled.
+- ONLY compound cases (let, seq, if, return-some, yield-some) are genuinely hard.
+
+**L308 (writeLE?_preserves_size)**: Pure ByteArray lemma. `set!` preserves size. Should be provable by induction on width.
+
+### Agent Prompt Rewrites
+1. **proof**: COMPLETE REWRITE with exact tactic templates for expanding `| _ => sorry` at L1563/L1595/L1612. Provided concrete Lean code for trivial, bindComplex, control flow, and while/tryCatch cases. P0 still: integrate staging lemmas.
+2. **jsspec**: REDIRECTED to CC easy wins (L2866/L2867 objectLit/arrayLit, L1132/L1133 forIn/forOf with supported). Also tasked with writing exfalso template for proof agent.
+3. **wasmspec**: REWRITE with L308 proof strategy (ByteArray.set! preserves size + induction on width). Added LSP timeout workaround: read context → write proof → build.
+
+### Actions Taken
+1. `lean_goal` at L1563: examined all 30+ sub-cases → identified 20+ trivially closeable
+2. `lean_goal` at L1612: examined all 20+ sub-cases → same pattern
+3. `lean_goal` at L1692, L1694: confirmed main theorem goal structure
+4. `lean_goal` at L308: confirmed pure ByteArray size preservation goal
+5. All 3 agent prompts rewritten with maximally specific Lean tactic code
+6. Logged time estimate (52 sorries, 168 hours)
+
+### OUTLOOK: Target next run ≤47 (ANF L1563/L1595 expansion -2→-5 net, Wasm L308 -1)
+### RISK: Proof agent has STILL not integrated staging lemmas. If it fails P0 again, I will write the integration directly.
+
+---
+
 ## Run: 2026-03-28T07:30:44+00:00
 
 ### Metrics
@@ -5429,3 +5469,4 @@ ANF sorry count effectively unchanged (structural improvements but no net closur
 
 ## Run: 2026-03-28T08:05:01+00:00
 
+2026-03-28T08:18:21+00:00 DONE

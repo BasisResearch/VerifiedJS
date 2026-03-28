@@ -1,59 +1,84 @@
-# wasmspec — CLOSE WASM SORRIES: TARGET -3 THIS RUN
+# wasmspec — CLOSE writeLE? LEMMA + binOp CASES
 
-## STATUS: 20 actual Wasm sorries in Semantics.lean. return-none proved earlier — good work.
+## STATUS: 20 actual Wasm sorries in Semantics.lean. Target: -3 this run.
 
 File: `VerifiedJS/Wasm/Semantics.lean`
 
-## SORRY INVENTORY (20 actual):
+## P0: L308 — writeLE?_preserves_size (EASY WIN, PURE LEMMA)
 
-### Top-level (1):
-- L308: Use `lean_goal` to check what this needs
-
-### step_sim constructor cases (12, L6542-6620):
-- L6542: let, L6550: seq, L6554: if, L6557: while_, L6560: throw, L6563: tryCatch
-- L6605: return some, L6608: yield, L6611: await, L6614: labeled, L6617: break, L6620: continue
-- **SKIP ALL 12** — these are structural, blocked by ANF proof progress
-
-### binOp (2):
-- L10290: type mismatch trap case
-- L10296: another binOp case
-
-### Other (5):
-- L10551: unOp or similar
-- L10604, L10608: call stack frame cases
-- L10611: callIndirect
-- L11371: memoryGrow
-
-## P0: binOp cases (L10290, L10296) — EASIEST WINS
-
-Use `lean_goal` at L10290 and L10296. These are type mismatch / trap cases similar to the ones you already proved.
-
-Pattern from your prior successes:
-1. Show IR traps because types don't match
-2. Show Wasm also traps (step? produces trap state)
-3. Build EmitSimRel with trap states matching
-
-```lean
--- At the sorry, try:
-lean_multi_attempt at L10290: ["simp_all", "exact ⟨_, rfl, by simp_all⟩", "refine ⟨_, ?_, ?_⟩ <;> simp_all"]
+Goal is:
+```
+mem mem' : ByteArray
+addr width : Nat
+value : UInt64
+h : writeLE? mem addr width value = some mem'
+⊢ mem'.size = mem.size
 ```
 
-## P1: L10551 — check with lean_goal
+writeLE? is defined at L269:
+```lean
+private def writeLE? (mem : ByteArray) (addr width : Nat) (value : UInt64) : Option ByteArray := Id.run do
+  let mut out := mem
+  for k in [0:width] do
+    let idx := addr + k
+    if idx < out.size then
+      let byte := UInt8.ofNat ((value.toNat / Nat.pow 2 (8 * k)) % 256)
+      out := out.set! idx byte
+    else
+      return none
+  return some out
+```
 
-If it's a straightforward case (unOp, comparison), close it. If it requires deep stack reasoning, skip.
+Key insight: `ByteArray.set!` preserves size (it uses `Array.set!` which preserves size when index is in bounds). The loop maintains the invariant `out.size = mem.size`.
 
-## P2: L308 — check with lean_goal
+Approach: Prove by induction on `width`. The for loop `[0:width]` iterates width times.
 
-This is the top-level sorry. May be easy or may be a placeholder for a large proof obligation.
+Try:
+```lean
+  induction width generalizing mem with
+  | zero => simp [writeLE?, Id.run, forIn, ForIn.forIn] at h; exact h ▸ rfl
+  | succ n ih =>
+    unfold writeLE? at h
+    simp [Id.run] at h
+    -- unfold the for loop one step, use set! preserves size, apply ih
+    sorry
+```
 
-## SKIP: L6542-6620 (structural step_sim), L10604/L10608 (call multi-frame), L10611 (callIndirect), L11371 (memoryGrow)
+Or try unfolding the `Id.run do` loop as `List.forIn` and proving the invariant. You may need:
+```lean
+theorem ByteArray.size_set! (a : ByteArray) (i : Nat) (v : UInt8) : (a.set! i v).size = a.size
+```
 
-## TARGET: Close 3 sorries (-3): binOp (2) + one of L10551/L308
+Check if this lemma exists with `lean_local_search` for "ByteArray" "size" "set". If not, prove it inline.
+
+**NOTE**: LSP may time out on this file (11K+ lines). If `lean_goal` times out:
+1. Try `lean_multi_attempt` with shorter snippets
+2. Or just write the proof and build: `lake build VerifiedJS.Wasm.Semantics`
+3. Use `lean_diagnostic_messages` to check errors
+
+## P1: binOp cases (L10284, L10290)
+
+These are deep in the file so LSP may time out. Use this strategy:
+1. Read the surrounding code (50 lines around each sorry) to understand the goal
+2. Write the proof based on the pattern of nearby proved cases
+3. Build to check
+
+The binOp cases typically follow the pattern:
+- IR evaluates binOp on two values
+- If types mismatch → IR traps → show Wasm also traps
+- If types match → produce result → show Wasm produces same result
+- Build EmitSimRel with updated stack
+
+## P2: L10545
+
+Same approach — read context, write proof, build.
+
+## SKIP: L6542-6620 (structural), L10598/L10602 (call), L10605 (callIndirect), L11365 (memoryGrow)
 
 ## WORKFLOW
-1. `lean_goal` at sorry line → understand the goal
-2. `lean_multi_attempt` with candidate tactics
-3. Edit sorry → build: `lake build VerifiedJS.Wasm.Semantics`
-4. Move to next sorry
+1. Prove writeLE?_preserves_size at L308 → build
+2. Read context around L10284, L10290 → write proofs → build
+3. Read context around L10545 → write proof → build
+4. Log to agents/wasmspec/log.md
 
-## Log progress to agents/wasmspec/log.md
+## BUILD COMMAND: `lake build VerifiedJS.Wasm.Semantics`
