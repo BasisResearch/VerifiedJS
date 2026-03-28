@@ -1,3 +1,50 @@
+## Run: 2026-03-28T02:05:01+00:00
+
+### Metrics
+- **Sorry count**: 62 (20 CC + 14 ANF + 27 Wasm + 1 Lower)
+- **Delta from last run**: +4 (58→62). CC 17→20 (+3, regression from var case rework + CCState architectural issue confirmed). ANF 13→14 (+1, new trace sorry in var-found case). Wasm unchanged at 27. Lower unchanged at 1.
+- **Net assessment**: No net progress this run. CC regression from proof agent fixing build errors by adding sorries. ANF var case was partially extended but added a trace alignment sorry.
+
+### CRITICAL DISCOVERY: break/continue DESIGN BUG
+ANF.step? for break/continue produces `.silent` event. Flat.step? produces `.error "break:..."`.
+`observableTrace` only filters `.silent`, so `observableTrace [.silent] ≠ observableTrace [.error msg]`.
+This makes break/continue cases UNPROVABLE with current definitions. 2 of 14 ANF sorries are permanently blocked.
+
+**Fix options** (for future):
+1. Extend `observableTrace` to also filter `.error` events starting with "break:"/"continue:"
+2. Change Flat.step? for break/continue to produce `.silent` instead of `.error`
+3. Both are small changes but risk breaking CC proof
+
+### ANF Build: PASSES (sorry warnings only)
+- var-found case (L1095-1133): FULLY CLOSED (all goals resolve)
+- var not-found (L1096): sorry (needs VarFreeIn inversion)
+- Remaining 13 constructor cases: all sorry (L1140-1148)
+
+### CC: 20 sorries (was 17 last run)
+- Proof agent log explains: fixed 2 build errors, 1 became sorry (CCState threading architectural issue)
+- CCState threading confirmed as pervasive: affects if, while, tryCatch value cases
+- 10 unstarted cases (call, newObj, setProp, setIndex, objectLit, arrayLit, functionDef, tryCatch)
+
+### Wasm: 27 sorries (unchanged)
+- Wasmspec closed 3 sorries last run (store type mismatch fixes)
+- binOp trap cases attempted but timeout in full build
+- Build passes
+
+### Agent Status
+- **proof**: Prompt REWRITTEN — ANF only. Priority: labeled > return(none) > throw. Skip break/continue (design bug).
+- **jsspec**: Prompt REWRITTEN — write normalizeExpr inversion lemmas (labeled_inv, return_none_inv, break_inv, continue_inv, throw_inv). These are THE blocker for all ANF cases.
+- **wasmspec**: Prompt REWRITTEN — focus on 12 binOp trap sorries with lean_multi_attempt, then control flow (br, brIf, callIndirect, memoryGrow).
+
+### Actions Taken
+1. proof prompt: REWRITTEN with exact goal analysis for labeled/return/throw cases
+2. jsspec prompt: REWRITTEN with exact normalizeExpr inversion lemma templates
+3. wasmspec prompt: REWRITTEN with prioritized sorry list and tactic candidates
+4. Discovered and documented break/continue design bug (2 permanently blocked sorries)
+
+### OUTLOOK: Target next run ≤57 (ANF -2 if inversions land: labeled + return(none), Wasm -3 binOp traps)
+
+---
+
 ## Run: 2026-03-27T23:30:04+00:00
 
 ### Metrics
@@ -5165,3 +5212,4 @@ CC and Wasm both broken. Neither is supervisor-fixable (file permissions). Agent
 
 ## Run: 2026-03-28T02:05:01+00:00
 
+2026-03-28T02:27:19+00:00 DONE

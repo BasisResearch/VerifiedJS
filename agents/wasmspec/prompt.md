@@ -1,45 +1,49 @@
-# wasmspec — FIX BUILD ERRORS, THEN CLOSE SORRIES
+# wasmspec — CLOSE MECHANICAL WASM SORRIES
 
-## URGENT P0: BUILD HAS 4 ERRORS
+## STATUS: 27 non-comment sorry tokens in VerifiedJS/Wasm/Semantics.lean. Down from 36. Good progress.
 
-### Error 1: L9956 — synthesize placeholder (SAME AS LAST RUN — NOT FIXED)
-The `refine ⟨_, ?_, ?_⟩` at L9956 can't infer the first `_` because it's a Prop.
+## BUILD STATUS: PASSES (sorry warnings only). DO NOT BREAK IT.
 
-**FIX**: Replace L9956 with explicit type annotation:
-```lean
-                  refine ⟨?hstep, ?hrel⟩
-                  case hstep => simp only [step?, hcw, hstk_w, withI32Bin, withI32Rel, pop2?, trapState, pushTrace]
-                  case hrel => exact { hemit := hrel.hemit, ... }
+## P0: binOp trap cases (12 sorries at L6475-6553)
+
+These are all in `step_sim` for binary operations where the stack has wrong types or is empty. Pattern:
+- L6475, 6483, 6487, 6490, 6493, 6496: first batch
+- L6538, 6541, 6544, 6547, 6550, 6553: second batch
+
+For EACH sorry, use `lean_goal` to see the exact state, then `lean_multi_attempt` with:
+```
+["simp_all [step?, pop2?, trapState, pushTrace, withI32Bin, withI32Rel, traceToWasm]",
+ "cases v1 <;> cases v2 <;> simp_all [step?, trapState, pushTrace, traceToWasm]",
+ "simp only [step?, pop2?, trapState, pushTrace]; split <;> simp_all",
+ "unfold step? withI32Bin pop2?; simp [trapState, pushTrace, traceToWasm]",
+ "exact ⟨_, by simp [step?, pop2?, trapState, pushTrace], by constructor <;> simp_all⟩"]
 ```
 
-OR simpler: **just sorry the entire `| [] =>` arm** (L9949-9959) temporarily:
-```lean
-                | [] => sorry -- binOp empty stack trap: needs per-op proof
-```
-This unblocks the build. You can come back to it.
+If heartbeat timeout: add `set_option maxHeartbeats 400000` before the declaration.
 
-### Errors 2-4: Heartbeat timeouts at L8323, L9935, L10046
-These are likely caused by large `simp` or `all_goals` blocks. Fix by:
-- Adding `set_option maxHeartbeats 400000` before the problematic declaration
-- Or breaking large `simp_all` into targeted `simp only [...]`
+## P1: control flow (4 sorries)
+- L10390: callIndirect
+- L10650: br
+- L10733: brIf
+- L11067: memoryGrow
 
-## PRIORITY: Get the build passing FIRST. Every sorry you add to fix a build error counts as regression, so fix them by simplifying proofs, not adding sorries where there weren't any.
+Use `lean_goal` at each, then `lean_multi_attempt`.
 
-## P1: After build passes, close sorries at:
-- L10166, L10421 (store/store8 — simpler patterns)
-- L10741 (br), L10824 (brIf)
+## P2: inner step_sim cases (11 sorries at L9953-10387)
 
-Use `lean_goal` at each, then `lean_multi_attempt`:
-```
-["simp_all [step?, pop2?, trapState, pushTrace]",
- "cases v1 <;> cases v2 <;> simp_all [trapState, pushTrace]",
- "simp [step?]; split <;> simp_all"]
-```
+These are deeper in the proof. Work on them after P0 and P1.
 
-## RULES:
-1. FIX BUILD FIRST — `lake build VerifiedJS.Wasm.Semantics`
-2. Build after EVERY change
-3. If something breaks, REVERT immediately
-4. Do NOT touch other files
+## WORKFLOW
+1. `lean_goal` at sorry line
+2. `lean_multi_attempt` with 3-5 tactic candidates
+3. If one works, edit the sorry to that tactic
+4. Verify with `lean_diagnostic_messages`
+5. Move to next sorry
 
-## Log progress to agents/wasmspec/log.md.
+## RULES
+1. Build after EVERY change — `lake build VerifiedJS.Wasm.Semantics`
+2. If something breaks, REVERT immediately
+3. Do NOT touch other files
+4. Prefer closing easy cases first (accumulate wins)
+
+## Log progress to agents/wasmspec/log.md

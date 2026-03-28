@@ -1,3 +1,46 @@
+## Run: 2026-03-28T01:30+00:00
+- **ANF BUILD: PASSES** ✓
+- **ANF Sorries: 13** (unchanged count, but var-found subcase closed — net: -1 sorry site closed, +1 new sorry for var-not-found subcase)
+
+### Changes applied:
+1. **Moved `anfConvert_step_star` after helper lemmas**: The main step simulation theorem was defined before its helpers, preventing use of those helpers in its proof cases. Moved it to after `normalizeExpr_var_step_sim`, enabling the var case to reference the helper.
+
+2. **Added `trivialOfFlatValue_eq_trivialOfValue` lemma (L833-835)**: Proves `ANF.trivialOfFlatValue v = .ok (ANF.trivialOfValue v)` for all values. Simple case split + rfl.
+
+3. **Added `normalizeExpr_var_step_sim` lemma (~120 lines, L945-1066)**: Core simulation lemma for the var case. Given:
+   - `normalizeExpr sf.expr k` produces `.trivial (.var name)` with k trivial-preserving
+   - `sf.env.lookup name = some val`
+   - `ExprWellFormed sf.expr sf.env`
+   Produces silent Flat steps from sf to sf' where `sf'.expr = .lit val`, preserving env/heap/observable-trace.
+
+   Proof by induction on depth. Cases:
+   - `.var name`: 1 step via `step?_var_bound`
+   - `.this`: 1 step, directly constructed (val from env.lookup "this")
+   - `.lit v`: contradiction — `trivialOfFlatValue` never produces `.var`
+   - `.seq a b`: `a` is trivial chain (by `normalizeExpr_trivial_implies_chain`), consume via `trivialChain_consume_ctx`, then IH on `b` (normalizeExpr `b k` produces same result by `normalizeExpr_ignored_bypass_trivial`)
+
+4. **Closed var-found subcase in `anfConvert_step_star`**: When ANF resolves `.trivial (.var name)` to `.trivial (trivialOfValue val)`:
+   - Uses `normalizeExpr_var_step_sim` to get silent Flat steps to `.lit val`
+   - Builds new SimRel with `k' = fun t => pure (.trivial t)` (identity continuation)
+   - Shows `normalizeExpr (.lit val) k'` produces `.trivial (trivialOfValue val)` via `trivialOfFlatValue_eq_trivialOfValue`
+   - ExprWellFormed for `.lit val` is vacuous (no VarFreeIn constructors for `.lit`)
+
+### Key analysis: break/continue/return/yield/await are UNPROVABLE
+Detailed analysis shows fundamental semantic mismatch between ANF and Flat for control flow:
+- **ANF break/continue**: produces `.silent` event, transitions to `.trivial .litUndefined`
+- **Flat break/continue**: produces `.error "break:..."` / `.error "continue:..."` event
+- **ANF return/yield/await**: produces `.silent` event
+- **Flat return**: produces `.error "return:..."` event
+
+Since `observableTrace` only filters `.silent` (not `.error`), the simulation `observableTrace [ev] = observableTrace evs` cannot hold when ANF produces `.silent` but Flat produces `.error`. The theorem is genuinely false for these cases with the current semantics.
+
+### Remaining 13 ANF sorries:
+- **Var not-found (1):** L1102 — needs VarFreeIn inversion + .this edge case handling
+- **Semantic mismatch (5):** break (L1161), continue (L1163), return (L1153), yield (L1155), await (L1157) — ANF produces .silent where Flat produces .error
+- **Complex (4):** let (L1141), seq (L1143), if (L1145), while (L1147) — need evalComplex reasoning or multi-step simulation
+- **Control flow (2):** throw (L1149), tryCatch (L1151) — throw has event mismatch; tryCatch is very complex
+- **Architecture (1):** labeled (L1159) — needs normalizeExpr inversion (proof restructuring)
+
 ## Run: 2026-03-27T23:00+00:00
 - **CC BUILD: PASSES** ✓
 - **CC Sorries: 20** (was 19 sorry + 2 build errors at start; fixed 2 build errors, added 1 sorry for broken proof)
@@ -2800,4 +2843,8 @@ FOCUS ON THE 23 REAL SORRIES. Define shared tactics for the 4 CCState cases (L16
 2026-03-28T01:15:49+00:00 DONE
 
 ## Run: 2026-03-28T01:30:01+00:00
+
+2026-03-28T02:28:41+00:00 DONE
+
+## Run: 2026-03-28T02:30:01+00:00
 

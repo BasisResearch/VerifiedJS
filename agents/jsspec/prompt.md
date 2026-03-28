@@ -1,50 +1,92 @@
-# jsspec — ANF HELPER LEMMAS (CRITICAL PATH)
+# jsspec — normalizeExpr INVERSION LEMMAS (ANF CRITICAL PATH)
 
-## STATUS: proof agent is FINALLY pivoting to ANF. It needs normalizeExpr inversion lemmas urgently.
+## STATUS: proof agent is working on ANF. It NEEDS inversion lemmas to make progress.
 
-## PRIORITY 0: normalizeExpr inversion lemmas
+## PRIORITY 0: normalizeExpr inversion lemmas (URGENT)
 
-The proof agent needs to invert `hnorm : StateT.run (ANF.normalizeExpr sf.expr k) n = Except.ok (ANF.Expr.break label, m)` to conclude `sf.expr = Flat.Expr.break label`.
+The proof agent needs to invert `hnorm : StateT.run (ANF.normalizeExpr sf.expr k) n = Except.ok (result, m)` to determine what `sf.expr` is from the shape of `result`.
 
-Write these lemmas in `.lake/_tmp_fix/VerifiedJS/Proofs/anf_norm_inv.lean`:
+Look at `VerifiedJS/ANF/Convert.lean:36-136`. Key observation: each normalizeExpr case produces output with a UNIQUE top-level constructor. So the result constructor determines the input constructor.
 
+Write these lemmas in `VerifiedJS/Proofs/ANFConvertCorrect.lean` as `private theorem` (before `anfConvert_step_star`):
+
+### 1. labeled inversion (MOST URGENT)
 ```lean
--- 1. normalizeExpr (.break label) k always produces .break label (ignores k)
-theorem normalizeExpr_break (label : Option String) (k : ANF.Trivial → ANF.ConvM ANF.Expr) (n : Nat) :
-    StateT.run (ANF.normalizeExpr (.break label) k) n = Except.ok (.break label, n)
-
--- 2. If normalizeExpr e k produces .break label, then e = .break label
-theorem normalizeExpr_break_inv (e : Flat.Expr) (k : ANF.Trivial → ANF.ConvM ANF.Expr) (n m : Nat) (label : Option String)
-    (h : StateT.run (ANF.normalizeExpr e k) n = Except.ok (.break label, m)) :
-    e = .break label
-
--- 3. Same for continue
-theorem normalizeExpr_continue_inv (e : Flat.Expr) (k : ANF.Trivial → ANF.ConvM ANF.Expr) (n m : Nat) (label : Option String)
-    (h : StateT.run (ANF.normalizeExpr e k) n = Except.ok (.continue label, m)) :
-    e = .continue label
+-- normalizeExpr only produces .labeled from .labeled input
+private theorem normalizeExpr_labeled_inv (e : Flat.Expr) (k : ANF.Trivial → ANF.ConvM ANF.Expr)
+    (n m : Nat) (label : Option String) (body_anf : ANF.Expr)
+    (h : (ANF.normalizeExpr e k).run n = .ok (.labeled label body_anf, m)) :
+    ∃ body_flat, e = .labeled label body_flat ∧
+      (ANF.normalizeExpr body_flat k).run n = .ok (body_anf, m) := by
+  -- Proof: case split on e. For every constructor except .labeled,
+  -- normalizeExpr produces a different constructor, contradiction.
+  cases e <;> simp [ANF.normalizeExpr] at h
+  -- Only .labeled case survives
+  case labeled label' body' =>
+    -- h : (.labeled label' bodyExpr, m') = (.labeled label body_anf, m)
+    exact ⟨body', rfl, h⟩
 ```
 
-Use `lean_hover_info` on `ANF.normalizeExpr` to understand the definition, then prove each.
-Also write similar lemmas for throw, return, yield, await.
-
-## PRIORITY 1: ANF.step? simp lemmas
-
+### 2. return inversion
 ```lean
-@[simp] theorem ANF_step?_break (label env heap trace) :
-    ANF.step? ⟨.break label, env, heap, trace⟩ = some (.silent, ANF.pushTrace ⟨.trivial .litUndefined, env, heap, trace⟩ .silent)
-
-@[simp] theorem ANF_step?_continue (label env heap trace) :
-    ANF.step? ⟨.continue label, env, heap, trace⟩ = some (.silent, ANF.pushTrace ⟨.trivial .litUndefined, env, heap, trace⟩ .silent)
+private theorem normalizeExpr_return_none_inv (e : Flat.Expr) (k : ANF.Trivial → ANF.ConvM ANF.Expr)
+    (n m : Nat)
+    (h : (ANF.normalizeExpr e k).run n = .ok (.return none, m)) :
+    e = .return none := by
+  cases e <;> simp [ANF.normalizeExpr] at h
 ```
 
-Verify each with `lean_run_code` or `lake env lean` on the staging file.
+### 3. break/continue inversion (for future use)
+```lean
+private theorem normalizeExpr_break_inv (e : Flat.Expr) (k : ANF.Trivial → ANF.ConvM ANF.Expr)
+    (n m : Nat) (label : Option String)
+    (h : (ANF.normalizeExpr e k).run n = .ok (.break label, m)) :
+    e = .break label := by
+  cases e <;> simp [ANF.normalizeExpr] at h
 
-## PRIORITY 2: Flat.Step lemmas for break/continue
+private theorem normalizeExpr_continue_inv (e : Flat.Expr) (k : ANF.Trivial → ANF.ConvM ANF.Expr)
+    (n m : Nat) (label : Option String)
+    (h : (ANF.normalizeExpr e k).run n = .ok (.continue label, m)) :
+    e = .continue label := by
+  cases e <;> simp [ANF.normalizeExpr] at h
+```
 
-The proof agent also needs: if sf.expr = .break label, then Flat.Step sf .silent {sf with expr := .lit .undefined, trace := sf.trace ++ [.silent]}.
+### 4. throw inversion
+```lean
+private theorem normalizeExpr_throw_inv (e : Flat.Expr) (k : ANF.Trivial → ANF.ConvM ANF.Expr)
+    (n m : Nat) (arg : ANF.Trivial)
+    (h : (ANF.normalizeExpr e k).run n = .ok (.throw arg, m)) :
+    ∃ arg_flat, e = .throw arg_flat := by
+  cases e <;> simp [ANF.normalizeExpr] at h
+  case throw a => exact ⟨a, rfl⟩
+```
 
-## What NOT to do:
-- Do NOT edit main proof files
-- Do NOT run full `lake build`
+## HOW TO PROVE THESE
 
-## Log progress to agents/jsspec/log.md.
+The key tactic pattern is:
+1. `cases e` — split on all Flat.Expr constructors
+2. For each non-matching case, `simp [ANF.normalizeExpr]` at h produces contradiction (the output constructor doesn't match)
+3. For the matching case, extract the relationship
+
+**IMPORTANT**: `simp [ANF.normalizeExpr]` may not fully unfold the recursive cases. You may need `unfold ANF.normalizeExpr` or `simp only [ANF.normalizeExpr]` with equation lemmas. If `simp` fails for a case, use `lean_goal` to see what's left and try `contradiction` or `exact absurd h (by ...)`.
+
+## VERIFY EACH LEMMA
+
+After writing each lemma:
+1. `lean_goal` at the `by` to check no unsolved goals
+2. `lean_diagnostic_messages` to check no errors
+
+## PRIORITY 1: Flat.step? lemmas for labeled/return
+
+```lean
+-- What does Flat.step? do for .labeled and .return?
+-- Check VerifiedJS/Flat/Semantics.lean
+-- Write @[simp] lemmas if they don't already exist
+```
+
+## DO NOT:
+- Edit the main theorem cases (those are for proof agent)
+- Run full `lake build`
+- Touch CC or Wasm files
+
+## Log progress to agents/jsspec/log.md

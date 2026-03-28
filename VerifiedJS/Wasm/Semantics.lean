@@ -10647,8 +10647,7 @@ theorem step_sim (irmod : IRModule) (wmod : Module) :
                   · exact hrel.hstack
                   · exact hhalt_of_structural (@EmitCodeCorr.nil (s1.labels.map (·.name))) hrel.hlabels
           · exact hf.elim
-      | .br label => sorry
-          /-
+      | .br label =>
           -- unconditional branch
           have hc : EmitCodeCorr _ (IRInstr.br label :: rest) s2.code := hcode_ir ▸ hrel.hcode
           rcases hc.br_inv with ⟨idx, rest_w, hcw, hfind_ctx, hrest⟩ | hf
@@ -10658,18 +10657,18 @@ theorem step_sim (irmod : IRModule) (wmod : Module) :
               emit_br_label_resolve (hcw ▸ hc) hrel.hlabels
             subst hidx
             -- Characterize the IR step
-            have hir := irStep?_eq_br s1 label rest ir_idx irLbl hcode_ir hfind
+            have hir := irStep?_eq_br s1 label rest idx irLbl hcode_ir hfind
             rw [hir] at hstep
             simp only [Option.some.injEq, Prod.mk.injEq] at hstep
             obtain ⟨rfl, rfl⟩ := hstep
             -- Label is within bounds
             have hlt := irFindLabel?_lt_length hfind
-            have hlt_w : ir_idx < s2.labels.length := hrel.hlabels ▸ hlt
+            have hlt_w : idx < s2.labels.length := hrel.hlabels ▸ hlt
             -- Get resolveBranch? spec
             obtain ⟨wLbl, hwlbl_get, hresolve⟩ := resolveBranch?_spec hlt_w
             -- Get label correspondence from hlabel_content
             obtain ⟨irLbl', wLbl', hirLbl, hwLbl', hcode_exit, hcode_branch, hloop⟩ :=
-              hrel.hlabel_content ir_idx hlt
+              hrel.hlabel_content idx hlt
             -- irLbl from irFindLabel? = irLbl' from hlabel_content
             have hirLbl_eq := irFindLabel?_getElem hfind
             rw [hirLbl_eq] at hirLbl
@@ -10678,9 +10677,9 @@ theorem step_sim (irmod : IRModule) (wmod : Module) :
             rw [hwlbl_get] at hwLbl'
             simp only [Option.some.injEq] at hwLbl'; subst hwLbl'
             -- Wasm step
-            have hw := step?_eq_br s2 ir_idx rest_w wLbl
-              (if wLbl.isLoop then wLbl :: s2.labels.drop (ir_idx + 1)
-               else s2.labels.drop (ir_idx + 1))
+            have hw := step?_eq_br s2 idx rest_w wLbl
+              (if wLbl.isLoop then wLbl :: s2.labels.drop (idx + 1)
+               else s2.labels.drop (idx + 1))
               hcw hresolve
             -- New labels (both sides use isLoop to decide)
             have hloop_eq : irLbl.isLoop = wLbl.isLoop := hloop
@@ -10711,25 +10710,24 @@ theorem step_sim (irmod : IRModule) (wmod : Module) :
                   dsimp only [] at hi ⊢
                   rw [hloop_eq] at hi ⊢
                   split at hi ⊢
-                  · -- isLoop = true: new labels = irLbl :: drop(ir_idx+1)
+                  · -- isLoop = true: new labels = irLbl :: drop(idx+1)
                     simp only [List.length_cons] at hi
                     match i with
                     | 0 =>
                       -- Position 0: the loop label itself
-                      exact hrel.hlabel_content ir_idx hlt
+                      exact hrel.hlabel_content idx hlt
                     | i + 1 =>
-                      -- Position i+1: from old labels at ir_idx+1+i
-                      have hi' : ir_idx + 1 + i < s1.labels.length := by omega
-                      exact hrel.hlabel_content (ir_idx + 1 + i) hi'
-                  · -- isLoop = false: new labels = drop(ir_idx+1)
-                    have hi' : ir_idx + 1 + i < s1.labels.length := by omega
-                    exact hrel.hlabel_content (ir_idx + 1 + i) hi'
+                      -- Position i+1: from old labels at idx+1+i
+                      have hi' : idx + 1 + i < s1.labels.length := by omega
+                      exact hrel.hlabel_content (idx + 1 + i) hi'
+                  · -- isLoop = false: new labels = drop(idx+1)
+                    have hi' : idx + 1 + i < s1.labels.length := by omega
+                    exact hrel.hlabel_content (idx + 1 + i) hi'
                 hframes_one := hrel.hframes_one
                 hmodule := hrel.hmodule
                 hstore_funcs := hrel.hstore_funcs
                 hstore_types := hrel.hstore_types }⟩
           · exact hf.elim
-          -/
       | .brIf label => sorry
           /-
           -- conditional branch
