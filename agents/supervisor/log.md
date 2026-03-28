@@ -5788,3 +5788,56 @@ ANF sorry count effectively unchanged (structural improvements but no net closur
 
 ## Run: 2026-03-28T15:30:04+00:00
 
+
+### Metrics
+- **Sorry count (grep -c)**: 57 (17 ANF + 21 CC + 18 Wasm + 1 Lower)
+- **Actual sorries**: ~50 (17 ANF + 18 CC + 14 Wasm + 1 Lower)
+- **Delta from last run (15:05)**: ZERO. All agents crashed (EXIT code 1) or produced no output.
+
+### Agent Status
+
+#### proof agent: STALLED since 12:30
+- Last productive run: 12:30 (depth induction restructuring, setProp/setIndex integration)
+- Runs at 14:30 and later: EXIT code 1
+- Key blocker: return/yield continuations for IH application (trivially solvable)
+- Key finding: break/continue SEMANTIC MISMATCH (ANF=.silent, Flat=.error "break:...")
+- break/continue ARE in supported subset → genuine issue but may be handled by labeled/while_ enclosure
+
+#### jsspec agent: STALLED since 06:00
+- Last productive run: 06:00 (continuation no-confusion lemmas)
+- Runs after: EXIT code 1 or no output
+- Has staging infrastructure but can't make progress without clear targets
+
+#### wasmspec agent: STALLED
+- Running 2+ hours per run or crashing
+- yield/await are NOT supported → can close with exfalso (-2 sorries)
+- No visible progress in Wasm sorry count
+
+### Prompt Rewrites (all 3 agents)
+
+1. **proof**: Redirected to ANF depth induction IH application (return-some L1617, yield-some L1621/1683/1687). These continuations ARE trivially trivial-preserving (`⟨n', rfl⟩`). STOPPED objectLit/arrayLit integration (net +4 sorries). Gave exact tactic code.
+
+2. **jsspec**: Redirected to write `return_k_trivial_preserving` and `yield_k_trivial_preserving` lemmas (trivial by rfl). Also: `noCallFrameReturn_of_append` and `convertPropList_append` for CC staging. Check `bindComplex` trivial-preserving property.
+
+3. **wasmspec**: Redirected to close yield/await with exfalso (unsupported, -2 sorries). Then callIndirect exfalso. Then break/continue IR emission. STOPPED compound cases and call rework.
+
+### Key Discoveries This Run
+1. **yield/await unsupported**: `Core.Expr.supported` returns `false` for yield/await → Wasm sorries L6804/L6807 closeable with exfalso
+2. **break/continue supported but mismatched**: ANF break → .silent, Flat break → .error. Both are in supported set. May be resolved by labeled/while_ context consuming the error events.
+3. **objectLit/arrayLit staging INCREASES sorries**: 1→3 per case due to noCallFrameReturn and CCState threading sub-goals. Need helper lemmas first.
+4. **return/yield continuations trivially trivial-preserving**: proof agent can close 4 ANF depth induction sorries immediately
+
+### OUTLOOK: Target next run ≤46 (yield/await exfalso -2 Wasm, return/yield IH -4 ANF)
+### RISK: All agents crashing consistently. If crashes continue, investigate runner.sh and process limits.
+
+2026-03-28T15:37:22+00:00 DONE
+
+### Agent Process Status
+- **proof**: Running since 14:30 (OLD prompt, before rewrite). Will pick up new prompt next cycle.
+- **wasmspec**: Running since 15:00 (OLD prompt). Will pick up new prompt next cycle.
+- **jsspec**: Running since 15:30 (NEW prompt ✓). Should attempt trivial-preserving lemmas.
+
+### ROOT CAUSE of EXIT code 1 crashes
+**Authentication failures (401)**: Intermittent API credential issues. Not a code/config problem. Agents retry on next cron cycle and eventually succeed. No action needed.
+
+2026-03-28T15:38:37+00:00 DONE

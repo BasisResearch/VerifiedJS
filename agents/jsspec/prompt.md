@@ -1,81 +1,80 @@
-# jsspec — ANF SimRel REDESIGN PREP + CC staging
+# jsspec — ANF INFRASTRUCTURE + CC STAGING LEMMAS
 
-## STATUS: normalizeExpr_not_labeled_family has sorry cases (needs noLabeledAnywhere predicate). Continuation no-confusion lemmas done.
+## STATUS: Last productive output was 06:00. Subsequent runs EXIT code 1 or no output. PRODUCE RESULTS.
 
-## KEY DISCOVERY: normalizeExpr_not_labeled_family needs recursive predicate
+## PRIORITY 0: Prove return/yield continuations are trivial-preserving
 
-Your analysis in `anf_not_labeled.lean` is correct: the top-level `h_not_labeled` is insufficient for recursive cases. `.labeled` propagates through sub-expressions.
+The proof agent needs these lemmas to close ANF sorries L1617, L1621, L1683, L1687.
 
-## PRIORITY 0: Write `Flat.Expr.noLabeledAnywhere` predicate
-
-Write in `.lake/_tmp_fix/VerifiedJS/Flat/ExprNoLabeled.lean`:
+Write in `.lake/_tmp_fix/VerifiedJS/ANF/ConvertHelpers.lean` (append):
 
 ```lean
-import VerifiedJS.Flat.Syntax
+/-- The return-some continuation is trivial-preserving -/
+theorem return_k_trivial_preserving :
+    ∀ (arg : ANF.Trivial) (n' : Nat), ∃ (m' : Nat),
+      ((fun t => pure (ANF.Expr.return (some t))) arg).run n' = Except.ok (ANF.Expr.return (some arg), m') := by
+  intro arg n'; exact ⟨n', rfl⟩
 
-namespace VerifiedJS.Flat
-
-/-- No .labeled constructor anywhere in the expression tree -/
-def Expr.noLabeledAnywhere : Expr → Prop
-  | .lit _ => True
-  | .var _ => True
-  | .this => True
-  | .«break» _ => True
-  | .«continue» _ => True
-  | .«return» none => True
-  | .«return» (some e) => e.noLabeledAnywhere
-  | .yield (some e) _ => e.noLabeledAnywhere
-  | .yield none _ => True
-  | .throw e => e.noLabeledAnywhere
-  | .await e => e.noLabeledAnywhere
-  | .seq a b => a.noLabeledAnywhere ∧ b.noLabeledAnywhere
-  | .«let» _ init body => init.noLabeledAnywhere ∧ body.noLabeledAnywhere
-  | .«if» c t e => c.noLabeledAnywhere ∧ t.noLabeledAnywhere ∧ e.noLabeledAnywhere
-  | .labeled _ _ => False
-  | .while_ c b => c.noLabeledAnywhere ∧ b.noLabeledAnywhere
-  | .tryCatch b _ cb f => b.noLabeledAnywhere ∧ cb.noLabeledAnywhere ∧ match f with | none => True | some fe => fe.noLabeledAnywhere
-  -- Add all other constructors (assign, unary, binary, call, getProp, setProp, etc.)
-  | _ => True  -- placeholder; expand for completeness
+/-- The yield-some continuation is trivial-preserving -/
+theorem yield_k_trivial_preserving (delegate : Bool) :
+    ∀ (arg : ANF.Trivial) (n' : Nat), ∃ (m' : Nat),
+      ((fun t => pure (ANF.Expr.yield (some t) delegate)) arg).run n' = Except.ok (ANF.Expr.yield (some arg) delegate, m') := by
+  intro arg n'; exact ⟨n', rfl⟩
 ```
 
-Then prove: `theorem noLabeledAnywhere_sub : e.noLabeledAnywhere → (sub-expressions of e).noLabeledAnywhere` for each constructor.
+These are trivially true by `rfl`. Verify they build.
 
-## PRIORITY 1: Complete normalizeExpr_not_labeled_family with noLabeledAnywhere
+## PRIORITY 1: Prove `noCallFrameReturn_of_append` for CC objectLit/arrayLit
 
-Update the hypothesis in `anf_not_labeled.lean` from `(∀ l b, e ≠ .labeled l b)` to `e.noLabeledAnywhere`. Then:
+The CC staging proofs need: `propListNoCallFrameReturn (a ++ b) = true ↔ propListNoCallFrameReturn a = true ∧ propListNoCallFrameReturn b = true`
 
-For `return (some value)` (L135-139): Since `(.return (some value)).noLabeledAnywhere → value.noLabeledAnywhere`, apply IH on value (depth decreases). The inner continuation `fun t => pure (.return (some t))` doesn't produce `.labeled` (noConfusion). ✓
+Write in `.lake/_tmp_fix/VerifiedJS/Proofs/cc_objectLit_arrayLit_helpers.lean` (append):
 
-For `throw arg` (L148-151): Same pattern. `(.throw arg).noLabeledAnywhere → arg.noLabeledAnywhere`. Apply IH. ✓
+```lean
+theorem propListNoCallFrameReturn_append (a b : List (String × Core.Expr)) :
+    propListNoCallFrameReturn (a ++ b) = (propListNoCallFrameReturn a && propListNoCallFrameReturn b) := by
+  induction a with
+  | nil => simp [propListNoCallFrameReturn]
+  | cons hd tl ih => simp [propListNoCallFrameReturn, ih, Bool.and_assoc]
 
-For compound cases (assign, seq, let, if): Use noLabeledAnywhere to get sub-expression hypotheses, then apply IH. The bindComplex-based continuations don't produce `.labeled` (use `bindComplex_not_labeled`). ✓
+theorem listNoCallFrameReturn_append (a b : List Core.Expr) :
+    listNoCallFrameReturn (a ++ b) = (listNoCallFrameReturn a && listNoCallFrameReturn b) := by
+  induction a with
+  | nil => simp [listNoCallFrameReturn]
+  | cons hd tl ih => simp [listNoCallFrameReturn, ih, Bool.and_assoc]
+```
 
-## PRIORITY 2: Prove initial expression has noLabeledAnywhere
+## PRIORITY 2: Prove `convertPropList_append` for CC objectLit CCState threading
 
-For the ANF SimRel redesign to work, we need: the initial Flat program's main expression has `noLabeledAnywhere`. This is likely TRUE because `.labeled` is only introduced by while_ lowering (which happens at runtime, not in the source). Check:
-1. Does `Flat.Expr` include `.labeled` in the initial program? Or is it only created by step?
-2. If `.labeled` only comes from while_ lowering in step?, prove `initialState.expr.noLabeledAnywhere`.
+```lean
+theorem convertPropList_append (a b : List (String × Core.Expr))
+    (scope : Flat.Scope) (envVar : String) (envMap : Std.HashMap String Nat) (st : Flat.CCState) :
+    (Flat.convertPropList (a ++ b) scope envVar envMap st).fst =
+      (Flat.convertPropList a scope envVar envMap st).fst ++
+      (Flat.convertPropList b scope envVar envMap (Flat.convertPropList a scope envVar envMap st).snd).fst := by
+  induction a with
+  | nil => simp [Flat.convertPropList]
+  | cons hd tl ih => simp [Flat.convertPropList, ih]
+```
 
-Write this in `.lake/_tmp_fix/VerifiedJS/Flat/ExprNoLabeled.lean`.
+Check actual definition first:
+```
+grep -n "def convertPropList" VerifiedJS/Flat/Syntax.lean VerifiedJS/Flat/Convert.lean
+```
 
-## PRIORITY 3: CC staging maintenance
+## PRIORITY 3: Check if `bindComplex` continuations are trivial-preserving
 
-Check if proof agent needs any NEW staging proofs. The CC cases that are being attempted:
-- objectLit/arrayLit: staging exists
-- call: check `.lake/_tmp_fix/VerifiedJS/Proofs/cc_call_patches.lean`
-- functionDef: may need staging
-- captured var (L1828): may need EnvCorrInj lemma
+The compound cases (L1632, L1698, L1715) use `bindComplex`. Check whether the continuations generated by bindComplex satisfy `∀ arg n', ∃ m', (k arg).run n' = ok (k_result arg, m')`.
 
-If any of these need helper lemmas, write them in staging.
+Look at `bindComplex` definition in `VerifiedJS/ANF/Convert.lean` and determine if the continuation it produces is trivial-preserving. If yes, write a theorem. If no, document why in staging.
 
 ## FILES YOU CAN EDIT
 - `.lake/_tmp_fix/VerifiedJS/**/*.lean` (staging area)
 - `VerifiedJS/Flat/*.lean`, `VerifiedJS/Core/*.lean`
-- `VerifiedJS/ANF/Convert.lean` (helper lemmas only)
 
 ## DO NOT EDIT
 - `VerifiedJS/Proofs/ANFConvertCorrect.lean` (owned by proof)
 - `VerifiedJS/Proofs/ClosureConvertCorrect.lean` (owned by proof)
 - `VerifiedJS/Wasm/Semantics.lean` (owned by wasmspec)
 
-## Log to agents/jsspec/log.md
+## LOG to agents/jsspec/log.md with exact results

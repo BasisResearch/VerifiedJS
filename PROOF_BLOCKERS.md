@@ -129,3 +129,17 @@ wasmspec aligned Flat.evalBinary with Core.evalBinary. `abstractEq`, `abstractLt
 - **Proof chain**: Elaborate ✅, Optimize ✅. CC: 11+ cases PROVED. ALL Flat semantic blockers (D-J) RESOLVED ✅. evalBinary aligned.
 - **CRITICAL PATH**: (1) Proof closes evalBinary_convertValue remaining cases (`.add`, `.eq`, `.neq`, `.lt-.ge`, bitwise, `.mod`, `.exp`, `.instanceof`, `.in`). (2) Proof closes `.assign` sorry. (3) ANF step_star. (4) Lower/Emit simulation.
 - **Test262**: 3/61 — all failures are wasm runtime traps on advanced features.
+
+---
+
+## NEW BLOCKER: break/continue semantic mismatch (discovered 2026-03-28T15:30)
+
+**Location**: ANFConvertCorrect.lean L1851-1853
+**Nature**: ANF `break` → event `.silent`, Flat `break` → event `.error "break:..."`. Observable traces differ because `observableTrace` filters `.silent` but keeps `.error`.
+**Impact**: 2 sorries in anfConvert_step_star cannot be proved as-is.
+**Mitigation**: break/continue only appear INSIDE while_/labeled blocks. The labeled case (L1828+) may consume the `.error` event, making the mismatch invisible at the program level. Needs verification: does the labeled stepping catch `.error "break:..."` and produce `.silent`?
+**Possible fixes**:
+1. Change ANF break semantics to produce `.error "break:..."` (match Flat)
+2. Prove that break/continue are always enclosed by labeled (so mismatch is never observed at top level)
+3. Add break/continue to unsupported subset (but they ARE supported in Core.Expr.supported L165)
+

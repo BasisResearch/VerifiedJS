@@ -11690,12 +11690,11 @@ theorem step_sim (irmod : IRModule) (wmod : Module) :
                         simp [h0mem, grownMem]
                       hmemLimits := by dsimp only [s2', store', pushTrace]; exact hrel.hmemLimits
                       hmemory_aligned := by
-                        dsimp only [s2', store', pushTrace, grownMem]
-                        rw [ByteArray.size, Array.size_append, Array.size_replicate]
-                        simp only [List.size_toArray]
-                        have : s1.memory.toList.length = s1.memory.size := by
-                          simp [ByteArray.size, ByteArray.toList]
-                        rw [this]
+                        show 65536 ∣ grownMem.size
+                        have hgsz : grownMem.size = s1.memory.size + pages.toNat * 65536 := by
+                          simp only [grownMem, ByteArray.size, Array.size_append, Array.size_replicate,
+                            List.size_toArray, ByteArray.toList, Array.toList_length]
+                        rw [hgsz]
                         exact Nat.dvd_add hrel.hmemory_aligned ⟨pages.toNat, Nat.mul_comm _ _⟩
                       hmemory_nonempty := by
                         dsimp only [s2', store', pushTrace]
@@ -11723,9 +11722,10 @@ theorem step_sim (irmod : IRModule) (wmod : Module) :
                     obtain ⟨k, hk⟩ := halign
                     rw [hk] at h ⊢
                     rw [Nat.mul_div_cancel_left _ (by omega : 0 < 65536)] at h
-                    calc 65536 * k + pages.toNat * 65536
-                        = (k + pages.toNat) * 65536 := by ring
-                      _ ≤ 65536 * 65536 := by omega
+                    have : 65536 * k + pages.toNat * 65536 = (k + pages.toNat) * 65536 := by omega
+                    rw [this]
+                    have : (k + pages.toNat) * 65536 ≤ 65536 * 65536 := by omega
+                    exact this
                   have hw : step? s2 = some (.silent, pushTrace
                     { s2 with code := rest_w, stack := .i32 (UInt32.ofNat 0xFFFFFFFF) :: wstk' } .silent) := by
                     simp only [step?, hcw, hstack_eq, pop1?, h0mem, dite_true, hmem_val]

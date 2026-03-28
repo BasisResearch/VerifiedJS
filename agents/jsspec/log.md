@@ -1,5 +1,66 @@
 # jsspec agent log
 
+## 2026-03-28T15:30 — Priority 2 INVALIDATED + CC getEnv/makeClosure helpers VERIFIED
+
+### PRIORITY 2: INVALIDATED — `.labeled` appears in source programs
+
+Investigation confirms `.labeled` is a SOURCE-LEVEL constructor (JavaScript labeled statements),
+preserved through the entire pipeline: Source → Core (elaborate) → Flat (closure convert) → ANF.
+It is NOT only introduced at runtime by while_ lowering.
+
+**Consequence**: Cannot prove `initialState.expr.noLabeledAnywhere` in general.
+The `normalizeExpr_not_labeled_family` theorem remains useful for expressions known to have
+no labeled sub-expressions, but cannot be applied universally to all initial programs.
+The ANF SimRel redesign must handle `.labeled` sub-expressions in the general case.
+
+### PRIORITY 3: CC staging — getEnv/makeClosure step helpers VERIFIED
+
+File: `.lake/_tmp_fix/VerifiedJS/Proofs/cc_getEnv_makeClosure_helpers.lean`
+
+| Lemma | Status | Purpose |
+|-------|--------|---------|
+| `Flat_step?_getEnv_step` | **VERIFIED** | getEnv steps inner envExpr when not a value |
+| `Flat_step?_getEnv_non_object` | **VERIFIED** | getEnv with non-object literal errors |
+| `Flat_step?_makeClosure_object` | **VERIFIED** | makeClosure with object env → closure |
+| `Flat_step?_makeClosure_non_object` | **VERIFIED** | makeClosure with non-object env errors |
+| `Flat_step?_makeClosure_step` | **VERIFIED** | makeClosure steps inner envExpr |
+| `Flat_step?_getEnv_object_found` | TEMPLATE | Needs private `envSlotKey` access |
+| `Flat_step?_getEnv_object_missing_slot` | TEMPLATE | Needs private `envSlotKey` access |
+| `Flat_step?_getEnv_dangling` | TEMPLATE | Needs private `heapObjectAt?` access |
+| `Flat_step?_makeEnv_allValues` | TEMPLATE | Needs private `allocEnvObject` access |
+| `Flat_step?_makeEnv_step` | TEMPLATE | Needs private access |
+
+Template lemmas are in comments — they must be placed inside ClosureConvertCorrect.lean
+for private def access.
+
+### PRIORITY 3: CC captured var case (L1847) — DESIGN MISMATCH
+
+The captured variable case has the same multi-step mismatch as functionDef/newObj:
+- Core: `.var name` → `.lit value` (one step, env lookup)
+- Flat: `.getEnv (.var envVar) idx` → `.getEnv (.lit envValue) idx` → `.lit result` (two+ steps)
+
+After ONE Flat step: `sf'.expr = .getEnv (.lit envValue) idx`
+But `convertExpr sc'.expr` where `sc'.expr = .lit value` gives `.lit (convertValue value)`
+These don't match, so the conversion relation breaks.
+
+**Resolution options** (same as functionDef/newObj):
+1. Stuttering simulation (allow Flat to take extra steps while Core idles)
+2. Multi-step simulation (match N Flat steps to 1 Core step)
+3. Redesign Core to step captured vars through getEnv
+
+### CC sorry status summary (21 sorries total)
+
+**Design mismatches** (cannot prove with current structure):
+- L1847: captured var (Core atomic vs Flat multi-step getEnv)
+- L2589: newObj (Core atomic vs Flat multi-step)
+- L3111: functionDef (Core atomic vs Flat multi-step makeClosure/makeEnv)
+
+**HeapInj-dependent** (4 sorries): L2595, L2654, L2686, L2724+
+**CCState threading** (6 sorries): L2147, L2169 (×2), L2232, L2645, L2989
+**Other** (remaining): call, setProp, setIndex, objectLit, arrayLit, tryCatch
+
+---
+
 ## 2026-03-28T14:00 — normalizeExpr_not_labeled_family FULLY VERIFIED
 
 ### PRIORITY 0: All ConvertHelpers.lean lemmas already integrated

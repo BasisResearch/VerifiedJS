@@ -1,74 +1,69 @@
-# wasmspec — CLOSE 1:1 CASES IN step_sim
+# wasmspec — CLOSE WASM SORRY CASES
 
-## CURRENT STATE: 18 grep sorries in Wasm/Semantics.lean. ~14 actual (some in comments).
+## STATUS: 14 actual sorries in Wasm/Semantics.lean. Runs taking 2+ hours or crashing. FOCUS ON ONE CASE AT A TIME.
 
-## STOP: L6801 (return-some) is 1:N. Already handled in step_sim_stutter. Move on.
+## CURRENT SORRIES:
+- L6738-6759: compound cases (let, seq, if, while_, throw, tryCatch) — 6 sorries, 1:N stepping
+- L6801: return-some — 1 sorry, 1:N stepping
+- L6804: yield — 1 sorry
+- L6807: await — 1 sorry
+- L6810: labeled — 1 sorry
+- L6813: break — 1 sorry
+- L6816: continue — 1 sorry
+- L10776: call — 1 sorry (trap alignment)
+- L10831: call stack underflow — 1 sorry
+- L10835: call successful — 1 sorry (multi-frame)
+- L10838: callIndirect — 1 sorry
 
-## PRIORITY 0: Prove 1:1 cases in step_sim
+## STOP: yield/await/break/continue may NOT be in supported subset
+Check `Expr.supported` in `VerifiedJS/Core/Syntax.lean` L138-165:
+- `.yield _ _` → **false** (unsupported!)
+- `.await _` → **false** (unsupported!)
+- `.break _` → **true** (supported, via `| _ => true`)
+- `.continue _` → **true** (supported)
 
-These expressions map to SINGLE IR instructions and are provable in step_sim:
-
-### yield (L6804)
-1. Check `LowerCodeCorr` for `.yield` — what IR does it emit?
-2. If it's a single instruction (e.g., `yield_`), follow the return-none pattern (L6764-6800)
-3. The pattern: unfold step_sim hypothesis, get the IR instruction, show irStep? produces a matching step
-
-### await (L6807)
-Same approach as yield. Check IR emission for `.await`.
-
-### break (L6813) and continue (L6816)
-These likely map to `br label` or similar. Check IR emission.
-
-### labeled (L6810)
-`.labeled label body` likely maps to IR `block` instruction. Check IR emission.
-
-### HOW TO CHECK IR EMISSION:
-```
-lean_hover_info on LowerCodeCorr constructors
-```
-Or grep:
-```
-grep -n "yield\|await\|break\|continue\|labeled" VerifiedJS/Wasm/Lower.lean | head -30
-```
-
-### PROOF TEMPLATE (from return-none at L6764):
+So yield (L6804) and await (L6807) can be closed with **exfalso** if the step_sim theorem has a supported hypothesis. CHECK: does `step_sim` at L6700+ have `h_supported` or similar? If yes:
 ```lean
-| .yield (some arg) delegate =>
-  -- 1. Unfold the LowerCodeCorr hypothesis to get IR code
-  obtain ⟨irCode, hirCorr, hirPrefix⟩ := hlower
-  -- 2. Show irCode is the expected instruction(s)
-  simp [Lower.lowerExpr] at hirCorr  -- or whatever the lowering function is
-  -- 3. Show irStep? on the instruction produces a matching step
-  refine ⟨ir₂, ?_, ?_⟩
-  ...
+| .yield arg delegate => exfalso; simp [ANF.Expr.supported] at h_supported
+| .await arg => exfalso; simp [ANF.Expr.supported] at h_supported
 ```
 
-Adapt this template for each 1:1 case.
+## PRIORITY 0: Close yield and await with exfalso (-2 sorries)
 
-## PRIORITY 1: callIndirect exfalso (L10838)
+1. Read the theorem signature around L6700 to find the supported hypothesis
+2. If it exists: close yield and await with `exfalso; simp [supported] at h_supported`
+3. If NOT: check if supported flows through from `compiler_correct` and add it
 
-Check if `ANF.Expr.supported` or `Flat.Expr.supported` excludes `.callIndirect`. If so:
+## PRIORITY 1: Close callIndirect with exfalso (-1 sorry)
+
+L10838: `callIndirect` is likely not in the supported subset. Check if `ANF.Expr.supported` excludes it or if there's an IR-level supported predicate. If unsupported:
 ```lean
 | .callIndirect typeIdx => exfalso; simp [supported] at h_supported
 ```
 
-Look for the supported definition:
+## PRIORITY 2: break/continue (L6813, L6816) — check IR emission
+
+Break and continue ARE supported. Check what `lowerExpr` produces for break/continue:
 ```
-grep -n "def supported" VerifiedJS/ANF/Syntax.lean VerifiedJS/Flat/Syntax.lean
+grep -n "break\|continue" VerifiedJS/Wasm/Lower.lean | head -20
 ```
 
-## PRIORITY 2: Compound step_sim cases (L6738-6759)
+If break maps to a single IR instruction (e.g., `br label`), follow the return-none pattern at L6764-6800:
+1. Invert LowerCodeCorr to get the IR instruction
+2. Show ANF step? produces the event
+3. Show irStep? on the instruction produces a matching step
+4. Construct the new LowerSimRel
 
-These 6 sorries (let, seq, if, while_, throw, tryCatch) are 1:N cases. They need multiple IR steps.
+## PRIORITY 3: labeled (L6810)
 
-For each one, check if `step_sim_stutter` already handles it (like return-some). If not, add an explicit match.
+`.labeled label body` maps to IR `block` instruction. Check if there's already a `block` case proved elsewhere (L10839+ looks like it handles `block`). If so, the labeled case may just delegate to the block handling.
 
-Start with `throw` — it's likely simplest:
-1. Check IR emission for `.throw`
-2. If it emits `[pushArg, throw_]`, that's 2 instructions
-3. Add a `| .throw arg =>` case in `step_sim_stutter` with a lemma showing 2 IR steps
+## DO NOT ATTEMPT
+- Compound cases (L6738-6759): these are 1:N and complex
+- return-some (L6801): 1:N stuttering, template exists but not trivial
+- call cases (L10776, 10831, 10835): needs multi-frame rework
 
-## File: `VerifiedJS/Wasm/Semantics.lean`
-## Log to agents/wasmspec/log.md
+## FILE: `VerifiedJS/Wasm/Semantics.lean`
+## LOG to agents/wasmspec/log.md
 
-## IMPORTANT: Your runs are taking 1-2+ hours. Focus on ONE case at a time. Get yield or await closed first, then move on.
+## CRITICAL: Keep runs SHORT. Target ONE case, close it, build, log. Don't try to solve everything.
