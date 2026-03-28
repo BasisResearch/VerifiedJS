@@ -11595,32 +11595,27 @@ theorem step_sim (irmod : IRModule) (wmod : Module) :
                     hstore_funcs := hrel.hstore_funcs
                     hstore_types := hrel.hstore_types }⟩
           · exact hf.elim
-      | .memoryGrow => sorry
-          /-
+      | .memoryGrow =>
           -- grow memory: IR and Wasm both pop i32 delta, grow or return -1
           have hc : EmitCodeCorr _ (IRInstr.memoryGrow :: rest) s2.code := hcode_ir ▸ hrel.hcode
           rcases hc.memoryGrow_inv with ⟨rest_w, hcw, hrest⟩ | hf
           · match hstk : s1.stack with
             | [] =>
               -- Empty stack: both trap with "stack underflow in memory.grow"
-              simp [irStep?, hcode_ir, hstk, irPop1?, irTrapState] at hstep
+              simp [irStep?, hcode_ir, hstk, irPop1?, irTrapState, irPushTrace] at hstep
               obtain ⟨rfl, rfl⟩ := hstep
-              have hlen_eq := hrel.hstack.1; rw [hstk] at hlen_eq; simp at hlen_eq
-              have hs2 : s2.stack = [] := by cases s2.stack with | nil => rfl | cons => simp_all
+              have hlen := hrel.hstack.1; rw [hstk] at hlen; simp at hlen
+              have hs2 : s2.stack = [] := by
+                cases hs : s2.stack with | nil => rfl | cons => simp [hs] at hlen
               have hw : step? s2 = some (.trap "stack underflow in memory.grow",
                   { s2 with code := [], trace := s2.trace ++ [.trap "stack underflow in memory.grow"] }) := by
                 simp [step?, hcw, hs2, pop1?, trapState, pushTrace]
-              exact ⟨_, by simp [traceToWasm]; exact hw,
-                { hemit := hrel.hemit, hcode := .nil, hstack := by dsimp only []; exact hrel.hstack,
-                  hframes_len := hrel.hframes_len, hframes_locals := hrel.hframes_locals,
-                  hframes_vals := hrel.hframes_vals, hglobals := hrel.hglobals, hmemory := hrel.hmemory,
-                  hmemLimits := hrel.hmemLimits, hmemory_aligned := hrel.hmemory_aligned, hmemory_nonempty := hrel.hmemory_nonempty,
-                  hlabels := hrel.hlabels, hhalt := hhalt_of_structural (@EmitCodeCorr.nil []) (by dsimp only []; exact hrel.hlabels)
-                  hlabel_content := hrel.hlabel_content
-                  hframes_one := hrel.hframes_one
-                  hmodule := hrel.hmodule
-                  hstore_funcs := hrel.hstore_funcs
-                  hstore_types := hrel.hstore_types }⟩
+              refine ⟨_, hw, ⟨hrel.hemit, ?_, ?_, hrel.hframes_len, hrel.hframes_locals,
+                hrel.hframes_vals, hrel.hglobals, hrel.hmemory, hrel.hmemLimits, hrel.hmemory_aligned, hrel.hmemory_nonempty,
+                hrel.hlabels, ?_, hrel.hlabel_content, hrel.hframes_one, hrel.hmodule, hrel.hstore_funcs, hrel.hstore_types⟩⟩
+              · exact EmitCodeCorr.nil
+              · exact hrel.hstack
+              · exact hhalt_of_structural (@EmitCodeCorr.nil (s1.labels.map (·.name))) hrel.hlabels
             | .i32 pages :: stk =>
               -- i32 on stack: grow or fail
               rcases hrel.hmemory with hmem_eq | ⟨hmem_none, hmem_sz⟩
@@ -11628,7 +11623,7 @@ theorem step_sim (irmod : IRModule) (wmod : Module) :
                 have hstk_w := stack_corr_i32_inv pages stk s2.stack
                   (hstk ▸ hrel.hstack.1) (hstk ▸ hrel.hstack.2)
                 obtain ⟨wstk', hstack_eq, hlen_tail, htail⟩ := hstk_w
-                have h0mem : 0 < s2.store.memories.size := List.getElem?_eq_some_length hmem_eq
+                have h0mem : 0 < s2.store.memories.size := Array.lt_size_of_getElem? hmem_eq
                 -- Wasm maxOk resolves to (newPages ≤ 65536) in all cases:
                 -- memLimits[0] with max = none (from hmemLimits) → .ble 65536
                 -- memLimits empty → .ble 65536 (else branch)
@@ -11666,23 +11661,20 @@ theorem step_sim (irmod : IRModule) (wmod : Module) :
                     hrel.hframes_vals, hrel.hglobals, ?_, ?_, ?_, ?_, hrel.hlabels,
                     hhalt_of_structural hrest hrel.hlabels, hrel.hlabel_content, hrel.hframes_one, hrel.hmodule, hrel.hstore_funcs, hrel.hstore_types⟩
                   · -- Stack correspondence
-                    dsimp only []
                     exact ⟨by simp; omega, by intro i hi; exact htail i (by omega)⟩
                   · -- hmemory: memories.set!(0, grown)[0]? = some grown
-                    left; dsimp only []
+                    left
                     simp [Array.set!, Array.setIfInBounds, h0mem]
                   · -- hmemLimits: memLimits unchanged by memory grow
-                    dsimp only []; exact hrel.hmemLimits
+                    exact hrel.hmemLimits
                   · -- hmemory_aligned: grown.size = memory.size + pages*65536
-                    dsimp only []
                     have hgsz : (ByteArray.mk (s1.memory.toList.toArray ++ Array.replicate (pages.toNat * 65536) 0)).size =
                         s1.memory.size + pages.toNat * 65536 := by
                       simp [ByteArray.size, ByteArray.toList, Array.toList_toArray]
                     rw [hgsz]
                     exact Dvd.dvd.add hrel.hmemory_aligned ⟨pages.toNat, rfl⟩
                   · -- hmemory_nonempty: set! preserves size
-                    dsimp only [pushTrace]
-                    simp [Array.size_set!]
+                    simp [pushTrace, Array.size_set!]
                     exact hrel.hmemory_nonempty
                 | isFalse hfail =>
                   -- Failure: both push -1 (0xFFFFFFFF)
@@ -11705,9 +11697,7 @@ theorem step_sim (irmod : IRModule) (wmod : Module) :
                   exact ⟨_, hw,
                     { hemit := hrel.hemit
                       hcode := hrest
-                      hstack := by
-                        dsimp only []
-                        exact ⟨by simp; omega, by intro i hi; exact htail i (by omega)⟩
+                      hstack := ⟨by simp; omega, by intro i hi; exact htail i (by omega)⟩
                       hframes_len := hrel.hframes_len
                       hframes_locals := hrel.hframes_locals
                       hframes_vals := hrel.hframes_vals
@@ -11726,38 +11716,53 @@ theorem step_sim (irmod : IRModule) (wmod : Module) :
               · -- No memory: contradicts hmemory_nonempty (memories.size > 0 ⇒ memories[0]? ≠ none)
                 exfalso
                 have h := hrel.hmemory_nonempty
-                simp [Array.getElem?_eq_none] at hmem_none
+                rw [Array.getElem?_eq_none_iff] at hmem_none
                 omega
-            | .f64 _ :: _ | .i64 _ :: _ =>
-              -- Non-i32 on stack: both trap with type mismatch
-              all_goals (
-                simp [irStep?, hcode_ir, hstk, irPop1?, irTrapState, irPushTrace] at hstep
-                obtain ⟨rfl, rfl⟩ := hstep
-                have hstk_rel := hrel.hstack; rw [hstk] at hstk_rel
-                have hlen := hstk_rel.1; simp at hlen
-                match hstk_w : s2.stack with
-                | [] => simp [hstk_w] at hlen
-                | wv :: wstk =>
-                  have h0 := hstk_rel.2 0 (by simp)
-                  simp [hstk_w] at h0
-                  have hw : step? s2 = some (.trap ("memory.grow delta is not i32"),
-                      { s2 with code := [], trace := s2.trace ++ [.trap ("memory.grow delta is not i32")] }) := by
-                    simp only [step?, hcw, hstk_w, pop1?, trapState, pushTrace]
-                    rcases h0 with ⟨hcorr⟩ | ⟨hcorr⟩
-                    all_goals (cases hcorr <;> simp)
-                  exact ⟨_, by simp [traceToWasm]; exact hw,
-                    { hemit := hrel.hemit, hcode := .nil, hstack := by dsimp only []; exact hrel.hstack,
-                      hframes_len := hrel.hframes_len, hframes_locals := hrel.hframes_locals,
-                      hframes_vals := hrel.hframes_vals, hglobals := hrel.hglobals, hmemory := hrel.hmemory,
-                      hmemLimits := hrel.hmemLimits, hmemory_aligned := hrel.hmemory_aligned, hmemory_nonempty := hrel.hmemory_nonempty,
-                      hlabels := hrel.hlabels, hhalt := hhalt_of_structural (@EmitCodeCorr.nil []) (by dsimp only []; exact hrel.hlabels)
-                      hlabel_content := hrel.hlabel_content
-                      hframes_one := hrel.hframes_one
-                      hmodule := hrel.hmodule
-                      hstore_funcs := hrel.hstore_funcs
-                      hstore_types := hrel.hstore_types }⟩)
+            | .i64 _ :: _ =>
+              -- i64 on stack: type mismatch trap
+              simp [irStep?, hcode_ir, hstk, irPop1?, irTrapState, irPushTrace] at hstep
+              obtain ⟨rfl, rfl⟩ := hstep
+              have hlen := hrel.hstack.1; rw [hstk] at hlen
+              match hs2 : s2.stack with
+              | [] => simp [hs2] at hlen
+              | wv :: wstk =>
+                have hval_corr := hrel.hstack.2 0 (by simp [hstk])
+                rw [hstk, hs2] at hval_corr
+                simp at hval_corr
+                cases hval_corr with
+                | i64 m =>
+                  have hw : step? s2 = some (.trap "memory.grow delta is not i32",
+                      { s2 with code := [], trace := s2.trace ++ [.trap "memory.grow delta is not i32"] }) := by
+                    simp [step?, hcw, hs2, pop1?, trapState, pushTrace]
+                  refine ⟨_, hw, ⟨hrel.hemit, ?_, ?_, hrel.hframes_len, hrel.hframes_locals,
+                    hrel.hframes_vals, hrel.hglobals, hrel.hmemory, hrel.hmemLimits, hrel.hmemory_aligned, hrel.hmemory_nonempty,
+                    hrel.hlabels, ?_, hrel.hlabel_content, hrel.hframes_one, hrel.hmodule, hrel.hstore_funcs, hrel.hstore_types⟩⟩
+                  · exact EmitCodeCorr.nil
+                  · exact hrel.hstack
+                  · exact hhalt_of_structural (@EmitCodeCorr.nil (s1.labels.map (·.name))) hrel.hlabels
+            | .f64 _ :: _ =>
+              -- f64 on stack: type mismatch trap
+              simp [irStep?, hcode_ir, hstk, irPop1?, irTrapState, irPushTrace] at hstep
+              obtain ⟨rfl, rfl⟩ := hstep
+              have hlen := hrel.hstack.1; rw [hstk] at hlen
+              match hs2 : s2.stack with
+              | [] => simp [hs2] at hlen
+              | wv :: wstk =>
+                have hval_corr := hrel.hstack.2 0 (by simp [hstk])
+                rw [hstk, hs2] at hval_corr
+                simp at hval_corr
+                cases hval_corr with
+                | f64 m =>
+                  have hw : step? s2 = some (.trap "memory.grow delta is not i32",
+                      { s2 with code := [], trace := s2.trace ++ [.trap "memory.grow delta is not i32"] }) := by
+                    simp [step?, hcw, hs2, pop1?, trapState, pushTrace]
+                  refine ⟨_, hw, ⟨hrel.hemit, ?_, ?_, hrel.hframes_len, hrel.hframes_locals,
+                    hrel.hframes_vals, hrel.hglobals, hrel.hmemory, hrel.hmemLimits, hrel.hmemory_aligned, hrel.hmemory_nonempty,
+                    hrel.hlabels, ?_, hrel.hlabel_content, hrel.hframes_one, hrel.hmodule, hrel.hstore_funcs, hrel.hstore_types⟩⟩
+                  · exact EmitCodeCorr.nil
+                  · exact hrel.hstack
+                  · exact hhalt_of_structural (@EmitCodeCorr.nil (s1.labels.map (·.name))) hrel.hlabels
           · exact hf.elim
-          -/
 
 /-- Step simulation (stuttering): if the IR takes one step, the Wasm takes
     one or more matching steps with the same observable events.
