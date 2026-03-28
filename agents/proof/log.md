@@ -3352,6 +3352,22 @@ These are the SAME requirements as for the wildcard cases. The entire `normalize
 - Replaced `| setIndex obj idx value => sorry` with same pattern: `| none =>` FULLY PROVED, `| some cv =>` sorry
 - **Net sorry change: 0** (1 sorry → 1 sorry per case, but structural progress: the non-value obj sub-case is now complete)
 
-### Build status: PENDING (checking both files)
+### Build status: PASSES ✓
+- ANFConvertCorrect.lean: 0 errors, pre-existing warnings only
+- ClosureConvertCorrect.lean: 0 errors, pre-existing warnings only
 
-2026-03-28T13:30:01+00:00 SKIP: already running
+### Sorry counts (unchanged):
+- **ANF**: 17 sorries (same as before)
+- **CC**: 18 code sorries (same as before — setProp/setIndex each 1→1 sorry with structural progress)
+
+### Bug fix during integration:
+- Staging file had `rw [hconv.2]` at end of setProp proof, but `hconv` was destructured by `obtain`. Fixed to `rw [hst]`.
+- Multi-line expressions inside `{ sf with expr := .setProp ... }` caused parse errors. Fixed with explicit `Flat.Expr.setProp` in parentheses.
+
+### Infrastructure now available for next run:
+- `normalizeExpr_labeled_step_sim` has `ih` in scope for all 7 sorry cases
+- Remaining blocker for using IH: `fun t => pure (.return (some t))` is NOT trivial-preserving
+- Needs theorem generalization (weaker `hk`) OR eval-context lifting lemmas
+
+2026-03-28T12:30:01+00:00 DONE
+2026-03-28T13:45:56+00:00 DONE

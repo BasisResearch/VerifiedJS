@@ -11647,7 +11647,7 @@ theorem step_sim (irmod : IRModule) (wmod : Module) :
                 have hmem_val : s2.store.memories[0]'h0mem = s1.memory := by
                   have h : s2.store.memories[0]? = some (s2.store.memories[0]'h0mem) :=
                     Array.getElem?_eq_getElem h0mem
-                  rw [hmem_eq] at h; exact Option.some.inj h
+                  rw [hmem_eq] at h; exact (Option.some.inj h).symm
                 by_cases hok : s1.memory.size + pages.toNat * 65536 ≤ 65536 * 65536
                 · -- Success: both grow memory — SORRY: lemma name bitrot
                   sorry
