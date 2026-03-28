@@ -11757,6 +11757,7 @@ theorem step_sim (irmod : IRModule) (wmod : Module) :
                       hstore_funcs := hrel.hstore_funcs
                       hstore_types := hrel.hstore_types }⟩)
           · exact hf.elim
+          -/
 
 /-- Step simulation (stuttering): if the IR takes one step, the Wasm takes
     one or more matching steps with the same observable events.
