@@ -10075,7 +10075,7 @@ theorem step_sim (irmod : IRModule) (wmod : Module) :
                 simp only [traceToWasm]
                 exact ⟨_, hw, {
                   hemit := hrel.hemit, hcode := .nil,
-                  hstack := by simp [hs2],
+                  hstack := ⟨hrel.hstack.1, hrel.hstack.2⟩,
                   hframes_len := hrel.hframes_len, hframes_locals := hrel.hframes_locals,
                   hframes_vals := hrel.hframes_vals, hglobals := hrel.hglobals,
                   hmemory := hrel.hmemory, hmemLimits := hrel.hmemLimits,
@@ -10201,7 +10201,7 @@ theorem step_sim (irmod : IRModule) (wmod : Module) :
                 simp only [traceToWasm]
                 exact ⟨_, hw, {
                   hemit := hrel.hemit, hcode := .nil,
-                  hstack := by simp [hs2],
+                  hstack := ⟨hrel.hstack.1, hrel.hstack.2⟩,
                   hframes_len := hrel.hframes_len, hframes_locals := hrel.hframes_locals,
                   hframes_vals := hrel.hframes_vals, hglobals := hrel.hglobals,
                   hmemory := hrel.hmemory, hmemLimits := hrel.hmemLimits,
