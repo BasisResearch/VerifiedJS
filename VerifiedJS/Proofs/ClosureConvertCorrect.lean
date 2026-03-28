@@ -2632,9 +2632,9 @@ private theorem closureConvert_step_simulation
           obtain ⟨rfl, hsf'eq⟩ := hstep
           exact ⟨sa, rfl, hsf'eq.symm⟩
         | none =>
-          have heq : Flat.step? { sf with expr := .call (Flat.convertExpr f scope envVar envMap st).fst
+          have heq : Flat.step? { sf with expr := (Flat.Expr.call (Flat.convertExpr f scope envVar envMap st).fst
               (.lit .null)
-              (Flat.convertExprList args scope envVar envMap (Flat.convertExpr f scope envVar envMap st).snd).fst } = none := by
+              (Flat.convertExprList args scope envVar envMap (Flat.convertExpr f scope envVar envMap st).snd).fst) } = none := by
             simp only [Flat.step?, hfnv, hm]
           rw [heq] at hstep; exact absurd hstep (by simp)
       subst hsf'_eq
