@@ -1,58 +1,44 @@
-# proof — FIX CC BUILD, THEN PIVOT TO ANF
+# proof — ANF IS YOUR ONLY PRIORITY
 
-## URGENT P0: CC BUILD IS BROKEN
+## STATUS: ANF has been sorry for 6+ DAYS. CC can wait. ANF CANNOT.
 
-Errors cascade from L2577 → L2563 → L1778:
-```
-L2577:6: Alternative `string` has not been provided
-L2577:6: Alternative `function` has not been provided
-L2563:4: Alternative `none` has not been provided
-L1778:2: Alternative `setProp/getIndex/setIndex/...` has not been provided
-```
+File: `VerifiedJS/Proofs/ANFConvertCorrect.lean` — 13 sorries.
 
-All match arms ARE present (verified). The errors cascade from inside the `getProp | some cv =>` arm (L2564-2661). Something in the `.object addr =>` sub-case (L2614-2661) likely has a type error that prevents the whole match from elaborating.
+## BREAK/CONTINUE CASE (L172, L174) — EXACT TACTIC SCAFFOLD
 
-**Likely causes:**
-1. `hheapvwf addr haddr props hobj kv (List.find?_mem hfind)` at L2659 — check if `List.find?_mem` exists with the right signature
-2. `coreToFlatValue_eq_convertValue` usage — check signature matches
+I tested these tactics. The following gets you to a clean intermediate goal:
 
-**Quick fix if stuck**: temporarily sorry the `.object addr =>` case body (L2615-2661) and rebuild. This narrows the error.
-
-**Run:** `lake build VerifiedJS.Proofs.ClosureConvertCorrect` to verify fix.
-
-## P1: ANF IS YOUR #1 PRIORITY (after build fix)
-
-File: `VerifiedJS/Proofs/ANFConvertCorrect.lean` — 13 sorries, UNTOUCHED FOR 6 DAYS.
-
-### Easiest cases first:
-
-1. **break (L172), continue (L174)**: Terminal control flow, no sub-expressions.
 ```lean
-lean_goal at L172
-lean_multi_attempt at L172: ["simp_all [ANF.step?, Source.step?, normalizeExpr]",
- "unfold ANF.step? Source.step?; simp_all",
- "simp [ANF.step?]; rfl",
- "cases h_step <;> simp_all"]
+-- For break (L172):
+obtain ⟨_, sa_env, sa_heap, sa_trace⟩ := sa
+simp only [] at hsa; subst hsa
+simp [ANF.step?] at hstep_eq
+obtain ⟨rfl, rfl⟩ := hstep_eq
+-- Now: ev = .silent, sa' = ANF.pushTrace {.trivial .litUndefined, sa_env, sa_heap, sa_trace} .silent
+-- sa' has expr = .trivial .litUndefined, trace = sa_trace ++ [.silent]
+-- Need: ∃ sf' evs, Flat.Steps sf evs sf' ∧ observableTrace [.silent] = observableTrace evs ∧ ANF_SimRel ... ∧ ExprWellFormed ...
 ```
 
-2. **throw (L155), return (L159), yield (L161), await (L163)**: Evaluate trivial arg, produce event.
+After this point:
+1. `observableTrace [.silent] = []` so you need `observableTrace evs = []`
+2. From `hnorm`: `normalizeExpr sf.expr k` produced `.break label`. Invert to learn `sf.expr = .break label` (Flat).
+3. Show `Flat.Step sf .silent sf'` where `sf' = {sf with expr := .lit .undefined, trace := sf.trace ++ [.silent]}`
+4. Build new `ANF_SimRel s t sa' sf'` — sa'.expr = .trivial .litUndefined, sf'.expr = .lit .undefined
+5. For new SimRel k', use `fun t => pure (.trivial t)` (identity continuation) since terminal state
 
-3. **var lookup (L138)**: Variable resolution.
+Use `lean_goal` and `lean_multi_attempt` aggressively at each sub-step. The continue case (L174) is identical in structure.
 
-4. **seq (L149), if (L151), let (L147)**: Sub-expression stepping.
+## THROW/RETURN/YIELD/AWAIT (L155, L159, L161, L163)
 
-5. **while (L153), tryCatch (L157)**: Hardest.
+Same pattern: destructure sa, subst hsa, simp [ANF.step?] at hstep_eq. These have a `Trivial` or `Option Trivial` arg. After simplifying step?, relate to Flat side.
 
-### Use `lean_goal` at each sorry, then `lean_multi_attempt` aggressively.
+## VAR (L138)
 
-## P2: CC remaining (ONLY after ANF progress)
+`ANF.step?` on `.var name` does env lookup. After simp [ANF.step?], case split on env lookup result.
 
-- L2138: jsspec confirmed 2nd sorry closes with `⟨rfl, rfl⟩`
-- CCStateAgree helpers staged at `.lake/_tmp_fix/VerifiedJS/Proofs/cc_agree_helpers.lean`
-- L3068 (while_ CCState): chain `convertExpr_state_determined`
+## DO NOT TOUCH CC until you close at least 4 ANF sorries.
 
-## DO NOT TOUCH: Wasm/Semantics.lean, LowerCorrect.lean
+The CC build may have issues — IGNORE THEM. ANF is the critical path.
 
-## Build CC: `lake build VerifiedJS.Proofs.ClosureConvertCorrect`
-## Build ANF: `lake build VerifiedJS.Proofs.ANFConvertCorrect`
+## Build: `lake build VerifiedJS.Proofs.ANFConvertCorrect`
 ## Log progress to agents/proof/log.md.
