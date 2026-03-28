@@ -11602,7 +11602,11 @@ theorem step_sim (irmod : IRModule) (wmod : Module) :
           · match hstk : s1.stack with
             | [] =>
               -- Empty stack: both trap with "stack underflow in memory.grow"
-              simp [irStep?, hcode_ir, hstk, irPop1?, irTrapState, irPushTrace] at hstep
+              have hir : irStep? s1 = some (.trap "stack underflow in memory.grow",
+                  { s1 with code := [], trace := s1.trace ++ [.trap "stack underflow in memory.grow"] }) := by
+                simp [irStep?, hcode_ir, hstk, irPop1?, irTrapState, irPushTrace]
+              rw [hir] at hstep
+              simp only [Option.some.injEq, Prod.mk.injEq] at hstep
               obtain ⟨rfl, rfl⟩ := hstep
               have hlen := hrel.hstack.1; rw [hstk] at hlen; simp at hlen
               have hs2 : s2.stack = [] := by
@@ -11614,7 +11618,7 @@ theorem step_sim (irmod : IRModule) (wmod : Module) :
                 hrel.hframes_vals, hrel.hglobals, hrel.hmemory, hrel.hmemLimits, hrel.hmemory_aligned, hrel.hmemory_nonempty,
                 hrel.hlabels, ?_, hrel.hlabel_content, hrel.hframes_one, hrel.hmodule, hrel.hstore_funcs, hrel.hstore_types⟩⟩
               · exact EmitCodeCorr.nil
-              · exact hrel.hstack
+              · simp [hstk, hs2]
               · exact hhalt_of_structural (@EmitCodeCorr.nil (s1.labels.map (·.name))) hrel.hlabels
             | .i32 pages :: stk =>
               -- i32 on stack: grow or fail
@@ -11633,12 +11637,12 @@ theorem step_sim (irmod : IRModule) (wmod : Module) :
                     | none => (s1.memory.size / 65536 + pages.toNat).ble 65536
                   else (s1.memory.size / 65536 + pages.toNat).ble 65536) =
                   (s1.memory.size / 65536 + pages.toNat).ble 65536 := by
-                  split
-                  · next hLim =>
+                  by_cases hLim : 0 < s2.store.memLimits.size
+                  · simp only [hLim, dite_true]
                     have hml := hrel.hmemLimits s2.store.memLimits[0]
                       (by rw [Array.getElem?_eq_getElem hLim])
                     simp [hml]
-                  · rfl
+                  · simp [hLim]
                 match hgrow : decide (s1.memory.size + pages.toNat * 65536 ≤ 65536 * 65536) with
                 | isTrue hok =>
                   -- Success: both grow memory
@@ -11720,7 +11724,11 @@ theorem step_sim (irmod : IRModule) (wmod : Module) :
                 omega
             | .i64 _ :: _ =>
               -- i64 on stack: type mismatch trap
-              simp [irStep?, hcode_ir, hstk, irPop1?, irTrapState, irPushTrace] at hstep
+              have hir : irStep? s1 = some (.trap "memory.grow delta is not i32",
+                  { s1 with code := [], trace := s1.trace ++ [.trap "memory.grow delta is not i32"] }) := by
+                simp [irStep?, hcode_ir, hstk, irPop1?, irTrapState, irPushTrace]
+              rw [hir] at hstep
+              simp only [Option.some.injEq, Prod.mk.injEq] at hstep
               obtain ⟨rfl, rfl⟩ := hstep
               have hlen := hrel.hstack.1; rw [hstk] at hlen
               match hs2 : s2.stack with
@@ -11742,7 +11750,11 @@ theorem step_sim (irmod : IRModule) (wmod : Module) :
                   · exact hhalt_of_structural (@EmitCodeCorr.nil (s1.labels.map (·.name))) hrel.hlabels
             | .f64 _ :: _ =>
               -- f64 on stack: type mismatch trap
-              simp [irStep?, hcode_ir, hstk, irPop1?, irTrapState, irPushTrace] at hstep
+              have hir : irStep? s1 = some (.trap "memory.grow delta is not i32",
+                  { s1 with code := [], trace := s1.trace ++ [.trap "memory.grow delta is not i32"] }) := by
+                simp [irStep?, hcode_ir, hstk, irPop1?, irTrapState, irPushTrace]
+              rw [hir] at hstep
+              simp only [Option.some.injEq, Prod.mk.injEq] at hstep
               obtain ⟨rfl, rfl⟩ := hstep
               have hlen := hrel.hstack.1; rw [hstk] at hlen
               match hs2 : s2.stack with
