@@ -1111,7 +1111,7 @@ private theorem normalizeExpr_labeled_step_sim
       refine ⟨[.silent], sf', .tail ⟨hstep⟩ (.refl _), ?_, henv', hheap', ?_, rfl, ?_⟩
       · rw [hexpr]; exact ⟨k, n, m', hres, hk⟩
       · rw [htrace', observableTrace_append]; simp [observableTrace]; decide
-      · rw [hexpr]; intro x hfx; exact hwf x (VarFreeIn.labeled_body _ _ _ hfx)
+      · rw [hexpr]; intro x hfx; rw [henv']; exact hwf x (VarFreeIn.labeled_body _ _ _ hfx)
     | error msg => simp [hres] at hnorm
   | var name =>
     exfalso
@@ -1126,10 +1126,12 @@ private theorem normalizeExpr_labeled_step_sim
   | lit v =>
     exfalso
     simp only [ANF.normalizeExpr] at hnorm
-    cases htv : ANF.trivialOfFlatValue v <;> simp [htv] at hnorm
-    · rename_i t
-      obtain ⟨m', hm'⟩ := hk t n
-      rw [hm'] at hnorm; exact absurd hnorm (by intro h; exact ANF.Expr.noConfusion (Prod.mk.inj (Except.ok.inj h)).1)
+    cases htv : ANF.trivialOfFlatValue v with
+    | error _ => simp [htv] at hnorm
+    | ok triv =>
+      simp [htv] at hnorm
+      obtain ⟨m', hm'⟩ := hk triv n
+      rw [hm'] at hnorm; exact ANF.Expr.noConfusion (Prod.mk.inj (Except.ok.inj hnorm)).1
   | «break» l =>
     exfalso; simp only [ANF.normalizeExpr, pure, Pure.pure, StateT.pure, Except.pure] at hnorm
     exact ANF.Expr.noConfusion (Prod.mk.inj (Except.ok.inj hnorm)).1
@@ -1154,10 +1156,16 @@ private theorem normalizeExpr_labeled_step_sim
     simp only [StateT.run, bind, Bind.bind, StateT.bind, Except.bind] at hnorm
     repeat (first | split at hnorm | (simp [pure, Pure.pure, StateT.pure, Except.pure] at hnorm))
   | tryCatch body_tc catchParam catchBody finally_ =>
-    -- tryCatch produces .tryCatch, never .labeled
+    -- tryCatch always produces .tryCatch constructor, never .labeled
     exfalso; unfold ANF.normalizeExpr at hnorm
     simp only [StateT.run, bind, Bind.bind, StateT.bind, Except.bind] at hnorm
-    cases finally_ <;> (repeat (first | split at hnorm | (simp [pure, Pure.pure, StateT.pure, Except.pure, Functor.map, StateT.map] at hnorm)))
+    cases finally_ with
+    | none =>
+      simp only [StateT.run, bind, Bind.bind, StateT.bind, Except.bind] at hnorm
+      repeat (first | split at hnorm | (simp [pure, Pure.pure, StateT.pure, Except.pure] at hnorm; try exact ANF.Expr.noConfusion (Prod.mk.inj (Except.ok.inj hnorm)).1))
+    | some fin =>
+      simp only [Functor.map, StateT.map, StateT.run, bind, Bind.bind, StateT.bind, Except.bind] at hnorm
+      repeat (first | split at hnorm | (simp [pure, Pure.pure, StateT.pure, Except.pure] at hnorm; try exact ANF.Expr.noConfusion (Prod.mk.inj (Except.ok.inj hnorm)).1))
   | _ => sorry -- remaining compound cases and seq
 
 /-- Stuttering simulation: one ANF step corresponds to one or more Flat steps,
