@@ -10683,50 +10683,74 @@ theorem step_sim (irmod : IRModule) (wmod : Module) :
               hcw hresolve
             -- New labels (both sides use isLoop to decide)
             have hloop_eq : irLbl.isLoop = wLbl.isLoop := hloop
-            exact ⟨_, hw,
-              { hemit := hrel.hemit
-                hcode := by rw [hloop_eq]; exact hcode_branch
-                hstack := hrel.hstack
-                hframes_len := hrel.hframes_len
-                hframes_locals := hrel.hframes_locals
-                hframes_vals := hrel.hframes_vals
-                hglobals := hrel.hglobals
-                hmemory := hrel.hmemory
-                hmemLimits := hrel.hmemLimits
-                hmemory_aligned := hrel.hmemory_aligned
-                hmemory_nonempty := hrel.hmemory_nonempty
-                hlabels := by
-                  dsimp only []
-                  rw [hloop_eq]
-                  split
-                  · simp; have := hrel.hlabels; omega
-                  · have := hrel.hlabels; omega
-                hhalt := by
-                  rw [hloop_eq]
-                  exact hhalt_of_structural (by rw [hloop_eq]; exact hcode_branch)
-                    (by rw [hloop_eq]; split <;> (simp; have := hrel.hlabels; omega))
-                hlabel_content := by
-                  intro i hi
-                  dsimp only [] at hi ⊢
-                  rw [hloop_eq] at hi ⊢
-                  split at hi ⊢
-                  · -- isLoop = true: new labels = irLbl :: drop(idx+1)
-                    simp only [List.length_cons] at hi
-                    match i with
-                    | 0 =>
-                      -- Position 0: the loop label itself
-                      exact hrel.hlabel_content idx hlt
-                    | i + 1 =>
-                      -- Position i+1: from old labels at idx+1+i
-                      have hi' : idx + 1 + i < s1.labels.length := by omega
-                      exact hrel.hlabel_content (idx + 1 + i) hi'
-                  · -- isLoop = false: new labels = drop(idx+1)
+            -- Key fact: drop idx labels = labels[idx] :: drop(idx+1) labels
+            have hdrop_ir : s1.labels.drop idx = irLbl :: s1.labels.drop (idx + 1) := by
+              rw [List.drop_eq_getElem_cons hlt]
+              congr 1
+              have := List.getElem?_eq_getElem hlt
+              rw [hirLbl_eq] at this; exact Option.some.injEq.mp this
+            -- Rewrite hcode_branch for isLoop=true case
+            have hcode_branch' : EmitCodeCorr ((irLbl :: s1.labels.drop (idx + 1)).map (·.name))
+                irLbl.onBranch wLbl.onBranch := by
+              simp only [hloop_eq, ite_true] at hcode_branch
+              rwa [hdrop_ir] at hcode_branch
+            cases hIsLoop : irLbl.isLoop
+            · -- isLoop = false
+              have hWLoop : wLbl.isLoop = false := by rw [← hloop_eq]; exact hIsLoop
+              simp only [hIsLoop, hWLoop, ite_false] at hcode_branch ⊢
+              exact ⟨_, hw,
+                { hemit := hrel.hemit
+                  hcode := hcode_branch
+                  hstack := hrel.hstack
+                  hframes_len := hrel.hframes_len
+                  hframes_locals := hrel.hframes_locals
+                  hframes_vals := hrel.hframes_vals
+                  hglobals := hrel.hglobals
+                  hmemory := hrel.hmemory
+                  hmemLimits := hrel.hmemLimits
+                  hmemory_aligned := hrel.hmemory_aligned
+                  hmemory_nonempty := hrel.hmemory_nonempty
+                  hlabels := by simp; have := hrel.hlabels; omega
+                  hhalt := hhalt_of_structural hcode_branch (by simp; have := hrel.hlabels; omega)
+                  hlabel_content := by
+                    intro i hi
+                    dsimp only [] at hi ⊢
                     have hi' : idx + 1 + i < s1.labels.length := by omega
                     exact hrel.hlabel_content (idx + 1 + i) hi'
-                hframes_one := hrel.hframes_one
-                hmodule := hrel.hmodule
-                hstore_funcs := hrel.hstore_funcs
-                hstore_types := hrel.hstore_types }⟩
+                  hframes_one := hrel.hframes_one
+                  hmodule := hrel.hmodule
+                  hstore_funcs := hrel.hstore_funcs
+                  hstore_types := hrel.hstore_types }⟩
+            · -- isLoop = true
+              have hWLoop : wLbl.isLoop = true := by rw [← hloop_eq]; exact hIsLoop
+              simp only [hIsLoop, hWLoop, ite_true] at hcode_branch ⊢
+              exact ⟨_, hw,
+                { hemit := hrel.hemit
+                  hcode := hcode_branch'
+                  hstack := hrel.hstack
+                  hframes_len := hrel.hframes_len
+                  hframes_locals := hrel.hframes_locals
+                  hframes_vals := hrel.hframes_vals
+                  hglobals := hrel.hglobals
+                  hmemory := hrel.hmemory
+                  hmemLimits := hrel.hmemLimits
+                  hmemory_aligned := hrel.hmemory_aligned
+                  hmemory_nonempty := hrel.hmemory_nonempty
+                  hlabels := by simp; have := hrel.hlabels; omega
+                  hhalt := hhalt_of_structural hcode_branch' (by simp; have := hrel.hlabels; omega)
+                  hlabel_content := by
+                    intro i hi
+                    dsimp only [] at hi ⊢
+                    simp only [List.length_cons] at hi
+                    match i with
+                    | 0 => exact hrel.hlabel_content idx hlt
+                    | i + 1 =>
+                      have hi' : idx + 1 + i < s1.labels.length := by omega
+                      exact hrel.hlabel_content (idx + 1 + i) hi'
+                  hframes_one := hrel.hframes_one
+                  hmodule := hrel.hmodule
+                  hstore_funcs := hrel.hstore_funcs
+                  hstore_types := hrel.hstore_types }⟩
           · exact hf.elim
       | .brIf label => sorry
           /-
