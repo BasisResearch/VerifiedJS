@@ -10698,10 +10698,11 @@ theorem step_sim (irmod : IRModule) (wmod : Module) :
               · rwa [List.getElem?_drop]
               · rwa [List.getElem?_drop]
               · rw [List.drop_drop]; exact hE
-              · rw [List.drop_drop,
-                  show idx + 1 + (if irL.isLoop = true then j else j + 1) =
-                    (if irL.isLoop = true then idx + 1 + j else idx + 1 + j + 1) from by split <;> omega]
-                exact hB
+              · rw [List.drop_drop]
+                suffices h : idx + 1 + (if irL.isLoop = true then j else j + 1) =
+                    (if irL.isLoop = true then idx + 1 + j else idx + 1 + j + 1) by
+                  rw [h]; exact hB
+                split <;> omega
             cases hIsLoop : irLbl.isLoop
             · -- isLoop = false
               have hWLoop : wLbl.isLoop = false := by rw [← hloop_eq]; exact hIsLoop
@@ -10756,7 +10757,10 @@ theorem step_sim (irmod : IRModule) (wmod : Module) :
                       rw [hwlbl_get] at h2; simp at h2; subst h2
                       refine ⟨irLbl, wLbl, rfl, rfl, ?_, ?_, hL⟩
                       · simp only [List.drop_succ_cons]; exact hE
-                      · simp [hIsLoop] at hB ⊢
+                      · rw [show (if irLbl.isLoop = true then (0 : Nat) else 0 + 1) = 0
+                            from by simp [hIsLoop], List.drop_zero]
+                        rw [show (if irLbl.isLoop = true then idx else idx + 1) = idx
+                            from by simp [hIsLoop]] at hB
                         rw [hdrop_ir] at hB; exact hB
                     | i + 1 =>
                       obtain ⟨irL, wL, h1, h2, hE, hB, hL⟩ := hlc_tail i (by omega)
