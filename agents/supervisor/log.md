@@ -1,3 +1,51 @@
+## Run: 2026-03-28T12:05:01+00:00
+
+### Metrics
+- **Sorry count (grep -c)**: 57 (17 ANF + 20 CC + 19 Wasm + 1 Lower)
+- **Actual sorries**: ~51 (17 ANF + 18 CC + 15 Wasm + 1 Lower)
+- **Delta from last run (11:05)**: Wasm grep +1 (call case consolidated from 2 decomposed sorries to 1 sorry + 2 in comments). Actual: -1 (call consolidation). ANF 0, CC 0.
+- **Net assessment**: -1 actual. Slow progress. Agents active but not landing sorry reductions.
+
+### ANF Analysis (17 sorries) — INFRASTRUCTURE REWRITE NEEDED
+- **7 in normalizeExpr_labeled_step_sim**: ALL need strong induction on e.depth. Theorem is currently flat `cases e`. Restructuring to `induction d` will provide IH needed for recursive cases.
+- **10 in anfConvert_step_star**: Blocked by lack of normalizeExpr inversion lemmas.
+- **Key insight from deep analysis**: `normalizeExpr_compound_not_await` CANNOT be stated as originally proposed. Nested `.await` inside `.return (some (.await arg))` propagates `.await` through normalizeExpr. Need inversion lemma approach instead, OR `normalizeExpr_not_labeled_family` (which IS feasible since .labeled only comes from .labeled constructor).
+- Proof agent hasn't logged since 08:30 (3.5 hours). Redirected to restructure normalizeExpr_labeled_step_sim.
+
+### CC Analysis (18 actual sorries) — STAGING PROOFS READY
+- jsspec wrote objectLit/arrayLit staging proofs with 9 verified helper lemmas
+- setProp/setIndex staging proofs also ready
+- BLOCKED: proof agent owns ClosureConvertCorrect.lean (rw-r-----)
+- Asked proof agent to integrate setProp/setIndex as P1
+
+### Wasm Analysis (15 actual sorries) — return-some GUARANTEED CLOSABLE
+- **call: CONSOLIDATED** from 2 actual sorries to 1 (L10776). Decomposed version moved to comments. Net: -1 actual.
+- **return-some (L6801): ALL 9 per-trivial lemmas are FULLY PROVED** (verified, zero sorry in any of them)
+- L6801 just needs `cases triv` dispatch to these lemmas
+- Gave wasmspec EXACT code for the edit
+- **P0 this run: -1 sorry from return-some dispatch** (HIGH CONFIDENCE)
+
+### Agent Prompt Rewrites
+1. **wasmspec**: EXACT dispatch code for return-some. Rename `| some t =>` to `| some triv =>` to avoid shadowing TraceEvent `t`. Cases on all 9 trivial constructors with exact lemma applications.
+2. **proof**: MAJOR REWRITE. Abandoned compound_not_await approach (proved infeasible). P0: restructure normalizeExpr_labeled_step_sim with strong induction on depth. P1: integrate CC setProp/setIndex staging proofs.
+3. **jsspec**: Redirected P0 to write `normalizeExpr_not_labeled_family` (feasible analog of _not_trivial for .labeled). This unblocks the 7 helper sorries. P1: polish objectLit/arrayLit staging. P2: check forIn/forOf exfalso.
+
+### Actions Taken
+1. Counted sorries: 57 grep / 51 actual (ANF 17, CC 18, Wasm 15, Lower 1)
+2. Verified all 9 step_sim_return_* lemmas are sorry-free
+3. Deep analysis of normalizeExpr_compound_not_await feasibility — proved INFEASIBLE
+4. Deep analysis of normalizeExpr_not_labeled_family feasibility — proved FEASIBLE
+5. Read normalizeExpr_not_trivial_family (L130-417) in full detail for template
+6. Read normalizeExpr_labeled_step_sim (L1456-1680) in full detail
+7. All 3 prompts rewritten with corrected strategy
+8. Logged time estimate (57 grep, 163 hours)
+
+### OUTLOOK: Target next run ≤50 actual (Wasm return-some -1, possible ANF structural progress)
+### RISK: Proof agent has been silent 3.5 hours. If normalizeExpr_labeled_step_sim restructuring fails to build, no ANF progress this run.
+### ESCALATION: normalizeExpr_compound_not_await approach is DEAD. Replaced with normalizeExpr_not_labeled_family approach. 4 ANF semantic mismatches (throw/return/break/continue) remain DESIGN BUGS requiring Semantics.lean fixes.
+
+---
+
 ## Run: 2026-03-28T11:05:01+00:00
 
 ### Metrics
@@ -5616,3 +5664,4 @@ ANF sorry count effectively unchanged (structural improvements but no net closur
 
 ## Run: 2026-03-28T12:05:01+00:00
 
+2026-03-28T12:16:56+00:00 DONE

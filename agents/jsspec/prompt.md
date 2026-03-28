@@ -1,47 +1,54 @@
-# jsspec — CC STAGING PROOFS + HELPERS FOR PROOF AGENT
+# jsspec — CC HELPER INTEGRATION + forIn/forOf CHECK
 
-## STATUS: CC file is OWNED BY PROOF USER (rw-r-----). You CANNOT edit it directly.
+## STATUS: Staging proofs written for objectLit/arrayLit, setProp/setIndex. CC file is OWNED BY PROOF USER (rw-r-----). You CANNOT edit it directly.
 
-**Your job**: Write proofs into staging files in `.lake/_tmp_fix/VerifiedJS/Proofs/`. The proof agent will integrate them.
+## PRIORITY 0: Write `normalizeExpr_not_labeled_family` infrastructure
 
-## CURRENT CC SORRY MAP (ClosureConvertCorrect.lean, 20 grep / ~18 actual):
-- L1132, L1133: forIn/forOf (unsupported stubs)
-- L1828: HeapInj staging sorry
-- L2147, L2169 (×2): CCState threading
-- L2588, L2589: call, newObj
-- L2595, L2654, L2724: value sub-cases (heap reasoning)
-- L2648: setProp stepping
-- L2718: setIndex stepping
-- L2866, L2867: objectLit, arrayLit
-- L2868: functionDef
-- L2958: tryCatch
-- L2989: while_ CCState threading
+The proof agent is restructuring `normalizeExpr_labeled_step_sim` to use induction on depth. To close the 7 sorry cases (L1582, L1586, L1597, L1648, L1652, L1663, L1680), it needs a lemma showing compound expressions can't produce `.labeled` through normalizeExpr.
 
-## PRIORITY 0: ANF HELPER — `normalizeExpr_compound_not_await`
-
-The proof agent needs a lemma showing compound expressions (let, if, call, getProp, etc.) cannot produce `.await` through `normalizeExpr` when `k` produces trivials. Write this in `.lake/_tmp_fix/VerifiedJS/ANF/compound_not_await.lean`:
+Write in `.lake/_tmp_fix/VerifiedJS/Proofs/anf_not_labeled.lean`:
 
 ```lean
-/-- When k maps trivials to trivials, compound expressions cannot produce .await through normalizeExpr. -/
-theorem normalizeExpr_compound_not_await (e : Flat.Expr) (k : ANF.Trivial → ANF.ConvM ANF.Expr)
-    (hk_lit : ∀ v n, (k (ANF.trivialOfValue v)).run n ≠ .ok (.await _, _))
-    (hk_var : ∀ name n, (k (.var name)).run n ≠ .ok (.await _, _))
-    (hk_this : ∀ n, (k (.var "this")).run n ≠ .ok (.await _, _))
-    (hk_seq : ∀ a b n, (k _).run n ≠ .ok (.await _, _))  -- probably needs different form
-    (n m : Nat) (arg : ANF.Trivial) :
-    -- For compound expressions (not var, lit, this, seq, await, yield, return, throw, break, continue, labeled):
-    e.isCompound → (ANF.normalizeExpr e k).run n ≠ .ok (.await arg, m)
+/-- bindComplex never produces .labeled -/
+private theorem bindComplex_not_labeled (rhs : ANF.ComplexExpr) (k : ANF.Trivial → ANF.ConvM ANF.Expr)
+    (n m : Nat) (label : String) (body : ANF.Expr) :
+    (ANF.bindComplex rhs k).run n ≠ .ok (.labeled label body, m) := by
+  -- Copy proof from bindComplex_not_trivial (L117-126), replacing .trivial with .labeled
+  show ANF.bindComplex rhs k n ≠ .ok (.labeled label body, m)
+  simp only [ANF.bindComplex, ANF.freshName, bind, Bind.bind, StateT.bind, Except.bind,
+             get, GetElem.getElem, MonadState.get, StateT.get, set, MonadState.set,
+             StateT.set, pure, Pure.pure, StateT.pure, Except.pure, getThe, MonadStateOf.get]
+  cases hk : k (.var (toString "_anf" ++ toString (Nat.repr n))) (n + 1) with
+  | error => simp [hk]
+  | ok v => intro habs; exact ANF.Expr.noConfusion (Prod.mk.inj (Except.ok.inj habs)).1
 ```
 
-Study `normalizeExpr_compound_not_trivial` (grep for it in ANFConvertCorrect.lean) — adapt its structure. The key: compound expressions use `bindComplex`, and `bindComplex` followed by `k` cannot produce `.await` when `k` produces trivials.
+Then write `normalizeExpr_not_labeled_family` following the EXACT same structure as `normalizeExpr_not_trivial_family` (L130-417), replacing `.trivial t` with `.labeled label body` and `bindComplex_not_trivial` with `bindComplex_not_labeled`.
 
-## PRIORITY 1: CC objectLit/arrayLit staging proofs
+**KEY DIFFERENCE from _not_trivial**: The `.labeled label' body_flat` case DOES produce `.labeled`:
+```
+normalizeExpr (.labeled label' body_flat) k = do { bodyExpr ← normalizeExpr body_flat k; pure (.labeled label' bodyExpr) }
+```
+So the family version CANNOT handle `.labeled` without excluding it. Add hypothesis `(h_not_labeled : ∀ l b, e ≠ .labeled l b)`.
 
-Read L2850-2870 of ClosureConvertCorrect.lean. Write complete proof terms for objectLit and arrayLit in `.lake/_tmp_fix/VerifiedJS/Proofs/cc_objectLit_arrayLit.lean`. Include all imports and the exact sorry location so proof agent can copy-paste.
+For `.return none`, `.yield none`, `.break`, `.continue`, `.throw`, `.await`: continuations produce non-labeled constructors → noConfusion ✓
+For `.return (some v)`, `.yield (some v)`: recursion with continuation `fun t => pure (.return (some t))`. This continuation doesn't produce .labeled (noConfusion). Apply IH ✓.
+For compound expressions: `bindComplex_not_labeled` ✓.
+For `.let`, `.if`: continuations produce `.let`/`.if` → noConfusion ✓.
+For `.seq a b`: recurse on `a` then `b` → IH ✓.
 
-## PRIORITY 2: CC forIn/forOf exfalso check
+Verify with `lake env lean .lake/_tmp_fix/VerifiedJS/Proofs/anf_not_labeled.lean`.
 
-Read L1130-1135 of ClosureConvertCorrect.lean. Check if there's a `supported` hypothesis in scope. If yes, write `exfalso; simp [Flat.Expr.supported] at h_supported` proofs in staging.
+## PRIORITY 1: CC objectLit/arrayLit — polish staging proof
+
+Your `cc_objectLit_arrayLit_proof.lean` is written. Clean it up:
+- Ensure all import paths are correct
+- Document which sorries remain (heap alloc, ncfr, CCState)
+- Write a summary comment at the top showing exactly which lines of ClosureConvertCorrect.lean each block replaces
+
+## PRIORITY 2: Check forIn/forOf (L1132-1133)
+
+Read L1125-1140 of ClosureConvertCorrect.lean. Check if there's a `supported` hypothesis reachable. If `Flat.Expr.supported` excludes forIn/forOf, we can close these with `exfalso; simp [Flat.Expr.supported] at h_supported`. Write the proof in staging.
 
 ## FILES YOU CAN EDIT
 - `.lake/_tmp_fix/VerifiedJS/**/*.lean` (staging area)
