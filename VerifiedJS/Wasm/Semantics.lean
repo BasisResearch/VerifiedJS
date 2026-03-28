@@ -10056,7 +10056,7 @@ theorem step_sim (irmod : IRModule) (wmod : Module) :
                   all_goals (simp only [traceToWasm]; refine ⟨_, ?_, ?_⟩)
                   all_goals first
                     | (unfold step? withI32Bin withI32Rel pop2?; simp [hcw, hstk_w, trapState, pushTrace])
-                    | exact { hemit := hrel.hemit, hcode := .nil, hstack := by rw [← hstk]; exact hrel.hstack,
+                    | (exact { hemit := hrel.hemit, hcode := .nil, hstack := by rw [← hstk]; exact hrel.hstack,
                         hframes_len := hrel.hframes_len, hframes_locals := hrel.hframes_locals,
                         hframes_vals := hrel.hframes_vals, hglobals := hrel.hglobals, hmemory := hrel.hmemory, hmemLimits := hrel.hmemLimits, hmemory_aligned := hrel.hmemory_aligned, hmemory_nonempty := hrel.hmemory_nonempty,
                         hlabels := hrel.hlabels, hhalt := hhalt_of_structural (@EmitCodeCorr.nil (s1.labels.map (·.name))) hrel.hlabels
@@ -10064,7 +10064,7 @@ theorem step_sim (irmod : IRModule) (wmod : Module) :
                         hframes_one := hrel.hframes_one
                         hmodule := hrel.hmodule
                         hstore_funcs := hrel.hstore_funcs
-                        hstore_types := hrel.hstore_types })
+                        hstore_types := hrel.hstore_types }))
           | .f64 =>
             rcases hc.binOp_f64_inv with
               ⟨rfl, rest_w, hcw, hrest⟩ | ⟨rfl, rest_w, hcw, hrest⟩ |
@@ -10165,7 +10165,7 @@ theorem step_sim (irmod : IRModule) (wmod : Module) :
                   all_goals (simp only [traceToWasm]; refine ⟨_, ?_, ?_⟩)
                   all_goals first
                     | (unfold step? withF64Bin pop2?; simp [hcw, hstk_w, trapState, pushTrace])
-                    | exact { hemit := hrel.hemit, hcode := .nil, hstack := by rw [← hstk]; exact hrel.hstack,
+                    | (exact { hemit := hrel.hemit, hcode := .nil, hstack := by rw [← hstk]; exact hrel.hstack,
                         hframes_len := hrel.hframes_len, hframes_locals := hrel.hframes_locals,
                         hframes_vals := hrel.hframes_vals, hglobals := hrel.hglobals, hmemory := hrel.hmemory, hmemLimits := hrel.hmemLimits, hmemory_aligned := hrel.hmemory_aligned, hmemory_nonempty := hrel.hmemory_nonempty,
                         hlabels := hrel.hlabels, hhalt := hhalt_of_structural (@EmitCodeCorr.nil (s1.labels.map (·.name))) hrel.hlabels
@@ -10173,7 +10173,7 @@ theorem step_sim (irmod : IRModule) (wmod : Module) :
                         hframes_one := hrel.hframes_one
                         hmodule := hrel.hmodule
                         hstore_funcs := hrel.hstore_funcs
-                        hstore_types := hrel.hstore_types })
+                        hstore_types := hrel.hstore_types }))
           | .i64 | .ptr =>
             -- No EmitCodeCorr constructor for i64/ptr binOps
             exfalso; generalize s2.code = wcode at hc
