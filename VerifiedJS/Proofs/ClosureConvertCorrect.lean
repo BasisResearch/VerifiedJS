@@ -2793,7 +2793,7 @@ private theorem closureConvert_step_simulation
     | none =>
       have hfnv : Flat.exprValue? (Flat.convertExpr obj scope envVar envMap st).fst = none :=
         convertExpr_not_value obj hcev scope envVar envMap st
-      have hsf_eta : sf = { sf with expr := .setIndex (Flat.convertExpr obj scope envVar envMap st).fst
+      have hsf_eta : sf = { sf with expr := Flat.Expr.setIndex (Flat.convertExpr obj scope envVar envMap st).fst
           (Flat.convertExpr idx scope envVar envMap (Flat.convertExpr obj scope envVar envMap st).snd).fst
           (Flat.convertExpr value scope envVar envMap
             (Flat.convertExpr idx scope envVar envMap (Flat.convertExpr obj scope envVar envMap st).snd).snd).fst } := by
