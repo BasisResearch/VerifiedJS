@@ -5914,6 +5914,54 @@ theorem irStep?_eq_f64BinOp_total (s : IRExecState) (op : String) (rest : List I
         trace := s.trace ++ [.silent] }) := by
   unfold irStep?; rw [hcode, hstack]; simp [irPop1?, irPushTrace]
 
+/-! ### IR Step? Trap Lemmas: Unary Operations -/
+
+/-- i32.eqz underflow (empty stack). -/
+private theorem irStep?_eq_i32Eqz_underflow (s : IRExecState) (rest : List IRInstr)
+    (hcode : s.code = IRInstr.unOp .i32 "eqz" :: rest) (hstack : s.stack = []) :
+    irStep? s = some (irTrapState { s with code := rest, stack := [] }
+      "stack underflow in i32.eqz") := by
+  unfold irStep?; rw [hcode, hstack]; simp [irPop1?]; rfl
+
+/-- i32.eqz type mismatch with i64 input. -/
+private theorem irStep?_eq_i32Eqz_type_mismatch_i64 (s : IRExecState) (rest : List IRInstr)
+    (v : UInt64) (stk : List IRValue)
+    (hcode : s.code = IRInstr.unOp .i32 "eqz" :: rest) (hstack : s.stack = .i64 v :: stk) :
+    irStep? s = some (irTrapState { s with code := rest, stack := .i64 v :: stk }
+      "type mismatch in i32.eqz") := by
+  unfold irStep?; rw [hcode, hstack]; simp [irPop1?]; rfl
+
+/-- i32.eqz type mismatch with f64 input. -/
+private theorem irStep?_eq_i32Eqz_type_mismatch_f64 (s : IRExecState) (rest : List IRInstr)
+    (v : Float) (stk : List IRValue)
+    (hcode : s.code = IRInstr.unOp .i32 "eqz" :: rest) (hstack : s.stack = .f64 v :: stk) :
+    irStep? s = some (irTrapState { s with code := rest, stack := .f64 v :: stk }
+      "type mismatch in i32.eqz") := by
+  unfold irStep?; rw [hcode, hstack]; simp [irPop1?]; rfl
+
+/-- i32.wrap_i64 underflow (empty stack). -/
+private theorem irStep?_eq_i32WrapI64_underflow (s : IRExecState) (rest : List IRInstr)
+    (hcode : s.code = IRInstr.unOp .i32 "wrap_i64" :: rest) (hstack : s.stack = []) :
+    irStep? s = some (irTrapState { s with code := rest, stack := [] }
+      "stack underflow in i32.wrap_i64") := by
+  unfold irStep?; rw [hcode, hstack]; simp [irPop1?]; rfl
+
+/-- i32.wrap_i64 type mismatch with i32 input. -/
+private theorem irStep?_eq_i32WrapI64_type_mismatch_i32 (s : IRExecState) (rest : List IRInstr)
+    (v : UInt32) (stk : List IRValue)
+    (hcode : s.code = IRInstr.unOp .i32 "wrap_i64" :: rest) (hstack : s.stack = .i32 v :: stk) :
+    irStep? s = some (irTrapState { s with code := rest, stack := .i32 v :: stk }
+      "type mismatch in i32.wrap_i64") := by
+  unfold irStep?; rw [hcode, hstack]; simp [irPop1?]; rfl
+
+/-- i32.wrap_i64 type mismatch with f64 input. -/
+private theorem irStep?_eq_i32WrapI64_type_mismatch_f64 (s : IRExecState) (rest : List IRInstr)
+    (v : Float) (stk : List IRValue)
+    (hcode : s.code = IRInstr.unOp .i32 "wrap_i64" :: rest) (hstack : s.stack = .f64 v :: stk) :
+    irStep? s = some (irTrapState { s with code := rest, stack := .f64 v :: stk }
+      "type mismatch in i32.wrap_i64") := by
+  unfold irStep?; rw [hcode, hstack]; simp [irPop1?]; rfl
+
 /-! ### IR Step? Equation Lemmas: Comparison Operations -/
 
 /-- f64 comparison ops produce i32 results. REF: Wasm §4.3.3 -/
@@ -10474,7 +10522,6 @@ theorem step_sim (irmod : IRModule) (wmod : Module) :
             exfalso; generalize s2.code = wcode at hc
             cases hc with | general _ _ _ _ hf _ => exact hf.elim
       | .unOp t op =>
-          -- unary operation: IR and Wasm compute the same result
           have hc : EmitCodeCorr _ (IRInstr.unOp t op :: rest) s2.code := hcode_ir ▸ hrel.hcode
           match t with
           | .i32 =>
