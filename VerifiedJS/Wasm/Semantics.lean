@@ -5725,6 +5725,25 @@ theorem irStep?_eq_callIndirect (s : IRExecState) (rest : List IRInstr)
         trace := s.trace ++ [.silent] }) := by
   simp [irStep?, hcode, hstack, irPop1?, hfunc, hpopn, irPushTrace]
 
+/-- ByteArray.toList preserves length (needed because ByteArray.toList.loop is irreducible). -/
+attribute [local semireducible] ByteArray.toList.loop in
+private theorem ByteArray_toList_loop_length (ba : ByteArray) :
+    ∀ (i : Nat) (r : List UInt8), i ≤ ba.size →
+    (ByteArray.toList.loop ba i r).length = r.length + (ba.size - i) := by
+  intro i r hi
+  match h : ba.size - i with
+  | 0 =>
+    have hge : ¬ (i < ba.size) := by omega
+    unfold ByteArray.toList.loop; simp [hge, List.length_reverse]
+  | n + 1 =>
+    have hlt : i < ba.size := by omega
+    unfold ByteArray.toList.loop; simp [hlt]
+    have ih := ByteArray_toList_loop_length ba (i + 1) (ba.get! i :: r) (by omega)
+    rw [ih]; simp [List.length_cons]; omega
+
+theorem ByteArray_toList_length (ba : ByteArray) : ba.toList.length = ba.size := by
+  simp [ByteArray.toList, ByteArray_toList_loop_length ba 0 [] (Nat.zero_le _)]
+
 /-- Exact state after memoryGrow (success): grows memory, pushes old page count.
     REF: Wasm §4.4.7.6 (memory.grow) -/
 theorem irStep?_eq_memoryGrow_ok (s : IRExecState) (rest : List IRInstr)
@@ -11692,12 +11711,10 @@ theorem step_sim (irmod : IRModule) (wmod : Module) :
                       hmemory_aligned := by
                         show 65536 ∣ grownMem.size
                         have hgsz : grownMem.size = s1.memory.size + pages.toNat * 65536 := by
-                          simp only [grownMem, ByteArray.size, Array.size_append, Array.size_replicate]
-                          have h1 := @List.size_toArray _ s1.memory.toList
-                          -- ByteArray.toList is s1.memory.data.toList
-                          conv at h1 => rhs; rw [show s1.memory.toList = s1.memory.data.toList from rfl]
-                          rw [Array.size_eq_length_toList] at h1
-                          omega
+                          show (ByteArray.mk (s1.memory.toList.toArray ++ Array.replicate (pages.toNat * 65536) 0)).size
+                            = s1.memory.size + pages.toNat * 65536
+                          simp only [ByteArray.size, Array.size_append, Array.size_replicate, List.size_toArray,
+                            ByteArray_toList_length]
                         rw [hgsz]
                         exact Nat.dvd_add hrel.hmemory_aligned ⟨pages.toNat, Nat.mul_comm _ _⟩
                       hmemory_nonempty := by
