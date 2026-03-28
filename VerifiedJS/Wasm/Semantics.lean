@@ -9947,10 +9947,21 @@ theorem step_sim (irmod : IRModule) (wmod : Module) :
               -- Case split on IR stack to determine trap vs success.
               match hstk : s1.stack with
               | [] =>
-                -- Stack underflow — sorry: withI32Bin/withI32Rel/withF64Bin trap + record construction
+                -- Stack underflow: empty IR stack → empty Wasm stack → both trap
                 simp [irStep?, hcode_ir, hstk, irPop2?, irTrapState, irPushTrace] at hstep
                 obtain ⟨rfl, rfl⟩ := hstep
-                sorry
+                have hlen := hrel.hstack.1; rw [hstk] at hlen; simp at hlen
+                have hs2 : s2.stack = [] := by cases s2.stack with | nil => rfl | cons => simp_all
+                simp only [traceToWasm]; exact ⟨_, by simp [step?, hcw, hs2, withI32Bin, withI32Rel, pop2?, trapState, pushTrace],
+                  { hemit := hrel.hemit, hcode := .nil, hstack := by simp [hs2],
+                    hframes_len := hrel.hframes_len, hframes_locals := hrel.hframes_locals,
+                    hframes_vals := hrel.hframes_vals, hglobals := hrel.hglobals, hmemory := hrel.hmemory, hmemLimits := hrel.hmemLimits, hmemory_aligned := hrel.hmemory_aligned, hmemory_nonempty := hrel.hmemory_nonempty,
+                    hlabels := hrel.hlabels, hhalt := hhalt_of_structural (@EmitCodeCorr.nil (s1.labels.map (·.name))) hrel.hlabels,
+                    hlabel_content := hrel.hlabel_content,
+                    hframes_one := hrel.hframes_one,
+                    hmodule := hrel.hmodule,
+                    hstore_funcs := hrel.hstore_funcs,
+                    hstore_types := hrel.hstore_types }⟩
               | [v1] =>
                 -- Only 1 element — sorry: trap + record construction
                 sorry
