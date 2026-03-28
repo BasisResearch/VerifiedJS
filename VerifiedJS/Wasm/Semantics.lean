@@ -4883,7 +4883,7 @@ theorem irStep?_ir_store (s : IRExecState) (rest : List IRInstr) (t : IRType)
     (hstack : s.stack = .i32 val :: .i32 addr :: stk)
     (hbounds : addr.toNat + offset + 4 ≤ s.memory.size) :
     ∃ te s', irStep? s = some (te, s') := by
-  cases t <;> simp [irStep?, hcode, hstack, irPop2?, irPushTrace, hbounds, writeLE?] <;>
+  cases t <;> simp [irStep?, hcode, hstack, irPop2?, irPushTrace, hbounds, writeLE?, writeLE?.writeLE?_aux] <;>
     (first | exact ⟨_, _, rfl⟩ | split <;> exact ⟨_, _, rfl⟩)
 
 /-- irStep? for store8 with i32 value and i32 address on stack and in-bounds succeeds.
@@ -4895,7 +4895,7 @@ theorem irStep?_ir_store8 (s : IRExecState) (rest : List IRInstr)
     (hstack : s.stack = .i32 val :: .i32 addr :: stk)
     (hbounds : addr.toNat + offset < s.memory.size) :
     ∃ te s', irStep? s = some (te, s') := by
-  simp [irStep?, hcode, hstack, irPop2?, irPushTrace, hbounds, writeLE?]
+  simp [irStep?, hcode, hstack, irPop2?, irPushTrace, hbounds, writeLE?, writeLE?.writeLE?_aux]
 
 /-- irStep? for callIndirect with i32 func index on stack and valid function succeeds.
     REF: Wasm §4.4.8.7 (call_indirect) / WasmCert-Coq r_call_indirect_success -/
