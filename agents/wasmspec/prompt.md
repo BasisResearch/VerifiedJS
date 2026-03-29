@@ -1,39 +1,41 @@
-# wasmspec — RESTART: SMALL WINS FIRST
+# wasmspec — YOU HAVE BEEN OOM FOR 28+ HOURS. RADICAL CHANGE.
 
-## STATUS: 63 grep sorries (18 Wasm). Build passes. You've been running 4+ hours with no output — likely OOM.
+## STATUS: 18 Wasm sorries. NO PROGRESS in 28+ hours. Multiple OOM kills (code 137, 143).
 
-**Your previous runs keep getting killed (code 137/143). You MUST work in smaller increments.**
+## THE PROBLEM: You keep attempting large proof sessions and getting killed.
 
-## PRIORITY 0: Fix `hlabels_empty` invariant (UNBLOCKS 3 sorries)
+## NEW MANDATE: ONE SORRY AT A TIME. BUILD AFTER EVERY CHANGE.
 
-This is your #1 task. Do NOT attempt anything else until this is done or documented as impossible.
+## PRIORITY 0: Identify the SINGLE easiest Wasm sorry
 
-Current problem: `LowerSimRel` has `hlabels_empty : s2.labels = []` but break/continue/labeled
-REQUIRE non-empty labels.
+Read VerifiedJS/Wasm/Semantics.lean. Find the sorry that needs the FEWEST new lines to close.
+Candidates (from grep):
+- L6798, L6806, L6810, L6813, L6816, L6819 (step_sim cases)
+- L6864, L6867, L6870, L6873, L6876, L6879 (more step_sim cases)
+- L10857, L10912, L10916, L10919 (lower cases)
 
-**Step 1**: Find the `LowerSimRel` definition. `grep -n "LowerSimRel" VerifiedJS/Wasm/Semantics.lean | head -10`
+**Step 1**: Read 10 lines around EACH sorry. Score by difficulty (1=trivial, 5=hard).
+**Step 2**: Pick the easiest one (score 1 or 2).
+**Step 3**: Write the proof. MAX 20 lines.
+**Step 4**: Build. If it passes, log and STOP.
+**Step 5**: If it fails, sorry it back and try the NEXT easiest.
 
-**Step 2**: Analyze options:
-- A) Change to `hlabels_match : s2.labels.length = labelDepth expr` — tracks nesting
-- B) Remove `hlabels_empty` entirely — prove label correctness case-by-case
-- C) Keep `hlabels_empty` for top-level, add `LowerSimRel_labeled` variant
+## CRITICAL CONSTRAINTS
+- Edit < 30 lines per change
+- `lake build VerifiedJS.Wasm.Semantics` after EVERY edit
+- Log after EVERY build (pass or fail)
+- If any single task takes > 30 minutes, STOP and log what you learned
+- Do NOT attempt hlabels_empty redesign (too large, will OOM)
+- Do NOT attempt 1:N stepping framework (too large, will OOM)
 
-**Step 3**: Pick simplest. Implement. Verify `lake env lean VerifiedJS/Wasm/Semantics.lean` passes.
+## ALTERNATIVE: If ALL Wasm sorries are blocked
 
-**Step 4**: If the change breaks other things, sorry them and document. Better to have 20 sorries
-with a correct invariant than 18 with a wrong one.
+If after reading all 18, you determine none can be closed in < 30 lines, then:
+1. Document WHY each is blocked (one line per sorry)
+2. Identify the SMALLEST infrastructure change that unblocks the most sorries
+3. Implement JUST that change (< 50 lines)
+4. Build and log
 
-## PRIORITY 1: Close `return none` step_sim fully
-
-`step_sim_return_none` should be the easiest case (1:1 stepping, already partially done).
-If there's any remaining sorry in that case, close it.
-
-## CRITICAL: WORK IN SMALL INCREMENTS
-- Edit < 50 lines at a time
-- Build-check after EVERY edit
-- Log progress after EVERY successful build
-- Do NOT attempt multi-hour proof sessions — you will OOM
-
-## FILES: `VerifiedJS/Wasm/Semantics.lean` (rw), `VerifiedJS/ANF/Semantics.lean` (rw)
+## FILES: `VerifiedJS/Wasm/Semantics.lean` (rw)
 ## DO NOT EDIT: `VerifiedJS/Proofs/*.lean`
 ## LOG: agents/wasmspec/log.md
