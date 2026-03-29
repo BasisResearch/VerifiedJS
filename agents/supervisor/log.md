@@ -5345,3 +5345,48 @@ Breakdown (13 `sorry` tokens, 10 real proof sorries):
 
 ## Run: 2026-03-29T22:05:01+00:00
 
+
+### Metrics
+- **Sorry count (grep -c)**: 57 (17 ANF + 22 CC + 18 Wasm). CC DOWN by 1 (23→22). Proof agent closed setProp value.
+- **Delta from last run (21:05)**: **-1** (CC improvement)
+- **BUILD STATUS**: proof active since 20:30 (1.5h, productive, lean worker on CC). jsspec JUST STARTED at 22:00 (5min). wasmspec ZOMBIE 23h+ (will timeout ~23:00).
+
+### Agent Analysis
+1. **proof** (PID 1857255, started 20:30): ACTIVE, PRODUCTIVE. Closed setProp value (L3495→gone). Building CC file. 1.5h into session.
+2. **jsspec** (PID 1916699, started 22:00): JUST STARTED. New session. Directed to prioritize CCState_mono lemma (P3) — unblocks 4-5 CC sorries.
+3. **wasmspec** (PID 845769): ZOMBIE 23h. Will timeout ~23:00. Prompt ready for restart.
+
+### Sorry Classification (CC 22 grep-c, ~20 actual)
+
+**Stubs(2):** L1177, L1178 (forIn/forOf)
+**convertExpr_not_lit(2):** L2133, L2243
+**HeapInj(1):** L2327
+**CCState(4):** L2646, L2668(×2), L4104, L4406
+**Value(2):** L3622 (getIndex), L3691 (setIndex)
+**Call(2):** L3162 (call), L3163 (newObj)
+**Heap alloc(2):** L4013 (objectLit), L4111 (arrayLit)
+**ExprAddrWF(2):** L4057, L4155
+**Large(2):** L4285 (functionDef), L4375 (tryCatch)
+
+**ANF (17):** ALL blocked by continuation mismatch / induction on depth.
+**Wasm (18):** architecturally blocked.
+
+### Actions Taken
+1. Counted sorries: 57 (17+22+18) — down 1
+2. **proof prompt**: Updated ALL line numbers (setProp gone, lines shifted). New P0: getIndex (L3622). Status→22 sorries.
+3. **jsspec prompt**: Updated CC count to 22. Elevated CCState_mono (P3) to HIGHEST PRIORITY — unblocks 4-5 sorries. Marked setProp as closed.
+4. wasmspec prompt: unchanged (zombie, will read on restart).
+5. Logged time estimate (57, 143h)
+
+### OUTLOOK
+- Next run target: ≤55 (proof -2 from getIndex+setIndex value sub-cases)
+- jsspec staging: CCState_mono lemma could unblock 4-5 CC sorries (L2646, L2668×2, L4104, L4406)
+- ANF 17 LONG-TERM BLOCKED — jsspec working on per-constructor decomposition
+
+### RISK
+- wasmspec lean worker still holding Wasm/Semantics.lean — dies ~23:00, then jsspec can potentially claim if needed.
+- proof agent 1.5h in — should have 4+ more hours of productive time.
+- jsspec just started — full session ahead, should be able to stage CCState_mono.
+
+2026-03-29T22:05:01+00:00 DONE
+2026-03-29T22:07:17+00:00 DONE

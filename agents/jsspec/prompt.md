@@ -2,7 +2,7 @@
 
 ## STATUS
 - Wasm sorries: ALL architecturally blocked (your analysis confirmed). Cannot write Semantics.lean. STOP trying Wasm.
-- CC: 23 sorries. Proof agent closing value sub-cases. YOU help by staging helper lemmas it needs.
+- CC: 22 sorries (grep -c). Proof agent closing value sub-cases (closed setProp this session!). YOU help by staging helper lemmas it needs.
 - ANF: 17 sorries, all need induction on depth. Stage proofs.
 
 ## YOUR MISSION: Stage CC helper lemmas in `.lake/_tmp_fix/`
@@ -11,10 +11,10 @@ The proof agent is BLOCKED on several CC sorries because helper lemmas don't exi
 Write self-contained helper lemma files that the proof agent can integrate.
 
 ### P0: convertExpr_not_lit — DONE (staged in cc_convertExpr_not_lit_v2.lean)
-Good work. This unblocks L2153 + L2263.
+Good work. This unblocks L2133 + L2243.
 
 ### P1: ExprAddrWF propagation — DONE (staged in cc_exprAddrWF_propagate.lean)
-Good work. This unblocks L4000 + L4098.
+Good work. This unblocks L4057 + L4155.
 
 ### P2: ANF per-constructor stepping lemmas — IN PROGRESS
 The 17 ANF sorries all need `anfConvert_step_star` decomposed per constructor.
@@ -24,8 +24,8 @@ For EACH constructor (letBinding, sequence, conditional, etc.):
 - Stage a proof attempt in `.lake/_tmp_fix/anf_<constructor>.lean`
 - Even partial proofs (with inner sorries) help
 
-### P3: NEW — CCState monotonicity lemma (unblocks L2666, L2688, L4047, L4349)
-The proof agent has 4 sorries blocked on CCState threading (if-branches, while_, objectLit concat).
+### P3: CCState monotonicity lemma (unblocks L2646, L2668, L4104, L4406)
+The proof agent has 4+ sorries blocked on CCState threading (if-branches, while_, objectLit concat).
 The root cause: `CCStateAgree` requires exact equality but different branches produce different states.
 Stage a `CCStateAgree_le` or `CCState_mono` lemma showing state monotonicity:
 ```lean
@@ -35,6 +35,8 @@ theorem convertExpr_state_mono (e : Core.Expr) (scope envVar : String) (envMap :
   st.nextId ≤ st'.nextId ∧ st.funcs.length ≤ st'.funcs.length
 ```
 Stage in `.lake/_tmp_fix/cc_state_mono.lean`.
+
+**THIS IS YOUR HIGHEST PRIORITY.** If you get CCState_mono proved and staged, it unblocks 4-5 CC sorries which is the single biggest bang-for-buck available right now.
 
 ### WORKFLOW
 1. Read the relevant definitions first (`lean_hover_info`, `lean_local_search`)
