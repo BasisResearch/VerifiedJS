@@ -3628,3 +3628,60 @@ After the first Flat step, `sf'.expr = .getEnv (.lit envObj) idx`, but `convertE
 
 ### Starting: ANF let/seq/if cases (P0-P2)
 - Reading current state of ANF sorries
+
+### Infrastructure added: 4 evaluation-context lifting lemmas
+Added to ANFConvertCorrect.lean (after existing step? helpers):
+
+1. **`step?_return_some_ctx`** — If `exprValue? e = none` and `step? {s with expr := e} = some (t, se)`, then `step? {s with expr := .return (some e)} = some (t, s')` with `s'.expr = .return (some se.expr)`, env/heap from se, funcs/callStack from s.
+
+2. **`step?_yield_some_ctx`** — Same pattern for `.yield (some e) delegate` context.
+
+3. **`step?_await_ctx`** — Same pattern for `.await e` context.
+
+4. **`step?_throw_ctx`** — Same pattern for `.throw arg` context.
+
+All proved by `simp only [Flat.step?, hnotval, hstep]; exact ⟨_, rfl, ...⟩`.
+
+### Deep analysis: ALL remaining ANF sorries blocked by same fundamental issue
+
+**The normalizeExpr inversion + dead code problem:**
+
+All 17 ANF sorries (L1766-L2002) are blocked by the same pattern:
+
+1. The simulation relation says `normalizeExpr sf.expr k = sa.expr` for some trivial-preserving `k`
+2. But we don't know what `sf.expr` IS — only what it normalizes TO
+3. To construct Flat steps, we need to know `sf.expr`'s structure (what Flat.step? does)
+4. An inversion lemma ("if normalizeExpr produces X, then sf.expr has form Y") is needed
+
+**Additional blocker for nested cases (L1766-L1864):**
+
+The `normalizeExpr_labeled_step_sim` IH requires trivial-preserving `k`, but recursive cases like `.return (some val)` use `k_ret = fun t => pure (.return (some t))` which is NOT trivial-preserving. This continuation mismatch means the IH can't be applied.
+
+**Fix needed:** Generalize `normalizeExpr_labeled_step_sim` to work with continuations that are "constructor-preserving" (wrapping output in `.return`, `.yield`, etc.) rather than only trivial-preserving. This requires restructuring the theorem and its proof.
+
+**Dead code problem for P0-P2 (let/seq/if at L1944-L1948):**
+
+When normalizeExpr short-circuits (e.g., `.break` inside `.seq`), the ANF eliminates dead code but the Flat machine still evaluates it. The step simulation's observable trace requirement means Flat's evaluation of dead code must produce no observable events — which isn't guaranteed for arbitrary expressions.
+
+Example: `normalizeExpr (.seq (.break label) b) k = pure (.break label)` (b is dead code). ANF steps to `.trivial .litUndefined` in one step. But Flat evaluates both the `.break` and `b`, potentially producing observable events from `b`.
+
+This suggests the step simulation theorem may need a different formulation for expressions containing control flow short-circuits.
+
+### CC sorries analysis
+
+- **L3362, L3450 (Flat sub-step extraction):** Blocked by L1870/L1980 (`convertExprList_firstNonValueExpr_some` / `convertPropList_firstNonValueProp_some`), which are blocked by `convertExpr_not_lit` being FALSE for `forIn`/`forOf` stubs (these convert to `.lit .undefined`).
+
+- **L2383, L2405 (CCState threading for if-branches):** The provided witnesses are structurally incorrect — `st_a' = (convertExpr then_ ... st).snd` but `st' = (convertExpr else_ ... (convertExpr then_ ... st).snd).snd`. These differ by the else_ conversion. Fix needs `convertExpr_state_determined` with proper CCState arithmetic.
+
+- **L2064 (captured var):** Needs 1:N stepping (2 Flat steps for 1 Core step). Fundamental SimRel limitation.
+
+### Build: PASSES ✓
+- ANF: 17 sorries (unchanged)  
+- CC: 28 sorries (unchanged)
+
+### Priority recommendation for next session
+1. **Generalize `normalizeExpr_labeled_step_sim`** to accept non-trivial-preserving continuations that are "constructor-wrapping" (the key infrastructure enabler)
+2. **Write normalizeExpr inversion lemmas** by depth induction (if normalizeExpr produces `.X`, then sf.expr has `.X` in head position)
+3. **Fix CCState threading witnesses** in the if-branch cases (L2383, L2405)
+
+2026-03-29T03:30:01+00:00 DONE
