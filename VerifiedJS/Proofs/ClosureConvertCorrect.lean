@@ -1801,17 +1801,6 @@ private theorem convertValue_not_string (v : Core.Value)
     (h : ∀ s, v ≠ .string s) : ∀ s, Flat.convertValue v ≠ .string s := by
   intro s; cases v <;> simp [Flat.convertValue] at * <;> exact h s rfl
 
-private theorem Flat_step?_arrayLit_elem_step (s : Flat.State) (elems : List Flat.Expr)
-    (done : List Flat.Expr) (target : Flat.Expr) (remaining : List Flat.Expr)
-    (hvals : Flat.valuesFromExprList? elems = none)
-    (hfnv : Flat.firstNonValueExpr elems = some (done, target, remaining))
-    (t : Core.TraceEvent) (sa : Flat.State)
-    (hss : Flat.step? { s with expr := target } = some (t, sa)) :
-    Flat.step? { s with expr := .arrayLit elems } =
-      some (t, { expr := .arrayLit (done ++ [sa.expr] ++ remaining), env := sa.env, heap := sa.heap,
-                 trace := s.trace ++ [t], funcs := s.funcs, callStack := s.callStack }) := by
-  sorry -- step? on arrayLit with firstNonValueExpr stepping
-
 /-! ## arrayLit helper lemmas -/
 
 private theorem firstNonValueExpr_decompose {l : List Core.Expr} {done target rest}
@@ -1887,15 +1876,16 @@ private theorem valuesFromExprList_none_of_firstNonValueExpr
   induction elems generalizing done target rest with
   | nil => simp [Flat.firstNonValueExpr] at h
   | cons e es ih =>
-    match he : e with
-    | .lit v =>
-      simp only [he, Flat.firstNonValueExpr] at h
+    cases e with
+    | lit v =>
+      unfold Flat.firstNonValueExpr at h
+      simp only [] at h
       match hrest : Flat.firstNonValueExpr es with
       | some (d, t, r) =>
-        have htail : Flat.valuesFromExprList? es = none := ih hrest
+        have htail := ih hrest
         simp [Flat.valuesFromExprList?, Flat.exprValue?, htail]
       | none => rw [hrest] at h; simp at h
-    | _ => simp only [Flat.valuesFromExprList?, Flat.exprValue?]
+    | _ => simp [Flat.valuesFromExprList?, Flat.exprValue?]
 
 private theorem convertExprList_append (a b : List Core.Expr)
     (scope : List String) (envVar : String) (envMap : Flat.EnvMapping) (st : Flat.CCState) :
@@ -3266,8 +3256,6 @@ private theorem closureConvert_step_simulation
       have hsf_eta : sf = { sf with expr := .arrayLit (Flat.convertExprList elems scope envVar envMap st).fst } := by
         cases sf; simp_all
       rw [hsf_eta] at hstep
-      have hvals : Flat.valuesFromExprList? (Flat.convertExprList elems scope envVar envMap st).fst = none :=
-        valuesFromExprList_none_of_firstNonValueExpr hffnv
       obtain ⟨sa, hsubstep, hsf'_eq⟩ : ∃ sa,
           Flat.step? { sf with expr := (Flat.convertExpr target_c scope envVar envMap
             (Flat.convertExprList done_c scope envVar envMap st).snd).fst } = some (ev, sa) ∧
@@ -3278,17 +3266,7 @@ private theorem closureConvert_step_simulation
                         (Flat.convertExprList done_c scope envVar envMap st).snd).snd).fst),
                   env := sa.env, heap := sa.heap,
                   trace := sf.trace ++ [ev], funcs := sf.funcs, callStack := sf.callStack } := by
-        match hm : Flat.step? { sf with expr := (Flat.convertExpr target_c scope envVar envMap
-            (Flat.convertExprList done_c scope envVar envMap st).snd).fst } with
-        | some (t, sa) =>
-          have heq := Flat_step?_arrayLit_elem_step sf _ _ _ _ hvals hffnv t sa hm
-          rw [heq] at hstep; simp at hstep
-          obtain ⟨rfl, hsf'eq⟩ := hstep
-          exact ⟨sa, rfl, hsf'eq.symm⟩
-        | none =>
-          have heq : Flat.step? { sf with expr := .arrayLit (Flat.convertExprList elems scope envVar envMap st).fst } = none := by
-            simp only [Flat.step?, hvals, hffnv, hm]
-          rw [heq] at hstep; exact absurd hstep (by simp)
+        sorry -- Flat sub-step extraction: unfold step? on arrayLit with valuesFromExprList?=none, firstNonValueExpr=some
       subst hsf'_eq
       have hdepth : target_c.depth < n := by
         simp [Core.Expr.depth] at hd
