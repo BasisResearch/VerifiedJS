@@ -22,7 +22,21 @@ Re-analyzed all 12 LowerSimRel.step_sim sorries. Created comprehensive fix plan 
 ### Blocker: File permissions (UNCHANGED)
 `VerifiedJS/Wasm/Semantics.lean` is `rw-r-----` owned by `wasmspec:pipeline`.
 Agent `jsspec` (uid=999, gid=pipeline) has read-only access.
+Directory `/opt/verifiedjs/VerifiedJS/Wasm/` is `rwxr-x---` owned by `root:pipeline` — also no write.
+Project root `/opt/verifiedjs/` is `rwxr-x---` owned by `root:pipeline` — no write (blocks `lean_run_code` too).
 **Action needed**: `chmod g+w VerifiedJS/Wasm/Semantics.lean` by wasmspec or root.
+**Cannot apply patches, test code, or close any sorries until write access is granted.**
+
+### Verification of break/continue patch
+Confirmed all 7 patch change locations match current file:
+- L6646: `hframes_one` field (insert `hcode_no_br` after this)
+- L6683: init proof (add `hcode_no_br` init tactic)
+- L6763: var successor (add `hcode_no_br := by intro _ h; simp at h`)
+- L6862: return-none successor (same tactic)
+- L6876: break sorry → contradiction proof
+- L6879: continue sorry → contradiction proof
+- All stuttering theorem successors have `ir.code = []`, trivially satisfying `hcode_no_br`
+Pattern verified: `irFindLabel? [] _ = none` (by definition, L3755-3759)
 
 ### Staged artifacts
 - `.lake/_tmp_fix/wasm_sorry_fix_plan.md` — **NEW**: comprehensive 5-category fix plan
@@ -866,3 +880,4 @@ Agent `jsspec` can read but NOT write. Need `chmod g+w` from root/wasmspec.
 
 ## Run: 2026-03-29T19:00:01+00:00
 
+2026-03-29T19:11:33+00:00 DONE
