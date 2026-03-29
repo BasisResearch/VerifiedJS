@@ -1747,6 +1747,58 @@ private theorem Flat_step?_binary_values (s : Flat.State) (op : Core.BinOp) (lv 
                        trace := s.trace ++ [.silent], funcs := s.funcs, callStack := s.callStack }) := by
   simp only [Flat.step?, Flat.exprValue?]; rfl
 
+private theorem Flat_step?_objectLit_step (s : Flat.State)
+    (props : List (Flat.PropName × Flat.Expr))
+    (done : List (Flat.PropName × Flat.Expr)) (propName : Flat.PropName)
+    (target : Flat.Expr) (rest : List (Flat.PropName × Flat.Expr))
+    (hvals : Flat.valuesFromExprList? (props.map Prod.snd) = none)
+    (hfnvp : Flat.firstNonValueProp props = some (done, propName, target, rest))
+    (t : Core.TraceEvent) (se : Flat.State)
+    (hss : Flat.step? { s with expr := target } = some (t, se)) :
+    Flat.step? { s with expr := .objectLit props } =
+      some (t, { expr := .objectLit (done ++ [(propName, se.expr)] ++ rest),
+                 env := se.env, heap := se.heap,
+                 trace := s.trace ++ [t], funcs := s.funcs, callStack := s.callStack }) := by
+  simp only [Flat.step?, hvals, hfnvp, hss, Flat.pushTrace]; rfl
+
+private theorem Core_step?_objectLit_step (s : Core.State)
+    (props : List (Core.PropName × Core.Expr))
+    (done : List (Core.PropName × Core.Expr)) (propName : Core.PropName)
+    (target : Core.Expr) (rest : List (Core.PropName × Core.Expr))
+    (hfnvp : Core.firstNonValueProp props = some (done, propName, target, rest))
+    (t : Core.TraceEvent) (se : Core.State)
+    (hss : Core.step? { s with expr := target } = some (t, se)) :
+    Core.step? { s with expr := .objectLit props } =
+      some (t, { expr := .objectLit (done ++ [(propName, se.expr)] ++ rest),
+                 env := se.env, heap := se.heap,
+                 trace := s.trace ++ [t], funcs := se.funcs, callStack := se.callStack }) := by
+  simp [Core.step?, hfnvp, hss, Core.pushTrace]
+
+private theorem Flat_step?_arrayLit_step (s : Flat.State)
+    (elems : List Flat.Expr)
+    (done : List Flat.Expr) (target : Flat.Expr) (rest : List Flat.Expr)
+    (hvals : Flat.valuesFromExprList? elems = none)
+    (hfnve : Flat.firstNonValueExpr elems = some (done, target, rest))
+    (t : Core.TraceEvent) (se : Flat.State)
+    (hss : Flat.step? { s with expr := target } = some (t, se)) :
+    Flat.step? { s with expr := .arrayLit elems } =
+      some (t, { expr := .arrayLit (done ++ [se.expr] ++ rest),
+                 env := se.env, heap := se.heap,
+                 trace := s.trace ++ [t], funcs := s.funcs, callStack := s.callStack }) := by
+  simp only [Flat.step?, hvals, hfnve, hss, Flat.pushTrace]; rfl
+
+private theorem Core_step?_arrayLit_step (s : Core.State)
+    (elems : List Core.Expr)
+    (done : List Core.Expr) (target : Core.Expr) (rest : List Core.Expr)
+    (hfnve : Core.firstNonValueExpr elems = some (done, target, rest))
+    (t : Core.TraceEvent) (se : Core.State)
+    (hss : Core.step? { s with expr := target } = some (t, se)) :
+    Core.step? { s with expr := .arrayLit elems } =
+      some (t, { expr := .arrayLit (done ++ [se.expr] ++ rest),
+                 env := se.env, heap := se.heap,
+                 trace := s.trace ++ [t], funcs := se.funcs, callStack := se.callStack }) := by
+  simp [Core.step?, hfnve, hss, Core.pushTrace]
+
 private theorem Flat_step?_while (s : Flat.State) (cond body : Flat.Expr) :
     Flat.step? { s with expr := .while_ cond body } =
       some (.silent, { expr := .«if» cond (.seq body (.while_ cond body)) (.lit .undefined),
