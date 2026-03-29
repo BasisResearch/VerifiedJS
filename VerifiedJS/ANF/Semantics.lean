@@ -411,8 +411,9 @@ def step? (s : State) : Option (Core.TraceEvent × State) :=
   | .«return» arg =>
       match arg with
       | none =>
-          let s' := pushTrace { s with expr := .trivial .litUndefined } (.error "return:undefined")
-          some (.error "return:undefined", s')
+          let msg := "return:" ++ "undefined"
+          let s' := pushTrace { s with expr := .trivial .litUndefined } (.error msg)
+          some (.error msg, s')
       | some t =>
           match evalTrivial s.env t with
           | .ok v =>
@@ -607,7 +608,8 @@ theorem step?_throw_error (s : State) (arg : Trivial) (msg : String)
 @[simp]
 theorem step?_return_none (s : State) :
     step? { s with expr := .return none } =
-      some (.error "return:undefined", pushTrace { s with expr := .trivial .litUndefined } (.error "return:undefined")) := by
+      some (.error ("return:" ++ "undefined"),
+            pushTrace { s with expr := .trivial .litUndefined } (.error ("return:" ++ "undefined"))) := by
   simp [step?]
 
 /-- Return with successful arg eval always steps. -/
