@@ -3428,17 +3428,20 @@ private theorem closureConvert_step_simulation
                   trace := sf.trace ++ [ev], funcs := sf.funcs, callStack := sf.callStack } := by
         have hvals := valuesFromExprList_none_of_firstNonValueProp hffnv
         -- Unfold step? on objectLit in the hypothesis to extract sub-step
-        unfold Flat.step? at hstep
-        simp only [hvals, hffnv, -Flat.step?] at hstep
-        -- Now case-split on step? of the target sub-expression
-        match hm : Flat.step? { sf with expr := (Flat.convertExpr target_c scope envVar envMap
-            (Flat.convertPropList done_c scope envVar envMap st).snd).fst } with
-        | some (t, se) =>
-          simp only [hm] at hstep; simp at hstep
-          obtain ⟨rfl, hsf'eq⟩ := hstep
-          exact ⟨se, rfl, hsf'eq.symm⟩
+        have hstep' := hstep.symm
+        unfold Flat.step? at hstep'
+        simp only [hvals, hffnv, -Flat.step?] at hstep'
+        -- hstep' now has: (match step? target with ...) = some (ev, sf')
+        -- Case-split on step? of the target sub-expression
+        generalize hm : Flat.step? { sf with expr := (Flat.convertExpr target_c scope envVar envMap
+            (Flat.convertPropList done_c scope envVar envMap st).snd).fst } = sub_result at hstep'
+        cases sub_result with
+        | some val =>
+          obtain ⟨t, se⟩ := val
+          simp at hstep'; obtain ⟨rfl, hsf'eq⟩ := hstep'
+          exact ⟨se, hm, hsf'eq.symm⟩
         | none =>
-          simp only [hm] at hstep; exact absurd hstep (by simp)
+          simp at hstep'
       subst hsf'_eq
       have hdepth : target_c.depth < n := by
         simp [Core.Expr.depth] at hd
@@ -3528,17 +3531,19 @@ private theorem closureConvert_step_simulation
                   trace := sf.trace ++ [ev], funcs := sf.funcs, callStack := sf.callStack } := by
         have hvals := valuesFromExprList_none_of_firstNonValueExpr hffnv
         -- Unfold step? on arrayLit in the hypothesis to extract sub-step
-        unfold Flat.step? at hstep
-        simp only [hvals, hffnv, -Flat.step?] at hstep
-        -- Now case-split on step? of the target sub-expression
-        match hm : Flat.step? { sf with expr := (Flat.convertExpr target_c scope envVar envMap
-            (Flat.convertExprList done_c scope envVar envMap st).snd).fst } with
-        | some (t, se) =>
-          simp only [hm] at hstep; simp at hstep
-          obtain ⟨rfl, hsf'eq⟩ := hstep
-          exact ⟨se, rfl, hsf'eq.symm⟩
+        have hstep' := hstep.symm
+        unfold Flat.step? at hstep'
+        simp only [hvals, hffnv, -Flat.step?] at hstep'
+        -- Case-split on step? of the target sub-expression
+        generalize hm : Flat.step? { sf with expr := (Flat.convertExpr target_c scope envVar envMap
+            (Flat.convertExprList done_c scope envVar envMap st).snd).fst } = sub_result at hstep'
+        cases sub_result with
+        | some val =>
+          obtain ⟨t, se⟩ := val
+          simp at hstep'; obtain ⟨rfl, hsf'eq⟩ := hstep'
+          exact ⟨se, hm, hsf'eq.symm⟩
         | none =>
-          simp only [hm] at hstep; exact absurd hstep (by simp)
+          simp at hstep'
       subst hsf'_eq
       have hdepth : target_c.depth < n := by
         simp [Core.Expr.depth] at hd
