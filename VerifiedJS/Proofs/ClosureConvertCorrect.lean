@@ -3070,7 +3070,7 @@ private theorem closureConvert_step_simulation
         -- Core lookup result
         let coreResult := match sc.heap.objects[addr]? with
           | some props =>
-              match props.find? (fun kv => kv.fst == prop) with
+              match props.find? (fun (k : Core.PropName × Core.Value) => k.fst == prop) with
               | some (_, v) => v
               | none => if prop == "length" then Core.Value.number (Float.ofNat props.length) else Core.Value.undefined
           | none => Core.Value.undefined
@@ -3106,9 +3106,11 @@ private theorem closureConvert_step_simulation
           cases sc.heap.objects[addr]? with
           | none => rfl
           | some props =>
-            cases props.find? (fun kv => kv.fst == prop) with
+            cases hfind : props.find? (fun (k : Core.PropName × Core.Value) => k.fst == prop) with
             | none => rfl
-            | some kv => simp [coreToFlatValue_eq_convertValue]
+            | some kv =>
+              obtain ⟨k, v⟩ := kv
+              simp [coreToFlatValue_eq_convertValue]
       · -- String case: length or undefined
         have : Flat.convertValue (.string str) = .string str := rfl
         rw [this] at hstep hsf_eta hfexpr
