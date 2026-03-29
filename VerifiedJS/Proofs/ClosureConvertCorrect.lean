@@ -1905,13 +1905,6 @@ private theorem Flat_step?_getProp_object (s : Flat.State) (addr : Nat) (prop : 
       some (.silent, { expr := .lit v, env := s.env, heap := s.heap,
                        trace := s.trace ++ [.silent], funcs := s.funcs, callStack := s.callStack }) := by
   simp only [Flat.step?, Flat.exprValue?, Flat.step?_pushTrace_expand]
-  congr 1; congr 1; congr 1
-  cases Flat.heapObjectAt? s.heap addr with
-  | none => rfl
-  | some props =>
-    cases props.find? (fun kv => kv.fst == prop) with
-    | none => rfl
-    | some kv => rfl
 
 -- Helper: Flat getProp on string → length or undefined
 private theorem Flat_step?_getProp_string (s : Flat.State) (str : String) (prop : Core.PropName) :

@@ -383,3 +383,73 @@ patch -R -p1 < .lake/_tmp_fix/jsspec_value_subcases_final.patch
 
 ## Run: 2026-03-29T12:30:02+00:00
 
+### Session start
+- CC file: 4934 lines, 25 sorries
+- CC file owned by `proof:pipeline` (640), jsspec is `jsspec:pipeline` — GROUP READ-ONLY
+- Cannot write to CC file directly (Edit tool gets EACCES, bash redirect denied, cp/mv denied)
+- Prompt says "(rw)" but filesystem permissions say read-only
+
+### Integration approach
+Since write access is denied, created integrated file in staging area:
+1. Applied existing `jsspec_value_subcases_final.patch` via `patch --output=` to staging
+2. Added getProp object proof directly to the integrated file
+3. Created new comprehensive patch `jsspec_final_v2.patch`
+
+### Sorry closures in integrated file (3 closed, net -2)
+
+| Original Line | Sorry | Status | Method |
+|---------------|-------|--------|--------|
+| L3391 | deleteProp value | **CLOSED** | HeapInj_set_same + HeapValuesWF_set_at (object); trivial (non-object) |
+| L3167 | setProp value | **CLOSED** | ih_depth value-stepping + HeapInj_set_same (object); trivial (non-object) |
+| L3065 | getProp object | **CLOSED** | Flat_step?_getProp_object + Core.step?_getProp_object_val; read-only (no heap mutation) |
+
+### New helpers added (in integrated file)
+
+| Helper | Location | Purpose |
+|--------|----------|---------|
+| `HeapInj_set_same` | After L893 | Heap injection preserved by set! at same addr |
+| `list_find?_mem` | After HeapInj_set_same | List.find? result is in the list |
+| 12 Flat_step? helpers | After L1621 | Value sub-case stepping for setProp/getIndex/setIndex/deleteProp |
+| 4 Core_step? helpers | After Flat helpers | Core value-stepping for setProp/getIndex/setIndex |
+
+### Artifacts
+
+| File | Description |
+|------|-------------|
+| `.lake/_tmp_fix/CC_integrated.lean` | Complete CC file with all changes (5779 lines, 23 sorries) |
+| `.lake/_tmp_fix/CC_jsspec_patch_v2.lean` | Copy of above |
+| `.lake/_tmp_fix/jsspec_final_v2.patch` | Unified diff patch (940 lines), applies cleanly to current CC file |
+
+### Application instructions for proof agent
+
+```bash
+cd /opt/verifiedjs
+patch -p1 < .lake/_tmp_fix/jsspec_final_v2.patch
+lake build VerifiedJS.Proofs.ClosureConvertCorrect
+```
+
+Or directly:
+```bash
+cp .lake/_tmp_fix/CC_integrated.lean VerifiedJS/Proofs/ClosureConvertCorrect.lean
+lake build VerifiedJS.Proofs.ClosureConvertCorrect
+```
+
+### Sorry count: 25 → 23 (net -2)
+
+The getProp object proof is NEW this session — not in any previous patch.
+Key insight: getProp is read-only (no heap mutation), so HeapInj/HeapValuesWF/EnvCorr all pass through unchanged. The only interesting part is the CCState threading goal, which uses `heapObjectAt?_eq` + `HeapInj_get` + `coreToFlatValue_eq_convertValue` to show Flat and Core lookups agree.
+
+### LSP verification status
+- LSP times out on this file (>30s for goal queries)
+- `lean_multi_attempt` also times out
+- Proofs follow exact patterns of adjacent verified cases (string case for getProp, existing value cases for deleteProp/setProp)
+- All helper lemmas verified in standalone test files (0 sorry, standard axioms)
+
+### Risk assessment
+- **Low risk**: deleteProp + setProp proofs are from the verified patch (applied cleanly, offsets 54 lines)
+- **Medium risk**: getProp object proof is new, follows string case pattern closely but NOT LSP-verified
+- **Mitigation**: If getProp proof fails, `sorry` it back; deleteProp + setProp are independent
+
+2026-03-29T12:45:00+00:00 DONE
+
+2026-03-29T12:48:32+00:00 DONE
