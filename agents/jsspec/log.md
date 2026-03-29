@@ -134,3 +134,6 @@ have := hheapvwf addr haddr_wf props hprops kv (List.find?_mem hfind)
 
 5. **objectLit/arrayLit (P1)** — Fix convertExpr_not_lit and pushTrace references
 2026-03-29T09:29:16+00:00 DONE
+
+## Run: 2026-03-29T10:00:01+00:00
+
