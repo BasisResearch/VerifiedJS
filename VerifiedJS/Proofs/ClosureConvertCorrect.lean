@@ -1829,6 +1829,47 @@ private theorem Flat_step?_arrayLit_none (s : Flat.State)
   · next hf =>
     simp [hfnve] at hf
 
+private theorem Core_step?_objectLit_step (s : Core.State)
+    (props : List (Core.PropName × Core.Expr))
+    (done : List (Core.PropName × Core.Expr)) (propName : Core.PropName)
+    (target : Core.Expr) (rest : List (Core.PropName × Core.Expr))
+    (hfnvp : Core.firstNonValueProp props = some (done, propName, target, rest))
+    (t : Core.TraceEvent) (se : Core.State)
+    (hss : Core.step? { s with expr := target } = some (t, se)) :
+    Core.step? { s with expr := .objectLit props } =
+      some (t, { expr := .objectLit (done ++ [(propName, se.expr)] ++ rest),
+                 env := se.env, heap := se.heap,
+                 trace := s.trace ++ [t], funcs := se.funcs, callStack := se.callStack }) := by
+  unfold Core.step?
+  split
+  · next done' propName' target' rest' hf =>
+    have heq := hfnvp ▸ hf
+    simp [Option.some.injEq, Prod.mk.injEq] at heq
+    obtain ⟨rfl, rfl, rfl, rfl⟩ := heq
+    simp only [hss, Core.pushTrace]
+  · next hf =>
+    simp [hfnvp] at hf
+
+private theorem Core_step?_arrayLit_step (s : Core.State)
+    (elems : List Core.Expr)
+    (done : List Core.Expr) (target : Core.Expr) (rest : List Core.Expr)
+    (hfnve : Core.firstNonValueExpr elems = some (done, target, rest))
+    (t : Core.TraceEvent) (se : Core.State)
+    (hss : Core.step? { s with expr := target } = some (t, se)) :
+    Core.step? { s with expr := .arrayLit elems } =
+      some (t, { expr := .arrayLit (done ++ [se.expr] ++ rest),
+                 env := se.env, heap := se.heap,
+                 trace := s.trace ++ [t], funcs := se.funcs, callStack := se.callStack }) := by
+  unfold Core.step?
+  split
+  · next done' target' rest' hf =>
+    have heq := hfnve ▸ hf
+    simp [Option.some.injEq, Prod.mk.injEq] at heq
+    obtain ⟨rfl, rfl, rfl⟩ := heq
+    simp only [hss, Core.pushTrace]
+  · next hf =>
+    simp [hfnve] at hf
+
 private theorem Flat_step?_while (s : Flat.State) (cond body : Flat.Expr) :
     Flat.step? { s with expr := .while_ cond body } =
       some (.silent, { expr := .«if» cond (.seq body (.while_ cond body)) (.lit .undefined),
