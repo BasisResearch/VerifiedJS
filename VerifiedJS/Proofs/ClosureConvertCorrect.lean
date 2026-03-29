@@ -2064,26 +2064,6 @@ private theorem Core_step?_setProp_value_step (cv : Core.Value) (prop : Core.Pro
   | lit v => simp [Core.exprValue?] at hnv
   | _ => cases cv <;> simp [Core.step?, Core.exprValue?, hss, Core.pushTrace]
 
--- Flat: obj is any value, value needs stepping (setProp) — combined object/non-object
-private theorem Flat_step?_setProp_value_step_value (s : Flat.State) (cv : Flat.Value) (prop : Core.PropName)
-    (ve : Flat.Expr) (hnv : Flat.exprValue? ve = none)
-    (t : Core.TraceEvent) (sv : Flat.State)
-    (hss : Flat.step? { s with expr := ve } = some (t, sv)) :
-    Flat.step? { s with expr := .setProp (.lit cv) prop ve } =
-      some (t, { expr := .setProp (.lit cv) prop sv.expr, env := sv.env, heap := sv.heap,
-                 trace := s.trace ++ [t], funcs := s.funcs, callStack := s.callStack }) := by
-  cases cv <;> simp only [Flat.step?, Flat.exprValue?, hnv, hss]; rfl
-
--- Flat: obj is any value, idx needs stepping (getIndex) — combined
-private theorem Flat_step?_getIndex_value_step_idx (s : Flat.State) (cv : Flat.Value)
-    (ie : Flat.Expr) (hnv : Flat.exprValue? ie = none)
-    (t : Core.TraceEvent) (si : Flat.State)
-    (hss : Flat.step? { s with expr := ie } = some (t, si)) :
-    Flat.step? { s with expr := .getIndex (.lit cv) ie } =
-      some (t, { expr := .getIndex (.lit cv) si.expr, env := si.env, heap := si.heap,
-                 trace := s.trace ++ [t], funcs := s.funcs, callStack := s.callStack }) := by
-  cases cv <;> simp only [Flat.step?, Flat.exprValue?, hnv, hss]; rfl
-
 /-! ## arrayLit helper lemmas -/
 
 private theorem firstNonValueExpr_decompose {l : List Core.Expr} {done target rest}
