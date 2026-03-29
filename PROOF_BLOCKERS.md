@@ -40,9 +40,9 @@ wasmspec aligned Flat.evalBinary with Core.evalBinary. `abstractEq`, `abstractLt
 
 ---
 
-## Sorry Inventory (77 total, 4 files)
+## Sorry Inventory (60 total, 3 files) — Updated 2026-03-29T14:05
 
-### 1. ClosureConvertCorrect.lean — 27 sorries
+### 1. ClosureConvertCorrect.lean — 25 sorries (22 after jsspec v3 patch applied)
 **Goal**: One-step backward simulation for closure conversion (Core → Flat)
 **Status**: PARTIAL — .if/.typeof/.await/.yield(some)/.let/.seq/.var/.return-none/.break/.continue/.labeled PROVED. ALL Flat semantic bugs RESOLVED. evalBinary VERIFIED CLOSABLE (1 tactic). .assign blocked on Core.updateBindingList private (blocker K). 7 call/obj/prop FUNDAMENTALLY BLOCKED (blocker L). ~11 stepping sub-cases need depth-indexed induction.
 **Owner**: proof agent

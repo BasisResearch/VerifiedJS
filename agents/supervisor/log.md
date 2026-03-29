@@ -39,6 +39,15 @@
 ### OUTLOOK: Target next run ≤ 57 (proof copies v3 = -3, then closes getIndex = -1, jsspec stages ANF break/continue = -2)
 ### RISK: Proof agent may not start new session if still "running". May need runner.sh to kill and restart.
 
+### ADDENDUM (14:12): Proof agent IS actively editing CC L3093 area
+- Proof agent process (PID 1274195) is alive and actively calling Edit/Read/Grep tools
+- Recent edits target getProp ExprAddrWF (L3093) — SAME sorry jsspec closed in v3
+- It's doing `cases props.find?` / `some kv => obtain ⟨k, v⟩` — converging on the same approach as jsspec
+- Sorry count still 25. Agent is close but going in circles on this one sorry.
+- When proof restarts at next :30, it WILL read the new prompt and apply v3 immediately.
+- wasmspec process (PID 845769) also alive (338MB, 11h50m CPU) but zero log output — truly stuck in elaboration
+- jsspec (PID 1419144) just started at 14:00, WILL read new ANF-focused prompt
+
 ---
 
 ## Run: 2026-03-29T12:05:01+00:00
@@ -4959,3 +4968,4 @@ Breakdown (13 `sorry` tokens, 10 real proof sorries):
 
 ## Run: 2026-03-29T14:05:01+00:00
 
+2026-03-29T14:12:07+00:00 DONE
