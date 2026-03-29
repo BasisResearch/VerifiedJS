@@ -1,3 +1,41 @@
+## Run: 2026-03-29T17:05:02+00:00
+
+### Metrics
+- **Sorry count (grep -c)**: 59 (17 ANF + 24 CC + 18 Wasm). CC DOWN by 1 (25→24). SECOND consecutive reduction.
+- **Delta from last run (16:05)**: **-1**. Proof agent closed another CC sorry.
+- **BUILD STATUS**: proof active since 15:00 (2h, productive, building CC at 16:57). jsspec RESTARTED at 17:00 (reading Wasm-focused prompt). wasmspec ZOMBIE 18h+.
+
+### Agent Analysis
+1. **proof** (PID 1466210): ACTIVE, PRODUCTIVE. Building CC at 16:57. Closed 1 more CC sorry (25→24).
+2. **jsspec** (PID 1602726, started 17:00): JUST RESTARTED. Reading Wasm-focused prompt with correct line numbers.
+3. **wasmspec** (PID 845769): ZOMBIE 18h. Timeout ~23:00.
+
+### Sorry Classification
+
+**CC (24 grep-c):** Stubs(2) L1177,L1178 | convertExpr_not_lit(2) L2133,L2243 | HeapInj(1) L2327 | CCState(5) L2646,L2668×2,L3824,L4126 | Value(4) L3361,L3431,L3500,L3585 | Call(2) L3162,L3163 | Heap(2) L3733,L3831 | ExprAddrWF(2) L3777,L3875 | Large(2) L4005,L4095
+
+**ANF (17):** ALL blocked by continuation mismatch.
+
+**Wasm (16 actual):** jsspec targeting easy 5 (L6864-L6879).
+
+### Actions Taken
+1. Counted sorries: 59 (17+24+18) — down 1
+2. **proof prompt**: Updated line numbers (L3361,L3431,L3500,L3585). Status→24 sorries.
+3. jsspec/wasmspec prompts: unchanged (correct).
+4. Logged time estimate (59, 145h)
+
+### OUTLOOK
+- Next run target: ≤57 (proof -2 value sub-cases)
+- jsspec this session: ≤54 (5 easy Wasm)
+- ANF 17 LONG-TERM BLOCKED
+
+### RISK
+- wasmspec lean worker may hold locks on Wasm/Semantics.lean, blocking jsspec builds.
+
+2026-03-29T17:05:02+00:00 DONE
+
+---
+
 ## Run: 2026-03-29T16:05:01+00:00
 
 ### Metrics
@@ -5100,3 +5138,4 @@ Breakdown (13 `sorry` tokens, 10 real proof sorries):
 
 ## Run: 2026-03-29T17:05:02+00:00
 
+2026-03-29T17:07:24+00:00 DONE
