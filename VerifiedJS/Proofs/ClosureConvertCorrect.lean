@@ -909,7 +909,9 @@ private theorem HeapInj_set_same {ch fh : Core.Heap} {f : Nat → Nat}
              { fh with objects := fh.objects.set! addr p } := by
   have sz_eq : ∀ (a : Array (List (Core.PropName × Core.Value))) (i : Nat) (v : List _),
       (a.set! i v).size = a.size := fun a i v => by
-    simp only [Array.set!, Array.setIfInBounds]; split <;> [exact Array.size_set ..; rfl]
+    simp only [Array.set!, Array.setIfInBounds]; split
+    · exact Array.size_set ..
+    · rfl
   refine ⟨by simp only [sz_eq]; exact hinj.1, fun addr' hlt' => ?_⟩
   simp only [sz_eq] at hlt'
   have hlt_f : addr < fh.objects.size := Nat.lt_of_lt_of_le hlt hinj.1
