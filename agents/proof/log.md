@@ -3860,3 +3860,58 @@ Net sorry change: 27 → 27 (replaced 1 sorry with 1 sorry + 2 proven sub-cases)
 2026-03-29T17:30:01+00:00 SKIP: already running
 2026-03-29T18:30:03+00:00 SKIP: already running
 2026-03-29T19:30:01+00:00 SKIP: already running
+
+### Starting: CC sorry closure — P0 v3 integration + value sub-cases
+- v3 copy FAILED (file structure incompatible — missing match arms)
+- Recovered from /tmp/CC_backup.lean (25 sorries)
+- Fixed broken Flat_step?_getProp_object proof (was sorry → now simp only + rfl)
+
+### Infrastructure added
+- `list_find?_mem`: if `l.find? p = some x` then `x ∈ l`
+- `HeapInj_set_same`: HeapInj preserved through `set!` at same addr on both heaps
+- 7 step helpers from v3 patch: deleteProp obj/nonobj, setProp obj/nonobj both-values, setProp obj/nonobj step-value, Core setProp value step
+
+### Closed sorries
+
+1. **getProp object value** (was L3184): When obj is `.lit (.object addr)`, lookup property in heap. Case-split on `sc.heap.objects[addr]?` and `find?`. ExprAddrWF uses `list_find?_mem` + `hheapvwf`. CCState agreement uses `heapObjectAt?_eq`, `HeapInj_get`, `coreToFlatValue_eq_convertValue`.
+
+2. **deleteProp value** (was L3587): When obj is a value, case-split object vs non-object. Object case: heap mutation via `set!` with filtered props, HeapInj via `HeapInj_set_same`, HeapValuesWF via `HeapValuesWF_set_at` with `List.mem_filter`. Non-object case: heap unchanged, return `.lit (.bool true)`.
+
+### Attempted but reverted
+- **setProp value** (L3363): Both-values sub-case proof structure works but HeapInj step fails because `flatToCoreValue (convertValue vv)` doesn't reduce inside lambda closures after `heapObjectAt?_eq` rewrite. Needs `conv` tactic or manual heap equality lemma. Value-stepping sub-case also needs work. Left as sorry.
+
+### Build: PASSES ✓
+- CC: 23 sorries (was 25, -2)
+- ANF: 17 sorries (unchanged)
+- Wasm: 18 sorries (unchanged)
+- **Total: 58 (was 60, -2)**
+
+### Final state
+- Full project build: PASSES ✓ (49 jobs)
+- CC: 23 sorries (down from 25, -2)  
+- ANF: 17 sorries (unchanged)
+- Wasm: 18 sorries (unchanged)
+- **Total: 58 (down from 60, -2)**
+
+### Remaining CC sorry analysis (23 total)
+| Category | Count | Status |
+|----------|-------|--------|
+| forIn/forOf stubs (theorem false) | 2 | BLOCKED |
+| convertExpr_not_lit for stubs | 2 | BLOCKED |
+| HeapInj refactor (captured var) | 1 | BLOCKED (staging) |
+| CCState threading (if/while/objectLit) | 4 | BLOCKED (structural) |
+| ExprAddrWF propagation (objectLit/arrayLit) | 2 | BLOCKED (def gap) |
+| Value sub-cases (setProp/getIndex/setIndex) | 3 | HARD (heap equality) |
+| Heap allocation (objectLit/arrayLit all-values) | 2 | HARD |
+| call value | 1 | HARD |
+| newObj | 1 | HARD |
+| functionDef | 1 | HARD |
+| tryCatch | 1 | HARD |
+
+### Key blockers for further progress
+1. **setProp/getIndex/setIndex value**: Need `flatToCoreValue_convertValue` to reduce inside lambda closures during HeapInj proof. Could be unblocked with a dedicated `HeapInj_set_same_convert` lemma.
+2. **ExprAddrWF propagation**: `ExprAddrWF (.objectLit _) = True` provides no info about elements. Needs definition change or separate `ExprAddrPropListWF`.
+3. **CCState threading**: Structural issue where dead-branch state delta is lost. Needs ClosureConvert.lean change or major restructuring.
+
+2026-03-29T15:00:03+00:00 DONE
+2026-03-29T19:44:45+00:00 DONE
