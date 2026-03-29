@@ -3685,3 +3685,4 @@ This suggests the step simulation theorem may need a different formulation for e
 3. **Fix CCState threading witnesses** in the if-branch cases (L2383, L2405)
 
 2026-03-29T03:30:01+00:00 DONE
+2026-03-29T04:00:11+00:00 DONE
