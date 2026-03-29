@@ -892,6 +892,32 @@ private theorem HeapInj_get {ch fh : Core.Heap} {f : Nat → Nat} {addr : Nat}
     (hinj : HeapInj f ch fh) (hlt : addr < ch.objects.size) :
     ch.objects[addr]? = fh.objects[addr]? := HeapCorr_get hinj hlt
 
+private theorem list_find?_mem {α : Type} {p : α → Bool} {l : List α} {x : α}
+    (h : l.find? p = some x) : x ∈ l := by
+  induction l with
+  | nil => simp [List.find?] at h
+  | cons a as ih =>
+    simp only [List.find?] at h
+    split at h
+    · exact Option.some.inj h ▸ .head _
+    · exact .tail _ (ih h)
+
+private theorem HeapInj_set_same {ch fh : Core.Heap} {f : Nat → Nat}
+    (hinj : HeapInj f ch fh) (addr : Nat) (hlt : addr < ch.objects.size)
+    (p : List (Core.PropName × Core.Value)) :
+    HeapInj f { ch with objects := ch.objects.set! addr p }
+             { fh with objects := fh.objects.set! addr p } := by
+  refine ⟨by simp only [size_set!]; exact hinj.1, fun addr' hlt' => ?_⟩
+  simp only [size_set!] at hlt'
+  have hlt_f : addr < fh.objects.size := Nat.lt_of_lt_of_le hlt hinj.1
+  by_cases h : addr' = addr
+  · subst h
+    simp [Array.set!, Array.setIfInBounds, hlt, hlt_f]
+  · simp only [Array.set!]
+    simp only [Array.setIfInBounds, hlt, hlt_f, ↓reduceDIte]
+    rw [Array.getElem?_set, Array.getElem?_set]
+    simp [Ne.symm h, hinj.2 addr' hlt']
+
 /-- All object addresses in a Core value are valid heap addresses. -/
 private def ValueAddrWF (v : Core.Value) (heapSize : Nat) : Prop :=
   match v with
@@ -1944,6 +1970,96 @@ private theorem convertValue_not_object (v : Core.Value)
 private theorem convertValue_not_string (v : Core.Value)
     (h : ∀ s, v ≠ .string s) : ∀ s, Flat.convertValue v ≠ .string s := by
   intro s; cases v <;> simp [Flat.convertValue] at * <;> exact h s rfl
+
+/-! ## Value sub-case step helpers -/
+
+-- deleteProp: obj is .object addr (value case)
+private theorem Flat_step?_deleteProp_object_value (s : Flat.State) (addr : Nat) (prop : Core.PropName) :
+    Flat.step? { s with expr := .deleteProp (.lit (.object addr)) prop } =
+      some (.silent,
+        { expr := .lit (.bool true), env := s.env,
+          heap := match Flat.heapObjectAt? s.heap addr with
+            | some props =>
+                { s.heap with objects := s.heap.objects.set! addr (props.filter (fun kv => kv.fst != prop)) }
+            | none => s.heap,
+          trace := s.trace ++ [.silent], funcs := s.funcs, callStack := s.callStack }) := by
+  simp only [Flat.step?, Flat.exprValue?]; rfl
+
+-- deleteProp: obj is non-object value
+private theorem Flat_step?_deleteProp_nonobject_value (s : Flat.State) (v : Flat.Value) (prop : Core.PropName)
+    (hobj : ∀ addr, v ≠ .object addr) :
+    Flat.step? { s with expr := .deleteProp (.lit v) prop } =
+      some (.silent,
+        { expr := .lit (.bool true), env := s.env, heap := s.heap,
+          trace := s.trace ++ [.silent], funcs := s.funcs, callStack := s.callStack }) := by
+  cases v with
+  | object addr => exact absurd rfl (hobj addr)
+  | _ => simp only [Flat.step?, Flat.exprValue?]; rfl
+
+-- setProp: obj is .object addr, value is a value → heap mutation
+private theorem Flat_step?_setProp_object_both_values (s : Flat.State) (addr : Nat) (prop : Core.PropName)
+    (v : Flat.Value) :
+    Flat.step? { s with expr := .setProp (.lit (.object addr)) prop (.lit v) } =
+      some (.silent,
+        { expr := .lit v, env := s.env,
+          heap := let cv := Flat.flatToCoreValue v
+            match Flat.heapObjectAt? s.heap addr with
+            | some props =>
+                let updated := if props.any (fun kv => kv.fst == prop)
+                  then props.map (fun kv => if kv.fst == prop then (prop, cv) else kv)
+                  else props ++ [(prop, cv)]
+                { s.heap with objects := s.heap.objects.set! addr updated }
+            | none => s.heap,
+          trace := s.trace ++ [.silent], funcs := s.funcs, callStack := s.callStack }) := by
+  simp only [Flat.step?, Flat.exprValue?]; rfl
+
+-- setProp: obj is non-object value, value is a value → return value, no heap change
+private theorem Flat_step?_setProp_nonobject_both_values (s : Flat.State) (v : Flat.Value) (prop : Core.PropName)
+    (vv : Flat.Value) (hobj : ∀ addr, v ≠ .object addr) :
+    Flat.step? { s with expr := .setProp (.lit v) prop (.lit vv) } =
+      some (.silent,
+        { expr := .lit vv, env := s.env, heap := s.heap,
+          trace := s.trace ++ [.silent], funcs := s.funcs, callStack := s.callStack }) := by
+  cases v with
+  | object addr => exact absurd rfl (hobj addr)
+  | _ => simp only [Flat.step?, Flat.exprValue?]; rfl
+
+-- setProp: obj is value, value needs stepping (Flat)
+private theorem Flat_step?_setProp_object_step_value (s : Flat.State) (addr : Nat) (prop : Core.PropName)
+    (ve : Flat.Expr) (hnv : Flat.exprValue? ve = none)
+    (t : Core.TraceEvent) (sv : Flat.State)
+    (hss : Flat.step? { s with expr := ve } = some (t, sv)) :
+    Flat.step? { s with expr := .setProp (.lit (.object addr)) prop ve } =
+      some (t, { expr := .setProp (.lit (.object addr)) prop sv.expr, env := sv.env, heap := sv.heap,
+                 trace := s.trace ++ [t], funcs := s.funcs, callStack := s.callStack }) := by
+  simp only [Flat.step?, hnv, hss]; rfl
+
+-- setProp: obj is non-object value, value needs stepping (Flat)
+private theorem Flat_step?_setProp_nonobject_step_value (s : Flat.State) (v : Flat.Value) (prop : Core.PropName)
+    (ve : Flat.Expr) (hnv : Flat.exprValue? ve = none)
+    (hobj : ∀ addr, v ≠ .object addr)
+    (t : Core.TraceEvent) (sv : Flat.State)
+    (hss : Flat.step? { s with expr := ve } = some (t, sv)) :
+    Flat.step? { s with expr := .setProp (.lit v) prop ve } =
+      some (t, { expr := .setProp (.lit v) prop sv.expr, env := sv.env, heap := sv.heap,
+                 trace := s.trace ++ [t], funcs := s.funcs, callStack := s.callStack }) := by
+  cases v with
+  | object addr => exact absurd rfl (hobj addr)
+  | _ => simp only [Flat.step?, hnv, hss]; rfl
+
+-- Core: obj is value, value needs stepping (setProp)
+private theorem Core_step?_setProp_value_step (cv : Core.Value) (prop : Core.PropName)
+    (ve : Core.Expr) (hnv : Core.exprValue? ve = none)
+    (env : Core.Env) (heap : Core.Heap) (trace : List Core.TraceEvent)
+    (funcs : Array Core.FuncClosure) (cs : List (List (Core.VarName × Core.Value)))
+    (t : Core.TraceEvent) (sv : Core.State)
+    (hss : Core.step? ⟨ve, env, heap, trace, funcs, cs⟩ = some (t, sv)) :
+    Core.step? ⟨.setProp (.lit cv) prop ve, env, heap, trace, funcs, cs⟩ =
+      some (t, { expr := .setProp (.lit cv) prop sv.expr, env := sv.env, heap := sv.heap,
+                 trace := trace ++ [t], funcs := sv.funcs, callStack := sv.callStack }) := by
+  cases ve with
+  | lit v => simp [Core.exprValue?] at hnv
+  | _ => cases cv <;> simp [Core.step?, Core.exprValue?, hss, Core.pushTrace]
 
 /-! ## arrayLit helper lemmas -/
 
