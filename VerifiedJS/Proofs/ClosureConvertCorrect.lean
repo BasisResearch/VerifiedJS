@@ -3478,7 +3478,18 @@ private theorem closureConvert_step_simulation
                         (Flat.convertPropList done_c scope envVar envMap st).snd).snd).fst),
                   env := sa.env, heap := sa.heap,
                   trace := sf.trace ++ [ev], funcs := sf.funcs, callStack := sf.callStack } := by
-        sorry -- Flat sub-step extraction: unfold step? on objectLit with valuesFromExprList?=none, firstNonValueProp=some
+        have hvals := valuesFromExprList_none_of_firstNonValueProp hffnv
+        match hm : Flat.step? { sf with expr := (Flat.convertExpr target_c scope envVar envMap
+            (Flat.convertPropList done_c scope envVar envMap st).snd).fst } with
+        | some (t, se) =>
+          have heq := Flat_step?_objectLit_step sf _ _ propName_c _ _ hvals hffnv t se hm
+          rw [heq] at hstep; simp at hstep
+          obtain ⟨rfl, hsf'eq⟩ := hstep
+          exact ⟨se, rfl, hsf'eq.symm⟩
+        | none =>
+          have heq : Flat.step? { sf with expr := .objectLit (Flat.convertPropList props scope envVar envMap st).fst } = none := by
+            simp only [Flat.step?, hvals, hffnv, hm]
+          rw [heq] at hstep; exact absurd hstep (by simp)
       subst hsf'_eq
       have hdepth : target_c.depth < n := by
         simp [Core.Expr.depth] at hd
@@ -3566,7 +3577,18 @@ private theorem closureConvert_step_simulation
                         (Flat.convertExprList done_c scope envVar envMap st).snd).snd).fst),
                   env := sa.env, heap := sa.heap,
                   trace := sf.trace ++ [ev], funcs := sf.funcs, callStack := sf.callStack } := by
-        sorry -- Flat sub-step extraction: unfold step? on arrayLit with valuesFromExprList?=none, firstNonValueExpr=some
+        have hvals := valuesFromExprList_none_of_firstNonValueExpr hffnv
+        match hm : Flat.step? { sf with expr := (Flat.convertExpr target_c scope envVar envMap
+            (Flat.convertExprList done_c scope envVar envMap st).snd).fst } with
+        | some (t, se) =>
+          have heq := Flat_step?_arrayLit_step sf _ _ _ _ hvals hffnv t se hm
+          rw [heq] at hstep; simp at hstep
+          obtain ⟨rfl, hsf'eq⟩ := hstep
+          exact ⟨se, rfl, hsf'eq.symm⟩
+        | none =>
+          have heq : Flat.step? { sf with expr := .arrayLit (Flat.convertExprList elems scope envVar envMap st).fst } = none := by
+            simp only [Flat.step?, hvals, hffnv, hm]
+          rw [heq] at hstep; exact absurd hstep (by simp)
       subst hsf'_eq
       have hdepth : target_c.depth < n := by
         simp [Core.Expr.depth] at hd
