@@ -1,41 +1,56 @@
-# wasmspec — RETURN SOME IS YOUR ONLY TARGET
+# wasmspec — YOU HAVE BEEN RUNNING FOR 8+ HOURS WITH ZERO OUTPUT
 
-## STATUS: 18 Wasm sorries. You proved return-none last run. Good.
+## STATUS: 18 Wasm sorries. UNCHANGED since 2026-03-28T23:00.
 
-## The return-some case (L6864) is the natural next step.
+Your last run started at 23:00 on Mar 28. It is now 07:30 on Mar 29.
+8.5 hours. Zero sorry reduction. Zero log entries. This is unacceptable.
 
-## PRIORITY 0: Prove step_sim for `return (some t)` at L6864
+## CRITICAL: DO NOT attempt large proofs. Small increments ONLY.
 
-You already proved `return none` (L6824-6863). The `return (some t)` case at L6864 follows similar structure:
+The 18 Wasm sorries break down into:
 
-1. Use `lean_goal` at L6864 to see the exact goal
-2. `t` is a `ANF.Trivial`, so it has a concrete value
-3. ANF step: evaluates `t` to a value `v`, produces `.error ("return:" ++ valueToString v)`
-4. IR code: from `LowerCodeCorr.return_some_inv`, should be `argCode ++ [return_]`
-5. `traceFromCore (.error ("return:" ++ s)) = .silent` — you already proved this simp lemma
+### EASY (try these first):
+- **L6864** `return (some t)`: Template exists at L6824-6863 (return none). Follow same pattern.
+- **L6867** `yield arg delegate`: Similar control-flow signal pattern
+- **L6870** `await arg`: Similar control-flow signal pattern
 
-The key difference from `return none`:
-- `t` is a trivial expr that evaluates immediately (ANF.Trivial → value in 0 steps)
-- Need `LowerCodeCorr.return_some` constructor or inversion
-- IR needs to execute argCode (evaluate t) then return_
+### MEDIUM:
+- **L6798** `let`: Need `LowerCodeCorr.let_inv` inversion
+- **L6810** `if cond then_ else_`: Need `LowerCodeCorr.if_inv` inversion
+- **L6873** `labeled label body`: Need label frame push
+- **L6876** `break label`: Signal pattern
+- **L6879** `continue label`: Signal pattern
 
-If `LowerCodeCorr` doesn't have a `return_some` constructor, check with `lean_hover_info` on `LowerCodeCorr`.
+### HARD (skip these):
+- **L6806** `seq`: 1:N stepping framework needed
+- **L6813** `while_`: Loop induction
+- **L6816** `throw`: Exception handling
+- **L6819** `tryCatch`: Complex control flow
+- **L10857** `call`: Multi-frame, blocked by hframes_one
+- **L10912, L10916** `call` sub-cases: Same blocker
+- **L10919** `callIndirect`: Same blocker
 
-## PRIORITY 1: If return-some is blocked, triage ALL 18 sorries
+## YOUR ONE JOB: Close `return (some t)` at L6864
 
-Read 5 lines around each sorry. Write one line per sorry:
-```
-L6798: [blocked/easy/medium] - [reason]
-```
-Log this triage. Pick the easiest unblocked sorry.
+1. `lean_goal` at L6864 col 9
+2. The pattern from return-none (L6824-6863):
+   - Invert `LowerCodeCorr` to get the IR code shape
+   - Show ANF steps to `.trivial .litUndefined` or error
+   - Show IR takes matching step(s)
+   - `traceFromCore (.error "return:...") = .silent` by `native_decide`
+   - Build new `LowerSimRel`
+3. The `t` is an `ANF.Trivial` — need to evaluate it first, then return
+4. Check `LowerCodeCorr` for a `return_some` constructor: `lean_hover_info` on `LowerCodeCorr`
 
-## MEMORY CONSTRAINTS
-- MAX 20 lines of new proof per sorry
-- `lake build VerifiedJS.Wasm.Semantics` after every edit
-- If build > 5 minutes, sorry it back
-- Do NOT unfold large definitions
-- Use `decide`, `omega`, `rfl`, `exact`, `native_decide` — simple tactics only
+If return-some is blocked (no constructor), try break/continue (L6876/6879) instead.
+
+## MEMORY/TIME CONSTRAINTS
+- MAX 15 lines of new proof per sorry
+- `lake build VerifiedJS.Wasm.Semantics` after EVERY edit
+- If build > 5 min, sorry it back IMMEDIATELY
+- LOG EVERY 30 MINUTES even if no progress
+- If you're stuck for >1 hour on one sorry, MOVE TO THE NEXT ONE
 
 ## FILES: `VerifiedJS/Wasm/Semantics.lean` (rw)
 ## DO NOT EDIT: `VerifiedJS/Proofs/*.lean`
-## LOG: agents/wasmspec/log.md — LOG FIRST, PROVE SECOND
+## LOG: agents/wasmspec/log.md — LOG FIRST LINE WITHIN 60 SECONDS OF STARTING

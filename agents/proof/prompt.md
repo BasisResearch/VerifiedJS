@@ -1,61 +1,54 @@
-# proof — CC CCSTATE THREADING: USE Prod.mk.eta
+# proof — INLINE ANFInversion + CC CCSTATE THREADING
 
-## STATUS: 62 grep sorries (17 ANF + 27 CC + 18 Wasm + 0 Lower).
+## STATUS: 61 sorries (17 ANF + 26 CC + 18 Wasm + 0 Lower). CC went 27→26. Good.
 
-## PRIORITY 0: CC CCState threading at L2383, L2405, L3703
+## CRITICAL INFRASTRUCTURE: ANFInversion content must be INLINED
 
-The CC_SimRel (L1098-1099) requires:
-```lean
-∃ (scope : List String) (envVar : String) (envMap : Flat.EnvMapping) (st st' : Flat.CCState),
-    (sf.expr, st') = Flat.convertExpr sc.expr scope envVar envMap st
-```
+**Nobody can create new files** — all directories are root:pipeline 750. The staging file
+`.lake/_tmp_fix/VerifiedJS/Proofs/ANFInversion.lean` (1425 lines, 0 sorry) CANNOT be
+copied to a new file. The only option is to APPEND its content into `ANFConvertCorrect.lean`.
 
-### L2383 (if-true CCState threading)
+### How to inline:
+1. Read `.lake/_tmp_fix/VerifiedJS/Proofs/ANFInversion.lean` (skip the top comment + imports — they're already in ANFConvertCorrect)
+2. Find a good insertion point in `ANFConvertCorrect.lean` — just BEFORE the first sorry (around L1760)
+3. Paste the theorem bodies (starting from `theorem ANF.bindComplex_never_break_general` through end)
+4. The namespace is `VerifiedJS` in ANFInversion but `VerifiedJS.Proofs` in ANFConvertCorrect — you may need to adjust: open the namespace or prefix references
+5. `lake build VerifiedJS.Proofs.ANFConvertCorrect` — must still pass
+6. If it fails, sorry-back any broken theorems and keep the ones that work
 
-The sorry is the last element of:
-```lean
-· exact ⟨st, (Flat.convertExpr then_ scope envVar envMap st).snd, by
-    simp [sc', Flat.convertExpr], ⟨rfl, rfl⟩, sorry⟩
-```
+This is P0. Without these inversion lemmas, the break/continue ANF sorries (L2000-2002) cannot be closed.
 
-**First**: use `lean_goal` at L2383 to check what the goal actually is.
+## PRIORITY 1: CC CCState threading at L2383, L2405
 
-The CCState witness for the then_ sub-expression after if-true stepping:
-- sc'.expr = then_
-- sf'.expr = (convertExpr then_ scope envVar envMap st).fst
-- So the witness should be: st_start = st, st_end = (convertExpr then_ scope envVar envMap st).snd
-- The equality `(sf'.expr, st_end) = convertExpr then_ scope envVar envMap st` follows from `Prod.mk.eta`
+You're already working on these. Key insight for L2383:
 
-Try replacing the sorry with:
-```lean
-exact Prod.ext (congrArg Prod.fst <| by simp [sc', Flat.convertExpr]) (congrArg Prod.snd <| by simp [sc', Flat.convertExpr])
-```
+The sorry at L2383 is the last component of an existential witness for the CC_SimRel.
+The goal is likely `CCStateAgree st_a' st_a''` or a Prod.mk equality.
 
-Or if the sorry is about something else (AgreeOut?), use `lean_goal` first.
+Use `lean_goal` at L2383 to check the EXACT goal type before attempting anything.
 
-### L2405 (if-false CCState threading)
+For L2405: two sorries. One is likely a `Prod.mk.eta` / `Prod.ext` equality, the other
+is likely `CCStateAgree`. Use `lean_goal` at each position.
 
-Same pattern but for else_ branch. The witnesses are:
-- st_start = (convertExpr then_ scope envVar envMap st).snd
-- st_end = (convertExpr else_ scope envVar envMap st_start).snd
+## PRIORITY 2: CC value sub-cases (L2899, L3089, L3159, L3228, L3313)
 
-Two sorries here: one is the conversion equality, one might be the AgreeOut.
+These 5 sorries all say "value sub-case (heap reasoning needed)". They follow a pattern:
+- callee/arg is already a value (`some cv`)
+- Need to show the Flat step matches the Core step when operating on a converted value
+- Blocked by heap injection reasoning
 
-### L3703 (while_ CCState threading)
+If heap injection is already set up in the SimRel, these may be closeable with
+`convertValue_inj` or `HeapInj.get_corr`. Check with `lean_hover_info` on `HeapInj`.
 
-while_ duplicates cond+body. Use `convertExpr_state_determined` (L548) to show
-the duplicated conversion produces CCStateAgree results.
+## PRIORITY 3: CC forIn/forOf (L1148-1149)
 
-## PRIORITY 1: Check forIn/forOf sorries (L1148-1149)
+These theorems are FALSE as stated. `forIn`/`forOf` convert to `.lit .undefined` which
+HAS a value (`Flat.exprValue? (.lit .undefined) = some .undefined`). But the theorem
+claims `Flat.exprValue? (convertExpr e ...) = none` for ALL non-value Core expressions.
 
-These are in `convertExpr_not_value`. The comment says "theorem false" — if that's literally true (forIn/forOf are stubs that convert to `.lit .undefined` which HAS a value), then these cannot be closed. But check: does the hypothesis `h : Core.exprValue? e = none` for `e = .forIn ...` actually hold? If forIn is never used in the supported subset, maybe we need `h_supported` to exclude these cases.
-
-## PRIORITY 2: Do NOT attempt ANF sorries
-
-Proof agent's own analysis (log 2026-03-28T11:30) showed these are fundamentally blocked by:
-- Nesting contamination
-- Eval-context lifting lemmas not yet written
-- 4 permanently unprovable (throw/return/break/continue semantic mismatches)
+Fix: Add a hypothesis `e.supported = true` that excludes forIn/forOf. Or: add
+`| forIn => rfl` / `| forOf => rfl` if the `Core.exprValue?` actually gives `some` for
+these (check!). The real fix is to exclude unsupported constructors.
 
 ## WORKFLOW
 1. `lean_goal` at each sorry BEFORE attempting anything
@@ -63,6 +56,10 @@ Proof agent's own analysis (log 2026-03-28T11:30) showed these are fundamentally
 3. `lake build VerifiedJS.Proofs.ClosureConvertCorrect` after EVERY edit
 4. If build fails, sorry it back IMMEDIATELY
 
-## FILES: `VerifiedJS/Proofs/ClosureConvertCorrect.lean` (rw)
-## DO NOT EDIT: `VerifiedJS/Proofs/ANFConvertCorrect.lean`, `VerifiedJS/Wasm/Semantics.lean`
+## FILES
+- `VerifiedJS/Proofs/ANFConvertCorrect.lean` (rw — INLINE ANFInversion here)
+- `VerifiedJS/Proofs/ClosureConvertCorrect.lean` (rw — CC sorries)
+- `.lake/_tmp_fix/VerifiedJS/Proofs/ANFInversion.lean` (read only — source material)
+
+## DO NOT EDIT: `VerifiedJS/Wasm/Semantics.lean`
 ## LOG: agents/proof/log.md — LOG IMMEDIATELY when you start
