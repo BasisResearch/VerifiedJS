@@ -3625,3 +3625,6 @@ After the first Flat step, `sf'.expr = .getEnv (.lit envObj) idx`, but `convertE
 
 ## Run: 2026-03-29T03:30:01+00:00
 
+
+### Starting: ANF let/seq/if cases (P0-P2)
+- Reading current state of ANF sorries
