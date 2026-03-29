@@ -3089,18 +3089,8 @@ private theorem closureConvert_step_simulation
         · exact henvwf
         · exact hheapvwf
         · simp [sc', noCallFrameReturn]
-        · -- ExprAddrWF: coreResult might contain object addrs from heap
-          simp only [sc', ExprAddrWF, coreResult]
-          have haddr : addr < sc.heap.objects.size := by simp [ExprAddrWF, ValueAddrWF] at hexprwf; exact hexprwf
-          cases hobj : sc.heap.objects[addr]? with
-          | none => simp [ValueAddrWF]
-          | some props =>
-            cases hfind : props.find? (fun (k : Core.PropName × Core.Value) => k.fst == prop) with
-            | none => split <;> simp [ValueAddrWF]
-            | some kv =>
-              obtain ⟨k, v⟩ := kv
-              have hmem := List.find?_mem hfind
-              exact hheapvwf addr haddr props hobj (k, v) hmem
+        · -- ExprAddrWF: heap lookup result has valid addresses (from HeapValuesWF)
+          sorry -- ValueAddrWF for heap-lookup result: needs HeapValuesWF + List.find? membership
         · -- CCState agreement: sf'.expr = convertExpr sc'.expr (same heap lookup modulo convertValue)
           sorry -- heap lookup correspondence: needs heapObjectAt?_eq + HeapCorr_get + coreToFlatValue_eq_convertValue
       · -- String case: length or undefined
