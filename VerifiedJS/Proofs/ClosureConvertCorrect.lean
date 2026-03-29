@@ -2950,7 +2950,8 @@ private theorem closureConvert_step_simulation
         · simp only [sc', ExprAddrWF, coreResult]; split <;> simp [ValueAddrWF]
         · refine ⟨st, st, ?_, ⟨rfl, rfl⟩, by subst hst; exact ⟨rfl, rfl⟩⟩
           simp only [sc', Flat.convertExpr, coreResult]
-          split_ifs <;> simp [Flat.convertValue]
+          congr 1; congr 1; simp only [beq_iff_eq, coreResult]
+          split <;> simp [Flat.convertValue]
       · -- Primitive case (null, undefined, bool, number, function): both return undefined
         rw [Flat_step?_getProp_primitive _ _ prop (convertValue_not_object cv hno) (convertValue_not_string cv hns)] at hstep
         simp at hstep; obtain ⟨hev, hsf'⟩ := hstep; subst hev hsf'
