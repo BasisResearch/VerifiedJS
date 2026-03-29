@@ -334,3 +334,86 @@ Build failure is PRE-EXISTING in `ClosureConvertCorrect.lean:1950`. My changes a
 
 ## Run: 2026-03-29T04:00:01+00:00
 
+### PRIORITY 0: Break/Continue step simulation helpers — STAGED
+
+File: `.lake/_tmp_fix/VerifiedJS/Proofs/anf_break_step_sim.lean`
+
+#### New verified theorems:
+
+| Lemma | Status | Purpose |
+|-------|--------|---------|
+| `Flat.step?_break_eq` | **VERIFIED** (propext+Choice+Quot) | Flat.step? on .break produces exact error event + terminal state |
+| `Flat.step?_continue_eq` | **VERIFIED** (propext+Choice+Quot) | Same for .continue |
+| `normalizeExpr_break_step_sim` (break direct) | **VERIFIED** | Direct case: sf.expr = .break l → 1 Flat step to .lit .undefined |
+| `normalizeExpr_break_step_sim` (exfalso cases) | **VERIFIED** | var/this/lit/continue/return-none/yield-none/while/tryCatch/labeled → exfalso |
+| `normalizeExpr_continue_step_sim` (continue direct) | **VERIFIED** | Direct case: sf.expr = .continue l → 1 Flat step to .lit .undefined |
+| `normalizeExpr_continue_step_sim` (exfalso cases) | **VERIFIED** | var/this/lit/break/return-none/yield-none/while/tryCatch/labeled → exfalso |
+
+#### Sorry cases (5 per theorem, 10 total):
+- `seq`, `let`, `if`: Need depth induction + trivialChain_consume_ctx (private)
+- `return (some _)`, `yield (some _)`: Inner expr may contain break; dead-code issue
+- `_ (compound/bindComplex)`: Sub-expression may contain break; dead-code issue
+
+#### Theorem signatures for integration at ANFConvertCorrect.lean L1999-2002:
+
+```lean
+theorem normalizeExpr_break_step_sim
+    (d : Nat) (e : Flat.Expr) (hd : e.depth ≤ d)
+    (k : ANF.Trivial → ANF.ConvM ANF.Expr) (n m : Nat)
+    (label : Option Flat.LabelName)
+    (hk : ∀ (arg : ANF.Trivial) (n' : Nat), ∃ m', (k arg).run n' = .ok (.trivial arg, m'))
+    (hnorm : (ANF.normalizeExpr e k).run n = .ok (.break label, m))
+    (sf : Flat.State) (hsf : sf.expr = e) :
+    ∃ (evs : List Core.TraceEvent) (sf' : Flat.State),
+      Flat.Steps sf evs sf' ∧
+      sf'.expr = .lit .undefined ∧
+      sf'.env = sf.env ∧ sf'.heap = sf.heap ∧
+      sf'.trace = sf.trace ++ evs ∧
+      evs = [.error ("break:" ++ (label.getD ""))]
+```
+
+Continue version is identical with `.continue` and `"continue:"` prefix.
+
+#### Integration template included in file — shows how to use at L1999-2002.
+
+#### FUNDAMENTAL DIFFICULTY documented: Dead code after break
+
+When sf.expr contains .break inside a context (e.g., .seq (.break l) b), CPS short-circuits
+but Flat continues executing dead code b. The current SimRel cannot bridge this gap.
+
+Potential solutions documented:
+1. Structural invariant: converted programs never have break inside compound expressions
+2. "Unwinding" mode in SimRel for post-break cleanup
+3. Strengthened ExprWellFormed: break/continue only in loop/labeled contexts
+
+### PRIORITY 2: Exfalso analysis — CORRECTED
+
+File: `.lake/_tmp_fix/VerifiedJS/Proofs/anf_exfalso_template.lean` (updated)
+
+**Key correction**: Categories 2-4 in the exfalso template were previously claimed to be
+closable via "exfalso by IH". This is **WRONG**:
+
+- normalizeExpr (.throw (.labeled l b)) k = .labeled l ... (labeled propagates through sub-exprs)
+- These are SIMULATION cases, not exfalso. They need actual stepping proofs.
+- The labeled inversion shows HasLabeledInHead in the sub-expression, enabling the step,
+  but the IH requires **generalizing** hk from "trivial-preserving" to "never-produces-labeled"
+
+**Correct sorry status for normalizeExpr_labeled_step_sim (7 sorry):**
+- All 7 sorry cases need depth induction + generalized k hypothesis
+- None are closable with exfalso alone
+- The generalization is: change `∀ arg n', ∃ m', (k arg).run n' = .ok (.trivial arg, m')`
+  to `∀ arg n' m' result, (k arg).run n' = .ok (result, m') → ¬ result.isLabeled`
+
+**Correct sorry status for anfConvert_step_star (12 sorry in 10 cases):**
+- break/continue (2): closable once break/continue_step_sim helpers are integrated
+- let/seq/if (3): need actual simulation logic (major work items)
+- throw (2 sub-cases): need normalizeExpr inversion for throw
+- tryCatch/return/yield/await (4): need respective simulation proofs
+- None closable with just labeled inversion
+
+### Build status:
+Build failure is PRE-EXISTING in `ClosureConvertCorrect.lean:1950`. My changes add no new errors.
+
+2026-03-29T04:00:01+00:00 DONE
+
+2026-03-29T04:20:58+00:00 DONE
