@@ -3429,14 +3429,15 @@ private theorem closureConvert_step_simulation
         have hvals := valuesFromExprList_none_of_firstNonValueProp hffnv
         -- Unfold step? on objectLit in the hypothesis
         unfold Flat.step? at hstep; simp only [hvals, hffnv, -Flat.step?] at hstep
-        match hm : Flat.step? { sf with expr := (Flat.convertExpr target_c scope envVar envMap
-            (Flat.convertPropList done_c scope envVar envMap st).snd).fst } with
-        | some (t, se) =>
-          rw [hm] at hstep; simp at hstep
-          obtain ⟨rfl, hsf'eq⟩ := hstep
-          exact ⟨se, rfl, hsf'eq.symm⟩
-        | none =>
-          rw [hm] at hstep; simp at hstep
+        -- hstep now has the form: match step? target with | some => ... | none => ... = some (ev, sf')
+        split at hstep
+        · -- step? target = some (t, se): extract sub-step and sf' structure
+          rename_i t_se heq
+          obtain ⟨t, se⟩ := t_se
+          simp at hstep; obtain ⟨rfl, hsf'eq⟩ := hstep
+          exact ⟨se, heq, hsf'eq.symm⟩
+        · -- step? target = none: contradiction
+          simp at hstep
       subst hsf'_eq
       have hdepth : target_c.depth < n := by
         simp [Core.Expr.depth] at hd
@@ -3527,14 +3528,15 @@ private theorem closureConvert_step_simulation
         have hvals := valuesFromExprList_none_of_firstNonValueExpr hffnv
         -- Unfold step? on arrayLit in the hypothesis
         unfold Flat.step? at hstep; simp only [hvals, hffnv, -Flat.step?] at hstep
-        match hm : Flat.step? { sf with expr := (Flat.convertExpr target_c scope envVar envMap
-            (Flat.convertExprList done_c scope envVar envMap st).snd).fst } with
-        | some (t, se) =>
-          rw [hm] at hstep; simp at hstep
-          obtain ⟨rfl, hsf'eq⟩ := hstep
-          exact ⟨se, rfl, hsf'eq.symm⟩
-        | none =>
-          rw [hm] at hstep; simp at hstep
+        -- hstep now has the form: match step? target with | some => ... | none => ... = some (ev, sf')
+        split at hstep
+        · -- step? target = some (t, se): extract sub-step and sf' structure
+          rename_i t_se heq
+          obtain ⟨t, se⟩ := t_se
+          simp at hstep; obtain ⟨rfl, hsf'eq⟩ := hstep
+          exact ⟨se, heq, hsf'eq.symm⟩
+        · -- step? target = none: contradiction
+          simp at hstep
       subst hsf'_eq
       have hdepth : target_c.depth < n := by
         simp [Core.Expr.depth] at hd
