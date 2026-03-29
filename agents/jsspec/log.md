@@ -503,3 +503,92 @@ Zero errors in both new files (LSP verified).
 
 ## Run: 2026-03-29T06:00:01+00:00
 
+### PRIORITY 0: ANFInversion.lean — MERGED, VERIFIED, READY FOR INSTALL
+
+File: `.lake/_tmp_fix/VerifiedJS/Proofs/ANFInversion.lean` (1425 lines, 0 sorry)
+
+**Merged ALL inversion infrastructure into one importable module:**
+- Break inversion (from `anf_break_inversion.lean`)
+- Labeled inversion (from `anf_labeled_inversion.lean`)
+- Continue inversion (from `anf_continue_inversion.lean`)
+- Step sim helpers (from `anf_break_sim.lean`)
+
+#### Full theorem inventory (all VERIFIED, axioms: propext + Quot.sound):
+
+**Part 1 — Break Inversion:**
+
+| Theorem | Status |
+|---------|--------|
+| `ANF.bindComplex_never_break_general` | **VERIFIED** |
+| `ANF.normalizeExpr_labeled_not_break` | **VERIFIED** |
+| `ANF.normalizeExpr_while_not_break` | **VERIFIED** |
+| `ANF.normalizeExpr_tryCatch_not_break` | **VERIFIED** |
+| `HasBreakInHead` / `HasBreakInHeadList` / `HasBreakInHeadProps` | **VERIFIED** |
+| `Flat.Expr.mem_propListDepth_lt` | **VERIFIED** |
+| `normalizeExprList_break_or_k` | **VERIFIED** |
+| `normalizeProps_break_or_k` | **VERIFIED** |
+| `ANF.normalizeExpr_break_or_k` | **VERIFIED** |
+| `ANF.normalizeExpr_break_implies_hasBreakInHead` | **VERIFIED** |
+| `ANF.normalizeExpr_not_break_of_no_head_no_k` | **VERIFIED** (NEW — contrapositive) |
+
+**Part 2 — Labeled Inversion:**
+
+| Theorem | Status |
+|---------|--------|
+| `HasLabeledInHead` / `HasLabeledInHeadList` / `HasLabeledInHeadProps` | **VERIFIED** |
+| `normalizeExprList_labeled_or_k` | **VERIFIED** |
+| `normalizeProps_labeled_or_k` | **VERIFIED** |
+| `ANF.normalizeExpr_labeled_or_k` | **VERIFIED** |
+| `ANF.normalizeExpr_labeled_implies_hasLabeledInHead` | **VERIFIED** |
+| `ANF.normalizeExpr_not_labeled_of_no_head_no_k` | **VERIFIED** |
+
+**Part 3 — Step Sim Helpers:**
+
+| Theorem | Status |
+|---------|--------|
+| `Flat.step?_break_is_some` | **VERIFIED** |
+| `Flat.step?_break_eq` | **VERIFIED** (NEW — exact characterization) |
+| `Flat.step?_continue_is_some` | **VERIFIED** |
+| `Flat.step?_continue_eq` | **VERIFIED** (NEW — exact characterization) |
+| `ANF.normalizeExpr_break_run` | **VERIFIED** |
+| `ANF.normalizeExpr_continue_run` | **VERIFIED** |
+| `ANF.normalizeExpr_lit_undefined_trivial` | **VERIFIED** (NEW) |
+| `ANF.trivial_k_preserving` | **VERIFIED** (NEW) |
+| `normalizeExpr_break_direct_state_eq` | **VERIFIED** (NEW) |
+| `normalizeExpr_continue_direct_state_eq` | **VERIFIED** (NEW) |
+
+**Part 4 — Continue Inversion:**
+
+| Theorem | Status |
+|---------|--------|
+| `ANF.bindComplex_never_continue_general` | **VERIFIED** |
+| `ANF.normalizeExpr_labeled_not_continue` | **VERIFIED** |
+| `ANF.normalizeExpr_while_not_continue` | **VERIFIED** |
+| `ANF.normalizeExpr_tryCatch_not_continue` | **VERIFIED** |
+| `HasContinueInHead` / `HasContinueInHeadList` / `HasContinueInHeadProps` | **VERIFIED** |
+| `normalizeExprList_continue_or_k` | **VERIFIED** |
+| `normalizeProps_continue_or_k` | **VERIFIED** |
+| `ANF.normalizeExpr_continue_or_k` | **VERIFIED** |
+| `ANF.normalizeExpr_continue_implies_hasContinueInHead` | **VERIFIED** |
+| `ANF.normalizeExpr_not_continue_of_no_head_no_k` | **VERIFIED** (NEW — contrapositive) |
+
+#### INSTALLATION BLOCKED: Permission denied
+
+`jsspec` user cannot write to `VerifiedJS/Proofs/` (owned by root:pipeline, mode 750).
+The proof agent or root must:
+1. Copy `.lake/_tmp_fix/VerifiedJS/Proofs/ANFInversion.lean` → `VerifiedJS/Proofs/ANFInversion.lean`
+2. Add `import VerifiedJS.Proofs.ANFInversion` to `ANFConvertCorrect.lean` (after line 14)
+3. `lake build VerifiedJS.Proofs.ANFInversion` to verify
+
+#### Integration template for L1999-2002 (break/continue sorry):
+
+Available in `.lake/_tmp_fix/VerifiedJS/Proofs/anf_break_step_sim.lean` lines 272-333.
+The direct case (sf.expr = .break l) is fully proved. Compound cases (sf.expr has break
+in sub-expression) are blocked by the dead-code-after-break fundamental difficulty.
+
+### Build status:
+Build failure is PRE-EXISTING in `ClosureConvertCorrect.lean`. My changes add no new errors.
+
+2026-03-29T06:15:00+00:00 DONE
+
+2026-03-29T06:07:36+00:00 DONE

@@ -3546,7 +3546,11 @@ private theorem closureConvert_step_simulation
               (Flat.convertExpr x scope envVar envMap
                 (Flat.convertExprList done_c scope envVar envMap st).snd).snd).fst := by
           intro x
-          rw [convertExprList_append, convertExprList_append, hcels_fst, hcels_snd]
+          rw [convertExprList_append, convertExprList_append, hcels_fst]
+          rw [show (Flat.convertExprList (done_c ++ [x]) scope envVar envMap st).snd =
+              (Flat.convertExpr x scope envVar envMap
+                (Flat.convertExprList done_c scope envVar envMap st).snd).snd from by
+            rw [convertExprList_append_snd, hcels_snd]]
           simp [List.append_assoc]
         have hdecomp_snd : ∀ (x : Core.Expr),
             (Flat.convertExprList (done_c ++ [x] ++ rest_c) scope envVar envMap st).snd =
@@ -3564,9 +3568,9 @@ private theorem closureConvert_step_simulation
                   (Flat.convertExprList done_c scope envVar envMap st).snd).snd).fst) =
             Flat.Expr.arrayLit (Flat.convertExprList (done_c ++ [sc_sub'.expr] ++ rest_c) scope envVar envMap st).fst := by
           rw [hdecomp_fst]
-          congr 1; congr 1
-          · exact htgt_eq.symm
-          · exact hsd_rest.1.symm
+          congr 2
+          · congr 1; exact htgt_eq.symm
+          · exact hsd_rest.1
         refine ⟨st, (Flat.convertExprList (done_c ++ [sc_sub'.expr] ++ rest_c) scope envVar envMap st).snd,
           ?_, ⟨rfl, rfl⟩, ?_⟩
         · -- Pair equality: use Prod.ext after unfolding convertExpr for arrayLit
