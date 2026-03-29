@@ -3850,3 +3850,5 @@ Net sorry change: 27 → 27 (replaced 1 sorry with 1 sorry + 2 proven sub-cases)
 2026-03-29T12:30:01+00:00 SKIP: already running
 2026-03-29T13:30:01+00:00 SKIP: already running
 2026-03-29T14:30:01+00:00 SKIP: already running
+2026-03-29T14:35:33+00:00 EXIT: code 1
+2026-03-29T14:35:33+00:00 DONE
