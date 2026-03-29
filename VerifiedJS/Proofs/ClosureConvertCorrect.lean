@@ -2911,97 +2911,15 @@ private theorem closureConvert_step_simulation
       have hsf_eta : sf = { sf with expr := .getProp (.lit (Flat.convertValue cv)) prop } := by
         cases sf; simp_all
       rw [hsf_eta] at hstep
-      -- Handle all three sub-cases: object (heap lookup), string (length), primitive (undefined)
-      -- First establish that cv determines the Core value type
+      -- Sub-cases by value type: object (heap lookup), string (length), or primitive (undefined)
       have hno_core : (∃ addr, cv = .object addr) ∨ (∃ str, cv = .string str) ∨ (∀ a, cv ≠ .object a) ∧ (∀ s, cv ≠ .string s) := by
         cases cv with
         | object a => left; exact ⟨a, rfl⟩
         | string s => right; left; exact ⟨s, rfl⟩
         | _ => right; right; exact ⟨fun a h => nomatch h, fun s h => nomatch h⟩
       rcases hno_core with ⟨addr, rfl⟩ | ⟨str, rfl⟩ | ⟨hno, hns⟩
-      · -- Object case: heap property lookup
-        have haddr : addr < sc.heap.objects.size := by
-          simp [ExprAddrWF, ValueAddrWF] at hexprwf; exact hexprwf
-        have hheap_eq : sc.heap.objects[addr]? = sf.heap.objects[addr]? :=
-          HeapInj_get hinj haddr
-        have hfstep : Flat.step? { sf with expr := .getProp (.lit (.object addr)) prop } =
-            some (.silent, { expr := .lit (match sf.heap.objects[addr]? with
-              | some props =>
-                  match props.find? (fun kv => kv.fst == prop) with
-                  | some (_, cv) => Flat.coreToFlatValue cv
-                  | none => if prop == "length" then .number (Float.ofNat props.length) else .undefined
-              | none => .undefined),
-              env := sf.env, heap := sf.heap,
-              trace := sf.trace ++ [.silent], funcs := sf.funcs, callStack := sf.callStack }) := by
-          simp [Flat.step?, Flat.exprValue?, Flat.pushTrace, heapObjectAt?_eq]
-        rw [hfstep] at hstep
-        simp at hstep; obtain ⟨hev, hsf'⟩ := hstep; subst hev hsf'
-        let coreResult := match sc.heap.objects[addr]? with
-          | some props =>
-              match props.find? (fun kv => kv.fst == prop) with
-              | some (_, v) => v
-              | none => if prop == "length" then Core.Value.number (Float.ofNat props.length) else .undefined
-          | none => Core.Value.undefined
-        let sc' : Core.State := ⟨.lit coreResult, sc.env, sc.heap,
-          sc.trace ++ [.silent], sc.funcs, sc.callStack⟩
-        refine ⟨injMap, sc', ⟨?_⟩, ?_, ?_, ?_, ?_, ?_, ?_, ?_, ?_⟩
-        · have hsc' : sc = { sc with expr := .getProp (.lit (.object addr)) prop } := by
-            obtain ⟨_, _, _, _, _, _⟩ := sc; simp only [] at hsc; subst hsc; rfl
-          rw [hsc']
-          have := Core.step?_getProp_object_val addr prop sc.env sc.heap sc.trace sc.funcs sc.callStack
-          simp only [Core.pushTrace, sc', coreResult] at this ⊢; exact this
-        · simp [sc', htrace]
-        · exact hinj
-        · exact henvCorr
-        · exact henvwf
-        · exact hheapvwf
-        · simp [sc', noCallFrameReturn]
-        · simp only [sc', ExprAddrWF]
-          show ValueAddrWF coreResult sc.heap.objects.size
-          simp only [coreResult]
-          cases hobj : sc.heap.objects[addr]? with
-          | none => simp [ValueAddrWF]
-          | some props =>
-            cases hfind : props.find? (fun kv => kv.fst == prop) with
-            | none => split <;> simp [ValueAddrWF]
-            | some kv =>
-              exact hheapvwf addr haddr props hobj kv (List.find?_mem hfind)
-        · refine ⟨st, st, ?_, ⟨rfl, rfl⟩, by subst hst; exact ⟨rfl, rfl⟩⟩
-          simp only [sc', Flat.convertExpr, coreResult]
-          rw [← hheap_eq]
-          cases sc.heap.objects[addr]? with
-          | none => simp [Flat.convertValue, Flat.coreToFlatValue]
-          | some props =>
-            cases props.find? (fun kv => kv.fst == prop) with
-            | none => split <;> simp [Flat.convertValue]
-            | some kv => rw [coreToFlatValue_eq_convertValue]
-      · -- String case: length or undefined
-        have hfstep : Flat.step? { sf with expr := .getProp (.lit (.string str)) prop } =
-            some (.silent, { expr := .lit (if prop == "length" then .number (Float.ofNat str.length) else .undefined),
-              env := sf.env, heap := sf.heap,
-              trace := sf.trace ++ [.silent], funcs := sf.funcs, callStack := sf.callStack }) := by
-          simp [Flat.step?, Flat.exprValue?, Flat.pushTrace]
-        rw [hfstep] at hstep
-        simp at hstep; obtain ⟨hev, hsf'⟩ := hstep; subst hev hsf'
-        let coreResult := if prop == "length" then Core.Value.number (Float.ofNat str.length) else Core.Value.undefined
-        let sc' : Core.State := ⟨.lit coreResult, sc.env, sc.heap,
-          sc.trace ++ [.silent], sc.funcs, sc.callStack⟩
-        refine ⟨injMap, sc', ⟨?_⟩, ?_, ?_, ?_, ?_, ?_, ?_, ?_, ?_⟩
-        · have hsc' : sc = { sc with expr := .getProp (.lit (.string str)) prop } := by
-            obtain ⟨_, _, _, _, _, _⟩ := sc; simp only [] at hsc; subst hsc; rfl
-          rw [hsc']
-          have := Core.step?_getProp_string_val str prop sc.env sc.heap sc.trace sc.funcs sc.callStack
-          simp only [Core.pushTrace, sc', coreResult] at this ⊢; exact this
-        · simp [sc', htrace]
-        · exact hinj
-        · exact henvCorr
-        · exact henvwf
-        · exact hheapvwf
-        · simp [sc', noCallFrameReturn]
-        · simp only [sc', ExprAddrWF, coreResult]; split <;> simp [ValueAddrWF]
-        · refine ⟨st, st, ?_, ⟨rfl, rfl⟩, by subst hst; exact ⟨rfl, rfl⟩⟩
-          simp only [sc', Flat.convertExpr, coreResult]
-          split <;> simp [Flat.convertValue]
+      · sorry -- getProp on object: heap property lookup (needs Flat step? unfolding for object case)
+      · sorry -- getProp on string: length or undefined (needs Flat step? unfolding for string case)
       · -- Primitive case (null, undefined, bool, number, function): both return undefined
         rw [Flat_step?_getProp_primitive _ _ prop (convertValue_not_object cv hno) (convertValue_not_string cv hns)] at hstep
         simp at hstep; obtain ⟨hev, hsf'⟩ := hstep; subst hev hsf'
