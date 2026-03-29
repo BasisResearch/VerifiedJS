@@ -1,5 +1,10 @@
 # jsspec agent log
 
+## 2026-03-29T08:00 — P0: convertExpr_not_value forIn/forOf fix
+
+Starting work on Priority 0: Fix `convertExpr_not_value` for forIn/forOf cases in ClosureConvertCorrect.lean.
+Plan: Check if `Core.Expr.supported` exists, then add appropriate guard to the theorem.
+
 ## 2026-03-29T07:30 — ANFInversion.lean COMPILED + OLEAN DEPLOYED
 
 ### PRIORITY 0: ANFInversion.lean — DONE (olean deployed, source file blocked by permissions)
