@@ -1,42 +1,35 @@
-# wasmspec — 18 Wasm sorries. 12+ HOURS of zero progress. YOUR PROCESS IS STUCK.
+# wasmspec — 16 Wasm sorries. YOUR STUCK LEAN PROCESS IS 13+ HOURS OLD.
 
-## STEP 0: CHECK IF YOUR LEAN PROCESSES ARE STUCK
+## STEP 0: DO NOT RUN `lake build` ON THE FULL WASM FILE
 
-```bash
-ps aux | grep lean | grep -v grep
-```
+Your lean process PID 853890 is stuck at 571MB for 13+ hours. You cannot kill it.
+Any `lake build` will hang. Use ONLY `lean_goal` and `lean_multi_attempt`.
 
-If any lean process is using >200MB and running for >1 hour, it is stuck in elaboration. You CANNOT kill it (it's from a prior session). IGNORE it. DO NOT run `lake build` on the full Wasm file — it will hang.
+## STEP 1: Close ONE sorry. Pick from the easiest.
 
-## STEP 1: Use lean_goal and lean_multi_attempt ONLY. No full builds.
-
-## STEP 2: Close ONE sorry. Pick the EASIEST one.
-
-### Target A: L6864 — `return (some t)`
-- The `return none` case is FULLY PROVED above (L6822-6863). READ IT CAREFULLY.
-- For `return (some t)`: the trivial `t` needs evaluation first
-- Pattern: `ANF.step?_return_some` + `irStep?` for const + return
-- A stuttering simulation template exists: `step_sim_return_litNull` at L6884
-- This is a 1:N step (IR needs multiple steps for one ANF step)
-
-### Target B: L6876 — `break label`
+### Target A: L6876 — break label
 - Both ANF and IR produce error signals for break
-- Should be simple: `ANF.step?_break` + `irStep?_break`
+- `lean_goal` at L6876 first
+- Should be: both sides step to error, match events
 
-### Target C: L6879 — `continue label`
+### Target B: L6879 — continue label
 - Same pattern as break
 
-### Target D: L6867 — `yield arg delegate`
-- If yield is unsupported, it should error/trap on both sides
+### Target C: L6864 — return (some t)
+- The `return none` case is FULLY PROVED above (L6822-6863). READ IT.
+- Pattern: `ANF.step?_return_some` + `irStep?` for trivial eval + return
 
-### Wasm sorry locations (18 total, verified 2026-03-29T11:05):
+### Target D: L6867 — yield
+### Target E: L6870 — await
+
+### Wasm sorry locations (16 actual sorries):
 - L6798 (let), L6806 (seq), L6810 (if), L6813 (while), L6816 (throw), L6819 (tryCatch)
-- L6864 (return some), L6867 (yield), L6870 (await), L6873 (labeled), L6876 (break), L6879 (continue)
+- L6864 (return some), L6867 (yield), L6870 (await), L6873 (labeled)
+- L6876 (break), L6879 (continue)
 - L10857 (call), L10912 (call stack underflow), L10916 (call success), L10919 (callIndirect)
 
 ## CONSTRAINTS
-- DO NOT run `lake build VerifiedJS.Wasm.Semantics` — your stuck process will block it
-- Use `lean_goal` and `lean_multi_attempt` for testing
+- NO `lake build` — use `lean_goal` and `lean_multi_attempt` ONLY
 - MAX 10 lines of new proof per attempt
 - LOG to agents/wasmspec/log.md every 15 minutes
 - If stuck >30 min on one sorry, move to next

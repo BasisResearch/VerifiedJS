@@ -3515,7 +3515,7 @@ private theorem closureConvert_step_simulation
           have heq := Flat_step?_objectLit_step sf _ _ propName_c _ _ hvals hffnv t se hm
           rw [heq] at hstep; simp only [Option.some.injEq, Prod.mk.injEq] at hstep
           obtain ⟨rfl, hsf'eq⟩ := hstep
-          refine ⟨se, rfl, ?_⟩; rw [hsf'eq]; simp [List.singleton_append]
+          exact ⟨se, rfl, hsf'eq.symm⟩
         | none =>
           have heq := Flat_step?_objectLit_none sf _ _ propName_c _ _ hvals hffnv hm
           rw [heq] at hstep; exact absurd hstep (by simp)
@@ -3613,7 +3613,7 @@ private theorem closureConvert_step_simulation
           have heq := Flat_step?_arrayLit_step sf _ _ _ _ hvals hffnv t se hm
           rw [heq] at hstep; simp only [Option.some.injEq, Prod.mk.injEq] at hstep
           obtain ⟨rfl, hsf'eq⟩ := hstep
-          refine ⟨se, rfl, ?_⟩; rw [hsf'eq]; simp [List.singleton_append]
+          exact ⟨se, rfl, hsf'eq.symm⟩
         | none =>
           have heq := Flat_step?_arrayLit_none sf _ _ _ _ hvals hffnv hm
           rw [heq] at hstep; exact absurd hstep (by simp)

@@ -1,49 +1,49 @@
-# jsspec — CC VALUE SUB-CASES: you own L2907, L3031, L3101, L3170, L3255
+# jsspec — INTEGRATE YOUR STAGED PROOFS INTO CC. Target: CLOSE 2+ sorries NOW.
 
-## STATUS: 60 sorries. CC stuck at 25 this run. WE NEED CLOSES. Your staged proofs are ready — INTEGRATE THEM.
+## STATUS: 60 sorries. ZERO progress last 2 runs. Your staging work is DONE. Now INTEGRATE.
 
-## YOUR TARGETS (5 value sub-cases) — LINE NUMBERS VERIFIED 2026-03-29T11:05
+## YOUR TARGETS — LINE NUMBERS VERIFIED 2026-03-29T12:05
 
-### You already staged proofs in `.lake/_tmp_fix/`. NOW CLOSE THE SORRIES.
+### STEP 1: Add helper lemmas to CC file (ClosureConvertCorrect.lean)
 
-### L3255 — deleteProp value (EASIEST — start here)
-- Your staging file `cc_deleteProp_value_proof.lean` has the complete proof
-- Add `Flat_step?_deleteProp_object_value` + `Flat_step?_deleteProp_nonobject_value` near L1790
-- Add `HeapCorr_set_same` near L893 if not already there
-- Replace sorry at L3255 with staged proof
+Near L1790 (after existing Flat_step? helpers), add these from your staging:
+- `Flat_step?_deleteProp_object_value`
+- `Flat_step?_deleteProp_nonobject_value`
+- `Flat_step?_setProp_object_both_values` / `nonobject_both_values`
+- `Flat_step?_getIndex_object_both_values` / `other_both_values`
+- `Flat_step?_setIndex_object_all_values` / `nonobject_all_values`
+- `HeapInj_set_same` near L893
 
-### L3031 — setProp value
-- `cc_all_value_proofs.lean` has the template
-- Add `Flat_step?_setProp_value_value` helper
-- Case split: object vs non-object
+Near L1574 (after existing Core.step? helpers), add:
+- `Core_step?_setProp_value_step`
+- `Core_step?_getIndex_value_step`
+- `Core_step?_setIndex_value_step_idx` / `value_step_val`
 
-### L3101 — getIndex value
-### L3170 — setIndex value
-- Same pattern as setProp. Add step? helpers, case split.
+### STEP 2: Close L3337 — deleteProp value (EASIEST)
+- Your staging has complete proof in `cc_deleteProp_value_proof.lean`
+- Object: HeapInj_set_same + HeapValuesWF with filter
+- Non-object: trivial (heap unchanged)
+- **Build after this. If green, commit mentally and move to next.**
 
-### L2907 — call value (HARDEST — do last)
-- Callee is value → case split on `Core.exprListValue? args`
-- All args values → execute call (function simulation)
-- Some arg needs stepping → `firstNonValueExpr` + ih
+### STEP 3: Close L3113 — setProp value
+- Your staging has complete proof in `cc_value_proofs_v2.lean` (B2)
+- Non-object: trivial. Object: HeapInj via flatToCoreValue_convertValue + HeapInj_set_same
 
-### Helper lemma pattern (all compile in staging):
-```lean
-cases ve_or_ie with
-| lit v => simp [Core.exprValue?] at hnv
-| _ => cases cv <;> simp [Core.step?, Core.exprValue?, hss, Core.pushTrace]
-```
+### STEP 4: Close L3011 — getProp object
+- Read-only operation (no heap mutation!)
+- HeapInj_get → same property list in Core and Flat
+- Staging file has template
 
-## ALSO CONSIDER if blocked: L3429, L3517 (step extraction), L3437, L3525 (ExprAddrWF)
+### STEP 5 (stretch): L3252 — setIndex value, L3183 — getIndex value
 
-## proof agent IS HANDLING: L2929 (getProp), L2908 (newObj), L3403/L3491 (all-values), L3655 (functionDef)
+## proof agent IS HANDLING: L2154, L2989, L2990, L3485, L3583, L3529, L3627, L3757, L3847
 DO NOT work on these.
 
 ## WORKFLOW
-1. `lean_goal` at each sorry FIRST
-2. Write helper lemma → build → use in sorry → build
-3. `lake build VerifiedJS.Proofs.ClosureConvertCorrect` after EVERY edit
-4. If build breaks: SORRY IT BACK immediately
-5. LOG to agents/jsspec/log.md every 30 min
+1. `lean_goal` at each sorry FIRST — verify line numbers match
+2. Write helper lemma → `lake build` → use in sorry → `lake build`
+3. If build breaks: SORRY IT BACK immediately
+4. LOG to agents/jsspec/log.md every 30 min
 
 ## FILES
 - `VerifiedJS/Proofs/ClosureConvertCorrect.lean` (rw)
