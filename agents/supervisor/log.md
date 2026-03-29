@@ -1,3 +1,51 @@
+## Run: 2026-03-29T21:05:01+00:00
+
+### Metrics
+- **Sorry count (grep -c)**: 58 (17 ANF + 23 CC + 18 Wasm). CC UP by 1 (22→23). New sorry L4047 (CCState threading: convertPropList concat) — proof agent decomposed objectLit case, exposed new sorry. Acceptable: structural progress.
+- **Delta from last run (18:05)**: **+1** (CC regression from case decomposition, not new blocking issue)
+- **BUILD STATUS**: proof active since 20:30 (35min, building CC at ~21:00). jsspec JUST STARTED at 21:00 (working on ANFConvertCorrect). wasmspec ZOMBIE 22h+.
+
+### Agent Analysis
+1. **proof** (PID 1857255, started 20:30): ACTIVE. Building CC file. Working on value sub-cases (setProp, getIndex, setIndex). New session — line numbers updated in prompt.
+2. **jsspec** (PID 1871413, started 21:00): ACTIVE. Lean worker on ANFConvertCorrect.lean. Previously staged P0 (convertExpr_not_lit) and P1 (ExprAddrWF propagation). Now targeting ANF constructors and CCState mono lemma.
+3. **wasmspec** (PID 845769): ZOMBIE 22h. Will timeout ~23:00.
+
+### Sorry Classification (CC 23 actual sorry lines)
+
+**Stubs(2):** L1177, L1178 (forIn/forOf)
+**convertExpr_not_lit(2):** L2153, L2263
+**HeapInj(1):** L2347
+**CCState(5):** L2666, L2688(×2), L4047, L4349
+**Value(3):** L3495 (setProp), L3565 (getIndex), L3634 (setIndex)
+**Call(2):** L3182, L3183
+**Heap alloc(2):** L3956 (objectLit), L4054 (arrayLit)
+**ExprAddrWF(2):** L4000, L4098
+**Large(2):** L4228 (functionDef), L4318 (tryCatch)
+
+**ANF (17):** ALL blocked by continuation mismatch.
+**Wasm (18):** architecturally blocked.
+
+### Actions Taken
+1. Counted sorries: 58 (17+23+18) — up 1 from CC decomposition
+2. **proof prompt**: Updated ALL line numbers to match current CC file (L3495, L3565, L3634, L3182, L3183, L3956, L4054). Updated blocked list with new L4047.
+3. **jsspec prompt**: Added P3 (CCState monotonicity lemma) as new task. Marked P0/P1 as DONE. Kept P2 (ANF constructors) as in-progress.
+4. wasmspec prompt: unchanged (zombie, will restart at ~23:00).
+5. Logged time estimate (58, 143h)
+
+### OUTLOOK
+- Next run target: ≤56 (proof -2 from setProp+getIndex value sub-cases)
+- jsspec staging: CCState_mono lemma could unblock 4 CC sorries (L2666, L2688×2, L4047, L4349)
+- ANF 17 LONG-TERM BLOCKED
+
+### RISK
+- CC +1 regression is from decomposition, not a real regression. Should resolve next session.
+- wasmspec lean worker still holding Wasm/Semantics.lean — may block jsspec if it tries Wasm.
+- proof agent just started (35min) — full session ahead, should be productive.
+
+2026-03-29T21:05:01+00:00 DONE
+
+---
+
 ## Run: 2026-03-29T18:05:01+00:00
 
 ### Metrics
@@ -5293,3 +5341,4 @@ Breakdown (13 `sorry` tokens, 10 real proof sorries):
 
 ## Run: 2026-03-29T21:05:01+00:00
 
+2026-03-29T21:12:37+00:00 DONE
