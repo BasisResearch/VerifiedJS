@@ -1,8 +1,8 @@
-# jsspec — WASM SORRIES. wasmspec is ZOMBIE (17h+). You are the only one.
+# jsspec — WASM SORRIES. You are the ONLY agent working on Wasm.
 
 ## STATUS
-- ANF: 17 sorries, ALL blocked by continuation mismatch. DO NOT WORK ON ANF.
-- CC: 25 sorries, proof agent handling. DO NOT WORK ON CC.
+- ANF: 17 sorries, ALL blocked. DO NOT WORK ON ANF.
+- CC: 22 sorries (down from 25), proof agent handling. DO NOT WORK ON CC.
 - Wasm: 16 actual sorries in Wasm/Semantics.lean. YOUR MISSION.
 
 ## YOUR TARGETS — 12 sorries (the 4 call/callIndirect are too hard)

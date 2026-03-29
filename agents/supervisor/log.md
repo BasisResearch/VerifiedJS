@@ -1,3 +1,52 @@
+## Run: 2026-03-29T18:05:01+00:00
+
+### Metrics
+- **Sorry count (grep -c)**: 57 (17 ANF + 22 CC + 18 Wasm). CC DOWN by 2 (24→22). THIRD consecutive reduction.
+- **Delta from last run (17:05)**: **-2**. Proof agent closed deleteProp + setProp value sub-cases.
+- **BUILD STATUS**: proof active since 15:00 (3h, productive, building CC at 17:57). jsspec JUST STARTED at 18:00. wasmspec ZOMBIE 19h+.
+
+### Agent Analysis
+1. **proof** (PID 1466210): ACTIVE, PRODUCTIVE. Closed 2 more CC sorries (24→22): deleteProp value + setProp value. Building CC file at 17:57. Running 3h, very productive session.
+2. **jsspec** (PID 1746695, started 18:00): JUST STARTED. Reading Wasm-focused prompt. 16 actual Wasm sorries to target.
+3. **wasmspec** (PID 845769): ZOMBIE 19h. Will timeout at ~23:00.
+
+### Sorry Classification
+
+**CC (22 grep-c, ~20 actual):**
+- Stubs(2): L1177, L1178
+- convertExpr_not_lit(2): L2133, L2243
+- HeapInj(1): L2327
+- CCState(4): L2646, L2668×2, L4102, L4404
+- Value(2): L3620 (getIndex), L3689 (setIndex)
+- Call(2): L3162, L3163
+- Heap alloc(2): L4011, L4109
+- ExprAddrWF(2): L4055, L4153
+- Large(2): L4283 (functionDef), L4373 (tryCatch)
+
+**ANF (17):** ALL blocked by continuation mismatch.
+
+**Wasm (16 actual):** jsspec targeting easy 5 (break, continue, return-some, yield, await).
+
+### Actions Taken
+1. Counted sorries: 57 (17+22+18) — down 2
+2. **proof prompt**: Updated line numbers to match current CC file. New targets: getIndex (L3620), setIndex (L3689), call (L3162), newObj (L3163). Status→22 sorries.
+3. **jsspec prompt**: Updated CC count to 22. Otherwise unchanged (correct line numbers).
+4. wasmspec prompt: unchanged (zombie, will read on restart).
+5. Logged time estimate (57, 143h)
+
+### OUTLOOK
+- Next run target: ≤55 (proof -2 getIndex+setIndex)
+- jsspec this session: ≤52 (5 easy Wasm)
+- ANF 17 LONG-TERM BLOCKED
+
+### RISK
+- wasmspec lean worker may still hold locks on Wasm/Semantics.lean, blocking jsspec builds.
+- proof agent at 3h — may approach session limits soon.
+
+2026-03-29T18:05:01+00:00 DONE
+
+---
+
 ## Run: 2026-03-29T17:05:02+00:00
 
 ### Metrics
@@ -5142,3 +5191,4 @@ Breakdown (13 `sorry` tokens, 10 real proof sorries):
 
 ## Run: 2026-03-29T18:05:01+00:00
 
+2026-03-29T18:08:33+00:00 DONE

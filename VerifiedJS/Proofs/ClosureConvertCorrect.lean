@@ -3365,7 +3365,7 @@ private theorem closureConvert_step_simulation
         cases obj <;> simp [Core.exprValue?] at hcev; subst hcev; rfl
       subst hlit
       -- After subst, hfexpr/hst still reference convertExpr (.lit cv). Simplify.
-      simp only [Flat.convertExpr, Flat.convertValue] at hfexpr hst
+      simp [Flat.convertExpr] at hfexpr hst
       have hsf_eta : sf = { sf with expr := (Flat.Expr.setProp (.lit (Flat.convertValue cv)) prop
           (Flat.convertExpr value scope envVar envMap st).fst) } := by
         cases sf; simp_all
@@ -3459,7 +3459,7 @@ private theorem closureConvert_step_simulation
         have hlit_v : value = .lit vv := by
           cases value <;> simp [Core.exprValue?] at hcev_v; subst hcev_v; rfl
         subst hlit_v
-        simp only [Flat.convertExpr, Flat.convertValue] at hfexpr hst
+        simp [Flat.convertExpr] at hfexpr hst
         have hsf_eta2 : sf = { sf with expr := (Flat.Expr.setProp (.lit (Flat.convertValue cv)) prop (.lit (Flat.convertValue vv))) } := by
           cases sf; simp_all
         rw [hsf_eta2] at hstep
