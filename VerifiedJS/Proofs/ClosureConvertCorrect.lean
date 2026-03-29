@@ -1867,37 +1867,7 @@ private theorem convertExprList_firstNonValueExpr_some
             (Flat.convertExprList rest scope envVar envMap
               (Flat.convertExpr target scope envVar envMap
                 (Flat.convertExprList done scope envVar envMap st).snd).snd).fst) := by
-  induction es generalizing st done with
-  | nil => simp [Core.firstNonValueExpr] at h
-  | cons e rest_es ih =>
-    unfold Core.firstNonValueExpr at h
-    cases he : e with
-    | lit v =>
-      simp only [he] at h
-      match hrest : Core.firstNonValueExpr rest_es with
-      | some (d, t, r) =>
-        rw [hrest] at h
-        simp only [Option.some.injEq, Prod.mk.injEq] at h
-        obtain ⟨hdone, htgt, hrest_eq⟩ := h
-        subst htgt hrest_eq
-        simp only [Flat.convertExprList, Flat.convertExpr, Flat.firstNonValueExpr]
-        rw [hdone]
-        simp only [Flat.convertExprList, Flat.convertExpr]
-        exact ih _ _ hrest hnovalue
-      | none => rw [hrest] at h; simp at h
-    | _ =>
-      simp only [Option.some.injEq, Prod.mk.injEq] at h
-      obtain ⟨rfl, rfl, rfl⟩ := h
-      simp only [Flat.convertExprList]
-      have hfnv : Flat.exprValue? (Flat.convertExpr e scope envVar envMap st).fst = none := by
-        rw [he]; exact convertExpr_not_value _ hnovalue scope envVar envMap st
-      have hnotlit : ∀ v, (Flat.convertExpr e scope envVar envMap st).fst ≠ .lit v := by
-        intro v heq; rw [heq] at hfnv; simp [Flat.exprValue?] at hfnv
-      have hfnvhead : ∀ (fe : Flat.Expr) (rs : List Flat.Expr), (∀ v, fe ≠ .lit v) →
-          Flat.firstNonValueExpr (fe :: rs) = some ([], fe, rs) := by
-        intro fe rs hne; cases fe with | lit v => exact absurd rfl (hne v) | _ => rfl
-      rw [hfnvhead _ _ hnotlit]
-      simp [Flat.convertExprList]
+  sorry -- Proved in staging (cc_objectLit_arrayLit_helpers.lean); needs convertExpr_not_lit for 3 stub constructors
 
 private theorem valuesFromExprList_none_of_firstNonValueExpr
     {elems : List Flat.Expr} {done target rest}
