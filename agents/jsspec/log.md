@@ -702,5 +702,51 @@ Three options (any one fixes the 6 unprovable cases):
 2026-03-29T16:00:00+00:00 DONE
 2026-03-29T16:03:00+00:00 DONE
 
-## Run: 2026-03-29T17:00:01+00:00
+## 2026-03-29T17:00 — Wasm step_sim sorry analysis
+
+### Mission: 12 sorries in step_sim (L6798-6879)
+
+### FINDING: All 12 sorries are ARCHITECTURALLY BLOCKED
+
+The `step_sim` theorem promises 1:1 stepping (`irStep? s2 = some (t, s2')`)
+with `hlabels_empty` (empty IR label stack). Every remaining case violates one or both:
+
+**Category 1 — Multi-step IR** (need ≥2 IR steps, 1:1 impossible):
+- L6864 return(some): `argCode ++ [return_]` = 2 steps
+- L6867 yield: `argCode ++ [boolConst, call yieldOp]` = 3+ steps
+- L6870 await: `argCode ++ [call awaitOp]` = 2+ steps
+- L6816 throw: `argCode ++ [call throwOp, br/return]` = 3+ steps
+
+**Category 2 — Label stack changes** (successor violates `hlabels_empty`):
+- L6810 if, L6813 while, L6873 labeled: IR block/loop pushes labels
+- L6798 let, L6806 seq, L6819 tryCatch: body code contains blocks
+
+**Category 3 — Impossible states** (proved via lean_multi_attempt):
+- L6876 break: code=[.br target], labels=[] → IR traps, ANF says .silent → `⊢ False`
+- L6879 continue: identical to break
+
+### Verified: break reduces to `⊢ False`
+
+Tactic sequence tested and confirmed:
+```lean
+have hc := hrel.hcode; rw [hexpr] at hc
+obtain ⟨target, hcode_eq⟩ := hc.break_inv
+-- ... unfold ANF step, traceFromCore → t = .silent
+-- irStep? with empty labels → .trap msg ≠ .silent → False
+```
+
+### Proposed fixes (require write access to Semantics.lean)
+
+1. **break/continue (LOW effort)**: Add `hcode_no_br` field to LowerSimRel preventing bare `br` with empty labels. Vacuously true at all 12 construction sites.
+2. **Multi-step cases (MEDIUM effort)**: Write specialized stutter theorems, wire into `step_sim_stutter`.
+3. **Label-changing cases (HIGH effort)**: Replace `hlabels_empty` with proper label tracking.
+
+### BLOCKER: File permissions
+
+`Semantics.lean` owned by `wasmspec:pipeline` (mode `rw-r-----`).
+Agent `jsspec` can read but NOT write. Need `chmod g+w` from root/wasmspec.
+
+### Output
+
+Full analysis: `.lake/_tmp_fix/wasm_step_sim_analysis.lean`
 
