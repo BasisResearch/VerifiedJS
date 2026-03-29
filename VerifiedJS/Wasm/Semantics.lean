@@ -6880,11 +6880,23 @@ theorem step_sim (prog : ANF.Program) (irmod : IRModule) :
         -- Labeled: ANF enters labeled block
         sorry
     | .«break» label =>
-        -- Break: ANF breaks to label
-        sorry
+        -- Break: ANF breaks to label — impossible with empty label stack.
+        -- LowerCodeCorr says code = [.br target], but hlabels_empty means
+        -- irFindLabel? on [] always returns none, so hcode_no_br contradicts.
+        have hc := hrel.hcode; rw [hexpr] at hc
+        obtain ⟨target, hcode_eq⟩ := hc.break_inv
+        exfalso
+        have ⟨idx, lbl, hfind⟩ := hrel.hcode_no_br target hcode_eq
+        rw [hrel.hlabels_empty] at hfind
+        simp [irFindLabel?, irFindLabel?.go] at hfind
     | .«continue» label =>
-        -- Continue: ANF continues loop
-        sorry
+        -- Continue: ANF continues loop — impossible with empty label stack.
+        have hc := hrel.hcode; rw [hexpr] at hc
+        obtain ⟨target, hcode_eq⟩ := hc.continue_inv
+        exfalso
+        have ⟨idx, lbl, hfind⟩ := hrel.hcode_no_br target hcode_eq
+        rw [hrel.hlabels_empty] at hfind
+        simp [irFindLabel?, irFindLabel?.go] at hfind
 
 /-- Stuttering step simulation for `return (some .litNull)`:
     IR takes 2 steps (const_ .i32 "0" + return_) matching ANF's 1 silent step.

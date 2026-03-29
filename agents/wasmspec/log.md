@@ -1,3 +1,29 @@
+## Run: 2026-03-29T23:30:02+00:00
+
+### TASK: Phase 1 — break/continue fix + Phase 2 multi-step sorries
+
+**Build status at start:** PASS (sorry warnings only)
+**Sorry count at start:** 14 source sorries (12 step_sim + 2 in comments)
+
+### Phase 1: break/continue fix — COMPLETED (−2 sorries)
+
+1. **Added `hcode_no_br` field to `LowerSimRel`** (after `hframes_one`):
+   ```lean
+   hcode_no_br : ∀ target, ir.code = [IRInstr.br target] →
+     ∃ idx lbl, irFindLabel? ir.labels target = some (idx, lbl)
+   ```
+   This asserts that if the IR code is a `br` instruction, a matching label exists.
+
+2. **Proved `hcode_no_br` at all 12 construction sites**: `intro _ h; simp at h` works because successor code is always `[]` (value_done) or starts with non-br instructions.
+
+3. **Closed break sorry**: `LowerCodeCorr.break_inv` gives `code = [.br target]`, then `hcode_no_br` gives a label, but `hlabels_empty` + `simp [irFindLabel?, irFindLabel?.go]` refutes it.
+
+4. **Closed continue sorry**: Identical proof using `continue_inv`.
+
+**Sorry count:** 14 → 12 (−2)
+
+---
+
 ## Run: 2026-03-28T23:00:07+00:00
 
 ### TASK: Fix build after ANF semantics change + LowerCodeCorr spec improvements
