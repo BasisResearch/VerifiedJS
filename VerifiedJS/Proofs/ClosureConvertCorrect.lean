@@ -1809,15 +1809,17 @@ private theorem firstNonValueExpr_decompose {l : List Core.Expr} {done target re
   induction l generalizing done with
   | nil => simp [Core.firstNonValueExpr] at h
   | cons e es ih =>
-    simp only [Core.firstNonValueExpr] at h
+    unfold Core.firstNonValueExpr at h
     split at h
-    · cases hrest : Core.firstNonValueExpr es with
-      | none => simp [hrest] at h
-      | some val =>
-        simp [hrest] at h
+    · -- e = .lit _
+      match hrest : Core.firstNonValueExpr es with
+      | some (d, t, r) =>
+        simp only [hrest, Option.some.injEq, Prod.mk.injEq] at h
         obtain ⟨rfl, rfl, rfl⟩ := h
-        simp [ih (by simp [Core.firstNonValueExpr, hrest])]
-    · simp at h; obtain ⟨rfl, rfl, rfl⟩ := h; simp
+        have := ih hrest; simp [this]
+      | none => simp [hrest] at h
+    · simp only [Option.some.injEq, Prod.mk.injEq] at h
+      obtain ⟨rfl, rfl, rfl⟩ := h; simp
 
 private theorem listNoCallFrameReturn_append (a b : List Core.Expr) :
     listNoCallFrameReturn (a ++ b) = (listNoCallFrameReturn a && listNoCallFrameReturn b) := by
@@ -1835,19 +1837,20 @@ private theorem firstNonValueExpr_listNoCallFrameReturn
   | nil => simp [Core.firstNonValueExpr] at hfnv
   | cons e es ih =>
     simp [listNoCallFrameReturn] at hncfr
-    simp only [Core.firstNonValueExpr] at hfnv
+    unfold Core.firstNonValueExpr at hfnv
     split at hfnv
-    · -- e = .lit _
-      cases hrest : Core.firstNonValueExpr es with
-      | none => simp [hrest] at hfnv
-      | some val =>
-        simp [hrest] at hfnv
+    · -- e = .lit v
+      rename_i v
+      match hrest : Core.firstNonValueExpr es with
+      | some (d, t, r) =>
+        simp only [hrest, Option.some.injEq, Prod.mk.injEq] at hfnv
         obtain ⟨rfl, rfl, rfl⟩ := hfnv
-        have := ih (by simp [Core.firstNonValueExpr, hrest]) hncfr.2
-        exact ⟨by simp [listNoCallFrameReturn]; exact ⟨by cases ‹Core.Expr› <;> simp_all [noCallFrameReturn], this.1⟩,
+        have := ih hrest hncfr.2
+        exact ⟨by simp [listNoCallFrameReturn, noCallFrameReturn]; exact this.1,
                this.2.1, this.2.2⟩
+      | none => simp [hrest] at hfnv
     · -- e is not .lit
-      simp at hfnv
+      simp only [Option.some.injEq, Prod.mk.injEq] at hfnv
       obtain ⟨rfl, rfl, rfl⟩ := hfnv
       exact ⟨by simp [listNoCallFrameReturn], hncfr.1, hncfr.2⟩
 
@@ -1867,27 +1870,26 @@ private theorem convertExprList_firstNonValueExpr_some
   induction es generalizing st done with
   | nil => simp [Core.firstNonValueExpr] at h
   | cons e rest_es ih =>
-    simp only [Core.firstNonValueExpr] at h
+    unfold Core.firstNonValueExpr at h
     split at h
     · -- e = .lit v
       rename_i v
-      cases hrest : Core.firstNonValueExpr rest_es with
-      | none => simp [hrest] at h
-      | some val =>
-        simp [hrest] at h
+      match hrest : Core.firstNonValueExpr rest_es with
+      | some (d, t, r) =>
+        simp only [hrest, Option.some.injEq, Prod.mk.injEq] at h
         obtain ⟨rfl, rfl, rfl⟩ := h
         simp only [Flat.convertExprList, Flat.convertExpr, Flat.firstNonValueExpr]
-        exact ih _ _ (by simp [Core.firstNonValueExpr, hrest]) hnovalue
+        exact ih _ _ hrest hnovalue
+      | none => simp [hrest] at h
     · -- e is not .lit
-      simp at h
+      simp only [Option.some.injEq, Prod.mk.injEq] at h
       obtain ⟨rfl, rfl, rfl⟩ := h
       simp only [Flat.convertExprList]
-      have hfnv : Flat.exprValue? (Flat.convertExpr target scope envVar envMap st).fst = none :=
-        convertExpr_not_value target hnovalue scope envVar envMap st
-      -- target converts to a non-.lit expression
-      have hnotlit : ∀ v, (Flat.convertExpr target scope envVar envMap st).fst ≠ .lit v := by
+      have hfnv : Flat.exprValue? (Flat.convertExpr e scope envVar envMap st).fst = none :=
+        convertExpr_not_value e hnovalue scope envVar envMap st
+      have hnotlit : ∀ v, (Flat.convertExpr e scope envVar envMap st).fst ≠ .lit v := by
         intro v heq; rw [heq] at hfnv; simp [Flat.exprValue?] at hfnv
-      cases hce : (Flat.convertExpr target scope envVar envMap st).fst with
+      cases hce : (Flat.convertExpr e scope envVar envMap st).fst with
       | lit v => exact absurd rfl (hnotlit v)
       | _ => simp [Flat.firstNonValueExpr, Flat.convertExprList]
 

@@ -1,3 +1,54 @@
+## Run: 2026-03-28T23:00:07+00:00
+
+### TASK: Fix build after ANF semantics change + LowerCodeCorr spec improvements
+
+**Build status at start:** FAIL (errors from ANF semantics change — traceFromCore not reducing for control flow signals)
+**Build status at end:** PASS (Wasm/Semantics + LowerCorrect clean; ClosureConvertCorrect pre-existing fail unrelated)
+**Sorry count:** 16 source sorries + 1 axiom (UNCHANGED)
+
+### Completed
+
+1. **Fixed `isControlFlowSignal` for proof-friendliness**: Changed from `String.startsWith` (opaque `@[extern]`, unprovable for variables) to `List Char`-based implementation using `toList.take` + `==`. Now `simp` can evaluate for both concrete strings and prefix-concatenation patterns.
+
+2. **Added `traceFromCore` simp lemmas for all 4 control flow prefixes**:
+   - `traceFromCore_return (s)`: `traceFromCore (.error ("return:" ++ s)) = .silent`
+   - `traceFromCore_break (s)`: `traceFromCore (.error ("break:" ++ s)) = .silent`
+   - `traceFromCore_continue (s)`: `traceFromCore (.error ("continue:" ++ s)) = .silent`
+   - `traceFromCore_throw (s)`: `traceFromCore (.error ("throw:" ++ s)) = .silent`
+
+   These fire via `simp` on concatenation patterns. For concrete string literals, use `native_decide` or `simp [traceFromCore, isControlFlowSignal, String.toList_append, BEq.beq, List.beq]`.
+
+3. **Fixed 9 step_sim_return stutter proofs**: All proofs that used `simp only [anfStepMapped, hanf, traceFromCore, ...]` now use the expanded simp set including `isControlFlowSignal`, `String.toList_append`, `BEq.beq`, `List.beq`, `Flat.valueToString` to fully reduce control flow signal traces.
+
+4. **Fixed return none step_sim proof**: Uses `native_decide` for the concrete `traceFromCore (.error "return:undefined") = .silent` fact.
+
+5. **Added `DecidableEq` to IR `TraceEvent`**: Enables `native_decide` for concrete trace event equalities.
+
+6. **Strengthened `LowerCodeCorr.if_` constructor** (spec correctness):
+   - Added missing `TrivialCodeCorr cond condCode` hypothesis
+   - Fixed code shape: was `condCode ++ [.if_ none ...]`, now correctly `condCode ++ [.call RuntimeIdx.truthy, .if_ (some .f64) ...]` matching Lower.lean L443
+   - Added `LowerCodeCorr.if_inv` inversion lemma
+
+7. **Strengthened `LowerCodeCorr.yield` constructor**: From unconstrained `instrs` to structured `argCode ++ [boolConst, .call RuntimeIdx.yieldOp]` matching Lower.lean L472-479.
+
+8. **Strengthened `LowerCodeCorr.await` constructor**: Added `TrivialCodeCorr arg argCode` and structured code `argCode ++ [.call RuntimeIdx.awaitOp]` matching Lower.lean L480-482.
+
+9. **Updated `irStepMeasure`**: `if` now 3 (was 2), `yield` now 3 (was 2), reflecting actual IR instruction counts.
+
+### Analysis: lower_main_code_corr STILL UNPROVABLE
+
+Confirmed previous analysis: `irInitialState irmod` has `code = []` because `lower` sets `startFunc := none`. The axiom claims `LowerCodeCorr prog.main []` which is only true for literal values. Fixing requires changes to Lower.lean (read-only).
+
+### Analysis: All 12 step_sim sorries STILL BLOCKED
+
+Same structural blockers as previous run: `hlabels_empty` prevents break/continue/labeled, `hframes_one` prevents call, and 1:1 framework prevents all 1:N cases (let, seq, if, while, throw, tryCatch, yield, await, return some).
+
+### Pre-existing issue: ClosureConvertCorrect.lean
+
+`ClosureConvertCorrect.lean` has missing alternatives for `labeled`, `yield`, `await` — pre-existing, not from our changes (file doesn't import Wasm).
+
+---
+
 ## Run: 2026-03-28T19:15:12+00:00
 
 ### TASK: Analyze lower_main_code_corr + sorry reduction (Priority 0/1)
