@@ -3181,7 +3181,58 @@ private theorem closureConvert_step_simulation
         | string s => right; left; exact ⟨s, rfl⟩
         | _ => right; right; exact ⟨by intro a; simp [Core.Value.noConfusion], by intro s; simp [Core.Value.noConfusion]⟩
       rcases hno_core with ⟨addr, rfl⟩ | ⟨str, rfl⟩ | ⟨hno, hns⟩
-      · sorry -- getProp on object: heap property lookup (needs Flat.step? unfolding helper)
+      · -- Object case: heap property lookup
+        have : Flat.convertValue (.object addr) = .object addr := rfl
+        rw [this] at hstep hsf_eta hfexpr
+        rw [Flat_step?_getProp_object] at hstep
+        simp at hstep; obtain ⟨hev, hsf'⟩ := hstep; subst hev hsf'
+        have haddr_wf : addr < sc.heap.objects.size := by
+          simp [ExprAddrWF, ValueAddrWF] at hexprwf; exact hexprwf
+        -- Build core lookup result
+        let coreResult := match sc.heap.objects[addr]? with
+          | some props =>
+              match props.find? (fun kv => kv.fst == prop) with
+              | some (_, v) => v
+              | none => if prop == "length" then Core.Value.number (Float.ofNat props.length) else .undefined
+          | none => Core.Value.undefined
+        let sc' : Core.State := ⟨.lit coreResult, sc.env, sc.heap,
+          sc.trace ++ [.silent], sc.funcs, sc.callStack⟩
+        refine ⟨injMap, sc', ⟨?_⟩, ?_, ?_, ?_, ?_, ?_, ?_, ?_, ?_⟩
+        · -- Core step
+          have hsc' : sc = { sc with expr := .getProp (.lit (.object addr)) prop } := by
+            obtain ⟨_, _, _, _, _, _⟩ := sc; simp only [] at hsc; subst hsc; rfl
+          rw [hsc']
+          have := Core.step?_getProp_object_val addr prop sc.env sc.heap sc.trace sc.funcs sc.callStack
+          simp only [Core.pushTrace, sc', coreResult] at this ⊢; exact this
+        · -- trace
+          simp [sc', htrace]
+        · -- HeapInj (heap unchanged)
+          exact hinj
+        · exact henvCorr
+        · exact henvwf
+        · exact hheapvwf
+        · simp [sc', noCallFrameReturn]
+        · -- ExprAddrWF: coreResult might contain object addrs
+          simp only [sc', ExprAddrWF, coreResult]
+          cases hprops : sc.heap.objects[addr]? with
+          | none => simp [ValueAddrWF]
+          | some props =>
+            cases hfind : props.find? (fun kv => kv.fst == prop) with
+            | none => split <;> simp [ValueAddrWF]
+            | some kv =>
+              exact hheapvwf addr haddr_wf props hprops kv (list_find?_mem hfind)
+        · -- CCState agreement
+          refine ⟨st, st, ?_, ⟨rfl, rfl⟩, by subst hst; exact ⟨rfl, rfl⟩⟩
+          simp only [sc', Flat.convertExpr, Flat.convertValue, coreResult]
+          congr 1; congr 1
+          -- Show Flat lookup result = convertValue (Core lookup result)
+          rw [heapObjectAt?_eq, ← HeapInj_get hinj haddr_wf]
+          cases sc.heap.objects[addr]? with
+          | none => rfl
+          | some props =>
+            cases props.find? (fun kv => kv.fst == prop) with
+            | none => split <;> simp [Flat.convertValue]
+            | some kv => exact coreToFlatValue_eq_convertValue kv.2
       · -- String case: length or undefined
         have : Flat.convertValue (.string str) = .string str := rfl
         rw [this] at hstep hsf_eta hfexpr
