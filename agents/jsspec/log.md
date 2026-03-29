@@ -167,3 +167,50 @@ File: `.lake/_tmp_fix/VerifiedJS/ANF/ConvertHelpers.lean` (lines 489-755)
 
 ## Run: 2026-03-29T01:00:01+00:00
 
+### PRIORITY 0: normalizeExpr break characterization — ALL 32 CASES COMPLETE
+
+File: `.lake/_tmp_fix/VerifiedJS/Proofs/anf_break_inversion.lean`
+
+**Previously:** 27/32 cases proved, 5 sorry (call, newObj, makeEnv, objectLit, arrayLit).
+
+**Now: ALL 32/32 cases proved. ZERO sorry remaining.**
+
+#### New verified theorems:
+
+| Lemma | Status | Purpose |
+|-------|--------|---------|
+| `normalizeExprList_break_or_k` | **VERIFIED** | If normalizeExprList produces .break, either some element has break in head or k produced break |
+| `normalizeProps_break_or_k` | **VERIFIED** | Same for normalizeProps (prop lists) |
+| `Flat.Expr.mem_propListDepth_lt` | **VERIFIED** | Membership in prop list implies depth bound (needed for objectLit case) |
+
+#### Key changes:
+- **HasBreakInHead/HasBreakInHeadList/HasBreakInHeadProps**: Restructured as `mutual` inductive, added 5 new constructors: `call_args`, `newObj_args`, `makeEnv_values`, `objectLit_props`, `arrayLit_elems`
+- **normalizeExprList_break_or_k**: Proved by induction on list, parameterized by an IH for `normalizeExpr` — enables plugging into the main depth-based induction
+- **normalizeProps_break_or_k**: Same pattern for prop lists
+- **5 sorry cases filled**: Each uses the list/prop helper + `bindComplex_never_break_general` for the terminal contradiction
+- **Minor fixes**: `bindComplex_not_break` proof (simp instead of unfold), `step_seq_lit` (removed redundant exact)
+
+#### Impact:
+- `normalizeExpr_break_or_k` — **FULLY VERIFIED** (no sorry, axioms: propext + Quot.sound)
+- `normalizeExpr_break_implies_hasBreakInHead` — **FULLY VERIFIED** (master inversion theorem)
+- These are KEY enablers for the -2 ANF sorries (break source characterization)
+
+### PRIORITY 1: Flat step helpers for objectLit/arrayLit — NEW
+
+File: `.lake/_tmp_fix/VerifiedJS/Proofs/cc_objectLit_arrayLit_helpers.lean` (appended)
+
+| Lemma | Status | Purpose |
+|-------|--------|---------|
+| `Flat.step_objectLit_prop_step` | **VERIFIED** | When objectLit has non-value prop and inner target steps, whole objectLit steps |
+| `Flat.step_arrayLit_elem_step` | **VERIFIED** | Same for arrayLit with non-value element |
+| `Flat.Step_objectLit_prop_step` | **VERIFIED** | Step relation wrapper |
+| `Flat.Step_arrayLit_elem_step` | **VERIFIED** | Step relation wrapper |
+
+Proof pattern: `unfold Flat.step?; simp only [hvf]; rw [hfnv]; simp only [hstep]` (needs `maxRecDepth 8000`).
+
+Still missing from Priority 1: `convertPropList_cons` (how convertExpr relates to stepping through prop list).
+
+### Build status:
+Build failure is PRE-EXISTING in `ClosureConvertCorrect.lean:1950` (missing alternatives). My changes add no new errors.
+
+2026-03-29T01:27:39+00:00 DONE

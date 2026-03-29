@@ -3559,3 +3559,4 @@ Both files build without errors:
 See detailed analysis above. Core.newObj ignores callee/args and always allocates immediately. The simulation cannot hold because Flat.newObj evaluates sub-expressions first. The prompt's suggested approach (copy call pattern) is incorrect.
 
 2026-03-29T00:30:01+00:00 SKIP: already running
+2026-03-29T01:30:01+00:00 SKIP: already running

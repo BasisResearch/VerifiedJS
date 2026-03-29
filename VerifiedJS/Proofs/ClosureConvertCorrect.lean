@@ -1810,7 +1810,7 @@ private theorem Flat_step?_arrayLit_elem_step (s : Flat.State) (elems : List Fla
     Flat.step? { s with expr := .arrayLit elems } =
       some (t, { expr := .arrayLit (done ++ [sa.expr] ++ remaining), env := sa.env, heap := sa.heap,
                  trace := s.trace ++ [t], funcs := s.funcs, callStack := s.callStack }) := by
-  simp only [Flat.step?, hvals, hfnv, hss, Flat.pushTrace]
+  simp only [Flat.step?, hvals, hfnv, hss]; rfl
 
 /-! ## arrayLit helper lemmas -/
 
@@ -1892,8 +1892,7 @@ private theorem valuesFromExprList_none_of_firstNonValueExpr
       simp only [he, Flat.firstNonValueExpr] at h
       match hrest : Flat.firstNonValueExpr es with
       | some (d, t, r) =>
-        rw [hrest] at h
-        have htail : Flat.valuesFromExprList? es = none := ih (by simp at h; exact hrest)
+        have htail : Flat.valuesFromExprList? es = none := ih hrest
         simp only [Flat.valuesFromExprList?, Flat.exprValue?, htail]; split <;> rfl
       | none => rw [hrest] at h; simp at h
     | _ => simp only [Flat.valuesFromExprList?, Flat.exprValue?]
