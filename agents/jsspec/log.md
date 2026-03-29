@@ -217,3 +217,70 @@ Build failure is PRE-EXISTING in `ClosureConvertCorrect.lean:1950` (missing alte
 
 ## Run: 2026-03-29T02:00:01+00:00
 
+### PRIORITY 1: convertPropList/ExprList cons + append lemmas — ALL VERIFIED
+
+File: `.lake/_tmp_fix/VerifiedJS/Proofs/cc_convertList_cons.lean`
+
+| Lemma | Status | Purpose |
+|-------|--------|---------|
+| `convertPropList_cons` | **VERIFIED** | Unfold convertPropList on cons |
+| `convertExprList_cons` | **VERIFIED** | Unfold convertExprList on cons |
+| `convertPropList_nil` | **VERIFIED** | Unfold convertPropList on nil |
+| `convertExprList_nil` | **VERIFIED** | Unfold convertExprList on nil |
+| `convertExprList_append` | **VERIFIED** | fst of convertExprList distributes over append |
+| `convertExprList_append_snd` | **VERIFIED** | snd of convertExprList threads through append |
+| `convertExprList_singleton` | **VERIFIED** | convertExprList [e] = [convertExpr e] |
+| `convertExprList_singleton_snd` | **VERIFIED** | snd for singleton |
+
+### PRIORITY 1: Flat step inversion for objectLit/arrayLit — STAGED
+
+File: `.lake/_tmp_fix/VerifiedJS/Proofs/cc_objectLit_arrayLit_helpers.lean` (additions)
+
+| Lemma | Status | Purpose |
+|-------|--------|---------|
+| `Flat.step_arrayLit_inversion` | **STAGED** (pending elaboration) | Extract sub-step from arrayLit step (enables L3269) |
+| `Flat.step_objectLit_inversion` | **STAGED** (pending elaboration) | Extract sub-step from objectLit step |
+| `convertExpr_not_lit` functionDef case | **FIXED** | Was sorry, now `simp [Flat.convertExpr]` |
+
+Note: `convertExpr_not_lit` forIn/forOf cases are **unprovable** — these convert to `.lit .undefined`, so the theorem is false for these constructors. This is fine since forIn/forOf are unsupported stub constructors excluded by SupportedExpr.
+
+### Break/continue ANF sim — ANALYSIS + BASE HELPERS
+
+File: `.lake/_tmp_fix/VerifiedJS/Proofs/anf_break_sim.lean`
+
+| Lemma | Status | Purpose |
+|-------|--------|---------|
+| `Flat.step?_break_is_some` | **VERIFIED** | Break always steps |
+| `Flat.step?_continue_is_some` | **VERIFIED** | Continue always steps |
+| `ANF.normalizeExpr_break_run` | **VERIFIED** | normalizeExpr (.break l) k = .break l |
+| `ANF.normalizeExpr_continue_run` | **VERIFIED** | normalizeExpr (.continue l) k = .continue l |
+| `ANF.normalizeExpr_lit_undefined_trivial` | **VERIFIED** | normalizeExpr (.lit .undefined) trivial_k = .trivial .litUndefined |
+| `ANF.trivial_k_preserving` | **VERIFIED** | fun t => pure (.trivial t) is trivial-preserving |
+| `normalizeExpr_break_direct_state_eq` | **VERIFIED** | State unchanged for direct break |
+| `normalizeExpr_continue_direct_state_eq` | **VERIFIED** | State unchanged for direct continue |
+
+#### ANALYSIS: Dead code after break — FUNDAMENTAL DIFFICULTY
+
+The break/continue sorry cases at ANFConvertCorrect.lean:L1947-1950 have a fundamental
+issue beyond the break inversion:
+
+**Base case** (sf.expr = .break label directly): simulation works — Flat takes 1 step,
+both produce .error msg, both reach terminal state (.lit .undefined / .trivial .litUndefined).
+
+**General case** (sf.expr = .seq (.break label) b): BLOCKED.
+- ANF: .break → .error msg → halt at .trivial .litUndefined
+- Flat: .seq (.break) b → .error msg, .seq (.lit .undefined) b → .silent, b → continues executing b
+- SimRel FAILS: normalizeExpr b k' ≠ .trivial .litUndefined for arbitrary b
+
+Root cause: normalizeExpr (CPS) eliminates dead code after break, but Flat small-step
+semantics executes it. This creates an asymmetry the current SimRel cannot bridge.
+
+Suggested solutions documented in `anf_break_sim.lean`.
+
+### ExprAddrWF arrayLit issue — DOCUMENTED
+
+The sorry at L3277 (`ExprAddrWF target_c sc.heap.objects.size`) is blocked because
+`ExprAddrWF (.arrayLit _) = True` — it doesn't propagate to elements. Needs a
+definition change to `| .arrayLit elems, n => ∀ e ∈ elems, ExprAddrWF e n` (same
+for objectLit). This is a design fix for the proof owner.
+

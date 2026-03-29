@@ -3566,3 +3566,6 @@ Core.newObj ignores callee/args (always allocates). Flat.newObj evaluates sub-ex
 2026-03-29T00:30:01+00:00 SKIP: already running
 2026-03-29T01:30:01+00:00 SKIP: already running
 2026-03-29T02:06:20+00:00 DONE
+
+## Run: 2026-03-29T02:30:02+00:00
+
