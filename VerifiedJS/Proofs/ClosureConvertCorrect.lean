@@ -3511,7 +3511,7 @@ private theorem closureConvert_step_simulation
           | none =>
             have heq : Flat.step? { sf with expr := (Flat.Expr.setProp (.lit (Flat.convertValue cv)) prop
                 (Flat.convertExpr value scope envVar envMap st).fst) } = none := by
-              cases cv <;> simp only [Flat.step?, Flat.convertValue, hfnv_v, hm]
+              cases cv <;> simp [Flat.step?, hfnv_v, hm]
             rw [heq] at hstep; exact absurd hstep (by simp)
         subst hsf'_eq
         have hdepth : value.depth < n := by simp [Core.Expr.depth] at hd; omega
