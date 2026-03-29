@@ -3327,7 +3327,94 @@ private theorem closureConvert_step_simulation
       · exact ⟨st_a, st_a', by
           simp [sc', Flat.convertExpr]
           exact ⟨congrArg Prod.fst hconv', congrArg Prod.snd hconv'⟩, hAgreeIn, by first | (rw [hst]; exact hAgreeOut) | (rw [hconv.2]; exact hAgreeOut)⟩
-  | objectLit props => sorry
+  | objectLit props =>
+    rw [hsc] at hconv hncfr hexprwf hd
+    simp [Flat.convertExpr] at hconv
+    obtain ⟨hfexpr, hst⟩ := hconv
+    cases hcfnv : Core.firstNonValueProp props with
+    | none =>
+      sorry -- all props are values: heap allocation (same class as other value sub-cases)
+    | some val =>
+      obtain ⟨done_c, propName_c, target_c, rest_c⟩ := val
+      have htarget_not_lit := Core.firstNonValueProp_not_lit hcfnv
+      have htarget_novalue : Core.exprValue? target_c = none := by
+        cases target_c with
+        | lit v => exact absurd rfl (htarget_not_lit v)
+        | _ => rfl
+      have hffnv := convertPropList_firstNonValueProp_some props scope envVar envMap st
+          done_c propName_c target_c rest_c hcfnv htarget_novalue
+      have hfnv_target : Flat.exprValue? (Flat.convertExpr target_c scope envVar envMap
+          (Flat.convertPropList done_c scope envVar envMap st).snd).fst = none :=
+        convertExpr_not_value target_c htarget_novalue scope envVar envMap _
+      have hsf_eta : sf = { sf with expr := .objectLit (Flat.convertPropList props scope envVar envMap st).fst } := by
+        cases sf; simp_all
+      rw [hsf_eta] at hstep
+      obtain ⟨sa, hsubstep, hsf'_eq⟩ : ∃ sa,
+          Flat.step? { sf with expr := (Flat.convertExpr target_c scope envVar envMap
+            (Flat.convertPropList done_c scope envVar envMap st).snd).fst } = some (ev, sa) ∧
+          sf' = { expr := .objectLit ((Flat.convertPropList done_c scope envVar envMap st).fst ++
+                    [(propName_c, sa.expr)] ++
+                    (Flat.convertPropList rest_c scope envVar envMap
+                      (Flat.convertExpr target_c scope envVar envMap
+                        (Flat.convertPropList done_c scope envVar envMap st).snd).snd).fst),
+                  env := sa.env, heap := sa.heap,
+                  trace := sf.trace ++ [ev], funcs := sf.funcs, callStack := sf.callStack } := by
+        sorry -- Flat sub-step extraction: unfold step? on objectLit with valuesFromExprList?=none, firstNonValueProp=some
+      subst hsf'_eq
+      have hdepth : target_c.depth < n := by
+        simp [Core.Expr.depth] at hd
+        have := Core.firstNonValueProp_depth hcfnv; omega
+      have ⟨hncfr_done, hncfr_target, hncfr_rest⟩ :=
+        firstNonValueProp_propListNoCallFrameReturn hcfnv (by simp [noCallFrameReturn] at hncfr; exact hncfr)
+      have hexprwf_target : ExprAddrWF target_c sc.heap.objects.size := by
+        sorry -- ExprAddrWF (.objectLit _) = True doesn't propagate to elements; needs ExprAddrPropListWF
+      obtain ⟨injMap', sc_sub', ⟨hcstep_sub⟩, htrace_sub, hinj', henvCorr', henvwf', hheapvwf',
+              hncfr', hexprwf', st_a, st_a', hconv', hAgreeIn, hAgreeOut⟩ :=
+        ih_depth target_c.depth hdepth envVar envMap injMap
+          { sf with expr := (Flat.convertExpr target_c scope envVar envMap
+            (Flat.convertPropList done_c scope envVar envMap st).snd).fst }
+          { sc with expr := target_c }
+          ev sa scope
+          (Flat.convertPropList done_c scope envVar envMap st).snd
+          (Flat.convertExpr target_c scope envVar envMap
+            (Flat.convertPropList done_c scope envVar envMap st).snd).snd
+          (by simp [Core.Expr.depth]) htrace hinj henvCorr henvwf hheapvwf hncfr_target hexprwf_target
+          (by simp)
+          ⟨hsubstep⟩
+      let sc' : Core.State :=
+        ⟨.objectLit (done_c ++ [(propName_c, sc_sub'.expr)] ++ rest_c),
+         sc_sub'.env, sc_sub'.heap,
+         sc.trace ++ [ev], sc_sub'.funcs, sc_sub'.callStack⟩
+      refine ⟨injMap', sc', ⟨?_⟩, ?_, ?_, ?_, ?_, ?_, ?_, ?_, ?_⟩
+      · -- Core.step?
+        show Core.step? sc = some (ev, sc')
+        have hsc' : sc = { sc with expr := .objectLit props } := by
+          obtain ⟨_, _, _, _, _, _⟩ := sc; simp only [] at hsc; subst hsc; rfl
+        rw [hsc']
+        have hcstep_anon : Core.step? ⟨target_c, sc.env, sc.heap, sc.trace, sc.funcs, sc.callStack⟩ =
+            some (ev, sc_sub') := by
+          obtain ⟨_, _, _, _, _, _⟩ := sc; exact hcstep_sub
+        have hcore_step := Core.step_objectLit_step_prop props sc.env sc.heap sc.trace sc.funcs sc.callStack
+            done_c propName_c target_c rest_c hcfnv ev sc_sub' hcstep_anon
+        simp only [Core.pushTrace] at hcore_step
+        have : sc' = { sc_sub' with
+          expr := .objectLit (done_c ++ [(propName_c, sc_sub'.expr)] ++ rest_c),
+          trace := sc.trace ++ [ev] } := by simp [sc']
+        rw [this]; exact hcore_step
+      · -- trace
+        simp [sc', htrace, htrace_sub]
+      · exact hinj'
+      · exact henvCorr'
+      · exact henvwf'
+      · exact hheapvwf'
+      · -- noCallFrameReturn
+        simp only [sc', noCallFrameReturn]
+        rw [propListNoCallFrameReturn_append, propListNoCallFrameReturn_append]
+        simp [propListNoCallFrameReturn, hncfr', hncfr_done, hncfr_rest]
+      · -- ExprAddrWF (objectLit is always True)
+        simp [sc', ExprAddrWF]
+      · -- CCState agreement
+        sorry -- CCState threading: convertPropList over concatenated lists (proof sketch verified)
   | arrayLit elems =>
     rw [hsc] at hconv hncfr hexprwf hd
     simp [Flat.convertExpr] at hconv
