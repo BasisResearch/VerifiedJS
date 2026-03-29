@@ -2072,7 +2072,7 @@ private theorem Flat_step?_setProp_value_step_value (s : Flat.State) (cv : Flat.
     Flat.step? { s with expr := .setProp (.lit cv) prop ve } =
       some (t, { expr := .setProp (.lit cv) prop sv.expr, env := sv.env, heap := sv.heap,
                  trace := s.trace ++ [t], funcs := s.funcs, callStack := s.callStack }) := by
-  cases cv <;> simp only [Flat.step?, Flat.exprValue?, hnv, hss, Flat.pushTrace]; rfl
+  cases cv <;> simp only [Flat.step?, Flat.exprValue?, hnv, hss]; rfl
 
 -- Flat: obj is any value, idx needs stepping (getIndex) — combined
 private theorem Flat_step?_getIndex_value_step_idx (s : Flat.State) (cv : Flat.Value)
@@ -2082,7 +2082,7 @@ private theorem Flat_step?_getIndex_value_step_idx (s : Flat.State) (cv : Flat.V
     Flat.step? { s with expr := .getIndex (.lit cv) ie } =
       some (t, { expr := .getIndex (.lit cv) si.expr, env := si.env, heap := si.heap,
                  trace := s.trace ++ [t], funcs := s.funcs, callStack := s.callStack }) := by
-  cases cv <;> simp only [Flat.step?, Flat.exprValue?, hnv, hss, Flat.pushTrace]; rfl
+  cases cv <;> simp only [Flat.step?, Flat.exprValue?, hnv, hss]; rfl
 
 /-! ## arrayLit helper lemmas -/
 
