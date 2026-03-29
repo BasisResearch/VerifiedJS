@@ -1086,6 +1086,41 @@ private theorem step?_return_some_ctx (s : Flat.State) (e : Flat.Expr)
   simp only [Flat.step?, hnotval, hstep]
   exact ⟨_, rfl, rfl, rfl, rfl, rfl, rfl, rfl⟩
 
+/-- If step? s = some (t, s'), then s.expr is not a value. -/
+private theorem step?_some_implies_not_value (s : Flat.State) (t : Core.TraceEvent) (s' : Flat.State)
+    (h : Flat.step? s = some (t, s')) : Flat.exprValue? s.expr = none := by
+  by_contra habs
+  cases s with
+  | mk e env heap trace funcs cs =>
+    simp only [Flat.exprValue?] at habs
+    split at habs
+    · rename_i v; simp only [Flat.step?_lit_none] at h
+    · exact habs rfl
+
+/-- Multi-step lifting through .return (some ·) context.
+    Given Flat.Steps sf evs sf' where sf'.expr is not a value,
+    lifts all steps through .return (some ·). -/
+private theorem Steps_return_some_lift
+    {sf sf' : Flat.State} {evs : List Core.TraceEvent}
+    (hsteps : Flat.Steps sf evs sf')
+    (hnotval_final : Flat.exprValue? sf'.expr = none) :
+    Flat.Steps { sf with expr := .«return» (some sf.expr) }
+              evs
+              { sf' with expr := .«return» (some sf'.expr) } := by
+  induction hsteps with
+  | refl s => exact .refl _
+  | @tail s1 s2 s3 t ts hstep hrest ih =>
+    have hnotval1 : Flat.exprValue? s1.expr = none := by
+      obtain ⟨hstep_eq⟩ := hstep
+      exact step?_some_implies_not_value s1 t s2 hstep_eq
+    obtain ⟨s2_w, hstep_w_eq, hexpr_w, henv_w, hheap_w, hfuncs_w, hcs_w, htrace_w⟩ :=
+      step?_return_some_ctx s1 s1.expr hnotval1 t s2 (by obtain ⟨h⟩ := hstep; exact h)
+    -- s2_w is the lifted state: it should equal { s2 with expr := .return (some s2.expr) }
+    have h_eq : s2_w = { s2 with expr := .«return» (some s2.expr) } := by
+      cases s2_w; cases s2; simp_all
+    subst h_eq
+    exact .tail ⟨hstep_w_eq⟩ (ih hnotval_final)
+
 /-- Contextual stepping: if e is not a value and steps, .yield (some e) delegate steps with
     the result wrapped in .yield (some ·) delegate. -/
 private theorem step?_yield_some_ctx (s : Flat.State) (e : Flat.Expr) (delegate : Bool)

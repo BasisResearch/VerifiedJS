@@ -1,3 +1,41 @@
+## Run: 2026-03-29T08:30+00:00
+- **BUILD: PASSES** ✓
+- **Sorries: ANF 17, CC 27, Wasm 18 (62 total, unchanged)**
+- **P3 COMPLETED: ANFInversion inlined into ANFConvertCorrect.lean**
+
+### P3: ANFInversion inlining — DONE
+- Inlined all 1408 lines from `.lake/_tmp_fix/VerifiedJS/Proofs/ANFInversion.lean` into `ANFConvertCorrect.lean` before L1601 (before `normalizeExpr_labeled_step_sim`)
+- Could not copy to separate file (directory owned by root, proof user lacks create permission)
+- Content inserted inside `VerifiedJS.Proofs` namespace — all external dependencies resolve (they're in imported modules: `ANF.Convert`, `Flat.Semantics`, `Flat.Syntax`)
+- Build passes, 0 new sorries, all existing proofs unaffected
+- Available theorems now: `HasBreakInHead`, `HasLabeledInHead`, `HasContinueInHead` (mutual inductives), `ANF.normalizeExpr_break_or_k`, `ANF.normalizeExpr_labeled_or_k`, `ANF.normalizeExpr_continue_or_k`, master inversions (`_implies_has*InHead`), contrapositives, step? characterization for break/continue
+
+### P0/P1: CCState threading — BLOCKED (architectural issue)
+- The `suffices` at L2023 requires `CCStateAgree st' st_a'` in its conclusion
+- For if-branching (cond is value, takes true/false branch): `st'` includes state changes from converting BOTH branches, but `st_a'` only includes the taken branch
+- `CCStateAgree` requires exact equality of `nextId` and `funcs.size`
+- Converting the other branch increments both, so `st' ≠ st_a'` unless the other branch is state-free (e.g., `.lit`)
+- Same issue affects: while_ (L3776), any branching construct
+- **Fix needed**: Either (a) weaken `CCStateAgree` output to use `≤` with a state-monotone variant of `convertExpr_state_determined`, or (b) change the existential to `∃ st_a, CCStateAgree st st_a ∧ (sf'.expr = (convertExpr sc'.expr ... st_a).fst)` without output agreement, threading a separate state bound
+- This is NOT a witness problem — it's a theorem statement issue
+
+### P2: forIn/forOf — BLOCKED (requires supported invariant)
+- `convertExpr_not_value` (L1143) is FALSE for `.forIn` and `.forOf` (they convert to `.lit .undefined`)
+- Adding `h_supp : e.supported = true` requires threading through 20+ call sites
+- No `supported` invariant exists in the proof; `hnofor` only excludes forIn/forOf at top-level states, not sub-expressions
+- **Fix needed**: Either add `supported` as an invariant (large refactor), or restructure call sites to handle the stub case by contradiction with Flat step
+
+### ANF break/continue sorries (L3412/3414) — partially unblocked
+- Inversion theorems now available: `normalizeExpr_break_implies_hasBreakInHead` etc.
+- Still need: multi-step Flat simulation for `HasBreakInHead`/`HasContinueInHead` (context lifting through compound expressions)
+- Single-step lifting exists (`step?_return_some_ctx`, `step?_yield_some_ctx`, etc.) but no multi-step version
+- The break expression may be nested in `.seq`, `.let`, `.if`, etc. — each context needs separate lifting
+
+### ANF nested sorries (L3178/3182/3193) — need eval-context infrastructure
+- `normalizeExpr_labeled_step_sim` has 7 sorries for nested cases (return-some, yield-some, compound)
+- These need: (1) multi-step context lifting lemma, (2) depth-recursive IH application through `.return (some ·)` wrapper
+- Single-step ctx lemma exists; multi-step requires proving intermediate expressions are non-values
+
 ## Run: 2026-03-28T11:30+00:00
 - **BUILD: PASSES** ✓ (Wasm.Semantics failure is pre-existing)
 - **ANF Sorries: 17** (unchanged — no sorries closed this run)
