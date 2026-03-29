@@ -1747,58 +1747,6 @@ private theorem Flat_step?_binary_values (s : Flat.State) (op : Core.BinOp) (lv 
                        trace := s.trace ++ [.silent], funcs := s.funcs, callStack := s.callStack }) := by
   simp only [Flat.step?, Flat.exprValue?]; rfl
 
-private theorem Flat_step?_objectLit_step (s : Flat.State)
-    (props : List (Flat.PropName × Flat.Expr))
-    (done : List (Flat.PropName × Flat.Expr)) (propName : Flat.PropName)
-    (target : Flat.Expr) (rest : List (Flat.PropName × Flat.Expr))
-    (hvals : Flat.valuesFromExprList? (props.map Prod.snd) = none)
-    (hfnvp : Flat.firstNonValueProp props = some (done, propName, target, rest))
-    (t : Core.TraceEvent) (se : Flat.State)
-    (hss : Flat.step? { s with expr := target } = some (t, se)) :
-    Flat.step? { s with expr := .objectLit props } =
-      some (t, { expr := .objectLit (done ++ [(propName, se.expr)] ++ rest),
-                 env := se.env, heap := se.heap,
-                 trace := s.trace ++ [t], funcs := s.funcs, callStack := s.callStack }) := by
-  unfold Flat.step?; simp [hvals, hfnvp, hss]
-
-private theorem Core_step?_objectLit_step (s : Core.State)
-    (props : List (Core.PropName × Core.Expr))
-    (done : List (Core.PropName × Core.Expr)) (propName : Core.PropName)
-    (target : Core.Expr) (rest : List (Core.PropName × Core.Expr))
-    (hfnvp : Core.firstNonValueProp props = some (done, propName, target, rest))
-    (t : Core.TraceEvent) (se : Core.State)
-    (hss : Core.step? { s with expr := target } = some (t, se)) :
-    Core.step? { s with expr := .objectLit props } =
-      some (t, { expr := .objectLit (done ++ [(propName, se.expr)] ++ rest),
-                 env := se.env, heap := se.heap,
-                 trace := s.trace ++ [t], funcs := se.funcs, callStack := se.callStack }) := by
-  unfold Core.step?; simp [hfnvp, hss, Core.pushTrace]
-
-private theorem Flat_step?_arrayLit_step (s : Flat.State)
-    (elems : List Flat.Expr)
-    (done : List Flat.Expr) (target : Flat.Expr) (rest : List Flat.Expr)
-    (hvals : Flat.valuesFromExprList? elems = none)
-    (hfnve : Flat.firstNonValueExpr elems = some (done, target, rest))
-    (t : Core.TraceEvent) (se : Flat.State)
-    (hss : Flat.step? { s with expr := target } = some (t, se)) :
-    Flat.step? { s with expr := .arrayLit elems } =
-      some (t, { expr := .arrayLit (done ++ [se.expr] ++ rest),
-                 env := se.env, heap := se.heap,
-                 trace := s.trace ++ [t], funcs := s.funcs, callStack := s.callStack }) := by
-  unfold Flat.step?; simp [hvals, hfnve, hss]
-
-private theorem Core_step?_arrayLit_step (s : Core.State)
-    (elems : List Core.Expr)
-    (done : List Core.Expr) (target : Core.Expr) (rest : List Core.Expr)
-    (hfnve : Core.firstNonValueExpr elems = some (done, target, rest))
-    (t : Core.TraceEvent) (se : Core.State)
-    (hss : Core.step? { s with expr := target } = some (t, se)) :
-    Core.step? { s with expr := .arrayLit elems } =
-      some (t, { expr := .arrayLit (done ++ [se.expr] ++ rest),
-                 env := se.env, heap := se.heap,
-                 trace := s.trace ++ [t], funcs := se.funcs, callStack := se.callStack }) := by
-  unfold Core.step?; simp [hfnve, hss, Core.pushTrace]
-
 private theorem Flat_step?_while (s : Flat.State) (cond body : Flat.Expr) :
     Flat.step? { s with expr := .while_ cond body } =
       some (.silent, { expr := .«if» cond (.seq body (.while_ cond body)) (.lit .undefined),
@@ -3479,17 +3427,16 @@ private theorem closureConvert_step_simulation
                   env := sa.env, heap := sa.heap,
                   trace := sf.trace ++ [ev], funcs := sf.funcs, callStack := sf.callStack } := by
         have hvals := valuesFromExprList_none_of_firstNonValueProp hffnv
+        -- Unfold step? on objectLit in the hypothesis
+        unfold Flat.step? at hstep; simp only [hvals, hffnv, -Flat.step?] at hstep
         match hm : Flat.step? { sf with expr := (Flat.convertExpr target_c scope envVar envMap
             (Flat.convertPropList done_c scope envVar envMap st).snd).fst } with
         | some (t, se) =>
-          have heq := Flat_step?_objectLit_step sf _ _ propName_c _ _ hvals hffnv t se hm
-          rw [heq] at hstep; simp at hstep
+          rw [hm] at hstep; simp at hstep
           obtain ⟨rfl, hsf'eq⟩ := hstep
           exact ⟨se, rfl, hsf'eq.symm⟩
         | none =>
-          have heq : Flat.step? { sf with expr := .objectLit (Flat.convertPropList props scope envVar envMap st).fst } = none := by
-            unfold Flat.step?; simp [hvals, hffnv, hm]
-          rw [heq] at hstep; exact absurd hstep (by simp)
+          rw [hm] at hstep; simp at hstep
       subst hsf'_eq
       have hdepth : target_c.depth < n := by
         simp [Core.Expr.depth] at hd
@@ -3578,17 +3525,16 @@ private theorem closureConvert_step_simulation
                   env := sa.env, heap := sa.heap,
                   trace := sf.trace ++ [ev], funcs := sf.funcs, callStack := sf.callStack } := by
         have hvals := valuesFromExprList_none_of_firstNonValueExpr hffnv
+        -- Unfold step? on arrayLit in the hypothesis
+        unfold Flat.step? at hstep; simp only [hvals, hffnv, -Flat.step?] at hstep
         match hm : Flat.step? { sf with expr := (Flat.convertExpr target_c scope envVar envMap
             (Flat.convertExprList done_c scope envVar envMap st).snd).fst } with
         | some (t, se) =>
-          have heq := Flat_step?_arrayLit_step sf _ _ _ _ hvals hffnv t se hm
-          rw [heq] at hstep; simp at hstep
+          rw [hm] at hstep; simp at hstep
           obtain ⟨rfl, hsf'eq⟩ := hstep
           exact ⟨se, rfl, hsf'eq.symm⟩
         | none =>
-          have heq : Flat.step? { sf with expr := .arrayLit (Flat.convertExprList elems scope envVar envMap st).fst } = none := by
-            unfold Flat.step?; simp [hvals, hffnv, hm]
-          rw [heq] at hstep; exact absurd hstep (by simp)
+          rw [hm] at hstep; simp at hstep
       subst hsf'_eq
       have hdepth : target_c.depth < n := by
         simp [Core.Expr.depth] at hd
