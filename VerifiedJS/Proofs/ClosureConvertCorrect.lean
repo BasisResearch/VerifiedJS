@@ -3547,8 +3547,8 @@ private theorem closureConvert_step_simulation
                 (Flat.convertExprList done_c scope envVar envMap st).snd).snd).fst := by
           intro x
           rw [convertExprList_append, convertExprList_append]
-          simp [hcels_fst, hcels_snd]
-          rfl
+          simp only [hcels_fst, hcels_snd]
+          rw [List.append_assoc]
         have hdecomp_snd : ∀ (x : Core.Expr),
             (Flat.convertExprList (done_c ++ [x] ++ rest_c) scope envVar envMap st).snd =
             (Flat.convertExprList rest_c scope envVar envMap
@@ -3560,12 +3560,16 @@ private theorem closureConvert_step_simulation
         refine ⟨st, (Flat.convertExprList (done_c ++ [sc_sub'.expr] ++ rest_c) scope envVar envMap st).snd,
           ?_, ⟨rfl, rfl⟩, ?_⟩
         · -- Pair equality
-          change (sf'.expr, _) =
-            (Flat.Expr.arrayLit (Flat.convertExprList (done_c ++ [sc_sub'.expr] ++ rest_c) scope envVar envMap st).fst,
-             (Flat.convertExprList (done_c ++ [sc_sub'.expr] ++ rest_c) scope envVar envMap st).snd)
-          congr 1
-          -- sf'.expr = .arrayLit (convertExprList (done_c ++ [sc_sub'.expr] ++ rest_c) ... st).fst
-          rw [hdecomp_fst, htgt_eq.symm, hsd_rest.1.symm]
+          simp only [Flat.convertExpr]
+          constructor
+          · -- Expression equality
+            show Flat.Expr.arrayLit _ = Flat.Expr.arrayLit _
+            rw [hdecomp_fst]
+            congr 1; congr 1
+            · exact htgt_eq.symm
+            · exact hsd_rest.1.symm
+          · -- State equality
+            rfl
         · -- Output CCState agreement
           rw [hst, helems, hdecomp_snd target_c, hdecomp_snd sc_sub'.expr]
           exact hsd_rest.2
