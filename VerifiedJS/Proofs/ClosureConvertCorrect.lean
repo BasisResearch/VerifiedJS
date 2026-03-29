@@ -3375,8 +3375,6 @@ private theorem closureConvert_step_simulation
         subst hlit_v
         simp [Flat.convertExpr] at hfexpr hst
         -- Normalize hstep: the Flat step should now reference .setProp (.lit (convertValue cv)) prop (.lit (convertValue vv))
-        have hsf_eq : sf = { sf with expr := (Flat.Expr.setProp (.lit (Flat.convertValue cv)) prop (.lit (Flat.convertValue vv))) } := by
-          cases sf; simp_all
         -- Case split: cv is object or not
         have hno_core : (∃ addr, cv = .object addr) ∨ (∀ a, cv ≠ .object a) := by
           cases cv with
@@ -3384,6 +3382,8 @@ private theorem closureConvert_step_simulation
           | _ => right; intro a; exact Core.Value.noConfusion
         rcases hno_core with ⟨addr, rfl⟩ | hno
         · -- Object case
+          have hsf_eq : sf = { sf with expr := (Flat.Expr.setProp (.lit (.object addr)) prop (.lit (Flat.convertValue vv))) } := by
+            cases sf; simp_all [Flat.convertValue]
           rw [hsf_eq] at hstep
           rw [Flat_step?_setProp_object_both_values] at hstep
           simp at hstep; obtain ⟨hev, hsf'⟩ := hstep; subst hev hsf'
@@ -3445,6 +3445,8 @@ private theorem closureConvert_step_simulation
             simp only [sc', Flat.convertExpr, Flat.convertValue]
         · -- Non-object case
           have hno_flat := convertValue_not_object cv hno
+          have hsf_eq : sf = { sf with expr := (Flat.Expr.setProp (.lit (Flat.convertValue cv)) prop (.lit (Flat.convertValue vv))) } := by
+            cases sf; simp_all
           rw [hsf_eq] at hstep
           rw [Flat_step?_setProp_nonobject_both_values _ _ _ _ hno_flat] at hstep
           simp at hstep; obtain ⟨hev, hsf'⟩ := hstep; subst hev hsf'
