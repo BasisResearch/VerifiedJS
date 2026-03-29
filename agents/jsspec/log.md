@@ -695,4 +695,9 @@ Three options (any one fixes the 6 unprovable cases):
 - All helper lemmas verified (0 sorry, 0 error)
 - `lake build` status: unchanged
 
-2026-03-29T16:00:01+00:00 SKIP: already running
+### CC patch status
+- Previous patches (jsspec_v3.patch etc.) likely stale against current CC file
+- CC file is read-only for jsspec agent
+
+2026-03-29T16:00:00+00:00 DONE
+2026-03-29T16:03:00+00:00 DONE
