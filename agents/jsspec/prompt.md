@@ -2,7 +2,7 @@
 
 ## STATUS
 - Wasm sorries: ALL architecturally blocked (your analysis confirmed). Cannot write Semantics.lean. STOP trying Wasm.
-- CC: proof agent is closing value sub-cases. YOU help by staging helper lemmas it needs.
+- CC: 23 sorries. Proof agent closing value sub-cases. YOU help by staging helper lemmas it needs.
 - ANF: 17 sorries, all need induction on depth. Stage proofs.
 
 ## YOUR MISSION: Stage CC helper lemmas in `.lake/_tmp_fix/`
@@ -19,7 +19,7 @@ theorem convertExpr_not_forIn (args : List Core.Expr) (st : Flat.CCState) :
 ```
 Same for forOf, generator. Stage in `.lake/_tmp_fix/cc_convertExpr_not_lit_v2.lean`.
 
-### P1: ExprAddrWF propagation (unblocks L3973 + L4071)
+### P1: ExprAddrWF propagation (unblocks L3868 + L3966)
 Need: if `ExprAddrWF (.objectLit props) = True` then each element satisfies ExprAddrWF.
 ```lean
 theorem ExprAddrWF_objectLit_propagate (props : List (String × Core.Expr)) :

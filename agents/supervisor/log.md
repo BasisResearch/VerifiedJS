@@ -5238,3 +5238,55 @@ Breakdown (13 `sorry` tokens, 10 real proof sorries):
 
 ## Run: 2026-03-29T20:05:01+00:00
 
+
+### Metrics
+- **Sorry count (grep -c)**: 58 (17 ANF + 23 CC + 18 Wasm). CC UP by 1 from last run (22→23).
+- **Actual sorries**: ~56 (17 ANF + 23 CC + 16 Wasm, 2 Wasm are comments)
+- **Delta from last run (19:10)**: **+1 CC** (grep). Proof agent ended session at 19:44 reporting 23 CC (down from 25, -2 net from session start). Discrepancy: 18:05 run counted 22 but proof agent consistently counted 23. Likely 18:05 run miscounted.
+- **BUILD STATUS**: proof DEAD (ended 19:44). jsspec ALIVE (started 20:00, working on convertExpr_not_lit). wasmspec ZOMBIE 21h+.
+
+### Agent Analysis
+1. **proof** (DEAD, ended 19:44): Closed 2 CC sorries during session (25→23): deleteProp value + setProp value. Session productive but over. Will restart on next cron cycle.
+2. **jsspec** (PID 1838752, started 20:00): ACTIVE. 5 min in. Lean worker building cc_convertExpr_not_lit_v2.lean and ClosureConvert.lean. P0 task (highest value).
+3. **wasmspec** (PID 845769, 21h zombie): Still "already running". Will timeout at ~23:00.
+
+### Sorry Classification
+
+**CC (23 grep-c, 21 unique locations):**
+- Stubs(2): L1177, L1178
+- convertExpr_not_lit(2): L2133, L2243
+- HeapInj(1): L2327
+- CCState(4): L2646, L2668×2, L3915, L4217
+- Value(3): L3363 (setProp), L3433 (getIndex), L3502 (setIndex)
+- Call(2): L3162, L3163
+- Heap alloc(2): L3824 (objectLit), L3922 (arrayLit)
+- ExprAddrWF(2): L3868, L3966
+- Large(2): L4096 (functionDef), L4186 (tryCatch)
+
+**ANF (17):** ALL blocked by continuation mismatch / induction on depth.
+
+**Wasm (16 actual, 18 grep):** 12 step_sim + 4 call/callIndirect. jsspec confirmed all architecturally blocked.
+
+### Actions Taken
+1. Counted sorries: 58 grep (17+23+18), ~56 actual
+2. **proof prompt**: Updated ALL line numbers to match current CC file. Reordered targets: P0=setProp(L3363), P1=getIndex(L3433), P2=setIndex(L3502). Status updated to 23.
+3. **jsspec prompt**: Minor update — CC count to 23, ExprAddrWF line refs to L3868+L3966.
+4. wasmspec prompt: unchanged (zombie, will read on restart at ~23:00).
+5. Logged time estimate (58, 143h)
+
+### OUTLOOK
+- **proof restart**: Will pick up updated prompt with correct lines. Target: -3 (setProp, getIndex, setIndex)
+- **jsspec this session**: convertExpr_not_lit staging → unblocks 2 CC sorries for proof agent
+- **wasmspec 23:00**: restarts, applies break/continue fix → -2 Wasm
+- **Target next run**: ≤55 (proof -3 value sub-cases)
+
+### RISK
+- Proof agent not running. No active sorry reduction until restart.
+- wasmspec zombie may hold file locks for 3 more hours.
+- ANF 17 sorries have had ZERO direct attention for days.
+
+2026-03-29T20:05:01+00:00 DONE
+
+---
+
+2026-03-29T20:08:00+00:00 DONE
