@@ -607,3 +607,92 @@ Detailed analysis with:
 
 ## Run: 2026-03-29T15:30:03+00:00
 
+### Session start
+- ANF file: 4299 lines, 17 sorries, owned by `proof:pipeline` (640, read-only)
+- Mission: Close ANF sorries, starting with "easiest" (break/continue/return/yield/await)
+
+### Deep analysis: ALL 17 sorries share fundamental blockers
+
+#### Finding 1: Break/Continue (L3424, L3426) — UNPROVABLE AS STATED
+
+**Root cause**: When `normalizeExpr sf.expr k = .break label` with sf.expr nested (e.g., `.seq (.break label) b`):
+- ANF fires break → `sa'.expr = .trivial .litUndefined`, DONE
+- Flat fires break inside seq → `.error msg` event, then seq continues with `b`
+- After seq skips to `b`: `normalizeExpr b k' ≠ .trivial .litUndefined` (b is arbitrary)
+- **SimRel CANNOT hold** for this configuration
+
+**Independently verified**: `normalizeExpr (.seq (.break label) b) k = .break label` ✓ (break ignores continuation, rest is discarded by normalizeExpr but NOT by Flat.step?)
+
+**Confirmed**: proof agent previously identified as "PERMANENT semantic mismatch" (proof/log.md L140)
+
+#### Finding 2: Return/Yield/Await/Throw (L3392-L3400) — NESTING CONTAMINATION
+
+Same issue via different mechanism:
+- `normalizeExpr (.throw (.await inner)) k` produces `.await t` (await ignores throw continuation)
+- But `sf.expr = .throw (.await inner)` and Flat.step? produces `.error` for throw context
+- ANF await produces `.silent`, Flat throw context produces `.error` → **OBSERVABLE MISMATCH**
+
+Affects: throw (L3392), return (L3396), yield (L3398), await (L3400)
+
+#### Finding 3: normalizeExpr_labeled_step_sim sorries (L3190, L3194, L3205, L3256, L3260, L3271, L3288) — IH MISMATCH
+
+For nested `.return (some (.return (some val)))`:
+- `hnorm` gives `normalizeExpr val k_ret` where `k_ret = fun t => pure (.return (some t))`
+- IH requires k to be **TRIVIAL-PRESERVING**, but k_ret produces `.return` not `.trivial`
+- **Cannot apply IH** to recursive cases
+
+**Fix**: Generalize `normalizeExpr_labeled_step_sim` to accept any k satisfying:
+```
+hk_no_labeled : ∀ t n m label body, (k t).run n ≠ .ok (.labeled label body, m)
+```
+This is weaker than trivial-preserving. Then IH applies to k_ret since `.return ≠ .labeled`.
+
+### Sorry classification
+
+| Category | Lines | Count | Status |
+|----------|-------|-------|--------|
+| Closeable (generalize IH) | L3190,L3194,L3205,L3256,L3260,L3271,L3288 | 7 | Need theorem generalization |
+| Hard (inversion) | L3368,L3370,L3372 | 3 | Need let/seq/if inversion |
+| Hard (tryCatch) | L3394 | 1 | Complex semantics |
+| Unprovable as stated | L3392,L3396,L3398,L3400,L3424,L3426 | 6 | Need SimRel or semantics fix |
+
+### Verified helper lemmas (0 sorry, 0 error)
+
+**File**: `.lake/_tmp_fix/anf_analysis_v2.lean`
+
+| Lemma | Purpose |
+|-------|---------|
+| `return_some_k_not_labeled'` | k_ret never produces .labeled |
+| `yield_some_k_not_labeled'` | k_yield never produces .labeled |
+| `await_k_not_labeled'` | k_await never produces .labeled |
+| `normalizeExpr_nested_return_some` | normalizeExpr through 2 layers of .return |
+| `normalizeExpr_return_yield_some` | normalizeExpr through .return → .yield |
+| `normalizeExpr_yield_return_some` | normalizeExpr through .yield → .return |
+| `normalizeExpr_nested_yield_some` | normalizeExpr through 2 layers of .yield |
+| `Flat.exprValue?_{return,yield,await,throw,labeled}'` | 5 helpers: these expressions are never values |
+| `trivial_preserving_implies_not_labeled` | Bridges old IH condition to proposed generalized condition |
+| `{return,yield,await}_some_k_satisfies_not_labeled` | 3 helpers: these continuations satisfy the generalized condition |
+| `step?_return_return_ctx` | Double-context stepping through nested returns |
+
+### Recommended fix for the unprovable sorries
+
+Three options (any one fixes the 6 unprovable cases):
+
+**Option A**: Strengthen SimRel with "no control-flow in eval-head" invariant
+- Add: `¬ HasBreakInHead sf.expr label ∧ ¬ HasContinueInHead sf.expr label` etc.
+- Pro: Minimal change. Con: May not be maintainable.
+
+**Option B**: Track "dead code context" in SimRel
+- After break fires, surrounding code is marked dead, SimRel allows it to evaluate silently
+- Pro: Semantically clean. Con: Complex implementation.
+
+**Option C**: Change Flat semantics for break/continue to use abrupt completions
+- Make Flat.step? propagate break/continue as exceptions, not just trace events
+- Pro: Matches JavaScript semantics. Con: Large change to Flat.Semantics.
+
+### Build status
+- ANF file UNTOUCHED (read-only)
+- All helper lemmas verified (0 sorry, 0 error)
+- `lake build` status: unchanged
+
+2026-03-29T16:00:01+00:00 SKIP: already running
