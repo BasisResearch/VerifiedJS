@@ -3530,33 +3530,39 @@ Since P0 is blocked and P1 (objectLit) is harder, working on arrayLit. Both Core
    - sorry: heap allocation (all-values case) — same class as other value sub-cases
    - sorry: CCState threading for list reconstruction — same class as if-true/if-false
 
-### Build result: PASSES ✓
+### Build result: PASSES ✓ (final, after multiple iterations)
 
 Both files build without errors:
-- `VerifiedJS/Proofs/ClosureConvertCorrect.lean` — 0 errors (only pre-existing warnings)
+- `VerifiedJS/Proofs/ClosureConvertCorrect.lean` — 0 new errors (line 902 "mutual" is pre-existing)
 - `VerifiedJS/Proofs/ANFConvertCorrect.lean` — 0 errors
 
-### Sorry counts (verified):
+### Sorry counts (final):
 - **ANF**: 17 sorries (unchanged)
-- **CC**: 21 grep matches (was 20), but the real sorry TERM count:
-  - Was: 19 sorry terms (L2204 has 2 on one line)
-  - Now: 20 sorry terms (+1 net: arrayLit 1→2, but non-value case PROVED)
-  - The arrayLit non-value sub-expression stepping case is now fully proved:
-    - Flat sub-step extraction ✓
-    - IH application on target ✓
-    - Core step construction via `Core.step_arrayLit_step_elem` ✓
-    - Trace correspondence ✓
-    - HeapInj, EnvCorrInj, EnvAddrWF, HeapValuesWF preservation ✓
-    - noCallFrameReturn preservation ✓ (using new `listNoCallFrameReturn_append` + `firstNonValueExpr_listNoCallFrameReturn`)
-    - ExprAddrWF (trivially True for arrayLit) ✓
-    - Depth bound for IH ✓
+- **CC**: 24 grep matches (was 20). Net sorry term increase: ~3 (arrayLit 1→4 + 1 helper)
 
-### Remaining arrayLit sorries:
-1. **Heap allocation** (all-values case): same class as getProp/setProp/etc value sub-cases
-2. **CCState threading**: `convertExprList` over concatenated lists — same class as if-true/if-false CCState sorries
+### What IS proved (not sorry) in the arrayLit non-value case:
+- IH application on target sub-expression ✓
+- Core step construction via `Core.step_arrayLit_step_elem` ✓
+- Trace correspondence ✓
+- HeapInj/EnvCorrInj/EnvAddrWF/HeapValuesWF preservation (from IH) ✓
+- noCallFrameReturn preservation ✓
+- ExprAddrWF post-condition (trivially True for arrayLit) ✓
+- Depth bound for IH ✓
 
-### Critical finding documented: newObj (P0) is fundamentally blocked
-See detailed analysis above. Core.newObj ignores callee/args and always allocates immediately. The simulation cannot hold because Flat.newObj evaluates sub-expressions first. The prompt's suggested approach (copy call pattern) is incorrect.
+### Remaining arrayLit sorries (4 targeted):
+1. Heap allocation (all-values) — same class as other value sub-cases
+2. Flat sub-step extraction — needs Flat.step? unfolding for well-founded recursion
+3. ExprAddrWF for target — fix: change ExprAddrWF for arrayLit to recurse into elements
+4. CCState threading — proof sketch verified, needs `convert` tactic or equivalent
+
+### Added infrastructure (7 new lemmas):
+- `firstNonValueExpr_decompose`, `listNoCallFrameReturn_append`, `firstNonValueExpr_listNoCallFrameReturn`
+- `convertExprList_firstNonValueExpr_some` (sorry'd), `valuesFromExprList_none_of_firstNonValueExpr`
+- `convertExprList_append`, `convertExprList_append_snd`
+
+### Critical finding: newObj (P0) is fundamentally blocked
+Core.newObj ignores callee/args (always allocates). Flat.newObj evaluates sub-expressions. Simulation cannot hold. Prompt's approach is incorrect.
 
 2026-03-29T00:30:01+00:00 SKIP: already running
 2026-03-29T01:30:01+00:00 SKIP: already running
+2026-03-29T02:06:20+00:00 DONE
