@@ -1,34 +1,56 @@
-# wasmspec — WASM STEP_SIM SORRY REDUCTION
+# wasmspec — UNBLOCK STEP_SIM: FIX HLABELS_EMPTY + 1:N FRAMEWORK
 
-## STATUS: 56 grep sorries (18 Wasm). Build status: CHECK FIRST.
+## STATUS: 59 grep sorries (18 Wasm). Build PASSES. All 12 step_sim cases identified as BLOCKED.
 
-## PRIORITY 0: Verify Wasm build
+Your previous analysis correctly identified three structural blockers:
+1. `hlabels_empty` prevents break/continue/labeled
+2. `hframes_one` prevents call
+3. 1:1 framework prevents all 1:N cases (let, seq, if, while, throw, tryCatch, yield, await, return some)
 
+**Strategy shift: instead of trying to close sorries, UNBLOCK them by fixing the infrastructure.**
+
+## PRIORITY 0: Fix `hlabels_empty` to unblock break/continue/labeled (-3 potential)
+
+The `LowerSimRel` has `hlabels_empty : s2.labels = []`. But break/continue/labeled REQUIRE labels to be non-empty (that's how they work in Wasm — `br` targets a label index).
+
+**Analysis needed**: Look at how `Lower.lean` lowers `.labeled label body`:
+1. Find `lowerExpr` case for `.labeled` — it likely emits `IRInstr.block label bodyCode`
+2. `IRInstr.block` pushes a label when stepped, so labels become non-empty
+3. The invariant should be: labels = [] at TOP LEVEL, but inside labeled blocks, labels reflect nesting
+
+**Fix options**:
+A. Change `hlabels_empty` to `hlabels_match : s2.labels.length = labelDepth s1.expr` (tracks label nesting)
+B. Remove `hlabels_empty` from LowerSimRel entirely and prove label correspondence separately
+C. Keep `hlabels_empty` but add a separate `LowerSimRel_labeled` for inside-block states
+
+Pick whichever is simplest. The key insight: break/continue are only reachable INSIDE a labeled block, so the labels invariant only matters in the labeled sub-proof.
+
+## PRIORITY 1: Design 1:N stepping framework
+
+Currently `step_sim` proves: 1 ANF step → 1 IR step. But most cases need 1:N (one ANF step → N IR steps). The `return none` case already works because it's genuinely 1:1.
+
+For 1:N, you need a stuttering simulation. You already have `step_sim_return_litNull` (L6881) as a 1:2 template. Generalize:
+
+```lean
+theorem step_sim_general (prog : ANF.Program) (irmod : IRModule)
+    (s1 : ANF.State) (s2 : IRExecState) (t : TraceEvent) (s1' : ANF.State)
+    (hrel : LowerSimRel prog irmod s1 s2)
+    (hstep : anfStepMapped s1 = some (t, s1')) :
+    ∃ (s2' : IRExecState) (ir_trace : List TraceEvent),
+      IRSteps s2 ir_trace s2' ∧
+      traceFromCore t = traceConcat ir_trace ∧
+      LowerSimRel prog irmod s1' s2'
 ```
-lake env lean VerifiedJS/Wasm/Semantics.lean 2>&1 | grep error | head -20
-```
 
-If errors remain, fix them. Your 23:00 run log says build passes — verify.
+Where `IRSteps` is a reflexive-transitive closure of `irStep?`. This lets each case take as many IR steps as needed.
 
-## PRIORITY 1: Close easy step_sim cases
+## PRIORITY 2: Close throw/break/continue if unblocked
 
-Look at the 12 step_sim sorries around L6798-6879. Identify the EASIEST ones:
-
-1. **break (L6876)**: ANF produces `.error ("break:" ++ label)`. IR should have a corresponding break instruction. Check if `LowerCodeCorr.break_inv` gives you the IR instruction shape. If IR just does `br labelIdx`, show it matches.
-
-2. **continue (L6879)**: Same pattern as break.
-
-3. **labeled (L6873)**: ANF enters labeled block. Check `LowerCodeCorr.labeled_inv` for IR shape (likely `block` instruction).
-
-For each: use `lean_goal` at the sorry position to see the exact proof state, then `lean_multi_attempt` to try tactics.
-
-## PRIORITY 2: Analyze lower_main_code_corr axiom
-
-Your analysis says `irInitialState` has `code = []` because `startFunc = none`. But the axiom is used in the proof chain. Can we:
-1. Change the axiom to match reality (what DOES the initial state look like)?
-2. Or change `irInitialState` to load from the main function body?
-
-Check Lower.lean to see where the main body actually ends up.
+If P0 succeeds in fixing labels:
+- **break**: ANF produces `.error ("break:" ++ label)`. IR does `br labelIdx`. Use `LowerCodeCorr.break_inv` to get IR shape. Show `traceFromCore (.error ("break:" ++ label)) = .silent` (already proved). Show IR `br` produces `.silent`.
+- **continue**: Same pattern.
+- **throw**: ANF produces `.error msg`. IR does `throw_`. Show traces match.
 
 ## FILES: `VerifiedJS/ANF/Semantics.lean` (rw), `VerifiedJS/Wasm/Semantics.lean` (rw)
+## DO NOT EDIT: `VerifiedJS/Proofs/*.lean`
 ## LOG: agents/wasmspec/log.md

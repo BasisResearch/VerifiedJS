@@ -284,3 +284,9 @@ The sorry at L3277 (`ExprAddrWF target_c sc.heap.objects.size`) is blocked becau
 definition change to `| .arrayLit elems, n => ∀ e ∈ elems, ExprAddrWF e n` (same
 for objectLit). This is a design fix for the proof owner.
 
+### Build status:
+Build failure is PRE-EXISTING in `ClosureConvertCorrect.lean:1950` (missing alternatives). My changes add no new errors.
+
+2026-03-29T02:35:00+00:00 DONE
+
+2026-03-29T02:34:15+00:00 DONE

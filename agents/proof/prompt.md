@@ -1,62 +1,69 @@
-# proof — FIX BUILD (10 ERRORS), THEN CC OBJECTLIT
+# proof — FIX BUILD FIRST (1 LINE), THEN CLOSE ARRAYLIT SORRIES
 
-## STATUS: BUILD BROKEN. 10 errors in ClosureConvertCorrect.lean. FIX BEFORE ANYTHING ELSE.
+## ABSOLUTE PRIORITY 0: FIX L902 BUILD ERROR (DO THIS BEFORE ANYTHING ELSE)
 
-## PRIORITY 0: FIX ALL BUILD ERRORS (DO THIS FIRST)
+**THIS HAS BEEN BROKEN FOR 2+ RUNS. FIX IT NOW.**
 
-### Error 1 (ROOT CAUSE): L902 — doc comment before `mutual`
+The build fails because a doc comment precedes `mutual` on L901-903. In Lean 4.29, doc comments CANNOT precede `mutual` blocks.
 
+**Exact fix** — swap lines 901-903 from:
+```lean
+/-- All object addresses in a Core expression are valid heap addresses.
+    Fully recursive to propagate through compound expressions. -/
+mutual
+def ExprAddrWF : Core.Expr → Nat → Prop
 ```
-ClosureConvertCorrect.lean:902:65: error: unexpected token 'mutual'
+To:
+```lean
+mutual
+/-- All object addresses in a Core expression are valid heap addresses.
+    Fully recursive to propagate through compound expressions. -/
+def ExprAddrWF : Core.Expr → Nat → Prop
 ```
 
-**Fix**: Move the doc comment from before `mutual` to after it:
+After fixing, verify:
+```
+lake env lean VerifiedJS/Proofs/ClosureConvertCorrect.lean 2>&1 | grep "error" | head -5
+```
+Must show ZERO errors. If any remain, sorry broken code to restore build.
+
+## PRIORITY 1: Close arrayLit sorries (3 tractable, 1 hard)
+
+The arrayLit non-value case (L3237-3324) has great proof structure but 4 remaining sorries:
+
+### L3269 — Flat sub-step extraction (MOST TRACTABLE)
+Need: `Flat.step? {sf with expr = .arrayLit flatElems} = some (ev, sa)` when `firstNonValueExpr` finds a non-value element.
+Strategy: Unfold `Flat.step?` for `.arrayLit`. It checks `valuesFromExprList?`. Since `firstNonValueExpr` returns `some`, `valuesFromExprList?` returns `none` (use `valuesFromExprList_none_of_firstNonValueExpr` at L1872). Then it calls `firstNonValueExpr` on the flat list (use `convertExprList_firstNonValueExpr_some` at L1851). Then it steps the target sub-expression. The result state has the stepped element in place.
 
 ```lean
--- CURRENT (BROKEN — line 901-903):
-/-- All object addresses in a Core expression are valid heap addresses.
-    Fully recursive to propagate through compound expressions. -/
-mutual
-def ExprAddrWF : Core.Expr → Nat → Prop
-
--- FIXED:
-mutual
-/-- All object addresses in a Core expression are valid heap addresses.
-    Fully recursive to propagate through compound expressions. -/
-def ExprAddrWF : Core.Expr → Nat → Prop
+-- Try this approach:
+simp [Flat.step?]
+rw [valuesFromExprList_none_of_firstNonValueExpr hffnv]
+simp [hffnv]
+exact ⟨_, hstep, rfl⟩  -- or similar
 ```
 
-### Error 2: L1885-1887 — Type mismatch / unsolved goals
+### L3277 — ExprAddrWF propagation
+Need: `ExprAddrWF target_c sc.heap.objects.size` from `ExprAddrWF (.arrayLit elems) sc.heap.objects.size`.
+Strategy: `ExprAddrWF (.arrayLit elems) n = True` by definition (check the mutual def). So this is just `trivial` or `simp [ExprAddrWF]`.
 
-Check the code around L1885. Likely from a recent edit. Fix the type mismatch.
+Actually check: does `ExprAddrWF` have a case for `.arrayLit`? Look at the mutual def starting L904. If `.arrayLit` maps to `True`, then `hexprwf` gives `True` which says nothing about elements. You may need to strengthen the invariant or use `sorry` and move on.
 
-### Errors 3-8: L3243-3278 — objectLit/arrayLit proof errors
+### L3324 — CCState threading
+Need: CCState agreement after convertExprList over concatenated `done ++ [stepped] ++ rest`.
+This is the hardest one. If you can't close it in < 30 min, leave it sorry'd and move to objectLit.
 
-```
-L3243:15: unsolved goals
-L3270:8: Missing cases
-L3272:23: unsolved goals
-L3273:15: Missing cases
-L3274:23: Fields missing: `env`, `heap`, `trace`
-L3278:98: unexpected identifier; expected '}'
-```
+### L3243 — all-values case (heap reasoning)
+Same class as other value sub-cases (L2812, L2870, etc.). Skip for now.
 
-These are in the arrayLit proof area. If you can't fix them quickly, sorry the broken cases to restore the build.
+## PRIORITY 2: CC objectLit (L3236)
 
-### VERIFICATION:
-```
-lake env lean VerifiedJS/Proofs/ClosureConvertCorrect.lean 2>&1 | grep error | head -20
-```
+Copy the arrayLit pattern. Structure:
+1. `rw [hsc] at hconv hncfr hexprwf hd; simp [Flat.convertExpr] at hconv`
+2. Case split on `Core.firstNonValueProp` (analogous to `firstNonValueExpr`)
+3. Value case: sorry (heap reasoning)
+4. Non-value case: use IH on target property expression
 
-Must show ZERO errors before proceeding to P1.
-
-## PRIORITY 1: CC objectLit non-value case (L3247)
-
-Same pattern as arrayLit. Only attempt AFTER build passes.
-
-## PRIORITY 2: CC var captured case (L1981)
-
-## DO NOT ATTEMPT: ANF sorries, Wasm sorries, CC value sub-cases (heap), newObj, functionDef, tryCatch, while_
-
+## DO NOT ATTEMPT: ANF sorries, Wasm sorries, newObj, functionDef, tryCatch, while_
 ## FILES: `VerifiedJS/Proofs/*.lean` (rw)
 ## LOG: agents/proof/log.md — LOG IMMEDIATELY when you start
