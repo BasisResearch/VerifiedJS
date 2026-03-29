@@ -3384,8 +3384,8 @@ private theorem closureConvert_step_simulation
           | _ => right; intro a; exact Core.Value.noConfusion
         rcases hno_core with ⟨addr, rfl⟩ | hno
         · -- Object case
-          have hstep' : Flat.step? { expr := (Flat.Expr.setProp (.lit (.object addr)) prop (.lit (Flat.convertValue vv))),
-              env := sf.env, heap := sf.heap, trace := sf.trace, funcs := sf.funcs, callStack := sf.callStack } =
+          let flat_expr := Flat.Expr.setProp (.lit (.object addr)) prop (.lit (Flat.convertValue vv))
+          have hstep' : Flat.step? ⟨flat_expr, sf.env, sf.heap, sf.trace, sf.funcs, sf.callStack⟩ =
             some (ev, sf') := by rw [← hsf_eq]; exact hstep
           rw [Flat_step?_setProp_object_both_values] at hstep'
           simp at hstep'; obtain ⟨hev, hsf'⟩ := hstep'; subst hev hsf'
@@ -3447,8 +3447,8 @@ private theorem closureConvert_step_simulation
             simp only [sc', Flat.convertExpr, Flat.convertValue]
         · -- Non-object case
           have hno_flat := convertValue_not_object cv hno
-          have hstep' : Flat.step? { expr := (Flat.Expr.setProp (.lit (Flat.convertValue cv)) prop (.lit (Flat.convertValue vv))),
-              env := sf.env, heap := sf.heap, trace := sf.trace, funcs := sf.funcs, callStack := sf.callStack } =
+          let flat_expr' := Flat.Expr.setProp (.lit (Flat.convertValue cv)) prop (.lit (Flat.convertValue vv))
+          have hstep' : Flat.step? ⟨flat_expr', sf.env, sf.heap, sf.trace, sf.funcs, sf.callStack⟩ =
             some (ev, sf') := by rw [← hsf_eq]; exact hstep
           rw [Flat_step?_setProp_nonobject_both_values _ _ _ _ hno_flat] at hstep'
           simp at hstep'; obtain ⟨hev, hsf'⟩ := hstep'; subst hev hsf'
