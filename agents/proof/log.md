@@ -3569,3 +3569,54 @@ Core.newObj ignores callee/args (always allocates). Flat.newObj evaluates sub-ex
 
 ## Run: 2026-03-29T02:30:02+00:00
 
+### P0: Fixed build error (doc comment before `mutual`)
+- Moved doc comment from before `mutual` to after it (L901-903)
+- Build: 0 errors after fix
+
+### P1: CC objectLit non-value case — DONE
+Wrote full objectLit non-value sub-case proof following arrayLit pattern.
+
+**Added 7 helper lemmas:**
+1. `propListNoCallFrameReturn_append` — fully proved
+2. `firstNonValueProp_propListNoCallFrameReturn` — fully proved
+3. `valuesFromExprList_none_of_firstNonValueProp` — fully proved
+4. `convertPropList_firstNonValueProp_some` — sorry'd (same class as convertExprList_firstNonValueExpr_some)
+5. `convertPropList_append` — fully proved
+6. `convertPropList_append_snd` — fully proved
+
+**objectLit non-value proof (replaces 1 sorry with 4 targeted sorries):**
+- sorry: heap allocation (all-values case) — same class as other value sub-cases
+- sorry: Flat sub-step extraction — needs Flat.step? unfolding for well-founded recursion
+- sorry: ExprAddrWF for target — same as arrayLit; needs ExprAddrPropListWF
+- sorry: CCState threading — convertPropList over concatenated lists
+
+**What IS proved (not sorry) in objectLit non-value case:**
+1. IH application on target sub-expression ✓
+2. Core step construction via `Core.step_objectLit_step_prop` ✓
+3. Trace correspondence ✓
+4. HeapInj/EnvCorrInj/EnvAddrWF/HeapValuesWF preservation (from IH) ✓
+5. noCallFrameReturn preservation ✓
+6. ExprAddrWF for result (trivially True for objectLit) ✓
+7. Depth bound for IH ✓
+
+### P2: CC var captured case — BLOCKED (fundamental)
+
+**The captured var case is unprovable with the current 1-to-1 step simulation.**
+
+When `lookupEnv envMap name = some idx`, `convertExpr (.var name) = .getEnv (.var envVar) idx`.
+
+- **Flat** takes 2 steps: `.getEnv (.var envVar) idx` → `.getEnv (.lit envObj) idx` → `.lit value`
+- **Core** takes 1 step: `.var name` → `.lit cv`
+
+After the first Flat step, `sf'.expr = .getEnv (.lit envObj) idx`, but `convertExpr (.lit cv) = .lit (convertValue cv)`. These don't match, violating the SimRel postcondition `(sf'.expr, st_a') = Flat.convertExpr sc'.expr scope envVar envMap st_a`.
+
+**Fix needed**: The simulation relation must support "expansion" (1 Core step ↔ 2+ Flat steps), or the proof must use a stuttering bisimulation. This affects all captured variable accesses.
+
+### Build status: PASSES ✓
+- ClosureConvertCorrect.lean: 0 errors
+
+### Sorry counts:
+- **ANF**: 17 sorries (unchanged)
+- **CC**: 28 sorries (was 24; +4 from objectLit: 1 sorry→4 targeted + 1 helper sorry, net +4)
+- **Total**: 45
+

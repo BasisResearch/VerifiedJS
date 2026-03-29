@@ -293,3 +293,41 @@ Build failure is PRE-EXISTING in `ClosureConvertCorrect.lean:1950` (missing alte
 
 ## Run: 2026-03-29T03:00:01+00:00
 
+### LABELED INVERSION — COMPLETE (all 32 cases, zero sorry)
+
+File: `.lake/_tmp_fix/VerifiedJS/Proofs/anf_labeled_inversion.lean`
+
+**Analogous to break inversion, but for `.labeled` output.**
+
+If `normalizeExpr e k = .labeled label body`, then either `e` has `.labeled label` in its CPS head position, or `k` was called and produced `.labeled`.
+
+#### New verified theorems (axioms: propext + Quot.sound only):
+
+| Lemma | Status | Purpose |
+|-------|--------|---------|
+| `HasLabeledInHead` | **VERIFIED** | Mutual inductive: structural predicate for labeled reachability in CPS head |
+| `HasLabeledInHeadList` | **VERIFIED** | List version |
+| `HasLabeledInHeadProps` | **VERIFIED** | Prop list version |
+| `normalizeExprList_labeled_or_k` | **VERIFIED** | List break-down: labeled from element head or k |
+| `normalizeProps_labeled_or_k` | **VERIFIED** | Prop list break-down: labeled from prop value head or k |
+| `normalizeExpr_labeled_or_k` | **VERIFIED** | **MAIN**: General labeled characterization, all 32 Flat.Expr constructors |
+| `normalizeExpr_labeled_implies_hasLabeledInHead` | **VERIFIED** | **MASTER INVERSION**: trivial-preserving k → labeled must come from expression |
+| `normalizeExpr_not_labeled_of_no_head_no_k` | **VERIFIED** | **CONTRAPOSITIVE**: no labeled in head + k never labeled → normalizeExpr never labeled |
+
+#### Key design:
+- Mirrors `anf_break_inversion.lean` structure exactly
+- Reuses existing lemmas from `ANF/Convert.lean`: `bindComplex_not_labeled`, `normalizeExpr_while_not_labeled_any_k`, `normalizeExpr_tryCatch_none/some_not_labeled_any_k`
+- `.labeled l body` case: output always `.labeled l _`, so `label = l` → `HasLabeledInHead.labeled_direct`
+- Strong induction on `e.depth` handles all constructors uniformly
+- List/prop cases use parameterized helpers (same pattern as break)
+
+#### Impact:
+- **Directly enables closing 23 sorry cases** in the `anf_exfalso_template.lean` (L1680, L1597, L1663 in ANFConvertCorrect)
+- Categories 2-4 (throw, await, assign, typeof, getProp, deleteProp, getEnv, makeClosure, unary, setProp, getIndex, setIndex, binary, call, newObj, objectLit, arrayLit, makeEnv): all become `exfalso` by applying `normalizeExpr_not_labeled_of_no_head_no_k` — the internal continuations (pure .throw, bindComplex, etc.) never produce .labeled, and these constructors don't have HasLabeledInHead
+- Category 5 (let, seq, if): still need actual stepping proofs (these CAN produce .labeled through k)
+
+### Build status:
+Build failure is PRE-EXISTING in `ClosureConvertCorrect.lean:1950`. My changes add no new errors.
+
+2026-03-29T03:09:11+00:00 DONE
+2026-03-29T03:09:33+00:00 DONE
