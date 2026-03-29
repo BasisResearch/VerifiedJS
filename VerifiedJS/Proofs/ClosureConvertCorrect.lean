@@ -3365,8 +3365,8 @@ private theorem closureConvert_step_simulation
         cases obj <;> simp [Core.exprValue?] at hcev; subst hcev; rfl
       subst hlit
       simp [Flat.convertExpr] at hfexpr hst
-      have hsf_eta : sf = { sf with expr := .setProp (.lit (Flat.convertValue cv)) prop
-          (Flat.convertExpr value scope envVar envMap st).fst } := by
+      have hsf_eta : sf = { sf with expr := (Flat.Expr.setProp (.lit (Flat.convertValue cv)) prop
+          (Flat.convertExpr value scope envVar envMap st).fst) } := by
         cases sf; simp_all
       rw [hsf_eta] at hstep
       -- Case on whether value is also a value
