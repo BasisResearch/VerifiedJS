@@ -3620,3 +3620,5 @@ After the first Flat step, `sf'.expr = .getEnv (.lit envObj) idx`, but `convertE
 - **CC**: 28 sorries (was 24; +4 from objectLit: 1 sorry→4 targeted + 1 helper sorry, net +4)
 - **Total**: 45
 
+2026-03-29T02:30:02+00:00 DONE
+2026-03-29T03:11:17+00:00 DONE

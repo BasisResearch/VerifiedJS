@@ -1,52 +1,59 @@
-# jsspec — CLOSE 5 REMAINING BREAK INVERSION CASES
+# jsspec — INTEGRATE LABELED INVERSION INTO ANF, CLOSE BREAK/CONTINUE
 
-## STATUS: 59 grep sorries. Break inversion 27/32 cases done. GREAT PROGRESS.
+## STATUS: 63 grep sorries. Labeled inversion COMPLETE (all 32 cases ✓). EXCELLENT WORK.
 
-## PRIORITY 0: Close remaining 5 list-based break inversion cases
+## PRIORITY 0: Write `break_step_sim` and `continue_step_sim` helpers
 
-File: `.lake/_tmp_fix/VerifiedJS/Proofs/anf_break_inversion.lean`
+The ANF break/continue sorries at ANFConvertCorrect.lean:L1948-1950 are the HIGHEST VALUE
+targets you can enable. The labeled case (L1925) is already proved using
+`normalizeExpr_labeled_step_sim`. Write the analogous helper for break/continue.
 
-The 5 remaining sorry cases in `normalizeExpr_break_or_k` are: **call, newObj, makeEnv, objectLit, arrayLit**.
+Your `anf_break_sim.lean` already has the base case analysis. The fundamental difficulty
+you identified (dead code after break in seq context) is REAL. But the solution is:
 
-All use `normalizeExprList` or `normalizeProps` internally. You need TWO helper lemmas:
+**Break/continue ONLY appear at ANF level** (normalizeExpr produces them as `.break`/`.continue`
+directly). The ANF `step?` for break/continue simply emits `.error ("break:" ++ label)`.
+On the Flat side, `normalizeExpr (.break label) k = .break label` (you proved this).
 
-### Helper 1: `normalizeExprList_break_or_k`
+So the proof needs to show:
+1. If `sa.expr = .break label`, then `ANF.step?` produces `(.error ("break:" ++ label), terminal_state)`
+2. The Flat state steps to produce the same observable trace
+3. The key: what is `sf.expr` when `sa.expr = .break label`?
+   - From SimRel: `normalizeExpr sf.expr k = sa.expr` up to some relationship
+   - If `sf.expr = .break label` directly, Flat steps once producing `.error` ✓
+   - If `sf.expr` is compound containing break in head position: use break inversion
+
+Write the helper in staging, then provide exact theorem statement + proof to proof agent.
+
 ```lean
-theorem normalizeExprList_break_or_k (es : List Flat.Expr) (k : Flat.Expr → Flat.NormalizeM ANF.Expr)
-    (label : String) (n : Nat) (hn : (∀ e ∈ es, e.depth ≤ n)) :
-    (normalizeExprList es k).run m = .break label →
-    (∃ e ∈ es, ∃ m', (normalizeExpr e (fun t => ... )).run m' = .break label) ∨
-    (∃ ts m', (k ts).run m' = .break label)
+theorem normalizeExpr_break_step_sim
+    (sf : Flat.State) (k : ...) (n m : Nat) (label : String)
+    (hk_triv : ...) (hnorm : ...) (hewf : ...) :
+    ∃ evs sf', Flat.steps? sf evs sf' ∧
+      observableTrace [.error ("break:" ++ label)] = observableTrace evs ∧
+      ... -- SimRel for terminal state
 ```
 
-Key insight: `normalizeExprList` processes elements left-to-right using `bindComplex`. You already proved `bindComplex_never_break_general` — bindComplex NEVER produces .break. So break must come from either:
-- A recursive `normalizeExpr` call on an element (→ use IH via strong induction on depth)
-- The final continuation `k` applied to the normalized list
+## PRIORITY 1: Close remaining 5 break inversion cases
 
-Proof strategy: Induction on `es`.
-- `[] case`: normalizeExprList [] k = k [] — break comes from k.
-- `e :: rest case`: normalizeExprList unfolds to `do let t ← normalizeExpr e ...; let ts ← normalizeExprList rest ...; k (t :: ts)`. The break comes from normalizeExpr e, or normalizeExprList rest, or k. Use the general characterization IH for normalizeExpr e, and list IH for rest.
+Still need: call, newObj, makeEnv, objectLit, arrayLit in `normalizeExpr_break_or_k`.
 
-### Helper 2: `normalizeProps_break_or_k`
-Same pattern for property lists. `normalizeProps` processes `(name, expr)` pairs.
+You already designed the `normalizeExprList_break_or_k` helper. Write it and close all 5.
 
-### Then close the 5 cases:
-For each of call, newObj, makeEnv, objectLit, arrayLit:
-1. Unfold `normalizeExpr` for that constructor
-2. It calls `normalizeExprList` (or `normalizeProps`) then a continuation
-3. Apply `normalizeExprList_break_or_k` to get the disjunction
-4. Left case: extract the element, show `HasBreakInHead` via `HasBreakInHead` constructors
-5. Right case: show continuation produces break → either HasBreakInHead from another sub-expr or k produces break
+## PRIORITY 2: Stage ANF exfalso proofs using labeled inversion
 
-**Once all 32 cases are proved, `normalizeExpr_break_implies_hasBreakInHead` is COMPLETE.** This directly enables -2 ANF sorries.
+Your labeled inversion enables closing ANF sorries via exfalso for constructors that
+CANNOT produce `.labeled` output. The proof agent needs these as ready-to-paste code.
 
-## PRIORITY 1: Stage Flat objectLit/arrayLit step helpers
+Write in staging: for each of the ANF constructors that have sorry (throw L1916, tryCatch L1918,
+return L1920, yield L1922, await L1924), show which ones can be closed via
+`normalizeExpr_not_labeled_of_no_head_no_k` + exfalso if the ANF step assumes labeled output.
 
-The proof agent needs these for CC objectLit. Check if they exist; if not, stage in `.lake/_tmp_fix/`:
+Wait — check first: do any of these ANF cases ASSUME labeled output? Read L1905-1924 carefully.
+The throw case at L1916 uses `all_goals sorry` after case splitting on `evalTrivial`. These
+are about throw stepping, not about labeled. So labeled inversion may not apply directly here.
 
-1. `Flat.step?_objectLit_prop_step`: When first prop is non-value, Flat steps inner expression
-2. `convertPropList_cons`: How convertPropList relates to stepping through prop list
-3. `convertPropList_firstNonValueProp_some`: Flat version preserves firstNonValueProp structure
+Focus: which ANF sorries CAN be closed with your inversion lemmas? Document precisely.
 
 ## FILES: `.lake/_tmp_fix/VerifiedJS/**/*.lean` (staging), `VerifiedJS/Flat/*.lean`, `VerifiedJS/Core/*.lean`
 ## DO NOT EDIT: `VerifiedJS/Proofs/*.lean`, `VerifiedJS/Wasm/Semantics.lean`

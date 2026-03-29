@@ -1,3 +1,41 @@
+## Run: 2026-03-29T03:05:01+00:00
+
+### Metrics
+- **Sorry count (grep -c)**: 63 (17 ANF + 28 CC + 18 Wasm + 0 Lower)
+- **Delta from last run (02:05)**: +4 grep (CC 24→28). objectLit sorry split into 4 targeted + 1 helper. NOT regression — proof agent built full objectLit non-value proof with 7 helper lemmas.
+- **BUILD STATUS**: **ALL THREE PASS ✓** — CC fixed (L902 doc comment moved), ANF passes, Wasm passes.
+
+### Agent Analysis
+1. **proof**: VERY PRODUCTIVE. Fixed L902 build bug (finally, after 3 runs of prompting). Proved full objectLit non-value case (mirrors arrayLit pattern). 7 new helper lemmas (6 proved, 1 sorry). Discovered var captured case is fundamentally blocked (needs 1:N stepping). CC 24→28 is objectLit decomposition (1→4 targeted + 1 helper).
+2. **jsspec**: EXCELLENT. Completed labeled inversion (ALL 32 Flat.Expr constructors, ZERO sorry). Created `anf_labeled_inversion.lean` with full mutual inductive + master inversion theorem. Best single-run output from any agent. Potentially enables many exfalso closures.
+3. **wasmspec**: STALLED. Running since 23:00 (4+ hours), no log output. Likely OOM (history: code 137, 143). No progress on hlabels_empty or any Wasm sorry.
+
+### Key Findings
+1. **Build fully green for first time in 2+ runs** — proof agent's L902 fix resolved persistent CC build failure
+2. **CC objectLit done** — both arrayLit and objectLit non-value cases have full proof structure. Remaining sorries are "same class" (heap reasoning, CCState threading, Flat sub-step extraction)
+3. **Labeled inversion is a major milestone** — jsspec proved all 32 cases of `normalizeExpr_labeled_or_k`. Master theorem: if trivial-preserving k, labeled output must come from expression head. Contrapositive enables exfalso proofs.
+4. **ANF let/seq/if are now the highest-value targets** — structurally simpler than CC sorries
+5. **Var captured case blocked** — needs 1:N framework (Flat takes 2 steps, Core takes 1). Not fixable without SimRel redesign.
+6. **wasmspec needs intervention** — 24+ hours of OOM cycles with no progress
+
+### Agent Prompt Rewrites
+1. **proof**: STRATEGY SHIFT to ANF. P0: let (L1892). P1: seq (L1894). P2: if (L1896). P3: CC Flat sub-step extraction if time permits.
+2. **jsspec**: P0: Write `break_step_sim` helper. P1: Close 5 remaining break inversion cases. P2: Stage exfalso proofs for ANF sorries.
+3. **wasmspec**: RESTART with small-increment mandate. P0: Fix hlabels_empty. P1: Close return_none fully.
+
+### Actions Taken
+1. Counted sorries: 63 (17+28+18+0)
+2. Verified build: all 3 files pass ✓
+3. Read all agent logs, analyzed jsspec labeled inversion breakthrough
+4. All 3 prompts rewritten with corrected priorities
+5. Logged time estimate (63, 145h)
+
+### OUTLOOK: Target next run ≤ 61 (proof closes ANF let + seq = -2)
+### RISK: wasmspec OOM cycle continues. Proof agent may find ANF sorries harder than expected.
+### POSITIVE: Build green. jsspec labeled inversion is major enabler. Proof agent responsive to P0 fixes.
+
+---
+
 ## Run: 2026-03-29T02:05:01+00:00
 
 ### Metrics
