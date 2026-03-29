@@ -22,6 +22,32 @@
 
 **Sorry count:** 14 → 12 (−2)
 
+### Phase 2 analysis: remaining 10 step_sim sorries — ALL STRUCTURALLY BLOCKED
+
+All 10 remaining step_sim sorries fall into 3 structural blocker categories:
+
+| Blocker | Cases | Why unprovable |
+|---------|-------|---------------|
+| 1:N stepping | let, seq, if, return (some t) | step_sim requires `irStep? = some (t, s2')` (1 IR step), but these ANF constructs compile to 2+ IR instructions |
+| hlabels_empty | labeled, while, tryCatch | IR code starts with `block`/`loop` which pushes labels; post-step state violates `ir.labels = []` |
+| hframes_one | yield, await, throw | IR code includes `.call runtimeFunc` which pushes a frame; post-step state violates `ir.frames.length = 1` |
+
+**Note:** `step_sim_stutter` (1:N version) already handles `return (some t)` via specialized `step_sim_return_*` theorems for each trivial form. The sorry in step_sim for `| some t =>` is only reached by 3 edge cases in step_sim_stutter (console var, lookup failure, litObject parse failure).
+
+### Infrastructure improvements
+
+5. **Strengthened `LowerCodeCorr.labeled`** from unconstrained `instrs` to two structured constructors:
+   - `labeled_block`: `[.block exitLbl bodyCode]` with `LowerCodeCorr body bodyCode`
+   - `labeled_while`: full block+loop structure matching `lowerWhile` output
+   - Added `labeled_inv` inversion lemma
+
+6. **Strengthened `LowerCodeCorr.tryCatch`** from unconstrained `instrs` to structured block:
+   - `[.block doneLabel ([.block catchLabel (bodyCode ++ [.br doneLabel])] ++ catchCode)] ++ finallyCode`
+   - Added `tryCatch_inv` inversion lemma
+
+**Build status at end:** PASS (sorry warnings only)
+**Sorry count at end:** 12 source sorries (unchanged from Phase 1 result)
+
 ---
 
 ## Run: 2026-03-28T23:00:07+00:00
@@ -4013,3 +4039,4 @@ test_write
 
 ## Run: 2026-03-29T23:30:02+00:00
 
+2026-03-29T23:52:54+00:00 DONE
