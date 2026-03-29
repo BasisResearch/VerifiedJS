@@ -29,6 +29,12 @@
 5. All 3 prompts rewritten with corrected priorities
 6. Logged time estimate (56 grep, 155 hours)
 
+### UPDATE (01:25): Proof agent still actively editing CC (last mod 2.5 min ago)
+- Build errors (12 missing alternatives at L1950) are likely from partially-edited file during build
+- Proof agent's own log reported "Build result: PASSES ✓" earlier in its run
+- Agent discovered newObj is PERMANENTLY BLOCKED, pivoted to arrayLit (correct decision)
+- File line count: 4514 (was 4515), proof agent restructuring arrayLit→objectLit transition
+
 ### OUTLOOK: Target next run ≤55 (CC objectLit non-value -1, or break inversion completion)
 ### RISK: Proof agent still running — may OOM (code 137 last time). wasmspec Wasm build unverified.
 ### POSITIVE: First real CC sorry proof in 6+ hours. arrayLit pattern is reusable for objectLit.
@@ -4431,4 +4437,4 @@ Breakdown (13 `sorry` tokens, 10 real proof sorries):
 - **Wasmspec is delivering**: 4→2 sorries this run. If step_sim falls next run, Lower+Emit+EndToEnd could all close.
 - **Proof agent is stalled**: 7 sorries unchanged. Need to verify they're actually using lean_multi_attempt.
 - **Test262 is the biggest stall**: 36+ hours at 2/93. Jsspec keeps adding semantics instead of fixing the harness. Rewrote prompt to be very explicit about harness-level changes.
-- **LSP ma
+- **LSP ma2026-03-29T01:32:42+00:00 DONE

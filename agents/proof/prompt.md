@@ -1,35 +1,60 @@
-# proof — CC OBJECTLIT AND CCSTATE THREADING
+# proof — FIX BUILD (10 ERRORS), THEN CC OBJECTLIT
 
-## STATUS: BUILD PASSES ✓. 56 grep sorries (17 ANF + 21 CC + 18 Wasm + 0 Lower).
-## LAST RUN: arrayLit non-value case PROVED ✓. newObj confirmed BLOCKED (Core ignores callee/args).
+## STATUS: BUILD BROKEN. 10 errors in ClosureConvertCorrect.lean. FIX BEFORE ANYTHING ELSE.
 
-## PRIORITY 0: CC objectLit non-value case (L3247)
+## PRIORITY 0: FIX ALL BUILD ERRORS (DO THIS FIRST)
 
-This is the SAME pattern as your arrayLit proof. objectLit has `props` instead of `elems`.
+### Error 1 (ROOT CAUSE): L902 — doc comment before `mutual`
 
-**Key APIs** (Core has these already):
-- `Core.firstNonValueProp : List (String × Core.Expr) → Option (List (String × Core.Expr) × (String × Core.Expr) × List (String × Core.Expr))`
-- `Core.step_objectLit_step_prop` (Core/Semantics.lean ~L13634)
+```
+ClosureConvertCorrect.lean:902:65: error: unexpected token 'mutual'
+```
 
-**Steps**:
-1. `rw [hsc] at hconv hncfr hexprwf hd`
-2. `simp [Flat.convertExpr] at hconv` — gives `sf.expr = .objectLit (convertPropList ...)`
-3. `cases hcfnv : Core.firstNonValueProp props` — none = all values (sorry), some = stepping
-4. For `some` case: copy arrayLit proof pattern exactly, substituting props for elems
+**Fix**: Move the doc comment from before `mutual` to after it:
 
-The staging file `.lake/_tmp_fix/VerifiedJS/Proofs/cc_objectLit_arrayLit_helpers.lean` has helpers like `convertPropList_firstNonValueProp_some/none`.
+```lean
+-- CURRENT (BROKEN — line 901-903):
+/-- All object addresses in a Core expression are valid heap addresses.
+    Fully recursive to propagate through compound expressions. -/
+mutual
+def ExprAddrWF : Core.Expr → Nat → Prop
 
-**Target: -1 sorry (objectLit 1→2, same as arrayLit, but non-value case proved)**
+-- FIXED:
+mutual
+/-- All object addresses in a Core expression are valid heap addresses.
+    Fully recursive to propagate through compound expressions. -/
+def ExprAddrWF : Core.Expr → Nat → Prop
+```
 
-## PRIORITY 1: CC var captured case (L1981)
+### Error 2: L1885-1887 — Type mismatch / unsolved goals
 
-Line 1981 is a sorry for `var` when `lookupEnv envMap name = some idx`. After CC, the var becomes `.getEnv (.var envVar) idx`. Both Core and Flat look up `name` in env. Core gets a value from `sc.env`, Flat gets `.getEnv` which looks up in closure env.
+Check the code around L1885. Likely from a recent edit. Fix the type mismatch.
 
-The proof needs: EnvCorr relates Core env lookup to Flat env lookup. If `EnvCorr sc.env sf.env` and `lookupEnv envMap name = some idx`, then `sf.env` contains the same value at the right position.
+### Errors 3-8: L3243-3278 — objectLit/arrayLit proof errors
 
-## PRIORITY 2: CC if-else CCState threading (L2300, L2322)
+```
+L3243:15: unsolved goals
+L3270:8: Missing cases
+L3272:23: unsolved goals
+L3273:15: Missing cases
+L3274:23: Fields missing: `env`, `heap`, `trace`
+L3278:98: unexpected identifier; expected '}'
+```
 
-These 3 sorries are about `convertExpr` state threading: the `st'` from converting `then_` branch differs from `st_a'` expected by the theorem. Look at the `st_a, st_a'` pair and see if `CCStateAgree` can be weakened or if the state threading just needs careful bookkeeping.
+These are in the arrayLit proof area. If you can't fix them quickly, sorry the broken cases to restore the build.
+
+### VERIFICATION:
+```
+lake env lean VerifiedJS/Proofs/ClosureConvertCorrect.lean 2>&1 | grep error | head -20
+```
+
+Must show ZERO errors before proceeding to P1.
+
+## PRIORITY 1: CC objectLit non-value case (L3247)
+
+Same pattern as arrayLit. Only attempt AFTER build passes.
+
+## PRIORITY 2: CC var captured case (L1981)
 
 ## DO NOT ATTEMPT: ANF sorries, Wasm sorries, CC value sub-cases (heap), newObj, functionDef, tryCatch, while_
 
