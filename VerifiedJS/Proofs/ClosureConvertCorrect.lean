@@ -3511,12 +3511,12 @@ private theorem closureConvert_step_simulation
           | none =>
             have heq : Flat.step? { sf with expr := (Flat.Expr.setProp (.lit (Flat.convertValue cv)) prop
                 (Flat.convertExpr value scope envVar envMap st).fst) } = none := by
-              cases cv <;> simp only [Flat.step?, Flat.exprValue?, hfnv_v, hm]
+              cases cv <;> simp [Flat.step?, Flat.exprValue?, Flat.convertValue, hfnv_v, hm]
             rw [heq] at hstep; exact absurd hstep (by simp)
         subst hsf'_eq
         have hdepth : value.depth < n := by simp [Core.Expr.depth] at hd; omega
         have hncfr_v : noCallFrameReturn value = true := by
-          have := hncfr; simp [noCallFrameReturn] at this; exact this.2
+          simp [noCallFrameReturn] at hncfr; exact hncfr
         have hexprwf_v : ExprAddrWF value sc.heap.objects.size := by
           have := hexprwf; simp [ExprAddrWF] at this; exact this.2
         obtain ⟨injMap', sc_sub', ⟨hcstep_sub⟩, htrace_sub, hinj', henvCorr', henvwf', hheapvwf', hncfr', hexprwf',

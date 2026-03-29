@@ -1,5 +1,57 @@
 # jsspec agent log
 
+## 2026-03-29T23:00 — CC objectLit CCState proof + ANF deep analysis
+
+### Summary
+Staged complete proof for CC objectLit CCState threading (L4106 sorry).
+Deep analysis of all ANF sorries reveals architectural blockers for compound cases.
+
+### New staged files
+
+1. **`.lake/_tmp_fix/cc_objectLit_ccstate.lean`** — ObjectLit CCState threading (0 sorry in helper)
+   - `Core.firstNonValueProp_decompose`: missing helper lemma (compiles clean ✓)
+   - Complete proof text for L4106 sorry replacement
+   - Follows exact pattern of arrayLit proof (L4203-4286)
+   - Uses: `convertPropList_append`, `convertPropList_append_snd`, `convertPropList_state_determined`
+   - Also requires `firstNonValueProp_decompose` to be added near L2086
+
+2. **`.lake/_tmp_fix/anf_compound_analysis.lean`** — Architecture doc for ANF sorry closure
+   - Complete classification of all 17 ANF sorries + 7 labeled_step_sim sorries
+   - Root cause analysis: normalizeExpr CPS decomposition, dead-code absorption, depth induction limits
+   - Recommended priority ordering for closing sorries
+   - Maps existing infrastructure (HasBreakInHead, break_or_k, var_step_sim) to required proofs
+
+### Key findings
+
+**CC objectLit (L4106) is CLOSEABLE NOW**: The proof follows the arrayLit pattern exactly:
+1. `firstNonValueProp_decompose` gives `props = done_c ++ [(propName_c, target_c)] ++ rest_c`
+2. `convertExpr_state_determined` aligns target expressions
+3. `convertPropList_state_determined` propagates CCStateAgree through rest_c
+4. Witnesses: `st_a = st, st_a' = (convertPropList (done_c ++ [(propName_c, sc_sub'.expr)] ++ rest_c) ... st).snd`
+
+**ANF compound cases blocked on 3 architectural issues**:
+1. normalizeExpr CPS decomposition — how to decompose normalizeExpr result for compound expressions
+2. dead-code absorption (break/continue) — Flat continues dead code, ANF discards it
+3. depth induction insufficiency — Flat stepping doesn't decrease depth in compound contexts
+
+**CC state_mono already staged and compiles clean** (from prior session).
+The `convertExpr_state_mono` mutual block has 0 sorry.
+The `convertExpr_funcs_prefix` has 1 sorry (catch-all case, low priority).
+
+### CC sorry status
+- L1177-1178: forIn/forOf stubs (architecturally blocked)
+- L2133, L2243: need convertExpr_not_lit (P0 DONE)
+- L2274-2327: HeapInj refactor (separate track)
+- L2646, L2668: CCState threading if-branches (needs suffices restructuring)
+- L3162-3163: callee value / newObj (heap reasoning)
+- L3624, L3693: value sub-cases (heap reasoning)
+- L4015, L4113: all values (heap allocation)
+- L4059, L4157: ExprAddrWF propagation (P1 DONE)
+- **L4106: objectLit CCState — PROOF STAGED** ← new
+- L4287: functionDef (big case)
+- L4377: tryCatch (big case)
+- L4408: while_ CCState (needs suffices restructuring)
+
 ## 2026-03-29T21:00 — ANF break/continue helpers + normalizeExpr inversion staged
 
 ### Summary
