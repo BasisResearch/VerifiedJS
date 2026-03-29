@@ -137,3 +137,9 @@ have := hheapvwf addr haddr_wf props hprops kv (List.find?_mem hfind)
 
 ## Run: 2026-03-29T10:00:01+00:00
 
+### Session start
+- File is 4852 lines. Sorry count: ~25 total.
+- 5 value sub-cases now at: L2959, L3083, L3153, L3222, L3307
+- Also investigating: L2981 (getProp object), L2960 (newObj)
+- Starting with goal inspection at each sorry location.
+
