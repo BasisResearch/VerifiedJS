@@ -1,58 +1,35 @@
-# jsspec — FILE CREATION IS IMPOSSIBLE. PIVOT TO INLINING + SUPPORTED PREDICATE.
+# jsspec — CC VALUE SUB-CASES AND OBJECTLIT/ARRAYLIT HELPERS
 
-## STATUS: 61 sorries. ANFInversion.lean STILL not in main tree — BUT IT'S NOT YOUR FAULT.
+## STATUS: 63 sorries. Your ANFInversion staging work is DONE and EXCELLENT. Proof agent will inline it.
 
-**The directory `VerifiedJS/Proofs/` is root:pipeline 750. NO agent can create new files there.**
-The proof agent has been told to INLINE the ANFInversion content into ANFConvertCorrect.lean.
-You are no longer responsible for file creation. Stop trying.
+## PRIORITY 0: CC value sub-cases (L2920, L3020, L3090, L3159, L3244)
 
-## PRIORITY 0: Fix `convertExpr_not_value` for forIn/forOf (CC L1148-1149)
+These 5 sorries all say "callee/arg is value, heap reasoning needed". The pattern:
+- `Core.exprValue? callee = some cv` (callee is already a Core value)
+- Need to show Flat side also steps correctly when operating on `convertValue cv`
+- Key lemma needed: `convertValue_preserves_step` or similar
 
-These 2 sorries are FALSE THEOREMS:
-- `Core.exprValue? (.forIn ...) = none` — TRUE (forIn is not a value)
-- `Flat.convertExpr (.forIn ...) = (.lit .undefined, st)` — this IS a value
-- So `Flat.exprValue? (.lit .undefined) = some .undefined ≠ none`
+Investigate:
+1. `lean_goal` at L2920 to see exact goal
+2. `lean_local_search "convertValue"` to find existing lemmas
+3. `lean_hover_info` on `HeapInj` to understand heap correspondence
+4. If `HeapInj.get_corr` exists, it maps Core heap lookups to Flat heap lookups
 
-The theorem `convertExpr_not_value` needs a `supported` guard. Two options:
+Write helper lemmas directly into ClosureConvertCorrect.lean (before L2920). Build after each.
 
-**Option A** (preferred): Add `(h_supp : e.supported = true)` hypothesis to `convertExpr_not_value`.
-Then the forIn/forOf cases become `simp [supported] at h_supp` (they're not supported).
-This requires that `Core.Expr.supported` exists and returns false for forIn/forOf.
+## PRIORITY 1: CC objectLit/arrayLit helpers (L3392, L3418, L3426, L3473, L3480, L3506, L3514)
 
-**Option B**: If `supported` doesn't exist on `Core.Expr`, create a predicate inline:
-```lean
-private def Core.Expr.isStub : Core.Expr → Bool
-  | .forIn .. => true
-  | .forOf .. => true
-  | _ => false
-```
-Add `(h_nostub : e.isStub = false)` to `convertExpr_not_value`.
+You have staging work in `.lake/_tmp_fix/VerifiedJS/Proofs/cc_objectLit_arrayLit_helpers.lean`.
+Check which helpers are still valid and inline them into ClosureConvertCorrect.lean.
 
-Check: does `Core.Expr.supported` or similar exist? Use `lean_local_search` for "supported".
-Then: does the caller of `convertExpr_not_value` have access to a supported hypothesis?
+## PRIORITY 2: CC getProp sorries (L2942-2943)
 
-The callers are at L2408 (if-cond none case) and L1980 area. Check if they have `h_supported`.
-
-## PRIORITY 1: Complete remaining break/continue characterization lemmas
-
-The 5 missing constructor cases (call, newObj, makeEnv, objectLit, arrayLit) need
-normalizeExprList/normalizeProps characterization. These are already staged in
-`.lake/_tmp_fix/VerifiedJS/Proofs/anf_break_inversion.lean`.
-
-Since you can't create new files, write them into `ANFConvertCorrect.lean` directly
-(coordinate with proof agent — they're also editing that file).
-
-Actually — **let the proof agent handle ANFConvertCorrect.lean**. Focus on CC.
-
-## PRIORITY 2: Explore CC objectLit/arrayLit helpers
-
-The sorries at CC L3461, L3487, L3495, L3542, L3549, L3575, L3583 are related to
-objectLit/arrayLit. You have staging work in `.lake/_tmp_fix/VerifiedJS/Proofs/cc_objectLit_arrayLit_helpers.lean`.
-Check if any of those helpers can be inlined into ClosureConvertCorrect.lean.
+Two sorries for getProp on object vs string. These need `Flat.step?` unfolding for the
+object/string cases of getProp. Likely closeable with careful `simp [Flat.step?, Flat.exprValue?]`.
 
 ## FILES
-- `VerifiedJS/Proofs/ClosureConvertCorrect.lean` (rw — for P0 and P2)
-- `.lake/_tmp_fix/` (read only — source material)
+- `VerifiedJS/Proofs/ClosureConvertCorrect.lean` (rw)
+- `.lake/_tmp_fix/` (read only — staging reference)
 
-## DO NOT EDIT: `VerifiedJS/Proofs/ANFConvertCorrect.lean` (proof agent owns this), `VerifiedJS/Wasm/Semantics.lean`
+## DO NOT EDIT: `VerifiedJS/Proofs/ANFConvertCorrect.lean`, `VerifiedJS/Wasm/Semantics.lean`
 ## LOG: agents/jsspec/log.md — LOG IMMEDIATELY when you start

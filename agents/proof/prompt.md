@@ -1,65 +1,56 @@
-# proof — INLINE ANFInversion + CC CCSTATE THREADING
+# proof — CC CCSTATE THREADING IS P0. STOP ANALYZING, START CLOSING.
 
-## STATUS: 61 sorries (17 ANF + 26 CC + 18 Wasm + 0 Lower). CC went 27→26. Good.
+## STATUS: 63 sorries (17 ANF + 28 CC + 18 Wasm). CC REGRESSED 27→28. UNACCEPTABLE.
 
-## CRITICAL INFRASTRUCTURE: ANFInversion content must be INLINED
+You've been "analyzing" CC CCState threading since 04:30. It is now 08:05. 3.5 hours. Zero sorry reduction. If you added a sorry, REVERT IT NOW.
 
-**Nobody can create new files** — all directories are root:pipeline 750. The staging file
-`.lake/_tmp_fix/VerifiedJS/Proofs/ANFInversion.lean` (1425 lines, 0 sorry) CANNOT be
-copied to a new file. The only option is to APPEND its content into `ANFConvertCorrect.lean`.
+## P0: Fix the CCState threading at L2404 (if-true branch)
 
-### How to inline:
-1. Read `.lake/_tmp_fix/VerifiedJS/Proofs/ANFInversion.lean` (skip the top comment + imports — they're already in ANFConvertCorrect)
-2. Find a good insertion point in `ANFConvertCorrect.lean` — just BEFORE the first sorry (around L1760)
-3. Paste the theorem bodies (starting from `theorem ANF.bindComplex_never_break_general` through end)
-4. The namespace is `VerifiedJS` in ANFInversion but `VerifiedJS.Proofs` in ANFConvertCorrect — you may need to adjust: open the namespace or prefix references
-5. `lake build VerifiedJS.Proofs.ANFConvertCorrect` — must still pass
-6. If it fails, sorry-back any broken theorems and keep the ones that work
+The sorry at L2404:
+```lean
+exact ⟨st, (Flat.convertExpr then_ scope envVar envMap st).snd, by
+    simp [sc', Flat.convertExpr], ⟨rfl, rfl⟩, sorry⟩
+```
 
-This is P0. Without these inversion lemmas, the break/continue ANF sorries (L2000-2002) cannot be closed.
+The witness is WRONG. When `if` takes the true branch:
+- Flat state after: `st_a' = (convertExpr then_ ... st).snd` ← correct
+- But the existential needs `st_a''` such that `(convertExpr (if cond then_ else_) ... st_orig).snd = st_a''`
+- `convertExpr (if cond then_ else_) = convertExpr else_ (convertExpr then_ (convertExpr cond st).snd).snd`
+- So `st_a'' = (convertExpr else_ ... (convertExpr then_ ... (convertExpr cond ... st).snd).snd).snd`
 
-## PRIORITY 1: CC CCState threading at L2383, L2405
+The key: `convertExpr` threads state through ALL sub-expressions even though only one branch executes. The existential witness for `st_a'` should be `(convertExpr then_ ... (convertExpr cond ... st).snd).snd`, and `st_a` should account for the full if-expression conversion.
 
-You're already working on these. Key insight for L2383:
+Use `lean_goal` at L2404 col 57 to see the EXACT goal. Then construct the witness.
 
-The sorry at L2383 is the last component of an existential witness for the CC_SimRel.
-The goal is likely `CCStateAgree st_a' st_a''` or a Prod.mk equality.
+## P1: Fix L2426 (if-false branch) — 2 sorries, same pattern
 
-Use `lean_goal` at L2383 to check the EXACT goal type before attempting anything.
+Same CCState mismatch but for false branch. Fix L2404 first, then apply same fix here.
 
-For L2405: two sorries. One is likely a `Prod.mk.eta` / `Prod.ext` equality, the other
-is likely `CCStateAgree`. Use `lean_goal` at each position.
+## P2: Fix forIn/forOf false theorems at L1148-1149
 
-## PRIORITY 2: CC value sub-cases (L2899, L3089, L3159, L3228, L3313)
+These are FALSE. `convertExpr (.forIn ...) = (.lit .undefined, st)`, and `exprValue? (.lit .undefined) = some _`.
+Fix: add `(h_supp : e.supported = true)` to the hypothesis. Then:
+```lean
+| forIn => simp [Core.Expr.supported] at h_supp
+| forOf => simp [Core.Expr.supported] at h_supp
+```
+Check if `Core.Expr.supported` exists first with `lean_local_search "supported"`.
+If it doesn't exist, use a manual exclusion: add `(h_not_stub : ¬(e = .forIn .. ∨ e = .forOf ..))`.
 
-These 5 sorries all say "value sub-case (heap reasoning needed)". They follow a pattern:
-- callee/arg is already a value (`some cv`)
-- Need to show the Flat step matches the Core step when operating on a converted value
-- Blocked by heap injection reasoning
+## P3: Inline ANFInversion into ANFConvertCorrect.lean
 
-If heap injection is already set up in the SimRel, these may be closeable with
-`convertValue_inj` or `HeapInj.get_corr`. Check with `lean_hover_info` on `HeapInj`.
+The file `.lake/_tmp_fix/VerifiedJS/Proofs/ANFInversion.lean` (1425 lines, 0 sorry) has been sitting there for DAYS. You own ANFConvertCorrect.lean. READ the staging file and APPEND the theorem bodies before the first sorry (around L1760). Skip duplicate imports/opens. Build after.
 
-## PRIORITY 3: CC forIn/forOf (L1148-1149)
-
-These theorems are FALSE as stated. `forIn`/`forOf` convert to `.lit .undefined` which
-HAS a value (`Flat.exprValue? (.lit .undefined) = some .undefined`). But the theorem
-claims `Flat.exprValue? (convertExpr e ...) = none` for ALL non-value Core expressions.
-
-Fix: Add a hypothesis `e.supported = true` that excludes forIn/forOf. Or: add
-`| forIn => rfl` / `| forOf => rfl` if the `Core.exprValue?` actually gives `some` for
-these (check!). The real fix is to exclude unsupported constructors.
-
-## WORKFLOW
-1. `lean_goal` at each sorry BEFORE attempting anything
-2. `lean_multi_attempt` to test candidate tactics
+## WORKFLOW — MANDATORY
+1. `lean_goal` BEFORE every sorry attempt
+2. `lean_multi_attempt` to test tactics
 3. `lake build VerifiedJS.Proofs.ClosureConvertCorrect` after EVERY edit
-4. If build fails, sorry it back IMMEDIATELY
+4. If build breaks: SORRY IT BACK within 2 minutes
+5. LOG every 30 minutes to agents/proof/log.md
 
 ## FILES
-- `VerifiedJS/Proofs/ANFConvertCorrect.lean` (rw — INLINE ANFInversion here)
-- `VerifiedJS/Proofs/ClosureConvertCorrect.lean` (rw — CC sorries)
-- `.lake/_tmp_fix/VerifiedJS/Proofs/ANFInversion.lean` (read only — source material)
+- `VerifiedJS/Proofs/ClosureConvertCorrect.lean` (rw — P0-P2)
+- `VerifiedJS/Proofs/ANFConvertCorrect.lean` (rw — P3)
+- `.lake/_tmp_fix/VerifiedJS/Proofs/ANFInversion.lean` (read only)
 
 ## DO NOT EDIT: `VerifiedJS/Wasm/Semantics.lean`
-## LOG: agents/proof/log.md — LOG IMMEDIATELY when you start

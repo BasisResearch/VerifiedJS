@@ -1,56 +1,39 @@
-# wasmspec — YOU HAVE BEEN RUNNING FOR 8+ HOURS WITH ZERO OUTPUT
+# wasmspec — YOU HAVE BEEN A ZOMBIE FOR 9 HOURS. WAKE UP.
 
-## STATUS: 18 Wasm sorries. UNCHANGED since 2026-03-28T23:00.
+## STATUS: 18 Wasm sorries. UNCHANGED since Mar 28 23:00. That is 9 HOURS of zero progress.
 
-Your last run started at 23:00 on Mar 28. It is now 07:30 on Mar 29.
-8.5 hours. Zero sorry reduction. Zero log entries. This is unacceptable.
+Your lean process (PID 853890) has been running for 9 hours consuming 571MB. You likely have
+a build hanging or an infinite loop.
 
-## CRITICAL: DO NOT attempt large proofs. Small increments ONLY.
+## FIRST ACTION: Kill stuck processes and restart clean
+```
+# If you have a hanging build, abandon it
+# Start fresh with lean_goal on one sorry
+```
 
-The 18 Wasm sorries break down into:
+## YOUR ONE AND ONLY JOB: Close ONE sorry. Just ONE.
 
-### EASY (try these first):
-- **L6864** `return (some t)`: Template exists at L6824-6863 (return none). Follow same pattern.
-- **L6867** `yield arg delegate`: Similar control-flow signal pattern
-- **L6870** `await arg`: Similar control-flow signal pattern
+### Target: `return (some t)` at L6864
 
-### MEDIUM:
-- **L6798** `let`: Need `LowerCodeCorr.let_inv` inversion
-- **L6810** `if cond then_ else_`: Need `LowerCodeCorr.if_inv` inversion
-- **L6873** `labeled label body`: Need label frame push
-- **L6876** `break label`: Signal pattern
-- **L6879** `continue label`: Signal pattern
+1. `lean_goal` at L6864 col 17
+2. Look at the return-none proof above (L6824-6863) — it's the template
+3. For return-some, the difference is:
+   - There IS a trivial arg `t` that must be evaluated first
+   - The ANF side does `evalTrivial t` → value, then returns it
+   - The Wasm side does a corresponding local.get or const, then return
+4. Check if `LowerCodeCorr` has a `return_some` case: `lean_hover_info` on `LowerCodeCorr`
+5. If the constructor exists, invert it and follow the return-none pattern
 
-### HARD (skip these):
-- **L6806** `seq`: 1:N stepping framework needed
-- **L6813** `while_`: Loop induction
-- **L6816** `throw`: Exception handling
-- **L6819** `tryCatch`: Complex control flow
-- **L10857** `call`: Multi-frame, blocked by hframes_one
-- **L10912, L10916** `call` sub-cases: Same blocker
-- **L10919** `callIndirect`: Same blocker
+### Fallback targets (if return-some is blocked):
+- L6876 `break label`: control-flow signal, should be straightforward
+- L6879 `continue label`: same pattern as break
 
-## YOUR ONE JOB: Close `return (some t)` at L6864
-
-1. `lean_goal` at L6864 col 9
-2. The pattern from return-none (L6824-6863):
-   - Invert `LowerCodeCorr` to get the IR code shape
-   - Show ANF steps to `.trivial .litUndefined` or error
-   - Show IR takes matching step(s)
-   - `traceFromCore (.error "return:...") = .silent` by `native_decide`
-   - Build new `LowerSimRel`
-3. The `t` is an `ANF.Trivial` — need to evaluate it first, then return
-4. Check `LowerCodeCorr` for a `return_some` constructor: `lean_hover_info` on `LowerCodeCorr`
-
-If return-some is blocked (no constructor), try break/continue (L6876/6879) instead.
-
-## MEMORY/TIME CONSTRAINTS
-- MAX 15 lines of new proof per sorry
+## CONSTRAINTS — NON-NEGOTIABLE
+- MAX 10 lines of new proof per attempt
 - `lake build VerifiedJS.Wasm.Semantics` after EVERY edit
-- If build > 5 min, sorry it back IMMEDIATELY
-- LOG EVERY 30 MINUTES even if no progress
-- If you're stuck for >1 hour on one sorry, MOVE TO THE NEXT ONE
+- If build takes >3 min, sorry it back and try something else
+- LOG to agents/wasmspec/log.md every 15 minutes
+- If stuck >30 min on one sorry, move to next
 
 ## FILES: `VerifiedJS/Wasm/Semantics.lean` (rw)
 ## DO NOT EDIT: `VerifiedJS/Proofs/*.lean`
-## LOG: agents/wasmspec/log.md — LOG FIRST LINE WITHIN 60 SECONDS OF STARTING

@@ -1770,6 +1770,14 @@ private theorem Flat_step?_tryCatch_body_value (s : Flat.State)
                        trace := s.trace ++ [.silent], funcs := s.funcs, callStack := s.callStack }) := by
   simp [Flat.step?, h_ncf]
 
+-- Helper: Flat getProp on string → length or undefined
+private theorem Flat_step?_getProp_string (s : Flat.State) (str : String) (prop : Core.PropName) :
+    Flat.step? { s with expr := .getProp (.lit (.string str)) prop } =
+      some (.silent, { expr := .lit (if prop == "length" then .number (Float.ofNat str.length) else .undefined),
+                       env := s.env, heap := s.heap,
+                       trace := s.trace ++ [.silent], funcs := s.funcs, callStack := s.callStack }) := by
+  simp [Flat.step?]
+
 -- Helper: getProp on a non-object non-string Flat value → .undefined
 private theorem Flat_step?_getProp_primitive (s : Flat.State) (v : Flat.Value) (prop : Core.PropName)
     (hno : ∀ a, v ≠ .object a) (hns : ∀ str, v ≠ .string str) :
@@ -2918,8 +2926,31 @@ private theorem closureConvert_step_simulation
         | string s => right; left; exact ⟨s, rfl⟩
         | _ => right; right; exact ⟨by intro a; simp [Core.Value.noConfusion], by intro s; simp [Core.Value.noConfusion]⟩
       rcases hno_core with ⟨addr, rfl⟩ | ⟨str, rfl⟩ | ⟨hno, hns⟩
-      · sorry -- getProp on object: heap property lookup (needs Flat step? unfolding for object case)
-      · sorry -- getProp on string: length or undefined (needs Flat step? unfolding for string case)
+      · sorry -- getProp on object: heap property lookup (WIP — needs Flat step? unfolding)
+      · -- String case: length or undefined
+        have : Flat.convertValue (.string str) = .string str := rfl
+        rw [this] at hstep hsf_eta hfexpr
+        rw [Flat_step?_getProp_string] at hstep
+        simp at hstep; obtain ⟨hev, hsf'⟩ := hstep; subst hev hsf'
+        let coreResult := if prop == "length" then Core.Value.number (Float.ofNat str.length) else Core.Value.undefined
+        let sc' : Core.State := ⟨.lit coreResult, sc.env, sc.heap,
+          sc.trace ++ [.silent], sc.funcs, sc.callStack⟩
+        refine ⟨injMap, sc', ⟨?_⟩, ?_, ?_, ?_, ?_, ?_, ?_, ?_, ?_⟩
+        · have hsc' : sc = { sc with expr := .getProp (.lit (.string str)) prop } := by
+            obtain ⟨_, _, _, _, _, _⟩ := sc; simp only [] at hsc; subst hsc; rfl
+          rw [hsc']
+          have := Core.step?_getProp_string_val str prop sc.env sc.heap sc.trace sc.funcs sc.callStack
+          simp only [Core.pushTrace, sc', coreResult] at this ⊢; exact this
+        · simp [sc', htrace]
+        · exact hinj
+        · exact henvCorr
+        · exact henvwf
+        · exact hheapvwf
+        · simp [sc', noCallFrameReturn]
+        · simp only [sc', ExprAddrWF, coreResult]; split <;> simp [ValueAddrWF]
+        · refine ⟨st, st, ?_, ⟨rfl, rfl⟩, by subst hst; exact ⟨rfl, rfl⟩⟩
+          simp only [sc', Flat.convertExpr, coreResult]
+          split_ifs <;> simp [Flat.convertValue]
       · -- Primitive case (null, undefined, bool, number, function): both return undefined
         rw [Flat_step?_getProp_primitive _ _ prop (convertValue_not_object cv hno) (convertValue_not_string cv hns)] at hstep
         simp at hstep; obtain ⟨hev, hsf'⟩ := hstep; subst hev hsf'
