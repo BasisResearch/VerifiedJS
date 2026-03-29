@@ -3089,21 +3089,22 @@ private theorem closureConvert_step_simulation
         · exact henvwf
         · exact hheapvwf
         · simp [sc', noCallFrameReturn]
-        · -- ExprAddrWF: coreResult might contain object addrs
+        · -- ExprAddrWF: coreResult might contain object addrs from heap
           simp only [sc', ExprAddrWF, coreResult]
-          simp [ExprAddrWF] at hexprwf
-          -- hexprwf : ValueAddrWF (.object addr) sc.heap.objects.size, i.e. addr < sc.heap.objects.size
-          sorry -- ValueAddrWF for heap-lookup result (needs HeapValuesWF)
-        · -- CCState agreement
+          have haddr : addr < sc.heap.objects.size := by simp [ExprAddrWF, ValueAddrWF] at hexprwf; exact hexprwf
+          exact hheapvwf.propLookupWF addr prop haddr
+        · -- CCState agreement: sf'.expr = convertExpr sc'.expr (same heap lookup modulo convertValue)
           refine ⟨st, st, ?_, ⟨rfl, rfl⟩, by subst hst; exact ⟨rfl, rfl⟩⟩
           simp only [sc', Flat.convertExpr, Flat.convertValue, coreResult]
-          congr 1; congr 1
-          -- Need: Flat lookup result = convertValue (Core lookup result)
-          -- Use HeapCorr to equate heap lookups, coreToFlatValue_eq_convertValue for value conversion
-          have hheap_eq := HeapCorr_get hinj (by simp [ExprAddrWF, ValueAddrWF] at hexprwf; exact hexprwf)
+          -- The Flat result uses heapObjectAt? sf.heap and coreToFlatValue
+          -- The Core result uses sc.heap.objects[addr]?
+          -- HeapCorr gives us the same heap content
+          have haddr : addr < sc.heap.objects.size := by simp [ExprAddrWF, ValueAddrWF] at hexprwf; exact hexprwf
+          have hheap_eq := HeapCorr_get hinj haddr
           rw [heapObjectAt?_eq] at *
-          rw [hheap_eq]
-          cases sc.heap.objects[addr]? with
+          congr 1; congr 1
+          rw [← hheap_eq]
+          cases sf.heap.objects[addr]? with
           | none => rfl
           | some props =>
             cases hfind : props.find? (fun (k : Core.PropName × Core.Value) => k.fst == prop) with
