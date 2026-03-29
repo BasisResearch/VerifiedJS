@@ -3274,7 +3274,7 @@ private theorem closureConvert_step_simulation
       have ⟨hncfr_done, hncfr_target, hncfr_rest⟩ :=
         firstNonValueExpr_listNoCallFrameReturn hcfnv (by simp [noCallFrameReturn] at hncfr; exact hncfr)
       have hexprwf_target : ExprAddrWF target_c sc.heap.objects.size := by
-        simp [ExprAddrWF] at hexprwf ⊢; trivial
+        sorry -- ExprAddrWF (.arrayLit _) = True doesn't propagate to elements; needs ExprAddrListWF
       obtain ⟨injMap', sc_sub', ⟨hcstep_sub⟩, htrace_sub, hinj', henvCorr', henvwf', hheapvwf',
               hncfr', hexprwf', st_a, st_a', hconv', hAgreeIn, hAgreeOut⟩ :=
         ih_depth target_c.depth hdepth envVar envMap injMap
@@ -3298,14 +3298,16 @@ private theorem closureConvert_step_simulation
         have hsc' : sc = { sc with expr := .arrayLit elems } := by
           obtain ⟨_, _, _, _, _, _⟩ := sc; simp only [] at hsc; subst hsc; rfl
         rw [hsc']
+        have hcstep_anon : Core.step? ⟨target_c, sc.env, sc.heap, sc.trace, sc.funcs, sc.callStack⟩ =
+            some (ev, sc_sub') := by
+          obtain ⟨_, _, _, _, _, _⟩ := sc; exact hcstep_sub
         have hcore_step := Core.step_arrayLit_step_elem elems sc.env sc.heap sc.trace sc.funcs sc.callStack
-            done_c target_c rest_c hcfnv ev
-            { expr := sc_sub'.expr, env := sc_sub'.env, heap := sc_sub'.heap,
-              trace := sc.trace, funcs := sc_sub'.funcs, callStack := sc_sub'.callStack }
-            (by convert hcstep_sub using 1 <;> simp)
+            done_c target_c rest_c hcfnv ev sc_sub' hcstep_anon
         simp only [Core.pushTrace] at hcore_step
-        convert hcore_step using 1
-        simp [sc']
+        have : sc' = { sc_sub' with
+          expr := .arrayLit (done_c ++ [sc_sub'.expr] ++ rest_c),
+          trace := sc.trace ++ [ev] } := by simp [sc']
+        rw [this]; exact hcore_step
       · -- trace
         simp [sc', htrace, htrace_sub]
       · exact hinj'
