@@ -1,35 +1,41 @@
-# wasmspec — 30+ HOURS OF OOM. LAST CHANCE.
+# wasmspec — RETURN SOME IS YOUR ONLY TARGET
 
-## STATUS: 18 Wasm sorries. ZERO progress in 30+ hours. Multiple OOM kills (137, 143).
+## STATUS: 18 Wasm sorries. You proved return-none last run. Good.
 
-## You have been running since 2026-03-28T23:00:07 with NO LOG OUTPUT.
+## The return-some case (L6864) is the natural next step.
 
-## IF YOU ARE READING THIS: You survived. Do the SMALLEST possible thing.
+## PRIORITY 0: Prove step_sim for `return (some t)` at L6864
 
-## PRIORITY 0: Triage all 18 sorries in 10 minutes
+You already proved `return none` (L6824-6863). The `return (some t)` case at L6864 follows similar structure:
 
-Read 5 lines around each sorry in `VerifiedJS/Wasm/Semantics.lean`. Write ONE LINE per sorry:
+1. Use `lean_goal` at L6864 to see the exact goal
+2. `t` is a `ANF.Trivial`, so it has a concrete value
+3. ANF step: evaluates `t` to a value `v`, produces `.error ("return:" ++ valueToString v)`
+4. IR code: from `LowerCodeCorr.return_some_inv`, should be `argCode ++ [return_]`
+5. `traceFromCore (.error ("return:" ++ s)) = .silent` — you already proved this simp lemma
+
+The key difference from `return none`:
+- `t` is a trivial expr that evaluates immediately (ANF.Trivial → value in 0 steps)
+- Need `LowerCodeCorr.return_some` constructor or inversion
+- IR needs to execute argCode (evaluate t) then return_
+
+If `LowerCodeCorr` doesn't have a `return_some` constructor, check with `lean_hover_info` on `LowerCodeCorr`.
+
+## PRIORITY 1: If return-some is blocked, triage ALL 18 sorries
+
+Read 5 lines around each sorry. Write one line per sorry:
 ```
 L6798: [blocked/easy/medium] - [reason]
 ```
+Log this triage. Pick the easiest unblocked sorry.
 
-Log this triage IMMEDIATELY. Do NOT start proving anything until the triage is logged.
-
-## PRIORITY 1: Pick the SINGLE easiest sorry and close it
-
-Constraints:
-- MAX 15 lines of new proof
-- `lake build VerifiedJS.Wasm.Semantics` after the edit
-- If build takes > 5 minutes, sorry it back and move on
-- If no sorry is closable in < 15 lines, log "ALL BLOCKED" with reasons and STOP
-
-## MEMORY CONSTRAINTS (you keep OOMing)
-- Do NOT hold large proof states in memory
-- Do NOT attempt to unfold complex definitions
-- Do NOT use `simp` with large lemma sets
-- Use `decide`, `omega`, `rfl`, `exact` — simple tactics only
-- If a tactic takes > 30 seconds, cancel and try something simpler
+## MEMORY CONSTRAINTS
+- MAX 20 lines of new proof per sorry
+- `lake build VerifiedJS.Wasm.Semantics` after every edit
+- If build > 5 minutes, sorry it back
+- Do NOT unfold large definitions
+- Use `decide`, `omega`, `rfl`, `exact`, `native_decide` — simple tactics only
 
 ## FILES: `VerifiedJS/Wasm/Semantics.lean` (rw)
 ## DO NOT EDIT: `VerifiedJS/Proofs/*.lean`
-## LOG: agents/wasmspec/log.md — LOG THE TRIAGE FIRST
+## LOG: agents/wasmspec/log.md — LOG FIRST, PROVE SECOND

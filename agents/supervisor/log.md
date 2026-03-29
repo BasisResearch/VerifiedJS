@@ -1,3 +1,39 @@
+## Run: 2026-03-29T06:05:01+00:00
+
+### Metrics
+- **Sorry count (grep -c)**: 62 (17 ANF + 27 CC + 18 Wasm + 0 Lower)
+- **Delta from last run (04:05)**: -1. CC 28→27 (1 sorry closed). ANF/Wasm unchanged.
+- **BUILD STATUS**: CC build in progress (large file, >5min). ANF/Wasm expected pass.
+
+### Agent Analysis
+1. **proof**: Last logged 2026-03-28T11:30 — 18+ hours ago. Found ANF approach fundamentally flawed (nesting contamination, eval-context lifting needed). No CC work attempted. Likely idle or stuck.
+2. **jsspec**: Last logged 2026-03-29T00:00. Excellent break inversion work (27/32 constructors proved). BUT: **4th consecutive run failing to create ANFInversion.lean in main tree**. Staging file exists and is complete. Integration is 5 lines of shell commands.
+3. **wasmspec**: Last logged 2026-03-28T23:00. PRODUCTIVE — fixed isControlFlowSignal, proved return-none case, strengthened LowerCodeCorr constructors. 18 sorries remain, most blocked by 1:N stepping framework.
+
+### Key Findings
+1. **CC 27→27 (was 28→27 earlier)**: Someone closed 1 CC sorry since last supervisor run. Marginal progress.
+2. **ANFInversion.lean STILL not created**: jsspec has been told 4 times. The staging file exists at `.lake/_tmp_fix/VerifiedJS/Proofs/ANFInversion.lean` and just needs to be copied. This blocks the proof agent from closing break/continue ANF sorries.
+3. **Wasmspec return-some is natural next step**: return-none was proved by pattern (L6824-6863). return-some (L6864) follows similar structure but needs trivial evaluation + LowerCodeCorr.return_some inversion.
+4. **CC CCState threading (L2383, L2405, L3703)** are the most tractable CC sorries — need correct Prod.mk.eta or convertExpr_state_determined application.
+
+### Agent Prompt Rewrites
+1. **proof**: Redirected to CC CCState threading (L2383, L2405, L3703). Gave specific guidance: use `lean_goal` first, then `Prod.mk.eta` for CCState witnesses. Added P1: check forIn/forOf false-theorem sorries. DO NOT attempt ANF.
+2. **jsspec**: **4th rewrite demanding ANFInversion.lean creation**. Emphasized: 5 lines of shell commands, staging file is complete, do it in first 5 minutes. P1: add import to ANFConvertCorrect. P2: complete 5 missing list-based constructor cases.
+3. **wasmspec**: Targeted at return-some (L6864) — natural extension of return-none proof. Gave specific structure guidance. P1: triage all 18 sorries if return-some blocked.
+
+### Actions Taken
+1. Counted sorries: 62 (17+27+18) — down 1 from 63
+2. CC build running (couldn't verify in time window)
+3. Read all agent logs, identified idle proof agent + jsspec integration failure
+4. All 3 prompts rewritten with specific tactical guidance
+5. Logged time estimate (62, 143h)
+
+### OUTLOOK: Target next run ≤ 59 (proof closes 2-3 CC CCState sorries, wasmspec closes return-some)
+### RISK: jsspec integration may fail AGAIN. Proof agent may be stuck/dead. CC build may be broken.
+### CRITICAL: 3 consecutive runs with ≤1 sorry reduction. If next run is also flat, need fundamental strategy change.
+
+---
+
 ## Run: 2026-03-29T04:05:01+00:00
 
 ### Metrics
