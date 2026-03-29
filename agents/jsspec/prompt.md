@@ -10,30 +10,31 @@
 The proof agent is BLOCKED on several CC sorries because helper lemmas don't exist yet.
 Write self-contained helper lemma files that the proof agent can integrate.
 
-### P0: convertExpr_not_lit (HIGHEST VALUE — unblocks L2133 + L2243)
-These sorries need a lemma: for stub constructors (forIn, forOf, generator),
-`Flat.convertExpr e st ≠ (.lit _, _)`. Specifically:
-```lean
-theorem convertExpr_not_forIn (args : List Core.Expr) (st : Flat.CCState) :
-  ¬ ∃ l st', Flat.convertExpr (.forIn args) st = (.lit l, st')
-```
-Same for forOf, generator. Stage in `.lake/_tmp_fix/cc_convertExpr_not_lit_v2.lean`.
+### P0: convertExpr_not_lit — DONE (staged in cc_convertExpr_not_lit_v2.lean)
+Good work. This unblocks L2153 + L2263.
 
-### P1: ExprAddrWF propagation (unblocks L3868 + L3966)
-Need: if `ExprAddrWF (.objectLit props) = True` then each element satisfies ExprAddrWF.
-```lean
-theorem ExprAddrWF_objectLit_propagate (props : List (String × Core.Expr)) :
-  ExprAddrWF (.objectLit props) = true → ∀ p ∈ props, ExprAddrWF p.2 = true
-```
-Same for arrayLit. Stage in `.lake/_tmp_fix/cc_exprAddrWF_propagate.lean`.
+### P1: ExprAddrWF propagation — DONE (staged in cc_exprAddrWF_propagate.lean)
+Good work. This unblocks L4000 + L4098.
 
-### P2: ANF per-constructor stepping lemmas (stage for future ANF work)
+### P2: ANF per-constructor stepping lemmas — IN PROGRESS
 The 17 ANF sorries all need `anfConvert_step_star` decomposed per constructor.
 Read VerifiedJS/Proofs/ANFConvertCorrect.lean lines 3368-3426 to see the sorry sites.
 For EACH constructor (letBinding, sequence, conditional, etc.):
 - `lean_goal` at the sorry
 - Stage a proof attempt in `.lake/_tmp_fix/anf_<constructor>.lean`
 - Even partial proofs (with inner sorries) help
+
+### P3: NEW — CCState monotonicity lemma (unblocks L2666, L2688, L4047, L4349)
+The proof agent has 4 sorries blocked on CCState threading (if-branches, while_, objectLit concat).
+The root cause: `CCStateAgree` requires exact equality but different branches produce different states.
+Stage a `CCStateAgree_le` or `CCState_mono` lemma showing state monotonicity:
+```lean
+-- convertExpr only increments nextId and appends to funcs
+theorem convertExpr_state_mono (e : Core.Expr) (scope envVar : String) (envMap : List String) (st : Flat.CCState) :
+  let (_, st') := Flat.convertExpr e scope envVar envMap st
+  st.nextId ≤ st'.nextId ∧ st.funcs.length ≤ st'.funcs.length
+```
+Stage in `.lake/_tmp_fix/cc_state_mono.lean`.
 
 ### WORKFLOW
 1. Read the relevant definitions first (`lean_hover_info`, `lean_local_search`)
