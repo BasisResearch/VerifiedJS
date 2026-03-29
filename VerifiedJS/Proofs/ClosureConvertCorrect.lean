@@ -1759,7 +1759,7 @@ private theorem Flat_step?_objectLit_step (s : Flat.State)
       some (t, { expr := .objectLit (done ++ [(propName, se.expr)] ++ rest),
                  env := se.env, heap := se.heap,
                  trace := s.trace ++ [t], funcs := s.funcs, callStack := s.callStack }) := by
-  unfold Flat.step?; simp only [hvals, hfnvp, hss]; rfl
+  unfold Flat.step?; simp [hvals, hfnvp, hss]
 
 private theorem Core_step?_objectLit_step (s : Core.State)
     (props : List (Core.PropName × Core.Expr))
@@ -1772,7 +1772,7 @@ private theorem Core_step?_objectLit_step (s : Core.State)
       some (t, { expr := .objectLit (done ++ [(propName, se.expr)] ++ rest),
                  env := se.env, heap := se.heap,
                  trace := s.trace ++ [t], funcs := se.funcs, callStack := se.callStack }) := by
-  unfold Core.step?; simp only [hfnvp, hss, Core.pushTrace]
+  unfold Core.step?; simp [hfnvp, hss, Core.pushTrace]
 
 private theorem Flat_step?_arrayLit_step (s : Flat.State)
     (elems : List Flat.Expr)
@@ -1785,7 +1785,7 @@ private theorem Flat_step?_arrayLit_step (s : Flat.State)
       some (t, { expr := .arrayLit (done ++ [se.expr] ++ rest),
                  env := se.env, heap := se.heap,
                  trace := s.trace ++ [t], funcs := s.funcs, callStack := s.callStack }) := by
-  unfold Flat.step?; simp only [hvals, hfnve, hss]; rfl
+  unfold Flat.step?; simp [hvals, hfnve, hss]
 
 private theorem Core_step?_arrayLit_step (s : Core.State)
     (elems : List Core.Expr)
@@ -1797,7 +1797,7 @@ private theorem Core_step?_arrayLit_step (s : Core.State)
       some (t, { expr := .arrayLit (done ++ [se.expr] ++ rest),
                  env := se.env, heap := se.heap,
                  trace := s.trace ++ [t], funcs := se.funcs, callStack := se.callStack }) := by
-  unfold Core.step?; simp only [hfnve, hss, Core.pushTrace]
+  unfold Core.step?; simp [hfnve, hss, Core.pushTrace]
 
 private theorem Flat_step?_while (s : Flat.State) (cond body : Flat.Expr) :
     Flat.step? { s with expr := .while_ cond body } =
@@ -3488,7 +3488,7 @@ private theorem closureConvert_step_simulation
           exact ⟨se, rfl, hsf'eq.symm⟩
         | none =>
           have heq : Flat.step? { sf with expr := .objectLit (Flat.convertPropList props scope envVar envMap st).fst } = none := by
-            unfold Flat.step?; simp only [hvals, hffnv, hm]
+            unfold Flat.step?; simp [hvals, hffnv, hm]
           rw [heq] at hstep; exact absurd hstep (by simp)
       subst hsf'_eq
       have hdepth : target_c.depth < n := by
@@ -3587,7 +3587,7 @@ private theorem closureConvert_step_simulation
           exact ⟨se, rfl, hsf'eq.symm⟩
         | none =>
           have heq : Flat.step? { sf with expr := .arrayLit (Flat.convertExprList elems scope envVar envMap st).fst } = none := by
-            unfold Flat.step?; simp only [hvals, hffnv, hm]
+            unfold Flat.step?; simp [hvals, hffnv, hm]
           rw [heq] at hstep; exact absurd hstep (by simp)
       subst hsf'_eq
       have hdepth : target_c.depth < n := by
