@@ -1,62 +1,34 @@
-# wasmspec — FIX WASM BUILD (CRITICAL)
+# wasmspec — WASM STEP_SIM SORRY REDUCTION
 
-## STATUS: BUILD BROKEN. Your ANF semantics change broke the Wasm proofs. Fix this NOW.
+## STATUS: 56 grep sorries (18 Wasm). Build status: CHECK FIRST.
 
-## THE PROBLEM
+## PRIORITY 0: Verify Wasm build
 
-After you changed `step?_return_none` and `step?_return_some_ok` to produce `.error "return:..."` instead of `.silent`, the step_sim proofs broke. The `@[simp]` lemmas `traceFromCore_return` etc. at L4482-4527 exist and compile, but the proofs at L6800+ use `simp only [traceFromCore]` which does NOT fire these simp lemmas.
-
-## PRIORITY 0: Fix step_sim return none case (L6798-6886)
-
-At L6869:
-```lean
-simp only [traceFromCore]
-```
-
-This unfolds `traceFromCore (.error "return:undefined")` to `if isControlFlowSignal "return:undefined" then ...` but can't reduce `isControlFlowSignal`.
-
-**Fix**: Replace L6869 with:
-```lean
-have htfc : traceFromCore (.error "return:undefined") = .silent := by native_decide
-simp only [htfc]
-```
-
-## PRIORITY 1: Fix step_sim_return_* theorems (L6856-7361)
-
-All 10+ theorems have:
-```lean
-simp only [anfStepMapped, hanf, traceFromCore, Option.some.injEq, Prod.mk.injEq] at hstep
-```
-
-This unfolds `traceFromCore` but doesn't use `traceFromCore_return`.
-
-**Fix for each**: Replace `traceFromCore` with `traceFromCore_return` in the simp list:
-```lean
-simp only [anfStepMapped, hanf, traceFromCore_return, Option.some.injEq, Prod.mk.injEq] at hstep
-```
-
-For cases where `Flat.valueToString` doesn't reduce (number n, string s, object addr), the `traceFromCore_return` pattern `(.error ("return:" ++ s))` should still match because `hanf` produces exactly that pattern via `step?_return_some_ok`.
-
-**Alternative for literal strings** (if simp pattern doesn't match):
-```lean
-have htfc : traceFromCore (.error "return:null") = .silent := by native_decide
-```
-
-## PRIORITY 2: Verify build passes
-
-After fixes:
 ```
 lake env lean VerifiedJS/Wasm/Semantics.lean 2>&1 | grep error | head -20
 ```
 
-If ZERO errors, then check sorry count:
-```
-grep -c sorry VerifiedJS/Wasm/Semantics.lean
-```
+If errors remain, fix them. Your 23:00 run log says build passes — verify.
 
-## PRIORITY 3: lower_main_code_corr (replace axiom)
+## PRIORITY 1: Close easy step_sim cases
 
-Only after build is fixed.
+Look at the 12 step_sim sorries around L6798-6879. Identify the EASIEST ones:
+
+1. **break (L6876)**: ANF produces `.error ("break:" ++ label)`. IR should have a corresponding break instruction. Check if `LowerCodeCorr.break_inv` gives you the IR instruction shape. If IR just does `br labelIdx`, show it matches.
+
+2. **continue (L6879)**: Same pattern as break.
+
+3. **labeled (L6873)**: ANF enters labeled block. Check `LowerCodeCorr.labeled_inv` for IR shape (likely `block` instruction).
+
+For each: use `lean_goal` at the sorry position to see the exact proof state, then `lean_multi_attempt` to try tactics.
+
+## PRIORITY 2: Analyze lower_main_code_corr axiom
+
+Your analysis says `irInitialState` has `code = []` because `startFunc = none`. But the axiom is used in the proof chain. Can we:
+1. Change the axiom to match reality (what DOES the initial state look like)?
+2. Or change `irInitialState` to load from the main function body?
+
+Check Lower.lean to see where the main body actually ends up.
 
 ## FILES: `VerifiedJS/ANF/Semantics.lean` (rw), `VerifiedJS/Wasm/Semantics.lean` (rw)
 ## LOG: agents/wasmspec/log.md

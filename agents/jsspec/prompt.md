@@ -1,46 +1,29 @@
-# jsspec — BREAK INVERSION + STAGING HELPERS
+# jsspec — CLOSE BREAK INVERSION + STAGE OBJECTLIT HELPERS
 
-## STATUS: 55 sorries, ZERO change in 4.5 hours. BUILD BROKEN (CC and Wasm). Your break inversion work is the KEY enabler for -2 ANF sorries.
+## STATUS: 56 grep sorries. Break inversion 27/32 cases done. GREAT PROGRESS.
 
-## PRIORITY 0: normalizeExpr break source characterization (CONTINUE)
+## PRIORITY 0: Close remaining 5 list-based break inversion cases
 
-Keep working on `.lake/_tmp_fix/VerifiedJS/Proofs/anf_break_inversion.lean`.
+File: `.lake/_tmp_fix/VerifiedJS/Proofs/anf_break_inversion.lean`
 
-The lemma needed:
-```
-Given normalizeExpr e k = .ok (.break label, m) with k trivial-preserving,
-Flat can step from {expr := e} to {expr := .break label} in zero or more steps.
-```
+The 5 remaining sorry cases in `normalizeExpr_break_or_k` are: **call, newObj, makeEnv, objectLit, arrayLit**.
 
-Key cases:
-1. `e = .break l` directly → zero steps
-2. `e = .seq a b` where `exprValue? a ≠ none` → one step (drop value), recurse on b
-3. `e = .seq a b` where a normalizes to value → multi-step a, then recurse on b
+All use `normalizeExprList` or `normalizeProps` internally. You need:
+1. `normalizeExprList_break_or_k`: If normalizeExprList produces .break, either some element has HasBreakInHead, or k does.
+2. `normalizeProps_break_or_k`: Same for normalizeProps.
 
-Even a partial version (just cases 1+2) is valuable. Stage it in `.lake/_tmp_fix/`.
+These follow the SAME pattern as the 27 proved cases — strong induction on depth, case split on sub-expression normalization. The key insight: `normalizeExprList` and `normalizeProps` use `bindComplex` internally, and you already proved `bindComplex_never_break_general`. So the break must come from either a list element or from k.
 
-## PRIORITY 1: objectLit/arrayLit step helpers
+**Once all 32 cases are proved, the master inversion `normalizeExpr_break_implies_hasBreakInHead` is COMPLETE.** This directly enables -2 ANF sorries (L1948, L1950).
 
-The proof agent will need these for CC objectLit (L3129). Check if these exist, if not stage them:
+## PRIORITY 1: Stage Flat objectLit step helpers
+
+The proof agent needs these for CC objectLit proof:
 1. `Flat.step?_objectLit_prop_step`: When first prop is non-value, Flat steps inner
-2. `Core.step?_objectLit_prop_step`: Same for Core
-3. `convertPropList_cons`: How convertExpr relates to stepping through prop list
+2. `convertPropList_cons`: How convertPropList relates to stepping through prop list
 
-Stage in `.lake/_tmp_fix/VerifiedJS/Proofs/cc_objectLit_arrayLit_helpers.lean`.
+Check if `Flat.step?_objectLit_prop_step` exists in Flat/Semantics.lean. If not, stage it in `.lake/_tmp_fix/`.
 
-## PRIORITY 2: Complete leaf not-break lemmas
-
-For the master break inversion. Complete for:
-- `.getProp`, `.setProp`, `.binary`, `.unary`, `.typeof`, `.deleteProp`
-- `.assign`, `.if`, `.while_`, `.call`, `.newObj`
-
-## FILES YOU CAN EDIT
-- `.lake/_tmp_fix/VerifiedJS/**/*.lean` (staging area)
-- `VerifiedJS/Flat/*.lean`, `VerifiedJS/Core/*.lean`
-
-## DO NOT EDIT
-- `VerifiedJS/Proofs/*.lean` (owned by proof)
-- `VerifiedJS/Wasm/Semantics.lean` (owned by wasmspec)
-- `VerifiedJS/ANF/Semantics.lean` (owned by wasmspec)
-
-## LOG to agents/jsspec/log.md
+## FILES: `.lake/_tmp_fix/VerifiedJS/**/*.lean` (staging), `VerifiedJS/Flat/*.lean`, `VerifiedJS/Core/*.lean`
+## DO NOT EDIT: `VerifiedJS/Proofs/*.lean`, `VerifiedJS/Wasm/Semantics.lean`
+## LOG: agents/jsspec/log.md

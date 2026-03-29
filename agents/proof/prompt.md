@@ -1,57 +1,37 @@
-# proof — FIX BUILD FIRST, THEN CC SORRIES
+# proof — CC OBJECTLIT AND CCSTATE THREADING
 
-## STATUS: BUILD BROKEN. 55 sorries (17 ANF + 20 CC + 18 Wasm + 0 Lower). ZERO progress in 4.5 hours.
+## STATUS: BUILD PASSES ✓. 56 grep sorries (17 ANF + 21 CC + 18 Wasm + 0 Lower).
+## LAST RUN: arrayLit non-value case PROVED ✓. newObj confirmed BLOCKED (Core ignores callee/args).
 
-## PRIORITY 0: FIX CC BUILD ERROR (BLOCKS EVERYTHING)
+## PRIORITY 0: CC objectLit non-value case (L3247)
 
-`ClosureConvertCorrect.lean:902` has: "unexpected token 'mutual'"
+This is the SAME pattern as your arrayLit proof. objectLit has `props` instead of `elems`.
 
-**Root cause**: In Lean 4.29, doc comments CANNOT precede `mutual` blocks. The `/-- ... -/` on lines 901-902 is illegal before `mutual` on line 903.
+**Key APIs** (Core has these already):
+- `Core.firstNonValueProp : List (String × Core.Expr) → Option (List (String × Core.Expr) × (String × Core.Expr) × List (String × Core.Expr))`
+- `Core.step_objectLit_step_prop` (Core/Semantics.lean ~L13634)
 
-**Fix** (exact edit):
-```
--- BEFORE (BROKEN):
-/-- All object addresses in a Core expression are valid heap addresses.
-    Fully recursive to propagate through compound expressions. -/
-mutual
-def ExprAddrWF : Core.Expr → Nat → Prop
+**Steps**:
+1. `rw [hsc] at hconv hncfr hexprwf hd`
+2. `simp [Flat.convertExpr] at hconv` — gives `sf.expr = .objectLit (convertPropList ...)`
+3. `cases hcfnv : Core.firstNonValueProp props` — none = all values (sorry), some = stepping
+4. For `some` case: copy arrayLit proof pattern exactly, substituting props for elems
 
--- AFTER (FIXED):
-mutual
-/-- All object addresses in a Core expression are valid heap addresses.
-    Fully recursive to propagate through compound expressions. -/
-def ExprAddrWF : Core.Expr → Nat → Prop
-```
+The staging file `.lake/_tmp_fix/VerifiedJS/Proofs/cc_objectLit_arrayLit_helpers.lean` has helpers like `convertPropList_firstNonValueProp_some/none`.
 
-Move the doc comment from before `mutual` to before `def ExprAddrWF`. That's it.
+**Target: -1 sorry (objectLit 1→2, same as arrayLit, but non-value case proved)**
 
-**Build command**: `lake env lean VerifiedJS/Proofs/ClosureConvertCorrect.lean 2>&1 | grep error | head -5`
+## PRIORITY 1: CC var captured case (L1981)
 
-## PRIORITY 1: CC newObj case (L2699) — WARNING: NOT identical to call
+Line 1981 is a sorry for `var` when `lookupEnv envMap name = some idx`. After CC, the var becomes `.getEnv (.var envVar) idx`. Both Core and Flat look up `name` in env. Core gets a value from `sc.env`, Flat gets `.getEnv` which looks up in closure env.
 
-**CRITICAL CORRECTION**: Core.step? for `.newObj` does NOT step the callee. It allocates immediately:
-```lean
-| .newObj _callee _args =>
-    let addr := s.heap.nextAddr
-    let heap' := { objects := s.heap.objects.push [], nextAddr := addr + 1 }
-    let s' := pushTrace { s with expr := .lit (.object addr), heap := heap' } .silent
-    some (.silent, s')
-```
+The proof needs: EnvCorr relates Core env lookup to Flat env lookup. If `EnvCorr sc.env sf.env` and `lookupEnv envMap name = some idx`, then `sf.env` contains the same value at the right position.
 
-But Flat.step? for `.newObj` DOES step the callee when non-value. So the CC proof needs:
-- If `Core.exprValue? f = none`: Core STILL allocates (producing `.silent`), but Flat steps the inner f. The Flat step event must also be `.silent` for the simulation to work. This requires showing that the inner Flat step produces `.silent` — which may not be true in general.
-- If `Core.exprValue? f = some cv`: Both allocate. Should be easier to prove.
+## PRIORITY 2: CC if-else CCState threading (L2300, L2322)
 
-**Approach**: Start with `cases hcev : Core.exprValue? f`:
-1. `some cv` case: Both Core and Flat allocate. Core produces `.silent`, Flat also produces `.silent` (allocation). Use `native_decide` or `rfl` for trace matching. This is likely tractable.
-2. `none` case: This has a FUNDAMENTAL 1:N mismatch. Sorry it and move on.
+These 3 sorries are about `convertExpr` state threading: the `st'` from converting `then_` branch differs from `st_a'` expected by the theorem. Look at the `st_a, st_a'` pair and see if `CCStateAgree` can be weakened or if the state threading just needs careful bookkeeping.
 
-## PRIORITY 2: CC objectLit (L3129)
-
-Only attempt after P0 and P1 are done.
-
-## DO NOT ATTEMPT
-- ANF sorries, Wasm sorries, CC value sub-cases, CC forIn/forOf, CC while_, CC tryCatch
+## DO NOT ATTEMPT: ANF sorries, Wasm sorries, CC value sub-cases (heap), newObj, functionDef, tryCatch, while_
 
 ## FILES: `VerifiedJS/Proofs/*.lean` (rw)
 ## LOG: agents/proof/log.md — LOG IMMEDIATELY when you start
