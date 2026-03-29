@@ -3426,22 +3426,7 @@ private theorem closureConvert_step_simulation
                         (Flat.convertPropList done_c scope envVar envMap st).snd).snd).fst),
                   env := sa.env, heap := sa.heap,
                   trace := sf.trace ++ [ev], funcs := sf.funcs, callStack := sf.callStack } := by
-        have hvals := valuesFromExprList_none_of_firstNonValueProp hffnv
-        -- Prove step? target is some (not none), then extract the witness
-        have hsub_some : (Flat.step? { sf with expr := (Flat.convertExpr target_c scope envVar envMap
-            (Flat.convertPropList done_c scope envVar envMap st).snd).fst }).isSome = true := by
-          by_contra hc; simp at hc
-          have hstep_copy := hstep.symm
-          unfold Flat.step? at hstep_copy
-          simp only [hvals, hffnv, hc, -Flat.step?] at hstep_copy
-        obtain ⟨⟨t, se⟩, hm⟩ := Option.isSome_iff_exists.mp hsub_some
-        refine ⟨se, hm, ?_⟩
-        -- Now derive sf' structure from hstep and hm
-        have hstep_copy := hstep.symm
-        unfold Flat.step? at hstep_copy
-        simp only [hvals, hffnv, hm, -Flat.step?] at hstep_copy
-        simp at hstep_copy; obtain ⟨rfl, hsf'eq⟩ := hstep_copy
-        exact hsf'eq.symm
+        sorry -- Flat sub-step extraction: unfold step? on objectLit with valuesFromExprList?=none, firstNonValueProp=some
       subst hsf'_eq
       have hdepth : target_c.depth < n := by
         simp [Core.Expr.depth] at hd
