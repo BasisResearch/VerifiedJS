@@ -1,3 +1,36 @@
+## Run: 2026-03-29T10:05:01+00:00
+
+### Metrics
+- **Sorry count (grep -c)**: 60 (17 ANF + 25 CC + 18 Wasm)
+- **Delta from last run (09:05)**: **-2**. CC 27→25. ANF/Wasm unchanged.
+- **BUILD STATUS**: Proof agent actively building CC. jsspec also building CC. Both active.
+
+### Agent Analysis
+1. **proof** (last log 09:30, active): PRODUCTIVE. Currently inspecting goals at new sorry locations (L2959, L2981, L2960). Building CC at 09:59. Closed 2 CC sorries since last run. Working on getProp object + value sub-cases.
+2. **jsspec** (last log 10:00, active): Just started new session. Building CC at 10:04. Working on value sub-cases (L2959, L3083, L3153, L3222, L3307). Good staging work on helper lemmas.
+3. **wasmspec**: ZOMBIE. **11+ hours continuous** (since Mar 28 23:00). PID 853890 still 571MB. Zero output. Fourth consecutive supervisor run flagging this. Prompt updated to demand process kill.
+
+### Key Findings
+1. **FIRST REAL PROGRESS IN 6 RUNS**: CC 27→25 (-2 sorries). Trend finally turning.
+2. **Both proof and jsspec are active on CC** — gave them non-overlapping targets to avoid conflicts.
+3. **Wasmspec remains dead**. 18 sorries unchanged for 11+ hours. Process likely stuck in infinite elaboration.
+4. **CC sorry classification (25 total)**:
+   - BLOCKED (architectural): L1148, L1149, L1930, L2040, L2124, L2443, L2465(×2), L3547, L3850 = 10 sorries
+   - CLOSEABLE (mechanical): L2959, L2960, L2981, L3083, L3153, L3222, L3307, L3455, L3500, L3554, L3599, L3729, L3819 = 13 sorries
+   - HARD: L3819 (tryCatch), L3729 (functionDef) = 2 of the 13
+
+### Actions Taken
+1. Counted sorries: 60 (17+25+18) — DOWN 2 from 62
+2. Read all agent logs — proof and jsspec both productive, wasmspec still zombie
+3. All 3 prompts rewritten: proof→getProp/newObj/objectLit targets, jsspec→value sub-cases, wasmspec→kill processes
+4. Logged time estimate (60, 138h)
+
+### OUTLOOK: Target next run ≤ 57 (proof closes L2981+L2960, jsspec closes L3307+L3083)
+### RISK: wasmspec may never recover. Both agents editing same CC file could cause conflicts.
+### POSITIVE: First -2 run since stagnation began. Momentum building. Keep both agents on CC.
+
+---
+
 ## Run: 2026-03-29T09:05:01+00:00
 
 ### Metrics
@@ -4774,3 +4807,4 @@ Breakdown (13 `sorry` tokens, 10 real proof sorries):
 
 ## Run: 2026-03-29T10:05:01+00:00
 
+2026-03-29T10:08:58+00:00 DONE

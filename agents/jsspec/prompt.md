@@ -1,36 +1,49 @@
-# jsspec — CC VALUE SUB-CASES: 5 sorries all with same pattern
+# jsspec — CC VALUE SUB-CASES: you own L2959, L3083, L3153, L3222, L3307
 
-## STATUS: 62 sorries. You're investigating L2920/L3020/L3090/L3159/L3244. KEEP GOING.
+## STATUS: 60 sorries. CC down 2 to 25! You helped make this happen. KEEP GOING.
 
-## PRIORITY 0: CC value sub-cases (L2907, L3031, L3101, L3170, L3255)
+## YOUR TARGETS (5 value sub-cases, all same pattern)
 
-All 5 say `| some cv => sorry -- callee/arg is value`. The pattern in each:
+### Pattern for all 5:
 - `Core.exprValue? subexpr = some cv` means `subexpr = .lit cv`
-- The Flat side has `sf.expr = .call (.lit (convertValue cv)) ...` (or similar)
-- `step?` on the Flat side evaluates the value part (it's already a lit, so moves to next sub-expr or executes)
-- You need `HeapInj` to map Core heap operations to Flat heap operations
+- Flat side has the converted lit value
+- `step?` on the Flat side evaluates the value part
+- Need `HeapInj` to map Core heap operations to Flat heap operations
+- Template: the STRING case of getProp (search for `getProp` proved case around L2930-2975)
 
-### Investigation steps:
-1. `lean_goal` at EACH sorry (L2907, L3031, L3101, L3170, L3255) — understand what differs
-2. `lean_local_search "HeapInj"` and `lean_local_search "convertValue"` — find available lemmas
-3. Look at the STRING case of getProp (L2930-2975) as a template — it's a fully proved value case
+### L2959 — call: callee is value
+- When callee is a value, case split on `Core.exprListValue? args`
+- All args values → execute the call (needs function call simulation)
+- Some arg needs stepping → use firstNonValueExpr + ih_depth
+- This is the HARDEST of the 5. Save for last if stuck.
 
-### For L2907 specifically (callee is value in .call):
-- When callee is a value, args may still need stepping
-- OR all args are values and we execute the call
-- Case split on `Core.exprListValue? args`
+### L3083 — setProp value sub-case
+### L3153 — getIndex value sub-case
+### L3222 — setIndex value sub-case
+### L3307 — deleteProp value sub-case
 
-Write helper lemmas directly into ClosureConvertCorrect.lean (section before L2907). Build after each.
+These 4 are simpler than call. Start with L3307 (deleteProp) — closest to getProp pattern.
 
-## PRIORITY 1: CC objectLit/arrayLit helpers (L3403, L3429, L3437, L3484, L3491, L3517, L3525)
+### Helper lemmas to add (near L1790):
+- `Flat_step?_deleteProp_object_value`: unfolding `step?` for `.deleteProp (.lit (.object addr)) prop`
+- `Flat_step?_setProp_value_value`: for `.setProp (.lit v1) prop (.lit v2)`
+- Similar for getIndex, setIndex
 
-Check `.lake/_tmp_fix/VerifiedJS/Proofs/cc_objectLit_arrayLit_helpers.lean` for staging work. Inline what's valid.
+## ALSO CONSIDER: L3500, L3599 (ExprAddrWF propagation)
+If value sub-cases are blocked, these may be easier — they need `ExprAddrPropListWF` / `ExprAddrListWF` helpers.
 
-## PRIORITY 2: CC getProp object sorry (L2929) — only if proof agent hasn't started this
+## proof agent IS HANDLING: L2981 (getProp object), L2960 (newObj), L3455/L3554 (all-values), L3729 (functionDef)
+DO NOT work on these.
+
+## WORKFLOW
+1. `lean_goal` at each sorry FIRST
+2. Write helper lemma → build → use in sorry → build
+3. `lake build VerifiedJS.Proofs.ClosureConvertCorrect` after EVERY edit
+4. If build breaks: SORRY IT BACK immediately
+5. LOG to agents/jsspec/log.md every 30 min
 
 ## FILES
 - `VerifiedJS/Proofs/ClosureConvertCorrect.lean` (rw)
 - `.lake/_tmp_fix/` (read only — staging reference)
 
 ## DO NOT EDIT: `VerifiedJS/Proofs/ANFConvertCorrect.lean`, `VerifiedJS/Wasm/Semantics.lean`
-## LOG: agents/jsspec/log.md — LOG IMMEDIATELY when you start and every 30 min

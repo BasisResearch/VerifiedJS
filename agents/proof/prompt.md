@@ -1,47 +1,38 @@
-# proof — PIVOT: CCState threading is BLOCKED. Close MECHANICAL sorries instead.
+# proof — CC down to 25! Keep closing MECHANICAL sorries.
 
-## STATUS: 62 sorries (17 ANF + 27 CC + 18 Wasm). CC down 1 from last run. P3 DONE — good work.
+## STATUS: 60 sorries (17 ANF + 25 CC + 18 Wasm). CC down 2 from last run! MOMENTUM IS REAL.
 
-Your analysis of CCState threading (P0/P1) is CORRECT — it's a theorem statement issue, not a witness problem. STOP working on it. Same for forIn/forOf (P2) — needs `supported` invariant. These are DEFERRED.
+## CURRENT CC SORRY MAP (25 sorries)
 
-## NEW PRIORITIES — ALL CLOSEABLE RIGHT NOW
+### BLOCKED (do NOT touch):
+- L1148, L1149: false theorems (forIn/forOf stubs)
+- L1930, L2040: need convertExpr_not_lit for stubs
+- L2443, L2465(×2), L3547, L3850: CCState threading — structural
+- L2124: HeapInj refactor area
 
-### P0: L2072 — captured variable case (CC)
+### YOUR TARGETS (most closeable first):
 
-This sorry is for `lookupEnv envMap name = some idx`. The converted expression is `.getEnv (.var envVar) idx`. You need to:
-1. `lean_goal` at L2072 to see the exact state
-2. The non-captured case (L2073-2108) is ALREADY PROVED and is your template
-3. For captured vars: `step?` on `.getEnv (.var envVar) idx` looks up `envVar` in `sf.env`, gets the closure environment array, then indexes at `idx`
-4. You need `HeapInj` to map from the Core env lookup to the Flat closure env lookup
-5. Construct `sc'` analogous to the non-captured case at L2088
+### P0: L2981 — getProp on object (YOU WERE WORKING ON THIS)
+- String case is proved. Object case needs heap lookup.
+- `Flat.step?` on `.getProp (.lit (.object addr)) prop` does heap lookup
+- Use `HeapInj` to map Core heap addr → Flat heap addr
+- `heapObjectAt?_eq` relates `heapObjectAt?` to `objects[addr]?`
+- ExprAddrWF for looked-up value: use `HeapValuesWF`
 
-### P1: L2929 — getProp on object (CC)
+### P1: L2960 — newObj
+- `lean_goal` first. This creates a new object on the heap.
+- Should be relatively mechanical — object allocation + HeapInj extension
 
-The string case is proved (L2930-2975). For object case:
-1. `lean_goal` at L2929
-2. `Flat.step?` on `.getProp (.lit (.object addr)) prop` does a heap lookup
-3. Use `HeapInj` to map Core heap addr to Flat heap addr
-4. Template: follow the string case pattern but with heap lookup instead of length
+### P2: L3455, L3554 — objectLit/arrayLit "all values" cases
+- When all props/elems are values, allocate on heap
+- Similar to newObj pattern
 
-### P2: L3655 — functionDef (CC)
+### P3: L3729 — functionDef
+- Creates a closure, allocates on heap
+- Complex but well-defined. Skip if >1h.
 
-```lean
-| functionDef fname params body isAsync isGen => sorry
-```
-1. `lean_goal` at L3655
-2. `Flat.convertExpr (.functionDef ...)` creates a closure, allocates it on the heap
-3. This is likely the most complex of these targets. If >1 hour, move to P3.
-
-### P3: L1878 + L1988 — "proved in staging" sorries
-
-These need `convertExpr_not_lit` for stub constructors (forIn, forOf, classDecl). Write this lemma:
-```lean
-theorem convertExpr_not_lit_stub (e : Core.Expr)
-    (h : e = .forIn .. ∨ e = .forOf .. ∨ e = .classDecl ..) :
-    ∀ v, Flat.convertExpr e scope envVar envMap st ≠ (.lit v, _) := by
-  rcases h with rfl | rfl | rfl <;> simp [Flat.convertExpr]
-```
-Check if this pattern works with `lean_multi_attempt`. Then use it to close L1878 and L1988.
+## jsspec IS HANDLING: L2959, L3083, L3153, L3222, L3307 (value sub-cases)
+DO NOT work on these — jsspec has them.
 
 ## WORKFLOW — MANDATORY
 1. `lean_goal` BEFORE every sorry attempt

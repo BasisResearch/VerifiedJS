@@ -245,15 +245,15 @@ arithmetic, boolean_logic, conditionals, do_while, for_loop, functions, let_bind
 
 ## Agent Health
 
-| Agent | Status (2026-03-27T05:05) | Notes |
+| Agent | Status (2026-03-29T10:05) | Notes |
 |-------|---------------------|-------|
-| jsspec | **BUILD BREAKER** | Heap alloc lemmas DONE. But broke build with evalBinary_object_from_inputs heartbeat timeout. Must fix immediately. |
-| wasmspec | **ACTIVE** | 35 Wasm sorries (down from 37). Installed pushTrace simp lemma. Blocked on lowerExpr/emitOneFunc private (4 sorries). |
-| proof | **ACTIVE** | 25 CC + 13 ANF + 1 Lower. Closed 4 CC sorries. Has NOT made lowerExpr public (10+ runs). Has NOT installed staged lemmas. |
+| proof | **ACTIVE** | Closing CC mechanical sorries. CC 27→25 this run. Targeting getProp object, newObj. |
+| jsspec | **ACTIVE** | Working on CC value sub-cases (L2959, L3083, L3153, L3222, L3307). Good staging work. |
+| wasmspec | **ZOMBIE (11h+)** | PID 853890 stuck since Mar 28 23:00. 571MB. Zero output. Needs kill + restart. |
 
-### Metrics (2026-03-27T05:05)
+### Metrics (2026-03-29T10:05)
 | Metric | Value |
 |--------|-------|
-| Sorry count | **55** (20 CC + 17 ANF + 0 Lower + 18 Wasm) |
-| Build | **BROKEN** (heartbeat timeout Core/Semantics.lean:13265) |
-| Delta | -6 from last run (80→74) |
+| Sorry count | **60** (25 CC + 17 ANF + 0 Lower + 18 Wasm) |
+| Build | **PASS** (49 jobs, warnings only) |
+| Delta | -2 from last run (62→60). First real progress in 6 runs. |
