@@ -1,72 +1,47 @@
-# jsspec — WASM SORRIES. You are the ONLY agent working on Wasm.
+# jsspec — CC HELPER LEMMAS + ANF STAGING
 
 ## STATUS
-- ANF: 17 sorries, ALL blocked. DO NOT WORK ON ANF.
-- CC: 22 sorries (down from 25), proof agent handling. DO NOT WORK ON CC.
-- Wasm: 16 actual sorries in Wasm/Semantics.lean. YOUR MISSION.
+- Wasm sorries: ALL architecturally blocked (your analysis confirmed). Cannot write Semantics.lean. STOP trying Wasm.
+- CC: proof agent is closing value sub-cases. YOU help by staging helper lemmas it needs.
+- ANF: 17 sorries, all need induction on depth. Stage proofs.
 
-## YOUR TARGETS — 12 sorries (the 4 call/callIndirect are too hard)
+## YOUR MISSION: Stage CC helper lemmas in `.lake/_tmp_fix/`
 
-### Pattern to follow: return-none (L6822-6863) is FULLY PROVED
+The proof agent is BLOCKED on several CC sorries because helper lemmas don't exist yet.
+Write self-contained helper lemma files that the proof agent can integrate.
 
-The proof pattern for every `step_sim` case is:
-1. `have hc := hrel.hcode; rw [hexpr] at hc` — get IR code structure from LowerCodeCorr
-2. Invert `hc` to get the specific code shape (e.g., `hc.return_none_inv`, `hc.var_inv`)
-3. Get ANF step lemma (e.g., `ANF.step?_return_none s1`)
-4. Rewrite `heq` with the step result to extract `⟨rfl, rfl⟩`
-5. Get IR step result (e.g., `irStep?_eq_return_toplevel`)
-6. Match traces using `traceFromCore`
-7. Construct new `LowerSimRel` for successor state with all fields
-
-### EASIEST 5 (start here):
-
-**L6876 — break**: Both sides produce error signal.
+### P0: convertExpr_not_lit (HIGHEST VALUE — unblocks L2133 + L2243)
+These sorries need a lemma: for stub constructors (forIn, forOf, generator),
+`Flat.convertExpr e st ≠ (.lit _, _)`. Specifically:
 ```lean
-have hc := hrel.hcode; rw [hexpr] at hc
--- Look for: LowerCodeCorr.break_inv, ANF.step?_break
--- lean_local_search "step?_break" and "break_inv"
+theorem convertExpr_not_forIn (args : List Core.Expr) (st : Flat.CCState) :
+  ¬ ∃ l st', Flat.convertExpr (.forIn args) st = (.lit l, st')
 ```
+Same for forOf, generator. Stage in `.lake/_tmp_fix/cc_convertExpr_not_lit_v2.lean`.
 
-**L6879 — continue**: Identical to break.
+### P1: ExprAddrWF propagation (unblocks L3973 + L4071)
+Need: if `ExprAddrWF (.objectLit props) = True` then each element satisfies ExprAddrWF.
+```lean
+theorem ExprAddrWF_objectLit_propagate (props : List (String × Core.Expr)) :
+  ExprAddrWF (.objectLit props) = true → ∀ p ∈ props, ExprAddrWF p.2 = true
+```
+Same for arrayLit. Stage in `.lake/_tmp_fix/cc_exprAddrWF_propagate.lean`.
 
-**L6864 — return (some t)**: Follow return-none (L6822-6863).
-- Need `hc.return_some_inv` to get `⟨argCode, hcode_eq, htcc⟩`
-- See `step_sim_return_litNull` at L6884 for a specialized example
-- Evaluate trivial arg, then return
+### P2: ANF per-constructor stepping lemmas (stage for future ANF work)
+The 17 ANF sorries all need `anfConvert_step_star` decomposed per constructor.
+Read VerifiedJS/Proofs/ANFConvertCorrect.lean lines 3368-3426 to see the sorry sites.
+For EACH constructor (letBinding, sequence, conditional, etc.):
+- `lean_goal` at the sorry
+- Stage a proof attempt in `.lake/_tmp_fix/anf_<constructor>.lean`
+- Even partial proofs (with inner sorries) help
 
-**L6867 — yield**: Evaluate optional arg, produce yield event.
+### WORKFLOW
+1. Read the relevant definitions first (`lean_hover_info`, `lean_local_search`)
+2. Write standalone `.lean` files in `.lake/_tmp_fix/`
+3. Test with `lean_run_code` or `lean_verify`
+4. LOG every 30 min to agents/jsspec/log.md
 
-**L6870 — await**: Evaluate trivial arg, produce await event.
-
-### MEDIUM 7:
-
-**L6816 — throw**: Evaluate arg, produce error. Similar to return.
-**L6806 — sequence**: Comments say needs 1:N stepping framework. Try anyway.
-**L6798 — let**: Comments say needs IR multi-step. Try anyway.
-**L6810 — if**: Evaluate cond, branch.
-**L6813 — while**: Loop stepping.
-**L6819 — tryCatch**: Error handling.
-**L6873 — labeled**: Enter labeled block.
-
-### WORKFLOW:
-1. Read L6708-6863 (proven cases) as your template — especially var (L6708), return-none (L6822)
-2. `lean_goal` at each sorry to see exact goal
-3. `lean_local_search` for `step?_break`, `break_inv`, etc. to find available lemmas
-4. `lean_hover_info` on `hc` after `rw [hexpr] at hc` to see what inversions exist
-5. `lean_multi_attempt` to test tactic combinations
-6. Edit file, then `lake build VerifiedJS.Wasm.Semantics`
-7. If build breaks: `git checkout VerifiedJS/Wasm/Semantics.lean` within 2 minutes
-8. Max 20 min per sorry. If stuck, move to next.
-9. LOG every 30 min to agents/jsspec/log.md
-
-### KEY LEMMAS TO SEARCH FOR:
-- `ANF.step?_break`, `ANF.step?_continue`, `ANF.step?_yield`, `ANF.step?_await`, `ANF.step?_throw`
-- `LowerCodeCorr.break_inv`, `.continue_inv`, `.yield_inv`, `.await_inv`, `.throw_inv`
-- `irStep?_eq_*` for each IR instruction pattern
-- `traceFromCore` for trace conversion
-
-### CONSTRAINTS:
-- CAN edit: `VerifiedJS/Wasm/Semantics.lean`
-- DO NOT edit: `VerifiedJS/Proofs/*.lean`
-- Stage helpers in `.lake/_tmp_fix/` if needed
-- LOG every 30 min to agents/jsspec/log.md
+### CONSTRAINTS
+- CAN write: `.lake/_tmp_fix/*.lean`
+- CANNOT write: `VerifiedJS/Proofs/*.lean`, `VerifiedJS/Wasm/Semantics.lean`
+- DO NOT run `lake build` (wastes time, proof agent is building)

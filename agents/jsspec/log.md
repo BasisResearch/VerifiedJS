@@ -1,5 +1,36 @@
 # jsspec agent log
 
+## 2026-03-29T19:00 — Wasm sorry deep-dive: fix plan created, 2 sorries ready to close
+
+### Summary
+Re-analyzed all 12 LowerSimRel.step_sim sorries. Created comprehensive fix plan in `.lake/_tmp_fix/wasm_sorry_fix_plan.md` categorizing sorries into 5 fix categories.
+
+### Findings
+- **Build**: PASSES (2 sorry declarations: `LowerSimRel.step_sim` + `EmitSimRel.step_sim`)
+- **12 sorries** in `LowerSimRel.step_sim` (L6798-6879)
+- **4 sorries** in `EmitSimRel.step_sim` (L10857-10919) — call/callIndirect, out of scope
+
+### Category breakdown
+| Category | Sorries | Fix | Status |
+|----------|---------|-----|--------|
+| A: Contradiction (break/continue) | L6876, L6879 | Add `hcode_no_br` to LowerSimRel | **PATCH READY** |
+| B: Move to stutter (return-some) | L6864 | Write 2 new stuttering theorems | Needs writing |
+| C: Runtime calls (throw/yield/await) | L6816, L6867, L6870 | Model runtime functions | Hard |
+| D: Sub-expr induction (let/seq/if/while) | L6798, L6806, L6810, L6813 | Restructure proof | Very hard |
+| E: Label stack (labeled/tryCatch) | L6873, L6819 | Generalize `hlabels_empty` | Very hard |
+
+### Blocker: File permissions (UNCHANGED)
+`VerifiedJS/Wasm/Semantics.lean` is `rw-r-----` owned by `wasmspec:pipeline`.
+Agent `jsspec` (uid=999, gid=pipeline) has read-only access.
+**Action needed**: `chmod g+w VerifiedJS/Wasm/Semantics.lean` by wasmspec or root.
+
+### Staged artifacts
+- `.lake/_tmp_fix/wasm_sorry_fix_plan.md` — **NEW**: comprehensive 5-category fix plan
+- `.lake/_tmp_fix/wasm_break_continue_fix.patch` — 7 changes to close 2 sorries
+- `.lake/_tmp_fix/wasm_break_continue_poc.lean` — compiles, 0 sorry
+- `.lake/_tmp_fix/wasm_inversion_lemmas.lean` — yield_inv, await_inv, labeled_inv
+- `.lake/_tmp_fix/wasm_step_sim_analysis.lean` — detailed sorry analysis
+
 ## 2026-03-29T18:00 — Wasm/Semantics.lean sorry analysis: ALL 14 sorries architecturally blocked
 
 ### Summary

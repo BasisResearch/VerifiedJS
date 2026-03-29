@@ -5195,3 +5195,43 @@ Breakdown (13 `sorry` tokens, 10 real proof sorries):
 
 ## Run: 2026-03-29T19:05:01+00:00
 
+
+### Metrics
+- **Sorry count**: 54 actual (17 ANF + 21 CC + 16 Wasm)
+- **Delta from last detailed run (13:05)**: **-6** (was 60 grep-c, now 54 actual)
+  - LowerCorrect.lean: 1→0 sorries (DONE!)
+  - CC: ~25→21 (proof agent closed deleteProp, setProp, getProp string/prim sub-cases)
+  - Wasm: 18→16 (2 comment-only lines excluded; actual sorries unchanged)
+  - ANF: 17→17 (untouched)
+- **BUILD STATUS**: proof building CC (lean at 70% CPU, 1.3GB). jsspec just launched (19:00). wasmspec zombie (20h+, expires 23:00).
+
+### Agent Analysis
+1. **proof** (PID 1466210, started 15:00, 4h): ACTIVE. Building CC right now (lean PID 1806391, 70% CPU, 1.3GB). CC file modified at 19:06 — making changes. Closed deleteProp, setProp, getProp string/prim since 09:30 session. Solid progress.
+2. **jsspec** (PID 1806602, started 19:00, 5min): JUST LAUNCHED. Previous run (17:00-17:55) produced excellent analysis: ALL 12 Wasm step_sim sorries are architecturally blocked (multi-step IR or label changes). Created break/continue fix patch and POC. REDIRECTED to CC helper lemmas (convertExpr_not_lit, ExprAddrWF propagation).
+3. **wasmspec** (PID 845769, started Mar 28 23:00): ZOMBIE 20+ hours. Zero log entries since Mar 27. Timeout at ~23:00 tonight. When it restarts, prompt has exact break/continue fix (+POC from jsspec).
+
+### Key Findings
+1. **LowerCorrect is DONE** — 0 sorries. One less file to worry about.
+2. **Wasm step_sim is architecturally blocked** — jsspec confirmed ALL 12 remaining cases need either multi-step IR or label tracking. The 1:1 stepping model can't handle them. Only break/continue can be eliminated (via `⊢ False` + precondition).
+3. **File permissions block jsspec on Wasm** — Semantics.lean owned by wasmspec (rw-r-----). jsspec can read only. Supervisor can't chmod.
+4. **Proof agent is productive** — closed ~4 CC sorries in last 10 hours. Currently building, likely working on getIndex/setIndex.
+
+### Actions Taken
+1. Counted sorries: 54 actual (17 ANF + 21 CC + 16 Wasm)
+2. Read all agent logs
+3. **Updated proof prompt**: Fixed line numbers to current (L3538, L3607, L3370, L3162, L3163, L3929, L4027). Updated blocked list.
+4. **Redirected jsspec**: From Wasm (blocked) to CC helper lemmas — convertExpr_not_lit (unblocks 2 CC sorries), ExprAddrWF propagation (unblocks 2 more), ANF constructor staging.
+5. **Updated wasmspec prompt**: Phase 1 = apply break/continue fix (exact code from jsspec POC), Phase 2 = multi-step IR approach.
+6. Logged time estimate (54, 143h)
+
+### OUTLOOK
+- **Next hour**: proof closes getIndex (-1), possibly setIndex (-1). jsspec stages convertExpr_not_lit helper.
+- **23:00 tonight**: wasmspec restarts, applies break/continue fix (-2 Wasm).
+- **Target next run**: ≤ 52 (proof -2, wasmspec restarts at 23:00)
+
+### RISK
+- wasmspec zombie holds lock on Wasm file for 4 more hours
+- If proof gets stuck on elaboration, 0 progress until restart
+- ANF (17 sorries) has had ZERO attention for days — all agents redirected elsewhere
+2026-03-29T19:10:00+00:00 DONE
+2026-03-29T19:09:54+00:00 DONE
