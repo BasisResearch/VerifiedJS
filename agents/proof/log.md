@@ -3493,3 +3493,42 @@ These are the SAME requirements as for the wildcard cases. The entire `normalize
 - Reading ClosureConvertCorrect.lean around L2699 for newObj sorry
 - Will examine call non-value proof at L2686-2697 for pattern to copy
 
+### Finding: newObj sorry is BLOCKED by Core/Flat semantic mismatch
+
+**P0 (newObj) is fundamentally unprovable with current semantics.**
+
+Core.step? for `.newObj _callee _args` (Core/Semantics.lean L10531-10535) ALWAYS allocates an empty object immediately, producing `.silent`. It IGNORES callee and args entirely (note underscores in `_callee _args`).
+
+Flat.step? for `.newObj funcExpr envExpr args` (Flat/Semantics.lean L499-534) evaluates sub-expressions first: funcExpr, then envExpr, then args left-to-right, then allocates.
+
+After closure conversion, `.newObj callee args` → `.newObj (convertExpr callee) (.lit .null) (convertExprList args)`.
+
+**Why the simulation breaks (Flat step → Core step):**
+- When Flat steps by evaluating a non-value callee inside newObj (producing event `ev`), Core must produce a matching step with event `ev`.
+- But Core.newObj always produces `(.silent, {expr = .lit (.object addr), ...})`.
+- If `ev ≠ .silent`, no match. Even if `ev = .silent`, post-states don't match: Core's post-state has `.lit (.object addr)` while Flat still has `.newObj ...`.
+- The simulation relation requires `sf'.expr = convertExpr sc'.expr ...`, which fails because `convertExpr (.lit v) = .lit (convertValue v)` ≠ `.newObj ...`.
+
+**The prompt's suggestion is wrong**: "copy the call non-value pattern" doesn't work because `call` in Core DOES evaluate sub-expressions (Core/Semantics.lean L7945-7952) while `newObj` does NOT.
+
+**Only closable sub-case**: When ALL sub-expressions are already values (callee, env, and all args), both Flat and Core allocate. But this is the "heap reasoning" case, which the prompt correctly identifies as blocked.
+
+### Pivoting to arrayLit (P2)
+
+Since P0 is blocked and P1 (objectLit) is harder, working on arrayLit. Both Core and Flat evaluate sub-expressions of arrayLit, so the simulation can hold.
+
+### Changes made:
+1. Fixed stale comments in ANFConvertCorrect.lean L1948, L1950 (break/continue: "both produce .error, needs normalizeExpr inversion")
+2. Added 7 helper lemmas to ClosureConvertCorrect.lean:
+   - `listNoCallFrameReturn_append`
+   - `firstNonValueExpr_listNoCallFrameReturn`
+   - `convertExprList_firstNonValueExpr_some`
+   - `valuesFromExprList_none_of_firstNonValueExpr`
+   - `convertExprList_append`
+   - `convertExprList_append_snd`
+3. Wrote arrayLit non-value case proof (replaces 1 sorry with 2 targeted sorries):
+   - sorry: heap allocation (all-values case) — same class as other value sub-cases
+   - sorry: CCState threading for list reconstruction — same class as if-true/if-false
+
+Building to check compilation...
+
