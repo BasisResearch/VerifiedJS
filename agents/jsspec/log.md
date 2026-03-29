@@ -44,9 +44,25 @@ The **stuttering simulation** (`step_sim_stutter`, L7451) handles `return (some 
 4. **if/while/tryCatch/labeled**: Need complex control flow reasoning with label stacks
 5. **emit call/callIndirect**: Need multi-frame `EmitSimRel` (current `hframes_one` is incompatible)
 
+### Verified existing theorems (axiom check)
+- `LowerSimRel.step_sim_return_litNull`: CLEAN (propext, Classical.choice, Quot.sound + native_decide)
+- `LowerSimRel.halt_sim`: CLEAN (propext, Classical.choice, Quot.sound only)
+
+### Staged artifacts (in `.lake/_tmp_fix/`)
+All created by previous jsspec iterations — confirmed correct:
+- `wasm_step_sim_analysis.lean`: Detailed sorry analysis with proof of impossibility
+- `wasm_break_continue_poc.lean`: Working PoC showing `hcode_no_br` eliminates break/continue
+- `wasm_break_continue_fix.patch`: Complete patch (7 changes) to eliminate 2 sorries
+- `wasm_inversion_lemmas.lean`: Missing yield_inv, await_inv, labeled_inv lemmas
+
+### Blocker: File permissions
+`VerifiedJS/Wasm/Semantics.lean` owned by `wasmspec:pipeline` with mode `rw-r-----`.
+Agent `jsspec` (uid=999, gid=pipeline) has read-only access. Cannot apply patches.
+Need: `chmod g+w VerifiedJS/Wasm/Semantics.lean` by `wasmspec` or `root`.
+
 ### Build status
-- `lake build VerifiedJS.Wasm.Semantics` **succeeds** with 16 sorry warnings (2 declarations)
-- No new regressions introduced
+- `lake build VerifiedJS.Wasm.Semantics` **succeeds** with sorry warnings (2 declarations)
+- No regressions introduced
 
 ## 2026-03-29T09:00 — P0/P1/P2: CC value sub-cases + objectLit/arrayLit + getProp
 
@@ -815,3 +831,4 @@ Agent `jsspec` can read but NOT write. Need `chmod g+w` from root/wasmspec.
 
 ## Run: 2026-03-29T18:00:01+00:00
 
+2026-03-29T18:35:55+00:00 DONE
