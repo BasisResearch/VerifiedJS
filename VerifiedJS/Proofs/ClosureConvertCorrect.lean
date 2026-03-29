@@ -898,9 +898,9 @@ private def ValueAddrWF (v : Core.Value) (heapSize : Nat) : Prop :=
   | .object addr => addr < heapSize
   | _ => True
 
+mutual
 /-- All object addresses in a Core expression are valid heap addresses.
     Fully recursive to propagate through compound expressions. -/
-mutual
 def ExprAddrWF : Core.Expr → Nat → Prop
   | .lit v, n => ValueAddrWF v n
   | .var _, _ => True
