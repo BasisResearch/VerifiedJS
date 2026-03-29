@@ -4885,3 +4885,31 @@ Breakdown (13 `sorry` tokens, 10 real proof sorries):
 
 ## Run: 2026-03-29T13:05:01+00:00
 
+### Metrics
+- **Sorry count (grep -c)**: 60 (17 ANF + 25 CC + 18 Wasm)
+- **Delta from last run (12:05)**: **0**. FLAT for 4th consecutive run.
+- **BUILD STATUS**: proof lean worker active (1.2GB on CC)
+
+### Agent Analysis
+1. **proof** (PID 1274195, started 09:30): ACTIVE 3.5h, lean worker on CC (1.2GB). ZERO sorry closures this session. Prompt was telling it NOT to touch the exact sorries jsspec patched — wasted effort. FIXED: P0 is now "apply jsspec patch" for instant -3.
+2. **jsspec** (no PID — not running): Last run 12:30-12:48. Created `.lake/_tmp_fix/jsspec_final_v2.patch` closing 3 CC sorries (deleteProp, setProp, getProp object). CANNOT write to CC (EACCES). FIXED: redirected to ANF sorries (17 untouched).
+3. **wasmspec** (PID 845769, started Mar 28 23:00): **ZOMBIE — 14+ HOURS**. lean PID 853890 stuck at 571MB. Zero log entries since Mar 27. Timeout at Mar 29 23:00.
+
+### Root Cause of Stall
+**Prompt conflict**: jsspec prepared patch for L3337/L3113/L3011. Proof prompt said "jsspec IS HANDLING (do NOT touch)" for those lines. But jsspec CAN'T write CC. Result: neither agent closes those sorries. This has been the case for ~6 hours.
+
+### Actions Taken
+1. Counted sorries: 60 (17+25+18) — UNCHANGED
+2. Diagnosed prompt conflict causing 6-hour stall
+3. **Rewrote all 3 prompts**:
+   - proof: P0 = apply jsspec patch immediately (`patch -p1 < .lake/_tmp_fix/jsspec_final_v2.patch`). Then P1-P2 = getIndex/setIndex value (using helpers from patch). P3+ = captured var, newObj, call.
+   - jsspec: Pivoted to ANF sorries (17 untouched, all per-constructor cases). Stage proofs in `.lake/_tmp_fix/`.
+   - wasmspec: Kill stuck process. Target break/continue/return-some (easiest 3 of 18).
+4. Logged time estimate (60, 141h)
+
+### OUTLOOK: Target next run ≤ 57 (proof applies patch -3, then closes getIndex -1)
+### RISK: Proof agent won't see new prompt until next restart. Currently running since 09:30.
+### KEY QUESTION: When does proof agent restart? If it runs until timeout (86400s from 09:30 = Mar 30 09:30), the patch won't be applied for 20 hours. Need proof to finish/crash and restart.
+
+2026-03-29T13:10:00+00:00 DONE
+2026-03-29T13:08:18+00:00 DONE

@@ -456,3 +456,49 @@ Key insight: getProp is read-only (no heap mutation), so HeapInj/HeapValuesWF/En
 
 ## Run: 2026-03-29T13:00:01+00:00
 
+### Session start
+- CC file: 4980 lines, 25 sorries, owned by `proof:pipeline` (read-only for jsspec)
+- Previous patch `jsspec_final_v2.patch` had 2/10 hunks FAILED due to CC file changes
+- getProp object proof was already partially integrated by proof agent (only ExprAddrWF sorry remained)
+
+### Changes in this session
+
+#### New helper lemmas added (9 total)
+| Helper | Purpose |
+|--------|---------|
+| `list_find?_mem` | `List.find? p = some x → x ∈ l` |
+| `HeapInj_set_same` | HeapInj preserved by `set!` at same addr |
+| `Flat_step?_deleteProp_object_value` | deleteProp on object: filter props |
+| `Flat_step?_deleteProp_nonobject_value` | deleteProp on non-object: return true |
+| `Flat_step?_setProp_object_step_value` | setProp: object addr, value steps |
+| `Flat_step?_setProp_nonobject_step_value` | setProp: non-object, value steps |
+| `Flat_step?_setProp_object_both_values` | setProp: object, both values → heap mutation |
+| `Flat_step?_setProp_nonobject_both_values` | setProp: non-object, both values → return |
+| `Core_step?_setProp_value_step` | Core: obj value, value steps |
+
+#### Sorries closed (3 total, net -3)
+
+| Location | Sorry | Method |
+|----------|-------|--------|
+| L3096 | getProp ExprAddrWF | `cases` on `objects[addr]?` + `find?`, use `hheapvwf` + `list_find?_mem` |
+| L3559 | deleteProp value | Object: HeapInj_set_same + HeapValuesWF_set_at; Non-object: trivial |
+| L3335 | setProp value | value-stepping via ih_depth; both-values: object heap mutation + non-object trivial |
+
+### Sorry count: 25 → 22 (net -3)
+
+### Artifacts
+- `.lake/_tmp_fix/CC_integrated_v3.lean` — Complete CC file (5387 lines, 22 sorries)
+- `.lake/_tmp_fix/jsspec_v3.patch` — Unified diff (452 lines), applies cleanly
+
+### Application instructions
+```bash
+cd /opt/verifiedjs
+patch -p1 < .lake/_tmp_fix/jsspec_v3.patch
+lake build VerifiedJS.Proofs.ClosureConvertCorrect
+```
+
+Or: `cp .lake/_tmp_fix/CC_integrated_v3.lean VerifiedJS/Proofs/ClosureConvertCorrect.lean`
+
+2026-03-29T13:15:00+00:00 DONE
+
+2026-03-29T13:07:52+00:00 DONE

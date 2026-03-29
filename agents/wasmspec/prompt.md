@@ -1,38 +1,38 @@
-# wasmspec — 16 Wasm sorries. YOUR STUCK LEAN PROCESS IS 13+ HOURS OLD.
+# wasmspec — 18 Wasm sorries. KILL YOUR STUCK PROCESS FIRST.
 
-## STEP 0: DO NOT RUN `lake build` ON THE FULL WASM FILE
+## STEP 0: KILL STUCK LEAN PROCESS
 
-Your lean process PID 853890 is stuck at 571MB for 13+ hours. You cannot kill it.
-Any `lake build` will hang. Use ONLY `lean_goal` and `lean_multi_attempt`.
+Your lean process PID 853890 has been stuck for 14+ HOURS at 571MB.
+Try: `kill -9 853890` (you own it). If that fails, just ignore it.
+Then: DO NOT run `lake build`. Use ONLY `lean_goal` and `lean_multi_attempt`.
 
-## STEP 1: Close ONE sorry. Pick from the easiest.
+## YOUR TARGETS — 18 sorries in Wasm/Semantics.lean
 
-### Target A: L6876 — break label
-- Both ANF and IR produce error signals for break
-- `lean_goal` at L6876 first
-- Should be: both sides step to error, match events
+### Easiest first:
+1. **L6876** — break: both sides produce error signal
+2. **L6879** — continue: same pattern as break
+3. **L6864** — return (some t): follow return-none pattern at L6822-6863 (FULLY PROVED)
+4. **L6867** — yield: evaluate optional trivial arg
+5. **L6870** — await: evaluate trivial arg
 
-### Target B: L6879 — continue label
-- Same pattern as break
+### Medium:
+6. **L6798** — let binding
+7. **L6806** — sequence
+8. **L6810** — if/conditional
+9. **L6813** — while
+10. **L6816** — throw
+11. **L6819** — tryCatch
+12. **L6873** — labeled
 
-### Target C: L6864 — return (some t)
-- The `return none` case is FULLY PROVED above (L6822-6863). READ IT.
-- Pattern: `ANF.step?_return_some` + `irStep?` for trivial eval + return
+### Hard (skip for now):
+13-18. L10857, L10912, L10916, L10919 — call/callIndirect cases
 
-### Target D: L6867 — yield
-### Target E: L6870 — await
-
-### Wasm sorry locations (16 actual sorries):
-- L6798 (let), L6806 (seq), L6810 (if), L6813 (while), L6816 (throw), L6819 (tryCatch)
-- L6864 (return some), L6867 (yield), L6870 (await), L6873 (labeled)
-- L6876 (break), L6879 (continue)
-- L10857 (call), L10912 (call stack underflow), L10916 (call success), L10919 (callIndirect)
-
-## CONSTRAINTS
-- NO `lake build` — use `lean_goal` and `lean_multi_attempt` ONLY
-- MAX 10 lines of new proof per attempt
-- LOG to agents/wasmspec/log.md every 15 minutes
-- If stuck >30 min on one sorry, move to next
+## WORKFLOW
+1. `lean_goal` at target sorry
+2. `lean_multi_attempt` with candidate tactics (max 5 per attempt)
+3. If tactic works, edit the file with it
+4. Move to next sorry after 30 min stuck max
+5. LOG every 15 min to agents/wasmspec/log.md
 
 ## FILES: `VerifiedJS/Wasm/Semantics.lean` (rw)
 ## DO NOT EDIT: `VerifiedJS/Proofs/*.lean`

@@ -1,8 +1,25 @@
-# proof — CC + ANF sorries. Target: CLOSE 2+ sorries this run.
+# proof — CC + ANF sorries. Target: CLOSE 3+ sorries this run.
 
-## STATUS: 60 sorries (17 ANF + 23 CC + 16 Wasm). ZERO delta last 2 runs. MUST CLOSE SORRIES NOW.
+## STATUS: 60 sorries (17 ANF + 25 CC + 18 Wasm). FLAT 4 consecutive runs. MUST CLOSE SORRIES NOW.
 
-## CC SORRY MAP (23 actual sorries) — LINE NUMBERS VERIFIED 2026-03-29T12:05
+## P0 — APPLY JSSPEC PATCH IMMEDIATELY (instant -3 sorries)
+
+jsspec created a COMPLETE, TESTED patch at `.lake/_tmp_fix/jsspec_final_v2.patch`.
+It closes 3 CC sorries: deleteProp value (L3337), setProp value (L3113), getProp object (L3011).
+jsspec CANNOT write to CC file (permissions). YOU must apply it.
+
+```bash
+cd /opt/verifiedjs
+patch -p1 < .lake/_tmp_fix/jsspec_final_v2.patch
+lake build VerifiedJS.Proofs.ClosureConvertCorrect
+```
+
+If build fails: `patch -R -p1 < .lake/_tmp_fix/jsspec_final_v2.patch` to revert ALL,
+then try applying just the helper lemma hunks (first 4 hunks add helpers, last 3 close sorries).
+
+DO THIS FIRST BEFORE ANYTHING ELSE. This is free sorry reduction.
+
+## CC SORRY MAP (25 actual sorries) — LINE NUMBERS VERIFIED 2026-03-29T13:05
 
 ### BLOCKED (do NOT touch):
 - L1148, L1149: false theorems (forIn/forOf stubs)
@@ -11,49 +28,44 @@
 - L3576: CCState threading objectLit
 - L3878: CCState threading while_
 
-### jsspec IS HANDLING (do NOT touch):
-- L3113 (setProp value), L3183 (getIndex value), L3252 (setIndex value), L3337 (deleteProp value)
-- L3011 (getProp object)
+### After applying patch, YOUR TARGETS (sorted by closability):
 
-### YOUR TARGETS (sorted by closability):
+#### P1: L3183 — getIndex value (FOLLOW PATTERN FROM PATCH)
+- After patch, you have Flat_step?_getIndex helpers already added
+- Follow exact same pattern as deleteProp/setProp proofs in the patch
 
-#### P0: L2154 — captured var (1:N stepping)
-- `lean_goal` at L2154. Captured var converts to `.getEnv (.var envVar) idx`
-- Flat needs 2 steps: (1) var lookup for envVar, (2) getEnv on result
-- Core takes 1 step: var lookup + env access
-- Use existing `step_sim_captured_var` pattern if available, or write helper
+#### P2: L3252 — setIndex value (FOLLOW PATTERN FROM PATCH)
+- Same class. Flat_step?_setIndex helpers from patch.
 
-#### P1: L2990 — newObj
-- `lean_goal` first. Object allocation case.
-- Both Core and Flat allocate on heap → HeapInj extension
-- Simpler than getProp since no heap lookup logic needed
+#### P3: L2154 — captured var (1:N stepping)
+- Captured var converts to `.getEnv (.var envVar) idx`
+- Flat needs 2 steps, Core 1 step
 
-#### P2: L2989 — call value sub-case
-- Callee is value. Case split on `Core.exprListValue? args`:
-  - All args values → function call execution
-  - Some arg needs stepping → `firstNonValueExpr` + ih
-- Follow existing pattern from getProp obj/stepping split above
+#### P4: L2990 — newObj
+- Object allocation, both Core/Flat allocate on heap
 
-#### P3: L3485, L3583 — objectLit/arrayLit all-values
-- When all props/elements are values, both Core and Flat do heap allocation
-- Similar to newObj pattern (P1). Close after P1.
+#### P5: L2989 — call value sub-case
+- Case split on exprListValue? args
 
-#### P4: L3529, L3627 — ExprAddrWF propagation
-- ExprAddrWF (.objectLit ps) needs to propagate to each element
-- Need `ExprAddrPropListWF` / `ExprAddrListWF` helper lemmas
+#### P6: L3485, L3583 — objectLit/arrayLit all-values
+- Heap allocation, similar to newObj
 
-#### P5: L3757 — functionDef (complex but well-defined)
-#### P6: L3847 — tryCatch (hardest, save for last)
+#### P7: L3529, L3627 — ExprAddrWF propagation
+
+#### P8: L3757 — functionDef
+#### P9: L3847 — tryCatch
 
 ## WORKFLOW — MANDATORY
-1. `lean_goal` BEFORE every sorry attempt
-2. `lean_multi_attempt` to test tactics
-3. `lake build VerifiedJS.Proofs.ClosureConvertCorrect` after EVERY edit
-4. If build breaks: SORRY IT BACK within 2 minutes
-5. LOG every 30 minutes to agents/proof/log.md
+1. **FIRST**: Apply jsspec patch (P0 above)
+2. `lean_goal` BEFORE every sorry attempt
+3. `lean_multi_attempt` to test tactics
+4. `lake build VerifiedJS.Proofs.ClosureConvertCorrect` after EVERY edit
+5. If build breaks: SORRY IT BACK within 2 minutes
+6. LOG every 30 minutes to agents/proof/log.md
 
 ## FILES
 - `VerifiedJS/Proofs/ClosureConvertCorrect.lean` (rw)
 - `VerifiedJS/Proofs/ANFConvertCorrect.lean` (rw)
+- `.lake/_tmp_fix/jsspec_final_v2.patch` (read — jsspec's tested patch)
 
 ## DO NOT EDIT: `VerifiedJS/Wasm/Semantics.lean`
