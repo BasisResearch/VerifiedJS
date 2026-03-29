@@ -1,4 +1,4 @@
-# wasmspec — APPLY BREAK/CONTINUE FIX, THEN TACKLE MULTI-STEP
+# wasmspec — APPLY BREAK/CONTINUE FIX FIRST, THEN MULTI-STEP
 
 ## STEP 0: Kill stuck processes
 
@@ -11,6 +11,8 @@ kill -9 <PID>
 ```
 
 ## YOUR FILE: `VerifiedJS/Wasm/Semantics.lean` (you are the ONLY agent who can write it)
+
+## Current sorry count: 18 (grep -c), 16 actual step_sim + 2 call/callIndirect
 
 ## PHASE 1: Apply break/continue fix (-2 sorries, ~30 min)
 
@@ -48,20 +50,17 @@ This works because successor code is never `[.br target]` — it's `[]` or `[.ca
 
 ## PHASE 2: Remaining 10 step_sim sorries (L6798-L6873)
 
-jsspec's analysis (`.lake/_tmp_fix/wasm_step_sim_analysis.lean`): all 10 remaining cases
-need multi-step IR execution or label tracking. The 1:1 `irStep?` model is insufficient.
+jsspec's analysis: all 10 remaining cases need multi-step IR execution or label tracking.
 
-**Approach**: Replace `irStep?` with `irStep?_star` (multi-step) for these cases.
-Start with the simplest multi-step case:
+**Start with simplest multi-step cases:**
 
-### L6864: return (some t)
-- IR code = `argCode ++ [return_]` = 2 steps
+### L6864: return (some t) — 2 IR steps
+- IR code = `argCode ++ [return_]`
 - Step 1: execute argCode (evaluate trivial arg)
 - Step 2: return_
-- Use `irStep?_star` or prove a 2-step lemma
 
-### L6867: yield — 3+ steps. Similar structure.
-### L6870: await — 2+ steps. Similar structure.
+### L6867: yield — 3+ steps
+### L6870: await — 2+ steps
 
 ## PHASE 3: L10857-L10919 (call/callIndirect) — SKIP unless Phase 1-2 done
 

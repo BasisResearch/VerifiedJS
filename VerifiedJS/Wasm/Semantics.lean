@@ -6644,6 +6644,10 @@ structure LowerSimRel (prog : ANF.Program) (irmod : IRModule)
   hlabels_empty : ir.labels = []
   /- Exactly one frame (top-level). -/
   hframes_one : ir.frames.length = 1
+  /- break/continue lower to [br target] which needs a matching label.
+     With empty labels, br traps and traces diverge. -/
+  hcode_no_br : ∀ target, ir.code = [IRInstr.br target] →
+    ∃ idx lbl, irFindLabel? ir.labels target = some (idx, lbl)
 
 namespace LowerSimRel
 
@@ -6681,6 +6685,8 @@ theorem init (prog : ANF.Program) (irmod : IRModule)
     exfalso; unfold irInitialState at hc; split at hc <;> simp at hc
   hlabels_empty := by simp [irInitialState]
   hframes_one := by simp [irInitialState]
+  hcode_no_br := by
+    intro _ h; exfalso; unfold irInitialState at h; split at h <;> simp at h
 
 /-- Step simulation (1:1): if the ANF takes one step, the IR takes a matching step.
     Now provable with LowerCodeCorr: case analysis on the ANF expression form
@@ -6761,6 +6767,7 @@ theorem step_sim (prog : ANF.Program) (irmod : IRModule) :
           hlocal_valid := by intro _ _ h; simp at h
           hlabels_empty := hrel.hlabels_empty
           hframes_one := hrel.hframes_one
+          hcode_no_br := by intro _ h; simp at h
         }
     | .trivial .litNull =>
         -- Literal null: ANF.step? returns none for literals, contradiction with heq
@@ -6860,6 +6867,7 @@ theorem step_sim (prog : ANF.Program) (irmod : IRModule) :
             hlocal_valid := by intro _ _ h; simp at h
             hlabels_empty := rfl
             hframes_one := by simp [hfr]
+            hcode_no_br := by intro _ h; simp at h
           }⟩
         | some t => sorry
     | .yield arg delegate =>
@@ -6945,6 +6953,7 @@ theorem step_sim_return_litNull (prog : ANF.Program) (irmod : IRModule)
     hlocal_valid := by intro _ _ h; simp at h
     hlabels_empty := rfl
     hframes_one := by simp [hfr]
+    hcode_no_br := by intro _ h; simp at h
   }
 
 /-- Stuttering step simulation for `return (some (.litNum n))`:
@@ -7006,6 +7015,7 @@ theorem step_sim_return_litNum (prog : ANF.Program) (irmod : IRModule)
     hlocal_valid := by intro _ _ h; simp at h
     hlabels_empty := rfl
     hframes_one := by simp [hfr]
+    hcode_no_br := by intro _ h; simp at h
   }
 
 /-- Stuttering step simulation for `return (some (.var name))`:
@@ -7079,6 +7089,7 @@ theorem step_sim_return_var (prog : ANF.Program) (irmod : IRModule)
     hlocal_valid := by intro _ _ h; simp at h
     hlabels_empty := rfl
     hframes_one := by simp [hfr]
+    hcode_no_br := by intro _ h; simp at h
   }
 
 /-- Stuttering step simulation for `return (some .litUndefined)`:
@@ -7140,6 +7151,7 @@ theorem step_sim_return_litUndefined (prog : ANF.Program) (irmod : IRModule)
     hlocal_valid := by intro _ _ h; simp at h
     hlabels_empty := rfl
     hframes_one := by simp [hfr]
+    hcode_no_br := by intro _ h; simp at h
   }
 
 /-- Stuttering step simulation for `return (some (.litBool true))`:
@@ -7200,6 +7212,7 @@ theorem step_sim_return_litBoolTrue (prog : ANF.Program) (irmod : IRModule)
     hlocal_valid := by intro _ _ h; simp at h
     hlabels_empty := rfl
     hframes_one := by simp [hfr]
+    hcode_no_br := by intro _ h; simp at h
   }
 
 /-- Stuttering step simulation for `return (some (.litBool false))`:
@@ -7260,6 +7273,7 @@ theorem step_sim_return_litBoolFalse (prog : ANF.Program) (irmod : IRModule)
     hlocal_valid := by intro _ _ h; simp at h
     hlabels_empty := rfl
     hframes_one := by simp [hfr]
+    hcode_no_br := by intro _ h; simp at h
   }
 
 /-- Stuttering step simulation for `return (some (.litObject addr))`:
@@ -7318,6 +7332,7 @@ theorem step_sim_return_litObject (prog : ANF.Program) (irmod : IRModule)
     hlocal_valid := by intro _ _ h; simp at h
     hlabels_empty := rfl
     hframes_one := by simp [hfr]
+    hcode_no_br := by intro _ h; simp at h
   }
 
 /-- Stuttering step simulation for `return (some (.litStr s))`:
@@ -7379,6 +7394,7 @@ theorem step_sim_return_litStr (prog : ANF.Program) (irmod : IRModule)
     hlocal_valid := by intro _ _ h; simp at h
     hlabels_empty := rfl
     hframes_one := by simp [hfr]
+    hcode_no_br := by intro _ h; simp at h
   }
 
 /-- Stuttering step simulation for `return (some (.litClosure fi ep))`:
@@ -7440,6 +7456,7 @@ theorem step_sim_return_litClosure (prog : ANF.Program) (irmod : IRModule)
     hlocal_valid := by intro _ _ h; simp at h
     hlabels_empty := rfl
     hframes_one := by simp [hfr]
+    hcode_no_br := by intro _ h; simp at h
   }
 
 /-- Step simulation (stuttering): if the ANF takes one step, the IR takes

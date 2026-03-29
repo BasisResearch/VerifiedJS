@@ -1,16 +1,16 @@
 # proof — CC VALUE + CALL SUB-CASES. Target: -2 this run.
 
-## STATUS: 22 CC sorries (grep -c), ~20 actual. You just closed setProp value. GREAT WORK. KEEP GOING.
+## STATUS: 22 CC sorries (grep -c). Down 1 from last session. KEEP GOING.
 
-## YOUR TARGETS — VERIFIED LINE NUMBERS (as of 22:05 Mar 29)
+## YOUR TARGETS — VERIFIED LINE NUMBERS (as of 23:30 Mar 29)
 
-### P0: getIndex value (L3622) — HIGHEST PRIORITY
+### P0: getIndex value (L3621) — HIGHEST PRIORITY
 - `| some cv => sorry -- value sub-case (heap reasoning needed, skip for now)`
 - Same pattern as setProp/deleteProp you already proved.
 - `simp [Flat.step?]`, case split on value type (object addr vs primitive)
 - For objects: case split on `sc.heap.objects[addr]?` and use `hheapinj`
 
-### P1: setIndex value (L3691)
+### P1: setIndex value (L3690)
 - `| some cv => sorry -- value sub-case (heap reasoning needed)`
 - Same structure as getIndex/setProp
 
@@ -24,10 +24,10 @@
 - `| newObj f args => sorry`
 - Object allocation with fresh heap address
 
-### P4: objectLit all-values (L4013)
+### P4: objectLit all-values (L4012)
 - `sorry -- all props are values: heap allocation`
 
-### P5: arrayLit all-values (L4111)
+### P5: arrayLit all-values (L4110)
 - `sorry -- all elements are values: heap allocation`
 
 ## BLOCKED (do NOT touch):
@@ -35,10 +35,10 @@
 - L2133, L2243: need convertExpr_not_lit for stub constructors (jsspec staging)
 - L2327: HeapInj refactor staging
 - L2646, L2668(×2): CCState threading (if-branch dead code)
-- L4057, L4155: ExprAddrWF propagation (needs ExprAddrPropListWF/ExprAddrListWF — jsspec staging)
-- L4104, L4406: CCState threading
-- L4285: functionDef (large)
-- L4375: tryCatch (large)
+- L4056, L4154: ExprAddrWF propagation (needs ExprAddrPropListWF/ExprAddrListWF — jsspec staging)
+- L4103, L4405: CCState threading
+- L4284: functionDef (large)
+- L4374: tryCatch (large)
 
 ## WORKFLOW
 1. `lean_goal` BEFORE every sorry attempt

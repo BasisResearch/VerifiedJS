@@ -3545,13 +3545,10 @@ private theorem closureConvert_step_simulation
         · simp [sc', noCallFrameReturn]; exact hncfr'
         · simp only [sc']; simp only [ExprAddrWF]
           exact ⟨ValueAddrWF_mono hcv_wf (Core_step_heap_size_mono hcstep_sub), hexprwf'⟩
-        · have hval := convertExpr_state_determined value scope envVar envMap
-              st st_a' hAgreeOut.1 hAgreeOut.2
-          exact ⟨st_a, (Flat.convertExpr value scope envVar envMap st_a').snd, by
-            simp only [sc', Flat.convertExpr, Flat.convertValue]
-            rw [show (Flat.convertExpr sc_sub'.expr scope envVar envMap st_a).fst = sa.expr from (congrArg Prod.fst hconv').symm]
-            rw [show (Flat.convertExpr sc_sub'.expr scope envVar envMap st_a).snd = st_a' from (congrArg Prod.snd hconv').symm]
-            exact ⟨congrArg _ hval.1, rfl⟩, hAgreeIn, by rw [hst]; exact hval.2⟩
+        · refine ⟨st_a, st_a', ?_, hAgreeIn, by rw [hst]; exact hAgreeOut⟩
+          simp only [sc', Flat.convertExpr, Flat.convertValue]
+          rw [show (Flat.convertExpr sc_sub'.expr scope envVar envMap st_a).fst = sa.expr from (congrArg Prod.fst hconv').symm]
+          rw [show (Flat.convertExpr sc_sub'.expr scope envVar envMap st_a).snd = st_a' from (congrArg Prod.snd hconv').symm]
     | none =>
       have hfnv : Flat.exprValue? (Flat.convertExpr obj scope envVar envMap st).fst = none :=
         convertExpr_not_value obj hcev scope envVar envMap st
