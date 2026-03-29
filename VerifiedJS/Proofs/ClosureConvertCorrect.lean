@@ -3091,8 +3091,25 @@ private theorem closureConvert_step_simulation
         · simp [sc', noCallFrameReturn]
         · -- ExprAddrWF: heap lookup result has valid addresses (from HeapValuesWF)
           sorry -- ValueAddrWF for heap-lookup result: needs HeapValuesWF + List.find? membership
-        · -- CCState agreement: sf'.expr = convertExpr sc'.expr (same heap lookup modulo convertValue)
-          sorry -- heap lookup correspondence: needs heapObjectAt?_eq + HeapCorr_get + coreToFlatValue_eq_convertValue
+        · -- CCState agreement: sf'.expr = convertExpr sc'.expr
+          refine ⟨st, st, ?_, ⟨rfl, rfl⟩, by subst hst; exact ⟨rfl, rfl⟩⟩
+          simp only [sc', Flat.convertExpr, Flat.convertValue, coreResult]
+          -- Both sides compute a value from the heap. Relate via HeapCorr.
+          have haddr : addr < sc.heap.objects.size := by simp [ExprAddrWF, ValueAddrWF] at hexprwf; exact hexprwf
+          have hheap_eq : sc.heap.objects[addr]? = sf.heap.objects[addr]? := HeapCorr_get hinj haddr
+          have hobj_eq : Flat.heapObjectAt? sf.heap addr = sc.heap.objects[addr]? := by
+            rw [heapObjectAt?_eq]; exact hheap_eq.symm
+          -- Rewrite the Flat side to use sc.heap
+          rw [hobj_eq]
+          cases sc.heap.objects[addr]? with
+          | none => rfl
+          | some props =>
+            simp only []
+            cases props.find? (fun (k : Core.PropName × Core.Value) => k.fst == prop) with
+            | none => rfl
+            | some kv =>
+              obtain ⟨k, v⟩ := kv
+              simp only [coreToFlatValue_eq_convertValue]
       · -- String case: length or undefined
         have : Flat.convertValue (.string str) = .string str := rfl
         rw [this] at hstep hsf_eta hfexpr
