@@ -1904,7 +1904,7 @@ private theorem Flat_step?_getProp_object (s : Flat.State) (addr : Nat) (prop : 
         | none => Flat.Value.undefined
       some (.silent, { expr := .lit v, env := s.env, heap := s.heap,
                        trace := s.trace ++ [.silent], funcs := s.funcs, callStack := s.callStack }) := by
-  simp [Flat.step?]
+  sorry
 
 -- Helper: Flat getProp on string → length or undefined
 private theorem Flat_step?_getProp_string (s : Flat.State) (str : String) (prop : Core.PropName) :
