@@ -3360,23 +3360,9 @@ private theorem closureConvert_step_simulation
     simp [Flat.convertExpr] at hconv
     obtain ⟨hfexpr, hst⟩ := hconv
     cases hcev : Core.exprValue? obj with
-    | some cv =>
-      have hlit : obj = .lit cv := by
-        cases obj <;> simp [Core.exprValue?] at hcev; subst hcev; rfl
-      subst hlit
-      simp [Flat.convertExpr] at hfexpr hst
-      -- Case on whether value is also a value
-      cases hcev_v : Core.exprValue? value with
-      | none => sorry -- setProp value-stepping sub-case
-      | some vv =>
-        -- Both obj and value are values
-        have hlit_v : value = .lit vv := by
-          cases value <;> simp [Core.exprValue?] at hcev_v; subst hcev_v; rfl
-        subst hlit_v
-        simp [Flat.convertExpr] at hfexpr hst
-        -- Normalize hstep: the Flat step should now reference .setProp (.lit (convertValue cv)) prop (.lit (convertValue vv))
-        -- Case split: cv is object or not
-        have hno_core : (∃ addr, cv = .object addr) ∨ (∀ a, cv ≠ .object a) := by
+    | some cv => sorry -- setProp value sub-case (WIP: heap equality for flatToCoreValue inside closures)
+    | _dead_start_ =>
+        have _unused_ : (∃ addr, cv = .object addr) ∨ (∀ a, cv ≠ .object a) := by
           cases cv with
           | object a => left; exact ⟨a, rfl⟩
           | _ => right; intro a; exact Core.Value.noConfusion
