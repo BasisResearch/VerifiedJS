@@ -1,5 +1,59 @@
 # jsspec agent log
 
+## 2026-03-29T21:00 — ANF break/continue helpers + normalizeExpr inversion staged
+
+### Summary
+Staged 2 new files for P2 (ANF per-constructor stepping). Both compile clean (0 error).
+Deep analysis of all 17 ANF sorries identified the common blocker: normalizeExpr inversion.
+
+### New staged files (both compile, 0 error)
+
+1. **`.lake/_tmp_fix/anf_break_continue.lean`** — Break/continue step sim helpers
+   - `normalizeExpr_break_eq` / `normalizeExpr_continue_eq`: normalizeExpr identity (0 sorry)
+   - `k_triv_not_break` / `k_triv_not_continue`: k can never produce break/continue (0 sorry)
+   - `normalizeExpr_lit_undefined_trivial`: post-break terminal state normalization (0 sorry)
+   - `normalizeExpr_depth0_break_inv` / `normalizeExpr_depth0_continue_inv`: inversion at depth 0 (0 sorry)
+   - Complete integration guide for L3424/L3426 in anfConvert_step_star
+   - Architectural analysis of compound case difficulty
+
+2. **`.lake/_tmp_fix/anf_normalizeExpr_inversion.lean`** — General normalizeExpr inversion
+   - `k_triv_only_trivial`: k with hk_triv produces only .trivial (0 sorry)
+   - `normalizeExpr_terminal_classification`: depth-0 output classification (0 sorry)
+   - Comprehensive sorry analysis table for all 17 ANF sorries
+   - Priority ordering for closing sorries
+
+### Key findings
+
+**ALL 17 ANF sorries depend on normalizeExpr inversion**: Given `normalizeExpr sf.expr k = .ok (anf_expr, m)`,
+what is sf.expr? This is the universal blocker.
+
+**Depth-0 inversion is fully proven**: If sf.expr.depth = 0, can determine sf.expr exactly.
+
+**Compound case has architectural challenge**: When break fires inside .seq/.let/etc.,
+Flat continues stepping dead code while ANF discards it. The ANF_SimRel can't hold
+for the compound post-state.
+
+**Two resolutions identified**:
+1. Prove break/continue only appear at depth 0 in SimRel states (compiler invariant)
+2. Restructure simulation to handle dead-code absorption
+
+**normalizeExpr evaluation order matches Flat.step?**: Both process sub-expressions
+in the same order (left-to-right, depth-first). This alignment is the foundation
+for all step simulation proofs.
+
+### Sorry dependency graph
+
+```
+normalizeExpr_labeled_step_sim (L3029) — 7 inner sorries
+  └── needs: IH generalization for non-trivial k
+anfConvert_step_star (L3293) — 10 case sorries
+  └── break/continue (L3424/3426): normalizeExpr_break_step_sim
+  └── throw (L3392): normalizeExpr_throw_step_sim
+  └── return/yield/await (L3396-3400): normalizeExpr_return_step_sim
+  └── let/seq/if (L3368-3372): normalizeExpr_compound_step_sim
+  └── tryCatch (L3394): most complex, needs error-catching sim
+```
+
 ## 2026-03-29T20:00 — CC helper lemmas staged (P0, P1), ANF analysis complete (P2)
 
 ### Summary

@@ -3376,6 +3376,9 @@ private theorem closureConvert_step_simulation
         have hlit_v : value = .lit vv := by
           cases value <;> simp [Core.exprValue?] at hcev_v; subst hcev_v; rfl
         subst hlit_v
+        have hcv_v : (Flat.convertExpr (.lit vv) scope envVar envMap st).fst = .lit (Flat.convertValue vv) := by
+          simp [Flat.convertExpr]
+        rw [hcv_v] at hstep
         simp [Flat.convertExpr] at hfexpr hst
         -- Case split: cv is object or not
         have hno_core : (∃ addr, cv = .object addr) ∨ (∀ a, cv ≠ .object a) := by
