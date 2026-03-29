@@ -3584,7 +3584,96 @@ private theorem closureConvert_step_simulation
     simp [Flat.convertExpr] at hconv
     obtain ⟨hfexpr, hst⟩ := hconv
     cases hcev : Core.exprValue? obj with
-    | some cv => sorry -- value sub-case (heap reasoning needed, skip for now)
+    | some cv =>
+      have hlit : obj = .lit cv := by
+        cases obj <;> simp [Core.exprValue?] at hcev; subst hcev; rfl
+      subst hlit
+      simp [Flat.convertExpr] at hfexpr hst
+      have hsf_eta : sf = { sf with expr := .deleteProp (.lit (Flat.convertValue cv)) prop } := by
+        cases sf; simp_all
+      rw [hsf_eta] at hstep
+      -- Case split: cv is object or not
+      have hno_core : (∃ addr, cv = .object addr) ∨ (∀ a, cv ≠ .object a) := by
+        cases cv with
+        | object a => left; exact ⟨a, rfl⟩
+        | _ => right; intro a; exact Core.Value.noConfusion
+      rcases hno_core with ⟨addr, rfl⟩ | hno
+      · -- Object case: heap mutation (filter props at addr)
+        have : Flat.convertValue (.object addr) = .object addr := rfl
+        rw [this] at hstep hsf_eta hfexpr
+        rw [Flat_step?_deleteProp_object_value] at hstep
+        simp at hstep; obtain ⟨hev, hsf'⟩ := hstep; subst hev hsf'
+        have haddr_wf : addr < sc.heap.objects.size := by
+          simp [ExprAddrWF, ValueAddrWF] at hexprwf; exact hexprwf
+        -- Build core result state
+        let coreHeap' := match sc.heap.objects[addr]? with
+          | some props =>
+              { sc.heap with objects := sc.heap.objects.set! addr (props.filter (fun kv => kv.fst != prop)) }
+          | none => sc.heap
+        let sc' : Core.State := ⟨.lit (.bool true), sc.env, coreHeap',
+          sc.trace ++ [.silent], sc.funcs, sc.callStack⟩
+        refine ⟨injMap, sc', ⟨?_⟩, ?_, ?_, ?_, ?_, ?_, ?_, ?_, ?_⟩
+        · -- Core step
+          have hsc' : sc = { sc with expr := .deleteProp (.lit (.object addr)) prop } := by
+            obtain ⟨_, _, _, _, _, _⟩ := sc; simp only [] at hsc; subst hsc; rfl
+          rw [hsc']
+          have := Core.step?_deleteProp_object_val addr prop sc.env sc.heap sc.trace sc.funcs sc.callStack
+          simp only [Core.pushTrace, sc', coreHeap'] at this ⊢; exact this
+        · -- trace
+          simp [sc', htrace]
+        · -- HeapInj: both heaps do same set! at addr
+          simp only [sc', coreHeap']
+          rw [heapObjectAt?_eq, ← HeapInj_get hinj haddr_wf]
+          cases sc.heap.objects[addr]? with
+          | none => exact hinj
+          | some props => exact HeapInj_set_same hinj addr haddr_wf _
+        · -- EnvCorrInj
+          exact henvCorr
+        · -- EnvAddrWF
+          simp only [sc', coreHeap']
+          cases sc.heap.objects[addr]? with
+          | none => exact henvwf
+          | some props =>
+            exact EnvAddrWF_mono henvwf (by simp [size_set!])
+        · -- HeapValuesWF
+          simp only [sc', coreHeap']
+          cases hprops : sc.heap.objects[addr]? with
+          | none => exact hheapvwf
+          | some props =>
+            exact HeapValuesWF_set_at hheapvwf (fun kv hkv =>
+              ValueAddrWF_mono
+                (hheapvwf addr haddr_wf props hprops kv ((List.mem_filter.mp hkv).1))
+                (by simp [size_set!]))
+        · -- noCallFrameReturn
+          simp [sc', noCallFrameReturn]
+        · -- ExprAddrWF
+          simp only [sc', ExprAddrWF, ValueAddrWF]
+        · -- CCState threading
+          refine ⟨st, st, ?_, ⟨rfl, rfl⟩, by subst hst; exact ⟨rfl, rfl⟩⟩
+          simp only [sc', Flat.convertExpr, Flat.convertValue]
+      · -- Non-object case: heap unchanged, both return .lit (.bool true)
+        have hno_flat : ∀ addr, Flat.convertValue cv ≠ .object addr :=
+          convertValue_not_object cv hno
+        rw [Flat_step?_deleteProp_nonobject_value _ _ _ hno_flat] at hstep
+        simp at hstep; obtain ⟨hev, hsf'⟩ := hstep; subst hev hsf'
+        let sc' : Core.State := ⟨.lit (.bool true), sc.env, sc.heap,
+          sc.trace ++ [.silent], sc.funcs, sc.callStack⟩
+        refine ⟨injMap, sc', ⟨?_⟩, ?_, ?_, ?_, ?_, ?_, ?_, ?_, ?_⟩
+        · -- Core step
+          have hsc' : sc = { sc with expr := .deleteProp (.lit cv) prop } := by
+            obtain ⟨_, _, _, _, _, _⟩ := sc; simp only [] at hsc; subst hsc; rfl
+          rw [hsc']
+          have := Core.step?_deleteProp_nonobject_val cv prop sc.env sc.heap sc.trace sc.funcs sc.callStack hno
+          simp only [Core.pushTrace, sc'] at this ⊢; exact this
+        · simp [sc', htrace]
+        · exact hinj
+        · exact henvCorr
+        · exact henvwf
+        · exact hheapvwf
+        · simp [sc', noCallFrameReturn]
+        · simp [sc', ExprAddrWF, ValueAddrWF]
+        · refine ⟨st, st, ?_, ⟨rfl, rfl⟩, by subst hst; exact ⟨rfl, rfl⟩⟩
+          simp [sc', Flat.convertExpr, Flat.convertValue]
     | none =>
       have hfnv : Flat.exprValue? (Flat.convertExpr obj scope envVar envMap st).fst = none :=
         convertExpr_not_value obj hcev scope envVar envMap st
