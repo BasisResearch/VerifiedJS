@@ -2911,15 +2911,19 @@ private theorem closureConvert_step_simulation
       have hsf_eta : sf = { sf with expr := .getProp (.lit (Flat.convertValue cv)) prop } := by
         cases sf; simp_all
       rw [hsf_eta] at hstep
-      -- Determine both step results by case-splitting on cv
-      cases cv with
-      | object addr =>
-        -- HeapCorr + ExprAddrWF give us the same heap lookup
+      -- Handle all three sub-cases: object (heap lookup), string (length), primitive (undefined)
+      -- First establish that cv determines the Core value type
+      have hno_core : (∃ addr, cv = .object addr) ∨ (∃ str, cv = .string str) ∨ (∀ a, cv ≠ .object a) ∧ (∀ s, cv ≠ .string s) := by
+        cases cv with
+        | object a => left; exact ⟨a, rfl⟩
+        | string s => right; left; exact ⟨s, rfl⟩
+        | _ => right; right; exact ⟨fun a h => nomatch h, fun s h => nomatch h⟩
+      rcases hno_core with ⟨addr, rfl⟩ | ⟨str, rfl⟩ | ⟨hno, hns⟩
+      · -- Object case: heap property lookup
         have haddr : addr < sc.heap.objects.size := by
           simp [ExprAddrWF, ValueAddrWF] at hexprwf; exact hexprwf
         have hheap_eq : sc.heap.objects[addr]? = sf.heap.objects[addr]? :=
           HeapInj_get hinj haddr
-        -- Determine Flat step result
         have hfstep : Flat.step? { sf with expr := .getProp (.lit (.object addr)) prop } =
             some (.silent, { expr := .lit (match sf.heap.objects[addr]? with
               | some props =>
@@ -2932,7 +2936,6 @@ private theorem closureConvert_step_simulation
           simp [Flat.step?, Flat.exprValue?, Flat.pushTrace, heapObjectAt?_eq]
         rw [hfstep] at hstep
         simp at hstep; obtain ⟨hev, hsf'⟩ := hstep; subst hev hsf'
-        -- Define the Core result value
         let coreResult := match sc.heap.objects[addr]? with
           | some props =>
               match props.find? (fun kv => kv.fst == prop) with
@@ -2942,8 +2945,7 @@ private theorem closureConvert_step_simulation
         let sc' : Core.State := ⟨.lit coreResult, sc.env, sc.heap,
           sc.trace ++ [.silent], sc.funcs, sc.callStack⟩
         refine ⟨injMap, sc', ⟨?_⟩, ?_, ?_, ?_, ?_, ?_, ?_, ?_, ?_⟩
-        · -- Core.step?
-          have hsc' : sc = { sc with expr := .getProp (.lit (.object addr)) prop } := by
+        · have hsc' : sc = { sc with expr := .getProp (.lit (.object addr)) prop } := by
             obtain ⟨_, _, _, _, _, _⟩ := sc; simp only [] at hsc; subst hsc; rfl
           rw [hsc']
           have := Core.step?_getProp_object_val addr prop sc.env sc.heap sc.trace sc.funcs sc.callStack
@@ -2954,8 +2956,7 @@ private theorem closureConvert_step_simulation
         · exact henvwf
         · exact hheapvwf
         · simp [sc', noCallFrameReturn]
-        · -- ExprAddrWF: result value from heap has valid addresses
-          simp only [sc', ExprAddrWF]
+        · simp only [sc', ExprAddrWF]
           show ValueAddrWF coreResult sc.heap.objects.size
           simp only [coreResult]
           cases hobj : sc.heap.objects[addr]? with
@@ -2965,13 +2966,8 @@ private theorem closureConvert_step_simulation
             | none => split <;> simp [ValueAddrWF]
             | some kv =>
               exact hheapvwf addr haddr props hobj kv (List.find?_mem hfind)
-        · -- CCState: trivial since lit doesn't change state
-          refine ⟨st, st, ?_, ⟨rfl, rfl⟩, by subst hst; exact ⟨rfl, rfl⟩⟩
-          -- Conversion equality: need sf'.expr = convertExpr (.lit coreResult) ... st .fst
+        · refine ⟨st, st, ?_, ⟨rfl, rfl⟩, by subst hst; exact ⟨rfl, rfl⟩⟩
           simp only [sc', Flat.convertExpr, coreResult]
-          -- The Flat result should be convertValue of Core result
-          -- Flat result: match sf.heap..., Core result: match sc.heap...
-          -- Since sf.heap and sc.heap agree at addr:
           rw [← hheap_eq]
           cases sc.heap.objects[addr]? with
           | none => simp [Flat.convertValue, Flat.coreToFlatValue]
@@ -2979,8 +2975,7 @@ private theorem closureConvert_step_simulation
             cases props.find? (fun kv => kv.fst == prop) with
             | none => split <;> simp [Flat.convertValue]
             | some kv => rw [coreToFlatValue_eq_convertValue]
-      | string str =>
-        -- Both return length or undefined for string properties
+      · -- String case: length or undefined
         have hfstep : Flat.step? { sf with expr := .getProp (.lit (.string str)) prop } =
             some (.silent, { expr := .lit (if prop == "length" then .number (Float.ofNat str.length) else .undefined),
               env := sf.env, heap := sf.heap,
@@ -3007,11 +3002,8 @@ private theorem closureConvert_step_simulation
         · refine ⟨st, st, ?_, ⟨rfl, rfl⟩, by subst hst; exact ⟨rfl, rfl⟩⟩
           simp only [sc', Flat.convertExpr, coreResult]
           split <;> simp [Flat.convertValue]
-      | null | undefined | bool _ | number _ | function _ =>
-        -- Primitive case: both return undefined
-        have hno_core : ∀ a, cv ≠ .object a := by intro a; cases cv <;> simp
-        have hns_core : ∀ s, cv ≠ .string s := by intro s; cases cv <;> simp
-        rw [Flat_step?_getProp_primitive _ _ prop (convertValue_not_object cv hno_core) (convertValue_not_string cv hns_core)] at hstep
+      · -- Primitive case (null, undefined, bool, number, function): both return undefined
+        rw [Flat_step?_getProp_primitive _ _ prop (convertValue_not_object cv hno) (convertValue_not_string cv hns)] at hstep
         simp at hstep; obtain ⟨hev, hsf'⟩ := hstep; subst hev hsf'
         let sc' : Core.State := ⟨.lit .undefined, sc.env, sc.heap,
           sc.trace ++ [.silent], sc.funcs, sc.callStack⟩
@@ -3019,7 +3011,7 @@ private theorem closureConvert_step_simulation
         · have hsc' : sc = { sc with expr := .getProp (.lit cv) prop } := by
             obtain ⟨_, _, _, _, _, _⟩ := sc; simp only [] at hsc; subst hsc; rfl
           rw [hsc']
-          exact Core_step?_getProp_primitive _ cv prop hno_core hns_core
+          exact Core_step?_getProp_primitive _ cv prop hno hns
         · simp [sc', htrace]
         · exact hinj
         · exact henvCorr
