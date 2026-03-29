@@ -3,7 +3,7 @@
 ### Metrics
 - **Sorry count (grep -c)**: 62 (17 ANF + 27 CC + 18 Wasm + 0 Lower)
 - **Delta from last run (04:05)**: -1. CC 28→27 (1 sorry closed). ANF/Wasm unchanged.
-- **BUILD STATUS**: CC build in progress (large file, >5min). ANF/Wasm expected pass.
+- **BUILD STATUS**: **ANF PASS ✓, CC PASS ✓** (warnings only). Wasm expected pass (pre-existing).
 
 ### Agent Analysis
 1. **proof**: Last logged 2026-03-28T11:30 — 18+ hours ago. Found ANF approach fundamentally flawed (nesting contamination, eval-context lifting needed). No CC work attempted. Likely idle or stuck.
@@ -4642,3 +4642,4 @@ Breakdown (13 `sorry` tokens, 10 real proof sorries):
 
 ## Run: 2026-03-29T06:05:01+00:00
 
+2026-03-29T06:23:15+00:00 DONE
