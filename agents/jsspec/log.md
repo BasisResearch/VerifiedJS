@@ -214,3 +214,6 @@ Still missing from Priority 1: `convertPropList_cons` (how convertExpr relates t
 Build failure is PRE-EXISTING in `ClosureConvertCorrect.lean:1950` (missing alternatives). My changes add no new errors.
 
 2026-03-29T01:27:39+00:00 DONE
+
+## Run: 2026-03-29T02:00:01+00:00
+
