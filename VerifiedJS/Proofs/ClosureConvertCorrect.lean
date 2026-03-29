@@ -1908,6 +1908,100 @@ private theorem convertExprList_append_snd (a b : List Core.Expr)
     simp only [List.cons_append, Flat.convertExprList]
     exact ih _
 
+private theorem propListNoCallFrameReturn_append (a b : List (Core.PropName × Core.Expr)) :
+    propListNoCallFrameReturn (a ++ b) = (propListNoCallFrameReturn a && propListNoCallFrameReturn b) := by
+  induction a with
+  | nil => simp [propListNoCallFrameReturn]
+  | cons hd tl ih =>
+    simp only [List.cons_append, propListNoCallFrameReturn, ih, Bool.and_assoc]
+
+private theorem firstNonValueProp_propListNoCallFrameReturn
+    {props : List (Core.PropName × Core.Expr)} {done name target rest}
+    (hfnv : Core.firstNonValueProp props = some (done, name, target, rest))
+    (hncfr : propListNoCallFrameReturn props = true) :
+    propListNoCallFrameReturn done = true ∧ noCallFrameReturn target = true ∧
+    propListNoCallFrameReturn rest = true := by
+  induction props generalizing done with
+  | nil => simp [Core.firstNonValueProp] at hfnv
+  | cons p ps ih =>
+    obtain ⟨pn, pe⟩ := p
+    simp [propListNoCallFrameReturn] at hncfr
+    unfold Core.firstNonValueProp at hfnv
+    split at hfnv
+    · -- pe = .lit v
+      rename_i v
+      match hrest : Core.firstNonValueProp ps with
+      | some (d, n, t, r) =>
+        simp only [hrest, Option.some.injEq, Prod.mk.injEq] at hfnv
+        obtain ⟨rfl, rfl, rfl, rfl⟩ := hfnv
+        have := ih hrest hncfr.2
+        exact ⟨by simp [propListNoCallFrameReturn, noCallFrameReturn]; exact this.1,
+               this.2.1, this.2.2⟩
+      | none => simp [hrest] at hfnv
+    · -- pe is not .lit
+      simp only [Option.some.injEq, Prod.mk.injEq] at hfnv
+      obtain ⟨rfl, rfl, rfl, rfl⟩ := hfnv
+      exact ⟨by simp [propListNoCallFrameReturn], hncfr.1, hncfr.2⟩
+
+private theorem valuesFromExprList_none_of_firstNonValueProp
+    {props : List (Flat.PropName × Flat.Expr)} {done name target rest}
+    (h : Flat.firstNonValueProp props = some (done, name, target, rest)) :
+    Flat.valuesFromExprList? (props.map Prod.snd) = none := by
+  induction props generalizing done name target rest with
+  | nil => simp [Flat.firstNonValueProp] at h
+  | cons p ps ih =>
+    obtain ⟨pn, pe⟩ := p
+    cases pe with
+    | lit v =>
+      unfold Flat.firstNonValueProp at h
+      simp only [] at h
+      match hrest : Flat.firstNonValueProp ps with
+      | some (d, n, t, r) =>
+        have htail := ih hrest
+        simp [List.map, Flat.valuesFromExprList?, Flat.exprValue?, htail]
+      | none => rw [hrest] at h; simp at h
+    | _ => simp [List.map, Flat.valuesFromExprList?, Flat.exprValue?]
+
+private theorem convertPropList_firstNonValueProp_some
+    (ps : List (Core.PropName × Core.Expr))
+    (scope : List String) (envVar : String) (envMap : Flat.EnvMapping) (st : Flat.CCState)
+    (done : List (Core.PropName × Core.Expr)) (name : Core.PropName) (target : Core.Expr)
+    (rest : List (Core.PropName × Core.Expr))
+    (h : Core.firstNonValueProp ps = some (done, name, target, rest))
+    (hnovalue : Core.exprValue? target = none) :
+    Flat.firstNonValueProp (Flat.convertPropList ps scope envVar envMap st).fst =
+      some ((Flat.convertPropList done scope envVar envMap st).fst,
+            name,
+            (Flat.convertExpr target scope envVar envMap
+              (Flat.convertPropList done scope envVar envMap st).snd).fst,
+            (Flat.convertPropList rest scope envVar envMap
+              (Flat.convertExpr target scope envVar envMap
+                (Flat.convertPropList done scope envVar envMap st).snd).snd).fst) := by
+  sorry -- Same class as convertExprList_firstNonValueExpr_some; needs convertExpr_not_lit for stub constructors
+
+private theorem convertPropList_append (a b : List (Core.PropName × Core.Expr))
+    (scope : List String) (envVar : String) (envMap : Flat.EnvMapping) (st : Flat.CCState) :
+    (Flat.convertPropList (a ++ b) scope envVar envMap st).fst =
+      (Flat.convertPropList a scope envVar envMap st).fst ++
+      (Flat.convertPropList b scope envVar envMap (Flat.convertPropList a scope envVar envMap st).snd).fst := by
+  induction a generalizing st with
+  | nil => simp [Flat.convertPropList]
+  | cons hd tl ih =>
+    obtain ⟨pn, pe⟩ := hd
+    simp only [List.cons_append, Flat.convertPropList]
+    exact congrArg ((pn, (Flat.convertExpr pe scope envVar envMap st).fst) :: ·) (ih _)
+
+private theorem convertPropList_append_snd (a b : List (Core.PropName × Core.Expr))
+    (scope : List String) (envVar : String) (envMap : Flat.EnvMapping) (st : Flat.CCState) :
+    (Flat.convertPropList (a ++ b) scope envVar envMap st).snd =
+      (Flat.convertPropList b scope envVar envMap (Flat.convertPropList a scope envVar envMap st).snd).snd := by
+  induction a generalizing st with
+  | nil => simp [Flat.convertPropList]
+  | cons hd tl ih =>
+    obtain ⟨pn, pe⟩ := hd
+    simp only [List.cons_append, Flat.convertPropList]
+    exact ih _
+
 private theorem closureConvert_step_simulation
     (s : Core.Program) (t : Flat.Program)
     (h : Flat.closureConvert s = .ok t) :
