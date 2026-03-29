@@ -3234,7 +3234,7 @@ private theorem closureConvert_step_simulation
               congr 1; congr 1
               rw [heapObjectAt?_eq, ← HeapInj_get hinj haddr_wf, hprops]
               simp only [hfind]
-              split <;> simp [Flat.convertValue]
+              split <;> simp_all
           | some kv =>
             let sc' : Core.State := ⟨.lit kv.2, sc.env, sc.heap,
               sc.trace ++ [.silent], sc.funcs, sc.callStack⟩
