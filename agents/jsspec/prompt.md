@@ -1,36 +1,36 @@
-# jsspec — BREAK INVERSION + OBJECTLIT STAGING
+# jsspec — BREAK INVERSION + STAGING HELPERS
 
-## STATUS: Your infrastructure work is excellent. 55 total sorries, ZERO change in 4 hours. We need your work to CONVERT to sorry reductions.
+## STATUS: 55 sorries, ZERO change in 4.5 hours. BUILD BROKEN (CC and Wasm). Your break inversion work is the KEY enabler for -2 ANF sorries.
 
-## PRIORITY 0: normalizeExpr break SOURCE CHARACTERIZATION (continued)
+## PRIORITY 0: normalizeExpr break source characterization (CONTINUE)
 
-This is the KEY MISSING PIECE for -2 ANF sorries. You were redirected to this at 18:05. Continue your break inversion work in `.lake/_tmp_fix/VerifiedJS/Proofs/anf_break_inversion.lean`.
+Keep working on `.lake/_tmp_fix/VerifiedJS/Proofs/anf_break_inversion.lean`.
 
-Reminder of what's needed:
-
-Given `normalizeExpr e k = .ok (.break label, m)` with `k` trivial-preserving, prove that Flat can step from `{expr := e}` to `{expr := .break label}` in zero or more steps.
+The lemma needed:
+```
+Given normalizeExpr e k = .ok (.break label, m) with k trivial-preserving,
+Flat can step from {expr := e} to {expr := .break label} in zero or more steps.
+```
 
 Key cases:
 1. `e = .break l` directly → zero steps
-2. `e = .seq a b` where `exprValue? a ≠ none` → one step (drop value), then recurse on b
-3. `e = .seq a b` where a normalizes to value via bindComplex → multi-step a, then recurse on b
+2. `e = .seq a b` where `exprValue? a ≠ none` → one step (drop value), recurse on b
+3. `e = .seq a b` where a normalizes to value → multi-step a, then recurse on b
 
-The proof agent CANNOT close ANF L1948/L1950 without this lemma. Even a partial version (just cases 1+2) is valuable.
+Even a partial version (just cases 1+2) is valuable. Stage it in `.lake/_tmp_fix/`.
 
-## PRIORITY 1: objectLit/arrayLit CC helpers
+## PRIORITY 1: objectLit/arrayLit step helpers
 
-The proof agent is about to work on CC objectLit (L3129). Check if more staging helpers are needed beyond what you already have in `cc_objectLit_arrayLit_helpers.lean`.
-
-Specifically, the proof agent needs:
-1. `Flat.step?_objectLit_prop_step`: When first prop is non-value, Flat steps the inner expression
+The proof agent will need these for CC objectLit (L3129). Check if these exist, if not stage them:
+1. `Flat.step?_objectLit_prop_step`: When first prop is non-value, Flat steps inner
 2. `Core.step?_objectLit_prop_step`: Same for Core
 3. `convertPropList_cons`: How convertExpr relates to stepping through prop list
 
-Check if these exist. If not, stage them in `.lake/_tmp_fix/`.
+Stage in `.lake/_tmp_fix/VerifiedJS/Proofs/cc_objectLit_arrayLit_helpers.lean`.
 
-## PRIORITY 2: Complete "leaf not-break" lemmas
+## PRIORITY 2: Complete leaf not-break lemmas
 
-For the master break inversion, you need: `normalizeExpr (.X ...) k` with trivial-preserving k NEVER produces `.break` for each non-break, non-seq, non-let constructor. Complete the set for:
+For the master break inversion. Complete for:
 - `.getProp`, `.setProp`, `.binary`, `.unary`, `.typeof`, `.deleteProp`
 - `.assign`, `.if`, `.while_`, `.call`, `.newObj`
 

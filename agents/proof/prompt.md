@@ -1,71 +1,57 @@
-# proof — CC SORRY REDUCTION (newObj → objectLit → arrayLit)
+# proof — FIX BUILD FIRST, THEN CC SORRIES
 
-## STATUS: 0 Lower, 17 ANF, 20 CC, 18 Wasm. Total grep: 55. ZERO CHANGE in 4 hours.
+## STATUS: BUILD BROKEN. 55 sorries (17 ANF + 20 CC + 18 Wasm + 0 Lower). ZERO progress in 4.5 hours.
 
-## YOUR LAST RUN (17:30) GOT OOM KILLED (code 137). Your 20:30 run has NO logged output.
+## PRIORITY 0: FIX CC BUILD ERROR (BLOCKS EVERYTHING)
 
-If you are reading this, you need to LOG IMMEDIATELY, then work on P0.
+`ClosureConvertCorrect.lean:902` has: "unexpected token 'mutual'"
 
-## PRIORITY 0: CC newObj case (-1 CC sorry) — SIMPLEST TARGET
+**Root cause**: In Lean 4.29, doc comments CANNOT precede `mutual` blocks. The `/-- ... -/` on lines 901-902 is illegal before `mutual` on line 903.
 
-File: `VerifiedJS/Proofs/ClosureConvertCorrect.lean` line 2699.
+**Fix** (exact edit):
+```
+-- BEFORE (BROKEN):
+/-- All object addresses in a Core expression are valid heap addresses.
+    Fully recursive to propagate through compound expressions. -/
+mutual
+def ExprAddrWF : Core.Expr → Nat → Prop
 
-You ALREADY proved the call non-value sub-case (L2686-2697). The newObj case at L2699 is structurally IDENTICAL:
-- Both have `ExprAddrWF f n ∧ (∀ e, e ∈ args → ExprAddrWF e n)` (you fixed this)
-- Both step the first non-value argument
-- Both use `Flat_step?_call_func_step` pattern (or the newObj analog)
+-- AFTER (FIXED):
+mutual
+/-- All object addresses in a Core expression are valid heap addresses.
+    Fully recursive to propagate through compound expressions. -/
+def ExprAddrWF : Core.Expr → Nat → Prop
+```
 
-Copy the call non-value pattern:
-1. Case split on `exprValue? f`:
-   - `none` → step the callee, use IH. This is the call non-value proof at L2686-2697.
-   - `some cv` → sorry (value sub-case, heap reasoning, skip)
-2. For the `none` case, you need `Flat.step?` on `.newObj f args` when `exprValue? f = none`. Check if it steps the callee like `.call` does. If so, the proof is copy-paste from call.
+Move the doc comment from before `mutual` to before `def ExprAddrWF`. That's it.
 
-**Build command**: `lake env lean VerifiedJS/Proofs/ClosureConvertCorrect.lean 2>&1 | grep error | head -20`
+**Build command**: `lake env lean VerifiedJS/Proofs/ClosureConvertCorrect.lean 2>&1 | grep error | head -5`
 
-## PRIORITY 1: CC objectLit (-1 CC sorry)
+## PRIORITY 1: CC newObj case (L2699) — WARNING: NOT identical to call
 
-File: `VerifiedJS/Proofs/ClosureConvertCorrect.lean` line 3129.
+**CRITICAL CORRECTION**: Core.step? for `.newObj` does NOT step the callee. It allocates immediately:
+```lean
+| .newObj _callee _args =>
+    let addr := s.heap.nextAddr
+    let heap' := { objects := s.heap.objects.push [], nextAddr := addr + 1 }
+    let s' := pushTrace { s with expr := .lit (.object addr), heap := heap' } .silent
+    some (.silent, s')
+```
 
-jsspec staging infrastructure exists in `.lake/_tmp_fix/VerifiedJS/Proofs/cc_objectLit_arrayLit_helpers.lean`:
-- `convertPropList_append`
-- `propListNoCallFrameReturn_append`
-- `listNoCallFrameReturn_append`
+But Flat.step? for `.newObj` DOES step the callee when non-value. So the CC proof needs:
+- If `Core.exprValue? f = none`: Core STILL allocates (producing `.silent`), but Flat steps the inner f. The Flat step event must also be `.silent` for the simulation to work. This requires showing that the inner Flat step produces `.silent` — which may not be true in general.
+- If `Core.exprValue? f = some cv`: Both allocate. Should be easier to prove.
 
-Strategy:
-1. Case split on first non-value prop in `props`
-2. If all values → allocate object, sorry the heap reasoning
-3. If first prop non-value → step inner, use IH
-4. Empty props → trivial
+**Approach**: Start with `cases hcev : Core.exprValue? f`:
+1. `some cv` case: Both Core and Flat allocate. Core produces `.silent`, Flat also produces `.silent` (allocation). Use `native_decide` or `rfl` for trace matching. This is likely tractable.
+2. `none` case: This has a FUNDAMENTAL 1:N mismatch. Sorry it and move on.
 
-This is HARDER than newObj. Only attempt after P0.
+## PRIORITY 2: CC objectLit (L3129)
 
-## PRIORITY 2: CC arrayLit (-1 CC sorry)
-
-Line 3130. Similar to objectLit but simpler (no prop names). Only attempt after P0/P1.
+Only attempt after P0 and P1 are done.
 
 ## DO NOT ATTEMPT
-- ANF sorries (blocked on inversion infrastructure from jsspec)
-- Wasm sorries (structurally blocked, axiom issues)
-- CC value sub-cases (L2698, 2705, 2763, 2833, 2902, 2987 — heap reasoning)
-- CC forIn/forOf (L1148-1149 — theorem false for stubs)
-- CC while_ (L3252), tryCatch (L3221), functionDef (L3131)
-- CC CCState threading (L2182, L2204)
+- ANF sorries, Wasm sorries, CC value sub-cases, CC forIn/forOf, CC while_, CC tryCatch
 
-## STALE COMMENT TO FIX (while you're in the file)
-
-ANFConvertCorrect.lean L1948: "break: ANF produces .silent but Flat produces .error" — this is WRONG. wasmspec fixed ANF break to produce `.error` matching Flat. Update the comment to: "break: both produce .error, needs normalizeExpr inversion"
-
-Same at L1950 for continue.
-
-## FILES YOU OWN
-- `VerifiedJS/Proofs/ANFConvertCorrect.lean` (rw)
-- `VerifiedJS/Proofs/ClosureConvertCorrect.lean` (rw)
-- `VerifiedJS/Proofs/LowerCorrect.lean` (rw)
-
-## WORKFLOW
-1. LOG what you're doing immediately
-2. Try newObj first — highest probability of success
-3. Build after each edit
-4. If stuck on newObj after 20 min, try objectLit
-5. Log to agents/proof/log.md with EXACT sorry counts and build status
+## FILES: `VerifiedJS/Proofs/*.lean` (rw)
+## LOG: agents/proof/log.md — LOG IMMEDIATELY when you start

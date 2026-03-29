@@ -1801,6 +1801,118 @@ private theorem convertValue_not_string (v : Core.Value)
     (h : ∀ s, v ≠ .string s) : ∀ s, Flat.convertValue v ≠ .string s := by
   intro s; cases v <;> simp [Flat.convertValue] at * <;> exact h s rfl
 
+/-! ## arrayLit helper lemmas -/
+
+private theorem listNoCallFrameReturn_append (a b : List Core.Expr) :
+    listNoCallFrameReturn (a ++ b) = (listNoCallFrameReturn a && listNoCallFrameReturn b) := by
+  induction a with
+  | nil => simp [listNoCallFrameReturn]
+  | cons hd tl ih => simp [listNoCallFrameReturn, ih, Bool.and_assoc]
+
+private theorem firstNonValueExpr_listNoCallFrameReturn
+    {elems : List Core.Expr} {done target rest}
+    (hfnv : Core.firstNonValueExpr elems = some (done, target, rest))
+    (hncfr : listNoCallFrameReturn elems = true) :
+    listNoCallFrameReturn done = true ∧ noCallFrameReturn target = true ∧
+    listNoCallFrameReturn rest = true := by
+  induction elems generalizing done with
+  | nil => simp [Core.firstNonValueExpr] at hfnv
+  | cons e es ih =>
+    simp [listNoCallFrameReturn] at hncfr
+    simp only [Core.firstNonValueExpr] at hfnv
+    split at hfnv
+    · -- e = .lit _
+      cases hrest : Core.firstNonValueExpr es with
+      | none => simp [hrest] at hfnv
+      | some val =>
+        simp [hrest] at hfnv
+        obtain ⟨rfl, rfl, rfl⟩ := hfnv
+        have := ih (by simp [Core.firstNonValueExpr, hrest]) hncfr.2
+        exact ⟨by simp [listNoCallFrameReturn]; exact ⟨by cases ‹Core.Expr› <;> simp_all [noCallFrameReturn], this.1⟩,
+               this.2.1, this.2.2⟩
+    · -- e is not .lit
+      simp at hfnv
+      obtain ⟨rfl, rfl, rfl⟩ := hfnv
+      exact ⟨by simp [listNoCallFrameReturn], hncfr.1, hncfr.2⟩
+
+private theorem convertExprList_firstNonValueExpr_some
+    (es : List Core.Expr)
+    (scope : List String) (envVar : String) (envMap : Flat.EnvMapping) (st : Flat.CCState)
+    (done : List Core.Expr) (target : Core.Expr) (rest : List Core.Expr)
+    (h : Core.firstNonValueExpr es = some (done, target, rest))
+    (hnovalue : Core.exprValue? target = none) :
+    Flat.firstNonValueExpr (Flat.convertExprList es scope envVar envMap st).fst =
+      some ((Flat.convertExprList done scope envVar envMap st).fst,
+            (Flat.convertExpr target scope envVar envMap
+              (Flat.convertExprList done scope envVar envMap st).snd).fst,
+            (Flat.convertExprList rest scope envVar envMap
+              (Flat.convertExpr target scope envVar envMap
+                (Flat.convertExprList done scope envVar envMap st).snd).snd).fst) := by
+  induction es generalizing st done with
+  | nil => simp [Core.firstNonValueExpr] at h
+  | cons e rest_es ih =>
+    simp only [Core.firstNonValueExpr] at h
+    split at h
+    · -- e = .lit v
+      rename_i v
+      cases hrest : Core.firstNonValueExpr rest_es with
+      | none => simp [hrest] at h
+      | some val =>
+        simp [hrest] at h
+        obtain ⟨rfl, rfl, rfl⟩ := h
+        simp only [Flat.convertExprList, Flat.convertExpr, Flat.firstNonValueExpr]
+        exact ih _ _ (by simp [Core.firstNonValueExpr, hrest]) hnovalue
+    · -- e is not .lit
+      simp at h
+      obtain ⟨rfl, rfl, rfl⟩ := h
+      simp only [Flat.convertExprList]
+      have hfnv : Flat.exprValue? (Flat.convertExpr target scope envVar envMap st).fst = none :=
+        convertExpr_not_value target hnovalue scope envVar envMap st
+      -- target converts to a non-.lit expression
+      have hnotlit : ∀ v, (Flat.convertExpr target scope envVar envMap st).fst ≠ .lit v := by
+        intro v heq; rw [heq] at hfnv; simp [Flat.exprValue?] at hfnv
+      cases hce : (Flat.convertExpr target scope envVar envMap st).fst with
+      | lit v => exact absurd rfl (hnotlit v)
+      | _ => simp [Flat.firstNonValueExpr, Flat.convertExprList]
+
+private theorem valuesFromExprList_none_of_firstNonValueExpr
+    {elems : List Flat.Expr} {done target rest}
+    (h : Flat.firstNonValueExpr elems = some (done, target, rest)) :
+    Flat.valuesFromExprList? elems = none := by
+  induction elems with
+  | nil => simp [Flat.firstNonValueExpr] at h
+  | cons e es ih =>
+    match he : e with
+    | .lit v =>
+      simp only [he, Flat.firstNonValueExpr] at h
+      cases hrest : Flat.firstNonValueExpr es with
+      | none => simp [hrest] at h
+      | some val =>
+        have htail : Flat.valuesFromExprList? es = none := ih (by simp only [hrest] at h; exact h)
+        simp only [Flat.valuesFromExprList?, Flat.exprValue?, htail]; split <;> rfl
+    | _ => simp only [Flat.valuesFromExprList?, Flat.exprValue?]
+
+private theorem convertExprList_append (a b : List Core.Expr)
+    (scope : List String) (envVar : String) (envMap : Flat.EnvMapping) (st : Flat.CCState) :
+    (Flat.convertExprList (a ++ b) scope envVar envMap st).fst =
+      (Flat.convertExprList a scope envVar envMap st).fst ++
+      (Flat.convertExprList b scope envVar envMap (Flat.convertExprList a scope envVar envMap st).snd).fst := by
+  induction a generalizing st with
+  | nil => simp [Flat.convertExprList]
+  | cons hd tl ih =>
+    simp only [List.cons_append, Flat.convertExprList]
+    exact congrArg ((Flat.convertExpr hd scope envVar envMap st).fst :: ·) (ih _)
+
+private theorem convertExprList_append_snd (a b : List Core.Expr)
+    (scope : List String) (envVar : String) (envMap : Flat.EnvMapping) (st : Flat.CCState) :
+    (Flat.convertExprList (a ++ b) scope envVar envMap st).snd =
+      (Flat.convertExprList b scope envVar envMap (Flat.convertExprList a scope envVar envMap st).snd).snd := by
+  induction a generalizing st with
+  | nil => simp [Flat.convertExprList]
+  | cons hd tl ih =>
+    simp only [List.cons_append, Flat.convertExprList]
+    exact ih _
+
 private theorem closureConvert_step_simulation
     (s : Core.Program) (t : Flat.Program)
     (h : Flat.closureConvert s = .ok t) :
@@ -3127,7 +3239,112 @@ private theorem closureConvert_step_simulation
           simp [sc', Flat.convertExpr]
           exact ⟨congrArg Prod.fst hconv', congrArg Prod.snd hconv'⟩, hAgreeIn, by first | (rw [hst]; exact hAgreeOut) | (rw [hconv.2]; exact hAgreeOut)⟩
   | objectLit props => sorry
-  | arrayLit elems => sorry
+  | arrayLit elems =>
+    rw [hsc] at hconv hncfr hexprwf hd
+    simp [Flat.convertExpr] at hconv
+    obtain ⟨hfexpr, hst⟩ := hconv
+    cases hcfnv : Core.firstNonValueExpr elems with
+    | none =>
+      sorry -- all elements are values: heap allocation (same class as other value sub-cases)
+    | some val =>
+      obtain ⟨done_c, target_c, rest_c⟩ := val
+      have htarget_not_lit := Core.firstNonValueExpr_not_lit hcfnv
+      have htarget_novalue : Core.exprValue? target_c = none := by
+        cases target_c with
+        | lit v => exact absurd rfl (htarget_not_lit v)
+        | _ => rfl
+      have hffnv := convertExprList_firstNonValueExpr_some elems scope envVar envMap st
+          done_c target_c rest_c hcfnv htarget_novalue
+      have hfnv_target : Flat.exprValue? (Flat.convertExpr target_c scope envVar envMap
+          (Flat.convertExprList done_c scope envVar envMap st).snd).fst = none :=
+        convertExpr_not_value target_c htarget_novalue scope envVar envMap _
+      have hsf_eta : sf = { sf with expr := .arrayLit (Flat.convertExprList elems scope envVar envMap st).fst } := by
+        cases sf; simp_all
+      rw [hsf_eta] at hstep
+      obtain ⟨sa, hsubstep, hsf'_eq⟩ : ∃ sa,
+          Flat.step? { sf with expr := (Flat.convertExpr target_c scope envVar envMap
+            (Flat.convertExprList done_c scope envVar envMap st).snd).fst } = some (ev, sa) ∧
+          sf' = { expr := .arrayLit ((Flat.convertExprList done_c scope envVar envMap st).fst ++
+                    [sa.expr] ++
+                    (Flat.convertExprList rest_c scope envVar envMap
+                      (Flat.convertExpr target_c scope envVar envMap
+                        (Flat.convertExprList done_c scope envVar envMap st).snd).snd).fst),
+                  env := sa.env, heap := sa.heap,
+                  trace := sf.trace ++ [ev], funcs := sf.funcs, callStack := sf.callStack } := by
+        have hvals : Flat.valuesFromExprList? (Flat.convertExprList elems scope envVar envMap st).fst = none :=
+          valuesFromExprList_none_of_firstNonValueExpr hffnv
+        match hm : Flat.step? { sf with expr := (Flat.convertExpr target_c scope envVar envMap
+            (Flat.convertExprList done_c scope envVar envMap st).snd).fst } with
+        | some (t, sa) =>
+          have heq : Flat.step? { sf with expr := .arrayLit (Flat.convertExprList elems scope envVar envMap st).fst } =
+              some (t, { expr := .arrayLit ((Flat.convertExprList done_c scope envVar envMap st).fst ++
+                          [sa.expr] ++
+                          (Flat.convertExprList rest_c scope envVar envMap
+                            (Flat.convertExpr target_c scope envVar envMap
+                              (Flat.convertExprList done_c scope envVar envMap st).snd).snd).fst),
+                        env := sa.env, heap := sa.heap,
+                        trace := sf.trace ++ [t], funcs := sf.funcs, callStack := sf.callStack }) := by
+            simp only [Flat.step?, hvals, hffnv, hfnv_target, hm, Flat.pushTrace]
+          rw [heq] at hstep; simp at hstep
+          obtain ⟨rfl, hsf'eq⟩ := hstep
+          exact ⟨sa, rfl, hsf'eq.symm⟩
+        | none =>
+          have heq : Flat.step? { sf with expr := .arrayLit (Flat.convertExprList elems scope envVar envMap st).fst } = none := by
+            simp only [Flat.step?, hvals, hffnv, hfnv_target, hm]
+          rw [heq] at hstep; exact absurd hstep (by simp)
+      subst hsf'_eq
+      have hdepth : target_c.depth < n := by
+        simp [Core.Expr.depth] at hd
+        have := Core.firstNonValueExpr_depth hcfnv; omega
+      have ⟨hncfr_done, hncfr_target, hncfr_rest⟩ :=
+        firstNonValueExpr_listNoCallFrameReturn hcfnv (by simp [noCallFrameReturn] at hncfr; exact hncfr)
+      have hexprwf_target : ExprAddrWF target_c sc.heap.objects.size := by
+        simp [ExprAddrWF] at hexprwf ⊢; trivial
+      obtain ⟨injMap', sc_sub', ⟨hcstep_sub⟩, htrace_sub, hinj', henvCorr', henvwf', hheapvwf',
+              hncfr', hexprwf', st_a, st_a', hconv', hAgreeIn, hAgreeOut⟩ :=
+        ih_depth target_c.depth hdepth envVar envMap injMap
+          { sf with expr := (Flat.convertExpr target_c scope envVar envMap
+            (Flat.convertExprList done_c scope envVar envMap st).snd).fst }
+          { sc with expr := target_c }
+          ev sa scope
+          (Flat.convertExprList done_c scope envVar envMap st).snd
+          (Flat.convertExpr target_c scope envVar envMap
+            (Flat.convertExprList done_c scope envVar envMap st).snd).snd
+          (by simp [Core.Expr.depth]) htrace hinj henvCorr henvwf hheapvwf hncfr_target hexprwf_target
+          (by simp)
+          ⟨hsubstep⟩
+      let sc' : Core.State :=
+        ⟨.arrayLit (done_c ++ [sc_sub'.expr] ++ rest_c),
+         sc_sub'.env, sc_sub'.heap,
+         sc.trace ++ [ev], sc_sub'.funcs, sc_sub'.callStack⟩
+      refine ⟨injMap', sc', ⟨?_⟩, ?_, ?_, ?_, ?_, ?_, ?_, ?_, ?_⟩
+      · -- Core.step?
+        show Core.step? sc = some (ev, sc')
+        have hsc' : sc = { sc with expr := .arrayLit elems } := by
+          obtain ⟨_, _, _, _, _, _⟩ := sc; simp only [] at hsc; subst hsc; rfl
+        rw [hsc']
+        have hcore_step := Core.step_arrayLit_step_elem elems sc.env sc.heap sc.trace sc.funcs sc.callStack
+            done_c target_c rest_c hcfnv ev
+            { expr := sc_sub'.expr, env := sc_sub'.env, heap := sc_sub'.heap,
+              trace := sc.trace, funcs := sc_sub'.funcs, callStack := sc_sub'.callStack }
+            (by convert hcstep_sub using 1 <;> simp)
+        simp only [Core.pushTrace] at hcore_step
+        convert hcore_step using 1
+        simp [sc']
+      · -- trace
+        simp [sc', htrace, htrace_sub]
+      · exact hinj'
+      · exact henvCorr'
+      · exact henvwf'
+      · exact hheapvwf'
+      · -- noCallFrameReturn
+        simp only [sc', noCallFrameReturn]
+        rw [listNoCallFrameReturn_append, listNoCallFrameReturn_append]
+        simp [listNoCallFrameReturn, hncfr', hncfr_done, hncfr_rest]
+      · -- ExprAddrWF (arrayLit is always True)
+        simp [sc', ExprAddrWF]
+      · -- CCState agreement
+        sorry -- CCState threading: convertExprList over concatenated lists
   | functionDef fname params body isAsync isGen => sorry
   | throw val =>
     rw [hsc] at hconv hncfr hexprwf hd

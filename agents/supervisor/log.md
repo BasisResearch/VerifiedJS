@@ -1,3 +1,49 @@
+## Run: 2026-03-28T22:30:46+00:00
+
+### Metrics
+- **Sorry count (grep -c)**: 55 (17 ANF + 20 CC + 18 Wasm + 0 Lower)
+- **Delta from last run (18:05)**: ZERO. 4.5 hours of no sorry reduction.
+- **BUILD STATUS**: **BROKEN** — 2 files fail.
+
+### CRITICAL: BUILD IS BROKEN
+
+1. **ClosureConvertCorrect.lean L902**: "unexpected token 'mutual'" — In Lean 4.29, doc comments CANNOT precede `mutual` blocks. Fix: move doc comment from before `mutual` to before `def ExprAddrWF`.
+
+2. **Wasm/Semantics.lean**: 14 errors — all from `isControlFlowSignal` not reducing in `simp only [traceFromCore]`. The `@[simp] traceFromCore_return` lemma EXISTS (L4482) but isn't used due to `simp only`. Fix: replace `traceFromCore` with `traceFromCore_return` in simp lists, or use `native_decide` for literal strings.
+
+### Agent Analysis
+1. **proof**: 20:30 run still running (2+ hours), NO logged output, NO file changes. Likely OOM again (previous run was killed with code 137). CC build error blocks all work anyway.
+2. **jsspec**: 20:01 run still running (2.5+ hours), NO output. Long-running break inversion work.
+3. **wasmspec**: 19:15 run still running (3+ hours). Modified Wasm file at 23:51 (added step_sim_return theorems) but build STILL broken.
+
+### Critical Discovery: newObj CC case is NOT identical to call
+- Core.step? for `.newObj` allocates immediately (ignores callee/args)
+- Flat.step? for `.newObj` evaluates callee first (like `.call`)
+- This creates a 1:N simulation mismatch for the non-value callee case
+- Previous prompt to proof agent was WRONG — corrected in new prompt
+- The `some cv` case (callee is value) might be tractable
+
+### Agent Prompt Rewrites
+1. **proof**: P0: Fix CC build (move doc comment off `mutual`). P1: CC newObj `some cv` case only. P2: CC objectLit.
+2. **wasmspec**: P0: Fix Wasm build (use `traceFromCore_return` or `native_decide`). P1: lower_main_code_corr.
+3. **jsspec**: P0: Continue break inversion. P1: objectLit step helpers. P2: Leaf not-break lemmas.
+
+### Actions Taken
+1. Counted sorries: 55 (unchanged)
+2. Ran `lake build` — discovered build broken in 2 files
+3. Diagnosed CC mutual error (doc comment before `mutual` not allowed in Lean 4.29)
+4. Diagnosed Wasm errors (simp only doesn't fire traceFromCore_return)
+5. Discovered newObj CC case is fundamentally different from call (Core semantics differ)
+6. Tested `isControlFlowSignalPure` approach using `List.isPrefixOf` — works for general strings
+7. All 3 prompts rewritten with build-fix-first strategy
+8. Logged time estimate (55 grep, 160 hours)
+
+### OUTLOOK: Target next run = build passes + ≤54 sorries
+### RISK: Agents OOM/stuck. wasmspec may not read new prompt if still running. Build fixes are simple but agents must execute them.
+### ESCALATION: 4.5 hours zero progress + broken build. If next run is still broken, consider requesting direct code access to fix builds.
+
+---
+
 ## Run: 2026-03-28T18:05:02+00:00
 
 ### Metrics

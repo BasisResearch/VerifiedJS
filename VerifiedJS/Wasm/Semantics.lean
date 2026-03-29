@@ -3646,7 +3646,7 @@ inductive TraceEvent where
   | trap (msg : String)
   | log (s : String)
   | error (s : String)
-  deriving Repr, BEq
+  deriving Repr, BEq, DecidableEq
 
 /-! ### IR Runtime Values -/
 
@@ -6839,7 +6839,10 @@ theorem step_sim (prog : ANF.Program) (irmod : IRModule) :
             | _ :: _ :: _, h => simp at h
           obtain ⟨frame, hfr⟩ := hfr
           have hir := irStep?_eq_return_toplevel s2 [] frame hcode_eq hfr
-          simp only [traceFromCore]
+          -- traceFromCore (.error "return:undefined") = .silent by control flow signal
+          have htrace : traceFromCore (.error "return:undefined") = TraceEvent.silent := by
+            native_decide
+          rw [htrace]
           exact ⟨_, hir, {
             hlower := hrel.hlower
             hmod := hrel.hmod
@@ -6897,7 +6900,9 @@ theorem step_sim_return_litNull (prog : ANF.Program) (irmod : IRModule)
   have hanf := ANF.step?_return_some_ok s1 .litNull Flat.Value.null
     (by simp [ANF.evalTrivial, ANF.trivialValue?])
   rw [hs1_eta] at hanf
-  simp only [anfStepMapped, hanf, traceFromCore, Option.some.injEq, Prod.mk.injEq] at hstep
+  simp only [anfStepMapped, hanf, traceFromCore, isControlFlowSignal,
+    String.toList_append, BEq.beq, List.beq, Bool.or_eq_true, ite_true, ite_false,
+    Flat.valueToString, Option.some.injEq, Prod.mk.injEq] at hstep
   obtain ⟨rfl, rfl⟩ := hstep
   -- t = .silent, s1' = pushTrace { s1 with expr := .trivial .litNull } .silent
   -- Extract single frame from hframes_one
@@ -6962,7 +6967,9 @@ theorem step_sim_return_litNum (prog : ANF.Program) (irmod : IRModule)
   have hanf := ANF.step?_return_some_ok s1 (.litNum n) (.number n)
     (by simp [ANF.evalTrivial, ANF.trivialValue?])
   rw [hs1_eta] at hanf
-  simp only [anfStepMapped, hanf, traceFromCore, Option.some.injEq, Prod.mk.injEq] at hstep
+  simp only [anfStepMapped, hanf, traceFromCore, isControlFlowSignal,
+    String.toList_append, BEq.beq, List.beq, Bool.or_eq_true, ite_true, ite_false,
+    Flat.valueToString, Option.some.injEq, Prod.mk.injEq] at hstep
   obtain ⟨rfl, rfl⟩ := hstep
   obtain ⟨frame, hfr⟩ : ∃ f, s2.frames = [f] := by
     match hf : s2.frames, hrel.hframes_one with
@@ -7027,7 +7034,9 @@ theorem step_sim_return_var (prog : ANF.Program) (irmod : IRModule)
   have hanf := ANF.step?_return_some_ok s1 (.var name) v
     (by simp [ANF.evalTrivial, henv_lookup])
   rw [hs1_eta] at hanf
-  simp only [anfStepMapped, hanf, traceFromCore, Option.some.injEq, Prod.mk.injEq] at hstep
+  simp only [anfStepMapped, hanf, traceFromCore, isControlFlowSignal,
+    String.toList_append, BEq.beq, List.beq, Bool.or_eq_true, ite_true, ite_false,
+    Flat.valueToString, Option.some.injEq, Prod.mk.injEq] at hstep
   obtain ⟨rfl, rfl⟩ := hstep
   obtain ⟨frame, hfr⟩ : ∃ f, s2.frames = [f] := by
     match hf : s2.frames, hrel.hframes_one with
@@ -7092,7 +7101,9 @@ theorem step_sim_return_litUndefined (prog : ANF.Program) (irmod : IRModule)
   have hanf := ANF.step?_return_some_ok s1 .litUndefined Flat.Value.undefined
     (by simp [ANF.evalTrivial, ANF.trivialValue?])
   rw [hs1_eta] at hanf
-  simp only [anfStepMapped, hanf, traceFromCore, Option.some.injEq, Prod.mk.injEq] at hstep
+  simp only [anfStepMapped, hanf, traceFromCore, isControlFlowSignal,
+    String.toList_append, BEq.beq, List.beq, Bool.or_eq_true, ite_true, ite_false,
+    Flat.valueToString, Option.some.injEq, Prod.mk.injEq] at hstep
   obtain ⟨rfl, rfl⟩ := hstep
   obtain ⟨frame, hfr⟩ : ∃ f, s2.frames = [f] := by
     match hf : s2.frames, hrel.hframes_one with
@@ -7150,7 +7161,9 @@ theorem step_sim_return_litBoolTrue (prog : ANF.Program) (irmod : IRModule)
   have hanf := ANF.step?_return_some_ok s1 (.litBool true) (.bool true)
     (by simp [ANF.evalTrivial, ANF.trivialValue?])
   rw [hs1_eta] at hanf
-  simp only [anfStepMapped, hanf, traceFromCore, Option.some.injEq, Prod.mk.injEq] at hstep
+  simp only [anfStepMapped, hanf, traceFromCore, isControlFlowSignal,
+    String.toList_append, BEq.beq, List.beq, Bool.or_eq_true, ite_true, ite_false,
+    Flat.valueToString, Option.some.injEq, Prod.mk.injEq] at hstep
   obtain ⟨rfl, rfl⟩ := hstep
   obtain ⟨frame, hfr⟩ : ∃ f, s2.frames = [f] := by
     match hf : s2.frames, hrel.hframes_one with
@@ -7208,7 +7221,9 @@ theorem step_sim_return_litBoolFalse (prog : ANF.Program) (irmod : IRModule)
   have hanf := ANF.step?_return_some_ok s1 (.litBool false) (.bool false)
     (by simp [ANF.evalTrivial, ANF.trivialValue?])
   rw [hs1_eta] at hanf
-  simp only [anfStepMapped, hanf, traceFromCore, Option.some.injEq, Prod.mk.injEq] at hstep
+  simp only [anfStepMapped, hanf, traceFromCore, isControlFlowSignal,
+    String.toList_append, BEq.beq, List.beq, Bool.or_eq_true, ite_true, ite_false,
+    Flat.valueToString, Option.some.injEq, Prod.mk.injEq] at hstep
   obtain ⟨rfl, rfl⟩ := hstep
   obtain ⟨frame, hfr⟩ : ∃ f, s2.frames = [f] := by
     match hf : s2.frames, hrel.hframes_one with
@@ -7266,7 +7281,9 @@ theorem step_sim_return_litObject (prog : ANF.Program) (irmod : IRModule)
   have hanf := ANF.step?_return_some_ok s1 (.litObject addr) (.object addr)
     (by simp [ANF.evalTrivial, ANF.trivialValue?])
   rw [hs1_eta] at hanf
-  simp only [anfStepMapped, hanf, traceFromCore, Option.some.injEq, Prod.mk.injEq] at hstep
+  simp only [anfStepMapped, hanf, traceFromCore, isControlFlowSignal,
+    String.toList_append, BEq.beq, List.beq, Bool.or_eq_true, ite_true, ite_false,
+    Flat.valueToString, Option.some.injEq, Prod.mk.injEq] at hstep
   obtain ⟨rfl, rfl⟩ := hstep
   obtain ⟨frame, hfr⟩ : ∃ f, s2.frames = [f] := by
     match hf : s2.frames, hrel.hframes_one with
@@ -7323,7 +7340,9 @@ theorem step_sim_return_litStr (prog : ANF.Program) (irmod : IRModule)
   have hanf := ANF.step?_return_some_ok s1 (.litStr str) (.string str)
     (by simp [ANF.evalTrivial, ANF.trivialValue?])
   rw [hs1_eta] at hanf
-  simp only [anfStepMapped, hanf, traceFromCore, Option.some.injEq, Prod.mk.injEq] at hstep
+  simp only [anfStepMapped, hanf, traceFromCore, isControlFlowSignal,
+    String.toList_append, BEq.beq, List.beq, Bool.or_eq_true, ite_true, ite_false,
+    Flat.valueToString, Option.some.injEq, Prod.mk.injEq] at hstep
   obtain ⟨rfl, rfl⟩ := hstep
   obtain ⟨frame, hfr⟩ : ∃ f, s2.frames = [f] := by
     match hf : s2.frames, hrel.hframes_one with
@@ -7382,7 +7401,9 @@ theorem step_sim_return_litClosure (prog : ANF.Program) (irmod : IRModule)
   have hanf := ANF.step?_return_some_ok s1 (.litClosure fi ep) (.closure fi ep)
     (by simp [ANF.evalTrivial, ANF.trivialValue?])
   rw [hs1_eta] at hanf
-  simp only [anfStepMapped, hanf, traceFromCore, Option.some.injEq, Prod.mk.injEq] at hstep
+  simp only [anfStepMapped, hanf, traceFromCore, isControlFlowSignal,
+    String.toList_append, BEq.beq, List.beq, Bool.or_eq_true, ite_true, ite_false,
+    Flat.valueToString, Option.some.injEq, Prod.mk.injEq] at hstep
   obtain ⟨rfl, rfl⟩ := hstep
   obtain ⟨frame, hfr⟩ : ∃ f, s2.frames = [f] := by
     match hf : s2.frames, hrel.hframes_one with
