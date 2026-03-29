@@ -1,44 +1,44 @@
-# wasmspec — 18 Wasm sorries. YOU HAVE BEEN ZOMBIE FOR 15+ HOURS.
+# wasmspec — YOU WERE ZOMBIE FOR 16+ HOURS. Fresh start.
 
-## STEP 0: KILL ALL YOUR STUCK PROCESSES
+## STEP 0: Verify your lean processes are NOT stuck
 
 ```bash
-kill -9 853890 853777 858560 849382
+ps aux | grep -E "lean.*worker" | grep wasmspec
 ```
 
-These are YOUR lean/lake processes from Mar 28. They are stuck and using 571MB+.
-Kill them ALL. Then restart fresh.
+If ANY lean worker has been running for >30 minutes, kill it:
+```bash
+kill -9 <PID>
+```
 
-DO NOT run `lake build`. Use ONLY `lean_goal` and `lean_multi_attempt`.
+DO NOT run `lake build` until you confirm no stuck processes.
 
-## YOUR TARGETS — 18 sorries in Wasm/Semantics.lean
+## YOUR TARGETS — 16 actual sorries in Wasm/Semantics.lean
 
-### EASIEST (start here — 5 sorries):
-1. **L6876** — break: both sides produce error signal. Try: `simp [Wasm.step]` or `rfl`
-2. **L6879** — continue: same pattern as break
-3. **L6864** — return (some t): follow return-none pattern at L6822-6863 (FULLY PROVED above)
-4. **L6867** — yield: evaluate optional trivial arg
-5. **L6870** — await: evaluate trivial arg
+jsspec is also working on Wasm now. To avoid conflicts:
+- YOU work on L6798-L6819 (let, seq, if, while, throw, tryCatch) = 6 sorries
+- jsspec is working on L6864-L6879 (return, yield, await, break, continue) + L6873 (labeled) = 6 sorries
 
-### MEDIUM (6 sorries):
-6. **L6798** — let binding
-7. **L6806** — sequence
-8. **L6810** — if/conditional
-9. **L6813** — while
-10. **L6816** — throw
-11. **L6819** — tryCatch
+### YOUR 6 TARGETS (sorted by difficulty):
 
-### CONTEXT:
-- L6873 — labeled (medium)
-- L10857, L10912, L10916, L10919 — call/callIndirect (HARD, skip)
+1. **L6816** — throw: evaluate arg, produce error. Should be simple.
+2. **L6806** — sequence: if a is value, skip to b; else step a
+3. **L6798** — let binding: evaluate rhs, extend env, continue body
+4. **L6810** — if/conditional: evaluate cond, branch
+5. **L6819** — tryCatch: step body, catch errors, handle finally
+6. **L6813** — while: loop body stepping
 
-## WORKFLOW
-1. Kill stuck processes (STEP 0)
-2. `lean_goal` at L6876 (break) to see exact goal
-3. `lean_multi_attempt` with: `["simp [step]", "rfl", "exact absurd", "omega", "contradiction"]`
-4. If tactic works → edit the file
-5. Move to next sorry. Max 20 min per sorry.
-6. LOG every 15 min to agents/wasmspec/log.md
+### APPROACH:
+1. Read the PROVEN cases above L6798 (especially L6822-6863 for return-none) to learn the proof pattern
+2. `lean_goal` at each sorry
+3. `lean_multi_attempt` to test tactics
+4. Edit the file to replace sorry when tactic works
+5. `lake build VerifiedJS.Wasm.Semantics` after each edit
+6. Max 20 min per sorry. If stuck, move on.
+
+### HARD SORRIES (skip for now):
+- L10857, L10912, L10916, L10919: call/callIndirect (complex)
 
 ## FILES: `VerifiedJS/Wasm/Semantics.lean` (rw)
 ## DO NOT EDIT: `VerifiedJS/Proofs/*.lean`
+## LOG every 15 min to agents/wasmspec/log.md

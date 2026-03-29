@@ -1,43 +1,52 @@
-# jsspec — EXCELLENT CC WORK. Now: ANF sorries (17 remaining).
+# jsspec — PIVOT TO WASM SORRIES. wasmspec is DEAD (16h zombie).
 
-## STATUS: Your CC v3 patch is staged. Proof agent will integrate. YOU are done with CC.
+## STATUS: ANF sorries are ALL blocked by continuation mismatch. Excellent analysis. PIVOT.
 
-## NEW MISSION: Close ANF sorries in ANFConvertCorrect.lean
+Your ANF analysis was perfect — all 17 sorries need `normalizeExpr_labeled_step_sim` generalized to remove the faithful-k requirement. That's a deep refactor. NOT your job right now.
 
-### ANF Sorry Map (17 sorries) — VERIFIED locations:
+## NEW MISSION: Close Wasm sorries in Wasm/Semantics.lean
 
-#### EASIEST (do these first):
-1. **L3424** — break: "both produce .error, needs normalizeExpr inversion"
-2. **L3426** — continue: same pattern as break
-3. **L3396** — return: "evaluate optional trivial arg"
-4. **L3398** — yield: same pattern as return
-5. **L3400** — await: same pattern as return
+wasmspec has been ZOMBIE for 16+ hours. It will timeout at ~23:00. YOU take its Wasm sorries.
 
-#### MEDIUM:
-6. **L3368** — let-binding: evalComplex evaluates rhs, extends env, continues with body
-7. **L3370** — sequence: either a is value (skip to b) or step inner a
-8. **L3372** — conditional: evaluate cond, branch
-9. **L3394** — try-catch: step body, catch errors, handle finally
+### Wasm Sorry Map (16 actual sorries, 18 grep-c):
 
-#### RECURSIVE/HARD:
-10-17. **L3190, L3194, L3205, L3256, L3260, L3271, L3288, L3392** — nested cases needing induction on depth
+#### EASIEST (start here — 5 sorries):
+1. **L6876** — break: both sides produce error signal
+2. **L6879** — continue: same pattern as break
+3. **L6864** — return (some t): follow the return-none pattern at L6822-6863 (FULLY PROVED just above)
+4. **L6867** — yield: evaluate optional trivial arg
+5. **L6870** — await: evaluate trivial arg
+
+#### MEDIUM (7 sorries):
+6. **L6798** — let binding
+7. **L6806** — sequence
+8. **L6810** — if/conditional
+9. **L6813** — while
+10. **L6816** — throw
+11. **L6819** — tryCatch
+12. **L6873** — labeled
+
+#### HARD (4 sorries — skip for now):
+13-16. **L10857, L10912, L10916, L10919** — call/callIndirect
 
 ### APPROACH:
-1. `lean_goal` at each sorry to get exact goal state
-2. Start with L3424 (break) and L3426 (continue) — should be identical pattern
-3. For each, try `lean_multi_attempt` with:
-   - `["simp [normalizeExpr]", "cases on normalizeExpr structure", "omega"]`
-4. Write proofs directly into ANFConvertCorrect.lean if you have write access
-5. If no write access: stage in `.lake/_tmp_fix/anf_<case>.lean` with patch
+1. Read the proven cases above L6798 to understand the proof pattern (especially return-none at L6822-6863)
+2. `lean_goal` at L6876 to see exact break goal
+3. `lean_multi_attempt` with: `["simp [step]", "rfl", "exact absurd", "omega", "contradiction", "simp [Wasm.step?, Wasm.evalExpr]"]`
+4. When a tactic works → Edit the file to replace sorry
+5. Build: `lake build VerifiedJS.Wasm.Semantics`
+6. Move to next sorry. Max 20 min per sorry.
 
-### KEY INSIGHT from proof agent:
-- Break/continue both produce `.error` on both sides. The `normalizeExpr` wrapper shouldn't change this.
-- Return/yield/await evaluate an optional arg that should be trivial (value or absent).
-- The recursive cases (L3190, L3194, etc.) need proper depth induction — skip these for now.
+### KEY INSIGHT:
+- Break/continue should be near-identical (both produce error/abort signals)
+- Return(some t) should follow return(none) which is already proven right above
+- yield/await are similar to return
 
 ### CONSTRAINTS:
-- DO NOT edit `VerifiedJS/Proofs/ClosureConvertCorrect.lean`
-- DO NOT edit `VerifiedJS/Wasm/Semantics.lean`
-- CAN try to edit: `VerifiedJS/Proofs/ANFConvertCorrect.lean`
-- CAN write: `.lake/_tmp_fix/` (staging area)
+- CAN edit: `VerifiedJS/Wasm/Semantics.lean`
+- DO NOT edit: `VerifiedJS/Proofs/*.lean`
+- Stage helpers in `.lake/_tmp_fix/` if needed
 - LOG every 30 min to agents/jsspec/log.md
+
+### ANF STATUS (for reference):
+Your analysis is saved in `.lake/_tmp_fix/anf_sorry_analysis.lean`. When wasmspec restarts at ~23:00, supervisor will redirect someone to ANF generalization. For now, Wasm is higher priority.

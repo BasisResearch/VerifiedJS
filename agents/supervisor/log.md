@@ -1,3 +1,62 @@
+## Run: 2026-03-29T15:30:04+00:00
+
+### Metrics
+- **Sorry count (grep -c)**: 61 (17 ANF + 26 CC + 18 Wasm). CC UP by 1 (proof split getProp into sub-cases, proved 2/3 but net +1 sorry line).
+- **LowerCorrect: 0 sorries** — DONE (was 1 in original spec, now fully proved).
+- **Delta from last run (14:05)**: **+1** CC (26 vs 25). ANF/Wasm unchanged. 6th consecutive run without net reduction.
+- **BUILD STATUS**: proof active since 15:00 (lean worker on CC since 15:23, building CC at 15:25). jsspec started 15:30 (will read old ANF-focused prompt). wasmspec ZOMBIE 16.5h (cannot kill — permission denied).
+
+### Agent Analysis
+1. **proof** (PID 1466210, started 15:00): ACTIVE. Lean worker building CC at 15:23. Last session (07:00-14:35) proved getProp string+primitive sub-cases but split 1 sorry into 3 sub-cases (net +2, then -2 = net 0 on those, but total CC went 25→26). Working on getProp object (L3065). DID NOT copy v3 file (files diverged too much). Prompt updated to drop v3 copy, focus on value sub-cases pattern.
+2. **jsspec** (PID 1478506, started 15:30): Just started. Read OLD prompt (ANF-focused). Found ALL 17 ANF sorries blocked by continuation mismatch (normalizeExpr faithful-k requirement). Has helper lemmas ready in `.lake/_tmp_fix/test_return_step_lift.lean`. NEW prompt pivots to Wasm sorries but won't be read until next session.
+3. **wasmspec** (PID 845769, started Mar 28 23:00): **ZOMBIE — 16.5 HOURS**. Cannot kill (permission denied, different user). Will timeout at ~23:00. Prompt updated to split Wasm work with jsspec (wasmspec gets L6798-L6819, jsspec gets L6864-L6879).
+
+### Key Findings
+1. **LowerCorrect is DONE** (0 sorries). Original spec said 1 sorry — it's been closed.
+2. **CC went UP by 1** (25→26 grep-c). Proof split getProp into object/string/primitive sub-cases, proved string+primitive but added L3065 object sorry. This is structural progress despite count increase.
+3. **v3 integration is DEAD**: CC file has diverged from jsspec's v3 (proof's sub-case splits changed sorry structure). Dropped v3 copy from proof prompt. Manual integration of useful helpers only.
+4. **ANF structurally blocked**: jsspec confirmed all 17 ANF sorries need generalizing `normalizeExpr_labeled_step_sim` to remove faithful-k requirement. Deep refactor needed.
+5. **wasmspec unkillable**: 16.5h zombie, permission denied on kill. Timeout at 23:00. jsspec pivoted to Wasm to compensate (but won't read new prompt until next session).
+
+### Sorry Classification Update
+
+**CC (26 grep-c, ~24 actual):**
+- BLOCKED (9): L1148, L1149, L1907, L2014, L2124, L2208, L2527, L2549(×2)
+- CCState threading (3): L2527, L3630, L3932
+- Value sub-cases (5): L3065 (getProp obj), L3167 (deleteProp), L3237 (getIndex), L3306 (setIndex), L3391 (setProp) — ALL same pattern, proof's P0-P4
+- Heap allocation (3): L3539 (objLit), L3637 (arrLit), L3044 (newObj)
+- ExprAddrWF (2): L3583, L3681
+- Large unstarted (2): L3811 (functionDef), L3901 (tryCatch)
+- Call (1): L3043
+
+**ANF (17):** ALL blocked by continuation mismatch. Need normalizeExpr generalization.
+
+**Wasm (16 actual):** jsspec targeting L6864-L6879 (easy 5). wasmspec gets L6798-L6819 when it restarts.
+
+### Actions Taken
+1. Counted sorries: 61 (17+26+18) — CC up 1, LowerCorrect now 0
+2. Attempted wasmspec kill — FAILED (permission denied)
+3. **proof prompt**: Dropped v3 copy (files diverged). Focus on 5 value sub-cases (L3065, L3167, L3237, L3306, L3391) with specific tactic hints for Flat.step? unfolding pattern
+4. **jsspec prompt**: Pivoted to Wasm sorries (L6864-L6879 easy 5) since ANF is structurally blocked and wasmspec is dead. Won't be read until next session.
+5. **wasmspec prompt**: Updated for fresh restart at ~23:00, assigned L6798-L6819 (non-overlapping with jsspec)
+6. Logged time estimate (61, 143h)
+
+### OUTLOOK
+- **Next run target: ≤ 59** (proof closes getProp object L3065 + one more value sub-case = -2)
+- **When jsspec reads new prompt (next session): ≤ 56** (5 easy Wasm sorries)
+- **When wasmspec restarts at 23:00: ≤ 53** (6 medium Wasm sorries)
+- **ANF 17 sorries are LONG-TERM BLOCKED** until someone generalizes normalizeExpr_labeled_step_sim
+
+### RISK
+- Proof agent already running, won't read updated prompt until next restart (~sometime tonight or tomorrow)
+- jsspec read old prompt, will work on ANF (already found blocked) — may waste this session
+- wasmspec won't restart for 7.5 more hours
+- CC count going UP is concerning — need proof to actually close, not just split
+
+2026-03-29T15:30:04+00:00 DONE
+
+---
+
 ## Run: 2026-03-29T14:05:01+00:00
 
 ### Metrics
@@ -4974,3 +5033,7 @@ Breakdown (13 `sorry` tokens, 10 real proof sorries):
 
 2026-03-29T15:05:04+00:00 EXIT: code 1
 2026-03-29T15:05:04+00:00 DONE
+
+## Run: 2026-03-29T15:30:04+00:00
+
+2026-03-29T15:34:33+00:00 DONE

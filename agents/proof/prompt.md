@@ -1,79 +1,71 @@
-# proof — INTEGRATE JSSPEC V3 + CLOSE CC SORRIES. Target: -5 this run.
+# proof — CC VALUE SUB-CASES. Target: -4 this run.
 
-## STATUS: 60 sorries (17 ANF + 25 CC + 18 Wasm). FLAT 5 CONSECUTIVE RUNS. EMERGENCY.
+## STATUS: 26 CC sorries (grep-c). You split getProp and proved string+primitive. GOOD.
 
-## P0 — COPY JSSPEC INTEGRATED FILE (instant -3 sorries)
+## DROP V3 COPY — files have diverged. Integrate manually if needed.
 
-jsspec's integrated v3 file closes 3 CC sorries and adds 9 helper lemmas.
-The patch won't apply cleanly (hunk 3 context shifted). Use the FULL FILE instead:
+The v3 file is stale (different sorry structure after your sub-case splits). Do NOT copy it.
 
-```bash
-cp .lake/_tmp_fix/CC_integrated_v3.lean VerifiedJS/Proofs/ClosureConvertCorrect.lean
-lake build VerifiedJS.Proofs.ClosureConvertCorrect
-```
+## YOUR TARGETS — value sub-cases (same pattern as getProp string/primitive)
 
-If build fails, revert with `git checkout VerifiedJS/Proofs/ClosureConvertCorrect.lean`.
+You proved getProp string and primitive sub-cases using heap reasoning. Now apply the SAME pattern to these 5 identical sorries:
 
-The v3 file has 22 sorries (vs current 25). It adds:
-- `list_find?_mem`, `HeapInj_set_same` (near L895)
-- 7 Flat_step?/Core_step? helpers (near L1971)
-- Closes: getProp ExprAddrWF (was L3093), deleteProp value (was L3355), setProp value (was L3216)
+### P0: getProp object (L3065) — FINISH THIS FIRST
+- You're already working on this. Needs Flat.step? unfolding for object case.
+- The `pushTrace` is private in Flat.Semantics. Workaround: use `show` to unfold step? definition inline, or add a `@[simp]` lemma for `Flat.step? (.getProp obj prop) heap env`.
+- Try: `simp only [Flat.step?, Flat.evalTrivial]` then case split on heap lookup result.
 
-**DO THIS FIRST. This is 3 free sorry closures.**
+### P1: deleteProp value (L3167)
+- Same pattern as getProp. `lean_goal` at L3167 then follow your getProp approach.
+- Case split on value being object/non-object.
 
-If the build fails after copying, diff the two files to identify the conflict:
-```bash
-diff VerifiedJS/Proofs/ClosureConvertCorrect.lean .lake/_tmp_fix/CC_integrated_v3.lean
-```
-Then manually integrate the changes.
+### P2: getIndex value (L3237)
+- Array index access. Similar heap reasoning.
 
-## CC SORRY MAP (22 after v3 applied) — TARGETS
+### P3: setIndex value (L3306)
+- Array index set. Similar heap reasoning.
 
-### YOUR TARGETS (sorted by closability):
+### P4: setProp value (L3391)
+- Object property set. Similar to getProp but writing.
 
-#### P1: getIndex value (was ~L3286)
-- Same pattern as deleteProp/setProp proofs from v3
-- use lean_goal at the sorry, then follow the exact same heap reasoning pattern
+### P5: call value (L3043) — after P0-P4
+- Case split on `exprListValue? args`. When all args are values, use call execution lemma.
 
-#### P2: setIndex value (was ~L3440)
-- Same class. Follow setProp pattern.
+### P6: newObj (L3044) — after P5
+- Object allocation. Heap reasoning for fresh address.
 
-#### P3: L3093 → ExprAddrWF (ONLY if v3 didn't close it)
-- `cases` on `sc.heap.objects[addr]?`, then `find?`, use `hheapvwf` + `list_find?_mem`
-
-#### P4: call value (was ~L3043)
-- Case split on `exprListValue? args`
-
-#### P5: newObj (was ~L3044)
-- Object allocation on heap
-
-#### P6: objectLit/arrayLit all-values (was ~L3588, L3686)
-- Heap allocation, similar to newObj
-
-#### P7: ExprAddrWF propagation (was ~L3632, L3730)
-
-#### P8: functionDef (was ~L3860)
-#### P9: tryCatch (was ~L3950)
-
-### BLOCKED (do NOT touch):
-- L1148, L1149: false theorems (forIn/forOf stubs)
-- L2014, L2124: need convertExpr_not_lit for stubs
+## BLOCKED (do NOT touch):
+- L1148, L1149: theorem false (forIn/forOf stubs, needs SupportedExpr)
+- L1907: unknown blocker
+- L2014, L2124: need convertExpr_not_lit
 - L2208: unknown
-- L2527, L2549(×2): CCState threading if-branches
-- L3679, L3981: CCState threading
+- L2527, L2549(×2): CCState threading (structural issue)
+- L3539, L3637: all-values heap allocation (do after P6)
+- L3583, L3681: ExprAddrWF propagation
+- L3630, L3932: CCState threading
+- L3811: functionDef (large)
+- L3901: tryCatch (large)
 
-## WORKFLOW — MANDATORY
-1. **FIRST**: Copy v3 file (P0 above) and BUILD
-2. `lean_goal` BEFORE every sorry attempt — line numbers WILL SHIFT after v3 copy
-3. `lean_multi_attempt` to test tactics
-4. `lake build VerifiedJS.Proofs.ClosureConvertCorrect` after EVERY edit
-5. If build breaks: revert within 2 minutes
-6. LOG every 30 minutes to agents/proof/log.md
+## WORKFLOW
+1. `lean_goal` BEFORE every sorry attempt
+2. `lean_multi_attempt` to test tactics: `["simp [Flat.step?, Flat.evalTrivial]", "cases h_heap : sc.heap.objects[addr]?"]`
+3. `lake build VerifiedJS.Proofs.ClosureConvertCorrect` after EVERY edit
+4. If build breaks: `git checkout VerifiedJS/Proofs/ClosureConvertCorrect.lean` within 2 minutes
+5. LOG every 30 minutes to agents/proof/log.md
+
+## CRITICAL TACTIC HINT for value sub-cases:
+All of L3167, L3237, L3306, L3391 have the shape:
+```
+| some cv => sorry -- value sub-case (heap reasoning needed)
+```
+The goal should be: given that the expression's value is `cv`, show that both Source and Flat sides step the same way. The proof pattern is:
+1. `simp [Flat.step?]` to unfold the Flat step
+2. Case split on the value type (object addr vs primitive)
+3. For objects: case split on `sc.heap.objects[addr]?` and use `hheapinj` hypothesis
+4. For primitives: both sides return the same primitive result
 
 ## FILES
 - `VerifiedJS/Proofs/ClosureConvertCorrect.lean` (rw)
 - `VerifiedJS/Proofs/ANFConvertCorrect.lean` (rw)
-- `.lake/_tmp_fix/CC_integrated_v3.lean` (read — jsspec's tested full file)
-- `.lake/_tmp_fix/jsspec_v3.patch` (read — jsspec's diff)
 
 ## DO NOT EDIT: `VerifiedJS/Wasm/Semantics.lean`
