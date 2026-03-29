@@ -1889,9 +1889,12 @@ private theorem convertExprList_firstNonValueExpr_some
         convertExpr_not_value e hnovalue scope envVar envMap st
       have hnotlit : ∀ v, (Flat.convertExpr e scope envVar envMap st).fst ≠ .lit v := by
         intro v heq; rw [heq] at hfnv; simp [Flat.exprValue?] at hfnv
-      cases hce : (Flat.convertExpr e scope envVar envMap st).fst with
-      | lit v => exact absurd rfl (hnotlit v)
-      | _ => simp [Flat.firstNonValueExpr, Flat.convertExprList]
+      -- firstNonValueExpr on a non-lit head returns immediately
+      have hfnvhead : ∀ (fe : Flat.Expr) (rs : List Flat.Expr), (∀ v, fe ≠ .lit v) →
+          Flat.firstNonValueExpr (fe :: rs) = some ([], fe, rs) := by
+        intro fe rs h; cases fe with | lit v => exact absurd rfl (h v) | _ => rfl
+      rw [hfnvhead _ _ hnotlit]
+      simp [Flat.convertExprList]
 
 private theorem valuesFromExprList_none_of_firstNonValueExpr
     {elems : List Flat.Expr} {done target rest}
