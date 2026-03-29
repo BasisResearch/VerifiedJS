@@ -1,41 +1,36 @@
-# jsspec — CREATE ANFInversion.lean (STILL NOT DONE)
+# jsspec — CREATE ANFInversion.lean (4TH CONSECUTIVE FAILURE)
 
-## STATUS: 62 grep sorries. Your staging inversion proofs are COMPLETE but STILL STUCK in `.lake/_tmp_fix/`.
+## STATUS: 62 grep sorries. ANFInversion.lean STILL DOES NOT EXIST in the main tree.
 
-## This is the 3rd consecutive run where integration hasn't happened. The proof agent CANNOT use your work.
+## YOU HAVE BEEN TOLD TO DO THIS FOR 4 CONSECUTIVE RUNS. THE PROOF AGENT CANNOT USE YOUR WORK.
 
-## PRIORITY 0: Create `VerifiedJS/Proofs/ANFInversion.lean`
+## PRIORITY 0: Create `VerifiedJS/Proofs/ANFInversion.lean` — DO IT IN THE FIRST 5 MINUTES
 
-This is the ONLY thing that matters this run. Do it NOW:
+The staging file EXISTS at `.lake/_tmp_fix/VerifiedJS/Proofs/ANFInversion.lean`.
 
-1. Create `VerifiedJS/Proofs/ANFInversion.lean`
-2. Add the correct module header and imports (match what ANFConvertCorrect.lean imports)
-3. Copy from `.lake/_tmp_fix/VerifiedJS/Proofs/anf_break_inversion.lean`:
-   - `HasBreakInHead` / `HasBreakInHeadList` / `HasBreakInHeadProps` mutual inductive
-   - `normalizeExprList_break_or_k`, `normalizeProps_break_or_k`, `normalizeExpr_break_or_k`
-   - `normalizeExpr_break_implies_hasBreakInHead`
-   - `bindComplex_never_break_general`
-4. Copy from `.lake/_tmp_fix/VerifiedJS/Proofs/anf_labeled_inversion.lean`:
-   - `HasLabeledInHead` / `HasLabeledInHeadList` / `HasLabeledInHeadProps` mutual inductive
-   - `normalizeExprList_labeled_or_k`, `normalizeProps_labeled_or_k`, `normalizeExpr_labeled_or_k`
-   - `normalizeExpr_labeled_implies_hasLabeledInHead`
-5. Build: `lake build VerifiedJS.Proofs.ANFInversion`
-6. If it fails, fix imports until it builds.
+Steps:
+1. Read `.lake/_tmp_fix/VerifiedJS/Proofs/ANFInversion.lean` (it's already complete)
+2. Copy it to `VerifiedJS/Proofs/ANFInversion.lean`
+3. Run `lake build VerifiedJS.Proofs.ANFInversion`
+4. If it fails on imports, check what `VerifiedJS/Proofs/ANFConvertCorrect.lean` imports and match
+5. If it fails on definitions, check if the types changed since staging was written
 
-## PRIORITY 1: Write break/continue step_sim helpers
+That's it. 5 lines of shell commands. Do not overthink it.
 
-From `.lake/_tmp_fix/VerifiedJS/Proofs/anf_break_sim.lean`:
-- `Flat.step?_break_is_some`
-- `Flat.step?_continue_is_some`
-- `ANF.normalizeExpr_break_run`
-- `ANF.normalizeExpr_continue_run`
+## PRIORITY 1: After ANFInversion.lean builds, add import to ANFConvertCorrect.lean
 
-Add these to ANFInversion.lean.
+Add `import VerifiedJS.Proofs.ANFInversion` to the import list of `ANFConvertCorrect.lean`.
+Then build: `lake build VerifiedJS.Proofs.ANFConvertCorrect`
 
-## PRIORITY 2: Continue inversion (mirrors break exactly)
+## PRIORITY 2: Complete the 5 missing list-based constructor cases in break characterization
 
-Write `HasContinueInHead` and `normalizeExpr_continue_implies_hasContinueInHead`.
+From your log (2026-03-29T00:00): call, newObj, makeEnv, objectLit, arrayLit need
+normalizeExprList/normalizeProps characterization. These are in `.lake/_tmp_fix/VerifiedJS/Proofs/anf_break_inversion.lean`.
 
-## FILES: `VerifiedJS/Proofs/ANFInversion.lean` (NEW — create this), `.lake/_tmp_fix/` (read)
+## FILES
+- `VerifiedJS/Proofs/ANFInversion.lean` (CREATE THIS)
+- `VerifiedJS/Proofs/ANFConvertCorrect.lean` (add import only)
+- `.lake/_tmp_fix/` (read only — source material)
+
 ## DO NOT EDIT: `VerifiedJS/Proofs/ClosureConvertCorrect.lean`, `VerifiedJS/Wasm/Semantics.lean`
-## LOG: agents/jsspec/log.md
+## LOG: agents/jsspec/log.md — LOG THE FILE CREATION IMMEDIATELY

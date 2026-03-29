@@ -1,55 +1,68 @@
-# proof — FIX CC BUILD FIRST, THEN CCSTATE THREADING
+# proof — CC CCSTATE THREADING: USE Prod.mk.eta
 
-## STATUS: 62 grep sorries (17 ANF + 27 CC + 18 Wasm + 0 Lower). CC BUILD BROKEN. ANF/Lower pass.
+## STATUS: 62 grep sorries (17 ANF + 27 CC + 18 Wasm + 0 Lower).
 
-## ⚠️ PRIORITY 0: FIX THE CC BUILD — YOUR LAST EDIT BROKE IT
+## PRIORITY 0: CC CCState threading at L2383, L2405, L3703
 
-Your 04:30 run edited ClosureConvertCorrect.lean and introduced 4 build errors:
-1. **L3504:6 unsolved goals** — `simp [sc', ExprAddrWF]` at L3503 doesn't close the goal
-2. **L3534:29 Application type mismatch** — `refine Prod.ext ?_ rfl` — the `rfl` doesn't match
-3. **L3542:11 unknown tactic** — `conv_rhs =>` may be in wrong context
-4. **L2045:2 missing alternatives** — THIS IS A CASCADE from errors 1-3. When those are fixed, this disappears.
-
-**FIX**: Replace the broken arrayLit CCState proof block (L3502-3564) with sorry:
+The CC_SimRel (L1098-1099) requires:
 ```lean
-      · -- ExprAddrWF (arrayLit is always True)
-        sorry -- ExprAddrWF propagation into arrayLit elements
-      · -- CCState agreement (arrayLit sub-step)
-        sorry -- CCState threading: convertExprList over decomposed list
+∃ (scope : List String) (envVar : String) (envMap : Flat.EnvMapping) (st st' : Flat.CCState),
+    (sf.expr, st') = Flat.convertExpr sc.expr scope envVar envMap st
 ```
 
-This does NOT increase sorry count — those subgoals were already broken (= implicitly sorry).
-
-**BUILD AFTER THE FIX. If it doesn't pass, investigate and fix until it does. DO NOT proceed to P1 until build passes.**
-
-## PRIORITY 1: CC CCState threading (L2383, L2405, L3686)
-
-After build is fixed, these are the most tractable:
-
 ### L2383 (if-true CCState threading)
-The witness needs to account for BOTH then_ AND else_ conversion states.
-Fix: Use `convertExpr_state_determined` to show the CCState from the full conversion
-matches. The key insight: `st_a'` only covers then_, but the full CCState covers then_ + else_.
 
-### L2405 (if-false CCState threading) — same pattern as L2383
+The sorry is the last element of:
+```lean
+· exact ⟨st, (Flat.convertExpr then_ scope envVar envMap st).snd, by
+    simp [sc', Flat.convertExpr], ⟨rfl, rfl⟩, sorry⟩
+```
 
-### L3686 (while_ CCState threading)
-while_ lowering duplicates cond and body. Use `convertExpr_state_determined` to show
-the duplicated conversion produces the same expressions regardless of CCState.
+**First**: use `lean_goal` at L2383 to check what the goal actually is.
 
-## PRIORITY 2: Integrate jsspec staging into ANF proofs
+The CCState witness for the then_ sub-expression after if-true stepping:
+- sc'.expr = then_
+- sf'.expr = (convertExpr then_ scope envVar envMap st).fst
+- So the witness should be: st_start = st, st_end = (convertExpr then_ scope envVar envMap st).snd
+- The equality `(sf'.expr, st_end) = convertExpr then_ scope envVar envMap st` follows from `Prod.mk.eta`
 
-jsspec has break/labeled inversion in `.lake/_tmp_fix/`. If `VerifiedJS/Proofs/ANFInversion.lean`
-exists (jsspec may have created it), add `import VerifiedJS.Proofs.ANFInversion` to ANFConvertCorrect
-and use `normalizeExpr_break_implies_hasBreakInHead` to close L2000 (break) and L2002 (continue).
+Try replacing the sorry with:
+```lean
+exact Prod.ext (congrArg Prod.fst <| by simp [sc', Flat.convertExpr]) (congrArg Prod.snd <| by simp [sc', Flat.convertExpr])
+```
 
-## DO NOT ATTEMPT
-- ANF nested depth sorries (L1766-L1864)
-- CC value sub-cases (heap reasoning)
-- CC var captured (L2064), newObj (L2900)
-- Wasm sorries
-- Any change that might break the build without immediately testing
+Or if the sorry is about something else (AgreeOut?), use `lean_goal` first.
 
-## FILES: `VerifiedJS/Proofs/*.lean` (rw)
+### L2405 (if-false CCState threading)
+
+Same pattern but for else_ branch. The witnesses are:
+- st_start = (convertExpr then_ scope envVar envMap st).snd
+- st_end = (convertExpr else_ scope envVar envMap st_start).snd
+
+Two sorries here: one is the conversion equality, one might be the AgreeOut.
+
+### L3703 (while_ CCState threading)
+
+while_ duplicates cond+body. Use `convertExpr_state_determined` (L548) to show
+the duplicated conversion produces CCStateAgree results.
+
+## PRIORITY 1: Check forIn/forOf sorries (L1148-1149)
+
+These are in `convertExpr_not_value`. The comment says "theorem false" — if that's literally true (forIn/forOf are stubs that convert to `.lit .undefined` which HAS a value), then these cannot be closed. But check: does the hypothesis `h : Core.exprValue? e = none` for `e = .forIn ...` actually hold? If forIn is never used in the supported subset, maybe we need `h_supported` to exclude these cases.
+
+## PRIORITY 2: Do NOT attempt ANF sorries
+
+Proof agent's own analysis (log 2026-03-28T11:30) showed these are fundamentally blocked by:
+- Nesting contamination
+- Eval-context lifting lemmas not yet written
+- 4 permanently unprovable (throw/return/break/continue semantic mismatches)
+
+## WORKFLOW
+1. `lean_goal` at each sorry BEFORE attempting anything
+2. `lean_multi_attempt` to test candidate tactics
+3. `lake build VerifiedJS.Proofs.ClosureConvertCorrect` after EVERY edit
+4. If build fails, sorry it back IMMEDIATELY
+
+## FILES: `VerifiedJS/Proofs/ClosureConvertCorrect.lean` (rw)
+## DO NOT EDIT: `VerifiedJS/Proofs/ANFConvertCorrect.lean`, `VerifiedJS/Wasm/Semantics.lean`
 ## LOG: agents/proof/log.md — LOG IMMEDIATELY when you start
-## RULE: `lake build VerifiedJS.Proofs.ClosureConvertCorrect` after EVERY edit
