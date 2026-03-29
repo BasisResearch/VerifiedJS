@@ -3398,9 +3398,9 @@ private theorem closureConvert_step_simulation
             simp [ExprAddrWF, ValueAddrWF] at hexprwf; exact hexprwf.2
           -- Build core result state
           let coreHeap' := match sc.heap.objects[addr]? with
-            | some props =>
-                let updated := if props.any (fun kv => kv.fst == prop)
-                  then props.map (fun kv => if kv.fst == prop then (prop, vv) else kv)
+            | some (props : List (Core.PropName × Core.Value)) =>
+                let updated := if props.any (fun (kv : Core.PropName × Core.Value) => kv.fst == prop)
+                  then props.map (fun (kv : Core.PropName × Core.Value) => if kv.fst == prop then (prop, vv) else kv)
                   else props ++ [(prop, vv)]
                 { sc.heap with objects := sc.heap.objects.set! addr updated }
             | none => sc.heap
@@ -3448,7 +3448,10 @@ private theorem closureConvert_step_simulation
           · -- noCallFrameReturn
             simp [sc', noCallFrameReturn]
           · -- ExprAddrWF
-            simp [sc', ExprAddrWF, ValueAddrWF]
+            simp only [sc', ExprAddrWF, ValueAddrWF, coreHeap']
+            cases sc.heap.objects[addr]? with
+            | none => exact hvv_wf
+            | some _ => exact ValueAddrWF_mono hvv_wf (by simp [size_set!])
           · -- CCState threading
             refine ⟨st, st, ?_, ⟨rfl, rfl⟩, by subst hst; exact ⟨rfl, rfl⟩⟩
             simp [sc', Flat.convertExpr, Flat.convertValue]
@@ -3471,7 +3474,8 @@ private theorem closureConvert_step_simulation
           · exact henvwf
           · exact hheapvwf
           · simp [sc', noCallFrameReturn]
-          · simp [sc', ExprAddrWF, ValueAddrWF]
+          · simp only [sc', ExprAddrWF, ValueAddrWF]
+            exact (by simp [ExprAddrWF, ValueAddrWF] at hexprwf; exact hexprwf.2)
           · refine ⟨st, st, ?_, ⟨rfl, rfl⟩, by subst hst; exact ⟨rfl, rfl⟩⟩
             simp [sc', Flat.convertExpr, Flat.convertValue]
       | none =>

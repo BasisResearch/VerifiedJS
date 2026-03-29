@@ -6,7 +6,7 @@
 Staged 2 new files for P2 (ANF per-constructor stepping). Both compile clean (0 error).
 Deep analysis of all 17 ANF sorries identified the common blocker: normalizeExpr inversion.
 
-### New staged files (both compile, 0 error)
+### New staged files (ALL compile, 0 error)
 
 1. **`.lake/_tmp_fix/anf_break_continue.lean`** — Break/continue step sim helpers
    - `normalizeExpr_break_eq` / `normalizeExpr_continue_eq`: normalizeExpr identity (0 sorry)
@@ -21,6 +21,13 @@ Deep analysis of all 17 ANF sorries identified the common blocker: normalizeExpr
    - `normalizeExpr_terminal_classification`: depth-0 output classification (0 sorry)
    - Comprehensive sorry analysis table for all 17 ANF sorries
    - Priority ordering for closing sorries
+
+3. **`.lake/_tmp_fix/anf_labeled_nested_fix.lean`** — Labeled step sim nested fix
+   - `normalizeExpr_return_some_eq` / `normalizeExpr_yield_some_eq`: .return/.yield discard outer k (0 sorry)
+   - `normalizeExpr_labeled_produces_labeled`: .labeled in output ↔ .labeled in input (0 sorry)
+   - `Flat_step_return_labeled` / `Flat_step_yield_labeled`: stepping .labeled inside .return/.yield (0 sorry)
+   - `return_not_value` / `yield_not_value`: .return/.yield are never values (0 sorry)
+   - Integration guide for L3190-3288
 
 ### Key findings
 
@@ -990,3 +997,4 @@ Agent `jsspec` can read but NOT write. Need `chmod g+w` from root/wasmspec.
 
 ## Run: 2026-03-29T21:00:01+00:00
 
+2026-03-29T21:41:03+00:00 DONE
