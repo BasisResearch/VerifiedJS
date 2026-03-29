@@ -1,3 +1,44 @@
+## Run: 2026-03-29T09:30+00:00
+- **BUILD: PASSES** ✓
+- **Sorries: ANF 17, CC 25, Wasm 18 (60 total, down 2 from 62)**
+- **Closed: objectLit sub-step extraction (L3511→proved), arrayLit sub-step extraction (L3609→proved)**
+
+### Closed sorries
+
+1. **objectLit sub-step extraction** (was L3429): When `Flat.step?` on `.objectLit props` has `valuesFromExprList? = none` and `firstNonValueProp = some (done, propName, target, rest)`, the step delegates to `step? target` and reassembles the objectLit. Proved using new helper `Flat_step?_objectLit_step`.
+
+2. **arrayLit sub-step extraction** (was L3517): Same pattern for `.arrayLit elems` with `firstNonValueExpr`. Proved using `Flat_step?_arrayLit_step`.
+
+### New infrastructure added
+
+- `Flat_step?_objectLit_step` / `Flat_step?_objectLit_none`: Step extraction/stuck lemmas for objectLit
+- `Flat_step?_arrayLit_step` / `Flat_step?_arrayLit_none`: Step extraction/stuck lemmas for arrayLit
+- `Core_step?_objectLit_step` / `Core_step?_arrayLit_step`: Core counterparts
+
+Key tactic insight: `Flat.step?` uses `match hf : firstNonValueProp props with ...` (dependent match for WF proof). Cannot use `simp only [hfnvp]` to resolve this. Must use `split` then equate the split hypothesis with `hfnvp` via injection.
+
+### Analysis of remaining CC sorries (25)
+
+**Blocked by theorem statement (CCState threading) — 5 sorries**:
+- L2391, L2413(×2), L3536, L3828: `st'` includes both-branch conversions but `st_a'` only one. Needs `CCStateAgree` weakening.
+
+**Blocked by supported invariant — 4 sorries**:
+- L1148-1149: `convertExpr_not_value` FALSE for forIn/forOf (stubs → `.lit .undefined`)
+- L1878, L1988: `convertExprList/PropList_firstNonValueExpr/Prop_some` depends on convertExpr_not_lit
+
+**Blocked by multi-step simulation — 1 sorry**:
+- L2072: Captured variable, Flat takes 2 steps (envVar lookup + heap index), Core takes 1
+
+**Heap value sub-cases — 9 sorries**:
+- L2907, L2908, L2929, L3031, L3101, L3170, L3255, L3455, L3543: Need HeapInj for Core→Flat heap address mapping when objects are values
+
+**ExprAddrWF propagation — 2 sorries**:
+- L3489, L3577: `ExprAddrWF (.objectLit/_arrayLit _) = True` doesn't propagate to elements
+
+**Full case implementations — 4 sorries**:
+- L3707 (functionDef), L3797 (tryCatch): Complex multi-step cases
+- These need dedicated proof effort
+
 ## Run: 2026-03-29T08:30+00:00
 - **BUILD: PASSES** ✓
 - **Sorries: ANF 17, CC 27, Wasm 18 (62 total, unchanged)**

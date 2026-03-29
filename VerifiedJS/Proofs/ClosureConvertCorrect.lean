@@ -1893,6 +1893,19 @@ private theorem Flat_step?_tryCatch_body_value (s : Flat.State)
                        trace := s.trace ++ [.silent], funcs := s.funcs, callStack := s.callStack }) := by
   simp [Flat.step?, h_ncf]
 
+-- Helper: Flat getProp on object → heap property lookup
+private theorem Flat_step?_getProp_object (s : Flat.State) (addr : Nat) (prop : Core.PropName) :
+    Flat.step? { s with expr := .getProp (.lit (.object addr)) prop } =
+      let v := match Flat.heapObjectAt? s.heap addr with
+        | some props =>
+            match props.find? (fun kv => kv.fst == prop) with
+            | some (_, cv) => Flat.coreToFlatValue cv
+            | none => if prop == "length" then Flat.Value.number (Float.ofNat props.length) else .undefined
+        | none => Flat.Value.undefined
+      some (.silent, { expr := .lit v, env := s.env, heap := s.heap,
+                       trace := s.trace ++ [.silent], funcs := s.funcs, callStack := s.callStack }) := by
+  simp [Flat.step?]
+
 -- Helper: Flat getProp on string → length or undefined
 private theorem Flat_step?_getProp_string (s : Flat.State) (str : String) (prop : Core.PropName) :
     Flat.step? { s with expr := .getProp (.lit (.string str)) prop } =
