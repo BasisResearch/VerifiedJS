@@ -3509,10 +3509,9 @@ private theorem closureConvert_step_simulation
               obtain ⟨rfl, hsf'eq⟩ := hstep
               exact ⟨sa, rfl, hsf'eq.symm⟩
           | none =>
-            have heq : Flat.step? { sf with expr := (Flat.Expr.setProp (.lit (Flat.convertValue cv)) prop
-                (Flat.convertExpr value scope envVar envMap st).fst) } = none := by
-              cases cv <;> simp [Flat.step?, hfnv_v, hm]
-            rw [heq] at hstep; exact absurd hstep (by simp)
+            exfalso
+            revert hstep; simp only [Flat.step?, Flat.convertValue]
+            cases cv <;> simp [hfnv_v, hm]
         subst hsf'_eq
         have hdepth : value.depth < n := by simp [Core.Expr.depth] at hd; omega
         have hncfr_v : noCallFrameReturn value = true := by
@@ -3544,7 +3543,9 @@ private theorem closureConvert_step_simulation
         · exact hheapvwf'
         · simp [sc', noCallFrameReturn]; exact hncfr'
         · simp only [sc']; simp only [ExprAddrWF]
-          exact ⟨ValueAddrWF_mono hcv_wf (Core_step_heap_size_mono hcstep_sub), hexprwf'⟩
+          have heap_mono : sc.heap.objects.size ≤ sc_sub'.heap.objects.size :=
+            Core_step_heap_size_mono hcstep_sub
+          exact ⟨ValueAddrWF_mono hcv_wf heap_mono, hexprwf'⟩
         · refine ⟨st_a, st_a', ?_, hAgreeIn, by rw [hst]; exact hAgreeOut⟩
           simp only [sc', Flat.convertExpr, Flat.convertValue]
           rw [show (Flat.convertExpr sc_sub'.expr scope envVar envMap st_a).fst = sa.expr from (congrArg Prod.fst hconv').symm]

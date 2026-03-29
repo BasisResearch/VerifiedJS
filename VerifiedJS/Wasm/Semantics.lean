@@ -6488,10 +6488,14 @@ inductive LowerCodeCorr : ANF.Expr → List IRInstr → Prop where
   | throw_ret (arg : ANF.Trivial) (argCode : List IRInstr) :
       TrivialCodeCorr arg argCode →
       LowerCodeCorr (.throw arg) (argCode ++ [.call RuntimeIdx.throwOp, .return_])
-  /-- tryCatch lowers to a block structure. -/
+  /-- tryCatch lowers to: [block doneLabel ([block catchLabel (bodyCode ++ [br doneLabel])] ++ catchCode)] ++ finallyCode.
+      REF: Lower.lean lines 453-465. -/
   | tryCatch (body : ANF.Expr) (cp : ANF.VarName) (cb : ANF.Expr)
-      (fin : Option ANF.Expr) (instrs : List IRInstr) :
-      LowerCodeCorr (.tryCatch body cp cb fin) instrs
+      (fin : Option ANF.Expr) (catchLabel doneLabel : String)
+      (bodyCode catchCode finallyCode : List IRInstr) :
+      LowerCodeCorr (.tryCatch body cp cb fin)
+        ([.block doneLabel
+          ([.block catchLabel (bodyCode ++ [.br doneLabel])] ++ catchCode)] ++ finallyCode)
   /-- return with value lowers to: valueCode ++ [return_].
       REF: Lower.lean lines 466-471. -/
   | return_some (arg : ANF.Trivial) (argCode : List IRInstr) :
@@ -6512,9 +6516,22 @@ inductive LowerCodeCorr : ANF.Expr → List IRInstr → Prop where
   | await (arg : ANF.Trivial) (argCode : List IRInstr) :
       TrivialCodeCorr arg argCode →
       LowerCodeCorr (.await arg) (argCode ++ [.call RuntimeIdx.awaitOp])
-  /-- labeled lowers to a block structure. -/
-  | labeled (label : String) (body : ANF.Expr) (instrs : List IRInstr) :
-      LowerCodeCorr (.labeled label body) instrs
+  /-- labeled (non-while body) lowers to: [block exitLbl bodyCode].
+      REF: Lower.lean lines 487-496. -/
+  | labeled_block (label : String) (body : ANF.Expr)
+      (exitLbl : String) (bodyCode : List IRInstr) :
+      LowerCodeCorr body bodyCode →
+      LowerCodeCorr (.labeled label body) [.block exitLbl bodyCode]
+  /-- labeled (while body) delegates to lowerWhile, same structure as while_.
+      REF: Lower.lean lines 485-486. -/
+  | labeled_while (label : String) (cond body : ANF.Expr)
+      (condCode bodyCode : List IRInstr) (exitLbl loopLbl : String)
+      (undefinedConst : IRInstr) :
+      LowerCodeCorr cond condCode → LowerCodeCorr body bodyCode →
+      LowerCodeCorr (.labeled label (.while_ cond body))
+        ([.block exitLbl [.loop loopLbl
+            (condCode ++ [.call RuntimeIdx.truthy, .unOp .i32 "eqz", .brIf exitLbl] ++
+             bodyCode ++ [.drop, .br loopLbl])]] ++ [undefinedConst])
   /-- break lowers to: [br target].
       REF: Lower.lean lines 497-500. -/
   | break_ (label : Option String) (target : String) :
@@ -6582,6 +6599,31 @@ theorem LowerCodeCorr.if_inv {cond : ANF.Trivial} {then_ else_ : ANF.Expr} {code
   match h with
   | LowerCodeCorr.if_ _ _ _ _ _ _ htcc hthen helse =>
     exact ⟨_, _, _, rfl, htcc, hthen, helse⟩
+
+/-- Inversion: LowerCodeCorr for labeled is either labeled_block or labeled_while. -/
+theorem LowerCodeCorr.labeled_inv {label : String} {body : ANF.Expr} {code : List IRInstr}
+    (h : LowerCodeCorr (.labeled label body) code) :
+    (∃ exitLbl bodyCode, code = [.block exitLbl bodyCode] ∧ LowerCodeCorr body bodyCode) ∨
+    (∃ cond loopBody condCode bodyCode exitLbl loopLbl undefinedConst,
+      body = .while_ cond loopBody ∧
+      code = [.block exitLbl [.loop loopLbl
+          (condCode ++ [.call RuntimeIdx.truthy, .unOp .i32 "eqz", .brIf exitLbl] ++
+           bodyCode ++ [.drop, .br loopLbl])]] ++ [undefinedConst] ∧
+      LowerCodeCorr cond condCode ∧ LowerCodeCorr loopBody bodyCode) := by
+  match h with
+  | .labeled_block _ _ el bc hbc => exact .inl ⟨el, bc, rfl, hbc⟩
+  | .labeled_while _ _ _ cc bc el ll uc hcc hbc =>
+    exact .inr ⟨_, _, cc, bc, el, ll, uc, rfl, rfl, hcc, hbc⟩
+
+/-- Inversion: LowerCodeCorr for tryCatch extracts block structure. -/
+theorem LowerCodeCorr.tryCatch_inv {body : ANF.Expr} {cp : ANF.VarName}
+    {cb : ANF.Expr} {fin : Option ANF.Expr} {code : List IRInstr}
+    (h : LowerCodeCorr (.tryCatch body cp cb fin) code) :
+    ∃ catchLabel doneLabel bodyCode catchCode finallyCode,
+      code = [.block doneLabel
+        ([.block catchLabel (bodyCode ++ [.br doneLabel])] ++ catchCode)] ++ finallyCode := by
+  match h with
+  | .tryCatch _ _ _ _ cl dl bc cc fc => exact ⟨cl, dl, bc, cc, fc, rfl⟩
 
 /-- Step-count measure: how many IR steps a given ANF expression needs.
     Used for stuttering simulation arguments. Returns 0 for halted expressions,
