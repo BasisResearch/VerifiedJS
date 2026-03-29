@@ -3209,7 +3209,7 @@ private theorem closureConvert_step_simulation
           · refine ⟨st, st, ?_, ⟨rfl, rfl⟩, by subst hst; exact ⟨rfl, rfl⟩⟩
             simp only [sc', Flat.convertExpr, Flat.convertValue]
             congr 1; congr 1
-            rw [heapObjectAt?_eq, ← HeapInj_get hinj haddr_wf, hprops]; rfl
+            rw [heapObjectAt?_eq, ← HeapInj_get hinj haddr_wf, hprops]
         | some props =>
           cases hfind : props.find? (fun (kv : Core.PropName × Core.Value) => kv.fst == prop) with
           | none =>
@@ -3230,10 +3230,10 @@ private theorem closureConvert_step_simulation
             · simp [sc', noCallFrameReturn]
             · simp only [sc', ExprAddrWF, coreResult]; split <;> simp [ValueAddrWF]
             · refine ⟨st, st, ?_, ⟨rfl, rfl⟩, by subst hst; exact ⟨rfl, rfl⟩⟩
-              simp only [sc', Flat.convertExpr, coreResult]
+              simp only [sc', Flat.convertExpr, Flat.convertValue, coreResult]
               congr 1; congr 1
-              rw [heapObjectAt?_eq, ← HeapInj_get hinj haddr_wf, hprops]
-              simp only [hfind]; split <;> simp [Flat.convertValue]
+              rw [heapObjectAt?_eq, ← HeapInj_get hinj haddr_wf, hprops, hfind]
+              split <;> simp [Flat.convertValue]
           | some kv =>
             let sc' : Core.State := ⟨.lit kv.2, sc.env, sc.heap,
               sc.trace ++ [.silent], sc.funcs, sc.callStack⟩
