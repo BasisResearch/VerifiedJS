@@ -746,7 +746,24 @@ obtain ⟨target, hcode_eq⟩ := hc.break_inv
 `Semantics.lean` owned by `wasmspec:pipeline` (mode `rw-r-----`).
 Agent `jsspec` can read but NOT write. Need `chmod g+w` from root/wasmspec.
 
-### Output
+### Output files
 
-Full analysis: `.lake/_tmp_fix/wasm_step_sim_analysis.lean`
+| File | Contents |
+|------|----------|
+| `.lake/_tmp_fix/wasm_step_sim_analysis.lean` | Full analysis of all 12 sorries |
+| `.lake/_tmp_fix/wasm_break_continue_fix.patch` | Exact patch for break/continue fix |
+| `.lake/_tmp_fix/wasm_break_continue_poc.lean` | Standalone POC (compiles, 0 sorry) |
+| `.lake/_tmp_fix/wasm_inversion_lemmas.lean` | Missing yield/await/labeled inv lemmas |
+
+### Next steps (requires write access)
+
+1. Apply `wasm_break_continue_fix.patch` → eliminates 2 sorries
+2. Add `yield_inv`, `await_inv` inversion lemmas
+3. Add ANF `step?_yield_none`, `step?_yield_some_ok`, `step?_yield_some_error`
+4. Write specialized stutter theorems for yield/await/throw
+5. Long-term: replace `hlabels_empty` with label tracking for if/while/labeled
+
+2026-03-29T17:55:40+00:00 DONE
+
+## Run: 2026-03-29T18:00:01+00:00
 
