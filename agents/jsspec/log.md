@@ -141,5 +141,64 @@ have := hheapvwf addr haddr_wf props hprops kv (List.find?_mem hfind)
 - File is 4852 lines. Sorry count: ~25 total.
 - 5 value sub-cases now at: L2959, L3083, L3153, L3222, L3307
 - Also investigating: L2981 (getProp object), L2960 (newObj)
-- Starting with goal inspection at each sorry location.
+- CC file is READ-ONLY for jsspec user. Staging in `.lake/_tmp_fix/`.
 
+### New verified helpers (all compile, 0 sorry)
+
+| Helper | Test file | Axioms |
+|--------|-----------|--------|
+| `HeapCorr_set_same` | test_heap_set_same.lean | propext |
+| `Core_step?_setProp_value_step` | test_core_step_helpers.lean | propext, choice, quot |
+| `Core_step?_getIndex_value_step` | test_core_step_helpers.lean | propext, choice, quot |
+| `Core_step?_setIndex_value_step_idx` | test_core_step_helpers.lean | propext, choice, quot |
+| `list_find?_mem` | test_list_filter.lean | — |
+
+Proof pattern for Core_step?_*_value_step:
+```lean
+cases ve_or_ie with
+| lit v => simp [Core.exprValue?] at hnv
+| _ => cases cv <;> simp [Core.step?, Core.exprValue?, hss, Core.pushTrace]
+```
+
+### Staging files created
+
+1. **cc_getProp_object_proof.lean** — Complete proof for L2981 (0 sorry)
+   - Prerequisites: Flat_step?_getProp_object_value (from cc_value_subcases.lean), list_find?_mem
+
+2. **cc_deleteProp_value_proof.lean** — Complete proof for L3307 (0 sorry)
+   - Non-object case: straightforward (no heap mutation)
+   - Object case: needs HeapInj_set_same + HeapValuesWF_set_at (both exist)
+   - Prerequisites: Flat_step?_deleteProp_{object,nonobject}_value, HeapCorr_set_same, HeapInj_set_same
+
+3. **cc_all_value_proofs.lean** — Master guide with ALL proofs + prerequisites
+   - getProp object (L2981): COMPLETE, 0 sorry
+   - deleteProp value (L3307): COMPLETE, 0 sorry
+   - setProp value (L3083): value-stepping case done, both-values sorry remains
+   - getIndex value (L3153): sketch (same pattern as setProp)
+   - setIndex value (L3222): sketch (triple case split)
+   - call value (L2959): NOT ATTEMPTED
+
+### Implementation order for proof agent
+
+1. Add helper lemmas to CC file (order matters):
+   - `list_find?_mem` (near utility section)
+   - `HeapCorr_set_same` + `HeapInj_set_same` (after L893)
+   - `Flat_step?_getProp_object_value` (after L1842)
+   - `Flat_step?_deleteProp_{object,nonobject}_value` (after above)
+   - `Flat_step?_setProp_{object,nonobject}_step_value` (after L1574)
+   - `Core_step?_setProp_value_step` (after above)
+
+2. Close sorries in order: L2981 → L3307 → L3083 → L3153 → L3222
+
+### Build status
+- CC file UNTOUCHED (read-only for jsspec)
+- All staging files compile with 0 errors
+- lake build status: unchanged from session start (pre-existing errors at L1761/L1775/L1787/L1800/L3488/L3587)
+
+### API notes
+- `List.mem_of_mem_filter` does NOT exist; use `(List.mem_filter.mp h).1`
+- `List.find?_mem` does NOT exist; need custom `list_find?_mem` helper
+- `Array.getElem?_set!` does NOT exist; use `Array.set!` unfolding + `Array.setIfInBounds` + `Array.getElem?_set`
+- Core_step?_*_value_step proof: MUST `cases` the expression first, not the value type
+
+2026-03-29T10:28:36+00:00 DONE
