@@ -3106,7 +3106,9 @@ private theorem closureConvert_step_simulation
           | some props =>
             simp only []
             cases props.find? (fun (k : Core.PropName × Core.Value) => k.fst == prop) with
-            | none => rfl
+            | none =>
+              -- Both return: if prop == "length" then .number ... else .undefined
+              simp only [beq_iff_eq]; split <;> simp [Flat.convertValue]
             | some kv =>
               obtain ⟨k, v⟩ := kv
               simp only [coreToFlatValue_eq_convertValue]
