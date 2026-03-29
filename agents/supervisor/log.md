@@ -1,3 +1,59 @@
+## Run: 2026-03-29T16:05:01+00:00
+
+### Metrics
+- **Sorry count (grep -c)**: 60 (17 ANF + 25 CC + 18 Wasm). CC DOWN by 1 (26→25). FIRST REDUCTION IN 7 RUNS.
+- **LowerCorrect: 0 sorries** — DONE.
+- **EmitCorrect: 0 sorries** — DONE.
+- **Delta from last run (15:30)**: **-1**. Proof agent closed 1 CC sorry.
+- **BUILD STATUS**: proof active since 15:00 (1h, productive). jsspec DEAD (session ended ~16:03). wasmspec ZOMBIE 17h+ (will timeout ~23:00).
+
+### Agent Analysis
+1. **proof** (PID 1466210, started 15:00): ACTIVE, PRODUCTIVE. Closed 1 CC sorry (26→25). Working on value sub-cases (getProp object, deleteProp, getIndex, setIndex, setProp). Line numbers updated in prompt. Keep running.
+2. **jsspec** (no PID): DEAD. Session ended at 16:03. Last session analyzed ANF (confirmed all 17 blocked by continuation mismatch), did NOT get to Wasm. Prompt updated with detailed Wasm tactic hints based on return-none proof pattern. Will read new prompt on restart.
+3. **wasmspec** (PID 845769, started Mar 28 23:00): ZOMBIE 17h. Permission denied on kill. Will timeout ~23:00.
+
+### Key Findings
+1. **CC -1 is PROGRESS**. First net reduction since run at 08:30. Proof agent is closing value sub-cases.
+2. **jsspec wasted last session on ANF** (read old prompt before Wasm pivot was written). New prompt is ready with specific tactic patterns from return-none proof.
+3. **Wasm 16 sorries untouched** — neither jsspec nor wasmspec has worked on them. jsspec will pick these up on restart.
+
+### Sorry Classification (unchanged structure)
+
+**CC (25 grep-c):**
+- BLOCKED (9): L1177, L1178, L2133, L2243, L2274/L2277/L2327, L2646, L2668(×2)
+- Value sub-cases (5): L3184 (getProp obj), L3286 (deleteProp), L3356 (getIndex), L3425 (setIndex), L3510 (setProp)
+- Heap allocation (2): L3658 (objLit), L3756 (arrLit)
+- ExprAddrWF (2): L3702, L3800
+- CCState threading (3): L3749, L4051, L2646
+- Call/newObj (2): L3162, L3163
+- Large (2): L3930 (functionDef), L4020 (tryCatch)
+
+**ANF (17):** ALL blocked by continuation mismatch.
+
+**Wasm (16 actual):** 12 easy/medium + 4 hard (call/callIndirect). jsspec targeting on restart.
+
+### Actions Taken
+1. Counted sorries: 60 (17+25+18) — CC down 1
+2. **proof prompt**: Updated line numbers to match current CC file (L3184, L3286, L3356, L3425, L3510). Status updated to reflect 25 sorries.
+3. **jsspec prompt**: Rewrote with detailed tactic pattern from return-none proof (L6822-6863). Listed specific lemmas to search for (`ANF.step?_break`, `LowerCodeCorr.break_inv`, etc.). Workflow steps match proven var/return cases.
+4. **wasmspec prompt**: Unchanged (won't restart until ~23:00).
+5. Logged time estimate (60, 144h)
+
+### OUTLOOK
+- **Next run target: ≤ 58** (proof closes getProp object + 1 more value sub-case = -2)
+- **When jsspec restarts: ≤ 55** (targets 5 easy Wasm sorries: break, continue, return-some, yield, await)
+- **When wasmspec restarts at 23:00: ≤ 52** (6 medium Wasm sorries)
+- **ANF 17 still LONG-TERM BLOCKED**
+
+### RISK
+- jsspec restart timing unknown — could be minutes or hours
+- Proof agent running 1h, may run several more hours on current session
+- wasmspec 7h until timeout
+
+2026-03-29T16:05:01+00:00 DONE
+
+---
+
 ## Run: 2026-03-29T15:30:04+00:00
 
 ### Metrics
@@ -5040,3 +5096,4 @@ Breakdown (13 `sorry` tokens, 10 real proof sorries):
 
 ## Run: 2026-03-29T16:05:01+00:00
 
+2026-03-29T16:08:03+00:00 DONE

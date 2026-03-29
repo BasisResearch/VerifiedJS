@@ -1,52 +1,72 @@
-# jsspec — PIVOT TO WASM SORRIES. wasmspec is DEAD (16h zombie).
+# jsspec — WASM SORRIES. wasmspec is ZOMBIE (17h+). You are the only one.
 
-## STATUS: ANF sorries are ALL blocked by continuation mismatch. Excellent analysis. PIVOT.
+## STATUS
+- ANF: 17 sorries, ALL blocked by continuation mismatch. DO NOT WORK ON ANF.
+- CC: 25 sorries, proof agent handling. DO NOT WORK ON CC.
+- Wasm: 16 actual sorries in Wasm/Semantics.lean. YOUR MISSION.
 
-Your ANF analysis was perfect — all 17 sorries need `normalizeExpr_labeled_step_sim` generalized to remove the faithful-k requirement. That's a deep refactor. NOT your job right now.
+## YOUR TARGETS — 12 sorries (the 4 call/callIndirect are too hard)
 
-## NEW MISSION: Close Wasm sorries in Wasm/Semantics.lean
+### Pattern to follow: return-none (L6822-6863) is FULLY PROVED
 
-wasmspec has been ZOMBIE for 16+ hours. It will timeout at ~23:00. YOU take its Wasm sorries.
+The proof pattern for every `step_sim` case is:
+1. `have hc := hrel.hcode; rw [hexpr] at hc` — get IR code structure from LowerCodeCorr
+2. Invert `hc` to get the specific code shape (e.g., `hc.return_none_inv`, `hc.var_inv`)
+3. Get ANF step lemma (e.g., `ANF.step?_return_none s1`)
+4. Rewrite `heq` with the step result to extract `⟨rfl, rfl⟩`
+5. Get IR step result (e.g., `irStep?_eq_return_toplevel`)
+6. Match traces using `traceFromCore`
+7. Construct new `LowerSimRel` for successor state with all fields
 
-### Wasm Sorry Map (16 actual sorries, 18 grep-c):
+### EASIEST 5 (start here):
 
-#### EASIEST (start here — 5 sorries):
-1. **L6876** — break: both sides produce error signal
-2. **L6879** — continue: same pattern as break
-3. **L6864** — return (some t): follow the return-none pattern at L6822-6863 (FULLY PROVED just above)
-4. **L6867** — yield: evaluate optional trivial arg
-5. **L6870** — await: evaluate trivial arg
+**L6876 — break**: Both sides produce error signal.
+```lean
+have hc := hrel.hcode; rw [hexpr] at hc
+-- Look for: LowerCodeCorr.break_inv, ANF.step?_break
+-- lean_local_search "step?_break" and "break_inv"
+```
 
-#### MEDIUM (7 sorries):
-6. **L6798** — let binding
-7. **L6806** — sequence
-8. **L6810** — if/conditional
-9. **L6813** — while
-10. **L6816** — throw
-11. **L6819** — tryCatch
-12. **L6873** — labeled
+**L6879 — continue**: Identical to break.
 
-#### HARD (4 sorries — skip for now):
-13-16. **L10857, L10912, L10916, L10919** — call/callIndirect
+**L6864 — return (some t)**: Follow return-none (L6822-6863).
+- Need `hc.return_some_inv` to get `⟨argCode, hcode_eq, htcc⟩`
+- See `step_sim_return_litNull` at L6884 for a specialized example
+- Evaluate trivial arg, then return
 
-### APPROACH:
-1. Read the proven cases above L6798 to understand the proof pattern (especially return-none at L6822-6863)
-2. `lean_goal` at L6876 to see exact break goal
-3. `lean_multi_attempt` with: `["simp [step]", "rfl", "exact absurd", "omega", "contradiction", "simp [Wasm.step?, Wasm.evalExpr]"]`
-4. When a tactic works → Edit the file to replace sorry
-5. Build: `lake build VerifiedJS.Wasm.Semantics`
-6. Move to next sorry. Max 20 min per sorry.
+**L6867 — yield**: Evaluate optional arg, produce yield event.
 
-### KEY INSIGHT:
-- Break/continue should be near-identical (both produce error/abort signals)
-- Return(some t) should follow return(none) which is already proven right above
-- yield/await are similar to return
+**L6870 — await**: Evaluate trivial arg, produce await event.
+
+### MEDIUM 7:
+
+**L6816 — throw**: Evaluate arg, produce error. Similar to return.
+**L6806 — sequence**: Comments say needs 1:N stepping framework. Try anyway.
+**L6798 — let**: Comments say needs IR multi-step. Try anyway.
+**L6810 — if**: Evaluate cond, branch.
+**L6813 — while**: Loop stepping.
+**L6819 — tryCatch**: Error handling.
+**L6873 — labeled**: Enter labeled block.
+
+### WORKFLOW:
+1. Read L6708-6863 (proven cases) as your template — especially var (L6708), return-none (L6822)
+2. `lean_goal` at each sorry to see exact goal
+3. `lean_local_search` for `step?_break`, `break_inv`, etc. to find available lemmas
+4. `lean_hover_info` on `hc` after `rw [hexpr] at hc` to see what inversions exist
+5. `lean_multi_attempt` to test tactic combinations
+6. Edit file, then `lake build VerifiedJS.Wasm.Semantics`
+7. If build breaks: `git checkout VerifiedJS/Wasm/Semantics.lean` within 2 minutes
+8. Max 20 min per sorry. If stuck, move to next.
+9. LOG every 30 min to agents/jsspec/log.md
+
+### KEY LEMMAS TO SEARCH FOR:
+- `ANF.step?_break`, `ANF.step?_continue`, `ANF.step?_yield`, `ANF.step?_await`, `ANF.step?_throw`
+- `LowerCodeCorr.break_inv`, `.continue_inv`, `.yield_inv`, `.await_inv`, `.throw_inv`
+- `irStep?_eq_*` for each IR instruction pattern
+- `traceFromCore` for trace conversion
 
 ### CONSTRAINTS:
 - CAN edit: `VerifiedJS/Wasm/Semantics.lean`
 - DO NOT edit: `VerifiedJS/Proofs/*.lean`
 - Stage helpers in `.lake/_tmp_fix/` if needed
 - LOG every 30 min to agents/jsspec/log.md
-
-### ANF STATUS (for reference):
-Your analysis is saved in `.lake/_tmp_fix/anf_sorry_analysis.lean`. When wasmspec restarts at ~23:00, supervisor will redirect someone to ANF generalization. For now, Wasm is higher priority.

@@ -1,6 +1,6 @@
 # proof — CC VALUE SUB-CASES. Target: -4 this run.
 
-## STATUS: 26 CC sorries (grep-c). You split getProp and proved string+primitive. GOOD.
+## STATUS: 25 CC sorries (grep-c). DOWN from 26. You closed 1 more. KEEP GOING.
 
 ## DROP V3 COPY — files have diverged. Integrate manually if needed.
 
@@ -10,28 +10,28 @@ The v3 file is stale (different sorry structure after your sub-case splits). Do 
 
 You proved getProp string and primitive sub-cases using heap reasoning. Now apply the SAME pattern to these 5 identical sorries:
 
-### P0: getProp object (L3065) — FINISH THIS FIRST
-- You're already working on this. Needs Flat.step? unfolding for object case.
+### P0: getProp object (L3184) — FINISH THIS FIRST
+- Needs Flat.step? unfolding for object case.
 - The `pushTrace` is private in Flat.Semantics. Workaround: use `show` to unfold step? definition inline, or add a `@[simp]` lemma for `Flat.step? (.getProp obj prop) heap env`.
 - Try: `simp only [Flat.step?, Flat.evalTrivial]` then case split on heap lookup result.
 
-### P1: deleteProp value (L3167)
-- Same pattern as getProp. `lean_goal` at L3167 then follow your getProp approach.
+### P1: deleteProp value (L3286)
+- Same pattern as getProp. `lean_goal` at L3286 then follow your getProp approach.
 - Case split on value being object/non-object.
 
-### P2: getIndex value (L3237)
+### P2: getIndex value (L3356)
 - Array index access. Similar heap reasoning.
 
-### P3: setIndex value (L3306)
+### P3: setIndex value (L3425)
 - Array index set. Similar heap reasoning.
 
-### P4: setProp value (L3391)
+### P4: setProp value (L3510)
 - Object property set. Similar to getProp but writing.
 
-### P5: call value (L3043) — after P0-P4
+### P5: call value (L3162) — after P0-P4
 - Case split on `exprListValue? args`. When all args are values, use call execution lemma.
 
-### P6: newObj (L3044) — after P5
+### P6: newObj (L3163) — after P5
 - Object allocation. Heap reasoning for fresh address.
 
 ## BLOCKED (do NOT touch):

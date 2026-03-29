@@ -907,19 +907,14 @@ private theorem HeapInj_set_same {ch fh : Core.Heap} {f : Nat → Nat}
     (p : List (Core.PropName × Core.Value)) :
     HeapInj f { ch with objects := ch.objects.set! addr p }
              { fh with objects := fh.objects.set! addr p } := by
-  have hsz_c : (ch.objects.set! addr p).size = ch.objects.size := Array.size_setIfInBounds ..
-  have hsz_f : (fh.objects.set! addr p).size = fh.objects.size := Array.size_setIfInBounds ..
-  constructor
-  · show (ch.objects.set! addr p).size ≤ (fh.objects.set! addr p).size
-    simp only [hsz_c, hsz_f]; exact hinj.1
-  · intro addr' hlt'
-    simp only [show Core.Heap.objects _ = _ from rfl, hsz_c] at hlt'
-    have hlt_f : addr < fh.objects.size := Nat.lt_of_lt_of_le hlt hinj.1
-    by_cases h : addr' = addr
-    · subst h; simp [Array.set!, Array.setIfInBounds, hlt, hlt_f]
-    · simp only [Array.set!, Array.setIfInBounds, hlt, hlt_f, ↓reduceDIte]
-      rw [Array.getElem?_set, Array.getElem?_set]
-      simp [Ne.symm h, hinj.2 addr' hlt']
+  refine ⟨by simp only [size_set!]; exact hinj.1, fun addr' hlt' => ?_⟩
+  simp only [size_set!] at hlt'
+  have hlt_f : addr < fh.objects.size := Nat.lt_of_lt_of_le hlt hinj.1
+  by_cases h : addr' = addr
+  · subst h; simp [Array.set!, Array.setIfInBounds, hlt, hlt_f]
+  · simp only [Array.set!, Array.setIfInBounds, hlt, hlt_f, ↓reduceDIte]
+    rw [Array.getElem?_set, Array.getElem?_set]
+    simp [Ne.symm h, hinj.2 addr' hlt']
 
 /-- All object addresses in a Core value are valid heap addresses. -/
 private def ValueAddrWF (v : Core.Value) (heapSize : Nat) : Prop :=
