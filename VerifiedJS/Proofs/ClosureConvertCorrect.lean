@@ -2926,7 +2926,7 @@ private theorem closureConvert_step_simulation
         | string s => right; left; exact ⟨s, rfl⟩
         | _ => right; right; exact ⟨by intro a; simp [Core.Value.noConfusion], by intro s; simp [Core.Value.noConfusion]⟩
       rcases hno_core with ⟨addr, rfl⟩ | ⟨str, rfl⟩ | ⟨hno, hns⟩
-      · sorry -- getProp on object: heap property lookup (WIP — needs Flat step? unfolding)
+      · sorry -- getProp on object: heap property lookup (needs Flat.step? unfolding helper)
       · -- String case: length or undefined
         have : Flat.convertValue (.string str) = .string str := rfl
         rw [this] at hstep hsf_eta hfexpr
