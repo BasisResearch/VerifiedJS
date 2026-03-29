@@ -3527,40 +3527,47 @@ private theorem closureConvert_step_simulation
         have hsd_rest := convertExprList_state_determined rest_c scope envVar envMap
           _ _ hagree_mid.1 hagree_mid.2
         -- Provide witnesses: st_a_out = st
+        -- Helper: unfold convertExprList for singleton
+        have hcels_snd : ∀ (e : Core.Expr) (s : Flat.CCState),
+            (Flat.convertExprList [e] scope envVar envMap s).snd =
+            (Flat.convertExpr e scope envVar envMap s).snd := by
+          intro e s; simp [Flat.convertExprList]
+        have hcels_fst : ∀ (e : Core.Expr) (s : Flat.CCState),
+            (Flat.convertExprList [e] scope envVar envMap s).fst =
+            [(Flat.convertExpr e scope envVar envMap s).fst] := by
+          intro e s; simp [Flat.convertExprList]
+        -- Decompose convertExprList for done ++ [x] ++ rest
+        have hdecomp_fst : ∀ (x : Core.Expr),
+            (Flat.convertExprList (done_c ++ [x] ++ rest_c) scope envVar envMap st).fst =
+            (Flat.convertExprList done_c scope envVar envMap st).fst ++
+            [(Flat.convertExpr x scope envVar envMap
+              (Flat.convertExprList done_c scope envVar envMap st).snd).fst] ++
+            (Flat.convertExprList rest_c scope envVar envMap
+              (Flat.convertExpr x scope envVar envMap
+                (Flat.convertExprList done_c scope envVar envMap st).snd).snd).fst := by
+          intro x
+          rw [convertExprList_append, convertExprList_append]
+          simp [hcels_fst, hcels_snd]
+          rfl
+        have hdecomp_snd : ∀ (x : Core.Expr),
+            (Flat.convertExprList (done_c ++ [x] ++ rest_c) scope envVar envMap st).snd =
+            (Flat.convertExprList rest_c scope envVar envMap
+              (Flat.convertExpr x scope envVar envMap
+                (Flat.convertExprList done_c scope envVar envMap st).snd).snd).snd := by
+          intro x
+          rw [convertExprList_append_snd, convertExprList_append_snd]
+          simp [hcels_snd]
         refine ⟨st, (Flat.convertExprList (done_c ++ [sc_sub'.expr] ++ rest_c) scope envVar envMap st).snd,
           ?_, ⟨rfl, rfl⟩, ?_⟩
-        · -- Pair equality: (sf'.expr, ..snd) = convertExpr (.arrayLit ..) ... st
-          simp only [Flat.convertExpr]
-          refine Prod.ext ?_ rfl
-          simp only []
-          -- sf'.expr = .arrayLit (convertExprList (done_c ++ [sc_sub'.expr] ++ rest_c) ... st).fst
-          show Flat.Expr.arrayLit _ = Flat.Expr.arrayLit _
+        · -- Pair equality
+          change (sf'.expr, _) =
+            (Flat.Expr.arrayLit (Flat.convertExprList (done_c ++ [sc_sub'.expr] ++ rest_c) scope envVar envMap st).fst,
+             (Flat.convertExprList (done_c ++ [sc_sub'.expr] ++ rest_c) scope envVar envMap st).snd)
           congr 1
-          -- LHS list: done_flat ++ [sa.expr] ++ rest_flat_old
-          -- RHS list: convertExprList (done_c ++ [sc_sub'.expr] ++ rest_c) ... st
-          -- Decompose RHS using convertExprList_append
-          conv_rhs =>
-            rw [show done_c ++ [sc_sub'.expr] ++ rest_c = (done_c ++ [sc_sub'.expr]) ++ rest_c from rfl,
-                convertExprList_append,
-                convertExprList_append done_c [sc_sub'.expr] scope envVar envMap st]
-          simp only [Flat.convertExprList, List.nil_append,
-                     convertExprList_append_snd done_c [sc_sub'.expr] scope envVar envMap st]
-          simp only [Flat.convertExprList]
-          -- Now both sides should have: done_flat ++ [target_flat] ++ rest_flat
-          -- with possibly different target and rest states
-          rw [htgt_eq.symm, hsd_rest.1.symm]
+          -- sf'.expr = .arrayLit (convertExprList (done_c ++ [sc_sub'.expr] ++ rest_c) ... st).fst
+          rw [hdecomp_fst, htgt_eq.symm, hsd_rest.1.symm]
         · -- Output CCState agreement
-          rw [hst, helems]
-          conv_lhs =>
-            rw [show done_c ++ [target_c] ++ rest_c = (done_c ++ [target_c]) ++ rest_c from rfl,
-                convertExprList_append_snd,
-                convertExprList_append_snd done_c [target_c] scope envVar envMap st]
-            simp only [Flat.convertExprList]
-          conv_rhs =>
-            rw [show done_c ++ [sc_sub'.expr] ++ rest_c = (done_c ++ [sc_sub'.expr]) ++ rest_c from rfl,
-                convertExprList_append_snd,
-                convertExprList_append_snd done_c [sc_sub'.expr] scope envVar envMap st]
-            simp only [Flat.convertExprList]
+          rw [hst, helems, hdecomp_snd target_c, hdecomp_snd sc_sub'.expr]
           exact hsd_rest.2
   | functionDef fname params body isAsync isGen => sorry
   | throw val =>
