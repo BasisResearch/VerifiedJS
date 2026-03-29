@@ -1,35 +1,36 @@
-# jsspec — CC VALUE SUB-CASES AND OBJECTLIT/ARRAYLIT HELPERS
+# jsspec — CC VALUE SUB-CASES: 5 sorries all with same pattern
 
-## STATUS: 63 sorries. Your ANFInversion staging work is DONE and EXCELLENT. Proof agent will inline it.
+## STATUS: 62 sorries. You're investigating L2920/L3020/L3090/L3159/L3244. KEEP GOING.
 
-## PRIORITY 0: CC value sub-cases (L2920, L3020, L3090, L3159, L3244)
+## PRIORITY 0: CC value sub-cases (L2907, L3031, L3101, L3170, L3255)
 
-These 5 sorries all say "callee/arg is value, heap reasoning needed". The pattern:
-- `Core.exprValue? callee = some cv` (callee is already a Core value)
-- Need to show Flat side also steps correctly when operating on `convertValue cv`
-- Key lemma needed: `convertValue_preserves_step` or similar
+All 5 say `| some cv => sorry -- callee/arg is value`. The pattern in each:
+- `Core.exprValue? subexpr = some cv` means `subexpr = .lit cv`
+- The Flat side has `sf.expr = .call (.lit (convertValue cv)) ...` (or similar)
+- `step?` on the Flat side evaluates the value part (it's already a lit, so moves to next sub-expr or executes)
+- You need `HeapInj` to map Core heap operations to Flat heap operations
 
-Investigate:
-1. `lean_goal` at L2920 to see exact goal
-2. `lean_local_search "convertValue"` to find existing lemmas
-3. `lean_hover_info` on `HeapInj` to understand heap correspondence
-4. If `HeapInj.get_corr` exists, it maps Core heap lookups to Flat heap lookups
+### Investigation steps:
+1. `lean_goal` at EACH sorry (L2907, L3031, L3101, L3170, L3255) — understand what differs
+2. `lean_local_search "HeapInj"` and `lean_local_search "convertValue"` — find available lemmas
+3. Look at the STRING case of getProp (L2930-2975) as a template — it's a fully proved value case
 
-Write helper lemmas directly into ClosureConvertCorrect.lean (before L2920). Build after each.
+### For L2907 specifically (callee is value in .call):
+- When callee is a value, args may still need stepping
+- OR all args are values and we execute the call
+- Case split on `Core.exprListValue? args`
 
-## PRIORITY 1: CC objectLit/arrayLit helpers (L3392, L3418, L3426, L3473, L3480, L3506, L3514)
+Write helper lemmas directly into ClosureConvertCorrect.lean (section before L2907). Build after each.
 
-You have staging work in `.lake/_tmp_fix/VerifiedJS/Proofs/cc_objectLit_arrayLit_helpers.lean`.
-Check which helpers are still valid and inline them into ClosureConvertCorrect.lean.
+## PRIORITY 1: CC objectLit/arrayLit helpers (L3403, L3429, L3437, L3484, L3491, L3517, L3525)
 
-## PRIORITY 2: CC getProp sorries (L2942-2943)
+Check `.lake/_tmp_fix/VerifiedJS/Proofs/cc_objectLit_arrayLit_helpers.lean` for staging work. Inline what's valid.
 
-Two sorries for getProp on object vs string. These need `Flat.step?` unfolding for the
-object/string cases of getProp. Likely closeable with careful `simp [Flat.step?, Flat.exprValue?]`.
+## PRIORITY 2: CC getProp object sorry (L2929) — only if proof agent hasn't started this
 
 ## FILES
 - `VerifiedJS/Proofs/ClosureConvertCorrect.lean` (rw)
 - `.lake/_tmp_fix/` (read only — staging reference)
 
 ## DO NOT EDIT: `VerifiedJS/Proofs/ANFConvertCorrect.lean`, `VerifiedJS/Wasm/Semantics.lean`
-## LOG: agents/jsspec/log.md — LOG IMMEDIATELY when you start
+## LOG: agents/jsspec/log.md — LOG IMMEDIATELY when you start and every 30 min

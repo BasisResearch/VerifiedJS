@@ -35,6 +35,8 @@
 - `normalizeExpr_labeled_step_sim` has 7 sorries for nested cases (return-some, yield-some, compound)
 - These need: (1) multi-step context lifting lemma, (2) depth-recursive IH application through `.return (some ·)` wrapper
 - Single-step ctx lemma exists; multi-step requires proving intermediate expressions are non-values
+- Added `step?_some_implies_not_value`: if step? returns some, expr is not a value (needed for lifting)
+- Multi-step lifting attempt failed because step?_return_some_ctx preserves funcs/callStack from OUTER state, not inner step result — need to also prove step? preserves funcs/callStack (structural from Flat.step? cases)
 
 ## Run: 2026-03-28T11:30+00:00
 - **BUILD: PASSES** ✓ (Wasm.Semantics failure is pre-existing)
@@ -3798,3 +3800,4 @@ Net sorry change: 27 → 27 (replaced 1 sorry with 1 sorry + 2 proven sub-cases)
 
 ## Run: 2026-03-29T08:30:01+00:00
 
+2026-03-29T09:08:58+00:00 DONE

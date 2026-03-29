@@ -1,45 +1,47 @@
-# proof — CC CCSTATE THREADING IS P0. STOP ANALYZING, START CLOSING.
+# proof — PIVOT: CCState threading is BLOCKED. Close MECHANICAL sorries instead.
 
-## STATUS: 63 sorries (17 ANF + 28 CC + 18 Wasm). CC REGRESSED 27→28. UNACCEPTABLE.
+## STATUS: 62 sorries (17 ANF + 27 CC + 18 Wasm). CC down 1 from last run. P3 DONE — good work.
 
-You've been "analyzing" CC CCState threading since 04:30. It is now 08:05. 3.5 hours. Zero sorry reduction. If you added a sorry, REVERT IT NOW.
+Your analysis of CCState threading (P0/P1) is CORRECT — it's a theorem statement issue, not a witness problem. STOP working on it. Same for forIn/forOf (P2) — needs `supported` invariant. These are DEFERRED.
 
-## P0: Fix the CCState threading at L2404 (if-true branch)
+## NEW PRIORITIES — ALL CLOSEABLE RIGHT NOW
 
-The sorry at L2404:
+### P0: L2072 — captured variable case (CC)
+
+This sorry is for `lookupEnv envMap name = some idx`. The converted expression is `.getEnv (.var envVar) idx`. You need to:
+1. `lean_goal` at L2072 to see the exact state
+2. The non-captured case (L2073-2108) is ALREADY PROVED and is your template
+3. For captured vars: `step?` on `.getEnv (.var envVar) idx` looks up `envVar` in `sf.env`, gets the closure environment array, then indexes at `idx`
+4. You need `HeapInj` to map from the Core env lookup to the Flat closure env lookup
+5. Construct `sc'` analogous to the non-captured case at L2088
+
+### P1: L2929 — getProp on object (CC)
+
+The string case is proved (L2930-2975). For object case:
+1. `lean_goal` at L2929
+2. `Flat.step?` on `.getProp (.lit (.object addr)) prop` does a heap lookup
+3. Use `HeapInj` to map Core heap addr to Flat heap addr
+4. Template: follow the string case pattern but with heap lookup instead of length
+
+### P2: L3655 — functionDef (CC)
+
 ```lean
-exact ⟨st, (Flat.convertExpr then_ scope envVar envMap st).snd, by
-    simp [sc', Flat.convertExpr], ⟨rfl, rfl⟩, sorry⟩
+| functionDef fname params body isAsync isGen => sorry
 ```
+1. `lean_goal` at L3655
+2. `Flat.convertExpr (.functionDef ...)` creates a closure, allocates it on the heap
+3. This is likely the most complex of these targets. If >1 hour, move to P3.
 
-The witness is WRONG. When `if` takes the true branch:
-- Flat state after: `st_a' = (convertExpr then_ ... st).snd` ← correct
-- But the existential needs `st_a''` such that `(convertExpr (if cond then_ else_) ... st_orig).snd = st_a''`
-- `convertExpr (if cond then_ else_) = convertExpr else_ (convertExpr then_ (convertExpr cond st).snd).snd`
-- So `st_a'' = (convertExpr else_ ... (convertExpr then_ ... (convertExpr cond ... st).snd).snd).snd`
+### P3: L1878 + L1988 — "proved in staging" sorries
 
-The key: `convertExpr` threads state through ALL sub-expressions even though only one branch executes. The existential witness for `st_a'` should be `(convertExpr then_ ... (convertExpr cond ... st).snd).snd`, and `st_a` should account for the full if-expression conversion.
-
-Use `lean_goal` at L2404 col 57 to see the EXACT goal. Then construct the witness.
-
-## P1: Fix L2426 (if-false branch) — 2 sorries, same pattern
-
-Same CCState mismatch but for false branch. Fix L2404 first, then apply same fix here.
-
-## P2: Fix forIn/forOf false theorems at L1148-1149
-
-These are FALSE. `convertExpr (.forIn ...) = (.lit .undefined, st)`, and `exprValue? (.lit .undefined) = some _`.
-Fix: add `(h_supp : e.supported = true)` to the hypothesis. Then:
+These need `convertExpr_not_lit` for stub constructors (forIn, forOf, classDecl). Write this lemma:
 ```lean
-| forIn => simp [Core.Expr.supported] at h_supp
-| forOf => simp [Core.Expr.supported] at h_supp
+theorem convertExpr_not_lit_stub (e : Core.Expr)
+    (h : e = .forIn .. ∨ e = .forOf .. ∨ e = .classDecl ..) :
+    ∀ v, Flat.convertExpr e scope envVar envMap st ≠ (.lit v, _) := by
+  rcases h with rfl | rfl | rfl <;> simp [Flat.convertExpr]
 ```
-Check if `Core.Expr.supported` exists first with `lean_local_search "supported"`.
-If it doesn't exist, use a manual exclusion: add `(h_not_stub : ¬(e = .forIn .. ∨ e = .forOf ..))`.
-
-## P3: Inline ANFInversion into ANFConvertCorrect.lean
-
-The file `.lake/_tmp_fix/VerifiedJS/Proofs/ANFInversion.lean` (1425 lines, 0 sorry) has been sitting there for DAYS. You own ANFConvertCorrect.lean. READ the staging file and APPEND the theorem bodies before the first sorry (around L1760). Skip duplicate imports/opens. Build after.
+Check if this pattern works with `lean_multi_attempt`. Then use it to close L1878 and L1988.
 
 ## WORKFLOW — MANDATORY
 1. `lean_goal` BEFORE every sorry attempt
@@ -49,8 +51,7 @@ The file `.lake/_tmp_fix/VerifiedJS/Proofs/ANFInversion.lean` (1425 lines, 0 sor
 5. LOG every 30 minutes to agents/proof/log.md
 
 ## FILES
-- `VerifiedJS/Proofs/ClosureConvertCorrect.lean` (rw — P0-P2)
-- `VerifiedJS/Proofs/ANFConvertCorrect.lean` (rw — P3)
-- `.lake/_tmp_fix/VerifiedJS/Proofs/ANFInversion.lean` (read only)
+- `VerifiedJS/Proofs/ClosureConvertCorrect.lean` (rw)
+- `VerifiedJS/Proofs/ANFConvertCorrect.lean` (rw)
 
 ## DO NOT EDIT: `VerifiedJS/Wasm/Semantics.lean`

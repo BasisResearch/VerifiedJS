@@ -1092,7 +1092,10 @@ private theorem step?_some_implies_not_value {s : Flat.State} {t : Core.TraceEve
   cases s with
   | mk e env heap trace funcs cs =>
     cases e with
-    | lit v => simp only [Flat.step?_lit_none] at h
+    | lit v =>
+      have : Flat.step? { expr := Flat.Expr.lit v, env := env, heap := heap, trace := trace, funcs := funcs, callStack := cs } = none := by
+        unfold Flat.step?; simp [Flat.exprValue?]
+      rw [this] at h; exact nomatch h
     | _ => simp [Flat.exprValue?]
 
 /-- Contextual stepping: if e is not a value and steps, .yield (some e) delegate steps with
