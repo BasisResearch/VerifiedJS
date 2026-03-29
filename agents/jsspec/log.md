@@ -505,3 +505,97 @@ Or: `cp .lake/_tmp_fix/CC_integrated_v3.lean VerifiedJS/Proofs/ClosureConvertCor
 
 ## Run: 2026-03-29T14:00:01+00:00
 
+### Session start
+- Pivoted to ANF sorries per prompt instructions
+- CC file: 4983 lines, 25 sorries, read-only. Previous patch `jsspec_v3.patch` has 1/5 hunks failing
+- ANF file: 4299 lines, 17 sorries
+
+### ANF sorry analysis — ALL 17 blocked by normalizeExpr inversion
+
+#### Two affected theorems
+
+| Theorem | Lines | Sorries | Purpose |
+|---------|-------|---------|---------|
+| `normalizeExpr_labeled_step_sim` | L3029 | 7 | Step sim: normalizeExpr produces .labeled → Flat steps to unwrap it |
+| `anfConvert_step_star` | L3293 | 10 | Main sim: one ANF step → one or more Flat steps |
+
+#### Sorry map with goals (via lean_goal)
+
+**normalizeExpr_labeled_step_sim (7 sorries):**
+
+| Line | Case | Goal summary |
+|------|------|-------------|
+| L3190 | return.some.return.some | sf.expr = .return(some(.return(some val✝))), need IH through nested return |
+| L3194 | return.some.yield.some | Similar for yield inside return |
+| L3205 | return.some._ | sf.expr = .return(some(compound)), 20 sub-goals (let, seq, if, call, etc.) |
+| L3256 | yield.some.return.some | Mirror of L3190 for yield branch |
+| L3260 | yield.some.yield.some | Mirror of L3194 |
+| L3271 | yield.some._ | Mirror of L3205 (20 sub-goals) |
+| L3288 | top-level._ | sf.expr = compound (21 sub-goals: let, seq, if, call, etc.) |
+
+**anfConvert_step_star (10 sorries):**
+
+| Line | Case | Goal summary |
+|------|------|-------------|
+| L3368 | let | evalComplex rhs, extend env, continue body |
+| L3370 | seq | Either a is value (skip) or step inner a |
+| L3372 | if | Evaluate cond trivial, branch |
+| L3392 | throw (×2) | Partially reduced: 2 goals (ok/error evalTrivial) |
+| L3394 | tryCatch | Step body, catch errors, handle finally |
+| L3396 | return | Evaluate optional trivial arg |
+| L3398 | yield | Evaluate optional trivial arg |
+| L3400 | await | Evaluate trivial arg |
+| L3424 | break | Both produce .error, needs normalizeExpr inversion |
+| L3426 | continue | Both produce .error, needs normalizeExpr inversion |
+
+#### Root cause: continuation mismatch
+
+ALL sorries are blocked by the same issue:
+- `normalizeExpr e k` recurses into sub-expressions with MODIFIED continuations
+- Modified continuations are NOT faithful (don't produce .trivial)
+- IH/existing lemmas require faithful continuations
+- Cannot apply IH to sub-expressions with their actual (non-faithful) continuations
+- Example: `normalizeExpr (.let name init body) k` uses `k_let = fun t => do { ... pure (.let ...) }` which produces `.let`, not `.trivial`
+
+#### Proposed fix: generalize normalizeExpr_labeled_step_sim
+
+Remove the faithful-k requirement from the hypothesis. The OUTPUT still needs faithful k' (for SimRel), but the INPUT doesn't need it. This would allow applying IH to sub-expressions with their actual continuations.
+
+#### Verified helper lemmas (0 sorry, compile clean)
+
+**File: test_return_step_lift.lean**
+| Lemma | Purpose |
+|-------|---------|
+| `Flat.step?_return_some_step` | Step-lifting through .return(some _) context |
+| `Flat.step?_yield_some_step` | Step-lifting through .yield(some _) context |
+| `Flat.step?_labeled` | .labeled steps to body in 1 silent step |
+| `Flat.exprValue?_*` (7 lemmas) | exprValue? = none for labeled/return/break/continue/yield/seq/let |
+
+**File: test_labeled_reach.lean**
+| Lemma | Purpose |
+|-------|---------|
+| `HasLabeledInHead_not_value` | HasLabeledInHead implies not a value |
+| `HasBreakInHead_not_value` | HasBreakInHead implies not a value |
+| `HasContinueInHead_not_value` | HasContinueInHead implies not a value |
+
+#### Comprehensive analysis in `.lake/_tmp_fix/anf_sorry_analysis.lean`
+
+Detailed analysis with:
+- Complete sorry map with types and blockers
+- Root cause analysis (continuation mismatch)
+- 4 proposed fix approaches (A-D) with effort estimates
+- Existing infrastructure inventory
+- Priority ordering for next sessions
+
+### CC patch status
+- `jsspec_v3.patch`: 1/5 hunks FAILED (hunk #3 at L3208)
+- Previous patches likely need rebasing against current CC file (4983 lines)
+- Recommend proof agent re-apply helpers + sorry replacements manually
+
+### Build status
+- ANF file UNTOUCHED (analysis only)
+- All helper lemma test files compile with 0 errors
+- `lake build` status: unchanged
+
+2026-03-29T14:30:00+00:00 DONE
+2026-03-29T14:22:38+00:00 DONE
