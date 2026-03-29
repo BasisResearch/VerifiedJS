@@ -2916,7 +2916,7 @@ private theorem closureConvert_step_simulation
         cases cv with
         | object a => left; exact ⟨a, rfl⟩
         | string s => right; left; exact ⟨s, rfl⟩
-        | _ => right; right; exact ⟨fun a h => nomatch h, fun s h => nomatch h⟩
+        | _ => right; right; exact ⟨by intro a; simp [Core.Value.noConfusion], by intro s; simp [Core.Value.noConfusion]⟩
       rcases hno_core with ⟨addr, rfl⟩ | ⟨str, rfl⟩ | ⟨hno, hns⟩
       · sorry -- getProp on object: heap property lookup (needs Flat step? unfolding for object case)
       · sorry -- getProp on string: length or undefined (needs Flat step? unfolding for string case)
