@@ -1,5 +1,53 @@
 # jsspec agent log
 
+## 2026-03-29T18:00 — Wasm/Semantics.lean sorry analysis: ALL 14 sorries architecturally blocked
+
+### Summary
+
+Analyzed all 14 active sorries in `VerifiedJS/Wasm/Semantics.lean`. **None are closeable** with the current proof architecture.
+
+### Active sorry count: 14 (not 16)
+- 12 in `LowerSimRel.step_sim` (L6798-6879): let, seq, if, while, throw, tryCatch, return(some), yield, await, labeled, break, continue
+- 2 in `EmitSimRel.step_sim` (L10857, L10919): call, callIndirect
+- 2 more (L10912, L10916) are inside `/- ... -/` block comments — NOT active
+
+### Root Cause: 1:1 framework vs multi-step IR execution
+
+`step_sim` claims `∃ s2', irStep? s2 = some (t, s2') ∧ LowerSimRel prog irmod s1' s2'` — i.e., exactly ONE IR step matches ONE ANF step.
+
+**Every remaining case compiles to 2+ IR instructions.** For example:
+- `return (some .litNull)` → IR code `[const_ .i32 "0", return_]` = 2 instructions
+- `throw arg` → IR code `argCode ++ [call throwOp, br lbl]` = 3+ instructions
+- `break label` → IR code `[br target]` = 1 instruction BUT `hlabels_empty` means the br traps (no matching label), producing `.trap` ≠ `.silent`
+
+**After the first IR step**, the post-step states violate `LowerSimRel`:
+1. `hcode` fails: No `LowerCodeCorr` constructor maps `(.trivial lit)` to `[.return_]`
+2. `hhalt` fails: ANF halts (literal doesn't step) but IR has `[.return_]` remaining
+3. For break/continue: trace mismatch (IR produces `.trap`, ANF mapped to `.silent`)
+
+### What DOES work
+
+The **stuttering simulation** (`step_sim_stutter`, L7451) handles `return (some triv)` correctly via 9 specialized `step_sim_return_*` theorems — ALL VERIFIED (no sorry):
+- `step_sim_return_litNull`, `step_sim_return_litUndefined`
+- `step_sim_return_litBoolTrue`, `step_sim_return_litBoolFalse`
+- `step_sim_return_litNum`, `step_sim_return_litStr`
+- `step_sim_return_litObject`, `step_sim_return_litClosure`
+- `step_sim_return_var`
+
+`halt_sim` is clean — verified with axioms `[propext, Classical.choice, Quot.sound]` only.
+
+### What would unblock progress
+
+1. **break/continue**: Need `LowerSimRel` generalized to non-empty labels (for inside loops/labeled blocks)
+2. **let/seq**: Need sub-expression induction or measure-based 1:N stepping framework
+3. **throw/yield/await**: Need runtime function call reasoning (`call throwOp/yieldOp/awaitOp`)
+4. **if/while/tryCatch/labeled**: Need complex control flow reasoning with label stacks
+5. **emit call/callIndirect**: Need multi-frame `EmitSimRel` (current `hframes_one` is incompatible)
+
+### Build status
+- `lake build VerifiedJS.Wasm.Semantics` **succeeds** with 16 sorry warnings (2 declarations)
+- No new regressions introduced
+
 ## 2026-03-29T09:00 — P0/P1/P2: CC value sub-cases + objectLit/arrayLit + getProp
 
 ### P0: CC value sub-cases — 12 VERIFIED step? lemmas + proof templates

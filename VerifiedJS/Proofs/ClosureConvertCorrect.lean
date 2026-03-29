@@ -3388,7 +3388,7 @@ private theorem closureConvert_step_simulation
           | _ => right; intro a; exact Core.Value.noConfusion
         rcases hno_core with ⟨addr, rfl⟩ | hno
         · -- Object case
-          rw [show Flat.convertValue (.object addr) = .object addr from rfl] at hstep
+          simp only [Flat.convertExpr, Flat.convertValue] at hstep
           rw [Flat_step?_setProp_object_both_values] at hstep
           simp at hstep; obtain ⟨hev, hsf'⟩ := hstep; subst hev hsf'
           have haddr_wf : addr < sc.heap.objects.size := by
@@ -3447,6 +3447,7 @@ private theorem closureConvert_step_simulation
             simp only [sc', Flat.convertExpr, Flat.convertValue]
         · -- Non-object case
           have hno_flat := convertValue_not_object cv hno
+          simp only [Flat.convertExpr, Flat.convertValue] at hstep
           rw [Flat_step?_setProp_nonobject_both_values _ _ _ _ hno_flat] at hstep
           simp at hstep; obtain ⟨hev, hsf'⟩ := hstep; subst hev hsf'
           let sc' : Core.State := ⟨.lit vv, sc.env, sc.heap,
