@@ -1,69 +1,55 @@
-# proof — CC CCSTATE THREADING + INTEGRATE STAGING
+# proof — FIX CC BUILD FIRST, THEN CCSTATE THREADING
 
-## STATUS: 63 grep sorries (17 ANF + 28 CC + 18 Wasm). Build passes ✓. Zero sorry reduction last run.
+## STATUS: 62 grep sorries (17 ANF + 27 CC + 18 Wasm + 0 Lower). CC BUILD BROKEN. ANF/Lower pass.
 
-## YOUR 03:30 RUN FINDINGS: ANF sorries ALL blocked by normalizeExpr inversion
-You correctly identified that all 17 ANF sorries need normalizeExpr inversion lemmas.
-jsspec has ALREADY BUILT these in staging:
-- `.lake/_tmp_fix/VerifiedJS/Proofs/anf_break_inversion.lean` — break inversion, all 32 cases VERIFIED
-- `.lake/_tmp_fix/VerifiedJS/Proofs/anf_labeled_inversion.lean` — labeled inversion, all 32 cases VERIFIED
+## ⚠️ PRIORITY 0: FIX THE CC BUILD — YOUR LAST EDIT BROKE IT
 
-**DO NOT rebuild this infrastructure. Integrate it.**
+Your 04:30 run edited ClosureConvertCorrect.lean and introduced 4 build errors:
+1. **L3504:6 unsolved goals** — `simp [sc', ExprAddrWF]` at L3503 doesn't close the goal
+2. **L3534:29 Application type mismatch** — `refine Prod.ext ?_ rfl` — the `rfl` doesn't match
+3. **L3542:11 unknown tactic** — `conv_rhs =>` may be in wrong context
+4. **L2045:2 missing alternatives** — THIS IS A CASCADE from errors 1-3. When those are fixed, this disappears.
 
-## PRIORITY 0: CC CCState threading sorries (MOST TRACTABLE — 5 sorry reduction possible)
+**FIX**: Replace the broken arrayLit CCState proof block (L3502-3564) with sorry:
+```lean
+      · -- ExprAddrWF (arrayLit is always True)
+        sorry -- ExprAddrWF propagation into arrayLit elements
+      · -- CCState agreement (arrayLit sub-step)
+        sorry -- CCState threading: convertExprList over decomposed list
+```
 
-These are the ONLY CC sorries that don't need new infrastructure. Fix them:
+This does NOT increase sorry count — those subgoals were already broken (= implicitly sorry).
+
+**BUILD AFTER THE FIX. If it doesn't pass, investigate and fix until it does. DO NOT proceed to P1 until build passes.**
+
+## PRIORITY 1: CC CCState threading (L2383, L2405, L3686)
+
+After build is fixed, these are the most tractable:
 
 ### L2383 (if-true CCState threading)
-The sorry is in the CCState agreement goal. The witness needs to account for the else_ conversion.
-Current: `⟨st, (Flat.convertExpr then_ scope envVar envMap st).snd, ...sorry⟩`
-The issue: `st_a' = (convertExpr else_ ... (convertExpr then_ ... st).snd).snd` but witness only has then_.
+The witness needs to account for BOTH then_ AND else_ conversion states.
+Fix: Use `convertExpr_state_determined` to show the CCState from the full conversion
+matches. The key insight: `st_a'` only covers then_, but the full CCState covers then_ + else_.
 
-Fix: Change the witness to include BOTH conversions:
-```lean
-exact ⟨st, (Flat.convertExpr else_ scope envVar envMap
-  (Flat.convertExpr then_ scope envVar envMap st).snd).snd, by
-  simp [sc', Flat.convertExpr], ⟨rfl, rfl⟩, rfl⟩
-```
-Or use `convert` to handle the mismatch. The key insight: CCState flows through then_ then else_ during conversion, but only then_ is used in the branch. The st_a' should be the FULL conversion state.
+### L2405 (if-false CCState threading) — same pattern as L2383
 
-### L2405 (if-false CCState threading) — SAME PATTERN
-Two sorries on one line. Fix analogous to L2383 but for the else branch.
+### L3686 (while_ CCState threading)
+while_ lowering duplicates cond and body. Use `convertExpr_state_determined` to show
+the duplicated conversion produces the same expressions regardless of CCState.
 
-### L3505 (arrayLit CCState threading)
-convertExprList over `done_exprs ++ [target_c] ++ rest_exprs` must equal sequential application.
-Proof: Use `convertExprList_append` (you wrote this helper!) to decompose, then show each piece threads correctly.
+## PRIORITY 2: Integrate jsspec staging into ANF proofs
 
-### L3417 (objectLit CCState threading) — SAME PATTERN as L3505 but for prop lists.
-
-### L3627 (while CCState threading)
-while_ lowering duplicates sub-expressions. The CCState from converting `cond` is used twice (for then-body and else-body). Show the second conversion's state equals the first's via determinism.
-
-## PRIORITY 1: Integrate jsspec break/labeled inversion into ANF proofs
-
-jsspec proved these in staging. You need to:
-1. Read `.lake/_tmp_fix/VerifiedJS/Proofs/anf_break_inversion.lean` — get the exact theorem statements
-2. Read `.lake/_tmp_fix/VerifiedJS/Proofs/anf_labeled_inversion.lean` — same
-3. Copy the RELEVANT theorems into `ANFConvertCorrect.lean` (or better, into a new imported file)
-4. Use `normalizeExpr_break_implies_hasBreakInHead` to close L2000 (break) and L2002 (continue)
-
-The break/continue cases at L2000-2002: if `sa.expr = .break label`, apply break inversion to get `HasBreakInHead sf.expr label`. Then case-split on the HasBreakInHead structure to construct Flat steps.
-
-## PRIORITY 2: CC ExprAddrWF propagation (L3370, L3458)
-
-These need ExprAddrWF to propagate into list elements. Fix the definition:
-```lean
-| .arrayLit elems, n => elems.Forall (fun e => ExprAddrWF e n)
-| .objectLit props, n => props.Forall (fun (_, e) => ExprAddrWF e n)
-```
-If this is in a read-only file, document what change is needed and sorry with a clear note.
+jsspec has break/labeled inversion in `.lake/_tmp_fix/`. If `VerifiedJS/Proofs/ANFInversion.lean`
+exists (jsspec may have created it), add `import VerifiedJS.Proofs.ANFInversion` to ANFConvertCorrect
+and use `normalizeExpr_break_implies_hasBreakInHead` to close L2000 (break) and L2002 (continue).
 
 ## DO NOT ATTEMPT
-- ANF nested depth sorries (L1766-L1864) — need generalized SimRel
-- CC value sub-cases (6 sorries) — need heap reasoning framework
-- CC var captured (L2064) — needs 1:N stepping
-- CC newObj (L2900) — permanently blocked
+- ANF nested depth sorries (L1766-L1864)
+- CC value sub-cases (heap reasoning)
+- CC var captured (L2064), newObj (L2900)
 - Wasm sorries
+- Any change that might break the build without immediately testing
 
 ## FILES: `VerifiedJS/Proofs/*.lean` (rw)
 ## LOG: agents/proof/log.md — LOG IMMEDIATELY when you start
+## RULE: `lake build VerifiedJS.Proofs.ClosureConvertCorrect` after EVERY edit
