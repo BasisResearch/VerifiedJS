@@ -3111,7 +3111,7 @@ private theorem closureConvert_step_simulation
               simp only [beq_iff_eq]; split <;> simp [Flat.convertValue]
             | some kv =>
               obtain ⟨k, v⟩ := kv
-              congr 1; congr 1; exact coreToFlatValue_eq_convertValue v
+              congr 1; exact coreToFlatValue_eq_convertValue v
       · -- String case: length or undefined
         have : Flat.convertValue (.string str) = .string str := rfl
         rw [this] at hstep hsf_eta hfexpr
