@@ -1,5 +1,53 @@
 # jsspec agent log
 
+## 2026-03-29T20:00 — CC helper lemmas staged (P0, P1), ANF analysis complete (P2)
+
+### Summary
+Pivoted from Wasm (blocked on write permissions) to CC/ANF helper staging per new prompt.
+Staged 3 files: P0 compiles clean (0 sorry), P1 compiles with 1 sorry (private dep), P2 is analysis.
+
+### P0: convertExpr_not_lit (DONE — `.lake/_tmp_fix/cc_convertExpr_not_lit_v2.lean`)
+- **Root cause**: `convertExpr_not_value` (L1172) has 2 sorries for forIn/forOf because
+  `convertExpr (.forIn ..) = (.lit .undefined, st)` — the Flat result IS a value.
+- **Fix**: Add `e.supported = true` guard. Since `supported` returns false for
+  forIn/forOf/yield/await, those cases become contradictions.
+- **Staged theorems** (all compile, 0 sorry):
+  - `convertExpr_not_value_supported` — fixed version of convertExpr_not_value
+  - `convertExpr_not_lit_supported` — stronger version (not .lit, not just not value)
+  - `Core.firstNonValueExpr_target_supported` — target from firstNonValueExpr is supported
+  - `Core.firstNonValueProp_target_supported` — same for props
+  - `Core.firstNonValueExpr_done_supported` / `_rest_supported` — propagation helpers
+  - `convertExpr_lit` / `convertExprList_cons` / `convertPropList_cons` — structural helpers
+- **Integration**: Replace L1172-1181, add `supported` hypothesis. All callers already
+  have `supported` from the main theorem's precondition chain.
+
+### P1: ExprAddrWF propagation (DONE — `.lake/_tmp_fix/cc_exprAddrWF_propagate.lean`)
+- **Root cause**: `ExprAddrWF (.objectLit _, _) => True` and `(.arrayLit _, _) => True`
+  don't recurse into sub-expressions. L3868/L3966 need ExprAddrWF on individual elements.
+- **Fix**: Change definition to recurse (inline pattern for objectLit, use ExprAddrListWF for arrayLit).
+- **Staged theorems** (compile, 1 sorry for private `ExprAddrWF_mono` reference):
+  - `ExprAddrPropListWF` — WF for property lists
+  - `ExprAddrPropListWF_mem` / `ExprAddrListWF_mem` — membership propagation
+  - `ExprAddrPropListWF_firstNonValueProp_target` — target from firstNonValueProp has WF
+  - `ExprAddrListWF_firstNonValueExpr_target` — same for lists
+  - `ExprAddrPropListWF_mono` — monotonicity
+- **Integration plan**: 4-step plan in file (change definition, update _mono, fix sorry sites, fix True-reliant sites).
+
+### P2: ANF analysis (DONE — `.lake/_tmp_fix/anf_step_analysis.lean`)
+- **17 sorries** in `anfConvert_step_star` (L3293), all need per-constructor step simulation.
+- **Key finding**: Each constructor needs a `normalizeExpr_<constructor>_step_sim` theorem
+  (~300 lines each, like the existing `normalizeExpr_labeled_step_sim`).
+- **Critical complication for break/continue**: After break fires inside wrapping context
+  (.seq, .let, etc.), SimRel requires sf'.expr to reach .lit .undefined through multiple
+  Flat steps resolving the wrapping layers.
+- **Priority**: break/continue (easiest), return/yield/await, if, throw, let/seq, tryCatch (hardest).
+- **Estimate**: ~2000+ lines total for all constructor step-sim lemmas.
+
+### Staged artifacts
+- `.lake/_tmp_fix/cc_convertExpr_not_lit_v2.lean` — **NEW**: P0, compiles clean (0 sorry)
+- `.lake/_tmp_fix/cc_exprAddrWF_propagate.lean` — **NEW**: P1, 1 sorry (private dep)
+- `.lake/_tmp_fix/anf_step_analysis.lean` — **NEW**: P2, analysis + proof strategy
+
 ## 2026-03-29T19:00 — Wasm sorry deep-dive: fix plan created, 2 sorries ready to close
 
 ### Summary
@@ -884,3 +932,4 @@ Agent `jsspec` can read but NOT write. Need `chmod g+w` from root/wasmspec.
 
 ## Run: 2026-03-29T20:00:01+00:00
 
+2026-03-29T20:11:17+00:00 DONE
