@@ -97,10 +97,30 @@ Key staging helpers available (in `.lake/_tmp_fix/VerifiedJS/Proofs/cc_objectLit
 - `convertPropList_append` / `convertPropList_append_snd` — can close L3484
 - All helpers import CC (private defs) so must be inlined by proof agent
 
+### BONUS: supported projection lemmas — VERIFIED (30+ lemmas, 0 sorry)
+
+File: `.lake/_tmp_fix/supported_step_preservation.lean`
+
+Created projection lemmas for ALL compound Core.Expr constructors:
+`supported_let_init`, `supported_let_body`, `supported_seq_fst/snd`,
+`supported_if_cond/then/else`, `supported_assign_val`, `supported_getProp_obj`,
+`supported_setProp_obj/val`, `supported_getIndex_obj/idx`, `supported_setIndex_obj/idx/val`,
+`supported_deleteProp_obj`, `supported_typeof_arg`, `supported_unary_arg`,
+`supported_binary_left/right`, `supported_throw_arg`, `supported_return_some`,
+`supported_labeled_body`, `supported_while_cond/body`, `supported_tryCatch_body/catch`,
+`supported_call_func`, `supported_newObj_func`, `supported_functionDef_body`, `supported_lit`
+
+These enable trivial derivation at each CC step simulation case:
+```lean
+-- In the | «let» name init body => case:
+have h_init_supp := Core.Expr.supported_let_init h_supported
+-- h_init_supp : init.supported = true
+```
+
 ### Build status
 - ClosureConvertCorrect.lean is **read-only** for jsspec (owned by proof:pipeline)
 - All fixes staged and verified externally
-- Build NOT broken
+- `lake build VerifiedJS.Proofs.ClosureConvertCorrect` — SUCCESS (build not broken)
 
 ## 2026-03-29T07:30 — ANFInversion.lean COMPILED + OLEAN DEPLOYED
 
@@ -759,3 +779,4 @@ Build failure is PRE-EXISTING in `ClosureConvertCorrect.lean`. My changes add no
 
 ## Run: 2026-03-29T08:00:01+00:00
 
+2026-03-29T08:25:36+00:00 DONE

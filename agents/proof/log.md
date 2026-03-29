@@ -3701,4 +3701,62 @@ This suggests the step simulation theorem may need a different formulation for e
 ## Run: 2026-03-29T07:00:03+00:00
 
 ### Starting: CC CCState threading (L2383, L2405) + survey other CC sorries
-2026-03-29T07:30:01+00:00 SKIP: already running
+
+### P0 Analysis: CCState threading (L2383, L2405, L3417, L3709) — STRUCTURALLY BLOCKED
+
+Confirmed via `lean_goal` at L2382-2383: the sorry is `CCStateAgree st' st_a'` where:
+- `st' = (convertExpr else_ ... (convertExpr then_ ... st).snd).snd` (includes BOTH branches)
+- `st_a' = (convertExpr then_ ... st).snd` (only then_ branch)
+
+These differ by the dead else_ branch's state delta (`nextId`, `funcs.size`). Since `nextId` is used for fresh variable generation in `functionDef` conversion, different starting states produce different expressions.
+
+**Root cause**: After if-true/false branch elimination, the CCState delta from the dead branch is lost. The `CCStateAgree` condition requires matching `nextId`/`funcs.size`, which is impossible when the dead branch changes these.
+
+**Same pattern affects**: L2383 (if-true), L2405 (if-false, both sorries), L3417 (objectLit concatenation), L3709 (while_ duplication).
+
+**Fix requires**: Either (a) change `convertExpr` for `if`/`while_` to make CCState allocation branch-independent (impl change in ClosureConvert.lean), or (b) restructure the inner induction to not require `CCStateAgree st' st_a'` in output for branching cases. Both are significant refactoring.
+
+### P1 Analysis: forIn/forOf (L1148-1149) — THEOREM FALSE
+
+Confirmed: `Core.exprValue? (.forIn ...) = none` holds, but `Flat.convertExpr (.forIn ...) = (.lit .undefined, st)` and `Flat.exprValue? (.lit .undefined) = some .undefined ≠ none`. The conversion maps forIn/forOf to `.lit .undefined` which IS a value, making `convertExpr_not_value` false.
+
+Fix: Add `SupportedExpr` predicate excluding forIn/forOf (mentioned in implementation comments). Requires ~20 call site updates.
+
+### getProp value sub-case (L2906): PARTIALLY CLOSED
+
+Replaced the single sorry with:
+- **Object sub-case**: sorry (needs `Flat.step?` unfolding — `pushTrace` is private in Flat.Semantics, making helper lemma difficult)
+- **String sub-case**: PROVED (length or undefined, using new `Flat_step?_getProp_string` helper)
+- **Primitive sub-case**: PROVED (null/undefined/bool/number/function → both return undefined)
+
+Added helper lemma `Flat_step?_getProp_string` near L1773.
+
+Net sorry change: 27 → 27 (replaced 1 sorry with 1 sorry + 2 proven sub-cases).
+
+### CC Sorry Classification (27 total)
+
+| Category | Count | Lines | Status |
+|----------|-------|-------|--------|
+| CCState threading | 5 | L2383, L2405(×2), L3417, L3709 | BLOCKED (structural) |
+| Theorem false (stubs) | 2 | L1148, L1149 | BLOCKED (needs SupportedExpr) |
+| Blocked by stubs | 4 | L1870, L1980, L3362, L3450 | BLOCKED (needs convertExpr_not_lit) |
+| Heap/value reasoning | 9 | L2899, L2900, L2907, L3031, L3101, L3170, L3255, L3336, L3424 | Partially tractable |
+| ExprAddrWF def change | 2 | L3370, L3458 | Needs objectLit/arrayLit ExprAddrWF change |
+| 1:N stepping | 1 | L2064 | BLOCKED (captured var) |
+| Large unstarted | 2 | L3588, L3678 | functionDef, tryCatch |
+| getProp object | 1 | L2929 | WIP (Flat.step? unfolding) |
+| getProp prim+string | 0 | (was L2906) | CLOSED this session |
+
+### Priority for next session
+1. Close getProp object sub-case (L2929) — needs a Flat.step? helper or inline simp strategy for the object case where `pushTrace` is private
+2. Close similar value sub-cases (deleteProp L3255, getIndex L3101) — follow getProp pattern
+3. CCState threading fix — requires either changing ClosureConvert.lean (not editable) or major inner-induction restructuring
+
+### Build: PASSES ✓
+- CC: 27 sorries (unchanged count, but getProp string + primitive sub-cases now proven)
+
+2026-03-29T07:00:03+00:00 DONE
+2026-03-29T08:28:58+00:00 DONE
+
+## Run: 2026-03-29T08:30:01+00:00
+
