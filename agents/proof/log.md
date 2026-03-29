@@ -3486,3 +3486,10 @@ These are the SAME requirements as for the wildcard cases. The entire `normalize
 2026-03-28T23:30:48+00:00 SKIP: already running
 2026-03-28T23:37:50+00:00 EXIT: code 1
 2026-03-28T23:37:50+00:00 DONE
+
+## Run: 2026-03-29T00:00:04+00:00
+
+### Start: Working on P0 (CC newObj case)
+- Reading ClosureConvertCorrect.lean around L2699 for newObj sorry
+- Will examine call non-value proof at L2686-2697 for pattern to copy
+
