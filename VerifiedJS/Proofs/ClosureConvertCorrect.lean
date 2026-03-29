@@ -3501,8 +3501,67 @@ private theorem closureConvert_step_simulation
         simp [listNoCallFrameReturn, hncfr', hncfr_done, hncfr_rest]
       · -- ExprAddrWF (arrayLit is always True)
         simp [sc', ExprAddrWF]
-      · -- CCState agreement
-        sorry -- CCState threading: convertExprList over concatenated lists (proof sketch verified)
+      · -- CCState agreement (arrayLit sub-step)
+        have helems := firstNonValueExpr_decompose hcfnv
+        -- State determination for sc_sub'.expr from canonical state vs IH state
+        have hsd := convertExpr_state_determined sc_sub'.expr scope envVar envMap
+          (Flat.convertExprList done_c scope envVar envMap st).snd st_a hAgreeIn.1 hAgreeIn.2
+        have hconv'_fst : sa.expr = (Flat.convertExpr sc_sub'.expr scope envVar envMap st_a).fst :=
+          congrArg Prod.fst hconv'
+        have hconv'_snd : st_a' = (Flat.convertExpr sc_sub'.expr scope envVar envMap st_a).snd :=
+          congrArg Prod.snd hconv'
+        -- Target expr equality
+        have htgt_eq : (Flat.convertExpr sc_sub'.expr scope envVar envMap
+            (Flat.convertExprList done_c scope envVar envMap st).snd).fst = sa.expr :=
+          hsd.1.trans hconv'_fst.symm
+        -- CCStateAgree between old target output and new target output (via st_a')
+        have hagree_mid : CCStateAgree
+            (Flat.convertExpr target_c scope envVar envMap
+              (Flat.convertExprList done_c scope envVar envMap st).snd).snd
+            (Flat.convertExpr sc_sub'.expr scope envVar envMap
+              (Flat.convertExprList done_c scope envVar envMap st).snd).snd := by
+          constructor
+          · have h1 := hAgreeOut.1; rw [hconv'_snd] at h1; exact h1.trans hsd.2.1.symm
+          · have h2 := hAgreeOut.2; rw [hconv'_snd] at h2; exact h2.trans hsd.2.2.symm
+        -- State determination for rest_c with agreeing intermediate states
+        have hsd_rest := convertExprList_state_determined rest_c scope envVar envMap
+          _ _ hagree_mid.1 hagree_mid.2
+        -- Provide witnesses: st_a_out = st
+        refine ⟨st, (Flat.convertExprList (done_c ++ [sc_sub'.expr] ++ rest_c) scope envVar envMap st).snd,
+          ?_, ⟨rfl, rfl⟩, ?_⟩
+        · -- Pair equality: (sf'.expr, ..snd) = convertExpr (.arrayLit ..) ... st
+          simp only [Flat.convertExpr]
+          refine Prod.ext ?_ rfl
+          simp only []
+          -- sf'.expr = .arrayLit (convertExprList (done_c ++ [sc_sub'.expr] ++ rest_c) ... st).fst
+          show Flat.Expr.arrayLit _ = Flat.Expr.arrayLit _
+          congr 1
+          -- LHS list: done_flat ++ [sa.expr] ++ rest_flat_old
+          -- RHS list: convertExprList (done_c ++ [sc_sub'.expr] ++ rest_c) ... st
+          -- Decompose RHS using convertExprList_append
+          conv_rhs =>
+            rw [show done_c ++ [sc_sub'.expr] ++ rest_c = (done_c ++ [sc_sub'.expr]) ++ rest_c from rfl,
+                convertExprList_append,
+                convertExprList_append done_c [sc_sub'.expr] scope envVar envMap st]
+          simp only [Flat.convertExprList, List.nil_append,
+                     convertExprList_append_snd done_c [sc_sub'.expr] scope envVar envMap st]
+          simp only [Flat.convertExprList]
+          -- Now both sides should have: done_flat ++ [target_flat] ++ rest_flat
+          -- with possibly different target and rest states
+          rw [htgt_eq.symm, hsd_rest.1.symm]
+        · -- Output CCState agreement
+          rw [hst, helems]
+          conv_lhs =>
+            rw [show done_c ++ [target_c] ++ rest_c = (done_c ++ [target_c]) ++ rest_c from rfl,
+                convertExprList_append_snd,
+                convertExprList_append_snd done_c [target_c] scope envVar envMap st]
+            simp only [Flat.convertExprList]
+          conv_rhs =>
+            rw [show done_c ++ [sc_sub'.expr] ++ rest_c = (done_c ++ [sc_sub'.expr]) ++ rest_c from rfl,
+                convertExprList_append_snd,
+                convertExprList_append_snd done_c [sc_sub'.expr] scope envVar envMap st]
+            simp only [Flat.convertExprList]
+          exact hsd_rest.2
   | functionDef fname params body isAsync isGen => sorry
   | throw val =>
     rw [hsc] at hconv hncfr hexprwf hd
