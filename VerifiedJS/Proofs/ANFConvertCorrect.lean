@@ -1945,9 +1945,9 @@ private theorem anfConvert_step_star
     · -- ExprWellFormed
       exact hwf'
   | «break» label =>
-    sorry -- break: ANF produces .silent but Flat produces .error — semantic mismatch
+    sorry -- break: both produce .error, needs normalizeExpr inversion
   | «continue» label =>
-    sorry -- continue: ANF produces .silent but Flat produces .error — semantic mismatch
+    sorry -- continue: both produce .error, needs normalizeExpr inversion
 
 /-- Auxiliary halt_star with strong induction on Flat expression depth.
     When ANF reaches a terminal state (step? = none), Flat can also reach a
