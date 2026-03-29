@@ -420,3 +420,83 @@ Build failure is PRE-EXISTING in `ClosureConvertCorrect.lean:1950`. My changes a
 
 ## Run: 2026-03-29T05:00:01+00:00
 
+### PRIORITY 0: Consolidated ANFInversion.lean module — STAGED + VERIFIED
+
+File: `.lake/_tmp_fix/VerifiedJS/Proofs/ANFInversion.lean` (NEW — 909 lines)
+
+**Merged all break inversion, labeled inversion, and break/continue sim helpers into a single
+importable module.** This consolidates content from three staging files into one clean file
+ready for installation at `VerifiedJS/Proofs/ANFInversion.lean`.
+
+#### Contents (all VERIFIED, axioms: propext + Quot.sound only):
+
+**Part 1 — Break Inversion:**
+
+| Theorem | Status |
+|---------|--------|
+| `ANF.bindComplex_never_break_general` | **VERIFIED** |
+| `ANF.normalizeExpr_labeled_not_break` | **VERIFIED** |
+| `ANF.normalizeExpr_while_not_break` | **VERIFIED** |
+| `ANF.normalizeExpr_tryCatch_not_break` | **VERIFIED** |
+| `HasBreakInHead` / `HasBreakInHeadList` / `HasBreakInHeadProps` | **VERIFIED** |
+| `Flat.Expr.mem_propListDepth_lt` | **VERIFIED** |
+| `normalizeExprList_break_or_k` | **VERIFIED** |
+| `normalizeProps_break_or_k` | **VERIFIED** |
+| `ANF.normalizeExpr_break_or_k` | **VERIFIED** |
+| `ANF.normalizeExpr_break_implies_hasBreakInHead` | **VERIFIED** |
+
+**Part 2 — Labeled Inversion:**
+
+| Theorem | Status |
+|---------|--------|
+| `HasLabeledInHead` / `HasLabeledInHeadList` / `HasLabeledInHeadProps` | **VERIFIED** |
+| `normalizeExprList_labeled_or_k` | **VERIFIED** |
+| `normalizeProps_labeled_or_k` | **VERIFIED** |
+| `ANF.normalizeExpr_labeled_or_k` | **VERIFIED** |
+| `ANF.normalizeExpr_labeled_implies_hasLabeledInHead` | **VERIFIED** |
+| `ANF.normalizeExpr_not_labeled_of_no_head_no_k` | **VERIFIED** |
+
+**Part 3 — Break/Continue Step Sim Helpers:**
+
+| Theorem | Status |
+|---------|--------|
+| `Flat.step?_break_is_some` | **VERIFIED** |
+| `Flat.step?_continue_is_some` | **VERIFIED** |
+| `ANF.normalizeExpr_break_run` | **VERIFIED** |
+| `ANF.normalizeExpr_continue_run` | **VERIFIED** |
+
+#### Installation instructions:
+1. Copy `.lake/_tmp_fix/VerifiedJS/Proofs/ANFInversion.lean` → `VerifiedJS/Proofs/ANFInversion.lean`
+2. Add `import VerifiedJS.Proofs.ANFInversion` to `ANFConvertCorrect.lean` (after line 14)
+3. `lake build VerifiedJS.Proofs.ANFConvertCorrect` to verify
+
+**NOTE:** jsspec agent does not have write permission to `VerifiedJS/Proofs/`. The proof agent
+or root must install the file.
+
+### PRIORITY 2: Continue inversion — COMPLETE (all 32 cases, zero sorry)
+
+File: `.lake/_tmp_fix/VerifiedJS/Proofs/anf_continue_inversion.lean` (NEW — 468 lines)
+
+**Mirrors break inversion exactly, replacing .break with .continue.**
+
+#### New verified theorems (axioms: propext + Quot.sound only):
+
+| Theorem | Status |
+|---------|--------|
+| `ANF.bindComplex_never_continue_general` | **VERIFIED** |
+| `ANF.normalizeExpr_labeled_not_continue` | **VERIFIED** |
+| `ANF.normalizeExpr_while_not_continue` | **VERIFIED** |
+| `ANF.normalizeExpr_tryCatch_not_continue` | **VERIFIED** |
+| `HasContinueInHead` / `HasContinueInHeadList` / `HasContinueInHeadProps` | **VERIFIED** |
+| `normalizeExprList_continue_or_k` | **VERIFIED** |
+| `normalizeProps_continue_or_k` | **VERIFIED** |
+| `ANF.normalizeExpr_continue_or_k` | **VERIFIED** |
+| `ANF.normalizeExpr_continue_implies_hasContinueInHead` | **VERIFIED** |
+
+### Build status:
+Build failure is PRE-EXISTING in `ClosureConvertCorrect.lean:1950`. My changes add no new errors.
+Zero errors in both new files (LSP verified).
+
+2026-03-29T05:00:01+00:00 DONE
+
+2026-03-29T05:14:32+00:00 DONE
