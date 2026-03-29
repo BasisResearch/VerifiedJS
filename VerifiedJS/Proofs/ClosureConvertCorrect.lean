@@ -1759,7 +1759,7 @@ private theorem Flat_step?_objectLit_step (s : Flat.State)
       some (t, { expr := .objectLit (done ++ [(propName, se.expr)] ++ rest),
                  env := se.env, heap := se.heap,
                  trace := s.trace ++ [t], funcs := s.funcs, callStack := s.callStack }) := by
-  unfold Flat.step?; simp only [hvals, hfnvp, hss]
+  unfold Flat.step?; simp only [hvals, hfnvp, hss]; rfl
 
 private theorem Core_step?_objectLit_step (s : Core.State)
     (props : List (Core.PropName × Core.Expr))
@@ -1772,7 +1772,7 @@ private theorem Core_step?_objectLit_step (s : Core.State)
       some (t, { expr := .objectLit (done ++ [(propName, se.expr)] ++ rest),
                  env := se.env, heap := se.heap,
                  trace := s.trace ++ [t], funcs := se.funcs, callStack := se.callStack }) := by
-  simp [Core.step?, hfnvp, hss, Core.pushTrace]
+  unfold Core.step?; simp only [hfnvp, hss, Core.pushTrace]
 
 private theorem Flat_step?_arrayLit_step (s : Flat.State)
     (elems : List Flat.Expr)
@@ -1785,7 +1785,7 @@ private theorem Flat_step?_arrayLit_step (s : Flat.State)
       some (t, { expr := .arrayLit (done ++ [se.expr] ++ rest),
                  env := se.env, heap := se.heap,
                  trace := s.trace ++ [t], funcs := s.funcs, callStack := s.callStack }) := by
-  unfold Flat.step?; simp only [hvals, hfnve, hss]
+  unfold Flat.step?; simp only [hvals, hfnve, hss]; rfl
 
 private theorem Core_step?_arrayLit_step (s : Core.State)
     (elems : List Core.Expr)
@@ -1797,7 +1797,7 @@ private theorem Core_step?_arrayLit_step (s : Core.State)
       some (t, { expr := .arrayLit (done ++ [se.expr] ++ rest),
                  env := se.env, heap := se.heap,
                  trace := s.trace ++ [t], funcs := se.funcs, callStack := se.callStack }) := by
-  simp [Core.step?, hfnve, hss, Core.pushTrace]
+  unfold Core.step?; simp only [hfnve, hss, Core.pushTrace]
 
 private theorem Flat_step?_while (s : Flat.State) (cond body : Flat.Expr) :
     Flat.step? { s with expr := .while_ cond body } =
