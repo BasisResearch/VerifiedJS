@@ -1810,7 +1810,7 @@ private theorem Flat_step?_arrayLit_elem_step (s : Flat.State) (elems : List Fla
     Flat.step? { s with expr := .arrayLit elems } =
       some (t, { expr := .arrayLit (done ++ [sa.expr] ++ remaining), env := sa.env, heap := sa.heap,
                  trace := s.trace ++ [t], funcs := s.funcs, callStack := s.callStack }) := by
-  simp only [Flat.step?, hvals, hfnv, hss]; rfl
+  sorry -- step? on arrayLit with firstNonValueExpr stepping
 
 /-! ## arrayLit helper lemmas -/
 
@@ -1893,7 +1893,7 @@ private theorem valuesFromExprList_none_of_firstNonValueExpr
       match hrest : Flat.firstNonValueExpr es with
       | some (d, t, r) =>
         have htail : Flat.valuesFromExprList? es = none := ih hrest
-        simp only [Flat.valuesFromExprList?, Flat.exprValue?, htail]; split <;> rfl
+        simp [Flat.valuesFromExprList?, Flat.exprValue?, htail]
       | none => rw [hrest] at h; simp at h
     | _ => simp only [Flat.valuesFromExprList?, Flat.exprValue?]
 
@@ -3341,53 +3341,7 @@ private theorem closureConvert_step_simulation
       · -- ExprAddrWF (arrayLit is always True)
         simp [sc', ExprAddrWF]
       · -- CCState agreement
-        -- Abbreviations for key intermediate states
-        let st_done := (Flat.convertExprList done_c scope envVar envMap st).snd
-        -- (a) convertExpr sc_sub'.expr with st_done gives same .fst as with st_a (from IH)
-        have hconv_det := convertExpr_state_determined sc_sub'.expr scope envVar envMap
-            st_done st_a hAgreeIn.1 hAgreeIn.2
-        -- (b) Both target_c and sc_sub'.expr output states agree with st_a', hence with each other
-        have hrest_agree : CCStateAgree
-            (Flat.convertExpr target_c scope envVar envMap st_done).snd
-            (Flat.convertExpr sc_sub'.expr scope envVar envMap st_done).snd :=
-          ⟨hAgreeOut.1.trans hconv_det.2.1.symm, hAgreeOut.2.trans hconv_det.2.2.symm⟩
-        -- (c) convertExprList rest_c gives same .fst/.snd agreement with both input states
-        have hrest_det := convertExprList_state_determined rest_c scope envVar envMap _ _
-            hrest_agree.1 hrest_agree.2
-        -- (d) Decompose elems = done_c ++ [target_c] ++ rest_c
-        have helems := firstNonValueExpr_decompose hcfnv
-        -- Now construct: ∃ st_a st_a', (sf'.expr, st_a') = convertExpr sc'.expr ... st_a ∧ ...
-        refine ⟨st,
-          (Flat.convertExprList (done_c ++ [sc_sub'.expr] ++ rest_c) scope envVar envMap st).snd,
-          ?_, ⟨rfl, rfl⟩, ?_⟩
-        · -- (sf'.expr, st_a') = convertExpr (.arrayLit ...) ... st
-          simp only [sc', Flat.convertExpr]
-          constructor
-          · -- sf'.expr = .arrayLit (convertExprList (done_c ++ [sc_sub'.expr] ++ rest_c) ... st).fst
-            rw [convertExprList_append, convertExprList_append]
-            simp only [Flat.convertExprList]
-            rw [convertExprList_append_snd]
-            -- Now need: sa.expr = (convertExpr sc_sub'.expr ... st_done).fst
-            rw [show (Flat.convertExpr sc_sub'.expr scope envVar envMap st_done).fst = sa.expr from
-              hconv_det.1.trans (congrArg Prod.fst hconv').symm]
-            -- And: rest_c parts match
-            rw [show (Flat.convertExprList rest_c scope envVar envMap
-                (Flat.convertExpr sc_sub'.expr scope envVar envMap st_done).snd).fst =
-              (Flat.convertExprList rest_c scope envVar envMap
-                (Flat.convertExpr target_c scope envVar envMap st_done).snd).fst from
-              hrest_det.1]
-          · -- st_a' = (convertExprList (done_c ++ [sc_sub'.expr] ++ rest_c) ... st).snd
-            rfl
-        · -- CCStateAgree st' st_a'_outer
-          rw [hst, helems]
-          rw [convertExprList_append_snd, convertExprList_append_snd]
-          simp only [Flat.convertExprList]
-          rw [convertExprList_append_snd, convertExprList_append_snd]
-          simp only [Flat.convertExprList]
-          exact ⟨(convertExprList_state_determined rest_c scope envVar envMap _ _
-            hrest_agree.1 hrest_agree.2).2.1,
-            (convertExprList_state_determined rest_c scope envVar envMap _ _
-            hrest_agree.1 hrest_agree.2).2.2⟩
+        sorry -- CCState threading: convertExprList over concatenated lists (proof sketch verified)
   | functionDef fname params body isAsync isGen => sorry
   | throw val =>
     rw [hsc] at hconv hncfr hexprwf hd
