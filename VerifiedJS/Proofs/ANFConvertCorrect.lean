@@ -3936,7 +3936,6 @@ private theorem hasBreakInHead_step?_error_aux
       s'.trace = sf.trace ++ [.error ("break:" ++ label.getD "")] := by
   induction d generalizing e sf with
   | zero =>
-    intro e hd label h sf hsf
     cases h with
     | break_direct =>
       cases sf with | mk _ env heap trace funcs cs =>
@@ -3953,160 +3952,160 @@ private theorem hasBreakInHead_step?_error_aux
       cases sf with | mk _ env heap trace funcs cs =>
       simp only [Flat.State.expr] at hsf; subst hsf
       have hnotval := HasBreakInHead_not_value _ _ hsub
-      have ha : Flat.Expr.depth _ ≤ d' := by simp [Flat.Expr.depth] at hd; omega
-      obtain ⟨sa', hsa, _, henv_a, hheap_a, _, _, _⟩ := ih _ ha _ hsub ⟨_, env, heap, trace, funcs, cs⟩ rfl
+      obtain ⟨sa', hsa, _, henv_a, hheap_a, _, _, _⟩ :=
+        ih _ (by simp [Flat.Expr.depth] at hd; omega) hsub ⟨_, env, heap, trace, funcs, cs⟩ rfl
       simp only [Flat.step?, hnotval, hsa, henv_a, hheap_a]
       exact ⟨_, rfl, rfl, rfl, rfl, rfl, rfl, rfl⟩
     | let_init hsub =>
       cases sf with | mk _ env heap trace funcs cs =>
       simp only [Flat.State.expr] at hsf; subst hsf
       have hnotval := HasBreakInHead_not_value _ _ hsub
-      have ha : Flat.Expr.depth _ ≤ d' := by simp [Flat.Expr.depth] at hd; omega
-      obtain ⟨sa', hsa, _, henv_a, hheap_a, _, _, _⟩ := ih _ ha _ hsub ⟨_, env, heap, trace, funcs, cs⟩ rfl
+      obtain ⟨sa', hsa, _, henv_a, hheap_a, _, _, _⟩ :=
+        ih _ (by simp [Flat.Expr.depth] at hd; omega) hsub ⟨_, env, heap, trace, funcs, cs⟩ rfl
       simp only [Flat.step?, hnotval, hsa, henv_a, hheap_a]
       exact ⟨_, rfl, rfl, rfl, rfl, rfl, rfl, rfl⟩
     | if_cond hsub =>
       cases sf with | mk _ env heap trace funcs cs =>
       simp only [Flat.State.expr] at hsf; subst hsf
       have hnotval := HasBreakInHead_not_value _ _ hsub
-      have ha : Flat.Expr.depth _ ≤ d' := by simp [Flat.Expr.depth] at hd; omega
-      obtain ⟨sa', hsa, _, henv_a, hheap_a, _, _, _⟩ := ih _ ha _ hsub ⟨_, env, heap, trace, funcs, cs⟩ rfl
+      obtain ⟨sa', hsa, _, henv_a, hheap_a, _, _, _⟩ :=
+        ih _ (by simp [Flat.Expr.depth] at hd; omega) hsub ⟨_, env, heap, trace, funcs, cs⟩ rfl
       simp only [Flat.step?, hnotval, hsa, henv_a, hheap_a]
       exact ⟨_, rfl, rfl, rfl, rfl, rfl, rfl, rfl⟩
     | unary_arg hsub =>
       cases sf with | mk _ env heap trace funcs cs =>
       simp only [Flat.State.expr] at hsf; subst hsf
       have hnotval := HasBreakInHead_not_value _ _ hsub
-      have ha : Flat.Expr.depth _ ≤ d' := by simp [Flat.Expr.depth] at hd; omega
-      obtain ⟨sa', hsa, _, henv_a, hheap_a, _, _, _⟩ := ih _ ha _ hsub ⟨_, env, heap, trace, funcs, cs⟩ rfl
+      obtain ⟨sa', hsa, _, henv_a, hheap_a, _, _, _⟩ :=
+        ih _ (by simp [Flat.Expr.depth] at hd; omega) hsub ⟨_, env, heap, trace, funcs, cs⟩ rfl
       simp only [Flat.step?, hnotval, hsa, henv_a, hheap_a]
       exact ⟨_, rfl, rfl, rfl, rfl, rfl, rfl, rfl⟩
     | typeof_arg hsub =>
       cases sf with | mk _ env heap trace funcs cs =>
       simp only [Flat.State.expr] at hsf; subst hsf
       have hnotval := HasBreakInHead_not_value _ _ hsub
-      have ha : Flat.Expr.depth _ ≤ d' := by simp [Flat.Expr.depth] at hd; omega
-      obtain ⟨sa', hsa, _, henv_a, hheap_a, _, _, _⟩ := ih _ ha _ hsub ⟨_, env, heap, trace, funcs, cs⟩ rfl
+      obtain ⟨sa', hsa, _, henv_a, hheap_a, _, _, _⟩ :=
+        ih _ (by simp [Flat.Expr.depth] at hd; omega) hsub ⟨_, env, heap, trace, funcs, cs⟩ rfl
       simp only [Flat.step?, hnotval, hsa, henv_a, hheap_a]
       exact ⟨_, rfl, rfl, rfl, rfl, rfl, rfl, rfl⟩
     | throw_arg hsub =>
       cases sf with | mk _ env heap trace funcs cs =>
       simp only [Flat.State.expr] at hsf; subst hsf
       have hnotval := HasBreakInHead_not_value _ _ hsub
-      have ha : Flat.Expr.depth _ ≤ d' := by simp [Flat.Expr.depth] at hd; omega
-      obtain ⟨sa', hsa, _, henv_a, hheap_a, _, _, _⟩ := ih _ ha _ hsub ⟨_, env, heap, trace, funcs, cs⟩ rfl
+      obtain ⟨sa', hsa, _, henv_a, hheap_a, _, _, _⟩ :=
+        ih _ (by simp [Flat.Expr.depth] at hd; omega) hsub ⟨_, env, heap, trace, funcs, cs⟩ rfl
       simp only [Flat.step?, hnotval, hsa, henv_a, hheap_a]
       exact ⟨_, rfl, rfl, rfl, rfl, rfl, rfl, rfl⟩
     | return_some_arg hsub =>
       cases sf with | mk _ env heap trace funcs cs =>
       simp only [Flat.State.expr] at hsf; subst hsf
       have hnotval := HasBreakInHead_not_value _ _ hsub
-      have ha : Flat.Expr.depth _ ≤ d' := by simp [Flat.Expr.depth] at hd; omega
-      obtain ⟨sa', hsa, _, henv_a, hheap_a, _, _, _⟩ := ih _ ha _ hsub ⟨_, env, heap, trace, funcs, cs⟩ rfl
+      obtain ⟨sa', hsa, _, henv_a, hheap_a, _, _, _⟩ :=
+        ih _ (by simp [Flat.Expr.depth] at hd; omega) hsub ⟨_, env, heap, trace, funcs, cs⟩ rfl
       simp only [Flat.step?, hnotval, hsa, henv_a, hheap_a]
       exact ⟨_, rfl, rfl, rfl, rfl, rfl, rfl, rfl⟩
     | yield_some_arg hsub =>
       cases sf with | mk _ env heap trace funcs cs =>
       simp only [Flat.State.expr] at hsf; subst hsf
       have hnotval := HasBreakInHead_not_value _ _ hsub
-      have ha : Flat.Expr.depth _ ≤ d' := by simp [Flat.Expr.depth] at hd; omega
-      obtain ⟨sa', hsa, _, henv_a, hheap_a, _, _, _⟩ := ih _ ha _ hsub ⟨_, env, heap, trace, funcs, cs⟩ rfl
+      obtain ⟨sa', hsa, _, henv_a, hheap_a, _, _, _⟩ :=
+        ih _ (by simp [Flat.Expr.depth] at hd; omega) hsub ⟨_, env, heap, trace, funcs, cs⟩ rfl
       simp only [Flat.step?, hnotval, hsa, henv_a, hheap_a]
       exact ⟨_, rfl, rfl, rfl, rfl, rfl, rfl, rfl⟩
     | await_arg hsub =>
       cases sf with | mk _ env heap trace funcs cs =>
       simp only [Flat.State.expr] at hsf; subst hsf
       have hnotval := HasBreakInHead_not_value _ _ hsub
-      have ha : Flat.Expr.depth _ ≤ d' := by simp [Flat.Expr.depth] at hd; omega
-      obtain ⟨sa', hsa, _, henv_a, hheap_a, _, _, _⟩ := ih _ ha _ hsub ⟨_, env, heap, trace, funcs, cs⟩ rfl
+      obtain ⟨sa', hsa, _, henv_a, hheap_a, _, _, _⟩ :=
+        ih _ (by simp [Flat.Expr.depth] at hd; omega) hsub ⟨_, env, heap, trace, funcs, cs⟩ rfl
       simp only [Flat.step?, hnotval, hsa, henv_a, hheap_a]
       exact ⟨_, rfl, rfl, rfl, rfl, rfl, rfl, rfl⟩
     | assign_val hsub =>
       cases sf with | mk _ env heap trace funcs cs =>
       simp only [Flat.State.expr] at hsf; subst hsf
       have hnotval := HasBreakInHead_not_value _ _ hsub
-      have ha : Flat.Expr.depth _ ≤ d' := by simp [Flat.Expr.depth] at hd; omega
-      obtain ⟨sa', hsa, _, henv_a, hheap_a, _, _, _⟩ := ih _ ha _ hsub ⟨_, env, heap, trace, funcs, cs⟩ rfl
+      obtain ⟨sa', hsa, _, henv_a, hheap_a, _, _, _⟩ :=
+        ih _ (by simp [Flat.Expr.depth] at hd; omega) hsub ⟨_, env, heap, trace, funcs, cs⟩ rfl
       simp only [Flat.step?, hnotval, hsa, henv_a, hheap_a]
       exact ⟨_, rfl, rfl, rfl, rfl, rfl, rfl, rfl⟩
     | getProp_obj hsub =>
       cases sf with | mk _ env heap trace funcs cs =>
       simp only [Flat.State.expr] at hsf; subst hsf
       have hnotval := HasBreakInHead_not_value _ _ hsub
-      have ha : Flat.Expr.depth _ ≤ d' := by simp [Flat.Expr.depth] at hd; omega
-      obtain ⟨sa', hsa, _, henv_a, hheap_a, _, _, _⟩ := ih _ ha _ hsub ⟨_, env, heap, trace, funcs, cs⟩ rfl
+      obtain ⟨sa', hsa, _, henv_a, hheap_a, _, _, _⟩ :=
+        ih _ (by simp [Flat.Expr.depth] at hd; omega) hsub ⟨_, env, heap, trace, funcs, cs⟩ rfl
       simp only [Flat.step?, hnotval, hsa, henv_a, hheap_a]
       exact ⟨_, rfl, rfl, rfl, rfl, rfl, rfl, rfl⟩
     | setProp_obj hsub =>
       cases sf with | mk _ env heap trace funcs cs =>
       simp only [Flat.State.expr] at hsf; subst hsf
       have hnotval := HasBreakInHead_not_value _ _ hsub
-      have ha : Flat.Expr.depth _ ≤ d' := by simp [Flat.Expr.depth] at hd; omega
-      obtain ⟨sa', hsa, _, henv_a, hheap_a, _, _, _⟩ := ih _ ha _ hsub ⟨_, env, heap, trace, funcs, cs⟩ rfl
+      obtain ⟨sa', hsa, _, henv_a, hheap_a, _, _, _⟩ :=
+        ih _ (by simp [Flat.Expr.depth] at hd; omega) hsub ⟨_, env, heap, trace, funcs, cs⟩ rfl
       simp only [Flat.step?, hnotval, hsa, henv_a, hheap_a]
       exact ⟨_, rfl, rfl, rfl, rfl, rfl, rfl, rfl⟩
     | deleteProp_obj hsub =>
       cases sf with | mk _ env heap trace funcs cs =>
       simp only [Flat.State.expr] at hsf; subst hsf
       have hnotval := HasBreakInHead_not_value _ _ hsub
-      have ha : Flat.Expr.depth _ ≤ d' := by simp [Flat.Expr.depth] at hd; omega
-      obtain ⟨sa', hsa, _, henv_a, hheap_a, _, _, _⟩ := ih _ ha _ hsub ⟨_, env, heap, trace, funcs, cs⟩ rfl
+      obtain ⟨sa', hsa, _, henv_a, hheap_a, _, _, _⟩ :=
+        ih _ (by simp [Flat.Expr.depth] at hd; omega) hsub ⟨_, env, heap, trace, funcs, cs⟩ rfl
       simp only [Flat.step?, hnotval, hsa, henv_a, hheap_a]
       exact ⟨_, rfl, rfl, rfl, rfl, rfl, rfl, rfl⟩
     | binary_lhs hsub =>
       cases sf with | mk _ env heap trace funcs cs =>
       simp only [Flat.State.expr] at hsf; subst hsf
       have hnotval := HasBreakInHead_not_value _ _ hsub
-      have ha : Flat.Expr.depth _ ≤ d' := by simp [Flat.Expr.depth] at hd; omega
-      obtain ⟨sa', hsa, _, henv_a, hheap_a, _, _, _⟩ := ih _ ha _ hsub ⟨_, env, heap, trace, funcs, cs⟩ rfl
+      obtain ⟨sa', hsa, _, henv_a, hheap_a, _, _, _⟩ :=
+        ih _ (by simp [Flat.Expr.depth] at hd; omega) hsub ⟨_, env, heap, trace, funcs, cs⟩ rfl
       simp only [Flat.step?, hnotval, hsa, henv_a, hheap_a]
       exact ⟨_, rfl, rfl, rfl, rfl, rfl, rfl, rfl⟩
     | call_func hsub =>
       cases sf with | mk _ env heap trace funcs cs =>
       simp only [Flat.State.expr] at hsf; subst hsf
       have hnotval := HasBreakInHead_not_value _ _ hsub
-      have ha : Flat.Expr.depth _ ≤ d' := by simp [Flat.Expr.depth] at hd; omega
-      obtain ⟨sa', hsa, _, henv_a, hheap_a, _, _, _⟩ := ih _ ha _ hsub ⟨_, env, heap, trace, funcs, cs⟩ rfl
+      obtain ⟨sa', hsa, _, henv_a, hheap_a, _, _, _⟩ :=
+        ih _ (by simp [Flat.Expr.depth] at hd; omega) hsub ⟨_, env, heap, trace, funcs, cs⟩ rfl
       simp only [Flat.step?, hnotval, hsa, henv_a, hheap_a]
       exact ⟨_, rfl, rfl, rfl, rfl, rfl, rfl, rfl⟩
     | newObj_func hsub =>
       cases sf with | mk _ env heap trace funcs cs =>
       simp only [Flat.State.expr] at hsf; subst hsf
       have hnotval := HasBreakInHead_not_value _ _ hsub
-      have ha : Flat.Expr.depth _ ≤ d' := by simp [Flat.Expr.depth] at hd; omega
-      obtain ⟨sa', hsa, _, henv_a, hheap_a, _, _, _⟩ := ih _ ha _ hsub ⟨_, env, heap, trace, funcs, cs⟩ rfl
+      obtain ⟨sa', hsa, _, henv_a, hheap_a, _, _, _⟩ :=
+        ih _ (by simp [Flat.Expr.depth] at hd; omega) hsub ⟨_, env, heap, trace, funcs, cs⟩ rfl
       simp only [Flat.step?, hnotval, hsa, henv_a, hheap_a]
       exact ⟨_, rfl, rfl, rfl, rfl, rfl, rfl, rfl⟩
     | getIndex_obj hsub =>
       cases sf with | mk _ env heap trace funcs cs =>
       simp only [Flat.State.expr] at hsf; subst hsf
       have hnotval := HasBreakInHead_not_value _ _ hsub
-      have ha : Flat.Expr.depth _ ≤ d' := by simp [Flat.Expr.depth] at hd; omega
-      obtain ⟨sa', hsa, _, henv_a, hheap_a, _, _, _⟩ := ih _ ha _ hsub ⟨_, env, heap, trace, funcs, cs⟩ rfl
+      obtain ⟨sa', hsa, _, henv_a, hheap_a, _, _, _⟩ :=
+        ih _ (by simp [Flat.Expr.depth] at hd; omega) hsub ⟨_, env, heap, trace, funcs, cs⟩ rfl
       simp only [Flat.step?, hnotval, hsa, henv_a, hheap_a]
       exact ⟨_, rfl, rfl, rfl, rfl, rfl, rfl, rfl⟩
     | setIndex_obj hsub =>
       cases sf with | mk _ env heap trace funcs cs =>
       simp only [Flat.State.expr] at hsf; subst hsf
       have hnotval := HasBreakInHead_not_value _ _ hsub
-      have ha : Flat.Expr.depth _ ≤ d' := by simp [Flat.Expr.depth] at hd; omega
-      obtain ⟨sa', hsa, _, henv_a, hheap_a, _, _, _⟩ := ih _ ha _ hsub ⟨_, env, heap, trace, funcs, cs⟩ rfl
+      obtain ⟨sa', hsa, _, henv_a, hheap_a, _, _, _⟩ :=
+        ih _ (by simp [Flat.Expr.depth] at hd; omega) hsub ⟨_, env, heap, trace, funcs, cs⟩ rfl
       simp only [Flat.step?, hnotval, hsa, henv_a, hheap_a]
       exact ⟨_, rfl, rfl, rfl, rfl, rfl, rfl, rfl⟩
     | getEnv_env hsub =>
       cases sf with | mk _ env heap trace funcs cs =>
       simp only [Flat.State.expr] at hsf; subst hsf
       have hnotval := HasBreakInHead_not_value _ _ hsub
-      have ha : Flat.Expr.depth _ ≤ d' := by simp [Flat.Expr.depth] at hd; omega
-      obtain ⟨sa', hsa, _, henv_a, hheap_a, _, _, _⟩ := ih _ ha _ hsub ⟨_, env, heap, trace, funcs, cs⟩ rfl
+      obtain ⟨sa', hsa, _, henv_a, hheap_a, _, _, _⟩ :=
+        ih _ (by simp [Flat.Expr.depth] at hd; omega) hsub ⟨_, env, heap, trace, funcs, cs⟩ rfl
       simp only [Flat.step?, hnotval, hsa, henv_a, hheap_a]
       exact ⟨_, rfl, rfl, rfl, rfl, rfl, rfl, rfl⟩
     | makeClosure_env hsub =>
       cases sf with | mk _ env heap trace funcs cs =>
       simp only [Flat.State.expr] at hsf; subst hsf
       have hnotval := HasBreakInHead_not_value _ _ hsub
-      have ha : Flat.Expr.depth _ ≤ d' := by simp [Flat.Expr.depth] at hd; omega
-      obtain ⟨sa', hsa, _, henv_a, hheap_a, _, _, _⟩ := ih _ ha _ hsub ⟨_, env, heap, trace, funcs, cs⟩ rfl
+      obtain ⟨sa', hsa, _, henv_a, hheap_a, _, _, _⟩ :=
+        ih _ (by simp [Flat.Expr.depth] at hd; omega) hsub ⟨_, env, heap, trace, funcs, cs⟩ rfl
       simp only [Flat.step?, hnotval, hsa, henv_a, hheap_a]
       exact ⟨_, rfl, rfl, rfl, rfl, rfl, rfl, rfl⟩
     -- Non-first-position cases: need multi-step (earlier sub-expression evaluates first)
@@ -4143,8 +4142,6 @@ private theorem hasBreakInHead_flat_error_steps
     hasBreakInHead_step?_error_aux e.depth e (Nat.le_refl _) label h sf hsf
   exact ⟨s', [_], .tail ⟨hstep⟩ (.refl _), hexpr, henv, hheap, hfuncs, hcs, htrace, rfl⟩
 
-/-- If an expression has continue in its evaluation head, then Flat stepping produces the
-    continue error. Symmetric to hasBreakInHead_flat_error_steps. -/
 /-- Symmetric to hasBreakInHead_step?_error_aux for continue. -/
 private theorem hasContinueInHead_step?_error_aux
     (d : Nat) (e : Flat.Expr) (hd : e.depth ≤ d)
@@ -4158,7 +4155,6 @@ private theorem hasContinueInHead_step?_error_aux
       s'.trace = sf.trace ++ [.error ("continue:" ++ label.getD "")] := by
   induction d generalizing e sf with
   | zero =>
-    intro e hd label h sf hsf
     cases h with
     | continue_direct =>
       cases sf with | mk _ env heap trace funcs cs =>
@@ -4175,160 +4171,160 @@ private theorem hasContinueInHead_step?_error_aux
       cases sf with | mk _ env heap trace funcs cs =>
       simp only [Flat.State.expr] at hsf; subst hsf
       have hnotval := HasContinueInHead_not_value _ _ hsub
-      have ha : Flat.Expr.depth _ ≤ d' := by simp [Flat.Expr.depth] at hd; omega
-      obtain ⟨sa', hsa, _, henv_a, hheap_a, _, _, _⟩ := ih _ ha _ hsub ⟨_, env, heap, trace, funcs, cs⟩ rfl
+      obtain ⟨sa', hsa, _, henv_a, hheap_a, _, _, _⟩ :=
+        ih _ (by simp [Flat.Expr.depth] at hd; omega) hsub ⟨_, env, heap, trace, funcs, cs⟩ rfl
       simp only [Flat.step?, hnotval, hsa, henv_a, hheap_a]
       exact ⟨_, rfl, rfl, rfl, rfl, rfl, rfl, rfl⟩
     | let_init hsub =>
       cases sf with | mk _ env heap trace funcs cs =>
       simp only [Flat.State.expr] at hsf; subst hsf
       have hnotval := HasContinueInHead_not_value _ _ hsub
-      have ha : Flat.Expr.depth _ ≤ d' := by simp [Flat.Expr.depth] at hd; omega
-      obtain ⟨sa', hsa, _, henv_a, hheap_a, _, _, _⟩ := ih _ ha _ hsub ⟨_, env, heap, trace, funcs, cs⟩ rfl
+      obtain ⟨sa', hsa, _, henv_a, hheap_a, _, _, _⟩ :=
+        ih _ (by simp [Flat.Expr.depth] at hd; omega) hsub ⟨_, env, heap, trace, funcs, cs⟩ rfl
       simp only [Flat.step?, hnotval, hsa, henv_a, hheap_a]
       exact ⟨_, rfl, rfl, rfl, rfl, rfl, rfl, rfl⟩
     | if_cond hsub =>
       cases sf with | mk _ env heap trace funcs cs =>
       simp only [Flat.State.expr] at hsf; subst hsf
       have hnotval := HasContinueInHead_not_value _ _ hsub
-      have ha : Flat.Expr.depth _ ≤ d' := by simp [Flat.Expr.depth] at hd; omega
-      obtain ⟨sa', hsa, _, henv_a, hheap_a, _, _, _⟩ := ih _ ha _ hsub ⟨_, env, heap, trace, funcs, cs⟩ rfl
+      obtain ⟨sa', hsa, _, henv_a, hheap_a, _, _, _⟩ :=
+        ih _ (by simp [Flat.Expr.depth] at hd; omega) hsub ⟨_, env, heap, trace, funcs, cs⟩ rfl
       simp only [Flat.step?, hnotval, hsa, henv_a, hheap_a]
       exact ⟨_, rfl, rfl, rfl, rfl, rfl, rfl, rfl⟩
     | unary_arg hsub =>
       cases sf with | mk _ env heap trace funcs cs =>
       simp only [Flat.State.expr] at hsf; subst hsf
       have hnotval := HasContinueInHead_not_value _ _ hsub
-      have ha : Flat.Expr.depth _ ≤ d' := by simp [Flat.Expr.depth] at hd; omega
-      obtain ⟨sa', hsa, _, henv_a, hheap_a, _, _, _⟩ := ih _ ha _ hsub ⟨_, env, heap, trace, funcs, cs⟩ rfl
+      obtain ⟨sa', hsa, _, henv_a, hheap_a, _, _, _⟩ :=
+        ih _ (by simp [Flat.Expr.depth] at hd; omega) hsub ⟨_, env, heap, trace, funcs, cs⟩ rfl
       simp only [Flat.step?, hnotval, hsa, henv_a, hheap_a]
       exact ⟨_, rfl, rfl, rfl, rfl, rfl, rfl, rfl⟩
     | typeof_arg hsub =>
       cases sf with | mk _ env heap trace funcs cs =>
       simp only [Flat.State.expr] at hsf; subst hsf
       have hnotval := HasContinueInHead_not_value _ _ hsub
-      have ha : Flat.Expr.depth _ ≤ d' := by simp [Flat.Expr.depth] at hd; omega
-      obtain ⟨sa', hsa, _, henv_a, hheap_a, _, _, _⟩ := ih _ ha _ hsub ⟨_, env, heap, trace, funcs, cs⟩ rfl
+      obtain ⟨sa', hsa, _, henv_a, hheap_a, _, _, _⟩ :=
+        ih _ (by simp [Flat.Expr.depth] at hd; omega) hsub ⟨_, env, heap, trace, funcs, cs⟩ rfl
       simp only [Flat.step?, hnotval, hsa, henv_a, hheap_a]
       exact ⟨_, rfl, rfl, rfl, rfl, rfl, rfl, rfl⟩
     | throw_arg hsub =>
       cases sf with | mk _ env heap trace funcs cs =>
       simp only [Flat.State.expr] at hsf; subst hsf
       have hnotval := HasContinueInHead_not_value _ _ hsub
-      have ha : Flat.Expr.depth _ ≤ d' := by simp [Flat.Expr.depth] at hd; omega
-      obtain ⟨sa', hsa, _, henv_a, hheap_a, _, _, _⟩ := ih _ ha _ hsub ⟨_, env, heap, trace, funcs, cs⟩ rfl
+      obtain ⟨sa', hsa, _, henv_a, hheap_a, _, _, _⟩ :=
+        ih _ (by simp [Flat.Expr.depth] at hd; omega) hsub ⟨_, env, heap, trace, funcs, cs⟩ rfl
       simp only [Flat.step?, hnotval, hsa, henv_a, hheap_a]
       exact ⟨_, rfl, rfl, rfl, rfl, rfl, rfl, rfl⟩
     | return_some_arg hsub =>
       cases sf with | mk _ env heap trace funcs cs =>
       simp only [Flat.State.expr] at hsf; subst hsf
       have hnotval := HasContinueInHead_not_value _ _ hsub
-      have ha : Flat.Expr.depth _ ≤ d' := by simp [Flat.Expr.depth] at hd; omega
-      obtain ⟨sa', hsa, _, henv_a, hheap_a, _, _, _⟩ := ih _ ha _ hsub ⟨_, env, heap, trace, funcs, cs⟩ rfl
+      obtain ⟨sa', hsa, _, henv_a, hheap_a, _, _, _⟩ :=
+        ih _ (by simp [Flat.Expr.depth] at hd; omega) hsub ⟨_, env, heap, trace, funcs, cs⟩ rfl
       simp only [Flat.step?, hnotval, hsa, henv_a, hheap_a]
       exact ⟨_, rfl, rfl, rfl, rfl, rfl, rfl, rfl⟩
     | yield_some_arg hsub =>
       cases sf with | mk _ env heap trace funcs cs =>
       simp only [Flat.State.expr] at hsf; subst hsf
       have hnotval := HasContinueInHead_not_value _ _ hsub
-      have ha : Flat.Expr.depth _ ≤ d' := by simp [Flat.Expr.depth] at hd; omega
-      obtain ⟨sa', hsa, _, henv_a, hheap_a, _, _, _⟩ := ih _ ha _ hsub ⟨_, env, heap, trace, funcs, cs⟩ rfl
+      obtain ⟨sa', hsa, _, henv_a, hheap_a, _, _, _⟩ :=
+        ih _ (by simp [Flat.Expr.depth] at hd; omega) hsub ⟨_, env, heap, trace, funcs, cs⟩ rfl
       simp only [Flat.step?, hnotval, hsa, henv_a, hheap_a]
       exact ⟨_, rfl, rfl, rfl, rfl, rfl, rfl, rfl⟩
     | await_arg hsub =>
       cases sf with | mk _ env heap trace funcs cs =>
       simp only [Flat.State.expr] at hsf; subst hsf
       have hnotval := HasContinueInHead_not_value _ _ hsub
-      have ha : Flat.Expr.depth _ ≤ d' := by simp [Flat.Expr.depth] at hd; omega
-      obtain ⟨sa', hsa, _, henv_a, hheap_a, _, _, _⟩ := ih _ ha _ hsub ⟨_, env, heap, trace, funcs, cs⟩ rfl
+      obtain ⟨sa', hsa, _, henv_a, hheap_a, _, _, _⟩ :=
+        ih _ (by simp [Flat.Expr.depth] at hd; omega) hsub ⟨_, env, heap, trace, funcs, cs⟩ rfl
       simp only [Flat.step?, hnotval, hsa, henv_a, hheap_a]
       exact ⟨_, rfl, rfl, rfl, rfl, rfl, rfl, rfl⟩
     | assign_val hsub =>
       cases sf with | mk _ env heap trace funcs cs =>
       simp only [Flat.State.expr] at hsf; subst hsf
       have hnotval := HasContinueInHead_not_value _ _ hsub
-      have ha : Flat.Expr.depth _ ≤ d' := by simp [Flat.Expr.depth] at hd; omega
-      obtain ⟨sa', hsa, _, henv_a, hheap_a, _, _, _⟩ := ih _ ha _ hsub ⟨_, env, heap, trace, funcs, cs⟩ rfl
+      obtain ⟨sa', hsa, _, henv_a, hheap_a, _, _, _⟩ :=
+        ih _ (by simp [Flat.Expr.depth] at hd; omega) hsub ⟨_, env, heap, trace, funcs, cs⟩ rfl
       simp only [Flat.step?, hnotval, hsa, henv_a, hheap_a]
       exact ⟨_, rfl, rfl, rfl, rfl, rfl, rfl, rfl⟩
     | getProp_obj hsub =>
       cases sf with | mk _ env heap trace funcs cs =>
       simp only [Flat.State.expr] at hsf; subst hsf
       have hnotval := HasContinueInHead_not_value _ _ hsub
-      have ha : Flat.Expr.depth _ ≤ d' := by simp [Flat.Expr.depth] at hd; omega
-      obtain ⟨sa', hsa, _, henv_a, hheap_a, _, _, _⟩ := ih _ ha _ hsub ⟨_, env, heap, trace, funcs, cs⟩ rfl
+      obtain ⟨sa', hsa, _, henv_a, hheap_a, _, _, _⟩ :=
+        ih _ (by simp [Flat.Expr.depth] at hd; omega) hsub ⟨_, env, heap, trace, funcs, cs⟩ rfl
       simp only [Flat.step?, hnotval, hsa, henv_a, hheap_a]
       exact ⟨_, rfl, rfl, rfl, rfl, rfl, rfl, rfl⟩
     | setProp_obj hsub =>
       cases sf with | mk _ env heap trace funcs cs =>
       simp only [Flat.State.expr] at hsf; subst hsf
       have hnotval := HasContinueInHead_not_value _ _ hsub
-      have ha : Flat.Expr.depth _ ≤ d' := by simp [Flat.Expr.depth] at hd; omega
-      obtain ⟨sa', hsa, _, henv_a, hheap_a, _, _, _⟩ := ih _ ha _ hsub ⟨_, env, heap, trace, funcs, cs⟩ rfl
+      obtain ⟨sa', hsa, _, henv_a, hheap_a, _, _, _⟩ :=
+        ih _ (by simp [Flat.Expr.depth] at hd; omega) hsub ⟨_, env, heap, trace, funcs, cs⟩ rfl
       simp only [Flat.step?, hnotval, hsa, henv_a, hheap_a]
       exact ⟨_, rfl, rfl, rfl, rfl, rfl, rfl, rfl⟩
     | deleteProp_obj hsub =>
       cases sf with | mk _ env heap trace funcs cs =>
       simp only [Flat.State.expr] at hsf; subst hsf
       have hnotval := HasContinueInHead_not_value _ _ hsub
-      have ha : Flat.Expr.depth _ ≤ d' := by simp [Flat.Expr.depth] at hd; omega
-      obtain ⟨sa', hsa, _, henv_a, hheap_a, _, _, _⟩ := ih _ ha _ hsub ⟨_, env, heap, trace, funcs, cs⟩ rfl
+      obtain ⟨sa', hsa, _, henv_a, hheap_a, _, _, _⟩ :=
+        ih _ (by simp [Flat.Expr.depth] at hd; omega) hsub ⟨_, env, heap, trace, funcs, cs⟩ rfl
       simp only [Flat.step?, hnotval, hsa, henv_a, hheap_a]
       exact ⟨_, rfl, rfl, rfl, rfl, rfl, rfl, rfl⟩
     | binary_lhs hsub =>
       cases sf with | mk _ env heap trace funcs cs =>
       simp only [Flat.State.expr] at hsf; subst hsf
       have hnotval := HasContinueInHead_not_value _ _ hsub
-      have ha : Flat.Expr.depth _ ≤ d' := by simp [Flat.Expr.depth] at hd; omega
-      obtain ⟨sa', hsa, _, henv_a, hheap_a, _, _, _⟩ := ih _ ha _ hsub ⟨_, env, heap, trace, funcs, cs⟩ rfl
+      obtain ⟨sa', hsa, _, henv_a, hheap_a, _, _, _⟩ :=
+        ih _ (by simp [Flat.Expr.depth] at hd; omega) hsub ⟨_, env, heap, trace, funcs, cs⟩ rfl
       simp only [Flat.step?, hnotval, hsa, henv_a, hheap_a]
       exact ⟨_, rfl, rfl, rfl, rfl, rfl, rfl, rfl⟩
     | call_func hsub =>
       cases sf with | mk _ env heap trace funcs cs =>
       simp only [Flat.State.expr] at hsf; subst hsf
       have hnotval := HasContinueInHead_not_value _ _ hsub
-      have ha : Flat.Expr.depth _ ≤ d' := by simp [Flat.Expr.depth] at hd; omega
-      obtain ⟨sa', hsa, _, henv_a, hheap_a, _, _, _⟩ := ih _ ha _ hsub ⟨_, env, heap, trace, funcs, cs⟩ rfl
+      obtain ⟨sa', hsa, _, henv_a, hheap_a, _, _, _⟩ :=
+        ih _ (by simp [Flat.Expr.depth] at hd; omega) hsub ⟨_, env, heap, trace, funcs, cs⟩ rfl
       simp only [Flat.step?, hnotval, hsa, henv_a, hheap_a]
       exact ⟨_, rfl, rfl, rfl, rfl, rfl, rfl, rfl⟩
     | newObj_func hsub =>
       cases sf with | mk _ env heap trace funcs cs =>
       simp only [Flat.State.expr] at hsf; subst hsf
       have hnotval := HasContinueInHead_not_value _ _ hsub
-      have ha : Flat.Expr.depth _ ≤ d' := by simp [Flat.Expr.depth] at hd; omega
-      obtain ⟨sa', hsa, _, henv_a, hheap_a, _, _, _⟩ := ih _ ha _ hsub ⟨_, env, heap, trace, funcs, cs⟩ rfl
+      obtain ⟨sa', hsa, _, henv_a, hheap_a, _, _, _⟩ :=
+        ih _ (by simp [Flat.Expr.depth] at hd; omega) hsub ⟨_, env, heap, trace, funcs, cs⟩ rfl
       simp only [Flat.step?, hnotval, hsa, henv_a, hheap_a]
       exact ⟨_, rfl, rfl, rfl, rfl, rfl, rfl, rfl⟩
     | getIndex_obj hsub =>
       cases sf with | mk _ env heap trace funcs cs =>
       simp only [Flat.State.expr] at hsf; subst hsf
       have hnotval := HasContinueInHead_not_value _ _ hsub
-      have ha : Flat.Expr.depth _ ≤ d' := by simp [Flat.Expr.depth] at hd; omega
-      obtain ⟨sa', hsa, _, henv_a, hheap_a, _, _, _⟩ := ih _ ha _ hsub ⟨_, env, heap, trace, funcs, cs⟩ rfl
+      obtain ⟨sa', hsa, _, henv_a, hheap_a, _, _, _⟩ :=
+        ih _ (by simp [Flat.Expr.depth] at hd; omega) hsub ⟨_, env, heap, trace, funcs, cs⟩ rfl
       simp only [Flat.step?, hnotval, hsa, henv_a, hheap_a]
       exact ⟨_, rfl, rfl, rfl, rfl, rfl, rfl, rfl⟩
     | setIndex_obj hsub =>
       cases sf with | mk _ env heap trace funcs cs =>
       simp only [Flat.State.expr] at hsf; subst hsf
       have hnotval := HasContinueInHead_not_value _ _ hsub
-      have ha : Flat.Expr.depth _ ≤ d' := by simp [Flat.Expr.depth] at hd; omega
-      obtain ⟨sa', hsa, _, henv_a, hheap_a, _, _, _⟩ := ih _ ha _ hsub ⟨_, env, heap, trace, funcs, cs⟩ rfl
+      obtain ⟨sa', hsa, _, henv_a, hheap_a, _, _, _⟩ :=
+        ih _ (by simp [Flat.Expr.depth] at hd; omega) hsub ⟨_, env, heap, trace, funcs, cs⟩ rfl
       simp only [Flat.step?, hnotval, hsa, henv_a, hheap_a]
       exact ⟨_, rfl, rfl, rfl, rfl, rfl, rfl, rfl⟩
     | getEnv_env hsub =>
       cases sf with | mk _ env heap trace funcs cs =>
       simp only [Flat.State.expr] at hsf; subst hsf
       have hnotval := HasContinueInHead_not_value _ _ hsub
-      have ha : Flat.Expr.depth _ ≤ d' := by simp [Flat.Expr.depth] at hd; omega
-      obtain ⟨sa', hsa, _, henv_a, hheap_a, _, _, _⟩ := ih _ ha _ hsub ⟨_, env, heap, trace, funcs, cs⟩ rfl
+      obtain ⟨sa', hsa, _, henv_a, hheap_a, _, _, _⟩ :=
+        ih _ (by simp [Flat.Expr.depth] at hd; omega) hsub ⟨_, env, heap, trace, funcs, cs⟩ rfl
       simp only [Flat.step?, hnotval, hsa, henv_a, hheap_a]
       exact ⟨_, rfl, rfl, rfl, rfl, rfl, rfl, rfl⟩
     | makeClosure_env hsub =>
       cases sf with | mk _ env heap trace funcs cs =>
       simp only [Flat.State.expr] at hsf; subst hsf
       have hnotval := HasContinueInHead_not_value _ _ hsub
-      have ha : Flat.Expr.depth _ ≤ d' := by simp [Flat.Expr.depth] at hd; omega
-      obtain ⟨sa', hsa, _, henv_a, hheap_a, _, _, _⟩ := ih _ ha _ hsub ⟨_, env, heap, trace, funcs, cs⟩ rfl
+      obtain ⟨sa', hsa, _, henv_a, hheap_a, _, _, _⟩ :=
+        ih _ (by simp [Flat.Expr.depth] at hd; omega) hsub ⟨_, env, heap, trace, funcs, cs⟩ rfl
       simp only [Flat.step?, hnotval, hsa, henv_a, hheap_a]
       exact ⟨_, rfl, rfl, rfl, rfl, rfl, rfl, rfl⟩
     -- Non-first-position cases
