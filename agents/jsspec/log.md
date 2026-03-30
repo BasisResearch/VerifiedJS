@@ -1,63 +1,50 @@
 # jsspec agent log
 
-## 2026-03-30T12:30 — FIX D EXTENDED TO ALL COMPOUND EXPRESSIONS ✓ BUILD PASSES
+## 2026-03-30T12:30 — FIX D EXTENSION STAGED (cannot apply — breaks CC/ANF ctx theorems)
 
-### What was done
-**Fix D error propagation** has been extended to ALL compound expression forms in
-`VerifiedJS/Flat/Semantics.lean`. Previously only `.seq` and `.let` had error
-propagation — now every context-stepping position catches `.error msg` events and
-produces `{expr := .lit .undefined, env := sa.env, heap := sa.heap}`.
+### What was attempted
+Tried to extend Fix D error propagation to ALL compound expression forms in
+`VerifiedJS/Flat/Semantics.lean`. Build of Flat.Semantics itself succeeded,
+but ClosureConvertCorrect.lean and ANFConvertCorrect.lean broke:
 
-### Expressions modified (35 stepping positions total)
-| Expression | Positions | Status |
-|-----------|-----------|--------|
-| `.unary` | 1 (arg) | **APPLIED** |
-| `.binary` | 2 (lhs, rhs) | **APPLIED** |
-| `.assign` | 1 (rhs) | **APPLIED** |
-| `.if` | 1 (cond) | **APPLIED** |
-| `.getProp` | 1 (obj) | **APPLIED** |
-| `.setProp` | 3 (obj, val×2) | **APPLIED** |
-| `.getIndex` | 4 (obj, idx×3) | **APPLIED** |
-| `.setIndex` | 5 (obj, idx×2, val×2) | **APPLIED** |
-| `.deleteProp` | 1 (obj) | **APPLIED** |
-| `.typeof` | 1 (arg) | **APPLIED** |
-| `.throw` | 1 (arg) | **APPLIED** |
-| `.return` | 1 (arg) | **APPLIED** |
-| `.yield` | 1 (arg) | **APPLIED** |
-| `.await` | 1 (arg) | **APPLIED** |
-| `.call` | 3 (func, env, args) | **APPLIED** |
-| `.newObj` | 3 (func, env, args) | **APPLIED** |
-| `.makeClosure` | 1 (env) | **APPLIED** |
-| `.getEnv` | 1 (env) | **APPLIED** |
-| `.makeEnv` | 1 (list elem) | **APPLIED** |
-| `.objectLit` | 1 (prop elem) | **APPLIED** |
-| `.arrayLit` | 1 (list elem) | **APPLIED** |
+**Root cause**: Both `Proofs/ClosureConvertCorrect.lean` and
+`Proofs/ANFConvertCorrect.lean` contain context-stepping theorems like:
+```
+Flat_step?_unary_step: step? sub = some (t, sa) → step? (.unary op sub) = some (t, ...)
+```
+These assume ANY sub-step (including errors) wraps the result. With Fix D,
+error steps produce `.lit .undefined` instead. The theorems need an additional
+`hnoerr : ∀ msg, t ≠ .error msg` hypothesis (as `step?_seq_ctx` already has).
 
-### Proof repairs
-- `step?_none_implies_lit` — all `split at h` on step? matches updated to handle
-  3 branches (error, non-error some, none) instead of 2. Uses newline-separated
-  bullets matching the existing `.let`/`.seq` pattern.
-- Build: **VerifiedJS.Flat.Semantics compiles cleanly** (only cosmetic simp warnings).
+**Action taken**: Reverted ALL Fix D additions. Flat/Semantics.lean is unchanged
+from the original. Fix D remains ONLY for `.seq` and `.let` (original).
 
-### Impact on sorry count
-- **Before**: 20 first-position compound cases BLOCKED in break/continue/throw step_sim
-- **After**: All 20 first-position cases now have the infrastructure to close
-- **Net**: 2 closeable → 22 closeable compound sub-cases (across break + continue + throw)
+### PREREQUISITE for Fix D extension
+Before Fix D can be applied, ALL `Flat_step?_*_step` theorems in:
+- `ClosureConvertCorrect.lean` (~10 theorems)
+- `ANFConvertCorrect.lean` (~5 theorems: if, return, yield, await, throw)
 
-### Remaining blockers
-1. **Second-position cases** (8): seq_right, binary_rhs, setProp_val, getIndex_idx,
-   setIndex_idx, setIndex_val, call_env, newObj_env — env/heap not preserved
-2. **List/props cases** (5): call_args, newObj_args, makeEnv_values, objectLit_props,
-   arrayLit_elems — need mutual theorem
-3. **Steps lifting lemma**: General "lift Steps through compound context" needed
-   to compose multi-step IH with context stepping + Fix D
+must be updated to add `hnoerr` guards (or use `cases t` in the proof).
+The proof agent should update these first, THEN Fix D can be applied.
 
-### Staged files (new/updated)
+### Builds verified: ALL PASS
+- VerifiedJS.Flat.Semantics: ✓
+- VerifiedJS.ANF.Semantics: ✓
+- VerifiedJS.Flat.Interp: ✓
+- VerifiedJS.Proofs.ClosureConvertCorrect: ✓
+- VerifiedJS.Proofs.ANFConvertCorrect: ✓
+
+### Staged files (new)
 | File | Contents | Status |
 |------|----------|--------|
 | `flat_context_step_lemmas.lean` | Context-stepping + error propagation lemma specs | **NEW** |
-| `fix_d_extension.lean` | Documentation of all Fix D changes (now applied) | **NEW** |
+| `fix_d_extension.lean` | EXACT code changes for all 35 Fix D positions | **NEW** |
 | `anf_throw_step_sim_v2.lean` | Throw step sim theorem sketch (post Fix D) | **NEW** |
+
+### Key insight: Fix D extension is a 2-step process
+1. **Step 1** (proof agent): Update `Flat_step?_*_step` theorems to add `hnoerr` guards
+2. **Step 2** (any agent): Apply Fix D changes from `fix_d_extension.lean` + proof updates
+   from this session's edits (3-way splits in `step?_none_implies_lit`)
 
 ## 2026-03-30T11:30 — normalizeExpr_break_step_sim STAGED + CRITICAL BLOCKER FOUND
 
@@ -1790,3 +1777,4 @@ Agent `jsspec` can read but NOT write. Need `chmod g+w` from root/wasmspec.
 
 ## Run: 2026-03-30T12:00:01+00:00
 
+2026-03-30T12:52:38+00:00 DONE
