@@ -1,3 +1,67 @@
+## Run: 2026-03-30T11:15:01+00:00
+
+### TASK: Axiom proof infrastructure — add inversion lemmas and stepping helpers
+
+**Build status:** PASS. `lake build VerifiedJS.Wasm.Semantics` succeeded (16 jobs, warnings only).
+
+### Phase 1: Re-verified axiom state
+
+Ran `lean_verify` on `LowerSimRel.step_sim` and `ir_forward_sim`:
+- step_sim: 11 custom axioms + 9 native_decide (unchanged from previous run)
+- ir_forward_sim: 15 custom axioms + native_decide (unchanged)
+- No new errors, no regressions
+
+### Phase 2: Added missing inversion lemmas for LowerCodeCorr
+
+Added 4 new inversion lemmas (proved, not axioms):
+1. **`LowerCodeCorr.let_inv`** — extracts `rhsCode`, `bodyCode`, `idx` from `let` code correspondence
+2. **`LowerCodeCorr.yield_inv`** — extracts `argCode`, `boolConst` from yield code
+3. **`LowerCodeCorr.await_inv`** — extracts `argCode` with `TrivialCodeCorr` from await code
+4. **`LowerCodeCorr.while_inv`** — extracts `condCode`, `bodyCode`, labels from while code
+
+Added 1 helper lemma:
+5. **`LowerCodeCorr.trivial_value_cases`** — shows non-var trivials with `trivialValue?` produce single-instruction code or `[]` (value_done)
+
+### Phase 3: Added IR stepping composition lemmas
+
+Added 2 new multi-step composition lemmas:
+6. **`irMultiStep_i32Const_drop`** — i32.const + drop = 2 silent steps preserving stack/frames/labels
+7. **`irMultiStep_f64Const_drop`** — f64.const + drop = 2 silent steps preserving stack/frames/labels
+
+These are building blocks for proving the seq value-skip case.
+
+### Phase 4: Deep analysis — why axioms remain axioms
+
+**Fundamental blockers for proving expression-case axioms (seq, let, if, while, etc.):**
+
+1. **Recursive sub-stepping**: `seq`, `while_`, `tryCatch` have recursive `step?` calls.
+   The axiom encapsulates "if ANF sub-steps, IR can match," which IS the inductive hypothesis.
+   Proving any of these requires well-founded induction on expression depth.
+
+2. **LowerSimRel is too strong for sub-expressions**: `hlabels_empty`, `hframes_one` hold at
+   top level but NOT inside block/loop/if constructs. After entering a block, labels ≠ [].
+   This means we can't maintain LowerSimRel after a single IR block instruction.
+
+3. **Missing code correspondence for ComplexExpr**: `LowerCodeCorr.let_` has unconstrained
+   `rhsCode` — no `ComplexCodeCorr rhs rhsCode` field. Can't prove what rhsCode does.
+
+4. **Missing well-scopedness invariants**: `LowerSimRel.hvar` only covers the current expression,
+   not sub-expressions. After transitioning to sub-expression `b` in seq, we can't show vars in
+   `b` are in scope without a general well-scopedness invariant.
+
+5. **Lowering pass opacity**: `lowerExpr` is `partial def` in Lower.lean, preventing proof-level
+   reasoning about generated code structure.
+
+**Path to proving axioms (future work):**
+- Restructure proof to use well-founded induction on `Expr.depth`
+- Replace `LowerSimRel` with a more general relation that allows non-empty labels/frames
+- Add `ComplexCodeCorr` to `LowerCodeCorr.let_`
+- Add general well-scopedness invariant
+
+**No axioms eliminated this run, but infrastructure improved for future proof efforts.**
+
+---
+
 ## Run: 2026-03-30T06:30:39+00:00
 
 ### TASK: Axiom verification & soundness analysis + lint cleanup
@@ -4361,3 +4425,4 @@ test_write
 
 ## Run: 2026-03-30T11:15:01+00:00
 
+2026-03-30T11:41:34+00:00 DONE

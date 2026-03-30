@@ -3440,22 +3440,25 @@ private theorem anfConvert_step_star
     generalize hge : sf.expr = e_flat at hbreak_head hnorm_simp hewf
     cases hbreak_head with
     | break_direct =>
-      have hsf_eq : sf = { sf with expr := .break label } := by cases sf; simp [hge]
       have hflat_step : Flat.step? sf =
           some (.error ("break:" ++ (label.getD "")),
-                { sf with expr := .lit .undefined,
-                         trace := sf.trace ++ [.error ("break:" ++ (label.getD ""))] }) := by
-        conv_lhs => rw [hsf_eq]
-        exact Flat.step?_break_eq _ label
-      refine ⟨{ sf with expr := .lit .undefined, trace := sf.trace ++ [.error ("break:" ++ (label.getD ""))] },
+                ⟨.lit .undefined, sf.env, sf.heap,
+                 sf.trace ++ [.error ("break:" ++ (label.getD ""))],
+                 sf.funcs, sf.callStack⟩) := by
+        cases sf with | mk e env heap trace funcs cs =>
+        simp only [Flat.State.expr] at hge; subst hge
+        unfold Flat.step?; rfl
+      refine ⟨⟨.lit .undefined, sf.env, sf.heap,
+               sf.trace ++ [.error ("break:" ++ (label.getD ""))],
+               sf.funcs, sf.callStack⟩,
               [.error ("break:" ++ (label.getD ""))],
               Flat.Steps.tail (Flat.Step.mk hflat_step) (Flat.Steps.refl _), ?_, ?_, ?_⟩
       · simp [observableTrace_error, observableTrace_nil]
       · refine ⟨?_, ?_, ?_, fun t => pure (.trivial t), n, n, ?_, ANF.trivial_k_preserving⟩
-        · simp; rw [hheap]
-        · simp; rw [henv]
-        · simp [observableTrace_append, observableTrace_error, observableTrace_nil]
-          rw [htrace]
+        · exact hheap
+        · exact henv
+        · simp only [observableTrace_append, observableTrace_error, observableTrace_nil]
+          exact htrace
         · exact ANF.normalizeExpr_lit_undefined_trivial n
       · simp; intro x hfx; cases hfx
     | seq_left h => sorry
@@ -3507,22 +3510,25 @@ private theorem anfConvert_step_star
     generalize hge' : sf.expr = e_flat' at hcont_head hnorm_simp hewf
     cases hcont_head with
     | continue_direct =>
-      have hsf_eq : sf = { sf with expr := .continue label } := by cases sf; simp [hge']
       have hflat_step : Flat.step? sf =
           some (.error ("continue:" ++ (label.getD "")),
-                { sf with expr := .lit .undefined,
-                         trace := sf.trace ++ [.error ("continue:" ++ (label.getD ""))] }) := by
-        conv_lhs => rw [hsf_eq]
-        exact Flat.step?_continue_eq _ label
-      refine ⟨{ sf with expr := .lit .undefined, trace := sf.trace ++ [.error ("continue:" ++ (label.getD ""))] },
+                ⟨.lit .undefined, sf.env, sf.heap,
+                 sf.trace ++ [.error ("continue:" ++ (label.getD ""))],
+                 sf.funcs, sf.callStack⟩) := by
+        cases sf with | mk e env heap trace funcs cs =>
+        simp only [Flat.State.expr] at hge'; subst hge'
+        unfold Flat.step?; rfl
+      refine ⟨⟨.lit .undefined, sf.env, sf.heap,
+               sf.trace ++ [.error ("continue:" ++ (label.getD ""))],
+               sf.funcs, sf.callStack⟩,
               [.error ("continue:" ++ (label.getD ""))],
               Flat.Steps.tail (Flat.Step.mk hflat_step) (Flat.Steps.refl _), ?_, ?_, ?_⟩
       · simp [observableTrace_error, observableTrace_nil]
       · refine ⟨?_, ?_, ?_, fun t => pure (.trivial t), n, n, ?_, ANF.trivial_k_preserving⟩
-        · simp; rw [hheap]
-        · simp; rw [henv]
-        · simp [observableTrace_append, observableTrace_error, observableTrace_nil]
-          rw [htrace]
+        · exact hheap
+        · exact henv
+        · simp only [observableTrace_append, observableTrace_error, observableTrace_nil]
+          exact htrace
         · exact ANF.normalizeExpr_lit_undefined_trivial n
       · simp; intro x hfx; cases hfx
     | seq_left h => sorry
