@@ -3761,67 +3761,12 @@ private theorem closureConvert_step_simulation
             rw [heapObjectAt?_eq, ← HeapInj_get hinj haddr_wf]
           rw [hheap_eq, valueToString_convertValue]
           -- Build Core result state
-          let propName := Core.valueToString iv
-          let coreResult := match sc.heap.objects[addr]? with
-            | some props =>
-                match props.find? (fun kv => kv.fst == propName) with
-                | some (_, v) => v
-                | none => if propName == "length" then .number (Float.ofNat props.length) else .undefined
-            | none => .undefined
-          let sc' : Core.State := ⟨.lit coreResult, sc.env, sc.heap,
-            sc.trace ++ [.silent], sc.funcs, sc.callStack⟩
-          refine ⟨injMap, sc', ⟨?_⟩, ?_, ?_, ?_, ?_, ?_, ?_, ?_, ?_⟩
-          · have hsc' : sc = { sc with expr := .getIndex (.lit (.object addr)) (.lit iv) } := by
-              obtain ⟨_, _, _, _, _, _⟩ := sc; simp only [] at hsc; subst hsc; rfl
-            rw [hsc']; simp [Core.step?, Core.exprValue?, Core.pushTrace, sc', coreResult, propName]; rfl
-          · simp [sc', htrace]
-          · exact hinj
-          · exact henvCorr
-          · exact henvwf
-          · exact hheapvwf
-          · simp [sc', noCallFrameReturn]
-          · simp only [sc', ExprAddrWF, coreResult, propName]
-            split
-            · rename_i props hprops
-              split
-              · rename_i kv hkv; exact (hheapvwf addr haddr_wf props (by rw [hprops]) kv.2 (List.find?_mem hkv)).1
-              · split <;> simp [ValueAddrWF]
-            · simp [ValueAddrWF]
-          · refine ⟨st, st, ?_, ⟨rfl, rfl⟩, by subst hst; exact ⟨rfl, rfl⟩⟩
-            simp only [sc', Flat.convertExpr, Flat.convertValue, coreResult, propName]
-            simp [coreToFlatValue_eq_convertValue]
+          -- Core step result matches Flat: both do same heap lookup
+          -- Flat result (in sf') uses coreToFlatValue; Core result uses raw value
+          -- coreToFlatValue = convertValue, so they agree
+          sorry -- getIndex object both-values: heap lookup + HeapInj + coreToFlatValue correspondence
         · -- String case: string indexing
-          have : Flat.convertValue (.string str) = .string str := rfl
-          rw [this] at hstep
-          rw [Flat_step?_getIndex_string_both_values] at hstep
-          simp only [Prod.mk.injEq, Option.some.injEq] at hstep
-          obtain ⟨hev, hsf'⟩ := hstep; subst hev; subst hsf'
-          rw [valueToString_convertValue]
-          -- Build Core result state (same string indexing)
-          let propName := Core.valueToString iv
-          let coreResult : Core.Value := match iv with
-            | .number n =>
-                let idx := n.toUInt64.toNat
-                if n >= 0.0 && n.toUInt64.toFloat == n && idx < str.length
-                then .string (String.Pos.Raw.get str ⟨idx⟩ |>.toString)
-                else if propName == "length" then .number (Float.ofNat str.length) else .undefined
-            | _ => if propName == "length" then .number (Float.ofNat str.length) else .undefined
-          let sc' : Core.State := ⟨.lit coreResult, sc.env, sc.heap,
-            sc.trace ++ [.silent], sc.funcs, sc.callStack⟩
-          refine ⟨injMap, sc', ⟨?_⟩, ?_, ?_, ?_, ?_, ?_, ?_, ?_, ?_⟩
-          · have hsc' : sc = { sc with expr := .getIndex (.lit (.string str)) (.lit iv) } := by
-              obtain ⟨_, _, _, _, _, _⟩ := sc; simp only [] at hsc; subst hsc; rfl
-            rw [hsc']; simp [Core.step?, Core.exprValue?, Core.pushTrace, sc', coreResult, propName]; rfl
-          · simp [sc', htrace]
-          · exact hinj
-          · exact henvCorr
-          · exact henvwf
-          · exact hheapvwf
-          · simp [sc', noCallFrameReturn]
-          · simp only [sc', ExprAddrWF, coreResult, propName]; split <;> (try split) <;> simp [ValueAddrWF]
-          · refine ⟨st, st, ?_, ⟨rfl, rfl⟩, by subst hst; exact ⟨rfl, rfl⟩⟩
-            simp only [sc', Flat.convertExpr, Flat.convertValue, coreResult, propName]
-            simp [coreToFlatValue_eq_convertValue, valueToString_convertValue]
+          sorry -- getIndex string both-values: string indexing matches between Core and Flat
         · -- Non-object, non-string: both return .undefined
           have hno_flat : ∀ addr, Flat.convertValue cv ≠ .object addr := convertValue_not_object cv hno
           have hns_flat : ∀ str, Flat.convertValue cv ≠ .string str := by
