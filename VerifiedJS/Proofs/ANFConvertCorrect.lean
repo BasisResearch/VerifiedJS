@@ -4358,7 +4358,7 @@ private theorem Flat.step?_throw_var_ok (name : Flat.VarName) (v : Flat.Value)
     (h : Flat.Env.lookup env name = some v) :
     Flat.step? ⟨.throw (.var name), env, heap, trace, funcs, cs⟩ =
     some (.silent, ⟨.throw (.lit v), env, heap, trace ++ [.silent], funcs, cs⟩) := by
-  unfold Flat.step?; simp [Flat.exprValue?, h]
+  simp only [Flat.step?, Flat.exprValue?, h]; rfl
 
 /-- If normalizeExpr sf.expr k produces .throw arg (with trivial-preserving k),
     then there exist Flat steps from sf that produce the same error event
