@@ -3458,7 +3458,7 @@ private theorem anfConvert_step_star
         · exact hheap
         · exact henv
         · simp only [observableTrace_append, observableTrace_error, observableTrace_nil]
-          exact htrace
+          congr 1
         · exact ANF.normalizeExpr_lit_undefined_trivial n
       · simp; intro x hfx; cases hfx
     | seq_left h => sorry
@@ -3528,7 +3528,7 @@ private theorem anfConvert_step_star
         · exact hheap
         · exact henv
         · simp only [observableTrace_append, observableTrace_error, observableTrace_nil]
-          exact htrace
+          congr 1
         · exact ANF.normalizeExpr_lit_undefined_trivial n
       · simp; intro x hfx; cases hfx
     | seq_left h => sorry

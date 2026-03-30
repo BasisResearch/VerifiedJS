@@ -1,3 +1,26 @@
+## Run: 2026-03-30T11:30+00:00
+- **BUILD: PASSES** ✓
+- **Sorries: ANF 81 (was 17; 2 break/continue sorries decomposed into 66 sub-case sorries with 2 direct cases fully proved)**
+- **Progress: break/continue case decomposition in anfConvert_step_star**
+
+### Break/continue decomposition
+Replaced 2 monolithic `sorry` lines for `| «break» label =>` and `| «continue» label =>` cases in `anfConvert_step_star` with fully structured proofs:
+
+1. **`break_direct` case: PROVED** — when `sf.expr = .break label`, Flat.step? produces `.error ("break:" ++ label)` event, matching ANF's behavior. Used `Flat.step?_break_eq` helper, `ANF.normalizeExpr_break_implies_hasBreakInHead` for inversion, and `generalize` to avoid dependent elimination failures.
+
+2. **`continue_direct` case: PROVED** — identical pattern using `Flat.step?_continue_eq` and `ANF.normalizeExpr_continue_implies_hasContinueInHead`.
+
+3. **33 sub-case sorries per case** (66 total) — all `HasBreakInHead`/`HasContinueInHead` constructors (seq_left, seq_right, let_init, getProp_obj, setProp_obj, setProp_val, binary_lhs, binary_rhs, unary_arg, typeof_arg, deleteProp_obj, assign_val, call_func, call_env, call_args, newObj_func, newObj_env, newObj_args, if_cond, throw_arg, return_some_arg, yield_some_arg, await_arg, getIndex_obj, getIndex_idx, setIndex_obj, setIndex_idx, setIndex_val, getEnv_env, makeClosure_env, makeEnv_values, objectLit_props, arrayLit_elems) — each representing a recursive normalizeExpr case where break/continue propagates through a compound expression.
+
+### Key technical insights
+- `cases hbreak` on `HasBreakInHead sf.expr label` fails with "Dependent elimination failed" when `sf` appears in multiple hypotheses. Fix: `generalize hge : sf.expr = e_flat at hbreak_head` before `cases`.
+- `Flat.pushTrace` is private in `Flat.Semantics` — cannot use in simp/refine. Fix: construct result state as explicit anonymous constructor `⟨.lit .undefined, sf.env, sf.heap, sf.trace ++ [...], sf.funcs, sf.callStack⟩`.
+- `hheap`/`henv` have struct accessor form (e.g., `{ expr := ..., heap := sa_heap, ... }.heap = sf.heap`) but `exact hheap` works since Lean sees through definitional equality of struct projections.
+- `observableTrace_append` + `congr 1` suffices for trace equality — `htrace` is found by unification.
+
+### Not attempted this run
+- Steps 3-4 (throw/return/yield/await): Require `HasThrowInHead` infrastructure (~500 lines in `.lake/_tmp_fix/anf_throw_inversion.lean`) not yet integrated into the main file. Deferred to future run.
+
 ## Run: 2026-03-30T00:30+00:00
 - **BUILD: PASSES** ✓
 - **Sorries: CC 23 (was 22; original getIndex sorry split into 3 sub-case sorries + 2 proved sub-cases)**
