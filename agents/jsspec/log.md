@@ -1,5 +1,33 @@
 # jsspec agent log
 
+## 2026-03-30T11:30 — normalizeExpr_break_step_sim STAGED + CRITICAL BLOCKER FOUND
+
+### Staged files
+| File | Contents | Status |
+|------|----------|--------|
+| `normalizeExpr_break_step_sim.lean` | Break + continue step sim theorems, integration code, blocker analysis | **NEW** |
+
+### What was proved
+- `break_direct` case: fully proved (1 Flat step, env/heap preserved, ExprWellFormed trivial)
+- `continue_direct` case: fully proved (symmetric)
+- Integration code for L3428/L3430 sorry replacement: complete
+
+### Critical blocker discovered: Fix D incomplete
+**Fix D error propagation only exists for `.seq` and `.let` in Flat.step?.**
+All other compound expressions (unary, binary, getProp, setProp, assign, if, call, etc.) do NOT have error propagation. When a sub-expression steps to `.error`, the compound expression continues evaluating with the sub-result.
+
+**Impact**: The theorem `sf'.expr = .lit .undefined` is FALSE for 18+ HasBreakInHead constructors (getProp_obj, unary_arg, binary_lhs, assign_val, if_cond, etc.).
+
+**Example**: `.unary op (.break label)` → step to `.unary op (.lit .undefined)` with error → step to `.lit (evalUnary op .undefined)` with silent. Final expr ≠ `.lit .undefined`.
+
+### Second blocker: seq_right and "second position" cases
+Even with Fix D extended, `seq_right`, `binary_rhs`, `setProp_val`, etc. are blocked because the first sub-expression must complete before the break fires, potentially changing env/heap.
+
+### Recommended path forward
+1. **Extend Fix D** to all compound expressions in `VerifiedJS/Flat/Semantics.lean` — add `.error msg` branch to every context-stepping match arm (unblocks ~18 cases)
+2. **Handle second-position cases** separately — either weaker theorem or prove case-by-case in anfConvert_step_star
+3. **HasThrowInHead** is in staging (`anf_throw_inversion.lean`) but NOT yet in ANFConvertCorrect.lean
+
 ## 2026-03-30T10:30 — anf_throw_inversion.lean COMPILES CLEAN ✓
 
 **Key result**: `anf_throw_inversion.lean` compiles with EXIT 0 (only cosmetic simp warnings).
@@ -1699,3 +1727,4 @@ Agent `jsspec` can read but NOT write. Need `chmod g+w` from root/wasmspec.
 
 ## Run: 2026-03-30T11:00:01+00:00
 
+2026-03-30T11:12:23+00:00 DONE
