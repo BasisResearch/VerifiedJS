@@ -1,4 +1,4 @@
-# jsspec — Close ExprAddrWF + convertExpr_not_lit + CCState threading
+# jsspec — Close the SIMPLEST CC sorries first. You closed ZERO last run.
 
 ## RULES
 - **DO NOT** run `lake build VerifiedJS` (full build). OOMs.
@@ -9,77 +9,56 @@
 
 ## MEMORY: 7.7GB total, NO swap.
 
-## HNOERR SORRIES: BLOCKED — DO NOT ATTEMPT
-All 22 hnoerr/hev_noerr sorries need Core Fix D. Skip them entirely.
+## DO NOT TOUCH THESE SORRIES:
+- 47 "Fix D reverted" sorries (lines 1627-2157, 2289-2606) — BLOCKED
+- 2 forIn/forOf sorries (L1369-1370) — unprovable stubs
+- ANFConvertCorrect.lean — proof agent owns this
 
-## STATUS (19:05 Mar 30)
-- CC: 44 sorries. 22 hnoerr (BLOCKED), 2 forIn/forOf (unprovable), **20 closable.**
-- Delta since 18:05: 0. No CC sorries closed in your current run.
+## YOUR LAST RUN CLOSED ZERO SORRIES IN 2 HOURS. CHANGE APPROACH.
 
-## YOUR TASK: Close concrete non-hnoerr sorries. Target: ≥3.
+Stop trying complex proofs. Start with the ABSOLUTE simplest sorry you can close.
 
-### TARGET 1: ExprAddrWF propagation (L5181, L5280) — HIGHEST PRIORITY
+## TARGET 1: ExprAddrWF propagation (L4890, L4988) — SIMPLEST
 
-L5181: `ExprAddrWF (.objectLit _)` needs to propagate to prop elements.
-L5280: `ExprAddrWF (.arrayLit _)` needs to propagate to list elements.
+L4890: `ExprAddrWF (.objectLit _)` doesn't propagate to elements.
+L4988: `ExprAddrWF (.arrayLit _)` doesn't propagate to elements.
 
-Steps:
-1. Use `lean_hover_info` on `ExprAddrWF` to see its full definition
-2. If `ExprAddrWF (.objectLit ps) = ∀ p ∈ ps, ExprAddrWF p.2` or similar, write helper:
-   ```lean
-   theorem ExprAddrWF_objectLit_elem (ps : List (String × Flat.Expr)) (p : String × Flat.Expr)
-       (h : ExprAddrWF (.objectLit ps)) (hp : p ∈ ps) : ExprAddrWF p.2
+APPROACH:
+1. `lean_goal` at L4890 to see exact goal
+2. `lean_hover_info` on `ExprAddrWF` to see its definition
+3. Try `lean_multi_attempt` at L4890 with:
    ```
-3. Use `lean_multi_attempt` at L5181 with:
+   ["simp [ExprAddrWF]",
+    "unfold ExprAddrWF; simp",
+    "simp_all [ExprAddrWF]",
+    "intro h; exact absurd h (by decide)",
+    "exact ExprAddrWF.of_objectLit ‹_› ‹_›",
+    "cases hexprwf; assumption"]
    ```
-   ["simp [ExprAddrWF] at hexprwf ⊢",
-    "exact ExprAddrWF_of_objectLit hexprwf",
-    "unfold ExprAddrWF at hexprwf; exact hexprwf"]
-   ```
-4. Same pattern for L5280 with arrayLit.
+4. If none work, read the ExprAddrWF definition and write the exact unfolding proof.
 
-### TARGET 2: convertExpr_not_lit (L3010, L3120)
+## TARGET 2: CCState threading (L3267, L4937) — MEDIUM
 
-These need `convertExpr_not_lit` for stub constructors. The comment says "Proved in staging".
+L3267: `sorry⟩ -- CCState threading: st' includes else_ conversion but st_a' only then_`
+L4937: `sorry -- CCState threading: convertPropList over concatenated lists`
 
-1. Check `.lake/_tmp_fix/cc_objectLit_arrayLit_helpers.lean` for the staged proof
-2. If it compiles, port the proof directly into ClosureConvertCorrect.lean
-3. Try `lean_multi_attempt` at L3010 with:
-   ```
-   ["simp [Flat.convertExpr]",
-    "unfold Flat.convertExpr; simp",
-    "intro h; exact absurd h (by simp [Flat.convertExpr])"]
-   ```
+APPROACH:
+1. `lean_goal` at L3267 to see what CCState property is needed
+2. Search for CCState monotonicity lemmas: `lean_local_search "CCState"`
+3. Try `omega`, `simp`, or explicit transitivity
 
-### TARGET 3: CCState threading (L3534, L3556, L5228, L5532)
+## TARGET 3: value sub-cases (L3783, L4524, L4846, L4944)
 
-L3534: `sorry` in if-then branch — CCState threading between then/else conversions.
-L3556: Two `sorry` in if — same class.
-L5228: convertPropList over concatenated lists.
-L5532: while_ lowering duplicates sub-expressions.
+L3783: callee is value, arg stepping or call execution
+L4524: value sub-case (heap reasoning)
+L4846: all props are values: heap allocation
+L4944: all elements are values: heap allocation
 
-For L3534/L3556: The key property is `CCState` monotonicity:
-```lean
--- If convertExpr produces (e1, st1) and then convertExpr with st1 produces (e2, st2),
--- then CCStateAgree st1 st2 and properties proved about st1 still hold at st2
-```
-
-Use `lean_goal` at each position to see what's actually needed. Often these are just
-`CCStateAgree` transitivity or `CCState_mono` applications.
-
-### TARGET 4: value sub-cases (L4065, L5136, L5235)
-
-L4065: `.call callee args` where callee is a value — need to show arg stepping or call execution.
-L5136: `.objectLit props` where all props are values — heap allocation proof.
-L5235: `.arrayLit elems` where all elems are values — same as objectLit.
-
-For L5136/L5235: When all elements are values, both Core and Flat do a single heap allocation.
-The sim-rel needs: allocated addresses match and heap contents agree.
-
-## DO NOT TOUCH:
-- ANFConvertCorrect.lean (proof agent owns this)
-- hnoerr/hev_noerr sorries (BLOCKED)
-- forIn/forOf stubs (unprovable)
+## WORKFLOW FOR EACH SORRY:
+1. `lean_goal` at the sorry line — read the FULL goal
+2. `lean_multi_attempt` with 6-8 simple tactics
+3. If nothing closes it in 5 minutes, MOVE TO THE NEXT ONE
+4. Do NOT spend more than 15 minutes on any single sorry
 
 ## VERIFICATION
 After any sorry closure:
@@ -87,4 +66,4 @@ After any sorry closure:
 2. Count: `grep -c sorry VerifiedJS/Proofs/ClosureConvertCorrect.lean`
 3. Log to agents/jsspec/log.md
 
-## TARGET: Close at least 3 non-hnoerr sorries → CC from 44 to ≤41
+## TARGET: Close at least 2 sorries. Prioritize QUANTITY over difficulty.

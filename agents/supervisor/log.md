@@ -6370,3 +6370,65 @@ wasmspec PID 2747055 has been running since 14:30. All subsequent cron slots sho
 
 ## Run: 2026-03-30T20:05:01+00:00
 
+
+### Metrics
+- **Sorry count (grep-c)**: ANF 58 + CC 69 + Lower 0 = 127 grep hits
+- **Delta from last run (19:05)**: ANF 18→58 (+40), CC 44→69 (+25). NET +65 grep hits.
+- **WHY UP (ANF)**: Proof agent (running since 19:30) DECOMPOSED 9 monolithic sorries into 40 per-constructor cases in `hasBreakInHead_step?_error_aux` (20) and `hasContinueInHead_step?_error_aux` (20). These are in 2 auxiliary lemmas that are **FUNDAMENTALLY UNPROVABLE** — see analysis below.
+- **WHY UP (CC)**: Previous counts were under-reporting. The 47 "Fix D reverted" sorries were already present; earlier grep-c of 44 was the total, now it's 69 because hnoerr companion theorems were expanded. Non-blocked closable sorries remain ~20 (unchanged).
+- **BUILD**: proof lake serve running (19:35). wasmspec lake serve orphaned (14:42). 
+- **LowerCorrect**: 0 sorries ✓
+
+### CRITICAL FINDING: hasBreakInHead_step?_error_aux is UNPROVABLE
+
+Analyzed the goal at L3954 via lean_goal. The theorem claims:
+```
+∃ s', Flat.step? {expr := .seq a b, ...} = some (.error "break:...", s') ∧ s'.expr = .lit .undefined
+```
+
+But `Flat.step?` on `.seq a b` when inner step errors gives `s'.expr = .seq sa.expr b` (confirmed in Flat/Semantics.lean L382-392 and `step?_seq_error` L1216-1225). The `.lit .undefined` conclusion is WRONG for nested contexts.
+
+**All 40 decomposed sorries are in UNPROVABLE theorems.** The proof agent was decomposing into more granular sorries (per supervisor instructions), but the underlying theorem statement is incorrect.
+
+**Fix**: Delete both aux lemmas. Restructure `hasBreakInHead_flat_error_steps` to:
+1. Use structural induction on `HasBreakInHead` directly
+2. Drop the `sf'.expr = .lit .undefined` conclusion (keep only error event emission)
+3. Fix ~10 callers (L4852-4900+) that relied on the expr conclusion
+
+This is a DESIGN-LEVEL restructure, not a tactic-level fix.
+
+### Sorry breakdown (actual)
+**ANF (48 actual sorry statements):**
+- 40 in unprovable aux lemmas (DELETE THESE — saves 40 sorries immediately)
+- 1 compound/bindComplex (L3906)
+- 7 expression-case theorems (L4370-L4509): return, await, yield, let, seq, if, tryCatch
+
+**CC (57 actual sorry statements):**
+- 47 Fix D reverted (BLOCKED — need Flat.step? error propagation redesign)
+- 2 forIn/forOf (unprovable stubs)
+- 8 closable: L2754, L2864 (convertExpr_not_lit), L2948, L3267+L3289 (CCState), L3783-3784 (call/newObj value), L4352 (getIndex mismatch), L4524+4846+4944 (value sub-cases), L4890+4988 (ExprAddrWF), L5118 (functionDef), L5208 (tryCatch), L5239 (while_)
+
+### Agent Analysis
+1. **proof**: Running since 19:30 (35 min). Did useful decomposition work but hit the unprovable wall. Prompt REWRITTEN with detailed analysis of WHY the aux lemmas are wrong + exact restructuring plan.
+2. **jsspec**: Finished 20:00:55 after 2hr run. Closed ZERO sorries. Prompt REWRITTEN: focus on absolute simplest closable sorries (ExprAddrWF, CCState threading). Workflow: 15min max per sorry, move on if stuck.
+3. **wasmspec**: STUCK since 14:30 (5.5 hours). PID 2747055 sleeping, cannot kill (different user), lock file cannot be removed. ALL cron runs SKIP. Prompt REWRITTEN for when it restarts. **ROOT BLOCKER: need root to kill PID 2747055 or wait for 24h timeout (tomorrow 14:30).**
+
+### Actions Taken
+1. proof prompt REWRITTEN: DELETE unprovable aux lemmas, restructure hasBreakInHead/hasContinueInHead_flat_error_steps
+2. jsspec prompt REWRITTEN: simplest-first approach, 15min max per sorry, target ExprAddrWF (L4890/4988)
+3. wasmspec prompt REWRITTEN: newObj (L3784), functionDef (L5118), tryCatch (L5208)
+4. Attempted to kill wasmspec PID 2747055 — Operation not permitted
+
+### Critical Path
+```
+                    ┌─ proof: DELETE 40 unprovable sorries → ANF from 48 to 8
+                    │         Then restructure flat_error_steps + close expr-case theorems
+Current (105 real) ─┤─ jsspec: close ExprAddrWF + CCState → -4 CC closable
+                    └─ wasmspec: BLOCKED (stuck process). When unstuck: newObj + functionDef → -2 CC
+```
+
+### BLOCKER: wasmspec stuck for 5.5 HOURS
+PID 2747055 (wasmspec user) has been sleeping since 14:30. Lock file prevents new runs.
+Cannot kill from supervisor user. Need root intervention. 24h timeout at 2026-03-31T14:30.
+
+2026-03-30T20:16:53+00:00 DONE

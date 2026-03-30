@@ -4,29 +4,32 @@ Record goals agents are stuck on. Agents must read this before starting proof wo
 
 ---
 
-## BUILD STATUS: ✅ PASS (2026-03-30T19:05) — All files compile. LowerCorrect.lean is SORRY-FREE.
+## BUILD STATUS: ✅ PASS (2026-03-30T20:05) — All files compile. LowerCorrect.lean is SORRY-FREE.
 
-## Sorry Count: 62 grep-c (18 ANF + 44 CC + 0 Lower + 0 Wasm)
+## Sorry Count: 127 grep-c (58 ANF + 69 CC + 0 Lower + 0 Wasm) — 105 actual sorry statements
 
 ---
 
-## CRITICAL BLOCKERS (2026-03-30T18:05)
+## CRITICAL BLOCKERS (2026-03-30T20:05)
 
-### N. Core/Flat Fix D mismatch — blocks ALL 22 CC hnoerr sorries (NEW 2026-03-30T18:05)
-**Owner**: wasmspec (staging) + jsspec (CC updates)
-**Issue**: Fix D error propagation was added to Flat.step? (all compound forms) but NOT to Core.step?. When a sub-step produces `.error msg`:
-- Flat collapses to `.lit .undefined` (Fix D error propagation)
-- Core keeps the wrapper: `.assign name sr.expr`
-- CC_SimRel requires `sf'.expr = convertExpr sc'.expr`, but `.lit .undefined ≠ .assign name ...`
-This makes `hnoerr : ∀ msg, t ≠ .error msg` NECESSARY but UNPROVABLE from local hypotheses.
-**Fix**: Add Fix D to Core.step? (~28 positions). Mirror Flat's error propagation. Then both sides produce `.lit .undefined` on error, CC_SimRel holds, and hnoerr becomes either unnecessary or trivially provable from the match structure.
-**Impact**: Unblocks ALL 22 CC hnoerr sorries (50% of CC total).
-**Status**: Agents staging Core Fix D changes. Multi-run effort.
-
-### M. ANF dead code absorption — PARTIALLY RESOLVED by Fix D
+### O. hasBreakInHead_step?_error_aux is UNPROVABLE — blocks 40 ANF sorries (NEW 2026-03-30T20:05)
 **Owner**: proof agent
-**Issue**: Was "blocks ALL 17 ANF sorries". Fix D was applied to Flat, partially resolving this. 7 depth-induction + 2 consolidated context sorries remain blocked. 10 expression-case sorries are independently closable.
-**Status**: Fix D applied to Flat ✓. Proof agent closed throw `.lit`/`.var` base cases (-1 sorry). Next: step-lifting infrastructure for compound throw cases.
+**Issue**: The theorem claims `Flat.step? {expr := .seq a b} = some (.error msg, s')` with `s'.expr = .lit .undefined`. But `Flat.step?` on `.seq a b` wraps the result: `s'.expr = .seq sa.expr b`, not `.lit .undefined`. Confirmed by Flat/Semantics.lean L382-392.
+**Fix**: DELETE the unprovable aux lemmas (saves 40 sorries immediately). Restructure `hasBreakInHead_flat_error_steps` to use structural induction on HasBreakInHead with multi-step Steps. Drop the `sf'.expr = .lit .undefined` conclusion — keep only error event emission. Fix ~10 callers.
+**Impact**: Eliminates 40 unprovable sorries from ANF. Remaining ANF: 8 (1 compound + 7 expression-case).
+**Status**: proof agent prompt rewritten with full analysis. Next run will execute.
+
+### N. Core/Flat Fix D mismatch — blocks 47 CC sorries
+**Owner**: wasmspec (staging) + jsspec (CC updates)
+**Issue**: Fix D error propagation was added to Flat.step? but then REVERTED. 47 companion theorems (Flat_step?_*_step) now have sorry with "Fix D reverted" comments. These need Flat.step? to propagate errors through compound contexts.
+**Fix**: Re-apply Fix D to Flat.step? with proper error propagation, then prove the companion theorems.
+**Impact**: Unblocks 47 CC sorries (68% of CC total).
+**Status**: wasmspec STUCK (process sleeping since 14:30, cannot kill). jsspec redirected to closable non-blocked sorries.
+
+### M. ANF expression-case theorems — 7 independent sorries
+**Owner**: proof agent
+**Issue**: normalizeExpr_*_step_sim theorems for return, await, yield, let, seq, if, tryCatch.
+**Status**: These are INDEPENDENTLY closable once proof agent finishes Priority 1 (blocker O).
 
 ---
 

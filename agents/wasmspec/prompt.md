@@ -1,72 +1,71 @@
-# wasmspec — Close captured-var + functionDef + tryCatch CC sorries
+# wasmspec — Close non-blocked CC sorries. Focus on newObj + functionDef + tryCatch.
 
 ## RULES
 - **DO NOT** run `lake build VerifiedJS` (full build). OOMs.
 - Build: `lake build VerifiedJS.Proofs.ClosureConvertCorrect`
 - Before building: `pkill -f "lean.*\.lean" 2>/dev/null; sleep 5`
 - **NEVER** use `pgrep -f "lake build"` inside a while loop (self-matches the shell)
+- **NEVER** use a `while` loop waiting for processes. Single `pgrep -x lake` check then proceed.
 - Check builds with: `pgrep -x lake` (not `-f`)
-- **NEVER** use a `while` loop waiting for processes. Use a single `pgrep -x lake` check then proceed.
 
 ## MEMORY: 7.7GB total, NO swap.
 
-## HNOERR SORRIES: BLOCKED — DO NOT ATTEMPT
-All 22 hnoerr/hev_noerr sorries need Core Fix D. Skip them entirely.
+## DO NOT TOUCH THESE SORRIES:
+- 47 "Fix D reverted" sorries (lines 1627-2606) — BLOCKED
+- 2 forIn/forOf sorries (L1369-1370) — unprovable stubs
+- ANFConvertCorrect.lean — proof agent owns this
+- L4890, L4988 (ExprAddrWF) — jsspec is working on these
+- L3267, L4937 (CCState threading) — jsspec is working on these
 
-## STATUS (19:05 Mar 30)
-- CC: 44 sorries. 22 hnoerr (BLOCKED), 2 forIn/forOf (unprovable), **20 closable.**
-- Your last run (14:30) applied hnoerr guards but has been stuck for 4.5 hours. Start fresh.
+## YOUR TASK: Close non-blocked CC sorries. Target: ≥2.
 
-## YOUR TASK: Close non-hnoerr CC sorries. Target: ≥2.
-
-### TARGET 1: Captured variable case (L3204) — HIGHEST PRIORITY
-
-This is the `| some idx =>` branch: `.var name` where `lookupEnv envMap name = some idx`.
-The converted expression is `.getEnv (.var envVar) idx`.
-
-Steps:
-1. `lean_goal` at L3204 to see the full proof state
-2. The Core side does: `Core.step? {s | .var name}` → env lookup → value
-3. The Flat side does: `Flat.step? {s | .getEnv (.var envVar) idx}` → gets closure env array from heap → gets element at idx
-4. CC_SimRel relates: `envMap name = some idx` means `heap[closureEnvAddr][idx] = env[name]`
-5. Use `lean_local_search "getEnv"` and `lean_local_search "EnvCorr"` to find relevant lemmas
-
-### TARGET 2: functionDef (L5410) — MEDIUM PRIORITY
-
-`| functionDef fname params body isAsync isGen => sorry`
-
-1. `lean_goal` at L5410
-2. Core.step? on functionDef creates a closure and binds it to fname
-3. Flat.step? on the converted expression does the same with the converted body
-4. CC_SimRel must hold: converted closure body relates to original, env extended
-
-### TARGET 3: tryCatch (L5501) — MEDIUM PRIORITY
-
-`| tryCatch body catchParam catchBody finally_ => sorry`
-
-1. `lean_goal` at L5501
-2. This is an expression-level case — tryCatch sets up a handler
-3. Core.step? enters the try body; Flat.step? enters the converted try body
-4. CC_SimRel must show converted body relates to original
-
-### TARGET 4: newObj (L4066) — LOWER PRIORITY
+### TARGET 1: newObj (L3784) — HIGHEST PRIORITY
 
 `| newObj f args => sorry`
 
-1. `lean_goal` at L4066
-2. Similar to call — evaluate f and args, create new object
+1. `lean_goal` at L3784 to see the full proof state
+2. newObj is similar to call — evaluate f and args, create new object
+3. Core.step? and Flat.step? should have matching newObj rules
+4. Use `lean_local_search "newObj"` to find relevant lemmas
+5. Try `lean_multi_attempt` at L3784 with simple tactics
 
-### TARGET 5: Begin Core Fix D staging (LOWEST PRIORITY, only if other targets closed)
+### TARGET 2: functionDef (L5118)
 
-If you close ≥2 sorries above, create `.lake/_tmp_fix/Core_fix_d_plan.md` documenting:
-- Each position in Core/Semantics.lean that needs `.error msg` match arm
-- The exact code change per position
-- List of Core_step?_*_error companion theorems needed
+`| functionDef fname params body isAsync isGen => sorry`
 
-## DO NOT TOUCH:
-- ANFConvertCorrect.lean (proof agent owns this)
-- hnoerr/hev_noerr sorries (BLOCKED)
-- forIn/forOf stubs (unprovable)
+1. `lean_goal` at L5118
+2. Core.step? on functionDef creates a closure and binds it to fname
+3. Flat.step? on converted expression should do the same
+4. CC_SimRel must hold: converted closure body relates to original
+
+### TARGET 3: tryCatch (L5208)
+
+`| tryCatch body catchParam catchBody finally_ => sorry`
+
+1. `lean_goal` at L5208
+2. tryCatch sets up a handler — both Core and Flat enter the try body
+3. CC_SimRel for the body should follow from the conversion
+
+### TARGET 4: getIndex string mismatch (L4352)
+
+`sorry -- getIndex string both-values: Flat/Core semantic mismatch`
+
+1. `lean_goal` at L4352 — this may be a genuine semantic mismatch
+2. If unprovable, document WHY and move on
+
+### TARGET 5: convertExpr_not_lit (L2754, L2864)
+
+These need `convertExpr_not_lit` for stub constructors.
+
+1. `lean_local_search "convertExpr_not_lit"` to find if it exists
+2. If not, check `.lake/_tmp_fix/` for staged proofs
+3. Write a simple lemma: `convertExpr ≠ .lit _` for the relevant constructors
+
+## WORKFLOW FOR EACH SORRY:
+1. `lean_goal` at the sorry line — read the FULL goal
+2. `lean_multi_attempt` with 6-8 tactics
+3. If nothing closes it in 10 minutes, MOVE TO THE NEXT ONE
+4. Log what you tried and why it failed
 
 ## VERIFICATION
 After any sorry closure:
@@ -74,4 +73,4 @@ After any sorry closure:
 2. Count: `grep -c sorry VerifiedJS/Proofs/ClosureConvertCorrect.lean`
 3. Log to agents/wasmspec/log.md
 
-## TARGET: Close at least 2 non-hnoerr sorries → CC from 44 to ≤42
+## TARGET: Close at least 2 non-blocked sorries → CC grep count down from 69
