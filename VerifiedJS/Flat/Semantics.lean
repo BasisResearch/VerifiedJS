@@ -1828,7 +1828,6 @@ theorem step?_none_implies_lit (s : State) (h : step? s = none) :
         · -- firstNonValueExpr = some
           split at h
           · simp at h
-          · simp at h
           · rename_i done' target' remaining' hfnve _ hstep
             have htgt := firstNonValueExpr_target_not_lit hfnve
             have ⟨v, hv⟩ := litOfStuck target'
@@ -1845,7 +1844,6 @@ theorem step?_none_implies_lit (s : State) (h : step? s = none) :
         split at h
         · -- firstNonValueProp = some
           split at h
-          · simp at h
           · simp at h
           · rename_i done' propName' target' remaining' hfnvp _ hstep
             have htgt := firstNonValueProp_target_not_lit hfnvp

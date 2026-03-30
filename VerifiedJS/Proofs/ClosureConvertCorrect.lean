@@ -2564,39 +2564,28 @@ private theorem Core_step?_setProp_value_step (cv : Core.Value) (prop : Core.Pro
 private theorem Flat_step?_getIndex_object_step_idx (s : Flat.State) (addr : Nat)
     (ie : Flat.Expr) (hnv : Flat.exprValue? ie = none)
     (t : Core.TraceEvent) (si : Flat.State)
-    (hss : Flat.step? { s with expr := ie } = some (t, si))
-    (hnoerr : ∀ msg, t ≠ .error msg) :
+    (hss : Flat.step? { s with expr := ie } = some (t, si)) :
     Flat.step? { s with expr := .getIndex (.lit (.object addr)) ie } =
       some (t, { expr := .getIndex (.lit (.object addr)) si.expr, env := si.env, heap := si.heap,
                  trace := s.trace ++ [t], funcs := s.funcs, callStack := s.callStack }) := by
-  simp only [Flat.step?, hnv, hss]
-  cases t with
-  | error msg => exact absurd rfl (hnoerr msg)
-  | log _ => rfl
-  | silent => rfl
+  simp only [Flat.step?, hnv, hss, Flat.pushTrace]; rfl
 
 -- getIndex: obj is .string, idx needs stepping (Flat)
 private theorem Flat_step?_getIndex_string_step_idx (s : Flat.State) (str : String)
     (ie : Flat.Expr) (hnv : Flat.exprValue? ie = none)
     (t : Core.TraceEvent) (si : Flat.State)
-    (hss : Flat.step? { s with expr := ie } = some (t, si))
-    (hnoerr : ∀ msg, t ≠ .error msg) :
+    (hss : Flat.step? { s with expr := ie } = some (t, si)) :
     Flat.step? { s with expr := .getIndex (.lit (.string str)) ie } =
       some (t, { expr := .getIndex (.lit (.string str)) si.expr, env := si.env, heap := si.heap,
                  trace := s.trace ++ [t], funcs := s.funcs, callStack := s.callStack }) := by
-  simp only [Flat.step?, hnv, hss]
-  cases t with
-  | error msg => exact absurd rfl (hnoerr msg)
-  | log _ => rfl
-  | silent => rfl
+  simp only [Flat.step?, hnv, hss, Flat.pushTrace]; rfl
 
 -- getIndex: obj is non-object non-string value, idx needs stepping (Flat)
 private theorem Flat_step?_getIndex_other_step_idx (s : Flat.State) (v : Flat.Value)
     (ie : Flat.Expr) (hnv : Flat.exprValue? ie = none)
     (hobj : ∀ addr, v ≠ .object addr) (hstr : ∀ str, v ≠ .string str)
     (t : Core.TraceEvent) (si : Flat.State)
-    (hss : Flat.step? { s with expr := ie } = some (t, si))
-    (hnoerr : ∀ msg, t ≠ .error msg) :
+    (hss : Flat.step? { s with expr := ie } = some (t, si)) :
     Flat.step? { s with expr := .getIndex (.lit v) ie } =
       some (t, { expr := .getIndex (.lit v) si.expr, env := si.env, heap := si.heap,
                  trace := s.trace ++ [t], funcs := s.funcs, callStack := s.callStack }) := by
@@ -2604,11 +2593,7 @@ private theorem Flat_step?_getIndex_other_step_idx (s : Flat.State) (v : Flat.Va
   | object addr => exact absurd rfl (hobj addr)
   | string str => exact absurd rfl (hstr str)
   | _ =>
-    simp only [Flat.step?, hnv, hss]
-    cases t with
-    | error msg => exact absurd rfl (hnoerr msg)
-    | log _ => rfl
-    | silent => rfl
+    simp only [Flat.step?, hnv, hss, Flat.pushTrace]; rfl
 
 private theorem Flat_step?_getIndex_object_error_idx (s : Flat.State) (addr : Nat)
     (ie : Flat.Expr) (hnv : Flat.exprValue? ie = none)
@@ -3128,8 +3113,6 @@ private theorem closureConvert_step_simulation
           (Flat.convertExpr body (name :: scope) envVar envMap (Flat.convertExpr init scope envVar envMap st).snd).fst) } := by
         cases sf; simp_all
       rw [hsf_eta] at hstep
-      -- Error propagation from Fix D cannot occur on well-scoped converted expressions
-      have hev_noerr : ∀ msg, ev ≠ .error msg := by sorry
       obtain ⟨sa, hsubstep, hsf'_eq⟩ : ∃ sa, Flat.step? { sf with expr := (Flat.convertExpr init scope envVar envMap st).fst } = some (ev, sa) ∧
           sf' = { expr := .«let» name sa.expr
                     (Flat.convertExpr body (name :: scope) envVar envMap (Flat.convertExpr init scope envVar envMap st).snd).fst,
@@ -3137,17 +3120,9 @@ private theorem closureConvert_step_simulation
                   trace := sf.trace ++ [ev], funcs := sf.funcs, callStack := sf.callStack } := by
         match hm : Flat.step? { sf with expr := (Flat.convertExpr init scope envVar envMap st).fst } with
         | some (t, sa) =>
-          have hnoerr : ∀ msg, t ≠ .error msg := by
-            intro msg hmsg; subst hmsg
-            have heq := Flat_step?_let_error sf name
-              (Flat.convertExpr body (name :: scope) envVar envMap (Flat.convertExpr init scope envVar envMap st).snd).fst
-              _ hfnv msg sa hm
-            rw [heq] at hstep; simp at hstep
-            obtain ⟨rfl, _⟩ := hstep
-            exact hev_noerr msg rfl
           have heq := Flat_step?_let_step sf name
             (Flat.convertExpr body (name :: scope) envVar envMap (Flat.convertExpr init scope envVar envMap st).snd).fst
-            _ hfnv t sa hm hnoerr
+            _ hfnv t sa hm
           rw [heq] at hstep; simp at hstep
           obtain ⟨rfl, hsf'eq⟩ := hstep
           exact ⟨sa, rfl, hsf'eq.symm⟩
@@ -3236,8 +3211,7 @@ private theorem closureConvert_step_simulation
                   trace := sf.trace ++ [ev], funcs := sf.funcs, callStack := sf.callStack } := by
         match hm : Flat.step? { sf with expr := (Flat.convertExpr rhs scope envVar envMap st).fst } with
         | some (t, sa) =>
-          have hnoerr : ∀ msg, t ≠ .error msg := by sorry
-          have heq := Flat_step?_assign_step sf name _ hfnv t sa hm hnoerr
+          have heq := Flat_step?_assign_step sf name _ hfnv t sa hm
           rw [heq] at hstep; simp at hstep
           obtain ⟨rfl, hsf'eq⟩ := hstep
           exact ⟨sa, rfl, hsf'eq.symm⟩
@@ -3355,12 +3329,11 @@ private theorem closureConvert_step_simulation
                   trace := sf.trace ++ [ev], funcs := sf.funcs, callStack := sf.callStack } := by
         match hm : Flat.step? { sf with expr := (Flat.convertExpr cond scope envVar envMap st).fst } with
         | some (t, sa) =>
-          have hnoerr : ∀ msg, t ≠ .error msg := by sorry
           have heq := Flat_step?_if_step sf
             (Flat.convertExpr then_ scope envVar envMap (Flat.convertExpr cond scope envVar envMap st).snd).fst
             (Flat.convertExpr else_ scope envVar envMap
               (Flat.convertExpr then_ scope envVar envMap (Flat.convertExpr cond scope envVar envMap st).snd).snd).fst
-            _ hfnv t sa hm hnoerr
+            _ hfnv t sa hm
           rw [heq] at hstep; simp at hstep
           obtain ⟨rfl, hsf'eq⟩ := hstep
           exact ⟨sa, rfl, hsf'eq.symm⟩
@@ -3453,8 +3426,6 @@ private theorem closureConvert_step_simulation
           (Flat.convertExpr b scope envVar envMap (Flat.convertExpr a scope envVar envMap st).snd).fst) } := by
         cases sf; simp_all
       rw [hsf_eta] at hstep
-      -- Error propagation from Fix D cannot occur on well-scoped converted expressions
-      have hev_noerr : ∀ msg, ev ≠ .error msg := by sorry
       obtain ⟨sa, hsubstep, hsf'_eq⟩ : ∃ sa, Flat.step? { sf with expr := (Flat.convertExpr a scope envVar envMap st).fst } = some (ev, sa) ∧
           sf' = { expr := .seq sa.expr
                     (Flat.convertExpr b scope envVar envMap (Flat.convertExpr a scope envVar envMap st).snd).fst,
@@ -3462,17 +3433,9 @@ private theorem closureConvert_step_simulation
                   trace := sf.trace ++ [ev], funcs := sf.funcs, callStack := sf.callStack } := by
         match hm : Flat.step? { sf with expr := (Flat.convertExpr a scope envVar envMap st).fst } with
         | some (t, sa) =>
-          have hnoerr : ∀ msg, t ≠ .error msg := by
-            intro msg hmsg; subst hmsg
-            have heq := Flat_step?_seq_error sf
-              (Flat.convertExpr b scope envVar envMap (Flat.convertExpr a scope envVar envMap st).snd).fst
-              _ hfnv msg sa hm
-            rw [heq] at hstep; simp at hstep
-            obtain ⟨rfl, _⟩ := hstep
-            exact hev_noerr msg rfl
           have heq := Flat_step?_seq_step sf
             (Flat.convertExpr b scope envVar envMap (Flat.convertExpr a scope envVar envMap st).snd).fst
-            _ hfnv t sa hm hnoerr
+            _ hfnv t sa hm
           rw [heq] at hstep; simp at hstep
           obtain ⟨rfl, hsf'eq⟩ := hstep
           exact ⟨sa, rfl, hsf'eq.symm⟩
@@ -3563,8 +3526,7 @@ private theorem closureConvert_step_simulation
                   trace := sf.trace ++ [ev], funcs := sf.funcs, callStack := sf.callStack } := by
         match hm : Flat.step? { sf with expr := (Flat.convertExpr arg scope envVar envMap st).fst } with
         | some (t, sa) =>
-          have hnoerr : ∀ msg, t ≠ .error msg := by sorry
-          have heq := Flat_step?_unary_step sf op _ hfnv t sa hm hnoerr
+          have heq := Flat_step?_unary_step sf op _ hfnv t sa hm
           rw [heq] at hstep; simp at hstep
           obtain ⟨rfl, hsf'eq⟩ := hstep
           exact ⟨sa, rfl, hsf'eq.symm⟩
@@ -3659,8 +3621,7 @@ private theorem closureConvert_step_simulation
                     trace := sf.trace ++ [ev], funcs := sf.funcs, callStack := sf.callStack } := by
           match hm : Flat.step? { sf with expr := (Flat.convertExpr rhs scope envVar envMap st).fst } with
           | some (t, sa) =>
-            have hnoerr : ∀ msg, t ≠ .error msg := by sorry
-            have heq := Flat_step?_binary_rhs_step sf op (Flat.convertValue lv) _ hfnv t sa hm hnoerr
+            have heq := Flat_step?_binary_rhs_step sf op (Flat.convertValue lv) _ hfnv t sa hm
             rw [heq] at hstep; simp at hstep
             obtain ⟨rfl, hsf'eq⟩ := hstep
             exact ⟨sa, rfl, hsf'eq.symm⟩
@@ -3718,10 +3679,9 @@ private theorem closureConvert_step_simulation
                   trace := sf.trace ++ [ev], funcs := sf.funcs, callStack := sf.callStack } := by
         match hm : Flat.step? { sf with expr := (Flat.convertExpr lhs scope envVar envMap st).fst } with
         | some (t, sa) =>
-          have hnoerr : ∀ msg, t ≠ .error msg := by sorry
           have heq := Flat_step?_binary_lhs_step sf op
             (Flat.convertExpr rhs scope envVar envMap (Flat.convertExpr lhs scope envVar envMap st).snd).fst
-            _ hfnv t sa hm hnoerr
+            _ hfnv t sa hm
           rw [heq] at hstep; simp at hstep
           obtain ⟨rfl, hsf'eq⟩ := hstep
           exact ⟨sa, rfl, hsf'eq.symm⟩
@@ -3790,10 +3750,9 @@ private theorem closureConvert_step_simulation
                   trace := sf.trace ++ [ev], funcs := sf.funcs, callStack := sf.callStack } := by
         match hm : Flat.step? { sf with expr := (Flat.convertExpr f scope envVar envMap st).fst } with
         | some (t, sa) =>
-          have hnoerr : ∀ msg, t ≠ .error msg := by sorry
           have heq := Flat_step?_call_func_step sf (.lit .null)
             (Flat.convertExprList args scope envVar envMap (Flat.convertExpr f scope envVar envMap st).snd).fst
-            _ hfnv t sa hm hnoerr
+            _ hfnv t sa hm
           rw [heq] at hstep; simp at hstep
           obtain ⟨rfl, hsf'eq⟩ := hstep
           exact ⟨sa, rfl, hsf'eq.symm⟩
@@ -4000,8 +3959,7 @@ private theorem closureConvert_step_simulation
                   trace := sf.trace ++ [ev], funcs := sf.funcs, callStack := sf.callStack } := by
         match hm : Flat.step? { sf with expr := (Flat.convertExpr obj scope envVar envMap st).fst } with
         | some (t, sa) =>
-          have hnoerr : ∀ msg, t ≠ .error msg := by sorry
-          have heq := Flat_step?_getProp_step sf prop _ hfnv t sa hm hnoerr
+          have heq := Flat_step?_getProp_step sf prop _ hfnv t sa hm
           rw [heq] at hstep; simp at hstep
           obtain ⟨rfl, hsf'eq⟩ := hstep
           exact ⟨sa, rfl, hsf'eq.symm⟩
@@ -4183,16 +4141,15 @@ private theorem closureConvert_step_simulation
               cases cv with
               | object a => left; exact ⟨a, rfl⟩
               | _ => right; intro a; exact Core.Value.noConfusion
-            have hnoerr : ∀ msg, t ≠ .error msg := by sorry
             rcases hno_core2 with ⟨addr, rfl⟩ | hno2
             · have : Flat.convertValue (.object addr) = .object addr := rfl
               rw [this] at hstep
-              have heq := Flat_step?_setProp_object_step_value sf addr prop _ hfnv_v t sa hm hnoerr
+              have heq := Flat_step?_setProp_object_step_value sf addr prop _ hfnv_v t sa hm
               rw [heq] at hstep; simp at hstep
               obtain ⟨rfl, hsf'eq⟩ := hstep
               exact ⟨sa, rfl, by rw [← hsf'eq]; congr 1⟩
             · have hno_flat := convertValue_not_object cv hno2
-              have heq := Flat_step?_setProp_nonobject_step_value sf (Flat.convertValue cv) prop _ hfnv_v hno_flat t sa hm hnoerr
+              have heq := Flat_step?_setProp_nonobject_step_value sf (Flat.convertValue cv) prop _ hfnv_v hno_flat t sa hm
               rw [heq] at hstep; simp at hstep
               obtain ⟨rfl, hsf'eq⟩ := hstep
               exact ⟨sa, rfl, hsf'eq.symm⟩
@@ -4250,10 +4207,9 @@ private theorem closureConvert_step_simulation
                   trace := sf.trace ++ [ev], funcs := sf.funcs, callStack := sf.callStack } := by
         match hm : Flat.step? { sf with expr := (Flat.convertExpr obj scope envVar envMap st).fst } with
         | some (t, sa) =>
-          have hnoerr : ∀ msg, t ≠ .error msg := by sorry
           have heq := Flat_step?_setProp_obj_step sf prop
             (Flat.convertExpr value scope envVar envMap (Flat.convertExpr obj scope envVar envMap st).snd).fst
-            _ hfnv t sa hm hnoerr
+            _ hfnv t sa hm
           rw [heq] at hstep; simp at hstep
           obtain ⟨rfl, hsf'eq⟩ := hstep
           exact ⟨sa, rfl, hsf'eq.symm⟩
@@ -4459,24 +4415,23 @@ private theorem closureConvert_step_simulation
               | object a => left; exact ⟨a, rfl⟩
               | string s => right; left; exact ⟨s, rfl⟩
               | _ => right; right; exact ⟨fun a => Core.Value.noConfusion, fun s => Core.Value.noConfusion⟩
-            have hnoerr : ∀ msg, t ≠ .error msg := by sorry
             rcases hno_core with ⟨addr, rfl⟩ | ⟨str, rfl⟩ | ⟨hno, hns⟩
             · have : Flat.convertValue (.object addr) = .object addr := rfl
               rw [this] at hstep
-              have heq := Flat_step?_getIndex_object_step_idx sf addr _ hfnv_i t sa hm hnoerr
+              have heq := Flat_step?_getIndex_object_step_idx sf addr _ hfnv_i t sa hm
               rw [heq] at hstep; simp at hstep
               obtain ⟨rfl, hsf'eq⟩ := hstep
               exact ⟨sa, rfl, by rw [← hsf'eq]; congr 1⟩
             · have : Flat.convertValue (.string str) = .string str := rfl
               rw [this] at hstep
-              have heq := Flat_step?_getIndex_string_step_idx sf str _ hfnv_i t sa hm hnoerr
+              have heq := Flat_step?_getIndex_string_step_idx sf str _ hfnv_i t sa hm
               rw [heq] at hstep; simp at hstep
               obtain ⟨rfl, hsf'eq⟩ := hstep
               exact ⟨sa, rfl, by rw [← hsf'eq]; congr 1⟩
             · have hno_flat : ∀ addr, Flat.convertValue cv ≠ .object addr := convertValue_not_object cv hno
               have hns_flat : ∀ str, Flat.convertValue cv ≠ .string str := by
                 intro str; cases cv <;> simp [Flat.convertValue] <;> (try exact (hno _ rfl).elim) <;> (try exact (hns _ rfl).elim) <;> exact Flat.Value.noConfusion
-              have heq := Flat_step?_getIndex_other_step_idx sf (Flat.convertValue cv) _ hfnv_i hno_flat hns_flat t sa hm hnoerr
+              have heq := Flat_step?_getIndex_other_step_idx sf (Flat.convertValue cv) _ hfnv_i hno_flat hns_flat t sa hm
               rw [heq] at hstep; simp at hstep
               obtain ⟨rfl, hsf'eq⟩ := hstep
               exact ⟨sa, rfl, hsf'eq.symm⟩
@@ -4535,10 +4490,9 @@ private theorem closureConvert_step_simulation
                   trace := sf.trace ++ [ev], funcs := sf.funcs, callStack := sf.callStack } := by
         match hm : Flat.step? { sf with expr := (Flat.convertExpr obj scope envVar envMap st).fst } with
         | some (t, sa) =>
-          have hnoerr : ∀ msg, t ≠ .error msg := by sorry
           have heq := Flat_step?_getIndex_step sf
             (Flat.convertExpr idx scope envVar envMap (Flat.convertExpr obj scope envVar envMap st).snd).fst
-            _ hfnv t sa hm hnoerr
+            _ hfnv t sa hm
           rw [heq] at hstep; simp at hstep
           obtain ⟨rfl, hsf'eq⟩ := hstep
           exact ⟨sa, rfl, hsf'eq.symm⟩
@@ -4610,12 +4564,11 @@ private theorem closureConvert_step_simulation
                   trace := sf.trace ++ [ev], funcs := sf.funcs, callStack := sf.callStack } := by
         match hm : Flat.step? { sf with expr := (Flat.convertExpr obj scope envVar envMap st).fst } with
         | some (t, sa) =>
-          have hnoerr : ∀ msg, t ≠ .error msg := by sorry
           have heq := Flat_step?_setIndex_obj_step sf
             (Flat.convertExpr idx scope envVar envMap (Flat.convertExpr obj scope envVar envMap st).snd).fst
             (Flat.convertExpr value scope envVar envMap
               (Flat.convertExpr idx scope envVar envMap (Flat.convertExpr obj scope envVar envMap st).snd).snd).fst
-            _ hfnv t sa hm hnoerr
+            _ hfnv t sa hm
           rw [heq] at hstep; simp at hstep
           obtain ⟨rfl, hsf'eq⟩ := hstep
           exact ⟨sa, rfl, hsf'eq.symm⟩
@@ -4778,8 +4731,7 @@ private theorem closureConvert_step_simulation
                   trace := sf.trace ++ [ev], funcs := sf.funcs, callStack := sf.callStack } := by
         match hm : Flat.step? { sf with expr := (Flat.convertExpr obj scope envVar envMap st).fst } with
         | some (t, sa) =>
-          have hnoerr : ∀ msg, t ≠ .error msg := by sorry
-          have heq := Flat_step?_deleteProp_step sf prop _ hfnv t sa hm hnoerr
+          have heq := Flat_step?_deleteProp_step sf prop _ hfnv t sa hm
           rw [heq] at hstep; simp at hstep
           obtain ⟨rfl, hsf'eq⟩ := hstep
           exact ⟨sa, rfl, hsf'eq.symm⟩
@@ -4868,8 +4820,7 @@ private theorem closureConvert_step_simulation
                   trace := sf.trace ++ [ev], funcs := sf.funcs, callStack := sf.callStack } := by
         match hm : Flat.step? { sf with expr := (Flat.convertExpr arg scope envVar envMap st).fst } with
         | some (t, sa) =>
-          have hnoerr : ∀ msg, t ≠ .error msg := by sorry
-          have heq := Flat_step?_typeof_step sf _ hfnv t sa hm hnoerr
+          have heq := Flat_step?_typeof_step sf _ hfnv t sa hm
           rw [heq] at hstep; simp at hstep
           obtain ⟨rfl, hsf'eq⟩ := hstep
           exact ⟨sa, rfl, hsf'eq.symm⟩
@@ -4946,8 +4897,7 @@ private theorem closureConvert_step_simulation
         match hm : Flat.step? { sf with expr := (Flat.convertExpr target_c scope envVar envMap
             (Flat.convertPropList done_c scope envVar envMap st).snd).fst } with
         | some (t, se) =>
-          have hnoerr : ∀ msg, t ≠ .error msg := by sorry
-          have heq := Flat_step?_objectLit_step sf _ _ propName_c _ _ hvals hffnv t se hm hnoerr
+          have heq := Flat_step?_objectLit_step sf _ _ propName_c _ _ hvals hffnv t se hm
           rw [heq] at hstep; simp only [Option.some.injEq, Prod.mk.injEq] at hstep
           obtain ⟨rfl, hsf'eq⟩ := hstep
           exact ⟨se, rfl, hsf'eq.symm⟩
@@ -5045,8 +4995,7 @@ private theorem closureConvert_step_simulation
         match hm : Flat.step? { sf with expr := (Flat.convertExpr target_c scope envVar envMap
             (Flat.convertExprList done_c scope envVar envMap st).snd).fst } with
         | some (t, se) =>
-          have hnoerr : ∀ msg, t ≠ .error msg := by sorry
-          have heq := Flat_step?_arrayLit_step sf _ _ _ _ hvals hffnv t se hm hnoerr
+          have heq := Flat_step?_arrayLit_step sf _ _ _ _ hvals hffnv t se hm
           rw [heq] at hstep; simp only [Option.some.injEq, Prod.mk.injEq] at hstep
           obtain ⟨rfl, hsf'eq⟩ := hstep
           exact ⟨se, rfl, hsf'eq.symm⟩
@@ -5235,8 +5184,7 @@ private theorem closureConvert_step_simulation
                   trace := sf.trace ++ [ev], funcs := sf.funcs, callStack := sf.callStack } := by
         match hm : Flat.step? { sf with expr := (Flat.convertExpr val scope envVar envMap st).fst } with
         | some (t, sa) =>
-          have hnoerr : ∀ msg, t ≠ .error msg := by sorry
-          have heq := Flat_step?_throw_step sf _ hfnv t sa hm hnoerr
+          have heq := Flat_step?_throw_step sf _ hfnv t sa hm
           rw [heq] at hstep; simp at hstep
           obtain ⟨rfl, hsf'eq⟩ := hstep
           exact ⟨sa, rfl, hsf'eq.symm⟩
@@ -5442,8 +5390,7 @@ private theorem closureConvert_step_simulation
                     trace := sf.trace ++ [ev], funcs := sf.funcs, callStack := sf.callStack } := by
           match hm : Flat.step? { sf with expr := (Flat.convertExpr e scope envVar envMap st).fst } with
           | some (t, sa) =>
-            have hnoerr : ∀ msg, t ≠ .error msg := by sorry
-            have heq := Flat_step?_return_some_step sf _ hfnv t sa hm hnoerr
+            have heq := Flat_step?_return_some_step sf _ hfnv t sa hm
             rw [heq] at hstep; simp at hstep
             obtain ⟨rfl, hsf'eq⟩ := hstep
             exact ⟨sa, rfl, hsf'eq.symm⟩
@@ -5581,8 +5528,7 @@ private theorem closureConvert_step_simulation
                     trace := sf.trace ++ [ev], funcs := sf.funcs, callStack := sf.callStack } := by
           match hm : Flat.step? { sf with expr := (Flat.convertExpr e scope envVar envMap st).fst } with
           | some (t, sa) =>
-            have hnoerr : ∀ msg, t ≠ .error msg := by sorry
-            have heq := Flat_step?_yield_some_step sf _ delegate hfnv t sa hm hnoerr
+            have heq := Flat_step?_yield_some_step sf _ delegate hfnv t sa hm
             rw [heq] at hstep; simp at hstep
             obtain ⟨rfl, hsf'eq⟩ := hstep
             exact ⟨sa, rfl, hsf'eq.symm⟩
@@ -5669,8 +5615,7 @@ private theorem closureConvert_step_simulation
                   trace := sf.trace ++ [ev], funcs := sf.funcs, callStack := sf.callStack } := by
         match hm : Flat.step? { sf with expr := (Flat.convertExpr arg scope envVar envMap st).fst } with
         | some (t, sa) =>
-          have hnoerr : ∀ msg, t ≠ .error msg := by sorry
-          have heq := Flat_step?_await_step sf _ hfnv t sa hm hnoerr
+          have heq := Flat_step?_await_step sf _ hfnv t sa hm
           rw [heq] at hstep; simp at hstep
           obtain ⟨rfl, hsf'eq⟩ := hstep
           exact ⟨sa, rfl, hsf'eq.symm⟩
