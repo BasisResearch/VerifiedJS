@@ -4386,7 +4386,7 @@ private theorem normalizeExpr_return_step_sim
     (∀ t v, arg = some t → ANF.evalTrivial sf.env t = .ok v →
       ∃ (evs : List Core.TraceEvent) (sf' : Flat.State),
         Flat.Steps sf evs sf' ∧
-        sf'.expr = .lit (ANF.trivialOfValue v) ∧ sf'.env = sf.env ∧ sf'.heap = sf.heap ∧
+        sf'.expr = .lit v ∧ sf'.env = sf.env ∧ sf'.heap = sf.heap ∧
         sf'.trace = sf.trace ++ evs ∧
         observableTrace evs = observableTrace [.error ("return:" ++ Flat.valueToString v)]) ∧
     -- some error case: return with arg that fails
@@ -4410,7 +4410,7 @@ private theorem normalizeExpr_await_step_sim
     (∀ v, ANF.evalTrivial sf.env arg = .ok v →
       ∃ (evs : List Core.TraceEvent) (sf' : Flat.State),
         Flat.Steps sf evs sf' ∧
-        sf'.expr = .lit (ANF.trivialOfValue v) ∧ sf'.env = sf.env ∧ sf'.heap = sf.heap ∧
+        sf'.expr = .lit v ∧ sf'.env = sf.env ∧ sf'.heap = sf.heap ∧
         sf'.trace = sf.trace ++ evs ∧
         observableTrace evs = observableTrace [.silent]) ∧
     -- error case
@@ -4436,14 +4436,14 @@ private theorem normalizeExpr_yield_step_sim
         Flat.Steps sf evs sf' ∧
         sf'.expr = .lit .undefined ∧ sf'.env = sf.env ∧ sf'.heap = sf.heap ∧
         sf'.trace = sf.trace ++ evs ∧
-        observableTrace evs = observableTrace [.error "yield:undefined"]) ∧
+        observableTrace evs = observableTrace [.silent]) ∧
     -- some ok case
     (∀ t v, arg = some t → ANF.evalTrivial sf.env t = .ok v →
       ∃ (evs : List Core.TraceEvent) (sf' : Flat.State),
         Flat.Steps sf evs sf' ∧
-        sf'.expr = .lit (ANF.trivialOfValue v) ∧ sf'.env = sf.env ∧ sf'.heap = sf.heap ∧
+        sf'.expr = .lit v ∧ sf'.env = sf.env ∧ sf'.heap = sf.heap ∧
         sf'.trace = sf.trace ++ evs ∧
-        observableTrace evs = observableTrace [.error ("yield:" ++ Flat.valueToString v)]) ∧
+        observableTrace evs = observableTrace [.silent]) ∧
     -- some error case
     (∀ t msg, arg = some t → ANF.evalTrivial sf.env t = .error msg →
       ∃ (evs : List Core.TraceEvent) (sf' : Flat.State),
@@ -4464,6 +4464,7 @@ private theorem normalizeExpr_let_step_sim
     (hewf : ExprWellFormed sf.expr sf.env)
     (sa_env : ANF.Env) (sa_heap : Core.Heap) (sa_trace : List Core.TraceEvent)
     (hheap : sa_heap = sf.heap) (henv : sa_env = sf.env)
+    (htrace : observableTrace sa_trace = observableTrace sf.trace)
     (ev : Core.TraceEvent) (sa' : ANF.State)
     (hstep_eq : ANF.step? ⟨.let name rhs body, sa_env, sa_heap, sa_trace⟩ = some (ev, sa')) :
     ∃ (evs : List Core.TraceEvent) (sf' : Flat.State),
@@ -4484,6 +4485,7 @@ private theorem normalizeExpr_seq_step_sim
     (hewf : ExprWellFormed sf.expr sf.env)
     (sa_env : ANF.Env) (sa_heap : Core.Heap) (sa_trace : List Core.TraceEvent)
     (hheap : sa_heap = sf.heap) (henv : sa_env = sf.env)
+    (htrace : observableTrace sa_trace = observableTrace sf.trace)
     (ev : Core.TraceEvent) (sa' : ANF.State)
     (hstep_eq : ANF.step? ⟨.seq a b, sa_env, sa_heap, sa_trace⟩ = some (ev, sa')) :
     ∃ (evs : List Core.TraceEvent) (sf' : Flat.State),
@@ -4504,6 +4506,7 @@ private theorem normalizeExpr_if_step_sim
     (hewf : ExprWellFormed sf.expr sf.env)
     (sa_env : ANF.Env) (sa_heap : Core.Heap) (sa_trace : List Core.TraceEvent)
     (hheap : sa_heap = sf.heap) (henv : sa_env = sf.env)
+    (htrace : observableTrace sa_trace = observableTrace sf.trace)
     (ev : Core.TraceEvent) (sa' : ANF.State)
     (hstep_eq : ANF.step? ⟨.if cond then_ else_, sa_env, sa_heap, sa_trace⟩ = some (ev, sa')) :
     ∃ (evs : List Core.TraceEvent) (sf' : Flat.State),
@@ -4524,6 +4527,7 @@ private theorem normalizeExpr_tryCatch_step_sim
     (hewf : ExprWellFormed sf.expr sf.env)
     (sa_env : ANF.Env) (sa_heap : Core.Heap) (sa_trace : List Core.TraceEvent)
     (hheap : sa_heap = sf.heap) (henv : sa_env = sf.env)
+    (htrace : observableTrace sa_trace = observableTrace sf.trace)
     (ev : Core.TraceEvent) (sa' : ANF.State)
     (hstep_eq : ANF.step? ⟨.tryCatch body catchParam catchBody finally_, sa_env, sa_heap, sa_trace⟩ = some (ev, sa')) :
     ∃ (evs : List Core.TraceEvent) (sf' : Flat.State),
@@ -4611,11 +4615,35 @@ private theorem anfConvert_step_star
       · exact absurd hstep_eq (by intro h; exact nomatch h)
       · intro name; exact ANF.Trivial.noConfusion
   | «let» name rhs body =>
-    sorry -- let-binding: evalComplex evaluates rhs, extends env, continues with body
+    cases sa with
+    | mk sa_expr sa_env sa_heap sa_trace =>
+    simp only [] at hsa; subst hsa
+    simp only [ANF.State.expr] at hnorm
+    simp only [ANF.State.heap] at hheap
+    simp only [ANF.State.env] at henv
+    simp only [ANF.State.trace] at htrace
+    exact normalizeExpr_let_step_sim sf s t k n m name rhs body hnorm hk_triv hewf
+      sa_env sa_heap sa_trace hheap henv htrace _ _ hstep_eq
   | seq a b =>
-    sorry -- sequence: either a is a value (skip to b) or step inner a
+    cases sa with
+    | mk sa_expr sa_env sa_heap sa_trace =>
+    simp only [] at hsa; subst hsa
+    simp only [ANF.State.expr] at hnorm
+    simp only [ANF.State.heap] at hheap
+    simp only [ANF.State.env] at henv
+    simp only [ANF.State.trace] at htrace
+    exact normalizeExpr_seq_step_sim sf s t k n m a b hnorm hk_triv hewf
+      sa_env sa_heap sa_trace hheap henv htrace _ _ hstep_eq
   | «if» cond then_ else_ =>
-    sorry -- conditional: evaluate cond trivial, branch
+    cases sa with
+    | mk sa_expr sa_env sa_heap sa_trace =>
+    simp only [] at hsa; subst hsa
+    simp only [ANF.State.expr] at hnorm
+    simp only [ANF.State.heap] at hheap
+    simp only [ANF.State.env] at henv
+    simp only [ANF.State.trace] at htrace
+    exact normalizeExpr_if_step_sim sf s t k n m cond then_ else_ hnorm hk_triv hewf
+      sa_env sa_heap sa_trace hheap henv htrace _ _ hstep_eq
   | while_ cond body =>
     exfalso
     rw [hsa] at hnorm
@@ -4631,13 +4659,43 @@ private theorem anfConvert_step_star
     simp only [ANF.step?, ANF.pushTrace] at hstep_eq
     cases heval : ANF.evalTrivial sa_env arg <;> simp [heval] at hstep_eq
     all_goals obtain ⟨rfl, rfl⟩ := hstep_eq
-    -- case ok: ev = .error "throw", sa' has .trivial .litUndefined
-    -- case error: ev = .error msg, sa' has .trivial .litUndefined
-    -- Need: Flat steps from sf producing matching observable trace
-    -- Blocked: sf.expr unknown, requires normalizeExpr inversion lemma
-    all_goals sorry
+    -- Shared setup for both throw subcases
+    all_goals simp only [ANF.State.expr] at hnorm
+    all_goals simp only [ANF.State.heap] at hheap
+    all_goals simp only [ANF.State.env] at henv
+    all_goals simp only [ANF.State.trace] at htrace
+    all_goals obtain ⟨hthrow_ok, hthrow_err⟩ :=
+      normalizeExpr_throw_step_sim sf k arg n m hnorm hk_triv hewf
+    · -- error case: evalTrivial produced error msg
+      rename_i msg
+      have heval_sf : ANF.evalTrivial sf.env arg = .error msg := by rw [← henv]; exact heval
+      obtain ⟨evs, sf', hsteps, hexpr', henv', hheap', htrace', hobs'⟩ := hthrow_err msg heval_sf
+      refine ⟨sf', evs, hsteps, hobs'.symm, ?_, ?_⟩
+      · refine ⟨hheap.trans hheap'.symm, henv.trans henv'.symm, ?_,
+                fun t => pure (.trivial t), n, n, ?_, ANF.trivial_k_preserving⟩
+        · rw [observableTrace_append, htrace, ← htrace']; rw [observableTrace_append]; congr 1; exact hobs'.symm
+        · rw [hexpr']; exact ANF.normalizeExpr_lit_undefined_trivial n
+      · rw [hexpr']; intro x hfx; cases hfx
+    · -- ok case: evalTrivial produced value
+      rename_i v
+      have heval_sf : ANF.evalTrivial sf.env arg = .ok v := by rw [← henv]; exact heval
+      obtain ⟨evs, sf', hsteps, hexpr', henv', hheap', htrace', hobs'⟩ := hthrow_ok v heval_sf
+      refine ⟨sf', evs, hsteps, hobs'.symm, ?_, ?_⟩
+      · refine ⟨hheap.trans hheap'.symm, henv.trans henv'.symm, ?_,
+                fun t => pure (.trivial t), n, n, ?_, ANF.trivial_k_preserving⟩
+        · rw [observableTrace_append, htrace, ← htrace']; rw [observableTrace_append]; congr 1; exact hobs'.symm
+        · rw [hexpr']; exact ANF.normalizeExpr_lit_undefined_trivial n
+      · rw [hexpr']; intro x hfx; cases hfx
   | tryCatch body catchParam catchBody finally_ =>
-    sorry -- try-catch: step body, catch errors, handle finally
+    cases sa with
+    | mk sa_expr sa_env sa_heap sa_trace =>
+    simp only [] at hsa; subst hsa
+    simp only [ANF.State.expr] at hnorm
+    simp only [ANF.State.heap] at hheap
+    simp only [ANF.State.env] at henv
+    simp only [ANF.State.trace] at htrace
+    exact normalizeExpr_tryCatch_step_sim sf s t k n m body catchParam catchBody finally_ hnorm hk_triv hewf
+      sa_env sa_heap sa_trace hheap henv htrace _ _ hstep_eq
   | «return» arg =>
     sorry -- return: evaluate optional trivial arg
   | yield arg delegate =>
