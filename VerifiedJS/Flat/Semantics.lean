@@ -365,6 +365,8 @@ def step? (s : State) : Option (Core.TraceEvent × State) :=
           some (.silent, s')
       | none =>
           match step? { s with expr := rhs } with
+          | some (.error msg, sr) =>
+              some (.error msg, pushTrace { s with expr := .lit .undefined, env := sr.env, heap := sr.heap } (.error msg))
           | some (t, sr) =>
               let s' := pushTrace { s with expr := .assign name sr.expr, env := sr.env, heap := sr.heap } t
               some (t, s')
@@ -377,6 +379,8 @@ def step? (s : State) : Option (Core.TraceEvent × State) :=
           some (.silent, s')
       | none =>
           match step? { s with expr := cond } with
+          | some (.error msg, sc) =>
+              some (.error msg, pushTrace { s with expr := .lit .undefined, env := sc.env, heap := sc.heap } (.error msg))
           | some (t, sc) =>
               let s' := pushTrace { s with expr := .«if» sc.expr then_ else_, env := sc.env, heap := sc.heap } t
               some (t, s')
@@ -401,6 +405,8 @@ def step? (s : State) : Option (Core.TraceEvent × State) :=
           some (.silent, s')
       | none =>
           match step? { s with expr := arg } with
+          | some (.error msg, sa) =>
+              some (.error msg, pushTrace { s with expr := .lit .undefined, env := sa.env, heap := sa.heap } (.error msg))
           | some (t, sa) =>
               let s' := pushTrace { s with expr := .unary op sa.expr, env := sa.env, heap := sa.heap } t
               some (t, s')
@@ -409,6 +415,8 @@ def step? (s : State) : Option (Core.TraceEvent × State) :=
       match exprValue? lhs with
       | none =>
           match step? { s with expr := lhs } with
+          | some (.error msg, sl) =>
+              some (.error msg, pushTrace { s with expr := .lit .undefined, env := sl.env, heap := sl.heap } (.error msg))
           | some (t, sl) =>
               let s' := pushTrace { s with expr := .binary op sl.expr rhs, env := sl.env, heap := sl.heap } t
               some (t, s')
@@ -417,6 +425,8 @@ def step? (s : State) : Option (Core.TraceEvent × State) :=
           match exprValue? rhs with
           | none =>
               match step? { s with expr := rhs } with
+              | some (.error msg, sr) =>
+                  some (.error msg, pushTrace { s with expr := .lit .undefined, env := sr.env, heap := sr.heap } (.error msg))
               | some (t, sr) =>
                   let s' := pushTrace
                     { s with expr := .binary op (.lit lv) sr.expr, env := sr.env, heap := sr.heap } t
@@ -561,6 +571,8 @@ def step? (s : State) : Option (Core.TraceEvent × State) :=
           some (.silent, s')
       | none =>
           match step? { s with expr := obj } with
+          | some (.error msg, so) =>
+              some (.error msg, pushTrace { s with expr := .lit .undefined, env := so.env, heap := so.heap } (.error msg))
           | some (t, so) =>
               let s' := pushTrace { s with expr := .getProp so.expr prop, env := so.env, heap := so.heap } t
               some (t, s')
