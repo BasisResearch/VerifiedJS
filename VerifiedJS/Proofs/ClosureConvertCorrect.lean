@@ -3716,17 +3716,38 @@ private theorem closureConvert_step_simulation
                     trace := sf.trace ++ [ev], funcs := sf.funcs, callStack := sf.callStack } := by
           match hm : Flat.step? { sf with expr := (Flat.convertExpr idx scope envVar envMap st).fst } with
           | some (t, sa) =>
-            have heq := Flat_step?_getIndex_value_step_idx sf (Flat.convertValue cv) _ hfnv_i t sa hm
-            rw [heq] at hstep; simp at hstep
-            obtain ⟨rfl, hsf'eq⟩ := hstep
-            exact ⟨sa, rfl, hsf'eq.symm⟩
+            have hno_core : (∃ addr, cv = .object addr) ∨ (∃ str, cv = .string str) ∨ ((∀ a, cv ≠ .object a) ∧ (∀ s, cv ≠ .string s)) := by
+              cases cv with
+              | object a => left; exact ⟨a, rfl⟩
+              | string s => right; left; exact ⟨s, rfl⟩
+              | _ => right; right; exact ⟨fun a => Core.Value.noConfusion, fun s => Core.Value.noConfusion⟩
+            rcases hno_core with ⟨addr, rfl⟩ | ⟨str, rfl⟩ | ⟨hno, hns⟩
+            · have : Flat.convertValue (.object addr) = .object addr := rfl
+              rw [this] at hstep
+              have heq := Flat_step?_getIndex_object_step_idx sf addr _ hfnv_i t sa hm
+              rw [heq] at hstep; simp at hstep
+              obtain ⟨rfl, hsf'eq⟩ := hstep
+              exact ⟨sa, rfl, by rw [← hsf'eq]; congr 1⟩
+            · have : Flat.convertValue (.string str) = .string str := rfl
+              rw [this] at hstep
+              have heq := Flat_step?_getIndex_string_step_idx sf str _ hfnv_i t sa hm
+              rw [heq] at hstep; simp at hstep
+              obtain ⟨rfl, hsf'eq⟩ := hstep
+              exact ⟨sa, rfl, by rw [← hsf'eq]; congr 1⟩
+            · have hno_flat : ∀ addr, Flat.convertValue cv ≠ .object addr := convertValue_not_object cv hno
+              have hns_flat : ∀ str, Flat.convertValue cv ≠ .string str := by
+                intro str; cases cv <;> simp [Flat.convertValue] <;> (try exact (hno _ rfl).elim) <;> (try exact (hns _ rfl).elim) <;> exact Flat.Value.noConfusion
+              have heq := Flat_step?_getIndex_other_step_idx sf (Flat.convertValue cv) _ hfnv_i hno_flat hns_flat t sa hm
+              rw [heq] at hstep; simp at hstep
+              obtain ⟨rfl, hsf'eq⟩ := hstep
+              exact ⟨sa, rfl, hsf'eq.symm⟩
           | none =>
             have heq := Flat_step?_getIndex_value_none sf (Flat.convertValue cv) _ hfnv_i hm
             rw [heq] at hstep; exact absurd hstep (by simp)
         subst hsf'_eq
         have hdepth : idx.depth < n := by simp [Core.Expr.depth] at hd; omega
         have hncfr_i : noCallFrameReturn idx = true := by
-          simp [noCallFrameReturn] at hncfr; exact hncfr.2
+          simp [noCallFrameReturn] at hncfr; exact hncfr
         have hexprwf_i : ExprAddrWF idx sc.heap.objects.size := by
           simp [ExprAddrWF] at hexprwf; exact hexprwf.2
         have hcv_wf : ValueAddrWF cv sc.heap.objects.size := by

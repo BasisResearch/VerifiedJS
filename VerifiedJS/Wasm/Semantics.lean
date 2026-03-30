@@ -10960,9 +10960,7 @@ theorem step_sim (irmod : IRModule) (wmod : Module) :
             exfalso; generalize s2.code = wcode at hc
             cases hc with | general _ _ _ _ hf _ => exact hf.elim
       | .call funcIdx =>
-          -- SORRY: call case needs trap message alignment + hframes_one invariant rework
-          sorry
-          /- function call
+          -- Partially proved: OOB case done, underflow and success cases sorry'd.
           have hc : EmitCodeCorr _ (IRInstr.call funcIdx :: rest) s2.code := hcode_ir ▸ hrel.hcode
           rcases hc.call_inv with ⟨rest_w, hcw, hrest⟩ | hf
           · -- Wasm code = Instr.call funcIdx :: rest_w
@@ -11013,16 +11011,11 @@ theorem step_sim (irmod : IRModule) (wmod : Module) :
                   rw [← hfuncs_size]
                   exact Nat.lt_of_not_le (fun hge => by rw [Array.getElem?_eq_none hge] at hfunc_ir; simp at hfunc_ir)
                 -- Need to show Wasm also underflows or handle differently
-                -- The Wasm param count might differ from IR param count,
-                -- so we cannot directly show Wasm underflows.
-                -- However, for a valid emit, param counts correspond.
                 sorry
               | some (args, callerStack) =>
                 -- Case 3: successful call → needs multi-frame EmitSimRel
-                -- (blocked: hframes_one requires frames.length = 1, but call creates 2 frames)
                 sorry
           · exact hf.elim
-      -/
       | .callIndirect typeIdx => sorry
       | .block label body =>
           -- block: push label frame, enter body. Both IR and Wasm do the same.
