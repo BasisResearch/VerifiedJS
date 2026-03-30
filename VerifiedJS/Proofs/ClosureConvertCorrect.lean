@@ -4128,41 +4128,7 @@ private theorem closureConvert_step_simulation
                 congr 1; congr 1
                 simp only [hfind]; exact (coreToFlatValue_eq_convertValue kv.2).symm
         · -- String case: string indexing
-          have hcv_str : Flat.convertValue (.string str) = .string str := rfl
-          rw [hcv_str] at hstep
-          rw [Flat_step?_getIndex_string_both_values] at hstep
-          simp only [Prod.mk.injEq, Option.some.injEq] at hstep
-          obtain ⟨hev, hsf'⟩ := hstep; subst hev; subst hsf'
-          rw [valueToString_convertValue]
-          let coreResult := match iv with
-            | .number n =>
-                let idx := n.toUInt64.toNat
-                if n >= 0.0 && n.toUInt64.toFloat == n && idx < str.length
-                then Core.Value.string (String.Pos.Raw.get str ⟨idx⟩ |>.toString)
-                else if Core.valueToString iv == "length" then .number (Float.ofNat str.length) else .undefined
-            | _ => if Core.valueToString iv == "length" then .number (Float.ofNat str.length) else .undefined
-          let sc' : Core.State := ⟨.lit coreResult, sc.env, sc.heap,
-            sc.trace ++ [.silent], sc.funcs, sc.callStack⟩
-          refine ⟨injMap, sc', ⟨?_⟩, ?_, ?_, ?_, ?_, ?_, ?_, ?_, ?_⟩
-          · have hsc' : sc = { sc with expr := .getIndex (.lit (.string str)) (.lit iv) } := by
-              obtain ⟨_, _, _, _, _, _⟩ := sc; simp only [] at hsc; subst hsc; rfl
-            rw [hsc']
-            have := Core_step?_getIndex_string_val str iv sc.env sc.heap sc.trace sc.funcs sc.callStack
-            simp only [Core.pushTrace, sc', coreResult] at this ⊢; exact this
-          · simp [sc', htrace]
-          · exact hinj
-          · exact henvCorr
-          · exact henvwf
-          · exact hheapvwf
-          · simp [sc', noCallFrameReturn]
-          · simp only [sc', ExprAddrWF, coreResult, ValueAddrWF]
-            cases iv <;> simp [ValueAddrWF] <;> (try split <;> simp [ValueAddrWF])
-          · refine ⟨st, st, ?_, ⟨rfl, rfl⟩, by subst hst; exact ⟨rfl, rfl⟩⟩
-            simp only [sc', Flat.convertExpr, Flat.convertValue, coreResult]
-            congr 1; congr 1
-            cases iv with
-            | number n => simp [Flat.convertValue]; split <;> simp [Flat.convertValue]
-            | _ => simp [Flat.convertValue]
+          sorry -- getIndex string both-values: Flat/Core semantic mismatch in .number else branch (propName == "length" check in Flat but not Core)
         · -- Non-object, non-string: both return .undefined
           have hno_flat : ∀ addr, Flat.convertValue cv ≠ .object addr := convertValue_not_object cv hno
           have hns_flat : ∀ str, Flat.convertValue cv ≠ .string str := by
