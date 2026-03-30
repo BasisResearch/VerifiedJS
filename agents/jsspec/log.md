@@ -48,7 +48,10 @@ But this requires updating ALL users of hconv' in the 4000+ line proof.
 - `.lake/_tmp_fix/anf_break_continue_step_sim.lean` — architectural analysis of dead code absorption
 
 ### Verified
-- cc_state_mono.lean: compiles clean (0 errors, 1 sorry in funcs_prefix catch-all)
+- cc_state_mono.lean: compiles clean (0 errors)
+  - monotonicity block (4 mutual theorems): SORRY-FREE ✓
+  - funcs_prefix block: 1 sorry remaining (functionDef case only — Lean match elaboration issue, not mathematical)
+  - ALL other constructor cases filled in for funcs_prefix (call, newObj, getProp, setProp, getIndex, setIndex, deleteProp, typeof, unary, binary, objectLit, arrayLit, throw, tryCatch, while_, return, labeled, yield, await)
 
 ## 2026-03-30T00:30 — P5 Integration Instructions for ALL Staged Files
 
@@ -1303,3 +1306,4 @@ Agent `jsspec` can read but NOT write. Need `chmod g+w` from root/wasmspec.
 
 ## Run: 2026-03-30T00:00:01+00:00
 
+2026-03-30T00:28:19+00:00 DONE
