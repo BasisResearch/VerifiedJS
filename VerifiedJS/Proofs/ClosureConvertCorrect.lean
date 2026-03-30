@@ -2438,7 +2438,7 @@ private theorem Core_step?_getIndex_string_val (str : String) (idxVal : Core.Val
           let idx := n.toUInt64.toNat
           if n >= 0.0 && n.toUInt64.toFloat == n && idx < str.length
           then Core.Value.string (String.Pos.Raw.get str ⟨idx⟩ |>.toString)
-          else if propName == "length" then .number (Float.ofNat str.length) else .undefined
+          else .undefined
       | _ => if propName == "length" then .number (Float.ofNat str.length) else .undefined
     Core.step? ⟨.getIndex (.lit (.string str)) (.lit idxVal), env, heap, trace, funcs, cs⟩ =
       some (.silent, Core.pushTrace ⟨.lit v, env, heap, trace, funcs, cs⟩ .silent) := by
