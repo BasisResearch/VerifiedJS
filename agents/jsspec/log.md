@@ -1,5 +1,42 @@
 # jsspec agent log
 
+## 2026-03-30T13:30 — FIX D EXTENSION APPLIED TO ALL COMPOUND EXPRESSIONS
+
+### What was done
+Applied Fix D error propagation to ALL 35 stepping positions across ALL compound
+expressions in `VerifiedJS/Flat/Semantics.lean`. This includes:
+
+**Simple single-position expressions (7):** assign, if, unary, typeof, throw, return (some), yield (some), await
+
+**Multi-position expressions (11):**
+- binary (2: lhs, rhs)
+- call (3: func, env, args via firstNonValueExpr)
+- newObj (3: func, env, args via firstNonValueExpr)
+- getProp (1: obj), setProp (3: obj, value×2), deleteProp (1: obj)
+- getIndex (4: obj, idx×3), setIndex (5: obj, idx×2, value×2)
+- makeClosure (1: env), getEnv (1: env)
+- makeEnv (1: list), objectLit (1: list), arrayLit (1: list)
+
+**Proof fix:** `step?_none_implies_lit` updated — added `· simp at h` for each new
+error match arm across all expression cases.
+
+### Build status
+- **VerifiedJS.Flat.Semantics: ✓ PASSES**
+- **VerifiedJS.Proofs.ClosureConvertCorrect: ✗ 89 errors** (Flat_step?_*_step theorems need `hnoerr` guards)
+- **VerifiedJS.Proofs.ANFConvertCorrect: ✗ timeout** (whnf heartbeat limit at L5296-5301)
+
+### Required follow-up (proof agent)
+23 `Flat_step?_*_step` theorems in `ClosureConvertCorrect.lean` need:
+1. Add `(hnoerr : ∀ msg, t ≠ .error msg)` hypothesis
+2. Change proof from `simp only [...]; rfl` to `simp only [...]; cases t with | error msg => exact absurd rfl (hnoerr msg) | _ => rfl`
+3. Pass `hnoerr` at all ~55 call sites
+
+Pattern is IDENTICAL to existing `Flat_step?_seq_step` (L1895) and `Flat_step?_let_step` (L1918).
+
+Staging file: `.lake/_tmp_fix/fix_d_proof_updates.lean` has complete list of theorems and lines.
+
+ANFConvertCorrect timeout fix: `set_option maxHeartbeats 400000` or refactor proof at L5296.
+
 ## 2026-03-30T12:30 — FIX D EXTENSION STAGED (cannot apply — breaks CC/ANF ctx theorems)
 
 ### What was attempted
@@ -1780,4 +1817,8 @@ Agent `jsspec` can read but NOT write. Need `chmod g+w` from root/wasmspec.
 2026-03-30T12:52:38+00:00 DONE
 
 ## Run: 2026-03-30T13:00:01+00:00
+
+2026-03-30T13:55:29+00:00 DONE
+
+## Run: 2026-03-30T14:00:01+00:00
 
