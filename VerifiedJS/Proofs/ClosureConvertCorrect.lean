@@ -3748,8 +3748,80 @@ private theorem closureConvert_step_simulation
           | string s => right; left; exact ⟨s, rfl⟩
           | _ => right; right; exact ⟨fun a => Core.Value.noConfusion, fun s => Core.Value.noConfusion⟩
         rcases hno_core with ⟨addr, rfl⟩ | ⟨str, rfl⟩ | ⟨hno, hns⟩
-        · sorry -- getIndex object both-values: heap lookup via HeapInj
-        · sorry -- getIndex string both-values: string indexing
+        · -- Object case: heap lookup
+          have : Flat.convertValue (.object addr) = .object addr := rfl
+          rw [this] at hstep
+          rw [Flat_step?_getIndex_object_both_values] at hstep
+          simp only [Prod.mk.injEq, Option.some.injEq] at hstep
+          obtain ⟨hev, hsf'⟩ := hstep; subst hev; subst hsf'
+          have haddr_wf : addr < sc.heap.objects.size := by
+            simp [ExprAddrWF, ValueAddrWF] at hexprwf; exact hexprwf.1
+          -- Relate Flat and Core heap lookups
+          have hheap_eq : Flat.heapObjectAt? sf.heap addr = sc.heap.objects[addr]? := by
+            rw [heapObjectAt?_eq, ← HeapInj_get hinj haddr_wf]
+          rw [hheap_eq, valueToString_convertValue]
+          -- Build Core result state
+          let propName := Core.valueToString iv
+          let coreResult := match sc.heap.objects[addr]? with
+            | some props =>
+                match props.find? (fun kv => kv.fst == propName) with
+                | some (_, v) => v
+                | none => if propName == "length" then .number (Float.ofNat props.length) else .undefined
+            | none => .undefined
+          let sc' : Core.State := ⟨.lit coreResult, sc.env, sc.heap,
+            sc.trace ++ [.silent], sc.funcs, sc.callStack⟩
+          refine ⟨injMap, sc', ⟨?_⟩, ?_, ?_, ?_, ?_, ?_, ?_, ?_, ?_⟩
+          · have hsc' : sc = { sc with expr := .getIndex (.lit (.object addr)) (.lit iv) } := by
+              obtain ⟨_, _, _, _, _, _⟩ := sc; simp only [] at hsc; subst hsc; rfl
+            rw [hsc']; simp [Core.step?, Core.exprValue?, Core.pushTrace, sc', coreResult, propName]; rfl
+          · simp [sc', htrace]
+          · exact hinj
+          · exact henvCorr
+          · exact henvwf
+          · exact hheapvwf
+          · simp [sc', noCallFrameReturn]
+          · simp only [sc', ExprAddrWF, coreResult, propName]
+            split
+            · rename_i props hprops
+              split
+              · rename_i kv hkv; exact (hheapvwf addr haddr_wf props (by rw [hprops]) kv.2 (List.find?_mem hkv)).1
+              · split <;> simp [ValueAddrWF]
+            · simp [ValueAddrWF]
+          · refine ⟨st, st, ?_, ⟨rfl, rfl⟩, by subst hst; exact ⟨rfl, rfl⟩⟩
+            simp only [sc', Flat.convertExpr, Flat.convertValue, coreResult, propName]
+            simp [coreToFlatValue_eq_convertValue]
+        · -- String case: string indexing
+          have : Flat.convertValue (.string str) = .string str := rfl
+          rw [this] at hstep
+          rw [Flat_step?_getIndex_string_both_values] at hstep
+          simp only [Prod.mk.injEq, Option.some.injEq] at hstep
+          obtain ⟨hev, hsf'⟩ := hstep; subst hev; subst hsf'
+          rw [valueToString_convertValue]
+          -- Build Core result state (same string indexing)
+          let propName := Core.valueToString iv
+          let coreResult : Core.Value := match iv with
+            | .number n =>
+                let idx := n.toUInt64.toNat
+                if n >= 0.0 && n.toUInt64.toFloat == n && idx < str.length
+                then .string (String.Pos.Raw.get str ⟨idx⟩ |>.toString)
+                else if propName == "length" then .number (Float.ofNat str.length) else .undefined
+            | _ => if propName == "length" then .number (Float.ofNat str.length) else .undefined
+          let sc' : Core.State := ⟨.lit coreResult, sc.env, sc.heap,
+            sc.trace ++ [.silent], sc.funcs, sc.callStack⟩
+          refine ⟨injMap, sc', ⟨?_⟩, ?_, ?_, ?_, ?_, ?_, ?_, ?_, ?_⟩
+          · have hsc' : sc = { sc with expr := .getIndex (.lit (.string str)) (.lit iv) } := by
+              obtain ⟨_, _, _, _, _, _⟩ := sc; simp only [] at hsc; subst hsc; rfl
+            rw [hsc']; simp [Core.step?, Core.exprValue?, Core.pushTrace, sc', coreResult, propName]; rfl
+          · simp [sc', htrace]
+          · exact hinj
+          · exact henvCorr
+          · exact henvwf
+          · exact hheapvwf
+          · simp [sc', noCallFrameReturn]
+          · simp only [sc', ExprAddrWF, coreResult, propName]; split <;> (try split) <;> simp [ValueAddrWF]
+          · refine ⟨st, st, ?_, ⟨rfl, rfl⟩, by subst hst; exact ⟨rfl, rfl⟩⟩
+            simp only [sc', Flat.convertExpr, Flat.convertValue, coreResult, propName]
+            simp [coreToFlatValue_eq_convertValue, valueToString_convertValue]
         · -- Non-object, non-string: both return .undefined
           have hno_flat : ∀ addr, Flat.convertValue cv ≠ .object addr := convertValue_not_object cv hno
           have hns_flat : ∀ str, Flat.convertValue cv ≠ .string str := by
