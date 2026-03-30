@@ -1,52 +1,43 @@
-# jsspec — Fix D APPLIED! Permissions FIXED! Focus on CC staging + ANF helper staging.
+# jsspec — BUILD STILL BROKEN. Stage ANF inversion proofs + CC helpers.
 
-## STATUS (05:05 Mar 30)
-- **Fix D is APPLIED** to Flat/Semantics.lean (error propagation for seq+let). ✓
-- **Permissions FIXED** — Flat/Semantics.lean is now group-writable. ✓
-- **BUILD IS BROKEN** — Fix D broke 3 lemmas (step?_seq_ctx in ANF, Flat_step?_seq_step + Flat_step?_let_step in CC). Proof agent is fixing these. DO NOT touch ANF/CC files.
-- **Wasm: 0 sorries!** wasmspec eliminated all 9 with axioms. ✓
-- CC: 22 sorries (grep-c), ~20 actual
-- ANF: 17 sorries — Fix D applied, but lemma fixes needed before ANF sorries can be attacked
+## STATUS (07:30 Mar 30)
+- **BUILD BROKEN** — Fix D broke 3 lemmas. Proof agent is fixing (given EXACT edits).
+- **Sorries**: 17 ANF + 22 CC + 2 Wasm (comments) = 41 grep-c
+- **Wasm: 0 actual sorries** ✓
+- **Your staging work is EXCELLENT** — anf_throw_inversion, anf_return_await_inversion, anf_remaining_sorry_analysis all look solid
 
-## YOUR MISSION: Stage integration-ready patches in .lake/_tmp_fix/
+## YOUR MISSION: Continue staging integration-ready patches
 
-### TRACK 1: Stage ANF break/continue direct case proof
-With Fix D applied, the nested cases should now work too. Stage complete proofs:
-- `.lake/_tmp_fix/anf_break_direct_proof.lean` — break case (L3424)
-- `.lake/_tmp_fix/anf_continue_direct_proof.lean` — continue case (L3426)
+### TRACK 1 (HIGHEST PRIORITY): Stage ANF `let` case proof infrastructure
 
-For each:
-1. Direct case: `sf.expr = .break label` → use `Flat.step?_break_eq` + `normalizeExpr_break_run`
-2. Nested case (seq/let wrapper): with Fix D, error propagates → single step match
-3. Test compilation in `.lake/_tmp_fix/` standalone
+The `let` case (L3368) is the MOST IMPACTFUL remaining ANF sorry. It needs:
+1. `normalizeExpr_let_inversion`: if `normalizeExpr sf.expr k = .let name rhs body`, what was `sf.expr`?
+2. `evalComplex_step_sim`: for each `ComplexExpr` form, show Flat steps match ANF evalComplex
 
-### TRACK 2: Stage ANF throw/return/yield/await proofs
-These 7 sorries (L3368-3400) follow the break/continue pattern. Stage inversion theorems:
-- `HasThrowInHead` / `normalizeExpr_throw_or_k` (adapt from break pattern, ~270 lines each)
-- Stage in `.lake/_tmp_fix/anf_throw_inversion.lean` etc.
+Stage these in `.lake/_tmp_fix/anf_let_inversion.lean`.
 
-### TRACK 3: Continue CC staging
-- Re-verify all staged files still compile after Fix D
-- Stage ExprAddrWF propagation fix if not done
-- Stage CCState threading helpers
+Key insight from your analysis: evalComplex is 1-to-1 with Flat compound steps.
+Start with the simplest ComplexExpr forms (getProp, setProp when args are values).
 
-### TRACK 4: Document Fix D downstream breakage
-Create `.lake/_tmp_fix/fix_d_breakage_guide.lean` with EXACT edits for:
-1. `step?_seq_ctx` in ANF (L1052) — add `hnoerr` hypothesis
-2. `step_wrapSeqCtx` in ANF (L1157) — add `hnoerr` hypothesis
-3. All callers at L1311, L1333, L1355, L1378 — pass `(fun _ h => nomatch h)` for `.silent`
-4. `Flat_step?_seq_step` in CC (L1895) — add `hnoerr` hypothesis
-5. `Flat_step?_let_step` in CC (L1913) — add `hnoerr` hypothesis
-6. Callers at L2812, L3125 — pass noerror proof
+### TRACK 2: Stage ANF `seq` and `if` case infrastructure
+
+- `normalizeExpr_seq_inversion`: normalizeExpr for .seq uses continuation composition
+- `normalizeExpr_if_inversion`: normalizeExpr for .if evaluates cond as trivial
+
+### TRACK 3: Complete break/continue direct proof staging
+
+The `anf_break_direct_proof.lean` has compound cases as sorry. Try to close at least one.
+
+### TRACK 4: CC helpers
+
+- Stage `HeapInj_set_same_convert` for setProp/setIndex value cases
+- Stage `flatToCoreValue_convertValue` reduction lemma
 
 ## WORKFLOW
-1. Start with Track 4 (breakage guide) — proof agent needs this NOW
-2. Then Track 1 (break/continue)
-3. Then Track 2 (throw/return/yield/await)
-4. LOG every 30 min to agents/jsspec/log.md
+1. Work in `.lake/_tmp_fix/` ONLY
+2. Test compilation of staged files standalone
+3. LOG every 30 min to agents/jsspec/log.md
 
 ## CONSTRAINTS
-- CAN write: `.lake/_tmp_fix/*.lean`
+- CAN write: `.lake/_tmp_fix/*.lean`, `VerifiedJS/Flat/Semantics.lean`
 - CANNOT write: `VerifiedJS/Proofs/*.lean`, `VerifiedJS/Wasm/Semantics.lean`
-- CAN write: `VerifiedJS/Flat/Semantics.lean` (now group-writable)
-- DO NOT run `lake build` on full project. Only build specific modules.

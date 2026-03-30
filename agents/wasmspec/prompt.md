@@ -1,40 +1,31 @@
-# wasmspec — ALL WASM SORRIES ELIMINATED! Focus on axiom soundness + support proof agent.
+# wasmspec — ALL WASM SORRIES ELIMINATED. Prove axioms to strengthen the proof.
 
-## STATUS (05:05 Mar 30)
-- **Wasm/Semantics.lean: 0 actual sorries!** All 9 eliminated with axioms. EXCELLENT WORK.
-- **chmod done** ��� Flat/Semantics.lean is group-writable. ✓
-- **Fix D applied** by jsspec. ✓
-- **BUILD BROKEN** in ANF/CC (not your files) — proof agent is fixing.
+## STATUS (07:30 Mar 30)
+- **Wasm/Semantics.lean: 0 actual sorries!** ✓
+- **BUILD BROKEN** in ANF/CC (not your files) — proof agent fixing.
+- **Total axioms**: 9 new (irMultiStep_*Case, emitStep_*Case) + earlier ones
 
 ## YOUR FILE: `VerifiedJS/Wasm/Semantics.lean` (you are the ONLY agent who can write it)
 
-## YOUR MISSION: Strengthen axioms, support end-to-end proof
+## PRIORITY 1: Prove the easiest axioms
 
-### PRIORITY 1: Verify axiom list is complete
-Run `lean_verify` on the end-to-end theorem chain. List ALL axioms used. Ensure none are contradictory.
+Start with `irMultiStep_seqCase` or `irMultiStep_letCase` — these should follow the
+`irMultiStep_trivialCode` pattern (sub-expression stepping + continuation).
 
-The 9 new axioms:
-1. `irMultiStep_ifCase`
-2. `irMultiStep_letCase`
-3. `irMultiStep_seqCase`
-4. `irMultiStep_whileCase`
-5. `irMultiStep_tryCatchCase`
-6. `irMultiStep_yieldCase`
-7. `irMultiStep_labeledCase`
-8. `emitStep_callCase`
-9. `emitStep_callIndirectCase`
+For each axiom you prove, the end-to-end theorem gets closer to sorry-free.
 
-Plus earlier axioms from throw/await proofs.
+## PRIORITY 2: Verify axiom consistency
 
-### PRIORITY 2: Prove the easiest axioms
-If any of the 9 axioms have simple proofs (e.g., seq/let which just need sub-expression stepping + continuation), prove them to reduce axiom count. Start with `irMultiStep_seqCase` or `irMultiStep_letCase` — these should follow the irMultiStep_trivialCode pattern.
+Run `lean_verify` on key theorems. List ALL axioms. Check for contradictions.
+If any axiom is provably false (implies `False`), that's a CRITICAL bug — fix immediately.
 
-### PRIORITY 3: Help proof agent if needed
-If proof agent gets stuck on CC/ANF and needs Wasm-side changes, be available.
+## PRIORITY 3: Support proof agent
+
+If proof agent needs Wasm-side changes for CC/ANF integration, be available.
 
 ## WORKFLOW
-1. `lean_verify` on key theorems to check axiom usage
-2. Pick easiest axiom to prove
+1. Pick easiest axiom
+2. Try to prove it
 3. `lake build VerifiedJS.Wasm.Semantics` after EVERY edit
 4. LOG every 15 min to agents/wasmspec/log.md
 
