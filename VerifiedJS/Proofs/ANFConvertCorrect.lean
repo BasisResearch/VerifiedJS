@@ -4360,6 +4360,15 @@ private theorem Flat.step?_throw_var_ok (name : Flat.VarName) (v : Flat.Value)
     some (.silent, ⟨.throw (.lit v), env, heap, trace ++ [.silent], funcs, cs⟩) := by
   simp only [Flat.step?, Flat.exprValue?, h]; rfl
 
+/-- step? on .throw .this when lookup "this" succeeds: resolves this, keeps throw. -/
+private theorem Flat.step?_throw_this_ok (v : Flat.Value)
+    (env : Flat.Env) (heap : Core.Heap) (trace : List Core.TraceEvent)
+    (funcs : Array Flat.FuncDef) (cs : List Flat.Env)
+    (h : Flat.Env.lookup env "this" = some v) :
+    Flat.step? ⟨.throw .this, env, heap, trace, funcs, cs⟩ =
+    some (.silent, ⟨.throw (.lit v), env, heap, trace ++ [.silent], funcs, cs⟩) := by
+  simp only [Flat.step?, Flat.exprValue?, h]; rfl
+
 /-- If normalizeExpr sf.expr k produces .throw arg (with trivial-preserving k),
     then there exist Flat steps from sf that produce the same error event
     as the ANF throw step. Covers both evalTrivial ok and error cases. -/
@@ -4449,7 +4458,42 @@ private theorem normalizeExpr_throw_step_sim
         intro msg heval
         simp only [ANF.evalTrivial, hv_anf] at heval
         exact absurd heval (by simp)
-    | _ => sorry
+    | this =>
+      -- normalizeExpr .this k' = k' (.var "this") = pure (.throw (.var "this"))
+      simp only [ANF.normalizeExpr, pure, Pure.pure, StateT.pure, Except.ok.injEq, Prod.mk.injEq] at hnorm'
+      obtain ⟨rfl, rfl⟩ := hnorm'
+      have hwf_this : env.lookup "this" ≠ none := by
+        apply hewf; exact VarFreeIn.throw_arg _ _ VarFreeIn.this_var
+      obtain ⟨v, hv_flat⟩ := Option.ne_none_iff_exists'.mp hwf_this
+      have hv_anf : ANF.Env.lookup env "this" = some v := by
+        simp only [ANF.Env.lookup, Flat.Env.lookup] at hv_flat ⊢; exact hv_flat
+      refine ⟨?_, ?_⟩
+      · -- ok case: evalTrivial env (.var "this") = .ok v
+        intro val heval
+        simp only [ANF.evalTrivial, hv_anf, Except.ok.injEq] at heval
+        subst heval
+        have hv_flat_env : Flat.Env.lookup env "this" = some v := by
+          simp only [Flat.Env.lookup, ANF.Env.lookup] at hv_flat ⊢; exact hv_flat
+        -- Step 1: .throw .this → .throw (.lit v) via resolving "this"
+        have hstep1 := Flat.step?_throw_this_ok v env heap trace funcs cs hv_flat_env
+        -- Step 2: throw with literal value → error
+        have hstep2 := Flat.step?_throw_lit_eq v env heap (trace ++ [.silent]) funcs cs
+        refine ⟨[.silent, .error (Flat.valueToString v)], _,
+          .tail ⟨hstep1⟩ (.tail ⟨hstep2⟩ (.refl _)),
+          rfl, rfl, rfl, ?_, ?_⟩
+        · simp only [List.append_assoc, List.cons_append, List.nil_append]
+        · simp only [observableTrace, List.filter]; rfl
+      · -- error case: vacuous since env.lookup "this" = some v
+        intro msg heval
+        simp only [ANF.evalTrivial, hv_anf] at heval
+        exact absurd heval (by simp)
+    | «break» _ =>
+      exfalso; simp only [ANF.normalizeExpr, pure, Pure.pure, StateT.pure, Except.pure] at hnorm'
+      exact ANF.Expr.noConfusion (Prod.mk.inj (Except.ok.inj hnorm')).1
+    | «continue» _ =>
+      exfalso; simp only [ANF.normalizeExpr, pure, Pure.pure, StateT.pure, Except.pure] at hnorm'
+      exact ANF.Expr.noConfusion (Prod.mk.inj (Except.ok.inj hnorm')).1
+    | _ => sorry -- compound flat_arg: seq, let, assign, if, call, throw, etc.
   | _ =>
     simp only [Flat.State.env, Flat.State.heap, Flat.State.trace]
     sorry
