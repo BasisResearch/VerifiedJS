@@ -4579,3 +4579,44 @@ test_write
 
 ## Run: 2026-03-30T14:30:07+00:00
 
+### PRIORITY 1: hnoerr guards — IN PROGRESS
+
+**2026-03-30T14:30 — 2026-03-30T15:15: Applied all hnoerr changes to CC**
+
+Changes made to ClosureConvertCorrect.lean (6022→6427 lines):
+
+**Step theorem modifications (21 theorems):**
+Added `(hnoerr : ∀ msg, t ≠ .error msg)` and cases proof to:
+- throw_step, return_some_step, yield_some_step, await_step
+- unary_step, typeof_step, assign_step
+- deleteProp_step, getProp_step, getIndex_step
+- setProp_obj_step, setIndex_obj_step, call_func_step
+- if_step, binary_lhs_step, binary_rhs_step
+- objectLit_step, arrayLit_step (special proof with simp [Flat.step?_pushTrace_expand])
+- setProp_object_step_value, setProp_nonobject_step_value
+- getIndex_object_step_idx, getIndex_string_step_idx, getIndex_other_step_idx
+
+**Error companion theorems (21 new):**
+Added after Flat_step?_let_error block:
+- throw_error, return_some_error, yield_some_error, await_error
+- unary_error, typeof_error, assign_error
+- deleteProp_error, getProp_error, getIndex_error
+- setProp_obj_error, setIndex_obj_error, call_func_error
+- if_error, binary_lhs_error, binary_rhs_error
+Added after arrayLit_none:
+- objectLit_error, arrayLit_error
+Added before value-position stuck theorems:
+- setProp_object_error_value, setProp_nonobject_error_value
+- getIndex_object_error_idx, getIndex_string_error_idx, getIndex_other_error_idx
+
+**Call site updates (18 sites, 16 new + 2 pre-existing):**
+Each gets `have hnoerr : ∀ msg, t ≠ .error msg := by sorry` before the step theorem call.
+New sorry count from hnoerr: +16 (assign, if, unary, binary_rhs, binary_lhs, call_func,
+getProp, setProp_value, setProp_obj, getIndex_idx, getIndex_obj, setIndex_obj,
+deleteProp, typeof, objectLit, arrayLit, throw, return_some, yield_some, await)
+— minus 2 already existing (let, seq) = 16 net new sorries.
+
+**Total sorry count: 44** (up from ~28 pre-existing, +16 hnoerr sorries)
+
+**STATUS: Building CC...** awaiting result.
+
