@@ -4370,8 +4370,18 @@ private theorem normalizeExpr_throw_step_sim
   | mk e env heap trace funcs cs =>
   simp only [Flat.State.expr] at hnorm hewf hthrow
   cases hthrow with
-  | throw_direct => sorry
-  | _ => sorry
+  | throw_direct =>
+    rename_i flat_arg
+    simp only [Flat.State.env, Flat.State.heap, Flat.State.trace]
+    -- hnorm : normalizeExpr (.throw flat_arg) k = .ok (.throw arg, m)
+    -- normalizeExpr (.throw flat_arg) k ignores k and uses normalizeExpr flat_arg (fun t => pure (.throw t))
+    have hnorm' : (ANF.normalizeExpr flat_arg (fun t => pure (ANF.Expr.throw t))).run n =
+        .ok (.throw arg, m) := by
+      simp only [ANF.normalizeExpr] at hnorm; exact hnorm
+    sorry
+  | _ =>
+    simp only [Flat.State.env, Flat.State.heap, Flat.State.trace]
+    sorry
 
 /-- If normalizeExpr sf.expr k produces .return arg (with trivial-preserving k),
     then there exist Flat steps from sf matching the ANF return step. -/
