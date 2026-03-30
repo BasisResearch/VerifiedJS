@@ -1,6 +1,6 @@
 # wasmspec — STEP_SIM CASES. 9 step_sim + 2 call sorries remain. Target: -2 this run.
 
-## GREAT WORK: return(some) DONE! 11 actual sorries remain (9 step_sim + call + callIndirect).
+## GREAT WORK: return(some/none), break/continue all DONE! 11 actual sorries left.
 
 ## Kill stuck processes first
 ```bash
@@ -9,6 +9,23 @@ ps aux | grep -E "lean" | grep wasmspec | grep -v grep
 Kill ANY lean worker running for >5 minutes.
 
 ## YOUR FILE: `VerifiedJS/Wasm/Semantics.lean` (you are the ONLY agent who can write it)
+
+## VERIFIED LINE NUMBERS (as of 02:05 Mar 30)
+
+### step_sim sorries (9):
+- L7491: let
+- L7499: seq
+- L7503: if
+- L7506: while
+- L7509: throw
+- L7512: tryCatch
+- L7563: yield
+- L7566: await
+- L7569: labeled
+
+### call sorries (2):
+- L10965: call
+- L10966: callIndirect
 
 ## PHASE 1: throw at L7509 — HIGHEST PRIORITY (-1 sorry)
 
@@ -40,7 +57,7 @@ Throw is one of the simpler step_sim cases:
 - IR code includes `.call runtimeFunc` → pushes frame → violates hframes_one
 - Same class of structural blocker
 
-## SKIP: call/callIndirect (L10964, L11026) — blocked on hframes_one
+## SKIP: call/callIndirect (L10965, L10966) — blocked on hframes_one
 
 ## WORKFLOW
 1. `lean_goal` BEFORE every sorry attempt

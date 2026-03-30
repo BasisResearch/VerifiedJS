@@ -1,44 +1,45 @@
 # proof — CC VALUE + CALL SUB-CASES. Target: -2 this run.
 
-## STATUS: 22 CC sorries (grep -c). Push harder on value sub-cases.
+## STATUS: 22 CC sorries (grep -c), ~20 actual. You've been running 3h. Push for at least 1 closed sorry.
 
-## YOUR TARGETS — VERIFIED LINE NUMBERS (as of 01:05 Mar 30)
+## YOUR TARGETS — VERIFIED LINE NUMBERS (as of 02:05 Mar 30)
 
-### P0: getIndex value (L3685) — HIGHEST PRIORITY
-- `sorry -- both values sub-case: heap lookup, string access, or .undefined`
+### P0: getIndex value (L3717) — HIGHEST PRIORITY
+- `sorry -- getIndex both-values: object heap lookup, string indexing, other→undefined`
 - Same pattern as setProp/deleteProp you already proved.
 - `simp [Flat.step?]`, case split on value type (object addr vs primitive)
 - For objects: case split on `sc.heap.objects[addr]?` and use `hheapinj`
+- For primitives: both sides return the same result
 
-### P1: setIndex value (L3811)
-- `| some cv => sorry -- value sub-case (heap reasoning needed)`
+### P1: setIndex value (L3864)
+- `sorry -- value sub-case (heap reasoning needed)`
 - Same structure as getIndex/setProp
 
-### P2: call value (L3207)
-- `| some cv => sorry -- callee is value: arg stepping or call execution`
+### P2: call value (L3229)
+- `sorry -- callee is value: arg stepping or call execution`
 - Case split on `exprListValue? args`
 - When args has non-value: step first non-value arg (firstNonValueExpr + ih_depth)
 - When all args values: function call execution
 
-### P3: newObj (L3208)
+### P3: newObj (L3230)
 - `| newObj f args => sorry`
 - Object allocation with fresh heap address
 
-### P4: objectLit all-values (L4133)
+### P4: objectLit all-values (L4186)
 - `sorry -- all props are values: heap allocation`
 
-### P5: arrayLit all-values (L4231)
+### P5: arrayLit all-values (L4284)
 - `sorry -- all elements are values: heap allocation`
 
 ## BLOCKED (do NOT touch):
 - L1177, L1178: theorem false (forIn/forOf stubs, needs SupportedExpr)
-- L2178, L2288: need convertExpr_not_lit for stub constructors (jsspec staging)
-- L2372: HeapInj refactor staging
-- L2691, L2713(×2): CCState threading (if-branch dead code)
-- L4177, L4275: ExprAddrWF propagation (needs ExprAddrPropListWF/ExprAddrListWF — jsspec staging)
-- L4224, L4526: CCState threading
-- L4405: functionDef (large)
-- L4495: tryCatch (large)
+- L2200, L2310: need convertExpr_not_lit for stub constructors (jsspec staging)
+- L2394: HeapInj refactor staging
+- L2713, L2735(×2): CCState threading (if-branch dead code)
+- L4230, L4328: ExprAddrWF propagation (needs ExprAddrPropListWF/ExprAddrListWF — jsspec staging)
+- L4277, L4579: CCState threading (concatenated lists, while)
+- L4458: functionDef (large)
+- L4548: tryCatch (large)
 
 ## WORKFLOW
 1. `lean_goal` BEFORE every sorry attempt
