@@ -4467,7 +4467,7 @@ private theorem normalizeExpr_let_step_sim
     (htrace : observableTrace sa_trace = observableTrace sf.trace)
     (ev : Core.TraceEvent) (sa' : ANF.State)
     (hstep_eq : ANF.step? ⟨.let name rhs body, sa_env, sa_heap, sa_trace⟩ = some (ev, sa')) :
-    ∃ (evs : List Core.TraceEvent) (sf' : Flat.State),
+    ∃ (sf' : Flat.State) (evs : List Core.TraceEvent),
       Flat.Steps sf evs sf' ∧
       observableTrace [ev] = observableTrace evs ∧
       ANF_SimRel s t sa' sf' ∧
@@ -4488,7 +4488,7 @@ private theorem normalizeExpr_seq_step_sim
     (htrace : observableTrace sa_trace = observableTrace sf.trace)
     (ev : Core.TraceEvent) (sa' : ANF.State)
     (hstep_eq : ANF.step? ⟨.seq a b, sa_env, sa_heap, sa_trace⟩ = some (ev, sa')) :
-    ∃ (evs : List Core.TraceEvent) (sf' : Flat.State),
+    ∃ (sf' : Flat.State) (evs : List Core.TraceEvent),
       Flat.Steps sf evs sf' ∧
       observableTrace [ev] = observableTrace evs ∧
       ANF_SimRel s t sa' sf' ∧
@@ -4509,7 +4509,7 @@ private theorem normalizeExpr_if_step_sim
     (htrace : observableTrace sa_trace = observableTrace sf.trace)
     (ev : Core.TraceEvent) (sa' : ANF.State)
     (hstep_eq : ANF.step? ⟨.if cond then_ else_, sa_env, sa_heap, sa_trace⟩ = some (ev, sa')) :
-    ∃ (evs : List Core.TraceEvent) (sf' : Flat.State),
+    ∃ (sf' : Flat.State) (evs : List Core.TraceEvent),
       Flat.Steps sf evs sf' ∧
       observableTrace [ev] = observableTrace evs ∧
       ANF_SimRel s t sa' sf' ∧
@@ -4530,7 +4530,7 @@ private theorem normalizeExpr_tryCatch_step_sim
     (htrace : observableTrace sa_trace = observableTrace sf.trace)
     (ev : Core.TraceEvent) (sa' : ANF.State)
     (hstep_eq : ANF.step? ⟨.tryCatch body catchParam catchBody finally_, sa_env, sa_heap, sa_trace⟩ = some (ev, sa')) :
-    ∃ (evs : List Core.TraceEvent) (sf' : Flat.State),
+    ∃ (sf' : Flat.State) (evs : List Core.TraceEvent),
       Flat.Steps sf evs sf' ∧
       observableTrace [ev] = observableTrace evs ∧
       ANF_SimRel s t sa' sf' ∧
@@ -4673,7 +4673,7 @@ private theorem anfConvert_step_star
       refine ⟨sf', evs, hsteps, hobs'.symm, ?_, ?_⟩
       · refine ⟨hheap.trans hheap'.symm, henv.trans henv'.symm, ?_,
                 fun t => pure (.trivial t), n, n, ?_, ANF.trivial_k_preserving⟩
-        · rw [observableTrace_append, htrace, ← htrace']; rw [observableTrace_append]; congr 1; exact hobs'.symm
+        · rw [observableTrace_append, htrace, htrace', observableTrace_append]; congr 1; exact hobs'.symm
         · rw [hexpr']; exact ANF.normalizeExpr_lit_undefined_trivial n
       · rw [hexpr']; intro x hfx; cases hfx
     · -- ok case: evalTrivial produced value
@@ -4683,7 +4683,7 @@ private theorem anfConvert_step_star
       refine ⟨sf', evs, hsteps, hobs'.symm, ?_, ?_⟩
       · refine ⟨hheap.trans hheap'.symm, henv.trans henv'.symm, ?_,
                 fun t => pure (.trivial t), n, n, ?_, ANF.trivial_k_preserving⟩
-        · rw [observableTrace_append, htrace, ← htrace']; rw [observableTrace_append]; congr 1; exact hobs'.symm
+        · rw [observableTrace_append, htrace, htrace', observableTrace_append]; congr 1; exact hobs'.symm
         · rw [hexpr']; exact ANF.normalizeExpr_lit_undefined_trivial n
       · rw [hexpr']; intro x hfx; cases hfx
   | tryCatch body catchParam catchBody finally_ =>
@@ -4714,7 +4714,7 @@ private theorem anfConvert_step_star
       refine ⟨sf', evs, hsteps, hobs'.symm, ?_, ?_⟩
       · refine ⟨hheap.trans hheap'.symm, henv.trans henv'.symm, ?_,
                 fun t => pure (.trivial t), n, n, ?_, ANF.trivial_k_preserving⟩
-        · rw [observableTrace_append, htrace, ← htrace']; rw [observableTrace_append]; congr 1; exact hobs'.symm
+        · rw [observableTrace_append, htrace, htrace', observableTrace_append]; congr 1; exact hobs'.symm
         · rw [hexpr']; exact ANF.normalizeExpr_lit_undefined_trivial n
       · rw [hexpr']; intro x hfx; cases hfx
     | some t =>
@@ -4728,7 +4728,7 @@ private theorem anfConvert_step_star
         refine ⟨sf', evs, hsteps, hobs'.symm, ?_, ?_⟩
         · refine ⟨hheap.trans hheap'.symm, henv.trans henv'.symm, ?_,
                   fun t' => pure (.trivial t'), n, n, ?_, ANF.trivial_k_preserving⟩
-          · rw [observableTrace_append, htrace, ← htrace']; rw [observableTrace_append]; congr 1; exact hobs'.symm
+          · rw [observableTrace_append, htrace, htrace', observableTrace_append]; congr 1; exact hobs'.symm
           · rw [hexpr']; exact ANF.normalizeExpr_lit_undefined_trivial n
         · rw [hexpr']; intro x hfx; cases hfx
       · -- ok case
@@ -4738,7 +4738,7 @@ private theorem anfConvert_step_star
         refine ⟨sf', evs, hsteps, hobs'.symm, ?_, ?_⟩
         · refine ⟨hheap.trans hheap'.symm, henv.trans henv'.symm, ?_,
                   fun t' => pure (.trivial t'), n, n, ?_, ANF.trivial_k_preserving⟩
-          · rw [observableTrace_append, htrace, ← htrace']; rw [observableTrace_append]; congr 1; exact hobs'.symm
+          · rw [observableTrace_append, htrace, htrace', observableTrace_append]; congr 1; exact hobs'.symm
           · rw [hexpr']; simp [ANF.normalizeExpr, trivialOfFlatValue_eq_trivialOfValue, StateT.run, StateT.pure, pure, Pure.pure, Except.pure]
         · rw [hexpr']; intro x hfx; cases hfx
   | yield arg delegate =>
@@ -4759,7 +4759,7 @@ private theorem anfConvert_step_star
       refine ⟨sf', evs, hsteps, hobs'.symm, ?_, ?_⟩
       · refine ⟨hheap.trans hheap'.symm, henv.trans henv'.symm, ?_,
                 fun t => pure (.trivial t), n, n, ?_, ANF.trivial_k_preserving⟩
-        · rw [observableTrace_append, htrace, ← htrace']; rw [observableTrace_append]; congr 1; exact hobs'.symm
+        · rw [observableTrace_append, htrace, htrace', observableTrace_append]; congr 1; exact hobs'.symm
         · rw [hexpr']; exact ANF.normalizeExpr_lit_undefined_trivial n
       · rw [hexpr']; intro x hfx; cases hfx
     | some t =>
@@ -4773,7 +4773,7 @@ private theorem anfConvert_step_star
         refine ⟨sf', evs, hsteps, hobs'.symm, ?_, ?_⟩
         · refine ⟨hheap.trans hheap'.symm, henv.trans henv'.symm, ?_,
                   fun t' => pure (.trivial t'), n, n, ?_, ANF.trivial_k_preserving⟩
-          · rw [observableTrace_append, htrace, ← htrace']; rw [observableTrace_append]; congr 1; exact hobs'.symm
+          · rw [observableTrace_append, htrace, htrace', observableTrace_append]; congr 1; exact hobs'.symm
           · rw [hexpr']; exact ANF.normalizeExpr_lit_undefined_trivial n
         · rw [hexpr']; intro x hfx; cases hfx
       · -- ok case
@@ -4783,7 +4783,7 @@ private theorem anfConvert_step_star
         refine ⟨sf', evs, hsteps, hobs'.symm, ?_, ?_⟩
         · refine ⟨hheap.trans hheap'.symm, henv.trans henv'.symm, ?_,
                   fun t' => pure (.trivial t'), n, n, ?_, ANF.trivial_k_preserving⟩
-          · rw [observableTrace_append, htrace, ← htrace']; rw [observableTrace_append]; congr 1; exact hobs'.symm
+          · rw [observableTrace_append, htrace, htrace', observableTrace_append]; congr 1; exact hobs'.symm
           · rw [hexpr']; simp [ANF.normalizeExpr, trivialOfFlatValue_eq_trivialOfValue, StateT.run, StateT.pure, pure, Pure.pure, Except.pure]
         · rw [hexpr']; intro x hfx; cases hfx
   | await arg =>
@@ -4806,7 +4806,7 @@ private theorem anfConvert_step_star
       refine ⟨sf', evs, hsteps, hobs'.symm, ?_, ?_⟩
       · refine ⟨hheap.trans hheap'.symm, henv.trans henv'.symm, ?_,
                 fun t => pure (.trivial t), n, n, ?_, ANF.trivial_k_preserving⟩
-        · rw [observableTrace_append, htrace, ← htrace']; rw [observableTrace_append]; congr 1; exact hobs'.symm
+        · rw [observableTrace_append, htrace, htrace', observableTrace_append]; congr 1; exact hobs'.symm
         · rw [hexpr']; exact ANF.normalizeExpr_lit_undefined_trivial n
       · rw [hexpr']; intro x hfx; cases hfx
     · -- ok case
@@ -4816,7 +4816,7 @@ private theorem anfConvert_step_star
       refine ⟨sf', evs, hsteps, hobs'.symm, ?_, ?_⟩
       · refine ⟨hheap.trans hheap'.symm, henv.trans henv'.symm, ?_,
                 fun t => pure (.trivial t), n, n, ?_, ANF.trivial_k_preserving⟩
-        · rw [observableTrace_append, htrace, ← htrace']; rw [observableTrace_append]; congr 1; exact hobs'.symm
+        · rw [observableTrace_append, htrace, htrace', observableTrace_append]; congr 1; exact hobs'.symm
         · rw [hexpr']; simp [ANF.normalizeExpr, trivialOfFlatValue_eq_trivialOfValue, StateT.run, StateT.pure, pure, Pure.pure, Except.pure]
       · rw [hexpr']; intro x hfx; cases hfx
   | labeled label body =>

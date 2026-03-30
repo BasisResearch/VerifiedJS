@@ -1,3 +1,43 @@
+## Run: 2026-03-30T16:30+00:00
+- **BUILD: PASSES** ✓
+- **Sorries: ANF 17 (unchanged count; 8 expression-case sorries restructured into 8 sorry'd helper theorems)**
+- **Progress: extracted 8 expression-case simulation lemmas from anfConvert_step_star**
+
+### What was done
+Restructured all 8 expression-case sorries in `anfConvert_step_star` (let, seq, if, throw, tryCatch, return, yield, await) by:
+
+1. **Wrote 8 sorry'd helper simulation theorems** (L4345-4538):
+   - `normalizeExpr_throw_step_sim`: handles throw ok/error evalTrivial cases
+   - `normalizeExpr_return_step_sim`: handles return none/some-ok/some-error cases
+   - `normalizeExpr_await_step_sim`: handles await ok/error cases
+   - `normalizeExpr_yield_step_sim`: handles yield none/some-ok/some-error cases
+   - `normalizeExpr_let_step_sim`: handles let (evalComplex rhs) simulation
+   - `normalizeExpr_seq_step_sim`: handles seq stepping simulation
+   - `normalizeExpr_if_step_sim`: handles if conditional simulation
+   - `normalizeExpr_tryCatch_step_sim`: handles try-catch stepping simulation
+
+2. **Closed 8 expression-case sorries** in `anfConvert_step_star`:
+   - `let/seq/if/tryCatch`: destruct sa, simplify hypotheses, call helper directly
+   - `throw`: fully structured proof with cases on evalTrivial, constructs ANF_SimRel using helper
+   - `return/yield`: cases on optional arg (none/some), then cases on evalTrivial
+   - `await`: cases on evalTrivial, constructs ANF_SimRel
+
+3. **Key proof patterns established**:
+   - Terminal cases (throw/return/yield/await): use `normalizeExpr_X_step_sim` to get Flat steps, then construct `ANF_SimRel` via `normalizeExpr_lit_undefined_trivial` (for litUndefined results) or `trivialOfFlatValue_eq_trivialOfValue` (for value results)
+   - Structural cases (let/seq/if/tryCatch): helper takes `htrace` to maintain trace invariant
+
+### Sorry breakdown (17 remaining)
+- 7 sorry: `normalizeExpr_labeled_step_sim` depth-recursive cases (L3825, 3829, 3840, 3891, 3895, 3906, 3923)
+- 2 sorry: consolidated context cases (L4116, L4327) — `hasBreakInHead_flat_error_steps` / `hasContinueInHead_flat_error_steps` makeEnv/objectLit/arrayLit subcases
+- 8 sorry: new expression-case helper theorems (L4368, 4399, 4423, 4454, 4475, 4496, 4517, 4538)
+
+### Architecture insight
+The expression-case helpers cleanly separate two concerns:
+1. **Main theorem case analysis** (now proved): destruct ANF state, unfold step?, apply helper
+2. **Simulation core** (sorry'd helpers): relate normalizeExpr output to Flat steps
+
+Each helper theorem has well-typed signature with all necessary hypotheses (normalizeExpr witness, trivial-preserving k, ExprWellFormed, env/heap/trace relationships). This makes the sorry bodies self-contained proof obligations.
+
 ## Run: 2026-03-30T12:30+00:00
 - **BUILD: PASSES** ✓
 - **Sorries: ANF 17 (was 81; 66 compound break/continue sub-cases consolidated into 2 sorry'd theorems)**
@@ -4280,3 +4320,4 @@ Key infrastructure available:
 
 ## Run: 2026-03-30T16:30:01+00:00
 
+2026-03-30T16:59:18+00:00 DONE
