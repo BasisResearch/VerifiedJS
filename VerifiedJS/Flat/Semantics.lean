@@ -379,8 +379,6 @@ def step? (s : State) : Option (Core.TraceEvent × State) :=
           some (.silent, s')
       | none =>
           match step? { s with expr := cond } with
-          | some (.error msg, sc) =>
-              some (.error msg, pushTrace { s with expr := .lit .undefined, env := sc.env, heap := sc.heap } (.error msg))
           | some (t, sc) =>
               let s' := pushTrace { s with expr := .«if» sc.expr then_ else_, env := sc.env, heap := sc.heap } t
               some (t, s')
@@ -824,8 +822,6 @@ def step? (s : State) : Option (Core.TraceEvent × State) :=
           some (.error msg, s')
       | none =>
           match step? { s with expr := arg } with
-          | some (.error msg, sa) =>
-              some (.error msg, pushTrace { s with expr := .lit .undefined, env := sa.env, heap := sa.heap } (.error msg))
           | some (t, sa) =>
               let s' := pushTrace { s with expr := .throw sa.expr, env := sa.env, heap := sa.heap } t
               some (t, s')
@@ -1034,8 +1030,6 @@ def step? (s : State) : Option (Core.TraceEvent × State) :=
               some (.error ("return:" ++ valueToString v), s')
           | none =>
               match step? { s with expr := e } with
-              | some (.error msg, se) =>
-                  some (.error msg, pushTrace { s with expr := .lit .undefined, env := se.env, heap := se.heap } (.error msg))
               | some (t, se) =>
                   let s' := pushTrace { s with expr := .«return» (some se.expr), env := se.env, heap := se.heap } t
                   some (t, s')
@@ -1052,8 +1046,6 @@ def step? (s : State) : Option (Core.TraceEvent × State) :=
               some (.silent, s')
           | none =>
               match step? { s with expr := e } with
-              | some (.error msg, se) =>
-                  some (.error msg, pushTrace { s with expr := .lit .undefined, env := se.env, heap := se.heap } (.error msg))
               | some (t, se) =>
                   let s' := pushTrace
                     { s with expr := .yield (some se.expr) delegate, env := se.env, heap := se.heap } t
@@ -1066,8 +1058,6 @@ def step? (s : State) : Option (Core.TraceEvent × State) :=
           some (.silent, s')
       | none =>
           match step? { s with expr := arg } with
-          | some (.error msg, sa) =>
-              some (.error msg, pushTrace { s with expr := .lit .undefined, env := sa.env, heap := sa.heap } (.error msg))
           | some (t, sa) =>
               let s' := pushTrace { s with expr := .await sa.expr, env := sa.env, heap := sa.heap } t
               some (t, s')
@@ -1490,9 +1480,7 @@ theorem step?_none_implies_lit (s : State) (h : step? s = none) :
       | some e =>
         unfold step? at h; simp only [-step?] at h
         split at h; · simp at h
-        · split at h
-          · simp at h
-          · simp at h
+        · split at h; · simp at h
           · next hval hstep =>
             have ⟨v, hv⟩ := litOfStuck e (by simp [Expr.depth] at hd; omega) hstep
             subst hv; simp_all [exprValue?]
@@ -1502,9 +1490,7 @@ theorem step?_none_implies_lit (s : State) (h : step? s = none) :
       | some e =>
         unfold step? at h; simp only [-step?] at h
         split at h; · simp at h
-        · split at h
-          · simp at h
-          · simp at h
+        · split at h; · simp at h
           · next hval hstep =>
             have ⟨v, hv⟩ := litOfStuck e (by simp [Expr.depth] at hd; omega) hstep
             subst hv; simp_all [exprValue?]
@@ -1531,9 +1517,7 @@ theorem step?_none_implies_lit (s : State) (h : step? s = none) :
     | «if» cond _ _ =>
       unfold step? at h; simp only [-step?] at h
       split at h; · simp at h
-      · split at h
-        · simp at h
-        · simp at h
+      · split at h; · simp at h
         · next hval hstep =>
           have ⟨v, hv⟩ := litOfStuck cond (by simp [Expr.depth] at hd; omega) hstep
           subst hv; simp_all [exprValue?]
@@ -1567,18 +1551,14 @@ theorem step?_none_implies_lit (s : State) (h : step? s = none) :
     | throw arg =>
       unfold step? at h; simp only [-step?] at h
       split at h; · simp at h
-      · split at h
-        · simp at h
-        · simp at h
+      · split at h; · simp at h
         · next hval hstep =>
           have ⟨v, hv⟩ := litOfStuck arg (by simp [Expr.depth] at hd; omega) hstep
           subst hv; simp_all [exprValue?]
     | await arg =>
       unfold step? at h; simp only [-step?] at h
       split at h; · simp at h
-      · split at h
-        · simp at h
-        · simp at h
+      · split at h; · simp at h
         · next hval hstep =>
           have ⟨v, hv⟩ := litOfStuck arg (by simp [Expr.depth] at hd; omega) hstep
           subst hv; simp_all [exprValue?]
