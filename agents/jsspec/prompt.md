@@ -1,47 +1,65 @@
-# jsspec — ANF DECOMPOSITION IS YOUR #1 PRIORITY
+# jsspec — ANF DEAD CODE FIX + CC INTEGRATION. Both are critical path.
 
 ## STATUS
-- CC: 22 sorries. Proof agent active, closing value sub-cases. You help with helpers.
-- ANF: 17 sorries — ALL blocked on monolithic `anfConvert_step_star`. DECOMPOSE IT.
-- Wasm: 16 sorries (wasmspec owns). DO NOT touch Semantics.lean.
+- CC: 22 sorries. Proof agent active on value sub-cases.
+- ANF: 17 sorries — ALL blocked by dead code absorption (your analysis confirmed this).
+- Wasm: 11 actual sorries (wasmspec owns). DO NOT touch Semantics.lean.
 
-## YOUR MISSION: DECOMPOSE ANF sorries
+## YOUR MISSION: TWO TRACKS
 
-The 17 ANF sorries are all inside one giant sorry. This has been stuck for 5+ DAYS.
-Break it into per-constructor cases NOW.
+### TRACK 1: FIX ANF DEAD CODE ABSORPTION — TOP PRIORITY
 
-### P0: ANF per-constructor stepping lemmas — TOP PRIORITY
-Read `VerifiedJS/Proofs/ANFConvertCorrect.lean` lines 3368-3426 (the sorry sites).
-For EACH ANF.Expr constructor:
-1. `lean_goal` at the sorry
-2. Write a per-constructor proof attempt in `.lake/_tmp_fix/anf_<constructor>.lean`
-3. Even 15 new inner sorries (one per constructor) is BETTER than 1 monolithic sorry
-4. Use `lean_multi_attempt` on each case
+Your analysis in `.lake/_tmp_fix/anf_break_continue_step_sim.lean` identified the root cause:
+normalizeExpr CPS discards dead code after break/continue/throw/return,
+but Flat.step? for .seq/.let continues executing it.
 
-Target constructors (easiest first):
-- litValue, litClosure (should be trivial — already done in main file?)
-- trivial (Expr.trivial already handled)
-- throw, return — simple control flow
-- let, seq — need multi-step induction
-- if, while — need branch analysis
+**Implement Fix D** (change Flat.step? to propagate errors through seq/let):
+This is the cleanest fix. In Flat.step?, when stepping a sub-expression inside .seq or .let
+produces an .error event, propagate the error immediately instead of continuing to the next part.
 
-### P1: Verify staged files still compile
-Check these in `.lake/_tmp_fix/`:
-- `cc_state_mono.lean` (CCState monotonicity)
-- `cc_objectLit_ccstate.lean` (objectLit CCState)
-- `cc_convertExpr_not_lit_v2.lean` (convertExpr_not_lit)
-- `cc_exprAddrWF_propagate.lean` (ExprAddrWF)
+**Concrete changes needed** (in `VerifiedJS/Flat/Semantics.lean`):
+```lean
+-- In step? for .seq:
+| .seq a b =>
+    match step? { s with expr := a } with
+    | some (.error msg, sa) => some (.error msg, { sa with expr := .lit .undefined })
+    | some (t, sa) => ...  -- existing behavior
+    | none => ...  -- existing behavior
 
-For each: `lean .lake/_tmp_fix/<file>` — if it compiles, write EXACT edit instructions for proof agent.
+-- In step? for .let:
+| .let name rhs body =>
+    match step? { s with expr := rhs } with
+    | some (.error msg, sa) => some (.error msg, { sa with expr := .lit .undefined })
+    | some (t, sa) => ...  -- existing behavior
+    | none => ...  -- existing behavior
+```
 
-### P2: Integration instructions
-For every staged file that compiles clean, post in your log:
+**IMPORTANT**: This will break ClosureConvertCorrect.lean proofs. You MUST:
+1. Write the fix in `.lake/_tmp_fix/flat_error_propagation.lean` FIRST
+2. Test with `lean .lake/_tmp_fix/flat_error_propagation.lean`
+3. Document EXACTLY which CC proofs break and why
+4. Only then discuss with supervisor whether to apply
+
+### TRACK 2: CC INTEGRATION — Get staged files into the main proof
+
+For every staged file that compiles, provide EXACT edit instructions:
 ```
 INTEGRATION: <filename>
+TARGET FILE: VerifiedJS/Proofs/ClosureConvertCorrect.lean
 OLD: <exact old_string to match>
 NEW: <exact new_string replacement>
 ```
-So the proof agent can apply them directly.
+
+Priority staged files:
+1. `cc_state_mono.lean` → unblocks L2691, L2713, L4224, L4526
+2. `cc_convertExpr_not_lit_v2.lean` → unblocks L1177-1178, L2178, L2288
+3. `cc_exprAddrWF_propagate.lean` → unblocks L4177, L4275
+
+### P1: Verify staged files still compile
+Check these in `.lake/_tmp_fix/`:
+- `cc_state_mono.lean`
+- `cc_convertExpr_not_lit_v2.lean`
+- `cc_exprAddrWF_propagate.lean`
 
 ## WORKFLOW
 1. Read the relevant definitions first (`lean_hover_info`, `lean_local_search`)
@@ -50,6 +68,6 @@ So the proof agent can apply them directly.
 4. LOG every 30 min to agents/jsspec/log.md
 
 ## CONSTRAINTS
-- CAN write: `.lake/_tmp_fix/*.lean`
+- CAN write: `.lake/_tmp_fix/*.lean`, `VerifiedJS/Flat/Semantics.lean` (for Fix D ONLY after staging)
 - CANNOT write: `VerifiedJS/Proofs/*.lean`, `VerifiedJS/Wasm/Semantics.lean`
 - DO NOT run `lake build` (wastes time, proof agent is building)

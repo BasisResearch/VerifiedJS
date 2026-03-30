@@ -1,3 +1,57 @@
+## Run: 2026-03-30T01:05:21+00:00
+
+### Metrics
+- **Sorry count (grep -c)**: 54 (17 ANF + 22 CC + 15 Wasm). Wasm DOWN by 1 (16→15).
+- **Actual active sorries**: 50 (17 ANF + 22 CC + 11 Wasm). Wasm has 4 sorries in comments/block-comments.
+- **LowerCorrect.lean**: 0 sorries (confirmed)
+- **Delta from last run (00:05)**: **-1 grep-c** (wasmspec proved return(some))
+- **BUILD STATUS**: proof active since 23:00 (2h+). jsspec started 01:00 (5min). wasmspec started 00:15 (50min).
+
+### Agent Analysis
+1. **proof** (PID 1939138, started 23:00): ACTIVE 2h. Still on CC value sub-cases. No new sorries closed since 09:30 log (last closed objectLit/arrayLit sub-step extraction). May be stuck — 2h without visible progress.
+2. **jsspec** (PID 2048966, started 01:00): ACTIVE 5min. Major finding: ALL 17 ANF sorries blocked by dead code absorption architecture. Proposed 4 fixes, Fix D (Flat.step? error propagation) is cleanest. Redirected to implement Fix D in staging.
+3. **wasmspec** (PID 2006354, started 00:15): ACTIVE 50min. Proved return(some) using step_sim_return_some. No log entry yet.
+
+### Sorry Classification
+
+**Wasm/Semantics (11 actual):**
+- step_sim (9): L7491 let, L7499 seq, L7503 if, L7506 while, L7509 throw, L7512 tryCatch, L7563 yield, L7566 await, L7569 labeled
+- call (1): L10964 | callIndirect (1): L11026
+- return(some): DONE ✓, return(none): DONE ✓, break/continue: DONE ✓
+
+**CC (22 grep-c, ~19 actual):**
+- Stubs(2): L1177, L1178 | convertExpr_not_lit(2): L2178, L2288 | HeapInj(1): L2372
+- CCState(5): L2691, L2713(×2), L4224, L4526 | Value(2): L3685, L3811
+- Call(2): L3207, L3208 | Heap alloc(2): L4133, L4231 | ExprAddrWF(2): L4177, L4275
+- Large(2): L4405 (functionDef), L4495 (tryCatch)
+
+**ANF (17):** ALL blocked by dead code absorption. jsspec analyzing Fix D (Flat error propagation).
+
+### CRITICAL FINDING: ANF dead code absorption
+jsspec confirmed ALL 17 ANF sorries are architecturally blocked. normalizeExpr CPS discards code after break/continue/throw/return, but Flat.step? continues executing it. This is NOT fixable by decomposition alone. Fix D (modify Flat.step? .seq/.let to propagate errors) is cleanest but will break CC proofs. jsspec redirected to stage Fix D.
+
+### Actions Taken
+1. Counted sorries: 54 grep-c (17+22+15), 50 actual — down 1 grep-c
+2. **proof prompt**: Updated ALL line numbers (L3685, L3811, L3207, L3208, L4133, L4231). Targets unchanged: getIndex/setIndex value sub-cases first.
+3. **jsspec prompt**: MAJOR REDIRECT — implement Fix D (Flat error propagation) in staging as Track 1. Track 2: CC integration instructions for staged files.
+4. **wasmspec prompt**: Congratulated return(some). New targets: throw L7509 (Phase 1), if L7503 (Phase 2).
+5. Logged time estimate (54, 135h)
+
+### OUTLOOK
+- Next run target: ≤52 (wasmspec -1 throw, proof -1 from value sub-case)
+- jsspec Fix D is high-risk/high-reward: if it works, unblocks ALL 17 ANF sorries
+- If Fix D is applied, CC proofs will need updating — could temporarily increase sorry count
+- proof agent may need a nudge — 2h without closing a sorry
+
+### RISK
+- Fix D changes Flat.step? semantics — could cascade into CC proof breakage
+- proof agent possibly stuck — consider redirecting to easier targets if no progress by next run
+- wasmspec multi-step cases (let/seq/if) may be structurally blocked like ANF
+
+2026-03-30T01:05:21+00:00 DONE
+
+---
+
 ## Run: 2026-03-30T00:05:02+00:00
 
 ### Metrics
@@ -5497,3 +5551,4 @@ Breakdown (13 `sorry` tokens, 10 real proof sorries):
 
 ## Run: 2026-03-30T01:05:21+00:00
 
+2026-03-30T01:12:06+00:00 DONE

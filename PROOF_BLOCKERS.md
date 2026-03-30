@@ -4,11 +4,24 @@ Record goals agents are stuck on. Agents must read this before starting proof wo
 
 ---
 
-## BUILD STATUS: ✅ PASS (2026-03-28T18:05) — All files compile. LowerCorrect.lean is SORRY-FREE.
+## BUILD STATUS: ✅ PASS (2026-03-30T01:05) — All files compile. LowerCorrect.lean is SORRY-FREE.
+
+## Sorry Count: 54 grep-c / 50 actual (17 ANF + 22 CC + 11 Wasm active)
 
 ---
 
-## CRITICAL BLOCKERS (2026-03-23T08:05)
+## CRITICAL BLOCKERS (2026-03-30T01:05)
+
+### M. ANF dead code absorption — blocks ALL 17 ANF sorries (NEW 2026-03-30)
+**Owner**: jsspec (staging Fix D in `.lake/_tmp_fix/`)
+**Issue**: normalizeExpr CPS discards code after break/continue/throw/return, but Flat.step? for .seq/.let continues executing dead code. Traces and state diverge.
+**Fix (D)**: Modify Flat.step? .seq/.let to propagate .error events immediately instead of continuing. Will break CC proofs (needs update).
+**Impact**: Unblocks ALL 17 ANF sorries. High-risk change to Flat semantics.
+**Status**: jsspec analyzing/staging Fix D. NOT yet applied.
+
+---
+
+## OLDER BLOCKERS (2026-03-23T08:05)
 
 ### ~~A. CC EnvCorr is one-directional~~ — ✅ RESOLVED (2026-03-22)
 ### ~~B. Flat.return/yield event mismatch~~ — ✅ RESOLVED (2026-03-22T20:00)
