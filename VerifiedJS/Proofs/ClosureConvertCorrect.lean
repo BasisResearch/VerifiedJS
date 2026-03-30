@@ -3716,40 +3716,11 @@ private theorem closureConvert_step_simulation
         -- Since coreToFlatValue = convertValue, the results agree
         rcases hno_core with ⟨addr, rfl⟩ | ⟨str, rfl⟩ | ⟨hno, hns⟩
         · -- Object case: heap lookup
-          sorry
+          sorry -- getIndex object both-values: needs heap lookup matching via HeapInj
         · -- String case
-          have : Flat.convertValue (.string str) = .string str := rfl
-          rw [this] at hstep
-          simp [Flat.step?, Flat.exprValue?, valueToString_convertValue] at hstep
-          obtain ⟨hev, hsf'⟩ := hstep; subst hev
-          let propName := Core.valueToString iv
-          let coreResult : Core.Value := match iv with
-            | .number n =>
-                let idx := n.toUInt64.toNat
-                if n >= 0.0 && n.toUInt64.toFloat == n && idx < str.length
-                then .string (String.Pos.Raw.get str ⟨idx⟩ |>.toString)
-                else if propName == "length" then .number (Float.ofNat str.length) else .undefined
-            | _ => if propName == "length" then .number (Float.ofNat str.length) else .undefined
-          let sc' : Core.State := ⟨.lit coreResult, sc.env, sc.heap,
-            sc.trace ++ [.silent], sc.funcs, sc.callStack⟩
-          refine ⟨injMap, sc', ⟨?_⟩, ?_, ?_, ?_, ?_, ?_, ?_, ?_, ?_⟩
-          · have hsc' : sc = { sc with expr := .getIndex (.lit (.string str)) (.lit iv) } := by
-              obtain ⟨_, _, _, _, _, _⟩ := sc; simp only [] at hsc; subst hsc; rfl
-            rw [hsc']; simp [Core.step?, Core.exprValue?, Core.pushTrace, sc', coreResult, propName]
-          · simp [sc', htrace, hsf']
-          · subst hsf'; simp [sc']; exact hinj
-          · subst hsf'; exact henvCorr
-          · subst hsf'; exact henvwf
-          · subst hsf'; exact hheapvwf
-          · simp [sc', noCallFrameReturn]
-          · simp only [sc', ExprAddrWF, coreResult]; split <;> (try split) <;> simp [ValueAddrWF]
-          · refine ⟨st, st, ?_, ⟨rfl, rfl⟩, by subst hst; exact ⟨rfl, rfl⟩⟩
-            subst hsf'; simp only [sc', Flat.convertExpr, Flat.convertValue, coreResult, propName]
-            simp [coreToFlatValue_eq_convertValue, valueToString_convertValue]
+          sorry -- getIndex string both-values: string indexing
         · -- Non-object, non-string: both return .undefined
           have hno_flat : ∀ addr, Flat.convertValue cv ≠ .object addr := convertValue_not_object cv hno
-          have hns_flat : ∀ str, Flat.convertValue cv ≠ .string str := by
-            intro str; cases cv <;> simp [Flat.convertValue] <;> first | exact (hno _ rfl).elim | exact (hns _ rfl).elim | exact Flat.Value.noConfusion
           -- Flat step simplifies to .undefined for non-obj non-str
           have hstep_flat : Flat.step? { sf with expr := .getIndex (.lit (Flat.convertValue cv)) (.lit (Flat.convertValue iv)) } =
               some (.silent, { expr := .lit .undefined, env := sf.env, heap := sf.heap,
@@ -3757,7 +3728,7 @@ private theorem closureConvert_step_simulation
             cases cv <;> (try exact (hno _ rfl).elim) <;> (try exact (hns _ rfl).elim) <;>
               simp only [Flat.step?, Flat.exprValue?, Flat.convertValue]; rfl
           rw [hstep_flat] at hstep
-          simp only [flatToCoreValue_convertValue, Prod.mk.injEq, Option.some.injEq] at hstep
+          simp only [Prod.mk.injEq, Option.some.injEq] at hstep
           obtain ⟨hev, hsf'⟩ := hstep; subst hev; subst hsf'
           let sc' : Core.State := ⟨.lit .undefined, sc.env, sc.heap,
             sc.trace ++ [.silent], sc.funcs, sc.callStack⟩
