@@ -352,6 +352,8 @@ def step? (s : State) : Option (Core.TraceEvent × State) :=
           some (.silent, s')
       | none =>
           match step? { s with expr := init } with
+          | some (.error msg, si) =>
+              some (.error msg, pushTrace { s with expr := .lit .undefined, env := si.env, heap := si.heap } (.error msg))
           | some (t, si) =>
               let s' := pushTrace { s with expr := .«let» name si.expr body, env := si.env, heap := si.heap } t
               some (t, s')
@@ -386,6 +388,8 @@ def step? (s : State) : Option (Core.TraceEvent × State) :=
           some (.silent, s')
       | none =>
           match step? { s with expr := a } with
+          | some (.error msg, sa) =>
+              some (.error msg, pushTrace { s with expr := .lit .undefined, env := sa.env, heap := sa.heap } (.error msg))
           | some (t, sa) =>
               let s' := pushTrace { s with expr := .seq sa.expr b, env := sa.env, heap := sa.heap } t
               some (t, s')
@@ -1199,12 +1203,15 @@ theorem step?_seq_sub_step (s : State) (a b : Expr)
     (hstep : ∃ t sa, step? { s with expr := a } = some (t, sa)) :
     ∃ t s', step? { s with expr := .seq a b } = some (t, s') := by
   obtain ⟨t, sa, ha⟩ := hstep
-  simp only [step?, hnotval, ha]; exact ⟨t, _, rfl⟩
+  simp only [step?, hnotval, ha]
+  cases t with
+  | error msg => exact ⟨_, _, rfl⟩
+  | _ => exact ⟨_, _, rfl⟩
 
 /-- `.seq (.var name) b` always steps (var always steps, seq delegates). -/
 theorem step?_seq_var_isSome (s : State) (name : VarName) (b : Expr) :
     (step? { s with expr := .seq (.var name) b }).isSome = true := by
-  simp [step?, exprValue?]; split <;> simp; split at * <;> simp_all
+  simp [step?, exprValue?]; cases s.env.lookup name <;> simp [pushTrace]
 
 /-- `.seq .this b` always steps (.this always steps, seq delegates). -/
 theorem step?_seq_this_isSome (s : State) (b : Expr) :
@@ -1221,26 +1228,33 @@ theorem step?_seq_var_found_explicit (s : State) (name : VarName) (v : Value) (b
   simp [step?, exprValue?, henv, pushTrace]
 
 /-- `.seq (.var name) b` when var not found: steps with ReferenceError.
-    Result uses explicit struct — proof agent can destructure directly. -/
+    With Fix D, error propagates immediately — result expr is `.lit .undefined`. -/
 theorem step?_seq_var_not_found_explicit (s : State) (name : VarName) (b : Expr)
     (henv : s.env.lookup name = none) :
     step? { s with expr := .seq (.var name) b } =
       some (.error ("ReferenceError: " ++ name),
-            { expr := .seq (.lit .undefined) b, env := s.env, heap := s.heap,
+            { expr := .lit .undefined, env := s.env, heap := s.heap,
               trace := s.trace ++ [.error ("ReferenceError: " ++ name)],
               funcs := s.funcs, callStack := s.callStack }) := by
   simp [step?, exprValue?, henv, pushTrace]
 
-/-- `.seq (.var name) b` always steps to a state with `.seq (.lit val) b` for some val.
-    This is the key existential the proof agent needs for anfConvert_halt_star. -/
-theorem step?_seq_var_steps_to_lit (s : State) (name : VarName) (b : Expr) :
-    ∃ val ev, step? { s with expr := .seq (.var name) b } =
-      some (ev, { expr := .seq (.lit val) b, env := s.env, heap := s.heap,
-                  trace := s.trace ++ [ev], funcs := s.funcs, callStack := s.callStack }) := by
-  cases henv : s.env.lookup name with
-  | some v => exact ⟨v, .silent, by simp [step?, exprValue?, henv, pushTrace]⟩
-  | none => exact ⟨.undefined, .error ("ReferenceError: " ++ name),
-                    by simp [step?, exprValue?, henv, pushTrace]⟩
+/-- `.seq (.var name) b` when var found: steps to `.seq (.lit v) b`. -/
+theorem step?_seq_var_steps_to_lit (s : State) (name : VarName) (v : Value) (b : Expr)
+    (henv : s.env.lookup name = some v) :
+    step? { s with expr := .seq (.var name) b } =
+      some (.silent, { expr := .seq (.lit v) b, env := s.env, heap := s.heap,
+                  trace := s.trace ++ [.silent], funcs := s.funcs, callStack := s.callStack }) := by
+  simp [step?, exprValue?, henv, pushTrace]
+
+/-- `.seq (.var name) b` when var not found: error propagates, expr becomes `.lit .undefined`. -/
+theorem step?_seq_var_not_found_propagates (s : State) (name : VarName) (b : Expr)
+    (henv : s.env.lookup name = none) :
+    step? { s with expr := .seq (.var name) b } =
+      some (.error ("ReferenceError: " ++ name),
+            { expr := .lit .undefined, env := s.env, heap := s.heap,
+              trace := s.trace ++ [.error ("ReferenceError: " ++ name)],
+              funcs := s.funcs, callStack := s.callStack }) := by
+  simp [step?, exprValue?, henv, pushTrace]
 
 /-- `.seq .this b` always steps to a state with `.seq (.lit val) b` for some val.
     This is the key existential the proof agent needs for anfConvert_halt_star. -/
@@ -1424,7 +1438,9 @@ theorem step?_none_implies_lit (s : State) (h : step? s = none) :
     | «let» _ init _ =>
       unfold step? at h; simp only [-step?] at h
       split at h; · simp at h
-      · split at h; · simp at h
+      · split at h
+        · simp at h
+        · simp at h
         · next hval hstep =>
           have ⟨v, hv⟩ := litOfStuck init (by simp [Expr.depth] at hd; omega) hstep
           subst hv; simp_all [exprValue?]
@@ -1445,7 +1461,9 @@ theorem step?_none_implies_lit (s : State) (h : step? s = none) :
     | seq a _ =>
       unfold step? at h; simp only [-step?] at h
       split at h; · simp at h
-      · split at h; · simp at h
+      · split at h
+        · simp at h
+        · simp at h
         · next hval hstep =>
           have ⟨v, hv⟩ := litOfStuck a (by simp [Expr.depth] at hd; omega) hstep
           subst hv; simp_all [exprValue?]
