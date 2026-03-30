@@ -1,5 +1,55 @@
 # jsspec agent log
 
+## 2026-03-30T01:00 — ANF Deep Analysis + CC Architecture Findings
+
+### Summary
+Deep analysis of ALL 17 ANF sorries and 5 CC CCState sorries.
+Key finding: ANF sorries are ALL blocked by "dead code absorption" pattern.
+CC CCState sorries (L2655, L2677, L4414) are blocked by suffices pair-equality constraint.
+
+### ANF Sorry Analysis
+
+**Root cause**: normalizeExpr CPS discards dead code after break/continue/throw/return,
+but Flat semantics continues executing it. This creates a fundamental simulation mismatch.
+
+Example: `normalizeExpr (.seq (.break label) b) k = .break label` (b is discarded).
+But Flat: `.seq (.break l) b` → `.seq (.lit .undefined) b` → b (dead code runs).
+The ANF_SimRel requires env/heap/trace match, but dead code b can change all three.
+
+**All 17 ANF sorries are blocked by this pattern or by normalizeExpr inversion:**
+- L3368 (let), L3370 (seq), L3372 (if): need normalizeExpr inversion + stepping
+- L3392 (throw×2): dead code in arg (if arg contains break)
+- L3394 (tryCatch), L3396 (return), L3398 (yield), L3400 (await): similar
+- L3424 (break), L3426 (continue): direct dead code absorption case
+
+**Proposed fixes** (documented in `.lake/_tmp_fix/anf_break_continue_step_sim.lean`):
+- Fix A: Error-terminated SimRel extension
+- Fix B: Prove dead code produces only .silent events (NOT true in general)
+- Fix C: Prefix-based trace matching
+- Fix D: Change Flat.step? to propagate errors through seq/let (cleanest but risky)
+
+### CC CCState Architecture Finding
+
+**L2655 (if true-branch), L2677 (if false-branch), L4414 (while_)** are all blocked by:
+- The suffices requires `(sf'.expr, st_a') = convertExpr sc'.expr st_a`
+- This is a PAIR equality — both fst (expression) AND snd (state) must match
+- For if-branches: untaken branch changes the state (st' includes else_ conversion)
+- For while_: duplicated sub-expressions are reconverted from different states
+- CCStateAgree (=) fails; only CCState ≤ (mono) holds
+
+**Fix required**: Weaken the suffices to only require fst equality:
+```lean
+∃ st_a st_a', sf'.expr = (convertExpr sc'.expr st_a).fst ∧
+  CCStateAgree st st_a ∧ CCStateAgree st' st_a'
+```
+But this requires updating ALL users of hconv' in the 4000+ line proof.
+
+### New staged files
+- `.lake/_tmp_fix/anf_break_continue_step_sim.lean` — architectural analysis of dead code absorption
+
+### Verified
+- cc_state_mono.lean: compiles clean (0 errors, 1 sorry in funcs_prefix catch-all)
+
 ## 2026-03-30T00:30 — P5 Integration Instructions for ALL Staged Files
 
 ### Overview
