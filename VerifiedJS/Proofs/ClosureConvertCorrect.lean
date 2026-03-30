@@ -739,6 +739,198 @@ private theorem convertOptExpr_state_determined (oe : Option Core.Expr)
   decreasing_by all_goals simp_all <;> omega
 end
 
+/-! ### State monotonicity: convertExpr only increments nextId and appends to funcs -/
+
+mutual
+theorem convertExpr_state_mono (e : Core.Expr)
+    (scope : List String) (envVar : String) (envMap : Flat.EnvMapping) (st : Flat.CCState) :
+    st.nextId ≤ (Flat.convertExpr e scope envVar envMap st).snd.nextId ∧
+    st.funcs.size ≤ (Flat.convertExpr e scope envVar envMap st).snd.funcs.size := by
+  cases e with
+  | lit v => simp [Flat.convertExpr]
+  | var n => simp only [Flat.convertExpr]; cases Flat.lookupEnv envMap n <;> simp
+  | this => simp [Flat.convertExpr]
+  | «break» l => simp [Flat.convertExpr]
+  | «continue» l => simp [Flat.convertExpr]
+  | forIn _ _ _ => simp [Flat.convertExpr]
+  | forOf _ _ _ => simp [Flat.convertExpr]
+  | «let» name init body =>
+    simp only [Flat.convertExpr]
+    have hi := convertExpr_state_mono init scope envVar envMap st
+    have hb := convertExpr_state_mono body (name :: scope) envVar envMap
+      (Flat.convertExpr init scope envVar envMap st).snd
+    exact ⟨Nat.le_trans hi.1 hb.1, Nat.le_trans hi.2 hb.2⟩
+  | assign name value =>
+    simp only [Flat.convertExpr]
+    exact convertExpr_state_mono value scope envVar envMap st
+  | «if» cond then_ else_ =>
+    simp only [Flat.convertExpr]
+    have hc := convertExpr_state_mono cond scope envVar envMap st
+    have ht := convertExpr_state_mono then_ scope envVar envMap
+      (Flat.convertExpr cond scope envVar envMap st).snd
+    have he := convertExpr_state_mono else_ scope envVar envMap
+      (Flat.convertExpr then_ scope envVar envMap
+        (Flat.convertExpr cond scope envVar envMap st).snd).snd
+    exact ⟨Nat.le_trans (Nat.le_trans hc.1 ht.1) he.1,
+           Nat.le_trans (Nat.le_trans hc.2 ht.2) he.2⟩
+  | seq a b =>
+    simp only [Flat.convertExpr]
+    have ha := convertExpr_state_mono a scope envVar envMap st
+    have hb := convertExpr_state_mono b scope envVar envMap
+      (Flat.convertExpr a scope envVar envMap st).snd
+    exact ⟨Nat.le_trans ha.1 hb.1, Nat.le_trans ha.2 hb.2⟩
+  | call callee args =>
+    simp only [Flat.convertExpr]
+    have hc := convertExpr_state_mono callee scope envVar envMap st
+    have ha := convertExprList_state_mono args scope envVar envMap
+      (Flat.convertExpr callee scope envVar envMap st).snd
+    exact ⟨Nat.le_trans hc.1 ha.1, Nat.le_trans hc.2 ha.2⟩
+  | newObj callee args =>
+    simp only [Flat.convertExpr]
+    have hc := convertExpr_state_mono callee scope envVar envMap st
+    have ha := convertExprList_state_mono args scope envVar envMap
+      (Flat.convertExpr callee scope envVar envMap st).snd
+    exact ⟨Nat.le_trans hc.1 ha.1, Nat.le_trans hc.2 ha.2⟩
+  | getProp obj prop =>
+    simp only [Flat.convertExpr]
+    exact convertExpr_state_mono obj scope envVar envMap st
+  | setProp obj prop value =>
+    simp only [Flat.convertExpr]
+    have ho := convertExpr_state_mono obj scope envVar envMap st
+    have hv := convertExpr_state_mono value scope envVar envMap
+      (Flat.convertExpr obj scope envVar envMap st).snd
+    exact ⟨Nat.le_trans ho.1 hv.1, Nat.le_trans ho.2 hv.2⟩
+  | getIndex obj idx =>
+    simp only [Flat.convertExpr]
+    have ho := convertExpr_state_mono obj scope envVar envMap st
+    have hi := convertExpr_state_mono idx scope envVar envMap
+      (Flat.convertExpr obj scope envVar envMap st).snd
+    exact ⟨Nat.le_trans ho.1 hi.1, Nat.le_trans ho.2 hi.2⟩
+  | setIndex obj idx value =>
+    simp only [Flat.convertExpr]
+    have ho := convertExpr_state_mono obj scope envVar envMap st
+    have hi := convertExpr_state_mono idx scope envVar envMap
+      (Flat.convertExpr obj scope envVar envMap st).snd
+    have hv := convertExpr_state_mono value scope envVar envMap
+      (Flat.convertExpr idx scope envVar envMap
+        (Flat.convertExpr obj scope envVar envMap st).snd).snd
+    exact ⟨Nat.le_trans (Nat.le_trans ho.1 hi.1) hv.1,
+           Nat.le_trans (Nat.le_trans ho.2 hi.2) hv.2⟩
+  | deleteProp obj prop =>
+    simp only [Flat.convertExpr]
+    exact convertExpr_state_mono obj scope envVar envMap st
+  | typeof arg =>
+    simp only [Flat.convertExpr]
+    exact convertExpr_state_mono arg scope envVar envMap st
+  | unary op arg =>
+    simp only [Flat.convertExpr]
+    exact convertExpr_state_mono arg scope envVar envMap st
+  | binary op lhs rhs =>
+    simp only [Flat.convertExpr]
+    have hl := convertExpr_state_mono lhs scope envVar envMap st
+    have hr := convertExpr_state_mono rhs scope envVar envMap
+      (Flat.convertExpr lhs scope envVar envMap st).snd
+    exact ⟨Nat.le_trans hl.1 hr.1, Nat.le_trans hl.2 hr.2⟩
+  | objectLit props =>
+    simp only [Flat.convertExpr]
+    exact convertPropList_state_mono props scope envVar envMap st
+  | arrayLit elems =>
+    simp only [Flat.convertExpr]
+    exact convertExprList_state_mono elems scope envVar envMap st
+  | functionDef fname params body _isAsync _isGenerator =>
+    unfold Flat.convertExpr
+    simp only [Flat.CCState.freshVar, Flat.CCState.addFunc]
+    have ih := convertExpr_state_mono body params
+      (toString "__env" ++ toString "_" ++ toString st.nextId)
+      (Flat.indexedMap
+        (Flat.dedupStrings
+          (match fname with
+          | some n => List.filter (fun x => x != n) (List.filter (fun v => !List.elem v params) (Flat.freeVars body))
+          | none => List.filter (fun v => !List.elem v params) (Flat.freeVars body)) []) 0)
+      { st with nextId := st.nextId + 1 }
+    constructor
+    · exact Nat.le_trans (Nat.le_succ _) ih.1
+    · show st.funcs.size ≤ Array.size (Array.push _ _)
+      simp only [Array.size_push]
+      exact Nat.le_trans ih.2 (Nat.le_succ _)
+  | throw arg =>
+    simp only [Flat.convertExpr]
+    exact convertExpr_state_mono arg scope envVar envMap st
+  | tryCatch body catchParam catchBody finally_ =>
+    simp only [Flat.convertExpr]
+    have hb := convertExpr_state_mono body scope envVar envMap st
+    have hc := convertExpr_state_mono catchBody (catchParam :: scope) envVar envMap
+      (Flat.convertExpr body scope envVar envMap st).snd
+    have hf := convertOptExpr_state_mono finally_ scope envVar envMap
+      (Flat.convertExpr catchBody (catchParam :: scope) envVar envMap
+        (Flat.convertExpr body scope envVar envMap st).snd).snd
+    exact ⟨Nat.le_trans (Nat.le_trans hb.1 hc.1) hf.1,
+           Nat.le_trans (Nat.le_trans hb.2 hc.2) hf.2⟩
+  | while_ cond body =>
+    simp only [Flat.convertExpr]
+    have hc := convertExpr_state_mono cond scope envVar envMap st
+    have hb := convertExpr_state_mono body scope envVar envMap
+      (Flat.convertExpr cond scope envVar envMap st).snd
+    exact ⟨Nat.le_trans hc.1 hb.1, Nat.le_trans hc.2 hb.2⟩
+  | «return» arg =>
+    simp only [Flat.convertExpr]
+    exact convertOptExpr_state_mono arg scope envVar envMap st
+  | labeled label body =>
+    simp only [Flat.convertExpr]
+    exact convertExpr_state_mono body scope envVar envMap st
+  | yield arg delegate =>
+    simp only [Flat.convertExpr]
+    exact convertOptExpr_state_mono arg scope envVar envMap st
+  | await arg =>
+    simp only [Flat.convertExpr]
+    exact convertExpr_state_mono arg scope envVar envMap st
+  termination_by sizeOf e
+  decreasing_by all_goals (try cases ‹Option Core.Expr›) <;> simp_wf <;> omega
+
+theorem convertExprList_state_mono (es : List Core.Expr)
+    (scope : List String) (envVar : String) (envMap : Flat.EnvMapping) (st : Flat.CCState) :
+    st.nextId ≤ (Flat.convertExprList es scope envVar envMap st).snd.nextId ∧
+    st.funcs.size ≤ (Flat.convertExprList es scope envVar envMap st).snd.funcs.size := by
+  cases es with
+  | nil => simp [Flat.convertExprList]
+  | cons e rest =>
+    simp only [Flat.convertExprList]
+    have he := convertExpr_state_mono e scope envVar envMap st
+    have hr := convertExprList_state_mono rest scope envVar envMap
+      (Flat.convertExpr e scope envVar envMap st).snd
+    exact ⟨Nat.le_trans he.1 hr.1, Nat.le_trans he.2 hr.2⟩
+  termination_by sizeOf es
+  decreasing_by all_goals (try simp_wf) <;> omega
+
+theorem convertPropList_state_mono (ps : List (Core.PropName × Core.Expr))
+    (scope : List String) (envVar : String) (envMap : Flat.EnvMapping) (st : Flat.CCState) :
+    st.nextId ≤ (Flat.convertPropList ps scope envVar envMap st).snd.nextId ∧
+    st.funcs.size ≤ (Flat.convertPropList ps scope envVar envMap st).snd.funcs.size := by
+  cases ps with
+  | nil => simp [Flat.convertPropList]
+  | cons p rest =>
+    obtain ⟨pn, pe⟩ := p
+    simp only [Flat.convertPropList]
+    have he := convertExpr_state_mono pe scope envVar envMap st
+    have hr := convertPropList_state_mono rest scope envVar envMap
+      (Flat.convertExpr pe scope envVar envMap st).snd
+    exact ⟨Nat.le_trans he.1 hr.1, Nat.le_trans he.2 hr.2⟩
+  termination_by sizeOf ps
+  decreasing_by all_goals (try simp_wf) <;> omega
+
+theorem convertOptExpr_state_mono (oe : Option Core.Expr)
+    (scope : List String) (envVar : String) (envMap : Flat.EnvMapping) (st : Flat.CCState) :
+    st.nextId ≤ (Flat.convertOptExpr oe scope envVar envMap st).snd.nextId ∧
+    st.funcs.size ≤ (Flat.convertOptExpr oe scope envVar envMap st).snd.funcs.size := by
+  cases oe with
+  | none => simp [Flat.convertOptExpr]
+  | some e =>
+    simp only [Flat.convertOptExpr]
+    exact convertExpr_state_mono e scope envVar envMap st
+  termination_by sizeOf oe
+  decreasing_by all_goals simp_all <;> omega
+end
+
 mutual
 /-- Returns true if the expression never uses "__call_frame_return__" as a tryCatch catchParam.
     Source programs from `elaborate` satisfy this predicate since "__call_frame_return__" is only
