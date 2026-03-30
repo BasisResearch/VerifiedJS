@@ -1,4 +1,4 @@
-# jsspec — Close non-hnoerr CC sorries + stage Core Fix D
+# jsspec — Close ExprAddrWF + convertExpr_not_lit + CCState threading
 
 ## RULES
 - **DO NOT** run `lake build VerifiedJS` (full build). OOMs.
@@ -10,62 +10,71 @@
 ## MEMORY: 7.7GB total, NO swap.
 
 ## HNOERR SORRIES: BLOCKED — DO NOT ATTEMPT
-Your 17:00 analysis was CORRECT. The hnoerr sorries require a design-level fix:
-adding Fix D error propagation to Core.step? so both Core and Flat produce the
-same state (.lit .undefined) on error events. Until Core Fix D is implemented,
-ALL 22 hnoerr/hev_noerr sorries are unprovable. DO NOT waste time on them.
+All 22 hnoerr/hev_noerr sorries need Core Fix D. Skip them entirely.
 
-## STATUS (18:05 Mar 30)
-- CC: 44 sorries. 22 are hnoerr (BLOCKED). 2 are forIn/forOf (unprovable). **20 are closable.**
+## STATUS (19:05 Mar 30)
+- CC: 44 sorries. 22 hnoerr (BLOCKED), 2 forIn/forOf (unprovable), **20 closable.**
+- Delta since 18:05: 0. No CC sorries closed in your current run.
 
-## YOUR TASK: Close non-hnoerr sorries
+## YOUR TASK: Close concrete non-hnoerr sorries. Target: ≥3.
 
-### TARGET 1: ExprAddrWF propagation (L5069, L5168)
+### TARGET 1: ExprAddrWF propagation (L5181, L5280) — HIGHEST PRIORITY
 
-L5069: `ExprAddrWF (.objectLit _)` doesn't propagate to elements.
-L5168: `ExprAddrWF (.arrayLit _)` doesn't propagate to elements.
+L5181: `ExprAddrWF (.objectLit _)` needs to propagate to prop elements.
+L5280: `ExprAddrWF (.arrayLit _)` needs to propagate to list elements.
 
-These need helper lemmas. Check how `ExprAddrWF` is defined:
+Steps:
+1. Use `lean_hover_info` on `ExprAddrWF` to see its full definition
+2. If `ExprAddrWF (.objectLit ps) = ∀ p ∈ ps, ExprAddrWF p.2` or similar, write helper:
+   ```lean
+   theorem ExprAddrWF_objectLit_elem (ps : List (String × Flat.Expr)) (p : String × Flat.Expr)
+       (h : ExprAddrWF (.objectLit ps)) (hp : p ∈ ps) : ExprAddrWF p.2
+   ```
+3. Use `lean_multi_attempt` at L5181 with:
+   ```
+   ["simp [ExprAddrWF] at hexprwf ⊢",
+    "exact ExprAddrWF_of_objectLit hexprwf",
+    "unfold ExprAddrWF at hexprwf; exact hexprwf"]
+   ```
+4. Same pattern for L5280 with arrayLit.
+
+### TARGET 2: convertExpr_not_lit (L3010, L3120)
+
+These need `convertExpr_not_lit` for stub constructors. The comment says "Proved in staging".
+
+1. Check `.lake/_tmp_fix/cc_objectLit_arrayLit_helpers.lean` for the staged proof
+2. If it compiles, port the proof directly into ClosureConvertCorrect.lean
+3. Try `lean_multi_attempt` at L3010 with:
+   ```
+   ["simp [Flat.convertExpr]",
+    "unfold Flat.convertExpr; simp",
+    "intro h; exact absurd h (by simp [Flat.convertExpr])"]
+   ```
+
+### TARGET 3: CCState threading (L3534, L3556, L5228, L5532)
+
+L3534: `sorry` in if-then branch — CCState threading between then/else conversions.
+L3556: Two `sorry` in if — same class.
+L5228: convertPropList over concatenated lists.
+L5532: while_ lowering duplicates sub-expressions.
+
+For L3534/L3556: The key property is `CCState` monotonicity:
 ```lean
--- ExprAddrWF is probably: all heap addresses in the expression are < heap.objects.size
--- For objectLit: ExprAddrWF (.objectLit ps) n = ... (likely always true or propagates to elements)
+-- If convertExpr produces (e1, st1) and then convertExpr with st1 produces (e2, st2),
+-- then CCStateAgree st1 st2 and properties proved about st1 still hold at st2
 ```
 
-Use `lean_hover_info` on `ExprAddrWF` to see its definition. Then check if `simp [ExprAddrWF]` at the sorry site works, or if you need to write a `ExprAddrPropListWF_of_ExprAddrWF_objectLit` lemma.
+Use `lean_goal` at each position to see what's actually needed. Often these are just
+`CCStateAgree` transitivity or `CCState_mono` applications.
 
-Try `lean_multi_attempt` at L5069:
-```
-["simp [ExprAddrWF] at hexprwf ⊢; exact hexprwf",
- "exact ExprAddrWF_mono target_c (by simp [ExprAddrWF] at hexprwf; exact hexprwf) (by omega)",
- "simp [ExprAddrWF] at hexprwf; exact hexprwf"]
-```
+### TARGET 4: value sub-cases (L4065, L5136, L5235)
 
-### TARGET 2: convertExpr_not_lit (L2898, L3008)
+L4065: `.call callee args` where callee is a value — need to show arg stepping or call execution.
+L5136: `.objectLit props` where all props are values — heap allocation proof.
+L5235: `.arrayLit elems` where all elems are values — same as objectLit.
 
-These need `convertExpr_not_lit` for stub constructors. Check if `convertExpr_not_value_supported`
-(defined at L1377) can close them, since the expression is a non-value supported expression.
-
-Try `lean_multi_attempt` at L2898 and L3008.
-
-### TARGET 3: CCState threading (L3422, L3444, L5116, L5420)
-
-These are about CCState agreement when convertExpr is called on different sub-expressions.
-The key property: CCState monotonically increases, and `CCStateAgree` is transitive.
-
-L5116: `convertPropList` over concatenated lists. Need to show:
-```lean
-CCStateAgree (convertPropList (done ++ [target_changed] ++ rest) ...).snd st_a'
-```
-Try decomposing with `convertPropList_append` and `convertPropList_append_snd`.
-
-### TARGET 4: Stage Core Fix D (LOWER PRIORITY)
-
-Create `.lake/_tmp_fix/Core_fix_d_plan.lean` with:
-1. List of all 28 positions in Core/Semantics.lean that need error propagation
-2. For each position, the exact code change (add `.error msg` match arm)
-3. List of new Core_step?_*_error theorems needed in CC
-
-This staging file will guide the full Fix D implementation in a future run.
+For L5136/L5235: When all elements are values, both Core and Flat do a single heap allocation.
+The sim-rel needs: allocated addresses match and heap contents agree.
 
 ## DO NOT TOUCH:
 - ANFConvertCorrect.lean (proof agent owns this)

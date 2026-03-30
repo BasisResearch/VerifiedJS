@@ -1,4 +1,4 @@
-# proof — Close ANF throw case (L4413)
+# proof — Write Flat.Steps_lift + close throw compound cases
 
 ## RULES
 - Edit: ANFConvertCorrect.lean (primary)
@@ -10,71 +10,80 @@
 
 ## MEMORY: 7.7GB total, NO swap. Kill stale lean procs.
 
-## CURRENT STATE (18:05 Mar 30)
-- ANF: 19 sorries
+## CURRENT STATE (19:05 Mar 30)
+- ANF: 18 sorries
   - 7 depth-induction (L3825-3923) — skip for now
   - 2 consolidated context (L4116, L4327) — skip for now
-  - 10 expression-case (3 throw sub-sorries + 7 others): **YOUR TARGET**
+  - 2 throw remaining (L4452, L4455) — **YOUR TARGET**
+  - 7 expression-case theorems (L4486-L4625) — NEXT TARGET
 
-## YOUR TARGET: Close the throw case (L4413, L4417, L4420)
+## YOUR CRITICAL BLOCKER: Step-lifting through compound contexts
 
-You already decomposed the throw case into 3 sub-sorries. Good. Now close them.
+ALL remaining expression-case sorries share the same blocker: when normalizeExpr sees
+a compound expression like `.seq a b` or `.let name init body`, it processes the first
+sub-expression and wraps the result. The Flat steps for the inner sub-expression need
+to be "lifted" through the outer compound context.
 
-### L4413: Two Flat steps for `.throw (.var name)` → `.throw (.lit v)` → `.lit .undefined`
+### PRIORITY 1: Write a general `Flat.Steps_ctx` lemma
 
-The proof state has:
-- `env : Flat.Env` (from sf)
-- `name : String` (the variable name)
-- `v : Core.Value` such that `env.lookup name = some v` (from `hwf_var` and `hv`)
-- `hv : ANF.Env.lookup env name = some v`
+You need a lemma that says: if `Flat.Steps {s | expr := inner} evs {s' | expr := inner'}`
+(where inner steps to inner'), then for a compound context C (like `.throw _`, `.seq _ b`,
+`.let name _ body`, `.unary op _`), `Flat.Steps {s | expr := C inner} evs {s' | expr := C inner'}`.
 
-You need to construct 2 Flat steps:
-1. Step `.throw (.var name)` with env lookup succeeding:
-   - `exprValue? (.var name) = none` (var is not a value)
-   - `step? { sf | .var name } = some (.silent, { sf | .lit v })` (var resolves)
-   - So `step? { sf | .throw (.var name) } = some (.silent, { sf | .throw (.lit v) })`
+**Pattern**: For each context C, you already have `step?_C_ctx` (written in the 13:30 run):
+- `step?_throw_ctx`, `step?_seq_ctx`, `step?_let_init_ctx`, etc.
 
-2. Step `.throw (.lit v)`:
-   - `exprValue? (.lit v) = some v` (lit is a value)
-   - `step? { sf | .throw (.lit v) } = some (.error (valueToString v), { sf | .lit .undefined })`
-
-Use `Flat.Steps` constructor to combine these 2 steps.
-
-Try `lean_goal` at L4413 first to see the exact goal. Then construct the proof:
+The `Steps_ctx` lemma lifts single-step ctx to multi-step:
 
 ```lean
--- Approach:
--- Step 1: .throw (.var name) →[.silent]→ .throw (.lit v)
-have hstep1 : Flat.step? { sf with expr := .throw (.var name) } =
-    some (.silent, pushTrace { sf with expr := .throw (.lit v) } .silent) := by
-  simp [Flat.step?, Flat.exprValue?, Flat.Env.lookup, hv]
--- Step 2: .throw (.lit v) →[.error ...]→ .lit .undefined
-have hstep2 : Flat.step? (pushTrace { sf with expr := .throw (.lit v) } .silent) =
-    some (.error (Flat.valueToString v), pushTrace { ... } (.error ...)) := by
-  simp [Flat.step?, Flat.exprValue?]
--- Combine:
-exact ⟨[.silent, .error (Flat.valueToString v)], final_state, Flat.Steps.cons hstep1 (Flat.Steps.cons hstep2 Flat.Steps.nil), ...⟩
+private theorem Flat.Steps_throw_ctx
+    (sf : Flat.State) (evs : List Core.TraceEvent) (sf' : Flat.State)
+    (hsteps : Flat.Steps { sf with expr := inner } evs { sf' with expr := inner' })
+    (hnoerr : ∀ ev ∈ evs, ∀ msg, ev ≠ .error msg) :
+    Flat.Steps { sf with expr := .throw inner } evs { sf' with expr := .throw inner' } := by
+  induction hsteps with
+  | refl _ => exact .refl _
+  | tail hstep ih =>
+    -- Use step?_throw_ctx for single step, ih for rest
+    sorry -- Fill in
 ```
 
-The exact details depend on the goal. Use `lean_goal` and `lean_multi_attempt` to refine.
+Write this for `.throw`, `.seq _ b` (left position), `.let name _ body` (init position),
+`.unary op _`, `.return (some _)`, `.yield (some _)`, `.await _`.
 
-### L4417: Non-var trivial case
+### PRIORITY 2: Close L4452 (throw compound cases)
 
-If `arg ≠ .var name` (the trivial is a literal), the throw case should be even simpler:
-- `exprValue? (.lit v) = some v` → one step: `.throw (.lit v)` → `.error ...`
+Once you have `Steps_throw_ctx`, L4452 becomes:
+1. The compound flat_arg (e.g., `.seq a b`) is processed by normalizeExpr
+2. normalizeExpr of compound expressions first evaluates sub-expressions via recursive calls
+3. Each recursive call produces `Flat.Steps` on the sub-expression
+4. `Steps_throw_ctx` lifts these through the `.throw _` wrapper
 
-### L4420: Non-throw outer expression case
+The key insight: normalizeExpr processes compound expressions by first evaluating them to
+a trivial value (using fresh variables). The Flat steps for this evaluation are exactly the
+steps that `normalizeExpr_labeled_step_sim` constructs (it already handles compound expressions).
+So you can REUSE that infrastructure.
 
-This is the fallthrough for when `normalizeExpr` produces `.throw arg` but the original
-expression wasn't directly `.throw`. Use `normalizeExpr_throw_or_k` to determine how the
-throw was introduced. If it came from `k`, then the outer expression was already handled
-by the continuation. If it came from HasThrowInHead, use the has-throw-in-head stepping lemmas.
+Specifically, for `.throw (.seq a b)`:
+- normalizeExpr (.throw (.seq a b)) k = normalizeExpr (.seq a b) (fun t => pure (.throw t))
+- normalizeExpr (.seq a b) k' first steps through a, then b, producing trivial t
+- Then k' t = pure (.throw t), so result is .throw t
+- The Flat steps: step through a, then b (inside .throw context), then throw the result
 
-## PRIORITY ORDER:
-1. L4413 (throw .var name — 2 Flat steps)
-2. L4417 (throw literal — 1 Flat step)
-3. L4420 (indirect throw)
-4. L4451 (return case — same pattern as throw)
+### PRIORITY 3: Close L4455 (HasThrowInHead non-direct)
+
+HasThrowInHead cases: `.seq (.throw _) b`, `.let name (.throw _) body`, etc.
+For these, the throw is in head position of a compound expression:
+- Flat.step? on `.seq (.throw (.lit v)) b` = step? on `.throw (.lit v)` via seq_left
+- So the throw fires through the compound context
+
+Use the existing `step?_seq_error`, `step?_let_init_error` helpers.
+
+### PRIORITY 4: Close normalizeExpr_return_step_sim (L4486)
+
+Same pattern as throw: `.return (some arg)` evaluates arg then fires return.
+The step?_return_some_ctx + Steps lifting handles compound args.
+For none case: `.return none` → Flat steps to `.lit .undefined` with error trace.
 
 ## DO NOT TOUCH:
 - Depth-induction cases (L3825-3923)

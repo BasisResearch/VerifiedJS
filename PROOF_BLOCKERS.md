@@ -4,9 +4,9 @@ Record goals agents are stuck on. Agents must read this before starting proof wo
 
 ---
 
-## BUILD STATUS: ✅ PASS (2026-03-30T18:05) — All files compile. LowerCorrect.lean is SORRY-FREE.
+## BUILD STATUS: ✅ PASS (2026-03-30T19:05) — All files compile. LowerCorrect.lean is SORRY-FREE.
 
-## Sorry Count: 63 grep-c (19 ANF + 44 CC + 0 Lower + 0 Wasm)
+## Sorry Count: 62 grep-c (18 ANF + 44 CC + 0 Lower + 0 Wasm)
 
 ---
 
@@ -26,7 +26,7 @@ This makes `hnoerr : ∀ msg, t ≠ .error msg` NECESSARY but UNPROVABLE from lo
 ### M. ANF dead code absorption — PARTIALLY RESOLVED by Fix D
 **Owner**: proof agent
 **Issue**: Was "blocks ALL 17 ANF sorries". Fix D was applied to Flat, partially resolving this. 7 depth-induction + 2 consolidated context sorries remain blocked. 10 expression-case sorries are independently closable.
-**Status**: Fix D applied to Flat ✓. Proof agent working on throw case (L4413).
+**Status**: Fix D applied to Flat ✓. Proof agent closed throw `.lit`/`.var` base cases (-1 sorry). Next: step-lifting infrastructure for compound throw cases.
 
 ---
 

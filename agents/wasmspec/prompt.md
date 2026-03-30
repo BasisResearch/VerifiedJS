@@ -1,4 +1,4 @@
-# wasmspec — Close non-hnoerr CC sorries + begin Core Fix D
+# wasmspec — Close captured-var + functionDef + tryCatch CC sorries
 
 ## RULES
 - **DO NOT** run `lake build VerifiedJS` (full build). OOMs.
@@ -6,77 +6,66 @@
 - Before building: `pkill -f "lean.*\.lean" 2>/dev/null; sleep 5`
 - **NEVER** use `pgrep -f "lake build"` inside a while loop (self-matches the shell)
 - Check builds with: `pgrep -x lake` (not `-f`)
+- **NEVER** use a `while` loop waiting for processes. Use a single `pgrep -x lake` check then proceed.
 
 ## MEMORY: 7.7GB total, NO swap.
 
 ## HNOERR SORRIES: BLOCKED — DO NOT ATTEMPT
-jsspec discovered the root cause: Flat has Fix D error propagation but Core does NOT.
-When a sub-step produces `.error msg`, Flat collapses to `.lit .undefined` but Core
-keeps the wrapper (`.assign name sr.expr`). CC_SimRel breaks.
+All 22 hnoerr/hev_noerr sorries need Core Fix D. Skip them entirely.
 
-**Fix**: Add Fix D to Core.step? (mirror Flat's error propagation). This is a multi-run
-effort. For now, focus on non-hnoerr sorries.
+## STATUS (19:05 Mar 30)
+- CC: 44 sorries. 22 hnoerr (BLOCKED), 2 forIn/forOf (unprovable), **20 closable.**
+- Your last run (14:30) applied hnoerr guards but has been stuck for 4.5 hours. Start fresh.
 
-## STATUS (18:05 Mar 30)
-- CC: 44 sorries. 22 are hnoerr (BLOCKED). 2 forIn/forOf (unprovable). **20 closable.**
+## YOUR TASK: Close non-hnoerr CC sorries. Target: ≥2.
 
-## YOUR TASK: Close non-hnoerr CC sorries
+### TARGET 1: Captured variable case (L3204) — HIGHEST PRIORITY
 
-### TARGET 1: Captured variable case (L3092)
+This is the `| some idx =>` branch: `.var name` where `lookupEnv envMap name = some idx`.
+The converted expression is `.getEnv (.var envVar) idx`.
 
-This is the `| some idx =>` branch of the `.var name` case where `lookupEnv envMap name = some idx`.
-The converted expression is `.getEnv (.var envVar) idx` — a closure environment access.
+Steps:
+1. `lean_goal` at L3204 to see the full proof state
+2. The Core side does: `Core.step? {s | .var name}` → env lookup → value
+3. The Flat side does: `Flat.step? {s | .getEnv (.var envVar) idx}` → gets closure env array from heap → gets element at idx
+4. CC_SimRel relates: `envMap name = some idx` means `heap[closureEnvAddr][idx] = env[name]`
+5. Use `lean_local_search "getEnv"` and `lean_local_search "EnvCorr"` to find relevant lemmas
 
-Use `lean_goal` at L3092 to see the full context. The proof needs:
-1. Show Flat.step? on `.getEnv (.var envVar) idx` corresponds to Core.step? on `.var name`
-2. Use `EnvCorrInj` to relate the env lookup results
-3. HeapInj to relate heap accesses (closure env is stored on heap)
+### TARGET 2: functionDef (L5410) — MEDIUM PRIORITY
 
-This might need a helper theorem about `getEnv` stepping. Check with `lean_local_search "getEnv"`.
+`| functionDef fname params body isAsync isGen => sorry`
 
-### TARGET 2: Value sub-cases (L3953, L4699, L5024, L5123)
+1. `lean_goal` at L5410
+2. Core.step? on functionDef creates a closure and binds it to fname
+3. Flat.step? on the converted expression does the same with the converted body
+4. CC_SimRel must hold: converted closure body relates to original, env extended
 
-L3953: `.call callee args` where callee is a value — arg stepping or call execution.
-L4699: `.setProp obj prop value` where obj is a value — value sub-case.
-L5024: `.objectLit props` where all props are values — heap allocation.
-L5123: `.arrayLit elems` where all elems are values — heap allocation.
+### TARGET 3: tryCatch (L5501) — MEDIUM PRIORITY
 
-For L5024 and L5123 (all values): these produce a heap allocation. The Core side does
-`.objectLit props` → evaluates all props → allocates. The Flat side should do the same.
-Use `lean_goal` to see what's needed, then construct the Core step.
+`| tryCatch body catchParam catchBody finally_ => sorry`
 
-### TARGET 3: Begin Core Fix D implementation
+1. `lean_goal` at L5501
+2. This is an expression-level case — tryCatch sets up a handler
+3. Core.step? enters the try body; Flat.step? enters the converted try body
+4. CC_SimRel must show converted body relates to original
 
-Create `.lake/_tmp_fix/Core_semantics_fix_d.lean` as a staging file with:
+### TARGET 4: newObj (L4066) — LOWER PRIORITY
 
-For EACH of the 28 `match step? { s with expr := sub }` positions in Core/Semantics.lean,
-add an error propagation arm:
-```lean
--- BEFORE (current):
-match step? { s with expr := sub } with
-| some (t, sa) =>
-    some (t, pushTrace { sa with expr := wrapper sa.expr, trace := s.trace } t)
-| none => none
+`| newObj f args => sorry`
 
--- AFTER (with Fix D):
-match step? { s with expr := sub } with
-| some (.error msg, sa) =>
-    some (.error msg, pushTrace { s with expr := .lit .undefined, env := sa.env, heap := sa.heap } (.error msg))
-| some (t, sa) =>
-    some (t, pushTrace { sa with expr := wrapper sa.expr, trace := s.trace } t)
-| none => none
-```
+1. `lean_goal` at L4066
+2. Similar to call — evaluate f and args, create new object
 
-Write this as a DIFF file showing each change. Include line numbers from Core/Semantics.lean.
-Also list the Core_step?_*_error theorems that will be needed in CC (analogous to the
-Flat_step?_*_error theorems you already wrote).
+### TARGET 5: Begin Core Fix D staging (LOWEST PRIORITY, only if other targets closed)
 
-**IMPORTANT**: Do NOT edit Core/Semantics.lean directly yet. Just stage the changes.
-Editing would break the build until CC is also updated.
+If you close ≥2 sorries above, create `.lake/_tmp_fix/Core_fix_d_plan.md` documenting:
+- Each position in Core/Semantics.lean that needs `.error msg` match arm
+- The exact code change per position
+- List of Core_step?_*_error companion theorems needed
 
 ## DO NOT TOUCH:
 - ANFConvertCorrect.lean (proof agent owns this)
-- hnoerr/hev_noerr sorries (BLOCKED until Core Fix D)
+- hnoerr/hev_noerr sorries (BLOCKED)
 - forIn/forOf stubs (unprovable)
 
 ## VERIFICATION

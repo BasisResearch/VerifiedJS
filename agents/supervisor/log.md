@@ -6322,3 +6322,48 @@ Current (61 grep) ──┤─ wasmspec (16:15): close 10 hnoerr + easy sorries 
 
 ## Run: 2026-03-30T19:05:01+00:00
 
+
+---
+
+## Run: 2026-03-30T19:05:01+00:00
+
+### Metrics
+- **Sorry count (grep-c)**: ANF 18 + CC 44 + Lower 0 = 62 grep hits
+- **Delta from last run (18:05)**: ANF 19→18 (-1), CC 44→44 (0). NET -1.
+- **WHY DOWN**: Proof agent closed throw `.lit` and `.var` base cases in normalizeExpr_throw_step_sim. Remaining throw sorries (L4452 compound, L4455 HasThrowInHead) need step-lifting infrastructure.
+- **BUILD**: 3 lake serve instances. 3.3GB free RAM. Healthy.
+- **LowerCorrect**: 0 sorries ✓
+
+### Agent Analysis
+1. **proof**: Completed 17:30 run at 18:37. Closed 1 sorry (throw var case). NOT RUNNING — prompt rewritten with step-lifting infrastructure as Priority 1. Next run will write `Flat.Steps_throw_ctx` etc.
+2. **jsspec**: Running since 18:00 (1 hour). No CC sorries closed yet. Still running — give it time. Prompt rewritten: ExprAddrWF (L5181/5280) as top target.
+3. **wasmspec**: STUCK since 14:30 (4.5 hours). Process sleeping. Cannot kill (different user). Lake serve still running. Prompt rewritten: captured-var (L3204) as top target. Fresh run needs to start; current process blocking new runs.
+
+### Sorry breakdown
+**ANF (18):**
+- 7 depth-induction (L3825-3923): needs k generalization in normalizeExpr_labeled_step_sim
+- 2 consolidated context (L4116, L4327): needs multi-step restructure
+- 2 throw remaining (L4452 compound, L4455 HasThrowInHead): needs Steps_ctx infrastructure
+- 7 expression-case theorems (L4486-L4625): return, await, yield, let, seq, if, tryCatch
+
+**CC (44):** 22 hnoerr (BLOCKED) + 2 forIn/forOf (unprovable) + 20 closable non-hnoerr
+
+### Actions Taken
+1. proof prompt REWRITTEN: Priority 1 = write Flat.Steps_throw_ctx (step-lifting through compound contexts), Priority 2 = close L4452 using it, Priority 3 = L4455 HasThrowInHead, Priority 4 = return_step_sim
+2. jsspec prompt REWRITTEN: Priority 1 = ExprAddrWF propagation (L5181/5280), Priority 2 = convertExpr_not_lit (L3010/3120), Priority 3 = CCState threading
+3. wasmspec prompt REWRITTEN: Priority 1 = captured-var (L3204), Priority 2 = functionDef (L5410), Priority 3 = tryCatch (L5501). Added warning about bash loop patterns.
+4. Attempted to kill stuck wasmspec (PID 2747055) — Operation not permitted.
+
+### Critical Path
+```
+                    ┌─ proof: write Steps_ctx + close throw compound → -2 ANF, unlocks 7 more
+Current (62 sorry) ─┤─ jsspec: close ExprAddrWF + convertExpr_not_lit → -4 CC
+                    └─ wasmspec: close captured-var + functionDef → -2 CC (IF unstuck)
+```
+Target: 62 → ~54
+
+### BLOCKER: wasmspec stuck process
+wasmspec PID 2747055 has been running since 14:30. All subsequent cron slots show "SKIP: already running". The process is sleeping (no CPU). Cannot kill from supervisor user. This blocks ALL new wasmspec runs. Need root intervention or process timeout.
+
+2026-03-30T19:05:01+00:00 DONE
+2026-03-30T19:10:01+00:00 DONE
