@@ -294,7 +294,7 @@ private theorem writeLE?_none_of_size_zero (mem : ByteArray) (addr : Nat) (width
     (value : UInt64) (hsz : mem.size = 0) : writeLE? mem addr width value = none := by
   unfold writeLE? writeLE?.writeLE?_aux
   have h0 : ¬ (addr + 0 < mem.size) := by omega
-  simp [Nat.not_le.mpr hw, h0, hsz]
+  simp [Nat.not_le.mpr hw, hsz]
 
 /-- ByteArray.set! preserves size. -/
 private theorem ByteArray.size_set! (a : ByteArray) (i : Nat) (v : UInt8) :
@@ -2521,7 +2521,7 @@ theorem step?_eq_localGet (s : ExecState) (idx : Nat) (rest : List Instr)
         code := rest
         stack := fr.locals[idx] :: s.stack
         trace := s.trace ++ [.silent] }) := by
-  cases s; simp_all [step?, hlocal, pushTrace]
+  cases s; simp_all [step?, pushTrace]
 
 /-- step? for localGet with no active frame: traps. -/
 theorem step?_eq_localGet_noFrame (s : ExecState) (idx : Nat) (rest : List Instr)
@@ -2555,7 +2555,7 @@ theorem step?_eq_localSet (s : ExecState) (idx : Nat) (rest : List Instr)
         stack := stk
         frames := { fr with locals := fr.locals.set! idx v } :: frs
         trace := s.trace ++ [.silent] }) := by
-  cases s; simp_all [step?, pop1?, hlocal, pushTrace, updateHeadFrame]
+  cases s; simp_all [step?, pop1?, pushTrace, updateHeadFrame]
 
 /-- step? for localSet with empty stack: traps. -/
 theorem step?_eq_localSet_emptyStack (s : ExecState) (idx : Nat) (rest : List Instr)
@@ -2585,7 +2585,7 @@ theorem step?_eq_localSet_oob (s : ExecState) (idx : Nat) (rest : List Instr)
     (hlocal : ¬(idx < fr.locals.size)) :
     step? s = some (.trap s!"unknown local index {idx}",
       { s with code := [], trace := s.trace ++ [.trap s!"unknown local index {idx}"] }) := by
-  cases s; simp_all [step?, pop1?, trapState, pushTrace, hlocal]
+  cases s; simp_all [step?, pop1?, trapState, pushTrace]
 
 /-- Exact step? result for i32.add with hypothesis-form arguments. -/
 theorem step?_eq_i32Add (s : ExecState) (rest : List Instr)

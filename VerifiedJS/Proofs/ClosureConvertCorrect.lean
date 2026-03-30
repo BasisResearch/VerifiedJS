@@ -5436,6 +5436,7 @@ private theorem step?_none_implies_lit_aux :
       next hev =>
         split at h
         next => simp at h
+        next => simp at h
         next hstep =>
           have ⟨v, hv⟩ := ih ⟨a, fenv, fheap, ftrace, ffuncs, fcallStack⟩
             (by simp [Flat.Expr.depth] at hd ⊢; omega) hstep
@@ -5446,6 +5447,7 @@ private theorem step?_none_implies_lit_aux :
       next => simp at h
       next hev =>
         split at h
+        next => simp at h
         next => simp at h
         next hstep =>
           have ⟨v, hv⟩ := ih ⟨init, fenv, fheap, ftrace, ffuncs, fcallStack⟩
