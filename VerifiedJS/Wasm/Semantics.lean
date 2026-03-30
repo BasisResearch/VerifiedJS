@@ -5800,7 +5800,8 @@ theorem irStep?_eq_i32BinOp_total (s : IRExecState) (op : String) (rest : List I
         trace := s.trace ++ [.silent] }) := by
   unfold irStep?; rw [hcode, hstack]
   simp only [irPop2?, irPushTrace]
-  obtain ⟨_, _, _, _⟩ := hnondiv
+  obtain ⟨hnd1, hnd2, hnd3, hnd4⟩ := hnondiv
+  simp only [hnd1, hnd2, hnd3, hnd4]
   exact ⟨_, rfl⟩
 
 /-- i32 add equation lemma. REF: Wasm §4.3.2 -/
@@ -10971,7 +10972,6 @@ theorem step_sim (irmod : IRModule) (wmod : Module) :
                   hemit := hrel.hemit
                   hcode := hrest
                   hstack := by
-                    simp only [pushTrace]
                     apply stack_corr_cons hlen_tail.symm htail
                     first
                       | exact .i32 (lhs + rhs)
@@ -11124,7 +11124,6 @@ theorem step_sim (irmod : IRModule) (wmod : Module) :
                   hemit := hrel.hemit
                   hcode := hrest
                   hstack := by
-                    simp only [pushTrace]
                     exact stack_corr_cons hlen_tail.symm htail (.f64 _)
                   hframes_len := hrel.hframes_len
                   hframes_locals := hrel.hframes_locals
@@ -11219,7 +11218,7 @@ theorem step_sim (irmod : IRModule) (wmod : Module) :
                 refine ⟨_, hw, ?_⟩
                 exact { hemit := hrel.hemit
                         hcode := hrest
-                        hstack := by simp only [pushTrace]; exact stack_corr_cons hlen_tail.symm htail (.i32 _)
+                        hstack := stack_corr_cons hlen_tail.symm htail (.i32 _)
                         hframes_len := hrel.hframes_len
                         hframes_locals := hrel.hframes_locals
                         hframes_vals := hrel.hframes_vals
@@ -11356,7 +11355,7 @@ theorem step_sim (irmod : IRModule) (wmod : Module) :
                 refine ⟨_, hw, ?_⟩
                 exact { hemit := hrel.hemit
                         hcode := hrest
-                        hstack := by simp only [pushTrace]; exact stack_corr_cons hlen_tail.symm htail (.i32 _)
+                        hstack := stack_corr_cons hlen_tail.symm htail (.i32 _)
                         hframes_len := hrel.hframes_len
                         hframes_locals := hrel.hframes_locals
                         hframes_vals := hrel.hframes_vals
@@ -11550,7 +11549,7 @@ theorem step_sim (irmod : IRModule) (wmod : Module) :
                     ?_, ?_, ?_, hrel.hframes_one, hrel.hmodule, hrel.hstore_funcs, hrel.hstore_types⟩⟩
                   · -- Stack correspondence: tails match
                     constructor
-                    · simp [hstk, hs2] at hlen ⊢; omega
+                    · simp [hs2] at hlen ⊢; omega
                     · intro i hi
                       have hstk2 := hrel.hstack
                       rw [hstk, hs2] at hstk2
@@ -11594,7 +11593,7 @@ theorem step_sim (irmod : IRModule) (wmod : Module) :
                       ?_, ?_, ?_, hrel.hframes_one, hrel.hmodule, hrel.hstore_funcs, hrel.hstore_types⟩⟩
                     · -- Stack correspondence: tails match
                       constructor
-                      · simp [hstk, hs2] at hlen ⊢; omega
+                      · simp [hs2] at hlen ⊢; omega
                       · intro i hi
                         have hstk2 := hrel.hstack
                         rw [hstk, hs2] at hstk2
@@ -11728,7 +11727,7 @@ theorem step_sim (irmod : IRModule) (wmod : Module) :
             cases hIsLoop : irLbl.isLoop
             · -- isLoop = false
               have hWLoop : wLbl.isLoop = false := by rw [← hloop_eq]; exact hIsLoop
-              simp only [hIsLoop, hWLoop, ite_false] at hcode_branch hw ⊢
+              simp only [hIsLoop, hWLoop] at hcode_branch hw ⊢
               exact ⟨_, hw,
                 { hemit := hrel.hemit
                   hcode := hcode_branch
@@ -11848,7 +11847,7 @@ theorem step_sim (irmod : IRModule) (wmod : Module) :
                     hhalt_of_structural hrest hrel.hlabels, hrel.hlabel_content,
                     hrel.hframes_one, hrel.hmodule, hrel.hstore_funcs, hrel.hstore_types⟩
                   constructor
-                  · simp [hstk, hs2] at hlen ⊢; omega
+                  · simp [hs2] at hlen ⊢; omega
                   · intro i hi
                     have hstk2 := hrel.hstack
                     rw [hstk, hs2] at hstk2
@@ -11917,13 +11916,13 @@ theorem step_sim (irmod : IRModule) (wmod : Module) :
                     cases hIsLoop : irLbl.isLoop
                     · -- isLoop = false
                       have hWLoop : wLbl.isLoop = false := by rw [← hloop_eq]; exact hIsLoop
-                      simp only [hIsLoop, hWLoop, ite_false] at hcode_branch hw ⊢
+                      simp only [hIsLoop, hWLoop] at hcode_branch hw ⊢
                       exact ⟨_, hw,
                         { hemit := hrel.hemit
                           hcode := hcode_branch
                           hstack := by
                             constructor
-                            · simp [hstk, hs2] at hlen ⊢; omega
+                            · simp [hs2] at hlen ⊢; omega
                             · intro i hi
                               have hstk2 := hrel.hstack
                               rw [hstk, hs2] at hstk2
@@ -11953,7 +11952,7 @@ theorem step_sim (irmod : IRModule) (wmod : Module) :
                           hcode := hcode_branch
                           hstack := by
                             constructor
-                            · simp [hstk, hs2] at hlen ⊢; omega
+                            · simp [hs2] at hlen ⊢; omega
                             · intro i hi
                               have hstk2 := hrel.hstack
                               rw [hstk, hs2] at hstk2
