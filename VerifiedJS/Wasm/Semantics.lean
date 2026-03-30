@@ -6746,8 +6746,10 @@ theorem init (prog : ANF.Program) (irmod : IRModule)
   hframes_one := by simp [irInitialState]
   hcode_no_br := by
     intro _ h; exfalso; unfold irInitialState at h; split at h <;> simp at h
+  hreturn_var_scope := by
+    intro name hexpr; simp [ANF.initialState] at hexpr; exact hscope name hexpr
 
-/-- Step simulation (1:1): if the ANF takes one step, the IR takes a matching step.
+/-- Step simulation (1:N): if the ANF takes one step, the IR takes matching steps.
     Now provable with LowerCodeCorr: case analysis on the ANF expression form
     tells us what the IR code looks like, which determines what irStep? returns.
     Each case is decomposed below; each sub-case may still be sorry'd but the
@@ -6756,8 +6758,12 @@ theorem init (prog : ANF.Program) (irmod : IRModule)
 theorem step_sim (prog : ANF.Program) (irmod : IRModule) :
     ∀ (s1 : ANF.State) (s2 : IRExecState) (t : TraceEvent) (s1' : ANF.State),
     LowerSimRel prog irmod s1 s2 → anfStepMapped s1 = some (t, s1') →
-    ∃ s2', irStep? s2 = some (t, s2') ∧ LowerSimRel prog irmod s1' s2' := by
+    ∃ (s2' : IRExecState) (ir_trace : List TraceEvent),
+      IRSteps s2 ir_trace s2' ∧
+      LowerSimRel prog irmod s1' s2' ∧
+      observableEvents ir_trace = observableEvents [t] := by
   intro s1 s2 t s1' hrel hstep
+  have hstep_orig : anfStepMapped s1 = some (t, s1') := hstep
   simp only [anfStepMapped] at hstep
   split at hstep
   · simp at hstep
@@ -6798,7 +6804,7 @@ theorem step_sim (prog : ANF.Program) (irmod : IRModule) :
         have hir := irStep?_eq_localGet s2 idx [] fr frs irval hcode_eq hfr_eq hlocal_val
         -- The IR produces (.silent, ...), and traceFromCore .silent = .silent
         simp only [traceFromCore]
-        refine ⟨_, hir, ?_⟩
+        refine ⟨_, [.silent], IRSteps_of_irStep? hir, ?_, rfl⟩
         -- Construct new LowerSimRel for the post-step states
         -- ANF: pushTrace { s1 with expr := .trivial (trivialOfValue v) } .silent
         -- IR: { s2 with code := [], stack := irval :: s2.stack, trace := ... }
@@ -6827,6 +6833,7 @@ theorem step_sim (prog : ANF.Program) (irmod : IRModule) :
           hlabels_empty := hrel.hlabels_empty
           hframes_one := hrel.hframes_one
           hcode_no_br := by intro _ h; simp at h
+          hreturn_var_scope := by intro _ h; simp [ANF.pushTrace] at h
         }
     | .trivial .litNull =>
         -- Literal null: ANF.step? returns none for literals, contradiction with heq
@@ -6910,7 +6917,7 @@ theorem step_sim (prog : ANF.Program) (irmod : IRModule) :
           have htrace : traceFromCore (.error "return:undefined") = TraceEvent.silent := by
             native_decide
           rw [htrace]
-          exact ⟨_, hir, {
+          exact ⟨_, [.silent], IRSteps_of_irStep? hir, {
             hlower := hrel.hlower
             hmod := hrel.hmod
             hcode := .value_done .litUndefined (by intro name; exact ANF.Trivial.noConfusion)
@@ -6927,8 +6934,38 @@ theorem step_sim (prog : ANF.Program) (irmod : IRModule) :
             hlabels_empty := rfl
             hframes_one := by simp [hfr]
             hcode_no_br := by intro _ h; simp at h
-          }⟩
-        | some t => sorry
+            hreturn_var_scope := by intro _ h; simp [ANF.pushTrace] at h
+          }, rfl⟩
+        | some triv =>
+            -- return(some triv): IR code = argCode ++ [return_] (2 IR steps)
+            -- Dispatch to dedicated step_sim_return_* theorems
+            cases triv with
+            | litNull =>
+              exact step_sim_return_litNull prog irmod s1 s2 _ s1' hrel hexpr hstep_orig
+            | litNum n =>
+              exact step_sim_return_litNum prog irmod s1 s2 _ s1' n hrel hexpr hstep_orig
+            | litUndefined =>
+              exact step_sim_return_litUndefined prog irmod s1 s2 _ s1' hrel hexpr hstep_orig
+            | litBool b =>
+              cases b with
+              | true => exact step_sim_return_litBoolTrue prog irmod s1 s2 _ s1' hrel hexpr hstep_orig
+              | false => exact step_sim_return_litBoolFalse prog irmod s1 s2 _ s1' hrel hexpr hstep_orig
+            | litStr s =>
+              exact step_sim_return_litStr prog irmod s1 s2 _ s1' s hrel hexpr hstep_orig
+            | litClosure fi ep =>
+              exact step_sim_return_litClosure prog irmod s1 s2 _ s1' fi ep hrel hexpr hstep_orig
+            | litObject addr =>
+              -- Strengthened TrivialCodeCorr.lit_object ensures s.toNat? = some addr
+              obtain ⟨argCode, hcode_eq, htcc⟩ := hc.return_some_inv
+              cases htcc with | lit_object _ s_str hs_parse =>
+              simp only [List.cons_append, List.nil_append] at hcode_eq
+              exact step_sim_return_litObject prog irmod s1 s2 _ s1' addr s_str addr
+                hrel hexpr hstep_orig hcode_eq hs_parse
+            | var name =>
+              -- hreturn_var_scope ensures the variable is in scope
+              have ⟨v, hlookup⟩ := hrel.hreturn_var_scope name hexpr
+              exact step_sim_return_var prog irmod s1 s2 _ s1' name
+                hrel hexpr ⟨v, hlookup⟩ hstep_orig
     | .yield arg delegate =>
         -- Yield: ANF produces value
         sorry
@@ -7025,6 +7062,7 @@ theorem step_sim_return_litNull (prog : ANF.Program) (irmod : IRModule)
     hlabels_empty := rfl
     hframes_one := by simp [hfr]
     hcode_no_br := by intro _ h; simp at h
+    hreturn_var_scope := by intro _ h; simp [ANF.pushTrace] at h
   }
 
 /-- Stuttering step simulation for `return (some (.litNum n))`:
@@ -7087,6 +7125,7 @@ theorem step_sim_return_litNum (prog : ANF.Program) (irmod : IRModule)
     hlabels_empty := rfl
     hframes_one := by simp [hfr]
     hcode_no_br := by intro _ h; simp at h
+    hreturn_var_scope := by intro _ h; simp [ANF.pushTrace] at h
   }
 
 /-- Stuttering step simulation for `return (some (.var name))`:
@@ -7098,7 +7137,6 @@ theorem step_sim_return_var (prog : ANF.Program) (irmod : IRModule)
     (hrel : LowerSimRel prog irmod s1 s2)
     (hexpr : s1.expr = .return (some (.var name)))
     (hvar_exists : ∃ v, s1.env.lookup name = some v)
-    (hne_console : name ≠ "console")
     (hstep : anfStepMapped s1 = some (t, s1')) :
     ∃ (s2' : IRExecState) (ir_trace : List TraceEvent),
       IRSteps s2 ir_trace s2' ∧
@@ -7161,6 +7199,7 @@ theorem step_sim_return_var (prog : ANF.Program) (irmod : IRModule)
     hlabels_empty := rfl
     hframes_one := by simp [hfr]
     hcode_no_br := by intro _ h; simp at h
+    hreturn_var_scope := by intro _ h; simp [ANF.pushTrace] at h
   }
 
 /-- Stuttering step simulation for `return (some .litUndefined)`:
@@ -7223,6 +7262,7 @@ theorem step_sim_return_litUndefined (prog : ANF.Program) (irmod : IRModule)
     hlabels_empty := rfl
     hframes_one := by simp [hfr]
     hcode_no_br := by intro _ h; simp at h
+    hreturn_var_scope := by intro _ h; simp [ANF.pushTrace] at h
   }
 
 /-- Stuttering step simulation for `return (some (.litBool true))`:
@@ -7284,6 +7324,7 @@ theorem step_sim_return_litBoolTrue (prog : ANF.Program) (irmod : IRModule)
     hlabels_empty := rfl
     hframes_one := by simp [hfr]
     hcode_no_br := by intro _ h; simp at h
+    hreturn_var_scope := by intro _ h; simp [ANF.pushTrace] at h
   }
 
 /-- Stuttering step simulation for `return (some (.litBool false))`:
@@ -7345,6 +7386,7 @@ theorem step_sim_return_litBoolFalse (prog : ANF.Program) (irmod : IRModule)
     hlabels_empty := rfl
     hframes_one := by simp [hfr]
     hcode_no_br := by intro _ h; simp at h
+    hreturn_var_scope := by intro _ h; simp [ANF.pushTrace] at h
   }
 
 /-- Stuttering step simulation for `return (some (.litObject addr))`:
@@ -7404,6 +7446,7 @@ theorem step_sim_return_litObject (prog : ANF.Program) (irmod : IRModule)
     hlabels_empty := rfl
     hframes_one := by simp [hfr]
     hcode_no_br := by intro _ h; simp at h
+    hreturn_var_scope := by intro _ h; simp [ANF.pushTrace] at h
   }
 
 /-- Stuttering step simulation for `return (some (.litStr s))`:
@@ -7466,6 +7509,7 @@ theorem step_sim_return_litStr (prog : ANF.Program) (irmod : IRModule)
     hlabels_empty := rfl
     hframes_one := by simp [hfr]
     hcode_no_br := by intro _ h; simp at h
+    hreturn_var_scope := by intro _ h; simp [ANF.pushTrace] at h
   }
 
 /-- Stuttering step simulation for `return (some (.litClosure fi ep))`:
@@ -7528,6 +7572,7 @@ theorem step_sim_return_litClosure (prog : ANF.Program) (irmod : IRModule)
     hlabels_empty := rfl
     hframes_one := by simp [hfr]
     hcode_no_br := by intro _ h; simp at h
+    hreturn_var_scope := by intro _ h; simp [ANF.pushTrace] at h
   }
 
 /-- Step simulation (stuttering): if the ANF takes one step, the IR takes
@@ -7543,51 +7588,8 @@ theorem step_sim_stutter (prog : ANF.Program) (irmod : IRModule) :
       IRSteps s2 ir_trace s2' ∧
       LowerSimRel prog irmod s1' s2' ∧
       observableEvents ir_trace = observableEvents [t] := by
-  intro s1 s2 t s1' hrel hstep
-  -- Case analysis on ANF expression to handle 1:N cases directly
-  match hexpr : s1.expr with
-  | .«return» (some triv) =>
-    -- 1:N case: IR takes 2 steps (argCode ++ [return_])
-    cases triv with
-    | litNull =>
-      exact step_sim_return_litNull prog irmod s1 s2 t s1' hrel hexpr hstep
-    | litNum n =>
-      exact step_sim_return_litNum prog irmod s1 s2 t s1' n hrel hexpr hstep
-    | var name =>
-      match hlookup : s1.env.lookup name with
-      | some v =>
-        by_cases hne : name = "console"
-        · subst hne
-          obtain ⟨s2', h1, h2⟩ := step_sim prog irmod s1 s2 t s1' hrel hstep
-          exact ⟨s2', [t], .tail (.mk h1) (.refl _), h2, rfl⟩
-        · exact step_sim_return_var prog irmod s1 s2 t s1' name hrel hexpr ⟨v, hlookup⟩ hne hstep
-      | none =>
-        obtain ⟨s2', h1, h2⟩ := step_sim prog irmod s1 s2 t s1' hrel hstep
-        exact ⟨s2', [t], .tail (.mk h1) (.refl _), h2, rfl⟩
-    | litUndefined =>
-      exact step_sim_return_litUndefined prog irmod s1 s2 t s1' hrel hexpr hstep
-    | litBool b =>
-      cases b with
-      | true => exact step_sim_return_litBoolTrue prog irmod s1 s2 t s1' hrel hexpr hstep
-      | false => exact step_sim_return_litBoolFalse prog irmod s1 s2 t s1' hrel hexpr hstep
-    | litStr s =>
-      exact step_sim_return_litStr prog irmod s1 s2 t s1' s hrel hexpr hstep
-    | litObject addr =>
-      have hc := hrel.hcode; rw [hexpr] at hc
-      obtain ⟨argCode, hcode_eq, htcc⟩ := hc.return_some_inv
-      cases htcc with | lit_object _ s_str =>
-      simp only [List.cons_append, List.nil_append] at hcode_eq
-      match hs : s_str.toNat? with
-      | some n => exact step_sim_return_litObject prog irmod s1 s2 t s1' addr s_str n hrel hexpr hstep hcode_eq hs
-      | none =>
-        obtain ⟨s2', h1, h2⟩ := step_sim prog irmod s1 s2 t s1' hrel hstep
-        exact ⟨s2', [t], .tail (.mk h1) (.refl _), h2, rfl⟩
-    | litClosure fi ep =>
-      exact step_sim_return_litClosure prog irmod s1 s2 t s1' fi ep hrel hexpr hstep
-  | _ =>
-    -- All other cases: delegate to step_sim (1:1)
-    obtain ⟨s2', h1, h2⟩ := step_sim prog irmod s1 s2 t s1' hrel hstep
-    exact ⟨s2', [t], .tail (.mk h1) (.refl _), h2, rfl⟩
+  -- step_sim now handles all cases (including return(some)) directly.
+  exact step_sim prog irmod s1 s2 t s1' hrel hstep
 
 /-- Halt simulation: if ANF halts, the IR halts.
     SORRY: When ANF.step? returns none, the ANF expression is a literal trivial
@@ -12147,10 +12149,10 @@ theorem ir_forward_sim (prog : ANF.Program) (irmod : IRModule)
     (hlower : Wasm.lower prog = .ok irmod) :
     ∃ (R : ANF.State → IRExecState → Prop),
       R (ANF.initialState prog) (irInitialState irmod) ∧
-      IRForwardSim R anfStepMapped := by
+      IRStutterSim R anfStepMapped := by
   refine ⟨LowerSimRel prog irmod, ?_, ?_⟩
-  · -- BLOCKED: requires LowerCodeCorr for initial program (needs lowerExpr public)
-    exact LowerSimRel.init prog irmod hlower (lower_main_code_corr prog irmod hlower)
+  · exact LowerSimRel.init prog irmod hlower (lower_main_code_corr prog irmod hlower)
+      (lower_main_var_scope prog irmod hlower)
   · exact {
       step_sim := LowerSimRel.step_sim prog irmod
       halt_sim := LowerSimRel.halt_sim prog irmod
@@ -12164,24 +12166,23 @@ theorem ir_stutter_sim (prog : ANF.Program) (irmod : IRModule)
       R (ANF.initialState prog) (irInitialState irmod) ∧
       IRStutterSim R anfStepMapped := by
   refine ⟨LowerSimRel prog irmod, ?_, ?_⟩
-  · -- BLOCKED: requires LowerCodeCorr for initial program (needs lowerExpr public)
-    exact LowerSimRel.init prog irmod hlower (lower_main_code_corr prog irmod hlower)
+  · exact LowerSimRel.init prog irmod hlower (lower_main_code_corr prog irmod hlower)
+      (lower_main_var_scope prog irmod hlower)
   · exact {
       step_sim := LowerSimRel.step_sim_stutter prog irmod
       halt_sim := LowerSimRel.halt_sim prog irmod
     }
 
-/-- 1:1 version: lower_behavioral_correct using IRForwardSim (for LowerCorrect.lean). -/
+/-- Stuttering version: lower_behavioral_correct using IRStutterSim. -/
 theorem lower_behavioral_correct' (prog : ANF.Program) (irmod : IRModule)
     (hlower : Wasm.lower prog = .ok irmod) :
     ∀ trace, ANF.Behaves prog trace →
-      IRBehaves irmod (traceListFromCore trace) := by
-  intro trace hBeh
-  obtain ⟨R, hR_init, sim⟩ := ir_forward_sim prog irmod hlower
-  have hDet := DetBehaves_of_ANFBehaves hBeh
-  have hIR := IRForwardSim_behavioral sim hR_init hDet
-  simp only [traceListFromCore_eq_map]
-  exact hIR
+      IRBehavesObs irmod (observableEvents (traceListFromCore trace)) := by
+  exact lower_behavioral_obs prog irmod hlower
+    (LowerSimRel.init prog irmod hlower (lower_main_code_corr prog irmod hlower)
+      (lower_main_var_scope prog irmod hlower))
+    { step_sim := LowerSimRel.step_sim prog irmod
+      halt_sim := LowerSimRel.halt_sim prog irmod }
 
 /-- Stuttering version: lower_behavioral_correct using observable events. -/
 theorem lower_behavioral_obs_correct (prog : ANF.Program) (irmod : IRModule)
@@ -12189,7 +12190,8 @@ theorem lower_behavioral_obs_correct (prog : ANF.Program) (irmod : IRModule)
     ∀ trace, ANF.Behaves prog trace →
       IRBehavesObs irmod (observableEvents (traceListFromCore trace)) := by
   exact lower_behavioral_obs prog irmod hlower
-    (LowerSimRel.init prog irmod hlower (lower_main_code_corr prog irmod hlower))
+    (LowerSimRel.init prog irmod hlower (lower_main_code_corr prog irmod hlower)
+      (lower_main_var_scope prog irmod hlower))
     { step_sim := LowerSimRel.step_sim_stutter prog irmod
       halt_sim := LowerSimRel.halt_sim prog irmod }
 
