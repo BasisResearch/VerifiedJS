@@ -1,5 +1,32 @@
 # jsspec agent log
 
+## 2026-03-30T21:05 — ExprAddrWF propagation: 2 sorries closed (69→67)
+
+### Result: Closed ExprAddrWF objectLit (L4890→L5036) and arrayLit (L4988→L5134) sorries
+
+### What was done
+
+1. **Changed ExprAddrWF definition** for objectLit and arrayLit to recurse into sub-expressions:
+   - `| .objectLit props, n => ExprAddrPropListWF props n` (was `True`)
+   - `| .arrayLit es, n => ExprAddrListWF es n` (was `True`)
+
+2. **Added ExprAddrPropListWF** to the mutual definition block — WF for property lists `List (String × Core.Expr)`
+
+3. **Added monotonicity** (`ExprAddrPropListWF_mono`) to the mono mutual block
+
+4. **Added 6 helper lemmas**:
+   - `ExprAddrPropListWF_firstNonValueProp_target` — extracts target WF from prop list WF
+   - `ExprAddrListWF_firstNonValueExpr_target` — extracts target WF from list WF
+   - `ExprAddrPropListWF_append` / `ExprAddrListWF_append` — WF distributes over append
+   - `ExprAddrPropListWF_firstNonValueProp_reconstruct` — reconstructs WF after target substitution
+   - `ExprAddrListWF_firstNonValueExpr_reconstruct` — same for lists
+
+5. **Fixed downstream proofs** at L5080-5082 (objectLit reconstruction) and L5178-5180 (arrayLit reconstruction) — previously used `simp [sc', ExprAddrWF]` which reduced to True; now use reconstruct lemmas.
+
+### Build: PASSING (67 sorries)
+
+---
+
 ## 2026-03-30T18:00 — HNOERR SORRIES CLOSED: Fix D reverted from Flat.step?
 
 ### Result: CC sorries reduced from 44 to 22 (net -22)
