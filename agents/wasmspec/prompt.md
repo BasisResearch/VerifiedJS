@@ -1,6 +1,6 @@
-# wasmspec — RETURN(SOME) + MULTI-STEP CASES. Target: -2 this run.
+# wasmspec — STEP_SIM CASES. 9 step_sim + 2 call sorries remain. Target: -2 this run.
 
-## GREAT WORK: break/continue + return(none) DONE. 16 grep -c (14 actual sorries).
+## GREAT WORK: return(some) DONE! 11 actual sorries remain (9 step_sim + call + callIndirect).
 
 ## Kill stuck processes first
 ```bash
@@ -10,36 +10,37 @@ Kill ANY lean worker running for >5 minutes.
 
 ## YOUR FILE: `VerifiedJS/Wasm/Semantics.lean` (you are the ONLY agent who can write it)
 
-## PHASE 1: return(some t) at L6914 — HIGHEST PRIORITY (-1 sorry)
+## PHASE 1: throw at L7509 — HIGHEST PRIORITY (-1 sorry)
 
-You already proved return(none) at L6870-L6913. return(some t) is similar:
-- IR code = `argCode ++ [return_]` (from LowerCodeCorr.return_some_inv)
-- ANF step: evaluates trivial arg t, gets value, then return
-- Multi-step: first IR executes argCode (trivial eval = 1 step), then return_
-- Use `hrel.hcode` + `hexpr` rewrite, invert LowerCodeCorr
-- For trivial t: argCode should be short (e.g. localGet). Show IR reaches return_ state.
-- Try: `lean_goal` at L6914 first, then adapt your return(none) proof
+Throw is one of the simpler step_sim cases:
+- ANF step: evaluates trivial arg, produces (.error msg) event
+- IR code from `LowerCodeCorr.throw_inv`: `argCode ++ [unreachable]`
+- For trivial arg: argCode is short (e.g. localGet), evaluates to 1 IR step
+- Then `unreachable` instruction traps
+- Trace alignment: ANF .error vs IR .trap — need `traceFromCore` alignment
+- Try: `lean_goal` at L7509 first, then adapt the return(none) proof pattern
 
-## PHASE 2: Simplest step_sim cases (L6847-L6868)
+## PHASE 2: if at L7503 — conditional branching
 
-### L6865: throw arg — potentially simple
-- ANF produces error trace event
-- IR code = `argCode ++ [unreachable]` or trap pattern
-- `lean_goal` first to see exact goal shape
-
-### L6859: if cond then_ else_ — conditional
 - ANF evaluates cond (trivial), picks branch
-- IR code = condCode ++ [if_ thenCode elseCode]
-- When cond is value: 1 IR step (if_ picks branch)
+- IR code from `LowerCodeCorr.if_inv`: `condCode ++ [call truthy, if_ (some .f64) thenCode elseCode]`
+- When cond is trivial: condCode is short, gets value on stack
+- Then truthy call converts to f64, if_ picks branch
+- This is multi-step (3+ IR instructions for 1 ANF step)
+- May need stuttering — check if step_sim_stutter framework exists
 
-### L6862: while_ cond body — loop
-- Hardest of the simple cases. Skip if others aren't done.
+## PHASE 3: labeled at L7569, then yield/await (L7563/L7566)
 
-### L6847: let — multi-step (IR = rhsCode ++ localSet ++ bodyCode)
-### L6855: seq — stuttering simulation needed
-### L6868: tryCatch — complex
+### labeled — needs hlabels_empty workaround
+- IR code: block with label push. Post-step state has non-empty labels → violates hlabels_empty
+- May need LowerSimRel generalization (allow non-empty labels for labeled blocks)
+- INVESTIGATE before attempting
 
-## PHASE 3: call/callIndirect (L10928, L10983, L10987, L10990) — SKIP unless Phase 1-2 done
+### yield/await — need hframes_one workaround
+- IR code includes `.call runtimeFunc` → pushes frame → violates hframes_one
+- Same class of structural blocker
+
+## SKIP: call/callIndirect (L10964, L11026) — blocked on hframes_one
 
 ## WORKFLOW
 1. `lean_goal` BEFORE every sorry attempt
