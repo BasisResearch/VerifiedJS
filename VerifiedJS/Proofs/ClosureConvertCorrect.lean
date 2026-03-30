@@ -1757,7 +1757,7 @@ private theorem Flat_step?_throw_step (s : Flat.State) (fe : Flat.Expr)
     Flat.step? { s with expr := .throw fe } =
       some (t, { expr := .throw sa.expr, env := sa.env, heap := sa.heap,
                  trace := s.trace ++ [t], funcs := s.funcs, callStack := s.callStack }) := by
-  sorry -- Fix D reverted: error propagation removed from Flat.step?
+  simp [Flat.step?, hss]; split <;> simp_all [Flat.exprValue?]
 
 private theorem Core_step?_throw_step (s : Core.State) (e : Core.Expr)
     (hnv : Core.exprValue? e = none)
@@ -1775,7 +1775,7 @@ private theorem Flat_step?_return_some_step (s : Flat.State) (fe : Flat.Expr)
     Flat.step? { s with expr := .«return» (some fe) } =
       some (t, { expr := .«return» (some sa.expr), env := sa.env, heap := sa.heap,
                  trace := s.trace ++ [t], funcs := s.funcs, callStack := s.callStack }) := by
-  sorry -- Fix D reverted: error propagation removed from Flat.step?
+  simp [Flat.step?, hss]; split <;> simp_all [Flat.exprValue?]
 
 private theorem Core_step?_return_some_step (s : Core.State) (e : Core.Expr)
     (hnv : Core.exprValue? e = none)
@@ -1793,7 +1793,7 @@ private theorem Flat_step?_yield_some_step (s : Flat.State) (fe : Flat.Expr) (de
     Flat.step? { s with expr := .yield (some fe) delegate } =
       some (t, { expr := .yield (some sa.expr) delegate, env := sa.env, heap := sa.heap,
                  trace := s.trace ++ [t], funcs := s.funcs, callStack := s.callStack }) := by
-  sorry -- Fix D reverted: error propagation removed from Flat.step?
+  simp [Flat.step?, hss]; split <;> simp_all [Flat.exprValue?]
 
 private theorem Core_step?_yield_some_step (s : Core.State) (e : Core.Expr) (delegate : Bool)
     (hnv : Core.exprValue? e = none)
@@ -1811,7 +1811,7 @@ private theorem Flat_step?_await_step (s : Flat.State) (fe : Flat.Expr)
     Flat.step? { s with expr := .await fe } =
       some (t, { expr := .await sa.expr, env := sa.env, heap := sa.heap,
                  trace := s.trace ++ [t], funcs := s.funcs, callStack := s.callStack }) := by
-  sorry -- Fix D reverted: error propagation removed from Flat.step?
+  simp [Flat.step?, hss]; split <;> simp_all [Flat.exprValue?]
 
 private theorem Core_step?_await_step (s : Core.State) (e : Core.Expr)
     (hnv : Core.exprValue? e = none)
@@ -1855,7 +1855,7 @@ private theorem Flat_step?_unary_step (s : Flat.State) (op : Core.UnaryOp) (fe :
     Flat.step? { s with expr := .unary op fe } =
       some (t, { expr := .unary op sa.expr, env := sa.env, heap := sa.heap,
                  trace := s.trace ++ [t], funcs := s.funcs, callStack := s.callStack }) := by
-  sorry -- Fix D reverted: error propagation removed from Flat.step?
+  simp [Flat.step?, hss]; split <;> simp_all [Flat.exprValue?]
 
 private theorem Core_step?_unary_step (s : Core.State) (op : Core.UnaryOp) (e : Core.Expr)
     (hnv : Core.exprValue? e = none)
@@ -1873,7 +1873,7 @@ private theorem Flat_step?_typeof_step (s : Flat.State) (fe : Flat.Expr)
     Flat.step? { s with expr := .typeof fe } =
       some (t, { expr := .typeof sa.expr, env := sa.env, heap := sa.heap,
                  trace := s.trace ++ [t], funcs := s.funcs, callStack := s.callStack }) := by
-  sorry -- Fix D reverted: error propagation removed from Flat.step?
+  simp [Flat.step?, hss]; split <;> simp_all [Flat.exprValue?]
 
 private theorem Core_step?_typeof_step (s : Core.State) (e : Core.Expr)
     (hnv : Core.exprValue? e = none)
@@ -1891,7 +1891,7 @@ private theorem Flat_step?_assign_step (s : Flat.State) (name : String) (fe : Fl
     Flat.step? { s with expr := .assign name fe } =
       some (t, { expr := .assign name sa.expr, env := sa.env, heap := sa.heap,
                  trace := s.trace ++ [t], funcs := s.funcs, callStack := s.callStack }) := by
-  sorry -- Fix D reverted: error propagation removed from Flat.step?
+  simp [Flat.step?, hss]; split <;> simp_all [Flat.exprValue?]
 
 private theorem Core_step?_assign_step (s : Core.State) (name : String) (e : Core.Expr)
     (hnv : Core.exprValue? e = none)
@@ -1909,7 +1909,7 @@ private theorem Flat_step?_deleteProp_step (s : Flat.State) (prop : Core.PropNam
     Flat.step? { s with expr := .deleteProp fe prop } =
       some (t, { expr := .deleteProp sa.expr prop, env := sa.env, heap := sa.heap,
                  trace := s.trace ++ [t], funcs := s.funcs, callStack := s.callStack }) := by
-  sorry -- Fix D reverted: error propagation removed from Flat.step?
+  simp [Flat.step?, hss]; split <;> simp_all [Flat.exprValue?]
 
 private theorem Core_step?_deleteProp_step (s : Core.State) (prop : Core.PropName) (e : Core.Expr)
     (hnv : Core.exprValue? e = none)
@@ -1927,7 +1927,7 @@ private theorem Flat_step?_getProp_step (s : Flat.State) (prop : Core.PropName) 
     Flat.step? { s with expr := .getProp fe prop } =
       some (t, { expr := .getProp sa.expr prop, env := sa.env, heap := sa.heap,
                  trace := s.trace ++ [t], funcs := s.funcs, callStack := s.callStack }) := by
-  sorry -- Fix D reverted: error propagation removed from Flat.step?
+  simp [Flat.step?, hss]; split <;> simp_all [Flat.exprValue?]
 
 private theorem Core_step?_getProp_step (s : Core.State) (prop : Core.PropName) (e : Core.Expr)
     (hnv : Core.exprValue? e = none)
@@ -1945,7 +1945,7 @@ private theorem Flat_step?_getIndex_step (s : Flat.State) (idx : Flat.Expr) (fe 
     Flat.step? { s with expr := .getIndex fe idx } =
       some (t, { expr := .getIndex sa.expr idx, env := sa.env, heap := sa.heap,
                  trace := s.trace ++ [t], funcs := s.funcs, callStack := s.callStack }) := by
-  sorry -- Fix D reverted: error propagation removed from Flat.step?
+  simp [Flat.step?, hss]; split <;> simp_all [Flat.exprValue?]
 
 private theorem Core_step?_getIndex_step (s : Core.State) (idx : Core.Expr) (e : Core.Expr)
     (hnv : Core.exprValue? e = none)
@@ -1963,7 +1963,7 @@ private theorem Flat_step?_setProp_obj_step (s : Flat.State) (prop : Core.PropNa
     Flat.step? { s with expr := .setProp fe prop value } =
       some (t, { expr := .setProp sa.expr prop value, env := sa.env, heap := sa.heap,
                  trace := s.trace ++ [t], funcs := s.funcs, callStack := s.callStack }) := by
-  sorry -- Fix D reverted: error propagation removed from Flat.step?
+  simp [Flat.step?, hss]; split <;> simp_all [Flat.exprValue?]
 
 private theorem Core_step?_setProp_obj_step (s : Core.State) (prop : Core.PropName) (value : Core.Expr) (e : Core.Expr)
     (hnv : Core.exprValue? e = none)
@@ -1981,7 +1981,7 @@ private theorem Flat_step?_setIndex_obj_step (s : Flat.State) (idx value : Flat.
     Flat.step? { s with expr := .setIndex fe idx value } =
       some (t, { expr := .setIndex sa.expr idx value, env := sa.env, heap := sa.heap,
                  trace := s.trace ++ [t], funcs := s.funcs, callStack := s.callStack }) := by
-  sorry -- Fix D reverted: error propagation removed from Flat.step?
+  simp [Flat.step?, hss]; split <;> simp_all [Flat.exprValue?]
 
 private theorem Core_step?_setIndex_obj_step (s : Core.State) (idx value : Core.Expr) (e : Core.Expr)
     (hnv : Core.exprValue? e = none)
@@ -2000,7 +2000,7 @@ private theorem Flat_step?_call_func_step (s : Flat.State) (envExpr : Flat.Expr)
     Flat.step? { s with expr := .call fe envExpr args } =
       some (t, { expr := .call sa.expr envExpr args, env := sa.env, heap := sa.heap,
                  trace := s.trace ++ [t], funcs := s.funcs, callStack := s.callStack }) := by
-  sorry -- Fix D reverted: error propagation removed from Flat.step?
+  simp [Flat.step?, hss]; split <;> simp_all [Flat.exprValue?]
 
 private theorem Core_step?_call_func_step (s : Core.State) (args : List Core.Expr) (e : Core.Expr)
     (hnv : Core.exprValue? e = none)
@@ -2032,7 +2032,7 @@ private theorem Flat_step?_seq_step (s : Flat.State) (b : Flat.Expr) (fe : Flat.
     Flat.step? { s with expr := .seq fe b } =
       some (t, { expr := .seq sa.expr b, env := sa.env, heap := sa.heap,
                  trace := s.trace ++ [t], funcs := s.funcs, callStack := s.callStack }) := by
-  sorry -- Fix D reverted: error propagation removed from Flat.step?
+  simp [Flat.step?, hss]; split <;> simp_all [Flat.exprValue?]
 
 private theorem Core_step?_seq_step (s : Core.State) (b : Core.Expr) (e : Core.Expr)
     (hnv : Core.exprValue? e = none)
@@ -2050,7 +2050,7 @@ private theorem Flat_step?_let_step (s : Flat.State) (name : String) (body : Fla
     Flat.step? { s with expr := .«let» name fe body } =
       some (t, { expr := .«let» name sa.expr body, env := sa.env, heap := sa.heap,
                  trace := s.trace ++ [t], funcs := s.funcs, callStack := s.callStack }) := by
-  sorry -- Fix D reverted: error propagation removed from Flat.step?
+  simp [Flat.step?, hss]; split <;> simp_all [Flat.exprValue?]
 
 private theorem Core_step?_let_step (s : Core.State) (name : String) (body : Core.Expr) (e : Core.Expr)
     (hnv : Core.exprValue? e = none)
@@ -2102,7 +2102,7 @@ private theorem Flat_step?_if_step (s : Flat.State) (then_ else_ : Flat.Expr) (f
     Flat.step? { s with expr := .«if» fe then_ else_ } =
       some (t, { expr := .«if» sa.expr then_ else_, env := sa.env, heap := sa.heap,
                  trace := s.trace ++ [t], funcs := s.funcs, callStack := s.callStack }) := by
-  sorry -- Fix D reverted: error propagation removed from Flat.step?
+  simp [Flat.step?, hss]; split <;> simp_all [Flat.exprValue?]
 
 private theorem Core_step?_if_step (s : Core.State) (then_ else_ : Core.Expr) (e : Core.Expr)
     (hnv : Core.exprValue? e = none)
@@ -2120,7 +2120,7 @@ private theorem Flat_step?_binary_lhs_step (s : Flat.State) (op : Core.BinOp) (r
     Flat.step? { s with expr := .binary op fe rhs } =
       some (t, { expr := .binary op sa.expr rhs, env := sa.env, heap := sa.heap,
                  trace := s.trace ++ [t], funcs := s.funcs, callStack := s.callStack }) := by
-  sorry -- Fix D reverted: error propagation removed from Flat.step?
+  simp [Flat.step?, hss]; split <;> simp_all [Flat.exprValue?]
 
 private theorem Core_step?_binary_lhs_step (s : Core.State) (op : Core.BinOp) (rhs : Core.Expr) (e : Core.Expr)
     (hnv : Core.exprValue? e = none)
@@ -2419,7 +2419,7 @@ private theorem Flat_step?_setProp_object_step_value (s : Flat.State) (addr : Na
     Flat.step? { s with expr := .setProp (.lit (.object addr)) prop ve } =
       some (t, { expr := .setProp (.lit (.object addr)) prop sv.expr, env := sv.env, heap := sv.heap,
                  trace := s.trace ++ [t], funcs := s.funcs, callStack := s.callStack }) := by
-  sorry -- Fix D reverted: error propagation removed from Flat.step?
+  simp [Flat.step?, hss]; split <;> simp_all [Flat.exprValue?]
 
 -- setProp: obj is non-object value, value needs stepping (Flat)
 private theorem Flat_step?_setProp_nonobject_step_value (s : Flat.State) (v : Flat.Value) (prop : Core.PropName)
@@ -2433,7 +2433,7 @@ private theorem Flat_step?_setProp_nonobject_step_value (s : Flat.State) (v : Fl
   cases v with
   | object addr => exact absurd rfl (hobj addr)
   | _ =>
-    sorry -- Fix D reverted: error propagation removed from Flat.step?
+    simp [Flat.step?, hss]; split <;> simp_all [Flat.exprValue?]
 
 
 private theorem Flat_step?_setProp_value_none (s : Flat.State) (v : Flat.Value) (prop : Core.PropName)
@@ -2467,7 +2467,7 @@ private theorem Flat_step?_getIndex_object_step_idx (s : Flat.State) (addr : Nat
     Flat.step? { s with expr := .getIndex (.lit (.object addr)) ie } =
       some (t, { expr := .getIndex (.lit (.object addr)) si.expr, env := si.env, heap := si.heap,
                  trace := s.trace ++ [t], funcs := s.funcs, callStack := s.callStack }) := by
-  sorry -- Fix D reverted: error propagation removed from Flat.step?
+  simp [Flat.step?, hss]; split <;> simp_all [Flat.exprValue?]
 
 -- getIndex: obj is .string, idx needs stepping (Flat)
 private theorem Flat_step?_getIndex_string_step_idx (s : Flat.State) (str : String)
@@ -2477,7 +2477,7 @@ private theorem Flat_step?_getIndex_string_step_idx (s : Flat.State) (str : Stri
     Flat.step? { s with expr := .getIndex (.lit (.string str)) ie } =
       some (t, { expr := .getIndex (.lit (.string str)) si.expr, env := si.env, heap := si.heap,
                  trace := s.trace ++ [t], funcs := s.funcs, callStack := s.callStack }) := by
-  sorry -- Fix D reverted: error propagation removed from Flat.step?
+  simp [Flat.step?, hss]; split <;> simp_all [Flat.exprValue?]
 
 -- getIndex: obj is non-object non-string value, idx needs stepping (Flat)
 private theorem Flat_step?_getIndex_other_step_idx (s : Flat.State) (v : Flat.Value)
@@ -2492,7 +2492,7 @@ private theorem Flat_step?_getIndex_other_step_idx (s : Flat.State) (v : Flat.Va
   | object addr => exact absurd rfl (hobj addr)
   | string str => exact absurd rfl (hstr str)
   | _ =>
-    sorry -- Fix D reverted: error propagation removed from Flat.step?
+    simp [Flat.step?, hss]; split <;> simp_all [Flat.exprValue?]
 
 
 
