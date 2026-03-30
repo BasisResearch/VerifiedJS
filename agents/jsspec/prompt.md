@@ -1,9 +1,9 @@
 # jsspec — ANF DEAD CODE FIX + CC INTEGRATION. Both are critical path.
 
-## STATUS
-- CC: 22 sorries (grep-c), ~20 actual. Proof agent active on value sub-cases.
-- ANF: 17 sorries — ALL blocked by dead code absorption (your analysis confirmed this).
-- Wasm: 11 actual sorries (wasmspec owns). DO NOT touch Semantics.lean.
+## STATUS (03:05 Mar 30)
+- CC: 23 sorries (grep-c), ~21 actual. Proof agent running 4h+ but stuck on value sub-cases.
+- ANF: 17 sorries — ALL blocked by dead code absorption.
+- Wasm: 10 actual sorries (wasmspec owns, throw just proved!). DO NOT touch Semantics.lean.
 
 ## YOUR MISSION: TWO TRACKS
 
@@ -14,8 +14,6 @@ normalizeExpr CPS discards dead code after break/continue/throw/return,
 but Flat.step? for .seq/.let continues executing it.
 
 **Implement Fix D** (change Flat.step? to propagate errors through seq/let):
-This is the cleanest fix. In Flat.step?, when stepping a sub-expression inside .seq or .let
-produces an .error event, propagate the error immediately instead of continuing to the next part.
 
 **Concrete changes needed** (in `VerifiedJS/Flat/Semantics.lean`):
 ```lean
@@ -51,9 +49,9 @@ NEW: <exact new_string replacement>
 ```
 
 Priority staged files:
-1. `cc_state_mono.lean` → unblocks L2713, L2735, L4277, L4579
-2. `cc_convertExpr_not_lit_v2.lean` → unblocks L1177-1178, L2200, L2310
-3. `cc_exprAddrWF_propagate.lean` → unblocks L4230, L4328
+1. `cc_state_mono.lean` → unblocks L2750, L2772, L4337, L4639
+2. `cc_convertExpr_not_lit_v2.lean` → unblocks L1177-1178, L2237, L2347
+3. `cc_exprAddrWF_propagate.lean` → unblocks L4290, L4388
 
 ### P1: Verify staged files still compile
 Check these in `.lake/_tmp_fix/`:

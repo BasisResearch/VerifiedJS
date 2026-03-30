@@ -1,45 +1,50 @@
-# proof — CC VALUE + CALL SUB-CASES. Target: -2 this run.
+# proof — CC VALUE + CALL SUB-CASES. Target: -1 this run.
 
-## STATUS: 22 CC sorries (grep -c), ~20 actual. You've been running 3h. Push for at least 1 closed sorry.
+## STATUS: 23 CC sorries (grep -c), ~21 actual. You've been running 4h+ with 0 closures. Time to close ONE.
 
-## YOUR TARGETS — VERIFIED LINE NUMBERS (as of 02:05 Mar 30)
+## YOUR TARGETS — VERIFIED LINE NUMBERS (as of 03:05 Mar 30)
 
-### P0: getIndex value (L3717) — HIGHEST PRIORITY
-- `sorry -- getIndex both-values: object heap lookup, string indexing, other→undefined`
-- Same pattern as setProp/deleteProp you already proved.
-- `simp [Flat.step?]`, case split on value type (object addr vs primitive)
-- For objects: case split on `sc.heap.objects[addr]?` and use `hheapinj`
-- For primitives: both sides return the same result
+### P0: getIndex value (L3751, L3752) — HIGHEST PRIORITY
+Two sub-cases on same sorry block:
+- L3751: `sorry -- getIndex object both-values: heap lookup via HeapInj`
+- L3752: `sorry -- getIndex string both-values: string indexing`
 
-### P1: setIndex value (L3864)
+**For L3752 (string indexing)**: This should be EASIER than object case.
+- Both Flat and Core do string character indexing → same result
+- Try: `simp [Flat.step?, Core.step?]`, unfold string indexing on both sides
+- If types match, `rfl` or `congr` should close it
+
+**For L3751 (object case)**: Same pattern as getProp object you already proved.
+- Case split on `sc.heap.objects[addr]?` → some/none
+- Use `hheapinj` for heap correspondence
+- Use `HeapInj_get` or similar from your infrastructure
+
+### P1: setIndex value (L3924)
 - `sorry -- value sub-case (heap reasoning needed)`
-- Same structure as getIndex/setProp
+- Same class as getIndex/setProp
 
-### P2: call value (L3229)
+### P2: call value (L3266)
 - `sorry -- callee is value: arg stepping or call execution`
 - Case split on `exprListValue? args`
-- When args has non-value: step first non-value arg (firstNonValueExpr + ih_depth)
-- When all args values: function call execution
 
-### P3: newObj (L3230)
+### P3: newObj (L3267)
 - `| newObj f args => sorry`
-- Object allocation with fresh heap address
 
-### P4: objectLit all-values (L4186)
+### P4: objectLit all-values (L4246)
 - `sorry -- all props are values: heap allocation`
 
-### P5: arrayLit all-values (L4284)
+### P5: arrayLit all-values (L4344)
 - `sorry -- all elements are values: heap allocation`
 
 ## BLOCKED (do NOT touch):
-- L1177, L1178: theorem false (forIn/forOf stubs, needs SupportedExpr)
-- L2200, L2310: need convertExpr_not_lit for stub constructors (jsspec staging)
-- L2394: HeapInj refactor staging
-- L2713, L2735(×2): CCState threading (if-branch dead code)
-- L4230, L4328: ExprAddrWF propagation (needs ExprAddrPropListWF/ExprAddrListWF — jsspec staging)
-- L4277, L4579: CCState threading (concatenated lists, while)
-- L4458: functionDef (large)
-- L4548: tryCatch (large)
+- L1177, L1178: theorem false (forIn/forOf stubs)
+- L2237, L2347: need convertExpr_not_lit for stub constructors (jsspec staging)
+- L2431: HeapInj refactor staging
+- L2750, L2772(×2): CCState threading (if-branch dead code)
+- L4290, L4388: ExprAddrWF propagation (needs ExprAddrPropListWF/ExprAddrListWF)
+- L4337, L4639: CCState threading (concatenated lists, while)
+- L4518: functionDef (large)
+- L4608: tryCatch (large)
 
 ## WORKFLOW
 1. `lean_goal` BEFORE every sorry attempt
@@ -48,12 +53,11 @@
 4. If build breaks: `git checkout VerifiedJS/Proofs/ClosureConvertCorrect.lean` within 2 minutes
 5. LOG every 30 minutes to agents/proof/log.md
 
-## CRITICAL TACTIC HINT for value sub-cases (P0-P1):
-Same pattern as setProp/deleteProp you proved:
-1. `simp [Flat.step?]` to unfold the Flat step
-2. Case split on value type (object addr vs primitive)
-3. For objects: case split on `sc.heap.objects[addr]?` and use `hheapinj`
-4. For primitives: both sides return the same result
+## STRATEGY SHIFT: Pick the EASIEST sorry first
+You've been stuck for 4h. Stop trying the hardest case first.
+- L3752 (getIndex string) is probably easiest — string indexing should be pure computation
+- If stuck after 20min on any case, move to the next one
+- Close ONE sorry this run, even if it's the simplest one
 
 ## FILES
 - `VerifiedJS/Proofs/ClosureConvertCorrect.lean` (rw)
