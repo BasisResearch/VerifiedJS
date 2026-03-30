@@ -18,8 +18,21 @@ Replaced 2 monolithic `sorry` lines for `| «break» label =>` and `| «continue
 - `hheap`/`henv` have struct accessor form (e.g., `{ expr := ..., heap := sa_heap, ... }.heap = sf.heap`) but `exact hheap` works since Lean sees through definitional equality of struct projections.
 - `observableTrace_append` + `congr 1` suffices for trace equality — `htrace` is found by unification.
 
+### Throw inversion infrastructure integrated (Step 3 partial)
+Added ~470 lines of throw inversion infrastructure after the continue section (Part 4):
+- `HasThrowInHead` / `HasThrowInHeadList` / `HasThrowInHeadProps` mutual inductives
+- Helper lemmas: `bindComplex_never_throw_general`, `normalizeExpr_labeled_not_throw`, `normalizeExpr_while_not_throw`, `normalizeExpr_tryCatch_not_throw`
+- List/Props helpers: `normalizeExprList_throw_or_k`, `normalizeProps_throw_or_k`
+- Main theorem: `ANF.normalizeExpr_throw_or_k` (with depth induction aux)
+- Master inversion: `ANF.normalizeExpr_throw_implies_hasThrowInHead`
+
+All infrastructure builds cleanly. The throw case in `anfConvert_step_star` was NOT decomposed because:
+1. Throw argument requires evaluation (unlike break/continue which are terminal)
+2. Two sub-cases from `ANF.evalTrivial` (ok/error) both need full `HasThrowInHead` decomposition
+3. Even the `throw_direct` case needs recursive Flat stepping through `arg_flat` evaluation
+
 ### Not attempted this run
-- Steps 3-4 (throw/return/yield/await): Require `HasThrowInHead` infrastructure (~500 lines in `.lake/_tmp_fix/anf_throw_inversion.lean`) not yet integrated into the main file. Deferred to future run.
+- Steps 3-4 throw/return/yield/await case decomposition in `anfConvert_step_star`: infrastructure is ready but proof of direct cases requires recursive stepping through argument evaluation, which is significantly harder than break/continue.
 
 ## Run: 2026-03-30T00:30+00:00
 - **BUILD: PASSES** ✓
@@ -4040,3 +4053,4 @@ LowerCorrect.lean has 3 errors (Application type mismatch at L59, L61, L69). The
 
 ## Run: 2026-03-30T11:30:01+00:00
 
+2026-03-30T11:54:52+00:00 DONE
