@@ -1,4 +1,4 @@
-# wasmspec — Close non-blocked CC sorries. Focus on value sub-cases + functionDef.
+# wasmspec — Close CC value sub-cases + functionDef + tryCatch
 
 ## RULES
 - **DO NOT** run `lake build VerifiedJS` (full build). OOMs.
@@ -10,56 +10,52 @@
 
 ## MEMORY: 7.7GB total, NO swap.
 
-## CONTEXT: Fix D has been REVERTED
+## STATE (22:05): CC has 15 real sorries (after jsspec deletes 22 dead-code)
 
-jsspec reverted Fix D from Flat/Semantics.lean and CC. The 47 "Fix D reverted" sorry
-theorems are dead code and will be deleted by jsspec. The hnoerr guards are gone.
+## YOUR TARGETS (4 value sub-cases + 2 large theorems):
 
-## DO NOT TOUCH THESE:
-- ANFConvertCorrect.lean — proof agent owns this
-- Flat/Semantics.lean — jsspec just modified this
-- forIn/forOf sorries (L1369-1370) — unprovable stubs
-- "Fix D reverted" sorries — jsspec is deleting these
-- ExprAddrWF sorries (L4902, L5000) — jsspec is working on these
-- CCState threading (L3279, L3301, L4949, L5251) — jsspec is working on these
+### TARGET 1: Value sub-cases — HIGHEST PRIORITY
 
-## YOUR TASK: Close value sub-cases + larger theorems. Target: ≥2.
+These are ALL the same pattern: all sub-expressions are values, so both Core and Flat
+take one matching step (allocation, property access, etc.).
 
-### TARGET 1: value sub-cases (L3795, L4536, L4858, L4956) — MOST PROMISING
+**L3692**: `| some cv => sorry -- callee is value: arg stepping or call execution`
+**L4433**: `| some cv => sorry -- value sub-case (heap reasoning needed)`
+**L4755**: `sorry -- all props are values: heap allocation`
+**L4938**: `sorry -- all elements are values: heap allocation`
 
-These all involve the case where all sub-expressions have already been evaluated to values.
+APPROACH for each:
+1. `lean_goal` at the sorry line → read FULL goal
+2. `lean_local_search "allValues"` and `lean_local_search "value_step"` for helpers
+3. When all sub-exprs are values, Core.step? and Flat.step? should BOTH take exactly
+   one step. The proof is: construct the matching steps, show results correspond.
+4. `lean_multi_attempt` with:
+   ```
+   ["simp_all", "exact ⟨_, _, rfl, rfl⟩", "constructor <;> simp_all",
+    "refine ⟨_, _, ?_, ?_⟩ <;> simp_all", "aesop"]
+   ```
+5. If the goal has `∃ sf' evs, Flat.Steps ...`, build the witness explicitly:
+   `exact ⟨{sf with expr := ..., heap := ...}, [ev], .tail ⟨by unfold Flat.step?; simp⟩ (.refl _), ...⟩`
 
-L3795: `| some cv => sorry -- callee is value: arg stepping or call execution`
-L4536: `| some cv => sorry -- value sub-case (heap reasoning needed)`
-L4858: `sorry -- all props are values: heap allocation`
-L4956: `sorry -- all elements are values: heap allocation`
-
-APPROACH:
-1. `lean_goal` at each line to see the full proof state
-2. When all expressions are values, Core.step? and Flat.step? should take a single matching step
-3. Use `lean_local_search "value"` and `lean_local_search "allValues"` to find helpers
-4. Try `lean_multi_attempt` with: `["simp_all", "exact ⟨_, rfl, rfl⟩", "constructor <;> simp_all"]`
-
-### TARGET 2: functionDef (L5130)
-
+### TARGET 2: functionDef (L5116)
 `| functionDef fname params body isAsync isGen => sorry`
 
-1. `lean_goal` at L5130
-2. functionDef creates a closure: Core binds fname to a closure value
-3. Flat's convertExpr on functionDef should produce equivalent binding
-4. Use `lean_local_search "functionDef"` to find step lemmas
+functionDef creates a closure and binds fname in env. Both Core and Flat should
+produce equivalent bindings. `lean_goal` → look for closure value correspondence.
 
-### TARGET 3: newObj (L3796)
-
-`| newObj f args => sorry`
-
-Similar to call case. Constructor invocation.
-
-### TARGET 4: tryCatch (L5220)
-
+### TARGET 3: tryCatch (L5206)
 `| tryCatch body catchParam catchBody finally_ => sorry`
 
-Sets up exception handler. Both Core and Flat enter the try body.
+Sets up exception handler context. Core enters try body; Flat enters converted body
+with catch frame pushed.
+
+## DO NOT TOUCH:
+- ANFConvertCorrect.lean — proof agent owns this
+- forIn/forOf stubs (L1502-1503) — unprovable
+- "Fix D reverted" sorries — jsspec is deleting these
+- CCState threading sorries (L2857, L3176, L3198, L5237) — jsspec owns these
+- convertExpr_not_lit (L2663, L2773) — jsspec owns these
+- getIndex string mismatch (L4261) — possibly unprovable
 
 ## WORKFLOW:
 1. `lean_goal` at the sorry line — read the FULL goal
@@ -67,8 +63,4 @@ Sets up exception handler. Both Core and Flat enter the try body.
 3. If nothing closes it in 10 minutes, MOVE TO THE NEXT ONE
 4. Log what you tried and why it failed
 
-## VERIFICATION
-After any sorry closure:
-1. Build: `lake build VerifiedJS.Proofs.ClosureConvertCorrect`
-2. Count: `grep -c sorry VerifiedJS/Proofs/ClosureConvertCorrect.lean`
-3. Log to agents/wasmspec/log.md
+## TARGET: Close at least 3 of your 6 assigned sorries

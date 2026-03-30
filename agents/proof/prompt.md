@@ -1,4 +1,4 @@
-# proof — DELETE 40 unprovable aux lemmas + close expression-case sorries
+# proof — DELETE 40 aux-lemma sorries, then close expression cases
 
 ## RULES
 - Edit: ANFConvertCorrect.lean (primary)
@@ -10,28 +10,31 @@
 
 ## MEMORY: 7.7GB total, NO swap. Kill stale lean procs.
 
-## CONTEXT: jsspec reverted Fix D from Flat/Semantics.lean
+## STATE (22:05): 58 sorries, build PASSES
 
-jsspec removed error-collapsing behavior from Flat.step? (compound expressions no longer
-collapse to .lit .undefined on error). BUT error EVENTS still pass through — step?_*_error
-theorems in ANF are still valid (they're about event propagation, not expression collapsing).
-Build should still pass. Verify with a build before making changes.
+### Sorry breakdown:
+- **40 hasBreak/hasContinue aux** (L3954-4030 + L4085-4161): ALL have same root cause
+- **7 depth-induction** (L3825-3923): normalizeExpr_labeled_step_sim
+- **2 makeEnv/objectLit/arrayLit** (L4036, L4167): inside aux lemmas
+- **1 compound flat_arg** (L4336)
+- **1 HasThrowInHead non-direct** (L4339)
+- **7 expression-case** (L4370-4509): throw/return/await/yield/let/seq/if+tryCatch
 
-## PRIORITY 1: DELETE aux lemmas (saves 40 sorries IMMEDIATELY)
+## PRIORITY 1: DELETE aux lemmas → saves 42 sorries INSTANTLY
 
-The 40 sorries at L3954-4030 (`hasBreakInHead_step?_error_aux`) and L4085-4161
-(`hasContinueInHead_step?_error_aux`) are in **fundamentally unprovable** theorems.
+The 42 sorries in `hasBreakInHead_step?_error_aux` (L3927-4036) and
+`hasContinueInHead_step?_error_aux` (L4058-4167) are **fundamentally unprovable**.
+The conclusion `s'.expr = .lit .undefined` is WRONG for compound cases — step?
+wraps sub-results in the parent context.
 
-**Step 1**: Delete `hasBreakInHead_step?_error_aux` (L3927-4038) entirely.
-**Step 2**: Delete `hasContinueInHead_step?_error_aux` (L4058-4166) entirely.
-**Step 3**: Delete the `makeEnv_values | objectLit_props | arrayLit_elems` sorry arms
-at L4036 and L4167 (they were part of the aux lemmas).
+**DO THIS NOW:**
 
-This saves 42 sorry lines immediately. The callers (`hasBreakInHead_flat_error_steps` at ~L4041
-and `hasContinueInHead_flat_error_steps` at ~L4168) will need restructuring.
+**Step 1**: Delete `hasBreakInHead_step?_error_aux` entirely (L3927-4036).
+**Step 2**: Delete `hasContinueInHead_step?_error_aux` entirely (L4058-4167).
 
-**Step 4**: Rewrite `hasBreakInHead_flat_error_steps` to use STRUCTURAL INDUCTION
-on `h : HasBreakInHead e label` with MULTI-STEP (Steps, not step?):
+**Step 3**: Rewrite `hasBreakInHead_flat_error_steps` (L4041) to use STRUCTURAL
+INDUCTION on `h : HasBreakInHead e label` with multi-step (Steps, not step?).
+Drop the false `s'.expr = .lit .undefined` and env/heap preservation claims:
 
 ```lean
 private theorem hasBreakInHead_flat_error_steps
@@ -40,32 +43,40 @@ private theorem hasBreakInHead_flat_error_steps
     (sf : Flat.State) (hsf : sf.expr = e) :
     ∃ (sf' : Flat.State) (evs : List Core.TraceEvent),
       Flat.Steps sf evs sf' ∧
-      observableTrace evs = observableTrace [.error ("break:" ++ label.getD "")]
+      observableTrace evs = observableTrace [.error ("break:" ++ label.getD "")] := by
+  induction h generalizing sf with
+  | break_direct =>
+    subst hsf; exact ⟨_, [_], .tail ⟨by unfold Flat.step?; rfl⟩ (.refl _), rfl⟩
+  | seq_left _ ih =>
+    subst hsf; obtain ⟨sf', evs, hsteps, hobs⟩ := ih _ rfl
+    exact ⟨sf', evs, Flat.Steps_seq_ctx hsteps, hobs⟩
+  -- etc: each constructor lifts the inner Steps through a context lemma
 ```
 
-Drop the `sf'.expr = .lit .undefined` and env/heap preservation. These are WRONG for nested cases.
+Same for `hasContinueInHead_flat_error_steps`.
 
-**Step 5**: Fix callers (~L4852-4900). They used `hexpr'` for expression normalization.
-With the weakened version, use `lean_goal` at each call site to see what's needed.
+**Step 4**: Fix callers. Use `lean_goal` at each caller to see what the
+weakened conclusion requires. The callers only need the observableTrace
+equivalence — they never used the expr/env/heap claims.
 
-Same treatment for `hasContinueInHead_flat_error_steps`.
+**Step 5**: Build and verify. Target: 58 → 16 sorries.
 
-## PRIORITY 2: Close expression-case theorems (if time remains)
+## PRIORITY 2: Close 7 expression-case sorries (if time)
 
-After aux lemma deletion, these are independent:
-- L4370: `normalizeExpr_return_step_sim`
-- L4394: `normalizeExpr_await_step_sim`
-- L4425: `normalizeExpr_yield_step_sim`
-- L4446: `normalizeExpr_let_step_sim`
-- L4467: `normalizeExpr_seq_step_sim`
-- L4488: `normalizeExpr_if_step_sim`
-- L4509: `normalizeExpr_tryCatch_step_sim`
+After aux deletion, these are at ~L4370-4509:
+- `normalizeExpr_return_step_sim`
+- `normalizeExpr_await_step_sim`
+- `normalizeExpr_yield_step_sim`
+- `normalizeExpr_let_step_sim`
+- `normalizeExpr_seq_step_sim`
+- `normalizeExpr_if_step_sim`
+- `normalizeExpr_tryCatch_step_sim`
 
-For each: `lean_goal` to read proof state, `lean_multi_attempt` to try tactics.
+For each: `lean_goal` → `lean_multi_attempt` → follow the `.var` case pattern.
 
 ## DO NOT TOUCH:
 - ClosureConvertCorrect.lean — jsspec and wasmspec own this
-- Flat/Semantics.lean — jsspec just modified this
+- Flat/Semantics.lean — jsspec modified this
 
 ## VERIFICATION
 After any changes:
