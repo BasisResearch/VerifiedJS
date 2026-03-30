@@ -2865,7 +2865,7 @@ theorem step?_eq_br (s : ExecState) (depth : Nat) (rest : List Instr)
         labels := labels'
         code := lbl.onBranch
         trace := s.trace ++ [.silent] }) := by
-  cases s; simp_all [step?, hresolve, pushTrace]
+  cases s; simp_all [step?, pushTrace]
 
 /-- Exact step? result for br when label not found. -/
 theorem step?_eq_br_oob (s : ExecState) (depth : Nat) (rest : List Instr)
@@ -2875,7 +2875,7 @@ theorem step?_eq_br_oob (s : ExecState) (depth : Nat) (rest : List Instr)
       { s with
         code := []
         trace := s.trace ++ [.trap s!"unknown label index {depth}"] }) := by
-  cases s; simp_all [step?, hresolve, trapState, pushTrace]
+  cases s; simp_all [step?, trapState, pushTrace]
 
 /-- Exact step? result for brIf with true condition (nonzero i32) and successful branch. -/
 theorem step?_eq_brIf_true_gen (s : ExecState) (depth : Nat) (rest : List Instr)
@@ -2922,7 +2922,7 @@ theorem step?_eq_call_valid (s : ExecState) (idx : Nat) (rest : List Instr)
                     moduleInst := 0 } :: s.frames
         code := (s.store.funcs[idx]).body ++ rest
         trace := s.trace ++ [.silent] }) := by
-  cases s; simp_all [step?, hfunc, hpop, pushTrace]
+  cases s; simp_all [step?, pushTrace]
 
 /-- Exact step? result for call with out-of-bounds function index. -/
 theorem step?_eq_call_oob (s : ExecState) (idx : Nat) (rest : List Instr)
@@ -2946,7 +2946,7 @@ theorem step?_eq_call_underflow (s : ExecState) (idx : Nat) (rest : List Instr)
       { s with
         code := []
         trace := s.trace ++ [.trap s!"stack underflow in call {idx}"] }) := by
-  cases s; simp_all [step?, hfunc, hpop, trapState, pushTrace]
+  cases s; simp_all [step?, trapState, pushTrace]
 
 /-- Exact step? result for empty code with label to pop. -/
 theorem step?_eq_labelDone (s : ExecState) (lbl : LabelFrame) (lbls : List LabelFrame)
@@ -3170,7 +3170,7 @@ private theorem withI32Rel_type_mismatch (s : ExecState) (op : UInt32 → UInt32
     (hmis : ∀ x y, (a, b) ≠ (.i32 x, .i32 y)) :
     withI32Rel s op name = some (trapState s ("type mismatch in " ++ name)) := by
   simp [withI32Rel, pop2?, hstack]
-  cases a <;> cases b <;> simp_all [trapState, pushTrace, boolToI32]
+  cases a <;> cases b <;> simp_all [trapState, pushTrace]
 
 /-- withF64Bin traps when the top two stack values aren't both f64. -/
 private theorem withF64Bin_type_mismatch (s : ExecState) (op : Float → Float → Float)
@@ -4461,10 +4461,10 @@ theorem observableWasmEvents_traceListToWasm (ts : List TraceEvent) :
   | cons t ts ih =>
     simp only [traceListToWasm, List.map] at ih ⊢
     cases t with
-    | silent => simp [traceToWasm, Wasm.observableWasmEvents, List.filter, ih]
-    | trap msg => simp [traceToWasm, Wasm.observableWasmEvents, List.filter, ih]
-    | log msg => simp [traceToWasm, Wasm.observableWasmEvents, List.filter, ih]
-    | error msg => simp [traceToWasm, Wasm.observableWasmEvents, List.filter, ih]
+    | silent => simp [traceToWasm, List.filter, ih]
+    | trap msg => simp [traceToWasm, List.filter, ih]
+    | log msg => simp [traceToWasm, List.filter, ih]
+    | error msg => simp [traceToWasm, List.filter, ih]
 
 /-! ### Core ↔ IR Trace Event Mappings (for LowerCorrect proof chain)
 
@@ -4541,9 +4541,9 @@ def traceListToCore : List TraceEvent → List Core.TraceEvent :=
 @[simp] theorem traceFromCoreForIR_silent : traceFromCoreForIR .silent = .silent := rfl
 @[simp] theorem traceFromCoreForIR_log (s : String) : traceFromCoreForIR (.log s) = .log s := rfl
 @[simp] theorem traceFromCoreForIR_error_nonCF (s : String) (h : isControlFlowSignal s = false) :
-    traceFromCoreForIR (.error s) = .error s := by simp [traceFromCore, h]
+    traceFromCoreForIR (.error s) = .error s := by simp [h]
 @[simp] theorem traceFromCoreForIR_error_CF (s : String) (h : isControlFlowSignal s = true) :
-    traceFromCoreForIR (.error s) = .silent := by simp [traceFromCore, h]
+    traceFromCoreForIR (.error s) = .silent := by simp [h]
 
 @[simp] theorem traceToCore_silent : traceToCore .silent = .silent := rfl
 @[simp] theorem traceToCore_trap (msg : String) : traceToCore (.trap msg) = .error msg := rfl
@@ -4890,9 +4890,9 @@ theorem irStep?_ir_load (s : IRExecState) (rest : List IRInstr) (t : IRType)
     (offset : Nat) (addr : UInt32) (stk : List IRValue)
     (hcode : s.code = IRInstr.load t offset :: rest)
     (hstack : s.stack = .i32 addr :: stk)
-    (hbounds : addr.toNat + offset + 4 ≤ s.memory.size) :
+    (_hbounds : addr.toNat + offset + 4 ≤ s.memory.size) :
     ∃ te s', irStep? s = some (te, s') := by
-  cases t <;> simp [irStep?, hcode, hstack, irPop1?, irPushTrace, hbounds, readLE?] <;>
+  cases t <;> simp [irStep?, hcode, hstack, irPop1?, irPushTrace, readLE?] <;>
     (first | exact ⟨_, _, rfl⟩ | split <;> exact ⟨_, _, rfl⟩)
 
 /-- irStep? for store with i32 value and i32 address on stack and in-bounds succeeds.
@@ -4902,9 +4902,9 @@ theorem irStep?_ir_store (s : IRExecState) (rest : List IRInstr) (t : IRType)
     (offset : Nat) (val addr : UInt32) (stk : List IRValue)
     (hcode : s.code = IRInstr.store t offset :: rest)
     (hstack : s.stack = .i32 val :: .i32 addr :: stk)
-    (hbounds : addr.toNat + offset + 4 ≤ s.memory.size) :
+    (_hbounds : addr.toNat + offset + 4 ≤ s.memory.size) :
     ∃ te s', irStep? s = some (te, s') := by
-  cases t <;> simp [irStep?, hcode, hstack, irPop2?, irPushTrace, hbounds, writeLE?, writeLE?.writeLE?_aux] <;>
+  cases t <;> simp [irStep?, hcode, hstack, irPop2?, irPushTrace, writeLE?, writeLE?.writeLE?_aux] <;>
     (first | exact ⟨_, _, rfl⟩ | split <;> exact ⟨_, _, rfl⟩)
 
 /-- irStep? for store8 with i32 value and i32 address on stack and in-bounds succeeds.
@@ -5800,8 +5800,7 @@ theorem irStep?_eq_i32BinOp_total (s : IRExecState) (op : String) (rest : List I
         trace := s.trace ++ [.silent] }) := by
   unfold irStep?; rw [hcode, hstack]
   simp only [irPop2?, irPushTrace]
-  obtain ⟨hnd1, hnd2, hnd3, hnd4⟩ := hnondiv
-  simp only [hnd1, hnd2, hnd3, hnd4]
+  obtain ⟨_, _, _, _⟩ := hnondiv
   exact ⟨_, rfl⟩
 
 /-- i32 add equation lemma. REF: Wasm §4.3.2 -/
@@ -7037,7 +7036,7 @@ theorem step_sim_return_litNull (prog : ANF.Program) (irmod : IRModule)
     (by simp [ANF.evalTrivial, ANF.trivialValue?])
   rw [hs1_eta] at hanf
   simp [anfStepMapped, hanf, traceFromCore, isControlFlowSignal,
-    String.toList_append, BEq.beq, List.beq,
+    BEq.beq, List.beq,
     Flat.valueToString] at hstep
   obtain ⟨rfl, rfl⟩ := hstep
   -- t = .silent, s1' = pushTrace { s1 with expr := .trivial .litNull } .silent
@@ -7108,7 +7107,7 @@ theorem step_sim_return_litNum (prog : ANF.Program) (irmod : IRModule)
     (by simp [ANF.evalTrivial, ANF.trivialValue?])
   rw [hs1_eta] at hanf
   simp [anfStepMapped, hanf, traceFromCore, isControlFlowSignal,
-    String.toList_append, BEq.beq, List.beq,
+    BEq.beq, List.beq,
     Flat.valueToString] at hstep
   obtain ⟨rfl, rfl⟩ := hstep
   obtain ⟨frame, hfr⟩ : ∃ f, s2.frames = [f] := by
@@ -7178,7 +7177,7 @@ theorem step_sim_return_var (prog : ANF.Program) (irmod : IRModule)
     (by simp [ANF.evalTrivial, henv_lookup])
   rw [hs1_eta] at hanf
   simp [anfStepMapped, hanf, traceFromCore, isControlFlowSignal,
-    String.toList_append, BEq.beq, List.beq,
+    BEq.beq, List.beq,
     Flat.valueToString] at hstep
   obtain ⟨rfl, rfl⟩ := hstep
   obtain ⟨frame, hfr⟩ : ∃ f, s2.frames = [f] := by
@@ -7249,7 +7248,7 @@ theorem step_sim_return_litUndefined (prog : ANF.Program) (irmod : IRModule)
     (by simp [ANF.evalTrivial, ANF.trivialValue?])
   rw [hs1_eta] at hanf
   simp [anfStepMapped, hanf, traceFromCore, isControlFlowSignal,
-    String.toList_append, BEq.beq, List.beq,
+    BEq.beq, List.beq,
     Flat.valueToString] at hstep
   obtain ⟨rfl, rfl⟩ := hstep
   obtain ⟨frame, hfr⟩ : ∃ f, s2.frames = [f] := by
@@ -7313,7 +7312,7 @@ theorem step_sim_return_litBoolTrue (prog : ANF.Program) (irmod : IRModule)
     (by simp [ANF.evalTrivial, ANF.trivialValue?])
   rw [hs1_eta] at hanf
   simp [anfStepMapped, hanf, traceFromCore, isControlFlowSignal,
-    String.toList_append, BEq.beq, List.beq,
+    BEq.beq, List.beq,
     Flat.valueToString] at hstep
   obtain ⟨rfl, rfl⟩ := hstep
   obtain ⟨frame, hfr⟩ : ∃ f, s2.frames = [f] := by
@@ -7377,7 +7376,7 @@ theorem step_sim_return_litBoolFalse (prog : ANF.Program) (irmod : IRModule)
     (by simp [ANF.evalTrivial, ANF.trivialValue?])
   rw [hs1_eta] at hanf
   simp [anfStepMapped, hanf, traceFromCore, isControlFlowSignal,
-    String.toList_append, BEq.beq, List.beq,
+    BEq.beq, List.beq,
     Flat.valueToString] at hstep
   obtain ⟨rfl, rfl⟩ := hstep
   obtain ⟨frame, hfr⟩ : ∃ f, s2.frames = [f] := by
@@ -7441,7 +7440,7 @@ theorem step_sim_return_litObject (prog : ANF.Program) (irmod : IRModule)
     (by simp [ANF.evalTrivial, ANF.trivialValue?])
   rw [hs1_eta] at hanf
   simp [anfStepMapped, hanf, traceFromCore, isControlFlowSignal,
-    String.toList_append, BEq.beq, List.beq,
+    BEq.beq, List.beq,
     Flat.valueToString] at hstep
   obtain ⟨rfl, rfl⟩ := hstep
   obtain ⟨frame, hfr⟩ : ∃ f, s2.frames = [f] := by
@@ -7504,7 +7503,7 @@ theorem step_sim_return_litStr (prog : ANF.Program) (irmod : IRModule)
     (by simp [ANF.evalTrivial, ANF.trivialValue?])
   rw [hs1_eta] at hanf
   simp [anfStepMapped, hanf, traceFromCore, isControlFlowSignal,
-    String.toList_append, BEq.beq, List.beq,
+    BEq.beq, List.beq,
     Flat.valueToString] at hstep
   obtain ⟨rfl, rfl⟩ := hstep
   obtain ⟨frame, hfr⟩ : ∃ f, s2.frames = [f] := by
@@ -7569,7 +7568,7 @@ theorem step_sim_return_litClosure (prog : ANF.Program) (irmod : IRModule)
     (by simp [ANF.evalTrivial, ANF.trivialValue?])
   rw [hs1_eta] at hanf
   simp [anfStepMapped, hanf, traceFromCore, isControlFlowSignal,
-    String.toList_append, BEq.beq, List.beq,
+    BEq.beq, List.beq,
     Flat.valueToString] at hstep
   obtain ⟨rfl, rfl⟩ := hstep
   obtain ⟨frame, hfr⟩ : ∃ f, s2.frames = [f] := by
