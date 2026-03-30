@@ -1620,11 +1620,16 @@ private theorem Core_step?_await_lit (s : Core.State) (cv : Core.Value) :
 private theorem Flat_step?_throw_step (s : Flat.State) (fe : Flat.Expr)
     (hnv : Flat.exprValue? fe = none)
     (t : Core.TraceEvent) (sa : Flat.State)
-    (hss : Flat.step? { s with expr := fe } = some (t, sa)) :
+    (hss : Flat.step? { s with expr := fe } = some (t, sa))
+    (hnoerr : ∀ msg, t ≠ .error msg) :
     Flat.step? { s with expr := .throw fe } =
       some (t, { expr := .throw sa.expr, env := sa.env, heap := sa.heap,
                  trace := s.trace ++ [t], funcs := s.funcs, callStack := s.callStack }) := by
-  simp only [Flat.step?, hnv, hss]; rfl
+  simp only [Flat.step?, hnv, hss]
+  cases t with
+  | error msg => exact absurd rfl (hnoerr msg)
+  | log _ => rfl
+  | silent => rfl
 
 private theorem Core_step?_throw_step (s : Core.State) (e : Core.Expr)
     (hnv : Core.exprValue? e = none)
