@@ -2080,10 +2080,8 @@ private theorem Flat_step?_getIndex_value_step_idx (s : Flat.State) (v : Flat.Va
     Flat.step? { s with expr := .getIndex (.lit v) ie } =
       some (t, { expr := .getIndex (.lit v) si.expr, env := si.env, heap := si.heap,
                  trace := s.trace ++ [t], funcs := s.funcs, callStack := s.callStack }) := by
-  cases v with
-  | object addr => simp only [Flat.step?, Flat.exprValue?, hnv, hss]; rfl
-  | string str => simp only [Flat.step?, Flat.exprValue?, hnv, hss]; rfl
-  | _ => simp only [Flat.step?, Flat.exprValue?, hnv, hss]; rfl
+  have hnv' : (match ie with | Flat.Expr.lit v => some v | _ => none) = none := hnv
+  cases v <;> simp only [Flat.step?, Flat.exprValue?, hnv', hss]
 
 -- getIndex: obj is value, idx stuck → whole stuck (Flat)
 private theorem Flat_step?_getIndex_value_none (s : Flat.State) (v : Flat.Value)
