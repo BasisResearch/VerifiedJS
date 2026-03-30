@@ -1,4 +1,4 @@
-# wasmspec — Close non-blocked CC sorries. Focus on newObj + functionDef + tryCatch.
+# wasmspec — Close non-blocked CC sorries. Focus on value sub-cases + functionDef.
 
 ## RULES
 - **DO NOT** run `lake build VerifiedJS` (full build). OOMs.
@@ -10,58 +10,58 @@
 
 ## MEMORY: 7.7GB total, NO swap.
 
-## DO NOT TOUCH THESE SORRIES:
-- 47 "Fix D reverted" sorries (lines 1627-2606) — BLOCKED
-- 2 forIn/forOf sorries (L1369-1370) — unprovable stubs
+## CONTEXT: Fix D has been REVERTED
+
+jsspec reverted Fix D from Flat/Semantics.lean and CC. The 47 "Fix D reverted" sorry
+theorems are dead code and will be deleted by jsspec. The hnoerr guards are gone.
+
+## DO NOT TOUCH THESE:
 - ANFConvertCorrect.lean — proof agent owns this
-- L4890, L4988 (ExprAddrWF) — jsspec is working on these
-- L3267, L4937 (CCState threading) — jsspec is working on these
+- Flat/Semantics.lean — jsspec just modified this
+- forIn/forOf sorries (L1369-1370) — unprovable stubs
+- "Fix D reverted" sorries — jsspec is deleting these
+- ExprAddrWF sorries (L4902, L5000) — jsspec is working on these
+- CCState threading (L3279, L3301, L4949, L5251) — jsspec is working on these
 
-## YOUR TASK: Close non-blocked CC sorries. Target: ≥2.
+## YOUR TASK: Close value sub-cases + larger theorems. Target: ≥2.
 
-### TARGET 1: newObj (L3784) — HIGHEST PRIORITY
+### TARGET 1: value sub-cases (L3795, L4536, L4858, L4956) — MOST PROMISING
 
-`| newObj f args => sorry`
+These all involve the case where all sub-expressions have already been evaluated to values.
 
-1. `lean_goal` at L3784 to see the full proof state
-2. newObj is similar to call — evaluate f and args, create new object
-3. Core.step? and Flat.step? should have matching newObj rules
-4. Use `lean_local_search "newObj"` to find relevant lemmas
-5. Try `lean_multi_attempt` at L3784 with simple tactics
+L3795: `| some cv => sorry -- callee is value: arg stepping or call execution`
+L4536: `| some cv => sorry -- value sub-case (heap reasoning needed)`
+L4858: `sorry -- all props are values: heap allocation`
+L4956: `sorry -- all elements are values: heap allocation`
 
-### TARGET 2: functionDef (L5118)
+APPROACH:
+1. `lean_goal` at each line to see the full proof state
+2. When all expressions are values, Core.step? and Flat.step? should take a single matching step
+3. Use `lean_local_search "value"` and `lean_local_search "allValues"` to find helpers
+4. Try `lean_multi_attempt` with: `["simp_all", "exact ⟨_, rfl, rfl⟩", "constructor <;> simp_all"]`
+
+### TARGET 2: functionDef (L5130)
 
 `| functionDef fname params body isAsync isGen => sorry`
 
-1. `lean_goal` at L5118
-2. Core.step? on functionDef creates a closure and binds it to fname
-3. Flat.step? on converted expression should do the same
-4. CC_SimRel must hold: converted closure body relates to original
+1. `lean_goal` at L5130
+2. functionDef creates a closure: Core binds fname to a closure value
+3. Flat's convertExpr on functionDef should produce equivalent binding
+4. Use `lean_local_search "functionDef"` to find step lemmas
 
-### TARGET 3: tryCatch (L5208)
+### TARGET 3: newObj (L3796)
+
+`| newObj f args => sorry`
+
+Similar to call case. Constructor invocation.
+
+### TARGET 4: tryCatch (L5220)
 
 `| tryCatch body catchParam catchBody finally_ => sorry`
 
-1. `lean_goal` at L5208
-2. tryCatch sets up a handler — both Core and Flat enter the try body
-3. CC_SimRel for the body should follow from the conversion
+Sets up exception handler. Both Core and Flat enter the try body.
 
-### TARGET 4: getIndex string mismatch (L4352)
-
-`sorry -- getIndex string both-values: Flat/Core semantic mismatch`
-
-1. `lean_goal` at L4352 — this may be a genuine semantic mismatch
-2. If unprovable, document WHY and move on
-
-### TARGET 5: convertExpr_not_lit (L2754, L2864)
-
-These need `convertExpr_not_lit` for stub constructors.
-
-1. `lean_local_search "convertExpr_not_lit"` to find if it exists
-2. If not, check `.lake/_tmp_fix/` for staged proofs
-3. Write a simple lemma: `convertExpr ≠ .lit _` for the relevant constructors
-
-## WORKFLOW FOR EACH SORRY:
+## WORKFLOW:
 1. `lean_goal` at the sorry line — read the FULL goal
 2. `lean_multi_attempt` with 6-8 tactics
 3. If nothing closes it in 10 minutes, MOVE TO THE NEXT ONE
@@ -72,5 +72,3 @@ After any sorry closure:
 1. Build: `lake build VerifiedJS.Proofs.ClosureConvertCorrect`
 2. Count: `grep -c sorry VerifiedJS/Proofs/ClosureConvertCorrect.lean`
 3. Log to agents/wasmspec/log.md
-
-## TARGET: Close at least 2 non-blocked sorries → CC grep count down from 69

@@ -1,4 +1,4 @@
-# jsspec — Close the SIMPLEST CC sorries first. You closed ZERO last run.
+# jsspec — DELETE 47 dead-code theorems + close real CC sorries
 
 ## RULES
 - **DO NOT** run `lake build VerifiedJS` (full build). OOMs.
@@ -9,61 +9,59 @@
 
 ## MEMORY: 7.7GB total, NO swap.
 
-## DO NOT TOUCH THESE SORRIES:
-- 47 "Fix D reverted" sorries (lines 1627-2157, 2289-2606) — BLOCKED
-- 2 forIn/forOf sorries (L1369-1370) — unprovable stubs
+## GREAT WORK on Fix D revert! Now clean up.
+
+Your 18:00 run reverted Fix D and eliminated 22 hnoerr sorries. Excellent.
+But there are still 47 dead-code "Fix D reverted" error theorems with sorry bodies.
+These are NEVER CALLED. Delete them to drop grep count from 69 → 22.
+
+## PRIORITY 1: DELETE ALL "Fix D reverted" dead-code sorries (instant -47)
+
+Search for all lines containing `sorry -- Fix D reverted` in ClosureConvertCorrect.lean.
+These are error companion theorems that are no longer referenced after the Fix D revert.
+DELETE each entire theorem (not just the sorry line — delete the full theorem including
+its signature and any doc comment).
+
+Approximate line ranges (verify before deleting):
+- L1627-2157: bulk of Fix D reverted sorries
+- L2289-2606: remaining Fix D reverted sorries
+
+**Verification**: After deletion, search for any references to the deleted theorem names.
+If any are still referenced, keep those. Delete only truly unreferenced ones.
+
+Build after deletion. grep -c sorry should drop from 69 to ~22.
+
+## PRIORITY 2: Close real sorries (20 remaining after cleanup)
+
+After deleting dead code, these are the real sorries to close:
+
+### EASIEST (start here):
+- **L4902**: ExprAddrWF objectLit — `lean_goal`, try `cases hexprwf; assumption` or `simp [ExprAddrWF]`
+- **L5000**: ExprAddrWF arrayLit — same approach
+- **L2960**: small sorry — `lean_goal` to understand
+
+### MEDIUM:
+- **L3279**: CCState threading (1 sorry) — `lean_goal`, try omega/simp
+- **L3301**: CCState threading (2 sorries) — same approach
+- **L4949**: CCState threading: convertPropList concatenation
+- **L5251**: CCState threading: while_ lowering
+
+### HARDER (skip if stuck):
+- **L2766, L2876**: convertExpr_not_lit — need to prove convertExpr ≠ .lit for stub constructors
+- **L3795**: callee is value (arg stepping or call execution)
+- **L3796**: newObj — similar to call
+- **L4364**: getIndex string semantic mismatch — MAY BE UNPROVABLE
+- **L4536, L4858, L4956**: value sub-cases (heap reasoning)
+- **L5130**: functionDef
+- **L5220**: tryCatch
+
+## DO NOT TOUCH:
 - ANFConvertCorrect.lean — proof agent owns this
+- forIn/forOf sorries (L1369-1370) — unprovable stubs
 
-## YOUR LAST RUN CLOSED ZERO SORRIES IN 2 HOURS. CHANGE APPROACH.
+## WORKFLOW:
+1. Delete dead code FIRST (Priority 1). Build. Verify count.
+2. Then start with EASIEST sorry. `lean_goal` → `lean_multi_attempt` → move on if stuck after 10 min.
+3. Log each sorry attempted and result.
 
-Stop trying complex proofs. Start with the ABSOLUTE simplest sorry you can close.
-
-## TARGET 1: ExprAddrWF propagation (L4890, L4988) — SIMPLEST
-
-L4890: `ExprAddrWF (.objectLit _)` doesn't propagate to elements.
-L4988: `ExprAddrWF (.arrayLit _)` doesn't propagate to elements.
-
-APPROACH:
-1. `lean_goal` at L4890 to see exact goal
-2. `lean_hover_info` on `ExprAddrWF` to see its definition
-3. Try `lean_multi_attempt` at L4890 with:
-   ```
-   ["simp [ExprAddrWF]",
-    "unfold ExprAddrWF; simp",
-    "simp_all [ExprAddrWF]",
-    "intro h; exact absurd h (by decide)",
-    "exact ExprAddrWF.of_objectLit ‹_› ‹_›",
-    "cases hexprwf; assumption"]
-   ```
-4. If none work, read the ExprAddrWF definition and write the exact unfolding proof.
-
-## TARGET 2: CCState threading (L3267, L4937) — MEDIUM
-
-L3267: `sorry⟩ -- CCState threading: st' includes else_ conversion but st_a' only then_`
-L4937: `sorry -- CCState threading: convertPropList over concatenated lists`
-
-APPROACH:
-1. `lean_goal` at L3267 to see what CCState property is needed
-2. Search for CCState monotonicity lemmas: `lean_local_search "CCState"`
-3. Try `omega`, `simp`, or explicit transitivity
-
-## TARGET 3: value sub-cases (L3783, L4524, L4846, L4944)
-
-L3783: callee is value, arg stepping or call execution
-L4524: value sub-case (heap reasoning)
-L4846: all props are values: heap allocation
-L4944: all elements are values: heap allocation
-
-## WORKFLOW FOR EACH SORRY:
-1. `lean_goal` at the sorry line — read the FULL goal
-2. `lean_multi_attempt` with 6-8 simple tactics
-3. If nothing closes it in 5 minutes, MOVE TO THE NEXT ONE
-4. Do NOT spend more than 15 minutes on any single sorry
-
-## VERIFICATION
-After any sorry closure:
-1. Build: `lake build VerifiedJS.Proofs.ClosureConvertCorrect`
-2. Count: `grep -c sorry VerifiedJS/Proofs/ClosureConvertCorrect.lean`
-3. Log to agents/jsspec/log.md
-
-## TARGET: Close at least 2 sorries. Prioritize QUANTITY over difficulty.
+## TARGET: Delete 47 dead-code + close at least 2 real sorries → CC from 69 to ~20

@@ -5033,7 +5033,8 @@ private theorem closureConvert_step_simulation
       have ⟨hncfr_done, hncfr_target, hncfr_rest⟩ :=
         firstNonValueProp_propListNoCallFrameReturn hcfnv (by simp [noCallFrameReturn] at hncfr; exact hncfr)
       have hexprwf_target : ExprAddrWF target_c sc.heap.objects.size := by
-        sorry -- ExprAddrWF (.objectLit _) = True doesn't propagate to elements; needs ExprAddrPropListWF
+        simp [ExprAddrWF] at hexprwf
+        exact ExprAddrPropListWF_firstNonValueProp_target hcfnv hexprwf
       obtain ⟨injMap', sc_sub', ⟨hcstep_sub⟩, htrace_sub, hinj', henvCorr', henvwf', hheapvwf',
               hncfr', hexprwf', st_a, st_a', hconv', hAgreeIn, hAgreeOut⟩ :=
         ih_depth target_c.depth hdepth envVar envMap injMap
@@ -5077,8 +5078,11 @@ private theorem closureConvert_step_simulation
         simp only [sc', noCallFrameReturn]
         rw [propListNoCallFrameReturn_append, propListNoCallFrameReturn_append]
         simp [propListNoCallFrameReturn, hncfr', hncfr_done, hncfr_rest]
-      · -- ExprAddrWF (objectLit is always True)
-        simp [sc', ExprAddrWF]
+      · -- ExprAddrWF objectLit: reconstruct from IH
+        simp only [sc', ExprAddrWF]
+        exact ExprAddrPropListWF_firstNonValueProp_reconstruct hcfnv
+          (by simp [ExprAddrWF] at hexprwf; exact hexprwf) hexprwf'
+          (Core_step_heap_size_mono hcstep_sub)
       · -- CCState agreement
         sorry -- CCState threading: convertPropList over concatenated lists (proof sketch verified)
   | arrayLit elems =>
@@ -5131,7 +5135,8 @@ private theorem closureConvert_step_simulation
       have ⟨hncfr_done, hncfr_target, hncfr_rest⟩ :=
         firstNonValueExpr_listNoCallFrameReturn hcfnv (by simp [noCallFrameReturn] at hncfr; exact hncfr)
       have hexprwf_target : ExprAddrWF target_c sc.heap.objects.size := by
-        sorry -- ExprAddrWF (.arrayLit _) = True doesn't propagate to elements; needs ExprAddrListWF
+        simp [ExprAddrWF] at hexprwf
+        exact ExprAddrListWF_firstNonValueExpr_target hcfnv hexprwf
       obtain ⟨injMap', sc_sub', ⟨hcstep_sub⟩, htrace_sub, hinj', henvCorr', henvwf', hheapvwf',
               hncfr', hexprwf', st_a, st_a', hconv', hAgreeIn, hAgreeOut⟩ :=
         ih_depth target_c.depth hdepth envVar envMap injMap
@@ -5175,8 +5180,11 @@ private theorem closureConvert_step_simulation
         simp only [sc', noCallFrameReturn]
         rw [listNoCallFrameReturn_append, listNoCallFrameReturn_append]
         simp [listNoCallFrameReturn, hncfr', hncfr_done, hncfr_rest]
-      · -- ExprAddrWF (arrayLit is always True)
-        simp [sc', ExprAddrWF]
+      · -- ExprAddrWF arrayLit: reconstruct from IH
+        simp only [sc', ExprAddrWF]
+        exact ExprAddrListWF_firstNonValueExpr_reconstruct hcfnv
+          (by simp [ExprAddrWF] at hexprwf; exact hexprwf) hexprwf'
+          (Core_step_heap_size_mono hcstep_sub)
       · -- CCState agreement (arrayLit sub-step)
         have helems := firstNonValueExpr_decompose hcfnv
         -- State determination for sc_sub'.expr from canonical state vs IH state
