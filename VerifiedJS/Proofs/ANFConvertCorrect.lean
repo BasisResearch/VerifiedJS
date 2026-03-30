@@ -1064,31 +1064,39 @@ private theorem step?_seq_ctx (s : Flat.State) (a b : Flat.Expr)
   | log _ => exact ⟨_, rfl, rfl, rfl, rfl, rfl, rfl, rfl⟩
   | silent => exact ⟨_, rfl, rfl, rfl, rfl, rfl, rfl, rfl⟩
 
-/-- Contextual stepping: if cond is not a value and steps, .if cond then_ else_ steps with
-    the result wrapped. -/
+/-- Contextual stepping: if cond is not a value and steps (non-error),
+    .if cond then_ else_ steps with the result wrapped. -/
 private theorem step?_if_cond_step (s : Flat.State) (cond then_ else_ : Flat.Expr)
     (hnotval : Flat.exprValue? cond = none)
     (t : Core.TraceEvent) (sc : Flat.State)
-    (hstep : Flat.step? { s with expr := cond } = some (t, sc)) :
+    (hstep : Flat.step? { s with expr := cond } = some (t, sc))
+    (hnoerr : ∀ msg, t ≠ .error msg) :
     ∃ s', Flat.step? { s with expr := .«if» cond then_ else_ } = some (t, s') ∧
       s'.expr = .«if» sc.expr then_ else_ ∧ s'.env = sc.env ∧ s'.heap = sc.heap ∧
       s'.funcs = s.funcs ∧ s'.callStack = s.callStack ∧
       s'.trace = s.trace ++ [t] := by
   simp only [Flat.step?, hnotval, hstep]
-  exact ⟨_, rfl, rfl, rfl, rfl, rfl, rfl, rfl⟩
+  cases t with
+  | error msg => exact absurd rfl (hnoerr msg)
+  | log _ => exact ⟨_, rfl, rfl, rfl, rfl, rfl, rfl, rfl⟩
+  | silent => exact ⟨_, rfl, rfl, rfl, rfl, rfl, rfl, rfl⟩
 
-/-- Contextual stepping: if e is not a value and steps, .return (some e) steps with
-    the result wrapped in .return (some ·). -/
+/-- Contextual stepping: if e is not a value and steps (non-error),
+    .return (some e) steps with the result wrapped in .return (some ·). -/
 private theorem step?_return_some_ctx (s : Flat.State) (e : Flat.Expr)
     (hnotval : Flat.exprValue? e = none)
     (t : Core.TraceEvent) (se : Flat.State)
-    (hstep : Flat.step? { s with expr := e } = some (t, se)) :
+    (hstep : Flat.step? { s with expr := e } = some (t, se))
+    (hnoerr : ∀ msg, t ≠ .error msg) :
     ∃ s', Flat.step? { s with expr := .«return» (some e) } = some (t, s') ∧
       s'.expr = .«return» (some se.expr) ∧ s'.env = se.env ∧ s'.heap = se.heap ∧
       s'.funcs = s.funcs ∧ s'.callStack = s.callStack ∧
       s'.trace = s.trace ++ [t] := by
   simp only [Flat.step?, hnotval, hstep]
-  exact ⟨_, rfl, rfl, rfl, rfl, rfl, rfl, rfl⟩
+  cases t with
+  | error msg => exact absurd rfl (hnoerr msg)
+  | log _ => exact ⟨_, rfl, rfl, rfl, rfl, rfl, rfl, rfl⟩
+  | silent => exact ⟨_, rfl, rfl, rfl, rfl, rfl, rfl, rfl⟩
 
 /-- If step? s = some (t, s'), then s.expr is not a value. -/
 private theorem step?_some_implies_not_value {s : Flat.State} {t : Core.TraceEvent} {s' : Flat.State}
@@ -1102,44 +1110,230 @@ private theorem step?_some_implies_not_value {s : Flat.State} {t : Core.TraceEve
       rw [this] at h; exact nomatch h
     | _ => simp [Flat.exprValue?]
 
-/-- Contextual stepping: if e is not a value and steps, .yield (some e) delegate steps with
-    the result wrapped in .yield (some ·) delegate. -/
+/-- Contextual stepping: if e is not a value and steps (non-error),
+    .yield (some e) delegate steps with the result wrapped in .yield (some ·) delegate. -/
 private theorem step?_yield_some_ctx (s : Flat.State) (e : Flat.Expr) (delegate : Bool)
     (hnotval : Flat.exprValue? e = none)
     (t : Core.TraceEvent) (se : Flat.State)
-    (hstep : Flat.step? { s with expr := e } = some (t, se)) :
+    (hstep : Flat.step? { s with expr := e } = some (t, se))
+    (hnoerr : ∀ msg, t ≠ .error msg) :
     ∃ s', Flat.step? { s with expr := .yield (some e) delegate } = some (t, s') ∧
       s'.expr = .yield (some se.expr) delegate ∧ s'.env = se.env ∧ s'.heap = se.heap ∧
       s'.funcs = s.funcs ∧ s'.callStack = s.callStack ∧
       s'.trace = s.trace ++ [t] := by
   simp only [Flat.step?, hnotval, hstep]
-  exact ⟨_, rfl, rfl, rfl, rfl, rfl, rfl, rfl⟩
+  cases t with
+  | error msg => exact absurd rfl (hnoerr msg)
+  | log _ => exact ⟨_, rfl, rfl, rfl, rfl, rfl, rfl, rfl⟩
+  | silent => exact ⟨_, rfl, rfl, rfl, rfl, rfl, rfl, rfl⟩
 
-/-- Contextual stepping: if e is not a value and steps, .await e steps with
-    the result wrapped in .await (·). -/
+/-- Contextual stepping: if e is not a value and steps (non-error),
+    .await e steps with the result wrapped in .await (·). -/
 private theorem step?_await_ctx (s : Flat.State) (e : Flat.Expr)
     (hnotval : Flat.exprValue? e = none)
     (t : Core.TraceEvent) (se : Flat.State)
-    (hstep : Flat.step? { s with expr := e } = some (t, se)) :
+    (hstep : Flat.step? { s with expr := e } = some (t, se))
+    (hnoerr : ∀ msg, t ≠ .error msg) :
     ∃ s', Flat.step? { s with expr := .await e } = some (t, s') ∧
       s'.expr = .await se.expr ∧ s'.env = se.env ∧ s'.heap = se.heap ∧
       s'.funcs = s.funcs ∧ s'.callStack = s.callStack ∧
       s'.trace = s.trace ++ [t] := by
   simp only [Flat.step?, hnotval, hstep]
-  exact ⟨_, rfl, rfl, rfl, rfl, rfl, rfl, rfl⟩
+  cases t with
+  | error msg => exact absurd rfl (hnoerr msg)
+  | log _ => exact ⟨_, rfl, rfl, rfl, rfl, rfl, rfl, rfl⟩
+  | silent => exact ⟨_, rfl, rfl, rfl, rfl, rfl, rfl, rfl⟩
 
-/-- Contextual stepping: if arg is not a value and steps, .throw arg steps with
-    the result wrapped in .throw (·). -/
+/-- Contextual stepping: if arg is not a value and steps (non-error),
+    .throw arg steps with the result wrapped in .throw (·). -/
 private theorem step?_throw_ctx (s : Flat.State) (arg : Flat.Expr)
     (hnotval : Flat.exprValue? arg = none)
     (t : Core.TraceEvent) (se : Flat.State)
-    (hstep : Flat.step? { s with expr := arg } = some (t, se)) :
+    (hstep : Flat.step? { s with expr := arg } = some (t, se))
+    (hnoerr : ∀ msg, t ≠ .error msg) :
     ∃ s', Flat.step? { s with expr := .throw arg } = some (t, s') ∧
       s'.expr = .throw se.expr ∧ s'.env = se.env ∧ s'.heap = se.heap ∧
       s'.funcs = s.funcs ∧ s'.callStack = s.callStack ∧
       s'.trace = s.trace ++ [t] := by
   simp only [Flat.step?, hnotval, hstep]
+  cases t with
+  | error msg => exact absurd rfl (hnoerr msg)
+  | log _ => exact ⟨_, rfl, rfl, rfl, rfl, rfl, rfl, rfl⟩
+  | silent => exact ⟨_, rfl, rfl, rfl, rfl, rfl, rfl, rfl⟩
+
+/-- Context stepping: if init is not a value and steps (non-error),
+    .let name init body steps with the result wrapped. -/
+private theorem step?_let_init_ctx (s : Flat.State) (name : String) (init body : Flat.Expr)
+    (hnotval : Flat.exprValue? init = none)
+    (t : Core.TraceEvent) (si : Flat.State)
+    (hstep : Flat.step? { s with expr := init } = some (t, si))
+    (hnoerr : ∀ msg, t ≠ .error msg) :
+    ∃ s', Flat.step? { s with expr := .«let» name init body } = some (t, s') ∧
+      s'.expr = .«let» name si.expr body ∧ s'.env = si.env ∧ s'.heap = si.heap ∧
+      s'.funcs = s.funcs ∧ s'.callStack = s.callStack ∧
+      s'.trace = s.trace ++ [t] := by
+  simp only [Flat.step?, hnotval, hstep]
+  cases t with
+  | error msg => exact absurd rfl (hnoerr msg)
+  | log _ => exact ⟨_, rfl, rfl, rfl, rfl, rfl, rfl, rfl⟩
+  | silent => exact ⟨_, rfl, rfl, rfl, rfl, rfl, rfl, rfl⟩
+
+/-- Context stepping: if arg is not a value and steps (non-error),
+    .unary op arg steps with the result wrapped. -/
+private theorem step?_unary_ctx (s : Flat.State) (op : Core.UnaryOp) (arg : Flat.Expr)
+    (hnotval : Flat.exprValue? arg = none)
+    (t : Core.TraceEvent) (sa : Flat.State)
+    (hstep : Flat.step? { s with expr := arg } = some (t, sa))
+    (hnoerr : ∀ msg, t ≠ .error msg) :
+    ∃ s', Flat.step? { s with expr := .unary op arg } = some (t, s') ∧
+      s'.expr = .unary op sa.expr ∧ s'.env = sa.env ∧ s'.heap = sa.heap ∧
+      s'.funcs = s.funcs ∧ s'.callStack = s.callStack ∧
+      s'.trace = s.trace ++ [t] := by
+  simp only [Flat.step?, hnotval, hstep]
+  cases t with
+  | error msg => exact absurd rfl (hnoerr msg)
+  | log _ => exact ⟨_, rfl, rfl, rfl, rfl, rfl, rfl, rfl⟩
+  | silent => exact ⟨_, rfl, rfl, rfl, rfl, rfl, rfl, rfl⟩
+
+/-- Context stepping: if lhs is not a value and steps (non-error),
+    .binary op lhs rhs steps with the result wrapped. -/
+private theorem step?_binary_lhs_ctx (s : Flat.State) (op : Core.BinOp) (lhs rhs : Flat.Expr)
+    (hnotval : Flat.exprValue? lhs = none)
+    (t : Core.TraceEvent) (sl : Flat.State)
+    (hstep : Flat.step? { s with expr := lhs } = some (t, sl))
+    (hnoerr : ∀ msg, t ≠ .error msg) :
+    ∃ s', Flat.step? { s with expr := .binary op lhs rhs } = some (t, s') ∧
+      s'.expr = .binary op sl.expr rhs ∧ s'.env = sl.env ∧ s'.heap = sl.heap ∧
+      s'.funcs = s.funcs ∧ s'.callStack = s.callStack ∧
+      s'.trace = s.trace ++ [t] := by
+  simp only [Flat.step?, hnotval, hstep]
+  cases t with
+  | error msg => exact absurd rfl (hnoerr msg)
+  | log _ => exact ⟨_, rfl, rfl, rfl, rfl, rfl, rfl, rfl⟩
+  | silent => exact ⟨_, rfl, rfl, rfl, rfl, rfl, rfl, rfl⟩
+
+/-- Error propagation for seq: when inner step errors, seq propagates. -/
+private theorem step?_seq_error (s : Flat.State) (a b : Flat.Expr)
+    (hnotval : Flat.exprValue? a = none)
+    (msg : String) (sa : Flat.State)
+    (hstep : Flat.step? { s with expr := a } = some (.error msg, sa)) :
+    ∃ s', Flat.step? { s with expr := .seq a b } = some (.error msg, s') ∧
+      s'.expr = .lit .undefined ∧ s'.env = sa.env ∧ s'.heap = sa.heap ∧
+      s'.funcs = s.funcs ∧ s'.callStack = s.callStack ∧
+      s'.trace = s.trace ++ [.error msg] := by
+  simp only [Flat.step?, hnotval, hstep]
   exact ⟨_, rfl, rfl, rfl, rfl, rfl, rfl, rfl⟩
+
+/-- Error propagation for let: when inner step errors, let propagates. -/
+private theorem step?_let_init_error (s : Flat.State) (name : String) (init body : Flat.Expr)
+    (hnotval : Flat.exprValue? init = none)
+    (msg : String) (si : Flat.State)
+    (hstep : Flat.step? { s with expr := init } = some (.error msg, si)) :
+    ∃ s', Flat.step? { s with expr := .«let» name init body } = some (.error msg, s') ∧
+      s'.expr = .lit .undefined ∧ s'.env = si.env ∧ s'.heap = si.heap ∧
+      s'.funcs = s.funcs ∧ s'.callStack = s.callStack ∧
+      s'.trace = s.trace ++ [.error msg] := by
+  simp only [Flat.step?, hnotval, hstep]
+  exact ⟨_, rfl, rfl, rfl, rfl, rfl, rfl, rfl⟩
+
+/-- Error propagation for unary: when inner step errors, unary propagates. -/
+private theorem step?_unary_error (s : Flat.State) (op : Core.UnaryOp) (arg : Flat.Expr)
+    (hnotval : Flat.exprValue? arg = none)
+    (msg : String) (sa : Flat.State)
+    (hstep : Flat.step? { s with expr := arg } = some (.error msg, sa)) :
+    ∃ s', Flat.step? { s with expr := .unary op arg } = some (.error msg, s') ∧
+      s'.expr = .lit .undefined ∧ s'.env = sa.env ∧ s'.heap = sa.heap ∧
+      s'.funcs = s.funcs ∧ s'.callStack = s.callStack ∧
+      s'.trace = s.trace ++ [.error msg] := by
+  simp only [Flat.step?, hnotval, hstep]
+  exact ⟨_, rfl, rfl, rfl, rfl, rfl, rfl, rfl⟩
+
+/-- Error propagation for binary (lhs): when lhs step errors, binary propagates. -/
+private theorem step?_binary_lhs_error (s : Flat.State) (op : Core.BinOp) (lhs rhs : Flat.Expr)
+    (hnotval : Flat.exprValue? lhs = none)
+    (msg : String) (sl : Flat.State)
+    (hstep : Flat.step? { s with expr := lhs } = some (.error msg, sl)) :
+    ∃ s', Flat.step? { s with expr := .binary op lhs rhs } = some (.error msg, s') ∧
+      s'.expr = .lit .undefined ∧ s'.env = sl.env ∧ s'.heap = sl.heap ∧
+      s'.funcs = s.funcs ∧ s'.callStack = s.callStack ∧
+      s'.trace = s.trace ++ [.error msg] := by
+  simp only [Flat.step?, hnotval, hstep]
+  exact ⟨_, rfl, rfl, rfl, rfl, rfl, rfl, rfl⟩
+
+/-- Error propagation for throw: when arg step errors, throw propagates. -/
+private theorem step?_throw_error (s : Flat.State) (arg : Flat.Expr)
+    (hnotval : Flat.exprValue? arg = none)
+    (msg : String) (sa : Flat.State)
+    (hstep : Flat.step? { s with expr := arg } = some (.error msg, sa)) :
+    ∃ s', Flat.step? { s with expr := .throw arg } = some (.error msg, s') ∧
+      s'.expr = .lit .undefined ∧ s'.env = sa.env ∧ s'.heap = sa.heap ∧
+      s'.funcs = s.funcs ∧ s'.callStack = s.callStack ∧
+      s'.trace = s.trace ++ [.error msg] := by
+  simp only [Flat.step?, hnotval, hstep]
+  exact ⟨_, rfl, rfl, rfl, rfl, rfl, rfl, rfl⟩
+
+/-- Error propagation for return (some): when inner step errors, return propagates. -/
+private theorem step?_return_some_error (s : Flat.State) (e : Flat.Expr)
+    (hnotval : Flat.exprValue? e = none)
+    (msg : String) (se : Flat.State)
+    (hstep : Flat.step? { s with expr := e } = some (.error msg, se)) :
+    ∃ s', Flat.step? { s with expr := .«return» (some e) } = some (.error msg, s') ∧
+      s'.expr = .lit .undefined ∧ s'.env = se.env ∧ s'.heap = se.heap ∧
+      s'.funcs = s.funcs ∧ s'.callStack = s.callStack ∧
+      s'.trace = s.trace ++ [.error msg] := by
+  simp only [Flat.step?, hnotval, hstep]
+  exact ⟨_, rfl, rfl, rfl, rfl, rfl, rfl, rfl⟩
+
+/-- Error propagation for yield (some): when inner step errors, yield propagates. -/
+private theorem step?_yield_some_error (s : Flat.State) (e : Flat.Expr) (delegate : Bool)
+    (hnotval : Flat.exprValue? e = none)
+    (msg : String) (se : Flat.State)
+    (hstep : Flat.step? { s with expr := e } = some (.error msg, se)) :
+    ∃ s', Flat.step? { s with expr := .yield (some e) delegate } = some (.error msg, s') ∧
+      s'.expr = .lit .undefined ∧ s'.env = se.env ∧ s'.heap = se.heap ∧
+      s'.funcs = s.funcs ∧ s'.callStack = s.callStack ∧
+      s'.trace = s.trace ++ [.error msg] := by
+  simp only [Flat.step?, hnotval, hstep]
+  exact ⟨_, rfl, rfl, rfl, rfl, rfl, rfl, rfl⟩
+
+/-- Error propagation for await: when inner step errors, await propagates. -/
+private theorem step?_await_error (s : Flat.State) (e : Flat.Expr)
+    (hnotval : Flat.exprValue? e = none)
+    (msg : String) (se : Flat.State)
+    (hstep : Flat.step? { s with expr := e } = some (.error msg, se)) :
+    ∃ s', Flat.step? { s with expr := .await e } = some (.error msg, s') ∧
+      s'.expr = .lit .undefined ∧ s'.env = se.env ∧ s'.heap = se.heap ∧
+      s'.funcs = s.funcs ∧ s'.callStack = s.callStack ∧
+      s'.trace = s.trace ++ [.error msg] := by
+  simp only [Flat.step?, hnotval, hstep]
+  exact ⟨_, rfl, rfl, rfl, rfl, rfl, rfl, rfl⟩
+
+/-- Error propagation for if: when cond step errors, if propagates. -/
+private theorem step?_if_cond_error (s : Flat.State) (cond then_ else_ : Flat.Expr)
+    (hnotval : Flat.exprValue? cond = none)
+    (msg : String) (sc : Flat.State)
+    (hstep : Flat.step? { s with expr := cond } = some (.error msg, sc)) :
+    ∃ s', Flat.step? { s with expr := .«if» cond then_ else_ } = some (.error msg, s') ∧
+      s'.expr = .lit .undefined ∧ s'.env = sc.env ∧ s'.heap = sc.heap ∧
+      s'.funcs = s.funcs ∧ s'.callStack = s.callStack ∧
+      s'.trace = s.trace ++ [.error msg] := by
+  simp only [Flat.step?, hnotval, hstep]
+  exact ⟨_, rfl, rfl, rfl, rfl, rfl, rfl, rfl⟩
+
+/-- HasBreakInHead expressions are never values. -/
+private theorem HasBreakInHead_not_value (e : Flat.Expr) (label : Option Flat.LabelName)
+    (h : HasBreakInHead e label) : Flat.exprValue? e = none := by
+  cases h <;> simp [Flat.exprValue?]
+
+/-- HasContinueInHead expressions are never values. -/
+private theorem HasContinueInHead_not_value (e : Flat.Expr) (label : Option Flat.LabelName)
+    (h : HasContinueInHead e label) : Flat.exprValue? e = none := by
+  cases h <;> simp [Flat.exprValue?]
+
+/-- HasThrowInHead expressions are never values. -/
+private theorem HasThrowInHead_not_value (e : Flat.Expr)
+    (h : HasThrowInHead e) : Flat.exprValue? e = none := by
+  cases h <;> simp [Flat.exprValue?]
 
 /-- Stepping .if with a literal condition branches directly. -/
 private theorem step?_if_lit_branch (s : Flat.State) (v : Flat.Value)
@@ -1229,7 +1423,7 @@ private theorem steps_if_var_branch (sf : Flat.State) (name : String) (val : Fla
     step?_var_bound sf name val hval
   have hnotval : Flat.exprValue? (Flat.Expr.var name) = none := by simp [Flat.exprValue?]
   obtain ⟨s1, hs1, he1, henv1, hheap1, hf1, hc1, ht1⟩ :=
-    step?_if_cond_step sf (.var name) then_ else_ hnotval .silent s_var hstep_var
+    step?_if_cond_step sf (.var name) then_ else_ hnotval .silent s_var hstep_var (fun _ h => nomatch h)
   -- s1.expr = .if (.lit val) then_ else_
   have hs1_expr : s1.expr = .«if» (.lit val) then_ else_ := by rw [he1, hexpr_var]
   -- Step 2: branch
@@ -1272,7 +1466,7 @@ private theorem steps_if_this_branch (sf : Flat.State)
     step?_this_resolve sf
   have hnotval : Flat.exprValue? Flat.Expr.this = none := by simp [Flat.exprValue?]
   obtain ⟨s1, hs1, he1, henv1, hheap1, hf1, hc1, ht1⟩ :=
-    step?_if_cond_step sf .this then_ else_ hnotval .silent s_this hstep_this
+    step?_if_cond_step sf .this then_ else_ hnotval .silent s_this hstep_this (fun _ h => nomatch h)
   have hs1_expr : s1.expr = .«if» (.lit val) then_ else_ := by rw [he1, hexpr_this]
   obtain ⟨s2, hs2, he2, henv2, hheap2, hf2, hc2, ht2⟩ :=
     step?_if_lit_branch s1 val then_ else_
