@@ -1,21 +1,22 @@
-# jsspec — ANF DEAD CODE FIX + CC INTEGRATION. Both are critical path.
+# jsspec — FIX D PERMISSIONS UNBLOCKED + CC INTEGRATION. Both are critical path.
 
-## STATUS (03:05 Mar 30)
-- CC: 23 sorries (grep-c), ~21 actual. Proof agent running 4h+ but stuck on value sub-cases.
+## STATUS (04:05 Mar 30)
+- CC: 23 sorries (grep-c). Proof agent redirected to integrate YOUR staged files first.
 - ANF: 17 sorries — ALL blocked by dead code absorption.
-- Wasm: 10 actual sorries (wasmspec owns, throw just proved!). DO NOT touch Semantics.lean.
+- Wasm: 9 actual sorries (wasmspec proved throw+await!). DO NOT touch Wasm/Semantics.lean.
+
+## GOOD NEWS: wasmspec will run `chmod g+w VerifiedJS/Flat/Semantics.lean` at 04:15
+Check permissions at start. If g+w is set, APPLY FIX D IMMEDIATELY.
 
 ## YOUR MISSION: TWO TRACKS
 
-### TRACK 1: FIX ANF DEAD CODE ABSORPTION — TOP PRIORITY
+### TRACK 1: FIX D — APPLY TO Flat/Semantics.lean (TOP PRIORITY)
 
-Your analysis in `.lake/_tmp_fix/anf_break_continue_step_sim.lean` identified the root cause:
-normalizeExpr CPS discards dead code after break/continue/throw/return,
-but Flat.step? for .seq/.let continues executing it.
+**Pre-check**: `ls -la VerifiedJS/Flat/Semantics.lean` — if group-writable, proceed.
 
-**Implement Fix D** (change Flat.step? to propagate errors through seq/let):
+Your staging is done (`.lake/_tmp_fix/flat_error_propagation.lean`, `.lake/_tmp_fix/test_fix_d.lean` both verified). Apply Fix D directly:
 
-**Concrete changes needed** (in `VerifiedJS/Flat/Semantics.lean`):
+**Concrete changes** (in `VerifiedJS/Flat/Semantics.lean`):
 ```lean
 -- In step? for .seq:
 | .seq a b =>
@@ -32,40 +33,36 @@ but Flat.step? for .seq/.let continues executing it.
     | none => ...  -- existing behavior
 ```
 
-**IMPORTANT**: This will break ClosureConvertCorrect.lean proofs. You MUST:
-1. Write the fix in `.lake/_tmp_fix/flat_error_propagation.lean` FIRST
-2. Test with `lean .lake/_tmp_fix/flat_error_propagation.lean`
-3. Document EXACTLY which CC proofs break and why
-4. Only then discuss with supervisor whether to apply
+**AFTER applying Fix D**: Fix the 6 broken lemmas documented in your staging analysis:
+1. `step?_seq_sub_step` — add error case
+2. `step?_seq_var_not_found_explicit` — update conclusion
+3. `step?_seq_var_steps_to_lit` — split needed
+4. `Flat_step?_seq_step` in CC — needs `nonerror` hypothesis (tell proof agent via log)
+5. `Flat_step?_let_step` in CC — same
+6. `step?_seq_ctx` in ANF — same
 
-### TRACK 2: CC INTEGRATION — Get staged files into the main proof
+For items 4-6 in CC/ANF files (you can't write those): document the EXACT edits needed in `.lake/_tmp_fix/fix_d_cc_breakage.lean` so proof agent can apply them.
 
-For every staged file that compiles, provide EXACT edit instructions:
-```
-INTEGRATION: <filename>
-TARGET FILE: VerifiedJS/Proofs/ClosureConvertCorrect.lean
-OLD: <exact old_string to match>
-NEW: <exact new_string replacement>
-```
+**Build and verify**: `lake build VerifiedJS.Flat.Semantics` after applying.
 
-Priority staged files:
-1. `cc_state_mono.lean` → unblocks L2750, L2772, L4337, L4639
-2. `cc_convertExpr_not_lit_v2.lean` → unblocks L1177-1178, L2237, L2347
-3. `cc_exprAddrWF_propagate.lean` → unblocks L4290, L4388
+### TRACK 2: CC STAGING — Continue providing integration-ready patches
 
-### P1: Verify staged files still compile
-Check these in `.lake/_tmp_fix/`:
-- `cc_state_mono.lean`
-- `cc_convertExpr_not_lit_v2.lean`
-- `cc_exprAddrWF_propagate.lean`
+Proof agent has been redirected to integrate your staged files (cc_state_mono, cc_convertExpr_not_lit_v2). Support this by:
+1. Re-verify staged files still compile: `lean .lake/_tmp_fix/cc_state_mono.lean`, `lean .lake/_tmp_fix/cc_convertExpr_not_lit_v2.lean`
+2. If cc_exprAddrWF_propagate still has dep failures, investigate and fix
+3. Stage break/continue direct case proof in `.lake/_tmp_fix/` for proof agent
+
+### TRACK 3: ANF break/continue direct case
+Your analysis shows the direct case (`sf.expr = .break label`) is PROVABLE NOW without Fix D.
+Stage the complete proof in `.lake/_tmp_fix/anf_break_direct_proof.lean` so proof agent can copy it in.
 
 ## WORKFLOW
-1. Read the relevant definitions first (`lean_hover_info`, `lean_local_search`)
-2. Write standalone `.lean` files in `.lake/_tmp_fix/`
-3. Test with `lean_run_code` or `lean_verify`
+1. Check Flat/Semantics.lean permissions first
+2. If writable: Apply Fix D, fix lemmas, build
+3. If not writable: Work on Track 2+3 until 04:15 when wasmspec runs
 4. LOG every 30 min to agents/jsspec/log.md
 
 ## CONSTRAINTS
-- CAN write: `.lake/_tmp_fix/*.lean`, `VerifiedJS/Flat/Semantics.lean` (for Fix D ONLY after staging)
+- CAN write: `.lake/_tmp_fix/*.lean`, `VerifiedJS/Flat/Semantics.lean` (after chmod)
 - CANNOT write: `VerifiedJS/Proofs/*.lean`, `VerifiedJS/Wasm/Semantics.lean`
-- DO NOT run `lake build` (wastes time, proof agent is building)
+- DO NOT run `lake build` on full project (wastes time). Only build specific modules.

@@ -1,66 +1,78 @@
-# proof — CC VALUE + CALL SUB-CASES. Target: -1 this run.
+# proof — INTEGRATE CC STAGED FILES FIRST, then close value sub-cases. Target: -2 this run.
 
-## STATUS: 23 CC sorries (grep -c), ~21 actual. You've been running 4h+ with 0 closures. Time to close ONE.
+## STATUS: 23 CC sorries (grep-c). You've run 5+ hours with 0 closures. CHANGE STRATEGY.
 
-## YOUR TARGETS — VERIFIED LINE NUMBERS (as of 03:05 Mar 30)
+## NEW STRATEGY: INTEGRATE STAGED FILES FIRST (easiest path to -2 sorries)
 
-### P0: getIndex value (L3751, L3752) — HIGHEST PRIORITY
-Two sub-cases on same sorry block:
-- L3751: `sorry -- getIndex object both-values: heap lookup via HeapInj`
-- L3752: `sorry -- getIndex string both-values: string indexing`
+jsspec has prepared fully-compiled CC fixes in `.lake/_tmp_fix/`. Integration instructions are in `.lake/_tmp_fix/CC_integration_instructions.lean`. Read it FIRST.
 
-**For L3752 (string indexing)**: This should be EASIER than object case.
-- Both Flat and Core do string character indexing → same result
-- Try: `simp [Flat.step?, Core.step?]`, unfold string indexing on both sides
-- If types match, `rfl` or `congr` should close it
+### STEP 1: Integrate cc_convertExpr_not_lit_v2.lean (closes L1177+L1178 = -2 sorries!)
 
-**For L3751 (object case)**: Same pattern as getProp object you already proved.
-- Case split on `sc.heap.objects[addr]?` → some/none
-- Use `hheapinj` for heap correspondence
-- Use `HeapInj_get` or similar from your infrastructure
+This is a QUICK WIN. Add `convertExpr_not_value_supported` theorem after the existing `convertExpr_not_value` (around L1181).
 
-### P1: setIndex value (L3924)
-- `sorry -- value sub-case (heap reasoning needed)`
-- Same class as getIndex/setProp
+**EXACT EDIT** — Insert this BEFORE `-- Helper lemmas for Core.step?` (currently ~L1183):
+```lean
+private theorem convertExpr_not_value_supported (e : Core.Expr)
+    (h : Core.exprValue? e = none)
+    (hsupp : e.supported = true)
+    (scope : List String) (envVar : String) (envMap : Flat.EnvMapping) (st : Flat.CCState) :
+    Flat.exprValue? (Flat.convertExpr e scope envVar envMap st).fst = none := by
+  cases e with
+  | lit v => simp [Core.exprValue?] at h
+  | forIn _ _ _ => simp [Core.Expr.supported] at hsupp
+  | forOf _ _ _ => simp [Core.Expr.supported] at hsupp
+  | yield _ _ => simp [Core.Expr.supported] at hsupp
+  | await _ => simp [Core.Expr.supported] at hsupp
+  | var _ =>
+    simp only [Flat.convertExpr]
+    split <;> simp [Flat.exprValue?]
+  | functionDef _ _ _ _ _ => unfold Flat.convertExpr; simp [Flat.exprValue?]
+  | _ => unfold Flat.convertExpr <;>
+    (try { simp [Flat.exprValue?]; done }) <;>
+    (try { split <;> simp [Flat.exprValue?]; done })
+```
 
-### P2: call value (L3266)
-- `sorry -- callee is value: arg stepping or call execution`
-- Case split on `exprListValue? args`
+Then change L1177-1178 (the forIn/forOf sorries in `convertExpr_not_value`) to reference the supported version OR simply add `(hsupp : e.supported = true)` guard. Read the staged file for the full approach.
 
-### P3: newObj (L3267)
-- `| newObj f args => sorry`
+### STEP 2: Integrate cc_state_mono.lean (infrastructure for CCState sorries)
 
-### P4: objectLit all-values (L4246)
-- `sorry -- all props are values: heap allocation`
+Read `.lake/_tmp_fix/cc_state_mono.lean`. Insert the two mutual blocks (state_mono + funcs_prefix) after L740 (end of convertExpr_state_determined mutual block).
 
-### P5: arrayLit all-values (L4344)
-- `sorry -- all elements are values: heap allocation`
+This provides `convertExpr_state_mono` / `convertExprList_state_mono` / `convertPropList_state_mono` which are needed for CCState threading sorries at L4354, L4656.
 
-## BLOCKED (do NOT touch):
-- L1177, L1178: theorem false (forIn/forOf stubs)
-- L2237, L2347: need convertExpr_not_lit for stub constructors (jsspec staging)
-- L2431: HeapInj refactor staging
-- L2750, L2772(×2): CCState threading (if-branch dead code)
-- L4290, L4388: ExprAddrWF propagation (needs ExprAddrPropListWF/ExprAddrListWF)
-- L4337, L4639: CCState threading (concatenated lists, while)
+### STEP 3: After integration, close value sub-cases
+
+With infrastructure in place, tackle these CC sorries (VERIFIED line numbers as of 04:05):
+
+**P0: getIndex (L3767, L3769)**
+- L3767: getIndex object both-values: heap lookup + HeapInj
+- L3769: getIndex string both-values: string indexing (EASIEST)
+
+**P1: Heap allocation sorries (L4263, L4361)**
+- L4263: objectLit all props are values
+- L4361: arrayLit all elements are values
+
+**P2: CCState threading (L4354, L4656)**
+- L4354: convertPropList over concatenated lists
+- L4656: while_ lowering duplicates sub-expressions
+
+### BLOCKED (do NOT touch):
+- L2431: HeapInj refactor
+- L4307, L4405: ExprAddrWF propagation (needs definition change)
 - L4518: functionDef (large)
 - L4608: tryCatch (large)
 
 ## WORKFLOW
-1. `lean_goal` BEFORE every sorry attempt
-2. `lean_multi_attempt` to test tactics
-3. `lake build VerifiedJS.Proofs.ClosureConvertCorrect` after EVERY edit
-4. If build breaks: `git checkout VerifiedJS/Proofs/ClosureConvertCorrect.lean` within 2 minutes
-5. LOG every 30 minutes to agents/proof/log.md
-
-## STRATEGY SHIFT: Pick the EASIEST sorry first
-You've been stuck for 4h. Stop trying the hardest case first.
-- L3752 (getIndex string) is probably easiest — string indexing should be pure computation
-- If stuck after 20min on any case, move to the next one
-- Close ONE sorry this run, even if it's the simplest one
+1. Read `.lake/_tmp_fix/CC_integration_instructions.lean` FIRST
+2. Read `.lake/_tmp_fix/cc_convertExpr_not_lit_v2.lean` and `.lake/_tmp_fix/cc_state_mono.lean`
+3. Integrate into `VerifiedJS/Proofs/ClosureConvertCorrect.lean`
+4. `lake build VerifiedJS.Proofs.ClosureConvertCorrect` after EVERY edit
+5. If build breaks: `git checkout VerifiedJS/Proofs/ClosureConvertCorrect.lean` within 2 minutes
+6. LOG every 30 minutes to agents/proof/log.md
 
 ## FILES
 - `VerifiedJS/Proofs/ClosureConvertCorrect.lean` (rw)
 - `VerifiedJS/Proofs/ANFConvertCorrect.lean` (rw)
+- `.lake/_tmp_fix/*.lean` (read for integration)
 
 ## DO NOT EDIT: `VerifiedJS/Wasm/Semantics.lean`

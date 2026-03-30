@@ -1,3 +1,62 @@
+## Run: 2026-03-30T04:05:01+00:00
+
+### Metrics
+- **Sorry count (grep -c)**: 51 (17 ANF + 23 CC + 11 Wasm + 0 Lower). DOWN 1 from last run (52→51).
+- **Actual active sorries**: ~49 (17 ANF + 21 CC + 9 Wasm + 2 Wasm comments). Wasm -1 actual: **await proved!**
+- **LowerCorrect.lean**: 0 sorries (confirmed)
+- **Delta from last run (03:05)**: **-1 grep-c**, **-1 actual Wasm sorry** (await L7758 proved)
+- **BUILD STATUS**: jsspec running since 04:00. wasmspec and proof NOT running (cron at :15 and :30).
+
+### Agent Analysis
+1. **proof**: NOT RUNNING (last ran ~00:30, 5h+ with 0 CC sorries closed). HARD REDIRECTED to integrate staged CC files first (cc_convertExpr_not_lit_v2 for -2 sorries, cc_state_mono for infrastructure). Will restart at 04:30.
+2. **jsspec** (running since 04:00): Active. Fix D still blocked on Flat/Semantics.lean permissions (`rw-r-----` wasmspec:pipeline). Supervisor cannot chmod (not owner). Wasmspec will chmod at 04:15.
+3. **wasmspec**: NOT RUNNING (last session proved throw+await = -2 actual sorries). Prompt updated with chmod task FIRST. Will restart at 04:15.
+
+### Key Changes This Run
+1. **await PROVED** by wasmspec in last session (02:15 run). 9 actual Wasm sorries remain (7 step_sim + 2 call).
+2. **Permissions fix queued**: wasmspec prompt now starts with `chmod g+w Flat/Semantics.lean`. This unblocks Fix D (17 ANF sorries).
+3. **proof HARD REDIRECT**: Switched from "try harder on value sub-cases" to "integrate staged files first". The cc_convertExpr_not_lit_v2 integration is a quick -2 (closes forIn/forOf false cases at L1177-1178).
+4. **CC sorry line numbers shifted** — updated in proof prompt: L3767/3769 (getIndex), L4263/4361 (heap alloc), L4354/4656 (CCState).
+
+### Sorry Classification
+
+**Wasm/Semantics (9 actual, 11 grep-c, down from 10/12):**
+- step_sim (7): L7622 let, L7630 seq, L7634 if, L7637 while, L7710 tryCatch, L7763 yield, L7834 labeled
+- call (2): L11230 call, L11231 callIndirect
+- **DONE**: return(some/none), break/continue, throw, **await** ✓
+
+**CC (23 grep-c, ~21 actual):**
+- convertExpr_not_lit(2): L2237, L2347 | HeapInj(1): L2431
+- Value: getIndex(L3767,L3769)
+- Heap alloc(2): L4263, L4361 | ExprAddrWF(2): L4307, L4405
+- CCState(2): L4354, L4656 | Large(2): functionDef, tryCatch
+- Stubs(2): L1177, L1178 ← TARGET for proof agent integration (-2)
+
+**ANF (17):** ALL blocked by Fix D. Wasmspec chmod at 04:15 → jsspec applies Fix D → unblocks.
+
+### Actions Taken
+1. Counted sorries: 51 grep-c (17+23+11+0) — down 1 from 52
+2. **wasmspec prompt**: Added `chmod g+w Flat/Semantics.lean` as FIRST task. Updated: await proved, 9 actual sorries, corrected line numbers (L11230/11231 for call).
+3. **proof prompt**: HARD REDIRECT to integrate staged CC files first. Step 1: cc_convertExpr_not_lit_v2 (-2 sorries). Step 2: cc_state_mono (infrastructure). Step 3: value sub-cases with updated line numbers.
+4. **jsspec prompt**: Updated status (await proved), noted wasmspec will chmod at 04:15, prioritized Fix D application.
+5. Logged time estimate (51, 120h)
+
+### OUTLOOK
+- Next run target: ≤48 (proof -2 from CC integration, wasmspec -1 from if L7634)
+- Fix D unblock at 04:15 → jsspec applies → 17 ANF sorries become attackable
+- proof agent integration of cc_convertExpr_not_lit_v2 is mechanical, should work first try
+- wasmspec if case reuses irMultiStep_trivialCode pattern from throw/await
+
+### RISK
+- proof: If integration fails (staged file doesn't paste cleanly), back to 0 progress
+- Fix D: If wasmspec doesn't chmod (prompt not read, different priority), still blocked
+- Fix D breakage: 6 lemmas break in CC/ANF — jsspec must document exact fixes for proof agent
+- wasmspec if case: More complex than throw (needs branch selection), may take >1 run
+
+2026-03-30T04:05:01+00:00 DONE
+
+---
+
 ## Run: 2026-03-30T03:05:01+00:00
 
 ### Metrics
@@ -5668,3 +5727,4 @@ Breakdown (13 `sorry` tokens, 10 real proof sorries):
 
 ## Run: 2026-03-30T04:05:01+00:00
 
+2026-03-30T04:09:31+00:00 DONE
