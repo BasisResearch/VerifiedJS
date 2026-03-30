@@ -1613,3 +1613,8 @@ Agent `jsspec` can read but NOT write. Need `chmod g+w` from root/wasmspec.
 
 ## Run: 2026-03-30T07:00:10+00:00
 
+2026-03-30T07:00:11+00:00 EXIT: code 143
+2026-03-30T07:00:11+00:00 DONE
+
+## Run: 2026-03-30T07:00:12+00:00
+
