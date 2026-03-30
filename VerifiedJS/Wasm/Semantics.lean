@@ -6749,224 +6749,6 @@ theorem init (prog : ANF.Program) (irmod : IRModule)
   hreturn_var_scope := by
     intro name hexpr; simp [ANF.initialState] at hexpr; exact hscope name hexpr
 
-/-- Step simulation (1:N): if the ANF takes one step, the IR takes matching steps.
-    Now provable with LowerCodeCorr: case analysis on the ANF expression form
-    tells us what the IR code looks like, which determines what irStep? returns.
-    Each case is decomposed below; each sub-case may still be sorry'd but the
-    architecture is clear.
-    REF: Standard forward simulation diagram. -/
-theorem step_sim (prog : ANF.Program) (irmod : IRModule) :
-    ∀ (s1 : ANF.State) (s2 : IRExecState) (t : TraceEvent) (s1' : ANF.State),
-    LowerSimRel prog irmod s1 s2 → anfStepMapped s1 = some (t, s1') →
-    ∃ (s2' : IRExecState) (ir_trace : List TraceEvent),
-      IRSteps s2 ir_trace s2' ∧
-      LowerSimRel prog irmod s1' s2' ∧
-      observableEvents ir_trace = observableEvents [t] := by
-  intro s1 s2 t s1' hrel hstep
-  have hstep_orig : anfStepMapped s1 = some (t, s1') := hstep
-  simp only [anfStepMapped] at hstep
-  split at hstep
-  · simp at hstep
-  · rename_i heq
-    simp at hstep
-    obtain ⟨rfl, rfl⟩ := hstep
-    -- heq : ANF.step? s1 = some (ct, s1') for some Core.TraceEvent ct
-    -- hrel.hcode : LowerCodeCorr s1.expr s2.code
-    -- Case analysis on the ANF expression form (= what s1.expr is)
-    -- Each case tells us what IR code s2.code has (via LowerCodeCorr),
-    -- which determines what irStep? s2 returns.
-    match hexpr : s1.expr with
-    | .trivial (.var name) =>
-        -- Variable reference: IR code is [localGet idx]
-        -- ANF steps by looking up name in env, IR steps by localGet
-        -- Get IR code structure from LowerCodeCorr
-        have hc := hrel.hcode; rw [hexpr] at hc
-        obtain ⟨idx, hcode_eq⟩ := hc.var_inv
-        -- Get var/local existence from hvar
-        have ⟨⟨v, henv_lookup⟩, ⟨irval, hlocal⟩⟩ := hrel.hvar name idx hexpr hcode_eq
-        -- ANF step for var found: produces silent, new expr = trivialOfValue v
-        have hs1eq : { s1 with expr := ANF.Expr.trivial (.var name) } = s1 := by
-          cases s1; simp_all
-        have hanf := ANF.step?_var_found s1 name v henv_lookup
-        rw [hs1eq] at hanf
-        rw [hanf] at heq
-        simp only [Option.some.injEq, Prod.mk.injEq] at heq
-        obtain ⟨rfl, rfl⟩ := heq
-        -- IR step for localGet
-        -- Extract frame from hframes
-        obtain ⟨fr, frs, hfr_eq⟩ : ∃ fr frs, s2.frames = fr :: frs := by
-          cases hf : s2.frames with
-          | nil => exact absurd hf hrel.hframes
-          | cons fr frs => exact ⟨fr, frs, rfl⟩
-        -- Extract local value from hlocal
-        simp [hfr_eq] at hlocal
-        have hlocal_val : fr.locals[idx]? = some irval := hlocal
-        have hir := irStep?_eq_localGet s2 idx [] fr frs irval hcode_eq hfr_eq hlocal_val
-        -- The IR produces (.silent, ...), and traceFromCore .silent = .silent
-        simp only [traceFromCore]
-        refine ⟨_, [.silent], IRSteps_of_irStep? hir, ?_, rfl⟩
-        -- Construct new LowerSimRel for the post-step states
-        -- ANF: pushTrace { s1 with expr := .trivial (trivialOfValue v) } .silent
-        -- IR: { s2 with code := [], stack := irval :: s2.stack, trace := ... }
-        exact {
-          hlower := hrel.hlower
-          hmod := hrel.hmod
-          hcode := by
-            -- new ANF expr = .trivial (trivialOfValue v), new IR code = []
-            simp [ANF.pushTrace]
-            exact .value_done (ANF.trivialOfValue v) (ANF.trivialOfValue_ne_var v)
-          hhalt := by
-            intro _
-            simp [IRExecState.halted, hrel.hlabels_empty]
-            exact Nat.le_of_eq hrel.hframes_one
-          hframes := by simp [hfr_eq]
-          henv := by
-            intro n w hlk hne
-            simp [ANF.pushTrace] at hlk
-            exact hrel.henv n w hlk hne
-          hvar := by
-            intro n' idx' hexpr' _
-            simp [ANF.pushTrace] at hexpr'
-            -- trivialOfValue never produces var
-            exact absurd hexpr' (by cases v <;> simp [ANF.trivialOfValue])
-          hlocal_valid := by intro _ _ h; simp at h
-          hlabels_empty := hrel.hlabels_empty
-          hframes_one := hrel.hframes_one
-          hcode_no_br := by intro _ h; simp at h
-          hreturn_var_scope := by intro _ h; simp [ANF.pushTrace] at h
-        }
-    | .trivial .litNull =>
-        -- Literal null: ANF.step? returns none for literals, contradiction with heq
-        have h := ANF.step?_litNull s1
-        have : { s1 with expr := ANF.Expr.trivial .litNull } = s1 := by cases s1; simp_all
-        rw [this] at h; simp [h] at heq
-    | .trivial .litUndefined =>
-        have h := ANF.step?_litUndefined s1
-        have : { s1 with expr := ANF.Expr.trivial .litUndefined } = s1 := by cases s1; simp_all
-        rw [this] at h; simp [h] at heq
-    | .trivial (.litBool b) =>
-        have h := ANF.step?_litBool s1 b
-        have : { s1 with expr := ANF.Expr.trivial (.litBool b) } = s1 := by cases s1; simp_all
-        rw [this] at h; simp [h] at heq
-    | .trivial (.litNum n) =>
-        have h := ANF.step?_litNum s1 n
-        have : { s1 with expr := ANF.Expr.trivial (.litNum n) } = s1 := by cases s1; simp_all
-        rw [this] at h; simp [h] at heq
-    | .trivial (.litStr str) =>
-        have h := ANF.step?_litStr s1 str
-        have : { s1 with expr := ANF.Expr.trivial (.litStr str) } = s1 := by cases s1; simp_all
-        rw [this] at h; simp [h] at heq
-    | .trivial (.litObject addr) =>
-        have h := ANF.step?_litObject s1 addr
-        have : { s1 with expr := ANF.Expr.trivial (.litObject addr) } = s1 := by cases s1; simp_all
-        rw [this] at h; simp [h] at heq
-    | .trivial (.litClosure fi ep) =>
-        have h := ANF.step?_litClosure s1 fi ep
-        have : { s1 with expr := ANF.Expr.trivial (.litClosure fi ep) } = s1 := by cases s1; simp_all
-        rw [this] at h; simp [h] at heq
-    | .«let» name rhs body =>
-        -- Let-binding: ANF evaluates rhs and binds result
-        -- IR code is rhsCode ++ [localSet idx] ++ bodyCode
-        -- Need to show IR executes rhs code, then localSet, matching ANF's let step
-        sorry
-    | .seq a b =>
-        -- Sequence: ANF either skips completed a (1 step), or steps a (1 step)
-        -- IR code is aCode ++ [drop] ++ bCode (from LowerCodeCorr.seq_inv)
-        -- Value case: ANF 1 step → b, but IR needs N steps (aCode + drop). NOT 1:1.
-        -- Stepping case: ANF steps a within seq, IR steps first of aCode. Potentially 1:1
-        --   but requires sub-expression simulation induction.
-        -- TODO: Restructure as stuttering simulation or add measure-based 1:N framework.
-        sorry
-    | .«if» cond then_ else_ =>
-        -- Conditional: ANF evaluates cond trivial, picks branch
-        -- IR code is condCode ++ [if_ ...]
-        sorry
-    | .while_ cond body =>
-        -- While loop: ANF checks cond value or steps cond
-        sorry
-    | .throw arg =>
-        -- Throw: ANF produces error event
-        sorry
-    | .tryCatch body catchParam catchBody finally_ =>
-        -- Try-catch: ANF steps body, catches errors
-        sorry
-    | .«return» arg =>
-        -- Return: ANF evaluates return value
-        have hc := hrel.hcode; rw [hexpr] at hc
-        match arg with
-        | none =>
-          -- return with no value: IR code = [return_]
-          -- Invert LowerCodeCorr: the only matching constructor is return_none
-          have hcode_eq : s2.code = [.return_] := by
-            generalize s2.code = c at hc; cases hc with | return_none => rfl
-          -- ANF step: silent, expr → trivial .litUndefined
-          have hs1eq : { s1 with expr := ANF.Expr.return none } = s1 := by cases s1; simp_all
-          have hanf := ANF.step?_return_none s1
-          rw [hs1eq] at hanf; rw [hanf] at heq
-          simp only [Option.some.injEq, Prod.mk.injEq] at heq
-          obtain ⟨rfl, rfl⟩ := heq
-          -- IR step: return_ with single frame → code = [], labels = []
-          have hfr : ∃ f, s2.frames = [f] := by
-            match hf : s2.frames, hrel.hframes_one with
-            | [], h => simp at h
-            | [f], _ => exact ⟨f, rfl⟩
-            | _ :: _ :: _, h => simp at h
-          obtain ⟨frame, hfr⟩ := hfr
-          have hir := irStep?_eq_return_toplevel s2 [] frame hcode_eq hfr
-          -- traceFromCore (.error "return:undefined") = .silent by control flow signal
-          have htrace : traceFromCore (.error "return:undefined") = TraceEvent.silent := by
-            native_decide
-          rw [htrace]
-          exact ⟨_, [.silent], IRSteps_of_irStep? hir, {
-            hlower := hrel.hlower
-            hmod := hrel.hmod
-            hcode := .value_done .litUndefined (by intro name; exact ANF.Trivial.noConfusion)
-            hhalt := by
-              intro _; simp [IRExecState.halted, hfr]
-            hframes := by simp [hfr]
-            henv := by
-              intro n w hlk hne; simp [ANF.pushTrace] at hlk
-              exact hrel.henv n w hlk hne
-            hvar := by
-              intro n' idx' hexpr' hcode_ir
-              simp [ANF.pushTrace] at hexpr'
-            hlocal_valid := by intro _ _ h; simp at h
-            hlabels_empty := rfl
-            hframes_one := by simp [hfr]
-            hcode_no_br := by intro _ h; simp at h
-            hreturn_var_scope := by intro _ h; simp [ANF.pushTrace] at h
-          }, rfl⟩
-        | some triv =>
-            -- return(some triv): 1:N case, dispatched by step_sim_return_some below
-            exact step_sim_return_some prog irmod s1 s2 _ s1' triv hrel hexpr hstep_orig
-    | .yield arg delegate =>
-        -- Yield: ANF produces value
-        sorry
-    | .await arg =>
-        -- Await: ANF evaluates argument
-        sorry
-    | .labeled label body =>
-        -- Labeled: ANF enters labeled block
-        sorry
-    | .«break» label =>
-        -- Break: ANF breaks to label — impossible with empty label stack.
-        -- LowerCodeCorr says code = [.br target], but hlabels_empty means
-        -- irFindLabel? on [] always returns none, so hcode_no_br contradicts.
-        have hc := hrel.hcode; rw [hexpr] at hc
-        obtain ⟨target, hcode_eq⟩ := hc.break_inv
-        exfalso
-        have ⟨idx, lbl, hfind⟩ := hrel.hcode_no_br target hcode_eq
-        rw [hrel.hlabels_empty] at hfind
-        simp [irFindLabel?, irFindLabel?.go] at hfind
-    | .«continue» label =>
-        -- Continue: ANF continues loop — impossible with empty label stack.
-        have hc := hrel.hcode; rw [hexpr] at hc
-        obtain ⟨target, hcode_eq⟩ := hc.continue_inv
-        exfalso
-        have ⟨idx, lbl, hfind⟩ := hrel.hcode_no_br target hcode_eq
-        rw [hrel.hlabels_empty] at hfind
-        simp [irFindLabel?, irFindLabel?.go] at hfind
-
 /-- Stuttering step simulation for `return (some .litNull)`:
     IR takes 2 steps (const_ .i32 "0" + return_) matching ANF's 1 silent step.
     This is the template for proving 1:N stepping cases in LowerSimRel. -/
@@ -7587,6 +7369,222 @@ theorem step_sim_return_some (prog : ANF.Program) (irmod : IRModule)
     exact step_sim_return_var prog irmod s1 s2 t s1' name
       hrel hexpr ⟨v, hlookup⟩ hstep
 
+/-- Step simulation (1:N): if the ANF takes one step, the IR takes matching steps.
+    Now provable with LowerCodeCorr: case analysis on the ANF expression form
+    tells us what the IR code looks like, which determines what irStep? returns.
+    Each case is decomposed below; each sub-case may still be sorry'd but the
+    architecture is clear.
+    REF: Standard forward simulation diagram. -/
+theorem step_sim (prog : ANF.Program) (irmod : IRModule) :
+    ∀ (s1 : ANF.State) (s2 : IRExecState) (t : TraceEvent) (s1' : ANF.State),
+    LowerSimRel prog irmod s1 s2 → anfStepMapped s1 = some (t, s1') →
+    ∃ (s2' : IRExecState) (ir_trace : List TraceEvent),
+      IRSteps s2 ir_trace s2' ∧
+      LowerSimRel prog irmod s1' s2' ∧
+      observableEvents ir_trace = observableEvents [t] := by
+  intro s1 s2 t s1' hrel hstep
+  have hstep_orig : anfStepMapped s1 = some (t, s1') := hstep
+  simp only [anfStepMapped] at hstep
+  split at hstep
+  · simp at hstep
+  · rename_i heq
+    simp at hstep
+    obtain ⟨rfl, rfl⟩ := hstep
+    -- heq : ANF.step? s1 = some (ct, s1') for some Core.TraceEvent ct
+    -- hrel.hcode : LowerCodeCorr s1.expr s2.code
+    -- Case analysis on the ANF expression form (= what s1.expr is)
+    -- Each case tells us what IR code s2.code has (via LowerCodeCorr),
+    -- which determines what irStep? s2 returns.
+    match hexpr : s1.expr with
+    | .trivial (.var name) =>
+        -- Variable reference: IR code is [localGet idx]
+        -- ANF steps by looking up name in env, IR steps by localGet
+        -- Get IR code structure from LowerCodeCorr
+        have hc := hrel.hcode; rw [hexpr] at hc
+        obtain ⟨idx, hcode_eq⟩ := hc.var_inv
+        -- Get var/local existence from hvar
+        have ⟨⟨v, henv_lookup⟩, ⟨irval, hlocal⟩⟩ := hrel.hvar name idx hexpr hcode_eq
+        -- ANF step for var found: produces silent, new expr = trivialOfValue v
+        have hs1eq : { s1 with expr := ANF.Expr.trivial (.var name) } = s1 := by
+          cases s1; simp_all
+        have hanf := ANF.step?_var_found s1 name v henv_lookup
+        rw [hs1eq] at hanf
+        rw [hanf] at heq
+        simp only [Option.some.injEq, Prod.mk.injEq] at heq
+        obtain ⟨rfl, rfl⟩ := heq
+        -- IR step for localGet
+        -- Extract frame from hframes
+        obtain ⟨fr, frs, hfr_eq⟩ : ∃ fr frs, s2.frames = fr :: frs := by
+          cases hf : s2.frames with
+          | nil => exact absurd hf hrel.hframes
+          | cons fr frs => exact ⟨fr, frs, rfl⟩
+        -- Extract local value from hlocal
+        simp [hfr_eq] at hlocal
+        have hlocal_val : fr.locals[idx]? = some irval := hlocal
+        have hir := irStep?_eq_localGet s2 idx [] fr frs irval hcode_eq hfr_eq hlocal_val
+        -- The IR produces (.silent, ...), and traceFromCore .silent = .silent
+        simp only [traceFromCore]
+        refine ⟨_, [.silent], IRSteps_of_irStep? hir, ?_, rfl⟩
+        -- Construct new LowerSimRel for the post-step states
+        -- ANF: pushTrace { s1 with expr := .trivial (trivialOfValue v) } .silent
+        -- IR: { s2 with code := [], stack := irval :: s2.stack, trace := ... }
+        exact {
+          hlower := hrel.hlower
+          hmod := hrel.hmod
+          hcode := by
+            -- new ANF expr = .trivial (trivialOfValue v), new IR code = []
+            simp [ANF.pushTrace]
+            exact .value_done (ANF.trivialOfValue v) (ANF.trivialOfValue_ne_var v)
+          hhalt := by
+            intro _
+            simp [IRExecState.halted, hrel.hlabels_empty]
+            exact Nat.le_of_eq hrel.hframes_one
+          hframes := by simp [hfr_eq]
+          henv := by
+            intro n w hlk hne
+            simp [ANF.pushTrace] at hlk
+            exact hrel.henv n w hlk hne
+          hvar := by
+            intro n' idx' hexpr' _
+            simp [ANF.pushTrace] at hexpr'
+            -- trivialOfValue never produces var
+            exact absurd hexpr' (by cases v <;> simp [ANF.trivialOfValue])
+          hlocal_valid := by intro _ _ h; simp at h
+          hlabels_empty := hrel.hlabels_empty
+          hframes_one := hrel.hframes_one
+          hcode_no_br := by intro _ h; simp at h
+          hreturn_var_scope := by intro _ h; simp [ANF.pushTrace] at h
+        }
+    | .trivial .litNull =>
+        -- Literal null: ANF.step? returns none for literals, contradiction with heq
+        have h := ANF.step?_litNull s1
+        have : { s1 with expr := ANF.Expr.trivial .litNull } = s1 := by cases s1; simp_all
+        rw [this] at h; simp [h] at heq
+    | .trivial .litUndefined =>
+        have h := ANF.step?_litUndefined s1
+        have : { s1 with expr := ANF.Expr.trivial .litUndefined } = s1 := by cases s1; simp_all
+        rw [this] at h; simp [h] at heq
+    | .trivial (.litBool b) =>
+        have h := ANF.step?_litBool s1 b
+        have : { s1 with expr := ANF.Expr.trivial (.litBool b) } = s1 := by cases s1; simp_all
+        rw [this] at h; simp [h] at heq
+    | .trivial (.litNum n) =>
+        have h := ANF.step?_litNum s1 n
+        have : { s1 with expr := ANF.Expr.trivial (.litNum n) } = s1 := by cases s1; simp_all
+        rw [this] at h; simp [h] at heq
+    | .trivial (.litStr str) =>
+        have h := ANF.step?_litStr s1 str
+        have : { s1 with expr := ANF.Expr.trivial (.litStr str) } = s1 := by cases s1; simp_all
+        rw [this] at h; simp [h] at heq
+    | .trivial (.litObject addr) =>
+        have h := ANF.step?_litObject s1 addr
+        have : { s1 with expr := ANF.Expr.trivial (.litObject addr) } = s1 := by cases s1; simp_all
+        rw [this] at h; simp [h] at heq
+    | .trivial (.litClosure fi ep) =>
+        have h := ANF.step?_litClosure s1 fi ep
+        have : { s1 with expr := ANF.Expr.trivial (.litClosure fi ep) } = s1 := by cases s1; simp_all
+        rw [this] at h; simp [h] at heq
+    | .«let» name rhs body =>
+        -- Let-binding: ANF evaluates rhs and binds result
+        -- IR code is rhsCode ++ [localSet idx] ++ bodyCode
+        -- Need to show IR executes rhs code, then localSet, matching ANF's let step
+        sorry
+    | .seq a b =>
+        -- Sequence: ANF either skips completed a (1 step), or steps a (1 step)
+        -- IR code is aCode ++ [drop] ++ bCode (from LowerCodeCorr.seq_inv)
+        -- Value case: ANF 1 step → b, but IR needs N steps (aCode + drop). NOT 1:1.
+        -- Stepping case: ANF steps a within seq, IR steps first of aCode. Potentially 1:1
+        --   but requires sub-expression simulation induction.
+        -- TODO: Restructure as stuttering simulation or add measure-based 1:N framework.
+        sorry
+    | .«if» cond then_ else_ =>
+        -- Conditional: ANF evaluates cond trivial, picks branch
+        -- IR code is condCode ++ [if_ ...]
+        sorry
+    | .while_ cond body =>
+        -- While loop: ANF checks cond value or steps cond
+        sorry
+    | .throw arg =>
+        -- Throw: ANF produces error event
+        sorry
+    | .tryCatch body catchParam catchBody finally_ =>
+        -- Try-catch: ANF steps body, catches errors
+        sorry
+    | .«return» arg =>
+        -- Return: ANF evaluates return value
+        have hc := hrel.hcode; rw [hexpr] at hc
+        match arg with
+        | none =>
+          -- return with no value: IR code = [return_]
+          -- Invert LowerCodeCorr: the only matching constructor is return_none
+          have hcode_eq : s2.code = [.return_] := by
+            generalize s2.code = c at hc; cases hc with | return_none => rfl
+          -- ANF step: silent, expr → trivial .litUndefined
+          have hs1eq : { s1 with expr := ANF.Expr.return none } = s1 := by cases s1; simp_all
+          have hanf := ANF.step?_return_none s1
+          rw [hs1eq] at hanf; rw [hanf] at heq
+          simp only [Option.some.injEq, Prod.mk.injEq] at heq
+          obtain ⟨rfl, rfl⟩ := heq
+          -- IR step: return_ with single frame → code = [], labels = []
+          have hfr : ∃ f, s2.frames = [f] := by
+            match hf : s2.frames, hrel.hframes_one with
+            | [], h => simp at h
+            | [f], _ => exact ⟨f, rfl⟩
+            | _ :: _ :: _, h => simp at h
+          obtain ⟨frame, hfr⟩ := hfr
+          have hir := irStep?_eq_return_toplevel s2 [] frame hcode_eq hfr
+          -- traceFromCore (.error "return:undefined") = .silent by control flow signal
+          have htrace : traceFromCore (.error "return:undefined") = TraceEvent.silent := by
+            native_decide
+          rw [htrace]
+          exact ⟨_, [.silent], IRSteps_of_irStep? hir, {
+            hlower := hrel.hlower
+            hmod := hrel.hmod
+            hcode := .value_done .litUndefined (by intro name; exact ANF.Trivial.noConfusion)
+            hhalt := by
+              intro _; simp [IRExecState.halted, hfr]
+            hframes := by simp [hfr]
+            henv := by
+              intro n w hlk hne; simp [ANF.pushTrace] at hlk
+              exact hrel.henv n w hlk hne
+            hvar := by
+              intro n' idx' hexpr' hcode_ir
+              simp [ANF.pushTrace] at hexpr'
+            hlocal_valid := by intro _ _ h; simp at h
+            hlabels_empty := rfl
+            hframes_one := by simp [hfr]
+            hcode_no_br := by intro _ h; simp at h
+            hreturn_var_scope := by intro _ h; simp [ANF.pushTrace] at h
+          }, rfl⟩
+        | some _ => sorry
+    | .yield arg delegate =>
+        -- Yield: ANF produces value
+        sorry
+    | .await arg =>
+        -- Await: ANF evaluates argument
+        sorry
+    | .labeled label body =>
+        -- Labeled: ANF enters labeled block
+        sorry
+    | .«break» label =>
+        -- Break: ANF breaks to label — impossible with empty label stack.
+        -- LowerCodeCorr says code = [.br target], but hlabels_empty means
+        -- irFindLabel? on [] always returns none, so hcode_no_br contradicts.
+        have hc := hrel.hcode; rw [hexpr] at hc
+        obtain ⟨target, hcode_eq⟩ := hc.break_inv
+        exfalso
+        have ⟨idx, lbl, hfind⟩ := hrel.hcode_no_br target hcode_eq
+        rw [hrel.hlabels_empty] at hfind
+        simp [irFindLabel?, irFindLabel?.go] at hfind
+    | .«continue» label =>
+        -- Continue: ANF continues loop — impossible with empty label stack.
+        have hc := hrel.hcode; rw [hexpr] at hc
+        obtain ⟨target, hcode_eq⟩ := hc.continue_inv
+        exfalso
+        have ⟨idx, lbl, hfind⟩ := hrel.hcode_no_br target hcode_eq
+        rw [hrel.hlabels_empty] at hfind
+        simp [irFindLabel?, irFindLabel?.go] at hfind
+
 /-- Step simulation (stuttering): if the ANF takes one step, the IR takes
     one or more matching steps with the same observable events.
     This is the architecturally correct formulation: one ANF step
@@ -7600,9 +7598,14 @@ theorem step_sim_stutter (prog : ANF.Program) (irmod : IRModule) :
       IRSteps s2 ir_trace s2' ∧
       LowerSimRel prog irmod s1' s2' ∧
       observableEvents ir_trace = observableEvents [t] := by
-  -- step_sim now handles all cases (including return(some)) directly.
   intro s1 s2 t s1' hrel hstep
-  exact step_sim prog irmod s1 s2 t s1' hrel hstep
+  -- return(some) requires multi-step: dispatch to step_sim_return_some.
+  -- All other cases: delegate to step_sim (1:N).
+  match hexpr : s1.expr with
+  | .«return» (some triv) =>
+    exact step_sim_return_some prog irmod s1 s2 t s1' triv hrel hexpr hstep
+  | _ =>
+    exact step_sim prog irmod s1 s2 t s1' hrel hstep
 
 /-- Halt simulation: if ANF halts, the IR halts.
     SORRY: When ANF.step? returns none, the ANF expression is a literal trivial
