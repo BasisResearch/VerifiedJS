@@ -3970,8 +3970,50 @@ Net sorry change: 27 → 27 (replaced 1 sorry with 1 sorry + 2 proven sub-cases)
 2026-03-30T07:00:12+00:00 DONE
 
 ## Run: 2026-03-30T07:00:13+00:00
+- **BUILD: ANF ✓, CC ✓ (LowerCorrect pre-existing failure)**
+- **Sorries: ANF 17 (unchanged), CC 24 (was 22; +2 from error propagation handling)**
+- **Progress: Fixed Fix D build breakage (6 errors in CC, 1 in ANF) + added infrastructure**
+
+### Fix D build repair (7 errors fixed)
+Fix D added error propagation to `Flat.step?` for `.seq` and `.let`. This broke lemmas that assumed
+the match on `step? a` resolves without case-splitting on the trace event type.
+
+**ANF fixes (1 error):**
+1. `step?_seq_ctx` (L1052): Added `(hnoerr : ∀ msg, t ≠ .error msg)` hypothesis, case-split proof on `t`
+2. `step_wrapSeqCtx` (L1157): Added `hnoerr` parameter, propagated to `step?_seq_ctx`
+3. All 4 callers of `step_wrapSeqCtx` (L1311, L1333, L1355, L1378): Pass `(fun _ h => nomatch h)` since all use `.silent`
+
+**CC fixes (6 errors):**
+1. `Flat_step?_seq_step` (L1895): Added `hnoerr` hypothesis, case-split proof
+2. `Flat_step?_let_step` (L1913): Same pattern
+3. Added `Flat_step?_seq_error` and `Flat_step?_let_error` helper lemmas for error propagation
+4. Let caller (~L2838): Restructured with `hev_noerr : ∀ msg, ev ≠ .error msg` (sorry) to derive `hnoerr` inside match
+5. Seq caller (~L3133): Same pattern
+6. `step?_none_implies_lit_aux` seq/let cases: Added extra `next => simp at h` for new error match arms
+
+### New infrastructure added
+- `Flat_step?_seq_error`: When inner step errors, seq propagates error (expr → .lit .undefined)
+- `Flat_step?_let_error`: Same for let
+- `Core_step?_getIndex_string_val`: Core step lemma for getIndex on string with both values
+
+### New sorries added (+2)
+- `hev_noerr` at let caller: `∀ msg, ev ≠ .error msg` — error propagation cannot occur on well-scoped converted expressions (needs env well-formedness proof)
+- `hev_noerr` at seq caller: Same class
+
+### Blocked sorry targets investigated
+- **getIndex string both-values**: Flat/Core semantic mismatch — Flat checks `propName == "length"` in `.number n` else branch but Core doesn't. Provable via showing `valueToString (.number n) ≠ "length"` but non-trivial.
+- **CCState threading (if/while)**: Requires showing `convertExpr` state consumption agrees across different conversion paths. Fundamental issue.
+- **ExprAddrWF objectLit/arrayLit**: `ExprAddrWF (.objectLit _) = True` doesn't propagate to elements. Needs definition change or helper.
+- **convertExprList_firstNonValueExpr_some**: Needs `supported` guard not available in main theorem.
+
+### LowerCorrect.lean pre-existing failure
+LowerCorrect.lean has 3 errors (Application type mismatch at L59, L61, L69). These were already present before this run — previously masked by Wasm.Semantics OOM. Not in editable files scope.
 
 2026-03-30T07:30:02+00:00 SKIP: already running
 2026-03-30T08:30:02+00:00 SKIP: already running
 2026-03-30T09:30:15+00:00 SKIP: already running
 2026-03-30T10:30:01+00:00 SKIP: already running
+2026-03-30T11:29:54+00:00 DONE
+
+## Run: 2026-03-30T11:30:01+00:00
+

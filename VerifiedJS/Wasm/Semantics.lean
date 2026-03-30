@@ -6550,6 +6550,31 @@ theorem LowerCodeCorr.var_inv {name : ANF.VarName} {code : List IRInstr}
   | .var _ idx => exact ⟨idx, rfl⟩
   | .value_done _ ht => exact absurd rfl (ht name)
 
+/-- LowerCodeCorr for a non-var trivial with a value produces a single const instruction
+    or is value_done (empty code). This is the key case analysis for seq value-skip. -/
+theorem LowerCodeCorr.trivial_value_cases {t : ANF.Trivial} {v : Flat.Value} {code : List IRInstr}
+    (h : LowerCodeCorr (.trivial t) code)
+    (hval : ANF.trivialValue? t = some v) :
+    (∃ instr, code = [instr]) ∨ code = [] := by
+  match t, h with
+  | .litNull, .lit_null => exact .inl ⟨_, rfl⟩
+  | .litNull, .value_done _ _ => exact .inr rfl
+  | .litUndefined, .lit_undefined => exact .inl ⟨_, rfl⟩
+  | .litUndefined, .value_done _ _ => exact .inr rfl
+  | .litBool true, .lit_bool_true => exact .inl ⟨_, rfl⟩
+  | .litBool true, .value_done _ _ => exact .inr rfl
+  | .litBool false, .lit_bool_false => exact .inl ⟨_, rfl⟩
+  | .litBool false, .value_done _ _ => exact .inr rfl
+  | .litNum n, .lit_num _ s => exact .inl ⟨_, rfl⟩
+  | .litNum _, .value_done _ _ => exact .inr rfl
+  | .litStr s, .lit_str _ enc => exact .inl ⟨_, rfl⟩
+  | .litStr _, .value_done _ _ => exact .inr rfl
+  | .litObject addr, .lit_object _ s => exact .inl ⟨_, rfl⟩
+  | .litObject _, .value_done _ _ => exact .inr rfl
+  | .litClosure fi ep, .lit_closure _ _ enc => exact .inl ⟨_, rfl⟩
+  | .litClosure _ _, .value_done _ _ => exact .inr rfl
+  | .var name, _ => simp [ANF.trivialValue?] at hval
+
 /-- Inversion: LowerCodeCorr for break must be the `break_` constructor. -/
 theorem LowerCodeCorr.break_inv {label : Option String} {code : List IRInstr}
     (h : LowerCodeCorr (.«break» label) code) :
@@ -6625,6 +6650,43 @@ theorem LowerCodeCorr.tryCatch_inv {body : ANF.Expr} {cp : ANF.VarName}
         ([.block catchLabel (bodyCode ++ [.br doneLabel])] ++ catchCode)] ++ finallyCode := by
   match h with
   | .tryCatch _ _ _ _ cl dl bc cc fc => exact ⟨cl, dl, bc, cc, fc, rfl⟩
+
+/-- Inversion: LowerCodeCorr for let extracts rhsCode, bodyCode, and idx. -/
+theorem LowerCodeCorr.let_inv {name : ANF.VarName} {rhs : ANF.ComplexExpr}
+    {body : ANF.Expr} {code : List IRInstr}
+    (h : LowerCodeCorr (.«let» name rhs body) code) :
+    ∃ rhsCode bodyCode idx, code = rhsCode ++ [.localSet idx] ++ bodyCode ∧
+      LowerCodeCorr body bodyCode := by
+  match h with
+  | .let_ _ _ _ rc bc idx hbc => exact ⟨rc, bc, idx, rfl, hbc⟩
+
+/-- Inversion: LowerCodeCorr for yield extracts argCode and boolConst. -/
+theorem LowerCodeCorr.yield_inv {arg : Option ANF.Trivial} {delegate : Bool}
+    {code : List IRInstr}
+    (h : LowerCodeCorr (.yield arg delegate) code) :
+    ∃ argCode boolConst,
+      code = argCode ++ [boolConst, .call RuntimeIdx.yieldOp] := by
+  match h with
+  | .yield _ _ ac bc => exact ⟨ac, bc, rfl⟩
+
+/-- Inversion: LowerCodeCorr for await extracts TrivialCodeCorr. -/
+theorem LowerCodeCorr.await_inv {arg : ANF.Trivial} {code : List IRInstr}
+    (h : LowerCodeCorr (.await arg) code) :
+    ∃ argCode, code = argCode ++ [.call RuntimeIdx.awaitOp] ∧
+      TrivialCodeCorr arg argCode := by
+  match h with
+  | .await _ ac htcc => exact ⟨ac, rfl, htcc⟩
+
+/-- Inversion: LowerCodeCorr for while extracts condCode and bodyCode. -/
+theorem LowerCodeCorr.while_inv {cond body : ANF.Expr} {code : List IRInstr}
+    (h : LowerCodeCorr (.while_ cond body) code) :
+    ∃ condCode bodyCode exitLbl loopLbl undefinedConst,
+      code = [.block exitLbl [.loop loopLbl
+          (condCode ++ [.call RuntimeIdx.truthy, .unOp .i32 "eqz", .brIf exitLbl] ++
+           bodyCode ++ [.drop, .br loopLbl])]] ++ [undefinedConst] ∧
+      LowerCodeCorr cond condCode ∧ LowerCodeCorr body bodyCode := by
+  match h with
+  | .while_ _ _ cc bc el ll uc hcc hbc => exact ⟨cc, bc, el, ll, uc, rfl, hcc, hbc⟩
 
 /-- Step-count measure: how many IR steps a given ANF expression needs.
     Used for stuttering simulation arguments. Returns 0 for halted expressions,
