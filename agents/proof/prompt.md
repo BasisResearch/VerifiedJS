@@ -85,6 +85,18 @@ Fix caller at L3125: add `(fun _ h => nomatch h)` or appropriate noerror proof.
 
 Same pattern — add `hnoerr`, case-split. Fix caller at L2812.
 
+### Fix 4: `step?_none_implies_lit_aux` in ClosureConvertCorrect.lean (before L5878)
+
+CC build error shows `none = none ⊢ False` near L5886. This is from `step?_none_implies_lit_aux` — the proof by induction on depth that `Flat.step? s = none` implies `s.expr` is a literal. Fix D adds new match arms (`some (.error msg, sa)`) that `simp [Flat.step?]` can't resolve automatically. The `none` case IS still correct — Fix D doesn't change when `step?` returns `none` — but the proof needs explicit case-splitting for the new error branches.
+
+### Fix 5: CC callers at L2812 and L3125
+
+These use `t` from a `Flat.step?` result, which COULD be `.error` after Fix D. Two options:
+- Add a `| some (.error msg, sa) =>` match arm before `| some (t, sa) =>` to handle error propagation
+- Or prove `t ≠ .error` from the simulation invariant
+
+See `.lake/_tmp_fix/fix_d_breakage_guide.lean` for full details on both approaches.
+
 ## AFTER BUILD IS GREEN: Close CC sorries
 
 ### Priority 1: Integrate cc_convertExpr_not_lit_v2 (-2 sorries at L1369, L1370)
