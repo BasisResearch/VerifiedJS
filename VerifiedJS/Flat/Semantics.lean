@@ -1223,13 +1223,12 @@ theorem step?_seq_var_found_explicit (s : State) (name : VarName) (v : Value) (b
                        trace := s.trace ++ [.silent], funcs := s.funcs, callStack := s.callStack }) := by
   simp [step?, exprValue?, henv, pushTrace]
 
-/-- `.seq (.var name) b` when var not found: steps with ReferenceError.
-    With Fix D, error propagates immediately — result expr is `.lit .undefined`. -/
+/-- `.seq (.var name) b` when var not found: steps with ReferenceError, wraps in seq. -/
 theorem step?_seq_var_not_found_explicit (s : State) (name : VarName) (b : Expr)
     (henv : s.env.lookup name = none) :
     step? { s with expr := .seq (.var name) b } =
       some (.error ("ReferenceError: " ++ name),
-            { expr := .lit .undefined, env := s.env, heap := s.heap,
+            { expr := .seq (.lit .undefined) b, env := s.env, heap := s.heap,
               trace := s.trace ++ [.error ("ReferenceError: " ++ name)],
               funcs := s.funcs, callStack := s.callStack }) := by
   simp [step?, exprValue?, henv, pushTrace]
