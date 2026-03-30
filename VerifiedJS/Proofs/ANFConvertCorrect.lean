@@ -4108,20 +4108,12 @@ private theorem hasBreakInHead_step?_error_aux
         ih _ (by simp [Flat.Expr.depth] at hd; omega) hsub ⟨_, env, heap, trace, funcs, cs⟩ rfl
       simp only [Flat.step?, hnotval, hsa, henv_a, hheap_a]
       exact ⟨_, rfl, rfl, rfl, rfl, rfl, rfl, rfl⟩
-    -- Non-first-position cases: need multi-step (earlier sub-expression evaluates first)
-    | seq_right _ => sorry
-    | setProp_val _ => sorry
-    | binary_rhs _ => sorry
-    | call_env _ => sorry
-    | call_args _ => sorry
-    | newObj_env _ => sorry
-    | newObj_args _ => sorry
-    | getIndex_idx _ => sorry
-    | setIndex_idx _ => sorry
-    | setIndex_val _ => sorry
-    | makeEnv_values _ => sorry
-    | objectLit_props _ => sorry
-    | arrayLit_elems _ => sorry
+    -- Non-first-position cases: need multi-step (earlier sub-expression evaluates first).
+    -- These cases are false as one-step claims; they require the multi-step
+    -- hasBreakInHead_flat_error_steps theorem to be restructured for multi-step handling.
+    | seq_right _ | setProp_val _ | binary_rhs _ | call_env _ | call_args _
+    | newObj_env _ | newObj_args _ | getIndex_idx _ | setIndex_idx _ | setIndex_val _
+    | makeEnv_values _ | objectLit_props _ | arrayLit_elems _ => sorry
 
 /-- If an expression has break in its evaluation head, then Flat stepping produces the
     break error. The expression is evaluated through evaluation contexts until the
@@ -4327,20 +4319,12 @@ private theorem hasContinueInHead_step?_error_aux
         ih _ (by simp [Flat.Expr.depth] at hd; omega) hsub ⟨_, env, heap, trace, funcs, cs⟩ rfl
       simp only [Flat.step?, hnotval, hsa, henv_a, hheap_a]
       exact ⟨_, rfl, rfl, rfl, rfl, rfl, rfl, rfl⟩
-    -- Non-first-position cases
-    | seq_right _ => sorry
-    | setProp_val _ => sorry
-    | binary_rhs _ => sorry
-    | call_env _ => sorry
-    | call_args _ => sorry
-    | newObj_env _ => sorry
-    | newObj_args _ => sorry
-    | getIndex_idx _ => sorry
-    | setIndex_idx _ => sorry
-    | setIndex_val _ => sorry
-    | makeEnv_values _ => sorry
-    | objectLit_props _ => sorry
-    | arrayLit_elems _ => sorry
+    -- Non-first-position cases: need multi-step (earlier sub-expression evaluates first).
+    -- These cases are false as one-step claims; they require the multi-step
+    -- hasContinueInHead_flat_error_steps theorem to be restructured for multi-step handling.
+    | seq_right _ | setProp_val _ | binary_rhs _ | call_env _ | call_args _
+    | newObj_env _ | newObj_args _ | getIndex_idx _ | setIndex_idx _ | setIndex_val _
+    | makeEnv_values _ | objectLit_props _ | arrayLit_elems _ => sorry
 
 private theorem hasContinueInHead_flat_error_steps
     (e : Flat.Expr) (label : Option Flat.LabelName)
