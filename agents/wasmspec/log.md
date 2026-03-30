@@ -4618,6 +4618,9 @@ deleteProp, typeof, objectLit, arrayLit, throw, return_some, yield_some, await)
 
 **Total sorry count: 44** (up from ~28 pre-existing, +16 hnoerr sorries)
 
-**STATUS: Building CC...** awaiting result.
+**First build failed:** `step?_none_implies_lit_aux` broken by three-way match.
+Fixed extra error arms in ~30 inner splits + 15 `| some r =>` contradiction cases.
+
+**STATUS: Rebuilding CC...** awaiting second build result.
 
 2026-03-30T15:15:01+00:00 SKIP: already running

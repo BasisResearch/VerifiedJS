@@ -5885,6 +5885,7 @@ private theorem step?_none_implies_lit_aux :
       next hev =>
         split at h
         next => simp at h
+        next => simp at h
         next hstep =>
           have ⟨v, hv⟩ := ih ⟨value, fenv, fheap, ftrace, ffuncs, fcallStack⟩
             (by simp [Flat.Expr.depth] at hd ⊢; omega) hstep
@@ -5895,6 +5896,7 @@ private theorem step?_none_implies_lit_aux :
       next => simp at h
       next hev =>
         split at h
+        next => simp at h
         next => simp at h
         next hstep =>
           have ⟨v, hv⟩ := ih ⟨cond, fenv, fheap, ftrace, ffuncs, fcallStack⟩
@@ -5907,6 +5909,7 @@ private theorem step?_none_implies_lit_aux :
       next hev =>
         split at h
         next => simp at h
+        next => simp at h
         next hstep =>
           have ⟨v, hv⟩ := ih ⟨arg, fenv, fheap, ftrace, ffuncs, fcallStack⟩
             (by simp [Flat.Expr.depth] at hd ⊢; omega) hstep
@@ -5917,6 +5920,7 @@ private theorem step?_none_implies_lit_aux :
       next => simp at h
       next hev =>
         split at h
+        next => simp at h
         next => simp at h
         next hstep =>
           have ⟨v, hv⟩ := ih ⟨arg, fenv, fheap, ftrace, ffuncs, fcallStack⟩
@@ -5929,6 +5933,7 @@ private theorem step?_none_implies_lit_aux :
       next hev =>
         split at h
         next => simp at h
+        next => simp at h
         next hstep =>
           have ⟨v, hv⟩ := ih ⟨arg, fenv, fheap, ftrace, ffuncs, fcallStack⟩
             (by simp [Flat.Expr.depth] at hd ⊢; omega) hstep
@@ -5939,6 +5944,7 @@ private theorem step?_none_implies_lit_aux :
       next => simp at h
       next hev =>
         split at h
+        next => simp at h
         next => simp at h
         next hstep =>
           have ⟨v, hv⟩ := ih ⟨arg, fenv, fheap, ftrace, ffuncs, fcallStack⟩
@@ -6040,6 +6046,7 @@ private theorem step?_none_implies_lit_aux :
       next hevl =>
         split at h
         next => simp at h
+        next => simp at h
         next hstep =>
           have ⟨v, hv⟩ := ih ⟨lhs, fenv, fheap, ftrace, ffuncs, fcallStack⟩
             (by simp [Flat.Expr.depth] at hd ⊢; omega) hstep
@@ -6048,6 +6055,7 @@ private theorem step?_none_implies_lit_aux :
         split at h
         next hevr =>
           split at h
+          next => simp at h
           next => simp at h
           next hstep =>
             have ⟨v, hv⟩ := ih ⟨rhs, fenv, fheap, ftrace, ffuncs, fcallStack⟩
@@ -6060,6 +6068,7 @@ private theorem step?_none_implies_lit_aux :
       next hevo =>
         split at h
         next => simp at h
+        next => simp at h
         next hstep =>
           have ⟨v, hv⟩ := ih ⟨obj, fenv, fheap, ftrace, ffuncs, fcallStack⟩
             (by simp [Flat.Expr.depth] at hd ⊢; omega) hstep
@@ -6070,6 +6079,7 @@ private theorem step?_none_implies_lit_aux :
         next hevv =>
           split at h
           next => simp at h
+          next => simp at h
           next hstep =>
             have ⟨v, hv⟩ := ih ⟨value, fenv, fheap, ftrace, ffuncs, fcallStack⟩
               (by simp [Flat.Expr.depth] at hd ⊢; omega) hstep
@@ -6079,6 +6089,7 @@ private theorem step?_none_implies_lit_aux :
         next => simp at h
         next hevv =>
           split at h
+          next => simp at h
           next => simp at h
           next hstep =>
             have ⟨v, hv⟩ := ih ⟨value, fenv, fheap, ftrace, ffuncs, fcallStack⟩
@@ -6090,6 +6101,7 @@ private theorem step?_none_implies_lit_aux :
       next hevo =>
         split at h
         next => simp at h
+        next => simp at h
         next hstep =>
           have ⟨v, hv⟩ := ih ⟨obj, fenv, fheap, ftrace, ffuncs, fcallStack⟩
             (by simp [Flat.Expr.depth] at hd ⊢; omega) hstep
@@ -6100,6 +6112,7 @@ private theorem step?_none_implies_lit_aux :
         next hevi =>
           split at h
           next => simp at h
+          next => simp at h
           next hstep =>
             have ⟨v, hv⟩ := ih ⟨idx, fenv, fheap, ftrace, ffuncs, fcallStack⟩
               (by simp [Flat.Expr.depth] at hd ⊢; omega) hstep
@@ -6110,6 +6123,7 @@ private theorem step?_none_implies_lit_aux :
         next hevi =>
           split at h
           next => simp at h
+          next => simp at h
           next hstep =>
             have ⟨v, hv⟩ := ih ⟨idx, fenv, fheap, ftrace, ffuncs, fcallStack⟩
               (by simp [Flat.Expr.depth] at hd ⊢; omega) hstep
@@ -6119,6 +6133,7 @@ private theorem step?_none_implies_lit_aux :
         next => simp at h
         next hevi =>
           split at h
+          next => simp at h
           next => simp at h
           next hstep =>
             have ⟨v, hv⟩ := ih ⟨idx, fenv, fheap, ftrace, ffuncs, fcallStack⟩
@@ -6130,6 +6145,7 @@ private theorem step?_none_implies_lit_aux :
       next hevo =>
         split at h
         next => simp at h
+        next => simp at h
         next hstep =>
           have ⟨v, hv⟩ := ih ⟨obj, fenv, fheap, ftrace, ffuncs, fcallStack⟩
             (by simp [Flat.Expr.depth] at hd ⊢; omega) hstep
@@ -6138,6 +6154,7 @@ private theorem step?_none_implies_lit_aux :
         split at h
         next hevi =>
           split at h
+          next => simp at h
           next => simp at h
           next hstep =>
             have ⟨v, hv⟩ := ih ⟨idx, fenv, fheap, ftrace, ffuncs, fcallStack⟩
@@ -6149,6 +6166,7 @@ private theorem step?_none_implies_lit_aux :
           next hevv =>
             split at h
             next => simp at h
+            next => simp at h
             next hstep =>
               have ⟨v, hv⟩ := ih ⟨value, fenv, fheap, ftrace, ffuncs, fcallStack⟩
                 (by simp [Flat.Expr.depth] at hd ⊢; omega) hstep
@@ -6157,6 +6175,7 @@ private theorem step?_none_implies_lit_aux :
         split at h
         next hevi =>
           split at h
+          next => simp at h
           next => simp at h
           next hstep =>
             have ⟨v, hv⟩ := ih ⟨idx, fenv, fheap, ftrace, ffuncs, fcallStack⟩
@@ -6167,6 +6186,7 @@ private theorem step?_none_implies_lit_aux :
           next => simp at h
           next hevv =>
             split at h
+            next => simp at h
             next => simp at h
             next hstep =>
               have ⟨v, hv⟩ := ih ⟨value, fenv, fheap, ftrace, ffuncs, fcallStack⟩
@@ -6210,7 +6230,7 @@ private theorem step?_none_implies_lit_aux :
         | none =>
           cases hstepe : Flat.step? ⟨envExpr, fenv, fheap, ftrace, ffuncs, fcallStack⟩ with
           | some r =>
-            unfold Flat.step? at h; simp only [hevf, heve, hstepe] at h; exact absurd h (by simp)
+            unfold Flat.step? at h; simp only [hevf, heve, hstepe] at h; exact absurd h (by obtain ⟨t, _⟩ := r; cases t <;> simp)
           | none =>
             have ⟨v, hv⟩ := ih ⟨envExpr, fenv, fheap, ftrace, ffuncs, fcallStack⟩
               (by simp [Flat.Expr.depth] at hd ⊢; omega) hstepe
@@ -6255,7 +6275,7 @@ private theorem step?_none_implies_lit_aux :
         | none =>
           cases hstepe : Flat.step? ⟨envExpr, fenv, fheap, ftrace, ffuncs, fcallStack⟩ with
           | some r =>
-            unfold Flat.step? at h; simp only [hevf, heve, hstepe] at h; exact absurd h (by simp)
+            unfold Flat.step? at h; simp only [hevf, heve, hstepe] at h; exact absurd h (by obtain ⟨t, _⟩ := r; cases t <;> simp)
           | none =>
             have ⟨v, hv⟩ := ih ⟨envExpr, fenv, fheap, ftrace, ffuncs, fcallStack⟩
               (by simp [Flat.Expr.depth] at hd ⊢; omega) hstepe
