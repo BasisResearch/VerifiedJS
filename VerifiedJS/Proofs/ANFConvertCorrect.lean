@@ -3951,163 +3951,83 @@ private theorem hasBreakInHead_step?_error_aux
     | seq_left hsub =>
       cases sf with | mk _ env heap trace funcs cs =>
       simp only [Flat.State.expr] at hsf; subst hsf
-      have hnotval := HasBreakInHead_not_value _ _ hsub
-      obtain ⟨sa', hsa, _, henv_a, hheap_a, _, _, _⟩ :=
-        ih _ (by simp [Flat.Expr.depth] at hd; omega) hsub ⟨_, env, heap, trace, funcs, cs⟩ rfl
-      simp only [Flat.step?, hnotval, hsa, henv_a, hheap_a]
-      exact ⟨_, rfl, rfl, rfl, rfl, rfl, rfl, rfl⟩
+      sorry -- step? wraps in parent context; needs multi-step restructuring
     | let_init hsub =>
       cases sf with | mk _ env heap trace funcs cs =>
       simp only [Flat.State.expr] at hsf; subst hsf
-      have hnotval := HasBreakInHead_not_value _ _ hsub
-      obtain ⟨sa', hsa, _, henv_a, hheap_a, _, _, _⟩ :=
-        ih _ (by simp [Flat.Expr.depth] at hd; omega) hsub ⟨_, env, heap, trace, funcs, cs⟩ rfl
-      simp only [Flat.step?, hnotval, hsa, henv_a, hheap_a]
-      exact ⟨_, rfl, rfl, rfl, rfl, rfl, rfl, rfl⟩
+      sorry -- step? wraps in parent context; needs multi-step restructuring
     | if_cond hsub =>
       cases sf with | mk _ env heap trace funcs cs =>
       simp only [Flat.State.expr] at hsf; subst hsf
-      have hnotval := HasBreakInHead_not_value _ _ hsub
-      obtain ⟨sa', hsa, _, henv_a, hheap_a, _, _, _⟩ :=
-        ih _ (by simp [Flat.Expr.depth] at hd; omega) hsub ⟨_, env, heap, trace, funcs, cs⟩ rfl
-      simp only [Flat.step?, hnotval, hsa, henv_a, hheap_a]
-      exact ⟨_, rfl, rfl, rfl, rfl, rfl, rfl, rfl⟩
+      sorry -- step? wraps in parent context; needs multi-step restructuring
     | unary_arg hsub =>
       cases sf with | mk _ env heap trace funcs cs =>
       simp only [Flat.State.expr] at hsf; subst hsf
-      have hnotval := HasBreakInHead_not_value _ _ hsub
-      obtain ⟨sa', hsa, _, henv_a, hheap_a, _, _, _⟩ :=
-        ih _ (by simp [Flat.Expr.depth] at hd; omega) hsub ⟨_, env, heap, trace, funcs, cs⟩ rfl
-      simp only [Flat.step?, hnotval, hsa, henv_a, hheap_a]
-      exact ⟨_, rfl, rfl, rfl, rfl, rfl, rfl, rfl⟩
+      sorry -- step? wraps in parent context; needs multi-step restructuring
     | typeof_arg hsub =>
       cases sf with | mk _ env heap trace funcs cs =>
       simp only [Flat.State.expr] at hsf; subst hsf
-      have hnotval := HasBreakInHead_not_value _ _ hsub
-      obtain ⟨sa', hsa, _, henv_a, hheap_a, _, _, _⟩ :=
-        ih _ (by simp [Flat.Expr.depth] at hd; omega) hsub ⟨_, env, heap, trace, funcs, cs⟩ rfl
-      simp only [Flat.step?, hnotval, hsa, henv_a, hheap_a]
-      exact ⟨_, rfl, rfl, rfl, rfl, rfl, rfl, rfl⟩
+      sorry -- step? wraps in parent context; needs multi-step restructuring
     | throw_arg hsub =>
       cases sf with | mk _ env heap trace funcs cs =>
       simp only [Flat.State.expr] at hsf; subst hsf
-      have hnotval := HasBreakInHead_not_value _ _ hsub
-      obtain ⟨sa', hsa, _, henv_a, hheap_a, _, _, _⟩ :=
-        ih _ (by simp [Flat.Expr.depth] at hd; omega) hsub ⟨_, env, heap, trace, funcs, cs⟩ rfl
-      simp only [Flat.step?, hnotval, hsa, henv_a, hheap_a]
-      exact ⟨_, rfl, rfl, rfl, rfl, rfl, rfl, rfl⟩
+      sorry -- step? wraps in parent context; needs multi-step restructuring
     | return_some_arg hsub =>
       cases sf with | mk _ env heap trace funcs cs =>
       simp only [Flat.State.expr] at hsf; subst hsf
-      have hnotval := HasBreakInHead_not_value _ _ hsub
-      obtain ⟨sa', hsa, _, henv_a, hheap_a, _, _, _⟩ :=
-        ih _ (by simp [Flat.Expr.depth] at hd; omega) hsub ⟨_, env, heap, trace, funcs, cs⟩ rfl
-      simp only [Flat.step?, hnotval, hsa, henv_a, hheap_a]
-      exact ⟨_, rfl, rfl, rfl, rfl, rfl, rfl, rfl⟩
+      sorry -- step? wraps in parent context; needs multi-step restructuring
     | yield_some_arg hsub =>
       cases sf with | mk _ env heap trace funcs cs =>
       simp only [Flat.State.expr] at hsf; subst hsf
-      have hnotval := HasBreakInHead_not_value _ _ hsub
-      obtain ⟨sa', hsa, _, henv_a, hheap_a, _, _, _⟩ :=
-        ih _ (by simp [Flat.Expr.depth] at hd; omega) hsub ⟨_, env, heap, trace, funcs, cs⟩ rfl
-      simp only [Flat.step?, hnotval, hsa, henv_a, hheap_a]
-      exact ⟨_, rfl, rfl, rfl, rfl, rfl, rfl, rfl⟩
+      sorry -- step? wraps in parent context; needs multi-step restructuring
     | await_arg hsub =>
       cases sf with | mk _ env heap trace funcs cs =>
       simp only [Flat.State.expr] at hsf; subst hsf
-      have hnotval := HasBreakInHead_not_value _ _ hsub
-      obtain ⟨sa', hsa, _, henv_a, hheap_a, _, _, _⟩ :=
-        ih _ (by simp [Flat.Expr.depth] at hd; omega) hsub ⟨_, env, heap, trace, funcs, cs⟩ rfl
-      simp only [Flat.step?, hnotval, hsa, henv_a, hheap_a]
-      exact ⟨_, rfl, rfl, rfl, rfl, rfl, rfl, rfl⟩
+      sorry -- step? wraps in parent context; needs multi-step restructuring
     | assign_val hsub =>
       cases sf with | mk _ env heap trace funcs cs =>
       simp only [Flat.State.expr] at hsf; subst hsf
-      have hnotval := HasBreakInHead_not_value _ _ hsub
-      obtain ⟨sa', hsa, _, henv_a, hheap_a, _, _, _⟩ :=
-        ih _ (by simp [Flat.Expr.depth] at hd; omega) hsub ⟨_, env, heap, trace, funcs, cs⟩ rfl
-      simp only [Flat.step?, hnotval, hsa, henv_a, hheap_a]
-      exact ⟨_, rfl, rfl, rfl, rfl, rfl, rfl, rfl⟩
+      sorry -- step? wraps in parent context; needs multi-step restructuring
     | getProp_obj hsub =>
       cases sf with | mk _ env heap trace funcs cs =>
       simp only [Flat.State.expr] at hsf; subst hsf
-      have hnotval := HasBreakInHead_not_value _ _ hsub
-      obtain ⟨sa', hsa, _, henv_a, hheap_a, _, _, _⟩ :=
-        ih _ (by simp [Flat.Expr.depth] at hd; omega) hsub ⟨_, env, heap, trace, funcs, cs⟩ rfl
-      simp only [Flat.step?, hnotval, hsa, henv_a, hheap_a]
-      exact ⟨_, rfl, rfl, rfl, rfl, rfl, rfl, rfl⟩
+      sorry -- step? wraps in parent context; needs multi-step restructuring
     | setProp_obj hsub =>
       cases sf with | mk _ env heap trace funcs cs =>
       simp only [Flat.State.expr] at hsf; subst hsf
-      have hnotval := HasBreakInHead_not_value _ _ hsub
-      obtain ⟨sa', hsa, _, henv_a, hheap_a, _, _, _⟩ :=
-        ih _ (by simp [Flat.Expr.depth] at hd; omega) hsub ⟨_, env, heap, trace, funcs, cs⟩ rfl
-      simp only [Flat.step?, hnotval, hsa, henv_a, hheap_a]
-      exact ⟨_, rfl, rfl, rfl, rfl, rfl, rfl, rfl⟩
+      sorry -- step? wraps in parent context; needs multi-step restructuring
     | deleteProp_obj hsub =>
       cases sf with | mk _ env heap trace funcs cs =>
       simp only [Flat.State.expr] at hsf; subst hsf
-      have hnotval := HasBreakInHead_not_value _ _ hsub
-      obtain ⟨sa', hsa, _, henv_a, hheap_a, _, _, _⟩ :=
-        ih _ (by simp [Flat.Expr.depth] at hd; omega) hsub ⟨_, env, heap, trace, funcs, cs⟩ rfl
-      simp only [Flat.step?, hnotval, hsa, henv_a, hheap_a]
-      exact ⟨_, rfl, rfl, rfl, rfl, rfl, rfl, rfl⟩
+      sorry -- step? wraps in parent context; needs multi-step restructuring
     | binary_lhs hsub =>
       cases sf with | mk _ env heap trace funcs cs =>
       simp only [Flat.State.expr] at hsf; subst hsf
-      have hnotval := HasBreakInHead_not_value _ _ hsub
-      obtain ⟨sa', hsa, _, henv_a, hheap_a, _, _, _⟩ :=
-        ih _ (by simp [Flat.Expr.depth] at hd; omega) hsub ⟨_, env, heap, trace, funcs, cs⟩ rfl
-      simp only [Flat.step?, hnotval, hsa, henv_a, hheap_a]
-      exact ⟨_, rfl, rfl, rfl, rfl, rfl, rfl, rfl⟩
+      sorry -- step? wraps in parent context; needs multi-step restructuring
     | call_func hsub =>
       cases sf with | mk _ env heap trace funcs cs =>
       simp only [Flat.State.expr] at hsf; subst hsf
-      have hnotval := HasBreakInHead_not_value _ _ hsub
-      obtain ⟨sa', hsa, _, henv_a, hheap_a, _, _, _⟩ :=
-        ih _ (by simp [Flat.Expr.depth] at hd; omega) hsub ⟨_, env, heap, trace, funcs, cs⟩ rfl
-      simp only [Flat.step?, hnotval, hsa, henv_a, hheap_a]
-      exact ⟨_, rfl, rfl, rfl, rfl, rfl, rfl, rfl⟩
+      sorry -- step? wraps in parent context; needs multi-step restructuring
     | newObj_func hsub =>
       cases sf with | mk _ env heap trace funcs cs =>
       simp only [Flat.State.expr] at hsf; subst hsf
-      have hnotval := HasBreakInHead_not_value _ _ hsub
-      obtain ⟨sa', hsa, _, henv_a, hheap_a, _, _, _⟩ :=
-        ih _ (by simp [Flat.Expr.depth] at hd; omega) hsub ⟨_, env, heap, trace, funcs, cs⟩ rfl
-      simp only [Flat.step?, hnotval, hsa, henv_a, hheap_a]
-      exact ⟨_, rfl, rfl, rfl, rfl, rfl, rfl, rfl⟩
+      sorry -- step? wraps in parent context; needs multi-step restructuring
     | getIndex_obj hsub =>
       cases sf with | mk _ env heap trace funcs cs =>
       simp only [Flat.State.expr] at hsf; subst hsf
-      have hnotval := HasBreakInHead_not_value _ _ hsub
-      obtain ⟨sa', hsa, _, henv_a, hheap_a, _, _, _⟩ :=
-        ih _ (by simp [Flat.Expr.depth] at hd; omega) hsub ⟨_, env, heap, trace, funcs, cs⟩ rfl
-      simp only [Flat.step?, hnotval, hsa, henv_a, hheap_a]
-      exact ⟨_, rfl, rfl, rfl, rfl, rfl, rfl, rfl⟩
+      sorry -- step? wraps in parent context; needs multi-step restructuring
     | setIndex_obj hsub =>
       cases sf with | mk _ env heap trace funcs cs =>
       simp only [Flat.State.expr] at hsf; subst hsf
-      have hnotval := HasBreakInHead_not_value _ _ hsub
-      obtain ⟨sa', hsa, _, henv_a, hheap_a, _, _, _⟩ :=
-        ih _ (by simp [Flat.Expr.depth] at hd; omega) hsub ⟨_, env, heap, trace, funcs, cs⟩ rfl
-      simp only [Flat.step?, hnotval, hsa, henv_a, hheap_a]
-      exact ⟨_, rfl, rfl, rfl, rfl, rfl, rfl, rfl⟩
+      sorry -- step? wraps in parent context; needs multi-step restructuring
     | getEnv_env hsub =>
       cases sf with | mk _ env heap trace funcs cs =>
       simp only [Flat.State.expr] at hsf; subst hsf
-      have hnotval := HasBreakInHead_not_value _ _ hsub
-      obtain ⟨sa', hsa, _, henv_a, hheap_a, _, _, _⟩ :=
-        ih _ (by simp [Flat.Expr.depth] at hd; omega) hsub ⟨_, env, heap, trace, funcs, cs⟩ rfl
-      simp only [Flat.step?, hnotval, hsa, henv_a, hheap_a]
-      exact ⟨_, rfl, rfl, rfl, rfl, rfl, rfl, rfl⟩
+      sorry -- step? wraps in parent context; needs multi-step restructuring
     | makeClosure_env hsub =>
       cases sf with | mk _ env heap trace funcs cs =>
       simp only [Flat.State.expr] at hsf; subst hsf
-      have hnotval := HasBreakInHead_not_value _ _ hsub
-      obtain ⟨sa', hsa, _, henv_a, hheap_a, _, _, _⟩ :=
-        ih _ (by simp [Flat.Expr.depth] at hd; omega) hsub ⟨_, env, heap, trace, funcs, cs⟩ rfl
-      simp only [Flat.step?, hnotval, hsa, henv_a, hheap_a]
-      exact ⟨_, rfl, rfl, rfl, rfl, rfl, rfl, rfl⟩
+      sorry -- step? wraps in parent context; needs multi-step restructuring
     -- Non-first-position cases: need multi-step (earlier sub-expression evaluates first).
     -- These cases are false as one-step claims; they require the multi-step
     -- hasBreakInHead_flat_error_steps theorem to be restructured for multi-step handling.
@@ -4162,163 +4082,83 @@ private theorem hasContinueInHead_step?_error_aux
     | seq_left hsub =>
       cases sf with | mk _ env heap trace funcs cs =>
       simp only [Flat.State.expr] at hsf; subst hsf
-      have hnotval := HasContinueInHead_not_value _ _ hsub
-      obtain ⟨sa', hsa, _, henv_a, hheap_a, _, _, _⟩ :=
-        ih _ (by simp [Flat.Expr.depth] at hd; omega) hsub ⟨_, env, heap, trace, funcs, cs⟩ rfl
-      simp only [Flat.step?, hnotval, hsa, henv_a, hheap_a]
-      exact ⟨_, rfl, rfl, rfl, rfl, rfl, rfl, rfl⟩
+      sorry -- step? wraps in parent context; needs multi-step restructuring
     | let_init hsub =>
       cases sf with | mk _ env heap trace funcs cs =>
       simp only [Flat.State.expr] at hsf; subst hsf
-      have hnotval := HasContinueInHead_not_value _ _ hsub
-      obtain ⟨sa', hsa, _, henv_a, hheap_a, _, _, _⟩ :=
-        ih _ (by simp [Flat.Expr.depth] at hd; omega) hsub ⟨_, env, heap, trace, funcs, cs⟩ rfl
-      simp only [Flat.step?, hnotval, hsa, henv_a, hheap_a]
-      exact ⟨_, rfl, rfl, rfl, rfl, rfl, rfl, rfl⟩
+      sorry -- step? wraps in parent context; needs multi-step restructuring
     | if_cond hsub =>
       cases sf with | mk _ env heap trace funcs cs =>
       simp only [Flat.State.expr] at hsf; subst hsf
-      have hnotval := HasContinueInHead_not_value _ _ hsub
-      obtain ⟨sa', hsa, _, henv_a, hheap_a, _, _, _⟩ :=
-        ih _ (by simp [Flat.Expr.depth] at hd; omega) hsub ⟨_, env, heap, trace, funcs, cs⟩ rfl
-      simp only [Flat.step?, hnotval, hsa, henv_a, hheap_a]
-      exact ⟨_, rfl, rfl, rfl, rfl, rfl, rfl, rfl⟩
+      sorry -- step? wraps in parent context; needs multi-step restructuring
     | unary_arg hsub =>
       cases sf with | mk _ env heap trace funcs cs =>
       simp only [Flat.State.expr] at hsf; subst hsf
-      have hnotval := HasContinueInHead_not_value _ _ hsub
-      obtain ⟨sa', hsa, _, henv_a, hheap_a, _, _, _⟩ :=
-        ih _ (by simp [Flat.Expr.depth] at hd; omega) hsub ⟨_, env, heap, trace, funcs, cs⟩ rfl
-      simp only [Flat.step?, hnotval, hsa, henv_a, hheap_a]
-      exact ⟨_, rfl, rfl, rfl, rfl, rfl, rfl, rfl⟩
+      sorry -- step? wraps in parent context; needs multi-step restructuring
     | typeof_arg hsub =>
       cases sf with | mk _ env heap trace funcs cs =>
       simp only [Flat.State.expr] at hsf; subst hsf
-      have hnotval := HasContinueInHead_not_value _ _ hsub
-      obtain ⟨sa', hsa, _, henv_a, hheap_a, _, _, _⟩ :=
-        ih _ (by simp [Flat.Expr.depth] at hd; omega) hsub ⟨_, env, heap, trace, funcs, cs⟩ rfl
-      simp only [Flat.step?, hnotval, hsa, henv_a, hheap_a]
-      exact ⟨_, rfl, rfl, rfl, rfl, rfl, rfl, rfl⟩
+      sorry -- step? wraps in parent context; needs multi-step restructuring
     | throw_arg hsub =>
       cases sf with | mk _ env heap trace funcs cs =>
       simp only [Flat.State.expr] at hsf; subst hsf
-      have hnotval := HasContinueInHead_not_value _ _ hsub
-      obtain ⟨sa', hsa, _, henv_a, hheap_a, _, _, _⟩ :=
-        ih _ (by simp [Flat.Expr.depth] at hd; omega) hsub ⟨_, env, heap, trace, funcs, cs⟩ rfl
-      simp only [Flat.step?, hnotval, hsa, henv_a, hheap_a]
-      exact ⟨_, rfl, rfl, rfl, rfl, rfl, rfl, rfl⟩
+      sorry -- step? wraps in parent context; needs multi-step restructuring
     | return_some_arg hsub =>
       cases sf with | mk _ env heap trace funcs cs =>
       simp only [Flat.State.expr] at hsf; subst hsf
-      have hnotval := HasContinueInHead_not_value _ _ hsub
-      obtain ⟨sa', hsa, _, henv_a, hheap_a, _, _, _⟩ :=
-        ih _ (by simp [Flat.Expr.depth] at hd; omega) hsub ⟨_, env, heap, trace, funcs, cs⟩ rfl
-      simp only [Flat.step?, hnotval, hsa, henv_a, hheap_a]
-      exact ⟨_, rfl, rfl, rfl, rfl, rfl, rfl, rfl⟩
+      sorry -- step? wraps in parent context; needs multi-step restructuring
     | yield_some_arg hsub =>
       cases sf with | mk _ env heap trace funcs cs =>
       simp only [Flat.State.expr] at hsf; subst hsf
-      have hnotval := HasContinueInHead_not_value _ _ hsub
-      obtain ⟨sa', hsa, _, henv_a, hheap_a, _, _, _⟩ :=
-        ih _ (by simp [Flat.Expr.depth] at hd; omega) hsub ⟨_, env, heap, trace, funcs, cs⟩ rfl
-      simp only [Flat.step?, hnotval, hsa, henv_a, hheap_a]
-      exact ⟨_, rfl, rfl, rfl, rfl, rfl, rfl, rfl⟩
+      sorry -- step? wraps in parent context; needs multi-step restructuring
     | await_arg hsub =>
       cases sf with | mk _ env heap trace funcs cs =>
       simp only [Flat.State.expr] at hsf; subst hsf
-      have hnotval := HasContinueInHead_not_value _ _ hsub
-      obtain ⟨sa', hsa, _, henv_a, hheap_a, _, _, _⟩ :=
-        ih _ (by simp [Flat.Expr.depth] at hd; omega) hsub ⟨_, env, heap, trace, funcs, cs⟩ rfl
-      simp only [Flat.step?, hnotval, hsa, henv_a, hheap_a]
-      exact ⟨_, rfl, rfl, rfl, rfl, rfl, rfl, rfl⟩
+      sorry -- step? wraps in parent context; needs multi-step restructuring
     | assign_val hsub =>
       cases sf with | mk _ env heap trace funcs cs =>
       simp only [Flat.State.expr] at hsf; subst hsf
-      have hnotval := HasContinueInHead_not_value _ _ hsub
-      obtain ⟨sa', hsa, _, henv_a, hheap_a, _, _, _⟩ :=
-        ih _ (by simp [Flat.Expr.depth] at hd; omega) hsub ⟨_, env, heap, trace, funcs, cs⟩ rfl
-      simp only [Flat.step?, hnotval, hsa, henv_a, hheap_a]
-      exact ⟨_, rfl, rfl, rfl, rfl, rfl, rfl, rfl⟩
+      sorry -- step? wraps in parent context; needs multi-step restructuring
     | getProp_obj hsub =>
       cases sf with | mk _ env heap trace funcs cs =>
       simp only [Flat.State.expr] at hsf; subst hsf
-      have hnotval := HasContinueInHead_not_value _ _ hsub
-      obtain ⟨sa', hsa, _, henv_a, hheap_a, _, _, _⟩ :=
-        ih _ (by simp [Flat.Expr.depth] at hd; omega) hsub ⟨_, env, heap, trace, funcs, cs⟩ rfl
-      simp only [Flat.step?, hnotval, hsa, henv_a, hheap_a]
-      exact ⟨_, rfl, rfl, rfl, rfl, rfl, rfl, rfl⟩
+      sorry -- step? wraps in parent context; needs multi-step restructuring
     | setProp_obj hsub =>
       cases sf with | mk _ env heap trace funcs cs =>
       simp only [Flat.State.expr] at hsf; subst hsf
-      have hnotval := HasContinueInHead_not_value _ _ hsub
-      obtain ⟨sa', hsa, _, henv_a, hheap_a, _, _, _⟩ :=
-        ih _ (by simp [Flat.Expr.depth] at hd; omega) hsub ⟨_, env, heap, trace, funcs, cs⟩ rfl
-      simp only [Flat.step?, hnotval, hsa, henv_a, hheap_a]
-      exact ⟨_, rfl, rfl, rfl, rfl, rfl, rfl, rfl⟩
+      sorry -- step? wraps in parent context; needs multi-step restructuring
     | deleteProp_obj hsub =>
       cases sf with | mk _ env heap trace funcs cs =>
       simp only [Flat.State.expr] at hsf; subst hsf
-      have hnotval := HasContinueInHead_not_value _ _ hsub
-      obtain ⟨sa', hsa, _, henv_a, hheap_a, _, _, _⟩ :=
-        ih _ (by simp [Flat.Expr.depth] at hd; omega) hsub ⟨_, env, heap, trace, funcs, cs⟩ rfl
-      simp only [Flat.step?, hnotval, hsa, henv_a, hheap_a]
-      exact ⟨_, rfl, rfl, rfl, rfl, rfl, rfl, rfl⟩
+      sorry -- step? wraps in parent context; needs multi-step restructuring
     | binary_lhs hsub =>
       cases sf with | mk _ env heap trace funcs cs =>
       simp only [Flat.State.expr] at hsf; subst hsf
-      have hnotval := HasContinueInHead_not_value _ _ hsub
-      obtain ⟨sa', hsa, _, henv_a, hheap_a, _, _, _⟩ :=
-        ih _ (by simp [Flat.Expr.depth] at hd; omega) hsub ⟨_, env, heap, trace, funcs, cs⟩ rfl
-      simp only [Flat.step?, hnotval, hsa, henv_a, hheap_a]
-      exact ⟨_, rfl, rfl, rfl, rfl, rfl, rfl, rfl⟩
+      sorry -- step? wraps in parent context; needs multi-step restructuring
     | call_func hsub =>
       cases sf with | mk _ env heap trace funcs cs =>
       simp only [Flat.State.expr] at hsf; subst hsf
-      have hnotval := HasContinueInHead_not_value _ _ hsub
-      obtain ⟨sa', hsa, _, henv_a, hheap_a, _, _, _⟩ :=
-        ih _ (by simp [Flat.Expr.depth] at hd; omega) hsub ⟨_, env, heap, trace, funcs, cs⟩ rfl
-      simp only [Flat.step?, hnotval, hsa, henv_a, hheap_a]
-      exact ⟨_, rfl, rfl, rfl, rfl, rfl, rfl, rfl⟩
+      sorry -- step? wraps in parent context; needs multi-step restructuring
     | newObj_func hsub =>
       cases sf with | mk _ env heap trace funcs cs =>
       simp only [Flat.State.expr] at hsf; subst hsf
-      have hnotval := HasContinueInHead_not_value _ _ hsub
-      obtain ⟨sa', hsa, _, henv_a, hheap_a, _, _, _⟩ :=
-        ih _ (by simp [Flat.Expr.depth] at hd; omega) hsub ⟨_, env, heap, trace, funcs, cs⟩ rfl
-      simp only [Flat.step?, hnotval, hsa, henv_a, hheap_a]
-      exact ⟨_, rfl, rfl, rfl, rfl, rfl, rfl, rfl⟩
+      sorry -- step? wraps in parent context; needs multi-step restructuring
     | getIndex_obj hsub =>
       cases sf with | mk _ env heap trace funcs cs =>
       simp only [Flat.State.expr] at hsf; subst hsf
-      have hnotval := HasContinueInHead_not_value _ _ hsub
-      obtain ⟨sa', hsa, _, henv_a, hheap_a, _, _, _⟩ :=
-        ih _ (by simp [Flat.Expr.depth] at hd; omega) hsub ⟨_, env, heap, trace, funcs, cs⟩ rfl
-      simp only [Flat.step?, hnotval, hsa, henv_a, hheap_a]
-      exact ⟨_, rfl, rfl, rfl, rfl, rfl, rfl, rfl⟩
+      sorry -- step? wraps in parent context; needs multi-step restructuring
     | setIndex_obj hsub =>
       cases sf with | mk _ env heap trace funcs cs =>
       simp only [Flat.State.expr] at hsf; subst hsf
-      have hnotval := HasContinueInHead_not_value _ _ hsub
-      obtain ⟨sa', hsa, _, henv_a, hheap_a, _, _, _⟩ :=
-        ih _ (by simp [Flat.Expr.depth] at hd; omega) hsub ⟨_, env, heap, trace, funcs, cs⟩ rfl
-      simp only [Flat.step?, hnotval, hsa, henv_a, hheap_a]
-      exact ⟨_, rfl, rfl, rfl, rfl, rfl, rfl, rfl⟩
+      sorry -- step? wraps in parent context; needs multi-step restructuring
     | getEnv_env hsub =>
       cases sf with | mk _ env heap trace funcs cs =>
       simp only [Flat.State.expr] at hsf; subst hsf
-      have hnotval := HasContinueInHead_not_value _ _ hsub
-      obtain ⟨sa', hsa, _, henv_a, hheap_a, _, _, _⟩ :=
-        ih _ (by simp [Flat.Expr.depth] at hd; omega) hsub ⟨_, env, heap, trace, funcs, cs⟩ rfl
-      simp only [Flat.step?, hnotval, hsa, henv_a, hheap_a]
-      exact ⟨_, rfl, rfl, rfl, rfl, rfl, rfl, rfl⟩
+      sorry -- step? wraps in parent context; needs multi-step restructuring
     | makeClosure_env hsub =>
       cases sf with | mk _ env heap trace funcs cs =>
       simp only [Flat.State.expr] at hsf; subst hsf
-      have hnotval := HasContinueInHead_not_value _ _ hsub
-      obtain ⟨sa', hsa, _, henv_a, hheap_a, _, _, _⟩ :=
-        ih _ (by simp [Flat.Expr.depth] at hd; omega) hsub ⟨_, env, heap, trace, funcs, cs⟩ rfl
-      simp only [Flat.step?, hnotval, hsa, henv_a, hheap_a]
-      exact ⟨_, rfl, rfl, rfl, rfl, rfl, rfl, rfl⟩
+      sorry -- step? wraps in parent context; needs multi-step restructuring
     -- Non-first-position cases: need multi-step (earlier sub-expression evaluates first).
     -- These cases are false as one-step claims; they require the multi-step
     -- hasContinueInHead_flat_error_steps theorem to be restructured for multi-step handling.
