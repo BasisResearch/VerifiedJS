@@ -3550,8 +3550,7 @@ private theorem closureConvert_step_simulation
         · exact hheapvwf'
         · simp [sc', noCallFrameReturn]; exact hncfr'
         · simp only [sc']; simp only [ExprAddrWF]
-          have heap_mono : sc.heap.objects.size ≤ sc_sub'.heap.objects.size :=
-            Core_step_heap_size_mono hcstep_sub
+          have heap_mono := Core_step_heap_size_mono hcstep_sub
           exact ⟨ValueAddrWF_mono hcv_wf heap_mono, hexprwf'⟩
         · refine ⟨st_a, st_a', ?_, hAgreeIn, by rw [hst]; exact hAgreeOut⟩
           simp only [sc', Flat.convertExpr, Flat.convertValue]
