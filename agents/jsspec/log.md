@@ -22,10 +22,16 @@
 3. `normalizeExprList_throw/return_or_k` — list helper
 4. `normalizeProps_throw/return_or_k` — props helper
 
+### Compilation status (memory-constrained, ~7.6GB/7.8GB used)
+- anf_throw_step_sim_direct.lean: step?_throw_value needs rw fix, step?_throw_step has sorry (Flat.pushTrace is private)
+- anf_throw_inversion.lean: objectLit case needs Flat.Expr.mem_propListDepth_lt (defined in ANFConvertCorrect only). Fixed locally. Recompiling.
+- anf_return_await_inversion.lean: normalizeProps destructuring fixed. Recompiling.
+- anf_remaining_sorry_analysis.lean: comprehensive analysis of all 17 ANF sorries, categorized by difficulty
+
 ### CC staged file verification (Track 3)
 - cc_state_mono.lean: COMPILES CLEAN (sorry warning only)
-- cc_convertExpr_not_lit_v2.lean: checking (agent running)
-- cc_exprAddrWF_propagate.lean: FAILED (dep failure, needs investigation)
+- cc_convertExpr_not_lit_v2.lean: COMPILES CLEAN (no errors)
+- cc_exprAddrWF_propagate.lean: FAILED (imports ClosureConvertCorrect.lean which has Fix D breakage)
 
 ### Throw step simulation strategy (Track 2 cont.)
 - Direct case (sf.expr = .throw flat_arg): 1-2 Flat steps, matches ANF evalTrivial
