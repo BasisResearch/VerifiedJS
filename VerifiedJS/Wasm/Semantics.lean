@@ -10960,37 +10960,9 @@ theorem step_sim (irmod : IRModule) (wmod : Module) :
             exfalso; generalize s2.code = wcode at hc
             cases hc with | general _ _ _ _ hf _ => exact hf.elim
       | .call funcIdx =>
-          -- SORRY: call case needs trap message alignment + hframes_one invariant rework
+          -- call: blocked on trap message alignment (IR vs Wasm format mismatch)
+          -- and multi-frame EmitSimRel for successful call case.
           sorry
-          /- function call — partially proved, blocked on trap message mismatch:
-             IR uses s!"call: unknown function {funcIdx}" while Wasm uses
-             s!"unknown function index {funcIdx}". Need traceToWasm alignment.
-          have hc : EmitCodeCorr _ (IRInstr.call funcIdx :: rest) s2.code := hcode_ir ▸ hrel.hcode
-          rcases hc.call_inv with ⟨rest_w, hcw, hrest⟩ | hf
-          · have hfuncs_size : s1.module.functions.size = s2.store.funcs.size := by
-              rw [hrel.hmodule, hrel.hstore_funcs]
-              exact (emit_preserves_funcs_size irmod wmod hrel.hemit).symm
-            match hfunc_ir : s1.module.functions[funcIdx]? with
-            | none =>
-              have hir : irStep? s1 = some (.trap s!"call: unknown function {funcIdx}",
-                  { s1 with code := [], trace := s1.trace ++ [.trap s!"call: unknown function {funcIdx}"] }) := by
-                simp [irStep?, hcode_ir, hfunc_ir, irTrapState, irPushTrace]
-              rw [hir] at hstep
-              simp only [Option.some.injEq, Prod.mk.injEq] at hstep
-              obtain ⟨rfl, rfl⟩ := hstep
-              have hfunc_oob : ¬(funcIdx < s2.store.funcs.size) := by
-                rw [← hfuncs_size]; intro h
-                rw [Array.getElem?_eq_getElem h] at hfunc_ir; simp at hfunc_ir
-              have hw := step?_eq_call_oob s2 funcIdx rest_w hcw hfunc_oob
-              -- BLOCKED: traceToWasm (.trap "call: unknown function N")
-              --        ≠ Wasm.TraceEvent.trap "unknown function index N"
-              sorry
-            | some fn =>
-              match hpop : irPopN? s1.stack fn.params.length with
-              | none => sorry   -- stack underflow: param count alignment needed
-              | some (args, callerStack) => sorry  -- successful call: multi-frame needed
-          · exact hf.elim
-          -/
       | .callIndirect typeIdx => sorry
       | .block label body =>
           -- block: push label frame, enter body. Both IR and Wasm do the same.
