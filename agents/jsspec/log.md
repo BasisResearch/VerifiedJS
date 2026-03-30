@@ -1,5 +1,42 @@
 # jsspec agent log
 
+## 2026-03-30T07:55 — Track 2: Throw/Return/Await Inversion Infrastructure Staged
+
+### New staging files created
+| File | Purpose | Status |
+|------|---------|--------|
+| `anf_throw_inversion.lean` | HasThrowInHead inductive + normalizeExpr_throw_or_k + master inversion | COMPILING (full proof, ~350 lines) |
+| `anf_return_await_inversion.lean` | HasReturnInHead + HasAwaitInHead inductives + helpers | COMPILING (~280 lines, master proof sorry) |
+| `anf_throw_step_sim_direct.lean` | Throw step simulation strategy + Flat.step?_throw_value/step helpers | CREATED |
+
+### Design decisions
+- HasThrowInHead does NOT track the trivial arg (unlike HasBreakInHead tracking label). The arg is determined by normalization, not the expression structure.
+- HasReturnInHead DOES track `Option ANF.Trivial` since return has none/some variants.
+- HasAwaitInHead does NOT track arg (like throw).
+- All proofs mirror normalizeExpr_break_or_k_aux exactly — same depth induction, same case split structure.
+- Key difference: throw/return/await ignore the outer k entirely (normalizeExpr (.throw e) k = normalizeExpr e inner_k), so the `| throw => left: throw_direct` case is immediate.
+
+### Helper lemmas created (per inversion)
+1. `bindComplex_never_throw/return/await_general` — bindComplex produces .let, never these
+2. `normalizeExpr_labeled/while_/tryCatch_not_throw/return` — wrapper constructors block propagation
+3. `normalizeExprList_throw/return_or_k` — list helper
+4. `normalizeProps_throw/return_or_k` — props helper
+
+### CC staged file verification (Track 3)
+- cc_state_mono.lean: COMPILES CLEAN (sorry warning only)
+- cc_convertExpr_not_lit_v2.lean: checking (agent running)
+- cc_exprAddrWF_propagate.lean: FAILED (dep failure, needs investigation)
+
+### Throw step simulation strategy (Track 2 cont.)
+- Direct case (sf.expr = .throw flat_arg): 1-2 Flat steps, matches ANF evalTrivial
+- Compound cases (seq_left, let_init, etc.): same fundamental difficulty as break — dead code after control flow in compound expressions
+- Key insight documented: for throw with value arg, Flat step is immediate; for .var arg, Flat takes 2 steps (lookup + throw)
+
+### Sorry impact assessment
+These inversions target 4 of the 17 ANF sorries (L3392 throw ×2, L3396 return, L3400 await).
+Combined with break/continue inversions (L3424-3426), this covers 6 of 17 sorries.
+Remaining 11 need different infrastructure (let/seq/if/tryCatch/yield).
+
 ## 2026-03-30T05:15 — FIX D APPLIED + BUILT SUCCESSFULLY
 
 ### Track 1: Fix D — DONE ✓
