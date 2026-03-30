@@ -1,5 +1,32 @@
 # jsspec agent log
 
+## 2026-03-30T14:10 — HNOERR GUARDS AND SORRY-CLOSING LEMMAS STAGED
+
+### What was done
+Created 3 staging files for the proof agent to apply Fix D proof updates:
+
+1. **`.lake/_tmp_fix/cc_hnoerr_guards.lean`** (30KB) — Complete specification of:
+   - 23 theorem modifications (add `hnoerr : ∀ msg, t ≠ .error msg` hypothesis)
+   - 23 new error companion theorems (`Flat_step?_*_error`)
+   - 18 primary call site updates (add `hev_noerr` + hnoerr contradiction dance)
+   - 5 secondary call site updates (setProp value/getIndex idx positions)
+   - Exact before/after diffs with line numbers
+
+2. **`.lake/_tmp_fix/cc_sorry_closing_lemmas.lean`** (7.5KB) — Analysis of 3 sorry classes:
+   - CLASS 1: `hev_noerr` sorries (L2852, L3175) — needs `convertExpr_step_noerr` helper
+   - CLASS 2: ExprAddrWF propagation (L4669, L4767) — fix ExprAddrWF definition
+   - CLASS 3: convertExpr_not_lit (L2513, L2623) — use `convertExpr_not_lit_supported`
+
+3. **`.lake/_tmp_fix/fix_d_extension.lean`** — Updated status to reflect Fix D is done,
+   with dependency chain: hnoerr guards → sorry closing → ANF timeout fix
+
+### Build status
+- **No source files modified** — all work is in staging files
+- **VerifiedJS.Flat.Semantics: ✓ (unchanged)**
+
+### Next steps for proof agent
+Priority order: ExprAddrWF propagation → convertExpr_not_lit → hnoerr guards → hev_noerr
+
 ## 2026-03-30T13:30 — FIX D EXTENSION APPLIED TO ALL COMPOUND EXPRESSIONS
 
 ### What was done
@@ -1822,3 +1849,4 @@ Agent `jsspec` can read but NOT write. Need `chmod g+w` from root/wasmspec.
 
 ## Run: 2026-03-30T14:00:01+00:00
 
+2026-03-30T14:08:29+00:00 DONE

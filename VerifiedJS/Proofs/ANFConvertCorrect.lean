@@ -1320,21 +1320,6 @@ private theorem step?_if_cond_error (s : Flat.State) (cond then_ else_ : Flat.Ex
   simp only [Flat.step?, hnotval, hstep]
   exact ⟨_, rfl, rfl, rfl, rfl, rfl, rfl, rfl⟩
 
-/-- HasBreakInHead expressions are never values. -/
-private theorem HasBreakInHead_not_value (e : Flat.Expr) (label : Option Flat.LabelName)
-    (h : HasBreakInHead e label) : Flat.exprValue? e = none := by
-  cases h <;> simp [Flat.exprValue?]
-
-/-- HasContinueInHead expressions are never values. -/
-private theorem HasContinueInHead_not_value (e : Flat.Expr) (label : Option Flat.LabelName)
-    (h : HasContinueInHead e label) : Flat.exprValue? e = none := by
-  cases h <;> simp [Flat.exprValue?]
-
-/-- HasThrowInHead expressions are never values. -/
-private theorem HasThrowInHead_not_value (e : Flat.Expr)
-    (h : HasThrowInHead e) : Flat.exprValue? e = none := by
-  cases h <;> simp [Flat.exprValue?]
-
 /-- Stepping .if with a literal condition branches directly. -/
 private theorem step?_if_lit_branch (s : Flat.State) (v : Flat.Value)
     (then_ else_ : Flat.Expr) :
@@ -1917,6 +1902,11 @@ inductive HasBreakInHeadProps : List (Flat.PropName × Flat.Expr) → Option Fla
   | head : HasBreakInHead e label → HasBreakInHeadProps ((name, e) :: rest) label
   | tail : HasBreakInHeadProps rest label → HasBreakInHeadProps (p :: rest) label
 end
+
+/-- HasBreakInHead expressions are never values. -/
+private theorem HasBreakInHead_not_value (e : Flat.Expr) (label : Option Flat.LabelName)
+    (h : HasBreakInHead e label) : Flat.exprValue? e = none := by
+  cases h <;> simp [Flat.exprValue?]
 
 /-- Membership in prop list implies depth bound -/
 theorem Flat.Expr.mem_propListDepth_lt {e : Flat.Expr} {name : Flat.PropName}
@@ -2870,6 +2860,11 @@ inductive HasContinueInHeadProps : List (Flat.PropName × Flat.Expr) → Option 
   | tail : HasContinueInHeadProps rest label → HasContinueInHeadProps (p :: rest) label
 end
 
+/-- HasContinueInHead expressions are never values. -/
+private theorem HasContinueInHead_not_value (e : Flat.Expr) (label : Option Flat.LabelName)
+    (h : HasContinueInHead e label) : Flat.exprValue? e = none := by
+  cases h <;> simp [Flat.exprValue?]
+
 /-! ## List continue characterization helpers -/
 
 /-- If normalizeExprList es k = .continue, then either some element has continue in head,
@@ -3271,6 +3266,11 @@ inductive HasThrowInHeadProps : List (Flat.PropName × Flat.Expr) → Prop where
   | head : HasThrowInHead e → HasThrowInHeadProps ((name, e) :: rest)
   | tail : HasThrowInHeadProps rest → HasThrowInHeadProps (p :: rest)
 end
+
+/-- HasThrowInHead expressions are never values. -/
+private theorem HasThrowInHead_not_value (e : Flat.Expr)
+    (h : HasThrowInHead e) : Flat.exprValue? e = none := by
+  cases h <;> simp [Flat.exprValue?]
 
 /-! ## Helper: bindComplex never produces .throw -/
 
@@ -4691,6 +4691,7 @@ private theorem anfConvert_step_star
         · rw [hexpr']; exact ANF.normalizeExpr_lit_undefined_trivial n
       · rw [hexpr']; intro x hfx; cases hfx
 
+set_option maxHeartbeats 400000 in
 /-- Auxiliary halt_star with strong induction on Flat expression depth.
     When ANF reaches a terminal state (step? = none), Flat can also reach a
     terminal state after zero or more silent steps.
