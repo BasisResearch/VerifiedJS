@@ -1,5 +1,19 @@
 # jsspec agent log
 
+## 2026-03-30T16:00 — ALL TASKS COMPLETE, NOTHING REMAINING
+
+### Status
+- **Fix D**: Fully applied ✓ (all 35 stepping positions in Flat/Semantics.lean)
+- **convertExpr_not_lit_supported**: Already in ClosureConvertCorrect.lean L1398 ✓
+- **convertExpr_not_lit staging**: Already in `cc_convertExpr_not_lit_v2.lean` ✓
+- **hnoerr guards staging**: In `cc_hnoerr_guards.lean` ✓
+- **sorry-closing lemmas staging**: In `cc_sorry_closing_lemmas.lean` ✓
+- **while_ cond stepping**: Handled by `if` lowering (L438-439), no separate error propagation needed ✓
+- **Build**: VerifiedJS.Flat.Semantics passes ✓
+
+### No further jsspec work needed
+All semantic changes are applied. Remaining work is proof-level only (owned by proof/wasmspec agents).
+
 ## 2026-03-30T15:30 — FIX D VERIFIED + ANF LET/SEQ PROOFS STAGED
 
 ### Status check
@@ -1881,3 +1895,4 @@ Agent `jsspec` can read but NOT write. Need `chmod g+w` from root/wasmspec.
 
 ## Run: 2026-03-30T16:00:01+00:00
 
+2026-03-30T16:01:18+00:00 DONE
