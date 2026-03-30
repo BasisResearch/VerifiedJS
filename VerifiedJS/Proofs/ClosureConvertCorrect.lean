@@ -1372,6 +1372,44 @@ private theorem convertExpr_not_value (e : Core.Expr)
     (try { simp [Flat.exprValue?]; done }) <;>
     (try { split <;> simp [Flat.exprValue?]; done })
 
+/-- convertExpr of a non-value supported expression is not a Flat value.
+    The `supported` guard eliminates forIn/forOf/yield/await (which convert to .lit .undefined). -/
+private theorem convertExpr_not_value_supported (e : Core.Expr)
+    (h : Core.exprValue? e = none)
+    (hsupp : e.supported = true)
+    (scope : List String) (envVar : String) (envMap : Flat.EnvMapping) (st : Flat.CCState) :
+    Flat.exprValue? (Flat.convertExpr e scope envVar envMap st).fst = none := by
+  cases e with
+  | lit v => simp [Core.exprValue?] at h
+  | forIn _ _ _ => simp [Core.Expr.supported] at hsupp
+  | forOf _ _ _ => simp [Core.Expr.supported] at hsupp
+  | yield _ _ => simp [Core.Expr.supported] at hsupp
+  | await _ => simp [Core.Expr.supported] at hsupp
+  | var _ =>
+    simp only [Flat.convertExpr]
+    split <;> simp [Flat.exprValue?]
+  | functionDef _ _ _ _ _ => unfold Flat.convertExpr; simp [Flat.exprValue?]
+  | _ => unfold Flat.convertExpr <;>
+    (try { simp [Flat.exprValue?]; done }) <;>
+    (try { split <;> simp [Flat.exprValue?]; done })
+
+/-- For supported, non-literal Core expressions, convertExpr never produces .lit.
+    Directly eliminates forIn/forOf/yield/await via the supported guard. -/
+private theorem convertExpr_not_lit_supported (e : Core.Expr) (scope : List String)
+    (envVar : String) (envMap : Flat.EnvMapping) (st : Flat.CCState)
+    (h : ∀ v, e ≠ .lit v)
+    (hsupp : e.supported = true) :
+    ∀ fv, (Flat.convertExpr e scope envVar envMap st).fst ≠ .lit fv := by
+  intro fv; cases e with
+  | lit v => exact absurd rfl (h v)
+  | forIn _ _ _ => simp [Core.Expr.supported] at hsupp
+  | forOf _ _ _ => simp [Core.Expr.supported] at hsupp
+  | yield _ _ => simp [Core.Expr.supported] at hsupp
+  | await _ => simp [Core.Expr.supported] at hsupp
+  | var _ => simp [Flat.convertExpr]; split <;> simp
+  | functionDef _ _ _ _ _ => unfold Flat.convertExpr; simp
+  | _ => unfold Flat.convertExpr; simp
+
 -- Helper lemmas for Core.step? on simple expressions (Core.step? is too large for simp in context)
 private theorem Core_step?_this_found (s : Core.State) (v : Core.Value)
     (h : s.env.lookup "this" = some v) :

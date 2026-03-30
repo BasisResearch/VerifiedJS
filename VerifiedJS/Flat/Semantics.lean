@@ -1242,8 +1242,9 @@ theorem step?_seq_var_not_found_explicit (s : State) (name : VarName) (b : Expr)
 theorem step?_seq_var_steps_to_lit (s : State) (name : VarName) (v : Value) (b : Expr)
     (henv : s.env.lookup name = some v) :
     step? { s with expr := .seq (.var name) b } =
-      some (.silent, { expr := .seq (.lit v) b, env := s.env, heap := s.heap,
-                  trace := s.trace ++ [.silent], funcs := s.funcs, callStack := s.callStack }) := by
+      some (.silent,
+        { expr := .seq (.lit v) b, env := s.env, heap := s.heap,
+          trace := s.trace ++ [.silent], funcs := s.funcs, callStack := s.callStack }) := by
   simp [step?, exprValue?, henv, pushTrace]
 
 /-- `.seq (.var name) b` when var not found: error propagates, expr becomes `.lit .undefined`. -/
@@ -1251,9 +1252,9 @@ theorem step?_seq_var_not_found_propagates (s : State) (name : VarName) (b : Exp
     (henv : s.env.lookup name = none) :
     step? { s with expr := .seq (.var name) b } =
       some (.error ("ReferenceError: " ++ name),
-            { expr := .lit .undefined, env := s.env, heap := s.heap,
-              trace := s.trace ++ [.error ("ReferenceError: " ++ name)],
-              funcs := s.funcs, callStack := s.callStack }) := by
+        { expr := .lit .undefined, env := s.env, heap := s.heap,
+          trace := s.trace ++ [.error ("ReferenceError: " ++ name)],
+          funcs := s.funcs, callStack := s.callStack }) := by
   simp [step?, exprValue?, henv, pushTrace]
 
 /-- `.seq .this b` always steps to a state with `.seq (.lit val) b` for some val.
