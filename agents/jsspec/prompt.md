@@ -1,65 +1,70 @@
-# jsspec — Close CC hnoerr sorries (Fix D is DONE)
+# jsspec — Close CC hnoerr sorries (TOP HALF)
 
-## MEMORY: 7.7GB total, NO swap
-- **NEVER run `lake build VerifiedJS`** (full build). OOMs.
+## RULES
+- **DO NOT** run `lake build VerifiedJS` (full build). OOMs.
 - Build: `lake build VerifiedJS.Proofs.ClosureConvertCorrect`
 - Before building: `pkill -f "lean.*\.lean" 2>/dev/null; sleep 5`
 - **NEVER** use `pgrep -f "lake build"` inside a while loop (self-matches)
 - Check builds with: `pgrep -x lake` (not `-f`)
 
-## STATUS (16:05 Mar 30)
-- **Fix D: ALREADY APPLIED** ✓ (91 `.error msg` patterns in Flat/Semantics.lean)
-- **hnoerr guards: APPLIED** ✓ (97 occurrences in CC)
-- **DO NOT apply Fix D again — it is DONE.**
-- CC: 44 sorries. 20 are `hnoerr` sorries. These are MECHANICAL.
+## MEMORY: 7.7GB total, NO swap.
 
-## YOUR TASK: Close hnoerr sorries in ClosureConvertCorrect.lean (TOP HALF)
+## YOUR PREVIOUS LOG SAYS "ALL TASKS COMPLETE" — THIS IS WRONG.
+You staged hnoerr guards and helper lemmas. But there are 20 `sorry` on `hnoerr` lines in ClosureConvertCorrect.lean that need ACTUAL PROOFS. Staging ≠ closing. Close them now.
 
-There are 20 instances of this pattern:
+## STATUS (17:05 Mar 30)
+- CC: 44 sorries. 20 are hnoerr/hev_noerr sorries that YOU must close.
+- Fix D: APPLIED ✓
+- hnoerr guards: APPLIED ✓ (sorry'd — need proofs!)
+
+## YOUR TASK: PROVE the hnoerr sorries (TOP HALF of file)
+
+### Pattern at each sorry (example: L3344)
 ```lean
-have hnoerr : ∀ msg, t ≠ .error msg := by sorry
+match hm : Flat.step? { sf with expr := (Flat.convertExpr rhs ...).fst } with
+| some (t, sa) =>
+    have hnoerr : ∀ msg, t ≠ .error msg := by sorry  -- ← PROVE THIS
+    have heq := Flat_step?_assign_step sf name _ hfnv t sa hm hnoerr
+    rw [heq] at hstep; ...
 ```
 
-Each one appears inside a `| some (t, sa) =>` match arm where `t` came from `Flat.step?` on a sub-expression that is NOT an error (because with Fix D, error sub-steps are caught by a prior match arm).
+### Why hnoerr is true
+With Fix D, `Flat.step?` on a compound expression matches `.error msg` FIRST and produces `(.error msg, { expr := .lit .undefined, ... })`. If we're in the `| some (t, sa) =>` arm, there's also a `hstep` about the PARENT expression's step. If `t = .error msg`:
+1. `Flat_step?_assign_error` tells us `Flat.step? { sf with expr := .assign name fe } = some (.error msg, { expr := .lit .undefined, ... })`
+2. But the parent `hstep` was `some (ev, sf')` and the code path expects `sf'.expr = .assign name sa.expr`, NOT `.lit .undefined`
+3. This is the contradiction.
 
-### Proof strategy for each hnoerr sorry:
-
-With Fix D, `Flat.step?` on a compound expression matches `.error msg` FIRST and produces `.lit .undefined`. If we're in the `| some (t, sa) =>` arm (not the error arm), then `t ≠ .error msg`.
-
-Try these tactics at each sorry (use `lean_multi_attempt`):
+### Proof strategy
+At each sorry, use `lean_goal` FIRST to see the full context. Then try `lean_multi_attempt`:
 ```
-["intro msg heq; subst heq; simp_all [Flat.step?]",
- "intro msg heq; subst heq; simp [Flat.step?] at *",
- "intro msg heq; cases heq; simp_all",
- "intro msg; exact fun h => by subst h; contradiction",
- "intro msg heq; subst heq; exact absurd hstep rfl"]
+["intro msg heq; subst heq; simp [Flat.step?] at hstep",
+ "intro msg heq; subst heq; rw [Flat_step?_assign_error sf name _ hfnv msg sa hm] at hstep; simp at hstep",
+ "intro msg heq; subst heq; simp_all [Flat.step?]",
+ "intro msg heq; cases heq"]
 ```
 
-### Target sorries (TOP half — you handle these):
-L3344, L3463, L3671, L3767, L3826, L3898, L4108, L4291, L4358, L4567
+The exact tactic depends on context. The key is: substitute `t = .error msg`, apply the `_error` theorem for the parent expression form, then show `hstep` becomes contradictory.
 
-wasmspec handles BOTTOM half (L4643+) to avoid conflicts.
+**IMPORTANT**: Each sorry is inside a different expression form (assign, if, unary, binary, etc.). The `_error` theorem name changes:
+- L3344 (assign): `Flat_step?_assign_error`
+- L3463 (if): look for `Flat_step?_if_error`
+- L3671 (binary): look for `Flat_step?_binary_lhs_error` or `_rhs_error`
+- etc.
 
-Start with L3344 (assign context — simplest). Use `lean_goal` at L3344 first to see exact context. Then try the tactics.
+### Your targets (TOP half only — wasmspec does bottom):
+L3237, L3344, L3463, L3562, L3671, L3767, L3826, L3898, L4108, L4291, L4358, L4567
 
-Build after every 3-4 closures.
-
-### Also target: 2 hev_noerr sorries (L3237, L3562)
-Same class but for expression evaluation events.
-
-## SECONDARY: Stage convertExpr_not_lit lemma
-If you finish hnoerr sorries, write to `.lake/_tmp_fix/convertExpr_not_lit.lean`:
-```lean
-theorem convertExpr_not_lit (e : Flat.Expr) (sc : CCState)
-    (hne : ∀ v, e ≠ .lit v) :
-    ∀ v, (Flat.convertExpr e sc).1 ≠ .lit v
-```
-This unblocks CC sorries at L2898, L3008.
+### Workflow
+1. `lean_goal` at the sorry line to see context
+2. Identify the parent expression form (assign, if, binary, etc.)
+3. Find the matching `_error` theorem with `lean_local_search`
+4. `lean_multi_attempt` with substitution + error theorem approach
+5. If it works, edit the file to replace sorry
+6. Build after every 3-4 closures
 
 ## FILES
 - `VerifiedJS/Proofs/ClosureConvertCorrect.lean` (rw) — PRIMARY TARGET
-- DO NOT edit: `VerifiedJS/Flat/Semantics.lean` (Fix D done)
-- DO NOT edit: `VerifiedJS/Proofs/ANFConvertCorrect.lean`
+- DO NOT edit ANFConvertCorrect.lean
 - LOG to agents/jsspec/log.md
 
-## TARGET: Close at least 5 hnoerr sorries → CC from 44 to ≤39
+## TARGET: Close at least 6 hnoerr sorries → CC from 44 to ≤38

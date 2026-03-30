@@ -1,4 +1,4 @@
-# proof — Close ANF expression-case sorries
+# proof — Close ANF expression-case sorries (throw first)
 
 ## RULES
 - Edit: ANFConvertCorrect.lean (primary)
@@ -10,60 +10,96 @@
 
 ## MEMORY: 7.7GB total, NO swap. Kill stale lean procs.
 
-## CURRENT STATE (16:05 Mar 30)
+## CURRENT STATE (17:05 Mar 30)
 - ANF: 17 sorries, 3 groups:
-  - 7 depth-induction (L3825-3923) — skip
-  - 2 consolidated context (L4116, L4327) — skip (need multi-step restructure)
-  - 8 expression-case (L4423, 4425, 4427, 4447, 4449, 4451, 4453, 4455) — YOUR TARGET
-- Fix D is APPLIED in Flat/Semantics.lean ✓
-- hnoerr guards applied in CC ✓
+  - 7 depth-induction (L3825-3923) — skip for now
+  - 2 consolidated context (L4116, L4327) — skip for now
+  - 8 expression-case: **YOUR TARGET**
+    - L4368: normalizeExpr_throw_step_sim (PRIORITY 1)
+    - L4399: normalizeExpr_return_step_sim
+    - L4423: normalizeExpr_await_step_sim
+    - L4454: normalizeExpr_yield_step_sim
+    - L4475: normalizeExpr_let_step_sim
+    - L4496: normalizeExpr_seq_step_sim
+    - L4517: normalizeExpr_if_step_sim
+    - L4538: normalizeExpr_tryCatch_step_sim
 
-## PRIORITY 1: Close the `let` case (L4423)
+## PRIORITY 1: Write `hasThrowInHead_flat_error_steps` + close throw case (L4368)
 
-Goal state at L4423 (supervisor read it):
+### Step 1: Write the helper (insert BEFORE L4340, after HasThrowInHead_not_value)
+
+The throw case needs a multi-step helper like `hasBreakInHead_flat_error_steps`. Unlike break (1 step), throw evaluates its argument first, then emits the error. Structure:
+
+```lean
+/-- If HasThrowInHead e, then Flat steps evaluate to either:
+    - error msg (if throw arg evaluates to value v, msg = valueToString v), or
+    - error msg (if throw arg sub-step errors) -/
+private theorem hasThrowInHead_step?_error_aux
+    (d : Nat) (e : Flat.Expr) (hd : e.depth ≤ d)
+    (h : HasThrowInHead e)
+    (sf : Flat.State) (hsf : sf.expr = e) :
+    -- At minimum: one step exists (not stuck), and it's either:
+    -- (a) an error event (throw arg is value → immediate), or
+    -- (b) a sub-stepping event (throw arg not value → arg steps)
+    ∃ s' ev, Flat.step? sf = some (ev, s') := by
+  induction d generalizing e sf with
+  | zero => cases h <;> simp [Flat.Expr.depth] at hd
+  | succ d ih =>
+    cases h with
+    | throw_direct =>
+      -- sf.expr = .throw arg
+      -- Flat.step? on .throw: either exprValue? arg = some v → error, or step arg
+      cases sf with | mk expr env heap trace funcs cs =>
+      simp only [Flat.State.expr] at hsf; subst hsf
+      simp only [Flat.step?]
+      -- case split on exprValue? arg
+      sorry  -- FILL IN: cases on exprValue? arg, then cases on step?
+    | seq_left hsub =>
+      cases sf with | mk _ env heap trace funcs cs =>
+      simp only [Flat.State.expr] at hsf; subst hsf
+      have hnotval := HasThrowInHead_not_value _ hsub
+      -- ... same pattern as hasBreakInHead_step?_error_aux
+      sorry
+    -- ... repeat for each HasThrowInHead constructor
+    | _ => sorry
 ```
-case let
-sa : ANF.State, sf : Flat.State, ev : Core.TraceEvent, sa' : ANF.State
-hewf : ExprWellFormed sf.expr sf.env
-hstep_eq : ANF.step? sa = some (ev, sa')
-hheap : sa.heap = sf.heap, henv : sa.env = sf.env
-htrace : observableTrace sa.trace = observableTrace sf.trace
-k : ANF.Trivial → ANF.ConvM ANF.Expr
-n m : Nat
-hnorm : StateT.run (ANF.normalizeExpr sf.expr k) n = Except.ok (sa.expr, m)
-hk_triv : ∀ arg n', ∃ m', StateT.run (k arg) n' = Except.ok (.trivial arg, m')
-name : ANF.VarName, rhs : ANF.ComplexExpr, body : ANF.Expr
-hsa : sa.expr = ANF.Expr.let name rhs body
-⊢ ∃ sf' evs, Flat.Steps sf evs sf' ∧
-    observableTrace [ev] = observableTrace evs ∧ ANF_SimRel s t sa' sf' ∧ ExprWellFormed sf'.expr sf'.env
+
+**BUT ACTUALLY**: The throw case is simpler than you think. Look at the existing `normalizeExpr_throw_step_sim` signature (L4340-4368). It takes `HasThrowInHead` as given (via `normalizeExpr_throw_implies_hasThrowInHead`). The proof needs to:
+
+1. Use `ANF.normalizeExpr_throw_implies_hasThrowInHead` to get `HasThrowInHead sf.expr`
+2. Induct on the HasThrowInHead proof (same as break/continue pattern)
+3. For `throw_direct`: `sf.expr = .throw arg`.
+   - `exprValue? arg = some v` → one Flat step produces `.error (valueToString v)`. The ANF side has `evalTrivial sf.env arg = .ok v` (from hnorm inversion). Match traces.
+   - `exprValue? arg = none` → arg is not a value, but normalizeExpr produced `.throw arg` with arg being a trivial. Trivials ARE values in Flat. So `exprValue? arg = some v` always. This case may be vacuous.
+4. For compound cases (seq_left, let_init, etc.): step through the outer expression context, then recurse.
+
+### Key insight: trivial args are always Flat values
+In `normalizeExpr_throw_step_sim`, `arg : ANF.Trivial`. After ANF conversion, the throw argument is already a trivial (variable or literal). When we map back to Flat, the corresponding Flat sub-expression is a value (literal or var lookup). So `exprValue?` on the Flat throw arg should always succeed → the throw is a single Flat step.
+
+### Step 2: Use it to prove L4368
+
+```lean
+-- At L4368, replace sorry with:
+  have hthrow := ANF.normalizeExpr_throw_implies_hasThrowInHead sf.expr k hk arg n m hnorm
+  -- Now induct on hthrow to construct Flat.Steps
+  -- For throw_direct: sf.expr = .throw farg for some farg
+  --   normalizeExpr (.throw farg) k produces .throw (trivialOfFlat farg)
+  --   So farg maps to arg under the trivial conversion
+  --   Flat.step? evaluates .throw farg:
+  --     exprValue? farg = some v → .error (valueToString v) in one step
+  --     Then match with evalTrivial sf.env arg = .ok v
+  sorry -- fill in the actual tactic proof
 ```
 
-Strategy:
-1. `subst hsa` to substitute the expr form
-2. `simp [ANF.step?]` on hstep_eq to unfold the let-stepping
-3. ANF.step? on `.let name rhs body` evaluates `rhs` (ComplexExpr):
-   - If rhs evaluates to a value: extends env, continues with body
-   - If rhs steps: produces intermediate state
-4. Use `lean_goal` after each tactic to see what remains
-5. For the Flat side: `normalizeExpr` of `sf.expr` produced `.let name rhs body`,
-   so `sf.expr` has a let in head position (possibly wrapped in seq/let chains)
-6. Use normalizeExpr inversion lemma to decompose
-7. Construct Flat.Steps matching the ANF step
+Use `lean_goal` at L4368 to see the exact proof state. Then try `lean_multi_attempt` with various approaches. The `throw_direct` case is the base; compound cases follow the break pattern.
 
-Try `lean_multi_attempt` at L4423 with:
-```
-["subst hsa; simp [ANF.step?, ANF.evalComplex, ANF.pushTrace] at hstep_eq",
- "subst hsa; simp only [ANF.step?] at hstep_eq"]
-```
-Then continue from whatever state remains.
+## PRIORITY 2: Close return case (L4399) — same pattern as throw
 
-## PRIORITY 2: Close `seq` case (L4425) — similar to let
+`normalizeExpr_return_step_sim` is analogous. Return with `some arg` evaluates arg (trivial → value → one step). Return with `none` is immediate.
 
-## PRIORITY 3: Close `if` case (L4427) — cond is trivial after ANF
+## PRIORITY 3: Close await (L4423) and yield (L4454) — similar
 
-## PRIORITY 4: Close `throw` case (L4447)
-Already partially destructed (L4436-4447). Two subgoals remain after evalTrivial cases.
-Use `lean_goal` at L4447 to see exact remaining state.
+## LOWER PRIORITY: let/seq/if/tryCatch (L4475-4538) — harder, need CPS context inversion
 
 ## DO NOT TOUCH:
 - Depth-induction cases (L3825-3923)
