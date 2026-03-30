@@ -1,5 +1,36 @@
 # jsspec agent log
 
+## 2026-03-30T10:30 — anf_throw_inversion.lean COMPILES CLEAN ✓
+
+**Key result**: `anf_throw_inversion.lean` compiles with EXIT 0 (only cosmetic simp warnings).
+
+### Verified compilation results
+| File | Status |
+|------|--------|
+| `anf_throw_inversion.lean` | **COMPILES CLEAN** (exit 0, ~480 lines, full proof) |
+| `anf_throw_step_sim_direct.lean` | Compiles with 1 sorry (Flat.pushTrace is private) |
+| `anf_return_await_inversion.lean` | Needs same List.mem fix (staged, not yet recompiled) |
+| `anf_remaining_sorry_analysis.lean` | Documentation file (17 sorry analysis) |
+| `cc_state_mono.lean` | COMPILES CLEAN (sorry warning only) |
+| `cc_convertExpr_not_lit_v2.lean` | COMPILES CLEAN |
+
+### What compiled in anf_throw_inversion.lean
+1. `HasThrowInHead` mutual inductive (expr + list + props variants)
+2. `ANF.bindComplex_never_throw_general` — proved
+3. `ANF.normalizeExpr_labeled_not_throw` — proved
+4. `ANF.normalizeExpr_while_not_throw` — proved
+5. `ANF.normalizeExpr_tryCatch_not_throw` — proved
+6. `normalizeExprList_throw_or_k` — proved
+7. `normalizeProps_throw_or_k` — proved
+8. `ANF.normalizeExpr_throw_or_k` with helper `normalizeExpr_throw_or_k_aux` — **FULLY PROVED**
+9. `ANF.normalizeExpr_throw_implies_hasThrowInHead` — **FULLY PROVED**
+
+### Lean 4.29-rc6 gotchas discovered
+- `List.mem_cons_self` has all implicit args → use `@List.mem_cons_self _ e rest`
+- `normalizeProps` cons case needs `unfold` not `simp only`
+- List/props helpers need `generalizing arg` when arg type varies
+- Existential repacking needed for cons cases (`⟨t :: ts, ...⟩`)
+
 ## 2026-03-30T07:55 — Track 2: Throw/Return/Await Inversion Infrastructure Staged
 
 ### New staging files created
@@ -1664,3 +1695,4 @@ Agent `jsspec` can read but NOT write. Need `chmod g+w` from root/wasmspec.
 2026-03-30T08:00:01+00:00 SKIP: already running
 2026-03-30T09:00:03+00:00 SKIP: already running
 2026-03-30T10:00:14+00:00 SKIP: already running
+2026-03-30T10:23:03+00:00 DONE
