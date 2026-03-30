@@ -4170,3 +4170,53 @@ Analogous theorems needed for each expression form. Key blockers:
 
 ## Run: 2026-03-30T14:30:08+00:00
 
+
+### Infrastructure: chmod + analysis of sorry blockers
+
+**Sorry count: 41 → 41 (unchanged)**
+
+The sorry count was previously reported as "17" but this counted by theorem rather than by sorry
+line. The actual file has 41 sorry lines:
+- 7 depth-induction sorries (L3825-3923): inside normalizeExpr_labeled_step_sim
+- 26 step?_error_aux sorries (13 break + 13 continue): non-first-position HasBreak/ContinueInHead
+- 8 expression-case sorries (L4439-4471): inside anfConvert_step_star
+
+#### Completed
+1. **chmod g+w ClosureConvertCorrect.lean** — unblocked wasmspec agent
+2. **Build verified**: `lake build VerifiedJS.Proofs.ANFConvertCorrect` passes ✓
+
+#### Analysis: Why non-first-position step?_error_aux cases are FALSE
+
+The 13 sorry cases in each step?_error_aux helper (seq_right, setProp_val, binary_rhs,
+call_env, call_args, newObj_env, newObj_args, getIndex_idx, setIndex_idx, setIndex_val,
+makeEnv_values, objectLit_props, arrayLit_elems) are **unprovable as stated**.
+
+The lemma claims `step?` produces the error in ONE step. But for non-first-position cases
+(e.g., `seq_right` where break is in `b` of `.seq a b`), evaluating `a` first may require
+multiple steps. When `a` is a value, one `.silent` step skips to `b`, then `b`'s break takes
+another step = TWO steps, not one. When `a` is not a value, `step? (.seq a b)` evaluates `a`,
+not `b`, so the break error from `b` is never reached.
+
+**Fix required**: These cases need a multi-step theorem (not one-step). The approach:
+1. Factor `hasBreakInHead_flat_error_steps` to handle non-first-position cases directly
+   with the normalizeExpr context (which guarantees earlier sub-exprs evaluate to values)
+2. Or add hypotheses to step?_error_aux for non-first-position cases
+
+#### Analysis: Expression case blockers
+
+All 8 expression-case sorries need `normalizeExpr_X_step_sim` theorems (~100-300 lines each)
+analogous to `normalizeExpr_var_step_sim` and `normalizeExpr_labeled_step_sim`.
+
+Key insight for throw/return/yield/await: these discard the continuation `k` during normalization.
+So `normalizeExpr_throw_or_k` + `hk_triv` gives `HasThrowInHead sf.expr`. But constructing
+the Flat steps requires a `hasThrowInHead_flat_steps` theorem (analogous to the break version)
+PLUS relating the Flat argument evaluation to the ANF trivial evaluation.
+
+### Priority for next session
+1. Write `hasThrowInHead_flat_value_steps` — if HasThrowInHead e, Flat steps produce the throw error.
+   Unlike break (one step), throw evaluates its argument first.
+2. Use it to close throw case (L4463) → -1 sorry (the all_goals sorry)
+3. Factor non-first-position cases out of step?_error_aux into multi-step variants
+
+2026-03-30T15:25:00+00:00 DONE
+2026-03-30T15:15:27+00:00 DONE

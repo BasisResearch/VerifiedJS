@@ -5955,7 +5955,7 @@ private theorem step?_none_implies_lit_aux :
       | none =>
         cases hstep : Flat.step? ⟨obj, fenv, fheap, ftrace, ffuncs, fcallStack⟩ with
         | some r =>
-          unfold Flat.step? at h; simp only [hev, hstep] at h; contradiction
+          unfold Flat.step? at h; simp only [hev, hstep] at h; obtain ⟨t, _⟩ := r; cases t <;> simp at h
         | none =>
           have ⟨v, hv⟩ := ih ⟨obj, fenv, fheap, ftrace, ffuncs, fcallStack⟩
             (by simp [Flat.Expr.depth] at hd ⊢; omega) hstep
@@ -5969,7 +5969,7 @@ private theorem step?_none_implies_lit_aux :
       | none =>
         cases hstep : Flat.step? ⟨obj, fenv, fheap, ftrace, ffuncs, fcallStack⟩ with
         | some r =>
-          unfold Flat.step? at h; simp only [hev, hstep] at h; contradiction
+          unfold Flat.step? at h; simp only [hev, hstep] at h; obtain ⟨t, _⟩ := r; cases t <;> simp at h
         | none =>
           have ⟨v, hv⟩ := ih ⟨obj, fenv, fheap, ftrace, ffuncs, fcallStack⟩
             (by simp [Flat.Expr.depth] at hd ⊢; omega) hstep
@@ -5983,7 +5983,7 @@ private theorem step?_none_implies_lit_aux :
       | none =>
         cases hstep : Flat.step? ⟨envExpr, fenv, fheap, ftrace, ffuncs, fcallStack⟩ with
         | some r =>
-          unfold Flat.step? at h; simp only [hev, hstep] at h; contradiction
+          unfold Flat.step? at h; simp only [hev, hstep] at h; obtain ⟨t, _⟩ := r; cases t <;> simp at h
         | none =>
           have ⟨v, hv⟩ := ih ⟨envExpr, fenv, fheap, ftrace, ffuncs, fcallStack⟩
             (by simp [Flat.Expr.depth] at hd ⊢; omega) hstep
@@ -5997,7 +5997,7 @@ private theorem step?_none_implies_lit_aux :
       | none =>
         cases hstep : Flat.step? ⟨envExpr, fenv, fheap, ftrace, ffuncs, fcallStack⟩ with
         | some r =>
-          unfold Flat.step? at h; simp only [hev, hstep] at h; contradiction
+          unfold Flat.step? at h; simp only [hev, hstep] at h; obtain ⟨t, _⟩ := r; cases t <;> simp at h
         | none =>
           have ⟨v, hv⟩ := ih ⟨envExpr, fenv, fheap, ftrace, ffuncs, fcallStack⟩
             (by simp [Flat.Expr.depth] at hd ⊢; omega) hstep
@@ -6013,7 +6013,7 @@ private theorem step?_none_implies_lit_aux :
         | none =>
           cases hstep : Flat.step? ⟨e, fenv, fheap, ftrace, ffuncs, fcallStack⟩ with
           | some r =>
-            unfold Flat.step? at h; simp only [hev, hstep] at h; contradiction
+            unfold Flat.step? at h; simp only [hev, hstep] at h; obtain ⟨t, _⟩ := r; cases t <;> simp at h
           | none =>
             have ⟨v, hv⟩ := ih ⟨e, fenv, fheap, ftrace, ffuncs, fcallStack⟩
               (by simp [Flat.Expr.depth] at hd ⊢; omega) hstep
@@ -6029,7 +6029,7 @@ private theorem step?_none_implies_lit_aux :
         | none =>
           cases hstep : Flat.step? ⟨e, fenv, fheap, ftrace, ffuncs, fcallStack⟩ with
           | some r =>
-            unfold Flat.step? at h; simp only [hev, hstep] at h; contradiction
+            unfold Flat.step? at h; simp only [hev, hstep] at h; obtain ⟨t, _⟩ := r; cases t <;> simp at h
           | none =>
             have ⟨v, hv⟩ := ih ⟨e, fenv, fheap, ftrace, ffuncs, fcallStack⟩
               (by simp [Flat.Expr.depth] at hd ⊢; omega) hstep
@@ -6200,7 +6200,7 @@ private theorem step?_none_implies_lit_aux :
       | none =>
         cases hstepf : Flat.step? ⟨funcExpr, fenv, fheap, ftrace, ffuncs, fcallStack⟩ with
         | some r =>
-          unfold Flat.step? at h; simp only [hevf, hstepf] at h; exact absurd h (by simp)
+          unfold Flat.step? at h; simp only [hevf, hstepf] at h; exact absurd h (by obtain ⟨t, _⟩ := r; cases t <;> simp)
         | none =>
           have ⟨v, hv⟩ := ih ⟨funcExpr, fenv, fheap, ftrace, ffuncs, fcallStack⟩
             (by simp [Flat.Expr.depth] at hd ⊢; omega) hstepf
@@ -6234,7 +6234,7 @@ private theorem step?_none_implies_lit_aux :
               rw [show Flat.firstNonValueExpr args = some (done, target, remaining) from hf] at h
               cases hstept : Flat.step? ⟨target, fenv, fheap, ftrace, ffuncs, fcallStack⟩ with
               | some r =>
-                simp only [hstept] at h; exact absurd h (by simp)
+                simp only [hstept] at h; exact absurd h (by obtain ⟨t, _⟩ := r; cases t <;> simp)
               | none =>
                 have ⟨v, hv⟩ := ih ⟨target, fenv, fheap, ftrace, ffuncs, fcallStack⟩
                   (by simp [Flat.Expr.depth] at hd ⊢; have := Flat.firstNonValueExpr_depth hf; omega) hstept
@@ -6245,7 +6245,7 @@ private theorem step?_none_implies_lit_aux :
       | none =>
         cases hstepf : Flat.step? ⟨funcExpr, fenv, fheap, ftrace, ffuncs, fcallStack⟩ with
         | some r =>
-          unfold Flat.step? at h; simp only [hevf, hstepf] at h; exact absurd h (by simp)
+          unfold Flat.step? at h; simp only [hevf, hstepf] at h; exact absurd h (by obtain ⟨t, _⟩ := r; cases t <;> simp)
         | none =>
           have ⟨v, hv⟩ := ih ⟨funcExpr, fenv, fheap, ftrace, ffuncs, fcallStack⟩
             (by simp [Flat.Expr.depth] at hd ⊢; omega) hstepf
@@ -6276,7 +6276,7 @@ private theorem step?_none_implies_lit_aux :
               rw [show Flat.firstNonValueExpr args = some (done, target, remaining) from hf] at h
               cases hstept : Flat.step? ⟨target, fenv, fheap, ftrace, ffuncs, fcallStack⟩ with
               | some r =>
-                simp only [hstept] at h; exact absurd h (by simp)
+                simp only [hstept] at h; exact absurd h (by obtain ⟨t, _⟩ := r; cases t <;> simp)
               | none =>
                 have ⟨v, hv⟩ := ih ⟨target, fenv, fheap, ftrace, ffuncs, fcallStack⟩
                   (by simp [Flat.Expr.depth] at hd ⊢; have := Flat.firstNonValueExpr_depth hf; omega) hstept
@@ -6297,7 +6297,7 @@ private theorem step?_none_implies_lit_aux :
           | some r =>
             unfold Flat.step? at h; simp only [hvals] at h
             rw [show Flat.firstNonValueExpr values = some (done, target, remaining) from hf] at h
-            simp only [hstept] at h; exact absurd h (by simp)
+            simp only [hstept] at h; exact absurd h (by obtain ⟨t, _⟩ := r; cases t <;> simp)
           | none =>
             have ⟨v, hv⟩ := ih ⟨target, fenv, fheap, ftrace, ffuncs, fcallStack⟩
               (by simp [Flat.Expr.depth] at hd ⊢
@@ -6319,7 +6319,7 @@ private theorem step?_none_implies_lit_aux :
           | some r =>
             unfold Flat.step? at h; simp only [hvals] at h
             rw [show Flat.firstNonValueProp props = some (done, propName, target, remaining) from hf] at h
-            simp only [hstept] at h; exact absurd h (by simp)
+            simp only [hstept] at h; exact absurd h (by obtain ⟨t, _⟩ := r; cases t <;> simp)
           | none =>
             have ⟨v, hv⟩ := ih ⟨target, fenv, fheap, ftrace, ffuncs, fcallStack⟩
               (by simp [Flat.Expr.depth] at hd ⊢
@@ -6341,7 +6341,7 @@ private theorem step?_none_implies_lit_aux :
           | some r =>
             unfold Flat.step? at h; simp only [hvals] at h
             rw [show Flat.firstNonValueExpr elems = some (done, target, remaining) from hf] at h
-            simp only [hstept] at h; exact absurd h (by simp)
+            simp only [hstept] at h; exact absurd h (by obtain ⟨t, _⟩ := r; cases t <;> simp)
           | none =>
             have ⟨v, hv⟩ := ih ⟨target, fenv, fheap, ftrace, ffuncs, fcallStack⟩
               (by simp [Flat.Expr.depth] at hd ⊢
