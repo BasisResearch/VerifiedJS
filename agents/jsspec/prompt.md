@@ -1,4 +1,4 @@
-# jsspec — EXTEND Fix D to ALL compound expressions in Flat/Semantics.lean
+# jsspec — Prepare hnoerr guards for Fix D, stage CC helper lemmas
 
 ## MEMORY: 7.7GB total, NO swap
 - **NEVER run `lake build VerifiedJS`** (full build). OOMs.
@@ -6,59 +6,63 @@
 - Before building: `pkill -f "lean.*\.lean" 2>/dev/null; sleep 5`
 - Check `pgrep -af "lake build"` first — do NOT start if one runs.
 
-## STATUS (12:05 Mar 30)
-- **ANF**: 81 sorries. Break/continue decomposed. 66 compound sub-cases need Fix D.
-- **CC**: 21 sorries.
-- **Your staging file `.lake/_tmp_fix/fix_d_extension.lean` has EXACT before/after diffs.**
+## STATUS (13:05 Mar 30)
+- **ANF**: 17 sorries (down from 81!). Break/continue compound sub-cases ALL closed.
+- **CC**: 22 actual sorries.
+- **Fix D extension**: BLOCKED — you correctly identified that Flat_step?_*_step theorems need hnoerr guards first.
 
-## YOUR CRITICAL TASK: Extend Fix D error propagation
+## SITUATION: Fix D dependency chain
+1. ClosureConvertCorrect.lean has ~20 `Flat_step?_*_step` theorems (L1620-2081) that assume context-wrapping for ALL trace events including errors
+2. Fix D changes error behavior: error events propagate instead of wrapping
+3. These theorems need `hnoerr : ∀ msg, t ≠ .error msg` hypothesis added
+4. THEN Fix D can be applied to Flat/Semantics.lean
 
-Fix D currently exists for `.seq` (L391-392) and `.let` (L355-356) in `VerifiedJS/Flat/Semantics.lean`. When a sub-expression step produces `.error msg`, the compound expression should:
-1. NOT wrap the error in a context step
-2. Instead produce `.error msg` and set expr to `.lit .undefined`
+## YOUR TASK: Stage the hnoerr guard changes
 
-### DO THIS IN ORDER (build after EACH one):
+### Task 1: Create staging file with EXACT CC hnoerr diffs
+Create `.lake/_tmp_fix/cc_hnoerr_guards.lean` with the exact before/after for each `Flat_step?_*_step` theorem in ClosureConvertCorrect.lean.
 
-1. **`.assign name rhs`** (~L367-370): When `step? {s with expr := rhs}` = `some (.error msg, sr)`, produce error + .lit .undefined
-2. **`.if cond then_ else_`** (~L379-382): Same for cond stepping
-3. **`.unary op arg`** (~L403-406): Same for arg stepping
-4. **`.typeof arg`** (~L411-414): Same for arg stepping
-5. **`.binary op lhs rhs`** (~L420-430): For BOTH lhs and rhs stepping
-6. **`.deleteProp obj prop`** (~L436-440): Same for obj stepping
-7. **`.getProp obj prop`** (~L340-344): Same for obj stepping
-8. **`.setProp obj prop val`** (~L346-352): For obj AND val stepping
-9. **`.call f env args`**: For f, env, AND args stepping
-10. **`.newObj f env args`**: Same as call
-11. **`.getIndex obj idx`**: For obj and idx stepping
-12. **`.setIndex obj idx val`**: For obj, idx, and val stepping
-13. **`.throw arg`**: For arg stepping
-14. **`.getEnv env`**: For env stepping
-15. **`.makeClosure env ...`**: For env stepping
-16. **`.makeEnv values`**: For values stepping
-17. **`.objectLit props`**: For props stepping
-18. **`.arrayLit elems`**: For elems stepping
-
-### EXACT PATTERN (from your staging file):
-
-For each compound expression's stepping match arm, change:
+For each theorem (there are ~20 at L1620-2081), the change is:
 ```lean
 -- BEFORE:
-| some (t, sr) => some (t, pushTrace { ... context step ... } t)
+private theorem Flat_step?_unary_step (s : Flat.State) (op : Core.UnaryOp) (fe : Flat.Expr)
+    (hnv : Flat.exprValue? fe = none)
+    (t : Core.TraceEvent) (sa : Flat.State)
+    (hss : Flat.step? { s with expr := fe } = some (t, sa)) :
+    ...
+
 -- AFTER:
-| some (.error msg, sr) => some (.error msg, pushTrace { s with expr := .lit .undefined, env := sr.env, heap := sr.heap } (.error msg))
-| some (t, sr) => some (t, pushTrace { ... context step ... } t)
+private theorem Flat_step?_unary_step (s : Flat.State) (op : Core.UnaryOp) (fe : Flat.Expr)
+    (hnv : Flat.exprValue? fe = none)
+    (t : Core.TraceEvent) (sa : Flat.State)
+    (hss : Flat.step? { s with expr := fe } = some (t, sa))
+    (hnoerr : ∀ msg, t ≠ .error msg) :  -- NEW
+    ...
 ```
 
-### AFTER EACH CHANGE:
-```bash
-pkill -f "lean.*\.lean" 2>/dev/null; sleep 5
-lake build VerifiedJS.Flat.Semantics 2>&1 | tail -30
-```
+The proofs should still work with `simp only [Flat.step?, hnv, hss]; rfl` because the non-error case is unchanged.
 
-If the build breaks, fix the breakage BEFORE moving to next expression. The breakage will be in `step?_none_implies_lit_aux` — add a `next => simp at h` for the new error match arm.
+BUT: every CALL SITE of these theorems must also supply `hnoerr`. Stage the call site changes too.
 
-### AFTER ALL Fix D extensions:
-Build `lake build VerifiedJS.Proofs.ANFConvertCorrect` to check it still compiles.
+### Task 2: Stage CC sorry-closing lemmas
+
+Several CC sorries are in known classes. Stage proofs for the easiest ones:
+
+1. **hev_noerr sorries** (L2852, L3175): `have hev_noerr : ∀ msg, ev ≠ .error msg := by sorry`
+   - These need to prove that the CC-simulated event is not an error
+   - Check what `ev` is in context — it comes from a Core.step that doesn't produce errors in these positions
+
+2. **ExprAddrWF propagation** (L4669, L4767): needs `ExprAddrPropListWF` / `ExprAddrListWF`
+   - Stage these helper lemmas
+
+3. **convertExpr_not_lit** (L2513, L2623): stage the lemma
+
+### Task 3: Update fix_d_extension.lean staging
+
+Your existing `fix_d_extension.lean` is good. Update it to note:
+- Step 1 (prerequisite): Apply hnoerr guards from `cc_hnoerr_guards.lean`
+- Step 2: Apply Fix D changes
+- Step 3: Update `step?_none_implies_lit_aux` for new arms
 
 ## CONSTRAINTS
 - CAN write: `VerifiedJS/Flat/Semantics.lean`, `.lake/_tmp_fix/*.lean`

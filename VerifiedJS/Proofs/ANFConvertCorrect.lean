@@ -3934,333 +3934,267 @@ private theorem anfConvert_step_star
     | seq_left h =>
       obtain ⟨sf', evs, hsteps, hexpr', henv', hheap', hfuncs', hcs', htrace', hobs'⟩ :=
         hasBreakInHead_flat_error_steps _ label (.seq_left h) sf hge hewf
-      exact ⟨sf', evs, hsteps, hobs'.symm,
-        ⟨hheap.trans hheap'.symm, henv.trans henv'.symm,
-         by rw [htrace', observableTrace_append, hobs']; simp [observableTrace_error, observableTrace_nil]; exact htrace.symm,
-         fun t => pure (.trivial t), n, n,
-         by rw [hexpr']; exact ANF.normalizeExpr_lit_undefined_trivial n,
-         ANF.trivial_k_preserving⟩,
-        by rw [hexpr']; intro x hfx; cases hfx⟩
+      refine ⟨sf', evs, hsteps, hobs'.symm, ?_, ?_⟩
+      · refine ⟨hheap.trans hheap'.symm, henv.trans henv'.symm, ?_, fun t => pure (.trivial t), n, n, ?_, ANF.trivial_k_preserving⟩
+        · simp only [htrace', observableTrace_append, hobs', observableTrace_error, observableTrace_nil]; congr 1
+        · rw [hexpr']; exact ANF.normalizeExpr_lit_undefined_trivial n
+      · rw [hexpr']; intro x hfx; cases hfx
     | seq_right h =>
       obtain ⟨sf', evs, hsteps, hexpr', henv', hheap', hfuncs', hcs', htrace', hobs'⟩ :=
         hasBreakInHead_flat_error_steps _ label (.seq_right h) sf hge hewf
-      exact ⟨sf', evs, hsteps, hobs'.symm,
-        ⟨hheap.trans hheap'.symm, henv.trans henv'.symm,
-         by rw [htrace', observableTrace_append, hobs']; simp [observableTrace_error, observableTrace_nil]; exact htrace.symm,
-         fun t => pure (.trivial t), n, n,
-         by rw [hexpr']; exact ANF.normalizeExpr_lit_undefined_trivial n,
-         ANF.trivial_k_preserving⟩,
-        by rw [hexpr']; intro x hfx; cases hfx⟩
+      refine ⟨sf', evs, hsteps, hobs'.symm, ?_, ?_⟩
+      · refine ⟨hheap.trans hheap'.symm, henv.trans henv'.symm, ?_, fun t => pure (.trivial t), n, n, ?_, ANF.trivial_k_preserving⟩
+        · simp only [htrace', observableTrace_append, hobs', observableTrace_error, observableTrace_nil]; congr 1
+        · rw [hexpr']; exact ANF.normalizeExpr_lit_undefined_trivial n
+      · rw [hexpr']; intro x hfx; cases hfx
     | let_init h =>
       obtain ⟨sf', evs, hsteps, hexpr', henv', hheap', hfuncs', hcs', htrace', hobs'⟩ :=
         hasBreakInHead_flat_error_steps _ label (.let_init h) sf hge hewf
-      exact ⟨sf', evs, hsteps, hobs'.symm,
-        ⟨hheap.trans hheap'.symm, henv.trans henv'.symm,
-         by rw [htrace', observableTrace_append, hobs']; simp [observableTrace_error, observableTrace_nil]; exact htrace.symm,
-         fun t => pure (.trivial t), n, n,
-         by rw [hexpr']; exact ANF.normalizeExpr_lit_undefined_trivial n,
-         ANF.trivial_k_preserving⟩,
-        by rw [hexpr']; intro x hfx; cases hfx⟩
+      refine ⟨sf', evs, hsteps, hobs'.symm, ?_, ?_⟩
+      · refine ⟨hheap.trans hheap'.symm, henv.trans henv'.symm, ?_, fun t => pure (.trivial t), n, n, ?_, ANF.trivial_k_preserving⟩
+        · simp only [htrace', observableTrace_append, hobs', observableTrace_error, observableTrace_nil]; congr 1
+        · rw [hexpr']; exact ANF.normalizeExpr_lit_undefined_trivial n
+      · rw [hexpr']; intro x hfx; cases hfx
     | getProp_obj h =>
       obtain ⟨sf', evs, hsteps, hexpr', henv', hheap', hfuncs', hcs', htrace', hobs'⟩ :=
         hasBreakInHead_flat_error_steps _ label (.getProp_obj h) sf hge hewf
-      exact ⟨sf', evs, hsteps, hobs'.symm,
-        ⟨hheap.trans hheap'.symm, henv.trans henv'.symm,
-         by rw [htrace', observableTrace_append, hobs']; simp [observableTrace_error, observableTrace_nil]; exact htrace.symm,
-         fun t => pure (.trivial t), n, n,
-         by rw [hexpr']; exact ANF.normalizeExpr_lit_undefined_trivial n,
-         ANF.trivial_k_preserving⟩,
-        by rw [hexpr']; intro x hfx; cases hfx⟩
+      refine ⟨sf', evs, hsteps, hobs'.symm, ?_, ?_⟩
+      · refine ⟨hheap.trans hheap'.symm, henv.trans henv'.symm, ?_, fun t => pure (.trivial t), n, n, ?_, ANF.trivial_k_preserving⟩
+        · simp only [htrace', observableTrace_append, hobs', observableTrace_error, observableTrace_nil]; congr 1
+        · rw [hexpr']; exact ANF.normalizeExpr_lit_undefined_trivial n
+      · rw [hexpr']; intro x hfx; cases hfx
     | setProp_obj h =>
       obtain ⟨sf', evs, hsteps, hexpr', henv', hheap', hfuncs', hcs', htrace', hobs'⟩ :=
         hasBreakInHead_flat_error_steps _ label (.setProp_obj h) sf hge hewf
-      exact ⟨sf', evs, hsteps, hobs'.symm,
-        ⟨hheap.trans hheap'.symm, henv.trans henv'.symm,
-         by rw [htrace', observableTrace_append, hobs']; simp [observableTrace_error, observableTrace_nil]; exact htrace.symm,
-         fun t => pure (.trivial t), n, n,
-         by rw [hexpr']; exact ANF.normalizeExpr_lit_undefined_trivial n,
-         ANF.trivial_k_preserving⟩,
-        by rw [hexpr']; intro x hfx; cases hfx⟩
+      refine ⟨sf', evs, hsteps, hobs'.symm, ?_, ?_⟩
+      · refine ⟨hheap.trans hheap'.symm, henv.trans henv'.symm, ?_, fun t => pure (.trivial t), n, n, ?_, ANF.trivial_k_preserving⟩
+        · simp only [htrace', observableTrace_append, hobs', observableTrace_error, observableTrace_nil]; congr 1
+        · rw [hexpr']; exact ANF.normalizeExpr_lit_undefined_trivial n
+      · rw [hexpr']; intro x hfx; cases hfx
     | setProp_val h =>
       obtain ⟨sf', evs, hsteps, hexpr', henv', hheap', hfuncs', hcs', htrace', hobs'⟩ :=
         hasBreakInHead_flat_error_steps _ label (.setProp_val h) sf hge hewf
-      exact ⟨sf', evs, hsteps, hobs'.symm,
-        ⟨hheap.trans hheap'.symm, henv.trans henv'.symm,
-         by rw [htrace', observableTrace_append, hobs']; simp [observableTrace_error, observableTrace_nil]; exact htrace.symm,
-         fun t => pure (.trivial t), n, n,
-         by rw [hexpr']; exact ANF.normalizeExpr_lit_undefined_trivial n,
-         ANF.trivial_k_preserving⟩,
-        by rw [hexpr']; intro x hfx; cases hfx⟩
+      refine ⟨sf', evs, hsteps, hobs'.symm, ?_, ?_⟩
+      · refine ⟨hheap.trans hheap'.symm, henv.trans henv'.symm, ?_, fun t => pure (.trivial t), n, n, ?_, ANF.trivial_k_preserving⟩
+        · simp only [htrace', observableTrace_append, hobs', observableTrace_error, observableTrace_nil]; congr 1
+        · rw [hexpr']; exact ANF.normalizeExpr_lit_undefined_trivial n
+      · rw [hexpr']; intro x hfx; cases hfx
     | binary_lhs h =>
       obtain ⟨sf', evs, hsteps, hexpr', henv', hheap', hfuncs', hcs', htrace', hobs'⟩ :=
         hasBreakInHead_flat_error_steps _ label (.binary_lhs h) sf hge hewf
-      exact ⟨sf', evs, hsteps, hobs'.symm,
-        ⟨hheap.trans hheap'.symm, henv.trans henv'.symm,
-         by rw [htrace', observableTrace_append, hobs']; simp [observableTrace_error, observableTrace_nil]; exact htrace.symm,
-         fun t => pure (.trivial t), n, n,
-         by rw [hexpr']; exact ANF.normalizeExpr_lit_undefined_trivial n,
-         ANF.trivial_k_preserving⟩,
-        by rw [hexpr']; intro x hfx; cases hfx⟩
+      refine ⟨sf', evs, hsteps, hobs'.symm, ?_, ?_⟩
+      · refine ⟨hheap.trans hheap'.symm, henv.trans henv'.symm, ?_, fun t => pure (.trivial t), n, n, ?_, ANF.trivial_k_preserving⟩
+        · simp only [htrace', observableTrace_append, hobs', observableTrace_error, observableTrace_nil]; congr 1
+        · rw [hexpr']; exact ANF.normalizeExpr_lit_undefined_trivial n
+      · rw [hexpr']; intro x hfx; cases hfx
     | binary_rhs h =>
       obtain ⟨sf', evs, hsteps, hexpr', henv', hheap', hfuncs', hcs', htrace', hobs'⟩ :=
         hasBreakInHead_flat_error_steps _ label (.binary_rhs h) sf hge hewf
-      exact ⟨sf', evs, hsteps, hobs'.symm,
-        ⟨hheap.trans hheap'.symm, henv.trans henv'.symm,
-         by rw [htrace', observableTrace_append, hobs']; simp [observableTrace_error, observableTrace_nil]; exact htrace.symm,
-         fun t => pure (.trivial t), n, n,
-         by rw [hexpr']; exact ANF.normalizeExpr_lit_undefined_trivial n,
-         ANF.trivial_k_preserving⟩,
-        by rw [hexpr']; intro x hfx; cases hfx⟩
+      refine ⟨sf', evs, hsteps, hobs'.symm, ?_, ?_⟩
+      · refine ⟨hheap.trans hheap'.symm, henv.trans henv'.symm, ?_, fun t => pure (.trivial t), n, n, ?_, ANF.trivial_k_preserving⟩
+        · simp only [htrace', observableTrace_append, hobs', observableTrace_error, observableTrace_nil]; congr 1
+        · rw [hexpr']; exact ANF.normalizeExpr_lit_undefined_trivial n
+      · rw [hexpr']; intro x hfx; cases hfx
     | unary_arg h =>
       obtain ⟨sf', evs, hsteps, hexpr', henv', hheap', hfuncs', hcs', htrace', hobs'⟩ :=
         hasBreakInHead_flat_error_steps _ label (.unary_arg h) sf hge hewf
-      exact ⟨sf', evs, hsteps, hobs'.symm,
-        ⟨hheap.trans hheap'.symm, henv.trans henv'.symm,
-         by rw [htrace', observableTrace_append, hobs']; simp [observableTrace_error, observableTrace_nil]; exact htrace.symm,
-         fun t => pure (.trivial t), n, n,
-         by rw [hexpr']; exact ANF.normalizeExpr_lit_undefined_trivial n,
-         ANF.trivial_k_preserving⟩,
-        by rw [hexpr']; intro x hfx; cases hfx⟩
+      refine ⟨sf', evs, hsteps, hobs'.symm, ?_, ?_⟩
+      · refine ⟨hheap.trans hheap'.symm, henv.trans henv'.symm, ?_, fun t => pure (.trivial t), n, n, ?_, ANF.trivial_k_preserving⟩
+        · simp only [htrace', observableTrace_append, hobs', observableTrace_error, observableTrace_nil]; congr 1
+        · rw [hexpr']; exact ANF.normalizeExpr_lit_undefined_trivial n
+      · rw [hexpr']; intro x hfx; cases hfx
     | typeof_arg h =>
       obtain ⟨sf', evs, hsteps, hexpr', henv', hheap', hfuncs', hcs', htrace', hobs'⟩ :=
         hasBreakInHead_flat_error_steps _ label (.typeof_arg h) sf hge hewf
-      exact ⟨sf', evs, hsteps, hobs'.symm,
-        ⟨hheap.trans hheap'.symm, henv.trans henv'.symm,
-         by rw [htrace', observableTrace_append, hobs']; simp [observableTrace_error, observableTrace_nil]; exact htrace.symm,
-         fun t => pure (.trivial t), n, n,
-         by rw [hexpr']; exact ANF.normalizeExpr_lit_undefined_trivial n,
-         ANF.trivial_k_preserving⟩,
-        by rw [hexpr']; intro x hfx; cases hfx⟩
+      refine ⟨sf', evs, hsteps, hobs'.symm, ?_, ?_⟩
+      · refine ⟨hheap.trans hheap'.symm, henv.trans henv'.symm, ?_, fun t => pure (.trivial t), n, n, ?_, ANF.trivial_k_preserving⟩
+        · simp only [htrace', observableTrace_append, hobs', observableTrace_error, observableTrace_nil]; congr 1
+        · rw [hexpr']; exact ANF.normalizeExpr_lit_undefined_trivial n
+      · rw [hexpr']; intro x hfx; cases hfx
     | deleteProp_obj h =>
       obtain ⟨sf', evs, hsteps, hexpr', henv', hheap', hfuncs', hcs', htrace', hobs'⟩ :=
         hasBreakInHead_flat_error_steps _ label (.deleteProp_obj h) sf hge hewf
-      exact ⟨sf', evs, hsteps, hobs'.symm,
-        ⟨hheap.trans hheap'.symm, henv.trans henv'.symm,
-         by rw [htrace', observableTrace_append, hobs']; simp [observableTrace_error, observableTrace_nil]; exact htrace.symm,
-         fun t => pure (.trivial t), n, n,
-         by rw [hexpr']; exact ANF.normalizeExpr_lit_undefined_trivial n,
-         ANF.trivial_k_preserving⟩,
-        by rw [hexpr']; intro x hfx; cases hfx⟩
+      refine ⟨sf', evs, hsteps, hobs'.symm, ?_, ?_⟩
+      · refine ⟨hheap.trans hheap'.symm, henv.trans henv'.symm, ?_, fun t => pure (.trivial t), n, n, ?_, ANF.trivial_k_preserving⟩
+        · simp only [htrace', observableTrace_append, hobs', observableTrace_error, observableTrace_nil]; congr 1
+        · rw [hexpr']; exact ANF.normalizeExpr_lit_undefined_trivial n
+      · rw [hexpr']; intro x hfx; cases hfx
     | assign_val h =>
       obtain ⟨sf', evs, hsteps, hexpr', henv', hheap', hfuncs', hcs', htrace', hobs'⟩ :=
         hasBreakInHead_flat_error_steps _ label (.assign_val h) sf hge hewf
-      exact ⟨sf', evs, hsteps, hobs'.symm,
-        ⟨hheap.trans hheap'.symm, henv.trans henv'.symm,
-         by rw [htrace', observableTrace_append, hobs']; simp [observableTrace_error, observableTrace_nil]; exact htrace.symm,
-         fun t => pure (.trivial t), n, n,
-         by rw [hexpr']; exact ANF.normalizeExpr_lit_undefined_trivial n,
-         ANF.trivial_k_preserving⟩,
-        by rw [hexpr']; intro x hfx; cases hfx⟩
+      refine ⟨sf', evs, hsteps, hobs'.symm, ?_, ?_⟩
+      · refine ⟨hheap.trans hheap'.symm, henv.trans henv'.symm, ?_, fun t => pure (.trivial t), n, n, ?_, ANF.trivial_k_preserving⟩
+        · simp only [htrace', observableTrace_append, hobs', observableTrace_error, observableTrace_nil]; congr 1
+        · rw [hexpr']; exact ANF.normalizeExpr_lit_undefined_trivial n
+      · rw [hexpr']; intro x hfx; cases hfx
     | call_func h =>
       obtain ⟨sf', evs, hsteps, hexpr', henv', hheap', hfuncs', hcs', htrace', hobs'⟩ :=
         hasBreakInHead_flat_error_steps _ label (.call_func h) sf hge hewf
-      exact ⟨sf', evs, hsteps, hobs'.symm,
-        ⟨hheap.trans hheap'.symm, henv.trans henv'.symm,
-         by rw [htrace', observableTrace_append, hobs']; simp [observableTrace_error, observableTrace_nil]; exact htrace.symm,
-         fun t => pure (.trivial t), n, n,
-         by rw [hexpr']; exact ANF.normalizeExpr_lit_undefined_trivial n,
-         ANF.trivial_k_preserving⟩,
-        by rw [hexpr']; intro x hfx; cases hfx⟩
+      refine ⟨sf', evs, hsteps, hobs'.symm, ?_, ?_⟩
+      · refine ⟨hheap.trans hheap'.symm, henv.trans henv'.symm, ?_, fun t => pure (.trivial t), n, n, ?_, ANF.trivial_k_preserving⟩
+        · simp only [htrace', observableTrace_append, hobs', observableTrace_error, observableTrace_nil]; congr 1
+        · rw [hexpr']; exact ANF.normalizeExpr_lit_undefined_trivial n
+      · rw [hexpr']; intro x hfx; cases hfx
     | call_env h =>
       obtain ⟨sf', evs, hsteps, hexpr', henv', hheap', hfuncs', hcs', htrace', hobs'⟩ :=
         hasBreakInHead_flat_error_steps _ label (.call_env h) sf hge hewf
-      exact ⟨sf', evs, hsteps, hobs'.symm,
-        ⟨hheap.trans hheap'.symm, henv.trans henv'.symm,
-         by rw [htrace', observableTrace_append, hobs']; simp [observableTrace_error, observableTrace_nil]; exact htrace.symm,
-         fun t => pure (.trivial t), n, n,
-         by rw [hexpr']; exact ANF.normalizeExpr_lit_undefined_trivial n,
-         ANF.trivial_k_preserving⟩,
-        by rw [hexpr']; intro x hfx; cases hfx⟩
+      refine ⟨sf', evs, hsteps, hobs'.symm, ?_, ?_⟩
+      · refine ⟨hheap.trans hheap'.symm, henv.trans henv'.symm, ?_, fun t => pure (.trivial t), n, n, ?_, ANF.trivial_k_preserving⟩
+        · simp only [htrace', observableTrace_append, hobs', observableTrace_error, observableTrace_nil]; congr 1
+        · rw [hexpr']; exact ANF.normalizeExpr_lit_undefined_trivial n
+      · rw [hexpr']; intro x hfx; cases hfx
     | call_args h =>
       obtain ⟨sf', evs, hsteps, hexpr', henv', hheap', hfuncs', hcs', htrace', hobs'⟩ :=
         hasBreakInHead_flat_error_steps _ label (.call_args h) sf hge hewf
-      exact ⟨sf', evs, hsteps, hobs'.symm,
-        ⟨hheap.trans hheap'.symm, henv.trans henv'.symm,
-         by rw [htrace', observableTrace_append, hobs']; simp [observableTrace_error, observableTrace_nil]; exact htrace.symm,
-         fun t => pure (.trivial t), n, n,
-         by rw [hexpr']; exact ANF.normalizeExpr_lit_undefined_trivial n,
-         ANF.trivial_k_preserving⟩,
-        by rw [hexpr']; intro x hfx; cases hfx⟩
+      refine ⟨sf', evs, hsteps, hobs'.symm, ?_, ?_⟩
+      · refine ⟨hheap.trans hheap'.symm, henv.trans henv'.symm, ?_, fun t => pure (.trivial t), n, n, ?_, ANF.trivial_k_preserving⟩
+        · simp only [htrace', observableTrace_append, hobs', observableTrace_error, observableTrace_nil]; congr 1
+        · rw [hexpr']; exact ANF.normalizeExpr_lit_undefined_trivial n
+      · rw [hexpr']; intro x hfx; cases hfx
     | newObj_func h =>
       obtain ⟨sf', evs, hsteps, hexpr', henv', hheap', hfuncs', hcs', htrace', hobs'⟩ :=
         hasBreakInHead_flat_error_steps _ label (.newObj_func h) sf hge hewf
-      exact ⟨sf', evs, hsteps, hobs'.symm,
-        ⟨hheap.trans hheap'.symm, henv.trans henv'.symm,
-         by rw [htrace', observableTrace_append, hobs']; simp [observableTrace_error, observableTrace_nil]; exact htrace.symm,
-         fun t => pure (.trivial t), n, n,
-         by rw [hexpr']; exact ANF.normalizeExpr_lit_undefined_trivial n,
-         ANF.trivial_k_preserving⟩,
-        by rw [hexpr']; intro x hfx; cases hfx⟩
+      refine ⟨sf', evs, hsteps, hobs'.symm, ?_, ?_⟩
+      · refine ⟨hheap.trans hheap'.symm, henv.trans henv'.symm, ?_, fun t => pure (.trivial t), n, n, ?_, ANF.trivial_k_preserving⟩
+        · simp only [htrace', observableTrace_append, hobs', observableTrace_error, observableTrace_nil]; congr 1
+        · rw [hexpr']; exact ANF.normalizeExpr_lit_undefined_trivial n
+      · rw [hexpr']; intro x hfx; cases hfx
     | newObj_env h =>
       obtain ⟨sf', evs, hsteps, hexpr', henv', hheap', hfuncs', hcs', htrace', hobs'⟩ :=
         hasBreakInHead_flat_error_steps _ label (.newObj_env h) sf hge hewf
-      exact ⟨sf', evs, hsteps, hobs'.symm,
-        ⟨hheap.trans hheap'.symm, henv.trans henv'.symm,
-         by rw [htrace', observableTrace_append, hobs']; simp [observableTrace_error, observableTrace_nil]; exact htrace.symm,
-         fun t => pure (.trivial t), n, n,
-         by rw [hexpr']; exact ANF.normalizeExpr_lit_undefined_trivial n,
-         ANF.trivial_k_preserving⟩,
-        by rw [hexpr']; intro x hfx; cases hfx⟩
+      refine ⟨sf', evs, hsteps, hobs'.symm, ?_, ?_⟩
+      · refine ⟨hheap.trans hheap'.symm, henv.trans henv'.symm, ?_, fun t => pure (.trivial t), n, n, ?_, ANF.trivial_k_preserving⟩
+        · simp only [htrace', observableTrace_append, hobs', observableTrace_error, observableTrace_nil]; congr 1
+        · rw [hexpr']; exact ANF.normalizeExpr_lit_undefined_trivial n
+      · rw [hexpr']; intro x hfx; cases hfx
     | newObj_args h =>
       obtain ⟨sf', evs, hsteps, hexpr', henv', hheap', hfuncs', hcs', htrace', hobs'⟩ :=
         hasBreakInHead_flat_error_steps _ label (.newObj_args h) sf hge hewf
-      exact ⟨sf', evs, hsteps, hobs'.symm,
-        ⟨hheap.trans hheap'.symm, henv.trans henv'.symm,
-         by rw [htrace', observableTrace_append, hobs']; simp [observableTrace_error, observableTrace_nil]; exact htrace.symm,
-         fun t => pure (.trivial t), n, n,
-         by rw [hexpr']; exact ANF.normalizeExpr_lit_undefined_trivial n,
-         ANF.trivial_k_preserving⟩,
-        by rw [hexpr']; intro x hfx; cases hfx⟩
+      refine ⟨sf', evs, hsteps, hobs'.symm, ?_, ?_⟩
+      · refine ⟨hheap.trans hheap'.symm, henv.trans henv'.symm, ?_, fun t => pure (.trivial t), n, n, ?_, ANF.trivial_k_preserving⟩
+        · simp only [htrace', observableTrace_append, hobs', observableTrace_error, observableTrace_nil]; congr 1
+        · rw [hexpr']; exact ANF.normalizeExpr_lit_undefined_trivial n
+      · rw [hexpr']; intro x hfx; cases hfx
     | if_cond h =>
       obtain ⟨sf', evs, hsteps, hexpr', henv', hheap', hfuncs', hcs', htrace', hobs'⟩ :=
         hasBreakInHead_flat_error_steps _ label (.if_cond h) sf hge hewf
-      exact ⟨sf', evs, hsteps, hobs'.symm,
-        ⟨hheap.trans hheap'.symm, henv.trans henv'.symm,
-         by rw [htrace', observableTrace_append, hobs']; simp [observableTrace_error, observableTrace_nil]; exact htrace.symm,
-         fun t => pure (.trivial t), n, n,
-         by rw [hexpr']; exact ANF.normalizeExpr_lit_undefined_trivial n,
-         ANF.trivial_k_preserving⟩,
-        by rw [hexpr']; intro x hfx; cases hfx⟩
+      refine ⟨sf', evs, hsteps, hobs'.symm, ?_, ?_⟩
+      · refine ⟨hheap.trans hheap'.symm, henv.trans henv'.symm, ?_, fun t => pure (.trivial t), n, n, ?_, ANF.trivial_k_preserving⟩
+        · simp only [htrace', observableTrace_append, hobs', observableTrace_error, observableTrace_nil]; congr 1
+        · rw [hexpr']; exact ANF.normalizeExpr_lit_undefined_trivial n
+      · rw [hexpr']; intro x hfx; cases hfx
     | throw_arg h =>
       obtain ⟨sf', evs, hsteps, hexpr', henv', hheap', hfuncs', hcs', htrace', hobs'⟩ :=
         hasBreakInHead_flat_error_steps _ label (.throw_arg h) sf hge hewf
-      exact ⟨sf', evs, hsteps, hobs'.symm,
-        ⟨hheap.trans hheap'.symm, henv.trans henv'.symm,
-         by rw [htrace', observableTrace_append, hobs']; simp [observableTrace_error, observableTrace_nil]; exact htrace.symm,
-         fun t => pure (.trivial t), n, n,
-         by rw [hexpr']; exact ANF.normalizeExpr_lit_undefined_trivial n,
-         ANF.trivial_k_preserving⟩,
-        by rw [hexpr']; intro x hfx; cases hfx⟩
+      refine ⟨sf', evs, hsteps, hobs'.symm, ?_, ?_⟩
+      · refine ⟨hheap.trans hheap'.symm, henv.trans henv'.symm, ?_, fun t => pure (.trivial t), n, n, ?_, ANF.trivial_k_preserving⟩
+        · simp only [htrace', observableTrace_append, hobs', observableTrace_error, observableTrace_nil]; congr 1
+        · rw [hexpr']; exact ANF.normalizeExpr_lit_undefined_trivial n
+      · rw [hexpr']; intro x hfx; cases hfx
     | return_some_arg h =>
       obtain ⟨sf', evs, hsteps, hexpr', henv', hheap', hfuncs', hcs', htrace', hobs'⟩ :=
         hasBreakInHead_flat_error_steps _ label (.return_some_arg h) sf hge hewf
-      exact ⟨sf', evs, hsteps, hobs'.symm,
-        ⟨hheap.trans hheap'.symm, henv.trans henv'.symm,
-         by rw [htrace', observableTrace_append, hobs']; simp [observableTrace_error, observableTrace_nil]; exact htrace.symm,
-         fun t => pure (.trivial t), n, n,
-         by rw [hexpr']; exact ANF.normalizeExpr_lit_undefined_trivial n,
-         ANF.trivial_k_preserving⟩,
-        by rw [hexpr']; intro x hfx; cases hfx⟩
+      refine ⟨sf', evs, hsteps, hobs'.symm, ?_, ?_⟩
+      · refine ⟨hheap.trans hheap'.symm, henv.trans henv'.symm, ?_, fun t => pure (.trivial t), n, n, ?_, ANF.trivial_k_preserving⟩
+        · simp only [htrace', observableTrace_append, hobs', observableTrace_error, observableTrace_nil]; congr 1
+        · rw [hexpr']; exact ANF.normalizeExpr_lit_undefined_trivial n
+      · rw [hexpr']; intro x hfx; cases hfx
     | yield_some_arg h =>
       obtain ⟨sf', evs, hsteps, hexpr', henv', hheap', hfuncs', hcs', htrace', hobs'⟩ :=
         hasBreakInHead_flat_error_steps _ label (.yield_some_arg h) sf hge hewf
-      exact ⟨sf', evs, hsteps, hobs'.symm,
-        ⟨hheap.trans hheap'.symm, henv.trans henv'.symm,
-         by rw [htrace', observableTrace_append, hobs']; simp [observableTrace_error, observableTrace_nil]; exact htrace.symm,
-         fun t => pure (.trivial t), n, n,
-         by rw [hexpr']; exact ANF.normalizeExpr_lit_undefined_trivial n,
-         ANF.trivial_k_preserving⟩,
-        by rw [hexpr']; intro x hfx; cases hfx⟩
+      refine ⟨sf', evs, hsteps, hobs'.symm, ?_, ?_⟩
+      · refine ⟨hheap.trans hheap'.symm, henv.trans henv'.symm, ?_, fun t => pure (.trivial t), n, n, ?_, ANF.trivial_k_preserving⟩
+        · simp only [htrace', observableTrace_append, hobs', observableTrace_error, observableTrace_nil]; congr 1
+        · rw [hexpr']; exact ANF.normalizeExpr_lit_undefined_trivial n
+      · rw [hexpr']; intro x hfx; cases hfx
     | await_arg h =>
       obtain ⟨sf', evs, hsteps, hexpr', henv', hheap', hfuncs', hcs', htrace', hobs'⟩ :=
         hasBreakInHead_flat_error_steps _ label (.await_arg h) sf hge hewf
-      exact ⟨sf', evs, hsteps, hobs'.symm,
-        ⟨hheap.trans hheap'.symm, henv.trans henv'.symm,
-         by rw [htrace', observableTrace_append, hobs']; simp [observableTrace_error, observableTrace_nil]; exact htrace.symm,
-         fun t => pure (.trivial t), n, n,
-         by rw [hexpr']; exact ANF.normalizeExpr_lit_undefined_trivial n,
-         ANF.trivial_k_preserving⟩,
-        by rw [hexpr']; intro x hfx; cases hfx⟩
+      refine ⟨sf', evs, hsteps, hobs'.symm, ?_, ?_⟩
+      · refine ⟨hheap.trans hheap'.symm, henv.trans henv'.symm, ?_, fun t => pure (.trivial t), n, n, ?_, ANF.trivial_k_preserving⟩
+        · simp only [htrace', observableTrace_append, hobs', observableTrace_error, observableTrace_nil]; congr 1
+        · rw [hexpr']; exact ANF.normalizeExpr_lit_undefined_trivial n
+      · rw [hexpr']; intro x hfx; cases hfx
     | getIndex_obj h =>
       obtain ⟨sf', evs, hsteps, hexpr', henv', hheap', hfuncs', hcs', htrace', hobs'⟩ :=
         hasBreakInHead_flat_error_steps _ label (.getIndex_obj h) sf hge hewf
-      exact ⟨sf', evs, hsteps, hobs'.symm,
-        ⟨hheap.trans hheap'.symm, henv.trans henv'.symm,
-         by rw [htrace', observableTrace_append, hobs']; simp [observableTrace_error, observableTrace_nil]; exact htrace.symm,
-         fun t => pure (.trivial t), n, n,
-         by rw [hexpr']; exact ANF.normalizeExpr_lit_undefined_trivial n,
-         ANF.trivial_k_preserving⟩,
-        by rw [hexpr']; intro x hfx; cases hfx⟩
+      refine ⟨sf', evs, hsteps, hobs'.symm, ?_, ?_⟩
+      · refine ⟨hheap.trans hheap'.symm, henv.trans henv'.symm, ?_, fun t => pure (.trivial t), n, n, ?_, ANF.trivial_k_preserving⟩
+        · simp only [htrace', observableTrace_append, hobs', observableTrace_error, observableTrace_nil]; congr 1
+        · rw [hexpr']; exact ANF.normalizeExpr_lit_undefined_trivial n
+      · rw [hexpr']; intro x hfx; cases hfx
     | getIndex_idx h =>
       obtain ⟨sf', evs, hsteps, hexpr', henv', hheap', hfuncs', hcs', htrace', hobs'⟩ :=
         hasBreakInHead_flat_error_steps _ label (.getIndex_idx h) sf hge hewf
-      exact ⟨sf', evs, hsteps, hobs'.symm,
-        ⟨hheap.trans hheap'.symm, henv.trans henv'.symm,
-         by rw [htrace', observableTrace_append, hobs']; simp [observableTrace_error, observableTrace_nil]; exact htrace.symm,
-         fun t => pure (.trivial t), n, n,
-         by rw [hexpr']; exact ANF.normalizeExpr_lit_undefined_trivial n,
-         ANF.trivial_k_preserving⟩,
-        by rw [hexpr']; intro x hfx; cases hfx⟩
+      refine ⟨sf', evs, hsteps, hobs'.symm, ?_, ?_⟩
+      · refine ⟨hheap.trans hheap'.symm, henv.trans henv'.symm, ?_, fun t => pure (.trivial t), n, n, ?_, ANF.trivial_k_preserving⟩
+        · simp only [htrace', observableTrace_append, hobs', observableTrace_error, observableTrace_nil]; congr 1
+        · rw [hexpr']; exact ANF.normalizeExpr_lit_undefined_trivial n
+      · rw [hexpr']; intro x hfx; cases hfx
     | setIndex_obj h =>
       obtain ⟨sf', evs, hsteps, hexpr', henv', hheap', hfuncs', hcs', htrace', hobs'⟩ :=
         hasBreakInHead_flat_error_steps _ label (.setIndex_obj h) sf hge hewf
-      exact ⟨sf', evs, hsteps, hobs'.symm,
-        ⟨hheap.trans hheap'.symm, henv.trans henv'.symm,
-         by rw [htrace', observableTrace_append, hobs']; simp [observableTrace_error, observableTrace_nil]; exact htrace.symm,
-         fun t => pure (.trivial t), n, n,
-         by rw [hexpr']; exact ANF.normalizeExpr_lit_undefined_trivial n,
-         ANF.trivial_k_preserving⟩,
-        by rw [hexpr']; intro x hfx; cases hfx⟩
+      refine ⟨sf', evs, hsteps, hobs'.symm, ?_, ?_⟩
+      · refine ⟨hheap.trans hheap'.symm, henv.trans henv'.symm, ?_, fun t => pure (.trivial t), n, n, ?_, ANF.trivial_k_preserving⟩
+        · simp only [htrace', observableTrace_append, hobs', observableTrace_error, observableTrace_nil]; congr 1
+        · rw [hexpr']; exact ANF.normalizeExpr_lit_undefined_trivial n
+      · rw [hexpr']; intro x hfx; cases hfx
     | setIndex_idx h =>
       obtain ⟨sf', evs, hsteps, hexpr', henv', hheap', hfuncs', hcs', htrace', hobs'⟩ :=
         hasBreakInHead_flat_error_steps _ label (.setIndex_idx h) sf hge hewf
-      exact ⟨sf', evs, hsteps, hobs'.symm,
-        ⟨hheap.trans hheap'.symm, henv.trans henv'.symm,
-         by rw [htrace', observableTrace_append, hobs']; simp [observableTrace_error, observableTrace_nil]; exact htrace.symm,
-         fun t => pure (.trivial t), n, n,
-         by rw [hexpr']; exact ANF.normalizeExpr_lit_undefined_trivial n,
-         ANF.trivial_k_preserving⟩,
-        by rw [hexpr']; intro x hfx; cases hfx⟩
+      refine ⟨sf', evs, hsteps, hobs'.symm, ?_, ?_⟩
+      · refine ⟨hheap.trans hheap'.symm, henv.trans henv'.symm, ?_, fun t => pure (.trivial t), n, n, ?_, ANF.trivial_k_preserving⟩
+        · simp only [htrace', observableTrace_append, hobs', observableTrace_error, observableTrace_nil]; congr 1
+        · rw [hexpr']; exact ANF.normalizeExpr_lit_undefined_trivial n
+      · rw [hexpr']; intro x hfx; cases hfx
     | setIndex_val h =>
       obtain ⟨sf', evs, hsteps, hexpr', henv', hheap', hfuncs', hcs', htrace', hobs'⟩ :=
         hasBreakInHead_flat_error_steps _ label (.setIndex_val h) sf hge hewf
-      exact ⟨sf', evs, hsteps, hobs'.symm,
-        ⟨hheap.trans hheap'.symm, henv.trans henv'.symm,
-         by rw [htrace', observableTrace_append, hobs']; simp [observableTrace_error, observableTrace_nil]; exact htrace.symm,
-         fun t => pure (.trivial t), n, n,
-         by rw [hexpr']; exact ANF.normalizeExpr_lit_undefined_trivial n,
-         ANF.trivial_k_preserving⟩,
-        by rw [hexpr']; intro x hfx; cases hfx⟩
+      refine ⟨sf', evs, hsteps, hobs'.symm, ?_, ?_⟩
+      · refine ⟨hheap.trans hheap'.symm, henv.trans henv'.symm, ?_, fun t => pure (.trivial t), n, n, ?_, ANF.trivial_k_preserving⟩
+        · simp only [htrace', observableTrace_append, hobs', observableTrace_error, observableTrace_nil]; congr 1
+        · rw [hexpr']; exact ANF.normalizeExpr_lit_undefined_trivial n
+      · rw [hexpr']; intro x hfx; cases hfx
     | getEnv_env h =>
       obtain ⟨sf', evs, hsteps, hexpr', henv', hheap', hfuncs', hcs', htrace', hobs'⟩ :=
         hasBreakInHead_flat_error_steps _ label (.getEnv_env h) sf hge hewf
-      exact ⟨sf', evs, hsteps, hobs'.symm,
-        ⟨hheap.trans hheap'.symm, henv.trans henv'.symm,
-         by rw [htrace', observableTrace_append, hobs']; simp [observableTrace_error, observableTrace_nil]; exact htrace.symm,
-         fun t => pure (.trivial t), n, n,
-         by rw [hexpr']; exact ANF.normalizeExpr_lit_undefined_trivial n,
-         ANF.trivial_k_preserving⟩,
-        by rw [hexpr']; intro x hfx; cases hfx⟩
+      refine ⟨sf', evs, hsteps, hobs'.symm, ?_, ?_⟩
+      · refine ⟨hheap.trans hheap'.symm, henv.trans henv'.symm, ?_, fun t => pure (.trivial t), n, n, ?_, ANF.trivial_k_preserving⟩
+        · simp only [htrace', observableTrace_append, hobs', observableTrace_error, observableTrace_nil]; congr 1
+        · rw [hexpr']; exact ANF.normalizeExpr_lit_undefined_trivial n
+      · rw [hexpr']; intro x hfx; cases hfx
     | makeClosure_env h =>
       obtain ⟨sf', evs, hsteps, hexpr', henv', hheap', hfuncs', hcs', htrace', hobs'⟩ :=
         hasBreakInHead_flat_error_steps _ label (.makeClosure_env h) sf hge hewf
-      exact ⟨sf', evs, hsteps, hobs'.symm,
-        ⟨hheap.trans hheap'.symm, henv.trans henv'.symm,
-         by rw [htrace', observableTrace_append, hobs']; simp [observableTrace_error, observableTrace_nil]; exact htrace.symm,
-         fun t => pure (.trivial t), n, n,
-         by rw [hexpr']; exact ANF.normalizeExpr_lit_undefined_trivial n,
-         ANF.trivial_k_preserving⟩,
-        by rw [hexpr']; intro x hfx; cases hfx⟩
+      refine ⟨sf', evs, hsteps, hobs'.symm, ?_, ?_⟩
+      · refine ⟨hheap.trans hheap'.symm, henv.trans henv'.symm, ?_, fun t => pure (.trivial t), n, n, ?_, ANF.trivial_k_preserving⟩
+        · simp only [htrace', observableTrace_append, hobs', observableTrace_error, observableTrace_nil]; congr 1
+        · rw [hexpr']; exact ANF.normalizeExpr_lit_undefined_trivial n
+      · rw [hexpr']; intro x hfx; cases hfx
     | makeEnv_values h =>
       obtain ⟨sf', evs, hsteps, hexpr', henv', hheap', hfuncs', hcs', htrace', hobs'⟩ :=
         hasBreakInHead_flat_error_steps _ label (.makeEnv_values h) sf hge hewf
-      exact ⟨sf', evs, hsteps, hobs'.symm,
-        ⟨hheap.trans hheap'.symm, henv.trans henv'.symm,
-         by rw [htrace', observableTrace_append, hobs']; simp [observableTrace_error, observableTrace_nil]; exact htrace.symm,
-         fun t => pure (.trivial t), n, n,
-         by rw [hexpr']; exact ANF.normalizeExpr_lit_undefined_trivial n,
-         ANF.trivial_k_preserving⟩,
-        by rw [hexpr']; intro x hfx; cases hfx⟩
+      refine ⟨sf', evs, hsteps, hobs'.symm, ?_, ?_⟩
+      · refine ⟨hheap.trans hheap'.symm, henv.trans henv'.symm, ?_, fun t => pure (.trivial t), n, n, ?_, ANF.trivial_k_preserving⟩
+        · simp only [htrace', observableTrace_append, hobs', observableTrace_error, observableTrace_nil]; congr 1
+        · rw [hexpr']; exact ANF.normalizeExpr_lit_undefined_trivial n
+      · rw [hexpr']; intro x hfx; cases hfx
     | objectLit_props h =>
       obtain ⟨sf', evs, hsteps, hexpr', henv', hheap', hfuncs', hcs', htrace', hobs'⟩ :=
         hasBreakInHead_flat_error_steps _ label (.objectLit_props h) sf hge hewf
-      exact ⟨sf', evs, hsteps, hobs'.symm,
-        ⟨hheap.trans hheap'.symm, henv.trans henv'.symm,
-         by rw [htrace', observableTrace_append, hobs']; simp [observableTrace_error, observableTrace_nil]; exact htrace.symm,
-         fun t => pure (.trivial t), n, n,
-         by rw [hexpr']; exact ANF.normalizeExpr_lit_undefined_trivial n,
-         ANF.trivial_k_preserving⟩,
-        by rw [hexpr']; intro x hfx; cases hfx⟩
+      refine ⟨sf', evs, hsteps, hobs'.symm, ?_, ?_⟩
+      · refine ⟨hheap.trans hheap'.symm, henv.trans henv'.symm, ?_, fun t => pure (.trivial t), n, n, ?_, ANF.trivial_k_preserving⟩
+        · simp only [htrace', observableTrace_append, hobs', observableTrace_error, observableTrace_nil]; congr 1
+        · rw [hexpr']; exact ANF.normalizeExpr_lit_undefined_trivial n
+      · rw [hexpr']; intro x hfx; cases hfx
     | arrayLit_elems h =>
       obtain ⟨sf', evs, hsteps, hexpr', henv', hheap', hfuncs', hcs', htrace', hobs'⟩ :=
         hasBreakInHead_flat_error_steps _ label (.arrayLit_elems h) sf hge hewf
-      exact ⟨sf', evs, hsteps, hobs'.symm,
-        ⟨hheap.trans hheap'.symm, henv.trans henv'.symm,
-         by rw [htrace', observableTrace_append, hobs']; simp [observableTrace_error, observableTrace_nil]; exact htrace.symm,
-         fun t => pure (.trivial t), n, n,
-         by rw [hexpr']; exact ANF.normalizeExpr_lit_undefined_trivial n,
-         ANF.trivial_k_preserving⟩,
-        by rw [hexpr']; intro x hfx; cases hfx⟩
+      refine ⟨sf', evs, hsteps, hobs'.symm, ?_, ?_⟩
+      · refine ⟨hheap.trans hheap'.symm, henv.trans henv'.symm, ?_, fun t => pure (.trivial t), n, n, ?_, ANF.trivial_k_preserving⟩
+        · simp only [htrace', observableTrace_append, hobs', observableTrace_error, observableTrace_nil]; congr 1
+        · rw [hexpr']; exact ANF.normalizeExpr_lit_undefined_trivial n
+      · rw [hexpr']; intro x hfx; cases hfx
   | «continue» label =>
     obtain ⟨sa_expr, sa_env, sa_heap, sa_trace⟩ := sa
     simp only [] at hsa; subst hsa
@@ -4301,333 +4235,267 @@ private theorem anfConvert_step_star
     | seq_left h =>
       obtain ⟨sf', evs, hsteps, hexpr', henv', hheap', hfuncs', hcs', htrace', hobs'⟩ :=
         hasContinueInHead_flat_error_steps _ label (.seq_left h) sf hge' hewf
-      exact ⟨sf', evs, hsteps, hobs'.symm,
-        ⟨hheap.trans hheap'.symm, henv.trans henv'.symm,
-         by rw [htrace', observableTrace_append, hobs']; simp [observableTrace_error, observableTrace_nil]; exact htrace.symm,
-         fun t => pure (.trivial t), n, n,
-         by rw [hexpr']; exact ANF.normalizeExpr_lit_undefined_trivial n,
-         ANF.trivial_k_preserving⟩,
-        by rw [hexpr']; intro x hfx; cases hfx⟩
+      refine ⟨sf', evs, hsteps, hobs'.symm, ?_, ?_⟩
+      · refine ⟨hheap.trans hheap'.symm, henv.trans henv'.symm, ?_, fun t => pure (.trivial t), n, n, ?_, ANF.trivial_k_preserving⟩
+        · simp only [htrace', observableTrace_append, hobs', observableTrace_error, observableTrace_nil]; congr 1
+        · rw [hexpr']; exact ANF.normalizeExpr_lit_undefined_trivial n
+      · rw [hexpr']; intro x hfx; cases hfx
     | seq_right h =>
       obtain ⟨sf', evs, hsteps, hexpr', henv', hheap', hfuncs', hcs', htrace', hobs'⟩ :=
         hasContinueInHead_flat_error_steps _ label (.seq_right h) sf hge' hewf
-      exact ⟨sf', evs, hsteps, hobs'.symm,
-        ⟨hheap.trans hheap'.symm, henv.trans henv'.symm,
-         by rw [htrace', observableTrace_append, hobs']; simp [observableTrace_error, observableTrace_nil]; exact htrace.symm,
-         fun t => pure (.trivial t), n, n,
-         by rw [hexpr']; exact ANF.normalizeExpr_lit_undefined_trivial n,
-         ANF.trivial_k_preserving⟩,
-        by rw [hexpr']; intro x hfx; cases hfx⟩
+      refine ⟨sf', evs, hsteps, hobs'.symm, ?_, ?_⟩
+      · refine ⟨hheap.trans hheap'.symm, henv.trans henv'.symm, ?_, fun t => pure (.trivial t), n, n, ?_, ANF.trivial_k_preserving⟩
+        · simp only [htrace', observableTrace_append, hobs', observableTrace_error, observableTrace_nil]; congr 1
+        · rw [hexpr']; exact ANF.normalizeExpr_lit_undefined_trivial n
+      · rw [hexpr']; intro x hfx; cases hfx
     | let_init h =>
       obtain ⟨sf', evs, hsteps, hexpr', henv', hheap', hfuncs', hcs', htrace', hobs'⟩ :=
         hasContinueInHead_flat_error_steps _ label (.let_init h) sf hge' hewf
-      exact ⟨sf', evs, hsteps, hobs'.symm,
-        ⟨hheap.trans hheap'.symm, henv.trans henv'.symm,
-         by rw [htrace', observableTrace_append, hobs']; simp [observableTrace_error, observableTrace_nil]; exact htrace.symm,
-         fun t => pure (.trivial t), n, n,
-         by rw [hexpr']; exact ANF.normalizeExpr_lit_undefined_trivial n,
-         ANF.trivial_k_preserving⟩,
-        by rw [hexpr']; intro x hfx; cases hfx⟩
+      refine ⟨sf', evs, hsteps, hobs'.symm, ?_, ?_⟩
+      · refine ⟨hheap.trans hheap'.symm, henv.trans henv'.symm, ?_, fun t => pure (.trivial t), n, n, ?_, ANF.trivial_k_preserving⟩
+        · simp only [htrace', observableTrace_append, hobs', observableTrace_error, observableTrace_nil]; congr 1
+        · rw [hexpr']; exact ANF.normalizeExpr_lit_undefined_trivial n
+      · rw [hexpr']; intro x hfx; cases hfx
     | getProp_obj h =>
       obtain ⟨sf', evs, hsteps, hexpr', henv', hheap', hfuncs', hcs', htrace', hobs'⟩ :=
         hasContinueInHead_flat_error_steps _ label (.getProp_obj h) sf hge' hewf
-      exact ⟨sf', evs, hsteps, hobs'.symm,
-        ⟨hheap.trans hheap'.symm, henv.trans henv'.symm,
-         by rw [htrace', observableTrace_append, hobs']; simp [observableTrace_error, observableTrace_nil]; exact htrace.symm,
-         fun t => pure (.trivial t), n, n,
-         by rw [hexpr']; exact ANF.normalizeExpr_lit_undefined_trivial n,
-         ANF.trivial_k_preserving⟩,
-        by rw [hexpr']; intro x hfx; cases hfx⟩
+      refine ⟨sf', evs, hsteps, hobs'.symm, ?_, ?_⟩
+      · refine ⟨hheap.trans hheap'.symm, henv.trans henv'.symm, ?_, fun t => pure (.trivial t), n, n, ?_, ANF.trivial_k_preserving⟩
+        · simp only [htrace', observableTrace_append, hobs', observableTrace_error, observableTrace_nil]; congr 1
+        · rw [hexpr']; exact ANF.normalizeExpr_lit_undefined_trivial n
+      · rw [hexpr']; intro x hfx; cases hfx
     | setProp_obj h =>
       obtain ⟨sf', evs, hsteps, hexpr', henv', hheap', hfuncs', hcs', htrace', hobs'⟩ :=
         hasContinueInHead_flat_error_steps _ label (.setProp_obj h) sf hge' hewf
-      exact ⟨sf', evs, hsteps, hobs'.symm,
-        ⟨hheap.trans hheap'.symm, henv.trans henv'.symm,
-         by rw [htrace', observableTrace_append, hobs']; simp [observableTrace_error, observableTrace_nil]; exact htrace.symm,
-         fun t => pure (.trivial t), n, n,
-         by rw [hexpr']; exact ANF.normalizeExpr_lit_undefined_trivial n,
-         ANF.trivial_k_preserving⟩,
-        by rw [hexpr']; intro x hfx; cases hfx⟩
+      refine ⟨sf', evs, hsteps, hobs'.symm, ?_, ?_⟩
+      · refine ⟨hheap.trans hheap'.symm, henv.trans henv'.symm, ?_, fun t => pure (.trivial t), n, n, ?_, ANF.trivial_k_preserving⟩
+        · simp only [htrace', observableTrace_append, hobs', observableTrace_error, observableTrace_nil]; congr 1
+        · rw [hexpr']; exact ANF.normalizeExpr_lit_undefined_trivial n
+      · rw [hexpr']; intro x hfx; cases hfx
     | setProp_val h =>
       obtain ⟨sf', evs, hsteps, hexpr', henv', hheap', hfuncs', hcs', htrace', hobs'⟩ :=
         hasContinueInHead_flat_error_steps _ label (.setProp_val h) sf hge' hewf
-      exact ⟨sf', evs, hsteps, hobs'.symm,
-        ⟨hheap.trans hheap'.symm, henv.trans henv'.symm,
-         by rw [htrace', observableTrace_append, hobs']; simp [observableTrace_error, observableTrace_nil]; exact htrace.symm,
-         fun t => pure (.trivial t), n, n,
-         by rw [hexpr']; exact ANF.normalizeExpr_lit_undefined_trivial n,
-         ANF.trivial_k_preserving⟩,
-        by rw [hexpr']; intro x hfx; cases hfx⟩
+      refine ⟨sf', evs, hsteps, hobs'.symm, ?_, ?_⟩
+      · refine ⟨hheap.trans hheap'.symm, henv.trans henv'.symm, ?_, fun t => pure (.trivial t), n, n, ?_, ANF.trivial_k_preserving⟩
+        · simp only [htrace', observableTrace_append, hobs', observableTrace_error, observableTrace_nil]; congr 1
+        · rw [hexpr']; exact ANF.normalizeExpr_lit_undefined_trivial n
+      · rw [hexpr']; intro x hfx; cases hfx
     | binary_lhs h =>
       obtain ⟨sf', evs, hsteps, hexpr', henv', hheap', hfuncs', hcs', htrace', hobs'⟩ :=
         hasContinueInHead_flat_error_steps _ label (.binary_lhs h) sf hge' hewf
-      exact ⟨sf', evs, hsteps, hobs'.symm,
-        ⟨hheap.trans hheap'.symm, henv.trans henv'.symm,
-         by rw [htrace', observableTrace_append, hobs']; simp [observableTrace_error, observableTrace_nil]; exact htrace.symm,
-         fun t => pure (.trivial t), n, n,
-         by rw [hexpr']; exact ANF.normalizeExpr_lit_undefined_trivial n,
-         ANF.trivial_k_preserving⟩,
-        by rw [hexpr']; intro x hfx; cases hfx⟩
+      refine ⟨sf', evs, hsteps, hobs'.symm, ?_, ?_⟩
+      · refine ⟨hheap.trans hheap'.symm, henv.trans henv'.symm, ?_, fun t => pure (.trivial t), n, n, ?_, ANF.trivial_k_preserving⟩
+        · simp only [htrace', observableTrace_append, hobs', observableTrace_error, observableTrace_nil]; congr 1
+        · rw [hexpr']; exact ANF.normalizeExpr_lit_undefined_trivial n
+      · rw [hexpr']; intro x hfx; cases hfx
     | binary_rhs h =>
       obtain ⟨sf', evs, hsteps, hexpr', henv', hheap', hfuncs', hcs', htrace', hobs'⟩ :=
         hasContinueInHead_flat_error_steps _ label (.binary_rhs h) sf hge' hewf
-      exact ⟨sf', evs, hsteps, hobs'.symm,
-        ⟨hheap.trans hheap'.symm, henv.trans henv'.symm,
-         by rw [htrace', observableTrace_append, hobs']; simp [observableTrace_error, observableTrace_nil]; exact htrace.symm,
-         fun t => pure (.trivial t), n, n,
-         by rw [hexpr']; exact ANF.normalizeExpr_lit_undefined_trivial n,
-         ANF.trivial_k_preserving⟩,
-        by rw [hexpr']; intro x hfx; cases hfx⟩
+      refine ⟨sf', evs, hsteps, hobs'.symm, ?_, ?_⟩
+      · refine ⟨hheap.trans hheap'.symm, henv.trans henv'.symm, ?_, fun t => pure (.trivial t), n, n, ?_, ANF.trivial_k_preserving⟩
+        · simp only [htrace', observableTrace_append, hobs', observableTrace_error, observableTrace_nil]; congr 1
+        · rw [hexpr']; exact ANF.normalizeExpr_lit_undefined_trivial n
+      · rw [hexpr']; intro x hfx; cases hfx
     | unary_arg h =>
       obtain ⟨sf', evs, hsteps, hexpr', henv', hheap', hfuncs', hcs', htrace', hobs'⟩ :=
         hasContinueInHead_flat_error_steps _ label (.unary_arg h) sf hge' hewf
-      exact ⟨sf', evs, hsteps, hobs'.symm,
-        ⟨hheap.trans hheap'.symm, henv.trans henv'.symm,
-         by rw [htrace', observableTrace_append, hobs']; simp [observableTrace_error, observableTrace_nil]; exact htrace.symm,
-         fun t => pure (.trivial t), n, n,
-         by rw [hexpr']; exact ANF.normalizeExpr_lit_undefined_trivial n,
-         ANF.trivial_k_preserving⟩,
-        by rw [hexpr']; intro x hfx; cases hfx⟩
+      refine ⟨sf', evs, hsteps, hobs'.symm, ?_, ?_⟩
+      · refine ⟨hheap.trans hheap'.symm, henv.trans henv'.symm, ?_, fun t => pure (.trivial t), n, n, ?_, ANF.trivial_k_preserving⟩
+        · simp only [htrace', observableTrace_append, hobs', observableTrace_error, observableTrace_nil]; congr 1
+        · rw [hexpr']; exact ANF.normalizeExpr_lit_undefined_trivial n
+      · rw [hexpr']; intro x hfx; cases hfx
     | typeof_arg h =>
       obtain ⟨sf', evs, hsteps, hexpr', henv', hheap', hfuncs', hcs', htrace', hobs'⟩ :=
         hasContinueInHead_flat_error_steps _ label (.typeof_arg h) sf hge' hewf
-      exact ⟨sf', evs, hsteps, hobs'.symm,
-        ⟨hheap.trans hheap'.symm, henv.trans henv'.symm,
-         by rw [htrace', observableTrace_append, hobs']; simp [observableTrace_error, observableTrace_nil]; exact htrace.symm,
-         fun t => pure (.trivial t), n, n,
-         by rw [hexpr']; exact ANF.normalizeExpr_lit_undefined_trivial n,
-         ANF.trivial_k_preserving⟩,
-        by rw [hexpr']; intro x hfx; cases hfx⟩
+      refine ⟨sf', evs, hsteps, hobs'.symm, ?_, ?_⟩
+      · refine ⟨hheap.trans hheap'.symm, henv.trans henv'.symm, ?_, fun t => pure (.trivial t), n, n, ?_, ANF.trivial_k_preserving⟩
+        · simp only [htrace', observableTrace_append, hobs', observableTrace_error, observableTrace_nil]; congr 1
+        · rw [hexpr']; exact ANF.normalizeExpr_lit_undefined_trivial n
+      · rw [hexpr']; intro x hfx; cases hfx
     | deleteProp_obj h =>
       obtain ⟨sf', evs, hsteps, hexpr', henv', hheap', hfuncs', hcs', htrace', hobs'⟩ :=
         hasContinueInHead_flat_error_steps _ label (.deleteProp_obj h) sf hge' hewf
-      exact ⟨sf', evs, hsteps, hobs'.symm,
-        ⟨hheap.trans hheap'.symm, henv.trans henv'.symm,
-         by rw [htrace', observableTrace_append, hobs']; simp [observableTrace_error, observableTrace_nil]; exact htrace.symm,
-         fun t => pure (.trivial t), n, n,
-         by rw [hexpr']; exact ANF.normalizeExpr_lit_undefined_trivial n,
-         ANF.trivial_k_preserving⟩,
-        by rw [hexpr']; intro x hfx; cases hfx⟩
+      refine ⟨sf', evs, hsteps, hobs'.symm, ?_, ?_⟩
+      · refine ⟨hheap.trans hheap'.symm, henv.trans henv'.symm, ?_, fun t => pure (.trivial t), n, n, ?_, ANF.trivial_k_preserving⟩
+        · simp only [htrace', observableTrace_append, hobs', observableTrace_error, observableTrace_nil]; congr 1
+        · rw [hexpr']; exact ANF.normalizeExpr_lit_undefined_trivial n
+      · rw [hexpr']; intro x hfx; cases hfx
     | assign_val h =>
       obtain ⟨sf', evs, hsteps, hexpr', henv', hheap', hfuncs', hcs', htrace', hobs'⟩ :=
         hasContinueInHead_flat_error_steps _ label (.assign_val h) sf hge' hewf
-      exact ⟨sf', evs, hsteps, hobs'.symm,
-        ⟨hheap.trans hheap'.symm, henv.trans henv'.symm,
-         by rw [htrace', observableTrace_append, hobs']; simp [observableTrace_error, observableTrace_nil]; exact htrace.symm,
-         fun t => pure (.trivial t), n, n,
-         by rw [hexpr']; exact ANF.normalizeExpr_lit_undefined_trivial n,
-         ANF.trivial_k_preserving⟩,
-        by rw [hexpr']; intro x hfx; cases hfx⟩
+      refine ⟨sf', evs, hsteps, hobs'.symm, ?_, ?_⟩
+      · refine ⟨hheap.trans hheap'.symm, henv.trans henv'.symm, ?_, fun t => pure (.trivial t), n, n, ?_, ANF.trivial_k_preserving⟩
+        · simp only [htrace', observableTrace_append, hobs', observableTrace_error, observableTrace_nil]; congr 1
+        · rw [hexpr']; exact ANF.normalizeExpr_lit_undefined_trivial n
+      · rw [hexpr']; intro x hfx; cases hfx
     | call_func h =>
       obtain ⟨sf', evs, hsteps, hexpr', henv', hheap', hfuncs', hcs', htrace', hobs'⟩ :=
         hasContinueInHead_flat_error_steps _ label (.call_func h) sf hge' hewf
-      exact ⟨sf', evs, hsteps, hobs'.symm,
-        ⟨hheap.trans hheap'.symm, henv.trans henv'.symm,
-         by rw [htrace', observableTrace_append, hobs']; simp [observableTrace_error, observableTrace_nil]; exact htrace.symm,
-         fun t => pure (.trivial t), n, n,
-         by rw [hexpr']; exact ANF.normalizeExpr_lit_undefined_trivial n,
-         ANF.trivial_k_preserving⟩,
-        by rw [hexpr']; intro x hfx; cases hfx⟩
+      refine ⟨sf', evs, hsteps, hobs'.symm, ?_, ?_⟩
+      · refine ⟨hheap.trans hheap'.symm, henv.trans henv'.symm, ?_, fun t => pure (.trivial t), n, n, ?_, ANF.trivial_k_preserving⟩
+        · simp only [htrace', observableTrace_append, hobs', observableTrace_error, observableTrace_nil]; congr 1
+        · rw [hexpr']; exact ANF.normalizeExpr_lit_undefined_trivial n
+      · rw [hexpr']; intro x hfx; cases hfx
     | call_env h =>
       obtain ⟨sf', evs, hsteps, hexpr', henv', hheap', hfuncs', hcs', htrace', hobs'⟩ :=
         hasContinueInHead_flat_error_steps _ label (.call_env h) sf hge' hewf
-      exact ⟨sf', evs, hsteps, hobs'.symm,
-        ⟨hheap.trans hheap'.symm, henv.trans henv'.symm,
-         by rw [htrace', observableTrace_append, hobs']; simp [observableTrace_error, observableTrace_nil]; exact htrace.symm,
-         fun t => pure (.trivial t), n, n,
-         by rw [hexpr']; exact ANF.normalizeExpr_lit_undefined_trivial n,
-         ANF.trivial_k_preserving⟩,
-        by rw [hexpr']; intro x hfx; cases hfx⟩
+      refine ⟨sf', evs, hsteps, hobs'.symm, ?_, ?_⟩
+      · refine ⟨hheap.trans hheap'.symm, henv.trans henv'.symm, ?_, fun t => pure (.trivial t), n, n, ?_, ANF.trivial_k_preserving⟩
+        · simp only [htrace', observableTrace_append, hobs', observableTrace_error, observableTrace_nil]; congr 1
+        · rw [hexpr']; exact ANF.normalizeExpr_lit_undefined_trivial n
+      · rw [hexpr']; intro x hfx; cases hfx
     | call_args h =>
       obtain ⟨sf', evs, hsteps, hexpr', henv', hheap', hfuncs', hcs', htrace', hobs'⟩ :=
         hasContinueInHead_flat_error_steps _ label (.call_args h) sf hge' hewf
-      exact ⟨sf', evs, hsteps, hobs'.symm,
-        ⟨hheap.trans hheap'.symm, henv.trans henv'.symm,
-         by rw [htrace', observableTrace_append, hobs']; simp [observableTrace_error, observableTrace_nil]; exact htrace.symm,
-         fun t => pure (.trivial t), n, n,
-         by rw [hexpr']; exact ANF.normalizeExpr_lit_undefined_trivial n,
-         ANF.trivial_k_preserving⟩,
-        by rw [hexpr']; intro x hfx; cases hfx⟩
+      refine ⟨sf', evs, hsteps, hobs'.symm, ?_, ?_⟩
+      · refine ⟨hheap.trans hheap'.symm, henv.trans henv'.symm, ?_, fun t => pure (.trivial t), n, n, ?_, ANF.trivial_k_preserving⟩
+        · simp only [htrace', observableTrace_append, hobs', observableTrace_error, observableTrace_nil]; congr 1
+        · rw [hexpr']; exact ANF.normalizeExpr_lit_undefined_trivial n
+      · rw [hexpr']; intro x hfx; cases hfx
     | newObj_func h =>
       obtain ⟨sf', evs, hsteps, hexpr', henv', hheap', hfuncs', hcs', htrace', hobs'⟩ :=
         hasContinueInHead_flat_error_steps _ label (.newObj_func h) sf hge' hewf
-      exact ⟨sf', evs, hsteps, hobs'.symm,
-        ⟨hheap.trans hheap'.symm, henv.trans henv'.symm,
-         by rw [htrace', observableTrace_append, hobs']; simp [observableTrace_error, observableTrace_nil]; exact htrace.symm,
-         fun t => pure (.trivial t), n, n,
-         by rw [hexpr']; exact ANF.normalizeExpr_lit_undefined_trivial n,
-         ANF.trivial_k_preserving⟩,
-        by rw [hexpr']; intro x hfx; cases hfx⟩
+      refine ⟨sf', evs, hsteps, hobs'.symm, ?_, ?_⟩
+      · refine ⟨hheap.trans hheap'.symm, henv.trans henv'.symm, ?_, fun t => pure (.trivial t), n, n, ?_, ANF.trivial_k_preserving⟩
+        · simp only [htrace', observableTrace_append, hobs', observableTrace_error, observableTrace_nil]; congr 1
+        · rw [hexpr']; exact ANF.normalizeExpr_lit_undefined_trivial n
+      · rw [hexpr']; intro x hfx; cases hfx
     | newObj_env h =>
       obtain ⟨sf', evs, hsteps, hexpr', henv', hheap', hfuncs', hcs', htrace', hobs'⟩ :=
         hasContinueInHead_flat_error_steps _ label (.newObj_env h) sf hge' hewf
-      exact ⟨sf', evs, hsteps, hobs'.symm,
-        ⟨hheap.trans hheap'.symm, henv.trans henv'.symm,
-         by rw [htrace', observableTrace_append, hobs']; simp [observableTrace_error, observableTrace_nil]; exact htrace.symm,
-         fun t => pure (.trivial t), n, n,
-         by rw [hexpr']; exact ANF.normalizeExpr_lit_undefined_trivial n,
-         ANF.trivial_k_preserving⟩,
-        by rw [hexpr']; intro x hfx; cases hfx⟩
+      refine ⟨sf', evs, hsteps, hobs'.symm, ?_, ?_⟩
+      · refine ⟨hheap.trans hheap'.symm, henv.trans henv'.symm, ?_, fun t => pure (.trivial t), n, n, ?_, ANF.trivial_k_preserving⟩
+        · simp only [htrace', observableTrace_append, hobs', observableTrace_error, observableTrace_nil]; congr 1
+        · rw [hexpr']; exact ANF.normalizeExpr_lit_undefined_trivial n
+      · rw [hexpr']; intro x hfx; cases hfx
     | newObj_args h =>
       obtain ⟨sf', evs, hsteps, hexpr', henv', hheap', hfuncs', hcs', htrace', hobs'⟩ :=
         hasContinueInHead_flat_error_steps _ label (.newObj_args h) sf hge' hewf
-      exact ⟨sf', evs, hsteps, hobs'.symm,
-        ⟨hheap.trans hheap'.symm, henv.trans henv'.symm,
-         by rw [htrace', observableTrace_append, hobs']; simp [observableTrace_error, observableTrace_nil]; exact htrace.symm,
-         fun t => pure (.trivial t), n, n,
-         by rw [hexpr']; exact ANF.normalizeExpr_lit_undefined_trivial n,
-         ANF.trivial_k_preserving⟩,
-        by rw [hexpr']; intro x hfx; cases hfx⟩
+      refine ⟨sf', evs, hsteps, hobs'.symm, ?_, ?_⟩
+      · refine ⟨hheap.trans hheap'.symm, henv.trans henv'.symm, ?_, fun t => pure (.trivial t), n, n, ?_, ANF.trivial_k_preserving⟩
+        · simp only [htrace', observableTrace_append, hobs', observableTrace_error, observableTrace_nil]; congr 1
+        · rw [hexpr']; exact ANF.normalizeExpr_lit_undefined_trivial n
+      · rw [hexpr']; intro x hfx; cases hfx
     | if_cond h =>
       obtain ⟨sf', evs, hsteps, hexpr', henv', hheap', hfuncs', hcs', htrace', hobs'⟩ :=
         hasContinueInHead_flat_error_steps _ label (.if_cond h) sf hge' hewf
-      exact ⟨sf', evs, hsteps, hobs'.symm,
-        ⟨hheap.trans hheap'.symm, henv.trans henv'.symm,
-         by rw [htrace', observableTrace_append, hobs']; simp [observableTrace_error, observableTrace_nil]; exact htrace.symm,
-         fun t => pure (.trivial t), n, n,
-         by rw [hexpr']; exact ANF.normalizeExpr_lit_undefined_trivial n,
-         ANF.trivial_k_preserving⟩,
-        by rw [hexpr']; intro x hfx; cases hfx⟩
+      refine ⟨sf', evs, hsteps, hobs'.symm, ?_, ?_⟩
+      · refine ⟨hheap.trans hheap'.symm, henv.trans henv'.symm, ?_, fun t => pure (.trivial t), n, n, ?_, ANF.trivial_k_preserving⟩
+        · simp only [htrace', observableTrace_append, hobs', observableTrace_error, observableTrace_nil]; congr 1
+        · rw [hexpr']; exact ANF.normalizeExpr_lit_undefined_trivial n
+      · rw [hexpr']; intro x hfx; cases hfx
     | throw_arg h =>
       obtain ⟨sf', evs, hsteps, hexpr', henv', hheap', hfuncs', hcs', htrace', hobs'⟩ :=
         hasContinueInHead_flat_error_steps _ label (.throw_arg h) sf hge' hewf
-      exact ⟨sf', evs, hsteps, hobs'.symm,
-        ⟨hheap.trans hheap'.symm, henv.trans henv'.symm,
-         by rw [htrace', observableTrace_append, hobs']; simp [observableTrace_error, observableTrace_nil]; exact htrace.symm,
-         fun t => pure (.trivial t), n, n,
-         by rw [hexpr']; exact ANF.normalizeExpr_lit_undefined_trivial n,
-         ANF.trivial_k_preserving⟩,
-        by rw [hexpr']; intro x hfx; cases hfx⟩
+      refine ⟨sf', evs, hsteps, hobs'.symm, ?_, ?_⟩
+      · refine ⟨hheap.trans hheap'.symm, henv.trans henv'.symm, ?_, fun t => pure (.trivial t), n, n, ?_, ANF.trivial_k_preserving⟩
+        · simp only [htrace', observableTrace_append, hobs', observableTrace_error, observableTrace_nil]; congr 1
+        · rw [hexpr']; exact ANF.normalizeExpr_lit_undefined_trivial n
+      · rw [hexpr']; intro x hfx; cases hfx
     | return_some_arg h =>
       obtain ⟨sf', evs, hsteps, hexpr', henv', hheap', hfuncs', hcs', htrace', hobs'⟩ :=
         hasContinueInHead_flat_error_steps _ label (.return_some_arg h) sf hge' hewf
-      exact ⟨sf', evs, hsteps, hobs'.symm,
-        ⟨hheap.trans hheap'.symm, henv.trans henv'.symm,
-         by rw [htrace', observableTrace_append, hobs']; simp [observableTrace_error, observableTrace_nil]; exact htrace.symm,
-         fun t => pure (.trivial t), n, n,
-         by rw [hexpr']; exact ANF.normalizeExpr_lit_undefined_trivial n,
-         ANF.trivial_k_preserving⟩,
-        by rw [hexpr']; intro x hfx; cases hfx⟩
+      refine ⟨sf', evs, hsteps, hobs'.symm, ?_, ?_⟩
+      · refine ⟨hheap.trans hheap'.symm, henv.trans henv'.symm, ?_, fun t => pure (.trivial t), n, n, ?_, ANF.trivial_k_preserving⟩
+        · simp only [htrace', observableTrace_append, hobs', observableTrace_error, observableTrace_nil]; congr 1
+        · rw [hexpr']; exact ANF.normalizeExpr_lit_undefined_trivial n
+      · rw [hexpr']; intro x hfx; cases hfx
     | yield_some_arg h =>
       obtain ⟨sf', evs, hsteps, hexpr', henv', hheap', hfuncs', hcs', htrace', hobs'⟩ :=
         hasContinueInHead_flat_error_steps _ label (.yield_some_arg h) sf hge' hewf
-      exact ⟨sf', evs, hsteps, hobs'.symm,
-        ⟨hheap.trans hheap'.symm, henv.trans henv'.symm,
-         by rw [htrace', observableTrace_append, hobs']; simp [observableTrace_error, observableTrace_nil]; exact htrace.symm,
-         fun t => pure (.trivial t), n, n,
-         by rw [hexpr']; exact ANF.normalizeExpr_lit_undefined_trivial n,
-         ANF.trivial_k_preserving⟩,
-        by rw [hexpr']; intro x hfx; cases hfx⟩
+      refine ⟨sf', evs, hsteps, hobs'.symm, ?_, ?_⟩
+      · refine ⟨hheap.trans hheap'.symm, henv.trans henv'.symm, ?_, fun t => pure (.trivial t), n, n, ?_, ANF.trivial_k_preserving⟩
+        · simp only [htrace', observableTrace_append, hobs', observableTrace_error, observableTrace_nil]; congr 1
+        · rw [hexpr']; exact ANF.normalizeExpr_lit_undefined_trivial n
+      · rw [hexpr']; intro x hfx; cases hfx
     | await_arg h =>
       obtain ⟨sf', evs, hsteps, hexpr', henv', hheap', hfuncs', hcs', htrace', hobs'⟩ :=
         hasContinueInHead_flat_error_steps _ label (.await_arg h) sf hge' hewf
-      exact ⟨sf', evs, hsteps, hobs'.symm,
-        ⟨hheap.trans hheap'.symm, henv.trans henv'.symm,
-         by rw [htrace', observableTrace_append, hobs']; simp [observableTrace_error, observableTrace_nil]; exact htrace.symm,
-         fun t => pure (.trivial t), n, n,
-         by rw [hexpr']; exact ANF.normalizeExpr_lit_undefined_trivial n,
-         ANF.trivial_k_preserving⟩,
-        by rw [hexpr']; intro x hfx; cases hfx⟩
+      refine ⟨sf', evs, hsteps, hobs'.symm, ?_, ?_⟩
+      · refine ⟨hheap.trans hheap'.symm, henv.trans henv'.symm, ?_, fun t => pure (.trivial t), n, n, ?_, ANF.trivial_k_preserving⟩
+        · simp only [htrace', observableTrace_append, hobs', observableTrace_error, observableTrace_nil]; congr 1
+        · rw [hexpr']; exact ANF.normalizeExpr_lit_undefined_trivial n
+      · rw [hexpr']; intro x hfx; cases hfx
     | getIndex_obj h =>
       obtain ⟨sf', evs, hsteps, hexpr', henv', hheap', hfuncs', hcs', htrace', hobs'⟩ :=
         hasContinueInHead_flat_error_steps _ label (.getIndex_obj h) sf hge' hewf
-      exact ⟨sf', evs, hsteps, hobs'.symm,
-        ⟨hheap.trans hheap'.symm, henv.trans henv'.symm,
-         by rw [htrace', observableTrace_append, hobs']; simp [observableTrace_error, observableTrace_nil]; exact htrace.symm,
-         fun t => pure (.trivial t), n, n,
-         by rw [hexpr']; exact ANF.normalizeExpr_lit_undefined_trivial n,
-         ANF.trivial_k_preserving⟩,
-        by rw [hexpr']; intro x hfx; cases hfx⟩
+      refine ⟨sf', evs, hsteps, hobs'.symm, ?_, ?_⟩
+      · refine ⟨hheap.trans hheap'.symm, henv.trans henv'.symm, ?_, fun t => pure (.trivial t), n, n, ?_, ANF.trivial_k_preserving⟩
+        · simp only [htrace', observableTrace_append, hobs', observableTrace_error, observableTrace_nil]; congr 1
+        · rw [hexpr']; exact ANF.normalizeExpr_lit_undefined_trivial n
+      · rw [hexpr']; intro x hfx; cases hfx
     | getIndex_idx h =>
       obtain ⟨sf', evs, hsteps, hexpr', henv', hheap', hfuncs', hcs', htrace', hobs'⟩ :=
         hasContinueInHead_flat_error_steps _ label (.getIndex_idx h) sf hge' hewf
-      exact ⟨sf', evs, hsteps, hobs'.symm,
-        ⟨hheap.trans hheap'.symm, henv.trans henv'.symm,
-         by rw [htrace', observableTrace_append, hobs']; simp [observableTrace_error, observableTrace_nil]; exact htrace.symm,
-         fun t => pure (.trivial t), n, n,
-         by rw [hexpr']; exact ANF.normalizeExpr_lit_undefined_trivial n,
-         ANF.trivial_k_preserving⟩,
-        by rw [hexpr']; intro x hfx; cases hfx⟩
+      refine ⟨sf', evs, hsteps, hobs'.symm, ?_, ?_⟩
+      · refine ⟨hheap.trans hheap'.symm, henv.trans henv'.symm, ?_, fun t => pure (.trivial t), n, n, ?_, ANF.trivial_k_preserving⟩
+        · simp only [htrace', observableTrace_append, hobs', observableTrace_error, observableTrace_nil]; congr 1
+        · rw [hexpr']; exact ANF.normalizeExpr_lit_undefined_trivial n
+      · rw [hexpr']; intro x hfx; cases hfx
     | setIndex_obj h =>
       obtain ⟨sf', evs, hsteps, hexpr', henv', hheap', hfuncs', hcs', htrace', hobs'⟩ :=
         hasContinueInHead_flat_error_steps _ label (.setIndex_obj h) sf hge' hewf
-      exact ⟨sf', evs, hsteps, hobs'.symm,
-        ⟨hheap.trans hheap'.symm, henv.trans henv'.symm,
-         by rw [htrace', observableTrace_append, hobs']; simp [observableTrace_error, observableTrace_nil]; exact htrace.symm,
-         fun t => pure (.trivial t), n, n,
-         by rw [hexpr']; exact ANF.normalizeExpr_lit_undefined_trivial n,
-         ANF.trivial_k_preserving⟩,
-        by rw [hexpr']; intro x hfx; cases hfx⟩
+      refine ⟨sf', evs, hsteps, hobs'.symm, ?_, ?_⟩
+      · refine ⟨hheap.trans hheap'.symm, henv.trans henv'.symm, ?_, fun t => pure (.trivial t), n, n, ?_, ANF.trivial_k_preserving⟩
+        · simp only [htrace', observableTrace_append, hobs', observableTrace_error, observableTrace_nil]; congr 1
+        · rw [hexpr']; exact ANF.normalizeExpr_lit_undefined_trivial n
+      · rw [hexpr']; intro x hfx; cases hfx
     | setIndex_idx h =>
       obtain ⟨sf', evs, hsteps, hexpr', henv', hheap', hfuncs', hcs', htrace', hobs'⟩ :=
         hasContinueInHead_flat_error_steps _ label (.setIndex_idx h) sf hge' hewf
-      exact ⟨sf', evs, hsteps, hobs'.symm,
-        ⟨hheap.trans hheap'.symm, henv.trans henv'.symm,
-         by rw [htrace', observableTrace_append, hobs']; simp [observableTrace_error, observableTrace_nil]; exact htrace.symm,
-         fun t => pure (.trivial t), n, n,
-         by rw [hexpr']; exact ANF.normalizeExpr_lit_undefined_trivial n,
-         ANF.trivial_k_preserving⟩,
-        by rw [hexpr']; intro x hfx; cases hfx⟩
+      refine ⟨sf', evs, hsteps, hobs'.symm, ?_, ?_⟩
+      · refine ⟨hheap.trans hheap'.symm, henv.trans henv'.symm, ?_, fun t => pure (.trivial t), n, n, ?_, ANF.trivial_k_preserving⟩
+        · simp only [htrace', observableTrace_append, hobs', observableTrace_error, observableTrace_nil]; congr 1
+        · rw [hexpr']; exact ANF.normalizeExpr_lit_undefined_trivial n
+      · rw [hexpr']; intro x hfx; cases hfx
     | setIndex_val h =>
       obtain ⟨sf', evs, hsteps, hexpr', henv', hheap', hfuncs', hcs', htrace', hobs'⟩ :=
         hasContinueInHead_flat_error_steps _ label (.setIndex_val h) sf hge' hewf
-      exact ⟨sf', evs, hsteps, hobs'.symm,
-        ⟨hheap.trans hheap'.symm, henv.trans henv'.symm,
-         by rw [htrace', observableTrace_append, hobs']; simp [observableTrace_error, observableTrace_nil]; exact htrace.symm,
-         fun t => pure (.trivial t), n, n,
-         by rw [hexpr']; exact ANF.normalizeExpr_lit_undefined_trivial n,
-         ANF.trivial_k_preserving⟩,
-        by rw [hexpr']; intro x hfx; cases hfx⟩
+      refine ⟨sf', evs, hsteps, hobs'.symm, ?_, ?_⟩
+      · refine ⟨hheap.trans hheap'.symm, henv.trans henv'.symm, ?_, fun t => pure (.trivial t), n, n, ?_, ANF.trivial_k_preserving⟩
+        · simp only [htrace', observableTrace_append, hobs', observableTrace_error, observableTrace_nil]; congr 1
+        · rw [hexpr']; exact ANF.normalizeExpr_lit_undefined_trivial n
+      · rw [hexpr']; intro x hfx; cases hfx
     | getEnv_env h =>
       obtain ⟨sf', evs, hsteps, hexpr', henv', hheap', hfuncs', hcs', htrace', hobs'⟩ :=
         hasContinueInHead_flat_error_steps _ label (.getEnv_env h) sf hge' hewf
-      exact ⟨sf', evs, hsteps, hobs'.symm,
-        ⟨hheap.trans hheap'.symm, henv.trans henv'.symm,
-         by rw [htrace', observableTrace_append, hobs']; simp [observableTrace_error, observableTrace_nil]; exact htrace.symm,
-         fun t => pure (.trivial t), n, n,
-         by rw [hexpr']; exact ANF.normalizeExpr_lit_undefined_trivial n,
-         ANF.trivial_k_preserving⟩,
-        by rw [hexpr']; intro x hfx; cases hfx⟩
+      refine ⟨sf', evs, hsteps, hobs'.symm, ?_, ?_⟩
+      · refine ⟨hheap.trans hheap'.symm, henv.trans henv'.symm, ?_, fun t => pure (.trivial t), n, n, ?_, ANF.trivial_k_preserving⟩
+        · simp only [htrace', observableTrace_append, hobs', observableTrace_error, observableTrace_nil]; congr 1
+        · rw [hexpr']; exact ANF.normalizeExpr_lit_undefined_trivial n
+      · rw [hexpr']; intro x hfx; cases hfx
     | makeClosure_env h =>
       obtain ⟨sf', evs, hsteps, hexpr', henv', hheap', hfuncs', hcs', htrace', hobs'⟩ :=
         hasContinueInHead_flat_error_steps _ label (.makeClosure_env h) sf hge' hewf
-      exact ⟨sf', evs, hsteps, hobs'.symm,
-        ⟨hheap.trans hheap'.symm, henv.trans henv'.symm,
-         by rw [htrace', observableTrace_append, hobs']; simp [observableTrace_error, observableTrace_nil]; exact htrace.symm,
-         fun t => pure (.trivial t), n, n,
-         by rw [hexpr']; exact ANF.normalizeExpr_lit_undefined_trivial n,
-         ANF.trivial_k_preserving⟩,
-        by rw [hexpr']; intro x hfx; cases hfx⟩
+      refine ⟨sf', evs, hsteps, hobs'.symm, ?_, ?_⟩
+      · refine ⟨hheap.trans hheap'.symm, henv.trans henv'.symm, ?_, fun t => pure (.trivial t), n, n, ?_, ANF.trivial_k_preserving⟩
+        · simp only [htrace', observableTrace_append, hobs', observableTrace_error, observableTrace_nil]; congr 1
+        · rw [hexpr']; exact ANF.normalizeExpr_lit_undefined_trivial n
+      · rw [hexpr']; intro x hfx; cases hfx
     | makeEnv_values h =>
       obtain ⟨sf', evs, hsteps, hexpr', henv', hheap', hfuncs', hcs', htrace', hobs'⟩ :=
         hasContinueInHead_flat_error_steps _ label (.makeEnv_values h) sf hge' hewf
-      exact ⟨sf', evs, hsteps, hobs'.symm,
-        ⟨hheap.trans hheap'.symm, henv.trans henv'.symm,
-         by rw [htrace', observableTrace_append, hobs']; simp [observableTrace_error, observableTrace_nil]; exact htrace.symm,
-         fun t => pure (.trivial t), n, n,
-         by rw [hexpr']; exact ANF.normalizeExpr_lit_undefined_trivial n,
-         ANF.trivial_k_preserving⟩,
-        by rw [hexpr']; intro x hfx; cases hfx⟩
+      refine ⟨sf', evs, hsteps, hobs'.symm, ?_, ?_⟩
+      · refine ⟨hheap.trans hheap'.symm, henv.trans henv'.symm, ?_, fun t => pure (.trivial t), n, n, ?_, ANF.trivial_k_preserving⟩
+        · simp only [htrace', observableTrace_append, hobs', observableTrace_error, observableTrace_nil]; congr 1
+        · rw [hexpr']; exact ANF.normalizeExpr_lit_undefined_trivial n
+      · rw [hexpr']; intro x hfx; cases hfx
     | objectLit_props h =>
       obtain ⟨sf', evs, hsteps, hexpr', henv', hheap', hfuncs', hcs', htrace', hobs'⟩ :=
         hasContinueInHead_flat_error_steps _ label (.objectLit_props h) sf hge' hewf
-      exact ⟨sf', evs, hsteps, hobs'.symm,
-        ⟨hheap.trans hheap'.symm, henv.trans henv'.symm,
-         by rw [htrace', observableTrace_append, hobs']; simp [observableTrace_error, observableTrace_nil]; exact htrace.symm,
-         fun t => pure (.trivial t), n, n,
-         by rw [hexpr']; exact ANF.normalizeExpr_lit_undefined_trivial n,
-         ANF.trivial_k_preserving⟩,
-        by rw [hexpr']; intro x hfx; cases hfx⟩
+      refine ⟨sf', evs, hsteps, hobs'.symm, ?_, ?_⟩
+      · refine ⟨hheap.trans hheap'.symm, henv.trans henv'.symm, ?_, fun t => pure (.trivial t), n, n, ?_, ANF.trivial_k_preserving⟩
+        · simp only [htrace', observableTrace_append, hobs', observableTrace_error, observableTrace_nil]; congr 1
+        · rw [hexpr']; exact ANF.normalizeExpr_lit_undefined_trivial n
+      · rw [hexpr']; intro x hfx; cases hfx
     | arrayLit_elems h =>
       obtain ⟨sf', evs, hsteps, hexpr', henv', hheap', hfuncs', hcs', htrace', hobs'⟩ :=
         hasContinueInHead_flat_error_steps _ label (.arrayLit_elems h) sf hge' hewf
-      exact ⟨sf', evs, hsteps, hobs'.symm,
-        ⟨hheap.trans hheap'.symm, henv.trans henv'.symm,
-         by rw [htrace', observableTrace_append, hobs']; simp [observableTrace_error, observableTrace_nil]; exact htrace.symm,
-         fun t => pure (.trivial t), n, n,
-         by rw [hexpr']; exact ANF.normalizeExpr_lit_undefined_trivial n,
-         ANF.trivial_k_preserving⟩,
-        by rw [hexpr']; intro x hfx; cases hfx⟩
+      refine ⟨sf', evs, hsteps, hobs'.symm, ?_, ?_⟩
+      · refine ⟨hheap.trans hheap'.symm, henv.trans henv'.symm, ?_, fun t => pure (.trivial t), n, n, ?_, ANF.trivial_k_preserving⟩
+        · simp only [htrace', observableTrace_append, hobs', observableTrace_error, observableTrace_nil]; congr 1
+        · rw [hexpr']; exact ANF.normalizeExpr_lit_undefined_trivial n
+      · rw [hexpr']; intro x hfx; cases hfx
 
 /-- Auxiliary halt_star with strong induction on Flat expression depth.
     When ANF reaches a terminal state (step? = none), Flat can also reach a

@@ -1,4 +1,4 @@
-# proof — ANF compound sub-cases. DO NOT TOUCH CC.
+# proof — Close anfConvert_step_star expression cases + prove helper theorems
 
 ## ABSOLUTE RULE: YOU MAY ONLY EDIT ANFConvertCorrect.lean THIS RUN
 - **DO NOT** open, read, build, or edit ClosureConvertCorrect.lean
@@ -9,61 +9,73 @@
 
 ## MEMORY: 7.7GB total, NO swap. Kill stale lean procs.
 
-## CURRENT STATE (12:05 Mar 30)
-- ANF: 81 sorries (decomposed — this is GOOD)
-- Break/continue direct cases DONE ✓
-- 66 compound sub-cases (33 break + 33 continue) are the bulk
-- 15 other sorries (recursive depth, let/seq/if, throw, try-catch, return, yield, await)
+## CURRENT STATE (13:05 Mar 30)
+- ANF: 17 sorries (down from 81! compound break/continue sub-cases ALL closed ✓)
+- Break/continue compound sub-cases: ALL 66 proved via hasBreakInHead/ContinueInHead_flat_error_steps ✓
+- Those 2 helper theorems (L3746, L3762) are sorry'd — they're USED 33× each
+- 7 depth-induction sorries inside yield/return cases
+- 8 expression-case sorries in anfConvert_step_star main body
 
-## YOUR TASK: Close compound sub-cases that already have Fix D support
+## YOUR PRIORITY ORDER
 
-### CONTEXT: Fix D error propagation
-Fix D exists for `.seq` and `.let` in Flat/Semantics.lean. When a sub-expression errors, the compound expression propagates the error and produces `.lit .undefined`.
+### Priority 1: Expression cases in anfConvert_step_star (L3842-3874)
 
-jsspec is EXTENDING Fix D to all other compound expressions. But you can already close the seq/let cases NOW.
+These are the CORE of the proof. Each is an independent case. Do them in order of difficulty:
 
-### Step 1: Close seq_left and seq_right for break (L3901-3902)
+#### 1a. `seq` (L3844) — EASIEST
+Pattern: `sf.expr = .seq a b`. Two sub-cases:
+- If `a` is a value: Flat.step? produces `.silent`, expr becomes `b`. ANF's normalizeExpr on `.seq a b` with value `a` gives `normalizeExpr b k`. Use seq_value lemma.
+- If `a` is not a value: Flat.step? steps `a` to `a'`. ANF step depends on normalizeExpr inversion. Use `step?_seq_sub_step` (~L1050).
 
-These compound sub-cases at L3901 (`| seq_left h => sorry`) and L3902 (`| seq_right h => sorry`) follow this pattern:
+You have `Flat_step?_seq_error` for error propagation. `seq` already has Fix D.
 
+#### 1b. `let` (L3842) — SIMILAR TO SEQ
+Pattern: `sf.expr = .let name rhs body`.
+- If `rhs` is value: Flat evaluates value, extends env, continues with body
+- If `rhs` not value: step rhs. Use `Flat_step?_let_step` equivalent.
+
+`.let` already has Fix D too.
+
+#### 1c. `if` (L3846) — EVALUATE COND, BRANCH
+Pattern: `sf.expr = .if cond then_ else_`. `cond` should be trivial after ANF.
+- ANF.step? evaluates trivial `cond`, branches
+- Flat.step? evaluates cond to value, branches
+- Key: normalizeExpr of `.if cond then_ else_` gives structure you can invert
+
+#### 1d. `return` (L3870), `yield` (L3872), `await` (L3874) — TRIVIAL ARG
+These evaluate an optional trivial argument. After ANF, the argument should be `.trivial t`.
+- `return none`: immediate, one Flat step
+- `return (some arg)`: evalTrivial gives value, one Flat step
+
+#### 1e. `throw` (L3866) — PARTIALLY DONE
+The throw case at L3855-3866 already does `cases heval : ANF.evalTrivial sa_env arg`. Both cases produce `all_goals sorry`. The structure is there, just need to construct Flat steps for each sub-case.
+
+#### 1f. `tryCatch` (L3868) — HARDEST, DO LAST
+This needs multi-step reasoning about body execution, error catching, and finally.
+
+### Priority 2: hasBreakInHead_flat_error_steps (L3746) and continue (L3762)
+
+These helpers are sorry'd but used by all compound sub-cases. They need structural induction on HasBreakInHead.
+
+**KEY INSIGHT**: For `break_direct`: trivial (already proved inline at L3912).
+For compound cases like `seq_left h`: need multi-step Flat reasoning:
+1. IH gives Flat.Steps from sub-expr to `.lit .undefined` with break error
+2. Lift steps through compound expr via context stepping (e.g., step?_seq_sub_step)
+3. Final error step triggers Fix D (for seq/let which have it)
+
+**PROBLEM**: Non-seq/let cases (unary, binary, etc.) DON'T have Fix D yet. So for now:
+- Prove the `break_direct`, `seq_left`, `seq_right`, `let_init` cases
+- Leave other cases sorry'd with a comment "needs Fix D extension"
+- This gives partial progress now, full closure after Fix D
+
+### Priority 3: Depth induction sorries (L3631-3729)
+
+These 7 sorries are inside yield/return/compound cases where normalizeExpr is called recursively. They need induction on expression depth. Try:
 ```lean
-    | seq_left h =>
-      -- h : HasBreakInHead a label, sf.expr = .seq a b
-      -- IH: from HasBreakInHead induction, inner sub-expr `a` can step
-      -- seq steps: Flat.step?_seq_ctx lifts the step through .seq
-      -- When inner step is error: Fix D propagates → .lit .undefined
-      -- Use existing step?_seq_sub_step and Flat_step?_seq_error lemmas
-      sorry -- CLOSE THIS
+| some arg =>
+  have hdepth : arg.depth < sf.expr.depth := by simp [Flat.Expr.depth]
+  -- use structural recursion or well-founded on depth
 ```
-
-The KEY lemmas you need are already in the file:
-- `step?_seq_sub_step` (grep for it ~L1050-1060): lifts a sub-step through seq
-- `Flat_step?_seq_error` (grep for it ~L1895): seq error propagation from Fix D
-
-Write a helper theorem `break_compound_seq_left` that:
-1. Takes `HasBreakInHead a label` for `.seq a b`
-2. Uses IH to get Flat.Steps from `a` producing the break error
-3. Lifts each step through `.seq` using step?_seq_sub_step
-4. The final error step triggers Fix D (Flat_step?_seq_error)
-5. Returns the Flat.Steps for `.seq a b` producing break error
-
-Then apply it to both break and continue seq_left cases.
-
-### Step 2: Close let_init for break (L3903) and continue (L3973)
-
-Same pattern but for `.let name init body`. Use `Flat_step?_let_error` lemma.
-
-### Step 3: If seq/let cases close, try the recursive depth sorries (L3631-3729)
-
-These 7 sorries need induction on depth. Check if `sf.expr.depth` gives you a decreasing measure. Try:
-```lean
-    | some _ =>
-      have : inner_expr.depth < sf.expr.depth := by simp [Flat.Expr.depth]
-      exact ih inner_expr (by omega) ...
-```
-
-### Step 4: Do NOT attempt other compound sub-cases yet
-Wait for jsspec to extend Fix D to getProp/setProp/binary/unary/etc. Those cases will follow the exact same pattern as seq once Fix D is there.
 
 ## VERIFICATION
 - [ ] Edit ONLY ANFConvertCorrect.lean
