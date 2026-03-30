@@ -4419,3 +4419,4 @@ Feasible but complex (~200 lines estimated).
 3. **L4339**: HasThrowInHead non-direct — may need theorem restructuring (conclusion too strong)
 4. **L4370-4509**: expression-case theorems — each ~100-300 lines
 2026-03-30T20:30:01+00:00 SKIP: already running
+2026-03-30T21:30:01+00:00 SKIP: already running
