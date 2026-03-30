@@ -1,5 +1,56 @@
 # jsspec agent log
 
+## 2026-03-30T04:30 — CC Sorry Triage v2 + getIndex Proof + All Staged Files Verified
+
+### Track 1: Fix D — still BLOCKED on permissions
+- `Flat/Semantics.lean` still `rw-r-----` owned by `wasmspec:pipeline`. No change.
+
+### Track 2: CC Integration
+
+#### All 3 staged files now compile clean
+| File | Status | Change from last |
+|------|--------|-----------------|
+| cc_state_mono.lean | COMPILES CLEAN | unchanged |
+| cc_convertExpr_not_lit_v2.lean | COMPILES CLEAN | unchanged |
+| cc_exprAddrWF_propagate.lean | **COMPILES CLEAN** | was dep failure, now passes |
+
+#### CC Sorry Triage v2
+Created comprehensive triage: `.lake/_tmp_fix/CC_sorry_triage_v2.lean`
+
+21 actual sorries in ClosureConvertCorrect.lean, categorized:
+- **Cat A** (4 sorries): Closeable with staged files (L1177-1178 via not_lit_v2, L4307/L4405 via exprAddrWF)
+- **Cat B** (5 sorries): CCState threading (L2750, L2772×2, L4354, L4656) — need proof restructuring
+- **Cat C** (8 sorries): Value sub-cases — heap reasoning needed
+- **Cat D** (4 sorries): Large standalone (functionDef, tryCatch, convertExprList/PropList)
+
+Priority path for max sorry reduction:
+1. A1 (−2): add convertExpr_not_value_supported
+2. A2 (−2): ExprAddrWF definition change
+3. B3 (−1): objectLit CCState via state_determined
+4. C4 (−1): getIndex object — proof written!
+
+#### getIndex Object Proof (L3767)
+Created: `.lake/_tmp_fix/cc_getIndex_object_proof.lean`
+- EXACT replacement text for L3767 sorry
+- Uses Core.step?_getIndex_object_val, hheapvwf + list_find?_mem, coreToFlatValue_eq_convertValue
+- 7 of 9 sub-goals close trivially; 2 need case analysis (both sketched)
+- String case (L3769) follows identical pattern
+
+### ANF Analysis
+- 17 sorries unchanged. All blocked on normalizeExpr inversion (same Fix D dependency for nested cases).
+- Throw/return/yield/await share break/continue's structural pattern.
+- No existing HasThrowInHead/normalizeExpr_throw_or_k infrastructure.
+- Would need ~270 lines each (mechanical adaptation of break pattern) — but jsspec can't write to ANFConvertCorrect.lean.
+
+### Sorry counts
+- CC: 23 grep matches, 21 actual sorries (L540 is comment, L2772 has 2)
+- ANF: 17 (unchanged)
+
+### Staged artifacts (new this session)
+- `.lake/_tmp_fix/CC_sorry_triage_v2.lean` — full 21-sorry categorization + fix strategies
+- `.lake/_tmp_fix/cc_getIndex_object_proof.lean` — exact replacement for L3767 sorry
+- `.lake/_tmp_fix/test_heap_value_wf.lean` — helper lemma tests (can't compile standalone due to private defs)
+
 ## 2026-03-30T03:30 — Break/Continue Proof Analysis + Staging
 
 ### Track 1: Fix D — still BLOCKED on permissions
@@ -1520,3 +1571,4 @@ Agent `jsspec` can read but NOT write. Need `chmod g+w` from root/wasmspec.
 
 ## Run: 2026-03-30T04:00:01+00:00
 
+2026-03-30T04:22:06+00:00 DONE
