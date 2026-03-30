@@ -1490,7 +1490,7 @@ theorem step?_none_implies_lit (s : State) (h : step? s = none) :
       | some e =>
         unfold step? at h; simp only [-step?] at h
         split at h; · simp at h
-        · split at h; · simp at h
+        · split at h; · simp at h; · simp at h
           · next hval hstep =>
             have ⟨v, hv⟩ := litOfStuck e (by simp [Expr.depth] at hd; omega) hstep
             subst hv; simp_all [exprValue?]
@@ -1500,7 +1500,7 @@ theorem step?_none_implies_lit (s : State) (h : step? s = none) :
       | some e =>
         unfold step? at h; simp only [-step?] at h
         split at h; · simp at h
-        · split at h; · simp at h
+        · split at h; · simp at h; · simp at h
           · next hval hstep =>
             have ⟨v, hv⟩ := litOfStuck e (by simp [Expr.depth] at hd; omega) hstep
             subst hv; simp_all [exprValue?]
@@ -1518,14 +1518,14 @@ theorem step?_none_implies_lit (s : State) (h : step? s = none) :
     | assign _ rhs =>
       unfold step? at h; simp only [-step?] at h
       split at h; · simp at h
-      · split at h; · simp at h
+      · split at h; · simp at h; · simp at h
         · next hval hstep =>
           have ⟨v, hv⟩ := litOfStuck rhs (by simp [Expr.depth] at hd; omega) hstep
           subst hv; simp_all [exprValue?]
     | «if» cond _ _ =>
       unfold step? at h; simp only [-step?] at h
       split at h; · simp at h
-      · split at h; · simp at h
+      · split at h; · simp at h; · simp at h
         · next hval hstep =>
           have ⟨v, hv⟩ := litOfStuck cond (by simp [Expr.depth] at hd; omega) hstep
           subst hv; simp_all [exprValue?]
@@ -1541,28 +1541,28 @@ theorem step?_none_implies_lit (s : State) (h : step? s = none) :
     | unary _ arg =>
       unfold step? at h; simp only [-step?] at h
       split at h; · simp at h
-      · split at h; · simp at h
+      · split at h; · simp at h; · simp at h
         · next hval hstep =>
           have ⟨v, hv⟩ := litOfStuck arg (by simp [Expr.depth] at hd; omega) hstep
           subst hv; simp_all [exprValue?]
     | typeof arg =>
       unfold step? at h; simp only [-step?] at h
       split at h; · simp at h
-      · split at h; · simp at h
+      · split at h; · simp at h; · simp at h
         · next hval hstep =>
           have ⟨v, hv⟩ := litOfStuck arg (by simp [Expr.depth] at hd; omega) hstep
           subst hv; simp_all [exprValue?]
     | throw arg =>
       unfold step? at h; simp only [-step?] at h
       split at h; · simp at h
-      · split at h; · simp at h
+      · split at h; · simp at h; · simp at h
         · next hval hstep =>
           have ⟨v, hv⟩ := litOfStuck arg (by simp [Expr.depth] at hd; omega) hstep
           subst hv; simp_all [exprValue?]
     | await arg =>
       unfold step? at h; simp only [-step?] at h
       split at h; · simp at h
-      · split at h; · simp at h
+      · split at h; · simp at h; · simp at h
         · next hval hstep =>
           have ⟨v, hv⟩ := litOfStuck arg (by simp [Expr.depth] at hd; omega) hstep
           subst hv; simp_all [exprValue?]
@@ -1574,6 +1574,7 @@ theorem step?_none_implies_lit (s : State) (h : step? s = none) :
       · -- exprValue? lhs = none
         split at h
         · simp at h
+        · simp at h
         · next hval hstep =>
           have ⟨v, hv⟩ := litOfStuck lhs (by simp [Expr.depth] at hd; omega) hstep
           subst hv; simp_all [exprValue?]
@@ -1581,6 +1582,7 @@ theorem step?_none_implies_lit (s : State) (h : step? s = none) :
         split at h
         · -- exprValue? rhs = none
           split at h
+          · simp at h
           · simp at h
           · next hval hstep =>
             have ⟨v, hv⟩ := litOfStuck rhs (by simp [Expr.depth] at hd; omega) hstep
@@ -1595,6 +1597,7 @@ theorem step?_none_implies_lit (s : State) (h : step? s = none) :
       · -- exprValue? obj = none
         split at h
         · simp at h
+        · simp at h
         · next hval hstep =>
           have ⟨v, hv⟩ := litOfStuck obj (by simp [Expr.depth] at hd; omega) hstep
           subst hv; simp_all [exprValue?]
@@ -1607,6 +1610,7 @@ theorem step?_none_implies_lit (s : State) (h : step? s = none) :
       · -- exprValue? obj = none
         split at h
         · simp at h
+        · simp at h
         · next hval hstep =>
           have ⟨v, hv⟩ := litOfStuck obj (by simp [Expr.depth] at hd; omega) hstep
           subst hv; simp_all [exprValue?]
@@ -1617,6 +1621,7 @@ theorem step?_none_implies_lit (s : State) (h : step? s = none) :
       · simp at h  -- some _ → returns some
       · -- exprValue? envExpr = none
         split at h
+        · simp at h
         · simp at h
         · next hval hstep =>
           have ⟨v, hv⟩ := litOfStuck envExpr (by simp [Expr.depth] at hd; omega) hstep
@@ -1632,6 +1637,7 @@ theorem step?_none_implies_lit (s : State) (h : step? s = none) :
       · -- exprValue? envExpr = none
         split at h
         · simp at h
+        · simp at h
         · next hval hstep =>
           have ⟨v, hv⟩ := litOfStuck envExpr (by simp [Expr.depth] at hd; omega) hstep
           subst hv; simp_all [exprValue?]
@@ -1641,6 +1647,7 @@ theorem step?_none_implies_lit (s : State) (h : step? s = none) :
       · -- exprValue? obj = none
         split at h
         · simp at h
+        · simp at h
         · next hval hstep =>
           have ⟨v, hv⟩ := litOfStuck obj (by simp [Expr.depth] at hd; omega) hstep
           subst hv; simp_all [exprValue?]
@@ -1649,6 +1656,7 @@ theorem step?_none_implies_lit (s : State) (h : step? s = none) :
         · simp at h  -- exprValue? value = some → returns some
         · -- exprValue? value = none
           split at h
+          · simp at h
           · simp at h
           · next hval hstep =>
             have ⟨v, hv⟩ := litOfStuck value (by simp [Expr.depth] at hd; omega) hstep
@@ -1659,6 +1667,7 @@ theorem step?_none_implies_lit (s : State) (h : step? s = none) :
         · -- exprValue? value = none
           split at h
           · simp at h
+          · simp at h
           · next hval hstep =>
             have ⟨v, hv⟩ := litOfStuck value (by simp [Expr.depth] at hd; omega) hstep
             subst hv; simp_all [exprValue?]
@@ -1668,6 +1677,7 @@ theorem step?_none_implies_lit (s : State) (h : step? s = none) :
       · -- exprValue? obj = none
         split at h
         · simp at h
+        · simp at h
         · next hval hstep =>
           have ⟨v, hv⟩ := litOfStuck obj (by simp [Expr.depth] at hd; omega) hstep
           subst hv; simp_all [exprValue?]
@@ -1676,6 +1686,7 @@ theorem step?_none_implies_lit (s : State) (h : step? s = none) :
         · simp at h  -- exprValue? idx = some → returns some
         · -- exprValue? idx = none
           split at h
+          · simp at h
           · simp at h
           · next hval hstep =>
             have ⟨v, hv⟩ := litOfStuck idx (by simp [Expr.depth] at hd; omega) hstep
@@ -1686,6 +1697,7 @@ theorem step?_none_implies_lit (s : State) (h : step? s = none) :
         · -- exprValue? idx = none
           split at h
           · simp at h
+          · simp at h
           · next hval hstep =>
             have ⟨v, hv⟩ := litOfStuck idx (by simp [Expr.depth] at hd; omega) hstep
             subst hv; simp_all [exprValue?]
@@ -1694,6 +1706,7 @@ theorem step?_none_implies_lit (s : State) (h : step? s = none) :
         · simp at h  -- exprValue? idx = some → returns some
         · -- exprValue? idx = none
           split at h
+          · simp at h
           · simp at h
           · next hval hstep =>
             have ⟨v, hv⟩ := litOfStuck idx (by simp [Expr.depth] at hd; omega) hstep
@@ -1704,6 +1717,7 @@ theorem step?_none_implies_lit (s : State) (h : step? s = none) :
       · -- exprValue? obj = none
         split at h
         · simp at h
+        · simp at h
         · next hval hstep =>
           have ⟨v, hv⟩ := litOfStuck obj (by simp [Expr.depth] at hd; omega) hstep
           subst hv; simp_all [exprValue?]
@@ -1711,6 +1725,7 @@ theorem step?_none_implies_lit (s : State) (h : step? s = none) :
         split at h
         · -- exprValue? idx = none
           split at h
+          · simp at h
           · simp at h
           · next hval hstep =>
             have ⟨v, hv⟩ := litOfStuck idx (by simp [Expr.depth] at hd; omega) hstep
@@ -1721,6 +1736,7 @@ theorem step?_none_implies_lit (s : State) (h : step? s = none) :
           · -- exprValue? value = none
             split at h
             · simp at h
+            · simp at h
             · next hval hstep =>
               have ⟨v, hv⟩ := litOfStuck value (by simp [Expr.depth] at hd; omega) hstep
               subst hv; simp_all [exprValue?]
@@ -1728,6 +1744,7 @@ theorem step?_none_implies_lit (s : State) (h : step? s = none) :
         split at h
         · -- exprValue? idx = none
           split at h
+          · simp at h
           · simp at h
           · next hval hstep =>
             have ⟨v, hv⟩ := litOfStuck idx (by simp [Expr.depth] at hd; omega) hstep
@@ -1737,6 +1754,7 @@ theorem step?_none_implies_lit (s : State) (h : step? s = none) :
           · simp at h  -- exprValue? value = some → returns some
           · -- exprValue? value = none
             split at h
+            · simp at h
             · simp at h
             · next hval hstep =>
               have ⟨v, hv⟩ := litOfStuck value (by simp [Expr.depth] at hd; omega) hstep
@@ -1767,6 +1785,7 @@ theorem step?_none_implies_lit (s : State) (h : step? s = none) :
       · -- exprValue? funcExpr = none
         split at h
         · simp at h
+        · simp at h
         · next hval hstep =>
           have ⟨v, hv⟩ := litOfStuck funcExpr (by simp [Expr.depth] at hd; omega) hstep
           subst hv; simp_all [exprValue?]
@@ -1774,6 +1793,7 @@ theorem step?_none_implies_lit (s : State) (h : step? s = none) :
         split at h
         · -- exprValue? envExpr = none
           split at h
+          · simp at h
           · simp at h
           · next hval hstep =>
             have ⟨v, hv⟩ := litOfStuck envExpr (by simp [Expr.depth] at hd; omega) hstep
@@ -1792,6 +1812,7 @@ theorem step?_none_implies_lit (s : State) (h : step? s = none) :
             · -- firstNonValueExpr = some (done, target, remaining)
               split at h
               · simp at h
+              · simp at h
               · -- step? target = none → target must be lit → contradiction
                 rename_i done' target' remaining' hfnve _ hstep
                 have htgt := firstNonValueExpr_target_not_lit hfnve
@@ -1808,6 +1829,7 @@ theorem step?_none_implies_lit (s : State) (h : step? s = none) :
       · -- exprValue? funcExpr = none
         split at h
         · simp at h
+        · simp at h
         · next hval hstep =>
           have ⟨v, hv⟩ := litOfStuck funcExpr (by simp [Expr.depth] at hd; omega) hstep
           subst hv; simp_all [exprValue?]
@@ -1815,6 +1837,7 @@ theorem step?_none_implies_lit (s : State) (h : step? s = none) :
         split at h
         · -- exprValue? envExpr = none
           split at h
+          · simp at h
           · simp at h
           · next hval hstep =>
             have ⟨v, hv⟩ := litOfStuck envExpr (by simp [Expr.depth] at hd; omega) hstep
@@ -1826,6 +1849,7 @@ theorem step?_none_implies_lit (s : State) (h : step? s = none) :
             split at h
             · -- firstNonValueExpr = some
               split at h
+              · simp at h
               · simp at h
               · rename_i done' target' remaining' hfnve _ hstep
                 have htgt := firstNonValueExpr_target_not_lit hfnve
@@ -1844,6 +1868,7 @@ theorem step?_none_implies_lit (s : State) (h : step? s = none) :
         · -- firstNonValueExpr = some
           split at h
           · simp at h
+          · simp at h
           · rename_i done' target' remaining' hfnve _ hstep
             have htgt := firstNonValueExpr_target_not_lit hfnve
             have ⟨v, hv⟩ := litOfStuck target'
@@ -1861,6 +1886,7 @@ theorem step?_none_implies_lit (s : State) (h : step? s = none) :
         · -- firstNonValueExpr = some
           split at h
           · simp at h
+          · simp at h
           · rename_i done' target' remaining' hfnve _ hstep
             have htgt := firstNonValueExpr_target_not_lit hfnve
             have ⟨v, hv⟩ := litOfStuck target'
@@ -1877,6 +1903,7 @@ theorem step?_none_implies_lit (s : State) (h : step? s = none) :
         split at h
         · -- firstNonValueProp = some
           split at h
+          · simp at h
           · simp at h
           · rename_i done' propName' target' remaining' hfnvp _ hstep
             have htgt := firstNonValueProp_target_not_lit hfnvp
