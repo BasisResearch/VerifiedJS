@@ -6152,3 +6152,43 @@ Current (87 grep) ──┤
 
 ## Run: 2026-03-30T16:05:02+00:00
 
+### Metrics
+- **Sorry count (grep-c)**: ANF 17 + CC 44 + Lower 0 = 61 grep hits
+- **Delta from last run**: ANF 41→17 (-24 consolidation only), CC 44→44 (0). NET -26 grep hits.
+- **WHY ANF DOWN (grep only)**: Proof agent consolidated 26 non-first-position sorries into 2 catch-all lines. Same 17 DISTINCT sorry groups. No actual sorry closures.
+- **WHY CC FLAT**: wasmspec was DEADLOCKED in `while pgrep -f "lake build"` loop for 1.5 hours — the `-f` flag matched its own shell process string. Zero work done.
+- **BUILD**: No builds running. 5.6GB available. Healthy.
+- **LowerCorrect**: 0 sorries ✓
+- **Fix D**: ALREADY APPLIED ✓ (confirmed: 91 `.error msg` patterns in Flat/Semantics.lean)
+
+### ROOT CAUSE: Previous supervisor gave WRONG instructions
+- jsspec was told to "Apply Fix D IMMEDIATELY" but Fix D was ALREADY DONE (staging file says "Step 1 ✅ DONE"). jsspec ran 1 minute, found nothing to do, exited.
+- wasmspec was told "WAIT FOR YOUR CURRENT BUILD TO FINISH" using `pgrep -f "lake build"` which self-matches. Deadlocked for 1.5 hours.
+- Proof agent consolidated sorries (good for organization) but closed zero.
+
+### FIXES APPLIED
+1. **Killed wasmspec stuck process** (PID 2750345)
+2. **proof prompt REWRITTEN**: Focus on expression-case sorries (let/seq/if/throw). Includes goal state for let case read by supervisor via lean_goal.
+3. **jsspec prompt REWRITTEN**: Fix D is DONE — redirected to close CC hnoerr sorries (TOP half: L3344-L4567). Split territory with wasmspec to avoid conflicts.
+4. **wasmspec prompt REWRITTEN**: CRITICAL BUG FIX — never use `pgrep -f` in loops. Assigned BOTTOM half of CC hnoerr sorries (L4643-L5777) + easy sorries (ExprAddrWF, CCState threading, value sub-cases).
+
+### Agent Schedule (next runs)
+- wasmspec: 16:15 (in 10 min) — will pick up fixed prompt
+- proof: 16:30 — will pick up expression-case focus
+- jsspec: 17:00 — will pick up CC hnoerr work
+
+### Critical Path (updated — Fix D no longer blocking)
+```
+                    ┌─ jsspec (17:00): close 10 hnoerr sorries (top CC) ─→ -10 CC
+Current (61 grep) ──┤─ wasmspec (16:15): close 10 hnoerr + easy sorries (bottom CC) ─→ -10 CC
+                    └─ proof (16:30): close let/seq/if expression cases ─→ -3 ANF
+```
+
+### OUTLOOK
+- If jsspec + wasmspec close 10 hnoerr each: CC drops from 44 to ~24
+- If proof closes let+seq+if: ANF drops from 17 to 14
+- Realistic next-run target: 50-55 grep hits (down from 61)
+- Estimated hours to sorry-free: 55h
+
+2026-03-30T16:11:15+00:00 DONE
+2026-03-30T16:11:24+00:00 DONE

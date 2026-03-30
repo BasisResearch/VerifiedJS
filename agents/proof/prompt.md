@@ -1,61 +1,77 @@
-# proof — Close ANF expression cases + non-first-position context cases
+# proof — Close ANF expression-case sorries
 
 ## RULES
 - Edit: ANFConvertCorrect.lean (primary)
 - **DO NOT** run `lake build VerifiedJS` (full build). OOMs.
 - Build ONLY: `lake build VerifiedJS.Proofs.ANFConvertCorrect`
 - Before building: `pkill -f "lean.*\.lean" 2>/dev/null; sleep 5`
-- Check `pgrep -af "lake build"` first — do NOT start if one runs.
+- Check `pgrep -x lake` first — do NOT start if one runs.
+- **NEVER** use `pgrep -f "lake build"` inside a while loop (self-matches the shell string)
 
 ## MEMORY: 7.7GB total, NO swap. Kill stale lean procs.
 
-## CURRENT STATE (15:30 Mar 30)
-- ANF: 41 sorry instances across 3 groups:
-  - 7 depth-induction sorries (L3825, 3829, 3840, 3891, 3895, 3906, 3923) — skip for now
-  - 26 non-first-position context sorries (L4112-4124 + L4331-4343) — BLOCKED on Fix D
-  - 8 expression-case sorries (L4439, 4441, 4443, 4463, 4465, 4467, 4469, 4471) — YOUR TARGET
-- CC permissions FIXED ✓ (group writable)
-- wasmspec applied hnoerr guards to CC ✓
-- jsspec is about to apply Fix D to Flat/Semantics.lean (will unblock 26 context cases)
+## CURRENT STATE (16:05 Mar 30)
+- ANF: 17 sorries, 3 groups:
+  - 7 depth-induction (L3825-3923) — skip
+  - 2 consolidated context (L4116, L4327) — skip (need multi-step restructure)
+  - 8 expression-case (L4423, 4425, 4427, 4447, 4449, 4451, 4453, 4455) — YOUR TARGET
+- Fix D is APPLIED in Flat/Semantics.lean ✓
+- hnoerr guards applied in CC ✓
 
-## PRIORITY 1: Close throw case (L4452-4463)
+## PRIORITY 1: Close the `let` case (L4423)
 
-Your own analysis identified the right approach. The throw case at L4452 already has:
-```lean
-  | throw arg =>
-    cases sa with | mk sa_expr sa_env sa_heap sa_trace =>
-    simp only [] at hsa; subst hsa
-    simp only [ANF.step?, ANF.pushTrace] at hstep_eq
-    cases heval : ANF.evalTrivial sa_env arg <;> simp [heval] at hstep_eq
-    all_goals obtain ⟨rfl, rfl⟩ := hstep_eq
-    all_goals sorry
+Goal state at L4423 (supervisor read it):
+```
+case let
+sa : ANF.State, sf : Flat.State, ev : Core.TraceEvent, sa' : ANF.State
+hewf : ExprWellFormed sf.expr sf.env
+hstep_eq : ANF.step? sa = some (ev, sa')
+hheap : sa.heap = sf.heap, henv : sa.env = sf.env
+htrace : observableTrace sa.trace = observableTrace sf.trace
+k : ANF.Trivial → ANF.ConvM ANF.Expr
+n m : Nat
+hnorm : StateT.run (ANF.normalizeExpr sf.expr k) n = Except.ok (sa.expr, m)
+hk_triv : ∀ arg n', ∃ m', StateT.run (k arg) n' = Except.ok (.trivial arg, m')
+name : ANF.VarName, rhs : ANF.ComplexExpr, body : ANF.Expr
+hsa : sa.expr = ANF.Expr.let name rhs body
+⊢ ∃ sf' evs, Flat.Steps sf evs sf' ∧
+    observableTrace [ev] = observableTrace evs ∧ ANF_SimRel s t sa' sf' ∧ ExprWellFormed sf'.expr sf'.env
 ```
 
-You need `hasThrowInHead_flat_value_steps` or equivalent. Build it:
-1. `lean_goal` at L4463 to see exact goal state
-2. The normalizeExpr of `.throw arg` produces an expr with throw in head
-3. Flat steps: evaluate the trivial arg (0-1 steps), then throw produces error event
-4. Use `lean_multi_attempt` at L4463 with candidate closings
+Strategy:
+1. `subst hsa` to substitute the expr form
+2. `simp [ANF.step?]` on hstep_eq to unfold the let-stepping
+3. ANF.step? on `.let name rhs body` evaluates `rhs` (ComplexExpr):
+   - If rhs evaluates to a value: extends env, continues with body
+   - If rhs steps: produces intermediate state
+4. Use `lean_goal` after each tactic to see what remains
+5. For the Flat side: `normalizeExpr` of `sf.expr` produced `.let name rhs body`,
+   so `sf.expr` has a let in head position (possibly wrapped in seq/let chains)
+6. Use normalizeExpr inversion lemma to decompose
+7. Construct Flat.Steps matching the ANF step
 
-If this is too hard, try return/yield/await first (L4467-4471) — same pattern but simpler.
+Try `lean_multi_attempt` at L4423 with:
+```
+["subst hsa; simp [ANF.step?, ANF.evalComplex, ANF.pushTrace] at hstep_eq",
+ "subst hsa; simp only [ANF.step?] at hstep_eq"]
+```
+Then continue from whatever state remains.
 
-## PRIORITY 2: Close let/seq/if (L4439-4443)
+## PRIORITY 2: Close `seq` case (L4425) — similar to let
 
-These are structurally simpler:
-- **let** (L4439): rhs is either value (extend env, continue with body via IH) or non-value (step inner rhs). Use `lean_goal` to see what's available.
-- **seq** (L4441): Same pattern. If `a` is value, skip to `b`. If not, step `a`.
-- **if** (L4443): After ANF, cond is trivial. Evaluate, branch to then/else.
+## PRIORITY 3: Close `if` case (L4427) — cond is trivial after ANF
 
-For each: `lean_goal` first, then `lean_multi_attempt` with tactics.
-
-## PRIORITY 3: tryCatch (L4465) — hardest, do last
+## PRIORITY 4: Close `throw` case (L4447)
+Already partially destructed (L4436-4447). Two subgoals remain after evalTrivial cases.
+Use `lean_goal` at L4447 to see exact remaining state.
 
 ## DO NOT TOUCH:
-- Non-first-position context cases (L4112-4124, L4331-4343) — these need Fix D first
-- Depth-induction cases (L3825-3923) — lower priority
-- ClosureConvertCorrect.lean — wasmspec owns this now
+- Depth-induction cases (L3825-3923)
+- Consolidated context cases (L4116, L4327)
+- ClosureConvertCorrect.lean — jsspec and wasmspec own this
 
 ## VERIFICATION
-- [ ] Build passes: `lake build VerifiedJS.Proofs.ANFConvertCorrect`
-- [ ] At least 2 expression-case sorries closed this run
-- [ ] Log to agents/proof/log.md with sorry count before/after
+After any sorry closure:
+1. Build: `lake build VerifiedJS.Proofs.ANFConvertCorrect`
+2. Count: `grep -c sorry VerifiedJS/Proofs/ANFConvertCorrect.lean`
+3. Log to agents/proof/log.md with sorry count before/after

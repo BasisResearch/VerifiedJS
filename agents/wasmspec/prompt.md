@@ -1,64 +1,56 @@
-# wasmspec — Close easy CC sorries NOW
+# wasmspec — Close CC sorries (BOTTOM half)
 
 ## MEMORY: 7.7GB total, NO swap
 - **NEVER run `lake build VerifiedJS`** (full build). OOMs.
 - Build: `lake build VerifiedJS.Proofs.ClosureConvertCorrect`
 - Before building: `pkill -f "lean.*\.lean" 2>/dev/null; sleep 5`
-- Check `pgrep -af "lake build"` first — do NOT start if one runs.
 
-## STATUS (15:30 Mar 30)
-- hnoerr guards: APPLIED ✓ (you did this! good work)
-- CC is now group-writable ✓
-- CC sorry count: 44 grep hits (20 hnoerr + 2 hev_noerr + ~22 other)
+## CRITICAL BUG FIX: DO NOT USE `pgrep -f` IN A LOOP
+Your last run was DEADLOCKED for 1.5 hours because:
+```bash
+while pgrep -f "lake build" > /dev/null; do sleep 10; done
+```
+matches ITS OWN shell process (the string "lake build" appears in the command text).
+**Use `pgrep -x lake` instead** (exact process name match).
+Or better: just check once, don't loop.
 
-## WAIT FOR YOUR CURRENT BUILD TO FINISH
-You have a CC build in progress. Wait for it. Check: `pgrep -af "lake build"`
+## STATUS (16:05 Mar 30)
+- hnoerr guards: APPLIED ✓ (you did this)
+- CC sorry count: 44
+- Fix D: ALREADY APPLIED ✓ in Flat/Semantics.lean
+- **Your last run accomplished NOTHING because of the pgrep deadlock. Don't repeat this.**
 
-## PRIORITY 1: Close hnoerr sorries (20 of them — most are mechanical)
+## YOUR TASK: Close CC sorries from the BOTTOM of the file
 
-Each `have hnoerr : ∀ msg, t ≠ .error msg := by sorry` needs a proof from context.
+jsspec is working on hnoerr sorries from the TOP (L3344 through L4567).
+YOU work from the BOTTOM up to avoid edit conflicts.
 
-The pattern: the trace event `t` comes from `Flat.step?` on a well-formed expression that is NOT an error. Prove it by:
-```lean
-have hnoerr : ∀ msg, t ≠ .error msg := by
-  intro msg heq; subst heq
-  -- t came from step? which only produces .error when the expr IS an error
-  -- but we know the expr is well-formed and not an error
-  simp [Flat.step?] at hstep  -- or whatever the step hypothesis is called
+### hnoerr sorries (bottom-up): L5777, L5689, L5550, L5343, L5153, L5054, L4976, L4886, L4718, L4643
+
+For each `have hnoerr : ∀ msg, t ≠ .error msg := by sorry`:
+
+Use `lean_goal` at the sorry line to see context, then `lean_multi_attempt` with:
+```
+["intro msg heq; subst heq; simp_all [Flat.step?]",
+ "intro msg heq; subst heq; simp [Flat.step?] at *",
+ "intro msg heq; cases heq; simp_all",
+ "intro msg; exact fun h => by subst h; contradiction"]
 ```
 
-Try `lean_multi_attempt` at each sorry with:
-```
-["intro msg heq; simp_all", "intro msg heq; subst heq; simp_all", "intro msg; exact fun h => by cases h"]
-```
-
-Start with L3344 (simplest context), then L3463, L3671, L3767, L3826, L3898.
-Then: L4108, L4291, L4358, L4567, L4643, L4718, L4886, L4976, L5054, L5153, L5343, L5550, L5689, L5777.
-
-Build after every 4 closures.
-
-## PRIORITY 2: Close hev_noerr sorries (L3237, L3562)
-
-Same class but for trace events from expression evaluation. Pattern:
-```lean
-have hev_noerr : ∀ msg, ev ≠ .error msg := by
-  intro msg heq; subst heq; simp_all [Flat.step?]
-```
-
-## PRIORITY 3: Close other easy sorries
-
-### Tier A (attempt):
-- L3092: `lean_goal` to see what's needed, try `lean_multi_attempt`
-- L3422, L3444: CCState threading — likely need `Flat.convertExpr` unfolding + `ext`
+### Other easy sorries (after hnoerr):
+- L5168: ExprAddrWF propagation for arrayLit — try `simp [ExprAddrWF]` variants
+- L5069: ExprAddrWF propagation for objectLit — similar
+- L5116: CCState threading for convertPropList — try `ext; simp_all`
+- L5024, L5123: value sub-case heap allocation
 
 ### DO NOT TOUCH:
-- L1369/1370 (forIn/forOf stubs — unprovable by design)
+- L1369/1370 (forIn/forOf stubs — unprovable)
 - L5298 (functionDef), L5389 (tryCatch), L5420 (while CCState) — complex
 - ANFConvertCorrect.lean — proof agent owns this
+- hnoerr sorries above L4643 — jsspec is handling those
 
-## TARGET: Close at least 5 hnoerr sorries this run → CC from 44 to ≤39
+## TARGET: Close at least 5 sorries → CC from 44 to ≤39
 
 ## FILES
 - `VerifiedJS/Proofs/ClosureConvertCorrect.lean` (rw)
-- `.lake/_tmp_fix/cc_hnoerr_guards.lean` (read)
-- LOG every 15 min to agents/wasmspec/log.md
+- LOG to agents/wasmspec/log.md
