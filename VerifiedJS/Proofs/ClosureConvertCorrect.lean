@@ -1139,8 +1139,8 @@ def ExprAddrWF : Core.Expr → Nat → Prop
   | .typeof e, n => ExprAddrWF e n
   | .unary _ e, n => ExprAddrWF e n
   | .binary _ l r, n => ExprAddrWF l n ∧ ExprAddrWF r n
-  | .objectLit _, _ => True
-  | .arrayLit _, _ => True
+  | .objectLit props, n => ExprAddrPropListWF props n
+  | .arrayLit es, n => ExprAddrListWF es n
   | .functionDef _ _ body _ _, n => ExprAddrWF body n
   | .throw e, n => ExprAddrWF e n
   | .tryCatch b _ c none, n => ExprAddrWF b n ∧ ExprAddrWF c n
@@ -1162,6 +1162,11 @@ def ExprAddrWF : Core.Expr → Nat → Prop
 def ExprAddrListWF : List Core.Expr → Nat → Prop
   | [], _ => True
   | e :: es, n => ExprAddrWF e n ∧ ExprAddrListWF es n
+
+/-- All object addresses in a property list of Core expressions are valid heap addresses. -/
+def ExprAddrPropListWF : List (String × Core.Expr) → Nat → Prop
+  | [], _ => True
+  | (_, e) :: ps, n => ExprAddrWF e n ∧ ExprAddrPropListWF ps n
 end
 
 private theorem ValueAddrWF_mono {v : Core.Value} {n m : Nat}
@@ -1175,8 +1180,8 @@ private theorem ExprAddrWF_mono : (e : Core.Expr) → {n m : Nat} →
   | .var _, _, _, _, _ => trivial
   | .call f args, _, _, h, hle => ⟨ExprAddrWF_mono f h.1 hle, ExprAddrListWF_mono args h.2 hle⟩
   | .newObj f args, _, _, h, hle => ⟨ExprAddrWF_mono f h.1 hle, ExprAddrListWF_mono args h.2 hle⟩
-  | .objectLit _, _, _, _, _ => trivial
-  | .arrayLit _, _, _, _, _ => trivial
+  | .objectLit props, _, _, h, hle => ExprAddrPropListWF_mono props h hle
+  | .arrayLit es, _, _, h, hle => ExprAddrListWF_mono es h hle
   | .break _, _, _, _, _ => trivial
   | .continue _, _, _, _, _ => trivial
   | .return none, _, _, _, _ => trivial
@@ -1214,7 +1219,148 @@ private theorem ExprAddrListWF_mono : (es : List Core.Expr) → {n m : Nat} →
   | e :: es, _, _, h, hle => ⟨ExprAddrWF_mono e h.1 hle, ExprAddrListWF_mono es h.2 hle⟩
   termination_by es => sizeOf es
   decreasing_by all_goals (try simp_wf) <;> omega
+
+private theorem ExprAddrPropListWF_mono : (ps : List (String × Core.Expr)) → {n m : Nat} →
+    ExprAddrPropListWF ps n → (n ≤ m) → ExprAddrPropListWF ps m
+  | [], _, _, _, _ => trivial
+  | (_, e) :: ps, _, _, h, hle => ⟨ExprAddrWF_mono e h.1 hle, ExprAddrPropListWF_mono ps h.2 hle⟩
+  termination_by ps => sizeOf ps
+  decreasing_by all_goals (try simp_wf) <;> omega
 end
+
+private theorem ExprAddrPropListWF_firstNonValueProp_target
+    {props : List (Core.PropName × Core.Expr)} {done propName target rest n}
+    (hfnv : Core.firstNonValueProp props = some (done, propName, target, rest))
+    (hwf : ExprAddrPropListWF props n) : ExprAddrWF target n := by
+  induction props generalizing done with
+  | nil => simp [Core.firstNonValueProp] at hfnv
+  | cons p tl ih =>
+    obtain ⟨pn, pe⟩ := p
+    unfold Core.firstNonValueProp at hfnv
+    split at hfnv
+    · -- pe = .lit _
+      split at hfnv
+      · next heq => simp at hfnv; obtain ⟨_, _, rfl, rfl⟩ := hfnv
+        simp [ExprAddrPropListWF] at hwf; exact ih heq hwf.2
+      · simp at hfnv
+    · -- pe is not a lit
+      simp at hfnv; obtain ⟨_, rfl, rfl, _⟩ := hfnv
+      simp [ExprAddrPropListWF] at hwf; exact hwf.1
+
+private theorem ExprAddrListWF_firstNonValueExpr_target
+    {es : List Core.Expr} {done target rest n}
+    (hfnv : Core.firstNonValueExpr es = some (done, target, rest))
+    (hwf : ExprAddrListWF es n) : ExprAddrWF target n := by
+  induction es generalizing done with
+  | nil => simp [Core.firstNonValueExpr] at hfnv
+  | cons e tl ih =>
+    unfold Core.firstNonValueExpr at hfnv
+    split at hfnv
+    · -- e = .lit _
+      split at hfnv
+      · next heq => simp at hfnv; obtain ⟨_, rfl, rfl⟩ := hfnv
+        simp [ExprAddrListWF] at hwf; exact ih heq hwf.2
+      · simp at hfnv
+    · -- e is not a lit
+      simp at hfnv; obtain ⟨rfl, rfl, rfl⟩ := hfnv
+      simp [ExprAddrListWF] at hwf; exact hwf.1
+
+private theorem ExprAddrPropListWF_append {l1 l2 : List (Core.PropName × Core.Expr)} {n} :
+    ExprAddrPropListWF (l1 ++ l2) n ↔ ExprAddrPropListWF l1 n ∧ ExprAddrPropListWF l2 n := by
+  induction l1 with
+  | nil => simp [ExprAddrPropListWF]
+  | cons p tl ih =>
+    obtain ⟨pn, pe⟩ := p
+    simp only [List.cons_append, ExprAddrPropListWF]
+    rw [ih]; constructor
+    · intro ⟨h1, h2, h3⟩; exact ⟨⟨h1, h2⟩, h3⟩
+    · intro ⟨⟨h1, h2⟩, h3⟩; exact ⟨h1, h2, h3⟩
+
+private theorem ExprAddrListWF_append {l1 l2 : List Core.Expr} {n} :
+    ExprAddrListWF (l1 ++ l2) n ↔ ExprAddrListWF l1 n ∧ ExprAddrListWF l2 n := by
+  induction l1 with
+  | nil => simp [ExprAddrListWF]
+  | cons e tl ih =>
+    simp only [List.cons_append, ExprAddrListWF]
+    rw [ih]; constructor
+    · intro ⟨h1, h2, h3⟩; exact ⟨⟨h1, h2⟩, h3⟩
+    · intro ⟨⟨h1, h2⟩, h3⟩; exact ⟨h1, h2, h3⟩
+
+private theorem ExprAddrPropListWF_firstNonValueProp_reconstruct
+    {props : List (Core.PropName × Core.Expr)} {done propName target rest n m}
+    (hfnv : Core.firstNonValueProp props = some (done, propName, target, rest))
+    (hwf : ExprAddrPropListWF props n) (hwf_new : ExprAddrWF target' m)
+    (hn_le_m : n ≤ m) :
+    ExprAddrPropListWF (done ++ [(propName, target')] ++ rest) m := by
+  rw [ExprAddrPropListWF_append, ExprAddrPropListWF_append]
+  refine ⟨?_, ⟨hwf_new, trivial⟩, ?_⟩
+  · -- done: all lit values, WF mono
+    induction props generalizing done with
+    | nil => simp [Core.firstNonValueProp] at hfnv
+    | cons p tl ih =>
+      obtain ⟨pn, pe⟩ := p
+      unfold Core.firstNonValueProp at hfnv
+      split at hfnv
+      · -- pe = .lit _
+        split at hfnv
+        · next heq => simp at hfnv; obtain ⟨rfl, _, _, _⟩ := hfnv
+          simp [ExprAddrPropListWF] at hwf ⊢
+          exact ⟨ExprAddrWF_mono _ hwf.1 hn_le_m, ih heq hwf.2⟩
+        · simp at hfnv
+      · simp at hfnv; obtain ⟨rfl, _, _, _⟩ := hfnv; exact trivial
+  · -- rest: WF mono
+    induction props generalizing done with
+    | nil => simp [Core.firstNonValueProp] at hfnv
+    | cons p tl ih =>
+      obtain ⟨pn, pe⟩ := p
+      unfold Core.firstNonValueProp at hfnv
+      split at hfnv
+      · -- pe = .lit _
+        split at hfnv
+        · next heq => simp at hfnv; obtain ⟨_, _, _, rfl⟩ := hfnv
+          simp [ExprAddrPropListWF] at hwf
+          exact ih heq hwf.2
+        · simp at hfnv
+      · simp at hfnv; obtain ⟨_, _, _, rfl⟩ := hfnv
+        simp [ExprAddrPropListWF] at hwf
+        exact ExprAddrPropListWF_mono _ hwf.2 hn_le_m
+
+private theorem ExprAddrListWF_firstNonValueExpr_reconstruct
+    {es : List Core.Expr} {done target rest n m}
+    (hfnv : Core.firstNonValueExpr es = some (done, target, rest))
+    (hwf : ExprAddrListWF es n) (hwf_new : ExprAddrWF target' m)
+    (hn_le_m : n ≤ m) :
+    ExprAddrListWF (done ++ [target'] ++ rest) m := by
+  rw [ExprAddrListWF_append, ExprAddrListWF_append]
+  refine ⟨?_, ⟨hwf_new, trivial⟩, ?_⟩
+  · -- done: all lit values, WF mono
+    induction es generalizing done with
+    | nil => simp [Core.firstNonValueExpr] at hfnv
+    | cons e tl ih =>
+      unfold Core.firstNonValueExpr at hfnv
+      split at hfnv
+      · -- e = .lit _
+        split at hfnv
+        · next heq => simp at hfnv; obtain ⟨rfl, _, _⟩ := hfnv
+          simp [ExprAddrListWF] at hwf ⊢
+          exact ⟨ExprAddrWF_mono _ hwf.1 hn_le_m, ih heq hwf.2⟩
+        · simp at hfnv
+      · simp at hfnv; obtain ⟨rfl, _, _⟩ := hfnv; exact trivial
+  · -- rest: WF mono
+    induction es generalizing done with
+    | nil => simp [Core.firstNonValueExpr] at hfnv
+    | cons e tl ih =>
+      unfold Core.firstNonValueExpr at hfnv
+      split at hfnv
+      · -- e = .lit _
+        split at hfnv
+        · next heq => simp at hfnv; obtain ⟨_, _, rfl⟩ := hfnv
+          simp [ExprAddrListWF] at hwf
+          exact ih heq hwf.2
+        · simp at hfnv
+      · simp at hfnv; obtain ⟨_, _, rfl⟩ := hfnv
+        simp [ExprAddrListWF] at hwf
+        exact ExprAddrListWF_mono _ hwf.2 hn_le_m
 
 private theorem Core_step_heap_size_mono
     {s s' : Core.State} {t : Core.TraceEvent}
