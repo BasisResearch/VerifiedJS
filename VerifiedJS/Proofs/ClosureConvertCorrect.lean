@@ -3720,15 +3720,6 @@ private theorem closureConvert_step_simulation
           | object a => left; exact ⟨a, rfl⟩
           | string s => right; left; exact ⟨s, rfl⟩
           | _ => right; right; exact ⟨fun a => Core.Value.noConfusion, fun s => Core.Value.noConfusion⟩
-        -- For any value type: getIndex on two values doesn't change heap/env
-        -- Core result: .lit (lookup result), trace += [.silent]
-        -- Flat result: .lit (coreToFlatValue (lookup result)), trace += [.silent]
-        -- Since coreToFlatValue = convertValue, the results agree
-        have hno_core : (∃ addr, cv = .object addr) ∨ (∃ str, cv = .string str) ∨ ((∀ a, cv ≠ .object a) ∧ (∀ str, cv ≠ .string str)) := by
-          cases cv with
-          | object a => left; exact ⟨a, rfl⟩
-          | string s => right; left; exact ⟨s, rfl⟩
-          | _ => right; right; exact ⟨fun a => Core.Value.noConfusion, fun s => Core.Value.noConfusion⟩
         rcases hno_core with ⟨addr, rfl⟩ | ⟨str, rfl⟩ | ⟨hno, hns⟩
         · sorry -- getIndex object both-values: heap lookup via HeapInj
         · sorry -- getIndex string both-values: string indexing
