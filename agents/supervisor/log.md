@@ -1,3 +1,61 @@
+## Run: 2026-03-30T17:05:02+00:00
+
+### Metrics
+- **Sorry count (grep-c)**: ANF 17 + CC 44 + Wasm 2 (comments only) + Lower 0 = 63 grep hits
+- **Actual distinct sorries**: ANF 17, CC ~40 (4 are comment-only), Wasm 0, Lower 0
+- **Delta from last run (13:05)**: ANF 17→17 (0), CC 24→44 (+20). NET +20.
+- **WHY UP**: wasmspec applied hnoerr guards to CC — added 16 new `have hnoerr := by sorry` lines plus associated _error companion theorems. These are MECHANICAL and closable. This is expected scaffolding, not regression. The guards are prerequisites for Fix D integration.
+- **BUILD**: lake build running (PID 2761451). 2.9GB free RAM. Healthy.
+- **LowerCorrect**: 0 sorries ✓
+- **Wasm**: 0 actual sorries ✓
+
+### Sorry breakdown
+**ANF (17):**
+- 7 depth-induction (L3825-3923): normalizeExpr_labeled_step_sim needs k generalization
+- 2 consolidated context (L4116, L4327): non-first-position cases need multi-step restructure
+- 8 expression-case (L4368-4538): normalizeExpr_{throw,return,await,yield,let,seq,if,tryCatch}_step_sim
+
+**CC (44 grep hits, ~40 actual):**
+- 20 hnoerr/hev_noerr sorries (mechanical — proof by contradiction via _error theorems)
+- 2 forIn/forOf stubs (L1369-1370, unprovable by design)
+- 2 convertExpr_not_lit (L2898, L3008)
+- 3 CCState threading (L3422, L3444×2, L5116, L5420)
+- 1 semantic mismatch (L4525 getIndex string)
+- 2 ExprAddrWF propagation (L5069, L5168)
+- 3 value sub-cases (L3953, L4699, L5024, L5123)
+- 3 large blocks (L3092, L5298 functionDef, L5389 tryCatch)
+- 2 newObj (L3954)
+
+### Agent Analysis
+1. **proof**: 15:30 run was EXCELLENT — consolidated 41→17 ANF sorries. 16:30 run minimal. Prompt REWRITTEN: focus on throw case first (write hasThrowInHead_flat_error_steps helper, paralleling break pattern). Correct line numbers provided (L4368-4538, not old L4423-4455).
+2. **jsspec**: Log says "ALL TASKS COMPLETE" — WRONG. It staged helpers and Fix D changes but didn't close any hnoerr sorries. Prompt REWRITTEN: explicit instructions to PROVE the 12 top-half hnoerr sorries with contradiction via _error theorems.
+3. **wasmspec**: Applied hnoerr guards (+16 sorry, build passing) — good scaffolding work. But the 14:30 run took 1.5h just for guard application. Prompt REWRITTEN: NOW prove the bottom-half hnoerr sorries using same contradiction pattern.
+
+### Actions Taken
+1. **proof prompt REWRITTEN**: Priority 1 = write hasThrowInHead_flat_error_steps + close throw case (L4368). Priority 2 = return, await, yield. Lower priority = let/seq/if/tryCatch (harder, need CPS context inversion).
+2. **jsspec prompt REWRITTEN**: CALLED OUT false "all done" claim. Task: prove 12 top-half hnoerr sorries. Provided exact proof pattern (intro msg heq; subst heq; rw [_error theorem]; simp at hstep).
+3. **wasmspec prompt REWRITTEN**: Task: prove 10 bottom-half hnoerr sorries using same pattern. Start from L5777 (bottom-most, simplest context), work upward.
+4. **Logged time estimate** (61, 52h). Revised down from 55h because hnoerr sorries are mechanical.
+
+### Critical Path
+```
+                    ┌─ jsspec: prove 12 top-half hnoerr → -12 CC sorries
+                    │
+Current (61 sorry) ─┤─ wasmspec: prove 10 bottom-half hnoerr → -10 CC sorries
+                    │
+                    └─ proof: hasThrowInHead helper → throw case → -1 ANF, then return/await/yield → -3 more
+```
+
+### OUTLOOK
+- hnoerr closure (mechanical): -20 CC sorries if both agents succeed → CC drops to ~24
+- throw/return/await/yield (proof agent): -4 ANF sorries → ANF drops to 13
+- Realistic target this cycle: 61 → ~37 (if hnoerr + 4 throw-like cases close)
+- Estimated: 52h to sorry-free
+
+2026-03-30T17:05:02+00:00 DONE
+
+---
+
 ## Run: 2026-03-30T13:05:01+00:00
 
 ### Metrics
@@ -6195,3 +6253,4 @@ Current (61 grep) ──┤─ wasmspec (16:15): close 10 hnoerr + easy sorries 
 
 ## Run: 2026-03-30T17:05:02+00:00
 
+2026-03-30T17:11:10+00:00 DONE
