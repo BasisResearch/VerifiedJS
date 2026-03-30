@@ -3436,42 +3436,61 @@ private theorem anfConvert_step_star
       intro t n' m' hkt
       obtain ⟨m'', htriv⟩ := hk_triv t n'
       rw [htriv] at hkt; cases hkt
-    rcases ANF.normalizeExpr_break_or_k sf.expr k label n m hnorm_simp with
-      hbreak | ⟨t_k, n_k, m_k, hkt⟩
-    · generalize hge : sf.expr = e_flat at hbreak
-      cases hbreak with
-      | break_direct =>
-        have hflat_step : Flat.step? sf =
+    have hbreak_head := ANF.normalizeExpr_break_implies_hasBreakInHead sf.expr k hk_triv label n m hnorm_simp
+    generalize hge : sf.expr = e_flat at hbreak_head hnorm_simp hewf
+    cases hbreak_head with
+    | break_direct =>
+      have hsf_eq : sf = { sf with expr := .break label } := by cases sf; simp [hge]
+      have hflat_step : Flat.step? sf =
           some (.error ("break:" ++ (label.getD "")),
-                Flat.pushTrace { sf with expr := .lit .undefined } (.error ("break:" ++ (label.getD "")))) := by
-          have : sf = { sf with expr := .break label } := by cases sf; simp_all
-          rw [this]; simp [Flat.step?]
-        refine ⟨Flat.pushTrace { sf with expr := .lit .undefined } (.error ("break:" ++ (label.getD ""))),
-                [.error ("break:" ++ (label.getD ""))],
-                Flat.Steps.tail (Flat.Step.mk hflat_step) (Flat.Steps.refl _), ?_, ?_, ?_⟩
-        · simp [observableTrace_error, observableTrace_nil]
-        · refine ⟨?_, ?_, ?_, fun t => pure (.trivial t), n, n, ?_, ANF.trivial_k_preserving⟩
-          · simp [Flat.pushTrace]; rw [hheap]
-          · simp [Flat.pushTrace]; rw [henv]
-          · simp [Flat.pushTrace, observableTrace_append, observableTrace_error, observableTrace_nil]
-            rw [htrace]
-          · exact ANF.normalizeExpr_lit_undefined_trivial n
-        · simp [Flat.pushTrace]; intro x hfx; cases hfx
-      | seq_left h => sorry
-      | seq_right h => sorry
-      | let_init h => sorry
-      | getProp_obj h => sorry
-      | setProp_obj h => sorry
-      | setProp_val h => sorry
-      | binary_lhs h => sorry
-      | binary_rhs h => sorry
-      | unary_arg h => sorry
-      | typeof_arg h => sorry
-      | deleteProp_obj h => sorry
-      | assign_val h => sorry
-      | call_func h => sorry
-      | call_env h => sorry
-    · exact absurd hkt (hk_no_break t_k n_k m_k)
+                { sf with expr := .lit .undefined,
+                         trace := sf.trace ++ [.error ("break:" ++ (label.getD ""))] }) := by
+        conv_lhs => rw [hsf_eq]
+        exact Flat.step?_break_eq _ label
+      refine ⟨{ sf with expr := .lit .undefined, trace := sf.trace ++ [.error ("break:" ++ (label.getD ""))] },
+              [.error ("break:" ++ (label.getD ""))],
+              Flat.Steps.tail (Flat.Step.mk hflat_step) (Flat.Steps.refl _), ?_, ?_, ?_⟩
+      · simp [observableTrace_error, observableTrace_nil]
+      · refine ⟨?_, ?_, ?_, fun t => pure (.trivial t), n, n, ?_, ANF.trivial_k_preserving⟩
+        · simp; rw [hheap]
+        · simp; rw [henv]
+        · simp [observableTrace_append, observableTrace_error, observableTrace_nil]
+          rw [htrace]
+        · exact ANF.normalizeExpr_lit_undefined_trivial n
+      · simp; intro x hfx; cases hfx
+    | seq_left h => sorry
+    | seq_right h => sorry
+    | let_init h => sorry
+    | getProp_obj h => sorry
+    | setProp_obj h => sorry
+    | setProp_val h => sorry
+    | binary_lhs h => sorry
+    | binary_rhs h => sorry
+    | unary_arg h => sorry
+    | typeof_arg h => sorry
+    | deleteProp_obj h => sorry
+    | assign_val h => sorry
+    | call_func h => sorry
+    | call_env h => sorry
+    | call_args h => sorry
+    | newObj_func h => sorry
+    | newObj_env h => sorry
+    | newObj_args h => sorry
+    | if_cond h => sorry
+    | throw_arg h => sorry
+    | return_some_arg h => sorry
+    | yield_some_arg h => sorry
+    | await_arg h => sorry
+    | getIndex_obj h => sorry
+    | getIndex_idx h => sorry
+    | setIndex_obj h => sorry
+    | setIndex_idx h => sorry
+    | setIndex_val h => sorry
+    | getEnv_env h => sorry
+    | makeClosure_env h => sorry
+    | makeEnv_values h => sorry
+    | objectLit_props h => sorry
+    | arrayLit_elems h => sorry
   | «continue» label =>
     obtain ⟨sa_expr, sa_env, sa_heap, sa_trace⟩ := sa
     simp only [] at hsa; subst hsa
@@ -3484,42 +3503,61 @@ private theorem anfConvert_step_star
       intro t n' m' hkt
       obtain ⟨m'', htriv⟩ := hk_triv t n'
       rw [htriv] at hkt; cases hkt
-    rcases ANF.normalizeExpr_continue_or_k sf.expr k label n m hnorm_simp with
-      hcont | ⟨t_k, n_k, m_k, hkt⟩
-    · generalize hge' : sf.expr = e_flat' at hcont
-      cases hcont with
-      | continue_direct =>
-        have hflat_step : Flat.step? sf =
+    have hcont_head := ANF.normalizeExpr_continue_implies_hasContinueInHead sf.expr k hk_triv label n m hnorm_simp
+    generalize hge' : sf.expr = e_flat' at hcont_head hnorm_simp hewf
+    cases hcont_head with
+    | continue_direct =>
+      have hsf_eq : sf = { sf with expr := .continue label } := by cases sf; simp [hge']
+      have hflat_step : Flat.step? sf =
           some (.error ("continue:" ++ (label.getD "")),
-                Flat.pushTrace { sf with expr := .lit .undefined } (.error ("continue:" ++ (label.getD "")))) := by
-          have : sf = { sf with expr := .continue label } := by cases sf; simp_all
-          rw [this]; simp [Flat.step?]
-        refine ⟨Flat.pushTrace { sf with expr := .lit .undefined } (.error ("continue:" ++ (label.getD ""))),
-                [.error ("continue:" ++ (label.getD ""))],
-                Flat.Steps.tail (Flat.Step.mk hflat_step) (Flat.Steps.refl _), ?_, ?_, ?_⟩
-        · simp [observableTrace_error, observableTrace_nil]
-        · refine ⟨?_, ?_, ?_, fun t => pure (.trivial t), n, n, ?_, ANF.trivial_k_preserving⟩
-          · simp [Flat.pushTrace]; rw [hheap]
-          · simp [Flat.pushTrace]; rw [henv]
-          · simp [Flat.pushTrace, observableTrace_append, observableTrace_error, observableTrace_nil]
-            rw [htrace]
-          · exact ANF.normalizeExpr_lit_undefined_trivial n
-        · simp [Flat.pushTrace]; intro x hfx; cases hfx
-      | seq_left h => sorry
-      | seq_right h => sorry
-      | let_init h => sorry
-      | getProp_obj h => sorry
-      | setProp_obj h => sorry
-      | setProp_val h => sorry
-      | binary_lhs h => sorry
-      | binary_rhs h => sorry
-      | unary_arg h => sorry
-      | typeof_arg h => sorry
-      | deleteProp_obj h => sorry
-      | assign_val h => sorry
-      | call_func h => sorry
-      | call_env h => sorry
-    · exact absurd hkt (hk_no_cont t_k n_k m_k)
+                { sf with expr := .lit .undefined,
+                         trace := sf.trace ++ [.error ("continue:" ++ (label.getD ""))] }) := by
+        conv_lhs => rw [hsf_eq]
+        exact Flat.step?_continue_eq _ label
+      refine ⟨{ sf with expr := .lit .undefined, trace := sf.trace ++ [.error ("continue:" ++ (label.getD ""))] },
+              [.error ("continue:" ++ (label.getD ""))],
+              Flat.Steps.tail (Flat.Step.mk hflat_step) (Flat.Steps.refl _), ?_, ?_, ?_⟩
+      · simp [observableTrace_error, observableTrace_nil]
+      · refine ⟨?_, ?_, ?_, fun t => pure (.trivial t), n, n, ?_, ANF.trivial_k_preserving⟩
+        · simp; rw [hheap]
+        · simp; rw [henv]
+        · simp [observableTrace_append, observableTrace_error, observableTrace_nil]
+          rw [htrace]
+        · exact ANF.normalizeExpr_lit_undefined_trivial n
+      · simp; intro x hfx; cases hfx
+    | seq_left h => sorry
+    | seq_right h => sorry
+    | let_init h => sorry
+    | getProp_obj h => sorry
+    | setProp_obj h => sorry
+    | setProp_val h => sorry
+    | binary_lhs h => sorry
+    | binary_rhs h => sorry
+    | unary_arg h => sorry
+    | typeof_arg h => sorry
+    | deleteProp_obj h => sorry
+    | assign_val h => sorry
+    | call_func h => sorry
+    | call_env h => sorry
+    | call_args h => sorry
+    | newObj_func h => sorry
+    | newObj_env h => sorry
+    | newObj_args h => sorry
+    | if_cond h => sorry
+    | throw_arg h => sorry
+    | return_some_arg h => sorry
+    | yield_some_arg h => sorry
+    | await_arg h => sorry
+    | getIndex_obj h => sorry
+    | getIndex_idx h => sorry
+    | setIndex_obj h => sorry
+    | setIndex_idx h => sorry
+    | setIndex_val h => sorry
+    | getEnv_env h => sorry
+    | makeClosure_env h => sorry
+    | makeEnv_values h => sorry
+    | objectLit_props h => sorry
+    | arrayLit_elems h => sorry
 
 /-- Auxiliary halt_star with strong induction on Flat expression depth.
     When ANF reaches a terminal state (step? = none), Flat can also reach a

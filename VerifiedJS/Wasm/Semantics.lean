@@ -5435,19 +5435,13 @@ theorem irMultiStep_i32Const_drop (s : IRExecState) (v : String) (n : Nat) (rest
       s'.code = rest ∧ s'.stack = s.stack ∧
       s'.frames = s.frames ∧ s'.labels = s.labels ∧
       s'.module = s.module ∧ s'.globals = s.globals := by
-  -- Step 1: i32.const pushes value
-  have hstep1 := irStep?_eq_i32Const s v n (.drop :: rest)
-    (by simp [hcode]) hv
-  -- Intermediate state
-  set s_mid : IRExecState := { s with
-    code := IRInstr.drop :: rest
-    stack := .i32 n.toUInt32 :: s.stack
-    trace := s.trace ++ [TraceEvent.silent] } with hs_mid
-  -- Step 2: drop pops the value
-  have hstep2 := irStep?_eq_drop s_mid rest (.i32 n.toUInt32) s.stack
-    (by simp [hs_mid]) (by simp [hs_mid])
-  refine ⟨_, IRSteps_trans (IRSteps_of_irStep? hstep1) (IRSteps_of_irStep? hstep2),
-    ?_, ?_, ?_, ?_, ?_, ?_⟩ <;> simp [hs_mid]
+  have hstep1 := IRStep_of_irStep? (irStep?_eq_i32Const s v n (.drop :: rest) hcode hv)
+  have hstep2 := IRStep_of_irStep? (irStep?_eq_drop
+    { s with code := IRInstr.drop :: rest,
+             stack := .i32 n.toUInt32 :: s.stack,
+             trace := s.trace ++ [TraceEvent.silent] }
+    rest (.i32 n.toUInt32) s.stack rfl rfl)
+  exact ⟨_, .tail hstep1 (.tail hstep2 (.refl _)), rfl, rfl, rfl, rfl, rfl, rfl⟩
 
 /-- f64.const followed by drop: two silent IR steps, net effect is advancing past both
     instructions with stack, frames, labels, module all preserved. -/
@@ -5457,17 +5451,13 @@ theorem irMultiStep_f64Const_drop (s : IRExecState) (v : String) (rest : List IR
       s'.code = rest ∧ s'.stack = s.stack ∧
       s'.frames = s.frames ∧ s'.labels = s.labels ∧
       s'.module = s.module ∧ s'.globals = s.globals := by
-  have hstep1 := irStep?_eq_f64Const s v (.drop :: rest)
-    (by simp [hcode])
-  set s_mid : IRExecState := { s with
-    code := IRInstr.drop :: rest
-    stack := .f64 (v.toNat?.map (fun m => Float.ofNat m) |>.getD 0.0) :: s.stack
-    trace := s.trace ++ [TraceEvent.silent] } with hs_mid
-  have hstep2 := irStep?_eq_drop s_mid rest
-    (.f64 (v.toNat?.map (fun m => Float.ofNat m) |>.getD 0.0)) s.stack
-    (by simp [hs_mid]) (by simp [hs_mid])
-  refine ⟨_, IRSteps_trans (IRSteps_of_irStep? hstep1) (IRSteps_of_irStep? hstep2),
-    ?_, ?_, ?_, ?_, ?_, ?_⟩ <;> simp [hs_mid]
+  have hstep1 := IRStep_of_irStep? (irStep?_eq_f64Const s v (.drop :: rest) hcode)
+  have hstep2 := IRStep_of_irStep? (irStep?_eq_drop
+    { s with code := IRInstr.drop :: rest,
+             stack := .f64 (v.toNat?.map (fun m => Float.ofNat m) |>.getD 0.0) :: s.stack,
+             trace := s.trace ++ [TraceEvent.silent] }
+    rest (.f64 (v.toNat?.map (fun m => Float.ofNat m) |>.getD 0.0)) s.stack rfl rfl)
+  exact ⟨_, .tail hstep1 (.tail hstep2 (.refl _)), rfl, rfl, rfl, rfl, rfl, rfl⟩
 
 /-! ### Inhabitedness Examples -/
 
