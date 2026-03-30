@@ -895,8 +895,6 @@ def step? (s : State) : Option (Core.TraceEvent × State) :=
               have : Expr.depth target < Expr.depth s.expr := by
                 rw [h]; simp [Expr.depth]; have := firstNonValueExpr_depth hf; omega
               match step? { s with expr := target } with
-              | some (.error msg, se) =>
-                  some (.error msg, pushTrace { s with expr := .lit .undefined, env := se.env, heap := se.heap } (.error msg))
               | some (t, se) =>
                   let s' := pushTrace { s with expr := .makeEnv (done ++ [se.expr] ++ remaining), env := se.env, heap := se.heap } t
                   some (t, s')
@@ -917,8 +915,6 @@ def step? (s : State) : Option (Core.TraceEvent × State) :=
               have : Expr.depth target < Expr.depth s.expr := by
                 rw [h]; simp [Expr.depth]; have := firstNonValueProp_depth hf; omega
               match step? { s with expr := target } with
-              | some (.error msg, se) =>
-                  some (.error msg, pushTrace { s with expr := .lit .undefined, env := se.env, heap := se.heap } (.error msg))
               | some (t, se) =>
                   let s' := pushTrace { s with expr := .objectLit (done ++ [(propName, se.expr)] ++ remaining), env := se.env, heap := se.heap } t
                   some (t, s')
@@ -938,8 +934,6 @@ def step? (s : State) : Option (Core.TraceEvent × State) :=
               have : Expr.depth target < Expr.depth s.expr := by
                 rw [h]; simp [Expr.depth]; have := firstNonValueExpr_depth hf; omega
               match step? { s with expr := target } with
-              | some (.error msg, se) =>
-                  some (.error msg, pushTrace { s with expr := .lit .undefined, env := se.env, heap := se.heap } (.error msg))
               | some (t, se) =>
                   let s' := pushTrace { s with expr := .arrayLit (done ++ [se.expr] ++ remaining), env := se.env, heap := se.heap } t
                   some (t, s')
@@ -1034,8 +1028,6 @@ def step? (s : State) : Option (Core.TraceEvent × State) :=
               some (.error ("return:" ++ valueToString v), s')
           | none =>
               match step? { s with expr := e } with
-              | some (.error msg, se) =>
-                  some (.error msg, pushTrace { s with expr := .lit .undefined, env := se.env, heap := se.heap } (.error msg))
               | some (t, se) =>
                   let s' := pushTrace { s with expr := .«return» (some se.expr), env := se.env, heap := se.heap } t
                   some (t, s')
@@ -1052,8 +1044,6 @@ def step? (s : State) : Option (Core.TraceEvent × State) :=
               some (.silent, s')
           | none =>
               match step? { s with expr := e } with
-              | some (.error msg, se) =>
-                  some (.error msg, pushTrace { s with expr := .lit .undefined, env := se.env, heap := se.heap } (.error msg))
               | some (t, se) =>
                   let s' := pushTrace
                     { s with expr := .yield (some se.expr) delegate, env := se.env, heap := se.heap } t
@@ -1066,8 +1056,6 @@ def step? (s : State) : Option (Core.TraceEvent × State) :=
           some (.silent, s')
       | none =>
           match step? { s with expr := arg } with
-          | some (.error msg, sa) =>
-              some (.error msg, pushTrace { s with expr := .lit .undefined, env := sa.env, heap := sa.heap } (.error msg))
           | some (t, sa) =>
               let s' := pushTrace { s with expr := .await sa.expr, env := sa.env, heap := sa.heap } t
               some (t, s')

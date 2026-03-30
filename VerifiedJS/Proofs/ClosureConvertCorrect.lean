@@ -1634,16 +1634,11 @@ private theorem Flat_step?_throw_step (s : Flat.State) (fe : Flat.Expr)
 private theorem Core_step?_throw_step (s : Core.State) (e : Core.Expr)
     (hnv : Core.exprValue? e = none)
     (t : Core.TraceEvent) (sa : Core.State)
-    (hss : Core.step? { s with expr := e } = some (t, sa))
-    (hnoerr : ∀ msg, t ≠ .error msg) :
+    (hss : Core.step? { s with expr := e } = some (t, sa)) :
     Core.step? { s with expr := .throw e } =
       some (t, { expr := .throw sa.expr, env := sa.env, heap := sa.heap,
                  trace := s.trace ++ [t], funcs := sa.funcs, callStack := sa.callStack }) := by
-  simp only [Core.step?, hnv, hss]
-  cases t with
-  | error msg => exact absurd rfl (hnoerr msg)
-  | log _ => simp [Core.pushTrace]
-  | silent => simp [Core.pushTrace]
+  simp [Core.step?, hnv, hss, Core.pushTrace]
 
 private theorem Flat_step?_return_some_step (s : Flat.State) (fe : Flat.Expr)
     (hnv : Flat.exprValue? fe = none)
@@ -1662,16 +1657,11 @@ private theorem Flat_step?_return_some_step (s : Flat.State) (fe : Flat.Expr)
 private theorem Core_step?_return_some_step (s : Core.State) (e : Core.Expr)
     (hnv : Core.exprValue? e = none)
     (t : Core.TraceEvent) (sa : Core.State)
-    (hss : Core.step? { s with expr := e } = some (t, sa))
-    (hnoerr : ∀ msg, t ≠ .error msg) :
+    (hss : Core.step? { s with expr := e } = some (t, sa)) :
     Core.step? { s with expr := .«return» (some e) } =
       some (t, { expr := .«return» (some sa.expr), env := sa.env, heap := sa.heap,
                  trace := s.trace ++ [t], funcs := sa.funcs, callStack := sa.callStack }) := by
-  simp only [Core.step?, hnv, hss]
-  cases t with
-  | error msg => exact absurd rfl (hnoerr msg)
-  | log _ => simp [Core.pushTrace]
-  | silent => simp [Core.pushTrace]
+  simp [Core.step?, hnv, hss, Core.pushTrace]
 
 private theorem Flat_step?_yield_some_step (s : Flat.State) (fe : Flat.Expr) (delegate : Bool)
     (hnv : Flat.exprValue? fe = none)
@@ -1690,16 +1680,11 @@ private theorem Flat_step?_yield_some_step (s : Flat.State) (fe : Flat.Expr) (de
 private theorem Core_step?_yield_some_step (s : Core.State) (e : Core.Expr) (delegate : Bool)
     (hnv : Core.exprValue? e = none)
     (t : Core.TraceEvent) (sa : Core.State)
-    (hss : Core.step? { s with expr := e } = some (t, sa))
-    (hnoerr : ∀ msg, t ≠ .error msg) :
+    (hss : Core.step? { s with expr := e } = some (t, sa)) :
     Core.step? { s with expr := .yield (some e) delegate } =
       some (t, { expr := .yield (some sa.expr) delegate, env := sa.env, heap := sa.heap,
                  trace := s.trace ++ [t], funcs := sa.funcs, callStack := sa.callStack }) := by
-  simp only [Core.step?, hnv, hss]
-  cases t with
-  | error msg => exact absurd rfl (hnoerr msg)
-  | log _ => simp [Core.pushTrace]
-  | silent => simp [Core.pushTrace]
+  simp [Core.step?, hnv, hss, Core.pushTrace]
 
 private theorem Flat_step?_await_step (s : Flat.State) (fe : Flat.Expr)
     (hnv : Flat.exprValue? fe = none)
@@ -1718,16 +1703,11 @@ private theorem Flat_step?_await_step (s : Flat.State) (fe : Flat.Expr)
 private theorem Core_step?_await_step (s : Core.State) (e : Core.Expr)
     (hnv : Core.exprValue? e = none)
     (t : Core.TraceEvent) (sa : Core.State)
-    (hss : Core.step? { s with expr := e } = some (t, sa))
-    (hnoerr : ∀ msg, t ≠ .error msg) :
+    (hss : Core.step? { s with expr := e } = some (t, sa)) :
     Core.step? { s with expr := .await e } =
       some (t, { expr := .await sa.expr, env := sa.env, heap := sa.heap,
                  trace := s.trace ++ [t], funcs := sa.funcs, callStack := sa.callStack }) := by
-  simp only [Core.step?, hnv, hss]
-  cases t with
-  | error msg => exact absurd rfl (hnoerr msg)
-  | log _ => simp [Core.pushTrace]
-  | silent => simp [Core.pushTrace]
+  simp [Core.step?, hnv, hss, Core.pushTrace]
 
 private theorem Flat_step?_unary_value (s : Flat.State) (op : Core.UnaryOp) (fv : Flat.Value) :
     Flat.step? { s with expr := .unary op (.lit fv) } =
@@ -1772,16 +1752,11 @@ private theorem Flat_step?_unary_step (s : Flat.State) (op : Core.UnaryOp) (fe :
 private theorem Core_step?_unary_step (s : Core.State) (op : Core.UnaryOp) (e : Core.Expr)
     (hnv : Core.exprValue? e = none)
     (t : Core.TraceEvent) (sa : Core.State)
-    (hss : Core.step? { s with expr := e } = some (t, sa))
-    (hnoerr : ∀ msg, t ≠ .error msg) :
+    (hss : Core.step? { s with expr := e } = some (t, sa)) :
     Core.step? { s with expr := .unary op e } =
       some (t, { expr := .unary op sa.expr, env := sa.env, heap := sa.heap,
                  trace := s.trace ++ [t], funcs := sa.funcs, callStack := sa.callStack }) := by
-  simp only [Core.step?, hnv, hss]
-  cases t with
-  | error msg => exact absurd rfl (hnoerr msg)
-  | log _ => simp [Core.pushTrace]
-  | silent => simp [Core.pushTrace]
+  simp [Core.step?, hnv, hss, Core.pushTrace]
 
 private theorem Flat_step?_typeof_step (s : Flat.State) (fe : Flat.Expr)
     (hnv : Flat.exprValue? fe = none)
@@ -1800,16 +1775,11 @@ private theorem Flat_step?_typeof_step (s : Flat.State) (fe : Flat.Expr)
 private theorem Core_step?_typeof_step (s : Core.State) (e : Core.Expr)
     (hnv : Core.exprValue? e = none)
     (t : Core.TraceEvent) (sa : Core.State)
-    (hss : Core.step? { s with expr := e } = some (t, sa))
-    (hnoerr : ∀ msg, t ≠ .error msg) :
+    (hss : Core.step? { s with expr := e } = some (t, sa)) :
     Core.step? { s with expr := .typeof e } =
       some (t, { expr := .typeof sa.expr, env := sa.env, heap := sa.heap,
                  trace := s.trace ++ [t], funcs := sa.funcs, callStack := sa.callStack }) := by
-  simp only [Core.step?, hnv, hss]
-  cases t with
-  | error msg => exact absurd rfl (hnoerr msg)
-  | log _ => simp [Core.pushTrace]
-  | silent => simp [Core.pushTrace]
+  simp [Core.step?, hnv, hss, Core.pushTrace]
 
 private theorem Flat_step?_assign_step (s : Flat.State) (name : String) (fe : Flat.Expr)
     (hnv : Flat.exprValue? fe = none)
@@ -1828,16 +1798,11 @@ private theorem Flat_step?_assign_step (s : Flat.State) (name : String) (fe : Fl
 private theorem Core_step?_assign_step (s : Core.State) (name : String) (e : Core.Expr)
     (hnv : Core.exprValue? e = none)
     (t : Core.TraceEvent) (sa : Core.State)
-    (hss : Core.step? { s with expr := e } = some (t, sa))
-    (hnoerr : ∀ msg, t ≠ .error msg) :
+    (hss : Core.step? { s with expr := e } = some (t, sa)) :
     Core.step? { s with expr := .assign name e } =
       some (t, { expr := .assign name sa.expr, env := sa.env, heap := sa.heap,
                  trace := s.trace ++ [t], funcs := sa.funcs, callStack := sa.callStack }) := by
-  simp only [Core.step?, hnv, hss]
-  cases t with
-  | error msg => exact absurd rfl (hnoerr msg)
-  | log _ => simp [Core.pushTrace]
-  | silent => simp [Core.pushTrace]
+  simp [Core.step?, hnv, hss, Core.pushTrace]
 
 private theorem Flat_step?_deleteProp_step (s : Flat.State) (prop : Core.PropName) (fe : Flat.Expr)
     (hnv : Flat.exprValue? fe = none)
@@ -1856,16 +1821,11 @@ private theorem Flat_step?_deleteProp_step (s : Flat.State) (prop : Core.PropNam
 private theorem Core_step?_deleteProp_step (s : Core.State) (prop : Core.PropName) (e : Core.Expr)
     (hnv : Core.exprValue? e = none)
     (t : Core.TraceEvent) (sa : Core.State)
-    (hss : Core.step? { s with expr := e } = some (t, sa))
-    (hnoerr : ∀ msg, t ≠ .error msg) :
+    (hss : Core.step? { s with expr := e } = some (t, sa)) :
     Core.step? { s with expr := .deleteProp e prop } =
       some (t, { expr := .deleteProp sa.expr prop, env := sa.env, heap := sa.heap,
                  trace := s.trace ++ [t], funcs := sa.funcs, callStack := sa.callStack }) := by
-  simp only [Core.step?, hnv, hss]
-  cases t with
-  | error msg => exact absurd rfl (hnoerr msg)
-  | log _ => simp [Core.pushTrace]
-  | silent => simp [Core.pushTrace]
+  simp [Core.step?, hnv, hss, Core.pushTrace]
 
 private theorem Flat_step?_getProp_step (s : Flat.State) (prop : Core.PropName) (fe : Flat.Expr)
     (hnv : Flat.exprValue? fe = none)
@@ -1884,16 +1844,11 @@ private theorem Flat_step?_getProp_step (s : Flat.State) (prop : Core.PropName) 
 private theorem Core_step?_getProp_step (s : Core.State) (prop : Core.PropName) (e : Core.Expr)
     (hnv : Core.exprValue? e = none)
     (t : Core.TraceEvent) (sa : Core.State)
-    (hss : Core.step? { s with expr := e } = some (t, sa))
-    (hnoerr : ∀ msg, t ≠ .error msg) :
+    (hss : Core.step? { s with expr := e } = some (t, sa)) :
     Core.step? { s with expr := .getProp e prop } =
       some (t, { expr := .getProp sa.expr prop, env := sa.env, heap := sa.heap,
                  trace := s.trace ++ [t], funcs := sa.funcs, callStack := sa.callStack }) := by
-  simp only [Core.step?, hnv, hss]
-  cases t with
-  | error msg => exact absurd rfl (hnoerr msg)
-  | log _ => simp [Core.pushTrace]
-  | silent => simp [Core.pushTrace]
+  simp [Core.step?, hnv, hss, Core.pushTrace]
 
 private theorem Flat_step?_getIndex_step (s : Flat.State) (idx : Flat.Expr) (fe : Flat.Expr)
     (hnv : Flat.exprValue? fe = none)
@@ -1912,16 +1867,11 @@ private theorem Flat_step?_getIndex_step (s : Flat.State) (idx : Flat.Expr) (fe 
 private theorem Core_step?_getIndex_step (s : Core.State) (idx : Core.Expr) (e : Core.Expr)
     (hnv : Core.exprValue? e = none)
     (t : Core.TraceEvent) (sa : Core.State)
-    (hss : Core.step? { s with expr := e } = some (t, sa))
-    (hnoerr : ∀ msg, t ≠ .error msg) :
+    (hss : Core.step? { s with expr := e } = some (t, sa)) :
     Core.step? { s with expr := .getIndex e idx } =
       some (t, { expr := .getIndex sa.expr idx, env := sa.env, heap := sa.heap,
                  trace := s.trace ++ [t], funcs := sa.funcs, callStack := sa.callStack }) := by
-  simp only [Core.step?, hnv, hss]
-  cases t with
-  | error msg => exact absurd rfl (hnoerr msg)
-  | log _ => simp [Core.pushTrace]
-  | silent => simp [Core.pushTrace]
+  simp [Core.step?, hnv, hss, Core.pushTrace]
 
 private theorem Flat_step?_setProp_obj_step (s : Flat.State) (prop : Core.PropName) (value : Flat.Expr) (fe : Flat.Expr)
     (hnv : Flat.exprValue? fe = none)
@@ -1940,16 +1890,11 @@ private theorem Flat_step?_setProp_obj_step (s : Flat.State) (prop : Core.PropNa
 private theorem Core_step?_setProp_obj_step (s : Core.State) (prop : Core.PropName) (value : Core.Expr) (e : Core.Expr)
     (hnv : Core.exprValue? e = none)
     (t : Core.TraceEvent) (sa : Core.State)
-    (hss : Core.step? { s with expr := e } = some (t, sa))
-    (hnoerr : ∀ msg, t ≠ .error msg) :
+    (hss : Core.step? { s with expr := e } = some (t, sa)) :
     Core.step? { s with expr := .setProp e prop value } =
       some (t, { expr := .setProp sa.expr prop value, env := sa.env, heap := sa.heap,
                  trace := s.trace ++ [t], funcs := sa.funcs, callStack := sa.callStack }) := by
-  simp only [Core.step?, hnv, hss]
-  cases t with
-  | error msg => exact absurd rfl (hnoerr msg)
-  | log _ => simp [Core.pushTrace]
-  | silent => simp [Core.pushTrace]
+  simp [Core.step?, hnv, hss, Core.pushTrace]
 
 private theorem Flat_step?_setIndex_obj_step (s : Flat.State) (idx value : Flat.Expr) (fe : Flat.Expr)
     (hnv : Flat.exprValue? fe = none)
@@ -1968,16 +1913,11 @@ private theorem Flat_step?_setIndex_obj_step (s : Flat.State) (idx value : Flat.
 private theorem Core_step?_setIndex_obj_step (s : Core.State) (idx value : Core.Expr) (e : Core.Expr)
     (hnv : Core.exprValue? e = none)
     (t : Core.TraceEvent) (sa : Core.State)
-    (hss : Core.step? { s with expr := e } = some (t, sa))
-    (hnoerr : ∀ msg, t ≠ .error msg) :
+    (hss : Core.step? { s with expr := e } = some (t, sa)) :
     Core.step? { s with expr := .setIndex e idx value } =
       some (t, { expr := .setIndex sa.expr idx value, env := sa.env, heap := sa.heap,
                  trace := s.trace ++ [t], funcs := sa.funcs, callStack := sa.callStack }) := by
-  simp only [Core.step?, hnv, hss]
-  cases t with
-  | error msg => exact absurd rfl (hnoerr msg)
-  | log _ => simp [Core.pushTrace]
-  | silent => simp [Core.pushTrace]
+  simp [Core.step?, hnv, hss, Core.pushTrace]
 
 private theorem Flat_step?_call_func_step (s : Flat.State) (envExpr : Flat.Expr)
     (args : List Flat.Expr) (fe : Flat.Expr)
@@ -1997,16 +1937,11 @@ private theorem Flat_step?_call_func_step (s : Flat.State) (envExpr : Flat.Expr)
 private theorem Core_step?_call_func_step (s : Core.State) (args : List Core.Expr) (e : Core.Expr)
     (hnv : Core.exprValue? e = none)
     (t : Core.TraceEvent) (sa : Core.State)
-    (hss : Core.step? { s with expr := e } = some (t, sa))
-    (hnoerr : ∀ msg, t ≠ .error msg) :
+    (hss : Core.step? { s with expr := e } = some (t, sa)) :
     Core.step? { s with expr := .call e args } =
       some (t, { expr := .call sa.expr args, env := sa.env, heap := sa.heap,
                  trace := s.trace ++ [t], funcs := sa.funcs, callStack := sa.callStack }) := by
-  simp only [Core.step?, hnv, hss]
-  cases t with
-  | error msg => exact absurd rfl (hnoerr msg)
-  | log _ => simp [Core.pushTrace]
-  | silent => simp [Core.pushTrace]
+  simp [Core.step?, hnv, hss, Core.pushTrace]
 
 private theorem Flat_step?_seq_value (s : Flat.State) (fv : Flat.Value) (b : Flat.Expr) :
     Flat.step? { s with expr := .seq (.lit fv) b } =
@@ -2039,16 +1974,11 @@ private theorem Flat_step?_seq_step (s : Flat.State) (b : Flat.Expr) (fe : Flat.
 private theorem Core_step?_seq_step (s : Core.State) (b : Core.Expr) (e : Core.Expr)
     (hnv : Core.exprValue? e = none)
     (t : Core.TraceEvent) (sa : Core.State)
-    (hss : Core.step? { s with expr := e } = some (t, sa))
-    (hnoerr : ∀ msg, t ≠ .error msg) :
+    (hss : Core.step? { s with expr := e } = some (t, sa)) :
     Core.step? { s with expr := .seq e b } =
       some (t, { expr := .seq sa.expr b, env := sa.env, heap := sa.heap,
                  trace := s.trace ++ [t], funcs := sa.funcs, callStack := sa.callStack }) := by
-  simp only [Core.step?, hnv, hss]
-  cases t with
-  | error msg => exact absurd rfl (hnoerr msg)
-  | log _ => simp [Core.pushTrace]
-  | silent => simp [Core.pushTrace]
+  simp [Core.step?, hnv, hss, Core.pushTrace]
 
 private theorem Flat_step?_let_step (s : Flat.State) (name : String) (body : Flat.Expr) (fe : Flat.Expr)
     (hnv : Flat.exprValue? fe = none)
@@ -2067,16 +1997,11 @@ private theorem Flat_step?_let_step (s : Flat.State) (name : String) (body : Fla
 private theorem Core_step?_let_step (s : Core.State) (name : String) (body : Core.Expr) (e : Core.Expr)
     (hnv : Core.exprValue? e = none)
     (t : Core.TraceEvent) (sa : Core.State)
-    (hss : Core.step? { s with expr := e } = some (t, sa))
-    (hnoerr : ∀ msg, t ≠ .error msg) :
+    (hss : Core.step? { s with expr := e } = some (t, sa)) :
     Core.step? { s with expr := .«let» name e body } =
       some (t, { expr := .«let» name sa.expr body, env := sa.env, heap := sa.heap,
                  trace := s.trace ++ [t], funcs := sa.funcs, callStack := sa.callStack }) := by
-  simp only [Core.step?, hnv, hss]
-  cases t with
-  | error msg => exact absurd rfl (hnoerr msg)
-  | log _ => simp [Core.pushTrace]
-  | silent => simp [Core.pushTrace]
+  simp [Core.step?, hnv, hss, Core.pushTrace]
 
 private theorem Flat_step?_seq_error (s : Flat.State) (b : Flat.Expr) (fe : Flat.Expr)
     (hnv : Flat.exprValue? fe = none)
@@ -2297,16 +2222,11 @@ private theorem Flat_step?_if_step (s : Flat.State) (then_ else_ : Flat.Expr) (f
 private theorem Core_step?_if_step (s : Core.State) (then_ else_ : Core.Expr) (e : Core.Expr)
     (hnv : Core.exprValue? e = none)
     (t : Core.TraceEvent) (sa : Core.State)
-    (hss : Core.step? { s with expr := e } = some (t, sa))
-    (hnoerr : ∀ msg, t ≠ .error msg) :
+    (hss : Core.step? { s with expr := e } = some (t, sa)) :
     Core.step? { s with expr := .«if» e then_ else_ } =
       some (t, { expr := .«if» sa.expr then_ else_, env := sa.env, heap := sa.heap,
                  trace := s.trace ++ [t], funcs := sa.funcs, callStack := sa.callStack }) := by
-  simp only [Core.step?, hnv, hss]
-  cases t with
-  | error msg => exact absurd rfl (hnoerr msg)
-  | log _ => simp [Core.pushTrace]
-  | silent => simp [Core.pushTrace]
+  simp [Core.step?, hnv, hss, Core.pushTrace]
 
 private theorem Flat_step?_binary_lhs_step (s : Flat.State) (op : Core.BinOp) (rhs : Flat.Expr) (fe : Flat.Expr)
     (hnv : Flat.exprValue? fe = none)
@@ -2325,16 +2245,11 @@ private theorem Flat_step?_binary_lhs_step (s : Flat.State) (op : Core.BinOp) (r
 private theorem Core_step?_binary_lhs_step (s : Core.State) (op : Core.BinOp) (rhs : Core.Expr) (e : Core.Expr)
     (hnv : Core.exprValue? e = none)
     (t : Core.TraceEvent) (sa : Core.State)
-    (hss : Core.step? { s with expr := e } = some (t, sa))
-    (hnoerr : ∀ msg, t ≠ .error msg) :
+    (hss : Core.step? { s with expr := e } = some (t, sa)) :
     Core.step? { s with expr := .binary op e rhs } =
       some (t, { expr := .binary op sa.expr rhs, env := sa.env, heap := sa.heap,
                  trace := s.trace ++ [t], funcs := sa.funcs, callStack := sa.callStack }) := by
-  simp only [Core.step?, hnv, hss]
-  cases t with
-  | error msg => exact absurd rfl (hnoerr msg)
-  | log _ => simp [Core.pushTrace]
-  | silent => simp [Core.pushTrace]
+  simp [Core.step?, hnv, hss, Core.pushTrace]
 
 private theorem Flat_step?_binary_rhs_step (s : Flat.State) (op : Core.BinOp) (lv : Flat.Value) (fe : Flat.Expr)
     (hnv : Flat.exprValue? fe = none)
@@ -2354,17 +2269,11 @@ private theorem Flat_step?_binary_rhs_step (s : Flat.State) (op : Core.BinOp) (l
 private theorem Core_step?_binary_rhs_step (s : Core.State) (op : Core.BinOp) (lv : Core.Value) (e : Core.Expr)
     (hnv : Core.exprValue? e = none)
     (t : Core.TraceEvent) (sa : Core.State)
-    (hss : Core.step? { s with expr := e } = some (t, sa))
-    (hnoerr : ∀ msg, t ≠ .error msg) :
+    (hss : Core.step? { s with expr := e } = some (t, sa)) :
     Core.step? { s with expr := .binary op (.lit lv) e } =
       some (t, { expr := .binary op (.lit lv) sa.expr, env := sa.env, heap := sa.heap,
                  trace := s.trace ++ [t], funcs := sa.funcs, callStack := sa.callStack }) := by
-  have hlv : Core.exprValue? (.lit lv) = some lv := rfl
-  simp only [Core.step?, hlv, hnv, hss]
-  cases t with
-  | error msg => exact absurd rfl (hnoerr msg)
-  | log _ => simp [Core.pushTrace]
-  | silent => simp [Core.pushTrace]
+  simp [Core.step?, hnv, hss, Core.pushTrace]
 
 private theorem Flat_step?_binary_values (s : Flat.State) (op : Core.BinOp) (lv rv : Flat.Value) :
     Flat.step? { s with expr := .binary op (.lit lv) (.lit rv) } =
@@ -2515,8 +2424,7 @@ private theorem Core_step?_objectLit_step (s : Core.State)
     (target : Core.Expr) (rest : List (Core.PropName × Core.Expr))
     (hfnvp : Core.firstNonValueProp props = some (done, propName, target, rest))
     (t : Core.TraceEvent) (se : Core.State)
-    (hss : Core.step? { s with expr := target } = some (t, se))
-    (hnoerr : ∀ msg, t ≠ .error msg) :
+    (hss : Core.step? { s with expr := target } = some (t, se)) :
     Core.step? { s with expr := .objectLit props } =
       some (t, { expr := .objectLit (done ++ [(propName, se.expr)] ++ rest),
                  env := se.env, heap := se.heap,
@@ -2527,11 +2435,7 @@ private theorem Core_step?_objectLit_step (s : Core.State)
     have heq := hfnvp ▸ hf
     simp [Option.some.injEq, Prod.mk.injEq] at heq
     obtain ⟨rfl, rfl, rfl, rfl⟩ := heq
-    simp only [hss]
-    cases t with
-    | error msg => exact absurd rfl (hnoerr msg)
-    | log _ => simp [Core.pushTrace]
-    | silent => simp [Core.pushTrace]
+    simp [hss, Core.pushTrace]
   · next hf =>
     simp [hfnvp] at hf
 
@@ -2540,8 +2444,7 @@ private theorem Core_step?_arrayLit_step (s : Core.State)
     (done : List Core.Expr) (target : Core.Expr) (rest : List Core.Expr)
     (hfnve : Core.firstNonValueExpr elems = some (done, target, rest))
     (t : Core.TraceEvent) (se : Core.State)
-    (hss : Core.step? { s with expr := target } = some (t, se))
-    (hnoerr : ∀ msg, t ≠ .error msg) :
+    (hss : Core.step? { s with expr := target } = some (t, se)) :
     Core.step? { s with expr := .arrayLit elems } =
       some (t, { expr := .arrayLit (done ++ [se.expr] ++ rest),
                  env := se.env, heap := se.heap,
@@ -2552,11 +2455,7 @@ private theorem Core_step?_arrayLit_step (s : Core.State)
     have heq := hfnve ▸ hf
     simp [Option.some.injEq, Prod.mk.injEq] at heq
     obtain ⟨rfl, rfl, rfl⟩ := heq
-    simp only [hss]
-    cases t with
-    | error msg => exact absurd rfl (hnoerr msg)
-    | log _ => simp [Core.pushTrace]
-    | silent => simp [Core.pushTrace]
+    simp [hss, Core.pushTrace]
   · next hf =>
     simp [hfnve] at hf
 
@@ -2759,8 +2658,7 @@ private theorem Core_step?_setProp_value_step (cv : Core.Value) (prop : Core.Pro
     (env : Core.Env) (heap : Core.Heap) (trace : List Core.TraceEvent)
     (funcs : Array Core.FuncClosure) (cs : List (List (Core.VarName × Core.Value)))
     (t : Core.TraceEvent) (sv : Core.State)
-    (hss : Core.step? ⟨ve, env, heap, trace, funcs, cs⟩ = some (t, sv))
-    (hnoerr : ∀ msg, t ≠ .error msg) :
+    (hss : Core.step? ⟨ve, env, heap, trace, funcs, cs⟩ = some (t, sv)) :
     Core.step? ⟨.setProp (.lit cv) prop ve, env, heap, trace, funcs, cs⟩ =
       some (t, { expr := .setProp (.lit cv) prop sv.expr, env := sv.env, heap := sv.heap,
                  trace := trace ++ [t], funcs := sv.funcs, callStack := sv.callStack }) := by
@@ -2768,10 +2666,7 @@ private theorem Core_step?_setProp_value_step (cv : Core.Value) (prop : Core.Pro
   | lit v => simp [Core.exprValue?] at hnv
   | _ =>
     cases cv <;> simp only [Core.step?, Core.exprValue?, hss]
-    all_goals (cases t with
-      | error msg => exact absurd rfl (hnoerr msg)
-      | log _ => simp [Core.pushTrace]
-      | silent => simp [Core.pushTrace])
+    all_goals simp [Core.pushTrace]
 
 -- getIndex: obj is .object addr, idx needs stepping (Flat)
 private theorem Flat_step?_getIndex_object_step_idx (s : Flat.State) (addr : Nat)
@@ -2911,8 +2806,7 @@ private theorem Core_step?_getIndex_value_step (cv : Core.Value)
     (env : Core.Env) (heap : Core.Heap) (trace : List Core.TraceEvent)
     (funcs : Array Core.FuncClosure) (cs : List (List (Core.VarName × Core.Value)))
     (t : Core.TraceEvent) (si : Core.State)
-    (hss : Core.step? ⟨ie, env, heap, trace, funcs, cs⟩ = some (t, si))
-    (hnoerr : ∀ msg, t ≠ .error msg) :
+    (hss : Core.step? ⟨ie, env, heap, trace, funcs, cs⟩ = some (t, si)) :
     Core.step? ⟨.getIndex (.lit cv) ie, env, heap, trace, funcs, cs⟩ =
       some (t, { expr := .getIndex (.lit cv) si.expr, env := si.env, heap := si.heap,
                  trace := trace ++ [t], funcs := si.funcs, callStack := si.callStack }) := by
@@ -2920,10 +2814,7 @@ private theorem Core_step?_getIndex_value_step (cv : Core.Value)
   | lit v => simp [Core.exprValue?] at hnv
   | _ =>
     cases cv <;> simp only [Core.step?, Core.exprValue?, hss]
-    all_goals (cases t with
-      | error msg => exact absurd rfl (hnoerr msg)
-      | log _ => simp [Core.pushTrace]
-      | silent => simp [Core.pushTrace])
+    all_goals simp [Core.pushTrace]
 
 -- Core: getIndex on string with both values: string character access
 private theorem Core_step?_getIndex_string_val (str : String) (idxVal : Core.Value)
