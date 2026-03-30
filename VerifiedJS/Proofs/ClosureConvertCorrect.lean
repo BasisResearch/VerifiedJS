@@ -3724,7 +3724,39 @@ private theorem closureConvert_step_simulation
         -- Core result: .lit (lookup result), trace += [.silent]
         -- Flat result: .lit (coreToFlatValue (lookup result)), trace += [.silent]
         -- Since coreToFlatValue = convertValue, the results agree
-        sorry -- getIndex both-values: object heap lookup, string indexing, other→undefined
+        have hno_core : (∃ addr, cv = .object addr) ∨ (∃ str, cv = .string str) ∨ ((∀ a, cv ≠ .object a) ∧ (∀ str, cv ≠ .string str)) := by
+          cases cv with
+          | object a => left; exact ⟨a, rfl⟩
+          | string s => right; left; exact ⟨s, rfl⟩
+          | _ => right; right; exact ⟨fun a => Core.Value.noConfusion, fun s => Core.Value.noConfusion⟩
+        rcases hno_core with ⟨addr, rfl⟩ | ⟨str, rfl⟩ | ⟨hno, hns⟩
+        · sorry -- getIndex object both-values: heap lookup via HeapInj
+        · sorry -- getIndex string both-values: string indexing
+        · -- Non-object, non-string: both return .undefined
+          have hno_flat : ∀ addr, Flat.convertValue cv ≠ .object addr := convertValue_not_object cv hno
+          have hns_flat : ∀ str, Flat.convertValue cv ≠ .string str := by
+            intro str; cases cv <;> simp [Flat.convertValue] <;>
+              first | exact (hno _ rfl).elim | exact (hns _ rfl).elim | exact Flat.Value.noConfusion
+          rw [Flat_step?_getIndex_other_both_values _ _ _ hno_flat hns_flat] at hstep
+          simp only [Prod.mk.injEq, Option.some.injEq] at hstep
+          obtain ⟨hev, hsf'⟩ := hstep; subst hev; subst hsf'
+          let sc' : Core.State := ⟨.lit .undefined, sc.env, sc.heap,
+            sc.trace ++ [.silent], sc.funcs, sc.callStack⟩
+          refine ⟨injMap, sc', ⟨?_⟩, ?_, ?_, ?_, ?_, ?_, ?_, ?_, ?_⟩
+          · have hsc' : sc = { sc with expr := .getIndex (.lit cv) (.lit iv) } := by
+              obtain ⟨_, _, _, _, _, _⟩ := sc; simp only [] at hsc; subst hsc; rfl
+            rw [hsc']
+            cases cv <;> (try exact (hno _ rfl).elim) <;> (try exact (hns _ rfl).elim) <;>
+              simp [Core.step?, Core.exprValue?, Core.pushTrace]
+          · simp [sc', htrace]
+          · exact hinj
+          · exact henvCorr
+          · exact henvwf
+          · exact hheapvwf
+          · simp [sc', noCallFrameReturn]
+          · simp only [sc', ExprAddrWF, ValueAddrWF]
+          · refine ⟨st, st, ?_, ⟨rfl, rfl⟩, by subst hst; exact ⟨rfl, rfl⟩⟩
+            simp [sc', Flat.convertExpr, Flat.convertValue]
       | none =>
         -- idx needs stepping; obj is already a value
         have hfnv_i : Flat.exprValue? (Flat.convertExpr idx scope envVar envMap st).fst = none :=
