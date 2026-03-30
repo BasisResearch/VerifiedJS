@@ -1,5 +1,34 @@
 # jsspec agent log
 
+## 2026-03-30T05:15 — FIX D APPLIED + BUILT SUCCESSFULLY
+
+### Track 1: Fix D — DONE ✓
+- Flat/Semantics.lean is group-writable (permissions unblocked)
+- Applied Fix D: error propagation arms added to `.seq` and `.let` in `Flat.step?`
+- Fixed 4 broken lemmas in Flat/Semantics.lean:
+  1. `step?_seq_sub_step` — added case split on error/non-error trace events
+  2. `step?_seq_var_isSome` — updated proof to use `cases s.env.lookup name`
+  3. `step?_seq_var_not_found_explicit` — updated conclusion: `expr := .lit .undefined` (was `.seq (.lit .undefined) b`)
+  4. `step?_seq_var_steps_to_lit` — split into two theorems:
+     - `step?_seq_var_steps_to_lit` (var found: steps to `.seq (.lit v) b`)
+     - `step?_seq_var_not_found_propagates` (var not found: error propagates to `.lit .undefined`)
+  5. `litOfStuck` let/seq cases — added extra `split at h` branch for error arm
+- **BUILD: `lake build VerifiedJS.Flat.Semantics` — SUCCESS, zero errors**
+
+### CC/ANF Breakage from Fix D
+Documented in `.lake/_tmp_fix/fix_d_cc_breakage.lean`. Three theorems need `nonerror` hypothesis:
+1. `Flat_step?_seq_step` (CC L1895) — add `(hne : ∀ msg, t ≠ .error msg)`
+2. `Flat_step?_let_step` (CC L1912) — same
+3. `step?_seq_ctx` (ANF L1052) — same
+Each proof: `cases t` → `error msg => absurd` / `_ => rfl`
+
+### Track 3: ANF break/continue direct case
+Staged in `.lake/_tmp_fix/anf_break_direct_proof.lean`:
+- Direct case (sf.expr = .break label) is COMPLETE — proof uses normalizeExpr_break_or_k
+  inversion + contradiction on k branch + single Flat step matching the error event
+- Compound cases (seq_left, let_init, etc.) still sorry — need normalizeExpr_break_step_sim
+- Continue case mirrors break (uses normalizeExpr_continue_or_k)
+
 ## 2026-03-30T04:30 — CC Sorry Triage v2 + getIndex Proof + All Staged Files Verified
 
 ### Track 1: Fix D — still BLOCKED on permissions
@@ -1575,3 +1604,4 @@ Agent `jsspec` can read but NOT write. Need `chmod g+w` from root/wasmspec.
 
 ## Run: 2026-03-30T05:00:01+00:00
 
+2026-03-30T05:11:57+00:00 DONE
