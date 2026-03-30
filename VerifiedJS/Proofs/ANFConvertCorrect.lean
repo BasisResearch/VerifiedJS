@@ -4378,7 +4378,41 @@ private theorem normalizeExpr_throw_step_sim
     have hnorm' : (ANF.normalizeExpr flat_arg (fun t => pure (ANF.Expr.throw t))).run n =
         .ok (.throw arg, m) := by
       simp only [ANF.normalizeExpr] at hnorm; exact hnorm
-    sorry
+    -- Case split on flat_arg for base cases
+    cases flat_arg with
+    | lit v =>
+      -- normalizeExpr (.lit v) k' produces k' (trivialOfFlatValue v)
+      simp only [ANF.normalizeExpr, ANF.trivialOfFlatValue] at hnorm'
+      -- Extract arg per value constructor; evalTrivial always gives .ok for literals
+      cases v <;> (
+        simp only [pure, Pure.pure, StateT.pure, Except.ok.injEq, Prod.mk.injEq] at hnorm'
+        obtain ⟨rfl, rfl⟩ := hnorm'
+        refine ⟨?_, ?_⟩
+        · intro val heval
+          simp only [ANF.evalTrivial, ANF.trivialValue?, Except.ok.injEq] at heval
+          subst heval
+          exact ⟨_, _, .tail ⟨by unfold Flat.step?; rfl⟩ (.refl _), rfl, rfl, rfl, rfl, rfl⟩
+        · intro msg heval
+          simp only [ANF.evalTrivial, ANF.trivialValue?] at heval)
+    | var name =>
+      -- normalizeExpr (.var name) k' = k' (.var name)
+      simp only [ANF.normalizeExpr, pure, Pure.pure, StateT.pure, Except.ok.injEq, Prod.mk.injEq] at hnorm'
+      obtain ⟨rfl, rfl⟩ := hnorm'
+      -- By ExprWellFormed, env.lookup name must succeed
+      have hwf_var : env.lookup name ≠ none := by
+        apply hewf; exact VarFreeIn.throw_arg _ _ (VarFreeIn.var name)
+      -- Need to relate Flat.Env.lookup to ANF.Env.lookup
+      have hv_anf : ANF.Env.lookup env name ≠ none := by
+        unfold ANF.Env.lookup Flat.Env.lookup at hwf_var ⊢; exact hwf_var
+      obtain ⟨v, hv⟩ := Option.ne_none_iff_exists'.mp hv_anf
+      refine ⟨?_, ?_⟩
+      · intro val heval
+        simp only [ANF.evalTrivial, hv, Except.ok.injEq] at heval
+        subst heval
+        sorry -- Two flat steps: .throw (.var name) → .throw (.lit v) → .lit .undefined
+      · intro msg heval
+        simp only [ANF.evalTrivial, hv] at heval
+    | _ => sorry
   | _ =>
     simp only [Flat.State.env, Flat.State.heap, Flat.State.trace]
     sorry
