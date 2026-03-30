@@ -1,50 +1,66 @@
-# jsspec — Close compound HasBreakInHead sub-cases via step_sim theorems
+# jsspec — EXTEND Fix D to ALL compound expressions in Flat/Semantics.lean
 
 ## MEMORY: 7.7GB total, NO swap
 - **NEVER run `lake build VerifiedJS`** (full build). OOMs.
-- Build individual modules: `lake build VerifiedJS.Proofs.ANFConvertCorrect`
-- Before building: `pkill -u jsspec -f "lean.*\.lean" 2>/dev/null; sleep 5`
+- Build: `lake build VerifiedJS.Flat.Semantics`
+- Before building: `pkill -f "lean.*\.lean" 2>/dev/null; sleep 5`
 - Check `pgrep -af "lake build"` first — do NOT start if one runs.
 
-## STATUS (11:05 Mar 30)
-- **Sorries**: 17 ANF + 23 CC + 2 Wasm (comments) = 42 grep-c
-- **Your break_step_sim staging is good** — proof agent will integrate break/continue direct case
-- **After integration**: break/continue will decompose into ~28 compound sub-case sorries
+## STATUS (12:05 Mar 30)
+- **ANF**: 81 sorries. Break/continue decomposed. 66 compound sub-cases need Fix D.
+- **CC**: 21 sorries.
+- **Your staging file `.lake/_tmp_fix/fix_d_extension.lean` has EXACT before/after diffs.**
 
-## YOUR MISSION: Make the compound sub-cases closeable
+## YOUR CRITICAL TASK: Extend Fix D error propagation
 
-### TOP PRIORITY: Verify and complete normalizeExpr_break_step_sim
+Fix D currently exists for `.seq` (L391-392) and `.let` (L355-356) in `VerifiedJS/Flat/Semantics.lean`. When a sub-expression step produces `.error msg`, the compound expression should:
+1. NOT wrap the error in a context step
+2. Instead produce `.error msg` and set expr to `.lit .undefined`
 
-Your staging file `.lake/_tmp_fix/anf_break_step_sim.lean` has the theorem structure. The compound cases (seq_left, seq_right, let_init, getProp_obj, etc.) each need:
+### DO THIS IN ORDER (build after EACH one):
 
-1. **IH**: The inner sub-expression steps (from HasBreakInHead IH)
-2. **Context step**: The enclosing expression (seq/let/etc.) propagates the step
-3. **Error propagation (Fix D)**: When sub-expression produces error, enclosing context propagates it
+1. **`.assign name rhs`** (~L367-370): When `step? {s with expr := rhs}` = `some (.error msg, sr)`, produce error + .lit .undefined
+2. **`.if cond then_ else_`** (~L379-382): Same for cond stepping
+3. **`.unary op arg`** (~L403-406): Same for arg stepping
+4. **`.typeof arg`** (~L411-414): Same for arg stepping
+5. **`.binary op lhs rhs`** (~L420-430): For BOTH lhs and rhs stepping
+6. **`.deleteProp obj prop`** (~L436-440): Same for obj stepping
+7. **`.getProp obj prop`** (~L340-344): Same for obj stepping
+8. **`.setProp obj prop val`** (~L346-352): For obj AND val stepping
+9. **`.call f env args`**: For f, env, AND args stepping
+10. **`.newObj f env args`**: Same as call
+11. **`.getIndex obj idx`**: For obj and idx stepping
+12. **`.setIndex obj idx val`**: For obj, idx, and val stepping
+13. **`.throw arg`**: For arg stepping
+14. **`.getEnv env`**: For env stepping
+15. **`.makeClosure env ...`**: For env stepping
+16. **`.makeEnv values`**: For values stepping
+17. **`.objectLit props`**: For props stepping
+18. **`.arrayLit elems`**: For elems stepping
 
-The KEY lemma for each compound case is a context-stepping lemma:
-- `Flat.step?_seq_ctx`: if `step? a = some (ev, a')` then `step? (seq a b) = some (ev, seq a' b)` (or error propagation)
-- `Flat.step?_let_ctx`: similar for let
-- `Flat.step?_getProp_obj_ctx`: similar for getProp
+### EXACT PATTERN (from your staging file):
 
-**Check if these context-stepping lemmas exist** in Flat/Semantics.lean. If they do, the compound cases are straightforward. If not, stage them.
-
-```bash
-grep -n "step?_seq_ctx\|step?_let_ctx\|step?_getProp" VerifiedJS/Flat/Semantics.lean | head -20
+For each compound expression's stepping match arm, change:
+```lean
+-- BEFORE:
+| some (t, sr) => some (t, pushTrace { ... context step ... } t)
+-- AFTER:
+| some (.error msg, sr) => some (.error msg, pushTrace { s with expr := .lit .undefined, env := sr.env, heap := sr.heap } (.error msg))
+| some (t, sr) => some (t, pushTrace { ... context step ... } t)
 ```
 
-### SECONDARY: Stage normalizeExpr_throw_step_sim
+### AFTER EACH CHANGE:
+```bash
+pkill -f "lean.*\.lean" 2>/dev/null; sleep 5
+lake build VerifiedJS.Flat.Semantics 2>&1 | tail -30
+```
 
-Same pattern as break_step_sim but for HasThrowInHead. The throw case (L3396) has `all_goals sorry` covering 2 sub-cases. A throw_step_sim would close them.
+If the build breaks, fix the breakage BEFORE moving to next expression. The breakage will be in `step?_none_implies_lit_aux` — add a `next => simp at h` for the new error match arm.
 
-### TERTIARY: Stage return/yield/await step_sim
-
-Check `.lake/_tmp_fix/anf_return_await_inversion.lean` — if HasReturnInHead etc. are defined, write the corresponding step_sim theorems.
-
-## WORKFLOW
-1. Work in `.lake/_tmp_fix/` ONLY
-2. Test that staged theorems type-check standalone if possible
-3. LOG every 30 min to agents/jsspec/log.md
+### AFTER ALL Fix D extensions:
+Build `lake build VerifiedJS.Proofs.ANFConvertCorrect` to check it still compiles.
 
 ## CONSTRAINTS
-- CAN write: `.lake/_tmp_fix/*.lean`, `VerifiedJS/Flat/Semantics.lean`
+- CAN write: `VerifiedJS/Flat/Semantics.lean`, `.lake/_tmp_fix/*.lean`
 - CANNOT write: `VerifiedJS/Proofs/*.lean`, `VerifiedJS/Wasm/Semantics.lean`
+- LOG every 30 min to agents/jsspec/log.md

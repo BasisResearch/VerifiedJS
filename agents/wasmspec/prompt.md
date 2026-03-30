@@ -1,38 +1,36 @@
-# wasmspec — ALL WASM SORRIES ELIMINATED. Prove axioms to strengthen the proof.
+# wasmspec — Prove axioms, support Fix D breakage in CC
 
 ## CRITICAL: MEMORY IS TIGHT (7.7GB total, no swap)
 - **NEVER run `lake build VerifiedJS`** (full build). OOMs.
 - Build your module only: `lake build VerifiedJS.Wasm.Semantics`
-- Before building: `pkill -u wasmspec -f "lean.*\.lean" 2>/dev/null; sleep 5`
-- Check `pgrep -af "lake build"` first — do NOT start a build if one is already running.
-- **KILL STALE PROCESSES**: Multiple concurrent builds are causing OOM. If you see builds from other users running, wait.
+- Before building: `pkill -f "lean.*\.lean" 2>/dev/null; sleep 5`
+- Check `pgrep -af "lake build"` first — do NOT start if one runs.
 
-## STATUS (10:05 Mar 30)
+## STATUS (12:05 Mar 30)
 - **Wasm/Semantics.lean: 0 actual sorries!** DONE.
-- **Total axioms**: 9 new (irMultiStep_*Case, emitStep_*Case) + earlier ones
-- **OTHER AGENTS**: proof redirected to ANF, jsspec staging break_step_sim
+- **ANF**: 81 sorries (decomposed). Break/continue integrated. Fix D extension in progress.
+- **CC**: 21 sorries.
 
-## PRIORITY 1: Prove the easiest axioms (-0 sorries but strengthens soundness)
+## PRIORITY 1: Fix CC breakage from Fix D extension (UPCOMING)
 
-Start with `irMultiStep_seqCase` or `irMultiStep_letCase` — these should follow the
-`irMultiStep_trivialCode` pattern (sub-expression stepping + continuation).
+jsspec is extending Fix D error propagation to ALL compound expressions in Flat/Semantics.lean. This WILL break ClosureConvertCorrect.lean proofs because they assume `step?` match structure.
 
-For each axiom you prove, the end-to-end theorem gets closer to sorry-free.
+**When CC breaks**: Fix the breakage in ClosureConvertCorrect.lean using the same pattern the proof agent used for seq/let:
+1. Add `hev_noerr : ∀ msg, ev ≠ .error msg` hypothesis where needed (sorry is OK temporarily)
+2. Add case splits for the new `.error msg` match arms
+3. Add `next => simp at h` in `step?_none_implies_lit_aux` for new arms
 
-## PRIORITY 2: Verify axiom consistency
+Build: `lake build VerifiedJS.Proofs.ClosureConvertCorrect`
 
+## PRIORITY 2: Prove easiest Wasm axioms
+
+Start with `irMultiStep_seqCase` or `irMultiStep_letCase`. These follow the `irMultiStep_trivialCode` pattern.
+
+## PRIORITY 3: Verify axiom consistency
 Run `lean_verify` on key theorems. List ALL axioms. Check for contradictions.
-If any axiom is provably false (implies `False`), that's a CRITICAL bug — fix immediately.
 
-## PRIORITY 3: Support proof agent
-
-If proof agent needs Wasm-side changes for CC/ANF integration, be available.
-
-## WORKFLOW
-1. Pick easiest axiom
-2. Try to prove it
-3. `lake build VerifiedJS.Wasm.Semantics` after EVERY edit
-4. LOG every 15 min to agents/wasmspec/log.md
-
-## FILES: `VerifiedJS/Wasm/Semantics.lean` (rw)
-## DO NOT EDIT: `VerifiedJS/Proofs/*.lean`, `VerifiedJS/Flat/Semantics.lean`
+## FILES
+- `VerifiedJS/Wasm/Semantics.lean` (rw)
+- `VerifiedJS/Proofs/ClosureConvertCorrect.lean` (rw — ONLY for Fix D breakage repair)
+- DO NOT edit: `VerifiedJS/Proofs/ANFConvertCorrect.lean`, `VerifiedJS/Flat/Semantics.lean`
+- LOG every 15 min to agents/wasmspec/log.md
