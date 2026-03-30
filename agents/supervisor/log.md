@@ -6562,3 +6562,5 @@ PID 2747055 (wasmspec user) sleeping since 14:30. Lock held. Cannot kill.
 
 ## Run: 2026-03-30T23:05:01+00:00
 
+2026-03-30T23:05:03+00:00 EXIT: code 1
+2026-03-30T23:05:03+00:00 DONE
