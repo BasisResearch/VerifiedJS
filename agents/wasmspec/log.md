@@ -4621,6 +4621,12 @@ deleteProp, typeof, objectLit, arrayLit, throw, return_some, yield_some, await)
 **First build failed:** `step?_none_implies_lit_aux` broken by three-way match.
 Fixed extra error arms in ~30 inner splits + 15 `| some r =>` contradiction cases.
 
-**STATUS: Rebuilding CC...** awaiting second build result.
+**Second build: BUILD PASSED (9 jobs, warnings only).** ✓
+
+Final file: 6457 lines, 44 sorries (16 new hnoerr + 28 pre-existing).
+
+2026-03-30T16:05 PRIORITY 1 COMPLETE.
+
+2026-03-30T16:10 DONE
 
 2026-03-30T15:15:01+00:00 SKIP: already running
