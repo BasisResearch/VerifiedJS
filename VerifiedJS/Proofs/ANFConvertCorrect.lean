@@ -4342,6 +4342,24 @@ private theorem hasContinueInHead_flat_error_steps
     hasContinueInHead_step?_error_aux e.depth e (Nat.le_refl _) label h sf hsf
   exact ⟨s', [_], .tail ⟨hstep⟩ (.refl _), hexpr, henv, hheap, hfuncs, hcs, htrace, rfl⟩
 
+/-- step? on .throw (.lit v) produces an immediate error. -/
+private theorem Flat.step?_throw_lit_eq (v : Flat.Value)
+    (env : Flat.Env) (heap : Core.Heap) (trace : List Core.TraceEvent)
+    (funcs : Array Flat.FuncDef) (cs : List Flat.Env) :
+    Flat.step? ⟨.throw (.lit v), env, heap, trace, funcs, cs⟩ =
+    some (.error (Flat.valueToString v),
+      ⟨.lit .undefined, env, heap, trace ++ [.error (Flat.valueToString v)], funcs, cs⟩) := by
+  unfold Flat.step?; rfl
+
+/-- step? on .throw (.var name) when lookup succeeds: resolves var, keeps throw. -/
+private theorem Flat.step?_throw_var_ok (name : Flat.VarName) (v : Flat.Value)
+    (env : Flat.Env) (heap : Core.Heap) (trace : List Core.TraceEvent)
+    (funcs : Array Flat.FuncDef) (cs : List Flat.Env)
+    (h : Flat.Env.lookup env name = some v) :
+    Flat.step? ⟨.throw (.var name), env, heap, trace, funcs, cs⟩ =
+    some (.silent, ⟨.throw (.lit v), env, heap, trace ++ [.silent], funcs, cs⟩) := by
+  unfold Flat.step?; simp [Flat.exprValue?, h]
+
 /-- If normalizeExpr sf.expr k produces .throw arg (with trivial-preserving k),
     then there exist Flat steps from sf that produce the same error event
     as the ANF throw step. Covers both evalTrivial ok and error cases. -/
@@ -4412,24 +4430,18 @@ private theorem normalizeExpr_throw_step_sim
         simp only [ANF.evalTrivial, hv_anf, Except.ok.injEq] at heval
         subst heval
         -- Two flat steps: .throw (.var name) → .throw (.lit v) → .lit .undefined
-        -- Step 1: step? on .throw (.var name) produces (.silent, .throw (.lit v)) state
-        have hstep1 : Flat.step?
-            ⟨.throw (.var name), env, heap, trace, funcs, cs⟩ =
-            some (.silent,
-              ⟨.throw (.lit v), env, heap, trace ++ [.silent], funcs, cs⟩) := by
-          simp only [Flat.step?, Flat.exprValue?, Flat.Env.lookup, hv_flat, Flat.pushTrace]
-        -- Step 2: step? on .throw (.lit v) produces (.error msg, .lit .undefined) state
-        have hstep2 : Flat.step?
-            ⟨.throw (.lit v), env, heap, trace ++ [.silent], funcs, cs⟩ =
-            some (.error (Flat.valueToString v),
-              ⟨.lit .undefined, env, heap, trace ++ [.silent, .error (Flat.valueToString v)], funcs, cs⟩) := by
-          simp only [Flat.step?, Flat.exprValue?, Flat.pushTrace, List.append_assoc]
-          rfl
+        -- Need Flat.Env.lookup for step? helpers
+        have hv_flat_env : Flat.Env.lookup env name = some v := by
+          simp only [Flat.Env.lookup, ANF.Env.lookup] at hv_flat ⊢; exact hv_flat
+        -- Step 1: resolve var inside throw
+        have hstep1 := Flat.step?_throw_var_ok name v env heap trace funcs cs hv_flat_env
+        -- Step 2: throw with literal value → error
+        have hstep2 := Flat.step?_throw_lit_eq v env heap (trace ++ [.silent]) funcs cs
         refine ⟨[.silent, .error (Flat.valueToString v)], _,
           .tail ⟨hstep1⟩ (.tail ⟨hstep2⟩ (.refl _)),
-          rfl, rfl, rfl, rfl, ?_⟩
-        · -- observableTrace [.silent, .error msg] = observableTrace [.error msg]
-          simp [observableTrace]
+          rfl, rfl, rfl, ?_, ?_⟩
+        · simp [List.append_assoc]
+        · simp [observableTrace]
       · -- error case: vacuous since env.lookup name = some v
         intro msg heval
         simp only [ANF.evalTrivial, hv_anf] at heval
