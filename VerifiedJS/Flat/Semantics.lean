@@ -1845,6 +1845,7 @@ theorem step?_none_implies_lit (s : State) (h : step? s = none) :
       · -- exprValue? funcExpr = none
         split at h
         · simp at h
+        · simp at h
         · next hval hstep =>
           have ⟨v, hv⟩ := litOfStuck funcExpr (by simp [Expr.depth] at hd; omega) hstep
           subst hv; simp_all [exprValue?]
@@ -1852,6 +1853,7 @@ theorem step?_none_implies_lit (s : State) (h : step? s = none) :
         split at h
         · -- exprValue? envExpr = none
           split at h
+          · simp at h
           · simp at h
           · next hval hstep =>
             have ⟨v, hv⟩ := litOfStuck envExpr (by simp [Expr.depth] at hd; omega) hstep
@@ -1863,6 +1865,7 @@ theorem step?_none_implies_lit (s : State) (h : step? s = none) :
             split at h
             · -- firstNonValueExpr = some
               split at h
+              · simp at h
               · simp at h
               · rename_i done' target' remaining' hfnve _ hstep
                 have htgt := firstNonValueExpr_target_not_lit hfnve
@@ -1881,6 +1884,7 @@ theorem step?_none_implies_lit (s : State) (h : step? s = none) :
         · -- firstNonValueExpr = some
           split at h
           · simp at h
+          · simp at h
           · rename_i done' target' remaining' hfnve _ hstep
             have htgt := firstNonValueExpr_target_not_lit hfnve
             have ⟨v, hv⟩ := litOfStuck target'
@@ -1898,6 +1902,7 @@ theorem step?_none_implies_lit (s : State) (h : step? s = none) :
         · -- firstNonValueExpr = some
           split at h
           · simp at h
+          · simp at h
           · rename_i done' target' remaining' hfnve _ hstep
             have htgt := firstNonValueExpr_target_not_lit hfnve
             have ⟨v, hv⟩ := litOfStuck target'
@@ -1914,6 +1919,7 @@ theorem step?_none_implies_lit (s : State) (h : step? s = none) :
         split at h
         · -- firstNonValueProp = some
           split at h
+          · simp at h
           · simp at h
           · rename_i done' propName' target' remaining' hfnvp _ hstep
             have htgt := firstNonValueProp_target_not_lit hfnvp
