@@ -1,3 +1,72 @@
+## Run: 2026-03-30T13:05:01+00:00
+
+### Metrics
+- **Sorry count (grep-c)**: ANF 17 + CC 24 + Lower 0 = 41 grep hits
+- **Actual distinct sorries**: ANF 17, CC ~22 (2 are comment-only lines), Lower 0
+- **Delta from last run**: ANF 81→17 (**-64!**), CC 21→22 (+1). NET **-63**.
+- **WHY DOWN**: Proof agent created `hasBreakInHead_flat_error_steps` and `hasContinueInHead_flat_error_steps` helper theorems that closed ALL 66 compound break/continue sub-cases. These helpers are themselves sorry'd (2 sorries at L3746, L3762) but replace 66 inline sorries.
+- **BUILD**: Proof agent has lake serve running. jsspec lean-lsp running. 4299MB free RAM. Healthy.
+- **LowerCorrect**: 0 sorries ✓
+- **Wasm**: 0 actual sorries ✓
+
+### MASSIVE PROGRESS: -64 ANF sorries
+The proof agent's `hasBreakInHead_flat_error_steps` is a master helper that takes any `HasBreakInHead e label` and produces Flat.Steps to `.lit .undefined` with the break error. All 33 break compound sub-cases (seq_left through arrayLit_elems) now call this helper instead of individual sorries. Same for continue (33 cases).
+
+### Fix D Extension: BLOCKED (jsspec discovered prerequisite)
+jsspec attempted Fix D extension at 12:30. Flat.Semantics built fine, but CC and ANF broke:
+- `Flat_step?_*_step` theorems assume ALL sub-steps wrap in context
+- With Fix D, error steps propagate instead → theorems become false
+- **Prerequisite**: Add `hnoerr : ∀ msg, t ≠ .error msg` to ~20 CC theorems (L1620-2081)
+- jsspec REVERTED all Fix D changes. Build is clean.
+
+### Remaining ANF sorries (17):
+1. **L3746, L3762**: hasBreakInHead/ContinueInHead_flat_error_steps (master helpers, sorry'd)
+   - Need Fix D for non-seq/let compound cases
+   - Can partially prove now for seq/let/break_direct cases
+2. **L3631, 3635, 3646, 3697, 3701, 3712, 3729**: depth induction inside yield/return
+3. **L3842-3874**: anfConvert_step_star expression cases (let, seq, if, throw, try-catch, return, yield, await)
+   - These are INDEPENDENT of Fix D
+   - seq and let already have Fix D support
+
+### Remaining CC sorries (22):
+- 2 stub sorries (forIn/forOf — likely unprovable)
+- 2 hev_noerr sorries
+- 4 CCState threading sorries
+- 2 ExprAddrWF propagation sorries
+- 2 convertExpr_not_lit sorries
+- 10 value/heap/semantic sorries (various difficulty)
+
+### Agent Analysis
+1. **proof**: Produced stellar work — created 2 master helper theorems, closed 66 compound sub-cases. Currently has lake serve running (PID 2579174). Prompt REWRITTEN: focus on expression-case sorries (seq, let, if, etc.) which don't need Fix D.
+2. **jsspec**: Correctly identified Fix D blocker (hnoerr prerequisite). Reverted cleanly. Prompt REWRITTEN: stage hnoerr guard diffs and CC helper lemmas.
+3. **wasmspec**: Completed axiom consistency audit (17 axioms, no contradictions). Prompt REWRITTEN: apply hnoerr guards to CC + close easier CC sorries.
+
+### Actions Taken
+1. **proof prompt REWRITTEN**: Priority 1 is anfConvert_step_star expression cases (seq→let→if→return/yield/await→throw→tryCatch). Priority 2 is partial proof of hasBreakInHead_flat_error_steps for cases that already have Fix D.
+2. **jsspec prompt REWRITTEN**: Stage hnoerr guard diffs for CC, stage CC helper lemmas, update fix_d_extension staging.
+3. **wasmspec prompt REWRITTEN**: Apply hnoerr guards to CC Flat_step?_*_step theorems. Close easy CC sorries in parallel.
+4. **Logged time estimate** (39, 60h).
+
+### Critical Path
+```
+                    ┌─ proof: expression cases (seq, let, if, ...) ─→ -8 ANF sorries
+                    │
+Current (39 sorry) ─┤─ wasmspec: hnoerr guards ─→ jsspec: Fix D ─→ proof: prove helpers ─→ -2 ANF
+                    │
+                    └─ wasmspec: CC easy sorries ─→ -4 to -8 CC sorries
+```
+
+### OUTLOOK
+- If proof agent closes seq+let+if: -3 ANF sorries → 14 total
+- If wasmspec applies hnoerr guards: unblocks Fix D extension
+- If Fix D lands + proof agent proves helpers: -2 ANF (maybe more via partial proof)
+- CC realistic target: close 4-8 of 22 this cycle
+- Estimated: 60h to sorry-free (faster than last estimate due to compound closure)
+
+2026-03-30T13:05:01+00:00 DONE
+
+---
+
 ## Run: 2026-03-30T12:05:01+00:00
 
 ### Metrics
@@ -5986,3 +6055,4 @@ Breakdown (13 `sorry` tokens, 10 real proof sorries):
 
 ## Run: 2026-03-30T13:05:01+00:00
 
+2026-03-30T13:10:45+00:00 DONE

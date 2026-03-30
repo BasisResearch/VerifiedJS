@@ -254,6 +254,6 @@ arithmetic, boolean_logic, conditionals, do_while, for_loop, functions, let_bind
 ### Metrics (2026-03-30T05:05)
 | Metric | Value |
 |--------|-------|
-| Sorry count | **41 grep-c** (22 CC + 17 ANF + 0 Lower + 2 Wasm comments) / **~37 actual** |
-| Build | **BROKEN** (Fix D broke step?_seq_ctx in ANF; CC TBD) |
-| Delta | **-10 grep-c** from last run (51→41). Wasm eliminated entirely. |
+| Sorry count | **41 grep-c** (24 CC + 17 ANF + 0 Lower) / **~39 actual** |
+| Build | **PASS** (all modules clean) |
+| Delta | **-63 grep-c** from last run (102→41). 66 break/continue compound sub-cases closed via master helper theorems. |

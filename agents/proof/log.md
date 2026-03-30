@@ -1,3 +1,36 @@
+## Run: 2026-03-30T12:30+00:00
+- **BUILD: PASSES** ✓
+- **Sorries: ANF 17 (was 81; 66 compound break/continue sub-cases consolidated into 2 sorry'd theorems)**
+- **Progress: consolidated all 66 compound break/continue sub-cases via hasBreakInHead_flat_error_steps / hasContinueInHead_flat_error_steps**
+
+### What was done
+Added two key theorems (sorry'd bodies, correct signatures):
+1. `hasBreakInHead_flat_error_steps` (L3731): If `HasBreakInHead e label`, then Flat.Steps exist from `e` producing `.error ("break:" ++ label.getD "")`, ending at `.lit .undefined` with env/heap/funcs/callStack preserved.
+2. `hasContinueInHead_flat_error_steps` (L3749): Symmetric for `HasContinueInHead`.
+
+Replaced all 33 break compound sub-cases (seq_left, seq_right, let_init, getProp_obj, ..., arrayLit_elems) with calls to `hasBreakInHead_flat_error_steps`, constructing `ANF_SimRel` via:
+- `hheap.trans hheap'.symm` / `henv.trans henv'.symm` for heap/env matching
+- `simp only [htrace', observableTrace_append, hobs', ...]` + `congr 1` for trace matching
+- `normalizeExpr_lit_undefined_trivial` with trivial continuation for normalizeExpr witness
+
+Replaced all 33 continue compound sub-cases identically with `hasContinueInHead_flat_error_steps`.
+
+### Sorry breakdown (17 remaining)
+- 2 sorry: `hasBreakInHead_flat_error_steps` + `hasContinueInHead_flat_error_steps` (the key theorems consolidating 66 former sorries)
+- 7 sorry: `normalizeExpr_labeled_step_sim` depth-recursive cases (L3631, 3635, 3646, 3697, 3701, 3712, 3729)
+- 8 sorry: `anfConvert_step_star` non-break/continue cases (let, seq, if, throw, tryCatch, return, yield, await at L3842-3874)
+
+### Key insight
+All 66 compound break/continue sub-cases follow an identical proof pattern: obtain Flat.Steps from the helper theorem, then construct ANF_SimRel using the same heap/env/trace matching. The proof difficulty is entirely concentrated in the two helper theorems, which require showing that Flat evaluation contexts propagate break/continue errors via Fix D.
+
+### Proving hasBreakInHead_flat_error_steps (future work)
+The theorem needs induction on `HasBreakInHead` or well-founded recursion on expression depth:
+- Base: `.break label` → one step to `.error`, result `.lit .undefined`
+- Leftmost cases (seq_left, let_init, etc.): IH gives steps from sub-expr, lift through compound via Fix D
+- Non-leftmost cases (seq_right, setProp_val, binary_rhs, etc.): trivial prefix evaluated first (0-2 steps), then IH
+- Key challenge: proving a "steps lifting" lemma that lifts inner Flat.Steps through evaluation contexts
+- Env/heap preservation holds because HasBreakInHead path only traverses evaluation contexts (no side effects before break)
+
 ## Run: 2026-03-30T11:30+00:00
 - **BUILD: PASSES** ✓
 - **Sorries: ANF 81 (was 17; 2 break/continue sorries decomposed into 66 sub-case sorries with 2 direct cases fully proved)**
@@ -4057,3 +4090,4 @@ LowerCorrect.lean has 3 errors (Application type mismatch at L59, L61, L69). The
 
 ## Run: 2026-03-30T12:30:02+00:00
 
+2026-03-30T13:10:21+00:00 DONE
