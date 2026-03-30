@@ -4440,11 +4440,15 @@ private theorem normalizeExpr_throw_step_sim
         refine ⟨[.silent, .error (Flat.valueToString v)], _,
           .tail ⟨hstep1⟩ (.tail ⟨hstep2⟩ (.refl _)),
           rfl, rfl, rfl, ?_, ?_⟩
-        · simp [List.append_assoc]
-        · simp [observableTrace]
+        · -- trace: (trace ++ [.silent]) ++ [.error msg] = trace ++ [.silent, .error msg]
+          simp only [List.append_assoc, List.cons_append, List.nil_append]
+        · -- observableTrace [.silent, .error msg] = observableTrace [.error msg]
+          simp only [observableTrace, List.filter]
+          rfl
       · -- error case: vacuous since env.lookup name = some v
         intro msg heval
         simp only [ANF.evalTrivial, hv_anf] at heval
+        exact absurd heval (by simp)
     | _ => sorry
   | _ =>
     simp only [Flat.State.env, Flat.State.heap, Flat.State.trace]
