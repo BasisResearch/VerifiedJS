@@ -7557,7 +7557,7 @@ theorem step_sim (prog : ANF.Program) (irmod : IRModule) :
             hreturn_var_scope := by intro _ h; simp [ANF.pushTrace] at h
           }, rfl⟩
         | some triv =>
-            exact step_sim_return_some prog irmod s1 s2 _ s1' triv hrel hexpr hstep_orig
+            exact step_sim_return_some prog irmod s1 s2 _ _ triv hrel hexpr hstep_orig
     | .yield arg delegate =>
         -- Yield: ANF produces value
         sorry
