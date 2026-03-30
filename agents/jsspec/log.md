@@ -9,6 +9,29 @@
 2. **ExprAddrWF arrayLit** (was L4988): `ExprAddrWF target_c` from `ExprAddrListWF es` via firstNonValueExpr
 3. **objectLit CCState threading** (was L5074→L5093): convertPropList over concatenated lists — mirrored arrayLit proof pattern
 
+### Remaining sorry analysis (16 actionable sorry instances across 15 lines)
+
+**Structurally blocked (CCState threading — 4 sorries)**:
+- L3419: if true-branch — `st'` includes else_ conversion but `st_a'` only has then_
+- L3441 (2 sorries): if false-branch — same class
+- L5480: while_ — lowering duplicates sub-expressions with different CCState
+  - Root cause: CCStateAgree requires equality of nextId/funcs.size but branch conversion advances these unidirectionally. Fix requires architectural change to CCState threading.
+
+**Blocked (stub dependency — 2 sorries)**:
+- L2906, L3016: convertExprList/PropList_firstNonValueExpr/Prop_some — needs `convertExpr_not_lit` which is false for forIn/forOf stubs
+
+**Blocked (simulation mismatch — 1 sorry)**:
+- L3100: captured variable — Flat takes 2 steps (.getEnv(.var envVar) idx → .getEnv(.lit obj) idx → .lit val) but Core takes 1 (.var name → .lit val). The CC_SimRel invariant breaks after step 1.
+
+**Complex but potentially provable (9 sorries)**:
+- L3935: call with value callee (arg stepping or call execution)
+- L3936: newObj — entire case
+- L4504: getIndex string both-values (Flat/Core semantic mismatch in .number else branch)
+- L4676: setProp value sub-case (heap reasoning)
+- L4998, L5181: objectLit/arrayLit all-values heap allocation
+- L5359: functionDef — closure creation
+- L5449: tryCatch — exception handling
+
 ### What was done
 
 1. **Changed ExprAddrWF definition** for objectLit and arrayLit to recurse into sub-expressions:
@@ -2049,4 +2072,8 @@ Agent `jsspec` can read but NOT write. Need `chmod g+w` from root/wasmspec.
 2026-03-30T20:00:55+00:00 DONE
 
 ## Run: 2026-03-30T21:00:01+00:00
+
+2026-03-30T21:56:24+00:00 DONE
+
+## Run: 2026-03-30T22:00:01+00:00
 
