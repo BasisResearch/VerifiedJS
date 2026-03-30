@@ -6423,7 +6423,8 @@ inductive TrivialCodeCorr : ANF.Trivial → List IRInstr → Prop where
   | lit_bool_false : TrivialCodeCorr (.litBool false) [.const_ .i32 "0"]
   | lit_num (n : Float) (s : String) : TrivialCodeCorr (.litNum n) [.const_ .f64 s]
   | lit_str (s : String) (encoding : String) : TrivialCodeCorr (.litStr s) [.const_ .f64 encoding]
-  | lit_object (addr : Nat) (s : String) : TrivialCodeCorr (.litObject addr) [.const_ .i32 s]
+  | lit_object (addr : Nat) (s : String) (hs : s.toNat? = some addr) :
+      TrivialCodeCorr (.litObject addr) [.const_ .i32 s]
   | lit_closure (fi : ANF.FuncIdx) (ep : Nat) (encoding : String) :
       TrivialCodeCorr (.litClosure fi ep) [.const_ .f64 encoding]
 
@@ -6650,6 +6651,14 @@ axiom lower_main_code_corr (prog : ANF.Program) (irmod : IRModule)
     (h : Wasm.lower prog = .ok irmod) :
     LowerCodeCorr prog.main (irInitialState irmod).code
 
+/-- Well-formedness: if the main expression is `return (some (.var name))`,
+    the variable is in scope in the initial environment.
+    This follows from the lowering only generating code for well-scoped programs. -/
+axiom lower_main_var_scope (prog : ANF.Program) (irmod : IRModule)
+    (h : Wasm.lower prog = .ok irmod) :
+    ∀ name, prog.main = .return (some (.var name)) →
+      ∃ v, (ANF.initialState prog).env.lookup name = some v
+
 structure LowerSimRel (prog : ANF.Program) (irmod : IRModule)
     (s : ANF.State) (ir : IRExecState) : Prop where
   /- The IR module is the result of lowering. -/
@@ -6690,6 +6699,12 @@ structure LowerSimRel (prog : ANF.Program) (irmod : IRModule)
      With empty labels, br traps and traces diverge. -/
   hcode_no_br : ∀ target, ir.code = [IRInstr.br target] →
     ∃ idx lbl, irFindLabel? ir.labels target = some (idx, lbl)
+  /- Variable scope: if the current expression is `return (some (.var name))`,
+     the variable is in the environment.  This ensures traces match in the
+     simulation (an undefined-variable reference would produce an observable
+     ReferenceError in the ANF but a silent localGet in the IR). -/
+  hreturn_var_scope : ∀ name, s.expr = .return (some (.var name)) →
+    ∃ v, s.env.lookup name = some v
 
 namespace LowerSimRel
 
@@ -6701,7 +6716,9 @@ namespace LowerSimRel
     once made public, this can be proved from `hlower` directly. -/
 theorem init (prog : ANF.Program) (irmod : IRModule)
     (hlower : Wasm.lower prog = .ok irmod)
-    (hcode : LowerCodeCorr prog.main (irInitialState irmod).code) :
+    (hcode : LowerCodeCorr prog.main (irInitialState irmod).code)
+    (hscope : ∀ name, prog.main = .return (some (.var name)) →
+      ∃ v, (ANF.initialState prog).env.lookup name = some v) :
     LowerSimRel prog irmod (ANF.initialState prog) (irInitialState irmod) where
   hlower := hlower
   hmod := rfl
