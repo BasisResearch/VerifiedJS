@@ -4697,11 +4697,128 @@ private theorem anfConvert_step_star
     exact normalizeExpr_tryCatch_step_sim sf s t k n m body catchParam catchBody finally_ hnorm hk_triv hewf
       sa_env sa_heap sa_trace hheap henv htrace _ _ hstep_eq
   | «return» arg =>
-    sorry -- return: evaluate optional trivial arg
+    cases sa with
+    | mk sa_expr sa_env sa_heap sa_trace =>
+    simp only [] at hsa; subst hsa
+    simp only [ANF.State.expr] at hnorm
+    simp only [ANF.State.heap] at hheap
+    simp only [ANF.State.env] at henv
+    simp only [ANF.State.trace] at htrace
+    obtain ⟨hret_none, hret_ok, hret_err⟩ :=
+      normalizeExpr_return_step_sim sf k arg n m hnorm hk_triv hewf
+    cases arg with
+    | none =>
+      simp only [ANF.step?, ANF.pushTrace] at hstep_eq
+      obtain ⟨rfl, rfl⟩ := hstep_eq
+      obtain ⟨evs, sf', hsteps, hexpr', henv', hheap', htrace', hobs'⟩ := hret_none rfl
+      refine ⟨sf', evs, hsteps, hobs'.symm, ?_, ?_⟩
+      · refine ⟨hheap.trans hheap'.symm, henv.trans henv'.symm, ?_,
+                fun t => pure (.trivial t), n, n, ?_, ANF.trivial_k_preserving⟩
+        · rw [observableTrace_append, htrace, ← htrace']; rw [observableTrace_append]; congr 1; exact hobs'.symm
+        · rw [hexpr']; exact ANF.normalizeExpr_lit_undefined_trivial n
+      · rw [hexpr']; intro x hfx; cases hfx
+    | some t =>
+      simp only [ANF.step?, ANF.pushTrace] at hstep_eq
+      cases heval : ANF.evalTrivial sa_env t <;> simp [heval] at hstep_eq
+      all_goals obtain ⟨rfl, rfl⟩ := hstep_eq
+      · -- error case
+        rename_i msg
+        have heval_sf : ANF.evalTrivial sf.env t = .error msg := by rw [← henv]; exact heval
+        obtain ⟨evs, sf', hsteps, hexpr', henv', hheap', htrace', hobs'⟩ := hret_err t msg rfl heval_sf
+        refine ⟨sf', evs, hsteps, hobs'.symm, ?_, ?_⟩
+        · refine ⟨hheap.trans hheap'.symm, henv.trans henv'.symm, ?_,
+                  fun t' => pure (.trivial t'), n, n, ?_, ANF.trivial_k_preserving⟩
+          · rw [observableTrace_append, htrace, ← htrace']; rw [observableTrace_append]; congr 1; exact hobs'.symm
+          · rw [hexpr']; exact ANF.normalizeExpr_lit_undefined_trivial n
+        · rw [hexpr']; intro x hfx; cases hfx
+      · -- ok case
+        rename_i v
+        have heval_sf : ANF.evalTrivial sf.env t = .ok v := by rw [← henv]; exact heval
+        obtain ⟨evs, sf', hsteps, hexpr', henv', hheap', htrace', hobs'⟩ := hret_ok t v rfl heval_sf
+        refine ⟨sf', evs, hsteps, hobs'.symm, ?_, ?_⟩
+        · refine ⟨hheap.trans hheap'.symm, henv.trans henv'.symm, ?_,
+                  fun t' => pure (.trivial t'), n, n, ?_, ANF.trivial_k_preserving⟩
+          · rw [observableTrace_append, htrace, ← htrace']; rw [observableTrace_append]; congr 1; exact hobs'.symm
+          · rw [hexpr']; simp [ANF.normalizeExpr, trivialOfFlatValue_eq_trivialOfValue, StateT.run, StateT.pure, pure, Pure.pure, Except.pure]
+        · rw [hexpr']; intro x hfx; cases hfx
   | yield arg delegate =>
-    sorry -- yield: evaluate optional trivial arg
+    cases sa with
+    | mk sa_expr sa_env sa_heap sa_trace =>
+    simp only [] at hsa; subst hsa
+    simp only [ANF.State.expr] at hnorm
+    simp only [ANF.State.heap] at hheap
+    simp only [ANF.State.env] at henv
+    simp only [ANF.State.trace] at htrace
+    obtain ⟨hyield_none, hyield_ok, hyield_err⟩ :=
+      normalizeExpr_yield_step_sim sf k arg delegate n m hnorm hk_triv hewf
+    cases arg with
+    | none =>
+      simp only [ANF.step?, ANF.pushTrace] at hstep_eq
+      obtain ⟨rfl, rfl⟩ := hstep_eq
+      obtain ⟨evs, sf', hsteps, hexpr', henv', hheap', htrace', hobs'⟩ := hyield_none rfl
+      refine ⟨sf', evs, hsteps, hobs'.symm, ?_, ?_⟩
+      · refine ⟨hheap.trans hheap'.symm, henv.trans henv'.symm, ?_,
+                fun t => pure (.trivial t), n, n, ?_, ANF.trivial_k_preserving⟩
+        · rw [observableTrace_append, htrace, ← htrace']; rw [observableTrace_append]; congr 1; exact hobs'.symm
+        · rw [hexpr']; exact ANF.normalizeExpr_lit_undefined_trivial n
+      · rw [hexpr']; intro x hfx; cases hfx
+    | some t =>
+      simp only [ANF.step?, ANF.pushTrace] at hstep_eq
+      cases heval : ANF.evalTrivial sa_env t <;> simp [heval] at hstep_eq
+      all_goals obtain ⟨rfl, rfl⟩ := hstep_eq
+      · -- error case
+        rename_i msg
+        have heval_sf : ANF.evalTrivial sf.env t = .error msg := by rw [← henv]; exact heval
+        obtain ⟨evs, sf', hsteps, hexpr', henv', hheap', htrace', hobs'⟩ := hyield_err t msg rfl heval_sf
+        refine ⟨sf', evs, hsteps, hobs'.symm, ?_, ?_⟩
+        · refine ⟨hheap.trans hheap'.symm, henv.trans henv'.symm, ?_,
+                  fun t' => pure (.trivial t'), n, n, ?_, ANF.trivial_k_preserving⟩
+          · rw [observableTrace_append, htrace, ← htrace']; rw [observableTrace_append]; congr 1; exact hobs'.symm
+          · rw [hexpr']; exact ANF.normalizeExpr_lit_undefined_trivial n
+        · rw [hexpr']; intro x hfx; cases hfx
+      · -- ok case
+        rename_i v
+        have heval_sf : ANF.evalTrivial sf.env t = .ok v := by rw [← henv]; exact heval
+        obtain ⟨evs, sf', hsteps, hexpr', henv', hheap', htrace', hobs'⟩ := hyield_ok t v rfl heval_sf
+        refine ⟨sf', evs, hsteps, hobs'.symm, ?_, ?_⟩
+        · refine ⟨hheap.trans hheap'.symm, henv.trans henv'.symm, ?_,
+                  fun t' => pure (.trivial t'), n, n, ?_, ANF.trivial_k_preserving⟩
+          · rw [observableTrace_append, htrace, ← htrace']; rw [observableTrace_append]; congr 1; exact hobs'.symm
+          · rw [hexpr']; simp [ANF.normalizeExpr, trivialOfFlatValue_eq_trivialOfValue, StateT.run, StateT.pure, pure, Pure.pure, Except.pure]
+        · rw [hexpr']; intro x hfx; cases hfx
   | await arg =>
-    sorry -- await: evaluate trivial arg
+    cases sa with
+    | mk sa_expr sa_env sa_heap sa_trace =>
+    simp only [] at hsa; subst hsa
+    simp only [ANF.State.expr] at hnorm
+    simp only [ANF.State.heap] at hheap
+    simp only [ANF.State.env] at henv
+    simp only [ANF.State.trace] at htrace
+    obtain ⟨hawait_ok, hawait_err⟩ :=
+      normalizeExpr_await_step_sim sf k arg n m hnorm hk_triv hewf
+    simp only [ANF.step?, ANF.pushTrace] at hstep_eq
+    cases heval : ANF.evalTrivial sa_env arg <;> simp [heval] at hstep_eq
+    all_goals obtain ⟨rfl, rfl⟩ := hstep_eq
+    · -- error case
+      rename_i msg
+      have heval_sf : ANF.evalTrivial sf.env arg = .error msg := by rw [← henv]; exact heval
+      obtain ⟨evs, sf', hsteps, hexpr', henv', hheap', htrace', hobs'⟩ := hawait_err msg heval_sf
+      refine ⟨sf', evs, hsteps, hobs'.symm, ?_, ?_⟩
+      · refine ⟨hheap.trans hheap'.symm, henv.trans henv'.symm, ?_,
+                fun t => pure (.trivial t), n, n, ?_, ANF.trivial_k_preserving⟩
+        · rw [observableTrace_append, htrace, ← htrace']; rw [observableTrace_append]; congr 1; exact hobs'.symm
+        · rw [hexpr']; exact ANF.normalizeExpr_lit_undefined_trivial n
+      · rw [hexpr']; intro x hfx; cases hfx
+    · -- ok case
+      rename_i v
+      have heval_sf : ANF.evalTrivial sf.env arg = .ok v := by rw [← henv]; exact heval
+      obtain ⟨evs, sf', hsteps, hexpr', henv', hheap', htrace', hobs'⟩ := hawait_ok v heval_sf
+      refine ⟨sf', evs, hsteps, hobs'.symm, ?_, ?_⟩
+      · refine ⟨hheap.trans hheap'.symm, henv.trans henv'.symm, ?_,
+                fun t => pure (.trivial t), n, n, ?_, ANF.trivial_k_preserving⟩
+        · rw [observableTrace_append, htrace, ← htrace']; rw [observableTrace_append]; congr 1; exact hobs'.symm
+        · rw [hexpr']; simp [ANF.normalizeExpr, trivialOfFlatValue_eq_trivialOfValue, StateT.run, StateT.pure, pure, Pure.pure, Except.pure]
+      · rw [hexpr']; intro x hfx; cases hfx
   | labeled label body =>
     obtain ⟨sa_expr, sa_env, sa_heap, sa_trace⟩ := sa
     simp only [] at hsa; subst hsa
