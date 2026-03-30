@@ -3728,6 +3728,39 @@ private theorem normalizeExpr_labeled_step_sim :
           repeat (first | split at hnorm | (simp [pure, Pure.pure, StateT.pure, Except.pure] at hnorm; try exact ANF.Expr.noConfusion (Prod.mk.inj (Except.ok.inj hnorm)).1))
       | _ => sorry -- compound/bindComplex/throw/await cases: needs induction on depth
 
+/-- If an expression has break in its evaluation head, then Flat stepping produces the
+    break error. The expression is evaluated through evaluation contexts until the
+    break statement is reached, at which point the error propagates via Fix D. -/
+private theorem hasBreakInHead_flat_error_steps
+    (e : Flat.Expr) (label : Option Flat.LabelName)
+    (h : HasBreakInHead e label)
+    (sf : Flat.State) (hsf : sf.expr = e)
+    (hewf : ExprWellFormed e sf.env) :
+    ∃ (sf' : Flat.State) (evs : List Core.TraceEvent),
+      Flat.Steps sf evs sf' ∧
+      sf'.expr = .lit .undefined ∧
+      sf'.env = sf.env ∧ sf'.heap = sf.heap ∧
+      sf'.funcs = sf.funcs ∧ sf'.callStack = sf.callStack ∧
+      sf'.trace = sf.trace ++ evs ∧
+      observableTrace evs = observableTrace [.error ("break:" ++ label.getD "")] := by
+  sorry
+
+/-- If an expression has continue in its evaluation head, then Flat stepping produces the
+    continue error. Symmetric to hasBreakInHead_flat_error_steps. -/
+private theorem hasContinueInHead_flat_error_steps
+    (e : Flat.Expr) (label : Option Flat.LabelName)
+    (h : HasContinueInHead e label)
+    (sf : Flat.State) (hsf : sf.expr = e)
+    (hewf : ExprWellFormed e sf.env) :
+    ∃ (sf' : Flat.State) (evs : List Core.TraceEvent),
+      Flat.Steps sf evs sf' ∧
+      sf'.expr = .lit .undefined ∧
+      sf'.env = sf.env ∧ sf'.heap = sf.heap ∧
+      sf'.funcs = sf.funcs ∧ sf'.callStack = sf.callStack ∧
+      sf'.trace = sf.trace ++ evs ∧
+      observableTrace evs = observableTrace [.error ("continue:" ++ label.getD "")] := by
+  sorry
+
 /-- Stuttering simulation: one ANF step corresponds to one or more Flat steps,
     preserving observable events and the simulation relation.
     This is the key theorem requiring detailed case analysis over expression forms. -/
