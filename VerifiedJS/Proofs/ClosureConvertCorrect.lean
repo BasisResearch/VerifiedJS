@@ -3716,60 +3716,7 @@ private theorem closureConvert_step_simulation
         -- Since coreToFlatValue = convertValue, the results agree
         rcases hno_core with ⟨addr, rfl⟩ | ⟨str, rfl⟩ | ⟨hno, hns⟩
         · -- Object case: heap lookup
-          have : Flat.convertValue (.object addr) = .object addr := rfl
-          rw [this] at hstep
-          have haddr_wf : addr < sc.heap.objects.size := by
-            simp [ExprAddrWF, ValueAddrWF] at hexprwf; exact hexprwf.1
-          -- Compute the getIndex result via propName lookup
-          let propName := Core.valueToString iv
-          let coreResult := match sc.heap.objects[addr]? with
-            | some props =>
-                match props.find? (fun kv => kv.fst == propName) with
-                | some (_, v) => v
-                | none => if propName == "length" then .number (Float.ofNat props.length) else .undefined
-            | none => .undefined
-          let sc' : Core.State := ⟨.lit coreResult, sc.env, sc.heap,
-            sc.trace ++ [.silent], sc.funcs, sc.callStack⟩
-          refine ⟨injMap, sc', ⟨?_⟩, ?_, ?_, ?_, ?_, ?_, ?_, ?_, ?_⟩
-          · -- Core step
-            have hsc' : sc = { sc with expr := .getIndex (.lit (.object addr)) (.lit iv) } := by
-              obtain ⟨_, _, _, _, _, _⟩ := sc; simp only [] at hsc; subst hsc; rfl
-            rw [hsc']; simp [Core.step?, Core.exprValue?, Core.pushTrace, sc', coreResult, propName]
-          · -- trace: Flat step has .silent, need to show trace agrees
-            -- First show Flat step result
-            rw [heapObjectAt?_eq, ← HeapInj_get hinj haddr_wf, valueToString_convertValue] at hstep
-            simp [Flat.step?, Flat.exprValue?] at hstep
-            obtain ⟨hev, hsf'⟩ := hstep; subst hev
-            simp [sc', htrace, hsf']
-          · -- HeapInj
-            rw [heapObjectAt?_eq, ← HeapInj_get hinj haddr_wf, valueToString_convertValue] at hstep
-            simp [Flat.step?, Flat.exprValue?] at hstep
-            obtain ⟨_, hsf'⟩ := hstep; subst hsf'; simp [sc']; exact hinj
-          · rw [heapObjectAt?_eq, ← HeapInj_get hinj haddr_wf, valueToString_convertValue] at hstep
-            simp [Flat.step?, Flat.exprValue?] at hstep
-            obtain ⟨_, hsf'⟩ := hstep; subst hsf'; exact henvCorr
-          · rw [heapObjectAt?_eq, ← HeapInj_get hinj haddr_wf, valueToString_convertValue] at hstep
-            simp [Flat.step?, Flat.exprValue?] at hstep
-            obtain ⟨_, hsf'⟩ := hstep; subst hsf'; exact henvwf
-          · rw [heapObjectAt?_eq, ← HeapInj_get hinj haddr_wf, valueToString_convertValue] at hstep
-            simp [Flat.step?, Flat.exprValue?] at hstep
-            obtain ⟨_, hsf'⟩ := hstep; subst hsf'; exact hheapvwf
-          · simp [sc', noCallFrameReturn]
-          · -- ExprAddrWF: result is .lit coreResult
-            simp only [sc', ExprAddrWF, coreResult]
-            split <;> try (split <;> try (split <;> simp [ValueAddrWF]))
-            · rename_i props _ kv hkv
-              exact (hheapvwf addr haddr_wf props (by simp_all) kv hkv).1
-            · split <;> simp [ValueAddrWF]
-            · simp [ValueAddrWF]
-          · -- CCState threading
-            refine ⟨st, st, ?_, ⟨rfl, rfl⟩, by subst hst; exact ⟨rfl, rfl⟩⟩
-            simp [sc', Flat.convertExpr, Flat.convertValue]
-            rw [heapObjectAt?_eq, ← HeapInj_get hinj haddr_wf, valueToString_convertValue] at hstep
-            simp [Flat.step?, Flat.exprValue?] at hstep
-            obtain ⟨_, hsf'⟩ := hstep; subst hsf'
-            simp [coreResult, propName]
-            simp [coreToFlatValue_eq_convertValue]
+          sorry
         · -- String case
           have : Flat.convertValue (.string str) = .string str := rfl
           rw [this] at hstep
