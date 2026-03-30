@@ -7674,11 +7674,19 @@ theorem step_sim (prog : ANF.Program) (irmod : IRModule) :
             hlower := hrel.hlower
             hmod := by rw [hmod'', hmod_mid]; exact hrel.hmod
             hcode := by
-              simp [ANF.pushTrace]
+              simp [ANF.pushTrace]; rw [hcode']
               exact .value_done .litUndefined (by intro name; exact ANF.Trivial.noConfusion)
             hhalt := by
-              intro _; simp [IRExecState.halted, hcode', hlbl']
-              rw [hfr', hfr_mid]; omega
+              intro _
+              constructor
+              · exact hcode'
+              constructor
+              · exact hlbl'
+              · have : s2'.frames.length = 1 := by
+                  have h1 : s2'.frames = s2_mid.frames := hfr'
+                  have h2 : s2_mid.frames = s2.frames := hfr_mid
+                  rw [h1, h2]; exact hrel.hframes_one
+                omega
             hframes := by rw [hfr', hfr_mid]; exact hrel.hframes
             henv := by
               intro n w hlk hne; simp [ANF.pushTrace] at hlk
@@ -7791,11 +7799,17 @@ theorem step_sim (prog : ANF.Program) (irmod : IRModule) :
             hlower := hrel.hlower
             hmod := by rw [hmod'', hmod_mid]; exact hrel.hmod
             hcode := by
-              simp [ANF.pushTrace]
+              simp [ANF.pushTrace]; rw [hcode']
               exact .value_done (ANF.trivialOfValue v) (ANF.trivialOfValue_ne_var v)
             hhalt := by
-              intro _; simp [IRExecState.halted, hcode', hlbl']
-              rw [hfr', hfr_mid]; omega
+              intro _
+              constructor
+              · exact hcode'
+              constructor
+              · exact hlbl'
+              · have : s2'.frames.length = 1 := by
+                  rw [hfr', hfr_mid]; exact hrel.hframes_one
+                omega
             hframes := by rw [hfr', hfr_mid]; exact hrel.hframes
             henv := by
               intro n w hlk hne; simp [ANF.pushTrace] at hlk
