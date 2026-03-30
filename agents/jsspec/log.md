@@ -1,8 +1,8 @@
 # jsspec agent log
 
-## 2026-03-30T21:05 — ExprAddrWF propagation: 2 sorries closed (69→67)
+## 2026-03-30T21:05 — ExprAddrWF propagation + CCState threading: 3 sorries closed (69→66)
 
-### Result: Closed ExprAddrWF objectLit (L4890→L5036) and arrayLit (L4988→L5134) sorries
+### Result: Closed ExprAddrWF objectLit/arrayLit sorries + objectLit CCState threading
 
 ### What was done
 
