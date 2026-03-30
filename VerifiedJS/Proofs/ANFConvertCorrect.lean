@@ -4342,6 +4342,197 @@ private theorem hasContinueInHead_flat_error_steps
     hasContinueInHead_step?_error_aux e.depth e (Nat.le_refl _) label h sf hsf
   exact ⟨s', [_], .tail ⟨hstep⟩ (.refl _), hexpr, henv, hheap, hfuncs, hcs, htrace, rfl⟩
 
+/-- If normalizeExpr sf.expr k produces .throw arg (with trivial-preserving k),
+    then there exist Flat steps from sf that produce the same error event
+    as the ANF throw step. Covers both evalTrivial ok and error cases. -/
+private theorem normalizeExpr_throw_step_sim
+    (sf : Flat.State)
+    (k : ANF.Trivial → ANF.ConvM ANF.Expr) (arg : ANF.Trivial) (n m : Nat)
+    (hnorm : (ANF.normalizeExpr sf.expr k).run n = .ok (.throw arg, m))
+    (hk : ∀ t n', ∃ m', (k t).run n' = .ok (.trivial t, m'))
+    (hewf : ExprWellFormed sf.expr sf.env) :
+    -- ok case: evalTrivial succeeds
+    (∀ v, ANF.evalTrivial sf.env arg = .ok v →
+      ∃ (evs : List Core.TraceEvent) (sf' : Flat.State),
+        Flat.Steps sf evs sf' ∧
+        sf'.expr = .lit .undefined ∧ sf'.env = sf.env ∧ sf'.heap = sf.heap ∧
+        sf'.trace = sf.trace ++ evs ∧
+        observableTrace evs = observableTrace [.error (Flat.valueToString v)]) ∧
+    -- error case: evalTrivial fails
+    (∀ msg, ANF.evalTrivial sf.env arg = .error msg →
+      ∃ (evs : List Core.TraceEvent) (sf' : Flat.State),
+        Flat.Steps sf evs sf' ∧
+        sf'.expr = .lit .undefined ∧ sf'.env = sf.env ∧ sf'.heap = sf.heap ∧
+        sf'.trace = sf.trace ++ evs ∧
+        observableTrace evs = observableTrace [.error msg]) := by
+  sorry
+
+/-- If normalizeExpr sf.expr k produces .return arg (with trivial-preserving k),
+    then there exist Flat steps from sf matching the ANF return step. -/
+private theorem normalizeExpr_return_step_sim
+    (sf : Flat.State)
+    (k : ANF.Trivial → ANF.ConvM ANF.Expr) (arg : Option ANF.Trivial) (n m : Nat)
+    (hnorm : (ANF.normalizeExpr sf.expr k).run n = .ok (.return arg, m))
+    (hk : ∀ t n', ∃ m', (k t).run n' = .ok (.trivial t, m'))
+    (hewf : ExprWellFormed sf.expr sf.env) :
+    -- none case: return without argument
+    (arg = none →
+      ∃ (evs : List Core.TraceEvent) (sf' : Flat.State),
+        Flat.Steps sf evs sf' ∧
+        sf'.expr = .lit .undefined ∧ sf'.env = sf.env ∧ sf'.heap = sf.heap ∧
+        sf'.trace = sf.trace ++ evs ∧
+        observableTrace evs = observableTrace [.error "return:undefined"]) ∧
+    -- some ok case: return with arg that evaluates successfully
+    (∀ t v, arg = some t → ANF.evalTrivial sf.env t = .ok v →
+      ∃ (evs : List Core.TraceEvent) (sf' : Flat.State),
+        Flat.Steps sf evs sf' ∧
+        sf'.expr = .lit (ANF.trivialOfValue v) ∧ sf'.env = sf.env ∧ sf'.heap = sf.heap ∧
+        sf'.trace = sf.trace ++ evs ∧
+        observableTrace evs = observableTrace [.error ("return:" ++ Flat.valueToString v)]) ∧
+    -- some error case: return with arg that fails
+    (∀ t msg, arg = some t → ANF.evalTrivial sf.env t = .error msg →
+      ∃ (evs : List Core.TraceEvent) (sf' : Flat.State),
+        Flat.Steps sf evs sf' ∧
+        sf'.expr = .lit .undefined ∧ sf'.env = sf.env ∧ sf'.heap = sf.heap ∧
+        sf'.trace = sf.trace ++ evs ∧
+        observableTrace evs = observableTrace [.error msg]) := by
+  sorry
+
+/-- If normalizeExpr sf.expr k produces .await arg (with trivial-preserving k),
+    then there exist Flat steps from sf matching the ANF await step. -/
+private theorem normalizeExpr_await_step_sim
+    (sf : Flat.State)
+    (k : ANF.Trivial → ANF.ConvM ANF.Expr) (arg : ANF.Trivial) (n m : Nat)
+    (hnorm : (ANF.normalizeExpr sf.expr k).run n = .ok (.await arg, m))
+    (hk : ∀ t n', ∃ m', (k t).run n' = .ok (.trivial t, m'))
+    (hewf : ExprWellFormed sf.expr sf.env) :
+    -- ok case
+    (∀ v, ANF.evalTrivial sf.env arg = .ok v →
+      ∃ (evs : List Core.TraceEvent) (sf' : Flat.State),
+        Flat.Steps sf evs sf' ∧
+        sf'.expr = .lit (ANF.trivialOfValue v) ∧ sf'.env = sf.env ∧ sf'.heap = sf.heap ∧
+        sf'.trace = sf.trace ++ evs ∧
+        observableTrace evs = observableTrace [.silent]) ∧
+    -- error case
+    (∀ msg, ANF.evalTrivial sf.env arg = .error msg →
+      ∃ (evs : List Core.TraceEvent) (sf' : Flat.State),
+        Flat.Steps sf evs sf' ∧
+        sf'.expr = .lit .undefined ∧ sf'.env = sf.env ∧ sf'.heap = sf.heap ∧
+        sf'.trace = sf.trace ++ evs ∧
+        observableTrace evs = observableTrace [.error msg]) := by
+  sorry
+
+/-- If normalizeExpr sf.expr k produces .yield arg delegate (with trivial-preserving k),
+    then there exist Flat steps from sf matching the ANF yield step. -/
+private theorem normalizeExpr_yield_step_sim
+    (sf : Flat.State)
+    (k : ANF.Trivial → ANF.ConvM ANF.Expr) (arg : Option ANF.Trivial) (delegate : Bool) (n m : Nat)
+    (hnorm : (ANF.normalizeExpr sf.expr k).run n = .ok (.yield arg delegate, m))
+    (hk : ∀ t n', ∃ m', (k t).run n' = .ok (.trivial t, m'))
+    (hewf : ExprWellFormed sf.expr sf.env) :
+    -- none case
+    (arg = none →
+      ∃ (evs : List Core.TraceEvent) (sf' : Flat.State),
+        Flat.Steps sf evs sf' ∧
+        sf'.expr = .lit .undefined ∧ sf'.env = sf.env ∧ sf'.heap = sf.heap ∧
+        sf'.trace = sf.trace ++ evs ∧
+        observableTrace evs = observableTrace [.error "yield:undefined"]) ∧
+    -- some ok case
+    (∀ t v, arg = some t → ANF.evalTrivial sf.env t = .ok v →
+      ∃ (evs : List Core.TraceEvent) (sf' : Flat.State),
+        Flat.Steps sf evs sf' ∧
+        sf'.expr = .lit (ANF.trivialOfValue v) ∧ sf'.env = sf.env ∧ sf'.heap = sf.heap ∧
+        sf'.trace = sf.trace ++ evs ∧
+        observableTrace evs = observableTrace [.error ("yield:" ++ Flat.valueToString v)]) ∧
+    -- some error case
+    (∀ t msg, arg = some t → ANF.evalTrivial sf.env t = .error msg →
+      ∃ (evs : List Core.TraceEvent) (sf' : Flat.State),
+        Flat.Steps sf evs sf' ∧
+        sf'.expr = .lit .undefined ∧ sf'.env = sf.env ∧ sf'.heap = sf.heap ∧
+        sf'.trace = sf.trace ++ evs ∧
+        observableTrace evs = observableTrace [.error msg]) := by
+  sorry
+
+/-- If normalizeExpr sf.expr k produces .let name rhs body (with trivial-preserving k),
+    then one ANF step on the let can be simulated by Flat steps. -/
+private theorem normalizeExpr_let_step_sim
+    (sf : Flat.State) (s : Flat.Program) (t : ANF.Program)
+    (k : ANF.Trivial → ANF.ConvM ANF.Expr) (n m : Nat)
+    (name : ANF.VarName) (rhs : ANF.ComplexExpr) (body : ANF.Expr)
+    (hnorm : (ANF.normalizeExpr sf.expr k).run n = .ok (.let name rhs body, m))
+    (hk : ∀ t' n', ∃ m', (k t').run n' = .ok (.trivial t', m'))
+    (hewf : ExprWellFormed sf.expr sf.env)
+    (sa_env : ANF.Env) (sa_heap : Core.Heap) (sa_trace : List Core.TraceEvent)
+    (hheap : sa_heap = sf.heap) (henv : sa_env = sf.env)
+    (ev : Core.TraceEvent) (sa' : ANF.State)
+    (hstep_eq : ANF.step? ⟨.let name rhs body, sa_env, sa_heap, sa_trace⟩ = some (ev, sa')) :
+    ∃ (evs : List Core.TraceEvent) (sf' : Flat.State),
+      Flat.Steps sf evs sf' ∧
+      observableTrace [ev] = observableTrace evs ∧
+      ANF_SimRel s t sa' sf' ∧
+      ExprWellFormed sf'.expr sf'.env := by
+  sorry
+
+/-- If normalizeExpr sf.expr k produces .seq a b (with trivial-preserving k),
+    then one ANF step on the seq can be simulated by Flat steps. -/
+private theorem normalizeExpr_seq_step_sim
+    (sf : Flat.State) (s : Flat.Program) (t : ANF.Program)
+    (k : ANF.Trivial → ANF.ConvM ANF.Expr) (n m : Nat)
+    (a b : ANF.Expr)
+    (hnorm : (ANF.normalizeExpr sf.expr k).run n = .ok (.seq a b, m))
+    (hk : ∀ t' n', ∃ m', (k t').run n' = .ok (.trivial t', m'))
+    (hewf : ExprWellFormed sf.expr sf.env)
+    (sa_env : ANF.Env) (sa_heap : Core.Heap) (sa_trace : List Core.TraceEvent)
+    (hheap : sa_heap = sf.heap) (henv : sa_env = sf.env)
+    (ev : Core.TraceEvent) (sa' : ANF.State)
+    (hstep_eq : ANF.step? ⟨.seq a b, sa_env, sa_heap, sa_trace⟩ = some (ev, sa')) :
+    ∃ (evs : List Core.TraceEvent) (sf' : Flat.State),
+      Flat.Steps sf evs sf' ∧
+      observableTrace [ev] = observableTrace evs ∧
+      ANF_SimRel s t sa' sf' ∧
+      ExprWellFormed sf'.expr sf'.env := by
+  sorry
+
+/-- If normalizeExpr sf.expr k produces .if cond then_ else_ (with trivial-preserving k),
+    then one ANF step on the if can be simulated by Flat steps. -/
+private theorem normalizeExpr_if_step_sim
+    (sf : Flat.State) (s : Flat.Program) (t : ANF.Program)
+    (k : ANF.Trivial → ANF.ConvM ANF.Expr) (n m : Nat)
+    (cond : ANF.Trivial) (then_ else_ : ANF.Expr)
+    (hnorm : (ANF.normalizeExpr sf.expr k).run n = .ok (.if cond then_ else_, m))
+    (hk : ∀ t' n', ∃ m', (k t').run n' = .ok (.trivial t', m'))
+    (hewf : ExprWellFormed sf.expr sf.env)
+    (sa_env : ANF.Env) (sa_heap : Core.Heap) (sa_trace : List Core.TraceEvent)
+    (hheap : sa_heap = sf.heap) (henv : sa_env = sf.env)
+    (ev : Core.TraceEvent) (sa' : ANF.State)
+    (hstep_eq : ANF.step? ⟨.if cond then_ else_, sa_env, sa_heap, sa_trace⟩ = some (ev, sa')) :
+    ∃ (evs : List Core.TraceEvent) (sf' : Flat.State),
+      Flat.Steps sf evs sf' ∧
+      observableTrace [ev] = observableTrace evs ∧
+      ANF_SimRel s t sa' sf' ∧
+      ExprWellFormed sf'.expr sf'.env := by
+  sorry
+
+/-- If normalizeExpr sf.expr k produces .tryCatch body catchParam catchBody finally_
+    (with trivial-preserving k), then one ANF step can be simulated by Flat steps. -/
+private theorem normalizeExpr_tryCatch_step_sim
+    (sf : Flat.State) (s : Flat.Program) (t : ANF.Program)
+    (k : ANF.Trivial → ANF.ConvM ANF.Expr) (n m : Nat)
+    (body : ANF.Expr) (catchParam : ANF.VarName) (catchBody : ANF.Expr) (finally_ : Option ANF.Expr)
+    (hnorm : (ANF.normalizeExpr sf.expr k).run n = .ok (.tryCatch body catchParam catchBody finally_, m))
+    (hk : ∀ t' n', ∃ m', (k t').run n' = .ok (.trivial t', m'))
+    (hewf : ExprWellFormed sf.expr sf.env)
+    (sa_env : ANF.Env) (sa_heap : Core.Heap) (sa_trace : List Core.TraceEvent)
+    (hheap : sa_heap = sf.heap) (henv : sa_env = sf.env)
+    (ev : Core.TraceEvent) (sa' : ANF.State)
+    (hstep_eq : ANF.step? ⟨.tryCatch body catchParam catchBody finally_, sa_env, sa_heap, sa_trace⟩ = some (ev, sa')) :
+    ∃ (evs : List Core.TraceEvent) (sf' : Flat.State),
+      Flat.Steps sf evs sf' ∧
+      observableTrace [ev] = observableTrace evs ∧
+      ANF_SimRel s t sa' sf' ∧
+      ExprWellFormed sf'.expr sf'.env := by
+  sorry
+
 /-- Stuttering simulation: one ANF step corresponds to one or more Flat steps,
     preserving observable events and the simulation relation.
     This is the key theorem requiring detailed case analysis over expression forms. -/
