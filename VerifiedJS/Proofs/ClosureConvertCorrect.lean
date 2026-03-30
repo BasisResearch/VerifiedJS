@@ -2080,16 +2080,20 @@ private theorem Flat_step?_getIndex_value_step_idx (s : Flat.State) (v : Flat.Va
     Flat.step? { s with expr := .getIndex (.lit v) ie } =
       some (t, { expr := .getIndex (.lit v) si.expr, env := si.env, heap := si.heap,
                  trace := s.trace ++ [t], funcs := s.funcs, callStack := s.callStack }) := by
-  have hnv' : (match ie with | Flat.Expr.lit v => some v | _ => none) = none := hnv
-  cases v <;> simp only [Flat.step?, Flat.exprValue?, hnv', hss]
+  cases ie with
+  | lit w => simp [Flat.exprValue?] at hnv
+  | _ => cases v <;> simp only [Flat.step?, Flat.exprValue?, hss]
 
 -- getIndex: obj is value, idx stuck → whole stuck (Flat)
 private theorem Flat_step?_getIndex_value_none (s : Flat.State) (v : Flat.Value)
     (ie : Flat.Expr) (hnv : Flat.exprValue? ie = none)
     (hss : Flat.step? { s with expr := ie } = none) :
     Flat.step? { s with expr := .getIndex (.lit v) ie } = none := by
-  simp only [Flat.step?, hnv, hss]
-  cases v <;> simp [Flat.exprValue?]
+  cases ie with
+  | lit w => simp [Flat.exprValue?] at hnv
+  | _ =>
+    simp only [Flat.step?, Flat.exprValue?, hss]
+    cases v <;> simp [Flat.exprValue?]
 
 -- Core: obj is value, idx needs stepping (getIndex)
 private theorem Core_step?_getIndex_value_step (cv : Core.Value)
