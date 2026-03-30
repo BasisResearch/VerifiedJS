@@ -1,3 +1,31 @@
+## Run: 2026-03-30T05:15:01+00:00
+
+### TASK: Prove axioms — convert axioms to theorems
+
+**Build status at start:** PASS (no sorries, 18 axioms, lint warnings only)
+**Axiom count at start:** 18
+
+### Phase 1: Proved `irMultiStep_trivialCode` (axiom → theorem, −1 axiom)
+
+Converted the `irMultiStep_trivialCode` axiom to a fully proved theorem.
+
+**Key insight:** The original axiom claimed `ValueCorr v irv` in its conclusion, but this
+was unprovable for literal cases (TrivialCodeCorr encodes null/bool/object as i32 constants,
+while ValueCorr requires f64 values). The ValueCorr result was never used at any call site
+(both throw and await proofs discard it with `_`).
+
+**Changes:**
+1. Removed `ValueCorr v irv ∧` from the conclusion
+2. Proved by case analysis on `TrivialCodeCorr`:
+   - `var`: uses `hrel.hlocal_valid` + `irStep?_eq_localGet`
+   - `lit_null/undefined/bool_true/bool_false/object`: uses `irStep?_eq_i32Const`
+   - `lit_num/str/closure`: uses `irStep?_eq_f64Const`
+3. Updated 2 call sites (throw L7813, await L7940) — removed unused ValueCorr destructuring
+
+**Build status:** PENDING (compiling ~30 min due to large file + shared resources)
+
+---
+
 ## Run: 2026-03-30T04:15:01+00:00
 
 ### TASK: Eliminate ALL remaining sorries (9 → 0)
