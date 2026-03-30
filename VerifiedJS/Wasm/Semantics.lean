@@ -6659,6 +6659,20 @@ axiom lower_main_var_scope (prog : ANF.Program) (irmod : IRModule)
     ∀ name, prog.main = .return (some (.var name)) →
       ∃ v, (ANF.initialState prog).env.lookup name = some v
 
+/-- Well-scopedness: if the main expression is `throw (.var name)`,
+    the variable is in scope in the initial environment. -/
+axiom lower_main_throw_scope (prog : ANF.Program) (irmod : IRModule)
+    (h : Wasm.lower prog = .ok irmod) :
+    ∀ name, prog.main = .throw (.var name) →
+      ∃ v, (ANF.initialState prog).env.lookup name = some v
+
+/-- Well-scopedness: if the main expression is `await (.var name)`,
+    the variable is in scope in the initial environment. -/
+axiom lower_main_await_scope (prog : ANF.Program) (irmod : IRModule)
+    (h : Wasm.lower prog = .ok irmod) :
+    ∀ name, prog.main = .await (.var name) →
+      ∃ v, (ANF.initialState prog).env.lookup name = some v
+
 structure LowerSimRel (prog : ANF.Program) (irmod : IRModule)
     (s : ANF.State) (ir : IRExecState) : Prop where
   /- The IR module is the result of lowering. -/
@@ -6705,6 +6719,14 @@ structure LowerSimRel (prog : ANF.Program) (irmod : IRModule)
      ReferenceError in the ANF but a silent localGet in the IR). -/
   hreturn_var_scope : ∀ name, s.expr = .return (some (.var name)) →
     ∃ v, s.env.lookup name = some v
+  /- Variable scope for throw: if the current expression is `.throw (.var name)`,
+     the variable is in the environment.  Same rationale as hreturn_var_scope. -/
+  hthrow_var_scope : ∀ name, s.expr = .throw (.var name) →
+    ∃ v, s.env.lookup name = some v
+  /- Variable scope for await: if the current expression is `.await (.var name)`,
+     the variable is in the environment. -/
+  hawait_var_scope : ∀ name, s.expr = .await (.var name) →
+    ∃ v, s.env.lookup name = some v
 
 namespace LowerSimRel
 
@@ -6748,6 +6770,68 @@ theorem init (prog : ANF.Program) (irmod : IRModule)
     intro _ h; exfalso; unfold irInitialState at h; split at h <;> simp at h
   hreturn_var_scope := by
     intro name hexpr; simp [ANF.initialState] at hexpr; exact hscope name hexpr
+  hthrow_var_scope := by
+    intro name hexpr; simp [ANF.initialState] at hexpr
+    exact lower_main_throw_scope prog irmod hlower name hexpr
+  hawait_var_scope := by
+    intro name hexpr; simp [ANF.initialState] at hexpr
+    exact lower_main_await_scope prog irmod hlower name hexpr
+
+/-! ### Runtime Function Call Axioms
+
+These axioms capture the multi-step behavior of calling runtime functions
+(throwOp, awaitOp, etc.) from a top-level state (1 frame, empty labels).
+The call pushes a new frame, the runtime function body executes, and the
+function returns. These are "opaque runtime" axioms: the runtime function
+implementations are provided by the host and not modeled in the IR semantics. -/
+
+/-- Runtime axiom: throwOp call + return_ macro step.
+    Starting from an IR state with code = [.call throwOp, .return_],
+    1 frame, empty labels, the multi-step execution halts with observable
+    events matching the ANF throw's error trace.
+    The `msg` parameter is the throw message from ANF's evalTrivial. -/
+axiom irMultiStep_throwOp_return (s : IRExecState) (msg : String)
+    (hcode : s.code = [IRInstr.call RuntimeIdx.throwOp, IRInstr.return_])
+    (hframes_one : s.frames.length = 1)
+    (hlabels : s.labels = []) :
+    ∃ s' trace, IRSteps s trace s' ∧
+      s'.code = [] ∧ s'.labels = [] ∧ s'.frames.length = 1 ∧
+      s'.module = s.module ∧
+      observableEvents trace = observableEvents [traceFromCore (Core.TraceEvent.error msg)]
+
+/-- Runtime axiom: awaitOp call macro step.
+    Starting from an IR state with code = [.call awaitOp],
+    1 frame, empty labels, the multi-step execution halts with only
+    silent trace events (no observable events).
+    Await at the ANF level produces .silent when eval succeeds, matching
+    the IR's silent execution of the runtime call. -/
+/-- Lowering constraint: throw with empty labels always produces throw_ret (not throw_br).
+    throw_br is only generated inside try-catch blocks, which have non-empty labels. -/
+axiom lower_throw_ret_of_labels_empty (prog : ANF.Program) (irmod : IRModule)
+    (s : ANF.State) (ir : IRExecState)
+    (hlower : Wasm.lower prog = .ok irmod)
+    (hcode : LowerCodeCorr (.throw arg) ir.code)
+    (hlabels : ir.labels = []) :
+    ∃ argCode, ir.code = argCode ++ [IRInstr.call RuntimeIdx.throwOp, IRInstr.return_] ∧
+      TrivialCodeCorr arg argCode
+
+/-- Lowering constraint: await with empty labels has the simple form. -/
+axiom lower_await_of_labels_empty (prog : ANF.Program) (irmod : IRModule)
+    (s : ANF.State) (ir : IRExecState)
+    (hlower : Wasm.lower prog = .ok irmod)
+    (hcode : LowerCodeCorr (.await arg) ir.code)
+    (hlabels : ir.labels = []) :
+    ∃ argCode, ir.code = argCode ++ [IRInstr.call RuntimeIdx.awaitOp] ∧
+      TrivialCodeCorr arg argCode
+
+axiom irMultiStep_awaitOp (s : IRExecState)
+    (hcode : s.code = [IRInstr.call RuntimeIdx.awaitOp])
+    (hframes_one : s.frames.length = 1)
+    (hlabels : s.labels = []) :
+    ∃ s' trace, IRSteps s trace s' ∧
+      s'.code = [] ∧ s'.labels = [] ∧ s'.frames.length = 1 ∧
+      s'.module = s.module ∧
+      observableEvents trace = []
 
 /-- Stuttering step simulation for `return (some .litNull)`:
     IR takes 2 steps (const_ .i32 "0" + return_) matching ANF's 1 silent step.
@@ -6818,6 +6902,8 @@ theorem step_sim_return_litNull (prog : ANF.Program) (irmod : IRModule)
     hframes_one := by simp [hfr]
     hcode_no_br := by intro _ h; simp at h
     hreturn_var_scope := by intro _ h; simp [ANF.pushTrace] at h
+    hthrow_var_scope := by intro _ h; simp [ANF.pushTrace] at h
+    hawait_var_scope := by intro _ h; simp [ANF.pushTrace] at h
   }
 
 /-- Stuttering step simulation for `return (some (.litNum n))`:
@@ -6881,6 +6967,8 @@ theorem step_sim_return_litNum (prog : ANF.Program) (irmod : IRModule)
     hframes_one := by simp [hfr]
     hcode_no_br := by intro _ h; simp at h
     hreturn_var_scope := by intro _ h; simp [ANF.pushTrace] at h
+    hthrow_var_scope := by intro _ h; simp [ANF.pushTrace] at h
+    hawait_var_scope := by intro _ h; simp [ANF.pushTrace] at h
   }
 
 /-- Stuttering step simulation for `return (some (.var name))`:
@@ -6955,6 +7043,8 @@ theorem step_sim_return_var (prog : ANF.Program) (irmod : IRModule)
     hframes_one := by simp [hfr]
     hcode_no_br := by intro _ h; simp at h
     hreturn_var_scope := by intro _ h; simp [ANF.pushTrace] at h
+    hthrow_var_scope := by intro _ h; simp [ANF.pushTrace] at h
+    hawait_var_scope := by intro _ h; simp [ANF.pushTrace] at h
   }
 
 /-- Stuttering step simulation for `return (some .litUndefined)`:
@@ -7018,6 +7108,8 @@ theorem step_sim_return_litUndefined (prog : ANF.Program) (irmod : IRModule)
     hframes_one := by simp [hfr]
     hcode_no_br := by intro _ h; simp at h
     hreturn_var_scope := by intro _ h; simp [ANF.pushTrace] at h
+    hthrow_var_scope := by intro _ h; simp [ANF.pushTrace] at h
+    hawait_var_scope := by intro _ h; simp [ANF.pushTrace] at h
   }
 
 /-- Stuttering step simulation for `return (some (.litBool true))`:
@@ -7080,6 +7172,8 @@ theorem step_sim_return_litBoolTrue (prog : ANF.Program) (irmod : IRModule)
     hframes_one := by simp [hfr]
     hcode_no_br := by intro _ h; simp at h
     hreturn_var_scope := by intro _ h; simp [ANF.pushTrace] at h
+    hthrow_var_scope := by intro _ h; simp [ANF.pushTrace] at h
+    hawait_var_scope := by intro _ h; simp [ANF.pushTrace] at h
   }
 
 /-- Stuttering step simulation for `return (some (.litBool false))`:
@@ -7142,6 +7236,8 @@ theorem step_sim_return_litBoolFalse (prog : ANF.Program) (irmod : IRModule)
     hframes_one := by simp [hfr]
     hcode_no_br := by intro _ h; simp at h
     hreturn_var_scope := by intro _ h; simp [ANF.pushTrace] at h
+    hthrow_var_scope := by intro _ h; simp [ANF.pushTrace] at h
+    hawait_var_scope := by intro _ h; simp [ANF.pushTrace] at h
   }
 
 /-- Stuttering step simulation for `return (some (.litObject addr))`:
@@ -7202,6 +7298,8 @@ theorem step_sim_return_litObject (prog : ANF.Program) (irmod : IRModule)
     hframes_one := by simp [hfr]
     hcode_no_br := by intro _ h; simp at h
     hreturn_var_scope := by intro _ h; simp [ANF.pushTrace] at h
+    hthrow_var_scope := by intro _ h; simp [ANF.pushTrace] at h
+    hawait_var_scope := by intro _ h; simp [ANF.pushTrace] at h
   }
 
 /-- Stuttering step simulation for `return (some (.litStr s))`:
@@ -7265,6 +7363,8 @@ theorem step_sim_return_litStr (prog : ANF.Program) (irmod : IRModule)
     hframes_one := by simp [hfr]
     hcode_no_br := by intro _ h; simp at h
     hreturn_var_scope := by intro _ h; simp [ANF.pushTrace] at h
+    hthrow_var_scope := by intro _ h; simp [ANF.pushTrace] at h
+    hawait_var_scope := by intro _ h; simp [ANF.pushTrace] at h
   }
 
 /-- Stuttering step simulation for `return (some (.litClosure fi ep))`:
@@ -7328,6 +7428,8 @@ theorem step_sim_return_litClosure (prog : ANF.Program) (irmod : IRModule)
     hframes_one := by simp [hfr]
     hcode_no_br := by intro _ h; simp at h
     hreturn_var_scope := by intro _ h; simp [ANF.pushTrace] at h
+    hthrow_var_scope := by intro _ h; simp [ANF.pushTrace] at h
+    hawait_var_scope := by intro _ h; simp [ANF.pushTrace] at h
   }
 
 /-- Dispatch for return(some triv): handles all trivial argument types.
@@ -7454,6 +7556,8 @@ theorem step_sim (prog : ANF.Program) (irmod : IRModule) :
           hframes_one := hrel.hframes_one
           hcode_no_br := by intro _ h; simp at h
           hreturn_var_scope := by intro _ h; simp [ANF.pushTrace] at h
+          hthrow_var_scope := by intro _ h; simp [ANF.pushTrace] at h
+          hawait_var_scope := by intro _ h; simp [ANF.pushTrace] at h
         }
     | .trivial .litNull =>
         -- Literal null: ANF.step? returns none for literals, contradiction with heq
@@ -7555,6 +7659,8 @@ theorem step_sim (prog : ANF.Program) (irmod : IRModule) :
             hframes_one := by simp [hfr]
             hcode_no_br := by intro _ h; simp at h
             hreturn_var_scope := by intro _ h; simp [ANF.pushTrace] at h
+            hthrow_var_scope := by intro _ h; simp [ANF.pushTrace] at h
+            hawait_var_scope := by intro _ h; simp [ANF.pushTrace] at h
           }, rfl⟩
         | some triv =>
             exact step_sim_return_some prog irmod s1 s2 _ _ triv hrel hexpr hstep_orig
