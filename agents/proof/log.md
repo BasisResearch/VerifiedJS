@@ -1,3 +1,37 @@
+## Run: 2026-03-30T17:30+00:00
+- **BUILD: PASSES** ✓
+- **Sorries: ANF 18 (was 17; throw sorry split into proved sub-cases + 2 structural sorries)**
+- **Progress: proved throw_direct base cases (lit, var) in normalizeExpr_throw_step_sim**
+
+### What was done
+1. **Added 2 Flat step? helper lemmas** (before normalizeExpr_throw_step_sim):
+   - `Flat.step?_throw_lit_eq`: step? on `.throw (.lit v)` produces immediate `.error (valueToString v)`
+   - `Flat.step?_throw_var_ok`: step? on `.throw (.var name)` with successful lookup produces `.silent` (var resolved to `.throw (.lit v)`)
+
+2. **Proved throw_direct sub-cases in normalizeExpr_throw_step_sim**:
+   - **`.lit v` case: FULLY PROVED** — normalizeExpr (.lit v) k' produces trivialOfFlatValue v as arg. Flat.step? on .throw (.lit v) gives one step to .error. evalTrivial of literal trivial always gives .ok v. Error case vacuous (evalTrivial of lit trivials always succeeds).
+   - **`.var name` case: FULLY PROVED** — normalizeExpr (.var name) k' produces .var name as arg. ExprWellFormed guarantees env.lookup name succeeds. Two flat steps: resolve var (.silent), then throw (.error). Error case vacuous since lookup succeeds. Used ANF.Env.lookup ↔ Flat.Env.lookup bridge.
+   - **Other flat_arg cases: sorry** — compound expressions (.seq, .let, etc.) and .this need multi-step flat evaluation or separate handling.
+
+3. **HasThrowInHead compound cases: sorry** — seq_left, seq_right, let_init, etc. require step-lifting lemmas to compose flat steps through compound expression contexts.
+
+### Key proof patterns established
+- normalizeExpr (.throw flat_arg) k ignores k: `simp only [ANF.normalizeExpr] at hnorm` extracts the inner normalizeExpr of flat_arg
+- For trivializable flat_arg: normalizeExpr_throw_or_k gives continuation was called with arg
+- evalTrivial ↔ Flat step? bridge: ANF.Env.lookup = Flat.Env.lookup via `simp only [ANF.Env.lookup, Flat.Env.lookup]`
+- observableTrace [.silent, .error msg] = observableTrace [.error msg] via `simp only [observableTrace, List.filter]; rfl`
+
+### Sorry breakdown (18 remaining)
+- 7 sorry: normalizeExpr_labeled_step_sim depth-recursive cases (L3825-3923)
+- 2 sorry: hasBreakInHead/hasContinueInHead_flat_error_steps makeEnv/objectLit/arrayLit (L4116, L4327)
+- 2 sorry: normalizeExpr_throw_step_sim compound cases (L4452 throw_direct non-lit/var, L4455 non-throw_direct HasThrowInHead)
+- 7 sorry: return/await/yield/let/seq/if/tryCatch step_sim theorems (L4482-L4621)
+
+### What's needed next
+1. **throw compound cases**: need a "flat evaluation to value" lemma — given normalizeExpr e k calls k with trivial t, show Flat.Steps from e to a state matching evalTrivial env t
+2. **step-lifting lemmas**: for each compound expression context C[e], if Flat.Steps from e produce steps, then Flat.Steps from C[e] also exist (lifting through the context)
+3. **return/await/yield**: same pattern as throw but with different error messages / different ANF step? behavior
+
 ## Run: 2026-03-30T16:30+00:00
 - **BUILD: PASSES** ✓
 - **Sorries: ANF 17 (unchanged count; 8 expression-case sorries restructured into 8 sorry'd helper theorems)**
@@ -4325,3 +4359,4 @@ Key infrastructure available:
 ## Run: 2026-03-30T17:30:01+00:00
 
 2026-03-30T18:30:01+00:00 SKIP: already running
+2026-03-30T18:37:15+00:00 DONE
