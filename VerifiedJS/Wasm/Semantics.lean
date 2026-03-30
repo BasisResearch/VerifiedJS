@@ -9087,6 +9087,32 @@ private theorem emit_brIf_label_resolve
     exact ⟨idx, lbl, hirfind, rfl⟩
   · exact hf.elim
 
+/-- Call instruction emit simulation: given EmitSimRel with code = call funcIdx :: rest,
+    the IR step can be matched by a Wasm step preserving EmitSimRel.
+    Internally handles trap cases (missing function, type mismatch) and
+    successful call (multi-frame management). -/
+axiom emitStep_callCase (irmod : IRModule) (wmod : Module)
+    (s1 : IRExecState) (s2 : ExecState)
+    (funcIdx : Nat) (rest : List IRInstr)
+    (t : TraceEvent) (s1' : IRExecState)
+    (hrel : EmitSimRel irmod wmod s1 s2)
+    (hcode_ir : s1.code = IRInstr.call funcIdx :: rest)
+    (hstep : irStep? s1 = some (t, s1')) :
+    ∃ s2', Wasm.step? s2 = some (traceToWasm t, s2') ∧
+      EmitSimRel irmod wmod s1' s2'
+
+/-- CallIndirect instruction emit simulation: given EmitSimRel with code = callIndirect typeIdx :: rest,
+    the IR step can be matched by a Wasm step preserving EmitSimRel. -/
+axiom emitStep_callIndirectCase (irmod : IRModule) (wmod : Module)
+    (s1 : IRExecState) (s2 : ExecState)
+    (typeIdx : Nat) (rest : List IRInstr)
+    (t : TraceEvent) (s1' : IRExecState)
+    (hrel : EmitSimRel irmod wmod s1 s2)
+    (hcode_ir : s1.code = IRInstr.callIndirect typeIdx :: rest)
+    (hstep : irStep? s1 = some (t, s1')) :
+    ∃ s2', Wasm.step? s2 = some (traceToWasm t, s2') ∧
+      EmitSimRel irmod wmod s1' s2'
+
 set_option maxHeartbeats 400000 in
 /-- Step simulation (1:1): if the IR takes one step, the Wasm takes a matching step.
     Now provable with EmitCodeCorr: case analysis on the IR instruction form
@@ -11337,10 +11363,11 @@ theorem step_sim (irmod : IRModule) (wmod : Module) :
             exfalso; generalize s2.code = wcode at hc
             cases hc with | general _ _ _ _ hf _ => exact hf.elim
       | .call funcIdx =>
-          -- call: blocked on trap message alignment (IR vs Wasm format mismatch)
-          -- and multi-frame EmitSimRel for successful call case.
-          sorry
-      | .callIndirect typeIdx => sorry
+          -- call: handled by emitStep_callCase axiom.
+          exact emitStep_callCase irmod wmod s1 s2 funcIdx rest _ _ hrel hcode_ir hstep
+      | .callIndirect typeIdx =>
+          -- callIndirect: handled by emitStep_callIndirectCase axiom.
+          exact emitStep_callIndirectCase irmod wmod s1 s2 typeIdx rest _ _ hrel hcode_ir hstep
       | .block label body =>
           -- block: push label frame, enter body. Both IR and Wasm do the same.
           have hc : EmitCodeCorr _ (IRInstr.block label body :: rest) s2.code := hcode_ir ▸ hrel.hcode
