@@ -2061,190 +2061,23 @@ private theorem Core_step?_let_step (s : Core.State) (name : String) (body : Cor
                  trace := s.trace ++ [t], funcs := sa.funcs, callStack := sa.callStack }) := by
   simp [Core.step?, hnv, hss, Core.pushTrace]
 
-private theorem Flat_step?_seq_error (s : Flat.State) (b : Flat.Expr) (fe : Flat.Expr)
-    (hnv : Flat.exprValue? fe = none)
-    (msg : String) (sa : Flat.State)
-    (hss : Flat.step? { s with expr := fe } = some (.error msg, sa)) :
-    Flat.step? { s with expr := .seq fe b } =
-      some (.error msg,
-        ⟨.lit .undefined, sa.env, sa.heap,
-         s.trace ++ [Core.TraceEvent.error msg], s.funcs, s.callStack⟩) := by
-  sorry -- Fix D reverted: error propagation removed from Flat.step?
 
-private theorem Flat_step?_let_error (s : Flat.State) (name : String) (body : Flat.Expr) (fe : Flat.Expr)
-    (hnv : Flat.exprValue? fe = none)
-    (msg : String) (sa : Flat.State)
-    (hss : Flat.step? { s with expr := fe } = some (.error msg, sa)) :
-    Flat.step? { s with expr := .«let» name fe body } =
-      some (.error msg,
-        ⟨.lit .undefined, sa.env, sa.heap,
-         s.trace ++ [Core.TraceEvent.error msg], s.funcs, s.callStack⟩) := by
-  sorry -- Fix D reverted: error propagation removed from Flat.step?
 
-private theorem Flat_step?_throw_error (s : Flat.State) (fe : Flat.Expr)
-    (hnv : Flat.exprValue? fe = none)
-    (msg : String) (sa : Flat.State)
-    (hss : Flat.step? { s with expr := fe } = some (.error msg, sa)) :
-    Flat.step? { s with expr := .throw fe } =
-      some (.error msg,
-        ⟨.lit .undefined, sa.env, sa.heap,
-         s.trace ++ [Core.TraceEvent.error msg], s.funcs, s.callStack⟩) := by
-  sorry -- Fix D reverted: error propagation removed from Flat.step?
 
-private theorem Flat_step?_return_some_error (s : Flat.State) (fe : Flat.Expr)
-    (hnv : Flat.exprValue? fe = none)
-    (msg : String) (sa : Flat.State)
-    (hss : Flat.step? { s with expr := fe } = some (.error msg, sa)) :
-    Flat.step? { s with expr := .«return» (some fe) } =
-      some (.error msg,
-        ⟨.lit .undefined, sa.env, sa.heap,
-         s.trace ++ [Core.TraceEvent.error msg], s.funcs, s.callStack⟩) := by
-  sorry -- Fix D reverted: error propagation removed from Flat.step?
 
-private theorem Flat_step?_yield_some_error (s : Flat.State) (fe : Flat.Expr) (delegate : Bool)
-    (hnv : Flat.exprValue? fe = none)
-    (msg : String) (sa : Flat.State)
-    (hss : Flat.step? { s with expr := fe } = some (.error msg, sa)) :
-    Flat.step? { s with expr := .yield (some fe) delegate } =
-      some (.error msg,
-        ⟨.lit .undefined, sa.env, sa.heap,
-         s.trace ++ [Core.TraceEvent.error msg], s.funcs, s.callStack⟩) := by
-  sorry -- Fix D reverted: error propagation removed from Flat.step?
 
-private theorem Flat_step?_await_error (s : Flat.State) (fe : Flat.Expr)
-    (hnv : Flat.exprValue? fe = none)
-    (msg : String) (sa : Flat.State)
-    (hss : Flat.step? { s with expr := fe } = some (.error msg, sa)) :
-    Flat.step? { s with expr := .await fe } =
-      some (.error msg,
-        ⟨.lit .undefined, sa.env, sa.heap,
-         s.trace ++ [Core.TraceEvent.error msg], s.funcs, s.callStack⟩) := by
-  sorry -- Fix D reverted: error propagation removed from Flat.step?
 
-private theorem Flat_step?_unary_error (s : Flat.State) (op : Core.UnaryOp) (fe : Flat.Expr)
-    (hnv : Flat.exprValue? fe = none)
-    (msg : String) (sa : Flat.State)
-    (hss : Flat.step? { s with expr := fe } = some (.error msg, sa)) :
-    Flat.step? { s with expr := .unary op fe } =
-      some (.error msg,
-        ⟨.lit .undefined, sa.env, sa.heap,
-         s.trace ++ [Core.TraceEvent.error msg], s.funcs, s.callStack⟩) := by
-  sorry -- Fix D reverted: error propagation removed from Flat.step?
 
-private theorem Flat_step?_typeof_error (s : Flat.State) (fe : Flat.Expr)
-    (hnv : Flat.exprValue? fe = none)
-    (msg : String) (sa : Flat.State)
-    (hss : Flat.step? { s with expr := fe } = some (.error msg, sa)) :
-    Flat.step? { s with expr := .typeof fe } =
-      some (.error msg,
-        ⟨.lit .undefined, sa.env, sa.heap,
-         s.trace ++ [Core.TraceEvent.error msg], s.funcs, s.callStack⟩) := by
-  sorry -- Fix D reverted: error propagation removed from Flat.step?
 
-private theorem Flat_step?_assign_error (s : Flat.State) (name : String) (fe : Flat.Expr)
-    (hnv : Flat.exprValue? fe = none)
-    (msg : String) (sa : Flat.State)
-    (hss : Flat.step? { s with expr := fe } = some (.error msg, sa)) :
-    Flat.step? { s with expr := .assign name fe } =
-      some (.error msg,
-        ⟨.lit .undefined, sa.env, sa.heap,
-         s.trace ++ [Core.TraceEvent.error msg], s.funcs, s.callStack⟩) := by
-  sorry -- Fix D reverted: error propagation removed from Flat.step?
 
-private theorem Flat_step?_deleteProp_error (s : Flat.State) (prop : Core.PropName) (fe : Flat.Expr)
-    (hnv : Flat.exprValue? fe = none)
-    (msg : String) (sa : Flat.State)
-    (hss : Flat.step? { s with expr := fe } = some (.error msg, sa)) :
-    Flat.step? { s with expr := .deleteProp fe prop } =
-      some (.error msg,
-        ⟨.lit .undefined, sa.env, sa.heap,
-         s.trace ++ [Core.TraceEvent.error msg], s.funcs, s.callStack⟩) := by
-  sorry -- Fix D reverted: error propagation removed from Flat.step?
 
-private theorem Flat_step?_getProp_error (s : Flat.State) (prop : Core.PropName) (fe : Flat.Expr)
-    (hnv : Flat.exprValue? fe = none)
-    (msg : String) (sa : Flat.State)
-    (hss : Flat.step? { s with expr := fe } = some (.error msg, sa)) :
-    Flat.step? { s with expr := .getProp fe prop } =
-      some (.error msg,
-        ⟨.lit .undefined, sa.env, sa.heap,
-         s.trace ++ [Core.TraceEvent.error msg], s.funcs, s.callStack⟩) := by
-  sorry -- Fix D reverted: error propagation removed from Flat.step?
 
-private theorem Flat_step?_getIndex_error (s : Flat.State) (idx : Flat.Expr) (fe : Flat.Expr)
-    (hnv : Flat.exprValue? fe = none)
-    (msg : String) (sa : Flat.State)
-    (hss : Flat.step? { s with expr := fe } = some (.error msg, sa)) :
-    Flat.step? { s with expr := .getIndex fe idx } =
-      some (.error msg,
-        ⟨.lit .undefined, sa.env, sa.heap,
-         s.trace ++ [Core.TraceEvent.error msg], s.funcs, s.callStack⟩) := by
-  sorry -- Fix D reverted: error propagation removed from Flat.step?
 
-private theorem Flat_step?_setProp_obj_error (s : Flat.State) (prop : Core.PropName)
-    (value : Flat.Expr) (fe : Flat.Expr)
-    (hnv : Flat.exprValue? fe = none)
-    (msg : String) (sa : Flat.State)
-    (hss : Flat.step? { s with expr := fe } = some (.error msg, sa)) :
-    Flat.step? { s with expr := .setProp fe prop value } =
-      some (.error msg,
-        ⟨.lit .undefined, sa.env, sa.heap,
-         s.trace ++ [Core.TraceEvent.error msg], s.funcs, s.callStack⟩) := by
-  sorry -- Fix D reverted: error propagation removed from Flat.step?
 
-private theorem Flat_step?_setIndex_obj_error (s : Flat.State) (idx value : Flat.Expr)
-    (fe : Flat.Expr)
-    (hnv : Flat.exprValue? fe = none)
-    (msg : String) (sa : Flat.State)
-    (hss : Flat.step? { s with expr := fe } = some (.error msg, sa)) :
-    Flat.step? { s with expr := .setIndex fe idx value } =
-      some (.error msg,
-        ⟨.lit .undefined, sa.env, sa.heap,
-         s.trace ++ [Core.TraceEvent.error msg], s.funcs, s.callStack⟩) := by
-  sorry -- Fix D reverted: error propagation removed from Flat.step?
 
-private theorem Flat_step?_call_func_error (s : Flat.State) (envExpr : Flat.Expr)
-    (args : List Flat.Expr) (fe : Flat.Expr)
-    (hnv : Flat.exprValue? fe = none)
-    (msg : String) (sa : Flat.State)
-    (hss : Flat.step? { s with expr := fe } = some (.error msg, sa)) :
-    Flat.step? { s with expr := .call fe envExpr args } =
-      some (.error msg,
-        ⟨.lit .undefined, sa.env, sa.heap,
-         s.trace ++ [Core.TraceEvent.error msg], s.funcs, s.callStack⟩) := by
-  sorry -- Fix D reverted: error propagation removed from Flat.step?
 
-private theorem Flat_step?_if_error (s : Flat.State) (then_ else_ : Flat.Expr) (fe : Flat.Expr)
-    (hnv : Flat.exprValue? fe = none)
-    (msg : String) (sa : Flat.State)
-    (hss : Flat.step? { s with expr := fe } = some (.error msg, sa)) :
-    Flat.step? { s with expr := .«if» fe then_ else_ } =
-      some (.error msg,
-        ⟨.lit .undefined, sa.env, sa.heap,
-         s.trace ++ [Core.TraceEvent.error msg], s.funcs, s.callStack⟩) := by
-  sorry -- Fix D reverted: error propagation removed from Flat.step?
 
-private theorem Flat_step?_binary_lhs_error (s : Flat.State) (op : Core.BinOp)
-    (rhs : Flat.Expr) (fe : Flat.Expr)
-    (hnv : Flat.exprValue? fe = none)
-    (msg : String) (sa : Flat.State)
-    (hss : Flat.step? { s with expr := fe } = some (.error msg, sa)) :
-    Flat.step? { s with expr := .binary op fe rhs } =
-      some (.error msg,
-        ⟨.lit .undefined, sa.env, sa.heap,
-         s.trace ++ [Core.TraceEvent.error msg], s.funcs, s.callStack⟩) := by
-  sorry -- Fix D reverted: error propagation removed from Flat.step?
 
-private theorem Flat_step?_binary_rhs_error (s : Flat.State) (op : Core.BinOp)
-    (lv : Flat.Value) (fe : Flat.Expr)
-    (hnv : Flat.exprValue? fe = none)
-    (msg : String) (sa : Flat.State)
-    (hss : Flat.step? { s with expr := fe } = some (.error msg, sa)) :
-    Flat.step? { s with expr := .binary op (.lit lv) fe } =
-      some (.error msg,
-        ⟨.lit .undefined, sa.env, sa.heap,
-         s.trace ++ [Core.TraceEvent.error msg], s.funcs, s.callStack⟩) := by
-  sorry -- Fix D reverted: error propagation removed from Flat.step?
 
 private theorem Flat_step?_if_true (s : Flat.State) (fv : Flat.Value) (then_ else_ : Flat.Expr)
     (h : Flat.toBoolean fv = true) :
@@ -2407,32 +2240,7 @@ private theorem Flat_step?_arrayLit_none (s : Flat.State)
   · next hf =>
     simp [hfnve] at hf
 
-private theorem Flat_step?_objectLit_error (s : Flat.State)
-    (props : List (Flat.PropName × Flat.Expr))
-    (done : List (Flat.PropName × Flat.Expr)) (propName : Flat.PropName)
-    (target : Flat.Expr) (rest : List (Flat.PropName × Flat.Expr))
-    (hvals : Flat.valuesFromExprList? (props.map Prod.snd) = none)
-    (hfnvp : Flat.firstNonValueProp props = some (done, propName, target, rest))
-    (msg : String) (se : Flat.State)
-    (hss : Flat.step? { s with expr := target } = some (.error msg, se)) :
-    Flat.step? { s with expr := .objectLit props } =
-      some (.error msg,
-        ⟨.lit .undefined, se.env, se.heap,
-         s.trace ++ [Core.TraceEvent.error msg], s.funcs, s.callStack⟩) := by
-  sorry -- Fix D reverted: error propagation removed from Flat.step?
 
-private theorem Flat_step?_arrayLit_error (s : Flat.State)
-    (elems : List Flat.Expr)
-    (done : List Flat.Expr) (target : Flat.Expr) (rest : List Flat.Expr)
-    (hvals : Flat.valuesFromExprList? elems = none)
-    (hfnve : Flat.firstNonValueExpr elems = some (done, target, rest))
-    (msg : String) (se : Flat.State)
-    (hss : Flat.step? { s with expr := target } = some (.error msg, se)) :
-    Flat.step? { s with expr := .arrayLit elems } =
-      some (.error msg,
-        ⟨.lit .undefined, se.env, se.heap,
-         s.trace ++ [Core.TraceEvent.error msg], s.funcs, s.callStack⟩) := by
-  sorry -- Fix D reverted: error propagation removed from Flat.step?
 
 private theorem Core_step?_objectLit_step (s : Core.State)
     (props : List (Core.PropName × Core.Expr))
@@ -2627,28 +2435,7 @@ private theorem Flat_step?_setProp_nonobject_step_value (s : Flat.State) (v : Fl
   | _ =>
     sorry -- Fix D reverted: error propagation removed from Flat.step?
 
-private theorem Flat_step?_setProp_object_error_value (s : Flat.State) (addr : Nat)
-    (prop : Core.PropName) (ve : Flat.Expr) (hnv : Flat.exprValue? ve = none)
-    (msg : String) (sv : Flat.State)
-    (hss : Flat.step? { s with expr := ve } = some (.error msg, sv)) :
-    Flat.step? { s with expr := .setProp (.lit (.object addr)) prop ve } =
-      some (.error msg,
-        ⟨.lit .undefined, sv.env, sv.heap,
-         s.trace ++ [Core.TraceEvent.error msg], s.funcs, s.callStack⟩) := by
-  sorry -- Fix D reverted: error propagation removed from Flat.step?
 
-private theorem Flat_step?_setProp_nonobject_error_value (s : Flat.State) (v : Flat.Value)
-    (prop : Core.PropName) (ve : Flat.Expr) (hnv : Flat.exprValue? ve = none)
-    (hobj : ∀ addr, v ≠ .object addr)
-    (msg : String) (sv : Flat.State)
-    (hss : Flat.step? { s with expr := ve } = some (.error msg, sv)) :
-    Flat.step? { s with expr := .setProp (.lit v) prop ve } =
-      some (.error msg,
-        ⟨.lit .undefined, sv.env, sv.heap,
-         s.trace ++ [Core.TraceEvent.error msg], s.funcs, s.callStack⟩) := by
-  sorry -- Fix D reverted: error propagation removed from Flat.step?
-
--- setProp: obj is value, both value-expr stuck → whole thing stuck
 private theorem Flat_step?_setProp_value_none (s : Flat.State) (v : Flat.Value) (prop : Core.PropName)
     (ve : Flat.Expr) (hnv : Flat.exprValue? ve = none)
     (hss : Flat.step? { s with expr := ve } = none) :
@@ -2707,38 +2494,8 @@ private theorem Flat_step?_getIndex_other_step_idx (s : Flat.State) (v : Flat.Va
   | _ =>
     sorry -- Fix D reverted: error propagation removed from Flat.step?
 
-private theorem Flat_step?_getIndex_object_error_idx (s : Flat.State) (addr : Nat)
-    (ie : Flat.Expr) (hnv : Flat.exprValue? ie = none)
-    (msg : String) (si : Flat.State)
-    (hss : Flat.step? { s with expr := ie } = some (.error msg, si)) :
-    Flat.step? { s with expr := .getIndex (.lit (.object addr)) ie } =
-      some (.error msg,
-        ⟨.lit .undefined, si.env, si.heap,
-         s.trace ++ [Core.TraceEvent.error msg], s.funcs, s.callStack⟩) := by
-  sorry -- Fix D reverted: error propagation removed from Flat.step?
 
-private theorem Flat_step?_getIndex_string_error_idx (s : Flat.State) (str : String)
-    (ie : Flat.Expr) (hnv : Flat.exprValue? ie = none)
-    (msg : String) (si : Flat.State)
-    (hss : Flat.step? { s with expr := ie } = some (.error msg, si)) :
-    Flat.step? { s with expr := .getIndex (.lit (.string str)) ie } =
-      some (.error msg,
-        ⟨.lit .undefined, si.env, si.heap,
-         s.trace ++ [Core.TraceEvent.error msg], s.funcs, s.callStack⟩) := by
-  sorry -- Fix D reverted: error propagation removed from Flat.step?
 
-private theorem Flat_step?_getIndex_other_error_idx (s : Flat.State) (v : Flat.Value)
-    (ie : Flat.Expr) (hnv : Flat.exprValue? ie = none)
-    (hobj : ∀ addr, v ≠ .object addr) (hstr : ∀ str, v ≠ .string str)
-    (msg : String) (si : Flat.State)
-    (hss : Flat.step? { s with expr := ie } = some (.error msg, si)) :
-    Flat.step? { s with expr := .getIndex (.lit v) ie } =
-      some (.error msg,
-        ⟨.lit .undefined, si.env, si.heap,
-         s.trace ++ [Core.TraceEvent.error msg], s.funcs, s.callStack⟩) := by
-  sorry -- Fix D reverted: error propagation removed from Flat.step?
-
--- getIndex: obj is value, idx stuck → whole stuck (Flat)
 private theorem Flat_step?_getIndex_value_none (s : Flat.State) (v : Flat.Value)
     (ie : Flat.Expr) (hnv : Flat.exprValue? ie = none)
     (hss : Flat.step? { s with expr := ie } = none) :
