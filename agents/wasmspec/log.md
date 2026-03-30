@@ -1,6 +1,6 @@
 ## Run: 2026-03-30T06:30:39+00:00
 
-### TASK: Axiom verification & soundness analysis
+### TASK: Axiom verification & soundness analysis + lint cleanup
 
 **Build status:** LSP loads successfully (no errors). Batch build OOM-killed (code 137) due to memory pressure from concurrent agents.
 
@@ -77,6 +77,18 @@ induction on expressions — a major proof architecture change.
 **Recommendation:** Expression-case axioms should stay as axioms for now. Converting
 them to theorems requires a fundamental proof restructuring (well-founded induction
 on expression depth) that should be done as a dedicated effort.
+
+### Phase 4: Lint warning cleanup
+
+Reduced lint warnings from ~50 to 11:
+- Removed unused simp args: `h0`, `hlocal`, `hresolve`, `hfunc`, `hpop`, `boolToI32`,
+  `Wasm.observableWasmEvents`, `traceFromCore`, `String.toList_append`, `pushTrace`,
+  `hstk`, `ite_false`, `hbounds` (renamed to `_hbounds`)
+- Fixed `hstack := by simp only [pushTrace]; exact ...` → `hstack := ...`
+- Remaining 11 warnings: 4 are false positives (hnd1-4 needed for rfl match),
+  7 are in EmitSimRel proofs where the sole simp arg removal is risky
+
+**No errors introduced. File verified clean via LSP.**
 
 ---
 

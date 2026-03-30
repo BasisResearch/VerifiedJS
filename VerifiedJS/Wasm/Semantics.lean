@@ -9819,7 +9819,7 @@ theorem step_sim (irmod : IRModule) (wmod : Module) :
                   simp [step?, hcw, hs2, pop1?, trapState, pushTrace]
                 refine ⟨_, hw, ⟨hrel.hemit, ?_, ?_, hrel.hframes_len, hrel.hframes_locals, hrel.hframes_vals, hrel.hglobals, hrel.hmemory, hrel.hmemLimits, hrel.hmemory_aligned, hrel.hmemory_nonempty, hrel.hlabels, ?_, hrel.hlabel_content, hrel.hframes_one, hrel.hmodule, hrel.hstore_funcs, hrel.hstore_types⟩⟩
                 · exact EmitCodeCorr.nil
-                · simp [hstk, hs2]
+                · simp [hs2]
                 · exact hhalt_of_structural (@EmitCodeCorr.nil (s1.labels.map (·.name))) hrel.hlabels
               | .i32 addr :: stk =>
                 -- i32 address on stack: read memory
@@ -9958,7 +9958,7 @@ theorem step_sim (irmod : IRModule) (wmod : Module) :
                   simp [step?, hcw, hs2, pop1?, trapState, pushTrace]
                 refine ⟨_, hw, ⟨hrel.hemit, ?_, ?_, hrel.hframes_len, hrel.hframes_locals, hrel.hframes_vals, hrel.hglobals, hrel.hmemory, hrel.hmemLimits, hrel.hmemory_aligned, hrel.hmemory_nonempty, hrel.hlabels, ?_, hrel.hlabel_content, hrel.hframes_one, hrel.hmodule, hrel.hstore_funcs, hrel.hstore_types⟩⟩
                 · exact EmitCodeCorr.nil
-                · simp [hstk, hs2]
+                · simp [hs2]
                 · exact hhalt_of_structural (@EmitCodeCorr.nil (s1.labels.map (·.name))) hrel.hlabels
               | .i32 addr :: stk =>
                 -- i32 address on stack: read memory
@@ -10094,7 +10094,7 @@ theorem step_sim (irmod : IRModule) (wmod : Module) :
                   simp [step?, hcw, hs2, pop1?, trapState, pushTrace]
                 refine ⟨_, hw, ⟨hrel.hemit, ?_, ?_, hrel.hframes_len, hrel.hframes_locals, hrel.hframes_vals, hrel.hglobals, hrel.hmemory, hrel.hmemLimits, hrel.hmemory_aligned, hrel.hmemory_nonempty, hrel.hlabels, ?_, hrel.hlabel_content, hrel.hframes_one, hrel.hmodule, hrel.hstore_funcs, hrel.hstore_types⟩⟩
                 · exact EmitCodeCorr.nil
-                · simp [hstk, hs2]
+                · simp [hs2]
                 · exact hhalt_of_structural (@EmitCodeCorr.nil (s1.labels.map (·.name))) hrel.hlabels
               | .i32 addr :: stk =>
                 -- i32 address on stack: read memory
