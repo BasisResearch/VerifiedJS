@@ -1312,7 +1312,7 @@ private theorem ExprAddrPropListWF_firstNonValueProp_reconstruct
         obtain ⟨rfl, rfl, rfl, rfl⟩ := hfnv
         simp only [List.cons_append, ExprAddrPropListWF]
         simp only [ExprAddrPropListWF] at hwf
-        exact And.intro (ExprAddrWF_mono _ hwf.1 hn_le_m) (ih heq hwf.2 hwf_new hn_le_m)
+        exact And.intro (ExprAddrWF_mono _ hwf.1 hn_le_m) (ih heq hwf.2)
       · simp at hfnv
     · -- pe is not a lit
       simp only [Option.some.injEq, Prod.mk.injEq] at hfnv
@@ -1340,7 +1340,7 @@ private theorem ExprAddrListWF_firstNonValueExpr_reconstruct
         obtain ⟨rfl, rfl, rfl⟩ := hfnv
         simp only [List.cons_append, ExprAddrListWF]
         simp only [ExprAddrListWF] at hwf
-        exact And.intro (ExprAddrWF_mono _ hwf.1 hn_le_m) (ih heq hwf.2 hwf_new hn_le_m)
+        exact And.intro (ExprAddrWF_mono _ hwf.1 hn_le_m) (ih heq hwf.2)
       · simp at hfnv
     · -- e is not a lit
       simp only [Option.some.injEq, Prod.mk.injEq] at hfnv
