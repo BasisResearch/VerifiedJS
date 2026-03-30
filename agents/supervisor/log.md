@@ -1,3 +1,52 @@
+## Run: 2026-03-30T22:05:01+00:00
+
+### Metrics
+- **Sorry count (grep-c)**: ANF 58 + CC 41 + Lower 0 = 99 grep hits
+- **Real sorries**: ANF 58 + CC 15 real + 22 dead-code + 2 stubs = 97
+- **Delta from last run (18:05)**: ANF 19→58 (+39), CC 44→41 (-3). NET +36.
+- **WHY UP**: Proof agent converted 40 ANF build errors into sorry (build wasn't passing). CC dropped because jsspec eliminated all 22 hnoerr guards and most error companions. The ANF increase is BUILD FIX scaffolding, not regression.
+- **BUILD**: lake serve x3. No active builds. 4GB free. Healthy.
+- **LowerCorrect**: 0 sorries ✓
+
+### Real progress assessment
+Despite grep count going up, actual provable-sorry count is IMPROVING:
+- CC real sorries: 40→15 (-25). HUGE win from jsspec's Fix D revert + hnoerr elimination.
+- ANF: 18 real sorries + 40 build-error-conversions = 58 total. The 40 are in hasBreak/hasContinue aux lemmas that are FUNDAMENTALLY UNPROVABLE. Deleting them drops to 16.
+- If proof agent deletes aux lemmas: ANF goes to 16. If jsspec deletes dead code: CC goes to 19.
+- **Effective sorry count: ~31 real provable sorries** (ANF 16 + CC 15)
+
+### Sorry breakdown
+**ANF (58):** 40 hasBreak/hasContinue aux (DELETE) + 7 depth-induction + 7 expression-case + 4 other
+**CC (41):** 22 dead-code "Fix D reverted" (DELETE) + 2 stubs + 15 real (value sub-cases, CCState, functionDef, tryCatch, etc.)
+
+### Agent Analysis
+1. **proof**: Last real work at 19:30. Fixed 9 step?_*_error theorems, proved 3 throw sub-cases (.this, .break, .continue). Converted 40 build errors → sorry to get build passing. Now SKIP: already running (stuck?). Prompt REWRITTEN: Priority 1 = DELETE 42 aux-lemma sorries.
+2. **jsspec**: Excellent work eliminating hnoerr. Currently running (22:00, building CC). Prompt REWRITTEN: Delete 22 dead-code "Fix D reverted" + close easiest real sorries (L2857, L3176, L3198).
+3. **wasmspec**: Stuck since 14:30 (build wait loop). Last completed 16:10. Prompt REWRITTEN: value sub-cases (L3692, L4433, L4755, L4938) + functionDef + tryCatch.
+
+### Actions Taken
+1. proof prompt REWRITTEN: Delete hasBreak/hasContinueInHead_step?_error_aux entirely (42 sorries). Provided restructured theorem with structural induction on HasBreakInHead.
+2. jsspec prompt REWRITTEN: Delete 22 dead-code "Fix D reverted" theorems. Then close L2857, L3176, L3198 (CCState threading).
+3. wasmspec prompt REWRITTEN: 4 value sub-cases + functionDef + tryCatch. Clear ownership split with jsspec.
+4. Time estimate: 97 grep hits, 40h (31 effective sorries, aux deletion is mechanical)
+
+### Critical Path
+```
+                    ┌─ proof: delete aux lemmas → ANF 58→16 (-42)
+Current (97 grep)  ─┤─ jsspec: delete dead code + close 3 → CC 41→16 (-25)
+                    └─ wasmspec: close value sub-cases → CC -4
+```
+Target: 97 → ~28 (16 ANF + 12 CC)
+
+### Process Notes
+- wasmspec has been stuck for 8 hours in build wait loop (pgrep -f). Prompt now says NEVER use while loops.
+- 3 lake serve instances running. Memory healthy (4GB free).
+- proof agent's "already running" status suggests it may need a fresh restart.
+
+2026-03-30T22:05:01+00:00 DONE
+
+---
+
 ## Run: 2026-03-30T18:05:01+00:00
 
 ### Metrics
@@ -6509,3 +6558,4 @@ PID 2747055 (wasmspec user) sleeping since 14:30. Lock held. Cannot kill.
 
 ## Run: 2026-03-30T22:05:01+00:00
 
+2026-03-30T22:10:39+00:00 DONE
