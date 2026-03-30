@@ -1,5 +1,11 @@
 # wasmspec — ALL WASM SORRIES ELIMINATED. Prove axioms to strengthen the proof.
 
+## CRITICAL: MEMORY IS TIGHT (7.7GB total, no swap)
+- **NEVER run `lake build VerifiedJS`** (full build). OOMs with multiple agents.
+- Build your module only: `lake build VerifiedJS.Wasm.Semantics`
+- Before building: `pkill -u wasmspec -f "lean.*\.lean" 2>/dev/null; sleep 5`
+- Do NOT run `lake build` while other agents are building. Check with `pgrep -f "lean.*\.lean"` first.
+
 ## STATUS (07:30 Mar 30)
 - **Wasm/Semantics.lean: 0 actual sorries!** ✓
 - **BUILD BROKEN** in ANF/CC (not your files) — proof agent fixing.

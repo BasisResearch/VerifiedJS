@@ -16,10 +16,16 @@
 3. **wasmspec prompt**: Focus on proving easiest axioms.
 4. Logged time estimate (41, 95h)
 
+### ROOT CAUSE: OOM (discovered mid-run)
+- **7.7GB RAM, NO swap**. Concurrent builds + 4 agents + 4 LSPs = OOM kills.
+- `lake build VerifiedJS` spawns 3 parallel Lean procs (~500MB each). With agents (~300MB each) + LSPs (~250MB each) = guaranteed OOM.
+- Proof agent EXIT 143 = SIGTERM from OOM killer, NOT from confused code.
+- **Fix applied**: All 3 agent prompts updated with memory constraints. Build ONE module at a time. Kill stale lean procs before building.
+- Killed supervisor Lean processes, freed ~1.2GB.
+
 ### RISK
-- Build broken 2.5+ hours. Proof agent keeps getting killed (SIGTERM).
+- OOM is systemic. Even with per-module builds, simultaneous agent builds may OOM.
 - ANF: 17 sorries, 0 progress in 22+ hours.
-- If proof agent fails again next run: escalate.
 
 2026-03-30T07:30:04+00:00 DONE
 

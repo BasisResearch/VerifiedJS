@@ -1,4 +1,10 @@
-# proof — FIX THE BUILD. 3 edits. Nothing else until green.
+# proof — FIX THE BUILD. 7 edits. Nothing else until green.
+
+## CRITICAL: MEMORY IS TIGHT (7.7GB total, no swap)
+- **NEVER run `lake build VerifiedJS`** (full build). It spawns 3 parallel Lean processes and OOMs.
+- Build ONE module at a time: `lake build VerifiedJS.Proofs.ANFConvertCorrect`
+- Before building, kill any stale lean processes: `pkill -u proof -f "lean.*\.lean"`
+- Wait 10 seconds between builds for memory to free
 
 ## YOU HAVE ONE JOB: Fix D broke the build. Apply these EXACT edits.
 
@@ -7,7 +13,7 @@ Three theorems assumed only 2 arms. Fix them by adding `hne` and case-splitting.
 
 ### EDIT 1: `step?_seq_ctx` (ANFConvertCorrect.lean L1052-1061)
 
-Replace the ENTIRE theorem:
+Replace the ENTIRE theorem (L1052-1061):
 ```lean
 private theorem step?_seq_ctx (s : Flat.State) (a b : Flat.Expr)
     (hnotval : Flat.exprValue? a = none)
@@ -24,35 +30,42 @@ private theorem step?_seq_ctx (s : Flat.State) (a b : Flat.Expr)
   | _ => exact ⟨_, rfl, rfl, rfl, rfl, rfl, rfl, rfl⟩
 ```
 
-### EDIT 2: `step_wrapSeqCtx` (ANFConvertCorrect.lean L1157-1181)
+### EDIT 2: `step_wrapSeqCtx` (ANFConvertCorrect.lean L1157-1158)
 
-Add `(hne : ∀ msg, t ≠ .error msg)` parameter after `(ctx : List Flat.Expr)`:
+Change signature from:
+```lean
+private theorem step_wrapSeqCtx (s : Flat.State) (t : Core.TraceEvent)
+    (ctx : List Flat.Expr) :
+```
+To:
 ```lean
 private theorem step_wrapSeqCtx (s : Flat.State) (t : Core.TraceEvent)
     (ctx : List Flat.Expr) (hne : ∀ msg, t ≠ .error msg) :
 ```
-And pass `hne` at L1175:
+And at L1175, pass `hne`:
 ```lean
       step?_seq_ctx s inner r hnotval t s_inner hstep hne
 ```
 
 ### EDIT 3: All 4 callers of `step_wrapSeqCtx` (L1311, L1333, L1355, L1378)
 
-All pass `.silent` as `t`. Add `(fun _ h => nomatch h)` after `rs`/`ctx`:
-```lean
--- L1311: change to:
-        step_wrapSeqCtx sf .silent rs (fun _ h => nomatch h) _ s_i hnotval hstep_i hfuncs_i hcs_i htrace_i
--- L1333: change to:
-        step_wrapSeqCtx sf .silent rs (fun _ h => nomatch h) _ s_i hnotval hstep_i hfuncs_i hcs_i htrace_i
--- L1355: change to:
-        step_wrapSeqCtx sf .silent ctx (fun _ h => nomatch h) _ s_v hnotval_v hstep_v hfuncs_v hcs_v htrace_v
--- L1378: change to:
-        step_wrapSeqCtx sf .silent ctx (fun _ h => nomatch h) _ s_t hnotval_t hstep_t hfuncs_t hcs_t htrace_t
+All pass `.silent` as `t`. Insert `(fun _ h => nomatch h)` after `rs`/`ctx`:
+```
+L1311:  step_wrapSeqCtx sf .silent rs (fun _ h => nomatch h) _ s_i hnotval ...
+L1333:  step_wrapSeqCtx sf .silent rs (fun _ h => nomatch h) _ s_i hnotval ...
+L1355:  step_wrapSeqCtx sf .silent ctx (fun _ h => nomatch h) _ s_v hnotval_v ...
+L1378:  step_wrapSeqCtx sf .silent ctx (fun _ h => nomatch h) _ s_t hnotval_t ...
+```
+
+### BUILD CHECK 1
+```bash
+pkill -u proof -f "lean.*\.lean" 2>/dev/null; sleep 5
+lake build VerifiedJS.Proofs.ANFConvertCorrect
 ```
 
 ### EDIT 4: `Flat_step?_seq_step` (ClosureConvertCorrect.lean L1895-1902)
 
-Replace:
+Replace entire theorem:
 ```lean
 private theorem Flat_step?_seq_step (s : Flat.State) (b : Flat.Expr) (fe : Flat.Expr)
     (hnv : Flat.exprValue? fe = none)
@@ -70,7 +83,7 @@ private theorem Flat_step?_seq_step (s : Flat.State) (b : Flat.Expr) (fe : Flat.
 
 ### EDIT 5: `Flat_step?_let_step` (ClosureConvertCorrect.lean L1913-1920)
 
-Replace:
+Replace entire theorem:
 ```lean
 private theorem Flat_step?_let_step (s : Flat.State) (name : String) (body : Flat.Expr) (fe : Flat.Expr)
     (hnv : Flat.exprValue? fe = none)
@@ -88,30 +101,23 @@ private theorem Flat_step?_let_step (s : Flat.State) (name : String) (body : Fla
 
 ### EDIT 6: CC callers at L2812 and L3125
 
-Add `(fun _ h => nomatch h)` as the `hne` argument to both calls.
+Add `(fun _ h => nomatch h)` as the last argument to `Flat_step?_let_step` (L2812) and `Flat_step?_seq_step` (L3125).
 
-L2812 uses `Flat_step?_let_step`. L3125 uses `Flat_step?_seq_step`.
-Find the exact call and add the new arg at the end.
+### EDIT 7: `step?_none_implies_lit_aux` (~L5353)
 
-### EDIT 7: `step?_none_implies_lit_aux` (ClosureConvertCorrect.lean ~L5353)
+If build fails here: the induction proof has new match arms from Fix D.
+Add `| some (.error _, _) => ...` arms. These should be `simp [Flat.step?]` or `contradiction`.
 
-If this breaks, it's because the induction on `step?` now has a new `.error` match arm.
-Add `| some (.error _, _) => ...` cases where the `step?` match occurs in the proof.
-
-## WORKFLOW
-1. Apply Edits 1-3 to ANFConvertCorrect.lean
-2. Build: `lake build VerifiedJS.Proofs.ANFConvertCorrect`
-3. If green, apply Edits 4-6 to ClosureConvertCorrect.lean
-4. Build: `lake build VerifiedJS.Proofs.ClosureConvertCorrect`
-5. If step?_none_implies_lit breaks, apply Edit 7
-6. Final: `lake build VerifiedJS`
+### BUILD CHECK 2
+```bash
+pkill -u proof -f "lean.*\.lean" 2>/dev/null; sleep 5
+lake build VerifiedJS.Proofs.ClosureConvertCorrect
+```
 
 ## AFTER BUILD IS GREEN: Close CC sorries
 
-### Priority 1: Integrate cc_convertExpr_not_lit_v2 (-2 sorries at L1369, L1370)
-See `.lake/_tmp_fix/cc_convertExpr_not_lit_v2.lean`. Close forIn/forOf by contradiction.
-
-### Priority 2: Value sub-cases (getIndex, setProp)
+### Priority 1: Integrate cc_convertExpr_not_lit_v2 (-2 sorries)
+See `.lake/_tmp_fix/cc_convertExpr_not_lit_v2.lean`.
 
 ## FILES
 - `VerifiedJS/Proofs/ANFConvertCorrect.lean` (rw)

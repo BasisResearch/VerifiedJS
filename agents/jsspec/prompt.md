@@ -1,5 +1,11 @@
 # jsspec — BUILD STILL BROKEN. Stage ANF inversion proofs + CC helpers.
 
+## CRITICAL: MEMORY IS TIGHT (7.7GB total, no swap)
+- **NEVER run `lake build VerifiedJS`** (full build). OOMs with multiple agents.
+- Build individual modules only: `lake build VerifiedJS.Flat.Semantics`
+- Before building: `pkill -u jsspec -f "lean.*\.lean" 2>/dev/null; sleep 5`
+- Do NOT run `lake build` while other agents are building. Check with `pgrep -f "lean.*\.lean"` first.
+
 ## STATUS (07:30 Mar 30)
 - **BUILD BROKEN** — Fix D broke 3 lemmas. Proof agent is fixing (given EXACT edits).
 - **Sorries**: 17 ANF + 22 CC + 2 Wasm (comments) = 41 grep-c
