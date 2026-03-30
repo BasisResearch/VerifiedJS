@@ -1,126 +1,121 @@
-# proof — BUILD IS BROKEN. Fix it FIRST, then close CC sorries. Target: build green + -2 sorries.
+# proof — FIX THE BUILD. 3 edits. Nothing else until green.
 
-## EMERGENCY: BUILD BROKEN BY FIX D
+## YOU HAVE ONE JOB: Fix D broke the build. Apply these EXACT edits.
 
-Fix D added error propagation to `Flat.step?` for `.seq` and `.let`. This broke 3 lemmas that assume the match resolves without case-splitting on the trace event. **FIX THESE FIRST.**
+Fix D added a `| some (.error msg, sa) =>` arm to `.seq` and `.let` in `Flat.step?`.
+Three theorems assumed only 2 arms. Fix them by adding `hne` and case-splitting.
 
-**FULL GUIDE**: `.lake/_tmp_fix/fix_d_breakage_guide.lean` has EVERY fix with exact code. READ IT FIRST.
+### EDIT 1: `step?_seq_ctx` (ANFConvertCorrect.lean L1052-1061)
 
-### Fix 1: `step?_seq_ctx` in ANFConvertCorrect.lean (L1052)
-
-**Current** (BROKEN):
-```lean
-private theorem step?_seq_ctx (s : Flat.State) (a b : Flat.Expr)
-    (hnotval : Flat.exprValue? a = none)
-    (t : Core.TraceEvent) (sa : Flat.State)
-    (hstep : Flat.step? { s with expr := a } = some (t, sa)) :
-    ∃ s', Flat.step? { s with expr := .seq a b } = some (t, s') ∧
-      s'.expr = .seq sa.expr b ∧ s'.env = sa.env ∧ s'.heap = sa.heap ∧
-      s'.funcs = s.funcs ∧ s'.callStack = s.callStack ∧
-      s'.trace = s.trace ++ [t] := by
-  simp only [Flat.step?, hnotval, hstep]
-  exact ⟨_, rfl, rfl, rfl, rfl, rfl, rfl, rfl⟩
-```
-
-**Fix** — add `hnoerr` hypothesis and case-split on `t`:
+Replace the ENTIRE theorem:
 ```lean
 private theorem step?_seq_ctx (s : Flat.State) (a b : Flat.Expr)
     (hnotval : Flat.exprValue? a = none)
     (t : Core.TraceEvent) (sa : Flat.State)
     (hstep : Flat.step? { s with expr := a } = some (t, sa))
-    (hnoerr : ∀ msg, t ≠ .error msg) :
+    (hne : ∀ msg, t ≠ .error msg) :
     ∃ s', Flat.step? { s with expr := .seq a b } = some (t, s') ∧
       s'.expr = .seq sa.expr b ∧ s'.env = sa.env ∧ s'.heap = sa.heap ∧
       s'.funcs = s.funcs ∧ s'.callStack = s.callStack ∧
       s'.trace = s.trace ++ [t] := by
   simp only [Flat.step?, hnotval, hstep]
   cases t with
-  | error msg => exact absurd rfl (hnoerr msg)
-  | log _ => exact ⟨_, rfl, rfl, rfl, rfl, rfl, rfl, rfl⟩
-  | silent => exact ⟨_, rfl, rfl, rfl, rfl, rfl, rfl, rfl⟩
+  | error msg => exact absurd rfl (hne msg)
+  | _ => exact ⟨_, rfl, rfl, rfl, rfl, rfl, rfl, rfl⟩
 ```
 
-### Fix 1b: `step_wrapSeqCtx` (L1157) — add same `hnoerr` hypothesis
+### EDIT 2: `step_wrapSeqCtx` (ANFConvertCorrect.lean L1157-1181)
 
-Add `(hnoerr : ∀ msg, t ≠ .error msg)` as a parameter. Pass it to `step?_seq_ctx` at L1175:
-```lean
-      step?_seq_ctx s inner r hnotval t s_inner hstep hnoerr
-```
-
-### Fix 1c: All callers of `step_wrapSeqCtx` (L1311, L1333, L1355, L1378)
-
-All pass `.silent` as `t`. Add `(fun _ h => nomatch h)` or `(by intro msg h; exact nomatch h)` as the `hnoerr` argument. Example:
-```lean
-        step_wrapSeqCtx sf .silent rs (fun _ h => nomatch h) _ s_i hnotval hstep_i hfuncs_i hcs_i htrace_i
-```
-Wait — `step_wrapSeqCtx` takes `t` as its 2nd arg. So it becomes:
+Add `(hne : ∀ msg, t ≠ .error msg)` parameter after `(ctx : List Flat.Expr)`:
 ```lean
 private theorem step_wrapSeqCtx (s : Flat.State) (t : Core.TraceEvent)
-    (ctx : List Flat.Expr) (hnoerr : ∀ msg, t ≠ .error msg) :
+    (ctx : List Flat.Expr) (hne : ∀ msg, t ≠ .error msg) :
 ```
-And callers: `step_wrapSeqCtx sf .silent rs (fun _ h => nomatch h) ...`
+And pass `hne` at L1175:
+```lean
+      step?_seq_ctx s inner r hnotval t s_inner hstep hne
+```
 
-### Fix 2: `Flat_step?_seq_step` in ClosureConvertCorrect.lean (L1895)
+### EDIT 3: All 4 callers of `step_wrapSeqCtx` (L1311, L1333, L1355, L1378)
 
-Add `(hnoerr : ∀ msg, t ≠ .error msg)` and fix proof:
+All pass `.silent` as `t`. Add `(fun _ h => nomatch h)` after `rs`/`ctx`:
+```lean
+-- L1311: change to:
+        step_wrapSeqCtx sf .silent rs (fun _ h => nomatch h) _ s_i hnotval hstep_i hfuncs_i hcs_i htrace_i
+-- L1333: change to:
+        step_wrapSeqCtx sf .silent rs (fun _ h => nomatch h) _ s_i hnotval hstep_i hfuncs_i hcs_i htrace_i
+-- L1355: change to:
+        step_wrapSeqCtx sf .silent ctx (fun _ h => nomatch h) _ s_v hnotval_v hstep_v hfuncs_v hcs_v htrace_v
+-- L1378: change to:
+        step_wrapSeqCtx sf .silent ctx (fun _ h => nomatch h) _ s_t hnotval_t hstep_t hfuncs_t hcs_t htrace_t
+```
+
+### EDIT 4: `Flat_step?_seq_step` (ClosureConvertCorrect.lean L1895-1902)
+
+Replace:
 ```lean
 private theorem Flat_step?_seq_step (s : Flat.State) (b : Flat.Expr) (fe : Flat.Expr)
     (hnv : Flat.exprValue? fe = none)
     (t : Core.TraceEvent) (sa : Flat.State)
     (hss : Flat.step? { s with expr := fe } = some (t, sa))
-    (hnoerr : ∀ msg, t ≠ .error msg) :
+    (hne : ∀ msg, t ≠ .error msg) :
     Flat.step? { s with expr := .seq fe b } =
       some (t, { expr := .seq sa.expr b, env := sa.env, heap := sa.heap,
                  trace := s.trace ++ [t], funcs := s.funcs, callStack := s.callStack }) := by
   simp only [Flat.step?, hnv, hss]
   cases t with
-  | error msg => exact absurd rfl (hnoerr msg)
-  | log _ => rfl
-  | silent => rfl
+  | error msg => exact absurd rfl (hne msg)
+  | _ => rfl
 ```
 
-Fix caller at L3125: add `(fun _ h => nomatch h)` or appropriate noerror proof.
+### EDIT 5: `Flat_step?_let_step` (ClosureConvertCorrect.lean L1913-1920)
 
-### Fix 3: `Flat_step?_let_step` in ClosureConvertCorrect.lean (L1913)
+Replace:
+```lean
+private theorem Flat_step?_let_step (s : Flat.State) (name : String) (body : Flat.Expr) (fe : Flat.Expr)
+    (hnv : Flat.exprValue? fe = none)
+    (t : Core.TraceEvent) (sa : Flat.State)
+    (hss : Flat.step? { s with expr := fe } = some (t, sa))
+    (hne : ∀ msg, t ≠ .error msg) :
+    Flat.step? { s with expr := .«let» name fe body } =
+      some (t, { expr := .«let» name sa.expr body, env := sa.env, heap := sa.heap,
+                 trace := s.trace ++ [t], funcs := s.funcs, callStack := s.callStack }) := by
+  simp only [Flat.step?, hnv, hss]
+  cases t with
+  | error msg => exact absurd rfl (hne msg)
+  | _ => rfl
+```
 
-Same pattern — add `hnoerr`, case-split. Fix caller at L2812.
+### EDIT 6: CC callers at L2812 and L3125
 
-### Fix 4: `step?_none_implies_lit_aux` in ClosureConvertCorrect.lean (before L5878)
+Add `(fun _ h => nomatch h)` as the `hne` argument to both calls.
 
-CC build error shows `none = none ⊢ False` near L5886. This is from `step?_none_implies_lit_aux` — the proof by induction on depth that `Flat.step? s = none` implies `s.expr` is a literal. Fix D adds new match arms (`some (.error msg, sa)`) that `simp [Flat.step?]` can't resolve automatically. The `none` case IS still correct — Fix D doesn't change when `step?` returns `none` — but the proof needs explicit case-splitting for the new error branches.
+L2812 uses `Flat_step?_let_step`. L3125 uses `Flat_step?_seq_step`.
+Find the exact call and add the new arg at the end.
 
-### Fix 5: CC callers at L2812 and L3125
+### EDIT 7: `step?_none_implies_lit_aux` (ClosureConvertCorrect.lean ~L5353)
 
-These use `t` from a `Flat.step?` result, which COULD be `.error` after Fix D. Two options:
-- Add a `| some (.error msg, sa) =>` match arm before `| some (t, sa) =>` to handle error propagation
-- Or prove `t ≠ .error` from the simulation invariant
+If this breaks, it's because the induction on `step?` now has a new `.error` match arm.
+Add `| some (.error _, _) => ...` cases where the `step?` match occurs in the proof.
 
-See `.lake/_tmp_fix/fix_d_breakage_guide.lean` for full details on both approaches.
+## WORKFLOW
+1. Apply Edits 1-3 to ANFConvertCorrect.lean
+2. Build: `lake build VerifiedJS.Proofs.ANFConvertCorrect`
+3. If green, apply Edits 4-6 to ClosureConvertCorrect.lean
+4. Build: `lake build VerifiedJS.Proofs.ClosureConvertCorrect`
+5. If step?_none_implies_lit breaks, apply Edit 7
+6. Final: `lake build VerifiedJS`
 
 ## AFTER BUILD IS GREEN: Close CC sorries
 
 ### Priority 1: Integrate cc_convertExpr_not_lit_v2 (-2 sorries at L1369, L1370)
+See `.lake/_tmp_fix/cc_convertExpr_not_lit_v2.lean`. Close forIn/forOf by contradiction.
 
-See `.lake/_tmp_fix/cc_convertExpr_not_lit_v2.lean`. Add `convertExpr_not_value_supported` after existing `convertExpr_not_value` (~L1181). Then close forIn/forOf cases by contradiction with `hsupp`.
-
-### Priority 2: Close getIndex string (L4027)
-
-See `.lake/_tmp_fix/cc_getIndex_object_proof.lean` for the pattern. String case is simpler.
-
-### Priority 3: Value sub-cases (L4199, L4521, L4619)
-
-Use HeapInj infrastructure.
-
-## WORKFLOW
-1. Fix the 3 broken lemmas (ANF + CC). Build after EACH fix.
-2. Then integrate staged CC files.
-3. `lake build VerifiedJS.Proofs.ANFConvertCorrect` and `lake build VerifiedJS.Proofs.ClosureConvertCorrect` after EVERY edit
-4. If build breaks: `git checkout` within 2 minutes
-5. LOG every 30 minutes to agents/proof/log.md
+### Priority 2: Value sub-cases (getIndex, setProp)
 
 ## FILES
-- `VerifiedJS/Proofs/ClosureConvertCorrect.lean` (rw)
 - `VerifiedJS/Proofs/ANFConvertCorrect.lean` (rw)
+- `VerifiedJS/Proofs/ClosureConvertCorrect.lean` (rw)
 - `.lake/_tmp_fix/*.lean` (read for integration)
 
 ## DO NOT EDIT: `VerifiedJS/Wasm/Semantics.lean`, `VerifiedJS/Flat/Semantics.lean`
