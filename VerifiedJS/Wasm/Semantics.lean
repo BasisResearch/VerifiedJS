@@ -10960,62 +10960,37 @@ theorem step_sim (irmod : IRModule) (wmod : Module) :
             exfalso; generalize s2.code = wcode at hc
             cases hc with | general _ _ _ _ hf _ => exact hf.elim
       | .call funcIdx =>
-          -- Partially proved: OOB case done, underflow and success cases sorry'd.
+          -- SORRY: call case needs trap message alignment + hframes_one invariant rework
+          sorry
+          /- function call — partially proved, blocked on trap message mismatch:
+             IR uses s!"call: unknown function {funcIdx}" while Wasm uses
+             s!"unknown function index {funcIdx}". Need traceToWasm alignment.
           have hc : EmitCodeCorr _ (IRInstr.call funcIdx :: rest) s2.code := hcode_ir ▸ hrel.hcode
           rcases hc.call_inv with ⟨rest_w, hcw, hrest⟩ | hf
-          · -- Wasm code = Instr.call funcIdx :: rest_w
-            -- Derive function count correspondence
-            have hfuncs_size : s1.module.functions.size = s2.store.funcs.size := by
+          · have hfuncs_size : s1.module.functions.size = s2.store.funcs.size := by
               rw [hrel.hmodule, hrel.hstore_funcs]
               exact (emit_preserves_funcs_size irmod wmod hrel.hemit).symm
             match hfunc_ir : s1.module.functions[funcIdx]? with
             | none =>
-              -- Case 1: funcIdx OOB in IR → also OOB in Wasm
               have hir : irStep? s1 = some (.trap s!"call: unknown function {funcIdx}",
                   { s1 with code := [], trace := s1.trace ++ [.trap s!"call: unknown function {funcIdx}"] }) := by
                 simp [irStep?, hcode_ir, hfunc_ir, irTrapState, irPushTrace]
               rw [hir] at hstep
               simp only [Option.some.injEq, Prod.mk.injEq] at hstep
               obtain ⟨rfl, rfl⟩ := hstep
-              -- funcIdx is also OOB in Wasm
               have hfunc_oob : ¬(funcIdx < s2.store.funcs.size) := by
                 rw [← hfuncs_size]; intro h
                 rw [Array.getElem?_eq_getElem h] at hfunc_ir; simp at hfunc_ir
               have hw := step?_eq_call_oob s2 funcIdx rest_w hcw hfunc_oob
-              exact ⟨_, by simp [traceToWasm]; exact hw,
-                { hemit := hrel.hemit, hcode := .nil, hstack := by dsimp only []; exact hrel.hstack,
-                  hframes_len := hrel.hframes_len, hframes_locals := hrel.hframes_locals,
-                  hframes_vals := hrel.hframes_vals, hglobals := hrel.hglobals,
-                  hmemory := hrel.hmemory, hmemLimits := hrel.hmemLimits,
-                  hmemory_aligned := hrel.hmemory_aligned, hmemory_nonempty := hrel.hmemory_nonempty,
-                  hlabels := hrel.hlabels,
-                  hhalt := hhalt_of_structural (@EmitCodeCorr.nil []) (by dsimp only []; exact hrel.hlabels),
-                  hlabel_content := hrel.hlabel_content,
-                  hframes_one := hrel.hframes_one,
-                  hmodule := hrel.hmodule, hstore_funcs := hrel.hstore_funcs,
-                  hstore_types := hrel.hstore_types }⟩
+              -- BLOCKED: traceToWasm (.trap "call: unknown function N")
+              --        ≠ Wasm.TraceEvent.trap "unknown function index N"
+              sorry
             | some fn =>
-              -- Function exists in IR
               match hpop : irPopN? s1.stack fn.params.length with
-              | none =>
-                -- Case 2: stack underflow → both trap
-                -- IR traps
-                have hir : irStep? s1 = some (.trap s!"stack underflow in call {funcIdx}",
-                    { s1 with code := [], trace := s1.trace ++ [.trap s!"stack underflow in call {funcIdx}"] }) := by
-                  simp [irStep?, hcode_ir, hfunc_ir, hpop, irTrapState, irPushTrace]
-                rw [hir] at hstep
-                simp only [Option.some.injEq, Prod.mk.injEq] at hstep
-                obtain ⟨rfl, rfl⟩ := hstep
-                -- funcIdx IS in bounds for Wasm (same size)
-                have hfunc_ok : funcIdx < s2.store.funcs.size := by
-                  rw [← hfuncs_size]
-                  exact Nat.lt_of_not_le (fun hge => by rw [Array.getElem?_eq_none hge] at hfunc_ir; simp at hfunc_ir)
-                -- Need to show Wasm also underflows or handle differently
-                sorry
-              | some (args, callerStack) =>
-                -- Case 3: successful call → needs multi-frame EmitSimRel
-                sorry
+              | none => sorry   -- stack underflow: param count alignment needed
+              | some (args, callerStack) => sorry  -- successful call: multi-frame needed
           · exact hf.elim
+          -/
       | .callIndirect typeIdx => sorry
       | .block label body =>
           -- block: push label frame, enter body. Both IR and Wasm do the same.

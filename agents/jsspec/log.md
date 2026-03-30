@@ -1,5 +1,102 @@
 # jsspec agent log
 
+## 2026-03-30T01:30 — ANF Per-Constructor Decomposition + Verified Building Blocks
+
+### Summary
+Decomposed all 17 ANF sorries (L3368-3426) into per-constructor analysis with verified building blocks. Key result: direct break/continue case proof is VERIFIED CORRECT (all lemmas compile). Compound cases are individually documented with blockers.
+
+### Verified: Direct break/continue case proof (test_break_direct.lean)
+All building blocks compile clean (0 errors):
+- `Flat.step?_break_eq`: Flat stepping on `.break label` produces correct error + terminal state
+- `ExprWellFormed (.lit .undefined) env`: trivially true (no free vars)
+- `normalizeExpr (.lit .undefined) (fun t => pure (.trivial t))`: produces `.trivial .litUndefined` ✓
+- `observableTrace [.error msg] = [.error msg]`: via `observableTrace_error` ✓
+- `ANF.normalizeExpr_break_run` / `ANF.normalizeExpr_continue_run`: k ignored ✓
+- `ANF.trivial_k_preserving`: identity continuation is trivial ✓
+
+### Architecture: normalizeExpr_break_step_sim theorem
+
+**Type signature** (insert before anfConvert_step_star ~L3290):
+```lean
+private theorem normalizeExpr_break_step_sim
+    (s : Flat.Program) (t : ANF.Program) (h : ANF.convert s = .ok t) :
+    ∀ (d : Nat) (e : Flat.Expr), e.depth ≤ d →
+    ∀ (k : ANF.Trivial → ANF.ConvM ANF.Expr) (n m : Nat)
+      (label : Option String)
+      (sa_env : ANF.Env) (sa_heap : Core.Heap) (sa_trace : List Core.TraceEvent),
+    (∀ (arg : ANF.Trivial) (n' : Nat), ∃ m', (k arg).run n' = .ok (.trivial arg, m')) →
+    (ANF.normalizeExpr e k).run n = .ok (.break label, m) →
+    ∀ (sf : Flat.State), sf.expr = e →
+    sa_heap = sf.heap → sa_env = sf.env →
+    observableTrace sa_trace = observableTrace sf.trace →
+    ExprWellFormed e sf.env →
+    ∃ (sf' : Flat.State) (evs : List Core.TraceEvent),
+      Flat.Steps sf evs sf' ∧
+      observableTrace [.error ("break:" ++ (label.getD ""))] = observableTrace evs ∧
+      ANF_SimRel s t
+        { expr := .trivial .litUndefined, env := sa_env, heap := sa_heap,
+          trace := sa_trace ++ [.error ("break:" ++ (label.getD ""))] } sf' ∧
+      ExprWellFormed sf'.expr sf'.env
+```
+
+**Proof structure** (by `cases e`):
+- **Closed cases** (.break label): 1 — uses Flat.step?_break_eq, observableTrace_error, trivial_k_preserving
+- **Contradiction cases** (cannot produce .break): ~12 — lit, var, this, continue, labeled, while_, tryCatch, return none, yield none
+- **Sorry cases** (dead code absorption): ~20 — seq, let, assign, if, call, newObj, getProp, setProp, etc.
+
+**Integration at L3424**:
+```lean
+    obtain ⟨sa_expr, sa_env, sa_heap, sa_trace⟩ := sa
+    simp only [] at hsa; subst hsa
+    simp only [ANF.step?, ANF.pushTrace] at hstep_eq
+    obtain ⟨rfl, rfl⟩ := hstep_eq
+    exact normalizeExpr_break_step_sim s t h sf.expr.depth sf.expr (Nat.le_refl _)
+      k n m label sa_env sa_heap sa_trace hk_triv hnorm sf rfl
+      (by simp only [ANF.State.heap] at hheap; exact hheap)
+      (by simp only [ANF.State.env] at henv; exact henv)
+      (by simp only [ANF.State.trace] at htrace; exact htrace)
+      hewf
+```
+
+Same pattern for `normalizeExpr_continue_step_sim` at L3426.
+
+### Sorry decomposition (all 17 ANF sorries)
+
+| Line | Constructor | Status | Blocker |
+|------|------------|--------|---------|
+| 3368 | let | sorry | normalizeExpr CPS inversion + multi-step |
+| 3370 | seq | sorry | normalizeExpr CPS inversion + multi-step |
+| 3372 | if | sorry | normalizeExpr CPS inversion + multi-step |
+| 3392 | throw (×2) | sorry | normalizeExpr throw inversion (no existing lemma) |
+| 3394 | tryCatch | sorry | multi-step body simulation |
+| 3396 | return | sorry | normalizeExpr return inversion |
+| 3398 | yield | sorry | normalizeExpr yield inversion |
+| 3400 | await | sorry | normalizeExpr await inversion |
+| 3424 | break | DECOMPOSED → 1 closed + ~20 sorry | dead code absorption in compound |
+| 3426 | continue | DECOMPOSED → 1 closed + ~20 sorry | dead code absorption in compound |
+
+### Core blocker: Dead code absorption
+ALL compound-case sorries share ONE root cause:
+- `normalizeExpr (.seq (.break label) b) k = .break label` (b discarded)
+- But Flat: `.seq (.break l) b` → step break → `.seq (.lit .undefined) b` → step to b → b runs
+- After break fires, dead code b can change env/heap/trace
+- ANF_SimRel requires env/heap equality, which breaks
+
+### Staged file compilation status
+| File | Status | Sorries |
+|------|--------|---------|
+| cc_state_mono.lean | ✓ compiles | 1 (funcs_prefix catch-all) |
+| cc_objectLit_ccstate.lean | ✓ compiles | 0 |
+| cc_convertExpr_not_lit_v2.lean | ✓ compiles | 0 |
+| cc_exprAddrWF_propagate.lean | ✗ failed dep | ClosureConvertCorrect.lean dependency |
+| test_break_direct.lean | ✓ compiles | 0 (all building blocks verified) |
+
+### New staged files
+- `.lake/_tmp_fix/anf_break_step_sim.lean` — full break step_sim theorem + integration instructions
+- `.lake/_tmp_fix/anf_continue_step_sim.lean` — continue step_sim (same pattern)
+- `.lake/_tmp_fix/anf_throw_return_step_sim.lean` — analysis of throw/return/yield/await/let/seq/if
+- `.lake/_tmp_fix/test_break_direct.lean` — verified building blocks (compiles clean)
+
 ## 2026-03-30T01:00 — ANF Deep Analysis + CC Architecture Findings
 
 ### Summary
@@ -1310,3 +1407,4 @@ Agent `jsspec` can read but NOT write. Need `chmod g+w` from root/wasmspec.
 
 ## Run: 2026-03-30T01:00:01+00:00
 
+2026-03-30T01:39:08+00:00 DONE
