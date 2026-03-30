@@ -4363,3 +4363,58 @@ Key infrastructure available:
 
 ## Run: 2026-03-30T19:30:01+00:00
 
+
+### Changes made
+
+1. **Fixed pre-existing build errors** (9 `step?_*_error` theorems at L1215-1310):
+   - `step?_seq_error`, `step?_let_init_error`, `step?_unary_error`, `step?_binary_lhs_error`,
+     `step?_throw_error`, `step?_return_some_error`, `step?_yield_some_error`, `step?_await_error`,
+     `step?_if_cond_error` — all had wrong `s'.expr = .lit .undefined` conclusions.
+   - Fixed to correct wrapped expressions (e.g., `.seq sa.expr b` for seq).
+
+2. **Converted 40 pre-existing build errors to sorry** (hasBreakInHead/hasContinueInHead compound cases):
+   - `hasBreakInHead_step?_error_aux` compound cases (L3954-4030): 20 cases
+   - `hasContinueInHead_step?_error_aux` compound cases (L4085-4161): 20 cases
+   - These claimed `s'.expr = .lit .undefined` but step? wraps in parent context.
+   - Root cause: theorems need multi-step restructuring (step? wraps sub-results in parent context).
+
+3. **Added `Flat.step?_throw_this_ok` helper** (after L4362):
+   - step? on `.throw .this` when lookup "this" succeeds resolves and wraps in throw.
+
+4. **Closed 3 cases in `normalizeExpr_throw_step_sim`** (L4452 wildcard):
+   - `.this`: Full proof (identical pattern to `.var` case using new helper)
+   - `.break _`: Contradiction (normalizeExpr produces `.break`, not `.throw`)
+   - `.continue _`: Contradiction (normalizeExpr produces `.continue`, not `.throw`)
+
+### Sorry count
+- Before: 18 sorries + 49 build errors (file didn't build)
+- After: 58 sorries, 0 build errors (build passes)
+- Net: 3 cases proved, 40 build errors converted to sorry, 9 theorems fixed
+
+### Analysis: L4455 (HasThrowInHead non-direct)
+The non-throw_direct HasThrowInHead cases (e.g., `.seq (.throw ..) b`) are **likely unprovable as stated**.
+The conclusion requires `sf'.env = sf.env ∧ sf'.heap = sf.heap`, but Flat stepping through
+compound contexts (e.g., evaluating `b` after error in `a` for `.seq a b`) can modify env/heap.
+This theorem needs restructuring — either weaken the conclusion or restructure the caller.
+
+### Analysis: L4336 (compound flat_arg in throw_direct)
+For compound flat_arg like `.seq a b` inside `.throw`, the proof needs step-lifting
+through the throw context (Flat.Steps_throw_ctx). This requires depth induction on flat_arg.
+Feasible but complex (~200 lines estimated).
+
+2026-03-30T20:10:00+00:00 DONE
+
+### Session summary
+- Build: PASSES (was failing before session due to pushTrace visibility errors)
+- Sorry count: 58 (was 18 + 40 build errors = effectively 58 broken proofs)
+- Cases proved: .this, .break, .continue in normalizeExpr_throw_step_sim
+- Infrastructure fixed: 9 step?_*_error theorems with wrong conclusions
+- Memory at end: ~2.7GB available
+
+### Next priorities (for future sessions)
+1. **Restructure hasBreakInHead/hasContinueInHead to multi-step** — 40 sorries all have
+   the same root cause: step? wraps sub-results in parent context. Fix: change from
+   single-step (step?) to multi-step (Steps) approach.
+2. **L4336**: compound flat_arg in throw_direct — needs Flat.Steps_throw_ctx + depth induction
+3. **L4339**: HasThrowInHead non-direct — may need theorem restructuring (conclusion too strong)
+4. **L4370-4509**: expression-case theorems — each ~100-300 lines
