@@ -1,3 +1,71 @@
+## Run: 2026-03-30T13:15:01+00:00
+
+### TASK: Add hnoerr guards to CC + sorry analysis
+
+**STATUS: Patch prepared, blocked on file permissions.**
+
+### Phase 1: hnoerr guards — COMPLETE (patch ready)
+
+Prepared complete patch at `.claude-wasmspec/backups/hnoerr_guards.patch` and `/tmp/hnoerr_guards.patch`.
+
+**Theorem declarations modified (25 new hnoerr):**
+Added `(hnoerr : ∀ msg, t ≠ .error msg)` to all `Flat_step?_*_step` theorems that step sub-expressions:
+- throw_step, return_some_step, yield_some_step, await_step (L1620-1681)
+- unary_step, typeof_step, assign_step (L1718-1761)
+- deleteProp_step, getProp_step, getIndex_step (L1772-1815)
+- setProp_obj_step, setIndex_obj_step, call_func_step (L1826-1870)
+- if_step, binary_lhs_step, binary_rhs_step (L1977-2021)
+- objectLit_step, arrayLit_step (L2039-2101)
+- setProp_object_step_value, setProp_nonobject_step_value (L2291-2311)
+- getIndex_object_step_idx, getIndex_string_step_idx, getIndex_other_step_idx (L2336-2367)
+
+seq_step and let_step already had hnoerr — unchanged.
+
+**Call sites updated (22):**
+Each call site gets `have hnoerr_ev : ∀ msg, t ≠ .error msg := by sorry -- hnoerr: needs proof` before the theorem application. The sorry count increase is **22 new sorries** (all tagged `-- hnoerr: needs proof`). These are expected — they will be closed when Fix D lands and the `hev_noerr` lemma is proved.
+
+**BLOCKER:** Cannot write to `ClosureConvertCorrect.lean` — file owned by `proof:pipeline` with mode `640`. wasmspec user has group read-only. Need `proof` agent or supervisor to apply the patch:
+```
+cd /opt/verifiedjs && patch -p0 < .claude-wasmspec/backups/hnoerr_guards.patch
+```
+
+### Phase 2: CC sorry analysis
+
+Analyzed all 22 sorries. Reclassified from prompt tiers:
+
+**Genuinely unprovable (stubs):**
+- L1369 (forIn), L1370 (forOf): convert to `.lit .undefined` — theorem is false
+
+**Multi-step simulation gap (design issue):**
+- L2707 (captured var): `.getEnv (.var envVar) idx` takes 2 Flat steps vs 1 Core step. Sim relation only handles 1-to-1 matching. Needs stuttering/multi-step extension.
+
+**CCState threading (design gap):**
+- L3036, L3058 (if true/false branch): `st'` includes both-branch conversion but sim only follows one. `CCStateAgree st' st_a'` fails because else/then conversion changes nextId/funcs.size.
+- L5018 (while_): Same class — duplicated sub-expression conversion.
+- L4716 (objectLit): `convertPropList` over concatenated lists.
+
+**Need hev_noerr lemma:**
+- L2852, L3175: `∀ msg, ev ≠ .error msg` for sub-expression stepping. Needs helper: "stepping a well-formed converted expression doesn't produce .error events."
+
+**Need helper lemmas:**
+- L2513, L2623: Need `convertExpr_not_lit` for stub constructors (forIn/forOf/functionDef)
+- L4669, L4767: Need `ExprAddrPropListWF`/`ExprAddrListWF` propagation
+- L2654-2657: HeapInj refactor staging
+
+**Semantic mismatch / hard reasoning:**
+- L3562, L3563: call/newObj value sub-cases
+- L4131: getIndex string — Flat has `propName == "length"` check, Core doesn't
+- L4303, L4625, L4723: value sub-cases needing heap allocation reasoning
+- L4897 (functionDef), L4987 (tryCatch): large unproved cases
+
+### Recommendations for jsspec/proof agent:
+1. Apply the hnoerr patch (472 lines, safe — all new hnoerr are unused in current Flat.step?)
+2. For CCState threading: consider relaxing `CCStateAgree` to monotone inequality (`st_a.nextId ≤ st'.nextId`) + determinism
+3. For captured var (L2707): need multi-step sim or a `getEnv_var_step` lemma combining the two Flat steps
+4. `hev_noerr` (L2852, L3175): provable once we have a lemma about converted expressions not producing errors during sub-stepping
+
+---
+
 ## Run: 2026-03-30T12:15:01+00:00
 
 ### TASK: Axiom consistency verification & CC monitoring
@@ -4502,3 +4570,4 @@ test_write
 
 ## Run: 2026-03-30T13:15:01+00:00
 
+2026-03-30T13:28:14+00:00 DONE
