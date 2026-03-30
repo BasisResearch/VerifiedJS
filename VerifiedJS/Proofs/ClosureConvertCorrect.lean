@@ -2072,17 +2072,39 @@ private theorem Core_step?_setProp_value_step (cv : Core.Value) (prop : Core.Pro
   | lit v => simp [Core.exprValue?] at hnv
   | _ => cases cv <;> simp [Core.step?, Core.exprValue?, hss, Core.pushTrace]
 
--- getIndex: obj is value, idx needs stepping (Flat)
-private theorem Flat_step?_getIndex_value_step_idx (s : Flat.State) (v : Flat.Value)
+-- getIndex: obj is .object addr, idx needs stepping (Flat)
+private theorem Flat_step?_getIndex_object_step_idx (s : Flat.State) (addr : Nat)
     (ie : Flat.Expr) (hnv : Flat.exprValue? ie = none)
+    (t : Core.TraceEvent) (si : Flat.State)
+    (hss : Flat.step? { s with expr := ie } = some (t, si)) :
+    Flat.step? { s with expr := .getIndex (.lit (.object addr)) ie } =
+      some (t, { expr := .getIndex (.lit (.object addr)) si.expr, env := si.env, heap := si.heap,
+                 trace := s.trace ++ [t], funcs := s.funcs, callStack := s.callStack }) := by
+  simp only [Flat.step?, hnv, hss]; rfl
+
+-- getIndex: obj is .string, idx needs stepping (Flat)
+private theorem Flat_step?_getIndex_string_step_idx (s : Flat.State) (str : String)
+    (ie : Flat.Expr) (hnv : Flat.exprValue? ie = none)
+    (t : Core.TraceEvent) (si : Flat.State)
+    (hss : Flat.step? { s with expr := ie } = some (t, si)) :
+    Flat.step? { s with expr := .getIndex (.lit (.string str)) ie } =
+      some (t, { expr := .getIndex (.lit (.string str)) si.expr, env := si.env, heap := si.heap,
+                 trace := s.trace ++ [t], funcs := s.funcs, callStack := s.callStack }) := by
+  simp only [Flat.step?, hnv, hss]; rfl
+
+-- getIndex: obj is non-object non-string value, idx needs stepping (Flat)
+private theorem Flat_step?_getIndex_other_step_idx (s : Flat.State) (v : Flat.Value)
+    (ie : Flat.Expr) (hnv : Flat.exprValue? ie = none)
+    (hobj : ∀ addr, v ≠ .object addr) (hstr : ∀ str, v ≠ .string str)
     (t : Core.TraceEvent) (si : Flat.State)
     (hss : Flat.step? { s with expr := ie } = some (t, si)) :
     Flat.step? { s with expr := .getIndex (.lit v) ie } =
       some (t, { expr := .getIndex (.lit v) si.expr, env := si.env, heap := si.heap,
                  trace := s.trace ++ [t], funcs := s.funcs, callStack := s.callStack }) := by
-  cases ie with
-  | lit w => simp [Flat.exprValue?] at hnv
-  | _ => cases v <;> simp only [Flat.step?, Flat.exprValue?, hss]
+  cases v with
+  | object addr => exact absurd rfl (hobj addr)
+  | string str => exact absurd rfl (hstr str)
+  | _ => simp only [Flat.step?, hnv, hss]; rfl
 
 -- getIndex: obj is value, idx stuck → whole stuck (Flat)
 private theorem Flat_step?_getIndex_value_none (s : Flat.State) (v : Flat.Value)
