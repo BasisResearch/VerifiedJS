@@ -2056,8 +2056,8 @@ private theorem Flat_step?_setProp_value_none (s : Flat.State) (v : Flat.Value) 
     (hss : Flat.step? { s with expr := ve } = none) :
     Flat.step? { s with expr := .setProp (.lit v) prop ve } = none := by
   cases v with
-  | object addr => simp only [Flat.step?, hnv, hss]
-  | _ => simp only [Flat.step?, hnv, hss]
+  | object addr => simp only [Flat.step?, Flat.exprValue?, hnv, hss]
+  | _ => simp only [Flat.step?, Flat.exprValue?, hnv, hss]
 
 -- Core: obj is value, value needs stepping (setProp)
 private theorem Core_step?_setProp_value_step (cv : Core.Value) (prop : Core.PropName)
