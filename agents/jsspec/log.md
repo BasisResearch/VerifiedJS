@@ -1,5 +1,64 @@
 # jsspec agent log
 
+## 2026-03-30T12:30 — FIX D EXTENDED TO ALL COMPOUND EXPRESSIONS ✓ BUILD PASSES
+
+### What was done
+**Fix D error propagation** has been extended to ALL compound expression forms in
+`VerifiedJS/Flat/Semantics.lean`. Previously only `.seq` and `.let` had error
+propagation — now every context-stepping position catches `.error msg` events and
+produces `{expr := .lit .undefined, env := sa.env, heap := sa.heap}`.
+
+### Expressions modified (35 stepping positions total)
+| Expression | Positions | Status |
+|-----------|-----------|--------|
+| `.unary` | 1 (arg) | **APPLIED** |
+| `.binary` | 2 (lhs, rhs) | **APPLIED** |
+| `.assign` | 1 (rhs) | **APPLIED** |
+| `.if` | 1 (cond) | **APPLIED** |
+| `.getProp` | 1 (obj) | **APPLIED** |
+| `.setProp` | 3 (obj, val×2) | **APPLIED** |
+| `.getIndex` | 4 (obj, idx×3) | **APPLIED** |
+| `.setIndex` | 5 (obj, idx×2, val×2) | **APPLIED** |
+| `.deleteProp` | 1 (obj) | **APPLIED** |
+| `.typeof` | 1 (arg) | **APPLIED** |
+| `.throw` | 1 (arg) | **APPLIED** |
+| `.return` | 1 (arg) | **APPLIED** |
+| `.yield` | 1 (arg) | **APPLIED** |
+| `.await` | 1 (arg) | **APPLIED** |
+| `.call` | 3 (func, env, args) | **APPLIED** |
+| `.newObj` | 3 (func, env, args) | **APPLIED** |
+| `.makeClosure` | 1 (env) | **APPLIED** |
+| `.getEnv` | 1 (env) | **APPLIED** |
+| `.makeEnv` | 1 (list elem) | **APPLIED** |
+| `.objectLit` | 1 (prop elem) | **APPLIED** |
+| `.arrayLit` | 1 (list elem) | **APPLIED** |
+
+### Proof repairs
+- `step?_none_implies_lit` — all `split at h` on step? matches updated to handle
+  3 branches (error, non-error some, none) instead of 2. Uses newline-separated
+  bullets matching the existing `.let`/`.seq` pattern.
+- Build: **VerifiedJS.Flat.Semantics compiles cleanly** (only cosmetic simp warnings).
+
+### Impact on sorry count
+- **Before**: 20 first-position compound cases BLOCKED in break/continue/throw step_sim
+- **After**: All 20 first-position cases now have the infrastructure to close
+- **Net**: 2 closeable → 22 closeable compound sub-cases (across break + continue + throw)
+
+### Remaining blockers
+1. **Second-position cases** (8): seq_right, binary_rhs, setProp_val, getIndex_idx,
+   setIndex_idx, setIndex_val, call_env, newObj_env — env/heap not preserved
+2. **List/props cases** (5): call_args, newObj_args, makeEnv_values, objectLit_props,
+   arrayLit_elems — need mutual theorem
+3. **Steps lifting lemma**: General "lift Steps through compound context" needed
+   to compose multi-step IH with context stepping + Fix D
+
+### Staged files (new/updated)
+| File | Contents | Status |
+|------|----------|--------|
+| `flat_context_step_lemmas.lean` | Context-stepping + error propagation lemma specs | **NEW** |
+| `fix_d_extension.lean` | Documentation of all Fix D changes (now applied) | **NEW** |
+| `anf_throw_step_sim_v2.lean` | Throw step sim theorem sketch (post Fix D) | **NEW** |
+
 ## 2026-03-30T11:30 — normalizeExpr_break_step_sim STAGED + CRITICAL BLOCKER FOUND
 
 ### Staged files

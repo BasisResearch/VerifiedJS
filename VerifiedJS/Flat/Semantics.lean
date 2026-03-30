@@ -1490,7 +1490,9 @@ theorem step?_none_implies_lit (s : State) (h : step? s = none) :
       | some e =>
         unfold step? at h; simp only [-step?] at h
         split at h; · simp at h
-        · split at h; · simp at h; · simp at h
+        · split at h
+          · simp at h
+          · simp at h
           · next hval hstep =>
             have ⟨v, hv⟩ := litOfStuck e (by simp [Expr.depth] at hd; omega) hstep
             subst hv; simp_all [exprValue?]
@@ -1500,7 +1502,9 @@ theorem step?_none_implies_lit (s : State) (h : step? s = none) :
       | some e =>
         unfold step? at h; simp only [-step?] at h
         split at h; · simp at h
-        · split at h; · simp at h; · simp at h
+        · split at h
+          · simp at h
+          · simp at h
           · next hval hstep =>
             have ⟨v, hv⟩ := litOfStuck e (by simp [Expr.depth] at hd; omega) hstep
             subst hv; simp_all [exprValue?]
@@ -1518,14 +1522,18 @@ theorem step?_none_implies_lit (s : State) (h : step? s = none) :
     | assign _ rhs =>
       unfold step? at h; simp only [-step?] at h
       split at h; · simp at h
-      · split at h; · simp at h; · simp at h
+      · split at h
+        · simp at h
+        · simp at h
         · next hval hstep =>
           have ⟨v, hv⟩ := litOfStuck rhs (by simp [Expr.depth] at hd; omega) hstep
           subst hv; simp_all [exprValue?]
     | «if» cond _ _ =>
       unfold step? at h; simp only [-step?] at h
       split at h; · simp at h
-      · split at h; · simp at h; · simp at h
+      · split at h
+        · simp at h
+        · simp at h
         · next hval hstep =>
           have ⟨v, hv⟩ := litOfStuck cond (by simp [Expr.depth] at hd; omega) hstep
           subst hv; simp_all [exprValue?]
@@ -1541,28 +1549,36 @@ theorem step?_none_implies_lit (s : State) (h : step? s = none) :
     | unary _ arg =>
       unfold step? at h; simp only [-step?] at h
       split at h; · simp at h
-      · split at h; · simp at h; · simp at h
+      · split at h
+        · simp at h
+        · simp at h
         · next hval hstep =>
           have ⟨v, hv⟩ := litOfStuck arg (by simp [Expr.depth] at hd; omega) hstep
           subst hv; simp_all [exprValue?]
     | typeof arg =>
       unfold step? at h; simp only [-step?] at h
       split at h; · simp at h
-      · split at h; · simp at h; · simp at h
+      · split at h
+        · simp at h
+        · simp at h
         · next hval hstep =>
           have ⟨v, hv⟩ := litOfStuck arg (by simp [Expr.depth] at hd; omega) hstep
           subst hv; simp_all [exprValue?]
     | throw arg =>
       unfold step? at h; simp only [-step?] at h
       split at h; · simp at h
-      · split at h; · simp at h; · simp at h
+      · split at h
+        · simp at h
+        · simp at h
         · next hval hstep =>
           have ⟨v, hv⟩ := litOfStuck arg (by simp [Expr.depth] at hd; omega) hstep
           subst hv; simp_all [exprValue?]
     | await arg =>
       unfold step? at h; simp only [-step?] at h
       split at h; · simp at h
-      · split at h; · simp at h; · simp at h
+      · split at h
+        · simp at h
+        · simp at h
         · next hval hstep =>
           have ⟨v, hv⟩ := litOfStuck arg (by simp [Expr.depth] at hd; omega) hstep
           subst hv; simp_all [exprValue?]
