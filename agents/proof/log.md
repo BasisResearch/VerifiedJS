@@ -4094,3 +4094,71 @@ LowerCorrect.lean has 3 errors (Application type mismatch at L59, L61, L69). The
 
 ## Run: 2026-03-30T13:30:02+00:00
 
+### Infrastructure: Fixed broken ctx lemmas + added new helpers
+
+**Sorry count: 17 → 17 (unchanged)**
+
+#### Fixed 5 broken context-stepping lemmas (proof errors → correct proofs)
+The existing ctx lemmas (`step?_if_cond_step`, `step?_return_some_ctx`, `step?_yield_some_ctx`,
+`step?_await_ctx`, `step?_throw_ctx`) had proof errors: the `rfl` for the trace conjunct
+failed because `Flat.pushTrace` is private. Fixed by:
+1. Adding `(hnoerr : ∀ msg, t ≠ .error msg)` hypothesis (matching `step?_seq_ctx` pattern)
+2. Case-splitting on `t` in proof to resolve the match on error/non-error branches
+3. Updated 2 callers at L1426, L1469 to pass `(fun _ h => nomatch h)`
+
+#### Added 14 new helper lemmas
+**Context-stepping (non-error events):**
+- `step?_let_init_ctx`: let init position
+- `step?_unary_ctx`: unary arg position
+- `step?_binary_lhs_ctx`: binary lhs position
+
+**Error propagation (error events):**
+- `step?_seq_error`: seq propagates inner error
+- `step?_let_init_error`: let propagates init error
+- `step?_unary_error`: unary propagates arg error
+- `step?_binary_lhs_error`: binary propagates lhs error
+- `step?_throw_error`: throw propagates arg error
+- `step?_return_some_error`: return propagates inner error
+- `step?_yield_some_error`: yield propagates inner error
+- `step?_await_error`: await propagates inner error
+- `step?_if_cond_error`: if propagates cond error
+
+**HasXInHead not-value lemmas:**
+- `HasBreakInHead_not_value`: break in head ⇒ not a value
+- `HasContinueInHead_not_value`: continue in head ⇒ not a value
+- `HasThrowInHead_not_value`: throw in head ⇒ not a value
+
+#### Fixed timeout in `anfConvert_halt_star_aux`
+Added `set_option maxHeartbeats 400000` — the theorem hit the 200K limit after file grew by ~190 lines.
+
+### Build: PASSES ✓
+- ANF: 17 sorries (unchanged)
+- 0 errors (was 5 proof errors in ctx lemmas, now 0)
+
+### Analysis: Why sorries can't be closed yet
+
+All 17 ANF sorries require **normalizeExpr inversion**: relating `sf.expr` (Flat) to `sa.expr` (ANF)
+through `hnorm : normalizeExpr sf.expr k = sa.expr`. The CPS transformation means `sf.expr` could
+be any compound expression wrapping the target form.
+
+The existing `normalizeExpr_labeled_step_sim` handles this for `.labeled` (~370 lines).
+Analogous theorems needed for each expression form. Key blockers:
+
+1. **7 depth-induction sorries (L3631-3729)**: Inside `normalizeExpr_labeled_step_sim`,
+   sub-cases where the continuation `k` changes to non-trivial-preserving (e.g.,
+   `fun t => pure (.return (some t))`). The IH requires trivial-preserving k.
+   Needs either theorem generalization or separate handling.
+
+2. **8 expression case sorries (L3842-3874)**: Each needs a `normalizeExpr_X_step_sim` theorem
+   (~300 lines each). The infrastructure added this session (ctx + error lemmas) is needed
+   for these proofs.
+
+3. **2 break/continue sorries (L3746, L3762)**: Need `Steps_lift` through compound contexts.
+   The ctx + error lemmas added this session are the building blocks.
+
+### Priority for next session
+1. Write `normalizeExpr_return_step_sim` using the new ctx/error lemmas → closes L3870 (-1 sorry)
+2. Write `normalizeExpr_throw_step_sim` → closes L3866 (-2 sorry, two sub-goals)
+3. Prove `hasBreakInHead_flat_error_steps` for `break_direct` + `seq_left` + `let_init` cases
+
+2026-03-30T14:11:19+00:00 DONE

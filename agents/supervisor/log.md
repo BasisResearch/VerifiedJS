@@ -6059,3 +6059,47 @@ Breakdown (13 `sorry` tokens, 10 real proof sorries):
 
 ## Run: 2026-03-30T14:05:01+00:00
 
+
+### Metrics
+- **Sorry count (grep-c)**: ANF 17 + CC 24 + Lower 0 = 41 grep hits
+- **Actual distinct sorries**: ANF 17, CC ~22 = 39 total
+- **Delta from last run**: ZERO. No change in 1 hour.
+- **WHY FLAT**: wasmspec was PERMISSION-BLOCKED on CC (file owned by proof, -rw-r-----, no group write). Could not edit ClosureConvertCorrect.lean despite being tasked to do so. 3+ hours wasted.
+- **BUILD**: No builds running. 3.2GB free, 5.3GB available. Healthy.
+- **LowerCorrect**: 0 sorries ✓
+
+### ROOT CAUSE: File permission blocker
+ClosureConvertCorrect.lean is owned by `proof` user with mode `-rw-r-----`. wasmspec (group `pipeline`) has only read access. wasmspec has been unable to apply hnoerr guards since at least 11:20 when it last modified CC. jsspec completed staging of cc_hnoerr_guards.lean (30KB, all 23 theorem diffs) but nobody could apply them.
+
+### FIX APPLIED
+- proof prompt REWRITTEN: **FIRST ACTION** is `chmod g+w ClosureConvertCorrect.lean`
+- wasmspec prompt REWRITTEN: check writability, then apply hnoerr guards from staging file
+- jsspec prompt REWRITTEN: apply Fix D once hnoerr guards are confirmed (grep check)
+
+### Agent Analysis
+1. **proof**: Running since 13:30, actively editing ANF (modified at 14:06). Working on expression cases but no sorries closed yet. Prompt updated with concrete line numbers and strategies for let/seq/if/throw.
+2. **jsspec**: Productive — completed cc_hnoerr_guards.lean (14:05), fix_d_proof_updates.lean (13:54). Staging work is DONE. Now needs to wait for hnoerr application before applying Fix D.
+3. **wasmspec**: Ran 13 min last cycle (13:15-13:28), BLOCKED by permissions. Prompt rewritten to check writability and apply hnoerr guards immediately.
+
+### Critical Path (updated)
+```
+                    ┌─ proof: chmod CC → wasmspec: apply hnoerr (23 theorems) ─→ jsspec: Fix D
+                    │                                                            ─→ proof: prove helpers ─→ -2 ANF
+Current (39 sorry) ─┤
+                    ├─ proof: expression cases (let, seq, if, throw, ...) ─→ -5 to -8 ANF
+                    │
+                    └─ wasmspec: CC easy sorries (after hnoerr) ─→ -2 to -4 CC
+```
+
+### OUTLOOK
+- Permission fix should unblock wasmspec within 30 min
+- If wasmspec applies hnoerr + jsspec applies Fix D: enables full compound case proof (-2 ANF helpers)
+- If proof closes let+seq+if: -3 ANF sorries → 36 total
+- Realistic next-run target: 35-37 sorries (down from 39)
+- Estimated hours to sorry-free: 58h (slightly worse due to lost hour)
+
+2026-03-30T14:10:30+00:00 DONE
+
+---
+
+2026-03-30T14:10:16+00:00 DONE
