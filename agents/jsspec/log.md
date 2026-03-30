@@ -1,5 +1,70 @@
 # jsspec agent log
 
+## 2026-03-30T17:00 — HNOERR SORRIES BLOCKED: Simulation invariant mismatch
+
+### Finding: hnoerr sorries are NOT mechanically closeable
+
+Attempted to close the 10 top-half hnoerr sorries (L3344-L4567) and 2 hev_noerr sorries (L3237, L3562). All 12 are blocked by the same fundamental issue.
+
+### Root cause analysis
+
+Fix D adds error propagation to Flat.step? compound expressions:
+```
+| some (.error msg, sa) => some (.error msg, {.lit .undefined, ...})  -- Fix D
+| some (t, sa) => some (t, {.assign name sa.expr, ...})               -- normal
+```
+
+But Core.step? does NOT have error propagation — it always wraps:
+```
+| some (t, sr) => some (t, {.assign name sr.expr, ...})  -- for ANY t
+```
+
+When a sub-step produces `.error msg`:
+- **Flat**: sf'.expr = `.lit .undefined` (error propagation collapses expression)
+- **Core**: sc'.expr = `.assign name sc_sub'.expr` (wrapper preserved)
+
+The simulation invariant requires `sf'.expr = (convertExpr sc'.expr ...).fst`, but:
+- `convertExpr (.assign name sc_sub'.expr) = (.assign name ..., _)` ≠ `.lit .undefined`
+
+So `hnoerr : ∀ msg, t ≠ .error msg` is **necessary** (error case breaks invariant) but **not provable from local hypotheses** alone.
+
+### What's needed (from cc_sorry_closing_lemmas.lean staging)
+
+A helper lemma `convertExpr_step_noerr` that proves converted expressions never step to error events, requiring:
+1. Well-scopedness hypothesis: `∀ name, name ∈ scope → s.env.lookup name ≠ none`
+2. Env variable defined: `s.env.lookup envVar ≠ none`
+3. Proof by induction on expression depth
+
+These hypotheses are NOT in the current simulation theorem statement. Adding them requires:
+- Modifying the `closureConvert_step_simulation` suffices block (L3043-3062)
+- Proving well-scopedness preservation through stepping
+- Threading the hypotheses through all ~20 case proofs
+
+This is a **design-level change**, not a tactic replacement.
+
+### Verification of the block
+
+Used `lean_multi_attempt` at L3344 (column 53, targeting the sorry):
+- `intro msg heq; subst heq; simp_all [Flat.step?]` → goal becomes `⊢ False`, hits maxRecDepth
+- `intro msg heq; subst heq; have heq2 := Flat_step?_assign_error ...` → reaches `⊢ False` but can't close it
+- All 5 suggested tactics fail because `False` is genuinely not derivable
+
+### No files modified
+
+No edits made — the sorries require structural changes to the theorem statement, not tactic changes.
+
+### Recommendation
+
+Two paths forward:
+1. **Add error propagation to Core.step?** (mirrors Fix D in Core) — keeps simulation relation intact
+2. **Add well-scopedness hypotheses** + prove `convertExpr_step_noerr` — requires threading through all cases
+
+Path 1 is simpler but changes Core semantics. Path 2 is more principled but significant effort.
+
+### Secondary task status
+
+`convertExpr_not_lit` staging already exists at `.lake/_tmp_fix/cc_convertExpr_not_lit_v2.lean` (as `convertExpr_not_value_supported`). No additional work needed.
+
 ## 2026-03-30T16:00 — ALL TASKS COMPLETE, NOTHING REMAINING
 
 ### Status
@@ -1899,3 +1964,4 @@ Agent `jsspec` can read but NOT write. Need `chmod g+w` from root/wasmspec.
 
 ## Run: 2026-03-30T17:00:01+00:00
 
+2026-03-30T17:53:55+00:00 DONE

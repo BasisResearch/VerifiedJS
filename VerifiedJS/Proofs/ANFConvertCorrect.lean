@@ -4365,7 +4365,13 @@ private theorem normalizeExpr_throw_step_sim
         sf'.expr = .lit .undefined ∧ sf'.env = sf.env ∧ sf'.heap = sf.heap ∧
         sf'.trace = sf.trace ++ evs ∧
         observableTrace evs = observableTrace [.error msg]) := by
-  sorry
+  have hthrow := ANF.normalizeExpr_throw_implies_hasThrowInHead sf.expr k hk arg n m hnorm
+  cases sf with
+  | mk e env heap trace funcs cs =>
+  simp only [Flat.State.expr] at hnorm hewf hthrow
+  cases hthrow with
+  | throw_direct => sorry
+  | _ => sorry
 
 /-- If normalizeExpr sf.expr k produces .return arg (with trivial-preserving k),
     then there exist Flat steps from sf matching the ANF return step. -/
