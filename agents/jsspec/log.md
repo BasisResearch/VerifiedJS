@@ -2,7 +2,12 @@
 
 ## 2026-03-30T21:05 — ExprAddrWF propagation + CCState threading: 3 sorries closed (69→66)
 
-### Result: Closed ExprAddrWF objectLit/arrayLit sorries + objectLit CCState threading
+### Result: Closed 3 sorries, build passing
+
+### Sorries closed
+1. **ExprAddrWF objectLit** (was L4890): `ExprAddrWF target_c` from `ExprAddrPropListWF props` via firstNonValueProp
+2. **ExprAddrWF arrayLit** (was L4988): `ExprAddrWF target_c` from `ExprAddrListWF es` via firstNonValueExpr
+3. **objectLit CCState threading** (was L5074→L5093): convertPropList over concatenated lists — mirrored arrayLit proof pattern
 
 ### What was done
 
