@@ -1,7 +1,10 @@
 ## Run: 2026-03-30T00:30+00:00
 - **BUILD: PASSES** ✓
-- **Sorries: CC 23 (was 22; 1 sorry split into 2 specific + proved non-obj/non-str case)**
-- **Progress: build repair (5 errors) + getIndex infrastructure + partial getIndex both-values proof**
+- **Sorries: CC 23 (was 22; original getIndex sorry split into 3 sub-case sorries + 2 proved sub-cases)**
+- **Progress: build repair (5 errors) + getIndex infrastructure + partial getIndex value proof**
+- **Proved sub-cases**: getIndex idx-not-value (stepping), getIndex non-obj/non-str both-values (→.undefined)
+- **Remaining sub-case sorries**: getIndex object both-values (heap lookup), getIndex string both-values (string indexing)
+- **Helper lemmas added**: `Flat_step?_getIndex_object_both_values`, `Flat_step?_getIndex_string_both_values`, `Flat_step?_getIndex_other_both_values`
 
 ### Build repair (5 errors fixed)
 The build was broken when this run started. Fixed 5 errors in setProp value-stepping sub-case:
