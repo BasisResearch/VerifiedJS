@@ -6785,11 +6785,6 @@ The call pushes a new frame, the runtime function body executes, and the
 function returns. These are "opaque runtime" axioms: the runtime function
 implementations are provided by the host and not modeled in the IR semantics. -/
 
-/-- Runtime axiom: throwOp call + return_ macro step.
-    Starting from an IR state with code = [.call throwOp, .return_],
-    1 frame, empty labels, the multi-step execution halts with observable
-    events matching the ANF throw's error trace.
-    The `msg` parameter is the throw message from ANF's evalTrivial. -/
 /-- Axiom: executing TrivialCodeCorr code from a LowerSimRel state evaluates
     the trivial expression, leaving the result on the stack.
     Frame, labels, module, memory, and globals are preserved; only
