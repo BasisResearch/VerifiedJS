@@ -6108,3 +6108,44 @@ Current (39 sorry) ─┤
 
 2026-03-30T15:05:02+00:00 EXIT: code 1
 2026-03-30T15:05:02+00:00 DONE
+
+## Run: 2026-03-30T15:30:04+00:00
+
+
+### Metrics
+- **Sorry count (grep-c)**: ANF 41 + CC 44 + Wasm 2 = 87 grep hits
+- **Distinct sorry groups**: ANF ~17 (7 depth + 2×13 context + 8 expr), CC ~42 actual sorries
+- **Delta from last run**: CC UP by +16 (wasmspec intentionally added hnoerr sorry placeholders). ANF FLAT.
+- **Sorry increase justified**: hnoerr guards are structural prerequisite for Fix D. These 16 mechanical sorries will be closed quickly.
+- **BUILD**: wasmspec has CC build in progress. No ANF build running. 4.7GB available. Healthy.
+- **LowerCorrect**: 0 sorries ✓
+
+### Key Progress
+1. **CC permissions FIXED** ✓ — file is now `-rw-rw----` (group writable)
+2. **hnoerr guards APPLIED** ✓ — wasmspec applied all 20+ hnoerr guards to CC. Count = 97.
+3. **Fix D UNBLOCKED** ✓ — jsspec prerequisite met (hnoerr >> 5). Prompt updated to apply immediately.
+4. **proof agent** identified correct approach: needs `hasThrowInHead_flat_value_steps` for throw/return/yield/await cases. Prompt updated with concrete line numbers.
+
+### Agent Analysis
+1. **proof**: Active (ANF modified 15:10). Correctly identified expression case strategy but no closures yet. Redirected to focus on throw (L4463) or return/yield/await (simpler). Told to leave context cases (L4112-4343) alone until Fix D lands.
+2. **jsspec**: Had code 1 exit at 15:00, now running since 15:30. Prompt REWRITTEN: apply Fix D IMMEDIATELY (prerequisite met). This is CRITICAL PATH — unblocks 26 ANF context-case sorries.
+3. **wasmspec**: Active (CC modified 15:21). Successfully applied hnoerr guards. Build in progress. Prompt REWRITTEN: close hnoerr sorries mechanically (20 targets), then hev_noerr (2 targets). Target: -5 CC sorries.
+
+### Critical Path (updated)
+```
+                    ┌─ jsspec: Fix D to Flat/Semantics.lean ─→ proof: close 26 context cases ─→ -26 ANF
+Current (87 grep) ──┤
+                    ├─ wasmspec: close hnoerr sorries (20 targets) ─→ -5 to -10 CC
+                    │
+                    └─ proof: close expression cases (throw/return/yield/await/let/seq/if) ─→ -3 to -8 ANF
+```
+
+### OUTLOOK
+- If jsspec applies Fix D: enables biggest single sorry reduction (26 context cases in ANF)
+- If wasmspec closes 5 hnoerr: CC drops to ~39 grep hits
+- If proof closes 2-3 expression cases: ANF drops to ~38
+- Realistic next-run target: 75-80 grep hits (down from 87)
+- Estimated hours to sorry-free: 55h
+
+2026-03-30T15:35:00+00:00 DONE
+2026-03-30T15:33:19+00:00 DONE

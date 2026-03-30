@@ -1,11 +1,4 @@
-# wasmspec — Apply hnoerr guards to CC + close easy CC sorries
-
-## CRITICAL: CHECK FILE PERMISSIONS FIRST
-Before editing CC, verify you can write to it:
-```bash
-test -w VerifiedJS/Proofs/ClosureConvertCorrect.lean && echo "WRITABLE" || echo "BLOCKED - wait for proof agent to chmod"
-```
-If BLOCKED: wait 5 min, then check again. Proof agent has been instructed to chmod g+w.
+# wasmspec — Close easy CC sorries NOW
 
 ## MEMORY: 7.7GB total, NO swap
 - **NEVER run `lake build VerifiedJS`** (full build). OOMs.
@@ -13,47 +6,59 @@ If BLOCKED: wait 5 min, then check again. Proof agent has been instructed to chm
 - Before building: `pkill -f "lean.*\.lean" 2>/dev/null; sleep 5`
 - Check `pgrep -af "lake build"` first — do NOT start if one runs.
 
-## CONTEXT: YOU WERE BLOCKED FOR 3 HOURS
-CC file was owned by proof with no group write. Proof agent is now instructed to fix this.
-Once writable, you have a LOT of catching up to do.
+## STATUS (15:30 Mar 30)
+- hnoerr guards: APPLIED ✓ (you did this! good work)
+- CC is now group-writable ✓
+- CC sorry count: 44 grep hits (20 hnoerr + 2 hev_noerr + ~22 other)
 
-## PRIORITY 1: Apply hnoerr guards (UNBLOCKS Fix D)
+## WAIT FOR YOUR CURRENT BUILD TO FINISH
+You have a CC build in progress. Wait for it. Check: `pgrep -af "lake build"`
 
-jsspec has staged ALL the diffs in `.lake/_tmp_fix/cc_hnoerr_guards.lean`. Read it.
+## PRIORITY 1: Close hnoerr sorries (20 of them — most are mechanical)
 
-The pattern for each of ~23 `Flat_step?_*_step` theorems (L1620-2081):
-1. Add `(hnoerr : ∀ msg, t ≠ .error msg)` as LAST hypothesis
-2. Change proof to:
+Each `have hnoerr : ∀ msg, t ≠ .error msg := by sorry` needs a proof from context.
+
+The pattern: the trace event `t` comes from `Flat.step?` on a well-formed expression that is NOT an error. Prove it by:
 ```lean
-    simp only [Flat.step?, hnv, hss]
-    cases t with
-    | error msg => exact absurd rfl (hnoerr msg)
-    | log _ => rfl
-    | silent => rfl
+have hnoerr : ∀ msg, t ≠ .error msg := by
+  intro msg heq; subst heq
+  -- t came from step? which only produces .error when the expr IS an error
+  -- but we know the expr is well-formed and not an error
+  simp [Flat.step?] at hstep  -- or whatever the step hypothesis is called
 ```
-3. At each CALL SITE, supply `hnoerr`. Usually derivable from context as `fun msg h => by simp [h] at hev` or similar.
 
-**NOTE**: `Flat_step?_seq_step` (L1895) and `Flat_step?_let_step` (L1918) ALREADY have hnoerr. Skip these.
+Try `lean_multi_attempt` at each sorry with:
+```
+["intro msg heq; simp_all", "intro msg heq; subst heq; simp_all", "intro msg; exact fun h => by cases h"]
+```
 
-Build after EVERY 3-4 theorem changes. Do NOT batch all 23 and hope it works.
+Start with L3344 (simplest context), then L3463, L3671, L3767, L3826, L3898.
+Then: L4108, L4291, L4358, L4567, L4643, L4718, L4886, L4976, L5054, L5153, L5343, L5550, L5689, L5777.
 
-## PRIORITY 2: Close easy CC sorries (after P1 builds clean)
+Build after every 4 closures.
 
-### Tier A — Mechanical (attempt these):
-- **L2707**: Read context with `lean_goal`, likely simple case analysis
-- **L3036**: CCState threading in if-then — use `lean_multi_attempt` with `[simp, rfl, omega, exact rfl]`
-- **L3058**: Two sorries on same line, CCState threading
+## PRIORITY 2: Close hev_noerr sorries (L3237, L3562)
 
-### Tier B — Need helper lemmas:
-- **L2852, L3175**: `hev_noerr : ∀ msg, ev ≠ .error msg` — prove from context that the trace event from stepping a well-formed non-error expression is not an error
-- **L2513, L2623**: needs `convertExpr_not_lit` lemma
+Same class but for trace events from expression evaluation. Pattern:
+```lean
+have hev_noerr : ∀ msg, ev ≠ .error msg := by
+  intro msg heq; subst heq; simp_all [Flat.step?]
+```
 
-### DO NOT TOUCH Tier C (hard) this run:
-- L1369/1370 (forIn/forOf stubs — unprovable)
-- L3562/3563, L4131, L4303, L4625, L4723, L4897, L4987 (complex)
+## PRIORITY 3: Close other easy sorries
+
+### Tier A (attempt):
+- L3092: `lean_goal` to see what's needed, try `lean_multi_attempt`
+- L3422, L3444: CCState threading — likely need `Flat.convertExpr` unfolding + `ext`
+
+### DO NOT TOUCH:
+- L1369/1370 (forIn/forOf stubs — unprovable by design)
+- L5298 (functionDef), L5389 (tryCatch), L5420 (while CCState) — complex
+- ANFConvertCorrect.lean — proof agent owns this
+
+## TARGET: Close at least 5 hnoerr sorries this run → CC from 44 to ≤39
 
 ## FILES
-- `VerifiedJS/Proofs/ClosureConvertCorrect.lean` (rw — once permissions fixed)
-- `.lake/_tmp_fix/cc_hnoerr_guards.lean` (read — jsspec staging)
-- DO NOT edit: ANFConvertCorrect.lean, Flat/Semantics.lean
+- `VerifiedJS/Proofs/ClosureConvertCorrect.lean` (rw)
+- `.lake/_tmp_fix/cc_hnoerr_guards.lean` (read)
 - LOG every 15 min to agents/wasmspec/log.md

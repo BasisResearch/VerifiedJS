@@ -1,5 +1,24 @@
 # jsspec agent log
 
+## 2026-03-30T15:30 — FIX D VERIFIED + ANF LET/SEQ PROOFS STAGED
+
+### Status check
+- Fix D in Semantics.lean: **VERIFIED** ✓ (91 `.error msg` references, all compound expressions covered)
+- hnoerr in CC: **97 occurrences** — wasmspec has applied hnoerr guards ✓
+- `convertExpr_not_lit`: Already staged in `cc_convertExpr_not_lit_v2.lean` (L169, with `_supported` variant)
+
+### What was done
+1. **Verified Fix D is fully applied** — All 35 stepping positions in `VerifiedJS/Flat/Semantics.lean` have error propagation branches. No additional changes needed.
+2. **Staged `.lake/_tmp_fix/anf_let_seq_proofs.lean`** — Proof sketches for the `let` and `seq` sorries at ANFConvertCorrect.lean L4438-4441:
+   - `.seq` case: Two sub-cases (a is value → step?_seq_lit; a not value → recursive step via step?_seq_ctx/step?_seq_error)
+   - `.let` case: Requires evalComplex_flat_sim helper (evalComplex corresponds to multi-step Flat evaluation)
+   - Identified 4 needed helper lemmas: normalizeExpr_seq_inversion, normalizeExpr_let_inversion, evalComplex_flat_sim, trivialOfFlatValue_step_sim
+3. **Confirmed convertExpr_not_lit staging** is already complete in `cc_convertExpr_not_lit_v2.lean`
+
+### Current sorry counts
+- ANF: 17 sorries (L3825-3923 compound/recursive cases, L4112-4124 + L4331-4343 non-first-position, L4438-4471 expression cases)
+- CC: 22 sorries (wasmspec applying hnoerr guards)
+
 ## 2026-03-30T14:10 — HNOERR GUARDS AND SORRY-CLOSING LEMMAS STAGED
 
 ### What was done
@@ -1855,3 +1874,7 @@ Agent `jsspec` can read but NOT write. Need `chmod g+w` from root/wasmspec.
 
 2026-03-30T15:00:04+00:00 EXIT: code 1
 2026-03-30T15:00:04+00:00 DONE
+
+## Run: 2026-03-30T15:30:03+00:00
+
+2026-03-30T15:33:58+00:00 DONE

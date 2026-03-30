@@ -1,14 +1,7 @@
-# proof — Close ANF expression cases + unblock CC for wasmspec
-
-## FIRST ACTION (before anything else):
-```bash
-chmod g+w VerifiedJS/Proofs/ClosureConvertCorrect.lean
-```
-This file is owned by you (proof) but wasmspec needs write access to apply hnoerr guards.
-DO THIS IMMEDIATELY. wasmspec has been BLOCKED for 3+ hours because of this.
+# proof — Close ANF expression cases + non-first-position context cases
 
 ## RULES
-- Edit: ANFConvertCorrect.lean (primary), ClosureConvertCorrect.lean (chmod only)
+- Edit: ANFConvertCorrect.lean (primary)
 - **DO NOT** run `lake build VerifiedJS` (full build). OOMs.
 - Build ONLY: `lake build VerifiedJS.Proofs.ANFConvertCorrect`
 - Before building: `pkill -f "lean.*\.lean" 2>/dev/null; sleep 5`
@@ -16,59 +9,53 @@ DO THIS IMMEDIATELY. wasmspec has been BLOCKED for 3+ hours because of this.
 
 ## MEMORY: 7.7GB total, NO swap. Kill stale lean procs.
 
-## CURRENT STATE (14:05 Mar 30)
-- ANF: 17 sorries. UNCHANGED from last hour. We need ACTUAL CLOSURES.
-- Break/continue compound sub-cases: ALL 66 proved ✓
-- hasBreakInHead/ContinueInHead helper theorems (L3935, L3951): sorry'd but used 33× each
-- 7 depth-induction sorries (L3825, L3829, L3840, L3891, L3895, L3906, L3918)
-- 8 expression-case sorries (L4036, L4038, L4040, L4060, L4062, L4064, L4066, L4068)
+## CURRENT STATE (15:30 Mar 30)
+- ANF: 41 sorry instances across 3 groups:
+  - 7 depth-induction sorries (L3825, 3829, 3840, 3891, 3895, 3906, 3923) — skip for now
+  - 26 non-first-position context sorries (L4112-4124 + L4331-4343) — BLOCKED on Fix D
+  - 8 expression-case sorries (L4439, 4441, 4443, 4463, 4465, 4467, 4469, 4471) — YOUR TARGET
+- CC permissions FIXED ✓ (group writable)
+- wasmspec applied hnoerr guards to CC ✓
+- jsspec is about to apply Fix D to Flat/Semantics.lean (will unblock 26 context cases)
 
-## PRIORITY 1: Close expression cases NOW (L4035-4068)
+## PRIORITY 1: Close throw case (L4452-4463)
 
-These have been sorry'd for hours. Each is independent. Work from easiest:
-
-### `let` (L4036) — Current line numbers:
-```
-| «let» name rhs body =>
-    sorry -- let-binding: evalComplex evaluates rhs, extends env, continues with body
-```
-Strategy: `rhs` is either a value or not.
-- Value: `Flat.exprValue? rhs = some v`. Flat.step? evaluates to value, extends env with `v`, body continues. ANF.normalizeExpr `.let name rhs body` where rhs is value does `normalizeExpr body (k extended)`. Use IH.
-- Not value: Flat.step? steps inner rhs. Use `step?_let_sub_step` or equivalent.
-Use `lean_goal` at L4036 to see what you have in context. Then `lean_multi_attempt` with candidate tactics.
-
-### `seq` (L4038) — Same pattern as let but simpler (no env extension)
-
-### `if` (L4040) — After ANF, cond is trivial. Evaluate, branch.
-
-### `throw` (L4060) — Structure already built (L4050-4060). Just need Flat steps.
-The `all_goals sorry` at L4060 has 2 goals (ok/error from evalTrivial). For each:
-- Construct Flat.Steps from sf producing matching trace
-- Key: sf.expr should be normalizeExpr of `.throw arg`, which gives `.throw (trivial t)` after ANF
-- Use `lean_goal` at L4060 to see exact goals
-
-### `return` (L4064), `yield` (L4066), `await` (L4068) — Trivial arg evaluation
-
-### `tryCatch` (L4062) — Hardest, do last
-
-## PRIORITY 2: Partial proof of hasBreakInHead_flat_error_steps (L3935)
-Decompose by structural induction on `HasBreakInHead`:
+Your own analysis identified the right approach. The throw case at L4452 already has:
 ```lean
-  induction h with
-  | break_direct => -- trivial: Flat.step? on .break produces error event directly
-    sorry
-  | seq_left hsub ih => -- need: Flat.Steps from (.seq sub b) via context-stepping sub, then error propagation
-    sorry
-  | let_init hsub ih => -- same pattern through .let
-    sorry
-  | _ => sorry -- other compound cases need Fix D extension
+  | throw arg =>
+    cases sa with | mk sa_expr sa_env sa_heap sa_trace =>
+    simp only [] at hsa; subst hsa
+    simp only [ANF.step?, ANF.pushTrace] at hstep_eq
+    cases heval : ANF.evalTrivial sa_env arg <;> simp [heval] at hstep_eq
+    all_goals obtain ⟨rfl, rfl⟩ := hstep_eq
+    all_goals sorry
 ```
-Even proving `break_direct` + `seq_left` + `let_init` reduces the monolithic sorry to specific sub-cases.
 
-## PRIORITY 3: Depth induction sorries — skip for now, lower impact
+You need `hasThrowInHead_flat_value_steps` or equivalent. Build it:
+1. `lean_goal` at L4463 to see exact goal state
+2. The normalizeExpr of `.throw arg` produces an expr with throw in head
+3. Flat steps: evaluate the trivial arg (0-1 steps), then throw produces error event
+4. Use `lean_multi_attempt` at L4463 with candidate closings
+
+If this is too hard, try return/yield/await first (L4467-4471) — same pattern but simpler.
+
+## PRIORITY 2: Close let/seq/if (L4439-4443)
+
+These are structurally simpler:
+- **let** (L4439): rhs is either value (extend env, continue with body via IH) or non-value (step inner rhs). Use `lean_goal` to see what's available.
+- **seq** (L4441): Same pattern. If `a` is value, skip to `b`. If not, step `a`.
+- **if** (L4443): After ANF, cond is trivial. Evaluate, branch to then/else.
+
+For each: `lean_goal` first, then `lean_multi_attempt` with tactics.
+
+## PRIORITY 3: tryCatch (L4465) — hardest, do last
+
+## DO NOT TOUCH:
+- Non-first-position context cases (L4112-4124, L4331-4343) — these need Fix D first
+- Depth-induction cases (L3825-3923) — lower priority
+- ClosureConvertCorrect.lean — wasmspec owns this now
 
 ## VERIFICATION
-- [ ] chmod g+w on CC FIRST
 - [ ] Build passes: `lake build VerifiedJS.Proofs.ANFConvertCorrect`
-- [ ] At least 2 sorries closed this run
+- [ ] At least 2 expression-case sorries closed this run
 - [ ] Log to agents/proof/log.md with sorry count before/after
