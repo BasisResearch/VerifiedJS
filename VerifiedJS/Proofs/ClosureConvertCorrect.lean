@@ -2050,6 +2050,15 @@ private theorem Flat_step?_setProp_nonobject_step_value (s : Flat.State) (v : Fl
   | object addr => exact absurd rfl (hobj addr)
   | _ => simp only [Flat.step?, hnv, hss]; rfl
 
+-- setProp: obj is value, both value-expr stuck → whole thing stuck
+private theorem Flat_step?_setProp_value_none (s : Flat.State) (v : Flat.Value) (prop : Core.PropName)
+    (ve : Flat.Expr) (hnv : Flat.exprValue? ve = none)
+    (hss : Flat.step? { s with expr := ve } = none) :
+    Flat.step? { s with expr := .setProp (.lit v) prop ve } = none := by
+  cases v with
+  | object addr => simp only [Flat.step?, hnv, hss]
+  | _ => simp only [Flat.step?, hnv, hss]
+
 -- Core: obj is value, value needs stepping (setProp)
 private theorem Core_step?_setProp_value_step (cv : Core.Value) (prop : Core.PropName)
     (ve : Core.Expr) (hnv : Core.exprValue? ve = none)
@@ -3509,9 +3518,8 @@ private theorem closureConvert_step_simulation
               obtain ⟨rfl, hsf'eq⟩ := hstep
               exact ⟨sa, rfl, hsf'eq.symm⟩
           | none =>
-            exfalso
-            revert hstep; simp only [Flat.step?, Flat.convertValue]
-            cases cv <;> simp [hfnv_v, hm]
+            have heq := Flat_step?_setProp_value_none sf (Flat.convertValue cv) prop _ hfnv_v hm
+            rw [heq] at hstep; exact absurd hstep (by simp)
         subst hsf'_eq
         have hdepth : value.depth < n := by simp [Core.Expr.depth] at hd; omega
         have hncfr_v : noCallFrameReturn value = true := by
