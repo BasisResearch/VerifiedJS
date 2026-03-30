@@ -1,5 +1,61 @@
 # jsspec agent log
 
+## 2026-03-30T03:30 — Break/Continue Proof Analysis + Staging
+
+### Track 1: Fix D — still BLOCKED on permissions
+- `Flat/Semantics.lean` still `640 wasmspec:pipeline`. jsspec has read-only.
+- Need `chmod g+w` from wasmspec or root before Fix D can be applied.
+
+### Track 1b: ANF break/continue sorry analysis (L3424, L3426)
+
+**Key finding**: Break/continue sorries are PARTIALLY independent of Fix D.
+
+**Direct case** (`sf.expr = .break label`): PROVABLE NOW, no Fix D needed.
+- `Flat.step?_break_eq` gives the exact Flat step
+- `normalizeExpr_break_run` confirms normalization
+- All 5 proof components verified in `test_break_proof_components.lean` (compiles clean)
+
+**Nested cases** (`sf.expr = .seq (.break label) b`, etc.): BLOCKED by Fix D.
+- Without Fix D, error from break doesn't propagate through seq/let
+- Flat continues executing dead code `b`, producing extra observable events
+- With Fix D, error propagates immediately → clean single-step match
+
+**Required helper**: `normalizeExpr_break_step_sim` (analogous to `normalizeExpr_labeled_step_sim`)
+- Pattern documented in `anf_break_continue_proof.lean`
+- Follows same induction-on-depth structure as labeled case
+- Direct case proof sketch included (can be applied without Fix D for partial closure)
+- Continue case is identical with s/break/continue/
+
+**Also analyzed**: The `normalizeExpr_labeled_step_sim` sorries at L3205, 3271, 3288
+- These are compound/bindComplex cases inside `return (some val)` / `yield (some val)`
+- Need IH application on sub-expressions but require ~20 individual case proofs
+- Better suited for proof agent (has write access to ANFConvertCorrect.lean)
+
+### Track 2: CC Integration — P1 re-verification
+
+| File | Status | Notes |
+|------|--------|-------|
+| cc_state_mono.lean | COMPILES CLEAN | 0 errors, 0 sorry |
+| cc_convertExpr_not_lit_v2.lean | COMPILES CLEAN | 0 errors, 0 sorry |
+| cc_exprAddrWF_propagate.lean | dep failure | CC still elaborating (proof agent active) |
+
+No changes to integration instructions — still valid as documented in `CC_integration_instructions.lean`.
+
+### Staged artifacts
+- `.lake/_tmp_fix/anf_break_continue_proof.lean` — **NEW**: Full analysis of break/continue proof structure, direct case proof sketch, Fix D dependency documentation
+- `.lake/_tmp_fix/test_break_proof_components.lean` — **NEW**: 5 verified building blocks for break/continue proof (all compile clean)
+
+### Summary of blockers
+1. **Fix D**: Permissions on `Flat/Semantics.lean` (wasmspec owns, jsspec read-only)
+2. **ANF break/continue**: Fix D for nested cases; direct case ready but jsspec can't write ANFConvertCorrect
+3. **CC integration**: Proof agent has write access; instructions are ready
+4. **cc_exprAddrWF_propagate**: Depends on CC file compiling
+
+### Sorry counts (unchanged)
+- CC: 23 (grep), ~20 actual
+- ANF: 17 — all still blocked (break/continue need Fix D, others need depth induction)
+- Flat/Semantics: 0
+
 ## 2026-03-30T02:30 — Fix D Staged + CC Integration Instructions Complete
 
 ### Track 1: Fix D (ANF dead code absorption)
@@ -1460,3 +1516,4 @@ Agent `jsspec` can read but NOT write. Need `chmod g+w` from root/wasmspec.
 
 ## Run: 2026-03-30T03:00:01+00:00
 
+2026-03-30T03:15:01+00:00 DONE

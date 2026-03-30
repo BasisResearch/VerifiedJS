@@ -1,3 +1,55 @@
+## Run: 2026-03-30T03:05:01+00:00
+
+### Metrics
+- **Sorry count (grep -c)**: 52 (17 ANF + 23 CC + 12 Wasm + 0 Lower). NET 0 from last run (52→52).
+- **Actual active sorries**: ~48 (17 ANF + 21 CC + 10 Wasm). CC grep-c +1 is new comment line L540, not a new sorry. Wasm -1 is REAL: **throw proved!**
+- **LowerCorrect.lean**: 0 sorries (confirmed)
+- **Delta from last run (02:05)**: **0 grep-c**, but **-1 actual Wasm sorry** (throw L7638-7699 fully proved)
+- **BUILD STATUS**: proof running since 23:00 (4h+). jsspec started 03:00. wasmspec last ran 00:15-01:46.
+
+### Agent Analysis
+1. **proof** (running since 23:00): 4h+ with 0 CC sorries closed. STUCK on value sub-cases (getIndex/setIndex). Redirected to try L3752 (string indexing) as easiest target. Added "strategy shift" — pick easiest sorry, 20min timeout per case.
+2. **jsspec** (started 03:00): Active. Dual-track (Fix D + CC staging). Has output files in `.lake/_tmp_fix/` for Wasm fixes too (can't write Semantics.lean). CC staging files could unblock 9+ sorries if integrated.
+3. **wasmspec**: NOT RUNNING (last session 00:15-01:46). **PROVED throw** — full proof with irMultiStep_trivialCode + irMultiStep_throwOp_return pattern. Needs cron restart.
+
+### Sorry Classification
+
+**Wasm/Semantics (10 actual, down from 11):**
+- step_sim (8): L7622 let, L7630 seq, L7634 if, L7637 while, L7702 tryCatch, L7755 yield, L7758 await, L7761 labeled
+- call (2): L11157 call, L11158 callIndirect
+- **DONE**: return(some/none), break/continue, **throw** ✓
+
+**CC (23 grep-c, ~21 actual):**
+- Stubs(2): L1177, L1178 | convertExpr_not_lit(2): L2237, L2347 | HeapInj(1): L2431
+- CCState(4): L2750, L2772(×2), L4337, L4639 | Value: getIndex(L3751,L3752), setIndex(L3924)
+- Call(1): L3266 | NewObj(1): L3267 | Heap alloc(2): L4246, L4344
+- ExprAddrWF(2): L4290, L4388 | Large(2): L4518 functionDef, L4608 tryCatch
+
+**ANF (17):** ALL blocked by dead code absorption. jsspec working on Fix D.
+
+### Actions Taken
+1. Counted sorries: 52 grep-c (17+23+12+0) — net 0 change, but 1 actual Wasm sorry closed
+2. **proof prompt**: Updated ALL line numbers (major shift from last prompt). Added strategy shift: try easiest sorry first (L3752 string indexing), 20min timeout per case.
+3. **jsspec prompt**: Maintained dual track. Updated CC sorry line numbers for Track 2.
+4. **wasmspec prompt**: Celebrated throw proof! Redirected to `if` L7634 (Phase 1) using same irMultiStep_trivialCode pattern. Updated all line numbers.
+5. Logged time estimate (52, 125h)
+
+### OUTLOOK
+- Next run target: ≤51 (proof -1 from string getIndex L3752, wasmspec -1 from if L7634)
+- proof agent needs to close at least 1 this run or will be restarted with different approach
+- wasmspec throw proof pattern (irMultiStep_trivialCode → phase2) is reusable for if/let/while
+- jsspec staged CC integration could unblock 9+ sorries — high priority
+
+### RISK
+- proof: 4h+ with 0 closures. If still 0 by 04:05, hard redirect to simplest possible sorry
+- wasmspec: not running, depends on cron restart
+- Fix D still not implemented — 17 ANF sorries remain fully blocked
+- CC grep-c went UP by 1 (just a comment line, but optics are bad)
+
+2026-03-30T03:05:01+00:00 DONE
+
+---
+
 ## Run: 2026-03-30T02:05:01+00:00
 
 ### Metrics
@@ -5612,3 +5664,4 @@ Breakdown (13 `sorry` tokens, 10 real proof sorries):
 
 ## Run: 2026-03-30T03:05:01+00:00
 
+2026-03-30T03:13:17+00:00 DONE
