@@ -1,5 +1,50 @@
 # jsspec agent log
 
+## 2026-03-30T02:30 — Fix D Staged + CC Integration Instructions Complete
+
+### Track 1: Fix D (ANF dead code absorption)
+
+**Staging file**: `.lake/_tmp_fix/flat_error_propagation.lean`
+- Documents exact edits to `VerifiedJS/Flat/Semantics.lean` for .seq and .let error propagation
+- Both cases add `.error msg` match arm before the existing sub-step arm
+- Error propagation produces `{expr := .lit .undefined, ...}` instead of wrapping back in seq/let
+
+**Concept test**: `.lake/_tmp_fix/test_fix_d.lean` — COMPILES CLEAN (0 errors)
+- Minimal standalone step? with Fix D applied
+- Verified: `seq_break_propagates`, `nested_seq_break_propagates`, `let_break_propagates`
+- Verified: `seq_normal_step` (non-error sub-steps work as before)
+- Verified: `seq_error_step` (new error propagation lemma)
+
+**Breakage analysis** (6 lemmas affected):
+- Flat/Semantics.lean: `step?_seq_sub_step` (proof fix), `step?_seq_var_not_found_explicit` (conclusion change), `step?_seq_var_steps_to_lit` (split needed)
+- ClosureConvertCorrect.lean: `Flat_step?_seq_step` (add nonerror hyp), `Flat_step?_let_step` (add nonerror hyp)
+- ANFConvertCorrect.lean: `step?_seq_ctx` (add nonerror hyp)
+- All callers operate in non-error contexts → adding nonerror hypothesis is straightforward
+
+**BLOCKER**: `Flat/Semantics.lean` is `rw-r-----` owned by `wasmspec:pipeline`. jsspec (gid=pipeline) has read-only access. Need `chmod g+w` by wasmspec or root before edit can be applied.
+
+### Track 2: CC Integration Instructions
+
+**New file**: `.lake/_tmp_fix/CC_integration_instructions.lean`
+Comprehensive integration guide for all 3 staged CC files.
+
+**P1 verification results**:
+| File | Status | Notes |
+|------|--------|-------|
+| cc_state_mono.lean | ✅ COMPILES CLEAN | 0 errors, 0 sorry |
+| cc_convertExpr_not_lit_v2.lean | ✅ COMPILES CLEAN | 0 errors, 0 sorry |
+| cc_exprAddrWF_propagate.lean | ⚠️ dep failure | ClosureConvertCorrect.lean still elaborating |
+
+**Integration summary**:
+- **cc_state_mono**: Insert after L740 (state_determined mutual block end). Provides monotonicity lemmas but if-branch sorries (L2713, L2735) still need proof restructuring.
+- **cc_convertExpr_not_lit_v2**: Option A (add alongside existing theorem) closes 2 sorries (L1177-1178). Option B (full migration with `supported` guard) requires 25+ caller updates.
+- **cc_exprAddrWF_propagate**: Requires definition change to ExprAddrWF (.objectLit case). Closes L4230 sorry but breaks L4275 proof (was relying on `ExprAddrWF (.objectLit _) = True`).
+
+### Staged artifacts
+- `.lake/_tmp_fix/flat_error_propagation.lean` — **NEW**: Fix D staging with exact edits + breakage analysis
+- `.lake/_tmp_fix/test_fix_d.lean` — **NEW**: Fix D concept proof (compiles clean)
+- `.lake/_tmp_fix/CC_integration_instructions.lean` — **NEW**: Comprehensive CC integration guide
+
 ## 2026-03-30T01:30 — ANF Per-Constructor Decomposition + Verified Building Blocks
 
 ### Summary
@@ -1411,3 +1456,4 @@ Agent `jsspec` can read but NOT write. Need `chmod g+w` from root/wasmspec.
 
 ## Run: 2026-03-30T02:00:01+00:00
 
+2026-03-30T02:19:05+00:00 DONE

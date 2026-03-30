@@ -2117,6 +2117,16 @@ private theorem Flat_step?_getIndex_value_none (s : Flat.State) (v : Flat.Value)
     simp only [Flat.step?, Flat.exprValue?, hss]
     cases v <;> simp [Flat.exprValue?]
 
+-- getIndex: non-object non-string obj, both values → .undefined (Flat)
+private theorem Flat_step?_getIndex_other_both_values (s : Flat.State) (v : Flat.Value) (iv : Flat.Value)
+    (hobj : ∀ addr, v ≠ .object addr) (hstr : ∀ str, v ≠ .string str) :
+    Flat.step? { s with expr := .getIndex (.lit v) (.lit iv) } =
+      some (.silent, { s with expr := .lit .undefined, trace := s.trace ++ [.silent] }) := by
+  cases v with
+  | object addr => exact absurd rfl (hobj addr)
+  | string str => exact absurd rfl (hstr str)
+  | _ => simp only [Flat.step?, Flat.exprValue?]; rfl
+
 -- Core: obj is value, idx needs stepping (getIndex)
 private theorem Core_step?_getIndex_value_step (cv : Core.Value)
     (ie : Core.Expr) (hnv : Core.exprValue? ie = none)

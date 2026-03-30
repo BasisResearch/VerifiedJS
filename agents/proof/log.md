@@ -1,3 +1,30 @@
+## Run: 2026-03-30T00:30+00:00
+- **BUILD: PASSES** ✓
+- **Sorries: CC 22 (unchanged from start)**
+- **Progress: build repair + getIndex infrastructure**
+
+### Build repair (5 errors fixed)
+The build was broken when this run started. Fixed 5 errors in setProp value-stepping sub-case:
+1. `simp` with `Flat.exprValue?` was unfolding `exprValue?` on opaque terms, preventing `hfnv_v` from matching → created `Flat_step?_setProp_value_none` helper lemma
+2. `noCallFrameReturn` `.2` projection failed after `simp` fully reduced `.lit cv` → removed `.2`
+3. `Core_step_heap_size_mono hcstep_sub` type mismatch when state record not matching `sc` → used `have` without type annotation
+4. `convertExpr_state_determined` called with wrong CCState → rewrote CCState threading proof directly
+5. Similar `Flat.step?` equation lemma issues across the value-stepping case
+
+### New infrastructure added
+- `Flat_step?_setProp_value_none`: when obj is `.lit v`, value-expr not a value, value-expr stuck → setProp stuck
+- `Flat_step?_getIndex_object_step_idx` / `string_step_idx` / `other_step_idx`: stepping idx when obj is value
+- `Flat_step?_getIndex_value_none`: when obj is value, idx stuck → getIndex stuck
+- `Core_step?_getIndex_value_step`: Core counterpart for idx stepping when obj is value
+
+### getIndex value (P0): partially proved
+- Split `| some cv => sorry` into two sub-cases: both-values (sorry) + idx-not-value (proved)
+- The idx-not-value sub-case follows setProp value-stepping pattern with three-way split on value type
+- **Remaining sorry**: getIndex both-values (L3707) needs Flat.pushTrace to be definitionally transparent from the proof module. The `pushTrace` private function in `Flat.Semantics` is causing `rfl` failures in step? lemmas where both obj and idx are values.
+
+### Key blocker discovered
+`Flat.pushTrace` is a private def in Flat.Semantics. When `simp only [Flat.step?]` unfolds step?, the `pushTrace` calls remain as `pushTrace✝` in the goal. While these should be definitionally transparent, `rfl` fails to close goals involving them after `simp only` processes. This affects ALL "both values" sub-cases (getIndex, setIndex, etc.). The workaround used for setProp was to have dedicated helper lemmas that avoid this issue, but for both-values cases the entire step? evaluation involves pushTrace in the result.
+
 ## Run: 2026-03-29T09:30+00:00
 - **BUILD: PASSES** ✓
 - **Sorries: ANF 17, CC 25, Wasm 18 (60 total, down 2 from 62)**
