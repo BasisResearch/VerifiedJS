@@ -4393,7 +4393,8 @@ private theorem normalizeExpr_throw_step_sim
           subst heval
           exact ⟨_, _, .tail ⟨by unfold Flat.step?; rfl⟩ (.refl _), rfl, rfl, rfl, rfl, rfl⟩
         · intro msg heval
-          simp only [ANF.evalTrivial, ANF.trivialValue?] at heval)
+          simp only [ANF.evalTrivial, ANF.trivialValue?] at heval
+          exact absurd heval (by simp))
     | var name =>
       -- normalizeExpr (.var name) k' = k' (.var name)
       simp only [ANF.normalizeExpr, pure, Pure.pure, StateT.pure, Except.ok.injEq, Prod.mk.injEq] at hnorm'
@@ -4401,17 +4402,37 @@ private theorem normalizeExpr_throw_step_sim
       -- By ExprWellFormed, env.lookup name must succeed
       have hwf_var : env.lookup name ≠ none := by
         apply hewf; exact VarFreeIn.throw_arg _ _ (VarFreeIn.var name)
-      -- Need to relate Flat.Env.lookup to ANF.Env.lookup
-      have hv_anf : ANF.Env.lookup env name ≠ none := by
-        unfold ANF.Env.lookup Flat.Env.lookup at hwf_var ⊢; exact hwf_var
-      obtain ⟨v, hv⟩ := Option.ne_none_iff_exists'.mp hv_anf
+      obtain ⟨v, hv_flat⟩ := Option.ne_none_iff_exists'.mp hwf_var
+      -- Get the ANF version of the lookup
+      have hv_anf : ANF.Env.lookup env name = some v := by
+        simp only [ANF.Env.lookup, Flat.Env.lookup] at hv_flat ⊢; exact hv_flat
       refine ⟨?_, ?_⟩
-      · intro val heval
-        simp only [ANF.evalTrivial, hv, Except.ok.injEq] at heval
+      · -- ok case: evalTrivial env (.var name) = .ok v
+        intro val heval
+        simp only [ANF.evalTrivial, hv_anf, Except.ok.injEq] at heval
         subst heval
-        sorry -- Two flat steps: .throw (.var name) → .throw (.lit v) → .lit .undefined
-      · intro msg heval
-        simp only [ANF.evalTrivial, hv] at heval
+        -- Two flat steps: .throw (.var name) → .throw (.lit v) → .lit .undefined
+        -- Step 1: step? on .throw (.var name) produces (.silent, .throw (.lit v)) state
+        have hstep1 : Flat.step?
+            ⟨.throw (.var name), env, heap, trace, funcs, cs⟩ =
+            some (.silent,
+              ⟨.throw (.lit v), env, heap, trace ++ [.silent], funcs, cs⟩) := by
+          simp only [Flat.step?, Flat.exprValue?, Flat.Env.lookup, hv_flat, Flat.pushTrace]
+        -- Step 2: step? on .throw (.lit v) produces (.error msg, .lit .undefined) state
+        have hstep2 : Flat.step?
+            ⟨.throw (.lit v), env, heap, trace ++ [.silent], funcs, cs⟩ =
+            some (.error (Flat.valueToString v),
+              ⟨.lit .undefined, env, heap, trace ++ [.silent, .error (Flat.valueToString v)], funcs, cs⟩) := by
+          simp only [Flat.step?, Flat.exprValue?, Flat.pushTrace, List.append_assoc]
+          rfl
+        refine ⟨[.silent, .error (Flat.valueToString v)], _,
+          .tail ⟨hstep1⟩ (.tail ⟨hstep2⟩ (.refl _)),
+          rfl, rfl, rfl, rfl, ?_⟩
+        · -- observableTrace [.silent, .error msg] = observableTrace [.error msg]
+          simp [observableTrace]
+      · -- error case: vacuous since env.lookup name = some v
+        intro msg heval
+        simp only [ANF.evalTrivial, hv_anf] at heval
     | _ => sorry
   | _ =>
     simp only [Flat.State.env, Flat.State.heap, Flat.State.trace]
