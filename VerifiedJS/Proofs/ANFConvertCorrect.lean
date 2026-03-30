@@ -1052,13 +1052,17 @@ private theorem trivialOfFlatValue_eq_trivialOfValue (v : Flat.Value) :
 private theorem step?_seq_ctx (s : Flat.State) (a b : Flat.Expr)
     (hnotval : Flat.exprValue? a = none)
     (t : Core.TraceEvent) (sa : Flat.State)
-    (hstep : Flat.step? { s with expr := a } = some (t, sa)) :
+    (hstep : Flat.step? { s with expr := a } = some (t, sa))
+    (hnoerr : ∀ msg, t ≠ .error msg) :
     ∃ s', Flat.step? { s with expr := .seq a b } = some (t, s') ∧
       s'.expr = .seq sa.expr b ∧ s'.env = sa.env ∧ s'.heap = sa.heap ∧
       s'.funcs = s.funcs ∧ s'.callStack = s.callStack ∧
       s'.trace = s.trace ++ [t] := by
   simp only [Flat.step?, hnotval, hstep]
-  exact ⟨_, rfl, rfl, rfl, rfl, rfl, rfl, rfl⟩
+  cases t with
+  | error msg => exact absurd rfl (hnoerr msg)
+  | log _ => exact ⟨_, rfl, rfl, rfl, rfl, rfl, rfl, rfl⟩
+  | silent => exact ⟨_, rfl, rfl, rfl, rfl, rfl, rfl, rfl⟩
 
 /-- Contextual stepping: if cond is not a value and steps, .if cond then_ else_ steps with
     the result wrapped. -/
@@ -1155,7 +1159,7 @@ private def wrapSeqCtx (inner : Flat.Expr) : List Flat.Expr → Flat.Expr
 
 /-- Lift a single Flat step through N layers of left-seq context. -/
 private theorem step_wrapSeqCtx (s : Flat.State) (t : Core.TraceEvent)
-    (ctx : List Flat.Expr) :
+    (ctx : List Flat.Expr) (hnoerr : ∀ msg, t ≠ .error msg) :
     ∀ (inner : Flat.Expr) (s_inner : Flat.State),
     Flat.exprValue? inner = none →
     Flat.step? { s with expr := inner } = some (t, s_inner) →
@@ -1172,7 +1176,7 @@ private theorem step_wrapSeqCtx (s : Flat.State) (t : Core.TraceEvent)
   | cons r rs ih =>
     intro inner s_inner hnotval hstep hf hc ht
     obtain ⟨s1, hstep1, hexpr1, henv1, hheap1, hfuncs1, hcs1, htrace1⟩ :=
-      step?_seq_ctx s inner r hnotval t s_inner hstep
+      step?_seq_ctx s inner r hnotval t s_inner hstep hnoerr
     have hnotval1 : Flat.exprValue? (Flat.Expr.seq inner r) = none := by
       simp [Flat.exprValue?]
     obtain ⟨s', hs', he', henv', hheap', hf', hc', ht'⟩ :=
@@ -1308,7 +1312,7 @@ private theorem trivialChain_consume_ctx
       obtain ⟨s_i, hstep_i, hexpr_i, henv_i, hheap_i, hfuncs_i, hcs_i, htrace_i⟩ :=
         step?_seq_lit sf v r
       obtain ⟨sf', hs', he', henv', hheap', _, _, ht'⟩ :=
-        step_wrapSeqCtx sf .silent rs _ s_i hnotval hstep_i hfuncs_i hcs_i htrace_i
+        step_wrapSeqCtx sf .silent rs (fun _ h => nomatch h) _ s_i hnotval hstep_i hfuncs_i hcs_i htrace_i
       have hstep_sf : Flat.step? sf = some (.silent, sf') := by
         have : sf = { sf with expr := wrapSeqCtx (Flat.Expr.seq (.lit v) r) rs } := by
           cases sf; simp_all [wrapSeqCtx]
@@ -1330,7 +1334,7 @@ private theorem trivialChain_consume_ctx
       obtain ⟨s_i, hstep_i, hexpr_i, henv_i, hheap_i, hfuncs_i, hcs_i, htrace_i⟩ :=
         step?_seq_lit sf v r
       obtain ⟨sf', hs', he', henv', hheap', _, _, ht'⟩ :=
-        step_wrapSeqCtx sf .silent rs _ s_i hnotval hstep_i hfuncs_i hcs_i htrace_i
+        step_wrapSeqCtx sf .silent rs (fun _ h => nomatch h) _ s_i hnotval hstep_i hfuncs_i hcs_i htrace_i
       have hstep_sf : Flat.step? sf = some (.silent, sf') := by
         have : sf = { sf with expr := wrapSeqCtx (Flat.Expr.seq (.lit v) r) rs } := by
           cases sf; simp_all [wrapSeqCtx]
@@ -1352,7 +1356,7 @@ private theorem trivialChain_consume_ctx
       obtain ⟨s_v, hstep_v, hexpr_v, henv_v, hheap_v, hfuncs_v, hcs_v, htrace_v⟩ :=
         step?_var_bound sf name val hval
       obtain ⟨sf1, hs1, he1, henv1, hheap1, hf1, hc1, ht1⟩ :=
-        step_wrapSeqCtx sf .silent ctx _ s_v hnotval_v hstep_v hfuncs_v hcs_v htrace_v
+        step_wrapSeqCtx sf .silent ctx (fun _ h => nomatch h) _ s_v hnotval_v hstep_v hfuncs_v hcs_v htrace_v
       have hstep_sf : Flat.step? sf = some (.silent, sf1) := by
         have : sf = { sf with expr := wrapSeqCtx (Flat.Expr.var name) ctx } := by
           cases sf; simp_all
@@ -1375,7 +1379,7 @@ private theorem trivialChain_consume_ctx
       obtain ⟨val, s_t, hstep_t, hexpr_t, henv_t, hheap_t, hfuncs_t, hcs_t, htrace_t⟩ :=
         step?_this_resolve sf
       obtain ⟨sf1, hs1, he1, henv1, hheap1, hf1, hc1, ht1⟩ :=
-        step_wrapSeqCtx sf .silent ctx _ s_t hnotval_t hstep_t hfuncs_t hcs_t htrace_t
+        step_wrapSeqCtx sf .silent ctx (fun _ h => nomatch h) _ s_t hnotval_t hstep_t hfuncs_t hcs_t htrace_t
       have hstep_sf : Flat.step? sf = some (.silent, sf1) := by
         have : sf = { sf with expr := wrapSeqCtx Flat.Expr.this ctx } := by
           cases sf; simp_all
