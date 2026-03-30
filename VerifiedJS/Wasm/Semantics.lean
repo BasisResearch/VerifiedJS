@@ -6790,25 +6790,37 @@ implementations are provided by the host and not modeled in the IR semantics. -/
     1 frame, empty labels, the multi-step execution halts with observable
     events matching the ANF throw's error trace.
     The `msg` parameter is the throw message from ANF's evalTrivial. -/
+/-- Axiom: executing TrivialCodeCorr code from a LowerSimRel state evaluates
+    the trivial expression, leaving the result on the stack.
+    Frame, labels, module, memory, and globals are preserved; only
+    silent trace events are produced. -/
+axiom irMultiStep_trivialCode (prog : ANF.Program) (irmod : IRModule)
+    (s1 : ANF.State) (s2 : IRExecState) (arg : ANF.Trivial)
+    (argCode rest : List IRInstr) (v : Flat.Value)
+    (hrel : LowerSimRel prog irmod s1 s2)
+    (htcc : TrivialCodeCorr arg argCode)
+    (hcode : s2.code = argCode ++ rest)
+    (heval : ANF.evalTrivial s1.env arg = .ok v) :
+    ∃ s2_mid trace irv, IRSteps s2 trace s2_mid ∧
+      s2_mid.code = rest ∧
+      s2_mid.stack = irv :: s2.stack ∧ ValueCorr v irv ∧
+      s2_mid.frames = s2.frames ∧ s2_mid.labels = s2.labels ∧
+      s2_mid.module = s2.module ∧
+      observableEvents trace = []
+
 axiom irMultiStep_throwOp_return (s : IRExecState) (msg : String)
     (hcode : s.code = [IRInstr.call RuntimeIdx.throwOp, IRInstr.return_])
     (hframes_one : s.frames.length = 1)
     (hlabels : s.labels = []) :
     ∃ s' trace, IRSteps s trace s' ∧
-      s'.code = [] ∧ s'.labels = [] ∧ s'.frames.length = 1 ∧
-      s'.module = s.module ∧
+      s'.code = [] ∧ s'.labels = [] ∧
+      s'.frames = s.frames ∧ s'.module = s.module ∧
       observableEvents trace = observableEvents [traceFromCore (Core.TraceEvent.error msg)]
 
-/-- Runtime axiom: awaitOp call macro step.
-    Starting from an IR state with code = [.call awaitOp],
-    1 frame, empty labels, the multi-step execution halts with only
-    silent trace events (no observable events).
-    Await at the ANF level produces .silent when eval succeeds, matching
-    the IR's silent execution of the runtime call. -/
 /-- Lowering constraint: throw with empty labels always produces throw_ret (not throw_br).
     throw_br is only generated inside try-catch blocks, which have non-empty labels. -/
 axiom lower_throw_ret_of_labels_empty (prog : ANF.Program) (irmod : IRModule)
-    (s : ANF.State) (ir : IRExecState)
+    (s : ANF.State) (ir : IRExecState) (arg : ANF.Trivial)
     (hlower : Wasm.lower prog = .ok irmod)
     (hcode : LowerCodeCorr (.throw arg) ir.code)
     (hlabels : ir.labels = []) :
@@ -6817,21 +6829,41 @@ axiom lower_throw_ret_of_labels_empty (prog : ANF.Program) (irmod : IRModule)
 
 /-- Lowering constraint: await with empty labels has the simple form. -/
 axiom lower_await_of_labels_empty (prog : ANF.Program) (irmod : IRModule)
-    (s : ANF.State) (ir : IRExecState)
+    (s : ANF.State) (ir : IRExecState) (arg : ANF.Trivial)
     (hlower : Wasm.lower prog = .ok irmod)
     (hcode : LowerCodeCorr (.await arg) ir.code)
     (hlabels : ir.labels = []) :
     ∃ argCode, ir.code = argCode ++ [IRInstr.call RuntimeIdx.awaitOp] ∧
       TrivialCodeCorr arg argCode
 
+/-- Runtime axiom: awaitOp call macro step.
+    Starting from an IR state with code = [.call awaitOp],
+    1 frame, empty labels, the multi-step execution halts with only
+    silent trace events (no observable events). -/
 axiom irMultiStep_awaitOp (s : IRExecState)
     (hcode : s.code = [IRInstr.call RuntimeIdx.awaitOp])
     (hframes_one : s.frames.length = 1)
     (hlabels : s.labels = []) :
     ∃ s' trace, IRSteps s trace s' ∧
-      s'.code = [] ∧ s'.labels = [] ∧ s'.frames.length = 1 ∧
-      s'.module = s.module ∧
+      s'.code = [] ∧ s'.labels = [] ∧
+      s'.frames = s.frames ∧ s'.module = s.module ∧
       observableEvents trace = []
+
+/-- evalTrivial succeeds when variables are in scope. -/
+theorem evalTrivial_ok_of_var_scope (env : ANF.Env) (arg : ANF.Trivial)
+    (hscope : ∀ name, arg = .var name → ∃ v, env.lookup name = some v) :
+    ∃ v, ANF.evalTrivial env arg = .ok v := by
+  cases arg with
+  | var name =>
+    obtain ⟨v, hv⟩ := hscope name rfl
+    exact ⟨v, by simp [ANF.evalTrivial, hv]⟩
+  | litNull => exact ⟨.null, by simp [ANF.evalTrivial, ANF.trivialValue?]⟩
+  | litUndefined => exact ⟨.undefined, by simp [ANF.evalTrivial, ANF.trivialValue?]⟩
+  | litBool b => exact ⟨.bool b, by simp [ANF.evalTrivial, ANF.trivialValue?]⟩
+  | litNum n => exact ⟨.number n, by simp [ANF.evalTrivial, ANF.trivialValue?]⟩
+  | litStr s => exact ⟨.string s, by simp [ANF.evalTrivial, ANF.trivialValue?]⟩
+  | litObject addr => exact ⟨.object addr, by simp [ANF.evalTrivial, ANF.trivialValue?]⟩
+  | litClosure fi ep => exact ⟨.closure fi ep, by simp [ANF.evalTrivial, ANF.trivialValue?]⟩
 
 /-- Stuttering step simulation for `return (some .litNull)`:
     IR takes 2 steps (const_ .i32 "0" + return_) matching ANF's 1 silent step.

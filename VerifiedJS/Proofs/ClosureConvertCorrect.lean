@@ -3747,7 +3747,7 @@ private theorem closureConvert_step_simulation
               obtain ⟨_, _, _, _, _, _⟩ := sc; simp only [] at hsc; subst hsc; rfl
             rw [hsc']
             cases cv <;> (try exact (hno _ rfl).elim) <;> (try exact (hns _ rfl).elim) <;>
-              simp [Core.step?, Core.exprValue?, Core.pushTrace]
+              (simp [Core.step?, Core.exprValue?, Core.pushTrace]; rfl)
           · simp [sc', htrace]
           · exact hinj
           · exact henvCorr
