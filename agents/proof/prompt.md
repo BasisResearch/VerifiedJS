@@ -1,78 +1,114 @@
-# proof — INTEGRATE CC STAGED FILES FIRST, then close value sub-cases. Target: -2 this run.
+# proof — BUILD IS BROKEN. Fix it FIRST, then close CC sorries. Target: build green + -2 sorries.
 
-## STATUS: 23 CC sorries (grep-c). You've run 5+ hours with 0 closures. CHANGE STRATEGY.
+## EMERGENCY: BUILD BROKEN BY FIX D
 
-## NEW STRATEGY: INTEGRATE STAGED FILES FIRST (easiest path to -2 sorries)
+Fix D added error propagation to `Flat.step?` for `.seq` and `.let`. This broke 3 lemmas that assume the match resolves without case-splitting on the trace event. **FIX THESE FIRST.**
 
-jsspec has prepared fully-compiled CC fixes in `.lake/_tmp_fix/`. Integration instructions are in `.lake/_tmp_fix/CC_integration_instructions.lean`. Read it FIRST.
+**FULL GUIDE**: `.lake/_tmp_fix/fix_d_breakage_guide.lean` has EVERY fix with exact code. READ IT FIRST.
 
-### STEP 1: Integrate cc_convertExpr_not_lit_v2.lean (closes L1177+L1178 = -2 sorries!)
+### Fix 1: `step?_seq_ctx` in ANFConvertCorrect.lean (L1052)
 
-This is a QUICK WIN. Add `convertExpr_not_value_supported` theorem after the existing `convertExpr_not_value` (around L1181).
-
-**EXACT EDIT** — Insert this BEFORE `-- Helper lemmas for Core.step?` (currently ~L1183):
+**Current** (BROKEN):
 ```lean
-private theorem convertExpr_not_value_supported (e : Core.Expr)
-    (h : Core.exprValue? e = none)
-    (hsupp : e.supported = true)
-    (scope : List String) (envVar : String) (envMap : Flat.EnvMapping) (st : Flat.CCState) :
-    Flat.exprValue? (Flat.convertExpr e scope envVar envMap st).fst = none := by
-  cases e with
-  | lit v => simp [Core.exprValue?] at h
-  | forIn _ _ _ => simp [Core.Expr.supported] at hsupp
-  | forOf _ _ _ => simp [Core.Expr.supported] at hsupp
-  | yield _ _ => simp [Core.Expr.supported] at hsupp
-  | await _ => simp [Core.Expr.supported] at hsupp
-  | var _ =>
-    simp only [Flat.convertExpr]
-    split <;> simp [Flat.exprValue?]
-  | functionDef _ _ _ _ _ => unfold Flat.convertExpr; simp [Flat.exprValue?]
-  | _ => unfold Flat.convertExpr <;>
-    (try { simp [Flat.exprValue?]; done }) <;>
-    (try { split <;> simp [Flat.exprValue?]; done })
+private theorem step?_seq_ctx (s : Flat.State) (a b : Flat.Expr)
+    (hnotval : Flat.exprValue? a = none)
+    (t : Core.TraceEvent) (sa : Flat.State)
+    (hstep : Flat.step? { s with expr := a } = some (t, sa)) :
+    ∃ s', Flat.step? { s with expr := .seq a b } = some (t, s') ∧
+      s'.expr = .seq sa.expr b ∧ s'.env = sa.env ∧ s'.heap = sa.heap ∧
+      s'.funcs = s.funcs ∧ s'.callStack = s.callStack ∧
+      s'.trace = s.trace ++ [t] := by
+  simp only [Flat.step?, hnotval, hstep]
+  exact ⟨_, rfl, rfl, rfl, rfl, rfl, rfl, rfl⟩
 ```
 
-Then change L1177-1178 (the forIn/forOf sorries in `convertExpr_not_value`) to reference the supported version OR simply add `(hsupp : e.supported = true)` guard. Read the staged file for the full approach.
+**Fix** — add `hnoerr` hypothesis and case-split on `t`:
+```lean
+private theorem step?_seq_ctx (s : Flat.State) (a b : Flat.Expr)
+    (hnotval : Flat.exprValue? a = none)
+    (t : Core.TraceEvent) (sa : Flat.State)
+    (hstep : Flat.step? { s with expr := a } = some (t, sa))
+    (hnoerr : ∀ msg, t ≠ .error msg) :
+    ∃ s', Flat.step? { s with expr := .seq a b } = some (t, s') ∧
+      s'.expr = .seq sa.expr b ∧ s'.env = sa.env ∧ s'.heap = sa.heap ∧
+      s'.funcs = s.funcs ∧ s'.callStack = s.callStack ∧
+      s'.trace = s.trace ++ [t] := by
+  simp only [Flat.step?, hnotval, hstep]
+  cases t with
+  | error msg => exact absurd rfl (hnoerr msg)
+  | log _ => exact ⟨_, rfl, rfl, rfl, rfl, rfl, rfl, rfl⟩
+  | silent => exact ⟨_, rfl, rfl, rfl, rfl, rfl, rfl, rfl⟩
+```
 
-### STEP 2: Integrate cc_state_mono.lean (infrastructure for CCState sorries)
+### Fix 1b: `step_wrapSeqCtx` (L1157) — add same `hnoerr` hypothesis
 
-Read `.lake/_tmp_fix/cc_state_mono.lean`. Insert the two mutual blocks (state_mono + funcs_prefix) after L740 (end of convertExpr_state_determined mutual block).
+Add `(hnoerr : ∀ msg, t ≠ .error msg)` as a parameter. Pass it to `step?_seq_ctx` at L1175:
+```lean
+      step?_seq_ctx s inner r hnotval t s_inner hstep hnoerr
+```
 
-This provides `convertExpr_state_mono` / `convertExprList_state_mono` / `convertPropList_state_mono` which are needed for CCState threading sorries at L4354, L4656.
+### Fix 1c: All callers of `step_wrapSeqCtx` (L1311, L1333, L1355, L1378)
 
-### STEP 3: After integration, close value sub-cases
+All pass `.silent` as `t`. Add `(fun _ h => nomatch h)` or `(by intro msg h; exact nomatch h)` as the `hnoerr` argument. Example:
+```lean
+        step_wrapSeqCtx sf .silent rs (fun _ h => nomatch h) _ s_i hnotval hstep_i hfuncs_i hcs_i htrace_i
+```
+Wait — `step_wrapSeqCtx` takes `t` as its 2nd arg. So it becomes:
+```lean
+private theorem step_wrapSeqCtx (s : Flat.State) (t : Core.TraceEvent)
+    (ctx : List Flat.Expr) (hnoerr : ∀ msg, t ≠ .error msg) :
+```
+And callers: `step_wrapSeqCtx sf .silent rs (fun _ h => nomatch h) ...`
 
-With infrastructure in place, tackle these CC sorries (VERIFIED line numbers as of 04:05):
+### Fix 2: `Flat_step?_seq_step` in ClosureConvertCorrect.lean (L1895)
 
-**P0: getIndex (L3767, L3769)**
-- L3767: getIndex object both-values: heap lookup + HeapInj
-- L3769: getIndex string both-values: string indexing (EASIEST)
+Add `(hnoerr : ∀ msg, t ≠ .error msg)` and fix proof:
+```lean
+private theorem Flat_step?_seq_step (s : Flat.State) (b : Flat.Expr) (fe : Flat.Expr)
+    (hnv : Flat.exprValue? fe = none)
+    (t : Core.TraceEvent) (sa : Flat.State)
+    (hss : Flat.step? { s with expr := fe } = some (t, sa))
+    (hnoerr : ∀ msg, t ≠ .error msg) :
+    Flat.step? { s with expr := .seq fe b } =
+      some (t, { expr := .seq sa.expr b, env := sa.env, heap := sa.heap,
+                 trace := s.trace ++ [t], funcs := s.funcs, callStack := s.callStack }) := by
+  simp only [Flat.step?, hnv, hss]
+  cases t with
+  | error msg => exact absurd rfl (hnoerr msg)
+  | log _ => rfl
+  | silent => rfl
+```
 
-**P1: Heap allocation sorries (L4263, L4361)**
-- L4263: objectLit all props are values
-- L4361: arrayLit all elements are values
+Fix caller at L3125: add `(fun _ h => nomatch h)` or appropriate noerror proof.
 
-**P2: CCState threading (L4354, L4656)**
-- L4354: convertPropList over concatenated lists
-- L4656: while_ lowering duplicates sub-expressions
+### Fix 3: `Flat_step?_let_step` in ClosureConvertCorrect.lean (L1913)
 
-### BLOCKED (do NOT touch):
-- L2431: HeapInj refactor
-- L4307, L4405: ExprAddrWF propagation (needs definition change)
-- L4518: functionDef (large)
-- L4608: tryCatch (large)
+Same pattern — add `hnoerr`, case-split. Fix caller at L2812.
+
+## AFTER BUILD IS GREEN: Close CC sorries
+
+### Priority 1: Integrate cc_convertExpr_not_lit_v2 (-2 sorries at L1369, L1370)
+
+See `.lake/_tmp_fix/cc_convertExpr_not_lit_v2.lean`. Add `convertExpr_not_value_supported` after existing `convertExpr_not_value` (~L1181). Then close forIn/forOf cases by contradiction with `hsupp`.
+
+### Priority 2: Close getIndex string (L4027)
+
+See `.lake/_tmp_fix/cc_getIndex_object_proof.lean` for the pattern. String case is simpler.
+
+### Priority 3: Value sub-cases (L4199, L4521, L4619)
+
+Use HeapInj infrastructure.
 
 ## WORKFLOW
-1. Read `.lake/_tmp_fix/CC_integration_instructions.lean` FIRST
-2. Read `.lake/_tmp_fix/cc_convertExpr_not_lit_v2.lean` and `.lake/_tmp_fix/cc_state_mono.lean`
-3. Integrate into `VerifiedJS/Proofs/ClosureConvertCorrect.lean`
-4. `lake build VerifiedJS.Proofs.ClosureConvertCorrect` after EVERY edit
-5. If build breaks: `git checkout VerifiedJS/Proofs/ClosureConvertCorrect.lean` within 2 minutes
-6. LOG every 30 minutes to agents/proof/log.md
+1. Fix the 3 broken lemmas (ANF + CC). Build after EACH fix.
+2. Then integrate staged CC files.
+3. `lake build VerifiedJS.Proofs.ANFConvertCorrect` and `lake build VerifiedJS.Proofs.ClosureConvertCorrect` after EVERY edit
+4. If build breaks: `git checkout` within 2 minutes
+5. LOG every 30 minutes to agents/proof/log.md
 
 ## FILES
 - `VerifiedJS/Proofs/ClosureConvertCorrect.lean` (rw)
 - `VerifiedJS/Proofs/ANFConvertCorrect.lean` (rw)
 - `.lake/_tmp_fix/*.lean` (read for integration)
 
-## DO NOT EDIT: `VerifiedJS/Wasm/Semantics.lean`
+## DO NOT EDIT: `VerifiedJS/Wasm/Semantics.lean`, `VerifiedJS/Flat/Semantics.lean`

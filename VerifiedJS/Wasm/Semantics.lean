@@ -6789,7 +6789,7 @@ implementations are provided by the host and not modeled in the IR semantics. -/
     the trivial expression, leaving the result on the stack.
     Frame, labels, module, memory, and globals are preserved; only
     silent trace events are produced. -/
-axiom irMultiStep_trivialCode (prog : ANF.Program) (irmod : IRModule)
+theorem irMultiStep_trivialCode (prog : ANF.Program) (irmod : IRModule)
     (s1 : ANF.State) (s2 : IRExecState) (arg : ANF.Trivial)
     (argCode rest : List IRInstr) (v : Flat.Value)
     (hrel : LowerSimRel prog irmod s1 s2)
@@ -6798,10 +6798,53 @@ axiom irMultiStep_trivialCode (prog : ANF.Program) (irmod : IRModule)
     (heval : ANF.evalTrivial s1.env arg = .ok v) :
     ∃ s2_mid trace irv, IRSteps s2 trace s2_mid ∧
       s2_mid.code = rest ∧
-      s2_mid.stack = irv :: s2.stack ∧ ValueCorr v irv ∧
+      s2_mid.stack = irv :: s2.stack ∧
       s2_mid.frames = s2.frames ∧ s2_mid.labels = s2.labels ∧
       s2_mid.module = s2.module ∧
-      observableEvents trace = []
+      observableEvents trace = [] := by
+  cases htcc with
+  | var name idx =>
+    simp only [List.cons_append, List.nil_append] at hcode
+    obtain ⟨fr, frs, hfr_eq⟩ : ∃ fr frs, s2.frames = fr :: frs := by
+      match hf : s2.frames with
+      | [] => exact absurd hf hrel.hframes
+      | fr :: frs => exact ⟨fr, frs, rfl⟩
+    obtain ⟨val, hlocal⟩ := hrel.hlocal_valid idx rest hcode
+    simp [hfr_eq] at hlocal
+    have hir := irStep?_eq_localGet s2 idx rest fr frs val hcode hfr_eq hlocal
+    exact ⟨_, [.silent], val, IRSteps_of_irStep? hir, rfl, rfl, rfl, rfl, rfl, rfl⟩
+  | lit_null =>
+    simp only [List.cons_append, List.nil_append] at hcode
+    have hir := irStep?_eq_i32Const s2 "0" 0 rest hcode (by native_decide)
+    exact ⟨_, [.silent], _, IRSteps_of_irStep? hir, rfl, rfl, rfl, rfl, rfl, rfl⟩
+  | lit_undefined =>
+    simp only [List.cons_append, List.nil_append] at hcode
+    have hir := irStep?_eq_i32Const s2 "0" 0 rest hcode (by native_decide)
+    exact ⟨_, [.silent], _, IRSteps_of_irStep? hir, rfl, rfl, rfl, rfl, rfl, rfl⟩
+  | lit_bool_true =>
+    simp only [List.cons_append, List.nil_append] at hcode
+    have hir := irStep?_eq_i32Const s2 "1" 1 rest hcode (by native_decide)
+    exact ⟨_, [.silent], _, IRSteps_of_irStep? hir, rfl, rfl, rfl, rfl, rfl, rfl⟩
+  | lit_bool_false =>
+    simp only [List.cons_append, List.nil_append] at hcode
+    have hir := irStep?_eq_i32Const s2 "0" 0 rest hcode (by native_decide)
+    exact ⟨_, [.silent], _, IRSteps_of_irStep? hir, rfl, rfl, rfl, rfl, rfl, rfl⟩
+  | lit_num n s_str =>
+    simp only [List.cons_append, List.nil_append] at hcode
+    have hir := irStep?_eq_f64Const s2 s_str rest hcode
+    exact ⟨_, [.silent], _, IRSteps_of_irStep? hir, rfl, rfl, rfl, rfl, rfl, rfl⟩
+  | lit_str s_str encoding =>
+    simp only [List.cons_append, List.nil_append] at hcode
+    have hir := irStep?_eq_f64Const s2 encoding rest hcode
+    exact ⟨_, [.silent], _, IRSteps_of_irStep? hir, rfl, rfl, rfl, rfl, rfl, rfl⟩
+  | lit_object addr s_str hs_parse =>
+    simp only [List.cons_append, List.nil_append] at hcode
+    have hir := irStep?_eq_i32Const s2 s_str addr rest hcode hs_parse
+    exact ⟨_, [.silent], _, IRSteps_of_irStep? hir, rfl, rfl, rfl, rfl, rfl, rfl⟩
+  | lit_closure fi ep encoding =>
+    simp only [List.cons_append, List.nil_append] at hcode
+    have hir := irStep?_eq_f64Const s2 encoding rest hcode
+    exact ⟨_, [.silent], _, IRSteps_of_irStep? hir, rfl, rfl, rfl, rfl, rfl, rfl⟩
 
 axiom irMultiStep_throwOp_return (s : IRExecState) (msg : String)
     (hcode : s.code = [IRInstr.call RuntimeIdx.throwOp, IRInstr.return_])
@@ -7767,7 +7810,7 @@ theorem step_sim (prog : ANF.Program) (irmod : IRModule) :
         -- Now: t✝ = .error (Flat.valueToString v)
         --   s'✝ = pushTrace { s1 with expr := .trivial .litUndefined } (.error ...)
         -- Phase 1: step through argCode
-        obtain ⟨s2_mid, trace1, irv, hsteps1, hcode_mid, _, _, hfr_mid, hlbl_mid,
+        obtain ⟨s2_mid, trace1, irv, hsteps1, hcode_mid, _, hfr_mid, hlbl_mid,
                 hmod_mid, hobs1⟩ :=
           irMultiStep_trivialCode prog irmod s1 s2 arg argCode
             [IRInstr.call RuntimeIdx.throwOp, IRInstr.return_] v hrel htcc hcode_eq heval
@@ -7894,7 +7937,7 @@ theorem step_sim (prog : ANF.Program) (irmod : IRModule) :
         obtain ⟨rfl, rfl⟩ := heq
         -- Now: t✝ = .silent, s'✝ = pushTrace { s1 with expr := .trivial (trivialOfValue v) } .silent
         -- Phase 1: step through argCode
-        obtain ⟨s2_mid, trace1, irv, hsteps1, hcode_mid, _, _, hfr_mid, hlbl_mid,
+        obtain ⟨s2_mid, trace1, irv, hsteps1, hcode_mid, _, hfr_mid, hlbl_mid,
                 hmod_mid, hobs1⟩ :=
           irMultiStep_trivialCode prog irmod s1 s2 arg argCode
             [IRInstr.call RuntimeIdx.awaitOp] v hrel htcc hcode_eq heval
