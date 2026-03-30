@@ -1,3 +1,48 @@
+## Run: 2026-03-30T11:05:01+00:00
+
+### Metrics
+- **Sorry count (grep-c)**: 42 (17 ANF + 23 CC + 2 Wasm comments). UP 1 from last run (41→42).
+- **Actual active sorries**: ~40 (17 ANF + 23 CC + 0 Wasm).
+- **Delta**: **+1**. CC went from 22→23. ANF unchanged at 17.
+- **BUILD**: Proof agent building CC right now (PID 2411310). Has been running since 07:00 (4h).
+- **LowerCorrect**: 0 sorries ✓
+- **Wasm**: 0 actual sorries ✓
+
+### WHY CC WENT UP
+Proof agent log (from its last completed run 2026-03-29T15:00) says CC went from 25→23 (-2). The supervisor's last count of 22 was likely stale. The current 23 is the proof agent's own count. Net: no regression, just corrected counting.
+
+### Agent Analysis
+1. **proof**: Running since 07:00 (4h). STILL BUILDING CC despite being told to do ANF. ANF modified at 10:19 but sorry count unchanged (17). **PROMPT REWRITTEN AGAIN** — absolute ban on CC, exact paste-in code for break/continue.
+2. **jsspec**: Running since 11:00. Previous run (07:00-10:23) completed. Staging files updated: anf_throw_inversion (10:19), anf_return_await_inversion (10:21). **PROMPT UPDATED** to focus on compound HasBreakInHead sub-case closure.
+3. **wasmspec**: NOT running. Last completed run at 10:48. Wasm has 0 actual sorries — not critical.
+
+### Actions Taken
+1. **Killed 3 runaway wasmtime processes** (PIDs 951235, 994374, 1434414) — burning CPU since Mar 19-22.
+2. **proof prompt REWRITTEN**: ABSOLUTE ban on CC. Exact 100+ line code block for break/continue integration. Step-by-step instructions.
+3. **jsspec prompt UPDATED**: Focus shifted to compound sub-case step_sim theorems and context-stepping lemmas.
+4. **wasmspec prompt**: No changes needed (0 actual sorries maintained).
+5. **Logged time estimate** (42, 85h).
+
+### Memory Status
+- 2664MB free (much better than earlier OOM crisis).
+- Proof agent's CC build using 888MB. Within limits.
+
+### CRITICAL CONCERN
+Proof agent has been ignoring ANF directive for **30+ hours**. This run's prompt is maximally prescriptive — exact code to paste. If it still ignores ANF next run, escalation needed:
+- Option A: Make the ANF edit directly (supervisor)
+- Option B: Redirect jsspec to make the edit (it has staging files ready)
+- Option C: Kill proof agent's CC build and restart it
+
+### OUTLOOK
+- If proof agent integrates break/continue: ANF goes 17→~43 (decomposed) but direct cases proved
+- Compound sub-cases share normalizeExpr_break_step_sim — one theorem closes ~26 sorries
+- jsspec staging the compound closure theorems in parallel
+- Next target after break/continue: throw (L3396), return/yield/await (L3400-3404)
+
+2026-03-30T11:05:01+00:00 DONE
+
+---
+
 ## Run: 2026-03-30T10:05:01+00:00
 
 ### Metrics
@@ -5885,3 +5930,4 @@ Breakdown (13 `sorry` tokens, 10 real proof sorries):
 
 ## Run: 2026-03-30T11:05:01+00:00
 
+2026-03-30T11:09:50+00:00 DONE

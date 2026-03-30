@@ -1,57 +1,48 @@
-# jsspec — Stage normalizeExpr_break_step_sim (THE key missing theorem)
+# jsspec — Close compound HasBreakInHead sub-cases via step_sim theorems
 
-## CRITICAL: MEMORY IS TIGHT (7.7GB total, no swap)
+## MEMORY: 7.7GB total, NO swap
 - **NEVER run `lake build VerifiedJS`** (full build). OOMs.
-- Build individual modules only: `lake build VerifiedJS.Flat.Semantics`
+- Build individual modules: `lake build VerifiedJS.Proofs.ANFConvertCorrect`
 - Before building: `pkill -u jsspec -f "lean.*\.lean" 2>/dev/null; sleep 5`
-- Check `pgrep -af "lake build"` first — do NOT start a build if one is already running.
+- Check `pgrep -af "lake build"` first — do NOT start if one runs.
 
-## STATUS (10:05 Mar 30)
-- **Sorries**: 17 ANF + 22 CC + 2 Wasm (comments) = 41 grep-c. UNCHANGED.
-- **Your staging work is EXCELLENT** — break direct case, throw inversion, return/await inversion all ready
-- **Proof agent is being redirected to ANF** — it will integrate break/continue direct case next
+## STATUS (11:05 Mar 30)
+- **Sorries**: 17 ANF + 23 CC + 2 Wasm (comments) = 42 grep-c
+- **Your break_step_sim staging is good** — proof agent will integrate break/continue direct case
+- **After integration**: break/continue will decompose into ~28 compound sub-case sorries
 
-## YOUR MISSION: Stage the ONE theorem that closes 26+ sorry sub-cases
+## YOUR MISSION: Make the compound sub-cases closeable
 
-### TOP PRIORITY: `normalizeExpr_break_step_sim`
+### TOP PRIORITY: Verify and complete normalizeExpr_break_step_sim
 
-This theorem handles ALL compound HasBreakInHead cases (seq_left, seq_right, let_init, getProp_obj, etc.). Once proved, it closes ~13 sorry sub-cases for break AND (by symmetry) ~13 for continue.
+Your staging file `.lake/_tmp_fix/anf_break_step_sim.lean` has the theorem structure. The compound cases (seq_left, seq_right, let_init, getProp_obj, etc.) each need:
 
-```lean
-/-- If HasBreakInHead sf.expr label, then Flat can step to a state with .lit .undefined
-    producing the break error event. -/
-theorem normalizeExpr_break_step_sim
-    (sf : Flat.State) (label : Option Flat.LabelName)
-    (hbreak : HasBreakInHead sf.expr label) :
-    ∃ (sf' : Flat.State) (evs : List Core.TraceEvent),
-      Flat.Steps sf evs sf' ∧
-      sf'.expr = .lit .undefined ∧
-      sf'.env = sf.env ∧ sf'.heap = sf.heap ∧
-      observableTrace evs = observableTrace [.error ("break:" ++ label.getD "")] ∧
-      ExprWellFormed sf'.expr sf'.env
+1. **IH**: The inner sub-expression steps (from HasBreakInHead IH)
+2. **Context step**: The enclosing expression (seq/let/etc.) propagates the step
+3. **Error propagation (Fix D)**: When sub-expression produces error, enclosing context propagates it
+
+The KEY lemma for each compound case is a context-stepping lemma:
+- `Flat.step?_seq_ctx`: if `step? a = some (ev, a')` then `step? (seq a b) = some (ev, seq a' b)` (or error propagation)
+- `Flat.step?_let_ctx`: similar for let
+- `Flat.step?_getProp_obj_ctx`: similar for getProp
+
+**Check if these context-stepping lemmas exist** in Flat/Semantics.lean. If they do, the compound cases are straightforward. If not, stage them.
+
+```bash
+grep -n "step?_seq_ctx\|step?_let_ctx\|step?_getProp" VerifiedJS/Flat/Semantics.lean | head -20
 ```
 
-**Proof approach**: Induction on `HasBreakInHead`. For each constructor:
-- `break_direct`: One Flat step via `Flat.step?_break_eq`
-- `seq_left h`: Flat steps the LHS of seq. With Fix D, error propagates: `Flat.step?` on `.seq a b` where `a` steps to error → seq produces the error (new `.error msg` arm in Fix D)
-- `let_init h`: Same pattern via `Flat.step?` on `.let name a body`
-- `getProp_obj h`, etc.: The sub-expression steps inside a compound op context. These use `step?_seq_ctx` or similar context-stepping lemmas.
+### SECONDARY: Stage normalizeExpr_throw_step_sim
 
-**Key insight**: Fix D added error propagation for seq and let. This means once the sub-expression produces an error, it immediately propagates to the enclosing context. So the induction just needs to compose the IH steps with one more propagation step.
+Same pattern as break_step_sim but for HasThrowInHead. The throw case (L3396) has `all_goals sorry` covering 2 sub-cases. A throw_step_sim would close them.
 
-Stage this in `.lake/_tmp_fix/normalizeExpr_break_step_sim.lean`.
+### TERTIARY: Stage return/yield/await step_sim
 
-### SECONDARY: Stage `normalizeExpr_continue_step_sim` (symmetric)
-
-Copy-paste from break version, replacing break with continue throughout.
-
-### TERTIARY: If time permits, stage HasThrowInHead integration
-
-Check if HasThrowInHead is already in ANFConvertCorrect.lean (from anf_throw_inversion.lean). If not, prepare clean integration patch.
+Check `.lake/_tmp_fix/anf_return_await_inversion.lean` — if HasReturnInHead etc. are defined, write the corresponding step_sim theorems.
 
 ## WORKFLOW
 1. Work in `.lake/_tmp_fix/` ONLY
-2. Test compilation of staged files standalone
+2. Test that staged theorems type-check standalone if possible
 3. LOG every 30 min to agents/jsspec/log.md
 
 ## CONSTRAINTS

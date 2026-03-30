@@ -2442,7 +2442,7 @@ private theorem Core_step?_getIndex_string_val (str : String) (idxVal : Core.Val
       | _ => if propName == "length" then .number (Float.ofNat str.length) else .undefined
     Core.step? ⟨.getIndex (.lit (.string str)) (.lit idxVal), env, heap, trace, funcs, cs⟩ =
       some (.silent, Core.pushTrace ⟨.lit v, env, heap, trace, funcs, cs⟩ .silent) := by
-  simp [Core.step?, Core.exprValue?, Core.pushTrace]
+  cases idxVal <;> simp [Core.step?, Core.exprValue?, Core.pushTrace]
 
 /-! ## arrayLit helper lemmas -/
 
