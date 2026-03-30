@@ -2127,6 +2127,33 @@ private theorem Flat_step?_getIndex_other_both_values (s : Flat.State) (v : Flat
   | string str => exact absurd rfl (hstr str)
   | _ => simp only [Flat.step?, Flat.exprValue?]; rfl
 
+-- getIndex: obj is .object addr, both values → heap lookup (Flat)
+private theorem Flat_step?_getIndex_object_both_values (s : Flat.State) (addr : Nat) (iv : Flat.Value) :
+    Flat.step? { s with expr := .getIndex (.lit (.object addr)) (.lit iv) } =
+      let propName := Flat.valueToString iv
+      let v := match Flat.heapObjectAt? s.heap addr with
+        | some props =>
+            match props.find? (fun kv => kv.fst == propName) with
+            | some (_, cv) => Flat.coreToFlatValue cv
+            | none => if propName == "length" then .number (Float.ofNat props.length) else .undefined
+        | none => .undefined
+      some (.silent, { s with expr := .lit v, trace := s.trace ++ [.silent] }) := by
+  simp only [Flat.step?, Flat.exprValue?]; rfl
+
+-- getIndex: obj is .string, both values → string indexing (Flat)
+private theorem Flat_step?_getIndex_string_both_values (s : Flat.State) (str : String) (iv : Flat.Value) :
+    Flat.step? { s with expr := .getIndex (.lit (.string str)) (.lit iv) } =
+      let propName := Flat.valueToString iv
+      let v := match iv with
+        | .number n =>
+            let idx := n.toUInt64.toNat
+            if n >= 0.0 && n.toUInt64.toFloat == n && idx < str.length
+            then .string (String.Pos.Raw.get str ⟨idx⟩ |>.toString)
+            else if propName == "length" then .number (Float.ofNat str.length) else .undefined
+        | _ => if propName == "length" then .number (Float.ofNat str.length) else .undefined
+      some (.silent, { s with expr := .lit v, trace := s.trace ++ [.silent] }) := by
+  simp only [Flat.step?, Flat.exprValue?]; rfl
+
 -- Core: obj is value, idx needs stepping (getIndex)
 private theorem Core_step?_getIndex_value_step (cv : Core.Value)
     (ie : Core.Expr) (hnv : Core.exprValue? ie = none)

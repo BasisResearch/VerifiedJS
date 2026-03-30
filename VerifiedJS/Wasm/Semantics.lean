@@ -7636,8 +7636,67 @@ theorem step_sim (prog : ANF.Program) (irmod : IRModule) :
         -- While loop: ANF checks cond value or steps cond
         sorry
     | .throw arg =>
-        -- Throw: ANF produces error event
-        sorry
+        -- Throw: ANF produces error event.
+        -- IR code: argCode ++ [call throwOp, return_] (throw_ret at top level).
+        -- Phase 1: Execute argCode via irMultiStep_trivialCode.
+        -- Phase 2: Execute call throwOp + return_ via irMultiStep_throwOp_return.
+        have hc := hrel.hcode; rw [hexpr] at hc
+        -- Get throw_ret form (throw_br impossible with empty labels)
+        obtain ⟨argCode, hcode_eq, htcc⟩ :=
+          lower_throw_ret_of_labels_empty prog irmod s1 s2 arg
+            hrel.hlower hc hrel.hlabels_empty
+        -- Show evalTrivial succeeds (var case uses hthrow_var_scope, lits always succeed)
+        have hscope : ∀ name, arg = .var name → ∃ v, s1.env.lookup name = some v := by
+          intro name harg; rw [harg] at hexpr; exact hrel.hthrow_var_scope name hexpr
+        obtain ⟨v, heval⟩ := evalTrivial_ok_of_var_scope s1.env arg hscope
+        -- Derive the ANF step result
+        have hs1_eta : { s1 with expr := ANF.Expr.throw arg } = s1 := by cases s1; simp_all
+        have hanf := ANF.step?_throw_ok s1 arg v heval
+        rw [hs1_eta] at hanf; rw [hanf] at heq
+        simp only [Option.some.injEq, Prod.mk.injEq] at heq
+        obtain ⟨rfl, rfl⟩ := heq
+        -- Now: t✝ = .error (Flat.valueToString v)
+        --   s'✝ = pushTrace { s1 with expr := .trivial .litUndefined } (.error ...)
+        -- Phase 1: step through argCode
+        obtain ⟨s2_mid, trace1, irv, hsteps1, hcode_mid, _, _, hfr_mid, hlbl_mid,
+                hmod_mid, hobs1⟩ :=
+          irMultiStep_trivialCode prog irmod s1 s2 arg argCode
+            [IRInstr.call RuntimeIdx.throwOp, IRInstr.return_] v hrel htcc hcode_eq heval
+        -- Phase 2: step through call throwOp + return_
+        obtain ⟨s2', trace2, hsteps2, hcode', hlbl', hfr', hmod'', hobs2⟩ :=
+          irMultiStep_throwOp_return s2_mid (Flat.valueToString v) hcode_mid
+            (by rw [hfr_mid]; exact hrel.hframes_one)
+            (by rw [hlbl_mid]; exact hrel.hlabels_empty)
+        -- Combine IR steps
+        refine ⟨s2', trace1 ++ trace2, IRSteps_trans hsteps1 hsteps2, ?_, ?_⟩
+        -- Post-state LowerSimRel
+        · exact {
+            hlower := hrel.hlower
+            hmod := by rw [hmod'', hmod_mid]; exact hrel.hmod
+            hcode := by
+              simp [ANF.pushTrace]
+              exact .value_done .litUndefined (by intro name; exact ANF.Trivial.noConfusion)
+            hhalt := by
+              intro _; simp [IRExecState.halted, hcode', hlbl']
+              rw [hfr', hfr_mid]; omega
+            hframes := by rw [hfr', hfr_mid]; exact hrel.hframes
+            henv := by
+              intro n w hlk hne; simp [ANF.pushTrace] at hlk
+              obtain ⟨idx, val, hlocal, hvc_env⟩ := hrel.henv n w hlk hne
+              exact ⟨idx, val, by rw [hfr', hfr_mid]; exact hlocal, hvc_env⟩
+            hvar := by
+              intro n' idx' hexpr' _
+              simp [ANF.pushTrace] at hexpr'
+            hlocal_valid := by intro _ _ h; rw [hcode'] at h; simp at h
+            hlabels_empty := hlbl'
+            hframes_one := by rw [hfr', hfr_mid]; exact hrel.hframes_one
+            hcode_no_br := by intro _ h; rw [hcode'] at h; simp at h
+            hreturn_var_scope := by intro _ h; simp [ANF.pushTrace] at h
+            hthrow_var_scope := by intro _ h; simp [ANF.pushTrace] at h
+            hawait_var_scope := by intro _ h; simp [ANF.pushTrace] at h
+          }
+        -- Observable events match
+        · simp [observableEvents_append, hobs1, hobs2]
     | .tryCatch body catchParam catchBody finally_ =>
         -- Try-catch: ANF steps body, catches errors
         sorry
