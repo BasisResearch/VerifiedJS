@@ -3764,7 +3764,73 @@ private theorem closureConvert_step_simulation
           -- Core step result matches Flat: both do same heap lookup
           -- Flat result (in sf') uses coreToFlatValue; Core result uses raw value
           -- coreToFlatValue = convertValue, so they agree
-          sorry -- getIndex object both-values: heap lookup + HeapInj + coreToFlatValue correspondence
+          -- Case split on heap lookup to build core result
+          cases hprops : sc.heap.objects[addr]? with
+          | none =>
+            let sc' : Core.State := ⟨.lit .undefined, sc.env, sc.heap,
+              sc.trace ++ [.silent], sc.funcs, sc.callStack⟩
+            refine ⟨injMap, sc', ⟨?_⟩, ?_, ?_, ?_, ?_, ?_, ?_, ?_, ?_⟩
+            · have hsc' : sc = { sc with expr := .getIndex (.lit (.object addr)) (.lit iv) } := by
+                obtain ⟨_, _, _, _, _, _⟩ := sc; simp only [] at hsc; subst hsc; rfl
+              rw [hsc']
+              have := Core.step?_getIndex_object_val addr iv sc.env sc.heap sc.trace sc.funcs sc.callStack
+              simp only [Core.pushTrace, sc', hprops] at this ⊢; exact this
+            · simp [sc', htrace]
+            · exact hinj
+            · exact henvCorr
+            · exact henvwf
+            · exact hheapvwf
+            · simp [sc', noCallFrameReturn]
+            · simp only [sc', ExprAddrWF, ValueAddrWF]
+            · refine ⟨st, st, ?_, ⟨rfl, rfl⟩, by subst hst; exact ⟨rfl, rfl⟩⟩
+              simp only [sc', Flat.convertExpr, Flat.convertValue]
+          | some props =>
+            cases hfind : props.find? (fun (kv : Core.PropName × Core.Value) => kv.fst == Core.valueToString iv) with
+            | none =>
+              let coreResult := if Core.valueToString iv == "length" then Core.Value.number (Float.ofNat props.length) else Core.Value.undefined
+              let sc' : Core.State := ⟨.lit coreResult, sc.env, sc.heap,
+                sc.trace ++ [.silent], sc.funcs, sc.callStack⟩
+              refine ⟨injMap, sc', ⟨?_⟩, ?_, ?_, ?_, ?_, ?_, ?_, ?_, ?_⟩
+              · have hsc' : sc = { sc with expr := .getIndex (.lit (.object addr)) (.lit iv) } := by
+                  obtain ⟨_, _, _, _, _, _⟩ := sc; simp only [] at hsc; subst hsc; rfl
+                rw [hsc']
+                have := Core.step?_getIndex_object_val addr iv sc.env sc.heap sc.trace sc.funcs sc.callStack
+                simp only [Core.pushTrace, sc', coreResult, hprops, hfind] at this ⊢; exact this
+              · simp [sc', htrace]
+              · exact hinj
+              · exact henvCorr
+              · exact henvwf
+              · exact hheapvwf
+              · simp [sc', noCallFrameReturn]
+              · simp only [sc', ExprAddrWF, coreResult]; split <;> simp [ValueAddrWF]
+              · refine ⟨st, st, ?_, ⟨rfl, rfl⟩, by subst hst; exact ⟨rfl, rfl⟩⟩
+                simp only [sc', Flat.convertExpr, Flat.convertValue, coreResult]
+                congr 1; congr 1
+                simp only [hfind]
+                split
+                · next h => simp [h]
+                · next h => simp [h]
+            | some kv =>
+              let sc' : Core.State := ⟨.lit kv.2, sc.env, sc.heap,
+                sc.trace ++ [.silent], sc.funcs, sc.callStack⟩
+              refine ⟨injMap, sc', ⟨?_⟩, ?_, ?_, ?_, ?_, ?_, ?_, ?_, ?_⟩
+              · have hsc' : sc = { sc with expr := .getIndex (.lit (.object addr)) (.lit iv) } := by
+                  obtain ⟨_, _, _, _, _, _⟩ := sc; simp only [] at hsc; subst hsc; rfl
+                rw [hsc']
+                have := Core.step?_getIndex_object_val addr iv sc.env sc.heap sc.trace sc.funcs sc.callStack
+                simp only [Core.pushTrace, sc', hprops, hfind] at this ⊢; exact this
+              · simp [sc', htrace]
+              · exact hinj
+              · exact henvCorr
+              · exact henvwf
+              · exact hheapvwf
+              · simp [sc', noCallFrameReturn]
+              · simp only [sc', ExprAddrWF]
+                exact hheapvwf addr haddr_wf props hprops kv (list_find?_mem hfind)
+              · refine ⟨st, st, ?_, ⟨rfl, rfl⟩, by subst hst; exact ⟨rfl, rfl⟩⟩
+                simp only [sc', Flat.convertExpr]
+                congr 1; congr 1
+                simp only [hfind]; exact (coreToFlatValue_eq_convertValue kv.2).symm
         · -- String case: string indexing
           sorry -- getIndex string both-values: string indexing matches between Core and Flat
         · -- Non-object, non-string: both return .undefined
