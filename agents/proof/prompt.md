@@ -1,4 +1,4 @@
-# proof — Close ANF expression-case sorries (throw first)
+# proof — Close ANF throw case (L4413)
 
 ## RULES
 - Edit: ANFConvertCorrect.lean (primary)
@@ -10,96 +10,71 @@
 
 ## MEMORY: 7.7GB total, NO swap. Kill stale lean procs.
 
-## CURRENT STATE (17:05 Mar 30)
-- ANF: 17 sorries, 3 groups:
+## CURRENT STATE (18:05 Mar 30)
+- ANF: 19 sorries
   - 7 depth-induction (L3825-3923) — skip for now
   - 2 consolidated context (L4116, L4327) — skip for now
-  - 8 expression-case: **YOUR TARGET**
-    - L4368: normalizeExpr_throw_step_sim (PRIORITY 1)
-    - L4399: normalizeExpr_return_step_sim
-    - L4423: normalizeExpr_await_step_sim
-    - L4454: normalizeExpr_yield_step_sim
-    - L4475: normalizeExpr_let_step_sim
-    - L4496: normalizeExpr_seq_step_sim
-    - L4517: normalizeExpr_if_step_sim
-    - L4538: normalizeExpr_tryCatch_step_sim
+  - 10 expression-case (3 throw sub-sorries + 7 others): **YOUR TARGET**
 
-## PRIORITY 1: Write `hasThrowInHead_flat_error_steps` + close throw case (L4368)
+## YOUR TARGET: Close the throw case (L4413, L4417, L4420)
 
-### Step 1: Write the helper (insert BEFORE L4340, after HasThrowInHead_not_value)
+You already decomposed the throw case into 3 sub-sorries. Good. Now close them.
 
-The throw case needs a multi-step helper like `hasBreakInHead_flat_error_steps`. Unlike break (1 step), throw evaluates its argument first, then emits the error. Structure:
+### L4413: Two Flat steps for `.throw (.var name)` → `.throw (.lit v)` → `.lit .undefined`
 
-```lean
-/-- If HasThrowInHead e, then Flat steps evaluate to either:
-    - error msg (if throw arg evaluates to value v, msg = valueToString v), or
-    - error msg (if throw arg sub-step errors) -/
-private theorem hasThrowInHead_step?_error_aux
-    (d : Nat) (e : Flat.Expr) (hd : e.depth ≤ d)
-    (h : HasThrowInHead e)
-    (sf : Flat.State) (hsf : sf.expr = e) :
-    -- At minimum: one step exists (not stuck), and it's either:
-    -- (a) an error event (throw arg is value → immediate), or
-    -- (b) a sub-stepping event (throw arg not value → arg steps)
-    ∃ s' ev, Flat.step? sf = some (ev, s') := by
-  induction d generalizing e sf with
-  | zero => cases h <;> simp [Flat.Expr.depth] at hd
-  | succ d ih =>
-    cases h with
-    | throw_direct =>
-      -- sf.expr = .throw arg
-      -- Flat.step? on .throw: either exprValue? arg = some v → error, or step arg
-      cases sf with | mk expr env heap trace funcs cs =>
-      simp only [Flat.State.expr] at hsf; subst hsf
-      simp only [Flat.step?]
-      -- case split on exprValue? arg
-      sorry  -- FILL IN: cases on exprValue? arg, then cases on step?
-    | seq_left hsub =>
-      cases sf with | mk _ env heap trace funcs cs =>
-      simp only [Flat.State.expr] at hsf; subst hsf
-      have hnotval := HasThrowInHead_not_value _ hsub
-      -- ... same pattern as hasBreakInHead_step?_error_aux
-      sorry
-    -- ... repeat for each HasThrowInHead constructor
-    | _ => sorry
-```
+The proof state has:
+- `env : Flat.Env` (from sf)
+- `name : String` (the variable name)
+- `v : Core.Value` such that `env.lookup name = some v` (from `hwf_var` and `hv`)
+- `hv : ANF.Env.lookup env name = some v`
 
-**BUT ACTUALLY**: The throw case is simpler than you think. Look at the existing `normalizeExpr_throw_step_sim` signature (L4340-4368). It takes `HasThrowInHead` as given (via `normalizeExpr_throw_implies_hasThrowInHead`). The proof needs to:
+You need to construct 2 Flat steps:
+1. Step `.throw (.var name)` with env lookup succeeding:
+   - `exprValue? (.var name) = none` (var is not a value)
+   - `step? { sf | .var name } = some (.silent, { sf | .lit v })` (var resolves)
+   - So `step? { sf | .throw (.var name) } = some (.silent, { sf | .throw (.lit v) })`
 
-1. Use `ANF.normalizeExpr_throw_implies_hasThrowInHead` to get `HasThrowInHead sf.expr`
-2. Induct on the HasThrowInHead proof (same as break/continue pattern)
-3. For `throw_direct`: `sf.expr = .throw arg`.
-   - `exprValue? arg = some v` → one Flat step produces `.error (valueToString v)`. The ANF side has `evalTrivial sf.env arg = .ok v` (from hnorm inversion). Match traces.
-   - `exprValue? arg = none` → arg is not a value, but normalizeExpr produced `.throw arg` with arg being a trivial. Trivials ARE values in Flat. So `exprValue? arg = some v` always. This case may be vacuous.
-4. For compound cases (seq_left, let_init, etc.): step through the outer expression context, then recurse.
+2. Step `.throw (.lit v)`:
+   - `exprValue? (.lit v) = some v` (lit is a value)
+   - `step? { sf | .throw (.lit v) } = some (.error (valueToString v), { sf | .lit .undefined })`
 
-### Key insight: trivial args are always Flat values
-In `normalizeExpr_throw_step_sim`, `arg : ANF.Trivial`. After ANF conversion, the throw argument is already a trivial (variable or literal). When we map back to Flat, the corresponding Flat sub-expression is a value (literal or var lookup). So `exprValue?` on the Flat throw arg should always succeed → the throw is a single Flat step.
+Use `Flat.Steps` constructor to combine these 2 steps.
 
-### Step 2: Use it to prove L4368
+Try `lean_goal` at L4413 first to see the exact goal. Then construct the proof:
 
 ```lean
--- At L4368, replace sorry with:
-  have hthrow := ANF.normalizeExpr_throw_implies_hasThrowInHead sf.expr k hk arg n m hnorm
-  -- Now induct on hthrow to construct Flat.Steps
-  -- For throw_direct: sf.expr = .throw farg for some farg
-  --   normalizeExpr (.throw farg) k produces .throw (trivialOfFlat farg)
-  --   So farg maps to arg under the trivial conversion
-  --   Flat.step? evaluates .throw farg:
-  --     exprValue? farg = some v → .error (valueToString v) in one step
-  --     Then match with evalTrivial sf.env arg = .ok v
-  sorry -- fill in the actual tactic proof
+-- Approach:
+-- Step 1: .throw (.var name) →[.silent]→ .throw (.lit v)
+have hstep1 : Flat.step? { sf with expr := .throw (.var name) } =
+    some (.silent, pushTrace { sf with expr := .throw (.lit v) } .silent) := by
+  simp [Flat.step?, Flat.exprValue?, Flat.Env.lookup, hv]
+-- Step 2: .throw (.lit v) →[.error ...]→ .lit .undefined
+have hstep2 : Flat.step? (pushTrace { sf with expr := .throw (.lit v) } .silent) =
+    some (.error (Flat.valueToString v), pushTrace { ... } (.error ...)) := by
+  simp [Flat.step?, Flat.exprValue?]
+-- Combine:
+exact ⟨[.silent, .error (Flat.valueToString v)], final_state, Flat.Steps.cons hstep1 (Flat.Steps.cons hstep2 Flat.Steps.nil), ...⟩
 ```
 
-Use `lean_goal` at L4368 to see the exact proof state. Then try `lean_multi_attempt` with various approaches. The `throw_direct` case is the base; compound cases follow the break pattern.
+The exact details depend on the goal. Use `lean_goal` and `lean_multi_attempt` to refine.
 
-## PRIORITY 2: Close return case (L4399) — same pattern as throw
+### L4417: Non-var trivial case
 
-`normalizeExpr_return_step_sim` is analogous. Return with `some arg` evaluates arg (trivial → value → one step). Return with `none` is immediate.
+If `arg ≠ .var name` (the trivial is a literal), the throw case should be even simpler:
+- `exprValue? (.lit v) = some v` → one step: `.throw (.lit v)` → `.error ...`
 
-## PRIORITY 3: Close await (L4423) and yield (L4454) — similar
+### L4420: Non-throw outer expression case
 
-## LOWER PRIORITY: let/seq/if/tryCatch (L4475-4538) — harder, need CPS context inversion
+This is the fallthrough for when `normalizeExpr` produces `.throw arg` but the original
+expression wasn't directly `.throw`. Use `normalizeExpr_throw_or_k` to determine how the
+throw was introduced. If it came from `k`, then the outer expression was already handled
+by the continuation. If it came from HasThrowInHead, use the has-throw-in-head stepping lemmas.
+
+## PRIORITY ORDER:
+1. L4413 (throw .var name — 2 Flat steps)
+2. L4417 (throw literal — 1 Flat step)
+3. L4420 (indirect throw)
+4. L4451 (return case — same pattern as throw)
 
 ## DO NOT TOUCH:
 - Depth-induction cases (L3825-3923)

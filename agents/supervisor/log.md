@@ -1,3 +1,64 @@
+## Run: 2026-03-30T18:05:01+00:00
+
+### Metrics
+- **Sorry count (grep-c)**: ANF 19 + CC 44 + Lower 0 = 63 grep hits
+- **Delta from last run (17:05)**: ANF 17→19 (+2), CC 44→44 (0). NET +2.
+- **WHY UP**: Proof agent decomposed throw case from 1 monolithic sorry into 3 sub-sorries (L4413, L4417, L4420). This is expected scaffolding toward closing the throw case.
+- **BUILD**: 3 lake serve instances running. 2.3GB free RAM. Tight but functional.
+- **LowerCorrect**: 0 sorries ✓
+
+### CRITICAL DISCOVERY: hnoerr sorries are DESIGN-BLOCKED
+
+jsspec's 17:00 run correctly identified that ALL 22 hnoerr/hev_noerr sorries are **unprovable from local hypotheses**. Root cause:
+
+- **Flat** (with Fix D): When sub-step produces `.error msg`, Flat collapses to `.lit .undefined`
+- **Core** (no Fix D): Core wraps result: `.assign name sr.expr` (preserves wrapper)
+- **CC_SimRel** requires `sf'.expr = convertExpr sc'.expr`, but `.lit .undefined ≠ .assign name ...`
+
+The hnoerr guard is NECESSARY (error case breaks invariant) but NOT LOCALLY PROVABLE.
+
+### Fix: Add Fix D to Core.step?
+
+Mirror Flat's error propagation in Core.step?. Both sides collapse to `.lit .undefined` on error → CC_SimRel holds. Requires:
+1. Add `.error msg` match arms to ~28 positions in Core/Semantics.lean
+2. Add `Core_step?_*_error` companion theorems
+3. Restructure proof sites or hnoerr becomes trivially provable
+
+Multi-run effort. Agents staging changes now.
+
+### Sorry breakdown
+**ANF (19):** 7 depth-induction + 2 consolidated + 3 throw + 7 other expression-case
+**CC (44):** 22 hnoerr (BLOCKED) + 2 forIn/forOf (unprovable) + 20 closable non-hnoerr
+
+### Agent Analysis
+1. **proof**: Decomposed throw into 3 sub-sorries (+2 net). Currently running (17:30). Prompt REWRITTEN with explicit 2-Flat-step construction for L4413.
+2. **jsspec**: 17:00 run: excellent hnoerr root cause analysis. Currently running (18:00). Prompt REWRITTEN: closable non-hnoerr sorries (ExprAddrWF, convertExpr_not_lit, CCState).
+3. **wasmspec**: Idle since 16:10 (skipped 3 runs). Prompt REWRITTEN: captured-var (L3092), value sub-cases, stage Core Fix D.
+
+### Actions Taken
+1. proof prompt: Close throw L4413 with 2-Flat-step construction
+2. jsspec prompt: Redirect from blocked hnoerr → closable sorries (ExprAddrWF L5069/5168, convertExpr_not_lit L2898/3008, CCState threading)
+3. wasmspec prompt: Redirect from blocked hnoerr → closable sorries (L3092 captured-var, value sub-cases) + stage Core Fix D
+4. Time estimate: 63 sorries, 60h (up from 52h — Core Fix D is a prerequisite for 22 CC sorries)
+
+### Critical Path
+```
+                    ┌─ jsspec: close ExprAddrWF + convertExpr_not_lit → -4 CC
+Current (63 sorry) ─┤─ wasmspec: close captured-var + value sub-cases → -3 CC; stage Core Fix D
+                    └─ proof: close throw L4413-4420 → -3 ANF
+```
+Target: 63 → ~55
+
+### Memory/Process Management
+- Killed supervisor lean workers: freed ~1.5GB (7.6→4.7GB used, 3GB free)
+- wasmspec 14:30 run STUCK: bash loop `pgrep -f "lake build"` waiting for proof's build. Holding flock. Can't kill (different user). Will auto-resolve when proof build completes. Next fresh wasmspec run: 19:15.
+- Proof agent building ANFConvertCorrect (started 18:25).
+- jsspec processing CC file (started 18:19).
+
+2026-03-30T18:05:01+00:00 DONE
+
+---
+
 ## Run: 2026-03-30T17:05:02+00:00
 
 ### Metrics

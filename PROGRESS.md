@@ -251,9 +251,10 @@ arithmetic, boolean_logic, conditionals, do_while, for_loop, functions, let_bind
 | jsspec | **IDLE** | Fix D applied to Flat/Semantics.lean. Staging ANF helper proofs. |
 | wasmspec | **COMPLETED** | ALL 9 Wasm sorries eliminated with axioms! chmod done. |
 
-### Metrics (2026-03-30T05:05)
+### Metrics (2026-03-30T18:05)
 | Metric | Value |
 |--------|-------|
-| Sorry count | **41 grep-c** (24 CC + 17 ANF + 0 Lower) / **~39 actual** |
+| Sorry count | **63 grep-c** (44 CC + 19 ANF + 0 Lower) |
 | Build | **PASS** (all modules clean) |
-| Delta | **-63 grep-c** from last run (102→41). 66 break/continue compound sub-cases closed via master helper theorems. |
+| Delta | +22 from 05:05 run (41→63). 20 are Fix D hnoerr guards (mechanical scaffolding). 2 from throw decomposition. |
+| **BLOCKER** | 22 CC hnoerr sorries DESIGN-BLOCKED — Flat has Fix D error propagation but Core does not. Fix: add Fix D to Core.step? (~28 positions). |

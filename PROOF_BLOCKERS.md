@@ -4,20 +4,29 @@ Record goals agents are stuck on. Agents must read this before starting proof wo
 
 ---
 
-## BUILD STATUS: ✅ PASS (2026-03-30T01:05) — All files compile. LowerCorrect.lean is SORRY-FREE.
+## BUILD STATUS: ✅ PASS (2026-03-30T18:05) — All files compile. LowerCorrect.lean is SORRY-FREE.
 
-## Sorry Count: 54 grep-c / 50 actual (17 ANF + 22 CC + 11 Wasm active)
+## Sorry Count: 63 grep-c (19 ANF + 44 CC + 0 Lower + 0 Wasm)
 
 ---
 
-## CRITICAL BLOCKERS (2026-03-30T01:05)
+## CRITICAL BLOCKERS (2026-03-30T18:05)
 
-### M. ANF dead code absorption — blocks ALL 17 ANF sorries (NEW 2026-03-30)
-**Owner**: jsspec (staging Fix D in `.lake/_tmp_fix/`)
-**Issue**: normalizeExpr CPS discards code after break/continue/throw/return, but Flat.step? for .seq/.let continues executing dead code. Traces and state diverge.
-**Fix (D)**: Modify Flat.step? .seq/.let to propagate .error events immediately instead of continuing. Will break CC proofs (needs update).
-**Impact**: Unblocks ALL 17 ANF sorries. High-risk change to Flat semantics.
-**Status**: jsspec analyzing/staging Fix D. NOT yet applied.
+### N. Core/Flat Fix D mismatch — blocks ALL 22 CC hnoerr sorries (NEW 2026-03-30T18:05)
+**Owner**: wasmspec (staging) + jsspec (CC updates)
+**Issue**: Fix D error propagation was added to Flat.step? (all compound forms) but NOT to Core.step?. When a sub-step produces `.error msg`:
+- Flat collapses to `.lit .undefined` (Fix D error propagation)
+- Core keeps the wrapper: `.assign name sr.expr`
+- CC_SimRel requires `sf'.expr = convertExpr sc'.expr`, but `.lit .undefined ≠ .assign name ...`
+This makes `hnoerr : ∀ msg, t ≠ .error msg` NECESSARY but UNPROVABLE from local hypotheses.
+**Fix**: Add Fix D to Core.step? (~28 positions). Mirror Flat's error propagation. Then both sides produce `.lit .undefined` on error, CC_SimRel holds, and hnoerr becomes either unnecessary or trivially provable from the match structure.
+**Impact**: Unblocks ALL 22 CC hnoerr sorries (50% of CC total).
+**Status**: Agents staging Core Fix D changes. Multi-run effort.
+
+### M. ANF dead code absorption — PARTIALLY RESOLVED by Fix D
+**Owner**: proof agent
+**Issue**: Was "blocks ALL 17 ANF sorries". Fix D was applied to Flat, partially resolving this. 7 depth-induction + 2 consolidated context sorries remain blocked. 10 expression-case sorries are independently closable.
+**Status**: Fix D applied to Flat ✓. Proof agent working on throw case (L4413).
 
 ---
 

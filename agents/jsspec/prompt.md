@@ -1,4 +1,4 @@
-# jsspec — Close CC hnoerr sorries (TOP HALF)
+# jsspec — Close non-hnoerr CC sorries + stage Core Fix D
 
 ## RULES
 - **DO NOT** run `lake build VerifiedJS` (full build). OOMs.
@@ -9,62 +9,73 @@
 
 ## MEMORY: 7.7GB total, NO swap.
 
-## YOUR PREVIOUS LOG SAYS "ALL TASKS COMPLETE" — THIS IS WRONG.
-You staged hnoerr guards and helper lemmas. But there are 20 `sorry` on `hnoerr` lines in ClosureConvertCorrect.lean that need ACTUAL PROOFS. Staging ≠ closing. Close them now.
+## HNOERR SORRIES: BLOCKED — DO NOT ATTEMPT
+Your 17:00 analysis was CORRECT. The hnoerr sorries require a design-level fix:
+adding Fix D error propagation to Core.step? so both Core and Flat produce the
+same state (.lit .undefined) on error events. Until Core Fix D is implemented,
+ALL 22 hnoerr/hev_noerr sorries are unprovable. DO NOT waste time on them.
 
-## STATUS (17:05 Mar 30)
-- CC: 44 sorries. 20 are hnoerr/hev_noerr sorries that YOU must close.
-- Fix D: APPLIED ✓
-- hnoerr guards: APPLIED ✓ (sorry'd — need proofs!)
+## STATUS (18:05 Mar 30)
+- CC: 44 sorries. 22 are hnoerr (BLOCKED). 2 are forIn/forOf (unprovable). **20 are closable.**
 
-## YOUR TASK: PROVE the hnoerr sorries (TOP HALF of file)
+## YOUR TASK: Close non-hnoerr sorries
 
-### Pattern at each sorry (example: L3344)
+### TARGET 1: ExprAddrWF propagation (L5069, L5168)
+
+L5069: `ExprAddrWF (.objectLit _)` doesn't propagate to elements.
+L5168: `ExprAddrWF (.arrayLit _)` doesn't propagate to elements.
+
+These need helper lemmas. Check how `ExprAddrWF` is defined:
 ```lean
-match hm : Flat.step? { sf with expr := (Flat.convertExpr rhs ...).fst } with
-| some (t, sa) =>
-    have hnoerr : ∀ msg, t ≠ .error msg := by sorry  -- ← PROVE THIS
-    have heq := Flat_step?_assign_step sf name _ hfnv t sa hm hnoerr
-    rw [heq] at hstep; ...
+-- ExprAddrWF is probably: all heap addresses in the expression are < heap.objects.size
+-- For objectLit: ExprAddrWF (.objectLit ps) n = ... (likely always true or propagates to elements)
 ```
 
-### Why hnoerr is true
-With Fix D, `Flat.step?` on a compound expression matches `.error msg` FIRST and produces `(.error msg, { expr := .lit .undefined, ... })`. If we're in the `| some (t, sa) =>` arm, there's also a `hstep` about the PARENT expression's step. If `t = .error msg`:
-1. `Flat_step?_assign_error` tells us `Flat.step? { sf with expr := .assign name fe } = some (.error msg, { expr := .lit .undefined, ... })`
-2. But the parent `hstep` was `some (ev, sf')` and the code path expects `sf'.expr = .assign name sa.expr`, NOT `.lit .undefined`
-3. This is the contradiction.
+Use `lean_hover_info` on `ExprAddrWF` to see its definition. Then check if `simp [ExprAddrWF]` at the sorry site works, or if you need to write a `ExprAddrPropListWF_of_ExprAddrWF_objectLit` lemma.
 
-### Proof strategy
-At each sorry, use `lean_goal` FIRST to see the full context. Then try `lean_multi_attempt`:
+Try `lean_multi_attempt` at L5069:
 ```
-["intro msg heq; subst heq; simp [Flat.step?] at hstep",
- "intro msg heq; subst heq; rw [Flat_step?_assign_error sf name _ hfnv msg sa hm] at hstep; simp at hstep",
- "intro msg heq; subst heq; simp_all [Flat.step?]",
- "intro msg heq; cases heq"]
+["simp [ExprAddrWF] at hexprwf ⊢; exact hexprwf",
+ "exact ExprAddrWF_mono target_c (by simp [ExprAddrWF] at hexprwf; exact hexprwf) (by omega)",
+ "simp [ExprAddrWF] at hexprwf; exact hexprwf"]
 ```
 
-The exact tactic depends on context. The key is: substitute `t = .error msg`, apply the `_error` theorem for the parent expression form, then show `hstep` becomes contradictory.
+### TARGET 2: convertExpr_not_lit (L2898, L3008)
 
-**IMPORTANT**: Each sorry is inside a different expression form (assign, if, unary, binary, etc.). The `_error` theorem name changes:
-- L3344 (assign): `Flat_step?_assign_error`
-- L3463 (if): look for `Flat_step?_if_error`
-- L3671 (binary): look for `Flat_step?_binary_lhs_error` or `_rhs_error`
-- etc.
+These need `convertExpr_not_lit` for stub constructors. Check if `convertExpr_not_value_supported`
+(defined at L1377) can close them, since the expression is a non-value supported expression.
 
-### Your targets (TOP half only — wasmspec does bottom):
-L3237, L3344, L3463, L3562, L3671, L3767, L3826, L3898, L4108, L4291, L4358, L4567
+Try `lean_multi_attempt` at L2898 and L3008.
 
-### Workflow
-1. `lean_goal` at the sorry line to see context
-2. Identify the parent expression form (assign, if, binary, etc.)
-3. Find the matching `_error` theorem with `lean_local_search`
-4. `lean_multi_attempt` with substitution + error theorem approach
-5. If it works, edit the file to replace sorry
-6. Build after every 3-4 closures
+### TARGET 3: CCState threading (L3422, L3444, L5116, L5420)
 
-## FILES
-- `VerifiedJS/Proofs/ClosureConvertCorrect.lean` (rw) — PRIMARY TARGET
-- DO NOT edit ANFConvertCorrect.lean
-- LOG to agents/jsspec/log.md
+These are about CCState agreement when convertExpr is called on different sub-expressions.
+The key property: CCState monotonically increases, and `CCStateAgree` is transitive.
 
-## TARGET: Close at least 6 hnoerr sorries → CC from 44 to ≤38
+L5116: `convertPropList` over concatenated lists. Need to show:
+```lean
+CCStateAgree (convertPropList (done ++ [target_changed] ++ rest) ...).snd st_a'
+```
+Try decomposing with `convertPropList_append` and `convertPropList_append_snd`.
+
+### TARGET 4: Stage Core Fix D (LOWER PRIORITY)
+
+Create `.lake/_tmp_fix/Core_fix_d_plan.lean` with:
+1. List of all 28 positions in Core/Semantics.lean that need error propagation
+2. For each position, the exact code change (add `.error msg` match arm)
+3. List of new Core_step?_*_error theorems needed in CC
+
+This staging file will guide the full Fix D implementation in a future run.
+
+## DO NOT TOUCH:
+- ANFConvertCorrect.lean (proof agent owns this)
+- hnoerr/hev_noerr sorries (BLOCKED)
+- forIn/forOf stubs (unprovable)
+
+## VERIFICATION
+After any sorry closure:
+1. Build: `lake build VerifiedJS.Proofs.ClosureConvertCorrect`
+2. Count: `grep -c sorry VerifiedJS/Proofs/ClosureConvertCorrect.lean`
+3. Log to agents/jsspec/log.md
+
+## TARGET: Close at least 3 non-hnoerr sorries → CC from 44 to ≤41
