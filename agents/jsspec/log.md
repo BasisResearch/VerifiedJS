@@ -1,5 +1,191 @@
 # jsspec agent log
 
+## 2026-03-30T00:30 — P5 Integration Instructions for ALL Staged Files
+
+### Overview
+The following staged files in `.lake/_tmp_fix/` are ready for integration.
+Each section gives the EXACT edits needed.
+
+---
+
+### 1. cc_state_mono.lean → L2646/L2668/L4112/L4414
+
+**What it provides**: `convertExpr_state_mono`, `convertExprList_state_mono`, `convertPropList_state_mono`, `convertOptExpr_state_mono` (mutual block, 0 sorry in monotonicity section; 1 sorry in funcs_prefix catch-all).
+
+**Where to add**: After `convertExpr_state_determined` mutual block in ClosureConvertCorrect.lean. These are NOT private — useful across multiple cases.
+
+**Integration steps**:
+1. Copy the `mutual ... end` block for `convertExpr_state_mono` / `convertExprList_state_mono` / `convertPropList_state_mono` / `convertOptExpr_state_mono` (lines 97-287 of cc_state_mono.lean) into ClosureConvertCorrect.lean after the `convertExpr_state_determined` mutual block.
+2. Optionally copy the `convertExpr_funcs_prefix` / `convertExprList_funcs_prefix` / `convertPropList_funcs_prefix` / `convertOptExpr_funcs_prefix` block (has 1 sorry in catch-all — complete the remaining cases by copying the let/seq/if pattern for each constructor).
+3. The monotonicity lemmas are immediately usable for the CCState threading sorries.
+
+**Unblocked sorries**: Helps with L2655, L2677, L4112, L4414 (CCState threading).
+
+---
+
+### 2. cc_convertExpr_not_lit_v2.lean → L1177-1178, L2142, L2252
+
+**What it provides**: `convertExpr_not_value_supported` (replaces `convertExpr_not_value` with `supported` guard), plus `firstNonValueExpr_target_supported`, `firstNonValueProp_target_supported`, `convertExpr_not_lit_supported`, and auxiliary lemmas.
+
+**Integration steps**:
+1. **Replace L1172-1181** (`convertExpr_not_value`):
+```lean
+-- OLD (L1172-1181):
+private theorem convertExpr_not_value (e : Core.Expr)
+    (h : Core.exprValue? e = none)
+    (scope : List String) (envVar : String) (envMap : Flat.EnvMapping) (st : Flat.CCState) :
+    Flat.exprValue? (Flat.convertExpr e scope envVar envMap st).fst = none := by
+  cases e with
+  | forIn => sorry
+  | forOf => sorry
+  | _ => simp [Core.exprValue?] at h <;> unfold Flat.convertExpr <;>
+    (try { simp [Flat.exprValue?]; done }) <;>
+    (try { split <;> simp [Flat.exprValue?]; done })
+
+-- NEW:
+private theorem convertExpr_not_value (e : Core.Expr)
+    (h : Core.exprValue? e = none)
+    (hsupp : e.supported = true)
+    (scope : List String) (envVar : String) (envMap : Flat.EnvMapping) (st : Flat.CCState) :
+    Flat.exprValue? (Flat.convertExpr e scope envVar envMap st).fst = none := by
+  cases e with
+  | lit v => simp [Core.exprValue?] at h
+  | forIn _ _ _ => simp [Core.Expr.supported] at hsupp
+  | forOf _ _ _ => simp [Core.Expr.supported] at hsupp
+  | yield _ _ => simp [Core.Expr.supported] at hsupp
+  | await _ => simp [Core.Expr.supported] at hsupp
+  | var _ => simp only [Flat.convertExpr]; split <;> simp [Flat.exprValue?]
+  | functionDef _ _ _ _ _ => unfold Flat.convertExpr; simp [Flat.exprValue?]
+  | _ => unfold Flat.convertExpr <;>
+    (try { simp [Flat.exprValue?]; done }) <;>
+    (try { split <;> simp [Flat.exprValue?]; done })
+```
+
+2. **Add `convertExpr_not_lit_supported`** after `convertExpr_not_value`:
+   Copy lines 169-182 from cc_convertExpr_not_lit_v2.lean.
+
+3. **Add `firstNonValueExpr_target_supported` and `firstNonValueProp_target_supported`**:
+   Copy lines 55-117 from cc_convertExpr_not_lit_v2.lean.
+
+4. **Update callers of `convertExpr_not_value`** to pass `hsupp`:
+   All callers have `supported` available through the theorem chain.
+
+5. **Close L2142** (`convertExprList_firstNonValueExpr_some`):
+   Add `hsupp : Core.Expr.listSupported es = true` param.
+   Proof by induction: lit head → skip (flat also lit), non-lit head → `convertExpr_not_lit_supported` shows flat not lit.
+
+6. **Close L2252** (`convertPropList_firstNonValueProp_some`):
+   Same strategy with propListSupported.
+
+**Unblocked sorries**: L1177, L1178 (eliminated), L2142, L2252.
+
+---
+
+### 3. cc_exprAddrWF_propagate.lean → L4065, L4163
+
+**What it provides**: `ExprAddrPropListWF`, `ExprAddrPropListWF_mem`, `ExprAddrListWF_mem`, `ExprAddrPropListWF_firstNonValueProp_target`, `ExprAddrListWF_firstNonValueExpr_target`.
+
+**Integration steps**:
+1. **Change ExprAddrWF definition** (in the mutual block around L930-973):
+   ```lean
+   -- OLD:
+   | .objectLit _, _ => True
+   | .arrayLit _, _ => True
+   -- NEW (inlined recursion):
+   | .objectLit [], _ => True
+   | .objectLit ((_, e) :: ps), n => ExprAddrWF e n ∧ ExprAddrWF (.objectLit ps) n
+   | .arrayLit es, n => ExprAddrListWF es n  -- already handled
+   ```
+
+2. **Update ExprAddrWF_mono** (L980-1009) to add objectLit cases:
+   ```lean
+   | .objectLit [], _, _, _, _ => trivial
+   | .objectLit ((_, e) :: ps), _, _, h, hle =>
+     ⟨ExprAddrWF_mono e h.1 hle, ExprAddrWF_mono (.objectLit ps) h.2 hle⟩
+   ```
+
+3. **Fix L4065** (objectLit ExprAddrWF propagation):
+   ```lean
+   have hexprwf_target : ExprAddrWF target_c sc.heap.objects.size := by
+     -- With the new def, hexprwf : ExprAddrWF (.objectLit props) n
+     -- Use induction on props to extract target_c's WF via firstNonValueProp
+     exact ExprAddrWF_objectLit_firstNonValueProp_target hcfnv hexprwf
+   ```
+
+4. **Fix L4163** (arrayLit ExprAddrWF propagation):
+   ```lean
+   have hexprwf_target : ExprAddrWF target_c sc.heap.objects.size := by
+     exact ExprAddrListWF_firstNonValueExpr_target hcfnv hexprwf
+   ```
+
+5. **Fix downstream `simp [ExprAddrWF]`** sites that relied on objectLit = True (L4110):
+   Now `simp [ExprAddrWF]` won't close objectLit cases automatically. Need to reconstruct ExprAddrWF from sub-proofs.
+
+**Unblocked sorries**: L4065, L4163.
+
+---
+
+### 4. cc_objectLit_ccstate.lean → L4112
+
+**What it provides**: `firstNonValueProp_decompose` + proof sketch for L4112 CCState threading.
+
+**Integration steps**:
+1. **Add `firstNonValueProp_decompose`** near L2086 (after `firstNonValueExpr_decompose`):
+   Copy lines 40-61 from cc_objectLit_ccstate.lean (the standalone theorem, adapting namespace).
+
+2. **Replace L4112 sorry** with the proof block from Section 2 of cc_objectLit_ccstate.lean (lines 68-153).
+   Key witnesses: `st_a = st`, `st_a' = (convertPropList (done_c ++ [(propName_c, sc_sub'.expr)] ++ rest_c) ... st).snd`.
+   Uses `convertExpr_state_determined`, `convertPropList_state_determined`, `convertPropList_append`, `convertPropList_append_snd`.
+
+**Unblocked sorries**: L4112.
+
+---
+
+### 5. L2655 / L2677 (if-branch CCState threading)
+
+These need `convertExpr_state_mono` from cc_state_mono.lean PLUS a restructuring of the proof approach.
+
+**L2655** (true branch taken, cond = .lit cv):
+- Currently provides `⟨st, (convertExpr then_ ... st).snd, ..., sorry⟩`
+- The sorry needs `CCStateAgree st' st_a'` where `st' = (convertExpr else_ ... (convertExpr then_ ... st).snd).snd` and `st_a' = (convertExpr then_ ... st).snd`
+- **Fix**: Change witnesses to `st_a = st`, `st_a' = st'` (the full state). Then CCStateAgree st' st' is trivial (⟨rfl, rfl⟩). But this requires `hconv'` to only assert `.fst` equality, not `.snd` equality. Check whether the suffices block's use of `hconv'` requires `.snd`.
+
+**L2677** (false branch taken):
+- Similarly, `st_a = (convertExpr then_ ... st).snd`, `st_a' = st'`
+- CCStateAgree st' st' = ⟨rfl, rfl⟩
+
+**Status**: These need manual inspection of the suffices block to confirm the fix works. Not directly closeable from staged files alone.
+
+---
+
+### CC Sorry Status Summary (22 total)
+
+| Lines | Category | Staged Fix | Status |
+|-------|----------|-----------|--------|
+| L1177-1178 | forIn/forOf stubs | cc_convertExpr_not_lit_v2 | READY - add `supported` guard |
+| L2142 | convertExprList_firstNonValueExpr_some | cc_convertExpr_not_lit_v2 | READY |
+| L2252 | convertPropList_firstNonValueProp_some | cc_convertExpr_not_lit_v2 | READY |
+| L2283-2336 | HeapInj refactor | — | BLOCKED (separate track) |
+| L2655 | if true-branch CCState | cc_state_mono + restructure | NEEDS WORK |
+| L2677 (×2) | if false-branch CCState | cc_state_mono + restructure | NEEDS WORK |
+| L3171-3172 | callee value / newObj | — | BLOCKED (heap reasoning) |
+| L3630 | value sub-case | — | BLOCKED (heap reasoning) |
+| L3699 | value sub-case | — | BLOCKED (heap reasoning) |
+| L4021 | objectLit all values | — | BLOCKED (heap alloc) |
+| L4065 | objectLit ExprAddrWF | cc_exprAddrWF_propagate | READY |
+| L4112 | objectLit CCState | cc_objectLit_ccstate | READY |
+| L4119 | arrayLit all values | — | BLOCKED (heap alloc) |
+| L4163 | arrayLit ExprAddrWF | cc_exprAddrWF_propagate | READY |
+| L4293 | functionDef | — | BLOCKED (complex) |
+| L4383 | tryCatch | — | BLOCKED (complex) |
+| L4414 | while_ CCState | cc_state_mono (partial) | NEEDS WORK |
+
+**READY to close**: 7 sorries (L1177, L1178, L2142, L2252, L4065, L4112, L4163)
+**NEEDS WORK**: 3 sorries (L2655, L2677×2)
+**BLOCKED**: 12 sorries
+
+---
+
 ## 2026-03-29T23:00 — CC objectLit CCState proof + ANF deep analysis
 
 ### Summary

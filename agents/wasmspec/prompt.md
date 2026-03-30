@@ -1,68 +1,45 @@
-# wasmspec — APPLY BREAK/CONTINUE FIX FIRST, THEN MULTI-STEP
+# wasmspec — RETURN(SOME) + MULTI-STEP CASES. Target: -2 this run.
 
-## STEP 0: Kill stuck processes
+## GREAT WORK: break/continue + return(none) DONE. 16 grep -c (14 actual sorries).
 
+## Kill stuck processes first
 ```bash
 ps aux | grep -E "lean" | grep wasmspec | grep -v grep
 ```
-Kill ANY lean worker running for >5 minutes:
-```bash
-kill -9 <PID>
-```
+Kill ANY lean worker running for >5 minutes.
 
 ## YOUR FILE: `VerifiedJS/Wasm/Semantics.lean` (you are the ONLY agent who can write it)
 
-## Current sorry count: 18 (grep -c), 16 actual step_sim + 2 call/callIndirect
+## PHASE 1: return(some t) at L6914 — HIGHEST PRIORITY (-1 sorry)
 
-## PHASE 1: Apply break/continue fix (-2 sorries, ~30 min)
+You already proved return(none) at L6870-L6913. return(some t) is similar:
+- IR code = `argCode ++ [return_]` (from LowerCodeCorr.return_some_inv)
+- ANF step: evaluates trivial arg t, gets value, then return
+- Multi-step: first IR executes argCode (trivial eval = 1 step), then return_
+- Use `hrel.hcode` + `hexpr` rewrite, invert LowerCodeCorr
+- For trivial t: argCode should be short (e.g. localGet). Show IR reaches return_ state.
+- Try: `lean_goal` at L6914 first, then adapt your return(none) proof
 
-jsspec analyzed all 12 step_sim sorries. break (L6876) and continue (L6879) reduce to `⊢ False`
-because `br` with empty label stack is impossible. The fix:
+## PHASE 2: Simplest step_sim cases (L6847-L6868)
 
-### Step 1: Add field to LowerSimRel (after `hframes_one` field, ~L6646)
-```lean
-  /- break/continue lower to [br target] which needs a matching label.
-     With empty labels, br traps and traces diverge. -/
-  hcode_no_br : ∀ target, ir.code = [IRInstr.br target] →
-    ∃ idx lbl, irFindLabel? ir.labels target = some (idx, lbl)
-```
+### L6865: throw arg — potentially simple
+- ANF produces error trace event
+- IR code = `argCode ++ [unreachable]` or trap pattern
+- `lean_goal` first to see exact goal shape
 
-### Step 2: Prove hcode_no_br at EVERY LowerSimRel construction site
-At each `exact { ... }` or `⟨ ... ⟩` that builds a LowerSimRel, add:
-```lean
-  hcode_no_br := by intro _ h; simp at h
-```
-This works because successor code is never `[.br target]` — it's `[]` or `[.call _]` etc.
+### L6859: if cond then_ else_ — conditional
+- ANF evaluates cond (trivial), picks branch
+- IR code = condCode ++ [if_ thenCode elseCode]
+- When cond is value: 1 IR step (if_ picks branch)
 
-### Step 3: Replace break sorry (L6876)
-```lean
-  have hc := hrel.hcode; rw [hexpr] at hc
-  obtain ⟨target, hcode_eq⟩ := hc.break_inv
-  exfalso
-  have ⟨idx, lbl, hfind⟩ := hrel.hcode_no_br target hcode_eq
-  rw [hrel.hlabels_empty] at hfind
-  simp [irFindLabel?, irFindLabel?.go] at hfind
-```
+### L6862: while_ cond body — loop
+- Hardest of the simple cases. Skip if others aren't done.
 
-### Step 4: Replace continue sorry (L6879) — identical proof
+### L6847: let — multi-step (IR = rhsCode ++ localSet ++ bodyCode)
+### L6855: seq — stuttering simulation needed
+### L6868: tryCatch — complex
 
-### Step 5: `lake build VerifiedJS.Wasm.Semantics`
-
-## PHASE 2: Remaining 10 step_sim sorries (L6798-L6873)
-
-jsspec's analysis: all 10 remaining cases need multi-step IR execution or label tracking.
-
-**Start with simplest multi-step cases:**
-
-### L6864: return (some t) — 2 IR steps
-- IR code = `argCode ++ [return_]`
-- Step 1: execute argCode (evaluate trivial arg)
-- Step 2: return_
-
-### L6867: yield — 3+ steps
-### L6870: await — 2+ steps
-
-## PHASE 3: L10857-L10919 (call/callIndirect) — SKIP unless Phase 1-2 done
+## PHASE 3: call/callIndirect (L10928, L10983, L10987, L10990) — SKIP unless Phase 1-2 done
 
 ## WORKFLOW
 1. `lean_goal` BEFORE every sorry attempt
