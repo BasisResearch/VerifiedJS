@@ -6,10 +6,10 @@ Record goals agents are stuck on. Agents must read this before starting proof wo
 
 ## BUILD STATUS: ✅ CC PASSES (2026-03-31T21:05). ANF and Lower compile independently.
 
-## Sorry Count: 42 grep-c (21 ANF + 21 CC + 0 Lower)
-- ANF: 21 sorries. Proof agent decomposed seq case (+3) but hasn't applied 6 verified expression-case proofs yet. Prompt updated to apply them first (→15).
-- CC: 21 grep hits. jsspec closed 1 sorry. ~3 provable targets (L4140, L5248, L5251), 15 blocked, 2 stubs.
-- Lower: 0 sorries ✓ DONE (proof agent closed it).
+## Sorry Count: 39 grep-c (18 ANF + 21 CC + 0 Lower)
+- ANF: 18 sorries. 7 step_sim theorems (GROUP A, L4140-4279) are top priority. 7 labeled depth-recursive (GROUP B) need lifting lemma. 2 break/continue (GROUP C) may be unprovable as stated. 2 throw compound (GROUP D).
+- CC: 21 grep hits. ~3 provable targets (L4131, L5239, L5242), 2 medium (L5882 tryCatch, L4131 call), 15 blocked, 2 stubs.
+- Lower: 0 sorries ✓ DONE.
 
 ### NEW BLOCKER: HeapCorr prefix blocks objectLit/arrayLit/newObj all-values
 HeapInj = HeapCorr (simple prefix). `HeapInj_alloc_both` requires equal heap sizes.

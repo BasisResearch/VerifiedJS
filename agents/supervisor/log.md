@@ -1,3 +1,101 @@
+## Run: 2026-03-31T23:30:05+00:00
+
+### Metrics
+- **Sorry count (grep-c)**: ANF 18 + CC 21 + Lower 0 = 39 grep hits
+- **Delta from last run (22:05)**: 42 → 39. NET -3 grep hits.
+- **Breakdown**: CC 22→21 (jsspec closed 1), Lower 1→0 (proof agent closed it earlier, now confirmed). ANF steady at 18.
+- **BUILD**: ANF compiles ✓ (11 jobs, warnings only)
+
+### Agent Status
+1. **proof** (PID 1632509, started 23:30): ACTIVE.
+   - Previous run: confirmed the 6 prompt tactics FAIL in actual build (lean_multi_attempt unreliable)
+   - Identified correct approach: evaluation context lifting lemma for GROUP B
+   - Closed LowerCorrect (0 sorries) ✓
+   - Prompt REWRITTEN: redirected from failed tactics to GROUP A (7 step_sim theorems L4140-4279)
+
+2. **jsspec** (PID 1632807, started 23:30): ACTIVE.
+   - Closed 1 CC sorry in previous session
+   - Prompt UPDATED: corrected line numbers (L4131, L5882), removed stale references
+
+3. **wasmspec** (PID 1632927, started 23:30): ACTIVE.
+   - Prompt UPDATED: corrected line numbers (L5239, L5242)
+
+### Key Finding: Previous prompt was WRONG
+The 6 expression-case tactics given to the proof agent were verified by the agent itself to FAIL:
+- `StateT.pure (.return (some arg)) n' ≠ Except.ok (.trivial arg, m)` — continuation produces `.return (some (.trivial arg))`, not `.trivial arg`
+- `cases hwf` fails because `ExprWellFormed` is not case-splittable
+- `hnorm` talks about `.labeled label body` but goal needs bare `body`
+
+The `lean_multi_attempt` tool reported success but actual builds fail. This tool is unreliable for this file.
+
+### ANF Sorry Classification (18 grep hits)
+```
+GROUP A — step_sim theorems (7, TOP PRIORITY):
+  L4140: return_step_sim
+  L4164: await_step_sim
+  L4195: yield_step_sim
+  L4216: let_step_sim
+  L4237: seq_step_sim
+  L4258: if_step_sim
+  L4279: tryCatch_step_sim
+
+GROUP B — labeled depth-recursive (7, DEFERRED):
+  L3825, L3829, L3840, L3891, L3895, L3906, L3923
+  Needs evaluation context lifting lemma (~100-200 lines)
+
+GROUP C — break/continue (2, POSSIBLY UNPROVABLE):
+  L3940: hasBreakInHead_flat_error_steps
+  L3953: hasContinueInHead_flat_error_steps
+
+GROUP D — throw compound (2, DEFERRED):
+  L4106, L4109
+```
+
+### CC Sorry Classification (21 grep hits)
+```
+STUBS (unprovable): 2
+  L1507, L1508: forIn/forOf
+
+BLOCKED (architectural): 12
+  L3262: captured var (HeapInj)
+  L3590, L3613 x2: CCStateAgree if
+  L4329: newObj (heap)
+  L4919: getIndex string (semantic mismatch)
+  L5574: objectLit values (heap)
+  L5670, L5677: arrayLit (heap)
+  L5773, L5774: arrayLit CCState + functionDef
+  L5917: while_ CCState
+
+POSSIBLY PROVABLE (agent targets): 4
+  L4131: call (jsspec)
+  L5239: setIndex value-stepping (wasmspec)
+  L5242: setIndex idx-stepping (wasmspec)
+  L5882: tryCatch body-value (jsspec)
+
+MAYBE PROVABLE: 1
+  L5885: tryCatch body-step
+```
+
+### Critical Path
+```
+                    ┌─ proof: 7 step_sim theorems (ANF 18→11 possible)
+Current (39 grep)  ─┤─ jsspec: L4131 + L5882 (CC 21→19 possible)
+                    └─ wasmspec: L5239 + L5242 (CC 19→17 possible)
+```
+
+Best case: 39 → 28 (7 ANF step_sim + 4 CC targets)
+Realistic case: 39 → 33-35 (2-3 step_sim + 1-2 CC targets)
+
+### Actions Taken
+1. Counted sorries: ANF 18, CC 21, Lower 0 = 39 total (down 3 from 42)
+2. REWROTE proof prompt: removed failed tactics, redirected to GROUP A step_sim theorems
+3. Updated jsspec prompt: corrected line numbers to match actual grep output
+4. Updated wasmspec prompt: corrected line numbers
+5. Updated PROOF_BLOCKERS.md sorry count
+6. Logged to time_estimate.csv
+
+---
+
 ## Run: 2026-03-31T21:05:00+00:00
 
 ### Metrics
@@ -7843,3 +7941,7 @@ Realistic case:
 
 2026-03-31T23:05:02+00:00 EXIT: code 1
 2026-03-31T23:05:02+00:00 DONE
+
+## Run: 2026-03-31T23:30:05+00:00
+
+2026-03-31T23:33:41+00:00 DONE
