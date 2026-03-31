@@ -1,68 +1,109 @@
-# jsspec — Close real CC sorries (CCState threading + convertExpr_not_lit)
+# jsspec — Close remaining CC sorries (CCState threading + captured var)
 
 ## RULES
 - **DO NOT** run `lake build VerifiedJS` (full build). OOMs.
 - Build: `lake build VerifiedJS.Proofs.ClosureConvertCorrect`
 - Before building: `pkill -f "lean.*\.lean" 2>/dev/null; sleep 5`
 
-## !! CRITICAL BUG FROM PREVIOUS SESSIONS !!
-Previous agents got PERMANENTLY STUCK in `while` / `until` loops waiting for processes.
-**NEVER use `while` or `until` loops. NEVER use `sleep` in a loop.**
-`lake serve` processes are PERMANENT. `pgrep -x lake` always returns 0.
-
-### ABSOLUTE RULES:
-1. **NEVER use `while` or `until` loops** — not for pgrep, not for anything
-2. If a build is running (`pgrep -f "lake build"`): SKIP, do other work, try later
-3. Just run your build command directly. If it fails, diagnose and retry once.
+## !! DO NOT USE WHILE/UNTIL LOOPS !!
+Previous agents got PERMANENTLY STUCK. **NEVER use `while`, `until`, or `sleep` in a loop.**
+`lake serve` processes are PERMANENT. Just run your build command directly.
 
 ## MEMORY: 7.7GB total, NO swap.
 
-## STATE (01:05): CC has 19 grep-sorry, ~16 real sorries
+## STATE (03:05): CC has 17 sorries (you proved 2 in last run! 19→17 ✓)
 
-### Remaining sorry breakdown (your targets):
-- **2 convertExpr_not_lit** (L2663, L2773): needs helper for 3 stub constructors
-- **1 captured variable** (L2857): needs getEnv stepping + EnvCorrInj
-- **1 CCState if-true** (L3176): needs restructured st_a choice (current witness is WRONG — st_a' doesn't account for else_ conversion)
-- **2 CCState if-false** (L3198): same class as L3176
-- **1 CCState while_** (L5237): while_ duplicates sub-expressions
+### Remaining sorry breakdown:
+- **2 unprovable stubs** (L1520-1521 forIn/forOf): DO NOT TOUCH
+- **1 captured variable** (L2933): YOUR TARGET — BLOCKED (multi-step mismatch)
+- **3 CCStateAgree** (L3252, L3274, L5313): YOUR TARGET — BLOCKED (invariant too strong)
+- **7 value/heap sub-cases**: wasmspec owns (L3768, L3769, L4337, L4509, L4831, L5014, L5192, L5282)
 
-### KEY INSIGHT FOR L3176/L3198 CCStateAgree:
-The current witness `st_a = st` doesn't work because `st' = (convertExpr else_ (convertExpr then_ st).snd).snd`
-but `st_a' = (convertExpr then_ st).snd` — these DON'T agree (else_ changes the state).
+### YOUR FINDINGS FROM LAST RUN:
+You correctly identified that the CCStateAgree sorries are fundamentally blocked:
+- L3252 (if-true): `st'` includes else_ conversion but `st_a'` is then_-only
+- L3274 (if-false): input `st` doesn't agree with `(convertExpr then_ ... st).snd`
+- L5313 (while_): duplicated sub-expression conversion advances state differently
+- L2933 (captured var): Flat needs 2 steps, Core needs 1 — 1-to-1 sim can't match
 
-**SOLUTION**: You need to pick `st_a` such that converting then_ from `st_a` produces
-an output `st_a'` that agrees with `st'`. Use `convertExpr_state_determined` (L548-552):
-if `CCStateAgree st1 st2`, then `convertExpr` from both produces same expr AND output
-states that agree. The trick: find an `st_a` where `CCStateAgree st st_a` AND
-`(convertExpr then_ st_a).snd` gives you a state whose nextId/funcs.size matches st'.
+## NEW STRATEGY: WEAKEN CCStateAgree TO MONOTONICITY
 
-One approach: restructure the existential witness entirely. Instead of `st_a = st`,
-use `st_a` with `nextId = st'.nextId - delta_then` and `funcs.size = st'.funcs.size - delta_then`.
-But this requires computing how much then_ adds, which is what convertExpr_state_determined gives you.
+The root cause is that `CCStateAgree` requires EQUALITY of `nextId` and `funcs.size`,
+but branching/resolution steps naturally produce states where one is "ahead" of the other.
 
-ALTERNATIVELY: maybe the theorem statement itself needs strengthening — the CCStateAgree
-invariant might need to be `≤` (monotonicity) rather than `=` (equality).
+### APPROACH: Change CCStateAgree from equality to monotone bounds
 
-## YOUR TARGETS (5 sorries):
+```lean
+-- CURRENT (broken for branches):
+private abbrev CCStateAgree (st1 st2 : Flat.CCState) : Prop :=
+  st1.nextId = st2.nextId ∧ st1.funcs.size = st2.funcs.size
 
-### TARGET 1: L2663 + L2773 (convertExpr_not_lit)
-These need a lemma: `convertExpr_not_lit` for the 3 stub constructors (forIn, forOf, and one more).
-`lean_goal` at L2663 → understand what's needed → prove or add the helper.
+-- PROPOSED (works for branches):
+private abbrev CCStateAgree (st1 st2 : Flat.CCState) : Prop :=
+  st1.nextId ≤ st2.nextId ∧ st1.funcs.size ≤ st2.funcs.size
+```
 
-### TARGET 2: L2857 (captured variable)
-Goal: When a variable is captured (lookupEnv returns some idx), the Flat expression is
-`.getEnv (.var envVar) idx`. Need to show Flat stepping this corresponds to Core stepping `.var name`.
-Look at how `.var name` (non-captured, L2858-2908) is proved — adapt for captured case.
+### BUT FIRST: Check what breaks!
 
-### TARGET 3: L3176 + L3198 (CCStateAgree) — HARDEST
-See KEY INSIGHT above. May require restructuring the theorem witness.
+1. `grep -n "CCStateAgree" VerifiedJS/Proofs/ClosureConvertCorrect.lean | head -40`
+2. Key user: `convertExpr_state_determined` (L566) uses `hid : st1.nextId = st2.nextId`
+   - If we weaken to `≤`, this theorem BREAKS — it needs equality to show expressions match
+   - **BUT**: do we actually USE the expression-equality from state_determined in the main proof?
+   - Check each call site of `convertExpr_state_determined` to see if we need `=` or just `≤`
 
-### TARGET 4: L5237 (while_ CCState threading)
-Similar to if: CCState diverges because while_ duplicates sub-expressions.
+3. Alternative: Keep CCStateAgree as equality for the INPUT `st st_a` (needed for
+   `convertExpr_state_determined`), but weaken the OUTPUT to `st_a'.nextId ≤ st'.nextId`:
+```lean
+∃ st_a st_a',
+  (sf'.expr, st_a') = Flat.convertExpr sc'.expr scope envVar envMap st_a ∧
+  CCStateAgree st st_a ∧    -- INPUT: equality (needed for state_determined)
+  st_a'.nextId ≤ st'.nextId ∧ st_a'.funcs.size ≤ st'.funcs.size  -- OUTPUT: monotone
+```
+
+4. Then for if-true: `st_a = st` (input agrees), `st_a' = (convertExpr then_ st).snd`
+   (output is ≤ st' because converting else_ only increases counters). ✓
+
+5. For if-false: `st_a = st` (input agrees by rfl), `st_a' = (convertExpr else_ ... (convertExpr then_ ... st).snd).snd = st'` (output equals st'). ✓
+   Wait — for if-false, sf'.expr should be `(convertExpr else_ ... st_then).fst`, but with
+   `st_a = st`, `convertExpr else_ ... st_a_then` where `st_a_then = (convertExpr then_ st).snd`.
+   Actually the conversion IS from st → convert cond → convert then_ → convert else_. Since cond=.lit cv,
+   converting cond doesn't change state. So `st_a_then = (convertExpr then_ st).snd` and
+   `st_a' = (convertExpr else_ ... st_a_then).snd = st'`. So output agrees exactly. ✓
+
+### IMPLEMENTATION PLAN:
+1. **First**: Try the asymmetric approach (input=equality, output=monotone)
+2. Change the existential in the main theorem (L2901-2903) from `CCStateAgree st' st_a'` to
+   `st_a'.nextId ≤ st'.nextId ∧ st_a'.funcs.size ≤ st'.funcs.size`
+3. Fix all callers — most just need `≤` weakened from `=`
+4. Check that `convertExpr_state_determined` still works (it uses input agreement, not output)
+5. Re-prove the if-true/false/while_ cases with the weakened output invariant
+
+**IMPORTANT**: This changes the theorem signature. It WILL break other cases temporarily.
+Make the change, then fix ALL build errors before logging. If too many things break,
+REVERT and try a different approach.
+
+## ALTERNATIVE: If monotone approach is too disruptive
+
+For the if-true case (L3252), try this specific fix without changing CCStateAgree:
+- Pick `st_a = st` (input agrees)
+- Pick `st_a' = (Flat.convertExpr else_ scope envVar envMap (Flat.convertExpr then_ scope envVar envMap st).snd).snd` = `st'`
+- Then `CCStateAgree st' st_a'` is `CCStateAgree st' st'` = `⟨rfl, rfl⟩` ✓
+- BUT need `(sf'.expr, st_a') = Flat.convertExpr sc'.expr scope envVar envMap st_a`
+- `sf'.expr = (convertExpr then_ ... st).fst` and `sc'.expr = then_` and `st_a = st`
+- So need `(convertExpr then_ ... st).fst, st')` = `convertExpr then_ ... st` — FALSE because
+  `st' ≠ (convertExpr then_ ... st).snd` (it includes else_ conversion)
+
+So this doesn't work. The monotone output approach IS the right fix.
 
 ## DO NOT TOUCH:
 - ANFConvertCorrect.lean — proof agent owns this
-- forIn/forOf sorries (L1502-1503) — unprovable stubs
-- L3692, L3693, L4261, L4433, L4755, L4938, L5116, L5206 — wasmspec owns these
+- forIn/forOf stubs (L1520-1521) — unprovable
+- Value sub-cases (L3768, L3769, L4337, L4509, L4831, L5014, L5192, L5282) — wasmspec owns
 
-## TARGET: Close at least 2 of your 5 assigned sorries → CC from 19 to ~17
+## WORKFLOW:
+1. Study the monotone approach impact by reading all CCStateAgree usage sites
+2. If feasible: implement it. If too risky: try alternative approach
+3. Build after each change
+4. Log progress
+
+## TARGET: Close the 3 CCStateAgree sorries (L3252, L3274, L5313) → CC from 17 to ~14

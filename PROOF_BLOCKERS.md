@@ -4,32 +4,36 @@ Record goals agents are stuck on. Agents must read this before starting proof wo
 
 ---
 
-## BUILD STATUS: ✅ PASS (2026-03-30T20:05) — All files compile. LowerCorrect.lean is SORRY-FREE.
+## BUILD STATUS: ✅ PASS (2026-03-31T03:05) — All files compile. LowerCorrect.lean is SORRY-FREE.
 
-## Sorry Count: 127 grep-c (58 ANF + 69 CC + 0 Lower + 0 Wasm) — 105 actual sorry statements
+## Sorry Count: 75 grep-c (58 ANF + 17 CC + 0 Lower + 0 Wasm) — ~29 real provable sorries
 
 ---
 
-## CRITICAL BLOCKERS (2026-03-30T20:05)
+## CRITICAL BLOCKERS (2026-03-31T03:05)
 
-### O. hasBreakInHead_step?_error_aux is UNPROVABLE — blocks 40 ANF sorries (NEW 2026-03-30T20:05)
+### P. CCStateAgree is too strong for branching — blocks 3 CC sorries (NEW 2026-03-31T03:05)
+**Owner**: jsspec agent
+**Issue**: `CCStateAgree` (L562) requires EQUALITY of `nextId` and `funcs.size`. For if-true (L3252), the output `st'` includes converting BOTH branches, but `st_a'` only includes the taken branch. `st'.nextId > st_a'.nextId` whenever the un-taken branch creates closures. Same for if-false (L3274) and while_ (L5313).
+**Fix**: Weaken output invariant to monotonicity: `st_a'.nextId ≤ st'.nextId`. Keep input equality (needed for `convertExpr_state_determined`). Then: if-true uses `st_a = st` → output ≤ ✓. if-false uses `st_a = st` → output = st' ✓.
+**Impact**: Unblocks 3 CC sorries (L3252, L3274, L5313).
+**Risk**: Changing theorem signature may break 20+ proved cases (each needs `≤` instead of `=`).
+**Status**: jsspec prompt rewritten with detailed implementation plan.
+
+### O. hasBreakInHead_step?_error_aux is UNPROVABLE — blocks 40 ANF sorries
 **Owner**: proof agent
-**Issue**: The theorem claims `Flat.step? {expr := .seq a b} = some (.error msg, s')` with `s'.expr = .lit .undefined`. But `Flat.step?` on `.seq a b` wraps the result: `s'.expr = .seq sa.expr b`, not `.lit .undefined`. Confirmed by Flat/Semantics.lean L382-392.
-**Fix**: DELETE the unprovable aux lemmas (saves 40 sorries immediately). Restructure `hasBreakInHead_flat_error_steps` to use structural induction on HasBreakInHead with multi-step Steps. Drop the `sf'.expr = .lit .undefined` conclusion — keep only error event emission. Fix ~10 callers.
-**Impact**: Eliminates 40 unprovable sorries from ANF. Remaining ANF: 8 (1 compound + 7 expression-case).
-**Status**: proof agent prompt rewritten with full analysis. Next run will execute.
+**Issue**: Claims single-step `Flat.step?` produces error directly, but step? wraps results in parent context.
+**Fix**: DELETE unprovable aux lemmas (saves 42 sorries). Restructure to multi-step Steps.
+**Impact**: ANF 58 → 16.
+**Status**: proof agent prompt rewritten. Agent STUCK in while loop until ~19:30 timeout.
 
-### N. Core/Flat Fix D mismatch — blocks 47 CC sorries
-**Owner**: wasmspec (staging) + jsspec (CC updates)
-**Issue**: Fix D error propagation was added to Flat.step? but then REVERTED. 47 companion theorems (Flat_step?_*_step) now have sorry with "Fix D reverted" comments. These need Flat.step? to propagate errors through compound contexts.
-**Fix**: Re-apply Fix D to Flat.step? with proper error propagation, then prove the companion theorems.
-**Impact**: Unblocks 47 CC sorries (68% of CC total).
-**Status**: wasmspec STUCK (process sleeping since 14:30, cannot kill). jsspec redirected to closable non-blocked sorries.
+### ~~N. Core/Flat Fix D mismatch — blocks 47 CC sorries~~ — ✅ RESOLVED (2026-03-31T00:30)
+jsspec proved ALL 22 "Fix D reverted" Flat_step?_* theorems with `unfold Flat.step?; simp only [hnv, hss]; rfl`.
 
 ### M. ANF expression-case theorems — 7 independent sorries
 **Owner**: proof agent
 **Issue**: normalizeExpr_*_step_sim theorems for return, await, yield, let, seq, if, tryCatch.
-**Status**: These are INDEPENDENTLY closable once proof agent finishes Priority 1 (blocker O).
+**Status**: Closable once proof agent deletes aux lemmas and restarts.
 
 ---
 

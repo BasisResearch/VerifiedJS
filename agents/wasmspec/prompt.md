@@ -1,100 +1,113 @@
-# wasmspec — Close CC value sub-cases + functionDef + tryCatch + callee/newObj
+# wasmspec — Close CC value sub-cases (all-values heap allocation proofs)
 
 ## RULES
 - **DO NOT** run `lake build VerifiedJS` (full build). OOMs.
 - Build: `lake build VerifiedJS.Proofs.ClosureConvertCorrect`
 - Before building: `pkill -f "lean.*\.lean" 2>/dev/null; sleep 5`
 
-## !! CRITICAL BUG FROM LAST RUN !!
-Your previous session got PERMANENTLY STUCK in `while pgrep -f "lake build"` because
-the while loop's own shell command string contains "lake build", so pgrep matches ITSELF.
-**THIS KILLED YOUR ENTIRE SESSION — 10+ HOURS WASTED.**
+## !! CRITICAL: YOU HAVE BEEN STUCK FOR 13+ HOURS !!
+Your LAST session got PERMANENTLY STUCK in `while pgrep -f "lake build"` because
+the while loop's OWN shell command string contains "lake build", so pgrep matches ITSELF.
+**THIS KILLED YOUR ENTIRE SESSION — 13 HOURS WASTED. ZERO WORK DONE.**
 
-### ABSOLUTE RULES FOR PROCESS WAITING:
-1. **NEVER use `while` loops** — not for pgrep, not for anything, not ever
-2. **NEVER use `until` loops** — same problem
-3. **NEVER use `sleep` in a loop** — you will get stuck
+### ABSOLUTE RULES — VIOLATION = WASTED SESSION:
+1. **NEVER write `while`** — not for pgrep, not for sleep, not for anything, EVER
+2. **NEVER write `until`** — same infinite loop problem
+3. **NEVER write `sleep` inside any loop** — you will get stuck forever
 4. `lake serve` processes are PERMANENT. `pgrep -x lake` will ALWAYS return 0.
-5. To check if a BUILD is running: `pgrep -f "lake build"` (but NEVER in a loop)
-6. If a build IS running: just SKIP and do something else. Do NOT wait.
-7. If you need to build: just run the build command directly. If it fails, try later.
+5. To build: just run `lake build VerifiedJS.Proofs.ClosureConvertCorrect` directly
+6. If it fails because another build runs: wait 60s with ONE `sleep 60`, then retry ONCE
+7. If it fails again: skip the build and work on something else
 
 ## MEMORY: 7.7GB total, NO swap.
 
-## STATE (01:05): CC has 19 grep-sorry, ~16 real sorries
+## STATE (03:05): CC has 17 sorries
 
 ### Remaining sorry breakdown:
-- **2 unprovable stubs** (L1502-1503 forIn/forOf): DO NOT TOUCH
-- **2 convertExpr_not_lit** (L2663, L2773): jsspec owns
-- **1 captured variable** (L2857): jsspec owns
-- **2 CCState if-true** (L3176): jsspec owns
-- **2 CCState if-false** (L3198): jsspec owns
-- **1 CCState while_** (L5237): jsspec owns
-- **2 callee/newObj** (L3692, L3693): YOUR TARGET
-- **1 getIndex mismatch** (L4261): possibly unprovable
-- **1 setIndex value sub-case** (L4433): YOUR TARGET
-- **1 objectLit all-values** (L4755): YOUR TARGET
-- **1 arrayLit all-values** (L4938): YOUR TARGET
-- **1 functionDef** (L5116): YOUR TARGET
-- **1 tryCatch** (L5206): YOUR TARGET
+- **2 unprovable stubs** (L1520-1521 forIn/forOf): DO NOT TOUCH
+- **2 convertExpr_not_lit** (L2663, L2773): jsspec (ALREADY PROVED ✓)
+- **1 captured variable** (L2933): jsspec owns
+- **3 CCState if/while** (L3252, L3274, L5313): jsspec owns — fundamentally blocked
+- **1 callee is value** (L3768): YOUR TARGET
+- **1 newObj** (L3769): YOUR TARGET
+- **1 getIndex mismatch** (L4337): possibly unprovable
+- **1 setIndex value sub-case** (L4509): YOUR TARGET
+- **1 objectLit all-values** (L4831): YOUR TARGET
+- **1 arrayLit all-values** (L5014): YOUR TARGET
+- **1 functionDef** (L5192): YOUR TARGET
+- **1 tryCatch** (L5282): YOUR TARGET
 
-## YOUR TARGETS (7 sorries):
+## YOUR TARGETS (7 sorries) — START WITH EASIEST
 
-### TARGET 1: Value sub-cases — HIGHEST PRIORITY
+### TARGET 1: objectLit all-values (L4831) — EASIEST
 
-These are ALL the same pattern: all sub-expressions are values, so both Core and Flat
-take one matching step (allocation, property access, etc.).
+When `Core.firstNonValueProp props = none`, ALL props are `.lit _` values.
+Both Core and Flat allocate a new heap object in one step.
 
-**L3692**: `| some cv => sorry -- callee is value: arg stepping or call execution`
-**L3693**: `| newObj f args => sorry`
-**L4433**: `| some cv => sorry -- value sub-case (heap reasoning needed)`
-**L4755**: `sorry -- all props are values: heap allocation`
-**L4938**: `sorry -- all elements are values: heap allocation`
+Key hypotheses in scope:
+- `hcfnv : Core.firstNonValueProp props = none`
+- `hfexpr : sf.expr = Flat.Expr.objectLit (Flat.convertPropList props ...)`
+- `hstep : Flat.step? sf = some (ev, sf')`
 
-APPROACH for each:
-1. `lean_goal` at the sorry line → read FULL goal
-2. `lean_local_search "allValues"` and `lean_local_search "value_step"` for helpers
-3. When all sub-exprs are values, Core.step? and Flat.step? should BOTH take exactly
-   one step. The proof is: construct the matching steps, show results correspond.
-4. `lean_multi_attempt` with:
-   ```
-   ["simp_all", "exact ⟨_, _, rfl, rfl⟩", "constructor <;> simp_all",
-    "refine ⟨_, _, ?_, ?_⟩ <;> simp_all", "aesop"]
-   ```
-5. If the goal has `∃ sf' evs, Flat.Steps ...`, build the witness explicitly:
-   `exact ⟨{sf with expr := ..., heap := ...}, [ev], .tail ⟨by unfold Flat.step?; simp⟩ (.refl _), ...⟩`
+APPROACH:
+1. ALL props are `.lit _`, so `convertPropList` maps `(k, .lit v)` → `(k, .lit (convertValue v))`
+2. Flat `valuesFromExprList?` succeeds → allocates via `allocObjectWithProps`
+3. Core `step?_objectLit_val` (in Core/Semantics.lean L13581) gives Core's allocation step
+4. HeapInj extends: `HeapInj_push` or similar
+5. Result: `sc'.expr = .lit (.object addr)`, `sf'.expr = .lit (.object flatAddr)`
 
-### TARGET 2: functionDef (L5116)
-`| functionDef fname params body isAsync isGen => sorry`
+Use `lean_goal` at L4831 first. Then build the proof by:
+- Getting the Flat step result via unfolding
+- Getting the Core step result via `Core.step?_objectLit_val`
+- Constructing HeapInj for the extended heap
+- All other invariants (env, noCallFrameReturn, etc.) are trivial since only heap changes
+- CCStateAgree: `st_a = st, st_a' = st` since `.lit (.object addr)` converts with unchanged state
 
-functionDef creates a closure and binds fname in env. Both Core and Flat should
-produce equivalent bindings. `lean_goal` → look for closure value correspondence.
+Related pattern: see how `getProp` value case (L3776-3867) is proved — similar structure.
 
-### TARGET 3: tryCatch (L5206)
-`| tryCatch body catchParam catchBody finally_ => sorry`
+### TARGET 2: arrayLit all-values (L5014) — SAME PATTERN
 
-Sets up exception handler context. Core enters try body; Flat enters converted body
-with catch frame pushed.
+Identical to objectLit but with `firstNonValueExpr` instead of `firstNonValueProp`.
+Core has `step?_arrayLit_val` (L13597). Follow the exact same approach.
 
-## TACTIC FOR Flat_step? PROOFS (proven pattern):
-The supervisor proved 22 Flat stepping theorems with this approach:
-- Simple cases: `simp [Flat.step?, hss]; split <;> simp_all [Flat.exprValue?]`
-- Complex (getIndex, setProp, setIndex, call, binary):
-  `cases fe with | lit v => simp [Flat.exprValue?] at hnv | _ => simp [Flat.step?, hss]`
+### TARGET 3: setIndex value sub-case (L4509)
 
-Use this pattern when you need to prove Flat stepping lemmas.
+When `exprValue? obj = some cv`, `obj = .lit cv`. Then need nested case split:
+- `exprValue? idx`: if none → step idx; if some → check value
+- `exprValue? value`: if none → step value; if some → execute setIndex
+
+See `setProp` value sub-case pattern (if it exists) for reference.
+
+### TARGET 4: call callee-is-value (L3768)
+
+When callee `f = .lit cv`, need to check args:
+- `allValues args = some vs` → execute call
+- `allValues args = none` → step first non-value arg
+Core has `step_call_step_arg` (L13621) and `step_call_nonfunc_exact` (L13610).
+
+### TARGET 5: newObj (L3769)
+### TARGET 6: functionDef (L5192)
+### TARGET 7: tryCatch (L5282) — HARDEST, skip if short on time
+
+## TACTIC PATTERNS (from proved cases):
+```lean
+-- For value sub-cases:
+have hlit : obj = .lit cv := by cases obj <;> simp [Core.exprValue?] at hcev; subst hcev; rfl
+subst hlit
+simp [Flat.convertExpr] at hfexpr hst
+-- Then build sf_eta, rewrite hstep, case-split on step? result
+```
 
 ## DO NOT TOUCH:
 - ANFConvertCorrect.lean — proof agent owns this
-- forIn/forOf stubs (L1502-1503) — unprovable
-- CCState threading sorries (L2857, L3176, L3198, L5237) — jsspec owns these
-- convertExpr_not_lit (L2663, L2773) — jsspec owns these
-- getIndex string mismatch (L4261) — possibly unprovable
+- forIn/forOf stubs (L1520-1521) — unprovable
+- CCState threading sorries (L2933, L3252, L3274, L5313) — jsspec owns
 
 ## WORKFLOW:
-1. `lean_goal` at the sorry line — read the FULL goal
+1. `lean_goal` at sorry line → read FULL goal
 2. `lean_multi_attempt` with 6-8 tactics
-3. If nothing closes it in 10 minutes, MOVE TO THE NEXT ONE
+3. If nothing closes it in 15 minutes, MOVE TO THE NEXT ONE
 4. Log what you tried and why it failed
+5. Build after every successful proof change
 
-## TARGET: Close at least 3 of your 7 assigned sorries → CC from 19 to ~16
+## TARGET: Close at least 2 of your 7 assigned sorries → CC from 17 to ~15

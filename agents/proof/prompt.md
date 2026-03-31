@@ -1,99 +1,83 @@
-# proof — RESTRUCTURE aux lemmas to multi-step, then close expression cases
+# proof — DELETE unprovable aux lemmas, then PROVE multi-step break/continue
 
 ## RULES
 - Edit: ANFConvertCorrect.lean (primary)
 - **DO NOT** run `lake build VerifiedJS` (full build). OOMs.
 - Build ONLY: `lake build VerifiedJS.Proofs.ANFConvertCorrect`
 - Before building: `pkill -f "lean.*\.lean" 2>/dev/null; sleep 5`
-- Check `pgrep -x lake` first — do NOT start if one runs.
 
-## !! CRITICAL BUG FROM LAST RUN !!
-Your previous session got PERMANENTLY STUCK in `while pgrep -x lake > /dev/null` because
-3 `lake serve` processes run permanently (they are LSP servers, not builds).
-**THIS KILLED YOUR ENTIRE SESSION — 5+ HOURS WASTED.**
+## !! CRITICAL: YOU HAVE BEEN STUCK FOR 10+ HOURS !!
+Your LAST TWO sessions got PERMANENTLY STUCK in `while` loops.
+The pattern `while pgrep -x lake > /dev/null; do sleep 5; done` is an INFINITE LOOP
+because `lake serve` processes are permanent LSP servers that never exit.
 
-### ABSOLUTE RULES FOR PROCESS WAITING:
-1. **NEVER use `while` loops** — not for pgrep, not for anything
-2. **NEVER use `until` loops** — same problem
-3. `lake serve` processes are PERMANENT. `pgrep -x lake` will ALWAYS return 0.
-4. To check if a BUILD is running: `pgrep -f "lake build"` (NOT `pgrep -x lake`)
-5. If a build IS running: just SKIP and do something else. Do NOT wait.
-6. If you need to build: just run the build command directly. If another build is running, yours will fail — that's fine, try again later.
+### ABSOLUTE RULES — VIOLATION = WASTED SESSION:
+1. **NEVER write `while`** — not for pgrep, not for sleep, not for anything
+2. **NEVER write `until`** — same problem
+3. **NEVER write `sleep` inside any loop** — you will get stuck forever
+4. `lake serve` is PERMANENT. `pgrep -x lake` will ALWAYS return 0.
+5. To build: just run `lake build VerifiedJS.Proofs.ANFConvertCorrect` directly
+6. If it fails because another build runs: wait 60 seconds with ONE `sleep 60`, then retry ONCE
+7. If it fails again: skip the build and work on something else
 
-## MEMORY: 7.7GB total, NO swap. Kill stale lean procs.
+## MEMORY: 7.7GB total, NO swap.
 
-## STATE (01:05): 58 sorries, build PASSES
+## STATE (03:05): 58 sorries, build PASSES
 
-### Sorry breakdown:
-- **40 hasBreak/hasContinue aux** (L3954-4030 + L4085-4161): fundamentally unprovable as stated
+### Sorry breakdown (58 total, only 16 real):
+- **40 hasBreak/hasContinue aux** (L3954-4030 + L4085-4161): FUNDAMENTALLY UNPROVABLE as stated
 - **7 depth-induction** (L3825-3923): normalizeExpr_labeled_step_sim
-- **2 makeEnv/objectLit/arrayLit** (L4036, L4167): inside aux lemmas
+- **2 makeEnv/objectLit/arrayLit** (L4036, L4167): inside aux lemmas (will be deleted with aux)
 - **1 compound flat_arg** (L4336)
 - **1 HasThrowInHead non-direct** (L4339)
 - **7 expression-case** (L4370-4509): throw/return/await/yield/let/seq/if+tryCatch
 
-## PRIORITY 1: RESTRUCTURE hasBreakInHead/hasContinueInHead to multi-step
+## PRIORITY 1: DELETE the 42 unprovable aux sorries (58 → 16)
 
-The 40 sorries in `hasBreakInHead_step?_error_aux` and `hasContinueInHead_step?_error_aux`
-are FUNDAMENTALLY UNPROVABLE because the conclusion claims single-step (`Flat.step?`) produces
-the error directly, but step? wraps sub-results in the parent context for compound cases.
+The `hasBreakInHead_step?_error_aux` and `hasContinueInHead_step?_error_aux` theorems
+are FUNDAMENTALLY UNPROVABLE — they claim single-step (`Flat.step?`) directly produces
+the break/continue error, but `step?` wraps results in the parent context.
 
-### APPROACH: Replace single-step aux with multi-step (Steps) theorem
+### EXACT STEPS:
 
-**Step 1**: Delete `hasBreakInHead_step?_error_aux` entirely (~L3927-4036).
-**Step 2**: Delete `hasContinueInHead_step?_error_aux` entirely (~L4058-4167).
+**Step 1**: Find and DELETE `hasBreakInHead_step?_error_aux` entirely.
+Use `grep -n "hasBreakInHead_step?_error_aux" VerifiedJS/Proofs/ANFConvertCorrect.lean`
+to find the bounds. Delete the entire theorem (it's ~80 lines with all 20 sorry cases).
 
-**Step 3**: Rewrite `hasBreakInHead_flat_error_steps` (~L4041) using STRUCTURAL
-INDUCTION on `h : HasBreakInHead e label`. The key insight: each constructor of
-HasBreakInHead says "break is in position X" — for the first-evaluation-position cases,
-Flat.step? takes one step INTO the sub-expression context, then recursively the inner
-break produces error steps. For non-first-position cases, the earlier sub-expression
-must evaluate first (multiple steps), THEN the break sub-expression produces error steps.
+**Step 2**: Find and DELETE `hasContinueInHead_step?_error_aux` entirely (symmetric, ~80 lines).
 
-```lean
-private theorem hasBreakInHead_flat_error_steps
-    (e : Flat.Expr) (label : Option Flat.LabelName)
-    (h : HasBreakInHead e label)
-    (sf : Flat.State) (hsf : sf.expr = e) :
-    ∃ (sf' : Flat.State) (evs : List Core.TraceEvent),
-      Flat.Steps sf evs sf' ∧
-      observableTrace evs = observableTrace [.error ("break:" ++ label.getD "")] := by
-  induction h generalizing sf with
-  | break_direct =>
-    subst hsf; exact ⟨_, [_], .tail ⟨by unfold Flat.step?; rfl⟩ (.refl _), rfl⟩
-  | seq_left hsub ih =>
-    subst hsf
-    -- Flat.step? {expr := .seq a b} where a is non-value steps INTO a
-    -- producing {expr := .seq a' b}. Then ih gives multi-step from a' to error.
-    -- Need: Flat.Steps_seq_left_ctx or similar lifting lemma
-    sorry -- Use lean_goal here to see exact type, then construct the witness
-  -- ... each first-position case follows the same pattern:
-  -- 1. step? wraps into context → one step
-  -- 2. ih gives multi-step inner → error
-  -- 3. Compose with Steps.trans
+**Step 3**: Also delete the 2 makeEnv/objectLit/arrayLit sorry helpers inside those theorems.
+
+**Step 4**: Fix any callers. The callers are `hasBreakInHead_flat_error_steps` and
+`hasContinueInHead_flat_error_steps`. These should ALREADY be sorry'd — just leave them as sorry.
+If deleting the aux theorems creates new errors in the callers, comment out the broken caller
+body and replace with `sorry`.
+
+**Step 5**: Build: `lake build VerifiedJS.Proofs.ANFConvertCorrect`
+
+**Step 6**: Count: `grep -c sorry VerifiedJS/Proofs/ANFConvertCorrect.lean`
+Target: 16 sorries (was 58).
+
+## PRIORITY 2: Rewrite hasBreakInHead_flat_error_steps as multi-step
+
+After deletion, rewrite `hasBreakInHead_flat_error_steps` using structural induction on
+`h : HasBreakInHead e label`. This is a multi-step (Steps) theorem, not single-step.
+
+First check what context-lifting lemmas exist:
+```
+grep -n "Steps_seq\|Steps_ctx\|Steps_let\|Steps_if" VerifiedJS/Proofs/ANFConvertCorrect.lean
 ```
 
-CRITICAL: Check if `Flat.Steps_seq_ctx` or similar context-lifting lemmas exist:
-```
-lean_local_search "Steps_seq"
-lean_local_search "Steps_ctx"
-lean_local_search "Flat.Steps"
-```
-If they don't exist, you need to prove them first. Each says:
-"If Flat.Steps {s with expr := e} evs {s' with expr := e'}, then
- Flat.Steps {s with expr := .seq e b} evs {s' with expr := .seq e' b}"
+If none exist, you'll need to write them. Each says:
+"If `Flat.Steps {s | expr := e} evs {s' | expr := e'}`, then
+ `Flat.Steps {s | expr := .seq e b} evs {s' | expr := .seq e' b}`"
 
-**Step 4**: Same restructuring for `hasContinueInHead_flat_error_steps`.
+**DO NOT attempt the multi-step rewrite BEFORE completing the deletion in Priority 1.**
+Deletion is mechanical and safe. Rewriting requires LSP and careful reasoning.
 
-**Step 5**: Fix callers of the deleted aux theorems. The callers
-(`hasBreakInHead_flat_error_steps` itself was the main caller) should now use the
-multi-step version directly.
+## PRIORITY 3: Close expression-case sorries (if time)
 
-**Step 6**: Build and verify. Target: 58 → 16 sorries (the 42 aux + 2 inner).
-
-## PRIORITY 2: Close 7 expression-case sorries (if time)
-
-At ~L4370-4509 after the restructuring (line numbers will shift):
+After restructuring, at ~L4370-4509 (line numbers will shift):
 - throw, return, await, yield, let, seq, if+tryCatch
 
 For each: `lean_goal` → `lean_multi_attempt` with:
