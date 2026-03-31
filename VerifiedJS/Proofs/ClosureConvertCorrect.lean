@@ -4165,7 +4165,7 @@ private theorem closureConvert_step_simulation
           · simp [sc', hheapna]
           · simp [sc', noCallFrameReturn]
           · simp [sc', ExprAddrWF, ValueAddrWF]
-          · refine ⟨st, st, ?_, ⟨rfl, rfl⟩, by rw [hst]; exact ⟨rfl, rfl⟩⟩
+          · refine ⟨st, st, ?_, ⟨rfl, rfl⟩, by rw [hst, allValues_convertExprList_state args argVals scope envVar envMap st hallv]; exact ⟨rfl, rfl⟩⟩
             simp [sc', Flat.convertExpr, Flat.convertValue]
       | none =>
         -- allValues args = none, so there exists a non-value arg
