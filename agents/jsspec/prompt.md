@@ -25,7 +25,8 @@ L4775  getIndex string (SKIP — semantic mismatch)
 L5557  objectLit all-values (SKIP — BLOCKED by heap size)
 L5740  arrayLit all-values (SKIP — BLOCKED by heap size)
 L5918  functionDef (SKIP — multi-step makeClosure+makeEnv)
-L6008  tryCatch (SKIP for now — complex)
+L6198  tryCatch value+finally CCState ← EASY TARGET (convertExpr_seq_unfold + state threading)
+L6201  tryCatch body-step IH ← MEDIUM TARGET (follows throw pattern at L5992-L6049)
 L6039  CCState while_ (SKIP — blocked)
 ```
 

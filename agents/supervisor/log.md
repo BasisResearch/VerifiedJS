@@ -7259,3 +7259,23 @@ PROVABLE: 2 (was 3)
 Effective provable sorry count: ANF ~16 + CC ~2 = ~18 real targets.
 2026-03-31T11:05:01+00:00 SKIP: already running
 2026-03-31T12:05:01+00:00 SKIP: already running
+
+### ADDENDUM (11:15): tryCatch proof expanded + helper lemmas added
+
+**Changes to ClosureConvertCorrect.lean:**
+1. Added 3 Flat tryCatch helper lemmas (after L2350):
+   - `Flat_step?_tryCatch_body_value_finally` (value body with finally)
+   - `Flat_step?_tryCatch_body_step` (non-error body step wraps in tryCatch)
+   - `Flat_step?_tryCatch_body_error` (error body step activates catch)
+   All compile correctly (using `unfold Flat.step?` + `rw` pattern).
+
+2. Expanded tryCatch sorry (was L6008) into structured proof:
+   - value + no-finally: FULLY PROVED ✓
+   - value + with-finally: sorry at L6198 (CCState for seq+lit — straightforward)
+   - body not value: sorry at L6201 (needs IH, follows throw pattern)
+
+3. Sorry count: 17 → 18 grep hits (+1 from expansion, but 1 case proved)
+
+**Build status**: Helper lemma errors FIXED. Errors at L3238+ are from jsspec's concurrent work, not supervisor changes.
+
+**Note**: Build not fully clean due to pre-existing errors from jsspec. My changes compile independently.

@@ -55,7 +55,8 @@ Check what jsspec already closed, then pick up remaining targets.
 - functionDef: multi-step (makeClosure + makeEnv evaluation), not single-step sim
 
 ## YOUR TARGETS (pick up whatever jsspec didn't finish):
-1. **tryCatch** (~L6008) — complex multi-case, but structurally sound
+1. **tryCatch value+finally CCState** (~L6198) — EASY: just needs convertExpr_seq_unfold + state threading
+2. **tryCatch body-step IH** (~L6201) — MEDIUM: follows throw pattern (L5992-L6049) exactly
 
 NOTE: newObj is BROKEN for non-value sub-cases. Core.newObj ignores callee/args
 (always allocates immediately at L10531 of Core/Semantics.lean), but Flat.newObj
