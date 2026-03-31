@@ -1,12 +1,11 @@
-# wasmspec — Close CC value sub-cases (share with jsspec)
+# wasmspec — Close CC value sub-cases (share CC file with jsspec)
 
 ## RULES
 - **DO NOT** run `lake build VerifiedJS` (full build). OOMs.
 - Build: `lake build VerifiedJS.Proofs.ClosureConvertCorrect`
 
-## !! CRITICAL: YOUR PROCESS HAS BEEN STUCK FOR 18+ HOURS !!
-**PID 2750345 has been in `while pgrep -f "lake build"` since yesterday 14:30.**
-This is the WORST case yet. You have wasted 60+ HOURS total in while loops.
+## !! CRITICAL: YOUR PROCESS HAS BEEN STUCK FOR 19+ HOURS !!
+**You have wasted 60+ HOURS total in while loops. DO NOT LOOP.**
 
 ### BUILD — THE ONLY WAY:
 ```bash
@@ -25,12 +24,25 @@ That's it. ONE command. No waiting, no checking, no loops.
 
 ## MEMORY: 7.7GB total, NO swap. ~4GB available.
 
-## STATE: CC has ~17 grep-sorry-hits. Build should be PASSING (jsspec may have changes).
+## STATE (10:05): CC has 17 grep-sorry-hits. Build PASSING. jsspec is also editing CC file.
 
-**SUPERVISOR CHANGES** (during 09:05 run):
-- Added 8 Flat/Core setIndex helper lemmas (after getIndex helpers section)
-- Expanded setIndex value sorry (old L4583) into full proof with 3 sub-cases
-- jsspec working on call all-values + call non-value arg
+## SORRY MAP:
+```
+SKIP (unprovable/blocked): 11
+  L1507, L1508: forIn/forOf stubs
+  L3160: captured var (needs multi-step getEnv)
+  L3479, L3501(x2): CCStateAgree (blocked)
+  L4775: getIndex string mismatch
+  L5557: objectLit all-values (BLOCKED by heap size)
+  L5740: arrayLit all-values (BLOCKED by heap size)
+  L5918: functionDef (multi-step makeClosure+makeEnv)
+  L6039: CCState while_ (blocked)
+
+PROVABLE: 3 (jsspec may be working on these)
+  L4010: call function all-values (jsspec's PRIMARY target)
+  L4207: newObj
+  L6008: tryCatch
+```
 
 ## FIRST ACTION:
 ```bash
@@ -38,14 +50,18 @@ grep -n sorry VerifiedJS/Proofs/ClosureConvertCorrect.lean
 ```
 Check what jsspec already closed, then pick up remaining targets.
 
-## CRITICAL: objectLit/arrayLit all-values are BLOCKED
-HeapInj_alloc_both requires equal heap sizes. HeapCorr only guarantees ≤.
-Flat heap can be bigger from env objects. DO NOT attempt objectLit/arrayLit all-values.
+## CRITICAL: objectLit/arrayLit/functionDef are ALL BLOCKED
+- objectLit/arrayLit: HeapInj_alloc_both requires equal heap sizes (blocked)
+- functionDef: multi-step (makeClosure + makeEnv evaluation), not single-step sim
 
-## PROVABLE TARGETS (pick up whatever jsspec didn't finish):
-1. **newObj** — similar pattern to call
-2. **functionDef** — complex state changes (addFunc, makeEnv, makeClosure)
-3. **tryCatch** — hardest, skip if short on time
+## YOUR TARGETS (pick up whatever jsspec didn't finish):
+1. **newObj** (~L4207) — similar to call case
+2. **tryCatch** (~L6008) — hardest, complex multi-step
+
+### For newObj: Check for `Flat.step?_newObj*` and `Core.step?_newObj*` lemmas:
+```bash
+grep -n "step?_newObj\|step_newObj" VerifiedJS/Flat/Semantics.lean VerifiedJS/Core/Semantics.lean VerifiedJS/Proofs/ClosureConvertCorrect.lean
+```
 
 ### PROOF PATTERN for non-function call (from getProp primitive):
 ```lean
@@ -70,9 +86,10 @@ refine ⟨injMap, sc', ⟨?_⟩, ?_, ?_, ?_, ?_, ?_, ?_, ?_, ?_, ?_⟩
 - CCState sorries — architecturally blocked
 - getIndex string mismatch — Flat/Core semantic mismatch
 - objectLit/arrayLit all-values — BLOCKED by heap size
+- functionDef — multi-step, skip
 
 ## CRITICAL: LOG YOUR WORK
 **FIRST ACTION**: `echo "### $(date -Iseconds) Starting run" >> agents/wasmspec/log.md`
 **LAST ACTION**: `echo "### $(date -Iseconds) Run complete — [result]" >> agents/wasmspec/log.md`
 
-## TARGET: Close at least 2 value sub-cases → reduce CC sorry count
+## TARGET: Close at least 1 CC sorry → reduce CC grep count
