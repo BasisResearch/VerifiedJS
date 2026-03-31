@@ -2369,8 +2369,8 @@ private theorem Flat_step?_tryCatch_body_step (s : Flat.State)
                  env := sb.env, heap := sb.heap,
                  trace := s.trace ++ [t], funcs := s.funcs, callStack := s.callStack }) := by
   cases t with
-  | silent => simp [Flat.step?, hbnv, hstep, Flat.pushTrace]
-  | log msg => simp [Flat.step?, hbnv, hstep, Flat.pushTrace]
+  | silent => simp [Flat.step?, hbnv, hstep]
+  | log msg => simp [Flat.step?, hbnv, hstep]
   | error msg => exact absurd rfl (hne msg)
 
 private theorem Flat_step?_tryCatch_body_error (s : Flat.State)
@@ -2389,8 +2389,8 @@ private theorem Flat_step?_tryCatch_body_error (s : Flat.State)
   have hicf : (catchParam == "__call_frame_return__") = false := by
     simp [BEq.beq, bne_iff_ne, h_ncf]
   cases finally_ with
-  | none => simp [Flat.step?, hbnv, hstep, hicf, Flat.pushTrace, Flat.Env.extend]
-  | some fin => simp [Flat.step?, hbnv, hstep, hicf, Flat.pushTrace, Flat.Env.extend]
+  | none => simp [Flat.step?, hbnv, hstep, hicf, Flat.Env.extend]
+  | some fin => simp [Flat.step?, hbnv, hstep, hicf, Flat.Env.extend]
 
 -- Helper: Flat getProp on object → heap property lookup
 private theorem Flat_step?_getProp_object (s : Flat.State) (addr : Nat) (prop : Core.PropName) :
