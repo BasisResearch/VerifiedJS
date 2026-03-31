@@ -4589,11 +4589,11 @@ private theorem closureConvert_step_simulation
           · -- hheapna
             sorry
           · -- noCallFrameReturn
-            sorry
+            simp [sc', noCallFrameReturn]
           · -- ExprAddrWF
             sorry
           · -- CCState threading
-            sorry
+            refine ⟨st, st, ?_, ⟨rfl, rfl⟩, by subst hst; exact ⟨rfl, rfl⟩⟩; simp [sc', Flat.convertExpr, Flat.convertValue]
         · -- Non-object case: heap unchanged, return value
           have hno_flat : ∀ addr, Flat.convertValue cv ≠ .object addr :=
             convertValue_not_object cv hno
