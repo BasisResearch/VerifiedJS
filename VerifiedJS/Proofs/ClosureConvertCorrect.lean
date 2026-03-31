@@ -4136,23 +4136,20 @@ private theorem closureConvert_step_simulation
             subst hidx
             rw [Flat_step?_call_consoleLog_vals _ 0 .null _ _ hflatvals] at hstep
             simp only [Option.some.injEq, Prod.mk.injEq] at hstep
-            obtain ⟨hev, hsf'⟩ := hstep; subst hsf'
-            -- Relate Flat msg to Core msg via valueToString_convertValue
-            have hmsg := consoleLog_msg_convertValue argVals
-            let coreMsg := match argVals with
-              | [v] => Core.valueToString v
-              | vs => String.intercalate " " (vs.map Core.valueToString)
-            have hev' : ev = .log coreMsg := by rw [hev]; congr 1; exact hmsg
-            subst hev'
+            obtain ⟨rfl, hsf'⟩ := hstep; subst hsf'
+            -- Build the Core result state
             let sc' : Core.State := ⟨.lit .undefined, sc.env, sc.heap,
-              sc.trace ++ [.log coreMsg], sc.funcs, sc.callStack⟩
+              sc.trace ++ [.log (match argVals with
+                | [v] => Core.valueToString v
+                | vs => String.intercalate " " (vs.map Core.valueToString))],
+              sc.funcs, sc.callStack⟩
             refine ⟨injMap, sc', ⟨?_⟩, ?_, ?_, ?_, ?_, ?_, ?_, ?_, ?_, ?_⟩
-            · show Core.step? sc = some (.log coreMsg, sc')
+            · show Core.step? sc = some (_, sc')
               have hsc' : sc = { sc with expr := .call (.lit (.function Core.consoleLogIdx)) args } := by
                 obtain ⟨_, _, _, _, _, _⟩ := sc; simp only [] at hsc; subst hsc; rfl
               rw [hsc']
               exact Core_step?_call_consoleLog_general args argVals sc.env sc.heap sc.trace sc.funcs sc.callStack hallv
-            · simp [sc', htrace]
+            · simp only [sc']; rw [htrace]; congr 1; congr 1; exact (consoleLog_msg_convertValue argVals).symm
             · exact hinj
             · exact henvCorr
             · exact henvwf
@@ -4163,7 +4160,7 @@ private theorem closureConvert_step_simulation
             · refine ⟨st, st, ?_, ⟨rfl, rfl⟩, ?_⟩
               · simp [sc', Flat.convertExpr, Flat.convertValue]
               · rw [hstflat]; subst hst; exact ⟨rfl, rfl⟩
-          · -- non-consoleLogIdx: blocked on FuncsCorr invariant (CC_SimRel lacks funcs correspondence)
+          · -- non-consoleLogIdx: blocked — CC_SimRel lacks FuncsCorr invariant
             sorry
         · -- Non-function callee with all-value args: both Core and Flat return .undefined
           have hflatvals := allValues_convertExprList_valuesFromExprList args argVals scope envVar envMap st hallv
