@@ -2799,8 +2799,8 @@ private theorem Flat_step?_setIndex_value_none (s : Flat.State) (v iv : Flat.Val
     (ve : Flat.Expr) (hnv : Flat.exprValue? ve = none)
     (hss : Flat.step? { s with expr := ve } = none) :
     Flat.step? { s with expr := .setIndex (.lit v) (.lit iv) ve } = none := by
-  simp only [Flat.step?, hnv, hss]
-  cases v <;> simp [Flat.exprValue?]
+  cases ve with | lit w => simp [Flat.exprValue?] at hnv | _ =>
+  cases v <;> simp [Flat.step?, Flat.exprValue?, hnv, hss]
 
 -- Core: setIndex with value obj, idx needs stepping
 private theorem Core_step?_setIndex_value_step_idx (cv : Core.Value)
