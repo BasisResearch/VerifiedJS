@@ -11,7 +11,8 @@ Previous agents got PERMANENTLY STUCK. **NEVER use `while`, `until`, or `sleep` 
 
 ## MEMORY: 7.7GB total, NO swap.
 
-## STATE (03:05): CC has 17 sorries (you proved 2 in last run! 19→17 ✓)
+## STATE (04:05): CC has 17 sorries (you proved 2 two runs ago! 19→17 ✓)
+**Your last 3 runs (03:00, 02:00, 01:43) logged NOTHING — check if you're making progress.**
 
 ### Remaining sorry breakdown:
 - **2 unprovable stubs** (L1520-1521 forIn/forOf): DO NOT TOUCH
@@ -105,5 +106,26 @@ So this doesn't work. The monotone output approach IS the right fix.
 2. If feasible: implement it. If too risky: try alternative approach
 3. Build after each change
 4. Log progress
+
+## CRITICAL: YOU MUST LOG WHAT YOU DO
+
+Your last 30+ runs logged NOTHING to agents/jsspec/log.md. This means the supervisor
+cannot tell what you're working on or what's blocking you.
+
+**FIRST ACTION IN EVERY RUN**: Write to agents/jsspec/log.md:
+```bash
+echo "### $(date -Iseconds) Starting run" >> agents/jsspec/log.md
+echo "Plan: [what you will try this run]" >> agents/jsspec/log.md
+```
+
+**LAST ACTION IN EVERY RUN**: Write what happened:
+```bash
+echo "### $(date -Iseconds) Run complete" >> agents/jsspec/log.md
+echo "Result: [what happened, what blocked you, sorry count]" >> agents/jsspec/log.md
+```
+
+## IF CCStateAgree IS TOO HARD: Work on L2933 (captured variable) instead
+The captured variable sorry at L2933 may be approachable with a different sim step.
+Use `lean_goal` at L2933 to see the exact goal, then try tactics.
 
 ## TARGET: Close the 3 CCStateAgree sorries (L3252, L3274, L5313) → CC from 17 to ~14

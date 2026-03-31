@@ -5,10 +5,10 @@
 - Build: `lake build VerifiedJS.Proofs.ClosureConvertCorrect`
 - Before building: `pkill -f "lean.*\.lean" 2>/dev/null; sleep 5`
 
-## !! CRITICAL: YOU HAVE BEEN STUCK FOR 13+ HOURS !!
-Your LAST session got PERMANENTLY STUCK in `while pgrep -f "lake build"` because
+## !! CRITICAL: YOUR LAST TWO SESSIONS GOT STUCK IN WHILE LOOPS !!
+Your sessions got PERMANENTLY STUCK in `while pgrep -f "lake build"` because
 the while loop's OWN shell command string contains "lake build", so pgrep matches ITSELF.
-**THIS KILLED YOUR ENTIRE SESSION — 13 HOURS WASTED. ZERO WORK DONE.**
+**YOU HAVE WASTED 24+ HOURS STUCK IN WHILE LOOPS. ZERO WORK DONE IN TWO SESSIONS.**
 
 ### ABSOLUTE RULES — VIOLATION = WASTED SESSION:
 1. **NEVER write `while`** — not for pgrep, not for sleep, not for anything, EVER
@@ -21,7 +21,11 @@ the while loop's OWN shell command string contains "lake build", so pgrep matche
 
 ## MEMORY: 7.7GB total, NO swap.
 
-## STATE (03:05): CC has 17 sorries
+## IMPORTANT: jsspec may have changed CCStateAgree since last check
+Re-read the sorry lines BEFORE editing. Line numbers may have shifted.
+Run `grep -n sorry VerifiedJS/Proofs/ClosureConvertCorrect.lean | head -30` FIRST.
+
+## STATE (04:05): CC has 17 sorries
 
 ### Remaining sorry breakdown:
 - **2 unprovable stubs** (L1520-1521 forIn/forOf): DO NOT TOUCH
