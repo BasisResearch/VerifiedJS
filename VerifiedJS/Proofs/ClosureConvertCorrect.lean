@@ -2032,7 +2032,7 @@ private theorem Flat_step?_call_value_step_arg (s : Flat.State)
       some (t, { expr := .call (.lit fv) (.lit ev) (done ++ [sa.expr] ++ remaining),
                  env := sa.env, heap := sa.heap,
                  trace := s.trace ++ [t], funcs := s.funcs, callStack := s.callStack }) := by
-  simp [Flat.step?, Flat.exprValue?, hvals, hfnv, hss, Flat.pushTrace]
+  simp [Flat.step?, Flat.exprValue?, hvals, hfnv, hss]
 
 /-- Flat call with non-closure value callee, all-value args: return undefined. -/
 private theorem Flat_step?_call_nonclosure (s : Flat.State)
@@ -2045,7 +2045,7 @@ private theorem Flat_step?_call_nonclosure (s : Flat.State)
                        trace := s.trace ++ [.silent], funcs := s.funcs, callStack := s.callStack }) := by
   cases fv with
   | closure fi ep => exact absurd rfl (hnc fi ep)
-  | _ => simp [Flat.step?, Flat.exprValue?, hvals, Flat.pushTrace]
+  | _ => simp [Flat.step?, Flat.exprValue?, hvals]
 
 private theorem Core_step?_call_func_step (s : Core.State) (args : List Core.Expr) (e : Core.Expr)
     (hnv : Core.exprValue? e = none)
