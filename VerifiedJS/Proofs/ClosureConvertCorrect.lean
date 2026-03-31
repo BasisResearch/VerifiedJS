@@ -4171,12 +4171,12 @@ private theorem closureConvert_step_simulation
             simp [Core.Expr.depth] at hd
             have := Core.firstNonValueExpr_depth hcfnv; omega
           have ⟨hncfr_done, hncfr_target, hncfr_rest⟩ :=
-            firstNonValueExpr_listNoCallFrameReturn hcfnv (by simp [noCallFrameReturn] at hncfr; exact hncfr.2)
+            firstNonValueExpr_listNoCallFrameReturn hcfnv (by simp [noCallFrameReturn] at hncfr; exact hncfr)
           have hexprwf_target : ExprAddrWF target_c sc.heap.objects.size := by
             simp [ExprAddrWF] at hexprwf
             exact ExprAddrListWF_firstNonValueExpr_target hcfnv hexprwf.2
           obtain ⟨injMap', sc_sub', ⟨hcstep_sub⟩, htrace_sub, hinj', henvCorr', henvwf', hheapvwf',
-                  hncfr', hexprwf', st_a, st_a', hconv', hAgreeIn, hAgreeOut⟩ :=
+                  hheapna', hncfr', hexprwf', st_a, st_a', hconv', hAgreeIn, hAgreeOut⟩ :=
             ih_depth target_c.depth hdepth envVar envMap injMap
               { sf with expr := (Flat.convertExpr target_c scope envVar envMap
                 (Flat.convertExprList done_c scope envVar envMap st).snd).fst }
