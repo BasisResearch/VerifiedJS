@@ -316,6 +316,11 @@ theorem flatToCoreValue_coreToFlatValue_number (n : Float) : flatToCoreValue (co
 theorem flatToCoreValue_coreToFlatValue_string (s : String) : flatToCoreValue (coreToFlatValue (.string s)) = .string s := rfl
 theorem flatToCoreValue_coreToFlatValue_object (addr : Nat) : flatToCoreValue (coreToFlatValue (.object addr)) = .object addr := rfl
 
+/-- flatToCoreValue is a left inverse of coreToFlatValue for ALL Core.Value constructors. -/
+@[simp] theorem flatToCoreValue_coreToFlatValue (v : Core.Value) :
+    flatToCoreValue (coreToFlatValue v) = v := by
+  cases v <;> rfl
+
 private def typeofValue : Value → Value
   | .undefined => .string "undefined"
   | .null => .string "object"
