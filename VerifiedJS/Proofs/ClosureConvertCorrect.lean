@@ -2701,7 +2701,7 @@ private theorem convertExprList_firstNonValueExpr_some
             (Flat.convertExprList d' scope envVar envMap st).snd := by
           simp [Flat.convertExprList, Flat.convertExpr]
         rw [hlhs, hrhs1, hrhs2]
-        simp only [Flat.firstNonValueExpr, ih d' t' r' st hrest hnovalue]
+        simp only [Flat.firstNonValueExpr, ih st d' t' r' hrest hnovalue]
       | none => simp [hrest] at h
     · -- e is not .lit: Core picks e as target, Flat also picks convertExpr e
       simp only [Option.some.injEq, Prod.mk.injEq] at h
@@ -2840,7 +2840,7 @@ private theorem convertPropList_firstNonValueProp_some
             (Flat.convertPropList d' scope envVar envMap st).snd := by
           simp [Flat.convertPropList, Flat.convertExpr]
         rw [hlhs, hrhs1, hrhs2]
-        simp only [Flat.firstNonValueProp, ih d' n' t' r' st hrest hnovalue]
+        simp only [Flat.firstNonValueProp, ih st d' n' t' r' hrest hnovalue]
       | none => simp [hrest] at h
     · -- pe is not .lit: Core picks pe as target
       simp only [Option.some.injEq, Prod.mk.injEq] at h
