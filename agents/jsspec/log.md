@@ -1,5 +1,45 @@
 # jsspec agent log
 
+## 2026-03-31T02:00 — Proved convertExprList/PropList_firstNonValueExpr/Prop_some (19→17 grep-sorry, 17→15 actual)
+
+### Result: 2 sorries closed, build passing
+
+### What was done
+
+Proved `convertExprList_firstNonValueExpr_some` and `convertPropList_firstNonValueProp_some` by induction on the expression/property list, using the existing (sorry'd) `convertExpr_not_value` lemma.
+
+**Key insight**: The theorems don't need a `supported` guard. The proof uses `convertExpr_not_value` which gives `Flat.exprValue? (convertExpr e ...).fst = none` for any non-value Core expression. This means the converted expression is NOT `.lit _`, so `Flat.firstNonValueExpr` picks it at the same position as `Core.firstNonValueExpr`. The `convertExpr_not_value` lemma itself has sorries for `forIn`/`forOf` (L1520-1521), but those are pre-existing and already counted — no new sorries introduced.
+
+**Proof technique** (both theorems follow same pattern):
+- Induction on the list, generalizing `done`, `target`, `rest`, `st`
+- `.lit v` head case: `convertExpr (.lit v) = (.lit (convertValue v), st)` with unchanged state. Both Core and Flat `firstNonValueExpr` skip it and recurse. Apply IH on tail.
+- Non-`.lit` head case: Core picks this element as target. New helper `Flat_firstNonValueExpr_cons_not_value` shows Flat also picks it since `convertExpr_not_value` guarantees it's not `.lit`.
+
+**New helper lemmas added**:
+- `Flat_firstNonValueExpr_cons_not_value`: if `Flat.exprValue? e = none` then `Flat.firstNonValueExpr (e :: rest) = some ([], e, rest)`
+- `Flat_firstNonValueProp_cons_not_value`: analogous for property lists
+
+### Analysis of remaining assigned sorries (all blocked)
+
+**L2933 (captured variable)**: Fundamentally blocked. When `lookupEnv envMap name = some idx`, `convertExpr (.var name) = (.getEnv (.var envVar) idx, st)`. Flat takes 2 steps (look up envVar, then getEnv), Core takes 1 step (look up name). The 1-to-1 step simulation can't match. Requires either multi-step simulation or changing `convertExpr` for captured variables.
+
+**L3252/L3274 (CCStateAgree if-true/false)**: Fundamentally blocked. The output CCStateAgree `CCStateAgree st' st_a'` requires the output state to be the same whether or not the un-taken branch's conversion was included. Since `st' = (convertExpr else_ (convertExpr then_ st).snd).snd` includes else_ conversion but `st_a' = (convertExpr then_ st).snd` doesn't, these can't agree when else_ changes the state (adds functions/IDs). No choice of `st_a` can fix this since `CCStateAgree st st_a` requires `st_a.nextId = st.nextId`, which by `convertExpr_state_determined` forces `st_a'` to agree with `(convertExpr then_ st).snd`, not `st'`.
+
+**L5313 (while_ CCStateAgree)**: Same class as L3252/L3274. While-lowering expands to `.if cond (.seq body (.while_ cond body)) (.lit .undefined)`, duplicating `cond` and `body` sub-expressions. The output CCState from converting the expanded form differs from the CCState that produced the original while_ conversion.
+
+### Root cause for CCStateAgree blockage
+
+The `suffices` invariant requires `CCStateAgree st' st_a'` (output states agree). This is needed by compound cases (e.g., stepping cond in `.if cond then_ else_`) to derive sub-expression equality via `convertExpr_state_determined`. However, branching/resolution steps (where a full sub-expression is evaluated and one branch is taken) can't satisfy this because the "lost" branch's conversion advances the state but the taken branch's conversion doesn't include it.
+
+Possible fixes (all require significant refactoring):
+1. Change `convertExpr` to use the same state for both if-branches (requires definition changes in Flat.ClosureConvert)
+2. Make the invariant N-to-1 (allow Flat to take multiple steps per Core step)
+3. Track per-subexpression state information instead of a single st/st' pair
+
+### Build: PASSING (17 grep-sorry = 15 actual proof obligations)
+
+---
+
 ## 2026-03-31T00:30 — Proved all 22 "Fix D reverted" Flat.step? theorems (41→19 sorries)
 
 ### Result: 22 sorries closed, build passing
@@ -2153,4 +2193,8 @@ Agent `jsspec` can read but NOT write. Need `chmod g+w` from root/wasmspec.
 2026-03-31T01:43:29+00:00 DONE
 
 ## Run: 2026-03-31T02:00:01+00:00
+
+2026-03-31T02:58:16+00:00 DONE
+
+## Run: 2026-03-31T03:00:01+00:00
 
