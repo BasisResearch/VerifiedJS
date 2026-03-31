@@ -2794,6 +2794,14 @@ private theorem Flat_step?_setIndex_nonobject_both_values (s : Flat.State) (v iv
   | object addr => exact absurd rfl (hobj addr)
   | _ => simp only [Flat.step?, Flat.exprValue?]; rfl
 
+-- setIndex: obj+idx are values, value step returns none → outer step is none
+private theorem Flat_step?_setIndex_value_none (s : Flat.State) (v iv : Flat.Value)
+    (ve : Flat.Expr) (hnv : Flat.exprValue? ve = none)
+    (hss : Flat.step? { s with expr := ve } = none) :
+    Flat.step? { s with expr := .setIndex (.lit v) (.lit iv) ve } = none := by
+  simp only [Flat.step?, hnv, hss]
+  cases v <;> simp [Flat.exprValue?]
+
 -- Core: setIndex with value obj, idx needs stepping
 private theorem Core_step?_setIndex_value_step_idx (cv : Core.Value)
     (ie value : Core.Expr) (hnv : Core.exprValue? ie = none)
@@ -4130,7 +4138,34 @@ private theorem closureConvert_step_simulation
         · -- Function call case: cv = .function idx, all args are values
           sorry -- consoleLogIdx + non-consoleLogIdx: needs Flat_step?_call_consoleLog_vals fix + FuncsCorr
         · -- Non-function callee with all-value args
-          sorry -- needs Flat_step?_call_nonclosure lemma fix after hsf_eta correction
+          have hnc := convertValue_not_closure_of_not_function cv hnotfunc
+          have hfvals := allValues_convertExprList_valuesFromExprList args argVals scope envVar envMap st hallv
+          have hsf_eta : sf = { sf with expr := .call (.lit (Flat.convertValue cv)) (.lit .null)
+              (Flat.convertExprList args scope envVar envMap st).fst } := by
+            cases sf; simp_all
+          rw [hsf_eta] at hstep
+          rw [Flat_step?_call_nonclosure _ _ _ _ _ hfvals hnc] at hstep
+          simp at hstep
+          obtain ⟨hev, hsf'⟩ := hstep; subst hev hsf'
+          let sc' : Core.State :=
+            ⟨.lit .undefined, sc.env, sc.heap, sc.trace ++ [.silent], sc.funcs, sc.callStack⟩
+          refine ⟨injMap, sc', ⟨?_⟩, ?_, ?_, ?_, ?_, ?_, ?_, ?_, ?_, ?_⟩
+          · show Core.step? sc = some (.silent, sc')
+            have hsc' : sc = { sc with expr := .call (.lit cv) args } := by
+              obtain ⟨_, _, _, _, _, _⟩ := sc; simp only [] at hsc; subst hsc; rfl
+            rw [hsc']
+            have := Core.step_call_nonfunc_exact cv args argVals sc.env sc.heap sc.trace sc.funcs sc.callStack hnotfunc hallv
+            simp only [Core.pushTrace, sc'] at this ⊢; exact this
+          · simp [sc', htrace]
+          · exact hinj
+          · exact henvCorr
+          · exact henvwf
+          · exact hheapvwf
+          · simp [sc', hheapna]
+          · simp [sc', noCallFrameReturn]
+          · simp [sc', ExprAddrWF, ValueAddrWF]
+          · refine ⟨st, st, ?_, ⟨rfl, rfl⟩, by rw [hst]; exact ⟨rfl, rfl⟩⟩
+            simp [sc', Flat.convertExpr, Flat.convertValue]
       | none =>
         -- allValues args = none, so there exists a non-value arg
         cases hcfnv : Core.firstNonValueExpr args with
