@@ -5106,7 +5106,7 @@ private theorem closureConvert_step_simulation
             have : Flat.convertValue (.object addr) = .object addr := rfl
             rw [this] at hstep
             rw [Flat_step?_setIndex_object_both_values] at hstep
-            simp only [flatToCoreValue_convertValue, Prod.mk.injEq, Option.some.injEq] at hstep
+            simp only [flatToCoreValue_convertValue, valueToString_convertValue, Prod.mk.injEq, Option.some.injEq] at hstep
             obtain ⟨hev, hsf'⟩ := hstep; subst hev; subst hsf'
             have haddr_wf : addr < sc.heap.objects.size := by
               simp [ExprAddrWF, ValueAddrWF] at hexprwf; exact hexprwf.1
@@ -5134,7 +5134,6 @@ private theorem closureConvert_step_simulation
             · -- HeapInj: both heaps do same set! at addr
               simp only [sc', coreHeap', propName]
               rw [heapObjectAt?_eq, ← HeapInj_get hinj haddr_wf]
-              rw [flatToCoreValue_convertValue, valueToString_convertValue]
               cases sc.heap.objects[addr]? with
               | none => exact hinj
               | some props => exact HeapInj_set_same hinj addr haddr_wf _
