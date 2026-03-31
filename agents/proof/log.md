@@ -4557,3 +4557,34 @@ Feasible but complex (~200 lines estimated).
 
 ## Run: 2026-03-31T22:30:08+00:00
 
+### Analysis of 18 remaining sorries in ANFConvertCorrect.lean
+
+**Build status**: PASSES (warnings only, no errors). 18 sorries unchanged.
+
+**Attempted the 6 priority proofs (L3825/3829/3840/3891/3895/3906)**: FAILED.
+The prompt's suggested tactic `exact ih _ (...) (by cases hwf; assumption)` fails for TWO reasons:
+1. `ExprWellFormed` is a `def` (not `inductive`), so `cases hwf` fails with "major premise type is not an inductive type"
+2. **Fundamental issue**: `ih` requires continuation producing `.trivial arg`, but the actual continuation is `fun t => pure (.return (some t))` (or `.yield`). The goal shows: `⊢ StateT.pure (ANF.Expr.return (some arg)) n' = Except.ok (ANF.Expr.trivial arg, ?m)` — impossible.
+
+**Root cause**: `normalizeExpr (.return (some val)) k` ignores `k` and uses `fun t => pure (.return (some t))` internally. The IH of `normalizeExpr_labeled_step_sim` requires a trivial-producing continuation, creating a mismatch for nested return/yield cases.
+
+**Fix needed**: Generalize the theorem's IH to handle non-trivial continuations (at least return/yield wrapping), or restructure the proof to handle return/yield differently.
+
+**hasBreakInHead_flat_error_steps (L3940) / hasContinueInHead_flat_error_steps (L3953)**:
+- `HasBreakInHead` is mutually inductive (with `HasBreakInHeadList`, `HasBreakInHeadProps`), so `induction` tactic fails
+- The `seq_right` constructor creates a potential soundness issue: `.seq a b` where `HasBreakInHead b` requires evaluating `a` first, which can change env/heap, contradicting the theorem's `sf'.env = sf.env` conclusion
+- Needs: custom recursion principle for mutual inductive + possible theorem weakening
+
+**Expression-case sim theorems (L4140-4279)**: Each is ~100-300 lines, requires full case analysis on Flat.Expr constructors through normalizeExpr. Same structural challenges as other proofs.
+
+**L4106/4109 (compound throw arg)**: ~20 compound expression sub-cases, each needing context-lifting through throw.
+
+### Recommendations for future sessions
+1. **Create a context-lifting lemma**: `Flat.Steps_context` — if steps through `a` produce `evs`, then steps through `C[a]` (for evaluation context C) produce corresponding events. This unblocks hasBreakInHead, compound throw/return/yield cases.
+2. **Generalize normalizeExpr_labeled_step_sim IH**: Either remove the trivial-continuation constraint entirely (adapting all cases) or add a secondary version for return/yield continuations.
+3. **Consider weakening hasBreakInHead theorems**: The `sf'.env = sf.env` conclusion may be too strong for `seq_right` and similar constructors where the left sub-expression modifies env/heap.
+
+2026-03-31T23:25:42+00:00 DONE
+
+## Run: 2026-03-31T23:30:01+00:00
+
