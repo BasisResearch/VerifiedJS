@@ -5845,11 +5845,11 @@ private theorem closureConvert_step_simulation
     let st2 := (Flat.convertExpr catchBody (catchParam :: scope) envVar envMap st1).snd
     let ffin := (Flat.convertOptExpr finally_ scope envVar envMap st2).fst
     have hncf : catchParam ≠ "__call_frame_return__" := by
-      unfold noCallFrameReturn at hncfr; simp at hncfr; exact hncfr.1
+      unfold noCallFrameReturn at hncfr; simp at hncfr; exact hncfr.1.1.1
     have hncfr_body : noCallFrameReturn body = true := by
-      unfold noCallFrameReturn at hncfr; simp at hncfr; exact hncfr.2.1
+      unfold noCallFrameReturn at hncfr; simp at hncfr; exact hncfr.1.1.2
     have hncfr_catch : noCallFrameReturn catchBody = true := by
-      unfold noCallFrameReturn at hncfr; simp at hncfr; exact hncfr.2.2.1
+      unfold noCallFrameReturn at hncfr; simp at hncfr; exact hncfr.1.2
     cases hbv : Core.exprValue? body with
     | some v =>
       sorry
