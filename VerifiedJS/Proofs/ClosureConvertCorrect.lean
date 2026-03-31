@@ -6250,8 +6250,9 @@ private theorem closureConvert_step_simulation
           rw [hsc']
           have hcore := Core.step_tryCatch_step_body_nonError body catchParam catchBody finally_
             sc.env sc.heap sc.trace sc.funcs sc.callStack hbv ev sc_sub' hcstep_sub hne
-          convert hcore using 1
-          simp [Core.pushTrace, sc']
+          have hsc'_eq : sc' = Core.pushTrace { sc_sub' with expr := .tryCatch sc_sub'.expr catchParam catchBody finally_, trace := sc.trace } ev := by
+            simp [Core.pushTrace, sc']
+          rw [hsc'_eq]; exact hcore
         · simp [sc', htrace, htrace_sub]
         · exact hinj'
         · exact henvCorr'
