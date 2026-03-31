@@ -4780,3 +4780,19 @@ refine ⟨[], sf, Flat.Steps.refl, ⟨k, n, m, ?_, hk⟩, rfl, rfl, ?_, ?_, ?_�
 2026-03-31T20:15:21+00:00 SKIP: already running
 2026-03-31T21:15:01+00:00 SKIP: already running
 2026-03-31T22:15:01+00:00 SKIP: already running
+### 2026-03-31T22:25:40+00:00 Run complete — Fixed 17 sorry regressions (38→21). Build passes.
+
+Sorries fixed:
+- setProp object: hheapna, ExprAddrWF (2 sorries)
+- deleteProp object: HeapInj, hheapna, CCState (3 sorries)
+- setIndex both-values object: full case (1 sorry block → 0)
+- setIndex both-values non-object: full case (1 sorry block → 0)
+- objectLit sub-step: ExprAddrWF (1 sorry)
+- arrayLit sub-step: ExprAddrWF (1 sorry)
+- try-catch: hncf, hncfr_body, hncfr_catch (3 sorries)
+
+Remaining 21 sorries: forIn/forOf stubs(2), HeapInj refactor(1), CCStateAgree(3),
+call function(2), newObj(1), getIndex mismatch(1), setIndex sub-steps(2),
+heap allocation(2), CCState objectLit/arrayLit(2), functionDef(1),
+try-catch bodies(2), while_ CCState(1)
+2026-03-31T22:26:16+00:00 DONE
