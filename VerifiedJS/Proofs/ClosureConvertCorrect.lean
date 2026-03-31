@@ -6198,7 +6198,90 @@ private theorem closureConvert_step_simulation
           sorry -- CCState for seq fin (.lit v) — needs convertExpr_seq_unfold + state threading
     | none =>
       -- Body is not a value; step the body via IH
-      sorry -- tryCatch body-step case: IH on body, then wrap result in tryCatch (non-error) or catch handler (error)
+      have hfnv : Flat.exprValue? fbody = none :=
+        convertExpr_not_value body hbv scope envVar envMap st
+      have hsf_eta : sf = { sf with expr := .tryCatch fbody catchParam fcatch ffin } := by
+        cases sf; simp_all
+      rw [hsf_eta] at hstep
+      -- Case split on whether the trace event is an error
+      have hev_split : (∃ msg, ev = .error msg) ∨ (∀ msg, ev ≠ .error msg) := by
+        cases ev with
+        | error msg => left; exact ⟨msg, rfl⟩
+        | _ => right; intro msg h; cases h
+      rcases hev_split with ⟨msg, rfl⟩ | hne
+      · -- Error case: body step produced error, catch handler activates
+        sorry -- CCState threading: catch body compiled at state st1 but need CCStateAgree st st_a
+      · -- Non-error case: body step propagated through tryCatch wrapper
+        obtain ⟨sa, hsubstep, hsf'_eq⟩ : ∃ sa,
+            Flat.step? { sf with expr := fbody } = some (ev, sa) ∧
+            sf' = { expr := .tryCatch sa.expr catchParam fcatch ffin,
+                    env := sa.env, heap := sa.heap,
+                    trace := sf.trace ++ [ev], funcs := sf.funcs, callStack := sf.callStack } := by
+          match hm : Flat.step? { sf with expr := fbody } with
+          | some (t, sa) =>
+            have heq := Flat_step?_tryCatch_body_step sf fbody catchParam fcatch ffin sa t hncf hfnv hm hne
+            rw [heq] at hstep; simp at hstep
+            obtain ⟨rfl, hsf'eq⟩ := hstep
+            exact ⟨sa, rfl, hsf'eq.symm⟩
+          | none =>
+            have heq : Flat.step? { sf with expr := .tryCatch fbody catchParam fcatch ffin } = none := by
+              simp only [Flat.step?, hfnv, hm]
+            rw [heq] at hstep; exact absurd hstep (by simp)
+        subst hsf'_eq
+        have hdepth : body.depth < n := by simp [Core.Expr.depth] at hd; omega
+        have hexprwf_body : ExprAddrWF body sc.heap.objects.size := by
+          simp [ExprAddrWF] at hexprwf; exact hexprwf.1
+        obtain ⟨injMap', sc_sub', ⟨hcstep_sub⟩, htrace_sub, hinj', henvCorr', henvwf', hheapvwf',
+               hheapna', hncfr', hexprwf', st_a, st_a', hconv', hAgreeIn, hAgreeOut⟩ :=
+          ih_depth body.depth hdepth envVar envMap injMap
+            { sf with expr := fbody }
+            { sc with expr := body }
+            ev sa scope st st1
+            (by simp [Core.Expr.depth]) htrace hinj henvCorr henvwf hheapvwf hheapna hncfr_body hexprwf_body
+            (by simp)
+            ⟨hsubstep⟩
+        let sc' : Core.State :=
+          ⟨.tryCatch sc_sub'.expr catchParam catchBody finally_, sc_sub'.env, sc_sub'.heap,
+           sc.trace ++ [ev], sc_sub'.funcs, sc_sub'.callStack⟩
+        refine ⟨injMap', sc', ⟨?_⟩, ?_, ?_, ?_, ?_, ?_, ?_, ?_, ?_, ?_⟩
+        · show Core.step? sc = some (ev, sc')
+          have hsc' : sc = { sc with expr := .tryCatch body catchParam catchBody finally_ } := by
+            obtain ⟨_, _, _, _, _, _⟩ := sc; simp only [] at hsc; subst hsc; rfl
+          rw [hsc']
+          have hcore := Core.step_tryCatch_step_body_nonError body catchParam catchBody finally_
+            sc.env sc.heap sc.trace sc.funcs sc.callStack hbv ev sc_sub' hcstep_sub hne
+          convert hcore using 1
+          simp [Core.pushTrace, sc']
+        · simp [sc', htrace, htrace_sub]
+        · exact hinj'
+        · exact henvCorr'
+        · exact henvwf'
+        · exact hheapvwf'
+        · exact hheapna'
+        · simp [sc', noCallFrameReturn]
+          simp [noCallFrameReturn] at hncfr
+          exact ⟨hncf, hncfr', hncfr.2.2.1, hncfr.2.2.2⟩
+        · simp only [sc', ExprAddrWF]
+          have hmono := Core_step_heap_size_mono hcstep_sub
+          simp [ExprAddrWF] at hexprwf
+          cases finally_ with
+          | none => exact ⟨hexprwf', ExprAddrWF_mono catchBody hexprwf.2.1 hmono⟩
+          | some fin => exact ⟨hexprwf', ExprAddrWF_mono catchBody hexprwf.2.1 hmono, ExprAddrWF_mono fin hexprwf.2.2 hmono⟩
+        · -- CCState threading: body stepped, catch and finally unchanged
+          have hcatch := convertExpr_state_determined catchBody (catchParam :: scope) envVar envMap
+              st1 st_a' hAgreeOut.1 hAgreeOut.2
+          have hfin := convertOptExpr_state_determined finally_ scope envVar envMap
+              st2 (Flat.convertExpr catchBody (catchParam :: scope) envVar envMap st_a').snd
+              hcatch.2.1 hcatch.2.2
+          refine ⟨st_a,
+            (Flat.convertOptExpr finally_ scope envVar envMap
+              (Flat.convertExpr catchBody (catchParam :: scope) envVar envMap st_a').snd).snd,
+            ?_, hAgreeIn, ?_⟩
+          · simp only [sc', Flat.convertExpr]
+            rw [show (Flat.convertExpr sc_sub'.expr scope envVar envMap st_a).fst = sa.expr from (congrArg Prod.fst hconv').symm]
+            rw [show (Flat.convertExpr sc_sub'.expr scope envVar envMap st_a).snd = st_a' from (congrArg Prod.snd hconv').symm]
+            rw [hcatch.1, hfin.1]
+          · rw [hconv.2]; exact hfin.2
   | while_ cond body =>
     rw [hsc] at hconv hncfr hexprwf hd
     simp [Flat.convertExpr] at hconv

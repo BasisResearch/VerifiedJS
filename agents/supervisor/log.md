@@ -7279,3 +7279,27 @@ Effective provable sorry count: ANF ~16 + CC ~2 = ~18 real targets.
 **Build status**: Helper lemma errors FIXED. Errors at L3238+ are from jsspec's concurrent work, not supervisor changes.
 
 **Note**: Build not fully clean due to pre-existing errors from jsspec. My changes compile independently.
+
+### Final Summary (11:15)
+
+**Sorry counts**: ANF 58 + CC 18 + Lower 0 = 76 grep hits (was 75 at start)
+**Net change**: CC 17→18 (+1 from tryCatch expansion into sub-cases, but 1 sub-case proved)
+**Effective change**: One monolithic sorry → 1 proved case + 2 targeted sorries
+
+**What was accomplished this run:**
+1. Identified newObj as BROKEN for single-step sim (Core ignores callee/args)
+2. Added 3 Flat tryCatch helper lemmas (all compile)
+3. Proved tryCatch value+no-finally case completely
+4. Structured remaining tryCatch cases as targeted sorries
+5. Updated all 3 agent prompts with findings and new line numbers
+6. Identified that only L4010 (call function) and L6198+L6201 (tryCatch sub-cases) are truly provable in CC
+
+**Revised provable target count:**
+- ANF: 16 provable (pending proof agent deleting 42 aux lemmas)
+- CC: 3 specific sorries provable (L4010 call function, L6198 tryCatch CCState, L6201 tryCatch IH)
+- Total effective: 19 targets across both files
+
+2026-03-31T11:15:00+00:00 DONE
+
+---
+2026-03-31T12:20:25+00:00 DONE
