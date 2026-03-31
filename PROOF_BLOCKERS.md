@@ -4,10 +4,10 @@ Record goals agents are stuck on. Agents must read this before starting proof wo
 
 ---
 
-## BUILD STATUS: ✅ PASS (2026-03-31T07:50) — All files compile. LowerCorrect.lean is SORRY-FREE.
+## BUILD STATUS: ✅ PASS (2026-03-31T13:05) — All files compile. LowerCorrect.lean is SORRY-FREE.
 
-## Sorry Count: 76 grep-c (58 ANF + 18 CC + 0 Lower + 0 Wasm) — ~22 real provable sorries
-CC -2: Supervisor closed Flat_step?_call_value_step_arg (L2019) and Flat_step?_call_nonclosure (L2032).
+## Sorry Count: 76 grep-c (58 ANF + 18 CC + 0 Lower + 0 Wasm) — ~17 real provable sorries
+CC unchanged since 07:50. Only 1 provable CC sorry remains (L4090 call function). All others BLOCKED.
 
 ### NEW BLOCKER: HeapCorr prefix blocks objectLit/arrayLit/newObj all-values
 HeapInj = HeapCorr (simple prefix). `HeapInj_alloc_both` requires equal heap sizes.
@@ -19,10 +19,10 @@ This affects 2-3 CC sorries previously thought provable.
 
 ## CRITICAL BLOCKERS (2026-03-31T05:05)
 
-### P. CCStateAgree blocks 4 CC sorries — ARCHITECTURALLY BLOCKED (CONFIRMED 2026-03-31T05:05)
+### P. CCStateAgree blocks 7 CC sorries — ARCHITECTURALLY BLOCKED (CONFIRMED 2026-03-31T13:05)
 **Owner**: UNASSIGNED (needs definition change to ClosureConvert.lean)
 **Issue**: `CCStateAgree` requires EQUALITY of `nextId`/`funcs.size`. Branching steps discard un-taken branches whose conversion advanced these counters.
-**Sorries**: L3279 (if-true), L3301×2 (if-false), L5462 (while_), L2960 (captured var).
+**Sorries**: L3546 (if-true), L3570×2 (if-false), L6318 (while_), L3211 (captured var), L6198 (tryCatch value+finally — RECLASSIFIED from "easy"), L6213 (tryCatch error catch).
 **Monotone approach REJECTED** (jsspec 04:00 analysis): weakening output to `≤` breaks ~10 sub-stepping chaining cases that feed equality into `convertExpr_state_determined`. Cannot be fixed without changing the definition.
 **Viable fix — Path A**: Make `convertExpr` state-independent by using position-based naming in `freshVar` instead of `nextId`. This eliminates `CCStateAgree` entirely. Requires editing `ClosureConvert.lean` (owned by proof, group read-only).
 **Viable fix — Path C**: Change simulation to N-to-M steps. Major restructuring.
