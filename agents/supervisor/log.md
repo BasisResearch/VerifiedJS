@@ -1,3 +1,84 @@
+## Run: 2026-03-31T21:05:00+00:00
+
+### Metrics
+- **Sorry count (grep-c)**: ANF 18 + CC 22 + Lower 1 = 41 grep hits
+- **Delta from last run (13:05)**: 76 → 41. NET -35 grep hits. MAJOR PROGRESS.
+- **Breakdown**: proof deleted 42 unprovable ANF aux (58→18), jsspec closed 2 CC helper lemma sorries (24→22), wasmspec still running
+- **BUILD**: All 3 files compile independently ✓
+
+### Agent Status
+1. **proof** (PID 1182196, started 20:30): ACTIVE and PRODUCTIVE.
+   - Completed Priority 1: deleted 42 unprovable aux sorries (ANF 58→18) ✓
+   - Fixed LowerCorrect (3 errors → 1 sorry) ✓
+   - Made ANF file group-writable (rw-rw----) ✓
+   - Modified ANF at 20:59. Should be working on Priority 2 (7 expression-case proofs).
+   - Prompt UPDATED: apply 7 expression-case proofs (18→11), then close LowerCorrect L52.
+
+2. **jsspec** (PID 1057128, started 19:00): ACTIVE.
+   - Closed 2 helper lemma sorries at 20:16 (Flat_step?_call_consoleLog_vals, Core_step?_call_consoleLog_general)
+   - Currently building CC (lake build running)
+   - Prompt UPDATED: redirected from done tryCatch noCallFrameReturn to L4133 (call non-closure) and L5855 (tryCatch body-value)
+
+3. **wasmspec** (PID 970206, started 18:15): ACTIVE.
+   - Running ~3 hours, currently building CC
+   - Prompt UPDATED: target L5212/L5215 (setIndex sub-stepping) + help apply ANF proofs if proof agent hasn't
+
+### CC Sorry Classification (22 grep hits)
+```
+UNPROVABLE (stubs): 2
+  L1507, L1508: forIn/forOf
+
+BLOCKED (cannot prove without architectural changes): 15
+  L3262: captured var (HeapInj refactor needed)
+  L3590: CCStateAgree if-then
+  L3613 x2: CCStateAgree if-else
+  L4131: call function (FuncsCorr needed)
+  L4302: newObj (heap + semantic mismatch)
+  L4892: getIndex string (semantic mismatch)
+  L5547: objectLit all-values (heap size)
+  L5643, L5650: arrayLit (heap size)
+  L5746: arrayLit CCState
+  L5747: functionDef (multi-step)
+  L5858: tryCatch body-step (CCState threading)
+  L5890: while_ CCState
+
+POSSIBLY PROVABLE: 3
+  L4133: call non-function (jsspec ACTIVE)
+  L5212: setIndex value-stepping (wasmspec target)
+  L5215: setIndex idx-stepping (wasmspec target)
+
+MAYBE PROVABLE: 1
+  L5855: tryCatch body-value (jsspec target 2)
+```
+
+### Critical Path
+```
+                    ┌─ proof: applying 7 ANF expression-case proofs (18→11)
+Current (41 grep)  ─┤─ jsspec: targeting L4133, L5855 (CC 22→20 possible)
+                    └─ wasmspec: targeting L5212, L5215 (CC 20→18 possible)
+```
+
+Best case (next few hours):
+- proof closes 7 ANF expression-case + LowerCorrect → ANF 11, Lower 0
+- jsspec closes L4133 + L5855 → CC 20
+- wasmspec closes L5212 + L5215 → CC 18
+- Total: ~29 grep hits (from 41)
+
+Realistic case:
+- proof closes 7 ANF expression-case → ANF 11
+- jsspec/wasmspec close 1-2 CC targets → CC 20-21
+- Total: ~32-33 grep hits
+
+### Actions Taken
+1. Counted sorries: ANF 18, CC 22, Lower 1 = 41 total (down 35 from 76)
+2. Updated jsspec prompt: removed completed targets, redirected to L4133 + L5855
+3. Updated wasmspec prompt: target L5212/L5215, backup plan to apply ANF proofs
+4. Updated proof prompt: confirmed deletion done, prioritize expression-case proofs
+5. Updated PROOF_BLOCKERS.md sorry count
+6. Logged to time_estimate.csv
+
+---
+
 ## Run: 2026-03-31T13:05:00+00:00
 
 ### Metrics
@@ -7672,3 +7753,4 @@ Realistic case:
 
 ## Run: 2026-03-31T21:05:02+00:00
 
+2026-03-31T21:09:40+00:00 DONE

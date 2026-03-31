@@ -1,4 +1,4 @@
-# jsspec — Close CC tryCatch + call sorries
+# jsspec — Close CC L4133 and tryCatch body-value (L5855)
 
 ## RULES
 - **DO NOT** run `lake build VerifiedJS` (full build). OOMs.
@@ -10,74 +10,67 @@ Previous agents got PERMANENTLY STUCK. **NEVER use `while`, `until`, or `sleep` 
 
 ## MEMORY: 7.7GB total, NO swap. ~4GB available.
 
-## STATE: CC 29 grep-sorry hits, build passing.
+## STATE: CC 22 grep-sorry hits. You closed 2 helper lemma sorries last run. Good work.
 
 ## YOUR TARGETS (in priority order)
 
-### Target 1: tryCatch noCallFrameReturn (L5740-5742) — EASY
+### Target 1: call non-function case (L4133) — MEDIUM
 
-These 3 sorries extract facts from `hncfr : noCallFrameReturn (.tryCatch body catchParam catchBody finally_) = true`.
+The goal: callee is NOT a function (all args values). Non-function call should produce a runtime error on both sides.
 
-`noCallFrameReturn` for tryCatch (L957-960):
-```lean
-| .tryCatch body cp cb fin =>
-    cp != "__call_frame_return__" &&
-    noCallFrameReturn body && noCallFrameReturn cb &&
-    match fin with | some f => noCallFrameReturn f | none => true
+Current context at L4133:
+- `hnotfunc : ∀ idx, cv ≠ .function idx` — callee is not a function
+- `hallv : Core.allValues args = some argVals` — all args are values
+- `hcev : Core.exprValue? f = some cv` — callee is a value
+- Need: Flat step matches Core step
+
+Pattern:
+1. `lean_goal` at L4133 to see full state
+2. Core should step `call (lit cv) [lit v1, ..., lit vn]` to error since cv is not a function
+3. Flat should do the same with converted values
+4. The key tactic sequence:
 ```
-
-**L5740** (`catchParam ≠ "__call_frame_return__"`):
+lean_multi_attempt at L4133:
+["have : ∀ idx, cv ≠ .function idx := hnotfunc; sorry",
+ "simp [Core.step?, Core.exprValue?, hcev, hallv] at hcstep; sorry"]
 ```
-lean_multi_attempt at L5740:
-["simp [noCallFrameReturn] at hncfr; exact hncfr.1",
- "simp [noCallFrameReturn, bne_iff_ne] at hncfr; exact hncfr.1",
- "simp [noCallFrameReturn, Bool.and_eq_true, bne_iff_ne] at hncfr; exact hncfr.1",
- "have := hncfr; simp [noCallFrameReturn] at this; exact this.1",
- "simp only [noCallFrameReturn, Bool.and_eq_true, bne_iff_ne, ne_eq] at hncfr; exact hncfr.1"]
-```
+Use `lean_goal` first to understand what's needed, then build the proof step by step.
 
-**L5741** (`noCallFrameReturn body = true`):
-```
-lean_multi_attempt at L5741:
-["simp [noCallFrameReturn] at hncfr; exact hncfr.2.1",
- "simp [noCallFrameReturn, Bool.and_eq_true] at hncfr; exact hncfr.2.1",
- "have := hncfr; simp [noCallFrameReturn] at this; exact this.2.1"]
-```
+### Target 2: tryCatch body-value (L5855) — MEDIUM
 
-**L5742** (`noCallFrameReturn catchBody = true`):
-```
-lean_multi_attempt at L5742:
-["simp [noCallFrameReturn] at hncfr; exact hncfr.2.2.1",
- "simp [noCallFrameReturn, Bool.and_eq_true] at hncfr; exact hncfr.2.2.1",
- "have := hncfr; simp [noCallFrameReturn] at this; exact this.2.2.1"]
-```
+When body is a value `some v`, tryCatch immediately produces the value (skipping catch, running finally).
+- `hbv : Core.exprValue? body = some v`
+- Core steps: tryCatch (lit v) catchParam catchBody finally → v (or sequence with finally)
+- Flat steps: similarly with converted expressions
 
-### Target 2: call non-function case (L4133) — MEDIUM
+Approach:
+1. `lean_goal` at L5855
+2. Prove `body = .lit v` from `hbv`
+3. Show both Core and Flat step tryCatch of a literal
+4. Use `lean_multi_attempt` with candidates
 
-Was previously proved before hsf_eta correction. Pattern:
-1. `lean_goal` at L4133 to see current state
-2. Need: rw hsf_eta at hstep, then Flat_step?_call_nonclosure, then Core.step_call_nonfunc
-3. The 10 refine bullets are: hinj, henvCorr, henvwf, hheapvwf, hheapna, noCallFrameReturn, ExprAddrWF, CCState
-4. `lean_multi_attempt` at L4133 with candidate approaches
+### Target 3: tryCatch body-stepping (L5858) — HARD, may be BLOCKED
 
-### Target 3: setProp/setIndex sorry bullets (L5100-5108) — if time
-
-These are in the setIndex all-values case. Use `lean_goal` to check what's needed.
+Body is not a value. Need IH to step body, then wrap in tryCatch context.
+- Uses `ih` on body, then reconstruct
+- LIKELY BLOCKED by CCState threading (body conversion uses st, but catch/finally use st1/st2)
+- Only attempt if L4133 and L5855 are done
 
 ### SKIP (architecturally blocked):
 - L1507-1508: forIn/forOf stubs (theorem is false)
 - L3262: captured var (HeapInj refactor)
 - L3590, L3613: CCStateAgree threading
-- L4131: call consoleLog (FuncsCorr needed)
+- L4131: call function (FuncsCorr needed)
 - L4302: newObj
 - L4892: getIndex string semantic mismatch
-- L5440, L5543: heap allocation
-- L5640: functionDef
-- L5745, L5748: tryCatch body stepping (complex)
-- L5780: while_ CCState
+- L5212, L5215: setIndex sub-stepping
+- L5547, L5643, L5650: heap allocation
+- L5746: arrayLit CCState
+- L5747: functionDef
+- L5890: while_ CCState
 
 ### COLLISION AVOIDANCE
-wasmspec is also editing CC. You work on lines L4100-4200 and L5700-5800. wasmspec works on L5000-5650. Do NOT edit the same regions.
+wasmspec is also editing CC. You work on lines L4100-4200 and L5800-5900. wasmspec works on L5000-5650. Do NOT edit the same regions.
 
 ## WORKFLOW:
 1. `grep -n sorry VerifiedJS/Proofs/ClosureConvertCorrect.lean` to find CURRENT line numbers

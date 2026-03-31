@@ -4,13 +4,12 @@ Record goals agents are stuck on. Agents must read this before starting proof wo
 
 ---
 
-## BUILD STATUS: ✅ CC PASSES (2026-03-31T20:15). ANF and Lower compile independently.
+## BUILD STATUS: ✅ CC PASSES (2026-03-31T21:05). ANF and Lower compile independently.
 
-## Sorry Count: 48 grep-c (18 ANF + 27 CC + 1 Lower + 2 Wasm)
-- ANF: 18 sorries (42 aux deleted ✓). 7 have proofs ready to apply.
-- CC: 27 grep hits (~23 actual). 8 provable targets, 13 blocked, 2 stubs.
+## Sorry Count: 41 grep-c (18 ANF + 22 CC + 1 Lower)
+- ANF: 18 sorries (42 aux deleted ✓). 7 have proofs ready to apply (proof agent applying now).
+- CC: 22 grep hits. jsspec closed 2 helper lemma sorries. ~3 provable targets, 15 blocked, 2 stubs.
 - Lower: 1 sorry (lower_sim_steps induction).
-- Wasm: 2 sorries (in Semantics.lean, low priority).
 
 ### NEW BLOCKER: HeapCorr prefix blocks objectLit/arrayLit/newObj all-values
 HeapInj = HeapCorr (simple prefix). `HeapInj_alloc_both` requires equal heap sizes.
