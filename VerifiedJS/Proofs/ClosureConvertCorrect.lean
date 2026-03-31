@@ -995,13 +995,14 @@ end
     Flat may contain additional closure-environment objects. -/
 private def HeapCorr (cheap fheap : Core.Heap) : Prop :=
   cheap.objects.size = fheap.objects.size ∧
+  cheap.nextAddr = fheap.nextAddr ∧
   ∀ addr, addr < cheap.objects.size → cheap.objects[addr]? = fheap.objects[addr]?
 
 private theorem HeapCorr_refl (h : Core.Heap) : HeapCorr h h :=
-  ⟨rfl, fun _ _ => rfl⟩
+  ⟨rfl, rfl, fun _ _ => rfl⟩
 
 private theorem HeapCorr_get {ch fh : Core.Heap} {addr : Nat} (hc : HeapCorr ch fh) (hlt : addr < ch.objects.size) :
-    ch.objects[addr]? = fh.objects[addr]? := hc.2 addr hlt
+    ch.objects[addr]? = fh.objects[addr]? := hc.2.2 addr hlt
 
 /-- Both heaps push the same object: size-equality relation is maintained. -/
 private theorem HeapCorr_alloc_both {ch fh : Core.Heap} (hc : HeapCorr ch fh)
@@ -1009,17 +1010,16 @@ private theorem HeapCorr_alloc_both {ch fh : Core.Heap} (hc : HeapCorr ch fh)
     HeapCorr { objects := ch.objects.push p, nextAddr := ch.nextAddr + 1 }
              { objects := fh.objects.push p, nextAddr := fh.nextAddr + 1 } := by
   have hsize := hc.1
-  constructor
-  · simp only [Array.size_push]; omega
-  · intro addr hlt
-    simp [Array.size_push] at hlt
-    rcases Nat.lt_or_ge addr ch.objects.size with h | h
-    · simp only [Array.getElem?_push, show ¬(addr = ch.objects.size) from by omega,
-                 show ¬(addr = fh.objects.size) from by omega, ite_false]
-      exact hc.2 addr h
-    · have haddr_eq : addr = ch.objects.size := by omega
-      subst haddr_eq
-      simp only [Array.getElem?_push, hsize, ite_true]
+  have hnext := hc.2.1
+  refine ⟨by simp only [Array.size_push]; omega, by omega, fun addr hlt => ?_⟩
+  simp [Array.size_push] at hlt
+  rcases Nat.lt_or_ge addr ch.objects.size with h | h
+  · simp only [Array.getElem?_push, show ¬(addr = ch.objects.size) from by omega,
+               show ¬(addr = fh.objects.size) from by omega, ite_false]
+    exact hc.2.2 addr h
+  · have haddr_eq : addr = ch.objects.size := by omega
+    subst haddr_eq
+    simp only [Array.getElem?_push, hsize, ite_true]
 
 /-- Map Core.Value object addresses through an injection (for heap correspondence). -/
 private def mapHeapValue (f : Nat → Nat) : Core.Value → Core.Value
@@ -1106,14 +1106,14 @@ private theorem HeapInj_set_same {ch fh : Core.Heap} {f : Nat → Nat}
     simp only [Array.set!, Array.setIfInBounds]; split
     · exact Array.size_set ..
     · rfl
-  refine ⟨by simp only [sz_eq]; exact hinj.1, fun addr' hlt' => ?_⟩
+  refine ⟨by simp only [sz_eq]; exact hinj.1, by simp; exact hinj.2.1, fun addr' hlt' => ?_⟩
   simp only [sz_eq] at hlt'
   have hlt_f : addr < fh.objects.size := hinj.1 ▸ hlt
   by_cases h : addr' = addr
   · subst h; simp [Array.set!, Array.setIfInBounds, hlt, hlt_f]
   · simp only [Array.set!, Array.setIfInBounds, hlt, hlt_f, ↓reduceDIte]
     rw [Array.getElem?_set, Array.getElem?_set]
-    simp [Ne.symm h, hinj.2 addr' hlt']
+    simp [Ne.symm h, hinj.2.2 addr' hlt']
 
 /-- All object addresses in a Core value are valid heap addresses. -/
 private def ValueAddrWF (v : Core.Value) (heapSize : Nat) : Prop :=
@@ -2812,6 +2812,50 @@ private theorem valuesFromExprList_none_of_firstNonValueProp
         simp [List.map, Flat.valuesFromExprList?, Flat.exprValue?, htail]
       | none => rw [hrest] at h; simp at h
     | _ => simp [List.map, Flat.valuesFromExprList?, Flat.exprValue?]
+
+private theorem convertPropList_firstNonValueProp_none
+    (ps : List (Core.PropName × Core.Expr))
+    (scope : List String) (envVar : String) (envMap : Flat.EnvMapping) (st : Flat.CCState)
+    (h : Core.firstNonValueProp ps = none) :
+    Flat.firstNonValueProp (Flat.convertPropList ps scope envVar envMap st).fst = none := by
+  induction ps generalizing st with
+  | nil => simp [Flat.convertPropList, Flat.firstNonValueProp]
+  | cons p ps' ih =>
+    obtain ⟨pn, pe⟩ := p
+    unfold Core.firstNonValueProp at h
+    match pe with
+    | .lit v =>
+      simp only [Flat.convertPropList, Flat.convertExpr]
+      cases hrest : Core.firstNonValueProp ps' with
+      | some _ => simp [hrest] at h
+      | none =>
+        simp only [Flat.firstNonValueProp, Flat.exprValue?]
+        exact ih st hrest
+    | _ => all_goals simp at h
+
+/-- When all Core props are values, the filterMap results match through conversion. -/
+private theorem convertPropList_filterMap_eq
+    (ps : List (Core.PropName × Core.Expr))
+    (scope : List String) (envVar : String) (envMap : Flat.EnvMapping) (st : Flat.CCState)
+    (h : Core.firstNonValueProp ps = none) :
+    ((Flat.convertPropList ps scope envVar envMap st).fst.filterMap fun (k, e) =>
+      match Flat.exprValue? e with | some v => some (k, Flat.flatToCoreValue v) | none => none) =
+    (ps.filterMap fun (k, e) =>
+      match Core.exprValue? e with | some v => some (k, v) | none => none) := by
+  induction ps generalizing st with
+  | nil => simp [Flat.convertPropList]
+  | cons p ps' ih =>
+    obtain ⟨pn, pe⟩ := p
+    unfold Core.firstNonValueProp at h
+    match pe with
+    | .lit v =>
+      cases hrest : Core.firstNonValueProp ps' with
+      | some _ => simp [hrest] at h
+      | none =>
+        simp only [Flat.convertPropList, Flat.convertExpr, List.filterMap,
+                    Flat.exprValue?, Core.exprValue?, flatToCoreValue_convertValue]
+        exact congrArg _ (ih st hrest)
+    | _ => all_goals simp at h
 
 private theorem convertPropList_firstNonValueProp_some
     (ps : List (Core.PropName × Core.Expr))
