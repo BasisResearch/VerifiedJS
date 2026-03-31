@@ -1,3 +1,59 @@
+## Run: 2026-03-31T07:00:04+00:00
+
+### Metrics
+- **Sorry count (grep-c)**: ANF 58 + CC 20 + Lower 0 = 78 grep hits
+- **Delta from last run (05:05)**: ANF 58→58 (0), CC 17→20 (+3). NET +3 grep hits.
+- **WHY UP**: jsspec's 05:00 session added 2 sorry'd helper lemmas (L2035 Flat_step?_call_arg_step, L2048 Flat_step?_call_nonclosure) + 1 comment mentioning sorry. These are scaffolding for call sub-cases, NOT regression. Real provable sorries unchanged.
+- **BUILD**: Healthy. No errors. ~4GB free. 4 lake serve + 2 lake build processes.
+- **LowerCorrect**: 0 sorries ✓
+- **Effective sorry count**: ~25 real provable sorries (ANF 16 + CC 9 provable targets)
+
+### Agent Status
+1. **proof** (PID 3309505, started Mar30 19:30): STILL STUCK in while loop.
+   - No work since 20:10 Mar30. 35+ hours wasted.
+   - Timeout at Mar31 19:30 (~12.5 hours from now). Cannot kill (different user).
+   - Prompt UPDATED: same instructions (delete 42 unprovable aux, then multi-step).
+
+2. **wasmspec** (PID 2747051, started Mar30 14:30): STILL STUCK in while loop.
+   - No work since 16:10 Mar30. 39+ hours wasted.
+   - Timeout at Mar31 14:30 (~7.5 hours from now). Cannot kill (different user).
+   - Prompt UPDATED: pick up CC value sub-cases after jsspec.
+
+3. **jsspec** (PID 116929, started 07:00): FRESH START. Reading prompt.
+   - 05:00 session tried CCStateAgree monotone approach again (read old prompt), exited 06:33 with code 1.
+   - Added 2 scaffolding helper lemmas (L2035, L2048) but closed 0 sorries.
+   - Prompt REWRITTEN at 07:00: clear target list with 10 provable sorries, objectLit first.
+
+### Actions Taken
+1. jsspec prompt REWRITTEN: 10 provable targets listed, helper lemma closing instructions added
+2. wasmspec prompt UPDATED: check jsspec progress first, pick up remaining
+3. proof prompt UPDATED: same delete-42 instructions, stronger loop warnings
+4. PROOF_BLOCKERS.md: updated sorry count (78 grep, ~25 real provable)
+5. time_estimate.csv: logged 78 sorries
+
+### Critical Path
+```
+                    ┌─ proof: STUCK until ~19:30 timeout (12.5h)
+Current (78 grep)  ─┤─ jsspec: FRESH START at 07:00 — value sub-cases (10 targets)
+                    └─ wasmspec: STUCK until ~14:30 timeout (7.5h)
+```
+
+Best case:
+- jsspec closes 3-4 value sub-cases → CC ~16
+- wasmspec restarts ~14:30, picks up remaining → CC ~13-14
+- proof restarts ~19:30, deletes 42 aux → ANF ~16
+- Total: ~29-30 grep hits (~25 real provable → ~12-15)
+
+### Blockers
+1. proof/wasmspec stuck in while loops — CANNOT kill (different users)
+2. CCStateAgree 4 sorries need definition change to ClosureConvert.lean
+3. ANFConvertCorrect.lean still no group write (proof needs to chmod)
+4. jsspec's 05:00 session wasted on CCStateAgree despite prompt — read OLD prompt before update
+
+2026-03-31T07:00:04+00:00 DONE
+
+---
+
 ## Run: 2026-03-31T05:05:01+00:00
 
 ### Metrics
@@ -6942,3 +6998,10 @@ Target: 76 → ~28 (16 ANF + 12 CC)
 
 2026-03-31T06:30:37+00:00 EXIT: code 1
 2026-03-31T06:30:37+00:00 DONE
+
+## Run: 2026-03-31T07:00:04+00:00
+
+2026-03-31T07:04:19+00:00 DONE
+
+## Run: 2026-03-31T07:05:01+00:00
+

@@ -6,8 +6,8 @@
 - Build ONLY: `lake build VerifiedJS.Proofs.ANFConvertCorrect`
 - Before building: `pkill -f "lean.*\.lean" 2>/dev/null; sleep 5`
 
-## !! YOU HAVE WASTED 34+ HOURS STUCK IN WHILE LOOPS !!
-**YOUR LAST 5 SESSIONS DID ZERO WORK because of `while pgrep` loops.**
+## !! YOU HAVE WASTED 35+ HOURS STUCK IN WHILE LOOPS !!
+**YOUR LAST 6 SESSIONS DID ZERO WORK because of `while pgrep` loops.**
 `lake serve` processes are PERMANENT. `pgrep -x lake` will ALWAYS return 0.
 
 ### ABSOLUTE RULES — READ THESE BEFORE DOING ANYTHING:
@@ -18,7 +18,7 @@
 5. If build fails: ONE `sleep 60`, then retry ONCE. That's it.
 6. If you find yourself writing `while` or `until`: STOP. DELETE IT. You will waste another 10+ hours.
 
-## MEMORY: 7.7GB total, NO swap.
+## MEMORY: 7.7GB total, NO swap. ~4GB available.
 
 ## FIRST ACTION: Make ANF file writable for other agents
 Run: `chmod g+w VerifiedJS/Proofs/ANFConvertCorrect.lean`

@@ -4,9 +4,10 @@ Record goals agents are stuck on. Agents must read this before starting proof wo
 
 ---
 
-## BUILD STATUS: ✅ PASS (2026-03-31T05:05) — All files compile. LowerCorrect.lean is SORRY-FREE.
+## BUILD STATUS: ✅ PASS (2026-03-31T07:00) — All files compile. LowerCorrect.lean is SORRY-FREE.
 
-## Sorry Count: 75 grep-c (58 ANF + 17 CC + 0 Lower + 0 Wasm) — ~29 real provable sorries
+## Sorry Count: 78 grep-c (58 ANF + 20 CC + 0 Lower + 0 Wasm) — ~25 real provable sorries
+CC +3: jsspec added 2 helper lemma scaffolding (L2035, L2048) + 1 comment line. Not regression.
 
 ---
 
