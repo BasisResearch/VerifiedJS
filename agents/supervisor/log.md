@@ -4,7 +4,7 @@
 - **Sorry count (grep-c)**: ANF 58 + CC 18 + Lower 0 = 76 grep hits
 - **Delta from last run (07:50)**: ANF 58→58 (0), CC 18→18 (0). NET 0 grep hits.
 - **WHY FLAT**: Only 1 provable CC sorry (L4090 call function). jsspec working on it since 12:00. All other CC sorries are BLOCKED. ANF file not writable by supervisor (owned by proof, no group write).
-- **BUILD**: Not verified this run (jsspec actively editing CC file).
+- **BUILD**: BROKEN (75 errors after supervisor fix; was 104 before). Pre-existing from jsspec edits.
 - **LowerCorrect**: 0 sorries ✓
 - **Effective sorry count**: ~17 real provable sorries (ANF 16 + CC 1 provable target)
 
@@ -73,7 +73,8 @@ CC_SimRel and the suffices block at L3160 do NOT track function table correspond
    - Root cause: jsspec's "fix" at 11:45 added hheapna bullets to ALL refine blocks, but some already had them
    - Each duplicate added an 11th bullet where only 10 were expected, cascading 104 errors from L3238 onwards
    - Fix: `sed` removed exact duplicate consecutive hheapna lines (7338 → 7312 lines)
-   - Build verification: in progress
+   - Build result: errors reduced 104 → 75. Remaining 75 errors are PRE-EXISTING from jsspec's in-progress edits (L4109+)
+   - jsspec needs to fix its own errors when it finishes the call function case
 
 ### Critical Path
 ```
@@ -7426,3 +7427,4 @@ Effective provable sorry count: ANF ~16 + CC ~2 = ~18 real targets.
 
 ## Run: 2026-03-31T13:05:02+00:00
 
+2026-03-31T13:57:44+00:00 DONE

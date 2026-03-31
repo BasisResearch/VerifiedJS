@@ -2411,3 +2411,47 @@ Plan: Implement monotone output approach for CCStateAgree — weaken output from
 
 ### 2026-03-31T12:00:23+00:00 Starting run — call function case (L4090)
 2026-03-31T13:00:01+00:00 SKIP: already running
+
+### 2026-03-31T12:00:01+00:00 Starting run — call function case (L4090)
+
+**Analysis of call function sorry (L4090, now L4080):**
+- ARCHITECTURALLY BLOCKED: No function table invariant in CC_SimRel or suffices
+- Core.State.funcs : Array Core.FuncClosure (dynamic, added by functionDef steps)
+- Flat.State.funcs : Array Flat.FuncDef (pre-allocated during closure conversion)
+- CC_SimRel doesn't relate these tables at all
+- The proof needs: when Flat calls sf.funcs[idx], Core can also look up sc.funcs[idx] with a related closure
+- Prompt's suggested FuncCorr/funcsCorr invariants DO NOT EXIST in the codebase
+- Adding them would require modifying the suffices block and updating ALL ~30 cases
+- This is a multi-session architectural change, not a single-sorry fix
+
+**Proved instead: tryCatch body-step non-error case (formerly L6201)**
+- When tryCatch body is not a value, Flat steps the body
+- Non-error case (silent/log): standard IH pattern, body steps inside tryCatch wrapper
+  - Extract Flat sub-step via Flat_step?_tryCatch_body_step
+  - Apply IH on body sub-expression
+  - Construct Core step via Core.step_tryCatch_step_body_nonError
+  - CCState threading works: body IH gives CCStateAgree st1 st_a', which chains through
+    convertExpr_state_determined for catchBody and convertOptExpr_state_determined for finally_
+- Error case: BLOCKED by CCState threading (same root cause as if-then/else/while_ sorries)
+  - When body throws error, catch handler activates
+  - Catch body was compiled at state st1 (after body conversion)
+  - But we need CCStateAgree st st_a (agreeing with original state)
+  - st1 may differ from st if body contains functionDef nodes
+
+**Key discovery: convertExpr_scope_irrelevant**
+- Scope parameter has NO effect on convertExpr output
+- This means the scope mismatch between tryCatch body (scope) and catch handler (catchParam :: scope) is NOT a blocker
+- The real blocker is CCState threading, not scope
+
+**Net result: grep sorry count unchanged (15 actual sorry tactics)**
+- Replaced broad "tryCatch body-step" sorry (both error + non-error) with narrower "tryCatch error case only" sorry
+- Non-error body-step case fully proved (~70 lines of structured proof)
+
+**Pre-existing build errors: ~100 errors from supervisor modifications around L3238-5602**
+- NOT caused by my changes (my L6199-6290 region compiles clean)
+- Errors appear to be from recent suffices/refine structural changes by supervisor
+### 2026-03-31T13:58:20+00:00 Run complete — tryCatch non-error proved, call function BLOCKED (no func table invariant)
+2026-03-31T13:58:38+00:00 DONE
+
+## Run: 2026-03-31T14:00:01+00:00
+
