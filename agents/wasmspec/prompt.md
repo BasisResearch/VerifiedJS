@@ -1,8 +1,7 @@
-# wasmspec — Help with ANF sorries after proof opens the file
+# wasmspec — Fix CC sorry regression (38 → reduce)
 
 ## RULES
 - **DO NOT** run `lake build VerifiedJS` (full build). OOMs.
-- Build ANF: `lake build VerifiedJS.Proofs.ANFConvertCorrect`
 - Build CC: `lake build VerifiedJS.Proofs.ClosureConvertCorrect`
 
 ## !! CRITICAL: DO NOT USE WHILE/UNTIL LOOPS !!
@@ -10,69 +9,61 @@
 
 ### BUILD — THE ONLY WAY:
 ```bash
-lake build VerifiedJS.Proofs.ANFConvertCorrect
+lake build VerifiedJS.Proofs.ClosureConvertCorrect
 ```
-That's it. ONE command. No waiting, no checking, no loops.
+ONE command. No waiting, no checking, no loops.
 
-### ABSOLUTE RULES — VIOLATION = ANOTHER WASTED SESSION:
+### ABSOLUTE RULES:
 1. **NEVER write `while`** — not for pgrep, not for sleep, not for ANYTHING
-2. **NEVER write `until`** — same problem
+2. **NEVER write `until`** — same infinite loop problem
 3. **NEVER write `sleep` inside any loop**
-4. **NEVER write `pgrep`** — lake serve is PERMANENT, pgrep always matches itself
+4. **NEVER write `pgrep`** — lake serve is PERMANENT
 5. **NEVER write `do...done`** — no loops of any kind
-6. **NEVER check if build is running** — just run your build command
-7. If build fails: `sleep 60`, retry ONCE. No loops.
+6. If build fails: `sleep 60`, retry ONCE. No loops.
 
 ## MEMORY: 7.7GB total, NO swap. ~4GB available.
 
-## SITUATION (14:05)
-- ANF: 58 sorries. File owned by `proof` user, group read-only (`rw-r-----`).
-- CC: 18 sorries — ALL BLOCKED (CCStateAgree, HeapInj, FuncsCorr issues). DO NOT TOUCH CC.
-- proof agent restarts at 14:30. It will `chmod g+w` the ANF file and delete 42 aux lemmas.
-- After proof finishes, ANF should have ~16-18 sorries and be group-writable.
+## SITUATION
+- **CC: 38 sorries, BUILD PASSES.** Many fixable sorry regressions.
+- **ANF: 58 sorries — FILE LOCKED.** DO NOT TOUCH.
+- **LowerCorrect: FILE LOCKED.** DO NOT TOUCH.
 
-## YOUR PLAN
+## YOUR PLAN: Fix CC sorry regressions
 
-### Step 1: Wait for ANF file to become writable (~15 minutes)
-```bash
-# Check once:
-test -w VerifiedJS/Proofs/ANFConvertCorrect.lean && echo "WRITABLE" || echo "NOT YET"
-```
-If not writable, `sleep 300` then check ONCE more. If still not writable after that, `sleep 300` and check ONE final time. 3 checks maximum. NO LOOPS.
+Focus on setProp, setIndex, deleteProp, objectLit, arrayLit sorry bullets.
 
-### Step 2: Once writable, count sorries and read the file
-```bash
-grep -n sorry VerifiedJS/Proofs/ANFConvertCorrect.lean
-```
+### Target: setProp sorry bullets (around L4590-4596)
+These are individual refine bullets that were sorry'd. Pattern:
+1. `lean_goal` at each sorry
+2. `lean_multi_attempt` with: `["exact hheapna'", "simp [sc', hheapna]", "simp [sc', noCallFrameReturn]", "simp [sc', ExprAddrWF, ValueAddrWF]"]`
+3. Edit with working tactic
 
-### Step 3: Work on the expression-case sorries
+### Target: setIndex sorry bullets (around L5084-5241)
+Same pattern. The setIndex case has several sorry'd sub-branches.
 
-After proof deletes aux lemmas, ~16 sorries remain. The EASIEST are the expression-case sorries:
+### Target: deleteProp sorry bullets (around L5507-5509)
 
-**Target sorries** (current line numbers — will shift after deletion):
-- L3825: nested return-some (needs depth induction)
-- L3829: nested yield-some (needs depth induction)
-- L3840: compound/bindComplex cases
-- L3891, L3895, L3906: same patterns
-- L3923: compound/bindComplex/throw/await
+### Target: objectLit / arrayLit sorry bullets (around L5607-5609)
 
-**Approach for each**:
-1. Use `lean_goal` to get the goal state
-2. These are in `normalizeExpr_step_sim` — check what constructor case you're in
-3. Try `lean_multi_attempt` with:
-   ```
-   ["simp_all", "exact ih_depth _ (by omega) _ _ _ _ _ _ rfl rfl rfl ⟨_, rfl⟩", "constructor <;> simp_all", "aesop"]
-   ```
-4. The key insight: these need `ih_depth` (the strong recursion IH) at a smaller depth
+### SKIP (architecturally blocked):
+- L1507-1508: forIn/forOf stubs
+- L3258: captured var (HeapInj)
+- L3586, L3609: CCStateAgree
+- L4127: call function (FuncsCorr)
+- L4298: newObj
+- L4876: getIndex semantic mismatch
+- L5416, L5516: heap allocation
+- L5610: functionDef
+- L5750: while_ CCState
 
-### Step 4: Work on depth-induction sorries (L4336+)
-
-These are in `normalizeExpr_labeled_step_sim`. Similar approach — use `lean_goal` and `lean_multi_attempt`.
-
-## DO NOT TOUCH:
-- ClosureConvertCorrect.lean — ALL sorries are architecturally blocked
-- Any file you don't have write permission for
+## WORKFLOW:
+1. `grep -n sorry ClosureConvertCorrect.lean` to find CURRENT line numbers
+2. `lean_goal` at target
+3. `lean_multi_attempt` with candidates
+4. Edit file with working tactic
+5. Build: `lake build VerifiedJS.Proofs.ClosureConvertCorrect`
+6. Next target
 
 ## CRITICAL: LOG YOUR WORK
-**FIRST ACTION**: `echo "### $(date -Iseconds) Starting run" >> agents/wasmspec/log.md`
-**LAST ACTION**: `echo "### $(date -Iseconds) Run complete — [result]" >> agents/wasmspec/log.md`
+**FIRST**: `echo "### $(date -Iseconds) Starting run" >> agents/wasmspec/log.md`
+**LAST**: `echo "### $(date -Iseconds) Run complete — [result]" >> agents/wasmspec/log.md`

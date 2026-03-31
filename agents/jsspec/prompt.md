@@ -1,74 +1,66 @@
-# jsspec — Help with ANF sorries (CC is fully blocked)
+# jsspec — Fix CC sorry regression (38 → reduce)
 
 ## RULES
 - **DO NOT** run `lake build VerifiedJS` (full build). OOMs.
-- Build ANF: `lake build VerifiedJS.Proofs.ANFConvertCorrect`
 - Build CC: `lake build VerifiedJS.Proofs.ClosureConvertCorrect`
+- Build ANF: `lake build VerifiedJS.Proofs.ANFConvertCorrect`
 
 ## !! DO NOT USE WHILE/UNTIL LOOPS !!
 Previous agents got PERMANENTLY STUCK. **NEVER use `while`, `until`, or `sleep` in a loop.**
-`lake serve` processes are PERMANENT. Just run your build command directly.
 
 ## MEMORY: 7.7GB total, NO swap. ~4GB available.
 
-## SITUATION (14:05)
-- **CC: ALL 18 sorries are BLOCKED.** DO NOT work on CC.
-  - L4090 (call function): BLOCKED by missing FuncsCorr invariant (you confirmed this)
-  - CCStateAgree sorries: BLOCKED by state threading
-  - Heap sorries: BLOCKED by HeapInj
-  - forIn/forOf: unprovable stubs
-- **ANF: 58 sorries.** proof agent should delete 42 aux lemmas at 14:30, leaving ~16-18.
-  - After deletion, ANF file should be group-writable (proof does `chmod g+w`).
+## SITUATION
+- **CC: 38 sorries, BUILD PASSES.** Extra sorries added to fix cascading errors. Many fixable.
+- **ANF: 58 sorries — FILE LOCKED** (owned by proof, group read-only). DO NOT TOUCH.
+- **LowerCorrect: FILE LOCKED.** DO NOT TOUCH.
 
-## YOUR PLAN
+## YOUR PLAN: Fix CC sorry regressions
 
-### Step 1: Check if ANF file is writable
-```bash
-test -w VerifiedJS/Proofs/ANFConvertCorrect.lean && echo "WRITABLE" || echo "NOT YET"
-```
-If not writable, `sleep 300` then check ONCE more. If still not writable, `sleep 300` and check ONE final time. 3 checks max. NO LOOPS.
+### Priority 1: Fix helper theorems (L2059, L2072)
+**L2059** (`Flat_step?_call_consoleLog_vals`): `Flat.pushTrace` is private.
+- The @[simp] lemma `Flat.step?_pushTrace_expand` should fire automatically
+- Try: `unfold Flat.step?; simp [Flat.exprValue?, hvals, Core.consoleLogIdx]`
+- The `let msg := match ...` in the conclusion creates a dependent match pattern
+- May need to use `show` to specialize the match, or `split` on argVals
 
-### Step 2: Once writable, count sorries and read the file
-```bash
-grep -n sorry VerifiedJS/Proofs/ANFConvertCorrect.lean
-```
+**L2072** (`Core_step?_call_consoleLog_general`): `Core.pushTrace` IS public.
+- Same dependent match issue
+- Try: `unfold Core.step?; simp [Core.exprValue?, hargs, Core.consoleLogIdx]; unfold Core.pushTrace; rfl`
 
-### Step 3: Work on remaining ANF sorries
+### Priority 2: Restore call non-function case (L4129)
+Was previously proven. Needs restoring after hsf_eta parentheses fix:
+- `lean_goal` to see current state
+- Pattern: hsf_eta sets sf.expr, rw at hstep, Flat_step?_call_nonclosure, Core.step_call_nonfunc_exact
+- All 10 refine bullets are standard: hinj, henvCorr, henvwf, hheapvwf, hheapna, noCallFrameReturn, ExprAddrWF, CCState
 
-After proof deletes the 42 aux lemmas, ~16 sorries remain. Focus on:
-
-**Expression-case sorries** (in `normalizeExpr_step_sim`):
-- nested return-some, yield-some cases
-- compound/bindComplex cases
-- These need `ih_depth` (strong recursion IH) at smaller depth
-
-**Approach**:
+### Priority 3: Fix setProp/setIndex sorry bullets (L4590-4596, L5084-5092)
+Individual proof bullets sorry'd. For each:
 1. `lean_goal` at the sorry line
-2. Study the nearby proved cases for patterns
-3. Try `lean_multi_attempt` with:
-   ```
-   ["exact ih_depth _ (by omega) _ _ _ _ _ _ rfl rfl rfl ⟨_, rfl⟩", "simp_all", "constructor <;> simp_all", "aesop"]
-   ```
-4. For compound cases, you may need to unfold the expression first, then apply IH
+2. `lean_multi_attempt` with: `["exact hheapna'", "simp [sc', hheapna]", "simp [sc', noCallFrameReturn]", "simp [sc', ExprAddrWF, ValueAddrWF]"]`
 
-**Depth-induction sorries** (in `normalizeExpr_labeled_step_sim`, L4336+):
-- Similar approach — `lean_goal` then `lean_multi_attempt`
-- These handle the labeled/break/continue stepping under normalization
+### Priority 4: Fix tryCatch sorries (L5710-5718)
+- L5710: `catchParam ≠ "__call_frame_return__"` — extract from hncfr via noCallFrameReturn tryCatch
+- L5711-5712: `noCallFrameReturn body/catchBody` — extract from hncfr
 
-### Step 4: If ANF never becomes writable
-If after 15 minutes ANF is still not writable, you cannot help. Log this and exit.
-
-## DO NOT TOUCH:
-- ClosureConvertCorrect.lean — ALL sorries are architecturally blocked
-- Any file you don't have write permission for
+### SKIP (architecturally blocked):
+- L1507-1508: forIn/forOf stubs
+- L3258: captured var (HeapInj)
+- L3586, L3609: CCStateAgree
+- L4298: newObj
+- L4876: getIndex semantic mismatch
+- L5416, L5516: heap allocation
+- L5610: functionDef
+- L5750: while_ CCState
 
 ## WORKFLOW:
-1. `grep -n sorry` to find CURRENT line numbers (they shift!)
+1. `grep -n sorry ClosureConvertCorrect.lean` to find CURRENT line numbers
 2. `lean_goal` at target line
 3. `lean_multi_attempt` with candidate tactics
 4. Edit the file with the working tactic
-5. Build after each change: `lake build VerifiedJS.Proofs.ANFConvertCorrect`
+5. Build: `lake build VerifiedJS.Proofs.ClosureConvertCorrect`
 6. Move to next target
 
 ## CRITICAL: LOG YOUR WORK
-**LAST ACTION**: `echo "### $(date -Iseconds) Run complete — [result]" >> agents/jsspec/log.md`
+**FIRST**: `echo "### $(date -Iseconds) Starting run" >> agents/jsspec/log.md`
+**LAST**: `echo "### $(date -Iseconds) Run complete — [result]" >> agents/jsspec/log.md`
