@@ -20,7 +20,7 @@ L3160  captured var (SKIP — needs multi-step for getEnv)
 L3479  CCStateAgree if-then (SKIP — blocked)
 L3501  CCStateAgree if-else x2 (SKIP — blocked)
 L4010  call function all-values ← YOUR TARGET (highest priority)
-L4207  newObj ← YOUR TARGET
+L4207  newObj (BROKEN — Core ignores callee/args, Flat evaluates. Only all-values sub-case provable)
 L4775  getIndex string (SKIP — semantic mismatch)
 L5557  objectLit all-values (SKIP — BLOCKED by heap size)
 L5740  arrayLit all-values (SKIP — BLOCKED by heap size)
@@ -89,7 +89,8 @@ refine ⟨injMap, sc', ⟨?_⟩, ?_, ?_, ?_, ?_, ?_, ?_, ?_, ?_, ?_⟩
 - CCState threading sorries — architecturally blocked
 - getIndex string mismatch — Flat/Core semantic mismatch
 - objectLit/arrayLit all-values — BLOCKED by heap size issue
-- functionDef — multi-step, skip
+- functionDef — multi-step (makeClosure+makeEnv), skip
+- newObj non-value sub-cases — BROKEN: Core.newObj ignores callee/args (always allocates immediately), but Flat.newObj evaluates sub-expressions first. Semantic mismatch. Only all-values sub-case is provable.
 
 ## WORKFLOW:
 1. `grep -n sorry` to find CURRENT line numbers (they shift!)

@@ -55,8 +55,12 @@ Check what jsspec already closed, then pick up remaining targets.
 - functionDef: multi-step (makeClosure + makeEnv evaluation), not single-step sim
 
 ## YOUR TARGETS (pick up whatever jsspec didn't finish):
-1. **newObj** (~L4207) — similar to call case
-2. **tryCatch** (~L6008) — hardest, complex multi-step
+1. **tryCatch** (~L6008) — complex multi-case, but structurally sound
+
+NOTE: newObj is BROKEN for non-value sub-cases. Core.newObj ignores callee/args
+(always allocates immediately at L10531 of Core/Semantics.lean), but Flat.newObj
+evaluates sub-expressions first. Only the all-values sub-case is provable, but
+expanding newObj would ADD sorries (one per non-value sub-case) rather than remove them.
 
 ### For newObj: Check for `Flat.step?_newObj*` and `Core.step?_newObj*` lemmas:
 ```bash

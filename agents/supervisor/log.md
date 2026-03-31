@@ -7224,3 +7224,36 @@ wasmspec picks up 1 target. proof successfully deletes aux lemmas.
 Total: ~35-40 grep hits.
 
 2026-03-31T10:05:01+00:00 DONE
+
+### ADDENDUM (10:30): newObj semantic mismatch discovered
+
+**Core.newObj** (L10531 Core/Semantics.lean): IGNORES callee and args. Always
+allocates empty object at heap.nextAddr in one step. Returns `.silent`.
+
+**Flat.newObj** (L499 Flat/Semantics.lean): Evaluates funcExpr, then envExpr,
+then args left-to-right, THEN allocates.
+
+**Impact on simulation**: When Flat steps a non-value sub-expression of newObj,
+Core can't match — Core already allocated. Events might match (.silent) but
+post-state expression correspondence breaks (Core: `.lit (.object addr)`,
+Flat: `.newObj resolvedCallee ...`).
+
+**Revised CC sorry classification**:
+```
+SKIP (unprovable/blocked): 12 (was 11)
+  L1507, L1508: forIn/forOf stubs
+  L3160: captured var (multi-step getEnv)
+  L3479, L3501(x2): CCStateAgree (blocked)
+  L4207: newObj (BROKEN — semantic mismatch: Core ignores callee/args)
+  L4775: getIndex string mismatch
+  L5557: objectLit all-values (BLOCKED by heap size)
+  L5740: arrayLit all-values (BLOCKED by heap size)
+  L5918: functionDef (multi-step makeClosure+makeEnv)
+  L6039: CCState while_ (blocked)
+
+PROVABLE: 2 (was 3)
+  L4010: call function all-values (jsspec working on it)
+  L6008: tryCatch
+```
+
+Effective provable sorry count: ANF ~16 + CC ~2 = ~18 real targets.
