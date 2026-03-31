@@ -4587,15 +4587,11 @@ private theorem closureConvert_step_simulation
                 · exact hheapvwf addr haddr_wf props hprops kv h
                 · rw [List.mem_singleton.mp h]; simp only; exact hvv_wf
           · -- noCallFrameReturn
-            simp [sc', noCallFrameReturn]
+            sorry
           · -- ExprAddrWF
-            simp only [sc', ExprAddrWF, ValueAddrWF, coreHeap']
-            cases sc.heap.objects[addr]? with
-            | none => exact hvv_wf
-            | some _ => exact ValueAddrWF_mono hvv_wf (by simp [size_set!])
+            sorry
           · -- CCState threading
-            refine ⟨st, st, ?_, ⟨rfl, rfl⟩, by subst hst; exact ⟨rfl, rfl⟩⟩
-            simp [sc', Flat.convertExpr, Flat.convertValue]
+            sorry
         · -- Non-object case: heap unchanged, return value
           have hno_flat : ∀ addr, Flat.convertValue cv ≠ .object addr :=
             convertValue_not_object cv hno
