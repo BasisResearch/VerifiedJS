@@ -5244,13 +5244,17 @@ private theorem closureConvert_step_simulation
                 (hheapvwf addr haddr_wf props hprops kv ((List.mem_filter.mp hkv).1))
                 (by simp [size_set!]))
         · -- hheapna
-          sorry
+          simp only [sc', coreHeap']
+          split
+          · simp [Array.size_setIfInBounds, hheapna]
+          · exact hheapna
         · -- noCallFrameReturn
           simp [sc', noCallFrameReturn]
         · -- ExprAddrWF
           simp only [sc', ExprAddrWF, ValueAddrWF]
         · -- CCState threading
-          sorry
+          refine ⟨st, st, ?_, ⟨rfl, rfl⟩, by subst hst; exact ⟨rfl, rfl⟩⟩
+          simp [sc', Flat.convertExpr, Flat.convertValue]
       · -- Non-object case: heap unchanged, both return .lit (.bool true)
         have hno_flat : ∀ addr, Flat.convertValue cv ≠ .object addr :=
           convertValue_not_object cv hno
