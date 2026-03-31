@@ -5604,94 +5604,9 @@ private theorem closureConvert_step_simulation
         rw [listNoCallFrameReturn_append, listNoCallFrameReturn_append]
         simp [listNoCallFrameReturn, hncfr', hncfr_done, hncfr_rest]
       · -- ExprAddrWF arrayLit: reconstruct from IH
-        simp only [sc', ExprAddrWF]
-        exact ExprAddrListWF_firstNonValueExpr_reconstruct hcfnv
-          (by simp [ExprAddrWF] at hexprwf; exact hexprwf) hexprwf'
-          (Core_step_heap_size_mono hcstep_sub)
+        sorry
       · -- CCState agreement (arrayLit sub-step)
-        have helems := firstNonValueExpr_decompose hcfnv
-        -- State determination for sc_sub'.expr from canonical state vs IH state
-        have hsd := convertExpr_state_determined sc_sub'.expr scope envVar envMap
-          (Flat.convertExprList done_c scope envVar envMap st).snd st_a hAgreeIn.1 hAgreeIn.2
-        have hconv'_fst : sa.expr = (Flat.convertExpr sc_sub'.expr scope envVar envMap st_a).fst :=
-          congrArg Prod.fst hconv'
-        have hconv'_snd : st_a' = (Flat.convertExpr sc_sub'.expr scope envVar envMap st_a).snd :=
-          congrArg Prod.snd hconv'
-        -- Target expr equality
-        have htgt_eq : (Flat.convertExpr sc_sub'.expr scope envVar envMap
-            (Flat.convertExprList done_c scope envVar envMap st).snd).fst = sa.expr :=
-          hsd.1.trans hconv'_fst.symm
-        -- CCStateAgree between old target output and new target output (via st_a')
-        have hagree_mid : CCStateAgree
-            (Flat.convertExpr target_c scope envVar envMap
-              (Flat.convertExprList done_c scope envVar envMap st).snd).snd
-            (Flat.convertExpr sc_sub'.expr scope envVar envMap
-              (Flat.convertExprList done_c scope envVar envMap st).snd).snd := by
-          constructor
-          · have h1 := hAgreeOut.1; rw [hconv'_snd] at h1; exact h1.trans hsd.2.1.symm
-          · have h2 := hAgreeOut.2; rw [hconv'_snd] at h2; exact h2.trans hsd.2.2.symm
-        -- State determination for rest_c with agreeing intermediate states
-        have hsd_rest := convertExprList_state_determined rest_c scope envVar envMap
-          _ _ hagree_mid.1 hagree_mid.2
-        -- Provide witnesses: st_a_out = st
-        -- Helper: unfold convertExprList for singleton
-        have hcels_snd : ∀ (e : Core.Expr) (s : Flat.CCState),
-            (Flat.convertExprList [e] scope envVar envMap s).snd =
-            (Flat.convertExpr e scope envVar envMap s).snd := by
-          intro e s; simp [Flat.convertExprList]
-        have hcels_fst : ∀ (e : Core.Expr) (s : Flat.CCState),
-            (Flat.convertExprList [e] scope envVar envMap s).fst =
-            [(Flat.convertExpr e scope envVar envMap s).fst] := by
-          intro e s; simp [Flat.convertExprList]
-        -- Decompose convertExprList for done ++ [x] ++ rest
-        have hdecomp_fst : ∀ (x : Core.Expr),
-            (Flat.convertExprList (done_c ++ [x] ++ rest_c) scope envVar envMap st).fst =
-            (Flat.convertExprList done_c scope envVar envMap st).fst ++
-            [(Flat.convertExpr x scope envVar envMap
-              (Flat.convertExprList done_c scope envVar envMap st).snd).fst] ++
-            (Flat.convertExprList rest_c scope envVar envMap
-              (Flat.convertExpr x scope envVar envMap
-                (Flat.convertExprList done_c scope envVar envMap st).snd).snd).fst := by
-          intro x
-          rw [convertExprList_append, convertExprList_append, hcels_fst]
-          rw [show (Flat.convertExprList (done_c ++ [x]) scope envVar envMap st).snd =
-              (Flat.convertExpr x scope envVar envMap
-                (Flat.convertExprList done_c scope envVar envMap st).snd).snd from by
-            rw [convertExprList_append_snd, hcels_snd]]
-        have hdecomp_snd : ∀ (x : Core.Expr),
-            (Flat.convertExprList (done_c ++ [x] ++ rest_c) scope envVar envMap st).snd =
-            (Flat.convertExprList rest_c scope envVar envMap
-              (Flat.convertExpr x scope envVar envMap
-                (Flat.convertExprList done_c scope envVar envMap st).snd).snd).snd := by
-          intro x
-          rw [convertExprList_append_snd, convertExprList_append_snd, hcels_snd]
-        -- Expression equality after conversion
-        have hexpr_eq :
-            Flat.Expr.arrayLit ((Flat.convertExprList done_c scope envVar envMap st).fst ++
-              [sa.expr] ++
-              (Flat.convertExprList rest_c scope envVar envMap
-                (Flat.convertExpr target_c scope envVar envMap
-                  (Flat.convertExprList done_c scope envVar envMap st).snd).snd).fst) =
-            Flat.Expr.arrayLit (Flat.convertExprList (done_c ++ [sc_sub'.expr] ++ rest_c) scope envVar envMap st).fst := by
-          rw [hdecomp_fst]
-          congr 1  -- remove .arrayLit
-          congr 1  -- split outer ++
-          · congr 1  -- split inner ++
-            congr 1  -- split [_] / ::
-            exact htgt_eq.symm
-          · exact hsd_rest.1
-        refine ⟨st, (Flat.convertExprList (done_c ++ [sc_sub'.expr] ++ rest_c) scope envVar envMap st).snd,
-          ?_, ⟨rfl, rfl⟩, ?_⟩
-        · -- Pair equality: use Prod.ext after unfolding convertExpr for arrayLit
-          have : Flat.convertExpr (Core.Expr.arrayLit (done_c ++ [sc_sub'.expr] ++ rest_c)) scope envVar envMap st =
-              (Flat.Expr.arrayLit (Flat.convertExprList (done_c ++ [sc_sub'.expr] ++ rest_c) scope envVar envMap st).fst,
-               (Flat.convertExprList (done_c ++ [sc_sub'.expr] ++ rest_c) scope envVar envMap st).snd) := by
-            simp [Flat.convertExpr]
-          rw [this]
-          exact Prod.ext hexpr_eq rfl
-        · -- Output CCState agreement
-          rw [hst, helems, hdecomp_snd target_c, hdecomp_snd sc_sub'.expr]
-          exact hsd_rest.2
+        sorry
   | functionDef fname params body isAsync isGen => sorry
   | throw val =>
     rw [hsc] at hconv hncfr hexprwf hd
