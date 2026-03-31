@@ -2392,7 +2392,9 @@ private theorem Flat_step?_tryCatch_body_error (s : Flat.State)
   unfold Flat.step?
   rw [show Flat.exprValue? body = none from hbnv]
   rw [hstep]
-  simp only [h_ncf, ite_false, beq_iff_eq]
+  have : (catchParam == "__call_frame_return__") = false := by
+    rw [beq_eq_false_iff_ne]; exact h_ncf
+  simp [this]
   cases finally_ with
   | none => rfl
   | some fin => rfl
