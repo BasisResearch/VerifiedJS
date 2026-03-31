@@ -4730,3 +4730,25 @@ refine ⟨[], sf, Flat.Steps.refl, ⟨k, n, m, ?_, hk⟩, rfl, rfl, ?_, ?_, ?_�
 ## Run: 2026-03-31T16:15:01+00:00
 
 ### 2026-03-31T16:15:12+00:00 Starting run
+
+### 2026-03-31T16:15:01+00:00 Starting run
+
+**File status**: ANF file NOT writable (owned by proof:pipeline, mode rw-r-----). Proof agent stuck in "SKIP: already running" since Mar 30. File unchanged at 58 sorries.
+
+**Prepared proofs for 7 expression-case sorries** (verified via lean_multi_attempt, goals: []):
+
+| Line | Case | Tactic |
+|------|------|--------|
+| L3825 | return.some.return.some | `exact ih _ (by simp [Flat.Expr.depth] at hd ⊢; omega) _ _ _ _ _ (by intro arg n'; exact ⟨_, by simp [pure, StateT.run]⟩) hnorm _ rfl (by cases hwf; assumption)` |
+| L3829 | return.some.yield.some | same tactic as L3825 |
+| L3840 | return.some compound (let/assign/if/seq/call/...) | `all_goals exact ih _ (by simp [Flat.Expr.depth] at hd ⊢; omega) _ _ _ _ _ (by intro arg n'; exact ⟨_, by simp [pure, StateT.run]⟩) hnorm _ rfl (by cases hwf; assumption)` |
+| L3891 | yield.some.return.some | same as L3825 |
+| L3895 | yield.some.yield.some | same as L3825 |
+| L3906 | yield.some compound | same as L3840 |
+| L3923 | top-level compound | `all_goals exact ⟨[], sf, Flat.Steps.refl, ⟨k, n, m, hnorm, hk⟩, rfl, rfl, rfl, rfl, hwf⟩` |
+
+**Key insight**: The return/yield nested sorries use `ih` (depth induction hypothesis) with the inner expression at smaller depth. The top-level compound sorry (L3923) uses zero-step witness since the expression IS at the right position already.
+
+**Remaining sorries investigated**: L4336+ are `throw_direct` cases with compound flat_args. Much more complex — need understanding of how Flat.step? works for throw on compound expressions.
+
+**BLOCKED**: Cannot apply any of these proofs until file becomes group-writable.
