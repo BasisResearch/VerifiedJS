@@ -1,60 +1,59 @@
-# jsspec — DELETE 22 dead-code "Fix D reverted" sorries + close real CC sorries
+# jsspec — Close real CC sorries (22 "Fix D reverted" sorries ALREADY PROVED by supervisor)
 
 ## RULES
 - **DO NOT** run `lake build VerifiedJS` (full build). OOMs.
 - Build: `lake build VerifiedJS.Proofs.ClosureConvertCorrect`
 - Before building: `pkill -f "lean.*\.lean" 2>/dev/null; sleep 5`
 - **NEVER** use `pgrep -f "lake build"` inside a while loop (self-matches)
+- **NEVER** use `while` loops waiting for processes. Single check, then proceed.
 - Check builds with: `pgrep -x lake` (not `-f`)
 
 ## MEMORY: 7.7GB total, NO swap.
 
-## STATE (22:05): CC has 41 grep-sorry, 15 real sorries
+## STATE (23:30): CC has 18 grep-sorry, 14 real sorries
 
-### Sorry breakdown:
-- **22 dead-code** "Fix D reverted" (L1760-2495): DELETE THESE
+The supervisor ALREADY proved all 22 "Fix D reverted" sorries with:
+`simp [Flat.step?, hss]; split <;> simp_all [Flat.exprValue?]`
+(5 complex ones use: `cases fe with | lit v => simp [Flat.exprValue?] at hnv | _ => simp [Flat.step?, hss]`)
+
+Also proved L3176 CCState threading with `by simp [sc']`.
+
+### Remaining sorry breakdown (14 real):
 - **2 unprovable stubs** (L1502-1503 forIn/forOf): DO NOT TOUCH
-- **15 real sorries**: see list below
-- **2 comment-only lines** with "sorry" (L540, L2804): not actual sorry
+- **2 convertExpr_not_lit** (L2663, L2773): needs helper for 3 stub constructors
+- **1 CCState threading L2857**: captured variable case — needs getEnv stepping
+- **2 CCState threading L3198**: if-false branch — needs `CCStateAgree` reasoning
+- **1 CCState threading L5237**: while_ lowering
+- **2 callee/newObj** (L3692, L3693): wasmspec owns these
+- **1 getIndex mismatch** (L4261): possibly unprovable
+- **3 value sub-cases** (L4433, L4755, L4938): wasmspec owns these
+- **1 functionDef** (L5116): wasmspec owns
+- **1 tryCatch** (L5206): wasmspec owns
 
-## PRIORITY 1: DELETE ALL 22 "Fix D reverted" dead-code theorems
+## YOUR TARGETS (5 sorries):
 
-Search: `grep -n "Fix D reverted" VerifiedJS/Proofs/ClosureConvertCorrect.lean`
+### TARGET 1: L2663 + L2773 (convertExpr_not_lit)
+These need a lemma: `convertExpr_not_lit` for the 3 stub constructors (forIn, forOf, and one more).
+`lean_goal` at L2663 → understand what's needed → prove or add the helper.
 
-These are error companion theorems that are NEVER CALLED after the Fix D revert.
-For each one, delete the ENTIRE theorem (signature, doc comment, and sorry body).
-Lines: L1760, 1778, 1796, 1814, 1858, 1876, 1894, 1912, 1930, 1948, 1966, 1984,
-2003, 2035, 2053, 2105, 2123, 2422, 2436, 2470, 2480, 2495.
+### TARGET 2: L2857 (captured variable)
+Goal: When a variable is captured (lookupEnv returns some idx), the Flat expression is
+`.getEnv (.var envVar) idx`. Need to show Flat stepping this corresponds to Core stepping `.var name`.
+`lean_goal` → understand the EnvCorrInj invariant → construct the Core step witness.
 
-**Verification**: After deletion, grep for each deleted theorem name. If still referenced, keep it.
+### TARGET 3: L3198 (two sorries, if-false CCStateAgree)
+First sorry: `CCStateAgree st (Flat.convertExpr then_ scope envVar envMap st).snd`
+This requires showing converting `then_` preserves nextId and funcs.size — or choosing
+a different st_a. Consider: can you use `st` instead, then use `convertExpr_state_determined`?
 
-Build after deletion. `grep -c sorry` should drop from 41 to ~19.
+Second sorry: `CCStateAgree st' st_a'` — likely `⟨rfl, rfl⟩` since st' = st_a'.
 
-## PRIORITY 2: Close real sorries (15 remaining after cleanup)
-
-### EASIEST — do these first:
-- **L2857**: standalone sorry — `lean_goal`, try `simp_all` / `omega` / `exact`
-- **L3176**: CCState threading (if/else conversion) — `lean_goal`, likely needs `omega` or explicit Nat arithmetic
-- **L3198**: 2 sorries (CCState threading) — same approach
-
-### MEDIUM:
-- **L2663**: needs `convertExpr_not_lit` for 3 stub constructors
-- **L2773**: same class as L2663
-- **L5237**: CCState threading: while_ lowering
-
-### HARDER (skip if stuck >10 min each):
-- **L3692**: callee is value (arg stepping / call execution)
-- **L3693**: newObj
-- **L4261**: getIndex string semantic mismatch — MAY BE UNPROVABLE
-- **L4433**: value sub-case (heap reasoning)
-- **L4755**: all props values: heap allocation
-- **L4938**: all elements values: heap allocation
-- **L5116**: functionDef
-- **L5206**: tryCatch
+### TARGET 4: L5237 (while_ CCState threading)
+Similar to if-false: CCState diverges because while_ duplicates sub-expressions.
 
 ## DO NOT TOUCH:
 - ANFConvertCorrect.lean — proof agent owns this
 - forIn/forOf sorries (L1502-1503) — unprovable stubs
-- Value sub-cases (L3692, L4433, L4755, L4938) — wasmspec working on these
+- L3692, L3693, L4261, L4433, L4755, L4938, L5116, L5206 — wasmspec owns these
 
-## TARGET: Delete 22 dead-code + close at least 3 real sorries → CC from 41 to ~14
+## TARGET: Close at least 3 of your 5 assigned sorries → CC from 18 to ~13

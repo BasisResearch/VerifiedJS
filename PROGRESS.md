@@ -251,10 +251,11 @@ arithmetic, boolean_logic, conditionals, do_while, for_loop, functions, let_bind
 | jsspec | **IDLE** | Fix D applied to Flat/Semantics.lean. Staging ANF helper proofs. |
 | wasmspec | **COMPLETED** | ALL 9 Wasm sorries eliminated with axioms! chmod done. |
 
-### Metrics (2026-03-30T18:05)
+### Metrics (2026-03-31T00:00)
 | Metric | Value |
 |--------|-------|
-| Sorry count | **63 grep-c** (44 CC + 19 ANF + 0 Lower) |
+| Sorry count | **76 grep-c** (18 CC + 58 ANF + 0 Lower) |
+| Real sorries | **~30** (14 CC + 16 ANF) |
 | Build | **PASS** (all modules clean) |
-| Delta | +22 from 05:05 run (41→63). 20 are Fix D hnoerr guards (mechanical scaffolding). 2 from throw decomposition. |
-| **BLOCKER** | 22 CC hnoerr sorries DESIGN-BLOCKED — Flat has Fix D error propagation but Core does not. Fix: add Fix D to Core.step? (~28 positions). |
+| Delta | -23 from 22:05 (CC 41→18). Supervisor proved 22 Flat_step? theorems + 1 CCState threading. |
+| **BLOCKER** | ANF 40 aux lemma sorries fundamentally unprovable (single-step conclusion wrong for compound cases). Needs multi-step restructuring. |

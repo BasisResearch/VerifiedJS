@@ -6568,3 +6568,46 @@ PID 2747055 (wasmspec user) sleeping since 14:30. Lock held. Cannot kill.
 ## Run: 2026-03-30T23:30:02+00:00
 
 2026-03-31T00:05:01+00:00 SKIP: already running
+
+### Metrics
+- **Sorry count (grep-c)**: ANF 58 + CC 18 + Lower 0 = 76 grep hits
+- **Real sorries**: ANF ~16 real + CC 14 real = ~30
+- **Delta from last run (22:05)**: CC 41→18 (-23). ANF unchanged. NET -23.
+- **WHY DOWN**: Supervisor directly proved 22 "Fix D reverted" Flat_step? theorems + 1 CCState threading (L3176).
+- **BUILD**: 3 lake serve instances. 3.4GB free. Healthy.
+- **LowerCorrect**: 0 sorries ✓
+
+### Supervisor direct work (this run)
+1. **Proved 22 "Fix D reverted" sorries** — ALL Flat_step?_*_step theorems.
+   Tactic (17 simple): `simp [Flat.step?, hss]; split <;> simp_all [Flat.exprValue?]`
+   Tactic (5 complex — getIndex, setProp, setIndex, call, binary):
+   `cases fe with | lit v => simp [Flat.exprValue?] at hnv | _ => simp [Flat.step?, hss]`
+2. **Proved L3176 CCState threading** — `by simp [sc']` (Prod.eta pattern).
+3. **DISCOVERY**: "Fix D reverted" theorems are NOT dead code (all 22 referenced at call sites).
+   Previous jsspec prompt incorrectly called them "dead code to delete."
+
+### Agent Analysis
+1. **proof**: STUCK — "SKIP: already running" since 20:30 (3+ hours). Lock at /var/lock/verifiedjs-proof.lock held but fuser shows no holder. Ghost lock? Next scheduled run should succeed. Prompt REWRITTEN: restructure aux lemmas to multi-step.
+2. **jsspec**: Last completed run 21:56. Then EXIT code 1 (22:31), EXIT code 143 (23:00). Started new run 23:00:02. Prompt REWRITTEN: targets are L2663, L2773, L2857, L3198, L5237.
+3. **wasmspec**: STUCK in while loop (PID 2750345) since 14:30 (9+ hours!). "SKIP: already running" for 8 hours. Process is orphaned bash in `while pgrep -f "lake build"` self-matching loop. Prompt REWRITTEN: 7 value sub-cases + functionDef + tryCatch. Added NEVER use while loops.
+
+### Actions Taken
+1. **DIRECTLY PROVED 23 sorries** (22 Flat_step? + 1 CCState) — agents were failing to do this.
+2. proof prompt REWRITTEN: restructure aux lemmas approach with concrete multi-step theorem template.
+3. jsspec prompt REWRITTEN: new targets (convertExpr_not_lit, captured var, CCStateAgree).
+4. wasmspec prompt REWRITTEN: 7 value sub-cases + functionDef + tryCatch + proven tactic patterns.
+
+### Critical Path
+```
+                    ┌─ proof: restructure aux → ANF 58→16 (-42)
+Current (76 grep)  ─┤─ jsspec: close 3+ → CC 18→15 (-3)
+                    └─ wasmspec: close value sub-cases → CC -3 to -5
+```
+Target: 76 → ~28 (16 ANF + 12 CC)
+
+### Process Notes
+- wasmspec PID 2750345 still stuck in while loop. Cannot kill (different user). Will timeout at 2026-03-31T14:30.
+- proof agent ghost lock should clear on next attempt.
+- All agent prompts updated with NEVER use while loops.
+
+2026-03-31T00:08:51+00:00 DONE

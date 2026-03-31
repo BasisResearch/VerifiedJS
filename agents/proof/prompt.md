@@ -1,4 +1,4 @@
-# proof — DELETE 40 aux-lemma sorries, then close expression cases
+# proof — RESTRUCTURE aux lemmas to multi-step, then close expression cases
 
 ## RULES
 - Edit: ANFConvertCorrect.lean (primary)
@@ -7,34 +7,37 @@
 - Before building: `pkill -f "lean.*\.lean" 2>/dev/null; sleep 5`
 - Check `pgrep -x lake` first — do NOT start if one runs.
 - **NEVER** use `pgrep -f "lake build"` inside a while loop (self-matches the shell string)
+- **NEVER** use `while` loops waiting for processes. Single check, then proceed.
 
 ## MEMORY: 7.7GB total, NO swap. Kill stale lean procs.
 
-## STATE (22:05): 58 sorries, build PASSES
+## STATE (23:30): 58 sorries, build PASSES
 
 ### Sorry breakdown:
-- **40 hasBreak/hasContinue aux** (L3954-4030 + L4085-4161): ALL have same root cause
+- **40 hasBreak/hasContinue aux** (L3954-4030 + L4085-4161): fundamentally unprovable as stated
 - **7 depth-induction** (L3825-3923): normalizeExpr_labeled_step_sim
 - **2 makeEnv/objectLit/arrayLit** (L4036, L4167): inside aux lemmas
 - **1 compound flat_arg** (L4336)
 - **1 HasThrowInHead non-direct** (L4339)
 - **7 expression-case** (L4370-4509): throw/return/await/yield/let/seq/if+tryCatch
 
-## PRIORITY 1: DELETE aux lemmas → saves 42 sorries INSTANTLY
+## PRIORITY 1: RESTRUCTURE hasBreakInHead/hasContinueInHead to multi-step
 
-The 42 sorries in `hasBreakInHead_step?_error_aux` (L3927-4036) and
-`hasContinueInHead_step?_error_aux` (L4058-4167) are **fundamentally unprovable**.
-The conclusion `s'.expr = .lit .undefined` is WRONG for compound cases — step?
-wraps sub-results in the parent context.
+The 40 sorries in `hasBreakInHead_step?_error_aux` and `hasContinueInHead_step?_error_aux`
+are FUNDAMENTALLY UNPROVABLE because the conclusion claims single-step (`Flat.step?`) produces
+the error directly, but step? wraps sub-results in the parent context for compound cases.
 
-**DO THIS NOW:**
+### APPROACH: Replace single-step aux with multi-step (Steps) theorem
 
-**Step 1**: Delete `hasBreakInHead_step?_error_aux` entirely (L3927-4036).
-**Step 2**: Delete `hasContinueInHead_step?_error_aux` entirely (L4058-4167).
+**Step 1**: Delete `hasBreakInHead_step?_error_aux` entirely (~L3927-4036).
+**Step 2**: Delete `hasContinueInHead_step?_error_aux` entirely (~L4058-4167).
 
-**Step 3**: Rewrite `hasBreakInHead_flat_error_steps` (L4041) to use STRUCTURAL
-INDUCTION on `h : HasBreakInHead e label` with multi-step (Steps, not step?).
-Drop the false `s'.expr = .lit .undefined` and env/heap preservation claims:
+**Step 3**: Rewrite `hasBreakInHead_flat_error_steps` (~L4041) using STRUCTURAL
+INDUCTION on `h : HasBreakInHead e label`. The key insight: each constructor of
+HasBreakInHead says "break is in position X" — for the first-evaluation-position cases,
+Flat.step? takes one step INTO the sub-expression context, then recursively the inner
+break produces error steps. For non-first-position cases, the earlier sub-expression
+must evaluate first (multiple steps), THEN the break sub-expression produces error steps.
 
 ```lean
 private theorem hasBreakInHead_flat_error_steps
@@ -47,32 +50,45 @@ private theorem hasBreakInHead_flat_error_steps
   induction h generalizing sf with
   | break_direct =>
     subst hsf; exact ⟨_, [_], .tail ⟨by unfold Flat.step?; rfl⟩ (.refl _), rfl⟩
-  | seq_left _ ih =>
-    subst hsf; obtain ⟨sf', evs, hsteps, hobs⟩ := ih _ rfl
-    exact ⟨sf', evs, Flat.Steps_seq_ctx hsteps, hobs⟩
-  -- etc: each constructor lifts the inner Steps through a context lemma
+  | seq_left hsub ih =>
+    subst hsf
+    -- Flat.step? {expr := .seq a b} where a is non-value steps INTO a
+    -- producing {expr := .seq a' b}. Then ih gives multi-step from a' to error.
+    -- Need: Flat.Steps_seq_left_ctx or similar lifting lemma
+    sorry -- Use lean_goal here to see exact type, then construct the witness
+  -- ... each first-position case follows the same pattern:
+  -- 1. step? wraps into context → one step
+  -- 2. ih gives multi-step inner → error
+  -- 3. Compose with Steps.trans
 ```
 
-Same for `hasContinueInHead_flat_error_steps`.
+CRITICAL: Check if `Flat.Steps_seq_ctx` or similar context-lifting lemmas exist:
+```
+lean_local_search "Steps_seq"
+lean_local_search "Steps_ctx"
+lean_local_search "Flat.Steps"
+```
+If they don't exist, you need to prove them first. Each says:
+"If Flat.Steps {s with expr := e} evs {s' with expr := e'}, then
+ Flat.Steps {s with expr := .seq e b} evs {s' with expr := .seq e' b}"
 
-**Step 4**: Fix callers. Use `lean_goal` at each caller to see what the
-weakened conclusion requires. The callers only need the observableTrace
-equivalence — they never used the expr/env/heap claims.
+**Step 4**: Same restructuring for `hasContinueInHead_flat_error_steps`.
 
-**Step 5**: Build and verify. Target: 58 → 16 sorries.
+**Step 5**: Fix callers of the deleted aux theorems. The callers
+(`hasBreakInHead_flat_error_steps` itself was the main caller) should now use the
+multi-step version directly.
+
+**Step 6**: Build and verify. Target: 58 → 16 sorries (the 42 aux + 2 inner).
 
 ## PRIORITY 2: Close 7 expression-case sorries (if time)
 
-After aux deletion, these are at ~L4370-4509:
-- `normalizeExpr_return_step_sim`
-- `normalizeExpr_await_step_sim`
-- `normalizeExpr_yield_step_sim`
-- `normalizeExpr_let_step_sim`
-- `normalizeExpr_seq_step_sim`
-- `normalizeExpr_if_step_sim`
-- `normalizeExpr_tryCatch_step_sim`
+At ~L4370-4509 after the restructuring (line numbers will shift):
+- throw, return, await, yield, let, seq, if+tryCatch
 
-For each: `lean_goal` → `lean_multi_attempt` → follow the `.var` case pattern.
+For each: `lean_goal` → `lean_multi_attempt` with:
+```
+["simp_all", "exact ⟨_, _, rfl, rfl⟩", "constructor <;> simp_all", "aesop"]
+```
 
 ## DO NOT TOUCH:
 - ClosureConvertCorrect.lean — jsspec and wasmspec own this

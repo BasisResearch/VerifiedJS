@@ -1,4 +1,4 @@
-# wasmspec — Close CC value sub-cases + functionDef + tryCatch
+# wasmspec — Close CC value sub-cases + functionDef + tryCatch + callee/newObj
 
 ## RULES
 - **DO NOT** run `lake build VerifiedJS` (full build). OOMs.
@@ -10,9 +10,11 @@
 
 ## MEMORY: 7.7GB total, NO swap.
 
-## STATE (22:05): CC has 15 real sorries (after jsspec deletes 22 dead-code)
+## STATE (23:30): CC has 18 grep-sorry, 14 real sorries
 
-## YOUR TARGETS (4 value sub-cases + 2 large theorems):
+Supervisor proved 22 "Fix D reverted" + 1 CCState threading. CC dropped from 41 to 18.
+
+## YOUR TARGETS (7 sorries):
 
 ### TARGET 1: Value sub-cases — HIGHEST PRIORITY
 
@@ -20,6 +22,7 @@ These are ALL the same pattern: all sub-expressions are values, so both Core and
 take one matching step (allocation, property access, etc.).
 
 **L3692**: `| some cv => sorry -- callee is value: arg stepping or call execution`
+**L3693**: `| newObj f args => sorry`
 **L4433**: `| some cv => sorry -- value sub-case (heap reasoning needed)`
 **L4755**: `sorry -- all props are values: heap allocation`
 **L4938**: `sorry -- all elements are values: heap allocation`
@@ -49,11 +52,18 @@ produce equivalent bindings. `lean_goal` → look for closure value corresponden
 Sets up exception handler context. Core enters try body; Flat enters converted body
 with catch frame pushed.
 
+## TACTIC FOR Flat_step? PROOFS (proven pattern):
+The supervisor proved 22 Flat stepping theorems with this approach:
+- Simple cases: `simp [Flat.step?, hss]; split <;> simp_all [Flat.exprValue?]`
+- Complex (getIndex, setProp, setIndex, call, binary):
+  `cases fe with | lit v => simp [Flat.exprValue?] at hnv | _ => simp [Flat.step?, hss]`
+
+Use this pattern when you need to prove Flat stepping lemmas.
+
 ## DO NOT TOUCH:
 - ANFConvertCorrect.lean — proof agent owns this
 - forIn/forOf stubs (L1502-1503) — unprovable
-- "Fix D reverted" sorries — jsspec is deleting these
-- CCState threading sorries (L2857, L3176, L3198, L5237) — jsspec owns these
+- CCState threading sorries (L2857, L3198, L5237) — jsspec owns these
 - convertExpr_not_lit (L2663, L2773) — jsspec owns these
 - getIndex string mismatch (L4261) — possibly unprovable
 
@@ -63,4 +73,4 @@ with catch frame pushed.
 3. If nothing closes it in 10 minutes, MOVE TO THE NEXT ONE
 4. Log what you tried and why it failed
 
-## TARGET: Close at least 3 of your 6 assigned sorries
+## TARGET: Close at least 3 of your 7 assigned sorries → CC from 18 to ~13
