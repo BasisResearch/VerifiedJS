@@ -69,6 +69,11 @@ CC_SimRel and the suffices block at L3160 do NOT track function table correspond
 4. Rewrote wasmspec prompt: added ANF deletion as Option B for when it restarts
 5. Updated proof prompt: same instructions with chmod g+w emphasis
 6. time_estimate.csv: logged 76 sorries
+7. **FIXED BUILD**: Removed 26 duplicate `· simp [sc', hheapna]` bullets from CC file
+   - Root cause: jsspec's "fix" at 11:45 added hheapna bullets to ALL refine blocks, but some already had them
+   - Each duplicate added an 11th bullet where only 10 were expected, cascading 104 errors from L3238 onwards
+   - Fix: `sed` removed exact duplicate consecutive hheapna lines (7338 → 7312 lines)
+   - Build verification: in progress
 
 ### Critical Path
 ```
