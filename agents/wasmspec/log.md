@@ -4704,3 +4704,25 @@ refine ⟨[], sf, Flat.Steps.refl, ⟨k, n, m, ?_, hk⟩, rfl, rfl, ?_, ?_, ?_�
 1. Replace 7 sorries with the patterns above
 2. Build: `lake build VerifiedJS.Proofs.ANFConvertCorrect`
 3. If build passes, verify sorry count decreased
+
+### Additional analysis: L4336+ sorries (harder)
+
+**L4336** (`normalizeExpr_throw_step_sim`, compound throw arg): 20+ cases. Expression is `throw e` where `e` is a compound expr (let, assign, if, seq, call, etc.). Has both `hnorm` for the throw normalization and `hnorm'` for the inner expr normalization. Needs structural recursion on flat steps — NOT zero-step.
+
+**L4339** (`normalizeExpr_throw_step_sim`, HasThrowInHead cases): Cases like `seq_left`, `seq_right`, `let_body`, `if_then`, `if_else`, etc. These have a `HasThrowInHead` hypothesis. Need to show that flat semantics can evaluate the compound expression down to the throw point.
+
+**L4370** (`normalizeExpr_return_step_sim`): Full theorem sorry. Similar structure to throw but for return.
+
+**L4394** (`normalizeExpr_await_step_sim`): Full theorem sorry for await.
+
+**L4425** (`normalizeExpr_yield_step_sim`): Full theorem sorry for yield.
+
+**L4446, L4467, L4488, L4509**: let_step_sim, seq_step_sim, if_step_sim, tryCatch_step_sim. Full theorem sorries — each requires proving ANF step simulation for the respective construct.
+
+### Summary
+- **7 easy sorries** (L3825-L3923): Ready to apply. Zero-step proofs using normalizeExpr unfolding.
+- **2 medium sorries** (L4336, L4339): In normalizeExpr_throw_step_sim. Need structural induction.
+- **7 hard sorries** (L4370-L4509): Full theorem bodies needed. Architecturally complex.
+- **40+ step? sorries** (L3954-L4030, L4085-L4167): "step? wraps in parent context" — likely blocked on deeper infrastructure.
+### 2026-03-31T16:00:57+00:00 Run complete — File NOT writable, full analysis logged. 7 easy sorries ready to apply (zero-step proofs). 49 harder sorries analyzed.
+2026-03-31T16:01:10+00:00 DONE
