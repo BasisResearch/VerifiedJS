@@ -4,29 +4,27 @@ Record goals agents are stuck on. Agents must read this before starting proof wo
 
 ---
 
-## BUILD STATUS: ✅ PASS (2026-03-31T04:05) — All files compile. LowerCorrect.lean is SORRY-FREE.
+## BUILD STATUS: ✅ PASS (2026-03-31T05:05) — All files compile. LowerCorrect.lean is SORRY-FREE.
 
 ## Sorry Count: 75 grep-c (58 ANF + 17 CC + 0 Lower + 0 Wasm) — ~29 real provable sorries
 
 ---
 
-## CRITICAL BLOCKERS (2026-03-31T03:05)
+## CRITICAL BLOCKERS (2026-03-31T05:05)
 
-### P. CCStateAgree is too strong for branching — blocks 3 CC sorries (NEW 2026-03-31T03:05)
-**Owner**: jsspec agent
-**Issue**: `CCStateAgree` (L562) requires EQUALITY of `nextId` and `funcs.size`. For if-true (L3252), the output `st'` includes converting BOTH branches, but `st_a'` only includes the taken branch. `st'.nextId > st_a'.nextId` whenever the un-taken branch creates closures. Same for if-false (L3274) and while_ (L5313).
-**Fix**: Weaken output invariant to monotonicity: `st_a'.nextId ≤ st'.nextId`. Keep input equality (needed for `convertExpr_state_determined`). Then: if-true uses `st_a = st` → output ≤ ✓. if-false uses `st_a = st` → output = st' ✓.
-**Impact**: Unblocks 3 CC sorries (L3252, L3274, L5313).
-**Risk**: Changing theorem signature may break 20+ proved cases (each needs `≤` instead of `=`).
-**Status**: jsspec prompt rewritten with detailed implementation plan. Supervisor verified via LSP:
-`simp [sc', Prod.eta]` closes equation, `⟨rfl, rfl⟩` for output fails (`st'.funcs.size ≠ st_a'.funcs.size`).
+### P. CCStateAgree blocks 4 CC sorries — ARCHITECTURALLY BLOCKED (CONFIRMED 2026-03-31T05:05)
+**Owner**: UNASSIGNED (needs definition change to ClosureConvert.lean)
+**Issue**: `CCStateAgree` requires EQUALITY of `nextId`/`funcs.size`. Branching steps discard un-taken branches whose conversion advanced these counters.
+**Sorries**: L3279 (if-true), L3301×2 (if-false), L5462 (while_), L2960 (captured var).
+**Monotone approach REJECTED** (jsspec 04:00 analysis): weakening output to `≤` breaks ~10 sub-stepping chaining cases that feed equality into `convertExpr_state_determined`. Cannot be fixed without changing the definition.
+**Viable fix — Path A**: Make `convertExpr` state-independent by using position-based naming in `freshVar` instead of `nextId`. This eliminates `CCStateAgree` entirely. Requires editing `ClosureConvert.lean` (owned by proof, group read-only).
+**Viable fix — Path C**: Change simulation to N-to-M steps. Major restructuring.
+**Status**: BLOCKED until ClosureConvert.lean access is available.
 
 ### P2. Captured variable multi-step mismatch — blocks 1 CC sorry (CONFIRMED 2026-03-31T04:05)
-**Owner**: unassigned (needs architectural fix)
-**Issue**: L2933 — Flat steps `.getEnv (.var envVar) idx` (2 steps: resolve var, then getEnv). Core steps `.var name` (1 step: env lookup). 1-to-1 simulation impossible.
-**Fix**: Either add stutter steps to the simulation, or change captured variable conversion.
-**Impact**: 1 CC sorry.
-**Status**: Confirmed blocked via lean_goal. Not a priority — focus on CCStateAgree (3 sorries) first.
+**Owner**: unassigned (needs architectural fix or N-to-M simulation)
+**Issue**: L2960 — Flat needs 2 steps, Core needs 1 for captured variable lookup.
+**Status**: Blocked. Subsumed by CCStateAgree fix (Path C would fix both).
 
 ### O. hasBreakInHead_step?_error_aux is UNPROVABLE — blocks 40 ANF sorries
 **Owner**: proof agent
