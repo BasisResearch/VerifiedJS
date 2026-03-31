@@ -2056,7 +2056,7 @@ private theorem Flat_step?_call_consoleLog_vals (s : Flat.State)
       some (.log msg, { expr := .lit .undefined, env := s.env, heap := s.heap,
                         trace := s.trace ++ [.log msg], funcs := s.funcs,
                         callStack := s.callStack }) := by
-  unfold Flat.step?; simp [Flat.exprValue?, hvals, Core.consoleLogIdx, Flat.step?_pushTrace_expand]
+  unfold Flat.step?; simp [Flat.exprValue?, hvals, Core.consoleLogIdx, Flat.step?_pushTrace_expand]; split <;> rfl
 
 /-- Core call with function at consoleLogIdx, all-value args (general). -/
 private theorem Core_step?_call_consoleLog_general (args : List Core.Expr) (argVals : List Core.Value)
@@ -2069,7 +2069,7 @@ private theorem Core_step?_call_consoleLog_general (args : List Core.Expr) (argV
     Core.step? ⟨.call (.lit (.function Core.consoleLogIdx)) args, env, heap, trace, funcs, cs⟩ =
       some (.log msg, ⟨.lit .undefined, env, heap,
                        trace ++ [.log msg], funcs, cs⟩) := by
-  unfold Core.step?; simp [Core.exprValue?, hargs, Core.consoleLogIdx, Core.pushTrace]
+  unfold Core.step?; simp [Core.exprValue?, hargs, Core.consoleLogIdx, Core.pushTrace]; split <;> rfl
 
 /-- Console.log message from converted values equals message from original values. -/
 private theorem consoleLog_msg_convertValue (argVals : List Core.Value) :
@@ -4596,10 +4596,14 @@ private theorem closureConvert_step_simulation
           · -- ExprAddrWF
             have hvv_wf' : ValueAddrWF vv sc.heap.objects.size := by
               simp [ExprAddrWF] at hexprwf; exact hexprwf.2
-            simp only [sc', ExprAddrWF, ValueAddrWF, coreHeap']
-            split
-            · simp only [Array.size_setIfInBounds]; exact hvv_wf'
-            · exact hvv_wf'
+            have hsize : coreHeap'.objects.size = sc.heap.objects.size := by
+              simp only [coreHeap']
+              split
+              · simp [size_set!]
+              · rfl
+            simp only [sc', ExprAddrWF, ValueAddrWF]
+            rw [hsize]
+            exact hvv_wf'
           · -- CCState threading
             refine ⟨st, st, ?_, ⟨rfl, rfl⟩, by subst hst; exact ⟨rfl, rfl⟩⟩; simp [sc', Flat.convertExpr, Flat.convertValue]
         · -- Non-object case: heap unchanged, return value
