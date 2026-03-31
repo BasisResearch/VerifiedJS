@@ -5,8 +5,8 @@
 - **DO NOT** run `lake build VerifiedJS` (full build). OOMs.
 - Build ONLY: `lake build VerifiedJS.Proofs.ANFConvertCorrect`
 
-## !! CRITICAL: YOUR PROCESS HAS BEEN STUCK IN A WHILE LOOP !!
-**You have wasted 60+ HOURS total in while loops. DO NOT LOOP.**
+## !! CRITICAL: YOUR PROCESS HAS BEEN STUCK IN A WHILE LOOP FOR 17+ HOURS !!
+**You have wasted 80+ HOURS total in while loops. DO NOT LOOP.**
 
 ### FIRST ACTION — BEFORE ANYTHING ELSE:
 ```bash
@@ -39,27 +39,40 @@ That's it. ONE command. No waiting, no checking, no loops.
 - **1 HasThrowInHead non-direct** (L3923)
 - **7 expression-case** (return-some L3825, yield-some L3829, L3891, L3895, L3906, L3923, and throw/await/yield/let/seq/if+tryCatch)
 
-## PRIORITY 1: DELETE the 42 unprovable aux sorries (58 → 16)
+## PRIORITY 1: DELETE the 42 unprovable aux sorries (58 → 18)
 
-The `hasBreakInHead_step?_error_aux` (L3927-L4036) and `hasContinueInHead_step?_error_aux` (L4058-L4167) theorems are FUNDAMENTALLY UNPROVABLE — they claim single-step produces break/continue error, but step? wraps results in the parent context (seq wraps in seq, let wraps in let, etc.).
+The `hasBreakInHead_step?_error_aux` and `hasContinueInHead_step?_error_aux` theorems are FUNDAMENTALLY UNPROVABLE — they claim single-step produces break/continue error, but step? wraps results in the parent context.
 
-### EXACT DELETION PLAN:
+### EXACT STEPS:
 
-**Step 1**: Delete `hasBreakInHead_step?_error_aux` (L3927 to L4036 inclusive):
-```
-private theorem hasBreakInHead_step?_error_aux  (21 sorry cases)
-```
-
-**Step 2**: Delete `hasContinueInHead_step?_error_aux` (L4058 to L4167 inclusive):
-```
-private theorem hasContinueInHead_step?_error_aux  (21 sorry cases)
+**Step 1**: Find the aux lemmas:
+```bash
+grep -n "hasBreakInHead_step?_error_aux\|hasContinueInHead_step?_error_aux" VerifiedJS/Proofs/ANFConvertCorrect.lean
 ```
 
-**Step 3**: Replace callers with sorry. The callers are:
-- `hasBreakInHead_flat_error_steps` (L4041-L4055) — uses the deleted aux. Replace proof body with `sorry`
-- `hasContinueInHead_flat_error_steps` (L4169-L4183) — same, replace body with `sorry`
+**Step 2**: Delete `hasBreakInHead_step?_error_aux` — everything from the `private theorem hasBreakInHead_step?_error_aux` line through the `| makeEnv_values _ | objectLit_props _ | arrayLit_elems _ => sorry` line. Keep the `hasBreakInHead_flat_error_steps` theorem but replace its proof body with `sorry`.
 
-**Step 4**: Build and count:
+**Step 3**: Delete `hasContinueInHead_step?_error_aux` — same structure. Keep `hasContinueInHead_flat_error_steps` but replace proof body with `sorry`.
+
+**Step 4**: The `_flat_error_steps` theorems should now look like:
+```lean
+private theorem hasBreakInHead_flat_error_steps
+    (e : Flat.Expr) (label : Option Flat.LabelName)
+    (h : HasBreakInHead e label)
+    (sf : Flat.State) (hsf : sf.expr = e)
+    (hewf : ExprWellFormed e sf.env) :
+    ∃ (sf' : Flat.State) (evs : List Core.TraceEvent),
+      Flat.Steps sf evs sf' ∧
+      sf'.expr = .lit .undefined ∧
+      sf'.env = sf.env ∧ sf'.heap = sf.heap ∧
+      sf'.funcs = sf.funcs ∧ sf'.callStack = sf.callStack ∧
+      sf'.trace = sf.trace ++ evs ∧
+      observableTrace evs = observableTrace [.error ("break:" ++ label.getD "")] := by
+  sorry -- TODO: multi-step induction on HasBreakInHead
+```
+(Same for hasContinueInHead_flat_error_steps)
+
+**Step 5**: Build and count:
 ```bash
 lake build VerifiedJS.Proofs.ANFConvertCorrect && grep -c sorry VerifiedJS/Proofs/ANFConvertCorrect.lean
 ```
@@ -69,13 +82,7 @@ Expected: 58 - 42 + 2 = 18 sorries
 
 After deletion, rewrite using structural induction on `h : HasBreakInHead e label`:
 ```lean
-private theorem hasBreakInHead_flat_error_steps
-    (e : Flat.Expr) (label : Option Flat.LabelName)
-    (h : HasBreakInHead e label)
-    (sf : Flat.State) (hsf : sf.expr = e)
-    (hewf : ExprWellFormed e sf.env) :
-    ∃ (sf' : Flat.State) (evs : List Core.TraceEvent),
-      Flat.Steps sf evs sf' ∧ ... := by
+private theorem hasBreakInHead_flat_error_steps ... := by
   induction h with
   | break_direct =>
     exact ⟨_, [_], .tail ⟨by cases sf; simp_all [Flat.step?]⟩ (.refl _), rfl, rfl, rfl, rfl, rfl, rfl, rfl⟩

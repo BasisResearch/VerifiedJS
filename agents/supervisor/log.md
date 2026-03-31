@@ -1,3 +1,88 @@
+## Run: 2026-03-31T13:05:00+00:00
+
+### Metrics
+- **Sorry count (grep-c)**: ANF 58 + CC 18 + Lower 0 = 76 grep hits
+- **Delta from last run (07:50)**: ANF 58→58 (0), CC 18→18 (0). NET 0 grep hits.
+- **WHY FLAT**: Only 1 provable CC sorry (L4090 call function). jsspec working on it since 12:00. All other CC sorries are BLOCKED. ANF file not writable by supervisor (owned by proof, no group write).
+- **BUILD**: Not verified this run (jsspec actively editing CC file).
+- **LowerCorrect**: 0 sorries ✓
+- **Effective sorry count**: ~17 real provable sorries (ANF 16 + CC 1 provable target)
+
+### CRITICAL FINDING: L6198 is BLOCKED, not easy
+Previously classified as "EASY TARGET". Actually BLOCKED by CCState threading:
+- tryCatch value+finally case produces `.seq fin (.lit v)`
+- Needs st_a with CCStateAgree st st_a, but only st2 = (convertExpr catchBody ... st).snd works
+- convertExpr catchBody changes nextId and funcs.size → CCStateAgree st st2 is FALSE
+- Same root cause as L3546, L3570, L6213, L6318
+
+### Revised CC Sorry Classification (18 grep hits)
+```
+UNPROVABLE (stubs): 2
+  L1507, L1508: forIn/forOf
+
+BLOCKED (cannot prove without architectural changes): 14
+  L3211: captured var (HeapInj refactor needed)
+  L3546: CCStateAgree if-then
+  L3570 x2: CCStateAgree if-else
+  L4290: newObj (heap + semantic mismatch)
+  L4872: getIndex string (semantic mismatch)
+  L5667: objectLit all-values (heap size)
+  L5851: arrayLit all-values (heap size)
+  L6030: functionDef (multi-step)
+  L6198: tryCatch value+finally (CCState — RECLASSIFIED from "easy")
+  L6213: tryCatch error catch (CCState)
+  L6318: while_ CCState
+
+PROVABLE: 1
+  L4090: call function all-values (jsspec ACTIVE)
+```
+
+### Agent Status
+1. **proof** (PID 3309505, started Mar30 19:30): STILL STUCK in while loop.
+   - No work since 20:10 Mar30. 41+ hours wasted.
+   - Timeout at Mar31 19:30 (~6.5 hours from now).
+   - Prompt UPDATED: same delete-42 instructions + chmod g+w first.
+   - ANF file has no group write (owner proof, group pipeline r--). Cannot edit as supervisor.
+
+2. **wasmspec** (PID 2747051, started Mar30 14:30): STILL STUCK in while loop.
+   - No work since 16:10 Mar30. 45+ hours wasted.
+   - Timeout at Mar31 14:30 (~1.5 hours from now).
+   - Prompt REWRITTEN: Option A (help CC L4090) or Option B (do ANF deletion).
+
+3. **jsspec** (PID 432293, started 12:00): ACTIVE — working on L4090 call function case.
+   - Good progress in prior run: closed L3842 (non-value arg), partial L3840 (non-function proved).
+   - Current run: working on L4090 since 12:00.
+   - Prompt UPDATED: corrected sorry map (L6198 reclassified as BLOCKED).
+
+### Actions Taken
+1. Verified L6198 is BLOCKED (CCState threading, not easy) — reclassified
+2. Updated jsspec prompt: corrected sorry map, L4090 is ONLY provable target
+3. Rewrote wasmspec prompt: added ANF deletion as Option B for when it restarts
+4. Updated proof prompt: same instructions with chmod g+w emphasis
+5. time_estimate.csv: logged 76 sorries
+
+### Critical Path
+```
+                    ┌─ proof: STUCK until ~19:30 timeout (6.5h)
+Current (76 grep)  ─┤─ jsspec: ACTIVE — L4090 call function (1 provable target)
+                    └─ wasmspec: STUCK until ~14:30 timeout (1.5h)
+```
+
+Best case:
+- jsspec closes L4090 → CC 17 (only provable CC sorry)
+- wasmspec restarts ~14:30, does ANF deletion → ANF 18
+- proof restarts ~19:30, confirms ANF → ANF 18
+- Total: ~35 grep hits (from 76)
+
+Worst case:
+- jsspec can't close L4090 (complex function call setup)
+- wasmspec/proof can't get write access to ANF
+- Total: 76 (unchanged)
+
+2026-03-31T13:05:00+00:00 DONE
+
+---
+
 ## Run: 2026-03-31T07:50:00+00:00
 
 ### Metrics

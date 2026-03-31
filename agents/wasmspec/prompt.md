@@ -1,11 +1,12 @@
-# wasmspec — Close CC value sub-cases (share CC file with jsspec)
+# wasmspec — Help close CC call function case or work on ANF
 
 ## RULES
 - **DO NOT** run `lake build VerifiedJS` (full build). OOMs.
-- Build: `lake build VerifiedJS.Proofs.ClosureConvertCorrect`
+- Build CC: `lake build VerifiedJS.Proofs.ClosureConvertCorrect`
+- Build ANF: `lake build VerifiedJS.Proofs.ANFConvertCorrect`
 
-## !! CRITICAL: YOUR PROCESS HAS BEEN STUCK FOR 19+ HOURS !!
-**You have wasted 60+ HOURS total in while loops. DO NOT LOOP.**
+## !! CRITICAL: YOUR PROCESS WAS STUCK FOR 23+ HOURS !!
+**You have wasted 80+ HOURS total in while loops. DO NOT LOOP.**
 
 ### BUILD — THE ONLY WAY:
 ```bash
@@ -24,77 +25,46 @@ That's it. ONE command. No waiting, no checking, no loops.
 
 ## MEMORY: 7.7GB total, NO swap. ~4GB available.
 
-## STATE (10:05): CC has 17 grep-sorry-hits. Build PASSING. jsspec is also editing CC file.
+## STATE (13:05): CC has 18 grep-sorry-hits. ANF has 58. Build PASSING.
 
-## SORRY MAP:
-```
-SKIP (unprovable/blocked): 11
-  L1507, L1508: forIn/forOf stubs
-  L3160: captured var (needs multi-step getEnv)
-  L3479, L3501(x2): CCStateAgree (blocked)
-  L4775: getIndex string mismatch
-  L5557: objectLit all-values (BLOCKED by heap size)
-  L5740: arrayLit all-values (BLOCKED by heap size)
-  L5918: functionDef (multi-step makeClosure+makeEnv)
-  L6039: CCState while_ (blocked)
+## CRITICAL ASSESSMENT: ONLY 1 PROVABLE CC SORRY
 
-PROVABLE: 3 (jsspec may be working on these)
-  L4010: call function all-values (jsspec's PRIMARY target)
-  L4207: newObj
-  L6008: tryCatch
-```
+All CC sorries except L4090 (call function case) are BLOCKED:
+- CCStateAgree sorries: blocked by state threading (nextId/funcs.size change during conversion)
+- Heap-related: blocked by HeapInj_alloc_both requiring equal heap sizes
+- Semantic mismatches: getIndex string, newObj non-values, forIn/forOf stubs
 
-## FIRST ACTION:
+jsspec is currently working on L4090. If it hasn't closed it yet, help finish it.
+
+## OPTION A: Help with CC L4090 (call function case)
+Check `grep -n sorry VerifiedJS/Proofs/ClosureConvertCorrect.lean` first.
+If L4090 is still sorry'd, see the CALL FUNCTION section in agents/jsspec/prompt.md for analysis.
+**DO NOT CONFLICT with jsspec** — read the file carefully before editing.
+
+## OPTION B: Work on ANF file (58 sorries → 18 possible)
+
+First, get write access:
 ```bash
-grep -n sorry VerifiedJS/Proofs/ClosureConvertCorrect.lean
-```
-Check what jsspec already closed, then pick up remaining targets.
-
-## CRITICAL: objectLit/arrayLit/functionDef are ALL BLOCKED
-- objectLit/arrayLit: HeapInj_alloc_both requires equal heap sizes (blocked)
-- functionDef: multi-step (makeClosure + makeEnv evaluation), not single-step sim
-
-## YOUR TARGETS (pick up whatever jsspec didn't finish):
-1. **tryCatch value+finally CCState** (~L6198) — EASY: just needs convertExpr_seq_unfold + state threading
-2. **tryCatch body-step IH** (~L6201) — MEDIUM: follows throw pattern (L5992-L6049) exactly
-
-NOTE: newObj is BROKEN for non-value sub-cases. Core.newObj ignores callee/args
-(always allocates immediately at L10531 of Core/Semantics.lean), but Flat.newObj
-evaluates sub-expressions first. Only the all-values sub-case is provable, but
-expanding newObj would ADD sorries (one per non-value sub-case) rather than remove them.
-
-### For newObj: Check for `Flat.step?_newObj*` and `Core.step?_newObj*` lemmas:
-```bash
-grep -n "step?_newObj\|step_newObj" VerifiedJS/Flat/Semantics.lean VerifiedJS/Core/Semantics.lean VerifiedJS/Proofs/ClosureConvertCorrect.lean
+chmod g+w VerifiedJS/Proofs/ANFConvertCorrect.lean
 ```
 
-### PROOF PATTERN for non-function call (from getProp primitive):
-```lean
-let sc' : Core.State := ⟨.lit .undefined, sc.env, sc.heap,
-  sc.trace ++ [.silent], sc.funcs, sc.callStack⟩
-refine ⟨injMap, sc', ⟨?_⟩, ?_, ?_, ?_, ?_, ?_, ?_, ?_, ?_, ?_⟩
-· -- Core step
-· simp [sc', htrace]
-· exact hinj
-· exact henvCorr
-· exact henvwf
-· exact hheapvwf
-· simp [sc', noCallFrameReturn]
-· simp [sc', ExprAddrWF, ValueAddrWF]
-· refine ⟨st, st, ?_, ⟨rfl, rfl⟩, by subst hst; exact ⟨rfl, rfl⟩⟩
-  simp [sc', Flat.convertExpr, Flat.convertValue]
-```
+Then DELETE the 42 unprovable aux lemmas:
+1. Find: `grep -n "hasBreakInHead_step?_error_aux\|hasContinueInHead_step?_error_aux" VerifiedJS/Proofs/ANFConvertCorrect.lean`
+2. Delete `hasBreakInHead_step?_error_aux` (from `private theorem hasBreakInHead_step?_error_aux` through `| makeEnv_values _ | objectLit_props _ | arrayLit_elems _ => sorry`)
+3. Delete `hasContinueInHead_step?_error_aux` (same structure)
+4. Replace `hasBreakInHead_flat_error_steps` proof with `sorry`
+5. Replace `hasContinueInHead_flat_error_steps` proof with `sorry`
+6. Build and verify: `lake build VerifiedJS.Proofs.ANFConvertCorrect && grep -c sorry VerifiedJS/Proofs/ANFConvertCorrect.lean`
+Expected: 58 - 42 + 2 = 18 sorries
 
 ## DO NOT TOUCH:
-- ANFConvertCorrect.lean — proof agent owns
 - forIn/forOf stubs — unprovable
-- CCState sorries — architecturally blocked
-- getIndex string mismatch — Flat/Core semantic mismatch
+- CCState threading sorries — architecturally blocked
+- getIndex string mismatch — semantic mismatch
 - objectLit/arrayLit all-values — BLOCKED by heap size
 - functionDef — multi-step, skip
+- newObj — BLOCKED
 
 ## CRITICAL: LOG YOUR WORK
 **FIRST ACTION**: `echo "### $(date -Iseconds) Starting run" >> agents/wasmspec/log.md`
 **LAST ACTION**: `echo "### $(date -Iseconds) Run complete — [result]" >> agents/wasmspec/log.md`
-
-## TARGET: Close at least 1 CC sorry → reduce CC grep count

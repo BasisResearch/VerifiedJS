@@ -1,4 +1,4 @@
-# jsspec — Close CC call function + newObj cases
+# jsspec — Close CC call function case (L4090)
 
 ## RULES
 - **DO NOT** run `lake build VerifiedJS` (full build). OOMs.
@@ -10,27 +10,29 @@ Previous agents got PERMANENTLY STUCK. **NEVER use `while`, `until`, or `sleep` 
 
 ## MEMORY: 7.7GB total, NO swap. ~4GB available.
 
-## STATE (10:05): CC has 17 grep-sorry hits. Build was PASSING.
+## STATE (13:05): CC has 18 grep-sorry hits. Build PASSING.
 
-## SORRY MAP (current — `grep -n sorry` to verify):
+## SORRY MAP (run `grep -n sorry` to get CURRENT lines):
 ```
-L1507  forIn stub (SKIP — unprovable)
-L1508  forOf stub (SKIP — unprovable)
-L3160  captured var (SKIP — needs multi-step for getEnv)
-L3479  CCStateAgree if-then (SKIP — blocked)
-L3501  CCStateAgree if-else x2 (SKIP — blocked)
-L4010  call function all-values ← YOUR TARGET (highest priority)
-L4207  newObj (BROKEN — Core ignores callee/args, Flat evaluates. Only all-values sub-case provable)
-L4775  getIndex string (SKIP — semantic mismatch)
-L5557  objectLit all-values (SKIP — BLOCKED by heap size)
-L5740  arrayLit all-values (SKIP — BLOCKED by heap size)
-L5918  functionDef (SKIP — multi-step makeClosure+makeEnv)
-L6198  tryCatch value+finally CCState ← EASY TARGET (convertExpr_seq_unfold + state threading)
-L6201  tryCatch body-step IH ← MEDIUM TARGET (follows throw pattern at L5992-L6049)
-L6039  CCState while_ (SKIP — blocked)
+PROVABLE (1 target):
+  L4090  call function all-values ← YOUR ONLY TARGET
+
+ALL OTHERS ARE BLOCKED — DO NOT TOUCH:
+  L1507, L1508: forIn/forOf stubs (unprovable)
+  L3211: captured var (needs HeapInj refactor)
+  L3546: CCStateAgree if-then (blocked)
+  L3570: CCStateAgree if-else x2 (blocked)
+  L4290: newObj (blocked — heap + semantic mismatch)
+  L4872: getIndex string (semantic mismatch)
+  L5667: objectLit all-values (blocked — heap size)
+  L5851: arrayLit all-values (blocked — heap size)
+  L6030: functionDef (multi-step, blocked)
+  L6198: tryCatch value+finally CCState (BLOCKED — CCState, NOT easy)
+  L6213: tryCatch error catch (BLOCKED — CCState threading)
+  L6318: while_ CCState (BLOCKED — CCState threading)
 ```
 
-## CALL FUNCTION CASE (L4010) — CRITICAL ANALYSIS
+## CALL FUNCTION CASE (L4090) — CRITICAL ANALYSIS
 
 **Goal state** (from lean_goal):
 ```
@@ -86,12 +88,7 @@ refine ⟨injMap, sc', ⟨?_⟩, ?_, ?_, ?_, ?_, ?_, ?_, ?_, ?_, ?_⟩
 
 ## DO NOT TOUCH:
 - ANFConvertCorrect.lean — proof agent owns this
-- forIn/forOf stubs — unprovable
-- CCState threading sorries — architecturally blocked
-- getIndex string mismatch — Flat/Core semantic mismatch
-- objectLit/arrayLit all-values — BLOCKED by heap size issue
-- functionDef — multi-step (makeClosure+makeEnv), skip
-- newObj non-value sub-cases — BROKEN: Core.newObj ignores callee/args (always allocates immediately), but Flat.newObj evaluates sub-expressions first. Semantic mismatch. Only all-values sub-case is provable.
+- ALL sorries except L4090 — they are all blocked (see sorry map above)
 
 ## WORKFLOW:
 1. `grep -n sorry` to find CURRENT line numbers (they shift!)
@@ -103,4 +100,4 @@ refine ⟨injMap, sc', ⟨?_⟩, ?_, ?_, ?_, ?_, ?_, ?_, ?_, ?_, ?_⟩
 ## CRITICAL: LOG YOUR WORK
 **LAST ACTION**: `echo "### $(date -Iseconds) Run complete — [result]" >> agents/jsspec/log.md`
 
-## TARGET: Close call function case (L4010) → CC grep from 17 to 16
+## TARGET: Close call function case (L4090) → CC grep from 18 to 17
