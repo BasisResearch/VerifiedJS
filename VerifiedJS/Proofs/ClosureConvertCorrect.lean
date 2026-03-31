@@ -5097,7 +5097,86 @@ private theorem closureConvert_step_simulation
             | _ => right; intro a; exact Core.Value.noConfusion
           rcases hno_core with ⟨addr, rfl⟩ | hno
           · -- Object case: heap mutation
-            sorry
+            have : Flat.convertValue (.object addr) = .object addr := rfl
+            rw [this] at hstep
+            rw [Flat_step?_setIndex_object_both_values] at hstep
+            simp only [flatToCoreValue_convertValue, Prod.mk.injEq, Option.some.injEq] at hstep
+            obtain ⟨hev, hsf'⟩ := hstep; subst hev; subst hsf'
+            have haddr_wf : addr < sc.heap.objects.size := by
+              simp [ExprAddrWF, ValueAddrWF] at hexprwf; exact hexprwf.1
+            have hvv_wf : ValueAddrWF vv sc.heap.objects.size := by
+              simp [ExprAddrWF, ValueAddrWF] at hexprwf; exact hexprwf.2.2
+            let propName := Core.valueToString iv
+            let coreHeap' := match sc.heap.objects[addr]? with
+              | some (props : List (Core.PropName × Core.Value)) =>
+                  let updated := if props.any (fun (kv : Core.PropName × Core.Value) => kv.fst == propName)
+                    then props.map (fun (kv : Core.PropName × Core.Value) => if kv.fst == propName then (propName, vv) else kv)
+                    else props ++ [(propName, vv)]
+                  { sc.heap with objects := sc.heap.objects.set! addr updated }
+              | none => sc.heap
+            let sc' : Core.State := ⟨.lit vv, sc.env, coreHeap',
+              sc.trace ++ [.silent], sc.funcs, sc.callStack⟩
+            refine ⟨injMap, sc', ⟨?_⟩, ?_, ?_, ?_, ?_, ?_, ?_, ?_, ?_, ?_⟩
+            · -- Core step
+              have hsc' : sc = { sc with expr := .setIndex (.lit (.object addr)) (.lit iv) (.lit vv) } := by
+                obtain ⟨_, _, _, _, _, _⟩ := sc; simp only [] at hsc; subst hsc; rfl
+              rw [hsc']
+              have := Core.step?_setIndex_object_val addr iv vv sc.env sc.heap sc.trace sc.funcs sc.callStack
+              simp only [Core.pushTrace, sc', coreHeap', propName] at this ⊢; exact this
+            · -- trace
+              simp [sc', htrace]
+            · -- HeapInj: both heaps do same set! at addr
+              simp only [sc', coreHeap', propName]
+              rw [heapObjectAt?_eq, ← HeapInj_get hinj haddr_wf]
+              rw [flatToCoreValue_convertValue, valueToString_convertValue]
+              cases sc.heap.objects[addr]? with
+              | none => exact hinj
+              | some props => exact HeapInj_set_same hinj addr haddr_wf _
+            · -- EnvCorrInj
+              exact henvCorr
+            · -- EnvAddrWF
+              simp only [sc', coreHeap', propName]
+              cases sc.heap.objects[addr]? with
+              | none => exact henvwf
+              | some props => exact EnvAddrWF_mono henvwf (by simp [size_set!])
+            · -- HeapValuesWF
+              simp only [sc', coreHeap', propName]
+              cases hprops : sc.heap.objects[addr]? with
+              | none => exact hheapvwf
+              | some props =>
+                apply HeapValuesWF_set_at hheapvwf
+                intro kv hkv
+                by_cases hany : props.any (fun kv => kv.fst == propName)
+                · simp only [hany, ↓reduceIte] at hkv
+                  obtain ⟨orig, horig, rfl⟩ := List.mem_map.mp hkv
+                  split
+                  · simp only; exact hvv_wf
+                  · exact hheapvwf addr haddr_wf props hprops orig horig
+                · simp only [hany, Bool.false_eq_true, ↓reduceIte] at hkv
+                  rcases List.mem_append.mp hkv with h | h
+                  · exact hheapvwf addr haddr_wf props hprops kv h
+                  · rw [List.mem_singleton.mp h]; simp only; exact hvv_wf
+            · -- hheapna
+              simp only [sc', coreHeap', propName]
+              split
+              · simp [Array.size_setIfInBounds, hheapna]
+              · exact hheapna
+            · -- noCallFrameReturn
+              simp [sc', noCallFrameReturn]
+            · -- ExprAddrWF
+              have hvv_wf' : ValueAddrWF vv sc.heap.objects.size := by
+                simp [ExprAddrWF] at hexprwf; exact hexprwf.2.2
+              have hsize : coreHeap'.objects.size = sc.heap.objects.size := by
+                simp only [coreHeap', propName]
+                split
+                · simp [size_set!]
+                · rfl
+              simp only [sc', ExprAddrWF, ValueAddrWF]
+              rw [hsize]
+              exact hvv_wf'
+            · -- CCState threading
+              refine ⟨st, st, ?_, ⟨rfl, rfl⟩, by subst hst; exact ⟨rfl, rfl⟩⟩
+              simp [sc', Flat.convertExpr, Flat.convertValue]
           · -- Non-object case: heap unchanged, return value
             have hno_flat : ∀ addr, Flat.convertValue cv ≠ .object addr :=
               convertValue_not_object cv hno
@@ -5760,9 +5839,12 @@ private theorem closureConvert_step_simulation
     let fcatch := (Flat.convertExpr catchBody (catchParam :: scope) envVar envMap st1).fst
     let st2 := (Flat.convertExpr catchBody (catchParam :: scope) envVar envMap st1).snd
     let ffin := (Flat.convertOptExpr finally_ scope envVar envMap st2).fst
-    have hncf : catchParam ≠ "__call_frame_return__" := by sorry
-    have hncfr_body : noCallFrameReturn body = true := by sorry
-    have hncfr_catch : noCallFrameReturn catchBody = true := by sorry
+    have hncf : catchParam ≠ "__call_frame_return__" := by
+      simp [noCallFrameReturn] at hncfr; exact hncfr.1
+    have hncfr_body : noCallFrameReturn body = true := by
+      simp [noCallFrameReturn] at hncfr; exact hncfr.2.1
+    have hncfr_catch : noCallFrameReturn catchBody = true := by
+      simp [noCallFrameReturn] at hncfr; exact hncfr.2.2.1
     cases hbv : Core.exprValue? body with
     | some v =>
       sorry
