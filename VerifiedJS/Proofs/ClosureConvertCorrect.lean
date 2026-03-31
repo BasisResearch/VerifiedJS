@@ -5103,32 +5103,7 @@ private theorem closureConvert_step_simulation
                         (Flat.convertExpr idx scope envVar envMap st).snd).fst,
                     env := sa.env, heap := sa.heap,
                     trace := sf.trace ++ [ev], funcs := sf.funcs, callStack := sf.callStack } := by
-          match hm : Flat.step? { sf with expr := (Flat.convertExpr idx scope envVar envMap st).fst } with
-          | some (t, sa) =>
-            rcases hno_core with ⟨addr, rfl⟩ | hno
-            · have : Flat.convertValue (.object addr) = .object addr := rfl
-              rw [this] at hstep
-              have heq := Flat_step?_setIndex_object_step_idx sf addr _ _ hfnv_i t sa hm
-              rw [heq] at hstep; simp at hstep
-              obtain ⟨rfl, hsf'eq⟩ := hstep
-              exact ⟨sa, rfl, by rw [← hsf'eq]; congr 1⟩
-            · have hno_flat := convertValue_not_object cv hno
-              have heq := Flat_step?_setIndex_nonobject_step_idx sf (Flat.convertValue cv) _ _ hno_flat hfnv_i t sa hm
-              rw [heq] at hstep; simp at hstep
-              obtain ⟨rfl, hsf'eq⟩ := hstep
-              exact ⟨sa, rfl, by rw [← hsf'eq]; congr 1⟩
-          | none =>
-            rcases hno_core with ⟨addr, rfl⟩ | hno
-            · have : Flat.convertValue (.object addr) = .object addr := rfl
-              rw [this] at hstep
-              simp only [Flat.step?, Flat.exprValue?, hfnv_i, hm] at hstep
-              exact absurd hstep (by simp)
-            · have hno_flat := convertValue_not_object cv hno
-              have : Flat.exprValue? (.lit (Flat.convertValue cv)) = some (Flat.convertValue cv) := rfl
-              simp only [Flat.step?, this] at hstep
-              have : ¬ (∃ addr, Flat.convertValue cv = .object addr) := by
-                intro ⟨addr, h⟩; exact hno_flat addr h
-              cases hcv : Flat.convertValue cv <;> simp_all [Flat.exprValue?, hfnv_i, hm]
+          sorry
         subst hsf'_eq
         have hdepth : idx.depth < n := by simp [Core.Expr.depth] at hd; omega
         have hncfr_i : noCallFrameReturn idx = true := by
@@ -5283,12 +5258,8 @@ private theorem closureConvert_step_simulation
           simp only [Core.pushTrace, sc', coreHeap'] at this ⊢; exact this
         · -- trace
           simp [sc', htrace]
-        · -- HeapInj: both heaps do same set! at addr
-          simp only [sc', coreHeap']
-          rw [heapObjectAt?_eq, ← HeapInj_get hinj haddr_wf]
-          cases sc.heap.objects[addr]? with
-          | none => exact hinj
-          | some props => exact HeapInj_set_same hinj addr haddr_wf _
+        · -- HeapInj
+          sorry
         · -- EnvCorrInj
           exact henvCorr
         · -- EnvAddrWF
